@@ -50,7 +50,7 @@ UV_MEMBERS = (
 )
 GENERATED_DIRS = (PROTO_DIR / "gen" / "go", PROTO_DIR / "gen" / "python")
 GENERATED_SUFFIXES = (".pb.go", ".connect.go", "_pb2.py", "_pb2.pyi", "_pb2_grpc.py")
-# 还没有 git 仓库时，buf breaking 以这个镜像为基线；S-01 人审通过后生成。
+# buf breaking 的基线：人审通过的契约镜像，每次契约变更经人审后重新生成（CLAUDE.md 常用命令）。
 BREAKING_BASELINE = PROTO_DIR / "breaking-baseline.binpb"
 
 
@@ -85,13 +85,11 @@ def test_buf_format_is_clean():
 
 
 def test_buf_breaking_against_baseline():
+    """以人审通过的契约镜像为基线。不用 .git#branch=main：仓库在网络共享盘上时 buf 无法克隆它，
+    而且 main 上也可能有尚未人审的契约改动。"""
     buf = require_tool("buf")
-    if (REPO_ROOT / ".git").exists():
-        against = ".git#branch=main"
-    else:
-        assert BREAKING_BASELINE.is_file(), f"没有 git 仓库时以 {BREAKING_BASELINE.name} 为基线，文件不存在"
-        against = str(BREAKING_BASELINE)
-    run([buf, "breaking", "--against", against])
+    assert BREAKING_BASELINE.is_file(), f"缺少兼容性基线 {BREAKING_BASELINE.name}"
+    run([buf, "breaking", "--against", BREAKING_BASELINE])
 
 
 def _copy_buf_module(dst: Path) -> Path:
@@ -177,7 +175,11 @@ def test_go_modules_build_vet_and_test(tmp_path):
     go = require_tool("go")
     for module in _go_workspace_modules():
         # -o 指向临时目录：模块里只有一个 main 包时，go build 会把可执行文件写进模块目录。
-        run([go, "build", "-o", tmp_path, "./..."], cwd=module)
+        # 没有 main 包的模块不接受 -o 目录，此时普通的 go build 也不会写出文件。
+        proc = run([go, "build", "-o", tmp_path, "./..."], cwd=module, check=False)
+        if proc.returncode != 0:
+            assert "no main packages" in proc.stderr + proc.stdout, proc.stderr
+            run([go, "build", "./..."], cwd=module)
         run([go, "vet", "./..."], cwd=module)
         run([go, "test", "./..."], cwd=module)
 

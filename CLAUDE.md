@@ -112,7 +112,7 @@ $env:UV_PROJECT_ENVIRONMENT = "$env:USERPROFILE\.local\venvs\agent-runtime"
 | --- | --- |
 | 安装 Python 依赖 | `uv sync --all-packages --locked` |
 | proto lint 与格式 | `buf lint`；`buf format --diff --exit-code` |
-| proto 兼容性检查 | `buf breaking --against proto/breaking-baseline.binpb`；成为 git 仓库后改用 `--against '.git#branch=main'` |
+| proto 兼容性检查 | `buf breaking --against proto/breaking-baseline.binpb`（基线是人审通过的契约；仓库在共享盘上时 buf 无法克隆 `.git`） |
 | 生成代码 | `buf generate`（远程插件，需要联网），生成结果一并提交 |
 | 契约验收测试（S-01） | `uv run --package agentruntime-contract-tests pytest tests/contract` |
 | Python 共享库与一致性测试（S-02） | 在 `libs/py-core` 下：`uv run --package agentruntime-core --all-extras pytest tests` |
