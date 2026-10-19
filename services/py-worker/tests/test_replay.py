@@ -14,12 +14,14 @@ import sys
 import uuid
 from pathlib import Path
 from types import ModuleType
+from typing import Any
 
 import pytest
 from temporalio.worker import Replayer, UnsandboxedWorkflowRunner
 from temporalio.workflow import NondeterminismError
 
 import agentruntime_worker.workflows.task as task_module
+from agentruntime_worker import names
 from agentruntime_worker.replay import load_histories, main, replay_histories
 
 from .support import HISTORIES_DIR
@@ -71,9 +73,15 @@ def swap_marked_lines(source: str) -> str:
     return "\n".join(lines)
 
 
+def is_task_history(history: Any) -> bool:
+    started = history.events[0].workflow_execution_started_event_attributes
+    return started.workflow_type.name == names.TASK_WORKFLOW
+
+
 async def replay_with(module: ModuleType) -> list[BaseException | None]:
     replayer = Replayer(workflows=[module.TaskWorkflow], workflow_runner=UnsandboxedWorkflowRunner())
-    histories = load_histories(HISTORIES_DIR)
+    # 只回放 Task 工作流的历史；SubAgentWorkflow 等子工作流的历史由 test_stage_replay 负责。
+    histories = [h for h in load_histories(HISTORIES_DIR) if is_task_history(h)]
     out: list[BaseException | None] = []
     for history in histories:
         result = await replayer.replay_workflow(history, raise_on_replay_failure=False)

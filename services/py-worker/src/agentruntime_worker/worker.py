@@ -20,25 +20,43 @@ from temporalio.worker import Worker
 from agentruntime_worker import names
 from agentruntime_worker.activities.stubs import StubActivities
 from agentruntime_worker.config import WorkerConfig
+from agentruntime_worker.workflows.stage_runner import SubAgentWorkflow, SubgraphWorkflow
 from agentruntime_worker.workflows.task import TaskWorkflow
 
 
 @dataclass(frozen=True)
 class QueueComponents:
-    """一个队列上登记的工作流与 activity 名。"""
+    """一个队列上登记的工作流与 activity 名。local activity 在运行工作流的 Worker 上执行，登记在工作流所在的队列。"""
 
     workflows: tuple[str, ...] = ()
     activities: tuple[str, ...] = ()
+    local_activities: tuple[str, ...] = ()
 
 
 QUEUE_COMPONENTS: dict[str, QueueComponents] = {
-    names.TASK_QUEUE: QueueComponents(workflows=(names.TASK_WORKFLOW,)),
-    names.DECISION_QUEUE: QueueComponents(activities=(names.PLAN_ROUND, names.REVIEW_ROUND, names.FINALIZE_TASK)),
-    names.MODEL_QUEUE: QueueComponents(activities=(names.EXECUTE_MODEL_NODE,)),
-    names.PROGRAM_QUEUE: QueueComponents(activities=(names.EXECUTE_PROGRAM_NODE,)),
+    names.TASK_QUEUE: QueueComponents(
+        workflows=(names.TASK_WORKFLOW, names.SUB_AGENT_WORKFLOW, names.SUBGRAPH_WORKFLOW),
+        local_activities=(names.RUN_HOOKS,),
+    ),
+    names.DECISION_QUEUE: QueueComponents(
+        activities=(
+            names.PLAN_ROUND,
+            names.REVIEW_ROUND,
+            names.FINALIZE_TASK,
+            names.LOAD_STAGE_POLICY,
+            names.RESOLVE_CATALOG,
+            names.EXPAND_TEMPLATE,
+        )
+    ),
+    names.MODEL_QUEUE: QueueComponents(activities=(names.EXECUTE_MODEL_NODE, names.TOOL_LOOP_STEP)),
+    names.PROGRAM_QUEUE: QueueComponents(activities=(names.EXECUTE_PROGRAM_NODE, names.CALL_TOOL)),
 }
 
-WORKFLOWS = {names.TASK_WORKFLOW: TaskWorkflow}
+WORKFLOWS = {
+    names.TASK_WORKFLOW: TaskWorkflow,
+    names.SUB_AGENT_WORKFLOW: SubAgentWorkflow,
+    names.SUBGRAPH_WORKFLOW: SubgraphWorkflow,
+}
 
 
 def parse_queues(value: str) -> list[str]:
@@ -70,7 +88,7 @@ def build_workers(
                 client,
                 task_queue=queue,
                 workflows=[WORKFLOWS[w] for w in components.workflows],
-                activities=[activities[a] for a in components.activities],
+                activities=[activities[a] for a in components.activities + components.local_activities],
             )
         )
     return workers

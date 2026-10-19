@@ -33,10 +33,13 @@ FORBIDDEN_MODULES = {
 # 工作流代码里只允许导入 activity 的类型，不导入它们的实现（实现做 I/O、调用模型）。
 FORBIDDEN_WORKER_MODULES = ("agentruntime_worker.activities.stubs", "agentruntime_worker.activities.calllog", "agentruntime_worker.config")
 FORBIDDEN_CALLS = {
-    ("datetime", "now"),
-    ("datetime", "utcnow"),
-    ("datetime", "today"),
-    ("date", "today"),
+    ("datetime", "now"): "改用 workflow.now()",
+    ("datetime", "utcnow"): "改用 workflow.now()",
+    ("datetime", "today"): "改用 workflow.now()",
+    ("date", "today"): "改用 workflow.now()",
+    # asyncio.wait 与 as_completed 用 set 返回结果，顺序不确定（计划 S-04：ready 集合要排序）。
+    ("asyncio", "wait"): "改用 workflow.wait()",
+    ("asyncio", "as_completed"): "改用 workflow.as_completed()",
 }
 FORBIDDEN_BUILTINS = {"open", "print", "input"}
 
@@ -60,7 +63,7 @@ def lint_source(source: str, filename: str) -> list[str]:
         elif isinstance(node, ast.Call):
             func = node.func
             if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name) and (func.value.id, func.attr) in FORBIDDEN_CALLS:
-                report(node, f"不用 {func.value.id}.{func.attr}()，改用 workflow.now()")
+                report(node, f"不用 {func.value.id}.{func.attr}()，{FORBIDDEN_CALLS[(func.value.id, func.attr)]}")
             if isinstance(func, ast.Name) and func.id in FORBIDDEN_BUILTINS:
                 report(node, f"工作流代码不调用 {func.id}()")
         elif isinstance(node, ast.For | ast.AsyncFor | ast.comprehension):
@@ -75,23 +78,24 @@ def lint_source(source: str, filename: str) -> list[str]:
 
 def test_workflow_modules_are_deterministic() -> None:
     files = sorted(WORKFLOW_DIR.glob("*.py"))
-    assert any(f.name == "task.py" for f in files)
+    assert {"task.py", "stage_runner.py", "stage_plan.py"} <= {f.name for f in files}
     problems = [p for f in files for p in lint_source(f.read_text("utf-8"), f.name)]
     assert not problems, "\n".join(problems)
 
 
 def test_lint_catches_violations() -> None:
     source = """
-import time, random
+import asyncio, time, random
 from datetime import datetime
 from agentruntime_worker.activities.stubs import StubActivities
-def f(xs):
+async def f(xs, tasks):
     datetime.now()
     open("x")
+    await asyncio.wait(tasks)
     for x in set(xs):
         pass
     return [y for y in {1, 2}]
 """
     problems = "\n".join(lint_source(source, "bad.py"))
-    for needle in ("time", "random", "datetime.now", "activities.stubs", "open()", "set 的遍历顺序"):
+    for needle in ("time", "random", "datetime.now", "asyncio.wait", "activities.stubs", "open()", "set 的遍历顺序"):
         assert needle in problems, f"没有发现“{needle}”：\n{problems}"

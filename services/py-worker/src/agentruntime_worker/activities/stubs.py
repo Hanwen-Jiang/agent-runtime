@@ -22,11 +22,22 @@ from temporalio.exceptions import ApplicationError
 from agentruntime_worker import names
 from agentruntime_worker.activities.calllog import CallLog
 from agentruntime_worker.activities.types import (
+    CatalogInfo,
+    CatalogRequest,
     FinalizeTaskInput,
+    HookCall,
     NodeInput,
     PlanRoundInput,
     PlanRoundOutput,
     ReviewRoundInput,
+    StagePolicy,
+    StagePolicyRequest,
+    TemplateExpansion,
+    TemplateExpansionRequest,
+    TemplateInfo,
+    ToolCallInput,
+    ToolLoopStep,
+    ToolLoopStepInput,
 )
 from agentruntime_worker.config import WorkerConfig
 
@@ -161,6 +172,41 @@ class StubActivities:
         self.calls.record(names.FINALIZE_TASK, inp.task_id, "start", status=inp.status)
         self.calls.record(names.FINALIZE_TASK, inp.task_id, "end", status=inp.status)
 
+    # --- Stage Runner 的桩（S-04）；真实实现分别来自租户策略、Registry、Model Gateway、ToolDriver 与 Policy Engine ---
+
+    @activity.defn(name=names.LOAD_STAGE_POLICY)
+    async def load_stage_policy(self, inp: StagePolicyRequest) -> StagePolicy:
+        """默认上限。"""
+        return StagePolicy()
+
+    @activity.defn(name=names.RESOLVE_CATALOG)
+    async def resolve_catalog(self, req: CatalogRequest) -> CatalogInfo:
+        """桩 Catalog：模板一律按 program · none，工具一律按 read。"""
+        return CatalogInfo(
+            templates={t: TemplateInfo(executor="program", effect="none") for t in req.templates},
+            tools={t: "read" for t in req.tools},
+        )
+
+    @activity.defn(name=names.EXPAND_TEMPLATE)
+    async def expand_template(self, req: TemplateExpansionRequest) -> TemplateExpansion:
+        """桩 Registry 没有 Recipe：一律报不可重试的错误。"""
+        raise ApplicationError(f"桩 Registry 里没有 Recipe {req.node.get('recipe')}", type="recipe_not_found", non_retryable=True)
+
+    @activity.defn(name=names.TOOL_LOOP_STEP)
+    async def tool_loop_step(self, inp: ToolLoopStepInput) -> ToolLoopStep:
+        """桩模型：第一步就结束，结果为空。"""
+        return ToolLoopStep(action="finish", result={})
+
+    @activity.defn(name=names.CALL_TOOL)
+    async def call_tool(self, inp: ToolCallInput) -> Any:
+        """桩工具：回显参数。"""
+        return {"tool": inp.tool, "args": inp.args}
+
+    @activity.defn(name=names.RUN_HOOKS)
+    async def run_hooks(self, call: HookCall) -> list[dict[str, Any]]:
+        """Policy Engine 的桩：一律 allow（计划 S-04 交付）。"""
+        return [{"decision": "allow", "hook": hook, "mount": call.mount} for hook in call.hooks]
+
     def activities(self) -> dict[str, Any]:
         """activity 名 → 绑定的方法。"""
         return {
@@ -169,4 +215,10 @@ class StubActivities:
             names.EXECUTE_PROGRAM_NODE: self.execute_program_node,
             names.REVIEW_ROUND: self.review_round,
             names.FINALIZE_TASK: self.finalize_task,
+            names.LOAD_STAGE_POLICY: self.load_stage_policy,
+            names.RESOLVE_CATALOG: self.resolve_catalog,
+            names.EXPAND_TEMPLATE: self.expand_template,
+            names.TOOL_LOOP_STEP: self.tool_loop_step,
+            names.CALL_TOOL: self.call_tool,
+            names.RUN_HOOKS: self.run_hooks,
         }

@@ -6,7 +6,8 @@
   Session 工作流 Continue-As-New 之后拿不到子工作流的 future，只能靠这个信号得知结束。
 - 版本清单由 Task Service 写入工作流输入，原样交给 Planner 并写进 Task State 的 pinned。
 
-S-03 的 Stage 执行只按依赖顺序逐个跑节点，调度、Hook 与展开由 S-04 的 Stage Runner 接手。
+Stage 由 Stage Runner 执行（S-04，workflows/stage_runner.py）。S-03 的旧执行路径保留在版本分支后面，
+S-03 留下的事件历史仍按旧路径回放。
 
 工作流代码必须确定：不读系统时间、不用 random、不做 I/O、不调用模型（CLAUDE.md）。
 """
@@ -34,16 +35,22 @@ with workflow.unsafe.imports_passed_through():
         PlanRoundInput,
         PlanRoundOutput,
         ReviewRoundInput,
+        StagePolicy,
         StageResult,
         Tenant,
     )
     from agentruntime_worker.workflows import timeouts
+    from agentruntime_worker.workflows.failures import caused_by_cancel as _caused_by_cancel
+    from agentruntime_worker.workflows.failures import failure_message as _failure_message
+    from agentruntime_worker.workflows.stage_runner import RunContext, StageRunner, effect_name
 
 # Round 上限；Reviewer 的升级规则（附录 B.8）由 S-10 实现，这里只防止无限循环。
 MAX_ROUNDS = 20
+# Stage Runner（S-04）改变了命令序列：新的运行走这个版本分支，S-03 留下的历史仍按旧路径回放。
+STAGE_RUNNER_PATCH = "s04-stage-runner"
 DEFAULT_DONE_WHEN = "回答用户的问题"
 
-DECISION_RETRY = RetryPolicy(initial_interval=timedelta(seconds=1), maximum_interval=timedelta(seconds=30), maximum_attempts=5)
+DECISION_RETRY = timeouts.DECISION_RETRY
 
 
 def _enum_name(value: int, prefix: str, enum: Any) -> str:
@@ -60,26 +67,6 @@ def _to_value(obj: Any) -> struct_pb2.Value:
     return value
 
 
-def _failure_message(err: BaseException) -> str:
-    """取最内层的失败说明，例如 activity 里抛出的 ApplicationError。"""
-    message = str(err)
-    cause: BaseException | None = err
-    while isinstance(cause, FailureError):
-        if cause.message:
-            message = cause.message
-        cause = cause.cause
-    return message
-
-
-def _caused_by_cancel(err: BaseException) -> bool:
-    cause: BaseException | None = err
-    while cause is not None:
-        if isinstance(cause, CancelledError):
-            return True
-        cause = cause.cause if isinstance(cause, FailureError) else None
-    return False
-
-
 def _initial_state(inp: task_pb2.TaskWorkflowInput) -> dict[str, Any]:
     inputs = json_format.MessageToDict(inp.inputs)
     pins = inp.pinned_versions
@@ -88,7 +75,9 @@ def _initial_state(inp: task_pb2.TaskWorkflowInput) -> dict[str, Any]:
         entries = getattr(pins, key)
         if entries:
             pinned[key] = {k: entries[k] for k in sorted(entries)}
-    constraints: dict[str, Any] = {}
+    # 领域约束（例如 quarter）来自用户的结构化输入，节点用 $task.constraints.<名> 引用（附录 B.1）；
+    # effect 上限与预算以租户策略为准，用户输入不能覆盖。
+    constraints: dict[str, Any] = dict(inputs.get("constraints") or {}) if isinstance(inputs.get("constraints"), dict) else {}
     if inp.effect_ceiling:
         constraints["effect_ceiling"] = _enum_name(inp.effect_ceiling, "EFFECT_", enums_pb2.Effect)
     if inp.budget.usd_micros:
@@ -99,7 +88,12 @@ def _initial_state(inp: task_pb2.TaskWorkflowInput) -> dict[str, Any]:
         "goal": inp.message,
         "done_when": str(inputs.get("done_when") or DEFAULT_DONE_WHEN),
         "status": "running",
+        "milestones": [],
+        "facts": [],
+        "assumptions": [],
+        "open_questions": [],
         "rounds": [],
+        "artifacts": [],
         "pinned": pinned,
     }
     if constraints:
@@ -133,6 +127,9 @@ class TaskWorkflow:
         # 正在等人工回复的节点 → 可选项；收到的合法回复。
         self._waiting: dict[str, tuple[str, ...]] = {}
         self._replies: dict[str, task_pb2.HumanReplySignal] = {}
+        # Stage Runner 的上限：第一个 Stage 开始时加载，整个 Task 内沿用。
+        self._stage_policy: StagePolicy | None = None
+        self._pinned: dict[str, Any] = {}
 
     @workflow.run
     async def run(self, inp: task_pb2.TaskWorkflowInput) -> task_pb2.TaskWorkflowResult:
@@ -192,6 +189,7 @@ class TaskWorkflow:
             "model_profiles": dict(sorted(inp.pinned_versions.model_profiles.items())),
             "tenant_policy": inp.pinned_versions.tenant_policy,
         }
+        self._pinned = pinned
         for seq in range(1, MAX_ROUNDS + 1):
             self._round_seq = seq
             plan = await workflow.execute_activity(
@@ -248,7 +246,36 @@ class TaskWorkflow:
         raise ApplicationError(f"超过 Round 上限 {MAX_ROUNDS}", type="too_many_rounds", non_retryable=True)
 
     async def _run_stage(self, seq: int, stage: dict[str, Any]) -> dict[str, StageResult]:
-        """按依赖顺序执行 Node。只把 result 交给下游与 Reviewer；rationale 只写入 trace，不往下传。"""
+        """执行一个 Stage。新的运行交给 Stage Runner；S-03 留下的历史没有版本标记，按旧路径回放。"""
+        assert self._input is not None
+        if not workflow.patched(STAGE_RUNNER_PATCH):
+            return await self._run_stage_v1(seq, stage)
+        ctx = RunContext(
+            tenant=self._tenant,
+            task_id=self._input.task_id,
+            round_seq=seq,
+            effect_ceiling=effect_name(self._input.effect_ceiling),
+            task_state=self._state,
+            pinned=self._pinned,
+            depth=self._input.depth,
+            policy=self._stage_policy,
+            task_input=self._input,
+        )
+        results = await StageRunner(ctx, self).run(stage)
+        self._stage_policy = ctx.policy
+        return results
+
+    async def wait_for_reply(self, question_id: str, options: tuple[str, ...]) -> task_pb2.HumanReplySignal:
+        """HumanGateway：等 human_reply 信号；只接受 options 里的选项；取消时等待随之结束。"""
+        self._waiting[question_id] = tuple(options)
+        try:
+            await workflow.wait_condition(lambda: question_id in self._replies)
+        finally:
+            self._waiting.pop(question_id, None)
+        return self._replies.pop(question_id)
+
+    async def _run_stage_v1(self, seq: int, stage: dict[str, Any]) -> dict[str, StageResult]:
+        """S-03 的执行路径：按依赖顺序逐个执行 Node。只为回放 S-03 留下的历史保留。"""
         assert self._input is not None
         results: dict[str, StageResult] = {}
         for node in _topological(stage["nodes"]):

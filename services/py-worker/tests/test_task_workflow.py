@@ -33,7 +33,7 @@ from agentruntime_worker.activities.calllog import read_calls
 from agentruntime_worker.activities.stubs import StubActivities
 from agentruntime_worker.activities.types import PlanRoundInput, ReviewRoundInput, StageResult
 from agentruntime_worker.config import WorkerConfig
-from agentruntime_worker.workflows.task import TaskWorkflow
+from agentruntime_worker.worker import QUEUE_COMPONENTS, build_workers
 
 from .support import assert_valid, task_input
 
@@ -164,12 +164,10 @@ async def harness(temporal_env: WorkflowEnvironment, tmp_path: Path) -> AsyncIte
     config = WorkerConfig(call_log=tmp_path / "calls.jsonl", gate_dir=tmp_path / "gates", stub_node_timeout_s=20)
     stubs = RecordingStubs(config)
     client = temporal_env.client
+    # 按 Worker 启动入口的登记方式：每个队列登记 QUEUE_COMPONENTS 列出的工作流与 activity（含 local activity）。
     workers = [
         Worker(client, task_queue=SESSION_QUEUE, workflows=[StandInSession]),
-        Worker(client, task_queue=names.TASK_QUEUE, workflows=[TaskWorkflow]),
-        Worker(client, task_queue=names.DECISION_QUEUE, activities=[stubs.plan_round, stubs.review_round, stubs.finalize_task]),
-        Worker(client, task_queue=names.MODEL_QUEUE, activities=[stubs.execute_model_node]),
-        Worker(client, task_queue=names.PROGRAM_QUEUE, activities=[stubs.execute_program_node]),
+        *build_workers(client, config, list(QUEUE_COMPONENTS), stubs=stubs),
     ]
     h = Harness(client, stubs, config)
     async with contextlib.AsyncExitStack() as stack:
@@ -394,12 +392,14 @@ async def test_human_reply_resumes_the_stage(harness: Harness) -> None:
 # --- 失败 ---
 
 
-async def test_failed_node_fails_the_task_but_still_wraps_up(harness: Harness) -> None:
+async def test_failed_node_goes_to_the_reviewer_and_still_wraps_up(harness: Harness) -> None:
+    """S-04 起 Node 失败交给 Reviewer（附录 D.6）；桩 Reviewer 看到交付节点失败判 abort。"""
     inp = task_input(stub_plan="fail_model")
     session, task = await harness.start_via_session(inp)
     result = await asyncio.wait_for(task.result(), timeout=30)
-    assert result.status == enums_pb2.TASK_STATUS_FAILED
-    assert result.final_verdict == enums_pb2.VERDICT_UNSPECIFIED
-    assert result.error.message
+    assert result.status == enums_pb2.TASK_STATUS_ABORTED
+    assert result.final_verdict == enums_pb2.VERDICT_ABORT
+    review = next(r for r in harness.stubs.review_inputs if r.task_id == inp.task_id)
+    assert review.stage_results["answer"].status == "failed" and review.stage_results["answer"].error
     assert len(harness.events(inp.task_id, names.FINALIZE_TASK, "end")) == 1
-    assert (await asyncio.wait_for(session.result(), timeout=30)).status == enums_pb2.TASK_STATUS_FAILED
+    assert (await asyncio.wait_for(session.result(), timeout=30)).status == enums_pb2.TASK_STATUS_ABORTED

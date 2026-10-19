@@ -1,0 +1,381 @@
+"""Stage Runner 集成测试的支架：脚本化的 Planner、Reviewer、执行器、Catalog、Recipe、tool_loop 与 Policy Engine。
+
+Task 工作流、SubAgentWorkflow、SubgraphWorkflow 用真实代码跑在 Temporal 本地开发服务上；activity 按名字登记在真实的
+任务队列上，由测试脚本决定返回什么，并记下每次调用的输入、开始与结束的先后、所在的工作流与队列。
+"""
+
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import copy
+import itertools
+import json
+import time
+from collections.abc import AsyncIterator, Awaitable, Callable
+from dataclasses import dataclass, field
+from typing import Any
+
+import pytest_asyncio
+from temporalio import activity
+from temporalio.client import Client, WorkflowHandle
+from temporalio.exceptions import ApplicationError
+from temporalio.testing import WorkflowEnvironment
+from temporalio.worker import Worker
+
+from agentruntime.workflow.v1 import task_pb2
+
+from agentruntime_worker import names
+from agentruntime_worker.activities.types import (
+    CatalogInfo,
+    CatalogRequest,
+    FinalizeTaskInput,
+    HookCall,
+    NodeInput,
+    PlanRoundInput,
+    PlanRoundOutput,
+    ReviewRoundInput,
+    StagePolicy,
+    StagePolicyRequest,
+    TemplateExpansion,
+    TemplateExpansionRequest,
+    TemplateInfo,
+    ToolCallInput,
+    ToolLoopStep,
+    ToolLoopStepInput,
+)
+from agentruntime_worker.workflows.stage_runner import SubAgentWorkflow, SubgraphWorkflow
+from agentruntime_worker.workflows.task import TaskWorkflow
+
+from .support import task_input, validator
+
+Behavior = Callable[[NodeInput, "Script"], Awaitable[dict[str, Any]]]
+
+
+@dataclass
+class Call:
+    activity: str
+    node_id: str
+    start: int
+    inp: Any
+    workflow_id: str
+    task_queue: str
+    end: int | None = None
+    outcome: str = ""  # ok、error、cancelled
+
+
+def base_id(node_id: str) -> str:
+    return node_id.split(".", 1)[0]
+
+
+async def echo(inp: NodeInput, _: Script) -> dict[str, Any]:
+    """默认的执行结果：回显 Node id 与收到的输入，另带一段不该往下传的 rationale。"""
+    node = inp.node
+    return {"result": {"node": node["id"], "inputs": node.get("inputs", {})}, "rationale": f"RATIONALE-{node['id']}", "meta": {}}
+
+
+def returns(result: Any) -> Behavior:
+    async def behave(inp: NodeInput, _: Script) -> dict[str, Any]:
+        return {"result": copy.deepcopy(result), "rationale": f"RATIONALE-{inp.node['id']}"}
+
+    return behave
+
+
+def sequence(*results: Any) -> Behavior:
+    """依次返回，最后一个一直重复。"""
+    it = iter(results)
+    last: list[Any] = []
+
+    async def behave(inp: NodeInput, _: Script) -> dict[str, Any]:
+        value = next(it, None)
+        if value is None:
+            value = last[0]
+        else:
+            last[:] = [value]
+        return {"result": copy.deepcopy(value), "rationale": f"RATIONALE-{inp.node['id']}"}
+
+    return behave
+
+
+def slow(seconds: float, inner: Behavior = echo) -> Behavior:
+    async def behave(inp: NodeInput, script: Script) -> dict[str, Any]:
+        await asyncio.sleep(seconds)
+        return await inner(inp, script)
+
+    return behave
+
+
+def fails(message: str = "执行失败", error_type: str = "stub_failure") -> Behavior:
+    async def behave(inp: NodeInput, _: Script) -> dict[str, Any]:
+        raise ApplicationError(message, type=error_type, non_retryable=True)
+
+    return behave
+
+
+def barrier(group: str, size: int, inner: Behavior = echo, timeout: float = 10) -> Behavior:
+    """同组的 size 个 Node 都开始之后才一起返回；没有并行时等不齐，按失败处理。"""
+
+    async def behave(inp: NodeInput, script: Script) -> dict[str, Any]:
+        arrived = script.barriers.setdefault(group, [0, asyncio.Event()])
+        arrived[0] += 1
+        if arrived[0] >= size:
+            arrived[1].set()
+        try:
+            await asyncio.wait_for(arrived[1].wait(), timeout)
+        except TimeoutError:
+            raise ApplicationError(f"{group} 没有并行执行", type="not_parallel", non_retryable=True) from None
+        return await inner(inp, script)
+
+    return behave
+
+
+def blocks_forever() -> Behavior:
+    async def behave(inp: NodeInput, _: Script) -> dict[str, Any]:
+        while True:
+            activity.heartbeat()
+            await asyncio.sleep(0.1)
+
+    return behave
+
+
+@dataclass
+class Script:
+    plans: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
+    deliver: dict[str, str] = field(default_factory=dict)
+    policy: StagePolicy = field(default_factory=StagePolicy)
+    templates: dict[str, TemplateInfo] = field(default_factory=dict)
+    tools: dict[str, str] = field(default_factory=dict)
+    recipes: dict[str, TemplateExpansion] = field(default_factory=dict)
+    # Node id、Node id 的顶层部分或 template → 执行行为
+    behaviors: dict[str, Behavior] = field(default_factory=dict)
+    # Goal id → 第 i 步（从 1 开始）的决定
+    tool_steps: dict[str, Callable[[ToolLoopStepInput], ToolLoopStep]] = field(default_factory=dict)
+    # 工具名 → 结果；返回 Exception 实例表示工具报错
+    tool_results: dict[str, Callable[[ToolCallInput], Any]] = field(default_factory=dict)
+    # (挂载点, Node id 或 "stage") → 替换第一个 Hook 结果的字段
+    hook_overrides: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
+
+    calls: list[Call] = field(default_factory=list)
+    hook_calls: list[HookCall] = field(default_factory=list)
+    plan_inputs: list[PlanRoundInput] = field(default_factory=list)
+    reviews: list[ReviewRoundInput] = field(default_factory=list)
+    finalized: list[FinalizeTaskInput] = field(default_factory=list)
+    catalog_requests: list[CatalogRequest] = field(default_factory=list)
+    scenario_of: dict[str, str] = field(default_factory=dict)
+    barriers: dict[str, list[Any]] = field(default_factory=dict)
+    invalid_nodes: list[str] = field(default_factory=list)
+    running: int = 0
+    max_running: int = 0
+    _clock: Any = field(default_factory=itertools.count)
+
+    def tick(self) -> int:
+        return next(self._clock)
+
+    # --- 查询记录 ---
+
+    def executed(self, task_or_workflow: str | None = None) -> list[Call]:
+        return [
+            c
+            for c in self.calls
+            if c.activity in (names.EXECUTE_MODEL_NODE, names.EXECUTE_PROGRAM_NODE)
+            and (task_or_workflow is None or c.workflow_id.startswith(task_or_workflow))
+        ]
+
+    def call(self, node_id: str) -> Call:
+        found = [c for c in self.calls if c.node_id == node_id]
+        assert len(found) == 1, f"{node_id} 应恰好执行一次，实际 {[(c.activity, c.node_id) for c in found]}"
+        return found[0]
+
+    def review(self, task_id: str, round_seq: int) -> ReviewRoundInput:
+        return next(r for r in self.reviews if r.task_id == task_id and r.round_seq == round_seq)
+
+    # --- 执行器 ---
+
+    def _behavior(self, node: dict[str, Any]) -> Behavior:
+        # 先按完整 id，再按 template（judge、scorer 等展开出的节点），最后按顶层 id（生成的副本）。
+        for key in (node["id"], node.get("template", ""), base_id(node["id"])):
+            if key in self.behaviors:
+                return self.behaviors[key]
+        return echo
+
+    async def _execute(self, name: str, inp: NodeInput) -> dict[str, Any]:
+        info = activity.info()
+        errors = list(validator("atomic_node").iter_errors(inp.node))
+        if errors:
+            self.invalid_nodes.append(f"{inp.node.get('id')}: {[e.message for e in errors]}")
+        call = Call(name, inp.node["id"], self.tick(), inp, info.workflow_id, info.task_queue)
+        self.calls.append(call)
+        self.running += 1
+        self.max_running = max(self.max_running, self.running)
+
+        async def beat() -> None:
+            # 像真实的执行器一样持续发心跳，等待中的 Node 不会因 heartbeat 超时被重试。
+            while True:
+                activity.heartbeat()
+                await asyncio.sleep(0.2)
+
+        beating = asyncio.create_task(beat())
+        try:
+            out = await self._behavior(inp.node)(inp, self)
+            call.outcome = "ok"
+            return out
+        except asyncio.CancelledError:
+            call.outcome = "cancelled"
+            raise
+        except Exception:
+            call.outcome = "error"
+            raise
+        finally:
+            beating.cancel()
+            self.running -= 1
+            call.end = self.tick()
+
+    @activity.defn(name=names.EXECUTE_MODEL_NODE)
+    async def execute_model_node(self, inp: NodeInput) -> dict[str, Any]:
+        return await self._execute(names.EXECUTE_MODEL_NODE, inp)
+
+    @activity.defn(name=names.EXECUTE_PROGRAM_NODE)
+    async def execute_program_node(self, inp: NodeInput) -> dict[str, Any]:
+        return await self._execute(names.EXECUTE_PROGRAM_NODE, inp)
+
+    # --- 决策 ---
+
+    @activity.defn(name=names.PLAN_ROUND)
+    async def plan_round(self, inp: PlanRoundInput) -> PlanRoundOutput:
+        scenario = str(inp.inputs.get("scenario") or "main")
+        self.scenario_of[inp.task_id] = scenario
+        self.plan_inputs.append(inp)
+        return PlanRoundOutput(stage=copy.deepcopy(self.plans[scenario][inp.round_seq - 1]), triage_level="full")
+
+    @activity.defn(name=names.REVIEW_ROUND)
+    async def review_round(self, inp: ReviewRoundInput) -> dict[str, Any]:
+        self.reviews.append(inp)
+        scenario = self.scenario_of[inp.task_id]
+        if inp.round_seq < len(self.plans[scenario]):
+            return {"verdict": "continue", "reason": "脚本：进入下一轮"}
+        deliver = self.deliver.get(scenario, "")
+        result = inp.stage_results.get(deliver)
+        if result is not None and result.status == "succeeded":
+            return {"verdict": "done", "reason": "脚本：完成", "done": {"deliver_node": deliver}}
+        return {"verdict": "abort", "reason": "脚本：交付节点没有成功", "abort": {"completed": [], "not_completed": [deliver or "交付"]}}
+
+    @activity.defn(name=names.FINALIZE_TASK)
+    async def finalize_task(self, inp: FinalizeTaskInput) -> None:
+        self.finalized.append(inp)
+
+    @activity.defn(name=names.LOAD_STAGE_POLICY)
+    async def load_stage_policy(self, inp: StagePolicyRequest) -> StagePolicy:
+        return self.policy
+
+    @activity.defn(name=names.RESOLVE_CATALOG)
+    async def resolve_catalog(self, req: CatalogRequest) -> CatalogInfo:
+        self.catalog_requests.append(req)
+        return CatalogInfo(
+            templates={t: self.templates.get(t, TemplateInfo(executor="program", effect="none")) for t in req.templates},
+            tools={t: self.tools.get(t, "read") for t in req.tools},
+        )
+
+    @activity.defn(name=names.EXPAND_TEMPLATE)
+    async def expand_template(self, req: TemplateExpansionRequest) -> TemplateExpansion:
+        self.calls.append(Call(names.EXPAND_TEMPLATE, req.node["id"], self.tick(), req, activity.info().workflow_id, activity.info().task_queue))
+        return copy.deepcopy(self.recipes[req.node["recipe"]])
+
+    # --- tool_loop ---
+
+    @activity.defn(name=names.TOOL_LOOP_STEP)
+    async def tool_loop_step(self, inp: ToolLoopStepInput) -> ToolLoopStep:
+        info = activity.info()
+        self.calls.append(Call(names.TOOL_LOOP_STEP, inp.step_id, self.tick(), inp, info.workflow_id, info.task_queue, outcome="ok"))
+        step = self.tool_steps.get(inp.node["id"]) or self.tool_steps[base_id(inp.node["id"])]
+        return step(inp)
+
+    @activity.defn(name=names.CALL_TOOL)
+    async def call_tool(self, inp: ToolCallInput) -> Any:
+        info = activity.info()
+        call = Call(names.CALL_TOOL, inp.node_id, self.tick(), inp, info.workflow_id, info.task_queue)
+        self.calls.append(call)
+        produce = self.tool_results.get(inp.tool, lambda i: {"tool": i.tool, "args": i.args})
+        value = produce(inp)
+        if isinstance(value, Exception):
+            call.outcome = "error"
+            raise ApplicationError(str(value), type="tool_error", non_retryable=True)
+        call.outcome = "ok"
+        return value
+
+    # --- Policy Engine（local activity） ---
+
+    @activity.defn(name=names.RUN_HOOKS)
+    async def run_hooks(self, call: HookCall) -> list[dict[str, Any]]:
+        self.hook_calls.append(call)
+        subject = call.subject.get("node", {}).get("id", "stage")
+        results = [{"decision": "allow", "hook": h, "mount": call.mount} for h in call.hooks]
+        override = self.hook_overrides.get((call.mount, subject))
+        if override is not None and results:
+            results[0] = {"hook": results[0]["hook"], "mount": call.mount, **override}
+        return results
+
+    def by_queue(self) -> dict[str, list[Any]]:
+        return {
+            names.DECISION_QUEUE: [self.plan_round, self.review_round, self.finalize_task, self.load_stage_policy, self.resolve_catalog, self.expand_template],
+            names.MODEL_QUEUE: [self.execute_model_node, self.tool_loop_step],
+            names.PROGRAM_QUEUE: [self.execute_program_node, self.call_tool],
+        }
+
+
+class StageHarness:
+    def __init__(self, client: Client, script: Script) -> None:
+        self.client = client
+        self.script = script
+        self.handles: list[WorkflowHandle[Any, Any]] = []
+
+    async def start(self, *, scenario: str = "main", **kwargs: Any) -> tuple[task_pb2.TaskWorkflowInput, WorkflowHandle[Any, Any]]:
+        inp = task_input(scenario=scenario, **kwargs)
+        handle = await self.client.start_workflow(
+            names.TASK_WORKFLOW, inp, id=inp.task_id, task_queue=names.TASK_QUEUE, result_type=task_pb2.TaskWorkflowResult
+        )
+        self.handles.append(handle)
+        return inp, handle
+
+    async def run(self, *, scenario: str = "main", **kwargs: Any) -> tuple[task_pb2.TaskWorkflowInput, task_pb2.TaskWorkflowResult]:
+        inp, handle = await self.start(scenario=scenario, **kwargs)
+        return inp, await asyncio.wait_for(handle.result(), timeout=60)
+
+    async def wait_for(self, predicate: Callable[[], bool], what: str, timeout: float = 20) -> None:
+        deadline = time.monotonic() + timeout
+        while not predicate():
+            if time.monotonic() > deadline:
+                raise AssertionError(f"{timeout} 秒内没有等到：{what}")
+            await asyncio.sleep(0.05)
+
+    async def terminate_all(self) -> None:
+        for handle in self.handles:
+            with contextlib.suppress(Exception):
+                await handle.terminate("测试结束")
+
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def harness(temporal_env: WorkflowEnvironment) -> AsyncIterator[StageHarness]:
+    script = Script()
+    client = temporal_env.client
+    workers = [
+        Worker(client, task_queue=names.TASK_QUEUE, workflows=[TaskWorkflow, SubAgentWorkflow, SubgraphWorkflow], activities=[script.run_hooks]),
+        *(Worker(client, task_queue=q, activities=acts) for q, acts in script.by_queue().items()),
+    ]
+    h = StageHarness(client, script)
+    async with contextlib.AsyncExitStack() as stack:
+        for w in workers:
+            await stack.enter_async_context(w)
+        try:
+            yield h
+        finally:
+            await h.terminate_all()
+    assert not script.invalid_nodes, "交给执行器的 Node 都必须是合法的 Atomic Node：\n" + "\n".join(script.invalid_nodes)
+
+
+def dumps(value: Any) -> str:
+    def default(o: Any) -> Any:
+        if hasattr(o, "__dataclass_fields__"):
+            return {k: getattr(o, k) for k in o.__dataclass_fields__}
+        return str(o)
+
+    return json.dumps(value, ensure_ascii=False, default=default)

@@ -63,11 +63,19 @@ def task_input(
     message: str = "上季度退款率为什么上升？",
     done_when: str | None = None,
     pinned: task_pb2.PinnedVersions | None = None,
+    scenario: str | None = None,
+    extra_inputs: dict | None = None,
+    effect_ceiling: int = enums_pb2.EFFECT_READ,
+    depth: int = 0,
 ) -> task_pb2.TaskWorkflowInput:
     inputs = struct_pb2.Struct()
     inputs.update({"stub_plan": stub_plan, "stub_rounds": stub_rounds})
     if done_when is not None:
         inputs.update({"done_when": done_when})
+    if scenario is not None:
+        inputs.update({"scenario": scenario})
+    if extra_inputs:
+        inputs.update(extra_inputs)
     submitted = timestamp_pb2.Timestamp()
     submitted.FromSeconds(1_790_000_000)
     return task_pb2.TaskWorkflowInput(
@@ -87,5 +95,6 @@ def task_input(
         session_access=enums_pb2.SESSION_ACCESS_READ_WRITE,
         priority=enums_pb2.PRIORITY_INTERACTIVE,
         budget=task_pb2.Budget(usd_micros=2_000_000, tool_calls=20),
-        effect_ceiling=enums_pb2.EFFECT_READ,
+        effect_ceiling=effect_ceiling,
+        depth=depth,
     )

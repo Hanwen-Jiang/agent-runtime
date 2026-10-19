@@ -1,4 +1,4 @@
-"""重放测试工具（计划 S-03 交付）：用当前代码回放 Task 工作流的事件历史。
+"""重放测试工具（计划 S-03 交付）：用当前代码回放 Task 工作流（及 SubAgentWorkflow、SubgraphWorkflow）的事件历史。
 
     python -m agentruntime_worker.replay --dir <事件历史目录>
 
@@ -27,11 +27,12 @@ def load_histories(directory: Path) -> list[WorkflowHistory]:
 
 
 async def replay_histories(histories: Sequence[WorkflowHistory], workflows: Sequence[type] | None = None) -> list[WorkflowReplayResult]:
-    """逐份回放，不在第一份失败时停下。workflows 默认是 [TaskWorkflow]。"""
+    """逐份回放，不在第一份失败时停下。workflows 默认是 Task 工作流与它的两种 Python 子工作流。"""
     if workflows is None:
+        from agentruntime_worker.workflows.stage_runner import SubAgentWorkflow, SubgraphWorkflow
         from agentruntime_worker.workflows.task import TaskWorkflow
 
-        workflows = [TaskWorkflow]
+        workflows = [TaskWorkflow, SubAgentWorkflow, SubgraphWorkflow]
     replayer = Replayer(workflows=list(workflows))
     return [await replayer.replay_workflow(h, raise_on_replay_failure=False) for h in histories]
 

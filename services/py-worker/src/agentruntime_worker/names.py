@@ -26,4 +26,17 @@ FINALIZE_TASK = "finalize_task"
 EXECUTE_MODEL_NODE = "execute_model_node"
 EXECUTE_PROGRAM_NODE = "execute_program_node"
 
+# Stage Runner 用到的 activity（S-04）。
+LOAD_STAGE_POLICY = "load_stage_policy"
+RESOLVE_CATALOG = "resolve_catalog"
+EXPAND_TEMPLATE = "expand_template"
+TOOL_LOOP_STEP = "tool_loop_step"
+CALL_TOOL = "call_tool"
+# Policy Engine 的 Hook，作为 local activity 在运行工作流的 Worker 上执行。
+RUN_HOOKS = "run_hooks"
+
+# Python 内部的子工作流（附录 K.1：Goal Node 的 sub_agent 与大批量 template 展开）。
+SUB_AGENT_WORKFLOW = "SubAgentWorkflow"
+SUBGRAPH_WORKFLOW = "SubgraphWorkflow"
+
 TASK_STATE_SCHEMA_ID = "https://agentruntime.example/schemas/task_state.schema.json"

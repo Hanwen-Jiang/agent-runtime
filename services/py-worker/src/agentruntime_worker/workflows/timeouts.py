@@ -6,6 +6,13 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+from temporalio.common import RetryPolicy
+
+# Planner、Reviewer 等决策 activity 的重试。
+DECISION_RETRY = RetryPolicy(initial_interval=timedelta(seconds=1), maximum_interval=timedelta(seconds=30), maximum_attempts=5)
+# Policy Engine 的 Hook（local activity）。
+HOOK_START_TO_CLOSE = timedelta(seconds=30)
+
 # Node 没给 budget.timeout_s 时的 start-to-close。
 DEFAULT_NODE_TIMEOUT = timedelta(minutes=10)
 # heartbeat 超时的上下限。

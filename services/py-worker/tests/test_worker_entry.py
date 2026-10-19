@@ -30,11 +30,19 @@ def test_worker_serves_the_four_python_queues() -> None:
 
 
 def test_every_component_is_registered_on_exactly_one_queue() -> None:
-    activities = [a for c in QUEUE_COMPONENTS.values() for a in c.activities]
+    activities = [a for c in QUEUE_COMPONENTS.values() for a in c.activities + c.local_activities]
     workflows = [w for c in QUEUE_COMPONENTS.values() for w in c.workflows]
     assert sorted(activities) == sorted(set(activities))
-    assert workflows == [names.TASK_WORKFLOW]
+    assert workflows == [names.TASK_WORKFLOW, names.SUB_AGENT_WORKFLOW, names.SUBGRAPH_WORKFLOW]
     assert set(activities) == set(StubActivities(WorkerConfig()).activities())
+
+
+def test_local_activities_live_with_the_workflows() -> None:
+    """local activity 在运行工作流的 Worker 上执行，必须和工作流登记在同一个队列。"""
+    for queue, components in QUEUE_COMPONENTS.items():
+        if components.local_activities:
+            assert components.workflows, f"{queue} 上有 local activity 却没有工作流"
+    assert QUEUE_COMPONENTS[names.TASK_QUEUE].local_activities == (names.RUN_HOOKS,)
 
 
 @pytest.mark.parametrize(

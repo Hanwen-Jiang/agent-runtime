@@ -7,6 +7,13 @@ import pytest
 import pytest_asyncio
 from temporalio.testing import WorkflowEnvironment
 
+# 回放本次会话的全部事件历史要在其他用例之后：它回放的是前面各个用例跑出来的历史。
+RUN_LAST = "test_stage_replay.py"
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    items.sort(key=lambda item: item.path.name == RUN_LAST)
+
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def temporal_env() -> AsyncIterator[WorkflowEnvironment]:

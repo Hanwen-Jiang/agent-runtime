@@ -1,0 +1,894 @@
+"""Stage Runner（设计书 3.2.3）：在 Task 工作流里把一个 Stage DAG 跑完。
+
+1. 调度：依赖满足的 Node 进入 ready，按 Node id 排序后启动；同时执行的叶子 Node 不超过 StagePolicy.max_parallel，
+   超过的排队；会写的 Node（effect 为 write_*）在工作流内串行，不用分布式锁。上游失败的 Node 记为 skipped。
+2. Hook：Stage 前后、每个 Node 前后由 Policy Engine 执行 Hook（local activity run_hooks）；
+   write_irreversible 的 Node 前自动插入人工审批 gate。deny 记为 denied，交给 Reviewer；modify 改写输入或输出。
+3. quality：revise、ensemble、search 展开为子图，子 Node id 为“父 id + 序号”（见 stage_plan）。
+4. Goal Node：template 展开为 Recipe 的子图，大批量拆到 SubgraphWorkflow 子工作流；tool_loop 每一步是一个 activity；
+   sub_agent 在 SubAgentWorkflow 子工作流里跑独立上下文、只交回结果，默认只读；sub_task 嵌套一个完整的 Task 工作流，
+   深度不超过 2。
+5. 汇集：结果按 Node id 排序后合并；下游只拿 result，rationale 不往下传。
+
+叶子 Node（不挂 quality 的 model、program 节点）一开始就排队拿执行名额，名额按 Node 启动的先后发放，所以执行顺序
+与 Node id 的顺序一致；Hook 在名额内执行。组合 Node（quality、Goal）不占名额，由它们展开出的叶子去拿，不会死锁。
+写节点先拿写锁再拿名额；组合 Node 若会写，整个展开期间持有写锁，子 Node 不再重复去拿。
+
+工作流代码必须确定（CLAUDE.md）。
+"""
+
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import copy
+from collections.abc import Awaitable
+from dataclasses import dataclass, field, replace
+from typing import Any, Protocol
+
+from temporalio import workflow
+from temporalio.common import RetryPolicy
+from temporalio.exceptions import FailureError
+
+with workflow.unsafe.imports_passed_through():
+    from google.protobuf import json_format, struct_pb2
+
+    from agentruntime.common.v1 import enums_pb2
+    from agentruntime.workflow.v1 import task_pb2
+
+    from agentruntime_worker import names
+    from agentruntime_worker.activities.types import (
+        CatalogInfo,
+        CatalogRequest,
+        GateRecord,
+        HookCall,
+        NodeInput,
+        StagePolicy,
+        StagePolicyRequest,
+        StageResult,
+        TemplateExpansion,
+        TemplateExpansionRequest,
+        TemplateInfo,
+        Tenant,
+        ToolCallInput,
+        ToolLoopStep,
+        ToolLoopStepInput,
+    )
+    from agentruntime_worker.workflows import stage_plan as sp
+    from agentruntime_worker.workflows import timeouts
+    from agentruntime_worker.workflows.failures import caused_by_cancel, failure_class, failure_message
+
+# memo 里记下所属租户，与 Session 工作流启动 Task 时一致（libs/go-core adapters/temporal）。
+SCOPE_MEMO_KEY = "agentruntime_scope"
+# tool_loop 没写 max_iterations 时的上限。
+DEFAULT_MAX_ITERATIONS = 20
+DEFAULT_ROLE = "transform"
+
+
+def effect_name(value: int) -> str:
+    """TaskWorkflowInput.effect_ceiling 的名字；没填时按只读处理。"""
+    if not value:
+        return "read"
+    return enums_pb2.Effect.Name(value).removeprefix("EFFECT_").lower()
+
+
+def _memo(tenant: Tenant) -> dict[str, Any]:
+    return {SCOPE_MEMO_KEY: tenant.tenant_id}
+
+
+def _role(node: dict[str, Any]) -> str:
+    return str(node.get("role") or DEFAULT_ROLE)
+
+
+def _denied(role: str, reason: str, status: str = "failed") -> StageResult:
+    return StageResult(role=role, status=status, failure_class="denied", error=reason)
+
+
+def _failed(role: str, error: str, cls: str = "") -> StageResult:
+    return StageResult(role=role, status="failed", failure_class=cls, error=error)
+
+
+def _as(result: StageResult, role: str, **changes: Any) -> StageResult:
+    return replace(result, role=role, **changes)
+
+
+def _max_effect(nodes: list[dict[str, Any]], ceiling: str) -> str:
+    effects = [sp.node_effect(n, ceiling) for n in nodes] or ["none"]
+    return max(effects, key=sp.effect_rank)
+
+
+def _copy_for(node: dict[str, Any], new_id: str, extra_inputs: dict[str, Any]) -> dict[str, Any]:
+    """quality 的一次生成：原 Node 的副本，换 id，去掉 quality 与 after，输入加上反馈等。"""
+    copied = {k: copy.deepcopy(v) for k, v in node.items() if k not in ("quality", "after")}
+    copied["id"] = new_id
+    copied["inputs"] = {**copy.deepcopy(node.get("inputs", {})), **extra_inputs}
+    return copied
+
+
+class HumanGateway(Protocol):
+    """等人工回复：Task 工作流收到 human_reply 信号后放行。只接受 options 里的选项。"""
+
+    async def wait_for_reply(self, question_id: str, options: tuple[str, ...]) -> task_pb2.HumanReplySignal: ...
+
+
+@dataclass
+class RunContext:
+    """Stage Runner 跑一个 Stage 需要的东西。policy 在一个 Task 内只加载一次。"""
+
+    tenant: Tenant
+    task_id: str
+    round_seq: int
+    effect_ceiling: str
+    task_state: dict[str, Any] = field(default_factory=dict)
+    pinned: dict[str, Any] = field(default_factory=dict)
+    depth: int = 0
+    policy: StagePolicy | None = None
+    # 只有 Task 工作流里有；sub_task 据此构造子 Task 的输入。
+    task_input: task_pb2.TaskWorkflowInput | None = None
+
+
+@dataclass
+class _Env:
+    """一个 DAG 的执行环境：已完成的结果（供 $ 引用）、Goal 的输入、是否已经持有写锁。"""
+
+    results: dict[str, StageResult]
+    goal_inputs: dict[str, Any] | None = None
+    write_held: bool = False
+
+    def view(self) -> dict[str, Any]:
+        return {k: r.result for k, r in self.results.items() if r.status == "succeeded"}
+
+
+@dataclass
+class _HookOutcome:
+    denied: str = ""
+    input_patches: list[dict[str, Any]] = field(default_factory=list)
+    output_patches: list[dict[str, Any]] = field(default_factory=list)
+    injections: list[dict[str, Any]] = field(default_factory=list)
+
+
+class StageRunner:
+    def __init__(self, ctx: RunContext, human: HumanGateway | None) -> None:
+        self._ctx = ctx
+        self._human = human
+        self._catalog = CatalogInfo()
+        self._slots: asyncio.Semaphore | None = None
+        self._write_lock = asyncio.Lock()
+
+    @property
+    def policy(self) -> StagePolicy:
+        assert self._ctx.policy is not None
+        return self._ctx.policy
+
+    # --- Stage ---
+
+    async def run(self, stage: dict[str, Any]) -> dict[str, StageResult]:
+        """跑完一个 Stage，返回顶层 Node 的结果，按 Node id 排序。展开出的子 Node 的结果只进 trace。"""
+        await self._prepare(stage)
+        nodes = list(stage.get("nodes", []))
+        errors = sp.validate_stage(stage, max_nodes=self.policy.max_inline_nodes)
+        if errors:
+            reason = "invalid_stage：" + "；".join(errors)
+            return {n["id"]: StageResult(role=_role(n), status="skipped", error=reason) for n in sorted(nodes, key=lambda n: n["id"])}
+        hooks = stage.get("hooks") or {}
+        subject: dict[str, Any] = {"stage": {k: stage.get(k) for k in ("seq", "goal", "exit_when")}}
+        before = await self._hooks("before_stage", list(hooks.get("before", [])), subject)
+        if before.denied:
+            return {n["id"]: _denied(_role(n), before.denied, status="skipped") for n in sorted(nodes, key=lambda n: n["id"])}
+        results = await self._run_dag(nodes, _Env(results={}))
+        after = await self._hooks("after_stage", list(hooks.get("after", [])), {**subject, "results": {k: v.status for k, v in sorted(results.items())}})
+        if after.denied:
+            # Stage 的产出被拒绝：结果不再往下交，由 Reviewer 判定 repair 还是 replan。
+            results = {k: StageResult(role=v.role, status="failed", failure_class="denied", error=after.denied, quality=v.quality) for k, v in results.items()}
+        return dict(sorted(results.items()))
+
+    async def _prepare(self, stage: dict[str, Any]) -> None:
+        """Stage 开始前：加载 StagePolicy（每个 Task 一次）与 Node Catalog。两行调换会改变命令顺序，重放测试据此证明自己有效。"""
+        await self._ensure_policy()  # replay-mutation:C
+        await self._ensure_catalog(stage)  # replay-mutation:D
+
+    async def _ensure_policy(self) -> None:
+        if self._ctx.policy is None:
+            self._ctx.policy = await workflow.execute_activity(
+                names.LOAD_STAGE_POLICY,
+                StagePolicyRequest(tenant=self._ctx.tenant, task_id=self._ctx.task_id, pinned=self._ctx.pinned),
+                task_queue=names.DECISION_QUEUE,
+                start_to_close_timeout=timeouts.DECISION_START_TO_CLOSE,
+                retry_policy=timeouts.DECISION_RETRY,
+                result_type=StagePolicy,
+            )
+        if self._slots is None:
+            self._slots = asyncio.Semaphore(max(1, self.policy.max_parallel))
+
+    async def _ensure_catalog(self, stage: dict[str, Any]) -> None:
+        await self._ensure_catalog_for(list(stage.get("nodes", [])))
+
+    async def _ensure_catalog_for(self, nodes: list[dict[str, Any]]) -> None:
+        """查出 judge、scorer 模板的执行方式与 Goal Node 工具的 effect；已经查过的不再查。"""
+        templates: list[str] = []
+        tools: list[str] = []
+        for node in nodes:
+            quality = node.get("quality") or {}
+            for key in ("judge", "scorer"):
+                ref = quality.get(key)
+                if ref and ref not in self._catalog.templates and ref not in templates:
+                    templates.append(ref)
+            if node.get("kind") == "goal":
+                for tool in node.get("tools", []):
+                    if tool not in self._catalog.tools and tool not in tools:
+                        tools.append(tool)
+        if not templates and not tools:
+            return
+        info = await workflow.execute_activity(
+            names.RESOLVE_CATALOG,
+            CatalogRequest(tenant=self._ctx.tenant, task_id=self._ctx.task_id, templates=sorted(templates), tools=sorted(tools), pinned=self._ctx.pinned),
+            task_queue=names.DECISION_QUEUE,
+            start_to_close_timeout=timeouts.DECISION_START_TO_CLOSE,
+            retry_policy=timeouts.DECISION_RETRY,
+            result_type=CatalogInfo,
+        )
+        self._catalog.templates.update(info.templates)
+        self._catalog.tools.update(info.tools)
+
+    # --- 调度 ---
+
+    def _slot(self) -> asyncio.Semaphore:
+        assert self._slots is not None
+        return self._slots
+
+    def _writer(self, effect: str, env: _Env) -> Any:
+        if effect in sp.WRITE_EFFECTS and not env.write_held:
+            return self._write_lock
+        return contextlib.nullcontext()
+
+    async def _run_dag(self, nodes: list[dict[str, Any]], env: _Env) -> dict[str, StageResult]:
+        """按依赖调度一个 DAG：ready 的 Node 按 id 排序后启动，上游没成功的记为 skipped。"""
+        pending = {n["id"]: n for n in nodes}
+        done = env.results
+        running: dict[str, asyncio.Task[StageResult]] = {}
+        try:
+            while pending or running:
+                progressed = True
+                while progressed:
+                    progressed = False
+                    for nid in sorted(pending):
+                        node = pending[nid]
+                        deps = list(node.get("after", []))
+                        if not all(d in done for d in deps):
+                            continue
+                        del pending[nid]
+                        progressed = True
+                        failed_dep = next((d for d in deps if done[d].status != "succeeded"), None)
+                        if failed_dep is not None:
+                            done[nid] = StageResult(role=_role(node), status="skipped", failure_class="upstream_failed", error=f"上游 {failed_dep} 没有成功")
+                        else:
+                            running[nid] = asyncio.create_task(self._run_node(node, env))
+                if not running:
+                    break
+                await workflow.wait(list(running.values()), return_when=asyncio.FIRST_COMPLETED)
+                for nid in sorted(k for k, t in running.items() if t.done()):
+                    done[nid] = running.pop(nid).result()
+        except asyncio.CancelledError:
+            for task in running.values():
+                task.cancel()
+            if running:
+                await workflow.wait(list(running.values()))
+            raise
+        return {n["id"]: done[n["id"]] for n in nodes if n["id"] in done}
+
+    async def _gather(self, coros: list[Awaitable[Any]]) -> list[Any]:
+        """并发执行，结果按传入的顺序返回；取消时一并取消。"""
+        tasks = [asyncio.ensure_future(c) for c in coros]
+        return list(await asyncio.gather(*tasks))
+
+    # --- 单个 Node ---
+
+    async def _run_node(self, node: dict[str, Any], env: _Env, *, resolved: bool = False) -> StageResult:
+        role = _role(node)
+        nid = node["id"]
+        ceiling = self._ctx.effect_ceiling
+        effect = sp.node_effect(node, ceiling)
+        if sp.effect_rank(effect) > sp.effect_rank(ceiling):
+            return _denied(role, f"{nid} 的 effect {effect} 超过 Task 允许的 {ceiling}")
+        if resolved:
+            inputs = node.get("inputs", {})
+        else:
+            try:
+                inputs = sp.resolve_inputs(node.get("inputs", {}), results=env.view(), task_state=self._ctx.task_state, goal_inputs=env.goal_inputs)
+            except sp.UnresolvedReference as err:
+                return _failed(role, f"unresolved_reference：{err}")
+        node = {**node, "inputs": inputs}
+        hooks = sp.default_node_hooks(node, ceiling)
+        leaf = (
+            node.get("kind") == "atomic"
+            and sp.quality_type(node) == "none"
+            and node.get("executor") in ("model", "program")
+            and effect != "write_irreversible"
+        )
+        if leaf:
+            async with self._writer(effect, env), self._slot():
+                return await self._guarded(node, env, hooks, role)
+        return await self._guarded(node, env, hooks, role)
+
+    async def _guarded(self, node: dict[str, Any], env: _Env, hooks: dict[str, list[str]], role: str) -> StageResult:
+        """before_node Hook → 执行 → after_node Hook。"""
+        before = await self._hooks("before_node", hooks["before_node"], {"node": node})
+        if before.denied:
+            return _denied(role, before.denied)
+        if before.input_patches:
+            try:
+                node = {**node, "inputs": sp.apply_patch(node.get("inputs", {}), before.input_patches)}
+            except sp.PatchError as err:
+                return _denied(role, f"Hook 改写输入失败：{err}")
+        outcome = _as(await self._dispatch(node, env, before.injections), role)
+        if outcome.status != "succeeded":
+            return outcome
+        after = await self._hooks("after_node", hooks["after_node"], {"node": node, "result": outcome.result})
+        if after.denied:
+            return _denied(role, after.denied)
+        if after.output_patches:
+            try:
+                outcome = replace(outcome, result=sp.apply_patch(outcome.result, after.output_patches))
+            except sp.PatchError as err:
+                return _denied(role, f"Hook 改写输出失败：{err}")
+        return outcome
+
+    async def _dispatch(self, node: dict[str, Any], env: _Env, injections: list[dict[str, Any]]) -> StageResult:
+        role = _role(node)
+        if sp.quality_type(node) != "none":
+            return await self._run_quality(node, env, role)
+        if node.get("kind") == "goal":
+            return await self._run_goal(node, env, role)
+        executor = node.get("executor")
+        if executor == "human":
+            return await self._run_human(node, role)
+        if node.get("effect") == "write_irreversible":
+            gate, reason = await self._approval(node)
+            if gate is None:
+                return _denied(role, reason)
+            async with self._writer("write_irreversible", env), self._slot():
+                return await self._execute(node, injections, gate)
+        return await self._execute(node, injections, None)
+
+    async def _execute(self, node: dict[str, Any], injections: list[dict[str, Any]], gate: GateRecord | None) -> StageResult:
+        role = _role(node)
+        model = node.get("executor") == "model"
+        start_to_close, heartbeat = timeouts.model_node_timeouts((node.get("budget") or {}).get("timeout_s"))
+        # write_irreversible 不自动重试（附录 D.4）。
+        attempts = 1 if node.get("effect") == "write_irreversible" else int((node.get("retry") or {}).get("max", 0)) + 1
+        try:
+            output = await workflow.execute_activity(
+                names.EXECUTE_MODEL_NODE if model else names.EXECUTE_PROGRAM_NODE,
+                NodeInput(tenant=self._ctx.tenant, task_id=self._ctx.task_id, round_seq=self._ctx.round_seq, node=node, gate=gate, injections=list(injections)),
+                task_queue=names.MODEL_QUEUE if model else names.PROGRAM_QUEUE,
+                start_to_close_timeout=start_to_close,
+                heartbeat_timeout=heartbeat,
+                retry_policy=RetryPolicy(initial_interval=timeouts.MIN_HEARTBEAT, maximum_interval=timeouts.MAX_HEARTBEAT, maximum_attempts=attempts),
+                cancellation_type=workflow.ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
+                result_type=dict,
+            )
+        except FailureError as err:
+            if caused_by_cancel(err):
+                raise asyncio.CancelledError() from err
+            return _failed(role, failure_message(err), failure_class(err))
+        # 只取 result；rationale 只写入 trace，不往下传（设计书 3.2.4）。
+        return StageResult(role=role, status="succeeded", result=output.get("result"))
+
+    async def _run_human(self, node: dict[str, Any], role: str) -> StageResult:
+        if self._human is None:
+            return _failed(role, "human 节点只能在 Task 工作流里执行")
+        options = tuple(str(o) for o in (node.get("inputs") or {}).get("options", ()))
+        reply = await self._human.wait_for_reply(node["id"], options)
+        return StageResult(role=role, status="succeeded", result={"option": reply.option, "guidance": reply.guidance, "replied_by": reply.replied_by_user_id})
+
+    async def _approval(self, node: dict[str, Any]) -> tuple[GateRecord | None, str]:
+        """write_irreversible 的 Node 前自动插入的人工审批（附录 F.3），gate 的 id 是 <id>.1。"""
+        if self._human is None:
+            return None, "这里没有人工审批通道，write_irreversible 的 Node 不能执行"
+        gate_id = sp.child_id(node["id"], 1)
+        reply = await self._human.wait_for_reply(gate_id, sp.APPROVAL_OPTIONS)
+        if reply.option != "approve":
+            return None, f"人工审批没有通过：{reply.option}"
+        return GateRecord(gate_node=gate_id, option=reply.option, approved_by=reply.replied_by_user_id), ""
+
+    async def _hooks(self, mount: str, hooks: list[str], subject: dict[str, Any]) -> _HookOutcome:
+        outcome = _HookOutcome()
+        if not hooks:
+            return outcome
+        try:
+            results = await workflow.execute_local_activity(
+                names.RUN_HOOKS,
+                HookCall(tenant=self._ctx.tenant, task_id=self._ctx.task_id, round_seq=self._ctx.round_seq, mount=mount, hooks=hooks, subject=subject),
+                start_to_close_timeout=timeouts.HOOK_START_TO_CLOSE,
+                result_type=list,
+            )
+        except FailureError as err:
+            if caused_by_cancel(err):
+                raise asyncio.CancelledError() from err
+            # Hook 执行不了时按拒绝处理，不放行。
+            outcome.denied = f"Hook 执行失败：{failure_message(err)}"
+            return outcome
+        for r in results:
+            decision = r.get("decision")
+            if decision == "deny" and not outcome.denied:
+                outcome.denied = f"{r.get('hook')}：{r.get('reason') or '被拒绝'}"
+            elif decision == "modify":
+                modification = r.get("modification") or {}
+                target = outcome.input_patches if modification.get("target") == "input" else outcome.output_patches
+                target.extend(modification.get("patch", []))
+            elif decision == "inject" and r.get("injection"):
+                outcome.injections.append(r["injection"])
+        return outcome
+
+    # --- quality ---
+
+    def _aux_node(self, node_id: str, template: str, inputs: dict[str, Any]) -> dict[str, Any]:
+        """judge 或 scorer 节点：执行方式取自 Node Catalog。"""
+        info = self._catalog.templates.get(template) or TemplateInfo(executor="program", effect="none")
+        node: dict[str, Any] = {
+            "id": node_id,
+            "kind": "atomic",
+            "template": template,
+            "executor": info.executor,
+            "effect": info.effect,
+            "role": "judge",
+            "inputs": inputs,
+        }
+        if info.executor == "model":
+            node["output"] = info.output or "score"
+        return node
+
+    async def _judge(self, node_id: str, template: str, inputs: dict[str, Any], env: _Env) -> StageResult:
+        judge = self._aux_node(node_id, template, inputs)
+        if judge["effect"] in sp.WRITE_EFFECTS:
+            return _denied("judge", f"judge {template} 不能有写操作")
+        return await self._run_node(judge, env, resolved=True)
+
+    async def _run_quality(self, node: dict[str, Any], env: _Env, role: str) -> StageResult:
+        kind = sp.quality_type(node)
+        if kind == "revise":
+            return await self._revise(node, env, role)
+        if kind == "ensemble":
+            return await self._ensemble(node, env, role)
+        if kind == "search":
+            return await self._search(node, env, role)
+        return _failed(role, f"不认识的 quality {kind}")
+
+    async def _revise(self, node: dict[str, Any], env: _Env, role: str) -> StageResult:
+        """生成 → judge → 不通过带反馈退回，最多 max_rounds 轮（附录 E.2）。"""
+        quality = node["quality"]
+        nid = node["id"]
+        rounds = int(quality["max_rounds"])
+        feedback: Any = None
+        last: StageResult | None = None
+        for r in range(1, rounds + 1):
+            extra = {"feedback": feedback} if feedback is not None else {}
+            generated = await self._run_node(_copy_for(node, sp.child_id(nid, 2 * r - 1), extra), env, resolved=True)
+            if generated.status != "succeeded":
+                return _as(generated, role, quality={"type": "revise", "rounds": r, "passed": False})
+            last = generated
+            judge_inputs: dict[str, Any] = {"candidate": generated.result}
+            if node.get("done_when"):
+                judge_inputs["done_when"] = node["done_when"]
+            verdict = await self._judge(sp.child_id(nid, 2 * r), quality["judge"], judge_inputs, env)
+            if verdict.status != "succeeded":
+                return _as(verdict, role, quality={"type": "revise", "rounds": r, "passed": False})
+            if isinstance(verdict.result, dict) and verdict.result.get("pass") is True:
+                return StageResult(role=role, status="succeeded", result=last.result, quality={"type": "revise", "rounds": r, "passed": True})
+            feedback = verdict.result
+        assert last is not None
+        return StageResult(role=role, status="succeeded", result=last.result, quality={"type": "revise", "rounds": rounds, "passed": False})
+
+    async def _ensemble(self, node: dict[str, Any], env: _Env, role: str) -> StageResult:
+        """生成 × N → 投票或 judge 择优（附录 E.2）。"""
+        quality = node["quality"]
+        nid = node["id"]
+        n = int(quality["n"])
+        candidates = [_copy_for(node, sp.child_id(nid, i), {"sample_index": i}) for i in range(1, n + 1)]
+        outcomes = await self._gather([self._run_node(c, env, resolved=True) for c in candidates])
+        succeeded = [(c["id"], o) for c, o in zip(candidates, outcomes, strict=True) if o.status == "succeeded"]
+        if not succeeded:
+            return _failed(role, f"{n} 个候选都没有成功：{outcomes[0].error}", outcomes[0].failure_class)
+        aggregate = quality["aggregate"]
+        if aggregate == "vote":
+            chosen = succeeded[sp.vote([o.result for _, o in succeeded])]
+        else:
+            verdict = await self._judge(sp.child_id(nid, n + 1), quality["judge"], {"candidates": [o.result for _, o in succeeded]}, env)
+            if verdict.status != "succeeded":
+                return _as(verdict, role)
+            best = verdict.result.get("best") if isinstance(verdict.result, dict) else None
+            if not isinstance(best, int) or not 1 <= best <= len(succeeded):
+                return _failed(role, f"judge 给出的 best 不在 1 到 {len(succeeded)} 之间：{best!r}", "invalid_output")
+            chosen = succeeded[best - 1]
+        return StageResult(
+            role=role,
+            status="succeeded",
+            result=chosen[1].result,
+            quality={"type": "ensemble", "n": n, "aggregate": aggregate, "chosen": chosen[0]},
+        )
+
+    async def _search(self, node: dict[str, Any], env: _Env, role: str) -> StageResult:
+        """每层扩展 k 个候选 → 打分 → 剪枝到 beam_width 个（附录 E.2）。结果取最后一层得分最高的候选。"""
+        quality = node["quality"]
+        nid = node["id"]
+        k, max_depth, beam_width = int(quality["expand_k"]), int(quality["max_depth"]), int(quality["beam_width"])
+        seq = 0
+        beam: list[Any] = [None]
+        chosen: tuple[str, StageResult] | None = None
+        for depth in range(1, max_depth + 1):
+            candidates: list[dict[str, Any]] = []
+            for state in beam:
+                for branch in range(1, k + 1):
+                    seq += 1
+                    candidates.append(_copy_for(node, sp.child_id(nid, seq), {"state": state, "depth": depth, "branch": branch}))
+            outcomes = await self._gather([self._run_node(c, env, resolved=True) for c in candidates])
+            ok = [(c["id"], o) for c, o in zip(candidates, outcomes, strict=True) if o.status == "succeeded"]
+            if not ok:
+                return _failed(role, f"第 {depth} 层的候选都没有成功", outcomes[0].failure_class)
+            seq += 1
+            scored = await self._judge(sp.child_id(nid, seq), quality["scorer"], {"candidates": [o.result for _, o in ok]}, env)
+            if scored.status != "succeeded":
+                return _as(scored, role)
+            scores = scored.result.get("scores") if isinstance(scored.result, dict) else None
+            if not isinstance(scores, list) or len(scores) != len(ok):
+                return _failed(role, f"scorer 应给出 {len(ok)} 个分数，实际 {scores!r}", "invalid_output")
+            kept = sp.prune([float(s) for s in scores], beam_width)
+            beam = [ok[i][1].result for i in kept]
+            chosen = ok[kept[0]]
+        assert chosen is not None
+        return StageResult(role=role, status="succeeded", result=chosen[1].result, quality={"type": "search", "depth": max_depth, "chosen": chosen[0]})
+
+    # --- Goal Node ---
+
+    async def _run_goal(self, node: dict[str, Any], env: _Env, role: str) -> StageResult:
+        mode = node.get("mode") or ("template" if node.get("recipe") else "tool_loop")
+        if mode == "template":
+            return await self._template(node, env, role)
+        if mode == "tool_loop":
+            return await self._inline_tool_loop(node, env, role)
+        if mode == "sub_agent":
+            return await self._sub_agent(node, role)
+        if mode == "sub_task":
+            return await self._sub_task(node, env, role)
+        return _failed(role, f"不认识的 mode {mode}")
+
+    async def _template(self, node: dict[str, Any], env: _Env, role: str) -> StageResult:
+        nid = node["id"]
+        try:
+            expansion = await workflow.execute_activity(
+                names.EXPAND_TEMPLATE,
+                TemplateExpansionRequest(tenant=self._ctx.tenant, task_id=self._ctx.task_id, round_seq=self._ctx.round_seq, node=node, pinned=self._ctx.pinned),
+                task_queue=names.DECISION_QUEUE,
+                start_to_close_timeout=timeouts.DECISION_START_TO_CLOSE,
+                retry_policy=timeouts.DECISION_RETRY,
+                result_type=TemplateExpansion,
+            )
+        except FailureError as err:
+            if caused_by_cancel(err):
+                raise asyncio.CancelledError() from err
+            return _failed(role, f"Recipe 展开失败：{failure_message(err)}", failure_class(err))
+        limit = self.policy.max_inline_nodes
+        goal_inputs = dict(node.get("inputs", {}))
+        try:
+            if expansion.per_item:
+                chains, collect = sp.expand_per_item(nid, expansion.per_item, list(expansion.items), expansion.collect)
+                nodes = [n for chain in chains for n in chain]
+            else:
+                nodes, output = sp.reindex_subgraph(nid, expansion.nodes, expansion.output)
+                chains, collect = [], [output]
+        except ValueError as err:
+            return _failed(role, f"invalid_recipe：{err}")
+        if not expansion.per_item and len(nodes) > limit:
+            return _denied(role, f"Recipe 展开出 {len(nodes)} 个 Node，超过内联上限 {limit}；大批量请用逐条目展开")
+        effect = _max_effect(nodes, self._ctx.effect_ceiling)
+        if len(nodes) > limit:
+            return await self._template_batches(node, chains, collect, goal_inputs, effect, env, role)
+        errors = sp.validate_stage({"nodes": nodes}, max_nodes=limit, top_level=False)
+        if errors:
+            return _failed(role, "invalid_recipe：" + "；".join(errors))
+        await self._ensure_catalog_for(nodes)
+        async with self._writer(effect, env):
+            done = await self._run_dag(nodes, _Env(results={}, goal_inputs=goal_inputs, write_held=env.write_held or effect in sp.WRITE_EFFECTS))
+        if expansion.per_item:
+            return _collect(role, [done[c] for c in collect])
+        return _as(done[collect[0]], role)
+
+    async def _template_batches(
+        self,
+        node: dict[str, Any],
+        chains: list[list[dict[str, Any]]],
+        collect: list[str],
+        goal_inputs: dict[str, Any],
+        effect: str,
+        env: _Env,
+        role: str,
+    ) -> StageResult:
+        """逐条目展开的大批量：按条目切批，每批一个 SubgraphWorkflow 子工作流（计划 S-04 难点“扇出上限”）。"""
+        policy = self.policy
+        chain_len = max(len(c) for c in chains)
+        if chain_len > policy.max_inline_nodes:
+            return _denied(role, f"一个条目的链有 {chain_len} 个 Node，超过内联上限 {policy.max_inline_nodes}")
+        size = max(1, min(policy.batch_size, policy.max_inline_nodes // chain_len))
+        writes = effect in sp.WRITE_EFFECTS
+        # 会写的批次一个接一个跑，保证同一时刻只有一个写者。
+        limit = asyncio.Semaphore(1 if writes else max(1, policy.batch_parallel))
+
+        async def run_batch(number: int, items: range) -> Any:
+            async with limit:
+                return await workflow.execute_child_workflow(
+                    names.SUBGRAPH_WORKFLOW,
+                    SubgraphInput(
+                        tenant=self._ctx.tenant,
+                        task_id=self._ctx.task_id,
+                        round_seq=self._ctx.round_seq,
+                        goal_id=node["id"],
+                        chains=[chains[i] for i in items],
+                        collect=[collect[i] for i in items],
+                        task_state=copy.deepcopy(self._ctx.task_state),
+                        effect_ceiling=self._ctx.effect_ceiling,
+                        policy=policy,
+                        goal_inputs=goal_inputs,
+                    ),
+                    id=sp.subworkflow_id(self._ctx.task_id, self._ctx.round_seq, node["id"], f"batch-{number}"),
+                    task_queue=names.TASK_QUEUE,
+                    memo=_memo(self._ctx.tenant),
+                    result_type=SubgraphOutput,
+                )
+
+        try:
+            async with self._writer(effect, env):
+                outputs = await self._gather([run_batch(b, r) for b, r in enumerate(sp.batches(len(chains), size), start=1)])
+        except FailureError as err:
+            if caused_by_cancel(err):
+                raise asyncio.CancelledError() from err
+            return _failed(role, f"批量子工作流失败：{failure_message(err)}", failure_class(err))
+        merged: dict[str, StageResult] = {}
+        for out in outputs:
+            merged.update(out.results)
+        return _collect(role, [merged[c] for c in collect])
+
+    async def _check_tools(self, node: dict[str, Any], ceiling: str, *, read_only: bool) -> tuple[dict[str, str] | None, str]:
+        """展开时校验 Goal Node 可用工具的 effect 都不高于 ceiling；查不到的工具按最高的 effect 处理。"""
+        await self._ensure_catalog_for([node])
+        effects = {t: self._catalog.tools.get(t, "write_irreversible") for t in node.get("tools", [])}
+        for tool in sorted(effects):
+            if sp.effect_rank(effects[tool]) > sp.effect_rank(ceiling):
+                if read_only:
+                    return None, f"sub_agent 只读，工具 {tool} 的 effect 为 {effects[tool]}"
+                return None, f"工具 {tool} 的 effect {effects[tool]} 超过 {node['id']} 允许的 {ceiling}"
+        return effects, ""
+
+    async def _inline_tool_loop(self, node: dict[str, Any], env: _Env, role: str) -> StageResult:
+        ceiling = str(node.get("effect_ceiling") or self._ctx.effect_ceiling)
+        effects, reason = await self._check_tools(node, ceiling, read_only=False)
+        if effects is None:
+            return _denied(role, reason)
+        effect = max(effects.values(), key=sp.effect_rank, default="none")
+        # tool_loop 的主 agent 是唯一写者：会写时整个循环持有写锁。
+        async with self._writer(effect, env):
+            inner = _Env(results={}, write_held=env.write_held or effect in sp.WRITE_EFFECTS)
+            return _as(await self.tool_loop(node, isolated=False, tool_effects=effects, env=inner), role)
+
+    async def tool_loop(self, node: dict[str, Any], *, isolated: bool, tool_effects: dict[str, str], env: _Env) -> StageResult:
+        """思考 → 调工具 → 观察，每一步是一个 activity（附录 E.1）。设最大迭代次数，同一错误连续出现就打断（附录 B.8）。"""
+        nid = node["id"]
+        limit = int(node.get("max_iterations") or DEFAULT_MAX_ITERATIONS)
+        history: list[dict[str, Any]] = []
+        for i in range(1, limit + 1):
+            try:
+                async with self._slot():
+                    step = await workflow.execute_activity(
+                        names.TOOL_LOOP_STEP,
+                        ToolLoopStepInput(
+                            tenant=self._ctx.tenant,
+                            task_id=self._ctx.task_id,
+                            round_seq=self._ctx.round_seq,
+                            node=node,
+                            iteration=i,
+                            history=copy.deepcopy(history),
+                            step_id=sp.child_id(nid, 2 * i - 1),
+                            isolated=isolated,
+                        ),
+                        task_queue=names.MODEL_QUEUE,
+                        start_to_close_timeout=timeouts.DECISION_START_TO_CLOSE,
+                        retry_policy=timeouts.DECISION_RETRY,
+                        result_type=ToolLoopStep,
+                    )
+            except FailureError as err:
+                if caused_by_cancel(err):
+                    raise asyncio.CancelledError() from err
+                return _failed(DEFAULT_ROLE, f"tool_loop 第 {i} 步失败：{failure_message(err)}", failure_class(err))
+            if step.action == "finish":
+                return StageResult(role=DEFAULT_ROLE, status="succeeded", result=step.result)
+            entry: dict[str, Any] = {"tool": step.tool, "args": step.args}
+            if step.tool not in tool_effects:
+                entry["error"] = f"工具 {step.tool} 不在 {nid} 的可用列表里"
+            else:
+                effect = tool_effects[step.tool]
+                try:
+                    async with self._writer(effect, env), self._slot():
+                        entry["observation"] = await workflow.execute_activity(
+                            names.CALL_TOOL,
+                            ToolCallInput(
+                                tenant=self._ctx.tenant,
+                                task_id=self._ctx.task_id,
+                                round_seq=self._ctx.round_seq,
+                                node_id=sp.child_id(nid, 2 * i),
+                                tool=step.tool,
+                                args=step.args,
+                                effect=effect,
+                            ),
+                            task_queue=names.PROGRAM_QUEUE,
+                            start_to_close_timeout=timeouts.DEFAULT_NODE_TIMEOUT,
+                            retry_policy=RetryPolicy(maximum_attempts=1 if effect in sp.WRITE_EFFECTS else 3),
+                            cancellation_type=workflow.ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
+                        )
+                except FailureError as err:
+                    if caused_by_cancel(err):
+                        raise asyncio.CancelledError() from err
+                    entry["error"] = failure_message(err)
+            history.append(entry)
+            if sp.repeated_error(history):
+                return _failed(DEFAULT_ROLE, f"repeated_error：同一错误连续出现 {sp.REPEATED_ERROR_LIMIT} 次：{entry['error']}")
+        return _failed(DEFAULT_ROLE, f"max_iterations：{limit} 步内没有完成")
+
+    async def _sub_agent(self, node: dict[str, Any], role: str) -> StageResult:
+        ceiling = str(node.get("effect_ceiling") or "read")
+        if sp.effect_rank(ceiling) > sp.effect_rank("read"):
+            return _denied(role, f"sub_agent 只读，effect_ceiling 不能是 {ceiling}")
+        effects, reason = await self._check_tools(node, ceiling, read_only=True)
+        if effects is None:
+            return _denied(role, reason)
+        try:
+            async with self._slot():
+                out = await workflow.execute_child_workflow(
+                    names.SUB_AGENT_WORKFLOW,
+                    SubAgentInput(
+                        tenant=self._ctx.tenant,
+                        task_id=self._ctx.task_id,
+                        round_seq=self._ctx.round_seq,
+                        node=node,
+                        effect_ceiling=ceiling,
+                        tools=effects,
+                        policy=self.policy,
+                    ),
+                    id=sp.subworkflow_id(self._ctx.task_id, self._ctx.round_seq, node["id"]),
+                    task_queue=names.TASK_QUEUE,
+                    memo=_memo(self._ctx.tenant),
+                    result_type=StageResult,
+                )
+        except FailureError as err:
+            if caused_by_cancel(err):
+                raise asyncio.CancelledError() from err
+            return _failed(role, f"sub_agent 失败：{failure_message(err)}", failure_class(err))
+        return _as(out, role)
+
+    async def _sub_task(self, node: dict[str, Any], env: _Env, role: str) -> StageResult:
+        """嵌套运行一个完整的 Task Loop，深度不超过 2（附录 E.1）；超过时拒绝并交给 Reviewer。"""
+        parent = self._ctx.task_input
+        if parent is None:
+            return _denied(role, "sub_task 只能在 Task 工作流里展开")
+        if self._ctx.depth + 1 > sp.MAX_SUB_TASK_DEPTH:
+            return _denied(role, f"sub_task 嵌套深度超过上限 {sp.MAX_SUB_TASK_DEPTH}")
+        now = workflow.now()
+        sub_id = sp.ulid_task_id(int(now.timestamp() * 1000), workflow.random().getrandbits(80))
+        inputs = struct_pb2.Struct()
+        json_format.ParseDict({**node.get("inputs", {}), "done_when": node["done_when"]}, inputs)
+        child = task_pb2.TaskWorkflowInput()
+        child.CopyFrom(parent)
+        child.task_id = sub_id
+        child.message = node["goal"]
+        child.inputs.CopyFrom(inputs)
+        del child.attachments[:]
+        child.parent_task_id = parent.task_id
+        child.depth = self._ctx.depth + 1
+        child.submitted_at.FromDatetime(now)
+        ceiling = sp.node_effect(node, self._ctx.effect_ceiling)
+        child.effect_ceiling = enums_pb2.Effect.Value("EFFECT_" + ceiling.upper())
+        usd = (node.get("budget") or {}).get("usd")
+        if usd is not None:
+            child.budget.usd_micros = int(float(usd) * 1_000_000)
+        try:
+            async with self._writer(ceiling, env):
+                result = await workflow.execute_child_workflow(
+                    names.TASK_WORKFLOW,
+                    child,
+                    id=sub_id,
+                    task_queue=names.TASK_QUEUE,
+                    memo=_memo(self._ctx.tenant),
+                    result_type=task_pb2.TaskWorkflowResult,
+                )
+        except FailureError as err:
+            if caused_by_cancel(err):
+                raise asyncio.CancelledError() from err
+            return _failed(role, f"子 Task {sub_id} 失败：{failure_message(err)}", failure_class(err))
+        if result.status != enums_pb2.TASK_STATUS_DONE:
+            status = enums_pb2.TaskStatus.Name(result.status).removeprefix("TASK_STATUS_").lower()
+            return _failed(role, f"子 Task {sub_id} 的结局是 {status}")
+        value = json_format.MessageToDict(result.deliverable.value) if result.HasField("deliverable") else None
+        return StageResult(role=role, status="succeeded", result=value)
+
+
+def _collect(role: str, results: list[StageResult]) -> StageResult:
+    """逐条目展开的汇总：按条目顺序给出 {"items": [...]}；有条目没成功时整个 Goal 失败。"""
+    for i, r in enumerate(results, start=1):
+        if r.status != "succeeded":
+            return _failed(role, f"第 {i} 个条目没有成功：{r.error}", r.failure_class)
+    return StageResult(role=role, status="succeeded", result={"items": [r.result for r in results]})
+
+
+@dataclass
+class SubAgentInput:
+    tenant: Tenant
+    task_id: str
+    round_seq: int
+    # sub_agent 模式的 Goal Node，inputs 已解析
+    node: dict[str, Any]
+    effect_ceiling: str
+    # 可用的工具 → effect，展开时已校验不高于 effect_ceiling
+    tools: dict[str, str]
+    policy: StagePolicy
+
+
+@workflow.defn(name=names.SUB_AGENT_WORKFLOW)
+class SubAgentWorkflow:
+    """sub_agent：独立上下文的子 agent，在自己的事件历史里跑 tool_loop，只交回结果（附录 E.1）。"""
+
+    @workflow.run
+    async def run(self, inp: SubAgentInput) -> StageResult:
+        ctx = RunContext(
+            tenant=inp.tenant,
+            task_id=inp.task_id,
+            round_seq=inp.round_seq,
+            effect_ceiling=inp.effect_ceiling,
+            depth=sp.MAX_SUB_TASK_DEPTH,
+            policy=inp.policy,
+        )
+        runner = StageRunner(ctx, human=None)
+        await runner._ensure_policy()
+        return await runner.tool_loop(inp.node, isolated=True, tool_effects=dict(inp.tools), env=_Env(results={}))
+
+
+@dataclass
+class SubgraphInput:
+    tenant: Tenant
+    task_id: str
+    round_seq: int
+    goal_id: str
+    # 这一批条目的链（Node id 已编号）与每条链给出结果的 Node id
+    chains: list[list[dict[str, Any]]]
+    collect: list[str]
+    task_state: dict[str, Any]
+    effect_ceiling: str
+    policy: StagePolicy
+    # Goal Node 的输入，供 $goal 引用
+    goal_inputs: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class SubgraphOutput:
+    # collect 的 Node id → 结果
+    results: dict[str, StageResult]
+
+
+@workflow.defn(name=names.SUBGRAPH_WORKFLOW)
+class SubgraphWorkflow:
+    """template 的大批量展开：一批条目的子图在子工作流里跑，控制单个工作流的事件历史（计划 S-04 难点“扇出上限”）。"""
+
+    @workflow.run
+    async def run(self, inp: SubgraphInput) -> SubgraphOutput:
+        ctx = RunContext(
+            tenant=inp.tenant,
+            task_id=inp.task_id,
+            round_seq=inp.round_seq,
+            effect_ceiling=inp.effect_ceiling,
+            task_state=inp.task_state,
+            depth=sp.MAX_SUB_TASK_DEPTH,
+            policy=inp.policy,
+        )
+        runner = StageRunner(ctx, human=None)
+        await runner._ensure_policy()
+        nodes = [n for chain in inp.chains for n in chain]
+        await runner._ensure_catalog_for(nodes)
+        done = await runner._run_dag(nodes, _Env(results={}, goal_inputs=inp.goal_inputs))
+        return SubgraphOutput(results={c: done[c] for c in inp.collect})
