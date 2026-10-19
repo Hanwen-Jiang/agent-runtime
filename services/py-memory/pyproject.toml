@@ -1,0 +1,18 @@
+[project]
+name = "agentruntime-memory"
+version = "0.0.0"
+description = "Memory Service：多租户记忆的作用域、写入、检索、晋升与治理"
+requires-python = ">=3.13"
+dependencies = [
+    "agentruntime-proto",
+]
+
+[tool.uv.sources]
+agentruntime-proto = { workspace = true }
+
+[build-system]
+requires = ["hatchling>=1.32"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentruntime_memory"]

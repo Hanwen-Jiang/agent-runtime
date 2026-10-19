@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package agentruntime.common.v1;
+
+import "agentruntime/common/v1/options.proto";
+
+// IdKind 列出 Runtime 自己生成的 ID。所有 ID 字段在 proto 里都是 string，字段名以 _id 结尾。
+//
+// 格式：
+//   - session、task、memory：<前缀>_<26 位 ULID>，例如 tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B。
+//   - trace：tr_<32 位小写十六进制的 W3C trace-id>。
+//
+// tenant_id、user_id、workspace_id 由身份系统分配：1 到 63 位小写字母、数字、下划线或连字符。
+// Node id 由 Planner 命名，展开出的子节点用“父 id.序号”（计划 S-04）。
+// /schemas/defs.schema.json 中各 ID 的 pattern 以这里的前缀为准，由契约测试比对。
+enum IdKind {
+  ID_KIND_UNSPECIFIED = 0;
+  ID_KIND_SESSION = 1 [(id_prefix) = "ses"];
+  ID_KIND_TASK = 2 [(id_prefix) = "tsk"];
+  ID_KIND_MEMORY = 3 [(id_prefix) = "mem"];
+  ID_KIND_TRACE = 4 [(id_prefix) = "tr"];
+}

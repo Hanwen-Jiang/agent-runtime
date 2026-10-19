@@ -1,0 +1,38 @@
+{
+  "type": "agentruntime.workflow.v1.TaskWorkflowInput",
+  "message": {
+    "tenant": {
+      "tenantId": "t1",
+      "userId": "u7",
+      "workspaceId": "w3",
+      "sessionId": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+      "trace": {
+        "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+        "tracestate": "vendor=t61rcWkgMzE"
+      }
+    },
+    "taskId": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+    "pinnedVersions": {
+      "recipe": "refund_analysis@v3",
+      "nodeTemplates": {"sql_query": "v3", "ticket_stats": "v1", "refund_attribution": "v2", "check_numbers_match": "v1"},
+      "reasoningTemplates": {"refund_attribution": "v1"},
+      "modelProfiles": {"vendor_a/strong-model": "2026-09-15", "vendor_b/mid-model": "2026-08-30"},
+      "tenantPolicy": "v12"
+    },
+    "message": "分析上季度退款率上升的原因并给出建议",
+    "inputs": {
+      "quarter": "2026Q3",
+      "regions": ["华东", "华北", "华南"],
+      "include_returns_shipping": null,
+      "max_rows": 50000,
+      "dry_run": false,
+      "filters": {"channel": ["app", "web"], "min_order_usd": 12.5}
+    },
+    "attachments": ["obj://t1/uploads/refund_policy_2026.pdf"],
+    "submittedAt": "2026-10-19T08:30:00.123456Z",
+    "sessionAccess": "SESSION_ACCESS_READ_ONLY",
+    "priority": "PRIORITY_INTERACTIVE",
+    "budget": {"usdMicros": "9007199254740993", "toolCalls": 80, "wallClock": "1200s"},
+    "effectCeiling": "EFFECT_READ"
+  }
+}

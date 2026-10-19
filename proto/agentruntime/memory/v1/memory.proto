@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package agentruntime.memory.v1;
+
+import "agentruntime/common/v1/payload.proto";
+import "agentruntime/common/v1/tenant.proto";
+
+// MemoryService 是多租户记忆的检索、写入与治理（设计书 3.4.1）。本期先定方法签名，实现分阶段补。
+//
+// 每个请求的字段 1 都是 TenantContext。作用域 ACL 与租户过滤条件由服务端根据它拼接；
+// 请求里不接受任何过滤表达式，过滤条件永远不由模型生成。缺少租户上下文的请求直接拒绝。
+// Memory Item 本身是 JSON 载荷，schema 为 /schemas/memory_item.schema.json。
+service MemoryService {
+  // 检索（附录 I.5、I.6）。
+  rpc Search(SearchRequest) returns (SearchResponse);
+  // 提交经验候选，异步进入写入流水线（附录 I.4）。
+  rpc SubmitCandidates(SubmitCandidatesRequest) returns (SubmitCandidatesResponse);
+  // 用后反馈：是否被采用、Task 结果，更新 helped 与 hurt。
+  rpc RecordFeedback(RecordFeedbackRequest) returns (RecordFeedbackResponse);
+  // 删除条目，沿 lineage 级联删除派生条目并写墓碑（附录 I.6、I.7）。
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+}
+
+// MemoryKind：记忆的类型（附录 I.2）。
+enum MemoryKind {
+  MEMORY_KIND_UNSPECIFIED = 0;
+  MEMORY_KIND_PREFERENCE = 1;
+  MEMORY_KIND_SUCCESS = 2;
+  MEMORY_KIND_FAILURE = 3;
+  MEMORY_KIND_FACT = 4;
+  MEMORY_KIND_RECIPE = 5;
+}
+
+// SearchTrigger：检索时机（附录 I.5）。
+enum SearchTrigger {
+  SEARCH_TRIGGER_UNSPECIFIED = 0;
+  // Triage 与规划时，按任务族取 Recipe 与错误经验。
+  SEARCH_TRIGGER_PLANNING = 1;
+  // Node 开始时，按节点类型取。
+  SEARCH_TRIGGER_NODE_START = 2;
+  // 出错时，按错误签名取。
+  SEARCH_TRIGGER_ERROR = 3;
+}
+
+message SearchRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  SearchTrigger trigger = 2;
+  // 自然语言查询，例如“任务描述 + 任务族”或“节点目标 + 工具”。
+  string query = 3;
+  string task_family = 4;
+  repeated string tools = 5;
+  // 归一化后的错误签名，trigger = ERROR 时填写。
+  string error_signature = 6;
+  repeated MemoryKind kinds = 7;
+  // 注入预算。
+  int32 token_budget = 8;
+  int32 top_k = 9;
+}
+
+message RetrievedItem {
+  agentruntime.common.v1.JsonPayload memory_item = 1;
+  // 业务打分：重排分 × 信任 × 新鲜度 × 作用域权重。
+  double score = 2;
+}
+
+message SearchResponse {
+  repeated RetrievedItem items = 1;
+}
+
+message MemoryCandidate {
+  agentruntime.common.v1.JsonPayload memory_item = 1;
+  string source_task_id = 2;
+}
+
+message SubmitCandidatesRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  repeated MemoryCandidate candidates = 2;
+}
+
+message SubmitCandidatesResponse {
+  // 进入写入流水线的候选数。
+  int32 accepted = 1;
+}
+
+message Feedback {
+  string memory_id = 1;
+  bool adopted = 2;
+  bool task_succeeded = 3;
+}
+
+message RecordFeedbackRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string task_id = 2;
+  repeated Feedback feedback = 3;
+}
+
+message RecordFeedbackResponse {}
+
+message DeleteRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string memory_id = 2;
+  string reason = 3;
+}
+
+message DeleteResponse {
+  // 含沿 lineage 级联删除的派生条目。
+  repeated string deleted_memory_ids = 1;
+}

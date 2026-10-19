@@ -1,0 +1,147 @@
+{
+  "schema": "task_plan",
+  "valid": [
+    {
+      "name": "appendix_c3_task_plan",
+      "source": "附录 C.3",
+      "notes": "记忆 ID 占位符换成完整 ULID；context.profile 改名为 context.work_mode，因为附录 A 中 profile 已是 Context Zones 的一个分区名（见 schemas/examples/README.md）。",
+      "instance": {
+        "triage": {"level": "full", "task_family": "analytics.attribution", "confidence": 0.64},
+        "recipe": null,
+        "horizon": "per_stage",
+        "first_stage": {"goal": "取数", "nodes": ["q_region", "q_sku", "q_reason"]},
+        "tiers": {"planner": "strong@medium", "reviewer": "other_vendor@medium", "node_default": "mid@low"},
+        "memory": {
+          "retrieved": ["mem_01J9F2B4D6F8H0K2M4P6R8T0V2", "mem_01J9K7X5V3T1R9P7N5M3K1H9F7"],
+          "write_policy": "workspace_on_verified"
+        },
+        "context": {"work_mode": "research", "mask_at": 0.4, "summarize_at": 0.7, "must_keep": ["citations", "numbers"]},
+        "budget": {"usd": 2.0, "tool_calls": 80, "wall_clock_min": 20}
+      }
+    },
+    {
+      "name": "light_with_recipe",
+      "source": "附录 C.1、C.3：light 时 recipe 为命中的 Recipe",
+      "notes": "",
+      "instance": {
+        "triage": {"level": "light", "task_family": "analytics.attribution", "confidence": 0.93},
+        "recipe": "refund_analysis@v3",
+        "horizon": "per_stage",
+        "tiers": {"planner": "mid@low", "reviewer": "other_vendor@medium", "node_default": "mid@low"},
+        "budget": {"usd": 1.0, "tool_calls": 40, "wall_clock_min": 10}
+      }
+    },
+    {
+      "name": "replan_explore",
+      "source": "附录 C.1 replan；设计书 3.2.1 第 2 条：几乎未知时只发一个 Goal Node 去探索",
+      "notes": "",
+      "instance": {
+        "triage": {"level": "replan", "task_family": "code.fix_test", "confidence": 0.7},
+        "recipe": null,
+        "horizon": "explore",
+        "first_stage": {"goal": "先定位失败根因", "nodes": ["explore_failure"]},
+        "context": {"work_mode": "coding", "mask_at": 0.4, "summarize_at": 0.7, "must_keep": ["file_changes", "error_text", "test_status"]},
+        "budget": {"usd": 1.5, "tool_calls": 60, "wall_clock_min": 30}
+      }
+    },
+    {
+      "name": "full_dag_batch",
+      "source": "设计书 3.2.1 第 2 条：信息齐全时一轮发出完整 DAG",
+      "notes": "",
+      "instance": {
+        "triage": {"level": "full", "task_family": "support.ticket_batch", "confidence": 0.81},
+        "recipe": null,
+        "horizon": "full_dag",
+        "first_stage": {"goal": "处理 1000 张工单", "nodes": ["triage_tickets"]},
+        "context": {"work_mode": "batch", "mask_at": 0.4, "summarize_at": 0.7, "must_keep": ["item_status_table"]},
+        "budget": {"usd": 12.0, "tool_calls": 3000, "wall_clock_min": 120}
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "light_without_recipe",
+      "description": "light 必须命中 Recipe（附录 C.1、C.3）",
+      "violates": [{"path": "/recipe"}],
+      "instance": {
+        "triage": {"level": "light", "task_family": "analytics.attribution", "confidence": 0.93},
+        "recipe": null,
+        "horizon": "per_stage"
+      }
+    },
+    {
+      "name": "triage_level_old_term",
+      "description": "调研文档旧叫法 P2，附录 A 为 full",
+      "violates": [{"path": "/triage/level", "keyword": "enum"}],
+      "instance": {
+        "triage": {"level": "P2", "task_family": "analytics.attribution", "confidence": 0.64},
+        "recipe": null,
+        "horizon": "per_stage"
+      }
+    },
+    {
+      "name": "confidence_out_of_range",
+      "description": "分诊置信度在 0 到 1 之间",
+      "violates": [{"path": "/triage/confidence", "keyword": "maximum"}],
+      "instance": {
+        "triage": {"level": "full", "task_family": "analytics.attribution", "confidence": 1.4},
+        "recipe": null,
+        "horizon": "per_stage"
+      }
+    },
+    {
+      "name": "context_profile_key",
+      "description": "工作模式字段名是 work_mode；profile 是 Context Zones 的分区名（附录 A），不复用",
+      "violates": [{"path": "/context"}],
+      "instance": {
+        "triage": {"level": "full", "task_family": "analytics.attribution", "confidence": 0.64},
+        "recipe": null,
+        "horizon": "per_stage",
+        "context": {"profile": "research", "mask_at": 0.4, "summarize_at": 0.7}
+      }
+    },
+    {
+      "name": "unknown_horizon",
+      "description": "horizon 只有 full_dag、per_stage、explore",
+      "violates": [{"path": "/horizon", "keyword": "enum"}],
+      "instance": {
+        "triage": {"level": "full", "task_family": "analytics.attribution", "confidence": 0.64},
+        "recipe": null,
+        "horizon": "whole_task"
+      }
+    },
+    {
+      "name": "retrieved_memory_bad_id",
+      "description": "记忆 ID 是 mem_ 加 26 位 ULID",
+      "violates": [{"path": "/memory/retrieved/0", "keyword": "pattern"}],
+      "instance": {
+        "triage": {"level": "full", "task_family": "analytics.attribution", "confidence": 0.64},
+        "recipe": null,
+        "horizon": "per_stage",
+        "memory": {"retrieved": ["mem_42"], "write_policy": "workspace_on_verified"}
+      }
+    },
+    {
+      "name": "tier_without_effort",
+      "description": "Tier 写成 模型档@推理强度（附录 A、H.1）",
+      "violates": [{"path": "/tiers/planner", "keyword": "pattern"}],
+      "instance": {
+        "triage": {"level": "full", "task_family": "analytics.attribution", "confidence": 0.64},
+        "recipe": null,
+        "horizon": "per_stage",
+        "tiers": {"planner": "strong"}
+      }
+    },
+    {
+      "name": "unknown_work_mode",
+      "description": "work_mode 取附录 G.3 的工作模式",
+      "violates": [{"path": "/context/work_mode", "keyword": "enum"}],
+      "instance": {
+        "triage": {"level": "full", "task_family": "analytics.attribution", "confidence": 0.64},
+        "recipe": null,
+        "horizon": "per_stage",
+        "context": {"work_mode": "chitchat", "mask_at": 0.4, "summarize_at": 0.7}
+      }
+    }
+  ]
+}

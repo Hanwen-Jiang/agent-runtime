@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/stage.schema.json",
+  "title": "Stage",
+  "description": "一个 Round 里执行的 Node DAG，有目标与退出条件（附录 A、B.2）。Node id 唯一、after 引用存在、DAG 无环、template 在 Node Catalog 中存在，这些 JSON Schema 表达不了，由 Stage Runner 与 Planner 的代码校验。",
+  "type": "object",
+  "required": ["seq", "goal", "exit_when", "nodes"],
+  "properties": {
+    "seq": {"type": "integer", "minimum": 1},
+    "goal": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+    "exit_when": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+    "budget": {"$ref": "defs.schema.json#/$defs/budget"},
+    "hooks": {
+      "description": "Stage 前后执行的 Hook，由 Recipe 与租户策略声明（附录 F.1）",
+      "type": "object",
+      "properties": {
+        "before": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/hook_name"}},
+        "after": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/hook_name"}}
+      },
+      "unevaluatedProperties": false
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/node"}
+    }
+  },
+  "unevaluatedProperties": false,
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {"$ref": "defs.schema.json#/$defs/node_kind"}
+      },
+      "allOf": [
+        {
+          "if": {"required": ["kind"], "properties": {"kind": {"const": "atomic"}}},
+          "then": {"$ref": "atomic_node.schema.json"}
+        },
+        {
+          "if": {"required": ["kind"], "properties": {"kind": {"const": "goal"}}},
+          "then": {"$ref": "goal_node.schema.json"}
+        }
+      ]
+    }
+  }
+}

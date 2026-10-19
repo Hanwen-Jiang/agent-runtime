@@ -1,0 +1,131 @@
+syntax = "proto3";
+
+package agentruntime.taskapi.v1;
+
+import "agentruntime/common/v1/enums.proto";
+import "agentruntime/common/v1/metering.proto";
+import "agentruntime/common/v1/payload.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// TaskService 是 Runtime 对外唯一的一组 Task API（设计书 3.1.1）。Ingress 完成认证与租户识别后调用它。
+//
+// 租户由服务端根据认证身份确定。请求里的 tenant_id 可以留空，填了就必须与认证身份一致，否则返回 denied。
+// 请求里不接受 TenantContext。
+service TaskService {
+  // 提交一条命令，立即返回 task_id 与 SSE 订阅地址（设计书 2.5）。
+  // 同一 Session 内 client_request_id 相同的重复提交返回同一个 task_id。
+  rpc SubmitTask(SubmitTaskRequest) returns (SubmitTaskResponse);
+  // 取消 Task。排队中的直接移出队列；运行中的转为 Task 子工作流的 cancel。
+  rpc CancelTask(CancelTaskRequest) returns (CancelTaskResponse);
+  // 控制指令，例如人工回复，转为工作流信号。
+  rpc SignalTask(SignalTaskRequest) returns (SignalTaskResponse);
+  // 查询 Task 的状态与 Task State。
+  rpc QueryTask(QueryTaskRequest) returns (QueryTaskResponse);
+}
+
+message SubmitTaskRequest {
+  // 只用来与认证身份做一致性校验。
+  string tenant_id = 1;
+  string workspace_id = 2;
+  // 为空时新建 Session。
+  string session_id = 3;
+  // 客户端生成的提交 ID，用于去重。
+  string client_request_id = 4;
+  // 用户命令原文。
+  string message = 5;
+  // 附带的结构化输入。
+  google.protobuf.Struct inputs = 6;
+  // 用户附带的文件，obj:// 引用。
+  repeated string attachments = 7;
+  agentruntime.common.v1.SessionAccess session_access = 8;
+  agentruntime.common.v1.Priority priority = 9;
+}
+
+message SubmitTaskResponse {
+  string task_id = 1;
+  string session_id = 2;
+  // SSE 订阅地址。
+  string events_url = 3;
+  // true 表示命中了已有的提交，返回的是原来的 task_id。
+  bool deduplicated = 4;
+}
+
+message CancelTaskRequest {
+  string tenant_id = 1;
+  string task_id = 2;
+  string reason = 3;
+}
+
+message CancelTaskResponse {
+  agentruntime.common.v1.TaskStatus status = 1;
+}
+
+message SignalTaskRequest {
+  string tenant_id = 1;
+  string task_id = 2;
+  oneof signal {
+    HumanReply human_reply = 3;
+  }
+}
+
+message SignalTaskResponse {}
+
+// HumanReply 是人对 human 节点或 Reviewer 升级问题的回复（设计书 4.11）。
+// 回复限定为问题给出的选项；Reviewer 升级时选项为 continue_as_is、replan_with_guidance、stop_and_wrap_up。
+message HumanReply {
+  string question_id = 1;
+  string option = 2;
+  // 选 replan_with_guidance 时的指导意见。
+  string guidance = 3;
+}
+
+message QueryTaskRequest {
+  string tenant_id = 1;
+  string task_id = 2;
+}
+
+message QueryTaskResponse {
+  string task_id = 1;
+  string session_id = 2;
+  agentruntime.common.v1.TaskStatus status = 3;
+  // 当前 Round 序号，从 1 开始；排队中为 0。
+  int32 round_seq = 4;
+  // Task State，schema 为 /schemas/task_state.schema.json。排队中为空。
+  agentruntime.common.v1.JsonPayload task_state = 5;
+  // 已推送的最后一个事件，客户端可据此续传。
+  int64 last_event_id = 6;
+  agentruntime.common.v1.Usage usage = 7;
+}
+
+// TaskEvent 是 SSE 推送的事件信封（设计书 4.14）。
+// event_id 在同一个 Task 的事件流内单调递增，客户端断线后凭 Last-Event-ID 续传。
+message TaskEvent {
+  int64 event_id = 1;
+  string task_id = 2;
+  string session_id = 3;
+  TaskEventType type = 4;
+  google.protobuf.Timestamp emitted_at = 5;
+  agentruntime.common.v1.JsonPayload payload = 6;
+}
+
+enum TaskEventType {
+  TASK_EVENT_TYPE_UNSPECIFIED = 0;
+  TASK_EVENT_TYPE_TASK_ACCEPTED = 1;
+  TASK_EVENT_TYPE_ROUND_STARTED = 2;
+  TASK_EVENT_TYPE_STAGE_STARTED = 3;
+  TASK_EVENT_TYPE_NODE_STARTED = 4;
+  TASK_EVENT_TYPE_NODE_FINISHED = 5;
+  // 思考过程。
+  TASK_EVENT_TYPE_THINKING_DELTA = 6;
+  // 工具状态。
+  TASK_EVENT_TYPE_TOOL_STATUS = 7;
+  // deliver 节点的 token 增量。
+  TASK_EVENT_TYPE_TOKEN_DELTA = 8;
+  // 等待人工回复。
+  TASK_EVENT_TYPE_HUMAN_INPUT_REQUIRED = 9;
+  TASK_EVENT_TYPE_VERDICT = 10;
+  // Task 结束：done、abort、取消或失败，见 payload。
+  TASK_EVENT_TYPE_TASK_FINISHED = 11;
+  TASK_EVENT_TYPE_HEARTBEAT = 12;
+}

@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/defs.schema.json",
+  "title": "共享定义",
+  "description": "其余 schema 共用的枚举与格式。枚举只在这里列出取值；与 /proto 同名的枚举（snake_case ↔ CamelCase）以 proto 为准，由契约测试比对。ID 前缀以 proto 的 IdKind 为准。",
+  "$defs": {
+    "executor": {"description": "由谁执行（附录 A、D.3）", "enum": ["model", "program", "human"]},
+    "effect": {"description": "副作用等级（附录 A、D.4）", "enum": ["none", "read", "write_reversible", "write_irreversible"]},
+    "write_effect": {"description": "需要幂等键的写操作", "enum": ["write_reversible", "write_irreversible"]},
+    "read_only_effect": {"description": "只读：sub_agent 默认的 effect 上限", "enum": ["none", "read"]},
+    "role": {"description": "Node 在数据流里的职责（附录 A、D.5）", "enum": ["fetch", "transform", "plan", "route", "judge", "aggregate", "act", "gate", "deliver"]},
+    "mode": {"description": "Goal Node 的展开方式（附录 A、E.1）", "enum": ["template", "tool_loop", "sub_agent", "sub_task"]},
+    "quality": {"description": "质量包装（附录 A、E.2）", "enum": ["none", "revise", "ensemble", "search"]},
+    "reasoning": {"description": "生成型 model 节点内的推理方式（附录 A、E.3）", "enum": ["direct", "stepwise", "plan_first", "templated"]},
+    "verdict": {"description": "Reviewer 的判定（附录 A、B.4）", "enum": ["done", "continue", "repair", "replan", "rollback", "reroute", "escalate", "abort"]},
+    "triage_level": {"description": "规划深度（附录 A、C.1）", "enum": ["fast", "light", "full", "replan"]},
+    "model_output": {"description": "model 节点的输出类别（附录 D.1）", "enum": ["generate", "score", "embed", "classify"]},
+    "node_status": {"description": "Node 的状态（附录 D.6），另加附录 K.4 的结果未知", "enum": ["pending", "ready", "running", "succeeded", "failed", "skipped", "cancelled", "unknown"]},
+    "failure_class": {"description": "Node 的失败分类（附录 D.6）", "enum": ["transient", "invalid_output", "denied", "upstream_failed"]},
+    "task_status": {"description": "Task 的生命周期状态", "enum": ["queued", "running", "done", "aborted", "cancelled", "failed"]},
+    "memory_kind": {"description": "记忆的类型（附录 I.2）", "enum": ["preference", "success", "failure", "fact", "recipe"]},
+
+    "node_kind": {"description": "atomic 为 Atomic Node，goal 为 Goal Node", "enum": ["atomic", "goal"]},
+    "fallback": {"description": "Node 失败后的处理（附录 D.1）", "enum": ["alternate", "skip", "fail"]},
+    "retry_on": {"description": "可重试的临时错误（附录 D.1、D.6）", "enum": ["timeout", "rate_limit"]},
+    "backoff": {"enum": ["exponential", "fixed"]},
+    "ensemble_aggregate": {"description": "ensemble 的合并方式：答案可归一时投票，开放答案时 judge 择优（附录 E.2）", "enum": ["vote", "judge"]},
+    "round_status": {"description": "Round 的进度；结束的 Round 带 Verdict", "enum": ["planning", "running", "reviewing", "completed"]},
+    "horizon": {"description": "一轮规划多远（设计书 3.2.1 第 2 条）：信息齐全时发完整 DAG，部分未知时每轮一个阶段，几乎未知时只发一个探索用的 Goal Node", "enum": ["full_dag", "per_stage", "explore"]},
+    "work_mode": {"description": "上下文策略按工作模式区分（附录 G.3）", "enum": ["coding", "research", "conversation", "writing", "data_analysis", "batch", "long_horizon"]},
+    "diagnosis_layer": {"description": "四层诊断（附录 B.5）", "enum": ["execution", "plan", "shape", "goal"]},
+    "hard_signal": {"description": "硬信号（附录 B.6）", "enum": ["repetition", "stall", "budget_burn", "plan_drift", "context_health", "parallel_anomaly", "sample_divergence"]},
+    "repair_strategy": {"description": "repair 的两步（附录 B.8 第 1、2 步）", "enum": ["retry_with_error", "change_method"]},
+    "escalate_target": {"description": "escalate 的去向：换更强的 Tier，或问人（附录 B.8 第 6 步）", "enum": ["tier", "human"]},
+    "human_reply": {"description": "Reviewer 升级问人时限定的三种回复（设计书 4.11）", "enum": ["continue_as_is", "replan_with_guidance", "stop_and_wrap_up"]},
+    "hook_decision": {"description": "Hook 的结果（附录 A、F.2）", "enum": ["allow", "deny", "modify", "inject"]},
+    "hook_mount": {"description": "Hook 的挂载点（附录 F.1）", "enum": ["on_task_received", "on_task_start", "before_stage", "after_stage", "before_node", "after_node", "before_compact", "before_finish", "on_task_end"]},
+    "context_zone": {"description": "Context Zones（附录 A、G.1）", "enum": ["system", "profile", "brief", "history", "status"]},
+    "modification_target": {"enum": ["input", "output"]},
+    "patch_op": {"description": "JSON Patch（RFC 6902）的操作", "enum": ["add", "remove", "replace", "move", "copy", "test"]},
+    "provenance_source": {"description": "记忆的来源（附录 I.3）", "enum": ["agent_reflection", "user_explicit", "user_correction", "admin", "external_content"]},
+    "sensitivity": {"description": "敏感级别（附录 I.3）：pii 先脱敏，secret 禁止入库", "enum": ["none", "pii", "secret"]},
+    "evidence_outcome": {"enum": ["verified", "failed"]},
+
+    "forbidden": {"description": "此处不允许出现该字段。用 not {} 而不用 false，Python jsonschema 才会把错误报在字段自身的位置", "not": {}},
+    "non_empty_string": {"type": "string", "minLength": 1},
+    "usd": {"description": "美元金额", "type": "number", "minimum": 0},
+    "unit_interval": {"type": "number", "minimum": 0, "maximum": 1},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+
+    "tenant_id": {"description": "身份系统分配的租户 ID", "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,62}$"},
+    "workspace_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,62}$"},
+    "user_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,62}$"},
+    "session_id": {"description": "ses_ 加 26 位 ULID（proto IdKind）", "type": "string", "pattern": "^ses_[0-7][0-9A-HJKMNP-TV-Z]{25}$"},
+    "task_id": {"description": "tsk_ 加 26 位 ULID（proto IdKind）", "type": "string", "pattern": "^tsk_[0-7][0-9A-HJKMNP-TV-Z]{25}$"},
+    "memory_id": {"description": "mem_ 加 26 位 ULID（proto IdKind）", "type": "string", "pattern": "^mem_[0-7][0-9A-HJKMNP-TV-Z]{25}$"},
+    "trace_id": {"description": "tr_ 加 32 位小写十六进制的 W3C trace-id（proto IdKind）", "type": "string", "pattern": "^tr_[0-9a-f]{32}$"},
+
+    "node_id": {"description": "Planner 命名的 Node id；展开出的子节点用“父 id.序号”（计划 S-04）", "type": "string", "maxLength": 128, "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)*$"},
+    "versioned_ref": {"description": "带版本的引用，形如 name@vN", "type": "string", "pattern": "^[a-z][a-z0-9_]*@v[0-9]+$"},
+    "template_ref": {"description": "Node Catalog 中的 Node Template，形如 sql_query@v3", "$ref": "#/$defs/versioned_ref"},
+    "recipe_ref": {"description": "Recipe，形如 refund_analysis@v3", "$ref": "#/$defs/versioned_ref"},
+    "version": {"description": "固定的版本号，形如 v3", "type": "string", "pattern": "^v[0-9]+$"},
+    "tier": {"description": "Tier：模型档@推理强度，形如 strong@medium（附录 A、H.1）", "type": "string", "pattern": "^[a-z][a-z0-9_]*@[a-z][a-z0-9_]*$"},
+    "task_family": {"description": "任务族，形如 analytics.attribution", "type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"},
+    "hook_name": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "tool_name": {"type": "string", "pattern": "^[a-z][a-z0-9_.-]*$"},
+    "object_uri": {"description": "ObjectStore 中的对象，路径以租户 ID 开头：obj://<tenant_id>/...（设计书 4.7）", "type": "string", "pattern": "^obj://[a-z0-9][a-z0-9_-]{0,62}/\\S+$"},
+
+    "schema_ref": {"description": "已登记的 schema 的名字，形如 region_refund_rate_v1", "type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "inline_json_schema": {"description": "内联的 JSON Schema", "type": "object", "$ref": "https://json-schema.org/draft/2020-12/schema"},
+    "output_schema": {"description": "schema 引用或内联 JSON Schema", "anyOf": [{"$ref": "#/$defs/schema_ref"}, {"$ref": "#/$defs/inline_json_schema"}]},
+
+    "after": {"description": "上游 Node id", "type": "array", "items": {"$ref": "#/$defs/node_id"}, "uniqueItems": true},
+    "inputs": {"description": "只能引用上游 result 字段（$<node_id>.result...）、Task State（$task...）或常量（附录 D.1）", "type": "object"},
+    "budget": {
+      "description": "Stage 或 Goal Node 的预算",
+      "type": "object",
+      "properties": {
+        "usd": {"$ref": "#/$defs/usd"},
+        "wall_clock_min": {"type": "number", "minimum": 0}
+      },
+      "unevaluatedProperties": false
+    },
+    "quality_spec": {
+      "description": "质量包装（附录 E.2）。revise：生成 → judge → 不通过带反馈退回，最多 max_rounds 轮；ensemble：生成 n 个 → 投票或 judge 择优；search：每层扩展 expand_k 个 → scorer 打分 → 保留 beam_width 个，最多 max_depth 层",
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {"$ref": "#/$defs/quality"},
+        "judge": {"$ref": "#/$defs/template_ref"},
+        "max_rounds": {"type": "integer", "minimum": 1, "maximum": 10},
+        "n": {"type": "integer", "minimum": 2, "maximum": 20},
+        "aggregate": {"$ref": "#/$defs/ensemble_aggregate"},
+        "expand_k": {"type": "integer", "minimum": 2, "maximum": 10},
+        "max_depth": {"type": "integer", "minimum": 1, "maximum": 10},
+        "beam_width": {"type": "integer", "minimum": 1, "maximum": 10},
+        "scorer": {"$ref": "#/$defs/template_ref"}
+      },
+      "allOf": [
+        {
+          "if": {"required": ["type"], "properties": {"type": {"const": "none"}}},
+          "then": {"properties": {"judge": {"$ref": "#/$defs/forbidden"}, "max_rounds": {"$ref": "#/$defs/forbidden"}, "n": {"$ref": "#/$defs/forbidden"}, "aggregate": {"$ref": "#/$defs/forbidden"}, "expand_k": {"$ref": "#/$defs/forbidden"}, "max_depth": {"$ref": "#/$defs/forbidden"}, "beam_width": {"$ref": "#/$defs/forbidden"}, "scorer": {"$ref": "#/$defs/forbidden"}}}
+        },
+        {
+          "if": {"required": ["type"], "properties": {"type": {"const": "revise"}}},
+          "then": {
+            "required": ["judge", "max_rounds"],
+            "properties": {"n": {"$ref": "#/$defs/forbidden"}, "aggregate": {"$ref": "#/$defs/forbidden"}, "expand_k": {"$ref": "#/$defs/forbidden"}, "max_depth": {"$ref": "#/$defs/forbidden"}, "beam_width": {"$ref": "#/$defs/forbidden"}, "scorer": {"$ref": "#/$defs/forbidden"}}
+          }
+        },
+        {
+          "if": {"required": ["type"], "properties": {"type": {"const": "ensemble"}}},
+          "then": {
+            "required": ["n", "aggregate"],
+            "properties": {"max_rounds": {"$ref": "#/$defs/forbidden"}, "expand_k": {"$ref": "#/$defs/forbidden"}, "max_depth": {"$ref": "#/$defs/forbidden"}, "beam_width": {"$ref": "#/$defs/forbidden"}, "scorer": {"$ref": "#/$defs/forbidden"}}
+          }
+        },
+        {
+          "if": {"required": ["type", "aggregate"], "properties": {"type": {"const": "ensemble"}, "aggregate": {"const": "judge"}}},
+          "then": {"required": ["judge"]}
+        },
+        {
+          "if": {"required": ["aggregate"], "properties": {"aggregate": {"const": "vote"}}},
+          "then": {"properties": {"judge": {"$ref": "#/$defs/forbidden"}}}
+        },
+        {
+          "if": {"required": ["type"], "properties": {"type": {"const": "search"}}},
+          "then": {
+            "required": ["expand_k", "max_depth", "beam_width", "scorer"],
+            "properties": {"judge": {"$ref": "#/$defs/forbidden"}, "max_rounds": {"$ref": "#/$defs/forbidden"}, "n": {"$ref": "#/$defs/forbidden"}, "aggregate": {"$ref": "#/$defs/forbidden"}}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    }
+  }
+}

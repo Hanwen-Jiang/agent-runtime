@@ -1,0 +1,157 @@
+syntax = "proto3";
+
+package agentruntime.common.v1;
+
+// 跨服务共用的枚举，取值一律用设计书附录 A 的名字。
+//
+// 这里是唯一的定义处：/schemas/defs.schema.json 的 $defs 中同名枚举（CamelCase ↔ snake_case）
+// 必须与这里一致，由契约测试比对。值名去掉前缀并转小写，就是 JSON 里的取值，
+// 例如 EFFECT_WRITE_REVERSIBLE ↔ "write_reversible"。
+
+// Executor：由谁执行（附录 D.3）。
+enum Executor {
+  EXECUTOR_UNSPECIFIED = 0;
+  EXECUTOR_MODEL = 1;
+  EXECUTOR_PROGRAM = 2;
+  EXECUTOR_HUMAN = 3;
+}
+
+// Effect：副作用等级（附录 D.4）。决定能否缓存、能否重试、是否需要幂等键与审批。
+enum Effect {
+  EFFECT_UNSPECIFIED = 0;
+  EFFECT_NONE = 1;
+  EFFECT_READ = 2;
+  EFFECT_WRITE_REVERSIBLE = 3;
+  EFFECT_WRITE_IRREVERSIBLE = 4;
+}
+
+// Role：Node 在数据流里的职责（附录 D.5）。
+enum Role {
+  ROLE_UNSPECIFIED = 0;
+  ROLE_FETCH = 1;
+  ROLE_TRANSFORM = 2;
+  ROLE_PLAN = 3;
+  ROLE_ROUTE = 4;
+  ROLE_JUDGE = 5;
+  ROLE_AGGREGATE = 6;
+  ROLE_ACT = 7;
+  ROLE_GATE = 8;
+  ROLE_DELIVER = 9;
+}
+
+// Mode：Goal Node 的展开方式（附录 E.1）。
+enum Mode {
+  MODE_UNSPECIFIED = 0;
+  MODE_TEMPLATE = 1;
+  MODE_TOOL_LOOP = 2;
+  MODE_SUB_AGENT = 3;
+  MODE_SUB_TASK = 4;
+}
+
+// Quality：质量包装（附录 E.2）。
+enum Quality {
+  QUALITY_UNSPECIFIED = 0;
+  QUALITY_NONE = 1;
+  QUALITY_REVISE = 2;
+  QUALITY_ENSEMBLE = 3;
+  QUALITY_SEARCH = 4;
+}
+
+// Reasoning：生成型 model 节点内的推理方式（附录 E.3）。
+enum Reasoning {
+  REASONING_UNSPECIFIED = 0;
+  REASONING_DIRECT = 1;
+  REASONING_STEPWISE = 2;
+  REASONING_PLAN_FIRST = 3;
+  REASONING_TEMPLATED = 4;
+}
+
+// Verdict：Reviewer 的判定（附录 B.4）。
+enum Verdict {
+  VERDICT_UNSPECIFIED = 0;
+  VERDICT_DONE = 1;
+  VERDICT_CONTINUE = 2;
+  VERDICT_REPAIR = 3;
+  VERDICT_REPLAN = 4;
+  VERDICT_ROLLBACK = 5;
+  VERDICT_REROUTE = 6;
+  VERDICT_ESCALATE = 7;
+  VERDICT_ABORT = 8;
+}
+
+// TriageLevel：Planner 决定的规划深度（附录 C.1）。
+enum TriageLevel {
+  TRIAGE_LEVEL_UNSPECIFIED = 0;
+  TRIAGE_LEVEL_FAST = 1;
+  TRIAGE_LEVEL_LIGHT = 2;
+  TRIAGE_LEVEL_FULL = 3;
+  TRIAGE_LEVEL_REPLAN = 4;
+}
+
+// ModelOutput：model 节点的输出类别（附录 D.1）。
+enum ModelOutput {
+  MODEL_OUTPUT_UNSPECIFIED = 0;
+  MODEL_OUTPUT_GENERATE = 1;
+  MODEL_OUTPUT_SCORE = 2;
+  MODEL_OUTPUT_EMBED = 3;
+  MODEL_OUTPUT_CLASSIFY = 4;
+}
+
+// NodeStatus：Node 的状态（附录 D.6），另加附录 K.4 的结果未知。
+enum NodeStatus {
+  NODE_STATUS_UNSPECIFIED = 0;
+  NODE_STATUS_PENDING = 1;
+  // 依赖已满足。
+  NODE_STATUS_READY = 2;
+  NODE_STATUS_RUNNING = 3;
+  NODE_STATUS_SUCCEEDED = 4;
+  NODE_STATUS_FAILED = 5;
+  // 上游失败。
+  NODE_STATUS_SKIPPED = 6;
+  NODE_STATUS_CANCELLED = 7;
+  // 写操作超时且没有确认结果（附录 K.4）。先按幂等键对账，不当作失败直接重试。
+  NODE_STATUS_UNKNOWN = 8;
+}
+
+// FailureClass：Node 的失败分类（附录 D.6）。
+enum FailureClass {
+  FAILURE_CLASS_UNSPECIFIED = 0;
+  // 超时、限流：按 retry 配置重试，但先要满足 effect 规则。
+  FAILURE_CLASS_TRANSIENT = 1;
+  // 输出不符合 schema：model 节点带上错误重问一次，其他执行者直接失败。
+  FAILURE_CLASS_INVALID_OUTPUT = 2;
+  // 被 Hook 或权限拒绝：不重试，交给 Reviewer。
+  FAILURE_CLASS_DENIED = 3;
+  // 上游失败：标记为 skipped，由 Reviewer 判定。
+  FAILURE_CLASS_UPSTREAM_FAILED = 4;
+}
+
+// TaskStatus：Task 的生命周期状态。
+enum TaskStatus {
+  TASK_STATUS_UNSPECIFIED = 0;
+  // 已接受，在 Session 工作流里排队等前一个写 Task 结束。
+  TASK_STATUS_QUEUED = 1;
+  TASK_STATUS_RUNNING = 2;
+  // Reviewer 判定 done。
+  TASK_STATUS_DONE = 3;
+  // Reviewer 判定 abort，交付部分结果。
+  TASK_STATUS_ABORTED = 4;
+  TASK_STATUS_CANCELLED = 5;
+  // 工作流本身出错，不是 Reviewer 的判定。
+  TASK_STATUS_FAILED = 6;
+}
+
+// SessionAccess：Task 是否会写 Session 状态（设计书 3.1.1）。
+// 会写的 Task 在 Session 内串行；只读的 Task 并行启动。未指定时按 READ_WRITE 处理。
+enum SessionAccess {
+  SESSION_ACCESS_UNSPECIFIED = 0;
+  SESSION_ACCESS_READ_ONLY = 1;
+  SESSION_ACCESS_READ_WRITE = 2;
+}
+
+// Priority：准入优先级。交互式 Task 优先于批量 Task（设计书 3.1.1）。未指定时按 INTERACTIVE 处理。
+enum Priority {
+  PRIORITY_UNSPECIFIED = 0;
+  PRIORITY_INTERACTIVE = 1;
+  PRIORITY_BATCH = 2;
+}

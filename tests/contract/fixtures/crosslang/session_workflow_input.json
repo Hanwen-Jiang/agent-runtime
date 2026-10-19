@@ -1,0 +1,39 @@
+{
+  "type": "agentruntime.workflow.v1.SessionWorkflowInput",
+  "message": {
+    "tenant": {
+      "tenantId": "t1",
+      "userId": "u7",
+      "workspaceId": "w3",
+      "sessionId": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+      "trace": {"traceparent": "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"}
+    },
+    "pending": [
+      {
+        "clientRequestId": "req-0007",
+        "task": {
+          "tenant": {
+            "tenantId": "t1",
+            "userId": "u7",
+            "workspaceId": "w3",
+            "sessionId": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z"
+          },
+          "taskId": "tsk_01JA8RA2C4E6G8J0K2M4N6P8Q0",
+          "pinnedVersions": {"nodeTemplates": {"report_writer": "v1"}},
+          "message": "再短一点",
+          "submittedAt": "2026-10-19T08:41:07Z",
+          "sessionAccess": "SESSION_ACCESS_READ_WRITE",
+          "priority": "PRIORITY_INTERACTIVE"
+        }
+      }
+    ],
+    "runningWriteTaskId": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+    "runningReadOnlyTaskIds": ["tsk_01JA8R9B1D3F5H7K9M1P3R5T7V"],
+    "submitted": {
+      "req-0006": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+      "req-0007": "tsk_01JA8RA2C4E6G8J0K2M4N6P8Q0"
+    },
+    "acceptedTasks": "7",
+    "runGeneration": 2
+  }
+}

@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package agentruntime.common.v1;
+
+// TenantContext 是每次调用都携带的租户上下文（设计书 4.1）。
+//
+// 它只由服务端构造：Task Service 根据认证身份填写，写入工作流输入，再原样传给内部服务与 Provider。
+// 外部请求不携带 TenantContext；外部请求里的 tenant_id 只用来与认证身份做一致性校验。
+message TenantContext {
+  string tenant_id = 1;
+  string user_id = 2;
+  string workspace_id = 3;
+  string session_id = 4;
+  TraceContext trace = 5;
+}
+
+// TraceContext 按 W3C Trace Context 传递 trace 上下文（设计书 4.13）。
+message TraceContext {
+  string traceparent = 1;
+  string tracestate = 2;
+}

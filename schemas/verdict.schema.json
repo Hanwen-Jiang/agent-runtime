@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/verdict.schema.json",
+  "title": "Verdict",
+  "description": "Reviewer 的判定（附录 A、B.4）。除 continue 外，各判定在与自己同名的字段里给出细节，且只能带与 verdict 一致的那一个；replan 的细节可省略。",
+  "type": "object",
+  "required": ["verdict", "reason"],
+  "properties": {
+    "verdict": {"$ref": "defs.schema.json#/$defs/verdict"},
+    "reason": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+    "layer": {"description": "问题出在哪一层（附录 B.5）", "$ref": "defs.schema.json#/$defs/diagnosis_layer"},
+    "signals": {"description": "触发的硬信号（附录 B.6）", "type": "array", "items": {"$ref": "defs.schema.json#/$defs/hard_signal"}, "uniqueItems": true},
+    "progress_check": {
+      "description": "Progress Check 的五个问题（附录 B.6）",
+      "type": "object",
+      "required": ["criteria_met", "progress", "looping", "assumptions_hold", "next_step"],
+      "properties": {
+        "criteria_met": {"description": "是否已满足验收条件", "type": "boolean"},
+        "progress": {"description": "最近几个 Round 有没有实质进展", "type": "boolean"},
+        "looping": {"description": "是否在绕圈", "type": "boolean"},
+        "assumptions_hold": {"description": "计划依赖的假设还成立吗", "type": "boolean"},
+        "next_step": {"description": "下一步做什么、由谁做", "type": "string"}
+      },
+      "unevaluatedProperties": false
+    },
+    "done": {
+      "type": "object",
+      "required": ["deliver_node"],
+      "properties": {
+        "deliver_node": {"description": "最终答案来自的 deliver 节点（附录 B.9）", "$ref": "defs.schema.json#/$defs/node_id"}
+      },
+      "unevaluatedProperties": false
+    },
+    "repair": {
+      "type": "object",
+      "required": ["nodes", "strategy"],
+      "properties": {
+        "nodes": {"type": "array", "minItems": 1, "items": {"$ref": "defs.schema.json#/$defs/node_id"}, "uniqueItems": true},
+        "strategy": {"$ref": "defs.schema.json#/$defs/repair_strategy"},
+        "guidance": {"type": "string"}
+      },
+      "unevaluatedProperties": false
+    },
+    "replan": {
+      "type": "object",
+      "properties": {
+        "keep_nodes": {"description": "保留的已验证 Node", "type": "array", "items": {"$ref": "defs.schema.json#/$defs/node_id"}, "uniqueItems": true},
+        "change_shape": {"description": "是否换 Stage 形状（附录 B.8 第 4 步）", "type": "boolean"},
+        "stuck_reason": {"description": "卡住的原因，写进 Task State，让下一次尝试真正不同", "type": "string"}
+      },
+      "unevaluatedProperties": false
+    },
+    "rollback": {
+      "type": "object",
+      "required": ["checkpoint"],
+      "properties": {
+        "checkpoint": {"$ref": "defs.schema.json#/$defs/non_empty_string"}
+      },
+      "unevaluatedProperties": false
+    },
+    "reroute": {
+      "type": "object",
+      "required": ["recipe"],
+      "properties": {
+        "recipe": {"$ref": "defs.schema.json#/$defs/recipe_ref"}
+      },
+      "unevaluatedProperties": false
+    },
+    "escalate": {
+      "type": "object",
+      "required": ["target"],
+      "properties": {
+        "target": {"$ref": "defs.schema.json#/$defs/escalate_target"},
+        "tier": {"$ref": "defs.schema.json#/$defs/tier"},
+        "question": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+        "options": {"type": "array", "minItems": 1, "items": {"$ref": "defs.schema.json#/$defs/human_reply"}, "uniqueItems": true},
+        "state_summary": {"type": "string"}
+      },
+      "allOf": [
+        {
+          "if": {"required": ["target"], "properties": {"target": {"const": "human"}}},
+          "then": {"required": ["question", "options"]}
+        },
+        {
+          "if": {"required": ["target"], "properties": {"target": {"const": "tier"}}},
+          "then": {"required": ["tier"]}
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "abort": {
+      "type": "object",
+      "required": ["completed", "not_completed"],
+      "properties": {
+        "completed": {"type": "array", "items": {"type": "string"}},
+        "not_completed": {"type": "array", "items": {"type": "string"}}
+      },
+      "unevaluatedProperties": false
+    }
+  },
+  "allOf": [
+    {"if": {"required": ["verdict"], "properties": {"verdict": {"const": "done"}}}, "then": {"required": ["done"]}},
+    {"if": {"required": ["verdict"], "properties": {"verdict": {"const": "repair"}}}, "then": {"required": ["repair"]}},
+    {"if": {"required": ["verdict"], "properties": {"verdict": {"const": "rollback"}}}, "then": {"required": ["rollback"]}},
+    {"if": {"required": ["verdict"], "properties": {"verdict": {"const": "reroute"}}}, "then": {"required": ["reroute"]}},
+    {"if": {"required": ["verdict"], "properties": {"verdict": {"const": "escalate"}}}, "then": {"required": ["escalate"]}},
+    {"if": {"required": ["verdict"], "properties": {"verdict": {"const": "abort"}}}, "then": {"required": ["abort"]}}
+  ],
+  "dependentSchemas": {
+    "done": {"properties": {"verdict": {"const": "done"}}},
+    "repair": {"properties": {"verdict": {"const": "repair"}}},
+    "replan": {"properties": {"verdict": {"const": "replan"}}},
+    "rollback": {"properties": {"verdict": {"const": "rollback"}}},
+    "reroute": {"properties": {"verdict": {"const": "reroute"}}},
+    "escalate": {"properties": {"verdict": {"const": "escalate"}}},
+    "abort": {"properties": {"verdict": {"const": "abort"}}}
+  },
+  "unevaluatedProperties": false
+}

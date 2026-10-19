@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/node_output.schema.json",
+  "title": "Node Output",
+  "description": "节点输出的三段（附录 A、D.2）：result 按 output_schema，默认只有它传给下游；rationale 只写入 trace，judge 需要时才显式传入；meta 是计量与置信度。大结果写入 ObjectStore，result 只留摘要，路径在 meta.result_ref。",
+  "type": "object",
+  "required": ["result"],
+  "properties": {
+    "result": {},
+    "rationale": {"type": "string"},
+    "meta": {
+      "type": "object",
+      "properties": {
+        "tier": {"$ref": "defs.schema.json#/$defs/tier"},
+        "reasoning": {"$ref": "defs.schema.json#/$defs/reasoning"},
+        "tokens": {
+          "type": "object",
+          "properties": {
+            "input": {"type": "integer", "minimum": 0},
+            "output": {"type": "integer", "minimum": 0},
+            "cache_read": {"type": "integer", "minimum": 0}
+          },
+          "unevaluatedProperties": false
+        },
+        "cost_usd": {"$ref": "defs.schema.json#/$defs/usd"},
+        "latency_ms": {"type": "integer", "minimum": 0},
+        "confidence": {"$ref": "defs.schema.json#/$defs/unit_interval"},
+        "result_ref": {
+          "type": "object",
+          "required": ["uri"],
+          "properties": {
+            "uri": {"$ref": "defs.schema.json#/$defs/object_uri"},
+            "size_bytes": {"type": "integer", "minimum": 0},
+            "sha256": {"$ref": "defs.schema.json#/$defs/sha256"}
+          },
+          "unevaluatedProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    }
+  },
+  "unevaluatedProperties": false
+}

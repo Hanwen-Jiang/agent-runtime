@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package agentruntime.common.v1;
+
+import "google/protobuf/descriptor.proto";
+
+// 枚举值上的自定义选项。Go 与 Python 都从描述符读取，避免两边各自硬编码同一个字符串。
+extend google.protobuf.EnumValueOptions {
+  // ID 前缀，见 IdKind。
+  string id_prefix = 50001;
+  // 跨语言共用的字符串名：工作流类型、信号、查询、任务队列。
+  string wire_name = 50002;
+}

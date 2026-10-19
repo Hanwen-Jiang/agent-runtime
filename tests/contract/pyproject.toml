@@ -1,0 +1,31 @@
+[project]
+name = "agentruntime-contract-tests"
+version = "0.0.0"
+description = "S-01 契约验收测试：schema 样例、proto 约定、枚举一致性、跨语言往返、工具链"
+requires-python = ">=3.13"
+dependencies = [
+    "agentruntime-core",
+    "agentruntime-proto",
+    "jsonschema>=4.26",
+    "jsonschema-specifications>=2025.9.1",
+    "protobuf>=7.36.2,<8",
+    "pytest>=9.1",
+    "referencing>=0.37",
+    "temporalio>=1.34",
+]
+
+[tool.uv.sources]
+agentruntime-core = { workspace = true }
+agentruntime-proto = { workspace = true }
+
+[build-system]
+requires = ["hatchling>=1.32"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["contract_tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["."]
+addopts = "-ra"
+xfail_strict = true

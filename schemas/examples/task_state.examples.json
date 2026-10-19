@@ -1,0 +1,169 @@
+{
+  "schema": "task_state",
+  "valid": [
+    {
+      "name": "appendix_b1_task_state",
+      "source": "附录 B.1",
+      "notes": "ID 占位符 tsk_01J...、ses_01H... 换成完整 ULID；pinned.node_templates 的占位值 by_stage 换成“模板名 → 版本”的映射。",
+      "instance": {
+        "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+        "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "goal": "分析上季度退款率上升的原因并给出建议",
+        "done_when": "每个结论有数据支撑，建议可执行",
+        "constraints": {"effect_ceiling": "read", "budget_usd": 2.0, "deadline_min": 20},
+        "milestones": ["取数", "归因", "成稿"],
+        "facts": ["华东退款率明显高于其他区域"],
+        "assumptions": ["工单原因字段可靠"],
+        "open_questions": ["物流商是否更换过"],
+        "rounds": [
+          {"seq": 1, "stage_goal": "取数", "verdict": "continue", "cost_usd": 0.12},
+          {"seq": 2, "stage_goal": "归因", "status": "running"}
+        ],
+        "artifacts": ["obj://t1/tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B/region_refund.csv"],
+        "pinned": {
+          "recipe": "refund_analysis@v3",
+          "node_templates": {"sql_query": "v3", "ticket_stats": "v1", "refund_attribution": "v2", "check_numbers_match": "v1"}
+        }
+      }
+    },
+    {
+      "name": "minimal",
+      "source": "附录 B.1 的必填部分",
+      "notes": "新建 Task 时只有目标与验收条件。",
+      "instance": {
+        "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+        "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "goal": "把这段话改短一点",
+        "done_when": "不超过 50 字且保留原意"
+      }
+    },
+    {
+      "name": "completed_done",
+      "source": "附录 B.3 图 34 三个 Round 结束后；附录 B.9 收尾",
+      "notes": "status 标记完成；constraints 可带领域约束（如附录 D.1 引用的 quarter）。",
+      "instance": {
+        "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+        "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "goal": "分析上季度退款率上升的原因并给出建议",
+        "done_when": "每个结论有数据支撑，建议可执行",
+        "status": "done",
+        "constraints": {"effect_ceiling": "read", "budget_usd": 2.0, "deadline_min": 20, "quarter": "2026Q3"},
+        "milestones": ["取数", "归因", "成稿"],
+        "facts": ["华东退款率明显高于其他区域", "华东退款主因是物流破损，占 46%"],
+        "rounds": [
+          {"seq": 1, "stage_goal": "取数", "triage_level": "full", "verdict": "continue", "cost_usd": 0.12},
+          {"seq": 2, "stage_goal": "归因", "verdict": "continue", "cost_usd": 0.41},
+          {"seq": 3, "stage_goal": "成稿", "status": "completed", "verdict": "done", "cost_usd": 0.27}
+        ],
+        "artifacts": [
+          "obj://t1/tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B/region_refund.csv",
+          "obj://t1/tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B/report.md"
+        ],
+        "pinned": {
+          "recipe": null,
+          "node_templates": {"sql_query": "v3", "report_writer": "v1"},
+          "model_profiles": {"vendor_a/strong-model": "2026-09-15"},
+          "reasoning_templates": {}
+        }
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "missing_goal",
+      "description": "Task State 必须有目标（附录 B.1）",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {
+        "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+        "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "done_when": "每个结论有数据支撑"
+      }
+    },
+    {
+      "name": "task_id_placeholder",
+      "description": "task_id 是 tsk_ 加 26 位 ULID，不接受占位写法",
+      "violates": [{"path": "/task_id", "keyword": "pattern"}],
+      "instance": {
+        "task_id": "tsk_01J...",
+        "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "goal": "分析退款率",
+        "done_when": "有结论"
+      }
+    },
+    {
+      "name": "artifact_without_tenant_prefix",
+      "description": "产物路径必须是带租户前缀的 obj:// 引用（设计书 4.7）",
+      "violates": [{"path": "/artifacts/0", "keyword": "pattern"}],
+      "instance": {
+        "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+        "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "goal": "分析退款率",
+        "done_when": "有结论",
+        "artifacts": ["s3://shared-bucket/report.md"]
+      }
+    },
+    {
+      "name": "round_verdict_unknown",
+      "description": "Verdict 只有附录 A 的八个取值",
+      "violates": [{"path": "/rounds/0/verdict", "keyword": "enum"}],
+      "instance": {
+        "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+        "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "goal": "分析退款率",
+        "done_when": "有结论",
+        "rounds": [{"seq": 1, "stage_goal": "取数", "verdict": "complete"}]
+      }
+    },
+    {
+      "name": "running_round_with_verdict",
+      "description": "还在运行的 Round 没有 Verdict",
+      "violates": [{"path": "/rounds/1/verdict"}],
+      "instance": {
+        "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+        "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "goal": "分析退款率",
+        "done_when": "有结论",
+        "rounds": [
+          {"seq": 1, "stage_goal": "取数", "verdict": "continue"},
+          {"seq": 2, "stage_goal": "归因", "status": "running", "verdict": "continue"}
+        ]
+      }
+    },
+    {
+      "name": "effect_ceiling_old_term",
+      "description": "effect 取值用附录 A 的名字",
+      "violates": [{"path": "/constraints/effect_ceiling", "keyword": "enum"}],
+      "instance": {
+        "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+        "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "goal": "分析退款率",
+        "done_when": "有结论",
+        "constraints": {"effect_ceiling": "read_external"}
+      }
+    },
+    {
+      "name": "negative_budget",
+      "description": "预算不能为负",
+      "violates": [{"path": "/constraints/budget_usd", "keyword": "minimum"}],
+      "instance": {
+        "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+        "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "goal": "分析退款率",
+        "done_when": "有结论",
+        "constraints": {"budget_usd": -1}
+      }
+    },
+    {
+      "name": "pinned_template_version_bad_format",
+      "description": "固定的模板版本形如 vN（设计书 3.1.2、附录 D.7）",
+      "violates": [{"path": "/pinned/node_templates/sql_query", "keyword": "pattern"}],
+      "instance": {
+        "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+        "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "goal": "分析退款率",
+        "done_when": "有结论",
+        "pinned": {"recipe": "refund_analysis@v3", "node_templates": {"sql_query": "latest"}}
+      }
+    }
+  ]
+}

@@ -1,0 +1,227 @@
+{
+  "schema": "goal_node",
+  "valid": [
+    {
+      "name": "appendix_b2_read_tickets",
+      "source": "附录 B.2，Stage 中的 read_tickets 节点",
+      "notes": "原文 output_schema 是简写 {reasons: [{name, share, examples}]}，这里展开为等价的 JSON Schema。",
+      "instance": {
+        "id": "read_tickets",
+        "kind": "goal",
+        "goal": "归纳华东工单中的退款原因",
+        "done_when": "输出原因分布与代表性工单",
+        "mode": "sub_agent",
+        "output_schema": {
+          "type": "object",
+          "required": ["reasons"],
+          "properties": {
+            "reasons": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "share", "examples"],
+                "properties": {
+                  "name": {"type": "string"},
+                  "share": {"type": "number", "minimum": 0, "maximum": 1},
+                  "examples": {"type": "array", "items": {"type": "string"}}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "appendix_b3_fix_ci_tool_loop",
+      "source": "附录 B.3 六类任务：修复 CI 中一个失败的测试",
+      "notes": "tool_loop，主 agent 是唯一写者；revise 的 judge 是跑测试的 program 节点模板。",
+      "instance": {
+        "id": "fix_failing_test",
+        "kind": "goal",
+        "goal": "修复 CI 中失败的测试 test_refund_rounding",
+        "done_when": "该测试与原有测试全部通过",
+        "mode": "tool_loop",
+        "output_schema": "code_patch_v1",
+        "effect_ceiling": "write_reversible",
+        "tools": ["repo_read", "repo_write", "run_tests"],
+        "max_iterations": 30,
+        "budget": {"usd": 1.5, "wall_clock_min": 30},
+        "quality": {"type": "revise", "judge": "run_tests@v1", "max_rounds": 3}
+      }
+    },
+    {
+      "name": "appendix_b3_batch_template",
+      "source": "附录 B.3 六类任务：批量处理 1000 张工单",
+      "notes": "template 模式按 Recipe 展开为固定链。",
+      "instance": {
+        "id": "triage_tickets",
+        "kind": "goal",
+        "goal": "逐张处理 1000 张工单：分类、抽取字段、给出处理建议",
+        "done_when": "每张工单都有通过 schema 校验的处理结果",
+        "mode": "template",
+        "recipe": "ticket_triage@v2",
+        "inputs": {"ticket_ids": "$task.constraints.ticket_ids"},
+        "output_schema": "ticket_triage_batch_v1"
+      }
+    },
+    {
+      "name": "appendix_b3_research_sub_agent",
+      "source": "附录 B.3 六类任务：行业研究报告 Stage 2 的 sub_agent",
+      "notes": "sub_agent 默认只读，这里显式写出 effect_ceiling = read。",
+      "instance": {
+        "id": "research_market_size",
+        "kind": "goal",
+        "goal": "调研目标行业近三年的市场规模与增速",
+        "done_when": "每个数字都带来源链接",
+        "mode": "sub_agent",
+        "effect_ceiling": "read",
+        "tools": ["web_search", "web_fetch"],
+        "output_schema": "research_card_v1"
+      }
+    },
+    {
+      "name": "mode_deferred",
+      "source": "附录 E.1：mode 可以推迟到运行时",
+      "notes": "只写 goal、done_when 与 output_schema。",
+      "instance": {
+        "id": "explore_repo",
+        "kind": "goal",
+        "goal": "弄清仓库的构建方式与测试入口",
+        "done_when": "给出构建命令、测试命令与依赖服务清单",
+        "output_schema": "repo_overview_v1"
+      }
+    },
+    {
+      "name": "sub_task",
+      "source": "附录 E.1：sub_task 嵌套运行一个完整的 Task Loop",
+      "notes": "嵌套深度由运行时计算与限制，不写在节点里。",
+      "instance": {
+        "id": "competitor_deep_dive",
+        "kind": "goal",
+        "goal": "完成竞品 A 的完整调研",
+        "done_when": "产出带引用的竞品分析小节",
+        "mode": "sub_task",
+        "after": ["scope_confirmed"],
+        "output_schema": "report_section_v1",
+        "budget": {"usd": 0.8, "wall_clock_min": 15}
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "missing_done_when",
+      "description": "Goal Node 必须写清 done_when（附录 E.1）",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {
+        "id": "read_tickets",
+        "kind": "goal",
+        "goal": "归纳华东工单中的退款原因",
+        "mode": "sub_agent",
+        "output_schema": "refund_reasons_v1"
+      }
+    },
+    {
+      "name": "missing_output_schema",
+      "description": "Goal Node 必须写清 output_schema（附录 E.1）",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {
+        "id": "read_tickets",
+        "kind": "goal",
+        "goal": "归纳华东工单中的退款原因",
+        "done_when": "输出原因分布与代表性工单"
+      }
+    },
+    {
+      "name": "old_term_mode_react",
+      "description": "调研文档旧叫法 react，附录 A 为 tool_loop",
+      "violates": [{"path": "/mode", "keyword": "enum"}],
+      "instance": {
+        "id": "fix_failing_test",
+        "kind": "goal",
+        "goal": "修复失败的测试",
+        "done_when": "测试通过",
+        "mode": "react",
+        "output_schema": "code_patch_v1"
+      }
+    },
+    {
+      "name": "old_term_mode_subagent",
+      "description": "调研文档旧叫法 subagent，附录 A 为 sub_agent",
+      "violates": [{"path": "/mode", "keyword": "enum"}],
+      "instance": {
+        "id": "read_tickets",
+        "kind": "goal",
+        "goal": "归纳华东工单中的退款原因",
+        "done_when": "输出原因分布与代表性工单",
+        "mode": "subagent",
+        "output_schema": "refund_reasons_v1"
+      }
+    },
+    {
+      "name": "sub_agent_write_ceiling",
+      "description": "sub_agent 默认只读，effect_ceiling 不得高于 read（设计书 3.2.3，计划 S-04）",
+      "violates": [{"path": "/effect_ceiling"}],
+      "instance": {
+        "id": "read_tickets",
+        "kind": "goal",
+        "goal": "归纳华东工单中的退款原因",
+        "done_when": "输出原因分布与代表性工单",
+        "mode": "sub_agent",
+        "effect_ceiling": "write_reversible",
+        "output_schema": "refund_reasons_v1"
+      }
+    },
+    {
+      "name": "template_mode_without_recipe",
+      "description": "template 模式要展开为预定义子图，必须指定 Recipe（附录 E.1）",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {
+        "id": "triage_tickets",
+        "kind": "goal",
+        "goal": "逐张处理工单",
+        "done_when": "每张工单都有处理结果",
+        "mode": "template",
+        "output_schema": "ticket_triage_batch_v1"
+      }
+    },
+    {
+      "name": "goal_with_atomic_fields",
+      "description": "Goal Node 不带 executor、template 等 Atomic Node 字段",
+      "violates": [{"path": "", "keyword": "unevaluatedProperties"}],
+      "instance": {
+        "id": "read_tickets",
+        "kind": "goal",
+        "goal": "归纳华东工单中的退款原因",
+        "done_when": "输出原因分布与代表性工单",
+        "executor": "model",
+        "output_schema": "refund_reasons_v1"
+      }
+    },
+    {
+      "name": "output_schema_wrong_type",
+      "description": "output_schema 只能是 schema 引用或内联 JSON Schema",
+      "violates": [{"path": "/output_schema"}],
+      "instance": {
+        "id": "read_tickets",
+        "kind": "goal",
+        "goal": "归纳华东工单中的退款原因",
+        "done_when": "输出原因分布与代表性工单",
+        "output_schema": 42
+      }
+    },
+    {
+      "name": "max_iterations_zero",
+      "description": "循环类 Goal Node 的最大迭代次数至少为 1（附录 B.8）",
+      "violates": [{"path": "/max_iterations", "keyword": "minimum"}],
+      "instance": {
+        "id": "fix_failing_test",
+        "kind": "goal",
+        "goal": "修复失败的测试",
+        "done_when": "测试通过",
+        "mode": "tool_loop",
+        "max_iterations": 0,
+        "output_schema": "code_patch_v1"
+      }
+    }
+  ]
+}

@@ -1,0 +1,258 @@
+{
+  "schema": "memory_item",
+  "valid": [
+    {
+      "name": "appendix_i3_memory_item",
+      "source": "附录 I.3",
+      "notes": "ID 占位符 mem_01J...、mem_01H... 换成完整 ULID；trace 的 tr_88、tr_91 换成 tr_ 加 32 位十六进制；session 的 ses_42 换成完整 ULID。",
+      "instance": {
+        "id": "mem_01JA8R5C7E9G1J3K5M7N9Q1S3V",
+        "scope": {"tenant": "t1", "workspace": "w3", "user": null},
+        "kind": "failure",
+        "applies_when": {"task_family": ["code.fix_test"], "tools": ["github", "docker"], "model_family": "any"},
+        "content": {
+          "title": "测试依赖本地 Redis",
+          "guidance": "运行 make test 前先执行 docker compose up -d redis",
+          "rationale": "3 次失败均为连接被拒绝"
+        },
+        "evidence": [
+          {"trace": "tr_4bf92f3577b34da6a3ce929d0e0e4736", "outcome": "verified"},
+          {"trace": "tr_0af7651916cd43dd8448eb211c80319c", "outcome": "verified"}
+        ],
+        "provenance": {"source": "agent_reflection", "session": "ses_01J9C4A2Z0Y8X6W4V2T0S8R6Q4"},
+        "trust": 0.82,
+        "stats": {"retrieved": 14, "helped": 11, "hurt": 1},
+        "validity": {"valid_from": "2026-09-02", "valid_to": null, "superseded_by": null},
+        "sensitivity": "none",
+        "lineage": ["mem_01J9F2B4D6F8H0K2M4P6R8T0V2"],
+        "embedding_version": "e3",
+        "version": 3
+      }
+    },
+    {
+      "name": "user_preference",
+      "source": "附录 I.1 User 作用域；附录 I.2 preference",
+      "notes": "",
+      "instance": {
+        "id": "mem_01J9K7X5V3T1R9P7N5M3K1H9F7",
+        "scope": {"tenant": "t1", "workspace": null, "user": "u7"},
+        "kind": "preference",
+        "content": {"title": "汇报格式", "guidance": "汇报用表格，不超过一页"},
+        "provenance": {"source": "user_explicit"},
+        "trust": 0.95,
+        "validity": {"valid_from": "2026-10-01", "valid_to": "2027-04-01", "superseded_by": null},
+        "sensitivity": "none",
+        "embedding_version": "e3",
+        "version": 1
+      }
+    },
+    {
+      "name": "platform_failure",
+      "source": "附录 I.1 Platform 作用域；附录 I.2 failure 的例子",
+      "notes": "Platform 级条目不含任何租户数据，scope 全为 null。",
+      "instance": {
+        "id": "mem_01J9F2B4D6F8H0K2M4P6R8T0V2",
+        "scope": {"tenant": null, "workspace": null, "user": null},
+        "kind": "failure",
+        "applies_when": {"tools": ["github"]},
+        "content": {"title": "分页参数", "guidance": "注意：该 API 分页参数是 cursor，不是 page"},
+        "provenance": {"source": "admin"},
+        "trust": 0.9,
+        "validity": {"valid_from": "2026-08-15", "valid_to": null, "superseded_by": null},
+        "sensitivity": "none",
+        "embedding_version": "e3",
+        "version": 2
+      }
+    },
+    {
+      "name": "session_external_content",
+      "source": "附录 I.4 第 4 条：外部内容来源的条目默认低信任",
+      "notes": "",
+      "instance": {
+        "id": "mem_01JA8R6D8F0H2K4M6P8R0T2V4X",
+        "scope": {"tenant": "t1", "workspace": "w3", "user": null, "session": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z"},
+        "kind": "fact",
+        "content": {"title": "供应商 X 的退货政策", "guidance": "供应商 X 官网写明 30 天内可退货"},
+        "provenance": {"source": "external_content", "uri": "https://example.com/returns"},
+        "trust": 0.3,
+        "validity": {"valid_from": "2026-10-18", "valid_to": null, "superseded_by": null},
+        "sensitivity": "none",
+        "embedding_version": "e3",
+        "version": 1
+      }
+    },
+    {
+      "name": "pii_redacted_correction",
+      "source": "附录 I.3 sensitivity：pii 先脱敏",
+      "notes": "",
+      "instance": {
+        "id": "mem_01JA8R7E9G1J3K5M7N9Q1S3V5X",
+        "scope": {"tenant": "t1", "workspace": "w3", "user": "u7"},
+        "kind": "fact",
+        "content": {"title": "客户联系人", "guidance": "该客户的对接人是采购部的 [NAME]，电话见 CRM"},
+        "provenance": {"source": "user_correction", "session": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z"},
+        "trust": 0.7,
+        "validity": {"valid_from": "2026-10-10", "valid_to": null, "superseded_by": null},
+        "sensitivity": "pii",
+        "embedding_version": "e3",
+        "version": 1
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "secret_sensitivity",
+      "description": "secret 禁止入库（附录 I.3、I.4）",
+      "violates": [{"path": "/sensitivity"}],
+      "instance": {
+        "id": "mem_01JA8R5C7E9G1J3K5M7N9Q1S3V",
+        "scope": {"tenant": "t1", "workspace": "w3", "user": null},
+        "kind": "fact",
+        "content": {"title": "数据库密码", "guidance": "生产库密码是 ..."},
+        "provenance": {"source": "agent_reflection"},
+        "trust": 0.5,
+        "validity": {"valid_from": "2026-10-01", "valid_to": null, "superseded_by": null},
+        "sensitivity": "secret",
+        "embedding_version": "e3",
+        "version": 1
+      }
+    },
+    {
+      "name": "platform_scope_with_workspace",
+      "description": "没有租户的条目只能是 Platform 级，不得挂在 Workspace 下（附录 I.1、I.7）",
+      "violates": [{"path": "/scope/workspace"}],
+      "instance": {
+        "id": "mem_01JA8R5C7E9G1J3K5M7N9Q1S3V",
+        "scope": {"tenant": null, "workspace": "w3", "user": null},
+        "kind": "success",
+        "content": {"title": "构建命令", "guidance": "先 make deps 再 make build"},
+        "provenance": {"source": "agent_reflection"},
+        "trust": 0.6,
+        "validity": {"valid_from": "2026-10-01", "valid_to": null, "superseded_by": null},
+        "sensitivity": "none",
+        "embedding_version": "e3",
+        "version": 1
+      }
+    },
+    {
+      "name": "scope_missing_tenant_key",
+      "description": "scope 必须显式写出 tenant，Platform 级写 null",
+      "violates": [{"path": "/scope", "keyword": "required"}],
+      "instance": {
+        "id": "mem_01JA8R5C7E9G1J3K5M7N9Q1S3V",
+        "scope": {"workspace": "w3"},
+        "kind": "success",
+        "content": {"title": "构建命令", "guidance": "先 make deps 再 make build"},
+        "provenance": {"source": "agent_reflection"},
+        "trust": 0.6,
+        "validity": {"valid_from": "2026-10-01", "valid_to": null, "superseded_by": null},
+        "sensitivity": "none",
+        "embedding_version": "e3",
+        "version": 1
+      }
+    },
+    {
+      "name": "trust_out_of_range",
+      "description": "trust 在 0 到 1 之间",
+      "violates": [{"path": "/trust", "keyword": "maximum"}],
+      "instance": {
+        "id": "mem_01JA8R5C7E9G1J3K5M7N9Q1S3V",
+        "scope": {"tenant": "t1", "workspace": "w3", "user": null},
+        "kind": "success",
+        "content": {"title": "构建命令", "guidance": "先 make deps 再 make build"},
+        "provenance": {"source": "agent_reflection"},
+        "trust": 1.2,
+        "validity": {"valid_from": "2026-10-01", "valid_to": null, "superseded_by": null},
+        "sensitivity": "none",
+        "embedding_version": "e3",
+        "version": 1
+      }
+    },
+    {
+      "name": "unknown_kind",
+      "description": "kind 只有 preference、success、failure、fact、recipe（附录 I.2）",
+      "violates": [{"path": "/kind", "keyword": "enum"}],
+      "instance": {
+        "id": "mem_01JA8R5C7E9G1J3K5M7N9Q1S3V",
+        "scope": {"tenant": "t1", "workspace": "w3", "user": null},
+        "kind": "rule",
+        "content": {"title": "构建命令", "guidance": "先 make deps 再 make build"},
+        "provenance": {"source": "admin"},
+        "trust": 0.6,
+        "validity": {"valid_from": "2026-10-01", "valid_to": null, "superseded_by": null},
+        "sensitivity": "none",
+        "embedding_version": "e3",
+        "version": 1
+      }
+    },
+    {
+      "name": "unknown_provenance_source",
+      "description": "来源取附录 I.3 的五类；网页内容属于 external_content",
+      "violates": [{"path": "/provenance/source", "keyword": "enum"}],
+      "instance": {
+        "id": "mem_01JA8R5C7E9G1J3K5M7N9Q1S3V",
+        "scope": {"tenant": "t1", "workspace": "w3", "user": null},
+        "kind": "fact",
+        "content": {"title": "退货政策", "guidance": "30 天内可退"},
+        "provenance": {"source": "web"},
+        "trust": 0.3,
+        "validity": {"valid_from": "2026-10-01", "valid_to": null, "superseded_by": null},
+        "sensitivity": "none",
+        "embedding_version": "e3",
+        "version": 1
+      }
+    },
+    {
+      "name": "missing_provenance",
+      "description": "每条记忆必须带来源（附录 I.7 防投毒）",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {
+        "id": "mem_01JA8R5C7E9G1J3K5M7N9Q1S3V",
+        "scope": {"tenant": "t1", "workspace": "w3", "user": null},
+        "kind": "fact",
+        "content": {"title": "退货政策", "guidance": "30 天内可退"},
+        "trust": 0.3,
+        "validity": {"valid_from": "2026-10-01", "valid_to": null, "superseded_by": null},
+        "sensitivity": "none",
+        "embedding_version": "e3",
+        "version": 1
+      }
+    },
+    {
+      "name": "lineage_placeholder_id",
+      "description": "lineage 里的 ID 必须完整，级联删除要靠它（附录 I.3、I.7）",
+      "violates": [{"path": "/lineage/0", "keyword": "pattern"}],
+      "instance": {
+        "id": "mem_01JA8R5C7E9G1J3K5M7N9Q1S3V",
+        "scope": {"tenant": "t1", "workspace": "w3", "user": null},
+        "kind": "success",
+        "content": {"title": "构建命令", "guidance": "先 make deps 再 make build"},
+        "provenance": {"source": "agent_reflection"},
+        "trust": 0.6,
+        "validity": {"valid_from": "2026-10-01", "valid_to": null, "superseded_by": null},
+        "sensitivity": "none",
+        "lineage": ["mem_01H..."],
+        "embedding_version": "e3",
+        "version": 1
+      }
+    },
+    {
+      "name": "evidence_trace_short_id",
+      "description": "evidence 的 trace 用完整的 trace ID",
+      "violates": [{"path": "/evidence/0/trace", "keyword": "pattern"}],
+      "instance": {
+        "id": "mem_01JA8R5C7E9G1J3K5M7N9Q1S3V",
+        "scope": {"tenant": "t1", "workspace": "w3", "user": null},
+        "kind": "success",
+        "content": {"title": "构建命令", "guidance": "先 make deps 再 make build"},
+        "evidence": [{"trace": "tr_88", "outcome": "verified"}],
+        "provenance": {"source": "agent_reflection"},
+        "trust": 0.6,
+        "validity": {"valid_from": "2026-10-01", "valid_to": null, "superseded_by": null},
+        "sensitivity": "none",
+        "embedding_version": "e3",
+        "version": 1
+      }
+    }
+  ]
+}

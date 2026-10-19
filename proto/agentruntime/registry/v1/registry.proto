@@ -1,0 +1,211 @@
+syntax = "proto3";
+
+package agentruntime.registry.v1;
+
+import "agentruntime/common/v1/enums.proto";
+import "agentruntime/common/v1/payload.proto";
+import "agentruntime/common/v1/tenant.proto";
+import "agentruntime/workflow/v1/task.proto";
+import "google/protobuf/struct.proto";
+
+// RegistryService 版本化存放 Node Template、Recipe、Reasoning Template、Model Profile 与租户策略
+// （设计书 3.1.2）。本期先定方法签名，实现分阶段补。
+//
+// 每个请求的字段 1 都是 TenantContext：可见范围、模型白名单等按租户过滤，由服务端执行。
+service RegistryService {
+  // 发布新版本。新版本以影子状态发布，不影响默认版本。
+  rpc Publish(PublishRequest) returns (PublishResponse);
+  // 评测达标后把某个版本设为默认。
+  rpc Promote(PromoteRequest) returns (PromoteResponse);
+  // Task 启动时解析要固定的版本清单，写入 TaskWorkflowInput。
+  rpc ResolvePinnedVersions(ResolvePinnedVersionsRequest) returns (ResolvePinnedVersionsResponse);
+  rpc GetNodeTemplate(GetNodeTemplateRequest) returns (GetNodeTemplateResponse);
+  // Node Catalog：Planner 只能从这里实例化 Atomic Node。
+  rpc ListNodeTemplates(ListNodeTemplatesRequest) returns (ListNodeTemplatesResponse);
+  rpc GetRecipe(GetRecipeRequest) returns (GetRecipeResponse);
+  // 按租户与任务族查询可用的 Recipe。
+  rpc ListRecipes(ListRecipesRequest) returns (ListRecipesResponse);
+  rpc GetModelProfile(GetModelProfileRequest) returns (GetModelProfileResponse);
+  rpc ListModelProfiles(ListModelProfilesRequest) returns (ListModelProfilesResponse);
+  rpc GetTenantPolicy(GetTenantPolicyRequest) returns (GetTenantPolicyResponse);
+}
+
+// RegistryKind：Registry 存放的对象种类。
+enum RegistryKind {
+  REGISTRY_KIND_UNSPECIFIED = 0;
+  REGISTRY_KIND_NODE_TEMPLATE = 1;
+  REGISTRY_KIND_RECIPE = 2;
+  REGISTRY_KIND_REASONING_TEMPLATE = 3;
+  REGISTRY_KIND_MODEL_PROFILE = 4;
+  REGISTRY_KIND_TENANT_POLICY = 5;
+}
+
+// ReleaseState：一个版本的发布状态。
+enum ReleaseState {
+  RELEASE_STATE_UNSPECIFIED = 0;
+  // 影子运行，只接影子流量与评测。
+  RELEASE_STATE_SHADOW = 1;
+  RELEASE_STATE_DEFAULT = 2;
+  RELEASE_STATE_RETIRED = 3;
+}
+
+// NodeTemplate 是 Atomic Node 的模板（附录 D.7）。骨架字段强类型；参数 schema 与默认配置是 JSON 载荷。
+message NodeTemplate {
+  string name = 1;
+  // 形如 v3。
+  string version = 2;
+  ReleaseState state = 3;
+  agentruntime.common.v1.Executor executor = 4;
+  agentruntime.common.v1.Effect effect = 5;
+  agentruntime.common.v1.Role role = 6;
+  // 仅 executor = model。
+  agentruntime.common.v1.ModelOutput output = 7;
+  // 输出 schema 的引用，例如 region_refund_rate_v1。
+  string output_schema_id = 8;
+  // 模板参数的 JSON Schema。
+  agentruntime.common.v1.JsonPayload params_schema = 9;
+  google.protobuf.Struct defaults = 10;
+  // effect = write_reversible 时登记的回滚方式（附录 D.4），通常是另一个模板名。
+  string rollback_template = 11;
+  // ToolDriver 能否按幂等键查询写操作是否已生效（计划 S-05 的 UNKNOWN 对账）。
+  bool supports_idempotency_lookup = 12;
+}
+
+// Recipe 是某个任务族验证过的做法，正文是 JSON 载荷。
+message Recipe {
+  string name = 1;
+  string version = 2;
+  ReleaseState state = 3;
+  string task_family = 4;
+  agentruntime.common.v1.JsonPayload document = 5;
+}
+
+// ModelProfile 是一个模型的档案（附录 H.1），正文是 JSON 载荷。
+message ModelProfile {
+  // 形如 vendor/model。
+  string id = 1;
+  string version = 2;
+  ReleaseState state = 3;
+  agentruntime.common.v1.JsonPayload document = 4;
+}
+
+// TenantPolicy 是租户策略：Hook 声明、模型白名单、预算等，正文是 JSON 载荷。
+message TenantPolicy {
+  string version = 1;
+  agentruntime.common.v1.JsonPayload document = 2;
+}
+
+message PublishRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  RegistryKind kind = 2;
+  string name = 3;
+  agentruntime.common.v1.JsonPayload document = 4;
+  string change_note = 5;
+}
+
+message PublishResponse {
+  string name = 1;
+  string version = 2;
+  ReleaseState state = 3;
+}
+
+message PromoteRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  RegistryKind kind = 2;
+  string name = 3;
+  string version = 4;
+  // 达标的评测证据。
+  agentruntime.common.v1.JsonPayload evaluation = 5;
+}
+
+message PromoteResponse {
+  string previous_default_version = 1;
+}
+
+message ResolvePinnedVersionsRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string task_family = 2;
+  // 指定的 Recipe，例如 refund_analysis@v3；为空时由 Registry 选默认。
+  string recipe = 3;
+}
+
+message ResolvePinnedVersionsResponse {
+  agentruntime.workflow.v1.PinnedVersions pinned_versions = 1;
+}
+
+message GetNodeTemplateRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string name = 2;
+  // 为空时取默认版本。
+  string version = 3;
+}
+
+message GetNodeTemplateResponse {
+  NodeTemplate node_template = 1;
+}
+
+message ListNodeTemplatesRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  // 按 Task 固定的版本过滤；为空时列出默认版本。
+  agentruntime.workflow.v1.PinnedVersions pinned_versions = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message ListNodeTemplatesResponse {
+  repeated NodeTemplate node_templates = 1;
+  string next_page_token = 2;
+}
+
+message GetRecipeRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string name = 2;
+  string version = 3;
+}
+
+message GetRecipeResponse {
+  Recipe recipe = 1;
+}
+
+message ListRecipesRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string task_family = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message ListRecipesResponse {
+  repeated Recipe recipes = 1;
+  string next_page_token = 2;
+}
+
+message GetModelProfileRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string id = 2;
+  string version = 3;
+}
+
+message GetModelProfileResponse {
+  ModelProfile model_profile = 1;
+}
+
+message ListModelProfilesRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListModelProfilesResponse {
+  repeated ModelProfile model_profiles = 1;
+  string next_page_token = 2;
+}
+
+message GetTenantPolicyRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  // 为空时取当前版本。
+  string version = 2;
+}
+
+message GetTenantPolicyResponse {
+  TenantPolicy tenant_policy = 1;
+}

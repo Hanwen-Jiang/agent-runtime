@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package agentruntime.workflow.v1;
+
+import "agentruntime/common/v1/tenant.proto";
+import "agentruntime/workflow/v1/task.proto";
+
+// SessionWorkflowInput 是 Session 工作流的输入（附录 K.1），首次启动与 Continue-As-New 都用它。
+// Task State 不放在 Session 工作流里，只在各自的 Task 子工作流中。
+message SessionWorkflowInput {
+  // session_id 在 tenant.session_id，同时是 Session 工作流的工作流 ID。
+  agentruntime.common.v1.TenantContext tenant = 1;
+  // Continue-As-New 前排空的、尚未处理的提交，按到达顺序。首次启动为空。
+  repeated SubmitTaskSignal pending = 2;
+  // 续接时仍在运行的写 Task。
+  string running_write_task_id = 3;
+  // 续接时仍在运行的只读 Task。
+  repeated string running_read_only_task_ids = 4;
+  // client_request_id → task_id，重复提交返回同一个 task_id。
+  map<string, string> submitted = 5;
+  // 累计接受的 Task 数，跨 Continue-As-New 延续。
+  int64 accepted_tasks = 6;
+  // 第几次运行，首次为 0，每次 Continue-As-New 加 1。
+  int32 run_generation = 7;
+}
+
+// SubmitTaskSignal 把一个 Task 投递给 Session 工作流（设计书 3.1.1）。
+message SubmitTaskSignal {
+  string client_request_id = 1;
+  // Task Service 已填好的子工作流输入，含 task_id 与固定的版本。
+  TaskWorkflowInput task = 2;
+}
+
+// CancelTaskSignal 取消 Session 里的一个 Task：排队中的移出队列，运行中的取消子工作流。
+message CancelTaskSignal {
+  string task_id = 1;
+  string reason = 2;
+}
+
+// SessionState 是 session_state 查询的结果。
+message SessionState {
+  string session_id = 1;
+  // 排队等待的写 Task，按执行顺序。
+  repeated string queued_task_ids = 2;
+  string running_write_task_id = 3;
+  repeated string running_read_only_task_ids = 4;
+  int64 accepted_tasks = 5;
+  int32 run_generation = 6;
+}

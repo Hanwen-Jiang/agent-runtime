@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/goal_node.schema.json",
+  "title": "Goal Node",
+  "description": "只声明目标与验收条件、运行时再展开的节点（附录 A、E.1）。只需写清 goal、done_when、预算与 output_schema；mode 可以推迟到运行时。嵌套深度由运行时计算，不写在节点里。",
+  "type": "object",
+  "required": ["id", "kind", "goal", "done_when", "output_schema"],
+  "properties": {
+    "id": {"$ref": "defs.schema.json#/$defs/node_id"},
+    "kind": {"const": "goal"},
+    "goal": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+    "done_when": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+    "mode": {"$ref": "defs.schema.json#/$defs/mode"},
+    "recipe": {"description": "template 模式展开用的 Recipe", "$ref": "defs.schema.json#/$defs/recipe_ref"},
+    "after": {"$ref": "defs.schema.json#/$defs/after"},
+    "inputs": {"$ref": "defs.schema.json#/$defs/inputs"},
+    "output_schema": {"$ref": "defs.schema.json#/$defs/output_schema"},
+    "budget": {"$ref": "defs.schema.json#/$defs/budget"},
+    "quality": {"$ref": "defs.schema.json#/$defs/quality_spec"},
+    "effect_ceiling": {"description": "展开后可用工具的最高 effect", "$ref": "defs.schema.json#/$defs/effect"},
+    "tools": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/tool_name"}, "uniqueItems": true},
+    "max_iterations": {"description": "循环类 Goal Node 的最大迭代次数（附录 B.8）", "type": "integer", "minimum": 1, "maximum": 500}
+  },
+  "allOf": [
+    {
+      "description": "sub_agent 默认只读（设计书 3.2.3）",
+      "if": {"required": ["mode"], "properties": {"mode": {"const": "sub_agent"}}},
+      "then": {"properties": {"effect_ceiling": {"$ref": "defs.schema.json#/$defs/read_only_effect"}}}
+    },
+    {
+      "description": "template 模式展开为预定义子图，必须指定 Recipe（附录 E.1）",
+      "if": {"required": ["mode"], "properties": {"mode": {"const": "template"}}},
+      "then": {"required": ["recipe"]}
+    }
+  ],
+  "unevaluatedProperties": false
+}

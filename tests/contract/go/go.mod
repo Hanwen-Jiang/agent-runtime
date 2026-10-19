@@ -1,0 +1,27 @@
+module github.com/agentruntime/agent-runtime/tests/contract/go
+
+go 1.26.0
+
+require (
+	github.com/agentruntime/agent-runtime/proto/gen/go v0.0.0-00010101000000-000000000000
+	go.temporal.io/api v1.63.6
+	go.temporal.io/sdk v1.49.0
+	google.golang.org/protobuf v1.36.12
+)
+
+require (
+	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.22.0 // indirect
+	github.com/nexus-rpc/nexus-proto-annotations v0.1.0 // indirect
+	github.com/stretchr/testify v1.11.1 // indirect
+	golang.org/x/net v0.58.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
+	google.golang.org/grpc v1.83.2 // indirect
+)
+
+// 同仓库的生成代码模块；go.work 用于构建，replace 让 go mod tidy 不去网络上找它。
+replace github.com/agentruntime/agent-runtime/proto/gen/go => ../../../proto/gen/go

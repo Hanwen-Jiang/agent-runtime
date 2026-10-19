@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package agentruntime.workflow.v1;
+
+import "agentruntime/common/v1/options.proto";
+
+// 工作流类型名、信号名、查询名与任务队列名。Go 的 Session 工作流与 Python 的 Task 子工作流
+// 靠这些字符串对上，两边都从 wire_name 读取，不各自硬编码（附录 K.1、K.5）。
+
+enum WorkflowType {
+  WORKFLOW_TYPE_UNSPECIFIED = 0;
+  // Go，以 session_id 为工作流 ID。
+  WORKFLOW_TYPE_SESSION = 1 [(agentruntime.common.v1.wire_name) = "SessionWorkflow"];
+  // Python，以 task_id 为工作流 ID。
+  WORKFLOW_TYPE_TASK = 2 [(agentruntime.common.v1.wire_name) = "TaskWorkflow"];
+}
+
+enum SignalName {
+  SIGNAL_NAME_UNSPECIFIED = 0;
+  // 发给 Session 工作流，载荷为 SubmitTaskSignal。
+  SIGNAL_NAME_SUBMIT_TASK = 1 [(agentruntime.common.v1.wire_name) = "submit_task"];
+  // 发给 Session 工作流，载荷为 CancelTaskSignal。
+  SIGNAL_NAME_CANCEL_TASK = 2 [(agentruntime.common.v1.wire_name) = "cancel_task"];
+  // 发给 Task 工作流，载荷为 HumanReplySignal。
+  SIGNAL_NAME_HUMAN_REPLY = 3 [(agentruntime.common.v1.wire_name) = "human_reply"];
+}
+
+enum QueryName {
+  QUERY_NAME_UNSPECIFIED = 0;
+  // Session 工作流，返回 SessionState。
+  QUERY_NAME_SESSION_STATE = 1 [(agentruntime.common.v1.wire_name) = "session_state"];
+  // Task 工作流，返回 TaskStateQueryResult。
+  QUERY_NAME_TASK_STATE = 2 [(agentruntime.common.v1.wire_name) = "task_state"];
+}
+
+// TaskQueue：按资源拆分的任务队列（附录 K.5）。
+enum TaskQueue {
+  TASK_QUEUE_UNSPECIFIED = 0;
+  // Go 的 Session 工作流。
+  TASK_QUEUE_SESSION = 1 [(agentruntime.common.v1.wire_name) = "session"];
+  // Python 的 Task 工作流，Stage Runner 在其中调度。
+  TASK_QUEUE_TASK = 2 [(agentruntime.common.v1.wire_name) = "task"];
+  // Planner、Reviewer 的模型决策 activity。
+  TASK_QUEUE_DECISION = 3 [(agentruntime.common.v1.wire_name) = "decision"];
+  // model 节点 activity。
+  TASK_QUEUE_MODEL = 4 [(agentruntime.common.v1.wire_name) = "model"];
+  // program 节点 activity。
+  TASK_QUEUE_PROGRAM = 5 [(agentruntime.common.v1.wire_name) = "program"];
+  // Learning Pipeline 与记忆提炼。
+  TASK_QUEUE_OFFLINE = 6 [(agentruntime.common.v1.wire_name) = "offline"];
+}

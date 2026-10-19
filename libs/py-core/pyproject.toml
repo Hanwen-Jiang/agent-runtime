@@ -1,0 +1,46 @@
+[project]
+name = "agentruntime-core"
+version = "0.0.0"
+description = "Provider 接口、错误模型、租户绑定与一致性测试（强档实施计划 S-02）"
+requires-python = ">=3.13"
+dependencies = [
+    "agentruntime-proto",
+    # ToolDriver 按工具登记的 JSON Schema 校验参数与输出；Policy Engine 的载荷校验也会用它（设计书 L.18）。
+    "jsonschema>=4.26",
+    "protobuf>=7.36.2,<8",
+]
+
+[project.optional-dependencies]
+# 一致性测试套件随库发布，生产实现所在的包也用它；只有跑测试时才需要这两个依赖。
+conformance = [
+    "pytest>=9.1",
+    "pytest-asyncio>=1.4",
+]
+# DurableEngine 的 Temporal 适配器（agentruntime_core.adapters.temporal）。
+temporal = [
+    "temporalio>=1.34",
+]
+
+[tool.uv.sources]
+agentruntime-proto = { workspace = true }
+
+[build-system]
+requires = ["hatchling>=1.32"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentruntime_core"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+xfail_strict = true
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "temporal: 需要 Temporal 本地开发服务（PATH 上的 temporal，即 Temporal CLI）",
+]
+filterwarnings = [
+    # tests/dev/test_durable_engine.py 用模块级的会话事件循环标记，同步用例会触发这条无害的警告。
+    "ignore:The test <Function .*> is marked with '@pytest.mark.asyncio' but it is not an async function:pytest.PytestWarning",
+]

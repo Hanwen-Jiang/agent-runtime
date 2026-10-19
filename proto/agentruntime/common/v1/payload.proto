@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package agentruntime.common.v1;
+
+import "google/protobuf/struct.proto";
+
+// JsonPayload 携带由 JSON Schema 定义的载荷（设计书 4.1：骨架用 protobuf，载荷用 JSON Schema）。
+// Node 的 inputs 与 result、模板参数，以及 /schemas 中的 Task State、Stage、Verdict 等对象都用它携带，
+// 不写成 proto message。
+message JsonPayload {
+  // 载荷遵循的 schema：/schemas 中某个 schema 的 $id，或 Node Template 登记的 output_schema 引用。
+  string schema_id = 1;
+  google.protobuf.Value value = 2;
+}

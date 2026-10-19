@@ -1,0 +1,449 @@
+{
+  "schema": "atomic_node",
+  "valid": [
+    {
+      "name": "appendix_d1_q_region",
+      "source": "附录 D.1",
+      "notes": "原样转写。",
+      "instance": {
+        "id": "q_region",
+        "kind": "atomic",
+        "template": "sql_query@v3",
+        "executor": "program",
+        "effect": "read",
+        "role": "fetch",
+        "after": [],
+        "inputs": {"params": {"quarter": "$task.constraints.quarter"}},
+        "output_schema": "region_refund_rate_v1",
+        "budget": {"timeout_s": 30, "max_cost_usd": 0.02},
+        "retry": {"max": 2, "on": ["timeout", "rate_limit"], "backoff": "exponential"},
+        "cache": {"ttl_s": 3600},
+        "idempotency_key": null,
+        "fallback": "fail"
+      }
+    },
+    {
+      "name": "appendix_b2_analyze",
+      "source": "附录 B.2，Stage 中的 analyze 节点",
+      "notes": "原样转写。",
+      "instance": {
+        "id": "analyze",
+        "kind": "atomic",
+        "template": "refund_attribution@v2",
+        "executor": "model",
+        "output": "generate",
+        "effect": "none",
+        "role": "transform",
+        "after": ["read_tickets"],
+        "tier": "strong@medium",
+        "reasoning": "plan_first",
+        "quality": {"type": "revise", "judge": "check_numbers_match@v1", "max_rounds": 2}
+      }
+    },
+    {
+      "name": "appendix_d1_rerank",
+      "source": "附录 D.1 列举：cross-encoder 重排 = model（score）· none · judge",
+      "notes": "id、template、inputs、tier 为补全的具体值。",
+      "instance": {
+        "id": "rerank_passages",
+        "kind": "atomic",
+        "template": "cross_encoder_rerank@v1",
+        "executor": "model",
+        "output": "score",
+        "effect": "none",
+        "role": "judge",
+        "after": ["search_kb"],
+        "inputs": {"query": "$task.goal", "candidates": "$search_kb.result.passages"},
+        "tier": "small@low"
+      }
+    },
+    {
+      "name": "appendix_d1_send_email",
+      "source": "附录 D.1 列举：发邮件 = program · write_irreversible · act；规则见附录 D.4",
+      "notes": "幂等键由代码按 tenant_id、task_id、node_id 与输入哈希生成，这里放一个示例值；write_irreversible 不带 retry。",
+      "instance": {
+        "id": "send_summary_email",
+        "kind": "atomic",
+        "template": "send_email@v1",
+        "executor": "program",
+        "effect": "write_irreversible",
+        "role": "act",
+        "after": ["write_report"],
+        "inputs": {"to": "$task.constraints.report_recipient", "body": "$write_report.result.markdown"},
+        "idempotency_key": "idk_3f1c9a7e5b2d4c6a8e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
+        "fallback": "fail"
+      }
+    },
+    {
+      "name": "appendix_d1_human_approval",
+      "source": "附录 D.1 列举：人工审批 = human · none · gate",
+      "notes": "id、template、inputs、budget 为补全的具体值。",
+      "instance": {
+        "id": "approve_payment",
+        "kind": "atomic",
+        "template": "human_approval@v1",
+        "executor": "human",
+        "effect": "none",
+        "role": "gate",
+        "after": ["select_flight"],
+        "inputs": {"question": "确认用公司卡支付所选航班？", "options": ["approve", "reject"]},
+        "budget": {"timeout_s": 86400},
+        "fallback": "fail"
+      }
+    },
+    {
+      "name": "appendix_d1_final_report",
+      "source": "附录 D.1 列举：写最终报告 = model（generate）· none · deliver；图 34 Stage 3",
+      "notes": "Stage 3 的 rubric 审查表达为 revise 的 judge。",
+      "instance": {
+        "id": "write_report",
+        "kind": "atomic",
+        "template": "report_writer@v1",
+        "executor": "model",
+        "output": "generate",
+        "effect": "none",
+        "role": "deliver",
+        "after": ["analyze"],
+        "tier": "strong@medium",
+        "reasoning": "direct",
+        "quality": {"type": "revise", "judge": "report_rubric@v1", "max_rounds": 1}
+      }
+    },
+    {
+      "name": "write_reversible_idempotent_retry",
+      "source": "附录 D.4：write_reversible 仅幂等时重试",
+      "notes": "带幂等键时允许 retry。",
+      "instance": {
+        "id": "update_ticket_status",
+        "kind": "atomic",
+        "template": "ticket_update@v2",
+        "executor": "program",
+        "effect": "write_reversible",
+        "role": "act",
+        "inputs": {"ticket_id": "$task.constraints.ticket_id", "status": "resolved"},
+        "retry": {"max": 2, "on": ["timeout"], "backoff": "exponential"},
+        "idempotency_key": "idk_9d4e2b7a1c6f3e8d0b5a4c7e2f9d1a6b3c8e5f0a7d2b4e9c1f6a3d8b5e0c7a2f",
+        "fallback": "fail"
+      }
+    },
+    {
+      "name": "quality_ensemble_vote",
+      "source": "附录 E.2：ensemble = 生成 × N → aggregate（投票）",
+      "notes": "答案可归一时用投票。",
+      "instance": {
+        "id": "classify_ticket",
+        "kind": "atomic",
+        "template": "ticket_classifier@v1",
+        "executor": "model",
+        "output": "classify",
+        "effect": "none",
+        "role": "route",
+        "inputs": {"ticket": "$task.constraints.ticket_text"},
+        "tier": "small@low",
+        "quality": {"type": "ensemble", "n": 3, "aggregate": "vote"}
+      }
+    },
+    {
+      "name": "quality_search",
+      "source": "附录 E.2：search = 每层扩展 k 个候选 → 打分 → 剪枝",
+      "notes": "expand_k、max_depth、beam_width、scorer 为本契约定义的参数名，需人审。",
+      "instance": {
+        "id": "plan_itinerary",
+        "kind": "atomic",
+        "template": "itinerary_planner@v1",
+        "executor": "model",
+        "output": "generate",
+        "effect": "none",
+        "role": "plan",
+        "tier": "strong@high",
+        "reasoning": "stepwise",
+        "quality": {"type": "search", "expand_k": 3, "max_depth": 4, "beam_width": 2, "scorer": "itinerary_score@v1"}
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "write_irreversible_missing_idempotency_key",
+      "description": "write_irreversible 缺幂等键（附录 D.1、D.4）",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {
+        "id": "send_summary_email",
+        "kind": "atomic",
+        "template": "send_email@v1",
+        "executor": "program",
+        "effect": "write_irreversible",
+        "role": "act",
+        "inputs": {"to": "ops@example.com"},
+        "fallback": "fail"
+      }
+    },
+    {
+      "name": "write_reversible_null_idempotency_key",
+      "description": "write_reversible 的幂等键为 null（附录 D.4）",
+      "violates": [{"path": "/idempotency_key"}],
+      "instance": {
+        "id": "update_ticket_status",
+        "kind": "atomic",
+        "template": "ticket_update@v2",
+        "executor": "program",
+        "effect": "write_reversible",
+        "role": "act",
+        "idempotency_key": null
+      }
+    },
+    {
+      "name": "write_irreversible_with_retry",
+      "description": "write_irreversible 不允许自动重试（附录 D.4）",
+      "violates": [{"path": "/retry/max"}],
+      "instance": {
+        "id": "send_summary_email",
+        "kind": "atomic",
+        "template": "send_email@v1",
+        "executor": "program",
+        "effect": "write_irreversible",
+        "role": "act",
+        "retry": {"max": 2, "on": ["timeout"], "backoff": "exponential"},
+        "idempotency_key": "idk_3f1c9a7e5b2d4c6a8e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d"
+      }
+    },
+    {
+      "name": "write_with_cache",
+      "description": "写节点不缓存（附录 D.4）",
+      "violates": [{"path": "/cache"}],
+      "instance": {
+        "id": "update_ticket_status",
+        "kind": "atomic",
+        "template": "ticket_update@v2",
+        "executor": "program",
+        "effect": "write_reversible",
+        "role": "act",
+        "cache": {"ttl_s": 60},
+        "idempotency_key": "idk_9d4e2b7a1c6f3e8d0b5a4c7e2f9d1a6b3c8e5f0a7d2b4e9c1f6a3d8b5e0c7a2f"
+      }
+    },
+    {
+      "name": "act_with_read_effect",
+      "description": "role = act 时 effect 必须是 write_reversible 或 write_irreversible（附录 D.5）",
+      "violates": [{"path": "/effect"}],
+      "instance": {
+        "id": "notify_owner",
+        "kind": "atomic",
+        "template": "send_email@v1",
+        "executor": "program",
+        "effect": "read",
+        "role": "act"
+      }
+    },
+    {
+      "name": "model_without_output",
+      "description": "model 节点必须用 output 细分 generate、score、embed、classify（附录 D.1）",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {
+        "id": "analyze",
+        "kind": "atomic",
+        "template": "refund_attribution@v2",
+        "executor": "model",
+        "effect": "none",
+        "role": "transform"
+      }
+    },
+    {
+      "name": "program_with_output",
+      "description": "output 只用于 model 节点（附录 D.1）",
+      "violates": [{"path": "/output"}],
+      "instance": {
+        "id": "q_region",
+        "kind": "atomic",
+        "template": "sql_query@v3",
+        "executor": "program",
+        "output": "generate",
+        "effect": "read",
+        "role": "fetch",
+        "cache": {"ttl_s": 3600}
+      }
+    },
+    {
+      "name": "program_with_reasoning",
+      "description": "reasoning 只用于生成型 model 节点（附录 E.3）",
+      "violates": [{"path": "/reasoning"}],
+      "instance": {
+        "id": "q_region",
+        "kind": "atomic",
+        "template": "sql_query@v3",
+        "executor": "program",
+        "effect": "read",
+        "role": "fetch",
+        "reasoning": "stepwise"
+      }
+    },
+    {
+      "name": "score_with_reasoning",
+      "description": "reasoning 只用于 output = generate 的 model 节点（附录 E.3）",
+      "violates": [{"path": "/reasoning"}],
+      "instance": {
+        "id": "rerank_passages",
+        "kind": "atomic",
+        "template": "cross_encoder_rerank@v1",
+        "executor": "model",
+        "output": "score",
+        "effect": "none",
+        "role": "judge",
+        "reasoning": "plan_first"
+      }
+    },
+    {
+      "name": "program_with_tier",
+      "description": "tier 只用于 model 节点",
+      "violates": [{"path": "/tier"}],
+      "instance": {
+        "id": "q_region",
+        "kind": "atomic",
+        "template": "sql_query@v3",
+        "executor": "program",
+        "effect": "read",
+        "role": "fetch",
+        "tier": "mid@low"
+      }
+    },
+    {
+      "name": "old_term_effect_read_external",
+      "description": "调研文档旧叫法 read_external，附录 A 为 read",
+      "violates": [{"path": "/effect", "keyword": "enum"}],
+      "instance": {
+        "id": "q_region",
+        "kind": "atomic",
+        "template": "sql_query@v3",
+        "executor": "program",
+        "effect": "read_external",
+        "role": "fetch"
+      }
+    },
+    {
+      "name": "old_term_quality_refine",
+      "description": "调研文档旧叫法 refine，附录 A 为 revise",
+      "violates": [{"path": "/quality/type", "keyword": "enum"}],
+      "instance": {
+        "id": "analyze",
+        "kind": "atomic",
+        "template": "refund_attribution@v2",
+        "executor": "model",
+        "output": "generate",
+        "effect": "none",
+        "role": "transform",
+        "quality": {"type": "refine", "judge": "check_numbers_match@v1", "max_rounds": 2}
+      }
+    },
+    {
+      "name": "unknown_executor",
+      "description": "executor 只有 model、program、human（附录 A）",
+      "violates": [{"path": "/executor", "keyword": "enum"}],
+      "instance": {
+        "id": "analyze",
+        "kind": "atomic",
+        "template": "refund_attribution@v2",
+        "executor": "llm",
+        "effect": "none",
+        "role": "transform"
+      }
+    },
+    {
+      "name": "template_without_version",
+      "description": "template 必须带版本，形如 name@vN（附录 D.1、D.7）",
+      "violates": [{"path": "/template", "keyword": "pattern"}],
+      "instance": {
+        "id": "q_region",
+        "kind": "atomic",
+        "template": "sql_query",
+        "executor": "program",
+        "effect": "read",
+        "role": "fetch"
+      }
+    },
+    {
+      "name": "unknown_field",
+      "description": "Atomic Node 只能有附录 D.1 的字段；提示词属于 Node Template，不由 Planner 写进节点",
+      "violates": [{"path": "", "keyword": "unevaluatedProperties"}],
+      "instance": {
+        "id": "analyze",
+        "kind": "atomic",
+        "template": "refund_attribution@v2",
+        "executor": "model",
+        "output": "generate",
+        "effect": "none",
+        "role": "transform",
+        "prompt": "请分析退款原因"
+      }
+    },
+    {
+      "name": "read_cache_without_ttl",
+      "description": "effect = read 的缓存必须设 TTL（附录 D.4）",
+      "violates": [{"path": "/cache", "keyword": "required"}],
+      "instance": {
+        "id": "q_region",
+        "kind": "atomic",
+        "template": "sql_query@v3",
+        "executor": "program",
+        "effect": "read",
+        "role": "fetch",
+        "cache": {}
+      }
+    },
+    {
+      "name": "revise_without_judge",
+      "description": "revise 必须指定 judge（附录 E.2）",
+      "violates": [{"path": "/quality", "keyword": "required"}],
+      "instance": {
+        "id": "analyze",
+        "kind": "atomic",
+        "template": "refund_attribution@v2",
+        "executor": "model",
+        "output": "generate",
+        "effect": "none",
+        "role": "transform",
+        "quality": {"type": "revise", "max_rounds": 2}
+      }
+    },
+    {
+      "name": "ensemble_judge_without_judge_template",
+      "description": "ensemble 用 judge 择优时必须指定 judge（附录 E.2）",
+      "violates": [{"path": "/quality", "keyword": "required"}],
+      "instance": {
+        "id": "name_candidates",
+        "kind": "atomic",
+        "template": "product_naming@v1",
+        "executor": "model",
+        "output": "generate",
+        "effect": "none",
+        "role": "transform",
+        "quality": {"type": "ensemble", "n": 5, "aggregate": "judge"}
+      }
+    },
+    {
+      "name": "kind_goal_in_atomic_schema",
+      "description": "Atomic Node 的 kind 固定为 atomic",
+      "violates": [{"path": "/kind"}],
+      "instance": {
+        "id": "analyze",
+        "kind": "goal",
+        "template": "refund_attribution@v2",
+        "executor": "model",
+        "output": "generate",
+        "effect": "none",
+        "role": "transform"
+      }
+    },
+    {
+      "name": "bad_node_id",
+      "description": "Node id 只用小写字母、数字、下划线，展开后的子节点用点号接序号",
+      "violates": [{"path": "/id", "keyword": "pattern"}],
+      "instance": {
+        "id": "Q Region",
+        "kind": "atomic",
+        "template": "sql_query@v3",
+        "executor": "program",
+        "effect": "read",
+        "role": "fetch"
+      }
+    }
+  ]
+}

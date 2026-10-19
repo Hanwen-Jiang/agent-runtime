@@ -1,0 +1,10 @@
+{
+  "type": "agentruntime.workflow.v1.HumanReplySignal",
+  "message": {
+    "questionId": "q_scope_returns_shipping",
+    "option": "replan_with_guidance",
+    "guidance": "只看华东，不用覆盖退货运费",
+    "repliedByUserId": "u7",
+    "repliedAt": "2026-10-19T09:02:11Z"
+  }
+}

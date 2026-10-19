@@ -1,0 +1,9 @@
+go 1.26.0
+
+use (
+	./libs/go-core
+	./proto/gen/go
+	./services/go-model-gateway
+	./services/go-task-service
+	./tests/contract/go
+)

@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/hook_result.schema.json",
+  "title": "Hook 结果",
+  "description": "Hook 在挂载点上的结果，只有 allow、deny、modify、inject 四种（附录 A、F.2）。deny 交给 Reviewer，不自动重试；modify 用 JSON Patch 改写输入或输出；inject 向某个上下文分区追加信息。",
+  "type": "object",
+  "required": ["decision", "hook", "mount"],
+  "properties": {
+    "decision": {"$ref": "defs.schema.json#/$defs/hook_decision"},
+    "hook": {"$ref": "defs.schema.json#/$defs/hook_name"},
+    "mount": {"$ref": "defs.schema.json#/$defs/hook_mount"},
+    "reason": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+    "modification": {
+      "type": "object",
+      "required": ["target", "patch"],
+      "properties": {
+        "target": {"$ref": "defs.schema.json#/$defs/modification_target"},
+        "patch": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/patch_operation"}}
+      },
+      "unevaluatedProperties": false
+    },
+    "injection": {
+      "type": "object",
+      "required": ["zone", "content"],
+      "properties": {
+        "zone": {"$ref": "defs.schema.json#/$defs/context_zone"},
+        "content": {"$ref": "defs.schema.json#/$defs/non_empty_string"}
+      },
+      "unevaluatedProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {"required": ["decision"], "properties": {"decision": {"const": "deny"}}},
+      "then": {"required": ["reason"]}
+    },
+    {
+      "if": {"required": ["decision"], "properties": {"decision": {"const": "modify"}}},
+      "then": {"required": ["modification"]},
+      "else": {"properties": {"modification": {"$ref": "defs.schema.json#/$defs/forbidden"}}}
+    },
+    {
+      "if": {"required": ["decision"], "properties": {"decision": {"const": "inject"}}},
+      "then": {"required": ["injection"]},
+      "else": {"properties": {"injection": {"$ref": "defs.schema.json#/$defs/forbidden"}}}
+    }
+  ],
+  "unevaluatedProperties": false,
+  "$defs": {
+    "patch_operation": {
+      "description": "RFC 6902 的一个操作",
+      "type": "object",
+      "required": ["op", "path"],
+      "properties": {
+        "op": {"$ref": "defs.schema.json#/$defs/patch_op"},
+        "path": {"type": "string", "pattern": "^(/.*)?$"},
+        "from": {"type": "string", "pattern": "^(/.*)?$"},
+        "value": {}
+      },
+      "unevaluatedProperties": false
+    }
+  }
+}

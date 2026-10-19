@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package agentruntime.common.v1;
+
+// Usage 是一次或多次模型调用的计量（设计书 3.3.1、4.8）。金额用整数微美元，避免浮点误差。
+message Usage {
+  int64 input_tokens = 1;
+  int64 output_tokens = 2;
+  int64 cache_read_tokens = 3;
+  int64 cache_write_tokens = 4;
+  // 推理模型的思考 token，已计入 output_tokens。
+  int64 reasoning_tokens = 5;
+  // 1 美元 = 1,000,000。
+  int64 cost_usd_micros = 6;
+}

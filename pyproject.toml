@@ -1,0 +1,14 @@
+# uv workspace 的根（虚拟根，本身不是包）。成员见下；Python 版本见 .python-version。
+[tool.uv.workspace]
+members = [
+    "libs/py-core",
+    "proto/gen/python",
+    "services/py-worker",
+    "services/py-memory",
+    "services/py-learning",
+    "tests/contract",
+]
+
+[tool.uv]
+# 依赖解析只取这个时间点之前发布的版本：新版本发布满两周再引入。升级依赖时有意识地往后挪。
+exclude-newer = "2026-10-05T00:00:00Z"

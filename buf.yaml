@@ -1,0 +1,11 @@
+version: v2
+modules:
+  - path: proto
+lint:
+  use:
+    - STANDARD
+breaking:
+  # FILE 最严：生成代码与 JSON 编码都要兼容。Temporal 事件历史里存的是 json/protobuf，
+  # 改字段名或编号会让旧历史解不出来。删字段前先 reserved 编号与名字。
+  use:
+    - FILE

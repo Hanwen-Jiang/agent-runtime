@@ -1,0 +1,17 @@
+[project]
+name = "agentruntime-proto"
+version = "0.0.0"
+description = "buf 从 /proto 生成的 protobuf 与 gRPC 代码，不要手改"
+requires-python = ">=3.13"
+# 与 buf.gen.yaml 中的插件版本对齐：protocolbuffers/python v36.2 ↔ protobuf 7.36.x，grpc/python v1.84.0 ↔ grpcio 1.84.x。
+dependencies = [
+    "grpcio>=1.84.0",
+    "protobuf>=7.36.2,<8",
+]
+
+[build-system]
+requires = ["hatchling>=1.32"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agentruntime"]

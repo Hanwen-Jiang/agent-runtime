@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package agentruntime.common.v1;
+
+import "google/protobuf/struct.proto";
+
+// ErrorCategory 是全仓统一的错误分类。Provider 与内部服务的错误都映射到这里，
+// Node Executor 再据此做失败分类（附录 D.6）。只有 transient 可以重试。
+enum ErrorCategory {
+  ERROR_CATEGORY_UNSPECIFIED = 0;
+  // 超时、限流、依赖暂时不可用。
+  ERROR_CATEGORY_TRANSIENT = 1;
+  // 参数或输出不合法。
+  ERROR_CATEGORY_INVALID = 2;
+  // 被权限、租户策略或 Hook 拒绝。
+  ERROR_CATEGORY_DENIED = 3;
+  ERROR_CATEGORY_NOT_FOUND = 4;
+  // 版本冲突、幂等键冲突等。
+  ERROR_CATEGORY_CONFLICT = 5;
+}
+
+message Error {
+  ErrorCategory category = 1;
+  // 机器可读的细分原因，例如 timeout、rate_limit。
+  string code = 2;
+  // 给开发者看的说明。不得包含凭据、密钥或租户的原始数据。
+  string message = 3;
+  google.protobuf.Struct details = 4;
+}

@@ -1,0 +1,126 @@
+{
+  "schema": "node_output",
+  "valid": [
+    {
+      "name": "appendix_d2_node_output",
+      "source": "附录 D.2",
+      "notes": "result 与 meta 的占位内容换成具体值；tokens 拆成 input、output、cache_read。",
+      "instance": {
+        "result": {
+          "reasons": [
+            {"name": "物流破损", "share": 0.46, "examples": ["tk_1042", "tk_1077"]},
+            {"name": "尺码不符", "share": 0.21, "examples": ["tk_1013"]}
+          ]
+        },
+        "rationale": "先按原因字段聚合，再与区域交叉核对；物流破损在华东占比显著偏高。",
+        "meta": {
+          "tier": "strong@medium",
+          "reasoning": "plan_first",
+          "tokens": {"input": 18420, "output": 1260, "cache_read": 12288},
+          "cost_usd": 0.083,
+          "latency_ms": 14250,
+          "confidence": 0.78
+        }
+      }
+    },
+    {
+      "name": "program_fetch",
+      "source": "附录 D.2：program 节点只有 result 与少量 meta",
+      "notes": "",
+      "instance": {
+        "result": {"rows": [{"region": "华东", "refund_rate": 0.074}, {"region": "华北", "refund_rate": 0.031}]},
+        "meta": {"latency_ms": 840}
+      }
+    },
+    {
+      "name": "offloaded_large_result",
+      "source": "设计书 3.2.4 第 3 条：大结果写入 ObjectStore，只回摘要与路径",
+      "notes": "路径带租户前缀。",
+      "instance": {
+        "result": {"summary": "共 12,408 行；华东退款率 7.4%，其余区域 3.1% 至 4.0%", "row_count": 12408},
+        "meta": {
+          "latency_ms": 2210,
+          "result_ref": {
+            "uri": "obj://t1/tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B/nodes/q_region/result.json",
+            "size_bytes": 1835007,
+            "sha256": "8e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3f1c9a7e5b2d4c6a"
+          }
+        }
+      }
+    },
+    {
+      "name": "scalar_score",
+      "source": "附录 D.1：score 型 model 节点",
+      "notes": "result 可以是标量。",
+      "instance": {
+        "result": 0.82,
+        "meta": {"tier": "small@low", "latency_ms": 95, "tokens": {"input": 512, "output": 1}, "cost_usd": 0.0001}
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "missing_result",
+      "description": "Node Output 必须有 result（附录 D.2）",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {
+        "rationale": "没有结果",
+        "meta": {"latency_ms": 10}
+      }
+    },
+    {
+      "name": "old_terms_answer_reasoning",
+      "description": "调研文档旧叫法 answer、reasoning，附录 A 为 result、rationale",
+      "violates": [{"path": "", "keyword": "required"}, {"path": "", "keyword": "unevaluatedProperties"}],
+      "instance": {
+        "answer": {"text": "物流破损"},
+        "reasoning": "按原因聚合后得出"
+      }
+    },
+    {
+      "name": "confidence_above_one",
+      "description": "confidence 在 0 到 1 之间",
+      "violates": [{"path": "/meta/confidence", "keyword": "maximum"}],
+      "instance": {
+        "result": {"ok": true},
+        "meta": {"confidence": 1.3}
+      }
+    },
+    {
+      "name": "result_ref_without_tenant_prefix",
+      "description": "外置结果的路径必须是带租户前缀的 obj:// 引用（计划 S-05）",
+      "violates": [{"path": "/meta/result_ref/uri", "keyword": "pattern"}],
+      "instance": {
+        "result": {"summary": "大结果"},
+        "meta": {"result_ref": {"uri": "https://storage.example.com/bucket/result.json", "size_bytes": 1048576}}
+      }
+    },
+    {
+      "name": "negative_tokens",
+      "description": "token 数不能为负",
+      "violates": [{"path": "/meta/tokens/input", "keyword": "minimum"}],
+      "instance": {
+        "result": "ok",
+        "meta": {"tokens": {"input": -5, "output": 10}}
+      }
+    },
+    {
+      "name": "meta_reasoning_old_term",
+      "description": "调研文档旧叫法 cot，附录 A 为 stepwise",
+      "violates": [{"path": "/meta/reasoning", "keyword": "enum"}],
+      "instance": {
+        "result": "ok",
+        "meta": {"reasoning": "cot"}
+      }
+    },
+    {
+      "name": "rationale_not_string",
+      "description": "rationale 是推理文本或思考摘要",
+      "violates": [{"path": "/rationale", "keyword": "type"}],
+      "instance": {
+        "result": "ok",
+        "rationale": {"steps": ["a", "b"]}
+      }
+    }
+  ]
+}

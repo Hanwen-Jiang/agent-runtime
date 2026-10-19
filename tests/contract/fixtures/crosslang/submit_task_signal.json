@@ -1,0 +1,27 @@
+{
+  "type": "agentruntime.workflow.v1.SubmitTaskSignal",
+  "message": {
+    "clientRequestId": "req-0008",
+    "task": {
+      "tenant": {
+        "tenantId": "t1",
+        "userId": "u7",
+        "workspaceId": "w3",
+        "sessionId": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "trace": {"traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"}
+      },
+      "taskId": "tsk_01JA8R9B1D3F5H7K9M1P3R5T7V",
+      "pinnedVersions": {
+        "recipe": "refund_analysis@v3",
+        "nodeTemplates": {"sql_query": "v3"},
+        "modelProfiles": {"vendor_a/strong-model": "2026-09-15"}
+      },
+      "message": "华北的退款率是多少？",
+      "submittedAt": "2026-10-19T08:45:00Z",
+      "sessionAccess": "SESSION_ACCESS_READ_ONLY",
+      "priority": "PRIORITY_INTERACTIVE",
+      "budget": {"usdMicros": "500000", "toolCalls": 10, "wallClock": "120s"},
+      "effectCeiling": "EFFECT_READ"
+    }
+  }
+}

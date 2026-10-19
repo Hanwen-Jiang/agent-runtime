@@ -1,0 +1,191 @@
+syntax = "proto3";
+
+package agentruntime.modelgateway.v1;
+
+import "agentruntime/common/v1/enums.proto";
+import "agentruntime/common/v1/metering.proto";
+import "agentruntime/common/v1/payload.proto";
+import "agentruntime/common/v1/tenant.proto";
+import "google/protobuf/struct.proto";
+
+// ModelGatewayService 是所有模型调用的唯一出口（设计书 3.3.1、4.8）：选档、限流、切换、计量。
+// 本期先定方法签名，实现分阶段补。
+//
+// 每个请求的字段 1 都是 TenantContext：先按租户策略过滤可用 Tier，再按租户计量与限流。
+// 每个响应都带 Usage。
+service ModelGatewayService {
+  // 生成，含结构化输出与工具调用。
+  rpc Generate(GenerateRequest) returns (GenerateResponse);
+  // 流式生成，供 deliver 节点边生成边推流。最后一个分片带 Usage。
+  rpc StreamGenerate(StreamGenerateRequest) returns (stream StreamGenerateResponse);
+  // 打分，例如 cross-encoder 重排或 judge 打分。
+  rpc Score(ScoreRequest) returns (ScoreResponse);
+  rpc Embed(EmbedRequest) returns (EmbedResponse);
+  rpc Classify(ClassifyRequest) returns (ClassifyResponse);
+}
+
+// CallContext 是选档依据（设计书 3.3.1）：Node 的 role、任务族、期望的 Tier 与约束。
+message CallContext {
+  string task_id = 1;
+  string node_id = 2;
+  agentruntime.common.v1.Role role = 3;
+  string task_family = 4;
+  // 期望的 Tier，形如 strong@medium；为空时按 role 的默认 Tier（附录 H.3）。
+  string tier = 5;
+  agentruntime.common.v1.Reasoning reasoning = 6;
+  // Task 固定的主模型；Task 中途尽量不换，以保住提示缓存（附录 H.4）。
+  string pinned_model_profile = 7;
+  // judge 优先用与生成者不同家的模型：填生成者的供应商，选档时排除（附录 H.3）。
+  string avoid_vendor = 8;
+  // 本次调用的成本上限。
+  int64 max_cost_usd_micros = 9;
+}
+
+// ModelChoice 记录实际服务这次调用的模型。
+message ModelChoice {
+  string model_profile_id = 1;
+  string tier = 2;
+  string vendor = 3;
+}
+
+enum ChatRole {
+  CHAT_ROLE_UNSPECIFIED = 0;
+  CHAT_ROLE_SYSTEM = 1;
+  CHAT_ROLE_USER = 2;
+  CHAT_ROLE_ASSISTANT = 3;
+  CHAT_ROLE_TOOL = 4;
+}
+
+message ChatMessage {
+  ChatRole role = 1;
+  string text = 2;
+  // role = assistant 时模型发起的工具调用。
+  repeated ToolCall tool_calls = 3;
+  // role = tool 时对应的调用。
+  string tool_call_id = 4;
+  // 在这条消息之后设提示缓存断点（附录 G.1）。
+  bool cache_breakpoint = 5;
+}
+
+message ToolSpec {
+  string name = 1;
+  string description = 2;
+  // 参数的 JSON Schema。
+  agentruntime.common.v1.JsonPayload params_schema = 3;
+}
+
+message ToolCall {
+  string id = 1;
+  string name = 2;
+  google.protobuf.Struct arguments = 3;
+}
+
+message GenerateParams {
+  repeated ChatMessage messages = 1;
+  repeated ToolSpec tools = 2;
+  // 结构化输出的 JSON Schema；为空时输出文本。
+  agentruntime.common.v1.JsonPayload output_schema = 3;
+  int32 max_output_tokens = 4;
+  // 思考预算；0 表示用 Tier 的默认值。
+  int32 thinking_budget_tokens = 5;
+}
+
+enum FinishReason {
+  FINISH_REASON_UNSPECIFIED = 0;
+  FINISH_REASON_STOP = 1;
+  FINISH_REASON_MAX_TOKENS = 2;
+  FINISH_REASON_TOOL_CALLS = 3;
+  FINISH_REASON_CONTENT_FILTER = 4;
+}
+
+message GenerateRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  CallContext call = 2;
+  GenerateParams generation = 3;
+}
+
+message GenerateResponse {
+  string text = 1;
+  // 结构化输出，按 generation.output_schema。
+  google.protobuf.Value result = 2;
+  repeated ToolCall tool_calls = 3;
+  // 思考摘要，只写入 trace，不传给下游。
+  string rationale = 4;
+  FinishReason finish_reason = 5;
+  ModelChoice model = 6;
+  agentruntime.common.v1.Usage usage = 7;
+}
+
+message StreamGenerateRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  CallContext call = 2;
+  GenerateParams generation = 3;
+}
+
+message StreamGenerateResponse {
+  oneof chunk {
+    string text_delta = 1;
+    string thinking_delta = 2;
+    ToolCall tool_call = 3;
+    // 最后一个分片：完整结果。
+    GenerateResponse final = 4;
+  }
+  // 只在最后一个分片中填写。
+  agentruntime.common.v1.Usage usage = 5;
+}
+
+message ScoreRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  CallContext call = 2;
+  string query = 3;
+  repeated string candidates = 4;
+  // judge 打分时的 rubric。
+  string rubric = 5;
+}
+
+message ScoreResponse {
+  // 与 candidates 一一对应。
+  repeated double scores = 1;
+  ModelChoice model = 2;
+  agentruntime.common.v1.Usage usage = 3;
+}
+
+message EmbedRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  CallContext call = 2;
+  repeated string texts = 3;
+  // 嵌入模型版本，与 Memory Item 的 embedding_version 对应。
+  string embedding_version = 4;
+}
+
+message Embedding {
+  repeated float values = 1;
+}
+
+message EmbedResponse {
+  // 与 texts 一一对应。
+  repeated Embedding embeddings = 1;
+  string embedding_version = 2;
+  ModelChoice model = 3;
+  agentruntime.common.v1.Usage usage = 4;
+}
+
+message ClassifyRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  CallContext call = 2;
+  repeated string texts = 3;
+  // 预设的类别，输出只能是其中之一（附录 D.5 route）。
+  repeated string labels = 4;
+}
+
+message Classification {
+  string label = 1;
+  double confidence = 2;
+}
+
+message ClassifyResponse {
+  // 与 texts 一一对应。
+  repeated Classification results = 1;
+  ModelChoice model = 2;
+  agentruntime.common.v1.Usage usage = 3;
+}

@@ -1,0 +1,192 @@
+{
+  "schema": "verdict",
+  "valid": [
+    {
+      "name": "done",
+      "source": "附录 B.4 done；附录 B.9：最终答案只来自 deliver 节点",
+      "notes": "progress_check 的五个字段对应附录 B.6 的五个问题。",
+      "instance": {
+        "verdict": "done",
+        "reason": "报告满足验收条件：每个结论都有数据支撑，建议可执行",
+        "progress_check": {"criteria_met": true, "progress": true, "looping": false, "assumptions_hold": true, "next_step": "交付并写回"},
+        "done": {"deliver_node": "write_report"}
+      }
+    },
+    {
+      "name": "continue",
+      "source": "附录 B.3 图 34 Stage 1 的判定",
+      "notes": "",
+      "instance": {
+        "verdict": "continue",
+        "reason": "三个查询都已返回；华东异常，下一步归因",
+        "progress_check": {"criteria_met": false, "progress": true, "looping": false, "assumptions_hold": true, "next_step": "Planner 规划归因 Stage"}
+      }
+    },
+    {
+      "name": "repair_change_method",
+      "source": "附录 B.4 repair；附录 B.8 第 2 步",
+      "notes": "",
+      "instance": {
+        "verdict": "repair",
+        "reason": "q_sku 连续两次超时，属于执行层问题",
+        "layer": "execution",
+        "signals": ["repetition"],
+        "repair": {"nodes": ["q_sku"], "strategy": "change_method", "guidance": "改为按月分批查询"}
+      }
+    },
+    {
+      "name": "replan_keep_verified",
+      "source": "附录 B.4 replan；附录 B.8 第 3 步：保留已验证 Node，卡住的原因写进 Task State",
+      "notes": "",
+      "instance": {
+        "verdict": "replan",
+        "reason": "“工单原因字段可靠”的假设被证伪：40% 的工单原因为空",
+        "layer": "plan",
+        "signals": ["stall"],
+        "replan": {"keep_nodes": ["q_region", "q_sku"], "change_shape": false, "stuck_reason": "原因字段缺失，需改从工单正文抽取"}
+      }
+    },
+    {
+      "name": "rollback",
+      "source": "附录 B.4 rollback",
+      "notes": "",
+      "instance": {
+        "verdict": "rollback",
+        "reason": "批量改写把共享配置文件改坏",
+        "layer": "execution",
+        "rollback": {"checkpoint": "ckpt_round2_before_write"}
+      }
+    },
+    {
+      "name": "reroute",
+      "source": "附录 B.4 reroute；附录 B.5 形状不对",
+      "notes": "",
+      "instance": {
+        "verdict": "reroute",
+        "reason": "任务实际是数据修复，而不是分析",
+        "layer": "shape",
+        "reroute": {"recipe": "data_fix@v1"}
+      }
+    },
+    {
+      "name": "escalate_human",
+      "source": "附录 B.8 第 6 步；设计书 4.11：问人时回复限定为三种",
+      "notes": "",
+      "instance": {
+        "verdict": "escalate",
+        "reason": "两个可行方案代价差异大，需要人来决定",
+        "layer": "goal",
+        "escalate": {
+          "target": "human",
+          "question": "华东退款分析要不要覆盖退货运费？",
+          "options": ["continue_as_is", "replan_with_guidance", "stop_and_wrap_up"],
+          "state_summary": "已完成取数与归因；物流破损占 46%。"
+        }
+      }
+    },
+    {
+      "name": "escalate_tier",
+      "source": "附录 B.8 第 6 步：换更强的 Tier；附录 H.4",
+      "notes": "",
+      "instance": {
+        "verdict": "escalate",
+        "reason": "ensemble 候选分歧大",
+        "layer": "execution",
+        "signals": ["sample_divergence"],
+        "escalate": {"target": "tier", "tier": "strong@high"}
+      }
+    },
+    {
+      "name": "abort_partial",
+      "source": "附录 B.8 第 7 步：交付部分结果，说清完成了什么、没完成什么、为什么",
+      "notes": "",
+      "instance": {
+        "verdict": "abort",
+        "reason": "预算用尽",
+        "signals": ["budget_burn"],
+        "abort": {"completed": ["取数", "归因"], "not_completed": ["成稿"]}
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "unknown_verdict",
+      "description": "Verdict 只有附录 A 的八个取值",
+      "violates": [{"path": "/verdict", "keyword": "enum"}],
+      "instance": {"verdict": "retry", "reason": "再试一次"}
+    },
+    {
+      "name": "old_term_ladder_level",
+      "description": "调研文档的处置阶梯 L1–L7 不再使用",
+      "violates": [{"path": "/verdict", "keyword": "enum"}],
+      "instance": {"verdict": "L3", "reason": "重规划"}
+    },
+    {
+      "name": "missing_reason",
+      "description": "每个 Verdict 都要写明原因",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {"verdict": "continue"}
+    },
+    {
+      "name": "repair_without_details",
+      "description": "repair 必须说明修哪些 Node、用什么办法（附录 B.8）",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {"verdict": "repair", "reason": "q_sku 超时", "layer": "execution"}
+    },
+    {
+      "name": "done_without_deliver_node",
+      "description": "done 必须指出交付来自哪个 deliver 节点（附录 B.9）",
+      "violates": [{"path": "/done", "keyword": "required"}],
+      "instance": {"verdict": "done", "reason": "完成", "done": {}}
+    },
+    {
+      "name": "escalate_human_without_question",
+      "description": "问人时必须带一个具体问题（附录 B.8 第 6 步）",
+      "violates": [{"path": "/escalate", "keyword": "required"}],
+      "instance": {
+        "verdict": "escalate",
+        "reason": "卡住了",
+        "escalate": {"target": "human", "options": ["continue_as_is", "stop_and_wrap_up"]}
+      }
+    },
+    {
+      "name": "escalate_human_free_text_option",
+      "description": "人的回复限定为三种（设计书 4.11）",
+      "violates": [{"path": "/escalate/options/1", "keyword": "enum"}],
+      "instance": {
+        "verdict": "escalate",
+        "reason": "卡住了",
+        "escalate": {"target": "human", "question": "怎么办？", "options": ["continue_as_is", "随你决定"]}
+      }
+    },
+    {
+      "name": "escalate_tier_without_tier",
+      "description": "换 Tier 时必须写明目标 Tier",
+      "violates": [{"path": "/escalate", "keyword": "required"}],
+      "instance": {"verdict": "escalate", "reason": "连续失败", "escalate": {"target": "tier"}}
+    },
+    {
+      "name": "details_do_not_match_verdict",
+      "description": "附带的细节必须与 Verdict 一致",
+      "violates": [{"path": "/verdict"}],
+      "instance": {
+        "verdict": "done",
+        "reason": "完成",
+        "done": {"deliver_node": "write_report"},
+        "escalate": {"target": "tier", "tier": "strong@high"}
+      }
+    },
+    {
+      "name": "unknown_signal",
+      "description": "硬信号取附录 B.6 的七类",
+      "violates": [{"path": "/signals/0", "keyword": "enum"}],
+      "instance": {"verdict": "continue", "reason": "正常", "signals": ["slow"]}
+    },
+    {
+      "name": "unknown_layer",
+      "description": "诊断层级取附录 B.5 的四层",
+      "violates": [{"path": "/layer", "keyword": "enum"}],
+      "instance": {"verdict": "replan", "reason": "假设不成立", "layer": "strategy"}
+    }
+  ]
+}

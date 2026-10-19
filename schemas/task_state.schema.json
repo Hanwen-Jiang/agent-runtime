@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/task_state.schema.json",
+  "title": "Task State",
+  "description": "Task 的结构化状态（附录 A、B.1）：目标、约束、里程碑、已验证事实、待查假设、Round 记录、产物与固定的版本。它是 Task 工作流的状态，通过查询读取；租户由工作流输入的 TenantContext 确定，不写在这里。",
+  "type": "object",
+  "required": ["task_id", "session_id", "goal", "done_when"],
+  "properties": {
+    "task_id": {"$ref": "defs.schema.json#/$defs/task_id"},
+    "session_id": {"$ref": "defs.schema.json#/$defs/session_id"},
+    "goal": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+    "done_when": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+    "status": {"$ref": "defs.schema.json#/$defs/task_status"},
+    "constraints": {
+      "description": "通用约束有固定字段；其余是领域约束，例如 quarter，节点用 $task.constraints.<名> 引用",
+      "type": "object",
+      "properties": {
+        "effect_ceiling": {"$ref": "defs.schema.json#/$defs/effect"},
+        "budget_usd": {"$ref": "defs.schema.json#/$defs/usd"},
+        "deadline_min": {"type": "number", "minimum": 0}
+      }
+    },
+    "milestones": {"description": "粗计划，可随时调整", "type": "array", "items": {"$ref": "defs.schema.json#/$defs/non_empty_string"}},
+    "facts": {"description": "已验证的事实", "type": "array", "items": {"$ref": "defs.schema.json#/$defs/non_empty_string"}},
+    "assumptions": {"description": "待回查的假设", "type": "array", "items": {"$ref": "defs.schema.json#/$defs/non_empty_string"}},
+    "open_questions": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/non_empty_string"}},
+    "rounds": {"type": "array", "items": {"$ref": "#/$defs/round"}},
+    "artifacts": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/object_uri"}},
+    "pinned": {
+      "description": "Task 启动时固定的版本，运行中不受新发布影响（设计书 3.1.2）",
+      "type": "object",
+      "properties": {
+        "recipe": {"anyOf": [{"$ref": "defs.schema.json#/$defs/recipe_ref"}, {"type": "null"}]},
+        "node_templates": {"type": "object", "additionalProperties": {"$ref": "defs.schema.json#/$defs/version"}},
+        "reasoning_templates": {"type": "object", "additionalProperties": {"$ref": "defs.schema.json#/$defs/version"}},
+        "model_profiles": {"type": "object", "additionalProperties": {"$ref": "defs.schema.json#/$defs/non_empty_string"}}
+      },
+      "unevaluatedProperties": false
+    }
+  },
+  "unevaluatedProperties": false,
+  "$defs": {
+    "round": {
+      "type": "object",
+      "required": ["seq", "stage_goal"],
+      "properties": {
+        "seq": {"type": "integer", "minimum": 1},
+        "stage_goal": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+        "triage_level": {"$ref": "defs.schema.json#/$defs/triage_level"},
+        "status": {"$ref": "defs.schema.json#/$defs/round_status"},
+        "verdict": {"$ref": "defs.schema.json#/$defs/verdict"},
+        "cost_usd": {"$ref": "defs.schema.json#/$defs/usd"}
+      },
+      "allOf": [
+        {
+          "description": "没结束的 Round 没有 Verdict",
+          "if": {"required": ["status"], "properties": {"status": {"not": {"const": "completed"}}}},
+          "then": {"properties": {"verdict": {"$ref": "defs.schema.json#/$defs/forbidden"}}}
+        }
+      ],
+      "unevaluatedProperties": false
+    }
+  }
+}

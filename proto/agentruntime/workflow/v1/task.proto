@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package agentruntime.workflow.v1;
+
+import "agentruntime/common/v1/enums.proto";
+import "agentruntime/common/v1/error.proto";
+import "agentruntime/common/v1/metering.proto";
+import "agentruntime/common/v1/payload.proto";
+import "agentruntime/common/v1/tenant.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// TaskWorkflowInput 是 Task 子工作流的输入。由 Go 的 Session 工作流启动，Python 的 Task 工作流执行，
+// 编码统一为 json/protobuf（计划 S-01）。
+message TaskWorkflowInput {
+  // 服务端根据认证身份构造。
+  agentruntime.common.v1.TenantContext tenant = 1;
+  // 同时是 Task 子工作流的工作流 ID。
+  string task_id = 2;
+  // Task 启动时固定的版本，运行中不受新发布影响（设计书 3.1.2）。
+  PinnedVersions pinned_versions = 3;
+  // 用户命令原文。
+  string message = 4;
+  // 附带的结构化输入。
+  google.protobuf.Struct inputs = 5;
+  // 用户附带的文件，obj:// 引用。
+  repeated string attachments = 6;
+  google.protobuf.Timestamp submitted_at = 7;
+  agentruntime.common.v1.SessionAccess session_access = 8;
+  agentruntime.common.v1.Priority priority = 9;
+  // 租户配额给出的上限，Planner 在其内规划 Task Plan 的预算。
+  Budget budget = 10;
+  // 租户策略允许的最高 effect。
+  agentruntime.common.v1.Effect effect_ceiling = 11;
+  // sub_task 的父 Task；顶层 Task 为空。
+  string parent_task_id = 12;
+  // sub_task 嵌套深度：顶层为 0，不超过 2（附录 E.1）。
+  int32 depth = 13;
+}
+
+// PinnedVersions 是 Task 固定的版本清单。map 的键是名字，值是版本，例如 sql_query → v3。
+message PinnedVersions {
+  // 命中的 Recipe，例如 refund_analysis@v3；没有时为空。
+  string recipe = 1;
+  map<string, string> node_templates = 2;
+  map<string, string> reasoning_templates = 3;
+  // 键是 Model Profile 的 id，例如 vendor/model。
+  map<string, string> model_profiles = 4;
+  // 租户策略的版本。
+  string tenant_policy = 5;
+}
+
+message Budget {
+  int64 usd_micros = 1;
+  int32 tool_calls = 2;
+  google.protobuf.Duration wall_clock = 3;
+}
+
+// TaskWorkflowResult 是 Task 子工作流的结果，交还 Session 工作流。
+message TaskWorkflowResult {
+  string task_id = 1;
+  agentruntime.common.v1.TaskStatus status = 2;
+  // done 或 abort；取消或失败时为 UNSPECIFIED。
+  agentruntime.common.v1.Verdict final_verdict = 3;
+  // 最终交付只来自 role = deliver 的节点（附录 B.9）。
+  string deliver_node_id = 4;
+  agentruntime.common.v1.JsonPayload deliverable = 5;
+  repeated string artifacts = 6;
+  // 跑了几个 Round。
+  int32 rounds = 7;
+  agentruntime.common.v1.Usage usage = 8;
+  // status = FAILED 时的错误。
+  agentruntime.common.v1.Error error = 9;
+}
+
+// TaskStateQueryResult 是 task_state 查询的结果。
+message TaskStateQueryResult {
+  string task_id = 1;
+  agentruntime.common.v1.TaskStatus status = 2;
+  int32 round_seq = 3;
+  // Task State，schema 为 /schemas/task_state.schema.json。
+  agentruntime.common.v1.JsonPayload task_state = 4;
+}
+
+// HumanReplySignal 把人的回复送回 Task 工作流（设计书 4.11、附录 K.1）。
+message HumanReplySignal {
+  string question_id = 1;
+  // 必须是问题给出的选项之一。
+  string option = 2;
+  string guidance = 3;
+  string replied_by_user_id = 4;
+  google.protobuf.Timestamp replied_at = 5;
+}

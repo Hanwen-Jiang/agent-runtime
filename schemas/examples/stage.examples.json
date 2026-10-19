@@ -1,0 +1,468 @@
+{
+  "schema": "stage",
+  "valid": [
+    {
+      "name": "appendix_b2_stage",
+      "source": "附录 B.2",
+      "notes": "read_tickets 的 output_schema 简写展开为 JSON Schema，其余原样转写。",
+      "instance": {
+        "seq": 2,
+        "goal": "找出华东退款率上升的原因",
+        "exit_when": "每个候选原因都有证据，或已被排除",
+        "budget": {"usd": 0.6, "wall_clock_min": 5},
+        "hooks": {"before": ["budget_check"], "after": ["schema_check", "checkpoint"]},
+        "nodes": [
+          {
+            "id": "read_tickets",
+            "kind": "goal",
+            "goal": "归纳华东工单中的退款原因",
+            "done_when": "输出原因分布与代表性工单",
+            "mode": "sub_agent",
+            "output_schema": {
+              "type": "object",
+              "required": ["reasons"],
+              "properties": {
+                "reasons": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "share", "examples"],
+                    "properties": {
+                      "name": {"type": "string"},
+                      "share": {"type": "number", "minimum": 0, "maximum": 1},
+                      "examples": {"type": "array", "items": {"type": "string"}}
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "id": "analyze",
+            "kind": "atomic",
+            "template": "refund_attribution@v2",
+            "executor": "model",
+            "output": "generate",
+            "effect": "none",
+            "role": "transform",
+            "after": ["read_tickets"],
+            "tier": "strong@medium",
+            "reasoning": "plan_first",
+            "quality": {"type": "revise", "judge": "check_numbers_match@v1", "max_rounds": 2}
+          }
+        ]
+      }
+    },
+    {
+      "name": "appendix_b3_round1_parallel_fetch",
+      "source": "附录 B.3 图 34 Stage 1；附录 C.3 first_stage；q_region 取自附录 D.1",
+      "notes": "q_sku、q_reason 的模板、输入与 output_schema 为补全的具体值。",
+      "instance": {
+        "seq": 1,
+        "goal": "取数",
+        "exit_when": "三个查询都返回结果",
+        "budget": {"usd": 0.2, "wall_clock_min": 3},
+        "hooks": {"before": ["budget_check"], "after": ["checkpoint"]},
+        "nodes": [
+          {
+            "id": "q_region",
+            "kind": "atomic",
+            "template": "sql_query@v3",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch",
+            "after": [],
+            "inputs": {"params": {"quarter": "$task.constraints.quarter"}},
+            "output_schema": "region_refund_rate_v1",
+            "budget": {"timeout_s": 30, "max_cost_usd": 0.02},
+            "retry": {"max": 2, "on": ["timeout", "rate_limit"], "backoff": "exponential"},
+            "cache": {"ttl_s": 3600},
+            "idempotency_key": null,
+            "fallback": "fail"
+          },
+          {
+            "id": "q_sku",
+            "kind": "atomic",
+            "template": "sql_query@v3",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch",
+            "inputs": {"params": {"quarter": "$task.constraints.quarter", "group_by": "sku_category"}},
+            "output_schema": "category_refund_rate_v1",
+            "budget": {"timeout_s": 30, "max_cost_usd": 0.02},
+            "cache": {"ttl_s": 3600}
+          },
+          {
+            "id": "q_reason",
+            "kind": "atomic",
+            "template": "ticket_stats@v1",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch",
+            "inputs": {"quarter": "$task.constraints.quarter", "field": "refund_reason"},
+            "output_schema": "ticket_reason_share_v1",
+            "budget": {"timeout_s": 30, "max_cost_usd": 0.02},
+            "cache": {"ttl_s": 3600}
+          }
+        ]
+      }
+    },
+    {
+      "name": "appendix_b3_round3_deliver",
+      "source": "附录 B.3 图 34 Stage 3",
+      "notes": "rubric 审查（另一家模型）表达为 deliver 节点上 revise 的 judge。",
+      "instance": {
+        "seq": 3,
+        "goal": "成稿",
+        "exit_when": "报告通过 rubric 审查",
+        "nodes": [
+          {
+            "id": "write_report",
+            "kind": "atomic",
+            "template": "report_writer@v1",
+            "executor": "model",
+            "output": "generate",
+            "effect": "none",
+            "role": "deliver",
+            "inputs": {"facts": "$task.facts", "artifacts": "$task.artifacts"},
+            "tier": "strong@medium",
+            "reasoning": "direct",
+            "quality": {"type": "revise", "judge": "report_rubric@v1", "max_rounds": 2}
+          }
+        ]
+      }
+    },
+    {
+      "name": "appendix_b3_flight_payment",
+      "source": "附录 B.3 六类任务：订机票并付款，Stage 2",
+      "notes": "这是 Planner 产出的形状：人工审批的 gate 节点由前置 Hook 自动插入，不在这里手写。",
+      "instance": {
+        "seq": 2,
+        "goal": "用选定的航班下单并付款",
+        "exit_when": "拿到出票确认号，或付款被拒绝",
+        "budget": {"usd": 0.1, "wall_clock_min": 10},
+        "nodes": [
+          {
+            "id": "pay_ticket",
+            "kind": "atomic",
+            "template": "flight_booking_pay@v1",
+            "executor": "program",
+            "effect": "write_irreversible",
+            "role": "act",
+            "inputs": {"offer_id": "$task.constraints.selected_offer_id", "payment_profile": "$task.constraints.payment_profile"},
+            "budget": {"timeout_s": 60},
+            "idempotency_key": "idk_5e0c7a2f9d4e2b7a1c6f3e8d0b5a4c7e2f9d1a6b3c8e5f0a7d2b4e9c1f6a3d8b",
+            "fallback": "fail"
+          },
+          {
+            "id": "confirm_booking",
+            "kind": "atomic",
+            "template": "booking_summary@v1",
+            "executor": "model",
+            "output": "generate",
+            "effect": "none",
+            "role": "deliver",
+            "after": ["pay_ticket"],
+            "tier": "mid@low",
+            "reasoning": "direct"
+          }
+        ]
+      }
+    },
+    {
+      "name": "appendix_b3_naming_ensemble",
+      "source": "附录 B.3 六类任务：产品命名",
+      "notes": "ensemble 5 个候选加 rubric judge，deliver 给出前 3 名。",
+      "instance": {
+        "seq": 1,
+        "goal": "给新产品起名并给出前 3 名",
+        "exit_when": "交付前 3 名候选及理由",
+        "nodes": [
+          {
+            "id": "name_candidates",
+            "kind": "atomic",
+            "template": "product_naming@v1",
+            "executor": "model",
+            "output": "generate",
+            "effect": "none",
+            "role": "transform",
+            "tier": "mid@medium",
+            "reasoning": "direct",
+            "quality": {"type": "ensemble", "n": 5, "aggregate": "judge", "judge": "naming_rubric@v1"}
+          },
+          {
+            "id": "present_top3",
+            "kind": "atomic",
+            "template": "ranked_shortlist@v1",
+            "executor": "model",
+            "output": "generate",
+            "effect": "none",
+            "role": "deliver",
+            "after": ["name_candidates"],
+            "tier": "mid@low",
+            "reasoning": "direct"
+          }
+        ]
+      }
+    },
+    {
+      "name": "appendix_b3_fix_ci",
+      "source": "附录 B.3 六类任务：修复 CI 中一个失败的测试",
+      "notes": "1 个 Stage，单个 tool_loop Goal Node。",
+      "instance": {
+        "seq": 1,
+        "goal": "修复失败的测试",
+        "exit_when": "测试通过，或同一错误连续出现 3 次",
+        "hooks": {"before": ["budget_check"], "after": ["checkpoint"]},
+        "nodes": [
+          {
+            "id": "fix_failing_test",
+            "kind": "goal",
+            "goal": "修复 CI 中失败的测试 test_refund_rounding",
+            "done_when": "该测试与原有测试全部通过",
+            "mode": "tool_loop",
+            "output_schema": "code_patch_v1",
+            "effect_ceiling": "write_reversible",
+            "max_iterations": 30,
+            "quality": {"type": "revise", "judge": "run_tests@v1", "max_rounds": 3}
+          }
+        ]
+      }
+    },
+    {
+      "name": "appendix_b3_batch_with_sampling_hook",
+      "source": "附录 B.3 六类任务：批量处理 1000 张工单",
+      "notes": "后置 Hook 抽样转人工复核。",
+      "instance": {
+        "seq": 1,
+        "goal": "处理 1000 张工单",
+        "exit_when": "每张工单都有通过 schema 校验的结果",
+        "hooks": {"after": ["sample_human_review"]},
+        "nodes": [
+          {
+            "id": "triage_tickets",
+            "kind": "goal",
+            "goal": "逐张处理工单：分类、抽取字段、给出处理建议",
+            "done_when": "每张工单都有通过 schema 校验的处理结果",
+            "mode": "template",
+            "recipe": "ticket_triage@v2",
+            "inputs": {"ticket_ids": "$task.constraints.ticket_ids"},
+            "output_schema": "ticket_triage_batch_v1"
+          }
+        ]
+      }
+    },
+    {
+      "name": "appendix_b3_research_parallel",
+      "source": "附录 B.3 六类任务：行业研究报告，Stage 2",
+      "notes": "3 个只读 sub_agent 并行。",
+      "instance": {
+        "seq": 2,
+        "goal": "并行研究",
+        "exit_when": "三个方向都交回带引用的卡片",
+        "budget": {"usd": 1.2, "wall_clock_min": 15},
+        "nodes": [
+          {
+            "id": "research_market_size",
+            "kind": "goal",
+            "goal": "调研目标行业近三年的市场规模与增速",
+            "done_when": "每个数字都带来源链接",
+            "mode": "sub_agent",
+            "effect_ceiling": "read",
+            "output_schema": "research_card_v1"
+          },
+          {
+            "id": "research_competitors",
+            "kind": "goal",
+            "goal": "梳理主要竞争者及其定位",
+            "done_when": "至少覆盖 5 家，并给出来源",
+            "mode": "sub_agent",
+            "effect_ceiling": "read",
+            "output_schema": "research_card_v1"
+          },
+          {
+            "id": "research_regulation",
+            "kind": "goal",
+            "goal": "梳理近两年的监管变化",
+            "done_when": "每条变化有生效日期与出处",
+            "mode": "sub_agent",
+            "effect_ceiling": "read",
+            "output_schema": "research_card_v1"
+          }
+        ]
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "empty_nodes",
+      "description": "Stage 至少有一个 Node",
+      "violates": [{"path": "/nodes", "keyword": "minItems"}],
+      "instance": {
+        "seq": 1,
+        "goal": "取数",
+        "exit_when": "三个查询都返回结果",
+        "nodes": []
+      }
+    },
+    {
+      "name": "missing_exit_when",
+      "description": "Stage 必须有退出条件（附录 A、B.2）",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {
+        "seq": 1,
+        "goal": "取数",
+        "nodes": [
+          {
+            "id": "q_region",
+            "kind": "atomic",
+            "template": "sql_query@v3",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch"
+          }
+        ]
+      }
+    },
+    {
+      "name": "seq_zero",
+      "description": "Stage 序号从 1 开始",
+      "violates": [{"path": "/seq", "keyword": "minimum"}],
+      "instance": {
+        "seq": 0,
+        "goal": "取数",
+        "exit_when": "查询返回结果",
+        "nodes": [
+          {
+            "id": "q_region",
+            "kind": "atomic",
+            "template": "sql_query@v3",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch"
+          }
+        ]
+      }
+    },
+    {
+      "name": "node_missing_kind",
+      "description": "每个 Node 必须用 kind 标明是 atomic 还是 goal",
+      "violates": [{"path": "/nodes/0", "keyword": "required"}],
+      "instance": {
+        "seq": 1,
+        "goal": "取数",
+        "exit_when": "查询返回结果",
+        "nodes": [
+          {
+            "id": "q_region",
+            "template": "sql_query@v3",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch"
+          }
+        ]
+      }
+    },
+    {
+      "name": "node_kind_old_term",
+      "description": "kind 只有 atomic 与 goal；subflow 是调研文档旧叫法",
+      "violates": [{"path": "/nodes/0/kind", "keyword": "enum"}],
+      "instance": {
+        "seq": 1,
+        "goal": "处理工单",
+        "exit_when": "全部处理完",
+        "nodes": [
+          {
+            "id": "triage_tickets",
+            "kind": "subflow",
+            "goal": "逐张处理工单",
+            "done_when": "每张工单都有结果",
+            "output_schema": "ticket_triage_batch_v1"
+          }
+        ]
+      }
+    },
+    {
+      "name": "nested_write_without_idempotency_key",
+      "description": "Stage 内的写节点同样必须带幂等键（附录 D.4）",
+      "violates": [{"path": "/nodes/0", "keyword": "required"}],
+      "instance": {
+        "seq": 2,
+        "goal": "下单并付款",
+        "exit_when": "拿到确认号",
+        "nodes": [
+          {
+            "id": "pay_ticket",
+            "kind": "atomic",
+            "template": "flight_booking_pay@v1",
+            "executor": "program",
+            "effect": "write_irreversible",
+            "role": "act"
+          }
+        ]
+      }
+    },
+    {
+      "name": "nested_goal_mode_old_term",
+      "description": "Stage 内 Goal Node 的 mode 同样校验",
+      "violates": [{"path": "/nodes/0/mode", "keyword": "enum"}],
+      "instance": {
+        "seq": 1,
+        "goal": "修复失败的测试",
+        "exit_when": "测试通过",
+        "nodes": [
+          {
+            "id": "fix_failing_test",
+            "kind": "goal",
+            "goal": "修复失败的测试",
+            "done_when": "测试通过",
+            "mode": "react",
+            "output_schema": "code_patch_v1"
+          }
+        ]
+      }
+    },
+    {
+      "name": "hooks_unknown_key",
+      "description": "hooks 只有 before 与 after 两个位置（附录 B.2、F.1）",
+      "violates": [{"path": "/hooks"}],
+      "instance": {
+        "seq": 1,
+        "goal": "取数",
+        "exit_when": "查询返回结果",
+        "hooks": {"pre": ["budget_check"]},
+        "nodes": [
+          {
+            "id": "q_region",
+            "kind": "atomic",
+            "template": "sql_query@v3",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch"
+          }
+        ]
+      }
+    },
+    {
+      "name": "hook_name_bad_format",
+      "description": "Hook 名用小写字母、数字、下划线",
+      "violates": [{"path": "/hooks/before/0", "keyword": "pattern"}],
+      "instance": {
+        "seq": 1,
+        "goal": "取数",
+        "exit_when": "查询返回结果",
+        "hooks": {"before": ["budget check"]},
+        "nodes": [
+          {
+            "id": "q_region",
+            "kind": "atomic",
+            "template": "sql_query@v3",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch"
+          }
+        ]
+      }
+    }
+  ]
+}

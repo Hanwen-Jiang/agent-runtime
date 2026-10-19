@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/task_plan.schema.json",
+  "title": "Task Plan",
+  "description": "Triage 的产出：本 Task 的 Recipe、Tier、记忆、上下文与预算配置（附录 A、C.3），写入上下文的 brief 区。附录 C.3 的 context.profile 在这里叫 context.work_mode，因为 profile 是 Context Zones 的分区名。",
+  "type": "object",
+  "required": ["triage", "horizon"],
+  "properties": {
+    "triage": {
+      "type": "object",
+      "required": ["level"],
+      "properties": {
+        "level": {"$ref": "defs.schema.json#/$defs/triage_level"},
+        "task_family": {"$ref": "defs.schema.json#/$defs/task_family"},
+        "confidence": {"$ref": "defs.schema.json#/$defs/unit_interval"}
+      },
+      "unevaluatedProperties": false
+    },
+    "recipe": {"description": "light 时为命中的 Recipe", "anyOf": [{"$ref": "defs.schema.json#/$defs/recipe_ref"}, {"type": "null"}]},
+    "horizon": {"$ref": "defs.schema.json#/$defs/horizon"},
+    "first_stage": {
+      "description": "第一个 Stage 的摘要，完整定义见 Stage",
+      "type": "object",
+      "required": ["goal", "nodes"],
+      "properties": {
+        "goal": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+        "nodes": {"type": "array", "minItems": 1, "items": {"$ref": "defs.schema.json#/$defs/node_id"}}
+      },
+      "unevaluatedProperties": false
+    },
+    "tiers": {
+      "type": "object",
+      "properties": {
+        "planner": {"$ref": "defs.schema.json#/$defs/tier"},
+        "reviewer": {"$ref": "defs.schema.json#/$defs/tier"},
+        "node_default": {"$ref": "defs.schema.json#/$defs/tier"}
+      },
+      "unevaluatedProperties": false
+    },
+    "memory": {
+      "type": "object",
+      "properties": {
+        "retrieved": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/memory_id"}},
+        "write_policy": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+      },
+      "unevaluatedProperties": false
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "work_mode": {"$ref": "defs.schema.json#/$defs/work_mode"},
+        "mask_at": {"description": "占有效长度的比例", "$ref": "defs.schema.json#/$defs/unit_interval"},
+        "summarize_at": {"description": "占有效长度的比例", "$ref": "defs.schema.json#/$defs/unit_interval"},
+        "must_keep": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/non_empty_string"}}
+      },
+      "unevaluatedProperties": false
+    },
+    "budget": {
+      "type": "object",
+      "properties": {
+        "usd": {"$ref": "defs.schema.json#/$defs/usd"},
+        "tool_calls": {"type": "integer", "minimum": 0},
+        "wall_clock_min": {"type": "number", "minimum": 0}
+      },
+      "unevaluatedProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "description": "light 必须命中 Recipe（附录 C.1、C.3）",
+      "if": {"required": ["triage"], "properties": {"triage": {"required": ["level"], "properties": {"level": {"const": "light"}}}}},
+      "then": {"required": ["recipe"], "properties": {"recipe": {"$ref": "defs.schema.json#/$defs/recipe_ref"}}}
+    }
+  ],
+  "unevaluatedProperties": false
+}

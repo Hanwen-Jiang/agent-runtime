@@ -1,0 +1,117 @@
+{
+  "schema": "hook_result",
+  "valid": [
+    {
+      "name": "allow",
+      "source": "附录 F.2 allow；附录 F.3 所有 Node 的预算检查",
+      "notes": "",
+      "instance": {"decision": "allow", "hook": "budget_check", "mount": "before_node"}
+    },
+    {
+      "name": "deny_budget",
+      "source": "附录 F.2 deny",
+      "notes": "",
+      "instance": {
+        "decision": "deny",
+        "hook": "budget_check",
+        "mount": "before_stage",
+        "reason": "本 Stage 预算 0.6 美元，超过 Task 剩余预算 0.4 美元"
+      }
+    },
+    {
+      "name": "deny_before_finish",
+      "source": "附录 F.1 before_finish：对照验收条件复核，不满足就驳回",
+      "notes": "",
+      "instance": {
+        "decision": "deny",
+        "hook": "acceptance_recheck",
+        "mount": "before_finish",
+        "reason": "报告缺少华南数据，未满足验收条件"
+      }
+    },
+    {
+      "name": "modify_redact_pii",
+      "source": "附录 F.2 modify：改写输入或输出，例如脱敏",
+      "notes": "改写用 JSON Patch（RFC 6902）表达。",
+      "instance": {
+        "decision": "modify",
+        "hook": "pii_redaction",
+        "mount": "after_node",
+        "modification": {
+          "target": "output",
+          "patch": [{"op": "replace", "path": "/result/customer_phone", "value": "[REDACTED]"}]
+        }
+      }
+    },
+    {
+      "name": "inject_project_rules",
+      "source": "附录 F.2 inject：向上下文追加信息，例如项目规则；附录 F.1 on_task_start",
+      "notes": "",
+      "instance": {
+        "decision": "inject",
+        "hook": "project_rules",
+        "mount": "on_task_start",
+        "injection": {"zone": "profile", "content": "本仓库提交前必须通过 make lint。"}
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "deny_without_reason",
+      "description": "deny 交给 Reviewer 处理，必须写明原因",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {"decision": "deny", "hook": "budget_check", "mount": "before_node"}
+    },
+    {
+      "name": "modify_without_modification",
+      "description": "modify 必须给出改写内容",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {"decision": "modify", "hook": "pii_redaction", "mount": "after_node"}
+    },
+    {
+      "name": "unknown_decision",
+      "description": "Hook 只返回 allow、deny、modify、inject（附录 A）",
+      "violates": [{"path": "/decision", "keyword": "enum"}],
+      "instance": {"decision": "block", "hook": "budget_check", "mount": "before_node", "reason": "超预算"}
+    },
+    {
+      "name": "unknown_mount",
+      "description": "挂载点取附录 F.1 的名字",
+      "violates": [{"path": "/mount", "keyword": "enum"}],
+      "instance": {"decision": "allow", "hook": "budget_check", "mount": "PreToolUse"}
+    },
+    {
+      "name": "allow_with_injection",
+      "description": "allow 不带改写或注入内容",
+      "violates": [{"path": "/injection"}],
+      "instance": {
+        "decision": "allow",
+        "hook": "project_rules",
+        "mount": "on_task_start",
+        "injection": {"zone": "profile", "content": "规则"}
+      }
+    },
+    {
+      "name": "inject_old_zone_name",
+      "description": "上下文分区用附录 A 的 Context Zones 名字，S0–S4 是旧叫法",
+      "violates": [{"path": "/injection/zone", "keyword": "enum"}],
+      "instance": {
+        "decision": "inject",
+        "hook": "project_rules",
+        "mount": "on_task_start",
+        "injection": {"zone": "S1", "content": "规则"}
+      }
+    },
+    {
+      "name": "patch_unknown_op",
+      "description": "改写只用 JSON Patch 的操作",
+      "violates": [{"path": "/modification/patch/0/op", "keyword": "enum"}],
+      "instance": {
+        "decision": "modify",
+        "hook": "pii_redaction",
+        "mount": "after_node",
+        "modification": {"target": "output", "patch": [{"op": "merge", "path": "/result", "value": {}}]}
+      }
+    }
+  ]
+}

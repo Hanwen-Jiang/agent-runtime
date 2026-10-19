@@ -1,0 +1,26 @@
+{
+  "type": "agentruntime.workflow.v1.TaskWorkflowResult",
+  "message": {
+    "taskId": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+    "status": "TASK_STATUS_DONE",
+    "finalVerdict": "VERDICT_DONE",
+    "deliverNodeId": "write_report",
+    "deliverable": {
+      "schemaId": "report_v1",
+      "value": {
+        "title": "华东退款率归因",
+        "sections": [{"heading": "结论", "body": "物流破损占 46%，集中在两家物流商"}],
+        "confidence": 0.78
+      }
+    },
+    "artifacts": ["obj://t1/tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B/report.md"],
+    "rounds": 3,
+    "usage": {
+      "inputTokens": "48210",
+      "outputTokens": "5120",
+      "cacheReadTokens": "30720",
+      "reasoningTokens": "1800",
+      "costUsdMicros": "800000"
+    }
+  }
+}

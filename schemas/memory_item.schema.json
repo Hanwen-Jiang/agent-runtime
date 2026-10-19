@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/memory_item.schema.json",
+  "title": "Memory Item",
+  "description": "一条记忆（附录 A、I.3）。写入最小必要作用域；没有租户的条目只能是 Platform 级；secret 禁止入库；lineage 支持级联删除。",
+  "type": "object",
+  "required": ["id", "scope", "kind", "content", "provenance", "trust", "validity", "sensitivity", "embedding_version", "version"],
+  "properties": {
+    "id": {"$ref": "defs.schema.json#/$defs/memory_id"},
+    "scope": {
+      "description": "作用域（附录 I.1）。tenant 必须显式写出，Platform 级写 null",
+      "type": "object",
+      "required": ["tenant"],
+      "properties": {
+        "tenant": {"anyOf": [{"$ref": "defs.schema.json#/$defs/tenant_id"}, {"type": "null"}]},
+        "workspace": {"anyOf": [{"$ref": "defs.schema.json#/$defs/workspace_id"}, {"type": "null"}]},
+        "user": {"anyOf": [{"$ref": "defs.schema.json#/$defs/user_id"}, {"type": "null"}]},
+        "session": {"anyOf": [{"$ref": "defs.schema.json#/$defs/session_id"}, {"type": "null"}]},
+        "task": {"anyOf": [{"$ref": "defs.schema.json#/$defs/task_id"}, {"type": "null"}]}
+      },
+      "allOf": [
+        {
+          "description": "没有租户的条目只能是 Platform 级，不挂在任何租户内的作用域下",
+          "if": {"required": ["tenant"], "properties": {"tenant": {"type": "null"}}},
+          "then": {"properties": {"workspace": {"type": "null"}, "user": {"type": "null"}, "session": {"type": "null"}, "task": {"type": "null"}}}
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "kind": {"$ref": "defs.schema.json#/$defs/memory_kind"},
+    "applies_when": {
+      "description": "结构化检索条件",
+      "type": "object",
+      "properties": {
+        "task_family": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/task_family"}},
+        "tools": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/tool_name"}},
+        "model_family": {"anyOf": [{"const": "any"}, {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/non_empty_string"}}]}
+      },
+      "unevaluatedProperties": false
+    },
+    "content": {
+      "type": "object",
+      "required": ["title", "guidance"],
+      "properties": {
+        "title": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+        "guidance": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+        "rationale": {"type": "string"}
+      },
+      "unevaluatedProperties": false
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["trace", "outcome"],
+        "properties": {
+          "trace": {"$ref": "defs.schema.json#/$defs/trace_id"},
+          "outcome": {"$ref": "defs.schema.json#/$defs/evidence_outcome"}
+        },
+        "unevaluatedProperties": false
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["source"],
+      "properties": {
+        "source": {"$ref": "defs.schema.json#/$defs/provenance_source"},
+        "session": {"$ref": "defs.schema.json#/$defs/session_id"},
+        "user": {"$ref": "defs.schema.json#/$defs/user_id"},
+        "trace": {"$ref": "defs.schema.json#/$defs/trace_id"},
+        "uri": {"description": "外部内容的出处", "type": "string", "format": "uri"}
+      },
+      "unevaluatedProperties": false
+    },
+    "trust": {"description": "来源 × 验证次数 × 新鲜度 × 用后反馈", "$ref": "defs.schema.json#/$defs/unit_interval"},
+    "stats": {
+      "type": "object",
+      "properties": {
+        "retrieved": {"type": "integer", "minimum": 0},
+        "helped": {"type": "integer", "minimum": 0},
+        "hurt": {"type": "integer", "minimum": 0}
+      },
+      "unevaluatedProperties": false
+    },
+    "validity": {
+      "type": "object",
+      "required": ["valid_from"],
+      "properties": {
+        "valid_from": {"type": "string", "format": "date"},
+        "valid_to": {"anyOf": [{"type": "string", "format": "date"}, {"type": "null"}]},
+        "superseded_by": {"anyOf": [{"$ref": "defs.schema.json#/$defs/memory_id"}, {"type": "null"}]}
+      },
+      "unevaluatedProperties": false
+    },
+    "sensitivity": {
+      "description": "pii 先脱敏后入库；secret 禁止入库",
+      "allOf": [{"$ref": "defs.schema.json#/$defs/sensitivity"}, {"not": {"const": "secret"}}]
+    },
+    "lineage": {"description": "晋升或合并的来源，支持级联删除", "type": "array", "items": {"$ref": "defs.schema.json#/$defs/memory_id"}},
+    "embedding_version": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+    "version": {"type": "integer", "minimum": 1}
+  },
+  "unevaluatedProperties": false
+}
