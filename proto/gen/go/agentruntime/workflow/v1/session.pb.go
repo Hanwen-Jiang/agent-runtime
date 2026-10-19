@@ -234,7 +234,7 @@ func (x *CancelTaskSignal) GetReason() string {
 type SessionState struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	// 排队等待的写 Task，按执行顺序。
+	// 排队等待的 Task，按接受顺序：写 Task 等前一个写 Task 结束，只读 Task 等并行名额。
 	QueuedTaskIds          []string `protobuf:"bytes,2,rep,name=queued_task_ids,json=queuedTaskIds,proto3" json:"queued_task_ids,omitempty"`
 	RunningWriteTaskId     string   `protobuf:"bytes,3,opt,name=running_write_task_id,json=runningWriteTaskId,proto3" json:"running_write_task_id,omitempty"`
 	RunningReadOnlyTaskIds []string `protobuf:"bytes,4,rep,name=running_read_only_task_ids,json=runningReadOnlyTaskIds,proto3" json:"running_read_only_task_ids,omitempty"`

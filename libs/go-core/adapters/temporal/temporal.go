@@ -30,6 +30,16 @@ import (
 // ScopeMemoKey 是记录作用域的 memo 键。
 const ScopeMemoKey = "agentruntime_scope"
 
+// ScopeMemo 返回租户作用域的 memo。工作流自己启动子工作流时用它，子工作流才能经绑定同一租户的 Engine 访问。
+// 纯函数，工作流代码可以调用。
+func ScopeMemo(tenant *commonv1.TenantContext) (map[string]any, error) {
+	s, err := tenancy.TenantScope(tenant)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{ScopeMemoKey: devutil.ScopeID(s)}, nil
+}
+
 var workflowID = regexp.MustCompile(`^[^\x00-\x1f\x7f]{1,255}$`)
 
 var statuses = map[enumspb.WorkflowExecutionStatus]durable.Status{

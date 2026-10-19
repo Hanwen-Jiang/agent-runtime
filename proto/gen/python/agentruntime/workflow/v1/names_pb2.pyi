@@ -17,6 +17,7 @@ class SignalName(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     SIGNAL_NAME_SUBMIT_TASK: _ClassVar[SignalName]
     SIGNAL_NAME_CANCEL_TASK: _ClassVar[SignalName]
     SIGNAL_NAME_HUMAN_REPLY: _ClassVar[SignalName]
+    SIGNAL_NAME_TASK_FINISHED: _ClassVar[SignalName]
 
 class QueryName(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
@@ -40,6 +41,7 @@ SIGNAL_NAME_UNSPECIFIED: SignalName
 SIGNAL_NAME_SUBMIT_TASK: SignalName
 SIGNAL_NAME_CANCEL_TASK: SignalName
 SIGNAL_NAME_HUMAN_REPLY: SignalName
+SIGNAL_NAME_TASK_FINISHED: SignalName
 QUERY_NAME_UNSPECIFIED: QueryName
 QUERY_NAME_SESSION_STATE: QueryName
 QUERY_NAME_TASK_STATE: QueryName

@@ -40,7 +40,7 @@ message CancelTaskSignal {
 // SessionState 是 session_state 查询的结果。
 message SessionState {
   string session_id = 1;
-  // 排队等待的写 Task，按执行顺序。
+  // 排队等待的 Task，按接受顺序：写 Task 等前一个写 Task 结束，只读 Task 等并行名额。
   repeated string queued_task_ids = 2;
   string running_write_task_id = 3;
   repeated string running_read_only_task_ids = 4;

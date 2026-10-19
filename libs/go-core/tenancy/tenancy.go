@@ -53,13 +53,17 @@ func (s Scope) TenantContext() (*commonv1.TenantContext, error) {
 	if s.IsPlatform() {
 		return nil, providererr.New(providererr.Denied, "platform_scope", "平台作用域没有租户上下文")
 	}
-	return &commonv1.TenantContext{
+	t := &commonv1.TenantContext{
 		TenantId:    s.TenantID,
 		UserId:      s.UserID,
 		WorkspaceId: s.WorkspaceID,
 		SessionId:   s.SessionID,
-		Trace:       &commonv1.TraceContext{Traceparent: s.Traceparent, Tracestate: s.Tracestate},
-	}, nil
+	}
+	// 没有 trace 上下文时不带空的 TraceContext，与原始输入保持一致。
+	if s.Traceparent != "" || s.Tracestate != "" {
+		t.Trace = &commonv1.TraceContext{Traceparent: s.Traceparent, Tracestate: s.Tracestate}
+	}
+	return t, nil
 }
 
 // TenantScope 校验并复制租户上下文。所有 Provider 实现的 Bind 都调用它。

@@ -83,6 +83,9 @@ const (
 	SignalName_SIGNAL_NAME_CANCEL_TASK SignalName = 2
 	// 发给 Task 工作流，载荷为 HumanReplySignal。
 	SignalName_SIGNAL_NAME_HUMAN_REPLY SignalName = 3
+	// Task 工作流结束时（done、abort、取消或失败）发给 Session 工作流，载荷为 TaskWorkflowResult。
+	// Session 工作流 Continue-As-New 之后拿不到上一次运行启动的子工作流的 future，只能靠它得知结束。
+	SignalName_SIGNAL_NAME_TASK_FINISHED SignalName = 4
 )
 
 // Enum value maps for SignalName.
@@ -92,12 +95,14 @@ var (
 		1: "SIGNAL_NAME_SUBMIT_TASK",
 		2: "SIGNAL_NAME_CANCEL_TASK",
 		3: "SIGNAL_NAME_HUMAN_REPLY",
+		4: "SIGNAL_NAME_TASK_FINISHED",
 	}
 	SignalName_value = map[string]int32{
-		"SIGNAL_NAME_UNSPECIFIED": 0,
-		"SIGNAL_NAME_SUBMIT_TASK": 1,
-		"SIGNAL_NAME_CANCEL_TASK": 2,
-		"SIGNAL_NAME_HUMAN_REPLY": 3,
+		"SIGNAL_NAME_UNSPECIFIED":   0,
+		"SIGNAL_NAME_SUBMIT_TASK":   1,
+		"SIGNAL_NAME_CANCEL_TASK":   2,
+		"SIGNAL_NAME_HUMAN_REPLY":   3,
+		"SIGNAL_NAME_TASK_FINISHED": 4,
 	}
 )
 
@@ -255,13 +260,14 @@ const file_agentruntime_workflow_v1_names_proto_rawDesc = "" +
 	"\fWorkflowType\x12\x1d\n" +
 	"\x19WORKFLOW_TYPE_UNSPECIFIED\x10\x00\x12.\n" +
 	"\x15WORKFLOW_TYPE_SESSION\x10\x01\x1a\x13\x92\xb5\x18\x0fSessionWorkflow\x12(\n" +
-	"\x12WORKFLOW_TYPE_TASK\x10\x02\x1a\x10\x92\xb5\x18\fTaskWorkflow*\xb3\x01\n" +
+	"\x12WORKFLOW_TYPE_TASK\x10\x02\x1a\x10\x92\xb5\x18\fTaskWorkflow*\xe5\x01\n" +
 	"\n" +
 	"SignalName\x12\x1b\n" +
 	"\x17SIGNAL_NAME_UNSPECIFIED\x10\x00\x12,\n" +
 	"\x17SIGNAL_NAME_SUBMIT_TASK\x10\x01\x1a\x0f\x92\xb5\x18\vsubmit_task\x12,\n" +
 	"\x17SIGNAL_NAME_CANCEL_TASK\x10\x02\x1a\x0f\x92\xb5\x18\vcancel_task\x12,\n" +
-	"\x17SIGNAL_NAME_HUMAN_REPLY\x10\x03\x1a\x0f\x92\xb5\x18\vhuman_reply*\x83\x01\n" +
+	"\x17SIGNAL_NAME_HUMAN_REPLY\x10\x03\x1a\x0f\x92\xb5\x18\vhuman_reply\x120\n" +
+	"\x19SIGNAL_NAME_TASK_FINISHED\x10\x04\x1a\x11\x92\xb5\x18\rtask_finished*\x83\x01\n" +
 	"\tQueryName\x12\x1a\n" +
 	"\x16QUERY_NAME_UNSPECIFIED\x10\x00\x12/\n" +
 	"\x18QUERY_NAME_SESSION_STATE\x10\x01\x1a\x11\x92\xb5\x18\rsession_state\x12)\n" +

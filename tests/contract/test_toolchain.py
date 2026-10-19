@@ -47,6 +47,7 @@ UV_MEMBERS = (
     "services/py-memory",
     "services/py-learning",
     "tests/contract",
+    "tests/e2e",
 )
 GENERATED_DIRS = (PROTO_DIR / "gen" / "go", PROTO_DIR / "gen" / "python")
 GENERATED_SUFFIXES = (".pb.go", ".connect.go", "_pb2.py", "_pb2.pyi", "_pb2_grpc.py")

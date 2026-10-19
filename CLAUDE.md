@@ -75,7 +75,7 @@
 
 ## 仓库结构
 
-按设计书 4.15 建立（S-01）。`/tests/contract` 不在 4.15 中，经人确认后加入。
+按设计书 4.15 建立（S-01）。`/tests/contract` 与 `/tests/e2e` 不在 4.15 中，经人确认后加入。
 
 ```text
 /proto                      # protobuf，Buf 生成代码并做兼容性检查
@@ -91,6 +91,7 @@
 /libs/py-core               # Python 共享库 agentruntime-core：Provider 接口、错误模型、租户绑定、一致性测试（S-02）
 /libs/go-core               # Go 共享库：同上（S-02）
 /tests/contract             # 跨语言、跨服务的契约验收测试（S-01；S-02 的接口一致性比对也在这里）
+/tests/e2e                  # 端到端验收测试：Temporal 开发服务 + task-service + Python Worker（S-03）
 /docs                       # 设计书、实施计划、参考文档
 ```
 
@@ -117,13 +118,18 @@ $env:UV_PROJECT_ENVIRONMENT = "$env:USERPROFILE\.local\venvs\agent-runtime"
 | 契约验收测试（S-01） | `uv run --package agentruntime-contract-tests pytest tests/contract` |
 | Python 共享库与一致性测试（S-02） | 在 `libs/py-core` 下：`uv run --package agentruntime-core --all-extras pytest tests` |
 | Go 构建与测试（含 `libs/go-core` 的一致性测试） | 在 `go.work` 列出的每个模块目录里运行 `go build ./...`、`go vet ./...`、`go test ./...` |
+| Worker 测试（S-03） | 在 `services/py-worker` 下：`uv run --package agentruntime-worker --all-extras pytest tests` |
+| 端到端测试（S-03） | 在 `tests/e2e` 下：`uv run --package agentruntime-e2e-tests pytest`（自己拉起 Temporal 开发服务、task-service 与 Worker） |
+| 更新 golden 事件历史 | 跑端到端测试时设 `AR_UPDATE_GOLDEN_HISTORIES=1`，写入 `services/go-task-service/internal/session/testdata/histories` 与 `services/py-worker/tests/histories`；结果人审后提交 |
+| 重放事件历史 | Go：在 `services/go-task-service` 下 `go run ./cmd/task-service replay --dir <目录>`；Python：`uv run --package agentruntime-worker python -m agentruntime_worker.replay --dir <目录>` |
 | 本地 Temporal 开发服务 | `temporal server start-dev` |
+| 本地跑整套 | `task-service serve`（环境变量见 `internal/config`，至少要 `AR_TEMPORAL_ADDRESS`、`AR_DEV_SIGNING_KEY`）；`python -m agentruntime_worker --queues task,decision,model,program`；令牌用 `task-service dev-token --tenant t1 --user u1` |
 
 契约变更走 S-01 流程：改 proto 或 schema → `buf generate` → 跑契约测试 → 人审通过后用 `buf build -o proto/breaking-baseline.binpb` 更新兼容性基线。
 
 依赖解析受根 `pyproject.toml` 的 `exclude-newer` 约束，只取发布满两周的版本；升级时有意识地往后挪这个日期。
 
-重放测试的命令在 S-03 补上。
+重放是硬门槛：`go test` 与 `pytest` 都会回放 golden 事件历史，并验证调换 `replay-mutation:A/B` 两行后重放必须失败。改变命令序列的修改要加版本分支；golden 历史只在有意识地更新时重新生成。
 
 代码托管在 GitHub（私有仓库，`gh` 已登录）；每完成一个小阶段就提交并推送。
 

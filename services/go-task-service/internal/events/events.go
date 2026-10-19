@@ -1,0 +1,226 @@
+// Package events 是 Task 事件的推流与 SSE 端点（设计书 4.14）：Session 工作流的 activity 把 TaskEvent
+// 追加到 Cache 中该 Task 的流，SSE 端点从流里读出来推给客户端，断线后凭 Last-Event-ID 续传。
+// event_id 就是 Cache 流里的 id，从 1 开始严格递增。
+package events
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/cache"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/ingress"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
+	taskapiv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/taskapi/v1"
+
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/ids"
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/taskstore"
+)
+
+// 流里的事件与 SSE 的 data 都用 proto 字段名，与 /schemas 的 JSON 载荷一致。
+var marshal = protojson.MarshalOptions{UseProtoNames: true}
+
+const defaultHeartbeat = 15 * time.Second
+
+// StreamName 是 Task 事件流在 Cache 里的名字。
+func StreamName(taskID string) string { return "task:" + taskID }
+
+// URL 是 Task 的 SSE 订阅地址。
+func URL(publicBaseURL, taskID string) string {
+	return strings.TrimRight(publicBaseURL, "/") + "/v1/tasks/" + taskID + "/events"
+}
+
+// EventName 是 SSE 的 event 字段：TaskEventType 去掉前缀后的小写名，例如 task_finished。
+func EventName(t taskapiv1.TaskEventType) string {
+	return strings.ToLower(strings.TrimPrefix(t.String(), "TASK_EVENT_TYPE_"))
+}
+
+// Append 把事件追加到 Task 的流，返回分配的 event_id。ev.EventId 不写入流。
+func Append(ctx context.Context, c cache.Cache, ev *taskapiv1.TaskEvent, retention time.Duration) (int64, error) {
+	stored := proto.Clone(ev).(*taskapiv1.TaskEvent)
+	stored.EventId = 0
+	data, err := marshal.Marshal(stored)
+	if err != nil {
+		return 0, err
+	}
+	return c.AppendEvent(ctx, StreamName(ev.GetTaskId()), data, retention)
+}
+
+// Decode 把流里的一条还原成 TaskEvent，EventId 取流里的 id。
+func Decode(se cache.StreamEvent) (*taskapiv1.TaskEvent, error) {
+	ev := &taskapiv1.TaskEvent{}
+	if err := protojson.Unmarshal(se.Data, ev); err != nil {
+		return nil, fmt.Errorf("events: 无法解码事件 %d：%w", se.ID, err)
+	}
+	ev.EventId = se.ID
+	return ev, nil
+}
+
+// HandlerDeps 是 SSE 端点的依赖。
+type HandlerDeps struct {
+	Ingress ingress.Ingress
+	Cache   cache.Provider
+	Store   relational.Provider
+	// Heartbeat 是空闲时发注释行的间隔，防止代理断开连接；0 表示 15 秒。
+	Heartbeat time.Duration
+}
+
+// NewHandler 返回 GET /v1/tasks/{task_id}/events 的处理器。先认证，再确认 Task 属于该租户，
+// 然后从 Last-Event-ID（请求头或 last_event_id 查询参数）之后开始推送，推完 task_finished 后结束。
+func NewHandler(d HandlerDeps) http.Handler {
+	if d.Heartbeat <= 0 {
+		d.Heartbeat = defaultHeartbeat
+	}
+	h := &handler{d: d, tasks: taskstore.New(d.Store)}
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /v1/tasks/{task_id}/events", h.serve)
+	return mux
+}
+
+type handler struct {
+	d     HandlerDeps
+	tasks *taskstore.Store
+}
+
+// BearerToken 取出 Authorization: Bearer 的令牌。
+func BearerToken(header string) string {
+	if token, ok := strings.CutPrefix(header, "Bearer "); ok {
+		return strings.TrimSpace(token)
+	}
+	return ""
+}
+
+func (h *handler) serve(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	id, err := h.d.Ingress.Authenticate(ctx, ingress.Credentials{BearerToken: BearerToken(r.Header.Get("Authorization"))})
+	if err != nil {
+		http.Error(w, "unauthenticated", http.StatusUnauthorized)
+		return
+	}
+	taskID := r.PathValue("task_id")
+	if !ids.ValidTaskID(taskID) {
+		http.Error(w, "invalid task_id", http.StatusBadRequest)
+		return
+	}
+	after, err := lastEventID(r)
+	if err != nil {
+		http.Error(w, "invalid Last-Event-ID", http.StatusBadRequest)
+		return
+	}
+	tenant, err := ingress.TenantContextFor(id, "", "", "", nil)
+	if err != nil {
+		http.Error(w, "permission denied", http.StatusForbidden)
+		return
+	}
+	if _, ok, err := h.tasks.LookupTask(ctx, tenant, taskID); err != nil {
+		http.Error(w, "unavailable", http.StatusServiceUnavailable)
+		return
+	} else if !ok {
+		http.Error(w, "task not found", http.StatusNotFound)
+		return
+	}
+	c, err := h.d.Cache.Bind(tenant)
+	if err != nil {
+		http.Error(w, "unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	sub, err := c.Subscribe(ctx, StreamName(taskID), after)
+	if err != nil {
+		http.Error(w, "unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	defer sub.Close()
+
+	flusher, _ := w.(http.Flusher)
+	header := w.Header()
+	header.Set("Content-Type", "text/event-stream; charset=utf-8")
+	header.Set("Cache-Control", "no-cache")
+	header.Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+	flush := func() {
+		if flusher != nil {
+			flusher.Flush()
+		}
+	}
+	flush()
+
+	type item struct {
+		ev  cache.StreamEvent
+		err error
+	}
+	items := make(chan item)
+	go func() {
+		defer close(items)
+		for {
+			ev, err := sub.Next(ctx)
+			select {
+			case items <- item{ev, err}:
+			case <-ctx.Done():
+				return
+			}
+			if err != nil {
+				return
+			}
+		}
+	}()
+
+	ticker := time.NewTicker(h.d.Heartbeat)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if _, err := fmt.Fprint(w, ": ping\n\n"); err != nil {
+				return
+			}
+			flush()
+		case it, ok := <-items:
+			if !ok || it.err != nil {
+				return
+			}
+			ev, err := Decode(it.ev)
+			if err != nil {
+				return
+			}
+			data, err := marshal.Marshal(ev)
+			if err != nil {
+				return
+			}
+			if _, err := fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", ev.GetEventId(), EventName(ev.GetType()), data); err != nil {
+				return
+			}
+			flush()
+			if ev.GetType() == taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_FINISHED {
+				return
+			}
+		}
+	}
+}
+
+var errBadEventID = errors.New("Last-Event-ID 必须是非负整数")
+
+func lastEventID(r *http.Request) (int64, error) {
+	raw := r.Header.Get("Last-Event-ID")
+	if raw == "" {
+		raw = r.URL.Query().Get("last_event_id")
+	}
+	if raw == "" {
+		return 0, nil
+	}
+	n, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+	if err != nil || n < 0 {
+		return 0, errBadEventID
+	}
+	return n, nil
+}

@@ -1,0 +1,31 @@
+[project]
+name = "agentruntime-e2e-tests"
+version = "0.0.0"
+description = "S-03 端到端验收：Temporal 开发服务 + task-service + Python Worker，经 Task API 与 SSE 驱动"
+requires-python = ">=3.13"
+dependencies = [
+    "agentruntime-proto",
+    "agentruntime-worker",
+    "protobuf>=7.36.2,<8",
+    "pytest>=9.1",
+    "pytest-asyncio>=1.4",
+    "temporalio>=1.34",
+]
+
+[tool.uv.sources]
+agentruntime-proto = { workspace = true }
+agentruntime-worker = { workspace = true }
+
+[build-system]
+requires = ["hatchling>=1.32"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["e2e_support"]
+
+[tool.pytest.ini_options]
+testpaths = ["."]
+addopts = "-ra"
+xfail_strict = true
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

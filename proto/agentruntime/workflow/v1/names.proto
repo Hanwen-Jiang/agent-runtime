@@ -23,6 +23,9 @@ enum SignalName {
   SIGNAL_NAME_CANCEL_TASK = 2 [(agentruntime.common.v1.wire_name) = "cancel_task"];
   // 发给 Task 工作流，载荷为 HumanReplySignal。
   SIGNAL_NAME_HUMAN_REPLY = 3 [(agentruntime.common.v1.wire_name) = "human_reply"];
+  // Task 工作流结束时（done、abort、取消或失败）发给 Session 工作流，载荷为 TaskWorkflowResult。
+  // Session 工作流 Continue-As-New 之后拿不到上一次运行启动的子工作流的 future，只能靠它得知结束。
+  SIGNAL_NAME_TASK_FINISHED = 4 [(agentruntime.common.v1.wire_name) = "task_finished"];
 }
 
 enum QueryName {
