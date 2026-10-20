@@ -1,8 +1,11 @@
-# 夜间任务（计划 S-07 验收“套件进入 CI 的夜间任务”）：端到端测试与故障注入套件。
-#
-# tests/e2e 自己拉起 Temporal 开发服务、task-service（现场编译）与 Python Worker；faults/ 是故障注入与恢复套件
-# （标记 faults，较慢）。最后一个模块回放全部导出的事件历史（Go 与 Python 两边）。
-# 工具链与 CLAUDE.md 的常用命令一致：Go 1.27、uv 0.12（Python 3.13）、Temporal CLI 1.9.1。
+# 夜间任务：
+#   - 端到端测试与故障注入套件（计划 S-07 验收“套件进入 CI 的夜间任务”）。tests/e2e 自己拉起 Temporal 开发服务、
+#     task-service（现场编译）与 Python Worker；faults/ 是故障注入与恢复套件（标记 faults，较慢）；
+#     test_isolation.py 是 Task API 的越权用例（S-12a）。最后一个模块回放全部导出的事件历史（Go 与 Python 两边）。
+#     之后把业务库换成 Postgres（AR_RELATIONAL_DSN，行级安全）再跑一遍不含故障注入的部分。
+#   - Go 的全部测试（计划 S-12a 验收“越权测试套件进入 CI”）：各 Provider 的一致性测试（含越权用例），
+#     Postgres 业务库的行级安全（用 runner 预装的 Postgres，测试自己 initdb 临时实例）。
+# 工具链与 CLAUDE.md 的常用命令一致：Go 1.27、uv 0.12（Python 3.13）、Temporal CLI 1.9.1、PostgreSQL（本机 17，runner 预装版本）。
 name: nightly
 
 on:
@@ -46,9 +49,61 @@ jobs:
         working-directory: tests/e2e
         run: uv run --package agentruntime-e2e-tests pytest -ra --junitxml="$RUNNER_TEMP/e2e-junit.xml"
 
+      - name: 端到端测试，业务库换成 Postgres（行级安全；不含故障注入套件）
+        working-directory: tests/e2e
+        run: |
+          bin="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)"
+          data="$RUNNER_TEMP/pg"
+          "$bin/initdb" -D "$data" -U postgres -A trust -E UTF8 --no-locale
+          "$bin/pg_ctl" -D "$data" -l "$RUNNER_TEMP/postgres.log" -w start \
+            -o "-p 55432 -c listen_addresses=127.0.0.1 -c unix_socket_directories=$RUNNER_TEMP"
+          "$bin/psql" -h 127.0.0.1 -p 55432 -U postgres -d postgres -X -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE agentruntime_app LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE" \
+            -c "CREATE DATABASE e2e OWNER agentruntime_app"
+          AR_RELATIONAL_DSN="postgres://agentruntime_app@127.0.0.1:55432/e2e?sslmode=disable" \
+            uv run --package agentruntime-e2e-tests pytest -ra -m "not faults" --junitxml="$RUNNER_TEMP/e2e-postgres-junit.xml"
+
       - name: 上传测试报告
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: e2e-junit
-          path: ${{ runner.temp }}/e2e-junit.xml
+          path: |
+            ${{ runner.temp }}/e2e-junit.xml
+            ${{ runner.temp }}/e2e-postgres-junit.xml
+
+  go-cross-tenant:
+    name: Go 测试（一致性与越权用例，含 Postgres 行级安全）
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TEMPORAL_CLI_VERSION: "1.9.1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+          cache-dependency-path: "**/go.sum"
+
+      - name: 安装 Temporal CLI（Temporal 适配器的一致性测试用）
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL "https://github.com/temporalio/cli/releases/download/v${TEMPORAL_CLI_VERSION}/temporal_cli_${TEMPORAL_CLI_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" temporal
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: 找到预装的 Postgres 二进制（initdb、pg_ctl、psql）
+        run: |
+          bin="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)"
+          test -x "$bin/initdb"
+          echo "AR_POSTGRES_BIN=$bin" >> "$GITHUB_ENV"
+
+      - name: go test（go.work 里的每个模块）
+        run: |
+          set -e
+          for dir in $(go list -m -f '{{.Dir}}'); do
+            echo "::group::$dir"
+            (cd "$dir" && go test -count=1 ./...)
+            echo "::endgroup::"
+          done

@@ -31,6 +31,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 	"google.golang.org/protobuf/types/known/durationpb"
 
+	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/postgres"
 	temporaladapter "github.com/agentruntime/agent-runtime/libs/go-core/adapters/temporal"
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/temporal/claimcheck"
 	"github.com/agentruntime/agent-runtime/libs/go-core/clock"
@@ -39,6 +40,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/localingress"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/memcache"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/sqlitestore"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	workflowv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1"
 
@@ -120,6 +122,18 @@ func newClaimCheck(objectStoreDir, secretsFile string, threshold int) (*claimche
 		return nil, err
 	}
 	return claimcheck.New(claimcheck.Options{Objects: objects, Secrets: secrets, Threshold: threshold})
+}
+
+// newRelationalStore 构造业务库：配置了 AR_RELATIONAL_DSN 时用 Postgres（行级安全，S-12a），否则用 SQLite 开发实现。
+func newRelationalStore(ctx context.Context, cfg config.Config) (relational.Provider, error) {
+	if !cfg.RelationalDSN.IsZero() {
+		return postgres.New(ctx, postgres.Options{DSN: string(cfg.RelationalDSN.Reveal())})
+	}
+	dir := filepath.Join(cfg.DataDir, "relational")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return nil, err
+	}
+	return sqlitestore.New(sqlitestore.Options{Dir: dir})
 }
 
 func replay(args []string, stdout, stderr io.Writer, getenv func(string) string) int {
@@ -222,11 +236,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	defer c.Close()
 
 	clk := clock.System{}
-	relDir := filepath.Join(cfg.DataDir, "relational")
-	if err := os.MkdirAll(relDir, 0o755); err != nil {
-		return err
-	}
-	store, err := sqlitestore.New(sqlitestore.Options{Dir: relDir})
+	store, err := newRelationalStore(ctx, cfg)
 	if err != nil {
 		return err
 	}

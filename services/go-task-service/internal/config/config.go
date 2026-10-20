@@ -25,6 +25,7 @@ const (
 	EnvObjectStoreDir      = "AR_OBJECT_STORE_DIR"
 	EnvSecretsFile         = "AR_SECRETS_FILE"
 	EnvClaimCheckThreshold = "AR_CLAIM_CHECK_THRESHOLD_BYTES"
+	EnvRelationalDSN       = "AR_RELATIONAL_DSN"
 	EnvRateLimitPerMinute  = "AR_DEV_RATE_LIMIT_PER_MINUTE"
 	EnvReadOnlyLimit       = "AR_SESSION_READ_ONLY_LIMIT"
 	EnvContinueAsNewTasks  = "AR_SESSION_CAN_TASKS"
@@ -75,6 +76,8 @@ type Config struct {
 	SecretsFile    string
 	// ClaimCheckThreshold 是 Claim-Check 的阈值（字节），默认 64 KiB。
 	ClaimCheckThreshold int
+	// RelationalDSN 是业务库（Postgres，行级安全）的连接串；为空时用 SQLite 开发实现（S-12a）。可能带口令，打印只显示掩码。
+	RelationalDSN secret.Value
 	// RateLimitPerMinute 是内置 Ingress 每个租户每个路由每分钟的请求上限。
 	RateLimitPerMinute int
 	Session            session.Config
@@ -108,6 +111,9 @@ func FromEnv(getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("缺少 %s", EnvDevSigningKey)
 	}
 	cfg.DevSigningKey = secret.New(key)
+	if dsn := getenv(EnvRelationalDSN); dsn != "" {
+		cfg.RelationalDSN = secret.New(dsn)
+	}
 	if u, err := url.Parse(cfg.PublicBaseURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return Config{}, fmt.Errorf("%s 必须是 http 或 https 地址", EnvPublicBaseURL)
 	}

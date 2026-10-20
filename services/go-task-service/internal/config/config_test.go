@@ -84,6 +84,30 @@ func TestFromEnvClaimCheck(t *testing.T) {
 	}
 }
 
+// S-12a：配置了 AR_RELATIONAL_DSN 时业务库用 Postgres（行级安全）；连接串可能带口令，按密钥对待。
+func TestFromEnvRelationalDSN(t *testing.T) {
+	cfg, err := FromEnv(env(base()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.RelationalDSN.IsZero() {
+		t.Error("没配置时业务库用 SQLite（开发实现）")
+	}
+	m := base()
+	dsn := "postgres://app:s3cret-password@db.internal:5432/agentruntime"
+	m[EnvRelationalDSN] = dsn
+	cfg, err = FromEnv(env(m))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.RelationalDSN.RevealString() != dsn {
+		t.Error("连接串没有读进来")
+	}
+	if strings.Contains(fmt.Sprintf("%v %+v", cfg, cfg), "s3cret-password") {
+		t.Error("打印配置时不能带出数据库口令")
+	}
+}
+
 func TestFromEnvRejectsBadValues(t *testing.T) {
 	cases := map[string]map[string]string{
 		"缺少 Temporal 地址": {EnvTemporalAddress: ""},

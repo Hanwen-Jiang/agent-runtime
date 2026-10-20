@@ -93,7 +93,7 @@
 /tests/contract             # 跨语言、跨服务的契约验收测试（S-01；S-02 的接口一致性比对也在这里）
 /tests/e2e                  # 端到端验收测试：Temporal 开发服务 + task-service + Python Worker（S-03）
 /tests/e2e/faults           # 故障注入与恢复套件（S-07）；故障 Worker 与外部 ledger 在 tests/e2e/e2e_support
-/.github/workflows          # CI：nightly.yml 每晚跑 tests/e2e（含故障注入套件）
+/.github/workflows          # CI：nightly.yml 每晚跑 tests/e2e（含故障注入套件与越权用例）与全部 Go 测试（含 Postgres 行级安全）
 /docs                       # 设计书、实施计划、参考文档
 ```
 
@@ -103,7 +103,7 @@ Go 模块路径前缀暂定 `github.com/agentruntime/agent-runtime`，schema 的
 
 ## 常用命令
 
-工具链：Go 1.27、uv 0.12（Python 3.13）、buf 1.73、Git 2.56、Temporal CLI 1.9.1。本机装在 `%USERPROFILE%\.local` 下（`bin`、`go`、`mingit`、`python`），不要装到 AppData：Claude 桌面应用里写入 AppData 的文件会被重定向到应用私有目录，用户自己的终端看不到。DurableEngine 的一致性测试用 PATH 上的 `temporal` 启动开发服务，不让 SDK 自行下载。
+工具链：Go 1.27、uv 0.12（Python 3.13）、buf 1.73、Git 2.56、Temporal CLI 1.9.1、PostgreSQL 17。本机装在 `%USERPROFILE%\.local` 下（`bin`、`go`、`mingit`、`python`、`pgsql`），不要装到 AppData：Claude 桌面应用里写入 AppData 的文件会被重定向到应用私有目录，用户自己的终端看不到。DurableEngine 的一致性测试用 PATH 上的 `temporal` 启动开发服务，不让 SDK 自行下载。Postgres 业务库的测试（S-12a：`libs/go-core/adapters/postgres` 与 task-service 的 `internal/taskstore`）用 PATH 上（或 `AR_POSTGRES_BIN` 指定目录里）的 `initdb`、`pg_ctl`、`psql` 自己拉起临时实例；本机要把 `%USERPROFILE%\.local\pgsql\bin` 放进 PATH。缺这些工具时测试失败，设 `AR_ALLOW_MISSING_TOOLS=1` 改为跳过。
 
 仓库在网络共享盘（`Z:` 即 `\\172.31.0.1\VMShare`）上时，Temporal Python SDK 的原生模块不能从共享盘加载，虚拟环境必须放在本地盘：
 
@@ -119,14 +119,14 @@ $env:UV_PROJECT_ENVIRONMENT = "$env:USERPROFILE\.local\venvs\agent-runtime"
 | 生成代码 | `buf generate`（远程插件，需要联网），生成结果一并提交 |
 | 契约验收测试（S-01） | `uv run --package agentruntime-contract-tests pytest tests/contract` |
 | Python 共享库与一致性测试（S-02） | 在 `libs/py-core` 下：`uv run --package agentruntime-core --all-extras pytest tests` |
-| Go 构建与测试（含 `libs/go-core` 的一致性测试） | 在 `go.work` 列出的每个模块目录里运行 `go build ./...`、`go vet ./...`、`go test ./...` |
+| Go 构建与测试（含 `libs/go-core` 的一致性测试与越权用例） | 在 `go.work` 列出的每个模块目录里运行 `go build ./...`、`go vet ./...`、`go test ./...`（要 PATH 上有 `temporal` 与 Postgres 二进制，见上） |
 | Worker 测试（S-03） | 在 `services/py-worker` 下：`uv run --package agentruntime-worker --all-extras pytest tests` |
 | 端到端测试（S-03） | 在 `tests/e2e` 下：`uv run --package agentruntime-e2e-tests pytest`（自己拉起 Temporal 开发服务、task-service 与 Worker；含故障注入套件，约 15 分钟）；跳过故障注入套件加 `-m "not faults"` |
 | 故障注入与恢复套件（S-07） | 在 `tests/e2e` 下：`uv run --package agentruntime-e2e-tests pytest faults`；夜间任务见 `.github/workflows/nightly.yml`。故障由故障计划注入（`e2e_support/faults.py`），外部副作用记在外部 ledger（`e2e_support/ledger.py`） |
 | 更新 golden 事件历史 | 设 `AR_UPDATE_GOLDEN_HISTORIES=1` 再跑测试：端到端测试写 Session 工作流与 S-03 的 Task 工作流历史（`services/go-task-service/internal/session/testdata/histories`、`services/py-worker/tests/histories`），py-worker 测试写 Stage Runner 与 Node Executor 各条路径的历史（`services/py-worker/tests/histories/stage_*.json`、`exec_*.json` 等）。只补缺的，不覆盖已有的 golden（它们证明旧版本的历史仍能回放）；要重新生成某一份先删掉它。结果人审后提交 |
 | 重放事件历史 | Go：在 `services/go-task-service` 下 `go run ./cmd/task-service replay --dir <目录>`；Python：`uv run --package agentruntime-worker python -m agentruntime_worker.replay --dir <目录>` |
 | 本地 Temporal 开发服务 | `temporal server start-dev` |
-| 本地跑整套 | `task-service serve`（环境变量见 `internal/config`，至少要 `AR_TEMPORAL_ADDRESS`、`AR_DEV_SIGNING_KEY`；租户的 effect 上限默认 read，要跑写节点用 `AR_DEV_TENANT_POLICIES_FILE` 指向租户策略文件）；`python -m agentruntime_worker --queues task,decision,model,program`；令牌用 `task-service dev-token --tenant t1 --user u1`。两个进程的 `AR_OBJECT_STORE_DIR` 与 `AR_SECRETS_FILE` 要指向同一处：超过阈值（`AR_CLAIM_CHECK_THRESHOLD_BYTES`，默认 64 KiB）的 Temporal 载荷由 Claim-Check 卸载到 ObjectStore（S-06），两边要互相取回；回放工具（`replay`）也读这两个变量 |
+| 本地跑整套 | `task-service serve`（环境变量见 `internal/config`，至少要 `AR_TEMPORAL_ADDRESS`、`AR_DEV_SIGNING_KEY`；租户的 effect 上限默认 read，要跑写节点用 `AR_DEV_TENANT_POLICIES_FILE` 指向租户策略文件）；`python -m agentruntime_worker --queues task,decision,model,program`；令牌用 `task-service dev-token --tenant t1 --user u1`。两个进程的 `AR_OBJECT_STORE_DIR` 与 `AR_SECRETS_FILE` 要指向同一处：超过阈值（`AR_CLAIM_CHECK_THRESHOLD_BYTES`，默认 64 KiB）的 Temporal 载荷由 Claim-Check 卸载到 ObjectStore（S-06），两边要互相取回；回放工具（`replay`）也读这两个变量。业务库默认是 `AR_DATA_DIR` 下的 SQLite；设 `AR_RELATIONAL_DSN` 改用 Postgres（行级安全，S-12a），连接的角色不能是超级用户或带 BYPASSRLS |
 
 契约变更走 S-01 流程：改 proto 或 schema → `buf generate` → 跑契约测试 → 人审通过后用 `buf build -o proto/breaking-baseline.binpb` 更新兼容性基线。
 
