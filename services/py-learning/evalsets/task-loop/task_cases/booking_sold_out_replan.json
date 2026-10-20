@@ -4,9 +4,8 @@
   "split": "dev",
   "category": "booking_payment",
   "review": {
-    "status": "confirmed",
-    "confirmed_by": "Hanwen-Jiang",
-    "confirmed_at": "2026-10-20"
+    "status": "draft",
+    "notes": "S-09：Planner 的输入补上了上一轮（Stage、结果与 Reviewer 的 Verdict），replan 才知道要保留哪些 Node、上次为什么卡住。已验证事实里写明比价结果来自 compare。"
   },
   "description": "付款时最便宜的航班售罄，Reviewer 判定 replan：保留已验证的比价结果（compare），直接改订次便宜的航班；付款仍按 write_irreversible 声明（有 gate）。",
   "planner": {
@@ -21,7 +20,7 @@
           "effect_ceiling": "write_irreversible"
         },
         "facts": [
-          "比价结果：MU5103 960 元、CA1519 990 元、HO1253 1020 元",
+          "比价结果（compare）：MU5103 960 元、CA1519 990 元、HO1253 1020 元",
           "MU5103 付款时已售罄"
         ],
         "rounds": [
@@ -40,6 +39,63 @@
             "cost_usd": 0.05
           }
         ]
+      },
+      "last_round": {
+        "stage": {
+          "seq": 2,
+          "goal": "付款出票",
+          "exit_when": "出票成功",
+          "nodes": [
+            {
+              "id": "pay",
+              "kind": "atomic",
+              "template": "book_and_pay@v1",
+              "executor": "program",
+              "effect": "write_irreversible",
+              "role": "act",
+              "inputs": {
+                "flight": "MU5103",
+                "price_max": 1000
+              }
+            },
+            {
+              "id": "answer",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "pay"
+              ]
+            }
+          ]
+        },
+        "results": {
+          "pay": {
+            "role": "act",
+            "status": "failed",
+            "failure_class": "denied",
+            "error": "MU5103 付款时已售罄",
+            "attempts": 1
+          },
+          "answer": {
+            "role": "deliver",
+            "status": "skipped",
+            "failure_class": "upstream_failed"
+          }
+        },
+        "verdict": {
+          "verdict": "replan",
+          "reason": "最便宜的航班付款时售罄，改订次便宜的",
+          "replan": {
+            "keep_nodes": [
+              "compare"
+            ],
+            "stuck_reason": "MU5103 已售罄；比价结果仍然有效，直接改订次便宜的航班"
+          }
+        }
       },
       "context": {
         "risk_before": "write_irreversible",
@@ -114,7 +170,7 @@
           "effect_ceiling": "write_irreversible"
         },
         "facts": [
-          "比价结果：MU5103 960 元、CA1519 990 元、HO1253 1020 元",
+          "比价结果（compare）：MU5103 960 元、CA1519 990 元、HO1253 1020 元",
           "MU5103 付款时已售罄"
         ],
         "rounds": [

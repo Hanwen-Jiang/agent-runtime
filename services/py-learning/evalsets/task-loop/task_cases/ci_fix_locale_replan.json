@@ -4,9 +4,8 @@
   "split": "dev",
   "category": "ci_fix",
   "review": {
-    "status": "confirmed",
-    "confirmed_by": "Hanwen-Jiang",
-    "confirmed_at": "2026-10-20"
+    "status": "draft",
+    "notes": "S-09：Planner 的输入补上了上一轮（Stage、结果与 Reviewer 的 Verdict），replan 才知道要保留哪些 Node、上次为什么卡住。"
   },
   "description": "Reviewer 判定 replan 后重做剩余部分（Triage = replan）：上一轮已经读过并验证的 CI 日志（read_log）不再重做，新 Stage 针对 locale 差异修复。",
   "planner": {
@@ -33,6 +32,76 @@
             "cost_usd": 0.5
           }
         ]
+      },
+      "last_round": {
+        "stage": {
+          "seq": 1,
+          "goal": "读 CI 日志并修复格式化函数",
+          "exit_when": "测试全部通过",
+          "nodes": [
+            {
+              "id": "read_log",
+              "kind": "atomic",
+              "template": "read_ci_log@v1",
+              "executor": "program",
+              "effect": "read",
+              "role": "fetch"
+            },
+            {
+              "id": "fix",
+              "kind": "goal",
+              "goal": "修好格式化函数，让 test_currency_format 通过",
+              "done_when": "run_tests 全部通过",
+              "mode": "tool_loop",
+              "after": [
+                "read_log"
+              ],
+              "output_schema": {
+                "type": "object"
+              },
+              "quality": {
+                "type": "revise",
+                "judge": "run_tests@v1",
+                "max_rounds": 2
+              },
+              "effect_ceiling": "write_reversible",
+              "tools": [
+                "repo_read",
+                "repo_edit",
+                "shell_test"
+              ]
+            }
+          ]
+        },
+        "results": {
+          "read_log": {
+            "role": "fetch",
+            "status": "succeeded",
+            "result": {
+              "failing_test": "test_currency_format",
+              "expected": "¥1,234.50",
+              "actual": "1234.50",
+              "ci_locale": "C"
+            }
+          },
+          "fix": {
+            "role": "transform",
+            "status": "failed",
+            "failure_class": "invalid_output",
+            "error": "改了格式化函数，CI 上仍然失败：输出依赖系统 locale",
+            "attempts": 1
+          }
+        },
+        "verdict": {
+          "verdict": "replan",
+          "reason": "“格式化函数有错”的假设被证伪：问题在 CI 镜像的 locale",
+          "replan": {
+            "keep_nodes": [
+              "read_log"
+            ],
+            "stuck_reason": "CI 镜像的 locale 是 C，本地是 zh_CN；只改格式化函数没用"
+          }
+        }
       },
       "context": {
         "risk_before": "write_reversible",

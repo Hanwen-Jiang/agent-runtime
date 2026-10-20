@@ -4,9 +4,8 @@
   "split": "holdout",
   "category": "research_report",
   "review": {
-    "status": "confirmed",
-    "confirmed_by": "Hanwen-Jiang",
-    "confirmed_at": "2026-10-20"
+    "status": "draft",
+    "notes": "S-09：Planner 的输入补上了上一轮（Stage、结果与 Reviewer 的 Verdict），replan 才知道要保留哪些 Node、上次为什么卡住。"
   },
   "description": "Reviewer 判定 replan（自上而下的口径不一致）后改为自下而上：已验证的医院数量查询（q_hospital_count）不再重做。",
   "planner": {
@@ -35,6 +34,75 @@
             "cost_usd": 0.6
           }
         ]
+      },
+      "last_round": {
+        "stage": {
+          "seq": 1,
+          "goal": "自上而下估算",
+          "exit_when": "给出区间估计",
+          "nodes": [
+            {
+              "id": "q_hospital_count",
+              "kind": "goal",
+              "goal": "统计全国宠物医院的数量",
+              "done_when": "给出数量与统计口径",
+              "mode": "tool_loop",
+              "output_schema": {
+                "type": "object"
+              },
+              "effect_ceiling": "read",
+              "tools": [
+                "web_search",
+                "fetch_page"
+              ]
+            },
+            {
+              "id": "top_down",
+              "kind": "goal",
+              "goal": "按行业报告自上而下估算市场规模",
+              "done_when": "给出区间与依据",
+              "mode": "tool_loop",
+              "after": [
+                "q_hospital_count"
+              ],
+              "output_schema": {
+                "type": "object"
+              },
+              "effect_ceiling": "read",
+              "tools": [
+                "web_search",
+                "fetch_page"
+              ]
+            }
+          ]
+        },
+        "results": {
+          "q_hospital_count": {
+            "role": "transform",
+            "status": "succeeded",
+            "result": {
+              "hospitals": 26000,
+              "basis": "2025 年口径"
+            }
+          },
+          "top_down": {
+            "role": "transform",
+            "status": "failed",
+            "failure_class": "invalid_output",
+            "error": "两份行业报告的统计口径不一致，估算相差 4 倍",
+            "attempts": 1
+          }
+        },
+        "verdict": {
+          "verdict": "replan",
+          "reason": "自上而下的估算口径不一致，换成自下而上",
+          "replan": {
+            "keep_nodes": [
+              "q_hospital_count"
+            ],
+            "stuck_reason": "行业报告的口径不一致；改为按医院类型自下而上估算"
+          }
+        }
       },
       "context": {
         "risk_before": "read",

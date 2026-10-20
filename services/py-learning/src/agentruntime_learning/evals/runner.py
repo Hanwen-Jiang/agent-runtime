@@ -162,6 +162,7 @@ async def _plan(subject: Subject, case: TaskCase, eval_set: EvalSet, split: str)
         attachments=list(inp.get("attachments", [])),
         context=copy.deepcopy(inp["context"]),
         catalog=eval_set.catalog,
+        last_round=copy.deepcopy(inp.get("last_round")),
     )
     try:
         output = await subject.plan(planner_input)

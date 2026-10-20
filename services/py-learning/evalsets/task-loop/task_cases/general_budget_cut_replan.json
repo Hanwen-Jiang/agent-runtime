@@ -4,9 +4,8 @@
   "split": "dev",
   "category": "general",
   "review": {
-    "status": "confirmed",
-    "confirmed_by": "Hanwen-Jiang",
-    "confirmed_at": "2026-10-20"
+    "status": "draft",
+    "notes": "S-09：Planner 的输入补上了上一轮（Stage、结果与 Reviewer 的 Verdict），replan 才知道要保留哪些 Node、上次为什么卡住。"
   },
   "description": "用户插入新约束（预算砍到 0.5 美元）→ replan：只对剩余部分重新规划，已验证的查询（q_region、q_sku）不重做，换便宜的 Tier。",
   "planner": {
@@ -33,6 +32,79 @@
             "cost_usd": 0.12
           }
         ]
+      },
+      "last_round": {
+        "stage": {
+          "seq": 1,
+          "goal": "取数",
+          "exit_when": "三组数据齐全",
+          "nodes": [
+            {
+              "id": "q_region",
+              "kind": "atomic",
+              "template": "sql_query@v1",
+              "executor": "program",
+              "effect": "read",
+              "role": "fetch",
+              "inputs": {
+                "metric": "refund_rate",
+                "by": "region"
+              }
+            },
+            {
+              "id": "q_sku",
+              "kind": "atomic",
+              "template": "sql_query@v1",
+              "executor": "program",
+              "effect": "read",
+              "role": "fetch",
+              "inputs": {
+                "metric": "refund_rate",
+                "by": "sku"
+              }
+            },
+            {
+              "id": "q_reason",
+              "kind": "atomic",
+              "template": "sql_query@v1",
+              "executor": "program",
+              "effect": "read",
+              "role": "fetch",
+              "inputs": {
+                "metric": "refund_count",
+                "by": "reason"
+              }
+            }
+          ]
+        },
+        "results": {
+          "q_region": {
+            "role": "fetch",
+            "status": "succeeded",
+            "result": {
+              "rows": 12,
+              "top": "华东"
+            }
+          },
+          "q_sku": {
+            "role": "fetch",
+            "status": "succeeded",
+            "result": {
+              "rows": 40
+            }
+          },
+          "q_reason": {
+            "role": "fetch",
+            "status": "succeeded",
+            "result": {
+              "rows": 7
+            }
+          }
+        },
+        "verdict": {
+          "verdict": "continue",
+          "reason": "取数完成，进入归因"
+        }
       },
       "context": {
         "risk_before": "read",

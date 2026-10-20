@@ -12,6 +12,7 @@ from agentruntime_worker.config import (
     ENV_CLAIM_CHECK_THRESHOLD,
     ENV_DATA_DIR,
     ENV_OBJECT_STORE_DIR,
+    ENV_PLANNER,
     ENV_SECRETS_FILE,
     ENV_STUB_CALL_LOG,
     ENV_STUB_GATE_DIR,
@@ -115,3 +116,11 @@ def test_claim_check_config_from_env(tmp_path: Path) -> None:
 def test_config_rejects_bad_claim_check_threshold(value: str) -> None:
     with pytest.raises(ValueError):
         WorkerConfig.from_env({ENV_CLAIM_CHECK_THRESHOLD: value})
+
+
+def test_planner_defaults_to_the_stub_and_accepts_model() -> None:
+    """S-09：AR_PLANNER 选 Planner；默认是桩，端到端测试照旧。"""
+    assert WorkerConfig.from_env({}).planner == "stub"
+    assert WorkerConfig.from_env({ENV_PLANNER: "model"}).planner == "model"
+    with pytest.raises(ValueError, match=ENV_PLANNER):
+        WorkerConfig.from_env({ENV_PLANNER: "gpt"})

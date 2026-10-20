@@ -20,6 +20,9 @@ ENV_DATA_DIR = "AR_DATA_DIR"
 ENV_OBJECT_STORE_DIR = "AR_OBJECT_STORE_DIR"
 ENV_SECRETS_FILE = "AR_SECRETS_FILE"
 ENV_CLAIM_CHECK_THRESHOLD = "AR_CLAIM_CHECK_THRESHOLD_BYTES"
+# Planner（S-09）：stub 用 S-03 的桩 Planner（默认，端到端测试用它）；model 用真正的 Planner（经 Model Gateway）。
+ENV_PLANNER = "AR_PLANNER"
+PLANNERS = ("stub", "model")
 
 
 @dataclass(frozen=True)
@@ -39,6 +42,8 @@ class WorkerConfig:
     secrets_file: Path | None = None
     # Claim-Check 的阈值（字节）。
     claim_check_threshold: int = 64 * 1024
+    # 哪个 Planner：stub 或 model（S-09）。
+    planner: str = "stub"
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> WorkerConfig:
@@ -55,6 +60,9 @@ class WorkerConfig:
             if not raw.isdigit() or int(raw) <= 0:
                 raise ValueError(f"{ENV_CLAIM_CHECK_THRESHOLD} 必须是正整数（字节）")
             threshold = int(raw)
+        planner = env.get(ENV_PLANNER, "") or cls.planner
+        if planner not in PLANNERS:
+            raise ValueError(f"{ENV_PLANNER} 只能是 {'、'.join(PLANNERS)}")
         call_log = env.get(ENV_STUB_CALL_LOG, "")
         gate_dir = env.get(ENV_STUB_GATE_DIR, "")
         data_dir = Path(env[ENV_DATA_DIR]) if env.get(ENV_DATA_DIR) else None
@@ -70,6 +78,7 @@ class WorkerConfig:
             object_store_dir=Path(objects) if objects else (data_dir / "objects" if data_dir else None),
             secrets_file=Path(secrets) if secrets else (data_dir / "secrets.json" if data_dir else None),
             claim_check_threshold=threshold,
+            planner=planner,
         )
 
     def store_paths(self, root: Path) -> tuple[Path, Path]:

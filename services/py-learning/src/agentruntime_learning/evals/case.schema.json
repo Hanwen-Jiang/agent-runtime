@@ -84,6 +84,17 @@
         "message": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/non_empty_string"},
         "task_state": {"$ref": "https://agentruntime.example/schemas/task_state.schema.json"},
         "attachments": {"type": "array", "items": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/object_uri"}},
+        "last_round": {
+          "description": "上一轮的 Stage、结果与 Reviewer 的 Verdict（S-09）。replan 时 verdict.replan.keep_nodes 是要保留的 Node，Planner 据此只重做剩余部分",
+          "type": "object",
+          "required": ["stage", "results", "verdict"],
+          "properties": {
+            "stage": {"$ref": "https://agentruntime.example/schemas/stage.schema.json"},
+            "results": {"type": "object", "propertyNames": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/node_id"}, "additionalProperties": {"$ref": "#/$defs/node_result"}},
+            "verdict": {"$ref": "https://agentruntime.example/schemas/verdict.schema.json"}
+          },
+          "unevaluatedProperties": false
+        },
         "context": {
           "type": "object",
           "required": ["risk_before", "effect_ceiling"],

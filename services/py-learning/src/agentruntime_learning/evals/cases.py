@@ -126,6 +126,9 @@ def _fill_keys(data: dict[str, Any]) -> dict[str, Any]:
         reference = (((data.get("planner") or {}).get("expect") or {}).get("reference")) or {}
         if "stage" in reference:
             reference["stage"] = stages.with_idempotency_keys(reference["stage"])
+        last = ((data.get("planner") or {}).get("input") or {}).get("last_round")
+        if isinstance(last, dict) and "stage" in last:
+            last["stage"] = stages.with_idempotency_keys(last["stage"])
         for cp in data.get("rounds") or []:
             if isinstance(cp, dict) and "stage" in cp:
                 cp["stage"] = stages.with_idempotency_keys(cp["stage"])
@@ -175,6 +178,11 @@ def _task_case_problems(data: dict[str, Any], catalog: Catalog) -> list[str]:
             found.append(f"planner.expect.reference.task_plan 的 Triage 是 {level}，标注是 {expect['triage']}")
         if expect["triage"] == "light" and plan.get("recipe") != expect.get("recipe"):
             found.append(f"planner.expect.reference.task_plan 的 Recipe 是 {plan.get('recipe')}，标注是 {expect.get('recipe')}")
+    last = data["planner"]["input"].get("last_round")
+    if last:
+        found += _stage_problems("planner.input.last_round.stage", last["stage"], catalog)
+        node_ids = {n.get("id") for n in stages.nodes(last["stage"])}
+        found += [f"planner.input.last_round.results 里的 {nid} 不在上一轮的 Stage 里" for nid in sorted(set(last["results"]) - node_ids)]
     for i, cp in enumerate(data["rounds"]):
         found += _checkpoint_problems(f"rounds[{i}]", cp, catalog)
     return found

@@ -43,6 +43,8 @@ class PlannerInput:
     attachments: list[str]
     context: dict[str, Any]
     catalog: Catalog
+    last_round: dict[str, Any] | None = None
+    """上一轮：{"stage", "results", "verdict"}；replan 时 verdict.replan.keep_nodes 是要保留的 Node（S-09）。"""
 
 
 @dataclass

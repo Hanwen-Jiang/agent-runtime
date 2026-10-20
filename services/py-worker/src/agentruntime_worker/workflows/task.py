@@ -15,6 +15,7 @@ S-03 留下的事件历史仍按旧路径回放。
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 from datetime import timedelta
 from typing import Any
 
@@ -190,6 +191,9 @@ class TaskWorkflow:
             "tenant_policy": inp.pinned_versions.tenant_policy,
         }
         self._pinned = pinned
+        # 交给下一轮 Planner 的 Task Plan 与上一轮（S-09）：只改 activity 的输入，不改命令序列。
+        task_plan: dict[str, Any] | None = None
+        last_round: dict[str, Any] | None = None
         for seq in range(1, MAX_ROUNDS + 1):
             self._round_seq = seq
             plan = await workflow.execute_activity(
@@ -203,6 +207,8 @@ class TaskWorkflow:
                     inputs=inputs,
                     attachments=list(inp.attachments),
                     pinned=pinned,
+                    task_plan=task_plan,
+                    last_round=last_round,
                 ),
                 task_queue=names.DECISION_QUEUE,
                 start_to_close_timeout=timeouts.DECISION_START_TO_CLOSE,
@@ -234,6 +240,9 @@ class TaskWorkflow:
             kind = verdict["verdict"]
             round_entry["status"] = "completed"
             round_entry["verdict"] = kind
+            if plan.task_plan:
+                task_plan = plan.task_plan
+            last_round = {"stage": stage, "results": {nid: dataclasses.asdict(r) for nid, r in results.items()}, "verdict": verdict}
             if kind == "done":
                 deliver = verdict["done"]["deliver_node"]
                 self._set_status(enums_pb2.TASK_STATUS_DONE)

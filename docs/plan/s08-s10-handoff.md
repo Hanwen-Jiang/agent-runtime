@@ -28,7 +28,7 @@
 | 工作项 | 状态 | 关键决定 |
 | --- | --- | --- |
 | S-08 | 已完成：人审两轮后 64 条标注全部确认，S-09、S-10 的门槛可以用 `--require-confirmed` | 见下一节 |
-| S-09 | 未开始 | — |
+| S-09 | 已实现（假模型上的验收全部通过）；真模型上的跑分等 Model Gateway 接好；6 条 replan 用例补了上一轮，等人复审 | Triage 由代码判定，小模型只给信号；full 与 replan 一次强模型调用，代码校验后重问一次再回退；Task 工作流把上一轮与 Task Plan 交给下一轮的 Planner |
 | S-10 | 未开始 | — |
 
 ## S-08 做成了什么样（S-09、S-10 会用到）
@@ -41,6 +41,13 @@
 - 每个判定点标了“至少升级到哪一步”（附录 B.8），低于它还在 repair 记为“该升级却原地重试”（S-10 验收要求为 0）。
 - 留出集只给汇总分数；提示只在开发集上调（有测试检查留出集内容没有进 Worker 的代码与提示）。
 - 基线（永远 full + 单个 Node）在开发集上成功率 4%，报告列出失败原因；参照输出在两个划分上都是满分。
+
+## S-09 做成了什么样（S-10 会用到）
+
+- 代码在 `services/py-worker/src/agentruntime_worker/planner`；Worker 设 `AR_PLANNER=model` 时由它接管 `plan_round`，默认仍是桩 Planner。
+- Triage 由代码按附录 C.1、C.2 判定，小模型分类器只给信号；fast 与 light 不调用强模型；full 与 replan 一次强模型调用，代码校验后重问一次，仍不合格回退到一个 tool_loop 的 Goal Node。
+- Task 工作流把上一轮（Stage、结果与 Verdict）与 Task Plan 交给下一轮的 Planner（`PlanRoundInput.last_round`、`task_plan`）；只改 activity 的输入，不改命令序列。S-10 的 Reviewer 判 replan 时，`replan.keep_nodes` 就是 Planner 不再重做的 Node。
+- 评测：`--subject agentruntime_learning.evals.worker_subject:planner_subject`，真模型经 `AR_EVAL_GATEWAY_FACTORY` 接入；在那之前假模型上能证明的是“结构与规则由代码兜底”。
 
 ## 需要你配合的
 

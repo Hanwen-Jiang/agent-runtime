@@ -16,7 +16,7 @@ from agentruntime_worker import names
 from agentruntime_worker.activities.stubs import StubActivities
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.executor.dev import dev_executor
-from agentruntime_worker.worker import QUEUE_COMPONENTS, build_workers, parse_queues
+from agentruntime_worker.worker import QUEUE_COMPONENTS, build_workers, decision_activities, parse_queues
 
 
 def contract_queues() -> set[str]:
@@ -68,6 +68,19 @@ def test_parse_queues(value: str, expected: list[str]) -> None:
 def test_parse_queues_rejects_unknown_queues(value: str) -> None:
     with pytest.raises(ValueError):
         parse_queues(value)
+
+
+def test_the_model_planner_takes_over_plan_round_only_when_asked() -> None:
+    """S-09：AR_PLANNER=model 时 plan_round 换成真正的 Planner，其余决策类 activity 仍是桩。"""
+    from agentruntime_worker.activities.stubs import StubActivities
+    from agentruntime_worker.planner.activities import PlannerActivities
+
+    default = decision_activities(WorkerConfig())
+    model = decision_activities(WorkerConfig(planner="model"))
+    assert isinstance(default[names.PLAN_ROUND].__self__, StubActivities)
+    assert isinstance(model[names.PLAN_ROUND].__self__, PlannerActivities)
+    assert set(model) == set(default)
+    assert isinstance(model[names.REVIEW_ROUND].__self__, StubActivities)
 
 
 @pytest.mark.temporal

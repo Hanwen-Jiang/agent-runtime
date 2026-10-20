@@ -164,6 +164,23 @@ async def test_the_default_split_is_dev(make_set) -> None:
     assert all("留出集" not in inp.message for inp in subject.plan_inputs)
 
 
+async def test_the_last_round_reaches_the_planner(make_set) -> None:
+    """S-09：replan 用例带着上一轮的 Stage、结果与 Verdict，Planner 才知道要保留哪些 Node。"""
+    previous = {
+        "stage": stage(atomic("q_region", "sql_query@v1")),
+        "results": {"q_region": {"role": "fetch", "status": "succeeded", "result": {"rows": 12}}},
+        "verdict": verdict("replan", replan={"keep_nodes": ["q_region"], "stuck_reason": "口径不一致"}),
+    }
+    case = task_case("t_replan", triage="replan", shape={"keep_nodes": ["q_region"]})
+    case["planner"]["input"]["last_round"] = previous
+    es = load_eval_set(make_set([case, task_case("t_plain")]))
+    subject = ScriptedSubject()
+    await run_eval(es, subject, reports_dir=None, compare=None)
+    seen = [inp.last_round for inp in subject.plan_inputs]
+    assert previous in seen, "replan 用例的上一轮原样送到"
+    assert sum(1 for s in seen if s is None) == 1, "没有上一轮的用例送 None"
+
+
 async def test_labels_must_be_confirmed_when_required(make_set) -> None:
     es = load_eval_set(make_set([task_case("t_draft"), task_case("t_ok", review=CONFIRMED)]))
     report = await run_eval(es, ScriptedSubject(), reports_dir=None, compare=None)

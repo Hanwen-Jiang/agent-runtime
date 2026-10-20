@@ -14,6 +14,7 @@ import dataclasses
 import os
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any
 
 from temporalio.client import Client
 from temporalio.converter import DataConverter
@@ -27,6 +28,7 @@ from agentruntime_worker.activities.stubs import StubActivities
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.executor.dev import data_root, dev_executor, dev_object_store, dev_secret_store
 from agentruntime_worker.executor.node_executor import NodeExecutor
+from agentruntime_worker.planner.activities import dev_planner
 from agentruntime_worker.workflows.stage_runner import SubAgentWorkflow, SubgraphWorkflow
 from agentruntime_worker.workflows.task import TaskWorkflow
 
@@ -101,6 +103,14 @@ async def connect(config: WorkerConfig, *, objects: ObjectStoreProvider | None =
     return Client(raw.service_client, namespace=raw.namespace, data_converter=worker_data_converter(config, raw, objects=objects))
 
 
+def decision_activities(config: WorkerConfig, stubs: StubActivities | None = None) -> dict[str, Any]:
+    """决策类 activity：桩，或者 AR_PLANNER=model 时由真正的 Planner 接管 plan_round（S-09）。"""
+    activities = (stubs or StubActivities(config)).activities()
+    if config.planner == "model":
+        activities.update(dev_planner(config).activities())
+    return activities
+
+
 def build_workers(
     client: Client,
     config: WorkerConfig,
@@ -108,9 +118,9 @@ def build_workers(
     stubs: StubActivities | None = None,
     executor: NodeExecutor | None = None,
 ) -> list[Worker]:
-    """每个队列一个 Worker，按 QUEUE_COMPONENTS 登记：决策类用 StubActivities，执行 Node 用 Node Executor。"""
+    """每个队列一个 Worker，按 QUEUE_COMPONENTS 登记：决策类见 decision_activities，执行 Node 用 Node Executor。"""
     activities = {
-        **(stubs or StubActivities(config)).activities(),
+        **decision_activities(config, stubs),
         **(executor or dev_executor(config, client=client)).activities(),
     }
     workers = []

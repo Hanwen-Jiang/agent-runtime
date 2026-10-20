@@ -4,9 +4,8 @@
   "split": "holdout",
   "category": "naming",
   "review": {
-    "status": "confirmed",
-    "confirmed_by": "Hanwen-Jiang",
-    "confirmed_at": "2026-10-20"
+    "status": "draft",
+    "notes": "S-09：Planner 的输入补上了上一轮（Stage、结果与 Reviewer 的 Verdict），replan 才知道要保留哪些 Node、上次为什么卡住。"
   },
   "description": "Reviewer 判定 replan（前三名都撞了商标）：保留已做的商标检索（tm_check）结果，避开这些名字重新生成。",
   "planner": {
@@ -32,6 +31,72 @@
             "cost_usd": 0.3
           }
         ]
+      },
+      "last_round": {
+        "stage": {
+          "seq": 1,
+          "goal": "生成并筛选名字",
+          "exit_when": "前三名都通过商标检索",
+          "nodes": [
+            {
+              "id": "candidates",
+              "kind": "atomic",
+              "template": "generate_names@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "transform",
+              "output": "generate",
+              "quality": {
+                "type": "ensemble",
+                "n": 5,
+                "aggregate": "judge",
+                "judge": "rubric_judge@v1"
+              }
+            },
+            {
+              "id": "tm_check",
+              "kind": "atomic",
+              "template": "trademark_check@v1",
+              "executor": "program",
+              "effect": "read",
+              "role": "fetch",
+              "after": [
+                "candidates"
+              ]
+            }
+          ]
+        },
+        "results": {
+          "candidates": {
+            "role": "transform",
+            "status": "succeeded",
+            "result": {
+              "top3": [
+                "小星 Starlet",
+                "跳跳 Hopper",
+                "朵朵 Doodle"
+              ]
+            }
+          },
+          "tm_check": {
+            "role": "fetch",
+            "status": "succeeded",
+            "result": {
+              "conflicts": 3,
+              "class": 9
+            }
+          }
+        },
+        "verdict": {
+          "verdict": "replan",
+          "reason": "前三名都撞了第 9 类商标，候选要重新生成",
+          "replan": {
+            "keep_nodes": [
+              "tm_check"
+            ],
+            "stuck_reason": "前三名候选都已被注册为第 9 类商标；新候选要先避开这些名字"
+          }
+        }
       },
       "context": {
         "risk_before": "read",

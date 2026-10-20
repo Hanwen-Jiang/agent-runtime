@@ -29,6 +29,11 @@ class PlanRoundInput:
     attachments: list[str]
     # Task 启动时固定的版本：recipe、node_templates、reasoning_templates、model_profiles、tenant_policy。
     pinned: dict[str, Any]
+    # 之前的轮次产出的 Task Plan（task_plan.schema.json）；首轮为空（S-09）。
+    task_plan: dict[str, Any] | None = None
+    # 上一轮：{"stage", "results": {node_id: StageResult 的字段}, "verdict"}；首轮为空。replan 时
+    # verdict.replan.keep_nodes 是要保留的 Node（S-09）。
+    last_round: dict[str, Any] | None = None
 
 
 @dataclass
@@ -37,6 +42,8 @@ class PlanRoundOutput:
     stage: dict[str, Any]
     # Triage 级别：fast、light、full、replan
     triage_level: str
+    # Task Plan（task_plan.schema.json）；fast 没有，后续轮次没变时可以为空（S-09）。
+    task_plan: dict[str, Any] | None = None
 
 
 @dataclass
