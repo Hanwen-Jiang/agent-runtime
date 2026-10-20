@@ -24,11 +24,12 @@ import contextlib
 import copy
 from collections.abc import Awaitable
 from dataclasses import dataclass, field, replace
+from datetime import timedelta
 from typing import Any, Protocol
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
-from temporalio.exceptions import FailureError
+from temporalio.exceptions import ApplicationError, FailureError, TimeoutError
 
 with workflow.unsafe.imports_passed_through():
     from google.protobuf import json_format, struct_pb2
@@ -37,12 +38,16 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime.workflow.v1 import task_pb2
 
     from agentruntime_worker import names
+    from agentruntime_worker.executor import keys
     from agentruntime_worker.activities.types import (
         CatalogInfo,
         CatalogRequest,
         GateRecord,
         HookCall,
+        HumanCancel,
+        HumanQuestion,
         NodeInput,
+        ReconcileResult,
         StagePolicy,
         StagePolicyRequest,
         StageResult,
@@ -62,6 +67,9 @@ with workflow.unsafe.imports_passed_through():
 SCOPE_MEMO_KEY = "agentruntime_scope"
 # tool_loop 没写 max_iterations 时的上限。
 DEFAULT_MAX_ITERATIONS = 20
+# S-05 改变命令序列的两处各有版本分支：human 节点与审批先经 HumanChannel 发问并设超时；写操作 activity 超时后按幂等键对账。
+HUMAN_CHANNEL_PATCH = "s05-human-channel"
+RECONCILE_PATCH = "s05-reconcile"
 DEFAULT_ROLE = "transform"
 
 
@@ -106,9 +114,30 @@ def _copy_for(node: dict[str, Any], new_id: str, extra_inputs: dict[str, Any]) -
 
 
 class HumanGateway(Protocol):
-    """等人工回复：Task 工作流收到 human_reply 信号后放行。只接受 options 里的选项。"""
+    """等人工回复：Task 工作流收到 human_reply 信号后放行。只接受 options 里的选项；超过 timeout 返回 None。"""
 
-    async def wait_for_reply(self, question_id: str, options: tuple[str, ...]) -> task_pb2.HumanReplySignal: ...
+    async def wait_for_reply(
+        self, question_id: str, options: tuple[str, ...], timeout: timedelta | None = None
+    ) -> task_pb2.HumanReplySignal | None: ...
+
+
+def _timed_out(err: BaseException) -> bool:
+    cause: BaseException | None = err
+    while cause is not None:
+        if isinstance(cause, TimeoutError):
+            return True
+        cause = cause.cause if isinstance(cause, FailureError) else None
+    return False
+
+
+def _unknown(err: BaseException) -> bool:
+    """Node Executor 报告写操作结果未知（ApplicationError 的 type 为 unknown）。"""
+    cause: BaseException | None = err
+    while cause is not None:
+        if isinstance(cause, ApplicationError) and cause.type == "unknown":
+            return True
+        cause = cause.cause if isinstance(cause, FailureError) else None
+    return False
 
 
 @dataclass
@@ -353,9 +382,13 @@ class StageRunner:
     async def _execute(self, node: dict[str, Any], injections: list[dict[str, Any]], gate: GateRecord | None) -> StageResult:
         role = _role(node)
         model = node.get("executor") == "model"
+        effect = str(node.get("effect", "none"))
+        if effect in sp.WRITE_EFFECTS:
+            # 幂等键一律由代码按 tenant_id、task_id、node_id 与最终的输入生成，Planner 或模型写的不算数（附录 D.4）。
+            node = {**node, "idempotency_key": keys.idempotency_key(self._ctx.tenant.tenant_id, self._ctx.task_id, node["id"], node.get("inputs", {}))}
         start_to_close, heartbeat = timeouts.model_node_timeouts((node.get("budget") or {}).get("timeout_s"))
         # write_irreversible 不自动重试（附录 D.4）。
-        attempts = 1 if node.get("effect") == "write_irreversible" else int((node.get("retry") or {}).get("max", 0)) + 1
+        attempts = 1 if effect == "write_irreversible" else int((node.get("retry") or {}).get("max", 0)) + 1
         try:
             output = await workflow.execute_activity(
                 names.EXECUTE_MODEL_NODE if model else names.EXECUTE_PROGRAM_NODE,
@@ -370,23 +403,109 @@ class StageRunner:
         except FailureError as err:
             if caused_by_cancel(err):
                 raise asyncio.CancelledError() from err
+            if _unknown(err):
+                return StageResult(role=role, status="unknown", error=failure_message(err))
+            # 写操作的 activity 超时：外部可能已经生效，结果未知；先按幂等键对账，不当作失败（附录 K.4）。
+            if effect in sp.WRITE_EFFECTS and _timed_out(err) and workflow.patched(RECONCILE_PATCH):
+                return await self._reconcile(node, role)
             return _failed(role, failure_message(err), failure_class(err))
         # 只取 result；rationale 只写入 trace，不往下传（设计书 3.2.4）。
         return StageResult(role=role, status="succeeded", result=output.get("result"))
 
+    async def _reconcile(self, node: dict[str, Any], role: str) -> StageResult:
+        try:
+            outcome = await workflow.execute_activity(
+                names.RECONCILE_NODE,
+                NodeInput(tenant=self._ctx.tenant, task_id=self._ctx.task_id, round_seq=self._ctx.round_seq, node=node),
+                task_queue=names.PROGRAM_QUEUE,
+                start_to_close_timeout=timeouts.DECISION_START_TO_CLOSE,
+                retry_policy=timeouts.DECISION_RETRY,
+                result_type=ReconcileResult,
+            )
+        except FailureError as err:
+            if caused_by_cancel(err):
+                raise asyncio.CancelledError() from err
+            return StageResult(role=role, status="unknown", error=f"对账失败，结果未知：{failure_message(err)}")
+        if outcome.found:
+            return StageResult(role=role, status="succeeded", result=(outcome.output or {}).get("result"))
+        return StageResult(role=role, status="unknown", error=outcome.reason or "写操作结果未知")
+
+    async def _ask_and_wait(self, question_id: str, text: str, options: tuple[str, ...], timeout_s: int) -> tuple[task_pb2.HumanReplySignal | None, str]:
+        """经 HumanChannel 发出问题，再等 human_reply 信号；等待有持久化定时器，超时或取消时撤回问题。
+        返回 (回复, 错误)；超时时回复为 None。S-05 之前的历史没有发问与定时器，按旧路径回放。"""
+        assert self._human is not None
+        if not workflow.patched(HUMAN_CHANNEL_PATCH):
+            return await self._human.wait_for_reply(question_id, options), ""
+        deadline = workflow.now() + timedelta(seconds=timeout_s)
+        try:
+            await workflow.execute_activity(
+                names.ASK_HUMAN,
+                HumanQuestion(
+                    tenant=self._ctx.tenant,
+                    task_id=self._ctx.task_id,
+                    question_id=question_id,
+                    text=text,
+                    options=list(options),
+                    deadline=deadline.isoformat(),
+                    round_seq=self._ctx.round_seq,
+                ),
+                task_queue=names.DECISION_QUEUE,
+                start_to_close_timeout=timeouts.DECISION_START_TO_CLOSE,
+                retry_policy=timeouts.DECISION_RETRY,
+            )
+        except FailureError as err:
+            if caused_by_cancel(err):
+                raise asyncio.CancelledError() from err
+            return None, f"发不出问题：{failure_message(err)}"
+        try:
+            reply = await self._human.wait_for_reply(question_id, options, timedelta(seconds=timeout_s))
+        except asyncio.CancelledError:
+            await asyncio.shield(asyncio.ensure_future(self._withdraw(question_id)))
+            raise
+        if reply is None:
+            await self._withdraw(question_id)
+        return reply, ""
+
+    async def _withdraw(self, question_id: str) -> None:
+        with contextlib.suppress(FailureError):
+            await workflow.execute_activity(
+                names.CANCEL_HUMAN,
+                HumanCancel(tenant=self._ctx.tenant, task_id=self._ctx.task_id, question_id=question_id, round_seq=self._ctx.round_seq),
+                task_queue=names.DECISION_QUEUE,
+                start_to_close_timeout=timeouts.DECISION_START_TO_CLOSE,
+                retry_policy=timeouts.DECISION_RETRY,
+            )
+
     async def _run_human(self, node: dict[str, Any], role: str) -> StageResult:
+        """human 节点：问题经 HumanChannel 发出，回复以信号送回；超时按 on_timeout 处理（附录 D.3：拒绝，或带默认值继续）。"""
         if self._human is None:
             return _failed(role, "human 节点只能在 Task 工作流里执行")
-        options = tuple(str(o) for o in (node.get("inputs") or {}).get("options", ()))
-        reply = await self._human.wait_for_reply(node["id"], options)
+        inputs = node.get("inputs") or {}
+        options = tuple(str(o) for o in inputs.get("options", ()))
+        timeout_s = int(inputs.get("timeout_s") or self.policy.human_timeout_s)
+        text = str(inputs.get("question") or f"请处理 {node['id']}")
+        reply, error = await self._ask_and_wait(node["id"], text, options, timeout_s)
+        if error:
+            return _failed(role, error)
+        if reply is None:
+            on_timeout = inputs.get("on_timeout")
+            if isinstance(on_timeout, dict) and "default" in on_timeout:
+                return StageResult(role=role, status="succeeded", result={"option": str(on_timeout["default"]), "timed_out": True})
+            return _denied(role, f"{node['id']} 等人工回复超时（{timeout_s} 秒）")
         return StageResult(role=role, status="succeeded", result={"option": reply.option, "guidance": reply.guidance, "replied_by": reply.replied_by_user_id})
 
     async def _approval(self, node: dict[str, Any]) -> tuple[GateRecord | None, str]:
-        """write_irreversible 的 Node 前自动插入的人工审批（附录 F.3），gate 的 id 是 <id>.1。"""
+        """write_irreversible 的 Node 前自动插入的人工审批（附录 F.3），gate 的 id 是 <id>.1；超时按拒绝处理。"""
         if self._human is None:
             return None, "这里没有人工审批通道，write_irreversible 的 Node 不能执行"
         gate_id = sp.child_id(node["id"], 1)
-        reply = await self._human.wait_for_reply(gate_id, sp.APPROVAL_OPTIONS)
+        timeout_s = self.policy.approval_timeout_s
+        text = f"批准执行 {node['id']}（{node.get('template', '')}）吗？这是不可撤销的写操作。"
+        reply, error = await self._ask_and_wait(gate_id, text, sp.APPROVAL_OPTIONS, timeout_s)
+        if error:
+            return None, error
+        if reply is None:
+            return None, f"人工审批超时（{timeout_s} 秒），按拒绝处理"
         if reply.option != "approve":
             return None, f"人工审批没有通过：{reply.option}"
         return GateRecord(gate_node=gate_id, option=reply.option, approved_by=reply.replied_by_user_id), ""

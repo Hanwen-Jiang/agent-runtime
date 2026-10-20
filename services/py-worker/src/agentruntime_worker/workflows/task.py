@@ -265,11 +265,16 @@ class TaskWorkflow:
         self._stage_policy = ctx.policy
         return results
 
-    async def wait_for_reply(self, question_id: str, options: tuple[str, ...]) -> task_pb2.HumanReplySignal:
-        """HumanGateway：等 human_reply 信号；只接受 options 里的选项；取消时等待随之结束。"""
+    async def wait_for_reply(
+        self, question_id: str, options: tuple[str, ...], timeout: timedelta | None = None
+    ) -> task_pb2.HumanReplySignal | None:
+        """HumanGateway：等 human_reply 信号；只接受 options 里的选项；取消时等待随之结束；超过 timeout 返回 None。
+        超时用 wait_condition 的持久化定时器，Worker 不占线程等待。"""
         self._waiting[question_id] = tuple(options)
         try:
-            await workflow.wait_condition(lambda: question_id in self._replies)
+            await workflow.wait_condition(lambda: question_id in self._replies, timeout=timeout)
+        except asyncio.TimeoutError:
+            return None
         finally:
             self._waiting.pop(question_id, None)
         return self._replies.pop(question_id)

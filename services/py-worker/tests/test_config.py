@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from agentruntime_worker.config import (
+    ENV_DATA_DIR,
     ENV_STUB_CALL_LOG,
     ENV_STUB_GATE_DIR,
     ENV_STUB_NODE_TIMEOUT_S,
@@ -66,8 +67,10 @@ def test_config_from_env(tmp_path: Path) -> None:
             ENV_STUB_CALL_LOG: str(tmp_path / "calls.jsonl"),
             ENV_STUB_GATE_DIR: str(tmp_path / "gates"),
             ENV_STUB_NODE_TIMEOUT_S: "40",
+            ENV_DATA_DIR: str(tmp_path / "data"),
         }
     )
+    assert config.data_dir == tmp_path / "data"
     assert config.temporal_address == "127.0.0.1:7999"
     assert config.namespace == "ns1"
     assert config.call_log == tmp_path / "calls.jsonl"

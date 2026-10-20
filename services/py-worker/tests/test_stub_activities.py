@@ -28,6 +28,8 @@ from agentruntime_worker.activities.types import (
     Tenant,
 )
 from agentruntime_worker.config import WorkerConfig
+from agentruntime_worker.executor.dev import dev_executor
+from agentruntime_worker.executor.node_executor import NodeExecutor
 
 from .support import SESSION_ID, assert_valid, new_task_id
 
@@ -116,30 +118,39 @@ async def test_stub_rounds_are_carried_into_the_model_node(stubs: StubActivities
     assert node(last, "answer")["inputs"]["final"] is True
 
 
-# --- 桩模型 ---
+# --- 桩模型（S-05 起作为 Model Gateway 的开发实现，经真实的 Node Executor 调用） ---
 
 
-async def model_output(stubs: StubActivities, task_id: str, stage: dict[str, Any], **env_kw: Any) -> dict[str, Any]:
+@pytest.fixture
+def executor(config: WorkerConfig, tmp_path: Path) -> NodeExecutor:
+    return dev_executor(dataclasses.replace(config, data_dir=tmp_path / "data"))
+
+
+def answer_input(task_id: str, stage: dict[str, Any]) -> NodeInput:
+    return NodeInput(tenant=TENANT, task_id=task_id, round_seq=1, node=node(stage, "answer"))
+
+
+async def model_output(executor: NodeExecutor, task_id: str, stage: dict[str, Any], **env_kw: Any) -> dict[str, Any]:
     env = activity_env(names.EXECUTE_MODEL_NODE, names.MODEL_QUEUE, **env_kw)
-    return await env.run(stubs.execute_model_node, NodeInput(tenant=TENANT, task_id=task_id, round_seq=1, node=node(stage, "answer")))
+    return await env.run(executor.execute_model_node, answer_input(task_id, stage))
 
 
-async def test_stub_model_output_is_a_valid_node_output(stubs: StubActivities) -> None:
+async def test_stub_model_output_is_a_valid_node_output(stubs: StubActivities, executor: NodeExecutor) -> None:
     task_id = new_task_id()
-    out = await model_output(stubs, task_id, await plan(stubs, task_id, "answer"))
+    out = await model_output(executor, task_id, await plan(stubs, task_id, "answer"))
     assert_valid("node_output", out)
     assert out["result"]["text"]
     assert out["result"]["final"] is True
-    assert "rationale" in out, "桩模型也给出 rationale，用来检验工作流不把它传给下游"
+    assert "rationale" not in out, "桩模型给出的 rationale 由 Node Executor 写进 trace，不进结果"
 
 
-async def test_slow_model_heartbeats_until_the_gate_opens(stubs: StubActivities, config: WorkerConfig) -> None:
+async def test_slow_model_heartbeats_until_the_gate_opens(stubs: StubActivities, executor: NodeExecutor, config: WorkerConfig) -> None:
     task_id = new_task_id()
     stage = await plan(stubs, task_id, "slow_answer")
     env = activity_env(names.EXECUTE_MODEL_NODE, names.MODEL_QUEUE, heartbeat=timedelta(milliseconds=300))
     beats: list[Any] = []
     env.on_heartbeat = lambda *details: beats.append(details)
-    run = asyncio.create_task(env.run(stubs.execute_model_node, NodeInput(tenant=TENANT, task_id=task_id, round_seq=1, node=node(stage, "answer"))))
+    run = asyncio.create_task(env.run(executor.execute_model_node, answer_input(task_id, stage)))
     await asyncio.sleep(0.6)
     assert not run.done(), "门没开之前不应返回"
     assert beats, "等待期间要发心跳"
@@ -149,11 +160,11 @@ async def test_slow_model_heartbeats_until_the_gate_opens(stubs: StubActivities,
     assert_valid("node_output", out)
 
 
-async def test_slow_model_stops_when_cancelled(stubs: StubActivities, config: WorkerConfig) -> None:
+async def test_slow_model_stops_when_cancelled(stubs: StubActivities, executor: NodeExecutor, config: WorkerConfig) -> None:
     task_id = new_task_id()
     stage = await plan(stubs, task_id, "slow_answer")
     env = activity_env(names.EXECUTE_MODEL_NODE, names.MODEL_QUEUE, heartbeat=timedelta(milliseconds=300))
-    run = asyncio.create_task(env.run(stubs.execute_model_node, NodeInput(tenant=TENANT, task_id=task_id, round_seq=1, node=node(stage, "answer"))))
+    run = asyncio.create_task(env.run(executor.execute_model_node, answer_input(task_id, stage)))
     await asyncio.sleep(0.3)
     env.cancel()
     with pytest.raises(asyncio.CancelledError):
@@ -163,11 +174,11 @@ async def test_slow_model_stops_when_cancelled(stubs: StubActivities, config: Wo
     assert "cancelled" in events and "end" not in events
 
 
-async def test_failing_model_raises_a_non_retryable_error(stubs: StubActivities) -> None:
+async def test_failing_model_raises_a_non_retryable_error(stubs: StubActivities, executor: NodeExecutor) -> None:
     task_id = new_task_id()
     stage = await plan(stubs, task_id, "fail_model")
     with pytest.raises(ApplicationError) as err:
-        await model_output(stubs, task_id, stage)
+        await model_output(executor, task_id, stage)
     assert err.value.non_retryable
 
 

@@ -6,6 +6,8 @@ requires-python = ">=3.13"
 dependencies = [
     "agentruntime-core",
     "agentruntime-proto",
+    # Node Executor 按 output_schema 校验结果（JSON Schema 2020-12）。
+    "jsonschema>=4.26",
     "protobuf>=7.36.2,<8",
     "temporalio>=1.34",
 ]

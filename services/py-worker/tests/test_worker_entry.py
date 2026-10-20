@@ -15,6 +15,7 @@ from agentruntime.workflow.v1 import names_pb2
 from agentruntime_worker import names
 from agentruntime_worker.activities.stubs import StubActivities
 from agentruntime_worker.config import WorkerConfig
+from agentruntime_worker.executor.dev import dev_executor
 from agentruntime_worker.worker import QUEUE_COMPONENTS, build_workers, parse_queues
 
 
@@ -34,7 +35,13 @@ def test_every_component_is_registered_on_exactly_one_queue() -> None:
     workflows = [w for c in QUEUE_COMPONENTS.values() for w in c.workflows]
     assert sorted(activities) == sorted(set(activities))
     assert workflows == [names.TASK_WORKFLOW, names.SUB_AGENT_WORKFLOW, names.SUBGRAPH_WORKFLOW]
-    assert set(activities) == set(StubActivities(WorkerConfig()).activities())
+    # 决策类的桩来自 StubActivities，执行 Node 的 activity 来自 Node Executor，两边不重复。
+    stub_names = set(StubActivities(WorkerConfig()).activities())
+    executor_names = set(dev_executor(WorkerConfig()).activities())
+    assert not stub_names & executor_names
+    assert set(activities) == stub_names | executor_names
+    assert {names.ASK_HUMAN, names.CANCEL_HUMAN} <= set(QUEUE_COMPONENTS[names.DECISION_QUEUE].activities)
+    assert names.RECONCILE_NODE in QUEUE_COMPONENTS[names.PROGRAM_QUEUE].activities
 
 
 def test_local_activities_live_with_the_workflows() -> None:

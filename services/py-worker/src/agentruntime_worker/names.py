@@ -35,6 +35,13 @@ CALL_TOOL = "call_tool"
 # Policy Engine 的 Hook，作为 local activity 在运行工作流的 Worker 上执行。
 RUN_HOOKS = "run_hooks"
 
+# Node Executor 用到的 activity（S-05）。
+ASK_HUMAN = "ask_human"
+CANCEL_HUMAN = "cancel_human"
+RECONCILE_NODE = "reconcile_node"
+# 内置的 program 模板：在 Sandbox 里执行代码，inputs 为 {"runtime", "code", "stdin"?}。
+SANDBOX_TEMPLATE = "sandbox_exec"
+
 # Python 内部的子工作流（附录 K.1：Goal Node 的 sub_agent 与大批量 template 展开）。
 SUB_AGENT_WORKFLOW = "SubAgentWorkflow"
 SUBGRAPH_WORKFLOW = "SubgraphWorkflow"

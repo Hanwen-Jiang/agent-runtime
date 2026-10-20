@@ -20,6 +20,8 @@ from temporalio.worker import Worker
 from agentruntime_worker import names
 from agentruntime_worker.activities.stubs import StubActivities
 from agentruntime_worker.config import WorkerConfig
+from agentruntime_worker.executor.dev import dev_executor
+from agentruntime_worker.executor.node_executor import NodeExecutor
 from agentruntime_worker.workflows.stage_runner import SubAgentWorkflow, SubgraphWorkflow
 from agentruntime_worker.workflows.task import TaskWorkflow
 
@@ -46,10 +48,12 @@ QUEUE_COMPONENTS: dict[str, QueueComponents] = {
             names.LOAD_STAGE_POLICY,
             names.RESOLVE_CATALOG,
             names.EXPAND_TEMPLATE,
+            names.ASK_HUMAN,
+            names.CANCEL_HUMAN,
         )
     ),
     names.MODEL_QUEUE: QueueComponents(activities=(names.EXECUTE_MODEL_NODE, names.TOOL_LOOP_STEP)),
-    names.PROGRAM_QUEUE: QueueComponents(activities=(names.EXECUTE_PROGRAM_NODE, names.CALL_TOOL)),
+    names.PROGRAM_QUEUE: QueueComponents(activities=(names.EXECUTE_PROGRAM_NODE, names.CALL_TOOL, names.RECONCILE_NODE)),
 }
 
 WORKFLOWS = {
@@ -76,10 +80,17 @@ def parse_queues(value: str) -> list[str]:
 
 
 def build_workers(
-    client: Client, config: WorkerConfig, queues: Sequence[str], stubs: StubActivities | None = None
+    client: Client,
+    config: WorkerConfig,
+    queues: Sequence[str],
+    stubs: StubActivities | None = None,
+    executor: NodeExecutor | None = None,
 ) -> list[Worker]:
-    """每个队列一个 Worker，按 QUEUE_COMPONENTS 登记。"""
-    activities = (stubs or StubActivities(config)).activities()
+    """每个队列一个 Worker，按 QUEUE_COMPONENTS 登记：决策类用 StubActivities，执行 Node 用 Node Executor。"""
+    activities = {
+        **(stubs or StubActivities(config)).activities(),
+        **(executor or dev_executor(config, client=client)).activities(),
+    }
     workers = []
     for queue in queues:
         components = QUEUE_COMPONENTS[queue]

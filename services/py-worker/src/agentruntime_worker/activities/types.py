@@ -88,6 +88,10 @@ class StagePolicy:
     # 批量展开时每个子工作流处理的条目数，与同时运行的子工作流个数。
     batch_size: int = 50
     batch_parallel: int = 4
+    # write_irreversible 前人工审批的等待上限；超时按拒绝处理（附录 D.3 human：超时按模板默认处理）。
+    approval_timeout_s: int = 24 * 3600
+    # human 节点没写 timeout_s 时的等待上限。
+    human_timeout_s: int = 24 * 3600
 
 
 @dataclass
@@ -185,6 +189,40 @@ class ToolCallInput:
     tool: str
     args: dict[str, Any]
     effect: str
+
+
+@dataclass
+class HumanQuestion:
+    """经 HumanChannel 发出的问题（设计书 4.11）。回复以 human_reply 信号送回 Task 工作流，Node Executor 不占线程等待。"""
+
+    tenant: Tenant
+    task_id: str
+    # human 节点为 Node id；write_irreversible 前的审批 gate 为 <id>.1
+    question_id: str
+    text: str
+    options: list[str]
+    # ISO 8601，带时区；由工作流按 workflow.now() + 超时算出
+    deadline: str
+    state_summary: str = ""
+    # 同一 Node id 在不同 Round 里会再问一次；HumanChannel 里的问题 id 带上 Task 与 Round，见 channel_question_id。
+    round_seq: int = 1
+
+
+@dataclass
+class HumanCancel:
+    tenant: Tenant
+    task_id: str
+    question_id: str
+    round_seq: int = 1
+
+
+@dataclass
+class ReconcileResult:
+    """写操作结果未知时按幂等键对账（附录 K.4）：found 表示外部已经生效，output 是当时的 Node Output。"""
+
+    found: bool
+    output: dict[str, Any] | None = None
+    reason: str = ""
 
 
 @dataclass

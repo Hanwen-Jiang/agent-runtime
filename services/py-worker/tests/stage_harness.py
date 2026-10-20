@@ -31,9 +31,12 @@ from agentruntime_worker.activities.types import (
     CatalogRequest,
     FinalizeTaskInput,
     HookCall,
+    HumanCancel,
+    HumanQuestion,
     NodeInput,
     PlanRoundInput,
     PlanRoundOutput,
+    ReconcileResult,
     ReviewRoundInput,
     StagePolicy,
     StagePolicyRequest,
@@ -162,6 +165,8 @@ class Script:
     finalized: list[FinalizeTaskInput] = field(default_factory=list)
     catalog_requests: list[CatalogRequest] = field(default_factory=list)
     scenario_of: dict[str, str] = field(default_factory=dict)
+    questions: list[HumanQuestion] = field(default_factory=list)
+    withdrawn: list[str] = field(default_factory=list)
     barriers: dict[str, list[Any]] = field(default_factory=dict)
     invalid_nodes: list[str] = field(default_factory=list)
     running: int = 0
@@ -302,6 +307,20 @@ class Script:
         call.outcome = "ok"
         return value
 
+    # --- human 与对账（真实实现见 NodeExecutor） ---
+
+    @activity.defn(name=names.ASK_HUMAN)
+    async def ask_human(self, q: HumanQuestion) -> None:
+        self.questions.append(q)
+
+    @activity.defn(name=names.CANCEL_HUMAN)
+    async def cancel_human(self, c: HumanCancel) -> None:
+        self.withdrawn.append(c.question_id)
+
+    @activity.defn(name=names.RECONCILE_NODE)
+    async def reconcile_node(self, inp: NodeInput) -> ReconcileResult:
+        return ReconcileResult(found=False, reason="脚本不对账")
+
     # --- Policy Engine（local activity） ---
 
     @activity.defn(name=names.RUN_HOOKS)
@@ -316,9 +335,18 @@ class Script:
 
     def by_queue(self) -> dict[str, list[Any]]:
         return {
-            names.DECISION_QUEUE: [self.plan_round, self.review_round, self.finalize_task, self.load_stage_policy, self.resolve_catalog, self.expand_template],
+            names.DECISION_QUEUE: [
+                self.plan_round,
+                self.review_round,
+                self.finalize_task,
+                self.load_stage_policy,
+                self.resolve_catalog,
+                self.expand_template,
+                self.ask_human,
+                self.cancel_human,
+            ],
             names.MODEL_QUEUE: [self.execute_model_node, self.tool_loop_step],
-            names.PROGRAM_QUEUE: [self.execute_program_node, self.call_tool],
+            names.PROGRAM_QUEUE: [self.execute_program_node, self.call_tool, self.reconcile_node],
         }
 
 

@@ -15,6 +15,7 @@ ENV_TEMPORAL_NAMESPACE = "AR_TEMPORAL_NAMESPACE"
 ENV_STUB_CALL_LOG = "AR_STUB_CALL_LOG"
 ENV_STUB_GATE_DIR = "AR_STUB_GATE_DIR"
 ENV_STUB_NODE_TIMEOUT_S = "AR_STUB_NODE_TIMEOUT_S"
+ENV_DATA_DIR = "AR_DATA_DIR"
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,8 @@ class WorkerConfig:
     gate_dir: Path | None = None
     # 桩 Planner 给 model 节点的 budget.timeout_s。
     stub_node_timeout_s: int = 600
+    # 开发实现（ObjectStore、SecretStore、Sandbox）的数据目录；None 时用临时目录。
+    data_dir: Path | None = None
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> WorkerConfig:
@@ -39,10 +42,12 @@ class WorkerConfig:
             timeout = int(raw)
         call_log = env.get(ENV_STUB_CALL_LOG, "")
         gate_dir = env.get(ENV_STUB_GATE_DIR, "")
+        data_dir = env.get(ENV_DATA_DIR, "")
         return cls(
             temporal_address=env.get(ENV_TEMPORAL_ADDRESS, "") or cls.temporal_address,
             namespace=env.get(ENV_TEMPORAL_NAMESPACE, "") or cls.namespace,
             call_log=Path(call_log) if call_log else None,
             gate_dir=Path(gate_dir) if gate_dir else None,
             stub_node_timeout_s=timeout,
+            data_dir=Path(data_dir) if data_dir else None,
         )

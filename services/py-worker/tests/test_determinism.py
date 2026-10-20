@@ -31,7 +31,16 @@ FORBIDDEN_MODULES = {
     "agentruntime_core": "Provider 调用放进 activity",
 }
 # 工作流代码里只允许导入 activity 的类型，不导入它们的实现（实现做 I/O、调用模型）。
-FORBIDDEN_WORKER_MODULES = ("agentruntime_worker.activities.stubs", "agentruntime_worker.activities.calllog", "agentruntime_worker.config")
+FORBIDDEN_WORKER_MODULES = (
+    "agentruntime_worker.activities.stubs",
+    "agentruntime_worker.activities.calllog",
+    "agentruntime_worker.config",
+    # Node Executor 做 I/O；工作流只能用其中的纯函数模块 executor.keys（生成幂等键）。
+    "agentruntime_worker.executor.node_executor",
+    "agentruntime_worker.executor.dev",
+    "agentruntime_worker.executor.model_gateway",
+    "agentruntime_worker.executor.schemas",
+)
 FORBIDDEN_CALLS = {
     ("datetime", "now"): "改用 workflow.now()",
     ("datetime", "utcnow"): "改用 workflow.now()",

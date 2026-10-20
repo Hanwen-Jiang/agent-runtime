@@ -226,6 +226,8 @@ class Stack:
             "AR_STUB_CALL_LOG": str(self.call_log),
             "AR_STUB_GATE_DIR": str(self.gate_dir),
             "AR_STUB_NODE_TIMEOUT_S": str(STUB_NODE_TIMEOUT_S),
+            # Node Executor 的开发实现（ObjectStore、SecretStore、Sandbox）的数据目录，与 task-service 的分开。
+            "AR_DATA_DIR": str(self.root / "worker-data"),
         }
         p = Process("worker", [sys.executable, "-m", "agentruntime_worker", "--queues", WORKER_QUEUES], env, self.root / "logs" / "worker.log")
         p.start()

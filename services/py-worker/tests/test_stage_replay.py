@@ -30,7 +30,7 @@ import agentruntime_worker.workflows.stage_runner as stage_module
 import agentruntime_worker.workflows.task as task_module
 from agentruntime_worker import names
 from agentruntime_worker.replay import load_histories, replay_histories
-from agentruntime_worker.workflows.stage_runner import SubAgentWorkflow, SubgraphWorkflow
+from agentruntime_worker.workflows.stage_runner import HUMAN_CHANNEL_PATCH, RECONCILE_PATCH, SubAgentWorkflow, SubgraphWorkflow
 from agentruntime_worker.workflows.task import STAGE_RUNNER_PATCH, TaskWorkflow
 
 from .support import HISTORIES_DIR
@@ -53,6 +53,10 @@ STAGE_CASES: dict[str, tuple[str, str]] = {
     "stage_cancel": (names.TASK_WORKFLOW, r"(?i)workflow_?execution_?cancel_?requested.*activity_?task_?cancel_?requested"),
     "subagent_child": (names.SUB_AGENT_WORKFLOW, r'"name":\s*"tool_loop_step"'),
     "subgraph_child": (names.SUBGRAPH_WORKFLOW, r'"name":\s*"execute_program_node"'),
+    # S-05：写操作对账、经 HumanChannel 发出的问题、结果未知交给 Reviewer。
+    "exec_reconcile": (names.TASK_WORKFLOW, r'"name":\s*"reconcile_node"'),
+    "exec_human_channel": (names.TASK_WORKFLOW, r'"name":\s*"ask_human"'),
+    "exec_unknown": (names.TASK_WORKFLOW, r'"status":\s*"unknown"'),
 }
 
 MUTATION_C = "# replay-mutation:C"
@@ -98,9 +102,13 @@ async def test_every_history_from_this_session_replays(temporal_env: WorkflowEnv
     assert not failures, failures
 
     if os.environ.get("AR_UPDATE_GOLDEN_HISTORIES") == "1":
+        # 只补缺的 golden，不覆盖已有的：已有的 golden 是旧版本代码留下的历史，用来证明它们仍能回放。
+        # 要重新生成某一份，先删掉它。
         used: set[str] = set()
         texts = sorted(((h.workflow_id, t, h.to_json()) for t, h in histories), key=lambda x: x[0])
         for name, (wf_type, pattern) in STAGE_CASES.items():
+            if (HISTORIES_DIR / f"{name}.json").exists():
+                continue
             match = next(
                 ((wid, raw) for wid, t, raw in texts if t == wf_type and wid not in used and re.search(pattern, history_text(raw), re.S)),
                 None,
@@ -125,6 +133,10 @@ def test_version_branch_keeps_old_histories_replayable() -> None:
     for name, (wf_type, _) in STAGE_CASES.items():
         if wf_type == names.TASK_WORKFLOW:
             assert STAGE_RUNNER_PATCH in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"{name} 应带版本标记 {STAGE_RUNNER_PATCH}"
+    # S-05 改变了 human 节点与写操作超时的命令序列，各有自己的版本分支；S-04 的审批历史没有新标记，按旧路径回放。
+    assert HUMAN_CHANNEL_PATCH not in history_text((HISTORIES_DIR / "stage_approval.json").read_text("utf-8"))
+    assert HUMAN_CHANNEL_PATCH in history_text((HISTORIES_DIR / "exec_human_channel.json").read_text("utf-8"))
+    assert RECONCILE_PATCH in history_text((HISTORIES_DIR / "exec_reconcile.json").read_text("utf-8"))
 
 
 async def test_all_golden_histories_replay_with_the_current_code() -> None:

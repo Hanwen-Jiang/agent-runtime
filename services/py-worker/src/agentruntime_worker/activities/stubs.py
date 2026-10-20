@@ -14,10 +14,15 @@ inputs.stub_rounds = N 时，前 N-1 个 Round 的结果标记为未完成，桩
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Any
 
+from google.protobuf import json_format, struct_pb2
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
+
+from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
+from agentruntime_core.errors import InvalidError
 
 from agentruntime_worker import names
 from agentruntime_worker.activities.calllog import CallLog
@@ -26,7 +31,6 @@ from agentruntime_worker.activities.types import (
     CatalogRequest,
     FinalizeTaskInput,
     HookCall,
-    NodeInput,
     PlanRoundInput,
     PlanRoundOutput,
     ReviewRoundInput,
@@ -46,6 +50,58 @@ HUMAN_OPTIONS = ("approve", "reject")
 _MODES = {"slow_answer": "slow", "fail_model": "fail"}
 # 等门打开时轮询的间隔；心跳由 SDK 按 heartbeat 超时节流后再发给服务端。
 _POLL_INTERVAL_S = 0.1
+
+
+class StubModelGateway:
+    """S-03 的桩模型，作为 Model Gateway 的开发实现（executor.model_gateway.ModelGateway）。
+
+    按 Node 输入里的 mode 行事：fast 立即返回；slow 等 <gate_dir>/<task_id> 出现；fail 抛不可重试的错误。
+    结果是 {"text", "final"}，另带 rationale。调用记录（activity 名 execute_model_node）与 S-03 相同，端到端测试据此断言。
+    """
+
+    def __init__(self, config: WorkerConfig) -> None:
+        self.config = config
+        self.calls = CallLog(config.call_log)
+
+    async def generate(self, request: mg.GenerateRequest) -> mg.GenerateResponse:
+        task_id, node_id = request.call.task_id, request.call.node_id
+        user = next((m.text for m in request.generation.messages if m.role == mg.CHAT_ROLE_USER), "{}")
+        inputs = (json.loads(user).get("inputs") or {}) if user.startswith("{") else {}
+        self.calls.record(names.EXECUTE_MODEL_NODE, task_id, "start", node_id=node_id)
+        try:
+            mode = inputs.get("mode", "fast")
+            if mode == "fail":
+                self.calls.record(names.EXECUTE_MODEL_NODE, task_id, "error", node_id=node_id)
+                raise InvalidError("stub_failure", "桩模型按计划失败")
+            if mode == "slow":
+                await self._wait_for_gate(task_id)
+        except asyncio.CancelledError:
+            self.calls.record(names.EXECUTE_MODEL_NODE, task_id, "cancelled", node_id=node_id)
+            raise
+        result = struct_pb2.Value()
+        json_format.ParseDict({"text": f"桩回答：{inputs.get('prompt', '')}", "final": bool(inputs.get("final", True))}, result)
+        self.calls.record(names.EXECUTE_MODEL_NODE, task_id, "end", node_id=node_id)
+        return mg.GenerateResponse(
+            result=result,
+            rationale="桩模型直接复述问题。",
+            finish_reason=mg.FINISH_REASON_STOP,
+            model=mg.ModelChoice(model_profile_id="stub/model", tier="stub@low", vendor="stub"),
+        )
+
+    async def embed(self, request: mg.EmbedRequest) -> mg.EmbedResponse:
+        return mg.EmbedResponse(embeddings=[mg.Embedding(values=[0.0, 0.0, 0.0]) for _ in request.texts], embedding_version="stub-v1")
+
+    async def _wait_for_gate(self, task_id: str) -> None:
+        """等 <gate_dir>/<task_id> 出现；心跳由 Node Executor 在后台发。"""
+        if self.config.gate_dir is None:
+            return
+        gate = self.config.gate_dir / task_id
+        first = True
+        while not gate.exists():
+            if first:
+                self.calls.record(names.EXECUTE_MODEL_NODE, task_id, "heartbeat")
+                first = False
+            await asyncio.sleep(_POLL_INTERVAL_S)
 
 
 class StubActivities:
@@ -95,50 +151,6 @@ class StubActivities:
         }
         self.calls.record(names.PLAN_ROUND, inp.task_id, "end", round_seq=inp.round_seq)
         return PlanRoundOutput(stage=stage, triage_level="fast")
-
-    @activity.defn(name=names.EXECUTE_MODEL_NODE)
-    async def execute_model_node(self, inp: NodeInput) -> dict[str, Any]:
-        """返回 Node Output（node_output.schema.json）。"""
-        node = inp.node
-        node_inputs = node.get("inputs", {})
-        self.calls.record(names.EXECUTE_MODEL_NODE, inp.task_id, "start", node_id=node["id"])
-        try:
-            mode = node_inputs.get("mode", "fast")
-            if mode == "fail":
-                self.calls.record(names.EXECUTE_MODEL_NODE, inp.task_id, "error", node_id=node["id"])
-                raise ApplicationError("桩模型按计划失败", type="stub_failure", non_retryable=True)
-            if mode == "slow":
-                await self._wait_for_gate(inp.task_id)
-        except asyncio.CancelledError:
-            self.calls.record(names.EXECUTE_MODEL_NODE, inp.task_id, "cancelled", node_id=node["id"])
-            raise
-        output = {
-            "result": {"text": f"桩回答：{node_inputs.get('prompt', '')}", "final": bool(node_inputs.get("final", True))},
-            "rationale": "桩模型直接复述问题。",
-            "meta": {"tier": "stub@low", "tokens": {"input": 0, "output": 0}, "cost_usd": 0, "latency_ms": 0},
-        }
-        self.calls.record(names.EXECUTE_MODEL_NODE, inp.task_id, "end", node_id=node["id"])
-        return output
-
-    async def _wait_for_gate(self, task_id: str) -> None:
-        if self.config.gate_dir is None:
-            return
-        gate = self.config.gate_dir / task_id
-        first = True
-        while not gate.exists():
-            activity.heartbeat()
-            if first:
-                self.calls.record(names.EXECUTE_MODEL_NODE, task_id, "heartbeat")
-                first = False
-            await asyncio.sleep(_POLL_INTERVAL_S)
-
-    @activity.defn(name=names.EXECUTE_PROGRAM_NODE)
-    async def execute_program_node(self, inp: NodeInput) -> dict[str, Any]:
-        """program 节点的桩，S-05 替换：原样返回节点的常量输入。"""
-        self.calls.record(names.EXECUTE_PROGRAM_NODE, inp.task_id, "start", node_id=inp.node["id"])
-        output = {"result": dict(inp.node.get("inputs", {}))}
-        self.calls.record(names.EXECUTE_PROGRAM_NODE, inp.task_id, "end", node_id=inp.node["id"])
-        return output
 
     @activity.defn(name=names.REVIEW_ROUND)
     async def review_round(self, inp: ReviewRoundInput) -> dict[str, Any]:
@@ -211,8 +223,6 @@ class StubActivities:
         """activity 名 → 绑定的方法。"""
         return {
             names.PLAN_ROUND: self.plan_round,
-            names.EXECUTE_MODEL_NODE: self.execute_model_node,
-            names.EXECUTE_PROGRAM_NODE: self.execute_program_node,
             names.REVIEW_ROUND: self.review_round,
             names.FINALIZE_TASK: self.finalize_task,
             names.LOAD_STAGE_POLICY: self.load_stage_policy,

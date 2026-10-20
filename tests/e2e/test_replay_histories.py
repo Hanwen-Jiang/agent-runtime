@@ -87,9 +87,11 @@ def test_every_exported_history_replays(stack: Stack, tmp_path: Path) -> None:
     session_golden = pick(exported["SessionWorkflow"], SESSION_CASES)
     task_golden = pick(exported["TaskWorkflow"], TASK_CASES)
     if os.environ.get("AR_UPDATE_GOLDEN_HISTORIES") == "1":
+        # 只补缺的 golden，不覆盖、不删除已有的：已有的 golden 是旧版本代码留下的历史，用来证明它们仍能回放；
+        # py-worker 的目录里还有 Stage Runner 等其他测试写的 golden。要重新生成某一份，先删掉它。
         for directory, chosen in ((GO_GOLDEN, session_golden), (PY_GOLDEN, task_golden)):
             directory.mkdir(parents=True, exist_ok=True)
-            for old in directory.glob("*.json"):
-                old.unlink()
             for name, path in chosen.items():
-                shutil.copyfile(path, directory / f"{name}.json")
+                target = directory / f"{name}.json"
+                if not target.exists():
+                    shutil.copyfile(path, target)
