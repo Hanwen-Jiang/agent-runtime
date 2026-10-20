@@ -3,7 +3,8 @@
 - 本模块排在最后（conftest.py）：本次测试会话里跑过的 Task、SubAgentWorkflow、SubgraphWorkflow 的事件历史，
   当前代码都必须能回放。设 AR_UPDATE_GOLDEN_HISTORIES=1 时，从中挑出覆盖每条展开路径的历史写进 tests/histories。
 - golden 历史覆盖：并行调度、revise、ensemble（vote 与 judge）、search、template（内联与拆子工作流）、tool_loop、
-  sub_agent、sub_task、写节点前的人工审批、Hook 的 deny、取消，以及两种子工作流本身。
+  sub_agent、sub_task、写节点前的人工审批、tool_loop 里不可逆工具调用前的审批（D16）、Hook 的 deny、取消，
+  以及两种子工作流本身。
 - Stage Runner 改变了 Task 工作流的命令序列，走 workflow.patched 版本分支：S-03 的 golden 历史仍能回放，
   新历史带版本标记，旧历史没有。
 - 把 Stage Runner 里两条标了 replay-mutation 的语句调换顺序，重放必须失败。
@@ -30,7 +31,14 @@ import agentruntime_worker.workflows.stage_runner as stage_module
 import agentruntime_worker.workflows.task as task_module
 from agentruntime_worker import names
 from agentruntime_worker.replay import load_histories, replay_histories
-from agentruntime_worker.workflows.stage_runner import HUMAN_CHANNEL_PATCH, RECONCILE_PATCH, SubAgentWorkflow, SubgraphWorkflow
+from agentruntime_worker.workflows.stage_runner import (
+    HUMAN_CHANNEL_PATCH,
+    HUMAN_REPLY_RACE_PATCH,
+    RECONCILE_PATCH,
+    TOOL_LOOP_APPROVAL_PATCH,
+    SubAgentWorkflow,
+    SubgraphWorkflow,
+)
 from agentruntime_worker.workflows.task import STAGE_RUNNER_PATCH, TaskWorkflow
 
 from .support import HISTORIES_DIR
@@ -57,6 +65,8 @@ STAGE_CASES: dict[str, tuple[str, str]] = {
     "exec_reconcile": (names.TASK_WORKFLOW, r'"name":\s*"reconcile_node"'),
     "exec_human_channel": (names.TASK_WORKFLOW, r'"name":\s*"ask_human"'),
     "exec_unknown": (names.TASK_WORKFLOW, r'"status":\s*"unknown"'),
+    # D16：tool_loop 里调用不可逆工具前的人工审批。
+    "stage_tool_loop_approval": (names.TASK_WORKFLOW, r"card_charge.*book\.\d+\.1"),
 }
 
 MUTATION_C = "# replay-mutation:C"
@@ -137,6 +147,12 @@ def test_version_branch_keeps_old_histories_replayable() -> None:
     assert HUMAN_CHANNEL_PATCH not in history_text((HISTORIES_DIR / "stage_approval.json").read_text("utf-8"))
     assert HUMAN_CHANNEL_PATCH in history_text((HISTORIES_DIR / "exec_human_channel.json").read_text("utf-8"))
     assert RECONCILE_PATCH in history_text((HISTORIES_DIR / "exec_reconcile.json").read_text("utf-8"))
+    # D16 改变了 tool_loop 的命令序列：新历史带版本标记，之前的 tool_loop 历史没有，按旧路径回放。
+    approval = history_text((HISTORIES_DIR / "stage_tool_loop_approval.json").read_text("utf-8"))
+    assert TOOL_LOOP_APPROVAL_PATCH in approval and HUMAN_REPLY_RACE_PATCH in approval
+    assert TOOL_LOOP_APPROVAL_PATCH not in history_text((HISTORIES_DIR / "stage_tool_loop.json").read_text("utf-8"))
+    # 发问前先登记回复的改动也有版本分支：S-05 的发问历史没有这个标记，按旧路径回放。
+    assert HUMAN_REPLY_RACE_PATCH not in history_text((HISTORIES_DIR / "exec_human_channel.json").read_text("utf-8"))
 
 
 async def test_all_golden_histories_replay_with_the_current_code() -> None:

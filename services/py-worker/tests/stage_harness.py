@@ -157,6 +157,8 @@ class Script:
     tool_results: dict[str, Callable[[ToolCallInput], Any]] = field(default_factory=dict)
     # (挂载点, Node id 或 "stage") → 替换第一个 Hook 结果的字段
     hook_overrides: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
+    # 发问时就回复（模拟秒回）：在 ask_human activity 返回之前调用
+    on_question: Callable[[HumanQuestion], Awaitable[None]] | None = None
 
     calls: list[Call] = field(default_factory=list)
     hook_calls: list[HookCall] = field(default_factory=list)
@@ -312,6 +314,9 @@ class Script:
     @activity.defn(name=names.ASK_HUMAN)
     async def ask_human(self, q: HumanQuestion) -> None:
         self.questions.append(q)
+        if self.on_question is not None:
+            # 在发问的 activity 还没返回时就回复：回复信号先于 activity 结果到达工作流。
+            await self.on_question(q)
 
     @activity.defn(name=names.CANCEL_HUMAN)
     async def cancel_human(self, c: HumanCancel) -> None:

@@ -185,10 +185,13 @@ class ToolCallInput:
     tenant: Tenant
     task_id: str
     round_seq: int
+    # 这次调用的 Node id：<Goal id>.<2i>
     node_id: str
     tool: str
     args: dict[str, Any]
     effect: str
+    # 通过的人工审批；只有 effect 为 write_irreversible 的调用有，审批 id 是 <node_id>.1（D16）。
+    gate: GateRecord | None = None
 
 
 @dataclass

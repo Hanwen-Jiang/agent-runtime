@@ -44,6 +44,7 @@ from agentruntime_worker.activities.types import (
     ToolLoopStepInput,
 )
 from agentruntime_worker.config import WorkerConfig
+from agentruntime_worker.executor.tool_gate import require_tool_gate
 
 STUB_PLANS = ("answer", "slow_answer", "human_gate", "fail_model")
 HUMAN_OPTIONS = ("approve", "reject")
@@ -211,7 +212,8 @@ class StubActivities:
 
     @activity.defn(name=names.CALL_TOOL)
     async def call_tool(self, inp: ToolCallInput) -> Any:
-        """桩工具：回显参数。"""
+        """桩工具：回显参数。不可逆工具先查审批记录（D16 兜底）。"""
+        require_tool_gate(inp)
         return {"tool": inp.tool, "args": inp.args}
 
     @activity.defn(name=names.RUN_HOOKS)

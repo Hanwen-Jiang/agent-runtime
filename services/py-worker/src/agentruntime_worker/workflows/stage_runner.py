@@ -3,7 +3,8 @@
 1. 调度：依赖满足的 Node 进入 ready，按 Node id 排序后启动；同时执行的叶子 Node 不超过 StagePolicy.max_parallel，
    超过的排队；会写的 Node（effect 为 write_*）在工作流内串行，不用分布式锁。上游失败的 Node 记为 skipped。
 2. Hook：Stage 前后、每个 Node 前后由 Policy Engine 执行 Hook（local activity run_hooks）；
-   write_irreversible 的 Node 前自动插入人工审批 gate。deny 记为 denied，交给 Reviewer；modify 改写输入或输出。
+   write_irreversible 的 Node 前自动插入人工审批 gate，tool_loop 里每次调用不可逆工具前也逐次审批（D16）。
+   deny 记为 denied，交给 Reviewer；modify 改写输入或输出。
 3. quality：revise、ensemble、search 展开为子图，子 Node id 为“父 id + 序号”（见 stage_plan）。
 4. Goal Node：template 展开为 Recipe 的子图，大批量拆到 SubgraphWorkflow 子工作流；tool_loop 每一步是一个 activity；
    sub_agent 在 SubAgentWorkflow 子工作流里跑独立上下文、只交回结果，默认只读；sub_task 嵌套一个完整的 Task 工作流，
@@ -22,6 +23,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import copy
+import json
 from collections.abc import Awaitable
 from dataclasses import dataclass, field, replace
 from datetime import timedelta
@@ -70,6 +72,12 @@ DEFAULT_MAX_ITERATIONS = 20
 # S-05 改变命令序列的两处各有版本分支：human 节点与审批先经 HumanChannel 发问并设超时；写操作 activity 超时后按幂等键对账。
 HUMAN_CHANNEL_PATCH = "s05-human-channel"
 RECONCILE_PATCH = "s05-reconcile"
+# D16：tool_loop 里每次调用 write_irreversible 的工具前都插入人工审批（设计书 3.2.3、附录 E.1）。
+TOOL_LOOP_APPROVAL_PATCH = "d16-tool-loop-approval"
+# 发问之前先登记要等的回复，问题刚发出就到的回复不再被当作“不匹配”丢掉。
+HUMAN_REPLY_RACE_PATCH = "d16-expect-reply-before-ask"
+# 同一个 Goal Node 里不可逆工具调用被拒（含超时）几次就记为 denied，交给 Reviewer。
+MAX_TOOL_REJECTIONS = 2
 DEFAULT_ROLE = "transform"
 
 
@@ -115,6 +123,12 @@ def _copy_for(node: dict[str, Any], new_id: str, extra_inputs: dict[str, Any]) -
 
 class HumanGateway(Protocol):
     """等人工回复：Task 工作流收到 human_reply 信号后放行。只接受 options 里的选项；超过 timeout 返回 None。"""
+
+    def expect_reply(self, question_id: str, options: tuple[str, ...]) -> None:
+        """问题发出之前先登记要等的回复：问题刚发出、工作流还没开始等时到达的回复也要收下。"""
+
+    def forget_reply(self, question_id: str) -> None:
+        """问题没发出去时撤销登记。"""
 
     async def wait_for_reply(
         self, question_id: str, options: tuple[str, ...], timeout: timedelta | None = None
@@ -447,6 +461,11 @@ class StageRunner:
         if not workflow.patched(HUMAN_CHANNEL_PATCH):
             return await self._human.wait_for_reply(question_id, options), ""
         deadline = workflow.now() + timedelta(seconds=timeout_s)
+        # 先登记再发问：信号先于 activity 结果交给工作流，问题刚发出就到的回复不能因为“还没在等”被丢掉。
+        # 这改变了早到回复的处理，可能改变命令序列，所以有版本分支；旧历史按旧路径回放。
+        early = workflow.patched(HUMAN_REPLY_RACE_PATCH)
+        if early:
+            self._human.expect_reply(question_id, options)
         try:
             await workflow.execute_activity(
                 names.ASK_HUMAN,
@@ -464,9 +483,15 @@ class StageRunner:
                 retry_policy=timeouts.DECISION_RETRY,
             )
         except FailureError as err:
+            if early:
+                self._human.forget_reply(question_id)
             if caused_by_cancel(err):
                 raise asyncio.CancelledError() from err
             return None, f"发不出问题：{failure_message(err)}"
+        except asyncio.CancelledError:
+            if early:
+                self._human.forget_reply(question_id)
+            raise
         try:
             reply = await self._human.wait_for_reply(question_id, options, timedelta(seconds=timeout_s))
         except asyncio.CancelledError:
@@ -799,10 +824,15 @@ class StageRunner:
             return _as(await self.tool_loop(node, isolated=False, tool_effects=effects, env=inner), role)
 
     async def tool_loop(self, node: dict[str, Any], *, isolated: bool, tool_effects: dict[str, str], env: _Env) -> StageResult:
-        """思考 → 调工具 → 观察，每一步是一个 activity（附录 E.1）。设最大迭代次数，同一错误连续出现就打断（附录 B.8）。"""
+        """思考 → 调工具 → 观察，每一步是一个 activity（附录 E.1）。设最大迭代次数，同一错误连续出现就打断（附录 B.8）。
+
+        调用 effect 为 write_irreversible 的工具前逐次人工审批（D16，附录 E.1）：拒绝或超时时不调用，把结果作为这一步的
+        观察送回循环；同一个 Goal Node 被拒 MAX_TOOL_REJECTIONS 次就记为 denied。D16 之前的历史没有审批，按旧路径回放。
+        """
         nid = node["id"]
         limit = int(node.get("max_iterations") or DEFAULT_MAX_ITERATIONS)
         history: list[dict[str, Any]] = []
+        rejections = 0
         for i in range(1, limit + 1):
             try:
                 async with self._slot():
@@ -834,6 +864,18 @@ class StageRunner:
                 entry["error"] = f"工具 {step.tool} 不在 {nid} 的可用列表里"
             else:
                 effect = tool_effects[step.tool]
+                call_id = sp.child_id(nid, 2 * i)
+                gate: GateRecord | None = None
+                if effect == "write_irreversible" and workflow.patched(TOOL_LOOP_APPROVAL_PATCH):
+                    gate, rejection, reason = await self._tool_approval(call_id, step)
+                    if reason:
+                        return _denied(DEFAULT_ROLE, reason)
+                    if gate is None:
+                        history.append({**entry, **rejection})
+                        rejections += 1
+                        if rejections >= MAX_TOOL_REJECTIONS:
+                            return _denied(DEFAULT_ROLE, f"{nid} 的不可逆工具调用被拒绝 {rejections} 次（含审批超时），交给 Reviewer")
+                        continue
                 try:
                     async with self._writer(effect, env), self._slot():
                         entry["observation"] = await workflow.execute_activity(
@@ -842,10 +884,11 @@ class StageRunner:
                                 tenant=self._ctx.tenant,
                                 task_id=self._ctx.task_id,
                                 round_seq=self._ctx.round_seq,
-                                node_id=sp.child_id(nid, 2 * i),
+                                node_id=call_id,
                                 tool=step.tool,
                                 args=step.args,
                                 effect=effect,
+                                gate=gate,
                             ),
                             task_queue=names.PROGRAM_QUEUE,
                             start_to_close_timeout=timeouts.DEFAULT_NODE_TIMEOUT,
@@ -860,6 +903,26 @@ class StageRunner:
             if sp.repeated_error(history):
                 return _failed(DEFAULT_ROLE, f"repeated_error：同一错误连续出现 {sp.REPEATED_ERROR_LIMIT} 次：{entry['error']}")
         return _failed(DEFAULT_ROLE, f"max_iterations：{limit} 步内没有完成")
+
+    async def _tool_approval(self, call_id: str, step: ToolLoopStep) -> tuple[GateRecord | None, dict[str, Any], str]:
+        """tool_loop 里一次不可逆工具调用前的人工审批，审批 id 是 <调用 id>.1；超时按拒绝处理。
+
+        返回 (审批记录, 拒绝时送回循环的观察, 不能审批的原因)：通过时只有审批记录；拒绝或超时时只有观察；
+        没有人工审批通道或发不出问题时只有原因，整个 Goal Node 记为 denied。
+        """
+        if self._human is None:
+            return None, {}, f"这里没有人工审批通道，不能调用不可逆工具 {step.tool}"
+        gate_id = sp.child_id(call_id, 1)
+        args = json.dumps(step.args, ensure_ascii=False, sort_keys=True)
+        text = f"批准调用 {step.tool} 吗？参数：{args}。这是不可撤销的操作。"
+        reply, error = await self._ask_and_wait(gate_id, text, sp.APPROVAL_OPTIONS, self.policy.approval_timeout_s)
+        if error:
+            return None, {}, error
+        if reply is None:
+            return None, {"rejected": True, "timed_out": True}, ""
+        if reply.option != "approve":
+            return None, {"rejected": True, "guidance": reply.guidance, "replied_by": reply.replied_by_user_id}, ""
+        return GateRecord(gate_node=gate_id, option=reply.option, approved_by=reply.replied_by_user_id), {}, ""
 
     async def _sub_agent(self, node: dict[str, Any], role: str) -> StageResult:
         ceiling = str(node.get("effect_ceiling") or "read")

@@ -265,6 +265,15 @@ class TaskWorkflow:
         self._stage_policy = ctx.policy
         return results
 
+    def expect_reply(self, question_id: str, options: tuple[str, ...]) -> None:
+        """HumanGateway：发问之前先登记，问题刚发出就到的回复也会收下。"""
+        self._waiting[question_id] = tuple(options)
+
+    def forget_reply(self, question_id: str) -> None:
+        """HumanGateway：问题没发出去时撤销登记。"""
+        self._waiting.pop(question_id, None)
+        self._replies.pop(question_id, None)
+
     async def wait_for_reply(
         self, question_id: str, options: tuple[str, ...], timeout: timedelta | None = None
     ) -> task_pb2.HumanReplySignal | None:

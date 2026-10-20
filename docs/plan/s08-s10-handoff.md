@@ -17,6 +17,9 @@
 | `0a014a7` | 设计书同步原文档 rev 11：4.3 补“行级安全的约束”；本说明 | 同上 |
 | `905a6fd` 起 | S-08 评测集与评测 harness，见下 | S-09、S-10 用它评测 |
 | S-08 人审之后的提交 | 设计书同步原文档 rev 21：附录 B.7、C.1、C.2、D.5、D.6 统一口径 | Triage：风险按本 Session 已授权的等级比较，已授权的写可以 light，light 涉及不可逆动作要多一项检查；续改开新 Task 并继承上一个 Task 的 State；任务本身需要的人工确认由 Planner 写成 human 的 gate 节点 |
+| `1b3fcc9` | 设计书同步原文档 rev 40：按 D1–D16 设计缺口评审统一口径 | tool_loop 里每次调用不可逆工具前逐次人工审批；只读 Task 的 effect 上限压到 read；Task 提交时固定一个 Registry 修订号；发布门槛改为非劣效检验 |
+| `e191089` | S-08 人审第二轮：17 条确认，两条待定 | 见下表 |
+| D16 的提交 | Stage Runner 在 tool_loop 里每次调用不可逆工具前问人；`call_tool` 再查一次审批记录；S-08 评分器相应调整 | Goal Node 可以带不可逆工具，运行时逐次审批 |
 
 ## 主干这边的做法
 
@@ -24,7 +27,7 @@
 
 | 工作项 | 状态 | 关键决定 |
 | --- | --- | --- |
-| S-08 | 已实现；人审第一轮 45 条确认，19 条按意见修改后等复审 | 见下一节 |
+| S-08 | 已实现；人审两轮后 62 条确认，两条待定（naming_ai_assistant_divergent、research_pricing_escalate） | 见下一节 |
 | S-09 | 未开始 | — |
 | S-10 | 未开始 | — |
 
@@ -34,7 +37,7 @@
 - 一条命令跑评测：`uv run --package agentruntime-learning python -m agentruntime_learning.evals run --subject <被测对象>`。S-09、S-10 的 Planner 与 Reviewer 以 `<模块>:<工厂函数>` 接入，实现 `model.Subject`（`plan` 与 `review` 两个方法）。
 - Reviewer 的输入只有 Stage、Stage 结果、Task State 与之前各 Round 的摘要（`ReviewerInput`），没有 Planner 的规划过程；被测对象也拿不到用例 id。
 - Verdict 序列按 Round 逐个判定点评测（用标注的 Stage 与结果），不是整轮实跑。
-- 规则由代码判定：风险上升必须 full；不可逆动作必须是按 `write_irreversible` 声明的 Atomic Node；模板、Recipe、工具必须在 Catalog 里；effect 不超过上限、不低于模板；fast 与 light 不调用强模型；light 必须命中最近没失败的 Recipe；done 必须来自成功的 deliver 节点。
+- 规则由代码判定：风险上升必须 full；Atomic Node 的不可逆动作必须按 `write_irreversible` 声明（Goal Node 里的不可逆工具由运行时逐次审批）；Goal Node 的工具不能高于它自己的 effect 上限；模板、Recipe、工具必须在 Catalog 里；effect 不超过上限、不低于模板；fast 与 light 不调用强模型；light 必须命中最近没失败的 Recipe；done 必须来自成功的 deliver 节点。
 - 每个判定点标了“至少升级到哪一步”（附录 B.8），低于它还在 repair 记为“该升级却原地重试”（S-10 验收要求为 0）。
 - 留出集只给汇总分数；提示只在开发集上调（有测试检查留出集内容没有进 Worker 的代码与提示）。
 - 基线（永远 full + 单个 Node）在开发集上成功率 4%，报告列出失败原因；参照输出在两个划分上都是满分。
@@ -43,4 +46,4 @@
 
 - 不要在 S-08 至 S-10 的范围里另起实现，以免两边冲突；有想法请直接提给项目负责人。
 - 核心链路（Task Loop → Stage Runner → Node Executor）同一时间只由一个 agent 修改（CLAUDE.md），S-09、S-10 会改到 Task 工作流调用的 decision activity。
-- 做 S-08 时发现：Stage Runner 只在 `write_irreversible` 的 Atomic Node 前插入人工审批，tool_loop 里调用不可逆工具不经过审批。已作为问题报给项目负责人；在修好之前，规划时不要把不可逆工具交给 Goal Node。
+- 做 S-08 时发现：Stage Runner 只在 `write_irreversible` 的 Atomic Node 前插入人工审批，tool_loop 里调用不可逆工具不经过审批。已按 D16 修好：每次调用不可逆工具前逐次人工审批，拒绝时把指导送回循环，同一 Goal Node 被拒 2 次记为 denied（设计书 3.2.3、附录 E.1）。

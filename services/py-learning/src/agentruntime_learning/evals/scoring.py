@@ -27,6 +27,7 @@ DIMENSIONS = ("schema", "rule", "triage", "shape", "verdict", "escalation", "err
 # 规则（Failure.code）。
 RULE_RISK_RISE_REQUIRES_FULL = "risk_rise_requires_full"
 RULE_IRREVERSIBLE_REQUIRES_GATE = "irreversible_requires_gate"
+RULE_TOOLS_WITHIN_NODE_CEILING = "tools_within_node_ceiling"
 RULE_EFFECT_NOT_BELOW_CATALOG = "effect_not_below_catalog"
 RULE_TEMPLATE_IN_CATALOG = "template_in_catalog"
 RULE_EFFECT_WITHIN_CEILING = "effect_within_ceiling"
@@ -193,9 +194,11 @@ def _rule_failures(case: TaskCase, output: PlannerOutput, stage: dict[str, Any],
             elif template in catalog.templates and stages.rank(str(node.get("effect"))) < stages.rank(catalog.templates[template].effect):
                 found.append(Failure("rule", RULE_EFFECT_NOT_BELOW_CATALOG, f"{nid} 按 {node.get('effect')} 声明，低于模板的 {catalog.templates[template].effect}"))
         else:
-            tools = sorted(set(node.get("tools") or []) & irreversible)
-            if tools:
-                found.append(Failure("rule", RULE_IRREVERSIBLE_REQUIRES_GATE, f"{nid} 在 Goal Node 里调用不可逆的工具 {'、'.join(tools)}：工具调用不经人工审批，应做成 write_irreversible 的 Atomic Node"))
+            # tool_loop 里每次调用不可逆工具前都逐次审批（D16），不可逆工具放进 Goal Node 不再违规；
+            # 但工具的 effect 高于这个 Node 自己的上限时，运行时在展开前就拒绝整个 Node。
+            over = sorted(str(t) for t in node.get("tools") or [] if t in catalog.tools and stages.rank(catalog.tools[t]) > stages.rank(effect))
+            if over:
+                found.append(Failure("rule", RULE_TOOLS_WITHIN_NODE_CEILING, f"{nid} 的工具 {'、'.join(over)} 高于它自己的 effect 上限 {effect}：运行时会拒绝整个 Node"))
     return found
 
 

@@ -21,11 +21,13 @@ from agentruntime_worker.activities.calllog import read_calls
 from agentruntime_worker.activities.stubs import HUMAN_OPTIONS, STUB_PLANS, StubActivities
 from agentruntime_worker.activities.types import (
     FinalizeTaskInput,
+    GateRecord,
     NodeInput,
     PlanRoundInput,
     ReviewRoundInput,
     StageResult,
     Tenant,
+    ToolCallInput,
 )
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.executor.dev import dev_executor
@@ -245,3 +247,40 @@ async def test_call_log_records_each_activity_with_attempt_and_queue(stubs: Stub
 
 def test_read_calls_of_missing_file_is_empty(tmp_path: Path) -> None:
     assert read_calls(tmp_path / "missing.jsonl") == []
+
+
+# --- D16：调用不可逆工具的兜底检查（计划 S-05“审批双保险”）：call_tool 自己再查一次审批记录 ---
+
+
+def tool_call(effect: str, gate: GateRecord | None = None) -> ToolCallInput:
+    return ToolCallInput(
+        tenant=TENANT, task_id=new_task_id(), round_seq=1, node_id="book.4", tool="card_charge",
+        args={"amount_cny": 980}, effect=effect, gate=gate,
+    )
+
+
+@pytest.mark.parametrize(
+    "gate",
+    [
+        None,
+        GateRecord(gate_node="book.4.1", option="reject", approved_by="u7"),
+        GateRecord(gate_node="book.2.1", option="approve", approved_by="u7"),
+    ],
+    ids=["no_gate", "rejected", "gate_of_another_call"],
+)
+async def test_an_irreversible_tool_call_without_its_own_passed_gate_is_refused(stubs: StubActivities, gate: GateRecord | None) -> None:
+    with pytest.raises(ApplicationError) as err:
+        await activity_env(names.CALL_TOOL, names.PROGRAM_QUEUE).run(stubs.call_tool, tool_call("write_irreversible", gate))
+    assert err.value.type == "denied" and err.value.non_retryable
+
+
+async def test_an_approved_irreversible_tool_call_runs(stubs: StubActivities) -> None:
+    gate = GateRecord(gate_node="book.4.1", option="approve", approved_by="u7")
+    out = await activity_env(names.CALL_TOOL, names.PROGRAM_QUEUE).run(stubs.call_tool, tool_call("write_irreversible", gate))
+    assert out == {"tool": "card_charge", "args": {"amount_cny": 980}}
+
+
+@pytest.mark.parametrize("effect", ["none", "read", "write_reversible"])
+async def test_other_tool_calls_need_no_gate(stubs: StubActivities, effect: str) -> None:
+    out = await activity_env(names.CALL_TOOL, names.PROGRAM_QUEUE).run(stubs.call_tool, tool_call(effect))
+    assert out["tool"] == "card_charge"

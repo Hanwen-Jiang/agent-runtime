@@ -116,9 +116,10 @@ def test_no_risk_rise_means_no_rule_violation(make_set) -> None:
 
 
 def test_irreversible_actions_must_be_declared_so_the_runtime_gates_them(make_set) -> None:
-    """write_irreversible 前必须有 gate：运行时只在按 write_irreversible 声明的 Atomic Node 前插入人工审批（附录 F.3）。
+    """write_irreversible 前必须有 gate：Atomic Node 按 write_irreversible 声明时，运行时在它前面插入人工审批（附录 F.3）；
+    按更低的 effect 声明就没有这道审批，算违规。
 
-    Goal Node（tool_loop）里的工具调用不经过这道审批，所以不可逆动作放进 Goal Node 一律算违规，不论 effect_ceiling。
+    D16 之后，tool_loop 里每次调用不可逆工具前也逐次审批，所以 Goal Node 带着不可逆工具不再违规。
     """
     case, catalog = load_case(make_set, task_case("t_pay", risk="write_irreversible", irreversible=["pay_order@v1", "card_charge"]))
     under = atomic("pay", "pay_order@v1", effect="write_reversible", role="act")
@@ -126,11 +127,19 @@ def test_irreversible_actions_must_be_declared_so_the_runtime_gates_them(make_se
     assert scoring.RULE_IRREVERSIBLE_REQUIRES_GATE in codes(score, "rule")
     declared = atomic("pay", "pay_order@v1", effect="write_irreversible", role="act")
     assert scoring.RULE_IRREVERSIBLE_REQUIRES_GATE not in codes(score_planner(case, plan("full", stage(declared)), catalog))
-    for ceiling in ("write_reversible", "write_irreversible"):
-        loop = goal("book", tools=["flight_search", "card_charge"], effect_ceiling=ceiling)
-        assert scoring.RULE_IRREVERSIBLE_REQUIRES_GATE in codes(score_planner(case, plan("full", stage(loop)), catalog)), ceiling
-    browse = goal("compare", tools=["flight_search"], effect_ceiling="read")
-    assert scoring.RULE_IRREVERSIBLE_REQUIRES_GATE not in codes(score_planner(case, plan("full", stage(browse, declared)), catalog))
+    loop = goal("book", tools=["flight_search", "card_charge"], effect_ceiling="write_irreversible")
+    assert codes(score_planner(case, plan("full", stage(loop)), catalog), "rule") == set(), "tool_loop 里的不可逆调用逐次审批（D16）"
+
+
+def test_goal_node_tools_must_fit_under_its_own_ceiling(make_set) -> None:
+    """Goal Node 的工具 effect 高于它自己的 effect_ceiling 时，运行时在展开前就拒绝整个 Node（Stage Runner 的工具检查）。"""
+    case, catalog = load_case(make_set, task_case("t_tools", risk="write_irreversible"))
+    loop = goal("book", tools=["flight_search", "card_charge"], effect_ceiling="write_reversible")
+    assert scoring.RULE_TOOLS_WITHIN_NODE_CEILING in codes(score_planner(case, plan("full", stage(loop)), catalog), "rule")
+    sub_agent = goal("research", mode="sub_agent", tools=["web_search", "repo_edit"])
+    assert scoring.RULE_TOOLS_WITHIN_NODE_CEILING in codes(score_planner(case, plan("full", stage(sub_agent)), catalog), "rule"), "sub_agent 默认只读"
+    fits = goal("compare", tools=["flight_search"], effect_ceiling="read")
+    assert scoring.RULE_TOOLS_WITHIN_NODE_CEILING not in codes(score_planner(case, plan("full", stage(fits)), catalog))
 
 
 def test_a_template_whose_catalog_effect_is_irreversible_counts_even_without_a_label(make_set) -> None:
