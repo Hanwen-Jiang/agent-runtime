@@ -4,8 +4,10 @@
   "split": "dev",
   "category": "general",
   "review": {
-    "status": "draft",
-    "notes": "按人审意见：原样本在只读上限下 reroute 到写流程，会越过 effect 上限。改为 Task 的上限是可回滚写、目标本身就是按规则处理工单；说明里补了“超出上限要先 escalate”。"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20",
+    "notes": "第二轮复审由 Claude 完成，经 Hanwen-Jiang 授权确认。按人审意见：原样本在只读上限下 reroute 到写流程，会越过 effect 上限。改为 Task 的上限是可回滚写、目标本身就是按规则处理工单；说明里补了“超出上限要先 escalate”。"
   },
   "description": "任务实际属于另一类流程（逐条打标签并写回），而且仍在 Task 的 effect 上限（可回滚写）之内 → reroute 换 Recipe。若换过去的流程超出 effect 上限，应先 escalate 请用户或策略授权，不能直接 reroute。",
   "checkpoint": {

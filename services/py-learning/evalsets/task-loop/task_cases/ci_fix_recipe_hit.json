@@ -4,8 +4,10 @@
   "split": "dev",
   "category": "ci_fix",
   "review": {
-    "status": "draft",
-    "notes": "按人审意见：附录 C.1 改为风险按本 Session 已授权的等级比较，已授权过的写可以 light；说明里写明理由，并补了 rubric。"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20",
+    "notes": "第二轮复审由 Claude 完成，经 Hanwen-Jiang 授权确认。按人审意见：附录 C.1 改为风险按本 Session 已授权的等级比较，已授权过的写可以 light；说明里写明理由，并补了 rubric。"
   },
   "description": "已知任务族、Recipe 缓存命中，风险没有高于本 Session 已授权的等级（可回滚写已授权）→ light，直接按 ci_fix@v2 执行。附录 C.1：风险按已授权的等级比较，已授权过的写操作可以走 light。",
   "planner": {

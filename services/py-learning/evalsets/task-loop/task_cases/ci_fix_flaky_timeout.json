@@ -4,8 +4,10 @@
   "split": "holdout",
   "category": "ci_fix",
   "review": {
-    "status": "draft",
-    "notes": "按人审意见与附录 D.6（rev 21）：临时错误先按 retry 配置自动重试，用完仍失败才交给 Reviewer；第一轮的尝试次数改为 3，错误信息写明重试已用完。"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20",
+    "notes": "第二轮复审由 Claude 完成，经 Hanwen-Jiang 授权确认。按人审意见与附录 D.6（rev 21）：临时错误先按 retry 配置自动重试，用完仍失败才交给 Reviewer；第一轮的尝试次数改为 3，错误信息写明重试已用完。"
   },
   "description": "偶发失败的修复：风险上升 → full。第一轮因为基础设施超时失败，按附录 D.6 先按 retry 配置自动重试，3 次用完仍失败才交给 Reviewer → repair 再给一轮；第二轮通过 → done。",
   "planner": {

@@ -4,10 +4,12 @@
   "split": "holdout",
   "category": "multi_day_dev",
   "review": {
-    "status": "draft",
-    "notes": "按人审意见与附录 C.2（rev 21）：续改开新 Task，Task State 继承上一个 Task 的约束、事实与产物，Round 与 Stage 从 1 开始，不再沿用上一个 Task 的 Round 记录。 运行中的 Task 不受影响，这里开的是只读的新 Task。"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20",
+    "notes": "第二轮复审由 Claude 完成，经 Hanwen-Jiang 授权确认。按人审意见与附录 C.2（rev 21）：续改开新 Task，Task State 继承上一个 Task 的约束、事实与产物，Round 与 Stage 从 1 开始，不再沿用上一个 Task 的 Round 记录。 运行中的 Task 不受影响，这里开的是只读的新 Task。第二轮复审：按设计书 3.1.1（rev 40）只读 Task 的 effect 上限压到 read。"
   },
-  "description": "关于运行中 Task 的简单问题 → fast：按附录 C.2 开一个只读的新 Task，从运行中的 Task 继承已验证事实，Stage 从 1 开始，单次作答，不打断运行中的 Task。",
+  "description": "关于运行中 Task 的简单问题 → fast：按附录 C.2 开一个只读的新 Task，从运行中的 Task 继承已验证事实，Stage 从 1 开始，单次作答，不打断运行中的 Task。只读 Task 与运行中的 Task 并行，effect 上限压到 read（设计书 3.1.1，rev 40）。",
   "planner": {
     "input": {
       "message": "刚才提交的那个功能叫什么来着？",
@@ -17,7 +19,7 @@
         "goal": "回答刚才提交的是哪个功能",
         "done_when": "给出功能名称",
         "constraints": {
-          "effect_ceiling": "write_reversible"
+          "effect_ceiling": "read"
         },
         "facts": [
           "运行中的 Task（按功能清单实现记账小程序）已提交：注册、登录"
@@ -25,7 +27,7 @@
       },
       "context": {
         "risk_before": "write_reversible",
-        "effect_ceiling": "write_reversible"
+        "effect_ceiling": "read"
       }
     },
     "expect": {
@@ -65,7 +67,7 @@
         "goal": "回答刚才提交的是哪个功能",
         "done_when": "给出功能名称",
         "constraints": {
-          "effect_ceiling": "write_reversible"
+          "effect_ceiling": "read"
         },
         "facts": [
           "运行中的 Task（按功能清单实现记账小程序）已提交：注册、登录"

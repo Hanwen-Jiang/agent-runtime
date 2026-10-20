@@ -5,7 +5,7 @@
   "category": "naming",
   "review": {
     "status": "draft",
-    "notes": "按人审意见：escalate 之前不交付。第一轮只生成候选看分歧（不出 deliver），分歧大再问人；形状标注改为本轮不能有 deliver。"
+    "notes": "按人审意见：escalate 之前不交付。第一轮只生成候选看分歧（不出 deliver），分歧大再问人；形状标注改为本轮不能有 deliver。 第二轮复审待定：形状要求第一轮必须用 ensemble 生成；按附录 C.5（规格模糊、可以问人时先澄清），先问人的规划同样合格，却会被判形状不符。建议放宽为只要求本轮不出 deliver，并在 rubric 里写明“先澄清或先生成候选看分歧都可以”。"
   },
   "description": "使用场景不明（给员工用还是给客户用），置信度低：第一轮只生成候选、看分歧，先不交付。候选分歧很大（附录 B.7：题目含糊）→ escalate 问人澄清；问清之前不出 deliver。",
   "planner": {

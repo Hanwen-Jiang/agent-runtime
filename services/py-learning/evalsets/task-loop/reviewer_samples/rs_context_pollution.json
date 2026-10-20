@@ -4,8 +4,10 @@
   "split": "holdout",
   "category": "multi_day_dev",
   "review": {
-    "status": "draft",
-    "notes": "按人审意见：附录 B.7 的“上下文污染”一行写明 Verdict 为 repair（换方法），reset 后仍无进展再 replan；样本补了 rubric。"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20",
+    "notes": "第二轮复审由 Claude 完成，经 Hanwen-Jiang 授权确认。按人审意见：附录 B.7 的“上下文污染”一行写明 Verdict 为 repair（换方法），reset 后仍无进展再 replan；样本补了 rubric。"
   },
   "description": "附录 B.7：上下文越来越长、质量下降 → 上下文污染；把状态写入 Task State，reset 后继续（repair 换方法）。",
   "symptom": "context_pollution",

@@ -4,8 +4,10 @@
   "split": "holdout",
   "category": "batch_processing",
   "review": {
-    "status": "draft",
-    "notes": "按人审意见与附录 C.2（rev 21）：续改开新 Task，Task State 继承上一个 Task 的约束、事实与产物，Round 与 Stage 从 1 开始，不再沿用上一个 Task 的 Round 记录。"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20",
+    "notes": "第二轮复审由 Claude 完成，经 Hanwen-Jiang 授权确认。按人审意见与附录 C.2（rev 21）：续改开新 Task，Task State 继承上一个 Task 的约束、事实与产物，Round 与 Stage 从 1 开始，不再沿用上一个 Task 的 Round 记录。"
   },
   "description": "续改上一个产出 → fast：按附录 C.2 开新 Task，继承上一个 Task 的事实与产物，Stage 从 1 开始。",
   "planner": {
