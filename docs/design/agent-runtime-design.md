@@ -1,7 +1,7 @@
 # Agent Runtime 项目设计书（暂名）
 
 > 本文件导出自 Claude Docs 文档《Agent Runtime 项目设计书（暂名）》（https://claude.ai/code/artifact/9208d7e8-6b94-4792-9382-a0d0f36921b5），以该文档为准。
-> 导出日期：2026-10-19。正文与原文档一致；34 张结构图转为 `assets/` 下的 SVG，第 4 章 4.9–4.14 的六张接口图为新补。
+> 导出日期：2026-10-19；2026-10-20 同步原文档 rev 10（3.6“恢复”与附录 K.4 写清 write_irreversible 崩溃后的处理）。正文与原文档一致；34 张结构图转为 `assets/` 下的 SVG，第 4 章 4.9–4.14 的六张接口图为新补。
 > 术语以附录 A 为准；调研阶段的旧叫法见附录 A 的“原称”列。
 
 ## 目录
@@ -487,7 +487,7 @@ Learning Pipeline 用 Python 实现，全部是后台任务：消费者从 Redpa
 
 **恢复**
 
-- Worker 崩溃：activity 超时后由其他 Worker 接手。只读的 Node 直接重跑；写操作先用幂等键查询外部状态，确认未生效再执行。
+- Worker 崩溃：activity 超时后由其他 Worker 接手。只读的 Node 直接重跑；写操作先用幂等键查询外部状态：已生效就取当时的结果；确认未生效时，write_reversible 再执行，write_irreversible 不自动重试，交给 Reviewer。
 - 等待人工或外部回调：工作流挂起，不占用 Worker。
 - 模型供应商故障：Model Gateway 切换到同档位的其他供应商。
 - 发布新版本：运行中的 Task 绑定启动时的代码与模板版本，只有新 Task 使用新版本。
@@ -1575,7 +1575,7 @@ GenAI 语义约定已移到独立仓库，仍处于 Development 阶段，属性�
 
 | 场景 | 恢复方式 |
 | --- | --- |
-| Worker 在 Node 执行中崩溃 | activity 超时后由其他 Worker 重试。effect 为 none 或 read 的 Node 直接重跑；写操作先用幂等键查询外部状态，确认未生效再执行 |
+| Worker 在 Node 执行中崩溃 | activity 超时后由其他 Worker 重试。effect 为 none 或 read 的 Node 直接重跑；写操作先用幂等键查询外部状态：已生效就取当时的结果；确认未生效时，write_reversible 再执行，write_irreversible 不自动重试，交给 Reviewer |
 | Node 已完成，但结果未写入历史 | 同上，靠幂等键去重 |
 | 写操作结果未知 | 结果记为 UNKNOWN，走对账路径确认，不当作失败直接重试 |
 | 等待人工或外部回调 | 工作流挂起，不占用 Worker；信号到达后继续 |
