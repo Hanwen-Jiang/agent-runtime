@@ -1,0 +1,193 @@
+{
+  "kind": "task",
+  "id": "ci_fix_failing_test",
+  "split": "dev",
+  "category": "ci_fix",
+  "review": {
+    "status": "draft"
+  },
+  "description": "附录 B.3“修复 CI 中一个失败的测试”：新任务、要改代码（风险从只读升到可回滚写）→ full。合格 Stage：一个可写的 tool_loop 当唯一写者，quality = revise 且 judge 是跑测试的 program 节点；修复说明来自 deliver 节点。",
+  "planner": {
+    "input": {
+      "message": "CI 里 test_refund_rounding 一直失败，帮我把它修好。",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "write_reversible",
+        "session_budget_remaining_usd": 5.0
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "task_family": "engineering.ci_fix",
+      "risk": "write_reversible",
+      "shape": {
+        "modes": [
+          "tool_loop"
+        ],
+        "quality": [
+          "revise"
+        ],
+        "single_writer": true,
+        "deliver": true
+      },
+      "estimated_task_cost_usd": 1.5,
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full",
+            "task_family": "engineering.ci_fix",
+            "confidence": 0.7
+          },
+          "horizon": "full_dag",
+          "first_stage": {
+            "goal": "修复 test_refund_rounding",
+            "nodes": [
+              "fix",
+              "report"
+            ]
+          },
+          "context": {
+            "work_mode": "coding"
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "让 test_refund_rounding 通过，不改测试本身",
+          "exit_when": "测试全部通过，修复说明已给出",
+          "nodes": [
+            {
+              "id": "fix",
+              "kind": "goal",
+              "goal": "让 test_refund_rounding 通过，不改测试本身",
+              "done_when": "run_tests 全部通过",
+              "mode": "tool_loop",
+              "output_schema": {
+                "type": "object"
+              },
+              "quality": {
+                "type": "revise",
+                "judge": "run_tests@v1",
+                "max_rounds": 3
+              },
+              "effect_ceiling": "write_reversible",
+              "tools": [
+                "repo_read",
+                "repo_edit",
+                "shell_test"
+              ],
+              "max_iterations": 40
+            },
+            {
+              "id": "report",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "fix"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000001X",
+        "session_id": "ses_01J0000000000000000000001S",
+        "goal": "修好 CI 中失败的 test_refund_rounding",
+        "done_when": "test_refund_rounding 与其余测试全部通过",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "修复 test_refund_rounding",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "让 test_refund_rounding 通过，不改测试本身",
+        "exit_when": "测试全部通过，修复说明已给出",
+        "nodes": [
+          {
+            "id": "fix",
+            "kind": "goal",
+            "goal": "让 test_refund_rounding 通过，不改测试本身",
+            "done_when": "run_tests 全部通过",
+            "mode": "tool_loop",
+            "output_schema": {
+              "type": "object"
+            },
+            "quality": {
+              "type": "revise",
+              "judge": "run_tests@v1",
+              "max_rounds": 3
+            },
+            "effect_ceiling": "write_reversible",
+            "tools": [
+              "repo_read",
+              "repo_edit",
+              "shell_test"
+            ],
+            "max_iterations": 40
+          },
+          {
+            "id": "report",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "fix"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "fix": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "tests": "passed",
+            "changed_files": 1
+          }
+        },
+        "report": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "四舍五入改为银行家舍入后测试通过"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "测试全部通过，修复说明已交付",
+          "done": {
+            "deliver_node": "report"
+          }
+        }
+      }
+    }
+  ],
+  "rubric": [
+    "只安排一个可写的 tool_loop 当唯一写者",
+    "revise 的 judge 是跑测试的 program 节点，而不是模型自评"
+  ]
+}

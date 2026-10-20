@@ -1,0 +1,103 @@
+{
+  "kind": "task",
+  "id": "general_lowercase_fast",
+  "split": "holdout",
+  "category": "general",
+  "review": {
+    "status": "draft"
+  },
+  "description": "简单问答 → fast。",
+  "planner": {
+    "input": {
+      "message": "Python 里怎么把字符串转成小写？",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "read"
+      }
+    },
+    "expect": {
+      "triage": "fast",
+      "risk": "none",
+      "shape": {
+        "nodes": {
+          "max": 1
+        },
+        "deliver": true
+      },
+      "reference": {
+        "stage": {
+          "seq": 1,
+          "goal": "作答",
+          "exit_when": "给出可用的写法",
+          "nodes": [
+            {
+              "id": "answer",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000036X",
+        "session_id": "ses_01J0000000000000000000036S",
+        "goal": "回答 Python 字符串转小写的问题",
+        "done_when": "给出可用的写法",
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "作答",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "作答",
+        "exit_when": "给出可用的写法",
+        "nodes": [
+          {
+            "id": "answer",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate"
+          }
+        ]
+      },
+      "results": {
+        "answer": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "s.lower()"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "已作答",
+          "done": {
+            "deliver_node": "answer"
+          }
+        }
+      }
+    }
+  ]
+}

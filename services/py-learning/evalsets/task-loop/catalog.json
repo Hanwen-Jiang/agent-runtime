@@ -1,0 +1,169 @@
+{
+  "templates": {
+    "answer@v1": {
+      "executor": "model",
+      "effect": "none",
+      "description": "直接作答，或交付最终结果"
+    },
+    "rewrite@v1": {
+      "executor": "model",
+      "effect": "none",
+      "description": "按要求改写当前产出"
+    },
+    "summarize@v1": {
+      "executor": "model",
+      "effect": "none",
+      "description": "归纳与汇总"
+    },
+    "synthesize_report@v1": {
+      "executor": "model",
+      "effect": "none",
+      "description": "综合多方材料成稿"
+    },
+    "check_citations@v1": {
+      "executor": "program",
+      "effect": "none",
+      "description": "核对引用与原文是否一致"
+    },
+    "rubric_judge@v1": {
+      "executor": "model",
+      "effect": "none",
+      "description": "按 rubric 打分或择优"
+    },
+    "debate@v1": {
+      "executor": "model",
+      "effect": "none",
+      "description": "多方辩论中的一方"
+    },
+    "clarify_scope@v1": {
+      "executor": "human",
+      "effect": "none",
+      "description": "向用户确认范围"
+    },
+    "sample_review@v1": {
+      "executor": "human",
+      "effect": "none",
+      "description": "抽样转人工复核"
+    },
+    "sql_query@v1": {
+      "executor": "program",
+      "effect": "read",
+      "description": "查询分析库"
+    },
+    "refund_attribution@v2": {
+      "executor": "model",
+      "effect": "none",
+      "description": "退款原因归因"
+    },
+    "check_numbers_match@v1": {
+      "executor": "program",
+      "effect": "none",
+      "description": "核对结论里的数字与查询结果一致"
+    },
+    "read_ci_log@v1": {
+      "executor": "program",
+      "effect": "read",
+      "description": "读取 CI 日志"
+    },
+    "run_tests@v1": {
+      "executor": "program",
+      "effect": "read",
+      "description": "运行测试"
+    },
+    "list_tickets@v1": {
+      "executor": "program",
+      "effect": "read",
+      "description": "列出工单"
+    },
+    "list_invoices@v1": {
+      "executor": "program",
+      "effect": "read",
+      "description": "列出发票"
+    },
+    "generate_names@v1": {
+      "executor": "model",
+      "effect": "none",
+      "description": "生成候选名字或口号"
+    },
+    "trademark_check@v1": {
+      "executor": "program",
+      "effect": "read",
+      "description": "商标检索"
+    },
+    "read_feature_list@v1": {
+      "executor": "program",
+      "effect": "read",
+      "description": "读取功能清单与进度"
+    },
+    "e2e_test@v1": {
+      "executor": "program",
+      "effect": "read",
+      "description": "端到端测试"
+    },
+    "commit_progress@v1": {
+      "executor": "program",
+      "effect": "write_reversible",
+      "description": "提交代码并更新进度"
+    },
+    "fetch_url@v1": {
+      "executor": "program",
+      "effect": "read",
+      "description": "读取网页或附件里的链接"
+    },
+    "book_and_pay@v1": {
+      "executor": "program",
+      "effect": "write_irreversible",
+      "description": "出票并付款"
+    },
+    "purchase_ticket@v1": {
+      "executor": "program",
+      "effect": "write_irreversible",
+      "description": "购买门票"
+    }
+  },
+  "recipes": {
+    "refund_analysis@v3": {
+      "task_family": "analytics.attribution",
+      "description": "退款率归因：取数 → 归因 → 成稿"
+    },
+    "ci_fix@v2": {
+      "task_family": "engineering.ci_fix",
+      "description": "修复 CI 失败：tool_loop + 跑测试的 revise"
+    },
+    "ticket_triage@v4": {
+      "task_family": "support.ticket_batch",
+      "description": "工单逐条打标签：固定链 + schema 校验 + 写回"
+    },
+    "invoice_coding@v1": {
+      "task_family": "finance.invoice_coding",
+      "description": "发票逐张归类：固定链 + 校验 + 写回"
+    },
+    "competitor_weekly@v2": {
+      "task_family": "research.competitor_weekly",
+      "description": "竞品周报"
+    },
+    "product_naming@v2": {
+      "task_family": "creative.naming",
+      "description": "产品命名：ensemble 生成 + rubric judge + 商标检索"
+    },
+    "feature_iteration@v1": {
+      "task_family": "engineering.app_dev",
+      "description": "实现功能清单的一项：实现 → 端到端验证 → 提交"
+    },
+    "flight_booking@v1": {
+      "task_family": "travel.booking",
+      "description": "订机票：比价 → 付款（付款前人工审批）"
+    }
+  },
+  "tools": {
+    "web_search": "read",
+    "fetch_page": "read",
+    "repo_read": "read",
+    "repo_edit": "write_reversible",
+    "shell_test": "read",
+    "flight_search": "read",
+    "ticket_api_read": "read",
+    "card_charge": "write_irreversible",
+    "send_email": "write_irreversible"
+  }
+}

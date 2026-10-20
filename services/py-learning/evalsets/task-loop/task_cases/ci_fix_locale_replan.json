@@ -1,0 +1,202 @@
+{
+  "kind": "task",
+  "id": "ci_fix_locale_replan",
+  "split": "dev",
+  "category": "ci_fix",
+  "review": {
+    "status": "draft"
+  },
+  "description": "Reviewer 判定 replan 后重做剩余部分（Triage = replan）：上一轮已经读过并验证的 CI 日志（read_log）不再重做，新 Stage 针对 locale 差异修复。",
+  "planner": {
+    "input": {
+      "message": "CI 里 test_currency_format 失败了，帮我修好。",
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000006X",
+        "session_id": "ses_01J0000000000000000000006S",
+        "goal": "修好 CI 中失败的 test_currency_format",
+        "done_when": "测试全部通过",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "facts": [
+          "失败只在 CI 镜像里出现",
+          "CI 镜像的 locale 是 C，本地是 zh_CN"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "读 CI 日志并修复格式化函数",
+            "status": "completed",
+            "verdict": "replan",
+            "cost_usd": 0.5
+          }
+        ]
+      },
+      "context": {
+        "risk_before": "write_reversible",
+        "effect_ceiling": "write_reversible"
+      }
+    },
+    "expect": {
+      "triage": "replan",
+      "task_family": "engineering.ci_fix",
+      "risk": "write_reversible",
+      "shape": {
+        "keep_nodes": [
+          "read_log"
+        ],
+        "deliver": true
+      },
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "replan",
+            "task_family": "engineering.ci_fix"
+          },
+          "horizon": "full_dag"
+        },
+        "stage": {
+          "seq": 2,
+          "goal": "按 locale 差异修复",
+          "exit_when": "测试在 C locale 下通过",
+          "nodes": [
+            {
+              "id": "fix_locale",
+              "kind": "goal",
+              "goal": "在不依赖系统 locale 的前提下修好 test_currency_format",
+              "done_when": "run_tests 在 C locale 下通过",
+              "mode": "tool_loop",
+              "output_schema": {
+                "type": "object"
+              },
+              "quality": {
+                "type": "revise",
+                "judge": "run_tests@v1",
+                "max_rounds": 2
+              },
+              "effect_ceiling": "write_reversible",
+              "tools": [
+                "repo_read",
+                "repo_edit",
+                "shell_test"
+              ]
+            },
+            {
+              "id": "report",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "fix_locale"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000006X",
+        "session_id": "ses_01J0000000000000000000006S",
+        "goal": "修好 CI 中失败的 test_currency_format",
+        "done_when": "测试全部通过",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "facts": [
+          "失败只在 CI 镜像里出现",
+          "CI 镜像的 locale 是 C，本地是 zh_CN"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "读 CI 日志并修复格式化函数",
+            "status": "completed",
+            "verdict": "replan",
+            "cost_usd": 0.5
+          },
+          {
+            "seq": 2,
+            "stage_goal": "按 locale 差异修复",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 2,
+        "goal": "按 locale 差异修复",
+        "exit_when": "测试在 C locale 下通过",
+        "nodes": [
+          {
+            "id": "fix_locale",
+            "kind": "goal",
+            "goal": "在不依赖系统 locale 的前提下修好 test_currency_format",
+            "done_when": "run_tests 在 C locale 下通过",
+            "mode": "tool_loop",
+            "output_schema": {
+              "type": "object"
+            },
+            "quality": {
+              "type": "revise",
+              "judge": "run_tests@v1",
+              "max_rounds": 2
+            },
+            "effect_ceiling": "write_reversible",
+            "tools": [
+              "repo_read",
+              "repo_edit",
+              "shell_test"
+            ]
+          },
+          {
+            "id": "report",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "fix_locale"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "fix_locale": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "report": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "格式化改为显式指定 locale 后通过"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "测试通过，说明已交付",
+          "done": {
+            "deliver_node": "report"
+          }
+        }
+      }
+    }
+  ]
+}

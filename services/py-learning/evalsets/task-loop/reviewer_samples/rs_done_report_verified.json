@@ -1,0 +1,111 @@
+{
+  "kind": "reviewer",
+  "id": "rs_done_report_verified",
+  "split": "dev",
+  "category": "research_report",
+  "review": {
+    "status": "draft"
+  },
+  "description": "成稿、引用核对通过、deliver 有结果 → done（完成看产出物，不看对话）。",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000101X",
+      "session_id": "ses_01J0000000000000000000101S",
+      "goal": "写一份欧洲热泵市场简报",
+      "done_when": "简报成稿且引用核对通过",
+      "constraints": {
+        "effect_ceiling": "read"
+      },
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "分头研究",
+          "status": "completed",
+          "verdict": "continue",
+          "cost_usd": 0.8
+        },
+        {
+          "seq": 2,
+          "stage_goal": "综合成稿",
+          "status": "reviewing"
+        }
+      ]
+    },
+    "stage": {
+      "seq": 2,
+      "goal": "综合成稿并核对引用",
+      "exit_when": "成稿且引用核对通过",
+      "nodes": [
+        {
+          "id": "synthesize",
+          "kind": "atomic",
+          "template": "synthesize_report@v1",
+          "executor": "model",
+          "effect": "none",
+          "role": "transform",
+          "output": "generate"
+        },
+        {
+          "id": "check_cites",
+          "kind": "atomic",
+          "template": "check_citations@v1",
+          "executor": "program",
+          "effect": "none",
+          "role": "judge",
+          "after": [
+            "synthesize"
+          ]
+        },
+        {
+          "id": "report",
+          "kind": "atomic",
+          "template": "answer@v1",
+          "executor": "model",
+          "effect": "none",
+          "role": "deliver",
+          "output": "generate",
+          "after": [
+            "check_cites"
+          ]
+        }
+      ]
+    },
+    "results": {
+      "synthesize": {
+        "role": "transform",
+        "status": "succeeded",
+        "result": {
+          "ok": true
+        }
+      },
+      "check_cites": {
+        "role": "judge",
+        "status": "succeeded",
+        "result": {
+          "mismatches": 0
+        }
+      },
+      "report": {
+        "role": "deliver",
+        "status": "succeeded",
+        "result": {
+          "pages": 6
+        }
+      }
+    },
+    "expect": {
+      "verdict": "done",
+      "acceptable": [
+        "done"
+      ],
+      "min_escalation": "none",
+      "reference": {
+        "verdict": "done",
+        "reason": "成稿且核对通过",
+        "done": {
+          "deliver_node": "report"
+        }
+      }
+    }
+  }
+}

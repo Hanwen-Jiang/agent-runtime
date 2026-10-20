@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/evals/case.schema.json",
+  "title": "评测用例（计划 S-08）",
+  "description": "评测集里的一个文件：一条 Task 用例（kind = task）或一条 Reviewer 专用样本（kind = reviewer）。Stage、Task Plan、Task State、Verdict 引用 /schemas。标注要经人确认（review.status = confirmed）；split 区分开发集与留出集，提示只在开发集上调。",
+  "type": "object",
+  "required": ["kind"],
+  "properties": {"kind": {"enum": ["task", "reviewer"]}},
+  "allOf": [
+    {"if": {"properties": {"kind": {"const": "task"}}}, "then": {"$ref": "#/$defs/task_case"}},
+    {"if": {"properties": {"kind": {"const": "reviewer"}}}, "then": {"$ref": "#/$defs/reviewer_sample"}}
+  ],
+  "$defs": {
+    "case_id": {"description": "与文件名（去掉 .json）相同", "type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "split": {"description": "dev：开发集，调提示用；holdout：留出集，只看汇总分数", "enum": ["dev", "holdout"]},
+    "category": {
+      "description": "附录 B.3 的六类常见任务；general 是不属于六类的闲聊与简单问答",
+      "enum": ["ci_fix", "research_report", "batch_processing", "naming", "multi_day_dev", "booking_payment", "general"]
+    },
+    "symptom": {
+      "description": "附录 B.7 形状不对的九种典型症状，依次为：扇出后子结果冲突、前几个 Node 就频繁 replan、tool_loop 轨迹长没有里程碑、revise 里同一错误反复、反思只改措辞、ensemble 分歧大、多方辩论很快一致或永不收敛、judge 总选第一个或最长的、上下文越来越长质量下降",
+      "enum": ["fanout_conflict", "early_replans", "long_tool_loop", "revise_same_error", "cosmetic_reflection", "ensemble_divergence", "debate_no_convergence", "judge_bias", "context_pollution"]
+    },
+    "escalation": {
+      "description": "附录 B.8 的升级顺序，由低到高；none 表示不需要升级（done、continue）",
+      "enum": ["none", "repair_retry", "repair_change_method", "replan", "replan_change_shape", "rollback", "escalate", "abort"]
+    },
+    "review": {
+      "description": "标注的人工确认（计划 S-08 难点：标注要经人确认）",
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {"enum": ["draft", "confirmed"]},
+        "confirmed_by": {"type": "string", "minLength": 1},
+        "confirmed_at": {"type": "string", "format": "date"},
+        "notes": {"type": "string"}
+      },
+      "if": {"properties": {"status": {"const": "confirmed"}}},
+      "then": {"required": ["confirmed_by", "confirmed_at"]},
+      "unevaluatedProperties": false
+    },
+    "range": {
+      "type": "object",
+      "properties": {
+        "min": {"type": "integer", "minimum": 0},
+        "max": {"type": "integer", "minimum": 0}
+      },
+      "minProperties": 1,
+      "unevaluatedProperties": false
+    },
+    "shape": {
+      "description": "合格 Stage 的形状特征；没写的特征不检查",
+      "type": "object",
+      "properties": {
+        "nodes": {"description": "顶层 Node 数", "$ref": "#/$defs/range"},
+        "fan_out": {"description": "同一层（互不依赖、可并行）的最多 Node 数", "$ref": "#/$defs/range"},
+        "gate": {"description": "是否有 gate：显式的 gate 节点，或 effect = write_irreversible 的节点（运行时自动插入人工审批，附录 F.3）", "type": "boolean"},
+        "human": {"description": "是否有 executor = human 的节点", "type": "boolean"},
+        "deliver": {"description": "是否有 role = deliver 的节点", "type": "boolean"},
+        "modes": {"description": "必须出现的 Goal Node mode", "type": "array", "items": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/mode"}, "uniqueItems": true},
+        "quality": {"description": "必须出现的质量包装", "type": "array", "items": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/quality"}, "uniqueItems": true},
+        "single_writer": {"description": "写操作（effect 为写，或可写的 tool_loop）不并行", "type": "boolean"},
+        "forbidden_roles": {"description": "本 Stage 不该出现的 role，例如信息没齐时不该有 deliver（一轮只规划到下一个信息检查点）", "type": "array", "items": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/role"}, "uniqueItems": true},
+        "keep_nodes": {"description": "replan 时保留的已验证 Node：不得在新 Stage 里重做", "type": "array", "items": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/node_id"}, "uniqueItems": true}
+      },
+      "unevaluatedProperties": false
+    },
+    "recipe_hit": {
+      "type": "object",
+      "required": ["recipe", "task_family"],
+      "properties": {
+        "recipe": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/recipe_ref"},
+        "task_family": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/task_family"},
+        "risk": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/effect"},
+        "recent_failure": {"type": "boolean"}
+      },
+      "unevaluatedProperties": false
+    },
+    "planner_input": {
+      "description": "Planner 在 Round 开头看到的输入：用户消息、当前 Task State（续改、加约束、replan 时有）与 Session 上下文",
+      "type": "object",
+      "required": ["message", "context"],
+      "properties": {
+        "message": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/non_empty_string"},
+        "task_state": {"$ref": "https://agentruntime.example/schemas/task_state.schema.json"},
+        "attachments": {"type": "array", "items": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/object_uri"}},
+        "context": {
+          "type": "object",
+          "required": ["risk_before", "effect_ceiling"],
+          "properties": {
+            "risk_before": {"description": "本 Session 或当前 Task 已经授权的风险等级；新 Task 的风险高于它就是风险上升", "$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/effect"},
+            "effect_ceiling": {"description": "租户与 Task 的 effect 上限", "$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/effect"},
+            "recipes": {"description": "Recipe 缓存里与本租户、Workspace 相关的条目（附录 C.4）", "type": "array", "items": {"$ref": "#/$defs/recipe_hit"}},
+            "session_budget_remaining_usd": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/usd"},
+            "model_profile_updated": {"description": "相关 Model Profile 最近更新过（附录 C.2）", "type": "boolean"}
+          },
+          "unevaluatedProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "planner_expect": {
+      "type": "object",
+      "required": ["triage", "risk", "shape", "reference"],
+      "properties": {
+        "triage": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/triage_level"},
+        "task_family": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/task_family"},
+        "risk": {"description": "这个 Task 的风险等级（最高 effect）", "$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/effect"},
+        "recipe": {"description": "light 时应命中的 Recipe", "$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/recipe_ref"},
+        "shape": {"$ref": "#/$defs/shape"},
+        "irreversible_actions": {"description": "不可逆动作对应的 Node Template 或工具；用到它们的 Node 必须按 write_irreversible 声明", "type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "estimated_task_cost_usd": {"description": "Task 的预计成本，用来统计规划成本占比（设计书 3.2.2：full 不超过约 5%）", "$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/usd"},
+        "reference": {
+          "description": "人确认过的合格输出：既给评审人看，也用来自检标注（参照输出必须得满分）",
+          "type": "object",
+          "required": ["stage"],
+          "properties": {
+            "task_plan": {"$ref": "https://agentruntime.example/schemas/task_plan.schema.json"},
+            "stage": {"$ref": "https://agentruntime.example/schemas/stage.schema.json"}
+          },
+          "unevaluatedProperties": false
+        }
+      },
+      "if": {"properties": {"triage": {"const": "light"}}},
+      "then": {"required": ["recipe"]},
+      "unevaluatedProperties": false
+    },
+    "node_result": {
+      "type": "object",
+      "required": ["role", "status"],
+      "properties": {
+        "role": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/role"},
+        "status": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/node_status"},
+        "result": {},
+        "failure_class": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/failure_class"},
+        "error": {"type": "string"},
+        "attempts": {"description": "本 Round 内的尝试次数", "type": "integer", "minimum": 1}
+      },
+      "unevaluatedProperties": false
+    },
+    "history_round": {
+      "description": "之前各 Round 的摘要：Verdict 与失败的 Node（id → 错误签名），由 Task State 与之前的 Stage 结果得出",
+      "type": "object",
+      "required": ["round", "verdict"],
+      "properties": {
+        "round": {"type": "integer", "minimum": 1},
+        "verdict": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/verdict"},
+        "failed_nodes": {"type": "object", "propertyNames": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/node_id"}, "additionalProperties": {"type": "string"}}
+      },
+      "unevaluatedProperties": false
+    },
+    "checkpoint": {
+      "description": "一个 Round 结束时 Reviewer 的判定点：给定 Stage、Stage 结果与 Task State，标注正确的 Verdict（逐个判定点评测，前面的判定按标注走）",
+      "type": "object",
+      "required": ["task_state", "stage", "results", "expect"],
+      "properties": {
+        "task_state": {"$ref": "https://agentruntime.example/schemas/task_state.schema.json"},
+        "stage": {"$ref": "https://agentruntime.example/schemas/stage.schema.json"},
+        "results": {"type": "object", "propertyNames": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/node_id"}, "additionalProperties": {"$ref": "#/$defs/node_result"}},
+        "history": {"type": "array", "items": {"$ref": "#/$defs/history_round"}},
+        "expect": {
+          "type": "object",
+          "required": ["verdict", "acceptable", "min_escalation", "reference"],
+          "properties": {
+            "verdict": {"description": "最好的判定", "$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/verdict"},
+            "acceptable": {"description": "可接受的判定，含 verdict", "type": "array", "minItems": 1, "items": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/verdict"}, "uniqueItems": true},
+            "min_escalation": {"description": "至少要升级到哪一步（附录 B.8）；低于它的 repair 记为“该升级却原地重试”", "$ref": "#/$defs/escalation"},
+            "layer": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/diagnosis_layer"},
+            "reference": {"description": "人确认过的参照 Verdict", "$ref": "https://agentruntime.example/schemas/verdict.schema.json"}
+          },
+          "unevaluatedProperties": false
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "task_case": {
+      "type": "object",
+      "required": ["kind", "id", "split", "category", "review", "description", "planner", "rounds"],
+      "properties": {
+        "kind": {"const": "task"},
+        "id": {"$ref": "#/$defs/case_id"},
+        "split": {"$ref": "#/$defs/split"},
+        "category": {"$ref": "#/$defs/category"},
+        "review": {"$ref": "#/$defs/review"},
+        "description": {"description": "给评审人看：这条考什么", "type": "string", "minLength": 1},
+        "planner": {
+          "type": "object",
+          "required": ["input", "expect"],
+          "properties": {
+            "input": {"$ref": "#/$defs/planner_input"},
+            "expect": {"$ref": "#/$defs/planner_expect"}
+          },
+          "unevaluatedProperties": false
+        },
+        "rounds": {"description": "期望的 Verdict 序列：每个 Round 结束时的判定点", "type": "array", "minItems": 1, "items": {"$ref": "#/$defs/checkpoint"}},
+        "rubric": {"description": "rubric 评分的要点，交给与被测模型不同家的模型打分", "type": "array", "items": {"type": "string", "minLength": 1}}
+      },
+      "unevaluatedProperties": false
+    },
+    "reviewer_sample": {
+      "type": "object",
+      "required": ["kind", "id", "split", "review", "description", "checkpoint"],
+      "properties": {
+        "kind": {"const": "reviewer"},
+        "id": {"$ref": "#/$defs/case_id"},
+        "split": {"$ref": "#/$defs/split"},
+        "category": {"$ref": "#/$defs/category"},
+        "review": {"$ref": "#/$defs/review"},
+        "description": {"type": "string", "minLength": 1},
+        "symptom": {"description": "附录 B.7 的典型症状；不属于这九种时省略", "$ref": "#/$defs/symptom"},
+        "checkpoint": {"$ref": "#/$defs/checkpoint"},
+        "rubric": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      },
+      "unevaluatedProperties": false
+    },
+    "catalog": {
+      "description": "评测用的 Node Catalog：Node Template、Recipe 与工具，以及各自的 effect（Atomic Node 只能从这里实例化）",
+      "type": "object",
+      "required": ["templates", "recipes", "tools"],
+      "properties": {
+        "templates": {
+          "type": "object",
+          "propertyNames": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/template_ref"},
+          "additionalProperties": {
+            "type": "object",
+            "required": ["executor", "effect"],
+            "properties": {
+              "executor": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/executor"},
+              "effect": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/effect"},
+              "description": {"type": "string"}
+            },
+            "unevaluatedProperties": false
+          }
+        },
+        "recipes": {
+          "type": "object",
+          "propertyNames": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/recipe_ref"},
+          "additionalProperties": {
+            "type": "object",
+            "required": ["task_family"],
+            "properties": {
+              "task_family": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/task_family"},
+              "description": {"type": "string"}
+            },
+            "unevaluatedProperties": false
+          }
+        },
+        "tools": {
+          "type": "object",
+          "propertyNames": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/tool_name"},
+          "additionalProperties": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/effect"}
+        }
+      },
+      "unevaluatedProperties": false
+    }
+  }
+}

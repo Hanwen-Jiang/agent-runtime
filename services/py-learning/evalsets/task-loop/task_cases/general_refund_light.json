@@ -1,0 +1,167 @@
+{
+  "kind": "task",
+  "id": "general_refund_light",
+  "split": "holdout",
+  "category": "general",
+  "review": {
+    "status": "draft"
+  },
+  "description": "已知任务族、命中 Recipe 缓存、风险没变 → light。",
+  "planner": {
+    "input": {
+      "message": "再跑一遍上季度退款率归因，这次看华南。",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "read",
+        "recipes": [
+          {
+            "recipe": "refund_analysis@v3",
+            "task_family": "analytics.attribution",
+            "risk": "read"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "triage": "light",
+      "task_family": "analytics.attribution",
+      "risk": "read",
+      "recipe": "refund_analysis@v3",
+      "shape": {
+        "modes": [
+          "template"
+        ],
+        "deliver": true
+      },
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "light",
+            "task_family": "analytics.attribution",
+            "confidence": 0.88
+          },
+          "recipe": "refund_analysis@v3",
+          "horizon": "full_dag"
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "按退款归因流程分析华南",
+          "exit_when": "结论有数据支撑",
+          "nodes": [
+            {
+              "id": "analysis",
+              "kind": "goal",
+              "goal": "分析上季度华南退款率上升的原因",
+              "done_when": "每个结论有数据支撑",
+              "mode": "template",
+              "recipe": "refund_analysis@v3",
+              "inputs": {
+                "region": "华南"
+              },
+              "output_schema": {
+                "type": "object"
+              },
+              "effect_ceiling": "read"
+            },
+            {
+              "id": "answer",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "analysis"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000038X",
+        "session_id": "ses_01J0000000000000000000038S",
+        "goal": "分析上季度华南退款率上升的原因",
+        "done_when": "每个结论有数据支撑",
+        "constraints": {
+          "effect_ceiling": "read"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "按流程分析",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "按退款归因流程分析华南",
+        "exit_when": "结论有数据支撑",
+        "nodes": [
+          {
+            "id": "analysis",
+            "kind": "goal",
+            "goal": "分析上季度华南退款率上升的原因",
+            "done_when": "每个结论有数据支撑",
+            "mode": "template",
+            "recipe": "refund_analysis@v3",
+            "inputs": {
+              "region": "华南"
+            },
+            "output_schema": {
+              "type": "object"
+            },
+            "effect_ceiling": "read"
+          },
+          {
+            "id": "answer",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "analysis"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "analysis": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "answer": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "top_cause": "退货政策调整"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "已交付",
+          "done": {
+            "deliver_node": "answer"
+          }
+        }
+      }
+    }
+  ]
+}

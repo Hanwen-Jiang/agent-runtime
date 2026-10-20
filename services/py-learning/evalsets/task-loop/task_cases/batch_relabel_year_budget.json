@@ -1,0 +1,450 @@
+{
+  "kind": "task",
+  "id": "batch_relabel_year_budget",
+  "split": "dev",
+  "category": "batch_processing",
+  "review": {
+    "status": "draft"
+  },
+  "description": "期望的 Verdict 序列 continue → escalate → abort：预算用掉 84% 而完成度只有 25%（附录 B.8：缩小范围或问人）；用户选择原样继续后预算用尽 → abort，交付部分结果并说明。",
+  "planner": {
+    "input": {
+      "message": "把过去一年的 20 万张工单全部重新打一遍标签。",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "write_reversible",
+        "session_budget_remaining_usd": 5.0
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "task_family": "support.ticket_batch",
+      "risk": "write_reversible",
+      "shape": {
+        "modes": [
+          "template"
+        ],
+        "nodes": {
+          "min": 2
+        },
+        "forbidden_roles": [
+          "deliver"
+        ]
+      },
+      "estimated_task_cost_usd": 5.0,
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full",
+            "task_family": "support.ticket_batch",
+            "confidence": 0.6
+          },
+          "horizon": "per_stage",
+          "context": {
+            "work_mode": "batch"
+          },
+          "budget": {
+            "usd": 5.0
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "分批重打标签",
+          "exit_when": "本批工单完成",
+          "nodes": [
+            {
+              "id": "list",
+              "kind": "atomic",
+              "template": "list_tickets@v1",
+              "executor": "program",
+              "effect": "read",
+              "role": "fetch",
+              "inputs": {
+                "range": "last_year",
+                "batch": 1
+              }
+            },
+            {
+              "id": "relabel_batch",
+              "kind": "goal",
+              "goal": "本批工单重打标签并写回",
+              "done_when": "本批工单的标签通过校验",
+              "mode": "template",
+              "recipe": "ticket_triage@v4",
+              "after": [
+                "list"
+              ],
+              "output_schema": {
+                "type": "object"
+              },
+              "effect_ceiling": "write_reversible"
+            },
+            {
+              "id": "progress",
+              "kind": "atomic",
+              "template": "summarize@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "aggregate",
+              "output": "generate",
+              "after": [
+                "relabel_batch"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000018X",
+        "session_id": "ses_01J0000000000000000000018S",
+        "goal": "把过去一年的 20 万张工单全部重新打标签并写回",
+        "done_when": "20 万张工单的标签都通过校验并已写回",
+        "constraints": {
+          "effect_ceiling": "write_reversible",
+          "budget_usd": 5.0
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "分批重打标签",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "分批重打标签",
+        "exit_when": "本批工单完成",
+        "nodes": [
+          {
+            "id": "list",
+            "kind": "atomic",
+            "template": "list_tickets@v1",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch",
+            "inputs": {
+              "range": "last_year",
+              "batch": 1
+            }
+          },
+          {
+            "id": "relabel_batch",
+            "kind": "goal",
+            "goal": "本批工单重打标签并写回",
+            "done_when": "本批工单的标签通过校验",
+            "mode": "template",
+            "recipe": "ticket_triage@v4",
+            "after": [
+              "list"
+            ],
+            "output_schema": {
+              "type": "object"
+            },
+            "effect_ceiling": "write_reversible"
+          },
+          {
+            "id": "progress",
+            "kind": "atomic",
+            "template": "summarize@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "aggregate",
+            "output": "generate",
+            "after": [
+              "relabel_batch"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "list": {
+          "role": "fetch",
+          "status": "succeeded",
+          "result": {
+            "count": 20000
+          }
+        },
+        "relabel_batch": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "progress": {
+          "role": "aggregate",
+          "status": "succeeded",
+          "result": {
+            "done": 20000,
+            "total": 200000
+          }
+        }
+      },
+      "expect": {
+        "verdict": "continue",
+        "acceptable": [
+          "continue"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "continue",
+          "reason": "第一批完成，预算与进度相符"
+        }
+      }
+    },
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000018X",
+        "session_id": "ses_01J0000000000000000000018S",
+        "goal": "把过去一年的 20 万张工单全部重新打标签并写回",
+        "done_when": "20 万张工单的标签都通过校验并已写回",
+        "constraints": {
+          "effect_ceiling": "write_reversible",
+          "budget_usd": 5.0
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "分批重打标签",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.5
+          },
+          {
+            "seq": 2,
+            "stage_goal": "分批重打标签",
+            "status": "reviewing",
+            "cost_usd": 3.7
+          }
+        ]
+      },
+      "stage": {
+        "seq": 2,
+        "goal": "分批重打标签",
+        "exit_when": "本批工单完成",
+        "nodes": [
+          {
+            "id": "list",
+            "kind": "atomic",
+            "template": "list_tickets@v1",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch",
+            "inputs": {
+              "range": "last_year",
+              "batch": 2
+            }
+          },
+          {
+            "id": "relabel_batch",
+            "kind": "goal",
+            "goal": "本批工单重打标签并写回",
+            "done_when": "本批工单的标签通过校验",
+            "mode": "template",
+            "recipe": "ticket_triage@v4",
+            "after": [
+              "list"
+            ],
+            "output_schema": {
+              "type": "object"
+            },
+            "effect_ceiling": "write_reversible"
+          },
+          {
+            "id": "progress",
+            "kind": "atomic",
+            "template": "summarize@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "aggregate",
+            "output": "generate",
+            "after": [
+              "relabel_batch"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "list": {
+          "role": "fetch",
+          "status": "succeeded",
+          "result": {
+            "count": 20000
+          }
+        },
+        "relabel_batch": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "progress": {
+          "role": "aggregate",
+          "status": "succeeded",
+          "result": {
+            "done": 50000,
+            "total": 200000
+          }
+        }
+      },
+      "expect": {
+        "verdict": "escalate",
+        "acceptable": [
+          "escalate",
+          "replan"
+        ],
+        "min_escalation": "replan",
+        "layer": "plan",
+        "reference": {
+          "verdict": "escalate",
+          "reason": "预算用掉 80% 以上而完成度不到 50%",
+          "layer": "plan",
+          "signals": [
+            "budget_burn"
+          ],
+          "escalate": {
+            "target": "human",
+            "question": "预算已用 84%，只完成 25%。缩小范围（例如只重打最近一个季度）、原样继续，还是停止并收尾？",
+            "options": [
+              "continue_as_is",
+              "replan_with_guidance",
+              "stop_and_wrap_up"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000018X",
+        "session_id": "ses_01J0000000000000000000018S",
+        "goal": "把过去一年的 20 万张工单全部重新打标签并写回",
+        "done_when": "20 万张工单的标签都通过校验并已写回",
+        "constraints": {
+          "effect_ceiling": "write_reversible",
+          "budget_usd": 5.0
+        },
+        "facts": [
+          "用户选择原样继续"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "分批重打标签",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.5
+          },
+          {
+            "seq": 2,
+            "stage_goal": "分批重打标签",
+            "status": "completed",
+            "verdict": "escalate",
+            "cost_usd": 3.7
+          },
+          {
+            "seq": 3,
+            "stage_goal": "分批重打标签",
+            "status": "reviewing",
+            "cost_usd": 0.85
+          }
+        ]
+      },
+      "stage": {
+        "seq": 3,
+        "goal": "分批重打标签",
+        "exit_when": "本批工单完成",
+        "nodes": [
+          {
+            "id": "list",
+            "kind": "atomic",
+            "template": "list_tickets@v1",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch",
+            "inputs": {
+              "range": "last_year",
+              "batch": 3
+            }
+          },
+          {
+            "id": "relabel_batch",
+            "kind": "goal",
+            "goal": "本批工单重打标签并写回",
+            "done_when": "本批工单的标签通过校验",
+            "mode": "template",
+            "recipe": "ticket_triage@v4",
+            "after": [
+              "list"
+            ],
+            "output_schema": {
+              "type": "object"
+            },
+            "effect_ceiling": "write_reversible"
+          },
+          {
+            "id": "progress",
+            "kind": "atomic",
+            "template": "summarize@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "aggregate",
+            "output": "generate",
+            "after": [
+              "relabel_batch"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "list": {
+          "role": "fetch",
+          "status": "succeeded",
+          "result": {
+            "count": 20000
+          }
+        },
+        "relabel_batch": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "progress": {
+          "role": "aggregate",
+          "status": "succeeded",
+          "result": {
+            "done": 60000,
+            "total": 200000
+          }
+        }
+      },
+      "expect": {
+        "verdict": "abort",
+        "acceptable": [
+          "abort"
+        ],
+        "min_escalation": "abort",
+        "reference": {
+          "verdict": "abort",
+          "reason": "预算用尽",
+          "abort": {
+            "completed": [
+              "约 6 万张工单已重新打标签并写回"
+            ],
+            "not_completed": [
+              "其余约 14 万张工单"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

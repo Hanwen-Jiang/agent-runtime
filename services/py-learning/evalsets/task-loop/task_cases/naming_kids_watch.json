@@ -1,0 +1,199 @@
+{
+  "kind": "task",
+  "id": "naming_kids_watch",
+  "split": "dev",
+  "category": "naming",
+  "review": {
+    "status": "draft"
+  },
+  "description": "附录 B.3“产品命名”：model 节点 quality = ensemble（5 个候选）+ rubric judge；deliver 给出前 3 名。",
+  "planner": {
+    "input": {
+      "message": "给我们的新款儿童智能手表起个名字，中英文都要。",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "read"
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "task_family": "creative.naming",
+      "risk": "read",
+      "shape": {
+        "quality": [
+          "ensemble"
+        ],
+        "deliver": true
+      },
+      "estimated_task_cost_usd": 0.8,
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full",
+            "task_family": "creative.naming",
+            "confidence": 0.65
+          },
+          "horizon": "full_dag",
+          "context": {
+            "work_mode": "writing"
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "生成并筛选名字",
+          "exit_when": "给出前 3 名及理由",
+          "nodes": [
+            {
+              "id": "candidates",
+              "kind": "atomic",
+              "template": "generate_names@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "transform",
+              "output": "generate",
+              "quality": {
+                "type": "ensemble",
+                "n": 5,
+                "aggregate": "judge",
+                "judge": "rubric_judge@v1"
+              }
+            },
+            {
+              "id": "tm_check",
+              "kind": "atomic",
+              "template": "trademark_check@v1",
+              "executor": "program",
+              "effect": "read",
+              "role": "fetch",
+              "after": [
+                "candidates"
+              ]
+            },
+            {
+              "id": "answer",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "tm_check"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000019X",
+        "session_id": "ses_01J0000000000000000000019S",
+        "goal": "给新款儿童智能手表起中英文名字",
+        "done_when": "给出前 3 名，均通过商标检索",
+        "constraints": {
+          "effect_ceiling": "read"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "生成并筛选名字",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "生成并筛选名字",
+        "exit_when": "给出前 3 名及理由",
+        "nodes": [
+          {
+            "id": "candidates",
+            "kind": "atomic",
+            "template": "generate_names@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "transform",
+            "output": "generate",
+            "quality": {
+              "type": "ensemble",
+              "n": 5,
+              "aggregate": "judge",
+              "judge": "rubric_judge@v1"
+            }
+          },
+          {
+            "id": "tm_check",
+            "kind": "atomic",
+            "template": "trademark_check@v1",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch",
+            "after": [
+              "candidates"
+            ]
+          },
+          {
+            "id": "answer",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "tm_check"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "candidates": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "tm_check": {
+          "role": "fetch",
+          "status": "succeeded",
+          "result": {
+            "conflicts": 0
+          }
+        },
+        "answer": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "top3": [
+              "小星 Starlet",
+              "朵朵 Doodle",
+              "跳跳 Hopper"
+            ]
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "前 3 名已交付",
+          "done": {
+            "deliver_node": "answer"
+          }
+        }
+      }
+    }
+  ],
+  "rubric": [
+    "用 ensemble 生成多个候选，由 rubric judge 择优",
+    "交付前做商标检索"
+  ]
+}

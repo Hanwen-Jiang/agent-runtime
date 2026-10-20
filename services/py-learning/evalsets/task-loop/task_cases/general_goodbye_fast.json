@@ -1,0 +1,103 @@
+{
+  "kind": "task",
+  "id": "general_goodbye_fast",
+  "split": "dev",
+  "category": "general",
+  "review": {
+    "status": "draft"
+  },
+  "description": "闲聊 → fast：单次调用，不调用强模型。",
+  "planner": {
+    "input": {
+      "message": "谢谢，今天先到这里。",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "read"
+      }
+    },
+    "expect": {
+      "triage": "fast",
+      "risk": "none",
+      "shape": {
+        "nodes": {
+          "max": 1
+        },
+        "deliver": true
+      },
+      "reference": {
+        "stage": {
+          "seq": 1,
+          "goal": "回应",
+          "exit_when": "礼貌回应",
+          "nodes": [
+            {
+              "id": "reply",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000035X",
+        "session_id": "ses_01J0000000000000000000035S",
+        "goal": "回应用户的道别",
+        "done_when": "礼貌回应",
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "回应",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "回应",
+        "exit_when": "礼貌回应",
+        "nodes": [
+          {
+            "id": "reply",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate"
+          }
+        ]
+      },
+      "results": {
+        "reply": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "好的，随时找我。"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "已回应",
+          "done": {
+            "deliver_node": "reply"
+          }
+        }
+      }
+    }
+  ]
+}

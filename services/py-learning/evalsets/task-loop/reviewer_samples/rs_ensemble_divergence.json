@@ -1,0 +1,86 @@
+{
+  "kind": "reviewer",
+  "id": "rs_ensemble_divergence",
+  "split": "holdout",
+  "category": "naming",
+  "review": {
+    "status": "draft"
+  },
+  "description": "附录 B.7：ensemble 分歧大 → 题目含糊，先澄清：escalate 问人（或拆解后 replan）。",
+  "symptom": "ensemble_divergence",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000111X",
+      "session_id": "ses_01J0000000000000000000111S",
+      "goal": "给新品发布会想一句口号",
+      "done_when": "口号符合定位，经用户认可",
+      "constraints": {
+        "effect_ceiling": "read"
+      },
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "生成口号",
+          "status": "reviewing"
+        }
+      ]
+    },
+    "stage": {
+      "seq": 1,
+      "goal": "生成口号",
+      "exit_when": "得到一致的推荐",
+      "nodes": [
+        {
+          "id": "slogans",
+          "kind": "atomic",
+          "template": "generate_names@v1",
+          "executor": "model",
+          "effect": "none",
+          "role": "transform",
+          "output": "generate",
+          "quality": {
+            "type": "ensemble",
+            "n": 5,
+            "aggregate": "vote"
+          }
+        }
+      ]
+    },
+    "results": {
+      "slogans": {
+        "role": "transform",
+        "status": "succeeded",
+        "result": {
+          "candidates": 5,
+          "agreement": 0.2
+        }
+      }
+    },
+    "expect": {
+      "verdict": "escalate",
+      "acceptable": [
+        "escalate",
+        "replan"
+      ],
+      "min_escalation": "replan",
+      "layer": "goal",
+      "reference": {
+        "verdict": "escalate",
+        "reason": "候选分歧很大，题目含糊",
+        "layer": "goal",
+        "signals": [
+          "sample_divergence"
+        ],
+        "escalate": {
+          "target": "human",
+          "question": "口号是对 B 端客户还是 C 端用户？要突出价格还是技术？",
+          "options": [
+            "continue_as_is",
+            "replan_with_guidance",
+            "stop_and_wrap_up"
+          ]
+        }
+      }
+    }
+  }
+}

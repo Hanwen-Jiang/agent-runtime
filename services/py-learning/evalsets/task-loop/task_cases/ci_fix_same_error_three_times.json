@@ -1,0 +1,415 @@
+{
+  "kind": "task",
+  "id": "ci_fix_same_error_three_times",
+  "split": "dev",
+  "category": "ci_fix",
+  "review": {
+    "status": "draft"
+  },
+  "description": "期望的 Verdict 序列 repair → repair（换方法）→ replan：附录 B.8“同一 Node 失败 2 次换方法，3 次 replan”，附录 B.3“同一错误连续 3 次时判定 replan”。",
+  "planner": {
+    "input": {
+      "message": "CI 上 test_tax_rate 失败了，修一下。",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "write_reversible"
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "task_family": "engineering.ci_fix",
+      "risk": "write_reversible",
+      "shape": {
+        "modes": [
+          "tool_loop"
+        ],
+        "quality": [
+          "revise"
+        ],
+        "single_writer": true,
+        "deliver": true
+      },
+      "estimated_task_cost_usd": 2.0,
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full",
+            "task_family": "engineering.ci_fix",
+            "confidence": 0.7
+          },
+          "horizon": "full_dag",
+          "context": {
+            "work_mode": "coding"
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "让 test_tax_rate 通过",
+          "exit_when": "测试全部通过，修复说明已给出",
+          "nodes": [
+            {
+              "id": "fix",
+              "kind": "goal",
+              "goal": "让 test_tax_rate 通过",
+              "done_when": "run_tests 全部通过",
+              "mode": "tool_loop",
+              "output_schema": {
+                "type": "object"
+              },
+              "quality": {
+                "type": "revise",
+                "judge": "run_tests@v1",
+                "max_rounds": 3
+              },
+              "effect_ceiling": "write_reversible",
+              "tools": [
+                "repo_read",
+                "repo_edit",
+                "shell_test"
+              ],
+              "max_iterations": 40
+            },
+            {
+              "id": "report",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "fix"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000003X",
+        "session_id": "ses_01J0000000000000000000003S",
+        "goal": "修好 CI 中失败的 test_tax_rate",
+        "done_when": "test_tax_rate 与其余测试全部通过",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "修复 test_tax_rate",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "让 test_tax_rate 通过",
+        "exit_when": "测试全部通过，修复说明已给出",
+        "nodes": [
+          {
+            "id": "fix",
+            "kind": "goal",
+            "goal": "让 test_tax_rate 通过",
+            "done_when": "run_tests 全部通过",
+            "mode": "tool_loop",
+            "output_schema": {
+              "type": "object"
+            },
+            "quality": {
+              "type": "revise",
+              "judge": "run_tests@v1",
+              "max_rounds": 3
+            },
+            "effect_ceiling": "write_reversible",
+            "tools": [
+              "repo_read",
+              "repo_edit",
+              "shell_test"
+            ],
+            "max_iterations": 40
+          },
+          {
+            "id": "report",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "fix"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "fix": {
+          "role": "transform",
+          "status": "failed",
+          "failure_class": "invalid_output",
+          "error": "测试仍失败：AssertionError: 0.13 != 0.12",
+          "attempts": 1
+        },
+        "report": {
+          "role": "deliver",
+          "status": "skipped",
+          "failure_class": "upstream_failed"
+        }
+      },
+      "expect": {
+        "verdict": "repair",
+        "acceptable": [
+          "repair"
+        ],
+        "min_escalation": "repair_retry",
+        "layer": "execution",
+        "reference": {
+          "verdict": "repair",
+          "reason": "第一次失败，带上错误信息重试",
+          "layer": "execution",
+          "repair": {
+            "nodes": [
+              "fix"
+            ],
+            "strategy": "retry_with_error",
+            "guidance": "测试仍失败：AssertionError: 0.13 != 0.12"
+          }
+        }
+      }
+    },
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000003X",
+        "session_id": "ses_01J0000000000000000000003S",
+        "goal": "修好 CI 中失败的 test_tax_rate",
+        "done_when": "test_tax_rate 与其余测试全部通过",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "修复 test_tax_rate",
+            "status": "completed",
+            "verdict": "repair",
+            "cost_usd": 0.3
+          },
+          {
+            "seq": 2,
+            "stage_goal": "修复 test_tax_rate",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 2,
+        "goal": "让 test_tax_rate 通过",
+        "exit_when": "测试全部通过，修复说明已给出",
+        "nodes": [
+          {
+            "id": "fix",
+            "kind": "goal",
+            "goal": "让 test_tax_rate 通过",
+            "done_when": "run_tests 全部通过",
+            "mode": "tool_loop",
+            "output_schema": {
+              "type": "object"
+            },
+            "quality": {
+              "type": "revise",
+              "judge": "run_tests@v1",
+              "max_rounds": 3
+            },
+            "effect_ceiling": "write_reversible",
+            "tools": [
+              "repo_read",
+              "repo_edit",
+              "shell_test"
+            ],
+            "max_iterations": 40
+          },
+          {
+            "id": "report",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "fix"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "fix": {
+          "role": "transform",
+          "status": "failed",
+          "failure_class": "invalid_output",
+          "error": "测试仍失败：AssertionError: 0.13 != 0.12",
+          "attempts": 1
+        },
+        "report": {
+          "role": "deliver",
+          "status": "skipped",
+          "failure_class": "upstream_failed"
+        }
+      },
+      "history": [
+        {
+          "round": 1,
+          "verdict": "repair",
+          "failed_nodes": {
+            "fix": "测试仍失败：AssertionError: 0.13 != 0.12"
+          }
+        }
+      ],
+      "expect": {
+        "verdict": "repair",
+        "acceptable": [
+          "repair"
+        ],
+        "min_escalation": "repair_change_method",
+        "layer": "execution",
+        "reference": {
+          "verdict": "repair",
+          "reason": "同一错误第二次出现，目标不变、换方法",
+          "layer": "execution",
+          "repair": {
+            "nodes": [
+              "fix"
+            ],
+            "strategy": "change_method",
+            "guidance": "先查清税率常量从哪里读，再改代码"
+          }
+        }
+      }
+    },
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000003X",
+        "session_id": "ses_01J0000000000000000000003S",
+        "goal": "修好 CI 中失败的 test_tax_rate",
+        "done_when": "test_tax_rate 与其余测试全部通过",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "修复 test_tax_rate",
+            "status": "completed",
+            "verdict": "repair",
+            "cost_usd": 0.3
+          },
+          {
+            "seq": 2,
+            "stage_goal": "修复 test_tax_rate",
+            "status": "completed",
+            "verdict": "repair",
+            "cost_usd": 0.35
+          },
+          {
+            "seq": 3,
+            "stage_goal": "修复 test_tax_rate",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 3,
+        "goal": "让 test_tax_rate 通过",
+        "exit_when": "测试全部通过，修复说明已给出",
+        "nodes": [
+          {
+            "id": "fix",
+            "kind": "goal",
+            "goal": "让 test_tax_rate 通过",
+            "done_when": "run_tests 全部通过",
+            "mode": "tool_loop",
+            "output_schema": {
+              "type": "object"
+            },
+            "quality": {
+              "type": "revise",
+              "judge": "run_tests@v1",
+              "max_rounds": 3
+            },
+            "effect_ceiling": "write_reversible",
+            "tools": [
+              "repo_read",
+              "repo_edit",
+              "shell_test"
+            ],
+            "max_iterations": 40
+          },
+          {
+            "id": "report",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "fix"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "fix": {
+          "role": "transform",
+          "status": "failed",
+          "failure_class": "invalid_output",
+          "error": "测试仍失败：AssertionError: 0.13 != 0.12",
+          "attempts": 1
+        },
+        "report": {
+          "role": "deliver",
+          "status": "skipped",
+          "failure_class": "upstream_failed"
+        }
+      },
+      "history": [
+        {
+          "round": 1,
+          "verdict": "repair",
+          "failed_nodes": {
+            "fix": "测试仍失败：AssertionError: 0.13 != 0.12"
+          }
+        },
+        {
+          "round": 2,
+          "verdict": "repair",
+          "failed_nodes": {
+            "fix": "测试仍失败：AssertionError: 0.13 != 0.12"
+          }
+        }
+      ],
+      "expect": {
+        "verdict": "replan",
+        "acceptable": [
+          "replan"
+        ],
+        "min_escalation": "replan",
+        "layer": "plan",
+        "reference": {
+          "verdict": "replan",
+          "reason": "同一错误连续三次，问题在上游，停止修复",
+          "layer": "plan",
+          "signals": [
+            "repetition"
+          ],
+          "replan": {
+            "stuck_reason": "税率常量与配置文件不一致，换方法后仍是同一错误"
+          }
+        }
+      }
+    }
+  ]
+}

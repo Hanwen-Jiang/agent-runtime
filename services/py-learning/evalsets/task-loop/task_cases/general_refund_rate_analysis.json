@@ -1,0 +1,391 @@
+{
+  "kind": "task",
+  "id": "general_refund_rate_analysis",
+  "split": "dev",
+  "category": "general",
+  "review": {
+    "status": "draft"
+  },
+  "description": "附录 B.3 的示例（三个 Round）：第一轮三个互不依赖的查询并行，“下一步查什么”要看结果，所以在这里切开；第二轮读工单（只读 sub_agent）+ 归因（revise）；第三轮才有 deliver。期望的 Verdict 序列 continue → continue → done。",
+  "planner": {
+    "input": {
+      "message": "分析上季度退款率上升的原因，并给出建议。",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "read"
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "task_family": "analytics.attribution",
+      "risk": "read",
+      "shape": {
+        "fan_out": {
+          "min": 3
+        },
+        "forbidden_roles": [
+          "deliver"
+        ]
+      },
+      "estimated_task_cost_usd": 2.0,
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full",
+            "task_family": "analytics.attribution",
+            "confidence": 0.64
+          },
+          "horizon": "per_stage",
+          "first_stage": {
+            "goal": "取数",
+            "nodes": [
+              "q_region",
+              "q_sku",
+              "q_reason"
+            ]
+          },
+          "context": {
+            "work_mode": "data_analysis"
+          },
+          "budget": {
+            "usd": 2.0
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "取数",
+          "exit_when": "三组数据齐全",
+          "nodes": [
+            {
+              "id": "q_region",
+              "kind": "atomic",
+              "template": "sql_query@v1",
+              "executor": "program",
+              "effect": "read",
+              "role": "fetch",
+              "inputs": {
+                "metric": "refund_rate",
+                "by": "region"
+              }
+            },
+            {
+              "id": "q_sku",
+              "kind": "atomic",
+              "template": "sql_query@v1",
+              "executor": "program",
+              "effect": "read",
+              "role": "fetch",
+              "inputs": {
+                "metric": "refund_rate",
+                "by": "sku"
+              }
+            },
+            {
+              "id": "q_reason",
+              "kind": "atomic",
+              "template": "sql_query@v1",
+              "executor": "program",
+              "effect": "read",
+              "role": "fetch",
+              "inputs": {
+                "metric": "refund_count",
+                "by": "reason"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000037X",
+        "session_id": "ses_01J0000000000000000000037S",
+        "goal": "分析上季度退款率上升的原因并给出建议",
+        "done_when": "每个结论有数据支撑，建议可执行",
+        "constraints": {
+          "effect_ceiling": "read",
+          "budget_usd": 2.0
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "取数",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "取数",
+        "exit_when": "三组数据齐全",
+        "nodes": [
+          {
+            "id": "q_region",
+            "kind": "atomic",
+            "template": "sql_query@v1",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch",
+            "inputs": {
+              "metric": "refund_rate",
+              "by": "region"
+            }
+          },
+          {
+            "id": "q_sku",
+            "kind": "atomic",
+            "template": "sql_query@v1",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch",
+            "inputs": {
+              "metric": "refund_rate",
+              "by": "sku"
+            }
+          },
+          {
+            "id": "q_reason",
+            "kind": "atomic",
+            "template": "sql_query@v1",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch",
+            "inputs": {
+              "metric": "refund_count",
+              "by": "reason"
+            }
+          }
+        ]
+      },
+      "results": {
+        "q_region": {
+          "role": "fetch",
+          "status": "succeeded",
+          "result": {
+            "rows": 12
+          }
+        },
+        "q_sku": {
+          "role": "fetch",
+          "status": "succeeded",
+          "result": {
+            "rows": 12
+          }
+        },
+        "q_reason": {
+          "role": "fetch",
+          "status": "succeeded",
+          "result": {
+            "rows": 12
+          }
+        }
+      },
+      "expect": {
+        "verdict": "continue",
+        "acceptable": [
+          "continue"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "continue",
+          "reason": "取数完成，进入归因"
+        }
+      }
+    },
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000037X",
+        "session_id": "ses_01J0000000000000000000037S",
+        "goal": "分析上季度退款率上升的原因并给出建议",
+        "done_when": "每个结论有数据支撑，建议可执行",
+        "constraints": {
+          "effect_ceiling": "read",
+          "budget_usd": 2.0
+        },
+        "facts": [
+          "华东退款率明显高于其他区域"
+        ],
+        "assumptions": [
+          "工单原因字段可靠"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "取数",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.12
+          },
+          {
+            "seq": 2,
+            "stage_goal": "归因",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 2,
+        "goal": "归因",
+        "exit_when": "每个候选原因都有证据，或已被排除",
+        "nodes": [
+          {
+            "id": "read_tickets",
+            "kind": "goal",
+            "goal": "归纳华东工单中的退款原因",
+            "done_when": "输出原因分布与代表性工单",
+            "mode": "sub_agent",
+            "output_schema": {
+              "type": "object"
+            }
+          },
+          {
+            "id": "analyze",
+            "kind": "atomic",
+            "template": "refund_attribution@v2",
+            "executor": "model",
+            "effect": "none",
+            "role": "transform",
+            "output": "generate",
+            "after": [
+              "read_tickets"
+            ],
+            "quality": {
+              "type": "revise",
+              "judge": "check_numbers_match@v1",
+              "max_rounds": 2
+            },
+            "tier": "strong@medium",
+            "reasoning": "plan_first"
+          }
+        ]
+      },
+      "results": {
+        "read_tickets": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "reasons": 5
+          }
+        },
+        "analyze": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "top_cause": "华东物流商更换"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "continue",
+        "acceptable": [
+          "continue"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "continue",
+          "reason": "归因完成，进入成稿"
+        }
+      }
+    },
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000037X",
+        "session_id": "ses_01J0000000000000000000037S",
+        "goal": "分析上季度退款率上升的原因并给出建议",
+        "done_when": "每个结论有数据支撑，建议可执行",
+        "constraints": {
+          "effect_ceiling": "read",
+          "budget_usd": 2.0
+        },
+        "facts": [
+          "华东退款率明显高于其他区域",
+          "主因是华东物流商更换"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "取数",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.12
+          },
+          {
+            "seq": 2,
+            "stage_goal": "归因",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.5
+          },
+          {
+            "seq": 3,
+            "stage_goal": "成稿",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 3,
+        "goal": "成稿",
+        "exit_when": "建议可执行且有数据支撑",
+        "nodes": [
+          {
+            "id": "write_up",
+            "kind": "atomic",
+            "template": "synthesize_report@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "transform",
+            "output": "generate"
+          },
+          {
+            "id": "answer",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "write_up"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "write_up": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "answer": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "recommendations": 3
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "结论与建议已交付",
+          "done": {
+            "deliver_node": "answer"
+          }
+        }
+      }
+    }
+  ],
+  "rubric": [
+    "第一轮在信息检查点切开：只安排互不依赖的查询，不提前安排归因与成稿"
+  ]
+}

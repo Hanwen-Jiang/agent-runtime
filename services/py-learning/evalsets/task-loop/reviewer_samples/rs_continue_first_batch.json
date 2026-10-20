@@ -1,0 +1,107 @@
+{
+  "kind": "reviewer",
+  "id": "rs_continue_first_batch",
+  "split": "holdout",
+  "category": "batch_processing",
+  "review": {
+    "status": "draft"
+  },
+  "description": "批量任务的第一批完成、预算与进度相符 → continue。",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000104X",
+      "session_id": "ses_01J0000000000000000000104S",
+      "goal": "给 1 万张工单打标签并写回",
+      "done_when": "全部工单的标签通过校验并已写回",
+      "constraints": {
+        "effect_ceiling": "write_reversible",
+        "budget_usd": 3.0
+      },
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "第一批打标签",
+          "status": "reviewing",
+          "cost_usd": 0.4
+        }
+      ]
+    },
+    "stage": {
+      "seq": 1,
+      "goal": "第一批打标签",
+      "exit_when": "第一批 2000 张完成",
+      "nodes": [
+        {
+          "id": "list",
+          "kind": "atomic",
+          "template": "list_tickets@v1",
+          "executor": "program",
+          "effect": "read",
+          "role": "fetch"
+        },
+        {
+          "id": "label_each",
+          "kind": "goal",
+          "goal": "给本批工单打标签并写回",
+          "done_when": "标签通过校验",
+          "mode": "template",
+          "recipe": "ticket_triage@v4",
+          "after": [
+            "list"
+          ],
+          "output_schema": {
+            "type": "object"
+          },
+          "effect_ceiling": "write_reversible"
+        },
+        {
+          "id": "progress",
+          "kind": "atomic",
+          "template": "summarize@v1",
+          "executor": "model",
+          "effect": "none",
+          "role": "aggregate",
+          "output": "generate",
+          "after": [
+            "label_each"
+          ]
+        }
+      ]
+    },
+    "results": {
+      "list": {
+        "role": "fetch",
+        "status": "succeeded",
+        "result": {
+          "count": 2000
+        }
+      },
+      "label_each": {
+        "role": "transform",
+        "status": "succeeded",
+        "result": {
+          "ok": true
+        }
+      },
+      "progress": {
+        "role": "aggregate",
+        "status": "succeeded",
+        "result": {
+          "done": 2000,
+          "total": 10000
+        }
+      }
+    },
+    "expect": {
+      "verdict": "continue",
+      "acceptable": [
+        "continue"
+      ],
+      "min_escalation": "none",
+      "reference": {
+        "verdict": "continue",
+        "reason": "第一批完成，预算与进度相符"
+      }
+    }
+  }
+}

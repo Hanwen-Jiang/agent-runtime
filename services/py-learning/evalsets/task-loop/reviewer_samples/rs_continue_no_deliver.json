@@ -1,0 +1,117 @@
+{
+  "kind": "reviewer",
+  "id": "rs_continue_no_deliver",
+  "split": "dev",
+  "category": "research_report",
+  "review": {
+    "status": "draft"
+  },
+  "description": "各 Node 都成功，但本轮只有草稿、没有 deliver 节点 → 还不能 done，continue 进入核对与交付。",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000121X",
+      "session_id": "ses_01J0000000000000000000121S",
+      "goal": "写一份国内咖啡连锁的门店扩张分析",
+      "done_when": "报告成稿，经核对后交付",
+      "constraints": {
+        "effect_ceiling": "read"
+      },
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "定范围",
+          "status": "completed",
+          "verdict": "continue",
+          "cost_usd": 0.1
+        },
+        {
+          "seq": 2,
+          "stage_goal": "研究与起草",
+          "status": "reviewing"
+        }
+      ]
+    },
+    "stage": {
+      "seq": 2,
+      "goal": "研究与起草",
+      "exit_when": "草稿完成",
+      "nodes": [
+        {
+          "id": "market",
+          "kind": "goal",
+          "goal": "研究门店扩张数据",
+          "done_when": "给出数据与来源",
+          "mode": "sub_agent",
+          "output_schema": {
+            "type": "object"
+          },
+          "tools": [
+            "web_search",
+            "fetch_page"
+          ]
+        },
+        {
+          "id": "competitors",
+          "kind": "goal",
+          "goal": "研究主要连锁品牌的扩张策略",
+          "done_when": "给出对比与来源",
+          "mode": "sub_agent",
+          "output_schema": {
+            "type": "object"
+          },
+          "tools": [
+            "web_search",
+            "fetch_page"
+          ]
+        },
+        {
+          "id": "draft",
+          "kind": "atomic",
+          "template": "synthesize_report@v1",
+          "executor": "model",
+          "effect": "none",
+          "role": "transform",
+          "output": "generate",
+          "after": [
+            "market",
+            "competitors"
+          ]
+        }
+      ]
+    },
+    "results": {
+      "market": {
+        "role": "transform",
+        "status": "succeeded",
+        "result": {
+          "ok": true
+        }
+      },
+      "competitors": {
+        "role": "transform",
+        "status": "succeeded",
+        "result": {
+          "ok": true
+        }
+      },
+      "draft": {
+        "role": "transform",
+        "status": "succeeded",
+        "result": {
+          "pages": 12
+        }
+      }
+    },
+    "expect": {
+      "verdict": "continue",
+      "acceptable": [
+        "continue"
+      ],
+      "min_escalation": "none",
+      "reference": {
+        "verdict": "continue",
+        "reason": "草稿完成，下一轮核对并交付"
+      }
+    }
+  }
+}

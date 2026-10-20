@@ -104,10 +104,29 @@ version = "0.0.0"
 source = { editable = "services/py-learning" }
 dependencies = [
     { name = "agentruntime-proto" },
+    { name = "agentruntime-worker" },
+    { name = "jsonschema" },
+    { name = "jsonschema-specifications" },
+    { name = "referencing" },
+]
+
+[package.optional-dependencies]
+test = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "agentruntime-proto", editable = "proto/gen/python" }]
+requires-dist = [
+    { name = "agentruntime-proto", editable = "proto/gen/python" },
+    { name = "agentruntime-worker", editable = "services/py-worker" },
+    { name = "jsonschema", specifier = ">=4.26" },
+    { name = "jsonschema-specifications", specifier = ">=2025.9.1" },
+    { name = "pytest", marker = "extra == 'test'", specifier = ">=9.1" },
+    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=1.4" },
+    { name = "referencing", specifier = ">=0.37" },
+]
+provides-extras = ["test"]
 
 [[package]]
 name = "agentruntime-memory"

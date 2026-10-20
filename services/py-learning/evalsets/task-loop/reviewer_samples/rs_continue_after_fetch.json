@@ -1,0 +1,93 @@
+{
+  "kind": "reviewer",
+  "id": "rs_continue_after_fetch",
+  "split": "dev",
+  "category": "general",
+  "review": {
+    "status": "draft"
+  },
+  "description": "本 Stage 的退出条件已满足、Task 还没完成 → continue。",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000103X",
+      "session_id": "ses_01J0000000000000000000103S",
+      "goal": "分析华北门店客单价下降的原因",
+      "done_when": "每个结论有数据支撑",
+      "constraints": {
+        "effect_ceiling": "read"
+      },
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "取数",
+          "status": "reviewing"
+        }
+      ]
+    },
+    "stage": {
+      "seq": 1,
+      "goal": "取数",
+      "exit_when": "三组数据齐全",
+      "nodes": [
+        {
+          "id": "q_store",
+          "kind": "atomic",
+          "template": "sql_query@v1",
+          "executor": "program",
+          "effect": "read",
+          "role": "fetch"
+        },
+        {
+          "id": "q_basket",
+          "kind": "atomic",
+          "template": "sql_query@v1",
+          "executor": "program",
+          "effect": "read",
+          "role": "fetch"
+        },
+        {
+          "id": "q_promo",
+          "kind": "atomic",
+          "template": "sql_query@v1",
+          "executor": "program",
+          "effect": "read",
+          "role": "fetch"
+        }
+      ]
+    },
+    "results": {
+      "q_store": {
+        "role": "fetch",
+        "status": "succeeded",
+        "result": {
+          "rows": 30
+        }
+      },
+      "q_basket": {
+        "role": "fetch",
+        "status": "succeeded",
+        "result": {
+          "rows": 30
+        }
+      },
+      "q_promo": {
+        "role": "fetch",
+        "status": "succeeded",
+        "result": {
+          "rows": 30
+        }
+      }
+    },
+    "expect": {
+      "verdict": "continue",
+      "acceptable": [
+        "continue"
+      ],
+      "min_escalation": "none",
+      "reference": {
+        "verdict": "continue",
+        "reason": "取数完成，进入归因"
+      }
+    }
+  }
+}

@@ -1,0 +1,231 @@
+{
+  "kind": "task",
+  "id": "multiday_bookkeeping_start",
+  "split": "dev",
+  "category": "multi_day_dev",
+  "review": {
+    "status": "draft"
+  },
+  "description": "附录 B.3“跨多天开发一个应用”：每个 Stage = 实现一个功能 + 端到端验证，Planner 读功能清单与进度，提交并更新进度；写操作由单一写者完成。第一个功能完成后任务还没结束 → continue。",
+  "planner": {
+    "input": {
+      "message": "我们要做一个记账小程序，按功能清单一项项实现，这几天陆续推进。",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "write_reversible"
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "task_family": "engineering.app_dev",
+      "risk": "write_reversible",
+      "shape": {
+        "nodes": {
+          "min": 3
+        },
+        "modes": [
+          "tool_loop"
+        ],
+        "single_writer": true,
+        "forbidden_roles": [
+          "deliver"
+        ]
+      },
+      "estimated_task_cost_usd": 6.0,
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full",
+            "task_family": "engineering.app_dev",
+            "confidence": 0.6
+          },
+          "horizon": "per_stage",
+          "context": {
+            "work_mode": "long_horizon"
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "实现第一个功能并端到端验证",
+          "exit_when": "第一个功能通过端到端测试并提交",
+          "nodes": [
+            {
+              "id": "read_features",
+              "kind": "atomic",
+              "template": "read_feature_list@v1",
+              "executor": "program",
+              "effect": "read",
+              "role": "fetch"
+            },
+            {
+              "id": "impl_feature",
+              "kind": "goal",
+              "goal": "实现功能清单里的第一项",
+              "done_when": "端到端测试通过",
+              "mode": "tool_loop",
+              "after": [
+                "read_features"
+              ],
+              "output_schema": {
+                "type": "object"
+              },
+              "effect_ceiling": "write_reversible",
+              "tools": [
+                "repo_read",
+                "repo_edit",
+                "shell_test"
+              ],
+              "max_iterations": 60
+            },
+            {
+              "id": "e2e",
+              "kind": "atomic",
+              "template": "e2e_test@v1",
+              "executor": "program",
+              "effect": "read",
+              "role": "judge",
+              "after": [
+                "impl_feature"
+              ]
+            },
+            {
+              "id": "commit",
+              "kind": "atomic",
+              "template": "commit_progress@v1",
+              "executor": "program",
+              "effect": "write_reversible",
+              "role": "act",
+              "after": [
+                "e2e"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000024X",
+        "session_id": "ses_01J0000000000000000000024S",
+        "goal": "按功能清单实现记账小程序",
+        "done_when": "功能清单全部实现并通过端到端测试",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "milestones": [
+          "注册",
+          "登录",
+          "记账",
+          "报表"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "实现第一个功能",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "实现第一个功能并端到端验证",
+        "exit_when": "第一个功能通过端到端测试并提交",
+        "nodes": [
+          {
+            "id": "read_features",
+            "kind": "atomic",
+            "template": "read_feature_list@v1",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch"
+          },
+          {
+            "id": "impl_feature",
+            "kind": "goal",
+            "goal": "实现功能清单里的第一项",
+            "done_when": "端到端测试通过",
+            "mode": "tool_loop",
+            "after": [
+              "read_features"
+            ],
+            "output_schema": {
+              "type": "object"
+            },
+            "effect_ceiling": "write_reversible",
+            "tools": [
+              "repo_read",
+              "repo_edit",
+              "shell_test"
+            ],
+            "max_iterations": 60
+          },
+          {
+            "id": "e2e",
+            "kind": "atomic",
+            "template": "e2e_test@v1",
+            "executor": "program",
+            "effect": "read",
+            "role": "judge",
+            "after": [
+              "impl_feature"
+            ]
+          },
+          {
+            "id": "commit",
+            "kind": "atomic",
+            "template": "commit_progress@v1",
+            "executor": "program",
+            "effect": "write_reversible",
+            "role": "act",
+            "after": [
+              "e2e"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "read_features": {
+          "role": "fetch",
+          "status": "succeeded",
+          "result": {
+            "features": 4
+          }
+        },
+        "impl_feature": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "e2e": {
+          "role": "judge",
+          "status": "succeeded",
+          "result": {
+            "passed": true
+          }
+        },
+        "commit": {
+          "role": "act",
+          "status": "succeeded",
+          "result": {
+            "commit": "a1b2c3d"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "continue",
+        "acceptable": [
+          "continue"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "continue",
+          "reason": "第一个功能完成并提交，还有三项"
+        }
+      }
+    }
+  ]
+}

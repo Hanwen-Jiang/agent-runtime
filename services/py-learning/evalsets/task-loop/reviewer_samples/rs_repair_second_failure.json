@@ -1,0 +1,114 @@
+{
+  "kind": "reviewer",
+  "id": "rs_repair_second_failure",
+  "split": "dev",
+  "category": "ci_fix",
+  "review": {
+    "status": "draft"
+  },
+  "description": "附录 B.8：同一 Node 失败第 2 次 → 换方法，不能原地重试。",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000122X",
+      "session_id": "ses_01J0000000000000000000122S",
+      "goal": "修好 CI 里的 lint 失败",
+      "done_when": "lint 通过",
+      "constraints": {
+        "effect_ceiling": "write_reversible"
+      },
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "修复 lint",
+          "status": "completed",
+          "verdict": "repair",
+          "cost_usd": 0.1
+        },
+        {
+          "seq": 2,
+          "stage_goal": "修复 lint",
+          "status": "reviewing"
+        }
+      ]
+    },
+    "stage": {
+      "seq": 2,
+      "goal": "修复 lint",
+      "exit_when": "lint 通过",
+      "nodes": [
+        {
+          "id": "fix_lint",
+          "kind": "goal",
+          "goal": "修复 lint 报错",
+          "done_when": "lint 通过",
+          "mode": "tool_loop",
+          "output_schema": {
+            "type": "object"
+          },
+          "effect_ceiling": "write_reversible",
+          "tools": [
+            "repo_read",
+            "repo_edit",
+            "shell_test"
+          ]
+        },
+        {
+          "id": "lint",
+          "kind": "atomic",
+          "template": "run_tests@v1",
+          "executor": "program",
+          "effect": "read",
+          "role": "judge",
+          "after": [
+            "fix_lint"
+          ]
+        }
+      ]
+    },
+    "results": {
+      "fix_lint": {
+        "role": "transform",
+        "status": "succeeded",
+        "result": {
+          "ok": true
+        }
+      },
+      "lint": {
+        "role": "judge",
+        "status": "failed",
+        "failure_class": "invalid_output",
+        "error": "flake8: E501 line too long（同一处）",
+        "attempts": 1
+      }
+    },
+    "history": [
+      {
+        "round": 1,
+        "verdict": "repair",
+        "failed_nodes": {
+          "lint": "flake8: E501 line too long（同一处）"
+        }
+      }
+    ],
+    "expect": {
+      "verdict": "repair",
+      "acceptable": [
+        "repair"
+      ],
+      "min_escalation": "repair_change_method",
+      "layer": "execution",
+      "reference": {
+        "verdict": "repair",
+        "reason": "同一错误第二次出现，换方法",
+        "layer": "execution",
+        "repair": {
+          "nodes": [
+            "fix_lint"
+          ],
+          "strategy": "change_method",
+          "guidance": "改用格式化工具统一处理行宽"
+        }
+      }
+    }
+  }
+}

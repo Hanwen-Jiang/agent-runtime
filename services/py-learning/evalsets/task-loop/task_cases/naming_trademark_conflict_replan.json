@@ -1,0 +1,230 @@
+{
+  "kind": "task",
+  "id": "naming_trademark_conflict_replan",
+  "split": "holdout",
+  "category": "naming",
+  "review": {
+    "status": "draft"
+  },
+  "description": "Reviewer 判定 replan（前三名都撞了商标）：保留已做的商标检索（tm_check）结果，避开这些名字重新生成。",
+  "planner": {
+    "input": {
+      "message": "我们的儿童手表新品需要一个中英文名字。",
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000023X",
+        "session_id": "ses_01J0000000000000000000023S",
+        "goal": "给儿童智能手表新品起中英文名字",
+        "done_when": "给出前 3 名，均通过商标检索",
+        "constraints": {
+          "effect_ceiling": "read"
+        },
+        "facts": [
+          "上一轮的前三名都已被注册为第 9 类商标"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "生成并筛选名字",
+            "status": "completed",
+            "verdict": "replan",
+            "cost_usd": 0.3
+          }
+        ]
+      },
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "read"
+      }
+    },
+    "expect": {
+      "triage": "replan",
+      "task_family": "creative.naming",
+      "risk": "read",
+      "shape": {
+        "keep_nodes": [
+          "tm_check"
+        ],
+        "quality": [
+          "ensemble"
+        ],
+        "deliver": true
+      },
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "replan",
+            "task_family": "creative.naming"
+          },
+          "horizon": "full_dag"
+        },
+        "stage": {
+          "seq": 2,
+          "goal": "避开已注册商标重新生成",
+          "exit_when": "前三名都通过商标检索",
+          "nodes": [
+            {
+              "id": "candidates2",
+              "kind": "atomic",
+              "template": "generate_names@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "transform",
+              "output": "generate",
+              "inputs": {
+                "avoid": "$task.facts"
+              },
+              "quality": {
+                "type": "ensemble",
+                "n": 5,
+                "aggregate": "judge",
+                "judge": "rubric_judge@v1"
+              }
+            },
+            {
+              "id": "tm_check2",
+              "kind": "atomic",
+              "template": "trademark_check@v1",
+              "executor": "program",
+              "effect": "read",
+              "role": "fetch",
+              "after": [
+                "candidates2"
+              ]
+            },
+            {
+              "id": "answer",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "tm_check2"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000023X",
+        "session_id": "ses_01J0000000000000000000023S",
+        "goal": "给儿童智能手表新品起中英文名字",
+        "done_when": "给出前 3 名，均通过商标检索",
+        "constraints": {
+          "effect_ceiling": "read"
+        },
+        "facts": [
+          "上一轮的前三名都已被注册为第 9 类商标"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "生成并筛选名字",
+            "status": "completed",
+            "verdict": "replan",
+            "cost_usd": 0.3
+          },
+          {
+            "seq": 2,
+            "stage_goal": "避开已注册商标重新生成",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 2,
+        "goal": "避开已注册商标重新生成",
+        "exit_when": "前三名都通过商标检索",
+        "nodes": [
+          {
+            "id": "candidates2",
+            "kind": "atomic",
+            "template": "generate_names@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "transform",
+            "output": "generate",
+            "inputs": {
+              "avoid": "$task.facts"
+            },
+            "quality": {
+              "type": "ensemble",
+              "n": 5,
+              "aggregate": "judge",
+              "judge": "rubric_judge@v1"
+            }
+          },
+          {
+            "id": "tm_check2",
+            "kind": "atomic",
+            "template": "trademark_check@v1",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch",
+            "after": [
+              "candidates2"
+            ]
+          },
+          {
+            "id": "answer",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "tm_check2"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "candidates2": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "tm_check2": {
+          "role": "fetch",
+          "status": "succeeded",
+          "result": {
+            "conflicts": 0
+          }
+        },
+        "answer": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "top3": [
+              "咕噜 Gulu",
+              "米粒 Mili",
+              "叮当 Dingo"
+            ]
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "前 3 名已交付",
+          "done": {
+            "deliver_node": "answer"
+          }
+        }
+      }
+    }
+  ]
+}

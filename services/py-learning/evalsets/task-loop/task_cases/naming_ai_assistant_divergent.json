@@ -1,0 +1,181 @@
+{
+  "kind": "task",
+  "id": "naming_ai_assistant_divergent",
+  "split": "holdout",
+  "category": "naming",
+  "review": {
+    "status": "draft"
+  },
+  "description": "ensemble 的候选分歧很大（附录 B.7：题目含糊）→ 先澄清，escalate 问人；直接交付算错。",
+  "planner": {
+    "input": {
+      "message": "给公司的新 AI 助手起个名字。",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "read"
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "task_family": "creative.naming",
+      "risk": "read",
+      "shape": {
+        "quality": [
+          "ensemble"
+        ],
+        "deliver": true
+      },
+      "estimated_task_cost_usd": 0.6,
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full",
+            "task_family": "creative.naming",
+            "confidence": 0.5
+          },
+          "horizon": "full_dag",
+          "context": {
+            "work_mode": "writing"
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "生成并择优",
+          "exit_when": "给出推荐名字",
+          "nodes": [
+            {
+              "id": "candidates",
+              "kind": "atomic",
+              "template": "generate_names@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "transform",
+              "output": "generate",
+              "quality": {
+                "type": "ensemble",
+                "n": 5,
+                "aggregate": "judge",
+                "judge": "rubric_judge@v1"
+              }
+            },
+            {
+              "id": "answer",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "candidates"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000022X",
+        "session_id": "ses_01J0000000000000000000022S",
+        "goal": "给公司的新 AI 助手起名字",
+        "done_when": "名字符合使用场景，并经用户认可",
+        "constraints": {
+          "effect_ceiling": "read"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "生成并择优",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "生成并择优",
+        "exit_when": "给出推荐名字",
+        "nodes": [
+          {
+            "id": "candidates",
+            "kind": "atomic",
+            "template": "generate_names@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "transform",
+            "output": "generate",
+            "quality": {
+              "type": "ensemble",
+              "n": 5,
+              "aggregate": "judge",
+              "judge": "rubric_judge@v1"
+            }
+          },
+          {
+            "id": "answer",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "candidates"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "candidates": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "candidates": [
+              "小智",
+              "Aurora",
+              "星河",
+              "Pilot",
+              "知了"
+            ],
+            "divergence": 0.81
+          }
+        },
+        "answer": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "pick": "Aurora"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "escalate",
+        "acceptable": [
+          "escalate",
+          "replan"
+        ],
+        "min_escalation": "replan",
+        "layer": "goal",
+        "reference": {
+          "verdict": "escalate",
+          "reason": "候选分歧很大，题目含糊",
+          "layer": "goal",
+          "signals": [
+            "sample_divergence"
+          ],
+          "escalate": {
+            "target": "human",
+            "question": "名字是给内部员工用，还是面向客户？风格偏中文还是英文？",
+            "options": [
+              "continue_as_is",
+              "replan_with_guidance",
+              "stop_and_wrap_up"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

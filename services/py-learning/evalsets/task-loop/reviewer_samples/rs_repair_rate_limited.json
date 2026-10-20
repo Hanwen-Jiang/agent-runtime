@@ -1,0 +1,86 @@
+{
+  "kind": "reviewer",
+  "id": "rs_repair_rate_limited",
+  "split": "holdout",
+  "category": "general",
+  "review": {
+    "status": "draft"
+  },
+  "description": "查询被限流（临时错误）→ repair：带上错误重试。",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000105X",
+      "session_id": "ses_01J0000000000000000000105S",
+      "goal": "统计上月各渠道的新客数",
+      "done_when": "每个渠道都有数据",
+      "constraints": {
+        "effect_ceiling": "read"
+      },
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "取数",
+          "status": "reviewing"
+        }
+      ]
+    },
+    "stage": {
+      "seq": 1,
+      "goal": "取数",
+      "exit_when": "两组数据齐全",
+      "nodes": [
+        {
+          "id": "q_channel",
+          "kind": "atomic",
+          "template": "sql_query@v1",
+          "executor": "program",
+          "effect": "read",
+          "role": "fetch"
+        },
+        {
+          "id": "q_newcomers",
+          "kind": "atomic",
+          "template": "sql_query@v1",
+          "executor": "program",
+          "effect": "read",
+          "role": "fetch"
+        }
+      ]
+    },
+    "results": {
+      "q_channel": {
+        "role": "fetch",
+        "status": "succeeded",
+        "result": {
+          "rows": 8
+        }
+      },
+      "q_newcomers": {
+        "role": "fetch",
+        "status": "failed",
+        "failure_class": "transient",
+        "error": "数据仓库限流（rate_limit）",
+        "attempts": 3
+      }
+    },
+    "expect": {
+      "verdict": "repair",
+      "acceptable": [
+        "repair"
+      ],
+      "min_escalation": "repair_retry",
+      "layer": "execution",
+      "reference": {
+        "verdict": "repair",
+        "reason": "临时错误，重试即可",
+        "layer": "execution",
+        "repair": {
+          "nodes": [
+            "q_newcomers"
+          ],
+          "strategy": "retry_with_error"
+        }
+      }
+    }
+  }
+}

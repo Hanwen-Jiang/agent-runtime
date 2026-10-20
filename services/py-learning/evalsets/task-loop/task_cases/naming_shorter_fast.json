@@ -1,0 +1,141 @@
+{
+  "kind": "task",
+  "id": "naming_shorter_fast",
+  "split": "dev",
+  "category": "naming",
+  "review": {
+    "status": "draft"
+  },
+  "description": "对当前产出的续改 → fast。",
+  "planner": {
+    "input": {
+      "message": "这几个名字再短一点，两个字以内。",
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000021X",
+        "session_id": "ses_01J0000000000000000000021S",
+        "goal": "给新款儿童智能手表起中英文名字",
+        "done_when": "给出前 3 名",
+        "constraints": {
+          "effect_ceiling": "read"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "生成并筛选名字",
+            "status": "completed",
+            "verdict": "done",
+            "cost_usd": 0.5
+          }
+        ]
+      },
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "read"
+      }
+    },
+    "expect": {
+      "triage": "fast",
+      "risk": "none",
+      "shape": {
+        "nodes": {
+          "max": 1
+        },
+        "deliver": true
+      },
+      "reference": {
+        "stage": {
+          "seq": 2,
+          "goal": "缩短名字",
+          "exit_when": "每个名字不超过两个字",
+          "nodes": [
+            {
+              "id": "shorter",
+              "kind": "atomic",
+              "template": "rewrite@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "inputs": {
+                "instruction": "两个字以内"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000021X",
+        "session_id": "ses_01J0000000000000000000021S",
+        "goal": "给新款儿童智能手表起中英文名字",
+        "done_when": "给出前 3 名",
+        "constraints": {
+          "effect_ceiling": "read"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "生成并筛选名字",
+            "status": "completed",
+            "verdict": "done",
+            "cost_usd": 0.5
+          },
+          {
+            "seq": 2,
+            "stage_goal": "缩短名字",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 2,
+        "goal": "缩短名字",
+        "exit_when": "每个名字不超过两个字",
+        "nodes": [
+          {
+            "id": "shorter",
+            "kind": "atomic",
+            "template": "rewrite@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "inputs": {
+              "instruction": "两个字以内"
+            }
+          }
+        ]
+      },
+      "results": {
+        "shorter": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "names": [
+              "星宝",
+              "朵朵",
+              "跳跳"
+            ]
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "已缩短",
+          "done": {
+            "deliver_node": "shorter"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,152 @@
+{
+  "kind": "reviewer",
+  "id": "rs_fanout_conflict",
+  "split": "dev",
+  "category": "multi_day_dev",
+  "review": {
+    "status": "draft"
+  },
+  "description": "附录 B.7：扇出后子结果冲突、合并困难 → 耦合度被低估，replan 换形状（先定共享接口，再由单一写者改）。",
+  "symptom": "fanout_conflict",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000106X",
+      "session_id": "ses_01J0000000000000000000106S",
+      "goal": "把单体服务拆成三个模块",
+      "done_when": "三个模块都能独立构建且测试通过",
+      "constraints": {
+        "effect_ceiling": "write_reversible"
+      },
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "梳理依赖",
+          "status": "completed",
+          "verdict": "continue",
+          "cost_usd": 0.3
+        },
+        {
+          "seq": 2,
+          "stage_goal": "并行重构",
+          "status": "reviewing"
+        }
+      ]
+    },
+    "stage": {
+      "seq": 2,
+      "goal": "并行重构三个模块",
+      "exit_when": "三个模块都重构完成并合并",
+      "nodes": [
+        {
+          "id": "refactor_api",
+          "kind": "goal",
+          "goal": "重构 api 模块",
+          "done_when": "api 模块测试通过",
+          "mode": "tool_loop",
+          "output_schema": {
+            "type": "object"
+          },
+          "effect_ceiling": "write_reversible",
+          "tools": [
+            "repo_read",
+            "repo_edit"
+          ]
+        },
+        {
+          "id": "refactor_db",
+          "kind": "goal",
+          "goal": "重构 db 模块",
+          "done_when": "db 模块测试通过",
+          "mode": "tool_loop",
+          "output_schema": {
+            "type": "object"
+          },
+          "effect_ceiling": "write_reversible",
+          "tools": [
+            "repo_read",
+            "repo_edit"
+          ]
+        },
+        {
+          "id": "refactor_ui",
+          "kind": "goal",
+          "goal": "重构 ui 模块",
+          "done_when": "ui 模块测试通过",
+          "mode": "tool_loop",
+          "output_schema": {
+            "type": "object"
+          },
+          "effect_ceiling": "write_reversible",
+          "tools": [
+            "repo_read",
+            "repo_edit"
+          ]
+        },
+        {
+          "id": "merge",
+          "kind": "atomic",
+          "template": "summarize@v1",
+          "executor": "model",
+          "effect": "none",
+          "role": "aggregate",
+          "output": "generate",
+          "after": [
+            "refactor_api",
+            "refactor_db",
+            "refactor_ui"
+          ]
+        }
+      ]
+    },
+    "results": {
+      "refactor_api": {
+        "role": "transform",
+        "status": "succeeded",
+        "result": {
+          "ok": true
+        }
+      },
+      "refactor_db": {
+        "role": "transform",
+        "status": "succeeded",
+        "result": {
+          "ok": true
+        }
+      },
+      "refactor_ui": {
+        "role": "transform",
+        "status": "succeeded",
+        "result": {
+          "ok": true
+        }
+      },
+      "merge": {
+        "role": "aggregate",
+        "status": "failed",
+        "failure_class": "invalid_output",
+        "error": "三个分支都改了 config.py 的同一段，互相矛盾，无法合并",
+        "attempts": 1
+      }
+    },
+    "expect": {
+      "verdict": "replan",
+      "acceptable": [
+        "replan"
+      ],
+      "min_escalation": "replan",
+      "layer": "shape",
+      "reference": {
+        "verdict": "replan",
+        "reason": "扇出后子结果冲突：耦合度被低估",
+        "layer": "shape",
+        "signals": [
+          "parallel_anomaly"
+        ],
+        "replan": {
+          "change_shape": true,
+          "stuck_reason": "先定共享的配置接口，再由单一写者修改"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "kind": "reviewer",
+  "id": "rs_replan_assumption_broken",
+  "split": "dev",
+  "category": "general",
+  "review": {
+    "status": "draft"
+  },
+  "description": "计划依赖的假设被证伪（工单原因字段不可靠）→ replan，保留已验证的读工单结果。",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000123X",
+      "session_id": "ses_01J0000000000000000000123S",
+      "goal": "分析上季度退款率上升的原因并给出建议",
+      "done_when": "每个结论有数据支撑",
+      "constraints": {
+        "effect_ceiling": "read"
+      },
+      "assumptions": [
+        "工单原因字段可靠"
+      ],
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "取数",
+          "status": "completed",
+          "verdict": "continue",
+          "cost_usd": 0.12
+        },
+        {
+          "seq": 2,
+          "stage_goal": "归因",
+          "status": "reviewing"
+        }
+      ]
+    },
+    "stage": {
+      "seq": 2,
+      "goal": "归因",
+      "exit_when": "每个候选原因都有证据",
+      "nodes": [
+        {
+          "id": "read_tickets",
+          "kind": "goal",
+          "goal": "归纳华东工单中的退款原因",
+          "done_when": "输出原因分布",
+          "mode": "sub_agent",
+          "output_schema": {
+            "type": "object"
+          }
+        },
+        {
+          "id": "analyze",
+          "kind": "atomic",
+          "template": "refund_attribution@v2",
+          "executor": "model",
+          "effect": "none",
+          "role": "transform",
+          "output": "generate",
+          "after": [
+            "read_tickets"
+          ]
+        }
+      ]
+    },
+    "results": {
+      "read_tickets": {
+        "role": "transform",
+        "status": "succeeded",
+        "result": {
+          "empty_reason_share": 0.62
+        }
+      },
+      "analyze": {
+        "role": "transform",
+        "status": "failed",
+        "failure_class": "invalid_output",
+        "error": "62% 的工单原因字段为空，无法归因",
+        "attempts": 1
+      }
+    },
+    "expect": {
+      "verdict": "replan",
+      "acceptable": [
+        "replan"
+      ],
+      "min_escalation": "replan",
+      "layer": "plan",
+      "reference": {
+        "verdict": "replan",
+        "reason": "假设“工单原因字段可靠”不成立",
+        "layer": "plan",
+        "replan": {
+          "keep_nodes": [
+            "read_tickets"
+          ],
+          "stuck_reason": "改从退款备注文本归纳原因"
+        }
+      }
+    }
+  }
+}

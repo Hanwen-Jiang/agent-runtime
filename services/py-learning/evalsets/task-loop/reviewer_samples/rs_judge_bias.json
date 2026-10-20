@@ -1,0 +1,115 @@
+{
+  "kind": "reviewer",
+  "id": "rs_judge_bias",
+  "split": "dev",
+  "category": "naming",
+  "review": {
+    "status": "draft"
+  },
+  "description": "附录 B.7：judge 总选第一个 → 评判偏差；repair 换方法：两两比较并交换顺序，按 rubric 打分。",
+  "symptom": "judge_bias",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000113X",
+      "session_id": "ses_01J0000000000000000000113S",
+      "goal": "给新款耳机起名字",
+      "done_when": "给出前 3 名",
+      "constraints": {
+        "effect_ceiling": "read"
+      },
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "生成并择优",
+          "status": "reviewing"
+        }
+      ]
+    },
+    "stage": {
+      "seq": 1,
+      "goal": "生成并择优",
+      "exit_when": "给出前 3 名",
+      "nodes": [
+        {
+          "id": "names",
+          "kind": "atomic",
+          "template": "generate_names@v1",
+          "executor": "model",
+          "effect": "none",
+          "role": "transform",
+          "output": "generate",
+          "quality": {
+            "type": "ensemble",
+            "n": 5,
+            "aggregate": "judge",
+            "judge": "rubric_judge@v1"
+          }
+        },
+        {
+          "id": "answer",
+          "kind": "atomic",
+          "template": "answer@v1",
+          "executor": "model",
+          "effect": "none",
+          "role": "deliver",
+          "output": "generate",
+          "after": [
+            "names"
+          ]
+        }
+      ]
+    },
+    "results": {
+      "names": {
+        "role": "transform",
+        "status": "succeeded",
+        "result": {
+          "picked_positions": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "note": "最近 10 次 judge 都选了第一个候选"
+        }
+      },
+      "answer": {
+        "role": "deliver",
+        "status": "succeeded",
+        "result": {
+          "top3": [
+            "声屿",
+            "Echo",
+            "听澜"
+          ]
+        }
+      }
+    },
+    "expect": {
+      "verdict": "repair",
+      "acceptable": [
+        "repair"
+      ],
+      "min_escalation": "repair_change_method",
+      "layer": "execution",
+      "reference": {
+        "verdict": "repair",
+        "reason": "judge 总选第一个，评判有偏差",
+        "layer": "execution",
+        "repair": {
+          "nodes": [
+            "names"
+          ],
+          "strategy": "change_method",
+          "guidance": "两两比较并交换顺序，按 rubric 打分"
+        }
+      }
+    }
+  }
+}

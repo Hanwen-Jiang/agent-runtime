@@ -1,0 +1,187 @@
+{
+  "kind": "task",
+  "id": "general_budget_cut_replan",
+  "split": "dev",
+  "category": "general",
+  "review": {
+    "status": "draft"
+  },
+  "description": "用户插入新约束（预算砍到 0.5 美元）→ replan：只对剩余部分重新规划，已验证的查询（q_region、q_sku）不重做，换便宜的 Tier。",
+  "planner": {
+    "input": {
+      "message": "预算砍到 0.5 美元，能做多少做多少。",
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000039X",
+        "session_id": "ses_01J0000000000000000000039S",
+        "goal": "分析上季度退款率上升的原因并给出建议",
+        "done_when": "每个结论有数据支撑，建议可执行",
+        "constraints": {
+          "effect_ceiling": "read",
+          "budget_usd": 2.0
+        },
+        "facts": [
+          "华东退款率明显高于其他区域"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "取数",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.12
+          }
+        ]
+      },
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "read"
+      }
+    },
+    "expect": {
+      "triage": "replan",
+      "task_family": "analytics.attribution",
+      "risk": "read",
+      "shape": {
+        "keep_nodes": [
+          "q_region",
+          "q_sku"
+        ],
+        "nodes": {
+          "max": 3
+        },
+        "deliver": true
+      },
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "replan",
+            "task_family": "analytics.attribution"
+          },
+          "horizon": "full_dag",
+          "budget": {
+            "usd": 0.5
+          }
+        },
+        "stage": {
+          "seq": 2,
+          "goal": "低成本归因并成稿",
+          "exit_when": "在 0.5 美元内给出初步结论",
+          "nodes": [
+            {
+              "id": "analyze_cheap",
+              "kind": "atomic",
+              "template": "refund_attribution@v2",
+              "executor": "model",
+              "effect": "none",
+              "role": "transform",
+              "output": "generate",
+              "tier": "mid@low"
+            },
+            {
+              "id": "answer",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "analyze_cheap"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000039X",
+        "session_id": "ses_01J0000000000000000000039S",
+        "goal": "分析上季度退款率上升的原因并给出建议",
+        "done_when": "每个结论有数据支撑，建议可执行",
+        "constraints": {
+          "effect_ceiling": "read",
+          "budget_usd": 2.0
+        },
+        "facts": [
+          "华东退款率明显高于其他区域"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "取数",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.12
+          },
+          {
+            "seq": 2,
+            "stage_goal": "低成本归因并成稿",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 2,
+        "goal": "低成本归因并成稿",
+        "exit_when": "在 0.5 美元内给出初步结论",
+        "nodes": [
+          {
+            "id": "analyze_cheap",
+            "kind": "atomic",
+            "template": "refund_attribution@v2",
+            "executor": "model",
+            "effect": "none",
+            "role": "transform",
+            "output": "generate",
+            "tier": "mid@low"
+          },
+          {
+            "id": "answer",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "analyze_cheap"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "analyze_cheap": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "answer": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "note": "初步结论"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "在预算内交付初步结论",
+          "done": {
+            "deliver_node": "answer"
+          }
+        }
+      }
+    }
+  ]
+}

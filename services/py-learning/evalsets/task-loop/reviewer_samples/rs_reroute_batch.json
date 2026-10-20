@@ -1,0 +1,75 @@
+{
+  "kind": "reviewer",
+  "id": "rs_reroute_batch",
+  "split": "dev",
+  "category": "general",
+  "review": {
+    "status": "draft"
+  },
+  "description": "任务实际属于另一类流程（逐条打标签并写回）→ reroute 换 Recipe。",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000116X",
+      "session_id": "ses_01J0000000000000000000116S",
+      "goal": "分析一下这批工单的退款原因",
+      "done_when": "说清主要原因",
+      "constraints": {
+        "effect_ceiling": "read"
+      },
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "了解工单情况",
+          "status": "reviewing"
+        }
+      ]
+    },
+    "stage": {
+      "seq": 1,
+      "goal": "了解工单情况",
+      "exit_when": "说明工单的规模与内容",
+      "nodes": [
+        {
+          "id": "explore",
+          "kind": "goal",
+          "goal": "看看这批工单是什么情况",
+          "done_when": "说明工单的规模与内容",
+          "mode": "tool_loop",
+          "output_schema": {
+            "type": "object"
+          },
+          "effect_ceiling": "read",
+          "tools": [
+            "ticket_api_read"
+          ]
+        }
+      ]
+    },
+    "results": {
+      "explore": {
+        "role": "transform",
+        "status": "succeeded",
+        "result": {
+          "tickets": 18000,
+          "finding": "用户要的是给这 1.8 万张工单逐条打标签并写回，不是写分析"
+        }
+      }
+    },
+    "expect": {
+      "verdict": "reroute",
+      "acceptable": [
+        "reroute"
+      ],
+      "min_escalation": "replan_change_shape",
+      "layer": "shape",
+      "reference": {
+        "verdict": "reroute",
+        "reason": "任务实际属于批量打标签流程",
+        "layer": "shape",
+        "reroute": {
+          "recipe": "ticket_triage@v4"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,508 @@
+{
+  "kind": "task",
+  "id": "multiday_csv_export",
+  "split": "dev",
+  "category": "multi_day_dev",
+  "review": {
+    "status": "draft"
+  },
+  "description": "期望的 Verdict 序列 repair → repair（换方法）→ done：同一个端到端错误第二次出现时要换方法，不能原地重试。",
+  "planner": {
+    "input": {
+      "message": "给记账小程序加上导出 CSV 的功能。",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "write_reversible"
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "task_family": "engineering.app_dev",
+      "risk": "write_reversible",
+      "shape": {
+        "single_writer": true,
+        "deliver": true
+      },
+      "estimated_task_cost_usd": 1.2,
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full",
+            "task_family": "engineering.app_dev",
+            "confidence": 0.75
+          },
+          "horizon": "full_dag",
+          "context": {
+            "work_mode": "coding"
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "实现导出 CSV",
+          "exit_when": "导出通过端到端测试并提交",
+          "nodes": [
+            {
+              "id": "impl_export",
+              "kind": "goal",
+              "goal": "实现导出 CSV",
+              "done_when": "端到端测试通过",
+              "mode": "tool_loop",
+              "output_schema": {
+                "type": "object"
+              },
+              "effect_ceiling": "write_reversible",
+              "tools": [
+                "repo_read",
+                "repo_edit",
+                "shell_test"
+              ]
+            },
+            {
+              "id": "e2e",
+              "kind": "atomic",
+              "template": "e2e_test@v1",
+              "executor": "program",
+              "effect": "read",
+              "role": "judge",
+              "after": [
+                "impl_export"
+              ]
+            },
+            {
+              "id": "commit",
+              "kind": "atomic",
+              "template": "commit_progress@v1",
+              "executor": "program",
+              "effect": "write_reversible",
+              "role": "act",
+              "after": [
+                "e2e"
+              ]
+            },
+            {
+              "id": "answer",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "commit"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000027X",
+        "session_id": "ses_01J0000000000000000000027S",
+        "goal": "给记账小程序加上导出 CSV 的功能",
+        "done_when": "导出通过端到端测试并提交",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "实现导出 CSV",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "实现导出 CSV",
+        "exit_when": "导出通过端到端测试并提交",
+        "nodes": [
+          {
+            "id": "impl_export",
+            "kind": "goal",
+            "goal": "实现导出 CSV",
+            "done_when": "端到端测试通过",
+            "mode": "tool_loop",
+            "output_schema": {
+              "type": "object"
+            },
+            "effect_ceiling": "write_reversible",
+            "tools": [
+              "repo_read",
+              "repo_edit",
+              "shell_test"
+            ]
+          },
+          {
+            "id": "e2e",
+            "kind": "atomic",
+            "template": "e2e_test@v1",
+            "executor": "program",
+            "effect": "read",
+            "role": "judge",
+            "after": [
+              "impl_export"
+            ]
+          },
+          {
+            "id": "commit",
+            "kind": "atomic",
+            "template": "commit_progress@v1",
+            "executor": "program",
+            "effect": "write_reversible",
+            "role": "act",
+            "after": [
+              "e2e"
+            ]
+          },
+          {
+            "id": "answer",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "commit"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "impl_export": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "e2e": {
+          "role": "judge",
+          "status": "failed",
+          "failure_class": "invalid_output",
+          "error": "导出的金额少了小数位：12.5 应为 12.50",
+          "attempts": 1
+        },
+        "commit": {
+          "role": "act",
+          "status": "skipped",
+          "failure_class": "upstream_failed"
+        },
+        "answer": {
+          "role": "deliver",
+          "status": "skipped",
+          "failure_class": "upstream_failed"
+        }
+      },
+      "expect": {
+        "verdict": "repair",
+        "acceptable": [
+          "repair"
+        ],
+        "min_escalation": "repair_retry",
+        "layer": "execution",
+        "reference": {
+          "verdict": "repair",
+          "reason": "端到端测试没通过，带上错误重试",
+          "layer": "execution",
+          "repair": {
+            "nodes": [
+              "impl_export"
+            ],
+            "strategy": "retry_with_error",
+            "guidance": "导出的金额少了小数位：12.5 应为 12.50"
+          }
+        }
+      }
+    },
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000027X",
+        "session_id": "ses_01J0000000000000000000027S",
+        "goal": "给记账小程序加上导出 CSV 的功能",
+        "done_when": "导出通过端到端测试并提交",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "实现导出 CSV",
+            "status": "completed",
+            "verdict": "repair",
+            "cost_usd": 0.3
+          },
+          {
+            "seq": 2,
+            "stage_goal": "实现导出 CSV",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 2,
+        "goal": "实现导出 CSV",
+        "exit_when": "导出通过端到端测试并提交",
+        "nodes": [
+          {
+            "id": "impl_export",
+            "kind": "goal",
+            "goal": "实现导出 CSV",
+            "done_when": "端到端测试通过",
+            "mode": "tool_loop",
+            "output_schema": {
+              "type": "object"
+            },
+            "effect_ceiling": "write_reversible",
+            "tools": [
+              "repo_read",
+              "repo_edit",
+              "shell_test"
+            ]
+          },
+          {
+            "id": "e2e",
+            "kind": "atomic",
+            "template": "e2e_test@v1",
+            "executor": "program",
+            "effect": "read",
+            "role": "judge",
+            "after": [
+              "impl_export"
+            ]
+          },
+          {
+            "id": "commit",
+            "kind": "atomic",
+            "template": "commit_progress@v1",
+            "executor": "program",
+            "effect": "write_reversible",
+            "role": "act",
+            "after": [
+              "e2e"
+            ]
+          },
+          {
+            "id": "answer",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "commit"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "impl_export": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "e2e": {
+          "role": "judge",
+          "status": "failed",
+          "failure_class": "invalid_output",
+          "error": "导出的金额少了小数位：12.5 应为 12.50",
+          "attempts": 1
+        },
+        "commit": {
+          "role": "act",
+          "status": "skipped",
+          "failure_class": "upstream_failed"
+        },
+        "answer": {
+          "role": "deliver",
+          "status": "skipped",
+          "failure_class": "upstream_failed"
+        }
+      },
+      "history": [
+        {
+          "round": 1,
+          "verdict": "repair",
+          "failed_nodes": {
+            "e2e": "导出的金额少了小数位：12.5 应为 12.50"
+          }
+        }
+      ],
+      "expect": {
+        "verdict": "repair",
+        "acceptable": [
+          "repair"
+        ],
+        "min_escalation": "repair_change_method",
+        "layer": "execution",
+        "reference": {
+          "verdict": "repair",
+          "reason": "同一错误第二次出现，换方法",
+          "layer": "execution",
+          "repair": {
+            "nodes": [
+              "impl_export"
+            ],
+            "strategy": "change_method",
+            "guidance": "金额统一用 Decimal 并按两位小数格式化"
+          }
+        }
+      }
+    },
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000027X",
+        "session_id": "ses_01J0000000000000000000027S",
+        "goal": "给记账小程序加上导出 CSV 的功能",
+        "done_when": "导出通过端到端测试并提交",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "实现导出 CSV",
+            "status": "completed",
+            "verdict": "repair",
+            "cost_usd": 0.3
+          },
+          {
+            "seq": 2,
+            "stage_goal": "实现导出 CSV",
+            "status": "completed",
+            "verdict": "repair",
+            "cost_usd": 0.3
+          },
+          {
+            "seq": 3,
+            "stage_goal": "实现导出 CSV",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 3,
+        "goal": "实现导出 CSV",
+        "exit_when": "导出通过端到端测试并提交",
+        "nodes": [
+          {
+            "id": "impl_export",
+            "kind": "goal",
+            "goal": "实现导出 CSV",
+            "done_when": "端到端测试通过",
+            "mode": "tool_loop",
+            "output_schema": {
+              "type": "object"
+            },
+            "effect_ceiling": "write_reversible",
+            "tools": [
+              "repo_read",
+              "repo_edit",
+              "shell_test"
+            ]
+          },
+          {
+            "id": "e2e",
+            "kind": "atomic",
+            "template": "e2e_test@v1",
+            "executor": "program",
+            "effect": "read",
+            "role": "judge",
+            "after": [
+              "impl_export"
+            ]
+          },
+          {
+            "id": "commit",
+            "kind": "atomic",
+            "template": "commit_progress@v1",
+            "executor": "program",
+            "effect": "write_reversible",
+            "role": "act",
+            "after": [
+              "e2e"
+            ]
+          },
+          {
+            "id": "answer",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "commit"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "impl_export": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "e2e": {
+          "role": "judge",
+          "status": "succeeded",
+          "result": {
+            "passed": true
+          }
+        },
+        "commit": {
+          "role": "act",
+          "status": "succeeded",
+          "result": {
+            "commit": "0f9e8d7"
+          }
+        },
+        "answer": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "导出 CSV 已上线"
+          }
+        }
+      },
+      "history": [
+        {
+          "round": 1,
+          "verdict": "repair",
+          "failed_nodes": {
+            "e2e": "导出的金额少了小数位：12.5 应为 12.50"
+          }
+        },
+        {
+          "round": 2,
+          "verdict": "repair",
+          "failed_nodes": {
+            "e2e": "导出的金额少了小数位：12.5 应为 12.50"
+          }
+        }
+      ],
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "通过端到端测试并提交",
+          "done": {
+            "deliver_node": "answer"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "kind": "reviewer",
+  "id": "rs_abort_no_access",
+  "split": "holdout",
+  "category": "general",
+  "review": {
+    "status": "draft"
+  },
+  "description": "已确认无法完成（数据不公开、没有授权渠道，用户也确认）→ abort。",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000120X",
+      "session_id": "ses_01J0000000000000000000120S",
+      "goal": "汇总竞品去年的内部销售数据",
+      "done_when": "给出各季度数据",
+      "constraints": {
+        "effect_ceiling": "read"
+      },
+      "facts": [
+        "用户确认没有任何渠道可以合法获取竞品内部数据"
+      ],
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "收集数据",
+          "status": "completed",
+          "verdict": "escalate",
+          "cost_usd": 0.2
+        },
+        {
+          "seq": 2,
+          "stage_goal": "再次收集",
+          "status": "reviewing"
+        }
+      ]
+    },
+    "stage": {
+      "seq": 2,
+      "goal": "再次收集",
+      "exit_when": "找到可用的数据源",
+      "nodes": [
+        {
+          "id": "collect",
+          "kind": "goal",
+          "goal": "寻找竞品内部销售数据的来源",
+          "done_when": "找到可用来源",
+          "mode": "tool_loop",
+          "output_schema": {
+            "type": "object"
+          },
+          "effect_ceiling": "read",
+          "tools": [
+            "web_search"
+          ]
+        }
+      ]
+    },
+    "results": {
+      "collect": {
+        "role": "transform",
+        "status": "failed",
+        "failure_class": "denied",
+        "error": "目标数据不公开，也没有授权渠道",
+        "attempts": 1
+      }
+    },
+    "history": [
+      {
+        "round": 1,
+        "verdict": "escalate",
+        "failed_nodes": {
+          "collect": "数据不公开"
+        }
+      }
+    ],
+    "expect": {
+      "verdict": "abort",
+      "acceptable": [
+        "abort"
+      ],
+      "min_escalation": "abort",
+      "layer": "goal",
+      "reference": {
+        "verdict": "abort",
+        "reason": "确认无法完成",
+        "layer": "goal",
+        "abort": {
+          "completed": [],
+          "not_completed": [
+            "竞品内部销售数据无法合法获取"
+          ]
+        }
+      }
+    }
+  }
+}

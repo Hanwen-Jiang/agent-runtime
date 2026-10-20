@@ -1,0 +1,118 @@
+{
+  "kind": "reviewer",
+  "id": "rs_context_pollution",
+  "split": "holdout",
+  "category": "multi_day_dev",
+  "review": {
+    "status": "draft"
+  },
+  "description": "附录 B.7：上下文越来越长、质量下降 → 上下文污染；把状态写入 Task State，reset 后继续（repair 换方法）。",
+  "symptom": "context_pollution",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000114X",
+      "session_id": "ses_01J0000000000000000000114S",
+      "goal": "按功能清单实现记账小程序",
+      "done_when": "功能清单全部实现并通过端到端测试",
+      "constraints": {
+        "effect_ceiling": "write_reversible"
+      },
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "注册",
+          "status": "completed",
+          "verdict": "continue",
+          "cost_usd": 0.9
+        },
+        {
+          "seq": 2,
+          "stage_goal": "登录",
+          "status": "completed",
+          "verdict": "continue",
+          "cost_usd": 0.9
+        },
+        {
+          "seq": 3,
+          "stage_goal": "记账",
+          "status": "completed",
+          "verdict": "continue",
+          "cost_usd": 1.1
+        },
+        {
+          "seq": 4,
+          "stage_goal": "报表",
+          "status": "completed",
+          "verdict": "continue",
+          "cost_usd": 1.3
+        },
+        {
+          "seq": 5,
+          "stage_goal": "报表页面",
+          "status": "reviewing"
+        }
+      ]
+    },
+    "stage": {
+      "seq": 5,
+      "goal": "实现报表页面",
+      "exit_when": "报表页面通过端到端测试",
+      "nodes": [
+        {
+          "id": "impl_report_page",
+          "kind": "goal",
+          "goal": "实现报表页面",
+          "done_when": "端到端测试通过",
+          "mode": "tool_loop",
+          "output_schema": {
+            "type": "object"
+          },
+          "effect_ceiling": "write_reversible",
+          "tools": [
+            "repo_read",
+            "repo_edit",
+            "shell_test"
+          ]
+        }
+      ]
+    },
+    "results": {
+      "impl_report_page": {
+        "role": "transform",
+        "status": "succeeded",
+        "result": {
+          "context_usage": 0.93,
+          "compactions": 6,
+          "repeated_reads": {
+            "src/report.ts": 9
+          },
+          "test_pass_rate": 0.7
+        }
+      }
+    },
+    "expect": {
+      "verdict": "repair",
+      "acceptable": [
+        "repair",
+        "replan"
+      ],
+      "min_escalation": "repair_change_method",
+      "layer": "execution",
+      "reference": {
+        "verdict": "repair",
+        "reason": "上下文污染，质量下降",
+        "layer": "execution",
+        "signals": [
+          "context_health"
+        ],
+        "repair": {
+          "nodes": [
+            "impl_report_page"
+          ],
+          "strategy": "change_method",
+          "guidance": "把进度写入 Task State，reset 上下文后继续"
+        }
+      }
+    }
+  }
+}

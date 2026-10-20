@@ -1,0 +1,165 @@
+{
+  "kind": "task",
+  "id": "naming_cup_light",
+  "split": "dev",
+  "category": "naming",
+  "review": {
+    "status": "draft"
+  },
+  "description": "同一任务族、命中 Recipe 缓存 → light。",
+  "planner": {
+    "input": {
+      "message": "新出的保温杯也起几个名字，还是之前那套流程。",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "read",
+        "recipes": [
+          {
+            "recipe": "product_naming@v2",
+            "task_family": "creative.naming",
+            "risk": "read"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "triage": "light",
+      "task_family": "creative.naming",
+      "risk": "read",
+      "recipe": "product_naming@v2",
+      "shape": {
+        "modes": [
+          "template"
+        ],
+        "deliver": true
+      },
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "light",
+            "task_family": "creative.naming",
+            "confidence": 0.9
+          },
+          "recipe": "product_naming@v2",
+          "horizon": "full_dag"
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "按命名流程起名",
+          "exit_when": "给出前 3 名",
+          "nodes": [
+            {
+              "id": "naming",
+              "kind": "goal",
+              "goal": "给新款保温杯起名字",
+              "done_when": "前 3 名均通过商标检索",
+              "mode": "template",
+              "recipe": "product_naming@v2",
+              "output_schema": {
+                "type": "object"
+              },
+              "effect_ceiling": "read"
+            },
+            {
+              "id": "answer",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "naming"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000020X",
+        "session_id": "ses_01J0000000000000000000020S",
+        "goal": "给新款保温杯起名字",
+        "done_when": "给出前 3 名",
+        "constraints": {
+          "effect_ceiling": "read"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "按命名流程起名",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "按命名流程起名",
+        "exit_when": "给出前 3 名",
+        "nodes": [
+          {
+            "id": "naming",
+            "kind": "goal",
+            "goal": "给新款保温杯起名字",
+            "done_when": "前 3 名均通过商标检索",
+            "mode": "template",
+            "recipe": "product_naming@v2",
+            "output_schema": {
+              "type": "object"
+            },
+            "effect_ceiling": "read"
+          },
+          {
+            "id": "answer",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "naming"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "naming": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "answer": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "top3": [
+              "暖暖",
+              "Thermo",
+              "随温"
+            ]
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "前 3 名已交付",
+          "done": {
+            "deliver_node": "answer"
+          }
+        }
+      }
+    }
+  ]
+}

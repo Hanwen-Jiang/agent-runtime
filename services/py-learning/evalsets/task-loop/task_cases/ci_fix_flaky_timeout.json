@@ -1,0 +1,288 @@
+{
+  "kind": "task",
+  "id": "ci_fix_flaky_timeout",
+  "split": "holdout",
+  "category": "ci_fix",
+  "review": {
+    "status": "draft"
+  },
+  "description": "偶发失败的修复：风险上升 → full；第一轮因为基础设施超时失败（临时错误）→ repair 重试，第二轮通过 → done。",
+  "planner": {
+    "input": {
+      "message": "nightly 里的 e2e 测试 test_checkout_flow 偶发超时，查清原因并修好。",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "write_reversible"
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "task_family": "engineering.ci_fix",
+      "risk": "write_reversible",
+      "shape": {
+        "modes": [
+          "tool_loop"
+        ],
+        "quality": [
+          "revise"
+        ],
+        "deliver": true
+      },
+      "estimated_task_cost_usd": 2.5,
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full",
+            "task_family": "engineering.ci_fix",
+            "confidence": 0.6
+          },
+          "horizon": "full_dag",
+          "context": {
+            "work_mode": "coding"
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "查清 test_checkout_flow 偶发超时的原因并修好",
+          "exit_when": "测试全部通过，修复说明已给出",
+          "nodes": [
+            {
+              "id": "investigate_fix",
+              "kind": "goal",
+              "goal": "查清 test_checkout_flow 偶发超时的原因并修好",
+              "done_when": "连续 20 次运行都通过",
+              "mode": "tool_loop",
+              "output_schema": {
+                "type": "object"
+              },
+              "quality": {
+                "type": "revise",
+                "judge": "run_tests@v1",
+                "max_rounds": 3
+              },
+              "effect_ceiling": "write_reversible",
+              "tools": [
+                "repo_read",
+                "repo_edit",
+                "shell_test"
+              ],
+              "max_iterations": 60
+            },
+            {
+              "id": "report",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "investigate_fix"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000005X",
+        "session_id": "ses_01J0000000000000000000005S",
+        "goal": "查清并修复 test_checkout_flow 的偶发超时",
+        "done_when": "连续 20 次运行都通过",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "查清并修复",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "查清 test_checkout_flow 偶发超时的原因并修好",
+        "exit_when": "测试全部通过，修复说明已给出",
+        "nodes": [
+          {
+            "id": "investigate_fix",
+            "kind": "goal",
+            "goal": "查清 test_checkout_flow 偶发超时的原因并修好",
+            "done_when": "连续 20 次运行都通过",
+            "mode": "tool_loop",
+            "output_schema": {
+              "type": "object"
+            },
+            "quality": {
+              "type": "revise",
+              "judge": "run_tests@v1",
+              "max_rounds": 3
+            },
+            "effect_ceiling": "write_reversible",
+            "tools": [
+              "repo_read",
+              "repo_edit",
+              "shell_test"
+            ],
+            "max_iterations": 60
+          },
+          {
+            "id": "report",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "investigate_fix"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "investigate_fix": {
+          "role": "transform",
+          "status": "failed",
+          "failure_class": "transient",
+          "error": "运行测试的 runner 超时（基础设施抖动）",
+          "attempts": 1
+        },
+        "report": {
+          "role": "deliver",
+          "status": "skipped",
+          "failure_class": "upstream_failed"
+        }
+      },
+      "expect": {
+        "verdict": "repair",
+        "acceptable": [
+          "repair"
+        ],
+        "min_escalation": "repair_retry",
+        "layer": "execution",
+        "reference": {
+          "verdict": "repair",
+          "reason": "临时错误，重试即可",
+          "layer": "execution",
+          "repair": {
+            "nodes": [
+              "investigate_fix"
+            ],
+            "strategy": "retry_with_error"
+          }
+        }
+      }
+    },
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000005X",
+        "session_id": "ses_01J0000000000000000000005S",
+        "goal": "查清并修复 test_checkout_flow 的偶发超时",
+        "done_when": "连续 20 次运行都通过",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "查清并修复",
+            "status": "completed",
+            "verdict": "repair",
+            "cost_usd": 0.5
+          },
+          {
+            "seq": 2,
+            "stage_goal": "查清并修复",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 2,
+        "goal": "查清 test_checkout_flow 偶发超时的原因并修好",
+        "exit_when": "测试全部通过，修复说明已给出",
+        "nodes": [
+          {
+            "id": "investigate_fix",
+            "kind": "goal",
+            "goal": "查清 test_checkout_flow 偶发超时的原因并修好",
+            "done_when": "连续 20 次运行都通过",
+            "mode": "tool_loop",
+            "output_schema": {
+              "type": "object"
+            },
+            "quality": {
+              "type": "revise",
+              "judge": "run_tests@v1",
+              "max_rounds": 3
+            },
+            "effect_ceiling": "write_reversible",
+            "tools": [
+              "repo_read",
+              "repo_edit",
+              "shell_test"
+            ],
+            "max_iterations": 60
+          },
+          {
+            "id": "report",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "investigate_fix"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "investigate_fix": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "cause": "等待支付回调没有超时上限",
+            "runs_passed": 20
+          }
+        },
+        "report": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "给支付回调加上超时与重试后连续 20 次通过"
+          }
+        }
+      },
+      "history": [
+        {
+          "round": 1,
+          "verdict": "repair",
+          "failed_nodes": {
+            "investigate_fix": "运行测试的 runner 超时（基础设施抖动）"
+          }
+        }
+      ],
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "连续 20 次通过，说明已交付",
+          "done": {
+            "deliver_node": "report"
+          }
+        }
+      }
+    }
+  ]
+}

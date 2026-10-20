@@ -1,0 +1,119 @@
+{
+  "kind": "reviewer",
+  "id": "rs_revise_same_error",
+  "split": "dev",
+  "category": "ci_fix",
+  "review": {
+    "status": "draft"
+  },
+  "description": "附录 B.7：revise 循环里同一错误反复出现 → 问题在上游，停止修复，升级为 replan。",
+  "symptom": "revise_same_error",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000109X",
+      "session_id": "ses_01J0000000000000000000109S",
+      "goal": "修好 CI 中失败的 test_tax_table",
+      "done_when": "测试全部通过",
+      "constraints": {
+        "effect_ceiling": "write_reversible"
+      },
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "修复",
+          "status": "completed",
+          "verdict": "repair",
+          "cost_usd": 0.3
+        },
+        {
+          "seq": 2,
+          "stage_goal": "修复",
+          "status": "reviewing"
+        }
+      ]
+    },
+    "stage": {
+      "seq": 2,
+      "goal": "让 test_tax_table 通过",
+      "exit_when": "测试全部通过，修复说明已给出",
+      "nodes": [
+        {
+          "id": "fix",
+          "kind": "goal",
+          "goal": "让 test_tax_table 通过",
+          "done_when": "run_tests 全部通过",
+          "mode": "tool_loop",
+          "output_schema": {
+            "type": "object"
+          },
+          "quality": {
+            "type": "revise",
+            "judge": "run_tests@v1",
+            "max_rounds": 3
+          },
+          "effect_ceiling": "write_reversible",
+          "tools": [
+            "repo_read",
+            "repo_edit",
+            "shell_test"
+          ],
+          "max_iterations": 40
+        },
+        {
+          "id": "report",
+          "kind": "atomic",
+          "template": "answer@v1",
+          "executor": "model",
+          "effect": "none",
+          "role": "deliver",
+          "output": "generate",
+          "after": [
+            "fix"
+          ]
+        }
+      ]
+    },
+    "results": {
+      "fix": {
+        "role": "transform",
+        "status": "failed",
+        "failure_class": "invalid_output",
+        "error": "revise 三轮都卡在同一错误：ImportError: cannot import name 'TaxTable'",
+        "attempts": 3
+      },
+      "report": {
+        "role": "deliver",
+        "status": "skipped",
+        "failure_class": "upstream_failed"
+      }
+    },
+    "history": [
+      {
+        "round": 1,
+        "verdict": "repair",
+        "failed_nodes": {
+          "fix": "ImportError: cannot import name 'TaxTable'"
+        }
+      }
+    ],
+    "expect": {
+      "verdict": "replan",
+      "acceptable": [
+        "replan"
+      ],
+      "min_escalation": "replan",
+      "layer": "plan",
+      "reference": {
+        "verdict": "replan",
+        "reason": "revise 里同一错误反复出现，问题在上游",
+        "layer": "plan",
+        "signals": [
+          "repetition"
+        ],
+        "replan": {
+          "stuck_reason": "TaxTable 在依赖包里被重命名，需要先确认依赖版本"
+        }
+      }
+    }
+  }
+}

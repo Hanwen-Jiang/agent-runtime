@@ -1,0 +1,145 @@
+{
+  "kind": "task",
+  "id": "multiday_feature_name_fast",
+  "split": "holdout",
+  "category": "multi_day_dev",
+  "review": {
+    "status": "draft"
+  },
+  "description": "关于当前 Task 的简单问题 → fast：沿用当前 Task State 单次作答。",
+  "planner": {
+    "input": {
+      "message": "刚才提交的那个功能叫什么来着？",
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000028X",
+        "session_id": "ses_01J0000000000000000000028S",
+        "goal": "按功能清单实现记账小程序",
+        "done_when": "功能清单全部实现并通过端到端测试",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "实现注册",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.9
+          },
+          {
+            "seq": 2,
+            "stage_goal": "实现登录",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.8
+          }
+        ]
+      },
+      "context": {
+        "risk_before": "write_reversible",
+        "effect_ceiling": "write_reversible"
+      }
+    },
+    "expect": {
+      "triage": "fast",
+      "risk": "none",
+      "shape": {
+        "nodes": {
+          "max": 1
+        },
+        "deliver": true
+      },
+      "reference": {
+        "stage": {
+          "seq": 3,
+          "goal": "回答问题",
+          "exit_when": "给出功能名称",
+          "nodes": [
+            {
+              "id": "answer",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000028X",
+        "session_id": "ses_01J0000000000000000000028S",
+        "goal": "按功能清单实现记账小程序",
+        "done_when": "功能清单全部实现并通过端到端测试",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "实现注册",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.9
+          },
+          {
+            "seq": 2,
+            "stage_goal": "实现登录",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.8
+          },
+          {
+            "seq": 3,
+            "stage_goal": "回答问题",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 3,
+        "goal": "回答问题",
+        "exit_when": "给出功能名称",
+        "nodes": [
+          {
+            "id": "answer",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate"
+          }
+        ]
+      },
+      "results": {
+        "answer": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "登录"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "已回答",
+          "done": {
+            "deliver_node": "answer"
+          }
+        }
+      }
+    }
+  ]
+}

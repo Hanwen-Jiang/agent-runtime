@@ -1,0 +1,202 @@
+{
+  "kind": "task",
+  "id": "batch_label_tickets",
+  "split": "dev",
+  "category": "batch_processing",
+  "review": {
+    "status": "draft"
+  },
+  "description": "附录 B.3“批量处理 1000 张工单”：template 模式的 Goal Node 按工单展开，每条走固定链加 schema 校验，后置 Hook 抽样转人工复核。写回工单系统，风险上升 → full。",
+  "planner": {
+    "input": {
+      "message": "把上周的 1000 张售后工单按退款原因打标签，写回工单系统。",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "write_reversible"
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "task_family": "support.ticket_batch",
+      "risk": "write_reversible",
+      "shape": {
+        "modes": [
+          "template"
+        ],
+        "deliver": true
+      },
+      "estimated_task_cost_usd": 4.0,
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full",
+            "task_family": "support.ticket_batch",
+            "confidence": 0.75
+          },
+          "horizon": "full_dag",
+          "context": {
+            "work_mode": "batch"
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "逐条打标签并写回",
+          "exit_when": "1000 张工单都有标签且通过校验",
+          "hooks": {
+            "after": [
+              "sample_review"
+            ]
+          },
+          "nodes": [
+            {
+              "id": "list",
+              "kind": "atomic",
+              "template": "list_tickets@v1",
+              "executor": "program",
+              "effect": "read",
+              "role": "fetch",
+              "inputs": {
+                "week": "last"
+              }
+            },
+            {
+              "id": "label_each",
+              "kind": "goal",
+              "goal": "按退款原因给每张工单打标签并写回",
+              "done_when": "每张工单的标签通过 schema 校验",
+              "mode": "template",
+              "recipe": "ticket_triage@v4",
+              "after": [
+                "list"
+              ],
+              "output_schema": {
+                "type": "object"
+              },
+              "effect_ceiling": "write_reversible"
+            },
+            {
+              "id": "report",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "label_each"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000013X",
+        "session_id": "ses_01J0000000000000000000013S",
+        "goal": "给上周 1000 张售后工单按退款原因打标签并写回",
+        "done_when": "每张工单的标签通过校验并已写回",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "逐条打标签并写回",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "逐条打标签并写回",
+        "exit_when": "1000 张工单都有标签且通过校验",
+        "hooks": {
+          "after": [
+            "sample_review"
+          ]
+        },
+        "nodes": [
+          {
+            "id": "list",
+            "kind": "atomic",
+            "template": "list_tickets@v1",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch",
+            "inputs": {
+              "week": "last"
+            }
+          },
+          {
+            "id": "label_each",
+            "kind": "goal",
+            "goal": "按退款原因给每张工单打标签并写回",
+            "done_when": "每张工单的标签通过 schema 校验",
+            "mode": "template",
+            "recipe": "ticket_triage@v4",
+            "after": [
+              "list"
+            ],
+            "output_schema": {
+              "type": "object"
+            },
+            "effect_ceiling": "write_reversible"
+          },
+          {
+            "id": "report",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "label_each"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "list": {
+          "role": "fetch",
+          "status": "succeeded",
+          "result": {
+            "count": 1000
+          }
+        },
+        "label_each": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "labeled": 1000,
+            "invalid": 0
+          }
+        },
+        "report": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "top_reason": "物流延误"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "全部打完并通过校验",
+          "done": {
+            "deliver_node": "report"
+          }
+        }
+      }
+    }
+  ]
+}

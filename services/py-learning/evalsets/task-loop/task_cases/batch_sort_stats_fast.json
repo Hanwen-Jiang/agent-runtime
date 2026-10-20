@@ -1,0 +1,137 @@
+{
+  "kind": "task",
+  "id": "batch_sort_stats_fast",
+  "split": "holdout",
+  "category": "batch_processing",
+  "review": {
+    "status": "draft"
+  },
+  "description": "对当前产出的续改 → fast。",
+  "planner": {
+    "input": {
+      "message": "把刚才的标签统计按占比从高到低排一下。",
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000017X",
+        "session_id": "ses_01J0000000000000000000017S",
+        "goal": "给上周 1000 张售后工单按退款原因打标签并写回",
+        "done_when": "每张工单的标签通过校验并已写回",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "逐条打标签并写回",
+            "status": "completed",
+            "verdict": "done",
+            "cost_usd": 3.6
+          }
+        ]
+      },
+      "context": {
+        "risk_before": "write_reversible",
+        "effect_ceiling": "write_reversible"
+      }
+    },
+    "expect": {
+      "triage": "fast",
+      "risk": "none",
+      "shape": {
+        "nodes": {
+          "max": 1
+        },
+        "deliver": true
+      },
+      "reference": {
+        "stage": {
+          "seq": 2,
+          "goal": "重排统计",
+          "exit_when": "按占比从高到低排列",
+          "nodes": [
+            {
+              "id": "sorted",
+              "kind": "atomic",
+              "template": "rewrite@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "inputs": {
+                "instruction": "按占比从高到低"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000017X",
+        "session_id": "ses_01J0000000000000000000017S",
+        "goal": "给上周 1000 张售后工单按退款原因打标签并写回",
+        "done_when": "每张工单的标签通过校验并已写回",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "逐条打标签并写回",
+            "status": "completed",
+            "verdict": "done",
+            "cost_usd": 3.6
+          },
+          {
+            "seq": 2,
+            "stage_goal": "重排统计",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 2,
+        "goal": "重排统计",
+        "exit_when": "按占比从高到低排列",
+        "nodes": [
+          {
+            "id": "sorted",
+            "kind": "atomic",
+            "template": "rewrite@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "inputs": {
+              "instruction": "按占比从高到低"
+            }
+          }
+        ]
+      },
+      "results": {
+        "sorted": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "rows": 7
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "已重排",
+          "done": {
+            "deliver_node": "sorted"
+          }
+        }
+      }
+    }
+  ]
+}

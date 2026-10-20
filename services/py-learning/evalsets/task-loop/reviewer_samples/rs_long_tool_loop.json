@@ -1,0 +1,82 @@
+{
+  "kind": "reviewer",
+  "id": "rs_long_tool_loop",
+  "split": "holdout",
+  "category": "multi_day_dev",
+  "review": {
+    "status": "draft"
+  },
+  "description": "附录 B.7：tool_loop 轨迹很长、没有里程碑 → 缺全局结构，replan 补一个显式计划或待办清单。",
+  "symptom": "long_tool_loop",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000108X",
+      "session_id": "ses_01J0000000000000000000108S",
+      "goal": "给记账小程序加全文搜索",
+      "done_when": "搜索通过端到端测试并提交",
+      "constraints": {
+        "effect_ceiling": "write_reversible"
+      },
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "实现搜索",
+          "status": "reviewing"
+        }
+      ]
+    },
+    "stage": {
+      "seq": 1,
+      "goal": "实现搜索",
+      "exit_when": "搜索通过端到端测试",
+      "nodes": [
+        {
+          "id": "impl_search",
+          "kind": "goal",
+          "goal": "实现全文搜索",
+          "done_when": "端到端测试通过",
+          "mode": "tool_loop",
+          "output_schema": {
+            "type": "object"
+          },
+          "effect_ceiling": "write_reversible",
+          "tools": [
+            "repo_read",
+            "repo_edit",
+            "shell_test"
+          ],
+          "max_iterations": 150
+        }
+      ]
+    },
+    "results": {
+      "impl_search": {
+        "role": "transform",
+        "status": "failed",
+        "failure_class": "invalid_output",
+        "error": "达到最大迭代次数 150，没有可验证的阶段性产出",
+        "attempts": 1
+      }
+    },
+    "expect": {
+      "verdict": "replan",
+      "acceptable": [
+        "replan"
+      ],
+      "min_escalation": "replan",
+      "layer": "shape",
+      "reference": {
+        "verdict": "replan",
+        "reason": "轨迹很长、没有里程碑",
+        "layer": "shape",
+        "signals": [
+          "repetition",
+          "plan_drift"
+        ],
+        "replan": {
+          "stuck_reason": "缺全局结构：先列出待办清单，再分步实现"
+        }
+      }
+    }
+  }
+}

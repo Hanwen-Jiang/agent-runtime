@@ -1,0 +1,307 @@
+{
+  "kind": "task",
+  "id": "research_cbam_impact",
+  "split": "holdout",
+  "category": "research_report",
+  "review": {
+    "status": "draft"
+  },
+  "description": "并行研究：三个只读 sub_agent 扇出，第一轮不出 deliver。第二轮引用核对没通过 → repair（带上核对结果重写）。",
+  "planner": {
+    "input": {
+      "message": "调研欧盟碳边境调节机制（CBAM）对国内铝出口企业的影响，给个结论。",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "read"
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "task_family": "research.policy_impact",
+      "risk": "read",
+      "shape": {
+        "fan_out": {
+          "min": 3,
+          "max": 5
+        },
+        "modes": [
+          "sub_agent"
+        ],
+        "forbidden_roles": [
+          "deliver"
+        ]
+      },
+      "estimated_task_cost_usd": 2.0,
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full",
+            "task_family": "research.policy_impact",
+            "confidence": 0.6
+          },
+          "horizon": "per_stage",
+          "context": {
+            "work_mode": "research"
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "分头收集证据",
+          "exit_when": "三方面证据齐全",
+          "nodes": [
+            {
+              "id": "policy_text",
+              "kind": "goal",
+              "goal": "梳理 CBAM 的条款与时间表",
+              "done_when": "给出要点与原文出处",
+              "mode": "sub_agent",
+              "output_schema": {
+                "type": "object"
+              },
+              "tools": [
+                "web_search",
+                "fetch_page"
+              ]
+            },
+            {
+              "id": "trade_data",
+              "kind": "goal",
+              "goal": "整理国内铝对欧出口数据",
+              "done_when": "给出近三年数据与来源",
+              "mode": "sub_agent",
+              "output_schema": {
+                "type": "object"
+              },
+              "tools": [
+                "web_search",
+                "fetch_page"
+              ]
+            },
+            {
+              "id": "company_cases",
+              "kind": "goal",
+              "goal": "收集三家以上企业的应对案例",
+              "done_when": "每个案例有来源",
+              "mode": "sub_agent",
+              "output_schema": {
+                "type": "object"
+              },
+              "tools": [
+                "web_search",
+                "fetch_page"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000010X",
+        "session_id": "ses_01J0000000000000000000010S",
+        "goal": "调研 CBAM 对国内铝出口企业的影响并给出结论",
+        "done_when": "结论有证据支撑，引用核对通过",
+        "constraints": {
+          "effect_ceiling": "read"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "分头收集证据",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "分头收集证据",
+        "exit_when": "三方面证据齐全",
+        "nodes": [
+          {
+            "id": "policy_text",
+            "kind": "goal",
+            "goal": "梳理 CBAM 的条款与时间表",
+            "done_when": "给出要点与原文出处",
+            "mode": "sub_agent",
+            "output_schema": {
+              "type": "object"
+            },
+            "tools": [
+              "web_search",
+              "fetch_page"
+            ]
+          },
+          {
+            "id": "trade_data",
+            "kind": "goal",
+            "goal": "整理国内铝对欧出口数据",
+            "done_when": "给出近三年数据与来源",
+            "mode": "sub_agent",
+            "output_schema": {
+              "type": "object"
+            },
+            "tools": [
+              "web_search",
+              "fetch_page"
+            ]
+          },
+          {
+            "id": "company_cases",
+            "kind": "goal",
+            "goal": "收集三家以上企业的应对案例",
+            "done_when": "每个案例有来源",
+            "mode": "sub_agent",
+            "output_schema": {
+              "type": "object"
+            },
+            "tools": [
+              "web_search",
+              "fetch_page"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "policy_text": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "sources": 7
+          }
+        },
+        "trade_data": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "sources": 7
+          }
+        },
+        "company_cases": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "sources": 7
+          }
+        }
+      },
+      "expect": {
+        "verdict": "continue",
+        "acceptable": [
+          "continue"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "continue",
+          "reason": "证据齐全，进入综合"
+        }
+      }
+    },
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000010X",
+        "session_id": "ses_01J0000000000000000000010S",
+        "goal": "调研 CBAM 对国内铝出口企业的影响并给出结论",
+        "done_when": "结论有证据支撑，引用核对通过",
+        "constraints": {
+          "effect_ceiling": "read"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "分头收集证据",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 1.1
+          },
+          {
+            "seq": 2,
+            "stage_goal": "综合并核对",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 2,
+        "goal": "综合并核对",
+        "exit_when": "结论成稿且引用核对通过",
+        "nodes": [
+          {
+            "id": "synthesize",
+            "kind": "atomic",
+            "template": "synthesize_report@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "transform",
+            "output": "generate"
+          },
+          {
+            "id": "check_cites",
+            "kind": "atomic",
+            "template": "check_citations@v1",
+            "executor": "program",
+            "effect": "none",
+            "role": "judge",
+            "after": [
+              "synthesize"
+            ]
+          },
+          {
+            "id": "report",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "check_cites"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "synthesize": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "check_cites": {
+          "role": "judge",
+          "status": "failed",
+          "failure_class": "invalid_output",
+          "error": "2 处引用与原文数字不符",
+          "attempts": 1
+        },
+        "report": {
+          "role": "deliver",
+          "status": "skipped",
+          "failure_class": "upstream_failed"
+        }
+      },
+      "expect": {
+        "verdict": "repair",
+        "acceptable": [
+          "repair"
+        ],
+        "min_escalation": "repair_retry",
+        "layer": "execution",
+        "reference": {
+          "verdict": "repair",
+          "reason": "引用核对没通过，带上核对结果重写",
+          "layer": "execution",
+          "repair": {
+            "nodes": [
+              "synthesize"
+            ],
+            "strategy": "retry_with_error",
+            "guidance": "按核对结果修正两处数字"
+          }
+        }
+      }
+    }
+  ]
+}

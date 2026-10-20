@@ -1,0 +1,240 @@
+{
+  "kind": "task",
+  "id": "multiday_auth_change_replan",
+  "split": "holdout",
+  "category": "multi_day_dev",
+  "review": {
+    "status": "draft"
+  },
+  "description": "用户插入新约束（换鉴权方案）→ replan：只重做剩余部分，已验证的注册功能（impl_signup）不重做；写操作仍由单一写者完成。",
+  "planner": {
+    "input": {
+      "message": "登录要换成短信验证码方案，按新方案继续做。",
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000026X",
+        "session_id": "ses_01J0000000000000000000026S",
+        "goal": "按功能清单实现记账小程序",
+        "done_when": "功能清单全部实现并通过端到端测试",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "milestones": [
+          "注册",
+          "登录",
+          "记账",
+          "报表"
+        ],
+        "facts": [
+          "注册功能已完成并通过端到端测试（impl_signup）"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "实现注册",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.9
+          },
+          {
+            "seq": 2,
+            "stage_goal": "实现登录（密码方案）",
+            "status": "completed",
+            "verdict": "replan",
+            "cost_usd": 0.4
+          }
+        ]
+      },
+      "context": {
+        "risk_before": "write_reversible",
+        "effect_ceiling": "write_reversible"
+      }
+    },
+    "expect": {
+      "triage": "replan",
+      "task_family": "engineering.app_dev",
+      "risk": "write_reversible",
+      "shape": {
+        "keep_nodes": [
+          "impl_signup"
+        ],
+        "single_writer": true
+      },
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "replan",
+            "task_family": "engineering.app_dev"
+          },
+          "horizon": "per_stage"
+        },
+        "stage": {
+          "seq": 3,
+          "goal": "按短信验证码方案实现登录",
+          "exit_when": "登录通过端到端测试并提交",
+          "nodes": [
+            {
+              "id": "impl_login_sms",
+              "kind": "goal",
+              "goal": "把登录改为短信验证码方案",
+              "done_when": "端到端测试通过",
+              "mode": "tool_loop",
+              "output_schema": {
+                "type": "object"
+              },
+              "effect_ceiling": "write_reversible",
+              "tools": [
+                "repo_read",
+                "repo_edit",
+                "shell_test"
+              ]
+            },
+            {
+              "id": "e2e",
+              "kind": "atomic",
+              "template": "e2e_test@v1",
+              "executor": "program",
+              "effect": "read",
+              "role": "judge",
+              "after": [
+                "impl_login_sms"
+              ]
+            },
+            {
+              "id": "commit",
+              "kind": "atomic",
+              "template": "commit_progress@v1",
+              "executor": "program",
+              "effect": "write_reversible",
+              "role": "act",
+              "after": [
+                "e2e"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000026X",
+        "session_id": "ses_01J0000000000000000000026S",
+        "goal": "按功能清单实现记账小程序",
+        "done_when": "功能清单全部实现并通过端到端测试",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "milestones": [
+          "注册",
+          "登录",
+          "记账",
+          "报表"
+        ],
+        "facts": [
+          "注册功能已完成并通过端到端测试（impl_signup）"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "实现注册",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.9
+          },
+          {
+            "seq": 2,
+            "stage_goal": "实现登录（密码方案）",
+            "status": "completed",
+            "verdict": "replan",
+            "cost_usd": 0.4
+          },
+          {
+            "seq": 3,
+            "stage_goal": "按短信验证码方案实现登录",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 3,
+        "goal": "按短信验证码方案实现登录",
+        "exit_when": "登录通过端到端测试并提交",
+        "nodes": [
+          {
+            "id": "impl_login_sms",
+            "kind": "goal",
+            "goal": "把登录改为短信验证码方案",
+            "done_when": "端到端测试通过",
+            "mode": "tool_loop",
+            "output_schema": {
+              "type": "object"
+            },
+            "effect_ceiling": "write_reversible",
+            "tools": [
+              "repo_read",
+              "repo_edit",
+              "shell_test"
+            ]
+          },
+          {
+            "id": "e2e",
+            "kind": "atomic",
+            "template": "e2e_test@v1",
+            "executor": "program",
+            "effect": "read",
+            "role": "judge",
+            "after": [
+              "impl_login_sms"
+            ]
+          },
+          {
+            "id": "commit",
+            "kind": "atomic",
+            "template": "commit_progress@v1",
+            "executor": "program",
+            "effect": "write_reversible",
+            "role": "act",
+            "after": [
+              "e2e"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "impl_login_sms": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "e2e": {
+          "role": "judge",
+          "status": "succeeded",
+          "result": {
+            "passed": true
+          }
+        },
+        "commit": {
+          "role": "act",
+          "status": "succeeded",
+          "result": {
+            "commit": "d4e5f6a"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "continue",
+        "acceptable": [
+          "continue"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "continue",
+          "reason": "登录完成并提交，还有两项"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,165 @@
+{
+  "kind": "task",
+  "id": "research_retitle_fast",
+  "split": "dev",
+  "category": "research_report",
+  "review": {
+    "status": "draft"
+  },
+  "description": "对当前产出的续改 → fast。",
+  "planner": {
+    "input": {
+      "message": "报告标题改成《固态电池：2026 年的拐点》，正文不动。",
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000009X",
+        "session_id": "ses_01J0000000000000000000009S",
+        "goal": "写一份 2026 年固态电池行业研究报告",
+        "done_when": "报告成稿",
+        "constraints": {
+          "effect_ceiling": "read"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "确认范围",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.02
+          },
+          {
+            "seq": 2,
+            "stage_goal": "分头研究",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 1.5
+          },
+          {
+            "seq": 3,
+            "stage_goal": "综合成稿",
+            "status": "completed",
+            "verdict": "done",
+            "cost_usd": 0.6
+          }
+        ]
+      },
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "read"
+      }
+    },
+    "expect": {
+      "triage": "fast",
+      "risk": "none",
+      "shape": {
+        "nodes": {
+          "max": 1
+        },
+        "deliver": true
+      },
+      "reference": {
+        "stage": {
+          "seq": 4,
+          "goal": "改标题",
+          "exit_when": "标题已改，正文不动",
+          "nodes": [
+            {
+              "id": "retitle",
+              "kind": "atomic",
+              "template": "rewrite@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "inputs": {
+                "instruction": "只改标题"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000009X",
+        "session_id": "ses_01J0000000000000000000009S",
+        "goal": "写一份 2026 年固态电池行业研究报告",
+        "done_when": "报告成稿",
+        "constraints": {
+          "effect_ceiling": "read"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "确认范围",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.02
+          },
+          {
+            "seq": 2,
+            "stage_goal": "分头研究",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 1.5
+          },
+          {
+            "seq": 3,
+            "stage_goal": "综合成稿",
+            "status": "completed",
+            "verdict": "done",
+            "cost_usd": 0.6
+          },
+          {
+            "seq": 4,
+            "stage_goal": "改标题",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 4,
+        "goal": "改标题",
+        "exit_when": "标题已改，正文不动",
+        "nodes": [
+          {
+            "id": "retitle",
+            "kind": "atomic",
+            "template": "rewrite@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "inputs": {
+              "instruction": "只改标题"
+            }
+          }
+        ]
+      },
+      "results": {
+        "retitle": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "title": "固态电池：2026 年的拐点"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "标题已改",
+          "done": {
+            "deliver_node": "retitle"
+          }
+        }
+      }
+    }
+  ]
+}

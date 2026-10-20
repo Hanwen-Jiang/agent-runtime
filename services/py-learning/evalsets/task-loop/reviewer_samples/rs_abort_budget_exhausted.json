@@ -1,0 +1,95 @@
+{
+  "kind": "reviewer",
+  "id": "rs_abort_budget_exhausted",
+  "split": "dev",
+  "category": "research_report",
+  "review": {
+    "status": "draft"
+  },
+  "description": "预算用尽 → abort：交付部分结果，说清完成了什么、没完成什么。",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000119X",
+      "session_id": "ses_01J0000000000000000000119S",
+      "goal": "整理 50 家供应商的 ESG 评级",
+      "done_when": "50 家都有评级与依据",
+      "constraints": {
+        "effect_ceiling": "read",
+        "budget_usd": 2.0
+      },
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "第一批评级",
+          "status": "completed",
+          "verdict": "continue",
+          "cost_usd": 0.9
+        },
+        {
+          "seq": 2,
+          "stage_goal": "第二批评级",
+          "status": "completed",
+          "verdict": "continue",
+          "cost_usd": 0.8
+        },
+        {
+          "seq": 3,
+          "stage_goal": "第三批评级",
+          "status": "reviewing",
+          "cost_usd": 0.35
+        }
+      ]
+    },
+    "stage": {
+      "seq": 3,
+      "goal": "第三批评级",
+      "exit_when": "本批供应商都有评级",
+      "nodes": [
+        {
+          "id": "rate_batch3",
+          "kind": "goal",
+          "goal": "给第三批供应商评级",
+          "done_when": "每家都有评级与依据",
+          "mode": "sub_agent",
+          "output_schema": {
+            "type": "object"
+          },
+          "tools": [
+            "web_search",
+            "fetch_page"
+          ]
+        }
+      ]
+    },
+    "results": {
+      "rate_batch3": {
+        "role": "transform",
+        "status": "succeeded",
+        "result": {
+          "rated_total": 31,
+          "total": 50
+        }
+      }
+    },
+    "expect": {
+      "verdict": "abort",
+      "acceptable": [
+        "abort",
+        "escalate"
+      ],
+      "min_escalation": "escalate",
+      "reference": {
+        "verdict": "abort",
+        "reason": "预算用尽",
+        "abort": {
+          "completed": [
+            "31 家供应商已评级"
+          ],
+          "not_completed": [
+            "其余 19 家"
+          ]
+        }
+      }
+    }
+  }
+}

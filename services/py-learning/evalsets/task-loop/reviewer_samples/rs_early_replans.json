@@ -1,0 +1,120 @@
+{
+  "kind": "reviewer",
+  "id": "rs_early_replans",
+  "split": "dev",
+  "category": "research_report",
+  "review": {
+    "status": "draft"
+  },
+  "description": "附录 B.7：前几个 Node 就频繁 replan → 信息不确定性被低估，先探索再规划（改用 tool_loop）。",
+  "symptom": "early_replans",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000107X",
+      "session_id": "ses_01J0000000000000000000107S",
+      "goal": "整理新版开放平台的接口变化",
+      "done_when": "列出全部变化及影响",
+      "constraints": {
+        "effect_ceiling": "read"
+      },
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "按旧文档取数",
+          "status": "completed",
+          "verdict": "replan",
+          "cost_usd": 0.2
+        },
+        {
+          "seq": 2,
+          "stage_goal": "按猜测的新路径取数",
+          "status": "completed",
+          "verdict": "replan",
+          "cost_usd": 0.2
+        },
+        {
+          "seq": 3,
+          "stage_goal": "读规格",
+          "status": "reviewing"
+        }
+      ]
+    },
+    "stage": {
+      "seq": 3,
+      "goal": "读规格",
+      "exit_when": "规格要点齐全",
+      "nodes": [
+        {
+          "id": "fetch_spec",
+          "kind": "atomic",
+          "template": "fetch_url@v1",
+          "executor": "program",
+          "effect": "read",
+          "role": "fetch"
+        },
+        {
+          "id": "digest",
+          "kind": "atomic",
+          "template": "summarize@v1",
+          "executor": "model",
+          "effect": "none",
+          "role": "transform",
+          "output": "generate",
+          "after": [
+            "fetch_spec"
+          ]
+        }
+      ]
+    },
+    "results": {
+      "fetch_spec": {
+        "role": "fetch",
+        "status": "failed",
+        "failure_class": "invalid_output",
+        "error": "预期的规格页不存在：计划又建立在错误的假设上",
+        "attempts": 1
+      },
+      "digest": {
+        "role": "transform",
+        "status": "skipped",
+        "failure_class": "upstream_failed"
+      }
+    },
+    "history": [
+      {
+        "round": 1,
+        "verdict": "replan",
+        "failed_nodes": {
+          "fetch_old": "旧文档已下线"
+        }
+      },
+      {
+        "round": 2,
+        "verdict": "replan",
+        "failed_nodes": {
+          "fetch_guess": "路径不存在"
+        }
+      }
+    ],
+    "expect": {
+      "verdict": "replan",
+      "acceptable": [
+        "replan"
+      ],
+      "min_escalation": "replan",
+      "layer": "shape",
+      "reference": {
+        "verdict": "replan",
+        "reason": "前几个 Node 就频繁 replan：信息不确定性被低估",
+        "layer": "shape",
+        "signals": [
+          "plan_drift"
+        ],
+        "replan": {
+          "change_shape": true,
+          "stuck_reason": "先用 tool_loop 探索文档结构，再规划"
+        }
+      }
+    }
+  }
+}

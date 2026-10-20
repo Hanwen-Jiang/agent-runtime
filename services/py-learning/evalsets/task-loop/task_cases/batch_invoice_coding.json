@@ -1,0 +1,310 @@
+{
+  "kind": "task",
+  "id": "batch_invoice_coding",
+  "split": "dev",
+  "category": "batch_processing",
+  "review": {
+    "status": "draft"
+  },
+  "description": "写回幂等，限流导致部分失败 → repair（重试，已写回的按幂等键跳过），第二轮完成 → done。",
+  "planner": {
+    "input": {
+      "message": "把这个月 500 张供应商发票按会计科目归类，结果写回财务系统。",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "write_reversible"
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "task_family": "finance.invoice_coding",
+      "risk": "write_reversible",
+      "shape": {
+        "modes": [
+          "template"
+        ],
+        "deliver": true
+      },
+      "estimated_task_cost_usd": 1.8,
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full",
+            "task_family": "finance.invoice_coding",
+            "confidence": 0.7
+          },
+          "horizon": "full_dag",
+          "context": {
+            "work_mode": "batch"
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "逐张归类并写回",
+          "exit_when": "500 张发票都归类并通过校验",
+          "nodes": [
+            {
+              "id": "list",
+              "kind": "atomic",
+              "template": "list_invoices@v1",
+              "executor": "program",
+              "effect": "read",
+              "role": "fetch",
+              "inputs": {
+                "month": "current"
+              }
+            },
+            {
+              "id": "code_each",
+              "kind": "goal",
+              "goal": "逐张归类并写回",
+              "done_when": "每张发票的科目通过校验",
+              "mode": "template",
+              "recipe": "invoice_coding@v1",
+              "after": [
+                "list"
+              ],
+              "output_schema": {
+                "type": "object"
+              },
+              "effect_ceiling": "write_reversible"
+            },
+            {
+              "id": "report",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "code_each"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000016X",
+        "session_id": "ses_01J0000000000000000000016S",
+        "goal": "把本月 500 张供应商发票按会计科目归类并写回财务系统",
+        "done_when": "每张发票都有科目且通过校验并已写回",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "逐张归类并写回",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "逐张归类并写回",
+        "exit_when": "500 张发票都归类并通过校验",
+        "nodes": [
+          {
+            "id": "list",
+            "kind": "atomic",
+            "template": "list_invoices@v1",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch",
+            "inputs": {
+              "month": "current"
+            }
+          },
+          {
+            "id": "code_each",
+            "kind": "goal",
+            "goal": "逐张归类并写回",
+            "done_when": "每张发票的科目通过校验",
+            "mode": "template",
+            "recipe": "invoice_coding@v1",
+            "after": [
+              "list"
+            ],
+            "output_schema": {
+              "type": "object"
+            },
+            "effect_ceiling": "write_reversible"
+          },
+          {
+            "id": "report",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "code_each"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "list": {
+          "role": "fetch",
+          "status": "succeeded",
+          "result": {
+            "count": 500
+          }
+        },
+        "code_each": {
+          "role": "transform",
+          "status": "failed",
+          "failure_class": "transient",
+          "error": "财务系统限流（429），已处理 312/500",
+          "attempts": 3
+        },
+        "report": {
+          "role": "deliver",
+          "status": "skipped",
+          "failure_class": "upstream_failed"
+        }
+      },
+      "expect": {
+        "verdict": "repair",
+        "acceptable": [
+          "repair"
+        ],
+        "min_escalation": "repair_retry",
+        "layer": "execution",
+        "reference": {
+          "verdict": "repair",
+          "reason": "限流导致的临时失败，写回幂等，可以续跑",
+          "layer": "execution",
+          "repair": {
+            "nodes": [
+              "code_each"
+            ],
+            "strategy": "retry_with_error"
+          }
+        }
+      }
+    },
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000016X",
+        "session_id": "ses_01J0000000000000000000016S",
+        "goal": "把本月 500 张供应商发票按会计科目归类并写回财务系统",
+        "done_when": "每张发票都有科目且通过校验并已写回",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "逐张归类并写回",
+            "status": "completed",
+            "verdict": "repair",
+            "cost_usd": 0.9
+          },
+          {
+            "seq": 2,
+            "stage_goal": "逐张归类并写回",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 2,
+        "goal": "逐张归类并写回",
+        "exit_when": "500 张发票都归类并通过校验",
+        "nodes": [
+          {
+            "id": "list",
+            "kind": "atomic",
+            "template": "list_invoices@v1",
+            "executor": "program",
+            "effect": "read",
+            "role": "fetch",
+            "inputs": {
+              "month": "current"
+            }
+          },
+          {
+            "id": "code_each",
+            "kind": "goal",
+            "goal": "逐张归类并写回",
+            "done_when": "每张发票的科目通过校验",
+            "mode": "template",
+            "recipe": "invoice_coding@v1",
+            "after": [
+              "list"
+            ],
+            "output_schema": {
+              "type": "object"
+            },
+            "effect_ceiling": "write_reversible"
+          },
+          {
+            "id": "report",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "code_each"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "list": {
+          "role": "fetch",
+          "status": "succeeded",
+          "result": {
+            "count": 500
+          }
+        },
+        "code_each": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "report": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "coded": 500
+          }
+        }
+      },
+      "history": [
+        {
+          "round": 1,
+          "verdict": "repair",
+          "failed_nodes": {
+            "code_each": "财务系统限流（429），已处理 312/500"
+          }
+        }
+      ],
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "全部归类并写回",
+          "done": {
+            "deliver_node": "report"
+          }
+        }
+      }
+    }
+  ]
+}

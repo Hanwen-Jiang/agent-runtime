@@ -1,0 +1,390 @@
+{
+  "kind": "task",
+  "id": "research_solid_state_battery",
+  "split": "dev",
+  "category": "research_report",
+  "review": {
+    "status": "draft"
+  },
+  "description": "附录 B.3“行业研究报告”：三个 Stage（澄清 → 并行研究 → 综合）。规划只到下一个信息检查点：第一轮只有确认范围的 gate，不提前规划研究与成稿。期望的 Verdict 序列 continue → continue → done。",
+  "planner": {
+    "input": {
+      "message": "写一份 2026 年固态电池行业研究报告，给投资委员会看。",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "read"
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "task_family": "research.industry_report",
+      "risk": "read",
+      "shape": {
+        "human": true,
+        "gate": true,
+        "nodes": {
+          "max": 2
+        },
+        "forbidden_roles": [
+          "deliver"
+        ]
+      },
+      "estimated_task_cost_usd": 3.0,
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full",
+            "task_family": "research.industry_report",
+            "confidence": 0.55
+          },
+          "horizon": "per_stage",
+          "first_stage": {
+            "goal": "确认报告范围",
+            "nodes": [
+              "confirm_scope"
+            ]
+          },
+          "context": {
+            "work_mode": "research"
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "确认报告范围",
+          "exit_when": "用户确认了范围",
+          "nodes": [
+            {
+              "id": "confirm_scope",
+              "kind": "atomic",
+              "template": "clarify_scope@v1",
+              "executor": "human",
+              "effect": "none",
+              "role": "gate",
+              "inputs": {
+                "question": "报告覆盖哪些地区与技术路线？需要投资建议吗？",
+                "options": [
+                  "approve",
+                  "reject"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000007X",
+        "session_id": "ses_01J0000000000000000000007S",
+        "goal": "写一份 2026 年固态电池行业研究报告，给投资委员会看",
+        "done_when": "报告成稿，结论有来源支撑，引用核对通过",
+        "constraints": {
+          "effect_ceiling": "read"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "确认报告范围",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "确认报告范围",
+        "exit_when": "用户确认了范围",
+        "nodes": [
+          {
+            "id": "confirm_scope",
+            "kind": "atomic",
+            "template": "clarify_scope@v1",
+            "executor": "human",
+            "effect": "none",
+            "role": "gate",
+            "inputs": {
+              "question": "报告覆盖哪些地区与技术路线？需要投资建议吗？",
+              "options": [
+                "approve",
+                "reject"
+              ]
+            }
+          }
+        ]
+      },
+      "results": {
+        "confirm_scope": {
+          "role": "gate",
+          "status": "succeeded",
+          "result": {
+            "option": "approve",
+            "guidance": "聚焦中日两国，要给投资建议"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "continue",
+        "acceptable": [
+          "continue"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "continue",
+          "reason": "范围已确认，进入研究"
+        }
+      }
+    },
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000007X",
+        "session_id": "ses_01J0000000000000000000007S",
+        "goal": "写一份 2026 年固态电池行业研究报告，给投资委员会看",
+        "done_when": "报告成稿，结论有来源支撑，引用核对通过",
+        "constraints": {
+          "effect_ceiling": "read"
+        },
+        "facts": [
+          "范围：中日两国，需要投资建议"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "确认报告范围",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.02
+          },
+          {
+            "seq": 2,
+            "stage_goal": "分头研究",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 2,
+        "goal": "分头研究",
+        "exit_when": "四个方向各有结论与来源",
+        "nodes": [
+          {
+            "id": "market",
+            "kind": "goal",
+            "goal": "研究市场规模与增速",
+            "done_when": "给出数据与来源",
+            "mode": "sub_agent",
+            "output_schema": {
+              "type": "object"
+            },
+            "tools": [
+              "web_search",
+              "fetch_page"
+            ]
+          },
+          {
+            "id": "tech",
+            "kind": "goal",
+            "goal": "研究主要技术路线与成熟度",
+            "done_when": "给出对比与来源",
+            "mode": "sub_agent",
+            "output_schema": {
+              "type": "object"
+            },
+            "tools": [
+              "web_search",
+              "fetch_page"
+            ]
+          },
+          {
+            "id": "policy",
+            "kind": "goal",
+            "goal": "研究中日两国的产业政策",
+            "done_when": "给出政策清单与来源",
+            "mode": "sub_agent",
+            "output_schema": {
+              "type": "object"
+            },
+            "tools": [
+              "web_search",
+              "fetch_page"
+            ]
+          },
+          {
+            "id": "supply_chain",
+            "kind": "goal",
+            "goal": "研究关键材料的供应链",
+            "done_when": "给出主要供应商与风险",
+            "mode": "sub_agent",
+            "output_schema": {
+              "type": "object"
+            },
+            "tools": [
+              "web_search",
+              "fetch_page"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "market": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "findings": 6,
+            "sources": 9
+          }
+        },
+        "tech": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "findings": 6,
+            "sources": 9
+          }
+        },
+        "policy": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "findings": 6,
+            "sources": 9
+          }
+        },
+        "supply_chain": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "findings": 6,
+            "sources": 9
+          }
+        }
+      },
+      "expect": {
+        "verdict": "continue",
+        "acceptable": [
+          "continue"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "continue",
+          "reason": "四个方向的研究齐全，进入综合"
+        }
+      }
+    },
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000007X",
+        "session_id": "ses_01J0000000000000000000007S",
+        "goal": "写一份 2026 年固态电池行业研究报告，给投资委员会看",
+        "done_when": "报告成稿，结论有来源支撑，引用核对通过",
+        "constraints": {
+          "effect_ceiling": "read"
+        },
+        "facts": [
+          "范围：中日两国，需要投资建议"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "确认报告范围",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.02
+          },
+          {
+            "seq": 2,
+            "stage_goal": "分头研究",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 1.6
+          },
+          {
+            "seq": 3,
+            "stage_goal": "综合成稿",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 3,
+        "goal": "综合成稿并核对引用",
+        "exit_when": "报告成稿且引用核对通过",
+        "nodes": [
+          {
+            "id": "synthesize",
+            "kind": "atomic",
+            "template": "synthesize_report@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "transform",
+            "output": "generate"
+          },
+          {
+            "id": "check_cites",
+            "kind": "atomic",
+            "template": "check_citations@v1",
+            "executor": "program",
+            "effect": "none",
+            "role": "judge",
+            "after": [
+              "synthesize"
+            ]
+          },
+          {
+            "id": "report",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "check_cites"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "synthesize": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "check_cites": {
+          "role": "judge",
+          "status": "succeeded",
+          "result": {
+            "mismatches": 0
+          }
+        },
+        "report": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "pages": 18
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "成稿且引用核对通过",
+          "done": {
+            "deliver_node": "report"
+          }
+        }
+      }
+    }
+  ],
+  "rubric": [
+    "第一轮只安排确认范围的 gate，不提前规划研究与成稿",
+    "研究阶段用只读的 sub_agent 并行"
+  ]
+}

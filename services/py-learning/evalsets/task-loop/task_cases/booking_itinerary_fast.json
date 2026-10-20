@@ -1,0 +1,151 @@
+{
+  "kind": "task",
+  "id": "booking_itinerary_fast",
+  "split": "dev",
+  "category": "booking_payment",
+  "review": {
+    "status": "draft"
+  },
+  "description": "对当前产出的续改 → fast。",
+  "planner": {
+    "input": {
+      "message": "行程再发我一遍，只要航班号和起飞时间。",
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000032X",
+        "session_id": "ses_01J0000000000000000000032S",
+        "goal": "订下周二北京到上海最便宜的经济舱并用公司卡付款",
+        "done_when": "出票成功，行程已发给用户",
+        "constraints": {
+          "effect_ceiling": "write_irreversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "比价",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.2
+          },
+          {
+            "seq": 2,
+            "stage_goal": "付款出票",
+            "status": "completed",
+            "verdict": "done",
+            "cost_usd": 0.1
+          }
+        ]
+      },
+      "context": {
+        "risk_before": "write_irreversible",
+        "effect_ceiling": "write_irreversible"
+      }
+    },
+    "expect": {
+      "triage": "fast",
+      "risk": "none",
+      "shape": {
+        "nodes": {
+          "max": 1
+        },
+        "deliver": true
+      },
+      "reference": {
+        "stage": {
+          "seq": 3,
+          "goal": "精简行程",
+          "exit_when": "只列航班号与起飞时间",
+          "nodes": [
+            {
+              "id": "itinerary",
+              "kind": "atomic",
+              "template": "rewrite@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "inputs": {
+                "instruction": "只要航班号和起飞时间"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000032X",
+        "session_id": "ses_01J0000000000000000000032S",
+        "goal": "订下周二北京到上海最便宜的经济舱并用公司卡付款",
+        "done_when": "出票成功，行程已发给用户",
+        "constraints": {
+          "effect_ceiling": "write_irreversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "比价",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.2
+          },
+          {
+            "seq": 2,
+            "stage_goal": "付款出票",
+            "status": "completed",
+            "verdict": "done",
+            "cost_usd": 0.1
+          },
+          {
+            "seq": 3,
+            "stage_goal": "精简行程",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 3,
+        "goal": "精简行程",
+        "exit_when": "只列航班号与起飞时间",
+        "nodes": [
+          {
+            "id": "itinerary",
+            "kind": "atomic",
+            "template": "rewrite@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "inputs": {
+              "instruction": "只要航班号和起飞时间"
+            }
+          }
+        ]
+      },
+      "results": {
+        "itinerary": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "MU5101 07:30"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "已发送",
+          "done": {
+            "deliver_node": "itinerary"
+          }
+        }
+      }
+    }
+  ]
+}

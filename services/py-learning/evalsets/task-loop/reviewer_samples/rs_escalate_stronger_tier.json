@@ -1,0 +1,117 @@
+{
+  "kind": "reviewer",
+  "id": "rs_escalate_stronger_tier",
+  "split": "holdout",
+  "category": "general",
+  "review": {
+    "status": "draft"
+  },
+  "description": "repair、换方法、replan 都试过仍卡住 → escalate 换更强的 Tier（附录 B.8 第 6 步）。",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000118X",
+      "session_id": "ses_01J0000000000000000000118S",
+      "goal": "证明调度算法在给定约束下不会饿死",
+      "done_when": "给出完整证明并通过检查",
+      "constraints": {
+        "effect_ceiling": "read"
+      },
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "直接证明",
+          "status": "completed",
+          "verdict": "repair",
+          "cost_usd": 0.2
+        },
+        {
+          "seq": 2,
+          "stage_goal": "换证明思路",
+          "status": "completed",
+          "verdict": "repair",
+          "cost_usd": 0.2
+        },
+        {
+          "seq": 3,
+          "stage_goal": "拆成引理",
+          "status": "completed",
+          "verdict": "replan",
+          "cost_usd": 0.3
+        },
+        {
+          "seq": 4,
+          "stage_goal": "证明引理 2",
+          "status": "reviewing"
+        }
+      ]
+    },
+    "stage": {
+      "seq": 4,
+      "goal": "证明引理 2",
+      "exit_when": "引理 2 的证明通过检查",
+      "nodes": [
+        {
+          "id": "prove_lemma2",
+          "kind": "atomic",
+          "template": "answer@v1",
+          "executor": "model",
+          "effect": "none",
+          "role": "transform",
+          "output": "generate",
+          "tier": "mid@medium",
+          "reasoning": "stepwise"
+        }
+      ]
+    },
+    "results": {
+      "prove_lemma2": {
+        "role": "transform",
+        "status": "failed",
+        "failure_class": "invalid_output",
+        "error": "引理 2 的证明仍有漏洞：第 3 步用到了待证结论",
+        "attempts": 1
+      }
+    },
+    "history": [
+      {
+        "round": 1,
+        "verdict": "repair",
+        "failed_nodes": {
+          "prove": "循环论证"
+        }
+      },
+      {
+        "round": 2,
+        "verdict": "repair",
+        "failed_nodes": {
+          "prove": "循环论证"
+        }
+      },
+      {
+        "round": 3,
+        "verdict": "replan",
+        "failed_nodes": {
+          "prove": "整体证明过长"
+        }
+      }
+    ],
+    "expect": {
+      "verdict": "escalate",
+      "acceptable": [
+        "escalate"
+      ],
+      "min_escalation": "escalate",
+      "layer": "execution",
+      "reference": {
+        "verdict": "escalate",
+        "reason": "repair、换方法、replan 都试过仍卡住",
+        "layer": "execution",
+        "escalate": {
+          "target": "tier",
+          "tier": "strong@high",
+          "state_summary": "引理 1 已证，引理 2 三次尝试都有循环论证"
+        }
+      }
+    }
+  }
+}

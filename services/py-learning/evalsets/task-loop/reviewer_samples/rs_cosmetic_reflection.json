@@ -1,0 +1,107 @@
+{
+  "kind": "reviewer",
+  "id": "rs_cosmetic_reflection",
+  "split": "dev",
+  "category": "research_report",
+  "review": {
+    "status": "draft"
+  },
+  "description": "附录 B.7：反思只改措辞 → 自评没有新信息，repair 换方法：引入外部判据或独立 judge。产出看似完成也不能判 done。",
+  "symptom": "cosmetic_reflection",
+  "checkpoint": {
+    "task_state": {
+      "task_id": "tsk_01J0000000000000000000110X",
+      "session_id": "ses_01J0000000000000000000110S",
+      "goal": "写一份储能电站安全事故分析",
+      "done_when": "结论有证据支撑，数据与来源一致",
+      "constraints": {
+        "effect_ceiling": "read"
+      },
+      "rounds": [
+        {
+          "seq": 1,
+          "stage_goal": "收集事故资料",
+          "status": "completed",
+          "verdict": "continue",
+          "cost_usd": 0.6
+        },
+        {
+          "seq": 2,
+          "stage_goal": "成稿",
+          "status": "reviewing"
+        }
+      ]
+    },
+    "stage": {
+      "seq": 2,
+      "goal": "成稿",
+      "exit_when": "成稿并自评通过",
+      "nodes": [
+        {
+          "id": "draft",
+          "kind": "atomic",
+          "template": "synthesize_report@v1",
+          "executor": "model",
+          "effect": "none",
+          "role": "transform",
+          "output": "generate",
+          "quality": {
+            "type": "revise",
+            "judge": "rubric_judge@v1",
+            "max_rounds": 3
+          }
+        },
+        {
+          "id": "answer",
+          "kind": "atomic",
+          "template": "answer@v1",
+          "executor": "model",
+          "effect": "none",
+          "role": "deliver",
+          "output": "generate",
+          "after": [
+            "draft"
+          ]
+        }
+      ]
+    },
+    "results": {
+      "draft": {
+        "role": "transform",
+        "status": "succeeded",
+        "result": {
+          "revise_rounds": 3,
+          "changes": "三轮修改只调整了措辞，结论与数据没变",
+          "judge_is_generator": true
+        }
+      },
+      "answer": {
+        "role": "deliver",
+        "status": "succeeded",
+        "result": {
+          "pages": 9
+        }
+      }
+    },
+    "expect": {
+      "verdict": "repair",
+      "acceptable": [
+        "repair"
+      ],
+      "min_escalation": "repair_change_method",
+      "layer": "execution",
+      "reference": {
+        "verdict": "repair",
+        "reason": "反思只改措辞，自评没有新信息",
+        "layer": "execution",
+        "repair": {
+          "nodes": [
+            "draft"
+          ],
+          "strategy": "change_method",
+          "guidance": "改用 check_citations 这样的外部判据核对数据与来源"
+        }
+      }
+    }
+  }
+}

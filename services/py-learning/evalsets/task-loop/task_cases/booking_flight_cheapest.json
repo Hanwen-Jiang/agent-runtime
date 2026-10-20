@@ -1,0 +1,230 @@
+{
+  "kind": "task",
+  "id": "booking_flight_cheapest",
+  "split": "dev",
+  "category": "booking_payment",
+  "review": {
+    "status": "draft"
+  },
+  "description": "附录 B.3“订机票并付款”：两个 Stage（比价 → 付款）。风险升到不可逆 → full。第一轮只比价（只读的 tool_loop），付款要看比价结果，放到下一轮；付款节点 role = act、effect = write_irreversible，运行时自动在前面插入人工审批。",
+  "planner": {
+    "input": {
+      "message": "帮我订下周二北京到上海最便宜的经济舱，用公司卡付款。",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "write_irreversible"
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "task_family": "travel.booking",
+      "risk": "write_irreversible",
+      "shape": {
+        "modes": [
+          "tool_loop"
+        ],
+        "forbidden_roles": [
+          "act",
+          "deliver"
+        ]
+      },
+      "irreversible_actions": [
+        "book_and_pay@v1",
+        "card_charge"
+      ],
+      "estimated_task_cost_usd": 0.6,
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full",
+            "task_family": "travel.booking",
+            "confidence": 0.7
+          },
+          "horizon": "per_stage",
+          "first_stage": {
+            "goal": "比价",
+            "nodes": [
+              "compare"
+            ]
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "比价",
+          "exit_when": "列出可订的最便宜航班",
+          "nodes": [
+            {
+              "id": "compare",
+              "kind": "goal",
+              "goal": "比较下周二北京到上海的经济舱价格",
+              "done_when": "给出最便宜的三个航班与退改规则",
+              "mode": "tool_loop",
+              "output_schema": {
+                "type": "object"
+              },
+              "effect_ceiling": "read",
+              "tools": [
+                "flight_search",
+                "fetch_page"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000029X",
+        "session_id": "ses_01J0000000000000000000029S",
+        "goal": "订下周二北京到上海最便宜的经济舱并用公司卡付款",
+        "done_when": "出票成功，行程已发给用户",
+        "constraints": {
+          "effect_ceiling": "write_irreversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "比价",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "比价",
+        "exit_when": "列出可订的最便宜航班",
+        "nodes": [
+          {
+            "id": "compare",
+            "kind": "goal",
+            "goal": "比较下周二北京到上海的经济舱价格",
+            "done_when": "给出最便宜的三个航班与退改规则",
+            "mode": "tool_loop",
+            "output_schema": {
+              "type": "object"
+            },
+            "effect_ceiling": "read",
+            "tools": [
+              "flight_search",
+              "fetch_page"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "compare": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "cheapest": {
+              "flight": "MU5101",
+              "price": 980
+            }
+          }
+        }
+      },
+      "expect": {
+        "verdict": "continue",
+        "acceptable": [
+          "continue"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "continue",
+          "reason": "比价完成，进入付款"
+        }
+      }
+    },
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000029X",
+        "session_id": "ses_01J0000000000000000000029S",
+        "goal": "订下周二北京到上海最便宜的经济舱并用公司卡付款",
+        "done_when": "出票成功，行程已发给用户",
+        "constraints": {
+          "effect_ceiling": "write_irreversible"
+        },
+        "facts": [
+          "最便宜：MU5101，980 元"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "比价",
+            "status": "completed",
+            "verdict": "continue",
+            "cost_usd": 0.2
+          },
+          {
+            "seq": 2,
+            "stage_goal": "付款出票",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 2,
+        "goal": "付款出票",
+        "exit_when": "出票成功",
+        "nodes": [
+          {
+            "id": "pay",
+            "kind": "atomic",
+            "template": "book_and_pay@v1",
+            "executor": "program",
+            "effect": "write_irreversible",
+            "role": "act",
+            "inputs": {
+              "flight": "MU5101",
+              "price_max": 1000
+            }
+          },
+          {
+            "id": "answer",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "pay"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "pay": {
+          "role": "act",
+          "status": "succeeded",
+          "result": {
+            "ticket": "781-2345678901"
+          }
+        },
+        "answer": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "已出票 MU5101"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "出票成功",
+          "done": {
+            "deliver_node": "answer"
+          }
+        }
+      }
+    }
+  ]
+}

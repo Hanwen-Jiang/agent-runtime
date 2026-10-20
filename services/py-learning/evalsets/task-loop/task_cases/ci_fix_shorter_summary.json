@@ -1,0 +1,137 @@
+{
+  "kind": "task",
+  "id": "ci_fix_shorter_summary",
+  "split": "holdout",
+  "category": "ci_fix",
+  "review": {
+    "status": "draft"
+  },
+  "description": "对当前产出的续改 → fast：沿用当前 Task State，单次改写，不调用强模型。",
+  "planner": {
+    "input": {
+      "message": "把刚才的修复说明再写短一点，一句话就行。",
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000004X",
+        "session_id": "ses_01J0000000000000000000004S",
+        "goal": "修好 CI 中失败的 test_refund_rounding",
+        "done_when": "测试全部通过",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "修复 test_refund_rounding",
+            "status": "completed",
+            "verdict": "done",
+            "cost_usd": 0.4
+          }
+        ]
+      },
+      "context": {
+        "risk_before": "write_reversible",
+        "effect_ceiling": "write_reversible"
+      }
+    },
+    "expect": {
+      "triage": "fast",
+      "risk": "none",
+      "shape": {
+        "nodes": {
+          "max": 1
+        },
+        "deliver": true
+      },
+      "reference": {
+        "stage": {
+          "seq": 2,
+          "goal": "把修复说明压成一句话",
+          "exit_when": "给出一句话的说明",
+          "nodes": [
+            {
+              "id": "short",
+              "kind": "atomic",
+              "template": "rewrite@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "inputs": {
+                "instruction": "压成一句话"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000004X",
+        "session_id": "ses_01J0000000000000000000004S",
+        "goal": "修好 CI 中失败的 test_refund_rounding",
+        "done_when": "测试全部通过",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "修复 test_refund_rounding",
+            "status": "completed",
+            "verdict": "done",
+            "cost_usd": 0.4
+          },
+          {
+            "seq": 2,
+            "stage_goal": "把修复说明压成一句话",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 2,
+        "goal": "把修复说明压成一句话",
+        "exit_when": "给出一句话的说明",
+        "nodes": [
+          {
+            "id": "short",
+            "kind": "atomic",
+            "template": "rewrite@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "inputs": {
+              "instruction": "压成一句话"
+            }
+          }
+        ]
+      },
+      "results": {
+        "short": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "改用银行家舍入，测试已通过。"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "一句话说明已交付",
+          "done": {
+            "deliver_node": "short"
+          }
+        }
+      }
+    }
+  ]
+}

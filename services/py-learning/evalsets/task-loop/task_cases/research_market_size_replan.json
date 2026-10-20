@@ -1,0 +1,225 @@
+{
+  "kind": "task",
+  "id": "research_market_size_replan",
+  "split": "holdout",
+  "category": "research_report",
+  "review": {
+    "status": "draft"
+  },
+  "description": "Reviewer 判定 replan（自上而下的口径不一致）后改为自下而上：已验证的医院数量查询（q_hospital_count）不再重做。",
+  "planner": {
+    "input": {
+      "message": "估算国内宠物医疗 SaaS 的市场规模。",
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000012X",
+        "session_id": "ses_01J0000000000000000000012S",
+        "goal": "估算国内宠物医疗 SaaS 的市场规模",
+        "done_when": "给出区间估计，假设与来源清楚",
+        "constraints": {
+          "effect_ceiling": "read"
+        },
+        "facts": [
+          "全国宠物医院约 2.6 万家（2025 年口径）"
+        ],
+        "open_questions": [
+          "连锁与单体医院的付费意愿差多少"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "自上而下估算",
+            "status": "completed",
+            "verdict": "replan",
+            "cost_usd": 0.6
+          }
+        ]
+      },
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "read"
+      }
+    },
+    "expect": {
+      "triage": "replan",
+      "task_family": "research.market_sizing",
+      "risk": "read",
+      "shape": {
+        "keep_nodes": [
+          "q_hospital_count"
+        ],
+        "deliver": true
+      },
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "replan",
+            "task_family": "research.market_sizing"
+          },
+          "horizon": "full_dag"
+        },
+        "stage": {
+          "seq": 2,
+          "goal": "自下而上重估",
+          "exit_when": "给出区间估计与假设",
+          "nodes": [
+            {
+              "id": "bottom_up",
+              "kind": "goal",
+              "goal": "按医院类型自下而上估算市场规模",
+              "done_when": "每类医院的数量、渗透率与客单价都有来源",
+              "mode": "tool_loop",
+              "output_schema": {
+                "type": "object"
+              },
+              "effect_ceiling": "read",
+              "tools": [
+                "web_search",
+                "fetch_page"
+              ]
+            },
+            {
+              "id": "draft",
+              "kind": "atomic",
+              "template": "synthesize_report@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "transform",
+              "output": "generate",
+              "after": [
+                "bottom_up"
+              ]
+            },
+            {
+              "id": "answer",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "draft"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000012X",
+        "session_id": "ses_01J0000000000000000000012S",
+        "goal": "估算国内宠物医疗 SaaS 的市场规模",
+        "done_when": "给出区间估计，假设与来源清楚",
+        "constraints": {
+          "effect_ceiling": "read"
+        },
+        "facts": [
+          "全国宠物医院约 2.6 万家（2025 年口径）"
+        ],
+        "open_questions": [
+          "连锁与单体医院的付费意愿差多少"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "自上而下估算",
+            "status": "completed",
+            "verdict": "replan",
+            "cost_usd": 0.6
+          },
+          {
+            "seq": 2,
+            "stage_goal": "自下而上重估",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 2,
+        "goal": "自下而上重估",
+        "exit_when": "给出区间估计与假设",
+        "nodes": [
+          {
+            "id": "bottom_up",
+            "kind": "goal",
+            "goal": "按医院类型自下而上估算市场规模",
+            "done_when": "每类医院的数量、渗透率与客单价都有来源",
+            "mode": "tool_loop",
+            "output_schema": {
+              "type": "object"
+            },
+            "effect_ceiling": "read",
+            "tools": [
+              "web_search",
+              "fetch_page"
+            ]
+          },
+          {
+            "id": "draft",
+            "kind": "atomic",
+            "template": "synthesize_report@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "transform",
+            "output": "generate",
+            "after": [
+              "bottom_up"
+            ]
+          },
+          {
+            "id": "answer",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "draft"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "bottom_up": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "draft": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "ok": true
+          }
+        },
+        "answer": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "range": "8–12 亿元"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "区间估计已交付",
+          "done": {
+            "deliver_node": "answer"
+          }
+        }
+      }
+    }
+  ]
+}
