@@ -1,7 +1,7 @@
 # Agent Runtime 项目设计书（暂名）
 
 > 本文件导出自 Claude Docs 文档《Agent Runtime 项目设计书（暂名）》（https://claude.ai/code/artifact/9208d7e8-6b94-4792-9382-a0d0f36921b5），以该文档为准。
-> 导出日期：2026-10-19；2026-10-20 同步原文档 rev 10（3.6“恢复”与附录 K.4 写清 write_irreversible 崩溃后的处理）与 rev 11（4.3 补“行级安全的约束”）、rev 21（附录 B.7、C.1、C.2、D.5、D.6 按 S-08 评测集人审统一口径）。正文与原文档一致；34 张结构图转为 `assets/` 下的 SVG，第 4 章 4.9–4.14 的六张接口图为新补。
+> 导出日期：2026-10-19；2026-10-20 同步原文档 rev 10（3.6“恢复”与附录 K.4 写清 write_irreversible 崩溃后的处理）与 rev 11（4.3 补“行级安全的约束”）、rev 21（附录 B.7、C.1、C.2、D.5、D.6 按 S-08 评测集人审统一口径）、rev 40（按 D1–D16 设计缺口评审：3.1.1、3.1.2、3.2.3、3.2.6、3.3.1，附录 A、B.5、C.2、D.4、E.1、F.3、J.3、J.5、K.1、K.3）。正文与原文档一致；34 张结构图转为 `assets/` 下的 SVG，第 4 章 4.9–4.14 的六张接口图为新补。
 > 术语以附录 A 为准；调研阶段的旧叫法见附录 A 的“原称”列。
 
 ## 目录
@@ -201,14 +201,14 @@ Control Plane 用 Go 实现，包含 Task Service 与 Registry 两个模块，�
 
 **核心逻辑**
 
-1. 提交：校验租户配额与权限，生成 task_id。
+1. 提交：校验租户配额与权限，生成 task_id；同一 Session 内带相同 client_request_id 的重复提交返回同一个 task_id。
 2. 投递：以 session_id 为 ID 找到 Session 工作流，不存在就创建，再把 Task 作为信号投递进去。
-3. 排队：会写 Session 状态的 Task 在 Session 工作流里串行；只读 Task 直接并行启动 Task 子工作流。
+3. 排队：提交时声明是否会写 Session 状态，不声明按会写处理。会写的 Task 在 Session 工作流里串行；只读 Task 直接并行启动 Task 子工作流，effect 上限压到 read，收尾只追加 Session 记录，不改 Session 的可变状态。
 4. 返回：立即返回 task_id 与 SSE 订阅地址；进度与结果经 Cache 推流。
 5. 控制：取消、人工回复等控制指令经 HTTP POST 到达，转为工作流的 cancel 或信号。
-6. 查询：读取工作流内的 Task State。
+6. 查询：运行中读取工作流内的 Task State；Task 结束时把 Task State 快照写入 RelationalStore，结束后的查询读快照，不依赖工作流历史的保留期。
 
-**关键规则**：Session 工作流长期运行，事件历史过长时用 Continue-As-New 续接；准入按租户配额与优先级排队，交互式 Task 优先于批量 Task。
+**关键规则**：Session 工作流长期运行，事件历史过长时用 Continue-As-New 续接（阈值与做法见附录 K.3）；准入按租户配额与优先级排队，交互式 Task 优先于批量 Task：优先级映射到任务队列的优先级或单独的批量队列，客户端能用哪一级由租户策略限定。Session 状态分两部分：可变状态（profile 区、brief 区里的 Session 摘要、Session 内的共享产物）只由会写的 Task 修改；追加记录（每个 Task 的命令与交付摘要）任何 Task 都可以追加，按完成时间排序。
 
 细节：工作流映射见附录 K。
 
@@ -223,9 +223,11 @@ Control Plane 用 Go 实现，包含 Task Service 与 Registry 两个模块，�
 **核心逻辑**
 
 1. 发布：新版本先影子运行，评测达标后再设为默认。Learning Pipeline 的产出也经这里发布。
-2. 固定：Task 启动时把用到的版本写入工作流输入，运行中不受新发布影响。
+2. 固定：Task 提交时固定一个 Registry 修订号，写入工作流输入。之后的解析都按这个修订号取版本：Planner 选 Recipe、reroute 换 Recipe，以及 Node Template、Reasoning Template、Model Profile、租户策略；实际用到的版本记入 Task State 的 pinned。固定的是决定行为的版本，价格、延迟、可用性等运行数据始终取最新。租户策略的收紧立即对运行中的 Task 生效，放宽只对新 Task 生效。
 3. 查询：Planner 按租户与任务族查询可用的 Recipe、Node Template 与 Tier。
 4. 失效：Model Profile 更新时，相关 Recipe 的缓存随之失效。
+
+**关键规则**：Registry 只追加新版本，不改已发布的版本。Registry 不可用时，运行中的 Task 用已固定版本的本地只读缓存；新 Task 的准入按失败处理（fail-closed）；租户策略与安全类 Hook 取不到时一律按拒绝处理。
 
 细节：Node Template 与 Node Catalog 见附录 D，Model Profile 见附录 H。
 
@@ -300,7 +302,7 @@ Worker 用 Python 实现，无状态，以 Kubernetes Deployment 部署，按 Te
 **核心逻辑**
 
 1. 调度：依赖满足的 Node 进入 ready；没有依赖的 Node 并发启动，扇出数有上限。
-2. 插入 Hook：每个 Node 前后由 Policy Engine 执行 Hook；effect 为 write_irreversible 的 Node 前自动插入人工审批。
+2. 插入 Hook：每个 Node 前后由 Policy Engine 执行 Hook；effect 为 write_irreversible 的 Atomic Node 前自动插入人工审批；tool_loop 里每次调用 effect 为 write_irreversible 的工具前，也插入一次人工审批。
 3. 展开 quality：revise 展开为“生成 → judge → 不通过带反馈退回”；ensemble 展开为“生成 × N → aggregate 或 judge”；search 展开为“每层扩展 k 个 → 打分 → 剪枝”。
 4. 展开 Goal Node：template 展开为预定义子图；tool_loop 在 Node 内循环“思考 → 调工具 → 观察”；sub_agent 交给独立上下文的子 agent，只交回摘要；sub_task 嵌套运行一个完整的 Task Loop。
 5. 汇集：结果按 Node id 排序后合并；下游默认只拿 result。
@@ -365,7 +367,7 @@ Worker 用 Python 实现，无状态，以 Kubernetes Deployment 部署，按 Te
 **核心逻辑**
 
 1. 挂载点：Task 接收、Task 开始、Stage 前后、Node 前后、压缩前、完成前、Task 结束。
-2. Hook 的来源：由 Recipe 与租户策略声明，Planner 不手写。部分 Hook 按 effect 自动插入，例如 write_irreversible 的 Node 前插入人工审批。
+2. Hook 的来源：由 Recipe 与租户策略声明，Planner 不手写。部分 Hook 按 effect 自动插入，例如 write_irreversible 的 Node 前、tool_loop 里每次调用不可逆工具前插入人工审批。
 3. 执行：每个 Hook 只返回 allow、deny、modify、inject 之一。deny 交给 Reviewer 处理，不自动重试。
 4. 防循环：会驳回或触发重试的 Hook 都有次数上限，例如“完成前”驳回完成。
 
@@ -411,7 +413,7 @@ Model Gateway 用 Go 实现，以 Kubernetes Deployment 多副本部署，是所
 
 **职责**：所有模型调用的唯一出口。
 
-**输入与输出**：输入是调用请求（Node 的 role、任务族、约束、期望的 Tier）；输出是模型结果与计量。
+**输入与输出**：输入是调用请求（Node 的 role、任务族、约束、期望的 Tier，以及 Task 固定的 Model Profile 版本）；输出是模型结果与计量。
 
 **核心逻辑**
 
@@ -421,7 +423,7 @@ Model Gateway 用 Go 实现，以 Kubernetes Deployment 多副本部署，是所
 4. 计量：按租户记录 token 与成本，写入 trace。
 5. 升降级：运行中先调推理强度，再换模型；连续失败、样本分歧大或停滞时升级。
 
-**关键规则**：Task 中途尽量不换主模型，以免丢失提示缓存；judge 角色优先用与生成者不同家的模型。
+**关键规则**：只在 Task 固定的 Model Profile 版本里选档，价格、延迟与可用性用实时数据；Task 中途尽量不换主模型，以免丢失提示缓存；judge 角色优先用与生成者不同家的模型。
 
 细节：Model Profile、选择公式、角色默认 Tier 与内部评测见附录 H。
 
@@ -788,8 +790,8 @@ Learning Pipeline 用 Python 实现，全部是后台任务：消费者从 Redpa
 | Tenant | 租户，隔离与计费的边界 | 租户 |
 | User | 租户下的用户 | 用户 |
 | Workspace | 用户创建的项目空间，一个用户可有多个 | workspace |
-| Session | Workspace 下的一段会话 | session |
-| Task | 用户在 Session 中下发的一次命令及其完整执行 | task |
+| Session | Workspace 下的一段会话；Session 状态分为可变状态与追加记录（见 3.1.1） | session |
+| Task | 用户在 Session 中下发的一次命令及其完整执行；状态为 queued、running、done、aborted、cancelled、failed | task |
 | Round | Task Loop 的一轮：规划、执行、评审 | 一轮 |
 | Stage | 一轮里执行的节点 DAG，有目标与退出条件 | 超步 x |
 | Node | Stage 里的执行单元 | 节点 |
@@ -836,7 +838,7 @@ Learning Pipeline 用 Python 实现，全部是后台任务：消费者从 Redpa
 | Runtime（暂名） | 本文设计的 Agent 运行核心 | 运行核心 |
 | Control Plane | Task Service 与 Registry | 控制面 |
 | Task Service | 对外入口，管理 Session 与 Task 的生命周期 | Task Service |
-| Registry | 存放 Node Template、Recipe、Model Profile、租户策略 | 注册中心 |
+| Registry | 存放 Node Template、Recipe、Reasoning Template、Model Profile、租户策略 | 注册中心 |
 | Worker | 无状态执行进程，运行 Planner、Stage Runner、Node Executor、Reviewer | Worker 池 |
 | Policy Engine | Worker 内的库，在挂载点执行 Hook | 钩子与策略引擎 |
 | Context Builder | Worker 内的库，为每次模型调用组装并压缩上下文 | 上下文装配 |
@@ -944,6 +946,8 @@ Stage 1 的三个查询互不依赖，放在同一个 Stage 里并行；“下�
 | 形状不对 | Stage 形状本身不合适，例如对强耦合任务扇出 | replan（换形状）或 reroute |
 | 目标误解 | 产出偏离真实需求 | escalate，回到澄清 |
 
+表中的 Verdict 是该层问题的默认去向。附录 B.8 的触发规则可以改变去向，例如预算用掉 80% 而完成度不到 50% 属于计划层的问题，去向却是缩小范围或问人（escalate）。Verdict 的 layer 字段记的是问题所在的层，不是 Verdict 本身。
+
 #### B.6 判定依据：硬信号与 Progress Check
 
 硬信号由代码计算，便宜且可靠：
@@ -1024,6 +1028,7 @@ Session 开始时已经加载的内容不再逐个 Task 检查：租户策略、
 - Session 剩余预算够这个任务族的典型成本吗？
 - 缓存的 Recipe 最近失败过，或相关 Model Profile 已更新吗？
 - 分诊置信度低于阈值吗？
+- 只对 light 的候选：要做不可逆动作，而它的对象或参数（金额、收件人、日期等）不能从这次的指令里明确得出，或超出了指令的目标范围吗？
 
 #### C.3 Task Plan
 
@@ -1128,7 +1133,7 @@ node_output:
 | none | 可以 | 可以 | — |
 | read | 可以，设 TTL | 可以 | 结果写入 trace，便于复现 |
 | write_reversible | 不缓存 | 仅幂等时 | 必须带幂等键并记录回滚方式；同一时刻只允许一个节点写同一份共享产物 |
-| write_irreversible | 不缓存 | 不可以 | 必须带幂等键；前置 Hook 自动插入人工审批 |
+| write_irreversible | 不缓存 | 不可以 | 必须带幂等键；执行前插入人工审批：Atomic Node 在节点前，tool_loop 在每次调用不可逆工具前 |
 
 #### D.5 按 role 的规则
 
@@ -1174,7 +1179,7 @@ judge 与 gate 的区别：judge 评价结果好不好，属于质量；gate 决
 | sub_agent | 读密集、宽度型，或需要隔离上下文 | 独立上下文的子 agent，只交回摘要；默认只读 |
 | sub_task | 本身就是一个复杂任务 | 嵌套运行一个完整的 Task Loop；嵌套深度不超过 2 |
 
-Goal Node 只需写清 goal、done_when、预算与 output_schema。mode 可以推迟到运行时，按 Recipe 的历史表现选择：有 Recipe 用 template，否则用 tool_loop；读密集或宽度型用 sub_agent。多 agent 的 token 消耗远高于单 agent，所以默认不派 sub_agent。
+Goal Node 只需写清 goal、done_when、预算与 output_schema。mode 可以推迟到运行时，按 Recipe 的历史表现选择：有 Recipe 用 template，否则用 tool_loop；读密集或宽度型用 sub_agent。多 agent 的 token 消耗远高于单 agent，所以默认不派 sub_agent。tool_loop 调用不可逆工具前逐次人工审批：审批时展示工具与具体参数，超时按拒绝处理；拒绝时把审批人的指导作为这一步的观察送回循环，同一个 Goal Node 被拒 2 次就记为 denied，交给 Reviewer。
 
 #### E.2 quality：质量包装
 
@@ -1234,7 +1239,7 @@ Reasoning Template 由 Learning Pipeline 按任务族生成一次，经 Registry
 | 所有 Node | 预算与配额检查、审计日志 |
 | effect = read | 结果写入 trace |
 | effect = write_reversible | 幂等键检查、单一写者锁、检查点 |
-| effect = write_irreversible | 幂等键检查、人工审批（gate 节点） |
+| effect = write_irreversible | 幂等键检查、人工审批（gate 节点；tool_loop 里每次调用不可逆工具前各审批一次） |
 | 外部内容进入上下文 | 提示注入检测，标记为低信任 |
 | 租户策略声明 | 数据驻留、模型白名单、敏感字段脱敏 |
 
@@ -1522,7 +1527,7 @@ GenAI 语义约定已移到独立仓库，仍处于 Development 阶段，属性�
 
 - 评测集：从生产 trace 按任务族抽样，标注成功、失败与成本。
 - 影子评测：新模型、新 Node Template、新 Recipe 先在影子流量上运行，与现行版本对比。
-- 门槛：成功率不降、每次成功成本不升（或在可接受范围内）才能发布。
+- 门槛：按非劣效检验判定。成功率的 95% 置信下界不低于现行版本减 δ，每次成功成本的上界不高于现行版本的 (1 + ε) 倍；默认 δ = 2 个百分点、ε = 5%，每个任务族至少 100 条样本，可按任务族在 Registry 里另设。豁免要人工审批并记录。达标后灰度放量，指标变差就自动回滚到上一版本。
 
 #### J.4 Recipe 统计与搜索
 
@@ -1533,7 +1538,7 @@ GenAI 语义约定已移到独立仓库，仍处于 Development 阶段，属性�
 
 #### J.5 发布
 
-所有产出（Model Profile 内部分数、路由策略、Recipe、Reasoning Template）都经 Registry 发布，带版本；运行中的 Task 不受影响。后台任务单独记预算，用小模型，按价值抽样。
+所有产出（Model Profile 及其派生的路由数据、Recipe、Node Template、Reasoning Template）都经 Registry 发布，带版本；运行中的 Task 不受影响。后台任务单独记预算，用小模型，按价值抽样。
 
 ### K. Temporal 映射与恢复场景
 
@@ -1548,7 +1553,7 @@ GenAI 语义约定已移到独立仓库，仍处于 Development 阶段，属性�
 | human 节点、外部回调 | 工作流等待信号，配合持久化定时器处理超时 |
 | Goal Node（sub_task、sub_agent） | 子工作流 |
 | Goal Node（tool_loop） | 子工作流里的循环，每一步是一个 activity |
-| 查询 Task 状态 | query handler 读取工作流内的 Task State |
+| 查询 Task 状态 | 运行中由 query handler 读取工作流内的 Task State；结束后读 RelationalStore 里的快照 |
 | 控制指令（取消、人工回复） | Ingress 收到 HTTP POST，由 Task Service 转为 cancel 或信号 |
 | 流式输出 | deliver 节点的 activity 把 token 推入 Valkey，由 Ingress 订阅并以 SSE 转发 |
 | 代码与模板升级 | Worker Versioning；模板版本写在工作流输入里 |
@@ -1565,7 +1570,7 @@ GenAI 语义约定已移到独立仓库，仍处于 Development 阶段，属性�
 
 | 限制 | 数值 | 应对 |
 | --- | --- | --- |
-| 单个工作流的事件历史 | 10,240 个事件或 10 MB 告警；51,200 个事件或 50 MB 为硬上限 | Session 工作流定期 Continue-As-New；长 Task 拆成子工作流 |
+| 单个工作流的事件历史 | 10,240 个事件或 10 MB 告警；51,200 个事件或 50 MB 为硬上限 | Session 工作流在事件数达到 4,000 或 Temporal 建议续接时 Continue-As-New，续接前排空信号，运行中的 Task 子工作流不受影响（父工作流关闭策略为 ABANDON）；长 Task 拆成子工作流 |
 | 未完成的 activity、子工作流、信号、取消请求 | 各默认 2,000 | Stage 扇出设上限；大批量按批拆到子工作流 |
 | 单个载荷 | 默认 2 MB | Claim-Check 卸载到 S3 |
 | External Storage | 默认阈值 256 KiB，目前为公开预览 | 正式发布前用自研 PayloadCodec，阈值按技术选择资料建议设为 64 KB |
