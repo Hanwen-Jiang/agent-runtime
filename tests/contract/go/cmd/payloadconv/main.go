@@ -33,9 +33,9 @@ import (
 
 const encodingJSONProtobuf = "json/protobuf"
 
-// dataConverter 返回 Runtime 使用的 DataConverter。
-// S-01 用 SDK 默认值：proto 消息优先编码为 json/protobuf。
-// S-03 与 S-06 落地后改为调用 go-task-service 的同一个工厂函数。
+// dataConverter 返回 Runtime 使用的载荷转换：SDK 默认值，proto 消息优先编码为 json/protobuf（两个服务都是这样）。
+// 服务的 DataConverter 另外接了 Claim-Check（S-06），只改动超过阈值的载荷，这里的 fixture 都在阈值以下；
+// Claim-Check 自己的跨语言往返见 cmd/claimcheck。
 func dataConverter() converter.DataConverter {
 	return converter.GetDefaultDataConverter()
 }

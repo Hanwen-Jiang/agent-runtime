@@ -16,6 +16,10 @@ ENV_STUB_CALL_LOG = "AR_STUB_CALL_LOG"
 ENV_STUB_GATE_DIR = "AR_STUB_GATE_DIR"
 ENV_STUB_NODE_TIMEOUT_S = "AR_STUB_NODE_TIMEOUT_S"
 ENV_DATA_DIR = "AR_DATA_DIR"
+# Claim-Check（S-06）：ObjectStore 与 SecretStore 开发实现的位置、阈值。变量名与 task-service 相同。
+ENV_OBJECT_STORE_DIR = "AR_OBJECT_STORE_DIR"
+ENV_SECRETS_FILE = "AR_SECRETS_FILE"
+ENV_CLAIM_CHECK_THRESHOLD = "AR_CLAIM_CHECK_THRESHOLD_BYTES"
 
 
 @dataclass(frozen=True)
@@ -30,6 +34,11 @@ class WorkerConfig:
     stub_node_timeout_s: int = 600
     # 开发实现（ObjectStore、SecretStore、Sandbox）的数据目录；None 时用临时目录。
     data_dir: Path | None = None
+    # ObjectStore 与 SecretStore 开发实现的位置；与 task-service 指向同一处，两边才能互相解开对方卸载的载荷。
+    object_store_dir: Path | None = None
+    secrets_file: Path | None = None
+    # Claim-Check 的阈值（字节）。
+    claim_check_threshold: int = 64 * 1024
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> WorkerConfig:
@@ -40,14 +49,29 @@ class WorkerConfig:
             if not raw.isdigit() or int(raw) <= 0:
                 raise ValueError(f"{ENV_STUB_NODE_TIMEOUT_S} 必须是正整数（秒）")
             timeout = int(raw)
+        threshold = cls.claim_check_threshold
+        raw = env.get(ENV_CLAIM_CHECK_THRESHOLD, "")
+        if raw:
+            if not raw.isdigit() or int(raw) <= 0:
+                raise ValueError(f"{ENV_CLAIM_CHECK_THRESHOLD} 必须是正整数（字节）")
+            threshold = int(raw)
         call_log = env.get(ENV_STUB_CALL_LOG, "")
         gate_dir = env.get(ENV_STUB_GATE_DIR, "")
-        data_dir = env.get(ENV_DATA_DIR, "")
+        data_dir = Path(env[ENV_DATA_DIR]) if env.get(ENV_DATA_DIR) else None
+        objects = env.get(ENV_OBJECT_STORE_DIR, "")
+        secrets = env.get(ENV_SECRETS_FILE, "")
         return cls(
             temporal_address=env.get(ENV_TEMPORAL_ADDRESS, "") or cls.temporal_address,
             namespace=env.get(ENV_TEMPORAL_NAMESPACE, "") or cls.namespace,
             call_log=Path(call_log) if call_log else None,
             gate_dir=Path(gate_dir) if gate_dir else None,
             stub_node_timeout_s=timeout,
-            data_dir=Path(data_dir) if data_dir else None,
+            data_dir=data_dir,
+            object_store_dir=Path(objects) if objects else (data_dir / "objects" if data_dir else None),
+            secrets_file=Path(secrets) if secrets else (data_dir / "secrets.json" if data_dir else None),
+            claim_check_threshold=threshold,
         )
+
+    def store_paths(self, root: Path) -> tuple[Path, Path]:
+        """ObjectStore 目录与密钥文件：配置了就用配置的，否则放在 root 下（与 task-service 的默认布局相同）。"""
+        return self.object_store_dir or root / "objects", self.secrets_file or root / "secrets.json"

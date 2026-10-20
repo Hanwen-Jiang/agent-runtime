@@ -70,8 +70,13 @@ def test_every_exported_history_replays(stack: Stack, tmp_path: Path) -> None:
     assert exported.get("TaskWorkflow"), "没有导出 Task 工作流的历史"
 
     assert stack.task_service_bin is not None
+    # 带 Claim-Check 引用的历史（S-06）要从共用的 ObjectStore 取回对象，回放工具与服务用同样的配置。
     go = subprocess.run(
-        [str(stack.task_service_bin), "replay", "--dir", str(tmp_path / "SessionWorkflow")], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600
+        [str(stack.task_service_bin), "replay", "--dir", str(tmp_path / "SessionWorkflow")],
+        capture_output=True,
+        text=True, encoding="utf-8", errors="replace",
+        timeout=600,
+        env={**os.environ, **stack.shared_store_env()},
     )
     assert go.returncode == 0, f"Go 回放失败：\n{go.stdout}\n{go.stderr}"
 
@@ -80,7 +85,7 @@ def test_every_exported_history_replays(stack: Stack, tmp_path: Path) -> None:
         capture_output=True,
         text=True, encoding="utf-8", errors="replace",
         timeout=600,
-        env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+        env={**os.environ, "PYTHONIOENCODING": "utf-8", **stack.shared_store_env()},
     )
     assert py.returncode == 0, f"Python 回放失败：\n{py.stdout}\n{py.stderr}"
 

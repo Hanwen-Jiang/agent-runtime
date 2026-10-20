@@ -77,6 +77,22 @@ async def test_build_workers_registers_components_per_queue(temporal_env: Workfl
     assert [w.task_queue for w in workers] == [names.DECISION_QUEUE, names.TASK_QUEUE]
 
 
+@pytest.mark.temporal
+@pytest.mark.asyncio(loop_scope="session")
+async def test_worker_client_encodes_payloads_through_claim_check(temporal_env: WorkflowEnvironment, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """S-06：Worker 的客户端带 Claim-Check（阈值取自配置，租户按工作流 memo 确定）；回放工具用同一份配置。"""
+    from agentruntime_core.adapters import claim_check as cc
+
+    from agentruntime_worker.worker import worker_data_converter
+
+    config = WorkerConfig(data_dir=tmp_path, claim_check_threshold=4096)
+    converter = worker_data_converter(config, temporal_env.client)
+    codec = converter.payload_codec
+    assert isinstance(codec, cc.ClaimCheckCodec)
+    assert isinstance(codec.resolver, cc.WorkflowMemoResolver)
+    assert codec.claim_check.threshold == 4096
+
+
 def test_module_entry_point_prints_usage() -> None:
     env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
     proc = subprocess.run([sys.executable, "-m", "agentruntime_worker", "--help"], capture_output=True, text=True, encoding="utf-8", env=env, timeout=60)

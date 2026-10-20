@@ -5,6 +5,7 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -52,6 +53,34 @@ func TestFromEnvSessionLimits(t *testing.T) {
 	}
 	if cfg.Session.ReadOnlyLimit != 2 || cfg.Session.ContinueAsNewTasks != 3 || cfg.Session.ContinueAsNewEvents != 4000 {
 		t.Errorf("Session 参数没有读进来：%+v", cfg.Session)
+	}
+}
+
+// S-06：Claim-Check 用的 ObjectStore、SecretStore 与阈值；变量名与 Python Worker 相同。
+func TestFromEnvClaimCheck(t *testing.T) {
+	cfg, err := FromEnv(env(base()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ClaimCheckThreshold != 64<<10 || cfg.ObjectStoreDir != filepath.Join("data", "objects") || cfg.SecretsFile != filepath.Join("data", "secrets.json") {
+		t.Errorf("默认值：阈值 64 KiB，ObjectStore 与密钥文件放在数据目录下，实际 %d / %q / %q", cfg.ClaimCheckThreshold, cfg.ObjectStoreDir, cfg.SecretsFile)
+	}
+	m := base()
+	m[EnvObjectStoreDir] = "/shared/objects"
+	m[EnvSecretsFile] = "/shared/secrets.json"
+	m[EnvClaimCheckThreshold] = "1024"
+	cfg, err = FromEnv(env(m))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ObjectStoreDir != "/shared/objects" || cfg.SecretsFile != "/shared/secrets.json" || cfg.ClaimCheckThreshold != 1024 {
+		t.Errorf("环境变量没有读进来：%q / %q / %d", cfg.ObjectStoreDir, cfg.SecretsFile, cfg.ClaimCheckThreshold)
+	}
+	for _, bad := range []string{"0", "-1", "big"} {
+		m[EnvClaimCheckThreshold] = bad
+		if _, err := FromEnv(env(m)); err == nil {
+			t.Errorf("阈值 %q 应当报错", bad)
+		}
 	}
 }
 

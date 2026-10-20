@@ -20,6 +20,7 @@ import (
 	"go.temporal.io/sdk/temporal"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/temporal/claimcheck"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/devutil"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/durable"
@@ -101,6 +102,14 @@ type engine struct {
 	owner string
 }
 
+// scoped 把绑定的租户放进 context：客户端调用的载荷按它做 Claim-Check（S-06）。平台作用域不对应租户。
+func (e *engine) scoped(ctx context.Context) context.Context {
+	if e.owner == devutil.PlatformID {
+		return ctx
+	}
+	return claimcheck.WithTenant(ctx, &commonv1.TenantContext{TenantId: e.owner})
+}
+
 func checkID(id string) error {
 	if !workflowID.MatchString(id) {
 		return providererr.New(providererr.Invalid, "invalid_workflow_id", "工作流 ID 必须是 1 到 255 个可打印字符")
@@ -176,6 +185,7 @@ func (e *engine) options(opts durable.StartOptions) client.StartWorkflowOptions 
 }
 
 func (e *engine) StartWorkflow(ctx context.Context, workflowType string, opts durable.StartOptions) (durable.Run, error) {
+	ctx = e.scoped(ctx)
 	if err := checkID(opts.WorkflowID); err != nil {
 		return durable.Run{}, err
 	}
@@ -203,6 +213,7 @@ func derefRun(r *durable.Run) durable.Run {
 }
 
 func (e *engine) SignalWithStart(ctx context.Context, workflowType string, opts durable.StartOptions, signal string, payload proto.Message) (durable.Run, error) {
+	ctx = e.scoped(ctx)
 	if err := checkID(opts.WorkflowID); err != nil {
 		return durable.Run{}, err
 	}
@@ -228,6 +239,7 @@ func (e *engine) SignalWithStart(ctx context.Context, workflowType string, opts 
 }
 
 func (e *engine) Signal(ctx context.Context, id, signal string, payload proto.Message) error {
+	ctx = e.scoped(ctx)
 	if _, err := e.owned(ctx, id); err != nil {
 		return err
 	}
@@ -256,6 +268,7 @@ func decodeInto(result proto.Message, get func(any) error) error {
 }
 
 func (e *engine) Query(ctx context.Context, id, query string, result proto.Message) error {
+	ctx = e.scoped(ctx)
 	if _, err := e.owned(ctx, id); err != nil {
 		return err
 	}
@@ -270,6 +283,7 @@ func (e *engine) Query(ctx context.Context, id, query string, result proto.Messa
 }
 
 func (e *engine) Cancel(ctx context.Context, id, _ string) error {
+	ctx = e.scoped(ctx)
 	resp, err := e.owned(ctx, id)
 	if err != nil {
 		return err
@@ -287,6 +301,7 @@ func (e *engine) Cancel(ctx context.Context, id, _ string) error {
 }
 
 func (e *engine) Describe(ctx context.Context, id string) (durable.Description, error) {
+	ctx = e.scoped(ctx)
 	resp, err := e.owned(ctx, id)
 	if err != nil {
 		return durable.Description{}, err
@@ -307,6 +322,7 @@ func (e *engine) Describe(ctx context.Context, id string) (durable.Description, 
 }
 
 func (e *engine) Result(ctx context.Context, id string, result proto.Message, timeout time.Duration) (durable.Outcome, error) {
+	ctx = e.scoped(ctx)
 	if _, err := e.owned(ctx, id); err != nil {
 		return durable.Outcome{}, err
 	}

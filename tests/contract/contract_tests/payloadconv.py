@@ -34,8 +34,9 @@ _DOUBLE_EXACT_LIMIT = 2**53
 def data_converter() -> temporalio.converter.DataConverter:
     """Runtime 的 DataConverter。
 
-    S-01 用 SDK 默认值：proto 消息优先编码为 json/protobuf。
-    S-03 接入 py-worker 自己的 DataConverter、S-06 接入 Claim-Check 编解码后，改为调用服务里的同一个工厂函数。
+    载荷转换用 SDK 默认值：proto 消息优先编码为 json/protobuf（两个服务都是这样）。服务的 DataConverter 另外接了
+    Claim-Check（S-06），它只改动超过阈值的载荷，这里的 fixture 都在阈值以下；Claim-Check 自己的跨语言往返见
+    test_claim_check_crosslang.py。
     """
     return temporalio.converter.DataConverter.default
 

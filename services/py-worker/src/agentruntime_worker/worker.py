@@ -10,17 +10,22 @@ from __future__ import annotations
 import argparse
 import asyncio
 import contextlib
+import dataclasses
 import os
 from collections.abc import Sequence
 from dataclasses import dataclass
 
 from temporalio.client import Client
+from temporalio.converter import DataConverter
 from temporalio.worker import Worker
+
+from agentruntime_core.adapters.claim_check import ClaimCheck, WorkflowMemoResolver
+from agentruntime_core.providers.object_store import ObjectStoreProvider
 
 from agentruntime_worker import names
 from agentruntime_worker.activities.stubs import StubActivities
 from agentruntime_worker.config import WorkerConfig
-from agentruntime_worker.executor.dev import dev_executor
+from agentruntime_worker.executor.dev import data_root, dev_executor, dev_object_store, dev_secret_store
 from agentruntime_worker.executor.node_executor import NodeExecutor
 from agentruntime_worker.workflows.stage_runner import SubAgentWorkflow, SubgraphWorkflow
 from agentruntime_worker.workflows.task import TaskWorkflow
@@ -79,6 +84,23 @@ def parse_queues(value: str) -> list[str]:
     return queues
 
 
+def worker_data_converter(config: WorkerConfig, raw_client: Client, *, objects: ObjectStoreProvider | None = None) -> DataConverter:
+    """Worker 客户端的 DataConverter：默认的载荷转换加上 Claim-Check（S-06）。
+
+    租户按工作流 memo 里的作用域确定（WorkflowMemoResolver，describe 用不带 Claim-Check 的 raw_client）。
+    ObjectStore 与 SecretStore 与 task-service 指向同一处；objects 可以换成别的实现（例如故障注入的包装）。
+    """
+    root = data_root(config)
+    claim_check = ClaimCheck(objects or dev_object_store(config, root), dev_secret_store(config, root), threshold=config.claim_check_threshold)
+    return dataclasses.replace(DataConverter.default, payload_codec=claim_check.codec(WorkflowMemoResolver(raw_client)))
+
+
+async def connect(config: WorkerConfig, *, objects: ObjectStoreProvider | None = None) -> Client:
+    """连上 Temporal，返回带 Claim-Check 的客户端。"""
+    raw = await Client.connect(config.temporal_address, namespace=config.namespace)
+    return Client(raw.service_client, namespace=raw.namespace, data_converter=worker_data_converter(config, raw, objects=objects))
+
+
 def build_workers(
     client: Client,
     config: WorkerConfig,
@@ -106,7 +128,7 @@ def build_workers(
 
 
 async def serve(config: WorkerConfig, queues: Sequence[str]) -> None:
-    client = await Client.connect(config.temporal_address, namespace=config.namespace)
+    client = await connect(config)
     async with contextlib.AsyncExitStack() as stack:
         for worker in build_workers(client, config, queues):
             await stack.enter_async_context(worker)

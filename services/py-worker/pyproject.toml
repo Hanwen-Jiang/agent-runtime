@@ -4,7 +4,8 @@ version = "0.0.0"
 description = "Worker：Task Loop（Planner、Stage Runner、Node Executor、Reviewer），以及进程内的 Policy Engine 与 Context Builder"
 requires-python = ">=3.13"
 dependencies = [
-    "agentruntime-core",
+    # temporal：DurableEngine 的 Temporal 适配器与 Claim-Check（S-06）。
+    "agentruntime-core[temporal]",
     "agentruntime-proto",
     # Node Executor 按 output_schema 校验结果（JSON Schema 2020-12）。
     "jsonschema>=4.26",

@@ -24,7 +24,6 @@ import contextlib
 import json
 import os
 import sys
-import tempfile
 from collections.abc import Mapping, Sequence
 from datetime import timedelta
 from pathlib import Path
@@ -39,7 +38,6 @@ from agentruntime_core.dev.cache import InMemoryCacheProvider
 from agentruntime_core.dev.human_channel import CliHumanChannelProvider
 from agentruntime_core.dev.object_store import LocalDiskObjectStoreProvider
 from agentruntime_core.dev.sandbox import LocalSubprocessSandboxProvider
-from agentruntime_core.dev.secret_store import LocalFileSecretStoreProvider
 from agentruntime_core.dev.telemetry import ConsoleTelemetryProvider
 from agentruntime_core.dev.tool_driver import LocalToolDriverProvider
 from agentruntime_core.enums import Effect
@@ -53,10 +51,10 @@ from agentruntime_worker.activities.calllog import CallLog
 from agentruntime_worker.activities.stubs import StubActivities, StubModelGateway
 from agentruntime_worker.activities.types import PlanRoundInput, PlanRoundOutput, ReviewRoundInput
 from agentruntime_worker.config import WorkerConfig
-from agentruntime_worker.executor.dev import TemporalReplySink
+from agentruntime_worker.executor.dev import TemporalReplySink, data_root, dev_object_store, dev_secret_store
 from agentruntime_worker.executor.node_executor import ExecutorDeps, NodeExecutor, workflow_question_id
 from agentruntime_worker.executor.schemas import DictSchemaResolver
-from agentruntime_worker.worker import QUEUE_COMPONENTS, build_workers, parse_queues
+from agentruntime_worker.worker import QUEUE_COMPONENTS, build_workers, connect, parse_queues
 
 from e2e_support.faults import CRASH_EXIT_CODE, ENV_FAULT_LEDGER_DIR, ENV_FAULT_PLAN, FaultPlan, Rule
 from e2e_support.ledger import ExternalLedger
@@ -330,16 +328,22 @@ class FaultStubActivities(StubActivities):
 # --- 组装与入口 ---
 
 
-def build_fault_components(config: WorkerConfig, client: Client, plan: FaultPlan, ledger: ExternalLedger) -> tuple[FaultStubActivities, NodeExecutor]:
-    root = config.data_dir or Path(tempfile.mkdtemp(prefix="agentruntime-fault-worker-"))
-    root.mkdir(parents=True, exist_ok=True)
+def faulty_objects(config: WorkerConfig, plan: FaultPlan) -> FaultyObjectStoreProvider:
+    """会按故障计划出错的 ObjectStore：Node Executor 的大结果与 Claim-Check（S-06）都经过它。"""
+    return FaultyObjectStoreProvider(dev_object_store(config, data_root(config)), plan, CallLog(config.call_log))
+
+
+def build_fault_components(
+    config: WorkerConfig, client: Client, plan: FaultPlan, ledger: ExternalLedger, objects: FaultyObjectStoreProvider
+) -> tuple[FaultStubActivities, NodeExecutor]:
+    root = data_root(config)
     calls = CallLog(config.call_log)
     tools = LocalToolDriverProvider()
     register_ledger_tools(tools, ledger, plan)
     deps = ExecutorDeps(
         tools=tools,
-        objects=FaultyObjectStoreProvider(LocalDiskObjectStoreProvider(root / "objects", signing_key=os.urandom(32)), plan, calls),
-        secrets=LocalFileSecretStoreProvider(root / "secrets.json"),
+        objects=objects,
+        secrets=dev_secret_store(config, root),
         cache=InMemoryCacheProvider(),
         humans=RecordingHumanChannelProvider(CliHumanChannelProvider(TemporalReplySink(client), output=sys.stderr), calls),
         telemetry=ConsoleTelemetryProvider(stream=sys.stderr),
@@ -351,8 +355,9 @@ def build_fault_components(config: WorkerConfig, client: Client, plan: FaultPlan
 
 
 async def serve(config: WorkerConfig, queues: Sequence[str], plan: FaultPlan, ledger: ExternalLedger) -> None:
-    client = await Client.connect(config.temporal_address, namespace=config.namespace)
-    stubs, executor = build_fault_components(config, client, plan, ledger)
+    objects = faulty_objects(config, plan)
+    client = await connect(config, objects=objects)
+    stubs, executor = build_fault_components(config, client, plan, ledger, objects)
     async with contextlib.AsyncExitStack() as stack:
         for worker in build_workers(client, config, queues, stubs=stubs, executor=executor):
             await stack.enter_async_context(worker)

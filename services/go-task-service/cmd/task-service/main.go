@@ -10,6 +10,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"flag"
 	"fmt"
@@ -24,13 +25,17 @@ import (
 	"time"
 
 	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/converter"
 	tlog "go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	temporaladapter "github.com/agentruntime/agent-runtime/libs/go-core/adapters/temporal"
+	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/temporal/claimcheck"
 	"github.com/agentruntime/agent-runtime/libs/go-core/clock"
+	"github.com/agentruntime/agent-runtime/libs/go-core/dev/diskobjects"
+	"github.com/agentruntime/agent-runtime/libs/go-core/dev/filesecrets"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/localingress"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/memcache"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/sqlitestore"
@@ -67,7 +72,7 @@ func run(args []string, stdout, stderr io.Writer, getenv func(string) string) in
 	case "dev-token":
 		return devToken(args[1:], stdout, stderr, getenv)
 	case "replay":
-		return replay(args[1:], stdout, stderr)
+		return replay(args[1:], stdout, stderr, getenv)
 	default:
 		fmt.Fprint(stderr, usage)
 		return 2
@@ -100,7 +105,24 @@ func quietLogger() tlog.Logger {
 	return tlog.NewStructuredLogger(slog.New(slog.NewTextHandler(io.Discard, nil)))
 }
 
-func replay(args []string, stdout, stderr io.Writer) int {
+// newClaimCheck 用 ObjectStore、SecretStore 的开发实现构造 Claim-Check（S-06）；与 Python Worker 指向同一处。
+func newClaimCheck(objectStoreDir, secretsFile string, threshold int) (*claimcheck.ClaimCheck, error) {
+	signingKey := make([]byte, 32)
+	if _, err := rand.Read(signingKey); err != nil {
+		return nil, err
+	}
+	objects, err := diskobjects.New(diskobjects.Options{Root: objectStoreDir, SigningKey: signingKey})
+	if err != nil {
+		return nil, err
+	}
+	secrets, err := filesecrets.New(filesecrets.Options{Path: secretsFile})
+	if err != nil {
+		return nil, err
+	}
+	return claimcheck.New(claimcheck.Options{Objects: objects, Secrets: secrets, Threshold: threshold})
+}
+
+func replay(args []string, stdout, stderr io.Writer, getenv func(string) string) int {
 	fs := flag.NewFlagSet("replay", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	dir := fs.String("dir", "", "事件历史目录，每个 *.json 是一份 Session 工作流的历史")
@@ -114,7 +136,24 @@ func replay(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	sort.Strings(files)
-	r := worker.NewWorkflowReplayer()
+	// 带 Claim-Check 引用的历史从 ObjectStore 取回对象；回放时工作流里按 memo 的作用域确定租户。
+	objectStoreDir, secretsFile, threshold, err := config.StoreLocations(getenv)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 2
+	}
+	cc, err := newClaimCheck(objectStoreDir, secretsFile, threshold)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	r, err := worker.NewWorkflowReplayerWithOptions(worker.WorkflowReplayerOptions{
+		DataConverter: cc.DataConverter(converter.GetDefaultDataConverter(), claimcheck.NewMemoResolver(nil)),
+	})
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
 	r.RegisterWorkflowWithOptions(session.NewWorkflow(session.DefaultConfig()), workflow.RegisterOptions{Name: session.WorkflowName})
 	failed := 0
 	for _, f := range files {
@@ -157,13 +196,28 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	c, err := client.Dial(client.Options{
+	raw, err := client.Dial(client.Options{
 		HostPort:  cfg.TemporalAddress,
 		Namespace: cfg.TemporalNamespace,
 		Logger:    tlog.NewStructuredLogger(logger),
 	})
 	if err != nil {
 		return fmt.Errorf("连不上 Temporal：%w", err)
+	}
+	defer raw.Close()
+	// 大载荷经 Claim-Check 卸载到 ObjectStore（S-06）：客户端调用按绑定的租户（DurableEngine.Bind），
+	// Session 工作流里按 memo 的作用域，activity 按所属工作流 describe 出的作用域（describe 用不带 Claim-Check 的 raw）。
+	cc, err := newClaimCheck(cfg.ObjectStoreDir, cfg.SecretsFile, cfg.ClaimCheckThreshold)
+	if err != nil {
+		return err
+	}
+	c, err := client.NewClientFromExisting(raw, client.Options{
+		Namespace:     cfg.TemporalNamespace,
+		Logger:        tlog.NewStructuredLogger(logger),
+		DataConverter: cc.DataConverter(converter.GetDefaultDataConverter(), claimcheck.NewMemoResolver(raw)),
+	})
+	if err != nil {
+		return err
 	}
 	defer c.Close()
 

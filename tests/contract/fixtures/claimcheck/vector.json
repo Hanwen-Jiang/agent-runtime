@@ -1,0 +1,31 @@
+{
+  "comment": "S-06 Claim-Check 格式的测试向量：Go 与 Python 都要由同样的输入得出同样的字节。expected_sealed 用 Go 标准库按格式说明独立算出，不经编解码器。",
+  "spec": {
+    "reference_encoding": "binary/agentruntime-claim-check",
+    "reference_version_key": "agentruntime-claim-check-version",
+    "reference_version": 1,
+    "object_key_prefix": "claim-check/",
+    "data_key_purpose": "claim_check",
+    "algorithm": "AES-256-GCM",
+    "sealed_layout": "\"ARCC\" | u8 版本(1) | u32 头部长度（大端）| 头部 JSON（键排序、无空白：alg、key=包装后的数据密钥 base64、nonce=12 字节 base64）| AES-256-GCM 密文（含 16 字节 tag）",
+    "aad": "\"agentruntime/claim-check/v1\" 0x00 租户 ID 0x00 对象键",
+    "object_key": "claim-check/ + 原载荷（Temporal Payload，确定性序列化）的 sha256 十六进制",
+    "reference_data": "JSON（键排序、无空白）：sha256、size（原载荷字节数）、uri（obj://<租户>/<对象键>）、v（1）"
+  },
+  "inputs": {
+    "tenant_id": "t1",
+    "data_key_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "nonce_hex": "a0a1a2a3a4a5a6a7a8a9aaab",
+    "wrapped_key_hex": "41524b312d746573742d777261707065642d6b6579",
+    "payload": {"metadata": {"encoding": "json/plain"}, "data_utf8": "{\"hello\":\"world\"}"},
+    "plaintext_hex": "0a160a08656e636f64696e67120a6a736f6e2f706c61696e12117b2268656c6c6f223a22776f726c64227d"
+  },
+  "expected": {
+    "plaintext_sha256": "9c1cb0626294082008ba7ca5ed4c2b7818d7af81c9a667782ab414dcf9737836",
+    "object_key": "claim-check/9c1cb0626294082008ba7ca5ed4c2b7818d7af81c9a667782ab414dcf9737836",
+    "header_json": "{\"alg\":\"AES-256-GCM\",\"key\":\"QVJLMS10ZXN0LXdyYXBwZWQta2V5\",\"nonce\":\"oKGio6Slpqeoqaqr\"}",
+    "sealed_hex": "4152434301000000557b22616c67223a224145532d3235362d47434d222c226b6579223a2251564a4c4d5331305a584e304c586479595842775a57517461325635222c226e6f6e6365223a226f4b47696f36536c7071656f71617172227dec0e762520a561d0060ce9b41570aaad1fc27660fed62b028e1f5da417ce196dbd547dddd84d21513bbe791f1eac2b2c50c13ed78790f8f155c4d3",
+    "reference_metadata": {"encoding": "binary/agentruntime-claim-check", "agentruntime-claim-check-version": "1"},
+    "reference_data": "{\"sha256\":\"9c1cb0626294082008ba7ca5ed4c2b7818d7af81c9a667782ab414dcf9737836\",\"size\":43,\"uri\":\"obj://t1/claim-check/9c1cb0626294082008ba7ca5ed4c2b7818d7af81c9a667782ab414dcf9737836\",\"v\":1}"
+  }
+}

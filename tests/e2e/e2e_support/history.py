@@ -16,7 +16,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import subprocess
+import sys
 import tempfile
 from collections import Counter
 from collections.abc import Iterable, Sequence
@@ -26,8 +28,6 @@ from typing import Any
 
 from temporalio.api.enums.v1 import EventType
 from temporalio.client import Client, WorkflowHistory
-
-from agentruntime_worker.replay import replay_histories
 
 MAX_EVENTS = 2000
 DECISION_ACTIVITIES = ("plan_round", "review_round", "finalize_task")
@@ -224,17 +224,37 @@ def fetch_one(address: str, workflow_id: str) -> WorkflowHistory:
     return runs[0]
 
 
-def assert_replays_python(histories: Sequence[WorkflowHistory]) -> None:
-    results = asyncio.run(replay_histories(list(histories)))
-    failures = [(h.workflow_id, r.replay_failure) for h, r in zip(histories, results, strict=True) if r.replay_failure is not None]
-    assert not failures, f"用当前代码回放失败：{failures}"
+def _write(histories: Sequence[WorkflowHistory], directory: Path) -> None:
+    for i, history in enumerate(histories):
+        (directory / f"{history.workflow_id.replace('/', '_')}__{i}.json").write_text(history.to_json(), "utf-8")
 
 
-def assert_replays_go(task_service_bin: Path, histories: Sequence[WorkflowHistory]) -> None:
-    with tempfile.TemporaryDirectory(prefix="session-histories-") as tmp:
-        for i, history in enumerate(histories):
-            (Path(tmp) / f"{history.workflow_id}__{i}.json").write_text(history.to_json(), "utf-8")
+def assert_replays_python(histories: Sequence[WorkflowHistory], *, env: dict[str, str] | None = None) -> None:
+    """用 `python -m agentruntime_worker.replay` 回放；env 给出 ObjectStore 与 SecretStore，带 Claim-Check 引用的历史要用。"""
+    with tempfile.TemporaryDirectory(prefix="task-histories-") as tmp:
+        _write(histories, Path(tmp))
         proc = subprocess.run(
-            [str(task_service_bin), "replay", "--dir", tmp], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300
+            [sys.executable, "-m", "agentruntime_worker.replay", "--dir", tmp],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=300,
+            env={**os.environ, "PYTHONIOENCODING": "utf-8", **(env or {})},
+        )
+    assert proc.returncode == 0, f"Task 工作流用当前代码回放失败：\n{proc.stdout}\n{proc.stderr}"
+
+
+def assert_replays_go(task_service_bin: Path, histories: Sequence[WorkflowHistory], *, env: dict[str, str] | None = None) -> None:
+    with tempfile.TemporaryDirectory(prefix="session-histories-") as tmp:
+        _write(histories, Path(tmp))
+        proc = subprocess.run(
+            [str(task_service_bin), "replay", "--dir", tmp],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=300,
+            env={**os.environ, **(env or {})},
         )
     assert proc.returncode == 0, f"Session 工作流用当前代码回放失败：\n{proc.stdout}\n{proc.stderr}"

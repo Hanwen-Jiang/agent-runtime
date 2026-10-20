@@ -11,6 +11,7 @@ import pytest
 from agentruntime_core.conformance.secret_store import SecretStoreConformance
 from agentruntime_core.dev.secret_store import LocalFileSecretStoreProvider
 from agentruntime_core.errors import ErrorCategory
+from agentruntime_core.tenancy import TenantContext
 from agentruntime_core.testing import FakeClock, FaultInjector
 
 
@@ -40,3 +41,26 @@ class TestLocalFileSecretStore(SecretStoreConformance):
     @pytest.fixture
     def harness(self, tmp_path: Path) -> Harness:
         return Harness(tmp_path / "secrets.json")
+
+
+# --- 开发实现专有：多个进程共用一份密钥文件（S-06：task-service 与 Worker 互相解开对方的 Claim-Check 数据密钥）---
+
+T1 = TenantContext(tenant_id="t1")
+
+
+async def test_a_kek_created_by_another_process_is_picked_up(tmp_path: Path) -> None:
+    path = tmp_path / "secrets.json"
+    early = LocalFileSecretStoreProvider(path)  # 先启动的进程，读文件时还没有 t1 的密钥加密密钥
+    late = LocalFileSecretStoreProvider(path)
+    key = await late.bind(T1).generate_data_key("claim_check")
+    assert await early.bind(T1).unwrap_data_key(key.wrapped, purpose="claim_check") == key.plaintext, "缺密钥加密密钥时重新读文件"
+
+
+async def test_concurrent_processes_never_overwrite_each_others_kek(tmp_path: Path) -> None:
+    path = tmp_path / "secrets.json"
+    a, b = LocalFileSecretStoreProvider(path), LocalFileSecretStoreProvider(path)
+    key_a = await a.bind(T1).generate_data_key("claim_check")
+    key_b = await b.bind(T1).generate_data_key("claim_check")  # b 读文件时没有 t1 的，生成前要重新读，沿用 a 的
+    fresh = LocalFileSecretStoreProvider(path)
+    assert await fresh.bind(T1).unwrap_data_key(key_a.wrapped, purpose="claim_check") == key_a.plaintext
+    assert await fresh.bind(T1).unwrap_data_key(key_b.wrapped, purpose="claim_check") == key_b.plaintext

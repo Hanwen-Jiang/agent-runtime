@@ -3,15 +3,20 @@
 文件格式与 Go 侧（libs/go-core/dev/filesecrets）相同：
     {"version": 1, "scopes": {"<租户 ID 或 _platform>": {"secrets": {名字: 值}, "roles": [角色], "kek": base64}}}
 kek 是该作用域的密钥加密密钥，首次生成数据密钥时创建并写回文件。短期凭据的租约只在内存里。
+多个进程可以共用一份文件（task-service 与 Worker 互相解开对方的 Claim-Check 数据密钥，S-06）：
+写文件时加锁并先重新读，缺 kek 时先重新读文件再生成，不会覆盖别的进程写进去的内容。
 文件里是明文，只能用于开发。
 """
 
 from __future__ import annotations
 
 import base64
+import contextlib
 import json
 import os
 import secrets
+import time
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -20,11 +25,15 @@ from typing import Any
 from agentruntime_core.clock import Clock, SystemClock
 from agentruntime_core.dev import _keywrap
 from agentruntime_core.dev._common import PLATFORM_ID, scope_id
-from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError
+from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError, TransientError
 from agentruntime_core.providers.secret_store import Credential, DataKey, LeaseStatus
 from agentruntime_core.secrets import Secret
 from agentruntime_core.tenancy import Scope, TenantContext, platform_scope, tenant_scope
 from agentruntime_core.testing import FaultInjector
+
+# 跨进程文件锁的等待上限，以及判定为崩溃遗留锁的时长。
+_LOCK_TIMEOUT_S = 10.0
+_LOCK_STALE_S = 30.0
 
 
 @dataclass
@@ -65,24 +74,58 @@ class LocalFileSecretStoreProvider:
     # --- 开发专用：写入静态密钥与授权角色 ---
 
     def seed_secret(self, tenant_id: str | None, name: str, value: str) -> None:
-        self._scope(tenant_id or PLATFORM_ID)["secrets"][name] = value
-        self._save()
+        with self._locked():
+            self._scope(tenant_id or PLATFORM_ID)["secrets"][name] = value
+            self._save()
 
     def grant_role(self, tenant_id: str | None, role: str) -> None:
-        roles = self._scope(tenant_id or PLATFORM_ID)["roles"]
-        if role not in roles:
-            roles.append(role)
-            self._save()
+        with self._locked():
+            roles = self._scope(tenant_id or PLATFORM_ID)["roles"]
+            if role not in roles:
+                roles.append(role)
+                self._save()
 
     def _scope(self, owner: str) -> dict[str, Any]:
         return self._data["scopes"].setdefault(owner, {"secrets": {}, "roles": []})
 
     def _kek(self, owner: str) -> bytes:
+        """作用域的密钥加密密钥。别的进程可能已经写进文件（S-06：task-service 与 Worker 共用一份）：
+        内存里没有就加锁、重新读文件，还没有才生成并写回，不会覆盖别人的。"""
         entry = self._scope(owner)
         if "kek" not in entry:
-            entry["kek"] = base64.b64encode(os.urandom(32)).decode()
-            self._save()
+            with self._locked():
+                entry = self._scope(owner)
+                if "kek" not in entry:
+                    entry["kek"] = base64.b64encode(os.urandom(32)).decode()
+                    self._save()
         return base64.b64decode(entry["kek"])
+
+    @contextlib.contextmanager
+    def _locked(self) -> Iterator[None]:
+        """跨进程的文件锁（<文件>.lock，独占创建）；拿到锁后重新读文件，修改基于最新内容。"""
+        lock = self._path.with_name(self._path.name + ".lock")
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        deadline = time.monotonic() + _LOCK_TIMEOUT_S
+        while True:
+            try:
+                fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                break
+            except FileExistsError:
+                with contextlib.suppress(OSError):
+                    if time.time() - lock.stat().st_mtime > _LOCK_STALE_S:
+                        lock.unlink()  # 持锁的进程崩溃留下的锁
+                        continue
+                if time.monotonic() > deadline:
+                    raise TransientError("busy", "密钥文件被别的进程锁住") from None
+                time.sleep(0.01)
+        try:
+            if self._path.exists():
+                self._data = json.loads(self._path.read_text("utf-8"))
+            yield
+        finally:
+            os.close(fd)
+            with contextlib.suppress(OSError):
+                lock.unlink()
 
     def _save(self) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)

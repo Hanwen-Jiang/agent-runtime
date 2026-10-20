@@ -126,7 +126,7 @@ $env:UV_PROJECT_ENVIRONMENT = "$env:USERPROFILE\.local\venvs\agent-runtime"
 | 更新 golden 事件历史 | 设 `AR_UPDATE_GOLDEN_HISTORIES=1` 再跑测试：端到端测试写 Session 工作流与 S-03 的 Task 工作流历史（`services/go-task-service/internal/session/testdata/histories`、`services/py-worker/tests/histories`），py-worker 测试写 Stage Runner 与 Node Executor 各条路径的历史（`services/py-worker/tests/histories/stage_*.json`、`exec_*.json` 等）。只补缺的，不覆盖已有的 golden（它们证明旧版本的历史仍能回放）；要重新生成某一份先删掉它。结果人审后提交 |
 | 重放事件历史 | Go：在 `services/go-task-service` 下 `go run ./cmd/task-service replay --dir <目录>`；Python：`uv run --package agentruntime-worker python -m agentruntime_worker.replay --dir <目录>` |
 | 本地 Temporal 开发服务 | `temporal server start-dev` |
-| 本地跑整套 | `task-service serve`（环境变量见 `internal/config`，至少要 `AR_TEMPORAL_ADDRESS`、`AR_DEV_SIGNING_KEY`；租户的 effect 上限默认 read，要跑写节点用 `AR_DEV_TENANT_POLICIES_FILE` 指向租户策略文件）；`python -m agentruntime_worker --queues task,decision,model,program`；令牌用 `task-service dev-token --tenant t1 --user u1` |
+| 本地跑整套 | `task-service serve`（环境变量见 `internal/config`，至少要 `AR_TEMPORAL_ADDRESS`、`AR_DEV_SIGNING_KEY`；租户的 effect 上限默认 read，要跑写节点用 `AR_DEV_TENANT_POLICIES_FILE` 指向租户策略文件）；`python -m agentruntime_worker --queues task,decision,model,program`；令牌用 `task-service dev-token --tenant t1 --user u1`。两个进程的 `AR_OBJECT_STORE_DIR` 与 `AR_SECRETS_FILE` 要指向同一处：超过阈值（`AR_CLAIM_CHECK_THRESHOLD_BYTES`，默认 64 KiB）的 Temporal 载荷由 Claim-Check 卸载到 ObjectStore（S-06），两边要互相取回；回放工具（`replay`）也读这两个变量 |
 
 契约变更走 S-01 流程：改 proto 或 schema → `buf generate` → 跑契约测试 → 人审通过后用 `buf build -o proto/breaking-baseline.binpb` 更新兼容性基线。
 

@@ -1,6 +1,8 @@
 """开发环境的 Node Executor：依赖全部用 S-02 的开发实现，模型用桩（StubModelGateway）。
 
 数据放在 WorkerConfig.data_dir（没配时用临时目录）：objects/（ObjectStore）、secrets.json（SecretStore）、sandbox/。
+ObjectStore 与 SecretStore 的位置可以单独配置（AR_OBJECT_STORE_DIR、AR_SECRETS_FILE），与 task-service 共用，
+Claim-Check（S-06）卸载的载荷两边才能互相取回。
 human 节点的问题打印到标准错误；回复由 TemporalReplySink 以 human_reply 信号送回 Task 工作流（附录 K.1）。
 """
 
@@ -24,6 +26,7 @@ from agentruntime_core.dev.secret_store import LocalFileSecretStoreProvider
 from agentruntime_core.dev.telemetry import ConsoleTelemetryProvider
 from agentruntime_core.dev.tool_driver import LocalToolDriverProvider
 from agentruntime_core.providers.human_channel import Reply
+from agentruntime_core.providers.object_store import ObjectStoreProvider
 
 from agentruntime_worker import names
 from agentruntime_worker.activities.stubs import StubModelGateway
@@ -62,14 +65,36 @@ class _LoggingSink:
         logger.warning("没有 Temporal 客户端，丢弃人工回复：%s", reply.question_id)
 
 
-def dev_executor(config: WorkerConfig, *, client: Client | None = None, executor_config: ExecutorConfig | None = None) -> NodeExecutor:
+def data_root(config: WorkerConfig) -> Path:
     root = config.data_dir or Path(tempfile.mkdtemp(prefix="agentruntime-worker-"))
     root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def dev_object_store(config: WorkerConfig, root: Path) -> LocalDiskObjectStoreProvider:
+    """ObjectStore 的开发实现，Node Executor 的大结果与 Claim-Check 共用（与 task-service 指向同一个目录）。"""
+    objects, _ = config.store_paths(root)
+    return LocalDiskObjectStoreProvider(objects, signing_key=os.urandom(32))
+
+
+def dev_secret_store(config: WorkerConfig, root: Path) -> LocalFileSecretStoreProvider:
+    _, secrets = config.store_paths(root)
+    return LocalFileSecretStoreProvider(secrets)
+
+
+def dev_executor(
+    config: WorkerConfig,
+    *,
+    client: Client | None = None,
+    executor_config: ExecutorConfig | None = None,
+    objects: ObjectStoreProvider | None = None,
+) -> NodeExecutor:
+    root = data_root(config)
     sink = TemporalReplySink(client) if client is not None else _LoggingSink()
     deps = ExecutorDeps(
         tools=LocalToolDriverProvider(),
-        objects=LocalDiskObjectStoreProvider(root / "objects", signing_key=os.urandom(32)),
-        secrets=LocalFileSecretStoreProvider(root / "secrets.json"),
+        objects=objects or dev_object_store(config, root),
+        secrets=dev_secret_store(config, root),
         cache=InMemoryCacheProvider(),
         humans=CliHumanChannelProvider(sink, output=sys.stderr),
         telemetry=ConsoleTelemetryProvider(stream=sys.stderr),

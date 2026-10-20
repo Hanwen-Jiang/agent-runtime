@@ -3,6 +3,7 @@ module github.com/agentruntime/agent-runtime/tests/contract/go
 go 1.26.0
 
 require (
+	github.com/agentruntime/agent-runtime/libs/go-core v0.0.0-00010101000000-000000000000
 	github.com/agentruntime/agent-runtime/proto/gen/go v0.0.0-00010101000000-000000000000
 	go.temporal.io/api v1.63.6
 	go.temporal.io/sdk v1.49.0
@@ -23,5 +24,8 @@ require (
 	google.golang.org/grpc v1.83.2 // indirect
 )
 
-// 同仓库的生成代码模块；go.work 用于构建，replace 让 go mod tidy 不去网络上找它。
-replace github.com/agentruntime/agent-runtime/proto/gen/go => ../../../proto/gen/go
+// 同仓库的模块（共享库与生成代码）；go.work 用于构建，replace 让 go mod tidy 不去网络上找它们。
+replace (
+	github.com/agentruntime/agent-runtime/libs/go-core => ../../../libs/go-core
+	github.com/agentruntime/agent-runtime/proto/gen/go => ../../../proto/gen/go
+)

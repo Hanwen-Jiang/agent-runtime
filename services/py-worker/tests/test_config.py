@@ -9,7 +9,10 @@ from pathlib import Path
 import pytest
 
 from agentruntime_worker.config import (
+    ENV_CLAIM_CHECK_THRESHOLD,
     ENV_DATA_DIR,
+    ENV_OBJECT_STORE_DIR,
+    ENV_SECRETS_FILE,
     ENV_STUB_CALL_LOG,
     ENV_STUB_GATE_DIR,
     ENV_STUB_NODE_TIMEOUT_S,
@@ -82,3 +85,33 @@ def test_config_from_env(tmp_path: Path) -> None:
 def test_config_rejects_bad_node_timeout(value: str) -> None:
     with pytest.raises(ValueError):
         WorkerConfig.from_env({ENV_STUB_NODE_TIMEOUT_S: value})
+
+
+# --- S-06：Claim-Check 用的 ObjectStore、SecretStore 与阈值 ---
+
+
+def test_claim_check_config_defaults(tmp_path: Path) -> None:
+    config = WorkerConfig.from_env({ENV_DATA_DIR: str(tmp_path / "data")})
+    assert config.claim_check_threshold == 64 * 1024
+    assert config.object_store_dir == tmp_path / "data" / "objects", "没单独配置时放在数据目录下"
+    assert config.secrets_file == tmp_path / "data" / "secrets.json"
+
+
+def test_claim_check_config_from_env(tmp_path: Path) -> None:
+    config = WorkerConfig.from_env(
+        {
+            ENV_DATA_DIR: str(tmp_path / "data"),
+            ENV_OBJECT_STORE_DIR: str(tmp_path / "shared" / "objects"),
+            ENV_SECRETS_FILE: str(tmp_path / "shared" / "secrets.json"),
+            ENV_CLAIM_CHECK_THRESHOLD: "1024",
+        }
+    )
+    assert config.object_store_dir == tmp_path / "shared" / "objects"
+    assert config.secrets_file == tmp_path / "shared" / "secrets.json"
+    assert config.claim_check_threshold == 1024
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "abc", "2.5"])
+def test_config_rejects_bad_claim_check_threshold(value: str) -> None:
+    with pytest.raises(ValueError):
+        WorkerConfig.from_env({ENV_CLAIM_CHECK_THRESHOLD: value})

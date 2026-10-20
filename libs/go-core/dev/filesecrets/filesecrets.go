@@ -5,6 +5,8 @@
 //	{"version": 1, "scopes": {"<租户 ID 或 _platform>": {"secrets": {名字: 值}, "roles": [角色], "kek": base64}}}
 //
 // kek 是该作用域的密钥加密密钥，首次生成数据密钥时创建并写回文件。短期凭据的租约只在内存里。
+// 多个进程可以共用一份文件（task-service 与 Worker 互相解开对方的 Claim-Check 数据密钥，S-06）：
+// 写文件时加锁并先重新读，缺 kek 时先重新读文件再生成，不会覆盖别的进程写进去的内容。
 // 文件里是明文，只能用于开发。
 package filesecrets
 
@@ -119,19 +121,24 @@ func ownerOf(tenantID string) string {
 func (p *Provider) SeedSecret(tenantID, name, value string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.scope(ownerOf(tenantID)).Secrets[name] = value
-	_ = p.save()
+	_ = p.locked(func() error {
+		p.scope(ownerOf(tenantID)).Secrets[name] = value
+		return p.save()
+	})
 }
 
 // GrantRole 把签发凭据的角色授予作用域（开发专用）。
 func (p *Provider) GrantRole(tenantID, role string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	e := p.scope(ownerOf(tenantID))
-	if !slices.Contains(e.Roles, role) {
+	_ = p.locked(func() error {
+		e := p.scope(ownerOf(tenantID))
+		if slices.Contains(e.Roles, role) {
+			return nil
+		}
 		e.Roles = append(e.Roles, role)
-		_ = p.save()
-	}
+		return p.save()
+	})
 }
 
 func (p *Provider) scope(owner string) *scopeEntry {
@@ -146,17 +153,79 @@ func (p *Provider) scope(owner string) *scopeEntry {
 	return e
 }
 
+// kek 返回作用域的密钥加密密钥。别的进程可能已经写进文件（S-06：task-service 与 Worker 共用一份）：
+// 内存里没有就加锁、重新读文件，还没有才生成并写回，不会覆盖别人的。
 func (p *Provider) kek(owner string) ([]byte, error) {
-	e := p.scope(owner)
-	if e.KEK == "" {
-		b := make([]byte, 32)
-		_, _ = rand.Read(b)
-		e.KEK = base64.StdEncoding.EncodeToString(b)
-		if err := p.save(); err != nil {
-			return nil, err
-		}
+	if e := p.scope(owner); e.KEK != "" {
+		return base64.StdEncoding.DecodeString(e.KEK)
 	}
-	return base64.StdEncoding.DecodeString(e.KEK)
+	var kek string
+	err := p.locked(func() error {
+		e := p.scope(owner)
+		if e.KEK == "" {
+			b := make([]byte, 32)
+			_, _ = rand.Read(b)
+			e.KEK = base64.StdEncoding.EncodeToString(b)
+			if err := p.save(); err != nil {
+				return err
+			}
+		}
+		kek = e.KEK
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return base64.StdEncoding.DecodeString(kek)
+}
+
+const (
+	lockTimeout = 10 * time.Second
+	lockStale   = 30 * time.Second
+)
+
+// locked 在跨进程文件锁（<文件>.lock，独占创建）里执行 fn；拿到锁后先重新读文件，修改基于最新内容。
+// 调用方持有 p.mu。
+func (p *Provider) locked(fn func() error) error {
+	lock := p.opts.Path + ".lock"
+	if err := os.MkdirAll(filepath.Dir(lock), 0o700); err != nil {
+		return err
+	}
+	deadline := time.Now().Add(lockTimeout)
+	for {
+		f, err := os.OpenFile(lock, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		if err == nil {
+			_ = f.Close()
+			break
+		}
+		if !errors.Is(err, fs.ErrExist) {
+			return err
+		}
+		if info, statErr := os.Stat(lock); statErr == nil && time.Since(info.ModTime()) > lockStale {
+			_ = os.Remove(lock) // 持锁的进程崩溃留下的锁
+			continue
+		}
+		if time.Now().After(deadline) {
+			return providererr.New(providererr.Transient, "busy", "密钥文件被别的进程锁住")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	defer func() { _ = os.Remove(lock) }()
+	raw, err := os.ReadFile(p.opts.Path)
+	switch {
+	case err == nil:
+		fresh := file{Version: 1, Scopes: map[string]*scopeEntry{}}
+		if err := json.Unmarshal(raw, &fresh); err != nil {
+			return err
+		}
+		if fresh.Scopes == nil {
+			fresh.Scopes = map[string]*scopeEntry{}
+		}
+		p.data = fresh
+	case !errors.Is(err, fs.ErrNotExist):
+		return err
+	}
+	return fn()
 }
 
 func (p *Provider) save() error {

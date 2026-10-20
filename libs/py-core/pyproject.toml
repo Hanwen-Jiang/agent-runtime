@@ -16,8 +16,10 @@ conformance = [
     "pytest>=9.1",
     "pytest-asyncio>=1.4",
 ]
-# DurableEngine 的 Temporal 适配器（agentruntime_core.adapters.temporal）。
+# DurableEngine 的 Temporal 适配器（agentruntime_core.adapters.temporal）与 Claim-Check（adapters.claim_check）。
+# cryptography 提供 Claim-Check 的 AES-256-GCM（计划 S-06，经人确认引入）。
 temporal = [
+    "cryptography>=46",
     "temporalio>=1.34",
 ]
 

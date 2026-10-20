@@ -37,6 +37,9 @@ STUB_NODE_TIMEOUT_S = 40
 ENV_TENANT_POLICIES = "AR_DEV_TENANT_POLICIES_FILE"
 # 允许写操作的租户，故障注入套件的写操作用例用它。
 WRITE_TENANT = "tw"
+# ObjectStore 与 SecretStore 开发实现的位置（task-service 与 Worker 相同的变量名，S-06）。
+ENV_OBJECT_STORE_DIR = "AR_OBJECT_STORE_DIR"
+ENV_SECRETS_FILE = "AR_SECRETS_FILE"
 
 
 def free_port() -> int:
@@ -138,6 +141,20 @@ class Stack:
     @property
     def tenant_policies_file(self) -> Path:
         return self.root / "tenant_policies.json"
+
+    @property
+    def objects_dir(self) -> Path:
+        """task-service 与 Worker 共用的 ObjectStore（开发实现）目录：Claim-Check 的对象两边都要读得到（S-06）。"""
+        return self.root / "shared" / "objects"
+
+    @property
+    def secrets_file(self) -> Path:
+        """task-service 与 Worker 共用的 SecretStore（开发实现）文件：两边用同一把租户密钥加密密钥。"""
+        return self.root / "shared" / "secrets.json"
+
+    def shared_store_env(self) -> dict[str, str]:
+        """ObjectStore 与 SecretStore 的环境变量；回放工具解码带引用的事件历史也要它们。"""
+        return {ENV_OBJECT_STORE_DIR: str(self.objects_dir), ENV_SECRETS_FILE: str(self.secrets_file)}
 
     @property
     def gate_dir(self) -> Path:
@@ -243,6 +260,7 @@ class Stack:
             "AR_SESSION_READ_ONLY_LIMIT": str(READ_ONLY_LIMIT),
             "AR_SESSION_CAN_TASKS": str(CONTINUE_AS_NEW_TASKS),
             ENV_TENANT_POLICIES: str(self.tenant_policies_file),
+            **self.shared_store_env(),
             **self.task_service_env,
         }
         assert self.task_service_bin is not None
@@ -273,6 +291,7 @@ class Stack:
             "AR_STUB_NODE_TIMEOUT_S": str(STUB_NODE_TIMEOUT_S),
             # Node Executor 的开发实现（ObjectStore、SecretStore、Sandbox）的数据目录，与 task-service 的分开。
             "AR_DATA_DIR": str(self.root / "worker-data"),
+            **self.shared_store_env(),
             ENV_FAULT_PLAN: str(self.faults.path),
             ENV_FAULT_LEDGER_DIR: str(self.ledger.root),
         }
