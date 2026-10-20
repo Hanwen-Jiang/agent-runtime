@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "general",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "闲聊 → fast：单次调用，不调用强模型。",
   "planner": {

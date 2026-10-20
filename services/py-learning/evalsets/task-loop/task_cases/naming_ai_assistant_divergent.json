@@ -4,9 +4,10 @@
   "split": "holdout",
   "category": "naming",
   "review": {
-    "status": "draft"
+    "status": "draft",
+    "notes": "按人审意见：escalate 之前不交付。第一轮只生成候选看分歧（不出 deliver），分歧大再问人；形状标注改为本轮不能有 deliver。"
   },
-  "description": "ensemble 的候选分歧很大（附录 B.7：题目含糊）→ 先澄清，escalate 问人；直接交付算错。",
+  "description": "使用场景不明（给员工用还是给客户用），置信度低：第一轮只生成候选、看分歧，先不交付。候选分歧很大（附录 B.7：题目含糊）→ escalate 问人澄清；问清之前不出 deliver。",
   "planner": {
     "input": {
       "message": "给公司的新 AI 助手起个名字。",
@@ -23,7 +24,9 @@
         "quality": [
           "ensemble"
         ],
-        "deliver": true
+        "forbidden_roles": [
+          "deliver"
+        ]
       },
       "estimated_task_cost_usd": 0.6,
       "reference": {
@@ -33,15 +36,15 @@
             "task_family": "creative.naming",
             "confidence": 0.5
           },
-          "horizon": "full_dag",
+          "horizon": "per_stage",
           "context": {
             "work_mode": "writing"
           }
         },
         "stage": {
           "seq": 1,
-          "goal": "生成并择优",
-          "exit_when": "给出推荐名字",
+          "goal": "先生成候选看分歧",
+          "exit_when": "得到候选与分歧程度",
           "nodes": [
             {
               "id": "candidates",
@@ -57,18 +60,6 @@
                 "aggregate": "judge",
                 "judge": "rubric_judge@v1"
               }
-            },
-            {
-              "id": "answer",
-              "kind": "atomic",
-              "template": "answer@v1",
-              "executor": "model",
-              "effect": "none",
-              "role": "deliver",
-              "output": "generate",
-              "after": [
-                "candidates"
-              ]
             }
           ]
         }
@@ -88,15 +79,15 @@
         "rounds": [
           {
             "seq": 1,
-            "stage_goal": "生成并择优",
+            "stage_goal": "先生成候选看分歧",
             "status": "reviewing"
           }
         ]
       },
       "stage": {
         "seq": 1,
-        "goal": "生成并择优",
-        "exit_when": "给出推荐名字",
+        "goal": "先生成候选看分歧",
+        "exit_when": "得到候选与分歧程度",
         "nodes": [
           {
             "id": "candidates",
@@ -112,18 +103,6 @@
               "aggregate": "judge",
               "judge": "rubric_judge@v1"
             }
-          },
-          {
-            "id": "answer",
-            "kind": "atomic",
-            "template": "answer@v1",
-            "executor": "model",
-            "effect": "none",
-            "role": "deliver",
-            "output": "generate",
-            "after": [
-              "candidates"
-            ]
           }
         ]
       },
@@ -140,13 +119,6 @@
               "知了"
             ],
             "divergence": 0.81
-          }
-        },
-        "answer": {
-          "role": "deliver",
-          "status": "succeeded",
-          "result": {
-            "pick": "Aurora"
           }
         }
       },

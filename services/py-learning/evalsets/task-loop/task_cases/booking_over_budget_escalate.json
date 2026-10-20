@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "booking_payment",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "预算内没有航班：继续付款会超出用户约束，属于高风险决定 → escalate 问人。",
   "planner": {

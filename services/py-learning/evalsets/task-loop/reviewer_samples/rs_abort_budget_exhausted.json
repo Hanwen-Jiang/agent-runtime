@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "research_report",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "预算用尽 → abort：交付部分结果，说清完成了什么、没完成什么。",
   "checkpoint": {

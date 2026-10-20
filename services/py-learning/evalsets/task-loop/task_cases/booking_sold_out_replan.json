@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "booking_payment",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "付款时最便宜的航班售罄，Reviewer 判定 replan：保留已验证的比价结果（compare），直接改订次便宜的航班；付款仍按 write_irreversible 声明（有 gate）。",
   "planner": {

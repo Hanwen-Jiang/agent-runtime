@@ -4,9 +4,10 @@
   "split": "dev",
   "category": "research_report",
   "review": {
-    "status": "draft"
+    "status": "draft",
+    "notes": "按人审意见与附录 D.5（rev 21）：任务本身需要的人工确认（确认范围）由 Planner 写成 human 的 gate 节点；标注不变，说明里写明依据。"
   },
-  "description": "附录 B.3“行业研究报告”：三个 Stage（澄清 → 并行研究 → 综合）。规划只到下一个信息检查点：第一轮只有确认范围的 gate，不提前规划研究与成稿。期望的 Verdict 序列 continue → continue → done。",
+  "description": "附录 B.3“行业研究报告”：三个 Stage（澄清 → 并行研究 → 综合）。规划只到下一个信息检查点：第一轮只有确认范围的 gate，不提前规划研究与成稿。确认范围是任务本身需要的人工确认，按附录 D.5 由 Planner 写成 human 的 gate 节点（不是 Hook 插入的审批）。期望的 Verdict 序列 continue → continue → done。",
   "planner": {
     "input": {
       "message": "写一份 2026 年固态电池行业研究报告，给投资委员会看。",

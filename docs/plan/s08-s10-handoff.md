@@ -15,7 +15,8 @@
 | --- | --- | --- |
 | `eafac66` | S-12a：Postgres 业务库的行级安全（`libs/go-core/adapters/postgres`）；task-service 设了 `AR_RELATIONAL_DSN` 时用 Postgres；夜间任务加了 Go 测试与 Postgres 上的端到端测试 | 新的业务表不能用外键，主键与唯一约束会被改写成以 `tenant_id` 开头 |
 | `0a014a7` | 设计书同步原文档 rev 11：4.3 补“行级安全的约束”；本说明 | 同上 |
-| S-08 的提交 | 评测集与评测 harness，见下 | S-09、S-10 用它评测 |
+| `905a6fd` 起 | S-08 评测集与评测 harness，见下 | S-09、S-10 用它评测 |
+| S-08 人审之后的提交 | 设计书同步原文档 rev 21：附录 B.7、C.1、C.2、D.5、D.6 统一口径 | Triage：风险按本 Session 已授权的等级比较，已授权的写可以 light，light 涉及不可逆动作要多一项检查；续改开新 Task 并继承上一个 Task 的 State；任务本身需要的人工确认由 Planner 写成 human 的 gate 节点 |
 
 ## 主干这边的做法
 
@@ -23,13 +24,13 @@
 
 | 工作项 | 状态 | 关键决定 |
 | --- | --- | --- |
-| S-08 | 已实现，等人审评测集 | 见下一节 |
+| S-08 | 已实现；人审第一轮 45 条确认，19 条按意见修改后等复审 | 见下一节 |
 | S-09 | 未开始 | — |
 | S-10 | 未开始 | — |
 
 ## S-08 做成了什么样（S-09、S-10 会用到）
 
-- 代码在 `services/py-learning`（`agentruntime_learning.evals`），评测集在 `services/py-learning/evalsets/task-loop`：39 条 Task 用例、24 条 Reviewer 专用样本，每条一个 JSON，格式见 `case.schema.json`，每条带人确认过的参照输出。标注目前都是草稿（`review.status = draft`），等人审。
+- 代码在 `services/py-learning`（`agentruntime_learning.evals`），评测集在 `services/py-learning/evalsets/task-loop`：40 条 Task 用例、24 条 Reviewer 专用样本，每条一个 JSON，格式见 `case.schema.json`，每条带人确认过的参照输出。人审结果写在每条的 `review` 里（`confirmed` 或 `draft` 加修改说明）。
 - 一条命令跑评测：`uv run --package agentruntime-learning python -m agentruntime_learning.evals run --subject <被测对象>`。S-09、S-10 的 Planner 与 Reviewer 以 `<模块>:<工厂函数>` 接入，实现 `model.Subject`（`plan` 与 `review` 两个方法）。
 - Reviewer 的输入只有 Stage、Stage 结果、Task State 与之前各 Round 的摘要（`ReviewerInput`），没有 Planner 的规划过程；被测对象也拿不到用例 id。
 - Verdict 序列按 Round 逐个判定点评测（用标注的 Stage 与结果），不是整轮实跑。

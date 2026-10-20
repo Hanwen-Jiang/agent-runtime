@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "research_report",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "附录 B.7：多方辩论很快一致 → 互相附和；repair 换方法：强制安排反方，给 judge 明确 rubric。",
   "symptom": "debate_no_convergence",

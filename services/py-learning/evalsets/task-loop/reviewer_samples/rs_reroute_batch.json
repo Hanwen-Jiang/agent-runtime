@@ -4,17 +4,18 @@
   "split": "dev",
   "category": "general",
   "review": {
-    "status": "draft"
+    "status": "draft",
+    "notes": "按人审意见：原样本在只读上限下 reroute 到写流程，会越过 effect 上限。改为 Task 的上限是可回滚写、目标本身就是按规则处理工单；说明里补了“超出上限要先 escalate”。"
   },
-  "description": "任务实际属于另一类流程（逐条打标签并写回）→ reroute 换 Recipe。",
+  "description": "任务实际属于另一类流程（逐条打标签并写回），而且仍在 Task 的 effect 上限（可回滚写）之内 → reroute 换 Recipe。若换过去的流程超出 effect 上限，应先 escalate 请用户或策略授权，不能直接 reroute。",
   "checkpoint": {
     "task_state": {
       "task_id": "tsk_01J0000000000000000000116X",
       "session_id": "ses_01J0000000000000000000116S",
-      "goal": "分析一下这批工单的退款原因",
-      "done_when": "说清主要原因",
+      "goal": "把这批工单按规则处理掉",
+      "done_when": "每张工单都按规则处理完",
       "constraints": {
-        "effect_ceiling": "read"
+        "effect_ceiling": "write_reversible"
       },
       "rounds": [
         {
@@ -32,8 +33,8 @@
         {
           "id": "explore",
           "kind": "goal",
-          "goal": "看看这批工单是什么情况",
-          "done_when": "说明工单的规模与内容",
+          "goal": "看看这批工单是什么情况、要怎么处理",
+          "done_when": "说明工单的规模、内容与处理方式",
           "mode": "tool_loop",
           "output_schema": {
             "type": "object"
@@ -51,7 +52,7 @@
         "status": "succeeded",
         "result": {
           "tickets": 18000,
-          "finding": "用户要的是给这 1.8 万张工单逐条打标签并写回，不是写分析"
+          "finding": "按规则处理就是逐条打标签并写回工单系统，适合工单批处理流程"
         }
       }
     },
@@ -64,7 +65,7 @@
       "layer": "shape",
       "reference": {
         "verdict": "reroute",
-        "reason": "任务实际属于批量打标签流程",
+        "reason": "任务实际属于批量打标签流程，且在 effect 上限之内",
         "layer": "shape",
         "reroute": {
           "recipe": "ticket_triage@v4"

@@ -4,7 +4,9 @@
   "split": "holdout",
   "category": "naming",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "Reviewer 判定 replan（前三名都撞了商标）：保留已做的商标检索（tm_check）结果，避开这些名字重新生成。",
   "planner": {

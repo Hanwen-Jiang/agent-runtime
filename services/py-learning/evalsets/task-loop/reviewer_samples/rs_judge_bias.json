@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "naming",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "附录 B.7：judge 总选第一个 → 评判偏差；repair 换方法：两两比较并交换顺序，按 rubric 打分。",
   "symptom": "judge_bias",

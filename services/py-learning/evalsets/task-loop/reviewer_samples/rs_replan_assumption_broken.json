@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "general",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "计划依赖的假设被证伪（工单原因字段不可靠）→ replan，保留已验证的读工单结果。",
   "checkpoint": {

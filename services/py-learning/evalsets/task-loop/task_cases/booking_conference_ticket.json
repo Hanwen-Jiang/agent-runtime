@@ -4,7 +4,9 @@
   "split": "holdout",
   "category": "booking_payment",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "流程已知、信息齐全（链接在附件里）→ 一轮发完整 DAG；购票是不可逆动作，必须按 write_irreversible 声明（运行时插入人工审批）。",
   "planner": {

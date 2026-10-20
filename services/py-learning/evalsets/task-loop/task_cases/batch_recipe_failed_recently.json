@@ -4,9 +4,10 @@
   "split": "holdout",
   "category": "batch_processing",
   "review": {
-    "status": "draft"
+    "status": "draft",
+    "notes": "按人审意见与附录 D.5（rev 21）：抽查试跑结果是任务本身需要的人工确认，由 Planner 写成 human 的 gate 节点；标注不变，说明里写明依据。"
   },
-  "description": "附录 C.2：缓存的 Recipe 最近失败过 → 升级到 full，不能走 light。合格的做法是先小批量试跑并人工抽查，信息齐了再铺开（本轮不出 deliver）。",
+  "description": "附录 C.2：缓存的 Recipe 最近失败过 → 升级到 full，不能走 light。合格的做法是先小批量试跑并人工抽查，信息齐了再铺开（本轮不出 deliver）。抽查试跑结果是任务本身需要的人工确认，按附录 D.5 由 Planner 写成 human 的 gate 节点。",
   "planner": {
     "input": {
       "message": "今天下午新进的工单，也按同样的规则打一遍标签。",

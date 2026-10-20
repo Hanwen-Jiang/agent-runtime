@@ -4,7 +4,9 @@
   "split": "holdout",
   "category": "batch_processing",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "批量任务的第一批完成、预算与进度相符 → continue。",
   "checkpoint": {

@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "naming",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "同一任务族、命中 Recipe 缓存 → light。",
   "planner": {

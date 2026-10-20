@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "general",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "本 Stage 的退出条件已满足、Task 还没完成 → continue。",
   "checkpoint": {

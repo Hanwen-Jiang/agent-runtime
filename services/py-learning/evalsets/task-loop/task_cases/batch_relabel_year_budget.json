@@ -4,9 +4,10 @@
   "split": "dev",
   "category": "batch_processing",
   "review": {
-    "status": "draft"
+    "status": "draft",
+    "notes": "按人审意见：layer 记问题所在的层（plan），去向由附录 B.8 的触发规则定（escalate）；说明里写明了二者的关系。附录 B.5 补一句“表中 Verdict 是默认去向”的改动还等你确认。"
   },
-  "description": "期望的 Verdict 序列 continue → escalate → abort：预算用掉 84% 而完成度只有 25%（附录 B.8：缩小范围或问人）；用户选择原样继续后预算用尽 → abort，交付部分结果并说明。",
+  "description": "期望的 Verdict 序列 continue → escalate → abort：预算用掉 84% 而完成度只有 25%（附录 B.8：缩小范围或问人）；用户选择原样继续后预算用尽 → abort，交付部分结果并说明。第二个判定点的 layer 记问题所在的层（计划层：预算与范围不匹配），去向则由附录 B.8 的触发规则定为问人，所以 layer = plan、Verdict = escalate；附录 B.5 表中的 Verdict 是各层的默认去向。",
   "planner": {
     "input": {
       "message": "把过去一年的 20 万张工单全部重新打一遍标签。",

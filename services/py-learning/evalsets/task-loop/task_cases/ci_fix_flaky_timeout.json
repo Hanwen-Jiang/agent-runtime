@@ -4,9 +4,10 @@
   "split": "holdout",
   "category": "ci_fix",
   "review": {
-    "status": "draft"
+    "status": "draft",
+    "notes": "按人审意见与附录 D.6（rev 21）：临时错误先按 retry 配置自动重试，用完仍失败才交给 Reviewer；第一轮的尝试次数改为 3，错误信息写明重试已用完。"
   },
-  "description": "偶发失败的修复：风险上升 → full；第一轮因为基础设施超时失败（临时错误）→ repair 重试，第二轮通过 → done。",
+  "description": "偶发失败的修复：风险上升 → full。第一轮因为基础设施超时失败，按附录 D.6 先按 retry 配置自动重试，3 次用完仍失败才交给 Reviewer → repair 再给一轮；第二轮通过 → done。",
   "planner": {
     "input": {
       "message": "nightly 里的 e2e 测试 test_checkout_flow 偶发超时，查清原因并修好。",
@@ -149,8 +150,8 @@
           "role": "transform",
           "status": "failed",
           "failure_class": "transient",
-          "error": "运行测试的 runner 超时（基础设施抖动）",
-          "attempts": 1
+          "error": "运行测试的 runner 连续超时（基础设施抖动），按 retry 配置重试 3 次后仍失败",
+          "attempts": 3
         },
         "report": {
           "role": "deliver",
@@ -167,7 +168,7 @@
         "layer": "execution",
         "reference": {
           "verdict": "repair",
-          "reason": "临时错误，重试即可",
+          "reason": "临时错误，自动重试用完，再给一轮",
           "layer": "execution",
           "repair": {
             "nodes": [
@@ -265,7 +266,7 @@
           "round": 1,
           "verdict": "repair",
           "failed_nodes": {
-            "investigate_fix": "运行测试的 runner 超时（基础设施抖动）"
+            "investigate_fix": "运行测试的 runner 连续超时（基础设施抖动），按 retry 配置重试 3 次后仍失败"
           }
         }
       ],

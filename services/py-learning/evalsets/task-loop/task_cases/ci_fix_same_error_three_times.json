@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "ci_fix",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "期望的 Verdict 序列 repair → repair（换方法）→ replan：附录 B.8“同一 Node 失败 2 次换方法，3 次 replan”，附录 B.3“同一错误连续 3 次时判定 replan”。",
   "planner": {

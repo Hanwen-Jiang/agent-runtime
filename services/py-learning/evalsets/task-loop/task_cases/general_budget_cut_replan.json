@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "general",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "用户插入新约束（预算砍到 0.5 美元）→ replan：只对剩余部分重新规划，已验证的查询（q_region、q_sku）不重做，换便宜的 Tier。",
   "planner": {

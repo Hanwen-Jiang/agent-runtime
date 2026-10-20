@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "booking_payment",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "下一步是不可退改的高价付款，超出用户的常规预期 → 高风险决定，escalate 问人。",
   "checkpoint": {

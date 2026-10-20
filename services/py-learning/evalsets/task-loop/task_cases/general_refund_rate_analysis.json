@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "general",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "附录 B.3 的示例（三个 Round）：第一轮三个互不依赖的查询并行，“下一步查什么”要看结果，所以在这里切开；第二轮读工单（只读 sub_agent）+ 归因（revise）；第三轮才有 deliver。期望的 Verdict 序列 continue → continue → done。",
   "planner": {

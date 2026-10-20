@@ -4,7 +4,9 @@
   "split": "holdout",
   "category": "research_report",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "并行研究：三个只读 sub_agent 扇出，第一轮不出 deliver。第二轮引用核对没通过 → repair（带上核对结果重写）。",
   "planner": {

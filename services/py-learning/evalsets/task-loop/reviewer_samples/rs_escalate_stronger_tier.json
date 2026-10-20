@@ -4,7 +4,9 @@
   "split": "holdout",
   "category": "general",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "repair、换方法、replan 都试过仍卡住 → escalate 换更强的 Tier（附录 B.8 第 6 步）。",
   "checkpoint": {

@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "booking_payment",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "附录 B.3“订机票并付款”：两个 Stage（比价 → 付款）。风险升到不可逆 → full。第一轮只比价（只读的 tool_loop），付款要看比价结果，放到下一轮；付款节点 role = act、effect = write_irreversible，运行时自动在前面插入人工审批。",
   "planner": {

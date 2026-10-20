@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "naming",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "附录 B.3“产品命名”：model 节点 quality = ensemble（5 个候选）+ rubric judge；deliver 给出前 3 名。",
   "planner": {

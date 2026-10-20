@@ -4,7 +4,9 @@
   "split": "holdout",
   "category": "multi_day_dev",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "用户插入新约束（换鉴权方案）→ replan：只重做剩余部分，已验证的注册功能（impl_signup）不重做；写操作仍由单一写者完成。",
   "planner": {

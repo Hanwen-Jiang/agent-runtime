@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "ci_fix",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "附录 B.3“修复 CI 中一个失败的测试”：新任务、要改代码（风险从只读升到可回滚写）→ full。合格 Stage：一个可写的 tool_loop 当唯一写者，quality = revise 且 judge 是跑测试的 program 节点；修复说明来自 deliver 节点。",
   "planner": {

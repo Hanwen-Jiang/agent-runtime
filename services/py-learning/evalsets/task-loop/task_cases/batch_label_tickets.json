@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "batch_processing",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "附录 B.3“批量处理 1000 张工单”：template 模式的 Goal Node 按工单展开，每条走固定链加 schema 校验，后置 Hook 抽样转人工复核。写回工单系统，风险上升 → full。",
   "planner": {

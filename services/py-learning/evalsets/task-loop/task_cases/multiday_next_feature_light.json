@@ -4,9 +4,10 @@
   "split": "dev",
   "category": "multi_day_dev",
   "review": {
-    "status": "draft"
+    "status": "draft",
+    "notes": "按人审意见：附录 C.1 改为风险按本 Session 已授权的等级比较，已授权过的写可以 light；说明里写明理由，并补了 rubric。"
   },
-  "description": "新的一天、同一任务族、命中 Recipe 缓存、风险没变 → light。",
+  "description": "新的一天、同一任务族、命中 Recipe 缓存，风险没有高于本 Session 已授权的等级（改代码并提交已授权）→ light。附录 C.1：风险按已授权的等级比较，已授权过的写操作可以走 light。",
   "planner": {
     "input": {
       "message": "继续做功能清单里的下一项。",
@@ -157,5 +158,9 @@
         }
       }
     }
+  ],
+  "rubric": [
+    "风险没有高于本 Session 已授权的等级：涉及写操作也可以 light",
+    "light 不调用强模型，直接按命中的 Recipe 执行"
   ]
 }

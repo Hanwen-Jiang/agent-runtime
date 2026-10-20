@@ -4,35 +4,23 @@
   "split": "holdout",
   "category": "multi_day_dev",
   "review": {
-    "status": "draft"
+    "status": "draft",
+    "notes": "按人审意见与附录 C.2（rev 21）：续改开新 Task，Task State 继承上一个 Task 的约束、事实与产物，Round 与 Stage 从 1 开始，不再沿用上一个 Task 的 Round 记录。 运行中的 Task 不受影响，这里开的是只读的新 Task。"
   },
-  "description": "关于当前 Task 的简单问题 → fast：沿用当前 Task State 单次作答。",
+  "description": "关于运行中 Task 的简单问题 → fast：按附录 C.2 开一个只读的新 Task，从运行中的 Task 继承已验证事实，Stage 从 1 开始，单次作答，不打断运行中的 Task。",
   "planner": {
     "input": {
       "message": "刚才提交的那个功能叫什么来着？",
       "task_state": {
-        "task_id": "tsk_01J0000000000000000000028X",
+        "task_id": "tsk_01J0000000000000000000228X",
         "session_id": "ses_01J0000000000000000000028S",
-        "goal": "按功能清单实现记账小程序",
-        "done_when": "功能清单全部实现并通过端到端测试",
+        "goal": "回答刚才提交的是哪个功能",
+        "done_when": "给出功能名称",
         "constraints": {
           "effect_ceiling": "write_reversible"
         },
-        "rounds": [
-          {
-            "seq": 1,
-            "stage_goal": "实现注册",
-            "status": "completed",
-            "verdict": "continue",
-            "cost_usd": 0.9
-          },
-          {
-            "seq": 2,
-            "stage_goal": "实现登录",
-            "status": "completed",
-            "verdict": "continue",
-            "cost_usd": 0.8
-          }
+        "facts": [
+          "运行中的 Task（按功能清单实现记账小程序）已提交：注册、登录"
         ]
       },
       "context": {
@@ -51,7 +39,7 @@
       },
       "reference": {
         "stage": {
-          "seq": 3,
+          "seq": 1,
           "goal": "回答问题",
           "exit_when": "给出功能名称",
           "nodes": [
@@ -72,37 +60,26 @@
   "rounds": [
     {
       "task_state": {
-        "task_id": "tsk_01J0000000000000000000028X",
+        "task_id": "tsk_01J0000000000000000000228X",
         "session_id": "ses_01J0000000000000000000028S",
-        "goal": "按功能清单实现记账小程序",
-        "done_when": "功能清单全部实现并通过端到端测试",
+        "goal": "回答刚才提交的是哪个功能",
+        "done_when": "给出功能名称",
         "constraints": {
           "effect_ceiling": "write_reversible"
         },
+        "facts": [
+          "运行中的 Task（按功能清单实现记账小程序）已提交：注册、登录"
+        ],
         "rounds": [
           {
             "seq": 1,
-            "stage_goal": "实现注册",
-            "status": "completed",
-            "verdict": "continue",
-            "cost_usd": 0.9
-          },
-          {
-            "seq": 2,
-            "stage_goal": "实现登录",
-            "status": "completed",
-            "verdict": "continue",
-            "cost_usd": 0.8
-          },
-          {
-            "seq": 3,
             "stage_goal": "回答问题",
             "status": "reviewing"
           }
         ]
       },
       "stage": {
-        "seq": 3,
+        "seq": 1,
         "goal": "回答问题",
         "exit_when": "给出功能名称",
         "nodes": [

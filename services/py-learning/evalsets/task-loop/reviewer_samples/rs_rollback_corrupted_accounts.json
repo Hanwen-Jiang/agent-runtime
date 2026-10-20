@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "multi_day_dev",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "共享产物被改坏（端到端测试发现账户被清空）→ rollback 到最近的检查点。",
   "checkpoint": {

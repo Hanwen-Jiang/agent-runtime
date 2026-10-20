@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "research_report",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "deliver 之前的引用核对没通过 → 不能判 done，repair：带上核对结果重写。",
   "checkpoint": {

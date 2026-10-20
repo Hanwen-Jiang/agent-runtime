@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "ci_fix",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "附录 B.7：revise 循环里同一错误反复出现 → 问题在上游，停止修复，升级为 replan。",
   "symptom": "revise_same_error",

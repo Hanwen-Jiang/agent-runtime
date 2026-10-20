@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "multi_day_dev",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "期望的 Verdict 序列 repair → repair（换方法）→ done：同一个端到端错误第二次出现时要换方法，不能原地重试。",
   "planner": {

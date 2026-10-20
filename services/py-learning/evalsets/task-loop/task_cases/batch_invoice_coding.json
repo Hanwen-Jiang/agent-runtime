@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "batch_processing",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "写回幂等，限流导致部分失败 → repair（重试，已写回的按幂等键跳过），第二轮完成 → done。",
   "planner": {

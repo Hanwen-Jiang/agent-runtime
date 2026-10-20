@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "ci_fix",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "附录 B.8：同一 Node 失败第 2 次 → 换方法，不能原地重试。",
   "checkpoint": {

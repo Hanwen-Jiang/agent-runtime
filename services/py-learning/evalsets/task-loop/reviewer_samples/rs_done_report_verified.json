@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "research_report",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "成稿、引用核对通过、deliver 有结果 → done（完成看产出物，不看对话）。",
   "checkpoint": {

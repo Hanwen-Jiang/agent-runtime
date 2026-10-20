@@ -4,7 +4,9 @@
   "split": "holdout",
   "category": "general",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "已确认无法完成（数据不公开、没有授权渠道，用户也确认）→ abort。",
   "checkpoint": {

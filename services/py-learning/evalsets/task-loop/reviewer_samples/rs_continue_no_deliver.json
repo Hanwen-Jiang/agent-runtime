@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "research_report",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "各 Node 都成功，但本轮只有草稿、没有 deliver 节点 → 还不能 done，continue 进入核对与交付。",
   "checkpoint": {

@@ -1,7 +1,7 @@
 # Agent Runtime 项目设计书（暂名）
 
 > 本文件导出自 Claude Docs 文档《Agent Runtime 项目设计书（暂名）》（https://claude.ai/code/artifact/9208d7e8-6b94-4792-9382-a0d0f36921b5），以该文档为准。
-> 导出日期：2026-10-19；2026-10-20 同步原文档 rev 10（3.6“恢复”与附录 K.4 写清 write_irreversible 崩溃后的处理）与 rev 11（4.3 补“行级安全的约束”）。正文与原文档一致；34 张结构图转为 `assets/` 下的 SVG，第 4 章 4.9–4.14 的六张接口图为新补。
+> 导出日期：2026-10-19；2026-10-20 同步原文档 rev 10（3.6“恢复”与附录 K.4 写清 write_irreversible 崩溃后的处理）与 rev 11（4.3 补“行级安全的约束”）、rev 21（附录 B.7、C.1、C.2、D.5、D.6 按 S-08 评测集人审统一口径）。正文与原文档一致；34 张结构图转为 `assets/` 下的 SVG，第 4 章 4.9–4.14 的六张接口图为新补。
 > 术语以附录 A 为准；调研阶段的旧叫法见附录 A 的“原称”列。
 
 ## 目录
@@ -978,7 +978,7 @@ Progress Check 在每个 Round 结束回答五个问题：
 | ensemble 分歧大 | 题目含糊或超出能力 | 澄清、拆解，或改用工具求证 |
 | 多方辩论很快一致或永不收敛 | 互相附和，或 judge 缺标准 | 给 judge 明确 rubric；强制安排反方 |
 | judge 总选第一个或最长的 | 评判偏差 | 两两比较并交换顺序，按 rubric 打分 |
-| 上下文越来越长，质量下降 | 上下文污染 | 状态写入 Task State，reset 后继续 |
+| 上下文越来越长，质量下降 | 上下文污染 | 状态写入 Task State，reset 后继续（Verdict：repair，换方法；reset 后仍无进展再 replan） |
 
 #### B.8 升级顺序与触发规则
 
@@ -1005,21 +1005,21 @@ Progress Check 在每个 Round 结束回答五个问题：
 
 | 级别 | 何时用 | 做什么 | 额外成本 |
 | --- | --- | --- | --- |
-| fast | 闲聊、简单问答；对当前产出的续改，例如“再短一点” | 规则或分类器判定后单次调用，沿用当前 Task State | 几乎为零 |
-| light | 已知任务族，置信度高，风险等级未变 | 命中 Recipe 缓存 → 差量检查 → 直接执行 | 一次小模型调用或纯规则 |
-| full | 新任务族、置信度低、涉及写操作或不可逆动作、预计成本高 | 生成完整 Task Plan：检索经验，选 Stage 形状、Tier、上下文策略与预算，必要时先澄清 | 一到两次强模型调用 |
+| fast | 闲聊、简单问答；对上一个产出的续改，例如“再短一点” | 规则或分类器判定后单次调用；续改开新 Task，继承上一个 Task 的 Task State（附录 C.2） | 几乎为零 |
+| light | 已知任务族，置信度高，风险等级不高于本 Session 已授权的等级 | 命中 Recipe 缓存 → 差量检查 → 直接执行 | 一次小模型调用或纯规则 |
+| full | 新任务族、置信度低、风险等级高于已授权的等级（例如第一次写操作或第一次不可逆动作）、预计成本高 | 生成完整 Task Plan：检索经验，选 Stage 形状、Tier、上下文策略与预算，必要时先澄清 | 一到两次强模型调用 |
 | replan | Reviewer 判定 replan、目标变化、用户插入新约束 | 只对剩余部分重新规划，保留已验证的 Node | 同 full，但范围更小 |
 
-风险等级上升一律走 full：只读 → 可回滚写 → 不可逆外部动作，每升一级都要完整规划，不允许走缓存。
+风险等级上升一律走 full：只读 → 可回滚写 → 不可逆外部动作，每升一级都要完整规划，不允许走缓存。风险等级按本 Session 已授权的最高等级比较：已授权过的写操作，同一任务族再次出现时可以走 light。write_irreversible 是绝对约束：不论 Triage 走哪一级，运行时都在不可逆动作前插入人工审批（附录 F.3）；light 涉及不可逆动作时还要通过附录 C.2 的额外检查，比只读的 light 更严。
 
 #### C.2 分诊与差量检查
 
-分诊先判断消息属于哪一类：续改当前产出、给当前 Task 加约束、新 Task、关于系统本身的问题。续改与加约束复用当前 Task State，只更新约束字段；新 Task 才进入差量检查。
+分诊先判断消息属于哪一类：续改上一个产出、给运行中的 Task 加约束、新 Task、关于系统本身的问题。每条命令都是一个新 Task（附录 A），续改也不例外：它的 Task State 继承上一个 Task 的约束、已验证事实、产物与固定的版本，目标改为这次的要求，Round 与 Stage 从 1 开始计数。给运行中的 Task 加约束不开新 Task，而是让该 Task 以 Triage = replan 重新规划剩余部分。只有新 Task 才进入差量检查。
 
 Session 开始时已经加载的内容不再逐个 Task 检查：租户策略、用户偏好、可用工具、模型可用性。每个新 Task 只比对下列变化项，任何一项为“是”就升级到 full：
 
 - 目标或交付物类型变了吗？
-- 风险等级升高了吗？
+- 风险等级高于本 Session 已授权的等级吗？
 - 需要的工具或权限超出当前授权了吗？
 - Session 剩余预算够这个任务族的典型成本吗？
 - 缓存的 Recipe 最近失败过，或相关 Model Profile 已更新吗？
@@ -1141,7 +1141,7 @@ node_output:
 | judge | 评价结果好不好：通过与否或分数 | 不看生成者的 rationale；model 担任时优先用另一家的模型 |
 | aggregate | 合并多个上游：投票、汇总、去重 | 等全部上游完成或超时 |
 | act | 对外部产生写操作：发送、下单、写库 | effect 必须是 write_reversible 或 write_irreversible |
-| gate | 决定能不能继续：权限、预算、人工审批 | 由 Hook 按策略自动插入，Planner 不手写 |
+| gate | 决定能不能继续：权限、预算、人工审批 | write_irreversible 前的审批与策略要求的 gate 由 Hook 按策略自动插入，Planner 不手写；任务本身需要的人工确认（澄清范围、抽查试跑结果）由 Planner 写成 executor = human 的 gate 节点 |
 | deliver | 产出面向用户的最终结果 | 每个 Task 只有一个出口 |
 
 judge 与 gate 的区别：judge 评价结果好不好，属于质量；gate 决定能不能继续，属于控制。
@@ -1151,7 +1151,7 @@ judge 与 gate 的区别：judge 评价结果好不好，属于质量；gate 决
 #### D.6 状态与失败分类
 
 - 状态：pending → ready（依赖已满足）→ running → succeeded、failed、skipped 或 cancelled。
-- transient（超时、限流）：按 retry 配置重试，但先要满足 effect 规则。
+- transient（超时、限流）：按 retry 配置重试，但先要满足 effect 规则；重试用完仍失败才交给 Reviewer，它可以判 repair 再给一轮（例如基础设施抖动），同一错误反复出现则按附录 B.8 升级。
 - invalid_output（输出不符合 schema）：model 节点带上错误重问一次，其他执行者直接失败。
 - denied（被 Hook 或权限拒绝）：不重试，直接交给 Reviewer。
 - upstream_failed（上游失败）：标记为 skipped，由 Reviewer 判定 repair 还是 replan。

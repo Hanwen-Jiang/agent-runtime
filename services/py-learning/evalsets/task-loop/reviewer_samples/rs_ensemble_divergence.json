@@ -4,7 +4,9 @@
   "split": "holdout",
   "category": "naming",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "附录 B.7：ensemble 分歧大 → 题目含糊，先澄清：escalate 问人（或拆解后 replan）。",
   "symptom": "ensemble_divergence",

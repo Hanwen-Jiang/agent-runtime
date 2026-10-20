@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "ci_fix",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "Reviewer 判定 replan 后重做剩余部分（Triage = replan）：上一轮已经读过并验证的 CI 日志（read_log）不再重做，新 Stage 针对 locale 差异修复。",
   "planner": {

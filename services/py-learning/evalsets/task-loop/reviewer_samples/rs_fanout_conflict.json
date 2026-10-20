@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "multi_day_dev",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "附录 B.7：扇出后子结果冲突、合并困难 → 耦合度被低估，replan 换形状（先定共享接口，再由单一写者改）。",
   "symptom": "fanout_conflict",

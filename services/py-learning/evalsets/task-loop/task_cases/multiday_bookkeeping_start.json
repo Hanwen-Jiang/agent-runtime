@@ -4,7 +4,9 @@
   "split": "dev",
   "category": "multi_day_dev",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20"
   },
   "description": "附录 B.3“跨多天开发一个应用”：每个 Stage = 实现一个功能 + 端到端验证，Planner 读功能清单与进度，提交并更新进度；写操作由单一写者完成。第一个功能完成后任务还没结束 → continue。",
   "planner": {
