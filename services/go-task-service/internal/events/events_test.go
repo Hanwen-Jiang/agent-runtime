@@ -41,6 +41,7 @@ type sseFixture struct {
 	t       *testing.T
 	cache   *memcache.Provider
 	ingress *localingress.Provider
+	store   *sqlitestore.Provider
 	url     string
 }
 
@@ -65,7 +66,7 @@ func newSSE(t *testing.T, heartbeat time.Duration) *sseFixture {
 	ing := localingress.New(localingress.Options{SigningKey: []byte("sse-test-key"), Clock: clk})
 	hs := httptest.NewServer(NewHandler(HandlerDeps{Ingress: ing, Cache: c, Store: store, Heartbeat: heartbeat}))
 	t.Cleanup(hs.Close)
-	return &sseFixture{t: t, cache: c, ingress: ing, url: hs.URL}
+	return &sseFixture{t: t, cache: c, ingress: ing, store: store, url: hs.URL}
 }
 
 func (f *sseFixture) append(typ taskapiv1.TaskEventType, payload map[string]any) int64 {
@@ -274,24 +275,106 @@ func TestEventNamesAndURL(t *testing.T) {
 	}
 }
 
-func TestAppendAssignsIDsAndDecodeRestoresThem(t *testing.T) {
+func TestAppendKeepsTheEventIDAndDecodeRestoresIt(t *testing.T) {
 	c, err := memcache.New(memcache.Options{Clock: testkit.NewFakeClock()}).Bind(tenant("t1"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	for want := int64(1); want <= 2; want++ {
-		id, err := Append(ctx, c, &taskapiv1.TaskEvent{EventId: 99, TaskId: testTask, Type: taskapiv1.TaskEventType_TASK_EVENT_TYPE_VERDICT}, time.Hour)
-		if err != nil || id != want {
-			t.Fatalf("event_id 由流分配，从 1 递增：期望 %d，实际 %d（%v）", want, id, err)
-		}
+	// event_id 由业务库分配（S-07）：Cache 重启后流里的 id 从 1 再来，event_id 照样往后排。
+	if id, err := Append(ctx, c, &taskapiv1.TaskEvent{EventId: 7, TaskId: testTask, Type: taskapiv1.TaskEventType_TASK_EVENT_TYPE_VERDICT}, time.Hour); err != nil || id != 1 {
+		t.Fatalf("流里的 id 从 1 开始：实际 %d（%v）", id, err)
+	}
+	if _, err := Append(ctx, c, &taskapiv1.TaskEvent{TaskId: testTask, Type: taskapiv1.TaskEventType_TASK_EVENT_TYPE_VERDICT}, time.Hour); err != nil {
+		t.Fatal(err)
 	}
 	page, err := c.ReadEvents(ctx, StreamName(testTask), 0, 10)
 	if err != nil || len(page.Events) != 2 {
 		t.Fatalf("流里应有 2 个事件：%v %v", page, err)
 	}
-	ev, err := Decode(page.Events[1])
-	if err != nil || ev.GetEventId() != 2 || ev.GetTaskId() != testTask {
-		t.Errorf("Decode 应还原事件并取流里的 id，实际 %v（%v）", ev, err)
+	if ev, err := Decode(page.Events[0]); err != nil || ev.GetEventId() != 7 || ev.GetTaskId() != testTask {
+		t.Errorf("Decode 应还原事件里的 event_id，实际 %v（%v）", ev, err)
+	}
+	if ev, err := Decode(page.Events[1]); err != nil || ev.GetEventId() != 2 {
+		t.Errorf("事件里没有 event_id 时取流里的 id，实际 %v（%v）", ev, err)
+	}
+}
+
+// --- S-07 场景 9：Cache 重启后续传（设计书 4.5：Cache 只存可丢失或可重建的数据）---
+
+func (f *sseFixture) appendWithID(id int64, typ taskapiv1.TaskEventType) {
+	f.t.Helper()
+	c, err := f.cache.Bind(tenant("t1"))
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	if _, err := Append(context.Background(), c, &taskapiv1.TaskEvent{EventId: id, TaskId: testTask, SessionId: testSession, Type: typ}, time.Hour); err != nil {
+		f.t.Fatal(err)
+	}
+}
+
+func (f *sseFixture) recordFinished(lastEventID int64) {
+	f.t.Helper()
+	outcome := `{"task_id":"` + testTask + `","status":"TASK_STATUS_DONE","deliver_node_id":"answer"}`
+	if err := taskstore.New(f.store).RecordFinished(context.Background(), tenant("t1"), testTask, commonv1.TaskStatus_TASK_STATUS_DONE, lastEventID, outcome); err != nil {
+		f.t.Fatal(err)
+	}
+}
+
+func TestFinishedTaskIsReplayedFromTheBusinessDBWhenTheStreamIsGone(t *testing.T) {
+	f := newSSE(t, 0)
+	f.recordFinished(3) // 结局在业务库里；Cache 重启，流没了
+	s := f.open(path(testTask), f.ingress.IssueToken("t1", "u1", time.Hour), map[string]string{"Last-Event-ID": "1"})
+	ev := s.next(nil)
+	if ev == nil || ev.ID != 3 || ev.Event != "task_finished" {
+		t.Fatalf("应补发 id 3 的 task_finished，实际 %+v", ev)
+	}
+	var te taskapiv1.TaskEvent
+	if err := protojson.Unmarshal([]byte(ev.Data), &te); err != nil {
+		t.Fatal(err)
+	}
+	if te.GetPayload().GetValue().GetStructValue().GetFields()["status"].GetStringValue() != "TASK_STATUS_DONE" {
+		t.Errorf("补发的载荷应是业务库里的结局，实际 %v", te.GetPayload())
+	}
+	if s.next(nil) != nil {
+		t.Error("补发之后应结束推流")
+	}
+}
+
+func TestFinishedTaskWithItsStreamIntactIsNotSentTwice(t *testing.T) {
+	f := newSSE(t, 0)
+	f.appendWithID(1, taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_ACCEPTED)
+	f.appendWithID(2, taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_FINISHED)
+	f.recordFinished(2)
+	s := f.open(path(testTask), f.ingress.IssueToken("t1", "u1", time.Hour), nil)
+	var got []string
+	for ev := s.next(nil); ev != nil; ev = s.next(nil) {
+		got = append(got, strconv.FormatInt(ev.ID, 10)+":"+ev.Event)
+	}
+	if strings.Join(got, ",") != "1:task_accepted,2:task_finished" {
+		t.Errorf("流还在时照常推送，task_finished 只有一个，实际 %v", got)
+	}
+}
+
+func TestEventIDsDoNotGoBackwardsAfterTheCacheRestarts(t *testing.T) {
+	f := newSSE(t, 0)
+	// Cache 重启后流里的 id 从 1 再来，事件里的 event_id 接着业务库往后排（4、5）。
+	f.appendWithID(4, taskapiv1.TaskEventType_TASK_EVENT_TYPE_HEARTBEAT)
+	s := f.open(path(testTask), f.ingress.IssueToken("t1", "u1", time.Hour), map[string]string{"Last-Event-ID": "3"})
+	if ev := s.next(nil); ev == nil || ev.ID != 4 {
+		t.Fatalf("续传的事件 id 应大于 Last-Event-ID，实际 %+v", ev)
+	}
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		f.appendWithID(5, taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_FINISHED)
+	}()
+	if ev := s.next(nil); ev == nil || ev.ID != 5 || ev.Event != "task_finished" {
+		t.Fatalf("之后追加的事件照常推送，实际 %+v", ev)
+	}
+
+	// 已经收到 id 4 的客户端重连：只补发之后的。
+	again := f.open(path(testTask), f.ingress.IssueToken("t1", "u1", time.Hour), map[string]string{"Last-Event-ID": "4"})
+	if ev := again.next(nil); ev == nil || ev.ID != 5 {
+		t.Fatalf("只补发 Last-Event-ID 之后的事件，实际 %+v", ev)
 	}
 }

@@ -130,14 +130,23 @@ def _timed_out(err: BaseException) -> bool:
     return False
 
 
-def _unknown(err: BaseException) -> bool:
-    """Node Executor 报告写操作结果未知（ApplicationError 的 type 为 unknown）。"""
+def _error_type_is(err: BaseException, error_type: str) -> bool:
     cause: BaseException | None = err
     while cause is not None:
-        if isinstance(cause, ApplicationError) and cause.type == "unknown":
+        if isinstance(cause, ApplicationError) and cause.type == error_type:
             return True
         cause = cause.cause if isinstance(cause, FailureError) else None
     return False
+
+
+def _unknown(err: BaseException) -> bool:
+    """Node Executor 报告写操作结果未知（ApplicationError 的 type 为 unknown）。"""
+    return _error_type_is(err, "unknown")
+
+
+def _needs_reconcile(err: BaseException) -> bool:
+    """Node Executor 报告写操作结果未知、这次没能查询（type 为 reconcile），要工作流接着对账。"""
+    return _error_type_is(err, "reconcile")
 
 
 @dataclass
@@ -405,8 +414,9 @@ class StageRunner:
                 raise asyncio.CancelledError() from err
             if _unknown(err):
                 return StageResult(role=role, status="unknown", error=failure_message(err))
-            # 写操作的 activity 超时：外部可能已经生效，结果未知；先按幂等键对账，不当作失败（附录 K.4）。
-            if effect in sp.WRITE_EFFECTS and _timed_out(err) and workflow.patched(RECONCILE_PATCH):
+            # 写操作的 activity 超时，或 Node Executor 查询暂时不可用：外部可能已经生效，结果未知；
+            # 先按幂等键对账（reconcile_node 带重试），不当作失败（附录 K.4）。
+            if effect in sp.WRITE_EFFECTS and (_timed_out(err) or _needs_reconcile(err)) and workflow.patched(RECONCILE_PATCH):
                 return await self._reconcile(node, role)
             return _failed(role, failure_message(err), failure_class(err))
         # 只取 result；rationale 只写入 trace，不往下传（设计书 3.2.4）。

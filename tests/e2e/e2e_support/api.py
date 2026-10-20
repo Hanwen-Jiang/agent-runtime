@@ -50,11 +50,13 @@ class TaskApi:
         stub_plan: str = "answer",
         read_only: bool = False,
         tenant_id: str = "",
+        inputs: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        """inputs 并入 Task 的 inputs（例如故障 Worker 的 fault_stage）。"""
         body: dict[str, Any] = {
             "client_request_id": client_request_id or uuid.uuid4().hex,
             "message": message,
-            "inputs": {"stub_plan": stub_plan},
+            "inputs": {"stub_plan": stub_plan, **(inputs or {})},
             "session_access": "SESSION_ACCESS_READ_ONLY" if read_only else "SESSION_ACCESS_READ_WRITE",
         }
         if session_id:

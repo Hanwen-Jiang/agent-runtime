@@ -188,6 +188,27 @@ func (s *session) submit(sig *workflowv1.SubmitTaskSignal) {
 	s.schedule()          // replay-mutation:B
 }
 
+// VersionAcceptDrainedCancel 是版本分支（S-07 场景 8）：续接前排空信号时，排空的提交随即又被取消。
+// 旧版本不接受它就直接推 TASK_FINISHED，它不计入已接受、不进去重表、也没有 TASK_ACCEPTED；
+// 新版本先按平时的方式接受，再取消。
+const VersionAcceptDrainedCancel = "s07-accept-drained-cancel"
+
+// acceptQueued 接受一个提交并放进队列，但不调度（续接前排空信号时用）。
+func (s *session) acceptQueued(sig *workflowv1.SubmitTaskSignal) {
+	task := sig.GetTask()
+	id, crid := task.GetTaskId(), sig.GetClientRequestId()
+	if id == "" || crid == "" || task.GetTenant().GetTenantId() != s.tenant.GetTenantId() {
+		s.warn("忽略不合法的提交信号", "task_id", id)
+		return
+	}
+	s.submitted[crid] = id
+	s.active[id] = true
+	s.accepted++
+	s.acceptedThisRun++
+	s.queue = append(s.queue, sig)
+	s.publishAccepted(id)
+}
+
 func isReadOnly(sig *workflowv1.SubmitTaskSignal) bool {
 	return sig.GetTask().GetSessionAccess() == commonv1.SessionAccess_SESSION_ACCESS_READ_ONLY
 }
@@ -410,8 +431,15 @@ func (s *session) continueAsNew(submitCh, cancelCh, finishedCh workflow.ReceiveC
 			}
 			drained = true
 			if i := indexOf(fresh, sig.GetTaskId()); i >= 0 {
+				pending := fresh[i]
 				fresh = append(fresh[:i:i], fresh[i+1:]...)
-				s.publishFinished(&workflowv1.TaskWorkflowResult{TaskId: sig.GetTaskId(), Status: commonv1.TaskStatus_TASK_STATUS_CANCELLED})
+				if workflow.GetVersion(s.ctx, VersionAcceptDrainedCancel, workflow.DefaultVersion, 1) == workflow.DefaultVersion {
+					s.publishFinished(&workflowv1.TaskWorkflowResult{TaskId: sig.GetTaskId(), Status: commonv1.TaskStatus_TASK_STATUS_CANCELLED})
+					continue
+				}
+				// 与平时的顺序一致：先接受（计数、去重表、TASK_ACCEPTED），再从队列里取消。
+				s.acceptQueued(pending)
+				s.cancel(sig.GetTaskId())
 				continue
 			}
 			s.cancel(sig.GetTaskId())

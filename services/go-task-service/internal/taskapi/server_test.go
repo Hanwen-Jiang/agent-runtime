@@ -77,6 +77,12 @@ type apiFixture struct {
 
 func newAPI(t *testing.T, ingressOpts ...func(*localingress.Options)) *apiFixture {
 	t.Helper()
+	return newAPIWith(t, nil, ingressOpts...)
+}
+
+// newAPIWith 同 newAPI，另外可以改 Server 的依赖（例如换上租户策略）。
+func newAPIWith(t *testing.T, deps func(*Deps), ingressOpts ...func(*localingress.Options)) *apiFixture {
+	t.Helper()
 	clk := testkit.NewFakeClock()
 	io := localingress.Options{SigningKey: signingKey, Clock: clk}
 	for _, o := range ingressOpts {
@@ -100,11 +106,15 @@ func newAPI(t *testing.T, ingressOpts ...func(*localingress.Options)) *apiFixtur
 			TenantPolicy:  "v5",
 		}},
 	}
-	srv, err := New(Deps{
+	d := Deps{
 		Ingress: f.ingress, Durable: f.durable, Store: store, Pins: f.pins, Clock: clk,
 		IDs: ids.New(clk, nil), PublicBaseURL: baseURL,
 		Defaults: Defaults{Budget: &workflowv1.Budget{UsdMicros: 2_000_000, ToolCalls: 50}, EffectCeiling: commonv1.Effect_EFFECT_READ},
-	})
+	}
+	if deps != nil {
+		deps(&d)
+	}
+	srv, err := New(d)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -39,7 +39,7 @@ from agentruntime_worker.executor.node_executor import channel_question_id
 from agentruntime_worker.workflows.stage_runner import SubAgentWorkflow, SubgraphWorkflow
 from agentruntime_worker.workflows.task import TaskWorkflow
 
-from .executor_harness import RATE_SCHEMA, ExecutorFixture, HangAfterEffect, SwitchableTools, make_fixture
+from .executor_harness import RATE_SCHEMA, ExecutorFixture, ExternalLedger, HangAfterEffect, SwitchableTools, make_fixture, register_external
 from .stage_harness import Script
 from .support import task_input
 
@@ -255,6 +255,23 @@ async def test_unconfirmable_write_is_unknown_and_goes_to_the_reviewer(exec_harn
     r = h.result_of(inp.task_id, "n")
     assert r.status == "unknown" and r.error
     assert result.status == enums_pb2.TASK_STATUS_ABORTED, "结果未知交给 Reviewer（脚本 Reviewer 判 abort）"
+
+
+async def test_reconcile_retries_while_the_lookup_is_temporarily_unavailable(exec_harness: ExecHarness) -> None:
+    """S-07 场景 3：响应丢失后，对账用的查询也暂时不可用。工作流用 reconcile_node 带重试地再查，不当作失败。"""
+    h, fx = exec_harness, exec_harness.fx
+    ledger = ExternalLedger(lose_response=True)
+    ledger.lookup_failures = 2  # Node Executor 里查一次失败，reconcile_node 第一次也失败
+    register_external(fx, "ext_transfer", Effect.WRITE_IRREVERSIBLE, ledger)
+    node = cell_node("ext_transfer", "write_irreversible")
+    del node["retry"]
+    h.one_node(node)
+    inp, result = await h.run(effect_ceiling=enums_pb2.EFFECT_WRITE_IRREVERSIBLE, approve="n.1")
+    assert len(ledger.applied) == 1, "结果未知的不可逆写操作不重试"
+    assert ledger.lookup_failures == 0
+    r = h.result_of(inp.task_id, "n")
+    assert r.status == "succeeded" and r.result == {"txn": "txn-1"}, "查询恢复后按幂等键对账成功"
+    assert result.status == enums_pb2.TASK_STATUS_DONE
 
 
 # --- human 节点与审批 ---

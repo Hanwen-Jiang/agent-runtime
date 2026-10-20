@@ -1,6 +1,9 @@
 // Package events 是 Task 事件的推流与 SSE 端点（设计书 4.14）：Session 工作流的 activity 把 TaskEvent
 // 追加到 Cache 中该 Task 的流，SSE 端点从流里读出来推给客户端，断线后凭 Last-Event-ID 续传。
-// event_id 就是 Cache 流里的 id，从 1 开始严格递增。
+//
+// event_id 由业务库分配（taskstore.NextEventID），写在事件里，从 1 开始严格递增；Cache 重启、流里的 id 从头再来，
+// event_id 也不回退。Cache 只存可丢失的数据（设计书 4.5）：Task 已经结束、流却丢了时，SSE 端点用业务库里的结局
+// 补发 task_finished（计划 S-07 场景 9）。事件里没有 event_id 时（旧数据）用流里的 id。
 package events
 
 import (
@@ -13,11 +16,12 @@ import (
 	"time"
 
 	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/cache"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/ingress"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
+	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	taskapiv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/taskapi/v1"
 
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/ids"
@@ -42,25 +46,40 @@ func EventName(t taskapiv1.TaskEventType) string {
 	return strings.ToLower(strings.TrimPrefix(t.String(), "TASK_EVENT_TYPE_"))
 }
 
-// Append 把事件追加到 Task 的流，返回分配的 event_id。ev.EventId 不写入流。
+// Append 把事件（连同 ev.EventId）追加到 Task 的流，返回流里的 id。
 func Append(ctx context.Context, c cache.Cache, ev *taskapiv1.TaskEvent, retention time.Duration) (int64, error) {
-	stored := proto.Clone(ev).(*taskapiv1.TaskEvent)
-	stored.EventId = 0
-	data, err := marshal.Marshal(stored)
+	data, err := marshal.Marshal(ev)
 	if err != nil {
 		return 0, err
 	}
 	return c.AppendEvent(ctx, StreamName(ev.GetTaskId()), data, retention)
 }
 
-// Decode 把流里的一条还原成 TaskEvent，EventId 取流里的 id。
+// Decode 把流里的一条还原成 TaskEvent；事件里没有 event_id 时取流里的 id。
 func Decode(se cache.StreamEvent) (*taskapiv1.TaskEvent, error) {
 	ev := &taskapiv1.TaskEvent{}
 	if err := protojson.Unmarshal(se.Data, ev); err != nil {
 		return nil, fmt.Errorf("events: 无法解码事件 %d：%w", se.ID, err)
 	}
-	ev.EventId = se.ID
+	if ev.EventId == 0 {
+		ev.EventId = se.ID
+	}
 	return ev, nil
+}
+
+// Finished 用业务库里的结局（TaskWorkflowResult 的 protojson）重建 task_finished 事件，event_id 取业务库记下的最后一个。
+func Finished(row taskstore.Task) (*taskapiv1.TaskEvent, error) {
+	value := &structpb.Value{}
+	if err := protojson.Unmarshal([]byte(row.Outcome), value); err != nil {
+		return nil, fmt.Errorf("events: 业务库里 %s 的结局无法解码：%w", row.TaskID, err)
+	}
+	return &taskapiv1.TaskEvent{
+		EventId:   row.LastEventID,
+		TaskId:    row.TaskID,
+		SessionId: row.SessionID,
+		Type:      taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_FINISHED,
+		Payload:   &commonv1.JsonPayload{Value: value},
+	}, nil
 }
 
 // HandlerDeps 是 SSE 端点的依赖。
@@ -119,7 +138,8 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "permission denied", http.StatusForbidden)
 		return
 	}
-	if _, ok, err := h.tasks.LookupTask(ctx, tenant, taskID); err != nil {
+	row, ok, err := h.tasks.LookupTask(ctx, tenant, taskID)
+	if err != nil {
 		http.Error(w, "unavailable", http.StatusServiceUnavailable)
 		return
 	} else if !ok {
@@ -131,28 +151,22 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	if row.Finished() {
+		h.serveFinished(ctx, w, c, row, after)
+		return
+	}
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	sub, err := c.Subscribe(ctx, StreamName(taskID), after)
+	// 从头订阅、按 event_id 过滤：Cache 重启后流里的 id 从头再来，与 event_id 对不上。
+	sub, err := c.Subscribe(ctx, StreamName(taskID), 0)
 	if err != nil {
 		http.Error(w, "unavailable", http.StatusServiceUnavailable)
 		return
 	}
 	defer sub.Close()
 
-	flusher, _ := w.(http.Flusher)
-	header := w.Header()
-	header.Set("Content-Type", "text/event-stream; charset=utf-8")
-	header.Set("Cache-Control", "no-cache")
-	header.Set("X-Accel-Buffering", "no")
-	w.WriteHeader(http.StatusOK)
-	flush := func() {
-		if flusher != nil {
-			flusher.Flush()
-		}
-	}
-	flush()
+	flush := startStream(w)
 
 	type item struct {
 		ev  cache.StreamEvent
@@ -193,11 +207,10 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				return
 			}
-			data, err := marshal.Marshal(ev)
-			if err != nil {
-				return
+			if ev.GetEventId() <= after {
+				continue
 			}
-			if _, err := fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", ev.GetEventId(), EventName(ev.GetType()), data); err != nil {
+			if err := writeEvent(w, ev); err != nil {
 				return
 			}
 			flush()
@@ -206,6 +219,79 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+}
+
+// serveFinished 推送已结束 Task 在 Last-Event-ID 之后的事件，然后结束。Cache 里的推流丢了（或读不到）时，
+// 用业务库里的结局补发 task_finished。
+func (h *handler) serveFinished(ctx context.Context, w http.ResponseWriter, c cache.Cache, row taskstore.Task, after int64) {
+	const pageSize = 500
+	var out []*taskapiv1.TaskEvent
+	finished := false
+	var cursor int64
+	for {
+		page, err := c.ReadEvents(ctx, StreamName(row.TaskID), cursor, pageSize)
+		if err != nil {
+			break
+		}
+		for _, se := range page.Events {
+			cursor = se.ID
+			ev, err := Decode(se)
+			if err != nil || ev.GetEventId() <= after {
+				continue
+			}
+			if ev.GetType() == taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_FINISHED {
+				if finished {
+					continue
+				}
+				finished = true
+			}
+			out = append(out, ev)
+		}
+		if len(page.Events) < pageSize {
+			break
+		}
+	}
+	if !finished && row.LastEventID > after {
+		ev, err := Finished(row)
+		if err != nil {
+			http.Error(w, "unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		out = append(out, ev)
+	}
+	flush := startStream(w)
+	for _, ev := range out {
+		if err := writeEvent(w, ev); err != nil {
+			return
+		}
+	}
+	flush()
+}
+
+// startStream 写 SSE 的响应头，返回 flush。
+func startStream(w http.ResponseWriter) func() {
+	flusher, _ := w.(http.Flusher)
+	header := w.Header()
+	header.Set("Content-Type", "text/event-stream; charset=utf-8")
+	header.Set("Cache-Control", "no-cache")
+	header.Set("X-Accel-Buffering", "no")
+	w.WriteHeader(http.StatusOK)
+	flush := func() {
+		if flusher != nil {
+			flusher.Flush()
+		}
+	}
+	flush()
+	return flush
+}
+
+func writeEvent(w http.ResponseWriter, ev *taskapiv1.TaskEvent) error {
+	data, err := marshal.Marshal(ev)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", ev.GetEventId(), EventName(ev.GetType()), data)
+	return err
 }
 
 var errBadEventID = errors.New("Last-Event-ID 必须是非负整数")

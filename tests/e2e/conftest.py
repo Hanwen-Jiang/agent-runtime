@@ -28,6 +28,15 @@ def stack(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Stack]:
     s.stop()
 
 
+@pytest.fixture(autouse=True)
+def _standard_worker(request: pytest.FixtureRequest) -> None:
+    """故障注入套件（faults/）之外的用例都跑在标准 Worker（python -m agentruntime_worker）上。"""
+    if "stack" in request.fixturenames and "fstack" not in request.fixturenames:
+        s: Stack = request.getfixturevalue("stack")
+        s.ensure_healthy()
+        s.use_worker("standard")
+
+
 @pytest.fixture(scope="session")
 def api(stack: Stack) -> TaskApi:
     """租户 t1、用户 u1。"""
@@ -49,3 +58,5 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]):  
 
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "e2e: 端到端测试，需要 go 与 temporal（Temporal CLI）")
+    config.addinivalue_line("markers", "faults: 故障注入与恢复套件（计划 S-07），较慢，进夜间任务")
+    config.addinivalue_line("markers", "scenario(n): 用例覆盖计划 S-07 必须覆盖的第 n 个场景")

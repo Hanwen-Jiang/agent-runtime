@@ -56,18 +56,22 @@ func (a *Activities) AcceptTask(ctx context.Context, tenant *commonv1.TenantCont
 		Type:      taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_ACCEPTED,
 		EmittedAt: timestamppb.New(a.now()),
 	}
-	id, err := a.publishOnce(ctx, tenant, ev)
-	if err != nil {
-		return activityError(err)
-	}
-	return activityError(taskstore.New(a.Store).RecordEvent(ctx, tenant, taskID, id))
+	_, err := a.publishOnce(ctx, tenant, ev)
+	return activityError(err)
 }
 
-// FinishTask 推送 TASK_FINISHED（载荷是 Task 的结局），并把终态记进业务库。重复调用只推一次。
+// FinishTask 推送 TASK_FINISHED（载荷是 Task 的结局），并把终态与结局记进业务库。重复调用只推一次：
+// 业务库里已经记下结局时（上一次调用做完了），即使 Cache 里的标记随 Cache 重启丢了，也不再推。
 func (a *Activities) FinishTask(ctx context.Context, tenant *commonv1.TenantContext, result *workflowv1.TaskWorkflowResult) error {
 	data, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(result)
 	if err != nil {
 		return activityError(err)
+	}
+	tasks := taskstore.New(a.Store)
+	if row, ok, err := tasks.LookupTask(ctx, tenant, result.GetTaskId()); err != nil {
+		return activityError(err)
+	} else if ok && row.Finished() {
+		return nil
 	}
 	value := &structpb.Value{}
 	if err := protojson.Unmarshal(data, value); err != nil {
@@ -84,10 +88,11 @@ func (a *Activities) FinishTask(ctx context.Context, tenant *commonv1.TenantCont
 	if err != nil {
 		return activityError(err)
 	}
-	return activityError(taskstore.New(a.Store).RecordFinished(ctx, tenant, result.GetTaskId(), result.GetStatus(), id))
+	return activityError(tasks.RecordFinished(ctx, tenant, result.GetTaskId(), result.GetStatus(), id, string(data)))
 }
 
-// publishOnce 每个 Task 的每类事件只推一次：推送后在 Cache 里记下标记与 event_id，重试时看到标记就不再推。
+// publishOnce 每个 Task 的每类事件只推一次：event_id 由业务库分配（taskstore.NextEventID，Cache 重启也不回退），
+// 推送后在 Cache 里记下标记与 event_id，重试时看到标记就不再推。
 // 推送成功、记标记之前崩溃时，重试会再推一次；宁可重复，不丢事件。
 func (a *Activities) publishOnce(ctx context.Context, tenant *commonv1.TenantContext, ev *taskapiv1.TaskEvent) (int64, error) {
 	c, err := a.Cache.Bind(tenant)
@@ -101,8 +106,12 @@ func (a *Activities) publishOnce(ctx context.Context, tenant *commonv1.TenantCon
 		id, _ := strconv.ParseInt(string(raw), 10, 64)
 		return id, nil
 	}
-	id, err := events.Append(ctx, c, ev, a.retention())
+	id, err := taskstore.New(a.Store).NextEventID(ctx, tenant, ev.GetTaskId())
 	if err != nil {
+		return 0, err
+	}
+	ev.EventId = id
+	if _, err := events.Append(ctx, c, ev, a.retention()); err != nil {
 		return 0, err
 	}
 	if err := c.Set(ctx, marker, []byte(strconv.FormatInt(id, 10)), a.retention()); err != nil {

@@ -1,6 +1,10 @@
 """拉起端到端的整套进程：Temporal 开发服务（Temporal CLI）、task-service（Go，现场编译）、Python Worker。
 
-Worker 可以被强杀再重启（计划 S-03 验收“杀 Worker”）。各进程的输出写进临时目录，失败时附在报错里。
+Worker 可以被强杀再重启（计划 S-03 验收“杀 Worker”）。故障注入套件（计划 S-07）另外用到：
+- Worker 切换成故障 Worker（e2e_support.fault_worker），按故障计划出错；
+- task-service 在同一端口上强杀再重启：开发环境的 Cache 在 task-service 进程内，这就是“Cache 重启”；
+- 租户策略文件：写操作租户（WRITE_TENANT）的 effect 上限是 write_irreversible，其余租户用默认的 read。
+各进程的输出写进临时目录，失败时附在报错里。
 """
 
 from __future__ import annotations
@@ -17,6 +21,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from e2e_support.faults import ENV_FAULT_LEDGER_DIR, ENV_FAULT_PLAN, FaultPlan
+from e2e_support.ledger import ExternalLedger
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 TASK_SERVICE_DIR = REPO_ROOT / "services" / "go-task-service"
 WORKER_QUEUES = "task,decision,model,program"
@@ -26,6 +33,10 @@ READ_ONLY_LIMIT = 2
 CONTINUE_AS_NEW_TASKS = 3
 # 桩 model 节点的 timeout_s；heartbeat 超时由它推出（约 2 秒），Worker 被杀后很快被接手。
 STUB_NODE_TIMEOUT_S = 40
+# task-service 的开发租户策略文件（租户 → effect 上限等）；没列出的租户用默认值。
+ENV_TENANT_POLICIES = "AR_DEV_TENANT_POLICIES_FILE"
+# 允许写操作的租户，故障注入套件的写操作用例用它。
+WRITE_TENANT = "tw"
 
 
 def free_port() -> int:
@@ -106,10 +117,27 @@ class Stack:
     signing_key: str = "e2e-dev-signing-key-0123456789"
     processes: dict[str, Process] = field(default_factory=dict)
     task_service_bin: Path | None = None
+    # standard：python -m agentruntime_worker；fault：python -m e2e_support.fault_worker。
+    worker_mode: str = "standard"
+    # 重启 task-service 时附加的环境变量（例如更低的限流上限）。
+    task_service_env: dict[str, str] = field(default_factory=dict)
+    http_port: int = 0
 
     @property
     def call_log(self) -> Path:
         return self.root / "calls.jsonl"
+
+    @property
+    def faults(self) -> FaultPlan:
+        return FaultPlan(self.root / "faults.json")
+
+    @property
+    def ledger(self) -> ExternalLedger:
+        return ExternalLedger(self.root / "external")
+
+    @property
+    def tenant_policies_file(self) -> Path:
+        return self.root / "tenant_policies.json"
 
     @property
     def gate_dir(self) -> Path:
@@ -163,6 +191,8 @@ class Stack:
     def start(self) -> None:
         self.gate_dir.mkdir(parents=True, exist_ok=True)
         self.set_pins({"recipe": "stub@v1", "node_templates": {"stub_answer": "v1"}, "model_profiles": {"mock/model": "v1"}, "tenant_policy": "v1"})
+        self.tenant_policies_file.write_text(json.dumps({"tenants": {WRITE_TENANT: {"effect_ceiling": "write_irreversible"}}}), "utf-8")
+        self.faults.clear()
         self._start_temporal()
         self._build_task_service()
         self._start_task_service()
@@ -199,24 +229,39 @@ class Stack:
             raise RuntimeError(f"编译 task-service 失败：\n{proc.stderr}")
 
     def _start_task_service(self) -> None:
-        port = free_port()
-        self.http_url = f"http://127.0.0.1:{port}"
+        # 重启时沿用同一端口：客户端手里的地址（SSE 订阅地址等）不变。
+        self.http_port = self.http_port or free_port()
+        self.http_url = f"http://127.0.0.1:{self.http_port}"
         env = {
             **os.environ,
             "AR_TEMPORAL_ADDRESS": self.temporal_address,
-            "AR_HTTP_ADDR": f"127.0.0.1:{port}",
+            "AR_HTTP_ADDR": f"127.0.0.1:{self.http_port}",
             "AR_PUBLIC_BASE_URL": self.http_url,
             "AR_DEV_SIGNING_KEY": self.signing_key,
             "AR_DATA_DIR": str(self.root / "data"),
             "AR_PINNED_VERSIONS_FILE": str(self.pins_file),
             "AR_SESSION_READ_ONLY_LIMIT": str(READ_ONLY_LIMIT),
             "AR_SESSION_CAN_TASKS": str(CONTINUE_AS_NEW_TASKS),
+            ENV_TENANT_POLICIES: str(self.tenant_policies_file),
+            **self.task_service_env,
         }
         assert self.task_service_bin is not None
-        p = Process("task-service", [str(self.task_service_bin), "serve"], env, self.root / "logs" / "task-service.log")
-        p.start()
-        self.processes["task-service"] = p
+        for attempt in range(3):
+            p = Process("task-service", [str(self.task_service_bin), "serve"], env, self.root / "logs" / "task-service.log")
+            p.start()
+            self.processes["task-service"] = p
+            time.sleep(0.5)
+            if p.alive() or attempt == 2:
+                break
+            time.sleep(1)  # 端口还没释放：稍等再起
         wait_until(lambda: urllib.request.urlopen(self.http_url + "/healthz", timeout=2).status == 200, "task-service 就绪")
+
+    def restart_task_service(self, env: dict[str, str] | None = None) -> None:
+        """强杀 task-service 再在同一端口上拉起。开发环境的 Cache 在进程内，随之清空（计划 S-07 场景 9）；
+        业务库（SQLite）与 Temporal 里的状态不受影响。env 替换附加的环境变量，None 表示恢复默认。"""
+        self.processes["task-service"].kill()
+        self.task_service_env = dict(env or {})
+        self._start_task_service()
 
     def start_worker(self) -> Process:
         env = {
@@ -228,8 +273,11 @@ class Stack:
             "AR_STUB_NODE_TIMEOUT_S": str(STUB_NODE_TIMEOUT_S),
             # Node Executor 的开发实现（ObjectStore、SecretStore、Sandbox）的数据目录，与 task-service 的分开。
             "AR_DATA_DIR": str(self.root / "worker-data"),
+            ENV_FAULT_PLAN: str(self.faults.path),
+            ENV_FAULT_LEDGER_DIR: str(self.ledger.root),
         }
-        p = Process("worker", [sys.executable, "-m", "agentruntime_worker", "--queues", WORKER_QUEUES], env, self.root / "logs" / "worker.log")
+        module = "e2e_support.fault_worker" if self.worker_mode == "fault" else "agentruntime_worker"
+        p = Process("worker", [sys.executable, "-m", module, "--queues", WORKER_QUEUES], env, self.root / "logs" / "worker.log")
         p.start()
         self.processes["worker"] = p
         time.sleep(1)
@@ -239,6 +287,39 @@ class Stack:
 
     def kill_worker(self) -> None:
         self.processes["worker"].kill()
+
+    def restart_worker(self) -> Process:
+        self.kill_worker()
+        return self.start_worker()
+
+    def use_worker(self, mode: str) -> None:
+        """换成另一种 Worker（standard 或 fault）。"""
+        if mode not in ("standard", "fault"):
+            raise ValueError(mode)
+        if mode == self.worker_mode and self.worker_alive():
+            return
+        if "worker" in self.processes:
+            self.kill_worker()
+        self.worker_mode = mode
+        self.start_worker()
+
+    def worker_alive(self) -> bool:
+        return "worker" in self.processes and self.processes["worker"].alive()
+
+    def wait_worker_exit(self, timeout: float = 60) -> int:
+        """等 Worker 自己退出（故障计划里的 crash），返回退出码。"""
+        p = self.processes["worker"]
+        wait_until(lambda: not p.alive(), "Worker 按故障计划退出", timeout)
+        assert p.proc is not None
+        return p.proc.returncode
+
+    def ensure_healthy(self) -> None:
+        """用例结束后恢复：Worker 活着、task-service 用默认配置运行、没有故障规则。"""
+        self.faults.clear()
+        if self.task_service_env or not self.processes["task-service"].alive():
+            self.restart_task_service(None)
+        if not self.worker_alive():
+            self.start_worker()
 
     def stop(self) -> None:
         for name in ("worker", "task-service", "temporal"):

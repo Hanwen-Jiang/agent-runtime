@@ -1,5 +1,8 @@
 // Package taskstore 是 Task Service 在业务库里的两张表：Session 与 Task 的归属、提交去重、Task 的终态。
 // 表按租户隔离由 RelationalStore 负责（providers/relational），这里的 SQL 不写租户条件。
+//
+// Task 事件的 event_id 也由这里分配（NextEventID）：业务库是持久的，Cache 重启后 event_id 也不回退；
+// Task 的结局（TaskWorkflowResult 的 protojson）记在 outcome，Cache 里的推流丢了也能补发 task_finished（计划 S-07 场景 9）。
 package taskstore
 
 import (
@@ -7,11 +10,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 )
 
-// Migrations 返回两张表的结构。
+// Migrations 返回两张表的结构；版本 2 给 tasks 加上结局一列（S-07）。
 func Migrations() []relational.Migration {
 	return []relational.Migration{{
 		Version: 1,
@@ -33,6 +37,12 @@ func Migrations() []relational.Migration {
 				UNIQUE (session_key, client_request_id)
 			)`,
 		},
+	}, {
+		Version: 2,
+		Name:    "task_service_task_outcome",
+		Statements: []string{
+			`ALTER TABLE tasks ADD COLUMN outcome TEXT NOT NULL DEFAULT ''`,
+		},
 	}}
 }
 
@@ -49,6 +59,13 @@ type Task struct {
 	Signaled    bool
 	LastEventID int64
 	CreatedAt   time.Time
+	// Outcome 是 Task 结束时的 TaskWorkflowResult（protojson，proto 字段名）；还没结束时为空。
+	Outcome string
+}
+
+// Finished 表示业务库里已记下终态与结局。
+func (t Task) Finished() bool {
+	return t.Status != commonv1.TaskStatus_TASK_STATUS_UNSPECIFIED && t.Outcome != ""
 }
 
 // Store 读写这两张表。每个方法都按参数里的租户绑定 RelationalStore。
@@ -85,15 +102,15 @@ func (s *Store) SessionExists(ctx context.Context, tenant *commonv1.TenantContex
 	return ok, err
 }
 
-const taskColumns = `task_id, session_id, session_key, client_request_id, status, signaled, last_event_id, created_at`
+const taskColumns = `task_id, session_id, session_key, client_request_id, status, signaled, last_event_id, created_at, outcome`
 
 // InsertTask 插入一行；（SessionKey, ClientRequestID）已存在时不插入，返回已有的那一行与 true。
 func (s *Store) InsertTask(ctx context.Context, tenant *commonv1.TenantContext, t Task) (Task, bool, error) {
 	var out Task
 	var existed bool
 	err := s.tx(ctx, tenant, false, func(ctx context.Context, tx relational.Tx) error {
-		n, err := tx.Execute(ctx, `INSERT INTO tasks (`+taskColumns+`) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT DO NOTHING`,
-			t.TaskID, t.SessionID, t.SessionKey, t.ClientRequestID, int64(t.Status), boolInt(t.Signaled), t.LastEventID, t.CreatedAt.UnixMilli())
+		n, err := tx.Execute(ctx, `INSERT INTO tasks (`+taskColumns+`) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT DO NOTHING`,
+			t.TaskID, t.SessionID, t.SessionKey, t.ClientRequestID, int64(t.Status), boolInt(t.Signaled), t.LastEventID, t.CreatedAt.UnixMilli(), t.Outcome)
 		if err != nil {
 			return err
 		}
@@ -138,24 +155,36 @@ func (s *Store) MarkSignaled(ctx context.Context, tenant *commonv1.TenantContext
 	})
 }
 
-// RecordFinished 记下终态与最后一个事件的 id。
-func (s *Store) RecordFinished(ctx context.Context, tenant *commonv1.TenantContext, taskID string, status commonv1.TaskStatus, lastEventID int64) error {
+// RecordFinished 记下终态、结局（TaskWorkflowResult 的 protojson）与最后一个事件的 id。
+func (s *Store) RecordFinished(ctx context.Context, tenant *commonv1.TenantContext, taskID string, status commonv1.TaskStatus, lastEventID int64, outcome string) error {
 	return s.tx(ctx, tenant, false, func(ctx context.Context, tx relational.Tx) error {
-		_, err := tx.Execute(ctx, `UPDATE tasks SET status = $1,
-			last_event_id = CASE WHEN last_event_id < $2 THEN $2 ELSE last_event_id END
-			WHERE task_id = $3`, int64(status), lastEventID, taskID)
+		_, err := tx.Execute(ctx, `UPDATE tasks SET status = $1, outcome = $2,
+			last_event_id = CASE WHEN last_event_id < $3 THEN $3 ELSE last_event_id END
+			WHERE task_id = $4`, int64(status), outcome, lastEventID, taskID)
 		return err
 	})
 }
 
-// RecordEvent 记下最后一个事件的 id。
-func (s *Store) RecordEvent(ctx context.Context, tenant *commonv1.TenantContext, taskID string, lastEventID int64) error {
-	return s.tx(ctx, tenant, false, func(ctx context.Context, tx relational.Tx) error {
-		_, err := tx.Execute(ctx, `UPDATE tasks SET
-			last_event_id = CASE WHEN last_event_id < $1 THEN $1 ELSE last_event_id END
-			WHERE task_id = $2`, lastEventID, taskID)
-		return err
+// NextEventID 给 Task 的下一个事件分配 event_id：在业务库里加一，从 1 开始严格递增，Cache 重启也不回退。
+// Task 不存在（或属于别的租户）时报 not_found。
+func (s *Store) NextEventID(ctx context.Context, tenant *commonv1.TenantContext, taskID string) (int64, error) {
+	var id int64
+	err := s.tx(ctx, tenant, false, func(ctx context.Context, tx relational.Tx) error {
+		n, err := tx.Execute(ctx, `UPDATE tasks SET last_event_id = last_event_id + 1 WHERE task_id = $1`, taskID)
+		if err != nil {
+			return err
+		}
+		if n != 1 {
+			return providererr.New(providererr.NotFound, "task_not_found", "没有这个 Task 的记录")
+		}
+		row, _, err := tx.QueryOne(ctx, `SELECT last_event_id FROM tasks WHERE task_id = $1`, taskID)
+		if err != nil {
+			return err
+		}
+		id, _ = row["last_event_id"].(int64)
+		return nil
 	})
+	return id, err
 }
 
 func boolInt(b bool) int64 {
@@ -177,5 +206,6 @@ func decode(row relational.Row) Task {
 		Signaled:        num("signaled") != 0,
 		LastEventID:     num("last_event_id"),
 		CreatedAt:       time.UnixMilli(num("created_at")).UTC(),
+		Outcome:         str("outcome"),
 	}
 }

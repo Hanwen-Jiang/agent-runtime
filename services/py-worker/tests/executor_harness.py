@@ -271,6 +271,49 @@ async def never_returns(_: ToolInvocation) -> Any:
     await asyncio.sleep(3600)
 
 
+class ExternalLedger:
+    """外部系统的替身（计划 S-07）：写入按幂等键记下，进程内的幂等记录丢了它也还在；不按幂等键去重，只支持查询。
+
+    lose_response：写入生效后响应丢失（调用方看到超时）。lookup_failures：接下来几次查询报 transient。
+    """
+
+    def __init__(self, *, lose_response: bool = False) -> None:
+        self.applied: list[str] = []
+        self.records: dict[str, dict[str, Any]] = {}
+        self.lookup_failures = 0
+        self.lose_response = lose_response
+
+    async def handler(self, invocation: ToolInvocation) -> dict[str, Any]:
+        assert invocation.idempotency_key is not None
+        self.applied.append(invocation.idempotency_key)
+        self.records.setdefault(invocation.idempotency_key, {"txn": f"txn-{len(self.applied)}"})
+        if self.lose_response:
+            raise TransientError("timeout", "外部已生效，响应丢失")
+        return {"txn": f"txn-{len(self.applied)}"}
+
+    async def lookup(self, query: Any) -> dict[str, Any] | None:
+        if self.lookup_failures:
+            self.lookup_failures -= 1
+            raise TransientError("unavailable", "外部查询接口暂时不可用")
+        return self.records.get(query.idempotency_key)
+
+
+def register_external(fx: ExecutorFixture, name: str, effect: Effect, ledger: ExternalLedger) -> None:
+    """登记一个背后是 ledger 的工具，按幂等键的查询交给 ledger。"""
+    spec = ToolSpec(
+        name=name,
+        version="v1",
+        description=name,
+        input_schema={"type": "object"},
+        output_schema={"type": "object"},
+        effect=effect,
+        permissions=frozenset(),
+        timeout=timedelta(seconds=5),
+        supports_idempotency_lookup=True,
+    )
+    fx.tools.register(spec, ledger.handler, lookup=ledger.lookup)
+
+
 class SwitchableTools:
     """ToolDriver 工厂的包装：测试可以随时换上一层故障（wrap），之后的 bind 都经过它。"""
 

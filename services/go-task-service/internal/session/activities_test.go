@@ -6,6 +6,7 @@ package session
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -140,6 +141,41 @@ func TestFinishTaskPublishesResultAndRecordsStatus(t *testing.T) {
 	}
 	if row.Status != commonv1.TaskStatus_TASK_STATUS_DONE || row.LastEventID != 2 {
 		t.Errorf("业务库应记下终态 DONE 与最后的 event_id 2，实际 %+v", row)
+	}
+}
+
+func TestEventIDsAndOutcomeSurviveACacheRestart(t *testing.T) {
+	// S-07 场景 9：event_id 由业务库分配，Cache 重启后不回退；结局记进业务库，重试不会在新的 Cache 里再推一次。
+	f := newActFixture(t)
+	ctx := context.Background()
+	id := taskID(5)
+	f.insertTask(t, testTenant(), id)
+	if err := f.acts.AcceptTask(ctx, testTenant(), id); err != nil {
+		t.Fatal(err)
+	}
+
+	f.cache = memcache.New(memcache.Options{Clock: f.clock}) // Cache 重启
+	f.acts.Cache = f.cache
+	result := &workflowv1.TaskWorkflowResult{TaskId: id, Status: commonv1.TaskStatus_TASK_STATUS_DONE}
+	if err := f.acts.FinishTask(ctx, testTenant(), result); err != nil {
+		t.Fatal(err)
+	}
+	evs := f.events(t, testTenant(), id)
+	if len(evs) != 1 || evs[0].GetEventId() != 2 || evs[0].GetType() != taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_FINISHED {
+		t.Fatalf("新 Cache 里的 TASK_FINISHED 的 event_id 应接着业务库排到 2，实际 %v", evs)
+	}
+	row, _, err := f.tasks.LookupTask(ctx, testTenant(), id)
+	if err != nil || !row.Finished() || row.LastEventID != 2 || !strings.Contains(row.Outcome, `"TASK_STATUS_DONE"`) {
+		t.Fatalf("业务库应记下终态、结局与最后的 event_id，实际 %+v（%v）", row, err)
+	}
+
+	f.cache = memcache.New(memcache.Options{Clock: f.clock}) // 又一次重启后 activity 重试
+	f.acts.Cache = f.cache
+	if err := f.acts.FinishTask(ctx, testTenant(), result); err != nil {
+		t.Fatal(err)
+	}
+	if evs := f.events(t, testTenant(), id); len(evs) != 0 {
+		t.Errorf("业务库里已有结局，重试不再推送，实际 %v", evs)
 	}
 }
 

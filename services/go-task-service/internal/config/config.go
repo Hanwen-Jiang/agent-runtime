@@ -20,6 +20,7 @@ const (
 	EnvDevSigningKey       = "AR_DEV_SIGNING_KEY"
 	EnvDataDir             = "AR_DATA_DIR"
 	EnvPinnedVersionsFile  = "AR_PINNED_VERSIONS_FILE"
+	EnvTenantPoliciesFile  = "AR_DEV_TENANT_POLICIES_FILE"
 	EnvRateLimitPerMinute  = "AR_DEV_RATE_LIMIT_PER_MINUTE"
 	EnvReadOnlyLimit       = "AR_SESSION_READ_ONLY_LIMIT"
 	EnvContinueAsNewTasks  = "AR_SESSION_CAN_TASKS"
@@ -36,6 +37,8 @@ type Config struct {
 	DevSigningKey      secret.Value
 	DataDir            string
 	PinnedVersionsFile string
+	// TenantPoliciesFile 是开发用的租户策略文件（各租户的 effect 上限），见 taskapi.FilePolicyResolver；空表示都用默认值。
+	TenantPoliciesFile string
 	// RateLimitPerMinute 是内置 Ingress 每个租户每个路由每分钟的请求上限。
 	RateLimitPerMinute int
 	Session            session.Config
@@ -55,6 +58,7 @@ func FromEnv(getenv func(string) string) (Config, error) {
 		HTTPAddr:           or(EnvHTTPAddr, "127.0.0.1:8080"),
 		DataDir:            or(EnvDataDir, "data"),
 		PinnedVersionsFile: getenv(EnvPinnedVersionsFile),
+		TenantPoliciesFile: getenv(EnvTenantPoliciesFile),
 		Session:            session.DefaultConfig(),
 	}
 	cfg.PublicBaseURL = or(EnvPublicBaseURL, "http://"+cfg.HTTPAddr)

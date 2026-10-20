@@ -192,6 +192,10 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	}
 	defer w.Stop()
 
+	defaults := taskapi.Defaults{
+		Budget:        &workflowv1.Budget{UsdMicros: 2_000_000, ToolCalls: 50, WallClock: durationpb.New(20 * time.Minute)},
+		EffectCeiling: commonv1.Effect_EFFECT_READ,
+	}
 	api, err := taskapi.New(taskapi.Deps{
 		Ingress:       ing,
 		Durable:       temporaladapter.New(c),
@@ -200,10 +204,8 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		Clock:         clk,
 		IDs:           ids.New(clk, nil),
 		PublicBaseURL: cfg.PublicBaseURL,
-		Defaults: taskapi.Defaults{
-			Budget:        &workflowv1.Budget{UsdMicros: 2_000_000, ToolCalls: 50, WallClock: durationpb.New(20 * time.Minute)},
-			EffectCeiling: commonv1.Effect_EFFECT_READ,
-		},
+		Defaults:      defaults,
+		Policies:      taskapi.FilePolicyResolver{Path: cfg.TenantPoliciesFile, Fallback: defaults},
 	})
 	if err != nil {
 		return err

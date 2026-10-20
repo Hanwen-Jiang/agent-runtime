@@ -13,10 +13,14 @@
 - rationale 只写入 trace（Telemetry 的 span 事件），不放进 activity 的结果，不进事件历史，不传给下游。
 - program 节点要求权限的工具，用 SecretStore 签发的短期凭据（角色 tool.<工具名>），调用结束即吊销；凭据不进日志与 trace。
 - 写操作超时、结果未知时先按幂等键对账：已生效就取当时的结果；没生效时 write_reversible 可重试（同一幂等键），
-  write_irreversible 记为结果未知（unknown），交给 Reviewer，不重试。
+  write_irreversible 记为结果未知（unknown），交给 Reviewer，不重试。对账用的查询本身暂时不可用时，不可逆写操作
+  报 reconcile，由工作流用 reconcile_node 带重试地再查（计划 S-07 场景 3）。
+- 写操作重试（attempt > 1，例如 Worker 崩溃后被接手）时，工具支持按幂等键查询就先查：外部已生效就取当时的结果，
+  不再执行；确认没有生效才执行（设计书 3.6“恢复”）。进程内的幂等记录随 Worker 崩溃丢失，只有外部的记录可信。
 
 失败一律以 ApplicationError 抛出，type 是下列之一，non_retryable 由这里决定（附录 D.6）：
-  transient（可重试；Node 写了 retry.on 时只重试其中的原因）、invalid_output、invalid、conflict、denied、unknown、internal。
+  transient（可重试；Node 写了 retry.on 时只重试其中的原因）、invalid_output、invalid、conflict、denied、unknown、internal；
+  另有 reconcile：结果未知、这次没能查询，交给工作流对账。
 执行期间后台持续发心跳，Worker 崩溃后 activity 能被及时接手。
 """
 
@@ -62,7 +66,9 @@ CONFLICT = "conflict"
 DENIED = "denied"
 UNKNOWN = "unknown"
 INTERNAL = "internal"
-ERROR_TYPES = (TRANSIENT, INVALID_OUTPUT, INVALID, CONFLICT, DENIED, UNKNOWN, INTERNAL)
+# 写操作结果未知，且这次没能按幂等键查询：工作流接着用 reconcile_node 对账。
+RECONCILE = "reconcile"
+ERROR_TYPES = (TRANSIENT, INVALID_OUTPUT, INVALID, CONFLICT, DENIED, UNKNOWN, INTERNAL, RECONCILE)
 
 EFFECT_ORDER = ("none", "read", "write_reversible", "write_irreversible")
 WRITE_EFFECTS = ("write_reversible", "write_irreversible")
@@ -179,8 +185,11 @@ class NodeExecutor:
 
     @activity.defn(name=names.CANCEL_HUMAN)
     async def cancel_human(self, c: HumanCancel) -> None:
+        """撤回问题。通道里已经没有这个问题（例如已清理）时没有可撤回的，按已撤回处理。"""
         try:
             await self.deps.humans.bind(_tenant(c.tenant)).cancel(channel_question_id(c.task_id, c.round_seq, c.question_id))
+        except NotFoundError:
+            return
         except ProviderError as err:
             raise self._from_provider(err, {}) from None
 
@@ -363,6 +372,13 @@ class NodeExecutor:
         if _rank(spec.effect.value) > _rank(effect):
             raise _error(f"工具 {name} 的 effect {spec.effect.value} 高于 {node['id']} 声明的 {effect}", DENIED)
         key = node.get("idempotency_key") if effect in WRITE_EFFECTS else None
+        if key and spec.supports_idempotency_lookup and activity.in_activity() and activity.info().attempt > 1:
+            # 重试：上一次 attempt 可能已经在外部生效（Worker 崩溃时结果没写入历史），先查再决定是否执行。
+            found = await driver.lookup(name, version, key)
+            if found is not None:
+                span.add_event("reconciled_before_retry")
+                span.set_attributes({"replayed": True})
+                return found.output
         secrets = None
         credential = None
         if spec.permissions:
@@ -387,7 +403,13 @@ class NodeExecutor:
         """写操作超时、结果未知：先按幂等键对账，不直接重试（附录 K.4）。"""
         reversible = node.get("effect") == "write_reversible"
         if spec.supports_idempotency_lookup:
-            found = await driver.lookup(spec.name, spec.version, key)
+            try:
+                found = await driver.lookup(spec.name, spec.version, key)
+            except TransientError as lookup_err:
+                if reversible:
+                    # 重试时先查（attempt > 1），查到就不再执行。
+                    raise self._from_provider(lookup_err, node) from None
+                raise _error(f"{node['id']} 写操作超时，按幂等键查询暂时不可用（{lookup_err.code}），交给对账", RECONCILE) from None
             if found is not None:
                 return found.output
             if reversible:

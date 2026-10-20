@@ -1,0 +1,54 @@
+# 夜间任务（计划 S-07 验收“套件进入 CI 的夜间任务”）：端到端测试与故障注入套件。
+#
+# tests/e2e 自己拉起 Temporal 开发服务、task-service（现场编译）与 Python Worker；faults/ 是故障注入与恢复套件
+# （标记 faults，较慢）。最后一个模块回放全部导出的事件历史（Go 与 Python 两边）。
+# 工具链与 CLAUDE.md 的常用命令一致：Go 1.27、uv 0.12（Python 3.13）、Temporal CLI 1.9.1。
+name: nightly
+
+on:
+  schedule:
+    - cron: "0 18 * * *" # 每天 18:00 UTC（北京时间 02:00）
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-and-faults:
+    name: 端到端测试与故障注入套件（tests/e2e，含 faults/）
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      TEMPORAL_CLI_VERSION: "1.9.1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+          cache-dependency-path: "**/go.sum"
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.x"
+
+      - name: 安装 Temporal CLI
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL "https://github.com/temporalio/cli/releases/download/v${TEMPORAL_CLI_VERSION}/temporal_cli_${TEMPORAL_CLI_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" temporal
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: 安装 Python 依赖
+        run: uv sync --all-packages --locked
+
+      - name: 端到端测试与故障注入套件
+        working-directory: tests/e2e
+        run: uv run --package agentruntime-e2e-tests pytest -ra --junitxml="$RUNNER_TEMP/e2e-junit.xml"
+
+      - name: 上传测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-junit
+          path: ${{ runner.temp }}/e2e-junit.xml

@@ -1,6 +1,8 @@
 """本地函数 ToolDriver（开发实现）。语义见 agentruntime_core.providers.tool_driver。
 
-工具是进程内的 async 函数，用 register 登记；权限用 grant 授予。幂等记录只在内存里。
+工具是进程内的 async 函数，用 register 登记；权限用 grant 授予。幂等记录只在内存里，进程重启就没了。
+工具背后是外部系统、而外部系统能按幂等键查询时，登记时给 lookup：lookup 交给外部系统回答，
+进程重启之后也能对账（附录 K.4）。
 """
 
 from __future__ import annotations
@@ -9,7 +11,7 @@ import asyncio
 import hashlib
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -29,12 +31,25 @@ _VERSION = re.compile(r"v[0-9]+")
 _GLOBAL = "*"
 
 
+@dataclass(frozen=True)
+class ToolLookup:
+    """交给工具自己的 lookup 的一次查询。tenant_id 来自客户端的作用域（平台作用域为空串）。"""
+
+    tenant_id: str
+    idempotency_key: str
+
+
+# 按幂等键查外部系统：生效过返回当时的输出，没有返回 None。
+ToolLookupHandler = Callable[[ToolLookup], Awaitable[Any | None]]
+
+
 @dataclass
 class _Tool:
     spec: ToolSpec
     handler: ToolHandler
     input_validator: Draft202012Validator
     output_validator: Draft202012Validator
+    lookup: ToolLookupHandler | None = None
 
 
 @dataclass(frozen=True)
@@ -68,9 +83,14 @@ class LocalToolDriverProvider:
 
     # --- 开发专用：登记与授权 ---
 
-    def register(self, spec: ToolSpec, handler: ToolHandler, *, tenant_id: str | None = None) -> None:
+    def register(
+        self, spec: ToolSpec, handler: ToolHandler, *, tenant_id: str | None = None, lookup: ToolLookupHandler | None = None
+    ) -> None:
+        """登记工具。lookup 只能配给声明了 supports_idempotency_lookup 的工具。"""
         if not _NAME.fullmatch(spec.name) or not _VERSION.fullmatch(spec.version):
             raise InvalidError("invalid_tool", "工具名或版本格式不对")
+        if lookup is not None and not spec.supports_idempotency_lookup:
+            raise InvalidError("invalid_tool", "没有声明支持按幂等键查询的工具不能配 lookup")
         try:
             input_validator = Draft202012Validator(dict(spec.input_schema))
             output_validator = Draft202012Validator(dict(spec.output_schema))
@@ -79,7 +99,7 @@ class LocalToolDriverProvider:
         except SchemaError as error:
             raise InvalidError("invalid_schema", "工具的 JSON Schema 不合法") from error
         owner = tenant_id or _GLOBAL
-        self._tools.setdefault(owner, {})[(spec.name, spec.version)] = _Tool(spec, handler, input_validator, output_validator)
+        self._tools.setdefault(owner, {})[(spec.name, spec.version)] = _Tool(spec, handler, input_validator, output_validator, lookup)
 
     def grant(self, tenant_id: str | None, permission: str) -> None:
         self._grants.setdefault(tenant_id or PLATFORM_ID, set()).add(permission)
@@ -161,6 +181,18 @@ class LocalToolDriver:
         if not tool.spec.supports_idempotency_lookup:
             raise InvalidError("lookup_unsupported", "该工具不支持按幂等键查询")
         record = self._provider._records.get((self._owner, name, version, idempotency_key))
-        if record is None:
+        if record is not None:
+            return ToolResult(output=record.output, idempotency_key=idempotency_key, replayed=True)
+        if tool.lookup is None:
             return None
-        return ToolResult(output=record.output, idempotency_key=idempotency_key, replayed=True)
+        try:
+            output = await asyncio.wait_for(
+                tool.lookup(ToolLookup(tenant_id=self._scope.tenant_id, idempotency_key=idempotency_key)), timeout=tool.spec.timeout.total_seconds()
+            )
+        except TimeoutError as error:
+            raise TransientError("timeout", "按幂等键查询超时") from error
+        if output is None:
+            return None
+        if next(tool.output_validator.iter_errors(output), None) is not None:
+            raise InvalidError("invalid_output", "工具返回不符合 output_schema")
+        return ToolResult(output=output, idempotency_key=idempotency_key, replayed=True)

@@ -95,12 +95,21 @@ type Deps struct {
 	// PublicBaseURL 用来拼 SSE 订阅地址，例如 https://api.example.com。
 	PublicBaseURL string
 	Defaults      Defaults
+	// Policies 按租户给出预算与 effect 上限；为空时所有租户都用 Defaults。
+	Policies PolicyResolver
 }
 
 // Server 实现 taskapiv1connect.TaskServiceHandler。
 type Server struct {
 	d     Deps
 	tasks *taskstore.Store
+}
+
+func (s *Server) policies() PolicyResolver {
+	if s.d.Policies != nil {
+		return s.d.Policies
+	}
+	return StaticPolicy{Defaults: s.d.Defaults}
 }
 
 var _ taskapiv1connect.TaskServiceHandler = (*Server)(nil)
@@ -248,6 +257,10 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	if err != nil {
 		return nil, err
 	}
+	policy, err := s.policies().Resolve(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
 	task := &workflowv1.TaskWorkflowInput{
 		Tenant:         tenant,
 		TaskId:         row.TaskID,
@@ -258,7 +271,8 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 		SubmittedAt:    timestamppb.New(now),
 		SessionAccess:  req.GetSessionAccess(),
 		Priority:       req.GetPriority(),
-		EffectCeiling:  s.d.Defaults.EffectCeiling,
+		EffectCeiling:  policy.EffectCeiling,
+		Budget:         policy.Budget,
 	}
 	if task.SessionAccess == commonv1.SessionAccess_SESSION_ACCESS_UNSPECIFIED {
 		// 不知道会不会写 Session 状态时按会写处理，串行最安全。
@@ -266,9 +280,6 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	}
 	if task.Priority == commonv1.Priority_PRIORITY_UNSPECIFIED {
 		task.Priority = commonv1.Priority_PRIORITY_INTERACTIVE
-	}
-	if s.d.Defaults.Budget != nil {
-		task.Budget = proto.Clone(s.d.Defaults.Budget).(*workflowv1.Budget)
 	}
 	engine, err := s.d.Durable.Bind(tenant)
 	if err != nil {

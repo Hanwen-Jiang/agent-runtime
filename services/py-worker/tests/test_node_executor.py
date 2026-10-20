@@ -18,6 +18,7 @@ import pytest
 from temporalio.exceptions import ApplicationError
 from temporalio.testing import ActivityEnvironment
 
+from agentruntime_core.enums import Effect
 from agentruntime_core.errors import DeniedError, InvalidError, TransientError
 from agentruntime_core.providers.human_channel import QuestionStatus
 from agentruntime_core.providers.secret_store import LeaseStatus
@@ -35,12 +36,14 @@ from .executor_harness import (
     TASK_ID,
     TENANT,
     ExecutorFixture,
+    ExternalLedger,
     ResponseLost,
     approved,
     make_fixture,
     model,
     node_input,
     program,
+    register_external,
 )
 from .support import assert_valid
 
@@ -371,6 +374,34 @@ async def test_write_irreversible_without_lookup_support_is_unknown(fx: Executor
     assert "查询" in str(err)
 
 
+async def test_retried_write_looks_up_the_external_state_before_executing(fx: ExecutorFixture) -> None:
+    ledger = ExternalLedger()
+    register_external(fx, "ledger_append", Effect.WRITE_REVERSIBLE, ledger)
+    node = program("w", "ledger_append", effect="write_reversible", inputs={"c": 1})
+    # 上一次 attempt 在外部生效后 Worker 崩溃：进程内没有记录，外部有。
+    ledger.records[node["idempotency_key"]] = {"txn": "txn-crashed"}
+    env = env_for(names.EXECUTE_PROGRAM_NODE, attempt=2)
+    out = await env.run(fx.executor.execute_program_node, node_input(node))
+    assert out["result"] == {"txn": "txn-crashed"} and ledger.applied == [], "重试前先查，外部已生效就不再执行"
+
+    fresh = program("w2", "ledger_append", effect="write_reversible", inputs={"c": 2})
+    out = await env.run(fx.executor.execute_program_node, node_input(fresh))
+    assert ledger.applied == [fresh["idempotency_key"]], "确认没有生效才执行，执行一次"
+
+
+async def test_lookup_unavailable_while_reconciling_a_lost_write(fx: ExecutorFixture) -> None:
+    ledger = ExternalLedger(lose_response=True)
+    register_external(fx, "ledger_transfer", Effect.WRITE_IRREVERSIBLE, ledger)
+    register_external(fx, "ledger_append", Effect.WRITE_REVERSIBLE, ledger)
+    ledger.lookup_failures = 2
+    # 不可逆写操作：结果未知、这次查不了，报 reconcile，交给工作流对账；不重试。
+    err = await expect_error(run_program(fx, program("pay", "ledger_transfer", effect="write_irreversible"), gate=approved("pay")), ne.RECONCILE)
+    assert "对账" in str(err)
+    # 可逆写操作：报 transient，下一次 attempt 先查再决定。
+    await expect_error(run_program(fx, program("w", "ledger_append", effect="write_reversible")), ne.TRANSIENT, retryable=True)
+    assert len(ledger.applied) == 2
+
+
 async def test_reconcile_node_activity(tmp_path: Path) -> None:
     fx = make_fixture(tmp_path)
     node = program("w", "update_crm", effect="write_reversible", inputs={"c": 2})
@@ -400,6 +431,12 @@ async def test_ask_and_cancel_go_through_the_human_channel(fx: ExecutorFixture) 
     assert "按这个范围继续吗" in fx.human_output.getvalue()
     await env_for(names.CANCEL_HUMAN, queue=names.DECISION_QUEUE).run(fx.executor.cancel_human, HumanCancel(tenant=TENANT, task_id=TASK_ID, question_id="confirm"))
     assert await channel.status(channel_id) == QuestionStatus.CANCELLED
+
+
+async def test_withdrawing_a_question_the_channel_no_longer_knows_succeeds(fx: ExecutorFixture) -> None:
+    """S-07 场景 5：问题已不在通道里（例如开发用的通道随 Worker 重启丢了），撤回按已撤回处理，不报错。"""
+    gone = HumanCancel(tenant=TENANT, task_id=TASK_ID, question_id="never_asked")
+    await env_for(names.CANCEL_HUMAN, queue=names.DECISION_QUEUE).run(fx.executor.cancel_human, gone)
 
 
 # --- sandbox 与心跳 ---

@@ -597,6 +597,48 @@ func TestContinueAsNewAfterTaskThresholdCarriesStateAndDrainsSignals(t *testing.
 	eq(t, "子工作流（续接前只启动有名额的）", h.startOrder(), ids(1, 2))
 }
 
+func TestCancelDrainedWithItsSubmitIsAcceptedThenCancelled(t *testing.T) {
+	// S-07 场景 8：续接前排空信号时，排空的提交随即被取消。与平时一样先接受（计数、去重表、TASK_ACCEPTED），
+	// 再从队列里取消；不启动子工作流，也不带入新的运行（版本分支 VersionAcceptDrainedCancel）。
+	cfg := defaultCfg()
+	cfg.ContinueAsNewTasks = 3
+	h := newHarness(t, cfg)
+	h.at(time.Minute, func() {
+		h.submit(
+			submit(1, "c1", write, 60, ""),
+			submit(2, "c2", write, 60, ""),
+			submit(3, "c3", write, 60, ""), // 达到阈值
+			submit(4, "c4", write, 60, ""), // 排空
+		)
+		h.cancel(4) // 与提交一起被排空
+	})
+	next := h.runExpectingContinueAsNew(newInput(), 2*time.Hour)
+
+	if next.GetAcceptedTasks() != 4 {
+		t.Errorf("排空后又被取消的 Task 也算已接受，实际 %d", next.GetAcceptedTasks())
+	}
+	if next.GetSubmitted()["c4"] != taskID(4) {
+		t.Errorf("它的 client_request_id 要进去重表，重复投递才不会再跑一次，实际 %v", next.GetSubmitted())
+	}
+	for _, p := range next.GetPending() {
+		if p.GetTask().GetTaskId() == taskID(4) {
+			t.Error("被取消的 Task 不带入新的运行")
+		}
+	}
+	h.mu.Lock()
+	accepted := h.accepts[taskID(4)]
+	h.mu.Unlock()
+	if accepted != 1 {
+		t.Errorf("应推送一次 TASK_ACCEPTED，实际 %d 次", accepted)
+	}
+	h.finishedOnce(4, commonv1.TaskStatus_TASK_STATUS_CANCELLED)
+	eq(t, "子工作流", h.startOrder(), ids(1))
+	idx := func(e string) int { return slices.Index(h.log, e) }
+	if idx("accept:"+taskID(4)) < 0 || idx("accept:"+taskID(4)) > idx("finish:"+taskID(4)) {
+		t.Errorf("先接受再取消，实际顺序 %v", h.log)
+	}
+}
+
 func TestNewRunResumesFromCarriedState(t *testing.T) {
 	cfg := defaultCfg()
 	cfg.ReadOnlyLimit = 1
