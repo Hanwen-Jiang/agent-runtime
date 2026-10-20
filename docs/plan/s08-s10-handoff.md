@@ -27,7 +27,7 @@
 
 | 工作项 | 状态 | 关键决定 |
 | --- | --- | --- |
-| S-08 | 已实现；人审两轮后 62 条确认，两条待定（naming_ai_assistant_divergent、research_pricing_escalate） | 见下一节 |
+| S-08 | 已完成：人审两轮后 64 条标注全部确认，S-09、S-10 的门槛可以用 `--require-confirmed` | 见下一节 |
 | S-09 | 未开始 | — |
 | S-10 | 未开始 | — |
 

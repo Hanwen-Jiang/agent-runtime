@@ -4,10 +4,12 @@
   "split": "holdout",
   "category": "naming",
   "review": {
-    "status": "draft",
-    "notes": "按人审意见：escalate 之前不交付。第一轮只生成候选看分歧（不出 deliver），分歧大再问人；形状标注改为本轮不能有 deliver。 第二轮复审待定：形状要求第一轮必须用 ensemble 生成；按附录 C.5（规格模糊、可以问人时先澄清），先问人的规划同样合格，却会被判形状不符。建议放宽为只要求本轮不出 deliver，并在 rubric 里写明“先澄清或先生成候选看分歧都可以”。"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20",
+    "notes": "按 Hanwen-Jiang 的决定修改后确认。第二轮按 Hanwen-Jiang 的决定：形状只要求本轮不出 deliver（先问人或先生成候选看分歧都合格，附录 C.5），补了 rubric。"
   },
-  "description": "使用场景不明（给员工用还是给客户用），置信度低：第一轮只生成候选、看分歧，先不交付。候选分歧很大（附录 B.7：题目含糊）→ escalate 问人澄清；问清之前不出 deliver。",
+  "description": "使用场景不明（给员工用还是给客户用），置信度低：第一轮不交付。附录 C.5 下两种规划都合格：先问人澄清用途，或先生成候选看分歧；形状只要求本轮不出 deliver。参照输出取后者：候选分歧很大（附录 B.7：题目含糊）→ escalate 问人澄清。",
   "planner": {
     "input": {
       "message": "给公司的新 AI 助手起个名字。",
@@ -21,9 +23,6 @@
       "task_family": "creative.naming",
       "risk": "read",
       "shape": {
-        "quality": [
-          "ensemble"
-        ],
         "forbidden_roles": [
           "deliver"
         ]
@@ -149,5 +148,9 @@
         }
       }
     }
+  ],
+  "rubric": [
+    "用途不明时，先问人澄清用途，或先生成候选看分歧，两种都可以",
+    "问清用途之前不交付名字"
   ]
 }

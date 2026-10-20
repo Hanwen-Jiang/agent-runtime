@@ -1,7 +1,7 @@
 """S-08 验收“人审评测集”的可自动检查部分：仓库里的评测集（evalsets/task-loop）合格、覆盖够、划分合理。
 
-人审本身是人工的：标注全部确认之前，test_every_label_is_confirmed 按预期失败（xfail，strict）；
-人确认完、把 review.status 改成 confirmed 后，它会通过，届时去掉 xfail 标记。
+人审本身是人工的：2026-10-20 经两轮人审，64 条标注全部确认（review.status = confirmed）。
+以后改了标注或新增用例，先回到草稿（review.status = draft），test_every_label_is_confirmed 会失败，直到人再次确认。
 """
 
 from __future__ import annotations
@@ -92,7 +92,6 @@ def test_every_case_carries_a_review_status() -> None:
     assert all(i.review.get("status") in ("draft", "confirmed") for i in [*es.task_cases, *es.reviewer_samples])
 
 
-@pytest.mark.xfail(reason="S-08 验收：评测集要经人审；人确认后把 review.status 改成 confirmed，并去掉这个标记", strict=True)
 def test_every_label_is_confirmed() -> None:
     assert eval_set().unconfirmed() == []
 
