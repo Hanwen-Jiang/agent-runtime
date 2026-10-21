@@ -124,3 +124,11 @@ def test_nightly_job_runs_the_cross_tenant_suites() -> None:
     text = NIGHTLY.read_text("utf-8")
     assert "tests/e2e" in text, "夜间任务要跑端到端的越权用例"
     assert re.search(r"(?i)postgres", text) and "go test" in text, "夜间任务要跑 Go 的测试（含 Postgres 行级安全），并装好 Postgres"
+
+
+def test_nightly_job_runs_the_memory_cross_tenant_suites_on_postgres_and_qdrant() -> None:
+    """S-12b：Python 侧的 Postgres、Qdrant 适配器与 Memory Service 的越权用例进入 CI，装好两种二进制、不允许跳过。"""
+    text = NIGHTLY.read_text("utf-8")
+    assert "libs/py-core" in text and "services/py-memory" in text, "夜间任务要跑 py-core 适配器与 Memory Service 的测试"
+    assert re.search(r"(?i)qdrant", text), "夜间任务要装好 Qdrant"
+    assert "AR_ALLOW_MISSING_TOOLS: \"1\"" not in text and "AR_ALLOW_MISSING_TOOLS=1" not in text, "越权用例不允许因为缺二进制而跳过"

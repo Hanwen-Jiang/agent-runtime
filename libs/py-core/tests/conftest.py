@@ -1,12 +1,43 @@
 import shutil
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 
 import pytest
 import pytest_asyncio
 from temporalio.testing import WorkflowEnvironment
 
+from agentruntime_core.adapters import pgtest, qdranttest
+
 # 一致性套件在包内，需要显式开启断言改写，失败时才有详细信息。
 pytest.register_assert_rewrite("agentruntime_core.conformance")
+
+
+def _missing(reason: str) -> None:
+    """缺 Postgres 或 Qdrant 的二进制时让用例失败；设 AR_ALLOW_MISSING_TOOLS=1 改为跳过。"""
+    if pgtest.allow_missing():
+        pytest.skip(reason)
+    pytest.fail(reason, pytrace=False)
+
+
+@pytest.fixture(scope="session")
+def pg_cluster() -> Iterator[pgtest.Cluster]:
+    """临时的 Postgres 实例，整个测试会话共用；每个用例在上面新建自己的库（计划 S-12b）。"""
+    try:
+        cluster = pgtest.Cluster()
+    except pgtest.MissingTool as err:
+        _missing(str(err))
+    yield cluster
+    cluster.stop()
+
+
+@pytest.fixture(scope="session")
+def qdrant_instance() -> Iterator[qdranttest.Instance]:
+    """临时的 Qdrant 实例，整个测试会话共用；每个用例用自己的集合前缀（计划 S-12b）。"""
+    try:
+        instance = qdranttest.Instance()
+    except qdranttest.MissingTool as err:
+        _missing(str(err))
+    yield instance
+    instance.stop()
 
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")

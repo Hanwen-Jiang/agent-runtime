@@ -22,6 +22,16 @@ temporal = [
     "cryptography>=46",
     "temporalio>=1.34",
 ]
+# RelationalStore 的 Postgres 适配器（agentruntime_core.adapters.postgres，行级安全，计划 S-12b，经人确认引入）。
+postgres = [
+    "psycopg[binary,pool]>=3.2",
+]
+# VectorStore 的 Qdrant 适配器（agentruntime_core.adapters.qdrant：租户字段分区、强制过滤、按租户密钥的保距变换，
+# 计划 S-12b，经人确认引入）；向量变换与密钥环用 cryptography。
+qdrant = [
+    "cryptography>=46",
+    "qdrant-client>=1.15",
+]
 
 [tool.uv.sources]
 agentruntime-proto = { workspace = true }

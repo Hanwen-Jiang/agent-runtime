@@ -85,15 +85,15 @@
 /services/go-task-service
 /services/go-model-gateway
 /services/py-worker
-/services/py-memory
+/services/py-memory         # Memory Service（S-12b、S-13）：作用域 ACL、写入与检索流水线、晋升、级联删除与回滚；gRPC 服务 python -m agentruntime_memory
 /services/py-learning       # Learning Pipeline；评测集与评测 harness（S-08）：agentruntime_learning.evals，评测集在 evalsets/task-loop
 /deploy                     # Helm 与环境配置
-/libs/py-core               # Python 共享库 agentruntime-core：Provider 接口、错误模型、租户绑定、一致性测试（S-02）
+/libs/py-core               # Python 共享库 agentruntime-core：Provider 接口、错误模型、租户绑定、一致性测试（S-02）；Postgres、Qdrant 适配器与密钥环（S-12b）
 /libs/go-core               # Go 共享库：同上（S-02）
 /tests/contract             # 跨语言、跨服务的契约验收测试（S-01；S-02 的接口一致性比对也在这里）
 /tests/e2e                  # 端到端验收测试：Temporal 开发服务 + task-service + Python Worker（S-03）
 /tests/e2e/faults           # 故障注入与恢复套件（S-07）；故障 Worker 与外部 ledger 在 tests/e2e/e2e_support
-/.github/workflows          # CI：nightly.yml 每晚跑 tests/e2e（含故障注入套件与越权用例）与全部 Go 测试（含 Postgres 行级安全）
+/.github/workflows          # CI：nightly.yml 每晚跑 tests/e2e（含故障注入套件与越权用例）、全部 Go 测试（含 Postgres 行级安全），以及 py-core 与 py-memory 的测试（Postgres + Qdrant）
 /docs                       # 设计书、实施计划、参考文档
 ```
 
@@ -103,7 +103,7 @@ Go 模块路径前缀暂定 `github.com/agentruntime/agent-runtime`，schema 的
 
 ## 常用命令
 
-工具链：Go 1.27、uv 0.12（Python 3.13）、buf 1.73、Git 2.56、Temporal CLI 1.9.1、PostgreSQL 17。本机装在 `%USERPROFILE%\.local` 下（`bin`、`go`、`mingit`、`python`、`pgsql`），不要装到 AppData：Claude 桌面应用里写入 AppData 的文件会被重定向到应用私有目录，用户自己的终端看不到。DurableEngine 的一致性测试用 PATH 上的 `temporal` 启动开发服务，不让 SDK 自行下载。Postgres 业务库的测试（S-12a：`libs/go-core/adapters/postgres` 与 task-service 的 `internal/taskstore`）用 PATH 上（或 `AR_POSTGRES_BIN` 指定目录里）的 `initdb`、`pg_ctl`、`psql` 自己拉起临时实例；本机要把 `%USERPROFILE%\.local\pgsql\bin` 放进 PATH。缺这些工具时测试失败，设 `AR_ALLOW_MISSING_TOOLS=1` 改为跳过。
+工具链：Go 1.27、uv 0.12（Python 3.13）、buf 1.73、Git 2.56、Temporal CLI 1.9.1、PostgreSQL 17、Qdrant 1.19.1。本机装在 `%USERPROFILE%\.local` 下（`bin`、`go`、`mingit`、`python`、`pgsql`、`qdrant`），不要装到 AppData：Claude 桌面应用里写入 AppData 的文件会被重定向到应用私有目录，用户自己的终端看不到。DurableEngine 的一致性测试用 PATH 上的 `temporal` 启动开发服务，不让 SDK 自行下载。Postgres 业务库的测试（S-12a：`libs/go-core/adapters/postgres` 与 task-service 的 `internal/taskstore`）用 PATH 上（或 `AR_POSTGRES_BIN` 指定目录里）的 `initdb`、`pg_ctl`、`psql` 自己拉起临时实例；本机要把 `%USERPROFILE%\.local\pgsql\bin` 放进 PATH。Python 侧的 Postgres 适配器（S-12b）同样自己拉起临时实例；Qdrant 适配器与 Memory Service 的测试用 PATH 上（或 `AR_QDRANT_BIN` 指定位置）的 `qdrant` 拉起临时实例，本机要把 `%USERPROFILE%\.local\qdrant` 放进 PATH。缺这些工具时测试失败，设 `AR_ALLOW_MISSING_TOOLS=1` 改为跳过。
 
 仓库在网络共享盘（`Z:` 即 `\\172.31.0.1\VMShare`）上时，Temporal Python SDK 的原生模块不能从共享盘加载，虚拟环境必须放在本地盘：
 
@@ -120,6 +120,7 @@ $env:UV_PROJECT_ENVIRONMENT = "$env:USERPROFILE\.local\venvs\agent-runtime"
 | 契约验收测试（S-01） | `uv run --package agentruntime-contract-tests pytest tests/contract` |
 | Python 共享库与一致性测试（S-02） | 在 `libs/py-core` 下：`uv run --package agentruntime-core --all-extras pytest tests` |
 | Go 构建与测试（含 `libs/go-core` 的一致性测试与越权用例） | 在 `go.work` 列出的每个模块目录里运行 `go build ./...`、`go vet ./...`、`go test ./...`（要 PATH 上有 `temporal` 与 Postgres 二进制，见上） |
+| Memory Service 测试（S-12b、S-13） | 在 `services/py-memory` 下：`uv run --package agentruntime-memory --all-extras pytest tests`（开发后端与 Postgres + Qdrant 后端各跑一遍；只跑开发后端加 `-m "not backends"`）。独立运行：`python -m agentruntime_memory`（环境变量见该模块：`AR_DEV_SIGNING_KEY` 必填，`AR_RELATIONAL_DSN`、`AR_QDRANT_URL` 换成生产后端） |
 | Learning 测试（S-08） | 在 `services/py-learning` 下：`uv run --package agentruntime-learning --all-extras pytest tests` |
 | 评测（S-08、S-09、S-10） | `uv run --package agentruntime-learning python -m agentruntime_learning.evals run --subject baseline`（被测对象：`baseline`、`oracle` 或 `<模块>:<工厂函数>`；默认开发集，`--split holdout` 只给汇总；`--require-confirmed` 要求标注全部经人确认）。报告写在 `services/py-learning/.eval-reports`，自动与同一被测对象的上一份报告比较。提示只在开发集上调；评测集的标注改动要经人确认。评测 S-09 的 Planner：`--subject agentruntime_learning.evals.worker_subject:planner_subject`；评测 S-10（Planner 加 Reviewer）：`--subject agentruntime_learning.evals.worker_subject:worker_subject`；两者都要先设 `AR_EVAL_GATEWAY_FACTORY=<模块>:<工厂函数>`（工厂函数返回 Model Gateway） |
 | Worker 测试（S-03） | 在 `services/py-worker` 下：`uv run --package agentruntime-worker --all-extras pytest tests` |

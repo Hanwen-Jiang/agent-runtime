@@ -4,10 +4,28 @@ version = "0.0.0"
 description = "Memory Service：多租户记忆的作用域、写入、检索、晋升与治理"
 requires-python = ">=3.13"
 dependencies = [
+    # postgres、qdrant：业务库与向量库的生产适配器（S-12b）；开发时用 py-core 的 SQLite 与内存实现。
+    "agentruntime-core[postgres,qdrant]",
     "agentruntime-proto",
+    # 条目正文按租户密钥 AES-256-GCM 加密（附录 I.7）。
+    "cryptography>=46",
+    "grpcio>=1.84.0",
+    # 候选条目按 /schemas/memory_item.schema.json 校验。
+    "jsonschema>=4.26",
+    "jsonschema-specifications>=2025.9.1",
+    "protobuf>=7.36.2,<8",
+    "referencing>=0.37",
+]
+
+[project.optional-dependencies]
+test = [
+    "agentruntime-core[conformance]",
+    "pytest>=9.1",
+    "pytest-asyncio>=1.4",
 ]
 
 [tool.uv.sources]
+agentruntime-core = { workspace = true }
 agentruntime-proto = { workspace = true }
 
 [build-system]
@@ -16,3 +34,13 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agentruntime_memory"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+xfail_strict = true
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "backends: 需要 Postgres 与 Qdrant 二进制（PATH 上的 initdb、pg_ctl、qdrant，或 AR_POSTGRES_BIN、AR_QDRANT_BIN）",
+]

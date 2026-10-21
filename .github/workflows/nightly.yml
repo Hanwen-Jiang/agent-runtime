@@ -5,7 +5,11 @@
 #     之后把业务库换成 Postgres（AR_RELATIONAL_DSN，行级安全）再跑一遍不含故障注入的部分。
 #   - Go 的全部测试（计划 S-12a 验收“越权测试套件进入 CI”）：各 Provider 的一致性测试（含越权用例），
 #     Postgres 业务库的行级安全（用 runner 预装的 Postgres，测试自己 initdb 临时实例）。
-# 工具链与 CLAUDE.md 的常用命令一致：Go 1.27、uv 0.12（Python 3.13）、Temporal CLI 1.9.1、PostgreSQL（本机 17，runner 预装版本）。
+#   - Python 侧的越权用例（计划 S-12b）：libs/py-core 的全部测试（含 Postgres、Qdrant 适配器的一致性测试与存储层核对）
+#     与 services/py-memory 的全部测试（越权、投毒、级联删除、回滚，开发后端与 Postgres + Qdrant 后端各跑一遍）。
+#     两种二进制都装好，缺了直接失败，不允许跳过。
+# 工具链与 CLAUDE.md 的常用命令一致：Go 1.27、uv 0.12（Python 3.13）、Temporal CLI 1.9.1、PostgreSQL（本机 17，runner 预装版本）、
+# Qdrant 1.19.1。
 name: nightly
 
 on:
@@ -107,3 +111,48 @@ jobs:
             (cd "$dir" && go test -count=1 ./...)
             echo "::endgroup::"
           done
+
+  python-cross-tenant:
+    name: Python 越权用例（py-core 适配器与 Memory Service，Postgres + Qdrant）
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      QDRANT_VERSION: "1.19.1"
+      TEMPORAL_CLI_VERSION: "1.9.1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.x"
+
+      - name: 安装 Temporal CLI（py-core 里 DurableEngine 的一致性测试用）
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL "https://github.com/temporalio/cli/releases/download/v${TEMPORAL_CLI_VERSION}/temporal_cli_${TEMPORAL_CLI_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" temporal
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: 安装 Qdrant
+        run: |
+          mkdir -p "$HOME/.local/qdrant"
+          curl -sSfL "https://github.com/qdrant/qdrant/releases/download/v${QDRANT_VERSION}/qdrant-x86_64-unknown-linux-gnu.tar.gz" \
+            | tar -xz -C "$HOME/.local/qdrant" qdrant
+          echo "AR_QDRANT_BIN=$HOME/.local/qdrant" >> "$GITHUB_ENV"
+
+      - name: 找到预装的 Postgres 二进制（initdb、pg_ctl、psql）
+        run: |
+          bin="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)"
+          test -x "$bin/initdb"
+          echo "AR_POSTGRES_BIN=$bin" >> "$GITHUB_ENV"
+
+      - name: 安装 Python 依赖
+        run: uv sync --all-packages --locked
+
+      - name: libs/py-core（含 Postgres、Qdrant 适配器）
+        working-directory: libs/py-core
+        run: uv run --package agentruntime-core --all-extras pytest -ra
+
+      - name: services/py-memory（开发后端与 Postgres + Qdrant 后端）
+        working-directory: services/py-memory
+        run: uv run --package agentruntime-memory --all-extras pytest -ra
