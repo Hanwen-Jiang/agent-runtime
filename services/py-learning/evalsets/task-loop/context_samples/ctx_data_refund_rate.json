@@ -3,7 +3,10 @@
   "id": "ctx_data_refund_rate",
   "split": "dev",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-21",
+    "notes": "首轮审阅由 Claude 完成，经 Hanwen-Jiang 授权确认。Probe 2 原答案 refunded_at 本来就在 Task State 里；改为只在第 3 步被遮蔽的数据行里出现的异常订单 O0700412。其余标注核对了出处，未改。"
   },
   "description": "分析 Q3 退款率；schema、已算出的数字与代码位置在前三步，后面是大量原始数据行。考查 schema、数字与代码能否保住，以及会不会重复查表结构。",
   "work_mode": "data_analysis",
@@ -100,7 +103,7 @@
       },
       "observation": {
         "row_count": 30,
-        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO0700412,华北,refunded_negative_amount\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
       }
     },
     {
@@ -420,8 +423,8 @@
       "answer": "4.7"
     },
     {
-      "question": "表示退款时间的列名是什么？",
-      "answer": "refunded_at"
+      "question": "抽查华北区数据时发现退款金额为负的是哪个订单？",
+      "answer": "O0700412"
     },
     {
       "question": "Q3 订单表一共多少行？",

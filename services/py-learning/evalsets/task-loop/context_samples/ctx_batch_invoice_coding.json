@@ -3,7 +3,10 @@
   "id": "ctx_batch_invoice_coding",
   "split": "holdout",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-21",
+    "notes": "首轮审阅由 Claude 完成，经 Hanwen-Jiang 授权确认。Probe 3 原答案 31 会被日志时间戳 09:31 蒙对，且出处在最后一步、压缩碰不到；改为第 18 步中途状态表快照里的“已处理 17 张”。其余标注核对了出处，未改。"
   },
   "description": "批量给发票归类；每项结果散在各步，失败项在中间。考查每项的状态与失败原因能否保住，以及会不会重复归类。",
   "work_mode": "batch",
@@ -250,6 +253,16 @@
       "error": "INV-0058 无法归类：供应商税号缺失"
     },
     {
+      "tool": "status_write",
+      "args": {
+        "table": "batch/status.csv"
+      },
+      "observation": {
+        "result": "batch/status.csv",
+        "text": "状态表中途快照：已处理 17 张，失败 1 张（INV-0058 待补税号）\n2026-10-14T09:07:01Z INFO ocr-INV-0057 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0057 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0057 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0057 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0057 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0057 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0057 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0057 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0057 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0057 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0057 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0057 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0057 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0057 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
       "tool": "invoice_fetch",
       "args": {
         "invoice": "INV-0059"
@@ -468,8 +481,8 @@
       "answer": "6602"
     },
     {
-      "question": "状态表记录已处理多少张？",
-      "answer": "31"
+      "question": "第一次写状态表时记录的进度是什么？",
+      "answer": "已处理 17 张"
     }
   ],
   "completed": [

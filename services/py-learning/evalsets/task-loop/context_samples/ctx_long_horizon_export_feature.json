@@ -3,7 +3,10 @@
   "id": "ctx_long_horizon_export_feature",
   "split": "holdout",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-21",
+    "notes": "首轮审阅由 Claude 完成，经 Hanwen-Jiang 授权确认。Probe 3 原答案“按时区导出”本来就在 Task State 里；改为只在第 2 步读过的代码里出现的 EXPORT_BATCH_SIZE = 5000。其余标注核对了出处，未改。"
   },
   "description": "多天开发导出功能；功能清单、版本与已跑的迁移在开头，后面是大量读代码。考查功能清单、进度与版本能否保住，以及会不会重跑迁移。",
   "work_mode": "long_horizon",
@@ -89,7 +92,7 @@
       "observation": {
         "path": "src/export/part_1.py",
         "exit_code": 0,
-        "content": "  1: def export_part_1_helper_1(items, opts=None):  # 处理第 1 组条目，返回规整后的列表\n  2: def export_part_1_helper_2(items, opts=None):  # 处理第 2 组条目，返回规整后的列表\n  3: def export_part_1_helper_3(items, opts=None):  # 处理第 3 组条目，返回规整后的列表\n  4: def export_part_1_helper_4(items, opts=None):  # 处理第 4 组条目，返回规整后的列表\n  5: def export_part_1_helper_5(items, opts=None):  # 处理第 5 组条目，返回规整后的列表\n  6: def export_part_1_helper_6(items, opts=None):  # 处理第 6 组条目，返回规整后的列表\n  7: def export_part_1_helper_7(items, opts=None):  # 处理第 7 组条目，返回规整后的列表\n  8: def export_part_1_helper_8(items, opts=None):  # 处理第 8 组条目，返回规整后的列表\n  9: def export_part_1_helper_9(items, opts=None):  # 处理第 9 组条目，返回规整后的列表\n 10: def export_part_1_helper_10(items, opts=None):  # 处理第 10 组条目，返回规整后的列表\n 11: def export_part_1_helper_11(items, opts=None):  # 处理第 11 组条目，返回规整后的列表\n 12: def export_part_1_helper_12(items, opts=None):  # 处理第 12 组条目，返回规整后的列表\n 13: def export_part_1_helper_13(items, opts=None):  # 处理第 13 组条目，返回规整后的列表\n 14: def export_part_1_helper_14(items, opts=None):  # 处理第 14 组条目，返回规整后的列表\n 15: def export_part_1_helper_15(items, opts=None):  # 处理第 15 组条目，返回规整后的列表\n 16: def export_part_1_helper_16(items, opts=None):  # 处理第 16 组条目，返回规整后的列表\n 17: def export_part_1_helper_17(items, opts=None):  # 处理第 17 组条目，返回规整后的列表\n 18: def export_part_1_helper_18(items, opts=None):  # 处理第 18 组条目，返回规整后的列表\n 19: def export_part_1_helper_19(items, opts=None):  # 处理第 19 组条目，返回规整后的列表\n 20: def export_part_1_helper_20(items, opts=None):  # 处理第 20 组条目，返回规整后的列表\n 21: def export_part_1_helper_21(items, opts=None):  # 处理第 21 组条目，返回规整后的列表\n 22: def export_part_1_helper_22(items, opts=None):  # 处理第 22 组条目，返回规整后的列表\n 23: def export_part_1_helper_23(items, opts=None):  # 处理第 23 组条目，返回规整后的列表\n 24: def export_part_1_helper_24(items, opts=None):  # 处理第 24 组条目，返回规整后的列表\n 25: def export_part_1_helper_25(items, opts=None):  # 处理第 25 组条目，返回规整后的列表\n 26: def export_part_1_helper_26(items, opts=None):  # 处理第 26 组条目，返回规整后的列表\n 27: def export_part_1_helper_27(items, opts=None):  # 处理第 27 组条目，返回规整后的列表\n 28: def export_part_1_helper_28(items, opts=None):  # 处理第 28 组条目，返回规整后的列表\n 29: def export_part_1_helper_29(items, opts=None):  # 处理第 29 组条目，返回规整后的列表\n 30: def export_part_1_helper_30(items, opts=None):  # 处理第 30 组条目，返回规整后的列表\n 31: def export_part_1_helper_31(items, opts=None):  # 处理第 31 组条目，返回规整后的列表\n 32: def export_part_1_helper_32(items, opts=None):  # 处理第 32 组条目，返回规整后的列表\n 33: def export_part_1_helper_33(items, opts=None):  # 处理第 33 组条目，返回规整后的列表\n 34: def export_part_1_helper_34(items, opts=None):  # 处理第 34 组条目，返回规整后的列表"
+        "content": "  1: EXPORT_BATCH_SIZE = 5000  # 每批导出的行数，改动前要同步改后台队列的超时\n  2: def export_part_1_helper_2(items, opts=None):  # 处理第 2 组条目，返回规整后的列表\n  3: def export_part_1_helper_3(items, opts=None):  # 处理第 3 组条目，返回规整后的列表\n  4: def export_part_1_helper_4(items, opts=None):  # 处理第 4 组条目，返回规整后的列表\n  5: def export_part_1_helper_5(items, opts=None):  # 处理第 5 组条目，返回规整后的列表\n  6: def export_part_1_helper_6(items, opts=None):  # 处理第 6 组条目，返回规整后的列表\n  7: def export_part_1_helper_7(items, opts=None):  # 处理第 7 组条目，返回规整后的列表\n  8: def export_part_1_helper_8(items, opts=None):  # 处理第 8 组条目，返回规整后的列表\n  9: def export_part_1_helper_9(items, opts=None):  # 处理第 9 组条目，返回规整后的列表\n 10: def export_part_1_helper_10(items, opts=None):  # 处理第 10 组条目，返回规整后的列表\n 11: def export_part_1_helper_11(items, opts=None):  # 处理第 11 组条目，返回规整后的列表\n 12: def export_part_1_helper_12(items, opts=None):  # 处理第 12 组条目，返回规整后的列表\n 13: def export_part_1_helper_13(items, opts=None):  # 处理第 13 组条目，返回规整后的列表\n 14: def export_part_1_helper_14(items, opts=None):  # 处理第 14 组条目，返回规整后的列表\n 15: def export_part_1_helper_15(items, opts=None):  # 处理第 15 组条目，返回规整后的列表\n 16: def export_part_1_helper_16(items, opts=None):  # 处理第 16 组条目，返回规整后的列表\n 17: def export_part_1_helper_17(items, opts=None):  # 处理第 17 组条目，返回规整后的列表\n 18: def export_part_1_helper_18(items, opts=None):  # 处理第 18 组条目，返回规整后的列表\n 19: def export_part_1_helper_19(items, opts=None):  # 处理第 19 组条目，返回规整后的列表\n 20: def export_part_1_helper_20(items, opts=None):  # 处理第 20 组条目，返回规整后的列表\n 21: def export_part_1_helper_21(items, opts=None):  # 处理第 21 组条目，返回规整后的列表\n 22: def export_part_1_helper_22(items, opts=None):  # 处理第 22 组条目，返回规整后的列表\n 23: def export_part_1_helper_23(items, opts=None):  # 处理第 23 组条目，返回规整后的列表\n 24: def export_part_1_helper_24(items, opts=None):  # 处理第 24 组条目，返回规整后的列表\n 25: def export_part_1_helper_25(items, opts=None):  # 处理第 25 组条目，返回规整后的列表\n 26: def export_part_1_helper_26(items, opts=None):  # 处理第 26 组条目，返回规整后的列表\n 27: def export_part_1_helper_27(items, opts=None):  # 处理第 27 组条目，返回规整后的列表\n 28: def export_part_1_helper_28(items, opts=None):  # 处理第 28 组条目，返回规整后的列表\n 29: def export_part_1_helper_29(items, opts=None):  # 处理第 29 组条目，返回规整后的列表\n 30: def export_part_1_helper_30(items, opts=None):  # 处理第 30 组条目，返回规整后的列表\n 31: def export_part_1_helper_31(items, opts=None):  # 处理第 31 组条目，返回规整后的列表\n 32: def export_part_1_helper_32(items, opts=None):  # 处理第 32 组条目，返回规整后的列表\n 33: def export_part_1_helper_33(items, opts=None):  # 处理第 33 组条目，返回规整后的列表\n 34: def export_part_1_helper_34(items, opts=None):  # 处理第 34 组条目，返回规整后的列表"
       }
     },
     {
@@ -455,8 +458,8 @@
       "answer": "0007"
     },
     {
-      "question": "还没完成的功能是什么？",
-      "answer": "按时区导出"
+      "question": "src/export/part_1.py 里导出分批大小 EXPORT_BATCH_SIZE 设的是多少？",
+      "answer": "5000"
     }
   ],
   "completed": [

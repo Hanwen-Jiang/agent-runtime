@@ -3,7 +3,10 @@
   "id": "ctx_coding_ci_rounding",
   "split": "dev",
   "review": {
-    "status": "draft"
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-21",
+    "notes": "首轮审阅由 Claude 完成，经 Hanwen-Jiang 授权确认。已完成动作 2 原为改动后的 repo_read pricing.py（重读核对改动不算浪费），改为在 3.12 上重跑同一测试（结果不会变）。其余标注核对了出处，未改。"
   },
   "description": "CI 修复：checkout 测试在 Python 3.13 上因银行家舍入失败；修好后又发现 invoice 的同类问题。考查错误原文、文件与行号、已读文件是否在压缩后保住。",
   "work_mode": "coding",
@@ -444,9 +447,9 @@
       }
     },
     {
-      "tool": "repo_read",
+      "tool": "shell",
       "args": {
-        "path": "src/shop/pricing.py"
+        "cmd": "python3.12 -m pytest tests/test_checkout.py -k rounding"
       }
     }
   ]
