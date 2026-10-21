@@ -1,0 +1,483 @@
+{
+  "kind": "context",
+  "id": "ctx_batch_invoice_coding",
+  "split": "holdout",
+  "review": {
+    "status": "draft"
+  },
+  "description": "批量给发票归类；每项结果散在各步，失败项在中间。考查每项的状态与失败原因能否保住，以及会不会重复归类。",
+  "work_mode": "batch",
+  "effective_tokens": 8000,
+  "task_state": {
+    "task_id": "tsk_000000000000000000000008SE",
+    "session_id": "ses_000000000000000000000008SE",
+    "goal": "给本批发票归类到会计科目",
+    "done_when": "每张发票都有科目或失败原因，状态表已更新",
+    "constraints": {
+      "effect_ceiling": "write_reversible"
+    },
+    "facts": [
+      "本批共 36 张发票"
+    ],
+    "open_questions": [
+      "税号缺失的发票找谁补"
+    ],
+    "artifacts": [
+      "obj://evals/artifacts/batch/status.csv"
+    ]
+  },
+  "task_plan": {
+    "triage": {
+      "level": "full",
+      "task_family": "finance.invoice_coding",
+      "confidence": 0.8
+    },
+    "horizon": "per_stage",
+    "context": {
+      "work_mode": "batch"
+    }
+  },
+  "node": {
+    "id": "work",
+    "kind": "goal",
+    "goal": "给本批发票归类到会计科目",
+    "done_when": "每张发票都有科目或失败原因，状态表已更新",
+    "mode": "tool_loop",
+    "tools": [
+      "invoice_fetch",
+      "ledger_classify",
+      "status_write"
+    ],
+    "output_schema": {
+      "type": "object"
+    },
+    "max_iterations": 80
+  },
+  "history": [
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0041"
+      },
+      "observation": {
+        "item": "INV-0041",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0041 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0041 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0041 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0041 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0041 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0041 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0041 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0041 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0041 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0041 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0041 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0041 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0041 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0041 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "ledger_classify",
+      "args": {
+        "invoice": "INV-0042"
+      },
+      "observation": {
+        "item": "INV-0042",
+        "status": "done",
+        "result": "科目 6602 管理费用-办公费",
+        "id": "INV-0042"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0043"
+      },
+      "observation": {
+        "item": "INV-0043",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0043 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0043 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0043 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0043 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0043 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0043 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0043 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0043 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0043 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0043 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0043 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0043 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0043 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0043 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0044"
+      },
+      "observation": {
+        "item": "INV-0044",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0044 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0044 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0044 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0044 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0044 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0044 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0044 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0044 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0044 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0044 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0044 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0044 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0044 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0044 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0045"
+      },
+      "observation": {
+        "item": "INV-0045",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0045 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0045 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0045 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0045 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0045 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0045 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0045 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0045 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0045 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0045 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0045 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0045 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0045 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0045 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0046"
+      },
+      "observation": {
+        "item": "INV-0046",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0046 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0046 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0046 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0046 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0046 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0046 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0046 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0046 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0046 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0046 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0046 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0046 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0046 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0046 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0047"
+      },
+      "observation": {
+        "item": "INV-0047",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0047 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0047 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0047 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0047 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0047 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0047 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0047 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0047 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0047 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0047 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0047 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0047 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0047 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0047 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0048"
+      },
+      "observation": {
+        "item": "INV-0048",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0048 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0048 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0048 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0048 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0048 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0048 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0048 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0048 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0048 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0048 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0048 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0048 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0048 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0048 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0049"
+      },
+      "observation": {
+        "item": "INV-0049",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0049 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0049 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0049 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0049 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0049 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0049 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0049 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0049 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0049 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0049 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0049 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0049 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0049 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0049 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0050"
+      },
+      "observation": {
+        "item": "INV-0050",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0050 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0050 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0050 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0050 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0050 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0050 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0050 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0050 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0050 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0050 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0050 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0050 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0050 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0050 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0051"
+      },
+      "observation": {
+        "item": "INV-0051",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0051 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0051 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0051 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0051 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0051 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0051 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0051 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0051 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0051 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0051 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0051 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0051 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0051 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0051 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0052"
+      },
+      "observation": {
+        "item": "INV-0052",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0052 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0052 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0052 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0052 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0052 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0052 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0052 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0052 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0052 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0052 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0052 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0052 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0052 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0052 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0053"
+      },
+      "observation": {
+        "item": "INV-0053",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0053 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0053 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0053 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0053 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0053 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0053 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0053 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0053 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0053 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0053 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0053 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0053 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0053 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0053 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0054"
+      },
+      "observation": {
+        "item": "INV-0054",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0054 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0054 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0054 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0054 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0054 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0054 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0054 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0054 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0054 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0054 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0054 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0054 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0054 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0054 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0055"
+      },
+      "observation": {
+        "item": "INV-0055",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0055 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0055 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0055 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0055 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0055 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0055 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0055 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0055 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0055 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0055 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0055 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0055 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0055 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0055 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0056"
+      },
+      "observation": {
+        "item": "INV-0056",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0056 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0056 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0056 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0056 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0056 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0056 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0056 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0056 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0056 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0056 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0056 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0056 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0056 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0056 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0057"
+      },
+      "observation": {
+        "item": "INV-0057",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0057 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0057 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0057 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0057 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0057 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0057 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0057 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0057 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0057 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0057 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0057 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0057 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0057 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0057 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "ledger_classify",
+      "args": {
+        "invoice": "INV-0058"
+      },
+      "error": "INV-0058 无法归类：供应商税号缺失"
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0059"
+      },
+      "observation": {
+        "item": "INV-0059",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0059 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0059 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0059 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0059 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0059 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0059 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0059 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0059 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0059 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0059 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0059 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0059 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0059 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0059 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0060"
+      },
+      "observation": {
+        "item": "INV-0060",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0060 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0060 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0060 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0060 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0060 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0060 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0060 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0060 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0060 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0060 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0060 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0060 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0060 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0060 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0061"
+      },
+      "observation": {
+        "item": "INV-0061",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0061 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0061 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0061 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0061 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0061 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0061 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0061 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0061 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0061 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0061 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0061 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0061 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0061 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0061 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0062"
+      },
+      "observation": {
+        "item": "INV-0062",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0062 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0062 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0062 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0062 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0062 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0062 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0062 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0062 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0062 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0062 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0062 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0062 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0062 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0062 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0063"
+      },
+      "observation": {
+        "item": "INV-0063",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0063 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0063 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0063 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0063 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0063 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0063 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0063 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0063 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0063 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0063 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0063 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0063 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0063 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0063 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0064"
+      },
+      "observation": {
+        "item": "INV-0064",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0064 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0064 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0064 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0064 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0064 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0064 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0064 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0064 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0064 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0064 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0064 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0064 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0064 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0064 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0065"
+      },
+      "observation": {
+        "item": "INV-0065",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0065 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0065 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0065 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0065 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0065 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0065 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0065 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0065 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0065 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0065 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0065 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0065 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0065 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0065 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0066"
+      },
+      "observation": {
+        "item": "INV-0066",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0066 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0066 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0066 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0066 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0066 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0066 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0066 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0066 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0066 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0066 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0066 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0066 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0066 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0066 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0067"
+      },
+      "observation": {
+        "item": "INV-0067",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0067 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0067 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0067 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0067 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0067 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0067 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0067 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0067 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0067 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0067 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0067 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0067 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0067 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0067 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0068"
+      },
+      "observation": {
+        "item": "INV-0068",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0068 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0068 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0068 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0068 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0068 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0068 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0068 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0068 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0068 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0068 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0068 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0068 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0068 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0068 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0069"
+      },
+      "observation": {
+        "item": "INV-0069",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0069 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0069 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0069 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0069 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0069 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0069 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0069 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0069 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0069 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0069 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0069 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0069 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0069 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0069 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0070"
+      },
+      "observation": {
+        "item": "INV-0070",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0070 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0070 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0070 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0070 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0070 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0070 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0070 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0070 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0070 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0070 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0070 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0070 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0070 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0070 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0071"
+      },
+      "observation": {
+        "item": "INV-0071",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0071 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0071 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0071 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0071 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0071 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0071 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0071 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0071 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0071 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0071 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0071 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0071 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0071 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0071 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0072"
+      },
+      "observation": {
+        "item": "INV-0072",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0072 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0072 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0072 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0072 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0072 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0072 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0072 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0072 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0072 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0072 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0072 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0072 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0072 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0072 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0073"
+      },
+      "observation": {
+        "item": "INV-0073",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0073 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0073 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0073 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0073 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0073 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0073 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0073 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0073 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0073 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0073 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0073 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0073 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0073 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0073 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0074"
+      },
+      "observation": {
+        "item": "INV-0074",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0074 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0074 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0074 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0074 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0074 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0074 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0074 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0074 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0074 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0074 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0074 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0074 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0074 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0074 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0075"
+      },
+      "observation": {
+        "item": "INV-0075",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0075 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0075 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0075 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0075 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0075 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0075 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0075 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0075 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0075 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0075 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0075 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0075 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0075 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0075 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "invoice_fetch",
+      "args": {
+        "invoice": "INV-0076"
+      },
+      "observation": {
+        "item": "INV-0076",
+        "status": "fetched",
+        "text": "2026-10-14T09:07:01Z INFO ocr-INV-0076 worker=w1 step=13 状态正常，继续处理下一批\n2026-10-14T09:14:02Z INFO ocr-INV-0076 worker=w2 step=26 状态正常，继续处理下一批\n2026-10-14T09:21:03Z INFO ocr-INV-0076 worker=w3 step=39 状态正常，继续处理下一批\n2026-10-14T09:28:04Z INFO ocr-INV-0076 worker=w4 step=52 状态正常，继续处理下一批\n2026-10-14T09:35:05Z INFO ocr-INV-0076 worker=w5 step=65 状态正常，继续处理下一批\n2026-10-14T09:42:06Z INFO ocr-INV-0076 worker=w6 step=78 状态正常，继续处理下一批\n2026-10-14T09:49:07Z INFO ocr-INV-0076 worker=w7 step=91 状态正常，继续处理下一批\n2026-10-14T09:56:08Z INFO ocr-INV-0076 worker=w8 step=104 状态正常，继续处理下一批\n2026-10-14T09:03:09Z INFO ocr-INV-0076 worker=w9 step=117 状态正常，继续处理下一批\n2026-10-14T09:10:10Z INFO ocr-INV-0076 worker=w10 step=130 状态正常，继续处理下一批\n2026-10-14T09:17:11Z INFO ocr-INV-0076 worker=w11 step=143 状态正常，继续处理下一批\n2026-10-14T09:24:12Z INFO ocr-INV-0076 worker=w12 step=156 状态正常，继续处理下一批\n2026-10-14T09:31:13Z INFO ocr-INV-0076 worker=w13 step=169 状态正常，继续处理下一批\n2026-10-14T09:38:14Z INFO ocr-INV-0076 worker=w14 step=182 状态正常，继续处理下一批"
+      }
+    },
+    {
+      "tool": "status_write",
+      "args": {
+        "table": "batch/status.csv"
+      },
+      "observation": {
+        "status": "已处理 31 张，失败 1 张",
+        "result": "batch/status.csv"
+      }
+    }
+  ],
+  "probes": [
+    {
+      "question": "哪张发票因为税号缺失失败了？",
+      "answer": "INV-0058"
+    },
+    {
+      "question": "INV-0042 归到了哪个科目编号？",
+      "answer": "6602"
+    },
+    {
+      "question": "状态表记录已处理多少张？",
+      "answer": "31"
+    }
+  ],
+  "completed": [
+    {
+      "tool": "ledger_classify",
+      "args": {
+        "invoice": "INV-0042"
+      }
+    }
+  ]
+}

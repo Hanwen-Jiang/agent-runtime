@@ -13,13 +13,15 @@ from referencing import Registry, Resource
 
 SCHEMAS_DIR = Path(__file__).resolve().parents[5] / "schemas"
 CASE_SCHEMA = Path(__file__).with_name("case.schema.json")
+CONTEXT_SAMPLE_SCHEMA = Path(__file__).with_name("context_sample.schema.json")
 
 
 @cache
 def _schemas() -> dict[str, dict[str, Any]]:
-    """名字（stage、task_plan…，以及 case）→ schema。"""
+    """名字（stage、task_plan…，以及 case、context_sample）→ schema。"""
     found = {p.name.removesuffix(".schema.json"): json.loads(p.read_text("utf-8")) for p in sorted(SCHEMAS_DIR.glob("*.schema.json"))}
     found["case"] = json.loads(CASE_SCHEMA.read_text("utf-8"))
+    found["context_sample"] = json.loads(CONTEXT_SAMPLE_SCHEMA.read_text("utf-8"))
     return found
 
 
@@ -30,7 +32,7 @@ def _registry() -> Registry:
 
 @cache
 def validator(name: str) -> Draft202012Validator:
-    """name 是 /schemas 里的 schema 名（stage、task_plan、task_state、verdict…）或 case。"""
+    """name 是 /schemas 里的 schema 名（stage、task_plan、task_state、verdict…）、case 或 context_sample。"""
     return Draft202012Validator(_schemas()[name], registry=_registry(), format_checker=Draft202012Validator.FORMAT_CHECKER)
 
 

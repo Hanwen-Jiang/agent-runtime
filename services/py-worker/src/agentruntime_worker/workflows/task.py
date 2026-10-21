@@ -152,6 +152,8 @@ class TaskWorkflow:
         self._delivery: tuple[str, Any] | None = None
         self._final_verdict: dict[str, Any] | None = None
         self._stage_cost = 0.0
+        # 当前的 Task Plan：交给 Stage Runner，tool_loop 的 Context Builder 据此取工作模式与阈值（只是输入）。
+        self._task_plan: dict[str, Any] | None = None
 
     @workflow.run
     async def run(self, inp: task_pb2.TaskWorkflowInput) -> task_pb2.TaskWorkflowResult:
@@ -243,6 +245,8 @@ class TaskWorkflow:
             stage = plan.stage
             round_entry: dict[str, Any] = {"seq": seq, "stage_goal": stage["goal"], "triage_level": plan.triage_level, "status": "running"}
             self._state["rounds"].append(round_entry)
+            if plan.task_plan:
+                self._task_plan = plan.task_plan
 
             results = await self._run_stage(seq, stage)
 
@@ -295,6 +299,7 @@ class TaskWorkflow:
                 round_entry: dict[str, Any] = {"seq": seq, "stage_goal": stage["goal"], "triage_level": plan.triage_level, "status": "running"}
                 if plan.task_plan:
                     task_plan = plan.task_plan
+                    self._task_plan = task_plan
             else:
                 # 原地重试或换更强的 Tier：不经 Planner，重跑同一个 Stage 里出问题的部分。
                 stage, carried, injections = rerun.stage, rerun.carried, rerun.injections
@@ -493,6 +498,7 @@ class TaskWorkflow:
             depth=self._input.depth,
             policy=self._stage_policy,
             task_input=self._input,
+            task_plan=self._task_plan,
         )
         runner = StageRunner(ctx, self)
         results = await runner.run(stage, carried=carried, injections=injections)

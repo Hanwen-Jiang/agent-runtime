@@ -26,6 +26,11 @@ PLANNERS = ("stub", "model")
 # Reviewer 与收尾写回（S-10）：stub 用 S-03 的桩（默认）；model 用真正的 Reviewer（经 Model Gateway）与收尾写回。
 ENV_REVIEWER = "AR_REVIEWER"
 REVIEWERS = ("stub", "model")
+# tool_loop 的一步：stub 用桩（默认，第一步就结束）；model 经 Model Gateway，上下文由 Context Builder 组装。
+ENV_TOOL_LOOP = "AR_TOOL_LOOP"
+TOOL_LOOPS = ("stub", "model")
+# Context Builder 的阈值基准：模型实测的有效长度（token）。Model Profile 接好之前用这个配置（附录 G.2、G.5）。
+ENV_CONTEXT_EFFECTIVE_TOKENS = "AR_CONTEXT_EFFECTIVE_TOKENS"
 
 
 @dataclass(frozen=True)
@@ -49,6 +54,10 @@ class WorkerConfig:
     planner: str = "stub"
     # 哪个 Reviewer：stub 或 model（S-10）。
     reviewer: str = "stub"
+    # 哪个 tool_loop：stub 或 model（Context Builder）。
+    tool_loop: str = "stub"
+    # 模型实测的有效长度（token），Context Builder 的阈值按它算。
+    context_effective_tokens: int = 32_000
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> WorkerConfig:
@@ -71,6 +80,15 @@ class WorkerConfig:
         reviewer = env.get(ENV_REVIEWER, "") or cls.reviewer
         if reviewer not in REVIEWERS:
             raise ValueError(f"{ENV_REVIEWER} 只能是 {'、'.join(REVIEWERS)}")
+        tool_loop = env.get(ENV_TOOL_LOOP, "") or cls.tool_loop
+        if tool_loop not in TOOL_LOOPS:
+            raise ValueError(f"{ENV_TOOL_LOOP} 只能是 {'、'.join(TOOL_LOOPS)}")
+        effective = cls.context_effective_tokens
+        raw = env.get(ENV_CONTEXT_EFFECTIVE_TOKENS, "")
+        if raw:
+            if not raw.isdigit() or int(raw) <= 0:
+                raise ValueError(f"{ENV_CONTEXT_EFFECTIVE_TOKENS} 必须是正整数（token）")
+            effective = int(raw)
         call_log = env.get(ENV_STUB_CALL_LOG, "")
         gate_dir = env.get(ENV_STUB_GATE_DIR, "")
         data_dir = Path(env[ENV_DATA_DIR]) if env.get(ENV_DATA_DIR) else None
@@ -88,6 +106,8 @@ class WorkerConfig:
             claim_check_threshold=threshold,
             planner=planner,
             reviewer=reviewer,
+            tool_loop=tool_loop,
+            context_effective_tokens=effective,
         )
 
     def store_paths(self, root: Path) -> tuple[Path, Path]:

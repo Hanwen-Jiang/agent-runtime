@@ -166,6 +166,8 @@ class Script:
     plan_for: Callable[[PlanRoundInput], dict[str, Any]] | None = None
     # S-10：收尾写回按这个消息失败（不可重试）
     finalize_error: str = ""
+    # Context Builder：Planner 给出的 Task Plan（每轮都给这一份）
+    task_plan: dict[str, Any] | None = None
 
     calls: list[Call] = field(default_factory=list)
     hook_calls: list[HookCall] = field(default_factory=list)
@@ -259,9 +261,10 @@ class Script:
         scenario = str(inp.inputs.get("scenario") or "main")
         self.scenario_of[inp.task_id] = scenario
         self.plan_inputs.append(inp)
+        plan = copy.deepcopy(self.task_plan)
         if self.plan_for is not None:
-            return PlanRoundOutput(stage=self.plan_for(inp), triage_level="full")
-        return PlanRoundOutput(stage=copy.deepcopy(self.plans[scenario][inp.round_seq - 1]), triage_level="full")
+            return PlanRoundOutput(stage=self.plan_for(inp), triage_level="full", task_plan=plan)
+        return PlanRoundOutput(stage=copy.deepcopy(self.plans[scenario][inp.round_seq - 1]), triage_level="full", task_plan=plan)
 
     @activity.defn(name=names.REVIEW_ROUND)
     async def review_round(self, inp: ReviewRoundInput) -> Any:

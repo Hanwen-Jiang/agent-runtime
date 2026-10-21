@@ -177,6 +177,8 @@ class RunContext:
     policy: StagePolicy | None = None
     # 只有 Task 工作流里有；sub_task 据此构造子 Task 的输入。
     task_input: task_pb2.TaskWorkflowInput | None = None
+    # 当前的 Task Plan；tool_loop 的每一步带上它与 Task State，给 Context Builder 用（只是输入）。
+    task_plan: dict[str, Any] | None = None
 
 
 @dataclass
@@ -866,6 +868,9 @@ class StageRunner:
                             history=copy.deepcopy(history),
                             step_id=sp.child_id(nid, 2 * i - 1),
                             isolated=isolated,
+                            # sub_agent 是独立上下文：不带 Task State 与 Task Plan。
+                            task_state={} if isolated else copy.deepcopy(self._ctx.task_state),
+                            task_plan=None if isolated else copy.deepcopy(self._ctx.task_plan),
                         ),
                         task_queue=names.MODEL_QUEUE,
                         start_to_close_timeout=timeouts.DECISION_START_TO_CLOSE,

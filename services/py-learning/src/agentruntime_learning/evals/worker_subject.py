@@ -25,6 +25,7 @@ from agentruntime_worker.reviewer.rules import ReviewCatalog
 
 from agentruntime_learning.evals import stages
 from agentruntime_learning.evals.cases import DEFAULT_EVAL_SET, EvalSet, load_eval_set
+from agentruntime_learning.evals.context import ContextSubject, GatewayContextSubject
 from agentruntime_learning.evals.model import PlannerInput, PlannerOutput, ReviewerInput, ReviewerOutput, Subject, Usage
 from agentruntime_learning.evals.subjects import BaselineSubject
 
@@ -147,3 +148,9 @@ def worker_subject() -> Subject:
 def planner_subject() -> Subject:
     """命令行用的工厂：按 AR_EVAL_GATEWAY_FACTORY 拿到 Model Gateway；Reviewer 用基线（S-09 的门槛只看 Planner）。"""
     return WorkerPlannerSubject(_gateway())
+
+
+def context_subject() -> ContextSubject:
+    """S-11 压缩评测的工厂（python -m agentruntime_learning.evals context --subject …:context_subject）：
+    按 AR_EVAL_GATEWAY_FACTORY 拿到 Model Gateway；增量摘要、Compaction Probe、答题与下一步动作都经它。"""
+    return GatewayContextSubject(_gateway())

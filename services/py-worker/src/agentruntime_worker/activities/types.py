@@ -179,6 +179,10 @@ class ToolLoopStepInput:
     step_id: str = ""
     # sub_agent 的独立上下文
     isolated: bool = False
+    # Context Builder 用：Task State 的精确状态进 status 区，Task Plan 的 context 给出工作模式与阈值。
+    # sub_agent（isolated）不带。只是输入，不改变命令序列。
+    task_state: dict[str, Any] = field(default_factory=dict)
+    task_plan: dict[str, Any] | None = None
 
 
 @dataclass

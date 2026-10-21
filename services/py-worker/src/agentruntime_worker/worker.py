@@ -28,6 +28,7 @@ from agentruntime_worker.activities.stubs import StubActivities
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.executor.dev import data_root, dev_executor, dev_object_store, dev_secret_store
 from agentruntime_worker.executor.node_executor import NodeExecutor
+from agentruntime_worker.executor.tool_loop import dev_tool_loop
 from agentruntime_worker.planner.activities import dev_planner
 from agentruntime_worker.reviewer.activities import dev_reviewer
 from agentruntime_worker.workflows.stage_runner import SubAgentWorkflow, SubgraphWorkflow
@@ -106,12 +107,15 @@ async def connect(config: WorkerConfig, *, objects: ObjectStoreProvider | None =
 
 def decision_activities(config: WorkerConfig, stubs: StubActivities | None = None) -> dict[str, Any]:
     """决策类 activity：桩，或者 AR_PLANNER=model 时由真正的 Planner 接管 plan_round（S-09），
-    AR_REVIEWER=model 时由真正的 Reviewer 与收尾写回接管 review_round 与 finalize_task（S-10）。"""
+    AR_REVIEWER=model 时由真正的 Reviewer 与收尾写回接管 review_round 与 finalize_task（S-10），
+    AR_TOOL_LOOP=model 时由经 Model Gateway、用 Context Builder 组装上下文的 tool_loop 接管 tool_loop_step。"""
     activities = (stubs or StubActivities(config)).activities()
     if config.planner == "model":
         activities.update(dev_planner(config).activities())
     if config.reviewer == "model":
         activities.update(dev_reviewer(config).activities())
+    if config.tool_loop == "model":
+        activities.update(dev_tool_loop(config).activities())
     return activities
 
 

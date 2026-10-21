@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/evals/context_sample.schema.json",
+  "title": "S-11 长任务样本",
+  "description": "一条长的 tool_loop 轨迹与它的 Task State、Task Plan、Goal Node；标注是 Probe 题（答案在原始轨迹或 Task State 里）与已经完成的动作（压缩后再做一遍算重复操作）。标注要经人确认。",
+  "type": "object",
+  "required": ["kind", "id", "split", "review", "description", "work_mode", "effective_tokens", "task_state", "task_plan", "node", "history", "probes", "completed"],
+  "properties": {
+    "kind": {"const": "context"},
+    "id": {"$ref": "https://agentruntime.example/schemas/evals/case.schema.json#/$defs/case_id"},
+    "split": {"$ref": "https://agentruntime.example/schemas/evals/case.schema.json#/$defs/split"},
+    "review": {"$ref": "https://agentruntime.example/schemas/evals/case.schema.json#/$defs/review"},
+    "description": {"type": "string", "minLength": 1},
+    "work_mode": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/work_mode"},
+    "effective_tokens": {"description": "压缩时按这个有效长度算阈值", "type": "integer", "minimum": 1000},
+    "task_state": {"$ref": "https://agentruntime.example/schemas/task_state.schema.json"},
+    "task_plan": {"$ref": "https://agentruntime.example/schemas/task_plan.schema.json"},
+    "node": {"$ref": "https://agentruntime.example/schemas/goal_node.schema.json"},
+    "history": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/step"}},
+    "probes": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": ["question", "answer"],
+        "properties": {"question": {"type": "string", "minLength": 1}, "answer": {"type": "string", "minLength": 1}},
+        "additionalProperties": false
+      }
+    },
+    "completed": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["tool", "args"],
+        "properties": {"tool": {"type": "string", "minLength": 1}, "args": {"type": "object"}},
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "step": {
+      "description": "tool_loop 的一步：动作与观察，或动作与工具报的错误（与 ToolLoopStepInput.history 的条目相同）",
+      "type": "object",
+      "required": ["tool", "args"],
+      "properties": {"tool": {"type": "string", "minLength": 1}, "args": {"type": "object"}, "observation": {}, "error": {"type": "string", "minLength": 1}},
+      "oneOf": [{"required": ["observation"]}, {"required": ["error"]}],
+      "additionalProperties": false
+    }
+  }
+}

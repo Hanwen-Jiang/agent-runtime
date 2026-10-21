@@ -1,0 +1,443 @@
+{
+  "kind": "context",
+  "id": "ctx_data_refund_rate",
+  "split": "dev",
+  "review": {
+    "status": "draft"
+  },
+  "description": "分析 Q3 退款率；schema、已算出的数字与代码位置在前三步，后面是大量原始数据行。考查 schema、数字与代码能否保住，以及会不会重复查表结构。",
+  "work_mode": "data_analysis",
+  "effective_tokens": 8000,
+  "task_state": {
+    "task_id": "tsk_000000000000000000000008SD",
+    "session_id": "ses_000000000000000000000008SD",
+    "goal": "分析 Q3 各区域退款率并找出异常",
+    "done_when": "给出各区域退款率与异常区域，附生成数字的代码",
+    "constraints": {
+      "effect_ceiling": "read",
+      "budget_usd": 1.5
+    },
+    "facts": [
+      "数据口径：退款以 refunded_at 非空为准"
+    ],
+    "assumptions": [
+      "退款上升与 9 月促销有关"
+    ],
+    "open_questions": [
+      "促销订单是否单独打标"
+    ]
+  },
+  "task_plan": {
+    "triage": {
+      "level": "full",
+      "task_family": "analytics.attribution",
+      "confidence": 0.8
+    },
+    "horizon": "per_stage",
+    "context": {
+      "work_mode": "data_analysis"
+    }
+  },
+  "node": {
+    "id": "work",
+    "kind": "goal",
+    "goal": "分析 Q3 各区域退款率并找出异常",
+    "done_when": "给出各区域退款率与异常区域，附生成数字的代码",
+    "mode": "tool_loop",
+    "tools": [
+      "sql_query",
+      "python_run",
+      "file_write"
+    ],
+    "output_schema": {
+      "type": "object"
+    },
+    "max_iterations": 80
+  },
+  "history": [
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "DESCRIBE orders_q3"
+      },
+      "observation": {
+        "schema": "orders_q3(order_id, region, refunded_at, amount)",
+        "columns": [
+          "order_id",
+          "region",
+          "refunded_at",
+          "amount"
+        ],
+        "row_count": 128406
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT region, COUNT(refunded_at) * 1.0 / COUNT(*) FROM orders_q3 GROUP BY region"
+      },
+      "observation": {
+        "result": "华东 0.047；华北 0.031；华南 0.029",
+        "query": "按区域算退款率",
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed"
+      }
+    },
+    {
+      "tool": "python_run",
+      "args": {
+        "file": "analysis/refund_rate.py"
+      },
+      "observation": {
+        "code": "analysis/refund_rate.py",
+        "value": "华东区 Q3 退款率 4.7%",
+        "result": "已保存到 analysis/refund_rate.py"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 30"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 60"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 90"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 120"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 150"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 180"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 210"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 240"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 270"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 300"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 330"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 360"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 390"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 420"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 450"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 480"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 510"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 540"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 570"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 600"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 630"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 660"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 690"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 720"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 750"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 780"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 810"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 840"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 870"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 900"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 930"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    },
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "SELECT * FROM orders_q3 WHERE region = '华北' LIMIT 30 OFFSET 960"
+      },
+      "observation": {
+        "row_count": 30,
+        "rows": "order_id,region,status\nO000131,华北,completed\nO000262,华北,completed\nO000393,华北,completed\nO000524,华北,completed\nO000655,华北,completed\nO000786,华北,completed\nO000917,华北,completed\nO001048,华北,completed\nO001179,华北,completed\nO0013010,华北,completed\nO0014311,华北,completed\nO0015612,华北,completed\nO0016913,华北,completed\nO0018214,华北,completed\nO0019515,华北,completed\nO0020816,华北,completed\nO0022117,华北,completed\nO0023418,华北,completed\nO0024719,华北,completed\nO0026020,华北,completed\nO0027321,华北,completed\nO0028622,华北,completed\nO0029923,华北,completed\nO0031224,华北,completed\nO0032525,华北,completed\nO0033826,华北,completed\nO0035127,华北,completed\nO0036428,华北,completed\nO0037729,华北,completed\nO0039030,华北,completed"
+      }
+    }
+  ],
+  "probes": [
+    {
+      "question": "华东区 Q3 退款率是多少？",
+      "answer": "4.7"
+    },
+    {
+      "question": "表示退款时间的列名是什么？",
+      "answer": "refunded_at"
+    },
+    {
+      "question": "Q3 订单表一共多少行？",
+      "answer": "128406"
+    },
+    {
+      "question": "算退款率的代码保存在哪个文件？",
+      "answer": "analysis/refund_rate.py"
+    }
+  ],
+  "completed": [
+    {
+      "tool": "sql_query",
+      "args": {
+        "query": "DESCRIBE orders_q3"
+      }
+    }
+  ]
+}
