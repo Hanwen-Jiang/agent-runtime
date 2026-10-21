@@ -1,6 +1,7 @@
 """S-11 验收“在 S-08 中加入长任务样本”的可自动检查部分：样本合格、覆盖每种工作模式、确实长到会触发摘要。
 
-标注（Probe 题与已完成的动作）要经人确认：确认之前 test_every_context_label_is_confirmed 是严格 xfail。
+标注（Probe 题与已完成的动作）要经人确认：2026-10-21 首轮审阅后 7 条全部确认（review.status = confirmed）。
+以后改了标注或新增样本，先回到草稿（review.status = draft），test_every_context_label_is_confirmed 会失败，直到人再次确认。
 """
 
 from __future__ import annotations
@@ -54,7 +55,6 @@ def test_labels_are_grounded_in_the_trajectory() -> None:
             assert (done["tool"], json.dumps(done["args"], sort_keys=True)) in actions, f"{s.id}：已完成的动作 {done} 不在轨迹里"
 
 
-@pytest.mark.xfail(strict=True, reason="长任务样本的标注还没经人确认（S-11）")
 def test_every_context_label_is_confirmed() -> None:
     assert [s.id for s in samples() if not s.confirmed] == []
 
