@@ -4,7 +4,9 @@
   "split": "holdout",
   "category": "multi_day_dev",
   "review": {
-    "status": "draft",
+    "status": "confirmed",
+    "confirmed_by": "Hanwen-Jiang",
+    "confirmed_at": "2026-10-20",
     "notes": "S-09：Planner 的输入补上了上一轮（Stage、结果与 Reviewer 的 Verdict），replan 才知道要保留哪些 Node、上次为什么卡住。第二轮的判定改为 continue：换鉴权方案是用户后来加的约束（附录 C.2），不是 Reviewer 判的 replan。"
   },
   "description": "用户插入新约束（换鉴权方案）→ replan：只重做剩余部分，已验证的注册功能（impl_signup）不重做；写操作仍由单一写者完成。",
