@@ -14,7 +14,7 @@ from agentruntime_worker.activities.types import Tenant
 from agentruntime_worker.executor.model_gateway import ModelGateway
 from agentruntime_worker.planner import prompts, validate
 from agentruntime_worker.planner.context import PlanningContext
-from agentruntime_worker.planner.triage import SIGNALS_SCHEMA, Signals, TriageDecision, decide, parse_signals
+from agentruntime_worker.planner.triage import SIGNALS_SCHEMA, Signals, TriageDecision, decide, parse_signals, reviewer_decision
 from agentruntime_worker.workflows import stage_plan as sp
 
 
@@ -95,8 +95,8 @@ class Planner:
 
     async def plan(self, request: PlanRequest) -> PlanResult:
         calls: list[ModelCall] = []
-        reviewer_replan = ((request.last_round or {}).get("verdict") or {}).get("verdict") == "replan"
-        signals = None if reviewer_replan else await self._classify(request, calls)
+        decided_by_reviewer = reviewer_decision(request.last_round, context=request.context) is not None
+        signals = None if decided_by_reviewer else await self._classify(request, calls)
         decision = decide(signals, context=request.context, last_round=request.last_round, confidence_threshold=self.config.confidence_threshold)
         if decision.level == "fast":
             stage = self._fast_stage(request, decision)
@@ -186,7 +186,16 @@ class Planner:
     # --- full 与 replan：一次强模型调用，不合格重问一次，再回退 ---
 
     def _keep_nodes(self, request: PlanRequest) -> list[str]:
-        verdict = (request.last_round or {}).get("verdict") or {}
+        """不得重做的 Node：replan 时是 Reviewer 保留的；repair 换方法时是修复范围（要修的 Node 及其下游）之外、
+        上一轮成功的 Node（S-10）。"""
+        last = request.last_round or {}
+        verdict = last.get("verdict") or {}
+        if verdict.get("verdict") == "repair" and (verdict.get("repair") or {}).get("strategy") == "change_method":
+            stage = last.get("stage") or {}
+            repaired = set(verdict["repair"].get("nodes") or [])
+            redo = repaired | sp.descendants(stage, repaired)
+            results = last.get("results") or {}
+            return sorted(str(n["id"]) for n in stage.get("nodes") or [] if n["id"] not in redo and (results.get(n["id"]) or {}).get("status") == "succeeded")
         return [str(n) for n in (verdict.get("replan") or {}).get("keep_nodes") or []]
 
     def _with_triage(self, task_plan: Any, decision: TriageDecision) -> Any:
@@ -209,6 +218,7 @@ class Planner:
             task_plan=request.task_plan,
             last_round=request.last_round,
             round_seq=request.round_seq,
+            keep_nodes=keep,
         )
         found: list[str] = []
         for attempt in range(2):

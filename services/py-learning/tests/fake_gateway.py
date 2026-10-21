@@ -1,4 +1,4 @@
-"""S-09 评测用的假 Model Gateway：分类器与规划都按脚本作答，记下每个请求。
+"""S-09、S-10 评测用的假 Model Gateway：分类器、规划与 Progress Check 都按脚本作答，记下每个请求。
 
 make() 是命令行的工厂（AR_EVAL_GATEWAY_FACTORY=fake_gateway:make）：一个“什么都答不对”的模型，
 用来证明结构校验与规则检查由代码兜底，不靠模型。
@@ -15,11 +15,12 @@ from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 
 
 class ScriptedGateway:
-    """triage、plan 是按请求返回结构化结果（dict）或文本（str）的函数；None 表示回答一段不合格的文本。"""
+    """triage、plan、review 是按请求返回结构化结果（dict）或文本（str）的函数；None 表示回答一段不合格的文本。"""
 
-    def __init__(self, *, triage: Any = None, plan: Any = None, vendor: str = "vendor_a", plan_cost_micros: int = 20_000) -> None:
+    def __init__(self, *, triage: Any = None, plan: Any = None, review: Any = None, vendor: str = "vendor_a", plan_cost_micros: int = 20_000) -> None:
         self.triage = triage
         self.plan = plan
+        self.review = review
         self.vendor = vendor
         self.plan_cost_micros = plan_cost_micros
         self.requests: list[mg.GenerateRequest] = []
@@ -27,7 +28,8 @@ class ScriptedGateway:
     async def generate(self, request: mg.GenerateRequest) -> mg.GenerateResponse:
         self.requests.append(request)
         is_triage = request.call.node_id.startswith("triage")
-        handler = self.triage if is_triage else self.plan
+        is_review = request.call.node_id.startswith("review")
+        handler = self.triage if is_triage else self.review if is_review else self.plan
         answer = handler(request) if handler else "我觉得可以这样做……"
         response = mg.GenerateResponse(
             finish_reason=mg.FINISH_REASON_STOP,
@@ -43,7 +45,7 @@ class ScriptedGateway:
         return response
 
     async def embed(self, request: mg.EmbedRequest) -> mg.EmbedResponse:
-        raise AssertionError("Planner 不做嵌入")
+        raise AssertionError("Planner 与 Reviewer 不做嵌入")
 
 
 def make() -> ScriptedGateway:

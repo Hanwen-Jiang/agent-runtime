@@ -18,7 +18,7 @@ from __future__ import annotations
 import copy
 import json
 import re
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from typing import Any
 
 EFFECT_ORDER = ("none", "read", "write_reversible", "write_irreversible")
@@ -82,6 +82,18 @@ def _node_reference(body: str) -> tuple[str, str] | None:
     if not match:
         return None
     return match.group(1), match.group(2) or ""
+
+
+def descendants(stage: Mapping[str, Any], ids: Iterable[str]) -> set[str]:
+    """ids 的全部下游（after 的传递闭包的反向），不含 ids 本身。"""
+    nodes = [n for n in stage.get("nodes", []) if isinstance(n, Mapping)]
+    found: set[str] = set()
+    frontier = set(ids)
+    while frontier:
+        nxt = {str(n.get("id")) for n in nodes if frontier & {str(d) for d in n.get("after", [])}} - found
+        found |= nxt
+        frontier = nxt
+    return found - set(ids)
 
 
 def validate_stage(stage: Mapping[str, Any], *, max_nodes: int, top_level: bool = True) -> list[str]:

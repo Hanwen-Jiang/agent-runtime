@@ -23,6 +23,9 @@ ENV_CLAIM_CHECK_THRESHOLD = "AR_CLAIM_CHECK_THRESHOLD_BYTES"
 # Planner（S-09）：stub 用 S-03 的桩 Planner（默认，端到端测试用它）；model 用真正的 Planner（经 Model Gateway）。
 ENV_PLANNER = "AR_PLANNER"
 PLANNERS = ("stub", "model")
+# Reviewer 与收尾写回（S-10）：stub 用 S-03 的桩（默认）；model 用真正的 Reviewer（经 Model Gateway）与收尾写回。
+ENV_REVIEWER = "AR_REVIEWER"
+REVIEWERS = ("stub", "model")
 
 
 @dataclass(frozen=True)
@@ -44,6 +47,8 @@ class WorkerConfig:
     claim_check_threshold: int = 64 * 1024
     # 哪个 Planner：stub 或 model（S-09）。
     planner: str = "stub"
+    # 哪个 Reviewer：stub 或 model（S-10）。
+    reviewer: str = "stub"
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> WorkerConfig:
@@ -63,6 +68,9 @@ class WorkerConfig:
         planner = env.get(ENV_PLANNER, "") or cls.planner
         if planner not in PLANNERS:
             raise ValueError(f"{ENV_PLANNER} 只能是 {'、'.join(PLANNERS)}")
+        reviewer = env.get(ENV_REVIEWER, "") or cls.reviewer
+        if reviewer not in REVIEWERS:
+            raise ValueError(f"{ENV_REVIEWER} 只能是 {'、'.join(REVIEWERS)}")
         call_log = env.get(ENV_STUB_CALL_LOG, "")
         gate_dir = env.get(ENV_STUB_GATE_DIR, "")
         data_dir = Path(env[ENV_DATA_DIR]) if env.get(ENV_DATA_DIR) else None
@@ -79,6 +87,7 @@ class WorkerConfig:
             secrets_file=Path(secrets) if secrets else (data_dir / "secrets.json" if data_dir else None),
             claim_check_threshold=threshold,
             planner=planner,
+            reviewer=reviewer,
         )
 
     def store_paths(self, root: Path) -> tuple[Path, Path]:

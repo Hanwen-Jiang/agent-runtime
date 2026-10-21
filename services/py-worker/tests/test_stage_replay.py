@@ -4,7 +4,7 @@
   当前代码都必须能回放。设 AR_UPDATE_GOLDEN_HISTORIES=1 时，从中挑出覆盖每条展开路径的历史写进 tests/histories。
 - golden 历史覆盖：并行调度、revise、ensemble（vote 与 judge）、search、template（内联与拆子工作流）、tool_loop、
   sub_agent、sub_task、写节点前的人工审批、tool_loop 里不可逆工具调用前的审批（D16）、Hook 的 deny、取消，
-  以及两种子工作流本身。
+  两种子工作流本身，以及 S-10 的 Verdict 去向（原地重试重跑、问人、rollback）。
 - Stage Runner 改变了 Task 工作流的命令序列，走 workflow.patched 版本分支：S-03 的 golden 历史仍能回放，
   新历史带版本标记，旧历史没有。
 - 把 Stage Runner 里两条标了 replay-mutation 的语句调换顺序，重放必须失败。
@@ -39,7 +39,7 @@ from agentruntime_worker.workflows.stage_runner import (
     SubAgentWorkflow,
     SubgraphWorkflow,
 )
-from agentruntime_worker.workflows.task import STAGE_RUNNER_PATCH, TaskWorkflow
+from agentruntime_worker.workflows.task import REVIEWER_PATCH, STAGE_RUNNER_PATCH, TaskWorkflow
 
 from .support import HISTORIES_DIR
 
@@ -67,7 +67,13 @@ STAGE_CASES: dict[str, tuple[str, str]] = {
     "exec_unknown": (names.TASK_WORKFLOW, r'"status":\s*"unknown"'),
     # D16：tool_loop 里调用不可逆工具前的人工审批。
     "stage_tool_loop_approval": (names.TASK_WORKFLOW, r"card_charge.*book\.\d+\.1"),
+    # S-10：Verdict 的去向——原地重试重跑同一个 Stage、问人、rollback；收尾先通知再写回。
+    # 载荷里的中文是 \u 转义的，正则只用 ASCII：原地重试的判定，加上重跑时给 Node 的 status 区注入。
+    "review_repair_rerun": (names.TASK_WORKFLOW, r'"strategy":\s*"retry_with_error".*"zone":\s*"status"'),
+    "review_escalate_human": (names.TASK_WORKFLOW, r'"question_id":\s*"_review"'),
+    "review_rollback": (names.TASK_WORKFLOW, r'"checkpoint":\s*"round_1"'),
 }
+REVIEW_CASES = ("review_repair_rerun", "review_escalate_human", "review_rollback")
 
 MUTATION_C = "# replay-mutation:C"
 MUTATION_D = "# replay-mutation:D"
@@ -153,6 +159,11 @@ def test_version_branch_keeps_old_histories_replayable() -> None:
     assert TOOL_LOOP_APPROVAL_PATCH not in history_text((HISTORIES_DIR / "stage_tool_loop.json").read_text("utf-8"))
     # 发问前先登记回复的改动也有版本分支：S-05 的发问历史没有这个标记，按旧路径回放。
     assert HUMAN_REPLY_RACE_PATCH not in history_text((HISTORIES_DIR / "exec_human_channel.json").read_text("utf-8"))
+    # S-10 改变了 Verdict 的去向与收尾的顺序：新历史带版本标记，之前的历史没有，按旧路径回放。
+    for name in REVIEW_CASES:
+        assert REVIEWER_PATCH in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"{name} 应带版本标记 {REVIEWER_PATCH}"
+    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in REVIEW_CASES)):
+        assert REVIEWER_PATCH not in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"S-10 之前的 {name} 不该有 {REVIEWER_PATCH}"
 
 
 async def test_all_golden_histories_replay_with_the_current_code() -> None:

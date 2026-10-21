@@ -37,10 +37,9 @@ async def _session_state(address: str, session_id: str) -> session_pb2.SessionSt
 
 
 def interval(stack: Stack, task_id: str) -> tuple[float, float]:
-    calls = stack.calls(task_id)
-    start = min(c["ts"] for c in calls if c["activity"] == "plan_round" and c["event"] == "start")
-    end = max(c["ts"] for c in calls if c["activity"] == "finalize_task" and c["event"] == "end")
-    return start, end
+    """Task 占着 Session 的时段：从第一次规划到交付（S-10 起收尾写回在交付之后异步进行，不算在内）。"""
+    start = min(c["ts"] for c in stack.calls(task_id) if c["activity"] == "plan_round" and c["event"] == "start")
+    return start, stack.handed_off_at(task_id)
 
 
 def max_overlap(intervals: list[tuple[float, float]]) -> int:

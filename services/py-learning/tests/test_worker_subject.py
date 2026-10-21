@@ -1,7 +1,9 @@
-"""S-09 验收：Worker 的 Planner 接进 S-08 的评测。
+"""S-09、S-10 验收：Worker 的 Planner 与 Reviewer 接进 S-08 的评测。
 
-真模型上的门槛（Triage 准确率 ≥ 90%、Stage 的 schema 通过率 100%、规则违例为 0、replan 不重做已验证的 Node）
-要等 Model Gateway 接好：设了 AR_EVAL_GATEWAY_FACTORY 才跑，否则跳过。假模型上能证明的是“结构与规则由代码兜底”。
+真模型上的门槛要等 Model Gateway 接好：设了 AR_EVAL_GATEWAY_FACTORY 才跑，否则跳过。
+- S-09（planner_subject）：Triage 准确率 ≥ 90%、Stage 的 schema 通过率 100%、规则违例为 0、replan 不重做已验证的 Node。
+- S-10（worker_subject，Planner 加 Reviewer）：Reviewer 样本上 Verdict 准确率 ≥ 85%，“该升级却原地重试”的错误为 0。
+假模型上能证明的是“结构与规则由代码兜底”。
 """
 
 from __future__ import annotations
@@ -13,9 +15,11 @@ import pytest
 
 from agentruntime_learning.evals.__main__ import main
 from agentruntime_learning.evals.cases import DEFAULT_EVAL_SET, load_eval_set
+from agentruntime_learning.evals.model import ReviewerInput
 from agentruntime_learning.evals.runner import run_eval
+from agentruntime_learning.evals.scoring import score_reviewer
 from agentruntime_learning.evals.subjects import load_subject
-from agentruntime_learning.evals.worker_subject import ENV_GATEWAY_FACTORY, EVAL_TENANT, WorkerPlannerSubject
+from agentruntime_learning.evals.worker_subject import ENV_GATEWAY_FACTORY, EVAL_TENANT, WorkerPlannerSubject, WorkerSubject
 
 from fake_gateway import ScriptedGateway
 
@@ -79,3 +83,71 @@ async def test_the_planner_meets_the_s09_thresholds_on_the_real_model(split: str
     assert planner["schema_pass_rate"] == 1.0, report.summary()
     assert planner["rule_violations"] == 0, report.summary()
     assert not [r for r in report.data["failure_reasons"] if r["code"] == "keep_nodes"], "replan 不得重做已验证的 Node"
+
+# --- S-10：Reviewer ---
+
+RETRY_IN_PLACE = {
+    "verdict": {
+        "verdict": "repair",
+        "reason": "再试一次",
+        "repair": {"nodes": ["ghost"], "strategy": "retry_with_error"},
+        "progress_check": {"criteria_met": False, "progress": False, "looping": False, "assumptions_hold": True, "next_step": "重试"},
+    },
+    "completion": 0.5,
+    "state_update": {},
+}
+"""对抗性的模型：不管看到什么都说原地重试，Node 还是编的。"""
+
+# 升级的 floor 能从结构化的输入算出来的样本：同一 Node 第 2 次失败、两次 replan 没有进展、预算用尽、写操作被策略拒绝。
+RULE_DECIDED = ("rs_repair_second_failure", "rs_early_replans", "rs_abort_budget_exhausted", "rs_denied_write")
+
+
+@pytest.mark.parametrize("split", SPLITS)
+async def test_verdicts_match_the_schema_even_when_the_model_gets_everything_wrong(split: str) -> None:
+    """Progress Check 两次都不合格时回退到规则：Verdict 照样 100% 合乎 schema，done 只来自本轮成功的 deliver 节点。"""
+    es = load_eval_set(DEFAULT_EVAL_SET)
+    report = await run_eval(es, WorkerSubject(ScriptedGateway()), split=split, reports_dir=None, compare=None)
+    metrics = report.data["metrics"]
+    assert metrics["reviewer"]["schema_pass_rate"] == 1.0, report.summary()
+    assert metrics["rounds"]["schema_pass_rate"] == 1.0, report.summary()
+    assert not [r for r in report.data["failure_reasons"] if r["code"] == "done_from_deliver"]
+    assert report.data["subject"] == "worker"
+
+
+async def test_code_floors_alone_stop_stuck_retries_where_the_rule_applies() -> None:
+    """附录 B.8 的规则由代码判定：模型永远原地重试时，这几条样本照样没有“该升级却原地重试”，判定也在可接受的范围内。"""
+    es = load_eval_set(DEFAULT_EVAL_SET)
+    samples = {s.id: s for s in es.reviewer_samples}
+    subject = WorkerSubject(ScriptedGateway(review=lambda _r: RETRY_IN_PLACE))
+    for sample_id in RULE_DECIDED:
+        cp = samples[sample_id].checkpoint
+        out = await subject.review(ReviewerInput(task_state=cp.task_state, stage=cp.stage, results=cp.results, history=cp.history))
+        score = score_reviewer(cp, out)
+        assert not score.failed("escalation") and not score.failed("verdict") and score.schema_ok, (sample_id, out.verdict, score.failures)
+
+
+async def test_the_reviewer_runs_on_the_eval_tenant_and_reports_usage() -> None:
+    es = load_eval_set(DEFAULT_EVAL_SET)
+    gateway = ScriptedGateway(review=lambda _r: RETRY_IN_PLACE)
+    report = await run_eval(es, WorkerSubject(gateway), split="dev", reports_dir=None, compare=None)
+    reviews = [r for r in gateway.requests if r.call.node_id.startswith("review")]
+    assert reviews and {r.tenant.tenant_id for r in reviews} == {EVAL_TENANT}
+    assert report.data["metrics"]["cost"]["total_usd"] > 0
+
+
+def test_without_a_gateway_factory_the_worker_subject_refuses_to_start(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(ENV_GATEWAY_FACTORY, raising=False)
+    with pytest.raises(ValueError, match=ENV_GATEWAY_FACTORY):
+        load_subject("agentruntime_learning.evals.worker_subject:worker_subject", load_eval_set(DEFAULT_EVAL_SET))
+
+
+@pytest.mark.skipif(not os.environ.get(ENV_GATEWAY_FACTORY), reason=f"真模型的验收跑分要等 Model Gateway 接好：设 {ENV_GATEWAY_FACTORY} 后再跑")
+@pytest.mark.parametrize("split", SPLITS)
+async def test_the_reviewer_meets_the_s10_thresholds_on_the_real_model(split: str) -> None:
+    es = load_eval_set(DEFAULT_EVAL_SET)
+    subject = load_subject("agentruntime_learning.evals.worker_subject:worker_subject", es)
+    report = await run_eval(es, subject, split=split, reports_dir=None, compare=None, require_confirmed=True)
+    metrics = report.data["metrics"]
+    assert metrics["reviewer"]["verdict_accuracy"] >= 0.85, report.summary()
+    assert metrics["stuck_retry_errors"] == 0, report.summary()
+    assert metrics["reviewer"]["schema_pass_rate"] == 1.0 and metrics["rounds"]["schema_pass_rate"] == 1.0, report.summary()

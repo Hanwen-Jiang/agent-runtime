@@ -32,6 +32,7 @@ def test_task_completes_after_the_worker_is_killed_mid_stage(stack: Stack, api: 
     assert stack.count(task_id, "plan_round", "end") == 1
     assert stack.count(task_id, "execute_model_node", "end") == 1
     assert stack.count(task_id, "review_round", "end") == 1
+    stack.wait_finalized(task_id)
     assert stack.count(task_id, "finalize_task", "end") == 1
     # Windows 上 venv 的 python.exe 是启动器，Popen 拿到的 pid 不是解释器的，所以只和被杀的那次比。
     ends = [c for c in stack.calls(task_id) if c["activity"] == "execute_model_node" and c["event"] == "end"]

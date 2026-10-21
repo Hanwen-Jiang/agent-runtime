@@ -48,7 +48,7 @@ def test_write_tasks_run_one_at_a_time(stack: Stack, api: TaskApi) -> None:
     stack.open_gate(first["taskId"])
     assert finished(api, first)["status"] == "TASK_STATUS_DONE"
     assert finished(api, second)["status"] == "TASK_STATUS_DONE"
-    assert first_ts(stack, second["taskId"], "plan_round", "start") >= first_ts(stack, first["taskId"], "finalize_task", "end")
+    assert first_ts(stack, second["taskId"], "plan_round", "start") >= stack.handed_off_at(first["taskId"])
 
 
 def test_read_only_tasks_run_in_parallel_up_to_the_limit(stack: Stack, api: TaskApi) -> None:
@@ -89,6 +89,7 @@ def test_cancel_running_task(stack: Stack, api: TaskApi) -> None:
     api.cancel(sub["taskId"], "用户取消")
     assert finished(api, sub)["status"] == "TASK_STATUS_CANCELLED"
     assert stack.count(sub["taskId"], "execute_model_node", "cancelled") == 1, "取消要传到正在运行的 activity"
+    stack.wait_finalized(sub["taskId"])
     assert stack.count(sub["taskId"], "finalize_task", "end") == 1
     assert api.query(sub["taskId"])["status"] == "TASK_STATUS_CANCELLED"
 

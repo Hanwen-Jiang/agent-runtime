@@ -311,16 +311,18 @@ async def test_reviewer_sees_only_results_state_and_criteria(harness: Harness) -
     reviews = [r for r in harness.stubs.review_inputs if r.task_id == inp.task_id]
     assert len(reviews) == 1
     review = reviews[0]
-    assert {f.name for f in dataclasses.fields(review)} == {"tenant", "task_id", "round_seq", "task_state", "stage_results", "done_when"}
+    # S-10：另带本轮执行的 Stage（判 continue 要看它的 exit_when，诊断形状要看 Node 结构）与之前各 Round 的摘要；
+    # 仍然没有 Task Plan、Triage 的理由与任何 rationale。
+    assert {f.name for f in dataclasses.fields(review)} == {"tenant", "task_id", "round_seq", "task_state", "stage_results", "done_when", "stage", "history"}
     assert review.done_when == "每个结论有数据支撑" == review.task_state["done_when"]
     assert set(review.stage_results) == {"answer"}
     answer = review.stage_results["answer"]
     assert isinstance(answer, StageResult)
     assert answer.role == "deliver" and answer.status == "succeeded" and answer.result["text"]
+    assert review.stage is not None and review.stage["exit_when"] and review.history == []
     dumped = json.dumps(dataclasses.asdict(review), ensure_ascii=False)
     assert "rationale" not in dumped, "Node 的 rationale 只写入 trace，不传给下游"
-    # Task State 本身记录各 Round 的 triage_level（附录 B.1），Reviewer 可以看；但不看 Stage 定义与规划输出。
-    assert '"exit_when"' not in dumped and '"nodes"' not in dumped, "Reviewer 不看 Planner 的规划过程"
+    assert "task_plan" not in dumped, "Reviewer 不看 Planner 的规划过程"
     results_dump = json.dumps({k: dataclasses.asdict(v) for k, v in review.stage_results.items()}, ensure_ascii=False)
     assert "triage" not in results_dump and "template" not in results_dump
 

@@ -206,6 +206,9 @@ class StageRunner:
         self._catalog = CatalogInfo()
         self._slots: asyncio.Semaphore | None = None
         self._write_lock = asyncio.Lock()
+        # S-10：重跑时给指定 Node 的注入（错误与 Reviewer 的指导）；本次运行里各次执行花的钱（Round 的成本）。
+        self._extra_injections: dict[str, list[dict[str, Any]]] = {}
+        self.spent_usd = 0.0
 
     @property
     def policy(self) -> StagePolicy:
@@ -214,8 +217,20 @@ class StageRunner:
 
     # --- Stage ---
 
-    async def run(self, stage: dict[str, Any]) -> dict[str, StageResult]:
-        """跑完一个 Stage，返回顶层 Node 的结果，按 Node id 排序。展开出的子 Node 的结果只进 trace。"""
+    async def run(
+        self,
+        stage: dict[str, Any],
+        *,
+        carried: dict[str, StageResult] | None = None,
+        injections: dict[str, list[dict[str, Any]]] | None = None,
+    ) -> dict[str, StageResult]:
+        """跑完一个 Stage，返回顶层 Node 的结果，按 Node id 排序。展开出的子 Node 的结果只进 trace。
+
+        重跑（S-10）时 carried 是沿用的结果：这些 Node 不再执行，结果照样供下游引用并一起返回；
+        injections 是给指定 Node 的额外注入。只有新的 Verdict 去向会传这两项，之前的历史不受影响。
+        """
+        carried = dict(carried or {})
+        self._extra_injections = {k: list(v) for k, v in (injections or {}).items()}
         await self._prepare(stage)
         nodes = list(stage.get("nodes", []))
         errors = sp.validate_stage(stage, max_nodes=self.policy.max_inline_nodes)
@@ -227,7 +242,9 @@ class StageRunner:
         before = await self._hooks("before_stage", list(hooks.get("before", [])), subject)
         if before.denied:
             return {n["id"]: _denied(_role(n), before.denied, status="skipped") for n in sorted(nodes, key=lambda n: n["id"])}
-        results = await self._run_dag(nodes, _Env(results={}))
+        kept = {n["id"]: carried[n["id"]] for n in nodes if n["id"] in carried}
+        results = await self._run_dag([n for n in nodes if n["id"] not in kept], _Env(results=dict(kept)))
+        results = {**kept, **results}
         after = await self._hooks("after_stage", list(hooks.get("after", [])), {**subject, "results": {k: v.status for k, v in sorted(results.items())}})
         if after.denied:
             # Stage 的产出被拒绝：结果不再往下交，由 Reviewer 判定 repair 还是 replan。
@@ -372,7 +389,7 @@ class StageRunner:
                 node = {**node, "inputs": sp.apply_patch(node.get("inputs", {}), before.input_patches)}
             except sp.PatchError as err:
                 return _denied(role, f"Hook 改写输入失败：{err}")
-        outcome = _as(await self._dispatch(node, env, before.injections), role)
+        outcome = _as(await self._dispatch(node, env, [*self._extra_injections.get(node["id"], []), *before.injections]), role)
         if outcome.status != "succeeded":
             return outcome
         after = await self._hooks("after_node", hooks["after_node"], {"node": node, "result": outcome.result})
@@ -433,8 +450,10 @@ class StageRunner:
             if effect in sp.WRITE_EFFECTS and (_timed_out(err) or _needs_reconcile(err)) and workflow.patched(RECONCILE_PATCH):
                 return await self._reconcile(node, role)
             return _failed(role, failure_message(err), failure_class(err))
-        # 只取 result；rationale 只写入 trace，不往下传（设计书 3.2.4）。
-        return StageResult(role=role, status="succeeded", result=output.get("result"))
+        # 只取 result；rationale 只写入 trace，不往下传（设计书 3.2.4）。成本计入 Round 的成本（S-10）。
+        cost = float((output.get("meta") or {}).get("cost_usd") or 0.0)
+        self.spent_usd += cost
+        return StageResult(role=role, status="succeeded", result=output.get("result"), cost_usd=cost)
 
     async def _reconcile(self, node: dict[str, Any], role: str) -> StageResult:
         try:

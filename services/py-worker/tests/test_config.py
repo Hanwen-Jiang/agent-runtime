@@ -13,6 +13,7 @@ from agentruntime_worker.config import (
     ENV_DATA_DIR,
     ENV_OBJECT_STORE_DIR,
     ENV_PLANNER,
+    ENV_REVIEWER,
     ENV_SECRETS_FILE,
     ENV_STUB_CALL_LOG,
     ENV_STUB_GATE_DIR,
@@ -124,3 +125,11 @@ def test_planner_defaults_to_the_stub_and_accepts_model() -> None:
     assert WorkerConfig.from_env({ENV_PLANNER: "model"}).planner == "model"
     with pytest.raises(ValueError, match=ENV_PLANNER):
         WorkerConfig.from_env({ENV_PLANNER: "gpt"})
+
+
+def test_reviewer_defaults_to_the_stub_and_accepts_model() -> None:
+    """S-10：AR_REVIEWER 选 Reviewer（连同收尾写回）；默认是桩，端到端测试照旧。"""
+    assert WorkerConfig.from_env({}).reviewer == "stub"
+    assert WorkerConfig.from_env({ENV_REVIEWER: "model"}).reviewer == "model"
+    with pytest.raises(ValueError, match=ENV_REVIEWER):
+        WorkerConfig.from_env({ENV_REVIEWER: "gpt"})

@@ -20,6 +20,7 @@
 | `1b3fcc9` | 设计书同步原文档 rev 40：按 D1–D16 设计缺口评审统一口径 | tool_loop 里每次调用不可逆工具前逐次人工审批；只读 Task 的 effect 上限压到 read；Task 提交时固定一个 Registry 修订号；发布门槛改为非劣效检验 |
 | `e191089` | S-08 人审第二轮：17 条确认，两条待定 | 见下表 |
 | D16 的提交 | Stage Runner 在 tool_loop 里每次调用不可逆工具前问人；`call_tool` 再查一次审批记录；S-08 评分器相应调整 | Goal Node 可以带不可逆工具，运行时逐次审批 |
+| S-10 的提交 | 设计书同步原文档 rev 44：3.2.5 Reviewer 的输入含本轮执行的 Stage；Reviewer、Verdict 去向与收尾写回，见下 | Task 工作流的 Round 循环与收尾顺序换到版本分支 `s10-reviewer` 后面 |
 
 ## 主干这边的做法
 
@@ -29,7 +30,7 @@
 | --- | --- | --- |
 | S-08 | 已完成：人审两轮后 64 条标注全部确认，S-09、S-10 的门槛可以用 `--require-confirmed` | 见下一节 |
 | S-09 | 已实现（假模型上的验收全部通过）；真模型上的跑分等 Model Gateway 接好；6 条 replan 用例补了上一轮并已复审确认 | Triage 由代码判定，小模型只给信号；full 与 replan 一次强模型调用，代码校验后重问一次再回退；Task 工作流把上一轮与 Task Plan 交给下一轮的 Planner |
-| S-10 | 未开始 | — |
+| S-10 | 已实现（假模型上的验收全部通过，含震荡测试）；真模型上的跑分等 Model Gateway 接好 | 规则先于模型，代码判定 floor 与各级次数上限；Reviewer 另看本轮执行的 Stage 与之前各 Round 的摘要；原地重试与换更强的 Tier 不回 Planner、只重跑出问题的部分；先交付再异步写回 |
 
 ## S-08 做成了什么样（S-09、S-10 会用到）
 
@@ -48,6 +49,15 @@
 - Triage 由代码按附录 C.1、C.2 判定，小模型分类器只给信号；fast 与 light 不调用强模型；full 与 replan 一次强模型调用，代码校验后重问一次，仍不合格回退到一个 tool_loop 的 Goal Node。
 - Task 工作流把上一轮（Stage、结果与 Verdict）与 Task Plan 交给下一轮的 Planner（`PlanRoundInput.last_round`、`task_plan`）；只改 activity 的输入，不改命令序列。S-10 的 Reviewer 判 replan 时，`replan.keep_nodes` 就是 Planner 不再重做的 Node。
 - 评测：`--subject agentruntime_learning.evals.worker_subject:planner_subject`，真模型经 `AR_EVAL_GATEWAY_FACTORY` 接入；在那之前假模型上能证明的是“结构与规则由代码兜底”。
+
+## S-10 做成了什么样
+
+- 代码在 `services/py-worker/src/agentruntime_worker/reviewer`；Worker 设 `AR_REVIEWER=model` 时由它接管 `review_round` 与 `finalize_task`，默认仍是桩。
+- 一次评审：代码先算硬信号与升级台账（`signals`），再算“至少要升级到哪一步”（`rules.floor`）；Progress Check 只调用一次强模型（独立上下文，材料按白名单取出，见 `prompts.review_view`），不合格重问一次，仍不合格只按规则判定；Triage 为 fast 的 Round 不调用模型。
+- 规则（附录 B.8）：有 Node 失败就不能 continue 或 done；同一 Node 失败 2 次换方法、3 次 replan；被拒绝的动作不原地重试；replan 2 次没有进展就换形状；预算用掉 80% 而完成度不到一半只能缩小范围、问人或收尾，用完只能问人或收尾。各级有次数上限（上次进展之后：原地重试 2、换方法 2、replan 2；整个 Task：换形状或 reroute 1、rollback 1、换更强的 Tier 1、问人 2），一直失败的 Task 在 12 次评审之内收尾。
+- Task 工作流（版本分支 `s10-reviewer`）按 Verdict 的去向走：原地重试与换更强的 Tier 重跑同一个 Stage 里出问题的部分，成功的 Node 结果沿用；问人经 HumanChannel，回复限定三种，超时按停止收尾；rollback 退回检查点时的 Task State；reroute 换 Recipe 回 Planner；abort 交付部分结果。Reviewer 的汇总（事实、假设、产物）写进 Task State，Round 记下成本。
+- 收尾先通知 Session 再写回：归档 Task State、经验与 Recipe 效果候选交给 Memory Service（接好之前记在进程内）、成本与 Verdict 分布写进 trace。
+- 评测：`--subject agentruntime_learning.evals.worker_subject:worker_subject`（Planner 加 Reviewer）。
 
 ## 需要你配合的
 

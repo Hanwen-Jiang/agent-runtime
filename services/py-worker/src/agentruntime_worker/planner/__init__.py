@@ -7,6 +7,7 @@
 - full 与 replan：一次强模型调用，结构化输出 Task Plan 与 Stage；代码校验（validate），不合格带上错误重问一次，
   仍不合格回退到保守规划（一个 tool_loop 的 Goal Node）。Triage 级别、Stage 的 seq 与幂等键由代码定，不由模型写。
 - replan 只重做剩余部分：上一轮 Reviewer 保留的 Node（replan.keep_nodes）不得出现在新 Stage 里。
+  Reviewer 判 repair 换方法时，修复范围之外、上一轮成功的 Node 同样不得重做（S-10）。
 - 提示按 Context Zones 分区（prompts）：固定说明与 Node Catalog 在 system 区并设缓存断点，Task Plan 与 Session
   上下文在 brief 区，本轮的消息在最后，保住提示缓存。
 

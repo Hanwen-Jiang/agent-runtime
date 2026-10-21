@@ -20,6 +20,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
@@ -27,7 +28,7 @@ from pathlib import Path
 from typing import Any
 
 from temporalio.api.enums.v1 import EventType
-from temporalio.client import Client, WorkflowHistory
+from temporalio.client import Client, WorkflowExecutionStatus, WorkflowHistory
 
 MAX_EVENTS = 2000
 DECISION_ACTIVITIES = ("plan_round", "review_round", "finalize_task")
@@ -218,7 +219,19 @@ def fetch(address: str, workflow_id: str) -> list[WorkflowHistory]:
     return asyncio.run(_fetch(address, workflow_id))
 
 
-def fetch_one(address: str, workflow_id: str) -> WorkflowHistory:
+async def _wait_closed(address: str, workflow_id: str, timeout: float) -> None:
+    """等工作流结束（最多 timeout 秒；到时不报错，交给后面的检查）。"""
+    client = await Client.connect(address)
+    handle = client.get_workflow_handle(workflow_id)
+    deadline = time.monotonic() + timeout
+    while (await handle.describe()).status == WorkflowExecutionStatus.RUNNING and time.monotonic() < deadline:
+        await asyncio.sleep(0.2)
+
+
+def fetch_one(address: str, workflow_id: str, *, wait_closed: float = 30) -> WorkflowHistory:
+    """一个 Task 工作流的历史。S-10 起 Task 先交付（task_finished）再收尾写回，客户端拿到结局时工作流可能还没结束：
+    先等它结束再取。"""
+    asyncio.run(_wait_closed(address, workflow_id, wait_closed))
     runs = fetch(address, workflow_id)
     assert len(runs) == 1, f"{workflow_id} 应只有一次运行，实际 {len(runs)} 次"
     return runs[0]

@@ -185,6 +185,15 @@ class Stack:
     def count(self, task_id: str, activity: str, event: str) -> int:
         return sum(1 for c in self.calls(task_id) if c["activity"] == activity and c["event"] == event)
 
+    def handed_off_at(self, task_id: str) -> float:
+        """写 Task 交出 Session 串行锁的时刻：交付（task_finished）紧跟在最后一次评审之后。
+        S-10 起收尾写回在交付之后异步进行，不占这把锁。"""
+        return max(c["ts"] for c in self.calls(task_id) if c["activity"] == "review_round" and c["event"] == "end")
+
+    def wait_finalized(self, task_id: str, timeout: float = 60) -> None:
+        """等收尾写回结束：S-10 起它在交付之后才做，客户端拿到结局时可能还没做完。"""
+        self.wait_call(task_id, "finalize_task", "end", timeout)
+
     def wait_call(self, task_id: str, activity: str, event: str, timeout: float = 60) -> dict[str, Any]:
         def check() -> dict[str, Any] | None:
             return next((c for c in self.calls(task_id) if c["activity"] == activity and c["event"] == event), None)

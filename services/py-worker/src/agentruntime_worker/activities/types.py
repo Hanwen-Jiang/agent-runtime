@@ -82,6 +82,9 @@ class StageResult:
     failure_class: str = ""
     error: str = ""
     quality: dict[str, Any] | None = None
+    # 直接执行这个 Node 花的钱（Node Executor 的 meta.cost_usd，S-10）。质量包装与展开出的子 Node 的成本
+    # 只计入 Round 的成本（Stage Runner 的 spent_usd）。
+    cost_usd: float = 0.0
 
 
 @dataclass
@@ -249,7 +252,11 @@ class HookCall:
 
 @dataclass
 class ReviewRoundInput:
-    """Reviewer 的输入只有 Stage 结果、Task State 与验收条件（设计书 3.2.1 第 4 条）。"""
+    """Reviewer 的输入只有 Stage 结果、Task State 与验收条件（设计书 3.2.1 第 4 条），不含 Planner 的规划过程。
+
+    S-10 另带本轮执行的 Stage（判 continue 要看 exit_when，诊断形状、选修复范围要看 Node 结构）与之前各 Round 的摘要
+    （history：Verdict、升级的步骤与失败的 Node，由工作流从 Task State 与之前的结果得出）。S-10 之前的历史里没有这两项。
+    """
 
     tenant: Tenant
     task_id: str
@@ -257,6 +264,17 @@ class ReviewRoundInput:
     task_state: dict[str, Any]
     stage_results: dict[str, StageResult]
     done_when: str
+    stage: dict[str, Any] | None = None
+    history: list[dict[str, Any]] = field(default_factory=list)
+
+
+@dataclass
+class ReviewRoundOutput:
+    """Reviewer 的输出（S-10）：Verdict（verdict.schema.json），以及要写进 Task State 的汇总
+    （facts、assumptions_verified、assumptions_broken、open_questions、artifacts）。S-03 的桩只返回 Verdict 本身。"""
+
+    verdict: dict[str, Any]
+    state_update: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -271,3 +289,5 @@ class FinalizeTaskInput:
     verdict: dict[str, Any] | None = None
     deliver_node: str = ""
     artifacts: list[str] = field(default_factory=list)
+    # 各 Round 的 Stage 摘要：{"seq", "goal", "nodes"（顶层 Node 数）, "tiers"}，写回 Recipe 的效果用（S-10）。
+    stages: list[dict[str, Any]] = field(default_factory=list)

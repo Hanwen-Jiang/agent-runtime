@@ -74,7 +74,7 @@ def _brief(context: PlanningContext, decision: TriageDecision, task_plan: dict[s
     return "\n".join(lines)
 
 
-def _round(message: str, round_seq: int, task_state: dict[str, Any] | None, last_round: dict[str, Any] | None) -> str:
+def _round(message: str, round_seq: int, task_state: dict[str, Any] | None, last_round: dict[str, Any] | None, keep_nodes: list[str] | None) -> str:
     lines = [f"用户消息：{message}", f"本轮是第 {round_seq} 轮。"]
     if task_state:
         lines.append(f"Task State：{_dump(task_state)}")
@@ -83,7 +83,13 @@ def _round(message: str, round_seq: int, task_state: dict[str, Any] | None, last
         lines.append(f"上一轮的 Stage：{_dump(last_round.get('stage'))}")
         lines.append(f"上一轮的结果：{_dump(last_round.get('results'))}")
         lines.append(f"上一轮 Reviewer 的判定：{_dump(verdict)}")
-        keep = (verdict.get("replan") or {}).get("keep_nodes") or []
+        reply = last_round.get("human_reply") or {}
+        if reply:
+            lines.append(f"Reviewer 问了人，人的回复：{reply.get('option', '')}" + (f"；指导：{reply['guidance']}" if reply.get("guidance") else ""))
+        repair = verdict.get("repair") or {}
+        if repair.get("strategy") == "change_method":
+            lines.append(f"要换方法重做的 Node：{'、'.join(repair.get('nodes') or [])}" + (f"；Reviewer 的指导：{repair['guidance']}" if repair.get("guidance") else ""))
+        keep = keep_nodes if keep_nodes is not None else (verdict.get("replan") or {}).get("keep_nodes") or []
         if keep:
             lines.append(f"要保留的已验证 Node（不要再安排）：{'、'.join(keep)}")
         stuck = (verdict.get("replan") or {}).get("stuck_reason")
@@ -115,11 +121,12 @@ def planning_messages(
     task_plan: dict[str, Any] | None,
     last_round: dict[str, Any] | None,
     round_seq: int,
+    keep_nodes: list[str] | None = None,
 ) -> list[mg.ChatMessage]:
     return [
         *system_zone(catalog),
         mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=_brief(context, decision, task_plan)),
-        mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=_round(message, round_seq, task_state, last_round)),
+        mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=_round(message, round_seq, task_state, last_round, keep_nodes)),
     ]
 
 

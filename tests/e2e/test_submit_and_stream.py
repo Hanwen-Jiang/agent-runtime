@@ -24,6 +24,7 @@ def test_submit_streams_the_result(stack: Stack, api: TaskApi) -> None:
     assert result["deliver_node_id"] == "answer"
     assert result["deliverable"]["value"]["text"]
 
+    stack.wait_finalized(sub["taskId"])  # S-10 起先交付再写回
     order = [c["activity"] for c in stack.calls(sub["taskId"]) if c["event"] == "start"]
     assert order == ["plan_round", "execute_model_node", "review_round", "finalize_task"]
 

@@ -1,11 +1,14 @@
-"""把 Worker 的 Planner（S-09）接进评测：python -m agentruntime_learning.evals run --subject agentruntime_learning.evals.worker_subject:planner_subject
+"""把 Worker 的 Planner（S-09）与 Reviewer（S-10）接进评测：
+
+    python -m agentruntime_learning.evals run --subject agentruntime_learning.evals.worker_subject:worker_subject
 
 - plan：S-08 的 PlannerInput 转成 Planner 的规划请求（评测专用租户 evals；Round 序号按 Task State 里已有的 Round 推出），
   模型调用的计量转成 Usage。
-- review：S-10 之前用基线的 Reviewer；S-09 的门槛只看 Planner 的指标。
+- review：worker_subject 用 Worker 的 Reviewer（S-10）：ReviewerInput 转成评审请求，reroute 按评测集 Catalog 的 Recipe
+  校验（风险取用例里 Recipe 缓存记的最高风险，没记的按 read）；planner_subject 仍用基线的 Reviewer（S-09 的门槛只看 Planner）。
 
 真模型经 Model Gateway 调用：环境变量 AR_EVAL_GATEWAY_FACTORY 给出 <模块>:<工厂函数>，工厂函数不带参数、返回
-ModelGateway。没设时 planner_subject 报错，不悄悄换成假模型。
+ModelGateway。没设时两个工厂都报错，不悄悄换成假模型。
 """
 
 from __future__ import annotations
@@ -17,8 +20,11 @@ from agentruntime_worker.activities.types import Tenant
 from agentruntime_worker.executor.model_gateway import ModelGateway
 from agentruntime_worker.planner.context import CatalogView, PlanningContext, RecipeEntry
 from agentruntime_worker.planner.planner import Planner, PlannerConfig, PlanRequest
+from agentruntime_worker.reviewer.reviewer import Reviewer, ReviewerConfig, ReviewRequest
+from agentruntime_worker.reviewer.rules import ReviewCatalog
 
 from agentruntime_learning.evals import stages
+from agentruntime_learning.evals.cases import DEFAULT_EVAL_SET, EvalSet, load_eval_set
 from agentruntime_learning.evals.model import PlannerInput, PlannerOutput, ReviewerInput, ReviewerOutput, Subject, Usage
 from agentruntime_learning.evals.subjects import BaselineSubject
 
@@ -79,11 +85,65 @@ class WorkerPlannerSubject:
         return await self.reviewer.review(inp)
 
 
-def planner_subject() -> Subject:
-    """命令行用的工厂：按 AR_EVAL_GATEWAY_FACTORY 拿到 Model Gateway。"""
+def eval_recipes(es: EvalSet) -> dict[str, str]:
+    """评测集 Catalog 里的 Recipe → 风险：取用例里 Recipe 缓存记的最高风险，没记的按 read。"""
+    risks: dict[str, str] = {name: "read" for name in es.catalog.recipes}
+    for case in es.task_cases:
+        for entry in case.planner_input["context"].get("recipes", []):
+            name, risk = entry["recipe"], entry.get("risk", "read")
+            if name in risks and stages.rank(risk) > stages.rank(risks[name]):
+                risks[name] = risk
+    return risks
+
+
+class WorkerSubject(WorkerPlannerSubject):
+    """Planner 加 Reviewer（S-10）：整个 Task Loop 的决策都用 Worker 的实现。"""
+
+    name = "worker"
+
+    def __init__(
+        self,
+        gateway: ModelGateway,
+        config: PlannerConfig | None = None,
+        *,
+        reviewer_config: ReviewerConfig | None = None,
+        recipes: dict[str, str] | None = None,
+    ) -> None:
+        super().__init__(gateway, config)
+        self.worker_reviewer = Reviewer(gateway, reviewer_config)
+        self.recipes = recipes if recipes is not None else eval_recipes(load_eval_set(DEFAULT_EVAL_SET))
+
+    async def review(self, inp: ReviewerInput) -> ReviewerOutput:
+        state = inp.task_state
+        ceiling = str((state.get("constraints") or {}).get("effect_ceiling") or "read")
+        result = await self.worker_reviewer.review(
+            ReviewRequest(
+                tenant=Tenant(tenant_id=EVAL_TENANT, session_id=str(state.get("session_id", ""))),
+                task_id=str(state.get("task_id") or stages.EVAL_TASK_ID),
+                round_seq=max(len(state.get("rounds") or []), 1),
+                task_state=state,
+                stage=inp.stage,
+                results=inp.results,
+                history=list(inp.history),
+                catalog=ReviewCatalog(recipes=dict(self.recipes), effect_ceiling=ceiling),
+            )
+        )
+        return ReviewerOutput(verdict=result.verdict, usage=[Usage(tier=c.tier, vendor=c.vendor, cost_usd=c.cost_usd) for c in result.calls])
+
+
+def _gateway() -> ModelGateway:
     spec = os.environ.get(ENV_GATEWAY_FACTORY, "")
     module_name, sep, attr = spec.partition(":")
     if not sep or not module_name or not attr:
-        raise ValueError(f"要用真模型评测 Planner，请设 {ENV_GATEWAY_FACTORY}=<模块>:<工厂函数>（工厂函数返回 Model Gateway）")
-    gateway = getattr(importlib.import_module(module_name), attr)()
-    return WorkerPlannerSubject(gateway)
+        raise ValueError(f"要用真模型评测 Worker 的 Planner 与 Reviewer，请设 {ENV_GATEWAY_FACTORY}=<模块>:<工厂函数>（工厂函数返回 Model Gateway）")
+    return getattr(importlib.import_module(module_name), attr)()
+
+
+def worker_subject() -> Subject:
+    """命令行用的工厂：按 AR_EVAL_GATEWAY_FACTORY 拿到 Model Gateway，Planner 与 Reviewer 都用 Worker 的实现。"""
+    return WorkerSubject(_gateway())
+
+
+def planner_subject() -> Subject:
+    """命令行用的工厂：按 AR_EVAL_GATEWAY_FACTORY 拿到 Model Gateway；Reviewer 用基线（S-09 的门槛只看 Planner）。"""
+    return WorkerPlannerSubject(_gateway())

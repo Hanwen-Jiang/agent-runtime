@@ -14,10 +14,11 @@ import json
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
+from datetime import timedelta
 from typing import Any
 
 import pytest_asyncio
-from temporalio import activity
+from temporalio import activity, workflow
 from temporalio.client import Client, WorkflowHandle
 from temporalio.exceptions import ApplicationError
 from temporalio.testing import WorkflowEnvironment
@@ -159,6 +160,12 @@ class Script:
     hook_overrides: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
     # 发问时就回复（模拟秒回）：在 ask_human activity 返回之前调用
     on_question: Callable[[HumanQuestion], Awaitable[None]] | None = None
+    # S-10：给了就由它给出判定（ReviewRoundOutput 或旧格式的 Verdict），否则按 plans 与 deliver 判定
+    reviewer: Callable[[ReviewRoundInput], Awaitable[Any]] | None = None
+    # S-10：给了就按规划请求生成 Stage，否则按 plans 的第 round_seq 个
+    plan_for: Callable[[PlanRoundInput], dict[str, Any]] | None = None
+    # S-10：收尾写回按这个消息失败（不可重试）
+    finalize_error: str = ""
 
     calls: list[Call] = field(default_factory=list)
     hook_calls: list[HookCall] = field(default_factory=list)
@@ -252,11 +259,15 @@ class Script:
         scenario = str(inp.inputs.get("scenario") or "main")
         self.scenario_of[inp.task_id] = scenario
         self.plan_inputs.append(inp)
+        if self.plan_for is not None:
+            return PlanRoundOutput(stage=self.plan_for(inp), triage_level="full")
         return PlanRoundOutput(stage=copy.deepcopy(self.plans[scenario][inp.round_seq - 1]), triage_level="full")
 
     @activity.defn(name=names.REVIEW_ROUND)
-    async def review_round(self, inp: ReviewRoundInput) -> dict[str, Any]:
+    async def review_round(self, inp: ReviewRoundInput) -> Any:
         self.reviews.append(inp)
+        if self.reviewer is not None:
+            return await self.reviewer(inp)
         scenario = self.scenario_of[inp.task_id]
         if inp.round_seq < len(self.plans[scenario]):
             return {"verdict": "continue", "reason": "脚本：进入下一轮"}
@@ -269,6 +280,8 @@ class Script:
     @activity.defn(name=names.FINALIZE_TASK)
     async def finalize_task(self, inp: FinalizeTaskInput) -> None:
         self.finalized.append(inp)
+        if self.finalize_error:
+            raise ApplicationError(self.finalize_error, type="write_back_failed", non_retryable=True)
 
     @activity.defn(name=names.LOAD_STAGE_POLICY)
     async def load_stage_policy(self, inp: StagePolicyRequest) -> StagePolicy:
@@ -355,6 +368,29 @@ class Script:
         }
 
 
+SESSION_QUEUE = "stage-session"
+
+
+@workflow.defn(name=names.SESSION_WORKFLOW, sandboxed=False)
+class StandInSession:
+    """Go 的 Session 工作流的替身：把 Task 作为子工作流启动，返回收到的第一个 task_finished（S-10 的收尾顺序要用）。"""
+
+    def __init__(self) -> None:
+        self._finished: list[task_pb2.TaskWorkflowResult] = []
+
+    @workflow.run
+    async def run(self, task: task_pb2.TaskWorkflowInput) -> task_pb2.TaskWorkflowResult:
+        await workflow.start_child_workflow(
+            names.TASK_WORKFLOW, task, id=task.task_id, task_queue=names.TASK_QUEUE, parent_close_policy=workflow.ParentClosePolicy.ABANDON
+        )
+        await workflow.wait_condition(lambda: bool(self._finished), timeout=timedelta(seconds=60))
+        return self._finished[0]
+
+    @workflow.signal(name=names.TASK_FINISHED_SIGNAL)
+    def task_finished(self, result: task_pb2.TaskWorkflowResult) -> None:
+        self._finished.append(result)
+
+
 class StageHarness:
     def __init__(self, client: Client, script: Script) -> None:
         self.client = client
@@ -372,6 +408,15 @@ class StageHarness:
     async def run(self, *, scenario: str = "main", **kwargs: Any) -> tuple[task_pb2.TaskWorkflowInput, task_pb2.TaskWorkflowResult]:
         inp, handle = await self.start(scenario=scenario, **kwargs)
         return inp, await asyncio.wait_for(handle.result(), timeout=60)
+
+    async def start_via_session(self, *, scenario: str = "main", **kwargs: Any) -> tuple[task_pb2.TaskWorkflowInput, WorkflowHandle[Any, Any]]:
+        """经 Session 替身启动：Task 是它的子工作流，收尾时给它发 task_finished。返回 Session 替身的句柄。"""
+        inp = task_input(scenario=scenario, **kwargs)
+        session = await self.client.start_workflow(
+            names.SESSION_WORKFLOW, inp, id=f"session-for-{inp.task_id}", task_queue=SESSION_QUEUE, result_type=task_pb2.TaskWorkflowResult
+        )
+        self.handles.extend([session, self.client.get_workflow_handle(inp.task_id)])
+        return inp, session
 
     async def wait_for(self, predicate: Callable[[], bool], what: str, timeout: float = 20) -> None:
         deadline = time.monotonic() + timeout
@@ -391,6 +436,7 @@ async def harness(temporal_env: WorkflowEnvironment) -> AsyncIterator[StageHarne
     script = Script()
     client = temporal_env.client
     workers = [
+        Worker(client, task_queue=SESSION_QUEUE, workflows=[StandInSession]),
         Worker(client, task_queue=names.TASK_QUEUE, workflows=[TaskWorkflow, SubAgentWorkflow, SubgraphWorkflow], activities=[script.run_hooks]),
         *(Worker(client, task_queue=q, activities=acts) for q, acts in script.by_queue().items()),
     ]

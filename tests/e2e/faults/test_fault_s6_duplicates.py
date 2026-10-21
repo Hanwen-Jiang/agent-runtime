@@ -93,8 +93,7 @@ def test_duplicate_task_finished_does_not_release_the_write_lock_twice(fstack: S
     assert outcome(api, running)["status"] == "TASK_STATUS_DONE"
     assert outcome(api, queued)["status"] == "TASK_STATUS_DONE"
     started = min(c["ts"] for c in fstack.calls(queued["taskId"]) if c["activity"] == "plan_round" and c["event"] == "start")
-    released = max(c["ts"] for c in fstack.calls(running["taskId"]) if c["activity"] == "finalize_task" and c["event"] == "end")
-    assert started >= released, "写 Task 依然串行"
+    assert started >= fstack.handed_off_at(running["taskId"]), "写 Task 依然串行"
 
     runs = h.fetch(fstack.temporal_address, sid)
     h.assert_session_clean(runs)
@@ -130,6 +129,7 @@ def test_duplicate_cancels_are_idempotent(fstack: Stack, api: TaskApi) -> None:
 
     assert outcome(api, sub)["status"] == "TASK_STATUS_CANCELLED"
     assert fstack.count(task_id, "execute_model_node", "cancelled") == 1
+    fstack.wait_finalized(task_id)
     assert fstack.count(task_id, "finalize_task", "end") == 1
     assert event_names(api, sub).count("task_finished") == 1
     task = h.fetch_one(fstack.temporal_address, task_id)

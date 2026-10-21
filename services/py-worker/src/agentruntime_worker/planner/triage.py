@@ -2,7 +2,8 @@
 
 分类器（小模型）只给信号；级别由 decide 按规则判定：
 
-1. 上一轮 Reviewer 判 replan → replan。
+1. 上一轮 Reviewer 的判定直接决定的（S-10，见 reviewer_decision）：replan、repair 换方法、rollback、问人后带指导重规划
+   → replan；reroute → 指定的 Recipe 命中缓存且风险不高于已授权的等级时 light，否则 full。这几种不调用分类器。
 2. 没有分类信号（分类器出错或输出不合格）→ full。
 3. 给运行中的 Task 加约束 → replan。
 4. 预计的风险（分类信号的 effect 与命中 Recipe 的风险取高）高于本 Session 已授权的等级 → full。
@@ -84,6 +85,34 @@ def _rank(effect: str) -> int:
     return sp.effect_rank(effect)
 
 
+def reviewer_decision(last_round: dict[str, Any] | None, *, context: PlanningContext, kind: str = "constraint") -> TriageDecision | None:
+    """上一轮 Reviewer 的判定直接决定 Triage 的情形（S-10，附录 B.4、B.8）；不由判定决定时返回 None，照常分诊。
+
+    - replan、repair 换方法、rollback、问人后“带指导重规划”：replan，只重做剩余部分；
+    - reroute：Reviewer 指定的 Recipe 在缓存里、最近没失败、风险不高于已授权的等级时走 light，否则 full。
+    """
+    last = last_round or {}
+    verdict = last.get("verdict") or {}
+    name = verdict.get("verdict")
+    reply = (last.get("human_reply") or {}).get("option")
+    if name == "replan":
+        return TriageDecision(level="replan", kind=kind, reasons=["上一轮 Reviewer 判定 replan，只重做剩余部分"])
+    if name == "repair" and (verdict.get("repair") or {}).get("strategy") == "change_method":
+        return TriageDecision(level="replan", kind=kind, reasons=["上一轮 Reviewer 判定换方法：重新规划要修的部分，其余保留"])
+    if name == "rollback":
+        return TriageDecision(level="replan", kind=kind, reasons=["上一轮退回了检查点：从检查点的状态重做剩余部分"])
+    if name == "escalate" and reply == "replan_with_guidance":
+        return TriageDecision(level="replan", kind=kind, reasons=["人回复带指导重规划"])
+    if name == "reroute":
+        ref = str((verdict.get("reroute") or {}).get("recipe", ""))
+        recipe = next((r for r in context.recipes if r.recipe == ref), None)
+        if recipe is not None and not recipe.recent_failure and _rank(recipe.risk) <= _rank(context.risk_authorized):
+            return TriageDecision(level="light", kind=kind, task_family=recipe.task_family, confidence=1.0, recipe=recipe, reasons=[f"Reviewer 判定换到 Recipe {ref}，命中缓存"])
+        why = "不在 Recipe 缓存里或最近失败过" if recipe is None or recipe.recent_failure else f"风险 {recipe.risk} 高于本 Session 已授权的 {context.risk_authorized}"
+        return TriageDecision(level="full", kind=kind, recipe=recipe, reasons=[f"Reviewer 判定换到 Recipe {ref}，但它{why}"])
+    return None
+
+
 def decide(
     signals: Signals | None,
     *,
@@ -92,9 +121,9 @@ def decide(
     confidence_threshold: float,
 ) -> TriageDecision:
     """按附录 C.1、C.2 的规则判定 Triage 级别。纯函数。"""
-    verdict = ((last_round or {}).get("verdict") or {}).get("verdict")
-    if verdict == "replan":
-        return TriageDecision(level="replan", kind=signals.kind if signals else "constraint", reasons=["上一轮 Reviewer 判定 replan，只重做剩余部分"])
+    forced = reviewer_decision(last_round, context=context, kind=signals.kind if signals else "constraint")
+    if forced is not None:
+        return forced
     if signals is None:
         return TriageDecision(level="full", kind="new_task", reasons=["分诊没有拿到合格的信号，按 full 规划"])
     base = {"kind": signals.kind, "task_family": signals.task_family, "confidence": signals.confidence}

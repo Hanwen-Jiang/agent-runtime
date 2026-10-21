@@ -38,6 +38,7 @@ def test_worker_killed_during_model_node_task_finishes_without_redoing_steps(fst
     # 外部副作用：model 节点只有最后一次 attempt 完成；Planner、Reviewer、收尾各一次。没有写操作。
     assert fstack.count(task_id, "plan_round", "end") == 1
     assert fstack.count(task_id, "review_round", "end") == 1
+    fstack.wait_finalized(task_id)
     assert fstack.count(task_id, "finalize_task", "end") == 1
     assert fstack.count(task_id, "execute_model_node", "end") == 1
     assert fstack.count(task_id, "execute_model_node", "start") == kills + 1

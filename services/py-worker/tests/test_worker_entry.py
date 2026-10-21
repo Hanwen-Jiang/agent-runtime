@@ -83,6 +83,20 @@ def test_the_model_planner_takes_over_plan_round_only_when_asked() -> None:
     assert isinstance(model[names.REVIEW_ROUND].__self__, StubActivities)
 
 
+def test_the_model_reviewer_takes_over_review_and_wrap_up_only_when_asked() -> None:
+    """S-10：AR_REVIEWER=model 时 review_round 与 finalize_task 换成真正的 Reviewer 与收尾写回，其余仍按原样。"""
+    from agentruntime_worker.activities.stubs import StubActivities
+    from agentruntime_worker.reviewer.activities import ReviewerActivities
+
+    default = decision_activities(WorkerConfig())
+    model = decision_activities(WorkerConfig(reviewer="model"))
+    for name in (names.REVIEW_ROUND, names.FINALIZE_TASK):
+        assert isinstance(default[name].__self__, StubActivities)
+        assert isinstance(model[name].__self__, ReviewerActivities)
+    assert isinstance(model[names.PLAN_ROUND].__self__, StubActivities), "Planner 与 Reviewer 各自开关"
+    assert set(model) == set(default)
+
+
 @pytest.mark.temporal
 @pytest.mark.asyncio(loop_scope="session")
 async def test_build_workers_registers_components_per_queue(temporal_env: WorkflowEnvironment) -> None:

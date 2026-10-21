@@ -59,8 +59,13 @@ class ExecHarness:
         self.handles: list[Any] = []
 
     def one_node(self, node: dict[str, Any], *, scenario: str = "main") -> None:
+        nodes = [node]
         deliver = node["id"]
-        self.script.plans[scenario] = [{"seq": 1, "goal": "执行一个 Node", "exit_when": "完成", "nodes": [node]}]
+        if node.get("role") != "deliver":
+            # 交付只来自 role = deliver 的节点（附录 B.9；S-10 起工作流会校验）：写操作的 Node 后面接一个交付节点。
+            deliver = "report"
+            nodes.append({"id": deliver, "kind": "atomic", "template": "compute@v1", "executor": "program", "effect": "none", "role": "deliver", "after": [node["id"]]})
+        self.script.plans[scenario] = [{"seq": 1, "goal": "执行一个 Node", "exit_when": "完成", "nodes": nodes}]
         self.script.deliver[scenario] = deliver
 
     async def start(self, **kwargs: Any) -> tuple[task_pb2.TaskWorkflowInput, Any]:
