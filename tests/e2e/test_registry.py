@@ -99,29 +99,41 @@ def pinned(api: TaskApi, task_id: str) -> dict[str, Any]:
     return api.query(task_id)["taskState"]["value"]["pinned"]
 
 
-async def release_answer_v2(address: str) -> str:
+async def default_version(address: str, name: str) -> str:
+    """当前的默认版本。端到端环境在整个会话里共用：别的用例可能已经发布过，版本号不一定从 v1 起。"""
+    client = GrpcRegistry(address)
+    try:
+        return (await client.get_node_template(Tenant(tenant_id="t1", user_id="u1"), name)).version
+    finally:
+        await client.aclose()
+
+
+async def release_answer_v2(address: str, current: str) -> str:
     client = GrpcRegistry(address, publish_token=TOKEN)
     try:
         published = await client.publish(None, rg.REGISTRY_KIND_NODE_TEMPLATE, "answer", ANSWER_V2, change_note="端到端测试")
         assert published.state == rg.RELEASE_STATE_SHADOW
         promoted = await client.promote(None, rg.REGISTRY_KIND_NODE_TEMPLATE, "answer", published.version, EVIDENCE)
-        assert promoted.previous_default_version == "v1"
+        assert promoted.previous_default_version == current
         return published.version
     finally:
         await client.aclose()
 
 
 def test_tasks_pin_the_registry_defaults_and_only_new_tasks_see_a_promotion(stack: Stack, api: TaskApi, registry: str) -> None:
+    answer = asyncio.run(default_version(registry, "answer"))
     first = api.submit()
     assert finished_payload(stream_until_finished(first["eventsUrl"], api.token or ""))["status"] == "TASK_STATUS_DONE"
-    expected = {"recipe": None, "node_templates": {"answer": "v1", "sql_query": "v1"}, "model_profiles": {PROFILE_ID: "v1"}}
+    # sql_query 与 Model Profile 的内容从不变，重复种下也跳过，所以一直是 v1。
+    expected = {"recipe": None, "node_templates": {"answer": answer, "sql_query": "v1"}, "model_profiles": {PROFILE_ID: "v1"}}
     assert pinned(api, first["taskId"]) == expected, "Task State 里固定的是 Registry 在提交那一刻的默认版本"
 
-    assert asyncio.run(release_answer_v2(registry)) == "v2"
+    released = asyncio.run(release_answer_v2(registry, answer))
+    assert released != answer
 
     second = api.submit()
     assert finished_payload(stream_until_finished(second["eventsUrl"], api.token or ""))["status"] == "TASK_STATUS_DONE"
-    assert pinned(api, second["taskId"])["node_templates"] == {"answer": "v2", "sql_query": "v1"}, "晋升之后的新 Task 用新版本"
+    assert pinned(api, second["taskId"])["node_templates"] == {"answer": released, "sql_query": "v1"}, "晋升之后的新 Task 用新版本"
     assert pinned(api, first["taskId"]) == expected, "先提交的 Task 不受影响"
 
 
@@ -131,7 +143,8 @@ def test_the_python_client_reads_and_writes_the_go_registry(registry: str) -> No
         writer = GrpcRegistry(registry, publish_token="not-the-token")
         try:
             templates = await reader.list_node_templates(Tenant(tenant_id="t1", user_id="u1"), None)
-            assert {(t.name, t.version) for t in templates} >= {("answer", "v1"), ("sql_query", "v1")}
+            assert {t.name for t in templates} >= {"answer", "sql_query"}
+            assert all(t.state == rg.RELEASE_STATE_DEFAULT for t in templates), "不带固定版本时列的是默认版本"
             with pytest.raises(DeniedError) as caught:
                 await writer.publish(None, rg.REGISTRY_KIND_NODE_TEMPLATE, "answer", ANSWER_V2)
             assert "not-the-token" not in str(caught.value) and TOKEN not in str(caught.value)
