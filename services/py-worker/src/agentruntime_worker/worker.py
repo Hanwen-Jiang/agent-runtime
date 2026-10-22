@@ -26,7 +26,7 @@ from agentruntime_core.providers.object_store import ObjectStoreProvider
 from agentruntime_worker import names
 from agentruntime_worker.activities.stubs import StubActivities
 from agentruntime_worker.config import WorkerConfig
-from agentruntime_worker.executor.dev import data_root, dev_executor, dev_object_store, dev_secret_store
+from agentruntime_worker.executor.dev import closing_model_gateways, data_root, dev_executor, dev_object_store, dev_secret_store
 from agentruntime_worker.executor.node_executor import NodeExecutor
 from agentruntime_worker.executor.tool_loop import dev_tool_loop
 from agentruntime_worker.planner.activities import dev_planner
@@ -146,8 +146,13 @@ def build_workers(
 
 
 async def serve(config: WorkerConfig, queues: Sequence[str]) -> None:
+    """连上 Temporal，每个队列起一个 Worker，一直运行到被取消（Ctrl+C 时 asyncio.run 取消它）。
+
+    退出时（包括被取消、Worker 出错）关闭本进程为 Node Executor、Planner、Reviewer、tool_loop 创建的 Model Gateway 客户端
+    （GrpcModelGateway.aclose；同一地址共用一个）；桩模型 StubModelGateway 没有要关的东西。
+    """
     client = await connect(config)
-    async with contextlib.AsyncExitStack() as stack:
+    async with closing_model_gateways(), contextlib.AsyncExitStack() as stack:
         for worker in build_workers(client, config, queues):
             await stack.enter_async_context(worker)
         await asyncio.Event().wait()

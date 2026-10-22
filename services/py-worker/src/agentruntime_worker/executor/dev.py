@@ -1,4 +1,5 @@
-"""开发环境的 Node Executor：依赖全部用 S-02 的开发实现，模型用桩（StubModelGateway）。
+"""开发环境的 Node Executor：依赖全部用 S-02 的开发实现；模型经 model_gateway(config)：设了 AR_MODEL_GATEWAY_ADDRESS
+时是到 go-model-gateway 的 GrpcModelGateway，没设时是桩（StubModelGateway）。
 
 数据放在 WorkerConfig.data_dir（没配时用临时目录）：objects/（ObjectStore）、secrets.json（SecretStore）、sandbox/。
 ObjectStore 与 SecretStore 的位置可以单独配置（AR_OBJECT_STORE_DIR、AR_SECRETS_FILE），与 task-service 共用，
@@ -8,10 +9,13 @@ human 节点的问题打印到标准错误；回复由 TemporalReplySink 以 hum
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import logging
 import os
 import sys
 import tempfile
+from collections.abc import AsyncIterator
 from pathlib import Path
 
 from google.protobuf import timestamp_pb2
@@ -31,6 +35,8 @@ from agentruntime_core.providers.object_store import ObjectStoreProvider
 from agentruntime_worker import names
 from agentruntime_worker.activities.stubs import StubModelGateway
 from agentruntime_worker.config import WorkerConfig
+from agentruntime_worker.executor.grpc_gateway import GrpcModelGateway
+from agentruntime_worker.executor.model_gateway import ModelGateway
 from agentruntime_worker.executor.node_executor import ExecutorConfig, ExecutorDeps, NodeExecutor, workflow_question_id
 from agentruntime_worker.executor.schemas import DictSchemaResolver
 
@@ -63,6 +69,37 @@ class _LoggingSink:
 
     async def deliver(self, reply: Reply) -> None:
         logger.warning("没有 Temporal 客户端，丢弃人工回复：%s", reply.question_id)
+
+
+_opened: contextvars.ContextVar[list[GrpcModelGateway] | None] = contextvars.ContextVar("opened_model_gateways", default=None)
+
+
+def model_gateway(config: WorkerConfig) -> ModelGateway:
+    """Node Executor、Planner、Reviewer、tool_loop 共用的模型出口：设了 AR_MODEL_GATEWAY_ADDRESS 时是 GrpcModelGateway，
+    否则是桩模型。在 closing_model_gateways() 里组装时，同一地址只建一个客户端，退出时统一关闭。"""
+    if not config.model_gateway_address:
+        return StubModelGateway(config)
+    opened = _opened.get()
+    for gateway in opened or ():
+        if gateway.address == config.model_gateway_address:
+            return gateway
+    gateway = GrpcModelGateway(config.model_gateway_address)
+    if opened is not None:
+        opened.append(gateway)
+    return gateway
+
+
+@contextlib.asynccontextmanager
+async def closing_model_gateways() -> AsyncIterator[list[GrpcModelGateway]]:
+    """在这里面经 model_gateway() 建的 GrpcModelGateway 都记下来，退出时（包括被取消）逐个关闭。"""
+    opened: list[GrpcModelGateway] = []
+    token = _opened.set(opened)
+    try:
+        yield opened
+    finally:
+        _opened.reset(token)
+        for gateway in opened:
+            await gateway.aclose()
 
 
 def data_root(config: WorkerConfig) -> Path:
@@ -98,7 +135,7 @@ def dev_executor(
         cache=InMemoryCacheProvider(),
         humans=CliHumanChannelProvider(sink, output=sys.stderr),
         telemetry=ConsoleTelemetryProvider(stream=sys.stderr),
-        models=StubModelGateway(config),
+        models=model_gateway(config),
         schemas=DictSchemaResolver({}),
         sandbox=LocalSubprocessSandboxProvider(root / "sandbox"),
     )

@@ -202,6 +202,7 @@ source = { editable = "services/py-worker" }
 dependencies = [
     { name = "agentruntime-core", extra = ["temporal"] },
     { name = "agentruntime-proto" },
+    { name = "grpcio" },
     { name = "jsonschema" },
     { name = "jsonschema-specifications" },
     { name = "protobuf" },
@@ -222,6 +223,7 @@ test = [
 requires-dist = [
     { name = "agentruntime-core", extras = ["temporal"], editable = "libs/py-core" },
     { name = "agentruntime-proto", editable = "proto/gen/python" },
+    { name = "grpcio", specifier = ">=1.84.0" },
     { name = "jsonschema", specifier = ">=4.26" },
     { name = "jsonschema", marker = "extra == 'test'", specifier = ">=4.26" },
     { name = "jsonschema-specifications", specifier = ">=2025.9.1" },

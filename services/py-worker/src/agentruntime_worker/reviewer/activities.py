@@ -13,7 +13,7 @@ from temporalio.exceptions import ApplicationError
 from agentruntime_core.dev.telemetry import ConsoleTelemetryProvider
 
 from agentruntime_worker import names
-from agentruntime_worker.activities.stubs import StubModelGateway
+from agentruntime_worker.executor.dev import model_gateway
 from agentruntime_worker.activities.types import FinalizeTaskInput, ReviewRoundInput, ReviewRoundOutput, StageResult, Tenant
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.executor.dev import data_root, dev_object_store
@@ -110,4 +110,4 @@ def dev_reviewer(config: WorkerConfig) -> ReviewerActivities:
     """
     root = data_root(config)
     wrap_up = WrapUp(objects=dev_object_store(config, root), memory=RecordingMemoryClient(), telemetry=ConsoleTelemetryProvider(stream=sys.stderr))
-    return ReviewerActivities(Reviewer(StubModelGateway(config)), StaticCatalogSource(ReviewCatalog(effect_ceiling="read")), wrap_up)
+    return ReviewerActivities(Reviewer(model_gateway(config)), StaticCatalogSource(ReviewCatalog(effect_ceiling="read")), wrap_up)

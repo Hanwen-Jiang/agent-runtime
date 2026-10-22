@@ -31,6 +31,9 @@ ENV_TOOL_LOOP = "AR_TOOL_LOOP"
 TOOL_LOOPS = ("stub", "model")
 # Context Builder 的阈值基准：模型实测的有效长度（token）。Model Profile 接好之前用这个配置（附录 G.2、G.5）。
 ENV_CONTEXT_EFFECTIVE_TOKENS = "AR_CONTEXT_EFFECTIVE_TOKENS"
+# Model Gateway 的地址（host:port，gRPC）：设了时 Node Executor、Planner、Reviewer 的模型调用都经 GrpcModelGateway；
+# 没设时用桩模型 StubModelGateway（端到端测试的默认）。
+ENV_MODEL_GATEWAY_ADDRESS = "AR_MODEL_GATEWAY_ADDRESS"
 
 
 @dataclass(frozen=True)
@@ -58,6 +61,8 @@ class WorkerConfig:
     tool_loop: str = "stub"
     # 模型实测的有效长度（token），Context Builder 的阈值按它算。
     context_effective_tokens: int = 32_000
+    # Model Gateway 的地址（AR_MODEL_GATEWAY_ADDRESS）；空表示用桩模型。
+    model_gateway_address: str = ""
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> WorkerConfig:
@@ -108,6 +113,7 @@ class WorkerConfig:
             reviewer=reviewer,
             tool_loop=tool_loop,
             context_effective_tokens=effective,
+            model_gateway_address=env.get(ENV_MODEL_GATEWAY_ADDRESS, "").strip(),
         )
 
     def store_paths(self, root: Path) -> tuple[Path, Path]:

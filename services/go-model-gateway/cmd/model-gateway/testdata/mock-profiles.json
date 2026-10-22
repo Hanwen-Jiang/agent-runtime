@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "profiles": [
+    {
+      "id": "mock/small@1", "vendor": "mock", "model": "mock-small", "class": "small",
+      "tiers": [{"name": "low", "effort": "", "thinking_budget": 0}],
+      "capabilities": ["generate", "structured", "tools", "stream"],
+      "cost": {"in_per_m": 50, "out_per_m": 100, "cache_read_per_m": 5},
+      "constraints": {"context_window": 128000, "max_output": 4096},
+      "freshness": {"price_at": "2026-10-21"}
+    },
+    {
+      "id": "mock/mid@1", "vendor": "mock", "model": "mock-small", "class": "mid",
+      "tiers": [{"name": "low", "effort": "", "thinking_budget": 0}],
+      "capabilities": ["generate", "structured", "tools", "stream"],
+      "cost": {"in_per_m": 100, "out_per_m": 200, "cache_read_per_m": 10},
+      "constraints": {"context_window": 128000, "max_output": 4096},
+      "freshness": {"price_at": "2026-10-21"}
+    },
+    {
+      "id": "mock/strong@1", "vendor": "mock", "model": "mock-small", "class": "strong",
+      "tiers": [{"name": "medium", "effort": "medium", "thinking_budget": 8192}, {"name": "high", "effort": "high", "thinking_budget": 32768}],
+      "capabilities": ["generate", "structured", "tools", "stream"],
+      "cost": {"in_per_m": 300, "out_per_m": 600, "cache_read_per_m": 30},
+      "constraints": {"context_window": 128000, "max_output": 4096},
+      "freshness": {"price_at": "2026-10-21"}
+    },
+    {
+      "id": "mock/embed@1", "vendor": "mock", "model": "mock-embed", "class": "embed",
+      "tiers": [{"name": "default"}],
+      "capabilities": ["embed"],
+      "cost": {"in_per_m": 10, "out_per_m": 0, "cache_read_per_m": 0},
+      "constraints": {"context_window": 8192, "max_output": 0},
+      "freshness": {"price_at": "2026-10-21"}
+    }
+  ]
+}

@@ -7,6 +7,8 @@ dependencies = [
     # temporal：DurableEngine 的 Temporal 适配器与 Claim-Check（S-06）。
     "agentruntime-core[temporal]",
     "agentruntime-proto",
+    # Model Gateway 的 gRPC 客户端（executor.grpc_gateway）直接用 grpcio；版本约束与 agentruntime-proto 相同。
+    "grpcio>=1.84.0",
     # Node Executor 按 output_schema 校验结果（JSON Schema 2020-12）；Planner 按 /schemas 校验规划（S-09）。
     "jsonschema>=4.26",
     "jsonschema-specifications>=2025.9.1",

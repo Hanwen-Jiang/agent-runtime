@@ -102,13 +102,13 @@ class ToolLoopActivities:
 
 
 def dev_tool_loop(config: WorkerConfig) -> ToolLoopActivities:
-    """AR_TOOL_LOOP=model 时的开发组装：真正的 tool_loop 与 Context Builder，加桩模型与开发实现的 ObjectStore。
+    """AR_TOOL_LOOP=model 时的开发组装：真正的 tool_loop 与 Context Builder，加开发实现的 ObjectStore。
 
-    Model Gateway 接好之前，桩模型不会发起工具调用，循环第一步就结束；这里只验证组装与链路，压缩效果见 S-11 的评测。
+    模型经 model_gateway(config)：设了 AR_MODEL_GATEWAY_ADDRESS 时走 Model Gateway；没设时是桩模型，桩模型不会发起工具调用，
+    循环第一步就结束，只验证组装与链路，压缩效果见 S-11 的评测。
     """
-    from agentruntime_worker.activities.stubs import StubModelGateway
-    from agentruntime_worker.executor.dev import data_root, dev_object_store
+    from agentruntime_worker.executor.dev import data_root, dev_object_store, model_gateway
 
-    gateway = StubModelGateway(config)
+    gateway = model_gateway(config)
     builder = ContextBuilder(gateway, dev_object_store(config, data_root(config)), ContextConfig(effective_tokens=config.context_effective_tokens))
     return ToolLoopActivities(ModelToolLoop(gateway, builder))

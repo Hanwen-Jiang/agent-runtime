@@ -70,7 +70,7 @@ async def test_a_bad_summary_is_retried_once_then_nothing_is_dropped(tmp_path: P
 
 async def test_summary_calls_use_the_configured_tier_and_structured_output(tmp_path: Path) -> None:
     gateway = ContextGateway(summaries=[delta(intent=["修复"])])
-    await ContextBuilder(gateway, objects(tmp_path), config(effective_tokens=4_000, summary_tier="light@low")).build(request(history(40, chars=600)))
+    await ContextBuilder(gateway, objects(tmp_path), config(effective_tokens=4_000, summary_tier="small@low")).build(request(history(40, chars=600)))
     [call] = gateway.of("summary")
-    assert call.call.tier == "light@low"
+    assert call.call.tier == "small@low"
     assert call.generation.output_schema.value.struct_value["required"] is not None

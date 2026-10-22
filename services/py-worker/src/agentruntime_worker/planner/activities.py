@@ -5,7 +5,7 @@ from __future__ import annotations
 from temporalio import activity
 
 from agentruntime_worker import names
-from agentruntime_worker.activities.stubs import StubModelGateway
+from agentruntime_worker.executor.dev import model_gateway
 from agentruntime_worker.activities.types import PlanRoundInput, PlanRoundOutput
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.planner.context import CatalogView, PlanningContext, PlanningContextSource, StaticContextSource
@@ -54,4 +54,4 @@ def dev_planner(config: WorkerConfig) -> PlannerActivities:
     这里只验证组装与链路，真模型上的跑分见 py-learning 的评测（S-08、S-09）。
     """
     catalog = CatalogView(templates={"answer@v1": ("model", "none"), "rewrite@v1": ("model", "none")})
-    return PlannerActivities(Planner(StubModelGateway(config)), StaticContextSource(PlanningContext(risk_authorized="read", effect_ceiling="read", catalog=catalog)))
+    return PlannerActivities(Planner(model_gateway(config)), StaticContextSource(PlanningContext(risk_authorized="read", effect_ceiling="read", catalog=catalog)))

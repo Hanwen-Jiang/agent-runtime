@@ -69,8 +69,8 @@ class ContextConfig:
     reset_repeats: int = 3
     excerpt_chars: int = 400
     """外置或遮蔽时留在上下文里的摘录长度。"""
-    summary_tier: str = "light@low"
-    probe_tier: str = "light@low"
+    summary_tier: str = "small@low"
+    probe_tier: str = "small@low"
     probe: bool = True
     steps: tuple[str, ...] = LADDER
     """允许用的阶梯步骤；S-11 的基线“只做 mask”是 ("offload", "mask", "prune")。"""
