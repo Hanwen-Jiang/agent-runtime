@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import dataclasses
+
 from temporalio import activity
 
 from agentruntime_worker import names
@@ -10,6 +12,7 @@ from agentruntime_worker.activities.types import PlanRoundInput, PlanRoundOutput
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.planner.context import CatalogView, PlanningContext, PlanningContextSource, StaticContextSource
 from agentruntime_worker.planner.planner import Planner, PlanRequest
+from agentruntime_worker.registry import RegistryContextSource, registry_client
 
 
 class PlannerActivities:
@@ -48,10 +51,14 @@ class PlannerActivities:
 
 
 def dev_planner(config: WorkerConfig) -> PlannerActivities:
-    """AR_PLANNER=model 时的开发组装：真正的 Planner 加桩模型与固定的上下文。
+    """AR_PLANNER=model 时的开发组装：真正的 Planner 经 model_gateway(config)（设了 AR_MODEL_GATEWAY_ADDRESS 时是真模型，否则是桩模型）。
 
-    Model Gateway 与 Registry 接好之前，桩模型答不出合格的分诊与规划，Planner 会按 full 规划并回退到保守规划；
-    这里只验证组装与链路，真模型上的跑分见 py-learning 的评测（S-08、S-09）。
+    设了 AR_REGISTRY_ADDRESS 时 Node Catalog 与 Recipe 取自 Registry（T-08），否则用固定的上下文。没接 Model Gateway 时
+    桩模型答不出合格的分诊与规划，Planner 会按 full 规划并回退到保守规划；真模型上的跑分见 py-learning 的评测（S-08、S-09）。
     """
     catalog = CatalogView(templates={"answer@v1": ("model", "none"), "rewrite@v1": ("model", "none")})
-    return PlannerActivities(Planner(model_gateway(config)), StaticContextSource(PlanningContext(risk_authorized="read", effect_ceiling="read", catalog=catalog)))
+    defaults = PlanningContext(risk_authorized="read", effect_ceiling="read", catalog=catalog)
+    contexts: PlanningContextSource = StaticContextSource(defaults)
+    if config.registry_address:
+        contexts = RegistryContextSource(registry_client(config), defaults=dataclasses.replace(defaults, catalog=CatalogView()))
+    return PlannerActivities(Planner(model_gateway(config)), contexts)

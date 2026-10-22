@@ -55,6 +55,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/agentruntime/agent-runtime/libs/go-core/connecterr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/modelprovider"
 	"github.com/agentruntime/agent-runtime/libs/go-core/tenancy"
@@ -488,15 +489,15 @@ func (c *call) generateResponse(cand router.Candidate, r modelprovider.GenerateR
 func (s *Server) Generate(ctx context.Context, req *connect.Request[modelgatewayv1.GenerateRequest]) (*connect.Response[modelgatewayv1.GenerateResponse], error) {
 	m := req.Msg
 	if err := checkTenant(m.GetTenant()); err != nil {
-		return nil, ConnectError(err)
+		return nil, connecterr.Error(err)
 	}
 	gen, err := generateRequest(m.GetGeneration())
 	if err != nil {
-		return nil, ConnectError(err)
+		return nil, connecterr.Error(err)
 	}
 	c, err := s.prepare(ctx, m.GetTenant(), m.GetCall(), "generate", router.Request{Kind: router.KindGenerate, Structured: len(gen.OutputSchema) > 0, Tools: len(gen.Tools) > 0})
 	if err != nil {
-		return nil, ConnectError(err)
+		return nil, connecterr.Error(err)
 	}
 	var result modelprovider.GenerateResult
 	cand, err := s.run(ctx, c, c.choice.Candidates, true, func(ctx context.Context, cand router.Candidate) (*commonv1.Usage, error) {
@@ -505,11 +506,11 @@ func (s *Server) Generate(ctx context.Context, req *connect.Request[modelgateway
 		return r.Usage, err
 	})
 	if err != nil {
-		return nil, ConnectError(err)
+		return nil, connecterr.Error(err)
 	}
 	out, err := c.generateResponse(cand, result)
 	if err != nil {
-		return nil, ConnectError(s.billedFailure(c, cand, result.Usage, err))
+		return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, err))
 	}
 	s.served(c, cand, out.GetUsage())
 	return connect.NewResponse(out), nil
@@ -520,15 +521,15 @@ func (s *Server) Generate(ctx context.Context, req *connect.Request[modelgateway
 func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelgatewayv1.StreamGenerateRequest], stream *connect.ServerStream[modelgatewayv1.StreamGenerateResponse]) error {
 	m := req.Msg
 	if err := checkTenant(m.GetTenant()); err != nil {
-		return ConnectError(err)
+		return connecterr.Error(err)
 	}
 	gen, err := generateRequest(m.GetGeneration())
 	if err != nil {
-		return ConnectError(err)
+		return connecterr.Error(err)
 	}
 	c, err := s.prepare(ctx, m.GetTenant(), m.GetCall(), "stream_generate", router.Request{Kind: router.KindStream, Structured: len(gen.OutputSchema) > 0, Tools: len(gen.Tools) > 0})
 	if err != nil {
-		return ConnectError(err)
+		return connecterr.Error(err)
 	}
 	// 一次尝试 = 建流并读到第一个分片；只有这之前的失败才重试与切换。每次尝试的超时也只套在第一个分片之前：
 	// 流一旦开始，长度不受 AttemptTimeout 限制，只受调用方的 deadline 限制。
@@ -564,16 +565,16 @@ func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelg
 		return nil, nil
 	})
 	if err != nil {
-		return ConnectError(err)
+		return connecterr.Error(err)
 	}
 	defer release()
 	defer open.Close()
 	for chunk, err := first, error(nil); ; chunk, err = open.Recv(ctx) {
 		if errors.Is(err, io.EOF) {
-			return ConnectError(providererr.New(providererr.Transient, "stream_truncated", "上游的流没有给出最终结果"))
+			return connecterr.Error(providererr.New(providererr.Transient, "stream_truncated", "上游的流没有给出最终结果"))
 		}
 		if err != nil {
-			return ConnectError(err)
+			return connecterr.Error(err)
 		}
 		out, final, err := c.streamChunk(cand, chunk)
 		if err != nil {
@@ -581,7 +582,7 @@ func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelg
 			if chunk.Final != nil {
 				usage = chunk.Final.Usage
 			}
-			return ConnectError(s.billedFailure(c, cand, usage, err))
+			return connecterr.Error(s.billedFailure(c, cand, usage, err))
 		}
 		if out != nil {
 			if err := stream.Send(out); err != nil {
@@ -622,14 +623,14 @@ func (c *call) streamChunk(cand router.Candidate, chunk modelprovider.Chunk) (*m
 func (s *Server) Score(ctx context.Context, req *connect.Request[modelgatewayv1.ScoreRequest]) (*connect.Response[modelgatewayv1.ScoreResponse], error) {
 	m := req.Msg
 	if err := checkTenant(m.GetTenant()); err != nil {
-		return nil, ConnectError(err)
+		return nil, connecterr.Error(err)
 	}
 	if len(m.GetCandidates()) == 0 {
-		return nil, ConnectError(invalid("empty_candidates", "没有候选"))
+		return nil, connecterr.Error(invalid("empty_candidates", "没有候选"))
 	}
 	c, err := s.prepare(ctx, m.GetTenant(), m.GetCall(), "score", router.Request{Kind: router.KindScore})
 	if err != nil {
-		return nil, ConnectError(err)
+		return nil, connecterr.Error(err)
 	}
 	var result modelprovider.ScoreResult
 	cand, err := s.run(ctx, c, c.choice.Candidates, true, func(ctx context.Context, cand router.Candidate) (*commonv1.Usage, error) {
@@ -638,10 +639,10 @@ func (s *Server) Score(ctx context.Context, req *connect.Request[modelgatewayv1.
 		return r.Usage, err
 	})
 	if err != nil {
-		return nil, ConnectError(err)
+		return nil, connecterr.Error(err)
 	}
 	if len(result.Scores) != len(m.GetCandidates()) {
-		return nil, ConnectError(s.billedFailure(c, cand, result.Usage, invalid("bad_scores", "分数与候选的个数不一致")))
+		return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, invalid("bad_scores", "分数与候选的个数不一致")))
 	}
 	out := &modelgatewayv1.ScoreResponse{Scores: result.Scores, Model: c.choiceOf(cand), Usage: priced(cand, result.Usage)}
 	s.served(c, cand, out.GetUsage())
@@ -652,21 +653,21 @@ func (s *Server) Score(ctx context.Context, req *connect.Request[modelgatewayv1.
 func (s *Server) Embed(ctx context.Context, req *connect.Request[modelgatewayv1.EmbedRequest]) (*connect.Response[modelgatewayv1.EmbedResponse], error) {
 	m := req.Msg
 	if err := checkTenant(m.GetTenant()); err != nil {
-		return nil, ConnectError(err)
+		return nil, connecterr.Error(err)
 	}
 	if len(m.GetTexts()) == 0 {
-		return nil, ConnectError(invalid("empty_texts", "没有要嵌入的文本"))
+		return nil, connecterr.Error(invalid("empty_texts", "没有要嵌入的文本"))
 	}
 	c, err := s.prepare(ctx, m.GetTenant(), m.GetCall(), "embed", router.Request{Kind: router.KindEmbed})
 	if err != nil {
-		return nil, ConnectError(err)
+		return nil, connecterr.Error(err)
 	}
 	candidates := c.choice.Candidates
 	if v := m.GetEmbeddingVersion(); v != "" {
 		// 向量不能混用：只用这一个 Profile，不切换。
 		i := slices.IndexFunc(candidates, func(cand router.Candidate) bool { return cand.Profile.ID == v })
 		if i < 0 {
-			return nil, ConnectError(invalid("embedding_version_mismatch", "embedding_version 不是可选的嵌入模型："+v))
+			return nil, connecterr.Error(invalid("embedding_version_mismatch", "embedding_version 不是可选的嵌入模型："+v))
 		}
 		candidates = candidates[i : i+1]
 	}
@@ -677,10 +678,10 @@ func (s *Server) Embed(ctx context.Context, req *connect.Request[modelgatewayv1.
 		return r.Usage, err
 	})
 	if err != nil {
-		return nil, ConnectError(err)
+		return nil, connecterr.Error(err)
 	}
 	if len(result.Vectors) != len(m.GetTexts()) {
-		return nil, ConnectError(s.billedFailure(c, cand, result.Usage, providererr.New(providererr.Transient, "bad_embeddings", "向量与文本的个数不一致")))
+		return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, providererr.New(providererr.Transient, "bad_embeddings", "向量与文本的个数不一致")))
 	}
 	out := &modelgatewayv1.EmbedResponse{EmbeddingVersion: cand.Profile.ID, Model: c.choiceOf(cand), Usage: priced(cand, result.Usage)}
 	for _, v := range result.Vectors {
@@ -702,15 +703,15 @@ func classifySchema(labels []string) json.RawMessage {
 func (s *Server) Classify(ctx context.Context, req *connect.Request[modelgatewayv1.ClassifyRequest]) (*connect.Response[modelgatewayv1.ClassifyResponse], error) {
 	m := req.Msg
 	if err := checkTenant(m.GetTenant()); err != nil {
-		return nil, ConnectError(err)
+		return nil, connecterr.Error(err)
 	}
 	labels, texts := m.GetLabels(), m.GetTexts()
 	if len(labels) == 0 || len(texts) == 0 {
-		return nil, ConnectError(invalid("empty_classify", "labels 与 texts 都不能为空"))
+		return nil, connecterr.Error(invalid("empty_classify", "labels 与 texts 都不能为空"))
 	}
 	c, err := s.prepare(ctx, m.GetTenant(), m.GetCall(), "classify", router.Request{Kind: router.KindClassify, Structured: true})
 	if err != nil {
-		return nil, ConnectError(err)
+		return nil, connecterr.Error(err)
 	}
 	var prompt strings.Builder
 	fmt.Fprintf(&prompt, "可选的类别：%s\n下面按顺序列出 %d 条文本。给每条文本选一个类别并给出 0 到 1 之间的置信度；results 按文本的顺序排列，条数与文本相同。\n", strings.Join(labels, "、"), len(texts))
@@ -728,7 +729,7 @@ func (s *Server) Classify(ctx context.Context, req *connect.Request[modelgateway
 		return r.Usage, err
 	})
 	if err != nil {
-		return nil, ConnectError(err)
+		return nil, connecterr.Error(err)
 	}
 	var parsed struct {
 		Results []struct {
@@ -737,12 +738,12 @@ func (s *Server) Classify(ctx context.Context, req *connect.Request[modelgateway
 		} `json:"results"`
 	}
 	if err := json.Unmarshal(result.Structured, &parsed); err != nil || len(parsed.Results) != len(texts) {
-		return nil, ConnectError(s.billedFailure(c, cand, result.Usage, invalid("bad_classification", "分类结果不是合法的 JSON，或条数与文本不一致")))
+		return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, invalid("bad_classification", "分类结果不是合法的 JSON，或条数与文本不一致")))
 	}
 	out := &modelgatewayv1.ClassifyResponse{Model: c.choiceOf(cand), Usage: priced(cand, result.Usage)}
 	for _, r := range parsed.Results {
 		if !slices.Contains(labels, r.Label) {
-			return nil, ConnectError(s.billedFailure(c, cand, result.Usage, invalid("bad_classification", "分类结果里有不在 labels 里的值")))
+			return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, invalid("bad_classification", "分类结果里有不在 labels 里的值")))
 		}
 		out.Results = append(out.Results, &modelgatewayv1.Classification{Label: r.Label, Confidence: min(max(r.Confidence, 0), 1)})
 	}

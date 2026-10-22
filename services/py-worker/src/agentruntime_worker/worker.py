@@ -24,12 +24,13 @@ from agentruntime_core.adapters.claim_check import ClaimCheck, WorkflowMemoResol
 from agentruntime_core.providers.object_store import ObjectStoreProvider
 
 from agentruntime_worker import names
-from agentruntime_worker.activities.stubs import StubActivities
+from agentruntime_worker.activities.stubs import StubActivities, stub_tool_effects
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.executor.dev import closing_model_gateways, data_root, dev_executor, dev_object_store, dev_secret_store
 from agentruntime_worker.executor.node_executor import NodeExecutor
 from agentruntime_worker.executor.tool_loop import dev_tool_loop
 from agentruntime_worker.planner.activities import dev_planner
+from agentruntime_worker.registry import RegistryCatalog, closing_registries, registry_client
 from agentruntime_worker.reviewer.activities import dev_reviewer
 from agentruntime_worker.workflows.stage_runner import SubAgentWorkflow, SubgraphWorkflow
 from agentruntime_worker.workflows.task import TaskWorkflow
@@ -108,7 +109,8 @@ async def connect(config: WorkerConfig, *, objects: ObjectStoreProvider | None =
 def decision_activities(config: WorkerConfig, stubs: StubActivities | None = None) -> dict[str, Any]:
     """决策类 activity：桩，或者 AR_PLANNER=model 时由真正的 Planner 接管 plan_round（S-09），
     AR_REVIEWER=model 时由真正的 Reviewer 与收尾写回接管 review_round 与 finalize_task（S-10），
-    AR_TOOL_LOOP=model 时由经 Model Gateway、用 Context Builder 组装上下文的 tool_loop 接管 tool_loop_step。"""
+    AR_TOOL_LOOP=model 时由经 Model Gateway、用 Context Builder 组装上下文的 tool_loop 接管 tool_loop_step，
+    设了 AR_REGISTRY_ADDRESS 时 resolve_catalog 改按 Task 固定的版本查 Registry（T-08；工具的 effect 仍由桩工具目录给出）。"""
     activities = (stubs or StubActivities(config)).activities()
     if config.planner == "model":
         activities.update(dev_planner(config).activities())
@@ -116,6 +118,8 @@ def decision_activities(config: WorkerConfig, stubs: StubActivities | None = Non
         activities.update(dev_reviewer(config).activities())
     if config.tool_loop == "model":
         activities.update(dev_tool_loop(config).activities())
+    if config.registry_address:
+        activities.update(RegistryCatalog(registry_client(config), tool_effects=stub_tool_effects).activities())
     return activities
 
 
@@ -149,10 +153,10 @@ async def serve(config: WorkerConfig, queues: Sequence[str]) -> None:
     """连上 Temporal，每个队列起一个 Worker，一直运行到被取消（Ctrl+C 时 asyncio.run 取消它）。
 
     退出时（包括被取消、Worker 出错）关闭本进程为 Node Executor、Planner、Reviewer、tool_loop 创建的 Model Gateway 客户端
-    （GrpcModelGateway.aclose；同一地址共用一个）；桩模型 StubModelGateway 没有要关的东西。
+    （GrpcModelGateway.aclose；同一地址共用一个）与 Registry 客户端（GrpcRegistry.aclose）；桩模型 StubModelGateway 没有要关的东西。
     """
     client = await connect(config)
-    async with closing_model_gateways(), contextlib.AsyncExitStack() as stack:
+    async with closing_model_gateways(), closing_registries(), contextlib.AsyncExitStack() as stack:
         for worker in build_workers(client, config, queues):
             await stack.enter_async_context(worker)
         await asyncio.Event().wait()

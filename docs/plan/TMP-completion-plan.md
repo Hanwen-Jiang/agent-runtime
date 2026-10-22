@@ -121,6 +121,12 @@
 **T-08 Registry**　中档 · 中
 - proto 已有，实现没找到。Recipe、Model Profile、Node Template 的读写与版本；Learning 发布走这里。
 - 完成：一致性测试；Planner 的 Node Catalog 从它读，不再只用评测集里的 catalog。
+- 结果（2026-10-22）：细化与取舍见 `docs/plan/registry.md`。契约（五个 schema）c0117be；实现在 task-service 的 `internal/registry`
+  （业务库一张表，SQLite 与 Postgres 同一组验收测试；Publish 以影子发布、Promote 要达标的评测证据、发布令牌在 SecretStore；
+  `AR_REGISTRY_ADDR` 启用、`registry-seed` 开发种子），Worker 的 `agentruntime_worker.registry`（`resolve_catalog` 与 Planner 的
+  Node Catalog、Recipe 改读 Registry，`AR_REGISTRY_ADDRESS` 启用）。`ar-error-bin` 的编码挪到 `libs/go-core/connecterr`。
+  登记到后续：`expand_template`；Model Gateway 改读 Registry；租户策略的收紧与放宽语义；全局 Registry 修订号（设计书 3.1.2，要改 proto）；
+  运行时按 Registry 核对 Atomic Node 的 effect（建议并入 T-09）。本机没有 Postgres，Postgres 一侧的用例由夜间 CI 跑。
 
 **T-09 Policy Engine 与默认 Hook**　中档 · 中，评审 R-01
 - write_irreversible 的审批插入不可绕过；deny 不重试；驳回类 Hook 有次数上限；Hook 里没有复杂推理。

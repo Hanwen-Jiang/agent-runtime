@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentruntime.example/schemas/node_template.schema.json",
   "title": "Node Template",
-  "description": "Node Catalog 里的模板（附录 D.7），经 Registry 发布（设计书 3.1.2）。这是 RegistryService.Publish 的 document（kind = NODE_TEMPLATE）；名字、版本与发布状态是 Registry 的元数据，不在正文里。Planner 用 name@vN 实例化 Atomic Node：executor、effect、role、output 照抄，defaults 补上节点没写的配置。规则与 Atomic Node 一致：executor 决定 output 与 implementation 能写什么（D.1、E.3）；role = act 时必须是写操作（D.5）；write_reversible 必须登记回滚方式，写操作的默认配置不缓存，write_irreversible 的默认配置不自动重试（D.4）。rollback_template 与 output_schema_id 指向的对象存在，由 Registry 发布时校验。",
+  "description": "Node Catalog 里的模板（附录 D.7），经 Registry 发布（设计书 3.1.2）。这是 RegistryService.Publish 的 document（kind = NODE_TEMPLATE）；名字、版本与发布状态是 Registry 的元数据，不在正文里。Planner 用 name@vN 实例化 Atomic Node：executor、effect、role、output 照抄，defaults 补上节点没写的配置。规则与 Atomic Node 一致：executor 决定 output 与 implementation 能写什么（D.1、E.3）；role = act 时必须是写操作（D.5）；write_reversible 必须登记回滚方式，写操作的默认配置不缓存，write_irreversible 的默认配置不自动重试（D.4）。rollback_template 指向的模板已经发布过，由 Registry 发布时校验；output_schema_id 指向的 schema 现在没有登记的地方，不校验。",
   "type": "object",
   "required": ["description", "executor", "effect", "role"],
   "properties": {

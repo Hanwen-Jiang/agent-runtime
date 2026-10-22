@@ -20,6 +20,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/agentruntime/agent-runtime/libs/go-core/connecterr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/modelprovider"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
@@ -417,7 +418,7 @@ func TestAllProfilesFailingIsTransient(t *testing.T) {
 
 // 约定 3：错误类别到 Connect 码与 ar-error-bin 的映射。
 func TestConnectErrorMapping(t *testing.T) {
-	if gateway.ConnectError(nil) != nil {
+	if connecterr.Error(nil) != nil {
 		t.Error("nil 应映射为 nil")
 	}
 	for _, c := range []struct {
@@ -430,7 +431,7 @@ func TestConnectErrorMapping(t *testing.T) {
 		{providererr.NotFound, connect.CodeNotFound},
 		{providererr.Conflict, connect.CodeAborted},
 	} {
-		ce := gateway.ConnectError(providererr.New(c.category, "some_code", "给开发者看的说明"))
+		ce := connecterr.Error(providererr.New(c.category, "some_code", "给开发者看的说明"))
 		code, pe := errorDetail(t, ce)
 		if code != c.code || pe.GetCategory() != c.category || pe.GetCode() != "some_code" || pe.GetMessage() != "给开发者看的说明" {
 			t.Errorf("%v → %v，trailer %v/%s/%q", c.category, code, pe.GetCategory(), pe.GetCode(), pe.GetMessage())
@@ -443,24 +444,24 @@ func TestConnectErrorMapping(t *testing.T) {
 		}
 	}
 	// transient 带 RetryAfter：details.retry_after_ms 为整数毫秒。
-	_, pe := errorDetail(t, gateway.ConnectError(transient("rate_limit", 1500*time.Millisecond)))
+	_, pe := errorDetail(t, connecterr.Error(transient("rate_limit", 1500*time.Millisecond)))
 	if ms, ok := retryAfterMS(pe); !ok || ms != 1500 {
 		t.Errorf("retry_after_ms = %v（%v），want 1500", ms, ok)
 	}
 	// 包了一层的 providererr 也按类别映射。
-	code, pe := errorDetail(t, gateway.ConnectError(fmt.Errorf("调用失败：%w", providererr.New(providererr.Denied, "bad_key", "凭据无效"))))
+	code, pe := errorDetail(t, connecterr.Error(fmt.Errorf("调用失败：%w", providererr.New(providererr.Denied, "bad_key", "凭据无效"))))
 	if code != connect.CodePermissionDenied || pe.GetCode() != "bad_key" {
 		t.Errorf("包装过的错误：%v %s", code, pe.GetCode())
 	}
 	// 超时与取消：transient。
 	for name, err := range map[string]error{"超时": context.DeadlineExceeded, "包装的超时": fmt.Errorf("x: %w", context.DeadlineExceeded), "取消": context.Canceled} {
-		code, pe := errorDetail(t, gateway.ConnectError(err))
+		code, pe := errorDetail(t, connecterr.Error(err))
 		if code != connect.CodeUnavailable || pe.GetCategory() != providererr.Transient {
 			t.Errorf("%s：%v %v", name, code, pe.GetCategory())
 		}
 	}
 	// 其他错误：Internal，trailer 为 transient/internal，文本不带原始错误。
-	ce := gateway.ConnectError(errors.New("dial tcp: Authorization: Bearer " + leakyKey))
+	ce := connecterr.Error(errors.New("dial tcp: Authorization: Bearer " + leakyKey))
 	code, pe = errorDetail(t, ce)
 	if code != connect.CodeInternal || pe.GetCategory() != providererr.Transient || pe.GetCode() != "internal" {
 		t.Errorf("其他错误：%v %v/%s", code, pe.GetCategory(), pe.GetCode())

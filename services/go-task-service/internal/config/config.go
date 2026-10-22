@@ -30,6 +30,10 @@ const (
 	EnvReadOnlyLimit       = "AR_SESSION_READ_ONLY_LIMIT"
 	EnvContinueAsNewTasks  = "AR_SESSION_CAN_TASKS"
 	EnvContinueAsNewEvents = "AR_SESSION_CAN_EVENTS"
+	// EnvRegistryAddr 设了才启用 Registry（T-08）：在这个单独的内部端口上提供 RegistryService，新 Task 的固定版本改由它给出；
+	// 不能与 Task API 共用端口，也不能再配 AR_PINNED_VERSIONS_FILE。EnvSchemasDir 是 Registry 校验 document 用的 /schemas，默认 schemas。
+	EnvRegistryAddr = "AR_REGISTRY_ADDR"
+	EnvSchemasDir   = "AR_SCHEMAS_DIR"
 )
 
 // DefaultClaimCheckThreshold 是 Claim-Check 的默认阈值（字节）。
@@ -81,6 +85,9 @@ type Config struct {
 	// RateLimitPerMinute 是内置 Ingress 每个租户每个路由每分钟的请求上限。
 	RateLimitPerMinute int
 	Session            session.Config
+	// RegistryAddr 为空表示不启用 Registry；SchemasDir 见 EnvSchemasDir。
+	RegistryAddr string
+	SchemasDir   string
 }
 
 // FromEnv 读取并校验配置。错误信息只提变量名，不带取值。
@@ -98,6 +105,8 @@ func FromEnv(getenv func(string) string) (Config, error) {
 		DataDir:            or(EnvDataDir, "data"),
 		PinnedVersionsFile: getenv(EnvPinnedVersionsFile),
 		TenantPoliciesFile: getenv(EnvTenantPoliciesFile),
+		RegistryAddr:       getenv(EnvRegistryAddr),
+		SchemasDir:         or(EnvSchemasDir, "schemas"),
 		Session:            session.DefaultConfig(),
 	}
 	cfg.PublicBaseURL = or(EnvPublicBaseURL, "http://"+cfg.HTTPAddr)
@@ -146,8 +155,37 @@ func FromEnv(getenv func(string) string) (Config, error) {
 	if cfg.ClaimCheckThreshold < 1 {
 		return Config{}, fmt.Errorf("%s 必须大于 0", EnvClaimCheckThreshold)
 	}
+	if cfg.RegistryAddr != "" && cfg.PinnedVersionsFile != "" {
+		return Config{}, fmt.Errorf("%s 与 %s 不能同时配置：固定版本由 Registry 给出", EnvRegistryAddr, EnvPinnedVersionsFile)
+	}
+	if cfg.RegistryAddr != "" && cfg.RegistryAddr == cfg.HTTPAddr {
+		return Config{}, fmt.Errorf("%s 要用单独的内部端口，不能与 %s 相同", EnvRegistryAddr, EnvHTTPAddr)
+	}
 	if err := cfg.Session.Validate(); err != nil {
 		return Config{}, fmt.Errorf("Session 参数不合法：%w", err)
 	}
 	return cfg, nil
+}
+
+// Store 是业务库与 schema 目录的位置：registry-seed 子命令只需要这几项，不要求 Temporal 地址与签名密钥。
+type Store struct {
+	DataDir string
+	// RelationalDSN 为空时用 DataDir 下的 SQLite；打印只显示掩码。
+	RelationalDSN secret.Value
+	SchemasDir    string
+}
+
+// StoreFromEnv 读取业务库与 schema 目录的位置（AR_DATA_DIR、AR_RELATIONAL_DSN、AR_SCHEMAS_DIR）。
+func StoreFromEnv(getenv func(string) string) Store {
+	s := Store{DataDir: getenv(EnvDataDir), SchemasDir: getenv(EnvSchemasDir)}
+	if s.DataDir == "" {
+		s.DataDir = "data"
+	}
+	if s.SchemasDir == "" {
+		s.SchemasDir = "schemas"
+	}
+	if dsn := getenv(EnvRelationalDSN); dsn != "" {
+		s.RelationalDSN = secret.New(dsn)
+	}
+	return s
 }

@@ -3,7 +3,7 @@
 > 实施计划第 7 节阶段 1 的中档工作项“Registry”（中 · 中，没有强档评审项）。第 7 节说“细化另行编写”，这里是细化。
 > 依据：设计书 3.1、3.1.2、4.1、4.3、附录 C.4、D.7、E.1、E.3、H.1、J.3–J.5；`proto/agentruntime/registry/v1/registry.proto`；
 > `proto/agentruntime/workflow/v1/task.proto` 的 `PinnedVersions`。
-> 状态：第 7 节的三个问题已经人确认（2026-10-22）。第 3 节的契约变更已写好 schema 与正反例、契约测试通过，**待人审**；人审之后再写 Registry 的验收测试。
+> 状态：已实现（2026-10-22）。第 7 节的三个问题与第 3 节的契约经人确认（契约提交 c0117be），验收测试（第 5 节）与第 8 节的细则经人确认，第 9 节是实现前人的决定。
 
 ## 1. 目标
 
@@ -46,6 +46,8 @@
 - 租户策略的生效语义：收紧立即对运行中的 Task 生效、放宽只对新 Task 生效（3.1.2 第 2 条）；task-service 的 `FilePolicyResolver` 暂不换。
 - 影子流量的分流与对比、J.3 的非劣效检验：`Promote` 只核对评测证据的格式与结论，检验本身由 Learning Pipeline 做（T-16、R-06）。
 - Registry 不可用时运行中的 Task 用本地只读缓存（3.1.2 关键规则）：第一期 Worker 失败即按 transient 重试，缓存后补。
+- 全局 Registry 修订号（设计书 3.1.2“固定一个 Registry 修订号”）：第一期按名字固定版本（proto 的 `PinnedVersions`），
+  Planner 在提交之后选的 Recipe 不受提交时刻约束；改成修订号要改 proto，见第 9 节第 3 条。
 
 ## 3. 契约变更（要经 S-01 流程）
 
@@ -84,17 +86,26 @@ JSON Schema 表达不了、由 Registry 发布时用代码检查的（写进第 
 - **令牌不外泄**：发布令牌只在 gRPC 元数据里，日志、错误、计量都不出现；令牌不对是 denied，不说明是缺了还是错了。
 - **确定性**：Registry 的查询都在 activity 里；工作流只用写进输入的 `PinnedVersions`，重放不再查 Registry。
 
-## 5. 验收（确认契约之后据此写测试）
+## 5. 验收（测试已写，待人确认）
 
-- 存储与版本：发布编号、只追加、影子不外泄、晋升与退役、按版本读退役版本、并发发布不重号；SQLite 与 Postgres 各跑一遍。
-- 作用域：平台条目所有租户可读、租户条目跨租户不可见、租户 Recipe 与平台同名被拒、缺租户拒绝。
-- 晋升：没有证据、证据不合 schema、结论不通过时拒绝且默认版本不变；通过时返回原默认版本。
-- 固定：`ResolvePinnedVersions` 只含 DEFAULT；之后的发布与晋升不改变按固定版本的查询结果。
-- 写权限：没有令牌或令牌错误时 `Publish`、`Promote` 为 denied，读方法不受影响；令牌不出现在错误与日志里。
-- task-service：配了 Registry 时新 Task 的工作流输入里是 Registry 给的固定版本；Registry 不可用时提交失败（transient），不启动工作流。
-- Worker：`resolve_catalog` 按 `pinned` 返回模板的 executor、effect；Registry 不可用时 activity 失败（transient），不回退桩。
-  Planner 的 Node Catalog 与 Recipe 来自 Registry。
-- 端到端：用 `registry-seed` 种下模板，一个 Task 的 program 节点按 Registry 里登记的 effect 执行（例如登记为 write_reversible 的模板带上幂等键）。
+| 验收 | 测试 |
+| --- | --- |
+| 存储与版本：发布编号、只追加、影子不外泄、晋升与退役、回滚到退役版本、按版本读退役版本、并发发布不重号；SQLite 与 Postgres 各跑一遍；表受行级安全覆盖；迁移版本号不与 taskstore 冲突 | `services/go-task-service/internal/registry/registry_test.go` |
+| 作用域：平台条目所有租户可读、租户条目跨租户不可见、租户 Recipe 与平台同名被拒（Conflict）、同名时读到平台的、读请求缺租户 denied、租户 ID 格式不对 invalid、发布的作用域按种类 | 同上 |
+| 晋升：没有证据、证据不合 schema、结论不通过时拒绝且默认版本不变；通过时返回原默认版本；版本不存在 NotFound；租户策略发布即生效、不走 Promote | 同上 |
+| 固定：`ResolvePinnedVersions` 只含 DEFAULT 与当前的租户策略；之后的发布与晋升不改变按固定版本的查询结果；固定的版本不存在时 NotFound；任务族的 Recipe 按第 8 节固定；分页按名字排序 | 同上 |
+| 发布校验：S-01 正反例全部按 schema 判对；schema_id 与种类一致；第 3 节列出的代码检查 | `internal/registry/validation_test.go` |
+| 写权限：没有令牌或令牌错误时 `Publish`、`Promote` 为 denied 且说明相同，读方法不受影响；SecretStore 里没有令牌时一律 denied；令牌不出现在错误与日志里；错误带 trailer `ar-error-bin` | `internal/registry/auth_test.go`、`registry_test.go` |
+| task-service：配了 Registry 时新 Task 的工作流输入里是 Registry 在提交那一刻给的固定版本；Registry 不可用时提交 Unavailable、不投递，恢复后重试同一提交照常投递 | `internal/taskapi/registry_pins_test.go` |
+| 配置：`AR_REGISTRY_ADDR` 启用 Registry，不能与 `AR_PINNED_VERSIONS_FILE` 同时配，不能与 Task API 共用端口；`AR_SCHEMAS_DIR` 默认 `schemas` | `internal/config/config_test.go` |
+| 开发种子：`registry-seed` 发布并设为默认、幂等、内容变了发新版本、有一条不合格就一条不写、用法错误 | `cmd/task-service/registry_seed_test.go` |
+| Worker：客户端带租户、取完分页、错误还原、发布令牌只在写方法上且不进 repr 与错误；`resolve_catalog` 按 `pinned` 取模板、引用的版本没固定或模板不存在不可重试、Registry 不可用可重试且不回退桩、工具仍由工具目录给出；Planner 的 Node Catalog 与 Recipe 来自 Registry、effect 上限取 Task 的约束、Registry 不可用时失败；`AR_REGISTRY_ADDRESS` 才换上 | `services/py-worker/tests/test_registry.py` |
+| 端到端：`registry-seed` 种下、task-service 以 Registry 启动；Task State 的 pinned 是提交时的默认版本，经 Python 客户端发布并晋升之后只有新 Task 用新版本；Python 客户端读写 Go 的 RegistryService；Task API 端口上没有 RegistryService | `tests/e2e/test_registry.py` |
+
+草案里的“端到端：program 节点按 Registry 里登记的 effect 执行”没有写：Stage Runner 现在信任 Stage 里 Atomic Node 自己声明的 effect
+（Planner 规划时对照 Node Catalog 校验，`planner/validate.py`），`resolve_catalog` 只查 quality 的 judge、scorer 模板。
+运行时按 Registry 核对 Atomic Node 的 effect 要改 Stage Runner 的命令序列（加版本分支与重放测试），属于“审批插入不可绕过”，
+建议放进 T-09（Policy Engine，评审 R-01）。
 
 ## 6. 依赖
 
@@ -105,3 +116,36 @@ S-01（契约变更）、S-02（RelationalStore、SecretStore）、S-12a（行�
 1. 第 3 节的契约变更：同意新增五个 schema。
 2. 第 2 节的范围切分：`expand_template`、Model Gateway 改读 Registry、租户策略的生效语义放到后续。
 3. 写权限用发布令牌（第 2 节第 7 条）作为 mTLS 之前的过渡。
+
+## 8. 写验收测试时定下的细则（待人确认）
+
+1. **发布的作用域按种类**：Node Template、Model Profile 只在平台作用域，`PublishRequest.tenant` 必须为空；租户策略必须带租户；
+   Recipe 不带租户是平台的，带租户是该租户的。Reasoning Template 第一期不收（还没有 schema；`ResolvePinnedVersions` 的
+   reasoning_templates 为空），等 T-16 给出 schema。读方法一律要租户。
+2. **名字**：Node Template、Recipe 的名字是 `^[a-z][a-z0-9_]*$`（与 `versioned_ref` 的名字部分一致）；Model Profile 的名字等于
+   document.id；租户策略不起名字（一个租户一份，名字为空）。
+3. **租户策略没有影子**：发布即成为当前版本，原来的退役；不走 Promote（proto 的 TenantPolicy 也没有发布状态字段）。
+   其余种类晋升都要达标的证据。回滚就是把退役的版本重新晋升，同样要证据。
+4. **按任务族固定 Recipe**：请求指定了 Recipe（`name@vN`）时，它必须是该租户看得到的默认版本，否则 NotFound；只给任务族时，
+   该任务族恰好一个默认 Recipe 才固定它，零个或多个都留空（由 Planner 选，记进 Task State）。
+5. **同名的 Recipe**：租户发布与平台同名的 Recipe 是 Conflict；平台发布时看不到各租户的作用域，挡不住与租户已有的同名，
+   读的时候平台的优先。
+6. **按固定版本列模板**：`pinned_versions.node_templates` 非空时只列这些名字与版本（含退役的），有一个不存在就 NotFound；
+   为空时列默认版本。
+7. **Worker 的 `resolve_catalog`**：Task 有固定版本时，引用的 `name@vN` 必须与固定的版本一致，否则不可重试（template_not_pinned）；
+   没有固定版本（Registry 接入之前启动的 Task）时按引用里的版本取。工具的 effect 不归 Registry，仍由工具目录给出（T-10 接 ToolDriver）。
+8. **Planner 的上下文**：effect 上限取 Task State 的 `constraints.effect_ceiling`（task-service 按租户策略写入），没有时用默认；
+   Recipe 的 recent_failure 第一期都是 false（Recipe 统计在 T-16）。
+9. **配置**：task-service 用 `AR_REGISTRY_ADDR`（内部端口）与 `AR_SCHEMAS_DIR`；Worker 用 `AR_REGISTRY_ADDRESS`。
+10. **rollback_template 发布时必须已发布过**（任何状态）：互为回滚的一对 write_reversible 模板因此发布不了，第一期接受这个限制。
+
+## 9. 实现前的人的决定（2026-10-22）
+
+1. **新依赖**：引入 `github.com/santhosh-tekuri/jsonschema/v6`（v6.0.3，纯 Go，支持 2020-12 与 unevaluatedProperties），
+   Registry 按 /schemas 校验 document 与评测证据。只在 task-service 用。
+2. **schema 描述的更正**：`node_template.schema.json` 的 description 改为“rollback_template 指向的模板已经发布过，由 Registry
+   发布时校验；output_schema_id 指向的 schema 现在没有登记的地方，不校验”。只改描述，校验规则不变。
+3. **与设计书的出入，登记到后续**：设计书 3.1.2 说提交时固定“一个 Registry 修订号”，之后按它解析一切（含 Planner 选 Recipe）；
+   proto 的 `PinnedVersions` 是按名字列版本。提交时还不知道任务族，所以 Planner 之后选的 Recipe 不受提交时刻约束（第 8 节第 4 条）。
+   要完全符合设计书，需要全局修订号（每次发布、晋升加一，查询按“截至修订号 R 的默认版本”），这是 proto 变更，见第 2 节“不做”。
+4. **错误的 trailer**：`ar-error-bin` 的编码挪到 `libs/go-core/connecterr`，Model Gateway 与 Registry 共用。

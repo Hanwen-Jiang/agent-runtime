@@ -105,6 +105,11 @@ class StubModelGateway:
             await asyncio.sleep(_POLL_INTERVAL_S)
 
 
+def stub_tool_effects(tools: list[str]) -> dict[str, str]:
+    """桩工具目录：工具一律按 read（工具的 effect 不归 Registry；ToolDriver 接好之前用它，T-10）。"""
+    return {t: "read" for t in tools}
+
+
 class StubActivities:
     def __init__(self, config: WorkerConfig) -> None:
         self.config = config
@@ -197,7 +202,7 @@ class StubActivities:
         """桩 Catalog：模板一律按 program · none，工具一律按 read。"""
         return CatalogInfo(
             templates={t: TemplateInfo(executor="program", effect="none") for t in req.templates},
-            tools={t: "read" for t in req.tools},
+            tools=stub_tool_effects(list(req.tools)),
         )
 
     @activity.defn(name=names.EXPAND_TEMPLATE)

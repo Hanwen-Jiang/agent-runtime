@@ -3,6 +3,7 @@ module github.com/agentruntime/agent-runtime/libs/go-core
 go 1.26.0
 
 require (
+	connectrpc.com/connect v1.21.0
 	github.com/agentruntime/agent-runtime/proto/gen/go v0.0.0-00010101000000-000000000000
 	github.com/jackc/pgx/v5 v5.11.0
 	go.temporal.io/api v1.63.6

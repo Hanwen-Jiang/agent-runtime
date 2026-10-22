@@ -34,6 +34,8 @@ ENV_CONTEXT_EFFECTIVE_TOKENS = "AR_CONTEXT_EFFECTIVE_TOKENS"
 # Model Gateway 的地址（host:port，gRPC）：设了时 Node Executor、Planner、Reviewer 的模型调用都经 GrpcModelGateway；
 # 没设时用桩模型 StubModelGateway（端到端测试的默认）。
 ENV_MODEL_GATEWAY_ADDRESS = "AR_MODEL_GATEWAY_ADDRESS"
+# Registry 的地址（task-service 的内部端口，T-08）；设了才让 resolve_catalog 与 Planner 的上下文改读 Registry。
+ENV_REGISTRY_ADDRESS = "AR_REGISTRY_ADDRESS"
 
 
 @dataclass(frozen=True)
@@ -63,6 +65,8 @@ class WorkerConfig:
     context_effective_tokens: int = 32_000
     # Model Gateway 的地址（AR_MODEL_GATEWAY_ADDRESS）；空表示用桩模型。
     model_gateway_address: str = ""
+    # Registry 的地址（AR_REGISTRY_ADDRESS，T-08）；空表示 Node Catalog 与 Recipe 仍用桩。
+    registry_address: str = ""
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> WorkerConfig:
@@ -114,6 +118,7 @@ class WorkerConfig:
             tool_loop=tool_loop,
             context_effective_tokens=effective,
             model_gateway_address=env.get(ENV_MODEL_GATEWAY_ADDRESS, "").strip(),
+            registry_address=env.get(ENV_REGISTRY_ADDRESS, "").strip(),
         )
 
     def store_paths(self, root: Path) -> tuple[Path, Path]:

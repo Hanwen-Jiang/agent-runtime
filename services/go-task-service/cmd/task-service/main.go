@@ -3,6 +3,7 @@
 //	task-service serve                                        Task API、SSE 端点与 Session 工作流的 Worker
 //	task-service dev-token --tenant t1 --user u1 [--ttl 1h]   用 AR_DEV_SIGNING_KEY 签发开发令牌
 //	task-service replay --dir <事件历史目录>                    用当前代码回放 Session 工作流的事件历史
+//	task-service registry-seed <种子文件>                       把一批文档发布到 Registry 并设为默认（开发与端到端测试用）
 //
 // 配置见 internal/config 的环境变量。serve 目前接的是开发实现（内置 Ingress、内存 Cache、SQLite），
 // 生产实现接入后在这里替换。
@@ -41,12 +42,14 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/memcache"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/sqlitestore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
+	"github.com/agentruntime/agent-runtime/libs/go-core/secret"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	workflowv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1"
 
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/config"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/events"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/ids"
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/registry"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/session"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/taskapi"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/taskstore"
@@ -56,6 +59,7 @@ const usage = `用法：
   task-service serve
   task-service dev-token --tenant <租户> --user <用户> [--ttl 1h]
   task-service replay --dir <事件历史目录>
+  task-service registry-seed <种子文件>
 `
 
 func main() {
@@ -73,6 +77,8 @@ func run(args []string, stdout, stderr io.Writer, getenv func(string) string) in
 		return serve(stderr, getenv)
 	case "dev-token":
 		return devToken(args[1:], stdout, stderr, getenv)
+	case "registry-seed":
+		return registrySeed(args[1:], stdout, stderr, getenv)
 	case "replay":
 		return replay(args[1:], stdout, stderr, getenv)
 	default:
@@ -125,11 +131,11 @@ func newClaimCheck(objectStoreDir, secretsFile string, threshold int) (*claimche
 }
 
 // newRelationalStore 构造业务库：配置了 AR_RELATIONAL_DSN 时用 Postgres（行级安全，S-12a），否则用 SQLite 开发实现。
-func newRelationalStore(ctx context.Context, cfg config.Config) (relational.Provider, error) {
-	if !cfg.RelationalDSN.IsZero() {
-		return postgres.New(ctx, postgres.Options{DSN: string(cfg.RelationalDSN.Reveal())})
+func newRelationalStore(ctx context.Context, dataDir string, dsn secret.Value) (relational.Provider, error) {
+	if !dsn.IsZero() {
+		return postgres.New(ctx, postgres.Options{DSN: string(dsn.Reveal())})
 	}
-	dir := filepath.Join(cfg.DataDir, "relational")
+	dir := filepath.Join(dataDir, "relational")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
 	}
@@ -236,13 +242,24 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	defer c.Close()
 
 	clk := clock.System{}
-	store, err := newRelationalStore(ctx, cfg)
+	store, err := newRelationalStore(ctx, cfg.DataDir, cfg.RelationalDSN)
 	if err != nil {
 		return err
 	}
 	defer store.Close()
 	if err := store.Migrate(ctx, taskstore.Migrations()); err != nil {
 		return err
+	}
+	// 固定版本：配了 Registry（AR_REGISTRY_ADDR）时由它给出，并在单独的内部端口上提供 RegistryService；否则读固定版本文件。
+	var pins taskapi.PinResolver = taskapi.FilePinResolver{Path: cfg.PinnedVersionsFile}
+	var registrySrv *http.Server
+	if cfg.RegistryAddr != "" {
+		reg, err := newRegistry(ctx, store, cfg.SecretsFile, cfg.SchemasDir, logger)
+		if err != nil {
+			return fmt.Errorf("Registry 起不来：%w", err)
+		}
+		pins = registry.Pins{Registry: reg}
+		registrySrv = registryServer(cfg.RegistryAddr, reg)
 	}
 	cacheProvider := memcache.New(memcache.Options{Clock: clk})
 	ing := localingress.New(localingress.Options{
@@ -264,7 +281,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		Ingress:       ing,
 		Durable:       temporaladapter.New(c),
 		Store:         store,
-		Pins:          taskapi.FilePinResolver{Path: cfg.PinnedVersionsFile},
+		Pins:          pins,
 		Clock:         clk,
 		IDs:           ids.New(clk, nil),
 		PublicBaseURL: cfg.PublicBaseURL,
@@ -283,9 +300,12 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	protocols.SetHTTP1(true)
 	protocols.SetUnencryptedHTTP2(true) // gRPC 客户端走明文 HTTP/2
 	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: mux, Protocols: protocols, ReadHeaderTimeout: 10 * time.Second}
-	errs := make(chan error, 1)
+	errs := make(chan error, 2)
 	go func() { errs <- srv.ListenAndServe() }()
-	logger.Info("task-service 已启动", "http", cfg.HTTPAddr, "temporal", cfg.TemporalAddress)
+	if registrySrv != nil {
+		go func() { errs <- registrySrv.ListenAndServe() }()
+	}
+	logger.Info("task-service 已启动", "http", cfg.HTTPAddr, "registry", cfg.RegistryAddr, "temporal", cfg.TemporalAddress)
 
 	select {
 	case err := <-errs:
@@ -297,5 +317,8 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	}
 	shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	if registrySrv != nil {
+		_ = registrySrv.Shutdown(shutdown)
+	}
 	return srv.Shutdown(shutdown)
 }

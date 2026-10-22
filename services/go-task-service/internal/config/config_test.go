@@ -145,3 +145,49 @@ func TestConfigNeverPrintsTheSigningKey(t *testing.T) {
 		}
 	}
 }
+
+// T-08 验收：Registry 的配置（docs/plan/registry.md 第 2 节第 5、7 条）。设了 AR_REGISTRY_ADDR 才启用 Registry：
+// 它在单独的内部端口上提供 RegistryService，新 Task 的固定版本改由它给出；这时不能再配固定版本文件（两处来源会互相顶替）。
+// AR_SCHEMAS_DIR 是 Registry 校验 document 用的 /schemas 目录，默认 schemas（相对工作目录）。
+func TestFromEnvRegistry(t *testing.T) {
+	cfg, err := FromEnv(env(base()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.RegistryAddr != "" {
+		t.Errorf("没配置时不启用 Registry，实际 %q", cfg.RegistryAddr)
+	}
+	if cfg.SchemasDir != "schemas" {
+		t.Errorf("schema 目录默认 schemas，实际 %q", cfg.SchemasDir)
+	}
+
+	m := base()
+	m[EnvRegistryAddr] = "127.0.0.1:8092"
+	m[EnvSchemasDir] = filepath.Join("repo", "schemas")
+	cfg, err = FromEnv(env(m))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.RegistryAddr != "127.0.0.1:8092" || cfg.SchemasDir != filepath.Join("repo", "schemas") {
+		t.Errorf("Registry 的地址与 schema 目录没有读进来：%q %q", cfg.RegistryAddr, cfg.SchemasDir)
+	}
+
+	for name, override := range map[string]map[string]string{
+		"同时配了固定版本文件":      {EnvRegistryAddr: "127.0.0.1:8092", EnvPinnedVersionsFile: "pins.json"},
+		"与 Task API 共用端口": {EnvRegistryAddr: "127.0.0.1:8080"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			m := base()
+			for k, v := range override {
+				m[k] = v
+			}
+			_, err := FromEnv(env(m))
+			if err == nil {
+				t.Fatal("应当报错")
+			}
+			if !strings.Contains(err.Error(), EnvRegistryAddr) {
+				t.Errorf("错误信息指出变量名 %s：%v", EnvRegistryAddr, err)
+			}
+		})
+	}
+}
