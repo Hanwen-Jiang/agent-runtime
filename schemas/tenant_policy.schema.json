@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/tenant_policy.schema.json",
+  "title": "租户策略",
+  "description": "一个租户的策略：effect 上限、模型白名单、Hook 声明与预算（设计书 3.1.2、附录 H.6），经 Registry 发布，只在该租户的作用域。这是 RegistryService.Publish 的 document（kind = TENANT_POLICY）。字段与开发用的策略文件（AR_DEV_TENANT_POLICIES_FILE 里每个租户的条目）一致：task-service 读 effect_ceiling 与 budget，Model Gateway 读 model_allowlist。没写的字段用平台默认值；model_allowlist 为空数组表示一个模型都不允许。数据驻留区域、BYOK、SLA 档位（附录 H.6）用到时再加。",
+  "type": "object",
+  "properties": {
+    "effect_ceiling": {"description": "该租户的 Task 可用的最高 effect", "$ref": "defs.schema.json#/$defs/effect"},
+    "model_allowlist": {"description": "允许的 Model Profile；不写表示不限制", "type": "array", "uniqueItems": true, "items": {"$ref": "model_profile.schema.json#/$defs/profile_id"}},
+    "hooks": {"$ref": "defs.schema.json#/$defs/hook_set"},
+    "budget": {"description": "新 Task 的预算", "$ref": "task_plan.schema.json#/properties/budget"}
+  },
+  "unevaluatedProperties": false
+}

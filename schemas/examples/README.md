@@ -49,3 +49,12 @@ S-01 的验收样例。每个 schema 一个文件：`<schema>.examples.json`，�
 | Node 状态 | 附录 D.6 的七个状态外加 `unknown`（附录 K.4：写操作结果未知） | 附录 D.6、K.4 |
 | Memory Item `evidence.outcome` | `verified`、`failed` | 附录 I.3 |
 | Hook 结果 `injection.zone` | Context Zones 五区 | 附录 A、G.1 |
+| Model Profile `capabilities` | `generate`、`structured`、`tools`、`stream`、`embed`（`$defs.model_capability`） | 附录 H.1；go-model-gateway 的 profiles 包 |
+| Node Template | `description`、`implementation`（`tier`、`prompt`、`tool`）、`defaults`、`eval_set` | 附录 D.7 |
+| Recipe | `description`、`risk`、`typical_cost_usd`、`stages`、`hooks` | 附录 A、C.1、C.2、C.4 |
+| 租户策略、Recipe 的 `hooks` | 挂载点 → Hook 名的列表（`$defs.hook_set`） | 附录 F.1；设计书 3.2.6 |
+| 晋升的评测证据 | `eval_set`、`samples`、`baseline`、`candidate`（`success_rate`、`success_rate_ci95`、`cost_per_success_usd`）、`thresholds`（`delta`、`epsilon`）、`passed`、`waiver`（`approved_by`、`reason`）、`report`、`evaluated_at` | 附录 J.3 |
+
+## Registry 的文档（T-08）
+
+`node_template`、`recipe`、`model_profile`、`tenant_policy` 是 `RegistryService.Publish` 的 document，`registry_evaluation` 是 `Promote` 的 evaluation。名字、版本与发布状态是 Registry 的元数据，不写在正文里（Model Profile 的 `id` 例外：它与开发用的 Profile 文件相同，Registry 核对它等于发布名）。细化与取舍见 `docs/plan/registry.md` 第 3 节。

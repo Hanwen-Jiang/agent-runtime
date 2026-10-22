@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/model_profile.schema.json",
+  "title": "Model Profile",
+  "description": "一个模型的档案（附录 H.1 的子集），经 Registry 发布（设计书 3.1.2）。这是 RegistryService.Publish 的 document（kind = MODEL_PROFILE），与开发用的 Profile 文件（deploy/dev/model-profiles.json）里的一条相同；id 必须等于发布时的名字，由 Registry 核对。字段只收 go-model-gateway 的 profiles 包认识的（它拒绝未知字段，以免单价字段拼错后按 0 计、被当成最便宜的选中），H.1 的能力分数、延迟、可靠性等等 Model Gateway 读到时再加。Tier 字符串是 <class>@<tier 名>，所以 class 与 Tier 名都不含 @；Tier 名在一个 Profile 内不重复，由代码校验。",
+  "type": "object",
+  "required": ["id", "vendor", "model", "class", "tiers", "capabilities", "cost", "freshness"],
+  "properties": {
+    "id": {"$ref": "#/$defs/profile_id"},
+    "vendor": {"description": "模型所属的家（openai、anthropic 等）：judge 用 avoid_vendor 选另一家", "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"},
+    "model": {"description": "供应商端点上的模型名", "$ref": "defs.schema.json#/$defs/non_empty_string"},
+    "class": {"description": "模型档：small、mid、strong、embed 等", "$ref": "#/$defs/slug"},
+    "tiers": {
+      "description": "同一模型的不同推理强度或思考预算视为不同的 Tier（附录 H.1）",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {"$ref": "#/$defs/slug"},
+          "effort": {"description": "供应商的推理强度（low、medium、high）；空串表示不发送", "type": "string"},
+          "thinking_budget": {"description": "该档默认的思考预算（token）", "type": "integer", "minimum": 0}
+        },
+        "unevaluatedProperties": false
+      }
+    },
+    "capabilities": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "defs.schema.json#/$defs/model_capability"}},
+    "cost": {
+      "description": "单价，单位“美元每百万 token”。三项都要写：缺的单价会被当成 0",
+      "type": "object",
+      "required": ["in_per_m", "out_per_m", "cache_read_per_m"],
+      "properties": {
+        "in_per_m": {"$ref": "defs.schema.json#/$defs/usd"},
+        "out_per_m": {"$ref": "defs.schema.json#/$defs/usd"},
+        "cache_read_per_m": {"$ref": "defs.schema.json#/$defs/usd"}
+      },
+      "unevaluatedProperties": false
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "context_window": {"type": "integer", "minimum": 1},
+        "max_output": {"description": "嵌入模型为 0", "type": "integer", "minimum": 0}
+      },
+      "unevaluatedProperties": false
+    },
+    "freshness": {
+      "type": "object",
+      "required": ["price_at"],
+      "properties": {
+        "price_at": {"description": "单价的取得日期", "type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}
+      },
+      "unevaluatedProperties": false
+    }
+  },
+  "unevaluatedProperties": false,
+  "$defs": {
+    "profile_id": {"description": "provider/model@version（附录 H.1），例如 a6api/gpt-4o-mini@2026-10", "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*@[a-z0-9][a-z0-9._-]*$"},
+    "slug": {"description": "小写 slug，不含 @；以字母开头，拼成的 Tier 字符串才符合 defs.schema.json 的 tier", "type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+  }
+}

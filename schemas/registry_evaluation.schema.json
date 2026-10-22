@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/registry_evaluation.schema.json",
+  "title": "晋升的评测证据",
+  "description": "RegistryService.Promote 的 evaluation：候选版本与现行默认版本在同一评测集上的对比（附录 J.3）。Registry 只核对格式与结论（passed 为 true 才晋升），原样存下以便追溯；非劣效检验本身由 Learning Pipeline 做。第一次晋升（还没有默认版本）时没有 baseline。没达标但经人工豁免时，passed 为 true 并带 waiver。",
+  "type": "object",
+  "required": ["eval_set", "samples", "candidate", "passed", "report", "evaluated_at"],
+  "properties": {
+    "eval_set": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"$ref": "#/$defs/eval_set_name"},
+        "version": {"description": "评测集的版本，例如标注文件的提交号", "$ref": "defs.schema.json#/$defs/non_empty_string"}
+      },
+      "unevaluatedProperties": false
+    },
+    "task_family": {"description": "按任务族评测时的任务族", "$ref": "defs.schema.json#/$defs/task_family"},
+    "samples": {"description": "参与对比的样本数", "type": "integer", "minimum": 1},
+    "baseline": {"description": "现行默认版本的结果", "$ref": "#/$defs/result"},
+    "candidate": {"description": "候选版本的结果", "$ref": "#/$defs/result"},
+    "thresholds": {
+      "description": "非劣效检验的门槛：成功率的 95% 置信下界不低于现行版本减 delta，每次成功成本的上界不高于现行版本的 (1 + epsilon) 倍（附录 J.3，默认 δ = 0.02、ε = 0.05）",
+      "type": "object",
+      "required": ["delta", "epsilon"],
+      "properties": {
+        "delta": {"$ref": "defs.schema.json#/$defs/unit_interval"},
+        "epsilon": {"type": "number", "minimum": 0}
+      },
+      "unevaluatedProperties": false
+    },
+    "passed": {"description": "是否达标；Registry 只晋升 passed 为 true 的版本", "type": "boolean"},
+    "waiver": {
+      "description": "人工豁免：没达标也晋升时必须记录审批人与理由（附录 J.3）",
+      "type": "object",
+      "required": ["approved_by", "reason"],
+      "properties": {
+        "approved_by": {"$ref": "defs.schema.json#/$defs/user_id"},
+        "reason": {"$ref": "defs.schema.json#/$defs/non_empty_string"}
+      },
+      "unevaluatedProperties": false
+    },
+    "report": {"description": "完整评测报告的引用（ObjectStore 的对象或报告文件名）", "$ref": "defs.schema.json#/$defs/non_empty_string"},
+    "evaluated_at": {"type": "string", "format": "date-time"}
+  },
+  "allOf": [
+    {
+      "description": "豁免只用于晋升：带 waiver 时 passed 必须为 true",
+      "if": {"required": ["waiver"]},
+      "then": {"properties": {"passed": {"const": true}}}
+    }
+  ],
+  "unevaluatedProperties": false,
+  "$defs": {
+    "eval_set_name": {"description": "评测集的名字，例如 task-loop", "type": "string", "pattern": "^[a-z][a-z0-9_-]*(\\.[a-z0-9_-]+)*$"},
+    "result": {
+      "type": "object",
+      "required": ["success_rate", "cost_per_success_usd"],
+      "properties": {
+        "success_rate": {"$ref": "defs.schema.json#/$defs/unit_interval"},
+        "success_rate_ci95": {
+          "description": "成功率的 95% 置信区间 [下界, 上界]",
+          "type": "array",
+          "prefixItems": [{"$ref": "defs.schema.json#/$defs/unit_interval"}, {"$ref": "defs.schema.json#/$defs/unit_interval"}],
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "cost_per_success_usd": {"$ref": "defs.schema.json#/$defs/usd"}
+      },
+      "unevaluatedProperties": false
+    }
+  }
+}

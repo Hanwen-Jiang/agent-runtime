@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/node_template.schema.json",
+  "title": "Node Template",
+  "description": "Node Catalog 里的模板（附录 D.7），经 Registry 发布（设计书 3.1.2）。这是 RegistryService.Publish 的 document（kind = NODE_TEMPLATE）；名字、版本与发布状态是 Registry 的元数据，不在正文里。Planner 用 name@vN 实例化 Atomic Node：executor、effect、role、output 照抄，defaults 补上节点没写的配置。规则与 Atomic Node 一致：executor 决定 output 与 implementation 能写什么（D.1、E.3）；role = act 时必须是写操作（D.5）；write_reversible 必须登记回滚方式，写操作的默认配置不缓存，write_irreversible 的默认配置不自动重试（D.4）。rollback_template 与 output_schema_id 指向的对象存在，由 Registry 发布时校验。",
+  "type": "object",
+  "required": ["description", "executor", "effect", "role"],
+  "properties": {
+    "description": {"description": "给 Planner 看的用途说明", "$ref": "defs.schema.json#/$defs/non_empty_string"},
+    "executor": {"$ref": "defs.schema.json#/$defs/executor"},
+    "effect": {"$ref": "defs.schema.json#/$defs/effect"},
+    "role": {"$ref": "defs.schema.json#/$defs/role"},
+    "output": {"$ref": "defs.schema.json#/$defs/model_output"},
+    "output_schema_id": {"description": "输出 schema 的引用，例如 region_refund_rate_v1", "$ref": "defs.schema.json#/$defs/schema_ref"},
+    "params_schema": {"description": "模板参数（Atomic Node 的 inputs）的 JSON Schema", "$ref": "defs.schema.json#/$defs/inline_json_schema"},
+    "defaults": {
+      "description": "Atomic Node 没写时用的默认配置，字段同 Atomic Node（附录 D.1）",
+      "type": "object",
+      "properties": {
+        "budget": {"$ref": "atomic_node.schema.json#/properties/budget"},
+        "retry": {"$ref": "atomic_node.schema.json#/properties/retry"},
+        "cache": {"$ref": "atomic_node.schema.json#/properties/cache"},
+        "fallback": {"$ref": "defs.schema.json#/$defs/fallback"},
+        "reasoning": {"$ref": "defs.schema.json#/$defs/reasoning"},
+        "quality": {"$ref": "defs.schema.json#/$defs/quality_spec"}
+      },
+      "unevaluatedProperties": false
+    },
+    "implementation": {
+      "description": "实现（附录 D.7）：model 节点是 Tier 与提示模板；program 节点是 ToolDriver 里的工具，不写时工具就是模板本身（Node Executor 现在的约定）",
+      "type": "object",
+      "properties": {
+        "tier": {"$ref": "defs.schema.json#/$defs/tier"},
+        "prompt": {"description": "提示模板", "$ref": "defs.schema.json#/$defs/non_empty_string"},
+        "tool": {"$ref": "defs.schema.json#/$defs/tool_name"}
+      },
+      "unevaluatedProperties": false
+    },
+    "rollback_template": {"description": "write_reversible 的回滚方式：另一个模板的名字，版本按 Task 固定的取（附录 D.4）", "type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "supports_idempotency_lookup": {"description": "ToolDriver 能否按幂等键查询写操作是否已生效（结果未知时先对账，附录 K.4）", "type": "boolean"},
+    "eval_set": {"description": "评测这个模板用的评测集（附录 D.7、J.3）", "$ref": "registry_evaluation.schema.json#/$defs/eval_set_name"}
+  },
+  "allOf": [
+    {
+      "description": "model 模板必须给出 output，实现是 Tier 与提示模板；其他执行者不带 output、Tier、提示模板",
+      "if": {"required": ["executor"], "properties": {"executor": {"const": "model"}}},
+      "then": {
+        "required": ["output"],
+        "properties": {"implementation": {"properties": {"tool": {"$ref": "defs.schema.json#/$defs/forbidden"}}}}
+      },
+      "else": {
+        "properties": {
+          "output": {"$ref": "defs.schema.json#/$defs/forbidden"},
+          "implementation": {"properties": {"tier": {"$ref": "defs.schema.json#/$defs/forbidden"}, "prompt": {"$ref": "defs.schema.json#/$defs/forbidden"}}}
+        }
+      }
+    },
+    {
+      "description": "human 模板没有工具实现",
+      "if": {"required": ["executor"], "properties": {"executor": {"const": "human"}}},
+      "then": {"properties": {"implementation": {"properties": {"tool": {"$ref": "defs.schema.json#/$defs/forbidden"}}}}}
+    },
+    {
+      "description": "reasoning 只用于生成型 model 节点（附录 E.3）",
+      "if": {"required": ["output"], "properties": {"output": {"const": "generate"}}},
+      "else": {"properties": {"defaults": {"properties": {"reasoning": {"$ref": "defs.schema.json#/$defs/forbidden"}}}}}
+    },
+    {
+      "description": "role = act 时 effect 必须是写操作（附录 D.5）",
+      "if": {"required": ["role"], "properties": {"role": {"const": "act"}}},
+      "then": {"properties": {"effect": {"$ref": "defs.schema.json#/$defs/write_effect"}}}
+    },
+    {
+      "description": "write_reversible 必须登记回滚方式；其他 effect 不登记（附录 D.4）",
+      "if": {"required": ["effect"], "properties": {"effect": {"const": "write_reversible"}}},
+      "then": {"required": ["rollback_template"]},
+      "else": {"properties": {"rollback_template": {"$ref": "defs.schema.json#/$defs/forbidden"}}}
+    },
+    {
+      "description": "写操作的默认配置不缓存（附录 D.4）",
+      "if": {"required": ["effect"], "properties": {"effect": {"$ref": "defs.schema.json#/$defs/write_effect"}}},
+      "then": {"properties": {"defaults": {"properties": {"cache": {"$ref": "defs.schema.json#/$defs/forbidden"}}}}}
+    },
+    {
+      "description": "write_irreversible 不自动重试（附录 D.4）",
+      "if": {"required": ["effect"], "properties": {"effect": {"const": "write_irreversible"}}},
+      "then": {"properties": {"defaults": {"properties": {"retry": {"properties": {"max": {"const": 0}}}}}}}
+    },
+    {
+      "description": "effect = read 的缓存必须设 TTL（附录 D.4）",
+      "if": {"required": ["effect"], "properties": {"effect": {"const": "read"}}},
+      "then": {"properties": {"defaults": {"properties": {"cache": {"required": ["ttl_s"]}}}}}
+    }
+  ],
+  "unevaluatedProperties": false
+}

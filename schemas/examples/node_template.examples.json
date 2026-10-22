@@ -1,0 +1,216 @@
+{
+  "schema": "node_template",
+  "valid": [
+    {
+      "name": "sql_query_read",
+      "source": "附录 D.1 q_region 引用的 sql_query@v3；附录 D.7 模板的内容；附录 D.4 read 的缓存设 TTL",
+      "notes": "程序节点的工具就是模板本身，所以 implementation 省略；评测集用 S-08 的 task-loop。",
+      "instance": {
+        "description": "查询分析库，返回结果行",
+        "executor": "program",
+        "effect": "read",
+        "role": "fetch",
+        "params_schema": {
+          "type": "object",
+          "required": ["sql"],
+          "properties": {"sql": {"type": "string"}, "timeout_s": {"type": "integer", "minimum": 1}}
+        },
+        "defaults": {
+          "budget": {"timeout_s": 30},
+          "retry": {"max": 2, "on": ["timeout", "rate_limit"], "backoff": "exponential"},
+          "cache": {"ttl_s": 600},
+          "fallback": "fail"
+        },
+        "eval_set": "task-loop"
+      }
+    },
+    {
+      "name": "refund_attribution_model",
+      "source": "S-08 评测集 catalog 的 refund_attribution@v2（model · none）；附录 D.7 的“Tier 与提示模板”；附录 E.2 revise",
+      "notes": "提示模板只是示意。",
+      "instance": {
+        "description": "退款原因归因",
+        "executor": "model",
+        "effect": "none",
+        "role": "transform",
+        "output": "generate",
+        "output_schema_id": "refund_reasons_v1",
+        "implementation": {
+          "tier": "mid@low",
+          "prompt": "根据下面各区域的退款明细，归纳退款上升的主要原因，每条给出占比与例子。"
+        },
+        "defaults": {
+          "reasoning": "plan_first",
+          "quality": {"type": "revise", "judge": "rubric_judge@v1", "max_rounds": 2}
+        },
+        "eval_set": "task-loop"
+      }
+    },
+    {
+      "name": "score_model",
+      "source": "附录 D.1 model 节点的 output：score；附录 E.2 judge",
+      "notes": "",
+      "instance": {
+        "description": "按 rubric 打分",
+        "executor": "model",
+        "effect": "none",
+        "role": "judge",
+        "output": "score",
+        "implementation": {"tier": "strong@medium", "prompt": "按给出的 rubric 逐项打分，只输出分数。"}
+      }
+    },
+    {
+      "name": "repo_edit_reversible",
+      "source": "附录 D.4 write_reversible：记录回滚方式；S-08 评测集的工具 repo_edit（write_reversible）",
+      "notes": "回滚模板 repo_revert 是示意，存在与否由 Registry 发布时校验。",
+      "instance": {
+        "description": "修改仓库里的文件",
+        "executor": "program",
+        "effect": "write_reversible",
+        "role": "act",
+        "implementation": {"tool": "repo_edit"},
+        "rollback_template": "repo_revert",
+        "supports_idempotency_lookup": true,
+        "defaults": {"retry": {"max": 1, "on": ["timeout"]}}
+      }
+    },
+    {
+      "name": "send_email_irreversible",
+      "source": "附录 D.1 列举：发邮件 = program · write_irreversible · act；附录 D.4 不自动重试",
+      "notes": "",
+      "instance": {
+        "description": "发送邮件",
+        "executor": "program",
+        "effect": "write_irreversible",
+        "role": "act",
+        "implementation": {"tool": "send_email"},
+        "supports_idempotency_lookup": true,
+        "defaults": {"retry": {"max": 0}, "fallback": "fail"}
+      }
+    },
+    {
+      "name": "human_approval_gate",
+      "source": "附录 D.4 write_irreversible 前插入人工审批；附录 D.5 gate",
+      "notes": "",
+      "instance": {
+        "description": "人工审批：展示动作与参数，等审批人回复",
+        "executor": "human",
+        "effect": "none",
+        "role": "gate",
+        "defaults": {"budget": {"timeout_s": 86400}}
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "model_missing_output",
+      "description": "model 模板必须给出 output（附录 D.1）",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {"description": "改写", "executor": "model", "effect": "none", "role": "transform"}
+    },
+    {
+      "name": "program_with_output",
+      "description": "program 模板不带 output（附录 D.1）",
+      "violates": [{"path": "/output", "keyword": "not"}],
+      "instance": {"description": "查询", "executor": "program", "effect": "read", "role": "fetch", "output": "generate"}
+    },
+    {
+      "name": "program_with_prompt",
+      "description": "提示模板只属于 model 模板（附录 D.7）",
+      "violates": [{"path": "/implementation/prompt", "keyword": "not"}],
+      "instance": {"description": "查询", "executor": "program", "effect": "read", "role": "fetch", "implementation": {"prompt": "查一下"}}
+    },
+    {
+      "name": "model_with_tool",
+      "description": "model 模板的实现是 Tier 与提示模板，不是工具（附录 D.7）",
+      "violates": [{"path": "/implementation/tool", "keyword": "not"}],
+      "instance": {
+        "description": "改写",
+        "executor": "model",
+        "effect": "none",
+        "role": "transform",
+        "output": "generate",
+        "implementation": {"prompt": "改写", "tool": "web_search"}
+      }
+    },
+    {
+      "name": "human_with_tool",
+      "description": "human 模板没有工具实现",
+      "violates": [{"path": "/implementation/tool", "keyword": "not"}],
+      "instance": {"description": "审批", "executor": "human", "effect": "none", "role": "gate", "implementation": {"tool": "send_email"}}
+    },
+    {
+      "name": "act_with_read_effect",
+      "description": "role = act 时 effect 必须是写操作（附录 D.5）",
+      "violates": [{"path": "/effect", "keyword": "enum"}],
+      "instance": {"description": "发送", "executor": "program", "effect": "read", "role": "act"}
+    },
+    {
+      "name": "write_reversible_missing_rollback",
+      "description": "write_reversible 必须登记回滚方式（附录 D.4）",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {"description": "改文件", "executor": "program", "effect": "write_reversible", "role": "act"}
+    },
+    {
+      "name": "rollback_on_read",
+      "description": "只有 write_reversible 登记回滚方式",
+      "violates": [{"path": "/rollback_template", "keyword": "not"}],
+      "instance": {"description": "查询", "executor": "program", "effect": "read", "role": "fetch", "rollback_template": "undo_query"}
+    },
+    {
+      "name": "write_default_cache",
+      "description": "写操作的默认配置不缓存（附录 D.4）",
+      "violates": [{"path": "/defaults/cache", "keyword": "not"}],
+      "instance": {
+        "description": "发送邮件",
+        "executor": "program",
+        "effect": "write_irreversible",
+        "role": "act",
+        "defaults": {"cache": {"ttl_s": 60}}
+      }
+    },
+    {
+      "name": "write_irreversible_default_retry",
+      "description": "write_irreversible 的默认配置不自动重试（附录 D.4）",
+      "violates": [{"path": "/defaults/retry/max", "keyword": "const"}],
+      "instance": {
+        "description": "付款",
+        "executor": "program",
+        "effect": "write_irreversible",
+        "role": "act",
+        "defaults": {"retry": {"max": 2}}
+      }
+    },
+    {
+      "name": "read_cache_without_ttl",
+      "description": "effect = read 的缓存必须设 TTL（附录 D.4）",
+      "violates": [{"path": "/defaults/cache", "keyword": "required"}],
+      "instance": {"description": "查询", "executor": "program", "effect": "read", "role": "fetch", "defaults": {"cache": {}}}
+    },
+    {
+      "name": "reasoning_on_score",
+      "description": "reasoning 只用于生成型 model 节点（附录 E.3）",
+      "violates": [{"path": "/defaults/reasoning", "keyword": "not"}],
+      "instance": {
+        "description": "打分",
+        "executor": "model",
+        "effect": "none",
+        "role": "judge",
+        "output": "score",
+        "defaults": {"reasoning": "stepwise"}
+      }
+    },
+    {
+      "name": "missing_description",
+      "description": "Planner 靠说明选模板，description 必填",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {"executor": "program", "effect": "none", "role": "transform"}
+    },
+    {
+      "name": "name_in_document",
+      "description": "名字与版本是 Registry 的元数据，不写在正文里",
+      "violates": [{"path": "", "keyword": "unevaluatedProperties"}],
+      "instance": {"name": "sql_query", "version": "v3", "description": "查询", "executor": "program", "effect": "read", "role": "fetch"}
+    }
+  ]
+}

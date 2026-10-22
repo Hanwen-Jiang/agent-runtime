@@ -1,0 +1,66 @@
+{
+  "schema": "tenant_policy",
+  "valid": [
+    {
+      "name": "dev_policy_file_entry",
+      "source": "开发用策略文件（AR_DEV_TENANT_POLICIES_FILE）的租户条目：task-service 的 FilePolicyResolver 与 Model Gateway 的 FileAllowlist",
+      "notes": "",
+      "instance": {"effect_ceiling": "read", "model_allowlist": ["a6api/gpt-4o-mini@2026-10"]}
+    },
+    {
+      "name": "hooks_and_budget",
+      "source": "设计书 3.1.2：租户策略（Hook 声明、模型白名单、预算）；附录 F.1 挂载点；附录 H.6",
+      "notes": "Hook 名是示意。",
+      "instance": {
+        "effect_ceiling": "write_irreversible",
+        "model_allowlist": ["a6api/claude-sonnet-5-5@2026-10", "a6api/gpt-5.5@2026-10"],
+        "hooks": {"before_node": ["pii_redaction"], "on_task_end": ["audit_export"]},
+        "budget": {"usd": 5.0, "tool_calls": 200, "wall_clock_min": 60}
+      }
+    },
+    {
+      "name": "empty_allowlist_denies_all",
+      "source": "Model Gateway 的 FileAllowlist：model_allowlist 为空数组表示一个模型都不允许",
+      "notes": "",
+      "instance": {"model_allowlist": []}
+    },
+    {
+      "name": "all_platform_defaults",
+      "source": "没写的字段用平台默认值",
+      "notes": "",
+      "instance": {}
+    }
+  ],
+  "invalid": [
+    {
+      "name": "unknown_effect",
+      "description": "effect_ceiling 取附录 A 的 effect",
+      "violates": [{"path": "/effect_ceiling", "keyword": "enum"}],
+      "instance": {"effect_ceiling": "write"}
+    },
+    {
+      "name": "duplicate_allowlist_entry",
+      "description": "白名单不重复",
+      "violates": [{"path": "/model_allowlist", "keyword": "uniqueItems"}],
+      "instance": {"model_allowlist": ["a6api/gpt-4o-mini@2026-10", "a6api/gpt-4o-mini@2026-10"]}
+    },
+    {
+      "name": "allowlist_not_profile_id",
+      "description": "白名单里是 Model Profile 的 id（provider/model@version），不是 Tier",
+      "violates": [{"path": "/model_allowlist/0", "keyword": "pattern"}],
+      "instance": {"model_allowlist": ["strong@medium"]}
+    },
+    {
+      "name": "tenant_id_in_document",
+      "description": "租户是条目所在的作用域，由服务端按认证身份确定，不写在正文里",
+      "violates": [{"path": "", "keyword": "unevaluatedProperties"}],
+      "instance": {"tenant_id": "t1", "effect_ceiling": "read"}
+    },
+    {
+      "name": "bad_hook_name",
+      "description": "Hook 名是小写 snake_case",
+      "violates": [{"path": "/hooks/after_node/0", "keyword": "pattern"}],
+      "instance": {"hooks": {"after_node": ["Audit-Log"]}}
+    }
+  ]
+}

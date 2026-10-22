@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/recipe.schema.json",
+  "title": "Recipe",
+  "description": "某个任务族验证过的做法：Stage 划分、模板、Tier、上下文策略与预算（附录 A、C.4），经 Registry 发布（设计书 3.1.2）。这是 RegistryService.Publish 的 document（kind = RECIPE）；名字、版本与发布状态是 Registry 的元数据。Planner 在 light 时命中它、按它规划 Stage（附录 C.1）；template 模式的 Goal Node 把它展开为子图（附录 E.1，展开另行实现）。atomic 节点只写引用的模板与本 Recipe 里的配置：executor、effect、role、output 取自引用的模板版本（已发布的版本不再改变），幂等键在实例化时由代码生成（附录 D.4），这几项都不写在这里。引用的模板存在、risk 不低于各节点的 effect、Node id 唯一、after 引用存在且无环，由 Registry 发布时校验。",
+  "type": "object",
+  "required": ["task_family", "description", "risk", "stages"],
+  "properties": {
+    "task_family": {"$ref": "defs.schema.json#/$defs/task_family"},
+    "description": {"description": "给 Planner 看的做法说明", "$ref": "defs.schema.json#/$defs/non_empty_string"},
+    "risk": {"description": "做法里最高的 effect，与 Session 已授权的风险等级比较（附录 C.1）", "$ref": "defs.schema.json#/$defs/effect"},
+    "typical_cost_usd": {"description": "典型成本：差量检查看 Session 剩余预算够不够（附录 C.2）", "$ref": "defs.schema.json#/$defs/usd"},
+    "stages": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/stage"}},
+    "tiers": {"$ref": "task_plan.schema.json#/properties/tiers"},
+    "context": {"$ref": "task_plan.schema.json#/properties/context"},
+    "budget": {"$ref": "task_plan.schema.json#/properties/budget"},
+    "hooks": {"$ref": "defs.schema.json#/$defs/hook_set"}
+  },
+  "unevaluatedProperties": false,
+  "$defs": {
+    "stage": {
+      "description": "Stage 的形状，字段同 Stage（附录 B.2）；seq 由 Planner 按 Round 编号",
+      "type": "object",
+      "required": ["goal", "exit_when", "nodes"],
+      "properties": {
+        "goal": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+        "exit_when": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+        "budget": {"$ref": "defs.schema.json#/$defs/budget"},
+        "nodes": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/node"}}
+      },
+      "unevaluatedProperties": false
+    },
+    "node": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {"$ref": "defs.schema.json#/$defs/node_kind"}
+      },
+      "allOf": [
+        {
+          "if": {"required": ["kind"], "properties": {"kind": {"const": "atomic"}}},
+          "then": {"$ref": "#/$defs/atomic_node"}
+        },
+        {
+          "if": {"required": ["kind"], "properties": {"kind": {"const": "goal"}}},
+          "then": {"$ref": "goal_node.schema.json"}
+        }
+      ]
+    },
+    "atomic_node": {
+      "description": "Recipe 里的 Atomic Node：Atomic Node 去掉取自模板的字段与实例化时生成的幂等键",
+      "type": "object",
+      "required": ["id", "kind", "template"],
+      "properties": {
+        "id": {"$ref": "defs.schema.json#/$defs/node_id"},
+        "kind": {"const": "atomic"},
+        "template": {"$ref": "defs.schema.json#/$defs/template_ref"},
+        "after": {"$ref": "defs.schema.json#/$defs/after"},
+        "inputs": {"$ref": "defs.schema.json#/$defs/inputs"},
+        "output_schema": {"$ref": "defs.schema.json#/$defs/output_schema"},
+        "budget": {"$ref": "atomic_node.schema.json#/properties/budget"},
+        "retry": {"$ref": "atomic_node.schema.json#/properties/retry"},
+        "cache": {"$ref": "atomic_node.schema.json#/properties/cache"},
+        "fallback": {"$ref": "defs.schema.json#/$defs/fallback"},
+        "tier": {"$ref": "defs.schema.json#/$defs/tier"},
+        "reasoning": {"$ref": "defs.schema.json#/$defs/reasoning"},
+        "quality": {"$ref": "defs.schema.json#/$defs/quality_spec"},
+        "executor": {"description": "取自模板", "$ref": "defs.schema.json#/$defs/forbidden"},
+        "effect": {"description": "取自模板", "$ref": "defs.schema.json#/$defs/forbidden"},
+        "role": {"description": "取自模板", "$ref": "defs.schema.json#/$defs/forbidden"},
+        "output": {"description": "取自模板", "$ref": "defs.schema.json#/$defs/forbidden"},
+        "idempotency_key": {"description": "实例化时由代码生成", "$ref": "defs.schema.json#/$defs/forbidden"}
+      },
+      "unevaluatedProperties": false
+    }
+  }
+}

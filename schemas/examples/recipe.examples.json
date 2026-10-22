@@ -1,0 +1,183 @@
+{
+  "schema": "recipe",
+  "valid": [
+    {
+      "name": "refund_analysis",
+      "source": "S-08 评测集 catalog 的 refund_analysis@v3（取数 → 归因 → 成稿）；附录 C.3 的 tiers、context、budget；附录 D.1 的 q_region；附录 F.1 before_finish",
+      "notes": "第二个 Stage 的输入引用 Task State 里第一个 Stage 的已验证结果，路径只是示意。附录 C.3 的 context.profile 按 task_plan 的约定写作 work_mode。",
+      "instance": {
+        "task_family": "analytics.attribution",
+        "description": "退款率归因：按区域与 SKU 取数，归因，成稿",
+        "risk": "read",
+        "typical_cost_usd": 0.4,
+        "stages": [
+          {
+            "goal": "取数",
+            "exit_when": "各区域与各 SKU 的退款率都已取到",
+            "nodes": [
+              {
+                "id": "q_region",
+                "kind": "atomic",
+                "template": "sql_query@v3",
+                "inputs": {"sql": "SELECT region, refund_rate FROM refunds_by_region WHERE week = :week", "week": "$task.constraints.week"},
+                "output_schema": "region_refund_rate_v1",
+                "cache": {"ttl_s": 600}
+              },
+              {
+                "id": "q_sku",
+                "kind": "atomic",
+                "template": "sql_query@v3",
+                "inputs": {"sql": "SELECT sku, refund_rate FROM refunds_by_sku WHERE week = :week", "week": "$task.constraints.week"}
+              }
+            ]
+          },
+          {
+            "goal": "归因与成稿",
+            "exit_when": "报告给出主要原因，每条带占比与例子",
+            "budget": {"usd": 0.3},
+            "nodes": [
+              {
+                "id": "analyze",
+                "kind": "atomic",
+                "template": "refund_attribution@v2",
+                "inputs": {"rows": "$task.verified_facts.refund_rows"},
+                "tier": "mid@low",
+                "reasoning": "plan_first"
+              },
+              {
+                "id": "report",
+                "kind": "atomic",
+                "template": "synthesize_report@v1",
+                "after": ["analyze"],
+                "inputs": {"findings": "$analyze.result"}
+              }
+            ]
+          }
+        ],
+        "tiers": {"planner": "strong@medium", "reviewer": "strong@medium", "node_default": "mid@low"},
+        "context": {"work_mode": "research", "mask_at": 0.4, "summarize_at": 0.7, "must_keep": ["citations", "numbers"]},
+        "budget": {"usd": 2.0, "tool_calls": 80, "wall_clock_min": 20},
+        "hooks": {"before_finish": ["acceptance_recheck"]}
+      }
+    },
+    {
+      "name": "ci_fix_with_tool_loop",
+      "source": "S-08 评测集 catalog 的 ci_fix@v2（tool_loop + 跑测试的 revise）；附录 E.1 tool_loop",
+      "notes": "Recipe 的 Stage 里可以有 Goal Node；template 模式展开时只接受全是 Atomic Node 的 Recipe（附录 E.1），由展开代码检查。",
+      "instance": {
+        "task_family": "engineering.ci_fix",
+        "description": "修复 CI 失败：读日志，tool_loop 改代码并跑测试",
+        "risk": "write_reversible",
+        "stages": [
+          {
+            "goal": "定位并修复失败的测试",
+            "exit_when": "CI 里失败的测试在本地全部通过",
+            "nodes": [
+              {"id": "read_log", "kind": "atomic", "template": "read_ci_log@v1", "inputs": {"run": "$task.constraints.ci_run"}},
+              {
+                "id": "fix",
+                "kind": "goal",
+                "goal": "修改代码让失败的测试通过",
+                "done_when": "run_tests 全部通过",
+                "mode": "tool_loop",
+                "after": ["read_log"],
+                "inputs": {"log": "$read_log.result"},
+                "output_schema": {"type": "object", "required": ["changed_files"], "properties": {"changed_files": {"type": "array", "items": {"type": "string"}}}},
+                "effect_ceiling": "write_reversible",
+                "tools": ["repo_read", "repo_edit", "shell_test"],
+                "max_iterations": 30
+              }
+            ]
+          }
+        ],
+        "tiers": {"node_default": "strong@medium"}
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "atomic_with_effect",
+      "description": "effect 取自引用的模板，不写在 Recipe 里",
+      "violates": [{"path": "/stages/0/nodes/0/effect", "keyword": "not"}],
+      "instance": {
+        "task_family": "analytics.attribution",
+        "description": "取数",
+        "risk": "read",
+        "stages": [{"goal": "取数", "exit_when": "取到", "nodes": [{"id": "q", "kind": "atomic", "template": "sql_query@v3", "effect": "none"}]}]
+      }
+    },
+    {
+      "name": "atomic_with_idempotency_key",
+      "description": "幂等键在实例化时由代码生成，不写在 Recipe 里（附录 D.4）",
+      "violates": [{"path": "/stages/0/nodes/0/idempotency_key", "keyword": "not"}],
+      "instance": {
+        "task_family": "support.ticket_batch",
+        "description": "写回标签",
+        "risk": "write_reversible",
+        "stages": [{"goal": "写回", "exit_when": "写完", "nodes": [{"id": "write_back", "kind": "atomic", "template": "ticket_update@v1", "idempotency_key": "fixed"}]}]
+      }
+    },
+    {
+      "name": "missing_risk",
+      "description": "risk 必填：light 要和 Session 已授权的风险等级比较（附录 C.1）",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {
+        "task_family": "analytics.attribution",
+        "description": "取数",
+        "stages": [{"goal": "取数", "exit_when": "取到", "nodes": [{"id": "q", "kind": "atomic", "template": "sql_query@v3"}]}]
+      }
+    },
+    {
+      "name": "no_stages",
+      "description": "Recipe 至少有一个 Stage",
+      "violates": [{"path": "/stages", "keyword": "minItems"}],
+      "instance": {"task_family": "analytics.attribution", "description": "空", "risk": "none", "stages": []}
+    },
+    {
+      "name": "stage_with_seq",
+      "description": "seq 由 Planner 按 Round 编号，不写在 Recipe 里",
+      "violates": [{"path": "/stages/0", "keyword": "unevaluatedProperties"}],
+      "instance": {
+        "task_family": "analytics.attribution",
+        "description": "取数",
+        "risk": "read",
+        "stages": [{"seq": 1, "goal": "取数", "exit_when": "取到", "nodes": [{"id": "q", "kind": "atomic", "template": "sql_query@v3"}]}]
+      }
+    },
+    {
+      "name": "goal_node_missing_output_schema",
+      "description": "Recipe 里的 Goal Node 同样要写 output_schema（附录 E.1）",
+      "violates": [{"path": "/stages/0/nodes/0", "keyword": "required"}],
+      "instance": {
+        "task_family": "engineering.ci_fix",
+        "description": "修复",
+        "risk": "write_reversible",
+        "stages": [{"goal": "修复", "exit_when": "通过", "nodes": [{"id": "fix", "kind": "goal", "goal": "修复", "done_when": "通过", "mode": "tool_loop"}]}]
+      }
+    },
+    {
+      "name": "unknown_hook_mount",
+      "description": "Hook 只能挂在附录 F.1 的挂载点上",
+      "violates": [{"path": "/hooks", "keyword": "enum"}],
+      "instance": {
+        "task_family": "analytics.attribution",
+        "description": "取数",
+        "risk": "read",
+        "stages": [{"goal": "取数", "exit_when": "取到", "nodes": [{"id": "q", "kind": "atomic", "template": "sql_query@v3"}]}],
+        "hooks": {"before_everything": ["audit_log"]}
+      }
+    },
+    {
+      "name": "tier_without_strength",
+      "description": "Tier 写作 模型档@推理强度（附录 A、H.1），与 Task Plan 一致",
+      "violates": [{"path": "/tiers/planner", "keyword": "pattern"}],
+      "instance": {
+        "task_family": "analytics.attribution",
+        "description": "取数",
+        "risk": "read",
+        "stages": [{"goal": "取数", "exit_when": "取到", "nodes": [{"id": "q", "kind": "atomic", "template": "sql_query@v3"}]}],
+        "tiers": {"planner": "strong"}
+      }
+    }
+  ]
+}

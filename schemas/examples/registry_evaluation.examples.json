@@ -1,0 +1,146 @@
+{
+  "schema": "registry_evaluation",
+  "valid": [
+    {
+      "name": "non_inferior_against_baseline",
+      "source": "附录 J.3：非劣效检验，默认 δ = 2 个百分点、ε = 5%，每个任务族至少 100 条样本",
+      "notes": "报告名仿照 py-learning 的评测报告。",
+      "instance": {
+        "eval_set": {"name": "task-loop", "version": "6e07f09"},
+        "task_family": "analytics.attribution",
+        "samples": 120,
+        "baseline": {"success_rate": 0.82, "success_rate_ci95": [0.74, 0.88], "cost_per_success_usd": 0.31},
+        "candidate": {"success_rate": 0.85, "success_rate_ci95": [0.78, 0.9], "cost_per_success_usd": 0.3},
+        "thresholds": {"delta": 0.02, "epsilon": 0.05},
+        "passed": true,
+        "report": "repeat--refund_analysis_v4--20261022T101500Z.json",
+        "evaluated_at": "2026-10-22T10:15:00Z"
+      }
+    },
+    {
+      "name": "first_version_without_baseline",
+      "source": "设计书 3.1.2：新版本先影子运行，评测达标后再设为默认；还没有默认版本时没有 baseline",
+      "notes": "",
+      "instance": {
+        "eval_set": {"name": "task-loop", "version": "6e07f09"},
+        "samples": 26,
+        "candidate": {"success_rate": 0.92, "cost_per_success_usd": 0.05},
+        "passed": true,
+        "report": "baseline--20261022T090000Z.json",
+        "evaluated_at": "2026-10-22T09:00:00Z"
+      }
+    },
+    {
+      "name": "waived",
+      "source": "附录 J.3：豁免要人工审批并记录",
+      "notes": "",
+      "instance": {
+        "eval_set": {"name": "task-loop", "version": "6e07f09"},
+        "samples": 60,
+        "baseline": {"success_rate": 0.8, "cost_per_success_usd": 0.4},
+        "candidate": {"success_rate": 0.79, "cost_per_success_usd": 0.2},
+        "thresholds": {"delta": 0.02, "epsilon": 0.05},
+        "passed": true,
+        "waiver": {"approved_by": "ops_lead", "reason": "样本不足 100 条，但成本减半，先灰度"},
+        "report": "repeat--candidate--20261022T110000Z.json",
+        "evaluated_at": "2026-10-22T11:00:00Z"
+      }
+    },
+    {
+      "name": "not_passed",
+      "source": "附录 J.3：未达标的证据也合格式；Registry 拒绝晋升 passed 不为 true 的版本",
+      "notes": "",
+      "instance": {
+        "eval_set": {"name": "task-loop", "version": "6e07f09"},
+        "samples": 120,
+        "baseline": {"success_rate": 0.82, "cost_per_success_usd": 0.31},
+        "candidate": {"success_rate": 0.7, "cost_per_success_usd": 0.29},
+        "thresholds": {"delta": 0.02, "epsilon": 0.05},
+        "passed": false,
+        "report": "repeat--candidate--20261022T120000Z.json",
+        "evaluated_at": "2026-10-22T12:00:00Z"
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "missing_passed",
+      "description": "结论 passed 必填",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {
+        "eval_set": {"name": "task-loop", "version": "6e07f09"},
+        "samples": 26,
+        "candidate": {"success_rate": 0.92, "cost_per_success_usd": 0.05},
+        "report": "r.json",
+        "evaluated_at": "2026-10-22T09:00:00Z"
+      }
+    },
+    {
+      "name": "success_rate_above_one",
+      "description": "成功率在 0 与 1 之间",
+      "violates": [{"path": "/candidate/success_rate", "keyword": "maximum"}],
+      "instance": {
+        "eval_set": {"name": "task-loop", "version": "6e07f09"},
+        "samples": 26,
+        "candidate": {"success_rate": 92, "cost_per_success_usd": 0.05},
+        "passed": true,
+        "report": "r.json",
+        "evaluated_at": "2026-10-22T09:00:00Z"
+      }
+    },
+    {
+      "name": "waiver_on_failed",
+      "description": "带豁免就是要晋升：passed 必须为 true",
+      "violates": [{"path": "/passed", "keyword": "const"}],
+      "instance": {
+        "eval_set": {"name": "task-loop", "version": "6e07f09"},
+        "samples": 26,
+        "candidate": {"success_rate": 0.5, "cost_per_success_usd": 0.05},
+        "passed": false,
+        "waiver": {"approved_by": "ops_lead", "reason": "先上线"},
+        "report": "r.json",
+        "evaluated_at": "2026-10-22T09:00:00Z"
+      }
+    },
+    {
+      "name": "waiver_without_reason",
+      "description": "豁免要记录理由（附录 J.3）",
+      "violates": [{"path": "/waiver", "keyword": "required"}],
+      "instance": {
+        "eval_set": {"name": "task-loop", "version": "6e07f09"},
+        "samples": 26,
+        "candidate": {"success_rate": 0.5, "cost_per_success_usd": 0.05},
+        "passed": true,
+        "waiver": {"approved_by": "ops_lead"},
+        "report": "r.json",
+        "evaluated_at": "2026-10-22T09:00:00Z"
+      }
+    },
+    {
+      "name": "zero_samples",
+      "description": "至少一条样本",
+      "violates": [{"path": "/samples", "keyword": "minimum"}],
+      "instance": {
+        "eval_set": {"name": "task-loop", "version": "6e07f09"},
+        "samples": 0,
+        "candidate": {"success_rate": 0.92, "cost_per_success_usd": 0.05},
+        "passed": true,
+        "report": "r.json",
+        "evaluated_at": "2026-10-22T09:00:00Z"
+      }
+    },
+    {
+      "name": "eval_set_without_version",
+      "description": "评测集要带版本，证据才可追溯",
+      "violates": [{"path": "/eval_set", "keyword": "required"}],
+      "instance": {
+        "eval_set": {"name": "task-loop"},
+        "samples": 26,
+        "candidate": {"success_rate": 0.92, "cost_per_success_usd": 0.05},
+        "passed": true,
+        "report": "r.json",
+        "evaluated_at": "2026-10-22T09:00:00Z"
+      }
+    }
+  ]
+}

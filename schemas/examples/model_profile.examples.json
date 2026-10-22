@@ -1,0 +1,179 @@
+{
+  "schema": "model_profile",
+  "valid": [
+    {
+      "name": "dev_small_single_tier",
+      "source": "deploy/dev/model-profiles.json 的 a6api/gpt-4o-mini@2026-10；附录 H.1",
+      "notes": "原样照抄。",
+      "instance": {
+        "id": "a6api/gpt-4o-mini@2026-10",
+        "vendor": "openai",
+        "model": "gpt-4o-mini",
+        "class": "small",
+        "tiers": [{"name": "low", "effort": "", "thinking_budget": 0}],
+        "capabilities": ["generate", "structured", "tools", "stream"],
+        "cost": {"in_per_m": 0.15, "out_per_m": 0.6, "cache_read_per_m": 0.075},
+        "constraints": {"context_window": 128000, "max_output": 16384},
+        "freshness": {"price_at": "2026-10-21"}
+      }
+    },
+    {
+      "name": "dev_strong_two_tiers",
+      "source": "deploy/dev/model-profiles.json 的 a6api/claude-sonnet-5-5@2026-10；附录 H.1：不同推理强度视为不同的 Tier",
+      "notes": "原样照抄。",
+      "instance": {
+        "id": "a6api/claude-sonnet-5-5@2026-10",
+        "vendor": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "class": "strong",
+        "tiers": [
+          {"name": "medium", "effort": "medium", "thinking_budget": 8192},
+          {"name": "high", "effort": "high", "thinking_budget": 32768}
+        ],
+        "capabilities": ["generate", "structured", "tools", "stream"],
+        "cost": {"in_per_m": 2.0, "out_per_m": 10.0, "cache_read_per_m": 0.2},
+        "constraints": {"context_window": 200000, "max_output": 64000},
+        "freshness": {"price_at": "2026-10-21"}
+      }
+    },
+    {
+      "name": "dev_embedding",
+      "source": "deploy/dev/model-profiles.json 的 a6api/text-embedding-3-small@2026-10",
+      "notes": "原样照抄。嵌入模型的 Tier 是 embed@default，max_output 为 0。",
+      "instance": {
+        "id": "a6api/text-embedding-3-small@2026-10",
+        "vendor": "openai",
+        "model": "text-embedding-3-small",
+        "class": "embed",
+        "tiers": [{"name": "default"}],
+        "capabilities": ["embed"],
+        "cost": {"in_per_m": 0.02, "out_per_m": 0, "cache_read_per_m": 0},
+        "constraints": {"context_window": 8191, "max_output": 0},
+        "freshness": {"price_at": "2026-10-21"}
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "missing_cache_read_price",
+      "description": "三项单价都要写：缺的单价按 0 计，会被当成最便宜的选中",
+      "violates": [{"path": "/cost", "keyword": "required"}],
+      "instance": {
+        "id": "a6api/gpt-4o-mini@2026-10",
+        "vendor": "openai",
+        "model": "gpt-4o-mini",
+        "class": "small",
+        "tiers": [{"name": "low"}],
+        "capabilities": ["generate"],
+        "cost": {"in_per_m": 0.15, "out_per_m": 0.6},
+        "freshness": {"price_at": "2026-10-21"}
+      }
+    },
+    {
+      "name": "negative_price",
+      "description": "单价不能为负",
+      "violates": [{"path": "/cost/in_per_m", "keyword": "minimum"}],
+      "instance": {
+        "id": "a6api/gpt-4o-mini@2026-10",
+        "vendor": "openai",
+        "model": "gpt-4o-mini",
+        "class": "small",
+        "tiers": [{"name": "low"}],
+        "capabilities": ["generate"],
+        "cost": {"in_per_m": -0.15, "out_per_m": 0.6, "cache_read_per_m": 0.075},
+        "freshness": {"price_at": "2026-10-21"}
+      }
+    },
+    {
+      "name": "unknown_capability",
+      "description": "capabilities 只能取 Model Gateway 认识的五项",
+      "violates": [{"path": "/capabilities/0", "keyword": "enum"}],
+      "instance": {
+        "id": "a6api/gpt-4o-mini@2026-10",
+        "vendor": "openai",
+        "model": "gpt-4o-mini",
+        "class": "small",
+        "tiers": [{"name": "low"}],
+        "capabilities": ["vision"],
+        "cost": {"in_per_m": 0.15, "out_per_m": 0.6, "cache_read_per_m": 0.075},
+        "freshness": {"price_at": "2026-10-21"}
+      }
+    },
+    {
+      "name": "tier_name_with_at",
+      "description": "Tier 字符串是 <class>@<tier 名>，Tier 名不含 @",
+      "violates": [{"path": "/tiers/0/name", "keyword": "pattern"}],
+      "instance": {
+        "id": "a6api/gpt-4o-mini@2026-10",
+        "vendor": "openai",
+        "model": "gpt-4o-mini",
+        "class": "small",
+        "tiers": [{"name": "small@low"}],
+        "capabilities": ["generate"],
+        "cost": {"in_per_m": 0.15, "out_per_m": 0.6, "cache_read_per_m": 0.075},
+        "freshness": {"price_at": "2026-10-21"}
+      }
+    },
+    {
+      "name": "no_tiers",
+      "description": "每个 Profile 至少一个 Tier",
+      "violates": [{"path": "/tiers", "keyword": "minItems"}],
+      "instance": {
+        "id": "a6api/gpt-4o-mini@2026-10",
+        "vendor": "openai",
+        "model": "gpt-4o-mini",
+        "class": "small",
+        "tiers": [],
+        "capabilities": ["generate"],
+        "cost": {"in_per_m": 0.15, "out_per_m": 0.6, "cache_read_per_m": 0.075},
+        "freshness": {"price_at": "2026-10-21"}
+      }
+    },
+    {
+      "name": "id_without_snapshot",
+      "description": "id 形如 provider/model@version（附录 H.1）",
+      "violates": [{"path": "/id", "keyword": "pattern"}],
+      "instance": {
+        "id": "openai/gpt-4o-mini",
+        "vendor": "openai",
+        "model": "gpt-4o-mini",
+        "class": "small",
+        "tiers": [{"name": "low"}],
+        "capabilities": ["generate"],
+        "cost": {"in_per_m": 0.15, "out_per_m": 0.6, "cache_read_per_m": 0.075},
+        "freshness": {"price_at": "2026-10-21"}
+      }
+    },
+    {
+      "name": "price_date_format",
+      "description": "freshness.price_at 的格式是 YYYY-MM-DD",
+      "violates": [{"path": "/freshness/price_at", "keyword": "pattern"}],
+      "instance": {
+        "id": "a6api/gpt-4o-mini@2026-10",
+        "vendor": "openai",
+        "model": "gpt-4o-mini",
+        "class": "small",
+        "tiers": [{"name": "low"}],
+        "capabilities": ["generate"],
+        "cost": {"in_per_m": 0.15, "out_per_m": 0.6, "cache_read_per_m": 0.075},
+        "freshness": {"price_at": "2026/10/21"}
+      }
+    },
+    {
+      "name": "field_unknown_to_gateway",
+      "description": "Model Gateway 还不读的 H.1 字段（例如 latency）不收：它会拒绝整个 Profile",
+      "violates": [{"path": "", "keyword": "unevaluatedProperties"}],
+      "instance": {
+        "id": "a6api/gpt-4o-mini@2026-10",
+        "vendor": "openai",
+        "model": "gpt-4o-mini",
+        "class": "small",
+        "tiers": [{"name": "low"}],
+        "capabilities": ["generate"],
+        "cost": {"in_per_m": 0.15, "out_per_m": 0.6, "cache_read_per_m": 0.075},
+        "freshness": {"price_at": "2026-10-21"},
+        "latency": {"ttft_p50_ms": 400}
+      }
+    }
+  ]
+}
