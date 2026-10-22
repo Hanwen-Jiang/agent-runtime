@@ -10,12 +10,14 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import importlib
 import time
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import grpc
 import pytest
+from temporalio.testing import ActivityEnvironment
 
 from agentruntime.common.v1 import error_pb2
 from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
@@ -378,3 +380,51 @@ def test_from_env_works_as_the_eval_gateway_factory(monkeypatch: pytest.MonkeyPa
     response = asyncio.run(scenario())
     assert response == generate_response()
     assert len(fake.requests) == 1
+
+
+# --- R-02 评审处理建议第 4 条：deadline 跟着 activity 剩下的时间走 ---
+# 在 Temporal activity 里调用时，deadline 取 timeout_s 与“activity 剩余时间减去余量”中较小的：网关据此安排每次尝试的超时、
+# 重试与切换（gRPC 把 deadline 带给网关），不会等 activity 先超时、再由 Temporal 整体重试（同一个请求在上游被处理两次）。
+
+
+def _activity_env(start_to_close: timedelta, *, started_ago: timedelta = timedelta(0)) -> ActivityEnvironment:
+    env = ActivityEnvironment()
+    env.info = dataclasses.replace(env.info, start_to_close_timeout=start_to_close, started_time=datetime.now(UTC) - started_ago)
+    return env
+
+
+async def test_deadline_follows_the_remaining_activity_time() -> None:
+    fake = FakeModelGateway(delay_s=10)
+    env = _activity_env(timedelta(seconds=3))
+    async with serve(fake) as address, open_client(address, timeout_s=60) as gateway:
+        started = time.monotonic()
+        with pytest.raises(TransientError):
+            await env.run(gateway.generate, generate_request())
+        elapsed = time.monotonic() - started
+    assert elapsed < 3, f"activity 只剩 3 秒，客户端等了 {elapsed:.1f} 秒"
+
+
+async def test_an_activity_with_plenty_of_time_still_uses_timeout_s() -> None:
+    fake = FakeModelGateway(delay_s=5)
+    env = _activity_env(timedelta(minutes=10))
+    async with serve(fake) as address, open_client(address, timeout_s=0.5) as gateway:
+        started = time.monotonic()
+        with pytest.raises(TransientError):
+            await env.run(gateway.generate, generate_request())
+        elapsed = time.monotonic() - started
+    assert elapsed < 3, f"timeout_s 是 0.5 秒，实际等了 {elapsed:.1f} 秒"
+
+
+async def test_no_time_left_in_the_activity_fails_fast_without_calling_the_gateway() -> None:
+    fake = FakeModelGateway()
+    env = _activity_env(timedelta(seconds=2), started_ago=timedelta(seconds=5))
+    async with serve(fake) as address, open_client(address) as gateway:
+        with pytest.raises(TransientError) as info:
+            await env.run(gateway.generate, generate_request())
+    assert fake.requests == [], "activity 已经没有时间了，不再发请求"
+    assert info.value.code
+
+
+def test_the_default_deadline_leaves_room_for_gateway_retries() -> None:
+    """网关每次尝试的超时默认 90 秒（go-model-gateway 的 gateway.DefaultAttemptTimeout）；客户端默认的 deadline 至少容得下三次尝试。"""
+    assert grpc_gateway.DEFAULT_TIMEOUT_S >= 3 * 90

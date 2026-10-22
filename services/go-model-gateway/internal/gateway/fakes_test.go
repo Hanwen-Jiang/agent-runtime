@@ -9,6 +9,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/modelprovider"
 	"github.com/agentruntime/agent-runtime/libs/go-core/tenancy"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
@@ -33,6 +34,7 @@ type fakeProvider struct {
 	platformBinds []string
 	calls         []fakeCall
 	failures      map[string][]error
+	hangs         map[string]int
 	generate      map[string]generateFunc
 	usage         *commonv1.Usage
 }
@@ -40,6 +42,7 @@ type fakeProvider struct {
 func newFakeProvider() *fakeProvider {
 	return &fakeProvider{
 		failures: map[string][]error{},
+		hangs:    map[string]int{},
 		generate: map[string]generateFunc{},
 		// 默认 Usage：按 mid-a 的单价（0.15/0.6/0.075）成本为 (1000-200)*0.15 + 200*0.075 + 500*0.6 = 435。
 		usage: &commonv1.Usage{InputTokens: 1000, OutputTokens: 500, CacheReadTokens: 200, ReasoningTokens: 50},
@@ -51,6 +54,13 @@ func (p *fakeProvider) failNext(model string, errs ...error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.failures[model] = append(p.failures[model], errs...)
+}
+
+// hangNext 让 model 接下来的 n 次调用一直等到调用的 ctx 结束，再返回 transient（code timeout），模拟上游没有响应。
+func (p *fakeProvider) hangNext(model string, n int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.hangs[model] += n
 }
 
 // onGenerate 设定 model 的 Generate 与 StreamGenerate 结果；返回的 Usage 为空时用默认 Usage。
@@ -113,11 +123,21 @@ func (p *fakeProvider) BindPlatform(purpose string) (modelprovider.Client, error
 
 func (p *fakeProvider) Close() error { return nil }
 
-// begin 记录调用并取出为该模型安排的失败。
-func (p *fakeProvider) begin(call fakeCall) (*commonv1.Usage, generateFunc, error) {
+// begin 记录调用并取出为该模型安排的失败；安排了 hang 时一直等到 ctx 结束。
+func (p *fakeProvider) begin(ctx context.Context, call fakeCall) (*commonv1.Usage, generateFunc, error) {
+	p.mu.Lock()
+	p.calls = append(p.calls, call)
+	hang := p.hangs[call.Model] > 0
+	if hang {
+		p.hangs[call.Model]--
+	}
+	p.mu.Unlock()
+	if hang {
+		<-ctx.Done()
+		return nil, nil, providererr.Wrap(providererr.Transient, "timeout", "上游没有响应", ctx.Err())
+	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.calls = append(p.calls, call)
 	usage := proto.Clone(p.usage).(*commonv1.Usage)
 	if queue := p.failures[call.Model]; len(queue) > 0 {
 		p.failures[call.Model] = queue[1:]
@@ -131,8 +151,8 @@ type fakeClient struct {
 	tenantID string
 }
 
-func (c *fakeClient) result(method string, req modelprovider.GenerateRequest) (modelprovider.GenerateResult, error) {
-	usage, fn, err := c.p.begin(fakeCall{TenantID: c.tenantID, Method: method, Model: req.Model, Generate: req})
+func (c *fakeClient) result(ctx context.Context, method string, req modelprovider.GenerateRequest) (modelprovider.GenerateResult, error) {
+	usage, fn, err := c.p.begin(ctx, fakeCall{TenantID: c.tenantID, Method: method, Model: req.Model, Generate: req})
 	if err != nil {
 		return modelprovider.GenerateResult{}, err
 	}
@@ -149,13 +169,13 @@ func (c *fakeClient) result(method string, req modelprovider.GenerateRequest) (m
 	return r, err
 }
 
-func (c *fakeClient) Generate(_ context.Context, req modelprovider.GenerateRequest) (modelprovider.GenerateResult, error) {
-	return c.result("Generate", req)
+func (c *fakeClient) Generate(ctx context.Context, req modelprovider.GenerateRequest) (modelprovider.GenerateResult, error) {
+	return c.result(ctx, "Generate", req)
 }
 
 // StreamGenerate 先发思考分片，再把文本切成 3 个字符一片，最后一个分片带完整结果。
-func (c *fakeClient) StreamGenerate(_ context.Context, req modelprovider.GenerateRequest) (modelprovider.Stream, error) {
-	r, err := c.result("StreamGenerate", req)
+func (c *fakeClient) StreamGenerate(ctx context.Context, req modelprovider.GenerateRequest) (modelprovider.Stream, error) {
+	r, err := c.result(ctx, "StreamGenerate", req)
 	if err != nil {
 		return nil, err
 	}
@@ -194,8 +214,8 @@ func (s *fakeStream) Recv(context.Context) (modelprovider.Chunk, error) {
 func (s *fakeStream) Close() error { return nil }
 
 // Score 依次给 0.1、0.2、0.3……
-func (c *fakeClient) Score(_ context.Context, req modelprovider.ScoreRequest) (modelprovider.ScoreResult, error) {
-	usage, _, err := c.p.begin(fakeCall{TenantID: c.tenantID, Method: "Score", Model: req.Model, Score: req})
+func (c *fakeClient) Score(ctx context.Context, req modelprovider.ScoreRequest) (modelprovider.ScoreResult, error) {
+	usage, _, err := c.p.begin(ctx, fakeCall{TenantID: c.tenantID, Method: "Score", Model: req.Model, Score: req})
 	if err != nil {
 		return modelprovider.ScoreResult{}, err
 	}
@@ -207,8 +227,8 @@ func (c *fakeClient) Score(_ context.Context, req modelprovider.ScoreRequest) (m
 }
 
 // Embed 的向量是 [文本的字节数, 1]。
-func (c *fakeClient) Embed(_ context.Context, req modelprovider.EmbedRequest) (modelprovider.EmbedResult, error) {
-	usage, _, err := c.p.begin(fakeCall{TenantID: c.tenantID, Method: "Embed", Model: req.Model, Embed: req})
+func (c *fakeClient) Embed(ctx context.Context, req modelprovider.EmbedRequest) (modelprovider.EmbedResult, error) {
+	usage, _, err := c.p.begin(ctx, fakeCall{TenantID: c.tenantID, Method: "Embed", Model: req.Model, Embed: req})
 	if err != nil {
 		return modelprovider.EmbedResult{}, err
 	}

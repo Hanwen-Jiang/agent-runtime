@@ -111,12 +111,18 @@ func newHarness(t *testing.T) *harness { return newHarnessWith(t, nil) }
 // newHarnessWith 用给定的租户白名单构造（nil 表示不限制）。
 func newHarnessWith(t *testing.T, allow router.Allowlist) *harness {
 	t.Helper()
+	return newHarnessOpts(t, allow, nil)
+}
+
+// newHarnessOpts 另可调整 gateway.Options（例如每次尝试的超时）。
+func newHarnessOpts(t *testing.T, allow router.Allowlist, adjust func(*gateway.Options)) *harness {
+	t.Helper()
 	catalog, err := profiles.Parse([]byte(testProfiles))
 	if err != nil {
 		t.Fatalf("测试用 Profile 应能解析：%v", err)
 	}
 	h := &harness{fake: newFakeProvider(), meter: &syncBuffer{}, logs: &syncBuffer{}, sleeps: &sleepRecorder{}}
-	srv, err := gateway.New(gateway.Options{
+	opts := gateway.Options{
 		Provider: h.fake,
 		Router:   router.New(catalog, allow),
 		Meter:    h.meter,
@@ -124,7 +130,11 @@ func newHarnessWith(t *testing.T, allow router.Allowlist) *harness {
 		Retry:    testRetry,
 		Sleep:    h.sleeps.sleep,
 		Jitter:   func(d time.Duration) time.Duration { return d },
-	})
+	}
+	if adjust != nil {
+		adjust(&opts)
+	}
+	srv, err := gateway.New(opts)
 	if err != nil {
 		t.Fatalf("gateway.New：%v", err)
 	}

@@ -262,7 +262,8 @@ func structured(text string) (json.RawMessage, error) {
 	return json.RawMessage(body), nil
 }
 
-// result 把一个 choice 转成 GenerateResult。
+// result 把一个 choice 转成 GenerateResult。工具参数或结构化输出不合格时报 Invalid，同时在结果里带回 Usage
+// （上游已经计费，Model Gateway 要记进计量）。
 func result(choice wireChoice, usage *wireUsage, schema json.RawMessage) (modelprovider.GenerateResult, error) {
 	m := choice.Message
 	out := modelprovider.GenerateResult{
@@ -277,14 +278,14 @@ func result(choice wireChoice, usage *wireUsage, schema json.RawMessage) (modelp
 	for _, call := range m.ToolCalls {
 		args, err := arguments(call.Function.Arguments)
 		if err != nil {
-			return modelprovider.GenerateResult{}, err
+			return modelprovider.GenerateResult{Usage: out.Usage}, err
 		}
 		out.ToolCalls = append(out.ToolCalls, modelprovider.ToolCall{ID: call.ID, Name: call.Function.Name, Arguments: args})
 	}
 	if len(schema) > 0 && len(out.ToolCalls) == 0 {
 		s, err := structured(out.Text)
 		if err != nil {
-			return modelprovider.GenerateResult{}, err
+			return modelprovider.GenerateResult{Usage: out.Usage}, err
 		}
 		out.Structured = s
 	}
@@ -338,13 +339,14 @@ func (c *client) Score(ctx context.Context, req modelprovider.ScoreRequest) (mod
 	}
 	r, err := c.Generate(ctx, gen)
 	if err != nil {
-		return modelprovider.ScoreResult{}, err
+		return modelprovider.ScoreResult{Usage: r.Usage}, err
 	}
 	var parsed struct {
 		Scores []float64 `json:"scores"`
 	}
 	if json.Unmarshal(r.Structured, &parsed) != nil || len(parsed.Scores) != len(req.Candidates) {
-		return modelprovider.ScoreResult{}, invalid("bad_scores", fmt.Sprintf("分数的个数应为 %d", len(req.Candidates)))
+		// 上游已经计费：分数不对也带回 Usage。
+		return modelprovider.ScoreResult{Usage: r.Usage}, invalid("bad_scores", fmt.Sprintf("分数的个数应为 %d", len(req.Candidates)))
 	}
 	return modelprovider.ScoreResult{Scores: parsed.Scores, Usage: r.Usage}, nil
 }

@@ -11,7 +11,10 @@ GrpcModelGateway 实现 executor.model_gateway.ModelGateway：经 grpcio 调用 
 - 没有这个 trailer、trailer 解析不了、或类别是 UNSPECIFIED 与不认识的值时，按 gRPC 状态码映射：UNAVAILABLE、DEADLINE_EXCEEDED、RESOURCE_EXHAUSTED → TransientError；
   INVALID_ARGUMENT → InvalidError；PERMISSION_DENIED、UNAUTHENTICATED → DeniedError；NOT_FOUND → NotFoundError；
   其余 → TransientError。
-- 每次调用的 deadline 是 timeout_s；客户端超时是 DEADLINE_EXCEEDED，按上一条为 TransientError。
+- 每次调用的 deadline 是 timeout_s；在 Temporal activity 里调用时，还不超过 activity 剩下的时间减去 ACTIVITY_MARGIN_S
+  （gRPC 把 deadline 带给网关，网关据此安排每次尝试的超时、重试与切换，不会等 activity 先超时、再由 Temporal 整体重试，
+  让同一个请求在上游被处理两次）。activity 已经没有时间时不发请求，直接抛 TransientError（code activity_deadline）。
+  客户端超时是 DEADLINE_EXCEEDED，按上一条为 TransientError。
 - 错误信息里不出现请求的消息内容（附录 D.4、CLAUDE.md“凭据与密钥不得出现在日志、trace 和错误信息里”）。
 - 不把 grpc 的异常漏给调用方：一律抛 agentruntime_core.errors 的 ProviderError。
 
@@ -24,11 +27,12 @@ from __future__ import annotations
 import asyncio
 import os
 from collections.abc import Mapping
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import grpc
 from google.protobuf.message import DecodeError
+from temporalio import activity
 
 from agentruntime.common.v1 import error_pb2
 from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
@@ -41,8 +45,10 @@ from agentruntime_worker.config import ENV_MODEL_GATEWAY_ADDRESS
 ERROR_TRAILER = "ar-error-bin"
 # Error.details 里的建议重试间隔（整数毫秒），只在 transient 时出现。
 RETRY_AFTER_DETAIL = "retry_after_ms"
-# 每次调用的默认 deadline（秒）。
-DEFAULT_TIMEOUT_S = 120.0
+# 每次调用的默认 deadline（秒）：容得下网关的三次尝试（go-model-gateway 的 gateway.DefaultAttemptTimeout 是 90 秒）。
+DEFAULT_TIMEOUT_S = 300.0
+# 在 activity 里调用时，deadline 比 activity 剩下的时间再早这么多秒：留给错误回传与 activity 收尾。
+ACTIVITY_MARGIN_S = 2.0
 
 __all__ = [
     "DEFAULT_TIMEOUT_S",
@@ -108,7 +114,8 @@ def restore_error(exc: grpc.aio.AioRpcError) -> ProviderError:
 class GrpcModelGateway:
     """到 go-model-gateway 的 gRPC 客户端，实现 ModelGateway Protocol。
 
-    address 形如 127.0.0.1:8091（h2c，不加密；服务间认证留给部署层的 mTLS）。timeout_s 是每次调用的 deadline（秒）。
+    address 形如 127.0.0.1:8091（h2c，不加密；服务间认证留给部署层的 mTLS）。timeout_s 是每次调用的 deadline 上限（秒），
+    在 activity 里还受 activity 剩下的时间限制（见模块说明）。
 
     构造时不建连接、不需要事件循环：评测的工厂（from_env）与 Worker 的组装可能在事件循环之外调用。
     通道在第一次调用时按当时运行的事件循环创建（事件循环换了就重建）；aclose() 关闭通道，没建过通道时什么也不做，可以重复调用。
@@ -133,17 +140,31 @@ class GrpcModelGateway:
             self._loop = loop
         return self._stub
 
+    def _deadline(self) -> float:
+        """这次调用的 deadline（秒）：timeout_s；在 activity 里时不超过 activity 剩下的时间减去 ACTIVITY_MARGIN_S。"""
+        timeout = self.timeout_s
+        if activity.in_activity():
+            info = activity.info()
+            if info.start_to_close_timeout is not None:
+                elapsed = (datetime.now(UTC) - info.started_time).total_seconds()
+                timeout = min(timeout, info.start_to_close_timeout.total_seconds() - elapsed - ACTIVITY_MARGIN_S)
+        if timeout <= 0:
+            raise TransientError("activity_deadline", "activity 剩下的时间不够再调用一次模型")
+        return timeout
+
     async def generate(self, request: mg.GenerateRequest) -> mg.GenerateResponse:
         """调用 ModelGatewayService.Generate；请求与响应原样传递。失败抛 ProviderError（见模块说明）。"""
+        timeout = self._deadline()
         try:
-            return await self._client().Generate(request, timeout=self.timeout_s)
+            return await self._client().Generate(request, timeout=timeout)
         except grpc.aio.AioRpcError as exc:
             raise restore_error(exc) from None
 
     async def embed(self, request: mg.EmbedRequest) -> mg.EmbedResponse:
         """调用 ModelGatewayService.Embed；请求与响应原样传递。失败抛 ProviderError（见模块说明）。"""
+        timeout = self._deadline()
         try:
-            return await self._client().Embed(request, timeout=self.timeout_s)
+            return await self._client().Embed(request, timeout=timeout)
         except grpc.aio.AioRpcError as exc:
             raise restore_error(exc) from None
 

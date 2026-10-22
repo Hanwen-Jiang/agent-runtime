@@ -138,3 +138,24 @@ TMP 计划第 0 节第 4 条：未处理的修掉或登记。建议分两类：
 **登记到完整版**（写进 `docs/reference/risks-and-open-questions.md`）：期望成本选档、多供应商切换、按供应商限流与并发池、
 `max_cost_usd_micros` 与预算上限、数据驻留与 SLA 档位、BYOK 作为选档约束、按 Task 固定 Profile 版本与主模型（要 Task State 配合，
 属于核心链路，单独排期）、升降级、Langfuse span、上游错误说明的脱敏、服务间认证（部署层 mTLS）。
+
+## 5. 处理结果（2026-10-22）
+
+“本期修”的第 2 到 5 条已改，验收测试先行（`services/go-model-gateway/internal/gateway/r02_test.go`、
+`libs/go-core/adapters/openaicompat/billed_test.go`、`services/py-worker/tests/test_grpc_gateway.py` 末尾）：
+
+2. 计量记录加 `pinned_model_profile`、`pin_ignored`、`avoid_vendor`、`avoid_vendor_unmet`，按实际服务的 Profile 判断（含切换之后）；
+   pin 没用上、avoid_vendor 没避开时各记一条日志（只有 Profile、vendor、Tier、task_id）。
+3. 计量记录加 `status`（ok 或 failed）与 `error_code`。适配层在上游已计费、结果却不合格时（结构化输出不是合法 JSON、工具参数
+   不是 JSON、Score 个数不对）返回错误的同时带回 Usage（`providers/modelprovider` 的包注释写明了这一条语义）；网关把这些尝试、
+   以及自己判为不合格的结果（结构化结果转不成 Value、Classify 标签不对、Score 或嵌入个数不对）都按 status failed 记进计量。
+   没有覆盖：流式中途断开（上游的 Usage 只在最后一个分片里，拿不到）。
+4. 网关每次尝试有自己的超时（`Options.AttemptTimeout`，默认 90 秒），受调用方剩余的 deadline 限制；流式只限到第一个分片。
+   等下一次重试的时间超过调用方剩下的时间时不再等待，返回 transient（code `deadline`，RetryAfter 为该等的时间）。
+   Python 客户端的默认 deadline 改为 300 秒；在 Temporal activity 里调用时不超过 activity 剩下的时间减 2 秒，activity 已经没有时间时
+   不发请求、直接 transient（`activity_deadline`）。决策 activity 的 start-to-close 只有 2 分钟（`workflows/timeouts.py`），
+   Planner 与 Reviewer 实际只有一次左右的尝试余地；要不要放宽属于核心链路，这里没动。
+5. `not_found` 且 code 为 `model_not_found` 的 Profile 不重试、不等待，直接切换同档的下一个；同档都下架时返回这个 not_found；
+   指定了 embedding_version 的嵌入只有一个 Profile，照旧不切换。其余 not_found 不切换。
+
+第 1 条（Reviewer 避开生成者那一家）与第 6 条（缺租户的类别）仍待人定方案。

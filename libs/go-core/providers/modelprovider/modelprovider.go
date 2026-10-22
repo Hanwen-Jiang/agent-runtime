@@ -6,6 +6,8 @@
 // 语义：
 //   - 绑定租户的客户端按租户选择凭据（租户自带的 Key 或平台 Key）并按租户计量；调用方无法换成别的租户。
 //   - 每个结果都带 Usage（token 数）；成本可以为 0，由 Model Gateway 按 Model Profile 计价。
+//   - 上游已经回了结果并计费、但结果不合格时（结构化输出不是合法 JSON、工具参数不是 JSON、Score 的个数不对），返回错误的同时
+//     在结果里带回 Usage，供 Model Gateway 计量；上游没有回结果的失败（HTTP 错误、超时、断开）结果里没有 Usage。
 //   - OutputSchema 非空时，Structured 必须是符合该 schema 的 JSON。
 //   - StreamGenerate：各分片的 TextDelta 依次拼接等于最后一个分片 Final 的 Text；Final 带 Usage；之后 Recv 返回 io.EOF。
 //   - Score、Embed 的结果与输入一一对应、顺序相同；同一模型的向量维度一致。

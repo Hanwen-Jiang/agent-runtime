@@ -95,3 +95,6 @@ S-02 的 ModelProvider 接口、一致性测试与 SecretStore 开发实现；S-
   `provider_gateway.py` 保留作离线对照，退役放到 T-17。
 - **没做的**：TMP 计划 T-05 的“history 最后一条消息加滚动断点”与设计书附录 G.1（断点只在 system、profile、brief 末尾）不一致，
   没有改 Context Builder，见回复里的设计改动建议；命中率对比要真模型，供应商额度用完，待补。
+- **R-02 评审后的修复**（`docs/plan/review-R-02-model-gateway.md` 第 5 节）：计量记录加 status、error_code、pin 与 avoid_vendor 的
+  满足情况，已计费的失败调用也记；每次尝试的超时与调用方的 deadline 对齐（网关 90 秒一次，Python 客户端默认 300 秒并跟着
+  activity 剩下的时间走）；`model_not_found` 切换同档的下一个 Profile。
