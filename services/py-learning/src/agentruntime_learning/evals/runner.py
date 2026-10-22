@@ -12,6 +12,8 @@
       reviewer      Reviewer 专用样本 {decisions, passed, verdict_accuracy, schema_pass_rate}
       stuck_retry_errors  “该升级却原地重试”的次数（判定点与样本合计）
       rubric        {scored, mean}；没配 judge 时 scored = 0、mean = null（未评，不按 0 分算）
+      model_call_failures  本次失败的模型调用次数（只有经 Model Gateway 的被测对象才有，见 worker_subject.CountingGateway）；
+                    大于 0 时这次的分数掺了 Planner、Reviewer 的回退，不代表模型的判断
       cost          {total_usd（被测对象的全部成本）, task_cases_usd（Task 用例的规划与判定）,
                      per_case_usd, per_success_usd（按 Task 用例算）, judge_usd（judge 另计）,
                      planner_cost_ratio: {cases, mean, max}}：标为 full 的用例里，规划成本占 Task 预计成本的比例
@@ -20,6 +22,7 @@
     failure_reasons [{dimension, code, message, count}]，按次数从多到少：低分的解释
     cases           [{id, kind, passed, failures, cost_usd}]，按 id 排序；留出集的报告没有这一项
                     被测对象调用出错时，该次决策记 error 维度的失败（code = subject_error），整轮评测继续
+    model_call_failure_codes  {code: 次数}：本次失败的模型调用按 code 分（与 model_call_failures 同时出现）
     diff            null，或 {against, comparable, metrics: {名: {before, after, delta}}, now_failing, now_passing}；
                     留出集的 diff 没有 now_failing 与 now_passing
 
@@ -112,6 +115,10 @@ class Report:
             f"judge 另计 {_usd(c['judge_usd'])}；full 的规划成本占 Task 预计成本："
             + (f"均值 {_pct(ratio['mean'])}，最大 {_pct(ratio['max'])}（{ratio['cases']} 条）" if ratio["cases"] else "无数据")
         )
+        failures = m.get("model_call_failures")
+        if failures:
+            codes = "、".join(f"{code} × {n}" for code, n in sorted(d.get("model_call_failure_codes", {}).items()))
+            lines.append(f"⚠ 模型调用失败 {failures} 次（{codes}）：Planner、Reviewer 回退到了保守规划或规则判定，这次的分数不代表模型的判断")
         reasons = d["failure_reasons"]
         lines.append("主要失败原因：" + ("无" if not reasons else ""))
         lines += [f"  [{r['dimension']}] {r['message']} × {r['count']}" for r in reasons[:_TOP_REASONS]]
@@ -183,6 +190,12 @@ async def _review(subject: Subject, cp: Checkpoint, split: str) -> tuple[Decisio
     except Exception as exc:  # noqa: BLE001
         return _error(exc, split), None
     return score_reviewer(cp, output), output
+
+
+def _model_call_failures(subject: Subject) -> Counter[str] | None:
+    """被测对象到目前为止失败的模型调用（按 code 计数）；不经 Model Gateway 的被测对象返回 None。"""
+    failures = getattr(subject, "model_call_failures", None)
+    return Counter(failures) if failures is not None else None
 
 
 def _slug(text: str) -> str:
@@ -264,6 +277,7 @@ async def run_eval(
     if require_confirmed and es.unconfirmed():
         raise UnconfirmedLabelsError(f"还有没经人确认的标注：{'、'.join(es.unconfirmed())}")
     declared = frozenset({subject_vendor}) if subject_vendor else frozenset()
+    failures_before = _model_call_failures(subject)
 
     items: list[_ItemResult] = []
     plan_scores: dict[str, DecisionScore] = {}
@@ -291,6 +305,10 @@ async def run_eval(
         items.append(item)
 
     data = _build(eval_set, es, subject, split, items, plan_scores)
+    if failures_before is not None:
+        failed = _model_call_failures(subject) - failures_before
+        data["metrics"]["model_call_failures"] = sum(failed.values())
+        data["model_call_failure_codes"] = dict(sorted(failed.items()))
     previous: Path | None = None
     if compare == LATEST:
         if reports_dir is not None:

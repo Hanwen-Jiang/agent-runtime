@@ -34,16 +34,61 @@
 - 问题：有效长度 8000 时，mask 之后总量很容易降到 70% 以下，开发集 5 条里只有 2 条触发摘要，留出集 0 条。没触发摘要，full 和 mask_only 的差别只剩随机波动。
 - 做法：把 `effective_tokens` 降到 3000 到 4000，或加长保留字段；检查脚本里加一条"mask 之后仍超过 summarize_at"的断言，不满足的样本加载就报错。
 - 完成：每条样本在 full 下至少触发一次摘要；新增的断言测试通过。
+- **结果（2026-10-21，`6c0b2e1`）**：7 条样本的 `effective_tokens` 改为 4000（经人确认）。离线量过：只做 mask 之后最少也超出 summarize_at 12%，
+  full 下 7 条全部摘要（3 条进一步 reset）。加载时检查这一条；报告记下每条样本走到阶梯的哪一步。
 
 **T-02 S-11 重复跑与分析**　中档 · 低
 - 开发集、留出集各跑 3 次，报告里给通过率的范围；单次差一两题不下结论。
 - 单看 `ctx_coding_ci_rounding`：full 比 mask_only 多丢 2 题，读报告里的摘要内容，改摘要提示（只在开发集上调）。
 - 完成：留出集上 full 不劣于 mask_only（取多次的中位数），或写明未达标的原因。
+- **结果（2026-10-22，真模型 Opus 5.5 / Haiku 5.5，经临时 Gateway）**：门槛两个划分都通过，没有调提示。
+
+  | 划分 | 策略 | Probe 通过率（中位数，范围） | 重复操作率 | 触发摘要 |
+  | --- | --- | --- | --- | --- |
+  | dev（5 条） | mask_only | 70%（70%–70%） | 0%（0%–0%） | 0 条 |
+  | dev | full | 96%（91%–100%） | 0%（0%–20%） | 5 条 |
+  | holdout（2 条） | mask_only | 50%（50%–50%） | 0% | 0 条 |
+  | holdout | full | 83%（83%–83%） | 0% | 2 条 |
+
+  `ctx_coding_ci_rounding` 在 4000 下 full 三次是 5/5、4/5、5/5，mask_only 每次 4/5，原来“full 多丢 2 题”的现象没有再出现。
+  留出集只看了 1 次（3 遍）。
 
 **T-03 S-09、S-10 真模型评测**　中档 · 低，强档看结果
 - 用 `AR_EVAL_GATEWAY_FACTORY=agentruntime_learning.evals.provider_gateway:make` 跑 `planner_subject`、`worker_subject`。
 - 门槛：Triage 准确率 ≥90%；Stage schema 通过率 100%；规则违例 0；Reviewer Verdict 准确率 ≥85%，且"该升级却原地重试"为 0；规划成本不超过 Task 预计成本的 5%（需要先让 Gateway 能算金额，见 T-04）。
 - 完成：三份报告落盘，不达标的写进差距清单，不在评测集上调提示的留出集。
+- **结果（2026-10-22，每个划分 3 遍，按中位数判，报告在 `services/py-learning/.eval-reports` 的 `repeat--*`）**：两项都未达标，差距如下。
+  - 有效性：S-10 留出集的第 2、3 遍不作数。供应商账户额度在跑的过程中用完，之后每次调用都是 403 `insufficient_user_quota`，
+    Planner 回退到 full 规划、Reviewer 回退到规则判定，评测照样“跑完”（第 3 遍总成本只有 $0.0018）。S-09 两个划分、S-10 开发集、
+    S-10 留出集第 1 遍在额度用完之前跑完。评测报告现在会写出失败的模型调用次数与 code（`metrics.model_call_failures`），摘要里提醒。
+    **额度补上之后要重跑 S-10 留出集。**
+  - 起初的一轮 S-09、S-10 也作废了：临时 Gateway 不认 Planner 分诊用的 `small@low`，分诊调用一律失败（已修，`d5b0544`）。
+
+  | 门槛 | S-09 dev | S-09 holdout | S-10 dev | S-10 holdout（只有第 1 遍有效） |
+  | --- | --- | --- | --- | --- |
+  | Triage 准确率 ≥ 90% | ✗ 88.5%（84.6–92.3） | ✗ 85.7%（85.7–92.9） | 84.6% | 85.7% |
+  | Stage schema 通过率 100% | ✓ | ✓ | ✓ | ✓ |
+  | 规则违例 0 | ✓ | ✓ | ✓ | ✓ |
+  | replan 不重做已验证的 Node | ✓（1 遍出现过 1 次） | ✓ | — | — |
+  | 规划成本 ≤ Task 预计成本 5%（最大一条） | ✗ 17.1%（均值 7.4%） | ✗ 37.3%（均值 15.2%） | 18.3% | — |
+  | Reviewer 样本 Verdict 准确率 ≥ 85% | （基线） | （基线） | ✗ 50.0%（37.5–75.0） | 87.5% |
+  | 该升级却原地重试 0 | — | — | ✗ 2（1–5） | 0 |
+
+  差距清单（开发集逐条看过；留出集只看汇总）：
+  1. **Triage 差 1.5 到 4.3 个百分点**。`research_retitle_fast`（fast）三遍都判 full；`naming_cup_light` 有 Recipe 却判成 fast（分诊给了
+     `follow_up` + `effect none`，代码规则先走 fast）；`multiday_next_feature_light`、`ci_fix_recipe_hit`、`batch_label_light` 时而判 full
+     （分诊置信度在阈值 0.8 附近摇摆）。方向：分诊提示里区分“改标题一类的续改”与“有 Recipe 的新任务”；fast 规则在命中 Recipe 时让位给 light。
+  2. **规划成本占比远超 5%**。一次 full 规划约 1.25 万输入 token、2 千输出 token，Opus 5.5 标价下约 $0.09；评测集里预计成本 $0.3 到 $1.5 的
+     Task 必然超标。方向：Planner 提示瘦身（Catalog 与 schema 占大头）、打开提示缓存（输入降到约十分之一，但输出约 $0.04 仍占大头）、
+     strong@medium 改用 Sonnet 5.5，或请人重新确认 5% 这条对小 Task 是否按绝对额（例如不超过 $0.05）处理。单价用的是一方 API 标价，
+     不是 a6api 的实价。
+  3. **Reviewer Verdict 准确率 50%**（开发集；规则基线是 31%）。三遍里稳定出错的：该 reroute 判 continue（`rs_reroute_batch`）、
+     该 escalate 判 continue（`rs_escalate_nonrefundable`）、该 repair 判 done（`rs_cosmetic_reflection`、`rs_judge_bias`）、
+     该 replan 判 repair（`rs_fanout_conflict`、`rs_replan_assumption_broken`、`rs_revise_same_error`）、该 rollback 判 repair
+     （`rs_rollback_corrupted_accounts`）。判定点（Task 用例里的 Round）的准确率是 92.3%，问题集中在附录 B.7 的症状样本上。
+  4. **该升级却原地重试 1 到 5 次**：都出现在 3 的那几条样本上，Progress Check 没有把“同类错误反复出现”“假设被推翻”映射到
+     replan 或 rollback。方向：把这几种症状写进规则（附录 B.8 的次数规则已经由代码判定，症状类的还靠模型）。
+  这四条属于 S-09、S-10 的提示与规则，按实施计划是强档的活，调提示只在开发集上做。
 
 **T-04 临时 Gateway 补金额**　轻 · 低
 - 现在只记 token，不算金额，S-09 的规划成本占比算不出来。在配置里加每个模型的单价，换算成 `cost_usd_micros`。

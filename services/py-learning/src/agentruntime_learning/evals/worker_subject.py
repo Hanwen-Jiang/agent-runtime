@@ -9,13 +9,20 @@
 
 真模型经 Model Gateway 调用：环境变量 AR_EVAL_GATEWAY_FACTORY 给出 <模块>:<工厂函数>，工厂函数不带参数、返回
 ModelGateway。没设时两个工厂都报错，不悄悄换成假模型。
+
+Planner 与 Reviewer 会吞掉模型调用的错误，回退到保守规划或规则判定（生产上就该这样）；评测时这会让分数不再代表模型的
+判断（2026-10-22 实测：供应商额度用完后每次调用都 403，评测照样“跑完”）。所以被测对象把 Gateway 包一层 CountingGateway，
+记下失败的次数与 code，运行器写进报告（metrics.model_call_failures）。
 """
 
 from __future__ import annotations
 
 import importlib
 import os
+from collections import Counter
+from typing import Any
 
+from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 from agentruntime_worker.activities.types import Tenant
 from agentruntime_worker.executor.model_gateway import ModelGateway
 from agentruntime_worker.planner.context import CatalogView, PlanningContext, RecipeEntry
@@ -54,12 +61,39 @@ def _context(inp: PlannerInput) -> PlanningContext:
     )
 
 
+class CountingGateway:
+    """包一层 Model Gateway，记下失败的调用（次数与 code），错误照样抛给调用方。"""
+
+    def __init__(self, inner: ModelGateway) -> None:
+        self.inner = inner
+        self.failures: Counter[str] = Counter()
+
+    async def _call(self, method: str, request: Any) -> Any:
+        try:
+            return await getattr(self.inner, method)(request)
+        except Exception as exc:
+            self.failures[str(getattr(exc, "code", "") or type(exc).__name__)] += 1
+            raise
+
+    async def generate(self, request: mg.GenerateRequest) -> mg.GenerateResponse:
+        return await self._call("generate", request)
+
+    async def embed(self, request: mg.EmbedRequest) -> mg.EmbedResponse:
+        return await self._call("embed", request)
+
+
 class WorkerPlannerSubject:
     name = "worker-planner"
 
     def __init__(self, gateway: ModelGateway, config: PlannerConfig | None = None) -> None:
-        self.planner = Planner(gateway, config)
+        self.gateway = CountingGateway(gateway)
+        self.planner = Planner(self.gateway, config)
         self.reviewer = BaselineSubject()
+
+    @property
+    def model_call_failures(self) -> Counter[str]:
+        """到目前为止失败的模型调用，按 code 计数（运行器按每次评测前后的差算本次的）。"""
+        return Counter(self.gateway.failures)
 
     async def plan(self, inp: PlannerInput) -> PlannerOutput:
         state = inp.task_state or {}
@@ -111,7 +145,7 @@ class WorkerSubject(WorkerPlannerSubject):
         recipes: dict[str, str] | None = None,
     ) -> None:
         super().__init__(gateway, config)
-        self.worker_reviewer = Reviewer(gateway, reviewer_config)
+        self.worker_reviewer = Reviewer(self.gateway, reviewer_config)
         self.recipes = recipes if recipes is not None else eval_recipes(load_eval_set(DEFAULT_EVAL_SET))
 
     async def review(self, inp: ReviewerInput) -> ReviewerOutput:

@@ -45,6 +45,7 @@ _SHOWN = (
     ("cost.per_success_usd", "每次成功成本", "usd"),
     ("cost.planner_cost_ratio.mean", "规划成本占 Task 预计成本（均值）", "rate"),
     ("cost.planner_cost_ratio.max", "规划成本占 Task 预计成本（最大）", "rate"),
+    ("model_call_failures", "模型调用失败", "count"),
 )
 
 
@@ -71,6 +72,9 @@ class RepeatedReport:
                 continue
             span = f"（{_fmt(entry['min'], kind)}–{_fmt(entry['max'], kind)}）" if entry["min"] != entry["max"] else ""
             lines.append(f"  {label}：中位数 {_fmt(entry['median'], kind)}{span}")
+        degraded = [i + 1 for i, v in enumerate((d["metrics"].get("model_call_failures") or {}).get("values", [])) if v]
+        if degraded:
+            lines.append(f"⚠ 第 {'、'.join(map(str, degraded))} 次评测有模型调用失败：这几次的分数掺了 Planner、Reviewer 的回退，不代表模型的判断")
         if d["gate"]:
             lines += gate_lines(d["gate"])
         lines.append("单次报告：" + ("、".join(p for p in d["runs"] if p) or "没有写文件"))

@@ -16,12 +16,15 @@ import pytest
 from agentruntime_learning.evals.__main__ import main
 from agentruntime_learning.evals.cases import DEFAULT_EVAL_SET, load_eval_set
 from agentruntime_learning.evals.model import ReviewerInput
+from agentruntime_core.errors import DeniedError
+from agentruntime_learning.evals.repeat import run_repeated
 from agentruntime_learning.evals.runner import run_eval
 from agentruntime_learning.evals.scoring import score_reviewer
 from agentruntime_learning.evals.subjects import load_subject
 from agentruntime_learning.evals.worker_subject import ENV_GATEWAY_FACTORY, EVAL_TENANT, WorkerPlannerSubject, WorkerSubject
 
 from fake_gateway import ScriptedGateway
+from support import reviewer_sample, task_case
 
 SPLITS = ["dev", "holdout"]
 
@@ -151,3 +154,46 @@ async def test_the_reviewer_meets_the_s10_thresholds_on_the_real_model(split: st
     assert metrics["reviewer"]["verdict_accuracy"] >= 0.85, report.summary()
     assert metrics["stuck_retry_errors"] == 0, report.summary()
     assert metrics["reviewer"]["schema_pass_rate"] == 1.0 and metrics["rounds"]["schema_pass_rate"] == 1.0, report.summary()
+
+
+# --- 模型调用失败要看得见：Planner、Reviewer 会吞掉错误回退，分数就不再代表模型的判断 ---
+
+
+def quota_exhausted(_request: object) -> dict:
+    raise DeniedError("http_403", "可用额度不足")
+
+
+async def test_failed_model_calls_are_counted_in_the_report(make_set) -> None:
+    """2026-10-22 实测：供应商额度用完后每次调用都 403，Planner 回退到 full 规划、Reviewer 回退到规则判定，评测照样“跑完”。
+    报告要写出这次有多少次模型调用失败、各是什么 code，摘要里给出提醒。"""
+    es = load_eval_set(make_set([task_case("t1"), task_case("t2")], [reviewer_sample("s1")]))
+    gateway = ScriptedGateway(triage=quota_exhausted, review=quota_exhausted)
+    report = await run_eval(es, WorkerSubject(gateway, recipes={}), reports_dir=None, compare=None)
+    metrics = report.data["metrics"]
+    assert metrics["model_call_failures"] >= 3, "两次分诊加至少一次评审"
+    assert report.data["model_call_failure_codes"].get("http_403") == metrics["model_call_failures"]
+    assert "模型调用失败" in report.summary()
+
+
+async def test_each_run_counts_only_its_own_failures(make_set) -> None:
+    """同一个被测对象重复跑：每次报告只记本次的失败，汇总里看得出哪一次掺了回退。"""
+    es = load_eval_set(make_set([task_case("t1")]))
+    calls = {"n": 0}
+
+    def fail_first_run(request: object) -> dict:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise DeniedError("http_403", "可用额度不足")
+        return {"kind": "chitchat", "task_family": None, "confidence": 0.9, "effect": "none", "irreversible_params_explicit": True}
+
+    result = await run_repeated(es, WorkerPlannerSubject(ScriptedGateway(triage=fail_first_run)), split="dev", repeat=2, reports_dir=None, compare=None)
+    assert [run.data["metrics"]["model_call_failures"] for run in result.runs] == [1, 0]
+    assert result.data["metrics"]["model_call_failures"]["values"] == [1, 0]
+    assert "模型调用失败" in result.summary()
+
+
+async def test_subjects_without_a_gateway_report_no_failure_count(make_set) -> None:
+    es = load_eval_set(make_set([task_case("t1")]))
+    report = await run_eval(es, load_subject("baseline", es), reports_dir=None, compare=None)
+    assert "model_call_failures" not in report.data["metrics"]
+    assert "模型调用失败" not in report.summary()
