@@ -41,7 +41,7 @@ def context_sample(sample_id: str = "c_coding", *, split: str = "dev", work_mode
         "review": review or {"status": "draft"},
         "description": f"长任务样本 {sample_id}",
         "work_mode": work_mode,
-        "effective_tokens": 4_000,
+        "effective_tokens": 3_000,
         "task_state": {
             "task_id": TASK_ID,
             "session_id": SESSION_ID,

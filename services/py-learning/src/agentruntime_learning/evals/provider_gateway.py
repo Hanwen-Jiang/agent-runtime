@@ -5,7 +5,9 @@
 
 配置从文件读（默认 ~/.agentruntime/model-provider.env，AR_MODEL_PROVIDER_FILE 可换），同名环境变量优先：
 - AR_MODEL_PROVIDER_BASE_URL、AR_MODEL_PROVIDER_API_KEY：必填；
-- AR_MODEL_PROVIDER_MODEL_STRONG、_MID、_LIGHT：各档用的模型，默认 claude-opus-5-5、claude-sonnet-5-5、claude-haiku-5-5。
+- AR_MODEL_PROVIDER_MODEL_STRONG、_MID、_LIGHT：各档用的模型，默认 claude-opus-5-5、claude-sonnet-5-5、claude-haiku-5-5；
+- AR_MODEL_PROVIDER_PRICE_STRONG、_MID、_LIGHT：该档模型的单价，“输入,输出[,缓存读]”，美元每百万 token；没给缓存读时按输入单价算。
+  不设时用 DEFAULT_PRICES（默认模型的一方 API 标价）；模型既没配单价、又不在 DEFAULT_PRICES 里，读配置时就报错。
 文件放在仓库外面：密钥不进仓库，也不出现在错误信息里。
 
 只做评测用得到的部分：
@@ -14,7 +16,9 @@
   由调用方按“不合格”处理（与真 Gateway 结构化输出失败时一样）；
 - 工具定义与工具调用按 OpenAI 的 function calling 转换；
 - cache_breakpoint 不传：各家 OpenAI 兼容接口对缓存参数的支持不一；
-- 计量只记 token（含命中缓存的 cached_tokens），不算金额；
+- 计量记 token 与金额（T-04）：按请求的模型的单价，未命中缓存的输入、命中缓存的输入（cached_tokens，OpenAI 的
+  prompt_tokens 已含它）与输出（completion_tokens，已含思考 token）分别计价，四舍五入到微美元；
+  分段计价（例如 Haiku 5.5 提示超过 10 万 token 后的单价）不做，评测的提示远小于这个长度；
 - 限流、5xx、超时与连不上按 transient 重试 2 次，仍失败抛 TransientError；其余 HTTP 错误按状态码抛对应类别的
   ProviderError。
 不做嵌入。
@@ -31,6 +35,7 @@ import urllib.parse
 import urllib.request
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
@@ -56,10 +61,59 @@ Post = Callable[[str, Mapping[str, str], bytes], Awaitable[tuple[int, bytes]]]
 
 
 @dataclass(frozen=True)
+class Price:
+    """单价：美元每百万 token（等于微美元每 token）。"""
+
+    input_per_m: Decimal
+    output_per_m: Decimal
+    cache_read_per_m: Decimal
+
+    @classmethod
+    def parse(cls, text: str) -> Price:
+        """“输入,输出[,缓存读]”；没给缓存读时按输入单价算（不假设有折扣）。不合法抛 ValueError。"""
+        parts = [p.strip() for p in text.split(",")]
+        if len(parts) not in (2, 3):
+            raise ValueError("要写成“输入,输出[,缓存读]”")
+        try:
+            values = [Decimal(p) for p in parts]
+        except InvalidOperation:
+            raise ValueError("单价要是数字") from None
+        if any(not v.is_finite() or v < 0 for v in values):
+            raise ValueError("单价不能为负")
+        return cls(values[0], values[1], values[2] if len(values) == 3 else values[0])
+
+    def cost_micros(self, input_tokens: int, output_tokens: int, cache_read_tokens: int) -> int:
+        """input_tokens 含命中缓存的 cache_read_tokens（OpenAI 的 prompt_tokens 口径）；四舍五入到微美元。"""
+        cached = min(cache_read_tokens, input_tokens)
+        total = (input_tokens - cached) * self.input_per_m + cached * self.cache_read_per_m + output_tokens * self.output_per_m
+        return int(total.to_integral_value(rounding=ROUND_HALF_UP))
+
+
+DEFAULT_PRICES: dict[str, Price] = {
+    # Anthropic 一方 API 标价（2026-10-06 取价）。聚合供应商的实价可能不同，用 AR_MODEL_PROVIDER_PRICE_<档> 覆盖。
+    "claude-opus-5-5": Price(Decimal("4"), Decimal("20"), Decimal("0.2")),
+    "claude-sonnet-5-5": Price(Decimal("2"), Decimal("10"), Decimal("0.2")),
+    # Haiku 5.5 的缓存读单价没查到，按输入单价算。
+    "claude-haiku-5-5": Price(Decimal("0.1"), Decimal("0.5"), Decimal("0.1")),
+}
+
+
+@dataclass(frozen=True)
 class ProviderConfig:
     base_url: str
     api_key: str = field(repr=False)
     models: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_MODELS))
+    prices: dict[str, Price] = field(default_factory=dict)
+    """模型 → 单价；没列出的模型取 DEFAULT_PRICES。每个档位的模型都必须有单价。"""
+
+    def __post_init__(self) -> None:
+        prices = dict(self.prices)
+        for model in self.models.values():
+            if model not in prices:
+                if model not in DEFAULT_PRICES:
+                    raise ValueError(f"模型 {model} 没有单价")
+                prices[model] = DEFAULT_PRICES[model]
+        object.__setattr__(self, "prices", prices)
 
 
 def _read_env_file(path: Path) -> dict[str, str]:
@@ -82,7 +136,17 @@ def load_config(env: Mapping[str, str] | None = None) -> ProviderConfig:
     if not base_url or not api_key:
         raise ValueError(f"缺少 {ENV_PREFIX}BASE_URL 或 {ENV_PREFIX}API_KEY：写进 {path}，或设同名环境变量")
     models = {tier: values.get(f"{ENV_PREFIX}MODEL_{tier.upper()}") or model for tier, model in DEFAULT_MODELS.items()}
-    return ProviderConfig(base_url=base_url.rstrip("/"), api_key=api_key, models=models)
+    prices: dict[str, Price] = {}
+    for tier, model in models.items():
+        key = f"{ENV_PREFIX}PRICE_{tier.upper()}"
+        if values.get(key):
+            try:
+                prices[model] = Price.parse(values[key])
+            except ValueError as exc:
+                raise ValueError(f"{key} 不合法：{exc}") from None
+        elif model not in DEFAULT_PRICES:
+            raise ValueError(f"模型 {model} 没有默认单价：设 {key}（输入,输出[,缓存读]，美元每百万 token）")
+    return ProviderConfig(base_url=base_url.rstrip("/"), api_key=api_key, models=models, prices=prices)
 
 
 def _urllib_post(timeout_s: float) -> Post:
@@ -240,14 +304,19 @@ class ProviderGateway:
         text = content if isinstance(content, str) else "".join(p.get("text", "") for p in content or [] if isinstance(p, dict))
         usage = data.get("usage") or {}
         served = str(data.get("model") or model)
+        input_tokens = int(usage.get("prompt_tokens") or 0)
+        output_tokens = int(usage.get("completion_tokens") or 0)
+        cache_read_tokens = int((usage.get("prompt_tokens_details") or {}).get("cached_tokens") or 0)
         response = mg.GenerateResponse(
             finish_reason=FINISH.get(choice.get("finish_reason") or "", mg.FINISH_REASON_UNSPECIFIED),
             model=mg.ModelChoice(model_profile_id=f"{self.host}/{served}", tier=request.call.tier, vendor=VENDORS.get(served.split("-")[0].lower(), "unknown")),
             usage=metering_pb2.Usage(
-                input_tokens=int(usage.get("prompt_tokens") or 0),
-                output_tokens=int(usage.get("completion_tokens") or 0),
-                cache_read_tokens=int((usage.get("prompt_tokens_details") or {}).get("cached_tokens") or 0),
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cache_read_tokens=cache_read_tokens,
                 reasoning_tokens=int((usage.get("completion_tokens_details") or {}).get("reasoning_tokens") or 0),
+                # 按请求的模型计价：聚合供应商回报的模型名可能带版本后缀。
+                cost_usd_micros=self.config.prices[model].cost_micros(input_tokens, output_tokens, cache_read_tokens),
             ),
             rationale=str(message.get("reasoning_content") or ""),
         )
@@ -261,7 +330,8 @@ class ProviderGateway:
             arguments = struct_pb2.Struct()
             json_format.ParseDict(_arguments(fn.get("arguments")), arguments)
             response.tool_calls.append(mg.ToolCall(id=str(call.get("id") or ""), name=str(fn.get("name") or ""), arguments=arguments))
-        self.calls.append({"node_id": request.call.node_id, "model": served, "input_tokens": response.usage.input_tokens, "output_tokens": response.usage.output_tokens, "cache_read_tokens": response.usage.cache_read_tokens})
+        u = response.usage
+        self.calls.append({"node_id": request.call.node_id, "model": served, "input_tokens": u.input_tokens, "output_tokens": u.output_tokens, "cache_read_tokens": u.cache_read_tokens, "cost_usd_micros": u.cost_usd_micros})
         return response
 
 

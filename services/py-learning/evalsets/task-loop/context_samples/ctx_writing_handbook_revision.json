@@ -6,11 +6,11 @@
     "status": "confirmed",
     "confirmed_by": "Hanwen-Jiang",
     "confirmed_at": "2026-10-21",
-    "notes": "首轮审阅由 Claude 完成，经 Hanwen-Jiang 授权确认。Probe 4 原答案 v7 本来就在 Task State 里；改为只在第 3 步附录 1 正文里出现的审批人“财务总监”。其余标注核对了出处，未改。"
+    "notes": "首轮审阅由 Claude 完成，经 Hanwen-Jiang 授权确认。Probe 4 原答案 v7 本来就在 Task State 里；改为只在第 3 步附录 1 正文里出现的审批人“财务总监”。其余标注核对了出处，未改。 2026-10-21 T-01：effective_tokens 由 8000 改为 4000（经 Hanwen-Jiang 确认），使只做 mask 之后仍超过 summarize_at、full 一定会摘要；Probe 与已完成的动作未改。"
   },
   "description": "修订员工手册；风格约定与评论状态在开头，后面逐节读附录。考查风格约定、评论及其状态、当前版本能否保住。",
   "work_mode": "writing",
-  "effective_tokens": 8000,
+  "effective_tokens": 4000,
   "task_state": {
     "task_id": "tsk_000000000000000000000008SC",
     "session_id": "ses_000000000000000000000008SC",

@@ -11,7 +11,10 @@ S-11 的增量摘要与 Compaction Probe）——再让被测模型只凭压缩�
 - Probe 通过率：答对的题数 / 总题数（判分用 Worker 的 probe.grade）；
 - 重复操作率：下一步动作是已完成动作的样本数 / 样本数。
 门槛：full 的 Probe 通过率不低于 mask_only，重复操作率不高于 mask_only。留出集只给汇总。
-另给一个与被测模型无关的诊断：答案留在压缩后上下文里的比例（retention_rate），不进门槛。
+另给两个与被测模型无关的诊断，不进门槛：答案留在压缩后上下文里的比例（retention_rate），走到 summarize 的样本数（summarized）。
+真模型有随机性：repeat 次重复跑时指标取中位数、门槛按中位数判，每次的结果都保留（T-02）。
+
+样本必须长到“只做 mask 之后仍超过 summarize_at”，否则 full 不会摘要，两种策略的差别只剩随机波动：加载时就检查（T-01）。
 
 被测模型：lexical 是离线基线（按词面作答，摘要由抽取式的假模型给出），只用来检查评测链路；真模型见
 worker_subject.context_subject（经 Model Gateway）。
@@ -19,11 +22,15 @@ worker_subject.context_subject（经 Model Gateway）。
 
 from __future__ import annotations
 
+import asyncio
 import importlib
 import json
 import re
+import statistics
+import tempfile
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
@@ -34,7 +41,7 @@ from agentruntime.common.v1 import enums_pb2, payload_pb2
 from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 from agentruntime_core.dev.object_store import LocalDiskObjectStoreProvider
 from agentruntime_worker.activities.types import Tenant
-from agentruntime_worker.context.builder import LADDER, ContextBuilder, ContextConfig, ContextRequest, tenant_context
+from agentruntime_worker.context.builder import LADDER, BuiltContext, ContextBuilder, ContextConfig, ContextRequest, tenant_context
 from agentruntime_worker.context.probe import ProbeFact, grade
 from agentruntime_worker.context.summary import SECTIONS
 from agentruntime_worker.executor.model_gateway import ModelGateway
@@ -118,22 +125,25 @@ def load_context_samples(root: Path) -> list[ContextSample]:
         problems += [f"{rel}：{p}" for p in found]
         if found or data["id"] != path.stem:
             continue
-        samples.append(
-            ContextSample(
-                id=data["id"],
-                split=data["split"],
-                review=data["review"],
-                description=data["description"],
-                work_mode=data["work_mode"],
-                effective_tokens=data["effective_tokens"],
-                task_state=data["task_state"],
-                task_plan=data["task_plan"],
-                node=data["node"],
-                history=data["history"],
-                probes=data["probes"],
-                completed=data["completed"],
-            )
+        sample = ContextSample(
+            id=data["id"],
+            split=data["split"],
+            review=data["review"],
+            description=data["description"],
+            work_mode=data["work_mode"],
+            effective_tokens=data["effective_tokens"],
+            task_state=data["task_state"],
+            task_plan=data["task_plan"],
+            node=data["node"],
+            history=data["history"],
+            probes=data["probes"],
+            completed=data["completed"],
         )
+        masked, threshold = masked_tokens(sample), summarize_threshold(sample)
+        if masked <= threshold:
+            problems.append(f"{rel}：只做 mask 之后约 {masked} token，不超过 summarize_at（{threshold:.0f}），full 不会摘要；调小 effective_tokens 或加长轨迹")
+            continue
+        samples.append(sample)
     if problems:
         raise EvalSetError(problems)
     return samples
@@ -150,13 +160,30 @@ class ContextSubject(Protocol):
     async def next_action(self, messages: Sequence[mg.ChatMessage], tools: Sequence[str]) -> tuple[str, dict[str, Any]]: ...
 
 
-async def compact(sample: ContextSample, strategy: str, gateway: ModelGateway, work_dir: Path) -> list[mg.ChatMessage]:
-    """用 Worker 的 Context Builder 按策略压缩样本的轨迹，返回压缩后的上下文。每次用全新的 ObjectStore，互不影响。"""
+def summarize_threshold(sample: ContextSample) -> float:
+    """样本触发 summarize 的 token 数：与 Context Builder 同一算法（Task Plan 的 context.summarize_at 覆盖默认值）。"""
+    settings = sample.task_plan.get("context") if isinstance(sample.task_plan.get("context"), Mapping) else {}
+    return float(settings.get("summarize_at", ContextConfig.summarize_at)) * sample.effective_tokens
+
+
+def masked_tokens(sample: ContextSample) -> int:
+    """只做 mask（mask_only 策略）之后上下文的 token 数。可以在事件循环里调用：在单独的线程里跑 Context Builder。"""
+
+    async def measure() -> int:
+        with tempfile.TemporaryDirectory(prefix="context-check-") as scratch:
+            return (await build_context(sample, "mask_only", ExtractiveGateway(), Path(scratch))).tokens
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, measure()).result()
+
+
+async def build_context(sample: ContextSample, strategy: str, gateway: ModelGateway, work_dir: Path) -> BuiltContext:
+    """用 Worker 的 Context Builder 按策略压缩样本的轨迹；结果里有压缩后的上下文与用到的阶梯步骤。每次用全新的 ObjectStore，互不影响。"""
     if strategy not in STRATEGY_STEPS:
         raise ValueError(f"未知的压缩策略 {strategy}")
     objects = LocalDiskObjectStoreProvider(Path(work_dir) / uuid.uuid4().hex, signing_key=b"context-evals")
     config = ContextConfig(effective_tokens=sample.effective_tokens, steps=STRATEGY_STEPS[strategy], probe=strategy == "full")
-    built = await ContextBuilder(gateway, objects, config).build(
+    return await ContextBuilder(gateway, objects, config).build(
         ContextRequest(
             tenant=Tenant(tenant_id=EVAL_TENANT, session_id=str(sample.task_state.get("session_id", ""))),
             task_id=str(sample.task_state.get("task_id", "")),
@@ -168,7 +195,11 @@ async def compact(sample: ContextSample, strategy: str, gateway: ModelGateway, w
             system=[SYSTEM_PROMPT],
         )
     )
-    return built.messages
+
+
+async def compact(sample: ContextSample, strategy: str, gateway: ModelGateway, work_dir: Path) -> list[mg.ChatMessage]:
+    """build_context 的压缩后上下文。"""
+    return (await build_context(sample, strategy, gateway, work_dir)).messages
 
 
 @dataclass
@@ -176,36 +207,84 @@ class ContextReport:
     split: str
     subject: str
     metrics: dict[str, dict[str, float]]
-    """策略 → {"probe_pass_rate", "repeat_rate", "samples"}。"""
+    """策略 → {"probe_pass_rate", "repeat_rate", "retention_rate", "summarized", "samples"}；重复跑时取各次的中位数。
+    summarized 是走到 summarize 的样本数。"""
     gate_passed: bool
+    """按 metrics（中位数）判。"""
     samples: list[dict[str, Any]] = field(default_factory=list)
-    """每条样本的明细；留出集为空。"""
+    """每次、每条样本的明细（run 从 1 数）；留出集为空。"""
+    runs: list[dict[str, dict[str, float]]] = field(default_factory=list)
+    """每次的 metrics，保留单次结果。"""
+    ranges: dict[str, dict[str, tuple[float, float]]] = field(default_factory=dict)
+    """策略 → 指标 → (各次的最小值, 最大值)。"""
 
     def summary(self) -> str:
-        lines = [f"S-11 压缩评测：被测 {self.subject}，{self.split}"]
+        repeat = len(self.runs)
+        head = f"S-11 压缩评测：被测 {self.subject}，{self.split}"
+        lines = [head + (f"，重复 {repeat} 次（指标取中位数，括号里是各次的范围）" if repeat > 1 else "")]
+
+        def show(strategy: str, name: str, fmt: str = "{:.0%}") -> str:
+            value = fmt.format(self.metrics[strategy][name])
+            if repeat > 1:
+                low, high = self.ranges[strategy][name]
+                value += f"（{fmt.format(low)}–{fmt.format(high)}）"
+            return value
+
         for strategy in STRATEGIES:
             m = self.metrics[strategy]
             lines.append(
-                f"  {strategy}：Probe 通过率 {m['probe_pass_rate']:.0%}，重复操作率 {m['repeat_rate']:.0%}，"
-                f"答案留在上下文里的比例 {m.get('retention_rate', 0.0):.0%}（{int(m['samples'])} 条）"
+                f"  {strategy}：Probe 通过率 {show(strategy, 'probe_pass_rate')}，重复操作率 {show(strategy, 'repeat_rate')}，"
+                f"答案留在上下文里的比例 {show(strategy, 'retention_rate')}，触发摘要 {show(strategy, 'summarized', '{:g}')} 条（共 {int(m['samples'])} 条）"
             )
         lines.append("  门槛（full 不劣于 mask_only）：" + ("通过" if self.gate_passed else "未通过"))
         for row in self.samples:
-            lines.append(f"    {row['id']} · {row['strategy']}：Probe {row['passed']}/{len(row['probes'])}，留存 {row['retained']}{'，重复操作' if row['repeated'] else ''}")
+            run = f"第 {row['run']} 次 · " if repeat > 1 else ""
+            lines.append(
+                f"    {run}{row['id']} · {row['strategy']}：Probe {row['passed']}/{len(row['probes'])}，留存 {row['retained']}，"
+                f"阶梯 {'/'.join(row['applied']) or '无'}{'，重复操作' if row['repeated'] else ''}"
+            )
         return "\n".join(lines)
 
     def to_json(self) -> dict[str, Any]:
-        return {"split": self.split, "subject": self.subject, "metrics": self.metrics, "gate_passed": self.gate_passed, "samples": self.samples}
+        return {
+            "split": self.split,
+            "subject": self.subject,
+            "repeat": len(self.runs),
+            "metrics": self.metrics,
+            "ranges": {s: {name: list(bounds) for name, bounds in r.items()} for s, r in self.ranges.items()},
+            "runs": self.runs,
+            "gate_passed": self.gate_passed,
+            "samples": self.samples,
+        }
 
 
-async def run_context_eval(samples: Sequence[ContextSample], subject: ContextSubject, *, split: str, work_dir: Path) -> ContextReport:
+async def run_context_eval(samples: Sequence[ContextSample], subject: ContextSubject, *, split: str, work_dir: Path, repeat: int = 1) -> ContextReport:
+    """跑 repeat 次（模型有随机性，单次差一两题不下结论）：metrics 取各次的中位数，门槛按中位数判，每次的结果都保留。"""
+    if repeat < 1:
+        raise ValueError(f"repeat 至少是 1，得到 {repeat}")
     selected = [s for s in samples if s.split == split]
+    runs: list[dict[str, dict[str, float]]] = []
+    rows: list[dict[str, Any]] = []
+    for run in range(1, repeat + 1):
+        metrics, run_rows = await _run_once(selected, subject, split=split, work_dir=Path(work_dir), run=run)
+        runs.append(metrics)
+        rows += run_rows
+    medians = {s: {name: statistics.median(r[s][name] for r in runs) for name in runs[0][s]} for s in STRATEGIES}
+    ranges = {s: {name: (min(r[s][name] for r in runs), max(r[s][name] for r in runs)) for name in runs[0][s]} for s in STRATEGIES}
+    full, masked = medians["full"], medians["mask_only"]
+    gate = full["probe_pass_rate"] >= masked["probe_pass_rate"] and full["repeat_rate"] <= masked["repeat_rate"]
+    return ContextReport(split=split, subject=subject.name, metrics=medians, gate_passed=gate, samples=rows, runs=runs, ranges=ranges)
+
+
+async def _run_once(selected: Sequence[ContextSample], subject: ContextSubject, *, split: str, work_dir: Path, run: int) -> tuple[dict[str, dict[str, float]], list[dict[str, Any]]]:
     metrics: dict[str, dict[str, float]] = {}
     rows: list[dict[str, Any]] = []
     for strategy in STRATEGIES:
-        questions = passed = retained = repeats = 0
+        questions = passed = retained = repeats = summarized = 0
         for sample in selected:
-            messages = await compact(sample, strategy, subject.gateway, Path(work_dir) / strategy / sample.id)
+            built = await build_context(sample, strategy, subject.gateway, work_dir / strategy / sample.id)
+            messages = built.messages
+            summarized += int("summarize" in built.applied)
             answers = await subject.answer(messages, [p["question"] for p in sample.probes])
             context_text = "\n".join(_context_lines(messages))
             graded, kept = [], []
@@ -220,16 +299,27 @@ async def run_context_eval(samples: Sequence[ContextSample], subject: ContextSub
             retained += sum(kept)
             repeats += int(repeated)
             if split == "dev":
-                rows.append({"id": sample.id, "strategy": strategy, "probes": graded, "passed": sum(graded), "retained": sum(kept), "repeated": repeated, "action": [tool, args]})
+                rows.append(
+                    {
+                        "run": run,
+                        "id": sample.id,
+                        "strategy": strategy,
+                        "applied": built.applied,
+                        "probes": graded,
+                        "passed": sum(graded),
+                        "retained": sum(kept),
+                        "repeated": repeated,
+                        "action": [tool, args],
+                    }
+                )
         metrics[strategy] = {
             "probe_pass_rate": passed / questions if questions else 0.0,
             "repeat_rate": repeats / len(selected) if selected else 0.0,
             "retention_rate": retained / questions if questions else 0.0,
+            "summarized": float(summarized),
             "samples": float(len(selected)),
         }
-    full, masked = metrics["full"], metrics["mask_only"]
-    gate = full["probe_pass_rate"] >= masked["probe_pass_rate"] and full["repeat_rate"] <= masked["repeat_rate"]
-    return ContextReport(split=split, subject=subject.name, metrics=metrics, gate_passed=gate, samples=rows)
+    return metrics, rows
 
 
 # --- 离线基线 ---

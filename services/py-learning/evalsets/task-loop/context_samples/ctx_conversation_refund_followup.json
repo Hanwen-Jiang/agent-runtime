@@ -6,11 +6,11 @@
     "status": "confirmed",
     "confirmed_by": "Hanwen-Jiang",
     "confirmed_at": "2026-10-21",
-    "notes": "首轮审阅由 Claude 完成，经 Hanwen-Jiang 授权确认。原四道题的答案都在 mask 保留字段里；新增 Probe 5（尾号 4417），答案只在第 3 步被遮蔽的通话记录里。其余标注核对了出处，未改。"
+    "notes": "首轮审阅由 Claude 完成，经 Hanwen-Jiang 授权确认。原四道题的答案都在 mask 保留字段里；新增 Probe 5（尾号 4417），答案只在第 3 步被遮蔽的通话记录里。其余标注核对了出处，未改。 2026-10-21 T-01：effective_tokens 由 8000 改为 4000（经 Hanwen-Jiang 确认），使只做 mask 之后仍超过 summarize_at、full 一定会摘要；Probe 与已完成的动作未改。"
   },
   "description": "客服跟进退款投诉；偏好、承诺与未解决诉求都在开头三步，后面是很长的通话记录。考查偏好、承诺、未结诉求能否保住，以及会不会重复查订单。",
   "work_mode": "conversation",
-  "effective_tokens": 8000,
+  "effective_tokens": 4000,
   "task_state": {
     "task_id": "tsk_000000000000000000000008SB",
     "session_id": "ses_000000000000000000000008SB",

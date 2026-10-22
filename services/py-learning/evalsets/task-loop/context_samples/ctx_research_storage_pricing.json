@@ -6,11 +6,11 @@
     "status": "confirmed",
     "confirmed_by": "Hanwen-Jiang",
     "confirmed_at": "2026-10-21",
-    "notes": "首轮审阅由 Claude 完成，经 Hanwen-Jiang 授权确认。Probe 4 原答案 Borealis 在轨迹里出现 52 处；改为只在第 3 步价格页正文里出现的阶梯价 0.017。其余标注核对了出处，未改。"
+    "notes": "首轮审阅由 Claude 完成，经 Hanwen-Jiang 授权确认。Probe 4 原答案 Borealis 在轨迹里出现 52 处；改为只在第 3 步价格页正文里出现的阶梯价 0.017。其余标注核对了出处，未改。 2026-10-21 T-01：effective_tokens 由 8000 改为 4000（经 Hanwen-Jiang 确认），使只做 mask 之后仍超过 summarize_at、full 一定会摘要；Probe 与已完成的动作未改。"
   },
   "description": "调研三家云厂商对象存储标准层价格；关键引用散落在前几步，后面是大量无关网页。考查引用（URL、数字）与已排除假设能否保住。",
   "work_mode": "research",
-  "effective_tokens": 8000,
+  "effective_tokens": 4000,
   "task_state": {
     "task_id": "tsk_000000000000000000000008SA",
     "session_id": "ses_000000000000000000000008SA",
