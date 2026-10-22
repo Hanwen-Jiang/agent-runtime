@@ -11,7 +11,7 @@
 文件放在仓库外面：密钥不进仓库，也不出现在错误信息里。
 
 只做评测用得到的部分：
-- Tier 只看档位（strong@medium 取 strong），推理强度与 thinking 预算不传；
+- Tier 只看档位（strong@medium 取 strong；small 与 light 是同一档），推理强度与 thinking 预算不传；
 - 结构化输出：把 output_schema 写进最后一条提示，要求只输出 JSON，再从回答里解析；解析不出来就只给 text，
   由调用方按“不合格”处理（与真 Gateway 结构化输出失败时一样）；
 - 工具定义与工具调用按 OpenAI 的 function calling 转换；
@@ -49,6 +49,8 @@ ENV_FILE = "AR_MODEL_PROVIDER_FILE"
 ENV_PREFIX = "AR_MODEL_PROVIDER_"
 DEFAULT_FILE = Path.home() / ".agentruntime" / "model-provider.env"
 DEFAULT_MODELS = {"strong": "claude-opus-5-5", "mid": "claude-sonnet-5-5", "light": "claude-haiku-5-5"}
+BAND_ALIASES = {"small": "light"}
+"""Planner 的分诊（small@low）与 Context Builder 的摘要（light@low）写法不同，指的是同一档小模型。"""
 ATTEMPTS = 3
 BACKOFF_S = 2.0
 TIMEOUT_S = 180.0
@@ -245,6 +247,7 @@ class ProviderGateway:
 
     def model_for(self, tier: str) -> str:
         band = tier.partition("@")[0] or "strong"
+        band = BAND_ALIASES.get(band, band)
         if band not in self.config.models:
             raise ProviderError.of(ErrorCategory.INVALID, "unknown_tier", f"不认识的 Tier {tier}")
         return self.config.models[band]

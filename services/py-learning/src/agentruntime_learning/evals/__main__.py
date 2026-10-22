@@ -88,16 +88,22 @@ def _context(args: argparse.Namespace) -> int:
         return 2
     with tempfile.TemporaryDirectory(prefix="context-evals-") as scratch:
         report = asyncio.run(run_context_eval(samples, subject, split=args.split, work_dir=args.work_dir or Path(scratch), repeat=args.repeat))
-    print(report.summary())
-    if args.reports_dir is not None:
+    path = None
+    if args.reports_dir is not None:  # 先落盘再打印：真模型跑一遍要花钱，打印出问题也不丢报告
         args.reports_dir.mkdir(parents=True, exist_ok=True)
         path = args.reports_dir / f"context-{report.subject}-{report.split}-{datetime.now(UTC):%Y%m%dT%H%M%SZ}.json"
         path.write_text(json.dumps(report.to_json(), ensure_ascii=False, indent=2), "utf-8")
+    print(report.summary())
+    if path is not None:
         print(f"报告：{path}")
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
+    # 输出重定向到文件时 Windows 用本地代码页（例如 cp1252），中文摘要编码不了：换成转义，不让打印中断评测。
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="backslashreplace")
     try:
         args = _parser().parse_args(argv)
     except SystemExit as exc:

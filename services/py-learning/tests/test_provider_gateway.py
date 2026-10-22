@@ -278,3 +278,12 @@ async def test_planning_cost_share_is_computable_through_the_provider_gateway(ma
     cost = report.data["metrics"]["cost"]
     assert cost["total_usd"] > 0
     assert cost["planner_cost_ratio"]["cases"] == 1 and cost["planner_cost_ratio"]["mean"] > 0
+
+
+async def test_small_and_light_name_the_same_band() -> None:
+    """Planner 的分诊用 small@low，Context Builder 的摘要用 light@low：都走小模型，不报 unknown_tier。"""
+    post = FakePost((200, completion("好")), (200, completion("好")))
+    gw, _ = gateway(post)
+    for tier in ("small@low", "light@low"):
+        await gw.generate(request(mg.ChatMessage(role=mg.CHAT_ROLE_USER, text="hi"), tier=tier))
+    assert [r["body"]["model"] for r in post.requests] == [DEFAULT_MODELS["light"]] * 2
