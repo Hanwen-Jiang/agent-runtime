@@ -153,10 +153,20 @@
 **T-11 SecretStore 接入与 Ingress/SSE 评审**　中档 · 中，评审 R-04、R-05
 - 节点拿不到长期密钥，凭据不进日志与 trace；SSE 支持 Last-Event-ID 续传。
 - 完成：两份评审结论。
+- 结果（2026-10-23）：评审写在 [review-R-04-secretstore.md](review-R-04-secretstore.md) 与 [review-R-05-ingress-sse.md](review-R-05-ingress-sse.md)。
+  R-04：模型调用与工具调用拿不到长期密钥，短期凭据用完即吊销，Secret 类型与 Telemetry 脱敏到位；未处理的是开发 Sandbox 把 Worker 的整个环境
+  透传给模型写的代码、工具回显凭据没有出口检查、吊销失败无记录、没有批量吊销与生产实现。R-05：Last-Event-ID 续传、event_id 稳定、
+  结束后从业务库补发都已处理；未处理的是只推受理与结束两类事件（4.14 的思考过程、工具状态、token 增量、等待人工回复都没有）、
+  SSE 不限流、令牌过期后流不断、同租户任何用户都能审批、对不上的人工回复被静默丢弃。评审在新会话里做，没看实现过程，
+  但实现出自强档，严格的写审分离还要另一家的强模型或人复审。
 
 **T-12 R-03 Context Builder 评审**　强档 · 高
 - 分区顺序与缓存断点；外置内容只以路径出现；阈值按有效长度设。笔记 `docs/note/context-compression.md` 里已有一份自述，可以拿来对照。
 - 完成：评审结论。
+- 结果（2026-10-23）：评审写在 [review-R-03-context-builder.md](review-R-03-context-builder.md)。分区顺序、三个断点、前缀稳定、offload 与 mask
+  已处理；未处理的是外置内容没有取回的工具、Goal Node 的输入原样进 brief、status 的 500 token 上限会截掉精确状态、阈值不算工具定义、
+  有效长度不按模型（Model Profile 缺 effective_ctx），以及 model 节点不经 Context Builder。history 的滚动断点要不要改 G.1 待人定。
+  独立性同 T-11。
 
 ### 阶段 D：端到端与部署（2 到 3 天）
 
