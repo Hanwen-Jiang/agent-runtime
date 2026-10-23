@@ -209,3 +209,8 @@ class ToolDriverConformance(StandardRules):
         assert result.output == {"has_credential": True}
         assert self.executions[-1].tenant_id == TENANT_A_ID
         assert self.executions[-1].credential is credential
+
+    async def test_handler_sees_the_bound_workspace(self, tools: ToolDriver) -> None:
+        # T-10：平台内工具按租户与 workspace 划分工作区；workspace 同租户一样来自绑定的作用域，参数改变不了它。
+        await tools.invoke("whoami", "v1", {})
+        assert self.executions[-1].workspace_id == "w-1"

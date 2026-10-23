@@ -165,7 +165,11 @@ class LocalToolDriver:
 
     async def _run(self, tool: _Tool, arguments: dict[str, Any], key: str | None, credential: Credential | None) -> Any:
         invocation = ToolInvocation(
-            tenant_id=self._scope.tenant_id, arguments=arguments, idempotency_key=key, credential=credential
+            tenant_id=self._scope.tenant_id,
+            arguments=arguments,
+            idempotency_key=key,
+            credential=credential,
+            workspace_id=self._scope.workspace_id,
         )
         try:
             output = await asyncio.wait_for(tool.handler(invocation), timeout=tool.spec.timeout.total_seconds())

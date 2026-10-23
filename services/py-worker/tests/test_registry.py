@@ -186,14 +186,26 @@ def catalog_request(templates: list[str], tools: list[str] | None = None, pinned
     return CatalogRequest(tenant=TENANT, task_id="tsk_reg", templates=templates, tools=tools or [], pinned=PINNED if pinned is None else pinned)
 
 
-def no_tools(tools: list[str]) -> dict[str, str]:
-    return {}
+class FakeTools:
+    """工具目录的替身（T-10 起 RegistryCatalog 按租户异步查 ToolCatalog）：记下问了什么，按 effects 回答。"""
+
+    def __init__(self, effects: dict[str, str] | None = None) -> None:
+        self._effects = dict(effects or {})
+        self.asked: list[tuple[str, list[str]]] = []
+
+    async def effects(self, tenant: Tenant, names: list[str]) -> dict[str, str]:
+        self.asked.append((tenant.tenant_id, list(names)))
+        return {n: self._effects[n] for n in names if n in self._effects}
+
+
+def no_tools() -> FakeTools:
+    return FakeTools()
 
 
 async def test_resolve_catalog_reads_templates_at_their_pinned_versions() -> None:
     fake = seeded()
     async with serve(fake) as address:
-        catalog = RegistryCatalog(GrpcRegistry(address), tool_effects=no_tools)
+        catalog = RegistryCatalog(GrpcRegistry(address), tools=no_tools())
         info = await ActivityEnvironment().run(catalog.resolve_catalog, catalog_request(["rubric_judge@v1", "sql_query@v1"]))
     assert info.templates == {
         "rubric_judge@v1": TemplateInfo(executor="model", effect="none", output="score"),
@@ -207,7 +219,7 @@ async def test_resolve_catalog_reads_templates_at_their_pinned_versions() -> Non
 async def test_resolve_catalog_rejects_a_version_the_task_did_not_pin() -> None:
     fake = seeded()
     async with serve(fake) as address:
-        catalog = RegistryCatalog(GrpcRegistry(address), tool_effects=no_tools)
+        catalog = RegistryCatalog(GrpcRegistry(address), tools=no_tools())
         with pytest.raises(ApplicationError) as caught:
             await ActivityEnvironment().run(catalog.resolve_catalog, catalog_request(["rubric_judge@v2"]))
     assert caught.value.non_retryable and caught.value.type == "template_not_pinned"
@@ -218,7 +230,7 @@ async def test_resolve_catalog_without_pins_reads_the_referenced_version() -> No
     # Registry 接入之前启动的 Task 没有固定版本：按引用里的版本取。
     fake = seeded()
     async with serve(fake) as address:
-        catalog = RegistryCatalog(GrpcRegistry(address), tool_effects=no_tools)
+        catalog = RegistryCatalog(GrpcRegistry(address), tools=no_tools())
         info = await ActivityEnvironment().run(catalog.resolve_catalog, catalog_request(["rubric_judge@v2"], pinned={}))
     assert info.templates["rubric_judge@v2"].executor == "model"
     assert [(r.name, r.version) for r in fake.calls("GetNodeTemplate")] == [("rubric_judge", "v2")]
@@ -227,7 +239,7 @@ async def test_resolve_catalog_without_pins_reads_the_referenced_version() -> No
 async def test_an_unknown_template_is_not_retryable() -> None:
     fake = seeded()
     async with serve(fake) as address:
-        catalog = RegistryCatalog(GrpcRegistry(address), tool_effects=no_tools)
+        catalog = RegistryCatalog(GrpcRegistry(address), tools=no_tools())
         with pytest.raises(ApplicationError) as caught:
             await ActivityEnvironment().run(catalog.resolve_catalog, catalog_request(["ghost@v1"], pinned={}))
     assert caught.value.non_retryable and caught.value.type == "template_not_found"
@@ -237,7 +249,7 @@ async def test_an_unavailable_registry_fails_retryably_and_never_falls_back_to_t
     fake = seeded()
     fake.abort = unavailable()
     async with serve(fake) as address:
-        catalog = RegistryCatalog(GrpcRegistry(address), tool_effects=no_tools)
+        catalog = RegistryCatalog(GrpcRegistry(address), tools=no_tools())
         with pytest.raises(Exception) as caught:
             await ActivityEnvironment().run(catalog.resolve_catalog, catalog_request(["sql_query@v1"]))
     err = caught.value
@@ -247,17 +259,12 @@ async def test_an_unavailable_registry_fails_retryably_and_never_falls_back_to_t
 
 async def test_tool_effects_still_come_from_the_tool_catalog() -> None:
     fake = seeded()
-    asked: list[list[str]] = []
-
-    def tool_effects(tools: list[str]) -> dict[str, str]:
-        asked.append(list(tools))
-        return {t: "write_irreversible" if t == "send_email" else "read" for t in tools}
-
+    tools = FakeTools({"send_email": "write_irreversible", "web_search": "read"})
     async with serve(fake) as address:
-        catalog = RegistryCatalog(GrpcRegistry(address), tool_effects=tool_effects)
+        catalog = RegistryCatalog(GrpcRegistry(address), tools=tools)
         info = await ActivityEnvironment().run(catalog.resolve_catalog, catalog_request([], tools=["send_email", "web_search"]))
     assert info.tools == {"send_email": "write_irreversible", "web_search": "read"}
-    assert asked == [["send_email", "web_search"]]
+    assert tools.asked == [("t-reg", ["send_email", "web_search"])], "按请求的租户问工具目录"
     assert fake.requests == [], "工具不问 Registry"
 
 
@@ -326,13 +333,13 @@ async def test_the_planning_context_fails_when_the_registry_is_unavailable() -> 
 
 
 def test_the_worker_uses_the_registry_only_when_configured() -> None:
-    from agentruntime_worker.activities.stubs import StubActivities
+    from agentruntime_worker.tools import DevCatalog
     from agentruntime_worker.planner.activities import dev_planner
     from agentruntime_worker.planner.context import StaticContextSource
 
     default = decision_activities(WorkerConfig())
     configured = decision_activities(WorkerConfig(registry_address="127.0.0.1:8092"))
-    assert isinstance(default[names.RESOLVE_CATALOG].__self__, StubActivities)
+    assert isinstance(default[names.RESOLVE_CATALOG].__self__, DevCatalog), "没接 Registry 时模板是桩，工具 effect 取自 ToolDriver 的登记（T-10）"
     assert isinstance(configured[names.RESOLVE_CATALOG].__self__, RegistryCatalog)
     assert set(configured) == set(default)
 
@@ -410,7 +417,7 @@ async def test_an_unavailable_registry_makes_the_stage_policy_retryable() -> Non
 async def test_the_registry_catalog_is_authoritative() -> None:
     fake = seeded()
     async with serve(fake) as address:
-        catalog = RegistryCatalog(GrpcRegistry(address), tool_effects=no_tools)
+        catalog = RegistryCatalog(GrpcRegistry(address), tools=no_tools())
         info = await ActivityEnvironment().run(catalog.resolve_catalog, catalog_request(["sql_query@v1"]))
     assert info.authoritative, "Stage Runner 据此按 Registry 核对 Atomic Node 的 executor、effect"
 

@@ -106,7 +106,7 @@ class StubModelGateway:
 
 
 def stub_tool_effects(tools: list[str]) -> dict[str, str]:
-    """桩工具目录：工具一律按 read（工具的 effect 不归 Registry；ToolDriver 接好之前用它，T-10）。"""
+    """桩工具目录：工具一律按 read。只有 StubActivities 用（测试）；Worker 的 resolve_catalog 取自 ToolDriver 的登记（DevCatalog，T-10）。"""
     return {t: "read" for t in tools}
 
 
@@ -217,7 +217,7 @@ class StubActivities:
 
     @activity.defn(name=names.CALL_TOOL)
     async def call_tool(self, inp: ToolCallInput) -> Any:
-        """桩工具：回显参数。不可逆工具先查审批记录（D16 兜底）。"""
+        """桩工具：回显参数。不可逆工具先查审批记录（D16 兜底）。不在 activities() 里：Worker 的 call_tool 是 Node Executor 的（T-10）。"""
         require_tool_gate(inp)
         return {"tool": inp.tool, "args": inp.args}
 
@@ -236,6 +236,5 @@ class StubActivities:
             names.RESOLVE_CATALOG: self.resolve_catalog,
             names.EXPAND_TEMPLATE: self.expand_template,
             names.TOOL_LOOP_STEP: self.tool_loop_step,
-            names.CALL_TOOL: self.call_tool,
             names.RUN_HOOKS: self.run_hooks,
         }

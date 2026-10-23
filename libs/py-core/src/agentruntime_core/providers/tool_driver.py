@@ -50,6 +50,8 @@ class ToolInvocation:
     arguments: Mapping[str, Any]
     idempotency_key: str | None
     credential: Credential | None
+    # 调用者的 workspace（来自客户端的作用域，没有为空串），参数改变不了它；平台内工具按它划分工作区（T-10）。
+    workspace_id: str = ""
 
 
 ToolHandler = Callable[[ToolInvocation], Awaitable[Any]]

@@ -21,6 +21,7 @@ from agentruntime_worker.activities.types import ToolLoopStep, ToolLoopStepInput
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.context.builder import ContextBuilder, ContextConfig, ContextRequest, tenant_context
 from agentruntime_worker.executor.model_gateway import ModelGateway
+from agentruntime_worker.tools.catalog import ToolCatalog
 
 TOOL_LOOP_TIER = "strong@medium"
 SYSTEM_PROMPT = """你在执行一个 Goal Node 的 tool_loop：每一步要么调用一个工具，要么在完成条件满足时不再调用工具、直接给出结果。
@@ -41,7 +42,9 @@ def _value(data: Any) -> struct_pb2.Value:
 
 
 class ModelToolLoop:
-    def __init__(self, gateway: ModelGateway, builder: ContextBuilder, *, tier: str = TOOL_LOOP_TIER) -> None:
+    def __init__(self, gateway: ModelGateway, builder: ContextBuilder, *, tier: str = TOOL_LOOP_TIER, tools: ToolCatalog | None = None) -> None:
+        # 给了 ToolCatalog 时，工具的说明与参数 schema 取自登记，没登记的不给模型（T-10）；没给时只有名字。
+        self.tools = tools
         self.gateway = gateway
         self.builder = builder
         self.tier = tier
@@ -62,7 +65,7 @@ class ModelToolLoop:
         )
         params = mg.GenerateParams(
             messages=built.messages,
-            tools=[mg.ToolSpec(name=str(t), params_schema=payload_pb2.JsonPayload(value=_value({"type": "object"}))) for t in node.get("tools") or []],
+            tools=await self._tool_specs(inp, [str(t) for t in node.get("tools") or []]),
         )
         if isinstance(node.get("output_schema"), dict):
             params.output_schema.CopyFrom(payload_pb2.JsonPayload(value=_value(node["output_schema"])))
@@ -88,6 +91,16 @@ class ModelToolLoop:
         result = json_format.MessageToDict(response.result) if response.HasField("result") else response.text
         return ToolLoopStep(action="finish", result=result)
 
+    async def _tool_specs(self, inp: ToolLoopStepInput, tools: list[str]) -> list[mg.ToolSpec]:
+        if self.tools is None:
+            return [mg.ToolSpec(name=t, params_schema=payload_pb2.JsonPayload(value=_value({"type": "object"}))) for t in tools]
+        specs = await self.tools.specs(inp.tenant, tools)
+        return [
+            mg.ToolSpec(name=t, description=specs[t].description, params_schema=payload_pb2.JsonPayload(value=_value(dict(specs[t].input_schema))))
+            for t in tools
+            if t in specs
+        ]
+
 
 class ToolLoopActivities:
     def __init__(self, loop: ModelToolLoop) -> None:
@@ -104,11 +117,13 @@ class ToolLoopActivities:
 def dev_tool_loop(config: WorkerConfig) -> ToolLoopActivities:
     """AR_TOOL_LOOP=model 时的开发组装：真正的 tool_loop 与 Context Builder，加开发实现的 ObjectStore。
 
+    工具定义取自开发用 ToolDriver 的登记（dev_tools，与 Node Executor 的 call_tool 同一个）。
     模型经 model_gateway(config)：设了 AR_MODEL_GATEWAY_ADDRESS 时走 Model Gateway；没设时是桩模型，桩模型不会发起工具调用，
     循环第一步就结束，只验证组装与链路，压缩效果见 S-11 的评测。
     """
     from agentruntime_worker.executor.dev import data_root, dev_object_store, model_gateway
+    from agentruntime_worker.tools import dev_tools
 
     gateway = model_gateway(config)
     builder = ContextBuilder(gateway, dev_object_store(config, data_root(config)), ContextConfig(effective_tokens=config.context_effective_tokens))
-    return ToolLoopActivities(ModelToolLoop(gateway, builder))
+    return ToolLoopActivities(ModelToolLoop(gateway, builder, tools=ToolCatalog(dev_tools(config))))

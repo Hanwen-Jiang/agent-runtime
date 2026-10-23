@@ -133,3 +133,21 @@ def test_reviewer_defaults_to_the_stub_and_accepts_model() -> None:
     assert WorkerConfig.from_env({ENV_REVIEWER: "model"}).reviewer == "model"
     with pytest.raises(ValueError, match=ENV_REVIEWER):
         WorkerConfig.from_env({ENV_REVIEWER: "gpt"})
+
+
+def test_tool_config_from_env(tmp_path: Path) -> None:
+    """T-10：工作区根、web_fetch 的主机名单与 MCP 登记文件（docs/plan/tool-driver.md 第 2 节第 4、5 条）。都没设时什么工具也不登记。"""
+    from agentruntime_worker.config import ENV_MCP_TOOLS_FILE, ENV_TOOL_FETCH_HOSTS, ENV_TOOL_WORKSPACE_ROOT
+
+    default = WorkerConfig.from_env({})
+    assert (default.tool_workspace_root, default.tool_fetch_hosts, default.mcp_tools_file) == (None, (), None)
+    config = WorkerConfig.from_env(
+        {
+            ENV_TOOL_WORKSPACE_ROOT: str(tmp_path / "ws"),
+            ENV_TOOL_FETCH_HOSTS: " docs.example.com , *.internal.example ",
+            ENV_MCP_TOOLS_FILE: str(tmp_path / "mcp.json"),
+        }
+    )
+    assert config.tool_workspace_root == tmp_path / "ws"
+    assert config.tool_fetch_hosts == ("docs.example.com", "*.internal.example")
+    assert config.mcp_tools_file == tmp_path / "mcp.json"

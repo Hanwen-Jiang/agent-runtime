@@ -36,6 +36,10 @@ ENV_CONTEXT_EFFECTIVE_TOKENS = "AR_CONTEXT_EFFECTIVE_TOKENS"
 ENV_MODEL_GATEWAY_ADDRESS = "AR_MODEL_GATEWAY_ADDRESS"
 # Registry 的地址（task-service 的内部端口，T-08）；设了才让 resolve_catalog 与 Planner 的上下文改读 Registry。
 ENV_REGISTRY_ADDRESS = "AR_REGISTRY_ADDRESS"
+# 平台内工具的工作区根、web_fetch 的主机名单（逗号分隔）、MCP 登记文件（T-10）；没设的那一类工具不登记。
+ENV_TOOL_WORKSPACE_ROOT = "AR_TOOL_WORKSPACE_ROOT"
+ENV_TOOL_FETCH_HOSTS = "AR_TOOL_FETCH_HOSTS"
+ENV_MCP_TOOLS_FILE = "AR_MCP_TOOLS_FILE"
 
 
 @dataclass(frozen=True)
@@ -67,6 +71,10 @@ class WorkerConfig:
     model_gateway_address: str = ""
     # Registry 的地址（AR_REGISTRY_ADDRESS，T-08）；空表示 Node Catalog 与 Recipe 仍用桩。
     registry_address: str = ""
+    # 平台内工具的工作区根（AR_TOOL_WORKSPACE_ROOT）、web_fetch 的主机名单（AR_TOOL_FETCH_HOSTS）、MCP 登记文件（AR_MCP_TOOLS_FILE），T-10。
+    tool_workspace_root: Path | None = None
+    tool_fetch_hosts: tuple[str, ...] = ()
+    mcp_tools_file: Path | None = None
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> WorkerConfig:
@@ -103,6 +111,9 @@ class WorkerConfig:
         data_dir = Path(env[ENV_DATA_DIR]) if env.get(ENV_DATA_DIR) else None
         objects = env.get(ENV_OBJECT_STORE_DIR, "")
         secrets = env.get(ENV_SECRETS_FILE, "")
+        workspace_root = env.get(ENV_TOOL_WORKSPACE_ROOT, "").strip()
+        fetch_hosts = tuple(h.strip() for h in env.get(ENV_TOOL_FETCH_HOSTS, "").split(",") if h.strip())
+        mcp_tools = env.get(ENV_MCP_TOOLS_FILE, "").strip()
         return cls(
             temporal_address=env.get(ENV_TEMPORAL_ADDRESS, "") or cls.temporal_address,
             namespace=env.get(ENV_TEMPORAL_NAMESPACE, "") or cls.namespace,
@@ -119,6 +130,9 @@ class WorkerConfig:
             context_effective_tokens=effective,
             model_gateway_address=env.get(ENV_MODEL_GATEWAY_ADDRESS, "").strip(),
             registry_address=env.get(ENV_REGISTRY_ADDRESS, "").strip(),
+            tool_workspace_root=Path(workspace_root) if workspace_root else None,
+            tool_fetch_hosts=fetch_hosts,
+            mcp_tools_file=Path(mcp_tools) if mcp_tools else None,
         )
 
     def store_paths(self, root: Path) -> tuple[Path, Path]:

@@ -4,7 +4,7 @@
   没有固定版本（Registry 接入之前启动的 Task）时按引用里的版本取。模板不存在、引用没固定都是不可重试的错误；
   Registry 不可用时抛 TransientError，由 Temporal 重试，不回退到“program · none”的桩。结果标为 authoritative，Stage Runner
   据此核对 Atomic Node 的 executor、effect（T-09）。工具的 effect 不归 Registry，
-  由 tool_effects 给出（工具目录；T-10 接 ToolDriver）。
+  由 tools（工具目录 ToolCatalog，取自 ToolDriver 的登记，T-10）给出；没登记的工具不在结果里。
 - RegistryStagePolicy（T-09）：load_stage_policy 把 Task 固定的租户策略与 Recipe 声明的 hooks 合并进 StagePolicy。
 - RegistryContextSource：Planner 的 Node Catalog 按 Task 固定的版本取自 Registry，Recipe 取自 Registry 的默认版本；
   effect 上限取 Task State 的 constraints.effect_ceiling（task-service 按租户策略写入），没有时用 defaults 的；
@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import dataclasses
 import re
-from collections.abc import Callable
 
 from google.protobuf import json_format
 from temporalio import activity
@@ -29,6 +28,7 @@ from agentruntime_worker import names
 from agentruntime_worker.activities.types import CatalogInfo, CatalogRequest, PlanRoundInput, StagePolicy, StagePolicyRequest, TemplateInfo
 from agentruntime_worker.planner.context import CatalogView, PlanningContext, RecipeEntry
 from agentruntime_worker.registry.client import GrpcRegistry
+from agentruntime_worker.tools.catalog import ToolCatalog
 
 _REF = re.compile(r"^([a-z][a-z0-9_]*)@(v[0-9]+)$")
 
@@ -48,9 +48,9 @@ def template_info(t: rg.NodeTemplate) -> TemplateInfo:
 
 
 class RegistryCatalog:
-    def __init__(self, registry: GrpcRegistry, *, tool_effects: Callable[[list[str]], dict[str, str]]) -> None:
+    def __init__(self, registry: GrpcRegistry, *, tools: ToolCatalog) -> None:
         self.registry = registry
-        self.tool_effects = tool_effects
+        self.tools = tools
 
     @activity.defn(name=names.RESOLVE_CATALOG)
     async def resolve_catalog(self, req: CatalogRequest) -> CatalogInfo:
@@ -77,7 +77,7 @@ class RegistryCatalog:
             if not info.executor or not info.effect:
                 raise ApplicationError(f"Registry 给的模板 {ref} 缺 executor 或 effect", type="invalid_template", non_retryable=True)
             templates[ref] = info
-        tools = self.tool_effects(list(req.tools)) if req.tools else {}
+        tools = await self.tools.effects(req.tenant, list(req.tools)) if req.tools else {}
         return CatalogInfo(templates=templates, tools=tools, authoritative=True)
 
     def activities(self) -> dict[str, object]:

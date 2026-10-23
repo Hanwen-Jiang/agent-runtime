@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 from temporalio.testing import WorkflowEnvironment
@@ -133,3 +134,42 @@ def test_module_entry_point_rejects_unknown_queue() -> None:
         [sys.executable, "-m", "agentruntime_worker", "--queues", "gpu"], capture_output=True, text=True, encoding="utf-8", env=env, timeout=60
     )
     assert proc.returncode == 2
+
+
+async def test_tools_go_through_one_dev_tool_driver(tmp_path: Path) -> None:
+    """T-10：call_tool 是 Node Executor 的（不再是回显的桩）；resolve_catalog 的工具 effect 与 Node Executor 用同一个开发用 ToolDriver；
+    按配置登记平台内工具（docs/plan/tool-driver.md 第 2 节第 6 条）。"""
+    from agentruntime_core.tenancy import TenantContext
+
+    from agentruntime_worker.executor.dev import dev_executor
+    from agentruntime_worker.executor.node_executor import NodeExecutor
+    from agentruntime_worker.tools import DevCatalog, dev_tools
+
+    config = WorkerConfig(data_dir=tmp_path, tool_workspace_root=tmp_path / "ws", tool_fetch_hosts=("example.com",))
+    executor = dev_executor(config)
+    activities = {**decision_activities(config), **executor.activities()}
+    assert isinstance(activities[names.CALL_TOOL].__self__, NodeExecutor)
+    assert isinstance(activities[names.RESOLVE_CATALOG].__self__, DevCatalog)
+    provider = dev_tools(config)
+    assert provider is dev_tools(config) and executor.deps.tools is provider, "同一进程只有一个开发用 ToolDriver"
+    listed = {s.name for s in await provider.bind(TenantContext(tenant_id="t1")).list_tools()}
+    assert listed == {"repo_read", "repo_list", "repo_grep", "repo_edit", "shell_run", "web_fetch"}
+    assert not {s.name for s in await dev_tools(WorkerConfig(data_dir=tmp_path / "other")).bind(TenantContext(tenant_id="t1")).list_tools()}, "没配置就不登记"
+
+
+async def test_mcp_tools_are_attached_for_the_workers_lifetime(tmp_path: Path) -> None:
+    import json
+    import sys
+
+    from agentruntime_core.tenancy import TenantContext
+
+    from agentruntime_worker.tools import dev_tools, tool_sessions
+
+    server = Path(__file__).with_name("mcp_fake_server.py")
+    registration = {"servers": [{"name": "fake", "command": [sys.executable, str(server)], "tools": [{"tool": "echo", "name": "mcp_echo", "effect": "read"}]}]}
+    (tmp_path / "mcp.json").write_text(json.dumps(registration), "utf-8")
+    config = WorkerConfig(data_dir=tmp_path, mcp_tools_file=tmp_path / "mcp.json")
+    async with tool_sessions(config) as gateway:
+        tools = dev_tools(config).bind(TenantContext(tenant_id="t1"))
+        assert (await tools.invoke("mcp_echo", "v1", {"text": "hi"})).output == {"text": "hi"}
+    assert gateway is not None and not any(s.alive for s in gateway.sessions), "Worker 退出时关闭 MCP 会话"

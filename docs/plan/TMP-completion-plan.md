@@ -142,6 +142,13 @@
 **T-10 ToolDriver 与平台内工具、MCP Gateway**　中档 · 中
 - `libs/py-core/.../tool_driver.py` 是接口与开发实现。补几个真工具（读文件、跑命令、HTTP 取页面），再接 MCP 服务。
 - 完成：tool_loop 能用至少三个真工具跑 S-11 那类长任务。
+- 结果（2026-10-23）：细化与取舍见 `docs/plan/tool-driver.md`。Worker 的 `agentruntime_worker.tools`：平台内工具 `repo_read`、`repo_list`、
+  `repo_grep`、`repo_edit`、`shell_run`、`web_fetch`（按配置登记，工作区按租户与 workspace 划分，`web_fetch` 有主机名单、拒绝内网、不跟随重定向）；
+  MCP Gateway（进程内、stdio，按登记文件包装 MCP 工具，effect 人工登记）；`ToolCatalog` 让 `resolve_catalog`（桩模板与 Registry 两种）的
+  工具 effect 取自 ToolDriver 的登记，关掉 T-09 登记的“工具 effect 是桩”的缺口；Node Executor 实现 `call_tool`（规则同 program 节点，
+  调用时按登记复核 effect）；tool_loop 给模型的工具定义取自登记。Temporal 测试里 tool_loop 用桩模型脚本驱动真工具跑完读、改、跑测试、取网页。
+  “完成”要求的真模型长任务演示还没做（供应商额度用完，2026-10-22）。
+  登记到后续：MCP Gateway 单独部署、HTTP 传输、MCP 工具的权限；工具版本固定到 Task；`shell_run` 的资源限制与网络隔离；记忆检索等平台内工具。
 
 **T-11 SecretStore 接入与 Ingress/SSE 评审**　中档 · 中，评审 R-04、R-05
 - 节点拿不到长期密钥，凭据不进日志与 trace；SSE 支持 Last-Event-ID 续传。

@@ -52,6 +52,35 @@ async def test_a_tool_call_becomes_a_tool_step(tmp_path: Path) -> None:
     assert request.generation.messages[0].cache_breakpoint, "上下文经 Context Builder 组装"
 
 
+async def test_tool_definitions_come_from_the_registrations(tmp_path: Path) -> None:
+    """T-10：给模型的工具定义（说明与参数 schema）取自 ToolDriver 的登记；Goal Node 里写了、但没登记的工具不给模型。"""
+    from datetime import timedelta
+
+    from google.protobuf import json_format
+
+    from agentruntime_core.dev.tool_driver import LocalToolDriverProvider
+    from agentruntime_core.enums import Effect
+    from agentruntime_core.providers.tool_driver import ToolInvocation, ToolSpec
+
+    from agentruntime_worker.tools import ToolCatalog
+
+    async def handler(invocation: ToolInvocation) -> dict:
+        return {}
+
+    provider = LocalToolDriverProvider()
+    schema = {"type": "object", "required": ["path"], "properties": {"path": {"type": "string", "description": "相对工作区的路径"}}}
+    provider.register(ToolSpec(name="repo_read", version="v1", description="读工作区里的文件", input_schema=schema, output_schema={"type": "object"},
+                               effect=Effect.READ, permissions=frozenset(), timeout=timedelta(seconds=5)), handler)
+    gateway = ContextGateway(steps=[tool_call("repo_read", path="src/checkout.py")])
+    tool_loop = ModelToolLoop(gateway, ContextBuilder(gateway, objects(tmp_path), config(effective_tokens=100_000)), tools=ToolCatalog(provider))
+    await tool_loop.step(step_input([]))
+    [request] = gateway.requests
+    tools = {t.name: t for t in request.generation.tools}
+    assert set(tools) == {"repo_read"}, "没登记的 run_tests、repo_edit、web_search 不给模型"
+    assert tools["repo_read"].description == "读工作区里的文件"
+    assert json_format.MessageToDict(tools["repo_read"].params_schema.value) == schema
+
+
 async def test_a_result_without_tool_calls_finishes(tmp_path: Path) -> None:
     gateway = ContextGateway(steps=[{"patch": "fix tz"}])
     step = await loop(tmp_path, gateway).step(step_input([read_step(0)]))

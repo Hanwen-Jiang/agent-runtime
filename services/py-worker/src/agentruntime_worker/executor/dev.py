@@ -28,7 +28,6 @@ from agentruntime_core.dev.object_store import LocalDiskObjectStoreProvider
 from agentruntime_core.dev.sandbox import LocalSubprocessSandboxProvider
 from agentruntime_core.dev.secret_store import LocalFileSecretStoreProvider
 from agentruntime_core.dev.telemetry import ConsoleTelemetryProvider
-from agentruntime_core.dev.tool_driver import LocalToolDriverProvider
 from agentruntime_core.providers.human_channel import Reply
 from agentruntime_core.providers.object_store import ObjectStoreProvider
 
@@ -39,6 +38,7 @@ from agentruntime_worker.executor.grpc_gateway import GrpcModelGateway
 from agentruntime_worker.executor.model_gateway import ModelGateway
 from agentruntime_worker.executor.node_executor import ExecutorConfig, ExecutorDeps, NodeExecutor, workflow_question_id
 from agentruntime_worker.executor.schemas import DictSchemaResolver
+from agentruntime_worker.tools import dev_tools
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +129,7 @@ def dev_executor(
     root = data_root(config)
     sink = TemporalReplySink(client) if client is not None else _LoggingSink()
     deps = ExecutorDeps(
-        tools=LocalToolDriverProvider(),
+        tools=dev_tools(config),
         objects=objects or dev_object_store(config, root),
         secrets=dev_secret_store(config, root),
         cache=InMemoryCacheProvider(),

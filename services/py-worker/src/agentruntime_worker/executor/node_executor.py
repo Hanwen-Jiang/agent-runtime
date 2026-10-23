@@ -53,10 +53,11 @@ from agentruntime_core.providers.tool_driver import ToolDriver, ToolDriverProvid
 from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker import names
-from agentruntime_worker.activities.types import HumanCancel, HumanQuestion, NodeInput, ReconcileResult, Tenant
+from agentruntime_worker.activities.types import HumanCancel, HumanQuestion, NodeInput, ReconcileResult, Tenant, ToolCallInput
 from agentruntime_worker.executor import keys
 from agentruntime_worker.executor.model_gateway import ModelGateway
 from agentruntime_worker.executor.schemas import OutputSchemaResolver, UnknownSchema, schema_for, validate
+from agentruntime_worker.tools.catalog import latest_spec
 
 # ApplicationError.type 的取值。
 TRANSIENT = "transient"
@@ -160,6 +161,37 @@ class NodeExecutor:
         """执行 model 节点，返回 Node Output（不含 rationale）。"""
         return await self._execute(inp, self._model)
 
+    @activity.defn(name=names.CALL_TOOL)
+    async def call_tool(self, inp: ToolCallInput) -> Any:
+        """tool_loop 的一次工具调用（T-10）：按名字取当前登记的最大版本，当作这次调用的 program 节点执行，规则同 program 节点。
+
+        - 没登记：denied。工具登记的 effect 高于工作流批准的（inp.effect，展开时取自 Catalog）：denied，不调用（_tool 里的检查）。
+        - 写操作的幂等键按 tenant_id、task_id、这次调用的 id 与参数由代码生成；write_irreversible 要这次调用自己的审批记录。
+        - 凭据、写操作超时的对账、大结果外置都同 program 节点。返回工具的输出（外置时是摘要与引用）。
+        """
+        from agentruntime_worker.executor.tool_gate import require_tool_gate  # tool_gate 引用本模块的 DENIED
+
+        require_tool_gate(inp)
+        tenant = _tenant(inp.tenant)
+        try:
+            spec = await latest_spec(self.deps.tools.bind(tenant), inp.tool)
+        except ProviderError as err:
+            raise self._from_provider(err, {}) from None
+        if spec is None:
+            raise _error(f"工具 {inp.tool} 没有登记，不能调用", DENIED)
+        node: dict[str, Any] = {
+            "id": inp.node_id,
+            "kind": "atomic",
+            "template": f"{spec.name}@{spec.version}",
+            "executor": "program",
+            "effect": inp.effect,
+            "inputs": dict(inp.args),
+        }
+        if inp.effect in WRITE_EFFECTS:
+            node["idempotency_key"] = keys.idempotency_key(inp.tenant.tenant_id, inp.task_id, inp.node_id, node["inputs"])
+        out = await self._execute(NodeInput(tenant=inp.tenant, task_id=inp.task_id, round_seq=inp.round_seq, node=node, gate=inp.gate), self._program)
+        return out["result"]
+
     @activity.defn(name=names.EXECUTE_PROGRAM_NODE)
     async def execute_program_node(self, inp: NodeInput) -> dict[str, Any]:
         """执行 program 节点：template 的名字与版本就是 ToolDriver 里的工具；内置模板 sandbox_exec 在 Sandbox 里执行代码。"""
@@ -220,6 +252,7 @@ class NodeExecutor:
             names.ASK_HUMAN: self.ask_human,
             names.CANCEL_HUMAN: self.cancel_human,
             names.RECONCILE_NODE: self.reconcile_node,
+            names.CALL_TOOL: self.call_tool,
         }
 
     # --- 公共流程 ---
