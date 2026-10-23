@@ -4,7 +4,7 @@
   当前代码都必须能回放。设 AR_UPDATE_GOLDEN_HISTORIES=1 时，从中挑出覆盖每条展开路径的历史写进 tests/histories。
 - golden 历史覆盖：并行调度、revise、ensemble（vote 与 judge）、search、template（内联与拆子工作流）、tool_loop、
   sub_agent、sub_task、写节点前的人工审批、tool_loop 里不可逆工具调用前的审批（D16）、Hook 的 deny、取消，
-  两种子工作流本身，以及 S-10 的 Verdict 去向（原地重试重跑、问人、rollback）。
+  两种子工作流本身，S-10 的 Verdict 去向（原地重试重跑、问人、rollback），以及 T-09 的 effect 核对、before_finish 驳回与 Task 级挂载点。
 - Stage Runner 改变了 Task 工作流的命令序列，走 workflow.patched 版本分支：S-03 的 golden 历史仍能回放，
   新历史带版本标记，旧历史没有。
 - 把 Stage Runner 里两条标了 replay-mutation 的语句调换顺序，重放必须失败。
@@ -39,7 +39,7 @@ from agentruntime_worker.workflows.stage_runner import (
     SubAgentWorkflow,
     SubgraphWorkflow,
 )
-from agentruntime_worker.workflows.task import REVIEWER_PATCH, STAGE_RUNNER_PATCH, TaskWorkflow
+from agentruntime_worker.workflows.task import POLICY_PATCH, REVIEWER_PATCH, STAGE_RUNNER_PATCH, TaskWorkflow
 
 from .support import HISTORIES_DIR
 
@@ -72,8 +72,13 @@ STAGE_CASES: dict[str, tuple[str, str]] = {
     "review_repair_rerun": (names.TASK_WORKFLOW, r'"strategy":\s*"retry_with_error".*"zone":\s*"status"'),
     "review_escalate_human": (names.TASK_WORKFLOW, r'"question_id":\s*"_review"'),
     "review_rollback": (names.TASK_WORKFLOW, r'"checkpoint":\s*"round_1"'),
+    # T-09：按 Registry 核对 effect 被拒、before_finish 驳回后回到 Planner、Task 级挂载点的 Hook。
+    "policy_effect_denied": (names.TASK_WORKFLOW, r"effect_mismatch"),
+    "policy_finish_rejected": (names.TASK_WORKFLOW, r'"finish_rejected"'),
+    "policy_task_mounts": (names.TASK_WORKFLOW, r'"mount":\s*"on_task_received".*"mount":\s*"on_task_end"'),
 }
 REVIEW_CASES = ("review_repair_rerun", "review_escalate_human", "review_rollback")
+POLICY_CASES = ("policy_effect_denied", "policy_finish_rejected", "policy_task_mounts")
 
 MUTATION_C = "# replay-mutation:C"
 MUTATION_D = "# replay-mutation:D"
@@ -162,8 +167,15 @@ def test_version_branch_keeps_old_histories_replayable() -> None:
     # S-10 改变了 Verdict 的去向与收尾的顺序：新历史带版本标记，之前的历史没有，按旧路径回放。
     for name in REVIEW_CASES:
         assert REVIEWER_PATCH in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"{name} 应带版本标记 {REVIEWER_PATCH}"
-    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in REVIEW_CASES)):
+    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in REVIEW_CASES + POLICY_CASES)):
         assert REVIEWER_PATCH not in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"S-10 之前的 {name} 不该有 {REVIEWER_PATCH}"
+    # T-09 改变了 Task 工作流的命令序列（提前加载 StagePolicy、Task 级挂载点、Catalog 一并查 Atomic Node 的模板）：
+    # 新历史带版本标记，之前的历史都没有，按旧路径回放。
+    for name in POLICY_CASES:
+        text = history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8"))
+        assert POLICY_PATCH in text and REVIEWER_PATCH in text, f"{name} 应带版本标记 {POLICY_PATCH}"
+    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in POLICY_CASES)):
+        assert POLICY_PATCH not in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"T-09 之前的 {name} 不该有 {POLICY_PATCH}"
 
 
 async def test_all_golden_histories_replay_with_the_current_code() -> None:

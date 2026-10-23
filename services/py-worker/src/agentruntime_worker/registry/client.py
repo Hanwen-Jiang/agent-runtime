@@ -134,6 +134,16 @@ class GrpcRegistry:
                 return out
         raise TransientError("paging_runaway", "Registry 的分页没有结束")
 
+    async def get_tenant_policy(self, tenant: Tenant, version: str = "") -> rg.TenantPolicy:
+        """租户策略；version 为空时取当前版本。"""
+        resp = await self._call("GetTenantPolicy", rg.GetTenantPolicyRequest(tenant=tenant_context(tenant), version=version))
+        return resp.tenant_policy
+
+    async def get_recipe(self, tenant: Tenant, name: str, version: str = "") -> rg.Recipe:
+        """Recipe；version 为空时取默认版本。"""
+        resp = await self._call("GetRecipe", rg.GetRecipeRequest(tenant=tenant_context(tenant), name=name, version=version))
+        return resp.recipe
+
     # --- 写（要发布令牌）---
 
     async def publish(

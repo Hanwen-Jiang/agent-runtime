@@ -78,6 +78,8 @@ TOOL_LOOP_APPROVAL_PATCH = "d16-tool-loop-approval"
 HUMAN_REPLY_RACE_PATCH = "d16-expect-reply-before-ask"
 # 同一个 Goal Node 里不可逆工具调用被拒（含超时）几次就记为 denied，交给 Reviewer。
 MAX_TOOL_REJECTIONS = 2
+# T-09：Policy Engine（策略声明的 Hook、Task 级挂载点、before_finish 的驳回上限、按 Registry 核对 effect）改变了命令序列。
+POLICY_PATCH = "t09-policy-engine"
 DEFAULT_ROLE = "transform"
 
 
@@ -90,6 +92,16 @@ def effect_name(value: int) -> str:
 
 def _memo(tenant: Tenant) -> dict[str, Any]:
     return {SCOPE_MEMO_KEY: tenant.tenant_id}
+
+
+def _merged(*groups: list[str]) -> list[str]:
+    """按出现的先后合并几组 Hook 名，同名的只留第一个。"""
+    out: list[str] = []
+    for group in groups:
+        for name in group:
+            if name not in out:
+                out.append(name)
+    return out
 
 
 def _role(node: dict[str, Any]) -> str:
@@ -179,6 +191,11 @@ class RunContext:
     task_input: task_pb2.TaskWorkflowInput | None = None
     # 当前的 Task Plan；tool_loop 的每一步带上它与 Task State，给 Context Builder 用（只是输入）。
     task_plan: dict[str, Any] | None = None
+    # T-09（POLICY_PATCH 之后的运行为 True）：策略声明的 Hook、Hook 的 subject 带预算与写者信息、按 Registry 核对 effect。
+    t09: bool = False
+    # Task 的预算（美元，没有为 None）与之前各 Round 已花的钱：budget_check 用。
+    budget_usd: float | None = None
+    spent_before_usd: float = 0.0
 
 
 @dataclass
@@ -211,6 +228,9 @@ class StageRunner:
         # S-10：重跑时给指定 Node 的注入（错误与 Reviewer 的指导）；本次运行里各次执行花的钱（Round 的成本）。
         self._extra_injections: dict[str, list[dict[str, Any]]] = {}
         self.spent_usd = 0.0
+        # T-09：本 Stage 开始时 Catalog 取不到的原因（这时整个 Stage 拒绝）；已经问过 Catalog 的模板（没登记的不再问）。
+        self._catalog_error = ""
+        self._asked_templates: set[str] = set()
 
     @property
     def policy(self) -> StagePolicy:
@@ -239,24 +259,46 @@ class StageRunner:
         if errors:
             reason = "invalid_stage：" + "；".join(errors)
             return {n["id"]: StageResult(role=_role(n), status="skipped", error=reason) for n in sorted(nodes, key=lambda n: n["id"])}
+        if self._catalog_error:
+            # T-09：Node Catalog 取不到时整个 Stage 拒绝，一个 Node 也不执行（fail-closed）。
+            reason = f"catalog_unavailable：Node Catalog 取不到（{self._catalog_error}）"
+            return {n["id"]: _denied(_role(n), reason) for n in sorted(nodes, key=lambda n: n["id"])}
         hooks = stage.get("hooks") or {}
         subject: dict[str, Any] = {"stage": {k: stage.get(k) for k in ("seq", "goal", "exit_when")}}
-        before = await self._hooks("before_stage", list(hooks.get("before", [])), subject)
+        before_hooks, after_hooks = list(hooks.get("before", [])), list(hooks.get("after", []))
+        if self._ctx.t09:
+            # 策略声明的 Hook 在前，Stage 里写的在后（细化第 2 节第 3 条）。
+            subject = {"stage": {k: stage.get(k) for k in ("seq", "goal", "exit_when", "budget")}, "budget": self._budget()}
+            before_hooks = _merged(self._policy_hooks("before_stage"), before_hooks)
+            after_hooks = _merged(self._policy_hooks("after_stage"), after_hooks)
+        before = await self._hooks("before_stage", before_hooks, subject)
         if before.denied:
             return {n["id"]: _denied(_role(n), before.denied, status="skipped") for n in sorted(nodes, key=lambda n: n["id"])}
         kept = {n["id"]: carried[n["id"]] for n in nodes if n["id"] in carried}
         results = await self._run_dag([n for n in nodes if n["id"] not in kept], _Env(results=dict(kept)))
         results = {**kept, **results}
-        after = await self._hooks("after_stage", list(hooks.get("after", [])), {**subject, "results": {k: v.status for k, v in sorted(results.items())}})
+        after = await self._hooks("after_stage", after_hooks, {**subject, "results": {k: v.status for k, v in sorted(results.items())}})
         if after.denied:
             # Stage 的产出被拒绝：结果不再往下交，由 Reviewer 判定 repair 还是 replan。
             results = {k: StageResult(role=v.role, status="failed", failure_class="denied", error=after.denied, quality=v.quality) for k, v in results.items()}
         return dict(sorted(results.items()))
 
     async def _prepare(self, stage: dict[str, Any]) -> None:
-        """Stage 开始前：加载 StagePolicy（每个 Task 一次）与 Node Catalog。两行调换会改变命令顺序，重放测试据此证明自己有效。"""
+        """Stage 开始前：加载 StagePolicy（每个 Task 一次）与 Node Catalog。两行调换会改变命令顺序，重放测试据此证明自己有效。
+        T-09 之后 Catalog 取不到时不再让工作流失败，而是记下原因，整个 Stage 拒绝。"""
         await self._ensure_policy()  # replay-mutation:C
-        await self._ensure_catalog(stage)  # replay-mutation:D
+        await self._ensure_stage_catalog(stage)  # replay-mutation:D
+
+    async def _ensure_stage_catalog(self, stage: dict[str, Any]) -> None:
+        if not self._ctx.t09:
+            await self._ensure_catalog(stage)
+            return
+        try:
+            await self._ensure_catalog(stage)
+        except FailureError as err:
+            if caused_by_cancel(err):
+                raise asyncio.CancelledError() from err
+            self._catalog_error = failure_message(err)
 
     async def _ensure_policy(self) -> None:
         if self._ctx.policy is None:
@@ -275,13 +317,16 @@ class StageRunner:
         await self._ensure_catalog_for(list(stage.get("nodes", [])))
 
     async def _ensure_catalog_for(self, nodes: list[dict[str, Any]]) -> None:
-        """查出 judge、scorer 模板的执行方式与 Goal Node 工具的 effect；已经查过的不再查。"""
+        """查出 judge、scorer 模板的执行方式与 Goal Node 工具的 effect；T-09 之后连 Atomic Node 的模板一并查
+        （按 Registry 核对 executor、effect）。已经查过的不再查。"""
         templates: list[str] = []
         tools: list[str] = []
         for node in nodes:
             quality = node.get("quality") or {}
-            for key in ("judge", "scorer"):
-                ref = quality.get(key)
+            refs = [quality.get(key) for key in ("judge", "scorer")]
+            if self._ctx.t09 and node.get("kind") == "atomic":
+                refs.append(node.get("template"))
+            for ref in refs:
                 if ref and ref not in self._catalog.templates and ref not in templates:
                     templates.append(ref)
             if node.get("kind") == "goal":
@@ -290,6 +335,7 @@ class StageRunner:
                         tools.append(tool)
         if not templates and not tools:
             return
+        self._asked_templates.update(templates)
         info = await workflow.execute_activity(
             names.RESOLVE_CATALOG,
             CatalogRequest(tenant=self._ctx.tenant, task_id=self._ctx.task_id, templates=sorted(templates), tools=sorted(tools), pinned=self._ctx.pinned),
@@ -300,6 +346,49 @@ class StageRunner:
         )
         self._catalog.templates.update(info.templates)
         self._catalog.tools.update(info.tools)
+        self._catalog.authoritative = self._catalog.authoritative or info.authoritative
+
+    # --- T-09：策略声明的 Hook、Hook 的 subject 与按 Registry 核对 effect ---
+
+    def _policy_hooks(self, mount: str) -> list[str]:
+        return list(self.policy.hooks.get(mount, []))
+
+    def _budget(self) -> dict[str, Any]:
+        """budget_check 用：Task 的预算与已花的钱（之前各 Round 加上本 Stage 到现在）。"""
+        return {"task_usd": self._ctx.budget_usd, "spent_usd": round(self._ctx.spent_before_usd + self.spent_usd, 6)}
+
+    def _node_hooks(self, node: dict[str, Any], ceiling: str) -> dict[str, list[str]]:
+        """按 effect 自动插入的默认 Hook，加上策略声明的；策略只能加 Hook，去不掉默认的；audit_log 永远最后。"""
+        hooks = sp.default_node_hooks(node, ceiling)
+        if not self._ctx.t09:
+            return hooks
+        after = [h for h in hooks["after_node"] if h != "audit_log"]
+        return {
+            "before_node": _merged(hooks["before_node"], self._policy_hooks("before_node")),
+            "after_node": [*_merged(after, [h for h in self._policy_hooks("after_node") if h != "audit_log"]), "audit_log"],
+        }
+
+    async def _registered(self, node: dict[str, Any]) -> str:
+        """按 Registry 登记的模板核对 Atomic Node：executor 不同、effect 写低了、模板没登记，返回拒绝的理由；Catalog 不是来自
+        Registry（桩）时不核对。拒绝在 before_node Hook 与审批之前，被拒的 Node 不问人、不执行。"""
+        template = str(node.get("template", ""))
+        if template not in self._catalog.templates and template not in self._asked_templates:
+            try:
+                await self._ensure_catalog_for([node])
+            except FailureError as err:
+                if caused_by_cancel(err):
+                    raise asyncio.CancelledError() from err
+                return f"catalog_unavailable：Node Catalog 取不到（{failure_message(err)}）"
+        if not self._catalog.authoritative:
+            return ""
+        info = self._catalog.templates.get(template)
+        if info is None:
+            return f"template_not_registered：{node['id']} 的模板 {template} 没有在 Registry 登记"
+        if node.get("executor") != info.executor:
+            return f"executor_mismatch：{node['id']} 写的 executor 是 {node.get('executor')}，模板 {template} 登记的是 {info.executor}"
+        if sp.effect_rank(str(node.get("effect", "none"))) < sp.effect_rank(info.effect):
+            return f"effect_mismatch：{node['id']} 写的 effect 是 {node.get('effect', 'none')}，低于模板 {template} 登记的 {info.effect}"
+        return ""
 
     # --- 调度 ---
 
@@ -361,6 +450,10 @@ class StageRunner:
         effect = sp.node_effect(node, ceiling)
         if sp.effect_rank(effect) > sp.effect_rank(ceiling):
             return _denied(role, f"{nid} 的 effect {effect} 超过 Task 允许的 {ceiling}")
+        if self._ctx.t09 and node.get("kind") == "atomic":
+            reason = await self._registered(node)
+            if reason:
+                return _denied(role, reason)
         if resolved:
             inputs = node.get("inputs", {})
         else:
@@ -369,7 +462,7 @@ class StageRunner:
             except sp.UnresolvedReference as err:
                 return _failed(role, f"unresolved_reference：{err}")
         node = {**node, "inputs": inputs}
-        hooks = sp.default_node_hooks(node, ceiling)
+        hooks = self._node_hooks(node, ceiling)
         leaf = (
             node.get("kind") == "atomic"
             and sp.quality_type(node) == "none"
@@ -383,7 +476,17 @@ class StageRunner:
 
     async def _guarded(self, node: dict[str, Any], env: _Env, hooks: dict[str, list[str]], role: str) -> StageResult:
         """before_node Hook → 执行 → after_node Hook。"""
-        before = await self._hooks("before_node", hooks["before_node"], {"node": node})
+        subject: dict[str, Any] = {"node": node}
+        if self._ctx.t09:
+            # 写者已串行化：会写的 Atomic Node 由 _writer 串行（叶子在这之前已拿到写锁，不可逆写在 _dispatch 里拿），
+            # Goal Node 在展开期间持有写锁。幂等键按最终输入由代码生成（_execute），这里先按当前输入算一份给 Hook 核对。
+            subject["budget"] = self._budget()
+            subject["write_serialized"] = env.write_held or node.get("kind") == "goal" or (
+                node.get("executor") in ("model", "program") and sp.quality_type(node) == "none"
+            )
+            if node.get("kind") == "atomic" and node.get("effect") in sp.WRITE_EFFECTS:
+                subject["idempotency_key"] = keys.idempotency_key(self._ctx.tenant.tenant_id, self._ctx.task_id, node["id"], node.get("inputs", {}))
+        before = await self._hooks("before_node", hooks["before_node"], subject)
         if before.denied:
             return _denied(role, before.denied)
         if before.input_patches:
@@ -1059,6 +1162,7 @@ class SubAgentWorkflow:
             effect_ceiling=inp.effect_ceiling,
             depth=sp.MAX_SUB_TASK_DEPTH,
             policy=inp.policy,
+            t09=workflow.patched(POLICY_PATCH),
         )
         runner = StageRunner(ctx, human=None)
         await runner._ensure_policy()
@@ -1101,6 +1205,7 @@ class SubgraphWorkflow:
             task_state=inp.task_state,
             depth=sp.MAX_SUB_TASK_DEPTH,
             policy=inp.policy,
+            t09=workflow.patched(POLICY_PATCH),
         )
         runner = StageRunner(ctx, human=None)
         await runner._ensure_policy()

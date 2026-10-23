@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from agentruntime_worker.registry.catalog import RegistryCatalog, RegistryContextSource
+from agentruntime_worker.registry.catalog import RegistryCatalog, RegistryContextSource, RegistryStagePolicy
 from agentruntime_worker.registry.client import (
     GrpcRegistry,
     MissingRegistryAddressError,
@@ -22,6 +22,7 @@ __all__ = [
     "MissingRegistryAddressError",
     "RegistryCatalog",
     "RegistryContextSource",
+    "RegistryStagePolicy",
     "closing_registries",
     "from_env",
     "registry_client",

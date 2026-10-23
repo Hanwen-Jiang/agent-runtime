@@ -6,13 +6,14 @@
 - UNKNOWN 路径：外部是否生效无法确认时记为 unknown，交给 Reviewer，不重复执行。
 - human 节点的问题经 HumanChannel 发出，等待有持久化定时器，超时按 on_timeout 处理；写节点前的审批同样如此。
 
-Planner、Reviewer 等决策用 stage_harness 的脚本，执行器用真实的 NodeExecutor（依赖是 S-02 的开发实现）。
+Planner、Reviewer 等决策用 stage_harness 的脚本，执行器用真实的 NodeExecutor（依赖是 S-02 的开发实现），Hook 由真的 Policy Engine 执行（T-09）。
 """
 
 from __future__ import annotations
 
 import asyncio
 import contextlib
+import io
 import time
 from collections.abc import AsyncIterator
 from pathlib import Path
@@ -27,6 +28,7 @@ from temporalio.worker import Worker
 from agentruntime.common.v1 import enums_pb2
 from agentruntime.workflow.v1 import task_pb2
 
+from agentruntime_core.dev.telemetry import ConsoleTelemetryProvider
 from agentruntime_core.enums import Effect
 from agentruntime_core.errors import NotFoundError, TransientError
 from agentruntime_core.providers.human_channel import QuestionStatus
@@ -36,6 +38,7 @@ from agentruntime_worker import names
 from agentruntime_worker.activities.types import StagePolicy
 from agentruntime_worker.executor import keys
 from agentruntime_worker.executor.node_executor import channel_question_id
+from agentruntime_worker.policy import PolicyEngine
 from agentruntime_worker.workflows.stage_runner import SubAgentWorkflow, SubgraphWorkflow
 from agentruntime_worker.workflows.task import TaskWorkflow
 
@@ -110,7 +113,8 @@ async def exec_harness(temporal_env: WorkflowEnvironment, tmp_path: Path) -> Asy
         return switch_holder[0]
 
     fx = make_fixture(tmp_path, tools=switchable)
-    script = Script()
+    # T-09：Hook 由真的 Policy Engine 执行（TMP 计划 T-09“S-05 的 effect 规则测试用真 Policy Engine 重跑”）。
+    script = Script(engine=PolicyEngine(telemetry=ConsoleTelemetryProvider(stream=io.StringIO())))
     client = temporal_env.client
     ex = fx.executor
     workers = [

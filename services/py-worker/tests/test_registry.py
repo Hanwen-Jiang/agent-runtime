@@ -1,4 +1,4 @@
-"""T-08 Registry 的 Worker 一侧（docs/plan/registry.md 第 2 节第 6 条、第 4 节、第 5 节“Worker”）。
+"""T-08 Registry 的 Worker 一侧（docs/plan/registry.md 第 2 节第 6 条、第 4 节、第 5 节“Worker”）；文件末尾是 T-09 的 Hook 来源。
 
 假的 RegistryService 在进程内（grpc.aio，见 registry_fakes）。覆盖：
 - 客户端 GrpcRegistry：每个请求带租户；列表把分页取完；按固定的版本列模板；错误按 trailer ar-error-bin 还原；
@@ -23,10 +23,10 @@ from agentruntime.registry.v1 import registry_pb2 as rg
 from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError, TransientError
 
 from agentruntime_worker import names
-from agentruntime_worker.activities.types import CatalogRequest, PlanRoundInput, Tenant, TemplateInfo
+from agentruntime_worker.activities.types import CatalogRequest, PlanRoundInput, StagePolicy, StagePolicyRequest, Tenant, TemplateInfo
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.planner.context import CatalogView, PlanningContext, RecipeEntry
-from agentruntime_worker.registry import GrpcRegistry, MissingRegistryAddressError, RegistryCatalog, RegistryContextSource, from_env
+from agentruntime_worker.registry import GrpcRegistry, MissingRegistryAddressError, RegistryCatalog, RegistryContextSource, RegistryStagePolicy, from_env
 from agentruntime_worker.worker import decision_activities
 
 from .gateway_fakes import Abort
@@ -343,3 +343,85 @@ def test_the_worker_uses_the_registry_only_when_configured() -> None:
 def test_the_registry_address_is_read_from_the_environment() -> None:
     assert WorkerConfig.from_env({}).registry_address == ""
     assert WorkerConfig.from_env({"AR_REGISTRY_ADDRESS": " 127.0.0.1:8092 "}).registry_address == "127.0.0.1:8092"
+
+
+# --- T-09：Hook 的来源（细化见 docs/plan/policy-engine.md 第 2 节第 3 条） ---
+
+
+def stage_policy_request(pinned: dict | None = None) -> StagePolicyRequest:
+    return StagePolicyRequest(tenant=TENANT, task_id="tsk_reg", pinned={"tenant_policy": "v5", "recipe": "refund_analysis@v1"} if pinned is None else pinned)
+
+
+def policy_registry() -> FakeRegistry:
+    fake = seeded()
+    fake.policies[("t-reg", "v5")] = {"effect_ceiling": "read", "hooks": {"before_node": ["pii_check"], "after_node": ["pii_redaction"]}}
+    fake.recipes = [
+        recipe("refund_analysis", "v1", "analytics.attribution", "read", hooks={"after_node": ["pii_redaction", "row_limit"], "before_finish": ["acceptance_recheck"]}),
+    ]
+    return fake
+
+
+async def test_stage_policy_hooks_come_from_the_pinned_tenant_policy_and_recipe() -> None:
+    fake = policy_registry()
+    defaults = StagePolicy(max_parallel=3)
+    async with serve(fake) as address:
+        loader = RegistryStagePolicy(GrpcRegistry(address), defaults=defaults)
+        policy = await ActivityEnvironment().run(loader.load_stage_policy, stage_policy_request())
+    assert policy.hooks == {
+        "before_node": ["pii_check"],
+        "after_node": ["pii_redaction", "row_limit"],
+        "before_finish": ["acceptance_recheck"],
+    }, "按租户策略、Recipe 的顺序合并，同名的只留一个"
+    assert policy.max_parallel == 3, "其余上限取默认"
+    (asked_policy,) = fake.calls("GetTenantPolicy")
+    assert asked_policy.version == "v5" and asked_policy.tenant == tenant_proto(), "按 Task 固定的版本取"
+    (asked_recipe,) = fake.calls("GetRecipe")
+    assert (asked_recipe.name, asked_recipe.version) == ("refund_analysis", "v1")
+
+
+async def test_no_pins_means_no_policy_hooks() -> None:
+    fake = policy_registry()
+    async with serve(fake) as address:
+        loader = RegistryStagePolicy(GrpcRegistry(address), defaults=StagePolicy())
+        policy = await ActivityEnvironment().run(loader.load_stage_policy, stage_policy_request({}))
+    assert policy.hooks == {}
+    assert fake.requests == [], "没有固定的租户策略与 Recipe 就不问 Registry"
+
+
+@pytest.mark.parametrize(("pinned", "error_type"), [({"tenant_policy": "v9"}, "tenant_policy_not_found"), ({"recipe": "ghost@v1"}, "recipe_not_found")])
+async def test_a_pinned_version_that_cannot_be_found_is_not_retryable(pinned: dict, error_type: str) -> None:
+    fake = policy_registry()
+    async with serve(fake) as address:
+        loader = RegistryStagePolicy(GrpcRegistry(address), defaults=StagePolicy())
+        with pytest.raises(ApplicationError) as caught:
+            await ActivityEnvironment().run(loader.load_stage_policy, stage_policy_request(pinned))
+    assert caught.value.non_retryable and caught.value.type == error_type, "固定的版本取不到一律按拒绝处理（设计书 3.1.2）"
+
+
+async def test_an_unavailable_registry_makes_the_stage_policy_retryable() -> None:
+    fake = policy_registry()
+    fake.abort = unavailable()
+    async with serve(fake) as address:
+        loader = RegistryStagePolicy(GrpcRegistry(address), defaults=StagePolicy())
+        with pytest.raises(TransientError):
+            await ActivityEnvironment().run(loader.load_stage_policy, stage_policy_request())
+
+
+async def test_the_registry_catalog_is_authoritative() -> None:
+    fake = seeded()
+    async with serve(fake) as address:
+        catalog = RegistryCatalog(GrpcRegistry(address), tool_effects=no_tools)
+        info = await ActivityEnvironment().run(catalog.resolve_catalog, catalog_request(["sql_query@v1"]))
+    assert info.authoritative, "Stage Runner 据此按 Registry 核对 Atomic Node 的 executor、effect"
+
+
+def test_the_worker_loads_hooks_from_the_registry_and_runs_the_real_policy_engine() -> None:
+    from agentruntime_worker.activities.stubs import StubActivities
+    from agentruntime_worker.policy import PolicyEngine
+
+    default = decision_activities(WorkerConfig())
+    configured = decision_activities(WorkerConfig(registry_address="127.0.0.1:8092"))
+    assert isinstance(default[names.LOAD_STAGE_POLICY].__self__, StubActivities)
+    assert isinstance(configured[names.LOAD_STAGE_POLICY].__self__, RegistryStagePolicy)
+    for activities in (default, configured):
+        assert isinstance(activities[names.RUN_HOOKS].__self__, PolicyEngine), "Worker 默认就用真的 Policy Engine"

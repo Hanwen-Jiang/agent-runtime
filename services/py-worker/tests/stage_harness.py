@@ -168,6 +168,14 @@ class Script:
     finalize_error: str = ""
     # Context Builder：Planner 给出的 Task Plan（每轮都给这一份）
     task_plan: dict[str, Any] | None = None
+    # T-09：给了就由真的 Policy Engine 执行 Hook（hook_overrides 仍可替换它的第一个结果）
+    engine: Any = None
+    # T-09：Catalog 来自 Registry（Stage Runner 据此核对 Atomic Node 的 executor、effect）；这时没登记的模板不在结果里
+    catalog_authoritative: bool = False
+    # T-09：resolve_catalog、load_stage_policy 按这个消息失败（不可重试）
+    catalog_error: str = ""
+    policy_error: str = ""
+    policy_requests: list[StagePolicyRequest] = field(default_factory=list)
 
     calls: list[Call] = field(default_factory=list)
     hook_calls: list[HookCall] = field(default_factory=list)
@@ -288,15 +296,21 @@ class Script:
 
     @activity.defn(name=names.LOAD_STAGE_POLICY)
     async def load_stage_policy(self, inp: StagePolicyRequest) -> StagePolicy:
+        self.policy_requests.append(inp)
+        if self.policy_error:
+            raise ApplicationError(self.policy_error, type="tenant_policy_not_found", non_retryable=True)
         return self.policy
 
     @activity.defn(name=names.RESOLVE_CATALOG)
     async def resolve_catalog(self, req: CatalogRequest) -> CatalogInfo:
         self.catalog_requests.append(req)
-        return CatalogInfo(
-            templates={t: self.templates.get(t, TemplateInfo(executor="program", effect="none")) for t in req.templates},
-            tools={t: self.tools.get(t, "read") for t in req.tools},
-        )
+        if self.catalog_error:
+            raise ApplicationError(self.catalog_error, type="template_not_found", non_retryable=True)
+        if self.catalog_authoritative:
+            templates = {t: self.templates[t] for t in req.templates if t in self.templates}
+        else:
+            templates = {t: self.templates.get(t, TemplateInfo(executor="program", effect="none")) for t in req.templates}
+        return CatalogInfo(templates=templates, tools={t: self.tools.get(t, "read") for t in req.tools}, authoritative=self.catalog_authoritative)
 
     @activity.defn(name=names.EXPAND_TEMPLATE)
     async def expand_template(self, req: TemplateExpansionRequest) -> TemplateExpansion:
@@ -348,8 +362,12 @@ class Script:
     async def run_hooks(self, call: HookCall) -> list[dict[str, Any]]:
         self.hook_calls.append(call)
         subject = call.subject.get("node", {}).get("id", "stage")
-        results = [{"decision": "allow", "hook": h, "mount": call.mount} for h in call.hooks]
-        override = self.hook_overrides.get((call.mount, subject))
+        if self.engine is not None:
+            results = list(await self.engine.run_hooks(call))
+        else:
+            results = [{"decision": "allow", "hook": h, "mount": call.mount} for h in call.hooks]
+        # (挂载点, Node id 或 "stage")，或 (挂载点, "*") 匹配这个挂载点上的任何一次调用。
+        override = self.hook_overrides.get((call.mount, subject)) or self.hook_overrides.get((call.mount, "*"))
         if override is not None and results:
             results[0] = {"hook": results[0]["hook"], "mount": call.mount, **override}
         return results

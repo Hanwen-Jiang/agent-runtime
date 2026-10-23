@@ -132,6 +132,12 @@
 - write_irreversible 的审批插入不可绕过；deny 不重试；驳回类 Hook 有次数上限；Hook 里没有复杂推理。
 - 现状：`taskapi/policy.go` 有入口，Python 侧 `activities/stubs.py` 里是桩。
 - 完成：S-05 的 effect 规则测试用真 Policy Engine 重跑；R-01 评审。
+- 结果（2026-10-23）：细化与取舍见 `docs/plan/policy-engine.md`。Worker 的 `agentruntime_worker.policy` 代替桩，默认就用；
+  默认 Hook（budget_check、idempotency_check、single_writer_lock、trace_result、checkpoint、audit_log）与 pii_redaction、
+  acceptance_recheck；租户策略与 Recipe 声明的 Hook 经 Registry 合并进 StagePolicy；接上 before_finish（驳回 2 次后问人）与
+  on_task_received、on_task_start、on_task_end；接了 Registry 时 Stage Runner 执行前按登记的模板核对 executor、effect。
+  S-05 的 effect 矩阵已用真 Policy Engine 重跑。R-01 评审还没做（要写审分离：另一家的强模型或人）。
+  登记到后续：工具的 effect 仍由桩工具目录给出（T-10）；提示注入检测（S-13）；before_compact；Task 级挂载点的 modify、inject。
 
 **T-10 ToolDriver 与平台内工具、MCP Gateway**　中档 · 中
 - `libs/py-core/.../tool_driver.py` 是接口与开发实现。补几个真工具（读文件、跑命令、HTTP 取页面），再接 MCP 服务。

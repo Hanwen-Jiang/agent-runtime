@@ -102,6 +102,8 @@ class StagePolicy:
     approval_timeout_s: int = 24 * 3600
     # human 节点没写 timeout_s 时的等待上限。
     human_timeout_s: int = 24 * 3600
+    # 租户策略与 Task 固定的 Recipe 声明的 Hook：挂载点 → Hook 名（T-09 骨架）。
+    hooks: dict[str, list[str]] = field(default_factory=dict)
 
 
 @dataclass
@@ -135,6 +137,8 @@ class CatalogInfo:
     templates: dict[str, TemplateInfo] = field(default_factory=dict)
     # 工具名 → effect
     tools: dict[str, str] = field(default_factory=dict)
+    # 来自 Registry（T-09 骨架）：Stage Runner 据此核对 Atomic Node 的 executor、effect；桩 Catalog 为 False。
+    authoritative: bool = False
 
 
 @dataclass

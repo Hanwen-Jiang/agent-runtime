@@ -1,9 +1,11 @@
 """Registry 版的 resolve_catalog 与 Planner 上下文（T-08，细化见 docs/plan/registry.md 第 8 节第 7、8 条）。
 
-- RegistryCatalog：Stage Runner 查 judge、scorer 模板的执行方式。Task 有固定版本时，引用的 name@vN 必须与固定的一致；
+- RegistryCatalog：Stage Runner 查模板（Atomic Node 与 quality 的 judge、scorer）的执行方式。Task 有固定版本时，引用的 name@vN 必须与固定的一致；
   没有固定版本（Registry 接入之前启动的 Task）时按引用里的版本取。模板不存在、引用没固定都是不可重试的错误；
-  Registry 不可用时抛 TransientError，由 Temporal 重试，不回退到“program · none”的桩。工具的 effect 不归 Registry，
+  Registry 不可用时抛 TransientError，由 Temporal 重试，不回退到“program · none”的桩。结果标为 authoritative，Stage Runner
+  据此核对 Atomic Node 的 executor、effect（T-09）。工具的 effect 不归 Registry，
   由 tool_effects 给出（工具目录；T-10 接 ToolDriver）。
+- RegistryStagePolicy（T-09）：load_stage_policy 把 Task 固定的租户策略与 Recipe 声明的 hooks 合并进 StagePolicy。
 - RegistryContextSource：Planner 的 Node Catalog 按 Task 固定的版本取自 Registry，Recipe 取自 Registry 的默认版本；
   effect 上限取 Task State 的 constraints.effect_ceiling（task-service 按租户策略写入），没有时用 defaults 的；
   Recipe 的 recent_failure 第一期都是 false（Recipe 统计在 T-16）。工具与 risk_authorized 取 defaults。
@@ -24,7 +26,7 @@ from agentruntime.registry.v1 import registry_pb2 as rg
 from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError
 
 from agentruntime_worker import names
-from agentruntime_worker.activities.types import CatalogInfo, CatalogRequest, PlanRoundInput, TemplateInfo
+from agentruntime_worker.activities.types import CatalogInfo, CatalogRequest, PlanRoundInput, StagePolicy, StagePolicyRequest, TemplateInfo
 from agentruntime_worker.planner.context import CatalogView, PlanningContext, RecipeEntry
 from agentruntime_worker.registry.client import GrpcRegistry
 
@@ -76,7 +78,7 @@ class RegistryCatalog:
                 raise ApplicationError(f"Registry 给的模板 {ref} 缺 executor 或 effect", type="invalid_template", non_retryable=True)
             templates[ref] = info
         tools = self.tool_effects(list(req.tools)) if req.tools else {}
-        return CatalogInfo(templates=templates, tools=tools)
+        return CatalogInfo(templates=templates, tools=tools, authoritative=True)
 
     def activities(self) -> dict[str, object]:
         return {names.RESOLVE_CATALOG: self.resolve_catalog}
@@ -109,3 +111,65 @@ class RegistryContextSource:
             )
         ceiling = (inp.task_state.get("constraints") or {}).get("effect_ceiling") or self.defaults.effect_ceiling
         return dataclasses.replace(self.defaults, catalog=catalog, recipes=entries, effect_ceiling=str(ceiling))
+
+
+class RegistryStagePolicy:
+    """load_stage_policy：Task 固定的租户策略版本与固定的 Recipe 的 hooks 合并进 StagePolicy（T-09，细化第 2 节第 3 条）。
+
+    按“租户策略、Recipe”的顺序合并，同一挂载点上同名的只留第一个；其余上限取 defaults。没有固定的就不问 Registry。
+    固定的版本取不到（NotFound）或被拒时不可重试地失败：租户策略与安全类 Hook 取不到一律按拒绝处理（设计书 3.1.2）；
+    Registry 不可用时抛 TransientError，由 Temporal 重试。
+    """
+
+    def __init__(self, registry: GrpcRegistry, *, defaults: StagePolicy) -> None:
+        self.registry = registry
+        self.defaults = defaults
+
+    @activity.defn(name=names.LOAD_STAGE_POLICY)
+    async def load_stage_policy(self, req: StagePolicyRequest) -> StagePolicy:
+        pinned = req.pinned or {}
+        hooks: dict[str, list[str]] = {}
+        version = str(pinned.get("tenant_policy") or "")
+        if version:
+            try:
+                policy = await self.registry.get_tenant_policy(req.tenant, version)
+            except NotFoundError:
+                raise ApplicationError(f"Task 固定的租户策略 {version} 取不到", type="tenant_policy_not_found", non_retryable=True) from None
+            except (DeniedError, InvalidError) as err:
+                raise ApplicationError(f"取租户策略被拒：{err.code}", type="registry_rejected", non_retryable=True) from None
+            _merge(hooks, _document(policy.document).get("hooks"))
+        recipe = str(pinned.get("recipe") or "")
+        if recipe:
+            m = _REF.match(recipe)
+            if m is None:
+                raise ApplicationError(f"固定的 Recipe {recipe!r} 不是 name@vN", type="invalid_recipe_ref", non_retryable=True)
+            try:
+                found = await self.registry.get_recipe(req.tenant, m.group(1), m.group(2))
+            except NotFoundError:
+                raise ApplicationError(f"Task 固定的 Recipe {recipe} 取不到", type="recipe_not_found", non_retryable=True) from None
+            except (DeniedError, InvalidError) as err:
+                raise ApplicationError(f"取 Recipe 被拒：{err.code}", type="registry_rejected", non_retryable=True) from None
+            _merge(hooks, _document(found.document).get("hooks"))
+        return dataclasses.replace(self.defaults, hooks=hooks)
+
+    def activities(self) -> dict[str, object]:
+        return {names.LOAD_STAGE_POLICY: self.load_stage_policy}
+
+
+def _document(payload: object) -> dict:
+    value = getattr(payload, "value", None)
+    if value is None or not payload.HasField("value"):  # type: ignore[attr-defined]
+        return {}
+    doc = json_format.MessageToDict(value)
+    return doc if isinstance(doc, dict) else {}
+
+
+def _merge(into: dict[str, list[str]], declared: object) -> None:
+    """hook_set（挂载点 → Hook 名）并进 into，同一挂载点上同名的只留第一个。"""
+    if not isinstance(declared, dict):
+        return
+    for mount, names_ in declared.items():
+        target = into.setdefault(str(mount), [])
+        for name in names_ if isinstance(names_, list) else []:
+            if name not in target:
+                target.append(str(name))

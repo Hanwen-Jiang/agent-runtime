@@ -36,6 +36,7 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker import names
     from agentruntime_worker.activities.types import (
         FinalizeTaskInput,
+        HookCall,
         HumanCancel,
         HumanQuestion,
         NodeInput,
@@ -43,6 +44,7 @@ with workflow.unsafe.imports_passed_through():
         PlanRoundOutput,
         ReviewRoundInput,
         StagePolicy,
+        StagePolicyRequest,
         StageResult,
         Tenant,
     )
@@ -53,10 +55,14 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.workflows import verdicts as vd
     from agentruntime_worker.workflows.failures import caused_by_cancel as _caused_by_cancel
     from agentruntime_worker.workflows.failures import failure_message as _failure_message
-    from agentruntime_worker.workflows.stage_runner import RunContext, StageRunner, effect_name
+    from agentruntime_worker.workflows.stage_runner import POLICY_PATCH, RunContext, StageRunner, effect_name
 
 # Round 上限：兜底。Reviewer 的升级规则与各级次数上限（S-10）让一直失败的 Task 在 12 次评审之内收尾。
 MAX_ROUNDS = 20
+# T-09：before_finish 最多驳回这么多次；再驳回就问人（附录 F.2：会驳回的 Hook 都有次数上限）。
+MAX_FINISH_REJECTIONS = 2
+# T-09 第一期只认 allow 与 deny 的挂载点（modify、inject 按 deny）；before_compact 还没接，声明了就拒绝。
+STRICT_TASK_MOUNTS = ("on_task_received", "on_task_start", "before_finish")
 # Stage Runner（S-04）改变了命令序列：新的运行走这个版本分支，S-03 留下的历史仍按旧路径回放。
 STAGE_RUNNER_PATCH = "s04-stage-runner"
 # S-10：按 Verdict 的去向走（repair 重跑、问人、rollback、reroute……）与收尾先通知再写回，改变了命令序列。
@@ -129,6 +135,16 @@ def _topological(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return order
 
 
+def _finish_escalation(rejection: str, count: int) -> dict[str, Any]:
+    """before_finish 驳回用满上限后问人的 escalate（回复限定三种，同 Reviewer 的问人）。"""
+    question = f"完成前复核已经驳回 {count} 次，最近一次：{rejection}。照现状收尾、带指导重规划，还是停止并收尾？"
+    return {
+        "verdict": "escalate",
+        "reason": f"完成前复核驳回了 {count} 次：{rejection}",
+        "escalate": {"target": "human", "question": question, "options": list(HUMAN_REPLIES), "state_summary": f"完成前复核：{rejection}"},
+    }
+
+
 @workflow.defn(name=names.TASK_WORKFLOW)
 class TaskWorkflow:
     def __init__(self) -> None:
@@ -154,6 +170,9 @@ class TaskWorkflow:
         self._stage_cost = 0.0
         # 当前的 Task Plan：交给 Stage Runner，tool_loop 的 Context Builder 据此取工作模式与阈值（只是输入）。
         self._task_plan: dict[str, Any] | None = None
+        # T-09：是否走 Policy Engine 的版本分支；before_finish 已经驳回的次数。
+        self._t09 = False
+        self._finish_rejections = 0
 
     @workflow.run
     async def run(self, inp: task_pb2.TaskWorkflowInput) -> task_pb2.TaskWorkflowResult:
@@ -217,6 +236,12 @@ class TaskWorkflow:
         # S-10 的 Round 循环改变了命令序列：新的运行走版本分支，之前的历史按下面的旧循环回放。
         self._s10 = workflow.patched(REVIEWER_PATCH)
         if self._s10:
+            # T-09 又改变了命令序列（规划前加载 StagePolicy、Task 级挂载点、before_finish）：新的运行走版本分支。
+            self._t09 = workflow.patched(POLICY_PATCH)
+            if self._t09:
+                refused = await self._task_start(inputs)
+                if refused is not None:
+                    return refused
             return await self._rounds(inputs, pinned)
         # 交给下一轮 Planner 的 Task Plan 与上一轮（S-09）：只改 activity 的输入，不改命令序列。
         task_plan: dict[str, Any] | None = None
@@ -325,7 +350,22 @@ class TaskWorkflow:
             if kind == "continue":
                 self._checkpoints[seq] = vd.snapshot(self._state)
             elif kind == "done":
-                return self._done(verdict, results)
+                rejection = await self._before_finish(stage, verdict, results) if self._t09 else ""
+                if not rejection:
+                    return self._done(verdict, results)
+                self._finish_rejections += 1
+                last_round["finish_rejected"] = rejection
+                if self._finish_rejections > MAX_FINISH_REJECTIONS:
+                    # 驳回用满上限：不再驳回，问人（同 Reviewer 的 escalate）。
+                    reply = await self._ask_human(seq, _finish_escalation(rejection, self._finish_rejections))
+                    if reply is None:
+                        return self._aborted(vd.stopped(results, f"完成前复核驳回后问人没有得到回复：{rejection}；按停止处理"))
+                    if reply.option == "stop_and_wrap_up":
+                        return self._aborted(vd.stopped(results, f"完成前复核驳回后人选择停止并收尾：{rejection}"))
+                    if reply.option == "continue_as_is":
+                        return self._done(verdict, results)
+                    last_round["human_reply"] = {"option": reply.option, "guidance": reply.guidance}
+                # 驳回：下一轮回 Planner，它看得到驳回的理由。
             elif kind == "abort":
                 return self._aborted(verdict)
             elif (kind == "repair" and verdict["repair"].get("strategy") == "retry_with_error") or (kind == "escalate" and verdict["escalate"].get("target") == "tier"):
@@ -346,6 +386,81 @@ class TaskWorkflow:
                 pinned["recipe"] = recipe
             # 其余（continue、replan、repair 换方法、rollback、reroute、问人后继续或重规划）：下一轮回 Planner。
         raise ApplicationError(f"超过 Round 上限 {MAX_ROUNDS}", type="too_many_rounds", non_retryable=True)
+
+    # --- T-09：Task 级挂载点（细化见 docs/plan/policy-engine.md 第 2 节第 4 条） ---
+
+    async def _task_start(self, inputs: dict[str, Any]) -> task_pb2.TaskWorkflowResult | None:
+        """规划之前：加载 StagePolicy（各 Stage 共用），执行 on_task_received、on_task_start 的 Hook。
+        租户策略取不到、before_compact 声明了 Hook（第一期没接）、Hook 拒绝，Task 都以 abort 结束、不规划；否则返回 None。"""
+        assert self._input is not None
+        try:
+            self._stage_policy = await workflow.execute_activity(
+                names.LOAD_STAGE_POLICY,
+                StagePolicyRequest(tenant=self._tenant, task_id=self._input.task_id, pinned=self._pinned),
+                task_queue=names.DECISION_QUEUE,
+                start_to_close_timeout=timeouts.DECISION_START_TO_CLOSE,
+                retry_policy=DECISION_RETRY,
+                result_type=StagePolicy,
+            )
+        except FailureError as err:
+            if _caused_by_cancel(err):
+                raise asyncio.CancelledError() from err
+            return self._refuse(f"租户策略取不到（{_failure_message(err)}），按拒绝处理")
+        hooks = self._stage_policy.hooks
+        if hooks.get("before_compact"):
+            return self._refuse(f"策略在 before_compact 声明了 Hook {hooks['before_compact']}，第一期还没有接上这个挂载点，按拒绝处理")
+        for mount, subject in (
+            ("on_task_received", {"message": self._input.message, "inputs": inputs}),
+            ("on_task_start", {"task_state": self._state}),
+        ):
+            reason = await self._task_hooks(mount, list(hooks.get(mount, [])), subject)
+            if reason:
+                return self._refuse(reason)
+        return None
+
+    def _refuse(self, reason: str) -> task_pb2.TaskWorkflowResult:
+        """Task 级的拒绝：不规划，以 abort 收尾。"""
+        return self._aborted({"verdict": "abort", "reason": reason, "abort": {"completed": [], "not_completed": ["整个 Task（被 Policy Engine 拒绝）"]}})
+
+    async def _task_hooks(self, mount: str, hooks: list[str], subject: dict[str, Any]) -> str:
+        """在 Task 级挂载点执行 Hook，返回拒绝的理由（放行时为空）。Hook 执行不了按拒绝；第一期这些挂载点只认 allow 与 deny，
+        modify、inject 也按拒绝（STRICT_TASK_MOUNTS）。没有 Hook 时不执行（不产生命令）。"""
+        assert self._input is not None
+        if not hooks:
+            return ""
+        try:
+            results = await workflow.execute_local_activity(
+                names.RUN_HOOKS,
+                HookCall(tenant=self._tenant, task_id=self._input.task_id, round_seq=self._round_seq, mount=mount, hooks=hooks, subject=subject),
+                start_to_close_timeout=timeouts.HOOK_START_TO_CLOSE,
+                result_type=list,
+            )
+        except FailureError as err:
+            if _caused_by_cancel(err):
+                raise asyncio.CancelledError() from err
+            return f"{mount} 的 Hook 执行失败：{_failure_message(err)}"
+        for r in results:
+            decision = r.get("decision")
+            if decision == "deny":
+                return f"{r.get('hook')}：{r.get('reason') or '被拒绝'}"
+            if decision != "allow" and mount in STRICT_TASK_MOUNTS:
+                return f"{r.get('hook')}：在 {mount} 返回了 {decision}，第一期这个挂载点只认 allow 与 deny，按拒绝处理"
+        return ""
+
+    async def _before_finish(self, stage: dict[str, Any], verdict: dict[str, Any], results: dict[str, StageResult]) -> str:
+        """Reviewer 判 done 之后、收尾之前：执行 before_finish 的 Hook，返回驳回的理由（放行时为空）。"""
+        hooks = list((self._stage_policy or StagePolicy()).hooks.get("before_finish", []))
+        deliver = str((verdict.get("done") or {}).get("deliver_node", ""))
+        r = results.get(deliver)
+        node = next((n for n in stage.get("nodes", []) if n.get("id") == deliver), {})
+        subject = {
+            "verdict": verdict,
+            "deliver_node": deliver,
+            "deliver_status": r.status if r is not None else "missing",
+            "deliverable": r.result if r is not None else None,
+            "output_schema": node.get("output_schema"),
+        }
+        return await self._task_hooks("before_finish", hooks, subject)
 
     async def _plan(
         self, seq: int, inputs: dict[str, Any], pinned: dict[str, Any], task_plan: dict[str, Any] | None, last_round: dict[str, Any] | None
@@ -499,6 +614,9 @@ class TaskWorkflow:
             policy=self._stage_policy,
             task_input=self._input,
             task_plan=self._task_plan,
+            t09=self._t09,
+            budget_usd=self._input.budget.usd_micros / 1_000_000 if self._input.budget.usd_micros else None,
+            spent_before_usd=round(sum(float(r.get("cost_usd") or 0) for r in self._state.get("rounds", [])), 6),
         )
         runner = StageRunner(ctx, self)
         results = await runner.run(stage, carried=carried, injections=injections)
@@ -610,10 +728,20 @@ class TaskWorkflow:
         S-10 之前的历史是先写回、再通知；那两行调换会改变命令顺序，重放测试据此证明自己有效。"""
         if self._s10:
             await self._notify_session(result)
+            if self._t09:
+                await self._task_end(result)
             await self._finalize(result)
             return
         await self._finalize(result)  # replay-mutation:A
         await self._notify_session(result)  # replay-mutation:B
+
+    async def _task_end(self, result: task_pb2.TaskWorkflowResult) -> None:
+        """T-09：on_task_end 的 Hook 在收尾时执行；结局已定，结果只记录，deny 不改变结局。"""
+        hooks = list((self._stage_policy or StagePolicy()).hooks.get("on_task_end", []))
+        subject = {"status": enums_pb2.TaskStatus.Name(result.status), "verdict": enums_pb2.Verdict.Name(result.final_verdict)}
+        reason = await self._task_hooks("on_task_end", hooks, subject)
+        if reason:
+            workflow.logger.warning("on_task_end 的 Hook 没有放行（不改变结局）：%s", reason)
 
     async def _finalize(self, result: task_pb2.TaskWorkflowResult) -> None:
         assert self._input is not None

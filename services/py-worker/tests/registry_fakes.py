@@ -41,7 +41,7 @@ def template(name: str, version: str, executor: str, effect: str, output: str = 
     )
 
 
-def recipe(name: str, version: str, family: str, risk: str, typical_cost_usd: float | None = None) -> rg.Recipe:
+def recipe(name: str, version: str, family: str, risk: str, typical_cost_usd: float | None = None, hooks: dict[str, list[str]] | None = None) -> rg.Recipe:
     doc: dict[str, Any] = {
         "task_family": family,
         "description": f"{name} 的做法",
@@ -50,6 +50,8 @@ def recipe(name: str, version: str, family: str, risk: str, typical_cost_usd: fl
     }
     if typical_cost_usd is not None:
         doc["typical_cost_usd"] = typical_cost_usd
+    if hooks is not None:
+        doc["hooks"] = hooks
     return rg.Recipe(name=name, version=version, state=DEFAULT, task_family=family, document=json_payload(doc))
 
 
@@ -67,6 +69,8 @@ class FakeRegistry(rg_grpc.RegistryServiceServicer):
 
     templates: dict[tuple[str, str], rg.NodeTemplate] = field(default_factory=dict)
     recipes: list[rg.Recipe] = field(default_factory=list)
+    # (租户, 版本) → 租户策略的正文
+    policies: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
     abort: Abort | None = None
     page_size: int = 2
     requests: list[tuple[str, Any, dict[str, str]]] = field(default_factory=list)
@@ -114,6 +118,22 @@ class FakeRegistry(rg_grpc.RegistryServiceServicer):
         chosen = sorted((r for r in self.recipes if not request.task_family or r.task_family == request.task_family), key=lambda r: r.name)
         page, token = self._page(chosen, request.page_token)
         return rg.ListRecipesResponse(recipes=page, next_page_token=token)
+
+    async def GetTenantPolicy(self, request: rg.GetTenantPolicyRequest, context: grpc.aio.ServicerContext) -> rg.GetTenantPolicyResponse:  # noqa: N802
+        await self._enter("GetTenantPolicy", request, context)
+        doc = self.policies.get((request.tenant.tenant_id, request.version))
+        if doc is None:
+            abort = not_found("tenant_policy_not_found")
+            await context.abort(abort.code, abort.details, abort.trailer())
+        return rg.GetTenantPolicyResponse(tenant_policy=rg.TenantPolicy(version=request.version, document=json_payload(doc)))
+
+    async def GetRecipe(self, request: rg.GetRecipeRequest, context: grpc.aio.ServicerContext) -> rg.GetRecipeResponse:  # noqa: N802
+        await self._enter("GetRecipe", request, context)
+        found = next((r for r in self.recipes if r.name == request.name and (not request.version or r.version == request.version)), None)
+        if found is None:
+            abort = not_found("recipe_not_found")
+            await context.abort(abort.code, abort.details, abort.trailer())
+        return rg.GetRecipeResponse(recipe=found)
 
     async def Publish(self, request: rg.PublishRequest, context: grpc.aio.ServicerContext) -> rg.PublishResponse:  # noqa: N802
         await self._enter("Publish", request, context)

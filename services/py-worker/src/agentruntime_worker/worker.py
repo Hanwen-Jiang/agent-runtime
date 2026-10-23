@@ -12,6 +12,7 @@ import asyncio
 import contextlib
 import dataclasses
 import os
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -21,16 +22,19 @@ from temporalio.converter import DataConverter
 from temporalio.worker import Worker
 
 from agentruntime_core.adapters.claim_check import ClaimCheck, WorkflowMemoResolver
+from agentruntime_core.dev.telemetry import ConsoleTelemetryProvider
 from agentruntime_core.providers.object_store import ObjectStoreProvider
 
 from agentruntime_worker import names
 from agentruntime_worker.activities.stubs import StubActivities, stub_tool_effects
+from agentruntime_worker.activities.types import StagePolicy
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.executor.dev import closing_model_gateways, data_root, dev_executor, dev_object_store, dev_secret_store
 from agentruntime_worker.executor.node_executor import NodeExecutor
 from agentruntime_worker.executor.tool_loop import dev_tool_loop
 from agentruntime_worker.planner.activities import dev_planner
-from agentruntime_worker.registry import RegistryCatalog, closing_registries, registry_client
+from agentruntime_worker.policy import PolicyEngine
+from agentruntime_worker.registry import RegistryCatalog, RegistryStagePolicy, closing_registries, registry_client
 from agentruntime_worker.reviewer.activities import dev_reviewer
 from agentruntime_worker.workflows.stage_runner import SubAgentWorkflow, SubgraphWorkflow
 from agentruntime_worker.workflows.task import TaskWorkflow
@@ -110,7 +114,8 @@ def decision_activities(config: WorkerConfig, stubs: StubActivities | None = Non
     """决策类 activity：桩，或者 AR_PLANNER=model 时由真正的 Planner 接管 plan_round（S-09），
     AR_REVIEWER=model 时由真正的 Reviewer 与收尾写回接管 review_round 与 finalize_task（S-10），
     AR_TOOL_LOOP=model 时由经 Model Gateway、用 Context Builder 组装上下文的 tool_loop 接管 tool_loop_step，
-    设了 AR_REGISTRY_ADDRESS 时 resolve_catalog 改按 Task 固定的版本查 Registry（T-08；工具的 effect 仍由桩工具目录给出）。"""
+    设了 AR_REGISTRY_ADDRESS 时 resolve_catalog 改按 Task 固定的版本查 Registry（T-08；工具的 effect 仍由桩工具目录给出），
+    load_stage_policy 改读 Registry 里租户策略与 Recipe 声明的 Hook（T-09）。run_hooks 一律是真的 Policy Engine（T-09）。"""
     activities = (stubs or StubActivities(config)).activities()
     if config.planner == "model":
         activities.update(dev_planner(config).activities())
@@ -119,7 +124,11 @@ def decision_activities(config: WorkerConfig, stubs: StubActivities | None = Non
     if config.tool_loop == "model":
         activities.update(dev_tool_loop(config).activities())
     if config.registry_address:
-        activities.update(RegistryCatalog(registry_client(config), tool_effects=stub_tool_effects).activities())
+        registry = registry_client(config)
+        activities.update(RegistryCatalog(registry, tool_effects=stub_tool_effects).activities())
+        activities.update(RegistryStagePolicy(registry, defaults=StagePolicy()).activities())
+    # Hook 一律由真的 Policy Engine 执行（T-09；代替 S-04 的桩）。审计与 trace 的记录写标准错误（开发实现）。
+    activities.update(PolicyEngine(telemetry=ConsoleTelemetryProvider(stream=sys.stderr)).activities())
     return activities
 
 
