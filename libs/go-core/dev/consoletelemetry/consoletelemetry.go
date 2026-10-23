@@ -13,22 +13,16 @@ import (
 	"io"
 	"os"
 	"regexp"
-	"strings"
 	"sync"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/telemetry"
-	"github.com/agentruntime/agent-runtime/libs/go-core/secret"
 	"github.com/agentruntime/agent-runtime/libs/go-core/tenancy"
 	"github.com/agentruntime/agent-runtime/libs/go-core/testkit"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 )
 
-var (
-	sensitive   = []string{"password", "secret", "token", "api_key", "apikey", "authorization", "credential", "cookie"}
-	reserved    = map[string]bool{"tenant_id": true, "user_id": true, "workspace_id": true, "session_id": true, "scope": true}
-	traceparent = regexp.MustCompile(`^00-([0-9a-f]{32})-([0-9a-f]{16})-[0-9a-f]{2}$`)
-)
+var traceparent = regexp.MustCompile(`^00-([0-9a-f]{32})-([0-9a-f]{16})-[0-9a-f]{2}$`)
 
 // SpanRecord、MetricRecord、LogRecord 是已导出的记录。
 type SpanRecord struct {
@@ -120,41 +114,8 @@ func (p *Provider) add(record any) {
 	p.pending = append(p.pending, record)
 }
 
-func cleanValue(v any) any {
-	switch x := v.(type) {
-	case secret.Value:
-		return telemetry.Redacted
-	case []secret.Value:
-		return telemetry.Redacted
-	case []any:
-		for _, e := range x {
-			if _, ok := e.(secret.Value); ok {
-				return telemetry.Redacted
-			}
-		}
-	}
-	return v
-}
-
-// Sanitize 去掉保留属性，脱敏敏感键与 secret.Value。
-func Sanitize(attrs []telemetry.Attribute) map[string]any {
-	out := map[string]any{}
-	for _, a := range attrs {
-		if reserved[a.Key] {
-			continue
-		}
-		lowered := strings.ToLower(a.Key)
-		value := cleanValue(a.Value)
-		for _, s := range sensitive {
-			if strings.Contains(lowered, s) {
-				value = telemetry.Redacted
-				break
-			}
-		}
-		out[a.Key] = value
-	}
-	return out
-}
+// Sanitize 去掉保留属性，脱敏敏感键与 secret.Value（规则见 telemetry.Sanitize）。
+func Sanitize(attrs []telemetry.Attribute) map[string]any { return telemetry.Sanitize(attrs) }
 
 func randomHex(n int) string {
 	b := make([]byte, n)

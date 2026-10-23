@@ -4,8 +4,8 @@ version = "0.0.0"
 description = "Worker：Task Loop（Planner、Stage Runner、Node Executor、Reviewer），以及进程内的 Policy Engine 与 Context Builder"
 requires-python = ">=3.13"
 dependencies = [
-    # temporal：DurableEngine 的 Temporal 适配器与 Claim-Check（S-06）。
-    "agentruntime-core[temporal]",
+    # temporal：DurableEngine 的 Temporal 适配器与 Claim-Check（S-06）；otel：设了 OTEL_EXPORTER_OTLP_ENDPOINT 时的 Telemetry（T-15）。
+    "agentruntime-core[otel,temporal]",
     "agentruntime-proto",
     # Model Gateway 的 gRPC 客户端（executor.grpc_gateway）直接用 grpcio；版本约束与 agentruntime-proto 相同。
     "grpcio>=1.84.0",

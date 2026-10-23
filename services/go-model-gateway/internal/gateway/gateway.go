@@ -16,6 +16,9 @@
 //     但网关判为失败的尝试也各写一行（status failed，带 error_code），例如结构化输出不是合法 JSON、Classify 给了标签外的值。
 //     请求的 pinned_model_profile 没用上、avoid_vendor 没能避开（按实际服务的 Profile 判断，含切换之后）时，计量记录里标明，
 //     并记一条日志。
+//  7. trace（附录 J.1；T-15）：配了 Options.Telemetry 时每次 RPC 一个 span，按请求的租户绑定。名字按 GenAI 语义约定是
+//     `{chat|embeddings} {请求的模型}`，属性有请求与实际服务的模型、供应商、token、成本、Tier、尝试次数、task_id、node_id；
+//     失败时 span 为 error、error.type 是错误的 code。不记消息内容、输出内容与密钥。
 //
 // 供应商返回的错误不是 *providererr.Error 时（违反 ModelProvider 约定）：不重试、不切换，按 ConnectError 的“其他错误”返回。
 //
@@ -58,6 +61,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/connecterr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/modelprovider"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/telemetry"
 	"github.com/agentruntime/agent-runtime/libs/go-core/tenancy"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	modelgatewayv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/modelgateway/v1"
@@ -104,6 +108,9 @@ type Options struct {
 	Sleep Sleeper
 	// Jitter 把退避抖动到 [d/2, d]；nil 时随机，测试注入恒等函数。
 	Jitter func(d time.Duration) time.Duration
+	// Telemetry 记每次模型调用的 span（附录 J.1；T-15），按请求的租户绑定；nil 表示不记。网关不在每次调用后 flush，
+	// 由 Telemetry 实现按批导出（OpenTelemetry 实现在后台导出，关闭时导出剩下的）。
+	Telemetry telemetry.Provider
 }
 
 // MeterRecord 是一条计量记录（每次成功的 RPC 一行 JSON）。不含消息内容与密钥。
@@ -200,6 +207,8 @@ type call struct {
 	method string
 	choice router.Choice
 	client modelprovider.Client
+	// attempts 是这次 RPC 一共尝试了几次（含重试与切换），记进 span。
+	attempts int
 }
 
 func invalid(code, message string) error {
@@ -246,6 +255,7 @@ func (s *Server) run(ctx context.Context, c *call, candidates []router.Candidate
 			if bounded {
 				actx, cancel = context.WithTimeout(ctx, s.opts.AttemptTimeout)
 			}
+			c.attempts++
 			usage, err := do(actx, cand)
 			cancel()
 			if err == nil {
@@ -351,6 +361,78 @@ func (s *Server) meter(c *call, cand router.Candidate, u *commonv1.Usage, errCod
 	s.meterMu.Lock()
 	defer s.meterMu.Unlock()
 	_, _ = s.opts.Meter.Write(append(line, '\n'))
+}
+
+// ---- span（附录 J.1；T-15）----
+
+// traced 是一次 RPC 的模型调用 span；没配 Telemetry 或绑定失败时 span 为 nil，方法都不做事。
+type traced struct {
+	span telemetry.Span
+}
+
+// startSpan 在选档之后开始 span：名字按 GenAI 语义约定是 `{operation} {请求的模型}`（选档的第一个候选），不含消息内容。
+func (s *Server) startSpan(ctx context.Context, c *call, operation string, stream bool) *traced {
+	if s.opts.Telemetry == nil {
+		return &traced{}
+	}
+	tel, err := s.opts.Telemetry.Bind(c.tenant)
+	if err != nil {
+		return &traced{}
+	}
+	model := ""
+	if len(c.choice.Candidates) > 0 {
+		model = c.choice.Candidates[0].Profile.Model
+	}
+	attrs := []telemetry.Attribute{
+		{Key: "gen_ai.operation.name", Value: operation},
+		{Key: "gen_ai.request.model", Value: model},
+		{Key: "tier", Value: c.choice.Tier},
+		{Key: "task_id", Value: c.ctx.GetTaskId()},
+		{Key: "node_id", Value: c.ctx.GetNodeId()},
+		{Key: "role", Value: roleName(c.ctx.GetRole())},
+		{Key: "runtime.method", Value: c.method},
+	}
+	if stream {
+		attrs = append(attrs, telemetry.Attribute{Key: "runtime.stream", Value: true})
+	}
+	_, span, err := tel.StartSpan(ctx, strings.TrimSpace(operation+" "+model), attrs...)
+	if err != nil {
+		return &traced{}
+	}
+	return &traced{span: span}
+}
+
+// end 记下实际服务的模型、token、成本与尝试次数并结束 span；err 不为空时 span 记为 error，error.type 是错误的 code。
+func (t *traced) end(c *call, cand router.Candidate, u *commonv1.Usage, err error) {
+	if t.span == nil {
+		return
+	}
+	attrs := []telemetry.Attribute{{Key: "runtime.attempts", Value: int64(c.attempts)}}
+	if cand.Profile.ID != "" {
+		attrs = append(attrs,
+			telemetry.Attribute{Key: "gen_ai.response.model", Value: cand.Profile.Model},
+			telemetry.Attribute{Key: "gen_ai.provider.name", Value: cand.Profile.Vendor},
+			telemetry.Attribute{Key: "model_profile_id", Value: cand.Profile.ID},
+		)
+	}
+	if u != nil {
+		attrs = append(attrs,
+			telemetry.Attribute{Key: "gen_ai.usage.input_tokens", Value: u.GetInputTokens()},
+			telemetry.Attribute{Key: "gen_ai.usage.output_tokens", Value: u.GetOutputTokens()},
+			telemetry.Attribute{Key: "runtime.cost_usd", Value: float64(u.GetCostUsdMicros()) / 1e6},
+		)
+	}
+	if err != nil {
+		t.span.RecordError(err)
+		code := "internal"
+		var pe *providererr.Error
+		if errors.As(err, &pe) {
+			code = pe.Code
+		}
+		attrs = append(attrs, telemetry.Attribute{Key: "error.type", Value: code})
+	}
+	t.span.SetAttributes(attrs...)
+	t.span.End()
 }
 
 // billedFailure 记下一次已计费、但网关判为失败的调用（usage 为空时上游没计费，不记），原样返回 err。
@@ -499,6 +581,7 @@ func (s *Server) Generate(ctx context.Context, req *connect.Request[modelgateway
 	if err != nil {
 		return nil, connecterr.Error(err)
 	}
+	tr := s.startSpan(ctx, c, "chat", false)
 	var result modelprovider.GenerateResult
 	cand, err := s.run(ctx, c, c.choice.Candidates, true, func(ctx context.Context, cand router.Candidate) (*commonv1.Usage, error) {
 		r, err := c.client.Generate(ctx, forCandidate(gen, cand))
@@ -506,13 +589,16 @@ func (s *Server) Generate(ctx context.Context, req *connect.Request[modelgateway
 		return r.Usage, err
 	})
 	if err != nil {
+		tr.end(c, cand, nil, err)
 		return nil, connecterr.Error(err)
 	}
 	out, err := c.generateResponse(cand, result)
 	if err != nil {
+		tr.end(c, cand, priced(cand, result.Usage), err)
 		return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, err))
 	}
 	s.served(c, cand, out.GetUsage())
+	tr.end(c, cand, out.GetUsage(), nil)
 	return connect.NewResponse(out), nil
 }
 
@@ -531,6 +617,12 @@ func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelg
 	if err != nil {
 		return connecterr.Error(err)
 	}
+	tr := s.startSpan(ctx, c, "chat", true)
+	// span 在流结束时结束：记下实际服务的候选、最后的 Usage 与错误（下面每个出口都先赋值再返回）。
+	var spanCand router.Candidate
+	var spanUsage *commonv1.Usage
+	var spanErr error
+	defer func() { tr.end(c, spanCand, spanUsage, spanErr) }()
 	// 一次尝试 = 建流并读到第一个分片；只有这之前的失败才重试与切换。每次尝试的超时也只套在第一个分片之前：
 	// 流一旦开始，长度不受 AttemptTimeout 限制，只受调用方的 deadline 限制。
 	var open modelprovider.Stream
@@ -564,16 +656,20 @@ func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelg
 		open, first, release = st, chunk, cancel
 		return nil, nil
 	})
+	spanCand = cand
 	if err != nil {
+		spanErr = err
 		return connecterr.Error(err)
 	}
 	defer release()
 	defer open.Close()
 	for chunk, err := first, error(nil); ; chunk, err = open.Recv(ctx) {
 		if errors.Is(err, io.EOF) {
-			return connecterr.Error(providererr.New(providererr.Transient, "stream_truncated", "上游的流没有给出最终结果"))
+			spanErr = providererr.New(providererr.Transient, "stream_truncated", "上游的流没有给出最终结果")
+			return connecterr.Error(spanErr)
 		}
 		if err != nil {
+			spanErr = err
 			return connecterr.Error(err)
 		}
 		out, final, err := c.streamChunk(cand, chunk)
@@ -581,15 +677,19 @@ func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelg
 			var usage *commonv1.Usage
 			if chunk.Final != nil {
 				usage = chunk.Final.Usage
+				spanUsage = priced(cand, usage)
 			}
+			spanErr = err
 			return connecterr.Error(s.billedFailure(c, cand, usage, err))
 		}
 		if out != nil {
 			if err := stream.Send(out); err != nil {
+				spanErr = err
 				return err
 			}
 		}
 		if final {
+			spanUsage = out.GetUsage()
 			s.served(c, cand, out.GetUsage())
 			return nil
 		}
@@ -632,6 +732,7 @@ func (s *Server) Score(ctx context.Context, req *connect.Request[modelgatewayv1.
 	if err != nil {
 		return nil, connecterr.Error(err)
 	}
+	tr := s.startSpan(ctx, c, "chat", false)
 	var result modelprovider.ScoreResult
 	cand, err := s.run(ctx, c, c.choice.Candidates, true, func(ctx context.Context, cand router.Candidate) (*commonv1.Usage, error) {
 		r, err := c.client.Score(ctx, modelprovider.ScoreRequest{Model: cand.Profile.Model, Query: m.GetQuery(), Candidates: m.GetCandidates(), Rubric: m.GetRubric()})
@@ -639,13 +740,17 @@ func (s *Server) Score(ctx context.Context, req *connect.Request[modelgatewayv1.
 		return r.Usage, err
 	})
 	if err != nil {
+		tr.end(c, cand, nil, err)
 		return nil, connecterr.Error(err)
 	}
 	if len(result.Scores) != len(m.GetCandidates()) {
-		return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, invalid("bad_scores", "分数与候选的个数不一致")))
+		err := invalid("bad_scores", "分数与候选的个数不一致")
+		tr.end(c, cand, priced(cand, result.Usage), err)
+		return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, err))
 	}
 	out := &modelgatewayv1.ScoreResponse{Scores: result.Scores, Model: c.choiceOf(cand), Usage: priced(cand, result.Usage)}
 	s.served(c, cand, out.GetUsage())
+	tr.end(c, cand, out.GetUsage(), nil)
 	return connect.NewResponse(out), nil
 }
 
@@ -671,6 +776,7 @@ func (s *Server) Embed(ctx context.Context, req *connect.Request[modelgatewayv1.
 		}
 		candidates = candidates[i : i+1]
 	}
+	tr := s.startSpan(ctx, c, "embeddings", false)
 	var result modelprovider.EmbedResult
 	cand, err := s.run(ctx, c, candidates, true, func(ctx context.Context, cand router.Candidate) (*commonv1.Usage, error) {
 		r, err := c.client.Embed(ctx, modelprovider.EmbedRequest{Model: cand.Profile.Model, Texts: m.GetTexts()})
@@ -678,16 +784,20 @@ func (s *Server) Embed(ctx context.Context, req *connect.Request[modelgatewayv1.
 		return r.Usage, err
 	})
 	if err != nil {
+		tr.end(c, cand, nil, err)
 		return nil, connecterr.Error(err)
 	}
 	if len(result.Vectors) != len(m.GetTexts()) {
-		return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, providererr.New(providererr.Transient, "bad_embeddings", "向量与文本的个数不一致")))
+		err := providererr.New(providererr.Transient, "bad_embeddings", "向量与文本的个数不一致")
+		tr.end(c, cand, priced(cand, result.Usage), err)
+		return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, err))
 	}
 	out := &modelgatewayv1.EmbedResponse{EmbeddingVersion: cand.Profile.ID, Model: c.choiceOf(cand), Usage: priced(cand, result.Usage)}
 	for _, v := range result.Vectors {
 		out.Embeddings = append(out.Embeddings, &modelgatewayv1.Embedding{Values: v})
 	}
 	s.served(c, cand, out.GetUsage())
+	tr.end(c, cand, out.GetUsage(), nil)
 	return connect.NewResponse(out), nil
 }
 
@@ -722,6 +832,7 @@ func (s *Server) Classify(ctx context.Context, req *connect.Request[modelgateway
 		Messages:     []modelprovider.Message{{Role: modelprovider.RoleSystem, Text: "你是分类器，只能从给定的类别里选。"}, {Role: modelprovider.RoleUser, Text: prompt.String()}},
 		OutputSchema: classifySchema(labels),
 	}
+	tr := s.startSpan(ctx, c, "chat", false)
 	var result modelprovider.GenerateResult
 	cand, err := s.run(ctx, c, c.choice.Candidates, true, func(ctx context.Context, cand router.Candidate) (*commonv1.Usage, error) {
 		r, err := c.client.Generate(ctx, forCandidate(gen, cand))
@@ -729,6 +840,7 @@ func (s *Server) Classify(ctx context.Context, req *connect.Request[modelgateway
 		return r.Usage, err
 	})
 	if err != nil {
+		tr.end(c, cand, nil, err)
 		return nil, connecterr.Error(err)
 	}
 	var parsed struct {
@@ -738,15 +850,20 @@ func (s *Server) Classify(ctx context.Context, req *connect.Request[modelgateway
 		} `json:"results"`
 	}
 	if err := json.Unmarshal(result.Structured, &parsed); err != nil || len(parsed.Results) != len(texts) {
-		return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, invalid("bad_classification", "分类结果不是合法的 JSON，或条数与文本不一致")))
+		err := invalid("bad_classification", "分类结果不是合法的 JSON，或条数与文本不一致")
+		tr.end(c, cand, priced(cand, result.Usage), err)
+		return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, err))
 	}
 	out := &modelgatewayv1.ClassifyResponse{Model: c.choiceOf(cand), Usage: priced(cand, result.Usage)}
 	for _, r := range parsed.Results {
 		if !slices.Contains(labels, r.Label) {
-			return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, invalid("bad_classification", "分类结果里有不在 labels 里的值")))
+			err := invalid("bad_classification", "分类结果里有不在 labels 里的值")
+			tr.end(c, cand, priced(cand, result.Usage), err)
+			return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, err))
 		}
 		out.Results = append(out.Results, &modelgatewayv1.Classification{Label: r.Label, Confidence: min(max(r.Confidence, 0), 1)})
 	}
 	s.served(c, cand, out.GetUsage())
+	tr.end(c, cand, out.GetUsage(), nil)
 	return connect.NewResponse(out), nil
 }

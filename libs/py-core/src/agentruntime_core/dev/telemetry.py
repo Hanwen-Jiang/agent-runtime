@@ -18,13 +18,11 @@ from typing import Any, TextIO
 
 from agentruntime_core.clock import Clock, SystemClock
 from agentruntime_core.errors import InvalidError
-from agentruntime_core.providers.telemetry import REDACTED, Attributes, LogLevel
-from agentruntime_core.secrets import Secret
+from agentruntime_core.providers.telemetry import Attributes, LogLevel
+from agentruntime_core.telemetry_rules import sanitize
 from agentruntime_core.tenancy import Scope, TenantContext, platform_scope, tenant_scope
 from agentruntime_core.testing import FaultInjector
 
-_SENSITIVE = ("password", "secret", "token", "api_key", "apikey", "authorization", "credential", "cookie")
-_RESERVED = ("tenant_id", "user_id", "workspace_id", "session_id", "scope")
 _TRACEPARENT = re.compile(r"00-([0-9a-f]{32})-([0-9a-f]{16})-[0-9a-f]{2}")
 
 
@@ -52,25 +50,6 @@ class LogRecord:
     level: str
     message: str
     attributes: dict[str, Any] = field(default_factory=dict)
-
-
-def _clean_value(value: Any) -> Any:
-    if isinstance(value, Secret):
-        return REDACTED
-    if isinstance(value, (list, tuple)):
-        return REDACTED if any(isinstance(v, Secret) for v in value) else list(value)
-    return value
-
-
-def sanitize(attributes: Attributes | None) -> dict[str, Any]:
-    """去掉保留属性，脱敏敏感键与 Secret 值。"""
-    clean: dict[str, Any] = {}
-    for key, value in (attributes or {}).items():
-        if key in _RESERVED:
-            continue
-        lowered = key.lower()
-        clean[key] = REDACTED if any(s in lowered for s in _SENSITIVE) else _clean_value(value)
-    return clean
 
 
 class _Span:

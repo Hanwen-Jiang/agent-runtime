@@ -1,0 +1,82 @@
+{{- /* Worker 按任务队列分池（设计书 3.6、附录 K.5）：每个池一个 Deployment（--queues 只有这个队列）与一个 KEDA ScaledObject。
+       副本数交给 KEDA（temporal 触发器按队列积压），Deployment 不写 replicas。 */ -}}
+{{- range $pool, $cfg := .Values.worker.pools }}
+{{- $name := printf "%s-worker-%s" (include "ar.fullname" $) $pool }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list $ "worker") | nindent 4 }}
+    agentruntime.io/pool: {{ $pool }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "ar.selector" (list $ "worker") | nindent 6 }}
+      agentruntime.io/pool: {{ $pool }}
+  template:
+    metadata:
+      labels:
+        {{- include "ar.labels" (list $ "worker") | nindent 8 }}
+        agentruntime.io/pool: {{ $pool }}
+    spec:
+      serviceAccountName: {{ include "ar.fullname" $ }}
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml $.Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: worker
+          image: {{ include "ar.image" (list $ "worker") }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          args: ["-m", "agentruntime_worker", "--queues", {{ $pool | quote }}]
+          env:
+            {{- include "ar.commonEnv" $ | nindent 12 }}
+            - name: AR_TEMPORAL_ADDRESS
+              value: {{ $.Values.external.temporal.address | quote }}
+            - name: AR_TEMPORAL_NAMESPACE
+              value: {{ $.Values.external.temporal.namespace | quote }}
+            - name: AR_MODEL_GATEWAY_ADDRESS
+              value: {{ printf "%s:%v" (include "ar.modelGatewayService" $) $.Values.modelGateway.port | quote }}
+            - name: AR_REGISTRY_ADDRESS
+              value: {{ printf "%s:%v" (include "ar.registryService" $) $.Values.taskService.registryPort | quote }}
+            - name: AR_PLANNER
+              value: {{ $.Values.worker.planner | quote }}
+            - name: AR_REVIEWER
+              value: {{ $.Values.worker.reviewer | quote }}
+            - name: AR_TOOL_LOOP
+              value: {{ $.Values.worker.toolLoop | quote }}
+            - name: AR_DATA_DIR
+              value: /data
+            - name: AR_OBJECT_STORE_DIR
+              value: /objects
+          securityContext:
+            {{- toYaml $.Values.containerSecurityContext | nindent 12 }}
+          resources:
+            {{- toYaml $cfg.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "ar.volumeMounts" $ | nindent 12 }}
+      volumes:
+        {{- include "ar.volumes" $ | nindent 8 }}
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list $ "worker") | nindent 4 }}
+    agentruntime.io/pool: {{ $pool }}
+spec:
+  scaleTargetRef:
+    name: {{ $name }}
+  minReplicaCount: {{ $cfg.minReplicas }}
+  maxReplicaCount: {{ $cfg.maxReplicas }}
+  triggers:
+    - type: temporal
+      metadata:
+        endpoint: {{ $.Values.external.temporal.address | quote }}
+        namespace: {{ $.Values.external.temporal.namespace | quote }}
+        taskQueue: {{ $pool | quote }}
+        queueTypes: {{ ternary "workflow" "activity" (eq $pool "task") | quote }}
+        targetQueueSize: {{ $cfg.targetQueueSize | quote }}
+{{- end }}

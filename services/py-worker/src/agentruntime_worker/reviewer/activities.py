@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import dataclasses
 import logging
-import sys
 from typing import Any, Protocol
 
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
-from agentruntime_core.dev.telemetry import ConsoleTelemetryProvider
 
 from agentruntime_worker import names
 from agentruntime_worker.executor.dev import model_gateway
@@ -20,6 +18,7 @@ from agentruntime_worker.executor.dev import data_root, dev_object_store
 from agentruntime_worker.reviewer.reviewer import Reviewer, ReviewRequest
 from agentruntime_worker.reviewer.rules import ReviewCatalog
 from agentruntime_worker.reviewer.wrap_up import RecordingMemoryClient, WrapUp
+from agentruntime_worker.telemetry import worker_telemetry
 from agentruntime_worker.workflows import stage_plan as sp
 
 logger = logging.getLogger(__name__)
@@ -109,5 +108,5 @@ def dev_reviewer(config: WorkerConfig) -> ReviewerActivities:
     经验候选只记在进程内。真模型上的跑分见 py-learning 的评测（S-08、S-10）。
     """
     root = data_root(config)
-    wrap_up = WrapUp(objects=dev_object_store(config, root), memory=RecordingMemoryClient(), telemetry=ConsoleTelemetryProvider(stream=sys.stderr))
+    wrap_up = WrapUp(objects=dev_object_store(config, root), memory=RecordingMemoryClient(), telemetry=worker_telemetry())
     return ReviewerActivities(Reviewer(model_gateway(config)), StaticCatalogSource(ReviewCatalog(effect_ceiling="read")), wrap_up)

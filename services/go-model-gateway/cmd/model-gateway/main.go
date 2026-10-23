@@ -6,6 +6,7 @@
 // 配置见 internal/config 的环境变量。serve 按 AR_MODEL_PROVIDER 接供应商适配层：openai_compat
 // （libs/go-core/adapters/openaicompat，密钥经 SecretStore 读取）或 mock（libs/go-core/dev/mockmodel）。
 // serve 每次成功的调用向标准输出写一行计量记录（JSON），日志写标准错误；两者都不含消息内容与密钥。
+// 设了 OTEL_EXPORTER_OTLP_ENDPOINT 时，每次模型调用另记一个 span 发给 OpenTelemetry Collector（附录 J.1）。
 // dev-secret 的密钥只从标准输入读，不经过命令行参数，也不回显到标准输出或标准错误。
 package main
 
@@ -24,9 +25,11 @@ import (
 	"time"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/openaicompat"
+	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/oteltelemetry"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/filesecrets"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/mockmodel"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/modelprovider"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/telemetry"
 	"github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/modelgateway/v1/modelgatewayv1connect"
 
 	"github.com/agentruntime/agent-runtime/services/go-model-gateway/internal/config"
@@ -91,11 +94,22 @@ func serve(ctx context.Context, stdout, stderr io.Writer, getenv func(string) st
 	}
 	defer provider.Close()
 	logger := slog.New(slog.NewTextHandler(stderr, nil))
+	// 设了 OTEL_EXPORTER_OTLP_ENDPOINT 时每次模型调用记一个 span 发给 Collector（T-15）；没设时不记
+	// （控制台实现要调用方 flush，网关不在每次调用后 flush）。
+	var tel telemetry.Provider
+	if strings.TrimSpace(getenv(oteltelemetry.EnvEndpoint)) != "" {
+		if tel, err = oteltelemetry.FromEnv("model-gateway", getenv, stderr); err != nil {
+			fmt.Fprintln(stderr, "model-gateway：Telemetry 配置不合法：", err)
+			return 2
+		}
+		defer tel.Close()
+	}
 	srv, err := gateway.New(gateway.Options{
-		Provider: provider,
-		Router:   router.New(catalog, router.FileAllowlist{Path: cfg.TenantPoliciesFile}),
-		Meter:    stdout,
-		Logger:   logger,
+		Provider:  provider,
+		Router:    router.New(catalog, router.FileAllowlist{Path: cfg.TenantPoliciesFile}),
+		Meter:     stdout,
+		Logger:    logger,
+		Telemetry: tel,
 	})
 	if err != nil {
 		fmt.Fprintln(stderr, "model-gateway：", err)

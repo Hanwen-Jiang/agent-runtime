@@ -1,0 +1,97 @@
+{{- $name := include "ar.collectorService" . -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "otel-collector") | nindent 4 }}
+data:
+  config.yaml: |
+{{ .Files.Get "files/otel-collector.yaml" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "otel-collector") | nindent 4 }}
+spec:
+  replicas: {{ .Values.collector.replicas }}
+  selector:
+    matchLabels:
+      {{- include "ar.selector" (list . "otel-collector") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ar.labels" (list . "otel-collector") | nindent 8 }}
+      annotations:
+        # 配置变了就滚动重启。
+        checksum/config: {{ .Files.Get "files/otel-collector.yaml" | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "ar.fullname" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: otel-collector
+          image: {{ .Values.collector.image }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["--config=/etc/otelcol/config.yaml"]
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+            - name: otlp-http
+              containerPort: 4318
+            - name: health
+              containerPort: 13133
+          env:
+            - name: TEMPO_ENDPOINT
+              value: {{ .Values.external.tempo.endpoint | quote }}
+            - name: LANGFUSE_ENDPOINT
+              value: {{ .Values.external.langfuse.endpoint | quote }}
+            - name: LANGFUSE_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.external.langfuse.authSecret.name }}
+                  key: {{ .Values.external.langfuse.authSecret.key }}
+            - name: REDPANDA_BROKERS
+              value: {{ .Values.external.redpanda.brokers | quote }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: health
+          livenessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 10
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          resources:
+            {{- toYaml .Values.collector.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otelcol
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ $name }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "otel-collector") | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "ar.selector" (list . "otel-collector") | nindent 4 }}
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: otlp-grpc
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http

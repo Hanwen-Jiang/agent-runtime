@@ -297,5 +297,8 @@ class FinalizeTaskInput:
     verdict: dict[str, Any] | None = None
     deliver_node: str = ""
     artifacts: list[str] = field(default_factory=list)
-    # 各 Round 的 Stage 摘要：{"seq", "goal", "nodes"（顶层 Node 数）, "tiers"}，写回 Recipe 的效果用（S-10）。
+    # 各 Round 的 Stage 摘要：{"seq", "goal", "nodes"（顶层 Node 数）, "tiers", "shape"}，写回 Recipe 的效果用（S-10）；
+    # shape 是 Stage 的形状，记进 runtime.round span（T-15）。
     stages: list[dict[str, Any]] = field(default_factory=list)
+    # 任务族（Task Plan 的 triage.task_family；没有时为空），记进 invoke_workflow span（T-15）。
+    task_family: str = ""

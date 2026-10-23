@@ -1,0 +1,89 @@
+# 生产环境的 values 样例：在默认 values 之上覆盖。地址与 Secret 名按集群改；密钥的值不写在这里。
+global:
+  environment: production
+
+image:
+  registry: registry.example/agentruntime
+  tag: "0.1.0"
+
+secrets:
+  existingSecret: agent-runtime-secrets
+  relationalDsn:
+    name: agent-runtime-postgres
+    key: dsn
+
+external:
+  temporal:
+    address: temporal-frontend.temporal.svc:7233
+    namespace: agent-runtime
+  qdrant:
+    url: http://qdrant.qdrant.svc:6333
+  redpanda:
+    brokers: redpanda-0.redpanda.redpanda.svc:9092
+  tempo:
+    endpoint: tempo-distributor.observability.svc:4317
+  langfuse:
+    endpoint: http://langfuse-web.observability.svc:3000
+    authSecret:
+      name: agent-runtime-langfuse
+      key: basic-auth
+
+objectStore:
+  claimName: agent-runtime-objects
+
+taskService:
+  replicas: 3
+  resources:
+    requests: {cpu: 500m, memory: 512Mi}
+    limits: {cpu: "2", memory: 1Gi}
+
+ingress:
+  enabled: true
+  className: nginx
+  host: agent-runtime.example.com
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+
+modelGateway:
+  replicas: 3
+  providerBaseUrl: https://llm-gateway.example.com/v1
+
+memory:
+  replicas: 2
+
+worker:
+  pools:
+    task:
+      minReplicas: 2
+      maxReplicas: 20
+      targetQueueSize: 20
+      resources:
+        requests: {cpu: 500m, memory: 512Mi}
+        limits: {cpu: "2", memory: 1Gi}
+    decision:
+      minReplicas: 2
+      maxReplicas: 40
+      targetQueueSize: 10
+      resources:
+        requests: {cpu: 500m, memory: 512Mi}
+        limits: {cpu: "2", memory: 1Gi}
+    model:
+      minReplicas: 2
+      maxReplicas: 60
+      targetQueueSize: 10
+      resources:
+        requests: {cpu: 500m, memory: 512Mi}
+        limits: {cpu: "2", memory: 1Gi}
+    program:
+      minReplicas: 1
+      maxReplicas: 40
+      targetQueueSize: 10
+      resources:
+        requests: {cpu: "1", memory: 1Gi}
+        limits: {cpu: "4", memory: 2Gi}
+
+learning:
+  tracesClaim: agent-runtime-traces
+
+collector:
+  replicas: 2

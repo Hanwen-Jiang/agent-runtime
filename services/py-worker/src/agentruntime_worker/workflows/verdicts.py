@@ -41,9 +41,25 @@ def review_output(raw: Any) -> tuple[dict[str, Any], dict[str, Any]]:
     return dict(raw), {}
 
 
+# Stage 形状里保留的 Node 字段（T-15）：只有结构，不含 inputs、rationale、幂等键与取自模板的 executor、effect、role、output。
+SHAPE_NODE_KEYS = ("id", "kind", "template", "goal", "done_when", "mode", "output_schema", "after", "tier", "reasoning", "quality")
+
+
+def stage_shape(stage: Mapping[str, Any]) -> dict[str, Any]:
+    """Stage 的形状：收尾写回记进 runtime.round span，Learning Pipeline 从它归纳 Recipe 的 Stage 划分（T-16）。"""
+    nodes = [{k: copy.deepcopy(n[k]) for k in SHAPE_NODE_KEYS if k in n} for n in stage.get("nodes") or [] if isinstance(n, Mapping)]
+    return {"goal": stage.get("goal"), "exit_when": stage.get("exit_when"), "nodes": nodes}
+
+
 def stage_summary(stage: Mapping[str, Any]) -> dict[str, Any]:
     nodes = list(stage.get("nodes") or [])
-    return {"seq": stage.get("seq"), "goal": stage.get("goal"), "nodes": len(nodes), "tiers": sorted({str(n["tier"]) for n in nodes if n.get("tier")})}
+    return {
+        "seq": stage.get("seq"),
+        "goal": stage.get("goal"),
+        "nodes": len(nodes),
+        "tiers": sorted({str(n["tier"]) for n in nodes if n.get("tier")}),
+        "shape": stage_shape(stage),
+    }
 
 
 def snapshot(task_state: Mapping[str, Any]) -> dict[str, Any]:

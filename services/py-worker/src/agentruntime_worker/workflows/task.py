@@ -777,6 +777,7 @@ class TaskWorkflow:
                     deliver_node=result.deliver_node_id,
                     artifacts=list(result.artifacts),
                     stages=list(self._stages),
+                    task_family=str(((self._task_plan or {}).get("triage") or {}).get("task_family") or ""),
                 ),
                 task_queue=names.DECISION_QUEUE,
                 start_to_close_timeout=timeouts.FINALIZE_START_TO_CLOSE,

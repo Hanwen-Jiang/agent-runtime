@@ -27,7 +27,6 @@ from agentruntime_core.dev.human_channel import CliHumanChannelProvider
 from agentruntime_core.dev.object_store import LocalDiskObjectStoreProvider
 from agentruntime_core.dev.sandbox import LocalSubprocessSandboxProvider
 from agentruntime_core.dev.secret_store import LocalFileSecretStoreProvider
-from agentruntime_core.dev.telemetry import ConsoleTelemetryProvider
 from agentruntime_core.providers.human_channel import Reply
 from agentruntime_core.providers.object_store import ObjectStoreProvider
 
@@ -38,6 +37,7 @@ from agentruntime_worker.executor.grpc_gateway import GrpcModelGateway
 from agentruntime_worker.executor.model_gateway import ModelGateway
 from agentruntime_worker.executor.node_executor import ExecutorConfig, ExecutorDeps, NodeExecutor, workflow_question_id
 from agentruntime_worker.executor.schemas import DictSchemaResolver
+from agentruntime_worker.telemetry import worker_telemetry
 from agentruntime_worker.tools import dev_tools
 
 logger = logging.getLogger(__name__)
@@ -134,7 +134,7 @@ def dev_executor(
         secrets=dev_secret_store(config, root),
         cache=InMemoryCacheProvider(),
         humans=CliHumanChannelProvider(sink, output=sys.stderr),
-        telemetry=ConsoleTelemetryProvider(stream=sys.stderr),
+        telemetry=worker_telemetry(),
         models=model_gateway(config),
         schemas=DictSchemaResolver({}),
         sandbox=LocalSubprocessSandboxProvider(root / "sandbox"),

@@ -191,6 +191,52 @@ def _to_value(obj: Any) -> struct_pb2.Value:
     return value
 
 
+def span_of(node: Mapping[str, Any], task_id: str) -> tuple[str, dict[str, Any]]:
+    """Node 的 span 名与开始时的属性（附录 J.1，GenAI 语义约定；T-15）：model 节点是 chat（嵌入是 embeddings），
+    program 节点是 execute_tool {工具名}。都带 Temporal 的 WorkflowID、RunID；不带 inputs 与结果。"""
+    attributes: dict[str, Any] = {
+        "node_id": node.get("id", ""),
+        "task_id": task_id,
+        "template": node.get("template", ""),
+        "executor": node.get("executor", ""),
+        "effect": node.get("effect", ""),
+    }
+    if activity.in_activity():
+        info = activity.info()
+        attributes["temporal.workflow_id"] = info.workflow_id or ""
+        attributes["temporal.run_id"] = info.workflow_run_id or ""
+    if node.get("executor") == "model":
+        operation = "embeddings" if node.get("output") == "embed" else "chat"
+        attributes["gen_ai.operation.name"] = operation
+        for key in ("role", "reasoning", "tier"):
+            if node.get(key):
+                attributes[key] = str(node[key])
+        quality = node.get("quality")
+        if isinstance(quality, Mapping) and quality.get("type"):
+            attributes["quality"] = str(quality["type"])
+        return operation, attributes
+    tool = str(node.get("template", "")).partition("@")[0]
+    attributes["gen_ai.operation.name"] = "execute_tool"
+    attributes["gen_ai.tool.name"] = tool
+    if node.get("idempotency_key"):
+        attributes["idempotency_key"] = str(node["idempotency_key"])
+    return f"execute_tool {tool}".rstrip(), attributes
+
+
+def _usage_attributes(node: Mapping[str, Any], model: mg.ModelChoice, usage: Any) -> dict[str, Any]:
+    """模型调用结束时补上实际服务的模型、token 与成本。"""
+    out: dict[str, Any] = {
+        "gen_ai.response.model": model.model_profile_id,
+        "gen_ai.usage.input_tokens": int(usage.input_tokens),
+        "gen_ai.usage.output_tokens": int(usage.output_tokens),
+        "runtime.cost_usd": usage.cost_usd_micros / 1_000_000,
+    }
+    tier = model.tier or node.get("tier")
+    if tier:
+        out["tier"] = str(tier)
+    return out
+
+
 class NodeExecutor:
     def __init__(self, deps: ExecutorDeps, config: ExecutorConfig | None = None) -> None:
         self.deps = deps
@@ -303,15 +349,9 @@ class NodeExecutor:
         node = inp.node
         tenant = _tenant(inp.tenant)
         telemetry = self.deps.telemetry.bind(tenant)
-        attributes = {
-            "node_id": node.get("id", ""),
-            "task_id": inp.task_id,
-            "template": node.get("template", ""),
-            "executor": node.get("executor", ""),
-            "effect": node.get("effect", ""),
-        }
+        name, attributes = span_of(node, inp.task_id)
         try:
-            async with self._heartbeating(), telemetry.start_span("node.execute", attributes=attributes) as span:
+            async with self._heartbeating(), telemetry.start_span(name, attributes=attributes) as span:
                 try:
                     self._check_rules(inp)
                     cached = await self._cache_get(tenant, node)
@@ -566,6 +606,7 @@ class NodeExecutor:
             embedded = await self.deps.models.embed(
                 mg.EmbedRequest(tenant=tenant, call=self._call(inp), texts=[keys.canonical_json(node.get("inputs", {}))])
             )
+            span.set_attributes(_usage_attributes(node, embedded.model, embedded.usage))
             return {"result": {"embeddings": [list(e.values) for e in embedded.embeddings]}, "meta": self._meta(node, embedded.model, embedded.usage, started)}
         schema = self._schema(node)
         response = await self._generate(inp, tenant, schema, None)
@@ -581,6 +622,7 @@ class NodeExecutor:
                 raise _error(f"{node['id']} 的输出重问一次后仍不符合 output_schema：" + "；".join(errors), INVALID_OUTPUT)
         if response.rationale:
             span.add_event("rationale", {"text": response.rationale})
+        span.set_attributes(_usage_attributes(node, response.model, response.usage))
         return {"result": result, "meta": self._meta(node, response.model, response.usage, started)}
 
     @staticmethod

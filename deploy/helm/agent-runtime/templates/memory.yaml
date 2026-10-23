@@ -1,0 +1,65 @@
+{{- $name := printf "%s-memory" (include "ar.fullname" .) -}}
+{{- $mem := .Values.memory -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "memory") | nindent 4 }}
+spec:
+  replicas: {{ $mem.replicas }}
+  selector:
+    matchLabels:
+      {{- include "ar.selector" (list . "memory") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ar.labels" (list . "memory") | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "ar.fullname" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: memory
+          image: {{ include "ar.image" (list . "memory") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["-m", "agentruntime_memory"]
+          ports:
+            - name: grpc
+              containerPort: {{ $mem.port }}
+          env:
+            {{- include "ar.commonEnv" . | nindent 12 }}
+            {{- include "ar.signingKeyEnv" . | nindent 12 }}
+            {{- include "ar.dsnEnv" . | nindent 12 }}
+            - name: AR_MEMORY_ADDRESS
+              value: {{ printf "0.0.0.0:%v" $mem.port | quote }}
+            - name: AR_DATA_DIR
+              value: /data
+            {{- with .Values.external.qdrant.url }}
+            - name: AR_QDRANT_URL
+              value: {{ . | quote }}
+            {{- end }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          resources:
+            {{- toYaml $mem.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "ar.volumeMounts" . | nindent 12 }}
+      volumes:
+        {{- include "ar.volumes" . | nindent 8 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "memory") | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "ar.selector" (list . "memory") | nindent 4 }}
+  ports:
+    - name: grpc
+      port: {{ $mem.port }}
+      targetPort: grpc

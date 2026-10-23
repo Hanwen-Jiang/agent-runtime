@@ -12,7 +12,6 @@ import asyncio
 import contextlib
 import dataclasses
 import os
-import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -22,7 +21,6 @@ from temporalio.converter import DataConverter
 from temporalio.worker import Worker
 
 from agentruntime_core.adapters.claim_check import ClaimCheck, WorkflowMemoResolver
-from agentruntime_core.dev.telemetry import ConsoleTelemetryProvider
 from agentruntime_core.providers.object_store import ObjectStoreProvider
 
 from agentruntime_worker import names
@@ -36,6 +34,7 @@ from agentruntime_worker.planner.activities import dev_planner
 from agentruntime_worker.policy import PolicyEngine
 from agentruntime_worker.registry import RegistryCatalog, RegistryStagePolicy, closing_registries, registry_client
 from agentruntime_worker.reviewer.activities import dev_reviewer
+from agentruntime_worker.telemetry import worker_telemetry
 from agentruntime_worker.tools import DevCatalog, ToolCatalog, dev_tools, tool_sessions
 from agentruntime_worker.workflows.stage_runner import SubAgentWorkflow, SubgraphWorkflow
 from agentruntime_worker.workflows.task import TaskWorkflow
@@ -131,8 +130,9 @@ def decision_activities(config: WorkerConfig, stubs: StubActivities | None = Non
         registry = registry_client(config)
         activities.update(RegistryCatalog(registry, tools=tools).activities())
         activities.update(RegistryStagePolicy(registry, defaults=StagePolicy()).activities())
-    # Hook 一律由真的 Policy Engine 执行（T-09；代替 S-04 的桩）。审计与 trace 的记录写标准错误（开发实现）。
-    activities.update(PolicyEngine(telemetry=ConsoleTelemetryProvider(stream=sys.stderr)).activities())
+    # Hook 一律由真的 Policy Engine 执行（T-09；代替 S-04 的桩）。审计与 trace 的记录经 worker_telemetry()：
+    # 设了 OTEL_EXPORTER_OTLP_ENDPOINT 时发给 Collector，否则写标准错误（T-15）。
+    activities.update(PolicyEngine(telemetry=worker_telemetry()).activities())
     return activities
 
 

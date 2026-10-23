@@ -1,0 +1,80 @@
+# OpenTelemetry Collector（contrib 发行版）的配置（设计书 4.13、L.14；T-15，细化见 docs/plan/deploy-telemetry.md 第 2 节第 3 条）。
+# 一路收（OTLP gRPC 4317、HTTP 4318），三路发：
+#   全部 span → Grafana Tempo（otlp）；
+#   语义 span（gen_ai.operation.name，或名字以 runtime.、invoke_ 开头）→ Langfuse（otlphttp，Langfuse 只收 OTLP over HTTP）
+#   与 Redpanda（kafka，otlp_json，主题 telemetry.spans，供 Learning Pipeline 消费）。
+# 指标与日志的后端设计书没有选型，第一期只到 debug。
+# 地址与认证取自环境变量（Helm Chart 注入）：TEMPO_ENDPOINT、LANGFUSE_ENDPOINT、LANGFUSE_AUTH、REDPANDA_BROKERS。
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+  batch:
+    send_batch_size: 1024
+    timeout: 5s
+  # 第二道脱敏：应用端（agentruntime_core.telemetry_rules、libs/go-core/providers/telemetry）已经脱敏。
+  # 不含 token：GenAI 的 gen_ai.usage.*_tokens 键名含 token，RE2 写不出排除它们的规则，这一项只靠应用端。
+  attributes/redact:
+    actions:
+      - pattern: (?i).*(password|secret|api_key|apikey|authorization|credential|cookie).*
+        action: delete
+  filter/semantic:
+    error_mode: ignore
+    traces:
+      span:
+        - 'attributes["gen_ai.operation.name"] == nil and not IsMatch(name, "^(runtime\\.|invoke_)")'
+
+exporters:
+  otlp/tempo:
+    endpoint: ${env:TEMPO_ENDPOINT}
+    tls:
+      insecure: true
+  otlphttp/langfuse:
+    traces_endpoint: ${env:LANGFUSE_ENDPOINT}/api/public/otel/v1/traces
+    headers:
+      Authorization: Basic ${env:LANGFUSE_AUTH}
+  kafka:
+    brokers: ["${env:REDPANDA_BROKERS}"]
+    traces:
+      topic: telemetry.spans
+      encoding: otlp_json
+  debug:
+    verbosity: basic
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces/tempo:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/redact, batch]
+      exporters: [otlp/tempo]
+    traces/langfuse:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/redact, filter/semantic, batch]
+      exporters: [otlphttp/langfuse]
+    traces/learning:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/redact, filter/semantic, batch]
+      exporters: [kafka]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/redact, batch]
+      exporters: [debug]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/redact, batch]
+      exporters: [debug]

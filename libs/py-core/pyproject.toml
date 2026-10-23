@@ -32,6 +32,13 @@ qdrant = [
     "cryptography>=46",
     "qdrant-client>=1.15",
 ]
+# Telemetry 的 OpenTelemetry 实现（agentruntime_core.adapters.otel：OTLP/HTTP 发给 Collector，设计书 4.13，T-15 经人确认引入）。
+# 测试里的假 Collector 用 opentelemetry-proto 解码，它是导出器的依赖。
+otel = [
+    "opentelemetry-api>=1.37",
+    "opentelemetry-exporter-otlp-proto-http>=1.37",
+    "opentelemetry-sdk>=1.37",
+]
 
 [tool.uv.sources]
 agentruntime-proto = { workspace = true }

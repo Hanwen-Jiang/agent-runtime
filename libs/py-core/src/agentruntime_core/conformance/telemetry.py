@@ -167,6 +167,22 @@ class TelemetryConformance(BindingRules):
         assert exported.spans[0].attributes["tool_input"] == REDACTED
         assert exported.logs[0].attributes["arg"] == REDACTED
 
+    async def test_genai_usage_counts_are_kept(self, harness: TelemetryHarness, telemetry: Telemetry) -> None:
+        """T-15：GenAI 语义约定的 token 计数（键名含 token）是数字，不脱敏；同名键的值不是整数时照样脱敏。"""
+        async with telemetry.start_span(
+            "chat", attributes={"gen_ai.usage.input_tokens": 1200, "gen_ai.usage.output_tokens": 300, "gen_ai.usage.api_token": SECRET_VALUE}
+        ):
+            pass
+        async with telemetry.start_span("chat", attributes={"gen_ai.usage.input_tokens": SECRET_VALUE}):
+            pass
+        await telemetry.flush()
+        exported = harness.exported()
+        first, second = exported.spans[0].attributes, exported.spans[1].attributes
+        assert (first["gen_ai.usage.input_tokens"], first["gen_ai.usage.output_tokens"]) == (1200, 300)
+        assert first["gen_ai.usage.api_token"] == REDACTED
+        assert second["gen_ai.usage.input_tokens"] == REDACTED, "只豁免这两个键的整数值"
+        assert SECRET_VALUE not in _all_rendered(exported)
+
     async def test_metrics_record_values(self, harness: TelemetryHarness, telemetry: Telemetry) -> None:
         await telemetry.count("node.calls", 2, attributes={"role": "fetch"})
         await telemetry.observe("node.latency_ms", 12.5)

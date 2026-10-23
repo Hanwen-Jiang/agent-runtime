@@ -75,7 +75,7 @@
 
 ## 仓库结构
 
-按设计书 4.15 建立（S-01）。`/tests/contract` 与 `/tests/e2e` 不在 4.15 中，经人确认后加入。
+按设计书 4.15 建立（S-01）。`/tests/contract`、`/tests/e2e` 与 `/tests/deploy` 不在 4.15 中，经人确认后加入。
 
 ```text
 /proto                      # protobuf，Buf 生成代码并做兼容性检查
@@ -86,13 +86,14 @@
 /services/go-model-gateway
 /services/py-worker         # Worker；Context Builder 是其中的库 agentruntime_worker.context（分区、Compaction Ladder、S-11 的增量摘要与 Compaction Probe）
 /services/py-memory         # Memory Service（S-12b、S-13）：作用域 ACL、写入与检索流水线、晋升、级联删除与回滚；gRPC 服务 python -m agentruntime_memory
-/services/py-learning       # Learning Pipeline；评测集与评测 harness（S-08）：agentruntime_learning.evals，评测集在 evalsets/task-loop（S-11 的长任务样本在其中的 context_samples）
-/deploy                     # Helm 与环境配置
+/services/py-learning       # Learning Pipeline；评测集与评测 harness（S-08）：agentruntime_learning.evals，评测集在 evalsets/task-loop（S-11 的长任务样本在其中的 context_samples）；最小闭环（T-16）：agentruntime_learning.pipeline
+/deploy                     # Helm 与环境配置；Chart 在 deploy/helm/agent-runtime（T-15），Collector 配置在其中的 files/otel-collector.yaml
 /libs/py-core               # Python 共享库 agentruntime-core：Provider 接口、错误模型、租户绑定、一致性测试（S-02）；Postgres、Qdrant 适配器与密钥环（S-12b）
 /libs/go-core               # Go 共享库：同上（S-02）
 /tests/contract             # 跨语言、跨服务的契约验收测试（S-01；S-02 的接口一致性比对也在这里）
 /tests/e2e                  # 端到端验收测试：Temporal 开发服务 + task-service + Python Worker（S-03）
 /tests/e2e/faults           # 故障注入与恢复套件（S-07）；故障 Worker 与外部 ledger 在 tests/e2e/e2e_support
+/tests/deploy               # 部署验收（T-15）：helm lint、helm template 的结构检查与 Collector 配置
 /.github/workflows          # CI：ci.yml 在 PR 与 main 上按步骤分 job 调用 scripts/check.py（T-14）；nightly.yml 每晚跑 tests/e2e（含故障注入套件与越权用例）、全部 Go 测试（含 Postgres 行级安全），以及 py-core 与 py-memory 的测试（Postgres + Qdrant）
 /scripts                    # check.py：本地与 CI 共用的检查脚本，只用标准库（T-14）
 /docs                       # 设计书、实施计划、参考文档
@@ -104,7 +105,7 @@ Go 模块路径前缀暂定 `github.com/agentruntime/agent-runtime`，schema 的
 
 ## 常用命令
 
-工具链：Go 1.27、uv 0.12（Python 3.13）、buf 1.73、Git 2.56、Temporal CLI 1.9.1、PostgreSQL 17、Qdrant 1.19.1。本机装在 `%USERPROFILE%\.local` 下（`bin`、`go`、`mingit`、`python`、`pgsql`、`qdrant`），不要装到 AppData：Claude 桌面应用里写入 AppData 的文件会被重定向到应用私有目录，用户自己的终端看不到。DurableEngine 的一致性测试用 PATH 上的 `temporal` 启动开发服务，不让 SDK 自行下载。Postgres 业务库的测试（S-12a：`libs/go-core/adapters/postgres` 与 task-service 的 `internal/taskstore`）用 PATH 上（或 `AR_POSTGRES_BIN` 指定目录里）的 `initdb`、`pg_ctl`、`psql` 自己拉起临时实例；本机要把 `%USERPROFILE%\.local\pgsql\bin` 放进 PATH。Python 侧的 Postgres 适配器（S-12b）同样自己拉起临时实例；Qdrant 适配器与 Memory Service 的测试用 PATH 上（或 `AR_QDRANT_BIN` 指定位置）的 `qdrant` 拉起临时实例，本机要把 `%USERPROFILE%\.local\qdrant` 放进 PATH。缺这些工具时测试失败，设 `AR_ALLOW_MISSING_TOOLS=1` 改为跳过。
+工具链：Go 1.27、uv 0.12（Python 3.13）、buf 1.73、Git 2.56、Temporal CLI 1.9.1、PostgreSQL 17、Qdrant 1.19.1、Helm 3.19（部署测试；可选 otelcol-contrib 校验 Collector 配置）。本机装在 `%USERPROFILE%\.local` 下（`bin`、`go`、`mingit`、`python`、`pgsql`、`qdrant`），不要装到 AppData：Claude 桌面应用里写入 AppData 的文件会被重定向到应用私有目录，用户自己的终端看不到。DurableEngine 的一致性测试用 PATH 上的 `temporal` 启动开发服务，不让 SDK 自行下载。Postgres 业务库的测试（S-12a：`libs/go-core/adapters/postgres` 与 task-service 的 `internal/taskstore`）用 PATH 上（或 `AR_POSTGRES_BIN` 指定目录里）的 `initdb`、`pg_ctl`、`psql` 自己拉起临时实例；本机要把 `%USERPROFILE%\.local\pgsql\bin` 放进 PATH。Python 侧的 Postgres 适配器（S-12b）同样自己拉起临时实例；Qdrant 适配器与 Memory Service 的测试用 PATH 上（或 `AR_QDRANT_BIN` 指定位置）的 `qdrant` 拉起临时实例，本机要把 `%USERPROFILE%\.local\qdrant` 放进 PATH。缺这些工具时测试失败，设 `AR_ALLOW_MISSING_TOOLS=1` 改为跳过。
 
 仓库在网络共享盘（`Z:` 即 `\\172.31.0.1\VMShare`）上时，Temporal Python SDK 的原生模块不能从共享盘加载，虚拟环境必须放在本地盘：
 
@@ -130,6 +131,9 @@ $env:UV_PROJECT_ENVIRONMENT = "$env:USERPROFILE\.local\venvs\agent-runtime"
 | Registry（T-08） | task-service 设 `AR_REGISTRY_ADDR=127.0.0.1:8092`（单独的内部端口，不能与 `AR_HTTP_ADDR` 相同，也不能再配 `AR_PINNED_VERSIONS_FILE`）就启用 Registry：新 Task 的固定版本由它给出，`AR_SCHEMAS_DIR`（默认 `schemas`，相对工作目录）是它校验 document 用的 /schemas。发布令牌放在 `AR_SECRETS_FILE` 的平台作用域，名为 `registry/publish-token`；`Publish`、`Promote` 带 `authorization: Bearer <令牌>`，读方法不要令牌。开发种子：`task-service registry-seed <文件>`（格式见 `internal/registry/seed.go`；只要 `AR_DATA_DIR` 或 `AR_RELATIONAL_DSN` 与 `AR_SCHEMAS_DIR`，幂等）。Worker 设 `AR_REGISTRY_ADDRESS` 后 `resolve_catalog` 与真正的 Planner 的 Node Catalog、Recipe 改读 Registry。细化见 `docs/plan/registry.md` |
 | Policy Engine（T-09） | Worker 的 Hook 一律由 `agentruntime_worker.policy` 执行（没有开关），审计与 trace 的记录写标准错误。租户策略与 Recipe 声明的 Hook 只在 Worker 设了 `AR_REGISTRY_ADDRESS` 时才读得到；这时 Stage Runner 还会在执行前按 Registry 登记的模板核对 Atomic Node 的 executor 与 effect。细化见 `docs/plan/policy-engine.md` |
 | 工具（T-10） | Worker 进程内一个开发用 ToolDriver，Node Executor 的 `call_tool`、`resolve_catalog` 的工具 effect 与 tool_loop 给模型的工具定义都取自它的登记（同名取最大版本；没登记的工具按 write_irreversible 处理，调用被拒）。`context_read` 总是登记：按 obj:// 路径取回 Context Builder 外置的内容与 Node 的外置结果，真正的 Planner 给 tool_loop 的 Goal Node 加上它。`AR_TOOL_WORKSPACE_ROOT` 设了才登记 `repo_read`、`repo_list`、`repo_grep`、`repo_edit`、`shell_run`（工作区是 `<根>/<租户>/<workspace，没有时为 default>`；`shell_run` 不隔离，仅限开发环境）；`AR_TOOL_FETCH_HOSTS`（逗号分隔，`*` 或 `*.后缀`）设了才登记 `web_fetch`（内网地址拒绝，不跟随重定向）；`AR_MCP_TOOLS_FILE` 指向 MCP 登记文件（格式见 `agentruntime_worker.tools.mcp`；只支持 stdio，effect 必须人工登记，不能声明权限），Worker 启动时建立会话、退出时关闭。细化见 `docs/plan/tool-driver.md` |
+| Telemetry（T-15） | 设了 `OTEL_EXPORTER_OTLP_ENDPOINT`（Collector 的 OTLP/HTTP 基地址，形如 `http://127.0.0.1:4318`）时 Worker 与 Model Gateway 经 OpenTelemetry 实现发给 Collector（`agentruntime_core.adapters.otel`、`libs/go-core/adapters/oteltelemetry`；可选 `OTEL_SERVICE_VERSION`、`OTEL_DEPLOYMENT_ENVIRONMENT`）；没设时 Worker 写标准错误，网关不记 span。span 按附录 J.1：`chat`、`execute_tool {工具}`、收尾补记的 `invoke_workflow` 与 `runtime.round`。Collector 配置在 `deploy/helm/agent-runtime/files/otel-collector.yaml`。细化见 `docs/plan/deploy-telemetry.md` |
+| 部署测试（T-15） | 在 `tests/deploy` 下：`uv run --package agentruntime-deploy-tests pytest`（要 PATH 上的 `helm`；有 `otelcol-contrib` 时另校验 Collector 配置）。直接看：`helm lint --strict deploy/helm/agent-runtime`、`helm template ar deploy/helm/agent-runtime` |
+| Learning Pipeline（T-16） | `uv run --package agentruntime-learning python -m agentruntime_learning.pipeline run --tenant <租户> --family <任务族> --traces <文件>… [--format otlp_json\|console] [--dry-run]`：读 trace（Collector 的 OTLP JSON 或控制台 Telemetry 的 JSON 行），归纳候选 Recipe，按附录 J.3 的非劣效门槛评测，过了才经 Registry 发布（`AR_REGISTRY_ADDRESS`，发布令牌取 `AR_SECRETS_FILE` 平台作用域的 `registry/publish-token`）；失败归因可选经 `AR_MODEL_GATEWAY_ADDRESS`，`--budget-usd` 单独记预算。报告写 `--report-dir`。细化见 `docs/plan/learning-pipeline.md` |
 | 端到端测试（S-03） | 在 `tests/e2e` 下：`uv run --package agentruntime-e2e-tests pytest`（自己拉起 Temporal 开发服务、task-service 与 Worker；含故障注入套件，约 15 分钟）；跳过故障注入套件加 `-m "not faults"` |
 | 故障注入与恢复套件（S-07） | 在 `tests/e2e` 下：`uv run --package agentruntime-e2e-tests pytest faults`；夜间任务见 `.github/workflows/nightly.yml`。故障由故障计划注入（`e2e_support/faults.py`），外部副作用记在外部 ledger（`e2e_support/ledger.py`） |
 | 更新 golden 事件历史 | 设 `AR_UPDATE_GOLDEN_HISTORIES=1` 再跑测试：端到端测试写 Session 工作流与 S-03 的 Task 工作流历史（`services/go-task-service/internal/session/testdata/histories`、`services/py-worker/tests/histories`），py-worker 测试写 Stage Runner、Node Executor 与 Verdict 去向各条路径的历史（`services/py-worker/tests/histories/stage_*.json`、`exec_*.json`、`review_*.json` 等）。只补缺的，不覆盖已有的 golden（它们证明旧版本的历史仍能回放）；要重新生成某一份先删掉它。结果人审后提交 |

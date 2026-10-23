@@ -208,6 +208,11 @@
 **T-15 Helm 与 KEDA、Telemetry**　中档 · 低
 - 能 `helm template` 出合法的清单即可，不要求真部署。Telemetry 打点与 Collector 配置补齐。
 - 完成：`helm lint` 通过。
+- 结果（2026-10-23）：细化与取舍见 `docs/plan/deploy-telemetry.md`（第 4 节的决定经人确认，实现记录在第 7 节）。Telemetry 的
+  OpenTelemetry 实现（Python `agentruntime_core.adapters.otel`、Go `adapters/oteltelemetry`，OTLP/HTTP，过同一套一致性测试，另加 GenAI token
+  计数不脱敏的一条）；附录 J.1 的打点：Node Executor 的 `chat`、`execute_tool {工具}`，收尾写回补记 `invoke_workflow` 与 `runtime.round`（带 Stage 形状），
+  Model Gateway 每次调用一个 span；Chart `deploy/helm/agent-runtime`（Worker 按队列分池加 KEDA temporal 触发器、Learning 的 ScaledJob、Collector 三路导出），
+  `helm lint --strict` 通过，结构检查在 `tests/deploy`。没验证：`otelcol-contrib validate`（本机没装）、真集群安装、镜像。
 
 ### 阶段 E：Learning Pipeline 最小闭环（2 到 3 天）
 
@@ -215,6 +220,13 @@
 - 从 trace 里挑一个任务族，产出一个候选 Recipe 或路由调整；跑评测；过门槛才经 Registry 发布。
 - 后台任务单独记预算；运行中的 Task 不受影响。
 - 完成：一次"候选未过门槛，发布被拒"和一次"过门槛，发布成功"的演示。
+- 结果（2026-10-23）：细化与取舍见 `docs/plan/learning-pipeline.md`（第 4 节的决定经人确认，实现记录在第 6 节）。
+  `python -m agentruntime_learning.pipeline run`：读 T-15 的 Task、Round span（OTLP JSON 或控制台格式），按租户过滤并在平台作用域留审计，
+  从完整规划的成功 Task 归纳候选 Recipe（做法签名只看结构），观测式评测按附录 J.3 的非劣效门槛（Wilson 下界、成本上界、每组至少 100 条），
+  过了才 Publish（租户作用域、影子）再带证据 Promote，没过不调 Registry 的写方法；失败归因经 Model Gateway 的 small@low，单独记预算。
+  演示（`tests/e2e/test_learning_pipeline.py`，真的 task-service Registry）：一个任务族发布被拒、Registry 里没有它的 Recipe；另一个过门槛成为
+  该租户的默认版本，另一个租户看不到。和影子评测的出入、没做的（Kafka 消费、offline 工作流、灰度与回滚、归因反哺）见细化第 2、4 节；
+  R-06 评审还没做（要写审分离）。`scripts/check.py`（T-14）的 contract 步骤顺带跑 `tests/deploy`，工具多了 helm。
 
 ### 阶段 F：收尾
 

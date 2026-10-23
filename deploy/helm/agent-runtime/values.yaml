@@ -1,0 +1,161 @@
+# Agent Runtime 的默认 values（细化见 docs/plan/deploy-telemetry.md）。
+# 第三方组件（Temporal、Postgres、Qdrant、Redpanda、Langfuse、Tempo）不在这个 Chart 里，只填地址。
+# 密钥一律引用已有的 Secret（名字与键），values 里不写密钥的值。
+
+global:
+  # 写进 OTEL_DEPLOYMENT_ENVIRONMENT。
+  environment: dev
+
+image:
+  registry: ghcr.io/agentruntime
+  # 为空时用 Chart 的 appVersion。不要用 latest。
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# 已有的 Secret（由运维创建）：
+#   secrets.json       开发 SecretStore 的文件（AR_SECRETS_FILE）：模型供应商的密钥、Registry 的发布令牌等。
+#   dev-signing-key    开发用的令牌签名密钥（AR_DEV_SIGNING_KEY）。
+secrets:
+  existingSecret: agent-runtime-secrets
+  secretsFileKey: secrets.json
+  signingKeyKey: dev-signing-key
+  # 业务库的连接串（AR_RELATIONAL_DSN）；name 为空时 task-service 与 Memory Service 用 AR_DATA_DIR 下的 SQLite。
+  relationalDsn:
+    name: ""
+    key: dsn
+
+external:
+  temporal:
+    address: temporal-frontend:7233
+    namespace: default
+  qdrant:
+    # 为空时 Memory Service 的向量放在内存里（只适合开发）。
+    url: ""
+  redpanda:
+    brokers: redpanda:9092
+  tempo:
+    endpoint: tempo:4317
+  langfuse:
+    endpoint: http://langfuse-web:3000
+    # Basic 认证（base64 的 public_key:secret_key）所在的 Secret。
+    authSecret:
+      name: agent-runtime-langfuse
+      key: basic-auth
+
+# 业务对象的存放（AR_OBJECT_STORE_DIR）。task-service 与 Worker 要读写同一处（Claim-Check、外置结果）；
+# 开发 ObjectStore 是本地目录，claimName 为空时每个 Pod 用自己的 emptyDir，跨 Pod 取不回，只适合单机试跑。
+objectStore:
+  claimName: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+
+taskService:
+  replicas: 1
+  # Task API 与 /healthz 同一端口；Registry 是单独的内部端口，只有集群内的 Service（docs/plan/registry.md 第 2 节第 7 条）。
+  httpPort: 8080
+  registryPort: 8092
+  service:
+    type: ClusterIP
+  resources:
+    requests: {cpu: 250m, memory: 256Mi}
+    limits: {cpu: "1", memory: 512Mi}
+
+ingress:
+  enabled: false
+  className: ""
+  host: agent-runtime.example
+  annotations: {}
+
+modelGateway:
+  replicas: 1
+  port: 8091
+  # openai_compat 或 mock。
+  provider: openai_compat
+  providerBaseUrl: https://api.example/v1
+  # Model Profile 所在的 ConfigMap（键 model-profiles.json，格式同 deploy/dev/model-profiles.json），由运维创建。
+  profilesConfigMap: agent-runtime-model-profiles
+  resources:
+    requests: {cpu: 250m, memory: 128Mi}
+    limits: {cpu: "1", memory: 256Mi}
+
+memory:
+  replicas: 1
+  port: 50061
+  resources:
+    requests: {cpu: 250m, memory: 256Mi}
+    limits: {cpu: "1", memory: 1Gi}
+
+worker:
+  # 真正的 Planner、Reviewer 与 tool_loop（经 Model Gateway）；stub 只用于端到端测试。
+  planner: model
+  reviewer: model
+  toolLoop: model
+  # 按任务队列分池（设计书 3.6、附录 K.5），每个池一个 Deployment 与一个 KEDA ScaledObject。
+  # 池名就是队列名（agentruntime_worker.names）；task 池按工作流积压扩缩，其余按 activity 积压。
+  pools:
+    task:
+      minReplicas: 1
+      maxReplicas: 10
+      targetQueueSize: 20
+      resources:
+        requests: {cpu: 250m, memory: 256Mi}
+        limits: {cpu: "1", memory: 512Mi}
+    decision:
+      minReplicas: 1
+      maxReplicas: 20
+      targetQueueSize: 10
+      resources:
+        requests: {cpu: 250m, memory: 256Mi}
+        limits: {cpu: "1", memory: 512Mi}
+    model:
+      minReplicas: 1
+      maxReplicas: 30
+      targetQueueSize: 10
+      resources:
+        requests: {cpu: 250m, memory: 256Mi}
+        limits: {cpu: "1", memory: 512Mi}
+    program:
+      minReplicas: 1
+      maxReplicas: 20
+      targetQueueSize: 10
+      resources:
+        requests: {cpu: 250m, memory: 512Mi}
+        limits: {cpu: "2", memory: 1Gi}
+
+# Learning Pipeline（T-16）：KEDA ScaledJob，按消费组在 trace 主题上的延迟起 Job（设计书 3.5）。
+# 第一期 Job 只能读文件形式的 trace（tracesClaim 里的 tracesFile）；从 Redpanda 消费要等 EventStream 的 Kafka 适配器。
+learning:
+  enabled: true
+  topic: telemetry.spans
+  consumerGroup: learning
+  lagThreshold: 1000
+  maxReplicaCount: 1
+  tenant: t1
+  family: finance.invoice_coding
+  budgetUsd: "0.5"
+  tracesClaim: ""
+  tracesFile: /traces/spans.jsonl
+  resources:
+    requests: {cpu: 250m, memory: 256Mi}
+    limits: {cpu: "1", memory: 1Gi}
+
+# OpenTelemetry Collector：一路收（OTLP），三路发（Tempo、Langfuse、Redpanda）；配置在 files/otel-collector.yaml。
+collector:
+  image: otel/opentelemetry-collector-contrib:0.135.0
+  replicas: 1
+  resources:
+    requests: {cpu: 200m, memory: 256Mi}
+    limits: {cpu: "1", memory: 512Mi}

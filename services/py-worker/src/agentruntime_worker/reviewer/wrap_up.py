@@ -1,4 +1,4 @@
-"""收尾写回（附录 B.9）：归档 Task State、交经验与 Recipe 效果候选给 Memory Service、写 trace 指标。
+"""收尾写回（附录 B.9）：归档 Task State、交经验与 Recipe 效果候选给 Memory Service、写 trace 指标与 Task、Round 两级 span（T-15）。
 
 每个 Provider 客户端都按 Task 的租户绑定。Memory Service 经它的 gRPC 接口（SubmitCandidates）接收 Reviewer 提交的
 经验候选，进入写入流水线（设计书 3.4）；开发与测试用 RecordingMemoryClient。
@@ -24,6 +24,7 @@ from agentruntime.memory.v1 import memory_pb2
 from agentruntime_core.providers.object_store import ObjectStoreProvider
 from agentruntime_core.providers.telemetry import TelemetryProvider
 from agentruntime_core.tenancy import TenantContext
+from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
 from agentruntime_worker.activities.types import FinalizeTaskInput
@@ -95,6 +96,44 @@ def trace_metrics(inp: FinalizeTaskInput) -> dict[str, Any]:
         "escalations": sum(n for v, n in verdicts.items() if v not in PROGRESS_VERDICTS),
         "verdicts": dict(sorted(verdicts.items())),
     }
+
+
+async def trace_task(telemetry: Any, inp: FinalizeTaskInput, metrics: dict[str, Any]) -> None:
+    """附录 J.1 的 Task 与 Round 两级 span（T-15）：收尾时事后补记，标 runtime.synthetic（时间戳不是 Task 的真实起止）。
+    Round 的 runtime.stage_shape 是 Stage 的形状（verdicts.stage_shape），不含 inputs 与 rationale；Learning Pipeline 从这里读（T-16）。"""
+    rounds = _rounds(inp)
+    temporal: dict[str, Any] = {}
+    if activity.in_activity():
+        info = activity.info()
+        temporal = {"temporal.workflow_id": info.workflow_id or "", "temporal.run_id": info.workflow_run_id or ""}
+    attributes = {
+        "task_id": inp.task_id,
+        **temporal,
+        "gen_ai.operation.name": "invoke_workflow",
+        "recipe": str((inp.task_state.get("pinned") or {}).get("recipe") or ""),
+        "runtime.task_family": inp.task_family,
+        "runtime.task_status": inp.status,
+        "runtime.cost_usd": metrics["cost_usd"],
+        "runtime.rounds": len(rounds),
+        "runtime.synthetic": True,
+    }
+    async with telemetry.start_span("invoke_workflow", attributes=attributes):
+        for i, r in enumerate(rounds):
+            round_attributes: dict[str, Any] = {
+                "task_id": inp.task_id,
+                "round_seq": int(r.get("seq") or i + 1),
+                "runtime.cost_usd": float(r.get("cost_usd") or 0.0),
+                "runtime.synthetic": True,
+            }
+            if r.get("verdict"):
+                round_attributes["verdict"] = str(r["verdict"])
+            if r.get("triage_level"):
+                round_attributes["triage_level"] = str(r["triage_level"])
+            shape = inp.stages[i].get("shape") if i < len(inp.stages) else None
+            if shape is not None:
+                round_attributes["runtime.stage_shape"] = json.dumps(shape, ensure_ascii=False, sort_keys=True)
+            async with telemetry.start_span("runtime.round", attributes=round_attributes):
+                pass
 
 
 def _scope(inp: FinalizeTaskInput) -> dict[str, Any]:
@@ -193,6 +232,7 @@ class WrapUp:
         report.metrics = trace_metrics(inp)
         try:
             telemetry = self.telemetry.bind(tenant)
+            await trace_task(telemetry, inp, report.metrics)
             await telemetry.observe("task.cost_usd", report.metrics["cost_usd"], attributes={"status": inp.status})
             if inp.status == "done":
                 await telemetry.observe("task.success_cost_usd", report.metrics["cost_usd"])

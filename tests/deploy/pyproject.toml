@@ -1,0 +1,29 @@
+[project]
+name = "agentruntime-deploy-tests"
+version = "0.0.0"
+description = "T-15 部署验收：Helm Chart（helm lint、helm template 的结构检查）与 OpenTelemetry Collector 配置"
+requires-python = ">=3.13"
+dependencies = [
+    # 队列名、环境变量名与敏感键规则取自代码本身，与 Chart 比对。
+    "agentruntime-core",
+    "agentruntime-worker",
+    "pytest>=9.1",
+    # 读 helm template 的输出与 Collector 配置（YAML）。
+    "pyyaml>=6.0.2",
+]
+
+[tool.uv.sources]
+agentruntime-core = { workspace = true }
+agentruntime-worker = { workspace = true }
+
+[build-system]
+requires = ["hatchling>=1.32"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["deploy_tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["."]
+addopts = "-ra"
+xfail_strict = true

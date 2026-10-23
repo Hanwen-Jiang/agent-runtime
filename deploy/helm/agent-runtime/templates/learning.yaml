@@ -1,0 +1,95 @@
+{{- if .Values.learning.enabled }}
+{{- $lp := .Values.learning -}}
+# Learning Pipeline（T-16）：KEDA 按消费组在 trace 主题上的延迟起 Job（设计书 3.5）；每个 Job 跑一遍
+# python -m agentruntime_learning.pipeline run，过评测门槛才经 Registry 发布。
+# 第一期 Job 读文件形式的 trace（tracesClaim）；从 Redpanda 消费要等 EventStream 的 Kafka 适配器。
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: {{ printf "%s-learning" (include "ar.fullname" .) }}
+  labels:
+    {{- include "ar.labels" (list . "learning") | nindent 4 }}
+spec:
+  maxReplicaCount: {{ $lp.maxReplicaCount }}
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTargetRef:
+    backoffLimit: 0
+    template:
+      metadata:
+        labels:
+          {{- include "ar.labels" (list . "learning") | nindent 10 }}
+      spec:
+        restartPolicy: Never
+        serviceAccountName: {{ include "ar.fullname" . }}
+        automountServiceAccountToken: false
+        securityContext:
+          {{- toYaml .Values.podSecurityContext | nindent 10 }}
+        containers:
+          - name: learning
+            image: {{ include "ar.image" (list . "learning") }}
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            args:
+              - -m
+              - agentruntime_learning.pipeline
+              - run
+              - --tenant
+              - {{ $lp.tenant | quote }}
+              - --family
+              - {{ $lp.family | quote }}
+              - --traces
+              - {{ $lp.tracesFile | quote }}
+              - --format
+              - otlp_json
+              - --report-dir
+              - /reports
+              - --budget-usd
+              - {{ $lp.budgetUsd | quote }}
+            env:
+              {{- include "ar.commonEnv" . | nindent 14 }}
+              - name: AR_REGISTRY_ADDRESS
+                value: {{ printf "%s:%v" (include "ar.registryService" .) .Values.taskService.registryPort | quote }}
+              - name: AR_MODEL_GATEWAY_ADDRESS
+                value: {{ printf "%s:%v" (include "ar.modelGatewayService" .) .Values.modelGateway.port | quote }}
+            securityContext:
+              {{- toYaml .Values.containerSecurityContext | nindent 14 }}
+            resources:
+              {{- toYaml $lp.resources | nindent 14 }}
+            volumeMounts:
+              - name: secrets
+                mountPath: /var/run/agentruntime/secrets
+                readOnly: true
+              - name: tmp
+                mountPath: /tmp
+              - name: reports
+                mountPath: /reports
+              - name: traces
+                mountPath: /traces
+                readOnly: true
+        volumes:
+          - name: secrets
+            secret:
+              secretName: {{ .Values.secrets.existingSecret }}
+              items:
+                - key: {{ .Values.secrets.secretsFileKey }}
+                  path: {{ .Values.secrets.secretsFileKey }}
+          - name: tmp
+            emptyDir: {}
+          - name: reports
+            emptyDir: {}
+          - name: traces
+          {{- if $lp.tracesClaim }}
+            persistentVolumeClaim:
+              claimName: {{ $lp.tracesClaim }}
+              readOnly: true
+          {{- else }}
+            emptyDir: {}
+          {{- end }}
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: {{ .Values.external.redpanda.brokers | quote }}
+        consumerGroup: {{ $lp.consumerGroup | quote }}
+        topic: {{ $lp.topic | quote }}
+        lagThreshold: {{ $lp.lagThreshold | quote }}
+{{- end }}

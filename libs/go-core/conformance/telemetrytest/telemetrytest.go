@@ -191,6 +191,28 @@ func Run(t *testing.T, newHarness func(t *testing.T) Harness) {
 			}
 		}
 	})
+	conformance.Case(t, "GenAIUsageCountsAreKept", func(t *testing.T) {
+		// T-15：GenAI 语义约定的 token 计数（键名含 token）是数字，不脱敏；同名键的值不是整数时照样脱敏。
+		h, tel := setup(t)
+		_, s := span(t, tel, ctx, "chat",
+			attr("gen_ai.usage.input_tokens", int64(1200)), attr("gen_ai.usage.output_tokens", int64(300)),
+			attr("gen_ai.usage.api_token", secretValue))
+		s.End()
+		_, s2 := span(t, tel, ctx, "chat", attr("gen_ai.usage.input_tokens", secretValue))
+		s2.End()
+		conformance.NoError(t, tel.Flush(ctx))
+		e := h.Exported()
+		a := e.Spans[0].Attributes
+		if a["gen_ai.usage.input_tokens"] != int64(1200) || a["gen_ai.usage.output_tokens"] != int64(300) {
+			t.Fatalf("token 计数不应脱敏：%v", a)
+		}
+		if a["gen_ai.usage.api_token"] != telemetry.Redacted || e.Spans[1].Attributes["gen_ai.usage.input_tokens"] != telemetry.Redacted {
+			t.Fatalf("只豁免这两个键的整数值：%v / %v", a, e.Spans[1].Attributes)
+		}
+		if strings.Contains(fmt.Sprintf("%#v", e), secretValue) {
+			t.Fatal("secret leaked into exported telemetry")
+		}
+	})
 	conformance.Case(t, "MetricsRecordValues", func(t *testing.T) {
 		h, tel := setup(t)
 		conformance.NoError(t, tel.Count(ctx, "node.calls", 2, attr("role", "fetch")))

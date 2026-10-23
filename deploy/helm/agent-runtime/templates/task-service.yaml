@@ -1,0 +1,128 @@
+{{- $name := printf "%s-task-service" (include "ar.fullname" .) -}}
+{{- $ts := .Values.taskService -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "task-service") | nindent 4 }}
+spec:
+  replicas: {{ $ts.replicas }}
+  selector:
+    matchLabels:
+      {{- include "ar.selector" (list . "task-service") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ar.labels" (list . "task-service") | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "ar.fullname" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: task-service
+          image: {{ include "ar.image" (list . "task-service") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["serve"]
+          ports:
+            - name: http
+              containerPort: {{ $ts.httpPort }}
+            - name: registry
+              containerPort: {{ $ts.registryPort }}
+          env:
+            {{- include "ar.commonEnv" . | nindent 12 }}
+            {{- include "ar.signingKeyEnv" . | nindent 12 }}
+            {{- include "ar.dsnEnv" . | nindent 12 }}
+            - name: AR_TEMPORAL_ADDRESS
+              value: {{ .Values.external.temporal.address | quote }}
+            - name: AR_TEMPORAL_NAMESPACE
+              value: {{ .Values.external.temporal.namespace | quote }}
+            - name: AR_HTTP_ADDR
+              value: {{ printf "0.0.0.0:%v" $ts.httpPort | quote }}
+            - name: AR_REGISTRY_ADDR
+              value: {{ printf "0.0.0.0:%v" $ts.registryPort | quote }}
+            - name: AR_SCHEMAS_DIR
+              value: /app/schemas
+            - name: AR_DATA_DIR
+              value: /data
+            - name: AR_OBJECT_STORE_DIR
+              value: /objects
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          resources:
+            {{- toYaml $ts.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "ar.volumeMounts" . | nindent 12 }}
+      volumes:
+        {{- include "ar.volumes" . | nindent 8 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "task-service") | nindent 4 }}
+spec:
+  type: {{ $ts.service.type }}
+  selector:
+    {{- include "ar.selector" (list . "task-service") | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ $ts.httpPort }}
+      targetPort: http
+---
+# Registry 的内部端口：只在集群内（ClusterIP），不进 Ingress；写方法另有发布令牌（docs/plan/registry.md 第 2 节第 7 条）。
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ar.registryService" . }}
+  labels:
+    {{- include "ar.labels" (list . "task-service") | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "ar.selector" (list . "task-service") | nindent 4 }}
+  ports:
+    - name: grpc
+      port: {{ $ts.registryPort }}
+      targetPort: registry
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "task-service") | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $name }}
+                port:
+                  name: http
+{{- end }}
