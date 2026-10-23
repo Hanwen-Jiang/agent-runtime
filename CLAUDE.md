@@ -93,7 +93,8 @@
 /tests/contract             # 跨语言、跨服务的契约验收测试（S-01；S-02 的接口一致性比对也在这里）
 /tests/e2e                  # 端到端验收测试：Temporal 开发服务 + task-service + Python Worker（S-03）
 /tests/e2e/faults           # 故障注入与恢复套件（S-07）；故障 Worker 与外部 ledger 在 tests/e2e/e2e_support
-/.github/workflows          # CI：nightly.yml 每晚跑 tests/e2e（含故障注入套件与越权用例）、全部 Go 测试（含 Postgres 行级安全），以及 py-core 与 py-memory 的测试（Postgres + Qdrant）
+/.github/workflows          # CI：ci.yml 在 PR 与 main 上按步骤分 job 调用 scripts/check.py（T-14）；nightly.yml 每晚跑 tests/e2e（含故障注入套件与越权用例）、全部 Go 测试（含 Postgres 行级安全），以及 py-core 与 py-memory 的测试（Postgres + Qdrant）
+/scripts                    # check.py：本地与 CI 共用的检查脚本，只用标准库（T-14）
 /docs                       # 设计书、实施计划、参考文档
 ```
 
@@ -114,6 +115,7 @@ $env:UV_PROJECT_ENVIRONMENT = "$env:USERPROFILE\.local\venvs\agent-runtime"
 | 做什么 | 命令 |
 | --- | --- |
 | 安装 Python 依赖 | `uv sync --all-packages --locked` |
+| 一次跑完检查（T-14） | `uv run --no-sync python scripts/check.py`：pr 档是除故障注入套件外的全部（proto、contract、go、py-core、py-memory、py-learning、py-worker、e2e），`--tier full` 再加 faults；`--only`、`--skip` 挑步骤，`--list` 看计划，`--fail-fast` 遇错即停，`--junit-dir` 写报告。缺工具的步骤失败并写明缺什么（`AR_ALLOW_MISSING_TOOLS=1` 时跳过）；仓库在网络盘上又没设 `UV_PROJECT_ENVIRONMENT` 时拒绝跑 Python 步骤。`--clone <目录>` 把当前提交克隆到本地目录再跑，用克隆自己的 `.venv`，不动共用的虚拟环境。CI（`.github/workflows/ci.yml`）在 PR 与 main 上按步骤分 job 调用同一个脚本 |
 | proto lint 与格式 | `buf lint`；`buf format --diff --exit-code` |
 | proto 兼容性检查 | `buf breaking --against proto/breaking-baseline.binpb`（基线是人审通过的契约；仓库在共享盘上时 buf 无法克隆 `.git`） |
 | 生成代码 | `buf generate`（远程插件，需要联网），生成结果一并提交 |

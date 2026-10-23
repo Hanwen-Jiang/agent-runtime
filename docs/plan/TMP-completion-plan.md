@@ -197,6 +197,13 @@
 **T-14 CI 与本地开发环境**　轻 · 低
 - 把"本地 clone 跑测试"写成脚本；CI 增加 py-learning、py-worker、py-memory 的日常测试，不只是夜间任务。
 - 完成：PR 上自动跑测试。
+- 结果（2026-10-23）：决定 D1–D12 经人确认。`scripts/check.py`（只用标准库）是本地与 CI 共用的检查：步骤 proto、contract、go、
+  py-core、py-memory、py-learning、py-worker、e2e、faults；pr 档不含 faults。Python 步骤前统一 `uv sync` 一次；contract 不再跑
+  Go 模块的测试（交给 go）；缺工具的步骤失败并写明缺什么；Windows 上仓库在网络盘又没设本地虚拟环境时拒绝；`--clone` 在当前提交的
+  本地克隆里跑（换行符设置跟源检出一致，用克隆自己的 `.venv`）。`.github/workflows/ci.yml` 在 PR 与 main 上分五个 job（contract、
+  go、python、py-worker、e2e）调用它，合起来恰好是 pr 档；工具版本与夜间任务一致，缺工具即失败，JUnit 报告总是上传。夜间任务不变。
+  登记到后续：本地拉起整套（Temporal、task-service、Worker）的脚本放到 T-13；夜间任务里时好时坏的
+  `test_duplicate_task_finished_does_not_release_the_write_lock_twice`（Session 工作流 UnhandledCommand）另查。
 
 **T-15 Helm 与 KEDA、Telemetry**　中档 · 低
 - 能 `helm template` 出合法的清单即可，不要求真部署。Telemetry 打点与 Collector 配置补齐。

@@ -1,0 +1,191 @@
+# PR 与 main 上的检查（TMP 计划 T-14）。每个 job 调用 scripts/check.py --only …：本地跑的与 CI 跑的是同一组命令，
+# 所有 job 合起来恰好是脚本 pr 档的全部步骤（tests/contract/test_ci_workflow.py 核对）。故障注入套件与 Postgres 业务库上的
+# 端到端测试留在夜间任务（nightly.yml）。
+# 工具链与夜间任务、CLAUDE.md 一致：Go 1.27、uv 0.12（Python 3.13）、buf 1.73、Temporal CLI 1.9.1、PostgreSQL（runner 预装）、
+# Qdrant 1.19.1、Helm 3.19（tests/deploy 进仓库后用）。缺工具就失败，不跳过。
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TEMPORAL_CLI_VERSION: "1.9.1"
+  QDRANT_VERSION: "1.19.1"
+  BUF_VERSION: "1.73.0"
+  HELM_VERSION: "3.19.0"
+
+jobs:
+  contract:
+    name: proto 与契约测试
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+          cache-dependency-path: "**/go.sum"
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.x"
+          enable-cache: true
+
+      - name: 安装 buf 与 Helm
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-Linux-x86_64.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" --strip-components 2 buf/bin/buf
+          curl -sSfL "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" --strip-components 1 linux-amd64/helm
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: proto 与契约测试
+        run: python3 scripts/check.py --only proto,contract --junit-dir "$RUNNER_TEMP/junit"
+
+      - name: 上传测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-contract
+          path: ${{ runner.temp }}/junit
+
+  go:
+    name: Go（go.work 的每个模块，含 Postgres 行级安全）
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+          cache-dependency-path: "**/go.sum"
+
+      - name: 安装 Temporal CLI
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL "https://github.com/temporalio/cli/releases/download/v${TEMPORAL_CLI_VERSION}/temporal_cli_${TEMPORAL_CLI_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" temporal
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: 找到预装的 Postgres 二进制（initdb、pg_ctl、psql）
+        run: |
+          bin="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)"
+          test -x "$bin/initdb"
+          echo "AR_POSTGRES_BIN=$bin" >> "$GITHUB_ENV"
+
+      - name: Go
+        run: python3 scripts/check.py --only go
+
+  python:
+    name: py-core、py-memory、py-learning（Postgres + Qdrant）
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.x"
+          enable-cache: true
+
+      - name: 安装 Temporal CLI 与 Qdrant
+        run: |
+          mkdir -p "$HOME/.local/bin" "$HOME/.local/qdrant"
+          curl -sSfL "https://github.com/temporalio/cli/releases/download/v${TEMPORAL_CLI_VERSION}/temporal_cli_${TEMPORAL_CLI_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" temporal
+          curl -sSfL "https://github.com/qdrant/qdrant/releases/download/v${QDRANT_VERSION}/qdrant-x86_64-unknown-linux-gnu.tar.gz" \
+            | tar -xz -C "$HOME/.local/qdrant" qdrant
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "AR_QDRANT_BIN=$HOME/.local/qdrant" >> "$GITHUB_ENV"
+
+      - name: 找到预装的 Postgres 二进制（initdb、pg_ctl、psql）
+        run: |
+          bin="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)"
+          test -x "$bin/initdb"
+          echo "AR_POSTGRES_BIN=$bin" >> "$GITHUB_ENV"
+
+      - name: py-core、py-memory、py-learning
+        run: python3 scripts/check.py --only py-core,py-memory,py-learning --junit-dir "$RUNNER_TEMP/junit"
+
+      - name: 上传测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-python
+          path: ${{ runner.temp }}/junit
+
+  py-worker:
+    name: py-worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.x"
+          enable-cache: true
+
+      - name: 安装 Temporal CLI
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL "https://github.com/temporalio/cli/releases/download/v${TEMPORAL_CLI_VERSION}/temporal_cli_${TEMPORAL_CLI_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" temporal
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: py-worker
+        run: python3 scripts/check.py --only py-worker --junit-dir "$RUNNER_TEMP/junit"
+
+      - name: 上传测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-py-worker
+          path: ${{ runner.temp }}/junit
+
+  e2e:
+    name: 端到端测试（不含故障注入）
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+          cache-dependency-path: "**/go.sum"
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.x"
+          enable-cache: true
+
+      - name: 安装 Temporal CLI
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL "https://github.com/temporalio/cli/releases/download/v${TEMPORAL_CLI_VERSION}/temporal_cli_${TEMPORAL_CLI_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" temporal
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: 端到端测试
+        run: python3 scripts/check.py --only e2e --junit-dir "$RUNNER_TEMP/junit"
+
+      - name: 上传测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-e2e
+          path: ${{ runner.temp }}/junit
