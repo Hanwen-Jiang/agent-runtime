@@ -150,5 +150,9 @@ Go `go.opentelemetry.io/otel` 系列 v1.44.0（与 go.sum 里 Temporal 间接依
 **测试支架的改动**（不改验收）：`test_trace_spans.py` 的控制台输出从 `open(os.devnull)` 换成 `io.StringIO()`（Windows 的默认编码写不了中文）；
 `telemetry_test.go` 改为自己 flush（第 1 条）。
 
-**没验证的**：`otelcol-contrib validate`（本机没装，按 `AR_ALLOW_MISSING_TOOLS` 跳过）；Chart 没有在真集群上装过，KEDA 的 temporal 触发器
-（KEDA 2.17 起）与 kafka 触发器的参数只按文档写；镜像与 Dockerfile 还没有。
+**本机补测（2026-10-23）**：装上 Qdrant 1.19.1、buf 1.73.0、otelcol-contrib 0.135.0 后，不设 `AR_ALLOW_MISSING_TOOLS` 重跑：
+py-core（Postgres + Qdrant）671 通过、py-memory 133 通过、Go 全部模块（含 Postgres 行级安全，没有跳过）、契约测试加 `tests/deploy`
+（含 `otelcol-contrib validate`）449 通过、故障注入套件 35 通过。CI 的契约 job 起初没装 otelcol-contrib，`test_collector_validates_its_own_config`
+失败，已由 e7c37e4 在 CI 里装上（T-14）。
+
+**没验证的**：Chart 没有在真集群上装过，KEDA 的 temporal 触发器（KEDA 2.17 起）与 kafka 触发器的参数只按文档写；镜像与 Dockerfile 还没有。

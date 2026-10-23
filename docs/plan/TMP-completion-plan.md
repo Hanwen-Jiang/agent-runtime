@@ -218,7 +218,8 @@
   OpenTelemetry 实现（Python `agentruntime_core.adapters.otel`、Go `adapters/oteltelemetry`，OTLP/HTTP，过同一套一致性测试，另加 GenAI token
   计数不脱敏的一条）；附录 J.1 的打点：Node Executor 的 `chat`、`execute_tool {工具}`，收尾写回补记 `invoke_workflow` 与 `runtime.round`（带 Stage 形状），
   Model Gateway 每次调用一个 span；Chart `deploy/helm/agent-runtime`（Worker 按队列分池加 KEDA temporal 触发器、Learning 的 ScaledJob、Collector 三路导出），
-  `helm lint --strict` 通过，结构检查在 `tests/deploy`。没验证：`otelcol-contrib validate`（本机没装）、真集群安装、镜像。
+  `helm lint --strict` 通过，结构检查在 `tests/deploy`（含 `otelcol-contrib validate`）；本机装齐工具后不跳过地补测全绿（见细化第 7 节）。
+  没验证：真集群安装、镜像。
 
 ### 阶段 E：Learning Pipeline 最小闭环（2 到 3 天）
 
