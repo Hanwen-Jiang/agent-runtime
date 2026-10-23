@@ -22,6 +22,7 @@ from contract_tests.paths import REPO_ROOT
 CI = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 NIGHTLY = REPO_ROOT / ".github" / "workflows" / "nightly.yml"
 SCRIPT = REPO_ROOT / "scripts" / "check.py"
+CHART_VALUES = REPO_ROOT / "deploy" / "helm" / "agent-runtime" / "values.yaml"
 
 # 步骤声明的工具 → job 里装它的标志。
 INSTALLS = {
@@ -111,6 +112,17 @@ def test_tool_versions_match_the_nightly_job_and_claude_md() -> None:
     for name in ("TEMPORAL_CLI_VERSION", "QDRANT_VERSION"):
         assert env_value(t, name) == env_value(nightly, name), f"{name} 与夜间任务一致"
     assert env_value(t, "BUF_VERSION").startswith("1.73"), "buf 1.73（CLAUDE.md）"
+
+
+def test_contract_job_validates_the_collector_config() -> None:
+    # T-15 的 Collector 配置在 CI 里也用 otelcol-contrib 自己的 validate 校验（tests/deploy 随 contract 步骤跑），
+    # 版本与 Chart 里的 Collector 镜像一致（docs/plan/deploy-telemetry.md 的工具表）。
+    if not CHART_VALUES.is_file():
+        pytest.skip("还没有 Chart（T-15）")
+    image = re.search(r"opentelemetry-collector-contrib:([0-9][0-9.]*)", CHART_VALUES.read_text("utf-8"))
+    assert image, f"{CHART_VALUES.relative_to(REPO_ROOT)} 里找不到 Collector 镜像的版本"
+    assert "OTELCOL_VERSION" in jobs()["contract"], "契约 job 要装 otelcol-contrib"
+    assert env_value(text(), "OTELCOL_VERSION") == image.group(1), "otelcol-contrib 与 Chart 里的 Collector 镜像同一版本"
 
 
 def test_missing_tools_are_never_skipped_in_ci() -> None:

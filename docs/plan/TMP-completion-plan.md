@@ -208,6 +208,8 @@
   拒绝这次结束命令，工作流处理完信号后重试成功；功能断言都通过，只是事件历史检查把这次被拒算成异常。工作流本身不改；
   `tests/e2e/e2e_support/history.py` 只放行 UNHANDLED_COMMAND 且之后有工作流任务成功完成、这次运行正常结束（completed 或
   continued_as_new）的 WorkflowTaskFailed，其余照旧失败；规则的测试在 `tests/e2e/test_history_rules.py`（不需要端到端环境）。
+  T-15 进来后契约 job 缺 `otelcol-contrib` 而失败：ci.yml 的契约 job 装上与 Chart 里 Collector 镜像同一版本的 otelcol-contrib
+  （`OTELCOL_VERSION`，现为 0.135.0），`tests/deploy` 的 Collector 配置在 CI 里用它自己的 validate 校验（`test_ci_workflow.py` 核对版本一致）。
 
 **T-15 Helm 与 KEDA、Telemetry**　中档 · 低
 - 能 `helm template` 出合法的清单即可，不要求真部署。Telemetry 打点与 Collector 配置补齐。

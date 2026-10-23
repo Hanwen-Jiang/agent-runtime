@@ -2,7 +2,8 @@
 # 所有 job 合起来恰好是脚本 pr 档的全部步骤（tests/contract/test_ci_workflow.py 核对）。故障注入套件与 Postgres 业务库上的
 # 端到端测试留在夜间任务（nightly.yml）。
 # 工具链与夜间任务、CLAUDE.md 一致：Go 1.27、uv 0.12（Python 3.13）、buf 1.73、Temporal CLI 1.9.1、PostgreSQL（runner 预装）、
-# Qdrant 1.19.1、Helm 3.19（tests/deploy 进仓库后用）。缺工具就失败，不跳过。
+# Qdrant 1.19.1、Helm 3.19（tests/deploy 用）；otelcol-contrib 与 Chart 里的 Collector 镜像同一版本（tests/deploy 用它校验
+# Collector 配置）。缺工具就失败，不跳过。
 name: ci
 
 on:
@@ -23,6 +24,7 @@ env:
   QDRANT_VERSION: "1.19.1"
   BUF_VERSION: "1.73.0"
   HELM_VERSION: "3.19.0"
+  OTELCOL_VERSION: "0.135.0"
 
 jobs:
   contract:
@@ -42,13 +44,15 @@ jobs:
           version: "0.12.x"
           enable-cache: true
 
-      - name: 安装 buf 与 Helm
+      - name: 安装 buf、Helm 与 otelcol-contrib
         run: |
           mkdir -p "$HOME/.local/bin"
           curl -sSfL "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-Linux-x86_64.tar.gz" \
             | tar -xz -C "$HOME/.local/bin" --strip-components 2 buf/bin/buf
           curl -sSfL "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" \
             | tar -xz -C "$HOME/.local/bin" --strip-components 1 linux-amd64/helm
+          curl -sSfL "https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v${OTELCOL_VERSION}/otelcol-contrib_${OTELCOL_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" otelcol-contrib
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: proto 与契约测试
