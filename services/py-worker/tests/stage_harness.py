@@ -24,6 +24,10 @@ from temporalio.exceptions import ApplicationError
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 
+from google.protobuf import json_format
+
+from agentruntime.common.v1 import tenant_pb2
+from agentruntime.taskapi.v1 import task_api_pb2
 from agentruntime.workflow.v1 import task_pb2
 
 from agentruntime_worker import names
@@ -176,6 +180,8 @@ class Script:
     catalog_error: str = ""
     policy_error: str = ""
     policy_requests: list[StagePolicyRequest] = field(default_factory=list)
+    # T-11b：给了就在每次推送进度事件时先调用它（抛异常表示这次推送失败）
+    on_publish: Callable[[str, Any], None] | None = None
 
     calls: list[Call] = field(default_factory=list)
     hook_calls: list[HookCall] = field(default_factory=list)
@@ -188,6 +194,9 @@ class Script:
     withdrawn: list[str] = field(default_factory=list)
     barriers: dict[str, list[Any]] = field(default_factory=dict)
     invalid_nodes: list[str] = field(default_factory=list)
+    # T-11b：推送成功的进度事件 (去重键, TaskEvent, 发起推送的工作流 id)，按推送的先后；每次推送尝试的去重键
+    published: list[tuple[str, Any, str]] = field(default_factory=list)
+    publish_attempts: list[str] = field(default_factory=list)
     running: int = 0
     max_running: int = 0
     _clock: Any = field(default_factory=itertools.count)
@@ -372,8 +381,26 @@ class Script:
             results[0] = {"hook": results[0]["hook"], "mount": call.mount, **override}
         return results
 
+    # --- 进度事件（真实实现在 Go 的 Session Worker：internal/session 的 PublishTaskEvent） ---
+
+    @activity.defn(name=names.PUBLISH_TASK_EVENT)
+    async def publish_task_event(self, tenant: tenant_pb2.TenantContext, key: str, event: task_api_pb2.TaskEvent) -> int:
+        self.publish_attempts.append(key)
+        if self.on_publish is not None:
+            self.on_publish(key, event)
+        for i, (k, e, _) in enumerate(self.published, start=1):
+            if k == key and e.task_id == event.task_id:
+                return i  # 同一个去重键只推一次
+        self.published.append((key, event, activity.info().workflow_id))
+        return len(self.published)
+
+    def progress(self, task_id: str) -> list[dict[str, Any]]:
+        """这个 Task 推送成功的进度事件的载荷，按推送的先后。"""
+        return [json_format.MessageToDict(e.payload.value) for _, e, _ in self.published if e.task_id == task_id]
+
     def by_queue(self) -> dict[str, list[Any]]:
         return {
+            names.SESSION_QUEUE: [self.publish_task_event],
             names.DECISION_QUEUE: [
                 self.plan_round,
                 self.review_round,

@@ -179,6 +179,13 @@
 - 难点：事件在 Python Worker 里产生，event_id 由 task-service 的业务库分配，要定事件从哪里写、id 怎么分配（例如 Worker 经 task-service 的
   内部接口追加，或在 session 队列上加 activity）；Task 工作流里加推送要走版本分支并补重放测试。
 - 完成：客户端从 SSE 看得到进度与等待中的问题，凭这里的 question_id 发人工回复；断线续传照常。
+- 结果（2026-10-23）：决定 D1–D10 经人确认。Python 的 Task 工作流经跨语言 activity `publish_task_event`（session 队列，契约见
+  names.proto 的 `ActivityName`）把进度事件交给 Go 的 Session Worker：业务库分配 event_id、推进 Cache，SSE 不用改。推
+  round_started、stage_started、node_finished（Stage 的顶层 Node）、human_input_required（带 question_id、kind、选项与 deadline）、
+  verdict；载荷的 schema 是 `schemas/task_event_payload.schema.json`，不带结果与 rationale。每个事件都等推送完成；去重键
+  `r<Round>/<事件>[/<Node 或问题>]`；推送失败不影响 Task，这一 Round 余下的不再推；Task 结束后到的事件丢弃。只有顶层 Task 推，
+  子工作流与子 Task 不推。版本分支 `t11b-progress-events`，新 golden `events_progress`。契约改动过了 `buf breaking`，基线已更新。
+  登记到后续：node_started、tool_status、思考与 token 增量（要 activity 一侧的推流路径，附录 K.1）；每个事件一个 activity 的历史开销。
 
 ### 阶段 D：端到端与部署（2 到 3 天）
 

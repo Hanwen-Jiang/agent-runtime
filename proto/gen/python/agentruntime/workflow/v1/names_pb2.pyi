@@ -34,6 +34,11 @@ class TaskQueue(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     TASK_QUEUE_MODEL: _ClassVar[TaskQueue]
     TASK_QUEUE_PROGRAM: _ClassVar[TaskQueue]
     TASK_QUEUE_OFFLINE: _ClassVar[TaskQueue]
+
+class ActivityName(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    ACTIVITY_NAME_UNSPECIFIED: _ClassVar[ActivityName]
+    ACTIVITY_NAME_PUBLISH_TASK_EVENT: _ClassVar[ActivityName]
 WORKFLOW_TYPE_UNSPECIFIED: WorkflowType
 WORKFLOW_TYPE_SESSION: WorkflowType
 WORKFLOW_TYPE_TASK: WorkflowType
@@ -52,3 +57,5 @@ TASK_QUEUE_DECISION: TaskQueue
 TASK_QUEUE_MODEL: TaskQueue
 TASK_QUEUE_PROGRAM: TaskQueue
 TASK_QUEUE_OFFLINE: TaskQueue
+ACTIVITY_NAME_UNSPECIFIED: ActivityName
+ACTIVITY_NAME_PUBLISH_TASK_EVENT: ActivityName

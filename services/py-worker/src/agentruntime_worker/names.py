@@ -15,6 +15,8 @@ TASK_STATE_QUERY = "task_state"
 TASK_FINISHED_SIGNAL = "task_finished"
 
 TASK_QUEUE = "task"
+# Go 的 Session 工作流与它的 activity 所在的队列；Task 工作流经这里的 PUBLISH_TASK_EVENT 推送进度事件（T-11b）。
+SESSION_QUEUE = "session"
 DECISION_QUEUE = "decision"
 MODEL_QUEUE = "model"
 PROGRAM_QUEUE = "program"
@@ -41,6 +43,9 @@ CANCEL_HUMAN = "cancel_human"
 RECONCILE_NODE = "reconcile_node"
 # 内置的 program 模板：在 Sandbox 里执行代码，inputs 为 {"runtime", "code", "stdin"?}。
 SANDBOX_TEMPLATE = "sandbox_exec"
+
+# 跨语言的 activity：Task 工作流把进度事件交给 Go 的 Session Worker，由它分配 event_id 并推进 Cache（T-11b）。
+PUBLISH_TASK_EVENT = "publish_task_event"
 
 # Python 内部的子工作流（附录 K.1：Goal Node 的 sub_agent 与大批量 template 展开）。
 SUB_AGENT_WORKFLOW = "SubAgentWorkflow"

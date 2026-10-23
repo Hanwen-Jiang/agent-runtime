@@ -54,6 +54,7 @@ S-01 的验收样例。每个 schema 一个文件：`<schema>.examples.json`，�
 | Recipe | `description`、`risk`、`typical_cost_usd`、`stages`、`hooks` | 附录 A、C.1、C.2、C.4 |
 | 租户策略、Recipe 的 `hooks` | 挂载点 → Hook 名的列表（`$defs.hook_set`） | 附录 F.1；设计书 3.2.6 |
 | 晋升的评测证据 | `eval_set`、`samples`、`baseline`、`candidate`（`success_rate`、`success_rate_ci95`、`cost_per_success_usd`）、`thresholds`（`delta`、`epsilon`）、`passed`、`waiver`（`approved_by`、`reason`）、`report`、`evaluated_at` | 附录 J.3 |
+| 进度事件的载荷（T-11b） | `event`（与 SSE 事件名相同：`round_started`、`stage_started`、`node_finished`、`human_input_required`、`verdict`）；`rerun`；问题的 `kind`：`human`、`approval`、`tool_approval`、`escalation` | 设计书 4.14；T-11b 决定 D4（已确认） |
 
 ## Registry 的文档（T-08）
 

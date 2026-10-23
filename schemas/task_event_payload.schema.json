@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/task_event_payload.schema.json",
+  "title": "TaskEvent 的载荷：进度事件",
+  "description": "Task 工作流经 publish_task_event 推送、客户端经 SSE 收到的进度事件的载荷（taskapi.v1.TaskEvent.payload；设计书 4.14，T-11b）。event 与 SSE 的事件名相同。只描述 Round、Stage、Node 的进度与等待中的问题，不带 Node 的结果与 rationale：结果只在 task_finished 里（Task 的结局）。task_accepted 没有载荷，task_finished 的载荷是 TaskWorkflowResult，都不在这里。",
+  "type": "object",
+  "required": ["event"],
+  "properties": {
+    "event": {"$ref": "defs.schema.json#/$defs/progress_event"}
+  },
+  "allOf": [
+    {"if": {"required": ["event"], "properties": {"event": {"const": "round_started"}}}, "then": {"$ref": "#/$defs/round_started"}},
+    {"if": {"required": ["event"], "properties": {"event": {"const": "stage_started"}}}, "then": {"$ref": "#/$defs/stage_started"}},
+    {"if": {"required": ["event"], "properties": {"event": {"const": "node_finished"}}}, "then": {"$ref": "#/$defs/node_finished"}},
+    {"if": {"required": ["event"], "properties": {"event": {"const": "human_input_required"}}}, "then": {"$ref": "#/$defs/human_input_required"}},
+    {"if": {"required": ["event"], "properties": {"event": {"const": "verdict"}}}, "then": {"$ref": "#/$defs/verdict"}}
+  ],
+  "$defs": {
+    "round_seq": {"description": "Round 序号，从 1 开始", "type": "integer", "minimum": 1},
+    "round_started": {
+      "description": "一个 Round 开始：规划之前（rerun 为 true 时不经 Planner，重跑上一个 Stage 里出问题的部分）",
+      "type": "object",
+      "required": ["event", "round_seq", "rerun"],
+      "properties": {
+        "event": {"const": "round_started"},
+        "round_seq": {"$ref": "#/$defs/round_seq"},
+        "rerun": {"type": "boolean"}
+      },
+      "unevaluatedProperties": false
+    },
+    "stage_started": {
+      "description": "这个 Round 的 Stage 定了：目标、退出条件与节点清单（只有 id、kind、role）",
+      "type": "object",
+      "required": ["event", "round_seq", "goal", "exit_when", "nodes"],
+      "properties": {
+        "event": {"const": "stage_started"},
+        "round_seq": {"$ref": "#/$defs/round_seq"},
+        "triage_level": {"description": "Planner 的分诊级别；重跑时不经 Planner，没有这一项", "$ref": "defs.schema.json#/$defs/triage_level"},
+        "goal": {"type": "string"},
+        "exit_when": {"type": "string"},
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "kind"],
+            "properties": {
+              "id": {"$ref": "defs.schema.json#/$defs/node_id"},
+              "kind": {"$ref": "defs.schema.json#/$defs/node_kind"},
+              "role": {"$ref": "defs.schema.json#/$defs/role"}
+            },
+            "unevaluatedProperties": false
+          }
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "node_finished": {
+      "description": "Stage 的一个顶层 Node 结束（包括因上游没成功而跳过的）。不带结果与 rationale",
+      "type": "object",
+      "required": ["event", "round_seq", "node_id", "role", "status"],
+      "properties": {
+        "event": {"const": "node_finished"},
+        "round_seq": {"$ref": "#/$defs/round_seq"},
+        "node_id": {"$ref": "defs.schema.json#/$defs/node_id"},
+        "role": {"$ref": "defs.schema.json#/$defs/role"},
+        "status": {"description": "结束时的状态（附录 D.6、K.4）", "$ref": "defs.schema.json#/$defs/finished_node_status"},
+        "failure_class": {"$ref": "defs.schema.json#/$defs/failure_class"},
+        "error": {"description": "失败说明，截到 300 个字符", "type": "string", "maxLength": 300},
+        "result": {"description": "结果不进进度事件", "$ref": "defs.schema.json#/$defs/forbidden"},
+        "rationale": {"description": "rationale 只进 trace", "$ref": "defs.schema.json#/$defs/forbidden"}
+      },
+      "unevaluatedProperties": false
+    },
+    "human_input_required": {
+      "description": "问题已经发出、正在等人工回复。客户端用 question_id 与 options 之一经 SignalTask 回复",
+      "type": "object",
+      "required": ["event", "round_seq", "question_id", "kind", "text", "options", "deadline"],
+      "properties": {
+        "event": {"const": "human_input_required"},
+        "round_seq": {"$ref": "#/$defs/round_seq"},
+        "question_id": {"description": "SignalTask 的 HumanReply.question_id：human 节点的 id、审批的 <id>.1、tool_loop 里一次调用的审批 <调用 id>.1，或 Reviewer 升级的 _review", "type": "string", "minLength": 1, "maxLength": 160},
+        "kind": {"$ref": "defs.schema.json#/$defs/question_kind"},
+        "text": {"type": "string", "minLength": 1},
+        "options": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "deadline": {"description": "等到什么时候（UTC），过了按超时处理", "type": "string", "format": "date-time"}
+      },
+      "unevaluatedProperties": false
+    },
+    "verdict": {
+      "description": "Reviewer 对这个 Round 的判定（附录 B.4）",
+      "type": "object",
+      "required": ["event", "round_seq", "verdict", "reason"],
+      "properties": {
+        "event": {"const": "verdict"},
+        "round_seq": {"$ref": "#/$defs/round_seq"},
+        "verdict": {"$ref": "defs.schema.json#/$defs/verdict"},
+        "reason": {"type": "string"}
+      },
+      "unevaluatedProperties": false
+    }
+  }
+}

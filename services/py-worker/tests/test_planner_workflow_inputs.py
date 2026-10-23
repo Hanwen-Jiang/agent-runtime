@@ -14,6 +14,7 @@ from typing import Any
 import pytest
 from temporalio import activity
 from temporalio.testing import WorkflowEnvironment
+from temporalio.worker import Worker
 
 from agentruntime.common.v1 import enums_pb2
 from agentruntime.workflow.v1 import task_pb2
@@ -24,6 +25,7 @@ from agentruntime_worker.activities.types import PlanRoundInput, PlanRoundOutput
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.worker import QUEUE_COMPONENTS, build_workers
 
+from .stage_harness import Script
 from .support import task_input
 
 pytestmark = [pytest.mark.temporal, pytest.mark.asyncio(loop_scope="session")]
@@ -59,8 +61,9 @@ async def test_the_next_round_sees_the_last_round_and_the_task_plan(temporal_env
     stubs = ReplanOnceStubs(config)
     client = temporal_env.client
     inp: task_pb2.TaskWorkflowInput = task_input(stub_plan="answer")
+    events = Script()  # T-11b：进度事件的替身（真实的在 Go 的 Session Worker）
     async with contextlib.AsyncExitStack() as stack:
-        for worker in build_workers(client, config, list(QUEUE_COMPONENTS), stubs=stubs):
+        for worker in [*build_workers(client, config, list(QUEUE_COMPONENTS), stubs=stubs), Worker(client, task_queue=names.SESSION_QUEUE, activities=[events.publish_task_event])]:
             await stack.enter_async_context(worker)
         handle = await client.start_workflow(names.TASK_WORKFLOW, inp, id=inp.task_id, task_queue=names.TASK_QUEUE, result_type=task_pb2.TaskWorkflowResult)
         result = await asyncio.wait_for(handle.result(), timeout=60)

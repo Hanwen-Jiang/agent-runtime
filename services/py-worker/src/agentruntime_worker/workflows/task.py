@@ -9,6 +9,8 @@
 - Verdict 的去向（S-10，附录 B.4、B.8）：continue、replan、repair 换方法、rollback、reroute、问人后继续或重规划
   回 Planner；repair 原地重试与 escalate 换更强的 Tier 不回 Planner，重跑同一个 Stage 里出问题的部分；
   escalate 问人经 HumanChannel，回复限定三种；done、abort 与问人后停止收尾。Reviewer 的汇总写进 Task State。
+- 进度事件（T-11b，workflows/events.py）：每个 Round 推 round_started、stage_started、verdict，Stage Runner 推
+  node_finished 与 human_input_required；交给 Go 的 Session Worker 分配 event_id、经 SSE 推给客户端。推送失败不影响 Task。
 
 Stage 由 Stage Runner 执行（S-04，workflows/stage_runner.py）。S-03 的旧执行路径保留在版本分支后面，
 S-03 留下的事件历史仍按旧路径回放；S-10 之前的历史同样按旧的 Round 循环与收尾顺序回放。
@@ -53,6 +55,7 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.reviewer.summary import apply_state_update
     from agentruntime_worker.workflows import timeouts
     from agentruntime_worker.workflows import verdicts as vd
+    from agentruntime_worker.workflows.events import EVENTS_PATCH, EventPublisher
     from agentruntime_worker.workflows.failures import caused_by_cancel as _caused_by_cancel
     from agentruntime_worker.workflows.failures import failure_message as _failure_message
     from agentruntime_worker.workflows.stage_runner import POLICY_PATCH, RunContext, StageRunner, effect_name
@@ -173,6 +176,8 @@ class TaskWorkflow:
         # T-09：是否走 Policy Engine 的版本分支；before_finish 已经驳回的次数。
         self._t09 = False
         self._finish_rejections = 0
+        # T-11b：进度事件；只有顶层 Task 的新运行有（版本分支 EVENTS_PATCH）。
+        self._events: EventPublisher | None = None
 
     @workflow.run
     async def run(self, inp: task_pb2.TaskWorkflowInput) -> task_pb2.TaskWorkflowResult:
@@ -311,6 +316,9 @@ class TaskWorkflow:
     async def _rounds(self, inputs: dict[str, Any], pinned: dict[str, Any]) -> task_pb2.TaskWorkflowResult:
         """S-10 的 Round 循环：按 Verdict 的去向走（附录 B.4、B.8）。"""
         assert self._input is not None
+        # T-11b 加入了推送进度事件的 activity：新的运行走版本分支；子 Task 没有自己的事件流，不推。
+        if workflow.patched(EVENTS_PATCH) and self._input.depth == 0:
+            self._events = EventPublisher(self._tenant, self._input.task_id)
         task_plan: dict[str, Any] | None = None
         last_round: dict[str, Any] | None = None
         rerun: vd.Rerun | None = None
@@ -318,9 +326,13 @@ class TaskWorkflow:
             self._round_seq = seq
             carried: dict[str, StageResult] = {}
             injections: dict[str, list[dict[str, Any]]] = {}
+            if self._events is not None:
+                await self._events.round_started(seq, rerun=rerun is not None)
+            triage_level: str | None = None
             if rerun is None:
                 plan = await self._plan(seq, inputs, pinned, task_plan, last_round)
                 stage = plan.stage
+                triage_level = plan.triage_level
                 round_entry: dict[str, Any] = {"seq": seq, "stage_goal": stage["goal"], "triage_level": plan.triage_level, "status": "running"}
                 if plan.task_plan:
                     task_plan = plan.task_plan
@@ -331,6 +343,8 @@ class TaskWorkflow:
                 rerun = None
                 round_entry = {"seq": seq, "stage_goal": stage["goal"], "status": "running"}
             self._state["rounds"].append(round_entry)
+            if self._events is not None:
+                await self._events.stage_started(seq, stage, triage_level)
 
             results = await self._run_stage(seq, stage, carried=carried, injections=injections)
             round_entry["cost_usd"] = round(self._stage_cost, 6)
@@ -338,6 +352,8 @@ class TaskWorkflow:
 
             round_entry["status"] = "reviewing"
             verdict, update = await self._review(seq, stage, results)
+            if self._events is not None:
+                await self._events.verdict(seq, verdict)
             kind = verdict["verdict"]
             round_entry["status"] = "completed"
             round_entry["verdict"] = kind
@@ -540,6 +556,7 @@ class TaskWorkflow:
         options = tuple(str(o) for o in esc.get("options") or HUMAN_REPLIES)
         timeout_s = (self._stage_policy or StagePolicy()).human_timeout_s
         qid = vd.REVIEW_QUESTION_ID
+        deadline = workflow.now() + timedelta(seconds=timeout_s)
         # 先登记再发问：问题刚发出就到的回复也会收下。
         self.expect_reply(qid, options)
         try:
@@ -551,7 +568,7 @@ class TaskWorkflow:
                     question_id=qid,
                     text=str(esc.get("question") or verdict["reason"]),
                     options=list(options),
-                    deadline=(workflow.now() + timedelta(seconds=timeout_s)).isoformat(),
+                    deadline=deadline.isoformat(),
                     state_summary=str(esc.get("state_summary") or ""),
                     round_seq=seq,
                 ),
@@ -568,6 +585,8 @@ class TaskWorkflow:
         except asyncio.CancelledError:
             self.forget_reply(qid)
             raise
+        if self._events is not None:
+            await self._events.human_input_required(seq, qid, "escalation", str(esc.get("question") or verdict["reason"]), options, deadline.isoformat())
         try:
             reply = await self.wait_for_reply(qid, options, timedelta(seconds=timeout_s))
         except asyncio.CancelledError:
@@ -617,6 +636,7 @@ class TaskWorkflow:
             t09=self._t09,
             budget_usd=self._input.budget.usd_micros / 1_000_000 if self._input.budget.usd_micros else None,
             spent_before_usd=round(sum(float(r.get("cost_usd") or 0) for r in self._state.get("rounds", [])), 6),
+            events=self._events,
         )
         runner = StageRunner(ctx, self)
         results = await runner.run(stage, carried=carried, injections=injections)

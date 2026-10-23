@@ -10,6 +10,7 @@
    sub_agent 在 SubAgentWorkflow 子工作流里跑独立上下文、只交回结果，默认只读；sub_task 嵌套一个完整的 Task 工作流，
    深度不超过 2。
 5. 汇集：结果按 Node id 排序后合并；下游只拿 result，rationale 不往下传。
+6. 进度事件（T-11b）：在顶层 Task 里，Stage 的顶层 Node 结束时推 node_finished，发出人工问题后推 human_input_required。
 
 叶子 Node（不挂 quality 的 model、program 节点）一开始就排队拿执行名额，名额按 Node 启动的先后发放，所以执行顺序
 与 Node id 的顺序一致；Hook 在名额内执行。组合 Node（quality、Goal）不占名额，由它们展开出的叶子去拿，不会死锁。
@@ -63,6 +64,7 @@ with workflow.unsafe.imports_passed_through():
     )
     from agentruntime_worker.workflows import stage_plan as sp
     from agentruntime_worker.workflows import timeouts
+    from agentruntime_worker.workflows.events import EventPublisher
     from agentruntime_worker.workflows.failures import caused_by_cancel, failure_class, failure_message
 
 # memo 里记下所属租户，与 Session 工作流启动 Task 时一致（libs/go-core adapters/temporal）。
@@ -196,6 +198,8 @@ class RunContext:
     # Task 的预算（美元，没有为 None）与之前各 Round 已花的钱：budget_check 用。
     budget_usd: float | None = None
     spent_before_usd: float = 0.0
+    # T-11b：只有顶层 Task 工作流的新运行有；顶层 Node 结束与发出人工问题时推送进度事件。子工作流里为 None。
+    events: EventPublisher | None = None
 
 
 @dataclass
@@ -231,6 +235,8 @@ class StageRunner:
         # T-09：本 Stage 开始时 Catalog 取不到的原因（这时整个 Stage 拒绝）；已经问过 Catalog 的模板（没登记的不再问）。
         self._catalog_error = ""
         self._asked_templates: set[str] = set()
+        # T-11b：顶层 DAG 的执行环境：它里面的 Node 结束时推送 node_finished。
+        self._top: _Env | None = None
 
     @property
     def policy(self) -> StagePolicy:
@@ -275,7 +281,8 @@ class StageRunner:
         if before.denied:
             return {n["id"]: _denied(_role(n), before.denied, status="skipped") for n in sorted(nodes, key=lambda n: n["id"])}
         kept = {n["id"]: carried[n["id"]] for n in nodes if n["id"] in carried}
-        results = await self._run_dag([n for n in nodes if n["id"] not in kept], _Env(results=dict(kept)))
+        self._top = _Env(results=dict(kept))
+        results = await self._run_dag([n for n in nodes if n["id"] not in kept], self._top)
         results = {**kept, **results}
         after = await self._hooks("after_stage", after_hooks, {**subject, "results": {k: v.status for k, v in sorted(results.items())}})
         if after.denied:
@@ -421,6 +428,7 @@ class StageRunner:
                         failed_dep = next((d for d in deps if done[d].status != "succeeded"), None)
                         if failed_dep is not None:
                             done[nid] = StageResult(role=_role(node), status="skipped", failure_class="upstream_failed", error=f"上游 {failed_dep} 没有成功")
+                            await self._node_finished(env, nid, done[nid])
                         else:
                             running[nid] = asyncio.create_task(self._run_node(node, env))
                 if not running:
@@ -428,6 +436,7 @@ class StageRunner:
                 await workflow.wait(list(running.values()), return_when=asyncio.FIRST_COMPLETED)
                 for nid in sorted(k for k, t in running.items() if t.done()):
                     done[nid] = running.pop(nid).result()
+                    await self._node_finished(env, nid, done[nid])
         except asyncio.CancelledError:
             for task in running.values():
                 task.cancel()
@@ -435,6 +444,11 @@ class StageRunner:
                 await workflow.wait(list(running.values()))
             raise
         return {n["id"]: done[n["id"]] for n in nodes if n["id"] in done}
+
+    async def _node_finished(self, env: _Env, node_id: str, result: StageResult) -> None:
+        """T-11b：顶层 DAG 里的 Node 结束时推送 node_finished；展开出的子 Node 不推。"""
+        if self._ctx.events is not None and env is self._top:
+            await self._ctx.events.node_finished(self._ctx.round_seq, node_id, result)
 
     async def _gather(self, coros: list[Awaitable[Any]]) -> list[Any]:
         """并发执行，结果按传入的顺序返回；取消时一并取消。"""
@@ -578,9 +592,12 @@ class StageRunner:
             return StageResult(role=role, status="succeeded", result=(outcome.output or {}).get("result"))
         return StageResult(role=role, status="unknown", error=outcome.reason or "写操作结果未知")
 
-    async def _ask_and_wait(self, question_id: str, text: str, options: tuple[str, ...], timeout_s: int) -> tuple[task_pb2.HumanReplySignal | None, str]:
+    async def _ask_and_wait(
+        self, question_id: str, text: str, options: tuple[str, ...], timeout_s: int, *, kind: str
+    ) -> tuple[task_pb2.HumanReplySignal | None, str]:
         """经 HumanChannel 发出问题，再等 human_reply 信号；等待有持久化定时器，超时或取消时撤回问题。
-        返回 (回复, 错误)；超时时回复为 None。S-05 之前的历史没有发问与定时器，按旧路径回放。"""
+        返回 (回复, 错误)；超时时回复为 None。S-05 之前的历史没有发问与定时器，按旧路径回放。
+        问题发出之后、开始等之前推送 human_input_required（T-11b）；kind 是问题的来源：human、approval、tool_approval。"""
         assert self._human is not None
         if not workflow.patched(HUMAN_CHANNEL_PATCH):
             return await self._human.wait_for_reply(question_id, options), ""
@@ -616,6 +633,8 @@ class StageRunner:
             if early:
                 self._human.forget_reply(question_id)
             raise
+        if self._ctx.events is not None:
+            await self._ctx.events.human_input_required(self._ctx.round_seq, question_id, kind, text, options, deadline.isoformat())
         try:
             reply = await self._human.wait_for_reply(question_id, options, timedelta(seconds=timeout_s))
         except asyncio.CancelledError:
@@ -643,7 +662,7 @@ class StageRunner:
         options = tuple(str(o) for o in inputs.get("options", ()))
         timeout_s = int(inputs.get("timeout_s") or self.policy.human_timeout_s)
         text = str(inputs.get("question") or f"请处理 {node['id']}")
-        reply, error = await self._ask_and_wait(node["id"], text, options, timeout_s)
+        reply, error = await self._ask_and_wait(node["id"], text, options, timeout_s, kind="human")
         if error:
             return _failed(role, error)
         if reply is None:
@@ -660,7 +679,7 @@ class StageRunner:
         gate_id = sp.child_id(node["id"], 1)
         timeout_s = self.policy.approval_timeout_s
         text = f"批准执行 {node['id']}（{node.get('template', '')}）吗？这是不可撤销的写操作。"
-        reply, error = await self._ask_and_wait(gate_id, text, sp.APPROVAL_OPTIONS, timeout_s)
+        reply, error = await self._ask_and_wait(gate_id, text, sp.APPROVAL_OPTIONS, timeout_s, kind="approval")
         if error:
             return None, error
         if reply is None:
@@ -1042,7 +1061,7 @@ class StageRunner:
         gate_id = sp.child_id(call_id, 1)
         args = json.dumps(step.args, ensure_ascii=False, sort_keys=True)
         text = f"批准调用 {step.tool} 吗？参数：{args}。这是不可撤销的操作。"
-        reply, error = await self._ask_and_wait(gate_id, text, sp.APPROVAL_OPTIONS, self.policy.approval_timeout_s)
+        reply, error = await self._ask_and_wait(gate_id, text, sp.APPROVAL_OPTIONS, self.policy.approval_timeout_s, kind="tool_approval")
         if error:
             return None, {}, error
         if reply is None:

@@ -47,6 +47,7 @@ func Register(r worker.Registry, cfg Config, acts *Activities) {
 	r.RegisterWorkflowWithOptions(NewWorkflow(cfg), workflow.RegisterOptions{Name: WorkflowName})
 	r.RegisterActivityWithOptions(acts.AcceptTask, activity.RegisterOptions{Name: AcceptTaskActivity})
 	r.RegisterActivityWithOptions(acts.FinishTask, activity.RegisterOptions{Name: FinishTaskActivity})
+	r.RegisterActivityWithOptions(acts.PublishTaskEvent, activity.RegisterOptions{Name: PublishTaskEventActivity})
 }
 
 // childOptions 是 Task 子工作流的启动参数：ID 为 task_id，投到 task 队列，父工作流关闭或续接时不连带关闭，

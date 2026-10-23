@@ -30,4 +30,7 @@ const (
 const (
 	AcceptTaskActivity = "AcceptTask"
 	FinishTaskActivity = "FinishTask"
+	// PublishTaskEventActivity 是跨语言的 activity：Python 的 Task 工作流把进度事件交给 Session 的 Worker（T-11b），
+	// 名字取自 names.proto 的 ActivityName。
+	PublishTaskEventActivity = "publish_task_event"
 )

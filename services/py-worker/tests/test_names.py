@@ -16,6 +16,8 @@ from .support import SCHEMAS_DIR
 
 
 def wire_name(enum: str, value: str) -> str:
+    if enum not in names_pb2.DESCRIPTOR.enum_types_by_name:
+        pytest.fail(f"契约中还没有枚举 {enum}：需要按 S-01 流程加入 names.proto", pytrace=False)
     descriptor = names_pb2.DESCRIPTOR.enum_types_by_name[enum]
     if value not in descriptor.values_by_name:
         pytest.fail(f"契约中还没有 {enum}.{value}：需要按 S-01 流程加入 names.proto", pytrace=False)
@@ -34,6 +36,9 @@ def wire_name(enum: str, value: str) -> str:
         ("SignalName", "SIGNAL_NAME_TASK_FINISHED", names.TASK_FINISHED_SIGNAL),
         ("QueryName", "QUERY_NAME_TASK_STATE", names.TASK_STATE_QUERY),
         ("TaskQueue", "TASK_QUEUE_TASK", names.TASK_QUEUE),
+        ("TaskQueue", "TASK_QUEUE_SESSION", names.SESSION_QUEUE),
+        # T-11b：Task 工作流推送进度事件的跨语言 activity。
+        ("ActivityName", "ACTIVITY_NAME_PUBLISH_TASK_EVENT", names.PUBLISH_TASK_EVENT),
         ("TaskQueue", "TASK_QUEUE_DECISION", names.DECISION_QUEUE),
         ("TaskQueue", "TASK_QUEUE_MODEL", names.MODEL_QUEUE),
         ("TaskQueue", "TASK_QUEUE_PROGRAM", names.PROGRAM_QUEUE),

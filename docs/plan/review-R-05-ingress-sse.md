@@ -100,4 +100,6 @@ task-service 这一侧没有工作流代码的改动问题；人工回复在 Tas
    `task.approve` scope 的用户；否则 PermissionDenied（code `not_task_owner`），请求不触达 DurableEngine。查询仍对同租户开放。
    迁移之前提交的 Task 没有提交者，只接受带 scope 的用户。开发令牌加可选的 scope（载荷键 `s`）：`task-service dev-token --scope task.approve`。
    没覆盖：经 HumanChannel 送回的回复（开发实现是 Worker 控制台）不经 Task API，不受这条约束，回复人以通道给出的为准。
-4. 进度事件推流（D10）单列为 TMP 计划的 T-11b，排在 T-13 之前。
+4. 进度事件推流（D10）单列为 TMP 计划的 T-11b，排在 T-13 之前。已完成（2026-10-23）：round_started、stage_started、
+   node_finished、human_input_required、verdict 经跨语言 activity `publish_task_event` 交给 Session Worker 推进 SSE，细节见 TMP 计划
+   T-11b 的结果。1.1“推什么”一项的思考过程、工具状态与 token 增量仍未处理，已登记。

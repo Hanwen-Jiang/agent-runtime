@@ -52,3 +52,12 @@ enum TaskQueue {
   // Learning Pipeline 与记忆提炼。
   TASK_QUEUE_OFFLINE = 6 [(agentruntime.common.v1.wire_name) = "offline"];
 }
+
+// ActivityName：跨语言调用的 activity。只在一种语言里用的 activity 不列在这里。
+enum ActivityName {
+  ACTIVITY_NAME_UNSPECIFIED = 0;
+  // Python 的 Task 工作流把进度事件交给 Go 的 Session Worker（session 队列）：分配 event_id 并推进 Cache，
+  // 客户端经 SSE 收到（设计书 4.14）。参数依次是 TenantContext、去重键（string）与 taskapi.v1.TaskEvent，
+  // 返回分配的 event_id（int64）；Task 已经结束时丢弃，返回 0。载荷的 schema 是 /schemas/task_event_payload.schema.json。
+  ACTIVITY_NAME_PUBLISH_TASK_EVENT = 1 [(agentruntime.common.v1.wire_name) = "publish_task_event"];
+}

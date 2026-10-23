@@ -42,6 +42,8 @@ func TestNamesMatchContract(t *testing.T) {
 		{"SignalName", "SIGNAL_NAME_HUMAN_REPLY", SignalHumanReply},
 		{"TaskQueue", "TASK_QUEUE_SESSION", SessionTaskQueue},
 		{"TaskQueue", "TASK_QUEUE_TASK", TaskTaskQueue},
+		// T-11b：Task 工作流推送进度事件的跨语言 activity。
+		{"ActivityName", "ACTIVITY_NAME_PUBLISH_TASK_EVENT", PublishTaskEventActivity},
 	}
 	for _, c := range cases {
 		t.Run(c.value, func(t *testing.T) {

@@ -252,6 +252,56 @@ func (TaskQueue) EnumDescriptor() ([]byte, []int) {
 	return file_agentruntime_workflow_v1_names_proto_rawDescGZIP(), []int{3}
 }
 
+// ActivityName：跨语言调用的 activity。只在一种语言里用的 activity 不列在这里。
+type ActivityName int32
+
+const (
+	ActivityName_ACTIVITY_NAME_UNSPECIFIED ActivityName = 0
+	// Python 的 Task 工作流把进度事件交给 Go 的 Session Worker（session 队列）：分配 event_id 并推进 Cache，
+	// 客户端经 SSE 收到（设计书 4.14）。参数依次是 TenantContext、去重键（string）与 taskapi.v1.TaskEvent，
+	// 返回分配的 event_id（int64）；Task 已经结束时丢弃，返回 0。载荷的 schema 是 /schemas/task_event_payload.schema.json。
+	ActivityName_ACTIVITY_NAME_PUBLISH_TASK_EVENT ActivityName = 1
+)
+
+// Enum value maps for ActivityName.
+var (
+	ActivityName_name = map[int32]string{
+		0: "ACTIVITY_NAME_UNSPECIFIED",
+		1: "ACTIVITY_NAME_PUBLISH_TASK_EVENT",
+	}
+	ActivityName_value = map[string]int32{
+		"ACTIVITY_NAME_UNSPECIFIED":        0,
+		"ACTIVITY_NAME_PUBLISH_TASK_EVENT": 1,
+	}
+)
+
+func (x ActivityName) Enum() *ActivityName {
+	p := new(ActivityName)
+	*p = x
+	return p
+}
+
+func (x ActivityName) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ActivityName) Descriptor() protoreflect.EnumDescriptor {
+	return file_agentruntime_workflow_v1_names_proto_enumTypes[4].Descriptor()
+}
+
+func (ActivityName) Type() protoreflect.EnumType {
+	return &file_agentruntime_workflow_v1_names_proto_enumTypes[4]
+}
+
+func (x ActivityName) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ActivityName.Descriptor instead.
+func (ActivityName) EnumDescriptor() ([]byte, []int) {
+	return file_agentruntime_workflow_v1_names_proto_rawDescGZIP(), []int{4}
+}
+
 var File_agentruntime_workflow_v1_names_proto protoreflect.FileDescriptor
 
 const file_agentruntime_workflow_v1_names_proto_rawDesc = "" +
@@ -280,7 +330,10 @@ const file_agentruntime_workflow_v1_names_proto_rawDesc = "" +
 	"\x13TASK_QUEUE_DECISION\x10\x03\x1a\f\x92\xb5\x18\bdecision\x12\x1f\n" +
 	"\x10TASK_QUEUE_MODEL\x10\x04\x1a\t\x92\xb5\x18\x05model\x12#\n" +
 	"\x12TASK_QUEUE_PROGRAM\x10\x05\x1a\v\x92\xb5\x18\aprogram\x12#\n" +
-	"\x12TASK_QUEUE_OFFLINE\x10\x06\x1a\v\x92\xb5\x18\aofflineB\x84\x02\n" +
+	"\x12TASK_QUEUE_OFFLINE\x10\x06\x1a\v\x92\xb5\x18\aoffline*k\n" +
+	"\fActivityName\x12\x1d\n" +
+	"\x19ACTIVITY_NAME_UNSPECIFIED\x10\x00\x12<\n" +
+	" ACTIVITY_NAME_PUBLISH_TASK_EVENT\x10\x01\x1a\x16\x92\xb5\x18\x12publish_task_eventB\x84\x02\n" +
 	"\x1ccom.agentruntime.workflow.v1B\n" +
 	"NamesProtoP\x01ZVgithub.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1;workflowv1\xa2\x02\x03AWX\xaa\x02\x18Agentruntime.Workflow.V1\xca\x02\x18Agentruntime\\Workflow\\V1\xe2\x02$Agentruntime\\Workflow\\V1\\GPBMetadata\xea\x02\x1aAgentruntime::Workflow::V1b\x06proto3"
 
@@ -296,12 +349,13 @@ func file_agentruntime_workflow_v1_names_proto_rawDescGZIP() []byte {
 	return file_agentruntime_workflow_v1_names_proto_rawDescData
 }
 
-var file_agentruntime_workflow_v1_names_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_agentruntime_workflow_v1_names_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
 var file_agentruntime_workflow_v1_names_proto_goTypes = []any{
 	(WorkflowType)(0), // 0: agentruntime.workflow.v1.WorkflowType
 	(SignalName)(0),   // 1: agentruntime.workflow.v1.SignalName
 	(QueryName)(0),    // 2: agentruntime.workflow.v1.QueryName
 	(TaskQueue)(0),    // 3: agentruntime.workflow.v1.TaskQueue
+	(ActivityName)(0), // 4: agentruntime.workflow.v1.ActivityName
 }
 var file_agentruntime_workflow_v1_names_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -321,7 +375,7 @@ func file_agentruntime_workflow_v1_names_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agentruntime_workflow_v1_names_proto_rawDesc), len(file_agentruntime_workflow_v1_names_proto_rawDesc)),
-			NumEnums:      4,
+			NumEnums:      5,
 			NumMessages:   0,
 			NumExtensions: 0,
 			NumServices:   0,

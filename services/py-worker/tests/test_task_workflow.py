@@ -35,6 +35,7 @@ from agentruntime_worker.activities.types import PlanRoundInput, ReviewRoundInpu
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.worker import QUEUE_COMPONENTS, build_workers
 
+from .stage_harness import Script
 from .support import assert_valid, task_input
 
 pytestmark = [pytest.mark.temporal, pytest.mark.asyncio(loop_scope="session")]
@@ -165,8 +166,10 @@ async def harness(temporal_env: WorkflowEnvironment, tmp_path: Path) -> AsyncIte
     stubs = RecordingStubs(config)
     client = temporal_env.client
     # 按 Worker 启动入口的登记方式：每个队列登记 QUEUE_COMPONENTS 列出的工作流与 activity（含 local activity）。
+    # Session 队列上另有进度事件的替身（T-11b：真实的在 Go 的 Session Worker）。
+    events = Script()
     workers = [
-        Worker(client, task_queue=SESSION_QUEUE, workflows=[StandInSession]),
+        Worker(client, task_queue=SESSION_QUEUE, workflows=[StandInSession], activities=[events.publish_task_event]),
         *build_workers(client, config, list(QUEUE_COMPONENTS), stubs=stubs),
     ]
     h = Harness(client, stubs, config)

@@ -126,6 +126,8 @@ async def exec_harness(temporal_env: WorkflowEnvironment, tmp_path: Path) -> Asy
         ),
         Worker(client, task_queue=names.MODEL_QUEUE, activities=[ex.execute_model_node, script.tool_loop_step]),
         Worker(client, task_queue=names.PROGRAM_QUEUE, activities=[ex.execute_program_node, ex.reconcile_node, script.call_tool]),
+        # T-11b：进度事件交给 Session Worker；这里用脚本的替身记下。
+        Worker(client, task_queue=names.SESSION_QUEUE, activities=[script.publish_task_event]),
     ]
     h = ExecHarness(client, script, fx, switch_holder[0])
     async with contextlib.AsyncExitStack() as stack:

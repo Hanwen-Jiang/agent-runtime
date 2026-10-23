@@ -1,0 +1,130 @@
+{
+  "schema": "task_event_payload",
+  "valid": [
+    {
+      "name": "round_started",
+      "source": "T-11b 决定 D4；设计书 4.14",
+      "notes": "",
+      "instance": {"event": "round_started", "round_seq": 1, "rerun": false}
+    },
+    {
+      "name": "stage_started_full",
+      "source": "T-11b 决定 D4；附录 B.3 图 34 Stage 1",
+      "notes": "节点清单只有 id、kind 与 role。",
+      "instance": {
+        "event": "stage_started",
+        "round_seq": 1,
+        "triage_level": "full",
+        "goal": "按地区与 SKU 拆解退款率",
+        "exit_when": "三个查询都返回",
+        "nodes": [
+          {"id": "q_region", "kind": "atomic", "role": "fetch"},
+          {"id": "q_sku", "kind": "atomic", "role": "fetch"},
+          {"id": "read_tickets", "kind": "goal"}
+        ]
+      }
+    },
+    {
+      "name": "stage_started_rerun",
+      "source": "T-11b 决定 D4：重跑不经 Planner，没有 triage_level",
+      "notes": "",
+      "instance": {"event": "stage_started", "round_seq": 2, "goal": "按地区与 SKU 拆解退款率", "exit_when": "三个查询都返回", "nodes": [{"id": "q_sku", "kind": "atomic", "role": "fetch"}]}
+    },
+    {
+      "name": "node_finished_failed",
+      "source": "T-11b 决定 D4；附录 D.6",
+      "notes": "",
+      "instance": {"event": "node_finished", "round_seq": 1, "node_id": "q_sku", "role": "fetch", "status": "failed", "failure_class": "transient", "error": "查询超时"}
+    },
+    {
+      "name": "node_finished_skipped",
+      "source": "T-11b 决定 D7：因上游没成功而跳过的也报",
+      "notes": "",
+      "instance": {"event": "node_finished", "round_seq": 1, "node_id": "write_report", "role": "deliver", "status": "skipped", "failure_class": "upstream_failed", "error": "上游 q_sku 没有成功"}
+    },
+    {
+      "name": "human_input_required_approval",
+      "source": "T-11b 决定 D8；附录 F.3 write_irreversible 前的人工审批",
+      "notes": "",
+      "instance": {
+        "event": "human_input_required",
+        "round_seq": 1,
+        "question_id": "pay_ticket.1",
+        "kind": "approval",
+        "text": "批准执行 pay_ticket（book_and_pay@v1）吗？这是不可撤销的写操作。",
+        "options": ["approve", "reject"],
+        "deadline": "2026-10-23T09:30:00+00:00"
+      }
+    },
+    {
+      "name": "human_input_required_escalation",
+      "source": "T-11b 决定 D8；设计书 4.11",
+      "notes": "",
+      "instance": {
+        "event": "human_input_required",
+        "round_seq": 3,
+        "question_id": "_review",
+        "kind": "escalation",
+        "text": "最便宜的一班不可退改，要订吗？",
+        "options": ["continue_as_is", "replan_with_guidance", "stop_and_wrap_up"],
+        "deadline": "2026-10-23T10:00:00Z"
+      }
+    },
+    {
+      "name": "verdict_continue",
+      "source": "T-11b 决定 D4；附录 B.4",
+      "notes": "",
+      "instance": {"event": "verdict", "round_seq": 1, "verdict": "continue", "reason": "三个查询都已返回；华东异常，下一步归因"}
+    }
+  ],
+  "invalid": [
+    {
+      "name": "unknown_event",
+      "description": "event 只有五种进度事件；task_accepted、task_finished 不用这个 schema",
+      "violates": [{"path": "/event", "keyword": "enum"}],
+      "instance": {"event": "task_finished", "round_seq": 1}
+    },
+    {
+      "name": "node_finished_with_result",
+      "description": "进度事件不带 Node 的结果",
+      "violates": [{"path": "/result", "keyword": "not"}],
+      "instance": {"event": "node_finished", "round_seq": 1, "node_id": "q_region", "role": "fetch", "status": "succeeded", "result": {"rows": 12}}
+    },
+    {
+      "name": "node_finished_with_rationale",
+      "description": "rationale 只进 trace",
+      "violates": [{"path": "/rationale", "keyword": "not"}],
+      "instance": {"event": "node_finished", "round_seq": 1, "node_id": "q_region", "role": "fetch", "status": "succeeded", "rationale": "先查华东"}
+    },
+    {
+      "name": "node_finished_still_running",
+      "description": "node_finished 只报结束时的状态",
+      "violates": [{"path": "/status", "keyword": "enum"}],
+      "instance": {"event": "node_finished", "round_seq": 1, "node_id": "q_region", "role": "fetch", "status": "running"}
+    },
+    {
+      "name": "question_without_options",
+      "description": "等待人工回复的事件要给出可选的回复",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {"event": "human_input_required", "round_seq": 1, "question_id": "confirm", "kind": "human", "text": "继续吗？", "deadline": "2026-10-23T09:30:00Z"}
+    },
+    {
+      "name": "unknown_question_kind",
+      "description": "问题只有四种来源",
+      "violates": [{"path": "/kind", "keyword": "enum"}],
+      "instance": {"event": "human_input_required", "round_seq": 1, "question_id": "confirm", "kind": "chat", "text": "继续吗？", "options": ["approve"], "deadline": "2026-10-23T09:30:00Z"}
+    },
+    {
+      "name": "round_zero",
+      "description": "Round 从 1 开始",
+      "violates": [{"path": "/round_seq", "keyword": "minimum"}],
+      "instance": {"event": "round_started", "round_seq": 0, "rerun": false}
+    },
+    {
+      "name": "verdict_old_term",
+      "description": "Verdict 只用附录 A 的取值",
+      "violates": [{"path": "/verdict", "keyword": "enum"}],
+      "instance": {"event": "verdict", "round_seq": 1, "verdict": "retry", "reason": "再试一次"}
+    }
+  ]
+}
