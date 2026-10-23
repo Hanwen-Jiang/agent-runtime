@@ -204,6 +204,10 @@
   go、python、py-worker、e2e）调用它，合起来恰好是 pr 档；工具版本与夜间任务一致，缺工具即失败，JUnit 报告总是上传。夜间任务不变。
   登记到后续：本地拉起整套（Temporal、task-service、Worker）的脚本放到 T-13；夜间任务里时好时坏的
   `test_duplicate_task_finished_does_not_release_the_write_lock_twice`（Session 工作流 UnhandledCommand）另查。
+  查明（2026-10-23）：Session 工作流要 Continue-As-New 时恰好收到重复的 task_finished 信号，服务端以 UNHANDLED_COMMAND
+  拒绝这次结束命令，工作流处理完信号后重试成功；功能断言都通过，只是事件历史检查把这次被拒算成异常。工作流本身不改；
+  `tests/e2e/e2e_support/history.py` 只放行 UNHANDLED_COMMAND 且之后有工作流任务成功完成、这次运行正常结束（completed 或
+  continued_as_new）的 WorkflowTaskFailed，其余照旧失败；规则的测试在 `tests/e2e/test_history_rules.py`（不需要端到端环境）。
 
 **T-15 Helm 与 KEDA、Telemetry**　中档 · 低
 - 能 `helm template` 出合法的清单即可，不要求真部署。Telemetry 打点与 Collector 配置补齐。

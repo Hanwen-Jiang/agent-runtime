@@ -2,7 +2,9 @@
 
 一份历史“无异常”指：
 
-1. 没有 WorkflowTaskFailed：工作流代码没有抛异常、没有不确定性错误。
+1. 没有 WorkflowTaskFailed：工作流代码没有抛异常、没有不确定性错误。唯一的例外是 UNHANDLED_COMMAND：工作流要结束
+   （完成或 Continue-As-New）时恰好来了新事件（例如信号），服务端拒绝这次结束命令，让工作流先处理新事件再重试。
+   只有之后有工作流任务成功完成、且这次运行正常结束（completed 或 continued_as_new）时才放行。
 2. 只有 Worker 被杀过时才允许 WorkflowTaskTimedOut（被杀的 Worker 手里的工作流任务超时后转给别的 Worker）。
 3. 工作流以预期的方式结束（或预期仍在运行，例如 Session 工作流）。
 4. 每个调度过的 activity 都有结局；失败或超时的只能是用例预期的那些。
@@ -27,10 +29,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from temporalio.api.enums.v1 import EventType
+from temporalio.api.enums.v1 import EventType, WorkflowTaskFailedCause
 from temporalio.client import Client, WorkflowExecutionStatus, WorkflowHistory
 
 MAX_EVENTS = 2000
+UNHANDLED_COMMAND = WorkflowTaskFailedCause.WORKFLOW_TASK_FAILED_CAUSE_UNHANDLED_COMMAND
+NORMAL_CLOSES = ("completed", "continued_as_new")
 DECISION_ACTIVITIES = ("plan_round", "review_round", "finalize_task")
 CLOSE_EVENTS = {
     "WORKFLOW_EXECUTION_COMPLETED": "completed",
@@ -71,6 +75,16 @@ class ActivityRecord:
 
 
 @dataclass
+class WorkflowTaskFailure:
+    cause: int
+    message: str
+    retried: bool = False  # 之后有工作流任务成功完成
+
+    def __str__(self) -> str:
+        return f"{self.cause}: {self.message}"
+
+
+@dataclass
 class HistoryReport:
     workflow_id: str
     run_id: str
@@ -78,11 +92,21 @@ class HistoryReport:
     events: list[str]
     close: str | None
     activities: list[ActivityRecord] = field(default_factory=list)
-    workflow_task_failures: list[str] = field(default_factory=list)
+    workflow_task_failed: list[WorkflowTaskFailure] = field(default_factory=list)
     workflow_task_timeouts: int = 0
     signals: list[str] = field(default_factory=list)
     timers_fired: int = 0
     max_payload_bytes: int = 0
+
+    @property
+    def workflow_task_failures(self) -> list[str]:
+        """每一次 WorkflowTaskFailed，含放行的 UNHANDLED_COMMAND。"""
+        return [str(f) for f in self.workflow_task_failed]
+
+    def unexpected_workflow_task_failures(self) -> list[str]:
+        """按模块文档第 1 条算作异常的 WorkflowTaskFailed。"""
+        benign = self.close in NORMAL_CLOSES
+        return [str(f) for f in self.workflow_task_failed if not (benign and f.cause == UNHANDLED_COMMAND and f.retried)]
 
     def scheduled(self, activity_type: str, node_id: str | None = None) -> list[ActivityRecord]:
         return [a for a in self.activities if a.activity_type == activity_type and (node_id is None or a.node_id == node_id)]
@@ -141,7 +165,10 @@ def analyze(history: WorkflowHistory) -> HistoryReport:
             record.failure = failure.message if failure is not None else ""
         elif name == "WORKFLOW_TASK_FAILED":
             attrs = event.workflow_task_failed_event_attributes
-            report.workflow_task_failures.append(f"{attrs.cause}: {attrs.failure.message}")
+            report.workflow_task_failed.append(WorkflowTaskFailure(cause=attrs.cause, message=attrs.failure.message))
+        elif name == "WORKFLOW_TASK_COMPLETED":
+            for failure in report.workflow_task_failed:
+                failure.retried = True
         elif name == "WORKFLOW_TASK_TIMED_OUT":
             report.workflow_task_timeouts += 1
         elif name == "WORKFLOW_EXECUTION_SIGNALED":
@@ -174,7 +201,8 @@ def assert_clean(
 ) -> None:
     """按模块文档的 1 至 6 条检查一份历史。close 为 None 表示工作流应仍在运行。"""
     where = f"{report.workflow_type} {report.workflow_id}"
-    assert not report.workflow_task_failures, f"{where} 有 WorkflowTaskFailed：{report.workflow_task_failures}"
+    failed = report.unexpected_workflow_task_failures()
+    assert not failed, f"{where} 有 WorkflowTaskFailed：{failed}"
     if not worker_restarted:
         assert report.workflow_task_timeouts == 0, f"{where} 没杀过 Worker，却有 {report.workflow_task_timeouts} 次 WorkflowTaskTimedOut"
     assert report.close == close, f"{where} 应以 {close} 结束，实际 {report.close}"
