@@ -107,3 +107,24 @@ G.6 的指标（压缩后的成功率、重复操作率、缓存命中率、每�
 **登记到后续**（T-17 时写进 `docs/reference/risks-and-open-questions.md`）：model 节点接 Context Builder；effective_ctx 进 Model Profile
 （改 schema，走 S-01）并按 Task 固定主模型（R-02）；token 估算按实际 input_tokens 校准；reset 的质量触发与 G.4 按目标切换摘要模型；
 运行时指标；`summary.json` 改条件写入。
+
+## 5. 处理结果（2026-10-23）
+
+人确认了决定 D6–D8、D11–D13。验收测试先行：`services/py-worker/tests/test_context_r03.py`、`test_context_read.py`，以及
+`test_context_summary.py` 里新增的三条。
+
+1. Goal Node 的输入超过 offload_tokens 时写进 `context/<task>/r<round>/<node>/inputs.json`，brief 里只留路径与 400 字符的摘录（算作 offload）；
+   小的输入照旧原样写。
+2. 精确状态单独成段（【精确状态】），放在 history 之后、status 之前，不受 status 500 token 的上限截断。它自己的上限是
+   `ContextConfig.state_tokens`（1500）：超出时按 Task State 的顺序放到上限为止，注明“另有 N 条”与完整 Task State 的路径
+   （`…/task-state.json`）。status 只留进度、补回的事实、最近的动作与错误、下一步。两条旧测试按新布局改了取消息的位置
+   （`test_exact_state_comes_from_the_task_state_not_the_summary`、`test_the_prefix_is_byte_stable_while_history_grows`）。
+3. `ContextRequest.tools`：工具定义计入阈值与 `BuiltContext.tokens`；tool_loop 先取工具定义，同一份交给 Context Builder 与 Model Gateway。
+4. 按需取回（D11）：平台内工具 `context_read`（read）总是登记，按 obj:// 路径读本租户 `context/` 与 `node-results/` 下的对象，长内容按
+   offset 分段；别的租户的路径 not_found，别的前缀 denied。Context Builder 外置的内容与它读同一个 ObjectStore（`tools.context_objects`）。
+   真正的 Planner 在 plan_round 里给每个 tool_loop 的 Goal Node 追加它（已登记、且这个 Goal 的 effect 上限允许 read 时）；只在 activity 里加，
+   Stage Runner 与工作流不变。没覆盖：ToolInvocation 不带 task_id，只能限到租户，读得到同租户别的 Task 的上下文对象；桩 Planner 与
+   Recipe 在 Stage Runner 里展开出的 Goal Node 不加。
+5. 持久摘要（D13）：当前的“未决”“下一步”交给摘要模型，按这一段的进展更新（解决的去掉、仍成立的保留、新的加上），合并时以最新一次替换；
+   意图、决策、产物仍只追加，也不交给模型。只替换不交给模型会丢掉早先仍未解决的问题，所以两件事一起做。S-11 的真模型评测等额度补上后重跑。
+6. history 的滚动断点（D12）：等 T-13 用真模型看到缓存命中率再定，G.1 暂不改。

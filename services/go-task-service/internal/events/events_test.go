@@ -39,13 +39,26 @@ func tenant(id string) *commonv1.TenantContext {
 
 type sseFixture struct {
 	t       *testing.T
+	clock   *testkit.FakeClock
 	cache   *memcache.Provider
 	ingress *localingress.Provider
 	store   *sqlitestore.Provider
 	url     string
 }
 
+// sseOptions 是 newSSEWith 的参数：limit 与 window 是 Ingress 每个（租户、路由）的限流，0 时用默认值。
+type sseOptions struct {
+	heartbeat time.Duration
+	limit     int
+	window    time.Duration
+}
+
 func newSSE(t *testing.T, heartbeat time.Duration) *sseFixture {
+	t.Helper()
+	return newSSEWith(t, sseOptions{heartbeat: heartbeat})
+}
+
+func newSSEWith(t *testing.T, o sseOptions) *sseFixture {
 	t.Helper()
 	clk := testkit.NewFakeClock()
 	c := memcache.New(memcache.Options{Clock: clk})
@@ -63,10 +76,10 @@ func newSSE(t *testing.T, heartbeat time.Duration) *sseFixture {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	ing := localingress.New(localingress.Options{SigningKey: []byte("sse-test-key"), Clock: clk})
-	hs := httptest.NewServer(NewHandler(HandlerDeps{Ingress: ing, Cache: c, Store: store, Heartbeat: heartbeat}))
+	ing := localingress.New(localingress.Options{SigningKey: []byte("sse-test-key"), Clock: clk, Limit: o.limit, Window: o.window})
+	hs := httptest.NewServer(NewHandler(HandlerDeps{Ingress: ing, Cache: c, Store: store, Heartbeat: o.heartbeat, Clock: clk}))
 	t.Cleanup(hs.Close)
-	return &sseFixture{t: t, cache: c, ingress: ing, store: store, url: hs.URL}
+	return &sseFixture{t: t, clock: clk, cache: c, ingress: ing, store: store, url: hs.URL}
 }
 
 func (f *sseFixture) append(typ taskapiv1.TaskEventType, payload map[string]any) int64 {

@@ -1,7 +1,8 @@
 """本地子进程 Sandbox（开发实现，仅限开发环境）。语义见 agentruntime_core.providers.sandbox。
 
 每个环境一个工作目录：<root>/<作用域>/<env_id>/work。不提供网络隔离与资源上限，不能运行不可信代码。
-argv[0] 为 python 时换成当前解释器。
+argv[0] 为 python 时换成当前解释器。子进程只拿 _ENV 白名单里的环境变量（与平台内工具 shell_run 相同）：
+Worker 进程的密钥与 AR_* 配置不传给沙箱里的代码（设计书 4.12：节点代码永远拿不到长期密钥）。
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from agentruntime_core.tenancy import Scope, TenantContext, platform_scope, tena
 from agentruntime_core.testing import FaultInjector
 
 _DRIVE = re.compile(r"^[A-Za-z]:")
+_ENV = ("PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "COMSPEC", "TEMP", "TMP", "HOME", "LANG", "LC_ALL")
 
 
 @dataclass
@@ -92,7 +94,7 @@ class LocalSubprocessSandbox:
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+            env={**{k: os.environ[k] for k in _ENV if k in os.environ}, "PYTHONIOENCODING": "utf-8"},
         )
         try:
             stdout, stderr = await asyncio.wait_for(process.communicate(stdin), timeout=timeout.total_seconds())

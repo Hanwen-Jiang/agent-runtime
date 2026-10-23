@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -18,6 +19,8 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/agentruntime/agent-runtime/libs/go-core/clock"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/cache"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/ingress"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
@@ -89,13 +92,22 @@ type HandlerDeps struct {
 	Store   relational.Provider
 	// Heartbeat 是空闲时发注释行的间隔，防止代理断开连接；0 表示 15 秒。
 	Heartbeat time.Duration
+	// Clock 判断令牌是否过期；nil 时用系统时钟。
+	Clock clock.Clock
 }
 
-// NewHandler 返回 GET /v1/tasks/{task_id}/events 的处理器。先认证，再确认 Task 属于该租户，
-// 然后从 Last-Event-ID（请求头或 last_event_id 查询参数）之后开始推送，推完 task_finished 后结束。
+// routeStream 是 SSE 在 Ingress.Admit 里的限流维度，与提交、取消等路由分开计数。
+const routeStream = "stream_events"
+
+// NewHandler 返回 GET /v1/tasks/{task_id}/events 的处理器。先认证并按租户限流（超限 429，带 Retry-After），
+// 再确认 Task 属于该租户，然后从 Last-Event-ID（请求头或 last_event_id 查询参数）之后开始推送，推完 task_finished 后结束。
+// 令牌过期时结束这条流（每次心跳与每个事件之前检查），客户端带新令牌与 Last-Event-ID 重连。
 func NewHandler(d HandlerDeps) http.Handler {
 	if d.Heartbeat <= 0 {
 		d.Heartbeat = defaultHeartbeat
+	}
+	if d.Clock == nil {
+		d.Clock = clock.System{}
 	}
 	h := &handler{d: d, tasks: taskstore.New(d.Store)}
 	mux := http.NewServeMux()
@@ -123,6 +135,11 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthenticated", http.StatusUnauthorized)
 		return
 	}
+	if err := h.d.Ingress.Admit(ctx, id, routeStream); err != nil {
+		admitError(w, err)
+		return
+	}
+	expired := func() bool { return !id.ExpiresAt.IsZero() && !h.d.Clock.Now().Before(id.ExpiresAt) }
 	taskID := r.PathValue("task_id")
 	if !ids.ValidTaskID(taskID) {
 		http.Error(w, "invalid task_id", http.StatusBadRequest)
@@ -195,12 +212,15 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			if expired() {
+				return
+			}
 			if _, err := fmt.Fprint(w, ": ping\n\n"); err != nil {
 				return
 			}
 			flush()
 		case it, ok := <-items:
-			if !ok || it.err != nil {
+			if !ok || it.err != nil || expired() {
 				return
 			}
 			ev, err := Decode(it.ev)
@@ -266,6 +286,20 @@ func (h *handler) serveFinished(ctx context.Context, w http.ResponseWriter, c ca
 		}
 	}
 	flush()
+}
+
+// admitError 把 Admit 的错误写成响应：限流 429 并带 Retry-After（秒，至少 1），其他暂时性错误 503，其余 403。
+func admitError(w http.ResponseWriter, err error) {
+	var pe *providererr.Error
+	switch {
+	case errors.As(err, &pe) && pe.Category == providererr.Transient && pe.Code == "rate_limit":
+		w.Header().Set("Retry-After", strconv.Itoa(max(1, int(math.Ceil(pe.RetryAfter.Seconds())))))
+		http.Error(w, "rate limited", http.StatusTooManyRequests)
+	case providererr.CategoryOf(err) == providererr.Transient:
+		http.Error(w, "unavailable", http.StatusServiceUnavailable)
+	default:
+		http.Error(w, "permission denied", http.StatusForbidden)
+	}
 }
 
 // startStream 写 SSE 的响应头，返回 flush。

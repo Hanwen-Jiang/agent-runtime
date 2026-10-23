@@ -42,6 +42,44 @@ def test_merge_appends_without_rewriting() -> None:
     assert all(title in rendered for title in SECTION_TITLES.values()) and "12" in rendered
 
 
+def test_merge_replaces_open_and_next_with_the_latest_summary() -> None:
+    """R-03 评审 D13：未决与下一步写的是当时的状态，按最新一次摘要替换；意图、决策、产物仍只追加。"""
+    first = merge(empty(), delta(intent=["修复 test_checkout"], decisions=["先读 checkout 模块"], open=["时区断言失败"], next=["跑 make test"]))
+    second = merge(first, delta(decisions=["固定 tz 为 UTC"], artifacts=["src/checkout.py"], open=["fixtures 是否要更新"], next=["提交修复"]))
+    assert second["intent"] == ["修复 test_checkout"] and second["decisions"] == ["先读 checkout 模块", "固定 tz 为 UTC"]
+    assert second["artifacts"] == ["src/checkout.py"]
+    assert second["open"] == ["fixtures 是否要更新"] and second["next"] == ["提交修复"], "已解决的未决、做完的下一步不再留着"
+    assert merge(second, delta(decisions=["加回归测试"]))["open"] == [], "最新一次没有未决就是没有"
+
+
+def test_the_prompt_carries_the_current_open_and_next_for_updating() -> None:
+    carried = {"open": ["时区断言失败"], "next": ["跑 make test"]}
+    text = text_of(summary_prompt(history(5, chars=200)[3:], first_step=3, goal="g", policy=policy_for("coding"), carried=carried))
+    assert "时区断言失败" in text and "跑 make test" in text, "当前的未决与下一步交给模型，按这一段的进展更新"
+    plain = text_of(summary_prompt(history(5, chars=200)[3:], first_step=3, goal="g", policy=policy_for("coding")))
+    assert "时区断言失败" not in plain
+
+
+async def test_open_and_next_are_carried_into_the_next_summary_and_replaced(tmp_path: Path) -> None:
+    provider = objects(tmp_path)
+    gateway = ContextGateway(
+        summaries=[
+            delta(decisions=["第一段的决策"], open=["时区断言失败"], next=["跑 make test"]),
+            delta(decisions=["第二段的决策"], open=["fixtures 是否要更新"], next=["提交修复"]),
+        ]
+    )
+    b = ContextBuilder(gateway, provider, config(effective_tokens=4_000))
+    await b.build(request(history(40, chars=600)))
+    await b.build(request(history(70, chars=600)))
+    _, second = gateway.of("summary")
+    second_text = text_of(list(second.generation.messages))
+    assert "时区断言失败" in second_text and "跑 make test" in second_text
+    assert "第一段的决策" not in second_text, "决策等分区仍不交给模型重写"
+    stored = json.loads((await provider.bind(tenant_context(TENANT)).get(f"context/{TASK_ID}/r1/fix/summary.json")).data)["summary"]
+    assert stored["decisions"] == ["第一段的决策", "第二段的决策"]
+    assert stored["open"] == ["fixtures 是否要更新"] and stored["next"] == ["提交修复"]
+
+
 async def test_later_summaries_only_see_newly_truncated_steps(tmp_path: Path) -> None:
     provider = objects(tmp_path)
     gateway = ContextGateway(summaries=[delta(decisions=["第一段的决策"]), delta(decisions=["第二段的决策"])])

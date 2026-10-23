@@ -10,6 +10,7 @@ import pytest
 
 from agentruntime_core.errors import NotFoundError
 from agentruntime_worker.context.builder import ContextBuilder, tenant_context
+from agentruntime_worker.context.partitions import STATE_HEADER
 from agentruntime_worker.context.tokens import estimate
 
 from .context_support import (
@@ -126,11 +127,13 @@ async def test_repeated_actions_trigger_a_reset(tmp_path: Path) -> None:
 async def test_exact_state_comes_from_the_task_state_not_the_summary(tmp_path: Path) -> None:
     gateway = ContextGateway(summaries=[delta(intent=["修复 test_checkout"])])
     built = await builder(tmp_path, gateway, effective_tokens=4_000).build(request(history(40, chars=600)))
-    status = built.messages[-1].text
     assert "summarize" in built.applied
+    # R-03 评审 D7：精确状态单独成段（status 之前），不再挤在 status 的 500 token 里。
+    exact_block = built.messages[-2].text
+    assert exact_block.startswith(STATE_HEADER)
     for exact in ("6379", "obj://t1/artifacts/patch-checkout.diff", "fixtures/orders.json", "2.5"):
-        assert exact in status, f"status 区注入 Task State 的精确状态：{exact}"
-    assert estimate(status) <= 500
+        assert exact in exact_block, f"Task State 的精确状态注入上下文：{exact}"
+    assert estimate(built.messages[-1].text) <= 500
 
 
 async def test_every_model_call_carries_the_tenant(tmp_path: Path) -> None:

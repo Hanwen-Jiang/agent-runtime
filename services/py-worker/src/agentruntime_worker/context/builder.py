@@ -1,7 +1,8 @@
 """Context Builder 的组装与 Compaction Ladder（设计书 3.2.7；附录 G.1、G.2、G.5、G.6）。
 
 每次构建：
-1. offload：单条观察超过 offload_tokens 的，完整输出写进 ObjectStore，上下文里只留开头的摘录与路径。
+1. offload：单条观察超过 offload_tokens 的，完整输出写进 ObjectStore，上下文里只留开头的摘录与路径；Goal Node 的输入
+   超过 offload_tokens 的同样外置，brief 里只留路径与摘录（brief 不压缩，大输入会让阶梯压不下来）。
 2. mask：总量超过有效长度的 mask_at（默认 40%）时，最近 keep_recent 步以外的观察换成占位符：占位符带路径
    （完整输出先写进 ObjectStore）与工作模式要求精确保留的字段；工具报的错误不遮蔽。
 3. prune：清理旧轮次的思考内容。history 里本来就没有思考（rationale 只写入 trace），这一步什么也不做。
@@ -12,8 +13,12 @@
    只用 system、profile、brief、持久摘要与 status 开新上下文。摘要不成功就不 reset。
 summarize 或 reset 之后做 Compaction Probe（probe），答错的事实补回原文片段。
 
+精确状态（Task State）单独成段放在 history 之后、status 之前，不交给摘要，也不受 status 的上限截断；超过 state_tokens 时
+按顺序放到上限为止，其余注明条数，完整的 Task State 写进 ObjectStore 给出路径。
+
 阈值按模型实测的有效长度（effective_tokens）设，不按标称窗口；Task Plan 的 context.mask_at、summarize_at 覆盖默认值。
-持久摘要与外置的输出放在 ObjectStore（按租户绑定），键是 context/<task_id>/r<round>/<node_id>/…，同一步重复构建结果相同。
+计数算上随请求给出的工具定义（ContextRequest.tools）。
+持久摘要与外置的内容放在 ObjectStore（按租户绑定），键是 context/<task_id>/r<round>/<node_id>/…，同一步重复构建结果相同。
 每次模型调用都带租户上下文。
 """
 
@@ -35,7 +40,7 @@ from agentruntime_core.providers.object_store import ObjectStore, ObjectStorePro
 from agentruntime_worker.activities.types import Tenant
 from agentruntime_worker.context import summary as summaries
 from agentruntime_worker.context.modes import ModePolicy, policy_for
-from agentruntime_worker.context.partitions import Partitions
+from agentruntime_worker.context.partitions import STATE_HEADER, Partitions
 from agentruntime_worker.context.probe import ProbeResult, done_when_line, grade, select_facts, state_lines
 from agentruntime_worker.context.tokens import estimate, truncate
 from agentruntime_worker.executor.model_gateway import ModelGateway
@@ -69,6 +74,8 @@ class ContextConfig:
     reset_repeats: int = 3
     excerpt_chars: int = 400
     """外置或遮蔽时留在上下文里的摘录长度。"""
+    state_tokens: int = 1_500
+    """精确状态这一段的上限。"""
     summary_tier: str = "small@low"
     probe_tier: str = "small@low"
     probe: bool = True
@@ -91,6 +98,8 @@ class ContextRequest:
     profile: Sequence[str] = ()
     experiences: Sequence[str] = ()
     """检索到的经验（Memory Service 的注入文本），放进 brief。"""
+    tools: Sequence[mg.ToolSpec] = ()
+    """随请求给出的工具定义：不进 messages，但计入阈值。"""
 
 
 @dataclass
@@ -99,6 +108,7 @@ class BuiltContext:
     applied: list[str]
     """这次用到的阶梯步骤，按 LADDER 的顺序。"""
     tokens: int
+    """messages 加工具定义的 token 估算。"""
     probes: list[ProbeResult] = field(default_factory=list)
 
 
@@ -114,6 +124,10 @@ class _State:
     restored: list[str] = field(default_factory=list)
     recovered: list[str] = field(default_factory=list)
     """补进 status 的事实原文。"""
+    inputs_ref: str = ""
+    """Goal Node 的输入外置后的路径；没外置时为空。"""
+    precise: list[str] = field(default_factory=list)
+    """精确状态这一段的各行（超出上限时末行注明条数与路径）。"""
 
 
 def tenant_context(t: Tenant) -> tenant_pb2.TenantContext:
@@ -137,6 +151,10 @@ def message_tokens(messages: Sequence[mg.ChatMessage]) -> int:
         for call in m.tool_calls:
             total += estimate(call.name) + estimate(_json(json_format.MessageToDict(call.arguments)))
     return total
+
+
+def tool_tokens(tools: Sequence[mg.ToolSpec]) -> int:
+    return sum(estimate(t.name) + estimate(t.description) + estimate(_json(json_format.MessageToDict(t.params_schema))) + 4 for t in tools)
 
 
 def _repeated(steps: Sequence[Mapping[str, Any]], times: int) -> bool:
@@ -165,9 +183,14 @@ class ContextBuilder:
         prefix = f"context/{request.task_id}/r{request.round_seq}/{request.node['id']}"
         state = _State(steps=list(request.history))
         await self._load_summary(store, prefix, state)
+        await self._precise_state(request, store, prefix, state)
         applied: set[str] = set()
 
         if "offload" in cfg.steps:
+            inputs = request.node.get("inputs")
+            if inputs and estimate(_json(inputs)) > cfg.offload_tokens:
+                state.inputs_ref = await self._put(store, f"{prefix}/inputs.json", inputs)
+                applied.add("offload")
             for i in range(state.covered, len(state.steps)):
                 observation = state.steps[i].get("observation")
                 if observation is not None and estimate(_json(observation)) > cfg.offload_tokens:
@@ -205,11 +228,12 @@ class ContextBuilder:
             if failed:
                 self._restore(request, state, failed)
                 messages = self._assemble(request, mode, state)
-        return BuiltContext(messages=messages, applied=[s for s in LADDER if s in applied], tokens=message_tokens(messages), probes=probes)
+        tokens = message_tokens(messages) + tool_tokens(request.tools)
+        return BuiltContext(messages=messages, applied=[s for s in LADDER if s in applied], tokens=tokens, probes=probes)
 
     # --- 组装 ---
 
-    def _brief(self, request: ContextRequest, mode: ModePolicy) -> list[str]:
+    def _brief(self, request: ContextRequest, mode: ModePolicy, built: _State) -> list[str]:
         state, node, plan = request.task_state, request.node, request.task_plan or {}
         lines = []
         if state.get("goal"):
@@ -219,7 +243,10 @@ class ContextBuilder:
         lines.append(f"本 Goal：{node.get('goal', '')}")
         if node.get("done_when"):
             lines.append(f"本 Goal 的完成条件：{node['done_when']}")
-        if node.get("inputs"):
+        if built.inputs_ref:
+            excerpt = _json(node["inputs"])[: self.config.excerpt_chars]
+            lines.append(f"输入已外置，完整输入：{built.inputs_ref}；摘录：{excerpt}…")
+        elif node.get("inputs"):
             lines.append(f"输入：{_json(node['inputs'])}")
         triage = plan.get("triage") if isinstance(plan.get("triage"), Mapping) else {}
         planned = [f"工作模式 {mode.name}"]
@@ -240,10 +267,6 @@ class ContextBuilder:
         lines = [f"进度：已执行 {len(steps)} 步。"]
         if state.recovered:
             lines.append("补回的关键事实：" + "；".join(state.recovered))
-        exact = [text for _, text, _ in state_lines(request.task_state)]
-        if exact:
-            lines.append("精确状态（来自 Task State）：")
-            lines += exact
         if steps:
             last = steps[-1]
             outcome = "出错" if "error" in last else "成功"
@@ -306,13 +329,14 @@ class ContextBuilder:
         return Partitions(
             system=list(request.system),
             profile=list(request.profile),
-            brief=self._brief(request, mode),
+            brief=self._brief(request, mode, state),
             history=self._history(mode, state),
+            state=state.precise,
             status=self._status(request, state),
         ).to_messages()
 
     def _tokens(self, request: ContextRequest, mode: ModePolicy, state: _State) -> int:
-        return message_tokens(self._assemble(request, mode, state))
+        return message_tokens(self._assemble(request, mode, state)) + tool_tokens(request.tools)
 
     def _cut(self, request: ContextRequest, mode: ModePolicy, state: _State, *, target: float) -> int:
         """摘要到第几步（不含）：最早的未摘要步骤一直摘到剩下的不超过 target，最近 keep_recent 步不摘。"""
@@ -331,12 +355,34 @@ class ContextBuilder:
     # --- 外置与持久摘要 ---
 
     async def _externalize(self, store: ObjectStore, prefix: str, i: int, step: Mapping[str, Any]) -> str:
-        key = f"{prefix}/step-{i}.json"
+        return await self._put(store, f"{prefix}/step-{i}.json", step)
+
+    @staticmethod
+    async def _put(store: ObjectStore, key: str, value: Any) -> str:
         try:
-            await store.put(key, _json(step).encode(), content_type="application/json", if_absent=True)
+            await store.put(key, _json(value).encode(), content_type="application/json", if_absent=True)
         except ConflictError:
             pass  # 重复构建：同一步早已写过
         return store.uri(key)
+
+    async def _precise_state(self, request: ContextRequest, store: ObjectStore, prefix: str, state: _State) -> None:
+        """精确状态这一段：Task State 逐行放到 state_tokens 为止；放不下的注明条数，完整的 Task State 写进 ObjectStore。"""
+        lines = [text for _, text, _ in state_lines(request.task_state)]
+        budget = self.config.state_tokens - estimate(STATE_HEADER + "（来自 Task State）")
+        if estimate("\n".join(lines)) <= budget:
+            state.precise = lines
+            return
+        key = f"{prefix}/task-state.json"
+        tail = f"另有 {len(lines)} 条精确状态没放进来，完整内容：{store.uri(key)}"
+        room, kept = budget - estimate(tail) - 1, []
+        for line in lines:
+            room -= estimate(line) + 1
+            if room < 0:
+                break
+            kept.append(line)
+        # Task State 在 Round 之间会变：同一个键直接覆盖，内容总是这次构建用的那一份。
+        await store.put(key, _json(request.task_state).encode(), content_type="application/json")
+        state.precise = [*kept, f"另有 {len(lines) - len(kept)} 条精确状态没放进来，完整内容：{store.uri(key)}"]
 
     async def _load_summary(self, store: ObjectStore, prefix: str, state: _State) -> None:
         try:
@@ -355,7 +401,8 @@ class ContextBuilder:
             if "observation" in step:
                 step["observation"] = truncate(_json(step["observation"]), self.config.offload_tokens)
             segment.append(step)
-        messages = summaries.summary_prompt(segment, first_step=state.covered, goal=str(request.node.get("goal", "")), policy=mode)
+        carried = {s: state.summary[s] for s in summaries.CURRENT_SECTIONS}
+        messages = summaries.summary_prompt(segment, first_step=state.covered, goal=str(request.node.get("goal", "")), policy=mode, carried=carried)
         for _ in range(2):
             response = await self.gateway.generate(
                 mg.GenerateRequest(

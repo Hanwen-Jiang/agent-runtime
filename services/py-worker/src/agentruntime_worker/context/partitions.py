@@ -5,7 +5,10 @@
 | profile | 用户偏好、Workspace 约定；新偏好以变更形式追加，不改写 | 末尾设断点 2 |
 | brief | Task Plan：目标、验收条件、约束、计划摘要、检索到的经验；replan 时整体替换 | 末尾设断点 3 |
 | history | 动作与观察的轨迹，只追加；压缩的主要对象 | |
-| status | 进度、待办、下一步与精确状态，放在最末尾，约 500 token 以内 | |
+| status | 进度、最近的动作与错误、下一步，放在最末尾，约 500 token 以内 | |
+
+精确状态（Task State 的约束、事实、产物、里程碑、待查与假设）单独成段，放在 history 之后、status 之前（设计书 3.2.7 第 4 条；
+R-03 评审 D7）：不受 status 的上限截断，也不在缓存前缀里；它自己的上限由 Context Builder 控制，超出的外置。
 """
 
 from __future__ import annotations
@@ -19,6 +22,7 @@ from agentruntime_worker.context.tokens import truncate
 STATUS_TOKENS = 500
 PROFILE_HEADER = "【用户偏好与 Workspace 约定】"
 BRIEF_HEADER = "【任务简报】"
+STATE_HEADER = "【精确状态】"
 STATUS_HEADER = "【当前状态】"
 
 
@@ -28,11 +32,12 @@ class Partitions:
     profile: list[str] = field(default_factory=list)
     brief: list[str] = field(default_factory=list)
     history: list[mg.ChatMessage] = field(default_factory=list)
+    state: list[str] = field(default_factory=list)
     status: str = ""
 
     def to_messages(self) -> list[mg.ChatMessage]:
-        """system、profile、brief 各成一条消息并在末尾设缓存断点（空的分区省略）；history 原样；status 是最后一条。
-        status 超过 STATUS_TOKENS 时截断。"""
+        """system、profile、brief 各成一条消息并在末尾设缓存断点（空的分区省略）；history 原样；精确状态一条（没有就省略）；
+        status 是最后一条，超过 STATUS_TOKENS 时截断。"""
         out: list[mg.ChatMessage] = []
         if self.system:
             out.append(mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text="\n\n".join(self.system), cache_breakpoint=True))
@@ -45,6 +50,8 @@ class Partitions:
             copy.CopyFrom(message)
             copy.cache_breakpoint = False
             out.append(copy)
+        if self.state:
+            out.append(mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=STATE_HEADER + "（来自 Task State）\n" + "\n".join(self.state)))
         if self.status:
             out.append(mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=truncate(STATUS_HEADER + "\n" + self.status, STATUS_TOKENS)))
         return out

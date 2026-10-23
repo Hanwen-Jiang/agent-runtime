@@ -153,8 +153,10 @@ async def test_tools_go_through_one_dev_tool_driver(tmp_path: Path) -> None:
     provider = dev_tools(config)
     assert provider is dev_tools(config) and executor.deps.tools is provider, "同一进程只有一个开发用 ToolDriver"
     listed = {s.name for s in await provider.bind(TenantContext(tenant_id="t1")).list_tools()}
-    assert listed == {"repo_read", "repo_list", "repo_grep", "repo_edit", "shell_run", "web_fetch"}
-    assert not {s.name for s in await dev_tools(WorkerConfig(data_dir=tmp_path / "other")).bind(TenantContext(tenant_id="t1")).list_tools()}, "没配置就不登记"
+    # context_read 总是登记（R-03 评审 D11），其余按配置登记。
+    assert listed == {"repo_read", "repo_list", "repo_grep", "repo_edit", "shell_run", "web_fetch", "context_read"}
+    unconfigured = {s.name for s in await dev_tools(WorkerConfig(data_dir=tmp_path / "other")).bind(TenantContext(tenant_id="t1")).list_tools()}
+    assert unconfigured == {"context_read"}, "没配置就只有 context_read"
 
 
 async def test_mcp_tools_are_attached_for_the_workers_lifetime(tmp_path: Path) -> None:

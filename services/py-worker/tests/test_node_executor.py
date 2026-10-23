@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import json
+import logging
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,7 @@ import pytest
 from temporalio.exceptions import ApplicationError
 from temporalio.testing import ActivityEnvironment
 
+from agentruntime_core.dev.secret_store import LocalFileSecretStore
 from agentruntime_core.enums import Effect
 from agentruntime_core.errors import DeniedError, InvalidError, TransientError
 from agentruntime_core.providers.human_channel import QuestionStatus
@@ -346,6 +348,71 @@ async def test_credential_role_not_granted_is_denied(fx: ExecutorFixture) -> Non
     fx.tools.grant("t1", "crm.read")
     await expect_error(run_program(fx, program("q", "crm_read")), ne.DENIED)
     assert fx.calls["crm_read"] == 0
+
+
+# R-04 评审本期修第 2、3 条（docs/plan/review-R-04-secretstore.md 第 4 节）：工具回显的凭据在出口处换成掩码；吊销失败要看得见。
+
+
+def grant_crm(fx: ExecutorFixture) -> None:
+    fx.tools.grant("t1", "crm.read")
+    fx.secrets.grant_role("t1", "tool.crm_read")
+
+
+async def node_events(fx: ExecutorFixture, node_id: str) -> list[str]:
+    await fx.telemetry.bind(tenant_proto()).flush()
+    return [e for s in fx.telemetry.exported_spans if s.attributes.get("node_id") == node_id for e in s.events]
+
+
+async def test_credential_echoed_in_the_tool_output_is_masked(fx: ExecutorFixture) -> None:
+    grant_crm(fx)
+
+    async def echo(invocation: Any) -> Any:
+        token = invocation.credential.secret.reveal()
+        return {"auth": token, "header": f"Bearer {token}", "rows": [{"note": f"conn=crm://svc:{token}@db"}]}
+
+    fx.behaviors["crm_read"] = echo
+    out = await run_program(fx, program("q", "crm_read"))
+    plaintext = fx.invocations[-1].credential.secret.reveal()
+    assert plaintext not in json.dumps(out, ensure_ascii=False), "凭据原文不进 Node 结果（事件历史、下游、Reviewer）"
+    assert out["result"]["auth"] == "***" and out["result"]["header"] == "Bearer ***", "原文换成掩码，其余内容不变"
+    assert out["result"]["rows"] == [{"note": "conn=crm://svc:***@db"}]
+    events = await node_events(fx, "q")
+    assert any(e.startswith("credential_redacted") and "crm_read" in e for e in events), "出口处换过掩码要在 trace 里看得到"
+    assert plaintext not in fx.telemetry_output.getvalue()
+
+
+async def test_credential_echoed_in_a_tool_error_is_masked(fx: ExecutorFixture) -> None:
+    grant_crm(fx)
+
+    async def fail(invocation: Any) -> Any:
+        raise InvalidError("bad_request", f"上游拒绝：Authorization: Bearer {invocation.credential.secret.reveal()}")
+
+    fx.behaviors["crm_read"] = fail
+    err = await expect_error(run_program(fx, program("q", "crm_read")), ne.INVALID)
+    plaintext = fx.invocations[-1].credential.secret.reveal()
+    assert plaintext not in str(err) and "Bearer ***" in str(err), "错误信息进事件历史与 Reviewer 的输入，凭据原文换成掩码"
+    assert plaintext not in fx.telemetry_output.getvalue()
+
+
+async def test_failed_revocation_is_recorded_and_the_node_still_succeeds(
+    fx: ExecutorFixture, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    grant_crm(fx)
+
+    async def unavailable(self: Any, lease_id: str) -> None:
+        raise TransientError("unavailable", "SecretStore 暂时不可用")
+
+    monkeypatch.setattr(LocalFileSecretStore, "revoke", unavailable)
+    with caplog.at_level(logging.WARNING):
+        out = await run_program(fx, program("q", "crm_read"))
+    credential = fx.invocations[-1].credential
+    assert out["result"] == {"echo": dict(fx.invocations[-1].arguments)}, "吊销失败不改变 Node 的结局"
+    events = [e for e in await node_events(fx, "q") if e.startswith("credential_revoke_failed")]
+    assert events and credential.lease_id in events[0] and "crm_read" in events[0] and "unavailable" in events[0], "trace 里记下工具、租约与错误 code"
+    warnings = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
+    assert any(credential.lease_id in m and "crm_read" in m for m in warnings), "另记一条警告日志"
+    plaintext = credential.secret.reveal()
+    assert plaintext not in caplog.text and plaintext not in fx.telemetry_output.getvalue()
 
 
 # --- 结果未知：按幂等键对账 ---

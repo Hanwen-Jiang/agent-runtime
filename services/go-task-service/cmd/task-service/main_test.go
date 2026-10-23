@@ -34,6 +34,20 @@ func TestDevTokenIsAcceptedByTheIngress(t *testing.T) {
 	}
 }
 
+func TestDevTokenCarriesScopes(t *testing.T) {
+	var out, errOut bytes.Buffer
+	code := run([]string{"dev-token", "--tenant", "t1", "--user", "u3", "--scope", "task.approve"}, &out, &errOut,
+		getenv(map[string]string{"AR_DEV_SIGNING_KEY": signingKey}))
+	if code != 0 {
+		t.Fatalf("dev-token 应成功，退出码 %d：%s", code, errOut.String())
+	}
+	id, err := localingress.New(localingress.Options{SigningKey: []byte(signingKey)}).
+		Authenticate(context.Background(), ingress.Credentials{BearerToken: strings.TrimSpace(out.String())})
+	if err != nil || len(id.Scopes) != 1 || id.Scopes[0] != "task.approve" {
+		t.Errorf("令牌应带出 scope task.approve（R-05 评审 D9），实际 %+v（%v）", id, err)
+	}
+}
+
 func TestDevTokenNeedsTheSigningKey(t *testing.T) {
 	var out, errOut bytes.Buffer
 	if code := run([]string{"dev-token", "--tenant", "t1", "--user", "u1"}, &out, &errOut, getenv(nil)); code == 0 {

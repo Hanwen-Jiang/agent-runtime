@@ -1,24 +1,34 @@
-"""Planner 的 decision activity（plan_round）。Worker 配置 AR_PLANNER=model 时代替桩 Planner。"""
+"""Planner 的 decision activity（plan_round）。Worker 配置 AR_PLANNER=model 时代替桩 Planner。
+
+规划之后，每个 tool_loop 的 Goal Node 加上 context_read（R-03 评审 D11）：模型按路径取回 Context Builder 外置或遮蔽的内容。
+只在 context_read 已登记、且这个 Goal 的 effect 上限（effect_ceiling，没写时取 Task 的）允许 read 时加；在 activity 里加，
+不改 Stage Runner，Planner 的提示与校验也不知道它。
+"""
 
 from __future__ import annotations
 
+import copy
 import dataclasses
+from typing import Any
 
 from temporalio import activity
 
 from agentruntime_worker import names
 from agentruntime_worker.executor.dev import model_gateway
-from agentruntime_worker.activities.types import PlanRoundInput, PlanRoundOutput
+from agentruntime_worker.activities.types import PlanRoundInput, PlanRoundOutput, Tenant
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.planner.context import CatalogView, PlanningContext, PlanningContextSource, StaticContextSource
 from agentruntime_worker.planner.planner import Planner, PlanRequest
 from agentruntime_worker.registry import RegistryContextSource, registry_client
+from agentruntime_worker.tools import CONTEXT_READ, ToolCatalog, dev_tools
+from agentruntime_worker.workflows import stage_plan as sp
 
 
 class PlannerActivities:
-    def __init__(self, planner: Planner, contexts: PlanningContextSource) -> None:
+    def __init__(self, planner: Planner, contexts: PlanningContextSource, *, tools: ToolCatalog | None = None) -> None:
         self.planner = planner
         self.contexts = contexts
+        self.tools = tools
 
     @activity.defn(name=names.PLAN_ROUND)
     async def plan_round(self, inp: PlanRoundInput) -> PlanRoundOutput:
@@ -44,7 +54,26 @@ class PlannerActivities:
             [(c.purpose, c.tier, c.vendor) for c in result.calls],
             "；两次都不合格，用了保守规划" if result.fallback else "",
         )
-        return PlanRoundOutput(stage=result.stage, triage_level=result.triage_level, task_plan=result.task_plan)
+        stage = await self._with_context_read(inp.tenant, result.stage, context.effect_ceiling)
+        return PlanRoundOutput(stage=stage, triage_level=result.triage_level, task_plan=result.task_plan)
+
+    async def _with_context_read(self, tenant: Tenant, stage: Any, ceiling: str) -> Any:
+        """tool_loop 的 Goal Node 加上 context_read（已有的工具不变，追加在后面）。"""
+        if self.tools is None or not isinstance(stage, dict) or not isinstance(stage.get("nodes"), list):
+            return stage
+        if (await self.tools.effects(tenant, [CONTEXT_READ])).get(CONTEXT_READ) != "read":
+            return stage
+        out = copy.deepcopy(stage)
+        for node in out["nodes"]:
+            if not isinstance(node, dict) or node.get("kind") != "goal" or node.get("mode") != "tool_loop":
+                continue
+            allowed = str(node.get("effect_ceiling") or ceiling)
+            if allowed not in sp.EFFECT_ORDER or sp.effect_rank(allowed) < sp.effect_rank("read"):
+                continue
+            tools = [str(t) for t in node.get("tools") or []]
+            if CONTEXT_READ not in tools:
+                node["tools"] = [*tools, CONTEXT_READ]
+        return out
 
     def activities(self) -> dict[str, object]:
         return {names.PLAN_ROUND: self.plan_round}
@@ -61,4 +90,4 @@ def dev_planner(config: WorkerConfig) -> PlannerActivities:
     contexts: PlanningContextSource = StaticContextSource(defaults)
     if config.registry_address:
         contexts = RegistryContextSource(registry_client(config), defaults=dataclasses.replace(defaults, catalog=CatalogView()))
-    return PlannerActivities(Planner(model_gateway(config)), contexts)
+    return PlannerActivities(Planner(model_gateway(config)), contexts, tools=ToolCatalog(dev_tools(config)))

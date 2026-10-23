@@ -30,9 +30,10 @@ type Options struct {
 }
 
 type claims struct {
-	Tenant  string `json:"t"`
-	User    string `json:"u"`
-	Expires int64  `json:"exp"`
+	Tenant  string   `json:"t"`
+	User    string   `json:"u"`
+	Expires int64    `json:"exp"`
+	Scopes  []string `json:"s,omitempty"`
 }
 
 // Provider 是内置 Ingress。
@@ -63,7 +64,12 @@ func (p *Provider) sign(payload string) string {
 
 // IssueToken 签发令牌（开发专用）。
 func (p *Provider) IssueToken(tenantID, userID string, ttl time.Duration) string {
-	raw, _ := json.Marshal(claims{Tenant: tenantID, User: userID, Expires: p.clock.Now().Add(ttl).Unix()})
+	return p.IssueTokenWithScopes(tenantID, userID, ttl)
+}
+
+// IssueTokenWithScopes 签发带 scope 的令牌（开发专用），例如 Task API 的 task.approve。
+func (p *Provider) IssueTokenWithScopes(tenantID, userID string, ttl time.Duration, scopes ...string) string {
+	raw, _ := json.Marshal(claims{Tenant: tenantID, User: userID, Expires: p.clock.Now().Add(ttl).Unix(), Scopes: scopes})
 	payload := base64.RawURLEncoding.EncodeToString(raw)
 	return payload + "." + p.sign(payload)
 }
@@ -90,7 +96,7 @@ func (p *Provider) Authenticate(_ context.Context, creds ingress.Credentials) (i
 	if !expires.After(p.clock.Now()) {
 		return ingress.Identity{}, denied("凭据已过期")
 	}
-	return ingress.Identity{TenantID: c.Tenant, UserID: c.User, ExpiresAt: expires}, nil
+	return ingress.Identity{TenantID: c.Tenant, UserID: c.User, Scopes: c.Scopes, ExpiresAt: expires}, nil
 }
 
 func (p *Provider) Admit(_ context.Context, id ingress.Identity, route string) error {

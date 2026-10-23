@@ -12,6 +12,7 @@
   meta.result_ref 记录 uri、大小与 sha256。
 - rationale 只写入 trace（Telemetry 的 span 事件），不放进 activity 的结果，不进事件历史，不传给下游。
 - program 节点要求权限的工具，用 SecretStore 签发的短期凭据（角色 tool.<工具名>），调用结束即吊销；凭据不进日志与 trace。
+  工具的输出或错误信息带出凭据原文时换成掩码（span 事件 credential_redacted）；吊销失败记 span 事件与警告日志，等租约过期。
 - 写操作超时、结果未知时先按幂等键对账：已生效就取当时的结果；没生效时 write_reversible 可重试（同一幂等键），
   write_irreversible 记为结果未知（unknown），交给 Reviewer，不重试。对账用的查询本身暂时不可用时，不可逆写操作
   报 reconcile，由工作流用 reconcile_node 带重试地再查（计划 S-07 场景 3）。
@@ -30,6 +31,7 @@ import asyncio
 import contextlib
 import hashlib
 import json
+import logging
 import time
 from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass
@@ -47,9 +49,10 @@ from agentruntime_core.providers.cache import CacheProvider
 from agentruntime_core.providers.human_channel import HumanChannelProvider, Question
 from agentruntime_core.providers.object_store import ObjectStoreProvider
 from agentruntime_core.providers.sandbox import SandboxProvider, SandboxSpec
-from agentruntime_core.providers.secret_store import SecretStoreProvider
+from agentruntime_core.providers.secret_store import Credential, SecretStoreProvider
 from agentruntime_core.providers.telemetry import Span, TelemetryProvider
 from agentruntime_core.providers.tool_driver import ToolDriver, ToolDriverProvider, ToolSpec
+from agentruntime_core.secrets import MASK
 from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker import names
@@ -58,6 +61,8 @@ from agentruntime_worker.executor import keys
 from agentruntime_worker.executor.model_gateway import ModelGateway
 from agentruntime_worker.executor.schemas import OutputSchemaResolver, UnknownSchema, schema_for, validate
 from agentruntime_worker.tools.catalog import latest_spec
+
+log = logging.getLogger(__name__)
 
 # ApplicationError.type 的取值。
 TRANSIENT = "transient"
@@ -132,6 +137,43 @@ def _split_template(template: str) -> tuple[str, str]:
 
 def _error(message: str, error_type: str, *, retryable: bool = False) -> ApplicationError:
     return ApplicationError(message, type=error_type, non_retryable=not retryable)
+
+
+def _plaintext(credential: Credential | None) -> str:
+    if credential is None:
+        return ""
+    value = credential.secret.reveal()
+    return value.decode("utf-8", "ignore") if isinstance(value, bytes) else value
+
+
+def _masked(value: Any, plaintext: str) -> Any:
+    if isinstance(value, str):
+        return value.replace(plaintext, MASK)
+    if isinstance(value, Mapping):
+        return {_masked(k, plaintext): _masked(v, plaintext) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_masked(v, plaintext) for v in value]
+    return value
+
+
+def _redact_output(output: Any, credential: Credential | None, tool: str, span: Span) -> Any:
+    """工具输出里出现这次签发的凭据原文时换成掩码（R-04）：结果会进事件历史、trace、下游与 Reviewer。"""
+    plaintext = _plaintext(credential)
+    if not plaintext or plaintext not in json.dumps(output, ensure_ascii=False, default=str):
+        return output
+    assert credential is not None
+    span.add_event("credential_redacted", {"tool": tool, "lease_id": credential.lease_id, "where": "output"})
+    return _masked(output, plaintext)
+
+
+def _redact_error(err: ProviderError, credential: Credential | None, tool: str, span: Span) -> ProviderError:
+    """工具错误的说明里出现凭据原文时换成掩码，类别、code 与 retry_after 不变。"""
+    plaintext = _plaintext(credential)
+    if not plaintext or plaintext not in err.message:
+        return err
+    assert credential is not None
+    span.add_event("credential_redacted", {"tool": tool, "lease_id": credential.lease_id, "where": "error"})
+    return type(err)(err.code, err.message.replace(plaintext, MASK), retry_after=err.retry_after)
 
 
 def _enum(enum: Any, prefix: str, value: str | None) -> int:
@@ -422,15 +464,22 @@ class NodeExecutor:
             try:
                 result = await driver.invoke(name, version, node.get("inputs", {}), idempotency_key=key, credential=credential)
                 span.set_attributes({"replayed": result.replayed})
-                return result.output
+                return _redact_output(result.output, credential, name, span)
             except TransientError as err:
                 if effect not in WRITE_EFFECTS:
                     raise
-                return await self._reconcile_timeout(driver, spec, node, key or "", err)
+                found = await self._reconcile_timeout(driver, spec, node, key or "", _redact_error(err, credential, name, span))
+                return _redact_output(found, credential, name, span)
+        except ProviderError as err:
+            raise _redact_error(err, credential, name, span) from None
         finally:
             if credential is not None and secrets is not None:
-                with contextlib.suppress(ProviderError):
+                try:
                     await secrets.revoke(credential.lease_id)
+                except ProviderError as err:
+                    # 没吊销成功的租约只能等过期：记进 trace 与日志，事后查得到；Node 的结局不受影响。
+                    span.add_event("credential_revoke_failed", {"tool": name, "lease_id": credential.lease_id, "code": err.code})
+                    log.warning("吊销工具 %s 的短期凭据失败（租约 %s，%s），等它过期", name, credential.lease_id, err.code)
 
     async def _reconcile_timeout(self, driver: ToolDriver, spec: ToolSpec, node: Mapping[str, Any], key: str, err: TransientError) -> Any:
         """写操作超时、结果未知：先按幂等键对账，不直接重试（附录 K.4）。"""

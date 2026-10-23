@@ -1,7 +1,7 @@
 // Command task-service 是 Control Plane 的入口（设计书 3.1）：
 //
 //	task-service serve                                        Task API、SSE 端点与 Session 工作流的 Worker
-//	task-service dev-token --tenant t1 --user u1 [--ttl 1h]   用 AR_DEV_SIGNING_KEY 签发开发令牌
+//	task-service dev-token --tenant t1 --user u1 [--ttl 1h] [--scope task.approve]   用 AR_DEV_SIGNING_KEY 签发开发令牌
 //	task-service replay --dir <事件历史目录>                    用当前代码回放 Session 工作流的事件历史
 //	task-service registry-seed <种子文件>                       把一批文档发布到 Registry 并设为默认（开发与端到端测试用）
 //
@@ -57,7 +57,7 @@ import (
 
 const usage = `用法：
   task-service serve
-  task-service dev-token --tenant <租户> --user <用户> [--ttl 1h]
+  task-service dev-token --tenant <租户> --user <用户> [--ttl 1h] [--scope <scope>]...
   task-service replay --dir <事件历史目录>
   task-service registry-seed <种子文件>
 `
@@ -93,6 +93,11 @@ func devToken(args []string, stdout, stderr io.Writer, getenv func(string) strin
 	tenant := fs.String("tenant", "", "租户 ID")
 	user := fs.String("user", "", "用户 ID")
 	ttl := fs.Duration("ttl", time.Hour, "有效期")
+	var scopes []string
+	fs.Func("scope", "令牌带的 scope，可以写多次（例如 task.approve：审批、回复与取消同租户里别人提交的 Task）", func(s string) error {
+		scopes = append(scopes, s)
+		return nil
+	})
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -105,7 +110,7 @@ func devToken(args []string, stdout, stderr io.Writer, getenv func(string) strin
 		fmt.Fprintf(stderr, "缺少 %s\n", config.EnvDevSigningKey)
 		return 1
 	}
-	fmt.Fprintln(stdout, localingress.New(localingress.Options{SigningKey: []byte(key)}).IssueToken(*tenant, *user, *ttl))
+	fmt.Fprintln(stdout, localingress.New(localingress.Options{SigningKey: []byte(key)}).IssueTokenWithScopes(*tenant, *user, *ttl, scopes...))
 	return 0
 }
 
@@ -293,7 +298,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	}
 	mux := http.NewServeMux()
 	api.Mount(mux)
-	mux.Handle("/v1/tasks/", events.NewHandler(events.HandlerDeps{Ingress: ing, Cache: cacheProvider, Store: store}))
+	mux.Handle("/v1/tasks/", events.NewHandler(events.HandlerDeps{Ingress: ing, Cache: cacheProvider, Store: store, Clock: clk}))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "ok") })
 
 	protocols := new(http.Protocols)

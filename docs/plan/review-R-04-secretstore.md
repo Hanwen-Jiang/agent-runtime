@@ -90,3 +90,16 @@ TMP 计划第 0 节第 4 条：未处理的修掉或登记。
 **登记到后续**（T-17 时写进 `docs/reference/risks-and-open-questions.md`）：生产 SecretStore（云 KMS + ESO 管平台密钥，OpenBao 管租户动态凭据）；
 接口加按租户或 Task 前缀批量吊销，Task abort 与租户下线时调用；MCP Server 的凭据改由 SecretStore 引用（登记文件写 `secret:<名字>`，
 启动时从平台作用域取）；shell_run 进 Sandbox（与 T-10 登记的资源限制、网络隔离一起做）；开发实现读密钥前检查文件是否变了。
+
+## 5. 处理结果（2026-10-23）
+
+本期修三条已改（人确认了决定 D1–D3），验收测试先行：`libs/py-core/tests/dev/test_sandbox.py` 末尾、`services/py-worker/tests/test_node_executor.py`
+里 R-04 的三条。
+
+1. 开发 Sandbox 只传白名单里的环境变量（PATH、PATHEXT、SYSTEMROOT、WINDIR、COMSPEC、TEMP、TMP、HOME、LANG、LC_ALL，另加
+   PYTHONIOENCODING），与 shell_run 同一份；Worker 的 `AR_*` 与别的变量都不传给沙箱里的代码。
+2. 工具的输出或错误信息里出现这次签发的凭据原文时换成 `***`，类别、code 不变，Node 照常进行；span 事件 `credential_redacted`
+   记工具名、lease_id 与位置（output 或 error）。写操作超时后对账取回的结果同样处理。
+3. 吊销失败记 span 事件 `credential_revoke_failed`（工具、lease_id、错误 code）与一条警告日志；Node 的结局不变，租约等过期。
+
+“登记到后续”的几条不变。

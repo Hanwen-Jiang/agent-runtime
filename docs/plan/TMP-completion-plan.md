@@ -159,14 +159,26 @@
   结束后从业务库补发都已处理；未处理的是只推受理与结束两类事件（4.14 的思考过程、工具状态、token 增量、等待人工回复都没有）、
   SSE 不限流、令牌过期后流不断、同租户任何用户都能审批、对不上的人工回复被静默丢弃。评审在新会话里做，没看实现过程，
   但实现出自强档，严格的写审分离还要另一家的强模型或人复审。
+  人确认决定后已修（各评审第 5 节）：开发 Sandbox 只传白名单环境变量；工具回显的凭据换成掩码；吊销失败记 trace 与日志；SSE 令牌过期即断、
+  经 Ingress 限流（`stream_events`）；取消与人工回复只接受提交者或带 `task.approve` scope 的用户（tasks 加 `submitted_by`，迁移 3）。
+  进度事件推流单列为 T-11b。
 
 **T-12 R-03 Context Builder 评审**　强档 · 高
 - 分区顺序与缓存断点；外置内容只以路径出现；阈值按有效长度设。笔记 `docs/note/context-compression.md` 里已有一份自述，可以拿来对照。
 - 完成：评审结论。
 - 结果（2026-10-23）：评审写在 [review-R-03-context-builder.md](review-R-03-context-builder.md)。分区顺序、三个断点、前缀稳定、offload 与 mask
   已处理；未处理的是外置内容没有取回的工具、Goal Node 的输入原样进 brief、status 的 500 token 上限会截掉精确状态、阈值不算工具定义、
-  有效长度不按模型（Model Profile 缺 effective_ctx），以及 model 节点不经 Context Builder。history 的滚动断点要不要改 G.1 待人定。
-  独立性同 T-11。
+  有效长度不按模型（Model Profile 缺 effective_ctx），以及 model 节点不经 Context Builder。
+  独立性同 T-11。人确认决定后已修（评审第 5 节）：大的 Goal 输入外置；精确状态单独成段、有自己的上限；阈值算上工具定义；平台内工具
+  `context_read` 按路径取回外置内容，真正的 Planner 给 tool_loop 的 Goal Node 加上它；持久摘要的“未决”“下一步”交给模型更新、以最新一次替换。
+  history 的滚动断点等 T-13 看到真模型的缓存命中率再定。S-11 的真模型评测要在额度补上后重跑。
+
+**T-11b 进度事件推流**　中档 · 中（R-05 评审 D10）
+- 设计书 4.14：SSE 推思考过程、工具状态与 token 增量。现在只推受理与结束两类事件，客户端看不到进度，也看不到“等待人工回复”。
+- 先做 round_started、human_input_required（带 question_id 与选项）、verdict、node_finished；token 与思考的增量后做。
+- 难点：事件在 Python Worker 里产生，event_id 由 task-service 的业务库分配，要定事件从哪里写、id 怎么分配（例如 Worker 经 task-service 的
+  内部接口追加，或在 session 队列上加 activity）；Task 工作流里加推送要走版本分支并补重放测试。
+- 完成：客户端从 SSE 看得到进度与等待中的问题，凭这里的 question_id 发人工回复；断线续传照常。
 
 ### 阶段 D：端到端与部署（2 到 3 天）
 
@@ -213,13 +225,15 @@ flowchart LR
   T08 --> T16[T-16 Learning]
   T03 --> T16
   T11[T-11] --> T17
+  T11 --> T11b[T-11b 进度事件]
+  T11b --> T13
   T12[T-12] --> T17
   T14[T-14 CI] --> T17
   T15[T-15 Helm] --> T17
   T16 --> T17
 ```
 
-A、B 可以并行：A 只用评测目录和临时 Gateway，B 在 Go 里。C 的几项互相独立，但 T-13 要等 T-06、T-08、T-09、T-10 都好。
+A、B 可以并行：A 只用评测目录和临时 Gateway，B 在 Go 里。C 的几项互相独立，但 T-13 要等 T-06、T-08、T-09、T-10、T-11b 都好。
 
 ## 4. 主要风险
 
@@ -235,7 +249,7 @@ A、B 可以并行：A 只用评测目录和临时 Gateway，B 在 Go 里。C �
 |---|---|---|
 | M1 评测站稳 | T-01 到 T-04 | 三套真模型评测各有一份可复现的报告 |
 | M2 真 Gateway | T-05 到 T-07 | Worker 经 Go Gateway 调真模型，缓存命中率可见 |
-| M3 骨架补齐 | T-08 到 T-12 | Registry、Policy、工具、五项评审完成 |
+| M3 骨架补齐 | T-08 到 T-12、T-11b | Registry、Policy、工具、五项评审完成；SSE 看得到进度 |
 | M4 端到端 | T-13 到 T-15 | 真任务跑通并能恢复，CI 与 Helm 合格 |
 | M5 初步完成 | T-16、T-17 | 第 0 节五条同时成立；删除本文件 |
 

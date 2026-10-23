@@ -3,6 +3,8 @@
 //
 // 租户由 Ingress 根据认证身份确定；请求里的 tenant_id 只用来校验一致（ingress.TenantContextFor）。
 // 所有 Provider 都按这个租户绑定，访问别的租户的 Session 或 Task 一律返回 NotFound。
+// 取消与人工回复（包括 write_irreversible 的审批）只接受 Task 的提交者，或身份带 ScopeApprove 的用户
+// （R-05 评审 D9）；同租户的其他人 PermissionDenied。查询对同租户开放。
 package taskapi
 
 import (
@@ -12,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -49,6 +52,9 @@ const (
 	maxClientRequestID = 128
 	maxMessageBytes    = 256 << 10
 )
+
+// ScopeApprove 让持有者可以审批、回复与取消同租户里别人提交的 Task。
+const ScopeApprove = "task.approve"
 
 var objectURI = regexp.MustCompile(`^obj://([a-z0-9][a-z0-9_-]{0,62})/\S+$`)
 
@@ -183,6 +189,14 @@ func (s *Server) lookup(ctx context.Context, header http.Header, route, requestT
 	return id, tenant, row, nil
 }
 
+// mayControl：取消与人工回复只接受提交者或带 ScopeApprove 的用户。没记下提交者的旧 Task 只接受后者。
+func mayControl(id ingress.Identity, row taskstore.Task) error {
+	if (row.SubmittedBy != "" && row.SubmittedBy == id.UserID) || slices.Contains(id.Scopes, ScopeApprove) {
+		return nil
+	}
+	return providererr.New(providererr.Denied, "not_task_owner", "只有提交者或有审批权限的用户能取消这个 Task 或回复它的问题")
+}
+
 func (s *Server) SubmitTask(ctx context.Context, req *connect.Request[taskapiv1.SubmitTaskRequest]) (*connect.Response[taskapiv1.SubmitTaskResponse], error) {
 	resp, err := s.submit(ctx, req.Header(), req.Msg)
 	if err != nil {
@@ -236,6 +250,7 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	}
 	row, existed, err := s.tasks.InsertTask(ctx, tenant, taskstore.Task{
 		TaskID: s.d.IDs.TaskID(), SessionID: sessionID, SessionKey: req.GetSessionId(), ClientRequestID: crid, CreatedAt: now,
+		SubmittedBy: id.UserID,
 	})
 	if err != nil {
 		return nil, err
@@ -304,8 +319,11 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 }
 
 func (s *Server) CancelTask(ctx context.Context, req *connect.Request[taskapiv1.CancelTaskRequest]) (*connect.Response[taskapiv1.CancelTaskResponse], error) {
-	_, tenant, row, err := s.lookup(ctx, req.Header(), routeCancel, req.Msg.GetTenantId(), req.Msg.GetTaskId())
+	id, tenant, row, err := s.lookup(ctx, req.Header(), routeCancel, req.Msg.GetTenantId(), req.Msg.GetTaskId())
 	if err != nil {
+		return nil, ConnectError(err)
+	}
+	if err := mayControl(id, row); err != nil {
 		return nil, ConnectError(err)
 	}
 	engine, err := s.d.Durable.Bind(tenant)
@@ -326,6 +344,9 @@ func (s *Server) CancelTask(ctx context.Context, req *connect.Request[taskapiv1.
 func (s *Server) SignalTask(ctx context.Context, req *connect.Request[taskapiv1.SignalTaskRequest]) (*connect.Response[taskapiv1.SignalTaskResponse], error) {
 	id, tenant, row, err := s.lookup(ctx, req.Header(), routeSignal, req.Msg.GetTenantId(), req.Msg.GetTaskId())
 	if err != nil {
+		return nil, ConnectError(err)
+	}
+	if err := mayControl(id, row); err != nil {
 		return nil, ConnectError(err)
 	}
 	reply := req.Msg.GetHumanReply()

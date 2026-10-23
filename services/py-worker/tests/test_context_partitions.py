@@ -47,6 +47,7 @@ async def test_the_prefix_is_byte_stable_while_history_grows(tmp_path: Path) -> 
     first = await builder.build(request(history(4)))
     second = await builder.build(request(history(5)))
     assert [m.SerializeToString() for m in first.messages[:3]] == [m.SerializeToString() for m in second.messages[:3]]
-    old_history, new_history = first.messages[3:-1], second.messages[3:-1]
+    # history 之后是精确状态与 status 两条（R-03 评审 D7）。
+    old_history, new_history = first.messages[3:-2], second.messages[3:-2]
     assert [m.SerializeToString() for m in new_history[: len(old_history)]] == [m.SerializeToString() for m in old_history]
     assert first.applied == [] and second.applied == []

@@ -11,6 +11,9 @@
 - web_fetch（配了 fetch_hosts 才登记）：只认 http、https；只去名单里的主机（"*" 任何主机，"*.example.com" 子域名）；
   解析出的地址是内网、回环、链路本地等一律拒绝（allow_private_fetch 只给测试用）；不走代理、不跟随重定向（返回状态码与
   Location）；正文有大小上限。
+- context_read（给了 Context Builder 的 ObjectStore 就登记，不要别的配置）：按 obj:// 路径取回本租户 context/ 与
+  node-results/ 下的对象（Context Builder 外置或遮蔽的内容、Node 的外置结果），长内容按 offset 分段（R-03 评审 D11）。
+  别的租户的路径一律 not_found，别的前缀 denied。
 """
 
 from __future__ import annotations
@@ -32,9 +35,13 @@ from typing import Any
 from agentruntime_core.dev.tool_driver import LocalToolDriverProvider
 from agentruntime_core.enums import Effect
 from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError, TransientError
+from agentruntime_core.providers.object_store import ObjectStoreProvider
 from agentruntime_core.providers.tool_driver import ToolHandler, ToolInvocation, ToolSpec
+from agentruntime_core.tenancy import TenantContext
 
 VERSION = "v1"
+CONTEXT_READ = "context_read"
+_CONTEXT_PREFIXES = ("context/", "node-results/")
 # 子进程只带这些环境变量（存在时）：能找到程序、在 Windows 上能启动 Python，别的一概不带。
 _SHELL_ENV = ("PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "COMSPEC", "TEMP", "TMP", "HOME", "LANG", "LC_ALL")
 _SLUG = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")
@@ -56,6 +63,8 @@ class PlatformToolsConfig:
     fetch_limit: int = 1024 * 1024
     fetch_timeout_s: float = 20.0
     max_read_lines: int = 2000
+    # context_read 不写 max_chars 时一次取多少个字符（上限是 output_limit）。
+    context_read_chars: int = 16_000
 
 
 def _spec(name: str, effect: Effect, description: str, properties: dict[str, Any], required: list[str], timeout_s: float) -> ToolSpec:
@@ -75,13 +84,15 @@ def _spec(name: str, effect: Effect, description: str, properties: dict[str, Any
 _PATH = {"type": "string", "minLength": 1, "description": "相对工作区的路径，用 / 分隔"}
 
 
-def register_platform_tools(provider: LocalToolDriverProvider, config: PlatformToolsConfig) -> list[str]:
-    """按配置登记平台内工具，返回登记了的名字。"""
+def register_platform_tools(provider: LocalToolDriverProvider, config: PlatformToolsConfig, *, objects: ObjectStoreProvider | None = None) -> list[str]:
+    """按配置登记平台内工具，返回登记了的名字。给了 objects（Context Builder 外置内容的 ObjectStore）就登记 context_read。"""
     tools: list[tuple[ToolSpec, ToolHandler]] = []
     if config.workspace_root is not None:
         tools += _Workspaces(Path(config.workspace_root), config).tools()
     if config.fetch_hosts:
         tools.append(_Fetcher(config).tool())
+    if objects is not None:
+        tools.append(_ContextReader(objects, config).tool())
     for spec, handler in tools:
         provider.register(spec, handler)
     return [spec.name for spec, _ in tools]
@@ -351,3 +362,39 @@ class _Fetcher:
         if location:
             out["location"] = location
         return out
+
+
+# --- context_read ---
+
+
+class _ContextReader:
+    def __init__(self, objects: ObjectStoreProvider, config: PlatformToolsConfig) -> None:
+        self.objects = objects
+        self.config = config
+
+    def tool(self) -> tuple[ToolSpec, ToolHandler]:
+        limit = self.config.output_limit
+        return (
+            _spec(CONTEXT_READ, Effect.READ, "按路径取回上下文里被外置或遮蔽的内容（obj:// 路径），以及 Node 的外置结果；内容长时用 offset 分段取", {
+                "path": {"type": "string", "minLength": 1, "description": "上下文里给出的 obj:// 路径"},
+                "offset": {"type": "integer", "minimum": 0, "description": "从第几个字符开始，默认 0"},
+                "max_chars": {"type": "integer", "minimum": 1, "maximum": limit, "description": f"最多取多少个字符，默认 {self.config.context_read_chars}"},
+            }, ["path"], 30),
+            self.read,
+        )
+
+    async def read(self, invocation: ToolInvocation) -> Any:
+        if not invocation.tenant_id:
+            raise DeniedError("no_tenant", "context_read 只在租户作用域里可用")
+        uri = str(invocation.arguments["path"])
+        store = self.objects.bind(TenantContext(tenant_id=invocation.tenant_id, workspace_id=invocation.workspace_id))
+        try:
+            key = store.key_of(uri)
+        except DeniedError:
+            raise NotFoundError("not_found", "没有这个路径") from None  # 别的租户的路径：不透露它是否存在
+        if not key.startswith(_CONTEXT_PREFIXES):
+            raise DeniedError("path_not_allowed", "context_read 只能取回上下文里外置的内容与 Node 的外置结果")
+        text = (await store.get(key)).data.decode("utf-8", errors="replace")
+        offset = int(invocation.arguments.get("offset") or 0)
+        part = text[offset : offset + int(invocation.arguments.get("max_chars") or self.config.context_read_chars)]
+        return {"path": uri, "content": part, "offset": offset, "total_chars": len(text), "truncated": offset + len(part) < len(text)}

@@ -86,3 +86,18 @@ task-service 这一侧没有工作流代码的改动问题；人工回复在 Tas
 **登记到后续**（T-17 时写进 `docs/reference/risks-and-open-questions.md`）：Valkey 适配器与跨节点广播；流的条数上限；保留时间可配置；
 重连按 event_id 定位读；人工回复改用带校验的 Temporal Update，对不上的回复当场拒绝（改 Task 工作流，属于核心链路）；
 浏览器客户端的会话换令牌（部署层）。
+
+## 5. 处理结果（2026-10-23）
+
+人确认了决定 D4、D5、D9、D10。验收测试先行：`services/go-task-service/internal/events/r05_test.go`、`internal/taskapi/control_auth_test.go`、
+`cmd/task-service/main_test.go` 的 `TestDevTokenCarriesScopes`。
+
+1. SSE 在令牌过期时结束这条流：每次心跳与每个事件之前按 `HandlerDeps.Clock` 检查。生产心跳 15 秒，过期后最多再过 15 秒断开；
+   客户端带新令牌与 Last-Event-ID 重连。
+2. SSE 经 `Ingress.Admit` 限流，路由 `stream_events`，按（租户、路由）计数，与提交、查询等分开；超限回 429，带 Retry-After（秒，至少 1）。
+   限的是建立连接的速率，不是同时在线的连接数，后者仍登记。
+3. 审批与取消权（D9）：业务库 tasks 加 `submitted_by`（迁移 3，SQLite 与 Postgres 同一份）。取消与人工回复只接受提交者，或身份带
+   `task.approve` scope 的用户；否则 PermissionDenied（code `not_task_owner`），请求不触达 DurableEngine。查询仍对同租户开放。
+   迁移之前提交的 Task 没有提交者，只接受带 scope 的用户。开发令牌加可选的 scope（载荷键 `s`）：`task-service dev-token --scope task.approve`。
+   没覆盖：经 HumanChannel 送回的回复（开发实现是 Worker 控制台）不经 Task API，不受这条约束，回复人以通道给出的为准。
+4. 进度事件推流（D10）单列为 TMP 计划的 T-11b，排在 T-13 之前。

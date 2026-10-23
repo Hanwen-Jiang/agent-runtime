@@ -15,7 +15,7 @@ import (
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 )
 
-// Migrations 返回两张表的结构；版本 2 给 tasks 加上结局一列（S-07）。
+// Migrations 返回两张表的结构；版本 2 给 tasks 加上结局一列（S-07），版本 3 加上提交者（R-05 评审 D9：谁能审批与取消）。
 func Migrations() []relational.Migration {
 	return []relational.Migration{{
 		Version: 1,
@@ -43,6 +43,12 @@ func Migrations() []relational.Migration {
 		Statements: []string{
 			`ALTER TABLE tasks ADD COLUMN outcome TEXT NOT NULL DEFAULT ''`,
 		},
+	}, {
+		Version: 3,
+		Name:    "task_service_task_submitter",
+		Statements: []string{
+			`ALTER TABLE tasks ADD COLUMN submitted_by TEXT NOT NULL DEFAULT ''`,
+		},
 	}}
 }
 
@@ -61,6 +67,8 @@ type Task struct {
 	CreatedAt   time.Time
 	// Outcome 是 Task 结束时的 TaskWorkflowResult（protojson，proto 字段名）；还没结束时为空。
 	Outcome string
+	// SubmittedBy 是提交者的 user_id（取自认证身份）；迁移 3 之前提交的 Task 为空。
+	SubmittedBy string
 }
 
 // Finished 表示业务库里已记下终态与结局。
@@ -102,15 +110,15 @@ func (s *Store) SessionExists(ctx context.Context, tenant *commonv1.TenantContex
 	return ok, err
 }
 
-const taskColumns = `task_id, session_id, session_key, client_request_id, status, signaled, last_event_id, created_at, outcome`
+const taskColumns = `task_id, session_id, session_key, client_request_id, status, signaled, last_event_id, created_at, outcome, submitted_by`
 
 // InsertTask 插入一行；（SessionKey, ClientRequestID）已存在时不插入，返回已有的那一行与 true。
 func (s *Store) InsertTask(ctx context.Context, tenant *commonv1.TenantContext, t Task) (Task, bool, error) {
 	var out Task
 	var existed bool
 	err := s.tx(ctx, tenant, false, func(ctx context.Context, tx relational.Tx) error {
-		n, err := tx.Execute(ctx, `INSERT INTO tasks (`+taskColumns+`) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT DO NOTHING`,
-			t.TaskID, t.SessionID, t.SessionKey, t.ClientRequestID, int64(t.Status), boolInt(t.Signaled), t.LastEventID, t.CreatedAt.UnixMilli(), t.Outcome)
+		n, err := tx.Execute(ctx, `INSERT INTO tasks (`+taskColumns+`) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) ON CONFLICT DO NOTHING`,
+			t.TaskID, t.SessionID, t.SessionKey, t.ClientRequestID, int64(t.Status), boolInt(t.Signaled), t.LastEventID, t.CreatedAt.UnixMilli(), t.Outcome, t.SubmittedBy)
 		if err != nil {
 			return err
 		}
@@ -207,5 +215,6 @@ func decode(row relational.Row) Task {
 		LastEventID:     num("last_event_id"),
 		CreatedAt:       time.UnixMilli(num("created_at")).UTC(),
 		Outcome:         str("outcome"),
+		SubmittedBy:     str("submitted_by"),
 	}
 }
