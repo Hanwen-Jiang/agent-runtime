@@ -108,3 +108,7 @@
 - [OpenTelemetry GenAI 语义约定现状](https://www.truefoundry.com/blog/opentelemetry-genai-semantic-conventions)
 
 设计书附录 O.2 另列了 Temporal 官方限制文档、Redpanda 许可说明、Langfuse 的 OTLP 接入等选型阶段的来源。
+
+## 8. 对照项目
+
+- [WDP 项目（StoreAgent）的 Codex 整理](https://chatgpt.com/s/cx_6adc9e036a388191a3ea7328e05aa50b)：知识库型 Agent 应用，总结与可借鉴之处见 [wdp-project.md](wdp-project.md)
