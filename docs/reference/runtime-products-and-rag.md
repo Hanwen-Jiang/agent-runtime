@@ -176,6 +176,8 @@ WDP：L1 2,400 字符（重叠 400）、L2 1,600（重叠 200）、L3 800（重�
 
 ## 5. 能不能用 Milvus
 
+> 2026-10-24 用户决定默认改用 Milvus，设计书的改动草稿见 [design-changes-2026-10.md](../plan/design-changes-2026-10.md) 的 C1。下面保留决定前的分析；其中第 3、4 条（不用原生 BM25、加密与变换要重做）在 Milvus 作默认时仍然成立，已写进 C1。
+
 能，但建议作为 VectorStore 的第二个实现，不替换 Qdrant 当默认。
 
 **为什么能**：`libs/py-core/.../providers/vector_store.py` 的接口与具体产品无关：按语料写入、按 id 取回与删除、稠密 + 稀疏查询并用 RRF（k = 60）融合、标量与 AnyOf 过滤、按 embedding_version 隔离。这些 Milvus 都能做：同一集合里放稠密与稀疏向量、混合检索带 RRF、用 partition key 按租户分区、数组字段的“包含任一”过滤。核心代码只依赖接口，换实现不用改核心。
