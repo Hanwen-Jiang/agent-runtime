@@ -93,6 +93,14 @@
 2. 在一台 Linux 主机上跑一个共用的 Milvus，测试经 `AR_MILVUS_URL` 连接，每次运行用随机前缀的集合并在结束时清理。
 3. 本机只跑内存实现，Milvus 的测试只在 CI 与夜间任务里跑（GitHub Actions 的 Ubuntu 有 Docker）。
 
+**2026-10-24 决定选 1**：用户在本机装 WSL2 + Docker，Milvus 的测试在本机自己拉起。测试的做法（T-18 细化时再定）：
+
+- 和现在拉起临时 `qdrant` 一样，测试会话开始时用 `docker run` 起一个 Milvus 单机版容器，用内嵌的 etcd 与本地存储（官方单机脚本 `standalone_embed.sh` 的做法），不需要单独的 etcd 与 MinIO；端口随机，结束时删除容器。
+- 镜像版本写死在测试支持代码里，可用 `AR_MILVUS_IMAGE` 覆盖；和其他依赖一样，只取发布满两周的版本。
+- 容器的数据不挂载到仓库所在的网络盘（`Z:`），只放在容器内部。
+- PATH 上没有 `docker`、或 Docker 没在运行时，测试失败并写明缺什么；设 `AR_ALLOW_MISSING_TOOLS=1` 时跳过（与现有约定一致）。
+- CI 与夜间任务用同样的方式起容器。
+
 ---
 
 ## C2　Task State 固定数据版本
