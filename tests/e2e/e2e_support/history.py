@@ -72,6 +72,8 @@ class ActivityRecord:
     outcome: str = "open"
     failure: str = ""
     result: Any = None
+    # activity 的输入（JSON；Claim-Check 卸载了的是引用）。工具调用的 tool 在这里。
+    input: Any = None
 
 
 @dataclass
@@ -140,8 +142,9 @@ def analyze(history: WorkflowHistory) -> HistoryReport:
             record = ActivityRecord(
                 scheduled_event_id=event.event_id,
                 activity_type=attrs.activity_type.name,
-                node_id=node.get("id") if isinstance(node, dict) else None,
+                node_id=_step_id(attrs.activity_type.name, inp, node),
                 round_seq=inp.get("round_seq") if isinstance(inp, dict) else None,
+                input=inp,
             )
             by_scheduled[event.event_id] = record
             report.activities.append(record)
@@ -176,6 +179,22 @@ def analyze(history: WorkflowHistory) -> HistoryReport:
         elif name == "TIMER_FIRED":
             report.timers_fired += 1
     return report
+
+
+def _step_id(activity_type: str, inp: Any, node: Any) -> str | None:
+    """activity 对应的步骤 id。tool_loop 的每一步（step_id）与每次工具调用（node_id）各有自己的 id（<Goal Node>.<序号>），
+    按它区分：同一个 Goal Node 的多步不是“重新调度”。其余取输入里 Node 的 id。"""
+    if isinstance(inp, dict):
+        if activity_type == "tool_loop_step" and inp.get("step_id"):
+            return str(inp["step_id"])
+        if activity_type == "call_tool" and inp.get("node_id"):
+            return str(inp["node_id"])
+    return str(node["id"]) if isinstance(node, dict) and node.get("id") is not None else None
+
+
+def tool_calls(report: HistoryReport) -> list[ActivityRecord]:
+    """经 call_tool 的工具调用（tool_loop 里的），按调度的先后。工具名在 record.input["tool"]。"""
+    return [a for a in report.activities if a.activity_type == "call_tool"]
 
 
 def _payload_fields(event: Any) -> Iterable[Any]:

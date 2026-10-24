@@ -35,4 +35,24 @@ $env:AR_MODEL_PROVIDER_BASE_URL = "<OpenAI 兼容端点，形如 https://host/v1
 model-gateway serve                                        # 默认监听 127.0.0.1:8091；计量记录写标准输出
 ```
 
-不接真实端点时设 `AR_MODEL_PROVIDER=mock`（模拟模型，模型名为 `mock-small`、`mock-embed`，要配一份对应的 Profile 文件）。
+不接真实端点时设 `AR_MODEL_PROVIDER=mock`（模拟模型，模型名为 `mock-small`、`mock-embed`，要配一份对应的 Profile 文件：
+`mock-model-profiles.json`）。
+
+## 本地拉起整套（T-13）
+
+`scripts/dev_stack.py` 一条命令拉起 Temporal 开发服务、task-service（Registry 打开）、Model Gateway 与 Worker，细化见
+`docs/plan/live-e2e.md`。真模型时供应商的地址与密钥只从 `~/.agentruntime/model-provider.env` 读，密钥经 `model-gateway dev-secret`
+的标准输入写进这次运行的开发 SecretStore。
+
+```powershell
+uv run --no-sync python scripts/dev_stack.py up --tenant-effect t13=write_reversible   # 默认真决策、openai_compat
+uv run --no-sync python scripts/dev_stack.py token --tenant t13 --user u13
+uv run --no-sync python scripts/dev_stack.py kill worker; uv run --no-sync python scripts/dev_stack.py start worker
+uv run --no-sync python scripts/dev_stack.py down
+```
+
+- `registry-seed.json`：启动前用 `task-service registry-seed` 种进 Registry 的开发种子：桩 Planner 与真 Planner 用到的 Node Template
+  （`stub_answer`、`stub_confirm`、`answer`、`rewrite`），加上 `model-profiles.json` 里的全部 Model Profile。改了 `model-profiles.json`
+  要同步改这里（`tests/e2e/test_dev_stack.py` 核对两边一致、每份文档合 schema）。租户策略不在种子里，由 `--tenant-effect` 种下。
+- 运行目录默认是 `~/.agentruntime/dev-stack`（不在仓库里：开发 SecretStore 里有供应商的密钥）；平台内工具的工作区在其中的
+  `workspaces/<租户>/<workspace>`。

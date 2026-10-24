@@ -12,3 +12,5 @@ build/
 /bin/
 # 评测报告（S-08）：本地跑出来的，用来和上一版比较，不提交
 .eval-reports/
+# T-13 的端到端日志（tests/e2e/.live-reports），本地跑出来的，结论摘要写进 TMP 计划
+.live-reports/

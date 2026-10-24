@@ -18,7 +18,8 @@ T-13 的“完成”：一份端到端日志；故障注入套件通过。
    `up --json` 的最后一行是各组件的地址、pid、日志位置。密钥只从 `~/.agentruntime/model-provider.env`（或 `--provider-env`）读，经 `model-gateway dev-secret`
    的标准输入写进本次运行的开发 SecretStore，不进命令行参数、环境变量与输出。live 用例与人手动演示用同一个脚本。
 2. **开发种子** `deploy/dev/registry-seed.json`：桩 Planner 与真 Planner 会用到的 Node Template（`stub_answer`、`stub_confirm`、`answer`、`rewrite`）、
-   `deploy/dev/model-profiles.json` 里的 Model Profile、默认租户策略。
+   `deploy/dev/model-profiles.json` 里的 Model Profile。租户策略不在种子里：`dev_stack.py up --tenant-effect 租户=effect` 给每个租户种一份
+   （同时写进开发租户策略文件，task-service 按它给 effect 上限）。mock 供应商用 `deploy/dev/mock-model-profiles.json`。
 3. **真模型端到端用例**（`tests/e2e/live/`，只在 `AR_LIVE_MODEL_PROVIDER=1` 时跑）：样本任务“CI 修复”（`tests/e2e/live/workspaces/ci_rounding`：
    一个小 Python 包，标准库 unittest，金额四舍五入的错误让两条用例失败）。一条完整跑完；一条在 tool_loop 中途强杀 Worker，重启后跑完。
 4. **故障注入套件经真 Model Gateway**：场景 1（model 节点执行中 Worker 崩溃）与场景 4（供应商持续失败触发切换）各加经 Go Model Gateway 的用例，上游是

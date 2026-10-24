@@ -6,7 +6,7 @@
 - ledger 工具：program 节点经 ToolDriver 的开发实现调用，写到 Worker 进程之外的外部 ledger（e2e_support.ledger）。
   四个工具代表外部 API 的三种能力，见 LEDGER_TOOLS。
 - 模型供应商替身：同一档位两家供应商；供应商超时时先重试，超过次数就切换到同档位的另一家（设计书 3.3.1 第 3 条）。
-  真正的 Model Gateway 实现之后（R-02），场景 4 改为对它跑，供应商一侧的故障由假的供应商端点注入。
+  设了 AR_MODEL_GATEWAY_ADDRESS 时改用真的 Go Model Gateway（场景 1、4 另有对它跑的用例，T-13），供应商一侧的故障由假的上游端点注入。
 - ObjectStore、HumanChannel 外面包一层：按故障计划出错，并把调用记进调用记录。
 - 桩 Planner：Task inputs 里有 fault_stage 时直接把它当作 Stage（单个 Round）；桩计划的 model 节点按固定版本选模板版本。
 - 桩 Reviewer：有结果未知（unknown）的 Node 时判 abort，其余同 S-03 的桩；判定前把看到的各 Node 状态记进调用记录。
@@ -52,6 +52,7 @@ from agentruntime_worker.activities.stubs import StubActivities, StubModelGatewa
 from agentruntime_worker.activities.types import PlanRoundInput, PlanRoundOutput, ReviewRoundInput
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.executor.dev import TemporalReplySink, data_root, dev_object_store, dev_secret_store
+from agentruntime_worker.executor.grpc_gateway import GrpcModelGateway
 from agentruntime_worker.executor.node_executor import ExecutorDeps, NodeExecutor, workflow_question_id
 from agentruntime_worker.executor.schemas import DictSchemaResolver
 from agentruntime_worker.worker import QUEUE_COMPONENTS, build_workers, connect, parse_queues
@@ -347,7 +348,8 @@ def build_fault_components(
         cache=InMemoryCacheProvider(),
         humans=RecordingHumanChannelProvider(CliHumanChannelProvider(TemporalReplySink(client), output=sys.stderr), calls),
         telemetry=ConsoleTelemetryProvider(stream=sys.stderr),
-        models=FailoverStubGateway(StubModelGateway(config), plan, calls),
+        # 设了 AR_MODEL_GATEWAY_ADDRESS 时经真的 Go Model Gateway（场景 1、4 的 T-13 用例；故障由假的上游注入），否则用替身。
+        models=GrpcModelGateway(config.model_gateway_address) if config.model_gateway_address else FailoverStubGateway(StubModelGateway(config), plan, calls),
         schemas=DictSchemaResolver({}),
         sandbox=LocalSubprocessSandboxProvider(root / "sandbox"),
     )

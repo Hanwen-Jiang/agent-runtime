@@ -137,7 +137,8 @@
   开发用 Profile 下与 Planner 同一家，实际未处理。另有计量少算已计费的失败调用、超时没对齐、网关不认证调用方三项风险。
   这次评审与实现出自同一会话，不算写审分离，R-02 还要另一家的强模型或人复审。
   评审的处理建议第 2 到 5 条已修（计量的 status 与偏好标记、已计费失败也记、超时对齐、model_not_found 切换），见评审第 5 节；
-  第 1、6 条待人定方案。
+  第 1、6 条人定方案后已修（2026-10-24，评审第 7 节：Reviewer 按结果的 `meta.vendor` 避开生成者，契约加了这个可选字段；缺租户报 denied）。
+  另一家复审（OpenAI gpt-6-sol，[reviews/R-02-gpt-6-sol.md](reviews/R-02-gpt-6-sol.md)）结论一致、没有新的高严重问题，**R-02 评审完成**。
 
 ### 阶段 C：补齐运行骨架上缺的模块（3 到 4 天）
 
@@ -164,7 +165,9 @@
 - **R-01 评审（2026-10-24）**：写在 [review-R-01-policy-engine.md](review-R-01-policy-engine.md)。审批插入、deny 不重试（Hook 与 Executor 两处）、
   before_finish 的上限、Hook 是纯函数都已处理；未处理的是 `run_hooks` 的 local activity 没有重试上限（Collector 不可用时所有 Task 卡在 after_node）、
   tool_loop 的单次工具调用不经过任何 Hook、失败的 Node 没有审计、`budget_check` 不算 tool_loop、Planner、Reviewer 与子工作流的花费；另有审批问题不带输入。
-  独立性同 R-03：新会话、同一家模型。处理建议第 1 到 3 条待人确认后修，第 4、5 条待人定方案。
+  独立性同 R-03：新会话、同一家模型。另一家复审（OpenAI gpt-6-sol，[reviews/R-01-gpt-6-sol.md](reviews/R-01-gpt-6-sol.md)）补了三条：脱敏在
+  trace_result 之后才作用、不认识的 Hook 结果被当成放行、trace 按字符截断。**R-01 评审完成**；人定方案后这六条与成本口径都已修（评审第 6 节，
+  新版本分支 `r01-audit-and-budget`），其余登记。
 
 **T-10 ToolDriver 与平台内工具、MCP Gateway**　中档 · 中
 - `libs/py-core/.../tool_driver.py` 是接口与开发实现。补几个真工具（读文件、跑命令、HTTP 取页面），再接 MCP 服务。
@@ -276,7 +279,8 @@
 - **R-06 评审（2026-10-24）**：写在 [review-R-06-learning-pipeline.md](review-R-06-learning-pipeline.md)。门槛先于发布、Registry 的第二道、样本下限、
   选择偏差、租户过滤都已处理；未处理的是每次成功成本只算成功 Task 的均值（不含失败，与 H.2 不一致）、Task 成本不含 tool_loop、Planner、Reviewer、
   运行中的 Task 重规划时看得到新晋升的 Recipe（Planner 列 Recipe 不按固定版本）、单次调用不超支要靠网关执行 `max_cost_usd_micros`（还没有）。
-  独立性同 R-01。处理建议第 1 到 3 条待人确认后修，第 4 到 6 条待人定方案。
+  独立性同 R-01。另一家复审（[reviews/R-06-gpt-6-sol.md](reviews/R-06-gpt-6-sol.md)）补了四条小问题。**R-06 评审完成**；第 1 到 3 条与补的四条已修（`5fad2ba`），
+  第 4 条随 R-01 的成本口径一起改，第 5、6 条登记。
 
 ### 阶段 F：收尾
 

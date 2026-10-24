@@ -6,6 +6,8 @@
 - 记录每个请求的路径、Authorization 里的密钥与 JSON 正文，测试据此断言模型、消息与密钥。
 - fail 不为 None 时所有请求都按它失败；错误正文故意回显请求里的密钥，检验网关不把它带进错误、日志与计量
   （docs/plan/model-gateway-direct.md 难点“密钥不外泄”：即使上游把它回显在错误正文里）。
+- 故障注入套件经真网关的用例（T-13）：fail_model 让某个模型的请求一直失败；hold 让消息里带某个标记的请求挂起，
+  直到 release（held 数到了几次）。reset 清掉这些。
 """
 
 from __future__ import annotations
@@ -31,6 +33,8 @@ CHAT_USAGE = {
 }
 EMBED_USAGE = {"prompt_tokens": 5000, "total_tokens": 5000}
 EMBED_VECTOR = [0.5, -0.25, 0.125, 1.0]
+# 挂起的请求最多等这么久，到时照常回答（测试忘了 release 时不会把服务线程卡死）。
+HOLD_TIMEOUT_S = 120
 
 
 @dataclass(frozen=True)
@@ -77,10 +81,58 @@ MODEL_NOT_FOUND = Failure(404, "model_not_found")
 class FakeOpenAI:
     def __init__(self) -> None:
         self.fail: Failure | None = None
+        # 模型名 → 这个模型的请求一律按它失败
+        self.fail_models: dict[str, Failure] = {}
         self._requests: list[UpstreamRequest] = []
         self._lock = threading.Lock()
+        self._holds: dict[str, threading.Event] = {}
+        self._held: dict[str, int] = {}
         self._server: ThreadingHTTPServer | None = None
         self._thread: threading.Thread | None = None
+
+    # --- 故障 ---
+
+    def fail_model(self, model: str, failure: Failure) -> None:
+        self.fail_models[model] = failure
+
+    def failure_for(self, req: UpstreamRequest) -> Failure | None:
+        return self.fail or self.fail_models.get(req.model)
+
+    def hold(self, marker: str) -> None:
+        """消息里带 marker 的请求挂起，直到 release(marker)。"""
+        with self._lock:
+            self._holds[marker] = threading.Event()
+            self._held[marker] = 0
+
+    def held(self, marker: str) -> int:
+        """带 marker 的请求到达过几次（含已经放行的）。"""
+        with self._lock:
+            return self._held.get(marker, 0)
+
+    def release(self, marker: str) -> None:
+        with self._lock:
+            event = self._holds.get(marker)
+        if event is not None:
+            event.set()
+
+    def wait_if_held(self, req: UpstreamRequest) -> None:
+        text = "\n".join(req.message_texts())
+        with self._lock:
+            events = [(m, e) for m, e in self._holds.items() if m in text]
+            for m, _ in events:
+                self._held[m] += 1
+        for _, event in events:
+            event.wait(HOLD_TIMEOUT_S)
+
+    def reset(self) -> None:
+        self.fail = None
+        self.fail_models.clear()
+        with self._lock:
+            events = list(self._holds.values())
+            self._holds.clear()
+            self._held.clear()
+        for event in events:
+            event.set()
 
     # --- 生命周期 ---
 
@@ -150,9 +202,11 @@ class _Handler(BaseHTTPRequestHandler):
         auth = self.headers.get("Authorization", "")
         key = auth.removeprefix("Bearer ").strip() if auth.startswith("Bearer ") else ""
         path = self.path.split("?", 1)[0]
-        self.fake.record(UpstreamRequest(path=path, api_key=key, body=body))
+        req = UpstreamRequest(path=path, api_key=key, body=body)
+        self.fake.record(req)
+        self.fake.wait_if_held(req)
 
-        failure = self.fake.fail
+        failure = self.fake.failure_for(req)
         if failure is not None:
             # 故意把密钥回显在错误正文里（真实供应商在 401 时会这样做）。
             payload = {"error": {"message": f"模拟上游失败，收到的密钥是 {key}", "type": failure.code, "code": failure.code, "param": None}}
@@ -183,13 +237,17 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _json(self, status: int, payload: dict[str, Any], headers: dict[str, str] | None = None) -> None:
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(data)))
-        for name, val in (headers or {}).items():
-            self.send_header(name, val)
-        self.end_headers()
-        self.wfile.write(data)
+        try:
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            for name, val in (headers or {}).items():
+                self.send_header(name, val)
+            self.end_headers()
+            self.wfile.write(data)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            # 调用方已经走了（挂起期间网关随客户端断开放弃了这次请求）。
+            self.close_connection = True
 
     def _stream_chat(self, body: dict[str, Any]) -> None:
         content = _content(body)
