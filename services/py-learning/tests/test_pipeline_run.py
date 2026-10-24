@@ -84,7 +84,21 @@ async def test_the_existing_default_recipe_is_the_baseline(tmp_path: Path) -> No
     ref = registry.promote_default("t1", "invoice_std", {"task_family": FAMILY})
     specs = [*population(**GOOD), *[route_task(500 + i, ROUTE_B, recipe=ref, status="done" if i % 4 else "aborted") for i in range(120)]]
     report, _, _ = await run(tmp_path, console_lines(specs), registry=registry)
-    assert report.baseline == {"kind": "recipe", "recipe": ref, "samples": 120}
+    assert report.baseline == {"kind": "recipe", "recipes": [ref], "samples": 120}
+
+
+async def test_several_default_recipes_of_the_family_make_one_baseline(tmp_path: Path) -> None:
+    """R-06 另一家复审第 1 条：同一任务族有几个默认 Recipe 时，现行组是用了其中任何一个的 Task，不是排序后随意的一个。"""
+    registry = FakeRegistry()
+    std = registry.promote_default("t1", "invoice_std", {"task_family": FAMILY})
+    fast = registry.promote_default("t1", "invoice_fast", {"task_family": FAMILY})
+    specs = [
+        *population(**GOOD),
+        *[route_task(500 + i, ROUTE_B, recipe=std, status="done" if i % 4 else "aborted") for i in range(80)],
+        *[route_task(700 + i, ROUTE_B, recipe=fast) for i in range(40)],
+    ]
+    report, _, _ = await run(tmp_path, console_lines(specs), registry=registry)
+    assert report.baseline == {"kind": "recipe", "recipes": sorted([fast, std]), "samples": 120}
 
 
 async def test_a_registry_refusal_is_reported(tmp_path: Path) -> None:
@@ -124,6 +138,35 @@ async def test_each_read_is_audited_on_the_platform_scope(tmp_path: Path) -> Non
     assert audit.attributes["learning.tenant"] == "t1"
     assert audit.attributes["learning.other_tenant_spans"] > 0
     assert audit.attributes["learning.tasks"] == 240
+
+
+async def test_the_audit_names_the_files_that_were_read(tmp_path: Path) -> None:
+    """R-06 另一家复审第 6 条：细化第 2 节第 2 步要求审计里有读了哪些文件。"""
+    telemetry = ConsoleTelemetryProvider(stream=io.StringIO())
+    registry = FakeRegistry()
+    await run_pipeline(
+        config(tmp_path),
+        lines=console_lines(population(**GOOD)),
+        fmt="console",
+        registry=registry,
+        gateway=None,
+        telemetry=telemetry,
+        now=NOW,
+        sources=["traces/2026-10-22.jsonl", "traces/2026-10-23.jsonl"],
+    )
+    [audit] = [entry for entry in telemetry.exported_logs if entry.message == "learning.read_traces"]
+    assert audit.attributes["learning.files"] == "traces/2026-10-22.jsonl,traces/2026-10-23.jsonl"
+
+
+async def test_reports_of_runs_in_the_same_second_do_not_overwrite_each_other(tmp_path: Path) -> None:
+    """R-06 另一家复审第 7 条：报告的文件名精确到微秒。"""
+    lines = console_lines(population(**GOOD))
+    a = await run_pipeline(config(tmp_path, dry_run=True), lines=lines, fmt="console", registry=FakeRegistry(), gateway=None,
+                           telemetry=ConsoleTelemetryProvider(stream=io.StringIO()), now=NOW)
+    b = await run_pipeline(config(tmp_path, dry_run=True), lines=lines, fmt="console", registry=FakeRegistry(), gateway=None,
+                           telemetry=ConsoleTelemetryProvider(stream=io.StringIO()), now=NOW.replace(microsecond=1))
+    assert a.path is not None and b.path is not None and a.path != b.path
+    assert a.path.exists() and b.path.exists()
 
 
 # --- 预算与指标 ---

@@ -46,13 +46,39 @@ def test_wilson_needs_samples() -> None:
         wilson(0, 0)
 
 
-def test_outcomes_count_successes_and_their_costs() -> None:
+def test_cost_per_success_counts_the_failures_too() -> None:
+    """R-06 评审 1.1：每次成功成本 = 组内全部 Task 的成本 ÷ 成功数（H.2、S-08 报告的 per_success_usd），失败的花费也算。"""
     tasks = traces([route_task(1, ROUTE_A, cost=0.2), route_task(2, ROUTE_A, status="aborted", cost=0.5), route_task(3, ROUTE_B, cost=0.4)])
     o = Outcomes.from_tasks(tasks)
     assert (o.total, o.successes) == (3, 2)
-    assert sorted(o.success_costs) == pytest.approx([0.2, 0.4])
+    assert o.total_cost == pytest.approx(1.1)
     assert o.success_rate == pytest.approx(2 / 3)
-    assert o.cost_per_success == pytest.approx(0.3)
+    assert o.cost_per_success == pytest.approx(0.55)
+
+
+def test_the_cost_upper_bound_is_the_ratio_estimators() -> None:
+    """95% 上界 = R + 1.96 × SE，R = Σc ÷ Σs，SE = sd(c − R·s) ÷ (√n · 成功率)（比率估计量的 delta 方法，确定、不抽样）。"""
+    tasks = traces([route_task(1, ROUTE_A, cost=0.2), route_task(2, ROUTE_A, status="aborted", cost=0.5), route_task(3, ROUTE_B, cost=0.4)])
+    o = Outcomes.from_tasks(tasks)
+    # 残差 −0.35、0.5、−0.15：样本标准差 √(0.395 / 2)；成功率 2/3。
+    se = (0.395 / 2) ** 0.5 / (3**0.5 * (2 / 3))
+    assert o.cost_upper_bound() == pytest.approx(0.55 + 1.96 * se)
+    assert Outcomes.from_tasks(traces([route_task(1, ROUTE_A, status="aborted")])).cost_upper_bound() is None, "没有成功就没有每次成功成本"
+
+
+def test_expensive_failures_make_a_route_costlier() -> None:
+    """成功的都便宜、失败的很贵：只看成功的均值会通过成本门槛，算上失败的花费就不通过。"""
+    specs = [
+        *[route_task(i, ROUTE_A, cost=0.05) for i in range(118)],
+        *[route_task(200 + i, ROUTE_A, status="aborted", cost=5.0) for i in range(2)],
+        *[route_task(300 + i, ROUTE_B, cost=0.1) for i in range(100)],
+        *[route_task(400 + i, ROUTE_B, status="aborted", cost=0.1) for i in range(10)],
+    ]
+    gate, cand, base = gate_for(specs, min_samples=100)
+    assert cand.cost_per_success == pytest.approx((118 * 0.05 + 2 * 5.0) / 118)
+    assert not gate.passed
+    assert any("成本" in r for r in gate.reasons)
+    assert not any("成功率" in r for r in gate.reasons), "成功率这一条是通过的，只报成本"
 
 
 # --- 两组 ---

@@ -111,10 +111,10 @@ async def _effects(registry: Any, tenant: Tenant, refs: Iterable[str]) -> dict[s
     return out
 
 
-async def _baseline_recipe(registry: Any, tenant: Tenant, task_family: str) -> str | None:
+async def _baseline_recipes(registry: Any, tenant: Tenant, task_family: str) -> list[str]:
+    """该任务族当前的默认 Recipe（ListRecipes 只列默认版本），排好序；可能有几个，现行组取它们的并集。"""
     recipes = await registry.list_recipes(tenant, task_family)
-    refs = sorted(f"{r.name}@{r.version}" for r in recipes if r.task_family == task_family)
-    return refs[0] if refs else None
+    return sorted(f"{r.name}@{r.version}" for r in recipes if r.task_family == task_family)
 
 
 def _write(report: PipelineReport, directory: Path, filename: str) -> None:
@@ -132,9 +132,12 @@ async def run_pipeline(
     gateway: Any | None,
     telemetry: TelemetryProvider,
     now: datetime | None = None,
+    sources: Iterable[str] = (),
 ) -> PipelineReport:
+    """sources 是读的 trace 文件，只记进审计。"""
     now = (now or datetime.now(UTC)).astimezone(UTC)
-    filename = f"{config.task_family}-{now:%Y%m%dT%H%M%SZ}.json"
+    # 精确到微秒：同一秒里的两次运行不互相覆盖报告。
+    filename = f"{config.task_family}-{now:%Y%m%dT%H%M%S%fZ}.json"
     evaluated_at = now.strftime("%Y-%m-%dT%H:%M:%SZ")
     platform = telemetry.bind_platform(TELEMETRY_PURPOSE)
     budget = LearningBudget(limit_usd=config.budget_usd)
@@ -152,6 +155,7 @@ async def run_pipeline(
         attributes={
             "learning.tenant": config.tenant_id,
             "learning.task_family": config.task_family,
+            "learning.files": ",".join(sources),
             "learning.spans": len(spans),
             "learning.tasks": len(tasks),
             "learning.skipped": traces.skipped,
@@ -176,10 +180,12 @@ async def run_pipeline(
         report.candidate_document = candidate.document
 
         # 4：评测与门槛。
-        baseline_ref = await _baseline_recipe(registry, tenant, config.task_family)
+        baseline_refs = await _baseline_recipes(registry, tenant, config.task_family)
         cand_tasks = candidate_cohort(tasks, config.task_family, candidate.signature)
-        base_tasks = baseline_cohort(tasks, config.task_family, baseline_ref)
-        report.baseline = {"kind": "recipe", "recipe": baseline_ref, "samples": len(base_tasks)} if baseline_ref else {"kind": "full_planning", "samples": len(base_tasks)}
+        base_tasks = baseline_cohort(tasks, config.task_family, baseline_refs)
+        report.baseline = (
+            {"kind": "recipe", "recipes": baseline_refs, "samples": len(base_tasks)} if baseline_refs else {"kind": "full_planning", "samples": len(base_tasks)}
+        )
         gate = non_inferiority(
             Outcomes.from_tasks(cand_tasks), Outcomes.from_tasks(base_tasks), delta=config.delta, epsilon=config.epsilon, min_samples=config.min_samples
         )

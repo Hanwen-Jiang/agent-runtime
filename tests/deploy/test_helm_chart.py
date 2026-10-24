@@ -10,6 +10,7 @@ Worker 池另有 `agentruntime.io/pool: <池名>`。
 from __future__ import annotations
 
 import re
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +22,7 @@ from deploy_tests import (
     CHART_DIR,
     COLLECTOR_CONFIG,
     PRODUCTION_VALUES,
+    RELEASE,
     REPO_ROOT,
     by_kind,
     containers,
@@ -296,3 +298,20 @@ def test_learning_is_a_scaled_job_on_the_spans_topic(manifests: list[dict[str, A
     assert pod["restartPolicy"] in ("Never", "OnFailure")
     args = [*main_container(job).get("command", []), *main_container(job).get("args", [])]
     assert "agentruntime_learning.pipeline" in " ".join(args)
+
+
+def test_learning_runs_one_job_at_a_time(manifests: list[dict[str, Any]]) -> None:
+    """R-06 评审第 4 节第 3 条：一个 ScaledJob 对应一个租户的一个任务族；两次运行并发时，后一次的 Promote 覆盖前一次，所以只许一个 Job 同时跑。"""
+    job = only(by_kind(manifests, "ScaledJob"), "Learning Pipeline 的 ScaledJob")
+    assert int(job["spec"]["maxReplicaCount"]) == 1
+    assert int(job["spec"]["jobTargetRef"].get("parallelism", 1)) == 1
+
+
+def test_learning_refuses_more_than_one_job() -> None:
+    helm = require_tool("helm")
+    proc = subprocess.run(
+        [helm, "template", RELEASE, CHART_DIR, "--set", "learning.maxReplicaCount=3"],
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
+    )
+    assert proc.returncode != 0, "learning.maxReplicaCount 改成大于 1 时渲染应失败"
+    assert "maxReplicaCount" in proc.stderr

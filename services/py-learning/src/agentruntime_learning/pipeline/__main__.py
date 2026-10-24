@@ -101,7 +101,7 @@ async def _run(args: argparse.Namespace, env: Mapping[str, str], lines: list[str
             budget_usd=args.budget_usd,
             dry_run=args.dry_run,
         )
-        report = await run_pipeline(config, lines=lines, fmt=args.format, registry=registry, gateway=gateway, telemetry=telemetry)
+        report = await run_pipeline(config, lines=lines, fmt=args.format, registry=registry, gateway=gateway, telemetry=telemetry, sources=list(args.traces))
         print(summary_line(report))
         return 1 if report.status in FAILED else 0
     finally:

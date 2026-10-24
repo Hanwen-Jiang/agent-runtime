@@ -159,3 +159,17 @@ TMP 计划第 0 节第 4 条：未处理的修掉或登记。建议分两类：
    指定了 embedding_version 的嵌入只有一个 Profile，照旧不切换。其余 not_found 不切换。
 
 第 1 条（Reviewer 避开生成者那一家）与第 6 条（缺租户的类别）仍待人定方案。
+
+人定方案（2026-10-24）：第 1 条按 Node 结果里实际服务的 vendor 避开（Node Executor 把 vendor 写进结果的 meta，Stage Runner 汇总给 Reviewer，
+Reviewer 调用时填 `avoid_vendor`）；第 6 条缺租户改报 denied。处理结果见第 7 节。
+
+## 6. 另一家复审（2026-10-24）
+
+OpenAI gpt-6-sol 按 6.2 的模板复审，原文与材料包见 [reviews/R-02-gpt-6-sol.md](reviews/R-02-gpt-6-sol.md)。满足写审分离，R-02 算评审完成。
+
+- **与本评审一致**：期望成本公式、租户约束只有白名单、并发池与限流、Task 级固定主模型、Reviewer 不传 `avoid_vendor` 都是“未处理”；
+  密钥不外泄、租户上下文、选档确定性、rationale 不混入结果为“已处理”。没有把第 5 节已修的四条判为没修好。
+- **新提出、采纳并登记**：网关只校验结构化输出是合法 JSON，不按 schema 校验（schema 由 Python 侧校验，契约要写明；登记到完整版）；
+  计量只写标准输出、没进 trace（第 3 节第 6 条已有，Langfuse 一并登记）；activity 重试时同一请求可能在上游被处理两次、没有请求级去重（第 2.2 节已提到，登记）。
+- **判“不确定”的两项**（错误分类跨语言一致、流式断流）：跨语言的错误还原有 `tests/e2e/test_model_gateway.py` 的 `test_upstream_errors_map_to_python_categories`；
+  流式中途断开拿不到 Usage 是第 5 节已写明的没有覆盖的情形。

@@ -56,7 +56,7 @@ func TestNewRequiresProviderAndRouter(t *testing.T) {
 	}
 }
 
-// 难点“租户上下文”：缺少租户的请求直接拒绝，不调用供应商。约定 3：invalid，code missing_tenant。
+// 难点“租户上下文”：缺少租户的请求直接拒绝，不调用供应商。与 S-02 的 tenancy 一致：denied，code missing_tenant（R-02 评审第 4 节第 6 条）。
 func TestMissingTenantIsRejectedWithoutCallingProvider(t *testing.T) {
 	h := newHarness(t)
 	for name, tc := range map[string]*commonv1.TenantContext{
@@ -87,8 +87,8 @@ func TestMissingTenantIsRejectedWithoutCallingProvider(t *testing.T) {
 		}
 		for method, do := range calls {
 			code, pe := errorDetail(t, do())
-			if code != connect.CodeInvalidArgument || pe.GetCategory() != providererr.Invalid || pe.GetCode() != "missing_tenant" {
-				t.Errorf("%s / %s：应是 InvalidArgument + invalid/missing_tenant，实际 %v %v/%s", name, method, code, pe.GetCategory(), pe.GetCode())
+			if code != connect.CodePermissionDenied || pe.GetCategory() != providererr.Denied || pe.GetCode() != "missing_tenant" {
+				t.Errorf("%s / %s：应是 PermissionDenied + denied/missing_tenant，实际 %v %v/%s", name, method, code, pe.GetCategory(), pe.GetCode())
 			}
 		}
 	}

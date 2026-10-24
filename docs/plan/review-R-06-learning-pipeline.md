@@ -97,3 +97,24 @@
 
 **登记到后续**（写进 `docs/reference/risks-and-open-questions.md`）：Learning 自己的发布令牌与角色；跨运行的预算总额与按价值抽样；Gateway 执行 `max_cost_usd_micros`（R-02 已登记）；
 trace 存储的访问控制；归因反哺之前先处理提示注入。
+
+人定方案（2026-10-24）：第 1 到 3 条现在修；第 4 条 Task 成本全部计入（tool_loop 每一步、Planner、Reviewer、子工作流）；第 5、6 条登记。
+
+## 5. 另一家复审（2026-10-24）
+
+OpenAI gpt-6-sol 按 6.2 的模板复审，原文与材料包见 [reviews/R-06-gpt-6-sol.md](reviews/R-06-gpt-6-sol.md)。满足写审分离，R-06 算评审完成。
+
+- **与本评审一致**：门槛先于发布、Registry 的第二道、样本下限、选择偏差、确定性、至少一次投递为“已处理”；单次调用超支取决于网关执行
+  `max_cost_usd_micros`；同一任务族并发运行时 Promote 的先后决定默认版本。
+- **新提出、采纳并在这一轮修**（都只动 Learning 自己）：
+  1. 现行组的 Recipe：`_baseline_recipe` 把该任务族的默认 Recipe 排序后取第一个，同一任务族有几个默认 Recipe 时现行组是随意的一个。改为这些默认 Recipe 的 Task 的并集，报告里列出用了哪些。
+  2. 失败归因的输出没有按完整 schema 校验（reason 非空、长度上限、不许多余字段）。改用 jsonschema 校验。
+  3. 审计 `learning.read_traces` 没有记读了哪些文件（细化第 2 节第 2 步要求）。补上文件名。
+  4. 报告文件名精确到秒，同一秒重跑会覆盖。改为精确到微秒。
+- **新提出、登记**：重跑通过门槛时每次都 Publish 一个新的影子版本（默认版本只由 Promote 决定，结果正确但多出影子版本）；Registry 的 Promote 没有
+  “基于哪个现行版本”的比较（CAS）；Chart 里 Learning 的 ScaledJob 按 Kafka 积压触发、Job 却读固定的 trace 文件（第一期只能读文件，触发器的语义要等 EventStream 的 Kafka 适配器）。
+- **判“不确定”、已核对**：span 上的 `tenant_id` 由 Telemetry 绑定时加上，调用方传入的同名属性被覆盖，由 Telemetry 的一致性测试
+  （`agentruntime_core/conformance/telemetry.py`）在控制台与 OpenTelemetry 两个实现上验证；运行中的 Task 固定版本由 T-08 的 `tests/e2e/test_registry.py` 验证，
+  但规划时可选的 Recipe 列表不按固定版本（本评审 1.3），与复审的“不确定”相符。
+- **不同意**：复审认为“每次成功成本”按 J.3 取成功 Task 的均值即可。J.3 说的“每次成功成本”与 H.2“每次成功的期望成本”、S-08 评测报告的 `per_success_usd`
+  是同一个量（总成本 ÷ 成功数），失败的花费要算进去，维持本评审 1.1 的结论并修掉。

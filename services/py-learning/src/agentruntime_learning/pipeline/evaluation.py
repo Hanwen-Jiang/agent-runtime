@@ -2,10 +2,11 @@
 
 - 候选组：签名等于候选签名的全部 Task（成功与失败都算），加上签名是它的严格前缀、且没有成功的 Task（走这条路中途失败的）。
   只算成功的会有选择偏差。
-- 现行组：该任务族当前的默认 Recipe 有就取用它的 Task；没有就取该任务族全部完整规划的 Task。
-- 门槛：候选成功率的 Wilson 95% 下界 ≥ 现行成功率 − δ；候选每次成功成本的 95% 上界（均值 + 1.96 × 标准误）
-  ≤ 现行均值 × (1 + ε)；两组都至少 min_samples 条。默认 δ = 0.02、ε = 0.05、100 条（J.3）。
-- 每次成功成本是成功 Task 成本的均值。
+- 现行组：该任务族当前有默认 Recipe 就取用了它们（任何一个）的 Task；没有就取该任务族全部完整规划的 Task。
+- 门槛：候选成功率的 Wilson 95% 下界 ≥ 现行成功率 − δ；候选每次成功成本的 95% 上界 ≤ 现行的每次成功成本 × (1 + ε)；
+  两组都至少 min_samples 条。默认 δ = 0.02、ε = 0.05、100 条（J.3）。
+- 每次成功成本 = 组内全部 Task 的成本 ÷ 成功数（附录 H.2、S-08 报告的 per_success_usd）：失败的花费也算（R-06 评审 1.1）。
+  上界用比率估计量的 delta 方法：R + 1.96 × sd(c − R·s) ÷ (√n · 成功率)，c 是每个 Task 的成本，s 是它成没成（0 或 1）。
 """
 
 from __future__ import annotations
@@ -43,29 +44,35 @@ def wilson(successes: int, total: int, z: float = Z95) -> tuple[float, float]:
 class Outcomes:
     total: int
     successes: int
-    success_costs: tuple[float, ...] = ()
+    # 每个 Task 的 (成本, 成没成)，按 task_id 的顺序。
+    tasks: tuple[tuple[float, bool], ...] = ()
 
     @classmethod
     def from_tasks(cls, tasks: Iterable[TaskTrace]) -> Outcomes:
-        tasks = list(tasks)
-        costs = tuple(t.cost_usd for t in tasks if t.status == "done")
-        return cls(total=len(tasks), successes=len(costs), success_costs=costs)
+        rows = tuple((float(t.cost_usd), t.status == "done") for t in tasks)
+        return cls(total=len(rows), successes=sum(1 for _, ok in rows if ok), tasks=rows)
 
     @property
     def success_rate(self) -> float:
         return self.successes / self.total if self.total else 0.0
 
     @property
+    def total_cost(self) -> float:
+        return math.fsum(c for c, _ in self.tasks)
+
+    @property
     def cost_per_success(self) -> float | None:
-        return statistics.fmean(self.success_costs) if self.success_costs else None
+        return self.total_cost / self.successes if self.successes else None
 
     def cost_upper_bound(self) -> float | None:
-        """每次成功成本的 95% 上界：均值 + 1.96 × 标准误（一条样本时标准误按 0）。"""
-        if not self.success_costs:
+        """每次成功成本的 95% 上界（比率估计量的 delta 方法；一条样本时标准误按 0）。没有成功时为 None。"""
+        ratio = self.cost_per_success
+        if ratio is None:
             return None
-        n = len(self.success_costs)
-        sd = statistics.stdev(self.success_costs) if n > 1 else 0.0
-        return statistics.fmean(self.success_costs) + Z95 * sd / math.sqrt(n)
+        n = len(self.tasks)
+        residuals = [c - ratio * (1.0 if ok else 0.0) for c, ok in self.tasks]
+        sd = statistics.stdev(residuals) if n > 1 else 0.0
+        return ratio + Z95 * sd / (math.sqrt(n) * self.success_rate)
 
     def result(self) -> dict[str, Any]:
         """registry_evaluation.schema.json 的 result。"""
@@ -89,12 +96,14 @@ def candidate_cohort(tasks: Iterable[TaskTrace], task_family: str, sig: Signatur
     return sorted(out, key=lambda t: t.task_id)
 
 
-def baseline_cohort(tasks: Iterable[TaskTrace], task_family: str, recipe: str | None) -> list[TaskTrace]:
-    """recipe 为 None：该任务族全部完整规划的 Task；否则是用了这个 Recipe（name@vN）的 Task。"""
-    if recipe is None:
+def baseline_cohort(tasks: Iterable[TaskTrace], task_family: str, recipes: str | Sequence[str] | None) -> list[TaskTrace]:
+    """recipes 为空：该任务族全部完整规划的 Task；否则是用了其中任何一个 Recipe（name@vN）的 Task
+    （同一任务族可以有几个默认 Recipe，现行组是它们的并集）。"""
+    wanted = {recipes} if isinstance(recipes, str) else set(recipes or ())
+    if not wanted:
         out = [t for t in tasks if t.task_family == task_family and not t.recipe]
     else:
-        out = [t for t in tasks if t.task_family == task_family and t.recipe == recipe]
+        out = [t for t in tasks if t.task_family == task_family and t.recipe in wanted]
     return sorted(out, key=lambda t: t.task_id)
 
 

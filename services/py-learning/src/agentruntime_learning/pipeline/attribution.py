@@ -2,18 +2,20 @@
 
 对没做成的 Task（aborted、failed；取消的不算这次做法的失败），用小模型（small@low）经 Model Gateway 判断属于哪一类：
 specification（规格问题：目标或验收条件不清）、coordination（协作失配：Node 之间信息不一致）、verification（验证缺失：没有 judge 或太弱）。
-输入只有结局、各 Round 的 verdict 与 Stage 形状（trace 里本来就没有用户数据），不带 task_id 与租户名。
-输出按 schema 校验，不合格、调用失败、没有 Gateway 或预算用完时一律 unattributed。第一期归因只进报告。
+输入只有结局、各 Round 的 verdict 与 Stage 的结构（Node 的 id、kind、template、after、tier、mode），不带 task_id 与租户名。
+Stage 与 Goal Node 的文字（goal、exit_when、done_when）是 Planner 写的，可能带业务名词，不进提示（R-06 评审第 4 节第 2 条）。
+输出按 OUTPUT_SCHEMA 完整校验，不合格、调用失败、没有 Gateway 或预算用完时一律 unattributed。第一期归因只进报告。
 """
 
 from __future__ import annotations
 
 import json
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
 from google.protobuf import json_format, struct_pb2
+from jsonschema import Draft202012Validator
 
 from agentruntime.common.v1 import enums_pb2, payload_pb2, tenant_pb2
 from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
@@ -34,6 +36,9 @@ OUTPUT_SCHEMA = {
     "properties": {"category": {"enum": list(CATEGORIES)}, "reason": {"type": "string", "minLength": 1, "maxLength": 300}},
     "additionalProperties": False,
 }
+_OUTPUT = Draft202012Validator(OUTPUT_SCHEMA)
+# 提示里每个 Node 只给这些结构字段。
+STRUCTURE_KEYS = ("id", "kind", "template", "after", "tier", "mode")
 
 SYSTEM_PROMPT = """你在做多步 Agent 运行的失败归因。给你一次没做成的运行：最终结局、每一轮评审的结论与这一轮执行计划的结构。
 从三类里选一类，并用一句话说明依据：
@@ -50,12 +55,17 @@ class Attribution:
     reason: str = ""
 
 
+def _structure(shape: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Stage 形状里每个 Node 的结构字段，不带 Planner 写的文字。"""
+    return [{k: n[k] for k in STRUCTURE_KEYS if k in n} for n in shape.get("nodes") or [] if isinstance(n, Mapping)]
+
+
 def _prompt(task: TaskTrace) -> str:
     lines = [f"结局：{task.status}；共 {len(task.rounds)} 轮"]
     for r in task.rounds:
-        shape = json.dumps(r.shape, ensure_ascii=False, sort_keys=True) if r.shape is not None else "（没有记录）"
+        shape = json.dumps(_structure(r.shape), ensure_ascii=False, sort_keys=True) if r.shape is not None else "（没有记录）"
         kind = "规划" if r.planned else "原地重跑"
-        lines.append(f"第 {r.seq} 轮（{kind}）：评审结论 {r.verdict or '（无）'}；执行计划 {shape}")
+        lines.append(f"第 {r.seq} 轮（{kind}）：评审结论 {r.verdict or '（无）'}；执行计划的结构 {shape}")
     return "\n".join(lines)
 
 
@@ -67,7 +77,7 @@ def _parse(response: mg.GenerateResponse) -> dict[str, Any] | None:
             value = json.loads(response.text)
         except json.JSONDecodeError:
             return None
-    if not isinstance(value, dict) or value.get("category") not in CATEGORIES or not isinstance(value.get("reason"), str):
+    if not _OUTPUT.is_valid(value):
         return None
     return value
 

@@ -1,7 +1,7 @@
 // Package gateway 实现 ModelGatewayService（设计书 3.3.1 核心逻辑 3、4；附录 H）：所有模型调用的唯一出口。
 //
 // 每次调用的流程：
-//  1. 校验租户：TenantContext 为空或 tenant_id 为空 → Invalid（code missing_tenant），不选档、不调用供应商。
+//  1. 校验租户：TenantContext 为空或 tenant_id 为空 → Denied（code missing_tenant，与 tenancy 一致），不选档、不调用供应商。
 //  2. 选档：交给 router（role 默认 Tier、显式 Tier、pinned、avoid_vendor、租户白名单、能力）。
 //  3. 按请求的租户 Bind 供应商客户端（每次 RPC 绑定一次，不用平台作用域）。
 //  4. 调用：每次尝试有自己的超时（AttemptTimeout，受调用方剩余的 deadline 限制；流式只限到第一个分片）。
@@ -215,10 +215,10 @@ func invalid(code, message string) error {
 	return providererr.New(providererr.Invalid, code, message)
 }
 
-// checkTenant：缺租户 Invalid（missing_tenant）；格式不对按 tenancy 的规则（Invalid）。
+// checkTenant：缺租户 Denied（missing_tenant），与 S-02 的 tenancy 一致；格式不对按 tenancy 的规则（Invalid）。
 func checkTenant(t *commonv1.TenantContext) error {
 	if t == nil || t.GetTenantId() == "" {
-		return invalid("missing_tenant", "缺少租户上下文")
+		return providererr.New(providererr.Denied, "missing_tenant", "缺少租户上下文")
 	}
 	_, err := tenancy.TenantScope(t)
 	return err

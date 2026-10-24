@@ -1,8 +1,12 @@
 {{- if .Values.learning.enabled }}
 {{- $lp := .Values.learning -}}
+{{- if ne (int $lp.maxReplicaCount) 1 }}
+{{- fail "learning.maxReplicaCount 只能是 1：同一租户同一任务族的两次运行并发时，后一次的 Promote 覆盖前一次（R-06 评审第 4 节第 3 条）" }}
+{{- end }}
 # Learning Pipeline（T-16）：KEDA 按消费组在 trace 主题上的延迟起 Job（设计书 3.5）；每个 Job 跑一遍
 # python -m agentruntime_learning.pipeline run，过评测门槛才经 Registry 发布。
 # 第一期 Job 读文件形式的 trace（tracesClaim）；从 Redpanda 消费要等 EventStream 的 Kafka 适配器。
+# 一个 ScaledJob 对应一个租户的一个任务族，同一时间只跑一个 Job（R-06 评审）。
 apiVersion: keda.sh/v1alpha1
 kind: ScaledJob
 metadata:
@@ -10,10 +14,11 @@ metadata:
   labels:
     {{- include "ar.labels" (list . "learning") | nindent 4 }}
 spec:
-  maxReplicaCount: {{ $lp.maxReplicaCount }}
+  maxReplicaCount: 1
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   jobTargetRef:
+    parallelism: 1
     backoffLimit: 0
     template:
       metadata:

@@ -10,7 +10,7 @@ import json
 import pytest
 
 from agentruntime.common.v1 import enums_pb2
-from agentruntime_learning.pipeline.attribution import CATEGORIES, LEARNING_USER, attribute_failures
+from agentruntime_learning.pipeline.attribution import CATEGORIES, LEARNING_USER, STRUCTURE_KEYS, attribute_failures
 from agentruntime_learning.pipeline.budget import LearningBudget
 from agentruntime_learning.pipeline.traces import TaskTrace, read_spans, task_traces
 
@@ -49,19 +49,34 @@ async def test_calls_use_the_small_tier_with_the_tenant_and_no_task() -> None:
     assert request.generation.HasField("output_schema"), "结构化输出，按 schema 校验"
 
 
-async def test_the_prompt_only_carries_outcome_verdicts_and_shapes() -> None:
+async def test_the_prompt_only_carries_outcome_verdicts_and_the_structure_of_each_stage() -> None:
+    """R-06 评审第 4 节第 2 条：Stage 与 Goal Node 的文字（goal、exit_when、done_when）是 Planner 写的，可能带业务名词，不进提示；
+    只给结构（Node 的 id、kind、template、after、tier、mode）。"""
     gateway = ScriptedGateway([])
-    [task] = [t for t in failed_tasks(1) if t.status != "done"]
+    [task] = [t for t in failed_tasks(2) if t.status != "done" and len(t.rounds) == 2]
     await attribute_failures([task], tenant_id="t1", task_family=FAMILY, gateway=gateway, budget=LearningBudget(limit_usd=1))
     text = "\n".join(m.text for m in gateway.requests[0].generation.messages)
     assert task.status in text
     for r in task.rounds:
         assert r.verdict in text
-        assert json.dumps(r.shape, ensure_ascii=False, sort_keys=True) in text
+        structure = [{k: n[k] for k in STRUCTURE_KEYS if k in n} for n in r.shape["nodes"]]
+        assert json.dumps(structure, ensure_ascii=False, sort_keys=True) in text
+    for words in ("取数并归类", "每张发票都有科目", "过账并核对", "核对过账结果", "总额一致"):
+        assert words not in text, f"Planner 写的文字不进提示：{words}"
     assert task.task_id not in text and "t1" not in text, "不需要的标识不进提示"
 
 
-@pytest.mark.parametrize("bad", [{"category": "bad_luck", "reason": "x"}, {"reason": "缺类别"}, "不是对象"])
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"category": "bad_luck", "reason": "x"},
+        {"reason": "缺类别"},
+        "不是对象",
+        {"category": "verification", "reason": ""},
+        {"category": "verification", "reason": "长" * 301},
+        {"category": "verification", "reason": "x", "extra": 1},
+    ],
+)
 async def test_invalid_model_output_is_unattributed(bad: object) -> None:
     results = await attribute_failures(failed_tasks(1), tenant_id="t1", task_family=FAMILY, gateway=ScriptedGateway([bad]), budget=LearningBudget(limit_usd=1))
     assert [r.category for r in results] == ["unattributed"]

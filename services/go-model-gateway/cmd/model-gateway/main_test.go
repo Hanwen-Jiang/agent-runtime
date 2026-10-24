@@ -189,12 +189,12 @@ func TestServeHealthzAndGRPCOnOnePort(t *testing.T) {
 		t.Errorf("Embed：%q，%d 个向量", emb.Msg.GetEmbeddingVersion(), len(emb.Msg.GetEmbeddings()))
 	}
 
-	// 缺租户：经真实服务也是 InvalidArgument，并带 ar-error-bin。
+	// 缺租户：经真实服务也是 PermissionDenied（denied，与 tenancy 一致），并带 ar-error-bin。
 	_, err = s.client.Generate(ctx, connect.NewRequest(&mg.GenerateRequest{
 		Call: &mg.CallContext{Role: commonv1.Role_ROLE_TRANSFORM}, Generation: &mg.GenerateParams{Messages: []*mg.ChatMessage{{Role: mg.ChatRole_CHAT_ROLE_USER, Text: "hi"}}},
 	}))
-	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Errorf("缺租户应是 InvalidArgument：%v", err)
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Errorf("缺租户应是 PermissionDenied：%v", err)
 	}
 	var ce *connect.Error
 	if !errors.As(err, &ce) || len(ce.Meta().Values("ar-error-bin")) == 0 {

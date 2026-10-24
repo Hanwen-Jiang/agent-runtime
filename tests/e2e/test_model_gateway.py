@@ -351,7 +351,7 @@ async def test_byok_tenant_uses_its_own_key(gateway: Gateway, upstream: FakeOpen
     ids=["no-tenant-field", "empty-tenant", "blank-tenant-id"],
 )
 async def test_missing_tenant_is_rejected_without_calling_upstream(gateway: Gateway, upstream: FakeOpenAI, tenant_ctx: tenant_pb2.TenantContext | None) -> None:
-    """难点“租户上下文”、约定 3：缺少租户 → invalid（code missing_tenant），不调用供应商。"""
+    """难点“租户上下文”：缺少租户 → denied（code missing_tenant，与 S-02 的 tenancy 一致，R-02 评审第 4 节第 6 条），不调用供应商。"""
     request = generate_request(task_id="tsk_gw_no_tenant")
     embed = mg.EmbedRequest(call=mg.CallContext(task_id="tsk_gw_no_tenant", node_id="embed"), texts=["x"])
     request.ClearField("tenant")
@@ -362,9 +362,9 @@ async def test_missing_tenant_is_rejected_without_calling_upstream(gateway: Gate
             msg.tenant.MergeFrom(tenant_ctx)
     mark = upstream.mark()
     async with client(gateway) as gw:
-        with pytest.raises(InvalidError) as info:
+        with pytest.raises(DeniedError) as info:
             await gw.generate(request)
-        with pytest.raises(InvalidError) as embed_info:
+        with pytest.raises(DeniedError) as embed_info:
             await gw.embed(embed)
     assert info.value.code == "missing_tenant"
     assert embed_info.value.code == "missing_tenant"
