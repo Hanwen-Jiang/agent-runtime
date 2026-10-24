@@ -51,9 +51,9 @@ def last_json(proc: subprocess.CompletedProcess[str]) -> dict[str, Any]:
 @dataclass
 class DevStack:
     root: Path
-    info: dict[str, Any] = field(default_factory=dict)
-    # 要从失败输出与检查里认出来的密钥（只在 live 用例里有）。
-    secrets: list[str] = field(default_factory=list)
+    info: dict[str, Any] = field(default_factory=dict, repr=False)
+    # 要从失败输出与检查里认出来的密钥（只在 live 用例里有）。不进 repr：pytest 的失败输出会打印 fixture 的值。
+    secrets: list[str] = field(default_factory=list, repr=False)
 
     @classmethod
     def up(cls, root: Path, *args: str, secrets: list[str] | None = None) -> DevStack:

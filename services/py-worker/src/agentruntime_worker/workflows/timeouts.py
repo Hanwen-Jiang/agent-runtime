@@ -23,6 +23,10 @@ MIN_HEARTBEAT = timedelta(seconds=1)
 
 # Planner、Reviewer 的决策 activity 与收尾写回。
 DECISION_START_TO_CLOSE = timedelta(minutes=2)
+# 要等强档模型的决策 activity：plan_round、review_round、tool_loop_step。T-13 的真模型端到端里，一次完整规划（约 1.2 万输入 token、
+# 带思考）经聚合网关超过 90 秒，2 分钟只够一次尝试，Planner 悄悄回退到保守规划。放到 5 分钟，网关的两次尝试与切换来得及。
+# 这些 activity 不发心跳，Worker 崩溃后要到超时才重试，所以只给这三个放宽。
+MODEL_DECISION_START_TO_CLOSE = timedelta(minutes=5)
 FINALIZE_START_TO_CLOSE = timedelta(minutes=1)
 
 

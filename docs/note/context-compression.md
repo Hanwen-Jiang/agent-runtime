@@ -1,6 +1,6 @@
 # 上下文压缩：Context Builder 与 S-11 评测
 
-> 学习笔记，2026-10-21。对应代码：`services/py-worker/src/agentruntime_worker/context/`（`builder.py`、`partitions.py`、`modes.py`、`summary.py`、`probe.py`、`tokens.py`）；评测：`services/py-learning/src/agentruntime_learning/evals/context.py`；设计依据：设计书 3.2.7、附录 G，[上下文与压缩参考](../reference/context-engineering.md)。
+> 学习笔记，2026-10-21（第 4 节 2026-10-24 按 T-13 更新）。对应代码：`services/py-worker/src/agentruntime_worker/context/`（`builder.py`、`partitions.py`、`modes.py`、`summary.py`、`probe.py`、`tokens.py`）；评测：`services/py-learning/src/agentruntime_learning/evals/context.py`；设计依据：设计书 3.2.7、附录 G，[上下文与压缩参考](../reference/context-engineering.md)。
 
 ## 1. 要解决的问题
 
@@ -116,9 +116,11 @@ mask 是**可恢复**的：原文都在 ObjectStore 里，模型需要细节时�
 5. **摘要持久化**：只有摘要刚发生的那一次，history 开头会变，缓存从 history 开头失效；之后每次都读回同一份摘要，又稳定下来。
 6. **profile 只追加**：偏好变化写成“偏好变更：新增/撤销 …”追加在后面，前面的条目不动。
 
-**断点为什么还没有“生效”**：`ChatMessage.cache_breakpoint`（`model_gateway.proto`）是 Worker 交给 Model Gateway 的标记，由 Gateway 的供应商适配器翻译成具体供应商的缓存参数（例如 Anthropic 的 `cache_control`）。目前 `services/go-model-gateway` 只有一个打印“not implemented yet”的 `main.go`，`libs/go-core` 里只有 mock 供应商。所以 Worker 这一侧已经做完，真正写出缓存参数并在 `metering.proto` 的 `cache_read_tokens`、`cache_write_tokens` 里看到命中，要等实施计划第 7 节的“Model Gateway 单供应商直连”工作项（以及 R-02 评审）。
+**断点怎么到达供应商（2026-10-24 更新）**：`ChatMessage.cache_breakpoint`（`model_gateway.proto`）是 Worker 交给 Model Gateway 的标记。Gateway 的 OpenAI 兼容适配器（`libs/go-core/adapters/openaicompat`，T-05）把带断点、文本非空的消息写成内容片段数组，文本片段带 `cache_control {"type":"ephemeral"}`；计量里的 `cache_read_tokens` 取自响应的 `prompt_tokens_details.cached_tokens`。
 
-**可以改进的点**：history 是最长、也是每步都在增长的部分，但现在没有断点。Anthropic 允许每次请求最多 4 个断点，在 history 最后一条消息上再设一个“滚动断点”，下一步就能复用到上一步为止的整段 history。这要等 Gateway 接上真实供应商、能看到命中率之后再验证收益。
+**T-13 真模型端到端看到的命中率**：CI 修复 Task 的 13 次调用，cache_read ÷ 输入合计 7%，全部来自 Reviewer（gpt-5.5，OpenAI 的自动前缀缓存，第二次 review 命中 5552 / 7920）；Anthropic 模型（Planner、tool_loop、Node）一律 0。单独探测过：同一段 18k token 的前缀带 `cache_control` 连发两次，供应商（OpenAI 兼容的转发服务）返回的 `cache_creation_input_tokens` 与 `cache_read_input_tokens` 都是 0，即它在 OpenAI 兼容格式下丢掉了 `cache_control`。所以 Worker 与适配器这一侧已经做完，Anthropic 的缓存要换成原生 Messages 接口的适配器（或支持透传的供应商）才生效，已登记在风险文档 3.2 节。
+
+**可以改进的点**：history 是最长、也是每步都在增长的部分，但现在没有断点。Anthropic 允许每次请求最多 4 个断点，在 history 最后一条消息上再设一个“滚动断点”，下一步就能复用到上一步为止的整段 history。等 Anthropic 的缓存真正生效、能看到命中率之后再验证收益。
 
 ## 5. S-11 压缩评测
 
@@ -183,7 +185,7 @@ A：摘要后附一张由代码算出的“已执行过的动作”清单，并�
 A：分区按稳定性排序，status 放最末；在稳定分区末尾设缓存断点；history 只追加；mask 结果确定，已遮蔽的不再变；摘要持久化，读回同一份；profile 只追加变更。
 
 **Q：你们的缓存断点现在生效了吗？**
-A：Worker 侧已经在 system、profile、brief 上设了 `cache_breakpoint`，有测试覆盖。但 Model Gateway 还没有真实供应商适配器，标记还没翻译成供应商的缓存参数，命中率要等 Gateway 接好后从计量字段里看。下一步可以考虑在 history 末尾加一个滚动断点。
+A：链路上做完了：Worker 在 system、profile、brief 上设 `cache_breakpoint`，Gateway 的适配器翻译成 `cache_control`，计量记下 cache_read。但真模型端到端里 Anthropic 模型的命中率是 0：现在用的 OpenAI 兼容转发服务丢掉了 `cache_control`（单独探测确认过）；OpenAI 模型靠自动前缀缓存有命中。要换原生 Messages 接口的适配器才能让 Anthropic 的断点生效。这也说明命中率必须从计量里实测，不能假设标记写出去就生效。
 
 **Q：mask 的阈值为什么是 40%，摘要为什么是 70%？**
 A：这是参考值，按模型实测的有效长度设，不按标称窗口。mask 早触发是因为它几乎没有代价；摘要留出余量，给后续步骤和摘要本身的增长留空间。不同模型、不同 Task 可以通过 Task Plan 覆盖。

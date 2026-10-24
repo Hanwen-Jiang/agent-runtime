@@ -1035,7 +1035,7 @@ class StageRunner:
                             task_plan=None if isolated else copy.deepcopy(self._ctx.task_plan),
                         ),
                         task_queue=names.MODEL_QUEUE,
-                        start_to_close_timeout=timeouts.DECISION_START_TO_CLOSE,
+                        start_to_close_timeout=timeouts.MODEL_DECISION_START_TO_CLOSE,
                         retry_policy=timeouts.DECISION_RETRY,
                         result_type=ToolLoopStep,
                     )

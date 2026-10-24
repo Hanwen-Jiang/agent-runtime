@@ -223,8 +223,12 @@
 - 一个完整任务（例如 CI 修复或批量发票归类）从 Ingress 到交付，用真 Gateway、真工具。
 - 杀掉 Worker 后能恢复（S-07 套件已有，换成真 Gateway 重跑一遍）。
 - 完成：一份端到端录像或日志；故障注入套件通过。
-- 状态（2026-10-24）：细化见 [live-e2e.md](live-e2e.md)，验收测试已写，**待人确认**第 3 节的决定与第 5 节的测试后实现。写测试时发现真 Planner 的
-  Node Catalog 里没有工具（规划不出用平台内工具的 tool_loop），一并修。
+- 结果（2026-10-24）：细化见 [live-e2e.md](live-e2e.md)，决定与测试经人确认。`scripts/dev_stack.py` 拉起整套；开发种子 `deploy/dev/registry-seed.json`；
+  场景 1、4 另加经真 Go Model Gateway 的用例。真模型的 CI 修复两条 live 用例都通过（完整跑完 $0.17；tool_loop 中途杀 Worker 后恢复 $0.14，工具调用不重复），
+  端到端日志在 `tests/e2e/.live-reports/`。第一次运行查出并修好：适配器对不满足严格模式的 schema 也发 strict、非流式请求带了 SSE 的 Accept（Reviewer 全部
+  bad_response）、完整规划超过 90 秒（模型决策 activity 放宽到 5 分钟）、失败信息带出开发 SecretStore 的内容。真 Planner 的 Node Catalog 补上了工具。
+  登记到后续：模型决策与工具 activity 不发心跳（崩溃后约 5 分钟才重试）；Planner、Reviewer 的回退外面看不出来；Anthropic 模型的缓存命中为 0（转发服务丢掉了
+  `cache_control`），history 的滚动断点还定不了。
 
 **T-14 CI 与本地开发环境**　轻 · 低
 - 把"本地 clone 跑测试"写成脚本；CI 增加 py-learning、py-worker、py-memory 的日常测试，不只是夜间任务。

@@ -505,7 +505,7 @@ class TaskWorkflow:
                 last_round=last_round,
             ),
             task_queue=names.DECISION_QUEUE,
-            start_to_close_timeout=timeouts.DECISION_START_TO_CLOSE,
+            start_to_close_timeout=timeouts.MODEL_DECISION_START_TO_CLOSE,
             retry_policy=DECISION_RETRY,
             result_type=PlanRoundOutput,
         )
@@ -527,7 +527,7 @@ class TaskWorkflow:
                 history=list(self._history),
             ),
             task_queue=names.DECISION_QUEUE,
-            start_to_close_timeout=timeouts.DECISION_START_TO_CLOSE,
+            start_to_close_timeout=timeouts.MODEL_DECISION_START_TO_CLOSE,
             retry_policy=DECISION_RETRY,
             result_type=dict,
         )

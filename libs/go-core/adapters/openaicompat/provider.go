@@ -270,8 +270,9 @@ type response struct {
 }
 
 // post 向上游发一个 POST（不重试）。2xx 返回响应；其余状态与传输错误分类成 *providererr.Error。model 是请求的模型名，
-// 用来把笼统的 400 区分成 not_found（见 modelList）。
-func (c *client) post(ctx context.Context, path, model string, payload any) (*response, error) {
+// 用来把笼统的 400 区分成 not_found（见 modelList）。accept 按请求的种类给：非流式只接受 application/json——有的聚合网关
+// 看到 Accept 里有 text/event-stream，会把非流式请求（包括它的拒绝）当流返回（T-13 真模型端到端发现）。
+func (c *client) post(ctx context.Context, path, model, accept string, payload any) (*response, error) {
 	key, err := c.apiKey(ctx)
 	if err != nil {
 		return nil, err
@@ -287,7 +288,7 @@ func (c *client) post(ctx context.Context, path, model string, payload any) (*re
 		return nil, providererr.New(providererr.Invalid, "bad_request", "无法构造请求")
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("Accept", accept)
 	req.Header.Set("Authorization", "Bearer "+key.RevealString())
 	resp, err := c.p.http.Do(req)
 	if err != nil {
@@ -310,7 +311,7 @@ func (c *client) post(ctx context.Context, path, model string, payload any) (*re
 
 // postJSON 发请求并把响应体解析进 out；解析失败为 Transient（上游的临时故障）。
 func (c *client) postJSON(ctx context.Context, path, model string, payload, out any) error {
-	r, err := c.post(ctx, path, model, payload)
+	r, err := c.post(ctx, path, model, "application/json", payload)
 	if err != nil {
 		return err
 	}

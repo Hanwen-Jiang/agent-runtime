@@ -183,3 +183,15 @@ OpenAI gpt-6-sol 按 6.2 的模板复审，原文与材料包见 [reviews/R-02-g
    仍未处理：网关只剩同一家时 `AvoidVendorUnmet` 照样同源评判（第 5 节第 2 条已让它进计量与日志）；Planner 与 Reviewer 默认都落在 strong 档的同一家，
    跨轮的“生成者”只看本轮结果。
 6. **缺租户报 denied**：网关缺租户改报 `denied`（`missing_tenant`），与 S-02 的 tenancy 一致；网关、cmd 与跨语言端到端的验收测试随之改。
+
+## 8. T-13 真模型端到端查出的适配器缺陷（2026-10-24）
+
+评审与另一家复审都没发现、真供应商才暴露的两条，已修（`libs/go-core/adapters/openaicompat`，测试 `strict_test.go`）：
+
+1. **严格模式**：`output_schema` 一律发 `strict: true`；OpenAI 的严格模式要求每层对象 `additionalProperties: false`、全部属性必填，不满足的 schema（Reviewer 的）被上游拒绝。
+   现在只在整份 schema 满足严格模式时发 strict，否则只要求合法 JSON（schema 照旧由 Python 侧校验，第 6 节）。
+2. **非流式请求的 Accept**：非流式请求也接受 `text/event-stream`，转发服务就按流式返回，或把校验错误写成 HTTP 200 的“System Notice”正文，适配器解析失败记为 bad_response、
+   切换到同档的另一个模型。现在非流式只发 `Accept: application/json`。
+
+登记（风险文档 3.2 节）：“System Notice”正文应识别为 invalid、不切换；Anthropic 模型经这家转发服务的 OpenAI 兼容格式时 `cache_control` 被丢掉，缓存命中为 0。
+经验：mock 供应商与 `fake_openai` 都按我们自己对协议的理解实现，验收测试覆盖不到供应商的严格程度与代理的行为；适配器至少要有一条 live 用例跑带 schema 的调用。

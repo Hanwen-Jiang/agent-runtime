@@ -3,7 +3,7 @@
 > TMP 计划 T-13（强档 · 中）。依据：设计书 1.1“可恢复”、2.5 端到端流程、3.6 执行保障、附录 K.4；TMP 计划第 0 节第 1 条；
 > 实施计划 S-03（杀 Worker）、S-07（故障注入）；T-05、T-06（Model Gateway）、T-08（Registry）、T-09（Policy Engine）、T-10（工具）、T-11b（进度事件），
 > 以及 T-14 登记过来的“本地拉起整套的脚本”。
-> 状态：验收测试已写，**待人确认**（第 3 节的决定与第 5 节的测试）。实现在确认之后。
+> 状态（2026-10-24）：第 3 节的决定与第 5 节的测试经人确认；已实现，验收全部通过，真模型运行记录见第 6 节。
 
 ## 1. 目标
 
@@ -72,3 +72,35 @@ T-13 的“完成”：一份端到端日志；故障注入套件通过。
 | 场景 4 经真网关：同档的一个上游模型持续失败，网关切到同档的另一个，activity 不重试；整档失败时 Node 有限次重试后失败、交给 Reviewer | `tests/e2e/faults/test_fault_s4_model_vendor_failover.py` |
 | live：CI 修复从 Ingress 到交付：DONE；unittest 在工作区通过、测试文件没改；用到真 Planner、tool_loop、Reviewer 与 `repo_*`、`shell_run`；SSE 有进度事件、没有 rationale；计量都在租户名下、合计不超过上限；不泄露密钥；历史干净、能回放；写出端到端日志 | `tests/e2e/live/test_t13_ci_fix.py` |
 | live：tool_loop 中途杀 Worker，重启后 DONE；已完成的 activity 不重调度、工具调用不重复完成；结果同上能独立核对 | 同上 |
+
+## 6. 实现记录（2026-10-24）
+
+**离线部分**：`test_dev_stack.py` 7 条、场景 1 与场景 4 经真网关的 3 条、`test_planner_tool_catalog.py` 都通过。真 Planner 的 Node Catalog 改由
+`ToolsContextSource` 补上 ToolDriver 登记的工具与 effect（上限取 Task State 的约束）。
+
+**真模型运行**（供应商：OpenAI 兼容的转发服务；Planner 与 tool_loop 是 claude-sonnet-5-5，Triage 是 gemini-3.5-flash-lite，Reviewer 避开生成者那一家落在 gpt-5.5）：
+
+| 运行 | 结局 | 说明 |
+| --- | --- | --- |
+| 第 1 次 | 失败 | Task DONE、unittest 通过、测试文件没改、SSE 正常；但计量里没有 review：Reviewer 的调用全部 bad_response，回退成只按规则判定。另外第 1 轮的规划超时，Planner 回退成保守规划 |
+| 第 2 次（修复后） | 两条都通过（7 分 17 秒） | 完整跑完：13 次调用、按标价 $0.17；杀 Worker：12 次调用、$0.14，第一次 `call_tool` 完成后强杀，中断的 `tool_loop_step` 第 2 次尝试完成，工具调用都只完成一次 |
+
+两条的做法相同：tool_loop 先 `shell_run` 跑 unittest 看到失败，`repo_read` 读 `pricing.py`，`repo_edit` 改成 `Decimal` 的 ROUND_HALF_UP，再跑一遍 unittest；
+Reviewer 判 continue，第 2 轮一个 model 节点写交付说明，Reviewer 判 done。端到端日志在 `tests/e2e/.live-reports/<时间>-ci-fix[-kill]/`（不提交）。
+
+**第 1 次运行查出并修好的**：
+
+1. **严格模式的结构化输出**：适配器对所有 `output_schema` 都发 `strict: true`，但 OpenAI 的严格模式要求每层 `additionalProperties: false`、全部属性必填，
+   Reviewer 的 schema 不满足，被上游拒绝。现在只在 schema 满足严格模式时才发 strict（`openaicompat/wire.go` 的 `strictCompatible`）。
+2. **非流式请求的 Accept**：非流式请求也带了 `text/event-stream`，转发服务就按流式返回，或把错误写成 HTTP 200 的“System Notice”正文，适配器解析失败记为 bad_response。
+   现在非流式只发 `Accept: application/json`。两条都有测试（`openaicompat/strict_test.go`）。
+3. **模型决策的超时**：一次完整规划经转发服务超过 90 秒，`plan_round` 的 2 分钟只够一次尝试。`plan_round`、`review_round`、`tool_loop_step` 放宽到 5 分钟
+   （`MODEL_DECISION_START_TO_CLOSE`）；只改 activity 的调度参数，不改命令序列。
+4. **失败信息里的密钥**：pytest 打印 fixture 的 repr 时带出了开发 SecretStore 的内容；`DevStack` 的这两个字段改为 `repr=False`。
+
+**缓存命中率**（决定第 7 条，只记录）：cache_read ÷ 输入合计 7% 与 9%，全部来自 Reviewer（OpenAI 的自动前缀缓存）；Anthropic 模型一律 0。
+单独探测：同一段 18k token 的前缀带 `cache_control` 连发两次，供应商返回的缓存写入与读取都是 0，即这家转发服务在 OpenAI 兼容格式下丢掉了 `cache_control`。
+history 的滚动断点因此还定不了。
+
+**登记到后续**（风险文档 3.2、3.8 节）：模型决策与工具 activity 不发心跳，Worker 崩溃后要等约 5 分钟（start-to-close）才重试；Planner、Reviewer 的回退外面看不出来；
+转发服务的“System Notice”应记为 invalid；Anthropic 的缓存要原生 Messages 接口的适配器。

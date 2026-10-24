@@ -18,7 +18,7 @@ func (c *client) StreamGenerate(ctx context.Context, req modelprovider.GenerateR
 	if err != nil {
 		return nil, err
 	}
-	r, err := c.post(ctx, chatPath, req.Model, body)
+	r, err := c.post(ctx, chatPath, req.Model, "text/event-stream", body)
 	if err != nil {
 		return nil, err
 	}

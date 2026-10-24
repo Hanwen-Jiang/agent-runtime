@@ -17,6 +17,74 @@ import (
 // schemaInstruction 放在结构化输出请求的最后一条 user 消息里（不执行 response_format 的端点靠它）。
 const schemaInstruction = "只输出一个符合下面 JSON Schema 的 JSON 对象，不要输出其他文字，也不要用代码块包起来：\n"
 
+// strictUnsupported 是 json_schema 严格模式不接受的关键字：schema 里出现任何一个就不发 strict。
+var strictUnsupported = []string{
+	"oneOf", "allOf", "not", "if", "then", "else", "patternProperties", "dependentSchemas", "dependentRequired",
+	"unevaluatedProperties", "unevaluatedItems", "minLength", "maxLength", "minProperties", "maxProperties", "uniqueItems", "contains",
+}
+
+// strictCompatible 判断 schema 能不能用 json_schema 的严格模式：每个 object 都写 additionalProperties: false，required 列出全部属性，
+// 不用严格模式不接受的关键字（T-13 真模型端到端发现：不满足时 OpenAI 拒绝整个请求）。不满足时发 strict: false，模型照样按 schema 输出，
+// 结果由调用方校验（Python 侧按 schema 校验，不合格重问）。
+func strictCompatible(raw json.RawMessage) bool {
+	var schema any
+	if json.Unmarshal(raw, &schema) != nil {
+		return false
+	}
+	return strictNode(schema)
+}
+
+func strictNode(node any) bool {
+	switch v := node.(type) {
+	case []any:
+		for _, item := range v {
+			if !strictNode(item) {
+				return false
+			}
+		}
+		return true
+	case map[string]any:
+		for _, k := range strictUnsupported {
+			if _, ok := v[k]; ok {
+				return false
+			}
+		}
+		props, hasProps := v["properties"].(map[string]any)
+		if v["type"] == "object" || hasProps {
+			if v["additionalProperties"] != false {
+				return false
+			}
+			required, _ := v["required"].([]any)
+			if len(required) != len(props) {
+				return false
+			}
+			for _, r := range required {
+				name, _ := r.(string)
+				if _, ok := props[name]; !ok {
+					return false
+				}
+			}
+		}
+		for _, k := range []string{"properties", "$defs", "definitions"} {
+			if children, ok := v[k].(map[string]any); ok {
+				for _, child := range children {
+					if !strictNode(child) {
+						return false
+					}
+				}
+			}
+		}
+		for _, k := range []string{"items", "prefixItems", "anyOf"} {
+			if child, ok := v[k]; ok && !strictNode(child) {
+				return false
+			}
+		}
+		return true
+	default:
+		return true
+	}
+}
+
 // ---- 请求 ----
 
 type wirePart struct {
@@ -139,7 +207,7 @@ func chatRequest(req modelprovider.GenerateRequest, stream bool) (*wireRequest, 
 		if !json.Valid(req.OutputSchema) {
 			return nil, invalid("bad_schema", "output_schema 不是合法的 JSON")
 		}
-		out.ResponseFormat = &wireResponseFormat{Type: "json_schema", JSONSchema: &wireJSONSchema{Name: "output", Schema: req.OutputSchema, Strict: true}}
+		out.ResponseFormat = &wireResponseFormat{Type: "json_schema", JSONSchema: &wireJSONSchema{Name: "output", Schema: req.OutputSchema, Strict: strictCompatible(req.OutputSchema)}}
 		out.Messages = append(out.Messages, wireMessage{Role: "user", Content: schemaInstruction + string(req.OutputSchema)})
 	}
 	if stream {
