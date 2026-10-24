@@ -1,7 +1,7 @@
 # 评测与 Learning Pipeline：评测集、门槛、观测式评测与发布
 
 > 学习笔记，2026-10-24。对应代码：评测 harness `services/py-learning/src/agentruntime_learning/evals/`（`runner.py`、`scoring.py`、`gates.py`、`repeat.py`、
-> `context.py` 压缩评测、`worker_subject.py` 被测对象、`provider_gateway.py` 临时直连 Gateway）；评测集 `services/py-learning/evalsets/task-loop/`；
+> `context.py` 压缩评测、`worker_subject.py` 被测对象、`provider_gateway.py` 不经网关的直连对照）；评测集 `services/py-learning/evalsets/task-loop/`；
 > Learning Pipeline `services/py-learning/src/agentruntime_learning/pipeline/`（`traces.py`、`candidates.py`、`evaluation.py`、`attribution.py`、`budget.py`、`run.py`）。
 > 设计依据：设计书 3.5、3.5.1，附录 J、H.2；实施计划 S-08 到 S-11；细化 `docs/plan/learning-pipeline.md`；评审 R-06 与另一家复审。
 

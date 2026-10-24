@@ -1,4 +1,4 @@
-"""评测用的临时 Model Gateway（直连 OpenAI 兼容的供应商）：配置读取、请求转换、回答解析、错误分类与重试、计价（T-04）。
+"""评测用的直连 Model Gateway（不经 go-model-gateway，直连 OpenAI 兼容的供应商）：配置读取、请求转换、回答解析、错误分类与重试、计价（T-04）。
 
 不连网络：HTTP 由假的 post 代替，记下发出去的请求。
 """
@@ -271,7 +271,7 @@ def test_a_malformed_price_names_the_setting(tmp_path: Path, value: str) -> None
 
 
 async def test_planning_cost_share_is_computable_through_the_provider_gateway(make_set) -> None:
-    """S-09 的“规划成本占 Task 预计成本”要有金额才算得出来：经临时 Gateway 规划，比例有值且大于 0。"""
+    """S-09 的“规划成本占 Task 预计成本”要有金额才算得出来：经直连 Gateway 规划，比例有值且大于 0。"""
     es = load_eval_set(make_set([task_case("t_full", estimated_cost=1.0)]))
     gw = ProviderGateway(ProviderConfig(base_url="https://llm.example/v1", api_key=KEY), post=EveryTime((200, usage_completion(2000, 300))))
     report = await run_eval(es, WorkerPlannerSubject(gw), reports_dir=None, compare=None)

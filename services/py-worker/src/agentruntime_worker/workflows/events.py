@@ -1,4 +1,4 @@
-"""进度事件（设计书 4.14、附录 K.1；T-11b，决定见 docs/plan/TMP-completion-plan.md 的 T-11b）。
+"""进度事件（设计书 4.14、附录 K.1；TMP 计划 T-11b，决定见该计划删除前最后一版的 T-11b，取法见 docs/reference/risks-and-open-questions.md 第 3 节）。
 
 Task 工作流把进度事件交给 Go 的 Session Worker：跨语言 activity publish_task_event（session 队列，名字见 names.proto 的
 ActivityName），参数是租户上下文、去重键与 taskapi.v1.TaskEvent；由它分配 event_id、推进 Cache，客户端经 SSE 收到。

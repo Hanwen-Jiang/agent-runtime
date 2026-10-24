@@ -1,6 +1,6 @@
 """S-09、S-10 验收：Worker 的 Planner 与 Reviewer 接进 S-08 的评测。
 
-真模型上的门槛要等 Model Gateway 接好：设了 AR_EVAL_GATEWAY_FACTORY 才跑，否则跳过。
+真模型上的门槛要经 Model Gateway（花钱、有随机性）：设了 AR_EVAL_GATEWAY_FACTORY 才跑，否则跳过。
 - S-09（planner_subject）：Triage 准确率 ≥ 90%、Stage 的 schema 通过率 100%、规则违例为 0、replan 不重做已验证的 Node。
 - S-10（worker_subject，Planner 加 Reviewer）：Reviewer 样本上 Verdict 准确率 ≥ 85%，“该升级却原地重试”的错误为 0。
 假模型上能证明的是“结构与规则由代码兜底”。
@@ -75,7 +75,7 @@ def test_without_a_gateway_factory_the_subject_refuses_to_start(monkeypatch: pyt
         load_subject("agentruntime_learning.evals.worker_subject:planner_subject", load_eval_set(DEFAULT_EVAL_SET))
 
 
-@pytest.mark.skipif(not os.environ.get(ENV_GATEWAY_FACTORY), reason=f"真模型的验收跑分要等 Model Gateway 接好：设 {ENV_GATEWAY_FACTORY} 后再跑")
+@pytest.mark.skipif(not os.environ.get(ENV_GATEWAY_FACTORY), reason=f"真模型的验收跑分要经 Model Gateway：设 {ENV_GATEWAY_FACTORY} 后再跑")
 @pytest.mark.parametrize("split", SPLITS)
 async def test_the_planner_meets_the_s09_thresholds_on_the_real_model(split: str) -> None:
     es = load_eval_set(DEFAULT_EVAL_SET)
@@ -144,7 +144,7 @@ def test_without_a_gateway_factory_the_worker_subject_refuses_to_start(monkeypat
         load_subject("agentruntime_learning.evals.worker_subject:worker_subject", load_eval_set(DEFAULT_EVAL_SET))
 
 
-@pytest.mark.skipif(not os.environ.get(ENV_GATEWAY_FACTORY), reason=f"真模型的验收跑分要等 Model Gateway 接好：设 {ENV_GATEWAY_FACTORY} 后再跑")
+@pytest.mark.skipif(not os.environ.get(ENV_GATEWAY_FACTORY), reason=f"真模型的验收跑分要经 Model Gateway：设 {ENV_GATEWAY_FACTORY} 后再跑")
 @pytest.mark.parametrize("split", SPLITS)
 async def test_the_reviewer_meets_the_s10_thresholds_on_the_real_model(split: str) -> None:
     es = load_eval_set(DEFAULT_EVAL_SET)

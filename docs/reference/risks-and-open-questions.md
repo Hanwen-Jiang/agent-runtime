@@ -60,6 +60,13 @@
 TMP 计划（初步完成整个项目，2026-10-21 至 2026-10-24）收尾时，从各工作项的“登记到后续”与 R-01 到 R-06 评审（含另一家复审，
 `docs/plan/reviews/`）里汇总过来。按模块分组，每条注明出处；做的时候先读出处。
 
+TMP 计划本身已按它的约定删除。代码与文档里的“TMP 计划 T-xx”指它的工作包，各工作包的结果记录看删除前的最后一版：
+`git log --diff-filter=D -1 -- docs/plan/TMP-completion-plan.md` 找到删除它的提交，再 `git show <该提交>^:docs/plan/TMP-completion-plan.md`。
+收尾时“初步完成”的五条：端到端真模型跑通并能恢复（T-13）、安全测试在 Postgres + Qdrant 后端全绿、R-01 到 R-06 评审做完、Learning Pipeline 最小闭环，
+这四条成立；第二条“门槛有数字”成立，但 S-09、S-10 的门槛没达到，差距见 3.1 节。全量回归（`scripts/check.py --tier full --clone`，提交 `d4e0da0`，
+2026-10-24）十步全部通过：contract 455、Go 全部模块、py-core 671 与 py-memory 133（Postgres + Qdrant 后端，无跳过）、py-learning 262、py-worker 837、
+e2e 80、故障注入 39；跳过的只有要真模型或花钱的用例与一条本机不能建符号链接的用例。
+
 ### 3.1 决策质量（S-09、S-10 的门槛没达到）
 
 - [ ] Triage 准确率 85.7%（门槛 90%）：区分“改标题一类的续改”与“有 Recipe 的新任务”；fast 规则在命中 Recipe 时让位给 light（TMP T-03 差距清单第 1 条）。
@@ -118,6 +125,7 @@ TMP 计划（初步完成整个项目，2026-10-21 至 2026-10-24）收尾时，
 
 - [ ] 真集群安装与镜像构建都没验证过。
 - [ ] 2.2 的容量指标仍待定。
+- [ ] 开发用的模型供应商密钥在 TMP 计划期间出现在对话记录里，要换一个新的（只放仓库外的 `~/.agentruntime/model-provider.env`）。
 
 ### 3.8 执行保障与恢复（T-13 真模型端到端）
 

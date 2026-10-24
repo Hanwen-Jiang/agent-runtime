@@ -35,7 +35,7 @@ Agent 用 tool_loop 做长任务时，每一步是“调一个工具 → 拿回�
 
 **Task State** 是由代码维护的结构化状态（目标、验收条件、约束、里程碑、已验证事实、待解问题、产物路径）。它每次都原样放进 status 区，**不经过模型摘要**。设计原则是“精确状态不进摘要”：文件清单、ID、数值靠 Task State 保住，摘要只负责叙述性的内容。
 
-## 3. 压缩阶梯
+## 3. Compaction Ladder
 
 从便宜到昂贵逐级触发。阈值都按有效长度 `effective_tokens` 算，Task Plan 的 `context.mask_at`、`context.summarize_at` 可以覆盖默认值。token 用 `tokens.estimate` 估算：ASCII 字符每 4 个算 1 个 token，其他字符（如中文）每个算 1 个。
 

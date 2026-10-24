@@ -1,5 +1,5 @@
-"""评测用的临时 Model Gateway：直连一个 OpenAI 兼容的模型供应商。Model Gateway 的单供应商直连（实施计划第 7 节）接好之前，
-给真模型评测用：
+"""评测用的直连 Model Gateway：不经 go-model-gateway，直连一个 OpenAI 兼容的模型供应商，作离线对照
+（S-09 到 S-11 最初的真模型评测都经它；真 Model Gateway 见 agentruntime_worker.executor.grpc_gateway:from_env）：
 
     AR_EVAL_GATEWAY_FACTORY=agentruntime_learning.evals.provider_gateway:make
 
@@ -271,7 +271,7 @@ class ProviderGateway:
         return self._response(request, model, data, structured)
 
     async def embed(self, request: mg.EmbedRequest) -> mg.EmbedResponse:
-        raise ProviderError.of(ErrorCategory.INVALID, "unsupported", "临时的评测 Gateway 不做嵌入")
+        raise ProviderError.of(ErrorCategory.INVALID, "unsupported", "直连的评测 Gateway 不做嵌入")
 
     async def _send(self, payload: dict[str, Any]) -> dict[str, Any]:
         url = self.config.base_url + "/chat/completions"
