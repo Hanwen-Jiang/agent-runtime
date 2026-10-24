@@ -641,6 +641,9 @@ class NodeExecutor:
         tier = model.tier or node.get("tier")
         if tier:
             meta["tier"] = tier
+        if model.vendor:
+            # 实际服务这次调用的供应商：Reviewer 据此避开生成者那一家（附录 H.3）。
+            meta["vendor"] = model.vendor
         if node.get("reasoning"):
             meta["reasoning"] = node["reasoning"]
         return meta

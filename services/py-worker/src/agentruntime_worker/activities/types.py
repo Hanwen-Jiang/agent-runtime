@@ -44,6 +44,8 @@ class PlanRoundOutput:
     triage_level: str
     # Task Plan（task_plan.schema.json）；fast 没有，后续轮次没变时可以为空（S-09）。
     task_plan: dict[str, Any] | None = None
+    # 这次规划的模型花费（分诊与规划），计入 Round 的成本（成本口径的人定方案，2026-10-24）。
+    cost_usd: float = 0.0
 
 
 @dataclass
@@ -85,6 +87,9 @@ class StageResult:
     # 直接执行这个 Node 花的钱（Node Executor 的 meta.cost_usd，S-10）。质量包装与展开出的子 Node 的成本
     # 只计入 Round 的成本（Stage Runner 的 spent_usd）。
     cost_usd: float = 0.0
+    # 实际服务这个结果的模型供应商（model 节点的 meta.vendor、tool_loop 最后一步的）；program 节点为空。
+    # Reviewer 调用时避开它（附录 H.3；R-02 评审第 4 节第 1 条）。
+    vendor: str = ""
 
 
 @dataclass
@@ -196,6 +201,9 @@ class ToolLoopStep:
     tool: str = ""
     args: dict[str, Any] = field(default_factory=dict)
     result: Any = None
+    # 这一步的模型花费（含 Context Builder 的摘要与 Probe），计入 Round 的成本；服务这一步的供应商。
+    cost_usd: float = 0.0
+    vendor: str = ""
 
 
 @dataclass
@@ -283,6 +291,8 @@ class ReviewRoundOutput:
 
     verdict: dict[str, Any]
     state_update: dict[str, Any] = field(default_factory=dict)
+    # 这次评审的模型花费，计入 Round 的成本（成本口径的人定方案，2026-10-24）。
+    cost_usd: float = 0.0
 
 
 @dataclass

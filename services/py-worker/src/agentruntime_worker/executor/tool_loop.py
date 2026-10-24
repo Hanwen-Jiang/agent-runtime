@@ -85,11 +85,14 @@ class ModelToolLoop:
                 [(p.fact.answer, p.passed) for p in built.probes] or "无",
                 response.rationale[:500],
             )
+        # 这一步的花费（含 Context Builder 的摘要与 Probe）计入 Round 的成本；vendor 给 Reviewer 避开生成者用。
+        cost = round(response.usage.cost_usd_micros / 1_000_000 + built.cost_usd, 6)
+        vendor = response.model.vendor
         if response.tool_calls:
             call = response.tool_calls[0]
-            return ToolLoopStep(action="tool", tool=call.name, args=json_format.MessageToDict(call.arguments))
+            return ToolLoopStep(action="tool", tool=call.name, args=json_format.MessageToDict(call.arguments), cost_usd=cost, vendor=vendor)
         result = json_format.MessageToDict(response.result) if response.HasField("result") else response.text
-        return ToolLoopStep(action="finish", result=result)
+        return ToolLoopStep(action="finish", result=result, cost_usd=cost, vendor=vendor)
 
     async def _tool_specs(self, inp: ToolLoopStepInput, tools: list[str]) -> list[mg.ToolSpec]:
         if self.tools is None:

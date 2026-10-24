@@ -58,7 +58,7 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.workflows.events import EventPublisher
     from agentruntime_worker.workflows.failures import caused_by_cancel as _caused_by_cancel
     from agentruntime_worker.workflows.failures import failure_message as _failure_message
-    from agentruntime_worker.workflows.patches import EVENTS_PATCH, POLICY_PATCH, REVIEWER_PATCH, STAGE_RUNNER_PATCH
+    from agentruntime_worker.workflows.patches import EVENTS_PATCH, POLICY_PATCH, R01_FIXES_PATCH, REVIEWER_PATCH, STAGE_RUNNER_PATCH
     from agentruntime_worker.workflows.stage_runner import RunContext, StageRunner, effect_name
 
 # Round 上限：兜底。Reviewer 的升级规则与各级次数上限（S-10）让一直失败的 Task 在 12 次评审之内收尾。
@@ -173,6 +173,8 @@ class TaskWorkflow:
         # T-09：是否走 Policy Engine 的版本分支；before_finish 已经驳回的次数。
         self._t09 = False
         self._finish_rejections = 0
+        # R-01 评审之后的版本分支：没成功的 Node 也审计，tool_loop 每一步之前查预算。
+        self._r01 = False
         # T-11b：进度事件；只有顶层 Task 的新运行有（版本分支 EVENTS_PATCH）。
         self._events: EventPublisher | None = None
 
@@ -242,6 +244,7 @@ class TaskWorkflow:
         if self._s10:
             # T-09 又改变了命令序列（规划前加载 StagePolicy、Task 级挂载点、before_finish）：新的运行走版本分支。
             self._t09 = workflow.patched(POLICY_PATCH)
+            self._r01 = workflow.patched(R01_FIXES_PATCH)
             if self._t09:
                 refused = await self._task_start(inputs)
                 if refused is not None:
@@ -328,10 +331,13 @@ class TaskWorkflow:
             if self._events is not None:
                 await self._events.round_started(seq, rerun=rerun is not None)
             triage_level: str | None = None
+            # 这一轮规划的花费：计入 Round 的成本，Stage 执行时已经算进已花的钱（成本口径的人定方案）。原地重跑不经 Planner。
+            plan_cost = 0.0
             if rerun is None:
                 plan = await self._plan(seq, inputs, pinned, task_plan, last_round)
                 stage = plan.stage
                 triage_level = plan.triage_level
+                plan_cost = float(plan.cost_usd or 0.0)
                 round_entry: dict[str, Any] = {"seq": seq, "stage_goal": stage["goal"], "triage_level": plan.triage_level, "status": "running"}
                 if plan.task_plan:
                     task_plan = plan.task_plan
@@ -345,12 +351,13 @@ class TaskWorkflow:
             if self._events is not None:
                 await self._events.stage_started(seq, stage, triage_level)
 
-            results = await self._run_stage(seq, stage, carried=carried, injections=injections)
-            round_entry["cost_usd"] = round(self._stage_cost, 6)
+            results = await self._run_stage(seq, stage, carried=carried, injections=injections, plan_cost=plan_cost)
+            round_entry["cost_usd"] = round(plan_cost + self._stage_cost, 6)
             self._stages.append(vd.stage_summary(stage))
 
             round_entry["status"] = "reviewing"
-            verdict, update = await self._review(seq, stage, results)
+            verdict, update, review_cost = await self._review(seq, stage, results)
+            round_entry["cost_usd"] = round(round_entry["cost_usd"] + review_cost, 6)
             if self._events is not None:
                 await self._events.verdict(seq, verdict)
             kind = verdict["verdict"]
@@ -448,6 +455,7 @@ class TaskWorkflow:
                 names.RUN_HOOKS,
                 HookCall(tenant=self._tenant, task_id=self._input.task_id, round_seq=self._round_seq, mount=mount, hooks=hooks, subject=subject),
                 start_to_close_timeout=timeouts.HOOK_START_TO_CLOSE,
+                retry_policy=timeouts.HOOK_RETRY,
                 result_type=list,
             )
         except FailureError as err:
@@ -502,8 +510,9 @@ class TaskWorkflow:
             result_type=PlanRoundOutput,
         )
 
-    async def _review(self, seq: int, stage: dict[str, Any], results: dict[str, StageResult]) -> tuple[dict[str, Any], dict[str, Any]]:
-        """Reviewer：输入只有 Stage 结果（含本轮执行的 Stage）、Task State、验收条件与之前各 Round 的摘要。"""
+    async def _review(self, seq: int, stage: dict[str, Any], results: dict[str, StageResult]) -> tuple[dict[str, Any], dict[str, Any], float]:
+        """Reviewer：输入只有 Stage 结果（含本轮执行的 Stage）、Task State、验收条件与之前各 Round 的摘要。
+        返回 (Verdict, 要写进 Task State 的汇总, 这次评审的花费)。"""
         assert self._input is not None
         raw = await workflow.execute_activity(
             names.REVIEW_ROUND,
@@ -522,7 +531,8 @@ class TaskWorkflow:
             retry_policy=DECISION_RETRY,
             result_type=dict,
         )
-        return vd.review_output(raw)
+        verdict, update = vd.review_output(raw)
+        return verdict, update, vd.review_cost(raw)
 
     def _remember_delivery(self, results: dict[str, StageResult]) -> None:
         for nid in sorted(results):
@@ -615,9 +625,10 @@ class TaskWorkflow:
         *,
         carried: dict[str, StageResult] | None = None,
         injections: dict[str, list[dict[str, Any]]] | None = None,
+        plan_cost: float = 0.0,
     ) -> dict[str, StageResult]:
         """执行一个 Stage。新的运行交给 Stage Runner；S-03 留下的历史没有版本标记，按旧路径回放。
-        carried 与 injections 只有 S-10 的重跑会传（见 workflows/verdicts.py）。"""
+        carried 与 injections 只有 S-10 的重跑会传（见 workflows/verdicts.py）；plan_cost 是这一轮规划的花费，算进已花的钱。"""
         assert self._input is not None
         if not workflow.patched(STAGE_RUNNER_PATCH):
             return await self._run_stage_v1(seq, stage)
@@ -634,8 +645,9 @@ class TaskWorkflow:
             task_plan=self._task_plan,
             t09=self._t09,
             budget_usd=self._input.budget.usd_micros / 1_000_000 if self._input.budget.usd_micros else None,
-            spent_before_usd=round(sum(float(r.get("cost_usd") or 0) for r in self._state.get("rounds", [])), 6),
+            spent_before_usd=round(sum(float(r.get("cost_usd") or 0) for r in self._state.get("rounds", [])) + plan_cost, 6),
             events=self._events,
+            r01=self._r01,
         )
         runner = StageRunner(ctx, self)
         results = await runner.run(stage, carried=carried, injections=injections)

@@ -10,6 +10,8 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -66,6 +68,15 @@ class ReviewResult:
     problems: list[str] = field(default_factory=list)
     reasons: list[str] = field(default_factory=list)
     """判定依据（写入 trace，不传给下游）。"""
+
+
+def generator_vendor(results: Mapping[str, Mapping[str, Any]]) -> str:
+    """生成本轮结果的供应商里最多的那一家（并列取名字靠前的）；没有模型生成的结果时为空。Reviewer 调用时避开它（附录 H.3）。"""
+    counts = Counter(str(r.get("vendor") or "") for r in results.values() if isinstance(r, Mapping) and r.get("vendor"))
+    if not counts:
+        return ""
+    top = max(counts.values())
+    return min(v for v, n in counts.items() if n == top)
 
 
 def _value(data: Any) -> struct_pb2.Value:
@@ -148,7 +159,9 @@ class Reviewer:
         t = request.tenant
         req = mg.GenerateRequest(
             tenant=tenant_pb2.TenantContext(tenant_id=t.tenant_id, user_id=t.user_id, workspace_id=t.workspace_id, session_id=t.session_id),
-            call=mg.CallContext(task_id=request.task_id, node_id="review", role=enums_pb2.ROLE_JUDGE, tier=self.config.tier),
+            call=mg.CallContext(
+                task_id=request.task_id, node_id="review", role=enums_pb2.ROLE_JUDGE, tier=self.config.tier, avoid_vendor=generator_vendor(request.results)
+            ),
             generation=mg.GenerateParams(messages=messages, output_schema=payload_pb2.JsonPayload(value=_value(prompts.REVIEW_OUTPUT_SCHEMA))),
         )
         response = await self.gateway.generate(req)

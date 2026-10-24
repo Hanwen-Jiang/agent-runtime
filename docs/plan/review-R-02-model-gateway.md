@@ -173,3 +173,13 @@ OpenAI gpt-6-sol 按 6.2 的模板复审，原文与材料包见 [reviews/R-02-g
   计量只写标准输出、没进 trace（第 3 节第 6 条已有，Langfuse 一并登记）；activity 重试时同一请求可能在上游被处理两次、没有请求级去重（第 2.2 节已提到，登记）。
 - **判“不确定”的两项**（错误分类跨语言一致、流式断流）：跨语言的错误还原有 `tests/e2e/test_model_gateway.py` 的 `test_upstream_errors_map_to_python_categories`；
   流式中途断开拿不到 Usage 是第 5 节已写明的没有覆盖的情形。
+
+## 7. 第 1、6 条的处理结果（2026-10-24）
+
+1. **Reviewer 避开生成者那一家**：Node Executor 把实际服务的供应商写进结果的 `meta.vendor`（契约改动：`node_output.schema.json` 的 meta 加可选字段
+   `vendor`，经人确认，正例与反例各一条，契约测试通过）；tool_loop 每一步的 `ToolLoopStep.vendor` 带回，Goal Node 的结果取最后一步的；
+   Stage Runner 写进 `StageResult.vendor`；Reviewer 调用时 `avoid_vendor` 填本轮结果里生成者最多的那一家（并列取名字靠前的），没有模型生成的结果时不填。
+   只改 activity 的输入输出，不改变命令序列。测试：`tests/test_cost_and_vendor.py`。
+   仍未处理：网关只剩同一家时 `AvoidVendorUnmet` 照样同源评判（第 5 节第 2 条已让它进计量与日志）；Planner 与 Reviewer 默认都落在 strong 档的同一家，
+   跨轮的“生成者”只看本轮结果。
+6. **缺租户报 denied**：网关缺租户改报 `denied`（`missing_tenant`），与 S-02 的 tenancy 一致；网关、cmd 与跨语言端到端的验收测试随之改。

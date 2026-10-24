@@ -182,6 +182,8 @@ class Script:
     policy_requests: list[StagePolicyRequest] = field(default_factory=list)
     # T-11b：给了就在每次推送进度事件时先调用它（抛异常表示这次推送失败）
     on_publish: Callable[[str, Any], None] | None = None
+    # 每次规划报告的花费（PlanRoundOutput.cost_usd；成本口径的人定方案，2026-10-24）
+    plan_cost: float = 0.0
 
     calls: list[Call] = field(default_factory=list)
     hook_calls: list[HookCall] = field(default_factory=list)
@@ -280,8 +282,8 @@ class Script:
         self.plan_inputs.append(inp)
         plan = copy.deepcopy(self.task_plan)
         if self.plan_for is not None:
-            return PlanRoundOutput(stage=self.plan_for(inp), triage_level="full", task_plan=plan)
-        return PlanRoundOutput(stage=copy.deepcopy(self.plans[scenario][inp.round_seq - 1]), triage_level="full", task_plan=plan)
+            return PlanRoundOutput(stage=self.plan_for(inp), triage_level="full", task_plan=plan, cost_usd=self.plan_cost)
+        return PlanRoundOutput(stage=copy.deepcopy(self.plans[scenario][inp.round_seq - 1]), triage_level="full", task_plan=plan, cost_usd=self.plan_cost)
 
     @activity.defn(name=names.REVIEW_ROUND)
     async def review_round(self, inp: ReviewRoundInput) -> Any:

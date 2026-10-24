@@ -23,6 +23,7 @@
           "unevaluatedProperties": false
         },
         "cost_usd": {"$ref": "defs.schema.json#/$defs/usd"},
+        "vendor": {"description": "实际服务这次模型调用的供应商（Model Gateway 的 ModelChoice.vendor）；Reviewer 调用时避开生成者那一家（附录 H.3）", "$ref": "defs.schema.json#/$defs/non_empty_string"},
         "latency_ms": {"type": "integer", "minimum": 0},
         "confidence": {"$ref": "defs.schema.json#/$defs/unit_interval"},
         "result_ref": {

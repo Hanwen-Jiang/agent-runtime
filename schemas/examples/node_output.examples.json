@@ -56,6 +56,15 @@
         "result": 0.82,
         "meta": {"tier": "small@low", "latency_ms": 95, "tokens": {"input": 512, "output": 1}, "cost_usd": 0.0001}
       }
+    },
+    {
+      "name": "model_node_with_vendor",
+      "source": "附录 H.3：judge 避开生成者那一家（R-02 评审第 4 节第 1 条，2026-10-24 经人确认）",
+      "notes": "vendor 取 Model Gateway 的 ModelChoice.vendor；program 节点没有。",
+      "instance": {
+        "result": {"text": "华东退款率上升主要因为物流破损"},
+        "meta": {"tier": "mid@low", "vendor": "anthropic", "tokens": {"input": 2048, "output": 180, "cache_read": 1536}, "cost_usd": 0.0058, "latency_ms": 2310}
+      }
     }
   ],
   "invalid": [
@@ -111,6 +120,15 @@
       "instance": {
         "result": "ok",
         "meta": {"reasoning": "cot"}
+      }
+    },
+    {
+      "name": "empty_vendor",
+      "description": "vendor 写了就不能为空；没有供应商（program 节点）时不写",
+      "violates": [{"path": "/meta/vendor", "keyword": "minLength"}],
+      "instance": {
+        "result": "ok",
+        "meta": {"vendor": ""}
       }
     },
     {

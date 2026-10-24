@@ -44,7 +44,9 @@ def loop(tmp_path: Path, gateway: ContextGateway) -> ModelToolLoop:
 async def test_a_tool_call_becomes_a_tool_step(tmp_path: Path) -> None:
     gateway = ContextGateway(steps=[tool_call("repo_read", path="src/checkout.py")])
     step = await loop(tmp_path, gateway).step(step_input([]))
-    assert step == ToolLoopStep(action="tool", tool="repo_read", args={"path": "src/checkout.py"})
+    assert (step.action, step.tool, step.args) == ("tool", "repo_read", {"path": "src/checkout.py"})
+    assert step.vendor == "mock", "服务这一步的供应商随结果交回（Reviewer 避开它）"
+    assert step.cost_usd >= 0
     [request] = gateway.requests
     assert request.call.node_id == "fix.1" and request.call.tier == TOOL_LOOP_TIER
     assert request.tenant.tenant_id == TENANT.tenant_id

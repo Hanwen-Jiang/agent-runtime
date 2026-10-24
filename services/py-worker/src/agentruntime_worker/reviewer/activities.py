@@ -83,7 +83,7 @@ class ReviewerActivities:
             [(c.purpose, c.tier, c.vendor) for c in result.calls],
             "；Progress Check 不可用，只按规则判定" if result.fallback else "",
         )
-        return ReviewRoundOutput(verdict=result.verdict, state_update=result.state_update)
+        return ReviewRoundOutput(verdict=result.verdict, state_update=result.state_update, cost_usd=round(sum(c.cost_usd for c in result.calls), 6))
 
     @activity.defn(name=names.REVIEW_ROUND)
     async def review_round(self, inp: ReviewRoundInput) -> ReviewRoundOutput:

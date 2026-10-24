@@ -36,6 +36,10 @@ POLICY_PATCH = "t09-policy-engine"
 # T-11b 加入了推送进度事件的 activity，改变了命令序列：新的运行走这个版本分支，之前的历史照旧回放。
 EVENTS_PATCH = "t11b-progress-events"
 
+# R-01 评审之后（2026-10-24）：没成功的 Node 也执行 audit_log（多一次 local activity）；tool_loop 每一步之前查 Task 的预算，
+# 用完就停（成本口径的人定方案）。都改变了命令序列。
+R01_FIXES_PATCH = "r01-audit-and-budget"
+
 # 新的运行在第一个工作流任务里一次问完全部版本分支（模块说明）。
 PATCHES_AT_START = "s04-patches-at-start"
 # 只能在末尾追加。
@@ -48,6 +52,7 @@ AT_START = (
     HUMAN_REPLY_RACE_PATCH,
     RECONCILE_PATCH,
     TOOL_LOOP_APPROVAL_PATCH,
+    R01_FIXES_PATCH,
 )
 
 

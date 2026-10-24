@@ -71,6 +71,7 @@ with workflow.unsafe.imports_passed_through():
         HUMAN_CHANNEL_PATCH,
         HUMAN_REPLY_RACE_PATCH,
         POLICY_PATCH,
+        R01_FIXES_PATCH,
         RECONCILE_PATCH,
         TOOL_LOOP_APPROVAL_PATCH,
     )
@@ -82,6 +83,8 @@ DEFAULT_MAX_ITERATIONS = 20
 # 同一个 Goal Node 里不可逆工具调用被拒（含超时）几次就记为 denied，交给 Reviewer。
 MAX_TOOL_REJECTIONS = 2
 DEFAULT_ROLE = "transform"
+# 审批问题里写进去的输入（规范化 JSON）最多这么多字符（R-01 评审第 4 节第 2 条）。
+APPROVAL_INPUTS_LIMIT = 2000
 
 
 def effect_name(value: int) -> str:
@@ -194,9 +197,11 @@ class RunContext:
     task_plan: dict[str, Any] | None = None
     # T-09（POLICY_PATCH 之后的运行为 True）：策略声明的 Hook、Hook 的 subject 带预算与写者信息、按 Registry 核对 effect。
     t09: bool = False
-    # Task 的预算（美元，没有为 None）与之前各 Round 已花的钱：budget_check 用。
+    # Task 的预算（美元，没有为 None）与这个 Stage 开始之前已花的钱（之前各 Round 加上这一轮的规划）：budget_check 用。
     budget_usd: float | None = None
     spent_before_usd: float = 0.0
+    # R01_FIXES_PATCH 之后的运行为 True：没成功的 Node 也审计；tool_loop 每一步之前查预算。
+    r01: bool = False
     # T-11b：只有顶层 Task 工作流的新运行有；顶层 Node 结束与发出人工问题时推送进度事件。子工作流里为 None。
     events: EventPublisher | None = None
 
@@ -360,18 +365,28 @@ class StageRunner:
         return list(self.policy.hooks.get(mount, []))
 
     def _budget(self) -> dict[str, Any]:
-        """budget_check 用：Task 的预算与已花的钱（之前各 Round 加上本 Stage 到现在）。"""
+        """budget_check 用：Task 的预算与已花的钱（之前各 Round、这一轮的规划，加上本 Stage 到现在）。"""
         return {"task_usd": self._ctx.budget_usd, "spent_usd": round(self._ctx.spent_before_usd + self.spent_usd, 6)}
 
+    def _budget_spent(self, nid: str) -> str:
+        """tool_loop 每一步之前：Task 的预算用完了就返回拒绝的理由（规则同 budget_check；纯计算，不产生命令）。"""
+        budget = self._budget()
+        task_usd, spent = budget["task_usd"], budget["spent_usd"]
+        if task_usd is None or spent < task_usd:
+            return ""
+        return f"budget_check：Task 的预算 {task_usd:g} 美元已经用完（已花 {spent:.4f}），{nid} 不再请求下一步"
+
     def _node_hooks(self, node: dict[str, Any], ceiling: str) -> dict[str, list[str]]:
-        """按 effect 自动插入的默认 Hook，加上策略声明的；策略只能加 Hook，去不掉默认的；audit_log 永远最后。"""
+        """按 effect 自动插入的默认 Hook，加上策略声明的；策略只能加 Hook，去不掉默认的；audit_log 永远最后。
+        after_node 上策略声明的在默认的前面：脱敏一类的改写先作用，trace_result、checkpoint 记的是改过的结果
+        （R-01 另一家复审第 4 条：之前 trace_result 先记了原始结果）。"""
         hooks = sp.default_node_hooks(node, ceiling)
         if not self._ctx.t09:
             return hooks
         after = [h for h in hooks["after_node"] if h != "audit_log"]
         return {
             "before_node": _merged(hooks["before_node"], self._policy_hooks("before_node")),
-            "after_node": [*_merged(after, [h for h in self._policy_hooks("after_node") if h != "audit_log"]), "audit_log"],
+            "after_node": [*_merged([h for h in self._policy_hooks("after_node") if h != "audit_log"], after), "audit_log"],
         }
 
     async def _registered(self, node: dict[str, Any]) -> str:
@@ -509,6 +524,10 @@ class StageRunner:
                 return _denied(role, f"Hook 改写输入失败：{err}")
         outcome = _as(await self._dispatch(node, env, [*self._extra_injections.get(node["id"], []), *before.injections]), role)
         if outcome.status != "succeeded":
+            if self._ctx.r01 and "audit_log" in hooks["after_node"]:
+                # R-01 评审第 4 节第 3 条：失败、结果未知、审批被拒的 Node 也审计（只审计，不跑 after_node 的其他 Hook）。
+                audit = {"node": node, "result": None, "status": outcome.status, "failure_class": outcome.failure_class}
+                await self._hooks("after_node", ["audit_log"], audit)
             return outcome
         after = await self._hooks("after_node", hooks["after_node"], {"node": node, "result": outcome.result})
         if after.denied:
@@ -568,10 +587,12 @@ class StageRunner:
             if effect in sp.WRITE_EFFECTS and (_timed_out(err) or _needs_reconcile(err)) and workflow.patched(RECONCILE_PATCH):
                 return await self._reconcile(node, role)
             return _failed(role, failure_message(err), failure_class(err))
-        # 只取 result；rationale 只写入 trace，不往下传（设计书 3.2.4）。成本计入 Round 的成本（S-10）。
-        cost = float((output.get("meta") or {}).get("cost_usd") or 0.0)
+        # 只取 result；rationale 只写入 trace，不往下传（设计书 3.2.4）。成本计入 Round 的成本（S-10）；
+        # vendor 是实际服务它的供应商，Reviewer 避开它（附录 H.3）。
+        meta = output.get("meta") or {}
+        cost = float(meta.get("cost_usd") or 0.0)
         self.spent_usd += cost
-        return StageResult(role=role, status="succeeded", result=output.get("result"), cost_usd=cost)
+        return StageResult(role=role, status="succeeded", result=output.get("result"), cost_usd=cost, vendor=str(meta.get("vendor") or ""))
 
     async def _reconcile(self, node: dict[str, Any], role: str) -> StageResult:
         try:
@@ -677,7 +698,11 @@ class StageRunner:
             return None, "这里没有人工审批通道，write_irreversible 的 Node 不能执行"
         gate_id = sp.child_id(node["id"], 1)
         timeout_s = self.policy.approval_timeout_s
-        text = f"批准执行 {node['id']}（{node.get('template', '')}）吗？这是不可撤销的写操作。"
+        # 审批人要看得到写什么（R-01 评审第 4 节第 2 条）：带上要执行的输入，过长截断。
+        inputs = json.dumps(node.get("inputs") or {}, ensure_ascii=False, sort_keys=True)
+        if len(inputs) > APPROVAL_INPUTS_LIMIT:
+            inputs = inputs[:APPROVAL_INPUTS_LIMIT] + "…（截断）"
+        text = f"批准执行 {node['id']}（{node.get('template', '')}）吗？输入：{inputs}。这是不可撤销的写操作。"
         reply, error = await self._ask_and_wait(gate_id, text, sp.APPROVAL_OPTIONS, timeout_s, kind="approval")
         if error:
             return None, error
@@ -696,6 +721,7 @@ class StageRunner:
                 names.RUN_HOOKS,
                 HookCall(tenant=self._ctx.tenant, task_id=self._ctx.task_id, round_seq=self._ctx.round_seq, mount=mount, hooks=hooks, subject=subject),
                 start_to_close_timeout=timeouts.HOOK_START_TO_CLOSE,
+                retry_policy=timeouts.HOOK_RETRY,
                 result_type=list,
             )
         except FailureError as err:
@@ -708,6 +734,9 @@ class StageRunner:
             decision = r.get("decision")
             if decision == "deny" and not outcome.denied:
                 outcome.denied = f"{r.get('hook')}：{r.get('reason') or '被拒绝'}"
+            elif decision not in ("allow", "modify", "inject") and not outcome.denied:
+                # 不认识的结果按拒绝处理（fail-closed）；Policy Engine 自己已经这样做，这里兜底。
+                outcome.denied = f"{r.get('hook')}：返回了不认识的结果 {decision!r}"
             elif decision == "modify":
                 modification = r.get("modification") or {}
                 target = outcome.input_patches if modification.get("target") == "input" else outcome.output_patches
@@ -924,6 +953,8 @@ class StageRunner:
                         effect_ceiling=self._ctx.effect_ceiling,
                         policy=policy,
                         goal_inputs=goal_inputs,
+                        budget_usd=self._ctx.budget_usd,
+                        spent_before_usd=self._budget()["spent_usd"],
                     ),
                     id=sp.subworkflow_id(self._ctx.task_id, self._ctx.round_seq, node["id"], f"batch-{number}"),
                     task_queue=names.TASK_QUEUE,
@@ -941,6 +972,8 @@ class StageRunner:
         merged: dict[str, StageResult] = {}
         for out in outputs:
             merged.update(out.results)
+            # 子图的花费带回父 Stage（成本口径的人定方案）。
+            self.spent_usd += float(out.cost_usd or 0.0)
         return _collect(role, [merged[c] for c in collect])
 
     async def _check_tools(self, node: dict[str, Any], ceiling: str, *, read_only: bool) -> tuple[dict[str, str] | None, str]:
@@ -975,7 +1008,15 @@ class StageRunner:
         limit = int(node.get("max_iterations") or DEFAULT_MAX_ITERATIONS)
         history: list[dict[str, Any]] = []
         rejections = 0
+        # 这个循环花的钱（每一步的模型花费，计入 Round 的成本）与最近一步的供应商。
+        spent_before = self.spent_usd
+        vendor = ""
         for i in range(1, limit + 1):
+            if self._ctx.r01:
+                # 成本口径的人定方案：每一步之前查 Task 的预算，用完就停，交给 Reviewer。
+                reason = self._budget_spent(nid)
+                if reason:
+                    return _denied(DEFAULT_ROLE, reason)
             try:
                 async with self._slot():
                     step = await workflow.execute_activity(
@@ -1002,8 +1043,10 @@ class StageRunner:
                 if caused_by_cancel(err):
                     raise asyncio.CancelledError() from err
                 return _failed(DEFAULT_ROLE, f"tool_loop 第 {i} 步失败：{failure_message(err)}", failure_class(err))
+            self.spent_usd += float(step.cost_usd or 0.0)
+            vendor = step.vendor or vendor
             if step.action == "finish":
-                return StageResult(role=DEFAULT_ROLE, status="succeeded", result=step.result)
+                return StageResult(role=DEFAULT_ROLE, status="succeeded", result=step.result, cost_usd=round(self.spent_usd - spent_before, 6), vendor=vendor)
             entry: dict[str, Any] = {"tool": step.tool, "args": step.args}
             if step.tool not in tool_effects:
                 entry["error"] = f"工具 {step.tool} 不在 {nid} 的可用列表里"
@@ -1088,6 +1131,8 @@ class StageRunner:
                         effect_ceiling=ceiling,
                         tools=effects,
                         policy=self.policy,
+                        budget_usd=self._ctx.budget_usd,
+                        spent_before_usd=self._budget()["spent_usd"],
                     ),
                     id=sp.subworkflow_id(self._ctx.task_id, self._ctx.round_seq, node["id"]),
                     task_queue=names.TASK_QUEUE,
@@ -1098,6 +1143,8 @@ class StageRunner:
             if caused_by_cancel(err):
                 raise asyncio.CancelledError() from err
             return _failed(role, f"sub_agent 失败：{failure_message(err)}", failure_class(err))
+        # 子 agent 的花费带回父 Stage（成本口径的人定方案）。
+        self.spent_usd += float(out.cost_usd or 0.0)
         return _as(out, role)
 
     async def _sub_task(self, node: dict[str, Any], env: _Env, role: str) -> StageResult:
@@ -1165,11 +1212,14 @@ class SubAgentInput:
     # 可用的工具 → effect，展开时已校验不高于 effect_ceiling
     tools: dict[str, str]
     policy: StagePolicy
+    # Task 的预算与启动时已花的钱：子 agent 的 tool_loop 每一步之前按它查（成本口径的人定方案）；之前的历史没有，按没有预算。
+    budget_usd: float | None = None
+    spent_before_usd: float = 0.0
 
 
 @workflow.defn(name=names.SUB_AGENT_WORKFLOW)
 class SubAgentWorkflow:
-    """sub_agent：独立上下文的子 agent，在自己的事件历史里跑 tool_loop，只交回结果（附录 E.1）。"""
+    """sub_agent：独立上下文的子 agent，在自己的事件历史里跑 tool_loop，只交回结果（附录 E.1）。结果的 cost_usd 是它花的钱，父 Stage 加上。"""
 
     @workflow.run
     async def run(self, inp: SubAgentInput) -> StageResult:
@@ -1182,10 +1232,14 @@ class SubAgentWorkflow:
             depth=sp.MAX_SUB_TASK_DEPTH,
             policy=inp.policy,
             t09=workflow.patched(POLICY_PATCH),
+            budget_usd=inp.budget_usd,
+            spent_before_usd=inp.spent_before_usd,
+            r01=workflow.patched(R01_FIXES_PATCH),
         )
         runner = StageRunner(ctx, human=None)
         await runner._ensure_policy()
-        return await runner.tool_loop(inp.node, isolated=True, tool_effects=dict(inp.tools), env=_Env(results={}))
+        result = await runner.tool_loop(inp.node, isolated=True, tool_effects=dict(inp.tools), env=_Env(results={}))
+        return replace(result, cost_usd=round(runner.spent_usd, 6))
 
 
 @dataclass
@@ -1202,12 +1256,17 @@ class SubgraphInput:
     policy: StagePolicy
     # Goal Node 的输入，供 $goal 引用
     goal_inputs: dict[str, Any] = field(default_factory=dict)
+    # Task 的预算与启动时已花的钱，给子图里的 budget_check（成本口径的人定方案）；之前的历史没有，按没有预算。
+    budget_usd: float | None = None
+    spent_before_usd: float = 0.0
 
 
 @dataclass
 class SubgraphOutput:
     # collect 的 Node id → 结果
     results: dict[str, StageResult]
+    # 这一批花的钱，父 Stage 加上
+    cost_usd: float = 0.0
 
 
 @workflow.defn(name=names.SUBGRAPH_WORKFLOW)
@@ -1226,10 +1285,13 @@ class SubgraphWorkflow:
             depth=sp.MAX_SUB_TASK_DEPTH,
             policy=inp.policy,
             t09=workflow.patched(POLICY_PATCH),
+            budget_usd=inp.budget_usd,
+            spent_before_usd=inp.spent_before_usd,
+            r01=workflow.patched(R01_FIXES_PATCH),
         )
         runner = StageRunner(ctx, human=None)
         await runner._ensure_policy()
         nodes = [n for chain in inp.chains for n in chain]
         await runner._ensure_catalog_for(nodes)
         done = await runner._run_dag(nodes, _Env(results={}, goal_inputs=inp.goal_inputs))
-        return SubgraphOutput(results={c: done[c] for c in inp.collect})
+        return SubgraphOutput(results={c: done[c] for c in inp.collect}, cost_usd=round(runner.spent_usd, 6))

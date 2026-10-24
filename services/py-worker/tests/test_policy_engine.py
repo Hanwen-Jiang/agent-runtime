@@ -11,16 +11,19 @@
 from __future__ import annotations
 
 import ast
+import contextlib
 import dataclasses
 import io
 import json
 import time
+from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from agentruntime_core.dev.telemetry import ConsoleTelemetryProvider
+from agentruntime_core.errors import TransientError
 
 from agentruntime_worker.activities.types import HookCall, Tenant
 from agentruntime_worker.executor import keys
@@ -98,6 +101,28 @@ def exported_text(telemetry: ConsoleTelemetryProvider) -> str:
 
 def spans(telemetry: ConsoleTelemetryProvider, name: str) -> list[Any]:
     return [s for s in telemetry.exported_spans if s.name == name]
+
+
+class DownTelemetry:
+    """Collector 不可用时的 Telemetry：记录照收，flush 抛 TransientError（OpenTelemetry 实现导出超时的样子）。"""
+
+    def __init__(self) -> None:
+        self.flushes = 0
+
+    def bind(self, tenant: Any) -> DownTelemetry:
+        return self
+
+    @contextlib.asynccontextmanager
+    async def start_span(self, name: str, attributes: dict[str, Any] | None = None) -> AsyncIterator[Any]:
+        class _Span:
+            def add_event(self, *_: Any, **__: Any) -> None:
+                pass
+
+        yield _Span()
+
+    async def flush(self) -> None:
+        self.flushes += 1
+        raise TransientError("export_timeout", "导出到 Collector 超时")
 
 
 # --- 目录与结果格式 ---
@@ -266,6 +291,48 @@ async def test_trace_result_writes_the_result_and_truncates_large_ones() -> None
     assert sum(len(e) for e in big.events) < 9 * 1024, "超过 8 KiB 的结果截断"
 
 
+async def test_trace_result_counts_bytes_not_characters() -> None:
+    """R-01 另一家复审第 9 条：8 KiB 按 UTF-8 字节算；截断落在字符边界上，不留半个字。"""
+    engine, telemetry = make_engine()
+    await run(engine, "after_node", ["trace_result"], {"node": node("cn"), "result": {"text": "长" * 5000}})
+    (record,) = spans(telemetry, "node.result")
+    text = "".join(record.events)
+    assert len(text.encode("utf-8")) < 9 * 1024, "中文三字节一个，按字符截会超过 8 KiB"
+    assert "�" not in text
+
+
+async def test_a_later_hook_sees_an_earlier_modification() -> None:
+    """R-01 另一家复审第 4 条：脱敏先作用，后面的 trace_result 记的是脱敏之后的结果，原始的个人信息不进 trace。"""
+    engine, telemetry = make_engine()
+    subject = {"node": node("q"), "result": {"note": "请联系 zhang.san@example.com"}}
+    results = await run(engine, "after_node", ["pii_redaction", "trace_result", "audit_log"], subject)
+    assert decisions(results) == ["modify", "allow", "allow"]
+    assert "zhang.san@example.com" not in exported_text(telemetry)
+    (record,) = spans(telemetry, "node.result")
+    assert "[REDACTED]" in "".join(record.events)
+    assert subject["result"]["note"] == "请联系 zhang.san@example.com", "改写只作用在引擎自己的副本上，HookCall 不变"
+
+
+@pytest.mark.parametrize(
+    "outcome",
+    [
+        {"decision": "maybe"},
+        {"decision": "deny"},
+        {"decision": "modify"},
+        {"decision": "modify", "modification": {"target": "output", "patch": [{"op": "replace", "path": "/nope/deeper", "value": 1}]}},
+        {"decision": "inject"},
+    ],
+    ids=["unknown-decision", "deny-without-reason", "modify-without-patch", "patch-that-does-not-apply", "inject-without-injection"],
+)
+async def test_a_malformed_hook_result_is_denied(outcome: dict[str, Any]) -> None:
+    """R-01 另一家复审第 5 条：Hook 的结果不合 hook_result.schema.json 时按 deny（fail-closed），不当作放行。"""
+    odd = HookSpec(frozenset({"after_node"}), lambda ctx: dict(outcome))
+    engine, _ = make_engine(hooks={**HOOKS, "odd": odd})
+    results = await run(engine, "after_node", ["odd", "audit_log"], {"node": node("q"), "result": {"rows": 1}})
+    assert decisions(results) == ["deny"], "遇到不合格的结果就停"
+    assert "odd" in results[0]["reason"]
+
+
 async def test_audit_log_records_hashes_not_contents() -> None:
     engine, telemetry = make_engine()
     n = node("pay", effect="write_irreversible", role="act", template="card_charge@v1", inputs={"card": SECRET})
@@ -275,7 +342,29 @@ async def test_audit_log_records_hashes_not_contents() -> None:
     attrs = record.attributes
     assert (attrs["node_id"], attrs["template"], attrs["effect"], attrs["role"]) == ("pay", "card_charge@v1", "write_irreversible", "act")
     assert attrs["input_hash"] == keys.input_hash(n["inputs"]) and attrs["result_hash"] == keys.input_hash({"receipt": SECRET})
+    assert attrs["status"] == "succeeded", "没写 status 的是成功执行后的审计"
     assert SECRET not in exported_text(telemetry)
+
+
+async def test_audit_log_records_how_a_failed_node_ended() -> None:
+    """R-01 评审第 4 节第 3 条：失败、结果未知、审批被拒的 Node 也审计，记下结局与失败类别（没有结果）。"""
+    engine, telemetry = make_engine()
+    n = node("pay", effect="write_irreversible", role="act", template="card_charge@v1", inputs={"card": SECRET})
+    results = await run(engine, "after_node", ["audit_log"], {"node": n, "result": None, "status": "unknown", "failure_class": "", "error": f"超时：{SECRET}"})
+    assert decisions(results) == ["allow"]
+    (record,) = spans(telemetry, "policy.audit")
+    assert (record.attributes["status"], record.attributes["node_id"]) == ("unknown", "pay")
+    assert SECRET not in exported_text(telemetry), "错误说明可能带数据，不进审计"
+
+
+async def test_a_telemetry_outage_does_not_fail_the_hooks() -> None:
+    """R-01 评审第 4 节第 1 条：Collector 不可用时 Hook 照常给出结果（审计记录写不出去另记日志），Task 不会卡在 after_node 上。"""
+    telemetry = DownTelemetry()
+    engine = PolicyEngine(telemetry=telemetry)  # type: ignore[arg-type]
+    n = node("q")
+    assert decisions(await run(engine, "after_node", ["trace_result", "audit_log"], {"node": n, "result": {"rows": 1}})) == ["allow", "allow"]
+    assert decisions(await run(engine, "before_node", ["budget_check"], before_node(n, spent_usd=5.0))) == ["deny"]
+    assert telemetry.flushes == 2, "每次都试过写记录"
 
 
 async def test_every_deny_is_audited_without_contents() -> None:

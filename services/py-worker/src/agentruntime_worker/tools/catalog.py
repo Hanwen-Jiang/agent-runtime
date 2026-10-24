@@ -55,6 +55,10 @@ class ToolCatalog:
     async def effects(self, tenant: Tenant, names_: Sequence[str]) -> dict[str, str]:
         return {n: spec.effect.value for n, spec in (await self.specs(tenant, names_)).items()}
 
+    async def all_effects(self, tenant: Tenant) -> dict[str, str]:
+        """这个租户看得到的全部工具 → effect（同名取最大版本），给 Planner 的 Node Catalog 用。"""
+        return {n: spec.effect.value for n, spec in sorted((await self._latest(tenant)).items())}
+
 
 class DevCatalog:
     """没接 Registry 时的 resolve_catalog：模板是桩，工具 effect 取自 ToolDriver 的登记。"""

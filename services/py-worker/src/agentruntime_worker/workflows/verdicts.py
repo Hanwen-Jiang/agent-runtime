@@ -41,6 +41,13 @@ def review_output(raw: Any) -> tuple[dict[str, Any], dict[str, Any]]:
     return dict(raw), {}
 
 
+def review_cost(raw: Any) -> float:
+    """review_round 报告的这次评审的花费（ReviewRoundOutput.cost_usd）；S-03 的桩与之前的结果没有，按 0。"""
+    if isinstance(raw, Mapping) and isinstance(raw.get("verdict"), Mapping):
+        return float(raw.get("cost_usd") or 0.0)
+    return 0.0
+
+
 # Stage 形状里保留的 Node 字段（T-15）：只有结构，不含 inputs、rationale、幂等键与取自模板的 executor、effect、role、output。
 SHAPE_NODE_KEYS = ("id", "kind", "template", "goal", "done_when", "mode", "output_schema", "after", "tier", "reasoning", "quality")
 

@@ -39,6 +39,8 @@
    版本与固定的 Recipe 的 `hooks`，按“租户策略、Recipe”的顺序合并去重；固定的版本取不到时不可重试地失败（设计书 3.1.2：租户策略
    取不到一律按拒绝处理）。没接 Registry 时仍是空的。每个挂载点上的顺序：默认 Hook、策略声明的 Hook、Stage 里写的 Hook；
    after_node 的 `audit_log` 永远最后。策略只能加 Hook，去不掉默认 Hook。
+   **R-01 评审之后（2026-10-24）**：after_node 上策略声明的 Hook 排在默认的前面，前一个 Hook 的 modify 先作用到 subject 上再交给下一个
+   （脱敏之后 trace_result 记的才是脱敏过的结果）；没成功的 Node 也执行 `audit_log`；run_hooks 有重试上限。见 `review-R-01-policy-engine.md` 第 6 节。
 4. **挂载点**（都在 workflow.patched("t09-policy-engine") 之后，旧历史按原路径回放）：
    - Task 工作流在第一轮规划之前加载 `StagePolicy`（不再等第一个 Stage），交给各 Stage 共用。
    - on_task_received（subject：message、inputs）、on_task_start（subject：Task State）：只有 allow 与 deny；deny 时 Task 以 abort

@@ -121,3 +121,40 @@
 
 **登记到后续**（写进 `docs/reference/risks-and-open-questions.md`）：持久审计存储；Recipe 展开与工具检查时 Catalog 取不到的去向（2.3）；
 惰性 Catalog 查询的竞态（2.3，目前走不到）；`single_writer_lock` 只是复述 Stage Runner 的判断。
+
+人定方案（2026-10-24）：第 1 到 3 条修；第 4 条 Task 的成本与预算全部计入；第 5 条（tool_loop 单次工具调用经 Hook）登记。
+
+## 5. 另一家复审（2026-10-24）
+
+OpenAI gpt-6-sol 按 6.2 的模板复审，原文与材料包见 [reviews/R-01-gpt-6-sol.md](reviews/R-01-gpt-6-sol.md)。满足写审分离，R-01 算评审完成。
+
+- **与本评审一致**：审批在 Stage Runner 的代码路径上、Hook 改不了 effect、按 Registry 核对 effect、deny 不重试、before_finish 的上限、
+  Hook 是纯函数、确定性。它没有看到 `run_hooks` 的重试上限与预算口径的问题，这两条以本评审为准。
+- **新提出、采纳并在这一轮修**：
+  1. after_node 上 `pii_redaction` 的改写要等全部 Hook 跑完才作用，`trace_result` 先把原始结果写进了 trace。改为 Policy Engine 把前一个 Hook 的
+     modify 作用到 subject 上再交给下一个，after_node 上策略声明的 Hook 排在默认的前面（`pii_redaction`、`trace_result`、`audit_log`）。
+  2. Hook 的结果不按 `hook_result.schema.json` 校验，不认识的 decision 会被当成放行。改为不认识或不完整的结果（含用不上的 patch）一律 deny，Stage Runner 也兜底。
+  3. `trace_result` 的 8 KiB 按字符算。改为按 UTF-8 字节、在字符边界上截断。
+- **判“不确定”、已核对**：`human`、quality 路径能否绕过审批——写操作的 Atomic Node 与 write_irreversible 的 Node 不能挂 quality（`stage_plan.py:161`），
+  human 节点只发问、不写外部；普通 Node 的 deny 有 Reviewer 的上限（`reviewer/rules.py:108`，判 replan，连续 replan 2 次升级）；
+  Subgraph 子工作流里 Catalog 取不到时子工作流失败，父 Stage 把它记为失败（本评审 2.3 已登记）。
+- **新提出、登记**：并行的 Node 读同一份预算快照、都可能通过 `budget_check`（要预留预算）；`single_writer_lock` 只在一个 Stage Runner 里有效，
+  跨 Session 写同一份共享产物没有分布式锁；`checkpoint` 只记模板名、不记回滚方式的描述；Node Executor 只核对 GateRecord 的字段、不验证它的来源
+  （activity 只由工作流在内部队列上调用，属于纵深防御）；扩展 Hook 的 reason 可能带数据。
+- **不采纳**：`before_stage` 没有自动插入 `budget_check`。附录 F.3 的“预算与配额检查”是对所有 Node 的，Stage 的预算检查由策略声明（细化第 2 节第 2 条）。
+
+## 6. 处理结果（2026-10-24）
+
+验收测试先行（`tests/test_policy_engine.py`、`tests/test_policy_workflow.py`、`tests/test_cost_and_vendor.py` 新增的用例）：
+
+1. `run_hooks` 的两处 local activity 用 `timeouts.HOOK_RETRY`（最多 3 次）；用完按“Hook 执行失败”拒绝，Task 不再无限重试。Policy Engine 写 Telemetry
+   失败只记日志、Hook 结果照常返回（Collector 不可用时 Task 不卡）。改 local activity 的重试策略不改变命令序列。
+2. write_irreversible 的审批问题带上输入（规范化 JSON，超过 2000 字符截断）。
+3. 没成功的 Node 也执行 `audit_log`（只审计），subject 带结局与失败类别，记录里有 `status`、`failure_class`，错误说明不进审计。
+4. 成本口径：tool_loop 每一步（含 Context Builder 的摘要与 Probe）、Planner、Reviewer、批量子图与 sub_agent 的花费都计入 Round 的成本；
+   这一轮的规划花费在 Stage 执行前就算进已花的钱；tool_loop 每一步之前查 Task 的预算，用完就停、记为 denied 交给 Reviewer；
+   子工作流带着 Task 的预算。sub_task（子 Task）的花费还带不回来（TaskWorkflowResult 没有成本字段，要改 proto），登记。
+5. 另一家复审的三条（见第 5 节）。
+
+第 3 条与第 4 条里“每一步之前查预算”改变命令序列，走新的版本分支 `r01-audit-and-budget`（追加在 `patches.AT_START` 末尾），新 golden
+`r01_failed_node_audited`、`r01_tool_loop_budget`；之前的 golden 都没有这个标记，按旧路径回放。py-worker 837 项通过。

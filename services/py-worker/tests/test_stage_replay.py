@@ -5,7 +5,8 @@
 - golden 历史覆盖：并行调度、revise、ensemble（vote 与 judge）、search、template（内联与拆子工作流）、tool_loop、
   sub_agent、sub_task、写节点前的人工审批、tool_loop 里不可逆工具调用前的审批（D16）、Hook 的 deny、取消，
   两种子工作流本身，S-10 的 Verdict 去向（原地重试重跑、问人、rollback），T-09 的 effect 核对、before_finish 驳回与 Task 级挂载点，
-  T-11b 的进度事件，以及 S-04 缺陷修复之后在第一个工作流任务里一次问完全部版本分支的新历史（workflows/patches.py）。
+  T-11b 的进度事件，S-04 缺陷修复之后在第一个工作流任务里一次问完全部版本分支的新历史（workflows/patches.py），
+  以及 R-01 评审之后的失败 Node 审计与 tool_loop 按预算停止。
 - Stage Runner 改变了 Task 工作流的命令序列，走 workflow.patched 版本分支：S-03 的 golden 历史仍能回放，
   新历史带版本标记，旧历史没有。
 - 把 Stage Runner 里两条标了 replay-mutation 的语句调换顺序，重放必须失败。
@@ -40,7 +41,7 @@ from agentruntime_worker.workflows.stage_runner import (
     SubAgentWorkflow,
     SubgraphWorkflow,
 )
-from agentruntime_worker.workflows.patches import EVENTS_PATCH, PATCHES_AT_START
+from agentruntime_worker.workflows.patches import EVENTS_PATCH, PATCHES_AT_START, R01_FIXES_PATCH
 from agentruntime_worker.workflows.task import POLICY_PATCH, REVIEWER_PATCH, STAGE_RUNNER_PATCH, TaskWorkflow
 
 from .support import HISTORIES_DIR
@@ -82,11 +83,17 @@ STAGE_CASES: dict[str, tuple[str, str]] = {
     "events_progress": (names.TASK_WORKFLOW, r'"name":\s*"publish_task_event".*human_input_required'),
     # S-04 的缺陷修复：新的运行在第一个工作流任务里一次问完全部版本分支，之后才有 Hook 与发问。
     "patches_at_start": (names.TASK_WORKFLOW, r'"name":\s*"ask_human".*s04-patches-at-start'),
+    # R-01 评审之后：执行失败的 Node 也经 audit_log 审计；tool_loop 每一步之前查预算，用完就停（“不再请求下一步”）。
+    "r01_failed_node_audited": (names.TASK_WORKFLOW, r'stub_failure.*r01-audit-and-budget.*"hook":\s*"audit_log"'),
+    "r01_tool_loop_budget": (names.TASK_WORKFLOW, r'"name":\s*"tool_loop_step".*r01-audit-and-budget.*\\u4e0d\\u518d\\u8bf7\\u6c42\\u4e0b\\u4e00\\u6b65'),
 }
 REVIEW_CASES = ("review_repair_rerun", "review_escalate_human", "review_rollback")
 POLICY_CASES = ("policy_effect_denied", "policy_finish_rejected", "policy_task_mounts")
 EVENTS_CASES = ("events_progress",)
 AT_START_CASES = ("patches_at_start",)
+R01_CASES = ("r01_failed_node_audited", "r01_tool_loop_budget")
+# 一次问完全部版本分支之后录下的（新历史开头带全部版本标记）。
+NEWER_CASES = (*AT_START_CASES, *R01_CASES)
 
 MUTATION_C = "# replay-mutation:C"
 MUTATION_D = "# replay-mutation:D"
@@ -175,26 +182,31 @@ def test_version_branch_keeps_old_histories_replayable() -> None:
     # S-10 改变了 Verdict 的去向与收尾的顺序：新历史带版本标记，之前的历史没有，按旧路径回放。
     for name in REVIEW_CASES:
         assert REVIEWER_PATCH in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"{name} 应带版本标记 {REVIEWER_PATCH}"
-    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in REVIEW_CASES + POLICY_CASES + EVENTS_CASES + AT_START_CASES)):
+    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in REVIEW_CASES + POLICY_CASES + EVENTS_CASES + NEWER_CASES)):
         assert REVIEWER_PATCH not in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"S-10 之前的 {name} 不该有 {REVIEWER_PATCH}"
     # T-09 改变了 Task 工作流的命令序列（提前加载 StagePolicy、Task 级挂载点、Catalog 一并查 Atomic Node 的模板）：
     # 新历史带版本标记，之前的历史都没有，按旧路径回放。
-    for name in (*POLICY_CASES, *EVENTS_CASES, *AT_START_CASES):
+    for name in (*POLICY_CASES, *EVENTS_CASES, *NEWER_CASES):
         text = history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8"))
         assert POLICY_PATCH in text and REVIEWER_PATCH in text, f"{name} 应带版本标记 {POLICY_PATCH}"
-    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in POLICY_CASES + EVENTS_CASES + AT_START_CASES)):
+    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in POLICY_CASES + EVENTS_CASES + NEWER_CASES)):
         assert POLICY_PATCH not in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"T-09 之前的 {name} 不该有 {POLICY_PATCH}"
     # T-11b 加入了推送进度事件的 activity：新历史带版本标记，之前的历史都没有，按旧路径回放（不推事件）。
-    for name in (*EVENTS_CASES, *AT_START_CASES):
+    for name in (*EVENTS_CASES, *NEWER_CASES):
         assert EVENTS_PATCH in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"{name} 应带版本标记 {EVENTS_PATCH}"
-    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in EVENTS_CASES + AT_START_CASES)):
+    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in EVENTS_CASES + NEWER_CASES)):
         assert EVENTS_PATCH not in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"T-11b 之前的 {name} 不该有 {EVENTS_PATCH}"
     # S-04 的缺陷修复：新的运行在第一个工作流任务里一次问完全部版本分支；之前的历史都没有这个标记，
     # 各版本分支仍在原位置第一次问，按原来的命令序列回放。
-    for name in AT_START_CASES:
+    for name in NEWER_CASES:
         assert PATCHES_AT_START in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"{name} 应带版本标记 {PATCHES_AT_START}"
-    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in AT_START_CASES)):
+    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in NEWER_CASES)):
         assert PATCHES_AT_START not in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"修复之前的 {name} 不该有 {PATCHES_AT_START}"
+    # R-01 评审之后的版本分支：新历史带标记；之前录下的（含 patches_at_start）都没有，开头问到时返回 False，按旧路径回放。
+    for name in R01_CASES:
+        assert R01_FIXES_PATCH in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"{name} 应带版本标记 {R01_FIXES_PATCH}"
+    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in R01_CASES)):
+        assert R01_FIXES_PATCH not in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"R-01 修复之前的 {name} 不该有 {R01_FIXES_PATCH}"
 
 
 async def test_all_golden_histories_replay_with_the_current_code() -> None:

@@ -10,8 +10,10 @@ from temporalio.common import RetryPolicy
 
 # Planner、Reviewer 等决策 activity 的重试。
 DECISION_RETRY = RetryPolicy(initial_interval=timedelta(seconds=1), maximum_interval=timedelta(seconds=30), maximum_attempts=5)
-# Policy Engine 的 Hook（local activity）。
+# Policy Engine 的 Hook（local activity）。重试有上限：用完就按“Hook 执行不了”拒绝（R-01 评审第 4 节第 1 条），
+# 不用 SDK 默认的无限重试。
 HOOK_START_TO_CLOSE = timedelta(seconds=30)
+HOOK_RETRY = RetryPolicy(initial_interval=timedelta(milliseconds=500), maximum_interval=timedelta(seconds=5), maximum_attempts=3)
 
 # Node 没给 budget.timeout_s 时的 start-to-close。
 DEFAULT_NODE_TIMEOUT = timedelta(minutes=10)

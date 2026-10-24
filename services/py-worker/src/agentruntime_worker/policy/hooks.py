@@ -6,7 +6,7 @@
 
 subject 的约定（Stage Runner 与 Task 工作流给出）：
 - before_node：{"node", "budget": {"task_usd", "spent_usd"}, "write_serialized", "idempotency_key"（写操作）}
-- after_node：{"node", "result"}
+- after_node：{"node", "result"}；没成功的 Node 只跑 audit_log，subject 另有 "status"、"failure_class"，result 为 None
 - before_stage：{"stage": {"seq", "goal", "exit_when", "budget"}, "budget"}
 - before_finish：{"verdict", "deliver_node", "deliver_status", "deliverable", "output_schema"}
 """
@@ -24,7 +24,7 @@ from agentruntime_worker.activities.types import Tenant
 from agentruntime_worker.executor import keys
 from agentruntime_worker.workflows import stage_plan as sp
 
-# trace_result 写进 trace 的结果最多这么多字符（附录 D.4：结果写入 trace，便于复现）。
+# trace_result 写进 trace 的结果最多这么多字节（UTF-8；附录 D.4：结果写入 trace，便于复现）。
 TRACE_LIMIT = 8 * 1024
 REDACTED = "[REDACTED]"
 
@@ -119,11 +119,12 @@ def single_writer_lock(ctx: HookContext) -> dict[str, Any]:
 
 
 def trace_result(ctx: HookContext) -> dict[str, Any]:
-    """read 的结果写进 trace（规范化 JSON，超过 TRACE_LIMIT 截断）。"""
+    """read 的结果写进 trace（规范化 JSON，UTF-8 超过 TRACE_LIMIT 字节就在字符边界上截断）。"""
     node = _node(ctx)
     text = keys.canonical_json(ctx.subject.get("result"))
-    if len(text) > TRACE_LIMIT:
-        text = text[:TRACE_LIMIT] + "…（截断）"
+    data = text.encode("utf-8")
+    if len(data) > TRACE_LIMIT:
+        text = data[:TRACE_LIMIT].decode("utf-8", errors="ignore") + "…（截断）"
     return {**allow(), "_record": ("node.result", {"node_id": node.get("id", ""), "template": node.get("template", "")}, f"result {text}")}
 
 
@@ -135,13 +136,16 @@ def checkpoint(ctx: HookContext) -> dict[str, Any]:
 
 
 def audit_log(ctx: HookContext) -> dict[str, Any]:
-    """审计：Node、模板、effect、role、输入与结果的哈希；不记原文。"""
+    """审计：Node、模板、effect、role、结局、输入与结果的哈希；不记原文（错误说明也不记，可能带数据）。
+    没成功的 Node 也审计（R-01 评审第 4 节第 3 条），这时 status 是它的结局。"""
     node = _node(ctx)
     attrs = {
         "node_id": node.get("id", ""),
         "template": node.get("template", ""),
         "effect": _effect(node),
         "role": node.get("role", ""),
+        "status": str(ctx.subject.get("status") or "succeeded"),
+        "failure_class": str(ctx.subject.get("failure_class") or ""),
         "input_hash": keys.input_hash(node.get("inputs") or {}),
         "result_hash": keys.input_hash(ctx.subject.get("result")),
     }

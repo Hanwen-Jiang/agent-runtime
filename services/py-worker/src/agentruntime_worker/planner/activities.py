@@ -2,7 +2,8 @@
 
 规划之后，每个 tool_loop 的 Goal Node 加上 context_read（R-03 评审 D11）：模型按路径取回 Context Builder 外置或遮蔽的内容。
 只在 context_read 已登记、且这个 Goal 的 effect 上限（effect_ceiling，没写时取 Task 的）允许 read 时加；在 activity 里加，
-不改 Stage Runner，Planner 的提示与校验也不知道它。
+不改 Stage Runner。开发组装下 Node Catalog 列出 ToolDriver 登记的全部工具（ToolsContextSource，含 context_read），
+Planner 自己写了 context_read 时不再重复加。
 """
 
 from __future__ import annotations
@@ -55,7 +56,8 @@ class PlannerActivities:
             "；两次都不合格，用了保守规划" if result.fallback else "",
         )
         stage = await self._with_context_read(inp.tenant, result.stage, context.effect_ceiling)
-        return PlanRoundOutput(stage=stage, triage_level=result.triage_level, task_plan=result.task_plan)
+        cost = round(sum(c.cost_usd for c in result.calls), 6)
+        return PlanRoundOutput(stage=stage, triage_level=result.triage_level, task_plan=result.task_plan, cost_usd=cost)
 
     async def _with_context_read(self, tenant: Tenant, stage: Any, ceiling: str) -> Any:
         """tool_loop 的 Goal Node 加上 context_read（已有的工具不变，追加在后面）。"""
@@ -79,15 +81,32 @@ class PlannerActivities:
         return {names.PLAN_ROUND: self.plan_round}
 
 
+class ToolsContextSource:
+    """在 inner 给出的规划上下文上加上 ToolDriver 登记的工具与 effect（T-13：之前 Node Catalog 里没有工具，真 Planner 规划不出
+    用平台内工具的 tool_loop），effect 上限跟 Task State 的 constraints（task-service 按租户策略写入；Registry 的上下文本来就这样）。"""
+
+    def __init__(self, inner: PlanningContextSource, tools: ToolCatalog) -> None:
+        self.inner = inner
+        self.tools = tools
+
+    async def load(self, inp: PlanRoundInput) -> PlanningContext:
+        ctx = await self.inner.load(inp)
+        tools = {**ctx.catalog.tools, **await self.tools.all_effects(inp.tenant)}
+        ceiling = (inp.task_state.get("constraints") or {}).get("effect_ceiling") or ctx.effect_ceiling
+        return dataclasses.replace(ctx, catalog=dataclasses.replace(ctx.catalog, tools=tools), effect_ceiling=str(ceiling))
+
+
 def dev_planner(config: WorkerConfig) -> PlannerActivities:
     """AR_PLANNER=model 时的开发组装：真正的 Planner 经 model_gateway(config)（设了 AR_MODEL_GATEWAY_ADDRESS 时是真模型，否则是桩模型）。
 
-    设了 AR_REGISTRY_ADDRESS 时 Node Catalog 与 Recipe 取自 Registry（T-08），否则用固定的上下文。没接 Model Gateway 时
-    桩模型答不出合格的分诊与规划，Planner 会按 full 规划并回退到保守规划；真模型上的跑分见 py-learning 的评测（S-08、S-09）。
+    设了 AR_REGISTRY_ADDRESS 时 Node Catalog 与 Recipe 取自 Registry（T-08），否则用固定的上下文；两种都加上开发用 ToolDriver
+    登记的工具（与 Node Executor 的 call_tool、tool_loop 给模型的工具定义是同一份登记）。没接 Model Gateway 时
+    桩模型答不出合格的分诊与规划，Planner 会按 full 规划并回退到保守规划；真模型上的跑分见 py-learning 的评测（S-09）。
     """
     catalog = CatalogView(templates={"answer@v1": ("model", "none"), "rewrite@v1": ("model", "none")})
     defaults = PlanningContext(risk_authorized="read", effect_ceiling="read", catalog=catalog)
-    contexts: PlanningContextSource = StaticContextSource(defaults)
+    inner: PlanningContextSource = StaticContextSource(defaults)
     if config.registry_address:
-        contexts = RegistryContextSource(registry_client(config), defaults=dataclasses.replace(defaults, catalog=CatalogView()))
-    return PlannerActivities(Planner(model_gateway(config)), contexts, tools=ToolCatalog(dev_tools(config)))
+        inner = RegistryContextSource(registry_client(config), defaults=dataclasses.replace(defaults, catalog=CatalogView()))
+    tools = ToolCatalog(dev_tools(config))
+    return PlannerActivities(Planner(model_gateway(config)), ToolsContextSource(inner, tools), tools=tools)

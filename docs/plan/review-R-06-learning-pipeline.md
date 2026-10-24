@@ -116,5 +116,7 @@ OpenAI gpt-6-sol 按 6.2 的模板复审，原文与材料包见 [reviews/R-06-g
 - **判“不确定”、已核对**：span 上的 `tenant_id` 由 Telemetry 绑定时加上，调用方传入的同名属性被覆盖，由 Telemetry 的一致性测试
   （`agentruntime_core/conformance/telemetry.py`）在控制台与 OpenTelemetry 两个实现上验证；运行中的 Task 固定版本由 T-08 的 `tests/e2e/test_registry.py` 验证，
   但规划时可选的 Recipe 列表不按固定版本（本评审 1.3），与复审的“不确定”相符。
+- **处理结果（2026-10-24，`5fad2ba`）**：第 4 节第 1 到 3 条与上面采纳的四条都已修，测试先行（py-learning 的 pipeline 84 项、tests/deploy 60 项通过）。
+  第 4 条（Task 成本口径）随 R-01 的修复一起改（见 R-01 评审第 6 节）：Task 成本现在含 tool_loop、Planner、Reviewer 与子工作流，Learning 的成本门槛量得到规划的花费了。
 - **不同意**：复审认为“每次成功成本”按 J.3 取成功 Task 的均值即可。J.3 说的“每次成功成本”与 H.2“每次成功的期望成本”、S-08 评测报告的 `per_success_usd`
   是同一个量（总成本 ÷ 成功数），失败的花费要算进去，维持本评审 1.1 的结论并修掉。

@@ -28,7 +28,7 @@ from agentruntime_worker.executor import keys
 from agentruntime_worker.policy import PolicyEngine
 from agentruntime_worker.reviewer.rules import HUMAN_REPLIES
 
-from .stage_harness import Script, StageHarness, harness, returns, sequence  # noqa: F401 — harness 是 fixture
+from .stage_harness import Script, StageHarness, fails, harness, returns, sequence  # noqa: F401 — harness 是 fixture
 from .test_stage_runner import atomic, deliver, one_round, stage
 from .test_task_verdicts import deliverable, executed_ids, out, reply_with, scripted
 
@@ -95,6 +95,19 @@ async def test_policy_hooks_join_the_defaults_and_audit_stays_last(harness: Stag
     assert "zhang.san@example.com" not in text and "[REDACTED]" in text
 
 
+async def test_policy_hooks_on_after_node_come_before_the_default_ones(harness: StageHarness) -> None:
+    """R-01 另一家复审第 4 条：after_node 上策略声明的 Hook（例如脱敏）排在 trace_result 之前，trace 里只有脱敏之后的结果。"""
+    s = harness.script
+    telemetry = use_engine(s)
+    s.policy = StagePolicy(hooks={"after_node": ["pii_redaction"]})
+    s.behaviors["q"] = returns({"contact": "zhang.san@example.com"})
+    one_round(harness, atomic("q", role="fetch", effect="read"), deliver(after=["q"]))
+    await harness.run()
+    assert hooks_at(s, "after_node", "q") == ["pii_redaction", "trace_result", "audit_log"]
+    traced = [s_ for s_ in telemetry.exported_spans if s_.name == "node.result"]
+    assert traced and all("zhang.san@example.com" not in "".join(t.events) for t in traced)
+
+
 async def test_policy_cannot_remove_default_hooks(harness: StageHarness) -> None:
     s = harness.script
     use_engine(s)
@@ -117,6 +130,55 @@ async def test_a_node_denied_by_a_hook_is_neither_executed_nor_retried(harness: 
     q = review_result(s, inp.task_id, "q")
     assert (q.status, q.failure_class) == ("failed", "denied") and "budget_check" in q.error
     assert result.status == enums_pb2.TASK_STATUS_ABORTED
+
+
+class BrokenEngine:
+    """run_hooks 本身一直失败（不是某个 Hook 抛异常）：local activity 失败。"""
+
+    def __init__(self) -> None:
+        self.attempts = 0
+
+    async def run_hooks(self, call: HookCall) -> list[dict[str, Any]]:
+        self.attempts += 1
+        raise RuntimeError("Policy Engine 不可用")
+
+
+async def test_a_hook_activity_that_keeps_failing_denies_instead_of_hanging(harness: StageHarness) -> None:
+    """R-01 评审第 4 节第 1 条：run_hooks 有重试上限，用完就按“Hook 执行不了”拒绝，Task 不会一直重试下去。"""
+    s = harness.script
+    s.engine = BrokenEngine()
+    one_round(harness, deliver())
+    inp, result = await harness.run()
+    assert "answer" not in executed_ids(s, inp.task_id), "Hook 执行不了的 Node 不执行"
+    answer = review_result(s, inp.task_id, "answer")
+    assert (answer.status, answer.failure_class) == ("failed", "denied") and "Hook 执行失败" in answer.error
+    assert s.engine.attempts == 3, "before_node 的 run_hooks 试 3 次"
+    assert result.status == enums_pb2.TASK_STATUS_ABORTED
+
+
+async def test_nodes_that_did_not_succeed_are_audited(harness: StageHarness) -> None:
+    """R-01 评审第 4 节第 3 条：执行失败的 Node 也经 audit_log 审计，subject 带结局与失败类别。"""
+    s = harness.script
+    use_engine(s)
+    s.behaviors["q"] = fails("数据源返回 500")
+    one_round(harness, atomic("q", role="fetch", effect="read"), deliver(after=["q"]))
+    await harness.run()
+    (audit,) = calls_at(s, "after_node", "q")
+    assert audit.hooks == ["audit_log"], "没成功的 Node 只审计，不跑 after_node 的其他 Hook"
+    assert (audit.subject["status"], audit.subject["result"]) == ("failed", None)
+    assert "failure_class" in audit.subject, "失败类别（未分类时为空）也交给审计"
+
+
+async def test_the_approval_question_shows_what_will_be_written(harness: StageHarness) -> None:
+    """R-01 评审第 4 节第 2 条：write_irreversible 的审批问题带上要执行的输入，审批人看得到要写什么。"""
+    s = harness.script
+    use_engine(s)
+    one_round(harness, atomic("pay", effect="write_irreversible", inputs={"to": "acct-9071", "amount": 300}), deliver(after=["pay"]))
+    s.on_question = reply_with(harness, "approve")
+    _, result = await harness.run(effect_ceiling=WRITE_CEILING)
+    assert result.status == enums_pb2.TASK_STATUS_DONE
+    (question,) = [q for q in s.questions if q.question_id == "pay.1"]
+    assert "acct-9071" in question.text and "300" in question.text
 
 
 # --- 按 Registry 核对 effect ---

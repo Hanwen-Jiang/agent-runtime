@@ -110,6 +110,8 @@ class BuiltContext:
     tokens: int
     """messages 加工具定义的 token 估算。"""
     probes: list[ProbeResult] = field(default_factory=list)
+    cost_usd: float = 0.0
+    """这次构建里摘要与 Probe 的模型花费（计入调用方这一步的成本）。"""
 
 
 @dataclass
@@ -128,6 +130,8 @@ class _State:
     """Goal Node 的输入外置后的路径；没外置时为空。"""
     precise: list[str] = field(default_factory=list)
     """精确状态这一段的各行（超出上限时末行注明条数与路径）。"""
+    cost_usd: float = 0.0
+    """摘要与 Probe 的模型花费。"""
 
 
 def tenant_context(t: Tenant) -> tenant_pb2.TenantContext:
@@ -223,13 +227,13 @@ class ContextBuilder:
         messages = self._assemble(request, mode, state)
         probes: list[ProbeResult] = []
         if cfg.probe and applied & {"summarize", "reset"}:
-            probes = await self._probe(request, mode, messages)
+            probes = await self._probe(request, mode, messages, state)
             failed = [p for p in probes if not p.passed]
             if failed:
                 self._restore(request, state, failed)
                 messages = self._assemble(request, mode, state)
         tokens = message_tokens(messages) + tool_tokens(request.tools)
-        return BuiltContext(messages=messages, applied=[s for s in LADDER if s in applied], tokens=tokens, probes=probes)
+        return BuiltContext(messages=messages, applied=[s for s in LADDER if s in applied], tokens=tokens, probes=probes, cost_usd=round(state.cost_usd, 6))
 
     # --- 组装 ---
 
@@ -411,6 +415,7 @@ class ContextBuilder:
                     generation=mg.GenerateParams(messages=messages, output_schema=payload_pb2.JsonPayload(schema_id="context_summary", value=_value(summaries.SUMMARY_SCHEMA))),
                 )
             )
+            state.cost_usd += response.usage.cost_usd_micros / 1_000_000
             delta = json_format.MessageToDict(response.result) if response.HasField("result") else None
             if summaries.valid(delta):
                 state.summary = summaries.merge(state.summary, delta)
@@ -422,7 +427,7 @@ class ContextBuilder:
 
     # --- Compaction Probe ---
 
-    async def _probe(self, request: ContextRequest, mode: ModePolicy, messages: list[mg.ChatMessage]) -> list[ProbeResult]:
+    async def _probe(self, request: ContextRequest, mode: ModePolicy, messages: list[mg.ChatMessage], state: _State) -> list[ProbeResult]:
         facts = select_facts(request.task_state, request.task_plan, mode)
         if not facts:
             return []
@@ -441,7 +446,8 @@ class ContextBuilder:
         except Exception as error:  # noqa: BLE001 — 抽查失败不影响这一步，只记日志
             log.warning("Compaction Probe 调用失败：%s", type(error).__name__)
             return []
-        answers = json_format.MessageToDict(response.result).get("answers") if response.HasField("result") else None
+        state.cost_usd += response.usage.cost_usd_micros / 1_000_000
+        answers =json_format.MessageToDict(response.result).get("answers") if response.HasField("result") else None
         answers = [str(a) for a in answers] if isinstance(answers, list) else []
         results = []
         for i, fact in enumerate(facts):
