@@ -62,26 +62,25 @@ with workflow.unsafe.imports_passed_through():
         ToolLoopStep,
         ToolLoopStepInput,
     )
+    from agentruntime_worker.workflows import patches
     from agentruntime_worker.workflows import stage_plan as sp
     from agentruntime_worker.workflows import timeouts
     from agentruntime_worker.workflows.events import EventPublisher
     from agentruntime_worker.workflows.failures import caused_by_cancel, failure_class, failure_message
+    from agentruntime_worker.workflows.patches import (
+        HUMAN_CHANNEL_PATCH,
+        HUMAN_REPLY_RACE_PATCH,
+        POLICY_PATCH,
+        RECONCILE_PATCH,
+        TOOL_LOOP_APPROVAL_PATCH,
+    )
 
 # memo 里记下所属租户，与 Session 工作流启动 Task 时一致（libs/go-core adapters/temporal）。
 SCOPE_MEMO_KEY = "agentruntime_scope"
 # tool_loop 没写 max_iterations 时的上限。
 DEFAULT_MAX_ITERATIONS = 20
-# S-05 改变命令序列的两处各有版本分支：human 节点与审批先经 HumanChannel 发问并设超时；写操作 activity 超时后按幂等键对账。
-HUMAN_CHANNEL_PATCH = "s05-human-channel"
-RECONCILE_PATCH = "s05-reconcile"
-# D16：tool_loop 里每次调用 write_irreversible 的工具前都插入人工审批（设计书 3.2.3、附录 E.1）。
-TOOL_LOOP_APPROVAL_PATCH = "d16-tool-loop-approval"
-# 发问之前先登记要等的回复，问题刚发出就到的回复不再被当作“不匹配”丢掉。
-HUMAN_REPLY_RACE_PATCH = "d16-expect-reply-before-ask"
 # 同一个 Goal Node 里不可逆工具调用被拒（含超时）几次就记为 denied，交给 Reviewer。
 MAX_TOOL_REJECTIONS = 2
-# T-09：Policy Engine（策略声明的 Hook、Task 级挂载点、before_finish 的驳回上限、按 Registry 核对 effect）改变了命令序列。
-POLICY_PATCH = "t09-policy-engine"
 DEFAULT_ROLE = "transform"
 
 
@@ -1174,6 +1173,7 @@ class SubAgentWorkflow:
 
     @workflow.run
     async def run(self, inp: SubAgentInput) -> StageResult:
+        patches.at_start()
         ctx = RunContext(
             tenant=inp.tenant,
             task_id=inp.task_id,
@@ -1216,6 +1216,7 @@ class SubgraphWorkflow:
 
     @workflow.run
     async def run(self, inp: SubgraphInput) -> SubgraphOutput:
+        patches.at_start()
         ctx = RunContext(
             tenant=inp.tenant,
             task_id=inp.task_id,

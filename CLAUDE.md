@@ -50,6 +50,7 @@
 - Go：不用 `time.Now`、原生 goroutine、channel 与 select，改用 `workflow.Now`、`workflow.Go`、`workflow.Channel`、`workflow.Selector`。
 - 不依赖 set 或 map 的遍历顺序；并发结果按 Node id 排序后合并。
 - 改变命令序列的修改，必须加版本分支（`workflow.patched` 或 `workflow.GetVersion`），并用重放测试证明旧历史仍能回放。
+- Python 的版本分支 id 一律定义在 `agentruntime_worker/workflows/patches.py`，并追加到 `AT_START` 末尾：新的运行在第一个工作流任务里一次问完。不要让版本分支在 local activity（Hook）之后才第一次问，回放时会走错路径（原因见该模块）。
 - 模型调用、工具调用、外部 I/O 一律放进 activity。
 
 **副作用**（附录 D.4）

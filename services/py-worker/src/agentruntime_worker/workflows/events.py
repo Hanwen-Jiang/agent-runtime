@@ -8,7 +8,7 @@ ActivityName），参数是租户上下文、去重键与 taskapi.v1.TaskEvent�
 - 每个事件都等推送完成再往下走：event_id 按发生的先后排，Task 结束前的事件都排在 task_finished 前面。
 - 去重键 r<Round>/<事件>[/<Node 或问题>]，重放与 activity 重试都不变。
 - 推送失败不让 Task 失败：记一条警告，这个 Round 余下的事件不再推，下一个 Round 再试。
-- 只有顶层的 Task 推送（子 Task、sub_agent 等子工作流不推）；新的运行才推（版本分支 EVENTS_PATCH）。
+- 只有顶层的 Task 推送（子 Task、sub_agent 等子工作流不推）；新的运行才推（版本分支 patches.EVENTS_PATCH）。
 
 是工作流代码：时间用 workflow.now()，不做 I/O。
 """
@@ -33,8 +33,6 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.activities.types import StageResult, Tenant
     from agentruntime_worker.workflows.failures import caused_by_cancel, failure_message
 
-# T-11b 加入了推送进度事件的 activity，改变了命令序列：新的运行走这个版本分支，之前的历史照旧回放。
-EVENTS_PATCH = "t11b-progress-events"
 PUBLISH_START_TO_CLOSE = timedelta(seconds=5)
 # 连排队带重试的上限：Session Worker 不在时，一个 Round 最多多等这么久（之后这个 Round 不再推）。
 PUBLISH_SCHEDULE_TO_CLOSE = timedelta(seconds=10)

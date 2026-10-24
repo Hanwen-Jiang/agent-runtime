@@ -53,12 +53,13 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.reviewer.rules import HUMAN_REPLIES
     from agentruntime_worker.reviewer.signals import history_entry
     from agentruntime_worker.reviewer.summary import apply_state_update
-    from agentruntime_worker.workflows import timeouts
+    from agentruntime_worker.workflows import patches, timeouts
     from agentruntime_worker.workflows import verdicts as vd
-    from agentruntime_worker.workflows.events import EVENTS_PATCH, EventPublisher
+    from agentruntime_worker.workflows.events import EventPublisher
     from agentruntime_worker.workflows.failures import caused_by_cancel as _caused_by_cancel
     from agentruntime_worker.workflows.failures import failure_message as _failure_message
-    from agentruntime_worker.workflows.stage_runner import POLICY_PATCH, RunContext, StageRunner, effect_name
+    from agentruntime_worker.workflows.patches import EVENTS_PATCH, POLICY_PATCH, REVIEWER_PATCH, STAGE_RUNNER_PATCH
+    from agentruntime_worker.workflows.stage_runner import RunContext, StageRunner, effect_name
 
 # Round 上限：兜底。Reviewer 的升级规则与各级次数上限（S-10）让一直失败的 Task 在 12 次评审之内收尾。
 MAX_ROUNDS = 20
@@ -66,10 +67,6 @@ MAX_ROUNDS = 20
 MAX_FINISH_REJECTIONS = 2
 # T-09 第一期只认 allow 与 deny 的挂载点（modify、inject 按 deny）；before_compact 还没接，声明了就拒绝。
 STRICT_TASK_MOUNTS = ("on_task_received", "on_task_start", "before_finish")
-# Stage Runner（S-04）改变了命令序列：新的运行走这个版本分支，S-03 留下的历史仍按旧路径回放。
-STAGE_RUNNER_PATCH = "s04-stage-runner"
-# S-10：按 Verdict 的去向走（repair 重跑、问人、rollback、reroute……）与收尾先通知再写回，改变了命令序列。
-REVIEWER_PATCH = "s10-reviewer"
 DEFAULT_DONE_WHEN = "回答用户的问题"
 
 DECISION_RETRY = timeouts.DECISION_RETRY
@@ -181,6 +178,8 @@ class TaskWorkflow:
 
     @workflow.run
     async def run(self, inp: task_pb2.TaskWorkflowInput) -> task_pb2.TaskWorkflowResult:
+        # 新的运行在第一个工作流任务里一次问完全部版本分支：local activity 之后不再第一次问（workflows/patches.py）。
+        patches.at_start()
         self._input = inp
         self._tenant = Tenant(
             tenant_id=inp.tenant.tenant_id,

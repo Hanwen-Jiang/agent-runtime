@@ -210,6 +210,16 @@
   continued_as_new）的 WorkflowTaskFailed，其余照旧失败；规则的测试在 `tests/e2e/test_history_rules.py`（不需要端到端环境）。
   T-15 进来后契约 job 缺 `otelcol-contrib` 而失败：ci.yml 的契约 job 装上与 Chart 里 Collector 镜像同一版本的 otelcol-contrib
   （`OTELCOL_VERSION`，现为 0.135.0），`tests/deploy` 的 Collector 配置在 CI 里用它自己的 validate 校验（`test_ci_workflow.py` 核对版本一致）。
+  夜间任务 2026-10-23 回放失败（`s05-human-channel` 的标记对不上）：作为 S-04 的缺陷修复处理，决定 D1–D6 经人确认。原因：Hook 的
+  local activity 运行时来了 Temporal 查询（客户端轮询 QueryTask），SDK 只带着 local activity 的 marker 先提交工作流任务，之后的代码
+  落进下一个工作流任务；回放时结果在上一个工作流任务里就交给工作流，紧接着第一次问的版本分支看不到标记，走了旧路径
+  （temporalio 1.34.0，sdk-rust#1616 没有覆盖）。本机重复 human_gate 40 次：轮询时 10 份回放失败，不轮询时 0 份；
+  Task 级 Hook 之后的 `t11b-progress-events` 同样会中。修复：版本分支一律定义在 `workflows/patches.py`，新的运行在第一个工作流任务里
+  按 `AT_START`（只能在末尾追加）一次问完（版本分支 `s04-patches-at-start`）；之前的历史没有这个标记，照旧在原位置问。
+  测试：`test_patches_at_start.py`（每个版本分支都登记、新历史开头问完）、`test_split_after_local_activity.py`（`history_split` 在
+  local activity 之后造出切分：修复前的历史切开后回放失败，与真实录下的切分形状一致；新历史在每个 local activity 之后切开都能回放）、
+  新 golden `patches_at_start`、夜间用例 `tests/e2e/faults/test_replay_under_status_polling.py`（轮询状态下重复 20 次后回放）。
+  修复之前已经录下切分的历史任何版本都回放不了（开发与 CI 环境里没有要保留的）。
 
 **T-15 Helm 与 KEDA、Telemetry**　中档 · 低
 - 能 `helm template` 出合法的清单即可，不要求真部署。Telemetry 打点与 Collector 配置补齐。
