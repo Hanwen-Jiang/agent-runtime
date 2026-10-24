@@ -96,6 +96,7 @@
 /tests/e2e/faults           # 故障注入与恢复套件（S-07）；故障 Worker 与外部 ledger 在 tests/e2e/e2e_support
 /tests/deploy               # 部署验收（T-15）：helm lint、helm template 的结构检查与 Collector 配置
 /.github/workflows          # CI：ci.yml 在 PR 与 main 上按步骤分 job 调用 scripts/check.py（T-14）；nightly.yml 每晚跑 tests/e2e（含故障注入套件与越权用例）、全部 Go 测试（含 Postgres 行级安全），以及 py-core 与 py-memory 的测试（Postgres + Qdrant）
+/products/coding            # 在线多租户 coding agent 的 MVP（2026-10-24 经人确认加入，计划见 docs/plan/coding-agent-mvp.md）：coding-web 服务（Go）与网页，经 Task API 调 Runtime
 /scripts                    # check.py：本地与 CI 共用的检查脚本，只用标准库（T-14）
 /docs                       # 设计书、实施计划、参考文档；docs/note 是各模块的学习笔记（末尾附面试速查）
 ```
