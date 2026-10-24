@@ -59,7 +59,12 @@ def dev_tools(config: WorkerConfig) -> LocalToolDriverProvider:
         provider = LocalToolDriverProvider()
         register_platform_tools(
             provider,
-            PlatformToolsConfig(workspace_root=config.tool_workspace_root, fetch_hosts=config.tool_fetch_hosts),
+            PlatformToolsConfig(
+                workspace_root=config.tool_workspace_root,
+                fetch_hosts=config.tool_fetch_hosts,
+                shell_sandbox=config.tool_shell_sandbox,
+                shell_image=config.tool_shell_image,
+            ),
             objects=context_objects(config),
         )
         _providers[key] = provider

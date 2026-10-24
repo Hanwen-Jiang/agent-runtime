@@ -151,3 +151,15 @@ def test_tool_config_from_env(tmp_path: Path) -> None:
     assert config.tool_workspace_root == tmp_path / "ws"
     assert config.tool_fetch_hosts == ("docs.example.com", "*.internal.example")
     assert config.mcp_tools_file == tmp_path / "mcp.json"
+
+
+def test_shell_sandbox_from_env() -> None:
+    """coding agent MVP：shell_run 默认在宿主机跑；AR_TOOL_SHELL_SANDBOX=docker 时在一次性容器里跑，镜像可换；别的取值报错。"""
+    from agentruntime_worker.config import ENV_TOOL_SHELL_IMAGE, ENV_TOOL_SHELL_SANDBOX
+
+    default = WorkerConfig.from_env({})
+    assert (default.tool_shell_sandbox, default.tool_shell_image) == ("host", "python:3.13-slim")
+    config = WorkerConfig.from_env({ENV_TOOL_SHELL_SANDBOX: "docker", ENV_TOOL_SHELL_IMAGE: "node:22-slim"})
+    assert (config.tool_shell_sandbox, config.tool_shell_image) == ("docker", "node:22-slim")
+    with pytest.raises(ValueError, match=ENV_TOOL_SHELL_SANDBOX):
+        WorkerConfig.from_env({ENV_TOOL_SHELL_SANDBOX: "vm"})

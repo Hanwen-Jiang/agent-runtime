@@ -40,6 +40,10 @@ ENV_REGISTRY_ADDRESS = "AR_REGISTRY_ADDRESS"
 ENV_TOOL_WORKSPACE_ROOT = "AR_TOOL_WORKSPACE_ROOT"
 ENV_TOOL_FETCH_HOSTS = "AR_TOOL_FETCH_HOSTS"
 ENV_MCP_TOOLS_FILE = "AR_MCP_TOOLS_FILE"
+# shell_run 在哪里跑：host（默认，开发用，不隔离）或 docker（一次性容器，不联网、限资源；coding agent MVP）；容器的镜像。
+ENV_TOOL_SHELL_SANDBOX = "AR_TOOL_SHELL_SANDBOX"
+ENV_TOOL_SHELL_IMAGE = "AR_TOOL_SHELL_IMAGE"
+SHELL_SANDBOXES = ("host", "docker")
 
 
 @dataclass(frozen=True)
@@ -75,6 +79,9 @@ class WorkerConfig:
     tool_workspace_root: Path | None = None
     tool_fetch_hosts: tuple[str, ...] = ()
     mcp_tools_file: Path | None = None
+    # shell_run 的沙箱（AR_TOOL_SHELL_SANDBOX）与 docker 时的镜像（AR_TOOL_SHELL_IMAGE）。
+    tool_shell_sandbox: str = "host"
+    tool_shell_image: str = "python:3.13-slim"
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> WorkerConfig:
@@ -114,6 +121,9 @@ class WorkerConfig:
         workspace_root = env.get(ENV_TOOL_WORKSPACE_ROOT, "").strip()
         fetch_hosts = tuple(h.strip() for h in env.get(ENV_TOOL_FETCH_HOSTS, "").split(",") if h.strip())
         mcp_tools = env.get(ENV_MCP_TOOLS_FILE, "").strip()
+        sandbox = env.get(ENV_TOOL_SHELL_SANDBOX, "").strip() or cls.tool_shell_sandbox
+        if sandbox not in SHELL_SANDBOXES:
+            raise ValueError(f"{ENV_TOOL_SHELL_SANDBOX} 只能是 {'、'.join(SHELL_SANDBOXES)}")
         return cls(
             temporal_address=env.get(ENV_TEMPORAL_ADDRESS, "") or cls.temporal_address,
             namespace=env.get(ENV_TEMPORAL_NAMESPACE, "") or cls.namespace,
@@ -133,6 +143,8 @@ class WorkerConfig:
             tool_workspace_root=Path(workspace_root) if workspace_root else None,
             tool_fetch_hosts=fetch_hosts,
             mcp_tools_file=Path(mcp_tools) if mcp_tools else None,
+            tool_shell_sandbox=sandbox,
+            tool_shell_image=env.get(ENV_TOOL_SHELL_IMAGE, "").strip() or cls.tool_shell_image,
         )
 
     def store_paths(self, root: Path) -> tuple[Path, Path]:

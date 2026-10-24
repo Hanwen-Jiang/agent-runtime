@@ -7,7 +7,9 @@
   工作区是 <workspace_root>/<tenant_id>/<workspace_id，没有为 default>，租户与 workspace 来自调用的作用域
   （ToolInvocation），参数改变不了它。路径一律相对工作区；绝对路径、盘符、..、反斜杠、规范化后出界（含经符号链接）都拒绝。
 - shell_run：argv 列表、不经 shell，在工作区里执行；子进程的环境只留 PATH 等必需的变量，Worker 的其他环境变量（含密钥）
-  带不进去；输出截断；超时杀掉进程并返回 timed_out，不抛异常；非零退出码照常返回。开发实现，没有资源限制与网络隔离。
+  带不进去；输出截断；超时杀掉进程并返回 timed_out，不抛异常；非零退出码照常返回。shell_sandbox = host 时直接在宿主机上跑
+  （开发实现，没有资源限制与网络隔离）；= docker 时在一次性容器里跑：只挂载本工作区到 /workspace，不联网，限 CPU、内存
+  与进程数，跑完删除容器（coding agent MVP，docs/plan/coding-agent-mvp.md）。
 - web_fetch（配了 fetch_hosts 才登记）：只认 http、https；只去名单里的主机（"*" 任何主机，"*.example.com" 子域名）；
   解析出的地址是内网、回环、链路本地等一律拒绝（allow_private_fetch 只给测试用）；不走代理、不跟随重定向（返回状态码与
   Location）；正文有大小上限。
@@ -23,6 +25,7 @@ import hashlib
 import ipaddress
 import os
 import re
+import shutil
 import socket
 import urllib.error
 import urllib.parse
@@ -58,6 +61,13 @@ class PlatformToolsConfig:
     allow_private_fetch: bool = False
     shell_timeout_s: int = 120
     max_shell_timeout_s: int = 600
+    # shell_run 在哪里跑：host 或 docker；docker 时的镜像、docker 可执行文件与资源上限。
+    shell_sandbox: str = "host"
+    shell_image: str = "python:3.13-slim"
+    shell_docker: str = "docker"
+    shell_cpus: str = "2"
+    shell_memory: str = "2g"
+    shell_pids: int = 512
     # shell_run 的 stdout、stderr 与 repo_read 的内容各自最多这么多字符。
     output_limit: int = 64 * 1024
     fetch_limit: int = 1024 * 1024
@@ -264,6 +274,8 @@ class _Workspaces:
         args = invocation.arguments
         argv = [str(a) for a in args["argv"]]
         timeout = min(int(args.get("timeout_s") or self.config.shell_timeout_s), self.config.max_shell_timeout_s)
+        if self.config.shell_sandbox == "docker":
+            return await self._docker_shell(root, argv, timeout)
         env = {k: os.environ[k] for k in _SHELL_ENV if k in os.environ}
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -278,6 +290,40 @@ class _Workspaces:
             stdout, stderr = await proc.communicate()
             return {"exit_code": None, "timed_out": True, **self._outputs(stdout, stderr)}
         return {"exit_code": proc.returncode, "timed_out": False, **self._outputs(stdout, stderr)}
+
+    async def _docker_shell(self, root: Path, argv: list[str], timeout: int) -> Any:
+        """在一次性容器里跑：只挂载本工作区，不联网，限资源；超时删除容器。启动不了 docker 按暂时性错误处理。"""
+        c = self.config
+        docker = shutil.which(c.shell_docker) or c.shell_docker
+        name = "ar-shell-" + os.urandom(6).hex()
+        cmd = [
+            docker, "run", "--rm", "--name", name, "--network", "none",
+            "--cpus", c.shell_cpus, "--memory", c.shell_memory, "--pids-limit", str(c.shell_pids),
+            "--security-opt", "no-new-privileges", "--cap-drop", "ALL",
+            "-v", f"{root}:/workspace", "-w", "/workspace", "-e", "HOME=/tmp", "-e", "PYTHONDONTWRITEBYTECODE=1",
+        ]
+        if hasattr(os, "getuid"):  # Linux 上用 Worker 的用户跑，工作区里新建的文件不归 root
+            cmd += ["--user", f"{os.getuid()}:{os.getgid()}"]
+        cmd += [c.shell_image, *argv]
+        # docker 的凭据助手与 docker 在同一目录；容器里的环境与 Worker 无关，这里只给 docker 客户端自己用。
+        env = {k: os.environ[k] for k in (*_SHELL_ENV, "DOCKER_HOST", "DOCKER_CONFIG", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "ProgramData") if k in os.environ}
+        env["PATH"] = str(Path(docker).parent) + os.pathsep + env.get("PATH", "")
+        try:
+            proc = await asyncio.create_subprocess_exec(*cmd, env=env, stdin=asyncio.subprocess.DEVNULL, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        except (FileNotFoundError, PermissionError) as err:
+            raise TransientError("sandbox_unavailable", f"启动不了 docker（{type(err).__name__}）") from None
+        try:
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout + 30)
+        except TimeoutError:
+            remover = await asyncio.create_subprocess_exec(docker, "rm", "-f", name, env=env, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+            await remover.wait()
+            proc.kill()
+            stdout, stderr = await proc.communicate()
+            return {"exit_code": None, "timed_out": True, "sandbox": "docker", **self._outputs(stdout, stderr)}
+        # 125：docker 自己出错（镜像拉不到、daemon 不在）；不是命令的退出码。
+        if proc.returncode == 125:
+            raise TransientError("sandbox_unavailable", "Docker 沙箱启动失败：" + stderr.decode("utf-8", errors="replace")[-500:])
+        return {"exit_code": proc.returncode, "timed_out": False, "sandbox": "docker", **self._outputs(stdout, stderr)}
 
     def _outputs(self, stdout: bytes, stderr: bytes) -> dict[str, Any]:
         limit = self.config.output_limit

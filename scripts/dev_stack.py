@@ -2,7 +2,8 @@
 Model Gateway、Python Worker。人手动演示与 tests/e2e/live 的真模型用例用同一个脚本。只用标准库（同 check.py）。
 
     uv run --no-sync python scripts/dev_stack.py up [--root 目录] [--provider mock|openai_compat] [--provider-env 文件]
-                                                  [--decisions model|stub] [--tenant-effect 租户=effect]... [--json]
+                                                  [--decisions model|stub] [--tenant-effect 租户=effect]...
+                                                  [--coding] [--sandbox host|docker] [--json]
     uv run --no-sync python scripts/dev_stack.py status [--json]      各组件是否在运行、地址与日志
     uv run --no-sync python scripts/dev_stack.py token --tenant t1 --user u1 [--scope task.approve]
     uv run --no-sync python scripts/dev_stack.py kill worker          强杀一个组件（演示“杀 Worker 后恢复”）
@@ -20,6 +21,9 @@ Model Gateway、Python Worker。人手动演示与 tests/e2e/live 的真模型�
 - Worker：--decisions model（默认）时 AR_PLANNER、AR_REVIEWER、AR_TOOL_LOOP 都是 model，经 Model Gateway；stub 时都用桩。
   Worker 用跑这个脚本的 Python（--python 可以换），PATH 前面加上它所在的目录，shell_run 里的 python 就是同一个解释器。
 - 输出：up、status 加 --json 时最后一行是 JSON（地址、pid、日志位置），不含任何密钥。
+- --coding：再编译并拉起 coding agent 的网页服务 coding-web（products/coding，docs/plan/coding-agent-mvp.md），开发登录打开，
+  与 Worker 共用工作区；租户首次登录时它把租户的 effect 上限写成 write_reversible。--sandbox docker：Worker 的 shell_run
+  在一次性 Docker 容器里跑（不联网、限资源），要 PATH 上有 docker。
 """
 
 from __future__ import annotations
@@ -43,9 +47,11 @@ DEFAULT_ROOT = Path.home() / ".agentruntime" / "dev-stack"
 DEFAULT_PROVIDER_ENV = Path.home() / ".agentruntime" / "model-provider.env"
 SEED_FILE = REPO_ROOT / "deploy" / "dev" / "registry-seed.json"
 PROFILES = {"openai_compat": REPO_ROOT / "deploy" / "dev" / "model-profiles.json", "mock": REPO_ROOT / "deploy" / "dev" / "mock-model-profiles.json"}
-COMPONENTS = ("temporal", "task-service", "model-gateway", "worker")
+COMPONENTS = ("temporal", "task-service", "model-gateway", "worker", "coding")
 # 报告里多一个 registry：它在 task-service 进程里，有自己的内部端口（T-08）。
-REPORTED = ("temporal", "task-service", "registry", "model-gateway", "worker")
+REPORTED = ("temporal", "task-service", "registry", "model-gateway", "worker", "coding")
+# 只在 up --coding 时才起的组件。
+OPTIONAL = {"coding"}
 EFFECTS = ("none", "read", "write_reversible", "write_irreversible")
 WORKER_QUEUES = "task,decision,model,program"
 PROVIDER_KEY_NAME = "model-provider/api-key"
@@ -239,8 +245,10 @@ class Stack:
                 "decisions": args.decisions,
                 "tenant_effects": effects,
                 "python": args.python or sys.executable,
+                "coding": bool(getattr(args, "coding", False)),
+                "sandbox": getattr(args, "sandbox", "host") or "host",
             },
-            "ports": {"temporal": free_port(), "temporal_ui": free_port(), "http": free_port(), "registry": free_port(), "gateway": free_port()},
+            "ports": {"temporal": free_port(), "temporal_ui": free_port(), "http": free_port(), "registry": free_port(), "gateway": free_port(), "coding": free_port()},
             "components": {},
         }
 
@@ -254,6 +262,13 @@ class Stack:
     @property
     def task_api(self) -> str:
         return f"http://{self.address('http')}"
+
+    @property
+    def coding_url(self) -> str:
+        return f"http://{self.address('coding')}" if self.options.get("coding") else ""
+
+    def wanted(self, name: str) -> bool:
+        return name not in OPTIONAL or bool(self.options.get(name))
 
     def shared_env(self) -> dict[str, str]:
         return {"AR_OBJECT_STORE_DIR": str(self.objects_dir), "AR_SECRETS_FILE": str(self.secrets_file)}
@@ -282,6 +297,22 @@ class Stack:
         base_url = self.provider_values().get("AR_MODEL_PROVIDER_BASE_URL", "")
         if base_url:
             gateway["AR_MODEL_PROVIDER_BASE_URL"] = base_url
+        worker_path = python_dir + os.pathsep + os.environ.get("PATH", "")
+        sandbox: dict[str, str] = {}
+        if self.options.get("sandbox") == "docker":
+            docker = shutil.which("docker")
+            if docker:  # docker 的凭据助手与它在同一目录
+                worker_path = str(Path(docker).parent) + os.pathsep + worker_path
+            sandbox = {"AR_TOOL_SHELL_SANDBOX": "docker"}
+        coding = {
+            "CODING_ADDR": self.address("coding"),
+            "CODING_TASK_API": self.task_api,
+            "CODING_WORKSPACE_ROOT": str(self.workspace_root),
+            "CODING_DATA_DIR": str(self.root / "coding"),
+            "CODING_DEV_LOGIN": "1",
+            "CODING_TENANT_POLICIES_FILE": str(self.policies_file),
+            "AR_DEV_SIGNING_KEY": self.signing_key(),
+        }
         return {
             "temporal": {},
             "task-service": {
@@ -306,15 +337,22 @@ class Stack:
                 "AR_TOOL_LOOP": decisions,
                 "AR_TOOL_WORKSPACE_ROOT": str(self.workspace_root),
                 "PYTHONIOENCODING": "utf-8",
-                "PATH": python_dir + os.pathsep + os.environ.get("PATH", ""),
+                "PATH": worker_path,
+                **sandbox,
                 **self.shared_env(),
             },
+            "coding": coding,
         }
 
     # 准备
     def build(self) -> None:
         go = require("go")
-        for name, where in (("task-service", "services/go-task-service"), ("model-gateway", "services/go-model-gateway")):
+        if self.options.get("sandbox") == "docker":
+            require("docker")
+        targets = [("task-service", "services/go-task-service"), ("model-gateway", "services/go-model-gateway")]
+        if self.options.get("coding"):
+            targets.append(("coding-web", "products/coding"))
+        for name, where in targets:
             proc = subprocess.run(
                 [go, "build", "-o", str(self.binary(name)), f"./cmd/{name}"], cwd=REPO_ROOT / where, capture_output=True, text=True, encoding="utf-8", errors="replace"
             )
@@ -394,6 +432,13 @@ class Stack:
             time.sleep(3)
             if not alive(pid):
                 raise StackError(f"Worker 启动失败：\n{tail(log)}")
+        elif name == "coding":
+            if not self.wanted(name):
+                raise StackError("这套整套没有带 --coding 启动")
+            (self.root / "coding").mkdir(parents=True, exist_ok=True)
+            pid = spawn([str(self.binary("coding-web"))], child_env(envs[name]), log)
+            components[name] = {"pid": pid, "log": str(log)}
+            wait_until(lambda: http_ok(self.coding_url + "/healthz"), "coding-web 就绪", 30)
         else:
             raise StackError(f"不认识的组件 {name}（{'、'.join(COMPONENTS)}）")
         self.save()
@@ -424,13 +469,14 @@ class Stack:
             "temporal": self.address("temporal") if self.state.get("ports") else "",
             "registry": self.address("registry") if self.state.get("ports") else "",
             "model_gateway": self.address("gateway") if self.state.get("ports") else "",
+            "coding": self.coding_url if self.state.get("ports") else "",
             "workspace_root": str(self.workspace_root),
             "shared_env": self.shared_env(),
             "components": out,
         }
 
     def diagnostics(self, known_secrets: list[str]) -> str:
-        text = "\n".join(f"===== {name} =====\n{tail(self.log(name))}" for name in COMPONENTS)
+        text = "\n".join(f"===== {name} =====\n{tail(self.log(name))}" for name in COMPONENTS if self.wanted(name))
         for s in known_secrets:
             if s:
                 text = text.replace(s, "***")
@@ -450,7 +496,8 @@ def cmd_up(args: argparse.Namespace) -> int:
         stack.build()
         stack.prepare()
         for name in COMPONENTS:
-            stack.start(name)
+            if stack.wanted(name):
+                stack.start(name)
     except (StackError, subprocess.SubprocessError, OSError) as err:
         known = [stack.provider_values().get("AR_MODEL_PROVIDER_API_KEY", "")]
         stack.down()
@@ -470,8 +517,12 @@ def print_report(stack: Stack, as_json: bool, title: str) -> None:
     print(f"  Temporal   {report['temporal']}")
     print(f"  Registry   {report['registry']}")
     print(f"  Gateway    {report['model_gateway']}")
+    if report.get("coding"):
+        print(f"  Coding     {report['coding']}  （网页，开发登录）")
     print(f"  工作区     {report['workspace_root']}")
     for name, c in report["components"].items():
+        if name in OPTIONAL and not c["pid"]:
+            continue
         print(f"  {name:<14}{'运行中' if c['alive'] else '已停止'}  pid {c['pid']}  日志 {c['log']}")
 
 
@@ -541,6 +592,8 @@ def parser() -> argparse.ArgumentParser:
         sp.add_argument("--decisions", choices=("model", "stub"), default="model", help="Planner、Reviewer、tool_loop 用真的（model）还是桩")
         sp.add_argument("--tenant-effect", action="append", help="租户=effect 上限，可以写多个")
         sp.add_argument("--python", default="", help="Worker 用的 Python（默认跑这个脚本的）")
+        sp.add_argument("--coding", action="store_true", help="再拉起 coding agent 的网页服务 coding-web（products/coding）")
+        sp.add_argument("--sandbox", choices=("host", "docker"), default="host", help="Worker 的 shell_run 在宿主机（host）还是一次性 Docker 容器（docker）里跑")
         sp.add_argument("--json", action="store_true")
 
     up = sub.add_parser("up", help="编译、种 Registry、拉起全部组件")

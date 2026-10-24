@@ -56,6 +56,8 @@ task-service（Task API、Session 与 Task 工作流）→ Worker（Planner、to
 | P4 | `scripts/dev_stack.py up --coding`：编译并拉起 coding-web，工作区与 Worker 共用 | 一条命令起整套，打开网页即可用 |
 | P5 | 冒烟测试 + 发 v0.2.0-alpha 预发行 | Go 单测与一条端到端冒烟通过 |
 
+**进度（2026-10-24）**：P1–P4 完成；P5 的冒烟测试完成（`products/coding` 的 Go 测试、Worker 沙箱配置测试），并用真模型从网页走通一遍：示例仓库的“修好 CI”任务 Agent 改用 `Decimal` + `ROUND_HALF_UP` 修好了 pricing.py，Reviewer 核对 5 条测试全部通过后判 done，两次 `python -m unittest` 都在 Docker 沙箱里跑；12 次模型调用，按计量约 0.10 美元。网页上看进度、看 diff、提交都验证过。
+
 ## 5. 安全底线（第一版也要有）
 
 - 租户只来自登录得到的令牌；项目、任务都按租户隔离，路径一律校验在工作区里。
