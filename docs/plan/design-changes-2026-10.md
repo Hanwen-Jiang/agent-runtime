@@ -85,6 +85,12 @@
 - 一致性测试（S-02）与越权测试（S-12b）都要在 Milvus 上跑通；`scripts/check.py`、`ci.yml`、`nightly.yml`、Helm（`deploy/helm/agent-runtime`）、`scripts/dev_stack.py`、CLAUDE.md 的工具链与命令一并改。
 - 新依赖 pymilvus 要写进 4.15 的理由（本草稿的 C1 即理由）。
 
+**进度（2026-10-24）**：适配器 `adapters/milvus.py` 与测试启动器 `adapters/milvustest.py` 已完成，Milvus 3.0.2 + pymilvus 3.0.2；一致性测试与 Milvus 专有的存储层核对（partition key、向量变换、强制过滤、过滤表达式注入、写后即读、不可用报 transient）在本机全部通过，`check.py`、CI 与夜间任务已为 py-core 准备 Docker 与 Milvus 镜像。默认实现还没切（Memory Service 的后端、Helm、`dev_stack` 仍是 Qdrant），等设计书更新后再切。实现中的三个发现：
+
+- Milvus 3.0 起要设 `DEPLOY_MODE=STANDALONE`，否则按分布式部署处理，内嵌 etcd 会直接 panic。
+- 字段名进不了过滤表达式的模板参数，Milvus 适配器只接受字母开头的字母、数字、下划线作字段名；开发实现与 Qdrant 没有这条限制，建议写进 VectorStore 的接口说明，三个实现一致。
+- 稀疏向量的下标置换收窄到 [0, 2**32 - 1)（Milvus 要求），`SparseTransform` 加了 `index_space`，用循环行走保持双射；Qdrant 仍用默认的全空间。
+
 ### 风险：本机跑不了 Milvus
 
 2026-10-24 核对：这台机器没有 Docker，也没有装 WSL。现有测试靠 PATH 上的 `qdrant` 单个可执行文件拉起临时实例，Milvus 没有 Windows 原生版本（Milvus Lite 只支持 Linux 与 macOS，以官方文档为准）。可选：

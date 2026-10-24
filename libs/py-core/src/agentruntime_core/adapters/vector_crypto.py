@@ -4,7 +4,8 @@
 
 - 稠密向量：由密钥派生的正交变换（置换、符号翻转与若干个 Householder 反射的乘积）。正交变换保持内积、
   范数与余弦，租户内的检索结果不变；没有密钥就恢复不出原向量，不同租户的同一个向量变换后也不同。
-- 稀疏向量：由密钥派生的可逆下标置换（32 位空间上的 Feistel 网络），值不变，点积保持不变。
+- 稀疏向量：由密钥派生的可逆下标置换（32 位空间上的 Feistel 网络），值不变，点积保持不变。后端的下标空间更小时
+  （Milvus 要求下标小于 2**32 - 1），用循环行走把置换限制在 [0, index_space) 内，仍是这个空间上的双射。
 
 参数由 HMAC-SHA256 的计数器流派生，纯 Python 实现，不依赖 numpy。变换由（密钥、维度）唯一决定。
 """
@@ -92,26 +93,42 @@ class DenseTransform:
 
 
 class SparseTransform:
-    def __init__(self, key: bytes) -> None:
+    def __init__(self, key: bytes, *, index_space: int = INDEX_SPACE) -> None:
+        # 循环行走平均要置换 2**32 / index_space 次，只用于略小于 2**32 的空间。
+        if not INDEX_SPACE // 2 <= index_space <= INDEX_SPACE:
+            raise ValueError("index_space 必须在 2**31 到 2**32 之间")
         self.key = key
+        self.index_space = index_space
         self._round_keys = [hmac.new(key, b"sparse-round:" + bytes([r]), hashlib.sha256).digest() for r in range(FEISTEL_ROUNDS)]
 
     def _f(self, r: int, half: int) -> int:
         return int.from_bytes(hmac.new(self._round_keys[r], half.to_bytes(2, "big"), hashlib.sha256).digest()[:2], "big")
 
-    def _permute(self, index: int) -> int:
-        if not 0 <= index < INDEX_SPACE:
-            raise ValueError("稀疏下标必须在 0 到 2**32 - 1 之间")
+    def _feistel(self, index: int) -> int:
         left, right = index >> 16, index & 0xFFFF
         for r in range(FEISTEL_ROUNDS):
             left, right = right, left ^ self._f(r, right)
         return (left << 16) | right
 
-    def _unpermute(self, index: int) -> int:
+    def _feistel_inverse(self, index: int) -> int:
         left, right = index >> 16, index & 0xFFFF
         for r in reversed(range(FEISTEL_ROUNDS)):
             left, right = right ^ self._f(r, left), left
         return (left << 16) | right
+
+    def _permute(self, index: int) -> int:
+        if not 0 <= index < self.index_space:
+            raise ValueError(f"稀疏下标必须在 0 到 {self.index_space - 1} 之间")
+        index = self._feistel(index)
+        while index >= self.index_space:  # 循环行走：落到空间外就再置换一次
+            index = self._feistel(index)
+        return index
+
+    def _unpermute(self, index: int) -> int:
+        index = self._feistel_inverse(index)
+        while index >= self.index_space:
+            index = self._feistel_inverse(index)
+        return index
 
     @staticmethod
     def _sorted(pairs: list[tuple[int, float]]) -> SparseVector:

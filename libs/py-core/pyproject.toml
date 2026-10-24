@@ -32,6 +32,12 @@ qdrant = [
     "cryptography>=46",
     "qdrant-client>=1.15",
 ]
+# VectorStore 的 Milvus 适配器（agentruntime_core.adapters.milvus：partition key 分租户、强制过滤、按租户密钥的保距变换；
+# 设计改动草稿 C1，2026-10-24 经人确认默认改用 Milvus）。客户端与测试用的服务端（milvustest）同为 3.0.2。
+milvus = [
+    "cryptography>=46",
+    "pymilvus>=3.0.2,<3.1",
+]
 # Telemetry 的 OpenTelemetry 实现（agentruntime_core.adapters.otel：OTLP/HTTP 发给 Collector，设计书 4.13，T-15 经人确认引入）。
 # 测试里的假 Collector 用 opentelemetry-proto 解码，它是导出器的依赖。
 otel = [

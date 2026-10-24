@@ -5,14 +5,14 @@ import pytest
 import pytest_asyncio
 from temporalio.testing import WorkflowEnvironment
 
-from agentruntime_core.adapters import pgtest, qdranttest
+from agentruntime_core.adapters import milvustest, pgtest, qdranttest
 
 # 一致性套件在包内，需要显式开启断言改写，失败时才有详细信息。
 pytest.register_assert_rewrite("agentruntime_core.conformance")
 
 
 def _missing(reason: str) -> None:
-    """缺 Postgres 或 Qdrant 的二进制时让用例失败；设 AR_ALLOW_MISSING_TOOLS=1 改为跳过。"""
+    """缺 Postgres、Qdrant 的二进制或 Docker 时让用例失败；设 AR_ALLOW_MISSING_TOOLS=1 改为跳过。"""
     if pgtest.allow_missing():
         pytest.skip(reason)
     pytest.fail(reason, pytrace=False)
@@ -35,6 +35,17 @@ def qdrant_instance() -> Iterator[qdranttest.Instance]:
     try:
         instance = qdranttest.Instance()
     except qdranttest.MissingTool as err:
+        _missing(str(err))
+    yield instance
+    instance.stop()
+
+
+@pytest.fixture(scope="session")
+def milvus_instance() -> Iterator[milvustest.Instance]:
+    """临时的 Milvus 单机版容器，整个测试会话共用；每个用例用自己的集合前缀（设计改动草稿 C1；T-18）。"""
+    try:
+        instance = milvustest.Instance()
+    except milvustest.MissingTool as err:
         _missing(str(err))
     yield instance
     instance.stop()

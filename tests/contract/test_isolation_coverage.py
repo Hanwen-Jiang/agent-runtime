@@ -131,4 +131,5 @@ def test_nightly_job_runs_the_memory_cross_tenant_suites_on_postgres_and_qdrant(
     text = NIGHTLY.read_text("utf-8")
     assert "libs/py-core" in text and "services/py-memory" in text, "夜间任务要跑 py-core 适配器与 Memory Service 的测试"
     assert re.search(r"(?i)qdrant", text), "夜间任务要装好 Qdrant"
+    assert "AR_MILVUS_IMAGE" in text and "docker pull" in text, "夜间任务要准备好 Milvus 镜像（T-18 的越权用例）"
     assert "AR_ALLOW_MISSING_TOOLS: \"1\"" not in text and "AR_ALLOW_MISSING_TOOLS=1" not in text, "越权用例不允许因为缺二进制而跳过"

@@ -31,6 +31,7 @@ INSTALLS = {
     "temporal": "TEMPORAL_CLI_VERSION",
     "postgres": "AR_POSTGRES_BIN",
     "qdrant": "AR_QDRANT_BIN",
+    "docker": "docker pull",  # runner 预装 Docker；job 预拉 Milvus 镜像
     "buf": "BUF_VERSION",
     "helm": "HELM_VERSION",
 }
@@ -109,8 +110,11 @@ def test_tool_versions_match_the_nightly_job_and_claude_md() -> None:
     t, nightly = text(), NIGHTLY.read_text("utf-8")
     assert env_value(t, "go-version") == env_value(nightly, "go-version") == "1.27"
     assert env_value(t, "version") == "0.12.x", "uv 0.12"
-    for name in ("TEMPORAL_CLI_VERSION", "QDRANT_VERSION"):
+    for name in ("TEMPORAL_CLI_VERSION", "QDRANT_VERSION", "AR_MILVUS_IMAGE"):
         assert env_value(t, name) == env_value(nightly, name), f"{name} 与夜间任务一致"
+    launcher = (REPO_ROOT / "libs" / "py-core" / "src" / "agentruntime_core" / "adapters" / "milvustest.py").read_text("utf-8")
+    default = re.search(r'DEFAULT_IMAGE = "([^"]+)"', launcher)
+    assert default and env_value(t, "AR_MILVUS_IMAGE") == default.group(1), "CI 的 Milvus 镜像与 milvustest 的默认镜像一致"
     assert env_value(t, "BUF_VERSION").startswith("1.73"), "buf 1.73（CLAUDE.md）"
 
 

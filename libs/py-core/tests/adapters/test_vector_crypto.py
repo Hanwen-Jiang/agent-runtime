@@ -88,3 +88,20 @@ def test_sparse_transform_depends_on_the_key() -> None:
     a = sv(i3=1.0, i5=1.0)
     assert SparseTransform(KEY_A).forward(a) == SparseTransform(KEY_A).forward(a)
     assert SparseTransform(KEY_A).forward(a).indices != SparseTransform(KEY_B).forward(a).indices
+
+
+def test_a_smaller_index_space_stays_inside_and_round_trips() -> None:
+    """Milvus 要求稀疏下标小于 2**32 - 1：收窄空间后，结果都在空间内，仍可逆；碰到空间外的像时循环行走。"""
+    top = 2**32 - 1
+    narrow, full = SparseTransform(KEY_A, index_space=top), SparseTransform(KEY_A)
+    walker = full._feistel_inverse(top)  # 它在全空间里的像正好是 2**32 - 1，收窄后要多走一步
+    a = sv(i0=1.0, i7=2.0, **{f"i{walker}": 3.0, f"i{top - 1}": 4.0})
+    fa = narrow.forward(a)
+    assert all(0 <= i < top for i in fa.indices)
+    assert narrow.inverse(fa) == a
+    assert narrow._permute(walker) == full._permute(top) != top
+    assert narrow._permute(7) == full._permute(7), "像在空间内的下标与全空间一致"
+    with pytest.raises(ValueError):
+        narrow.forward(sv(**{f"i{top}": 1.0}))
+    with pytest.raises(ValueError):
+        SparseTransform(KEY_A, index_space=1000)

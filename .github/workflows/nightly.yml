@@ -5,11 +5,11 @@
 #     之后把业务库换成 Postgres（AR_RELATIONAL_DSN，行级安全）再跑一遍不含故障注入的部分。
 #   - Go 的全部测试（计划 S-12a 验收“越权测试套件进入 CI”）：各 Provider 的一致性测试（含越权用例），
 #     Postgres 业务库的行级安全（用 runner 预装的 Postgres，测试自己 initdb 临时实例）。
-#   - Python 侧的越权用例（计划 S-12b）：libs/py-core 的全部测试（含 Postgres、Qdrant 适配器的一致性测试与存储层核对）
+#   - Python 侧的越权用例（计划 S-12b）：libs/py-core 的全部测试（含 Postgres、Qdrant、Milvus 适配器的一致性测试与存储层核对）
 #     与 services/py-memory 的全部测试（越权、投毒、级联删除、回滚，开发后端与 Postgres + Qdrant 后端各跑一遍）。
-#     两种二进制都装好，缺了直接失败，不允许跳过。
+#     二进制与 Milvus 镜像都准备好，缺了直接失败，不允许跳过。
 # 工具链与 CLAUDE.md 的常用命令一致：Go 1.27、uv 0.12（Python 3.13）、Temporal CLI 1.9.1、PostgreSQL（本机 17，runner 预装版本）、
-# Qdrant 1.19.1。
+# Qdrant 1.19.1、Milvus 3.0.2（runner 预装的 Docker 拉起单机版容器）。
 name: nightly
 
 on:
@@ -113,11 +113,12 @@ jobs:
           done
 
   python-cross-tenant:
-    name: Python 越权用例（py-core 适配器与 Memory Service，Postgres + Qdrant）
+    name: Python 越权用例（py-core 适配器与 Memory Service，Postgres + Qdrant + Milvus）
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       QDRANT_VERSION: "1.19.1"
+      AR_MILVUS_IMAGE: "milvusdb/milvus:v3.0.2"
       TEMPORAL_CLI_VERSION: "1.9.1"
     steps:
       - uses: actions/checkout@v4
@@ -146,10 +147,13 @@ jobs:
           test -x "$bin/initdb"
           echo "AR_POSTGRES_BIN=$bin" >> "$GITHUB_ENV"
 
+      - name: 预拉 Milvus 镜像（py-core 的测试用 Docker 拉起单机版容器）
+        run: docker pull "$AR_MILVUS_IMAGE"
+
       - name: 安装 Python 依赖
         run: uv sync --all-packages --locked
 
-      - name: libs/py-core（含 Postgres、Qdrant 适配器）
+      - name: libs/py-core（含 Postgres、Qdrant、Milvus 适配器）
         working-directory: libs/py-core
         run: uv run --package agentruntime-core --all-extras pytest -ra
 
