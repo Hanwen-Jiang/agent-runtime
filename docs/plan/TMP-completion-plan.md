@@ -93,6 +93,8 @@
 **T-04 临时 Gateway 补金额**　轻 · 低
 - 现在只记 token，不算金额，S-09 的规划成本占比算不出来。在配置里加每个模型的单价，换算成 `cost_usd_micros`。
 - 完成：`Usage.cost_usd_micros` 有值，报告里每次成功成本可算。
+- **结果（2026-10-21，`6c0b2e1`）**：临时 Gateway 按模型单价（`AR_MODEL_PROVIDER_PRICE_*`，默认一方标价）换算 `cost_usd_micros`；评测报告的
+  每次成功成本与规划成本占比由它算出（T-03 的表）。
 
 ### 阶段 B：真正的 Model Gateway（2 到 3 天）
 
@@ -101,10 +103,17 @@
 - 先接 OpenAI 兼容接口（与 `provider_gateway.py` 同一个供应商），不做多供应商。
 - 在 history 最后一条消息上加滚动断点，对比命中率（`cache_read_tokens`）。
 - 完成：`libs/go-core/conformance/modelprovidertest` 对它通过；Worker 通过 gRPC 调它；缓存命中率能在计量里看到。
+- **结果（2026-10-22，`daf45aa`）**：细化见 [model-gateway-direct.md](model-gateway-direct.md)。`libs/go-core/adapters/openaicompat`（生成、流式、
+  Score、Embed；密钥经 SecretStore，BYOK 优先）过 `modelprovidertest`，真实端点的一致性测试在额度用完之前通过；`services/go-model-gateway`
+  （选档、transient 重试与同档切换、按实际 Profile 计价、每次调用一行计量，含 `cache_read_tokens`）。history 的滚动断点没加，等 T-13 看到真模型的
+  命中率再定（R-03 评审）。
 
 **T-06 Worker 的 Gateway 客户端换成 gRPC**　中档 · 低
 - `executor/model_gateway.py` 的生产实现是到 `go-model-gateway` 的 gRPC 客户端（文件里已写明）。评测改用同一个客户端，退役 `provider_gateway.py`，或留作离线对照。
 - 完成：评测命令不变，只换 Gateway。
+- **结果（2026-10-22，`daf45aa`）**：`executor/grpc_gateway.py` 的 `GrpcModelGateway` 按 `ar-error-bin` 还原错误类别；设了 `AR_MODEL_GATEWAY_ADDRESS`
+  时 Node Executor、Planner、Reviewer、tool_loop 都经它；评测用 `AR_EVAL_GATEWAY_FACTORY=agentruntime_worker.executor.grpc_gateway:from_env`。
+  `provider_gateway.py` 留作离线对照，T-17 删它的临时说明。
 
 **T-07 R-02 评审**　强档 · 高
 - 逐条看：先按租户约束过滤；期望成本公式；同档切换与限流；Task 中途不换主模型；judge 用不同家模型。
@@ -138,6 +147,10 @@
   on_task_received、on_task_start、on_task_end；接了 Registry 时 Stage Runner 执行前按登记的模板核对 executor、effect。
   S-05 的 effect 矩阵已用真 Policy Engine 重跑。R-01 评审还没做（要写审分离：另一家的强模型或人）。
   登记到后续：工具的 effect 仍由桩工具目录给出（T-10）；提示注入检测（S-13）；before_compact；Task 级挂载点的 modify、inject。
+- **R-01 评审（2026-10-24）**：写在 [review-R-01-policy-engine.md](review-R-01-policy-engine.md)。审批插入、deny 不重试（Hook 与 Executor 两处）、
+  before_finish 的上限、Hook 是纯函数都已处理；未处理的是 `run_hooks` 的 local activity 没有重试上限（Collector 不可用时所有 Task 卡在 after_node）、
+  tool_loop 的单次工具调用不经过任何 Hook、失败的 Node 没有审计、`budget_check` 不算 tool_loop、Planner、Reviewer 与子工作流的花费；另有审批问题不带输入。
+  独立性同 R-03：新会话、同一家模型。处理建议第 1 到 3 条待人确认后修，第 4、5 条待人定方案。
 
 **T-10 ToolDriver 与平台内工具、MCP Gateway**　中档 · 中
 - `libs/py-core/.../tool_driver.py` 是接口与开发实现。补几个真工具（读文件、跑命令、HTTP 取页面），再接 MCP 服务。
@@ -193,6 +206,8 @@
 - 一个完整任务（例如 CI 修复或批量发票归类）从 Ingress 到交付，用真 Gateway、真工具。
 - 杀掉 Worker 后能恢复（S-07 套件已有，换成真 Gateway 重跑一遍）。
 - 完成：一份端到端录像或日志；故障注入套件通过。
+- 状态（2026-10-24）：细化见 [live-e2e.md](live-e2e.md)，验收测试已写，**待人确认**第 3 节的决定与第 5 节的测试后实现。写测试时发现真 Planner 的
+  Node Catalog 里没有工具（规划不出用平台内工具的 tool_loop），一并修。
 
 **T-14 CI 与本地开发环境**　轻 · 低
 - 把"本地 clone 跑测试"写成脚本；CI 增加 py-learning、py-worker、py-memory 的日常测试，不只是夜间任务。
@@ -244,6 +259,10 @@
   演示（`tests/e2e/test_learning_pipeline.py`，真的 task-service Registry）：一个任务族发布被拒、Registry 里没有它的 Recipe；另一个过门槛成为
   该租户的默认版本，另一个租户看不到。和影子评测的出入、没做的（Kafka 消费、offline 工作流、灰度与回滚、归因反哺）见细化第 2、4 节；
   R-06 评审还没做（要写审分离）。`scripts/check.py`（T-14）的 contract 步骤顺带跑 `tests/deploy`，工具多了 helm。
+- **R-06 评审（2026-10-24）**：写在 [review-R-06-learning-pipeline.md](review-R-06-learning-pipeline.md)。门槛先于发布、Registry 的第二道、样本下限、
+  选择偏差、租户过滤都已处理；未处理的是每次成功成本只算成功 Task 的均值（不含失败，与 H.2 不一致）、Task 成本不含 tool_loop、Planner、Reviewer、
+  运行中的 Task 重规划时看得到新晋升的 Recipe（Planner 列 Recipe 不按固定版本）、单次调用不超支要靠网关执行 `max_cost_usd_micros`（还没有）。
+  独立性同 R-01。处理建议第 1 到 3 条待人确认后修，第 4 到 6 条待人定方案。
 
 ### 阶段 F：收尾
 
