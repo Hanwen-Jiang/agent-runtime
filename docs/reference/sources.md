@@ -113,3 +113,5 @@
 
 - [WDP 项目（StoreAgent）的 Codex 整理](https://chatgpt.com/s/cx_6adc9e036a388191a3ea7328e05aa50b)：知识库型 Agent 应用，总结与可借鉴之处见 [wdp-project.md](wdp-project.md)
 - Aster 项目的设计视图（本机 `Z:\Aster\Aster-artifacts`，不在仓库里）：Aster Runtime 与建在其上的 Aster Code、Aster Care，总结与可借鉴之处见 [aster-project.md](aster-project.md)
+
+两者合起来的建议（在本 Runtime 上重写 Aster Code、Aster Care，RAG 分块与 Milvus 的取舍）见 [runtime-products-and-rag.md](runtime-products-and-rag.md)。
