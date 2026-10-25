@@ -143,6 +143,8 @@ const ICONS = {
   terminal: "M4 17l6-6-6-6M12 19h8",
   refresh: "M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5",
   logout: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9",
+  user: "M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10z",
+  link: "M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7",
   menu: "M3 6h18M3 12h18M3 18h18",
   stop: "M7 7h10v10H7z",
   clock: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2",
@@ -429,6 +431,102 @@ function report(ex) {
   if (ex && ex.message !== "unauthorized") toast(ex.message, true);
 }
 
+// ---------------------------------------------------------------- 登录方式与 Git 平台
+
+function providerList() {
+  return state.config.providers || [];
+}
+
+function providerInfo(id) {
+  return providerList().find((p) => p.id === id) || { id, name: id || "Git", url: "", git: true };
+}
+
+function connection(id) {
+  return ((state.me && state.me.connections) || []).find((c) => c.provider === id) || null;
+}
+
+function gitConnections() {
+  return ((state.me && state.me.connections) || []).filter((c) => c.git);
+}
+
+// 平台的小标记：GitHub 用它自己的标志，其余是品牌色的字母块（不照搬各家标志）。
+const BADGES = { gitee: ["码", "#C71D23"], gitlab: ["GL", "#E24329"], gitea: ["Gt", "#609926"], codeberg: ["Cb", "#2185D0"], bitbucket: ["Bb", "#2684FF"], google: ["G", "#4285F4"] };
+
+function badge(id, size = "sm") {
+  if (id === "github") return icon("github", size);
+  const info = providerInfo(id);
+  const key = id === "gitea" && /codeberg/i.test(info.name) ? "codeberg" : id;
+  const [text, color] = BADGES[key] || [String(id || "?").slice(0, 2), "#76736b"];
+  const el = h("span", { class: `pv-badge ${size}`, title: info.name }, text);
+  el.style.background = color;
+  return el;
+}
+
+// 工作区的标记：Git 平台上的仓库用平台标记，示例用盒子，其余用文件夹。
+function projectMark(p, size = "sm") {
+  if (p.git_provider) return badge(p.git_provider, size);
+  return icon(p.source && p.source.startsWith("sample:") ? "box" : "folder", size);
+}
+
+function repoURL(p) {
+  const base = (providerInfo(p.git_provider).url || "").replace(/\/$/, "");
+  return base && p.repo ? `${base}/${p.repo}` : "";
+}
+
+function requestName(p) {
+  return providerInfo(p.git_provider).request_name || "PR";
+}
+
+// 地址里 #…?linked=gitlab 或 ?error=… 是 OAuth 回调带回来的结果。
+function hashParams() {
+  return new URLSearchParams(location.hash.split("?")[1] || "");
+}
+
+// openAccount 是“账号与平台”：已连接的登录方式、连接别家、断开。
+async function openAccount() {
+  closePop();
+  if (document.querySelector("dialog.account")) return;
+  const body = h("div", { class: "d-body" }, h("div", { class: "row muted" }, h("span", { class: "spinner" }), "正在读取…"));
+  const dialog = h("dialog", { class: "account" },
+    h("div", { class: "d-head" }, h("h2", {}, "账号与平台"), h("div", { class: "muted small" }, `租户 ${state.me.tenant} · 用户 ${state.me.user}`)),
+    body,
+    h("div", { class: "d-foot" }, h("button", { class: "btn ghost", onclick: () => dialog.close() }, "关闭")),
+  );
+  const draw = (acct) => {
+    const conns = acct.connections || [];
+    const rows = providerList().filter((p) => p.configured || state.config.dev_login || conns.some((c) => c.provider === p.id)).map((p) => {
+      const c = conns.find((x) => x.provider === p.id);
+      const status = c ? `已连接 · ${c.login}${c.name && c.name !== c.login ? `（${c.name}）` : ""}` : p.configured ? "未连接" : "服务端没有配置";
+      return h("div", { class: "conn-row" + (c ? " on" : "") },
+        badge(p.id, "md"),
+        h("div", { class: "grow" },
+          h("div", { class: "t" }, p.name, p.git ? null : h("span", { class: "chip" }, "只用于登录")),
+          h("div", { class: "m" }, status)),
+        c ? h("button", { class: "btn sm", onclick: () => disconnect(p, draw) }, "断开")
+          : p.configured ? h("a", { class: "btn sm primary", href: `/api/auth/${p.id}/login?link=1` }, "连接") : null);
+    });
+    body.replaceChildren(
+      h("div", { class: "note" }, "用任何一个已连接的平台都能登录这个账号。连接了 Git 平台，就能从它选仓库、把会话的改动推上去并开 PR/MR。"),
+      h("div", { class: "conn-list" }, rows),
+    );
+  };
+  dialog.addEventListener("close", () => dialog.remove());
+  document.body.append(dialog);
+  dialog.showModal();
+  try { draw(await api("GET", "/api/account")); } catch (ex) { report(ex); }
+}
+
+async function disconnect(p, draw) {
+  if (!confirm(`断开 ${p.name}？之后不能再用它登录这个账号，也不能推送到它上面的仓库（随时可以再连）。`)) return;
+  try {
+    const r = await api("POST", `/api/account/connections/${p.id}/disconnect`);
+    state.me = await api("GET", "/api/me");
+    draw(r);
+    renderSide();
+    toast(`已断开 ${p.name}`);
+  } catch (ex) { report(ex); }
+}
+
 // ---------------------------------------------------------------- 外观
 
 function applyTheme() {
@@ -503,9 +601,29 @@ function renderLogin(message = "") {
     submit,
     h("div", { class: "note" }, "开发登录不校验密码，只用于本机测试。"),
   );
-  const github = state.config.github_login
-    ? h("a", { class: "btn block github-btn", href: "/api/auth/github/login" }, icon("github"), "使用 GitHub 登录")
-    : null;
+  // 第三方登录：GitHub 是主按钮，其余 Git 平台收在它下面的“其他 Git 平台”里，Google 单独一个。
+  // 开发环境（开着开发登录）里没配置的也列出来、不可点，说明还能接哪些。
+  const usable = (p) => p && (p.configured || state.config.dev_login);
+  const oauthButton = (p, cls, label) => p.configured
+    ? h("a", { class: `btn block ${cls}`, href: `/api/auth/${p.id}/login` }, badge(p.id), h("span", {}, label))
+    : h("button", { class: `btn block ${cls}`, type: "button", disabled: true, title: `服务端没有配置 ${p.name}（CODING_${p.id.toUpperCase()}_CLIENT_ID 与 _CLIENT_SECRET）` },
+      badge(p.id), h("span", {}, label), h("span", { class: "off" }, "未配置"));
+  const all = providerList();
+  const gh = all.find((p) => p.id === "github");
+  const google = all.find((p) => p.id === "google");
+  const others = all.filter((p) => p.git && p.id !== "github" && usable(p));
+  const otherList = h("div", { class: "other-providers" + (others.some((p) => p.configured) && !usable(gh) ? "" : " hidden") },
+    others.map((p) => oauthButton(p, "provider-btn", p.name)));
+  const otherToggle = others.length ? h("button", {
+    class: "other-toggle", type: "button",
+    onclick: () => { otherList.classList.toggle("hidden"); otherToggle.classList.toggle("open"); },
+  }, h("span", {}, "其他 Git 平台"), h("span", { class: "names" }, others.map((p) => p.name).join(" · ")), icon("chevDown", "xs caret")) : null;
+  const thirdParty = [
+    usable(gh) ? oauthButton(gh, "github-btn", "使用 GitHub 登录") : null,
+    otherToggle, otherList,
+    usable(google) ? oauthButton(google, "google-btn", "使用 Google 登录") : null,
+  ].filter(Boolean);
+  const hasThirdParty = usable(gh) || others.length || usable(google);
   mount(h("div", { class: "login-page" },
     h("div", { class: "login-card" },
       h("div", { class: "hero" },
@@ -514,10 +632,11 @@ function renderLogin(message = "") {
         h("p", {}, "读代码、改代码、跑测试；改动由你审阅后再推送。"),
       ),
       h("div", { class: "login-box" },
-        github,
-        github && state.config.dev_login ? h("div", { class: "sep" }, "或") : null,
+        thirdParty,
+        hasThirdParty ? h("div", { class: "note center" }, "第一次登录会自动注册；之后可以在“账号与平台”里连接别的平台，用哪一家登录都是同一个账号。") : null,
+        hasThirdParty && state.config.dev_login ? h("div", { class: "sep" }, "或") : null,
         state.config.dev_login ? form : null,
-        !github && !state.config.dev_login ? h("div", { class: "note" }, "服务端既没有配置 GitHub 登录，也没有打开开发登录。") : null,
+        !hasThirdParty && !state.config.dev_login ? h("div", { class: "note" }, "服务端既没有配置第三方登录，也没有打开开发登录。") : null,
         err,
       ),
     ),
@@ -717,12 +836,8 @@ function scheduleChrome() {
 
 // ---------------------------------------------------------------- 左栏
 
-function projectIcon(p) {
-  return p.github_repo ? "github" : p.source && p.source.startsWith("sample:") ? "box" : "folder";
-}
-
 function sourceLabel(p) {
-  if (p.github_repo) return p.github_repo;
+  if (p.repo) return `${providerInfo(p.git_provider).name} · ${p.repo}`;
   if (!p.source || p.source === "empty") return "空项目";
   if (p.source.startsWith("sample:")) return "示例仓库";
   return p.source.replace(/^https:\/\//, "");
@@ -757,7 +872,7 @@ function orderedProjects() {
 function renderSide() {
   if (!ui.side || !state.me) return;
   const me = state.me;
-  const name = me.github ? me.github.login : me.user;
+  const name = me.login || me.user;
   const live = liveSessions();
   const nav = (ic, label, onclick, opts = {}) => h("button", { class: "nav-item" + (opts.active ? " active" : ""), title: opts.title || label, onclick },
     icon(ic, "sm"), h("span", { class: "grow" }, label),
@@ -779,7 +894,7 @@ function renderSide() {
     h("div", { class: "side-list" },
       state.projects.length ? orderedProjects().map((p) => workspaceGroup(p, live)) : h("div", { class: "side-empty" }, "还没有工作区")),
     h("div", { class: "side-foot" },
-      h("div", { class: "avatar" }, me.github && me.github.avatar_url ? h("img", { src: me.github.avatar_url, alt: "" }) : initials(name)),
+      h("div", { class: "avatar" }, me.avatar_url ? h("img", { src: me.avatar_url, alt: "" }) : initials(name)),
       h("div", { class: "grow who" }, h("div", { class: "ellipsis" }, name), h("div", { class: "m ellipsis" }, `租户 ${me.tenant}`)),
       h("button", { class: "btn ghost sm icon-only", title: "外观与账号", onclick: (e) => openPop(e.currentTarget, userMenu) }, icon("more", "sm"))),
   );
@@ -802,7 +917,7 @@ function workspaceGroup(p, live) {
   return h("div", { class: "ws-group" + (closed ? " closed" : "") },
     h("div", { class: "ws-head" },
       h("button", { class: "ws-toggle", title: `${p.name} · ${sourceLabel(p)}`, onclick: toggle },
-        icon("chevron", "xs chev"), icon(projectIcon(p), "sm"), h("span", { class: "t ellipsis" }, p.name),
+        icon("chevron", "xs chev"), projectMark(p, "sm"), h("span", { class: "t ellipsis" }, p.name),
         closed && anyLive ? h("span", { class: "spinner" }) : null),
       h("button", { class: "btn ghost xs icon-only ws-add", title: `在「${p.name}」开新会话`, onclick: () => openDraft(p.id) }, icon("plus", "xs"))),
     closed ? null : h("div", { class: "ws-sessions" },
@@ -824,7 +939,7 @@ function sessionItem(p, s, isLive) {
     onclick: open,
     onkeydown: (e) => { if (e.key === "Enter") open(); },
   },
-    isLive ? h("span", { class: "spinner", title: "有任务在跑" }) : s.pr_number ? icon("github", "xs") : icon("chat", "xs"),
+    isLive ? h("span", { class: "spinner", title: "有任务在跑" }) : s.pr_number ? badge(p.git_provider, "xs") : icon("chat", "xs"),
     h("span", { class: "t grow ellipsis" }, s.title || "未命名会话"),
     h("span", { class: "when" }, fmtShortAgo(s.updated_at)),
     h("button", { class: "btn ghost xs icon-only item-more", title: "重命名、删除", onclick: (e) => { e.stopPropagation(); openPop(e.currentTarget, (close) => sessionMenu(p, s, close)); } }, icon("more", "xs")),
@@ -871,7 +986,10 @@ async function deleteSession(p, s) {
 function userMenu(close) {
   const theme = ls.get("cw_theme") || "system";
   const set = (t) => { ls.set("cw_theme", t); applyTheme(); close(); };
+  const conns = (state.me.connections || []).length;
   return [
+    popItem("link", "账号与平台", conns ? `已连接 ${conns} 个：${state.me.connections.map((c) => providerInfo(c.provider).name).join("、")}` : "连接 GitHub、Gitee、GitLab…", false, () => { close(); openAccount(); }),
+    h("div", { class: "pop-sep" }),
     h("div", { class: "pop-title" }, "外观"),
     popItem("monitor", "跟随系统", null, theme === "system", () => set("system")),
     popItem("sun", "浅色", null, theme === "light", () => set("light")),
@@ -898,7 +1016,7 @@ function renderTopbar() {
     parts.push(h("span", { class: "crumb-sep" }, "/"));
     parts.push(h("span", { class: "title ellipsis" }, s ? s.title || "未命名会话" : "新会话"));
     parts.push(h("div", { class: "chips" },
-      p.github_repo ? h("a", { class: "chip", href: `https://github.com/${p.github_repo}`, target: "_blank", rel: "noopener" }, icon("github", "xs"), p.github_repo) : null,
+      p.repo ? h("a", { class: "chip", href: repoURL(p), target: "_blank", rel: "noopener" }, badge(p.git_provider, "xs"), p.repo) : null,
       s && s.branch ? h("span", { class: "chip run mono" }, icon("branch", "xs"), s.branch) : p.base_branch ? h("span", { class: "chip mono" }, icon("branch", "xs"), p.base_branch) : null,
       s && s.pr_url ? h("a", { class: "chip ok", href: s.pr_url, target: "_blank", rel: "noopener" }, `PR #${s.pr_number}`, icon("external", "xs")) : null,
     ));
@@ -922,7 +1040,7 @@ function renderWorkspaces() {
     const running = sessions.filter((s) => live.has(`${p.id}/${s.id}`)).length;
     return h("div", { class: "ws-card" },
       h("div", { class: "row" },
-        h("span", { class: "ws-icon" }, icon(projectIcon(p), "sm")),
+        h("span", { class: "ws-icon" }, projectMark(p, "sm")),
         h("div", { class: "grow" }, h("div", { class: "name ellipsis" }, p.name), h("div", { class: "src ellipsis" }, sourceLabel(p)))),
       h("div", { class: "stats" },
         h("span", {}, `${sessions.length} 个会话`),
@@ -979,10 +1097,10 @@ function openSearch() {
     const q = input.value.trim().toLowerCase();
     const has = (t) => String(t || "").toLowerCase().includes(q);
     const sessions = state.sessions.filter((s) => !q || has(s.title) || has((findProject(s.project_id) || {}).name)).slice(0, 30).map((s) => ({
-      group: "会话", ic: "chat", title: s.title || "未命名会话", sub: `${(findProject(s.project_id) || {}).name || ""} · ${fmtAgo(s.updated_at)}`, run: () => openSession(s.project_id, s.id),
+      group: "会话", mark: () => icon("chat", "sm"), title: s.title || "未命名会话", sub: `${(findProject(s.project_id) || {}).name || ""} · ${fmtAgo(s.updated_at)}`, run: () => openSession(s.project_id, s.id),
     }));
     const projects = state.projects.filter((p) => !q || has(p.name) || has(sourceLabel(p))).slice(0, 10).map((p) => ({
-      group: "工作区", ic: projectIcon(p), title: p.name, sub: `新会话 · ${sourceLabel(p)}`, run: () => openDraft(p.id),
+      group: "工作区", mark: () => projectMark(p, "sm"), title: p.name, sub: `新会话 · ${sourceLabel(p)}`, run: () => openDraft(p.id),
     }));
     items = [...sessions, ...projects];
     sel = Math.min(sel, Math.max(0, items.length - 1));
@@ -990,7 +1108,7 @@ function openSearch() {
     items.forEach((it, i) => {
       if (i === 0 || items[i - 1].group !== it.group) out.push(h("div", { class: "pal-group" }, it.group));
       out.push(h("button", { class: "pal-item" + (i === sel ? " sel" : ""), onclick: () => pick(i), onmousemove: () => { if (sel !== i) { sel = i; draw(); } } },
-        icon(it.ic, "sm"), h("span", { class: "t ellipsis" }, it.title), h("span", { class: "m ellipsis" }, it.sub)));
+        it.mark(), h("span", { class: "t ellipsis" }, it.title), h("span", { class: "m ellipsis" }, it.sub)));
     });
     list.replaceChildren(...(out.length ? out : [h("div", { class: "pal-empty" }, "没有找到")]));
     const cur = list.querySelector(".pal-item.sel");
@@ -1119,7 +1237,9 @@ function welcome() {
     h("p", {}, "工作区是一个代码仓库。在里面开会话，Agent 读代码、改代码，在隔离的沙箱里跑测试；改动由你审阅后提交或推送。"),
     h("div", { class: "suggestions" },
       sample ? suggestion("box", "试试示例仓库", sample.description, () => quickSample(sample)) : null,
-      suggestion("github", state.me.github ? "从我的 GitHub 仓库开始" : "从 Git 地址克隆", state.me.github ? "选一个仓库，改完推到 agent/* 分支开草稿 PR" : "https 公开仓库", () => openNewProject("git")),
+      suggestion("branch", gitConnections().length ? "从我的仓库开始" : "从 Git 地址克隆",
+        gitConnections().length ? `从 ${gitConnections().map((c) => providerInfo(c.provider).name).join("、")} 选一个仓库，改完推到 agent/* 分支开草稿 PR/MR` : "https 公开仓库；连接 Git 平台后还能选私有仓库",
+        () => openNewProject("git")),
       suggestion("folder", "空项目", "从零开始让 Agent 写", () => openNewProject("empty")),
     ),
   );
@@ -1648,7 +1768,10 @@ function nextSteps(ph) {
     const s = state.session || {};
     const out = [];
     if (n) out.push(chip("diff", `审阅改动 · ${n} 个文件`, () => openDrawer("changes"), true));
-    if (n && p.github_repo && state.me.github) out.push(chip("github", s.pr_number ? `推送到 PR #${s.pr_number}` : "推送并开草稿 PR", () => openDrawer("changes", { focus: "publish" })));
+    if (n && p.repo && connection(p.git_provider)) {
+      const rn = requestName(p);
+      out.push(h("button", { class: "next-step", onclick: () => openDrawer("changes", { focus: "publish" }) }, badge(p.git_provider, "xs"), s.pr_number ? `推送到 ${rn} #${s.pr_number}` : `推送并开草稿 ${rn}`));
+    }
     else if (n) out.push(chip("commit", "提交这些改动", () => openDrawer("changes", { focus: "commit" })));
     out.push(chip("edit", "继续完善", () => setComposer("在刚才的基础上继续：")));
     out.push(chip("fileText", "解释改了什么", () => setComposer("解释一下刚才改了哪些地方、为什么这样改，不要再改文件。")));
@@ -1868,8 +1991,9 @@ function envBody() {
       ["分支", git.branch ? [h("span", { class: "chip mono" }, icon("branch", "xs"), git.branch), git.head ? h("span", { class: "mono small muted" }, git.head.slice(0, 7)) : null] : "—"],
       git.subject ? ["最近提交", h("span", { class: "muted" }, git.subject)] : null,
       ["改动", git.dirty ? `${git.dirty} 个文件未提交` : "干净"],
-      ["工作区", [h("span", {}, p.name), h("span", { class: "muted small" }, p.github_repo ? "" : sourceLabel(p)),
-        p.github_repo ? h("a", { href: `https://github.com/${p.github_repo}`, target: "_blank", rel: "noopener" }, p.github_repo) : null]],
+      ["工作区", [h("span", {}, p.name), p.repo ? null : h("span", { class: "muted small" }, sourceLabel(p))]],
+      p.repo ? ["仓库", [badge(p.git_provider, "xs"), h("a", { href: repoURL(p), target: "_blank", rel: "noopener" }, p.repo),
+        connection(p.git_provider) ? null : h("span", { class: "muted small" }, `未连接 ${providerInfo(p.git_provider).name}`)]] : null,
       rsid ? ["Session", h("span", { class: "mono small", title: rsid }, rsid.slice(0, 16) + "…")] : null,
     ]),
     h("div", { class: "sp-actions" },
@@ -1976,7 +2100,8 @@ function changesBody() {
       : h("div", { class: "empty-line" }, "这个会话的工作副本相对 HEAD 没有改动。"),
     h("div", { class: "sp-actions" },
       files.length ? h("button", { class: "btn primary xs", onclick: () => openDrawer("changes") }, icon("diff", "xs"), "审阅并提交") : null,
-      files.length && p.github_repo && state.me.github ? h("button", { class: "btn xs", onclick: () => openDrawer("changes", { focus: "publish" }) }, icon("github", "xs"), s.pr_number ? `推送到 PR #${s.pr_number}` : "推送并开 PR") : null,
+      files.length && p.repo && connection(p.git_provider) ? h("button", { class: "btn xs", onclick: () => openDrawer("changes", { focus: "publish" }) },
+        badge(p.git_provider, "xs"), s.pr_number ? `推送到 ${requestName(p)} #${s.pr_number}` : `推送并开 ${requestName(p)}`) : null,
       files.length ? h("a", { class: "btn xs", href: `${sbase()}/patch`, download: `${s.workspace_id}.patch` }, icon("download", "xs"), "补丁") : null,
       h("button", { class: "btn ghost xs", onclick: () => openDrawer("history") }, icon("history", "xs"), "提交历史")),
   ];
@@ -2118,24 +2243,32 @@ function lastMessage() {
   return t ? t.message.trim().split("\n")[0].slice(0, 72) : "";
 }
 
-// publishCard 是“推送并开草稿 PR”：一个会话一个 agent/* 分支、一个 PR。
+// publishCard 是“推送并开草稿 PR/MR”：一个会话一个 agent/* 分支、一个 PR（GitLab 叫 Merge Request）。
 function publishCard(busy, dirty) {
   const p = state.project;
   const s = state.session;
-  if (!p.github_repo) return null;
-  if (!state.me.github) {
-    return { card: h("div", { class: "card" }, h("div", { class: "card-title" }, icon("github", "sm"), p.github_repo), h("div", { class: "muted" }, "用 GitHub 登录后，可以把这个会话的改动推到它自己的 agent/* 分支并开草稿 PR。")), title: null };
+  if (!p.repo) return null;
+  const info = providerInfo(p.git_provider);
+  const rn = requestName(p);
+  if (!connection(p.git_provider)) {
+    return {
+      card: h("div", { class: "card" },
+        h("div", { class: "card-title" }, badge(p.git_provider, "sm"), h("span", { class: "mono grow ellipsis" }, p.repo)),
+        h("div", { class: "muted" }, `连接 ${info.name} 后，可以把这个会话的改动推到它自己的 agent/* 分支并开草稿 ${rn}。`),
+        info.configured ? h("div", { class: "actions" }, h("a", { class: "btn sm primary", href: `/api/auth/${p.git_provider}/login?link=1` }, "连接 " + info.name)) : null),
+      title: null,
+    };
   }
-  const title = h("input", { class: "field", placeholder: "PR 标题，也用作提交说明", value: s.title || lastMessage() });
+  const title = h("input", { class: "field", placeholder: `${rn} 标题，也用作提交说明`, value: s.title || lastMessage() });
   const out = h("div", {});
-  const label = s.pr_number ? `推送到 PR #${s.pr_number}` : "推送并开草稿 PR";
+  const label = s.pr_number ? `推送到 ${rn} #${s.pr_number}` : `推送并开草稿 ${rn}`;
   const push = h("button", { class: "btn primary sm", disabled: busy, onclick: async () => {
     push.disabled = true;
     push.lastChild.textContent = "正在推送…";
     try {
       const r = await api("POST", `${sbase()}/publish`, { title: title.value });
       setSession(r.session);
-      toast(r.created ? `已开草稿 PR #${r.pr_number}` : `已推送到 ${r.branch}`);
+      toast(r.created ? `已开草稿 ${rn} #${r.pr_number}` : `已推送到 ${r.branch}`);
       renderTopbar();
       renderSide();
       await loadChanges();
@@ -2146,13 +2279,13 @@ function publishCard(busy, dirty) {
       push.lastChild.textContent = label;
       if (ex.message !== "unauthorized") out.replaceChildren(h("div", { class: "error-box" }, ex.message));
     }
-  } }, icon("github", "sm"), h("span", {}, label));
+  } }, badge(p.git_provider, "sm"), h("span", {}, label));
   const card = h("div", { class: "card" },
-    h("div", { class: "card-title" }, icon("github", "sm"), h("span", { class: "mono grow ellipsis" }, p.github_repo),
-      s.pr_url ? h("a", { class: "chip ok", href: s.pr_url, target: "_blank", rel: "noopener" }, `PR #${s.pr_number}`, icon("external", "xs")) : null),
+    h("div", { class: "card-title" }, badge(p.git_provider, "sm"), h("a", { class: "mono grow ellipsis", href: repoURL(p), target: "_blank", rel: "noopener" }, p.repo),
+      s.pr_url ? h("a", { class: "chip ok", href: s.pr_url, target: "_blank", rel: "noopener" }, `${rn} #${s.pr_number}`, icon("external", "xs")) : null),
     h("div", { class: "muted" }, s.branch
-      ? `${dirty ? "提交未提交的改动后" : ""}推送到 ${s.branch}，PR 自动更新。`
-      : `给这个会话新建 agent/… 分支，提交后推送，再向 ${p.base_branch || "基线分支"} 开草稿 PR；不会推到别的分支，也不强推。`),
+      ? `${dirty ? "提交未提交的改动后" : ""}推送到 ${s.branch}，${rn} 自动更新。`
+      : `给这个会话新建 agent/… 分支，提交后推送到 ${info.name}，再向 ${p.base_branch || "基线分支"} 开草稿 ${rn}；不会推到别的分支，也不强推。`),
     h("div", { class: "actions" }, h("div", { class: "grow" }, title), push),
     out,
   );
@@ -2269,12 +2402,14 @@ async function resetBranch() {
 // ---------------------------------------------------------------- 项目
 
 function openNewProject(initial) {
-  let mode = initial || (state.me.github ? "git" : state.samples.length ? "sample" : "git");
+  const conns = gitConnections();
+  let mode = initial || (conns.length ? "git" : state.samples.length ? "sample" : "git");
   let sample = state.samples[0] ? state.samples[0].id : "";
-  let repos = null;
+  let provider = conns[0] ? conns[0].provider : "";
+  const repoCache = {}; // 平台 → 仓库列表（"loading" 表示在读）
   let filter = "";
-  const name = h("input", { class: "field", placeholder: "项目名" });
-  const gitUrl = h("input", { class: "field", placeholder: "https://github.com/owner/repo.git" });
+  const name = h("input", { class: "field", placeholder: "工作区名" });
+  const gitUrl = h("input", { class: "field", placeholder: "https://github.com/owner/repo.git（Gitee、GitLab、Gitea、Bitbucket 也行）" });
   const branch = h("input", { class: "field", placeholder: "默认分支" });
   const err = h("div", { class: "err-text" });
   const seg = h("div", { class: "seg" });
@@ -2288,42 +2423,57 @@ function openNewProject(initial) {
   );
   const repoList = h("div", { class: "pick-list" });
   const drawRepos = () => {
-    if (repos === null) {
-      repos = "loading";
-      api("GET", "/api/github/repos").then((r) => { repos = r; drawRepos(); }).catch((ex) => { repos = []; err.textContent = ex.message; drawRepos(); });
+    const p = provider;
+    if (!p) return repoList.replaceChildren();
+    if (repoCache[p] === undefined) {
+      repoCache[p] = "loading";
+      api("GET", `/api/git/${p}/repos`).then((r) => { repoCache[p] = r; if (provider === p) drawRepos(); })
+        .catch((ex) => { repoCache[p] = []; err.textContent = ex.message; if (provider === p) drawRepos(); });
     }
-    if (repos === "loading") return repoList.replaceChildren(h("div", { class: "row muted" }, h("span", { class: "spinner" }), "正在读取你的仓库…"));
+    const repos = repoCache[p];
+    if (repos === "loading") return repoList.replaceChildren(h("div", { class: "row muted" }, h("span", { class: "spinner" }), `正在读取你在 ${providerInfo(p).name} 上的仓库…`));
     const q = filter.trim().toLowerCase();
     const shown = repos.filter((r) => !q || r.full_name.toLowerCase().includes(q)).slice(0, 40);
     repoList.replaceChildren(...(shown.length ? shown.map((r) => h("button", {
       class: "pick" + (gitUrl.value === r.clone_url ? " active" : ""),
-      onclick: () => { gitUrl.value = r.clone_url; branch.value = r.default_branch || ""; name.value = r.full_name.split("/")[1]; drawRepos(); },
-    }, icon("github", "sm"), h("span", { class: "mono grow ellipsis" }, r.full_name),
+      onclick: () => { gitUrl.value = r.clone_url; branch.value = r.default_branch || ""; name.value = r.full_name.split("/").pop(); drawRepos(); },
+    }, badge(r.provider, "sm"), h("span", { class: "mono grow ellipsis" }, r.full_name),
       r.private ? h("span", { class: "chip" }, "私有") : null,
-      r.permissions && !r.permissions.push ? h("span", { class: "chip warn" }, "只读") : null)) : [h("div", { class: "muted" }, "没有匹配的仓库")]));
+      r.can_push ? null : h("span", { class: "chip warn" }, "只读"))) : [h("div", { class: "muted" }, "没有匹配的仓库")]));
   };
   const draw = () => {
-    seg.replaceChildren(...[["git", "github", state.me.github ? "GitHub 仓库" : "Git 地址"], ["sample", "box", "示例"], ["empty", "folder", "空项目"]].map(([k, ic, l]) =>
+    seg.replaceChildren(...[["git", "branch", conns.length ? "我的仓库" : "Git 地址"], ["sample", "box", "示例"], ["empty", "folder", "空项目"]].map(([k, ic, l]) =>
       h("button", { class: mode === k ? "active" : "", onclick: () => { mode = k; draw(); } }, icon(ic, "sm"), l)));
     const parts = [];
     if (mode === "git") {
-      if (state.me.github) {
-        const search = h("input", { class: "field", placeholder: "搜索我的仓库", value: filter });
+      if (conns.length) {
+        if (conns.length > 1) {
+          parts.push(h("div", { class: "pv-tabs" }, conns.map((c) => h("button", {
+            class: "pv-tab" + (c.provider === provider ? " active" : ""),
+            onclick: () => { provider = c.provider; filter = ""; draw(); },
+          }, badge(c.provider, "xs"), providerInfo(c.provider).name))));
+        }
+        const search = h("input", { class: "field", placeholder: `搜索我在 ${providerInfo(provider).name} 上的仓库`, value: filter });
         search.addEventListener("input", () => { filter = search.value; drawRepos(); });
         parts.push(h("div", { class: "col" }, search, repoList));
         drawRepos();
       }
-      parts.push(h("div", {}, h("label", { class: "lbl" }, state.me.github ? "或者填 Git 地址（https）" : "Git 地址（https，公开仓库）"), gitUrl));
-      parts.push(h("div", { class: "row" }, h("div", { class: "grow" }, h("label", { class: "lbl" }, "项目名"), name), h("div", { class: "grow" }, h("label", { class: "lbl" }, "分支"), branch)));
+      const connectable = providerList().filter((p) => p.git && p.configured && !connection(p.id));
+      if (connectable.length) {
+        parts.push(h("div", { class: "connect-row" }, h("span", { class: "muted small" }, conns.length ? "还可以连接：" : "连接 Git 平台后可以从你的仓库里选（含私有仓库）："),
+          connectable.map((p) => h("a", { class: "btn xs", href: `/api/auth/${p.id}/login?link=1` }, badge(p.id, "xs"), p.name))));
+      }
+      parts.push(h("div", {}, h("label", { class: "lbl" }, conns.length ? "或者填 Git 地址（https）" : "Git 地址（https，公开仓库）"), gitUrl));
+      parts.push(h("div", { class: "row" }, h("div", { class: "grow" }, h("label", { class: "lbl" }, "工作区名"), name), h("div", { class: "grow" }, h("label", { class: "lbl" }, "分支"), branch)));
     } else if (mode === "sample") {
       parts.push(...state.samples.map((s) => h("div", {
         class: "sample-card" + (sample === s.id ? " active" : ""),
         onclick: () => { sample = s.id; name.value = s.name; draw(); },
       }, h("div", { class: "row" }, icon("box", "sm"), h("strong", {}, s.name)), h("div", { class: "muted" }, s.description))));
       if (!name.value && state.samples[0]) name.value = (state.samples.find((s) => s.id === sample) || state.samples[0]).name;
-      parts.push(h("div", {}, h("label", { class: "lbl" }, "项目名"), name));
+      parts.push(h("div", {}, h("label", { class: "lbl" }, "工作区名"), name));
     } else {
-      parts.push(h("div", { class: "muted" }, "一个只有 README 的空仓库，让 Agent 从零开始写。"), h("div", {}, h("label", { class: "lbl" }, "项目名"), name));
+      parts.push(h("div", { class: "muted" }, "一个只有 README 的空仓库，让 Agent 从零开始写。"), h("div", {}, h("label", { class: "lbl" }, "工作区名"), name));
     }
     body.replaceChildren(...parts);
   };
@@ -2425,10 +2575,17 @@ window.addEventListener("hashchange", () => {
 
 async function boot() {
   applyTheme();
+  // OAuth 回调带回来的结果：连接成功（?linked=<平台>）或失败（?error=…）。进主界面会改地址，先记下来。
+  const params = hashParams();
+  const linked = params.get("linked");
+  const failed = params.get("error");
   try { state.config = await api("GET", "/api/config"); } catch { /* 用默认 */ }
   try { state.me = await api("GET", "/api/me"); } catch { state.me = null; }
-  if (state.me) await enterApp().catch(report);
-  else renderLogin();
+  if (state.me) {
+    await enterApp().catch(report);
+    if (linked) { toast(`已连接 ${providerInfo(linked).name}`); openAccount(); }
+    if (failed) toast(failed, true);
+  } else renderLogin();
 }
 
 boot();

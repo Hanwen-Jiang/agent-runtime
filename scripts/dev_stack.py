@@ -23,7 +23,8 @@ Model Gateway、Python Worker。人手动演示与 tests/e2e/live 的真模型�
 - 输出：up、status 加 --json 时最后一行是 JSON（地址、pid、日志位置），不含任何密钥。
 - --coding：再编译并拉起 coding agent 的网页服务 coding-web（products/coding，docs/plan/coding-agent-mvp.md），开发登录打开，
   与 Worker 共用工作区；租户首次登录时它把租户的 effect 上限写成 write_reversible。端口默认固定 8095（--coding-port）；
-  ~/.agentruntime/github-oauth.env 在时打开 GitHub 登录（OAuth 回调 http://127.0.0.1:<端口>/api/auth/github/callback）。--sandbox docker：Worker 的 shell_run
+  ~/.agentruntime/oauth.env（或旧的 github-oauth.env）里配了哪几家就打开哪几家的登录（GitHub、Gitee、GitLab、Gitea、Bitbucket、Google；
+  OAuth 回调 http://127.0.0.1:<端口>/api/auth/<平台>/callback）。--sandbox docker：Worker 的 shell_run
   在一次性 Docker 容器里跑（不联网、限资源），要 PATH 上有 docker。
 """
 
@@ -46,9 +47,11 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ROOT = Path.home() / ".agentruntime" / "dev-stack"
 DEFAULT_PROVIDER_ENV = Path.home() / ".agentruntime" / "model-provider.env"
-# coding-web 的 GitHub OAuth App（CODING_GITHUB_CLIENT_ID、CODING_GITHUB_CLIENT_SECRET，格式同上）；文件在才打开 GitHub 登录。
-DEFAULT_GITHUB_ENV = Path.home() / ".agentruntime" / "github-oauth.env"
-GITHUB_ENV_NAMES = ("CODING_GITHUB_CLIENT_ID", "CODING_GITHUB_CLIENT_SECRET", "CODING_GITHUB_URL", "CODING_GITHUB_API_URL", "CODING_GITHUB_SCOPES")
+# coding-web 的第三方登录（格式同上）：每一家 CODING_<平台>_CLIENT_ID 与 _CLIENT_SECRET（可选 _URL、_API_URL、_SCOPES、_NAME），
+# 平台是 GITHUB、GITEE、GITLAB、GITEA、BITBUCKET、GOOGLE。oauth.env 放全部；github-oauth.env 是只有 GitHub 时的旧文件，两个都读。
+DEFAULT_OAUTH_ENVS = (Path.home() / ".agentruntime" / "github-oauth.env", Path.home() / ".agentruntime" / "oauth.env")
+OAUTH_PROVIDERS = ("GITHUB", "GITEE", "GITLAB", "GITEA", "BITBUCKET", "GOOGLE")
+OAUTH_ENV_NAMES = tuple(f"CODING_{p}_{k}" for p in OAUTH_PROVIDERS for k in ("CLIENT_ID", "CLIENT_SECRET", "URL", "API_URL", "SCOPES", "NAME"))
 # OAuth App 的回调地址要固定，coding-web 默认用这个端口。
 DEFAULT_CODING_PORT = 8095
 SEED_FILE = REPO_ROOT / "deploy" / "dev" / "registry-seed.json"
@@ -324,9 +327,10 @@ class Stack:
         }
         if sandbox:
             coding["CODING_SANDBOX_IMAGE"] = os.environ.get("AR_TOOL_SHELL_IMAGE") or "python:3.13-slim"
-        if DEFAULT_GITHUB_ENV.exists():
-            github = read_provider_env(DEFAULT_GITHUB_ENV)
-            coding.update({k: github[k] for k in GITHUB_ENV_NAMES if github.get(k)})
+        for path in DEFAULT_OAUTH_ENVS:
+            if path.exists():
+                values = read_provider_env(path)
+                coding.update({k: values[k] for k in OAUTH_ENV_NAMES if values.get(k)})
         return {
             "temporal": {},
             "task-service": {
@@ -585,8 +589,8 @@ def cmd_env(args: argparse.Namespace) -> int:
     for env in envs.values():
         if "AR_DEV_SIGNING_KEY" in env:
             env["AR_DEV_SIGNING_KEY"] = "***（在 shared/signing.key）"
-        if "CODING_GITHUB_CLIENT_SECRET" in env:
-            env["CODING_GITHUB_CLIENT_SECRET"] = f"***（在 {DEFAULT_GITHUB_ENV}）"
+        for name in [k for k in env if k.startswith("CODING_") and k.endswith("_CLIENT_SECRET")]:
+            env[name] = "***（在 ~/.agentruntime/oauth.env 或 github-oauth.env）"
     if args.json:
         print(json.dumps({"root": str(stack.root), "components": envs}, ensure_ascii=False))
     else:

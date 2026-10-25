@@ -18,7 +18,11 @@ type Project struct {
 	Source    string    `json:"source"`
 	CreatedAt time.Time `json:"created_at"`
 	CreatedBy string    `json:"created_by"`
-	// GitHub 上的仓库（owner/repo）；只有这样的工作区能推送、开 PR。
+	// 从 Git 平台克隆的工作区：平台（github、gitee、gitlab、gitea、bitbucket）与仓库路径（owner/repo，GitLab 可有多级群组）；
+	// 只有这样的工作区能推送、开 PR/MR。
+	Provider string `json:"git_provider,omitempty"`
+	Repo     string `json:"repo,omitempty"`
+	// 多平台之前只有 GitHub：读到时转成 Provider、Repo。
 	GitHubRepo string `json:"github_repo,omitempty"`
 	// 克隆时的分支（PR 的目标分支）。
 	BaseBranch string `json:"base_branch,omitempty"`
@@ -194,10 +198,21 @@ func writeFileAtomic(path string, v any) error {
 	return err
 }
 
+// readProjects 读项目列表，把多平台之前的 github_repo 转成 Provider、Repo。
+func (s *Store) readProjects(tenant string) ([]Project, error) {
+	projects, err := readJSONFile[[]Project](s.projectsFile(tenant))
+	for i := range projects {
+		if p := &projects[i]; p.GitHubRepo != "" && p.Repo == "" {
+			p.Provider, p.Repo, p.GitHubRepo = "github", p.GitHubRepo, ""
+		}
+	}
+	return projects, err
+}
+
 func (s *Store) Projects(tenant string) ([]Project, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return readJSONFile[[]Project](s.projectsFile(tenant))
+	return s.readProjects(tenant)
 }
 
 func (s *Store) Project(tenant, id string) (Project, bool, error) {
@@ -217,7 +232,7 @@ func (s *Store) Project(tenant, id string) (Project, bool, error) {
 func (s *Store) UpdateProjects(tenant string, fn func([]Project) ([]Project, error)) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	projects, err := readJSONFile[[]Project](s.projectsFile(tenant))
+	projects, err := s.readProjects(tenant)
 	if err != nil {
 		return err
 	}

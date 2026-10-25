@@ -12,12 +12,16 @@
 //	CODING_TENANT_POLICIES_FILE task-service 的开发租户策略文件；给了就在租户首次登录时把 effect 上限设为 write_reversible
 //	CODING_GIT                  git 可执行文件，默认 PATH 上的 git
 //	CODING_SECURE_COOKIE=1      Cookie 只走 HTTPS
-//	CODING_PUBLIC_URL           对外的地址（拼 GitHub OAuth 的回调），例如 http://127.0.0.1:8095
-//	CODING_GITHUB_CLIENT_ID     GitHub OAuth App 的 Client ID；与 Secret 都给了才打开 GitHub 登录与推送
-//	CODING_GITHUB_CLIENT_SECRET GitHub OAuth App 的 Client Secret（不写进日志）
-//	CODING_GITHUB_URL           GitHub 网页地址，默认 https://github.com（GitHub Enterprise 时改）
-//	CODING_GITHUB_API_URL       GitHub API 地址，默认 https://api.github.com
-//	CODING_GITHUB_SCOPES        OAuth 的 scope，默认 "repo read:user"
+//	CODING_PUBLIC_URL           对外的地址（拼 OAuth 回调 <地址>/api/auth/<平台>/callback），例如 http://127.0.0.1:8095
+//
+// 第三方登录（<平台> 是 GITHUB、GITEE、GITLAB、GITEA、BITBUCKET、GOOGLE；Client ID 与 Secret 都给了才打开这一家）：
+//
+//	CODING_<平台>_CLIENT_ID      OAuth 应用的 Client ID（Bitbucket 叫 Key）
+//	CODING_<平台>_CLIENT_SECRET  OAuth 应用的 Client Secret（不写进日志）
+//	CODING_<平台>_URL            网页地址：自建的 GitLab、Gitea 填它的地址；GitHub Enterprise 也填（默认各家公共站，Gitea 默认 Codeberg）
+//	CODING_<平台>_API_URL        API 地址，不填按网页地址推出
+//	CODING_<平台>_SCOPES         OAuth 的 scope，不填用各家默认（GitHub "repo read:user"，GitLab "api read_user"…）
+//	CODING_<平台>_NAME           显示名，例如自建 Gitea 叫 "公司 Git"
 //	CODING_SANDBOX              Worker 的 shell_run 在哪里跑（docker 或 host），只用来在界面上说明环境
 //	CODING_SANDBOX_IMAGE        docker 时 shell_run 用的镜像（与 Worker 的 AR_TOOL_SHELL_IMAGE 相同）
 package main
@@ -29,6 +33,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -46,15 +51,19 @@ func main() {
 		Git:           os.Getenv("CODING_GIT"),
 		SecureCookie:  os.Getenv("CODING_SECURE_COOKIE") == "1",
 
-		PublicURL:          os.Getenv("CODING_PUBLIC_URL"),
-		GitHubClientID:     os.Getenv("CODING_GITHUB_CLIENT_ID"),
-		GitHubClientSecret: os.Getenv("CODING_GITHUB_CLIENT_SECRET"),
-		GitHubURL:          os.Getenv("CODING_GITHUB_URL"),
-		GitHubAPI:          os.Getenv("CODING_GITHUB_API_URL"),
-		GitHubScopes:       os.Getenv("CODING_GITHUB_SCOPES"),
+		PublicURL: os.Getenv("CODING_PUBLIC_URL"),
+		Providers: map[string]server.ProviderConfig{},
 
 		Sandbox:      os.Getenv("CODING_SANDBOX"),
 		SandboxImage: os.Getenv("CODING_SANDBOX_IMAGE"),
+	}
+	for _, id := range []string{"github", "gitee", "gitlab", "gitea", "bitbucket", "google"} {
+		env := func(name string) string { return os.Getenv("CODING_" + strings.ToUpper(id) + "_" + name) }
+		if c := (server.ProviderConfig{
+			ClientID: env("CLIENT_ID"), ClientSecret: env("CLIENT_SECRET"), URL: env("URL"), APIURL: env("API_URL"), Scopes: env("SCOPES"), Name: env("NAME"),
+		}); c.ClientID != "" {
+			cfg.Providers[id] = c
+		}
 	}
 	srv, err := server.New(cfg)
 	if err != nil {

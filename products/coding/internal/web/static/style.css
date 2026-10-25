@@ -265,6 +265,44 @@ textarea.field { height: auto; padding: 8px 11px; resize: vertical; line-height:
 .login-box .sep::before, .login-box .sep::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .github-btn { background: var(--text); color: var(--bg); border-color: var(--text); }
 .github-btn:hover { background: var(--text-2); border-color: var(--text-2); text-decoration: none; }
+.login-box .btn.block { gap: 10px; }
+.login-box .btn .off { margin-left: 6px; font-size: 11.5px; color: var(--faint); }
+.login-box .note.center { text-align: center; line-height: 1.5; }
+/* GitHub 下面的小副按钮：展开其他 Git 平台 */
+.other-toggle {
+  display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%;
+  margin-top: -4px; padding: 4px 8px; border: 0; border-radius: var(--radius-sm); background: transparent;
+  color: var(--muted); font-size: 12.5px;
+}
+.other-toggle:hover { color: var(--text); background: var(--sunken); }
+.other-toggle .names { color: var(--faint); font-size: 12px; }
+.other-toggle .caret { transition: transform 0.15s; }
+.other-toggle.open .caret { transform: rotate(180deg); }
+.other-providers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; animation: rise 0.15s ease-out; }
+.other-providers .btn.block { height: 36px; font-size: 13px; justify-content: flex-start; padding: 0 12px; }
+.google-btn { background: var(--surface); }
+
+/* 平台的小标记（GitHub 之外）：品牌色的字母块 */
+.pv-badge {
+  display: inline-grid; place-items: center; flex: none;
+  width: 18px; height: 18px; border-radius: 5px;
+  color: #fff; font: 700 9.5px/1 var(--font-sans); letter-spacing: -0.02em;
+}
+.pv-badge.xs { width: 15px; height: 15px; border-radius: 4px; font-size: 8px; }
+.pv-badge.md { width: 26px; height: 26px; border-radius: 7px; font-size: 12px; }
+.icon.md { width: 26px; height: 26px; }
+
+/* 账号与平台 */
+.conn-list { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+.conn-row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+.conn-row:last-child { border-bottom: 0; }
+.conn-row .t { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+.conn-row .m { font-size: 12.5px; color: var(--muted); margin-top: 1px; }
+.conn-row.on .m { color: var(--ok); }
+.pv-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.pv-tab { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--surface); color: var(--text-2); font-size: 12.5px; }
+.pv-tab.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.connect-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .mark { display: inline-grid; place-items: center; color: var(--accent); }
 .mark.big { width: 56px; height: 56px; border-radius: 16px; background: var(--accent-soft); }
 

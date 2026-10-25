@@ -98,7 +98,7 @@ func (s *Server) handleEnv(w http.ResponseWriter, r *http.Request, id identity) 
 			"branch": s.git.Branch(ctx, dir), "head": s.git.Head(ctx, dir), "subject": strings.TrimSpace(subject),
 			"dirty": dirty, "base_branch": p.BaseBranch,
 		},
-		"project": map[string]any{"source": p.Source, "github_repo": p.GitHubRepo, "created_at": p.CreatedAt},
+		"project": map[string]any{"source": p.Source, "git_provider": p.Provider, "repo": p.Repo, "created_at": p.CreatedAt},
 		"session": map[string]any{"workspace_id": sess.WorkspaceID, "runtime_session_id": sess.RuntimeSessionID, "base_commit": sess.BaseCommit, "own_copy": sess.WorkspaceID != p.ID},
 		// 租户策略里现在的上限；每个任务实际的上限在它的 Task State 里。
 		"effect_ceiling": s.tenantCeiling(id.TenantID),

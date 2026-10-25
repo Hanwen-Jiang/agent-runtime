@@ -113,12 +113,12 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request, id 
 				args = append(args, "--branch", req.Branch)
 			}
 			args = append(args, "--", req.GitURL, dir)
-			if repo, ok := s.gh.repoOf(req.GitURL); ok {
-				p.GitHubRepo = repo
-				if _, token, has := s.account(id); has { // 私有仓库要令牌；令牌只在这次 git 进程的环境变量里
-					_, err := s.git.RunWithToken(ctx, filepath.Dir(dir), s.gh.Web+"/", token, args...)
-					return err
-				}
+			// 已配置的 Git 平台上的仓库：记下平台与仓库路径；连接了这一家就带令牌克隆（私有仓库要），令牌只在这次 git 进程的环境变量里。
+			if prov, repo := s.providerOfURL(req.GitURL); prov != nil {
+				p.Provider, p.Repo = prov.id, repo
+				host, user, pass := s.gitCredentials(r, id, p)
+				_, err := s.git.RunWithAuth(ctx, filepath.Dir(dir), host, user, pass, args...)
+				return err
 			}
 			_, err := s.git.Run(ctx, filepath.Dir(dir), args...)
 			return err

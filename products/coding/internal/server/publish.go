@@ -2,9 +2,7 @@ package server
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
-	"net/url"
 	"regexp"
 	"strings"
 	"time"
@@ -40,12 +38,6 @@ func (s *Server) updateProject(tenant, id string, fn func(*Project)) (Project, e
 	return out, err
 }
 
-type pullRequest struct {
-	HTMLURL string `json:"html_url"`
-	Number  int    `json:"number"`
-	Draft   bool   `json:"draft"`
-}
-
 // handlePublish 把会话工作副本里的改动推到这个会话的 agent/* 分支并开草稿 PR（已有 PR 时只推送，PR 自动更新）。
 // 一个会话一个分支、一个 PR。由人点按钮触发。
 func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identity) {
@@ -53,13 +45,17 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identi
 	if !ok {
 		return
 	}
-	if p.GitHubRepo == "" || s.gh == nil {
-		writeError(w, http.StatusBadRequest, "只有从 GitHub 克隆的项目能推送并开 PR")
+	prov := s.providers[p.Provider]
+	if p.Repo == "" || prov == nil {
+		writeError(w, http.StatusBadRequest, "只有从已配置的 Git 平台克隆的工作区能推送并开 PR")
 		return
 	}
-	acct, token, ok := s.account(id)
-	if !ok {
-		writeError(w, http.StatusForbidden, "先用 GitHub 登录，才能推送到 GitHub")
+	conn, token, err := s.connToken(r, id, prov)
+	if errors.Is(err, errNotConnected) {
+		writeError(w, http.StatusForbidden, "先在“账号与平台”里连接 "+prov.Name+"，才能推送到 "+prov.Name)
+		return
+	} else if err != nil {
+		writeGitError(w, err)
 		return
 	}
 	var req struct {
@@ -83,8 +79,9 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identi
 	dir := s.sessionDir(id.TenantID, sess)
 	ctx, cancel := ctxTimeout(r, 3*time.Minute)
 	defer cancel()
-	host := s.gh.Web + "/"
-	name, email := acct.Login, fmt.Sprintf("%d+%s@users.noreply.github.com", acct.ID, acct.Login)
+	host := prov.Web + "/"
+	gitUser, gitPass := prov.gitAuth(conn, token)
+	name, email := prov.commitAuthor(conn)
 	base := p.BaseBranch
 	if base == "" {
 		base = "main"
@@ -138,7 +135,7 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identi
 			return
 		}
 	}
-	if _, err := s.git.RunWithToken(ctx, dir, host, token, "push", "-q", "origin", "HEAD:refs/heads/"+branch); err != nil {
+	if _, err := s.git.RunWithAuth(ctx, dir, host, gitUser, gitPass, "push", "-q", "origin", "HEAD:refs/heads/"+branch); err != nil {
 		_, _ = s.updateSession(id.TenantID, sess, func(x *Session) { x.Branch = branch })
 		writeError(w, http.StatusBadGateway, "推送失败（是否有这个仓库的写权限？）："+err.Error())
 		return
@@ -152,11 +149,13 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identi
 		if body == "" {
 			body = "由 Coding Agent 生成的改动，请审阅后再合并。"
 		}
-		pr, err := s.openPR(r, token, p.GitHubRepo, title, branch, base, body)
+		prCtx, prCancel := ctxTimeout(r, 30*time.Second)
+		pr, err := prov.openPR(prCtx, token, p.Repo, title, branch, base, body)
+		prCancel()
 		if err != nil {
 			// 分支已推上去；PR 没开成时把分支记下来，下次推送再试。
 			_, _ = s.updateSession(id.TenantID, sess, func(x *Session) { x.Branch, x.PushedHead = branch, pushed })
-			writeGitHubError(w, err)
+			writeGitError(w, err)
 			return
 		}
 		prURL, prNumber, created = pr.HTMLURL, pr.Number, true
@@ -169,30 +168,6 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identi
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"session": updated, "branch": branch, "pr_url": prURL, "pr_number": prNumber, "created": created, "head": pushed})
-}
-
-// openPR 开草稿 PR；仓库不支持草稿时退回普通 PR；同一分支已有打开的 PR 时直接用它。
-func (s *Server) openPR(r *http.Request, token, repo, title, branch, base, body string) (pullRequest, error) {
-	ctx, cancel := ctxTimeout(r, 30*time.Second)
-	defer cancel()
-	var pr pullRequest
-	req := map[string]any{"title": title, "head": branch, "base": base, "body": body, "draft": true}
-	err := s.gh.api(ctx, token, http.MethodPost, "/repos/"+repo+"/pulls", req, &pr)
-	var ghErr *GitHubError
-	if errors.As(err, &ghErr) && ghErr.Status == http.StatusUnprocessableEntity {
-		if strings.Contains(strings.ToLower(ghErr.Message), "draft") {
-			req["draft"] = false
-			err = s.gh.api(ctx, token, http.MethodPost, "/repos/"+repo+"/pulls", req, &pr)
-		} else if strings.Contains(strings.ToLower(ghErr.Message), "already exists") {
-			owner := strings.SplitN(repo, "/", 2)[0]
-			var existing []pullRequest
-			q := url.Values{"head": {owner + ":" + branch}, "state": {"open"}}
-			if err2 := s.gh.api(ctx, token, http.MethodGet, "/repos/"+repo+"/pulls?"+q.Encode(), nil, &existing); err2 == nil && len(existing) > 0 {
-				return existing[0], nil
-			}
-		}
-	}
-	return pr, err
 }
 
 // handleResetBranch 让会话的工作副本回到基线分支并拉取最新：PR 合并之后开始下一轮。要求没有未提交的改动。
@@ -217,9 +192,9 @@ func (s *Server) handleResetBranch(w http.ResponseWriter, r *http.Request, id id
 		writeError(w, http.StatusBadRequest, "不知道基线分支")
 		return
 	}
-	if p.GitHubRepo != "" && s.gh != nil {
-		_, token, _ := s.account(id)
-		if _, err := s.git.RunWithToken(ctx, dir, s.gh.Web+"/", token, "fetch", "-q", "--depth", "50", "origin", base); err != nil {
+	if p.Repo != "" && s.providers[p.Provider] != nil {
+		host, user, pass := s.gitCredentials(r, id, p)
+		if _, err := s.git.RunWithAuth(ctx, dir, host, user, pass, "fetch", "-q", "--depth", "50", "origin", base); err != nil {
 			writeError(w, http.StatusBadGateway, "拉取失败："+err.Error())
 			return
 		}

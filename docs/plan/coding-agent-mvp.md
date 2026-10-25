@@ -121,3 +121,16 @@ task-service（Task API、Session 与 Task 工作流）→ Worker（Planner、to
 - **接口**：工作区 `GET/POST /api/projects`、`DELETE /api/projects/{p}`（连同所有会话的副本）；会话 `GET /api/sessions`、`POST /api/projects/{p}/sessions`，其余（任务、事件、回复、取消、改动、提交、补丁、推送、回到基线、文件、提交历史、环境、改名、删除）都在 `/api/projects/{p}/sessions/{s}/…` 下；`GET /api/tasks/active` 带上工作区与会话。
 - **界面**：左栏上半部分是“新建会话、搜索（Ctrl K）、工作区、进行中”，下半部分按工作区分组列出会话（可折叠，悬停出现“+”开新会话、“…”改名或删除）。中间多了“工作区”一览（每个工作区的会话数、在跑的会话、最近的会话，新建会话、删除工作区）与“进行中”（所有会话里在跑与排队的任务，可跳转、可停止）。地址是 `#/w/<工作区>/s/<会话>`、`#/w/<工作区>/new`、`#/workspaces`、`#/activity`。
 - **还没做**：会话之间合并改动（现在靠各自推 PR，或在基线仓库外手动合并）；归档会话；清理长期不用的副本。
+
+## 9. 多平台登录与账号关联
+
+2026-10-25 用户要求：支持 GitHub、Gitee 等各家 Git 平台的 OAuth 注册与登录，再加 Google；登录页 GitHub 是主按钮，其余 Git 平台收在它下面一个小的“其他 Git 平台”副按钮里。用户选定“一个账号关联多个平台”。
+
+- **登录方式**（`products/coding/internal/server/oauth.go`）：GitHub、Gitee、GitLab（含自建）、Gitea/Forgejo/Codeberg（默认 Codeberg，可指向自建）、Bitbucket Cloud 是 Git 平台；Google 只用来认人（要求邮箱已验证）。都走 OAuth2 授权码流程，回调 `/api/auth/<平台>/callback`；配置是 `CODING_<平台>_CLIENT_ID`、`_CLIENT_SECRET`（可选 `_URL`、`_API_URL`、`_SCOPES`、`_NAME`），配了才打开。
+- **账号**（`accounts.go`）：账号仍是（租户、用户）。平台账号按平台给的不变编号认（`identities.json`：`<平台>:<编号>` → 租户、用户）。第一次用某家登录就注册，租户 `<前缀>-<登录名>`（gh、gitee、gl、gitea、bb、google，被占用时加随机后缀），开发登录不许用这些前缀。登录后“连接”别家（`/api/auth/<平台>/login?link=1`），之后用任何一家登录都是这个账号；一个平台账号只能关联一个本地账号；平台注册的账号至少留一个登录方式。多平台之前的 GitHub 账号按 GitHub 编号认回原来的 `gh-` 租户，账号文件就地迁移。
+- **令牌**：按（租户、用户、平台）加密存放；会过期的（GitLab 2 小时、Gitee 1 天、Gitea、Bitbucket 1–2 小时）用前两分钟内自动用续期令牌换新；续不上时提示重新连接。API 调用出错时的提示不带令牌（Gitee 的令牌在查询参数里，连接失败的错误不带地址）。
+- **各家的差别**（`providers.go`）：仓库列表只列能推送的（GitLab `min_access_level=30`、Bitbucket `role=contributor`）；推送的 Basic 认证 GitHub 是“令牌 + x-oauth-basic”，GitLab、Gitea 是 `oauth2` + 令牌，Bitbucket 是 `x-token-auth` + 令牌，Gitee 是登录名 + 令牌；草稿 GitHub 用 `draft`（不支持时退回普通 PR），GitLab 用 `Draft:` 标题前缀，Gitea 用 `WIP:`，Bitbucket 先试 `draft` 字段、不认就退回普通 PR，Gitee 开普通 PR；同一分支已有打开的 PR/MR 时直接用它。提交作者：GitHub 用 noreply 地址，其余用公开邮箱或 `<登录名>@users.noreply.<主机>`。
+- **工作区**：`git_provider` 与 `repo` 记下平台与仓库路径（旧的 `github_repo` 读到时转换）；按克隆地址的主机认出是哪一家。
+- **界面**：登录页（GitHub 主按钮、“其他 Git 平台”副按钮展开 Gitee/GitLab/Gitea/Bitbucket、Google、开发登录；开发环境里没配置的也列出来、不可点）；左下角菜单“账号与平台”（连接、断开）；新建工作区按已连接的平台选仓库；推送卡片与下一步按平台改叫法（GitLab 叫 Merge Request）。平台标记 GitHub 用它的标志，其余是品牌色字母块，不照搬各家标志。
+- **验证**：各家都只对着替身服务测过（`oauth_test.go`：换令牌的 client 认证方式、Gitee 的查询参数与 User-Agent、续期、关联与冲突、旧账号迁移、各家的 PR/MR 请求）。没在真平台上验：Gitee 推送时用登录名作用户名、Bitbucket 创建草稿 PR 的字段都是按文档与常见做法推的。
+- **还没做**：同一家接多个实例（例如两个自建 GitLab）；GitHub App（按仓库授权）；Bitbucket Server / Data Center；把 Google 等身份与企业 SSO 打通。

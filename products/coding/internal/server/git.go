@@ -37,17 +37,17 @@ func (g Git) RunAs(ctx context.Context, dir, name, email string, args ...string)
 	return g.run(ctx, dir, gitOpts{name: name, email: email}, args...)
 }
 
-// RunWithToken 同 Run，对 host（例如 https://github.com/）的请求带上 OAuth 令牌。
-func (g Git) RunWithToken(ctx context.Context, dir, host, token string, args ...string) (string, error) {
-	return g.run(ctx, dir, gitOpts{env: tokenEnv(host, token)}, args...)
+// RunWithAuth 同 Run，对 host（例如 https://github.com/）的请求带上 Basic 认证（各家平台的用户名与令牌见 Provider.gitAuth）。
+func (g Git) RunWithAuth(ctx context.Context, dir, host, user, pass string, args ...string) (string, error) {
+	return g.run(ctx, dir, gitOpts{env: basicEnv(host, user, pass)}, args...)
 }
 
-// tokenEnv 用 GIT_CONFIG_COUNT 把 http.<host>.extraheader 放进环境变量：只对这个 host 生效，不落盘。
-func tokenEnv(host, token string) []string {
-	if token == "" {
+// basicEnv 用 GIT_CONFIG_COUNT 把 http.<host>.extraheader 放进环境变量：只对这个 host 生效，不落盘。
+func basicEnv(host, user, pass string) []string {
+	if host == "" || (user == "" && pass == "") {
 		return nil
 	}
-	basic := base64.StdEncoding.EncodeToString([]byte(token + ":x-oauth-basic"))
+	basic := base64.StdEncoding.EncodeToString([]byte(user + ":" + pass))
 	return []string{
 		"GIT_CONFIG_COUNT=1",
 		"GIT_CONFIG_KEY_0=http." + strings.TrimRight(host, "/") + "/.extraheader",

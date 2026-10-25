@@ -153,7 +153,7 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request, id 
 	writeJSON(w, http.StatusCreated, sess)
 }
 
-// createSession 从工作区的基线仓库复制出会话的工作副本（检出基线分支），GitHub 工作区再把远端换回 GitHub、尽量拉到基线分支的最新提交。
+// createSession 从工作区的基线仓库复制出会话的工作副本（检出基线分支），Git 平台的工作区再把远端换回平台、尽量拉到基线分支的最新提交。
 func (s *Server) createSession(r *http.Request, id identity, p Project, title string) (Session, error) {
 	now := time.Now().UTC()
 	sess := Session{ID: newSessionID(), ProjectID: p.ID, Title: title, CreatedAt: now, CreatedBy: id.UserID, UpdatedAt: now}
@@ -166,13 +166,13 @@ func (s *Server) createSession(r *http.Request, id identity, p Project, title st
 		_ = os.RemoveAll(dir)
 		return Session{}, err
 	}
-	if p.GitHubRepo != "" && strings.HasPrefix(p.Source, "https://") && s.gh != nil {
+	if p.Repo != "" && strings.HasPrefix(p.Source, "https://") && s.providers[p.Provider] != nil {
 		if _, err := s.git.Run(ctx, dir, "remote", "set-url", "origin", p.Source); err != nil {
 			_ = os.RemoveAll(dir)
 			return Session{}, err
 		}
-		if _, token, has := s.account(id); has && p.BaseBranch != "" {
-			if _, err := s.git.RunWithToken(ctx, dir, s.gh.Web+"/", token, "fetch", "-q", "--depth", "50", "origin", p.BaseBranch); err == nil {
+		if host, user, pass := s.gitCredentials(r, id, p); p.BaseBranch != "" {
+			if _, err := s.git.RunWithAuth(ctx, dir, host, user, pass, "fetch", "-q", "--depth", "50", "origin", p.BaseBranch); err == nil {
 				_, _ = s.git.Run(ctx, dir, "reset", "-q", "--hard", "FETCH_HEAD")
 			}
 		}
