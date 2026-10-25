@@ -340,13 +340,17 @@ textarea.field { height: auto; padding: 8px 11px; resize: vertical; line-height:
 .ws-add { opacity: 0; color: var(--muted); }
 .ws-head:hover .ws-add, .ws-add:focus-visible { opacity: 1; }
 .ws-sessions { display: flex; flex-direction: column; gap: 1px; padding: 1px 0 2px; }
-.side-item.session { gap: 8px; padding: 6px 6px 6px 27px; font-size: 13.5px; cursor: pointer; }
+/* 悬停时“…”叠在时间上面出现，不占位置，行高与宽度都不变。 */
+.side-item.session { position: relative; gap: 8px; min-height: 32px; padding: 6px 6px 6px 27px; font-size: 13.5px; cursor: pointer; }
 .side-item.session > .icon { color: var(--faint); }
 .side-item.session.active > .icon { color: var(--accent); }
-.side-item.session .when { flex: none; font-size: 11px; color: var(--faint); }
-.side-item.session .item-more { display: none; color: var(--muted); }
-.side-item.session:hover .when, .side-item.session:focus-within .when { display: none; }
-.side-item.session:hover .item-more, .side-item.session:focus-within .item-more { display: inline-flex; }
+.side-item.session .when { flex: none; min-width: 28px; text-align: right; font-size: 11px; color: var(--faint); }
+.side-item.session .item-more {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  opacity: 0; pointer-events: none; color: var(--muted); background: inherit;
+}
+.side-item.session:hover .when, .side-item.session:focus-within .when { visibility: hidden; }
+.side-item.session:hover .item-more, .side-item.session:focus-within .item-more { opacity: 1; pointer-events: auto; }
 .side-item.draft { font-style: italic; color: var(--text); }
 .more-link { display: block; width: 100%; padding: 4px 6px 4px 27px; border: 0; background: transparent; text-align: left; color: var(--faint); font-size: 12px; }
 .more-link:hover { color: var(--accent); }
