@@ -4,7 +4,8 @@
 
 1. 没有 WorkflowTaskFailed：工作流代码没有抛异常、没有不确定性错误。唯一的例外是 UNHANDLED_COMMAND：工作流要结束
    （完成或 Continue-As-New）时恰好来了新事件（例如信号），服务端拒绝这次结束命令，让工作流先处理新事件再重试。
-   只有之后有工作流任务成功完成、且这次运行正常结束（completed 或 continued_as_new）时才放行。
+   只有之后有工作流任务成功完成、且这次运行正常结束（completed 或 continued_as_new）时才放行。Session 工作流在这种情形下
+   不丢信号（续接前排空、带进下一次运行）由 services/go-task-service/internal/session/unhandled_command_test.go 确定地验证。
 2. 只有 Worker 被杀过时才允许 WorkflowTaskTimedOut（被杀的 Worker 手里的工作流任务超时后转给别的 Worker）。
 3. 工作流以预期的方式结束（或预期仍在运行，例如 Session 工作流）。
 4. 每个调度过的 activity 都有结局；失败或超时的只能是用例预期的那些。

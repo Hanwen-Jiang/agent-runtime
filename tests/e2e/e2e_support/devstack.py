@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from e2e_support.business_db import BusinessDb
 from e2e_support.stack import REPO_ROOT
 
 SCRIPT = REPO_ROOT / "scripts" / "dev_stack.py"
@@ -54,21 +55,29 @@ class DevStack:
     info: dict[str, Any] = field(default_factory=dict, repr=False)
     # 要从失败输出与检查里认出来的密钥（只在 live 用例里有）。不进 repr：pytest 的失败输出会打印 fixture 的值。
     secrets: list[str] = field(default_factory=list, repr=False)
+    # 这套整套自己的业务库（e2e_support/business_db.py）。脚本每次调用都从环境变量读连接串，所以每次都传。
+    business_db: BusinessDb = field(default_factory=BusinessDb, repr=False)
 
     @classmethod
     def up(cls, root: Path, *args: str, secrets: list[str] | None = None) -> DevStack:
-        proc = run_script("up", "--root", str(root), "--json", *args)
         stack = cls(root=root, secrets=list(secrets or []))
+        proc = stack.run("up", "--root", str(root), "--json", *args)
         if proc.returncode != 0:
+            stack.business_db.drop()
             raise RuntimeError(stack.redact(f"dev_stack.py up 失败（退出码 {proc.returncode}）：\n{proc.stdout}\n{proc.stderr}"))
         stack.info = last_json(proc)
         return stack
 
+    def run(self, *args: str, timeout: float = 900) -> subprocess.CompletedProcess[str]:
+        return run_script(*args, timeout=timeout, env=self.business_db.env())
+
     def down(self) -> subprocess.CompletedProcess[str]:
-        return run_script("down", "--root", str(self.root))
+        proc = self.run("down", "--root", str(self.root))
+        self.business_db.drop()
+        return proc
 
     def status(self) -> dict[str, Any]:
-        proc = run_script("status", "--root", str(self.root), "--json")
+        proc = self.run("status", "--root", str(self.root), "--json")
         assert proc.returncode == 0, proc.stderr
         return last_json(proc)
 
@@ -76,17 +85,17 @@ class DevStack:
         args = ["token", "--root", str(self.root), "--tenant", tenant, "--user", user]
         for scope in scopes:
             args += ["--scope", scope]
-        proc = run_script(*args, timeout=120)
+        proc = self.run(*args, timeout=120)
         assert proc.returncode == 0, proc.stderr
         return proc.stdout.strip().splitlines()[-1]
 
     def kill(self, component: str) -> None:
         """强杀一个组件（不给它收尾的机会）。"""
-        proc = run_script("kill", component, "--root", str(self.root))
+        proc = self.run("kill", component, "--root", str(self.root))
         assert proc.returncode == 0, proc.stderr
 
     def start(self, component: str) -> None:
-        proc = run_script("start", component, "--root", str(self.root), timeout=300)
+        proc = self.run("start", component, "--root", str(self.root), timeout=300)
         assert proc.returncode == 0, self.redact(proc.stderr)
         self.info = self.status()
 

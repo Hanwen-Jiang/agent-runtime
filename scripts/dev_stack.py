@@ -458,6 +458,8 @@ class Stack:
         out: dict[str, Any] = {}
         for name in REPORTED:
             source = "task-service" if name == "registry" else name
+            if not self.wanted(source):
+                continue  # 没带 --coding 启动时不报 coding
             entry = comps.get(source) or {}
             item = {"pid": entry.get("pid"), "alive": alive(entry.get("pid")), "log": entry.get("log", str(self.log(source)))}
             if entry.get("stdout"):
@@ -565,7 +567,7 @@ def cmd_token(args: argparse.Namespace) -> int:
 def cmd_env(args: argparse.Namespace) -> int:
     stack = Stack(Path(args.root))
     stack.configure(args)
-    envs = stack.envs()
+    envs = {name: env for name, env in stack.envs().items() if stack.wanted(name)}
     for env in envs.values():
         if "AR_DEV_SIGNING_KEY" in env:
             env["AR_DEV_SIGNING_KEY"] = "***（在 shared/signing.key）"

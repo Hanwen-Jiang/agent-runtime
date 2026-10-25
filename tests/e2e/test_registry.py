@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import subprocess
 import urllib.error
 import urllib.request
@@ -72,7 +71,7 @@ def seed(stack: Stack, entries: dict[str, Any]) -> None:
     assert stack.task_service_bin is not None
     proc = subprocess.run(
         [str(stack.task_service_bin), "registry-seed", str(path)],
-        env={**os.environ, "AR_DATA_DIR": str(stack.root / "data"), "AR_SCHEMAS_DIR": str(REPO_ROOT / "schemas")},
+        env=stack.cli_env({"AR_SCHEMAS_DIR": str(REPO_ROOT / "schemas")}),
         capture_output=True,
         text=True,
         encoding="utf-8",

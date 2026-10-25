@@ -8,7 +8,7 @@
 | Aster 模块 | 我们的对应 | 完成度 | 已有 | 主要缺口 |
 | --- | --- | --- | --- | --- |
 | M1 In/Out | Task API（HTTP POST + SSE）、Ingress | 约 60% | 提交、取消、人工回复、状态查询；SSE 续传（Last-Event-ID）；租户由令牌决定；按租户限流；提交去重 | 只有开发令牌，没有正式登录（OAuth、SSO）；事件正文只在 Cache；没有 token 与工具状态的增量；同一幂等键配不同正文不报冲突；没有 IDE、CLI 适配器 |
-| M2 Kernel：运行引擎与恢复 | Temporal（Session、Task 工作流） | 约 90% | 重放、版本分支、golden 历史；故障注入套件；Claim-Check | 夜间端到端时有偶发失败（回放、重复事件、Postgres 下的版本固定） |
+| M2 Kernel：运行引擎与恢复 | Temporal（Session、Task 工作流） | 约 90% | 重放、版本分支、golden 历史；故障注入套件；Claim-Check | 夜间端到端的偶发失败（回放、重复事件、Postgres 下的版本固定）已查明并修复（2026-10-25；Postgres 下是各套进程共用一个业务库） |
 | M2 Kernel：租户与授权 | 租户策略、effect 上限、Policy Engine、gate | 约 55% | effect 上限、Hook、不可逆写前的审批、幂等键；RLS；越权测试 | 没有“逐步收窄到冻结计划”的执行规格；没有委托主体（草稿 C5）；审批不绑输入摘要、没有多人与策略审批（C3、C4） |
 | M2 Kernel：资源 | 预算检查、Model Gateway 计量 | 约 40% | Task 预算、按租户计量、限流 | 没有预留与结算；没有配额与公平队列；子任务没有预算份额 |
 | M2·1 Workspace Manager | 无（ToolDriver 只认工作区目录） | 约 10% | `AR_TOOL_WORKSPACE_ROOT/<租户>/<workspace>` 下的读写工具 | 没有 revision、快照、分支、提交与 Apply；没有 Task 级的版本固定（C2） |

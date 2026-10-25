@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from e2e_support.business_db import BusinessDb
 from e2e_support.faults import ENV_FAULT_LEDGER_DIR, ENV_FAULT_PLAN, FaultPlan
 from e2e_support.ledger import ExternalLedger
 
@@ -125,6 +126,8 @@ class Stack:
     # 重启 task-service 时附加的环境变量（例如更低的限流上限）。
     task_service_env: dict[str, str] = field(default_factory=dict)
     http_port: int = 0
+    # 这套进程自己的业务库：SQLite 在 root/data 下；设了 AR_RELATIONAL_DSN 时是同一个库里自己的 schema。
+    business_db: BusinessDb = field(default_factory=BusinessDb, repr=False)
 
     @property
     def call_log(self) -> Path:
@@ -212,6 +215,10 @@ class Stack:
         )
         return proc.stdout.strip()
 
+    def cli_env(self, extra: dict[str, str]) -> dict[str, str]:
+        """task-service 子命令（registry-seed 等）的环境：与这套进程的 serve 用同一个业务库。"""
+        return {**os.environ, "AR_DATA_DIR": str(self.root / "data"), **self.business_db.env(), **extra}
+
     # --- 进程 ---
 
     def start(self) -> None:
@@ -265,6 +272,7 @@ class Stack:
             "AR_PUBLIC_BASE_URL": self.http_url,
             "AR_DEV_SIGNING_KEY": self.signing_key,
             "AR_DATA_DIR": str(self.root / "data"),
+            **self.business_db.env(),
             "AR_PINNED_VERSIONS_FILE": str(self.pins_file),
             "AR_SESSION_READ_ONLY_LIMIT": str(READ_ONLY_LIMIT),
             "AR_SESSION_CAN_TASKS": str(CONTINUE_AS_NEW_TASKS),
@@ -353,6 +361,7 @@ class Stack:
         for name in ("worker", "task-service", "temporal"):
             if name in self.processes:
                 self.processes[name].stop()
+        self.business_db.drop()
 
     def diagnostics(self) -> str:
         return "\n".join(f"===== {p.name} =====\n{tail(p.log)}" for p in self.processes.values())

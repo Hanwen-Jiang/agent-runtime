@@ -64,7 +64,8 @@ jobs:
           "$bin/psql" -h 127.0.0.1 -p 55432 -U postgres -d postgres -X -v ON_ERROR_STOP=1 \
             -c "CREATE ROLE agentruntime_app LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE" \
             -c "CREATE DATABASE e2e OWNER agentruntime_app"
-          AR_RELATIONAL_DSN="postgres://agentruntime_app@127.0.0.1:55432/e2e?sslmode=disable" \
+          # 每套进程在 e2e 库里用自己的 schema，用 psql 建与删（tests/e2e/e2e_support/business_db.py）。
+          AR_RELATIONAL_DSN="postgres://agentruntime_app@127.0.0.1:55432/e2e?sslmode=disable" AR_POSTGRES_BIN="$bin" \
             uv run --package agentruntime-e2e-tests pytest -ra -m "not faults" --junitxml="$RUNNER_TEMP/e2e-postgres-junit.xml"
 
       - name: 上传测试报告

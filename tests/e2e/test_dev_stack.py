@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import urllib.request
 from collections.abc import Iterator
@@ -139,15 +138,19 @@ def test_the_dev_seed_loads_into_the_registry_idempotently(tmp_path: Path) -> No
     stack = Stack(root=tmp_path)
     stack._build_task_service()
     assert stack.task_service_bin is not None
-    env = {**os.environ, "AR_DATA_DIR": str(tmp_path / "data"), "AR_SCHEMAS_DIR": str(SCHEMAS_DIR)}
-    for _ in range(2):
-        proc = subprocess.run(
-            [str(stack.task_service_bin), "registry-seed", str(SEED_FILE)],
-            env=env,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=120,
-        )
-        assert proc.returncode == 0, f"registry-seed 失败：\n{proc.stderr}"
+    try:
+        # 种进这套 Stack 自己的业务库：Postgres 时不能种进别的用例共用的库（e2e_support/business_db.py）。
+        env = stack.cli_env({"AR_SCHEMAS_DIR": str(SCHEMAS_DIR)})
+        for _ in range(2):
+            proc = subprocess.run(
+                [str(stack.task_service_bin), "registry-seed", str(SEED_FILE)],
+                env=env,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=120,
+            )
+            assert proc.returncode == 0, f"registry-seed 失败：\n{proc.stderr}"
+    finally:
+        stack.stop()
