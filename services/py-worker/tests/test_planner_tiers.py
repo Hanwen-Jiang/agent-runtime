@@ -47,6 +47,15 @@ async def test_the_prompt_lists_the_available_tiers() -> None:
     assert "不是 Tier 名" in system, "说明 Triage 的级别（fast、light…）不是 Tier 名"
 
 
+async def test_the_rules_explain_the_model_preference() -> None:
+    # coding-web 把用户选的模型倾向放进 inputs.constraints.model_preference，进 Task State 的约束。
+    gateway = FakeGateway(triage=RISKY_FULL, plan=[plan_answer()])
+    await Planner(gateway).plan(request(ctx=with_tiers(), task_state={"goal": "修测试", "constraints": {"model_preference": "economy"}}))
+    [call] = gateway.calls("plan")
+    assert "model_preference" in call.generation.messages[0].text
+    assert '"model_preference":"economy"' in prompt_text(call), "Task State（含约束）原样给 Planner"
+
+
 async def test_without_known_tiers_the_prompt_says_not_to_write_one() -> None:
     gateway = FakeGateway(triage=RISKY_FULL, plan=[plan_answer()])
     await plan(gateway, context())

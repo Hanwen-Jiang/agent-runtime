@@ -32,7 +32,7 @@ _PLANNER_RULES = """你是 Agent Runtime 的 Planner，在 Round 的开头决定
 6. replan 只重做剩余部分：上一轮 Reviewer 保留的 Node 不要再安排，直接引用它们已有的结果。
 7. 不要写 idempotency_key，也不必纠结 Stage 的 seq 与 Task Plan 的 triage.level：这三样由系统填写。
 8. Task Plan 写清 horizon（full_dag、per_stage 或 explore）、上下文策略与预算；规划成本控制在 Task 预计成本的约 5% 以内。
-9. Tier（model 节点的 tier 与 Task Plan 的 tiers）只能用 Node Catalog 列出的，写成 <模型档>@<推理强度>；拿不准就不写，由 Model Gateway 按 role 选默认 Tier。Triage 的级别（fast、light、full、replan）不是 Tier 名。"""
+9. Tier（model 节点的 tier 与 Task Plan 的 tiers）只能用 Node Catalog 列出的，写成 <模型档>@<推理强度>；拿不准就不写，由 Model Gateway 按 role 选默认 Tier。Triage 的级别（fast、light、full、replan）不是 Tier 名。Task State 的 constraints.model_preference 是用户的模型倾向：economy 尽量用便宜的 Tier，best 可以用最强的，balanced 或没给时按任务难度选。"""
 
 _CLASSIFIER_RULES = """你给 Agent Runtime 的 Planner 做分诊。读用户这条消息（以及当前 Task 的摘要），只输出一个 JSON 对象：
 - kind：follow_up（续改上一个产出）、constraint（给运行中的 Task 加约束）、new_task（新任务）、question（简单问答）、chitchat（闲聊）、system_question（关于系统本身的问题）。

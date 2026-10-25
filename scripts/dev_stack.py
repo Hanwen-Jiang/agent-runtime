@@ -319,7 +319,11 @@ class Stack:
             "CODING_TENANT_POLICIES_FILE": str(self.policies_file),
             "CODING_PUBLIC_URL": f"http://{self.address('coding')}",
             "AR_DEV_SIGNING_KEY": self.signing_key(),
+            # 只用来在界面上说明 shell_run 在哪里跑；镜像与 Worker 的默认 AR_TOOL_SHELL_IMAGE 相同。
+            "CODING_SANDBOX": "docker" if sandbox else "host",
         }
+        if sandbox:
+            coding["CODING_SANDBOX_IMAGE"] = os.environ.get("AR_TOOL_SHELL_IMAGE") or "python:3.13-slim"
         if DEFAULT_GITHUB_ENV.exists():
             github = read_provider_env(DEFAULT_GITHUB_ENV)
             coding.update({k: github[k] for k in GITHUB_ENV_NAMES if github.get(k)})

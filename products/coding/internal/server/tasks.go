@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -12,37 +13,53 @@ import (
 
 const maxMessageChars = 20000
 
-// refresh 向 Runtime 查询还没结束的任务，更新缓存的状态；查不到的保持原样。
+// maxBackfill 是一次刷新最多补查几个“已结束、还没取过计量”的任务（之前版本留下的记录）。
+const maxBackfill = 8
+
+// refresh 向 Runtime 查询还没结束的任务（以及少量还没取过计量的已结束任务），更新缓存的状态与计量；查不到的保持原样。
 func (s *Server) refresh(r *http.Request, id identity, project string) []TaskRecord {
 	tasks, err := s.store.Tasks(id.TenantID, project)
 	if err != nil {
 		return nil
 	}
-	changed := map[string]string{}
+	changed := map[string]TaskRecord{}
+	backfill := 0
 	for _, t := range tasks {
-		if terminal(t.Status) {
+		if t.Settled {
 			continue
+		}
+		if terminal(t.Status) {
+			if backfill >= maxBackfill {
+				continue
+			}
+			backfill++
 		}
 		var q queryResponse
 		ctx, cancel := ctxTimeout(r, 10*time.Second)
 		err := s.api.Call(ctx, id.token, "QueryTask", map[string]string{"taskId": t.ID}, &q)
 		cancel()
-		if err == nil && q.Status != "" && q.Status != t.Status {
-			changed[t.ID] = q.Status
+		switch {
+		case err == nil && q.Status != "":
+			if next := withQuery(t, q); !sameRecord(next, t) {
+				changed[t.ID] = next
+			}
+		case notFound(err) && terminal(t.Status):
+			t.Settled = true
+			changed[t.ID] = t
 		}
 	}
 	if len(changed) > 0 {
 		_ = s.store.UpdateTasks(id.TenantID, project, func(ts []TaskRecord) []TaskRecord {
 			for i := range ts {
-				if st, ok := changed[ts[i].ID]; ok {
-					ts[i].Status = st
+				if next, ok := changed[ts[i].ID]; ok {
+					ts[i] = next
 				}
 			}
 			return ts
 		})
 		for i := range tasks {
-			if st, ok := changed[tasks[i].ID]; ok {
-				tasks[i].Status = st
+			if next, ok := changed[tasks[i].ID]; ok {
+				tasks[i] = next
 			}
 		}
 	}
@@ -74,6 +91,8 @@ func (s *Server) handleSubmitTask(w http.ResponseWriter, r *http.Request, id ide
 	}
 	var req struct {
 		Message string `json:"message"`
+		Sandbox string `json:"sandbox"`
+		Model   string `json:"model"`
 	}
 	if !readJSON(w, r, &req) {
 		return
@@ -83,6 +102,16 @@ func (s *Server) handleSubmitTask(w http.ResponseWriter, r *http.Request, id ide
 		writeError(w, http.StatusBadRequest, "任务描述不能为空，也不能超过 20000 个字")
 		return
 	}
+	sandbox, ok := pickOption(req.Sandbox, sandboxLevels, defaultSandbox)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "沙箱等级只能是 read 或 write_reversible")
+		return
+	}
+	model, ok := pickOption(req.Model, modelPreferences, defaultModel)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "模型倾向只能是 economy、balanced 或 best")
+		return
+	}
 	dir := s.workspace(id.TenantID, p.ID)
 	base := s.git.Head(r.Context(), dir)
 	submit := map[string]any{
@@ -90,9 +119,19 @@ func (s *Server) handleSubmitTask(w http.ResponseWriter, r *http.Request, id ide
 		"clientRequestId": randomHex(16),
 		"message":         msg,
 		"sessionAccess":   "SESSION_ACCESS_READ_WRITE",
+		"inputs":          map[string]any{"constraints": map[string]any{"model_preference": model}},
 	}
 	if p.SessionID != "" {
 		submit["sessionId"] = p.SessionID
+	}
+	// 改写租户策略与提交在同一把租户锁里：task-service 提交时读策略文件，把上限固定进这个 Task。
+	unlock := s.lockTenant(id.TenantID)
+	defer unlock()
+	if s.cfg.PoliciesFile == "" {
+		sandbox = "" // 这个部署定不了沙箱等级，以 task-service 的租户策略为准
+	} else if err := s.writeTenantCeiling(id.TenantID, sandbox, false); err != nil {
+		writeError(w, http.StatusInternalServerError, "写租户策略失败："+err.Error())
+		return
 	}
 	var resp submitResponse
 	ctx, cancel := ctxTimeout(r, 30*time.Second)
@@ -111,7 +150,7 @@ func (s *Server) handleSubmitTask(w http.ResponseWriter, r *http.Request, id ide
 			return ps, nil
 		})
 	}
-	record := TaskRecord{ID: resp.TaskID, Message: msg, CreatedAt: time.Now().UTC(), CreatedBy: id.UserID, BaseCommit: base, Status: "TASK_STATUS_QUEUED"}
+	record := TaskRecord{ID: resp.TaskID, Message: msg, CreatedAt: time.Now().UTC(), CreatedBy: id.UserID, BaseCommit: base, Status: "TASK_STATUS_QUEUED", Sandbox: sandbox, Model: model}
 	if err := s.store.UpdateTasks(id.TenantID, p.ID, func(ts []TaskRecord) []TaskRecord {
 		if slices.ContainsFunc(ts, func(t TaskRecord) bool { return t.ID == record.ID }) {
 			return ts
@@ -148,24 +187,28 @@ func (s *Server) handleQueryTask(w http.ResponseWriter, r *http.Request, id iden
 	if !ok {
 		return
 	}
-	var q map[string]any
+	var raw json.RawMessage
 	ctx, cancel := ctxTimeout(r, 15*time.Second)
 	defer cancel()
-	if err := s.api.Call(ctx, id.token, "QueryTask", map[string]string{"taskId": t.ID}, &q); err != nil {
+	if err := s.api.Call(ctx, id.token, "QueryTask", map[string]string{"taskId": t.ID}, &raw); err != nil {
 		writeAPIError(w, err)
 		return
 	}
-	if st, _ := q["status"].(string); st != "" && st != t.Status {
-		_ = s.store.UpdateTasks(id.TenantID, p.ID, func(ts []TaskRecord) []TaskRecord {
-			for i := range ts {
-				if ts[i].ID == t.ID {
-					ts[i].Status = st
+	var q queryResponse
+	if err := json.Unmarshal(raw, &q); err == nil && q.Status != "" {
+		if next := withQuery(t, q); !sameRecord(next, t) {
+			_ = s.store.UpdateTasks(id.TenantID, p.ID, func(ts []TaskRecord) []TaskRecord {
+				for i := range ts {
+					if ts[i].ID == t.ID {
+						ts[i] = next
+					}
 				}
-			}
-			return ts
-		})
+				return ts
+			})
+			t = next
+		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"task": t, "runtime": q})
+	writeJSON(w, http.StatusOK, map[string]any{"task": t, "runtime": raw})
 }
 
 // handleEvents 代理 Task 的 SSE 流：浏览器的 EventSource 带不了 Authorization 头，由这里补上令牌。

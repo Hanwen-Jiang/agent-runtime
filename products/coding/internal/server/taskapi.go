@@ -88,5 +88,22 @@ type queryResponse struct {
 	Status      string          `json:"status"`
 	RoundSeq    int             `json:"roundSeq"`
 	LastEventID string          `json:"lastEventId"`
+	TaskState   json.RawMessage `json:"taskState,omitempty"`
 	Usage       json.RawMessage `json:"usage,omitempty"`
+}
+
+// Healthy 看 task-service 的 /healthz 通不通（右栏“环境”用）。
+func (a *TaskAPI) Healthy(ctx context.Context) bool {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	r, err := http.NewRequestWithContext(ctx, http.MethodGet, a.base+"/healthz", nil)
+	if err != nil {
+		return false
+	}
+	res, err := a.client.Do(r)
+	if err != nil {
+		return false
+	}
+	_ = res.Body.Close()
+	return res.StatusCode == http.StatusOK
 }

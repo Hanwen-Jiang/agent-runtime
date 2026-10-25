@@ -37,6 +37,15 @@ type TaskRecord struct {
 	CreatedBy  string    `json:"created_by"`
 	BaseCommit string    `json:"base_commit,omitempty"`
 	Status     string    `json:"status"`
+	// 提交时选的沙箱等级（effect 上限：read 或 write_reversible）与模型倾向（economy、balanced、best）。
+	Sandbox string `json:"sandbox,omitempty"`
+	Model   string `json:"model,omitempty"`
+	// 从 Task State 读到的花费（各 Round 的 cost_usd 之和）与轮数；Usage 是 QueryTask 的 usage（Runtime 填了才有）。
+	CostUSD float64         `json:"cost_usd,omitempty"`
+	Rounds  int             `json:"rounds,omitempty"`
+	Usage   json.RawMessage `json:"usage,omitempty"`
+	// Settled 表示任务已结束、上面的计量已经取过，之后不再查 Runtime。
+	Settled bool `json:"settled,omitempty"`
 }
 
 func terminal(status string) bool {

@@ -18,6 +18,8 @@
 //	CODING_GITHUB_URL           GitHub 网页地址，默认 https://github.com（GitHub Enterprise 时改）
 //	CODING_GITHUB_API_URL       GitHub API 地址，默认 https://api.github.com
 //	CODING_GITHUB_SCOPES        OAuth 的 scope，默认 "repo read:user"
+//	CODING_SANDBOX              Worker 的 shell_run 在哪里跑（docker 或 host），只用来在界面上说明环境
+//	CODING_SANDBOX_IMAGE        docker 时 shell_run 用的镜像（与 Worker 的 AR_TOOL_SHELL_IMAGE 相同）
 package main
 
 import (
@@ -50,6 +52,9 @@ func main() {
 		GitHubURL:          os.Getenv("CODING_GITHUB_URL"),
 		GitHubAPI:          os.Getenv("CODING_GITHUB_API_URL"),
 		GitHubScopes:       os.Getenv("CODING_GITHUB_SCOPES"),
+
+		Sandbox:      os.Getenv("CODING_SANDBOX"),
+		SandboxImage: os.Getenv("CODING_SANDBOX_IMAGE"),
 	}
 	srv, err := server.New(cfg)
 	if err != nil {
