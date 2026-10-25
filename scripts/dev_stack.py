@@ -22,7 +22,8 @@ Model Gateway、Python Worker。人手动演示与 tests/e2e/live 的真模型�
   Worker 用跑这个脚本的 Python（--python 可以换），PATH 前面加上它所在的目录，shell_run 里的 python 就是同一个解释器。
 - 输出：up、status 加 --json 时最后一行是 JSON（地址、pid、日志位置），不含任何密钥。
 - --coding：再编译并拉起 coding agent 的网页服务 coding-web（products/coding，docs/plan/coding-agent-mvp.md），开发登录打开，
-  与 Worker 共用工作区；租户首次登录时它把租户的 effect 上限写成 write_reversible。--sandbox docker：Worker 的 shell_run
+  与 Worker 共用工作区；租户首次登录时它把租户的 effect 上限写成 write_reversible。端口默认固定 8095（--coding-port）；
+  ~/.agentruntime/github-oauth.env 在时打开 GitHub 登录（OAuth 回调 http://127.0.0.1:<端口>/api/auth/github/callback）。--sandbox docker：Worker 的 shell_run
   在一次性 Docker 容器里跑（不联网、限资源），要 PATH 上有 docker。
 """
 
@@ -45,6 +46,11 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ROOT = Path.home() / ".agentruntime" / "dev-stack"
 DEFAULT_PROVIDER_ENV = Path.home() / ".agentruntime" / "model-provider.env"
+# coding-web 的 GitHub OAuth App（CODING_GITHUB_CLIENT_ID、CODING_GITHUB_CLIENT_SECRET，格式同上）；文件在才打开 GitHub 登录。
+DEFAULT_GITHUB_ENV = Path.home() / ".agentruntime" / "github-oauth.env"
+GITHUB_ENV_NAMES = ("CODING_GITHUB_CLIENT_ID", "CODING_GITHUB_CLIENT_SECRET", "CODING_GITHUB_URL", "CODING_GITHUB_API_URL", "CODING_GITHUB_SCOPES")
+# OAuth App 的回调地址要固定，coding-web 默认用这个端口。
+DEFAULT_CODING_PORT = 8095
 SEED_FILE = REPO_ROOT / "deploy" / "dev" / "registry-seed.json"
 PROFILES = {"openai_compat": REPO_ROOT / "deploy" / "dev" / "model-profiles.json", "mock": REPO_ROOT / "deploy" / "dev" / "mock-model-profiles.json"}
 COMPONENTS = ("temporal", "task-service", "model-gateway", "worker", "coding")
@@ -248,7 +254,7 @@ class Stack:
                 "coding": bool(getattr(args, "coding", False)),
                 "sandbox": getattr(args, "sandbox", "host") or "host",
             },
-            "ports": {"temporal": free_port(), "temporal_ui": free_port(), "http": free_port(), "registry": free_port(), "gateway": free_port(), "coding": free_port()},
+            "ports": {"temporal": free_port(), "temporal_ui": free_port(), "http": free_port(), "registry": free_port(), "gateway": free_port(), "coding": int(getattr(args, "coding_port", 0) or DEFAULT_CODING_PORT)},
             "components": {},
         }
 
@@ -311,8 +317,12 @@ class Stack:
             "CODING_DATA_DIR": str(self.root / "coding"),
             "CODING_DEV_LOGIN": "1",
             "CODING_TENANT_POLICIES_FILE": str(self.policies_file),
+            "CODING_PUBLIC_URL": f"http://{self.address('coding')}",
             "AR_DEV_SIGNING_KEY": self.signing_key(),
         }
+        if DEFAULT_GITHUB_ENV.exists():
+            github = read_provider_env(DEFAULT_GITHUB_ENV)
+            coding.update({k: github[k] for k in GITHUB_ENV_NAMES if github.get(k)})
         return {
             "temporal": {},
             "task-service": {
@@ -571,6 +581,8 @@ def cmd_env(args: argparse.Namespace) -> int:
     for env in envs.values():
         if "AR_DEV_SIGNING_KEY" in env:
             env["AR_DEV_SIGNING_KEY"] = "***（在 shared/signing.key）"
+        if "CODING_GITHUB_CLIENT_SECRET" in env:
+            env["CODING_GITHUB_CLIENT_SECRET"] = f"***（在 {DEFAULT_GITHUB_ENV}）"
     if args.json:
         print(json.dumps({"root": str(stack.root), "components": envs}, ensure_ascii=False))
     else:
@@ -596,6 +608,7 @@ def parser() -> argparse.ArgumentParser:
         sp.add_argument("--python", default="", help="Worker 用的 Python（默认跑这个脚本的）")
         sp.add_argument("--coding", action="store_true", help="再拉起 coding agent 的网页服务 coding-web（products/coding）")
         sp.add_argument("--sandbox", choices=("host", "docker"), default="host", help="Worker 的 shell_run 在宿主机（host）还是一次性 Docker 容器（docker）里跑")
+        sp.add_argument("--coding-port", type=int, default=DEFAULT_CODING_PORT, help=f"coding-web 的端口（默认 {DEFAULT_CODING_PORT}；GitHub OAuth 的回调地址要固定）")
         sp.add_argument("--json", action="store_true")
 
     up = sub.add_parser("up", help="编译、种 Registry、拉起全部组件")
