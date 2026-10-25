@@ -291,6 +291,8 @@ textarea.field { height: auto; padding: 8px 11px; resize: vertical; line-height:
 .pv-badge.xs { width: 15px; height: 15px; border-radius: 4px; font-size: 8px; }
 .pv-badge.md { width: 26px; height: 26px; border-radius: 7px; font-size: 12px; }
 .icon.md { width: 26px; height: 26px; }
+/* 品牌标志：路径自带品牌色，不描边 */
+.icon.brand { stroke: none; }
 
 /* 账号与平台 */
 .conn-list { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; }

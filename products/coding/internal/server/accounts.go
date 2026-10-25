@@ -9,6 +9,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"errors"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -379,6 +380,8 @@ func (s *Server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	p := s.providers[r.PathValue("provider")]
 	mode := "login"
 	fail := func(msg string) {
+		// 记下失败原因（平台给的错误说明，不含令牌），排查回调用。
+		log.Printf("OAuth %s（%s）失败：%s", r.PathValue("provider"), mode, msg)
 		target := "/#/login?error="
 		if mode == "link" {
 			target = "/#/?error="
@@ -480,9 +483,11 @@ func (s *Server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if mode == "link" {
+		log.Printf("OAuth %s（link）成功：%s 连到 %s/%s", p.id, u.Login, ref.Tenant, ref.User)
 		http.Redirect(w, r, "/#/?linked="+p.id, http.StatusFound)
 		return
 	}
+	log.Printf("OAuth %s（login）成功：%s 登录为 %s/%s", p.id, u.Login, ref.Tenant, ref.User)
 	s.setSession(w, ref.Tenant, ref.User)
 	http.Redirect(w, r, "/", http.StatusFound)
 }
