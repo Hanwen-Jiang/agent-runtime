@@ -112,7 +112,15 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request, id 
 			if req.Branch != "" {
 				args = append(args, "--branch", req.Branch)
 			}
-			_, err := s.git.Run(ctx, filepath.Dir(dir), append(args, "--", req.GitURL, dir)...)
+			args = append(args, "--", req.GitURL, dir)
+			if repo, ok := s.gh.repoOf(req.GitURL); ok {
+				p.GitHubRepo = repo
+				if _, token, has := s.account(id); has { // 私有仓库要令牌；令牌只在这次 git 进程的环境变量里
+					_, err := s.git.RunWithToken(ctx, filepath.Dir(dir), s.gh.Web+"/", token, args...)
+					return err
+				}
+			}
+			_, err := s.git.Run(ctx, filepath.Dir(dir), args...)
 			return err
 		}
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -137,6 +145,7 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request, id 
 		writeError(w, http.StatusBadRequest, "建项目失败："+err.Error())
 		return
 	}
+	p.BaseBranch = s.git.Branch(ctx, dir)
 	if err := s.store.UpdateProjects(id.TenantID, func(ps []Project) ([]Project, error) { return append(ps, p), nil }); err != nil {
 		_ = os.RemoveAll(dir)
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -333,7 +342,7 @@ func (s *Server) handleChanges(w http.ResponseWriter, r *http.Request, id identi
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"head": s.git.Head(r.Context(), dir), "files": files, "diff": diff, "truncated": truncated})
+	writeJSON(w, http.StatusOK, map[string]any{"head": s.git.Head(r.Context(), dir), "branch": s.git.Branch(r.Context(), dir), "files": files, "diff": diff, "truncated": truncated})
 }
 
 func (s *Server) handlePatch(w http.ResponseWriter, r *http.Request, id identity) {

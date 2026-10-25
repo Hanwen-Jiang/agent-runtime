@@ -42,6 +42,13 @@ type Config struct {
 	PoliciesFile  string
 	Git           string
 	SecureCookie  bool
+	// GitHub OAuth App：Client ID 与 Secret 都给了才打开 GitHub 登录与推送；PublicURL 用来拼回调地址。
+	GitHubClientID     string
+	GitHubClientSecret string
+	GitHubURL          string
+	GitHubAPI          string
+	GitHubScopes       string
+	PublicURL          string
 }
 
 // Server 是 coding-web。
@@ -51,6 +58,7 @@ type Server struct {
 	store   *Store
 	api     *TaskAPI
 	git     Git
+	gh      *GitHub
 }
 
 // New 校验配置并构造 Server。
@@ -77,12 +85,17 @@ func New(cfg Config) (*Server, error) {
 	if err := os.MkdirAll(hooks, 0o755); err != nil {
 		return nil, err
 	}
+	gh := newGitHub(cfg)
+	if gh != nil && cfg.PublicURL == "" {
+		return nil, errors.New("打开 GitHub 登录要给 CODING_PUBLIC_URL（拼 OAuth 回调地址）")
+	}
 	return &Server{
 		cfg:     cfg,
 		ingress: localingress.New(localingress.Options{SigningKey: cfg.SigningKey, Limit: 1 << 30, Window: time.Minute}),
 		store:   NewStore(cfg.DataDir),
 		api:     NewTaskAPI(strings.TrimRight(cfg.TaskAPI, "/")),
 		git:     Git{Bin: cfg.Git, HooksDir: hooks},
+		gh:      gh,
 	}, nil
 }
 
@@ -94,6 +107,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/login", s.handleLogin)
 	mux.HandleFunc("POST /api/logout", s.handleLogout)
 	mux.HandleFunc("GET /api/me", s.authed(s.handleMe))
+	mux.HandleFunc("GET /api/auth/github/login", s.handleGitHubLogin)
+	mux.HandleFunc("GET /api/auth/github/callback", s.handleGitHubCallback)
+	mux.HandleFunc("GET /api/github/repos", s.authed(s.handleGitHubRepos))
 
 	mux.HandleFunc("GET /api/samples", s.authed(s.handleSamples))
 	mux.HandleFunc("GET /api/projects", s.authed(s.handleListProjects))
@@ -106,6 +122,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/projects/{project}/patch", s.authed(s.handlePatch))
 	mux.HandleFunc("POST /api/projects/{project}/commit", s.authed(s.handleCommit))
 	mux.HandleFunc("POST /api/projects/{project}/discard", s.authed(s.handleDiscard))
+	mux.HandleFunc("POST /api/projects/{project}/publish", s.authed(s.handlePublish))
+	mux.HandleFunc("POST /api/projects/{project}/reset-branch", s.authed(s.handleResetBranch))
 
 	mux.HandleFunc("GET /api/projects/{project}/tasks", s.authed(s.handleListTasks))
 	mux.HandleFunc("POST /api/projects/{project}/tasks", s.authed(s.handleSubmitTask))
@@ -124,7 +142,7 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("Referrer-Policy", "same-origin")
-		h.Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'")
+		h.Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data: https://avatars.githubusercontent.com; style-src 'self'; script-src 'self'; connect-src 'self'")
 		next.ServeHTTP(w, r)
 	})
 }
@@ -160,7 +178,16 @@ func (s *Server) authed(h authedHandler) http.HandlerFunc {
 }
 
 func (s *Server) handleConfig(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"dev_login": s.cfg.DevLogin})
+	writeJSON(w, http.StatusOK, map[string]any{"dev_login": s.cfg.DevLogin, "github_login": s.gh != nil})
+}
+
+// setSession 签发 Runtime 令牌，放进 HttpOnly Cookie。
+func (s *Server) setSession(w http.ResponseWriter, tenant, user string) {
+	token := s.ingress.IssueToken(tenant, user, tokenTTL)
+	http.SetCookie(w, &http.Cookie{
+		Name: cookieName, Value: token, Path: "/", HttpOnly: true, Secure: s.cfg.SecureCookie,
+		SameSite: http.SameSiteLaxMode, MaxAge: int(tokenTTL.Seconds()),
+	})
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -184,15 +211,15 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "租户与用户名只能用小写字母、数字、- 与 _，以字母或数字开头")
 		return
 	}
+	if strings.HasPrefix(req.Tenant, tenantPrefix) {
+		writeError(w, http.StatusBadRequest, "gh- 开头的租户留给 GitHub 登录")
+		return
+	}
 	if err := s.ensureTenantPolicy(req.Tenant); err != nil {
 		writeError(w, http.StatusInternalServerError, "写租户策略失败："+err.Error())
 		return
 	}
-	token := s.ingress.IssueToken(req.Tenant, req.User, tokenTTL)
-	http.SetCookie(w, &http.Cookie{
-		Name: cookieName, Value: token, Path: "/", HttpOnly: true, Secure: s.cfg.SecureCookie,
-		SameSite: http.SameSiteLaxMode, MaxAge: int(tokenTTL.Seconds()),
-	})
+	s.setSession(w, req.Tenant, req.User)
 	writeJSON(w, http.StatusOK, map[string]string{"tenant": req.Tenant, "user": req.User})
 }
 
@@ -206,7 +233,11 @@ func (s *Server) clearCookie(w http.ResponseWriter) {
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, _ *http.Request, id identity) {
-	writeJSON(w, http.StatusOK, map[string]any{"tenant": id.TenantID, "user": id.UserID, "expires_at": id.ExpiresAt})
+	me := map[string]any{"tenant": id.TenantID, "user": id.UserID, "expires_at": id.ExpiresAt}
+	if a, _, ok := s.account(id); ok {
+		me["github"] = map[string]any{"login": a.Login, "name": a.Name, "avatar_url": a.AvatarURL, "scopes": a.Scopes}
+	}
+	writeJSON(w, http.StatusOK, me)
 }
 
 // ensureTenantPolicy 在开发租户策略文件里给新租户 write_reversible 的 effect 上限（改代码、跑测试要用）；

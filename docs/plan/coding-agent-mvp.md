@@ -65,6 +65,14 @@ task-service（Task API、Session 与 Task 工作流）→ Worker（Planner、to
 - 沙箱：一次性容器、`--network none`、CPU、内存与进程数上限，只挂载本项目的工作区。
 - Git 克隆只接受 https 地址，禁用 hooks；不把凭据写进地址。
 
-## 6. 第二版（v0.3）
+## 6. 第二版（v0.3）：GitHub 登录与推送
 
-GitHub 登录与 GitHub App（推送到 `agent/*` 分支、开草稿 PR）；token 与工具状态的流式输出（需要 Runtime 的 R8：事件落库与增量事件）；按 CLAUDE.md 补齐验收测试；每个任务一个分支与 PatchSet；配额与计费；编辑器插件。
+2026-10-25 用户定：第二版先做 GitHub 登录与推送。
+
+- **登录**：GitHub OAuth App 替换开发登录（开发登录只在 `CODING_DEV_LOGIN=1` 时留着，供离线测试）。租户是 `gh-<GitHub 登录名>`（个人就是只有一个成员的租户，同 Aster Code 云端版），用户是登录名；开发登录不许用 `gh-` 开头的租户名，免得冒充。
+- **令牌**：OAuth 令牌只存在服务端，按租户、用户加密（AES-256-GCM，密钥由签名密钥派生），不进浏览器、日志、Git 配置与地址。Git 操作用环境变量传 `http.extraheader`，命令行参数里也没有令牌。
+- **项目**：可以从“我的仓库”里选；私有仓库用令牌克隆。记下 `owner/repo` 与基线分支。
+- **推送与 PR**：由人点按钮触发（模型提议、人来应用）。没有分支时新建 `agent/<描述>-<随机>`，提交未提交的改动，只推这个分支（引用由服务端拼，不能推到别的分支，不强推），再用 GitHub API 开草稿 PR；之后再推就更新同一个 PR。“回到基线分支”拉取最新的基线、清掉分支与 PR 记录。
+- **回调地址**：OAuth App 的回调地址要固定，`dev_stack` 给 coding-web 固定端口 8095，回调是 `http://127.0.0.1:8095/api/auth/github/callback`；Client ID 与 Secret 放在 `~/.agentruntime/github-oauth.env`（仓库外，不提交）。
+
+之后：token 与工具状态的流式输出（需要 Runtime 的 R8）；按 CLAUDE.md 补齐验收测试；每个任务一个分支与 PatchSet；GitHub App（按仓库授权、短期令牌）替换 OAuth App；配额与计费；编辑器插件。

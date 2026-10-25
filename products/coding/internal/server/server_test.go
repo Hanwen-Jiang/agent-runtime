@@ -68,6 +68,11 @@ func (c *client) do(method, path string, body any) (int, map[string]any, string)
 }
 
 func newServer(t *testing.T) (*httptest.Server, *fakeTaskAPI, Config) {
+	ts, fake, cfg, _ := newServerWith(t, nil)
+	return ts, fake, cfg
+}
+
+func newServerWith(t *testing.T, edit func(*Config)) (*httptest.Server, *fakeTaskAPI, Config, *Server) {
 	t.Helper()
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("PATH 上没有 git")
@@ -80,13 +85,16 @@ func newServer(t *testing.T) (*httptest.Server, *fakeTaskAPI, Config) {
 		TaskAPI: api.URL, WorkspaceRoot: filepath.Join(dir, "ws"), DataDir: filepath.Join(dir, "data"),
 		DevLogin: true, SigningKey: []byte("test-key"), PoliciesFile: filepath.Join(dir, "policies.json"),
 	}
+	if edit != nil {
+		edit(&cfg)
+	}
 	srv, err := New(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
-	return ts, fake, cfg
+	return ts, fake, cfg, srv
 }
 
 func TestLoginProjectChangesCommitAndTask(t *testing.T) {

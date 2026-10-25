@@ -18,6 +18,15 @@ type Project struct {
 	CreatedAt time.Time `json:"created_at"`
 	CreatedBy string    `json:"created_by"`
 	SessionID string    `json:"session_id,omitempty"`
+	// GitHub 上的仓库（owner/repo）；只有这样的项目能推送、开 PR。
+	GitHubRepo string `json:"github_repo,omitempty"`
+	// 克隆时的分支（PR 的目标分支）；Agent 的改动推到 Branch（agent/…），PR 记在 PRURL、PRNumber。
+	BaseBranch string `json:"base_branch,omitempty"`
+	Branch     string `json:"branch,omitempty"`
+	PRURL      string `json:"pr_url,omitempty"`
+	PRNumber   int    `json:"pr_number,omitempty"`
+	// 上次推送到 Branch 的提交；没有新提交也没有未提交的改动时不再推。
+	PushedHead string `json:"pushed_head,omitempty"`
 }
 
 // TaskRecord 是在项目里下过的一个任务（状态以 Runtime 为准，这里只缓存最后一次看到的）。
@@ -46,7 +55,9 @@ type Store struct {
 
 func NewStore(dir string) *Store { return &Store{dir: dir} }
 
-func (s *Store) projectsFile(tenant string) string { return filepath.Join(s.dir, tenant, "projects.json") }
+func (s *Store) projectsFile(tenant string) string {
+	return filepath.Join(s.dir, tenant, "projects.json")
+}
 
 func (s *Store) tasksFile(tenant, project string) string {
 	return filepath.Join(s.dir, tenant, "tasks-"+project+".json")

@@ -29,7 +29,9 @@ type APIError struct {
 	Message string `json:"message"`
 }
 
-func (e *APIError) Error() string { return fmt.Sprintf("Task API %d %s：%s", e.Status, e.Code, e.Message) }
+func (e *APIError) Error() string {
+	return fmt.Sprintf("Task API %d %s：%s", e.Status, e.Code, e.Message)
+}
 
 func (a *TaskAPI) Call(ctx context.Context, token, method string, req, resp any) error {
 	body, err := json.Marshal(req)

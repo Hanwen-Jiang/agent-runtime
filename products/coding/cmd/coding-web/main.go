@@ -12,6 +12,12 @@
 //	CODING_TENANT_POLICIES_FILE task-service 的开发租户策略文件；给了就在租户首次登录时把 effect 上限设为 write_reversible
 //	CODING_GIT                  git 可执行文件，默认 PATH 上的 git
 //	CODING_SECURE_COOKIE=1      Cookie 只走 HTTPS
+//	CODING_PUBLIC_URL           对外的地址（拼 GitHub OAuth 的回调），例如 http://127.0.0.1:8095
+//	CODING_GITHUB_CLIENT_ID     GitHub OAuth App 的 Client ID；与 Secret 都给了才打开 GitHub 登录与推送
+//	CODING_GITHUB_CLIENT_SECRET GitHub OAuth App 的 Client Secret（不写进日志）
+//	CODING_GITHUB_URL           GitHub 网页地址，默认 https://github.com（GitHub Enterprise 时改）
+//	CODING_GITHUB_API_URL       GitHub API 地址，默认 https://api.github.com
+//	CODING_GITHUB_SCOPES        OAuth 的 scope，默认 "repo read:user"
 package main
 
 import (
@@ -37,6 +43,13 @@ func main() {
 		PoliciesFile:  os.Getenv("CODING_TENANT_POLICIES_FILE"),
 		Git:           os.Getenv("CODING_GIT"),
 		SecureCookie:  os.Getenv("CODING_SECURE_COOKIE") == "1",
+
+		PublicURL:          os.Getenv("CODING_PUBLIC_URL"),
+		GitHubClientID:     os.Getenv("CODING_GITHUB_CLIENT_ID"),
+		GitHubClientSecret: os.Getenv("CODING_GITHUB_CLIENT_SECRET"),
+		GitHubURL:          os.Getenv("CODING_GITHUB_URL"),
+		GitHubAPI:          os.Getenv("CODING_GITHUB_API_URL"),
+		GitHubScopes:       os.Getenv("CODING_GITHUB_SCOPES"),
 	}
 	srv, err := server.New(cfg)
 	if err != nil {

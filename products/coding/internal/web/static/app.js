@@ -132,16 +132,36 @@ function renderLogin(message = "") {
     err,
     submit,
   );
+  const hashError = new URLSearchParams(location.hash.split("?")[1] || "").get("error");
+  if (hashError && !message) err.textContent = hashError;
+  const github = state.config.github_login
+    ? h("a", { class: "btn primary github-btn", href: "/api/auth/github/login" }, githubMark(), "使用 GitHub 登录")
+    : null;
   mount(h("div", { class: "login-wrap" },
     h("div", { class: "login stack" },
       h("div", { class: "row" }, h("span", { class: "brand-mark" }, "</>"), h("h1", {}, "Coding Agent")),
-      h("div", { class: "muted" }, "在多租户 Agent Runtime 上运行的编码智能体：下任务、看进度、审改动。"),
+      h("div", { class: "muted" }, "在多租户 Agent Runtime 上运行的编码智能体：下任务、看进度、审改动，推送到 GitHub 开草稿 PR。"),
+      github,
+      github && state.config.dev_login ? h("div", { class: "divider muted" }, "或者") : null,
       state.config.dev_login
-        ? [h("div", { class: "notice" }, "测试版：开发登录，不校验密码，只用于试用。"), form]
-        : h("div", { class: "notice" }, "服务端没有打开开发登录（CODING_DEV_LOGIN=1）。"),
+        ? [h("div", { class: "notice" }, "开发登录：不校验密码，只用于测试。"), form]
+        : (github ? (hashError ? err : null) : h("div", { class: "notice" }, "服务端既没有配置 GitHub 登录，也没有打开开发登录。")),
     ),
   ));
-  (tenant.value ? user : tenant).focus();
+  if (state.config.dev_login) (tenant.value ? user : tenant).focus();
+}
+
+function githubMark() {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("width", "16");
+  svg.setAttribute("height", "16");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute("fill", "currentColor");
+  path.setAttribute("d", "M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z");
+  svg.append(path);
+  return svg;
 }
 
 async function logout() {
@@ -178,7 +198,8 @@ function renderShell() {
     h("span", { class: "title" }, "Coding Agent"),
     h("span", { class: "badge test" }, "测试版"),
     h("span", { class: "spacer" }),
-    h("span", { class: "muted" }, `${state.me.user} @ ${state.me.tenant}`),
+    state.me.github && state.me.github.avatar_url ? h("img", { class: "avatar", src: state.me.github.avatar_url, alt: "" }) : null,
+    h("span", { class: "muted" }, state.me.github ? state.me.github.login : `${state.me.user} @ ${state.me.tenant}`),
     h("button", { class: "btn small ghost", onclick: logout }, "退出"),
   );
   const main = h("main", { class: "main" }, state.project ? projectView() : emptyMain());
@@ -222,7 +243,16 @@ function projectView() {
   const view = h("div", { class: "main" },
     h("div", { class: "project-head" },
       h("div", { class: "row" },
-        h("div", { class: "grow" }, h("h1", {}, p.name), h("div", { class: "muted mono" }, sourceLabel(p.source))),
+        h("div", { class: "grow" },
+          h("h1", {}, p.name),
+          h("div", { class: "row wrap" },
+            h("span", { class: "muted mono" }, sourceLabel(p.source)),
+            p.base_branch ? h("span", { class: "badge" }, "基线 " + p.base_branch) : null,
+            p.branch ? h("span", { class: "badge run mono" }, p.branch) : null,
+            p.pr_url ? h("a", { class: "badge ok", href: p.pr_url, target: "_blank", rel: "noopener" }, `PR #${p.pr_number} ↗`) : null,
+          ),
+        ),
+        p.branch ? h("button", { class: "btn small", onclick: resetBranch }, `回到 ${p.base_branch || "基线"}`) : null,
         h("button", { class: "btn small danger", onclick: deleteProject }, "删除项目"),
       ),
       h("div", { class: "tabs" }, tabs.map(([key, label, count]) => h("button", {
@@ -507,7 +537,11 @@ async function loadChanges(content) {
   }
   const running = state.tasks.some((t) => !TERMINAL.has(t.status));
   if (!data.files.length) {
-    content.replaceChildren(h("div", { class: "empty" }, h("h2", {}, "没有未提交的改动"), h("p", {}, "当前 HEAD：", h("span", { class: "mono" }, (data.head || "").slice(0, 10)))));
+    content.replaceChildren(...[
+      publishCard(content, running),
+      h("div", { class: "empty" }, h("h2", {}, "没有未提交的改动"),
+        h("p", {}, "当前分支 ", h("span", { class: "mono" }, data.branch || "—"), "，HEAD ", h("span", { class: "mono" }, (data.head || "").slice(0, 10)))),
+    ].filter(Boolean));
     return;
   }
   const added = data.files.reduce((n, f) => n + f.added, 0);
@@ -544,9 +578,66 @@ async function loadChanges(content) {
       ),
       h("div", { class: "toolbar" }, h("div", { class: "grow" }, message), commit, download, discard),
     ),
+    publishCard(content, running),
     renderDiff(data.diff),
     data.truncated ? h("div", { class: "muted" }, "改动太大，只显示了前 2 MB；完整内容请下载补丁。") : null,
   ].filter(Boolean));
+}
+
+function setProject(p) {
+  state.project = p;
+  state.projects = state.projects.map((x) => (x.id === p.id ? p : x));
+}
+
+// 推到 agent/* 分支并开草稿 PR：只对从 GitHub 克隆的项目显示；由人点按钮触发。
+function publishCard(content, running) {
+  const p = state.project;
+  if (!p.github_repo) return null;
+  if (!state.me.github) {
+    return h("div", { class: "card card-pad notice" }, "用 GitHub 登录后，可以把改动推到 agent/* 分支并开草稿 PR。");
+  }
+  const title = h("input", { placeholder: "PR 标题，也用作提交说明", value: lastTaskMessage() });
+  const result = h("div", {});
+  const label = p.pr_number ? `推送到 PR #${p.pr_number}` : "推送并开草稿 PR";
+  const push = h("button", { class: "btn primary", disabled: running, onclick: async () => {
+    push.disabled = true;
+    push.textContent = "正在推送…";
+    try {
+      const r = await api("POST", `/api/projects/${p.id}/publish`, { title: title.value });
+      setProject(r.project);
+      toast(r.created ? `已开草稿 PR #${r.pr_number}` : `已推送到 ${r.branch}`);
+      renderShell();
+    } catch (ex) {
+      push.disabled = false;
+      push.textContent = label;
+      if (ex.message !== "unauthorized") result.replaceChildren(h("div", { class: "error-text" }, ex.message));
+    }
+  } }, githubMark(), label);
+  return h("div", { class: "card card-pad stack publish" },
+    h("div", { class: "row" },
+      githubMark(), h("strong", { class: "mono" }, p.github_repo),
+      p.pr_url ? h("a", { class: "badge ok", href: p.pr_url, target: "_blank", rel: "noopener" }, `PR #${p.pr_number} ↗`) : null,
+      running ? h("span", { class: "badge run" }, "有任务在跑，跑完再推送") : null,
+    ),
+    h("div", { class: "muted" }, p.branch
+      ? `会把未提交的改动提交到 ${p.branch} 并推送，PR 自动更新。`
+      : `会新建 agent/… 分支，提交改动后推送，再向 ${p.base_branch || "基线分支"} 开草稿 PR；不会推到其他分支，也不会强推。`),
+    h("div", { class: "toolbar" }, h("div", { class: "grow" }, title), push),
+    result,
+  );
+}
+
+async function resetBranch() {
+  const p = state.project;
+  if (!confirm(`回到 ${p.base_branch} 并拉取最新？当前分支 ${p.branch} 上已推送的提交不受影响，未提交的改动需要先处理。`)) return;
+  try {
+    const r = await api("POST", `/api/projects/${p.id}/reset-branch`);
+    setProject(r.project);
+    toast(`已回到 ${p.base_branch}`);
+    renderShell();
+  } catch (ex) {
+    if (ex.message !== "unauthorized") toast(ex.message, true);
+  }
 }
 
 function lastTaskMessage() {
@@ -645,8 +736,10 @@ async function loadHistory(content) {
 // --- 项目 ---
 
 function openNewProject() {
-  let mode = state.samples.length ? "sample" : "git";
+  let mode = state.me.github ? "git" : state.samples.length ? "sample" : "git";
   let sample = state.samples[0] ? state.samples[0].id : "";
+  let repos = null;
+  let repoFilter = "";
   const name = h("input", { placeholder: "项目名" });
   const gitUrl = h("input", { placeholder: "https://github.com/owner/repo.git" });
   const branch = h("input", { placeholder: "分支（可选）" });
@@ -671,11 +764,41 @@ function openNewProject() {
       }, h("strong", {}, s.name), h("div", { class: "muted" }, s.description)))));
       if (!name.value && state.samples[0]) name.value = state.samples.find((s) => s.id === sample).name;
     } else if (mode === "git") {
-      parts.push(h("div", {}, h("label", {}, "Git 地址（https，公开仓库）"), gitUrl), h("div", {}, h("label", {}, "分支"), branch));
+      if (state.me.github) parts.push(repoPicker());
+      parts.push(
+        h("div", {}, h("label", {}, state.me.github ? "Git 地址（https；私有仓库用你的 GitHub 授权克隆）" : "Git 地址（https，公开仓库）"), gitUrl),
+        h("div", {}, h("label", {}, "分支"), branch),
+      );
     } else {
       parts.push(h("div", { class: "muted" }, "建一个只有 README 的空仓库，让 Agent 从零开始写。"));
     }
     body.replaceChildren(...parts);
+  };
+  const repoPicker = () => {
+    if (repos === null) {
+      repos = "loading";
+      api("GET", "/api/github/repos").then((r) => { repos = r; draw(); }).catch((ex) => { repos = []; err.textContent = ex.message; draw(); });
+    }
+    const filter = h("input", { placeholder: "搜索我的仓库", value: repoFilter });
+    filter.addEventListener("input", () => { repoFilter = filter.value; list.replaceChildren(...items()); });
+    const items = () => {
+      if (repos === "loading") return [h("div", { class: "muted" }, "正在读取你的仓库…")];
+      const q = repoFilter.trim().toLowerCase();
+      const shown = repos.filter((r) => !q || r.full_name.toLowerCase().includes(q)).slice(0, 30);
+      if (!shown.length) return [h("div", { class: "muted" }, "没有匹配的仓库")];
+      return shown.map((r) => h("button", {
+        class: "repo-item" + (gitUrl.value === r.clone_url ? " active" : ""),
+        onclick: () => {
+          gitUrl.value = r.clone_url;
+          branch.value = r.default_branch || "";
+          name.value = r.full_name.split("/")[1];
+          list.replaceChildren(...items());
+        },
+      }, h("span", { class: "mono grow" }, r.full_name), r.private ? h("span", { class: "badge" }, "私有") : null,
+        r.permissions && !r.permissions.push ? h("span", { class: "badge warn" }, "只读") : null));
+    };
+    const list = h("div", { class: "repo-list" }, items());
+    return h("div", { class: "stack" }, h("label", {}, "我的 GitHub 仓库"), filter, list);
   };
   draw();
   cancel.addEventListener("click", () => dialog.close());
