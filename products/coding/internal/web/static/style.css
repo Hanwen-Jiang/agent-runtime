@@ -281,6 +281,12 @@ textarea.field { height: auto; padding: 8px 11px; resize: vertical; line-height:
 .other-providers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; animation: rise 0.15s ease-out; }
 .other-providers .btn.block { height: 36px; font-size: 13px; justify-content: flex-start; padding: 0 12px; }
 .google-btn { background: var(--surface); }
+/* 登录页底部的语言切换 */
+.lang-switch { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: -10px; color: var(--faint); font-size: 12.5px; }
+.lang-switch .icon { margin-right: 2px; }
+.lang-switch button { padding: 3px 8px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--muted); }
+.lang-switch button:hover { background: var(--sunken); color: var(--text); }
+.lang-switch button.active { color: var(--text); font-weight: 500; }
 
 /* 平台的小标记（GitHub 之外）：品牌色的字母块 */
 .pv-badge {
@@ -394,7 +400,17 @@ textarea.field { height: auto; padding: 8px 11px; resize: vertical; line-height:
 .side-item.draft { font-style: italic; color: var(--text); }
 .more-link { display: block; width: 100%; padding: 4px 6px 4px 27px; border: 0; background: transparent; text-align: left; color: var(--faint); font-size: 12px; }
 .more-link:hover { color: var(--accent); }
-.side-foot { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border-top: 1px solid var(--line); flex: none; }
+/* 个人信息块整个是按钮：点哪里都打开账号、外观与语言的菜单 */
+.side-foot { padding: 5px 8px; border-top: 1px solid var(--line); flex: none; }
+.profile {
+  display: flex; align-items: center; gap: 9px; width: 100%; min-width: 0;
+  padding: 5px 8px; border: 0; border-radius: var(--radius-sm);
+  background: transparent; color: var(--text); text-align: left;
+}
+.profile:hover, .profile.open { background: var(--sunken); }
+.profile .who { display: flex; flex-direction: column; min-width: 0; }
+.profile .more { color: var(--faint); flex: none; }
+.profile:hover .more, .profile.open .more { color: var(--muted); }
 .avatar {
   width: 30px; height: 30px; flex: none; border-radius: 50%;
   display: grid; place-items: center; overflow: hidden;
@@ -648,8 +664,9 @@ textarea.field { height: auto; padding: 8px 11px; resize: vertical; line-height:
 .sp.open .sp-head .chev { transform: rotate(90deg); }
 .sp-body { display: none; padding: 2px 12px 12px; font-size: 13px; }
 .sp.open .sp-body { display: block; }
-.kv { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 7px 10px; align-items: baseline; }
-.kv .k { color: var(--muted); font-size: 12.5px; }
+/* 标签列按最长的标签定宽（英文标签比中文长），不折行 */
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 7px 12px; align-items: baseline; }
+.kv .k { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
 .kv .v { min-width: 0; word-break: break-word; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex: none; }
 .dot.ok { background: var(--ok); }

@@ -2,19 +2,21 @@
 // 工作区（基线仓库）下有很多会话；每个会话一段对话加一份自己的工作副本，可以同时跑。
 // 左栏：上面是新建会话、搜索、工作区、进行中，下面按工作区分组列出会话。中间：会话（每个任务一轮：你的消息、工作过程、回答，
 // 输入框随阶段变化）、工作区一览或进行中的任务。右栏是当前会话的环境、上下文、输出、改动与后台任务；diff、文件与提交历史在宽抽屉里打开。
-// DOM 一律用 textContent 构造，不拼 HTML。
+// DOM 一律用 textContent 构造，不拼 HTML。界面文字一律经 i18n.js 的 t() 取（中文与英文）。
+
+import { LANGS, lang, locale, setLang, t } from "./i18n.js";
 
 const EVENT_TYPES = [
   "task_accepted", "round_started", "stage_started", "node_started", "node_finished",
   "thinking_delta", "tool_status", "token_delta", "human_input_required", "verdict", "task_finished",
 ];
 const STATUS = {
-  TASK_STATUS_QUEUED: ["排队中", "run"],
-  TASK_STATUS_RUNNING: ["进行中", "run"],
-  TASK_STATUS_DONE: ["已完成", "ok"],
-  TASK_STATUS_ABORTED: ["已终止", "err"],
-  TASK_STATUS_CANCELLED: ["已取消", "warn"],
-  TASK_STATUS_FAILED: ["失败", "err"],
+  TASK_STATUS_QUEUED: [t("status.queued"), "run"],
+  TASK_STATUS_RUNNING: [t("status.running"), "run"],
+  TASK_STATUS_DONE: [t("status.done"), "ok"],
+  TASK_STATUS_ABORTED: [t("status.aborted"), "err"],
+  TASK_STATUS_CANCELLED: [t("status.cancelled"), "warn"],
+  TASK_STATUS_FAILED: [t("status.failed"), "err"],
 };
 const TERMINAL = new Set(["TASK_STATUS_DONE", "TASK_STATUS_ABORTED", "TASK_STATUS_CANCELLED", "TASK_STATUS_FAILED"]);
 const QUIET = new Set(["heartbeat", "token_delta", "thinking_delta"]);
@@ -22,19 +24,18 @@ const REPLAY_LIMIT = 12;
 
 // 沙箱等级就是 Task 的 effect 上限；模型倾向交给 Planner 选 Tier（服务端见 runsettings.go）。
 const SANDBOX = [
-  { id: "read", icon: "eye", label: "只读", desc: "只读代码、回答问题；不改文件，也不跑命令" },
-  { id: "write_reversible", icon: "edit", label: "工作区可写", desc: "改文件；命令在断网的一次性容器里跑" },
-  { id: "full", icon: "globe", label: "完全访问", desc: "联网与对外的写操作 —— 暂不开放", disabled: true },
+  { id: "read", icon: "eye", label: t("sandbox.read"), desc: t("sandbox.readDesc") },
+  { id: "write_reversible", icon: "edit", label: t("sandbox.write"), desc: t("sandbox.writeDesc") },
+  { id: "full", icon: "globe", label: t("sandbox.full"), desc: t("sandbox.fullDesc"), disabled: true },
 ];
 const MODELS = [
-  { id: "economy", icon: "leaf", label: "省钱", desc: "Planner 尽量选便宜的模型档位" },
-  { id: "balanced", icon: "gauge", label: "均衡", desc: "按任务难度选档位" },
-  { id: "best", icon: "zap", label: "最强", desc: "关键步骤用最强的档位，花费更高" },
+  { id: "economy", icon: "leaf", label: t("model.economy"), desc: t("model.economyDesc") },
+  { id: "balanced", icon: "gauge", label: t("model.balanced"), desc: t("model.balancedDesc") },
+  { id: "best", icon: "zap", label: t("model.best"), desc: t("model.bestDesc") },
 ];
-const VERDICTS = {
-  done: ["完成", "ok"], continue: ["继续", "info"], repair: ["修复", "warn"], replan: ["重新规划", "warn"],
-  rollback: ["回滚", "warn"], reroute: ["换路线", "warn"], escalate: ["升级", "warn"], abort: ["终止", "err"],
-};
+const VERDICTS = Object.fromEntries(Object.entries({
+  done: "ok", continue: "info", repair: "warn", replan: "warn", rollback: "warn", reroute: "warn", escalate: "warn", abort: "err",
+}).map(([k, kind]) => [k, [t("verdict." + k), kind]]));
 const SECTIONS = ["env", "context", "output", "changes", "background"];
 
 const ls = {
@@ -216,24 +217,24 @@ function toast(text, isError = false) {
 }
 
 function copy(text) {
-  navigator.clipboard.writeText(text).then(() => toast("已复制"), () => toast("复制失败", true));
+  navigator.clipboard.writeText(text).then(() => toast(t("common.copied")), () => toast(t("common.copyFailed"), true));
 }
 
 function fmtTime(iso) {
   const d = new Date(iso);
-  return isNaN(d) ? "" : d.toLocaleString([], { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return isNaN(d) ? "" : d.toLocaleString(locale, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 function fmtClock(iso) {
   const d = new Date(iso);
-  return isNaN(d) ? "" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return isNaN(d) ? "" : d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
 function fmtDuration(ms) {
   const s = Math.max(0, Math.round(ms / 1000));
-  if (s < 60) return `${s} 秒`;
+  if (s < 60) return t("dur.s", { s });
   const m = Math.floor(s / 60);
-  return s % 60 ? `${m} 分 ${s % 60} 秒` : `${m} 分`;
+  return s % 60 ? t("dur.ms", { m, s: s % 60 }) : t("dur.m", { m });
 }
 
 function fmtTimer(ms) {
@@ -244,9 +245,9 @@ function fmtTimer(ms) {
 function fmtAgo(iso) {
   const ms = Date.now() - new Date(iso);
   if (isNaN(ms)) return "";
-  if (ms < 60e3) return "刚刚";
-  if (ms < 3600e3) return `${Math.floor(ms / 60e3)} 分钟前`;
-  if (ms < 86400e3) return `${Math.floor(ms / 3600e3)} 小时前`;
+  if (ms < 60e3) return t("ago.now");
+  if (ms < 3600e3) return t("ago.min", { n: Math.floor(ms / 60e3) });
+  if (ms < 86400e3) return t("ago.hour", { n: Math.floor(ms / 3600e3) });
   return fmtTime(iso);
 }
 
@@ -273,7 +274,7 @@ function num(v) {
 }
 
 function statusChip(status) {
-  const [label, kind] = STATUS[status] || [status || "未知", ""];
+  const [label, kind] = STATUS[status] || [status || t("status.unknown"), ""];
   return h("span", { class: `chip ${kind}` }, kind === "run" ? h("span", { class: "spinner" }) : null, label);
 }
 
@@ -385,8 +386,8 @@ function cells(line) {
 
 function codeBlock(code, lang) {
   return h("div", { class: "codeblock" },
-    h("div", { class: "cb-head" }, h("span", { class: "grow" }, lang || "代码"),
-      h("button", { class: "btn ghost xs", onclick: () => copy(code) }, icon("copy", "xs"), "复制")),
+    h("div", { class: "cb-head" }, h("span", { class: "grow" }, lang || t("code.lang")),
+      h("button", { class: "btn ghost xs", onclick: () => copy(code) }, icon("copy", "xs"), t("common.copy"))),
     h("pre", {}, h("code", {}, code)),
   );
 }
@@ -417,13 +418,13 @@ async function api(method, path, body) {
   const res = await fetch(path, opts);
   if (res.status === 401 && path !== "/api/me") {
     state.me = null;
-    renderLogin("登录已过期，请重新登录");
+    renderLogin(t("api.expired"));
     throw new Error("unauthorized");
   }
   const text = await res.text();
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-  if (!res.ok) throw new Error((data && data.error) || `请求失败（${res.status}）`);
+  if (!res.ok) throw new Error((data && data.error) || t("api.failed", { status: res.status }));
   return data;
 }
 
@@ -519,29 +520,27 @@ function hashParams() {
 async function openAccount() {
   closePop();
   if (document.querySelector("dialog.account")) return;
-  const body = h("div", { class: "d-body" }, h("div", { class: "row muted" }, h("span", { class: "spinner" }), "正在读取…"));
+  const body = h("div", { class: "d-body" }, h("div", { class: "row muted" }, h("span", { class: "spinner" }), t("common.loading")));
   const dialog = h("dialog", { class: "account" },
-    h("div", { class: "d-head" }, h("h2", {}, "账号与平台"), h("div", { class: "muted small" }, `租户 ${state.me.tenant} · 用户 ${state.me.user}`)),
+    h("div", { class: "d-head" }, h("h2", {}, t("account.title")), h("div", { class: "muted small" }, t("account.who", { tenant: state.me.tenant, user: state.me.user }))),
     body,
-    h("div", { class: "d-foot" }, h("button", { class: "btn ghost", onclick: () => dialog.close() }, "关闭")),
+    h("div", { class: "d-foot" }, h("button", { class: "btn ghost", onclick: () => dialog.close() }, t("common.close"))),
   );
   const draw = (acct) => {
     const conns = acct.connections || [];
     const rows = providerList().filter((p) => p.configured || state.config.dev_login || conns.some((c) => c.provider === p.id)).map((p) => {
       const c = conns.find((x) => x.provider === p.id);
-      const status = c ? `已连接 · ${c.login}${c.name && c.name !== c.login ? `（${c.name}）` : ""}` : p.configured ? "未连接" : "服务端没有配置";
+      const who = c && c.name && c.name !== c.login ? t("account.nameParen", { login: c.login, name: c.name }) : c && c.login;
+      const status = c ? t("account.connected", { who }) : p.configured ? t("account.notConnected") : t("account.notConfigured");
       return h("div", { class: "conn-row" + (c ? " on" : "") },
         badge(p.id, "md"),
         h("div", { class: "grow" },
-          h("div", { class: "t" }, p.name, p.git ? null : h("span", { class: "chip" }, "只用于登录")),
+          h("div", { class: "t" }, p.name, p.git ? null : h("span", { class: "chip" }, t("account.loginOnly"))),
           h("div", { class: "m" }, status)),
-        c ? h("button", { class: "btn sm", onclick: () => disconnect(p, draw) }, "断开")
-          : p.configured ? h("a", { class: "btn sm primary", href: `/api/auth/${p.id}/login?link=1` }, "连接") : null);
+        c ? h("button", { class: "btn sm", onclick: () => disconnect(p, draw) }, t("account.disconnect"))
+          : p.configured ? h("a", { class: "btn sm primary", href: `/api/auth/${p.id}/login?link=1` }, t("account.connect")) : null);
     });
-    body.replaceChildren(
-      h("div", { class: "note" }, "用任何一个已连接的平台都能登录这个账号。连接了 Git 平台，就能从它选仓库、把会话的改动推上去并开 PR/MR。"),
-      h("div", { class: "conn-list" }, rows),
-    );
+    body.replaceChildren(h("div", { class: "conn-list" }, rows));
   };
   dialog.addEventListener("close", () => dialog.remove());
   document.body.append(dialog);
@@ -550,13 +549,13 @@ async function openAccount() {
 }
 
 async function disconnect(p, draw) {
-  if (!confirm(`断开 ${p.name}？之后不能再用它登录这个账号，也不能推送到它上面的仓库（随时可以再连）。`)) return;
+  if (!confirm(t("account.disconnectConfirm", { name: p.name }))) return;
   try {
     const r = await api("POST", `/api/account/connections/${p.id}/disconnect`);
     state.me = await api("GET", "/api/me");
     draw(r);
     renderSide();
-    toast(`已断开 ${p.name}`);
+    toast(t("account.disconnected", { name: p.name }));
   } catch (ex) { report(ex); }
 }
 
@@ -572,13 +571,14 @@ function applyTheme() {
 
 let pop = null;
 
-function openPop(anchor, build) {
+function openPop(anchor, build, opts = {}) {
   if (pop && pop.anchor === anchor) return closePop();
   closePop();
   const el = h("div", { class: "pop", role: "menu" });
   append(el, build(closePop));
-  document.body.append(el);
   const r = anchor.getBoundingClientRect();
+  if (opts.matchWidth) el.style.width = `${Math.max(r.width, 220)}px`;
+  document.body.append(el);
   const left = Math.min(Math.max(8, r.left), window.innerWidth - el.offsetWidth - 8);
   let top = r.top - el.offsetHeight - 6;
   if (top < 8) top = Math.min(r.bottom + 6, window.innerHeight - el.offsetHeight - 8);
@@ -610,9 +610,9 @@ function renderLogin(message = "") {
   closePop();
   const hashError = new URLSearchParams(location.hash.split("?")[1] || "").get("error");
   const err = h("div", { class: "err-text" }, message || hashError || "");
-  const tenant = h("input", { class: "field", placeholder: "例如 acme", autocomplete: "organization", value: ls.get("cw_tenant") || "" });
-  const user = h("input", { class: "field", placeholder: "例如 alice", autocomplete: "username", value: ls.get("cw_user") || "" });
-  const submit = h("button", { class: "btn primary block", type: "submit" }, "用开发账号进入");
+  const tenant = h("input", { class: "field", placeholder: t("login.tenantPh"), autocomplete: "organization", value: ls.get("cw_tenant") || "" });
+  const user = h("input", { class: "field", placeholder: t("login.userPh"), autocomplete: "username", value: ls.get("cw_user") || "" });
+  const submit = h("button", { class: "btn primary block", type: "submit" }, t("login.devSubmit"));
   const form = h("form", { class: "col", onsubmit: async (e) => {
     e.preventDefault();
     submit.disabled = true;
@@ -629,18 +629,17 @@ function renderLogin(message = "") {
       submit.disabled = false;
     }
   } },
-    h("div", {}, h("label", { class: "lbl" }, "租户"), tenant),
-    h("div", {}, h("label", { class: "lbl" }, "用户名"), user),
+    h("div", {}, h("label", { class: "lbl" }, t("login.tenant")), tenant),
+    h("div", {}, h("label", { class: "lbl" }, t("login.user")), user),
     submit,
-    h("div", { class: "note" }, "开发登录不校验密码，只用于本机测试。"),
   );
   // 第三方登录：GitHub 是主按钮，其余 Git 平台收在它下面的“其他 Git 平台”里，Google 单独一个。
   // 开发环境（开着开发登录）里没配置的也列出来、不可点，说明还能接哪些。
   const usable = (p) => p && (p.configured || state.config.dev_login);
   const oauthButton = (p, cls, label) => p.configured
     ? h("a", { class: `btn block ${cls}`, href: `/api/auth/${p.id}/login` }, badge(p.id), h("span", {}, label))
-    : h("button", { class: `btn block ${cls}`, type: "button", disabled: true, title: `服务端没有配置 ${p.name}（CODING_${p.id.toUpperCase()}_CLIENT_ID 与 _CLIENT_SECRET）` },
-      badge(p.id), h("span", {}, label), h("span", { class: "off" }, "未配置"));
+    : h("button", { class: `btn block ${cls}`, type: "button", disabled: true, title: t("login.notConfiguredTitle", { name: p.name, env: `CODING_${p.id.toUpperCase()}` }) },
+      badge(p.id), h("span", {}, label), h("span", { class: "off" }, t("login.notConfigured")));
   const all = providerList();
   const gh = all.find((p) => p.id === "github");
   const google = all.find((p) => p.id === "google");
@@ -650,11 +649,11 @@ function renderLogin(message = "") {
   const otherToggle = others.length ? h("button", {
     class: "other-toggle", type: "button",
     onclick: () => { otherList.classList.toggle("hidden"); otherToggle.classList.toggle("open"); },
-  }, h("span", {}, "其他 Git 平台"), h("span", { class: "names" }, others.map((p) => p.name).join(" · ")), icon("chevDown", "xs caret")) : null;
+  }, h("span", {}, t("login.otherGit")), h("span", { class: "names" }, others.map((p) => p.name).join(" · ")), icon("chevDown", "xs caret")) : null;
   const thirdParty = [
-    usable(gh) ? oauthButton(gh, "github-btn", "使用 GitHub 登录") : null,
+    usable(gh) ? oauthButton(gh, "github-btn", t("login.with", { name: gh.name })) : null,
     otherToggle, otherList,
-    usable(google) ? oauthButton(google, "google-btn", "使用 Google 登录") : null,
+    usable(google) ? oauthButton(google, "google-btn", t("login.with", { name: google.name })) : null,
   ].filter(Boolean);
   const hasThirdParty = usable(gh) || others.length || usable(google);
   mount(h("div", { class: "login-page" },
@@ -662,18 +661,25 @@ function renderLogin(message = "") {
       h("div", { class: "hero" },
         h("div", { class: "mark big" }, logo("lg")),
         h("h1", {}, "Coding Agent"),
-        h("p", {}, "读代码、改代码、跑测试；改动由你审阅后再推送。"),
+        h("p", {}, t("login.tagline")),
       ),
       h("div", { class: "login-box" },
         thirdParty,
-        hasThirdParty ? h("div", { class: "note center" }, "第一次登录会自动注册；之后可以在“账号与平台”里连接别的平台，用哪一家登录都是同一个账号。") : null,
-        hasThirdParty && state.config.dev_login ? h("div", { class: "sep" }, "或") : null,
+        hasThirdParty && state.config.dev_login ? h("div", { class: "sep" }, t("login.or")) : null,
         state.config.dev_login ? form : null,
-        !hasThirdParty && !state.config.dev_login ? h("div", { class: "note" }, "服务端既没有配置第三方登录，也没有打开开发登录。") : null,
+        !hasThirdParty && !state.config.dev_login ? h("div", { class: "note" }, t("login.none")) : null,
         err,
       ),
+      langSwitch(),
     ),
   ));
+}
+
+// langSwitch 是登录页底部的语言切换：每种语言用它自己的名字。
+function langSwitch() {
+  return h("div", { class: "lang-switch", role: "group", "aria-label": t("menu.language") },
+    icon("globe", "xs"),
+    LANGS.map((l) => h("button", { class: l.id === lang ? "active" : "", lang: l.tag, "aria-pressed": String(l.id === lang), onclick: () => setLang(l.id) }, l.label)));
 }
 
 async function logout() {
@@ -819,8 +825,8 @@ function renderApp() {
     ui.side,
     h("main", { class: "main" }, ui.topbar, ui.scroll, ui.dock),
     h("aside", { class: "status" },
-      h("div", { class: "status-head" }, h("span", { class: "h grow" }, "状态"),
-        h("button", { class: "btn ghost sm icon-only", title: "收起状态栏", onclick: toggleStatus }, icon("x", "sm"))),
+      h("div", { class: "status-head" }, h("span", { class: "h grow" }, t("status.panel")),
+        h("button", { class: "btn ghost sm icon-only", title: t("status.hide"), onclick: toggleStatus }, icon("x", "sm"))),
       ui.statusBody),
   );
   mount(ui.root);
@@ -844,10 +850,10 @@ function toggleStatus() {
 
 function updateTitle() {
   const live = inSession() && currentTask();
-  const name = state.view === "workspaces" ? "工作区"
-    : state.view === "activity" ? "进行中"
-      : state.session ? state.session.title || "未命名会话"
-        : state.project ? `新会话 · ${state.project.name}` : "";
+  const name = state.view === "workspaces" ? t("nav.workspaces")
+    : state.view === "activity" ? t("nav.activity")
+      : state.session ? state.session.title || t("session.untitled")
+        : state.project ? t("session.newIn", { name: state.project.name }) : "";
   document.title = `${live ? "● " : ""}${name ? name + " · " : ""}Coding Agent`;
 }
 
@@ -871,18 +877,18 @@ function scheduleChrome() {
 
 function sourceLabel(p) {
   if (p.repo) return `${providerInfo(p.git_provider).name} · ${p.repo}`;
-  if (!p.source || p.source === "empty") return "空项目";
-  if (p.source.startsWith("sample:")) return "示例仓库";
+  if (!p.source || p.source === "empty") return t("source.empty");
+  if (p.source.startsWith("sample:")) return t("source.sample");
   return p.source.replace(/^https:\/\//, "");
 }
 
 function fmtShortAgo(iso) {
   const ms = Date.now() - new Date(iso);
   if (isNaN(ms)) return "";
-  if (ms < 60e3) return "刚刚";
-  if (ms < 3600e3) return `${Math.floor(ms / 60e3)} 分`;
-  if (ms < 86400e3) return `${Math.floor(ms / 3600e3)} 时`;
-  if (ms < 7 * 86400e3) return `${Math.floor(ms / 86400e3)} 天`;
+  if (ms < 60e3) return t("ago.now");
+  if (ms < 3600e3) return t("short.min", { n: Math.floor(ms / 60e3) });
+  if (ms < 86400e3) return t("short.hour", { n: Math.floor(ms / 3600e3) });
+  if (ms < 7 * 86400e3) return t("short.day", { n: Math.floor(ms / 86400e3) });
   const d = new Date(iso);
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
@@ -915,21 +921,23 @@ function renderSide() {
   ui.side.replaceChildren(
     h("div", { class: "side-head" },
       h("div", { class: "brand grow" }, h("span", { class: "mark" }, logo()), "Coding Agent"),
-      h("button", { class: "btn ghost sm icon-only only-wide", title: "收起侧栏", onclick: () => { state.sideCollapsed = true; ls.set("cw_side", "0"); applyLayout(); renderTopbar(); } }, icon("panelLeft", "sm")),
-      h("button", { class: "btn ghost sm icon-only only-narrow", title: "关闭", onclick: () => { state.sideOpen = false; applyLayout(); } }, icon("x", "sm"))),
+      h("button", { class: "btn ghost sm icon-only only-wide", title: t("side.collapse"), onclick: () => { state.sideCollapsed = true; ls.set("cw_side", "0"); applyLayout(); renderTopbar(); } }, icon("panelLeft", "sm")),
+      h("button", { class: "btn ghost sm icon-only only-narrow", title: t("common.close"), onclick: () => { state.sideOpen = false; applyLayout(); } }, icon("x", "sm"))),
     h("nav", { class: "side-nav" },
-      nav("compose", "新建会话", newSession, { title: "在当前工作区开新会话（每个会话一份独立的工作副本）" }),
-      nav("search", "搜索", openSearch, { kbd: "Ctrl K" }),
-      nav("grid", "工作区", () => go("workspaces"), { active: state.view === "workspaces", count: state.projects.length || null }),
-      nav("activity", "进行中", () => go("activity"), { active: state.view === "activity", count: state.active.length || null, live: state.active.length > 0 }),
+      nav("compose", t("nav.newSession"), newSession, { title: t("nav.newSessionTitle") }),
+      nav("search", t("nav.search"), openSearch, { kbd: "Ctrl K" }),
+      nav("grid", t("nav.workspaces"), () => go("workspaces"), { active: state.view === "workspaces", count: state.projects.length || null }),
+      nav("activity", t("nav.activity"), () => go("activity"), { active: state.view === "activity", count: state.active.length || null, live: state.active.length > 0 }),
     ),
-    h("div", { class: "side-label" }, "会话"),
+    h("div", { class: "side-label" }, t("side.sessions")),
     h("div", { class: "side-list" },
-      state.projects.length ? orderedProjects().map((p) => workspaceGroup(p, live)) : h("div", { class: "side-empty" }, "还没有工作区")),
+      state.projects.length ? orderedProjects().map((p) => workspaceGroup(p, live)) : h("div", { class: "side-empty" }, t("side.noWorkspaces"))),
+    // 整个个人信息块都是按钮：点哪里都打开账号、外观与语言的菜单，菜单与这一块一样宽。
     h("div", { class: "side-foot" },
-      h("div", { class: "avatar" }, me.avatar_url ? h("img", { src: me.avatar_url, alt: "" }) : initials(name)),
-      h("div", { class: "grow who" }, h("div", { class: "ellipsis" }, name), h("div", { class: "m ellipsis" }, `租户 ${me.tenant}`)),
-      h("button", { class: "btn ghost sm icon-only", title: "外观与账号", onclick: (e) => openPop(e.currentTarget, userMenu) }, icon("more", "sm"))),
+      h("button", { class: "profile", title: t("menu.title"), "aria-haspopup": "menu", onclick: (e) => openPop(e.currentTarget, userMenu, { matchWidth: true }) },
+        h("span", { class: "avatar" }, me.avatar_url ? h("img", { src: me.avatar_url, alt: "" }) : initials(name)),
+        h("span", { class: "grow who" }, h("span", { class: "n ellipsis" }, name), h("span", { class: "m ellipsis" }, t("side.tenant", { tenant: me.tenant }))),
+        icon("more", "sm more"))),
   );
 }
 
@@ -952,13 +960,13 @@ function workspaceGroup(p, live) {
       h("button", { class: "ws-toggle", title: `${p.name} · ${sourceLabel(p)}`, onclick: toggle },
         icon("chevron", "xs chev"), projectMark(p, "sm"), h("span", { class: "t ellipsis" }, p.name),
         closed && anyLive ? h("span", { class: "spinner" }) : null),
-      h("button", { class: "btn ghost xs icon-only ws-add", title: `在「${p.name}」开新会话`, onclick: () => openDraft(p.id) }, icon("plus", "xs"))),
+      h("button", { class: "btn ghost xs icon-only ws-add", title: t("ws.newIn", { name: p.name }), onclick: () => openDraft(p.id) }, icon("plus", "xs"))),
     closed ? null : h("div", { class: "ws-sessions" },
-      drafting ? h("div", { class: "side-item session active draft" }, icon("compose", "xs"), h("span", { class: "t grow ellipsis" }, "新会话")) : null,
+      drafting ? h("div", { class: "side-item session active draft" }, icon("compose", "xs"), h("span", { class: "t grow ellipsis" }, t("session.new"))) : null,
       shown.map((s) => sessionItem(p, s, live.has(`${p.id}/${s.id}`))),
       sessions.length > GROUP_MAX ? h("button", { class: "more-link", onclick: () => { if (all) state.groupsAll.delete(p.id); else state.groupsAll.add(p.id); renderSide(); } },
-        all ? "收起" : `显示全部 ${sessions.length} 个`) : null,
-      !sessions.length && !drafting ? h("button", { class: "more-link", onclick: () => openDraft(p.id) }, "还没有会话，开一个") : null,
+        all ? t("ws.less") : t("ws.showAll", { n: sessions.length })) : null,
+      !sessions.length && !drafting ? h("button", { class: "more-link", onclick: () => openDraft(p.id) }, t("ws.noSessions")) : null,
     ),
   );
 }
@@ -968,21 +976,21 @@ function sessionItem(p, s, isLive) {
   const open = () => { if (!active) openSession(p.id, s.id); else { state.sideOpen = false; applyLayout(); } };
   return h("div", {
     class: "side-item session" + (active ? " active" : ""),
-    role: "button", tabindex: 0, title: s.title || "未命名会话",
+    role: "button", tabindex: 0, title: s.title || t("session.untitled"),
     onclick: open,
     onkeydown: (e) => { if (e.key === "Enter") open(); },
   },
-    isLive ? h("span", { class: "spinner", title: "有任务在跑" }) : s.pr_number ? badge(p.git_provider, "xs") : icon("chat", "xs"),
-    h("span", { class: "t grow ellipsis" }, s.title || "未命名会话"),
+    isLive ? h("span", { class: "spinner", title: t("session.live") }) : s.pr_number ? badge(p.git_provider, "xs") : icon("chat", "xs"),
+    h("span", { class: "t grow ellipsis" }, s.title || t("session.untitled")),
     h("span", { class: "when" }, fmtShortAgo(s.updated_at)),
-    h("button", { class: "btn ghost xs icon-only item-more", title: "重命名、删除", onclick: (e) => { e.stopPropagation(); openPop(e.currentTarget, (close) => sessionMenu(p, s, close)); } }, icon("more", "xs")),
+    h("button", { class: "btn ghost xs icon-only item-more", title: t("session.menuTitle"), onclick: (e) => { e.stopPropagation(); openPop(e.currentTarget, (close) => sessionMenu(p, s, close)); } }, icon("more", "xs")),
   );
 }
 
 function sessionMenu(p, s, close) {
   return [
-    popItem("edit", "重命名", null, false, () => { close(); renameSession(p, s); }),
-    popItem("trash", "删除会话", s.workspace_id !== p.id ? "工作副本（含未提交的改动）一起删掉" : "只删记录，工作区目录保留", false, () => { close(); deleteSession(p, s); }),
+    popItem("edit", t("session.rename"), null, false, () => { close(); renameSession(p, s); }),
+    popItem("trash", t("session.delete"), s.workspace_id !== p.id ? t("session.deleteCopy") : t("session.deleteRecord"), false, () => { close(); deleteSession(p, s); }),
   ];
 }
 
@@ -992,7 +1000,7 @@ function setSession(s) {
 }
 
 async function renameSession(p, s) {
-  const title = prompt("会话标题", s.title || "");
+  const title = prompt(t("session.titlePrompt"), s.title || "");
   if (!title || !title.trim()) return;
   try {
     setSession(await api("POST", `${sessionURL(p.id, s.id)}/rename`, { title }));
@@ -1003,12 +1011,12 @@ async function renameSession(p, s) {
 }
 
 async function deleteSession(p, s) {
-  const copy = s.workspace_id !== p.id ? "它的工作副本（含未提交的改动）会一起删掉，" : "";
-  if (!confirm(`删除会话「${s.title || "未命名会话"}」？${copy}不能撤销。`)) return;
+  const title = s.title || t("session.untitled");
+  if (!confirm(t(s.workspace_id !== p.id ? "session.deleteConfirmCopy" : "session.deleteConfirm", { title }))) return;
   try {
     await api("DELETE", sessionURL(p.id, s.id));
     state.sessions = state.sessions.filter((x) => !(x.project_id === p.id && x.id === s.id));
-    toast("已删除会话");
+    toast(t("session.deleted"));
     if (state.session && state.session.project_id === p.id && state.session.id === s.id) {
       const next = state.sessions.find((x) => x.project_id === p.id);
       if (next) openSession(p.id, next.id); else openDraft(p.id);
@@ -1018,17 +1026,21 @@ async function deleteSession(p, s) {
 
 function userMenu(close) {
   const theme = ls.get("cw_theme") || "system";
-  const set = (t) => { ls.set("cw_theme", t); applyTheme(); close(); };
-  const conns = (state.me.connections || []).length;
+  const set = (value) => { ls.set("cw_theme", value); applyTheme(); close(); };
+  const conns = state.me.connections || [];
+  const names = conns.map((c) => providerInfo(c.provider).name).join(t("list.sep"));
   return [
-    popItem("link", "账号与平台", conns ? `已连接 ${conns} 个：${state.me.connections.map((c) => providerInfo(c.provider).name).join("、")}` : "连接 GitHub、Gitee、GitLab…", false, () => { close(); openAccount(); }),
+    popItem("link", t("account.title"), conns.length ? t("account.connectedList", { n: conns.length, names }) : t("account.connectHint"), false, () => { close(); openAccount(); }),
     h("div", { class: "pop-sep" }),
-    h("div", { class: "pop-title" }, "外观"),
-    popItem("monitor", "跟随系统", null, theme === "system", () => set("system")),
-    popItem("sun", "浅色", null, theme === "light", () => set("light")),
-    popItem("moon", "深色", null, theme === "dark", () => set("dark")),
+    h("div", { class: "pop-title" }, t("menu.appearance")),
+    popItem("monitor", t("theme.system"), null, theme === "system", () => set("system")),
+    popItem("sun", t("theme.light"), null, theme === "light", () => set("light")),
+    popItem("moon", t("theme.dark"), null, theme === "dark", () => set("dark")),
     h("div", { class: "pop-sep" }),
-    popItem("logout", "退出登录", null, false, () => { close(); logout(); }),
+    h("div", { class: "pop-title" }, t("menu.language")),
+    ...LANGS.map((l) => popItem("globe", l.label, null, l.id === lang, () => { close(); setLang(l.id); })),
+    h("div", { class: "pop-sep" }),
+    popItem("logout", t("menu.logout"), null, false, () => { close(); logout(); }),
   ];
 }
 
@@ -1039,15 +1051,15 @@ function renderTopbar() {
   const p = state.project;
   const s = state.session;
   const parts = [
-    h("button", { class: "btn ghost sm icon-only only-narrow", title: "侧栏", onclick: () => { state.sideOpen = true; applyLayout(); } }, icon("menu", "sm")),
-    state.sideCollapsed ? h("button", { class: "btn ghost sm icon-only only-wide", title: "展开侧栏", onclick: () => { state.sideCollapsed = false; ls.set("cw_side", "1"); applyLayout(); renderTopbar(); } }, icon("panelLeft", "sm")) : null,
+    h("button", { class: "btn ghost sm icon-only only-narrow", title: t("side.open"), onclick: () => { state.sideOpen = true; applyLayout(); } }, icon("menu", "sm")),
+    state.sideCollapsed ? h("button", { class: "btn ghost sm icon-only only-wide", title: t("side.expand"), onclick: () => { state.sideCollapsed = false; ls.set("cw_side", "1"); applyLayout(); renderTopbar(); } }, icon("panelLeft", "sm")) : null,
   ];
-  if (state.view === "workspaces") parts.push(h("span", { class: "title" }, "工作区"));
-  else if (state.view === "activity") parts.push(h("span", { class: "title" }, "进行中"));
+  if (state.view === "workspaces") parts.push(h("span", { class: "title" }, t("nav.workspaces")));
+  else if (state.view === "activity") parts.push(h("span", { class: "title" }, t("nav.activity")));
   else if (p) {
-    parts.push(h("button", { class: "crumb ellipsis", title: "工作区一览", onclick: () => go("workspaces") }, p.name));
+    parts.push(h("button", { class: "crumb ellipsis", title: t("ws.overview"), onclick: () => go("workspaces") }, p.name));
     parts.push(h("span", { class: "crumb-sep" }, "/"));
-    parts.push(h("span", { class: "title ellipsis" }, s ? s.title || "未命名会话" : "新会话"));
+    parts.push(h("span", { class: "title ellipsis" }, s ? s.title || t("session.untitled") : t("session.new")));
     parts.push(h("div", { class: "chips" },
       p.repo ? h("a", { class: "chip", href: repoURL(p), target: "_blank", rel: "noopener" }, badge(p.git_provider, "xs"), p.repo) : null,
       s && s.branch ? h("span", { class: "chip run mono" }, icon("branch", "xs"), s.branch) : p.base_branch ? h("span", { class: "chip mono" }, icon("branch", "xs"), p.base_branch) : null,
@@ -1056,9 +1068,9 @@ function renderTopbar() {
   }
   parts.push(h("span", { class: "grow" }));
   if (inSession()) {
-    parts.push(h("button", { class: "btn ghost sm icon-only", title: "改动、文件与提交历史", onclick: () => openDrawer("changes") }, icon("diff", "sm")));
-    parts.push(h("button", { class: "btn ghost sm icon-only", title: "重命名、删除会话", onclick: (e) => openPop(e.currentTarget, (close) => sessionMenu(p, s, close)) }, icon("more", "sm")));
-    parts.push(h("button", { class: "btn ghost sm icon-only", title: state.statusOpen ? "收起状态栏" : "展开状态栏", onclick: toggleStatus }, icon("panelRight", "sm")));
+    parts.push(h("button", { class: "btn ghost sm icon-only", title: t("drawer.title"), onclick: () => openDrawer("changes") }, icon("diff", "sm")));
+    parts.push(h("button", { class: "btn ghost sm icon-only", title: t("session.menuTitle"), onclick: (e) => openPop(e.currentTarget, (close) => sessionMenu(p, s, close)) }, icon("more", "sm")));
+    parts.push(h("button", { class: "btn ghost sm icon-only", title: state.statusOpen ? t("status.hide") : t("status.show"), onclick: toggleStatus }, icon("panelRight", "sm")));
   }
   ui.topbar.replaceChildren(...parts.filter(Boolean));
 }
@@ -1076,22 +1088,21 @@ function renderWorkspaces() {
         h("span", { class: "ws-icon" }, projectMark(p, "sm")),
         h("div", { class: "grow" }, h("div", { class: "name ellipsis" }, p.name), h("div", { class: "src ellipsis" }, sourceLabel(p)))),
       h("div", { class: "stats" },
-        h("span", {}, `${sessions.length} 个会话`),
-        running ? h("span", { class: "chip run" }, h("span", { class: "spinner" }), `${running} 个在跑`) : null,
-        sessions[0] ? h("span", { class: "muted" }, `最近 ${fmtAgo(sessions[0].updated_at)}`) : null),
+        h("span", {}, t("ws.sessions", { n: sessions.length })),
+        running ? h("span", { class: "chip run" }, h("span", { class: "spinner" }), t("ws.running", { n: running })) : null,
+        sessions[0] ? h("span", { class: "muted" }, t("ws.recent", { ago: fmtAgo(sessions[0].updated_at) })) : null),
       sessions.length ? h("div", { class: "ws-recent" }, sessions.slice(0, 3).map((s) => h("button", { class: "link-row", onclick: () => openSession(p.id, s.id) },
-        live.has(`${p.id}/${s.id}`) ? h("span", { class: "spinner" }) : icon("chat", "xs"), h("span", { class: "grow ellipsis" }, s.title || "未命名会话"), h("span", { class: "when" }, fmtShortAgo(s.updated_at))))) : null,
+        live.has(`${p.id}/${s.id}`) ? h("span", { class: "spinner" }) : icon("chat", "xs"), h("span", { class: "grow ellipsis" }, s.title || t("session.untitled")), h("span", { class: "when" }, fmtShortAgo(s.updated_at))))) : null,
       h("div", { class: "actions" },
-        h("button", { class: "btn primary sm", onclick: () => openDraft(p.id) }, icon("plus", "sm"), "新建会话"),
+        h("button", { class: "btn primary sm", onclick: () => openDraft(p.id) }, icon("plus", "sm"), t("nav.newSession")),
         h("span", { class: "grow" }),
-        h("button", { class: "btn ghost sm danger", onclick: () => deleteProject(p) }, icon("trash", "sm"), "删除工作区")),
+        h("button", { class: "btn ghost sm danger", onclick: () => deleteProject(p) }, icon("trash", "sm"), t("ws.delete"))),
     );
   });
   ui.scroll.replaceChildren(h("div", { class: "page" },
     h("div", { class: "page-head" },
-      h("div", { class: "grow" }, h("h1", {}, "工作区"),
-        h("p", {}, "工作区是一个基线仓库。每个会话从它复制一份自己的工作副本：会话之间互不干扰、可以同时跑；GitHub 工作区里一个会话一个分支、一个 PR。")),
-      h("button", { class: "btn primary", onclick: () => openNewProject() }, icon("plus", "sm"), "新建工作区")),
+      h("div", { class: "grow" }, h("h1", {}, t("nav.workspaces"))),
+      h("button", { class: "btn primary", onclick: () => openNewProject() }, icon("plus", "sm"), t("ws.create"))),
     cards.length ? h("div", { class: "ws-grid" }, cards) : welcome(),
   ));
 }
@@ -1102,17 +1113,16 @@ function renderActivity() {
     a.task.status === "TASK_STATUS_RUNNING" ? h("span", { class: "spinner" }) : icon("clock", "sm"),
     h("div", { class: "grow" },
       h("div", { class: "t" }, a.task.message),
-      h("div", { class: "m" }, `${a.project_name} / ${a.session_title || "未命名会话"} · ${fmtAgo(a.task.created_at)}`)),
+      h("div", { class: "m" }, `${a.project_name} / ${a.session_title || t("session.untitled")} · ${fmtAgo(a.task.created_at)}`)),
     statusChip(a.task.status),
-    h("button", { class: "btn sm", onclick: (e) => { e.stopPropagation(); cancelTask(a.task.id, sessionURL(a.project_id, a.session_id)); } }, icon("stop", "xs"), "停止"),
+    h("button", { class: "btn sm", onclick: (e) => { e.stopPropagation(); cancelTask(a.task.id, sessionURL(a.project_id, a.session_id)); } }, icon("stop", "xs"), t("common.stop")),
   ));
   ui.scroll.replaceChildren(h("div", { class: "page" },
     h("div", { class: "page-head" },
-      h("div", { class: "grow" }, h("h1", {}, "进行中"),
-        h("p", {}, "所有工作区、所有会话里正在跑或排队的任务。同一会话的任务按顺序执行，不同会话可以同时跑。"))),
+      h("div", { class: "grow" }, h("h1", {}, t("nav.activity")))),
     rows.length ? h("div", { class: "act-list" }, rows)
-      : h("div", { class: "empty-page" }, icon("check", "lg"), h("div", {}, "没有进行中的任务"),
-        h("button", { class: "btn sm", onclick: newSession }, icon("compose", "sm"), "新建会话")),
+      : h("div", { class: "empty-page" }, icon("check", "lg"), h("div", {}, t("activity.empty")),
+        h("button", { class: "btn sm", onclick: newSession }, icon("compose", "sm"), t("nav.newSession"))),
   ));
 }
 
@@ -1120,7 +1130,7 @@ function renderActivity() {
 function openSearch() {
   closePop();
   if (document.querySelector("dialog.palette")) return;
-  const input = h("input", { class: "pal-input", placeholder: "搜索会话与工作区…", "aria-label": "搜索" });
+  const input = h("input", { class: "pal-input", placeholder: t("search.placeholder"), "aria-label": t("nav.search") });
   const list = h("div", { class: "pal-list" });
   const dialog = h("dialog", { class: "palette" }, h("div", { class: "pal-head" }, icon("search", "sm"), input, h("span", { class: "kbd" }, "Esc")), list);
   let items = [];
@@ -1128,12 +1138,12 @@ function openSearch() {
   const pick = (i) => { const it = items[i]; if (!it) return; dialog.close(); it.run(); };
   const draw = () => {
     const q = input.value.trim().toLowerCase();
-    const has = (t) => String(t || "").toLowerCase().includes(q);
+    const has = (text) => String(text || "").toLowerCase().includes(q);
     const sessions = state.sessions.filter((s) => !q || has(s.title) || has((findProject(s.project_id) || {}).name)).slice(0, 30).map((s) => ({
-      group: "会话", mark: () => icon("chat", "sm"), title: s.title || "未命名会话", sub: `${(findProject(s.project_id) || {}).name || ""} · ${fmtAgo(s.updated_at)}`, run: () => openSession(s.project_id, s.id),
+      group: t("side.sessions"), mark: () => icon("chat", "sm"), title: s.title || t("session.untitled"), sub: `${(findProject(s.project_id) || {}).name || ""} · ${fmtAgo(s.updated_at)}`, run: () => openSession(s.project_id, s.id),
     }));
     const projects = state.projects.filter((p) => !q || has(p.name) || has(sourceLabel(p))).slice(0, 10).map((p) => ({
-      group: "工作区", mark: () => projectMark(p, "sm"), title: p.name, sub: `新会话 · ${sourceLabel(p)}`, run: () => openDraft(p.id),
+      group: t("nav.workspaces"), mark: () => projectMark(p, "sm"), title: p.name, sub: t("search.newIn", { source: sourceLabel(p) }), run: () => openDraft(p.id),
     }));
     items = [...sessions, ...projects];
     sel = Math.min(sel, Math.max(0, items.length - 1));
@@ -1143,7 +1153,7 @@ function openSearch() {
       out.push(h("button", { class: "pal-item" + (i === sel ? " sel" : ""), onclick: () => pick(i), onmousemove: () => { if (sel !== i) { sel = i; draw(); } } },
         it.mark(), h("span", { class: "t ellipsis" }, it.title), h("span", { class: "m ellipsis" }, it.sub)));
     });
-    list.replaceChildren(...(out.length ? out : [h("div", { class: "pal-empty" }, "没有找到")]));
+    list.replaceChildren(...(out.length ? out : [h("div", { class: "pal-empty" }, t("search.none"))]));
     const cur = list.querySelector(".pal-item.sel");
     if (cur) cur.scrollIntoView({ block: "nearest" });
   };
@@ -1191,8 +1201,8 @@ function lastFinished() {
   return null;
 }
 
-function pendingAsk(t) {
-  const run = state.runs.get(t.id);
+function pendingAsk(task) {
+  const run = state.runs.get(task.id);
   if (!run) return null;
   const events = run.events;
   for (let i = events.length - 1; i >= 0; i--) {
@@ -1203,7 +1213,7 @@ function pendingAsk(t) {
     if (state.replied.has(qid) || events.slice(i + 1).some((e) => !QUIET.has(e.type))) return null;
     const raw = pick(v, "options", "choices") || ["approve", "reject"];
     const options = raw.map((o) => (typeof o === "string" ? { id: o, label: o } : { id: pick(o, "id", "value", "option"), label: pick(o, "label", "text", "id", "value") }));
-    return { qid, question: pick(v, "question", "prompt", "text", "summary", "message") || "Agent 请求确认后再继续。", options };
+    return { qid, question: pick(v, "question", "prompt", "text", "summary", "message") || t("ask.default"), options };
   }
   return null;
 }
@@ -1221,14 +1231,14 @@ function phase() {
   return { mode: statusOf(last) === "TASK_STATUS_DONE" ? "done" : "failed", last };
 }
 
-function liveInfo(t) {
-  const run = state.runs.get(t.id);
+function liveInfo(task) {
+  const run = state.runs.get(task.id);
   const events = run ? run.events : [];
   let round = 0;
   for (const e of events) if (e.type === "round_started") round = num(pick(e.value, "round_seq")) || round;
   const steps = workSteps(events);
   const last = steps[steps.length - 1];
-  const now = last ? stepInfo(last).now : t.status === "TASK_STATUS_QUEUED" ? "排队中" : "正在连接…";
+  const now = last ? stepInfo(last).now : task.status === "TASK_STATUS_QUEUED" ? t("status.queued") : t("run.connecting");
   const elapsed = events.length ? Date.now() - new Date(events[0].time) : 0;
   return { round, now, elapsed, steps: steps.length };
 }
@@ -1264,16 +1274,16 @@ function scrollToTurn(id) {
 
 function welcome() {
   const sample = state.samples[0];
+  const conns = gitConnections();
   return h("div", { class: "hero-empty" },
     h("div", { class: "mark big" }, logo("lg")),
-    h("h2", {}, "从一个工作区开始"),
-    h("p", {}, "工作区是一个代码仓库。在里面开会话，Agent 读代码、改代码，在隔离的沙箱里跑测试；改动由你审阅后提交或推送。"),
+    h("h2", {}, t("welcome.title")),
     h("div", { class: "suggestions" },
-      sample ? suggestion("box", "试试示例仓库", sample.description, () => quickSample(sample)) : null,
-      suggestion("branch", gitConnections().length ? "从我的仓库开始" : "从 Git 地址克隆",
-        gitConnections().length ? `从 ${gitConnections().map((c) => providerInfo(c.provider).name).join("、")} 选一个仓库，改完推到 agent/* 分支开草稿 PR/MR` : "https 公开仓库；连接 Git 平台后还能选私有仓库",
+      sample ? suggestion("box", t("welcome.sample"), sample.description, () => quickSample(sample)) : null,
+      suggestion("branch", conns.length ? t("welcome.myRepos") : t("welcome.clone"),
+        conns.length ? t("welcome.myReposDesc", { names: conns.map((c) => providerInfo(c.provider).name).join(t("list.sep")) }) : t("welcome.cloneDesc"),
         () => openNewProject("git")),
-      suggestion("folder", "空项目", "从零开始让 Agent 写", () => openNewProject("empty")),
+      suggestion("folder", t("source.empty"), t("welcome.emptyDesc"), () => openNewProject("empty")),
     ),
   );
 }
@@ -1291,21 +1301,19 @@ async function quickSample(sample) {
   } catch (ex) { report(ex); }
 }
 
-// projectEmpty 是新会话（草稿或还没有任务的会话）的开场：说明会话的工作副本，给几条起手的任务。
+// projectEmpty 是新会话（草稿或还没有任务的会话）的开场：给几条起手的任务。
 function projectEmpty() {
   const sample = state.samples.find((s) => state.project.source === "sample:" + s.id);
-  const others = state.sessions.filter((s) => s.project_id === state.project.id).length - (state.session ? 1 : 0);
   const ideas = [
-    sample ? ["sparkles", "修好失败的测试", sample.prompt] : null,
-    ["eye", "讲讲这个仓库", "先通读仓库，说明它的结构、入口和主要模块，不要改任何文件。"],
-    ["check", "找出并修复失败的测试", "运行项目的测试，找出失败的用例，定位原因并修好；改完再跑一遍确认。"],
-    ["terminal", "补单元测试", "为核心模块补充单元测试，覆盖主要分支与边界情况，并确认全部通过。"],
+    sample ? ["sparkles", t("idea.fixSample"), sample.prompt] : null,
+    ["eye", t("idea.explain"), t("idea.explainPrompt")],
+    ["check", t("idea.fix"), t("idea.fixPrompt")],
+    ["terminal", t("idea.tests"), t("idea.testsPrompt")],
   ].filter(Boolean);
   return h("div", { class: "hero-empty" },
     h("div", { class: "mark big" }, logo("lg")),
-    h("h2", {}, `在「${state.project.name}」里做什么？`),
-    h("p", {}, `这个会话会从工作区的基线复制一份自己的工作副本${others > 0 ? `，和另外 ${others} 个会话互不干扰、可以同时跑` : ""}。用一句话描述任务，它会规划、动手、自我检查；改动由你审阅。`),
-    h("div", { class: "suggestions" }, ideas.map(([ic, t, prompt]) => suggestion(ic, t, prompt.length > 60 ? prompt.slice(0, 58) + "…" : prompt, () => setComposer(prompt)))),
+    h("h2", {}, t("empty.title", { name: state.project.name })),
+    h("div", { class: "suggestions" }, ideas.map(([ic, title, prompt]) => suggestion(ic, title, prompt.length > 60 ? prompt.slice(0, 58) + "…" : prompt, () => setComposer(prompt)))),
   );
 }
 
@@ -1313,74 +1321,74 @@ function modelLabel(id) {
   return (MODELS.find((m) => m.id === id) || {}).label || id;
 }
 
-function turn(t) {
-  const run = state.runs.get(t.id);
+function turn(task) {
+  const run = state.runs.get(task.id);
   const events = run ? run.events : [];
   const finished = events.find((e) => e.type === "task_finished");
-  const status = statusOf(t);
+  const status = statusOf(task);
   const running = !TERMINAL.has(status);
   let tail = null;
-  if (finished) tail = result(t, finished.value);
-  else if (running) tail = waitingLine(t);
-  else if (!run) tail = h("div", { class: "result-foot" }, statusChip(status), h("button", { class: "btn ghost sm", onclick: () => loadRun(t, true) }, "加载详情"));
-  return h("section", { class: "turn", id: "turn-" + t.id },
+  if (finished) tail = result(task, finished.value);
+  else if (running) tail = waitingLine(task);
+  else if (!run) tail = h("div", { class: "result-foot" }, statusChip(status), h("button", { class: "btn ghost sm", onclick: () => loadRun(task, true) }, t("turn.load")));
+  return h("section", { class: "turn", id: "turn-" + task.id },
     h("div", { class: "msg-user" },
-      h("div", { class: "bubble" }, t.message),
-      h("div", { class: "meta" }, fmtTime(t.created_at),
-        t.sandbox === "read" ? h("span", { class: "chip info" }, icon("eye", "xs"), "只读") : null,
-        t.model && t.model !== "balanced" ? h("span", { class: "chip" }, modelLabel(t.model)) : null),
+      h("div", { class: "bubble" }, task.message),
+      h("div", { class: "meta" }, fmtTime(task.created_at),
+        task.sandbox === "read" ? h("span", { class: "chip info" }, icon("eye", "xs"), t("sandbox.read")) : null,
+        task.model && task.model !== "balanced" ? h("span", { class: "chip" }, modelLabel(task.model)) : null),
     ),
     h("div", { class: "msg-agent" },
-      h("div", { class: "agent-mark" + (running ? " live" : ""), title: running ? "工作中" : null }, logo()),
-      h("div", { class: "agent-body" }, worklog(t, events, running, finished), asks(events), tail),
+      h("div", { class: "agent-mark" + (running ? " live" : ""), title: running ? t("turn.working") : null }, logo()),
+      h("div", { class: "agent-body" }, worklog(task, events, running, finished), asks(events), tail),
     ),
   );
 }
 
-function waitingLine(t) {
+function waitingLine(task) {
   const live = liveTasks();
-  const ahead = live.indexOf(t);
+  const ahead = live.indexOf(task);
   if (ahead > 0) {
-    return h("div", { class: "waiting-line" }, icon("clock", "sm"), `排队中：前面还有 ${ahead} 个任务`,
-      h("button", { class: "btn ghost xs", onclick: () => cancelTask(t.id) }, "取消排队"));
+    return h("div", { class: "waiting-line" }, icon("clock", "sm"), t("queue.ahead", { n: ahead }),
+      h("button", { class: "btn ghost xs", onclick: () => cancelTask(task.id) }, t("queue.cancel")));
   }
-  const run = state.runs.get(t.id);
+  const run = state.runs.get(task.id);
   if (run && run.events.length) return null; // 进度在工作过程与输入框上方
-  return h("div", { class: "waiting-line" }, h("span", { class: "spinner" }), run ? "正在开始…" : "正在连接…");
+  return h("div", { class: "waiting-line" }, h("span", { class: "spinner" }), run ? t("run.starting") : t("run.connecting"));
 }
 
 function asks(events) {
   return events.filter((e) => e.type === "human_input_required").map((ev) => {
     const v = ev.value || {};
     const qid = pick(v, "question_id", "questionId");
-    const q = pick(v, "question", "prompt", "text", "summary", "message") || "确认";
+    const q = pick(v, "question", "prompt", "text", "summary", "message") || t("ask.short");
     const answered = state.replied.has(qid) || events.some((e) => e.event_id > ev.event_id && !QUIET.has(e.type));
     return answered
-      ? h("div", { class: "ask-inline done" }, icon("check", "sm"), h("span", {}, "已回复：" + q))
-      : h("div", { class: "ask-inline" }, icon("alert", "sm"), h("span", {}, h("strong", {}, "需要你确认："), q, h("span", { class: "muted" }, " —— 在下方输入框里回复")));
+      ? h("div", { class: "ask-inline done" }, icon("check", "sm"), h("span", {}, t("ask.replied", { q })))
+      : h("div", { class: "ask-inline" }, icon("alert", "sm"), h("span", {}, h("strong", {}, t("ask.needs")), q));
   });
 }
 
-function worklog(t, events, running, finished) {
+function worklog(task, events, running, finished) {
   const steps = workSteps(events);
   if (!steps.length) return null;
-  const isOpen = state.open.has(t.id) || (running && !state.closed.has(t.id));
+  const isOpen = state.open.has(task.id) || (running && !state.closed.has(task.id));
   const first = events[0];
   const elapsed = first ? (finished ? new Date(finished.time) : Date.now()) - new Date(first.time) : 0;
   const head = running
-    ? [h("span", { class: "spinner" }), h("span", { class: "grow", id: "wl-" + t.id }, workingText(steps.length, elapsed))]
-    : [icon(finished && finished.value.status === "TASK_STATUS_DONE" ? "check" : "clock", "sm lead"), h("span", { class: "grow" }, `工作了 ${fmtDuration(elapsed)} · ${steps.length} 步`)];
+    ? [h("span", { class: "spinner" }), h("span", { class: "grow", id: "wl-" + task.id }, workingText(steps.length, elapsed))]
+    : [icon(finished && finished.value.status === "TASK_STATUS_DONE" ? "check" : "clock", "sm lead"), h("span", { class: "grow" }, t("work.done", { dur: fmtDuration(elapsed), n: steps.length }))];
   return h("div", { class: "worklog" + (isOpen ? " open" : "") },
     h("button", { class: "worklog-head", onclick: () => {
-      if (isOpen) { state.open.delete(t.id); state.closed.add(t.id); } else { state.open.add(t.id); state.closed.delete(t.id); }
-      renderTurn(t.id);
+      if (isOpen) { state.open.delete(task.id); state.closed.add(task.id); } else { state.open.add(task.id); state.closed.delete(task.id); }
+      renderTurn(task.id);
     } }, head, icon("chevron", "sm chev")),
     h("div", { class: "worklog-steps" }, steps.map(step)),
   );
 }
 
 function workingText(steps, elapsed) {
-  return `工作中 · ${steps} 步${elapsed ? " · " + fmtDuration(elapsed) : ""}`;
+  return t("work.live", { n: steps }) + (elapsed ? " · " + fmtDuration(elapsed) : "");
 }
 
 function workSteps(events) {
@@ -1391,40 +1399,44 @@ function stepInfo(ev) {
   const v = ev.value || {};
   let ic = "box", kind = "", title = ev.type, detail = "", chips = null, now = "";
   switch (ev.type) {
-    case "task_accepted": ic = "check"; kind = "ok"; title = "任务已受理"; now = "已受理，正在分诊"; break;
+    case "task_accepted": ic = "check"; kind = "ok"; title = t("step.accepted"); now = t("step.acceptedNow"); break;
     case "round_started":
-      ic = "play"; kind = "run"; title = `开始第 ${pick(v, "round_seq") ?? ""} 轮`; now = "正在规划这一轮";
-      detail = v.rerun ? "重新规划" : "";
+      ic = "play"; kind = "run"; title = t("step.round", { n: pick(v, "round_seq") ?? "" }); now = t("step.roundNow");
+      detail = v.rerun ? t("verdict.replan") : "";
       break;
     case "stage_started": {
       ic = "layers"; kind = "run";
-      const goal = pick(v, "goal") || "执行";
-      title = "计划：" + goal;
-      now = "按计划执行：" + goal;
-      detail = pick(v, "exit_when") ? "完成标准：" + v.exit_when : "";
-      if (v.triage_level) detail = (detail ? detail + "\n" : "") + "Triage：" + v.triage_level;
+      const goal = pick(v, "goal") || t("step.execute");
+      title = t("step.plan", { goal });
+      now = t("step.planNow", { goal });
+      detail = pick(v, "exit_when") ? t("step.exitWhen", { x: v.exit_when }) : "";
+      if (v.triage_level) detail = (detail ? detail + "\n" : "") + "Triage: " + v.triage_level;
       const nodes = Array.isArray(v.nodes) ? v.nodes : [];
-      chips = nodes.length ? h("div", { class: "step-chips" }, nodes.map((n) => h("span", { class: "chip mono" }, typeof n === "string" ? n : pick(n, "id") || "节点"))) : null;
+      chips = nodes.length ? h("div", { class: "step-chips" }, nodes.map((n) => h("span", { class: "chip mono" }, typeof n === "string" ? n : pick(n, "id") || t("step.node")))) : null;
       break;
     }
-    case "node_started": ic = "terminal"; title = "开始 " + (pick(v, "node_id") || "节点"); now = "正在执行 " + (pick(v, "node_id") || "节点"); break;
+    case "node_started": {
+      const id = pick(v, "node_id") || t("step.node");
+      ic = "terminal"; title = t("step.nodeStart", { id }); now = t("step.nodeRunning", { id });
+      break;
+    }
     case "node_finished": {
       const st = String(pick(v, "status") || "");
       const failed = /fail|denied|error/i.test(st);
-      const id = pick(v, "node_id") || "节点";
+      const id = pick(v, "node_id") || t("step.node");
       ic = failed ? "x" : "check"; kind = failed ? "err" : "ok";
-      title = (failed ? "失败：" : "完成：") + id;
-      now = failed ? `${id} 失败，Reviewer 会决定怎么办` : `完成 ${id}`;
+      title = t(failed ? "step.nodeFailed" : "step.nodeDone", { id });
+      now = t(failed ? "step.nodeFailedNow" : "step.nodeDoneNow", { id });
       detail = [pick(v, "role"), st && st !== "succeeded" ? st : ""].filter(Boolean).join(" · ");
       break;
     }
-    case "tool_status": ic = "terminal"; title = "工具 " + (pick(v, "tool", "name") || ""); detail = pick(v, "status", "message") || ""; break;
+    case "tool_status": ic = "terminal"; title = t("step.tool", { name: pick(v, "tool", "name") || "" }); detail = pick(v, "status", "message") || ""; break;
     case "verdict": {
       const key = String(pick(v, "verdict") || "").replace(/^VERDICT_/, "").toLowerCase();
       const [label, k] = VERDICTS[key] || [key || "—", ""];
       ic = "shield"; kind = k === "info" ? "run" : k;
-      title = `Reviewer 判定：${label}（${key}）`;
-      now = `Reviewer 判定：${label}`;
+      title = t("step.verdict", { label, key });
+      now = t("step.verdictNow", { label });
       detail = pick(v, "reason") || "";
       break;
     }
@@ -1440,7 +1452,7 @@ function step(ev) {
       h("div", { class: "step-title" }, s.title),
       s.detail ? h("div", { class: "step-detail" }, s.detail) : null,
       s.chips,
-      h("details", { class: "raw" }, h("summary", {}, "原始事件"), h("pre", {}, JSON.stringify(ev.value || {}, null, 2))),
+      h("details", { class: "raw" }, h("summary", {}, t("step.raw")), h("pre", {}, JSON.stringify(ev.value || {}, null, 2))),
     ),
     h("span", { class: "step-time" }, fmtClock(ev.time)),
   );
@@ -1472,7 +1484,7 @@ function objectMarkdown(d) {
   for (const [k, v] of Object.entries(d)) {
     out.push(`### ${k.replace(/_/g, " ")}`);
     if (Array.isArray(v)) out.push(v.map((x) => `- ${inlineValue(x)}`).join("\n"));
-    else if (v !== null && typeof v === "object") out.push(Object.entries(v).map(([kk, vv]) => `- **${kk}**：${inlineValue(vv)}`).join("\n"));
+    else if (v !== null && typeof v === "object") out.push(Object.entries(v).map(([kk, vv]) => `- **${kk}**: ${inlineValue(vv)}`).join("\n"));
     else out.push(String(v));
     out.push("");
   }
@@ -1484,22 +1496,22 @@ function taskCost(t) {
   return d && d.cost !== undefined ? d.cost : t.cost_usd || 0;
 }
 
-function result(t, r) {
+function result(task, r) {
   const text = deliverableText(r);
   const ok = r.status === "TASK_STATUS_DONE";
-  const cost = taskCost(t);
-  const rounds = r.rounds || t.rounds;
+  const cost = taskCost(task);
+  const rounds = r.rounds || task.rounds;
   const n = state.changes ? state.changes.files.length : 0;
   return h("div", { class: "col" },
     text ? h("div", { class: "answer" }, md(text)) : null,
     r.error ? h("div", { class: "error-box" }, typeof r.error === "string" ? r.error : pick(r.error, "message") || JSON.stringify(r.error)) : null,
     h("div", { class: "result-foot" },
       statusChip(r.status),
-      rounds ? h("span", { class: "chip" }, `${rounds} 轮`) : null,
+      rounds ? h("span", { class: "chip" }, t("rounds", { n: rounds })) : null,
       cost ? h("span", { class: "chip" }, fmtUSD(cost)) : null,
       h("span", { class: "grow" }),
-      text ? h("button", { class: "btn ghost xs", onclick: () => copy(text) }, icon("copy", "xs"), "复制") : null,
-      ok && n && t === state.tasks[state.tasks.length - 1] ? h("button", { class: "btn ghost xs", onclick: () => openDrawer("changes") }, icon("diff", "xs"), "审阅改动") : null,
+      text ? h("button", { class: "btn ghost xs", onclick: () => copy(text) }, icon("copy", "xs"), t("common.copy")) : null,
+      ok && n && task === state.tasks[state.tasks.length - 1] ? h("button", { class: "btn ghost xs", onclick: () => openDrawer("changes") }, icon("diff", "xs"), t("changes.review")) : null,
     ),
   );
 }
@@ -1585,10 +1597,10 @@ function afterFinish(t) {
 
 // cancelTask 停止一个任务；base 是它所在会话的接口前缀，默认当前会话。
 async function cancelTask(taskId, base = sbase()) {
-  if (!base || !confirm("停止这个任务？已经做的改动会留在会话的工作副本里。")) return;
+  if (!base || !confirm(t("task.stopConfirm"))) return;
   try {
     await api("POST", `${base}/tasks/${taskId}/cancel`);
-    toast("已请求停止");
+    toast(t("task.stopRequested"));
     loadActive();
   } catch (ex) { report(ex); }
 }
@@ -1674,7 +1686,7 @@ function dock() {
   ui.cAsk = h("div", { class: "hidden" });
   ui.cRight = h("div", { class: "c-right" });
   ui.cOpts = h("div", { class: "hidden" });
-  ui.input = h("textarea", { class: "c-input", rows: 1, id: "composer", "aria-label": "给 Agent 的消息" });
+  ui.input = h("textarea", { class: "c-input", rows: 1, id: "composer", "aria-label": t("composer.aria") });
   ui.input.addEventListener("input", () => { autosize(); refreshSend(); });
   ui.input.addEventListener("keydown", onComposerKey);
   ui.composer = h("div", { class: "composer" }, ui.cStatus, ui.cAsk, h("div", { class: "c-row" }, ui.input, ui.cRight), ui.cOpts);
@@ -1716,10 +1728,10 @@ function updateComposer(force = false) {
     ui.cStatus.className = "c-status";
     ui.cStatus.replaceChildren(...[
       ph.mode === "running" ? h("span", { class: "spinner" }) : icon("alert", "sm"),
-      h("span", { class: "grow ellipsis" }, info.round ? `第 ${info.round} 轮 · ` : "", h("span", { class: "what" }, ph.mode === "waiting" ? "等你确认后继续" : info.now)),
-      ph.queued.length ? h("span", { class: "chip" }, `排队 ${ph.queued.length}`) : null,
+      h("span", { class: "grow ellipsis" }, info.round ? t("composer.round", { n: info.round }) : "", h("span", { class: "what" }, ph.mode === "waiting" ? t("composer.waiting") : info.now)),
+      ph.queued.length ? h("span", { class: "chip" }, t("composer.queued", { n: ph.queued.length })) : null,
       h("span", { class: "when", id: "c-elapsed" }, info.elapsed ? fmtTimer(info.elapsed) : ""),
-      h("button", { class: "btn xs", title: "停止当前任务（Esc）", onclick: () => cancelTask(ph.current.id) }, icon("stop", "xs"), "停止"),
+      h("button", { class: "btn xs", title: t("composer.stopTitle"), onclick: () => cancelTask(ph.current.id) }, icon("stop", "xs"), t("common.stop")),
     ].filter(Boolean));
   } else {
     ui.cStatus.className = "hidden";
@@ -1728,19 +1740,13 @@ function updateComposer(force = false) {
 
   if (ph.mode === "waiting") {
     ui.cAsk.className = "c-ask";
-    ui.cAsk.replaceChildren(h("div", { class: "h" }, icon("alert", "xs"), "需要你确认"), h("div", { class: "q" }, ph.ask.question));
+    ui.cAsk.replaceChildren(h("div", { class: "h" }, icon("alert", "xs"), t("ask.title")), h("div", { class: "q" }, ph.ask.question));
   } else {
     ui.cAsk.className = "hidden";
     ui.cAsk.replaceChildren();
   }
 
-  ui.input.placeholder = {
-    empty: "描述要做的改动，例如：修好失败的测试",
-    done: "接着说，或者开始新的改动",
-    failed: "换个说法再试，或者补充更多信息",
-    running: "继续输入：会排在当前任务之后执行",
-    waiting: "补充说明（可选），然后选一个选项",
-  }[ph.mode] || "";
+  ui.input.placeholder = ["empty", "done", "failed", "running", "waiting"].includes(ph.mode) ? t("composer.ph." + ph.mode) : "";
 
   // 工具条与下一步只在内容变了时重画，免得打断打开着的菜单。
   const m = meter();
@@ -1773,24 +1779,25 @@ function updateComposer(force = false) {
 
 function sendButton(ph) {
   const queue = ph.mode === "running";
-  ui.send = h("button", { class: "send" + (queue ? " queue" : ""), title: queue ? "排在当前任务之后（Enter）" : "发送（Enter）", onclick: () => submit() },
-    icon(queue ? "queue" : "send", "sm"), queue ? "排队" : null);
+  ui.send = h("button", { class: "send" + (queue ? " queue" : ""), title: queue ? t("composer.queueTitle") : t("composer.sendTitle"), onclick: () => submit() },
+    icon(queue ? "queue" : "send", "sm"), queue ? t("composer.queue") : null);
   return ui.send;
 }
 
 function hint(ph) {
   const k = (key, text) => h("span", {}, h("span", { class: "kbd" }, key), " ", text);
-  if (ph.mode === "running") return [k("Esc", "停止当前任务"), k("Enter", "排队"), k("Shift+Enter", "换行")];
-  if (ph.mode === "waiting") return [h("span", {}, "选项会作为人工回复送回 Runtime；补充说明随选项一起发送")];
-  return [k("Enter", "发送"), k("Shift+Enter", "换行"),
-    h("span", {}, state.settings.sandbox === "read" ? "只读：这个任务不会改文件" : "改动留在工作区，由你审阅后再提交")];
+  if (ph.mode === "running") return [k("Esc", t("hint.stop")), k("Enter", t("hint.queue")), k("Shift+Enter", t("hint.newline"))];
+  if (ph.mode === "waiting") return [];
+  return [k("Enter", t("hint.send")), k("Shift+Enter", t("hint.newline"))];
 }
 
+const OPTION_LABELS = {
+  approve: "opt.approve", reject: "opt.reject", continue_as_is: "opt.continue", replan_with_guidance: "opt.replanGuided", stop_and_wrap_up: "opt.wrapUp",
+  continue: "opt.continue", replan: "opt.replan", stop: "opt.wrapUp",
+};
+
 function optionLabel(label) {
-  return {
-    approve: "批准", reject: "拒绝", continue_as_is: "原样继续", replan_with_guidance: "按补充说明重新规划", stop_and_wrap_up: "停下并收尾",
-    continue: "原样继续", replan: "带指导重规划", stop: "停止并收尾",
-  }[label] || label;
+  return OPTION_LABELS[label] ? t(OPTION_LABELS[label]) : label;
 }
 
 function nextSteps(ph) {
@@ -1800,22 +1807,23 @@ function nextSteps(ph) {
     const p = state.project;
     const s = state.session || {};
     const out = [];
-    if (n) out.push(chip("diff", `审阅改动 · ${n} 个文件`, () => openDrawer("changes"), true));
+    if (n) out.push(chip("diff", t("next.review", { n }), () => openDrawer("changes"), true));
     if (n && p.repo && connection(p.git_provider)) {
       const rn = requestName(p);
-      out.push(h("button", { class: "next-step", onclick: () => openDrawer("changes", { focus: "publish" }) }, badge(p.git_provider, "xs"), s.pr_number ? `推送到 ${rn} #${s.pr_number}` : `推送并开草稿 ${rn}`));
+      out.push(h("button", { class: "next-step", onclick: () => openDrawer("changes", { focus: "publish" }) }, badge(p.git_provider, "xs"),
+        s.pr_number ? t("publish.pushTo", { rn, n: s.pr_number }) : t("publish.pushDraft", { rn })));
     }
-    else if (n) out.push(chip("commit", "提交这些改动", () => openDrawer("changes", { focus: "commit" })));
-    out.push(chip("edit", "继续完善", () => setComposer("在刚才的基础上继续：")));
-    out.push(chip("fileText", "解释改了什么", () => setComposer("解释一下刚才改了哪些地方、为什么这样改，不要再改文件。")));
+    else if (n) out.push(chip("commit", t("next.commit"), () => openDrawer("changes", { focus: "commit" })));
+    out.push(chip("edit", t("next.refine"), () => setComposer(t("next.refinePrompt"))));
+    out.push(chip("fileText", t("next.explain"), () => setComposer(t("next.explainPrompt"))));
     return out;
   }
   if (ph.mode === "failed") {
-    const t = ph.last;
+    const last = ph.last;
     return [
-      chip("refresh", "重试", () => submit(t.message), true),
-      chip("edit", "改一改再试", () => setComposer(t.message)),
-      chip("list", "看看卡在哪里", () => { state.open.add(t.id); state.closed.delete(t.id); renderTurn(t.id); scrollToTurn(t.id); }),
+      chip("refresh", t("next.retry"), () => submit(last.message), true),
+      chip("edit", t("next.edit"), () => setComposer(last.message)),
+      chip("list", t("next.where"), () => { state.open.add(last.id); state.closed.delete(last.id); renderTurn(last.id); scrollToTurn(last.id); }),
     ];
   }
   return [];
@@ -1831,7 +1839,7 @@ function setSetting(key, value) {
 function sandboxDesc(s) {
   if (s.id !== "write_reversible") return s.desc;
   const mode = state.env && state.env.sandbox && state.env.sandbox.mode;
-  return mode === "host" ? "改文件；命令直接在本机跑（开发环境，不隔离）" : s.desc;
+  return mode === "host" ? t("sandbox.hostDesc") : s.desc;
 }
 
 function sandboxTool() {
@@ -1840,12 +1848,10 @@ function sandboxTool() {
   return h("button", {
     class: "tool" + (cur.id === "read" ? " read-only" : ""),
     disabled: !can,
-    title: can ? "沙箱等级：对下一个任务生效" : "这个部署的沙箱等级由租户策略决定",
+    title: can ? t("sandbox.title") : t("sandbox.fixed"),
     onclick: (e) => openPop(e.currentTarget, (close) => [
-      h("div", { class: "pop-title" }, "沙箱等级"),
+      h("div", { class: "pop-title" }, t("sandbox.heading")),
       ...SANDBOX.map((s) => popItem(s.icon, s.label, sandboxDesc(s), state.settings.sandbox === s.id, () => { setSetting("sandbox", s.id); close(); }, s.disabled)),
-      h("div", { class: "pop-sep" }),
-      h("div", { class: "pop-note" }, "对下一个任务生效：提交时固定成这个任务的 effect 上限，运行中改不了。"),
     ]),
   }, icon(cur.icon, "sm"), h("span", { class: "v" }, cur.label), icon("chevDown", "caret"));
 }
@@ -1854,12 +1860,10 @@ function modelTool() {
   const cur = MODELS.find((m) => m.id === state.settings.model) || MODELS[1];
   return h("button", {
     class: "tool",
-    title: "模型倾向：对下一个任务生效",
+    title: t("model.title"),
     onclick: (e) => openPop(e.currentTarget, (close) => [
-      h("div", { class: "pop-title" }, "模型倾向"),
+      h("div", { class: "pop-title" }, t("model.heading")),
       ...MODELS.map((m) => popItem(m.icon, m.label, m.desc, state.settings.model === m.id, () => { setSetting("model", m.id); close(); })),
-      h("div", { class: "pop-sep" }),
-      h("div", { class: "pop-note" }, "作为约束交给 Planner，它规划模型节点时据此选档位；工具循环与 Reviewer 的档位是固定配置。"),
     ]),
   }, icon(cur.icon, "sm"), h("span", { class: "v" }, cur.label), icon("chevDown", "caret"));
 }
@@ -1882,27 +1886,23 @@ function meter() {
 }
 
 function meterText(m) {
-  return m.hasUsage ? `${fmtTokens(m.input + m.output)} token · ${fmtUSD(m.cost)}` : fmtUSD(m.cost);
+  return m.hasUsage ? t("meter.text", { tokens: fmtTokens(m.input + m.output), cost: fmtUSD(m.cost) }) : fmtUSD(m.cost);
 }
 
 function meterTool(m) {
   return h("button", {
     class: "tool",
-    title: "本项目的用量",
+    title: t("meter.title"),
     onclick: (e) => openPop(e.currentTarget, () => {
       const mm = meter();
       const row = (k, v) => [h("span", { class: "k" }, k), h("span", { class: "v" }, v)];
       return [
-        h("div", { class: "pop-title" }, "本项目的用量"),
+        h("div", { class: "pop-title" }, t("meter.title")),
         h("div", { class: "meter-grid" },
-          row("任务", String(mm.count)),
-          row("花费合计", fmtUSD(mm.cost)),
-          mm.current !== null ? row("当前任务", fmtUSD(mm.current)) : null,
-          mm.hasUsage ? [row("输入 token", fmtTokens(mm.input)), row("输出 token", fmtTokens(mm.output)), row("缓存读", fmtTokens(mm.cacheRead))] : null),
-        h("div", { class: "pop-sep" }),
-        h("div", { class: "pop-note" }, mm.hasUsage
-          ? "花费按 Task State 里每一轮的 cost_usd 相加；token 来自 Runtime 的计量。"
-          : "花费按 Task State 里每一轮的 cost_usd 相加。Token 数要等 Runtime 在 QueryTask 里回报 usage，现在还是空的。"),
+          row(t("meter.tasks"), String(mm.count)),
+          row(t("meter.cost"), fmtUSD(mm.cost)),
+          mm.current !== null ? row(t("meter.current"), fmtUSD(mm.current)) : null,
+          mm.hasUsage ? [row(t("meter.input"), fmtTokens(mm.input)), row(t("meter.output"), fmtTokens(mm.output)), row(t("meter.cache"), fmtTokens(mm.cacheRead))] : null),
       ];
     }),
   }, icon("gauge", "sm"), h("span", { class: "v keep" }, meterText(m)));
@@ -1948,15 +1948,15 @@ async function submit(text) {
   }
 }
 
-async function reply(t, ask, option) {
+async function reply(task, ask, option) {
   try {
-    await api("POST", `${sbase()}/tasks/${t.id}/reply`, { question_id: ask.qid, option, guidance: ui.input.value.trim() });
+    await api("POST", `${sbase()}/tasks/${task.id}/reply`, { question_id: ask.qid, option, guidance: ui.input.value.trim() });
     state.replied.add(ask.qid);
     ui.input.value = "";
     autosize();
-    renderTurn(t.id);
+    renderTurn(task.id);
     updateComposer(true);
-    toast("已回复");
+    toast(t("ask.sent"));
   } catch (ex) { report(ex); }
 }
 
@@ -1974,11 +1974,11 @@ function setComposer(text) {
 function renderStatus() {
   if (!ui.statusBody || !inSession() || !state.statusOpen) return;
   ui.statusBody.replaceChildren(
-    section("env", "server", "环境", envSummary(), envBody),
-    section("context", "layers", "上下文", contextSummary(), contextBody),
-    section("output", "fileText", "输出", outputSummary(), outputBody),
-    section("changes", "diff", "改动", changesSummary(), changesBody),
-    section("background", "activity", "后台任务", backgroundSummary(), backgroundBody),
+    section("env", "server", t("sp.env"), envSummary(), envBody),
+    section("context", "layers", t("sp.context"), contextSummary(), contextBody),
+    section("output", "fileText", t("sp.output"), outputSummary(), outputBody),
+    section("changes", "diff", t("sp.changes"), changesSummary(), changesBody),
+    section("background", "activity", t("sp.background"), backgroundSummary(), backgroundBody),
   );
 }
 
@@ -2001,64 +2001,64 @@ function kv(rows) {
 function envSummary() {
   const e = state.env;
   if (!e) return h("span", { class: "spinner" });
-  return e.runtime && e.runtime.ok ? [h("span", { class: "dot ok" }), "已连接"] : [h("span", { class: "dot err" }), "Runtime 连不上"];
+  return e.runtime && e.runtime.ok ? [h("span", { class: "dot ok" }), t("env.connected")] : [h("span", { class: "dot err" }), t("env.down")];
 }
 
 function envBody() {
   const e = state.env;
-  if (!e) return h("div", { class: "empty-line" }, "正在读取…");
+  if (!e) return h("div", { class: "empty-line" }, t("common.loading"));
   const p = state.project;
   const s = state.session;
   const sb = e.sandbox || {};
   const git = e.git || {};
   const se = e.session || {};
   const level = SANDBOX.find((x) => x.id === state.settings.sandbox) || SANDBOX[1];
-  const sandboxText = sb.mode === "docker" ? `Docker · ${sb.image || "默认镜像"} · 断网` : sb.mode === "host" ? "本机（不隔离，仅开发）" : "没有说明";
+  const sandboxText = sb.mode === "docker" ? t("env.docker", { image: sb.image || t("env.defaultImage") }) : sb.mode === "host" ? t("env.host") : t("env.unknown");
   const rsid = se.runtime_session_id || "";
   return [
     kv([
-      ["Runtime", [h("span", { class: "dot " + (e.runtime && e.runtime.ok ? "ok" : "err") }), e.runtime && e.runtime.ok ? "task-service 已连接" : "连不上 task-service"]],
-      ["沙箱", sandboxText],
-      ["权限", [h("span", { class: "chip" + (level.id === "read" ? " info" : "") }, icon(level.icon, "xs"), level.label), h("span", { class: "muted small" }, "下一个任务")]],
-      ["工作副本", se.own_copy ? [h("span", {}, "这个会话独有"), h("span", { class: "mono small muted", title: se.workspace_id }, se.workspace_id)] : "工作区目录（迁移来的会话）"],
-      ["分支", git.branch ? [h("span", { class: "chip mono" }, icon("branch", "xs"), git.branch), git.head ? h("span", { class: "mono small muted" }, git.head.slice(0, 7)) : null] : "—"],
-      git.subject ? ["最近提交", h("span", { class: "muted" }, git.subject)] : null,
-      ["改动", git.dirty ? `${git.dirty} 个文件未提交` : "干净"],
-      ["工作区", [h("span", {}, p.name), p.repo ? null : h("span", { class: "muted small" }, sourceLabel(p))]],
-      p.repo ? ["仓库", [badge(p.git_provider, "xs"), h("a", { href: repoURL(p), target: "_blank", rel: "noopener" }, p.repo),
-        connection(p.git_provider) ? null : h("span", { class: "muted small" }, `未连接 ${providerInfo(p.git_provider).name}`)]] : null,
+      ["Runtime", [h("span", { class: "dot " + (e.runtime && e.runtime.ok ? "ok" : "err") }), e.runtime && e.runtime.ok ? t("env.taskOk") : t("env.taskDown")]],
+      [t("env.sandbox"), sandboxText],
+      [t("env.permission"), [h("span", { class: "chip" + (level.id === "read" ? " info" : "") }, icon(level.icon, "xs"), level.label), h("span", { class: "muted small" }, t("env.nextTask"))]],
+      [t("env.copy"), se.own_copy ? [h("span", {}, t("env.ownCopy")), h("span", { class: "mono small muted", title: se.workspace_id }, se.workspace_id)] : t("env.sharedCopy")],
+      [t("env.branch"), git.branch ? [h("span", { class: "chip mono" }, icon("branch", "xs"), git.branch), git.head ? h("span", { class: "mono small muted" }, git.head.slice(0, 7)) : null] : "—"],
+      git.subject ? [t("env.lastCommit"), h("span", { class: "muted" }, git.subject)] : null,
+      [t("sp.changes"), git.dirty ? t("env.dirty", { n: git.dirty }) : t("env.clean")],
+      [t("env.workspace"), [h("span", {}, p.name), p.repo ? null : h("span", { class: "muted small" }, sourceLabel(p))]],
+      p.repo ? [t("env.repo"), [badge(p.git_provider, "xs"), h("a", { href: repoURL(p), target: "_blank", rel: "noopener" }, p.repo),
+        connection(p.git_provider) ? null : h("span", { class: "muted small" }, t("env.notConnected", { name: providerInfo(p.git_provider).name }))]] : null,
       rsid ? ["Session", h("span", { class: "mono small", title: rsid }, rsid.slice(0, 16) + "…")] : null,
     ]),
     h("div", { class: "sp-actions" },
-      h("button", { class: "btn xs", onclick: () => openDrawer("files") }, icon("folder", "xs"), "浏览文件"),
-      s.branch ? h("button", { class: "btn xs", title: `回到 ${p.base_branch} 并拉取最新`, onclick: resetBranch }, icon("refresh", "xs"), `回到 ${p.base_branch}`) : null,
-      h("button", { class: "btn ghost xs", title: "重新读取", onclick: loadEnv }, icon("refresh", "xs"))),
+      h("button", { class: "btn xs", onclick: () => openDrawer("files") }, icon("folder", "xs"), t("env.browse")),
+      s.branch ? h("button", { class: "btn xs", title: t("env.resetTitle", { base: p.base_branch }), onclick: resetBranch }, icon("refresh", "xs"), t("env.reset", { base: p.base_branch })) : null,
+      h("button", { class: "btn ghost xs", title: t("common.reload"), onclick: loadEnv }, icon("refresh", "xs"))),
   ];
 }
 
 function contextSummary() {
-  const t = focusTask();
-  if (!t) return "—";
-  const d = state.detail.get(t.id);
-  const rounds = d && d.state && Array.isArray(d.state.rounds) ? d.state.rounds.length : t.rounds || 0;
-  const cost = taskCost(t);
-  return [rounds ? `${rounds} 轮` : null, cost ? fmtUSD(cost) : null].filter(Boolean).join(" · ") || "—";
+  const task = focusTask();
+  if (!task) return "—";
+  const d = state.detail.get(task.id);
+  const rounds = d && d.state && Array.isArray(d.state.rounds) ? d.state.rounds.length : task.rounds || 0;
+  const cost = taskCost(task);
+  return [rounds ? t("rounds", { n: rounds }) : null, cost ? fmtUSD(cost) : null].filter(Boolean).join(" · ") || "—";
 }
 
 function contextBody() {
-  const t = focusTask();
-  if (!t) return h("div", { class: "empty-line" }, "还没有任务。提交一个任务后，这里显示它的目标、约束、已知的事实与每一轮的判定。");
-  const d = state.detail.get(t.id);
+  const task = focusTask();
+  if (!task) return h("div", { class: "empty-line" }, t("ctx.empty"));
+  const d = state.detail.get(task.id);
   const s = d && d.state;
-  if (!s) return [h("div", { class: "goal" }, t.message), h("div", { class: "empty-line" }, "正在读取 Task State…")];
+  if (!s) return [h("div", { class: "goal" }, task.message), h("div", { class: "empty-line" }, t("ctx.loading"))];
   const c = s.constraints || {};
   const chips = [];
   if (c.effect_ceiling) {
     const lv = SANDBOX.find((x) => x.id === c.effect_ceiling);
     chips.push(h("span", { class: "chip" + (c.effect_ceiling === "read" ? " info" : "") }, lv ? lv.label : c.effect_ceiling));
   }
-  if (c.budget_usd) chips.push(h("span", { class: "chip" }, `预算 ${fmtUSD(num(c.budget_usd))}`));
-  if (c.model_preference) chips.push(h("span", { class: "chip" }, `模型 ${modelLabel(c.model_preference)}`));
+  if (c.budget_usd) chips.push(h("span", { class: "chip" }, t("ctx.budget", { cost: fmtUSD(num(c.budget_usd)) })));
+  if (c.model_preference) chips.push(h("span", { class: "chip" }, t("ctx.model", { label: modelLabel(c.model_preference) })));
   for (const [k, v] of Object.entries(c)) {
     if (!["effect_ceiling", "budget_usd", "model_preference"].includes(k)) chips.push(h("span", { class: "chip mono" }, `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`));
   }
@@ -2066,19 +2066,19 @@ function contextBody() {
     if (!Array.isArray(items) || !items.length) return null;
     const shown = items.slice(-max);
     return [h("div", { class: "sp-sub" }, `${title} · ${items.length}`), h("ul", { class: "sp-list" }, shown.map((x) => h("li", {}, String(x)))),
-      items.length > max ? h("div", { class: "empty-line" }, `还有更早的 ${items.length - max} 条`) : null];
+      items.length > max ? h("div", { class: "empty-line" }, t("ctx.older", { n: items.length - max })) : null];
   };
   const rounds = Array.isArray(s.rounds) ? s.rounds : [];
   return [
-    h("div", { class: "goal" }, s.goal || t.message),
-    h("div", { class: "sp-sub" }, "完成条件"),
+    h("div", { class: "goal" }, s.goal || task.message),
+    h("div", { class: "sp-sub" }, t("ctx.doneWhen")),
     h("div", { class: "muted" }, s.done_when || "—"),
-    chips.length ? [h("div", { class: "sp-sub" }, "约束"), h("div", { class: "chip-row" }, chips)] : null,
-    list("里程碑", s.milestones),
-    list("已验证的事实", s.facts),
-    list("待查的假设", s.assumptions),
-    list("待问的问题", s.open_questions),
-    rounds.length ? [h("div", { class: "sp-sub" }, "各轮"), h("div", { class: "rounds" }, rounds.map((r) => h("div", { class: "round-row" },
+    chips.length ? [h("div", { class: "sp-sub" }, t("ctx.constraints")), h("div", { class: "chip-row" }, chips)] : null,
+    list(t("ctx.milestones"), s.milestones),
+    list(t("ctx.facts"), s.facts),
+    list(t("ctx.assumptions"), s.assumptions),
+    list(t("ctx.questions"), s.open_questions),
+    rounds.length ? [h("div", { class: "sp-sub" }, t("ctx.rounds")), h("div", { class: "rounds" }, rounds.map((r) => h("div", { class: "round-row" },
       h("span", { class: "n" }, r.seq), h("span", { class: "g ellipsis", title: r.stage_goal }, r.stage_goal || "—"),
       r.verdict ? verdictChip(r.verdict) : r.status && r.status !== "completed" ? h("span", { class: "spinner" }) : null,
       r.cost_usd ? h("span", { class: "c" }, fmtUSD(num(r.cost_usd))) : null)))] : null,
@@ -2092,17 +2092,17 @@ function outputSummary() {
 
 function outputBody() {
   const f = lastFinished();
-  if (!f) return h("div", { class: "empty-line" }, "任务结束后，这里显示最近一次的交付。");
+  if (!f) return h("div", { class: "empty-line" }, t("output.empty"));
   const text = deliverableText(f.result);
   const d = state.detail.get(f.task.id);
   const artifacts = d && d.state && Array.isArray(d.state.artifacts) ? d.state.artifacts : [];
   return [
     h("div", { class: "muted small ellipsis" }, f.task.message),
-    text ? h("div", { class: "output-preview" }, h("div", { class: "answer" }, md(text))) : h("div", { class: "empty-line" }, "这个任务没有文字交付。"),
-    artifacts.length ? [h("div", { class: "sp-sub" }, `产物 · ${artifacts.length}`), h("ul", { class: "sp-list" }, artifacts.map((a) => h("li", { class: "mono small" }, a)))] : null,
+    text ? h("div", { class: "output-preview" }, h("div", { class: "answer" }, md(text))) : h("div", { class: "empty-line" }, t("output.noText")),
+    artifacts.length ? [h("div", { class: "sp-sub" }, t("output.artifacts", { n: artifacts.length })), h("ul", { class: "sp-list" }, artifacts.map((a) => h("li", { class: "mono small" }, a)))] : null,
     h("div", { class: "sp-actions" },
-      h("button", { class: "btn xs", onclick: () => scrollToTurn(f.task.id) }, icon("chevron", "xs"), "在对话里看"),
-      text ? h("button", { class: "btn ghost xs", onclick: () => copy(text) }, icon("copy", "xs"), "复制") : null),
+      h("button", { class: "btn xs", onclick: () => scrollToTurn(f.task.id) }, icon("chevron", "xs"), t("output.inThread")),
+      text ? h("button", { class: "btn ghost xs", onclick: () => copy(text) }, icon("copy", "xs"), t("common.copy")) : null),
   ];
 }
 
@@ -2114,12 +2114,12 @@ function changeStats() {
 function changesSummary() {
   if (!state.changes) return h("span", { class: "spinner" });
   const { files, added, deleted } = changeStats();
-  if (!files.length) return "干净";
-  return [h("span", { class: "stat-add" }, `+${added}`), h("span", { class: "stat-del" }, `−${deleted}`), `${files.length} 个文件`];
+  if (!files.length) return t("env.clean");
+  return [h("span", { class: "stat-add" }, `+${added}`), h("span", { class: "stat-del" }, `−${deleted}`), t("files.count", { n: files.length })];
 }
 
 function changesBody() {
-  if (!state.changes) return h("div", { class: "empty-line" }, "正在读取…");
+  if (!state.changes) return h("div", { class: "empty-line" }, t("common.loading"));
   const { files } = changeStats();
   const p = state.project;
   const s = state.session;
@@ -2128,34 +2128,31 @@ function changesBody() {
     files.length
       ? h("div", {}, files.slice(0, max).map((f) => h("button", { class: "file-row", title: f.path, onclick: () => openDrawer("changes", { focus: f.path }) },
         icon("file", "xs"), h("span", { class: "p ellipsis" }, f.path),
-        f.binary ? h("span", { class: "muted small" }, "二进制") : [h("span", { class: "stat-add" }, `+${f.added}`), h("span", { class: "stat-del" }, `−${f.deleted}`)])),
-      files.length > max ? h("div", { class: "empty-line" }, `还有 ${files.length - max} 个文件`) : null)
-      : h("div", { class: "empty-line" }, "这个会话的工作副本相对 HEAD 没有改动。"),
+        f.binary ? h("span", { class: "muted small" }, t("changes.binary")) : [h("span", { class: "stat-add" }, `+${f.added}`), h("span", { class: "stat-del" }, `−${f.deleted}`)])),
+      files.length > max ? h("div", { class: "empty-line" }, t("changes.more", { n: files.length - max })) : null)
+      : h("div", { class: "empty-line" }, t("changes.none")),
     h("div", { class: "sp-actions" },
-      files.length ? h("button", { class: "btn primary xs", onclick: () => openDrawer("changes") }, icon("diff", "xs"), "审阅并提交") : null,
+      files.length ? h("button", { class: "btn primary xs", onclick: () => openDrawer("changes") }, icon("diff", "xs"), t("changes.reviewCommit")) : null,
       files.length && p.repo && connection(p.git_provider) ? h("button", { class: "btn xs", onclick: () => openDrawer("changes", { focus: "publish" }) },
-        badge(p.git_provider, "xs"), s.pr_number ? `推送到 ${requestName(p)} #${s.pr_number}` : `推送并开 ${requestName(p)}`) : null,
-      files.length ? h("a", { class: "btn xs", href: `${sbase()}/patch`, download: `${s.workspace_id}.patch` }, icon("download", "xs"), "补丁") : null,
-      h("button", { class: "btn ghost xs", onclick: () => openDrawer("history") }, icon("history", "xs"), "提交历史")),
+        badge(p.git_provider, "xs"), s.pr_number ? t("publish.pushTo", { rn: requestName(p), n: s.pr_number }) : t("publish.pushOpen", { rn: requestName(p) })) : null,
+      files.length ? h("a", { class: "btn xs", href: `${sbase()}/patch`, download: `${s.workspace_id}.patch` }, icon("download", "xs"), t("changes.patch")) : null,
+      h("button", { class: "btn ghost xs", onclick: () => openDrawer("history") }, icon("history", "xs"), t("drawer.history"))),
   ];
 }
 
 function backgroundSummary() {
   const n = state.active.length;
-  return n ? [h("span", { class: "spinner" }), `${n} 个进行中`] : "空闲";
+  return n ? [h("span", { class: "spinner" }), t("bg.count", { n })] : t("bg.idle");
 }
 
 function backgroundBody() {
-  if (!state.active.length) return h("div", { class: "empty-line" }, "没有进行中的任务。同一会话的任务按顺序执行，不同会话可以同时跑。");
-  return [
-    h("div", {}, state.active.map((a) => h("div", { class: "bg-row", title: "打开这个任务", onclick: () => jumpTo(a.project_id, a.session_id, a.task.id) },
-      a.task.status === "TASK_STATUS_RUNNING" ? h("span", { class: "spinner" }) : icon("clock", "sm"),
-      h("div", { class: "grow" }, h("div", { class: "t" }, a.task.message),
-        h("div", { class: "m" }, `${a.project_name} / ${a.session_title || "未命名会话"} · ${(STATUS[a.task.status] || [a.task.status])[0]} · ${fmtAgo(a.task.created_at)}`)),
-      h("button", { class: "btn ghost xs icon-only", title: "停止", onclick: (e) => { e.stopPropagation(); cancelTask(a.task.id, sessionURL(a.project_id, a.session_id)); } }, icon("x", "xs")),
-    ))),
-    h("div", { class: "empty-line" }, "同一会话的任务按顺序执行，不同会话可以同时跑。"),
-  ];
+  if (!state.active.length) return h("div", { class: "empty-line" }, t("activity.empty"));
+  return h("div", {}, state.active.map((a) => h("div", { class: "bg-row", title: t("bg.open"), onclick: () => jumpTo(a.project_id, a.session_id, a.task.id) },
+    a.task.status === "TASK_STATUS_RUNNING" ? h("span", { class: "spinner" }) : icon("clock", "sm"),
+    h("div", { class: "grow" }, h("div", { class: "t" }, a.task.message),
+      h("div", { class: "m" }, `${a.project_name} / ${a.session_title || t("session.untitled")} · ${(STATUS[a.task.status] || [a.task.status])[0]} · ${fmtAgo(a.task.created_at)}`)),
+    h("button", { class: "btn ghost xs icon-only", title: t("common.stop"), onclick: (e) => { e.stopPropagation(); cancelTask(a.task.id, sessionURL(a.project_id, a.session_id)); } }, icon("x", "xs")),
+  )));
 }
 
 async function jumpTo(projectId, sessionId, taskId) {
@@ -2171,7 +2168,7 @@ function openDrawer(tab, opts = {}) {
   closePop();
   state.drawer = { tab, focus: opts.focus || null };
   const scrim = h("div", { class: "scrim", onclick: closeDrawer });
-  const el = h("div", { class: "drawer", role: "dialog", "aria-label": "改动、文件与提交历史" });
+  const el = h("div", { class: "drawer", role: "dialog", "aria-label": t("drawer.title") });
   ui.drawer = { scrim, el };
   document.body.append(scrim, el);
   renderDrawer();
@@ -2193,12 +2190,12 @@ function renderDrawer() {
   const body = h("div", { class: "drawer-body" });
   ui.drawer.el.replaceChildren(
     h("div", { class: "drawer-head" },
-      h("span", { class: "h ellipsis", title: state.project.name }, state.session.title || "未命名会话"),
-      tab("changes", "diff", "改动", n ? h("span", { class: "n" }, n) : null),
-      tab("files", "folder", "文件"),
-      tab("history", "history", "提交历史"),
+      h("span", { class: "h ellipsis", title: state.project.name }, state.session.title || t("session.untitled")),
+      tab("changes", "diff", t("sp.changes"), n ? h("span", { class: "n" }, n) : null),
+      tab("files", "folder", t("drawer.files")),
+      tab("history", "history", t("drawer.history")),
       h("span", { class: "grow" }),
-      h("button", { class: "btn ghost sm icon-only", title: "关闭（Esc）", onclick: closeDrawer }, icon("x", "sm"))),
+      h("button", { class: "btn ghost sm icon-only", title: t("drawer.close"), onclick: closeDrawer }, icon("x", "sm"))),
     body,
   );
   if (d.tab === "changes") drawChanges(body, d.focus);
@@ -2207,7 +2204,7 @@ function renderDrawer() {
 }
 
 async function drawChanges(body, focus) {
-  body.replaceChildren(h("div", { class: "row muted" }, h("span", { class: "spinner" }), "正在读取改动…"));
+  body.replaceChildren(h("div", { class: "row muted" }, h("span", { class: "spinner" }), t("changes.loading")));
   let data;
   try {
     data = await api("GET", `${sbase()}/changes`);
@@ -2222,34 +2219,34 @@ async function drawChanges(body, focus) {
   let commitInput = null;
   if (!data.files.length) {
     parts.push(h("div", { class: "card" },
-      h("div", { class: "card-title" }, icon("check", "sm"), "这个会话的工作副本是干净的"),
-      h("div", { class: "muted" }, "当前分支 ", h("span", { class: "mono" }, data.branch || "—"), " · HEAD ", h("span", { class: "mono" }, (data.head || "").slice(0, 10)))));
+      h("div", { class: "card-title" }, icon("check", "sm"), t("changes.cleanTitle")),
+      h("div", { class: "muted" }, t("changes.branch"), h("span", { class: "mono" }, data.branch || "—"), " · HEAD ", h("span", { class: "mono" }, (data.head || "").slice(0, 10)))));
   } else {
     const added = data.files.reduce((n, f) => n + f.added, 0);
     const deleted = data.files.reduce((n, f) => n + f.deleted, 0);
-    commitInput = h("input", { class: "field", placeholder: "提交说明", value: lastMessage() });
+    commitInput = h("input", { class: "field", placeholder: t("commit.ph"), value: lastMessage() });
     const commit = h("button", { class: "btn primary sm", disabled: busy, onclick: async () => {
       commit.disabled = true;
       try {
         const r = await api("POST", `${sbase()}/commit`, { message: commitInput.value });
-        toast("已提交 " + r.head.slice(0, 8));
+        toast(t("commit.done", { hash: r.head.slice(0, 8) }));
         await loadChanges();
         loadEnv();
         renderDrawer();
       } catch (ex) { commit.disabled = false; report(ex); }
-    } }, icon("commit", "sm"), "提交");
+    } }, icon("commit", "sm"), t("commit.btn"));
     parts.push(h("div", { class: "card" },
-      h("div", { class: "card-title" }, `${data.files.length} 个文件有改动`, h("span", { class: "stat-add" }, `+${added}`), h("span", { class: "stat-del" }, `−${deleted}`),
-        busy ? h("span", { class: "chip run" }, h("span", { class: "spinner" }), "任务进行中，结束后才能提交") : null),
+      h("div", { class: "card-title" }, t("changes.title", { n: data.files.length }), h("span", { class: "stat-add" }, `+${added}`), h("span", { class: "stat-del" }, `−${deleted}`),
+        busy ? h("span", { class: "chip run" }, h("span", { class: "spinner" }), t("changes.busy")) : null),
       h("div", { class: "actions" }, h("div", { class: "grow" }, commitInput), commit,
-        h("a", { class: "btn sm", href: `${sbase()}/patch`, download: `${state.session.workspace_id}.patch` }, icon("download", "sm"), "补丁"),
-        h("button", { class: "btn sm danger", disabled: busy, onclick: discard }, icon("trash", "sm"), "丢弃")),
+        h("a", { class: "btn sm", href: `${sbase()}/patch`, download: `${state.session.workspace_id}.patch` }, icon("download", "sm"), t("changes.patch")),
+        h("button", { class: "btn sm danger", disabled: busy, onclick: discard }, icon("trash", "sm"), t("changes.discard"))),
     ));
   }
   const pub = publishCard(busy, data.files.length > 0);
   if (pub) parts.push(pub.card);
   parts.push(...renderDiff(data.diff));
-  if (data.truncated) parts.push(h("div", { class: "muted" }, "改动太大，只显示了前 2 MB；完整内容请下载补丁。"));
+  if (data.truncated) parts.push(h("div", { class: "muted" }, t("changes.truncated")));
   body.replaceChildren(...parts);
   if (focus === "commit" && commitInput) commitInput.focus();
   else if (focus === "publish" && pub) pub.title.focus();
@@ -2260,10 +2257,10 @@ async function drawChanges(body, focus) {
 }
 
 async function discard() {
-  if (!confirm("丢弃全部未提交的改动？这一步不能撤销。")) return;
+  if (!confirm(t("changes.discardConfirm"))) return;
   try {
     await api("POST", `${sbase()}/discard`);
-    toast("已丢弃改动");
+    toast(t("changes.discarded"));
     await loadChanges();
     loadEnv();
     renderDrawer();
@@ -2272,8 +2269,8 @@ async function discard() {
 
 function lastMessage() {
   // 默认提交说明：最近一条像样的任务描述（跳过“-”这类过短的）。
-  const t = [...state.tasks].reverse().find((x) => x.message.trim().length > 3);
-  return t ? t.message.trim().split("\n")[0].slice(0, 72) : "";
+  const task = [...state.tasks].reverse().find((x) => x.message.trim().length > 3);
+  return task ? task.message.trim().split("\n")[0].slice(0, 72) : "";
 }
 
 // publishCard 是“推送并开草稿 PR/MR”：一个会话一个 agent/* 分支、一个 PR（GitLab 叫 Merge Request）。
@@ -2287,21 +2284,21 @@ function publishCard(busy, dirty) {
     return {
       card: h("div", { class: "card" },
         h("div", { class: "card-title" }, badge(p.git_provider, "sm"), h("span", { class: "mono grow ellipsis" }, p.repo)),
-        h("div", { class: "muted" }, `连接 ${info.name} 后，可以把这个会话的改动推到它自己的 agent/* 分支并开草稿 ${rn}。`),
-        info.configured ? h("div", { class: "actions" }, h("a", { class: "btn sm primary", href: `/api/auth/${p.git_provider}/login?link=1` }, "连接 " + info.name)) : null),
+        h("div", { class: "muted" }, t("publish.connectFirst", { name: info.name, rn })),
+        info.configured ? h("div", { class: "actions" }, h("a", { class: "btn sm primary", href: `/api/auth/${p.git_provider}/login?link=1` }, t("account.connectTo", { name: info.name }))) : null),
       title: null,
     };
   }
-  const title = h("input", { class: "field", placeholder: `${rn} 标题，也用作提交说明`, value: s.title || lastMessage() });
+  const title = h("input", { class: "field", placeholder: t("publish.titlePh", { rn }), value: s.title || lastMessage() });
   const out = h("div", {});
-  const label = s.pr_number ? `推送到 ${rn} #${s.pr_number}` : `推送并开草稿 ${rn}`;
+  const label = s.pr_number ? t("publish.pushTo", { rn, n: s.pr_number }) : t("publish.pushDraft", { rn });
   const push = h("button", { class: "btn primary sm", disabled: busy, onclick: async () => {
     push.disabled = true;
-    push.lastChild.textContent = "正在推送…";
+    push.lastChild.textContent = t("publish.pushing");
     try {
       const r = await api("POST", `${sbase()}/publish`, { title: title.value });
       setSession(r.session);
-      toast(r.created ? `已开草稿 ${rn} #${r.pr_number}` : `已推送到 ${r.branch}`);
+      toast(r.created ? t("publish.opened", { rn, n: r.pr_number }) : t("publish.pushed", { branch: r.branch }));
       renderTopbar();
       renderSide();
       await loadChanges();
@@ -2317,8 +2314,8 @@ function publishCard(busy, dirty) {
     h("div", { class: "card-title" }, badge(p.git_provider, "sm"), h("a", { class: "mono grow ellipsis", href: repoURL(p), target: "_blank", rel: "noopener" }, p.repo),
       s.pr_url ? h("a", { class: "chip ok", href: s.pr_url, target: "_blank", rel: "noopener" }, `${rn} #${s.pr_number}`, icon("external", "xs")) : null),
     h("div", { class: "muted" }, s.branch
-      ? `${dirty ? "提交未提交的改动后" : ""}推送到 ${s.branch}，${rn} 自动更新。`
-      : `给这个会话新建 agent/… 分支，提交后推送到 ${info.name}，再向 ${p.base_branch || "基线分支"} 开草稿 ${rn}；不会推到别的分支，也不强推。`),
+      ? t(dirty ? "publish.updateDirty" : "publish.update", { branch: s.branch, rn })
+      : t("publish.new", { base: p.base_branch || t("publish.baseBranch"), rn })),
     h("div", { class: "actions" }, h("div", { class: "grow" }, title), push),
     out,
   );
@@ -2382,7 +2379,7 @@ async function loadFiles(body, path) {
       entries.length ? h("div", {}, entries.map((e) => h("button", {
         class: "tree-item",
         onclick: () => (e.dir ? loadFiles(body, join(path, e.name)) : showFile(viewer, join(path, e.name))),
-      }, icon(e.dir ? "folder" : "file", "sm"), e.name, e.dir ? null : h("span", { class: "size" }, fmtSize(e.size))))) : h("div", { class: "muted" }, "空目录"),
+      }, icon(e.dir ? "folder" : "file", "sm"), e.name, e.dir ? null : h("span", { class: "size" }, fmtSize(e.size))))) : h("div", { class: "muted" }, t("files.empty")),
     ),
     viewer,
   );
@@ -2393,12 +2390,12 @@ function join(a, b) {
 }
 
 async function showFile(viewer, path) {
-  viewer.replaceChildren(h("div", { class: "row muted" }, h("span", { class: "spinner" }), "正在读取…"));
+  viewer.replaceChildren(h("div", { class: "row muted" }, h("span", { class: "spinner" }), t("common.loading")));
   try {
     const f = await api("GET", `${sbase()}/file?path=${encodeURIComponent(path)}`);
     const head = h("div", { class: "row" }, icon("file", "sm"), h("strong", { class: "mono grow ellipsis" }, path), h("span", { class: "muted" }, fmtSize(f.size || 0)));
-    const content = f.binary ? h("div", { class: "muted" }, "二进制文件，不显示内容")
-      : f.too_large ? h("div", { class: "muted" }, "文件太大，不显示内容")
+    const content = f.binary ? h("div", { class: "muted" }, t("files.binary"))
+      : f.too_large ? h("div", { class: "muted" }, t("files.tooLarge"))
         : h("pre", { class: "code-view" }, f.content.replace(/\n$/, "").split("\n").map((l) => h("span", {}, l || " ")));
     viewer.replaceChildren(h("div", { class: "col" }, head, content));
   } catch (ex) {
@@ -2412,7 +2409,7 @@ async function loadHistory(body) {
     body.replaceChildren(h("div", { class: "card" }, commits.length ? commits.map((c) => h("div", { class: "commit-row" },
       h("span", { class: "hash" }, c.hash.slice(0, 7)),
       h("div", { class: "grow" }, h("div", {}, c.subject), h("div", { class: "muted small" }, `${c.author} · ${fmtTime(c.date)}`)),
-    )) : h("div", { class: "muted" }, "还没有提交")));
+    )) : h("div", { class: "muted" }, t("history.none"))));
   } catch (ex) {
     body.replaceChildren(h("div", { class: "error-box" }, ex.message));
   }
@@ -2421,11 +2418,11 @@ async function loadHistory(body) {
 async function resetBranch() {
   const p = state.project;
   const s = state.session;
-  if (!confirm(`让这个会话回到 ${p.base_branch} 并拉取最新？${s.branch} 上已推送的提交不受影响；未提交的改动要先处理。`)) return;
+  if (!confirm(t("env.resetConfirm", { base: p.base_branch, branch: s.branch }))) return;
   try {
     const r = await api("POST", `${sbase()}/reset-branch`);
     setSession(r.session);
-    toast(`已回到 ${p.base_branch}`);
+    toast(t("env.resetDone", { base: p.base_branch }));
     renderTopbar();
     loadChanges();
     loadEnv();
@@ -2441,16 +2438,16 @@ function openNewProject(initial) {
   let provider = conns[0] ? conns[0].provider : "";
   const repoCache = {}; // 平台 → 仓库列表（"loading" 表示在读）
   let filter = "";
-  const name = h("input", { class: "field", placeholder: "工作区名" });
-  const gitUrl = h("input", { class: "field", placeholder: "https://github.com/owner/repo.git（Gitee、GitLab、Gitea、Bitbucket 也行）" });
-  const branch = h("input", { class: "field", placeholder: "默认分支" });
+  const name = h("input", { class: "field", placeholder: t("new.name") });
+  const gitUrl = h("input", { class: "field", placeholder: "https://github.com/owner/repo.git" });
+  const branch = h("input", { class: "field", placeholder: t("new.branchPh") });
   const err = h("div", { class: "err-text" });
   const seg = h("div", { class: "seg" });
   const body = h("div", { class: "col" });
-  const create = h("button", { class: "btn primary" }, "创建");
-  const cancel = h("button", { class: "btn ghost" }, "取消");
+  const create = h("button", { class: "btn primary" }, t("new.create"));
+  const cancel = h("button", { class: "btn ghost" }, t("common.cancel"));
   const dialog = h("dialog", {},
-    h("div", { class: "d-head" }, h("h2", {}, "新建工作区")),
+    h("div", { class: "d-head" }, h("h2", {}, t("new.title"))),
     h("div", { class: "d-body" }, seg, body, err),
     h("div", { class: "d-foot" }, cancel, create),
   );
@@ -2464,18 +2461,18 @@ function openNewProject(initial) {
         .catch((ex) => { repoCache[p] = []; err.textContent = ex.message; if (provider === p) drawRepos(); });
     }
     const repos = repoCache[p];
-    if (repos === "loading") return repoList.replaceChildren(h("div", { class: "row muted" }, h("span", { class: "spinner" }), `正在读取你在 ${providerInfo(p).name} 上的仓库…`));
+    if (repos === "loading") return repoList.replaceChildren(h("div", { class: "row muted" }, h("span", { class: "spinner" }), t("new.loadingRepos", { name: providerInfo(p).name })));
     const q = filter.trim().toLowerCase();
     const shown = repos.filter((r) => !q || r.full_name.toLowerCase().includes(q)).slice(0, 40);
     repoList.replaceChildren(...(shown.length ? shown.map((r) => h("button", {
       class: "pick" + (gitUrl.value === r.clone_url ? " active" : ""),
       onclick: () => { gitUrl.value = r.clone_url; branch.value = r.default_branch || ""; name.value = r.full_name.split("/").pop(); drawRepos(); },
     }, badge(r.provider, "sm"), h("span", { class: "mono grow ellipsis" }, r.full_name),
-      r.private ? h("span", { class: "chip" }, "私有") : null,
-      r.can_push ? null : h("span", { class: "chip warn" }, "只读"))) : [h("div", { class: "muted" }, "没有匹配的仓库")]));
+      r.private ? h("span", { class: "chip" }, t("new.private")) : null,
+      r.can_push ? null : h("span", { class: "chip warn" }, t("new.readOnly")))) : [h("div", { class: "muted" }, t("new.noRepos"))]));
   };
   const draw = () => {
-    seg.replaceChildren(...[["git", "branch", conns.length ? "我的仓库" : "Git 地址"], ["sample", "box", "示例"], ["empty", "folder", "空项目"]].map(([k, ic, l]) =>
+    seg.replaceChildren(...[["git", "branch", conns.length ? t("new.myRepos") : t("new.gitUrl")], ["sample", "box", t("new.sample")], ["empty", "folder", t("source.empty")]].map(([k, ic, l]) =>
       h("button", { class: mode === k ? "active" : "", onclick: () => { mode = k; draw(); } }, icon(ic, "sm"), l)));
     const parts = [];
     if (mode === "git") {
@@ -2486,27 +2483,27 @@ function openNewProject(initial) {
             onclick: () => { provider = c.provider; filter = ""; draw(); },
           }, badge(c.provider, "xs"), providerInfo(c.provider).name))));
         }
-        const search = h("input", { class: "field", placeholder: `搜索我在 ${providerInfo(provider).name} 上的仓库`, value: filter });
+        const search = h("input", { class: "field", placeholder: t("new.searchPh", { name: providerInfo(provider).name }), value: filter });
         search.addEventListener("input", () => { filter = search.value; drawRepos(); });
         parts.push(h("div", { class: "col" }, search, repoList));
         drawRepos();
       }
       const connectable = providerList().filter((p) => p.git && p.configured && !connection(p.id));
       if (connectable.length) {
-        parts.push(h("div", { class: "connect-row" }, h("span", { class: "muted small" }, conns.length ? "还可以连接：" : "连接 Git 平台后可以从你的仓库里选（含私有仓库）："),
+        parts.push(h("div", { class: "connect-row" }, h("span", { class: "muted small" }, conns.length ? t("new.alsoConnect") : t("new.connect")),
           connectable.map((p) => h("a", { class: "btn xs", href: `/api/auth/${p.id}/login?link=1` }, badge(p.id, "xs"), p.name))));
       }
-      parts.push(h("div", {}, h("label", { class: "lbl" }, conns.length ? "或者填 Git 地址（https）" : "Git 地址（https，公开仓库）"), gitUrl));
-      parts.push(h("div", { class: "row" }, h("div", { class: "grow" }, h("label", { class: "lbl" }, "工作区名"), name), h("div", { class: "grow" }, h("label", { class: "lbl" }, "分支"), branch)));
+      parts.push(h("div", {}, h("label", { class: "lbl" }, conns.length ? t("new.orUrl") : t("new.url")), gitUrl));
+      parts.push(h("div", { class: "row" }, h("div", { class: "grow" }, h("label", { class: "lbl" }, t("new.name")), name), h("div", { class: "grow" }, h("label", { class: "lbl" }, t("env.branch")), branch)));
     } else if (mode === "sample") {
       parts.push(...state.samples.map((s) => h("div", {
         class: "sample-card" + (sample === s.id ? " active" : ""),
         onclick: () => { sample = s.id; name.value = s.name; draw(); },
       }, h("div", { class: "row" }, icon("box", "sm"), h("strong", {}, s.name)), h("div", { class: "muted" }, s.description))));
       if (!name.value && state.samples[0]) name.value = (state.samples.find((s) => s.id === sample) || state.samples[0]).name;
-      parts.push(h("div", {}, h("label", { class: "lbl" }, "工作区名"), name));
+      parts.push(h("div", {}, h("label", { class: "lbl" }, t("new.name")), name));
     } else {
-      parts.push(h("div", { class: "muted" }, "一个只有 README 的空仓库，让 Agent 从零开始写。"), h("div", {}, h("label", { class: "lbl" }, "工作区名"), name));
+      parts.push(h("div", { class: "muted" }, t("new.emptyDesc")), h("div", {}, h("label", { class: "lbl" }, t("new.name")), name));
     }
     body.replaceChildren(...parts);
   };
@@ -2516,7 +2513,7 @@ function openNewProject(initial) {
   create.addEventListener("click", async () => {
     err.textContent = "";
     create.disabled = true;
-    create.textContent = mode === "git" ? "正在克隆…" : "正在创建…";
+    create.textContent = mode === "git" ? t("new.cloning") : t("new.creating");
     const req = { name: name.value || (mode === "git" ? (gitUrl.value.split("/").pop() || "").replace(/\.git$/, "") : "") };
     if (mode === "git") Object.assign(req, { git_url: gitUrl.value, branch: branch.value });
     if (mode === "sample") req.sample = sample;
@@ -2530,7 +2527,7 @@ function openNewProject(initial) {
     } catch (ex) {
       if (ex.message !== "unauthorized") err.textContent = ex.message;
       create.disabled = false;
-      create.textContent = "创建";
+      create.textContent = t("new.create");
     }
   });
   document.body.append(dialog);
@@ -2539,12 +2536,12 @@ function openNewProject(initial) {
 
 async function deleteProject(p) {
   const n = state.sessions.filter((s) => s.project_id === p.id).length;
-  if (!confirm(`删除工作区「${p.name}」？基线仓库${n ? `和 ${n} 个会话（含它们的工作副本与未提交的改动）` : ""}会一起删掉，不能撤销。`)) return;
+  if (!confirm(t(n ? "ws.deleteConfirmSessions" : "ws.deleteConfirm", { name: p.name, n }))) return;
   try {
     await api("DELETE", `/api/projects/${p.id}`);
     state.projects = state.projects.filter((x) => x.id !== p.id);
     state.sessions = state.sessions.filter((s) => s.project_id !== p.id);
-    toast("已删除工作区");
+    toast(t("ws.deleted"));
     if (state.project && state.project.id === p.id) state.project = null;
     if (state.view === "workspaces") renderApp();
     else landing();
@@ -2607,6 +2604,7 @@ window.addEventListener("hashchange", () => {
 });
 
 async function boot() {
+  document.documentElement.lang = locale;
   applyTheme();
   // OAuth 回调带回来的结果：连接成功（?linked=<平台>）或失败（?error=…）。进主界面会改地址，先记下来。
   const params = hashParams();
@@ -2616,7 +2614,7 @@ async function boot() {
   try { state.me = await api("GET", "/api/me"); } catch { state.me = null; }
   if (state.me) {
     await enterApp().catch(report);
-    if (linked) { toast(`已连接 ${providerInfo(linked).name}`); openAccount(); }
+    if (linked) { toast(t("account.linked", { name: providerInfo(linked).name })); openAccount(); }
     if (failed) toast(failed, true);
   } else renderLogin();
 }
