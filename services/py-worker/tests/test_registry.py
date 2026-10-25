@@ -30,7 +30,7 @@ from agentruntime_worker.registry import GrpcRegistry, MissingRegistryAddressErr
 from agentruntime_worker.worker import decision_activities
 
 from .gateway_fakes import Abort
-from .registry_fakes import FakeRegistry, not_found, recipe, serve, template, unavailable
+from .registry_fakes import FakeRegistry, model_profile, not_found, recipe, serve, template, unavailable
 
 TENANT = Tenant(tenant_id="t-reg", user_id="u-reg", workspace_id="w-reg", session_id="ses-reg")
 TOKEN = "worker-test-publish-token-5d2f"
@@ -59,6 +59,13 @@ def seeded() -> FakeRegistry:
         recipe("refund_analysis", "v1", "analytics.attribution", "read", 0.4),
         recipe("ticket_triage", "v4", "support.ticket_batch", "write_reversible"),
         recipe("weekly", "v2", "research.weekly", "none"),
+    ]
+    fake.model_profiles = [
+        model_profile("a6api/gpt-4o-mini@2026-10", "small", ["low"]),
+        model_profile("a6api/deepseek-v4-flash@2026-10", "mid", ["low"]),
+        model_profile("a6api/claude-sonnet-5-5@2026-10", "strong", ["medium", "high"]),
+        model_profile("a6api/gpt-5.5@2026-10", "strong", ["medium", "high"]),
+        model_profile("a6api/text-embedding-3-small@2026-10", "embed", ["default"], capabilities=["embed"]),
     ]
     return fake
 
@@ -310,6 +317,21 @@ async def test_the_planning_context_comes_from_the_registry() -> None:
     assert dict(listed.pinned_versions.node_templates) == PINNED["node_templates"]
     assert listed.tenant == tenant_proto()
     assert all(r.tenant == tenant_proto() for r in fake.calls("ListRecipes"))
+
+
+async def test_the_planning_context_lists_the_tiers_of_the_model_profiles() -> None:
+    # Planner 只能写 Model Profile 里有的 Tier（2026-10-25 真模型运行写出了不存在的 strong@light）。
+    fake = seeded()
+    async with serve(fake) as address:
+        client = GrpcRegistry(address)
+        try:
+            profiles = await client.list_model_profiles(TENANT)
+            context = await RegistryContextSource(client, defaults=DEFAULTS).load(plan_input())
+        finally:
+            await client.aclose()
+    assert len(profiles) == 5, "分页（每页 2 条）取完"
+    assert context.catalog.tiers == ("mid@low", "small@low", "strong@high", "strong@medium"), "<class>@<tier 名>，排序去重；只算能生成的 Profile"
+    assert all(r.tenant == tenant_proto() for r in fake.calls("ListModelProfiles"))
 
 
 async def test_the_effect_ceiling_follows_the_task_constraints() -> None:

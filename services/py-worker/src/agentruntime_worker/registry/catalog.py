@@ -9,12 +9,15 @@
 - RegistryContextSource：Planner 的 Node Catalog 按 Task 固定的版本取自 Registry，Recipe 取自 Registry 的默认版本；
   effect 上限取 Task State 的 constraints.effect_ceiling（task-service 按租户策略写入），没有时用 defaults 的；
   Recipe 的 recent_failure 第一期都是 false（Recipe 统计在 T-16）。工具与 risk_authorized 取 defaults。
+  可用的 Tier 取自默认版本的 Model Profile：能生成（capabilities 含 generate）的那些的 <class>@<tier 名>；嵌入模型不列，
+  嵌入节点不写 tier，Model Gateway 按调用种类取默认。
 """
 
 from __future__ import annotations
 
 import dataclasses
 import re
+from collections.abc import Iterable
 
 from google.protobuf import json_format
 from temporalio import activity
@@ -92,10 +95,12 @@ class RegistryContextSource:
     async def load(self, inp: PlanRoundInput) -> PlanningContext:
         templates = await self.registry.list_node_templates(inp.tenant, inp.pinned)
         recipes = await self.registry.list_recipes(inp.tenant)
+        profiles = await self.registry.list_model_profiles(inp.tenant)
         catalog = CatalogView(
             templates={f"{t.name}@{t.version}": (info.executor, info.effect) for t in templates for info in [template_info(t)]},
             recipes={f"{r.name}@{r.version}": r.task_family for r in recipes},
             tools=dict(self.defaults.catalog.tools),
+            tiers=generation_tiers(_document(p.document) for p in profiles),
         )
         entries = []
         for r in recipes:
@@ -154,6 +159,16 @@ class RegistryStagePolicy:
 
     def activities(self) -> dict[str, object]:
         return {names.LOAD_STAGE_POLICY: self.load_stage_policy}
+
+
+def generation_tiers(documents: Iterable[dict]) -> tuple[str, ...]:
+    """Model Profile 的正文 → 能生成的 Tier（<class>@<tier 名>），排序去重。"""
+    found: set[str] = set()
+    for doc in documents:
+        if "generate" not in (doc.get("capabilities") or []) or not doc.get("class"):
+            continue
+        found |= {f"{doc['class']}@{t['name']}" for t in doc.get("tiers") or [] if isinstance(t, dict) and t.get("name")}
+    return tuple(sorted(found))
 
 
 def _document(payload: object) -> dict:

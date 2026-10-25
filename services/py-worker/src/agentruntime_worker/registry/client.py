@@ -134,6 +134,18 @@ class GrpcRegistry:
                 return out
         raise TransientError("paging_runaway", "Registry 的分页没有结束")
 
+    async def list_model_profiles(self, tenant: Tenant) -> list[rg.ModelProfile]:
+        """租户看得到的默认版本的 Model Profile。分页取完。"""
+        out: list[rg.ModelProfile] = []
+        token = ""
+        for _ in range(MAX_PAGES):
+            resp = await self._call("ListModelProfiles", rg.ListModelProfilesRequest(tenant=tenant_context(tenant), page_size=PAGE_SIZE, page_token=token))
+            out.extend(resp.model_profiles)
+            token = resp.next_page_token
+            if not token:
+                return out
+        raise TransientError("paging_runaway", "Registry 的分页没有结束")
+
     async def get_tenant_policy(self, tenant: Tenant, version: str = "") -> rg.TenantPolicy:
         """租户策略；version 为空时取当前版本。"""
         resp = await self._call("GetTenantPolicy", rg.GetTenantPolicyRequest(tenant=tenant_context(tenant), version=version))

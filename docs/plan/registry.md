@@ -135,7 +135,9 @@ S-01（契约变更）、S-02（RelationalStore、SecretStore）、S-12a（行�
 7. **Worker 的 `resolve_catalog`**：Task 有固定版本时，引用的 `name@vN` 必须与固定的版本一致，否则不可重试（template_not_pinned）；
    没有固定版本（Registry 接入之前启动的 Task）时按引用里的版本取。工具的 effect 不归 Registry，仍由工具目录给出（T-10 接 ToolDriver）。
 8. **Planner 的上下文**：effect 上限取 Task State 的 `constraints.effect_ceiling`（task-service 按租户策略写入），没有时用默认；
-   Recipe 的 recent_failure 第一期都是 false（Recipe 统计在 T-16）。
+   Recipe 的 recent_failure 第一期都是 false（Recipe 统计在 T-16）。可用的 Tier 取自 `ListModelProfiles`（默认版本、能生成的 Profile 的
+   `<class>@<tier 名>`），列在 Planner 提示的 Node Catalog 里；规划结果里不在列表中的 tier 由代码去掉，Model Gateway 按 role 取默认 Tier
+   （附录 H.3），不为它重问模型（2026-10-25：真模型规划写出了不存在的 `strong@light`）。
 9. **配置**：task-service 用 `AR_REGISTRY_ADDR`（内部端口）与 `AR_SCHEMAS_DIR`；Worker 用 `AR_REGISTRY_ADDRESS`。
 10. **rollback_template 发布时必须已发布过**（任何状态）：互为回滚的一对 write_reversible 模板因此发布不了，第一期接受这个限制。
 

@@ -49,11 +49,12 @@ class PlannerActivities:
         )
         # 判定依据与模型调用写入日志（trace），不传给下游。
         activity.logger.info(
-            "Planner：Triage %s，依据 %s；模型调用 %s%s",
+            "Planner：Triage %s，依据 %s；模型调用 %s%s%s",
             result.triage_level,
             "；".join(result.decision.reasons),
             [(c.purpose, c.tier, c.vendor) for c in result.calls],
             "；两次都不合格，用了保守规划" if result.fallback else "",
+            f"；代码改正：{'；'.join(result.adjustments)}" if result.adjustments else "",
         )
         stage = await self._with_context_read(inp.tenant, result.stage, context.effect_ceiling)
         cost = round(sum(c.cost_usd for c in result.calls), 6)

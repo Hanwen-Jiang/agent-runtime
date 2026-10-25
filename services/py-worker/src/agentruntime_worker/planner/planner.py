@@ -68,6 +68,8 @@ class PlanResult:
     """两次都不合格，用了保守规划。"""
     problems: list[str] = field(default_factory=list)
     """最后一次不合格的说明（写入 trace）。"""
+    adjustments: list[str] = field(default_factory=list)
+    """代码替模型改正了什么（例如去掉不可用的 Tier；写入 trace）。"""
 
 
 PLAN_OUTPUT_SCHEMA: dict[str, Any] = {
@@ -235,9 +237,10 @@ class Planner:
                 else:
                     stage = validate.normalize_stage(answer.get("stage"), round_seq=request.round_seq, tenant_id=request.tenant.tenant_id, task_id=request.task_id)
                     task_plan = self._with_triage(answer.get("task_plan"), decision)
+                    stage, task_plan, adjusted = validate.drop_unknown_tiers(stage, task_plan, request.context.catalog.tiers)
                     found = validate.problems(stage, task_plan, level=decision.level, context=request.context, keep_nodes=keep)
                     if not found:
-                        return PlanResult(triage_level=decision.level, stage=stage, task_plan=task_plan, decision=decision, calls=calls)
+                        return PlanResult(triage_level=decision.level, stage=stage, task_plan=task_plan, decision=decision, calls=calls, adjustments=adjusted)
             if attempt == 0:
                 messages = prompts.retry_messages(messages, answer_text, found)
         stage, task_plan = self._fallback(request, decision, keep)

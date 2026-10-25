@@ -55,6 +55,11 @@ def recipe(name: str, version: str, family: str, risk: str, typical_cost_usd: fl
     return rg.Recipe(name=name, version=version, state=DEFAULT, task_family=family, document=json_payload(doc))
 
 
+def model_profile(profile_id: str, klass: str, tiers: list[str], capabilities: list[str] | None = None) -> rg.ModelProfile:
+    doc = {"id": profile_id, "class": klass, "tiers": [{"name": t} for t in tiers], "capabilities": capabilities or ["generate", "structured"]}
+    return rg.ModelProfile(id=profile_id, version="v1", state=DEFAULT, document=json_payload(doc))
+
+
 def not_found(code: str = "not_found") -> Abort:
     return Abort(grpc.StatusCode.NOT_FOUND, "没有", error_pb2.Error(category=4, code=code, message="Registry 里没有这一项"))
 
@@ -69,6 +74,7 @@ class FakeRegistry(rg_grpc.RegistryServiceServicer):
 
     templates: dict[tuple[str, str], rg.NodeTemplate] = field(default_factory=dict)
     recipes: list[rg.Recipe] = field(default_factory=list)
+    model_profiles: list[rg.ModelProfile] = field(default_factory=list)
     # (租户, 版本) → 租户策略的正文
     policies: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
     abort: Abort | None = None
@@ -118,6 +124,11 @@ class FakeRegistry(rg_grpc.RegistryServiceServicer):
         chosen = sorted((r for r in self.recipes if not request.task_family or r.task_family == request.task_family), key=lambda r: r.name)
         page, token = self._page(chosen, request.page_token)
         return rg.ListRecipesResponse(recipes=page, next_page_token=token)
+
+    async def ListModelProfiles(self, request: rg.ListModelProfilesRequest, context: grpc.aio.ServicerContext) -> rg.ListModelProfilesResponse:  # noqa: N802
+        await self._enter("ListModelProfiles", request, context)
+        page, token = self._page(sorted(self.model_profiles, key=lambda p: p.id), request.page_token)
+        return rg.ListModelProfilesResponse(model_profiles=page, next_page_token=token)
 
     async def GetTenantPolicy(self, request: rg.GetTenantPolicyRequest, context: grpc.aio.ServicerContext) -> rg.GetTenantPolicyResponse:  # noqa: N802
         await self._enter("GetTenantPolicy", request, context)

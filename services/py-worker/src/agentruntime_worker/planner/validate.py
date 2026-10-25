@@ -1,7 +1,8 @@
 """Planner 输出的校验与规整（计划 S-09 难点“结构化输出”“不能编造模板”）。
 
 规整（normalize）由代码完成：Stage 的 seq 定为本轮序号；写操作的幂等键按 tenant_id、task_id、node_id 与输入重新生成
-（附录 D.4，模型写的不算数）。校验（problems）不过就带着问题重问模型：
+（附录 D.4，模型写的不算数）；不在 Catalog 可用 Tier 里的 tier（Node 的与 Task Plan 的 tiers）去掉，由 Model Gateway
+按 role 选默认 Tier（附录 H.3），不为它重问。校验（problems）不过就带着问题重问模型：
 
 - Stage 与 Task Plan 合 /schemas；Stage 的 DAG 合法（复用 Stage Runner 的检查）。
 - Node Template、Recipe、工具（含 quality 的 judge 与 scorer）都在 Node Catalog 里。
@@ -76,6 +77,31 @@ def normalize_stage(stage: Any, *, round_seq: int, tenant_id: str, task_id: str)
         elif node.get("kind") == "atomic":
             node.pop("idempotency_key", None)
     return out
+
+
+def drop_unknown_tiers(stage: Any, task_plan: Any, tiers: tuple[str, ...]) -> tuple[Any, Any, list[str]]:
+    """去掉不在 tiers 里的 tier，返回（Stage、Task Plan、去掉了什么的说明）；不是 dict 的原样返回。"""
+    notes: list[str] = []
+    allowed = set(tiers)
+    if isinstance(stage, dict):
+        stage = copy.deepcopy(stage)
+        for node in nodes(stage):
+            if "tier" in node and node["tier"] not in allowed:
+                tier = node.pop("tier")
+                notes.append(f"{node.get('id')} 的 Tier {tier!r} 不可用，改由 Model Gateway 按 role 选默认 Tier")
+    if isinstance(task_plan, dict) and isinstance(task_plan.get("tiers"), dict):
+        task_plan = copy.deepcopy(task_plan)
+        kept = {}
+        for name, tier in task_plan["tiers"].items():
+            if tier in allowed:
+                kept[name] = tier
+            else:
+                notes.append(f"Task Plan 的 tiers.{name} {tier!r} 不可用，已去掉")
+        if kept:
+            task_plan["tiers"] = kept
+        else:
+            del task_plan["tiers"]
+    return stage, task_plan, notes
 
 
 def _rank(effect: str) -> int:

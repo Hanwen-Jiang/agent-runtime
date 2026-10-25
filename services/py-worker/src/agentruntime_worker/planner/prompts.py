@@ -2,7 +2,7 @@
 
 按 Context Zones 分区（附录 G.1）：
 
-- system 区：Planner 的固定说明、输出的 JSON Schema 与 Node Catalog（按名字排序）。与租户、Task、消息无关，
+- system 区：Planner 的固定说明、输出的 JSON Schema 与 Node Catalog（按名字排序，含可用的 Tier）。与租户、Task、消息无关，
   同一个 Catalog 下逐字节相同；这条消息设缓存断点。
 - brief 区：Triage 的结论、Session 上下文（已授权的风险、effect 上限、剩余预算、Recipe 缓存）与 Task Plan。
 - 最后是本轮：用户消息、本轮序号、Task State、上一轮的 Stage、结果与 Verdict（replan 时含要保留的 Node）。
@@ -31,7 +31,8 @@ _PLANNER_RULES = """你是 Agent Runtime 的 Planner，在 Round 的开头决定
 5. 最终答案只来自 role = deliver 的节点，只在信息齐全、可以交付的那一轮安排。
 6. replan 只重做剩余部分：上一轮 Reviewer 保留的 Node 不要再安排，直接引用它们已有的结果。
 7. 不要写 idempotency_key，也不必纠结 Stage 的 seq 与 Task Plan 的 triage.level：这三样由系统填写。
-8. Task Plan 写清 horizon（full_dag、per_stage 或 explore）、Tier、上下文策略与预算；规划成本控制在 Task 预计成本的约 5% 以内。"""
+8. Task Plan 写清 horizon（full_dag、per_stage 或 explore）、上下文策略与预算；规划成本控制在 Task 预计成本的约 5% 以内。
+9. Tier（model 节点的 tier 与 Task Plan 的 tiers）只能用 Node Catalog 列出的，写成 <模型档>@<推理强度>；拿不准就不写，由 Model Gateway 按 role 选默认 Tier。Triage 的级别（fast、light、full、replan）不是 Tier 名。"""
 
 _CLASSIFIER_RULES = """你给 Agent Runtime 的 Planner 做分诊。读用户这条消息（以及当前 Task 的摘要），只输出一个 JSON 对象：
 - kind：follow_up（续改上一个产出）、constraint（给运行中的 Task 加约束）、new_task（新任务）、question（简单问答）、chitchat（闲聊）、system_question（关于系统本身的问题）。
@@ -50,6 +51,10 @@ def _catalog_text(catalog: CatalogView) -> str:
     lines += [f"- Node Template {name}：executor {executor}，effect {effect}" for name, (executor, effect) in sorted(catalog.templates.items())]
     lines += [f"- Recipe {name}：任务族 {family}" for name, family in sorted(catalog.recipes.items())]
     lines += [f"- 工具 {name}：effect {effect}" for name, effect in sorted(catalog.tools.items())]
+    if catalog.tiers:
+        lines.append(f"- Tier：{'、'.join(catalog.tiers)}")
+    else:
+        lines.append("- Tier：没有列出，不要写 tier（model 节点与 Task Plan 都不写），由 Model Gateway 按 role 选默认 Tier")
     return "\n".join(lines)
 
 

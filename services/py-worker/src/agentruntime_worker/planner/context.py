@@ -1,7 +1,7 @@
 """Planner 的 Session 上下文（设计书 3.2.1：Planner 的输入是 Task State、Session 上下文、检索到的经验与 Recipe）。
 
-Registry（Recipe 缓存、Node Catalog）与 Memory Service 还没有实现，先由 PlanningContextSource 提供，
-开发与测试用 StaticContextSource。
+由 PlanningContextSource 提供：设了 Registry 时是 registry.RegistryContextSource（Node Catalog、Recipe 与可用的 Tier），
+开发与测试用 StaticContextSource。Memory Service 还没有接进来。
 """
 
 from __future__ import annotations
@@ -25,11 +25,14 @@ class RecipeEntry:
 
 @dataclass(frozen=True)
 class CatalogView:
-    """Node Catalog 的视图（附录 D.7）：Node Template → (executor, effect)，Recipe → 任务族，工具 → effect。"""
+    """Node Catalog 的视图（附录 D.7）：Node Template → (executor, effect)，Recipe → 任务族，工具 → effect；
+    另有可用的 Tier（附录 H.1：能生成的 Model Profile 的 <class>@<tier 名>，排好序）。"""
 
     templates: dict[str, tuple[str, str]] = field(default_factory=dict)
     recipes: dict[str, str] = field(default_factory=dict)
     tools: dict[str, str] = field(default_factory=dict)
+    tiers: tuple[str, ...] = ()
+    """为空表示不知道有哪些 Tier：规划结果里的 tier 一律去掉，由 Model Gateway 按 role 选默认 Tier（附录 H.3）。"""
 
 
 @dataclass(frozen=True)
