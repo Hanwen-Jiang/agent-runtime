@@ -520,23 +520,33 @@ textarea.field { height: auto; padding: 8px 11px; resize: vertical; line-height:
 .c-ask .h { display: flex; align-items: center; gap: 7px; color: var(--warn); font-size: 12.5px; font-weight: 600; letter-spacing: 0.02em; }
 .c-ask .q { margin-top: 5px; font: 15px/1.55 var(--font-serif); color: var(--text); white-space: pre-wrap; }
 
-.c-row { display: flex; align-items: flex-end; gap: 8px; padding: 0 9px 9px 0; }
+/* 空的时候只有一行高，随内容长高（最多 260px）；发送按钮贴在右下角。 */
+.c-row { display: flex; align-items: flex-end; gap: 8px; padding: 7px 7px 7px 0; }
 .c-input {
-  display: block; flex: 1; min-width: 0; min-height: 58px; max-height: 260px;
-  padding: 16px 4px 8px 18px; border: 0; outline: none; resize: none;
-  background: transparent; color: var(--text); font-size: 15px; line-height: 1.55;
+  display: block; flex: 1; min-width: 0; min-height: 36px; max-height: 260px;
+  padding: 7px 4px 7px 16px; border: 0; outline: none; resize: none;
+  background: transparent; color: var(--text); font-size: 15px; line-height: 1.5;
 }
 .c-input::placeholder { color: var(--faint); }
 .c-right { flex: none; display: flex; }
 .c-right:empty { display: none; }
 
-/* 输入框下方（卡片外）的工具条：沙箱、模型倾向、用量，右边是快捷键提示 */
-.c-tools { display: flex; align-items: center; gap: 2px; min-height: 30px; margin-top: 6px; padding: 0 4px; }
-.c-hint { display: flex; gap: 12px; font-size: 11.5px; color: var(--faint); white-space: nowrap; overflow: hidden; }
+/* 输入框下方（卡片外）的工具条：沙箱、模型倾向、用量，右边是快捷键提示。
+   按输入区自己的宽度收：窄到放不下提示时先藏提示，手机那么窄时才只留图标。 */
+.dock-inner { container-type: inline-size; }
+.c-tools { display: flex; align-items: center; gap: 6px; min-height: 32px; margin-top: 8px; padding: 0 2px; }
+.c-hint { display: flex; gap: 14px; margin-left: 12px; font-size: 11.5px; color: var(--faint); white-space: nowrap; overflow: hidden; }
 .tool {
-  display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 9px;
-  border: 1px solid transparent; border-radius: 9px; background: transparent;
+  display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 999px; background: transparent;
   color: var(--muted); font-size: 12.5px; white-space: nowrap;
+}
+@container (max-width: 640px) {
+  .c-hint { display: none; }
+}
+@container (max-width: 400px) {
+  .tool .v:not(.keep) { display: none; }
+  .c-tools { gap: 4px; }
 }
 .tool:hover, .tool.open { background: var(--sunken); color: var(--text); }
 .tool:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -760,8 +770,6 @@ dialog::backdrop { background: rgba(20, 19, 18, 0.35); }
   .dock { padding: 0 12px 10px; }
   .topbar { padding: 0 8px 0 10px; }
   .topbar .chips { display: none; }
-  .tool .v:not(.keep) { display: none; }
-  .c-hint { display: none; }
   .page { padding: 14px 16px 32px; }
   .page-head { flex-direction: column; }
   .topbar .crumb, .topbar .crumb-sep { display: none; }
