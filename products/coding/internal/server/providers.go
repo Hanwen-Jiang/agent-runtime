@@ -101,10 +101,31 @@ type remoteRepo struct {
 	CanPush       bool   `json:"can_push"`
 }
 
-// repos 列出用户能看到的仓库（最近活动的在前，第一页）。
+// repoPages 是“我的仓库”最多翻几页：每页 100 个（Gitea 50 个），再多的用户自己贴地址。
+const repoPages = 5
+
+// repos 列出用户能看到的仓库（最近活动的在前），一页一页翻，直到某页不满或翻满 repoPages 页。
 func (p *Provider) repos(ctx context.Context, token string) ([]remoteRepo, error) {
 	out := []remoteRepo{}
-	add := func(r remoteRepo) { r.Provider = p.id; out = append(out, r) }
+	for page := 1; page <= repoPages; page++ {
+		got, full, err := p.repoPage(ctx, token, page)
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range got {
+			r.Provider = p.id
+			out = append(out, r)
+		}
+		if !full {
+			break
+		}
+	}
+	return out, nil
+}
+
+// repoPage 取“我的仓库”的第 page 页；full 表示这一页是满的，后面可能还有。
+func (p *Provider) repoPage(ctx context.Context, token string, page int) (out []remoteRepo, full bool, err error) {
+	n := strconv.Itoa(page)
 	switch p.id {
 	case "github", "gitea":
 		var rs []struct {
@@ -116,16 +137,17 @@ func (p *Provider) repos(ctx context.Context, token string) ([]remoteRepo, error
 				Push bool `json:"push"`
 			} `json:"permissions"`
 		}
-		path := "/user/repos?sort=updated&per_page=100&affiliation=owner,collaborator,organization_member"
+		size, path := 100, "/user/repos?sort=updated&per_page=100&affiliation=owner,collaborator,organization_member&page="+n
 		if p.id == "gitea" {
-			path = "/user/repos?limit=50"
+			size, path = 50, "/user/repos?limit=50&page="+n
 		}
 		if err := p.api(ctx, token, http.MethodGet, path, nil, &rs); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		for _, r := range rs {
-			add(remoteRepo{FullName: r.FullName, CloneURL: r.CloneURL, Private: r.Private, DefaultBranch: r.DefaultBranch, CanPush: r.Permissions.Push})
+			out = append(out, remoteRepo{FullName: r.FullName, CloneURL: r.CloneURL, Private: r.Private, DefaultBranch: r.DefaultBranch, CanPush: r.Permissions.Push})
 		}
+		return out, len(rs) >= size, nil
 	case "gitee":
 		var rs []struct {
 			FullName      string `json:"full_name"`
@@ -136,12 +158,13 @@ func (p *Provider) repos(ctx context.Context, token string) ([]remoteRepo, error
 				Push bool `json:"push"`
 			} `json:"permission"`
 		}
-		if err := p.api(ctx, token, http.MethodGet, "/user/repos?sort=updated&per_page=100", nil, &rs); err != nil {
-			return nil, err
+		if err := p.api(ctx, token, http.MethodGet, "/user/repos?sort=updated&per_page=100&page="+n, nil, &rs); err != nil {
+			return nil, false, err
 		}
 		for _, r := range rs {
-			add(remoteRepo{FullName: r.FullName, CloneURL: strings.TrimSuffix(r.HTMLURL, "/") + ".git", Private: r.Private, DefaultBranch: r.DefaultBranch, CanPush: r.Permission.Push})
+			out = append(out, remoteRepo{FullName: r.FullName, CloneURL: strings.TrimSuffix(r.HTMLURL, "/") + ".git", Private: r.Private, DefaultBranch: r.DefaultBranch, CanPush: r.Permission.Push})
 		}
+		return out, len(rs) >= 100, nil
 	case "gitlab":
 		var rs []struct {
 			PathWithNamespace string `json:"path_with_namespace"`
@@ -150,14 +173,15 @@ func (p *Provider) repos(ctx context.Context, token string) ([]remoteRepo, error
 			DefaultBranch     string `json:"default_branch"`
 		}
 		// min_access_level=30（Developer）：能推送的才列出来。
-		if err := p.api(ctx, token, http.MethodGet, "/projects?membership=true&min_access_level=30&order_by=last_activity_at&per_page=100", nil, &rs); err != nil {
-			return nil, err
+		if err := p.api(ctx, token, http.MethodGet, "/projects?membership=true&min_access_level=30&order_by=last_activity_at&per_page=100&page="+n, nil, &rs); err != nil {
+			return nil, false, err
 		}
 		for _, r := range rs {
-			add(remoteRepo{FullName: r.PathWithNamespace, CloneURL: r.HTTPURLToRepo, Private: r.Visibility != "public", DefaultBranch: r.DefaultBranch, CanPush: true})
+			out = append(out, remoteRepo{FullName: r.PathWithNamespace, CloneURL: r.HTTPURLToRepo, Private: r.Visibility != "public", DefaultBranch: r.DefaultBranch, CanPush: true})
 		}
+		return out, len(rs) >= 100, nil
 	case "bitbucket":
-		var page struct {
+		var res struct {
 			Values []struct {
 				FullName   string `json:"full_name"`
 				IsPrivate  bool   `json:"is_private"`
@@ -171,12 +195,13 @@ func (p *Provider) repos(ctx context.Context, token string) ([]remoteRepo, error
 					} `json:"clone"`
 				} `json:"links"`
 			} `json:"values"`
+			Next string `json:"next"`
 		}
 		// role=contributor：有写权限的才列出来。
-		if err := p.api(ctx, token, http.MethodGet, "/repositories?role=contributor&pagelen=100&sort=-updated_on", nil, &page); err != nil {
-			return nil, err
+		if err := p.api(ctx, token, http.MethodGet, "/repositories?role=contributor&pagelen=100&sort=-updated_on&page="+n, nil, &res); err != nil {
+			return nil, false, err
 		}
-		for _, r := range page.Values {
+		for _, r := range res.Values {
 			clone := p.Web + "/" + r.FullName + ".git"
 			for _, c := range r.Links.Clone {
 				if c.Name == "https" {
@@ -186,12 +211,11 @@ func (p *Provider) repos(ctx context.Context, token string) ([]remoteRepo, error
 					}
 				}
 			}
-			add(remoteRepo{FullName: r.FullName, CloneURL: clone, Private: r.IsPrivate, DefaultBranch: r.MainBranch.Name, CanPush: true})
+			out = append(out, remoteRepo{FullName: r.FullName, CloneURL: clone, Private: r.IsPrivate, DefaultBranch: r.MainBranch.Name, CanPush: true})
 		}
-	default:
-		return nil, &GitError{Provider: p.Name, Status: http.StatusBadRequest, Message: p.Name + " 不是 Git 平台"}
+		return out, res.Next != "", nil
 	}
-	return out, nil
+	return nil, false, &GitError{Provider: p.Name, Status: http.StatusBadRequest, Message: p.Name + " 不是 Git 平台"}
 }
 
 // repoOf 认出这一家的仓库地址（https，主机与网页地址相同），返回仓库路径：owner/repo，GitLab 可以有多级群组。

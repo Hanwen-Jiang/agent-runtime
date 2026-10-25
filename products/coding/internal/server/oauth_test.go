@@ -609,3 +609,63 @@ func TestGitCredentialsAndRepoPaths(t *testing.T) {
 		}
 	}
 }
+
+// 仓库列表一页一页翻：某页不满（Bitbucket 是没有 next）就停，最多 repoPages 页。
+func TestRepoListsPageThrough(t *testing.T) {
+	cfg := Config{Providers: map[string]ProviderConfig{}}
+	for _, id := range []string{"github", "gitee", "gitlab", "gitea", "bitbucket"} {
+		cfg.Providers[id] = ProviderConfig{ClientID: "c", ClientSecret: "s"}
+	}
+	providers := newProviders(cfg)
+	for _, tc := range []struct {
+		id                 string
+		total, want, pages int
+	}{
+		{"github", 230, 230, 3},
+		{"github", 200, 200, 3}, // 第二页正好满：再问一页，是空的
+		{"github", 1000, 500, 5},
+		{"gitea", 120, 120, 3},
+		{"gitea", 1000, 250, 5},
+		{"gitee", 150, 150, 2},
+		{"gitlab", 99, 99, 1},
+		{"bitbucket", 230, 230, 3},
+		{"bitbucket", 1000, 500, 5},
+	} {
+		var asked []string
+		fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			q := r.URL.Query()
+			asked = append(asked, q.Get("page"))
+			size := 100
+			if tc.id == "gitea" {
+				size = 50
+			}
+			page := 1
+			fmt.Sscan(q.Get("page"), &page)
+			items := []map[string]any{}
+			for i := (page - 1) * size; i < page*size && i < tc.total; i++ {
+				name := fmt.Sprintf("o/r%d", i)
+				items = append(items, map[string]any{"full_name": name, "path_with_namespace": name, "html_url": "https://x/" + name, "clone_url": "https://x/" + name + ".git"})
+			}
+			w.Header().Set("Content-Type", "application/json")
+			if tc.id == "bitbucket" {
+				res := map[string]any{"values": items}
+				if page*size < tc.total {
+					res["next"] = fmt.Sprintf("%s/repositories?page=%d", "https://api.bitbucket.org/2.0", page+1)
+				}
+				_ = json.NewEncoder(w).Encode(res)
+				return
+			}
+			_ = json.NewEncoder(w).Encode(items)
+		}))
+		p := *providers[tc.id]
+		p.API, p.Web = fake.URL, fake.URL
+		repos, err := p.repos(t.Context(), "tok")
+		fake.Close()
+		if err != nil || len(repos) != tc.want || len(asked) != tc.pages {
+			t.Fatalf("%s 共 %d 个：应取到 %d 个、问 %d 页，实际 %d 个、问了 %v（%v）", tc.id, tc.total, tc.want, tc.pages, len(repos), asked, err)
+		}
+		if repos[0].FullName != "o/r0" || repos[len(repos)-1].FullName != fmt.Sprintf("o/r%d", tc.want-1) || repos[0].Provider != tc.id {
+			t.Fatalf("%s：顺序或来源不对：%v … %v", tc.id, repos[0], repos[len(repos)-1])
+		}
+	}
+}
