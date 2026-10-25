@@ -10,22 +10,46 @@ import (
 	"time"
 )
 
-// Project 是一个项目：租户下的一个 Git 工作区，对应 Runtime 的 workspace；同一项目的任务共用一个 Session。
+// Project 是一个工作区：租户下的一个基线 Git 仓库（<工作区根>/<租户>/<ID>）。它下面可以开很多会话（Session），
+// 每个会话从基线仓库复制一份自己的工作副本，互不干扰，可以同时跑。
 type Project struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	Source    string    `json:"source"`
 	CreatedAt time.Time `json:"created_at"`
 	CreatedBy string    `json:"created_by"`
-	SessionID string    `json:"session_id,omitempty"`
-	// GitHub 上的仓库（owner/repo）；只有这样的项目能推送、开 PR。
+	// GitHub 上的仓库（owner/repo）；只有这样的工作区能推送、开 PR。
 	GitHubRepo string `json:"github_repo,omitempty"`
-	// 克隆时的分支（PR 的目标分支）；Agent 的改动推到 Branch（agent/…），PR 记在 PRURL、PRNumber。
+	// 克隆时的分支（PR 的目标分支）。
 	BaseBranch string `json:"base_branch,omitempty"`
+
+	// 以下是会话出现之前的字段（一个项目一段对话、直接在基线仓库里改）。读到时迁移成这个工作区的 main 会话，之后不再写。
+	SessionID  string `json:"session_id,omitempty"`
 	Branch     string `json:"branch,omitempty"`
 	PRURL      string `json:"pr_url,omitempty"`
 	PRNumber   int    `json:"pr_number,omitempty"`
-	// 上次推送到 Branch 的提交；没有新提交也没有未提交的改动时不再推。
+	PushedHead string `json:"pushed_head,omitempty"`
+}
+
+// Session 是工作区里的一个会话：一段对话（Runtime 的一个 Session）加一份独立的工作副本。
+type Session struct {
+	ID        string    `json:"id"`
+	ProjectID string    `json:"project_id"`
+	Title     string    `json:"title"`
+	CreatedAt time.Time `json:"created_at"`
+	CreatedBy string    `json:"created_by"`
+	// UpdatedAt 是最近一次提交任务的时间（侧栏按它排序）。
+	UpdatedAt time.Time `json:"updated_at"`
+	// WorkspaceID 是 Runtime 的 workspace id，也是工作副本的目录名（<工作区根>/<租户>/<WorkspaceID>）；
+	// 新会话是 <项目>--<会话>，迁移来的 main 会话就是项目自己的目录。
+	WorkspaceID      string `json:"workspace_id"`
+	RuntimeSessionID string `json:"runtime_session_id,omitempty"`
+	// 复制时基线仓库的提交。
+	BaseCommit string `json:"base_commit,omitempty"`
+	// Agent 的改动推到 Branch（agent/…），PR 记在 PRURL、PRNumber；PushedHead 是上次推送的提交。
+	Branch     string `json:"branch,omitempty"`
+	PRURL      string `json:"pr_url,omitempty"`
+	PRNumber   int    `json:"pr_number,omitempty"`
 	PushedHead string `json:"pushed_head,omitempty"`
 }
 
@@ -56,7 +80,7 @@ func terminal(status string) bool {
 	return false
 }
 
-// Store 把元数据存成 JSON 文件：<dir>/<租户>/projects.json 与 <dir>/<租户>/tasks-<项目>.json。MVP 用，单进程。
+// Store 把元数据存成 JSON 文件：<dir>/<租户>/projects.json、sessions.json 与 tasks-<会话的 WorkspaceID>.json。MVP 用，单进程。
 type Store struct {
 	dir string
 	mu  sync.Mutex
@@ -68,8 +92,59 @@ func (s *Store) projectsFile(tenant string) string {
 	return filepath.Join(s.dir, tenant, "projects.json")
 }
 
-func (s *Store) tasksFile(tenant, project string) string {
-	return filepath.Join(s.dir, tenant, "tasks-"+project+".json")
+func (s *Store) sessionsFile(tenant string) string {
+	return filepath.Join(s.dir, tenant, "sessions.json")
+}
+
+func (s *Store) tasksFile(tenant, workspaceID string) string {
+	return filepath.Join(s.dir, tenant, "tasks-"+workspaceID+".json")
+}
+
+func (s *Store) Sessions(tenant string) ([]Session, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return readJSONFile[[]Session](s.sessionsFile(tenant))
+}
+
+// UpdateSessions 在锁里读出、修改、写回会话列表。
+func (s *Store) UpdateSessions(tenant string, fn func([]Session) ([]Session, error)) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sessions, err := readJSONFile[[]Session](s.sessionsFile(tenant))
+	if err != nil {
+		return err
+	}
+	sessions, err = fn(sessions)
+	if err != nil {
+		return err
+	}
+	return writeFileAtomic(s.sessionsFile(tenant), sessions)
+}
+
+// HasTasks 判断某个工作副本有没有任务记录（迁移旧项目时用）。
+func (s *Store) HasTasks(tenant, workspaceID string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, err := os.Stat(s.tasksFile(tenant, workspaceID))
+	return err == nil
+}
+
+// DeleteSession 删掉一个会话的元数据与任务记录（工作副本由调用方删）。
+func (s *Store) DeleteSession(tenant string, sess Session) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sessions, err := readJSONFile[[]Session](s.sessionsFile(tenant))
+	if err != nil {
+		return err
+	}
+	sessions = slices.DeleteFunc(sessions, func(x Session) bool { return x.ProjectID == sess.ProjectID && x.ID == sess.ID })
+	if err := writeFileAtomic(s.sessionsFile(tenant), sessions); err != nil {
+		return err
+	}
+	if err := os.Remove(s.tasksFile(tenant, sess.WorkspaceID)); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return nil
 }
 
 func readJSONFile[T any](path string) (T, error) {
@@ -153,24 +228,25 @@ func (s *Store) UpdateProjects(tenant string, fn func([]Project) ([]Project, err
 	return writeFileAtomic(s.projectsFile(tenant), projects)
 }
 
-func (s *Store) Tasks(tenant, project string) ([]TaskRecord, error) {
+// Tasks 是一个会话（按它的 WorkspaceID）的任务列表。
+func (s *Store) Tasks(tenant, workspaceID string) ([]TaskRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return readJSONFile[[]TaskRecord](s.tasksFile(tenant, project))
+	return readJSONFile[[]TaskRecord](s.tasksFile(tenant, workspaceID))
 }
 
-// UpdateTasks 在锁里读出、修改、写回一个项目的任务列表。
-func (s *Store) UpdateTasks(tenant, project string, fn func([]TaskRecord) []TaskRecord) error {
+// UpdateTasks 在锁里读出、修改、写回一个会话的任务列表。
+func (s *Store) UpdateTasks(tenant, workspaceID string, fn func([]TaskRecord) []TaskRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	tasks, err := readJSONFile[[]TaskRecord](s.tasksFile(tenant, project))
+	tasks, err := readJSONFile[[]TaskRecord](s.tasksFile(tenant, workspaceID))
 	if err != nil {
 		return err
 	}
-	return writeFileAtomic(s.tasksFile(tenant, project), fn(tasks))
+	return writeFileAtomic(s.tasksFile(tenant, workspaceID), fn(tasks))
 }
 
-// DeleteProject 删掉项目的元数据（工作区由调用方删）。
+// DeleteProject 删掉工作区与它所有会话的元数据、任务记录（目录由调用方删）。
 func (s *Store) DeleteProject(tenant, id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -182,8 +258,23 @@ func (s *Store) DeleteProject(tenant, id string) error {
 	if err := writeFileAtomic(s.projectsFile(tenant), projects); err != nil {
 		return err
 	}
-	if err := os.Remove(s.tasksFile(tenant, id)); err != nil && !errors.Is(err, os.ErrNotExist) {
+	sessions, err := readJSONFile[[]Session](s.sessionsFile(tenant))
+	if err != nil {
 		return err
+	}
+	files := []string{s.tasksFile(tenant, id)}
+	for _, x := range sessions {
+		if x.ProjectID == id {
+			files = append(files, s.tasksFile(tenant, x.WorkspaceID))
+		}
+	}
+	if err := writeFileAtomic(s.sessionsFile(tenant), slices.DeleteFunc(sessions, func(x Session) bool { return x.ProjectID == id })); err != nil {
+		return err
+	}
+	for _, f := range files {
+		if err := os.Remove(f); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
 	}
 	return nil
 }

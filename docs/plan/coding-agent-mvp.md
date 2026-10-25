@@ -109,3 +109,15 @@ task-service（Task API、Session 与 Task 工作流）→ Worker（Planner、to
 - **沙箱等级**：effect 上限。只读是 `read`（只能读代码、回答，不改文件、不跑命令，`shell_run` 是 write_reversible）；工作区可写是 `write_reversible`（命令在断网的一次性容器里跑）。Task API 没有逐个任务的上限，effect 上限来自租户策略：coding-web 在提交前把开发租户策略文件里这个租户的上限改成所选的等级，同一租户的“改写策略、提交”串行，task-service 在提交那一刻把上限固定进 Task。缺口：正式部署要在 `SubmitTaskRequest` 加一个只能调低的 `effect_ceiling`（走 S-01）。
 - **模型倾向**：放进 `inputs.constraints.model_preference`，进入 Task State 的约束；Planner 的提示说明它的含义，规划 model 节点的 Tier 时参考（只能选可用的 Tier）。tool_loop 与 Reviewer 的 Tier 是固定配置，不受它影响。
 - **已用 token**：`QueryTask` 的 usage；任务结束时缓存进 coding-web 的任务记录，项目合计在前端相加。
+
+## 8. 工作区与会话
+
+2026-10-25 用户要求：一个工作区可以开很多会话；侧栏上半部分放一些入口。用户选定“每个会话一份独立副本”。
+
+- **工作区**（原来的“项目”）是一个基线仓库：`<工作区根>/<租户>/<工作区>`，由克隆、示例或空仓库建出来，之后不直接在里面改。
+- **会话**是一段对话（Runtime 的一个 Session）加一份自己的工作副本：从基线仓库本地克隆（`git clone --local`，对象用硬链接，得到一个完整、独立的仓库，Docker 沙箱里也能用 git），检出基线分支；GitHub 工作区再把远端换回 GitHub、尽量拉到基线分支的最新提交。目录与 Runtime 的 workspace id 都是 `<工作区>--<会话>`，Worker 的工具与沙箱只看得到这份副本。会话之间互不干扰、可以同时跑；改动、提交、补丁、推送都按会话，GitHub 工作区里一个会话一个 `agent/*` 分支、一个 PR。
+- **草稿**：“新建会话”只打开草稿，第一条消息发出时才开会话（复制副本），标题取这条消息的第一行（最多 40 字），可以改名。
+- **迁移**：会话出现之前的项目（记着 Runtime Session、推送记录或任务）读到时变成这个工作区的 `main` 会话，直接用工作区自己的目录与原来的任务记录；删 `main` 会话只删记录，不删目录。
+- **接口**：工作区 `GET/POST /api/projects`、`DELETE /api/projects/{p}`（连同所有会话的副本）；会话 `GET /api/sessions`、`POST /api/projects/{p}/sessions`，其余（任务、事件、回复、取消、改动、提交、补丁、推送、回到基线、文件、提交历史、环境、改名、删除）都在 `/api/projects/{p}/sessions/{s}/…` 下；`GET /api/tasks/active` 带上工作区与会话。
+- **界面**：左栏上半部分是“新建会话、搜索（Ctrl K）、工作区、进行中”，下半部分按工作区分组列出会话（可折叠，悬停出现“+”开新会话、“…”改名或删除）。中间多了“工作区”一览（每个工作区的会话数、在跑的会话、最近的会话，新建会话、删除工作区）与“进行中”（所有会话里在跑与排队的任务，可跳转、可停止）。地址是 `#/w/<工作区>/s/<会话>`、`#/w/<工作区>/new`、`#/workspaces`、`#/activity`。
+- **还没做**：会话之间合并改动（现在靠各自推 PR，或在基线仓库外手动合并）；归档会话；清理长期不用的副本。

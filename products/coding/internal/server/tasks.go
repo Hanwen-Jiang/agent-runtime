@@ -16,9 +16,10 @@ const maxMessageChars = 20000
 // maxBackfill 是一次刷新最多补查几个“已结束、还没取过计量”的任务（之前版本留下的记录）。
 const maxBackfill = 8
 
-// refresh 向 Runtime 查询还没结束的任务（以及少量还没取过计量的已结束任务），更新缓存的状态与计量；查不到的保持原样。
-func (s *Server) refresh(r *http.Request, id identity, project string) []TaskRecord {
-	tasks, err := s.store.Tasks(id.TenantID, project)
+// refresh 向 Runtime 查询一个会话（按 WorkspaceID）里还没结束的任务（以及少量还没取过计量的已结束任务），
+// 更新缓存的状态与计量；查不到的保持原样。
+func (s *Server) refresh(r *http.Request, id identity, workspaceID string) []TaskRecord {
+	tasks, err := s.store.Tasks(id.TenantID, workspaceID)
 	if err != nil {
 		return nil
 	}
@@ -49,7 +50,7 @@ func (s *Server) refresh(r *http.Request, id identity, project string) []TaskRec
 		}
 	}
 	if len(changed) > 0 {
-		_ = s.store.UpdateTasks(id.TenantID, project, func(ts []TaskRecord) []TaskRecord {
+		_ = s.store.UpdateTasks(id.TenantID, workspaceID, func(ts []TaskRecord) []TaskRecord {
 			for i := range ts {
 				if next, ok := changed[ts[i].ID]; ok {
 					ts[i] = next
@@ -66,17 +67,17 @@ func (s *Server) refresh(r *http.Request, id identity, project string) []TaskRec
 	return tasks
 }
 
-// busy 判断项目里是否还有没结束的任务（提交、丢弃、删除之前查）。
-func (s *Server) busy(r *http.Request, id identity, project string) bool {
-	return slices.ContainsFunc(s.refresh(r, id, project), func(t TaskRecord) bool { return !terminal(t.Status) })
+// busy 判断一个会话里是否还有没结束的任务（提交、丢弃、删除之前查）。
+func (s *Server) busy(r *http.Request, id identity, workspaceID string) bool {
+	return slices.ContainsFunc(s.refresh(r, id, workspaceID), func(t TaskRecord) bool { return !terminal(t.Status) })
 }
 
 func (s *Server) handleListTasks(w http.ResponseWriter, r *http.Request, id identity) {
-	p, ok := s.project(w, r, id)
+	_, sess, ok := s.session(w, r, id)
 	if !ok {
 		return
 	}
-	tasks := s.refresh(r, id, p.ID)
+	tasks := s.refresh(r, id, sess.WorkspaceID)
 	if tasks == nil {
 		tasks = []TaskRecord{}
 	}
@@ -85,7 +86,7 @@ func (s *Server) handleListTasks(w http.ResponseWriter, r *http.Request, id iden
 }
 
 func (s *Server) handleSubmitTask(w http.ResponseWriter, r *http.Request, id identity) {
-	p, ok := s.project(w, r, id)
+	_, sess, ok := s.session(w, r, id)
 	if !ok {
 		return
 	}
@@ -112,17 +113,16 @@ func (s *Server) handleSubmitTask(w http.ResponseWriter, r *http.Request, id ide
 		writeError(w, http.StatusBadRequest, "模型倾向只能是 economy、balanced 或 best")
 		return
 	}
-	dir := s.workspace(id.TenantID, p.ID)
-	base := s.git.Head(r.Context(), dir)
+	base := s.git.Head(r.Context(), s.sessionDir(id.TenantID, sess))
 	submit := map[string]any{
-		"workspaceId":     p.ID,
+		"workspaceId":     sess.WorkspaceID,
 		"clientRequestId": randomHex(16),
 		"message":         msg,
 		"sessionAccess":   "SESSION_ACCESS_READ_WRITE",
 		"inputs":          map[string]any{"constraints": map[string]any{"model_preference": model}},
 	}
-	if p.SessionID != "" {
-		submit["sessionId"] = p.SessionID
+	if sess.RuntimeSessionID != "" {
+		submit["sessionId"] = sess.RuntimeSessionID
 	}
 	// 改写租户策略与提交在同一把租户锁里：task-service 提交时读策略文件，把上限固定进这个 Task。
 	unlock := s.lockTenant(id.TenantID)
@@ -140,18 +140,18 @@ func (s *Server) handleSubmitTask(w http.ResponseWriter, r *http.Request, id ide
 		writeAPIError(w, err)
 		return
 	}
-	if p.SessionID == "" && resp.SessionID != "" {
-		_ = s.store.UpdateProjects(id.TenantID, func(ps []Project) ([]Project, error) {
-			for i := range ps {
-				if ps[i].ID == p.ID && ps[i].SessionID == "" {
-					ps[i].SessionID = resp.SessionID
-				}
-			}
-			return ps, nil
-		})
-	}
-	record := TaskRecord{ID: resp.TaskID, Message: msg, CreatedAt: time.Now().UTC(), CreatedBy: id.UserID, BaseCommit: base, Status: "TASK_STATUS_QUEUED", Sandbox: sandbox, Model: model}
-	if err := s.store.UpdateTasks(id.TenantID, p.ID, func(ts []TaskRecord) []TaskRecord {
+	now := time.Now().UTC()
+	_, _ = s.updateSession(id.TenantID, sess, func(x *Session) {
+		if x.RuntimeSessionID == "" {
+			x.RuntimeSessionID = resp.SessionID
+		}
+		if x.Title == "" {
+			x.Title = sessionTitle(msg)
+		}
+		x.UpdatedAt = now
+	})
+	record := TaskRecord{ID: resp.TaskID, Message: msg, CreatedAt: now, CreatedBy: id.UserID, BaseCommit: base, Status: "TASK_STATUS_QUEUED", Sandbox: sandbox, Model: model}
+	if err := s.store.UpdateTasks(id.TenantID, sess.WorkspaceID, func(ts []TaskRecord) []TaskRecord {
 		if slices.ContainsFunc(ts, func(t TaskRecord) bool { return t.ID == record.ID }) {
 			return ts
 		}
@@ -163,27 +163,27 @@ func (s *Server) handleSubmitTask(w http.ResponseWriter, r *http.Request, id ide
 	writeJSON(w, http.StatusCreated, record)
 }
 
-// task 取出请求路径里的任务，确认它属于这个租户的这个项目。
-func (s *Server) task(w http.ResponseWriter, r *http.Request, id identity) (Project, TaskRecord, bool) {
-	p, ok := s.project(w, r, id)
+// task 取出请求路径里的任务，确认它属于这个租户的这个会话。
+func (s *Server) task(w http.ResponseWriter, r *http.Request, id identity) (Session, TaskRecord, bool) {
+	_, sess, ok := s.session(w, r, id)
 	if !ok {
-		return Project{}, TaskRecord{}, false
+		return Session{}, TaskRecord{}, false
 	}
-	tasks, err := s.store.Tasks(id.TenantID, p.ID)
+	tasks, err := s.store.Tasks(id.TenantID, sess.WorkspaceID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
-		return Project{}, TaskRecord{}, false
+		return Session{}, TaskRecord{}, false
 	}
 	i := slices.IndexFunc(tasks, func(t TaskRecord) bool { return t.ID == r.PathValue("task") })
 	if i < 0 {
 		writeError(w, http.StatusNotFound, "任务不存在")
-		return Project{}, TaskRecord{}, false
+		return Session{}, TaskRecord{}, false
 	}
-	return p, tasks[i], true
+	return sess, tasks[i], true
 }
 
 func (s *Server) handleQueryTask(w http.ResponseWriter, r *http.Request, id identity) {
-	p, t, ok := s.task(w, r, id)
+	sess, t, ok := s.task(w, r, id)
 	if !ok {
 		return
 	}
@@ -197,7 +197,7 @@ func (s *Server) handleQueryTask(w http.ResponseWriter, r *http.Request, id iden
 	var q queryResponse
 	if err := json.Unmarshal(raw, &q); err == nil && q.Status != "" {
 		if next := withQuery(t, q); !sameRecord(next, t) {
-			_ = s.store.UpdateTasks(id.TenantID, p.ID, func(ts []TaskRecord) []TaskRecord {
+			_ = s.store.UpdateTasks(id.TenantID, sess.WorkspaceID, func(ts []TaskRecord) []TaskRecord {
 				for i := range ts {
 					if ts[i].ID == t.ID {
 						ts[i] = next

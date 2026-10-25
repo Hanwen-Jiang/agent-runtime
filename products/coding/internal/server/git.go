@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -22,6 +23,8 @@ type gitOpts struct {
 	name, email string
 	// env 追加到 git 进程的环境里；用来传 http.extraheader（令牌不出现在命令行参数、Git 配置与远端地址里）。
 	env []string
+	// allowFile 只给 CloneLocal：本机路径作远端（两端路径都由服务端拼出）。
+	allowFile bool
 }
 
 // Run 在 dir 里执行 git，返回标准输出；失败时错误里带标准错误的末尾。
@@ -52,9 +55,23 @@ func tokenEnv(host, token string) []string {
 	}
 }
 
+// CloneLocal 把本机的仓库 src 克隆到 dst（对象用硬链接，得到的是一个完整、独立的仓库），检出 branch（为空时用 src 的 HEAD）。
+func (g Git) CloneLocal(ctx context.Context, src, dst, branch string) (string, error) {
+	args := []string{"clone", "-q", "--local"}
+	if branch != "" {
+		args = append(args, "--branch", branch)
+	}
+	out, err := g.run(ctx, filepath.Dir(dst), gitOpts{allowFile: true}, append(args, "--", src, dst)...)
+	if err != nil && branch != "" { // src 里没有这个分支（例如还没有提交）：退回 HEAD
+		_ = os.RemoveAll(dst)
+		return g.run(ctx, filepath.Dir(dst), gitOpts{allowFile: true}, "clone", "-q", "--local", "--", src, dst)
+	}
+	return out, err
+}
+
 func (g Git) run(ctx context.Context, dir string, o gitOpts, args ...string) (string, error) {
 	file := "never"
-	if g.AllowFileProtocol {
+	if g.AllowFileProtocol || o.allowFile {
 		file = "always"
 	}
 	full := []string{"-c", "core.hooksPath=" + g.HooksDir, "-c", "core.autocrlf=false", "-c", "protocol.file.allow=" + file, "-c", "advice.detachedHead=false"}

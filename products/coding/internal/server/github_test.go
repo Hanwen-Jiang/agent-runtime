@@ -138,23 +138,25 @@ func TestGitHubLoginPublishAndReset(t *testing.T) {
 		t.Fatalf("仓库列表：%d %s", code, raw)
 	}
 
-	// 项目：示例仓库 + 本地裸仓库作 GitHub 远端。
+	// 工作区：示例仓库 + 本地裸仓库作 GitHub 远端；会话的工作副本把 origin 指到裸仓库。
 	_, project, _ := c.do("POST", "/api/projects", map[string]string{"name": "demo", "sample": "ci_rounding"})
 	pid := project["id"].(string)
-	ws := filepath.Join(cfg.WorkspaceRoot, "gh-octo-cat", pid)
+	base := filepath.Join(cfg.WorkspaceRoot, "gh-octo-cat", pid)
 	bare := filepath.Join(t.TempDir(), "demo.git")
 	gitIn(t, srv, filepath.Dir(bare), "init", "-q", "--bare", "-b", "main", bare)
-	gitIn(t, srv, ws, "remote", "add", "origin", bare)
-	gitIn(t, srv, ws, "push", "-q", "origin", "main")
-	gitIn(t, srv, ws, "fetch", "-q", "origin")
+	gitIn(t, srv, base, "remote", "add", "origin", bare)
+	gitIn(t, srv, base, "push", "-q", "origin", "main")
 	if _, err := srv.updateProject("gh-octo-cat", pid, func(p *Project) { p.GitHubRepo, p.BaseBranch = "octo-cat/demo", "main" }); err != nil {
 		t.Fatal(err)
 	}
+	api, ws := newSession(t, c, cfg, "gh-octo-cat", pid)
+	gitIn(t, srv, ws, "remote", "set-url", "origin", bare)
+	gitIn(t, srv, ws, "fetch", "-q", "origin")
 
 	if err := os.WriteFile(filepath.Join(ws, "pricing.py"), []byte("# fixed\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	code, out, raw := c.do("POST", "/api/projects/"+pid+"/publish", map[string]string{"title": "Fix rounding"})
+	code, out, raw := c.do("POST", api+"/publish", map[string]string{"title": "Fix rounding"})
 	if code != http.StatusOK || out["created"] != true || out["pr_number"].(float64) != 7 {
 		t.Fatalf("推送并开 PR：%d %s", code, raw)
 	}
@@ -183,17 +185,20 @@ func TestGitHubLoginPublishAndReset(t *testing.T) {
 		t.Fatal("令牌不能写进 .git/config")
 	}
 
-	if code, _, _ := c.do("POST", "/api/projects/"+pid+"/publish", map[string]string{"title": "again"}); code != http.StatusBadRequest {
+	if code, _, _ := c.do("POST", api+"/publish", map[string]string{"title": "again"}); code != http.StatusBadRequest {
 		t.Fatalf("没有新改动时应 400，实际 %d", code)
 	}
 	_ = os.WriteFile(filepath.Join(ws, "notes.md"), []byte("more\n"), 0o644)
-	code, out, raw = c.do("POST", "/api/projects/"+pid+"/publish", map[string]string{"title": "More changes"})
+	code, out, raw = c.do("POST", api+"/publish", map[string]string{"title": "More changes"})
 	if code != http.StatusOK || out["created"] != false || out["branch"] != branch || len(gh.pulls) != 1 {
 		t.Fatalf("再推应只更新同一个 PR：%d %s", code, raw)
 	}
+	if out["session"].(map[string]any)["pr_number"].(float64) != 7 {
+		t.Fatalf("PR 记在会话上：%s", raw)
+	}
 
-	code, out, raw = c.do("POST", "/api/projects/"+pid+"/reset-branch", nil)
-	if code != http.StatusOK || out["project"].(map[string]any)["branch"] != nil {
+	code, out, raw = c.do("POST", api+"/reset-branch", nil)
+	if code != http.StatusOK || out["session"].(map[string]any)["branch"] != nil {
 		t.Fatalf("回到基线分支：%d %s", code, raw)
 	}
 	if cur := srv.git.Branch(t.Context(), ws); cur != "main" {
@@ -210,11 +215,11 @@ func TestDevLoginCannotTakeGitHubTenants(t *testing.T) {
 }
 
 func TestPublishNeedsAGitHubProjectAndAccount(t *testing.T) {
-	ts, _, _ := newServer(t)
+	ts, _, cfg := newServer(t)
 	c := newClient(t, ts.URL)
-	c.do("POST", "/api/login", map[string]string{"tenant": "acme", "user": "alice"})
-	_, project, _ := c.do("POST", "/api/projects", map[string]string{"name": "demo", "sample": "ci_rounding"})
-	if code, _, _ := c.do("POST", "/api/projects/"+project["id"].(string)+"/publish", map[string]string{"title": "x"}); code != http.StatusBadRequest {
+	pid := sampleProject(t, c)
+	api, _ := newSession(t, c, cfg, "acme", pid)
+	if code, _, _ := c.do("POST", api+"/publish", map[string]string{"title": "x"}); code != http.StatusBadRequest {
 		t.Fatalf("不是 GitHub 项目不能推送，实际 %d", code)
 	}
 }

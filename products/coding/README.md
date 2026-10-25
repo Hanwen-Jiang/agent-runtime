@@ -12,7 +12,7 @@ uv run --no-sync python scripts/dev_stack.py up --coding --sandbox docker
 
 离线试用（不调真模型，Agent 只会回一句桩回复）加 `--provider mock --decisions stub`。真模型的地址与密钥放在 `~/.agentruntime/model-provider.env`（见 CLAUDE.md）。
 
-命令输出里的 `Coding` 就是网页地址（默认 http://127.0.0.1:8095）。用任意租户名与用户名登录（开发登录，仅供测试），新建项目时选“示例仓库”可以直接试“修好 CI”的任务。
+命令输出里的 `Coding` 就是网页地址（默认 http://127.0.0.1:8095）。用任意租户名与用户名登录（开发登录，仅供测试），新建工作区时选“示例仓库”可以直接试“修好 CI”的任务。
 
 ### 打开 GitHub 登录与推送
 
@@ -24,7 +24,7 @@ uv run --no-sync python scripts/dev_stack.py up --coding --sandbox docker
    CODING_GITHUB_CLIENT_SECRET = <Client Secret>
    ```
 
-3. 重新 `up --coding`。登录页会多一个“使用 GitHub 登录”：租户是 `gh-<你的登录名>`，新建项目时可以从“我的 GitHub 仓库”里选（私有仓库用你的授权克隆）。任务跑完在“改动”页点“推送并开草稿 PR”：新建 `agent/…` 分支、提交、只推这个分支、开草稿 PR；之后再推会更新同一个 PR；PR 合并后点“回到 main”开始下一轮。
+3. 重新 `up --coding`。登录页会多一个“使用 GitHub 登录”：租户是 `gh-<你的登录名>`，新建工作区时可以从“我的 GitHub 仓库”里选（私有仓库用你的授权克隆）。会话里的任务跑完，在“改动”页点“推送并开草稿 PR”：给这个会话新建 `agent/…` 分支、提交、只推这个分支、开草稿 PR；之后再推会更新同一个 PR；PR 合并后点“回到 main”开始下一轮（或者开一个新会话）。
 
 OAuth 令牌只存在服务端（按租户、用户加密），不进浏览器、日志与 `.git/config`；git 用环境变量传认证头。scope 默认 `repo read:user`（私有仓库与开 PR 要 `repo`），可用 `CODING_GITHUB_SCOPES` 改。
 
@@ -32,7 +32,9 @@ OAuth 令牌只存在服务端（按租户、用户加密），不进浏览器�
 
 ## 界面
 
-参照 Claude 的版式（设计取舍见计划第 7 节）：左栏是项目；中间是对话；右栏是状态（环境、上下文、输出、改动、后台任务），窄屏时收进抽屉。diff、文件与提交历史在宽抽屉里打开。
+参照 Claude 的版式（设计取舍见计划第 7、8 节）。一个**工作区**（一个代码仓库）下可以开很多**会话**；每个会话一段对话加一份自己的工作副本（从工作区本地克隆），会话之间互不干扰、可以同时跑，GitHub 工作区里一个会话一个分支、一个 PR。
+
+左栏上半部分是新建会话、搜索（Ctrl K）、工作区、进行中，下半部分按工作区分组列出会话；中间是会话的对话（或工作区一览、进行中的任务）；右栏是当前会话的状态（环境、上下文、输出、改动、后台任务），窄屏时收进抽屉。diff、文件与提交历史在宽抽屉里打开。
 
 - **输入框随阶段变化**：运行中上沿显示轮次、当前一步与用时，带“停止”（Esc 也行），这时发出的消息排在当前任务之后；Agent 要你确认时，问题与选项出现在输入框里；结束后上方给下一步（审阅改动、提交、推送并开 PR、继续、重试）。
 - **输入框下方**：沙箱等级（只读、工作区可写；对下一个任务生效，提交时固定成它的 effect 上限）、模型倾向（省钱、均衡、最强；作为 `model_preference` 约束交给 Planner）、本项目的花费。Token 数要等 Runtime 在 `QueryTask` 里回报 usage。
@@ -42,7 +44,7 @@ OAuth 令牌只存在服务端（按租户、用户加密），不进浏览器�
 
 | 部分 | 位置 | 说明 |
 | --- | --- | --- |
-| coding-web | `cmd/coding-web`、`internal/server` | Go，只用标准库与 `libs/go-core`：开发登录（签发 Runtime 令牌，放 HttpOnly Cookie）、项目（`<工作区根>/<租户>/<项目>` 下的 Git 仓库）、经 Task API 下任务、代理 SSE、diff 与提交 |
+| coding-web | `cmd/coding-web`、`internal/server` | Go，只用标准库与 `libs/go-core`：开发登录（签发 Runtime 令牌，放 HttpOnly Cookie）、工作区（`<工作区根>/<租户>/<工作区>` 下的基线仓库）与会话（`<工作区>--<会话>` 下的工作副本）、经 Task API 下任务、代理 SSE、diff 与提交 |
 | 网页 | `internal/web/static` | 原生 JS 单页应用，无构建步骤，CSP 只允许同源脚本与样式 |
 | 示例仓库 | `internal/samples` | 内嵌的“CI 修复”示例 |
 | 沙箱 | Worker 的 `shell_run`（`AR_TOOL_SHELL_SANDBOX=docker`） | 一次性容器，只挂载本项目的工作区，不联网，限 CPU、内存与进程数 |

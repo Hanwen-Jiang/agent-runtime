@@ -69,13 +69,13 @@ func sameRecord(a, b TaskRecord) bool {
 	return a.Status == b.Status && a.CostUSD == b.CostUSD && a.Rounds == b.Rounds && a.Settled == b.Settled && string(a.Usage) == string(b.Usage)
 }
 
-// handleEnv 是右栏“环境”：Runtime 是否连得上、沙箱、工作区的分支与 HEAD、项目来源与 Session。
+// handleEnv 是右栏“环境”：Runtime 是否连得上、沙箱、会话工作副本的分支与 HEAD、工作区来源与 Runtime 的 Session。
 func (s *Server) handleEnv(w http.ResponseWriter, r *http.Request, id identity) {
-	p, ok := s.project(w, r, id)
+	p, sess, ok := s.session(w, r, id)
 	if !ok {
 		return
 	}
-	dir := s.workspace(id.TenantID, p.ID)
+	dir := s.sessionDir(id.TenantID, sess)
 	ctx, cancel := ctxTimeout(r, 10*time.Second)
 	defer cancel()
 	subject, _ := s.git.Run(ctx, dir, "log", "-1", "--format=%s")
@@ -98,30 +98,42 @@ func (s *Server) handleEnv(w http.ResponseWriter, r *http.Request, id identity) 
 			"branch": s.git.Branch(ctx, dir), "head": s.git.Head(ctx, dir), "subject": strings.TrimSpace(subject),
 			"dirty": dirty, "base_branch": p.BaseBranch,
 		},
-		"project": map[string]any{"source": p.Source, "github_repo": p.GitHubRepo, "session_id": p.SessionID, "created_at": p.CreatedAt},
+		"project": map[string]any{"source": p.Source, "github_repo": p.GitHubRepo, "created_at": p.CreatedAt},
+		"session": map[string]any{"workspace_id": sess.WorkspaceID, "runtime_session_id": sess.RuntimeSessionID, "base_commit": sess.BaseCommit, "own_copy": sess.WorkspaceID != p.ID},
 		// 租户策略里现在的上限；每个任务实际的上限在它的 Task State 里。
 		"effect_ceiling": s.tenantCeiling(id.TenantID),
 	})
 }
 
 type activeTask struct {
-	ProjectID   string     `json:"project_id"`
-	ProjectName string     `json:"project_name"`
-	Task        TaskRecord `json:"task"`
+	ProjectID    string     `json:"project_id"`
+	ProjectName  string     `json:"project_name"`
+	SessionID    string     `json:"session_id"`
+	SessionTitle string     `json:"session_title"`
+	Task         TaskRecord `json:"task"`
 }
 
-// handleActiveTasks 是右栏“后台任务”：这个租户所有项目里还没结束的任务，按提交时间排。
+// handleActiveTasks 是“进行中”：这个租户所有工作区、所有会话里还没结束的任务，按提交时间排。
 func (s *Server) handleActiveTasks(w http.ResponseWriter, r *http.Request, id identity) {
 	projects, err := s.store.Projects(id.TenantID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	out := []activeTask{}
+	sessions, err := s.ensureSessions(id.TenantID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	names := map[string]string{}
 	for _, p := range projects {
-		for _, t := range s.refresh(r, id, p.ID) {
+		names[p.ID] = p.Name
+	}
+	out := []activeTask{}
+	for _, sess := range sessions {
+		for _, t := range s.refresh(r, id, sess.WorkspaceID) {
 			if !terminal(t.Status) {
-				out = append(out, activeTask{ProjectID: p.ID, ProjectName: p.Name, Task: t})
+				out = append(out, activeTask{ProjectID: sess.ProjectID, ProjectName: names[sess.ProjectID], SessionID: sess.ID, SessionTitle: sess.Title, Task: t})
 			}
 		}
 	}

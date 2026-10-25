@@ -154,18 +154,28 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request, id 
 	writeJSON(w, http.StatusCreated, p)
 }
 
+// handleDeleteProject 删掉工作区：基线仓库、所有会话的工作副本与记录。
 func (s *Server) handleDeleteProject(w http.ResponseWriter, r *http.Request, id identity) {
 	p, ok := s.project(w, r, id)
 	if !ok {
 		return
 	}
-	if s.busy(r, id, p.ID) {
-		writeError(w, http.StatusConflict, "还有任务在跑，等它结束或先取消")
-		return
-	}
-	if err := os.RemoveAll(s.workspace(id.TenantID, p.ID)); err != nil {
+	sessions, err := s.projectSessions(id.TenantID, p.ID)
+	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+	for _, x := range sessions {
+		if s.busy(r, id, x.WorkspaceID) {
+			writeError(w, http.StatusConflict, "还有任务在跑，等它结束或先取消")
+			return
+		}
+	}
+	for _, dir := range append(s.sessionDirs(id.TenantID, p, sessions), s.workspace(id.TenantID, p.ID)) {
+		if err := os.RemoveAll(dir); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
 	if err := s.store.DeleteProject(id.TenantID, p.ID); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -206,11 +216,11 @@ func safePath(root, rel string) (string, error) {
 }
 
 func (s *Server) handleTree(w http.ResponseWriter, r *http.Request, id identity) {
-	p, ok := s.project(w, r, id)
+	_, sess, ok := s.session(w, r, id)
 	if !ok {
 		return
 	}
-	dir, err := safePath(s.workspace(id.TenantID, p.ID), r.URL.Query().Get("path"))
+	dir, err := safePath(s.sessionDir(id.TenantID, sess), r.URL.Query().Get("path"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -249,11 +259,11 @@ func (s *Server) handleTree(w http.ResponseWriter, r *http.Request, id identity)
 }
 
 func (s *Server) handleFile(w http.ResponseWriter, r *http.Request, id identity) {
-	p, ok := s.project(w, r, id)
+	_, sess, ok := s.session(w, r, id)
 	if !ok {
 		return
 	}
-	file, err := safePath(s.workspace(id.TenantID, p.ID), r.URL.Query().Get("path"))
+	file, err := safePath(s.sessionDir(id.TenantID, sess), r.URL.Query().Get("path"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -280,13 +290,13 @@ func (s *Server) handleFile(w http.ResponseWriter, r *http.Request, id identity)
 }
 
 func (s *Server) handleLog(w http.ResponseWriter, r *http.Request, id identity) {
-	p, ok := s.project(w, r, id)
+	_, sess, ok := s.session(w, r, id)
 	if !ok {
 		return
 	}
 	ctx, cancel := ctxTimeout(r, 30*time.Second)
 	defer cancel()
-	out, err := s.git.Run(ctx, s.workspace(id.TenantID, p.ID), "log", "-n", "30", "--date=iso-strict", "--pretty=format:%H%x1f%an%x1f%ad%x1f%s")
+	out, err := s.git.Run(ctx, s.sessionDir(id.TenantID, sess), "log", "-n", "30", "--date=iso-strict", "--pretty=format:%H%x1f%an%x1f%ad%x1f%s")
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -332,11 +342,11 @@ func (s *Server) diff(r *http.Request, dir string) (files []map[string]any, diff
 }
 
 func (s *Server) handleChanges(w http.ResponseWriter, r *http.Request, id identity) {
-	p, ok := s.project(w, r, id)
+	_, sess, ok := s.session(w, r, id)
 	if !ok {
 		return
 	}
-	dir := s.workspace(id.TenantID, p.ID)
+	dir := s.sessionDir(id.TenantID, sess)
 	files, diff, truncated, err := s.diff(r, dir)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -346,22 +356,22 @@ func (s *Server) handleChanges(w http.ResponseWriter, r *http.Request, id identi
 }
 
 func (s *Server) handlePatch(w http.ResponseWriter, r *http.Request, id identity) {
-	p, ok := s.project(w, r, id)
+	_, sess, ok := s.session(w, r, id)
 	if !ok {
 		return
 	}
-	_, diff, _, err := s.diff(r, s.workspace(id.TenantID, p.ID))
+	_, diff, _, err := s.diff(r, s.sessionDir(id.TenantID, sess))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	w.Header().Set("Content-Type", "text/x-patch; charset=utf-8")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", p.ID+".patch"))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", sess.WorkspaceID+".patch"))
 	_, _ = w.Write([]byte(diff))
 }
 
 func (s *Server) handleCommit(w http.ResponseWriter, r *http.Request, id identity) {
-	p, ok := s.project(w, r, id)
+	_, sess, ok := s.session(w, r, id)
 	if !ok {
 		return
 	}
@@ -375,11 +385,11 @@ func (s *Server) handleCommit(w http.ResponseWriter, r *http.Request, id identit
 	if msg == "" {
 		msg = "Apply agent changes"
 	}
-	if s.busy(r, id, p.ID) {
+	if s.busy(r, id, sess.WorkspaceID) {
 		writeError(w, http.StatusConflict, "还有任务在跑，等它结束再提交")
 		return
 	}
-	dir := s.workspace(id.TenantID, p.ID)
+	dir := s.sessionDir(id.TenantID, sess)
 	ctx, cancel := ctxTimeout(r, time.Minute)
 	defer cancel()
 	if _, err := s.git.Run(ctx, dir, "add", "-A"); err != nil {
@@ -403,15 +413,15 @@ func (s *Server) handleCommit(w http.ResponseWriter, r *http.Request, id identit
 }
 
 func (s *Server) handleDiscard(w http.ResponseWriter, r *http.Request, id identity) {
-	p, ok := s.project(w, r, id)
+	_, sess, ok := s.session(w, r, id)
 	if !ok {
 		return
 	}
-	if s.busy(r, id, p.ID) {
+	if s.busy(r, id, sess.WorkspaceID) {
 		writeError(w, http.StatusConflict, "还有任务在跑，等它结束或先取消")
 		return
 	}
-	dir := s.workspace(id.TenantID, p.ID)
+	dir := s.sessionDir(id.TenantID, sess)
 	ctx, cancel := ctxTimeout(r, time.Minute)
 	defer cancel()
 	for _, args := range [][]string{{"reset", "-q", "--hard", "HEAD"}, {"clean", "-q", "-fd"}} {

@@ -46,9 +46,10 @@ type pullRequest struct {
 	Draft   bool   `json:"draft"`
 }
 
-// handlePublish 把工作区的改动推到 agent/* 分支并开草稿 PR（已有 PR 时只推送，PR 自动更新）。由人点按钮触发。
+// handlePublish 把会话工作副本里的改动推到这个会话的 agent/* 分支并开草稿 PR（已有 PR 时只推送，PR 自动更新）。
+// 一个会话一个分支、一个 PR。由人点按钮触发。
 func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identity) {
-	p, ok := s.project(w, r, id)
+	p, sess, ok := s.session(w, r, id)
 	if !ok {
 		return
 	}
@@ -75,11 +76,11 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identi
 	if len(title) > 200 {
 		title = title[:200]
 	}
-	if s.busy(r, id, p.ID) {
+	if s.busy(r, id, sess.WorkspaceID) {
 		writeError(w, http.StatusConflict, "还有任务在跑，等它结束再推送")
 		return
 	}
-	dir := s.workspace(id.TenantID, p.ID)
+	dir := s.sessionDir(id.TenantID, sess)
 	ctx, cancel := ctxTimeout(r, 3*time.Minute)
 	defer cancel()
 	host := s.gh.Web + "/"
@@ -95,7 +96,7 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identi
 		return
 	}
 	dirty := strings.TrimSpace(status) != ""
-	branch := p.Branch
+	branch := sess.Branch
 	if branch == "" {
 		// 第一次推：工作区干净、也不比基线多提交时没有东西可推，不建分支。
 		if ahead, err := s.git.Run(ctx, dir, "rev-list", "--count", "origin/"+base+"..HEAD"); !dirty && err == nil && strings.TrimSpace(ahead) == "0" {
@@ -118,7 +119,7 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identi
 				return
 			}
 		}
-		if !dirty && s.git.Head(ctx, dir) == p.PushedHead {
+		if !dirty && s.git.Head(ctx, dir) == sess.PushedHead {
 			writeError(w, http.StatusBadRequest, "没有可推送的改动")
 			return
 		}
@@ -138,14 +139,14 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identi
 		}
 	}
 	if _, err := s.git.RunWithToken(ctx, dir, host, token, "push", "-q", "origin", "HEAD:refs/heads/"+branch); err != nil {
-		_, _ = s.updateProject(id.TenantID, p.ID, func(x *Project) { x.Branch = branch })
+		_, _ = s.updateSession(id.TenantID, sess, func(x *Session) { x.Branch = branch })
 		writeError(w, http.StatusBadGateway, "推送失败（是否有这个仓库的写权限？）："+err.Error())
 		return
 	}
 	pushed := s.git.Head(ctx, dir)
 
 	created := false
-	prURL, prNumber := p.PRURL, p.PRNumber
+	prURL, prNumber := sess.PRURL, sess.PRNumber
 	if prNumber == 0 {
 		body := strings.TrimSpace(req.Body)
 		if body == "" {
@@ -154,20 +155,20 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identi
 		pr, err := s.openPR(r, token, p.GitHubRepo, title, branch, base, body)
 		if err != nil {
 			// 分支已推上去；PR 没开成时把分支记下来，下次推送再试。
-			_, _ = s.updateProject(id.TenantID, p.ID, func(x *Project) { x.Branch, x.PushedHead = branch, pushed })
+			_, _ = s.updateSession(id.TenantID, sess, func(x *Session) { x.Branch, x.PushedHead = branch, pushed })
 			writeGitHubError(w, err)
 			return
 		}
 		prURL, prNumber, created = pr.HTMLURL, pr.Number, true
 	}
-	updated, err := s.updateProject(id.TenantID, p.ID, func(x *Project) {
+	updated, err := s.updateSession(id.TenantID, sess, func(x *Session) {
 		x.Branch, x.PRURL, x.PRNumber, x.PushedHead = branch, prURL, prNumber, pushed
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"project": updated, "branch": branch, "pr_url": prURL, "pr_number": prNumber, "created": created, "head": pushed})
+	writeJSON(w, http.StatusOK, map[string]any{"session": updated, "branch": branch, "pr_url": prURL, "pr_number": prNumber, "created": created, "head": pushed})
 }
 
 // openPR 开草稿 PR；仓库不支持草稿时退回普通 PR；同一分支已有打开的 PR 时直接用它。
@@ -194,17 +195,17 @@ func (s *Server) openPR(r *http.Request, token, repo, title, branch, base, body 
 	return pr, err
 }
 
-// handleResetBranch 回到基线分支并拉取最新：PR 合并之后开始下一轮。要求没有未提交的改动。
+// handleResetBranch 让会话的工作副本回到基线分支并拉取最新：PR 合并之后开始下一轮。要求没有未提交的改动。
 func (s *Server) handleResetBranch(w http.ResponseWriter, r *http.Request, id identity) {
-	p, ok := s.project(w, r, id)
+	p, sess, ok := s.session(w, r, id)
 	if !ok {
 		return
 	}
-	if s.busy(r, id, p.ID) {
+	if s.busy(r, id, sess.WorkspaceID) {
 		writeError(w, http.StatusConflict, "还有任务在跑，等它结束再切换")
 		return
 	}
-	dir := s.workspace(id.TenantID, p.ID)
+	dir := s.sessionDir(id.TenantID, sess)
 	ctx, cancel := ctxTimeout(r, 3*time.Minute)
 	defer cancel()
 	if status, _ := s.git.Run(ctx, dir, "status", "--porcelain"); strings.TrimSpace(status) != "" {
@@ -231,10 +232,10 @@ func (s *Server) handleResetBranch(w http.ResponseWriter, r *http.Request, id id
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	updated, err := s.updateProject(id.TenantID, p.ID, func(x *Project) { x.Branch, x.PRURL, x.PRNumber, x.PushedHead = "", "", 0, "" })
+	updated, err := s.updateSession(id.TenantID, sess, func(x *Session) { x.Branch, x.PRURL, x.PRNumber, x.PushedHead = "", "", 0, "" })
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"project": updated, "head": s.git.Head(ctx, dir)})
+	writeJSON(w, http.StatusOK, map[string]any{"session": updated, "head": s.git.Head(ctx, dir)})
 }
