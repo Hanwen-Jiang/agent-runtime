@@ -365,7 +365,8 @@ textarea.field { height: auto; padding: 8px 11px; resize: vertical; line-height:
 
 .msg-agent { display: flex; gap: 13px; }
 .agent-mark { flex: none; width: 28px; height: 28px; display: grid; place-items: center; color: var(--accent); margin-top: 1px; }
-.agent-mark.live .icon { animation: pulse 1.6s ease-in-out infinite; }
+.agent-mark.live .cursor { animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
 .agent-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 .waiting-line { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13.5px; min-height: 28px; }
 

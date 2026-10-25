@@ -117,7 +117,6 @@ const ICONS = {
   commit: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 12h6M15 12h6",
   external: "M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6",
   sparkles: "M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z",
-  spark: "M12 2.5v19M2.5 12h19M5.3 5.3l13.4 13.4M18.7 5.3 5.3 18.7",
   layers: "M12 2 2 7l10 5 10-5zM2 17l10 5 10-5M2 12l10 5 10-5",
   play: "M6 4l13 8-13 8z",
   shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
@@ -159,6 +158,22 @@ function icon(name, cls = "") {
   const path = document.createElementNS(ns, "path");
   path.setAttribute("d", github ? GITHUB_PATH : ICONS[name] || ICONS.box);
   svg.append(path);
+  return svg;
+}
+
+// 标志：缺口朝右的环（Task Loop：规划、执行、复核）加一根光标，读作“C|”。Agent 工作时光标闪烁。
+function logo(cls = "") {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("class", `icon logo bold ${cls}`);
+  svg.setAttribute("aria-hidden", "true");
+  for (const [d, part] of [["M16.6 6.9A8 8 0 1 0 16.6 17.1", "ring"], ["M20 9v6", "cursor"]]) {
+    const path = document.createElementNS(ns, "path");
+    path.setAttribute("d", d);
+    path.setAttribute("class", part);
+    svg.append(path);
+  }
   return svg;
 }
 
@@ -470,7 +485,7 @@ function renderLogin(message = "") {
   mount(h("div", { class: "login-page" },
     h("div", { class: "login-card" },
       h("div", { class: "hero" },
-        h("div", { class: "mark big" }, icon("spark", "lg bold")),
+        h("div", { class: "mark big" }, logo("lg")),
         h("h1", {}, "Coding Agent"),
         h("p", {}, "读代码、改代码、跑测试；改动由你审阅后再推送。"),
       ),
@@ -588,7 +603,7 @@ function renderSide() {
   if (state.project && currentTask()) live.add(state.project.id);
   ui.side.replaceChildren(
     h("div", { class: "side-head" },
-      h("div", { class: "brand grow" }, h("span", { class: "mark" }, icon("spark", "bold")), "Coding Agent"),
+      h("div", { class: "brand grow" }, h("span", { class: "mark" }, logo()), "Coding Agent"),
       h("button", { class: "btn ghost sm icon-only only-wide", title: "收起侧栏", onclick: () => { state.sideCollapsed = true; ls.set("cw_side", "0"); applyLayout(); renderTopbar(); } }, icon("panelLeft", "sm")),
       h("button", { class: "btn ghost sm icon-only only-narrow", title: "关闭", onclick: () => { state.sideOpen = false; applyLayout(); } }, icon("x", "sm"))),
     h("button", { class: "btn new-btn", onclick: () => openNewProject() }, h("span", { class: "plus" }, icon("plus", "xs")), "新建项目"),
@@ -775,7 +790,7 @@ function scrollToTurn(id) {
 function welcome() {
   const sample = state.samples[0];
   return h("div", { class: "hero-empty" },
-    h("div", { class: "mark big" }, icon("spark", "lg bold")),
+    h("div", { class: "mark big" }, logo("lg")),
     h("h2", {}, "从一个项目开始"),
     h("p", {}, "Agent 在项目的工作区里读代码、改代码，在隔离的沙箱里跑测试；改动由你审阅后提交或推送。"),
     h("div", { class: "suggestions" },
@@ -808,7 +823,7 @@ function projectEmpty() {
     ["terminal", "补单元测试", "为核心模块补充单元测试，覆盖主要分支与边界情况，并确认全部通过。"],
   ].filter(Boolean);
   return h("div", { class: "hero-empty" },
-    h("div", { class: "mark big" }, icon("spark", "lg bold")),
+    h("div", { class: "mark big" }, logo("lg")),
     h("h2", {}, "要 Agent 做什么？"),
     h("p", {}, "用一句话描述任务。它会规划、动手、自我检查；进度在右侧，改动由你审阅。"),
     h("div", { class: "suggestions" }, ideas.map(([ic, t, prompt]) => suggestion(ic, t, prompt.length > 60 ? prompt.slice(0, 58) + "…" : prompt, () => setComposer(prompt)))),
@@ -837,7 +852,7 @@ function turn(t) {
         t.model && t.model !== "balanced" ? h("span", { class: "chip" }, modelLabel(t.model)) : null),
     ),
     h("div", { class: "msg-agent" },
-      h("div", { class: "agent-mark" + (running ? " live" : "") }, icon("spark", "bold")),
+      h("div", { class: "agent-mark" + (running ? " live" : ""), title: running ? "工作中" : null }, logo()),
       h("div", { class: "agent-body" }, worklog(t, events, running, finished), asks(events), tail),
     ),
   );
