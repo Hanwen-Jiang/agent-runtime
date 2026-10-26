@@ -3,7 +3,7 @@ Model Gateway、Python Worker。人手动演示与 tests/e2e/live 的真模型�
 
     uv run --no-sync python scripts/dev_stack.py up [--root 目录] [--provider mock|openai_compat] [--provider-env 文件]
                                                   [--decisions model|stub] [--tenant-effect 租户=effect]...
-                                                  [--coding] [--sandbox host|docker] [--json]
+                                                  [--sandbox host|docker] [--json]
     uv run --no-sync python scripts/dev_stack.py status [--json]      各组件是否在运行、地址与日志
     uv run --no-sync python scripts/dev_stack.py token --tenant t1 --user u1 [--scope task.approve]
     uv run --no-sync python scripts/dev_stack.py kill worker          强杀一个组件（演示“杀 Worker 后恢复”）
@@ -20,12 +20,10 @@ Model Gateway、Python Worker。人手动演示与 tests/e2e/live 的真模型�
   再按 --tenant-effect 给每个租户种一份租户策略（同时写进开发租户策略文件，task-service 按它给 Task 的 effect 上限）。
 - Worker：--decisions model（默认）时 AR_PLANNER、AR_REVIEWER、AR_TOOL_LOOP 都是 model，经 Model Gateway；stub 时都用桩。
   Worker 用跑这个脚本的 Python（--python 可以换），PATH 前面加上它所在的目录，shell_run 里的 python 就是同一个解释器。
-- 输出：up、status 加 --json 时最后一行是 JSON（地址、pid、日志位置），不含任何密钥。
-- --coding：再编译并拉起 coding agent 的网页服务 coding-web（products/coding，docs/plan/coding-agent-mvp.md），开发登录打开，
-  与 Worker 共用工作区；租户首次登录时它把租户的 effect 上限写成 write_reversible。端口默认固定 8095（--coding-port）；
-  ~/.agentruntime/oauth.env（或旧的 github-oauth.env）里配了哪几家就打开哪几家的登录（GitHub、Gitee、GitLab、Gitea、Bitbucket、Google；
-  OAuth 回调 http://127.0.0.1:<端口>/api/auth/<平台>/callback）。--sandbox docker：Worker 的 shell_run
-  在一次性 Docker 容器里跑（不联网、限资源），要 PATH 上有 docker。
+- 输出：up、status 加 --json 时最后一行是 JSON（地址、pid、日志位置），不含任何密钥。建在 Runtime 上的应用（例如单独仓库里的
+  coding agent）读这份报告接入本机的整套：Task API 地址、工作区根（workspace_root）、开发租户策略文件（policies_file）、
+  开发签名密钥所在的文件（signing_key_file，只给路径）与 shell_run 的沙箱（sandbox）。
+- --sandbox docker：Worker 的 shell_run 在一次性 Docker 容器里跑（不联网、限资源），要 PATH 上有 docker。
 """
 
 from __future__ import annotations
@@ -47,20 +45,11 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ROOT = Path.home() / ".agentruntime" / "dev-stack"
 DEFAULT_PROVIDER_ENV = Path.home() / ".agentruntime" / "model-provider.env"
-# coding-web 的第三方登录（格式同上）：每一家 CODING_<平台>_CLIENT_ID 与 _CLIENT_SECRET（可选 _URL、_API_URL、_SCOPES、_NAME），
-# 平台是 GITHUB、GITEE、GITLAB、GITEA、BITBUCKET、GOOGLE。oauth.env 放全部；github-oauth.env 是只有 GitHub 时的旧文件，两个都读。
-DEFAULT_OAUTH_ENVS = (Path.home() / ".agentruntime" / "github-oauth.env", Path.home() / ".agentruntime" / "oauth.env")
-OAUTH_PROVIDERS = ("GITHUB", "GITEE", "GITLAB", "GITEA", "BITBUCKET", "GOOGLE")
-OAUTH_ENV_NAMES = tuple(f"CODING_{p}_{k}" for p in OAUTH_PROVIDERS for k in ("CLIENT_ID", "CLIENT_SECRET", "URL", "API_URL", "SCOPES", "NAME"))
-# OAuth App 的回调地址要固定，coding-web 默认用这个端口。
-DEFAULT_CODING_PORT = 8095
 SEED_FILE = REPO_ROOT / "deploy" / "dev" / "registry-seed.json"
 PROFILES = {"openai_compat": REPO_ROOT / "deploy" / "dev" / "model-profiles.json", "mock": REPO_ROOT / "deploy" / "dev" / "mock-model-profiles.json"}
-COMPONENTS = ("temporal", "task-service", "model-gateway", "worker", "coding")
+COMPONENTS = ("temporal", "task-service", "model-gateway", "worker")
 # 报告里多一个 registry：它在 task-service 进程里，有自己的内部端口（T-08）。
-REPORTED = ("temporal", "task-service", "registry", "model-gateway", "worker", "coding")
-# 只在 up --coding 时才起的组件。
-OPTIONAL = {"coding"}
+REPORTED = ("temporal", "task-service", "registry", "model-gateway", "worker")
 EFFECTS = ("none", "read", "write_reversible", "write_irreversible")
 WORKER_QUEUES = "task,decision,model,program"
 PROVIDER_KEY_NAME = "model-provider/api-key"
@@ -254,10 +243,9 @@ class Stack:
                 "decisions": args.decisions,
                 "tenant_effects": effects,
                 "python": args.python or sys.executable,
-                "coding": bool(getattr(args, "coding", False)),
                 "sandbox": getattr(args, "sandbox", "host") or "host",
             },
-            "ports": {"temporal": free_port(), "temporal_ui": free_port(), "http": free_port(), "registry": free_port(), "gateway": free_port(), "coding": int(getattr(args, "coding_port", 0) or DEFAULT_CODING_PORT)},
+            "ports": {"temporal": free_port(), "temporal_ui": free_port(), "http": free_port(), "registry": free_port(), "gateway": free_port()},
             "components": {},
         }
 
@@ -271,13 +259,6 @@ class Stack:
     @property
     def task_api(self) -> str:
         return f"http://{self.address('http')}"
-
-    @property
-    def coding_url(self) -> str:
-        return f"http://{self.address('coding')}" if self.options.get("coding") else ""
-
-    def wanted(self, name: str) -> bool:
-        return name not in OPTIONAL or bool(self.options.get(name))
 
     def shared_env(self) -> dict[str, str]:
         return {"AR_OBJECT_STORE_DIR": str(self.objects_dir), "AR_SECRETS_FILE": str(self.secrets_file)}
@@ -313,24 +294,6 @@ class Stack:
             if docker:  # docker 的凭据助手与它在同一目录
                 worker_path = str(Path(docker).parent) + os.pathsep + worker_path
             sandbox = {"AR_TOOL_SHELL_SANDBOX": "docker"}
-        coding = {
-            "CODING_ADDR": self.address("coding"),
-            "CODING_TASK_API": self.task_api,
-            "CODING_WORKSPACE_ROOT": str(self.workspace_root),
-            "CODING_DATA_DIR": str(self.root / "coding"),
-            "CODING_DEV_LOGIN": "1",
-            "CODING_TENANT_POLICIES_FILE": str(self.policies_file),
-            "CODING_PUBLIC_URL": f"http://{self.address('coding')}",
-            "AR_DEV_SIGNING_KEY": self.signing_key(),
-            # 只用来在界面上说明 shell_run 在哪里跑；镜像与 Worker 的默认 AR_TOOL_SHELL_IMAGE 相同。
-            "CODING_SANDBOX": "docker" if sandbox else "host",
-        }
-        if sandbox:
-            coding["CODING_SANDBOX_IMAGE"] = os.environ.get("AR_TOOL_SHELL_IMAGE") or "python:3.13-slim"
-        for path in DEFAULT_OAUTH_ENVS:
-            if path.exists():
-                values = read_provider_env(path)
-                coding.update({k: values[k] for k in OAUTH_ENV_NAMES if values.get(k)})
         return {
             "temporal": {},
             "task-service": {
@@ -359,7 +322,6 @@ class Stack:
                 **sandbox,
                 **self.shared_env(),
             },
-            "coding": coding,
         }
 
     # 准备
@@ -367,10 +329,7 @@ class Stack:
         go = require("go")
         if self.options.get("sandbox") == "docker":
             require("docker")
-        targets = [("task-service", "services/go-task-service"), ("model-gateway", "services/go-model-gateway")]
-        if self.options.get("coding"):
-            targets.append(("coding-web", "products/coding"))
-        for name, where in targets:
+        for name, where in (("task-service", "services/go-task-service"), ("model-gateway", "services/go-model-gateway")):
             proc = subprocess.run(
                 [go, "build", "-o", str(self.binary(name)), f"./cmd/{name}"], cwd=REPO_ROOT / where, capture_output=True, text=True, encoding="utf-8", errors="replace"
             )
@@ -450,13 +409,6 @@ class Stack:
             time.sleep(3)
             if not alive(pid):
                 raise StackError(f"Worker 启动失败：\n{tail(log)}")
-        elif name == "coding":
-            if not self.wanted(name):
-                raise StackError("这套整套没有带 --coding 启动")
-            (self.root / "coding").mkdir(parents=True, exist_ok=True)
-            pid = spawn([str(self.binary("coding-web"))], child_env(envs[name]), log)
-            components[name] = {"pid": pid, "log": str(log)}
-            wait_until(lambda: http_ok(self.coding_url + "/healthz"), "coding-web 就绪", 30)
         else:
             raise StackError(f"不认识的组件 {name}（{'、'.join(COMPONENTS)}）")
         self.save()
@@ -476,8 +428,6 @@ class Stack:
         out: dict[str, Any] = {}
         for name in REPORTED:
             source = "task-service" if name == "registry" else name
-            if not self.wanted(source):
-                continue  # 没带 --coding 启动时不报 coding
             entry = comps.get(source) or {}
             item = {"pid": entry.get("pid"), "alive": alive(entry.get("pid")), "log": entry.get("log", str(self.log(source)))}
             if entry.get("stdout"):
@@ -489,14 +439,16 @@ class Stack:
             "temporal": self.address("temporal") if self.state.get("ports") else "",
             "registry": self.address("registry") if self.state.get("ports") else "",
             "model_gateway": self.address("gateway") if self.state.get("ports") else "",
-            "coding": self.coding_url if self.state.get("ports") else "",
             "workspace_root": str(self.workspace_root),
+            "policies_file": str(self.policies_file),
+            "signing_key_file": str(self.signing_key_file),
+            "sandbox": (self.state.get("options") or {}).get("sandbox", "host"),
             "shared_env": self.shared_env(),
             "components": out,
         }
 
     def diagnostics(self, known_secrets: list[str]) -> str:
-        text = "\n".join(f"===== {name} =====\n{tail(self.log(name))}" for name in COMPONENTS if self.wanted(name))
+        text = "\n".join(f"===== {name} =====\n{tail(self.log(name))}" for name in COMPONENTS)
         for s in known_secrets:
             if s:
                 text = text.replace(s, "***")
@@ -516,8 +468,7 @@ def cmd_up(args: argparse.Namespace) -> int:
         stack.build()
         stack.prepare()
         for name in COMPONENTS:
-            if stack.wanted(name):
-                stack.start(name)
+            stack.start(name)
     except (StackError, subprocess.SubprocessError, OSError) as err:
         known = [stack.provider_values().get("AR_MODEL_PROVIDER_API_KEY", "")]
         stack.down()
@@ -537,12 +488,8 @@ def print_report(stack: Stack, as_json: bool, title: str) -> None:
     print(f"  Temporal   {report['temporal']}")
     print(f"  Registry   {report['registry']}")
     print(f"  Gateway    {report['model_gateway']}")
-    if report.get("coding"):
-        print(f"  Coding     {report['coding']}  （网页，开发登录）")
     print(f"  工作区     {report['workspace_root']}")
     for name, c in report["components"].items():
-        if name in OPTIONAL and not c["pid"]:
-            continue
         print(f"  {name:<14}{'运行中' if c['alive'] else '已停止'}  pid {c['pid']}  日志 {c['log']}")
 
 
@@ -585,12 +532,10 @@ def cmd_token(args: argparse.Namespace) -> int:
 def cmd_env(args: argparse.Namespace) -> int:
     stack = Stack(Path(args.root))
     stack.configure(args)
-    envs = {name: env for name, env in stack.envs().items() if stack.wanted(name)}
+    envs = stack.envs()
     for env in envs.values():
         if "AR_DEV_SIGNING_KEY" in env:
             env["AR_DEV_SIGNING_KEY"] = "***（在 shared/signing.key）"
-        for name in [k for k in env if k.startswith("CODING_") and k.endswith("_CLIENT_SECRET")]:
-            env[name] = "***（在 ~/.agentruntime/oauth.env 或 github-oauth.env）"
     if args.json:
         print(json.dumps({"root": str(stack.root), "components": envs}, ensure_ascii=False))
     else:
@@ -614,9 +559,7 @@ def parser() -> argparse.ArgumentParser:
         sp.add_argument("--decisions", choices=("model", "stub"), default="model", help="Planner、Reviewer、tool_loop 用真的（model）还是桩")
         sp.add_argument("--tenant-effect", action="append", help="租户=effect 上限，可以写多个")
         sp.add_argument("--python", default="", help="Worker 用的 Python（默认跑这个脚本的）")
-        sp.add_argument("--coding", action="store_true", help="再拉起 coding agent 的网页服务 coding-web（products/coding）")
         sp.add_argument("--sandbox", choices=("host", "docker"), default="host", help="Worker 的 shell_run 在宿主机（host）还是一次性 Docker 容器（docker）里跑")
-        sp.add_argument("--coding-port", type=int, default=DEFAULT_CODING_PORT, help=f"coding-web 的端口（默认 {DEFAULT_CODING_PORT}；GitHub OAuth 的回调地址要固定）")
         sp.add_argument("--json", action="store_true")
 
     up = sub.add_parser("up", help="编译、种 Registry、拉起全部组件")

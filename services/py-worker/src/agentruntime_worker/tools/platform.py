@@ -9,7 +9,7 @@
 - shell_run：argv 列表、不经 shell，在工作区里执行；子进程的环境只留 PATH 等必需的变量，Worker 的其他环境变量（含密钥）
   带不进去；输出截断；超时杀掉进程并返回 timed_out，不抛异常；非零退出码照常返回。shell_sandbox = host 时直接在宿主机上跑
   （开发实现，没有资源限制与网络隔离）；= docker 时在一次性容器里跑：只挂载本工作区到 /workspace，不联网，限 CPU、内存
-  与进程数，跑完删除容器（coding agent MVP，docs/plan/coding-agent-mvp.md）。
+  与进程数，跑完删除容器（为 coding agent 加的，见 coding-agent 仓库的 docs/plan/coding-agent-mvp.md；上云后的后端见 docs/plan/cloud-deploy.md）。
 - web_fetch（配了 fetch_hosts 才登记）：只认 http、https；只去名单里的主机（"*" 任何主机，"*.example.com" 子域名）；
   解析出的地址是内网、回环、链路本地等一律拒绝（allow_private_fetch 只给测试用）；不走代理、不跟随重定向（返回状态码与
   Location）；正文有大小上限。

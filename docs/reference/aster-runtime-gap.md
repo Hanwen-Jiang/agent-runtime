@@ -27,7 +27,7 @@
 
 | 缺口 | 对 coding agent 的影响 | MVP 的处理 |
 | --- | --- | --- |
-| 执行隔离（BEM） | 多租户下不能在宿主机上直接跑用户仓库的命令 | 先做 Docker 沙箱：shell 工具在一次性容器里跑，不联网、限资源（见 [coding agent MVP 计划](../plan/coding-agent-mvp.md)） |
+| 执行隔离（BEM） | 多租户下不能在宿主机上直接跑用户仓库的命令 | 先做 Docker 沙箱：shell 工具在一次性容器里跑，不联网、限资源（见 coding-agent 仓库的 `docs/plan/coding-agent-mvp.md`） |
 | Workspace Manager | 没有快照、分支、提交与 Apply | 产品层用 Git：每个项目一个克隆，每个 Task 一个分支；diff、提交、下载补丁由产品服务做 |
 | 正式登录 | 只有开发令牌 | MVP 用开发登录（租户 + 用户名换令牌），标明仅供测试；正式版接 GitHub OAuth |
 | 事件增量 | 界面只能看到节点级进度 | MVP 先展示节点级时间线；token 增量与事件落库（草稿外的 R8）放第二版 |
