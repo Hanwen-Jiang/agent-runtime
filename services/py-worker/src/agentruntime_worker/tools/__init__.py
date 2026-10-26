@@ -3,7 +3,8 @@
 - dev_tools(config)：Worker 进程内唯一的开发用 ToolDriver（LocalToolDriverProvider）。按配置登记平台内工具（platform.py）；
   Node Executor、resolve_catalog、tool_loop_step 共用它。同样的工具配置得到同一个实例。context_read 总是登记。
 - context_objects(config)：Context Builder 外置内容的 ObjectStore，context_read 读的也是它（R-03 评审 D11）。位置同
-  Node Executor（AR_OBJECT_STORE_DIR，或数据目录下的 objects）；两者都没配时是进程内同一个临时目录。
+  Node Executor（设了 AR_S3_ENDPOINT 时是 S3 兼容的对象存储，否则 AR_OBJECT_STORE_DIR 或数据目录下的 objects）；
+  都没配时是进程内同一个临时目录。
 - tool_sessions(config)：Worker 运行期间的 MCP 会话：配了 AR_MCP_TOOLS_FILE 时启动 MCP Gateway（mcp.py），把登记了的
   MCP 工具登记进 dev_tools(config)，退出时关闭会话。
 - ToolCatalog、DevCatalog、latest_spec：工具的 effect 与定义取自登记（catalog.py）。
@@ -19,6 +20,7 @@ from pathlib import Path
 
 from agentruntime_core.dev.object_store import LocalDiskObjectStoreProvider
 from agentruntime_core.dev.tool_driver import LocalToolDriverProvider
+from agentruntime_core.providers.object_store import ObjectStoreProvider
 
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.tools.catalog import DevCatalog, ToolCatalog, latest, latest_spec
@@ -29,11 +31,11 @@ from agentruntime_worker.tools.sandboxes import Sandboxes, registry_policy
 __all__ = ["CONTEXT_READ", "DevCatalog", "ToolCatalog", "context_objects", "dev_tools", "latest", "latest_spec", "tool_sessions"]
 
 _providers: dict[tuple[object, ...], LocalToolDriverProvider] = {}
-_objects: dict[tuple[object, ...], LocalDiskObjectStoreProvider] = {}
+_objects: dict[tuple[object, ...], ObjectStoreProvider] = {}
 
 
 def _store_key(config: WorkerConfig) -> tuple[object, ...]:
-    return (config.data_dir, config.object_store_dir)
+    return (config.data_dir, config.object_store_dir, config.object_store_s3)
 
 
 def _key(config: WorkerConfig) -> tuple[object, ...]:
@@ -55,14 +57,17 @@ def sandboxes(config: WorkerConfig) -> Sandboxes | None:
     )
 
 
-def context_objects(config: WorkerConfig) -> LocalDiskObjectStoreProvider:
+def context_objects(config: WorkerConfig) -> ObjectStoreProvider:
     """Context Builder 外置内容与 context_read 共用的 ObjectStore；同样的存储配置得到同一个实例。"""
     key = _store_key(config)
     objects = _objects.get(key)
     if objects is None:
-        root = config.data_dir or Path(tempfile.mkdtemp(prefix="agentruntime-context-"))
-        path, _ = config.store_paths(root)
-        objects = LocalDiskObjectStoreProvider(path, signing_key=os.urandom(32))
+        if config.object_store_s3 is not None:
+            objects = config.object_store_s3.provider()
+        else:
+            root = config.data_dir or Path(tempfile.mkdtemp(prefix="agentruntime-context-"))
+            path, _ = config.store_paths(root)
+            objects = LocalDiskObjectStoreProvider(path, signing_key=os.urandom(32))
         _objects[key] = objects
     return objects
 

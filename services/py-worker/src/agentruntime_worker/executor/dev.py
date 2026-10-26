@@ -108,8 +108,11 @@ def data_root(config: WorkerConfig) -> Path:
     return root
 
 
-def dev_object_store(config: WorkerConfig, root: Path) -> LocalDiskObjectStoreProvider:
-    """ObjectStore 的开发实现，Node Executor 的大结果与 Claim-Check 共用（与 task-service 指向同一个目录）。"""
+def dev_object_store(config: WorkerConfig, root: Path) -> ObjectStoreProvider:
+    """Node Executor 的大结果与 Claim-Check 共用的 ObjectStore（与 task-service 指向同一处）：设了 AR_S3_ENDPOINT 时是
+    S3 兼容的对象存储（R2、S3、MinIO；D-09），否则是开发实现（AR_OBJECT_STORE_DIR）。"""
+    if config.object_store_s3 is not None:
+        return config.object_store_s3.provider()
     objects, _ = config.store_paths(root)
     return LocalDiskObjectStoreProvider(objects, signing_key=os.urandom(32))
 

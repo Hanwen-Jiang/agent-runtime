@@ -10,6 +10,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from agentruntime_core.adapters.s3_object_store import S3Settings
+
 ENV_TEMPORAL_ADDRESS = "AR_TEMPORAL_ADDRESS"
 ENV_TEMPORAL_NAMESPACE = "AR_TEMPORAL_NAMESPACE"
 ENV_STUB_CALL_LOG = "AR_STUB_CALL_LOG"
@@ -63,6 +65,8 @@ class WorkerConfig:
     # ObjectStore 与 SecretStore 开发实现的位置；与 task-service 指向同一处，两边才能互相解开对方卸载的载荷。
     object_store_dir: Path | None = None
     secrets_file: Path | None = None
+    # S3 兼容的对象存储（AR_S3_*，见 agentruntime_core.adapters.s3_object_store；D-09）：设了就不用 object_store_dir。
+    object_store_s3: S3Settings | None = None
     # Claim-Check 的阈值（字节）。
     claim_check_threshold: int = 64 * 1024
     # 哪个 Planner：stub 或 model（S-09）。
@@ -139,6 +143,7 @@ class WorkerConfig:
             data_dir=data_dir,
             object_store_dir=Path(objects) if objects else (data_dir / "objects" if data_dir else None),
             secrets_file=Path(secrets) if secrets else (data_dir / "secrets.json" if data_dir else None),
+            object_store_s3=S3Settings.from_env(env),
             claim_check_threshold=threshold,
             planner=planner,
             reviewer=reviewer,

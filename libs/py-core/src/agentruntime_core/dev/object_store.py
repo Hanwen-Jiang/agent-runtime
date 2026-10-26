@@ -40,6 +40,20 @@ def check_key(key: str) -> str:
     return key
 
 
+def key_of_uri(uri: str, owner: str) -> str:
+    """解析 obj://<作用域>/<键>：格式不对 invalid，属于别的作用域 denied。各实现共用。"""
+    match = _URI.fullmatch(uri) if isinstance(uri, str) else None
+    if match is None:
+        raise InvalidError("invalid_uri", "引用必须形如 obj://<租户>/<键>")
+    scope, key = match.groups()
+    if scope != PLATFORM_ID and not _SLUG.fullmatch(scope):
+        raise InvalidError("invalid_uri", "引用里的作用域格式不对")
+    check_key(key)
+    if scope != owner:
+        raise DeniedError("cross_scope_reference", "引用属于别的作用域")
+    return key
+
+
 class LocalDiskObjectStoreProvider:
     def __init__(
         self,
@@ -217,16 +231,7 @@ class LocalDiskObjectStore:
         return f"obj://{self._owner}/{check_key(key)}"
 
     def key_of(self, uri: str) -> str:
-        match = _URI.fullmatch(uri) if isinstance(uri, str) else None
-        if match is None:
-            raise InvalidError("invalid_uri", "引用必须形如 obj://<租户>/<键>")
-        owner, key = match.groups()
-        if owner != PLATFORM_ID and not _SLUG.fullmatch(owner):
-            raise InvalidError("invalid_uri", "引用里的作用域格式不对")
-        check_key(key)
-        if owner != self._owner:
-            raise DeniedError("cross_scope_reference", "引用属于别的作用域")
-        return key
+        return key_of_uri(uri, self._owner)
 
     async def put(
         self,

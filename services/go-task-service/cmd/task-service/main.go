@@ -33,6 +33,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/postgres"
+	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/s3objects"
 	temporaladapter "github.com/agentruntime/agent-runtime/libs/go-core/adapters/temporal"
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/temporal/claimcheck"
 	"github.com/agentruntime/agent-runtime/libs/go-core/clock"
@@ -41,6 +42,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/localingress"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/memcache"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/sqlitestore"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	"github.com/agentruntime/agent-runtime/libs/go-core/secret"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
@@ -119,14 +121,24 @@ func quietLogger() tlog.Logger {
 }
 
 // newClaimCheck 用 ObjectStore、SecretStore 的开发实现构造 Claim-Check（S-06）；与 Python Worker 指向同一处。
-func newClaimCheck(objectStoreDir, secretsFile string, threshold int) (*claimcheck.ClaimCheck, error) {
-	signingKey := make([]byte, 32)
-	if _, err := rand.Read(signingKey); err != nil {
-		return nil, err
-	}
-	objects, err := diskobjects.New(diskobjects.Options{Root: objectStoreDir, SigningKey: signingKey})
-	if err != nil {
-		return nil, err
+func newClaimCheck(s3 *s3objects.Options, objectStoreDir, secretsFile string, threshold int) (*claimcheck.ClaimCheck, error) {
+	var objects objectstore.Provider
+	if s3 != nil {
+		p, err := s3objects.New(*s3)
+		if err != nil {
+			return nil, err
+		}
+		objects = p
+	} else {
+		signingKey := make([]byte, 32)
+		if _, err := rand.Read(signingKey); err != nil {
+			return nil, err
+		}
+		p, err := diskobjects.New(diskobjects.Options{Root: objectStoreDir, SigningKey: signingKey})
+		if err != nil {
+			return nil, err
+		}
+		objects = p
 	}
 	secrets, err := filesecrets.New(filesecrets.Options{Path: secretsFile})
 	if err != nil {
@@ -167,7 +179,14 @@ func replay(args []string, stdout, stderr io.Writer, getenv func(string) string)
 		fmt.Fprintln(stderr, err)
 		return 2
 	}
-	cc, err := newClaimCheck(objectStoreDir, secretsFile, threshold)
+	var s3 *s3objects.Options
+	if opts, ok, err := s3objects.OptionsFromEnv(getenv); err != nil {
+		fmt.Fprintln(stderr, err)
+		return 2
+	} else if ok {
+		s3 = &opts
+	}
+	cc, err := newClaimCheck(s3, objectStoreDir, secretsFile, threshold)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -232,7 +251,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	defer raw.Close()
 	// 大载荷经 Claim-Check 卸载到 ObjectStore（S-06）：客户端调用按绑定的租户（DurableEngine.Bind），
 	// Session 工作流里按 memo 的作用域，activity 按所属工作流 describe 出的作用域（describe 用不带 Claim-Check 的 raw）。
-	cc, err := newClaimCheck(cfg.ObjectStoreDir, cfg.SecretsFile, cfg.ClaimCheckThreshold)
+	cc, err := newClaimCheck(cfg.ObjectStoreS3, cfg.ObjectStoreDir, cfg.SecretsFile, cfg.ClaimCheckThreshold)
 	if err != nil {
 		return err
 	}

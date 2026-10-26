@@ -113,6 +113,26 @@ def test_claim_check_config_from_env(tmp_path: Path) -> None:
     assert config.claim_check_threshold == 1024
 
 
+def test_s3_object_store_replaces_the_directory(tmp_path: Path) -> None:
+    """D-09：设了 AR_S3_* 时 Claim-Check、Node Executor 的大结果与 Context Builder 都用 S3 兼容的对象存储（与 task-service 同一组变量）。"""
+    from agentruntime_core.adapters.s3_object_store import S3ObjectStoreProvider
+
+    from agentruntime_worker.executor.dev import dev_object_store
+    from agentruntime_worker.tools import context_objects
+
+    env = {
+        "AR_S3_ENDPOINT": "https://acct.r2.cloudflarestorage.com", "AR_S3_BUCKET": "ar-objects",
+        "AR_S3_ACCESS_KEY_ID": "a", "AR_S3_SECRET_ACCESS_KEY": "s", "AR_S3_PREFIX": "prod/",
+    }
+    config = WorkerConfig.from_env(env)
+    assert config.object_store_s3 is not None and config.object_store_s3.bucket == "ar-objects"
+    for objects in (dev_object_store(config, tmp_path), context_objects(config)):
+        assert isinstance(objects, S3ObjectStoreProvider) and objects.prefix == "prod/"
+    assert WorkerConfig.from_env({}).object_store_s3 is None
+    with pytest.raises(ValueError, match="AR_S3_BUCKET"):
+        WorkerConfig.from_env({"AR_S3_ENDPOINT": "https://acct.r2.cloudflarestorage.com"})
+
+
 @pytest.mark.parametrize("value", ["0", "-1", "abc", "2.5"])
 def test_config_rejects_bad_claim_check_threshold(value: str) -> None:
     with pytest.raises(ValueError):

@@ -326,19 +326,22 @@ func (s *store) enter(op string) error {
 
 func (s *store) URI(key string) string { return "obj://" + s.owner + "/" + key }
 
-func (s *store) KeyOf(uri string) (string, error) {
+func (s *store) KeyOf(uri string) (string, error) { return KeyOfURI(uri, s.owner) }
+
+// KeyOfURI 解析 obj://<作用域>/<键>：格式不对 Invalid，属于别的作用域（不是 owner）Denied。各实现共用。
+func KeyOfURI(uri, owner string) (string, error) {
 	m := uriRe.FindStringSubmatch(uri)
 	if m == nil {
 		return "", providererr.New(providererr.Invalid, "invalid_uri", "引用必须形如 obj://<租户>/<键>")
 	}
-	owner, key := m[1], m[2]
-	if owner != devutil.PlatformID && !slug.MatchString(owner) {
+	scope, key := m[1], m[2]
+	if scope != devutil.PlatformID && !slug.MatchString(scope) {
 		return "", providererr.New(providererr.Invalid, "invalid_uri", "引用里的作用域格式不对")
 	}
 	if err := CheckKey(key); err != nil {
 		return "", err
 	}
-	if owner != s.owner {
+	if scope != owner {
 		return "", providererr.New(providererr.Denied, "cross_scope_reference", "引用属于别的作用域")
 	}
 	return key, nil

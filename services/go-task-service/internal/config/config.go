@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/s3objects"
 	"github.com/agentruntime/agent-runtime/libs/go-core/secret"
 
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/session"
@@ -78,6 +79,9 @@ type Config struct {
 	// 与 Python Worker 指向同一处，两边才能互相解开对方卸载的载荷。默认放在 DataDir 下。
 	ObjectStoreDir string
 	SecretsFile    string
+	// ObjectStoreS3 非空时 ObjectStore 用 S3 兼容实现（R2、S3、MinIO；AR_S3_*，见 s3objects.OptionsFromEnv；D-09），
+	// ObjectStoreDir 不再用。Worker 读同一组变量。
+	ObjectStoreS3 *s3objects.Options
 	// ClaimCheckThreshold 是 Claim-Check 的阈值（字节），默认 64 KiB。
 	ClaimCheckThreshold int
 	// RelationalDSN 是业务库（Postgres，行级安全）的连接串；为空时用 SQLite 开发实现（S-12a）。可能带口令，打印只显示掩码。
@@ -122,6 +126,11 @@ func FromEnv(getenv func(string) string) (Config, error) {
 	cfg.DevSigningKey = secret.New(key)
 	if dsn := getenv(EnvRelationalDSN); dsn != "" {
 		cfg.RelationalDSN = secret.New(dsn)
+	}
+	if s3, ok, err := s3objects.OptionsFromEnv(getenv); err != nil {
+		return Config{}, err
+	} else if ok {
+		cfg.ObjectStoreS3 = &s3
 	}
 	if u, err := url.Parse(cfg.PublicBaseURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return Config{}, fmt.Errorf("%s 必须是 http 或 https 地址", EnvPublicBaseURL)
