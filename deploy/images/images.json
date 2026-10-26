@@ -1,0 +1,33 @@
+{
+  "_comment": "Runtime 的镜像（docs/plan/cloud-deploy.md D-01）：名字 → Dockerfile 与构建参数。构建上下文都是仓库根目录。scripts/build_images.py 按这里构建；tests/deploy/test_images.py 核对 Chart 引用的镜像都在这里。",
+  "images": {
+    "task-service": {
+      "dockerfile": "deploy/images/go.Dockerfile",
+      "args": {"MODULE": "services/go-task-service", "MAIN": "./cmd/task-service"}
+    },
+    "model-gateway": {
+      "dockerfile": "deploy/images/go.Dockerfile",
+      "args": {"MODULE": "services/go-model-gateway", "MAIN": "./cmd/model-gateway"}
+    },
+    "worker": {
+      "dockerfile": "deploy/images/python.Dockerfile",
+      "args": {"PACKAGE": "agentruntime-worker"}
+    },
+    "memory": {
+      "dockerfile": "deploy/images/python.Dockerfile",
+      "args": {"PACKAGE": "agentruntime-memory"}
+    },
+    "learning": {
+      "dockerfile": "deploy/images/python.Dockerfile",
+      "args": {"PACKAGE": "agentruntime-learning"}
+    },
+    "sandbox-agent": {
+      "dockerfile": "deploy/images/sandbox-agent.Dockerfile",
+      "args": {}
+    },
+    "sandbox-python": {
+      "dockerfile": "deploy/images/sandbox-python/Dockerfile",
+      "args": {}
+    }
+  }
+}

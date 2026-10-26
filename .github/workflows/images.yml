@@ -1,0 +1,48 @@
+# 打标签（v*）时构建 Runtime 的镜像并推到 GHCR（docs/plan/cloud-deploy.md D-01）。命令与本地相同：scripts/build_images.py。
+# 镜像名 ghcr.io/<仓库所有者>/<名字>:<标签去掉 v>；部署时 Chart 的 image.registry 设成 ghcr.io/<仓库所有者>。
+# 只做 linux/amd64（要上 ARM 节点时再做多架构）。tests/deploy/test_images.py 核对这个文件。
+name: images
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 镜像标签（不要用 latest）
+        required: true
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 构建并推送镜像
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 镜像标签与仓库
+        id: meta
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          tag="${INPUT_TAG:-${GITHUB_REF_NAME#v}}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "registry=ghcr.io/${OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: 登录 GHCR
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: echo "${TOKEN}" | docker login ghcr.io -u "${ACTOR}" --password-stdin
+
+      - name: 构建并推送
+        run: python3 scripts/build_images.py --registry "${{ steps.meta.outputs.registry }}" --tag "${{ steps.meta.outputs.tag }}" --push

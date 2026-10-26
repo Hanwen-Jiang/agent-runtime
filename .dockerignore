@@ -1,0 +1,32 @@
+# 镜像的构建上下文是仓库根目录（deploy/images，docs/plan/cloud-deploy.md D-01；Cloudflare 桥的 sandbox-python 也是）。
+# 密钥、开发文件与本机产物一律不进构建上下文；tests/deploy/test_images.py 核对这里与镜像内容。
+.git
+.github
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+**/node_modules
+**/.wrangler
+**/.eval-reports
+**/.live-reports
+
+# 密钥与本机配置
+**/.env
+**/.env.*
+**/*.env
+**/*.key
+**/*.pem
+**/secrets.json
+
+# 开发用的文件（开发租户策略、Registry 种子、模型 Profile 示例）与文档
+deploy/dev
+docs
+
+# 测试不进镜像；tests/ 下只留工作区成员的 pyproject.toml（uv 核对 uv.lock 时要看到整个工作区）
+libs/py-core/tests
+services/*/tests
+tests/**
+!tests/*/pyproject.toml

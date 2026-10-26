@@ -2,7 +2,7 @@ apiVersion: v2
 name: agent-runtime
 description: Agent Runtime 的服务、按任务队列分池的 Worker、KEDA 扩缩与 OpenTelemetry Collector（设计书 4.15、附录 K.5、L.19；TMP 计划 T-15）
 type: application
-# Chart 自己的版本；appVersion 是镜像的默认标签（镜像与 Dockerfile 还没有，见 docs/plan/deploy-telemetry.md 第 2 节“不做”）。
+# Chart 自己的版本；appVersion 是镜像的默认标签。镜像的 Dockerfile 在 deploy/images（D-01），scripts/build_images.py 构建。
 version: 0.1.0
 appVersion: "0.0.0"
 keywords:
