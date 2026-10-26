@@ -3,7 +3,7 @@
 > 2026-10-26 用户要求：把系统部署到云端，以最有性价比的布局展示完整形态；沙箱考虑 Cloudflare Containers，或者容器与 microVM 混用。
 > 依据：设计书 4.10（Sandbox）、4.12（SecretStore）、4.15（仓库结构）、附录 L.11、L.13、L.19；T-15 的 [Helm、KEDA 与 Telemetry](deploy-telemetry.md)。
 > 范围只是 Runtime。建在 Runtime 上的应用（例如 coding-agent 仓库）各自部署，它们要 Runtime 提供的东西列在第 7 节。
-> 状态：计划，还没开工。价格与产品能力是 2026-10 查的（见第 9 节），下单前再核对一次。
+> 状态（2026-10-26）：代码与配置的适配做完了（D-06 只有设计书改动稿），实体资源（机器、域名、R2、Cloudflare 账号）由用户选购配置之后在真机上验收；进度与没验的部分见第 10 节。价格与产品能力是 2026-10 查的（见第 9 节），下单前再核对一次。
 
 ## 1. 目标与不做
 
@@ -292,6 +292,28 @@ D-01 与 D-02 可以并行；D-05 动 Worker 的工具（不在 Task Loop → St
 - 设计书 4.10 说“本期只定义接口；开发时用本地子进程实现”。为 coding agent 加的 Docker 沙箱绕过了接口，直接在 shell_run 里调 docker；D-05 改回走接口。
 - 设计书没有“工作区”一层；D-06 要先改设计书（建议见 D-06）。
 - 设计书 4.4 的向量库现行是 Qdrant；改为 Milvus 的草稿（C1）还没进设计书，D-03 按现行版本做。
+- 设计书改动稿：[design-changes-workspace.md](design-changes-workspace.md)（W1 Sandbox 的后端、W2 Workspace 层、W3 effect_ceiling、W4 租户策略的沙箱后端）。
+
+## 10. 进度（2026-10-26）
+
+| 项 | 做了什么 | 本机验过的 | 要真机器或人做的 |
+| --- | --- | --- | --- |
+| D-01 | `deploy/images`：Go 与 Python 两种 Dockerfile、sandbox-agent、sandbox-python；`scripts/build_images.py`；`.github/workflows/images.yml` | `tests/deploy/test_images.py` 的静态检查（以 10001 运行、基础镜像写明版本、按 uv.lock 装、`.dockerignore`、Chart 的镜像名） | 构建与运行（`AR_TEST_IMAGES=1`，要拉基础镜像、下载依赖，还没跑） |
+| D-02 | `deploy/cluster`：k3s 配置、Pod Security 默认值、runsc 的 containerd 模板、Traefik、install.sh、verify.sh、SOPS 密钥样例 | `tests/deploy/test_cloud.py`；沙箱命名空间的约束在 kind 上（D-05 的测试） | 新机器上跑 install.sh 与 verify.sh（gVisor、Kata 的内核）；经 Traefik 的 SSE（`scripts/sse_probe.py`） |
+| D-03 | `deploy/data`：CloudNativePG（三个角色无超级用户、无 BYPASSRLS，每天备份到 R2）、恢复演练脚本、Temporal、Qdrant、Redpanda、Langfuse、Tempo、Grafana 的 values | 静态检查；内存预算（requests 合计不超过 60 GiB） | 各组件起来、角色核对、从 R2 恢复演练、Collector 三路导出；第三方 Chart 的键名按 versions.conf 的版本核对 |
+| D-04 | Chart：入口改 Traefik / Gateway API / 通用 Ingress；Worker 经 Sandbox 跑 shell_run 与只在沙箱命名空间里的 Role；ObjectStore 的 S3 变量；可写的 SecretStore 加种子（`AR_SECRETS_SEED_FILE`）；`values-cloud.yaml` | 三套 values 的 helm lint 与结构检查；Worker 的 RBAC 在 kind 的 API Server 上（`kubectl auth can-i`） | helm 装上、mock 模型跑到 done、删 Worker Pod 续跑、KEDA 扩缩 |
+| D-05 | K8s 沙箱后端、sandbox-agent、shell_run 走 Sandbox | kind 上的一致性测试、非 root、只读根、没令牌、断网、令牌、回收；Worker 经 K8s 后端跑 shell_run | gVisor 与 Kata 的 RuntimeClass（kind 里没有） |
+| D-06 | 只有设计书改动稿 | — | 人确认 W2、更新设计书之后再开工 |
+| D-07 | Cloudflare 桥（TypeScript）与 Python 适配器 | 适配器对着假桥 | 桥本身（本机没有 Node）；真端点（`AR_LIVE_CLOUDFLARE=1`，花钱） |
+| D-08 | `SubmitTaskRequest.effect_ceiling`、租户策略的 `sandbox.backend` | 契约测试、Task API 的测试、按策略选后端 | **proto 与 schema 的改动待人审**，之后更新 `proto/breaking-baseline.binpb` |
+| D-09 | ObjectStore 的 S3 兼容实现（Python 与 Go，标准库的 SigV4），task-service 与 Worker 接上 | 一致性测试对着会核对签名的假服务（带与不带前缀）、AWS 文档里的签名例子 | 真实 R2（`AR_LIVE_S3=1`）；task-service 与 Worker 不共用卷时的 Claim-Check（线上） |
+| D-10 | `deploy/cluster/demo.md`；Grafana 面板；`runtime.sandbox` span（后端、存活、执行与 CPU 时间）；K8s 后端每个租户的配额 | 面板查的名字与代码对得上；CPU 时间与配额在 kind 上 | 照手册在线上走一遍；面板的 TraceQL 指标查询在真 Tempo 上 |
+
+实现中与本计划写法不同的：
+
+- D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
+- D-07 说沙箱的存活时间与 CPU 时间记在 `execute_tool` span 上：tool_loop 里的工具调用没有 execute_tool span，program 节点又会嵌套重名，所以单独记一个 `runtime.sandbox` span（不挂在任务的调用链下，按租户与时间找）。
+- D-04 说 ObjectStore 用本地 PVC：开发 SecretStore 也要可写（Claim-Check 第一次用到租户时写回 kek，副本要共用），所以多了一个 SecretStore 的卷与种子合并；这是单节点的做法，正式环境换 OpenBao。
 
 ## 9. 来源
 
