@@ -298,7 +298,7 @@ D-01 与 D-02 可以并行；D-05 动 Worker 的工具（不在 Task Loop → St
 
 | 项 | 做了什么 | 本机验过的 | 要真机器或人做的 |
 | --- | --- | --- | --- |
-| D-01 | `deploy/images`：Go 与 Python 两种 Dockerfile、sandbox-agent、sandbox-python；`scripts/build_images.py`；`.github/workflows/images.yml` | `tests/deploy/test_images.py` 的静态检查（以 10001 运行、基础镜像写明版本、按 uv.lock 装、`.dockerignore`、Chart 的镜像名） | 构建与运行（`AR_TEST_IMAGES=1`，要拉基础镜像、下载依赖，还没跑） |
+| D-01 | `deploy/images`：Go 与 Python 两种 Dockerfile、sandbox-agent、sandbox-python；`scripts/build_images.py`；`.github/workflows/images.yml` | `tests/deploy/test_images.py` 的静态检查；`AR_TEST_IMAGES=1`（2026-10-26 跑过）：七个镜像都能构建，以 10001、只读根文件系统起来：task-service、model-gateway、sandbox-agent 的 `/healthz` 是 200，Memory Service 的 gRPC 端口接受连接，Worker 在 Temporal 上轮询，learning 的命令行能跑；镜像里我们加的部分没有密钥文件、开发文件与测试代码。大小：task-service 52 MB、model-gateway 31 MB、sandbox-agent 10 MB、sandbox-python 186 MB、worker 与 learning 327 MB、memory 389 MB | 多架构（要上 ARM 节点时） |
 | D-02 | `deploy/cluster`：k3s 配置、Pod Security 默认值、runsc 的 containerd 模板、Traefik、install.sh、verify.sh、SOPS 密钥样例 | `tests/deploy/test_cloud.py`；沙箱命名空间的约束在 kind 上（D-05 的测试） | 新机器上跑 install.sh 与 verify.sh（gVisor、Kata 的内核）；经 Traefik 的 SSE（`scripts/sse_probe.py`） |
 | D-03 | `deploy/data`：CloudNativePG（三个角色无超级用户、无 BYPASSRLS，每天备份到 R2）、恢复演练脚本、Temporal、Qdrant、Redpanda、Langfuse、Tempo、Grafana 的 values | 静态检查；内存预算（requests 合计不超过 60 GiB） | 各组件起来、角色核对、从 R2 恢复演练、Collector 三路导出；第三方 Chart 的键名按 versions.conf 的版本核对 |
 | D-04 | Chart：入口改 Traefik / Gateway API / 通用 Ingress；Worker 经 Sandbox 跑 shell_run 与只在沙箱命名空间里的 Role；ObjectStore 的 S3 变量；可写的 SecretStore 加种子（`AR_SECRETS_SEED_FILE`）；`values-cloud.yaml` | 三套 values 的 helm lint 与结构检查；Worker 的 RBAC 在 kind 的 API Server 上（`kubectl auth can-i`） | helm 装上、mock 模型跑到 done、删 Worker Pod 续跑、KEDA 扩缩 |

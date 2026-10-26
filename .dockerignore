@@ -25,8 +25,16 @@
 deploy/dev
 docs
 
-# 测试不进镜像；tests/ 下只留工作区成员的 pyproject.toml（uv 核对 uv.lock 时要看到整个工作区）
+# 测试不进镜像。tests/ 下的工作区成员 python.Dockerfile 只复制 pyproject.toml（uv 核对 uv.lock 时要看到整个工作区）。
+# 这里不用 ! 例外：有例外时 BuildKit 不能整个跳过被排除的目录，会逐个打开，碰到读不了的缓存目录就构建失败。
 libs/py-core/tests
 services/*/tests
-tests/**
-!tests/*/pyproject.toml
+tests/contract/contract_tests
+tests/contract/go
+tests/contract/test_*.py
+tests/deploy/deploy_tests
+tests/deploy/test_*.py
+tests/e2e/e2e_support
+tests/e2e/faults
+tests/e2e/live
+tests/e2e/test_*.py

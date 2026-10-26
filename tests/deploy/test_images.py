@@ -20,6 +20,7 @@ import json
 import os
 import re
 import secrets
+import shutil
 import socket
 import subprocess
 import sys
@@ -136,7 +137,12 @@ def test_dockerignore_keeps_secrets_and_dev_files_out() -> None:
     patterns = {line.strip() for line in DOCKERIGNORE.read_text("utf-8").splitlines() if line.strip() and not line.startswith("#")}
     for required in (".git", "**/.env", "**/.env.*", "**/*.env", "**/*.key", "**/secrets.json", "deploy/dev", "**/.venv", "**/node_modules"):
         assert required in patterns, f".dockerignore 要有 {required}"
-    assert "!tests/*/pyproject.toml" in patterns, "uv 核对 uv.lock 要看到 tests/ 下成员的 pyproject.toml"
+    assert not [p for p in patterns if p.startswith("!")], "不用 ! 例外：有例外时 BuildKit 会打开被排除的目录（读不了的缓存目录会让构建失败）"
+    members = re.findall(r'"([^"]+)"', (REPO_ROOT / "pyproject.toml").read_text("utf-8").split("members = [", 1)[1].split("]", 1)[0])
+    dockerfile = (IMAGES_DIR / "python.Dockerfile").read_text("utf-8")
+    for member in members:
+        assert re.search(rf"(?m)^COPY {re.escape(member)}/(pyproject\.toml)? {re.escape(member)}/$", dockerfile), \
+            f"python.Dockerfile 要复制工作区成员 {member}（至少它的 pyproject.toml），uv 才能核对 uv.lock"
     tracked = run(["git", "ls-files"], check=False).stdout.splitlines()
     leaked = [f for f in tracked if SECRET_NAMES.search(f)]
     assert not leaked, f"仓库里不该有这些文件：{leaked}"
@@ -272,9 +278,11 @@ def test_task_service_serves_healthz(built: dict[str, str], temporal: str, start
         pytest.fail(logs(cid), pytrace=False)
 
 
-def test_model_gateway_serves_healthz(built: dict[str, str], started: list[str]) -> None:
+def test_model_gateway_serves_healthz(built: dict[str, str], started: list[str], tmp_path: Path) -> None:
     port = free_port()
-    profiles = REPO_ROOT / "deploy" / "dev" / "mock-model-profiles.json"
+    # 复制到本地的临时目录再挂：仓库在网络盘上时 Docker 挂不了 UNC 路径。
+    profiles = tmp_path / "model-profiles.json"
+    shutil.copyfile(REPO_ROOT / "deploy" / "dev" / "mock-model-profiles.json", profiles)
     cid = run_detached(built["model-gateway"], "serve", ports={port: 8091}, mounts=(f"{profiles}:/etc/agentruntime/model-profiles.json:ro",), env={
         "AR_MODEL_PROVIDER": "mock", "AR_MODEL_PROFILES_FILE": "/etc/agentruntime/model-profiles.json", "AR_MODEL_GATEWAY_ADDR": "0.0.0.0:8091",
         "AR_SECRETS_FILE": "/tmp/secrets.json",
@@ -346,7 +354,7 @@ def test_images_carry_no_secrets_or_dev_files(built: dict[str, str], name: str) 
     finally:
         docker("rm", "-f", cid, check=False)
     with tarfile.open(fileobj=io.BytesIO(exported)) as tar:
-        files = [m.name for m in tar.getmembers()]
+        files = [m.name for m in tar.getmembers() if m.isfile()]  # 只看文件：目录项（例如 app/tests/e2e/）不算
     ours = [f for f in files if f.startswith(OURS)]
     assert ours, f"{name}：镜像里没找到我们加的文件"
     leaked = [f for f in ours if SECRET_NAMES.search(f) or "deploy/dev" in f or "/.git/" in f]
