@@ -113,11 +113,11 @@ func (s *Server) open(sealed, aad string) (string, error) {
 		return "", err
 	}
 	if len(data) < gcm.NonceSize() {
-		return "", errors.New("令牌记录损坏")
+		return "", msg("令牌记录损坏")
 	}
 	plain, err := gcm.Open(nil, data[:gcm.NonceSize()], data[gcm.NonceSize():], []byte(aad))
 	if err != nil {
-		return "", errors.New("令牌记录解不开")
+		return "", msg("令牌记录解不开")
 	}
 	return string(plain), nil
 }
@@ -226,7 +226,7 @@ func (s *Server) connToken(r *http.Request, id identity, p *Provider) (Connectio
 	defer cancel()
 	t, err := p.refresh(ctx, refresh)
 	if err != nil {
-		return Connection{}, "", &GitError{Provider: p.Name, Status: http.StatusUnauthorized, Message: "授权过期且续不上：" + err.Error()}
+		return Connection{}, "", &GitError{Provider: p.Name, Status: http.StatusUnauthorized, Note: msg("授权过期且续不上：%v", err)}
 	}
 	if t.Refresh == "" {
 		t.Refresh = refresh // 有的平台续期时不换续期令牌
@@ -346,13 +346,13 @@ func stateCookieName(provider string) string { return "cw_oauth_" + provider }
 func (s *Server) handleOAuthLogin(w http.ResponseWriter, r *http.Request) {
 	p := s.providers[r.PathValue("provider")]
 	if p == nil {
-		writeError(w, http.StatusNotFound, "没有配置这个登录方式")
+		writeMsg(w, r, http.StatusNotFound, "没有配置这个登录方式")
 		return
 	}
 	mode := "login"
 	if r.URL.Query().Get("link") == "1" {
 		if _, ok := s.currentIdentity(r); !ok {
-			http.Redirect(w, r, "/#/login?error="+url.QueryEscape("先登录，再连接 "+p.Name), http.StatusFound)
+			http.Redirect(w, r, "/#/login?error="+url.QueryEscape(msg("先登录，再连接 %s", p.Name).In(requestLang(r))), http.StatusFound)
 			return
 		}
 		mode = "link"
@@ -379,17 +379,17 @@ func (s *Server) currentIdentity(r *http.Request) (identity, bool) {
 func (s *Server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	p := s.providers[r.PathValue("provider")]
 	mode := "login"
-	fail := func(msg string) {
-		// 记下失败原因（平台给的错误说明，不含令牌），排查回调用。
-		log.Printf("OAuth %s（%s）失败：%s", r.PathValue("provider"), mode, msg)
+	// fail 跳回网页并带上原因（按请求的语言）；日志里记中文（平台给的错误说明，不含令牌），排查回调用。
+	fail := func(why *Msg) {
+		log.Printf("OAuth %s（%s）失败：%s", r.PathValue("provider"), mode, why)
 		target := "/#/login?error="
 		if mode == "link" {
 			target = "/#/?error="
 		}
-		http.Redirect(w, r, target+url.QueryEscape(msg), http.StatusFound)
+		http.Redirect(w, r, target+url.QueryEscape(why.In(requestLang(r))), http.StatusFound)
 	}
 	if p == nil {
-		fail("没有配置这个登录方式")
+		fail(msg("没有配置这个登录方式"))
 		return
 	}
 	cookie, err := r.Cookie(stateCookieName(p.id))
@@ -401,27 +401,31 @@ func (s *Server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil || state == "" || subtle.ConstantTimeCompare([]byte(want), []byte(state)) != 1 {
 		mode = "login"
-		fail("登录状态不匹配，请重新登录")
+		fail(msg("登录状态不匹配，请重新登录"))
 		return
 	}
 	if e := r.URL.Query().Get("error"); e != "" {
-		fail(p.Name + " 没有授权：" + e)
+		fail(msg("%s 没有授权：%s", p.Name, e))
 		return
 	}
 	ctx, cancel := ctxTimeout(r, 30*time.Second)
 	defer cancel()
 	t, err := p.exchange(ctx, r.URL.Query().Get("code"), s.callbackURL(p.id))
 	if err != nil {
-		fail(err.Error())
+		why, ok := err.(*Msg) // 换令牌的说明自己带着平台名
+		if !ok {
+			why = msg("%s 登录没有完成：%v", p.Name, err)
+		}
+		fail(why)
 		return
 	}
 	u, err := p.user(ctx, t.Access)
 	if err != nil {
-		fail("读不到 " + p.Name + " 账号：" + err.Error())
+		fail(msg("读不到 %s 账号：%v", p.Name, err))
 		return
 	}
 	if u.ID == "" || u.Login == "" {
-		fail(p.Name + " 没有给出账号编号或登录名")
+		fail(msg("%s 没有给出账号编号或登录名", p.Name))
 		return
 	}
 	key := identityKey(p.id, u.ID)
@@ -432,30 +436,30 @@ func (s *Server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	if mode == "link" {
 		cur, ok := s.currentIdentity(r)
 		if !ok {
-			fail("登录已过期，请重新登录后再连接")
+			fail(msg("登录已过期，请重新登录后再连接"))
 			return
 		}
 		ref = identityRef{Tenant: cur.TenantID, User: cur.UserID}
 		if err := s.bindIdentity(key, ref); errors.Is(err, errIdentityTaken) {
-			fail("这个 " + p.Name + " 账号已经关联到别的账号了")
+			fail(msg("这个 %s 账号已经关联到别的账号了", p.Name))
 			return
 		} else if err != nil {
-			fail("保存关联失败")
+			fail(msg("保存关联失败"))
 			return
 		}
 	} else if found, ok := s.lookupIdentity(key); ok {
 		ref = found
 	} else {
 		if ref, err = s.newAccountFor(p, u); err != nil {
-			fail("建账号失败")
+			fail(msg("建账号失败"))
 			return
 		}
 		if err := s.bindIdentity(key, ref); err != nil {
-			fail("保存关联失败")
+			fail(msg("保存关联失败"))
 			return
 		}
 		if err := s.ensureTenantPolicy(ref.Tenant); err != nil {
-			fail("写租户策略失败")
+			fail(msg("写租户策略失败：%v", err))
 			return
 		}
 	}
@@ -476,10 +480,10 @@ func (s *Server) handleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return nil
 	}); errors.Is(err, errIdentityTaken) {
 		_ = s.unbindIdentity(key)
-		fail("这个账号已经连着另一个 " + p.Name + " 账号，先断开它")
+		fail(msg("这个账号已经连着另一个 %s 账号，先断开它", p.Name))
 		return
 	} else if err != nil {
-		fail("保存 " + p.Name + " 账号失败")
+		fail(msg("保存 %s 账号失败", p.Name))
 		return
 	}
 	if mode == "link" {
@@ -557,13 +561,13 @@ func (s *Server) handleDisconnect(w http.ResponseWriter, r *http.Request, id ide
 	})
 	switch {
 	case errors.Is(err, errNotConnected):
-		writeError(w, http.StatusNotFound, "没有连接这个平台")
+		writeMsg(w, r, http.StatusNotFound, "没有连接这个平台")
 		return
 	case errors.Is(err, errLastLogin):
-		writeError(w, http.StatusConflict, "这是这个账号唯一的登录方式，先连接另一家再断开")
+		writeMsg(w, r, http.StatusConflict, "这是这个账号唯一的登录方式，先连接另一家再断开")
 		return
 	case err != nil:
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	_ = s.unbindIdentity(identityKey(provider, removed.RemoteID))
@@ -581,22 +585,22 @@ func (s *Server) handleRepos(w http.ResponseWriter, r *http.Request, id identity
 	}
 	p := s.providers[name]
 	if p == nil || !p.git {
-		writeError(w, http.StatusNotFound, "没有配置这个 Git 平台")
+		writeMsg(w, r, http.StatusNotFound, "没有配置这个 Git 平台")
 		return
 	}
 	_, token, err := s.connToken(r, id, p)
 	if errors.Is(err, errNotConnected) {
-		writeError(w, http.StatusForbidden, "先在“账号与平台”里连接 "+p.Name)
+		writeMsg(w, r, http.StatusForbidden, "先在“账号与平台”里连接 %s", p.Name)
 		return
 	} else if err != nil {
-		writeGitError(w, err)
+		writeGitError(w, r, err)
 		return
 	}
 	ctx, cancel := ctxTimeout(r, 30*time.Second)
 	defer cancel()
 	repos, err := p.repos(ctx, token)
 	if err != nil {
-		writeGitError(w, err)
+		writeGitError(w, r, err)
 		return
 	}
 	slices.SortStableFunc(repos, func(a, b remoteRepo) int {

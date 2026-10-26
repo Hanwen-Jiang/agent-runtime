@@ -1,7 +1,6 @@
 package server
 
 import (
-	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -86,12 +85,12 @@ func (s *Server) session(w http.ResponseWriter, r *http.Request, id identity) (P
 	sid := r.PathValue("session")
 	sessions, err := s.ensureSessions(id.TenantID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return Project{}, Session{}, false
 	}
 	i := slices.IndexFunc(sessions, func(x Session) bool { return x.ProjectID == p.ID && x.ID == sid })
 	if !slug.MatchString(sid) || i < 0 {
-		writeError(w, http.StatusNotFound, "会话不存在")
+		writeMsg(w, r, http.StatusNotFound, "会话不存在")
 		return Project{}, Session{}, false
 	}
 	return p, sessions[i], true
@@ -112,15 +111,15 @@ func (s *Server) updateSession(tenant string, sess Session, fn func(*Session)) (
 				return all, nil
 			}
 		}
-		return nil, errors.New("会话不存在")
+		return nil, msg("会话不存在")
 	})
 	return out, err
 }
 
-func (s *Server) handleListSessions(w http.ResponseWriter, _ *http.Request, id identity) {
+func (s *Server) handleListSessions(w http.ResponseWriter, r *http.Request, id identity) {
 	sessions, err := s.ensureSessions(id.TenantID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	if sessions == nil {
@@ -142,12 +141,12 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request, id 
 		return
 	}
 	if _, err := s.ensureSessions(id.TenantID); err != nil { // 旧项目先迁移出 main 会话，免得被新会话挤掉
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	sess, err := s.createSession(r, id, p, sessionTitle(req.Title))
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "开会话失败："+err.Error())
+		writeMsg(w, r, http.StatusInternalServerError, "开会话失败：%v", err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, sess)
@@ -198,12 +197,12 @@ func (s *Server) handleRenameSession(w http.ResponseWriter, r *http.Request, id 
 	}
 	title := sessionTitle(req.Title)
 	if title == "" {
-		writeError(w, http.StatusBadRequest, "标题不能为空")
+		writeMsg(w, r, http.StatusBadRequest, "标题不能为空")
 		return
 	}
 	updated, err := s.updateSession(id.TenantID, sess, func(x *Session) { x.Title = title })
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, updated)
@@ -216,17 +215,17 @@ func (s *Server) handleDeleteSession(w http.ResponseWriter, r *http.Request, id 
 		return
 	}
 	if s.busy(r, id, sess.WorkspaceID) {
-		writeError(w, http.StatusConflict, "还有任务在跑，等它结束或先取消")
+		writeMsg(w, r, http.StatusConflict, "还有任务在跑，等它结束或先取消")
 		return
 	}
 	if sess.WorkspaceID != p.ID {
 		if err := os.RemoveAll(s.sessionDir(id.TenantID, sess)); err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			writeErr(w, r, http.StatusInternalServerError, err)
 			return
 		}
 	}
 	if err := s.store.DeleteSession(id.TenantID, sess); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})

@@ -100,17 +100,17 @@ func (s *Server) handleSubmitTask(w http.ResponseWriter, r *http.Request, id ide
 	}
 	msg := strings.TrimSpace(req.Message)
 	if msg == "" || utf8.RuneCountInString(msg) > maxMessageChars {
-		writeError(w, http.StatusBadRequest, "任务描述不能为空，也不能超过 20000 个字")
+		writeMsg(w, r, http.StatusBadRequest, "任务描述不能为空，也不能超过 20000 个字")
 		return
 	}
 	sandbox, ok := pickOption(req.Sandbox, sandboxLevels, defaultSandbox)
 	if !ok {
-		writeError(w, http.StatusBadRequest, "沙箱等级只能是 read 或 write_reversible")
+		writeMsg(w, r, http.StatusBadRequest, "沙箱等级只能是 read 或 write_reversible")
 		return
 	}
 	model, ok := pickOption(req.Model, modelPreferences, defaultModel)
 	if !ok {
-		writeError(w, http.StatusBadRequest, "模型倾向只能是 economy、balanced 或 best")
+		writeMsg(w, r, http.StatusBadRequest, "模型倾向只能是 economy、balanced 或 best")
 		return
 	}
 	base := s.git.Head(r.Context(), s.sessionDir(id.TenantID, sess))
@@ -130,14 +130,14 @@ func (s *Server) handleSubmitTask(w http.ResponseWriter, r *http.Request, id ide
 	if s.cfg.PoliciesFile == "" {
 		sandbox = "" // 这个部署定不了沙箱等级，以 task-service 的租户策略为准
 	} else if err := s.writeTenantCeiling(id.TenantID, sandbox, false); err != nil {
-		writeError(w, http.StatusInternalServerError, "写租户策略失败："+err.Error())
+		writeMsg(w, r, http.StatusInternalServerError, "写租户策略失败：%v", err)
 		return
 	}
 	var resp submitResponse
 	ctx, cancel := ctxTimeout(r, 30*time.Second)
 	defer cancel()
 	if err := s.api.Call(ctx, id.token, "SubmitTask", submit, &resp); err != nil {
-		writeAPIError(w, err)
+		writeAPIError(w, r, err)
 		return
 	}
 	now := time.Now().UTC()
@@ -157,7 +157,7 @@ func (s *Server) handleSubmitTask(w http.ResponseWriter, r *http.Request, id ide
 		}
 		return append(ts, record)
 	}); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, record)
@@ -171,12 +171,12 @@ func (s *Server) task(w http.ResponseWriter, r *http.Request, id identity) (Sess
 	}
 	tasks, err := s.store.Tasks(id.TenantID, sess.WorkspaceID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return Session{}, TaskRecord{}, false
 	}
 	i := slices.IndexFunc(tasks, func(t TaskRecord) bool { return t.ID == r.PathValue("task") })
 	if i < 0 {
-		writeError(w, http.StatusNotFound, "任务不存在")
+		writeMsg(w, r, http.StatusNotFound, "任务不存在")
 		return Session{}, TaskRecord{}, false
 	}
 	return sess, tasks[i], true
@@ -191,7 +191,7 @@ func (s *Server) handleQueryTask(w http.ResponseWriter, r *http.Request, id iden
 	ctx, cancel := ctxTimeout(r, 15*time.Second)
 	defer cancel()
 	if err := s.api.Call(ctx, id.token, "QueryTask", map[string]string{"taskId": t.ID}, &raw); err != nil {
-		writeAPIError(w, err)
+		writeAPIError(w, r, err)
 		return
 	}
 	var q queryResponse
@@ -224,13 +224,13 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request, id identit
 	}
 	res, err := s.api.Events(r.Context(), id.token, t.ID, last)
 	if err != nil {
-		writeError(w, http.StatusBadGateway, "连不上 task-service")
+		writeMsg(w, r, http.StatusBadGateway, "连不上 task-service")
 		return
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(res.Body, 4096))
-		writeError(w, res.StatusCode, strings.TrimSpace(string(body)))
+		writeErr(w, r, res.StatusCode, errors.New(strings.TrimSpace(string(body)))) // task-service 的说明原样转出
 		return
 	}
 	flusher, _ := w.(http.Flusher)
@@ -270,14 +270,14 @@ func (s *Server) handleReply(w http.ResponseWriter, r *http.Request, id identity
 		return
 	}
 	if req.QuestionID == "" || req.Option == "" {
-		writeError(w, http.StatusBadRequest, "要给出 question_id 与 option")
+		writeMsg(w, r, http.StatusBadRequest, "要给出 question_id 与 option")
 		return
 	}
 	ctx, cancel := ctxTimeout(r, 15*time.Second)
 	defer cancel()
 	signal := map[string]any{"taskId": t.ID, "humanReply": map[string]string{"questionId": req.QuestionID, "option": req.Option, "guidance": req.Guidance}}
 	if err := s.api.Call(ctx, id.token, "SignalTask", signal, nil); err != nil {
-		writeAPIError(w, err)
+		writeAPIError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
@@ -291,22 +291,26 @@ func (s *Server) handleCancel(w http.ResponseWriter, r *http.Request, id identit
 	ctx, cancel := ctxTimeout(r, 15*time.Second)
 	defer cancel()
 	var resp map[string]any
-	if err := s.api.Call(ctx, id.token, "CancelTask", map[string]string{"taskId": t.ID, "reason": "用户在网页上取消"}, &resp); err != nil {
-		writeAPIError(w, err)
+	if err := s.api.Call(ctx, id.token, "CancelTask", map[string]string{"taskId": t.ID, "reason": msg("用户在网页上取消").In(requestLang(r))}, &resp); err != nil {
+		writeAPIError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
 
-func writeAPIError(w http.ResponseWriter, err error) {
+func writeAPIError(w http.ResponseWriter, r *http.Request, err error) {
 	var apiErr *APIError
 	if errors.As(err, &apiErr) {
 		status := apiErr.Status
 		if status < 400 || status > 599 {
 			status = http.StatusBadGateway
 		}
-		writeError(w, status, apiErr.Message)
+		if apiErr.Note != nil {
+			writeErr(w, r, status, apiErr.Note)
+		} else {
+			writeErr(w, r, status, errors.New(apiErr.Message)) // task-service 的说明原样转出
+		}
 		return
 	}
-	writeError(w, http.StatusBadGateway, err.Error())
+	writeErr(w, r, http.StatusBadGateway, err)
 }

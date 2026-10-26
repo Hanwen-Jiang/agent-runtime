@@ -90,7 +90,7 @@ func (g Git) run(ctx context.Context, dir string, o gitOpts, args ...string) (st
 		if len(msg) > 2000 {
 			msg = msg[len(msg)-2000:]
 		}
-		return stdout.String(), fmt.Errorf("git %s 失败：%v %s", args[0], err, msg)
+		return stdout.String(), fmt.Errorf("git %s: %v %s", args[0], err, msg) // git 自己的输出原样带上，不翻译
 	}
 	return stdout.String(), nil
 }

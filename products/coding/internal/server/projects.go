@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -45,14 +44,25 @@ func newProjectID(name string) string {
 	return base + "-" + randomHex(2)
 }
 
-func (s *Server) handleSamples(w http.ResponseWriter, _ *http.Request, _ identity) {
-	writeJSON(w, http.StatusOK, samples.All)
+// sampleView 是示例在网页上的样子：文字按请求的语言。
+type sampleView struct {
+	ID string `json:"id"`
+	samples.Text
 }
 
-func (s *Server) handleListProjects(w http.ResponseWriter, _ *http.Request, id identity) {
+func (s *Server) handleSamples(w http.ResponseWriter, r *http.Request, _ identity) {
+	lang := requestLang(r)
+	out := make([]sampleView, 0, len(samples.All))
+	for _, sm := range samples.All {
+		out = append(out, sampleView{ID: sm.ID, Text: sm.In(lang)})
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request, id identity) {
 	projects, err := s.store.Projects(id.TenantID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	if projects == nil {
@@ -74,7 +84,7 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request, id 
 	}
 	req.Name, req.GitURL, req.Branch = strings.TrimSpace(req.Name), strings.TrimSpace(req.GitURL), strings.TrimSpace(req.Branch)
 	if req.Name == "" || len(req.Name) > 80 {
-		writeError(w, http.StatusBadRequest, "项目名要有，且不超过 80 个字符")
+		writeMsg(w, r, http.StatusBadRequest, "项目名要有，且不超过 80 个字符")
 		return
 	}
 	source := "empty"
@@ -82,17 +92,17 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request, id 
 	case req.GitURL != "":
 		u, err := url.Parse(req.GitURL)
 		if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil {
-			writeError(w, http.StatusBadRequest, "只支持 https 的 Git 地址，且地址里不能带用户名或密码")
+			writeMsg(w, r, http.StatusBadRequest, "只支持 https 的 Git 地址，且地址里不能带用户名或密码")
 			return
 		}
 		if req.Branch != "" && (strings.HasPrefix(req.Branch, "-") || strings.ContainsAny(req.Branch, " \t\n~^:?*[\\")) {
-			writeError(w, http.StatusBadRequest, "分支名不合法")
+			writeMsg(w, r, http.StatusBadRequest, "分支名不合法")
 			return
 		}
 		source = req.GitURL
 	case req.Sample != "":
 		if _, ok := samples.Find(req.Sample); !ok {
-			writeError(w, http.StatusBadRequest, "没有这个示例")
+			writeMsg(w, r, http.StatusBadRequest, "没有这个示例")
 			return
 		}
 		source = "sample:" + req.Sample
@@ -100,7 +110,7 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request, id 
 	p := Project{ID: newProjectID(req.Name), Name: req.Name, Source: source, CreatedAt: time.Now().UTC(), CreatedBy: id.UserID}
 	dir := s.workspace(id.TenantID, p.ID)
 	if err := os.MkdirAll(filepath.Dir(dir), 0o755); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	ctx, cancel := ctxTimeout(r, 5*time.Minute)
@@ -142,13 +152,13 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request, id 
 	}()
 	if err != nil {
 		_ = os.RemoveAll(dir)
-		writeError(w, http.StatusBadRequest, "建项目失败："+err.Error())
+		writeMsg(w, r, http.StatusBadRequest, "建项目失败：%v", err)
 		return
 	}
 	p.BaseBranch = s.git.Branch(ctx, dir)
 	if err := s.store.UpdateProjects(id.TenantID, func(ps []Project) ([]Project, error) { return append(ps, p), nil }); err != nil {
 		_ = os.RemoveAll(dir)
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, p)
@@ -162,23 +172,23 @@ func (s *Server) handleDeleteProject(w http.ResponseWriter, r *http.Request, id 
 	}
 	sessions, err := s.projectSessions(id.TenantID, p.ID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	for _, x := range sessions {
 		if s.busy(r, id, x.WorkspaceID) {
-			writeError(w, http.StatusConflict, "还有任务在跑，等它结束或先取消")
+			writeMsg(w, r, http.StatusConflict, "还有任务在跑，等它结束或先取消")
 			return
 		}
 	}
 	for _, dir := range append(s.sessionDirs(id.TenantID, p, sessions), s.workspace(id.TenantID, p.ID)) {
 		if err := os.RemoveAll(dir); err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			writeErr(w, r, http.StatusInternalServerError, err)
 			return
 		}
 	}
 	if err := s.store.DeleteProject(id.TenantID, p.ID); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
@@ -191,14 +201,14 @@ func safePath(root, rel string) (string, error) {
 		return root, nil
 	}
 	if strings.ContainsAny(rel, "\\\x00") {
-		return "", errors.New("路径不合法")
+		return "", msg("路径不合法")
 	}
 	clean := strings.TrimPrefix(path.Clean("/"+rel), "/")
 	if clean == "" {
 		return root, nil
 	}
 	if slices.Contains(strings.Split(clean, "/"), ".git") {
-		return "", errors.New("不能访问 .git")
+		return "", msg("不能访问 .git")
 	}
 	target := filepath.Join(root, filepath.FromSlash(clean))
 	realRoot, err := filepath.EvalSymlinks(root)
@@ -210,7 +220,7 @@ func safePath(root, rel string) (string, error) {
 		return "", err
 	}
 	if within, _ := filepath.Rel(realRoot, realTarget); within == ".." || strings.HasPrefix(within, ".."+string(filepath.Separator)) {
-		return "", errors.New("路径不在工作区里")
+		return "", msg("路径不在工作区里")
 	}
 	return target, nil
 }
@@ -222,12 +232,12 @@ func (s *Server) handleTree(w http.ResponseWriter, r *http.Request, id identity)
 	}
 	dir, err := safePath(s.sessionDir(id.TenantID, sess), r.URL.Query().Get("path"))
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, r, http.StatusBadRequest, err)
 		return
 	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "目录不存在")
+		writeMsg(w, r, http.StatusNotFound, "目录不存在")
 		return
 	}
 	type entry struct {
@@ -265,12 +275,12 @@ func (s *Server) handleFile(w http.ResponseWriter, r *http.Request, id identity)
 	}
 	file, err := safePath(s.sessionDir(id.TenantID, sess), r.URL.Query().Get("path"))
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeErr(w, r, http.StatusBadRequest, err)
 		return
 	}
 	info, err := os.Stat(file)
 	if err != nil || info.IsDir() {
-		writeError(w, http.StatusNotFound, "文件不存在")
+		writeMsg(w, r, http.StatusNotFound, "文件不存在")
 		return
 	}
 	if info.Size() > maxFileBytes {
@@ -279,7 +289,7 @@ func (s *Server) handleFile(w http.ResponseWriter, r *http.Request, id identity)
 	}
 	data, err := os.ReadFile(file)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	if bytes.IndexByte(data[:min(len(data), 8192)], 0) >= 0 {
@@ -298,7 +308,7 @@ func (s *Server) handleLog(w http.ResponseWriter, r *http.Request, id identity) 
 	defer cancel()
 	out, err := s.git.Run(ctx, s.sessionDir(id.TenantID, sess), "log", "-n", "30", "--date=iso-strict", "--pretty=format:%H%x1f%an%x1f%ad%x1f%s")
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	commits := []map[string]string{}
@@ -349,7 +359,7 @@ func (s *Server) handleChanges(w http.ResponseWriter, r *http.Request, id identi
 	dir := s.sessionDir(id.TenantID, sess)
 	files, diff, truncated, err := s.diff(r, dir)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"head": s.git.Head(r.Context(), dir), "branch": s.git.Branch(r.Context(), dir), "files": files, "diff": diff, "truncated": truncated})
@@ -362,7 +372,7 @@ func (s *Server) handlePatch(w http.ResponseWriter, r *http.Request, id identity
 	}
 	_, diff, _, err := s.diff(r, s.sessionDir(id.TenantID, sess))
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	w.Header().Set("Content-Type", "text/x-patch; charset=utf-8")
@@ -386,27 +396,27 @@ func (s *Server) handleCommit(w http.ResponseWriter, r *http.Request, id identit
 		msg = "Apply agent changes"
 	}
 	if s.busy(r, id, sess.WorkspaceID) {
-		writeError(w, http.StatusConflict, "还有任务在跑，等它结束再提交")
+		writeMsg(w, r, http.StatusConflict, "还有任务在跑，等它结束再提交")
 		return
 	}
 	dir := s.sessionDir(id.TenantID, sess)
 	ctx, cancel := ctxTimeout(r, time.Minute)
 	defer cancel()
 	if _, err := s.git.Run(ctx, dir, "add", "-A"); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	status, err := s.git.Run(ctx, dir, "status", "--porcelain")
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	if strings.TrimSpace(status) == "" {
-		writeError(w, http.StatusBadRequest, "没有可提交的改动")
+		writeMsg(w, r, http.StatusBadRequest, "没有可提交的改动")
 		return
 	}
 	if _, err := s.git.RunAs(ctx, dir, id.UserID, id.UserID+"@"+id.TenantID+".coding.local", "commit", "-q", "-m", msg); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"head": s.git.Head(ctx, dir)})
@@ -418,7 +428,7 @@ func (s *Server) handleDiscard(w http.ResponseWriter, r *http.Request, id identi
 		return
 	}
 	if s.busy(r, id, sess.WorkspaceID) {
-		writeError(w, http.StatusConflict, "还有任务在跑，等它结束或先取消")
+		writeMsg(w, r, http.StatusConflict, "还有任务在跑，等它结束或先取消")
 		return
 	}
 	dir := s.sessionDir(id.TenantID, sess)
@@ -426,7 +436,7 @@ func (s *Server) handleDiscard(w http.ResponseWriter, r *http.Request, id identi
 	defer cancel()
 	for _, args := range [][]string{{"reset", "-q", "--hard", "HEAD"}, {"clean", "-q", "-fd"}} {
 		if _, err := s.git.Run(ctx, dir, args...); err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			writeErr(w, r, http.StatusInternalServerError, err)
 			return
 		}
 	}

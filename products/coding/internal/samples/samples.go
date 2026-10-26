@@ -11,21 +11,43 @@ import (
 //go:embed ci_rounding
 var files embed.FS
 
-// Sample 是一个示例仓库。
+// Sample 是一个示例仓库。名字、说明与起手的任务按语言给（zh、en）；仓库里的文件只有一份。
 type Sample struct {
-	ID          string `json:"id"`
+	ID   string
+	Text map[string]Text
+}
+
+// Text 是示例给用户看的文字。
+type Text struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Prompt      string `json:"prompt"`
 }
 
+// In 是这种语言的文字；没有这种语言时用中文。
+func (s Sample) In(lang string) Text {
+	if t, ok := s.Text[lang]; ok {
+		return t
+	}
+	return s.Text["zh"]
+}
+
 // All 列出全部示例。
 var All = []Sample{
 	{
-		ID:          "ci_rounding",
-		Name:        "CI 修复示例（Python）",
-		Description: "金额“半分进一”误用了 round()（银行家舍入），五条 unittest 里三条失败。",
-		Prompt:      "CI 挂了：在仓库根目录运行 `python -m unittest` 有用例失败。请找出原因并修好 pricing.py，让全部测试通过；不要改测试文件 test_pricing.py。改完再运行一遍 `python -m unittest` 确认。",
+		ID: "ci_rounding",
+		Text: map[string]Text{
+			"zh": {
+				Name:        "CI 修复示例（Python）",
+				Description: "金额“半分进一”误用了 round()（银行家舍入），五条 unittest 里三条失败。",
+				Prompt:      "CI 挂了：在仓库根目录运行 `python -m unittest` 有用例失败。请找出原因并修好 pricing.py，让全部测试通过；不要改测试文件 test_pricing.py。改完再运行一遍 `python -m unittest` 确认。",
+			},
+			"en": {
+				Name:        "CI fix sample (Python)",
+				Description: "Half-cent rounding uses round(), which rounds half to even; three of five unittest cases fail.",
+				Prompt:      "CI is failing: running `python -m unittest` in the repository root has failing tests. Find the cause and fix pricing.py so that all tests pass; don't change the test file test_pricing.py. Run `python -m unittest` again afterwards to confirm.",
+			},
+		},
 	},
 }
 

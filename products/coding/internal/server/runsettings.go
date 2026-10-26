@@ -117,12 +117,12 @@ type activeTask struct {
 func (s *Server) handleActiveTasks(w http.ResponseWriter, r *http.Request, id identity) {
 	projects, err := s.store.Projects(id.TenantID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	sessions, err := s.ensureSessions(id.TenantID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	names := map[string]string{}

@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -181,17 +180,17 @@ func (s *Server) authed(h authedHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(cookieName)
 		if err != nil || cookie.Value == "" {
-			writeError(w, http.StatusUnauthorized, "请先登录")
+			writeMsg(w, r, http.StatusUnauthorized, "请先登录")
 			return
 		}
 		id, err := s.ingress.Authenticate(r.Context(), ingress.Credentials{BearerToken: cookie.Value})
 		if err != nil {
 			s.clearCookie(w)
-			writeError(w, http.StatusUnauthorized, "登录已过期，请重新登录")
+			writeMsg(w, r, http.StatusUnauthorized, "登录已过期，请重新登录")
 			return
 		}
 		if r.Method != http.MethodGet && r.Header.Get(csrfHeader) == "" {
-			writeError(w, http.StatusForbidden, "缺少 X-Coding-Web 头")
+			writeMsg(w, r, http.StatusForbidden, "缺少 X-Coding-Web 头")
 			return
 		}
 		h(w, r, identity{Identity: id, token: cookie.Value})
@@ -229,11 +228,11 @@ func (s *Server) setSession(w http.ResponseWriter, tenant, user string) {
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if !s.cfg.DevLogin {
-		writeError(w, http.StatusForbidden, "没有打开开发登录（CODING_DEV_LOGIN=1）")
+		writeMsg(w, r, http.StatusForbidden, "没有打开开发登录（CODING_DEV_LOGIN=1）")
 		return
 	}
 	if r.Header.Get(csrfHeader) == "" {
-		writeError(w, http.StatusForbidden, "缺少 X-Coding-Web 头")
+		writeMsg(w, r, http.StatusForbidden, "缺少 X-Coding-Web 头")
 		return
 	}
 	var req struct {
@@ -245,15 +244,15 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Tenant, req.User = strings.ToLower(strings.TrimSpace(req.Tenant)), strings.ToLower(strings.TrimSpace(req.User))
 	if !slug.MatchString(req.Tenant) || !slug.MatchString(req.User) {
-		writeError(w, http.StatusBadRequest, "租户与用户名只能用小写字母、数字、- 与 _，以字母或数字开头")
+		writeMsg(w, r, http.StatusBadRequest, "租户与用户名只能用小写字母、数字、- 与 _，以字母或数字开头")
 		return
 	}
 	if reservedTenant(req.Tenant) {
-		writeError(w, http.StatusBadRequest, "gh-、gitee-、gl-、gitea-、bb-、google- 开头的租户留给第三方登录")
+		writeMsg(w, r, http.StatusBadRequest, "gh-、gitee-、gl-、gitea-、bb-、google- 开头的租户留给第三方登录")
 		return
 	}
 	if err := s.ensureTenantPolicy(req.Tenant); err != nil {
-		writeError(w, http.StatusInternalServerError, "写租户策略失败："+err.Error())
+		writeMsg(w, r, http.StatusInternalServerError, "写租户策略失败：%v", err)
 		return
 	}
 	s.setSession(w, req.Tenant, req.User)
@@ -331,7 +330,7 @@ func (s *Server) readPolicies() (map[string]any, error) {
 		return nil, err
 	}
 	if err := json.Unmarshal(data, &doc); err != nil {
-		return nil, fmt.Errorf("租户策略文件格式不对：%w", err)
+		return nil, msg("租户策略文件格式不对：%v", err)
 	}
 	return doc, nil
 }
@@ -362,14 +361,10 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-func writeError(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, map[string]string{"error": msg})
-}
-
 func readJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
 	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
-		writeError(w, http.StatusBadRequest, "请求体不是合法的 JSON")
+		writeMsg(w, r, http.StatusBadRequest, "请求体不是合法的 JSON")
 		return false
 	}
 	return true
@@ -379,16 +374,16 @@ func readJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 func (s *Server) project(w http.ResponseWriter, r *http.Request, id identity) (Project, bool) {
 	pid := r.PathValue("project")
 	if !slug.MatchString(pid) {
-		writeError(w, http.StatusNotFound, "项目不存在")
+		writeMsg(w, r, http.StatusNotFound, "项目不存在")
 		return Project{}, false
 	}
 	p, ok, err := s.store.Project(id.TenantID, pid)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return Project{}, false
 	}
 	if !ok {
-		writeError(w, http.StatusNotFound, "项目不存在")
+		writeMsg(w, r, http.StatusNotFound, "项目不存在")
 		return Project{}, false
 	}
 	return p, true

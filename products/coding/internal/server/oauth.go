@@ -167,7 +167,7 @@ func (p *Provider) tokenRequest(ctx context.Context, form url.Values) (tokenSet,
 	}
 	res, err := p.client.Do(req)
 	if err != nil {
-		return tokenSet{}, fmt.Errorf("连不上 %s", p.Name)
+		return tokenSet{}, msg("连不上 %s", p.Name)
 	}
 	defer res.Body.Close()
 	var out struct {
@@ -180,10 +180,10 @@ func (p *Provider) tokenRequest(ctx context.Context, form url.Values) (tokenSet,
 		ErrorDescription string          `json:"error_description"`
 	}
 	if err := json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&out); err != nil {
-		return tokenSet{}, fmt.Errorf("%s 返回的令牌格式不对", p.Name)
+		return tokenSet{}, msg("%s 返回的令牌格式不对", p.Name)
 	}
 	if out.AccessToken == "" {
-		return tokenSet{}, fmt.Errorf("%s 拒绝了授权：%s %s", p.Name, strings.Trim(string(out.Error), `"`), out.ErrorDescription)
+		return tokenSet{}, msg("%s 拒绝了授权：%s %s", p.Name, strings.Trim(string(out.Error), `"`), out.ErrorDescription)
 	}
 	t := tokenSet{Access: out.AccessToken, Refresh: out.RefreshToken, Scope: out.Scope}
 	if t.Scope == "" {
@@ -197,14 +197,28 @@ func (p *Provider) tokenRequest(ctx context.Context, form url.Values) (tokenSet,
 
 const userAgent = "coding-web (agent-runtime)"
 
-// GitError 是 Git 平台（或 Google）返回的错误；Message 不含令牌。
+// GitError 是调 Git 平台（或 Google）出的错：Message 是平台给的说明（原样，不含令牌）；
+// 出错的原因在我们这边时（连不上、地址不对……）用 Note，按请求的语言写。
 type GitError struct {
 	Provider string
 	Status   int
 	Message  string
+	Note     *Msg
 }
 
-func (e *GitError) Error() string { return fmt.Sprintf("%s %d：%s", e.Provider, e.Status, e.Message) }
+func (e *GitError) Error() string { return e.In(langZH) }
+
+// In 是按语言写的整句：平台名、状态码与说明。
+func (e *GitError) In(lang string) string {
+	return fmt.Sprintf("%s %d: %s", e.Provider, e.Status, e.detail(lang))
+}
+
+func (e *GitError) detail(lang string) string {
+	if e.Note != nil {
+		return e.Note.In(lang)
+	}
+	return e.Message
+}
 
 // api 调平台的 REST API。path 是相对 API 地址的路径（可带查询串）。令牌放 Authorization 头；Gitee 放 access_token 查询参数。
 // 连接失败时的错误不带地址（地址里可能有令牌）。
@@ -227,7 +241,7 @@ func (p *Provider) api(ctx context.Context, token, method, path string, body, ou
 	}
 	req, err := http.NewRequestWithContext(ctx, method, target, reader)
 	if err != nil {
-		return &GitError{Provider: p.Name, Status: http.StatusBadGateway, Message: "请求地址不对"}
+		return &GitError{Provider: p.Name, Status: http.StatusBadGateway, Note: msg("请求地址不对")}
 	}
 	req.Header.Set("User-Agent", userAgent)
 	if p.id == "github" {
@@ -244,7 +258,7 @@ func (p *Provider) api(ctx context.Context, token, method, path string, body, ou
 	}
 	res, err := p.client.Do(req)
 	if err != nil {
-		return &GitError{Provider: p.Name, Status: http.StatusBadGateway, Message: "连不上 " + p.Name}
+		return &GitError{Provider: p.Name, Status: http.StatusBadGateway, Note: msg("连不上 %s", p.Name)}
 	}
 	defer res.Body.Close()
 	data, _ := io.ReadAll(io.LimitReader(res.Body, 8<<20))
@@ -296,22 +310,22 @@ func errorMessage(data []byte) string {
 			}
 		}
 	}
-	return strings.Join(parts, "：")
+	return strings.Join(parts, "; ")
 }
 
-func writeGitError(w http.ResponseWriter, err error) {
+func writeGitError(w http.ResponseWriter, r *http.Request, err error) {
 	var ge *GitError
 	if errors.As(err, &ge) {
 		status := ge.Status
 		if status == http.StatusUnauthorized {
-			writeError(w, http.StatusForbidden, ge.Provider+" 授权失效，请在“账号与平台”里重新连接 "+ge.Provider)
+			writeMsg(w, r, http.StatusForbidden, "%s 授权失效，请在“账号与平台”里重新连接 %[1]s", ge.Provider)
 			return
 		}
 		if status < 400 || status > 599 {
 			status = http.StatusBadGateway
 		}
-		writeError(w, status, ge.Provider+"："+ge.Message)
+		writeMsg(w, r, status, "%s：%s", ge.Provider, ge.detail(requestLang(r)))
 		return
 	}
-	writeError(w, http.StatusBadGateway, err.Error())
+	writeErr(w, r, http.StatusBadGateway, err)
 }

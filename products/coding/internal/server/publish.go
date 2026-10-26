@@ -33,7 +33,7 @@ func (s *Server) updateProject(tenant, id string, fn func(*Project)) (Project, e
 				return ps, nil
 			}
 		}
-		return nil, errors.New("项目不存在")
+		return nil, msg("项目不存在")
 	})
 	return out, err
 }
@@ -47,15 +47,15 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identi
 	}
 	prov := s.providers[p.Provider]
 	if p.Repo == "" || prov == nil {
-		writeError(w, http.StatusBadRequest, "只有从已配置的 Git 平台克隆的工作区能推送并开 PR")
+		writeMsg(w, r, http.StatusBadRequest, "只有从已配置的 Git 平台克隆的工作区能推送并开 PR")
 		return
 	}
 	conn, token, err := s.connToken(r, id, prov)
 	if errors.Is(err, errNotConnected) {
-		writeError(w, http.StatusForbidden, "先在“账号与平台”里连接 "+prov.Name+"，才能推送到 "+prov.Name)
+		writeMsg(w, r, http.StatusForbidden, "先在“账号与平台”里连接 %s，才能推送到 %[1]s", prov.Name)
 		return
 	} else if err != nil {
-		writeGitError(w, err)
+		writeGitError(w, r, err)
 		return
 	}
 	var req struct {
@@ -73,7 +73,7 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identi
 		title = title[:200]
 	}
 	if s.busy(r, id, sess.WorkspaceID) {
-		writeError(w, http.StatusConflict, "还有任务在跑，等它结束再推送")
+		writeMsg(w, r, http.StatusConflict, "还有任务在跑，等它结束再推送")
 		return
 	}
 	dir := s.sessionDir(id.TenantID, sess)
@@ -89,7 +89,7 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identi
 
 	status, err := s.git.Run(ctx, dir, "status", "--porcelain")
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	dirty := strings.TrimSpace(status) != ""
@@ -97,12 +97,12 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identi
 	if branch == "" {
 		// 第一次推：工作区干净、也不比基线多提交时没有东西可推，不建分支。
 		if ahead, err := s.git.Run(ctx, dir, "rev-list", "--count", "origin/"+base+"..HEAD"); !dirty && err == nil && strings.TrimSpace(ahead) == "0" {
-			writeError(w, http.StatusBadRequest, "没有可推送的改动")
+			writeMsg(w, r, http.StatusBadRequest, "没有可推送的改动")
 			return
 		}
 		branch = branchName(title)
 		if _, err := s.git.Run(ctx, dir, "checkout", "-q", "-b", branch); err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			writeErr(w, r, http.StatusInternalServerError, err)
 			return
 		}
 	} else {
@@ -112,32 +112,32 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identi
 				args = []string{"checkout", "-q", "-b", branch} // 本地没有这个分支（例如工作区重建过）：从当前 HEAD 建
 			}
 			if _, err := s.git.Run(ctx, dir, args...); err != nil {
-				writeError(w, http.StatusInternalServerError, err.Error())
+				writeErr(w, r, http.StatusInternalServerError, err)
 				return
 			}
 		}
 		if !dirty && s.git.Head(ctx, dir) == sess.PushedHead {
-			writeError(w, http.StatusBadRequest, "没有可推送的改动")
+			writeMsg(w, r, http.StatusBadRequest, "没有可推送的改动")
 			return
 		}
 	}
 	if !agentBranch.MatchString(branch) {
-		writeError(w, http.StatusInternalServerError, "分支名不合法："+branch)
+		writeMsg(w, r, http.StatusInternalServerError, "分支名不合法：%s", branch)
 		return
 	}
 	if dirty {
 		if _, err := s.git.Run(ctx, dir, "add", "-A"); err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			writeErr(w, r, http.StatusInternalServerError, err)
 			return
 		}
 		if _, err := s.git.RunAs(ctx, dir, name, email, "commit", "-q", "-m", title); err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
+			writeErr(w, r, http.StatusInternalServerError, err)
 			return
 		}
 	}
 	if _, err := s.git.RunWithAuth(ctx, dir, host, gitUser, gitPass, "push", "-q", "origin", "HEAD:refs/heads/"+branch); err != nil {
 		_, _ = s.updateSession(id.TenantID, sess, func(x *Session) { x.Branch = branch })
-		writeError(w, http.StatusBadGateway, "推送失败（是否有这个仓库的写权限？）："+err.Error())
+		writeMsg(w, r, http.StatusBadGateway, "推送失败（是否有这个仓库的写权限？）：%v", err)
 		return
 	}
 	pushed := s.git.Head(ctx, dir)
@@ -147,7 +147,7 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identi
 	if prNumber == 0 {
 		body := strings.TrimSpace(req.Body)
 		if body == "" {
-			body = "由 Coding Agent 生成的改动，请审阅后再合并。"
+			body = msg("由 Coding Agent 生成的改动，请审阅后再合并。").In(requestLang(r))
 		}
 		prCtx, prCancel := ctxTimeout(r, 30*time.Second)
 		pr, err := prov.openPR(prCtx, token, p.Repo, title, branch, base, body)
@@ -155,7 +155,7 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identi
 		if err != nil {
 			// 分支已推上去；PR 没开成时把分支记下来，下次推送再试。
 			_, _ = s.updateSession(id.TenantID, sess, func(x *Session) { x.Branch, x.PushedHead = branch, pushed })
-			writeGitError(w, err)
+			writeGitError(w, r, err)
 			return
 		}
 		prURL, prNumber, created = pr.HTMLURL, pr.Number, true
@@ -164,7 +164,7 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request, id identi
 		x.Branch, x.PRURL, x.PRNumber, x.PushedHead = branch, prURL, prNumber, pushed
 	})
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"session": updated, "branch": branch, "pr_url": prURL, "pr_number": prNumber, "created": created, "head": pushed})
@@ -177,25 +177,25 @@ func (s *Server) handleResetBranch(w http.ResponseWriter, r *http.Request, id id
 		return
 	}
 	if s.busy(r, id, sess.WorkspaceID) {
-		writeError(w, http.StatusConflict, "还有任务在跑，等它结束再切换")
+		writeMsg(w, r, http.StatusConflict, "还有任务在跑，等它结束再切换")
 		return
 	}
 	dir := s.sessionDir(id.TenantID, sess)
 	ctx, cancel := ctxTimeout(r, 3*time.Minute)
 	defer cancel()
 	if status, _ := s.git.Run(ctx, dir, "status", "--porcelain"); strings.TrimSpace(status) != "" {
-		writeError(w, http.StatusConflict, "还有未提交的改动：先推送、提交或丢弃")
+		writeMsg(w, r, http.StatusConflict, "还有未提交的改动：先推送、提交或丢弃")
 		return
 	}
 	base := p.BaseBranch
 	if base == "" {
-		writeError(w, http.StatusBadRequest, "不知道基线分支")
+		writeMsg(w, r, http.StatusBadRequest, "不知道基线分支")
 		return
 	}
 	if p.Repo != "" && s.providers[p.Provider] != nil {
 		host, user, pass := s.gitCredentials(r, id, p)
 		if _, err := s.git.RunWithAuth(ctx, dir, host, user, pass, "fetch", "-q", "--depth", "50", "origin", base); err != nil {
-			writeError(w, http.StatusBadGateway, "拉取失败："+err.Error())
+			writeMsg(w, r, http.StatusBadGateway, "拉取失败：%v", err)
 			return
 		}
 	}
@@ -204,12 +204,12 @@ func (s *Server) handleResetBranch(w http.ResponseWriter, r *http.Request, id id
 		target = "origin/" + base
 	}
 	if _, err := s.git.Run(ctx, dir, "checkout", "-q", "-B", base, target); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	updated, err := s.updateSession(id.TenantID, sess, func(x *Session) { x.Branch, x.PRURL, x.PRNumber, x.PushedHead = "", "", 0, "" })
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeErr(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"session": updated, "head": s.git.Head(ctx, dir)})

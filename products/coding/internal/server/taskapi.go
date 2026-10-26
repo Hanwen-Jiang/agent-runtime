@@ -22,11 +22,12 @@ func NewTaskAPI(base string) *TaskAPI {
 	return &TaskAPI{base: base, client: &http.Client{Timeout: 30 * time.Second}, stream: &http.Client{}}
 }
 
-// APIError 是 Task API 返回的错误。
+// APIError 是 Task API 返回的错误：Message 是 task-service 给的说明（原样）；连不上这类我们这边的原因用 Note，按请求的语言写。
 type APIError struct {
 	Status  int
 	Code    string `json:"code"`
 	Message string `json:"message"`
+	Note    *Msg   `json:"-"`
 }
 
 func (e *APIError) Error() string {
@@ -46,7 +47,8 @@ func (a *TaskAPI) Call(ctx context.Context, token, method string, req, resp any)
 	r.Header.Set("Authorization", "Bearer "+token)
 	res, err := a.client.Do(r)
 	if err != nil {
-		return &APIError{Status: http.StatusBadGateway, Code: "unavailable", Message: "连不上 task-service"}
+		note := msg("连不上 task-service")
+		return &APIError{Status: http.StatusBadGateway, Code: "unavailable", Message: note.Error(), Note: note}
 	}
 	defer res.Body.Close()
 	data, _ := io.ReadAll(io.LimitReader(res.Body, 8<<20))

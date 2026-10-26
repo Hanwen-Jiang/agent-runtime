@@ -83,12 +83,12 @@ func (p *Provider) user(ctx context.Context, token string) (remoteUser, error) {
 			return remoteUser{}, err
 		}
 		if !u.EmailVerified {
-			return remoteUser{}, &GitError{Provider: p.Name, Status: http.StatusForbidden, Message: "这个 Google 账号的邮箱还没有验证"}
+			return remoteUser{}, &GitError{Provider: p.Name, Status: http.StatusForbidden, Note: msg("这个 Google 账号的邮箱还没有验证")}
 		}
 		login, _, _ := strings.Cut(u.Email, "@")
 		return remoteUser{ID: u.Sub, Login: login, Name: u.Name, AvatarURL: u.Picture, Email: u.Email}, nil
 	}
-	return remoteUser{}, fmt.Errorf("不认识的登录方式 %s", p.id)
+	return remoteUser{}, msg("不认识的登录方式 %s", p.id)
 }
 
 // remoteRepo 是“我的仓库”里的一项，各家统一成这个形状。
@@ -215,7 +215,7 @@ func (p *Provider) repoPage(ctx context.Context, token string, page int) (out []
 		}
 		return out, res.Next != "", nil
 	}
-	return nil, false, &GitError{Provider: p.Name, Status: http.StatusBadRequest, Message: p.Name + " 不是 Git 平台"}
+	return nil, false, &GitError{Provider: p.Name, Status: http.StatusBadRequest, Note: msg("%s 不是 Git 平台", p.Name)}
 }
 
 // repoOf 认出这一家的仓库地址（https，主机与网页地址相同），返回仓库路径：owner/repo，GitLab 可以有多级群组。
@@ -348,7 +348,7 @@ func (p *Provider) openPR(ctx context.Context, token, repo, title, head, base, b
 		}
 		return pullRequest{HTMLURL: pr.Links.HTML.Href, Number: pr.ID}, err
 	}
-	return pullRequest{}, &GitError{Provider: p.Name, Status: http.StatusBadRequest, Message: p.Name + " 不是 Git 平台"}
+	return pullRequest{}, &GitError{Provider: p.Name, Status: http.StatusBadRequest, Note: msg("%s 不是 Git 平台", p.Name)}
 }
 
 // existingPR 找同一分支上已经打开的 PR/MR。

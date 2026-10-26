@@ -1,6 +1,7 @@
 // 界面文字的多语言。每种语言一份同样键的字典；缺的键回落到中文。取值是字符串（{name} 是占位）或函数（英文要分单复数时）。
 // 语言按用户选的（存在 localStorage 的 cw_lang），没选过时按浏览器语言；换语言时重新载入页面，所有文字按新语言重建。
-// 服务端返回的错误说明与示例仓库的文字还是中文，不经这里。
+// 服务端给的文字（错误说明、OAuth 回调带回的错误、示例仓库）由服务端按 cw_lang Cookie 翻译（internal/server/i18n.go），
+// 这里每次载入都把选定的语言写进这个 Cookie。
 
 const plural = (n, one, many) => (Number(n) === 1 ? one : many);
 
@@ -761,7 +762,8 @@ const DICTS = { zh: ZH, en: EN };
 
 function initialLang() {
   let saved = null;
-  try { saved = localStorage.getItem("cw_lang"); } catch { /* 无痕窗口等 */ }
+  try { saved = localStorage.getItem("cw_lang"); } catch { /* 无痕窗口等：再看 Cookie */ }
+  if (!DICTS[saved]) saved = (document.cookie.match(/(?:^|;\s*)cw_lang=(\w+)/) || [])[1];
   if (DICTS[saved]) return saved;
   for (const l of navigator.languages || [navigator.language || ""]) {
     const code = String(l).toLowerCase();
@@ -773,6 +775,8 @@ function initialLang() {
 
 export const lang = initialLang();
 export const locale = LANGS.find((l) => l.id === lang).tag;
+// 服务端按这个 Cookie 写错误说明与示例；整页跳转（OAuth 回调）也带着它，所以用 Cookie 而不是请求头。
+document.cookie = `cw_lang=${lang}; path=/; max-age=31536000; samesite=lax`;
 
 export function t(key, params = {}) {
   const v = DICTS[lang][key] ?? ZH[key];
@@ -784,6 +788,7 @@ export function t(key, params = {}) {
 // setLang 记下选择并重新载入：常量里的文字（状态、沙箱等级…）在载入时按语言建好。
 export function setLang(id) {
   if (!DICTS[id] || id === lang) return;
-  try { localStorage.setItem("cw_lang", id); } catch { /* 存不下时重新载入后还是原来的语言 */ }
+  try { localStorage.setItem("cw_lang", id); } catch { /* 存不下时靠 Cookie 记着 */ }
+  document.cookie = `cw_lang=${id}; path=/; max-age=31536000; samesite=lax`;
   location.reload();
 }
