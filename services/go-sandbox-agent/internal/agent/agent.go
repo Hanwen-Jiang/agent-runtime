@@ -131,6 +131,8 @@ type execResponse struct {
 	Stdout    []byte `json:"stdout"`
 	Stderr    []byte `json:"stderr"`
 	Truncated bool   `json:"truncated"`
+	// CPUMillis 是命令用掉的 CPU 时间（用户态加内核态，含它等待过的子进程），计量用（docs/plan/cloud-deploy.md D-07、D-10）。
+	CPUMillis int64 `json:"cpu_ms"`
 }
 
 func (s *server) exec(w http.ResponseWriter, r *http.Request) {
@@ -197,6 +199,9 @@ func (s *server) exec(w http.ResponseWriter, r *http.Request) {
 	}
 	resp.Stdout, resp.Stderr = stdout.Bytes(), stderr.Bytes()
 	resp.Truncated = stdout.Truncated() || stderr.Truncated()
+	if ps := cmd.ProcessState; ps != nil {
+		resp.CPUMillis = (ps.UserTime() + ps.SystemTime()).Milliseconds()
+	}
 	writeJSON(w, http.StatusOK, resp)
 }
 

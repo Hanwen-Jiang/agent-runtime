@@ -23,6 +23,7 @@ from agentruntime_core.dev.tool_driver import LocalToolDriverProvider
 from agentruntime_core.providers.object_store import ObjectStoreProvider
 
 from agentruntime_worker.config import WorkerConfig
+from agentruntime_worker.telemetry import worker_telemetry
 from agentruntime_worker.tools.catalog import DevCatalog, ToolCatalog, latest, latest_spec
 from agentruntime_worker.tools.mcp import McpGateway
 from agentruntime_worker.tools.platform import CONTEXT_READ, PlatformToolsConfig, register_platform_tools
@@ -88,6 +89,7 @@ def dev_tools(config: WorkerConfig) -> LocalToolDriverProvider:
             ),
             objects=context_objects(config),
             sandboxes=sandboxes(config),
+            telemetry=worker_telemetry(),
         )
         _providers[key] = provider
     return provider

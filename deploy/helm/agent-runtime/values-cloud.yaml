@@ -80,6 +80,8 @@ worker:
         agent_image: ghcr.io/agentruntime/sandbox-agent:0.1.0
         connect: pod_ip
         workspace_claim: workspaces
+        # 每个租户同时最多几个沙箱（D-10）；命名空间的总量另由 ResourceQuota 限住。
+        max_envs_per_scope: 4
       kata:
         kind: k8s
         isolation: microvm
@@ -91,6 +93,7 @@ worker:
         workspace_claim: workspaces
         # microVM 启动比容器慢。
         startup_timeout_s: 120
+        max_envs_per_scope: 2
   pools:
     task:
       minReplicas: 1

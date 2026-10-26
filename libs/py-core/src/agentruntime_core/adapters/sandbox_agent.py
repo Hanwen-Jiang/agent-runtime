@@ -61,8 +61,10 @@ class AgentClient:
         self.raise_for(status, data)
         try:
             out = json.loads(data)
+            cpu_ms = out.get("cpu_ms")
             return ExecResult(
-                exit_code=out["exit_code"], stdout=_unb64(out.get("stdout")), stderr=_unb64(out.get("stderr")), timed_out=bool(out["timed_out"])
+                exit_code=out["exit_code"], stdout=_unb64(out.get("stdout")), stderr=_unb64(out.get("stderr")), timed_out=bool(out["timed_out"]),
+                cpu_time=timedelta(milliseconds=int(cpu_ms)) if isinstance(cpu_ms, int) else None,
             )
         except (ValueError, KeyError, TypeError):
             raise TransientError("sandbox_bad_response", "沙箱返回的结果格式不对") from None

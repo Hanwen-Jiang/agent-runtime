@@ -1,4 +1,4 @@
-# Temporal（官方 Chart temporalio/temporal，版本见 deploy/cluster/versions.env；docs/plan/cloud-deploy.md D-03）。
+# Temporal（官方 Chart temporalio/temporal，版本见 deploy/cluster/versions.conf；docs/plan/cloud-deploy.md D-03）。
 # 存储用 deploy/data/postgres.yaml 的 temporal 与 temporal_visibility 两个库；不带 Cassandra、Elasticsearch、Prometheus、Grafana。
 # 键名随 Chart 版本变过，升级时对照该版本的 values.yaml。Runtime 用的命名空间 agent-runtime 由 deploy/data/install.sh 建，
 # 保留期要短于业务对象的生命周期（计划 S-06）。

@@ -2,7 +2,7 @@
 
 静态检查（总是跑）。线上的验收要真机器，脚本在 deploy/cluster/verify.sh、deploy/data/restore-drill.sh、scripts/sse_probe.py：
 - 集群基线：k3s 加密 Secret、Pod Security 默认值、containerd 模板加了 runsc、Traefik 跳 https 且不压缩不缓冲；sandboxes 是
-  restricted；RuntimeClass gvisor 与 kata；装脚本按 versions.env 装、不直接把网上的脚本接给 sh、gVisor 核对 sha512。
+  restricted；RuntimeClass gvisor 与 kata；装脚本按 versions.conf 装、不直接把网上的脚本接给 sh、gVisor 核对 sha512。
 - 数据层：Postgres 的角色都不是超级用户、没有 BYPASSRLS；每天备份到 R2；恢复演练从备份起新集群、不往原处归档。
 - Runtime 的 Chart：入口是 Traefik 的 IngressRoute（或 Gateway API、通用 Ingress），不再是 nginx，只转 task-service 的 http 端口；
   Worker 在沙箱命名空间里只能管 Pod，读不了 Secret，别的服务不挂令牌；ObjectStore 的 S3 变量；可写的 SecretStore 加种子。
@@ -41,7 +41,7 @@ def cluster_docs() -> list[dict[str, Any]]:
 
 def versions() -> dict[str, str]:
     out = {}
-    for line in (CLUSTER / "versions.env").read_text("utf-8").splitlines():
+    for line in (CLUSTER / "versions.conf").read_text("utf-8").splitlines():
         if line.strip() and not line.startswith("#"):
             key, _, value = line.partition("=")
             out[key.strip()] = value.strip()
@@ -75,7 +75,7 @@ def test_versions_are_pinned_and_every_script_variable_is_defined() -> None:
         assert value and value.lower() != "latest" and re.search(r"\d", value), f"{key} 要写明版本"
     for script in SCRIPTS:
         for var in set(re.findall(r"\$\{?([A-Z][A-Z0-9_]*_VERSION|GVISOR_RELEASE)\b", script.read_text("utf-8"))):
-            assert var in pinned, f"{script.name} 用了 versions.env 里没有的 {var}"
+            assert var in pinned, f"{script.name} 用了 versions.conf 里没有的 {var}"
 
 
 @pytest.mark.parametrize("script", SCRIPTS, ids=[s.relative_to(REPO_ROOT).as_posix() for s in SCRIPTS])
@@ -419,6 +419,51 @@ def test_memory_requests_leave_room_for_sandboxes(cloud: list[dict[str, Any]]) -
     reserved = 3.5
     total = chart_memory_requests(cloud) + data_memory_requests() + sandboxes + reserved
     assert total <= 60, f"64 GB 的机器上 requests 合计 {total:.1f} GiB，超出预算（deploy/cluster/README.md）"
+
+
+# --- D-10 面板 ---
+
+
+def dashboard() -> dict[str, Any]:
+    [cm] = docs(DATA / "dashboards" / "agent-runtime.yaml")
+    assert cm["kind"] == "ConfigMap" and cm["metadata"]["namespace"] == "observability"
+    grafana = yaml.safe_load((DATA / "values" / "grafana.yaml").read_text("utf-8"))
+    assert grafana["sidecar"]["dashboards"]["label"] in cm["metadata"]["labels"], "Grafana 的 sidecar 按这个标签收面板"
+    return json.loads(cm["data"]["agent-runtime.json"])
+
+
+def worker_source() -> str:
+    root = REPO_ROOT / "services" / "py-worker" / "src"
+    return "\n".join(p.read_text("utf-8") for p in root.rglob("*.py"))
+
+
+def test_dashboard_queries_spans_and_attributes_the_code_emits() -> None:
+    board = dashboard()
+    queries = [t["query"] for p in board["panels"] for t in p["targets"] if t.get("query")]
+    assert queries
+    source = worker_source()
+    for query in queries:
+        for name in re.findall(r'name = \\?"([^"\\]+)\\?"', query):
+            assert f'"{name}"' in source, f"面板查的 span {name} 代码里没有"
+        for attr in re.findall(r"span\.([a-z_.]+)", query):
+            if attr in ("tenant_id",):
+                continue  # 绑定租户的 Telemetry 自动加上
+            assert f'"{attr}"' in source, f"面板用的属性 {attr} 代码里没有"
+    titles = " ".join(p["title"] for p in board["panels"])
+    for wanted in ("Task", "模型花费", "沙箱"):
+        assert wanted in titles, f"面板缺“{wanted}”（D-10：任务数、各后端的沙箱时长与花费、模型花费）"
+
+
+def test_tempo_can_answer_traceql_metrics() -> None:
+    tempo = yaml.safe_load((DATA / "values" / "tempo.yaml").read_text("utf-8"))["tempo"]
+    assert tempo["metricsGenerator"]["enabled"] is True
+    assert "local-blocks" in tempo["overrides"]["defaults"]["metrics_generator"]["processors"]
+
+
+def test_backends_have_per_tenant_quotas() -> None:
+    backends = cloud_values()["worker"]["shell"]["backends"]
+    for name, backend in backends.items():
+        assert int(backend.get("max_envs_per_scope", 0)) > 0, f"后端 {name} 要有每个租户的沙箱配额（D-10）"
 
 
 # --- kind 上核对 Worker 的 RBAC（AR_TEST_KIND=1） ---

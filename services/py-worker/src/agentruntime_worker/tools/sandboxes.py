@@ -15,7 +15,8 @@ AR_TOOL_SHELL_SANDBOX=sandbox 时 shell_run 经 Sandbox 接口跑：每条命令
       }
     }
 
-- k8s：agentruntime_core.adapters.k8s_sandbox；可选 kubeconfig（JSON；不给时在集群内用 ServiceAccount）。
+- k8s：agentruntime_core.adapters.k8s_sandbox；可选 kubeconfig（JSON；不给时在集群内用 ServiceAccount）、
+  max_envs_per_scope（每个租户同时最多几个环境，D-10；超了 denied）。
 - cloudflare：agentruntime_core.adapters.cloudflare_sandbox；桥的令牌取自 SecretStore 平台作用域的 sandbox/cloudflare-bridge-token。
 - local：本地子进程（开发实现），不隔离，只给开发与测试。
 用哪个后端由租户策略的 sandbox.backend 决定（经 Registry 读当前版本，按租户缓存一分钟），没写时用 default；模型与请求都不能指定。
@@ -166,6 +167,8 @@ class Sandboxes:
                 fields["agent_port"] = int(spec["agent_port"])
             if "run_as_user" in spec:
                 fields["run_as_user"] = int(spec["run_as_user"])
+            if "max_envs_per_scope" in spec:
+                fields["max_envs_per_scope"] = int(spec["max_envs_per_scope"])
             if "startup_timeout_s" in spec:
                 fields["startup_timeout"] = timedelta(seconds=float(spec["startup_timeout_s"]))
             config = K8sSandboxConfig(images={"python": str(spec.get("image") or "python:3.13-slim")}, **fields)

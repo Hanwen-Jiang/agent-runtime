@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 import os
 from collections.abc import Mapping
@@ -16,6 +17,7 @@ from typing import Any
 
 import pytest
 
+from agentruntime_core.dev.telemetry import ConsoleTelemetryProvider
 from agentruntime_core.dev.tool_driver import LocalToolDriverProvider
 from agentruntime_core.errors import InvalidError
 from agentruntime_core.tenancy import TenantContext
@@ -35,7 +37,7 @@ def policy_from(policies: Mapping[str, Mapping[str, Any]]):
     return lookup
 
 
-def make(tmp_path: Path, policies: Mapping[str, Mapping[str, Any]] | None = None) -> LocalToolDriverProvider:
+def make(tmp_path: Path, policies: Mapping[str, Mapping[str, Any]] | None = None, telemetry: Any = None) -> LocalToolDriverProvider:
     workspaces = tmp_path / "workspaces"
     (workspaces / "t1" / "w1").mkdir(parents=True)
     (workspaces / "t1" / "w1" / "seed.txt").write_text("种子", "utf-8")
@@ -46,7 +48,7 @@ def make(tmp_path: Path, policies: Mapping[str, Mapping[str, Any]] | None = None
         policy=policy_from(policies or {}),
     )
     provider = LocalToolDriverProvider()
-    register_platform_tools(provider, PlatformToolsConfig(workspace_root=workspaces, shell_sandbox="sandbox"), sandboxes=boxes)
+    register_platform_tools(provider, PlatformToolsConfig(workspace_root=workspaces, shell_sandbox="sandbox"), sandboxes=boxes, telemetry=telemetry)
     return provider
 
 
@@ -76,6 +78,20 @@ async def test_tenant_policy_picks_the_backend(tmp_path: Path) -> None:
     provider = make(tmp_path, {"t2": {"sandbox": {"backend": "other"}}})
     assert (await shell(provider, ["python", "-c", "print(1)"]))["sandbox"] == "plain", "没写策略用 default"
     assert (await shell(provider, ["python", "-c", "print(1)"], T2))["sandbox"] == "other"
+
+
+async def test_each_run_is_metered_in_a_span_without_the_command_or_output(tmp_path: Path) -> None:
+    """D-07、D-10：一次运行一个 runtime.sandbox span，记后端、隔离强度、存活与执行时间；不记命令与输出。"""
+    telemetry = ConsoleTelemetryProvider(stream=io.StringIO())
+    provider = make(tmp_path, telemetry=telemetry)
+    await shell(provider, ["python", "-c", "print('secret-output-7f3a')"])
+    await telemetry.bind(T1).flush()
+    [span] = [s for s in telemetry.exported_spans if s.name == "runtime.sandbox"]
+    attrs = span.attributes
+    assert attrs["sandbox.backend"] == "plain" and attrs["sandbox.isolation"] == "none" and attrs["sandbox.kind"] == "local"
+    assert attrs["tenant_id"] == "t1" and attrs["gen_ai.tool.name"] == "shell_run"
+    assert attrs["sandbox.lifetime_ms"] >= attrs["sandbox.exec_ms"] >= 0 and attrs["sandbox.timed_out"] is False
+    assert "secret-output-7f3a" not in json.dumps(attrs, ensure_ascii=False, default=str), "span 里不记命令与输出"
 
 
 async def test_unknown_backend_in_policy_is_rejected(tmp_path: Path) -> None:

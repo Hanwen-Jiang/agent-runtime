@@ -14,13 +14,14 @@ import asyncio
 import json
 from datetime import timedelta
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from agentruntime_core.adapters import kindtest
 from agentruntime_core.adapters.k8s_sandbox import LABELS, K8sPodSandboxProvider, K8sSandboxConfig
 from agentruntime_core.adapters.kube import KubeAPI, label_selector
-from agentruntime_core.conformance.common import expect_error, tenant_a
+from agentruntime_core.conformance.common import expect_error, tenant_a, tenant_b
 from agentruntime_core.conformance.sandbox import SandboxWithWorkspaceConformance
 from agentruntime_core.errors import ErrorCategory
 from agentruntime_core.providers.sandbox import SandboxSpec
@@ -29,7 +30,9 @@ from agentruntime_core.testing import FaultInjector
 TIMEOUT = timedelta(seconds=60)
 
 
-def make_provider(cluster: kindtest.Cluster, faults: FaultInjector | None = None, *, token_key: bytes = b"k" * 32) -> K8sPodSandboxProvider:
+def make_provider(
+    cluster: kindtest.Cluster, faults: FaultInjector | None = None, *, token_key: bytes = b"k" * 32, **overrides: Any
+) -> K8sPodSandboxProvider:
     config = K8sSandboxConfig(
         namespace="sandboxes",
         images={"python": cluster.python_image},
@@ -38,6 +41,7 @@ def make_provider(cluster: kindtest.Cluster, faults: FaultInjector | None = None
         workspace_claim="workspaces",
         image_pull_policy="IfNotPresent",
         startup_timeout=timedelta(minutes=3),
+        **overrides,
     )
     return K8sPodSandboxProvider(KubeAPI.from_kubeconfig(cluster.kubeconfig), config, token_key=token_key, faults=faults)
 
@@ -90,6 +94,30 @@ async def test_sandbox_runs_as_non_root_with_a_read_only_root(harness: Harness) 
     assert out == "10001"
     code, out, err = await run(harness, "open('/etc/x', 'w')")
     assert code != 0 and ("Read-only file system" in err or "Permission denied" in err)
+
+
+async def test_exec_reports_cpu_time_for_metering(harness: Harness) -> None:
+    """D-10：agent 报出命令用掉的 CPU 时间，Worker 记进 runtime.sandbox span。"""
+    box = harness.provider.bind(tenant_a())
+    env = await box.create(SandboxSpec())
+    res = await box.exec(env.env_id, ["python", "-c", "import time\nend = time.time() + 0.5\nwhile time.time() < end: pass"], timeout=TIMEOUT)
+    assert res.cpu_time is not None and res.cpu_time >= timedelta(milliseconds=200), res.cpu_time
+
+
+async def test_each_tenant_has_its_own_quota(harness: Harness) -> None:
+    """D-10：一个租户同时最多 max_envs_per_scope 个环境，超了 denied；别的租户不受影响，销毁后又能建。"""
+    limited = make_provider(harness.cluster, max_envs_per_scope=1)
+    try:
+        a, b = limited.bind(tenant_a()), limited.bind(tenant_b())
+        first = await a.create(SandboxSpec())
+        with expect_error(ErrorCategory.DENIED, "sandbox_quota_exceeded"):
+            await a.create(SandboxSpec())
+        other = await b.create(SandboxSpec())
+        await a.destroy(first.env_id)
+        await a.create(SandboxSpec())
+        await b.destroy(other.env_id)
+    finally:
+        await limited.aclose()
 
 
 async def test_sandbox_has_no_service_account_token(harness: Harness) -> None:

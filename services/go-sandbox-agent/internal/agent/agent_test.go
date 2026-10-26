@@ -40,6 +40,12 @@ func helper(mode string, args []string) {
 	case "sleep":
 		d, _ := time.ParseDuration(args[0])
 		time.Sleep(d)
+	case "burn":
+		d, _ := time.ParseDuration(args[0])
+		x := 0
+		for end := time.Now().Add(d); time.Now().Before(end); x++ {
+		}
+		fmt.Print(x > 0)
 	case "env":
 		v, ok := os.LookupEnv(args[0])
 		if !ok {
@@ -164,6 +170,15 @@ func TestExecReturnsOutputAndExitCode(t *testing.T) {
 	status, out, _ = h.exec(h.run("fail", "3", "bad"), "", 30*time.Second)
 	if status != 200 || out.ExitCode == nil || *out.ExitCode != 3 || string(out.Stderr) != "bad" {
 		t.Fatalf("非零退出码照常返回：%d %+v", status, out)
+	}
+}
+
+func TestExecReportsCPUTimeForMetering(t *testing.T) {
+	h := newHarness(t, nil)
+	_, busy, _ := h.exec(h.run("burn", "300ms"), "", 30*time.Second)
+	_, idle, _ := h.exec(h.run("sleep", "300ms"), "", 30*time.Second)
+	if busy.CPUMillis < 100 || idle.CPUMillis > busy.CPUMillis {
+		t.Fatalf("CPU 时间：忙 %dms，闲 %dms", busy.CPUMillis, idle.CPUMillis)
 	}
 }
 

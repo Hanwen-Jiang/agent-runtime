@@ -12,6 +12,14 @@ tempo:
   resources:
     requests: {cpu: 250m, memory: 512Mi}
     limits: {cpu: "1", memory: 1536Mi}
+  # Grafana 的面板（deploy/data/dashboards，D-10）用 TraceQL 的指标查询（rate、sum_over_time 等），要开 local-blocks 处理器。
+  # 键名按 TEMPO_CHART_VERSION 的 values.yaml 核对。
+  metricsGenerator:
+    enabled: true
+  overrides:
+    defaults:
+      metrics_generator:
+        processors: [local-blocks]
 persistence:
   enabled: true
   size: 20Gi

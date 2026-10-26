@@ -30,6 +30,7 @@ import os
 import re
 import shutil
 import socket
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -43,6 +44,7 @@ from agentruntime_core.enums import Effect
 from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError, ProviderError, TransientError
 from agentruntime_core.providers.object_store import ObjectStoreProvider
 from agentruntime_core.providers.sandbox import SandboxSpec
+from agentruntime_core.providers.telemetry import TelemetryProvider
 from agentruntime_core.providers.tool_driver import ToolHandler, ToolInvocation, ToolSpec
 from agentruntime_core.tenancy import TenantContext
 
@@ -106,14 +108,15 @@ def register_platform_tools(
     *,
     objects: ObjectStoreProvider | None = None,
     sandboxes: Sandboxes | None = None,
+    telemetry: TelemetryProvider | None = None,
 ) -> list[str]:
     """按配置登记平台内工具，返回登记了的名字。给了 objects（Context Builder 外置内容的 ObjectStore）就登记 context_read；
-    shell_sandbox = sandbox 时 shell_run 用 sandboxes 里的后端。"""
+    shell_sandbox = sandbox 时 shell_run 用 sandboxes 里的后端，每次运行记一个 runtime.sandbox span（给了 telemetry 时）。"""
     if config.shell_sandbox == "sandbox" and config.workspace_root is not None and sandboxes is None:
         raise ValueError("shell_sandbox = sandbox 时要给沙箱后端（AR_SANDBOX_BACKENDS_FILE）")
     tools: list[tuple[ToolSpec, ToolHandler]] = []
     if config.workspace_root is not None:
-        tools += _Workspaces(Path(config.workspace_root), config, sandboxes).tools()
+        tools += _Workspaces(Path(config.workspace_root), config, sandboxes, telemetry).tools()
     if config.fetch_hosts:
         tools.append(_Fetcher(config).tool())
     if objects is not None:
@@ -127,10 +130,13 @@ def register_platform_tools(
 
 
 class _Workspaces:
-    def __init__(self, root: Path, config: PlatformToolsConfig, sandboxes: Sandboxes | None = None) -> None:
+    def __init__(
+        self, root: Path, config: PlatformToolsConfig, sandboxes: Sandboxes | None = None, telemetry: TelemetryProvider | None = None
+    ) -> None:
         self.root = root
         self.config = config
         self.sandboxes = sandboxes
+        self.telemetry = telemetry
 
     def tools(self) -> list[tuple[ToolSpec, ToolHandler]]:
         c = self.config
@@ -344,11 +350,15 @@ class _Workspaces:
         return {"exit_code": proc.returncode, "timed_out": False, "sandbox": "docker", **self._outputs(stdout, stderr)}
 
     async def _sandbox_shell(self, invocation: ToolInvocation, root: Path, argv: list[str], timeout: int) -> Any:
-        """经 Sandbox 接口：按租户策略选后端，建一个绑定本 workspace、断网的环境，跑完销毁。"""
+        """经 Sandbox 接口：按租户策略选后端，建一个绑定本 workspace、断网的环境，跑完销毁。
+
+        计量（docs/plan/cloud-deploy.md D-07、D-10）：每次运行一个 runtime.sandbox span，记后端、隔离强度、环境的存活时间、
+        执行时间与 CPU 时间（后端量得出时）；Grafana 的面板按它算各后端的沙箱时长。不记命令与输出。"""
         assert self.sandboxes is not None
         backend = await self.sandboxes.for_tenant(invocation.tenant_id)
         workspace = root.name
-        box = backend.provider.bind(TenantContext(tenant_id=invocation.tenant_id, workspace_id=workspace))
+        tenant = TenantContext(tenant_id=invocation.tenant_id, workspace_id=workspace)
+        box = backend.provider.bind(tenant)
         c = self.config
         spec = SandboxSpec(
             runtime="python",
@@ -358,16 +368,33 @@ class _Workspaces:
             idle_timeout=timedelta(seconds=timeout + 120),
             workspace_id=workspace,
         )
-        env = await box.create(spec)
-        try:
-            result = await box.exec(env.env_id, argv, timeout=timedelta(seconds=timeout))
-        except InvalidError as err:
-            if err.code == "command_not_found":
-                raise InvalidError("command_not_found", f"启动不了 {argv[0]}") from None
-            raise
-        finally:
-            with contextlib.suppress(ProviderError):
-                await box.destroy(env.env_id)
+        attributes = {
+            "gen_ai.tool.name": "shell_run", "sandbox.backend": backend.name, "sandbox.kind": backend.kind,
+            "sandbox.isolation": backend.isolation, "sandbox.cpu_millis": spec.cpu_millis, "sandbox.memory_mb": spec.memory_mb,
+        }
+        span_cm = self.telemetry.bind(tenant).start_span("runtime.sandbox", attributes=attributes) if self.telemetry else contextlib.nullcontext()
+        async with span_cm as span:
+            started = time.monotonic()
+            env = await box.create(spec)
+            ran = time.monotonic()
+            result = None
+            try:
+                result = await box.exec(env.env_id, argv, timeout=timedelta(seconds=timeout))
+            except InvalidError as err:
+                if err.code == "command_not_found":
+                    raise InvalidError("command_not_found", f"启动不了 {argv[0]}") from None
+                raise
+            finally:
+                exec_ms = int((time.monotonic() - ran) * 1000)
+                with contextlib.suppress(ProviderError):
+                    await box.destroy(env.env_id)
+                if span is not None:
+                    meter: dict[str, Any] = {"sandbox.lifetime_ms": int((time.monotonic() - started) * 1000), "sandbox.exec_ms": exec_ms}
+                    if result is not None:
+                        meter["sandbox.timed_out"] = result.timed_out
+                        if result.cpu_time is not None:
+                            meter["sandbox.cpu_ms"] = int(result.cpu_time.total_seconds() * 1000)
+                    span.set_attributes(meter)
         return {"exit_code": result.exit_code, "timed_out": result.timed_out, "sandbox": backend.name, **self._outputs(result.stdout, result.stderr)}
 
     def _outputs(self, stdout: bytes, stderr: bytes) -> dict[str, Any]:

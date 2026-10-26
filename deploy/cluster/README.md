@@ -7,7 +7,7 @@
 
 | 位置 | 内容 |
 | --- | --- |
-| `deploy/cluster/versions.env` | 所有组件的版本（装之前核对） |
+| `deploy/cluster/versions.conf` | 所有组件的版本（装之前核对） |
 | `deploy/cluster/install.sh` | 机器 → k3s 集群：gVisor、k3s、Kata、基础清单、cert-manager、KEDA、CloudNativePG |
 | `deploy/cluster/verify.sh` | 核对 D-02 验收 1–3（RuntimeClass、gVisor 与 Kata 的内核、沙箱断网、没有令牌） |
 | `deploy/cluster/k3s/` | k3s 配置、Pod Security 默认值、containerd 模板（runsc）、Traefik 配置 |

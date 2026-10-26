@@ -6,6 +6,7 @@
 - 环境只属于创建它的作用域；别的作用域访问：not_found。销毁后访问：not_found。destroy 重复调用不报错。
 - argv[0] 为 spec.runtime 时由实现映射到环境内的解释器，例如 runtime = python 时 ["python", "-c", "..."]。
 - exec 超时不抛异常：返回 timed_out=True，exit_code 为 None。代码自身的非零退出码照常返回。
+- ExecResult.cpu_time 是命令用掉的 CPU 时间（计量用，docs/plan/cloud-deploy.md D-10）；实现量不出来时为 None。
 - 文件路径相对于环境的工作目录；绝对路径、含 .. 段或反斜杠：invalid。读不存在的文件：not_found。
 - 不同环境的文件互不可见。
 - spec.workspace_id 非空时，环境的工作目录就是本租户的这个 workspace（Worker 的工作区类工具读写的同一处，
@@ -48,6 +49,7 @@ class ExecResult:
     stdout: bytes
     stderr: bytes
     timed_out: bool
+    cpu_time: timedelta | None = None
 
 
 class Sandbox(Protocol):

@@ -15,6 +15,8 @@ Pod 的样子：
 作用域：Pod 的注解里记着所属作用域（租户 ID 或 _platform），标签里是它的哈希；别的作用域访问一律 not_found。
 agent 的令牌由 token_key 对 env_id 做 HMAC 得到，不存放：同一套配置的任何 Worker 进程都能连上，别人猜不出。
 空闲超时：注解里记着到期时间，每次用时顺延；新建环境时顺手删掉到期的 Pod（最多每分钟一次）。activeDeadlineSeconds 兜底。
+每个作用域的配额（max_envs_per_scope，docs/plan/cloud-deploy.md D-10）：新建前按标签数一数这个作用域还活着的 Pod，到上限就 denied
+（sandbox_quota_exceeded）。数的是集群里的 Pod，所以对所有 Worker 副本一起生效；同时并发新建时可能多出几个，是软上限。
 """
 
 from __future__ import annotations
@@ -35,7 +37,7 @@ from agentruntime_core.adapters.kube import KubeAPI, error_for, label_selector
 from agentruntime_core.adapters.sandbox_agent import AgentClient, AgentEndpoint, check_path
 from agentruntime_core.dev._common import scope_id
 from agentruntime_core.dev.sandbox import workspace_subpath
-from agentruntime_core.errors import InvalidError, NotFoundError, TransientError
+from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError, TransientError
 from agentruntime_core.providers.sandbox import ExecResult, SandboxEnv, SandboxSpec
 from agentruntime_core.tenancy import Scope, TenantContext, platform_scope, tenant_scope
 from agentruntime_core.testing import FaultInjector
@@ -69,6 +71,8 @@ class K8sSandboxConfig:
     tmp_size_mb: int = 512
     startup_timeout: timedelta = timedelta(minutes=2)
     max_lifetime: timedelta = timedelta(hours=6)
+    # 一个作用域（租户）同时最多几个环境；0 表示不限（只受命名空间的 ResourceQuota 约束）。
+    max_envs_per_scope: int = 0
 
 
 class K8sPodSandboxProvider:
@@ -163,6 +167,12 @@ class K8sPodSandbox:
             raise InvalidError("invalid_argument", "cpu_millis、memory_mb、idle_timeout 都要大于 0")
         workspace = self._workspace_volume(spec.workspace_id) if spec.workspace_id else None
         await p.reap()
+        if c.max_envs_per_scope > 0:
+            selector = label_selector({**LABELS, OWNER_LABEL: self._owner_label})
+            listed = await p.kube.json("GET", p.pods_path() + "?labelSelector=" + selector)
+            alive = [pod for pod in listed.get("items") or [] if not (pod.get("metadata") or {}).get("deletionTimestamp")]
+            if len(alive) >= c.max_envs_per_scope:
+                raise DeniedError("sandbox_quota_exceeded", f"同时最多 {c.max_envs_per_scope} 个沙箱，先等前面的跑完")
         env_id = "sbx-" + secrets.token_hex(8)
         manifest = self._manifest(env_id, spec, image, workspace)
         await p.kube.json("POST", p.pods_path(), manifest)

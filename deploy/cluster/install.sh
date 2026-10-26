@@ -3,18 +3,18 @@
 #   sudo deploy/cluster/install.sh
 # 做的事（重复运行是安全的）：
 #   1. gVisor：下载 runsc 与 containerd-shim-runsc-v1，核对 sha512 后装到 /usr/local/bin。
-#   2. k3s：配置（config.yaml、psa.yaml、containerd 模板、Traefik 配置）放好后按 versions.env 的版本安装。
+#   2. k3s：配置（config.yaml、psa.yaml、containerd 模板、Traefik 配置）放好后按 versions.conf 的版本安装。
 #   3. Kata（机器有 /dev/kvm 时）：kata-deploy 的 Helm Chart；没有 KVM 时跳过并提示，kata RuntimeClass 的 Pod 会起不来。
 #   4. 工作区目录 /var/lib/agentruntime/workspaces（属主 10001）。
 #   5. 集群里的基础清单：命名空间、沙箱的约束、RuntimeClass、工作区与业务对象的卷。
 #   6. cert-manager、KEDA、CloudNativePG 与它的 Barman Cloud 插件。
 # 之后：密钥（secrets/README.md）→ deploy/data/install.sh → Runtime 的 Chart（README.md 的步骤）。
-# 版本都在 versions.env，装之前核对；下载的东西都校验（k3s 的安装脚本自己核对二进制的 sha256）。
+# 版本都在 versions.conf，装之前核对；下载的东西都校验（k3s 的安装脚本自己核对二进制的 sha256）。
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=versions.env
-source "$HERE/versions.env"
+# shellcheck source=versions.conf
+source "$HERE/versions.conf"
 
 log() { printf '==> %s\n' "$*"; }
 die() { printf '错误：%s\n' "$*" >&2; exit 1; }
