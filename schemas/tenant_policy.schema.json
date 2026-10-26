@@ -8,7 +8,16 @@
     "effect_ceiling": {"description": "该租户的 Task 可用的最高 effect", "$ref": "defs.schema.json#/$defs/effect"},
     "model_allowlist": {"description": "允许的 Model Profile；不写表示不限制", "type": "array", "uniqueItems": true, "items": {"$ref": "model_profile.schema.json#/$defs/profile_id"}},
     "hooks": {"$ref": "defs.schema.json#/$defs/hook_set"},
-    "budget": {"description": "新 Task 的预算", "$ref": "task_plan.schema.json#/properties/budget"}
+    "budget": {"description": "新 Task 的预算", "$ref": "task_plan.schema.json#/properties/budget"},
+    "sandbox": {
+      "description": "该租户的沙箱：backend 是 Worker 的沙箱后端登记（AR_SANDBOX_BACKENDS_FILE）里的名字，例如 gvisor、kata、cloudflare；不写用部署的默认后端。由策略决定，模型与请求都不能指定；登记里没有的名字一律拒绝（docs/plan/cloud-deploy.md D-08）。",
+      "type": "object",
+      "properties": {
+        "backend": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,62}$"}
+      },
+      "required": ["backend"],
+      "additionalProperties": false
+    }
   },
   "unevaluatedProperties": false
 }

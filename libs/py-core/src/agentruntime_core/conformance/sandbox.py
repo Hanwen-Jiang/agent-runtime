@@ -11,7 +11,16 @@ from typing import Any, Protocol
 
 import pytest
 
-from agentruntime_core.conformance.common import TENANT_A_ID, TENANT_B_ID, Harness, StandardRules, expect_error, tenant_a, tenant_b
+from agentruntime_core.conformance.common import (
+    TENANT_A_ID,
+    TENANT_B_ID,
+    BindingRules,
+    Harness,
+    StandardRules,
+    expect_error,
+    tenant_a,
+    tenant_b,
+)
 from agentruntime_core.errors import ErrorCategory, NotFoundError
 from agentruntime_core.providers.sandbox import Sandbox, SandboxProvider, SandboxSpec
 
@@ -126,9 +135,9 @@ class WorkspaceHarness(Protocol):
         ...
 
 
-class SandboxWorkspaceConformance:
-    """spec.workspace_id 的规则（providers.sandbox 的语义最后一条）。支持绑定 workspace 的实现另外继承这一组；
-    harness 要实现 WorkspaceHarness。目录由宿主一侧先建好（同 Worker 的工作区类工具的做法）。"""
+class SandboxWorkspaceConformance(BindingRules):
+    """spec.workspace_id 的规则（providers.sandbox 的语义最后一条）。支持绑定 workspace 的实现用下面的
+    SandboxWithWorkspaceConformance（两组一起）；harness 要实现 WorkspaceHarness。目录由宿主一侧先建好（同 Worker 的工作区类工具的做法）。"""
 
     @staticmethod
     def _prepare(harness: Any, tenant_id: str, workspace_id: str) -> Path:
@@ -173,3 +182,7 @@ class SandboxWorkspaceConformance:
     async def test_malformed_workspace_id_is_invalid(self, harness: Any, workspace_id: str) -> None:
         with expect_error(ErrorCategory.INVALID):
             await harness.provider.bind(tenant_a()).create(SandboxSpec(workspace_id=workspace_id))
+
+
+class SandboxWithWorkspaceConformance(SandboxConformance, SandboxWorkspaceConformance):
+    """支持绑定 workspace 的实现跑的全套：通用规则加 workspace 的规则。"""

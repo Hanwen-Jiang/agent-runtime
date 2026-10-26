@@ -44,7 +44,7 @@ TASK_EVENT_TYPE_TASK_FINISHED: TaskEventType
 TASK_EVENT_TYPE_HEARTBEAT: TaskEventType
 
 class SubmitTaskRequest(_message.Message):
-    __slots__ = ("tenant_id", "workspace_id", "session_id", "client_request_id", "message", "inputs", "attachments", "session_access", "priority")
+    __slots__ = ("tenant_id", "workspace_id", "session_id", "client_request_id", "message", "inputs", "attachments", "session_access", "priority", "effect_ceiling")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
     SESSION_ID_FIELD_NUMBER: _ClassVar[int]
@@ -54,6 +54,7 @@ class SubmitTaskRequest(_message.Message):
     ATTACHMENTS_FIELD_NUMBER: _ClassVar[int]
     SESSION_ACCESS_FIELD_NUMBER: _ClassVar[int]
     PRIORITY_FIELD_NUMBER: _ClassVar[int]
+    EFFECT_CEILING_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
     workspace_id: str
     session_id: str
@@ -63,7 +64,8 @@ class SubmitTaskRequest(_message.Message):
     attachments: _containers.RepeatedScalarFieldContainer[str]
     session_access: _enums_pb2.SessionAccess
     priority: _enums_pb2.Priority
-    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., session_id: _Optional[str] = ..., client_request_id: _Optional[str] = ..., message: _Optional[str] = ..., inputs: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., attachments: _Optional[_Iterable[str]] = ..., session_access: _Optional[_Union[_enums_pb2.SessionAccess, str]] = ..., priority: _Optional[_Union[_enums_pb2.Priority, str]] = ...) -> None: ...
+    effect_ceiling: _enums_pb2.Effect
+    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., session_id: _Optional[str] = ..., client_request_id: _Optional[str] = ..., message: _Optional[str] = ..., inputs: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., attachments: _Optional[_Iterable[str]] = ..., session_access: _Optional[_Union[_enums_pb2.SessionAccess, str]] = ..., priority: _Optional[_Union[_enums_pb2.Priority, str]] = ..., effect_ceiling: _Optional[_Union[_enums_pb2.Effect, str]] = ...) -> None: ...
 
 class SubmitTaskResponse(_message.Message):
     __slots__ = ("task_id", "session_id", "events_url", "deduplicated")

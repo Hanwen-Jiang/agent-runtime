@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"connectrpc.com/connect"
+
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	workflowv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1"
@@ -100,4 +102,41 @@ func TestSubmitUsesTheAuthenticatedTenantsPolicy(t *testing.T) {
 	if got := sig.GetTask().GetEffectCeiling(); got != commonv1.Effect_EFFECT_READ {
 		t.Errorf("其他租户仍是默认的 read，实际 %v", got)
 	}
+}
+
+// D-08：请求里的 effect 上限只能调低；调高被拒（denied，不悄悄截断），被拒的请求不留 Task。
+func TestSubmitEffectCeilingCanOnlyLowerThePolicy(t *testing.T) {
+	path := writePolicies(t, `{"tenants": {"tw": {"effect_ceiling": "write_reversible"}}}`)
+	f := newAPIWith(t, func(d *Deps) { d.Policies = FilePolicyResolver{Path: path, Fallback: d.Defaults} })
+	token := f.token("tw", "u1")
+
+	req := newRequest("c-low")
+	req.EffectCeiling = commonv1.Effect_EFFECT_READ
+	f.mustSubmit(token, req)
+	if _, sig := f.lastSubmit(); sig.GetTask().GetEffectCeiling() != commonv1.Effect_EFFECT_READ {
+		t.Errorf("调低到 read，实际 %v", sig.GetTask().GetEffectCeiling())
+	}
+
+	req = newRequest("c-same")
+	req.EffectCeiling = commonv1.Effect_EFFECT_WRITE_REVERSIBLE
+	f.mustSubmit(token, req)
+	if _, sig := f.lastSubmit(); sig.GetTask().GetEffectCeiling() != commonv1.Effect_EFFECT_WRITE_REVERSIBLE {
+		t.Errorf("与策略相同可以，实际 %v", sig.GetTask().GetEffectCeiling())
+	}
+
+	before := len(f.durable.callsOf("SignalWithStart"))
+	req = newRequest("c-high")
+	req.EffectCeiling = commonv1.Effect_EFFECT_WRITE_IRREVERSIBLE
+	_, err := f.submit(token, req)
+	wantCode(t, "调高", err, connect.CodePermissionDenied)
+	if after := len(f.durable.callsOf("SignalWithStart")); after != before {
+		t.Errorf("被拒的请求不应投递给 Session 工作流")
+	}
+	req.EffectCeiling = commonv1.Effect_EFFECT_READ // 同一个 client_request_id 改低了再提交：照常受理
+	f.mustSubmit(token, req)
+
+	req = newRequest("c-bogus")
+	req.EffectCeiling = commonv1.Effect(42)
+	_, err = f.submit(token, req)
+	wantCode(t, "不认识的 effect", err, connect.CodeInvalidArgument)
 }

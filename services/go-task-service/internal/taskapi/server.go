@@ -234,6 +234,19 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 			return nil, providererr.New(providererr.Denied, "foreign_object", "附件不属于当前租户")
 		}
 	}
+	// 请求里的 effect 上限只能调低（docs/plan/cloud-deploy.md D-08）：在建 Task 之前核对，被拒的请求不留记录。
+	if want := req.GetEffectCeiling(); want != commonv1.Effect_EFFECT_UNSPECIFIED {
+		if _, known := commonv1.Effect_name[int32(want)]; !known {
+			return nil, invalid("effect_ceiling 不是附录 A 的 effect")
+		}
+		policy, err := s.policies().Resolve(ctx, tenant)
+		if err != nil {
+			return nil, err
+		}
+		if want > policy.EffectCeiling {
+			return nil, providererr.New(providererr.Denied, "effect_ceiling_exceeds_policy", "请求的 effect 上限高于租户策略允许的")
+		}
+	}
 
 	now := s.d.Clock.Now()
 	sessionID := req.GetSessionId()
@@ -276,6 +289,10 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	if err != nil {
 		return nil, err
 	}
+	ceiling := policy.EffectCeiling
+	if want := req.GetEffectCeiling(); want != commonv1.Effect_EFFECT_UNSPECIFIED && want <= ceiling {
+		ceiling = want
+	}
 	task := &workflowv1.TaskWorkflowInput{
 		Tenant:         tenant,
 		TaskId:         row.TaskID,
@@ -286,7 +303,7 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 		SubmittedAt:    timestamppb.New(now),
 		SessionAccess:  req.GetSessionAccess(),
 		Priority:       req.GetPriority(),
-		EffectCeiling:  policy.EffectCeiling,
+		EffectCeiling:  ceiling,
 		Budget:         policy.Budget,
 	}
 	if task.SessionAccess == commonv1.SessionAccess_SESSION_ACCESS_UNSPECIFIED {

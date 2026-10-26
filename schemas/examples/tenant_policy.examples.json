@@ -29,6 +29,12 @@
       "source": "没写的字段用平台默认值",
       "notes": "",
       "instance": {}
+    },
+    {
+      "name": "microvm_sandbox_for_public_tenant",
+      "source": "docs/plan/cloud-deploy.md 第 4.2 节、D-08：公开注册的租户的命令在 microVM 级的沙箱里跑",
+      "notes": "后端名取自 Worker 的沙箱后端登记。",
+      "instance": {"effect_ceiling": "write_reversible", "sandbox": {"backend": "kata"}}
     }
   ],
   "invalid": [
@@ -61,6 +67,18 @@
       "description": "Hook 名是小写 snake_case",
       "violates": [{"path": "/hooks/after_node/0", "keyword": "pattern"}],
       "instance": {"hooks": {"after_node": ["Audit-Log"]}}
+    },
+    {
+      "name": "sandbox_backend_not_a_name",
+      "description": "沙箱后端是登记里的名字（小写字母、数字、- 与 _），不是镜像或地址",
+      "violates": [{"path": "/sandbox/backend", "keyword": "pattern"}],
+      "instance": {"sandbox": {"backend": "https://sandbox.example.workers.dev"}}
+    },
+    {
+      "name": "sandbox_without_backend",
+      "description": "写了 sandbox 就要写 backend",
+      "violates": [{"path": "/sandbox", "keyword": "required"}],
+      "instance": {"sandbox": {}}
     }
   ]
 }

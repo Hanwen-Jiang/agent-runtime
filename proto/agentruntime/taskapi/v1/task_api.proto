@@ -40,6 +40,9 @@ message SubmitTaskRequest {
   repeated string attachments = 7;
   agentruntime.common.v1.SessionAccess session_access = 8;
   agentruntime.common.v1.Priority priority = 9;
+  // 这个 Task 的 effect 上限，只能比租户策略的上限低或相等；高于时返回 denied（不悄悄截断）。
+  // 不填时用租户策略的上限。应用按用户选的沙箱等级填它（docs/plan/cloud-deploy.md D-08）。
+  agentruntime.common.v1.Effect effect_ceiling = 10;
 }
 
 message SubmitTaskResponse {

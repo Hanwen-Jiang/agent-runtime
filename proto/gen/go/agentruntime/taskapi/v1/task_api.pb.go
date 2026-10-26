@@ -125,6 +125,9 @@ type SubmitTaskRequest struct {
 	Attachments   []string         `protobuf:"bytes,7,rep,name=attachments,proto3" json:"attachments,omitempty"`
 	SessionAccess v1.SessionAccess `protobuf:"varint,8,opt,name=session_access,json=sessionAccess,proto3,enum=agentruntime.common.v1.SessionAccess" json:"session_access,omitempty"`
 	Priority      v1.Priority      `protobuf:"varint,9,opt,name=priority,proto3,enum=agentruntime.common.v1.Priority" json:"priority,omitempty"`
+	// 这个 Task 的 effect 上限，只能比租户策略的上限低或相等；高于时返回 denied（不悄悄截断）。
+	// 不填时用租户策略的上限。应用按用户选的沙箱等级填它（docs/plan/cloud-deploy.md D-08）。
+	EffectCeiling v1.Effect `protobuf:"varint,10,opt,name=effect_ceiling,json=effectCeiling,proto3,enum=agentruntime.common.v1.Effect" json:"effect_ceiling,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -220,6 +223,13 @@ func (x *SubmitTaskRequest) GetPriority() v1.Priority {
 		return x.Priority
 	}
 	return v1.Priority(0)
+}
+
+func (x *SubmitTaskRequest) GetEffectCeiling() v1.Effect {
+	if x != nil {
+		return x.EffectCeiling
+	}
+	return v1.Effect(0)
 }
 
 type SubmitTaskResponse struct {
@@ -814,7 +824,7 @@ var File_agentruntime_taskapi_v1_task_api_proto protoreflect.FileDescriptor
 
 const file_agentruntime_taskapi_v1_task_api_proto_rawDesc = "" +
 	"\n" +
-	"&agentruntime/taskapi/v1/task_api.proto\x12\x17agentruntime.taskapi.v1\x1a\"agentruntime/common/v1/enums.proto\x1a%agentruntime/common/v1/metering.proto\x1a$agentruntime/common/v1/payload.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x97\x03\n" +
+	"&agentruntime/taskapi/v1/task_api.proto\x12\x17agentruntime.taskapi.v1\x1a\"agentruntime/common/v1/enums.proto\x1a%agentruntime/common/v1/metering.proto\x1a$agentruntime/common/v1/payload.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xde\x03\n" +
 	"\x11SubmitTaskRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x1d\n" +
@@ -825,7 +835,9 @@ const file_agentruntime_taskapi_v1_task_api_proto_rawDesc = "" +
 	"\x06inputs\x18\x06 \x01(\v2\x17.google.protobuf.StructR\x06inputs\x12 \n" +
 	"\vattachments\x18\a \x03(\tR\vattachments\x12L\n" +
 	"\x0esession_access\x18\b \x01(\x0e2%.agentruntime.common.v1.SessionAccessR\rsessionAccess\x12<\n" +
-	"\bpriority\x18\t \x01(\x0e2 .agentruntime.common.v1.PriorityR\bpriority\"\x8f\x01\n" +
+	"\bpriority\x18\t \x01(\x0e2 .agentruntime.common.v1.PriorityR\bpriority\x12E\n" +
+	"\x0eeffect_ceiling\x18\n" +
+	" \x01(\x0e2\x1e.agentruntime.common.v1.EffectR\reffectCeiling\"\x8f\x01\n" +
 	"\x12SubmitTaskResponse\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x1d\n" +
 	"\n" +
@@ -928,36 +940,38 @@ var file_agentruntime_taskapi_v1_task_api_proto_goTypes = []any{
 	(*structpb.Struct)(nil),       // 11: google.protobuf.Struct
 	(v1.SessionAccess)(0),         // 12: agentruntime.common.v1.SessionAccess
 	(v1.Priority)(0),              // 13: agentruntime.common.v1.Priority
-	(v1.TaskStatus)(0),            // 14: agentruntime.common.v1.TaskStatus
-	(*v1.JsonPayload)(nil),        // 15: agentruntime.common.v1.JsonPayload
-	(*v1.Usage)(nil),              // 16: agentruntime.common.v1.Usage
-	(*timestamppb.Timestamp)(nil), // 17: google.protobuf.Timestamp
+	(v1.Effect)(0),                // 14: agentruntime.common.v1.Effect
+	(v1.TaskStatus)(0),            // 15: agentruntime.common.v1.TaskStatus
+	(*v1.JsonPayload)(nil),        // 16: agentruntime.common.v1.JsonPayload
+	(*v1.Usage)(nil),              // 17: agentruntime.common.v1.Usage
+	(*timestamppb.Timestamp)(nil), // 18: google.protobuf.Timestamp
 }
 var file_agentruntime_taskapi_v1_task_api_proto_depIdxs = []int32{
 	11, // 0: agentruntime.taskapi.v1.SubmitTaskRequest.inputs:type_name -> google.protobuf.Struct
 	12, // 1: agentruntime.taskapi.v1.SubmitTaskRequest.session_access:type_name -> agentruntime.common.v1.SessionAccess
 	13, // 2: agentruntime.taskapi.v1.SubmitTaskRequest.priority:type_name -> agentruntime.common.v1.Priority
-	14, // 3: agentruntime.taskapi.v1.CancelTaskResponse.status:type_name -> agentruntime.common.v1.TaskStatus
-	7,  // 4: agentruntime.taskapi.v1.SignalTaskRequest.human_reply:type_name -> agentruntime.taskapi.v1.HumanReply
-	14, // 5: agentruntime.taskapi.v1.QueryTaskResponse.status:type_name -> agentruntime.common.v1.TaskStatus
-	15, // 6: agentruntime.taskapi.v1.QueryTaskResponse.task_state:type_name -> agentruntime.common.v1.JsonPayload
-	16, // 7: agentruntime.taskapi.v1.QueryTaskResponse.usage:type_name -> agentruntime.common.v1.Usage
-	0,  // 8: agentruntime.taskapi.v1.TaskEvent.type:type_name -> agentruntime.taskapi.v1.TaskEventType
-	17, // 9: agentruntime.taskapi.v1.TaskEvent.emitted_at:type_name -> google.protobuf.Timestamp
-	15, // 10: agentruntime.taskapi.v1.TaskEvent.payload:type_name -> agentruntime.common.v1.JsonPayload
-	1,  // 11: agentruntime.taskapi.v1.TaskService.SubmitTask:input_type -> agentruntime.taskapi.v1.SubmitTaskRequest
-	3,  // 12: agentruntime.taskapi.v1.TaskService.CancelTask:input_type -> agentruntime.taskapi.v1.CancelTaskRequest
-	5,  // 13: agentruntime.taskapi.v1.TaskService.SignalTask:input_type -> agentruntime.taskapi.v1.SignalTaskRequest
-	8,  // 14: agentruntime.taskapi.v1.TaskService.QueryTask:input_type -> agentruntime.taskapi.v1.QueryTaskRequest
-	2,  // 15: agentruntime.taskapi.v1.TaskService.SubmitTask:output_type -> agentruntime.taskapi.v1.SubmitTaskResponse
-	4,  // 16: agentruntime.taskapi.v1.TaskService.CancelTask:output_type -> agentruntime.taskapi.v1.CancelTaskResponse
-	6,  // 17: agentruntime.taskapi.v1.TaskService.SignalTask:output_type -> agentruntime.taskapi.v1.SignalTaskResponse
-	9,  // 18: agentruntime.taskapi.v1.TaskService.QueryTask:output_type -> agentruntime.taskapi.v1.QueryTaskResponse
-	15, // [15:19] is the sub-list for method output_type
-	11, // [11:15] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	14, // 3: agentruntime.taskapi.v1.SubmitTaskRequest.effect_ceiling:type_name -> agentruntime.common.v1.Effect
+	15, // 4: agentruntime.taskapi.v1.CancelTaskResponse.status:type_name -> agentruntime.common.v1.TaskStatus
+	7,  // 5: agentruntime.taskapi.v1.SignalTaskRequest.human_reply:type_name -> agentruntime.taskapi.v1.HumanReply
+	15, // 6: agentruntime.taskapi.v1.QueryTaskResponse.status:type_name -> agentruntime.common.v1.TaskStatus
+	16, // 7: agentruntime.taskapi.v1.QueryTaskResponse.task_state:type_name -> agentruntime.common.v1.JsonPayload
+	17, // 8: agentruntime.taskapi.v1.QueryTaskResponse.usage:type_name -> agentruntime.common.v1.Usage
+	0,  // 9: agentruntime.taskapi.v1.TaskEvent.type:type_name -> agentruntime.taskapi.v1.TaskEventType
+	18, // 10: agentruntime.taskapi.v1.TaskEvent.emitted_at:type_name -> google.protobuf.Timestamp
+	16, // 11: agentruntime.taskapi.v1.TaskEvent.payload:type_name -> agentruntime.common.v1.JsonPayload
+	1,  // 12: agentruntime.taskapi.v1.TaskService.SubmitTask:input_type -> agentruntime.taskapi.v1.SubmitTaskRequest
+	3,  // 13: agentruntime.taskapi.v1.TaskService.CancelTask:input_type -> agentruntime.taskapi.v1.CancelTaskRequest
+	5,  // 14: agentruntime.taskapi.v1.TaskService.SignalTask:input_type -> agentruntime.taskapi.v1.SignalTaskRequest
+	8,  // 15: agentruntime.taskapi.v1.TaskService.QueryTask:input_type -> agentruntime.taskapi.v1.QueryTaskRequest
+	2,  // 16: agentruntime.taskapi.v1.TaskService.SubmitTask:output_type -> agentruntime.taskapi.v1.SubmitTaskResponse
+	4,  // 17: agentruntime.taskapi.v1.TaskService.CancelTask:output_type -> agentruntime.taskapi.v1.CancelTaskResponse
+	6,  // 18: agentruntime.taskapi.v1.TaskService.SignalTask:output_type -> agentruntime.taskapi.v1.SignalTaskResponse
+	9,  // 19: agentruntime.taskapi.v1.TaskService.QueryTask:output_type -> agentruntime.taskapi.v1.QueryTaskResponse
+	16, // [16:20] is the sub-list for method output_type
+	12, // [12:16] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_agentruntime_taskapi_v1_task_api_proto_init() }
