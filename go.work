@@ -4,6 +4,7 @@ use (
 	./libs/go-core
 	./proto/gen/go
 	./services/go-model-gateway
+	./services/go-sandbox-agent
 	./services/go-task-service
 	./tests/contract/go
 )

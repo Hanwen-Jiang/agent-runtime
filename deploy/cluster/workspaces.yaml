@@ -1,0 +1,62 @@
+# 单节点部署的工作区（docs/plan/cloud-deploy.md D-05）：Worker、应用（例如 coding-web）与沙箱 Pod 要看到同一个目录
+# /var/lib/agentruntime/workspaces（里面是 <租户>/<workspace>）。
+#
+# PVC 不能跨命名空间共用，Pod Security 的 restricted 又不许沙箱 Pod 直接用 hostPath，所以建两个指向同一目录的静态 PV，
+# 各绑一个 PVC：agent-runtime/workspaces 给 Worker 与应用，sandboxes/workspaces 给沙箱 Pod（用 subPath 只挂一个 workspace）。
+# 目录的属主是 10001（Worker、应用、沙箱都以这个用户跑），由 deploy/cluster/install.sh 建好。
+# 多节点之前要换掉：工作区跟着沙箱走（D-06）。
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: agentruntime-workspaces-runtime
+  labels:
+    agentruntime.io/volume: workspaces
+spec:
+  capacity: {storage: 200Gi}
+  accessModes: [ReadWriteMany]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: agentruntime-workspaces
+  claimRef: {namespace: agent-runtime, name: workspaces}
+  hostPath:
+    path: /var/lib/agentruntime/workspaces
+    type: Directory
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: agentruntime-workspaces-sandboxes
+  labels:
+    agentruntime.io/volume: workspaces
+spec:
+  capacity: {storage: 200Gi}
+  accessModes: [ReadWriteMany]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: agentruntime-workspaces
+  claimRef: {namespace: sandboxes, name: workspaces}
+  hostPath:
+    path: /var/lib/agentruntime/workspaces
+    type: Directory
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: workspaces
+  namespace: agent-runtime
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: agentruntime-workspaces
+  volumeName: agentruntime-workspaces-runtime
+  resources:
+    requests: {storage: 200Gi}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: workspaces
+  namespace: sandboxes
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: agentruntime-workspaces
+  volumeName: agentruntime-workspaces-sandboxes
+  resources:
+    requests: {storage: 200Gi}

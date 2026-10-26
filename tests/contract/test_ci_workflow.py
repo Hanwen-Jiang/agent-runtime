@@ -34,6 +34,8 @@ INSTALLS = {
     "docker": "docker pull",  # runner 预装 Docker；job 预拉 Milvus 镜像
     "buf": "BUF_VERSION",
     "helm": "HELM_VERSION",
+    "kind": "KIND_VERSION",
+    "kubectl": "预装了 kubectl",  # runner 预装 kubectl；job 里写明靠的是预装的
 }
 
 
@@ -110,7 +112,7 @@ def test_tool_versions_match_the_nightly_job_and_claude_md() -> None:
     t, nightly = text(), NIGHTLY.read_text("utf-8")
     assert env_value(t, "go-version") == env_value(nightly, "go-version") == "1.27"
     assert env_value(t, "version") == "0.12.x", "uv 0.12"
-    for name in ("TEMPORAL_CLI_VERSION", "QDRANT_VERSION", "AR_MILVUS_IMAGE"):
+    for name in ("TEMPORAL_CLI_VERSION", "QDRANT_VERSION", "AR_MILVUS_IMAGE", "KIND_VERSION"):
         assert env_value(t, name) == env_value(nightly, name), f"{name} 与夜间任务一致"
     launcher = (REPO_ROOT / "libs" / "py-core" / "src" / "agentruntime_core" / "adapters" / "milvustest.py").read_text("utf-8")
     default = re.search(r'DEFAULT_IMAGE = "([^"]+)"', launcher)

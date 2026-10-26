@@ -121,12 +121,26 @@ jobs:
       QDRANT_VERSION: "1.19.1"
       AR_MILVUS_IMAGE: "milvusdb/milvus:v3.0.2"
       TEMPORAL_CLI_VERSION: "1.9.1"
+      KIND_VERSION: "0.33.0"
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+          cache-dependency-path: "**/go.sum"
 
       - uses: astral-sh/setup-uv@v6
         with:
           version: "0.12.x"
+
+      - name: 安装 kind（py-core 的 K8s 沙箱测试用它拉起集群；runner 预装了 kubectl）
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL -o "$HOME/.local/bin/kind" "https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-linux-amd64"
+          chmod +x "$HOME/.local/bin/kind"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "AR_KIND_WORKSPACES=$RUNNER_TEMP/kind-workspaces" >> "$GITHUB_ENV"
 
       - name: 安装 Temporal CLI（py-core 里 DurableEngine 的一致性测试用）
         run: |
@@ -154,7 +168,7 @@ jobs:
       - name: 安装 Python 依赖
         run: uv sync --all-packages --locked
 
-      - name: libs/py-core（含 Postgres、Qdrant、Milvus 适配器）
+      - name: libs/py-core（含 Postgres、Qdrant、Milvus 适配器与 K8s 沙箱）
         working-directory: libs/py-core
         run: uv run --package agentruntime-core --all-extras pytest -ra
 

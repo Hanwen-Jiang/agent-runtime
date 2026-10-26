@@ -8,6 +8,11 @@
 - exec 超时不抛异常：返回 timed_out=True，exit_code 为 None。代码自身的非零退出码照常返回。
 - 文件路径相对于环境的工作目录；绝对路径、含 .. 段或反斜杠：invalid。读不存在的文件：not_found。
 - 不同环境的文件互不可见。
+- spec.workspace_id 非空时，环境的工作目录就是本租户的这个 workspace（Worker 的工作区类工具读写的同一处，
+  <工作区根>/<tenant_id>/<workspace_id>），而不是一个空目录；销毁环境不删 workspace 里的文件。
+  工作区根由实现的配置给出，请求改变不了；平台作用域没有 workspace（invalid）；workspace_id 格式同租户 ID，不对时 invalid。
+  实现不支持时 invalid（unsupported_workspace）。这是单节点部署的做法（docs/plan/cloud-deploy.md D-05）；
+  工作区跟着沙箱走（D-06）要等设计书加上 Workspace 一层。
 """
 
 from __future__ import annotations
@@ -28,6 +33,7 @@ class SandboxSpec:
     network: Literal["none", "allowlist"] = "none"
     allow_hosts: tuple[str, ...] = ()
     idle_timeout: timedelta = timedelta(minutes=10)
+    workspace_id: str = ""
 
 
 @dataclass(frozen=True)

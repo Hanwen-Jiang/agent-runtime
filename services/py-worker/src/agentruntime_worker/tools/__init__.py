@@ -24,6 +24,7 @@ from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.tools.catalog import DevCatalog, ToolCatalog, latest, latest_spec
 from agentruntime_worker.tools.mcp import McpGateway
 from agentruntime_worker.tools.platform import CONTEXT_READ, PlatformToolsConfig, register_platform_tools
+from agentruntime_worker.tools.sandboxes import Sandboxes, registry_policy
 
 __all__ = ["CONTEXT_READ", "DevCatalog", "ToolCatalog", "context_objects", "dev_tools", "latest", "latest_spec", "tool_sessions"]
 
@@ -36,7 +37,22 @@ def _store_key(config: WorkerConfig) -> tuple[object, ...]:
 
 
 def _key(config: WorkerConfig) -> tuple[object, ...]:
-    return (config.tool_workspace_root, config.tool_fetch_hosts, config.mcp_tools_file, *_store_key(config))
+    return (
+        config.tool_workspace_root, config.tool_fetch_hosts, config.mcp_tools_file, config.tool_shell_sandbox,
+        config.sandbox_backends_file, config.registry_address, *_store_key(config),
+    )
+
+
+def sandboxes(config: WorkerConfig) -> Sandboxes | None:
+    """shell_run 的沙箱后端（AR_TOOL_SHELL_SANDBOX=sandbox 时）：登记文件里的后端，按租户策略（经 Registry）选。"""
+    if config.tool_shell_sandbox != "sandbox" or config.sandbox_backends_file is None:
+        return None
+    return Sandboxes.from_file(
+        config.sandbox_backends_file,
+        workspace_root=config.tool_workspace_root,
+        secrets_file=config.secrets_file,
+        policy=registry_policy(config.registry_address) if config.registry_address else None,
+    )
 
 
 def context_objects(config: WorkerConfig) -> LocalDiskObjectStoreProvider:
@@ -66,6 +82,7 @@ def dev_tools(config: WorkerConfig) -> LocalToolDriverProvider:
                 shell_image=config.tool_shell_image,
             ),
             objects=context_objects(config),
+            sandboxes=sandboxes(config),
         )
         _providers[key] = provider
     return provider

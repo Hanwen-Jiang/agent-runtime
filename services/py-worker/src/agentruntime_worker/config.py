@@ -40,10 +40,12 @@ ENV_REGISTRY_ADDRESS = "AR_REGISTRY_ADDRESS"
 ENV_TOOL_WORKSPACE_ROOT = "AR_TOOL_WORKSPACE_ROOT"
 ENV_TOOL_FETCH_HOSTS = "AR_TOOL_FETCH_HOSTS"
 ENV_MCP_TOOLS_FILE = "AR_MCP_TOOLS_FILE"
-# shell_run 在哪里跑：host（默认，开发用，不隔离）或 docker（一次性容器，不联网、限资源；coding agent MVP）；容器的镜像。
+# shell_run 在哪里跑：host（默认，开发用，不隔离）、docker（一次性容器，不联网、限资源；coding agent MVP）或 sandbox
+# （经 Sandbox 接口，后端登记在 AR_SANDBOX_BACKENDS_FILE，按租户策略选；docs/plan/cloud-deploy.md D-05）；docker 时容器的镜像。
 ENV_TOOL_SHELL_SANDBOX = "AR_TOOL_SHELL_SANDBOX"
 ENV_TOOL_SHELL_IMAGE = "AR_TOOL_SHELL_IMAGE"
-SHELL_SANDBOXES = ("host", "docker")
+ENV_SANDBOX_BACKENDS_FILE = "AR_SANDBOX_BACKENDS_FILE"
+SHELL_SANDBOXES = ("host", "docker", "sandbox")
 
 
 @dataclass(frozen=True)
@@ -79,9 +81,10 @@ class WorkerConfig:
     tool_workspace_root: Path | None = None
     tool_fetch_hosts: tuple[str, ...] = ()
     mcp_tools_file: Path | None = None
-    # shell_run 的沙箱（AR_TOOL_SHELL_SANDBOX）与 docker 时的镜像（AR_TOOL_SHELL_IMAGE）。
+    # shell_run 的沙箱（AR_TOOL_SHELL_SANDBOX）、docker 时的镜像（AR_TOOL_SHELL_IMAGE）、sandbox 时的后端登记文件（AR_SANDBOX_BACKENDS_FILE）。
     tool_shell_sandbox: str = "host"
     tool_shell_image: str = "python:3.13-slim"
+    sandbox_backends_file: Path | None = None
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> WorkerConfig:
@@ -124,6 +127,9 @@ class WorkerConfig:
         sandbox = env.get(ENV_TOOL_SHELL_SANDBOX, "").strip() or cls.tool_shell_sandbox
         if sandbox not in SHELL_SANDBOXES:
             raise ValueError(f"{ENV_TOOL_SHELL_SANDBOX} 只能是 {'、'.join(SHELL_SANDBOXES)}")
+        backends = env.get(ENV_SANDBOX_BACKENDS_FILE, "").strip()
+        if sandbox == "sandbox" and not backends:
+            raise ValueError(f"{ENV_TOOL_SHELL_SANDBOX}=sandbox 时要给 {ENV_SANDBOX_BACKENDS_FILE}")
         return cls(
             temporal_address=env.get(ENV_TEMPORAL_ADDRESS, "") or cls.temporal_address,
             namespace=env.get(ENV_TEMPORAL_NAMESPACE, "") or cls.namespace,
@@ -145,6 +151,7 @@ class WorkerConfig:
             mcp_tools_file=Path(mcp_tools) if mcp_tools else None,
             tool_shell_sandbox=sandbox,
             tool_shell_image=env.get(ENV_TOOL_SHELL_IMAGE, "").strip() or cls.tool_shell_image,
+            sandbox_backends_file=Path(backends) if backends else None,
         )
 
     def store_paths(self, root: Path) -> tuple[Path, Path]:

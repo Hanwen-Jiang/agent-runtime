@@ -6,10 +6,12 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from pathlib import Path
+from typing import Any, Protocol
 
 import pytest
 
-from agentruntime_core.conformance.common import Harness, StandardRules, expect_error, tenant_a, tenant_b
+from agentruntime_core.conformance.common import TENANT_A_ID, TENANT_B_ID, Harness, StandardRules, expect_error, tenant_a, tenant_b
 from agentruntime_core.errors import ErrorCategory, NotFoundError
 from agentruntime_core.providers.sandbox import Sandbox, SandboxProvider, SandboxSpec
 
@@ -116,3 +118,58 @@ class SandboxConformance(StandardRules):
     async def test_unknown_environment_is_not_found(self, sandbox: Sandbox) -> None:
         with expect_error(ErrorCategory.NOT_FOUND):
             await sandbox.exec("env-does-not-exist", ["python", "-c", "print(1)"], timeout=TIMEOUT)
+
+
+class WorkspaceHarness(Protocol):
+    def workspace_path(self, tenant_id: str, workspace_id: str) -> Path:
+        """宿主一侧看到的 workspace 目录（<工作区根>/<tenant_id>/<workspace_id>），测试在这里放文件、查文件。"""
+        ...
+
+
+class SandboxWorkspaceConformance:
+    """spec.workspace_id 的规则（providers.sandbox 的语义最后一条）。支持绑定 workspace 的实现另外继承这一组；
+    harness 要实现 WorkspaceHarness。目录由宿主一侧先建好（同 Worker 的工作区类工具的做法）。"""
+
+    @staticmethod
+    def _prepare(harness: Any, tenant_id: str, workspace_id: str) -> Path:
+        path = harness.workspace_path(tenant_id, workspace_id)
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    async def test_workspace_is_shared_with_the_host(self, harness: Any) -> None:
+        sandbox = harness.provider.bind(tenant_a())
+        host = self._prepare(harness, TENANT_A_ID, "w-share")
+        (host / "seed.txt").write_text("从宿主写入", encoding="utf-8")
+        env = await sandbox.create(SandboxSpec(workspace_id="w-share"))
+        code = "open('made.txt', 'w', encoding='utf-8').write(open('seed.txt', encoding='utf-8').read() + '，沙箱读到了')"
+        assert (await sandbox.exec(env.env_id, ["python", "-c", code], timeout=TIMEOUT)).exit_code == 0
+        assert (host / "made.txt").read_text(encoding="utf-8") == "从宿主写入，沙箱读到了"
+        assert await sandbox.read_file(env.env_id, "seed.txt") == "从宿主写入".encode()
+
+    async def test_destroy_keeps_workspace_files(self, harness: Any) -> None:
+        sandbox = harness.provider.bind(tenant_a())
+        self._prepare(harness, TENANT_A_ID, "w-keep")
+        env = await sandbox.create(SandboxSpec(workspace_id="w-keep"))
+        await sandbox.write_file(env.env_id, "kept.txt", b"x")
+        await sandbox.destroy(env.env_id)
+        assert (harness.workspace_path(TENANT_A_ID, "w-keep") / "kept.txt").read_bytes() == b"x"
+
+    async def test_same_workspace_id_differs_per_tenant(self, harness: Any) -> None:
+        a = harness.provider.bind(tenant_a())
+        b = harness.provider.bind(tenant_b())
+        self._prepare(harness, TENANT_A_ID, "w-same")
+        self._prepare(harness, TENANT_B_ID, "w-same")
+        env_a = await a.create(SandboxSpec(workspace_id="w-same"))
+        await a.write_file(env_a.env_id, "only-a.txt", b"a")
+        env_b = await b.create(SandboxSpec(workspace_id="w-same"))
+        with expect_error(ErrorCategory.NOT_FOUND):
+            await b.read_file(env_b.env_id, "only-a.txt")
+
+    async def test_platform_scope_has_no_workspace(self, harness: Any) -> None:
+        with expect_error(ErrorCategory.INVALID):
+            await harness.provider.bind_platform("conformance").create(SandboxSpec(workspace_id="w-1"))
+
+    @pytest.mark.parametrize("workspace_id", ["../w", "W-1", "w/1", "-w", "w" * 64])
+    async def test_malformed_workspace_id_is_invalid(self, harness: Any, workspace_id: str) -> None:
+        with expect_error(ErrorCategory.INVALID):
+            await harness.provider.bind(tenant_a()).create(SandboxSpec(workspace_id=workspace_id))

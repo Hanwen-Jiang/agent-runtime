@@ -1,0 +1,35 @@
+# 集群里的命名空间（docs/plan/cloud-deploy.md D-02）。
+# sandboxes 只放沙箱 Pod：Pod Security 用 restricted（不许 hostPath、特权、root），其余约束见 sandboxes.yaml。
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agent-runtime
+  labels:
+    app.kubernetes.io/part-of: agent-runtime
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sandboxes
+  labels:
+    app.kubernetes.io/part-of: agent-runtime
+    agentruntime.io/role: sandboxes
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data
+  labels:
+    app.kubernetes.io/part-of: agent-runtime
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability
+  labels:
+    app.kubernetes.io/part-of: agent-runtime

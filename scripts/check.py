@@ -129,7 +129,10 @@ def all_steps(root: Path, *, committed: bool = False) -> dict[str, Step]:
             ["uv", "buf", "go", *(["helm"] if deploy else [])],
         ),
         Step(id="go", title="Go：go.work 的每个模块 build、vet、test", commands=go, tools=["go", "temporal", "postgres"]),
-        _python("py-core", "libs/py-core（含 Postgres、Qdrant、Milvus 适配器）", root / "libs" / "py-core", "agentruntime-core", ["tests"], ["uv", "temporal", "postgres", "qdrant", "docker"]),
+        _python(
+            "py-core", "libs/py-core（含 Postgres、Qdrant、Milvus 适配器与 K8s 沙箱）", root / "libs" / "py-core", "agentruntime-core", ["tests"],
+            ["uv", "temporal", "postgres", "qdrant", "docker", "go", "kind", "kubectl"],
+        ),
         _python("py-memory", "services/py-memory（开发后端与 Postgres + Qdrant）", root / "services" / "py-memory", "agentruntime-memory", ["tests"], ["uv", "postgres", "qdrant"]),
         _python("py-learning", "services/py-learning", root / "services" / "py-learning", "agentruntime-learning", ["tests"], ["uv"]),
         _python("py-worker", "services/py-worker", root / "services" / "py-worker", "agentruntime-worker", ["tests"], ["uv", "temporal"]),
@@ -202,12 +205,18 @@ def tool_available(tool: str, env: Mapping[str, str]) -> bool:
             path = Path(configured)
             return path.is_file() or shutil.which("qdrant", path=str(path)) is not None
         return _which("qdrant", env) is not None
-    if tool == "docker":  # Milvus 适配器的测试用它拉起单机版容器（agentruntime_core.adapters.milvustest）
+    if tool in ("docker", "kubectl"):
+        # docker：Milvus 适配器的测试拉起单机版容器（milvustest），K8s 沙箱的测试用 kind（kindtest）。
+        # kubectl：kindtest 用它应用 deploy/cluster 的清单；Docker Desktop 把它与 docker 放在同一目录。
         configured = env.get("AR_DOCKER_BIN", "")
         if configured:
             path = Path(configured)
-            return path.is_file() or shutil.which("docker", path=str(path)) is not None
-        return _which("docker", env) is not None
+            directory = path if path.is_dir() else path.parent
+            if shutil.which(tool, path=str(directory)) is not None:
+                return True
+        return _which(tool, env) is not None
+    if tool == "kind" and env.get("AR_KIND_BIN"):
+        return Path(env["AR_KIND_BIN"]).exists()
     return _which(tool, env) is not None
 
 

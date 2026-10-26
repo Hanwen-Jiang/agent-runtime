@@ -1,6 +1,7 @@
 """本地子进程 Sandbox（开发实现，仅限开发环境）。语义见 agentruntime_core.providers.sandbox。
 
-每个环境一个工作目录：<root>/<作用域>/<env_id>/work。不提供网络隔离与资源上限，不能运行不可信代码。
+每个环境一个工作目录：<root>/<作用域>/<env_id>/work；spec.workspace_id 非空时是 <workspaces>/<tenant_id>/<workspace_id>
+（给了 workspaces 才支持）。不提供网络隔离与资源上限，不能运行不可信代码。
 argv[0] 为 python 时换成当前解释器。子进程只拿 _ENV 白名单里的环境变量（与平台内工具 shell_run 相同）：
 Worker 进程的密钥与 AR_* 配置不传给沙箱里的代码（设计书 4.12：节点代码永远拿不到长期密钥）。
 """
@@ -26,6 +27,7 @@ from agentruntime_core.testing import FaultInjector
 
 _DRIVE = re.compile(r"^[A-Za-z]:")
 _ENV = ("PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "COMSPEC", "TEMP", "TMP", "HOME", "LANG", "LC_ALL")
+_SLUG = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")
 
 
 @dataclass
@@ -34,6 +36,8 @@ class _Env:
     spec: SandboxSpec
     workdir: Path
     destroyed: bool = False
+    # 绑定 workspace 的环境销毁时只删记录，不删目录。
+    owns_workdir: bool = True
 
 
 def _relative(path: str) -> Path:
@@ -46,8 +50,9 @@ def _relative(path: str) -> Path:
 
 
 class LocalSubprocessSandboxProvider:
-    def __init__(self, root: Path, *, faults: FaultInjector | None = None) -> None:
+    def __init__(self, root: Path, *, workspaces: Path | None = None, faults: FaultInjector | None = None) -> None:
         self._root = Path(root)
+        self._workspaces = Path(workspaces) if workspaces is not None else None
         self._faults = faults or FaultInjector()
         self._envs: dict[str, _Env] = {}
 
@@ -64,6 +69,7 @@ class LocalSubprocessSandboxProvider:
 class LocalSubprocessSandbox:
     def __init__(self, provider: LocalSubprocessSandboxProvider, scope: Scope) -> None:
         self._provider = provider
+        self._scope = scope
         self._owner = scope_id(scope)
 
     def _env(self, env_id: str, *, allow_destroyed: bool = False) -> _Env:
@@ -77,6 +83,11 @@ class LocalSubprocessSandbox:
         if spec.runtime != "python":
             raise InvalidError("unsupported_runtime", "开发实现只支持 python")
         env_id = "env-" + secrets.token_hex(8)
+        if spec.workspace_id:
+            workdir = workspace_dir(self._provider._workspaces, self._scope, spec.workspace_id)
+            workdir.mkdir(parents=True, exist_ok=True)
+            self._provider._envs[env_id] = _Env(owner=self._owner, spec=spec, workdir=workdir, owns_workdir=False)
+            return SandboxEnv(env_id=env_id, spec=spec)
         workdir = self._provider._root / self._owner / env_id / "work"
         workdir.mkdir(parents=True)
         self._provider._envs[env_id] = _Env(owner=self._owner, spec=spec, workdir=workdir)
@@ -124,4 +135,21 @@ class LocalSubprocessSandbox:
         env = self._env(env_id, allow_destroyed=True)
         if not env.destroyed:
             env.destroyed = True
-            shutil.rmtree(env.workdir.parent, ignore_errors=True)
+            if env.owns_workdir:
+                shutil.rmtree(env.workdir.parent, ignore_errors=True)
+
+
+def workspace_subpath(scope: Scope, workspace_id: str) -> str:
+    """绑定 workspace 时相对工作区根的路径 <tenant_id>/<workspace_id>。各实现共用同一套校验。"""
+    if scope.is_platform:
+        raise InvalidError("unsupported_workspace", "平台作用域没有 workspace")
+    if not isinstance(workspace_id, str) or not _SLUG.match(workspace_id):
+        raise InvalidError("invalid_workspace", "workspace_id 的格式不对")
+    return f"{scope.tenant_id}/{workspace_id}"
+
+
+def workspace_dir(root: Path | None, scope: Scope, workspace_id: str) -> Path:
+    """绑定 workspace 时的工作目录：<root>/<tenant_id>/<workspace_id>。"""
+    if root is None:
+        raise InvalidError("unsupported_workspace", "这个 Sandbox 没有配置工作区根，不能绑定 workspace")
+    return Path(root) / workspace_subpath(scope, workspace_id)

@@ -131,7 +131,7 @@ def test_steps_declare_the_tools_they_need() -> None:
     assert {"buf"} <= tools["proto"]
     assert {"uv", "buf", "go"} <= tools["contract"]
     assert {"go", "temporal", "postgres"} <= tools["go"]
-    assert {"uv", "temporal", "postgres", "qdrant", "docker"} <= tools["py-core"]
+    assert {"uv", "temporal", "postgres", "qdrant", "docker", "go", "kind", "kubectl"} <= tools["py-core"]
     assert {"uv", "postgres", "qdrant"} <= tools["py-memory"]
     assert {"uv", "temporal"} <= tools["py-worker"]
     assert {"uv", "go", "temporal"} <= tools["e2e"] and {"uv", "go", "temporal"} <= tools["faults"]

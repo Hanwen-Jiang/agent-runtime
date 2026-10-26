@@ -1,0 +1,63 @@
+# 沙箱命名空间的约束（docs/plan/cloud-deploy.md D-02、D-05）。沙箱 Pod 由 Worker 经 K8s 的 Sandbox 适配器建
+# （agentruntime_core.adapters.k8s_sandbox），标签 app.kubernetes.io/managed-by=agentruntime-sandbox。
+#
+# - 网络：默认拒绝一切进出。沙箱 Pod 只开一个口：Worker 连 agent 的 7070 端口。按域名放行 NetworkPolicy 做不到，
+#   联网的任务走 microVM 后端（D-07）。
+# - 资源：配额限制整个命名空间的总量；LimitRange 给没写资源的容器补默认值（适配器总会写）。
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: sandboxes
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: worker-to-agent
+  namespace: sandboxes
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/managed-by: agentruntime-sandbox
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: agent-runtime
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/component: worker
+      ports:
+        - protocol: TCP
+          port: 7070
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: sandboxes
+  namespace: sandboxes
+spec:
+  hard:
+    pods: "40"
+    requests.cpu: "16"
+    requests.memory: 32Gi
+    limits.cpu: "32"
+    limits.memory: 48Gi
+    requests.ephemeral-storage: 40Gi
+    limits.ephemeral-storage: 80Gi
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: sandboxes
+  namespace: sandboxes
+spec:
+  limits:
+    - type: Container
+      default: {cpu: "1", memory: 1Gi, ephemeral-storage: 2Gi}
+      defaultRequest: {cpu: 250m, memory: 256Mi, ephemeral-storage: 256Mi}
+      max: {cpu: "4", memory: 8Gi, ephemeral-storage: 10Gi}

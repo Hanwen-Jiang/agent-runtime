@@ -9,7 +9,9 @@
 - shell_run：argv 列表、不经 shell，在工作区里执行；子进程的环境只留 PATH 等必需的变量，Worker 的其他环境变量（含密钥）
   带不进去；输出截断；超时杀掉进程并返回 timed_out，不抛异常；非零退出码照常返回。shell_sandbox = host 时直接在宿主机上跑
   （开发实现，没有资源限制与网络隔离）；= docker 时在一次性容器里跑：只挂载本工作区到 /workspace，不联网，限 CPU、内存
-  与进程数，跑完删除容器（为 coding agent 加的，见 coding-agent 仓库的 docs/plan/coding-agent-mvp.md；上云后的后端见 docs/plan/cloud-deploy.md）。
+  与进程数，跑完删除容器（为 coding agent 加的，见 coding-agent 仓库的 docs/plan/coding-agent-mvp.md）；= sandbox 时经
+  Sandbox 接口（设计书 4.10）：按租户策略选登记的后端（K8s 的 gVisor、Kata，Cloudflare），每条命令建一个绑定本 workspace、
+  断网的环境，跑完销毁（tools/sandboxes.py；docs/plan/cloud-deploy.md D-05）。
 - web_fetch（配了 fetch_hosts 才登记）：只认 http、https；只去名单里的主机（"*" 任何主机，"*.example.com" 子域名）；
   解析出的地址是内网、回环、链路本地等一律拒绝（allow_private_fetch 只给测试用）；不走代理、不跟随重定向（返回状态码与
   Location）；正文有大小上限。
@@ -21,6 +23,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import ipaddress
 import os
@@ -37,10 +40,13 @@ from typing import Any
 
 from agentruntime_core.dev.tool_driver import LocalToolDriverProvider
 from agentruntime_core.enums import Effect
-from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError, TransientError
+from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError, ProviderError, TransientError
 from agentruntime_core.providers.object_store import ObjectStoreProvider
+from agentruntime_core.providers.sandbox import SandboxSpec
 from agentruntime_core.providers.tool_driver import ToolHandler, ToolInvocation, ToolSpec
 from agentruntime_core.tenancy import TenantContext
+
+from agentruntime_worker.tools.sandboxes import Sandboxes, parse_cpu_millis, parse_memory_mb
 
 VERSION = "v1"
 CONTEXT_READ = "context_read"
@@ -61,7 +67,7 @@ class PlatformToolsConfig:
     allow_private_fetch: bool = False
     shell_timeout_s: int = 120
     max_shell_timeout_s: int = 600
-    # shell_run 在哪里跑：host 或 docker；docker 时的镜像、docker 可执行文件与资源上限。
+    # shell_run 在哪里跑：host、docker 或 sandbox；docker 时的镜像、docker 可执行文件与资源上限（sandbox 时 CPU 与内存也取这里）。
     shell_sandbox: str = "host"
     shell_image: str = "python:3.13-slim"
     shell_docker: str = "docker"
@@ -94,11 +100,20 @@ def _spec(name: str, effect: Effect, description: str, properties: dict[str, Any
 _PATH = {"type": "string", "minLength": 1, "description": "相对工作区的路径，用 / 分隔"}
 
 
-def register_platform_tools(provider: LocalToolDriverProvider, config: PlatformToolsConfig, *, objects: ObjectStoreProvider | None = None) -> list[str]:
-    """按配置登记平台内工具，返回登记了的名字。给了 objects（Context Builder 外置内容的 ObjectStore）就登记 context_read。"""
+def register_platform_tools(
+    provider: LocalToolDriverProvider,
+    config: PlatformToolsConfig,
+    *,
+    objects: ObjectStoreProvider | None = None,
+    sandboxes: Sandboxes | None = None,
+) -> list[str]:
+    """按配置登记平台内工具，返回登记了的名字。给了 objects（Context Builder 外置内容的 ObjectStore）就登记 context_read；
+    shell_sandbox = sandbox 时 shell_run 用 sandboxes 里的后端。"""
+    if config.shell_sandbox == "sandbox" and config.workspace_root is not None and sandboxes is None:
+        raise ValueError("shell_sandbox = sandbox 时要给沙箱后端（AR_SANDBOX_BACKENDS_FILE）")
     tools: list[tuple[ToolSpec, ToolHandler]] = []
     if config.workspace_root is not None:
-        tools += _Workspaces(Path(config.workspace_root), config).tools()
+        tools += _Workspaces(Path(config.workspace_root), config, sandboxes).tools()
     if config.fetch_hosts:
         tools.append(_Fetcher(config).tool())
     if objects is not None:
@@ -112,9 +127,10 @@ def register_platform_tools(provider: LocalToolDriverProvider, config: PlatformT
 
 
 class _Workspaces:
-    def __init__(self, root: Path, config: PlatformToolsConfig) -> None:
+    def __init__(self, root: Path, config: PlatformToolsConfig, sandboxes: Sandboxes | None = None) -> None:
         self.root = root
         self.config = config
+        self.sandboxes = sandboxes
 
     def tools(self) -> list[tuple[ToolSpec, ToolHandler]]:
         c = self.config
@@ -276,6 +292,8 @@ class _Workspaces:
         timeout = min(int(args.get("timeout_s") or self.config.shell_timeout_s), self.config.max_shell_timeout_s)
         if self.config.shell_sandbox == "docker":
             return await self._docker_shell(root, argv, timeout)
+        if self.config.shell_sandbox == "sandbox":
+            return await self._sandbox_shell(invocation, root, argv, timeout)
         env = {k: os.environ[k] for k in _SHELL_ENV if k in os.environ}
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -324,6 +342,33 @@ class _Workspaces:
         if proc.returncode == 125:
             raise TransientError("sandbox_unavailable", "Docker 沙箱启动失败：" + stderr.decode("utf-8", errors="replace")[-500:])
         return {"exit_code": proc.returncode, "timed_out": False, "sandbox": "docker", **self._outputs(stdout, stderr)}
+
+    async def _sandbox_shell(self, invocation: ToolInvocation, root: Path, argv: list[str], timeout: int) -> Any:
+        """经 Sandbox 接口：按租户策略选后端，建一个绑定本 workspace、断网的环境，跑完销毁。"""
+        assert self.sandboxes is not None
+        backend = await self.sandboxes.for_tenant(invocation.tenant_id)
+        workspace = root.name
+        box = backend.provider.bind(TenantContext(tenant_id=invocation.tenant_id, workspace_id=workspace))
+        c = self.config
+        spec = SandboxSpec(
+            runtime="python",
+            cpu_millis=parse_cpu_millis(c.shell_cpus),
+            memory_mb=parse_memory_mb(c.shell_memory),
+            network="none",
+            idle_timeout=timedelta(seconds=timeout + 120),
+            workspace_id=workspace,
+        )
+        env = await box.create(spec)
+        try:
+            result = await box.exec(env.env_id, argv, timeout=timedelta(seconds=timeout))
+        except InvalidError as err:
+            if err.code == "command_not_found":
+                raise InvalidError("command_not_found", f"启动不了 {argv[0]}") from None
+            raise
+        finally:
+            with contextlib.suppress(ProviderError):
+                await box.destroy(env.env_id)
+        return {"exit_code": result.exit_code, "timed_out": result.timed_out, "sandbox": backend.name, **self._outputs(result.stdout, result.stderr)}
 
     def _outputs(self, stdout: bytes, stderr: bytes) -> dict[str, Any]:
         limit = self.config.output_limit
