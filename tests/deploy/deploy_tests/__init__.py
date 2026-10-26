@@ -29,6 +29,8 @@ REPO_ROOT = _find_repo_root()
 CHART_DIR = REPO_ROOT / "deploy" / "helm" / "agent-runtime"
 COLLECTOR_CONFIG = CHART_DIR / "files" / "otel-collector.yaml"
 PRODUCTION_VALUES = CHART_DIR / "values-production.example.yaml"
+# 云上单节点（docs/plan/cloud-deploy.md D-04）。
+CLOUD_VALUES = CHART_DIR / "values-cloud.yaml"
 RELEASE = "ar"
 
 

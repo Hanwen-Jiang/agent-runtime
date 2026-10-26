@@ -1,0 +1,13 @@
+# Qdrant（qdrant/qdrant Chart；docs/plan/cloud-deploy.md D-03）：Memory Service 的向量库（设计书现行版本；改 Milvus 见
+# docs/plan/design-changes-2026-10.md 的 C1）。单副本、本地盘；只有集群内的 Runtime 能连（deploy/data/networkpolicy.yaml）。
+replicaCount: 1
+persistence:
+  storageClassName: local-path
+  size: 20Gi
+resources:
+  requests: {cpu: 250m, memory: 1Gi}
+  limits: {cpu: "1", memory: 2Gi}
+service:
+  type: ClusterIP
+config:
+  telemetry_disabled: true

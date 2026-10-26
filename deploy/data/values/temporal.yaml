@@ -1,0 +1,79 @@
+# Temporal（官方 Chart temporalio/temporal，版本见 deploy/cluster/versions.env；docs/plan/cloud-deploy.md D-03）。
+# 存储用 deploy/data/postgres.yaml 的 temporal 与 temporal_visibility 两个库；不带 Cassandra、Elasticsearch、Prometheus、Grafana。
+# 键名随 Chart 版本变过，升级时对照该版本的 values.yaml。Runtime 用的命名空间 agent-runtime 由 deploy/data/install.sh 建，
+# 保留期要短于业务对象的生命周期（计划 S-06）。
+server:
+  replicaCount: 1
+  config:
+    numHistoryShards: 128
+    persistence:
+      default:
+        driver: sql
+        sql:
+          driver: postgres12
+          host: pg-rw.data.svc
+          port: 5432
+          database: temporal
+          user: temporal
+          existingSecret: pg-temporal
+          secretKey: password
+          maxConns: 20
+          maxIdleConns: 5
+      visibility:
+        driver: sql
+        sql:
+          driver: postgres12
+          host: pg-rw.data.svc
+          port: 5432
+          database: temporal_visibility
+          user: temporal
+          existingSecret: pg-temporal
+          secretKey: password
+          maxConns: 10
+          maxIdleConns: 2
+  frontend:
+    resources:
+      requests: {cpu: 200m, memory: 256Mi}
+      limits: {cpu: "1", memory: 512Mi}
+  history:
+    resources:
+      requests: {cpu: 250m, memory: 512Mi}
+      limits: {cpu: "1", memory: 1Gi}
+  matching:
+    resources:
+      requests: {cpu: 200m, memory: 256Mi}
+      limits: {cpu: "1", memory: 512Mi}
+  worker:
+    resources:
+      requests: {cpu: 100m, memory: 128Mi}
+      limits: {cpu: 500m, memory: 256Mi}
+admintools:
+  enabled: true
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 250m, memory: 256Mi}
+web:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 250m, memory: 256Mi}
+schema:
+  createDatabase:
+    enabled: false
+  setup:
+    enabled: true
+  update:
+    enabled: true
+cassandra:
+  enabled: false
+mysql:
+  enabled: false
+postgresql:
+  enabled: false
+elasticsearch:
+  enabled: false
+prometheus:
+  enabled: false
+grafana:
+  enabled: false

@@ -1,0 +1,15 @@
+# k3s 的配置（/etc/rancher/k3s/config.yaml；docs/plan/cloud-deploy.md D-02），install.sh 复制过去。单节点、自带 Traefik 与网络策略控制器。
+write-kubeconfig-mode: "0600"
+# Secret 在 etcd（单节点是 SQLite）里加密存放。
+secrets-encryption: true
+# k3s 自带的 servicelb 够用（单节点、一个公网地址）；不用 k3s 自带的 local-storage 以外的存储。
+disable:
+  - metrics-server
+kubelet-arg:
+  # 沙箱 Pod 用的临时存储有上限（LimitRange），节点磁盘吃紧时先驱逐。
+  - "eviction-hard=memory.available<1Gi,nodefs.available<10%"
+  - "system-reserved=cpu=500m,memory=2Gi"
+  - "kube-reserved=cpu=500m,memory=1Gi"
+kube-apiserver-arg:
+  # 没有标注 Pod Security 的命名空间也至少是 baseline。
+  - "admission-control-config-file=/etc/rancher/k3s/psa.yaml"

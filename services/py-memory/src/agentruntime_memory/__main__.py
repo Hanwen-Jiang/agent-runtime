@@ -7,6 +7,7 @@
 - AR_QDRANT_URL：向量库用 Qdrant；不设时用内存实现（进程退出即丢，只适合本地试用）。
 - AR_DATA_DIR：SQLite 与默认密钥文件的目录，默认 ./.agentruntime/memory。
 - AR_SECRETS_FILE：开发版 SecretStore 的文件，默认 AR_DATA_DIR 下的 secrets.json。
+- AR_SECRETS_SEED_FILE：启动时并进 AR_SECRETS_FILE 的种子文件（集群里是只读挂载的 K8s Secret；docs/plan/cloud-deploy.md D-04）。
 
 嵌入暂用确定的哈希嵌入；Model Gateway 接好后换成 GatewayEmbedder。提交的候选在后台处理。
 """
@@ -37,7 +38,10 @@ async def serve() -> None:
         raise SystemExit("要设置 AR_DEV_SIGNING_KEY")
     data_dir = Path(os.environ.get("AR_DATA_DIR", ".agentruntime/memory"))
     data_dir.mkdir(parents=True, exist_ok=True)
-    secrets = LocalFileSecretStoreProvider(Path(os.environ.get("AR_SECRETS_FILE", data_dir / "secrets.json")))
+    secrets_file = Path(os.environ.get("AR_SECRETS_FILE", data_dir / "secrets.json"))
+    if seed := os.environ.get("AR_SECRETS_SEED_FILE", ""):
+        LocalFileSecretStoreProvider(secrets_file).merge_seed(Path(seed))
+    secrets = LocalFileSecretStoreProvider(secrets_file)
     dsn = os.environ.get("AR_RELATIONAL_DSN", "")
     if dsn:
         from agentruntime_core.adapters.postgres import PostgresRelationalStoreProvider

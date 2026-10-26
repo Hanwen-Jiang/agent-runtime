@@ -14,3 +14,11 @@ build/
 .eval-reports/
 # T-13 的端到端日志（tests/e2e/.live-reports），本地跑出来的，结论摘要写进 TMP 计划
 .live-reports/
+# 集群的密钥（D-02）：只提交 SOPS 加密过的 *.enc.yaml 与只有占位符的样例，明文一律不进仓库
+/deploy/cluster/secrets/*.yaml
+!/deploy/cluster/secrets/*.enc.yaml
+!/deploy/cluster/secrets/secrets.example.yaml
+!/deploy/cluster/secrets/.sops.yaml
+# Cloudflare 桥（D-07）的依赖与 wrangler 的本地状态
+/deploy/cloudflare/sandbox-bridge/node_modules/
+/deploy/cloudflare/sandbox-bridge/.wrangler/

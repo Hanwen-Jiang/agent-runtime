@@ -31,7 +31,7 @@ spec:
             - name: registry
               containerPort: {{ $ts.registryPort }}
           env:
-            {{- include "ar.commonEnv" . | nindent 12 }}
+            {{- include "ar.storeEnv" . | nindent 12 }}
             {{- include "ar.signingKeyEnv" . | nindent 12 }}
             {{- include "ar.dsnEnv" . | nindent 12 }}
             - name: AR_TEMPORAL_ADDRESS
@@ -42,12 +42,12 @@ spec:
               value: {{ printf "0.0.0.0:%v" $ts.httpPort | quote }}
             - name: AR_REGISTRY_ADDR
               value: {{ printf "0.0.0.0:%v" $ts.registryPort | quote }}
+            # 镜像里的 /schemas（deploy/images/go.Dockerfile）。
             - name: AR_SCHEMAS_DIR
-              value: /app/schemas
+              value: /schemas
             - name: AR_DATA_DIR
               value: /data
-            - name: AR_OBJECT_STORE_DIR
-              value: /objects
+            {{- include "ar.objectStoreEnv" . | nindent 12 }}
           readinessProbe:
             httpGet:
               path: /healthz
@@ -98,31 +98,3 @@ spec:
     - name: grpc
       port: {{ $ts.registryPort }}
       targetPort: registry
-{{- if .Values.ingress.enabled }}
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: {{ $name }}
-  labels:
-    {{- include "ar.labels" (list . "task-service") | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-spec:
-  {{- with .Values.ingress.className }}
-  ingressClassName: {{ . }}
-  {{- end }}
-  rules:
-    - host: {{ .Values.ingress.host }}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ $name }}
-                port:
-                  name: http
-{{- end }}

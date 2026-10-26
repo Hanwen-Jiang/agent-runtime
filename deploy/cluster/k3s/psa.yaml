@@ -1,0 +1,16 @@
+# Pod Security 准入的默认值（/etc/rancher/k3s/psa.yaml）：没有标注的命名空间按 baseline 执行、按 restricted 警告。
+# sandboxes 命名空间自己标注 restricted（deploy/cluster/namespaces.yaml）。系统命名空间豁免。
+apiVersion: apiserver.config.k8s.io/v1
+kind: AdmissionConfiguration
+plugins:
+  - name: PodSecurity
+    configuration:
+      apiVersion: pod-security.admission.config.k8s.io/v1
+      kind: PodSecurityConfiguration
+      defaults:
+        enforce: baseline
+        enforce-version: latest
+        warn: restricted
+        warn-version: latest
+      exemptions:
+        namespaces: [kube-system, kata-system]

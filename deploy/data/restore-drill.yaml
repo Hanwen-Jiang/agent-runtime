@@ -1,0 +1,29 @@
+# 恢复演练（docs/plan/cloud-deploy.md D-03 验收 3）：从 R2 的备份恢复出一个新集群 pg-restore，restore-drill.sh 比对行数与校验和，
+# 比完删掉。只读备份，不往原来的位置写（恢复出的集群不归档 WAL）。
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-restore
+  namespace: data
+  labels:
+    agentruntime.io/purpose: restore-drill
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.6
+  storage:
+    storageClass: local-path
+    size: 50Gi
+  resources:
+    requests: {cpu: 250m, memory: 1Gi}
+    limits: {cpu: "1", memory: 2Gi}
+  enableSuperuserAccess: false
+  bootstrap:
+    recovery:
+      source: pg-backup
+  externalClusters:
+    - name: pg-backup
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: r2
+          serverName: pg

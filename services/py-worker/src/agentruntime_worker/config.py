@@ -21,6 +21,8 @@ ENV_DATA_DIR = "AR_DATA_DIR"
 # Claim-Check（S-06）：ObjectStore 与 SecretStore 开发实现的位置、阈值。变量名与 task-service 相同。
 ENV_OBJECT_STORE_DIR = "AR_OBJECT_STORE_DIR"
 ENV_SECRETS_FILE = "AR_SECRETS_FILE"
+# 集群里密钥文件放在共用的可写卷上，静态密钥来自只读的种子文件（K8s Secret），启动时并进来（D-04；与 task-service 相同）。
+ENV_SECRETS_SEED_FILE = "AR_SECRETS_SEED_FILE"
 ENV_CLAIM_CHECK_THRESHOLD = "AR_CLAIM_CHECK_THRESHOLD_BYTES"
 # Planner（S-09）：stub 用 S-03 的桩 Planner（默认，端到端测试用它）；model 用真正的 Planner（经 Model Gateway）。
 ENV_PLANNER = "AR_PLANNER"
@@ -65,6 +67,8 @@ class WorkerConfig:
     # ObjectStore 与 SecretStore 开发实现的位置；与 task-service 指向同一处，两边才能互相解开对方卸载的载荷。
     object_store_dir: Path | None = None
     secrets_file: Path | None = None
+    # 启动时并进 secrets_file 的种子文件（AR_SECRETS_SEED_FILE）；None 表示不并。
+    secrets_seed_file: Path | None = None
     # S3 兼容的对象存储（AR_S3_*，见 agentruntime_core.adapters.s3_object_store；D-09）：设了就不用 object_store_dir。
     object_store_s3: S3Settings | None = None
     # Claim-Check 的阈值（字节）。
@@ -134,6 +138,9 @@ class WorkerConfig:
         backends = env.get(ENV_SANDBOX_BACKENDS_FILE, "").strip()
         if sandbox == "sandbox" and not backends:
             raise ValueError(f"{ENV_TOOL_SHELL_SANDBOX}=sandbox 时要给 {ENV_SANDBOX_BACKENDS_FILE}")
+        seed = env.get(ENV_SECRETS_SEED_FILE, "").strip()
+        if seed and not secrets:
+            raise ValueError(f"设了 {ENV_SECRETS_SEED_FILE} 还要设 {ENV_SECRETS_FILE}（种子并进哪个文件）")
         return cls(
             temporal_address=env.get(ENV_TEMPORAL_ADDRESS, "") or cls.temporal_address,
             namespace=env.get(ENV_TEMPORAL_NAMESPACE, "") or cls.namespace,
@@ -143,6 +150,7 @@ class WorkerConfig:
             data_dir=data_dir,
             object_store_dir=Path(objects) if objects else (data_dir / "objects" if data_dir else None),
             secrets_file=Path(secrets) if secrets else (data_dir / "secrets.json" if data_dir else None),
+            secrets_seed_file=Path(seed) if seed else None,
             object_store_s3=S3Settings.from_env(env),
             claim_check_threshold=threshold,
             planner=planner,

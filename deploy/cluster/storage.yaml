@@ -1,0 +1,25 @@
+# 单节点上 task-service 与 Worker 共用的业务对象目录（开发 ObjectStore，AR_OBJECT_STORE_DIR；docs/plan/cloud-deploy.md D-04）。
+# local-path 的卷是 ReadWriteOnce，但同一台机器上的多个 Pod 都能挂上；加节点之前换成 R2（Chart 的 objectStore.s3，D-09）。
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: agent-runtime-objects
+  namespace: agent-runtime
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests: {storage: 50Gi}
+---
+# SecretStore 的可写文件（Chart 的 secrets.storeClaim）：Claim-Check 与 Memory Service 的各租户 kek 写在这里，副本共用；
+# 静态密钥仍来自 K8s Secret（种子，启动时并进来）。文件是明文，只适合单节点演示；正式环境换 OpenBao（设计书 4.12）。
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: agent-runtime-secretstore
+  namespace: agent-runtime
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests: {storage: 1Gi}

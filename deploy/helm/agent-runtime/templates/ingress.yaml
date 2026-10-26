@@ -1,0 +1,81 @@
+{{- /* Task API 的对外入口（docs/plan/cloud-deploy.md D-04）。只转发 task-service 的 http 端口；Registry 的内部端口
+       永远不进入口（T-08）。Task API 的事件流是 SSE：不加会缓冲或压缩响应的中间件。 */ -}}
+{{- $ing := .Values.ingress -}}
+{{- if $ing.enabled }}
+{{- $svc := printf "%s-task-service" (include "ar.fullname" .) -}}
+{{- if eq $ing.type "traefik" }}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ $svc }}
+  labels:
+    {{- include "ar.labels" (list . "task-service") | nindent 4 }}
+spec:
+  entryPoints:
+    {{- toYaml $ing.traefik.entryPoints | nindent 4 }}
+  routes:
+    - kind: Rule
+      match: {{ printf "Host(`%s`)" $ing.host | quote }}
+      services:
+        - name: {{ $svc }}
+          port: http
+          # SSE：Traefik 对 text/event-stream 本来就逐条转发；这里再把刷新间隔压短，别的流式响应也不攒。
+          responseForwarding:
+            flushInterval: 10ms
+  tls:
+    {{- if $ing.traefik.tlsSecretName }}
+    secretName: {{ $ing.traefik.tlsSecretName }}
+    {{- else }}
+    {}
+    {{- end }}
+{{- else if eq $ing.type "gateway" }}
+{{- if not $ing.gateway.parentRefs }}
+{{- fail "ingress.type=gateway 时要给 ingress.gateway.parentRefs" }}
+{{- end }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $svc }}
+  labels:
+    {{- include "ar.labels" (list . "task-service") | nindent 4 }}
+spec:
+  parentRefs:
+    {{- toYaml $ing.gateway.parentRefs | nindent 4 }}
+  hostnames:
+    - {{ $ing.host | quote }}
+  rules:
+    - matches:
+        - path: {type: PathPrefix, value: /}
+      backendRefs:
+        - name: {{ $svc }}
+          port: {{ .Values.taskService.httpPort }}
+{{- else if eq $ing.type "ingress" }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $svc }}
+  labels:
+    {{- include "ar.labels" (list . "task-service") | nindent 4 }}
+  {{- with $ing.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with $ing.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  rules:
+    - host: {{ $ing.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $svc }}
+                port:
+                  name: http
+{{- else }}
+{{- fail "ingress.type 只能是 traefik、gateway 或 ingress" }}
+{{- end }}
+{{- end }}

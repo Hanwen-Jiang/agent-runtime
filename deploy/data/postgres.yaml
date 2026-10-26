@@ -1,0 +1,125 @@
+# 一套 Postgres（CloudNativePG；docs/plan/cloud-deploy.md D-03）：业务库、Temporal 的两个库、Langfuse 各一个库。
+# 单节点、一个实例；每天全量备份加 WAL 归档到 Cloudflare R2（Barman Cloud 插件），恢复演练见 restore-drill.sh。
+#
+# 角色都不是超级用户、没有 BYPASSRLS：业务库的行级安全（S-12a）对 agentruntime 生效（表都 FORCE ROW LEVEL SECURITY），
+# 适配器连上时还会核对一遍。口令在 data 命名空间的 Secret 里（deploy/cluster/secrets，SOPS 加密）。
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg
+  namespace: data
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.6
+  storage:
+    storageClass: local-path
+    size: 50Gi
+  resources:
+    requests: {cpu: 500m, memory: 2Gi}
+    limits: {cpu: "2", memory: 3Gi}
+  postgresql:
+    parameters:
+      shared_buffers: 512MB
+      max_connections: "200"
+  bootstrap:
+    initdb:
+      database: agentruntime
+      owner: agentruntime
+      secret:
+        name: pg-agentruntime
+  enableSuperuserAccess: false
+  managed:
+    roles:
+      - name: agentruntime
+        ensure: present
+        login: true
+        superuser: false
+        bypassrls: false
+        createdb: false
+        createrole: false
+        passwordSecret: {name: pg-agentruntime}
+      - name: temporal
+        ensure: present
+        login: true
+        superuser: false
+        bypassrls: false
+        createdb: false
+        createrole: false
+        passwordSecret: {name: pg-temporal}
+      - name: langfuse
+        ensure: present
+        login: true
+        superuser: false
+        bypassrls: false
+        createdb: false
+        createrole: false
+        passwordSecret: {name: pg-langfuse}
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: r2
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: temporal
+  namespace: data
+spec:
+  cluster: {name: pg}
+  name: temporal
+  owner: temporal
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: temporal-visibility
+  namespace: data
+spec:
+  cluster: {name: pg}
+  name: temporal_visibility
+  owner: temporal
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: langfuse
+  namespace: data
+spec:
+  cluster: {name: pg}
+  name: langfuse
+  owner: langfuse
+---
+# 备份的去处：R2 的桶（S3 兼容）。端点与桶名按账号改；凭据在 Secret r2-backup（键 ACCESS_KEY_ID、ACCESS_SECRET_KEY）。
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: r2
+  namespace: data
+spec:
+  configuration:
+    destinationPath: s3://agentruntime-backups/pg
+    endpointURL: https://ACCOUNT_ID.r2.cloudflarestorage.com
+    s3Credentials:
+      accessKeyId: {name: r2-backup, key: ACCESS_KEY_ID}
+      secretAccessKey: {name: r2-backup, key: ACCESS_SECRET_KEY}
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
+  retentionPolicy: 14d
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: pg-daily
+  namespace: data
+spec:
+  # 每天 03:00（UTC）；秒 分 时 日 月 周。
+  schedule: "0 0 3 * * *"
+  backupOwnerReference: self
+  cluster: {name: pg}
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+  immediate: true

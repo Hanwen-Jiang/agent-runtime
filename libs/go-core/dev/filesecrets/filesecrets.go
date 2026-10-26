@@ -141,6 +141,47 @@ func (p *Provider) GrantRole(tenantID, role string) {
 	})
 }
 
+// MergeSeed 把种子文件（同样的格式，通常是只读挂载的 K8s Secret）并进 path 的密钥文件（docs/plan/cloud-deploy.md D-04）：
+// 种子里的密钥覆盖同名的（轮换时改种子），角色取并集；kek 只在密钥文件还没有时才取种子的，已有的不换
+// （用它包过的数据密钥要能解开）。与 Python 侧 LocalFileSecretStoreProvider.merge_seed 规则相同。
+func MergeSeed(path, seedPath string) error {
+	raw, err := os.ReadFile(seedPath)
+	if err != nil {
+		return providererr.New(providererr.Invalid, "invalid_seed", "读不了密钥的种子文件")
+	}
+	var seed file
+	if err := json.Unmarshal(raw, &seed); err != nil || seed.Scopes == nil {
+		return providererr.New(providererr.Invalid, "invalid_seed", "密钥的种子文件格式不对")
+	}
+	p, err := New(Options{Path: path})
+	if err != nil {
+		return err
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.locked(func() error {
+		for owner, entry := range seed.Scopes {
+			if entry == nil {
+				continue
+			}
+			mine := p.scope(owner)
+			for name, value := range entry.Secrets {
+				mine.Secrets[name] = value
+			}
+			for _, role := range entry.Roles {
+				if !slices.Contains(mine.Roles, role) {
+					mine.Roles = append(mine.Roles, role)
+				}
+			}
+			slices.Sort(mine.Roles)
+			if mine.KEK == "" && entry.KEK != "" {
+				mine.KEK = entry.KEK
+			}
+		}
+		return p.save()
+	})
+}
+
 func (p *Provider) scope(owner string) *scopeEntry {
 	e, ok := p.data.Scopes[owner]
 	if !ok {

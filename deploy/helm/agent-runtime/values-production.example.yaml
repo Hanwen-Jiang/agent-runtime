@@ -37,12 +37,13 @@ taskService:
     requests: {cpu: 500m, memory: 512Mi}
     limits: {cpu: "2", memory: 1Gi}
 
+# ingress-nginx 2026 年 3 月起停止维护，样例改用 Traefik（docs/plan/cloud-deploy.md D-04）。
 ingress:
   enabled: true
-  className: nginx
+  type: traefik
   host: agent-runtime.example.com
-  annotations:
-    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+  traefik:
+    tlsSecretName: agent-runtime-tls
 
 modelGateway:
   replicas: 3

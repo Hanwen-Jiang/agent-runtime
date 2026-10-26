@@ -1,5 +1,7 @@
 {{- /* Worker 按任务队列分池（设计书 3.6、附录 K.5）：每个池一个 Deployment（--queues 只有这个队列）与一个 KEDA ScaledObject。
        副本数交给 KEDA（temporal 触发器按队列积压），Deployment 不写 replicas。 */ -}}
+{{- $kube := include "ar.workerNeedsKube" . }}
+{{- $shell := .Values.worker.shell }}
 {{- range $pool, $cfg := .Values.worker.pools }}
 {{- $name := printf "%s-worker-%s" (include "ar.fullname" $) $pool }}
 ---
@@ -21,8 +23,14 @@ spec:
         {{- include "ar.labels" (list $ "worker") | nindent 8 }}
         agentruntime.io/pool: {{ $pool }}
     spec:
+      {{- if $kube }}
+      # 只在沙箱命名空间里管 Pod（worker-sandbox.yaml 的 Role）。
+      serviceAccountName: {{ include "ar.workerServiceAccount" $ }}
+      automountServiceAccountToken: true
+      {{- else }}
       serviceAccountName: {{ include "ar.fullname" $ }}
       automountServiceAccountToken: false
+      {{- end }}
       securityContext:
         {{- toYaml $.Values.podSecurityContext | nindent 8 }}
       containers:
@@ -31,7 +39,7 @@ spec:
           imagePullPolicy: {{ $.Values.image.pullPolicy }}
           args: ["-m", "agentruntime_worker", "--queues", {{ $pool | quote }}]
           env:
-            {{- include "ar.commonEnv" $ | nindent 12 }}
+            {{- include "ar.storeEnv" $ | nindent 12 }}
             - name: AR_TEMPORAL_ADDRESS
               value: {{ $.Values.external.temporal.address | quote }}
             - name: AR_TEMPORAL_NAMESPACE
@@ -48,16 +56,44 @@ spec:
               value: {{ $.Values.worker.toolLoop | quote }}
             - name: AR_DATA_DIR
               value: /data
-            - name: AR_OBJECT_STORE_DIR
-              value: /objects
+            {{- include "ar.objectStoreEnv" $ | nindent 12 }}
+            - name: AR_TOOL_SHELL_SANDBOX
+              value: {{ $shell.mode | quote }}
+            {{- if eq $shell.mode "sandbox" }}
+            - name: AR_SANDBOX_BACKENDS_FILE
+              value: /etc/agentruntime/sandbox/backends.json
+            {{- end }}
+            {{- if $.Values.worker.workspacesClaim }}
+            - name: AR_TOOL_WORKSPACE_ROOT
+              value: /workspaces
+            {{- end }}
           securityContext:
             {{- toYaml $.Values.containerSecurityContext | nindent 12 }}
           resources:
             {{- toYaml $cfg.resources | nindent 12 }}
           volumeMounts:
             {{- include "ar.volumeMounts" $ | nindent 12 }}
+            {{- if $.Values.worker.workspacesClaim }}
+            - name: workspaces
+              mountPath: /workspaces
+            {{- end }}
+            {{- if eq $shell.mode "sandbox" }}
+            - name: sandbox-backends
+              mountPath: /etc/agentruntime/sandbox
+              readOnly: true
+            {{- end }}
       volumes:
         {{- include "ar.volumes" $ | nindent 8 }}
+        {{- if $.Values.worker.workspacesClaim }}
+        - name: workspaces
+          persistentVolumeClaim:
+            claimName: {{ $.Values.worker.workspacesClaim }}
+        {{- end }}
+        {{- if eq $shell.mode "sandbox" }}
+        - name: sandbox-backends
+          configMap:
+            name: {{ printf "%s-sandbox-backends" (include "ar.fullname" $) }}
+        {{- end }}
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject

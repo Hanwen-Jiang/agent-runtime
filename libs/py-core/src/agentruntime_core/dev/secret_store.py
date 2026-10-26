@@ -5,7 +5,10 @@
 kek 是该作用域的密钥加密密钥，首次生成数据密钥时创建并写回文件。短期凭据的租约只在内存里。
 多个进程可以共用一份文件（task-service 与 Worker 互相解开对方的 Claim-Check 数据密钥，S-06）：
 写文件时加锁并先重新读，缺 kek 时先重新读文件再生成，不会覆盖别的进程写进去的内容。
-文件里是明文，只能用于开发。
+文件里是明文，只能用于开发与单节点演示。
+
+集群里（docs/plan/cloud-deploy.md D-04）静态密钥来自只读挂载的 K8s Secret，kek 又要写回：密钥文件放在共用的可写卷上，
+各进程启动时用 merge_seed 把只读的种子文件并进来（AR_SECRETS_SEED_FILE）。Go 侧 filesecrets.MergeSeed 规则相同。
 """
 
 from __future__ import annotations
@@ -84,6 +87,25 @@ class LocalFileSecretStoreProvider:
             if role not in roles:
                 roles.append(role)
                 self._save()
+
+    def merge_seed(self, seed: Path) -> None:
+        """把种子文件（同样的格式，通常是只读挂载的 K8s Secret）并进密钥文件：种子里的密钥覆盖同名的（轮换时改种子），
+        角色取并集；kek 只在本文件还没有时才取种子的，已有的不换（用它包过的数据密钥要能解开）。"""
+        try:
+            data = json.loads(Path(seed).read_text("utf-8"))
+        except (OSError, ValueError) as err:
+            raise InvalidError("invalid_seed", f"读不了密钥的种子文件（{type(err).__name__}）") from None
+        scopes = data.get("scopes") if isinstance(data, dict) else None
+        if not isinstance(scopes, dict):
+            raise InvalidError("invalid_seed", "密钥的种子文件里没有 scopes")
+        with self._locked():
+            for owner, entry in scopes.items():
+                mine = self._scope(owner)
+                mine["secrets"].update(entry.get("secrets") or {})
+                mine["roles"] = sorted(set(mine["roles"]) | set(entry.get("roles") or []))
+                if "kek" not in mine and entry.get("kek"):
+                    mine["kek"] = entry["kek"]
+            self._save()
 
     def _scope(self, owner: str) -> dict[str, Any]:
         return self._data["scopes"].setdefault(owner, {"secrets": {}, "roles": []})

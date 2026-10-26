@@ -133,6 +133,14 @@ def test_s3_object_store_replaces_the_directory(tmp_path: Path) -> None:
         WorkerConfig.from_env({"AR_S3_ENDPOINT": "https://acct.r2.cloudflarestorage.com"})
 
 
+def test_secrets_seed_file_needs_a_writable_secrets_file(tmp_path: Path) -> None:
+    """D-04：集群里密钥文件在可写的共用卷上，只读的种子（K8s Secret）启动时并进来。"""
+    config = WorkerConfig.from_env({ENV_SECRETS_FILE: str(tmp_path / "store.json"), "AR_SECRETS_SEED_FILE": str(tmp_path / "seed.json")})
+    assert config.secrets_seed_file == tmp_path / "seed.json"
+    with pytest.raises(ValueError, match="AR_SECRETS_FILE"):
+        WorkerConfig.from_env({"AR_SECRETS_SEED_FILE": str(tmp_path / "seed.json")})
+
+
 @pytest.mark.parametrize("value", ["0", "-1", "abc", "2.5"])
 def test_config_rejects_bad_claim_check_threshold(value: str) -> None:
     with pytest.raises(ValueError):

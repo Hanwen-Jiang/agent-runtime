@@ -1,0 +1,75 @@
+{{- /* shell_run 经 Sandbox 接口（docs/plan/cloud-deploy.md D-05）：后端登记的 ConfigMap；有 kind=k8s 的后端时，
+       Worker 用自己的 ServiceAccount，只在沙箱命名空间里管 Pod（建、读、改标注、删；api_proxy 时再加 pods/proxy），
+       读不了 Secret，也不能在别的命名空间建 Pod。 */ -}}
+{{- $shell := .Values.worker.shell -}}
+{{- if not (has $shell.mode (list "host" "sandbox")) }}
+{{- fail "worker.shell.mode 只能是 host 或 sandbox（docker 要挂 docker.sock，集群里不允许）" }}
+{{- end }}
+{{- if eq $shell.mode "sandbox" }}
+{{- if not $shell.backends }}
+{{- fail "worker.shell.mode=sandbox 时要登记 worker.shell.backends" }}
+{{- end }}
+{{- if not (hasKey $shell.backends $shell.defaultBackend) }}
+{{- fail "worker.shell.defaultBackend 要是 worker.shell.backends 里的一个" }}
+{{- end }}
+{{- if not .Values.worker.workspacesClaim }}
+{{- fail "worker.shell.mode=sandbox 时要给 worker.workspacesClaim（沙箱挂的是 workspace 的目录）" }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-sandbox-backends" (include "ar.fullname" .) }}
+  labels:
+    {{- include "ar.labels" (list . "worker") | nindent 4 }}
+data:
+  backends.json: {{ dict "default" $shell.defaultBackend "backends" $shell.backends | toJson | quote }}
+{{- if include "ar.workerNeedsKube" . }}
+{{- $proxy := false }}
+{{- range $name, $b := $shell.backends }}
+{{- if and (eq $b.kind "k8s") (eq (default "pod_ip" $b.connect) "api_proxy") }}{{ $proxy = true }}{{ end }}
+{{- if and (eq $b.kind "k8s") (ne (default $shell.sandboxNamespace $b.namespace) $shell.sandboxNamespace) }}
+{{- fail (printf "沙箱后端 %s 的 namespace 要是 worker.shell.sandboxNamespace（Role 只建在那里）" $name) }}
+{{- end }}
+{{- end }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "ar.workerServiceAccount" . }}
+  labels:
+    {{- include "ar.labels" (list . "worker") | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "ar.workerServiceAccount" . }}
+  namespace: {{ $shell.sandboxNamespace }}
+  labels:
+    {{- include "ar.labels" (list . "worker") | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["create", "get", "list", "patch", "delete"]
+  {{- if $proxy }}
+  - apiGroups: [""]
+    resources: ["pods/proxy"]
+    verbs: ["get", "create", "update"]
+  {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "ar.workerServiceAccount" . }}
+  namespace: {{ $shell.sandboxNamespace }}
+  labels:
+    {{- include "ar.labels" (list . "worker") | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "ar.workerServiceAccount" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "ar.workerServiceAccount" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
+{{- end }}

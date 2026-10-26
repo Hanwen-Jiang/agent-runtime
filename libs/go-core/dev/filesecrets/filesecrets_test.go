@@ -2,6 +2,7 @@ package filesecrets_test
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -64,6 +65,35 @@ func TestConcurrentProcessesNeverOverwriteEachOthersKEK(t *testing.T) {
 		if err != nil || !got.Equal(key.Plaintext) {
 			t.Errorf("%s 生成的数据密钥应能用文件里的密钥加密密钥解开：%v", name, err)
 		}
+	}
+}
+
+// 集群里（D-04）：静态密钥来自只读的种子文件，kek 写在共用的可写文件里。
+func TestMergeSeedKeepsGeneratedKEKsAndRefreshesSecrets(t *testing.T) {
+	dir := t.TempDir()
+	path, seed := filepath.Join(dir, "store", "secrets.json"), filepath.Join(dir, "seed.json")
+	ctx := context.Background()
+	t1 := &commonv1.TenantContext{TenantId: "t1"}
+	write := func(body string) { conformance.NoError(t, os.WriteFile(seed, []byte(body), 0o600)) }
+	write(`{"version":1,"scopes":{"_platform":{"secrets":{"model-provider/api-key":"old"},"roles":["r1"]}}}`)
+	conformance.NoError(t, filesecrets.MergeSeed(path, seed))
+	key := conformance.Must(conformance.Must(conformance.Must(filesecrets.New(filesecrets.Options{Path: path})).Bind(t1)).GenerateDataKey(ctx, "claim_check"))
+
+	// 轮换：种子里的值变了，kek 不能被种子换掉（种子里带了别的 kek 也不行）。
+	write(`{"version":1,"scopes":{"_platform":{"secrets":{"model-provider/api-key":"new"},"roles":["r2"]},"t1":{"secrets":{},"roles":[],"kek":"` +
+		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" + `"}}}`)
+	conformance.NoError(t, filesecrets.MergeSeed(path, seed))
+	p := conformance.Must(filesecrets.New(filesecrets.Options{Path: path}))
+	got := conformance.Must(conformance.Must(p.BindPlatform("seed")).Read(ctx, "model-provider/api-key"))
+	if got.RevealString() != "new" {
+		t.Fatalf("种子里的密钥要覆盖旧值")
+	}
+	plain, err := conformance.Must(p.Bind(t1)).UnwrapDataKey(ctx, key.Wrapped, "claim_check")
+	if err != nil || !plain.Equal(key.Plaintext) {
+		t.Fatalf("已生成的 kek 不能被种子换掉：%v", err)
+	}
+	if err := filesecrets.MergeSeed(path, filepath.Join(dir, "missing.json")); providererr.CategoryOf(err) != providererr.Invalid {
+		t.Fatalf("种子文件不存在：%v", err)
 	}
 }
 

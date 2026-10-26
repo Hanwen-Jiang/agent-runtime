@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# 装数据层与观测组件（docs/plan/cloud-deploy.md D-03），deploy/cluster/install.sh 与密钥（deploy/cluster/secrets）之后运行：
+#   deploy/data/install.sh
+# Postgres（CloudNativePG）、Temporal、Qdrant、Redpanda 装在 data；Langfuse、Tempo、Grafana 装在 observability。
+# 版本见 deploy/cluster/versions.env；资源的预算见 deploy/cluster/README.md。重复运行是安全的。
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../cluster/versions.env
+source "$HERE/../cluster/versions.env"
+export KUBECONFIG="${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}"
+log() { printf '==> %s\n' "$*"; }
+
+for s in pg-agentruntime pg-temporal pg-langfuse r2-backup; do
+  kubectl -n data get secret "$s" >/dev/null || { echo "data 命名空间缺 Secret $s（见 deploy/cluster/secrets/README.md）" >&2; exit 1; }
+done
+
+log "Postgres"
+kubectl apply -f "$HERE/networkpolicy.yaml"
+kubectl apply -f "$HERE/postgres.yaml"
+kubectl -n data wait --for=condition=Ready cluster/pg --timeout=15m
+
+helm repo add temporal https://go.temporal.io/helm-charts >/dev/null
+helm repo add qdrant https://qdrant.github.io/qdrant-helm >/dev/null
+helm repo add redpanda https://charts.redpanda.com >/dev/null
+helm repo add langfuse https://langfuse.github.io/langfuse-k8s >/dev/null
+helm repo add grafana https://grafana.github.io/helm-charts >/dev/null
+helm repo update >/dev/null
+
+log "Temporal"
+helm upgrade --install temporal temporal/temporal --version "$TEMPORAL_CHART_VERSION" -n data -f "$HERE/values/temporal.yaml" --wait --timeout 15m
+# Runtime 用的命名空间；保留期 7 天，短于业务对象的生命周期（S-06）。
+kubectl -n data exec deploy/temporal-admintools -- \
+  sh -c 'temporal operator namespace describe -n agent-runtime >/dev/null 2>&1 || temporal operator namespace create -n agent-runtime --retention 7d'
+
+log "Qdrant、Redpanda"
+helm upgrade --install qdrant qdrant/qdrant --version "$QDRANT_CHART_VERSION" -n data -f "$HERE/values/qdrant.yaml" --wait
+helm upgrade --install redpanda redpanda/redpanda --version "$REDPANDA_CHART_VERSION" -n data -f "$HERE/values/redpanda.yaml" --wait --timeout 15m
+
+log "Langfuse、Tempo、Grafana"
+helm upgrade --install langfuse langfuse/langfuse --version "$LANGFUSE_CHART_VERSION" -n observability -f "$HERE/values/langfuse.yaml" --wait --timeout 15m
+helm upgrade --install tempo grafana/tempo --version "$TEMPO_CHART_VERSION" -n observability -f "$HERE/values/tempo.yaml" --wait
+helm upgrade --install grafana grafana/grafana --version "$GRAFANA_CHART_VERSION" -n observability -f "$HERE/values/grafana.yaml" --wait
+kubectl apply -f "$HERE/dashboards/"
+
+log "核对业务库的角色（rolsuper、rolbypassrls 都应为 f）"
+primary="$(kubectl -n data get pod -l cnpg.io/cluster=pg,cnpg.io/instanceRole=primary -o jsonpath='{.items[0].metadata.name}')"
+kubectl -n data exec "$primary" -c postgres -- psql -X -A -t -c \
+  "SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname IN ('agentruntime', 'temporal', 'langfuse') ORDER BY 1"
+log "完成。备份恢复演练：deploy/data/restore-drill.sh"

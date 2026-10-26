@@ -251,6 +251,12 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	defer raw.Close()
 	// 大载荷经 Claim-Check 卸载到 ObjectStore（S-06）：客户端调用按绑定的租户（DurableEngine.Bind），
 	// Session 工作流里按 memo 的作用域，activity 按所属工作流 describe 出的作用域（describe 用不带 Claim-Check 的 raw）。
+	if cfg.SecretsSeedFile != "" {
+		// 先并种子，后面建的 SecretStore（Claim-Check、Registry 的发布令牌）读到的就是并好的文件。
+		if err := filesecrets.MergeSeed(cfg.SecretsFile, cfg.SecretsSeedFile); err != nil {
+			return fmt.Errorf("并入 %s 失败：%w", config.EnvSecretsSeedFile, err)
+		}
+	}
 	cc, err := newClaimCheck(cfg.ObjectStoreS3, cfg.ObjectStoreDir, cfg.SecretsFile, cfg.ClaimCheckThreshold)
 	if err != nil {
 		return err

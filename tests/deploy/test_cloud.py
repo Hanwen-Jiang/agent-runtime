@@ -1,0 +1,459 @@
+"""D-02、D-03、D-04：云上单节点的集群基线、数据层与 Runtime 上线（docs/plan/cloud-deploy.md）。
+
+静态检查（总是跑）。线上的验收要真机器，脚本在 deploy/cluster/verify.sh、deploy/data/restore-drill.sh、scripts/sse_probe.py：
+- 集群基线：k3s 加密 Secret、Pod Security 默认值、containerd 模板加了 runsc、Traefik 跳 https 且不压缩不缓冲；sandboxes 是
+  restricted；RuntimeClass gvisor 与 kata；装脚本按 versions.env 装、不直接把网上的脚本接给 sh、gVisor 核对 sha512。
+- 数据层：Postgres 的角色都不是超级用户、没有 BYPASSRLS；每天备份到 R2；恢复演练从备份起新集群、不往原处归档。
+- Runtime 的 Chart：入口是 Traefik 的 IngressRoute（或 Gateway API、通用 Ingress），不再是 nginx，只转 task-service 的 http 端口；
+  Worker 在沙箱命名空间里只能管 Pod，读不了 Secret，别的服务不挂令牌；ObjectStore 的 S3 变量；可写的 SecretStore 加种子。
+- 各处对得上：values-cloud.yaml 引用的卷、Secret、RuntimeClass、服务地址都有出处；内存的 requests 总和留得下沙箱。
+设 AR_TEST_KIND=1 时在 kind 集群里核对 Worker 的 RBAC（kubectl auth can-i）。
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+import pytest
+import yaml
+
+from deploy_tests import CLOUD_VALUES, REPO_ROOT, by_kind, containers, env_of, pod_spec, render, run
+
+CLUSTER = REPO_ROOT / "deploy" / "cluster"
+DATA = REPO_ROOT / "deploy" / "data"
+WORKER = "app.kubernetes.io/component"
+
+
+def docs(path: Path) -> list[dict[str, Any]]:
+    return [d for d in yaml.safe_load_all(path.read_text("utf-8")) if d]
+
+
+def cluster_docs() -> list[dict[str, Any]]:
+    return [d for name in ("namespaces", "sandboxes", "runtimeclasses", "workspaces", "storage") for d in docs(CLUSTER / f"{name}.yaml")]
+
+
+def versions() -> dict[str, str]:
+    out = {}
+    for line in (CLUSTER / "versions.env").read_text("utf-8").splitlines():
+        if line.strip() and not line.startswith("#"):
+            key, _, value = line.partition("=")
+            out[key.strip()] = value.strip()
+    return out
+
+
+def cloud_values() -> dict[str, Any]:
+    return yaml.safe_load(CLOUD_VALUES.read_text("utf-8"))
+
+
+@pytest.fixture(scope="module")
+def cloud() -> list[dict[str, Any]]:
+    return render(CLOUD_VALUES)
+
+
+def mem_gi(value: str) -> float:
+    match = re.fullmatch(r"([0-9.]+)(Mi|Gi|Ki|M|G)?", str(value))
+    assert match, value
+    number, unit = float(match.group(1)), match.group(2) or ""
+    return number * {"Gi": 1, "G": 1, "Mi": 1 / 1024, "M": 1 / 1024, "Ki": 1 / 1024 / 1024, "": 1 / 1024**3}[unit]
+
+
+SCRIPTS = [CLUSTER / "install.sh", CLUSTER / "verify.sh", DATA / "install.sh", DATA / "restore-drill.sh"]
+
+# --- D-02 集群基线 ---
+
+
+def test_versions_are_pinned_and_every_script_variable_is_defined() -> None:
+    pinned = versions()
+    for key, value in pinned.items():
+        assert value and value.lower() != "latest" and re.search(r"\d", value), f"{key} 要写明版本"
+    for script in SCRIPTS:
+        for var in set(re.findall(r"\$\{?([A-Z][A-Z0-9_]*_VERSION|GVISOR_RELEASE)\b", script.read_text("utf-8"))):
+            assert var in pinned, f"{script.name} 用了 versions.env 里没有的 {var}"
+
+
+@pytest.mark.parametrize("script", SCRIPTS, ids=[s.relative_to(REPO_ROOT).as_posix() for s in SCRIPTS])
+def test_scripts_fail_fast_and_never_pipe_downloads_into_a_shell(script: Path) -> None:
+    text = script.read_text("utf-8")
+    assert text.startswith("#!/usr/bin/env bash\n") and "set -euo pipefail" in text
+    assert not re.search(r"curl[^\n|]*\|\s*(sudo\s+)?(ba)?sh\b", text), "先下载到文件再执行"
+    assert "\r\n" not in text, "脚本要是 LF 换行"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows 上的 bash 是 WSL 的，读不到网络盘；CI（Linux）上检查语法")
+@pytest.mark.parametrize("script", SCRIPTS, ids=[s.name for s in SCRIPTS])
+def test_scripts_parse(script: Path) -> None:
+    bash = shutil.which("bash")
+    assert bash, "要有 bash"
+    run([bash, "-n", script])
+
+
+def test_gvisor_binaries_are_checksummed() -> None:
+    text = (CLUSTER / "install.sh").read_text("utf-8")
+    assert "runsc.sha512" in text.replace("$bin.sha512", "runsc.sha512") and "sha512sum -c" in text
+    assert "INSTALL_K3S_VERSION=\"$K3S_VERSION\"" in text
+
+
+def test_k3s_config_encrypts_secrets_and_defaults_pod_security() -> None:
+    config = yaml.safe_load((CLUSTER / "k3s" / "config.yaml").read_text("utf-8"))
+    assert config["secrets-encryption"] is True
+    assert config["write-kubeconfig-mode"] == "0600"
+    assert "admission-control-config-file=/etc/rancher/k3s/psa.yaml" in config["kube-apiserver-arg"]
+    assert "/etc/rancher/k3s/psa.yaml" in (CLUSTER / "install.sh").read_text("utf-8"), "install.sh 把 psa.yaml 放到 k3s 配置引用的位置"
+    psa = yaml.safe_load((CLUSTER / "k3s" / "psa.yaml").read_text("utf-8"))
+    defaults = psa["plugins"][0]["configuration"]["defaults"]
+    assert defaults["enforce"] in ("baseline", "restricted")
+
+
+def test_containerd_template_adds_runsc_to_the_k3s_base() -> None:
+    text = (CLUSTER / "k3s" / "config-v3.toml.tmpl").read_text("utf-8")
+    assert text.lstrip().startswith('{{ template "base" . }}'), "在 k3s 生成的配置之上追加"
+    assert re.search(r"runtimes\.runsc\]\s*\n\s*runtime_type = \"io\.containerd\.runsc\.v1\"", text)
+
+
+def test_traefik_redirects_to_https_and_does_not_buffer_sse() -> None:
+    doc = yaml.safe_load((CLUSTER / "k3s" / "traefik-config.yaml").read_text("utf-8"))
+    values = yaml.safe_load(doc["spec"]["valuesContent"])
+    assert values["ports"]["web"]["redirections"]["entryPoint"]["to"] == "websecure"
+    websecure = values["ports"]["websecure"]
+    assert websecure["transport"]["respondingTimeouts"]["writeTimeout"] in ("0s", "0", 0), "SSE 是长连接，不设写超时"
+    assert websecure["forwardedHeaders"]["trustedIPs"], "只信任 Cloudflare 转发的客户端地址"
+    text = doc["spec"]["valuesContent"]
+    assert "compress" not in text and "buffering" not in text, "全局不开压缩与缓冲（会攒住 SSE）"
+
+
+def test_namespaces_and_sandbox_constraints() -> None:
+    all_docs = cluster_docs()
+    namespaces = {d["metadata"]["name"]: d for d in all_docs if d["kind"] == "Namespace"}
+    assert set(namespaces) >= {"agent-runtime", "sandboxes", "data", "observability"}
+    labels = namespaces["sandboxes"]["metadata"]["labels"]
+    assert labels["pod-security.kubernetes.io/enforce"] == "restricted"
+    policies = {d["metadata"]["name"]: d for d in all_docs if d["kind"] == "NetworkPolicy"}
+    deny = policies["default-deny-all"]["spec"]
+    assert deny["podSelector"] == {} and set(deny["policyTypes"]) == {"Ingress", "Egress"} and not deny.get("egress")
+    assert {d["kind"] for d in all_docs if d["metadata"].get("namespace") == "sandboxes"} >= {"ResourceQuota", "LimitRange"}
+    classes = {d["metadata"]["name"]: d["handler"] for d in all_docs if d["kind"] == "RuntimeClass"}
+    assert classes == {"gvisor": "runsc", "kata": "kata-clh"}
+
+
+# --- D-03 数据层 ---
+
+
+def test_postgres_roles_cannot_bypass_row_level_security() -> None:
+    cluster = next(d for d in docs(DATA / "postgres.yaml") if d["kind"] == "Cluster")
+    spec = cluster["spec"]
+    assert spec["enableSuperuserAccess"] is False
+    roles = {r["name"]: r for r in spec["managed"]["roles"]}
+    assert set(roles) == {"agentruntime", "temporal", "langfuse"}
+    for name, role in roles.items():
+        assert role["superuser"] is False and role["bypassrls"] is False, f"角色 {name} 不能是超级用户或带 BYPASSRLS（S-12a）"
+        assert role["passwordSecret"]["name"] == f"pg-{name}"
+    assert spec["bootstrap"]["initdb"]["owner"] == "agentruntime"
+    databases = {d["spec"]["name"]: d["spec"]["owner"] for d in docs(DATA / "postgres.yaml") if d["kind"] == "Database"}
+    assert databases == {"temporal": "temporal", "temporal_visibility": "temporal", "langfuse": "langfuse"}
+
+
+def test_postgres_is_backed_up_daily_to_r2_and_the_drill_restores_without_archiving() -> None:
+    all_docs = docs(DATA / "postgres.yaml")
+    cluster = next(d for d in all_docs if d["kind"] == "Cluster")
+    [plugin] = cluster["spec"]["plugins"]
+    assert plugin["isWALArchiver"] is True
+    store = next(d for d in all_docs if d["kind"] == "ObjectStore")
+    assert store["metadata"]["name"] == plugin["parameters"]["barmanObjectName"]
+    assert "r2.cloudflarestorage.com" in store["spec"]["configuration"]["endpointURL"]
+    assert store["spec"]["retentionPolicy"]
+    backup = next(d for d in all_docs if d["kind"] == "ScheduledBackup")
+    assert backup["spec"]["cluster"]["name"] == cluster["metadata"]["name"] and backup["spec"]["method"] == "plugin"
+    assert len(backup["spec"]["schedule"].split()) == 6, "CloudNativePG 的 cron 带秒"
+    [drill] = docs(DATA / "restore-drill.yaml")
+    assert "recovery" in drill["spec"]["bootstrap"] and "plugins" not in drill["spec"], "演练集群只读备份，不往原处归档 WAL"
+    script = (DATA / "restore-drill.sh").read_text("utf-8")
+    assert "count(*)" in script and "md5" in script and "diff" in script, "比对行数与校验和"
+
+
+def test_data_namespace_only_admits_runtime_and_observability() -> None:
+    [policy] = docs(DATA / "networkpolicy.yaml")
+    allowed = policy["spec"]["ingress"][0]["from"][0]["namespaceSelector"]["matchExpressions"][0]["values"]
+    assert "sandboxes" not in allowed and {"agent-runtime", "observability", "data"} <= set(allowed)
+
+
+def test_temporal_namespace_retention_is_set_on_install() -> None:
+    text = (DATA / "install.sh").read_text("utf-8")
+    assert re.search(r"namespace create -n agent-runtime --retention \d+d", text)
+    assert cloud_values()["external"]["temporal"]["namespace"] == "agent-runtime"
+
+
+# --- D-04 Runtime 的 Chart ---
+
+
+def test_cloud_entry_is_a_traefik_route_to_the_task_api_only(cloud: list[dict[str, Any]]) -> None:
+    assert not by_kind(cloud, "Ingress")
+    [route] = by_kind(cloud, "IngressRoute")
+    [rule] = route["spec"]["routes"]
+    [service] = rule["services"]
+    assert service["name"].endswith("-task-service") and service["port"] == "http"
+    assert "middlewares" not in rule, "不加会缓冲或压缩的中间件"
+    assert route["spec"]["tls"]["secretName"] == cloud_values()["ingress"]["traefik"]["tlsSecretName"]
+
+
+def test_nginx_is_gone_from_the_chart() -> None:
+    chart = REPO_ROOT / "deploy" / "helm" / "agent-runtime"
+    for path in [*chart.glob("*.yaml"), *(chart / "templates").glob("*")]:
+        assert "nginx" not in path.read_text("utf-8").replace("ingress-nginx 2026 年 3 月起停止维护", ""), f"{path.name} 还在用 nginx"
+
+
+@pytest.mark.parametrize(
+    ("sets", "kind"),
+    [
+        (["ingress.enabled=true", "ingress.type=gateway", "ingress.gateway.parentRefs[0].name=public"], "HTTPRoute"),
+        (["ingress.enabled=true", "ingress.type=ingress", "ingress.className=traefik"], "Ingress"),
+    ],
+    ids=["gateway", "ingress"],
+)
+def test_other_entry_types_render(sets: list[str], kind: str) -> None:
+    manifests = render(set_values=sets)
+    [entry] = by_kind(manifests, kind)
+    assert "registry" not in repr(entry)
+
+
+def render_fails(*sets: str, values: Path | None = None) -> str:
+    helm = shutil.which("helm") or "helm"
+    cmd: list[Any] = [helm, "template", "ar", REPO_ROOT / "deploy" / "helm" / "agent-runtime"]
+    if values:
+        cmd += ["--values", values]
+    for s in sets:
+        cmd += ["--set", s]
+    proc = run(cmd, check=False)
+    assert proc.returncode != 0, f"应当渲染失败：{sets}"
+    return proc.stderr
+
+
+@pytest.mark.parametrize(
+    ("sets", "message"),
+    [
+        (["ingress.enabled=true", "ingress.type=gateway"], "parentRefs"),
+        (["ingress.enabled=true", "ingress.type=nginx"], "ingress.type"),
+        (["worker.shell.mode=docker"], "docker.sock"),
+        (["objectStore.s3.endpoint=https://x.r2.cloudflarestorage.com"], "bucket"),
+        (["objectStore.s3.endpoint=http://minio:9000", "objectStore.s3.bucket=b", "objectStore.s3.accessKeyId=a",
+          "objectStore.s3.secretAccessKey.name=s"], "https"),
+    ],
+    ids=["gateway-without-parents", "unknown-entry", "docker-shell", "s3-incomplete", "s3-plain-http"],
+)
+def test_bad_values_are_refused(sets: list[str], message: str) -> None:
+    assert message in render_fails(*sets)
+
+
+@pytest.mark.parametrize(
+    ("sets", "message"),
+    [
+        (["worker.workspacesClaim="], "workspacesClaim"),
+        (["worker.shell.defaultBackend=nope"], "defaultBackend"),
+        (["worker.shell.backends.gvisor.namespace=elsewhere"], "sandboxNamespace"),
+    ],
+    ids=["no-workspaces", "unknown-default", "foreign-namespace"],
+)
+def test_bad_sandbox_values_are_refused(sets: list[str], message: str) -> None:
+    assert message in render_fails(*sets, values=CLOUD_VALUES)
+
+
+def test_worker_may_only_manage_pods_in_the_sandbox_namespace(cloud: list[dict[str, Any]]) -> None:
+    sandbox_ns = cloud_values()["worker"]["shell"]["sandboxNamespace"]
+    [role] = by_kind(cloud, "Role")
+    assert role["metadata"]["namespace"] == sandbox_ns
+    for rule in role["rules"]:
+        assert rule["apiGroups"] == [""] and set(rule["resources"]) <= {"pods", "pods/proxy"}, "只管 Pod，读不了 Secret"
+        assert set(rule["verbs"]) <= {"create", "get", "list", "patch", "delete", "update"}
+    assert not by_kind(cloud, "ClusterRole") and not by_kind(cloud, "ClusterRoleBinding")
+    [binding] = by_kind(cloud, "RoleBinding")
+    assert binding["metadata"]["namespace"] == sandbox_ns and binding["roleRef"]["name"] == role["metadata"]["name"]
+    [subject] = binding["subjects"]
+    for workload, c in containers(cloud):
+        spec = pod_spec(workload)
+        if workload["metadata"]["labels"].get(WORKER) == "worker":
+            assert spec["serviceAccountName"] == subject["name"] and spec["automountServiceAccountToken"] is True
+            env = env_of(c)
+            assert env["AR_TOOL_SHELL_SANDBOX"]["value"] == "sandbox"
+            assert env["AR_SANDBOX_BACKENDS_FILE"]["value"].startswith("/etc/agentruntime/sandbox/")
+            assert env["AR_TOOL_WORKSPACE_ROOT"]["value"] == "/workspaces"
+        else:
+            assert spec.get("automountServiceAccountToken") is False, f"{workload['metadata']['name']} 不调 K8s API，不挂令牌"
+
+
+def test_api_proxy_backends_also_get_pods_proxy() -> None:
+    manifests = render(CLOUD_VALUES, set_values=["worker.shell.backends.gvisor.connect=api_proxy"])
+    [role] = by_kind(manifests, "Role")
+    assert any("pods/proxy" in r["resources"] for r in role["rules"])
+    [plain] = by_kind(render(CLOUD_VALUES), "Role")
+    assert not any("pods/proxy" in r["resources"] for r in plain["rules"]), "pod_ip 时不给 pods/proxy"
+
+
+def test_backend_registry_matches_the_cluster(cloud: list[dict[str, Any]]) -> None:
+    [cm] = [c for c in by_kind(cloud, "ConfigMap") if c["metadata"]["name"].endswith("-sandbox-backends")]
+    registry = json.loads(cm["data"]["backends.json"])
+    classes = {d["metadata"]["name"] for d in cluster_docs() if d["kind"] == "RuntimeClass"}
+    claims = {(d["metadata"]["namespace"], d["metadata"]["name"]) for d in cluster_docs() if d["kind"] == "PersistentVolumeClaim"}
+    images = json.loads((REPO_ROOT / "deploy" / "images" / "images.json").read_text("utf-8"))["images"]
+    assert registry["default"] in registry["backends"]
+    for name, backend in registry["backends"].items():
+        assert backend["kind"] == "k8s" and backend["runtime_class"] in classes, f"后端 {name} 的 RuntimeClass 不存在"
+        assert (backend["namespace"], backend["workspace_claim"]) in claims, f"后端 {name} 的工作区卷不在 {backend['namespace']}"
+        for key in ("image", "agent_image"):
+            assert backend[key].rsplit("/", 1)[1].split(":")[0] in images, f"后端 {name} 的 {key} 不是我们构建的镜像"
+    assert {b["isolation"] for b in registry["backends"].values()} == {"container", "microvm"}, "两种隔离强度都有"
+
+
+def test_network_policy_lets_the_rendered_workers_reach_the_agent(cloud: list[dict[str, Any]]) -> None:
+    policy = next(d for d in cluster_docs() if d["kind"] == "NetworkPolicy" and d["metadata"]["name"] == "worker-to-agent")
+    source = policy["spec"]["ingress"][0]["from"][0]
+    assert source["namespaceSelector"]["matchLabels"]["kubernetes.io/metadata.name"] == "agent-runtime"
+    wanted = source["podSelector"]["matchLabels"]
+    workers = [w for w in by_kind(cloud, "Deployment") if w["metadata"]["labels"].get(WORKER) == "worker"]
+    assert workers and all(wanted.items() <= w["spec"]["template"]["metadata"]["labels"].items() for w in workers)
+    assert policy["spec"]["ingress"][0]["ports"][0]["port"] == 7070
+
+
+def test_cloud_volumes_exist_in_the_cluster_manifests() -> None:
+    values = cloud_values()
+    claims = {(d["metadata"]["namespace"], d["metadata"]["name"]) for d in cluster_docs() if d["kind"] == "PersistentVolumeClaim"}
+    for claim in (values["objectStore"]["claimName"], values["secrets"]["storeClaim"], values["worker"]["workspacesClaim"]):
+        assert ("agent-runtime", claim) in claims, f"values-cloud.yaml 引用的卷 {claim} 不在 deploy/cluster 里"
+
+
+def test_s3_object_store_env_replaces_the_directory() -> None:
+    manifests = render(set_values=[
+        "objectStore.s3.endpoint=https://acct.r2.cloudflarestorage.com", "objectStore.s3.bucket=ar-objects",
+        "objectStore.s3.accessKeyId=key-id", "objectStore.s3.secretAccessKey.name=agent-runtime-r2", "objectStore.s3.prefix=prod/",
+    ])
+    seen = 0
+    for workload, c in containers(manifests):
+        env = env_of(c)
+        if "AR_S3_ENDPOINT" in env:
+            seen += 1
+            assert "AR_OBJECT_STORE_DIR" not in env
+            assert env["AR_S3_SECRET_ACCESS_KEY"]["valueFrom"]["secretKeyRef"]["name"] == "agent-runtime-r2"
+            assert env["AR_S3_PREFIX"]["value"] == "prod/"
+    components = {w["metadata"]["labels"].get(WORKER) for w, c in containers(manifests) if "AR_S3_ENDPOINT" in env_of(c)}
+    assert components == {"task-service", "worker"}, "Claim-Check 的两端都换"
+    assert seen
+
+
+def test_cloud_service_addresses_match_the_data_layer() -> None:
+    external = cloud_values()["external"]
+    install = (DATA / "install.sh").read_text("utf-8")
+    for release, namespace, address in [
+        ("temporal", "data", external["temporal"]["address"]),
+        ("qdrant", "data", external["qdrant"]["url"]),
+        ("redpanda", "data", external["redpanda"]["brokers"]),
+        ("tempo", "observability", external["tempo"]["endpoint"]),
+        ("langfuse", "observability", external["langfuse"]["endpoint"]),
+    ]:
+        assert re.search(rf"helm upgrade --install {release} \S+ --version \S+ -n {namespace}\b", install), f"{release} 装在 {namespace}"
+        assert f".{namespace}.svc" in address and release in address, f"{address} 对不上 {release}（{namespace}）"
+
+
+# --- 密钥与资源 ---
+
+
+def secret_refs() -> set[tuple[str, str]]:
+    """values-cloud.yaml、数据层的清单与 values 里引用的 Secret（命名空间，名字）。"""
+    refs: set[tuple[str, str]] = set()
+    values = cloud_values()
+    secrets = values["secrets"]
+    refs |= {("agent-runtime", secrets["existingSecret"]), ("agent-runtime", secrets["relationalDsn"]["name"])}
+    refs.add(("agent-runtime", values["external"]["langfuse"]["authSecret"]["name"]))
+    refs.add(("agent-runtime", values["ingress"]["traefik"]["tlsSecretName"]))
+    text = (DATA / "postgres.yaml").read_text("utf-8")
+    refs |= {("data", n) for n in re.findall(r"(?:passwordSecret: \{name: |secret:\s*\n\s*name: |\{name: )(pg-[a-z]+|r2-[a-z]+)", text)}
+    refs |= {("data", n) for n in re.findall(r"existingSecret: (\S+)", (DATA / "values" / "temporal.yaml").read_text("utf-8"))}
+    for name in ("langfuse", "grafana"):
+        body = (DATA / "values" / f"{name}.yaml").read_text("utf-8")
+        refs |= {("observability", n) for n in re.findall(r"(?:existingSecret: |name: )([a-z0-9-]+)", body) if n not in ("Tempo",)}
+    return refs
+
+
+def test_every_referenced_secret_is_in_the_example_with_placeholders_only() -> None:
+    example = [d for d in docs(CLUSTER / "secrets" / "secrets.example.yaml") if d["kind"] == "Secret"]
+    defined = {(d["metadata"]["namespace"], d["metadata"]["name"]) for d in example}
+    missing = secret_refs() - defined
+    assert not missing, f"secrets.example.yaml 缺这些 Secret：{sorted(missing)}"
+    for d in example:
+        for key, value in d.get("stringData", {}).items():
+            if key in ("username", "user"):
+                continue
+            assert "REPLACE_ME" in value, f"{d['metadata']['name']}.{key} 只能写占位符"
+    ignored = run(["git", "check-ignore", "deploy/cluster/secrets/secrets.yaml"], check=False)
+    assert ignored.returncode == 0, "明文的 secrets.yaml 要被 .gitignore 挡住"
+    kept = run(["git", "check-ignore", "deploy/cluster/secrets/secrets.enc.yaml", "deploy/cluster/secrets/.sops.yaml"], check=False)
+    assert kept.returncode == 1, "加密后的文件与 SOPS 规则要能提交"
+
+
+def chart_memory_requests(manifests: list[dict[str, Any]]) -> float:
+    total = 0.0
+    so = {s["spec"]["scaleTargetRef"]["name"]: int(s["spec"]["maxReplicaCount"]) for s in by_kind(manifests, "ScaledObject")}
+    for workload, c in containers(manifests):
+        replicas = so.get(workload["metadata"]["name"], workload["spec"].get("replicas", 1) if workload["kind"] == "Deployment" else 1)
+        total += mem_gi(c["resources"]["requests"]["memory"]) * replicas
+    return total
+
+
+def data_memory_requests() -> float:
+    total = 0.0
+    for path in [DATA / "postgres.yaml", *(DATA / "values").glob("*.yaml")]:
+        for match in re.finditer(r"requests: \{cpu: [^,]+, memory: ([0-9.]+[MG]i)\}", path.read_text("utf-8")):
+            total += mem_gi(match.group(1))
+    redpanda = yaml.safe_load((DATA / "values" / "redpanda.yaml").read_text("utf-8"))
+    return total + mem_gi(redpanda["resources"]["memory"]["container"]["max"])
+
+
+def test_memory_requests_leave_room_for_sandboxes(cloud: list[dict[str, Any]]) -> None:
+    quota = next(d for d in cluster_docs() if d["kind"] == "ResourceQuota")
+    sandboxes = mem_gi(quota["spec"]["hard"]["requests.memory"])
+    assert sandboxes >= 16, "沙箱至少留 16 GB（计划 D-03）"
+    reserved = 3.5
+    total = chart_memory_requests(cloud) + data_memory_requests() + sandboxes + reserved
+    assert total <= 60, f"64 GB 的机器上 requests 合计 {total:.1f} GiB，超出预算（deploy/cluster/README.md）"
+
+
+# --- kind 上核对 Worker 的 RBAC（AR_TEST_KIND=1） ---
+
+
+@pytest.mark.skipif(os.environ.get("AR_TEST_KIND") != "1", reason="设 AR_TEST_KIND=1 才在 kind 集群里核对 RBAC")
+def test_worker_rbac_on_a_real_api_server(cloud: list[dict[str, Any]], tmp_path: Path) -> None:
+    kubectl = shutil.which("kubectl", path=os.environ.get("AR_DOCKER_BIN")) or shutil.which("kubectl")
+    kind = os.environ.get("AR_KIND_BIN") or shutil.which("kind")
+    assert kubectl and kind, "要有 kubectl 与 kind"
+    cluster = os.environ.get("AR_KIND_CLUSTER", "agentruntime-test")
+    kubeconfig = tmp_path / "kubeconfig"
+    kubeconfig.write_text(run([kind, "get", "kubeconfig", "--name", cluster]).stdout, "utf-8")
+    k = [kubectl, "--kubeconfig", kubeconfig]
+    run([*k, "apply", "-f", CLUSTER / "namespaces.yaml"])
+    rbac = [d for d in cloud if d["kind"] in ("ServiceAccount", "Role", "RoleBinding") and "-worker" in d["metadata"]["name"]]
+    manifest = tmp_path / "rbac.yaml"
+    for d in rbac:
+        d["metadata"].setdefault("namespace", "agent-runtime")
+    manifest.write_text(yaml.safe_dump_all(rbac), "utf-8")
+    run([*k, "apply", "-f", manifest])
+    try:
+        sa = next(d["metadata"]["name"] for d in rbac if d["kind"] == "ServiceAccount")
+        who = f"system:serviceaccount:agent-runtime:{sa}"
+
+        def can(verb: str, resource: str, namespace: str, subresource: str = "") -> bool:
+            # pods/exec 这种写法 kubectl 会当成名叫 exec 的 Pod；子资源要用 --subresource。
+            extra = ["--subresource", subresource] if subresource else []
+            out = run([*k, "auth", "can-i", verb, resource, *extra, "-n", namespace, "--as", who], check=False)
+            return out.stdout.strip() == "yes"
+
+        assert can("create", "pods", "sandboxes") and can("delete", "pods", "sandboxes") and can("patch", "pods", "sandboxes")
+        assert not can("create", "pods", "agent-runtime"), "Worker 不能在别的命名空间建 Pod"
+        assert not can("get", "secrets", "sandboxes") and not can("get", "secrets", "agent-runtime"), "Worker 读不了 Secret"
+        assert not can("create", "pods", "sandboxes", "exec"), "不给 exec（agent 经 HTTP）"
+        assert not can("get", "pods", "sandboxes", "proxy"), "pod_ip 时不给 pods/proxy"
+    finally:
+        run([*k, "delete", "-f", manifest, "--ignore-not-found"], check=False)

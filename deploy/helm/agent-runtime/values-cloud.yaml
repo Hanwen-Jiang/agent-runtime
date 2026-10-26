@@ -1,0 +1,129 @@
+# 云上单节点的 values（docs/plan/cloud-deploy.md 第 2 节的布局、D-04）：一台独服上的 k3s，第三方组件按 deploy/data 装在集群里。
+# 在默认 values 之上覆盖：
+#   helm upgrade --install ar deploy/helm/agent-runtime -n agent-runtime -f deploy/helm/agent-runtime/values-cloud.yaml \
+#     --set image.registry=ghcr.io/<仓库所有者> --set image.tag=<版本> --set ingress.host=<域名>
+# 要先有的东西（deploy/cluster/README.md 的步骤）：命名空间与沙箱的约束、工作区与业务对象的卷、第三方组件、下面引用的 Secret。
+# 资源按 64 GB 内存的一台机器分（deploy/cluster/README.md 的预算表），给沙箱留出至少 16 GB。
+global:
+  environment: cloud
+
+image:
+  registry: ghcr.io/agentruntime
+  tag: "0.1.0"
+
+secrets:
+  existingSecret: agent-runtime-secrets
+  # 可写的 SecretStore 文件（kek）；只读的 secrets.json 作种子（deploy/cluster/storage.yaml）。
+  storeClaim: agent-runtime-secretstore
+  # 业务库 agentruntime（deploy/data/postgres.yaml）的连接串：角色 agentruntime 不是超级用户、没有 BYPASSRLS。
+  # Secret 跨不了命名空间，这里的与 data 命名空间里给 CloudNativePG 的口令出自同一份 SOPS 文件（deploy/cluster/secrets）。
+  relationalDsn:
+    name: agent-runtime-postgres
+    key: dsn
+
+external:
+  temporal:
+    address: temporal-frontend.data.svc:7233
+    namespace: agent-runtime
+  qdrant:
+    url: http://qdrant.data.svc:6333
+  redpanda:
+    brokers: redpanda.data.svc:9093
+  tempo:
+    endpoint: tempo.observability.svc:4317
+  langfuse:
+    endpoint: http://langfuse-web.observability.svc:3000
+    authSecret:
+      name: agent-runtime-langfuse
+      key: basic-auth
+
+# 单节点：所有 Pod 在一台机器上，local-path 的卷能共用（deploy/cluster/storage.yaml）。加节点之前换成 R2（objectStore.s3，D-09）。
+objectStore:
+  claimName: agent-runtime-objects
+
+ingress:
+  enabled: true
+  type: traefik
+  host: agent-runtime.example.com
+  traefik:
+    entryPoints: [websecure]
+    # Cloudflare 的源站证书（deploy/cluster/README.md）；Cloudflare 的 SSL 模式用 Full (strict)。
+    tlsSecretName: cloudflare-origin-tls
+
+taskService:
+  replicas: 1
+  resources:
+    requests: {cpu: 250m, memory: 256Mi}
+    limits: {cpu: "1", memory: 512Mi}
+
+modelGateway:
+  replicas: 1
+  providerBaseUrl: https://api.example/v1
+
+memory:
+  replicas: 1
+
+worker:
+  workspacesClaim: workspaces
+  shell:
+    mode: sandbox
+    # 邀请制租户默认 gVisor；公开注册的租户由租户策略的 sandbox.backend 指到 kata（或 cloudflare，见 deploy/cloudflare）。
+    defaultBackend: gvisor
+    sandboxNamespace: sandboxes
+    backends:
+      gvisor:
+        kind: k8s
+        isolation: container
+        runtime_class: gvisor
+        namespace: sandboxes
+        image: ghcr.io/agentruntime/sandbox-python:0.1.0
+        agent_image: ghcr.io/agentruntime/sandbox-agent:0.1.0
+        connect: pod_ip
+        workspace_claim: workspaces
+      kata:
+        kind: k8s
+        isolation: microvm
+        runtime_class: kata
+        namespace: sandboxes
+        image: ghcr.io/agentruntime/sandbox-python:0.1.0
+        agent_image: ghcr.io/agentruntime/sandbox-agent:0.1.0
+        connect: pod_ip
+        workspace_claim: workspaces
+        # microVM 启动比容器慢。
+        startup_timeout_s: 120
+  pools:
+    task:
+      minReplicas: 1
+      maxReplicas: 4
+      targetQueueSize: 20
+      resources:
+        requests: {cpu: 250m, memory: 256Mi}
+        limits: {cpu: "1", memory: 512Mi}
+    decision:
+      minReplicas: 1
+      maxReplicas: 4
+      targetQueueSize: 10
+      resources:
+        requests: {cpu: 250m, memory: 256Mi}
+        limits: {cpu: "1", memory: 512Mi}
+    model:
+      minReplicas: 1
+      maxReplicas: 6
+      targetQueueSize: 10
+      resources:
+        requests: {cpu: 250m, memory: 256Mi}
+        limits: {cpu: "1", memory: 512Mi}
+    program:
+      minReplicas: 1
+      maxReplicas: 4
+      targetQueueSize: 10
+      resources:
+        requests: {cpu: 250m, memory: 512Mi}
+        limits: {cpu: "2", memory: 1Gi}
+
+learning:
+  enabled: true
+  tracesClaim: ""
+
+collector:
+  replicas: 1

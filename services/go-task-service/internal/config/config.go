@@ -15,16 +15,19 @@ import (
 
 // 环境变量名。
 const (
-	EnvTemporalAddress     = "AR_TEMPORAL_ADDRESS"
-	EnvTemporalNamespace   = "AR_TEMPORAL_NAMESPACE"
-	EnvHTTPAddr            = "AR_HTTP_ADDR"
-	EnvPublicBaseURL       = "AR_PUBLIC_BASE_URL"
-	EnvDevSigningKey       = "AR_DEV_SIGNING_KEY"
-	EnvDataDir             = "AR_DATA_DIR"
-	EnvPinnedVersionsFile  = "AR_PINNED_VERSIONS_FILE"
-	EnvTenantPoliciesFile  = "AR_DEV_TENANT_POLICIES_FILE"
-	EnvObjectStoreDir      = "AR_OBJECT_STORE_DIR"
-	EnvSecretsFile         = "AR_SECRETS_FILE"
+	EnvTemporalAddress    = "AR_TEMPORAL_ADDRESS"
+	EnvTemporalNamespace  = "AR_TEMPORAL_NAMESPACE"
+	EnvHTTPAddr           = "AR_HTTP_ADDR"
+	EnvPublicBaseURL      = "AR_PUBLIC_BASE_URL"
+	EnvDevSigningKey      = "AR_DEV_SIGNING_KEY"
+	EnvDataDir            = "AR_DATA_DIR"
+	EnvPinnedVersionsFile = "AR_PINNED_VERSIONS_FILE"
+	EnvTenantPoliciesFile = "AR_DEV_TENANT_POLICIES_FILE"
+	EnvObjectStoreDir     = "AR_OBJECT_STORE_DIR"
+	EnvSecretsFile        = "AR_SECRETS_FILE"
+	// EnvSecretsSeedFile：集群里密钥文件放在共用的可写卷上（kek 要写回），静态密钥来自只读挂载的 K8s Secret，
+	// serve 启动时把它并进 AR_SECRETS_FILE（filesecrets.MergeSeed；docs/plan/cloud-deploy.md D-04）。Worker 与 Memory Service 相同。
+	EnvSecretsSeedFile     = "AR_SECRETS_SEED_FILE"
 	EnvClaimCheckThreshold = "AR_CLAIM_CHECK_THRESHOLD_BYTES"
 	EnvRelationalDSN       = "AR_RELATIONAL_DSN"
 	EnvRateLimitPerMinute  = "AR_DEV_RATE_LIMIT_PER_MINUTE"
@@ -79,6 +82,8 @@ type Config struct {
 	// 与 Python Worker 指向同一处，两边才能互相解开对方卸载的载荷。默认放在 DataDir 下。
 	ObjectStoreDir string
 	SecretsFile    string
+	// SecretsSeedFile 非空时 serve 启动时并进 SecretsFile（EnvSecretsSeedFile）。
+	SecretsSeedFile string
 	// ObjectStoreS3 非空时 ObjectStore 用 S3 兼容实现（R2、S3、MinIO；AR_S3_*，见 s3objects.OptionsFromEnv；D-09），
 	// ObjectStoreDir 不再用。Worker 读同一组变量。
 	ObjectStoreS3 *s3objects.Options
@@ -116,6 +121,7 @@ func FromEnv(getenv func(string) string) (Config, error) {
 	cfg.PublicBaseURL = or(EnvPublicBaseURL, "http://"+cfg.HTTPAddr)
 	cfg.ObjectStoreDir = or(EnvObjectStoreDir, filepath.Join(cfg.DataDir, "objects"))
 	cfg.SecretsFile = or(EnvSecretsFile, filepath.Join(cfg.DataDir, "secrets.json"))
+	cfg.SecretsSeedFile = getenv(EnvSecretsSeedFile)
 	if cfg.TemporalAddress == "" {
 		return Config{}, fmt.Errorf("缺少 %s", EnvTemporalAddress)
 	}

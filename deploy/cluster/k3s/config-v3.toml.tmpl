@@ -1,0 +1,7 @@
+{{ template "base" . }}
+
+# gVisor（docs/plan/cloud-deploy.md D-02）：RuntimeClass gvisor 的 handler runsc。k3s 的 containerd 2 用这个模板
+# （/var/lib/rancher/k3s/agent/etc/containerd/config-v3.toml.tmpl），在 k3s 生成的配置后面加上 runsc。
+# Kata 的 handler（kata-clh 等）由 kata-deploy 自己加，不写在这里。
+[plugins.'io.containerd.cri.v1.runtime'.containerd.runtimes.runsc]
+  runtime_type = "io.containerd.runsc.v1"

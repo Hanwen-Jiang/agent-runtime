@@ -1,0 +1,32 @@
+# Grafana（grafana/grafana Chart；docs/plan/cloud-deploy.md D-03、D-10）：看 Tempo 的调用链与面板。装在 observability 命名空间，
+# 管理员口令取 Secret grafana-admin；面板（D-10）以 ConfigMap 的形式放在 deploy/data/dashboards。
+admin:
+  existingSecret: grafana-admin
+  userKey: user
+  passwordKey: password
+resources:
+  requests: {cpu: 100m, memory: 128Mi}
+  limits: {cpu: 500m, memory: 256Mi}
+persistence:
+  enabled: false
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Tempo
+        type: tempo
+        uid: tempo
+        url: http://tempo.observability.svc:3200
+        access: proxy
+        isDefault: true
+sidecar:
+  dashboards:
+    enabled: true
+    label: grafana_dashboard
+    searchNamespace: observability
+grafana.ini:
+  analytics:
+    reporting_enabled: false
+    check_for_updates: false
+  users:
+    allow_sign_up: false

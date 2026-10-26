@@ -13,12 +13,18 @@ image:
   pullPolicy: IfNotPresent
 
 # 已有的 Secret（由运维创建）：
-#   secrets.json       开发 SecretStore 的文件（AR_SECRETS_FILE）：模型供应商的密钥、Registry 的发布令牌等。
+#   secrets.json       开发 SecretStore 的文件（AR_SECRETS_FILE）：模型供应商的密钥、Registry 的发布令牌、
+#                      沙箱 agent 的令牌密钥（sandbox/token-key）与 Cloudflare 桥的令牌等。
 #   dev-signing-key    开发用的令牌签名密钥（AR_DEV_SIGNING_KEY）。
 secrets:
   existingSecret: agent-runtime-secrets
   secretsFileKey: secrets.json
   signingKeyKey: dev-signing-key
+  # SecretStore 的可写文件所在的 PVC（docs/plan/cloud-deploy.md D-04）：Claim-Check 与 Memory Service 第一次用到一个租户时
+  # 要把它的 kek 写回文件，多个副本还要共用同一份。设了时 task-service、Worker、Memory Service 的 AR_SECRETS_FILE 在这个卷上，
+  # 上面的 secrets.json 作为种子在启动时并进去（AR_SECRETS_SEED_FILE；种子里的密钥覆盖旧值，已生成的 kek 不换）。
+  # 为空时直接读只读的 secrets.json，写 kek 会失败，只适合不卸载大载荷的试跑。
+  storeClaim: ""
   # 业务库的连接串（AR_RELATIONAL_DSN）；name 为空时 task-service 与 Memory Service 用 AR_DATA_DIR 下的 SQLite。
   relationalDsn:
     name: ""
@@ -42,10 +48,23 @@ external:
       name: agent-runtime-langfuse
       key: basic-auth
 
-# 业务对象的存放（AR_OBJECT_STORE_DIR）。task-service 与 Worker 要读写同一处（Claim-Check、外置结果）；
-# 开发 ObjectStore 是本地目录，claimName 为空时每个 Pod 用自己的 emptyDir，跨 Pod 取不回，只适合单机试跑。
+# 业务对象的存放。task-service 与 Worker 要读写同一处（Claim-Check、外置结果）。
+# - s3.endpoint 设了：S3 兼容的对象存储（Cloudflare R2、S3、MinIO；AR_S3_*，D-09），各 Pod 不用共用卷。
+# - 否则是开发 ObjectStore 的本地目录（AR_OBJECT_STORE_DIR）：claimName 是共用的 PVC（单节点上 local-path 的卷就行，
+#   所有 Pod 在一台机器上）；为空时每个 Pod 用自己的 emptyDir，跨 Pod 取不回，只适合单机试跑。
 objectStore:
   claimName: ""
+  s3:
+    endpoint: ""
+    bucket: ""
+    region: auto
+    # 几个环境共用一个桶时的前缀，以 / 结尾。
+    prefix: ""
+    accessKeyId: ""
+    # 密钥所在的已有 Secret。
+    secretAccessKey:
+      name: ""
+      key: secret-access-key
 
 podSecurityContext:
   runAsNonRoot: true
@@ -73,11 +92,22 @@ taskService:
     requests: {cpu: 250m, memory: 256Mi}
     limits: {cpu: "1", memory: 512Mi}
 
+# 对外入口：只有 Task API（含 SSE 事件流）；Registry 的内部端口永远不进入口（T-08）。
 ingress:
   enabled: false
-  className: ""
+  # traefik：Traefik 的 IngressRoute（k3s 自带；docs/plan/cloud-deploy.md D-04）；gateway：Gateway API 的 HTTPRoute；
+  # ingress：通用的 networking.k8s.io Ingress（className 与 annotations 自选）。
+  type: traefik
   host: agent-runtime.example
+  className: ""
   annotations: {}
+  traefik:
+    entryPoints: [websecure]
+    # 证书所在的 Secret（Cloudflare 代理在前面时放 Cloudflare 的源站证书）；为空时用 Traefik 的默认证书。
+    tlsSecretName: ""
+  gateway:
+    # 挂到哪个 Gateway，例如 [{name: public, namespace: kube-system}]；type=gateway 时必填。
+    parentRefs: []
 
 modelGateway:
   replicas: 1
@@ -103,6 +133,20 @@ worker:
   planner: model
   reviewer: model
   toolLoop: model
+  # 工作区（AR_TOOL_WORKSPACE_ROOT）：Worker 与应用共用的 PVC（单节点见 deploy/cluster/workspaces.yaml），挂在 /workspaces。
+  # 为空时不登记 repo_* 与 shell_run。
+  workspacesClaim: ""
+  shell:
+    # shell_run 在哪里跑（AR_TOOL_SHELL_SANDBOX）：host 不隔离，只给开发；集群里用 sandbox（经 Sandbox 接口，D-05）。
+    # docker 要挂 docker.sock（等于节点 root），集群里不允许。
+    mode: host
+    # mode=sandbox 时的后端登记，写进 ConfigMap 作为 AR_SANDBOX_BACKENDS_FILE（格式见 agentruntime_worker.tools.sandboxes）。
+    # 用哪个后端由租户策略的 sandbox.backend 决定，没写时 defaultBackend。
+    defaultBackend: ""
+    backends: {}
+    # kind=k8s 的后端把 Pod 建在这个命名空间：Chart 在那里给 Worker 建 Role（只能管 Pod，读不了 Secret），
+    # Worker 用自己的 ServiceAccount（其余服务仍然不挂令牌）。
+    sandboxNamespace: sandboxes
   # 按任务队列分池（设计书 3.6、附录 K.5），每个池一个 Deployment 与一个 KEDA ScaledObject。
   # 池名就是队列名（agentruntime_worker.names）；task 池按工作流积压扩缩，其余按 activity 积压。
   pools:

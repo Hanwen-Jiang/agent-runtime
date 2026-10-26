@@ -20,6 +20,7 @@ from agentruntime_worker import names
 
 from deploy_tests import (
     CHART_DIR,
+    CLOUD_VALUES,
     COLLECTOR_CONFIG,
     PRODUCTION_VALUES,
     RELEASE,
@@ -41,13 +42,17 @@ PYTHON_QUEUES = {names.TASK_QUEUE, names.DECISION_QUEUE, names.MODEL_QUEUE, name
 WORKFLOW_QUEUES = {names.TASK_QUEUE}
 SENSITIVE_ENV = re.compile(r"(?i)(password|secret|token|api_?key|signing_key|auth|dsn|credential)")
 # 不是密钥、名字却像的环境变量：它们的值是文件路径或密钥的名字。
-NOT_SECRET_ENV = {"AR_SECRETS_FILE", "AR_MODEL_PROVIDER_KEY_NAME"}
+NOT_SECRET_ENV = {"AR_SECRETS_FILE", "AR_SECRETS_SEED_FILE", "AR_MODEL_PROVIDER_KEY_NAME"}
 OTLP_HTTP_PORT = 4318
 
 
-@pytest.fixture(scope="module", params=["default", "production"])
+VALUES = {"default": None, "production": PRODUCTION_VALUES, "cloud": CLOUD_VALUES}
+
+
+@pytest.fixture(scope="module", params=list(VALUES))
 def manifests(request: pytest.FixtureRequest) -> list[dict[str, Any]]:
-    return render() if request.param == "default" else render(PRODUCTION_VALUES)
+    values = VALUES[request.param]
+    return render(values) if values else render()
 
 
 def component(manifests: list[dict[str, Any]], kind: str, name: str) -> list[dict[str, Any]]:
@@ -77,7 +82,7 @@ def source_text() -> str:
 # --- lint 与渲染 ---
 
 
-@pytest.mark.parametrize("values", [None, PRODUCTION_VALUES], ids=["default", "production"])
+@pytest.mark.parametrize("values", list(VALUES.values()), ids=list(VALUES))
 def test_helm_lint_passes(values: Path | None) -> None:
     helm = require_tool("helm")
     cmd: list[Any] = [helm, "lint", "--strict", CHART_DIR]
@@ -161,9 +166,9 @@ def test_registry_port_is_internal_and_distinct(manifests: list[dict[str, Any]])
         exposes_registry = any(p.get("targetPort") in ("registry", registry_port) for p in svc["spec"]["ports"])
         if exposes_registry:
             assert svc["spec"].get("type", "ClusterIP") == "ClusterIP", "Registry 端口只能在集群内"
-    for ingress in by_kind(manifests, "Ingress"):
+    for ingress in [*by_kind(manifests, "Ingress"), *by_kind(manifests, "IngressRoute"), *by_kind(manifests, "HTTPRoute")]:
         text = repr(ingress)
-        assert "registry" not in text and str(registry_port) not in text, "Registry 端口不进 Ingress"
+        assert "registry" not in text and str(registry_port) not in text, "Registry 端口不进入口（Ingress、IngressRoute、HTTPRoute）"
 
 
 @pytest.mark.parametrize("name", ["task-service", "model-gateway"])
@@ -220,16 +225,27 @@ def test_sample_secret_values_never_leak(tmp_path: Path) -> None:
 
 
 def test_secrets_file_comes_from_a_secret_volume(manifests: list[dict[str, Any]]) -> None:
+    """SecretStore 的静态密钥来自 Secret 卷：要么 AR_SECRETS_FILE 就在 Secret 卷上；要么（secrets.storeClaim，D-04）它在可写的
+    PVC 上，种子 AR_SECRETS_SEED_FILE 在 Secret 卷上。"""
     for workload, c in containers(manifests):
         env = env_of(c)
         if "AR_SECRETS_FILE" not in env:
             continue
-        path = env["AR_SECRETS_FILE"]["value"]
         mounts = {m["mountPath"]: m["name"] for m in c.get("volumeMounts", [])}
-        mount = next((mp for mp in mounts if path.startswith(mp.rstrip("/") + "/")), None)
-        assert mount, f"{workload['metadata']['name']} 的 AR_SECRETS_FILE 不在任何挂载点下"
         volumes = {v["name"]: v for v in pod_spec(workload).get("volumes", [])}
-        assert "secret" in volumes[mounts[mount]], "SecretStore 的文件来自 Secret 卷"
+
+        def volume_of(var: str) -> dict[str, Any]:
+            path = env[var]["value"]
+            mount = next((mp for mp in mounts if path.startswith(mp.rstrip("/") + "/")), None)
+            assert mount, f"{workload['metadata']['name']} 的 {var} 不在任何挂载点下"
+            return volumes[mounts[mount]]
+
+        store = volume_of("AR_SECRETS_FILE")
+        if "secret" in store:
+            assert "AR_SECRETS_SEED_FILE" not in env
+            continue
+        assert "persistentVolumeClaim" in store, f"{workload['metadata']['name']} 的可写密钥文件要在共用的 PVC 上"
+        assert "AR_SECRETS_SEED_FILE" in env and "secret" in volume_of("AR_SECRETS_SEED_FILE"), "种子来自 Secret 卷"
 
 
 # --- 公共约束 ---

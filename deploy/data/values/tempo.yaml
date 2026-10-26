@@ -1,0 +1,18 @@
+# Tempo（grafana/tempo 单进程 Chart；docs/plan/cloud-deploy.md D-03）：调用链。装在 observability 命名空间，Collector 经 OTLP gRPC
+# （4317）写入；数据放本地盘、保留 7 天。
+tempo:
+  retention: 168h
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {cpu: "1", memory: 1536Mi}
+persistence:
+  enabled: true
+  size: 20Gi
+  storageClassName: local-path

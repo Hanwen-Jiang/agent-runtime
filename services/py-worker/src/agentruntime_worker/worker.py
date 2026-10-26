@@ -21,6 +21,7 @@ from temporalio.converter import DataConverter
 from temporalio.worker import Worker
 
 from agentruntime_core.adapters.claim_check import ClaimCheck, WorkflowMemoResolver
+from agentruntime_core.dev.secret_store import LocalFileSecretStoreProvider
 from agentruntime_core.providers.object_store import ObjectStoreProvider
 
 from agentruntime_worker import names
@@ -189,6 +190,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         config = WorkerConfig.from_env(os.environ)
     except ValueError as err:
         parser.error(str(err))
+    if config.secrets_seed_file is not None and config.secrets_file is not None:
+        # 先并种子，后面各处建的 SecretStore 读到的就是并好的文件。
+        LocalFileSecretStoreProvider(config.secrets_file).merge_seed(config.secrets_seed_file)
     with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(serve(config, queues))
     return 0
