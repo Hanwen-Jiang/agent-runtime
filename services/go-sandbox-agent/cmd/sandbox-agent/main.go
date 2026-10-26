@@ -14,8 +14,8 @@
 //	AGENT_OUTPUT_LIMIT               stdout、stderr 各自最多保留多少字节，默认 8 MiB
 //	AGENT_FILE_LIMIT                 一个文件最多多少字节，默认 64 MiB
 //
-// 命令只拿到这些环境变量：PATH、HOME（默认 /tmp）、LANG（默认 C.UTF-8）、LC_ALL、TZ，加上 PYTHONIOENCODING=utf-8 与
-// PYTHONDONTWRITEBYTECODE=1；AGENT_* 一个都不给。
+// 命令只拿到这些环境变量：PATH、HOME（默认 /tmp）、LANG（默认 C.UTF-8）、LC_ALL、TZ（Windows 上另有 SYSTEMROOT、WINDIR、
+// PATHEXT），加上 PYTHONIOENCODING=utf-8 与 PYTHONDONTWRITEBYTECODE=1；AGENT_* 一个都不给。
 package main
 
 import (
@@ -86,7 +86,8 @@ func commandEnv() []string {
 		"PYTHONIOENCODING=utf-8",
 		"PYTHONDONTWRITEBYTECODE=1",
 	}
-	for _, k := range []string{"LC_ALL", "TZ"} {
+	// SYSTEMROOT、WINDIR、PATHEXT 只在 Windows 上有：本机测试时 Python 没有 SYSTEMROOT 启动不了。
+	for _, k := range []string{"LC_ALL", "TZ", "SYSTEMROOT", "WINDIR", "PATHEXT"} {
 		if v := os.Getenv(k); v != "" {
 			env = append(env, k+"="+v)
 		}

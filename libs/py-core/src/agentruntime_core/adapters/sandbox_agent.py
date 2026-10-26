@@ -58,7 +58,7 @@ class AgentClient:
         status, data = await self._call(
             endpoint, "POST", "/v1/exec", body, {"Content-Type": "application/json"}, timeout.total_seconds() + self._request_timeout.total_seconds()
         )
-        self._raise(status, data)
+        self.raise_for(status, data)
         try:
             out = json.loads(data)
             return ExecResult(
@@ -69,11 +69,11 @@ class AgentClient:
 
     async def write_file(self, endpoint: AgentEndpoint, path: str, data: bytes) -> None:
         status, body = await self._call(endpoint, "PUT", "/v1/files/" + _quote(check_path(path)), data, {"Content-Type": "application/octet-stream"})
-        self._raise(status, body)
+        self.raise_for(status, body)
 
     async def read_file(self, endpoint: AgentEndpoint, path: str) -> bytes:
         status, body = await self._call(endpoint, "GET", "/v1/files/" + _quote(check_path(path)), None, {})
-        self._raise(status, body)
+        self.raise_for(status, body)
         return body
 
     async def healthy(self, endpoint: AgentEndpoint) -> bool:
@@ -104,7 +104,8 @@ class AgentClient:
         return await asyncio.to_thread(send)
 
     @staticmethod
-    def _raise(status: int, body: bytes) -> None:
+    def raise_for(status: int, body: bytes) -> None:
+        """按 HTTP 状态码与 {"code", "message"} 抛相应的错误；2xx 不抛。桥（Cloudflare）的错误也用它。"""
         if 200 <= status < 300:
             return
         code, message = _error_of(body)

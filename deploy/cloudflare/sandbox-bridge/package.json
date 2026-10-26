@@ -1,0 +1,17 @@
+{
+  "name": "agentruntime-sandbox-bridge",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@cloudflare/containers": "0.3.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260901.0",
+    "typescript": "^5.9.0",
+    "wrangler": "4.152.0"
+  }
+}

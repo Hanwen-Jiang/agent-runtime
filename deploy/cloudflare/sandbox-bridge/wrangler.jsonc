@@ -1,0 +1,23 @@
+// Sandbox 的 Cloudflare 桥（docs/plan/cloud-deploy.md D-07）。部署：见同目录 README.md。
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "agentruntime-sandbox-bridge",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "observability": { "enabled": true },
+  "containers": [
+    {
+      "class_name": "Sandbox",
+      // 跑命令的镜像：python:3.13-slim 加 sandbox-agent（deploy/images/sandbox-python），构建上下文是仓库根。
+      "image": "../../images/sandbox-python/Dockerfile",
+      "image_build_context": "../../..",
+      // 1 vCPU、6 GiB、12 GB 盘；一次编码任务约 0.02 美元（计划第 4.3 节）。
+      "instance_type": "standard-2",
+      "max_instances": 20
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "SANDBOX", "class_name": "Sandbox" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Sandbox"] }]
+}
