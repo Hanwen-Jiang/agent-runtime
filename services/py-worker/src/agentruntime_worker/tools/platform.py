@@ -36,7 +36,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import timedelta
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -51,6 +51,7 @@ from agentruntime_core.providers.tool_driver import ToolHandler, ToolInvocation,
 from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker.sandbox.broker import SandboxBroker
+from agentruntime_worker.sandbox.environments import Resolution, workspace_reader
 from agentruntime_worker.tools.sandboxes import Sandboxes, parse_cpu_millis, parse_memory_mb
 
 VERSION = "v1"
@@ -391,11 +392,24 @@ class _Workspaces:
         )
         reuse = c.session_sandboxes and bool(invocation.session_id) and self.broker.ledger is not None
         busy = timedelta(seconds=timeout + 60)
+        environment = await self._environment(tenant, root)
+        if environment is not None and environment.image:
+            spec = replace(spec, image=environment.image)
         attributes: dict[str, Any] = {"gen_ai.tool.name": "shell_run", "sandbox.cpu_millis": spec.cpu_millis, "sandbox.memory_mb": spec.memory_mb}
+        if environment is not None:
+            attributes["sandbox.environment"] = environment.state
         span_cm = self.telemetry.bind(tenant).start_span("runtime.sandbox", attributes=attributes) if self.telemetry else contextlib.nullcontext()
         async with span_cm as span:
             started = time.monotonic()
-            lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy)
+            try:
+                lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy)
+            except InvalidError as err:
+                if err.code != "unsupported_image" or environment is None:
+                    raise
+                # 项目环境的镜像落不到这个后端（例如回退到了托管后端）：退回 universal，并说明。
+                spec = replace(spec, image="")
+                environment = replace(environment, state="fallback", image="", note=f"{err.message}，这次用 universal")
+                lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy)
             ran = time.monotonic()
             result = None
             try:
@@ -431,7 +445,23 @@ class _Workspaces:
         if lease.record is not None and lease.record.state == "destroyed" and lease.record.cost_usd > 0:
             # 一次性环境的花费（按后端价目）：Node Executor 计入这个 Node 的 meta.cost_usd，进 Round 与 Task 的花费。
             out["sandbox_cost_usd"] = lease.record.cost_usd
+        if environment is not None:
+            # 仓库自带环境定义时说明用的是哪个（D-17）：没用上时写明原因，不悄悄退回。
+            out["environment"] = environment.as_output()
         return out
+
+    async def _environment(self, tenant: TenantContext, root: Path) -> Resolution | None:
+        """按项目定制的运行环境（D-17）：只对首选后端能用环境镜像的租户查（K8s，或登记里写了 custom_images: true）；
+        仓库没有环境定义时 None。"""
+        manager = self.broker.environments if self.broker is not None else None
+        if manager is None:
+            return None
+        policy = await self.broker.sandboxes.policy_for(tenant.tenant_id)  # type: ignore[union-attr]
+        backend = self.broker.sandboxes.spec(policy.backend)  # type: ignore[union-attr]
+        if backend.get("kind") != "k8s" and backend.get("custom_images") is not True:
+            return None
+        resolution = await manager.resolve(tenant, workspace_reader(root))
+        return None if resolution.state == "none" else resolution
 
     def _outputs(self, stdout: bytes, stderr: bytes) -> dict[str, Any]:
         limit = self.config.output_limit

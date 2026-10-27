@@ -40,8 +40,10 @@ from agentruntime_worker.policy import PolicyEngine
 from agentruntime_worker.registry import RegistryCatalog, RegistryStagePolicy, closing_registries, registry_client
 from agentruntime_worker.reviewer.activities import dev_reviewer
 from agentruntime_worker.telemetry import worker_telemetry
+from agentruntime_worker.sandbox.env_build import EnvBuildActivities, temporal_starter
 from agentruntime_worker.sandbox.reconcile import ReconcileActivities
 from agentruntime_worker.tools import DevCatalog, ToolCatalog, dev_tools, sandbox_broker, tool_sessions
+from agentruntime_worker.workflows.env_build import EnvironmentBuildWorkflow
 from agentruntime_worker.workflows.sandbox_reconcile import ReconcileInput, SandboxReconcileWorkflow
 from agentruntime_worker.workflows.stage_runner import SubAgentWorkflow, SubgraphWorkflow
 from agentruntime_worker.workflows.task import TaskWorkflow
@@ -58,7 +60,7 @@ class QueueComponents:
 
 QUEUE_COMPONENTS: dict[str, QueueComponents] = {
     names.TASK_QUEUE: QueueComponents(
-        workflows=(names.TASK_WORKFLOW, names.SUB_AGENT_WORKFLOW, names.SUBGRAPH_WORKFLOW, names.SANDBOX_RECONCILE_WORKFLOW),
+        workflows=(names.TASK_WORKFLOW, names.SUB_AGENT_WORKFLOW, names.SUBGRAPH_WORKFLOW, names.SANDBOX_RECONCILE_WORKFLOW, names.ENV_BUILD_WORKFLOW),
         local_activities=(names.RUN_HOOKS,),
     ),
     names.DECISION_QUEUE: QueueComponents(
@@ -74,7 +76,9 @@ QUEUE_COMPONENTS: dict[str, QueueComponents] = {
         )
     ),
     names.MODEL_QUEUE: QueueComponents(activities=(names.EXECUTE_MODEL_NODE, names.TOOL_LOOP_STEP)),
-    names.PROGRAM_QUEUE: QueueComponents(activities=(names.EXECUTE_PROGRAM_NODE, names.CALL_TOOL, names.RECONCILE_NODE, names.RECONCILE_SANDBOXES)),
+    names.PROGRAM_QUEUE: QueueComponents(
+        activities=(names.EXECUTE_PROGRAM_NODE, names.CALL_TOOL, names.RECONCILE_NODE, names.RECONCILE_SANDBOXES, names.BUILD_ENVIRONMENT)
+    ),
 }
 
 WORKFLOWS = {
@@ -82,6 +86,7 @@ WORKFLOWS = {
     names.SUB_AGENT_WORKFLOW: SubAgentWorkflow,
     names.SUBGRAPH_WORKFLOW: SubgraphWorkflow,
     names.SANDBOX_RECONCILE_WORKFLOW: SandboxReconcileWorkflow,
+    names.ENV_BUILD_WORKFLOW: EnvironmentBuildWorkflow,
 }
 
 
@@ -156,6 +161,7 @@ def build_workers(
         **decision_activities(config, stubs),
         **(executor or dev_executor(config, client=client)).activities(),
         **ReconcileActivities(sandbox_broker(config)).activities(),
+        **EnvBuildActivities(sandbox_broker(config)).activities(),
     }
     workers = []
     for queue in queues:
@@ -182,7 +188,11 @@ async def serve(config: WorkerConfig, queues: Sequence[str]) -> None:
     async with closing_model_gateways(), closing_registries(), tool_sessions(config), contextlib.AsyncExitStack() as stack:
         for worker in build_workers(client, config, queues):
             await stack.enter_async_context(worker)
-        if names.TASK_QUEUE in queues and sandbox_broker(config) is not None:
+        broker = sandbox_broker(config)
+        if broker is not None and broker.environments is not None:
+            # 项目环境的构建交给 Temporal 的构建工作流（D-17）：shell_run 发现要构建时起它，Worker 重启也不丢。
+            broker.environments.starter = temporal_starter(client, timeout_s=int(broker.environments.limits.build_timeout.total_seconds()))
+        if names.TASK_QUEUE in queues and broker is not None:
             await ensure_sandbox_reconcile(client, config)
         await asyncio.Event().wait()
 

@@ -89,7 +89,13 @@ def sandbox_broker(config: WorkerConfig) -> SandboxBroker | None:
                 lambda: boxes.read_secret(envcred.SECRET_NAME), mirror_url=config.pkg_mirror_url, egress_url=config.egress_gateway_url,
                 test_env=lambda tenant: boxes.read_tenant_secret(tenant, TEST_ENV_SECRET),
             )
-            _brokers[key] = SandboxBroker(boxes, SandboxLedger(relational_store(config.relational_dsn, root)), credentials=credentials)
+            broker = SandboxBroker(boxes, SandboxLedger(relational_store(config.relational_dsn, root)), credentials=credentials)
+            if boxes.environments:
+                # 按项目定制的运行环境（D-17；登记文件的 environments 一节，格式见 sandbox.env_build.environment_manager）。
+                from agentruntime_worker.sandbox.env_build import environment_manager
+
+                broker.environments = environment_manager(broker, boxes.environments)
+            _brokers[key] = broker
     return _brokers[key]
 
 

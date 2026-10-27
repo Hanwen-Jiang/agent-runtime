@@ -184,6 +184,40 @@ worker:
     sandboxNamespace: sandboxes
     # 在每个节点上预先拉好 kind=k8s 后端用到的镜像（D-14）：第一次建环境不用现下载几个 GB 的镜像。
     prepull: false
+    # 按项目定制的运行环境（D-17）：仓库自带 devcontainer.json、.tool-versions 或 Dockerfile 时在 Kata 里构建一次、缓存复用；
+    # 构建好之前、失败时退回 runtime（universal），并在 shell_run 的结果里说明。要打开 egressGateway（拉基础镜像经它）。
+    environments:
+      enabled: false
+      # 生成 .tool-versions 的镜像时的底（按 digest 固定；baseDigest 为空时按标签）。
+      baseImage: ""
+      baseDigest: ""
+      registry:
+        # 推送地址：空时用 Chart 建的 env-registry（deploy: true）。
+        url: ""
+        # 节点拉镜像用的主机：单节点经 NodePort 是 127.0.0.1:30500（k3s 的 registries.yaml 里配它的凭据与 http）。
+        pullHost: ""
+        prefix: envs
+        deploy: false
+        image: registry:2.8.3
+        storage: 50Gi
+        nodePort: 30500
+        # 能经 NodePort 拉镜像的地址（节点的网段）。
+        nodeCidr: 0.0.0.0/0
+        # htpasswd 的 Secret（键 htpasswd）；Worker 推送用的凭据另放在 SecretStore 的 sandbox/env-registry。
+        htpasswdSecret: ""
+      builder:
+        namespace: sandbox-builds
+        # 必须是 microVM 级的 RuntimeClass。
+        runtimeClass: kata
+        agentImage: ""
+        buildkitImage: moby/buildkit:v0.25.1
+      # 构建能经出网网关访问的主机（拉基础镜像、装系统包）。
+      buildHosts: [registry-1.docker.io, auth.docker.io, production.cloudflare.docker.com, ghcr.io, pkg-containers.githubusercontent.com, deb.debian.org, security.debian.org]
+      limits:
+        maxImages: 5
+        maxImageBytes: 8589934592
+        buildTimeoutSeconds: 1800
+        idleDays: 14
   # 按任务队列分池（设计书 3.6、附录 K.5），每个池一个 Deployment 与一个 KEDA ScaledObject。
   # 池名就是队列名（agentruntime_worker.names）；task 池按工作流积压扩缩，其余按 activity 积压。
   pools:

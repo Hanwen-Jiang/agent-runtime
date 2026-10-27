@@ -126,6 +126,12 @@ spec:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: {{ .Release.Namespace }}
+        {{- if .Values.worker.shell.environments.enabled }}
+        # 按项目定制的运行环境的构建（D-17）装依赖也经镜像。
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.worker.shell.environments.builder.namespace }}
+        {{- end }}
       ports:
         - {protocol: TCP, port: 8093}
     - from:

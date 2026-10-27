@@ -3,6 +3,10 @@
 //
 //	sandbox-agent                 起服务
 //	sandbox-agent install <路径>  把自己拷到 <路径>：K8s 的 initContainer 用它把 agent 放进共享卷，跑命令的镜像不用自带 agent
+//	sandbox-agent upload <文件> <最大字节数>
+//	                              把构建出的镜像（OCI 打包）PUT 到环境变量 AGENT_UPLOAD_URL 给的预签名地址（按项目定制的运行环境，
+//	                              D-17）：构建在 microVM 里，手里没有镜像仓库的凭据，只有这一个限时、只能写这一个对象的地址；
+//	                              超过最大字节数时不传、退出码非零。
 //	sandbox-agent version
 //
 // 环境变量：
@@ -45,6 +49,18 @@ func main() {
 			}
 			if err := install(os.Args[2]); err != nil {
 				log.Fatalf("install：%v", err)
+			}
+			return
+		case "upload":
+			if len(os.Args) != 4 {
+				log.Fatal("用法：sandbox-agent upload <文件> <最大字节数>（地址在 AGENT_UPLOAD_URL）")
+			}
+			limit, err := strconv.ParseInt(os.Args[3], 10, 64)
+			if err != nil || limit <= 0 {
+				log.Fatal("最大字节数要是正整数")
+			}
+			if err := upload(os.Args[2], os.Getenv("AGENT_UPLOAD_URL"), limit); err != nil {
+				log.Fatalf("upload：%v", err)
 			}
 			return
 		case "version":
@@ -119,6 +135,41 @@ func install(dest string) error {
 		return err
 	}
 	return out.Close()
+}
+
+// upload 把文件 PUT 到预签名地址；超过 limit 字节时不传。地址只在环境变量里，不进日志与错误信息。
+func upload(path, url string, limit int64) error {
+	if url == "" {
+		return fmt.Errorf("没有 AGENT_UPLOAD_URL")
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	if info.Size() > limit {
+		return fmt.Errorf("镜像有 %d 字节，超过上限 %d", info.Size(), limit)
+	}
+	req, err := http.NewRequest(http.MethodPut, url, f)
+	if err != nil {
+		return fmt.Errorf("预签名地址不对")
+	}
+	req.ContentLength = info.Size()
+	req.Header.Set("Content-Type", "application/vnd.oci.image.layout.v1+tar")
+	client := &http.Client{Timeout: 30 * time.Minute}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("上传失败（%T）", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		return fmt.Errorf("上传失败：HTTP %d", resp.StatusCode)
+	}
+	return nil
 }
 
 func envOr(key, fallback string) string {

@@ -72,7 +72,7 @@ JSON：{"e": env_ref, "t": tenant_id, "w": workspace_id, "s": session_id, "x": �
 | D-14 | `deploy/images/universal`；后端登记的 `images`（runtime → 镜像 digest）；`runtime.sandbox` span 的 `sandbox.image` |
 | D-15 | `services/go-pkg-mirror`（`internal/cache` 内容寻址与淘汰、`internal/mirror` 三种协议与管理接口、`internal/usage` 未命中字节）；`envcred`（Python 与 Go）；Sandbox 的 `exec(env=…)` 与 sandbox-agent 的 `env`、`AGENT_ENV_PASSTHROUGH`；`agentruntime_worker.sandbox.credentials`；Chart 的 `pkgMirror` |
 | D-16 | `services/go-egress-gateway`（`internal/netguard` 地址与主机的检查、`internal/grants` 授权的读取与计量审计、`internal/proxy` 代理、预览入口与管理接口）；`SubmitTaskRequest.network_request` 与 `sandbox.network`（S-01，待人审）；task-service 的 `taskapi/network.go` 与 `internal/sandboxgrants`；Worker 的 `sandbox.grants`、`tools/network.py`（`request_network`）、`sandbox.credentials` 的代理变量与测试用密钥 |
-| D-17 | `agentruntime_worker.sandbox.environments`（识别定义文件、算键、配额、退回 universal）与构建器的 Job 清单 |
+| D-17 | `agentruntime_worker.sandbox.environments`（识别定义文件、静态检查、算键、配额、退回 universal、清理）、`sandbox.env_builder`（Kata 里的构建 Job）、`sandbox.env_build` 与 `workflows/env_build.py`（构建工作流）、`agentruntime_core.adapters.oci_registry`（读 OCI 打包、推镜像）；`SandboxSpec.image`；Chart 的 `worker.shell.environments` 与 `env-registry`；`deploy/cluster/builds.yaml` |
 
 ## 5. 与改动稿、计划的出入（实现时定的）
 
@@ -144,3 +144,22 @@ JSON：{"e": env_ref, "t": tenant_id, "w": workspace_id, "s": session_id, "x": �
   - 授权从批准时起算，Task 排队的时间也算在内。
 - 契约（S-01，**待人审**，基线没更新）：`SubmitTaskRequest.network_request`（`NetworkRequest`：hosts、ports、minutes、reason）；租户策略 `sandbox.network.max_rps`；`host_pattern` 收紧为最后一段以字母开头（`10.0.0.1` 这类写法不再合法）。环境凭据的用途加 `preview`（`tests/contract/sandbox_credential_vectors.json` 加了正例与反例）。
 - 没覆盖的：集群里经网络策略的连通性（沙箱只连得到网关与镜像）与真实 DNS、真实的 TLS 站点要真集群；`runtime.egress` span 进 Tempo、按 Task 列出访问记录的界面（现在有业务库的审计表与 `GrantStore.audit`，还没有 API 与面板）；`dev_stack.py` 还不拉起网关；Cloudflare 后端按域名放行的那一路只对着开发实现测了（真桥要 `AR_LIVE_CLOUDFLARE=1`）；HTTPS 解密（W8 说默认不做）。
+
+**D-17（2026-10-27）**
+
+- 识别（`sandbox.environments.detect`）：按顺序找 `.devcontainer/devcontainer.json`、`.devcontainer.json`、`.tool-versions`、根目录的 `Dockerfile`，用第一个。devcontainer.json 允许注释与结尾逗号，认 `image`（生成 `FROM` 它）与 `build.dockerfile`、`build.context`、`build.args`（写成 Dockerfile 开头的 `ARG` 默认值）；`features`、`dockerComposeFile` 不支持（退回并说明）。`.tool-versions` 认 python、nodejs、golang、rust、java（`temurin-<版本>+<构建号>`），版本要写死成三段，生成的 Dockerfile 在 universal（按 digest 固定）之上把对应的工具链换成官方镜像里的那个版本，各占一层，不在构建里现下载工具链。
+- 静态检查（`check_dockerfile`）：`FROM`、`COPY --from`、`RUN --mount=from` 引用的镜像不能是环境镜像仓库里别的租户的路径，不能指向地址或内网名字，不能用变量；`RUN --network=host`、`--security=insecure`、`secret` 与 `ssh` 挂载不收；`# syntax` 只认 docker/dockerfile；`ADD` 的远端地址不能是地址或内网名字。没通过的不起构建，退回 universal 并列出原因。真正的隔离靠构建在 Kata 里。
+- 缓存：键是“定义（含生成或引用的 Dockerfile、上下文）的哈希 + 基础镜像的 digest”，记在业务库的 `sandbox_images`（迁移 204，租户作用域）：building → ready，或 failed（原因）；改了定义就是新键、重新构建。个数配额（默认 5，building 与 ready 都算）在建行的事务里核对（与沙箱环境同一把 `sandbox_quota_lock`，行 id `images`）。长期不用的（默认 14 天）在这个租户下次用到时清掉（每小时最多一次）：按 digest 删仓库里的清单，记为 deleted。
+- 构建：shell_run 第一次碰到某个定义时起构建工作流 `EnvironmentBuildWorkflow`（ID `env-build-<租户>-<键的前 32 位>`，已经在跑就沿用；只排一个 `build_environment` activity，program 队列，重试一次），这条命令照常用 universal。activity 里：
+  - 在环境表里记一行（后端 `env-builder`、隔离 microvm），给它一条平台批准的授权（只放行登记的 `build_hosts`：Docker Hub、GHCR 与 Debian 的源），签发出网与包镜像的凭据；BuildKit 拉基础镜像经出网网关，RUN 里装依赖经包镜像（代理与镜像源的变量作为 build-arg 传进去）。结束后收回授权、记为销毁。
+  - 构建器（`sandbox.env_builder.K8sJobBuilder`）在 `sandbox-builds` 里建一次性的 Job：只能用 Kata（`deploy/cluster/builds.yaml` 的 ValidatingAdmissionPolicy 兜底）；BuildKit 以特权跑在 VM 里（Kata 的 handler 要 `privileged_without_host_devices`，install.sh 核对）；不挂 ServiceAccount 令牌、宿主路径、宿主网络；仓库里的文件以只读的 subPath 挂本租户的这个工作区（工作区目录的第三个静态 PV，在 `builds.yaml`）。产物以 OCI 打包写到 emptyDir（`sizeLimit` 是镜像的大小上限）。
+  - 产物由 Worker 去取：Job 的主容器跑 sandbox-agent、只读地挂着产物；构建那一步正常退出、agent 就绪后，Worker 按 Pod IP 带着这次构建随机生成的令牌取回（`worker-to-builder` 网络策略只放行 Worker 到 7070），边取边核对大小上限，取完删 Job、Secret 与 ConfigMap。构建里没有镜像仓库的凭据，也不连 ObjectStore。
+  - Worker 读打包（`oci_registry.read_layout`：只按名字读需要的条目，取 linux/amd64，按清单核对大小与 digest），推到 `<prefix>/<租户>/env:<键>`（路径由 Worker 按租户拼，打包里的名字一概不看），记下 `<pull_host>/<prefix>/<租户>/env@sha256:…`。推送的凭据在 SecretStore 平台作用域的 `sandbox/env-registry`。
+  - 构建超时（默认 30 分钟）、被驱逐或取回时超了大小上限（默认 8 GiB）、构建失败（附上构建日志的最后几行，去掉凭据）都记成 failed；同一个定义不再反复构建，改了定义才重来。
+- 用镜像：shell_run 只在租户首选的后端能用环境镜像时查（K8s，或登记里写了 `custom_images: true`）。镜像好了就把 `SandboxSpec.image` 设成它；K8s 后端只接受本部署环境镜像仓库里、本租户路径下按 digest 写的引用（`custom_image_prefix`），别的后端 invalid（`unsupported_image`），这时这条命令退回 universal。会话级的环境是用 universal 建的、镜像好了之后闲着就换掉。shell_run 的结果里有 `environment`（`state`：ready、building、failed、unsupported、quota、fallback，`definition`、`kind`，没用上时 `note` 写明原因），span 上是 `sandbox.environment`。
+- 部署：Chart 的 `worker.shell.environments`（`values-cloud.yaml` 打开；要打开 `egressGateway`，要给 `registry.pullHost`）：后端登记的 `environments` 一节、Worker 在 `sandbox-builds` 里的 Role（建、读、删 Job；建、删 ConfigMap 与 Secret，读不了 Secret；读 Pod 与日志）、`builds-egress`（构建只出到网关的 8095、包镜像的 8093 与 DNS），网关与包镜像各自放行这个命名空间进来。可选的环境镜像仓库 `env-registry`（`registry.deploy`：CNCF Distribution 2.8.3，htpasswd，打开删除，集群内经 Service 的 5000 推、节点经 NodePort 30500 拉，只收 Runtime 与节点网段）。集群：`deploy/cluster/builds.yaml`（命名空间的 Pod Security 是 privileged，默认拒绝进出、只放行 Worker 来取产物，配额，只许 Kata，工作区目录的只读 PV）、`k3s/registries.yaml.tmpl`（install.sh 用 `ENV_REGISTRY_USER`、`ENV_REGISTRY_PASSWORD` 填好写到 `/etc/rancher/k3s/registries.yaml`，节点拉镜像用）。
+- 与计划的出入：
+  - “推到租户自己的镜像仓库路径”是部署的环境镜像仓库里按租户分的路径，不是租户自带的仓库。
+  - “长期不用的镜像定期清掉”是随用随清（这个租户下次用到时），没有另起定时任务；只删清单，仓库的 blob 要另跑 registry 的 garbage-collect（要停写），还没有接。
+  - devcontainer 的 `features`、`dockerComposeFile` 不支持；`.tool-versions` 只认五种工具。
+- 没覆盖的：真实的 BuildKit 在 Kata 里构建、拉基础镜像经网关、节点从 NodePort 拉镜像，都要真集群（验收 1 的两次耗时现在只有进程里的数）；验收 2 在运行时的那一半（构建里访问宿主、内网、别的租户的镜像失败）靠准入策略、网络策略与 Kata，要在集群里跑恶意样例；Cloudflare 后端不能用项目环境（镜像在桥里写死）。sandbox-agent 的 `upload` 子命令是早先“构建往外传”的写法留下的，改成 Worker 去取之后没用了，待删。

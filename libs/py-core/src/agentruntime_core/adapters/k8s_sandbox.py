@@ -73,6 +73,9 @@ class K8sSandboxConfig:
     max_lifetime: timedelta = timedelta(hours=6)
     # 一个作用域（租户）同时最多几个环境；0 表示不限（只受命名空间的 ResourceQuota 约束）。
     max_envs_per_scope: int = 0
+    # 按项目定制的运行环境（D-17）：SandboxSpec.image 只接受这个前缀下、属于本作用域的引用（<前缀>/<租户>/env@sha256:…）；
+    # 为空时不接受显式的镜像。
+    custom_image_prefix: str = ""
 
 
 class K8sPodSandboxProvider:
@@ -174,6 +177,12 @@ class K8sPodSandbox:
         p, c = self._p, self._p.config
         p._faults.check("create")
         image = c.images.get(spec.runtime)
+        if spec.image:
+            # 显式的镜像只能是本部署的环境镜像仓库里、本租户路径下按 digest 写的（D-17）。
+            own = f"{c.custom_image_prefix.rstrip('/')}/{self._scope.tenant_id}/env@sha256:"
+            if not c.custom_image_prefix or self._scope.is_platform or not spec.image.startswith(own):
+                raise InvalidError("unsupported_image", "只接受本租户在环境镜像仓库里、按 digest 写的镜像")
+            image = spec.image
         if not image:
             raise InvalidError("unsupported_runtime", f"没有配置 runtime {spec.runtime} 的镜像")
         if spec.network != "none":

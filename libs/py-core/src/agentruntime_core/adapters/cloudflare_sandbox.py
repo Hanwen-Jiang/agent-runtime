@@ -118,6 +118,8 @@ class CloudflareSandbox:
         self._p._faults.check("create")
         if spec.runtime != "python":
             raise InvalidError("unsupported_runtime", "Cloudflare 后端的镜像只有 python")
+        if spec.image:
+            raise InvalidError("unsupported_image", "Cloudflare 后端的镜像在桥里写死，不能按项目定制（D-17）")
         if spec.workspace_id:
             raise InvalidError("unsupported_workspace", "Cloudflare 后端要等工作区跟着沙箱走（D-06）才能绑定 workspace")
         hosts: list[str] = []

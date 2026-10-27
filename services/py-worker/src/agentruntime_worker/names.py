@@ -55,5 +55,8 @@ SUBGRAPH_WORKFLOW = "SubgraphWorkflow"
 SANDBOX_RECONCILE_WORKFLOW = "SandboxReconcileWorkflow"
 SANDBOX_RECONCILE_WORKFLOW_ID = "platform-sandbox-reconcile"
 RECONCILE_SANDBOXES = "reconcile_sandboxes"
+# 按项目定制的运行环境（D-17）：每个环境定义一个构建工作流（ID 由租户与键定，同一个定义只构建一次）与它的 activity，只在 Python 里。
+ENV_BUILD_WORKFLOW = "EnvironmentBuildWorkflow"
+BUILD_ENVIRONMENT = "build_environment"
 
 TASK_STATE_SCHEMA_ID = "https://agentruntime.example/schemas/task_state.schema.json"

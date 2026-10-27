@@ -35,13 +35,13 @@ def test_every_component_is_registered_on_exactly_one_queue() -> None:
     activities = [a for c in QUEUE_COMPONENTS.values() for a in c.activities + c.local_activities]
     workflows = [w for c in QUEUE_COMPONENTS.values() for w in c.workflows]
     assert sorted(activities) == sorted(set(activities))
-    assert workflows == [names.TASK_WORKFLOW, names.SUB_AGENT_WORKFLOW, names.SUBGRAPH_WORKFLOW, names.SANDBOX_RECONCILE_WORKFLOW]
+    assert workflows == [names.TASK_WORKFLOW, names.SUB_AGENT_WORKFLOW, names.SUBGRAPH_WORKFLOW, names.SANDBOX_RECONCILE_WORKFLOW, names.ENV_BUILD_WORKFLOW]
     # 决策类的桩来自 StubActivities，执行 Node 的 activity 来自 Node Executor，两边不重复。
     stub_names = set(StubActivities(WorkerConfig()).activities())
     executor_names = set(dev_executor(WorkerConfig()).activities())
     assert not stub_names & executor_names
     # 沙箱环境表的对账（D-11）是平台级的 activity，不属于桩也不属于 Node Executor。
-    assert set(activities) == stub_names | executor_names | {names.RECONCILE_SANDBOXES}
+    assert set(activities) == stub_names | executor_names | {names.RECONCILE_SANDBOXES, names.BUILD_ENVIRONMENT}
     assert {names.ASK_HUMAN, names.CANCEL_HUMAN} <= set(QUEUE_COMPONENTS[names.DECISION_QUEUE].activities)
     assert names.RECONCILE_NODE in QUEUE_COMPONENTS[names.PROGRAM_QUEUE].activities
 

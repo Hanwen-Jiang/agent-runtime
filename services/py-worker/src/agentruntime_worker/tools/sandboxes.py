@@ -73,6 +73,7 @@ class Sandboxes:
         secrets_file: Path | None = None,
         policy: PolicyLookup | None = None,
         cache_ttl: float = 60,
+        environments: Mapping[str, Any] | None = None,
     ) -> None:
         if default not in specs:
             raise ValueError(f"沙箱后端的 default {default!r} 没有登记")
@@ -92,6 +93,8 @@ class Sandboxes:
         self._backends: dict[str, Backend] = {}
         self._policies: dict[str, tuple[float, SandboxPolicy]] = {}
         self._lock = asyncio.Lock()
+        # 登记文件里的 environments 一节（按项目定制的运行环境，D-17；格式见 tools/__init__.py 的 environment_manager）。
+        self.environments: dict[str, Any] = dict(environments or {})
 
     @classmethod
     def from_file(cls, path: Path, **kwargs: Any) -> Sandboxes:
@@ -102,7 +105,10 @@ class Sandboxes:
         backends = doc.get("backends")
         if not isinstance(backends, dict) or not backends:
             raise ValueError("沙箱后端的登记文件里没有 backends")
-        return cls(backends, str(doc.get("default") or ""), **kwargs)
+        environments = doc.get("environments")
+        if environments is not None and not isinstance(environments, dict):
+            raise ValueError("沙箱后端登记文件的 environments 要是一个对象")
+        return cls(backends, str(doc.get("default") or ""), environments=environments, **kwargs)
 
     @property
     def names(self) -> tuple[str, ...]:
@@ -213,6 +219,10 @@ class Sandboxes:
                 fields["max_envs_per_scope"] = int(spec["max_envs_per_scope"])
             if "startup_timeout_s" in spec:
                 fields["startup_timeout"] = timedelta(seconds=float(spec["startup_timeout_s"]))
+            if self.environments.get("registry"):
+                # 按项目定制的运行环境（D-17）：接受本部署的环境镜像仓库里的镜像。
+                reg = dict(self.environments["registry"])
+                fields["custom_image_prefix"] = f"{reg['pull_host']}/{reg.get('prefix', 'envs')}".rstrip("/")
             # runtime → 镜像（D-14）：images 里列全；只给 image 时就是 python 的镜像（D-05 的写法）。
             images = {str(k): str(v) for k, v in dict(spec.get("images") or {}).items()}
             images.setdefault("python", str(spec.get("image") or "python:3.13-slim"))

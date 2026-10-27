@@ -127,6 +127,29 @@ MIGRATIONS = (
         )""",
         "CREATE INDEX sandbox_egress_audit_task ON sandbox_egress_audit (task_id, started_at)",
     )),
+    # D-17：按项目定制的运行环境（构建出的镜像按“定义的哈希 + 基础镜像 digest”缓存，见 sandbox.environments）。
+    Migration(204, "sandbox_images", (
+        """CREATE TABLE sandbox_images (
+            image_key TEXT PRIMARY KEY,
+            kind TEXT NOT NULL,
+            path TEXT NOT NULL,
+            workspace_id TEXT NOT NULL DEFAULT '',
+            context TEXT NOT NULL DEFAULT '',
+            dockerfile TEXT NOT NULL,
+            base_image TEXT NOT NULL DEFAULT '',
+            state TEXT NOT NULL,
+            image TEXT NOT NULL DEFAULT '',
+            digest TEXT NOT NULL DEFAULT '',
+            size_bytes BIGINT NOT NULL DEFAULT 0,
+            reason TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            ready_at TEXT NOT NULL DEFAULT '',
+            last_used_at TEXT NOT NULL DEFAULT '',
+            build_ms BIGINT NOT NULL DEFAULT 0,
+            deleted_at TEXT NOT NULL DEFAULT ''
+        )""",
+        "CREATE INDEX sandbox_images_state ON sandbox_images (state, last_used_at)",
+    )),
 )
 
 

@@ -30,6 +30,7 @@ from agentruntime_core.providers.sandbox import ExecResult, Sandbox, SandboxSpec
 from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker.sandbox.credentials import EnvCredentials
+from agentruntime_worker.sandbox.environments import EnvironmentManager, same_image
 from agentruntime_worker.sandbox.grants import Grant, GrantStore, union_hosts
 from agentruntime_worker.sandbox.ledger import EnvRecord, SandboxLedger
 from agentruntime_worker.sandbox.policy import ISOLATION_RANK, SandboxPolicy
@@ -84,6 +85,8 @@ class SandboxBroker:
         self.ledger = ledger
         self.credentials = credentials
         self.grants = GrantStore(ledger) if ledger is not None else None
+        # 按项目定制的运行环境（D-17）：shell_run 借环境之前问它用哪个镜像；没配时为 None。
+        self.environments: EnvironmentManager | None = None
 
     # --- 借 ---
 
@@ -106,10 +109,11 @@ class SandboxBroker:
             found = await self.ledger.find_reusable(
                 owner, workspace_id=spec.workspace_id, session_id=session, backends=policy.names, writable=writable and bool(spec.workspace_id)
             )
-            if found is not None and not self._fits_grants(found.backend, found, grants):
-                # 托管后端的域名白名单是建环境时定的：授权变了（或要审计却不经网关），这个环境不能再用，闲着就换掉。
+            if found is not None and (not self._fits_grants(found.backend, found, grants) or (spec.image and not same_image(spec.image, found.image))):
+                # 托管后端的域名白名单是建环境时定的：授权变了（或要审计却不经网关），这个环境不能再用，闲着就换掉；
+                # 项目环境的镜像构建好了（D-17），之前用 universal 建的环境也换掉。
                 if self.ledger.idle_now(found):
-                    await self._destroy_record(found, "network grants changed")
+                    await self._destroy_record(found, "network grants or environment image changed")
                 found = None
             if found is not None:
                 backend = await self.sandboxes.backend(found.backend)
@@ -206,7 +210,7 @@ class SandboxBroker:
         kwargs: dict[str, Any] = dict(
             backend=backend.name, kind=backend.kind, isolation=backend.isolation, workspace_id=spec.workspace_id,
             session_id=tenant.session_id if reuse else "", task_id=task_id, writable=writable and bool(spec.workspace_id),
-            runtime=spec.runtime, image=self.sandboxes.image_for(backend.name, spec.runtime), idle=idle,
+            runtime=spec.runtime, image=spec.image or self.sandboxes.image_for(backend.name, spec.runtime), idle=idle,
             max_lifetime=policy.max_lifetime, quota=policy.quota, fallback_from=fallback_from, allow_hosts=allow_hosts,
         )
         try:
@@ -292,6 +296,12 @@ class SandboxBroker:
     async def _destroy_record(self, record: EnvRecord, reason: str) -> EnvRecord:
         """按环境表的一行销毁（对账、回收、抢占用）；后端里已经没了也算销毁完成。"""
         assert self.ledger is not None
+        if record.backend == BUILD_BACKEND:
+            # 构建记的环境（BuildNetwork）：Job 由构建器自己删，这里只收尾记录与授权。
+            if self.grants is not None and record.task_id:
+                await self.grants.revoke_task(record.owner, record.task_id)
+            record = await self.ledger.begin_destroy(record, reason)
+            return await self.ledger.mark_destroyed(record)
         backend = await self.sandboxes.backend(record.backend)
         box = backend.provider.bind_platform("sandbox-reconcile") if record.owner == PLATFORM_ID else backend.provider.bind(
             TenantContext(tenant_id=record.owner, workspace_id=record.workspace_id)
@@ -337,4 +347,53 @@ class SandboxBroker:
         return n
 
 
-__all__ = ["Lease", "SandboxBroker"]
+# 构建项目环境时在环境表里记的“后端”（不在后端登记里；D-17）。
+BUILD_BACKEND = "env-builder"
+
+
+class BuildNetwork:
+    """构建项目环境时的联网（D-17）：在环境表里记一行（后端 env-builder、隔离 microvm），给它一条平台批准的授权
+    （只放行部署登记的 build_hosts：镜像仓库与系统包的源），再签发出网与包镜像的凭据。出网网关于是按同一套规则放行构建
+    拉基础镜像，用量与审计照记。构建结束（成功或失败）收回授权、记为销毁。"""
+
+    def __init__(self, broker: SandboxBroker, hosts: tuple[str, ...]) -> None:
+        if broker.ledger is None or broker.grants is None:
+            raise ValueError("构建联网要有沙箱环境表")
+        self.broker = broker
+        self.hosts = tuple(sorted(set(hosts)))
+        self._records: dict[tuple[str, str], EnvRecord] = {}
+
+    @staticmethod
+    def task_id(key: str) -> str:
+        return f"envbuild-{key[:16]}"
+
+    async def open(self, owner: str, key: str, timeout: timedelta) -> dict[str, str]:
+        from agentruntime_worker.sandbox.grants import NetworkPolicy, NetworkRequest
+        from agentruntime_worker.sandbox.ledger import Quota
+
+        ledger, grants = self.broker.ledger, self.broker.grants
+        assert ledger is not None and grants is not None
+        lifetime = timeout + timedelta(minutes=10)
+        task = self.task_id(key)
+        record = await ledger.begin_create(
+            owner, backend=BUILD_BACKEND, kind="k8s", isolation="microvm", task_id=task, writable=False, idle=lifetime, max_lifetime=lifetime,
+        )
+        record = await ledger.mark_ready(record, f"envb-{key[:16]}")
+        self._records[(owner, key)] = record
+        if self.hosts:
+            minutes = int(lifetime.total_seconds() // 60) + 1
+            await grants.create(owner, NetworkRequest(hosts=self.hosts, ports=(80, 443), minutes=minutes, reason="构建项目环境"),
+                                NetworkPolicy(allowed=True, hosts=self.hosts), task_id=task, approved_by="platform:env-builder")
+        if self.broker.credentials is None:
+            return {}
+        return await self.broker.credentials.exec_env(record, {"kind": "k8s"}, Quota())
+
+    async def close(self, owner: str, key: str) -> None:
+        record = self._records.pop((owner, key), None)
+        if record is None and self.broker.ledger is not None:
+            record = await self.broker.ledger.by_backend_env(owner, BUILD_BACKEND, f"envb-{key[:16]}")
+        if record is not None and record.state == "ready":
+            await self.broker._destroy_record(record, "build finished")  # noqa: SLF001
+
+
+__all__ = ["BUILD_BACKEND", "BuildNetwork", "Lease", "SandboxBroker"]

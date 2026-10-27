@@ -84,6 +84,16 @@ worker:
     # 默认用多语言的运行环境（D-14）；只用 Python 的租户也能跑（universal 里有 Python）。
     runtime: universal
     prepull: true
+    # 按项目定制的运行环境（D-17）：构建在 Kata 里，镜像放 Chart 建的环境镜像仓库（单节点经 NodePort 拉）。
+    environments:
+      enabled: true
+      baseImage: ghcr.io/agentruntime/sandbox-universal:0.1.0
+      registry:
+        pullHost: 127.0.0.1:30500
+        deploy: true
+        htpasswdSecret: agent-runtime-env-registry
+      builder:
+        agentImage: ghcr.io/agentruntime/sandbox-agent:0.1.0
     backends:
       gvisor:
         kind: k8s

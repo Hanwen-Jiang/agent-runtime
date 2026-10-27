@@ -64,6 +64,19 @@
 4.0 起 Go 运行时的 `kata-clh` 进入弃用期）。不用 Firecracker：它不支持 virtio-fs，用它要另配 devmapper 快照器，kata-deploy 4.2
 里也只有 Go 运行时的 `fc`。
 
+## 项目环境的构建
+
+按项目定制的运行环境（D-17，`docs/plan/sandbox-platform.md` 第 5 节）在 `sandbox-builds` 里构建用户的 Dockerfile。BuildKit 要以特权
+跑，特权只能停在 Kata 的 VM 里：kata-deploy 给 handler 配的 `privileged_without_host_devices = true` 不能少（install.sh 核对，
+没有时退出）；没有 Kata 时构建会被 `builds.yaml` 的准入策略拒绝，环境退回 universal。
+
+构建出的镜像放 Chart 建的环境镜像仓库（`worker.shell.environments.registry.deploy`），节点经 NodePort 30500 拉：
+
+1. 定一个用户与口令：SecretStore 的 `sandbox/env-registry` 写 `{"username": …, "password": …}`；Secret `agent-runtime-env-registry`
+   的 `htpasswd` 写 `htpasswd -nbB <用户> <口令>` 的输出（`secrets/secrets.example.yaml`）。
+2. 跑 install.sh 时带上 `ENV_REGISTRY_USER`、`ENV_REGISTRY_PASSWORD`：写 `/etc/rancher/k3s/registries.yaml`（`k3s/registries.yaml.tmpl`，
+   0600），节点拉镜像时用它认证、走 http。之后改口令要重跑一次（或改这个文件再 `systemctl restart k3s`）。
+
 ## 单节点的前提，加节点之前要换掉的
 
 - 业务对象（`agent-runtime-objects`）与 SecretStore 的可写文件（`agent-runtime-secretstore`）是 local-path 的卷，只在一台机器上共用：

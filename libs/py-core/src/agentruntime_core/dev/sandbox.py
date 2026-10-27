@@ -87,6 +87,8 @@ class LocalSubprocessSandbox:
         self._provider._faults.check("create")
         if spec.runtime != "python":
             raise InvalidError("unsupported_runtime", "开发实现只支持 python")
+        if spec.image:
+            raise InvalidError("unsupported_image", "开发实现不用镜像")
         env_id = "env-" + secrets.token_hex(8)
         if spec.workspace_id:
             workdir = workspace_dir(self._provider._workspaces, self._scope, spec.workspace_id)
