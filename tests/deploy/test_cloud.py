@@ -95,9 +95,17 @@ def test_scripts_parse(script: Path) -> None:
 
 
 def test_gvisor_binaries_are_checksummed() -> None:
+    """gVisor 从 2026-07 起一个版本一个包（runsc、shim 与 gvisor-bin/），要整包解到同一个目录。"""
     text = (CLUSTER / "install.sh").read_text("utf-8")
-    assert "runsc.sha512" in text.replace("$bin.sha512", "runsc.sha512") and "sha512sum -c" in text
+    assert "gvisor.tar.bz2.sha512" in text and "sha512sum -c gvisor.tar.bz2.sha512" in text
+    assert re.search(r"tar -xjf \S*gvisor\.tar\.bz2\"? -C /usr/local/bin", text), "runsc 在自己旁边找 gvisor-bin/"
     assert "INSTALL_K3S_VERSION=\"$K3S_VERSION\"" in text
+
+
+def test_postgres_images_agree() -> None:
+    images = {re.search(r"imageName: (\S+)", (DATA / f).read_text("utf-8")).group(1) for f in ("postgres.yaml", "restore-drill.yaml")}
+    assert len(images) == 1, f"恢复演练要用与原集群相同的镜像：{images}"
+    assert next(iter(images)).rsplit(":", 1)[1].startswith("17."), "与测试用的 PostgreSQL 17 同一大版本"
 
 
 def test_k3s_config_encrypts_secrets_and_defaults_pod_security() -> None:
@@ -184,9 +192,17 @@ def test_data_namespace_only_admits_runtime_and_observability() -> None:
 
 
 def test_temporal_namespace_retention_is_set_on_install() -> None:
-    text = (DATA / "install.sh").read_text("utf-8")
-    assert re.search(r"namespace create -n agent-runtime --retention \d+d", text)
-    assert cloud_values()["external"]["temporal"]["namespace"] == "agent-runtime"
+    """Runtime 用的 Temporal 命名空间由 Chart 的 namespace Job 建，带保留期（S-06：短于业务对象的生命周期）。"""
+    temporal = yaml.safe_load((DATA / "values" / "temporal.yaml").read_text("utf-8"))
+    namespaces = temporal["server"]["config"]["namespaces"]
+    assert namespaces["create"] is True
+    wanted = cloud_values()["external"]["temporal"]["namespace"]
+    [entry] = [n for n in namespaces["namespace"] if n["name"] == wanted]
+    assert re.fullmatch(r"\d+d", entry["retention"])
+    for store in temporal["server"]["config"]["persistence"]["datastores"].values():
+        sql = store["sql"]
+        assert sql["existingSecret"] == "pg-temporal" and "password" not in sql, "口令取 Secret，不写在 values 里"
+        assert sql["createDatabase"] is False, "库由 CloudNativePG 的 Database 建"
 
 
 # --- D-04 Runtime 的 Chart ---

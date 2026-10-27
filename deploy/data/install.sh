@@ -24,18 +24,20 @@ helm repo add temporal https://go.temporal.io/helm-charts >/dev/null
 helm repo add qdrant https://qdrant.github.io/qdrant-helm >/dev/null
 helm repo add redpanda https://charts.redpanda.com >/dev/null
 helm repo add langfuse https://langfuse.github.io/langfuse-k8s >/dev/null
-helm repo add grafana https://grafana.github.io/helm-charts >/dev/null
+helm repo add grafana https://grafana-community.github.io/helm-charts >/dev/null
 helm repo update >/dev/null
 
 log "Temporal"
+# Runtime 用的命名空间 agent-runtime（保留期 7 天，短于业务对象的生命周期，S-06）由 Chart 的 namespace Job 建（values/temporal.yaml）。
 helm upgrade --install temporal temporal/temporal --version "$TEMPORAL_CHART_VERSION" -n data -f "$HERE/values/temporal.yaml" --wait --timeout 15m
-# Runtime 用的命名空间；保留期 7 天，短于业务对象的生命周期（S-06）。
-kubectl -n data exec deploy/temporal-admintools -- \
-  sh -c 'temporal operator namespace describe -n agent-runtime >/dev/null 2>&1 || temporal operator namespace create -n agent-runtime --retention 7d'
 
 log "Qdrant、Redpanda"
 helm upgrade --install qdrant qdrant/qdrant --version "$QDRANT_CHART_VERSION" -n data -f "$HERE/values/qdrant.yaml" --wait
 helm upgrade --install redpanda redpanda/redpanda --version "$REDPANDA_CHART_VERSION" -n data -f "$HERE/values/redpanda.yaml" --wait --timeout 15m
+
+log "ClickHouse operator（Langfuse 2.x 的 ClickHouse 由它部署；要 cert-manager，deploy/cluster/install.sh 装过）"
+helm upgrade --install clickhouse-operator oci://ghcr.io/clickhouse/clickhouse-operator-helm --version "$CLICKHOUSE_OPERATOR_VERSION" \
+  -n clickhouse-operator --create-namespace --wait
 
 log "Langfuse、Tempo、Grafana"
 helm upgrade --install langfuse langfuse/langfuse --version "$LANGFUSE_CHART_VERSION" -n observability -f "$HERE/values/langfuse.yaml" --wait --timeout 15m

@@ -1,36 +1,48 @@
 # Temporal（官方 Chart temporalio/temporal，版本见 deploy/cluster/versions.conf；docs/plan/cloud-deploy.md D-03）。
-# 存储用 deploy/data/postgres.yaml 的 temporal 与 temporal_visibility 两个库；不带 Cassandra、Elasticsearch、Prometheus、Grafana。
-# 键名随 Chart 版本变过，升级时对照该版本的 values.yaml。Runtime 用的命名空间 agent-runtime 由 deploy/data/install.sh 建，
-# 保留期要短于业务对象的生命周期（计划 S-06）。
+# 存储用 deploy/data/postgres.yaml 的 temporal 与 temporal_visibility 两个库（CloudNativePG 的 Database 已经建好，所以
+# createDatabase: false；表结构由 Chart 的 schema Job 建与升级）。键名按 1.x 的 Chart（2026-10 对照 temporal-1.7.0 的 values.yaml）。
+# Runtime 用的命名空间 agent-runtime 由 Chart 的 namespace Job 建，保留期要短于业务对象的生命周期（计划 S-06）。
 server:
-  replicaCount: 1
   config:
-    numHistoryShards: 128
     persistence:
-      default:
-        driver: sql
-        sql:
-          driver: postgres12
-          host: pg-rw.data.svc
-          port: 5432
-          database: temporal
-          user: temporal
-          existingSecret: pg-temporal
-          secretKey: password
-          maxConns: 20
-          maxIdleConns: 5
-      visibility:
-        driver: sql
-        sql:
-          driver: postgres12
-          host: pg-rw.data.svc
-          port: 5432
-          database: temporal_visibility
-          user: temporal
-          existingSecret: pg-temporal
-          secretKey: password
-          maxConns: 10
-          maxIdleConns: 2
+      defaultStore: default
+      visibilityStore: visibility
+      # 建好之后不能改；单节点用 128 够。
+      numHistoryShards: 128
+      datastores:
+        default:
+          sql:
+            pluginName: postgres12
+            databaseName: temporal
+            connectAddr: "pg-rw.data.svc:5432"
+            connectProtocol: tcp
+            user: temporal
+            existingSecret: pg-temporal
+            secretKey: password
+            maxConns: 20
+            maxIdleConns: 5
+            maxConnLifetime: 1h
+            createDatabase: false
+            manageSchema: true
+        visibility:
+          sql:
+            pluginName: postgres12
+            databaseName: temporal_visibility
+            connectAddr: "pg-rw.data.svc:5432"
+            connectProtocol: tcp
+            user: temporal
+            existingSecret: pg-temporal
+            secretKey: password
+            maxConns: 10
+            maxIdleConns: 2
+            maxConnLifetime: 1h
+            createDatabase: false
+            manageSchema: true
+    namespaces:
+      create: true
+      namespace:
+        - name: agent-runtime
+          retention: 7d
   frontend:
     resources:
       requests: {cpu: 200m, memory: 256Mi}
@@ -54,26 +66,6 @@ admintools:
     limits: {cpu: 250m, memory: 256Mi}
 web:
   enabled: true
-  replicaCount: 1
   resources:
     requests: {cpu: 50m, memory: 64Mi}
     limits: {cpu: 250m, memory: 256Mi}
-schema:
-  createDatabase:
-    enabled: false
-  setup:
-    enabled: true
-  update:
-    enabled: true
-cassandra:
-  enabled: false
-mysql:
-  enabled: false
-postgresql:
-  enabled: false
-elasticsearch:
-  enabled: false
-prometheus:
-  enabled: false
-grafana:
-  enabled: false

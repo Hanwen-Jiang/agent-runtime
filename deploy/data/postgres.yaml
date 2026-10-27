@@ -10,7 +10,8 @@ metadata:
   namespace: data
 spec:
   instances: 1
-  imageName: ghcr.io/cloudnative-pg/postgresql:17.6
+  # 与测试用的 PostgreSQL 17 同一大版本；小版本 2026-10 核对过（镜像构建于 2026-08-31）。恢复演练用同一个镜像。
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.11
   storage:
     storageClass: local-path
     size: 50Gi

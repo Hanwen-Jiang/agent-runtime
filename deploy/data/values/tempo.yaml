@@ -20,7 +20,7 @@ tempo:
     defaults:
       metrics_generator:
         processors: [local-blocks]
+# 存储类用集群默认的（k3s 是 local-path）；键名 2026-10 对照 tempo-3.1.0（grafana-community）。
 persistence:
   enabled: true
   size: 20Gi
-  storageClassName: local-path

@@ -1,15 +1,17 @@
-# Langfuse（langfuse/langfuse Chart v1；docs/plan/cloud-deploy.md D-03）：看 token 与花费。装在 observability 命名空间。
-# Postgres 用 deploy/data/postgres.yaml 的 langfuse 库；ClickHouse 与 Redis 用 Chart 自带的单实例；事件与媒体放 R2。
-# 密钥一律取已有的 Secret（deploy/cluster/secrets）：langfuse（salt、nextauth、encryption key）、pg-langfuse 的副本、r2-langfuse。
+# Langfuse（langfuse/langfuse Chart 2.x；docs/plan/cloud-deploy.md D-03）：看 token 与花费。装在 observability 命名空间。
+# 2.x 起 ClickHouse 由 ClickHouse 官方的 operator 部署（ClickHouseCluster、KeeperCluster），operator 先由 deploy/data/install.sh 装好；
+# Redis 换成了 Valkey。Postgres 用 deploy/data/postgres.yaml 的 langfuse 库；事件与媒体放 R2（不装 Chart 自带的 SeaweedFS）。
+# 密钥一律取已有的 Secret（deploy/cluster/secrets）：langfuse（salt、nextauth、encryption key、ClickHouse 与 Valkey 的口令）、
+# pg-langfuse 的副本、r2-langfuse。键名 2026-10 对照 langfuse-2.1.4 的 values.yaml。
 langfuse:
   salt:
     secretKeyRef: {name: langfuse, key: salt}
+  encryptionKey:
+    secretKeyRef: {name: langfuse, key: encryption-key}
   nextauth:
     url: https://langfuse.example.com
     secret:
       secretKeyRef: {name: langfuse, key: nextauth-secret}
-  encryptionKey:
-    secretKeyRef: {name: langfuse, key: encryption-key}
   features:
     telemetryEnabled: false
     signUpDisabled: true
@@ -33,28 +35,34 @@ postgresql:
       userPasswordKey: password
 clickhouse:
   deploy: true
-  replicaCount: 1
-  shards: 1
   auth:
     existingSecret: langfuse
     existingSecretKey: clickhouse-password
-  resources:
-    requests: {cpu: 500m, memory: 2Gi}
-    limits: {cpu: "2", memory: 3Gi}
-  persistence:
-    size: 20Gi
-    storageClass: local-path
-  zookeeper:
-    enabled: false
+  cluster:
+    replicas: 1
+    storage:
+      size: 20Gi
+      className: local-path
+    resources:
+      requests: {cpu: 500m, memory: 2Gi}
+      limits: {cpu: "2", memory: 3Gi}
+  # 单节点：一个 Keeper 就够（Chart 默认 3 个，给多节点高可用用）。
+  keeper:
+    replicas: 1
+    storage:
+      size: 5Gi
+      className: local-path
+    resources:
+      requests: {cpu: 100m, memory: 256Mi}
+      limits: {cpu: 500m, memory: 512Mi}
 redis:
   deploy: true
   auth:
     existingSecret: langfuse
     existingSecretPasswordKey: redis-password
-  primary:
-    resources:
-      requests: {cpu: 50m, memory: 128Mi}
-      limits: {cpu: 250m, memory: 256Mi}
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {cpu: 250m, memory: 256Mi}
 s3:
   deploy: false
   bucket: agentruntime-langfuse

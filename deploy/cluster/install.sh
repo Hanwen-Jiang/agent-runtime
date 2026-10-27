@@ -2,7 +2,7 @@
 # 把一台新机器装成单节点 k3s 集群（docs/plan/cloud-deploy.md D-02），在机器上以 root 运行：
 #   sudo deploy/cluster/install.sh
 # 做的事（重复运行是安全的）：
-#   1. gVisor：下载 runsc 与 containerd-shim-runsc-v1，核对 sha512 后装到 /usr/local/bin。
+#   1. gVisor：下载这个版本的包（runsc、containerd-shim-runsc-v1 与 gvisor-bin/），核对 sha512 后解到 /usr/local/bin。
 #   2. k3s：配置（config.yaml、psa.yaml、containerd 模板、Traefik 配置）放好后按 versions.conf 的版本安装。
 #   3. Kata（机器有 /dev/kvm 时）：kata-deploy 的 Helm Chart；没有 KVM 时跳过并提示，kata RuntimeClass 的 Pod 会起不来。
 #   4. 工作区目录 /var/lib/agentruntime/workspaces（属主 10001）。
@@ -30,13 +30,13 @@ trap 'rm -rf "$WORK"' EXIT
 # --- 1. gVisor ---
 if ! command -v runsc >/dev/null || [[ "$(runsc --version 2>/dev/null | head -1)" != *"$GVISOR_RELEASE"* ]]; then
   log "安装 gVisor $GVISOR_RELEASE"
+  # 2026-07 起一个版本一个包；runsc 在自己旁边找 gvisor-bin/，所以整包解到同一个目录。
   base="https://storage.googleapis.com/gvisor/releases/release/${GVISOR_RELEASE}/x86_64"
-  for bin in runsc containerd-shim-runsc-v1; do
-    curl -fsSL -o "$WORK/$bin" "$base/$bin"
-    curl -fsSL -o "$WORK/$bin.sha512" "$base/$bin.sha512"
-    (cd "$WORK" && sha512sum -c "$bin.sha512")
-    install -m 0755 "$WORK/$bin" "/usr/local/bin/$bin"
-  done
+  curl -fsSL -o "$WORK/gvisor.tar.bz2" "$base/gvisor.tar.bz2"
+  curl -fsSL -o "$WORK/gvisor.tar.bz2.sha512" "$base/gvisor.tar.bz2.sha512"
+  (cd "$WORK" && sha512sum -c gvisor.tar.bz2.sha512)
+  tar -xjf "$WORK/gvisor.tar.bz2" -C /usr/local/bin
+  chmod 0755 /usr/local/bin/runsc /usr/local/bin/containerd-shim-runsc-v1
 fi
 
 # --- 2. k3s ---

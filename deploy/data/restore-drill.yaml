@@ -9,7 +9,7 @@ metadata:
     agentruntime.io/purpose: restore-drill
 spec:
   instances: 1
-  imageName: ghcr.io/cloudnative-pg/postgresql:17.6
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.11
   storage:
     storageClass: local-path
     size: 50Gi
