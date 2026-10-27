@@ -79,8 +79,9 @@ class SandboxBroker:
         policy = await self.sandboxes.policy_for(owner)
         session = tenant.session_id
         if reuse and session and self.ledger is not None:
+            # 没绑工作区的环境不算可写（与 begin_create 的记法一致）。
             found = await self.ledger.find_reusable(
-                owner, workspace_id=spec.workspace_id, session_id=session, backends=policy.names, writable=writable
+                owner, workspace_id=spec.workspace_id, session_id=session, backends=policy.names, writable=writable and bool(spec.workspace_id)
             )
             if found is not None:
                 backend = await self.sandboxes.backend(found.backend)

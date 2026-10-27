@@ -93,3 +93,11 @@ JSON：{"e": env_ref, "t": tenant_id, "w": workspace_id, "s": session_id, "x": �
 - 配额在建环境的事务里核对（`sandbox_quota_lock` 那一行先更新，Postgres 上是行锁）：同时在跑的数、当天的沙箱秒数（已结束的加上在跑的）、当天的出网与镜像未命中字节、当天与当月的花费。
 - 没做的：“要出网审计的 Task 只在支持网关的后端之间回退”等 D-16 有了网关再加（后端登记要标明是否经网关出网）。
 
+**D-13（2026-10-27）**
+
+- 复用在 SandboxBroker：shell_run 带着会话（`ToolInvocation.session_id`）时按（租户，工作区，会话）在环境表里找没到期、没在别处占用的 ready 环境；找不到才建。会话级默认打开（Worker 的 `AR_SANDBOX_SESSIONS=0` 关掉）；没有会话的调用仍是一次性的。
+- 空闲期限按租户策略的 `idle_timeout_s`（只能调低部署默认的 15 分钟）；活满按 `max_lifetime_s`（默认 6 小时）；每次用都顺延空闲期限（不超过活满）。回收在对账里做（命令还在跑的不回收：`busy_until`）。
+- 环境在后端里没了（被后端自己回收、节点重启）：exec 报 not_found 时记为丢失，换新环境把这条命令跑完。
+- 一个工作区同一时间只有一个可写的环境：别的会话的那个闲着就回收，正在跑命令就拒绝（`workspace_busy`）。所以同一个工作区的两个会话会轮流拿到环境（后来的回收先来的那个闲着的环境），工作区的文件不受影响。
+- 没做的：Session 关闭时销毁（`SandboxBroker.destroy_session` 有了，但 Session 工作流在 Go 里，还没有把关闭的信号送过来；靠空闲期限兜底，W5 的待定问题 1）；验收 4 的“20 条命令在 Kata 上的总耗时”要 Kata 节点。
+
