@@ -8,11 +8,15 @@
 - 应用 deploy/cluster 的 namespaces.yaml、sandboxes.yaml、workspaces.yaml（沙箱命名空间的 Pod Security、默认拒绝的网络策略、配额）。
 - 镜像：sandbox-agent 用本仓库的源码编译成 Linux 静态二进制，放进 FROM scratch 的镜像（不用拉基础镜像）；跑命令的镜像默认
   python:3.13-slim（本机没有时 docker pull）。都用 kind load 装进节点。AR_SANDBOX_AGENT_IMAGE 给了就用现成的 agent 镜像。
-- gVisor 与 Kata 在 kind 里没有，这里只测适配器与集群约束；两种 RuntimeClass 留到真机器上验（D-02 的验收）。
+- gVisor：设 AR_KIND_GVISOR 为 gVisor 发布包（gvisor.tar.zstd 或 .tar.bz2，旁边要有同名的 .sha512）时，核对 sha512、在宿主上
+  解开，把 runsc、containerd-shim-runsc-v1 与 gvisor-bin/ 拷进节点，给节点的 containerd 登记 runsc，再应用
+  deploy/cluster/runtimeclasses.yaml；之后沙箱 Pod 用 RuntimeClass gvisor（Cluster.runtime_class）。不让测试自行下载。
+  Kata 要嵌套虚拟化，kind 里没有，留到真机器上验（D-02 的验收）。
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -68,6 +72,10 @@ class Cluster:
             elif not self.reuse:
                 raise RuntimeError(f"已经有一个叫 {CLUSTER} 的 kind 集群：删掉它（kind delete cluster --name {CLUSTER}）或设 AR_KIND_REUSE=1 复用")
             self.kubeconfig = self._kubeconfig()
+            self.runtime_class = ""
+            if os.environ.get("AR_KIND_GVISOR"):
+                self._install_gvisor(Path(os.environ["AR_KIND_GVISOR"]))
+                self.runtime_class = "gvisor"
             self.agent_image = os.environ.get("AR_SANDBOX_AGENT_IMAGE") or self._build_agent()
             self.python_image = self._python_image()
             self._run(self.kind, "load", "docker-image", self.agent_image, self.python_image, "--name", CLUSTER, timeout=900)
@@ -136,6 +144,38 @@ class Cluster:
         (build / "Dockerfile").write_text(f"FROM {PYTHON_IMAGE}\n", "utf-8")
         self._run(self.docker, "build", "-q", "-t", SANDBOX_PYTHON_IMAGE, str(build), timeout=600)
         return SANDBOX_PYTHON_IMAGE
+
+    def _install_gvisor(self, package: Path) -> None:
+        """把 gVisor 装进 kind 的节点并给 containerd 登记 runsc（RuntimeClass gvisor 的 handler）。重复调用是安全的。"""
+        sums = package.with_name(package.name + ".sha512")
+        if not package.is_file() or not sums.is_file():
+            raise MissingTool(f"AR_KIND_GVISOR 要指向 gVisor 的发布包，旁边要有 {sums.name}")
+        want = sums.read_text("utf-8").split()[0].lower()
+        digest = hashlib.sha512()
+        with package.open("rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                digest.update(chunk)
+        if digest.hexdigest() != want:
+            raise RuntimeError(f"{package.name} 的 sha512 对不上")
+        node = f"{CLUSTER}-control-plane"
+        installed = self._run(self.docker, "exec", node, "sh", "-c", "test -x /usr/local/bin/runsc && test -d /usr/local/bin/gvisor-bin", check=False).returncode == 0
+        if not installed:
+            out = self._dir / "gvisor"
+            out.mkdir()
+            self._run(shutil.which("tar") or "tar", "-xf", str(package), "-C", str(out), timeout=600)
+            for item in sorted(out.iterdir()):
+                self._run(self.docker, "cp", str(item), f"{node}:/usr/local/bin/", timeout=600)
+            self._run(self.docker, "exec", node, "sh", "-c",
+                      "chmod 0755 /usr/local/bin/runsc /usr/local/bin/containerd-shim-runsc-v1 && chmod -R a+rX /usr/local/bin/gvisor-bin "
+                      "&& find /usr/local/bin/gvisor-bin -type f -exec chmod a+x {} +")
+        config = self._run(self.docker, "exec", node, "cat", "/etc/containerd/config.toml").stdout
+        if "runtimes.runsc]" not in config:
+            # kind 的节点用 containerd 的 v2 格式配置。
+            block = '\n[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runsc]\n  runtime_type = "io.containerd.runsc.v1"\n'
+            self._run(self.docker, "exec", "-i", node, "sh", "-c", "cat >> /etc/containerd/config.toml", input=block)
+            self._run(self.docker, "exec", node, "systemctl", "restart", "containerd")
+            self.kubectl_run("wait", "--for=condition=Ready", "node", "--all", "--timeout=180s")
+        self.kubectl_run("apply", "-f", str(REPO_ROOT / "deploy" / "cluster" / "runtimeclasses.yaml"))
 
     def _wait_bound(self) -> None:
         deadline = time.monotonic() + 60

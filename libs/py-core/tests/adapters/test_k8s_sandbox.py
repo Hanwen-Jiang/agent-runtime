@@ -41,6 +41,8 @@ def make_provider(
         workspace_claim="workspaces",
         image_pull_policy="IfNotPresent",
         startup_timeout=timedelta(minutes=3),
+        # 设了 AR_KIND_GVISOR 时整套一致性测试都在 RuntimeClass gvisor 上跑（kindtest 把 gVisor 装进节点）。
+        runtime_class=cluster.runtime_class,
         **overrides,
     )
     return K8sPodSandboxProvider(KubeAPI.from_kubeconfig(cluster.kubeconfig), config, token_key=token_key, faults=faults)
@@ -118,6 +120,17 @@ async def test_each_tenant_has_its_own_quota(harness: Harness) -> None:
         await b.destroy(other.env_id)
     finally:
         await limited.aclose()
+
+
+async def test_gvisor_runtime_class_runs_under_the_gvisor_kernel(harness: Harness) -> None:
+    """D-05 验收 1（gVisor 那一半）：RuntimeClass gvisor 的沙箱里是 gVisor 的用户态内核，不是宿主的。
+    gVisor 自报的内核版本随版本变（以前是 4.4.0，2026-10 的版本是 4.19.0-gvisor），只认 gvisor 字样。"""
+    if harness.cluster.runtime_class != "gvisor":
+        pytest.skip("设 AR_KIND_GVISOR（gVisor 的发布包）才在 kind 里装 gVisor")
+    _, version, _ = await run(harness, "print(open('/proc/version').read())")
+    assert "gvisor" in version.lower(), version
+    pod = (await harness.provider.kube.json("GET", harness.provider.pods_path() + "?labelSelector=" + label_selector(LABELS)))["items"]
+    assert pod and all(p["spec"].get("runtimeClassName") == "gvisor" for p in pod)
 
 
 async def test_sandbox_has_no_service_account_token(harness: Harness) -> None:

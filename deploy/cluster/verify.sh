@@ -49,8 +49,8 @@ if kubectl get runtimeclass gvisor kata >/dev/null 2>&1; then pass "RuntimeClass
 
 host_kernel="$(uname -r)"
 gvisor_out="$(run_pod verify-gvisor gvisor "print(open('/proc/version').read())")"
-# gVisor 自报的内核是 4.4.0（与宿主无关）。
-if grep -q '4\.4\.0' <<<"$gvisor_out" && ! grep -qF "$host_kernel" <<<"$gvisor_out"; then
+# gVisor 自报的内核带 gvisor 字样（2026-10 的版本是 4.19.0-gvisor；更早的是 4.4.0），与宿主无关。
+if grep -qi 'gvisor' <<<"$gvisor_out" && ! grep -qF "$host_kernel" <<<"$gvisor_out"; then
   pass "gvisor Pod 里是 gVisor 的内核"
 else
   flunk "gvisor Pod 里是 gVisor 的内核（输出：$gvisor_out）"

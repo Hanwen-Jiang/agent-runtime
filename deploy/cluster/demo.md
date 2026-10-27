@@ -47,7 +47,7 @@ AR_RELATIONAL_DSN="postgresql://agentruntime:<口令>@127.0.0.1:5432/agentruntim
 
    积压时 model、decision 池的副本数涨上去，消化完缩回 `minReplicas`。
 4. **两种沙箱**：`demo-invited` 的命令在 gVisor 里跑，`demo-public` 的在 Kata 的 microVM 里跑。让两个租户各跑一条 `uname -r`：
-   gVisor 报 `4.4.0`，Kata 报客户机内核的版本，都与宿主不同。Grafana 的“沙箱存活时间（按后端）”能看到两条线。
+   gVisor 报带 `gvisor` 字样的版本（例如 `4.19.0-gvisor`），Kata 报客户机内核的版本，都与宿主不同。Grafana 的“沙箱存活时间（按后端）”能看到两条线。
    沙箱断网：让任务 `curl https://example.com`，命令失败。
 5. **Tempo 与 Langfuse**：在 Grafana 的 Explore 里用 TraceQL `{ span.task_id = "<任务>" }` 找到这次任务的 span：`invoke_workflow`
    下面是各轮的 `runtime.round`，节点的模型调用是 `chat`。沙箱里的命令是单独的 `runtime.sandbox` span（不挂在任务的调用链下），
