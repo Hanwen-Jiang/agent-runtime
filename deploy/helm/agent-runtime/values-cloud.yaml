@@ -68,6 +68,12 @@ pkgMirror:
   # 单节点：local-path 的卷，预算 100 GiB（包文件）+ 5 GiB（元数据），留出余量。
   storage: 120Gi
 
+# 出网网关（D-16）：联网经申请与批准；预览地址是 https://<环境号>.preview.<域名>（Cloudflare 上配 *.preview 的通配记录与证书）。
+egressGateway:
+  enabled: true
+  previewDomain: preview.agent-runtime.example.com
+  previewTLSSecretName: cloudflare-origin-tls
+
 worker:
   workspacesClaim: workspaces
   shell:

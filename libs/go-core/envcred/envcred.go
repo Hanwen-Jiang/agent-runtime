@@ -4,7 +4,8 @@
 //	ar1.<base64url(JSON)>.<base64url(HMAC-SHA256(key, "ar1." + base64url(JSON)))>
 //	JSON：{"e": env_ref, "t": tenant_id, "w": workspace_id, "s": session_id, "x": 到期的 Unix 秒, "k": 用途, "q": {限额}}
 //
-// 用途只能是 mirror 或 egress，一个凭据只能用在一处；q 是签发方填的这个环境的限额。任何一项不对都是同一个 denied
+// 用途只能是 mirror、egress 或 preview（出网网关的预览入口，q.port 是环境的端口），一个凭据只能用在一处；
+// q 是签发方填的这个环境的限额。任何一项不对都是同一个 denied
 // （invalid_credential），不说明是哪一项。两种语言对着同一组向量测试（tests/contract/sandbox_credential_vectors.json）。
 // 凭据不进日志、trace 与错误信息。
 package envcred
@@ -29,8 +30,9 @@ const SecretName = "sandbox/env-credential-key"
 
 // 用途。
 const (
-	PurposeMirror = "mirror"
-	PurposeEgress = "egress"
+	PurposeMirror  = "mirror"
+	PurposeEgress  = "egress"
+	PurposePreview = "preview"
 )
 
 var (
@@ -64,8 +66,8 @@ func Issue(key []byte, c Claims) (string, error) {
 	if len(key) < 32 {
 		return "", providererr.New(providererr.Invalid, "weak_credential_key", "环境凭据的密钥至少 32 字节")
 	}
-	if c.Purpose != PurposeMirror && c.Purpose != PurposeEgress {
-		return "", providererr.New(providererr.Invalid, "invalid_purpose", "环境凭据的用途只能是 mirror 或 egress")
+	if c.Purpose != PurposeMirror && c.Purpose != PurposeEgress && c.Purpose != PurposePreview {
+		return "", providererr.New(providererr.Invalid, "invalid_purpose", "环境凭据的用途只能是 mirror、egress 或 preview")
 	}
 	if !tenantPattern.MatchString(c.TenantID) || !envRefPattern.MatchString(c.EnvRef) {
 		return "", providererr.New(providererr.Invalid, "invalid_claims", "环境凭据的租户或环境号格式不对")

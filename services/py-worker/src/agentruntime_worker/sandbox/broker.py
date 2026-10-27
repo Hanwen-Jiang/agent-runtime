@@ -8,13 +8,17 @@
   不靠进程内的缓存。用完不删（release(keep=True)），空闲到期或活满时由对账回收（sandbox.reconcile）。
 - 一个工作区同一时间只有一个可写的环境：别的会话占着、但那边没有命令在跑时，回收它再建；正在跑就报 denied（workspace_busy）。
 - 没有环境表（ledger 为 None，只在单元测试与没配业务库的开发里）时退回原来的做法：直接调后端，不复用、不核对配额。
-- 环境的短期凭据（D-15）：配了 credentials 时，每次借到的环境带上这条命令要的环境变量（Lease.env：包镜像的地址与凭据，
-  sandbox.credentials），调用方经 exec 的 env 给到命令；不进 repr、环境表与 trace。
+- 环境的短期凭据（D-15、D-16）：配了 credentials 时，每次借到的环境带上这条命令要的环境变量（Lease.env：包镜像与出网网关
+  的地址与凭据、租户的测试用密钥，sandbox.credentials），调用方经 exec 的 env 给到命令；不进 repr、环境表与 trace。
+- 联网授权（D-16，sandbox.grants）：授权属于 Task。经出网网关的后端（K8s、本地）环境本身断网，网关按授权放行；托管后端
+  没有网关，Task 有授权时环境建成按域名放行（network = allowlist，主机是各授权的并集），授权变了就换一个环境。授权带用量
+  上限（字节、连接、频率）时只能落在经网关的后端（W11：要审计的 Task 只在支持网关的后端之间回退）。
 """
 
 from __future__ import annotations
 
 import contextlib
+import json
 import logging
 from dataclasses import dataclass, field, replace
 from datetime import timedelta
@@ -26,6 +30,7 @@ from agentruntime_core.providers.sandbox import ExecResult, Sandbox, SandboxSpec
 from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker.sandbox.credentials import EnvCredentials
+from agentruntime_worker.sandbox.grants import Grant, GrantStore, union_hosts
 from agentruntime_worker.sandbox.ledger import EnvRecord, SandboxLedger
 from agentruntime_worker.sandbox.policy import ISOLATION_RANK, SandboxPolicy
 
@@ -47,13 +52,19 @@ class Lease:
     reused: bool = False
     fallback_from: str = ""
     fallback_reason: str = ""
-    # 给这条命令的环境变量（包镜像与出网代理的地址、凭据）；里面有凭据，不进 repr。
+    # 给这条命令的环境变量（包镜像与出网代理的地址、凭据，测试用密钥）；里面有凭据，不进 repr。
     env: dict[str, str] = field(default_factory=dict, repr=False)
+    # 联网的方式：none（断网）、gateway（经出网网关，按授权放行）、allowlist（托管后端按域名放行）；注入的测试用密钥的名字。
+    network: str = "none"
+    test_env_names: tuple[str, ...] = ()
 
     @property
     def attributes(self) -> dict[str, Any]:
-        """给 runtime.sandbox span 的属性（不含命令、输出与凭据）。"""
+        """给 runtime.sandbox span 的属性（不含命令、输出与凭据；测试用密钥只记名字）。"""
         out: dict[str, Any] = {"sandbox.backend": self.backend.name, "sandbox.kind": self.backend.kind, "sandbox.isolation": self.backend.isolation}
+        out["sandbox.network"] = self.network
+        if self.test_env_names:
+            out["sandbox.test_env"] = list(self.test_env_names)
         if self.record is not None:
             out["sandbox.env_ref"] = self.record.env_ref
             out["sandbox.reused"] = self.reused
@@ -72,6 +83,7 @@ class SandboxBroker:
         self.sandboxes = sandboxes
         self.ledger = ledger
         self.credentials = credentials
+        self.grants = GrantStore(ledger) if ledger is not None else None
 
     # --- 借 ---
 
@@ -87,32 +99,67 @@ class SandboxBroker:
     ) -> Lease:
         owner = tenant.tenant_id or PLATFORM_ID
         policy = await self.sandboxes.policy_for(owner)
+        grants = await self.task_grants(owner, task_id)
         session = tenant.session_id
         if reuse and session and self.ledger is not None:
             # 没绑工作区的环境不算可写（与 begin_create 的记法一致）。
             found = await self.ledger.find_reusable(
                 owner, workspace_id=spec.workspace_id, session_id=session, backends=policy.names, writable=writable and bool(spec.workspace_id)
             )
+            if found is not None and not self._fits_grants(found.backend, found, grants):
+                # 托管后端的域名白名单是建环境时定的：授权变了（或要审计却不经网关），这个环境不能再用，闲着就换掉。
+                if self.ledger.idle_now(found):
+                    await self._destroy_record(found, "network grants changed")
+                found = None
             if found is not None:
                 backend = await self.sandboxes.backend(found.backend)
                 record = await self.ledger.touch(found, task_id=task_id, busy_for=busy_for)
                 lease = Lease(backend, backend.provider.bind(tenant), record.backend_env_id, record, reused=True)
-                return await self._with_env(lease, policy)
-        lease = await self._create(tenant, owner, spec, policy, task_id=task_id, writable=writable, reuse=reuse, busy_for=busy_for)
-        return await self._with_env(lease, policy)
+                return await self._with_env(lease, policy, grants)
+        lease = await self._create(tenant, owner, spec, policy, task_id=task_id, writable=writable, reuse=reuse, busy_for=busy_for, grants=grants)
+        return await self._with_env(lease, policy, grants)
 
-    async def _with_env(self, lease: Lease, policy: SandboxPolicy) -> Lease:
+    async def task_grants(self, owner: str, task_id: str) -> list[Grant]:
+        """这个 Task 现在有效的联网授权（没有环境表或没有 Task 时为空）。"""
+        if self.grants is None or not task_id or owner == PLATFORM_ID:
+            return []
+        return await self.grants.for_task(owner, task_id)
+
+    def has_gateway(self, name: str) -> bool:
+        return self.credentials is not None and bool(self.credentials.egress_for(self.sandboxes.spec(name)))
+
+    def _allow_hosts(self, name: str, grants: list[Grant]) -> str:
+        """托管后端按域名放行时环境要带的主机（JSON）；经网关的后端与没有授权时为空。"""
+        if not grants or self.has_gateway(name):
+            return ""
+        return json.dumps(list(union_hosts(grants)))
+
+    def _fits_grants(self, name: str, record: EnvRecord, grants: list[Grant]) -> bool:
+        if any(g.audited for g in grants) and not self.has_gateway(name):
+            return False
+        return record.allow_hosts == self._allow_hosts(name, grants)
+
+    async def _with_env(self, lease: Lease, policy: SandboxPolicy, grants: list[Grant] | None = None) -> Lease:
+        lease.network = "none"
+        if self.has_gateway(lease.backend.name):
+            lease.network = "gateway"
+        elif lease.record is not None and lease.record.allow_hosts:
+            lease.network = "allowlist"
         if self.credentials is not None and lease.record is not None:
             lease.env = await self.credentials.exec_env(lease.record, self.sandboxes.spec(lease.backend.name), policy.quota)
+            secrets = await self.credentials.test_env(lease.record.owner)
+            lease.env.update(secrets)
+            lease.test_env_names = tuple(sorted(secrets))
         return lease
 
     async def _create(
         self, tenant: TenantContext, owner: str, spec: SandboxSpec, policy: SandboxPolicy, *, task_id: str, writable: bool, reuse: bool,
-        busy_for: timedelta | None,
+        busy_for: timedelta | None, grants: list[Grant] | None = None,
     ) -> Lease:
-        candidates, skipped = self._candidates(policy, spec)
+        grants = grants or []
+        candidates, skipped = self._candidates(policy, spec, gateway_only=any(g.audited for g in grants))
         if not candidates:
-            raise InvalidError("no_sandbox_backend", "租户策略里没有满足隔离强度与工作区要求的沙箱后端：" + "；".join(skipped))
+            raise InvalidError("no_sandbox_backend", "租户策略里没有满足隔离强度、工作区与出网审计要求的沙箱后端：" + "；".join(skipped))
         preferred = policy.backend
         errors: list[str] = []
         idle = min(spec.idle_timeout, policy.idle_timeout) if not reuse else policy.idle_timeout
@@ -120,13 +167,17 @@ class SandboxBroker:
             backend = await self.sandboxes.backend(name)
             fallback_from = preferred if name != preferred else ""
             reason = errors[-1] if errors else ""
+            allow_hosts = self._allow_hosts(name, grants)
             record = None
             if self.ledger is not None:
                 record = await self._begin(owner, backend, spec, policy, task_id=task_id, writable=writable, reuse=reuse, idle=idle,
-                                           fallback_from=fallback_from, tenant=tenant)
+                                           fallback_from=fallback_from, tenant=tenant, allow_hosts=allow_hosts)
             box = backend.provider.bind(tenant)
+            create_spec = replace(spec, idle_timeout=max(spec.idle_timeout, idle))
+            if allow_hosts:
+                create_spec = replace(create_spec, network="allowlist", allow_hosts=tuple(json.loads(allow_hosts)))
             try:
-                env = await box.create(replace(spec, idle_timeout=max(spec.idle_timeout, idle)))
+                env = await box.create(create_spec)
             except TransientError as err:
                 errors.append(f"{name}：{err.code}")
                 if record is not None:
@@ -149,14 +200,14 @@ class SandboxBroker:
 
     async def _begin(
         self, owner: str, backend: Backend, spec: SandboxSpec, policy: SandboxPolicy, *, task_id: str, writable: bool, reuse: bool,
-        idle: timedelta, fallback_from: str, tenant: TenantContext,
+        idle: timedelta, fallback_from: str, tenant: TenantContext, allow_hosts: str = "",
     ) -> EnvRecord:
         assert self.ledger is not None
         kwargs: dict[str, Any] = dict(
             backend=backend.name, kind=backend.kind, isolation=backend.isolation, workspace_id=spec.workspace_id,
             session_id=tenant.session_id if reuse else "", task_id=task_id, writable=writable and bool(spec.workspace_id),
             runtime=spec.runtime, image=self.sandboxes.image_for(backend.name, spec.runtime), idle=idle,
-            max_lifetime=policy.max_lifetime, quota=policy.quota, fallback_from=fallback_from,
+            max_lifetime=policy.max_lifetime, quota=policy.quota, fallback_from=fallback_from, allow_hosts=allow_hosts,
         )
         try:
             return await self.ledger.begin_create(owner, **kwargs)
@@ -171,7 +222,7 @@ class SandboxBroker:
             await self._destroy_record(holder, "preempted: 另一个会话要写同一个工作区")
         return await self.ledger.begin_create(owner, **kwargs)
 
-    def _candidates(self, policy: SandboxPolicy, spec: SandboxSpec) -> tuple[list[str], list[str]]:
+    def _candidates(self, policy: SandboxPolicy, spec: SandboxSpec, *, gateway_only: bool = False) -> tuple[list[str], list[str]]:
         names = policy.names
         floor = policy.min_isolation or self.sandboxes.isolation(names[0])
         floor_rank = ISOLATION_RANK[floor]
@@ -184,6 +235,9 @@ class SandboxBroker:
                 continue
             if spec.workspace_id and self._workspace_group(name) != group:
                 skipped.append(f"{name}（与首选不共用工作区）")
+                continue
+            if gateway_only and not self.has_gateway(name):
+                skipped.append(f"{name}（不经出网网关，做不到联网授权的用量上限与审计）")
                 continue
             out.append(name)
         return out, skipped
@@ -271,6 +325,8 @@ class SandboxBroker:
         """租户删除时销毁它的全部环境（W9；设计书还没有租户删除的流程，这里先给出沙箱一侧要做的）。"""
         if self.ledger is None:
             return 0
+        if self.grants is not None:
+            await self.grants.revoke_all(tenant_id, "tenant deleted")
         n = 0
         for record in await self.ledger.active(tenant_id):
             if record.state == "creating":

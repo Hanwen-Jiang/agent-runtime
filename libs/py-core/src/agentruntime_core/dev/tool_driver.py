@@ -137,6 +137,7 @@ class LocalToolDriver:
         idempotency_key: str | None = None,
         credential: Credential | None = None,
         task_id: str = "",
+        approved_by: str = "",
     ) -> ToolResult:
         self._provider._faults.check("invoke")
         tool = self._tool(name, version)
@@ -149,7 +150,7 @@ class LocalToolDriver:
         if tool.spec.effect.is_write and not idempotency_key:
             raise InvalidError("missing_idempotency_key", "写操作必须带幂等键")
         if not idempotency_key:
-            return ToolResult(output=await self._run(tool, arguments, None, credential, task_id), idempotency_key=None, replayed=False)
+            return ToolResult(output=await self._run(tool, arguments, None, credential, task_id, approved_by), idempotency_key=None, replayed=False)
 
         record_key = (self._owner, name, version, idempotency_key)
         arguments_hash = _hash(arguments)
@@ -160,11 +161,13 @@ class LocalToolDriver:
                 if record.arguments_hash != arguments_hash:
                     raise ConflictError("idempotency_conflict", "同一幂等键配了不同的参数")
                 return ToolResult(output=record.output, idempotency_key=idempotency_key, replayed=True)
-            output = await self._run(tool, arguments, idempotency_key, credential, task_id)
+            output = await self._run(tool, arguments, idempotency_key, credential, task_id, approved_by)
             self._provider._records[record_key] = _Record(arguments_hash, output)
             return ToolResult(output=output, idempotency_key=idempotency_key, replayed=False)
 
-    async def _run(self, tool: _Tool, arguments: dict[str, Any], key: str | None, credential: Credential | None, task_id: str = "") -> Any:
+    async def _run(
+        self, tool: _Tool, arguments: dict[str, Any], key: str | None, credential: Credential | None, task_id: str = "", approved_by: str = ""
+    ) -> Any:
         invocation = ToolInvocation(
             tenant_id=self._scope.tenant_id,
             arguments=arguments,
@@ -174,6 +177,7 @@ class LocalToolDriver:
             session_id=self._scope.session_id,
             user_id=self._scope.user_id,
             task_id=task_id,
+            approved_by=approved_by,
         )
         try:
             output = await asyncio.wait_for(tool.handler(invocation), timeout=tool.spec.timeout.total_seconds())

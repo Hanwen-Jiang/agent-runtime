@@ -144,6 +144,23 @@ pkgMirror:
     requests: {cpu: 100m, memory: 128Mi}
     limits: {cpu: "2", memory: 1Gi}
 
+# 出网网关（docs/plan/cloud-deploy.md D-16）：沙箱联网只经它，按 Task 的联网授权放行；要配 secrets.relationalDsn。
+# 打开后 Worker 给命令注入代理变量并登记 request_network，task-service 在 Task 结束时通知它收回。
+egressGateway:
+  enabled: false
+  # 预览地址的域名（https://<环境号>.<域名>）；空表示不开预览入口。ingress.type 是 traefik 时 Chart 建它的 IngressRoute。
+  previewDomain: ""
+  previewTLSSecretName: ""
+  # 入口控制器所在的命名空间（只有它能连预览端口；k3s 的 Traefik 在 kube-system）。
+  ingressNamespace: kube-system
+  # 另外拒绝的网段：集群的 Pod 与 Service 网段（k3s 默认 10.42.0.0/16、10.43.0.0/16）。
+  denyCidrs: ["10.42.0.0/16", "10.43.0.0/16"]
+  # 授权缓存多久（毫秒）：撤销最迟这么久生效；Task 结束时 task-service 另外主动通知。
+  grantTTLMillis: 2000
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: "1", memory: 512Mi}
+
 worker:
   # 真正的 Planner、Reviewer 与 tool_loop（经 Model Gateway）；stub 只用于端到端测试。
   planner: model

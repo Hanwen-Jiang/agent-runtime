@@ -27,7 +27,7 @@ from agentruntime_core.providers.object_store import ObjectStoreProvider
 
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.sandbox.broker import SandboxBroker
-from agentruntime_worker.sandbox.credentials import EnvCredentials
+from agentruntime_worker.sandbox.credentials import TEST_ENV_SECRET, EnvCredentials
 from agentruntime_worker.sandbox.ledger import SandboxLedger
 from agentruntime_worker.sandbox.store import relational_store
 from agentruntime_worker.telemetry import worker_telemetry
@@ -52,14 +52,15 @@ def _store_key(config: WorkerConfig) -> tuple[object, ...]:
 def _key(config: WorkerConfig) -> tuple[object, ...]:
     return (
         config.tool_workspace_root, config.tool_fetch_hosts, config.mcp_tools_file, config.tool_shell_sandbox,
-        config.sandbox_backends_file, config.registry_address, config.sandbox_sessions, config.sandbox_runtime, *_store_key(config),
+        config.sandbox_backends_file, config.registry_address, config.sandbox_sessions, config.sandbox_runtime, config.preview_domain,
+        *_broker_key(config), *_store_key(config),
     )
 
 
 def _broker_key(config: WorkerConfig) -> tuple[object, ...]:
     return (
         config.tool_shell_sandbox, config.sandbox_backends_file, config.registry_address, config.data_dir, config.secrets_file, config.relational_dsn,
-        config.pkg_mirror_url,
+        config.pkg_mirror_url, config.egress_gateway_url,
     )
 
 
@@ -84,7 +85,10 @@ def sandbox_broker(config: WorkerConfig) -> SandboxBroker | None:
             _brokers[key] = None
         else:
             root = config.data_dir or Path(tempfile.mkdtemp(prefix="agentruntime-sandbox-ledger-"))
-            credentials = EnvCredentials(lambda: boxes.read_secret(envcred.SECRET_NAME), mirror_url=config.pkg_mirror_url)
+            credentials = EnvCredentials(
+                lambda: boxes.read_secret(envcred.SECRET_NAME), mirror_url=config.pkg_mirror_url, egress_url=config.egress_gateway_url,
+                test_env=lambda tenant: boxes.read_tenant_secret(tenant, TEST_ENV_SECRET),
+            )
             _brokers[key] = SandboxBroker(boxes, SandboxLedger(relational_store(config.relational_dsn, root)), credentials=credentials)
     return _brokers[key]
 
@@ -119,6 +123,8 @@ def dev_tools(config: WorkerConfig) -> LocalToolDriverProvider:
                 shell_image=config.tool_shell_image,
                 session_sandboxes=config.sandbox_sessions,
                 shell_runtime=config.sandbox_runtime,
+                network_requests=bool(config.egress_gateway_url),
+                preview_domain=config.preview_domain,
             ),
             objects=context_objects(config),
             sandboxes=sandbox_broker(config),

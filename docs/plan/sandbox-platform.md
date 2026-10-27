@@ -55,11 +55,11 @@ JSON：{"e": env_ref, "t": tenant_id, "w": workspace_id, "s": session_id, "x": �
 ```
 
 - 密钥取自 SecretStore 平台作用域的 `sandbox/env-credential-key`（部署共用，至少 32 字节），与 agent 令牌的 `sandbox/token-key` 分开。
-- 用途 `k`：`mirror`（包镜像）或 `egress`（出网网关）；一个凭据只能用在一处。
+- 用途 `k`：`mirror`（包镜像）、`egress`（出网网关）或 `preview`（出网网关的预览入口，`q.port` 是环境的端口；D-16 加的）；一个凭据只能用在一处。
 - 到期时间等于环境的 max_until；环境销毁后网关与镜像按环境表拒绝（凭据本身还没过期也一样）。
 - 限额 `q`：签发时从租户策略抄进来（包镜像用 `mirror_miss_bytes`），Go 服务不用再去查租户策略；策略改了，下一个环境生效。
 - 两种语言的签发与校验对着同一组向量测试（`tests/contract/sandbox_credential_vectors.json`）：`agentruntime_core.envcred` 与 `libs/go-core/envcred`。
-- 沙箱里的样子（包镜像）：凭据放在路径前缀里，`PIP_INDEX_URL=http://pkg-mirror…:8093/t/<凭据>/pypi/simple/`、`npm_config_registry=…/t/<凭据>/npm/`、`GOPROXY=…/t/<凭据>/go`。pip、npm、go 对 userinfo 与认证头的处理各不相同（npm 的 `_authToken` 要按主机另配，go 的 GOPROXY 不带认证头），路径前缀三家都原样带着。包镜像也接受 `Authorization: Basic`（口令是凭据）与 `Bearer`。出网（D-16）的样子在那一项定。日志与 trace 里只记环境号，不记凭据（包镜像的访问日志把路径里的凭据换成 `***`）。
+- 沙箱里的样子（包镜像）：凭据放在路径前缀里，`PIP_INDEX_URL=http://pkg-mirror…:8093/t/<凭据>/pypi/simple/`、`npm_config_registry=…/t/<凭据>/npm/`、`GOPROXY=…/t/<凭据>/go`。pip、npm、go 对 userinfo 与认证头的处理各不相同（npm 的 `_authToken` 要按主机另配，go 的 GOPROXY 不带认证头），路径前缀三家都原样带着。包镜像也接受 `Authorization: Basic`（口令是凭据）与 `Bearer`。出网（D-16）：`HTTP_PROXY`、`HTTPS_PROXY`（与小写、npm 的 `npm_config_proxy`、`npm_config_https_proxy`）是 `http://ar:<凭据>@egress-gateway…:8095`，各家客户端都把 userinfo 换成 `Proxy-Authorization: Basic`；`NO_PROXY` 是包镜像的主机、localhost、127.0.0.1。日志与 trace 里只记环境号，不记凭据（包镜像的访问日志把路径里的凭据换成 `***`）。
 - 凭据只经 Sandbox 的 `exec(env=…)` 给到那一条命令（每次执行可以带环境变量：名字是 `[A-Za-z_][A-Za-z0-9_]*`、不以 `AGENT_` 开头，至多 64 个、合计 64 KiB），不写进 Pod 的定义、环境表与 span。
 
 ## 4. 各项的落点
@@ -71,7 +71,7 @@ JSON：{"e": env_ref, "t": tenant_id, "w": workspace_id, "s": session_id, "x": �
 | D-13 | `SandboxSpec.session_id`；`ToolInvocation.session_id`、`task_id`；`sandbox.broker` 按（工作区、会话）复用；空闲与活满的回收在对账里 |
 | D-14 | `deploy/images/universal`；后端登记的 `images`（runtime → 镜像 digest）；`runtime.sandbox` span 的 `sandbox.image` |
 | D-15 | `services/go-pkg-mirror`（`internal/cache` 内容寻址与淘汰、`internal/mirror` 三种协议与管理接口、`internal/usage` 未命中字节）；`envcred`（Python 与 Go）；Sandbox 的 `exec(env=…)` 与 sandbox-agent 的 `env`、`AGENT_ENV_PASSTHROUGH`；`agentruntime_worker.sandbox.credentials`；Chart 的 `pkgMirror` |
-| D-16 | `services/go-egress-gateway`；`SubmitTaskRequest.network_request` 与 `sandbox.network`（S-01，待人审）；Worker 的 `request_network` 工具 |
+| D-16 | `services/go-egress-gateway`（`internal/netguard` 地址与主机的检查、`internal/grants` 授权的读取与计量审计、`internal/proxy` 代理、预览入口与管理接口）；`SubmitTaskRequest.network_request` 与 `sandbox.network`（S-01，待人审）；task-service 的 `taskapi/network.go` 与 `internal/sandboxgrants`；Worker 的 `sandbox.grants`、`tools/network.py`（`request_network`）、`sandbox.credentials` 的代理变量与测试用密钥 |
 | D-17 | `agentruntime_worker.sandbox.environments`（识别定义文件、算键、配额、退回 universal）与构建器的 Job 清单 |
 
 ## 5. 与改动稿、计划的出入（实现时定的）
@@ -122,3 +122,25 @@ JSON：{"e": env_ref, "t": tenant_id, "w": workspace_id, "s": session_id, "x": �
 - 镜像：`pkg-mirror`（`deploy/images/go.Dockerfile`）。沙箱镜像加了 `AGENT_ENV_PASSTHROUGH`：sandbox-agent 只把基本变量交给命令，工具链要的（RUSTUP_HOME、JAVA_HOME、各种缓存目录）要列在那里，不然经 agent 跑的命令找不到 Rust 工具链、往只读的目录里写；`tests/deploy/test_images.py` 核对镜像 ENV 里的每一个都列了。
 - 与计划的出入：计划写“只用标准库”，实际还依赖 `libs/go-core`（业务库要 Postgres 驱动）。Maven、crates 与 R2 冷层仍放第二步。
 - 没覆盖的：Grafana 面板（集群里还没有 Prometheus 抓 `/metrics`，计数先在 `/metrics` 与日志里）；真实客户端的测试对着本机的假官方源（不联网），没对真的 PyPI、npm、Go 代理跑；集群里经网络策略的连通性（沙箱连得到镜像、连不到外网）要真集群（`deploy/cluster/verify.sh` 还没加这一条）。
+
+**D-16（2026-10-27）**
+
+- `services/go-egress-gateway`：只用标准库与 `libs/go-core`（业务库、开发 SecretStore、环境凭据、可选的 OpenTelemetry）。代理端口 8095（HTTPS 走 CONNECT，HTTP 走绝对地址的请求），管理端口 8096（`/healthz`、`/metrics`、`POST /admin/revoke`，收回要 `egress-gateway/admin-token`），预览入口 8097（配了 `AR_EGRESS_PREVIEW_DOMAIN` 才开）。
+- 放行：凭据（用途 egress）→ 环境表里环境还在（`ready`）、最近用它的 Task（`sandbox_envs.task_id`）→ 那个 Task 有效的授权里覆盖这个主机与端口的一条（按 grant_id 排，取第一条）。授权属于 Task：会话级的环境被下一个 Task 用了，就按那个 Task 的授权。HTTPS 另看 ClientHello 的 SNI（要在同一条授权里；没有 SNI 拒绝），在上行的转发里核对，下行照常，服务端先说话的协议（SSH 的横幅）不受影响；不是 TLS 的流只看 CONNECT 的主机。
+- SSRF（`internal/netguard`）：目标只能是域名，IP 地址的任何写法（点分、十进制、八进制、十六进制、简写、IPv6、方括号、IPv4 映射）都按地址拒绝；localhost 与 `.local`、`.internal`、`.svc`、`.cluster.local` 等拒绝。网关自己解析，解析出的任何一个地址在私有网段、回环、链路本地、云元数据（169.254.169.254、fd00:ec2::254、100.100.100.200）、CGNAT、唯一本地、组播、保留与文档网段、NAT64 里嵌着的内网、6to4、Teredo，或 `AR_EGRESS_DENY_CIDRS`（集群的 Pod 与 Service 网段）里就整个拒绝；连接用核对过的那个地址，不再解析。不跟随重定向（客户端跟过去的那一次照样要过检查）。
+- 用量：每个授权在网关进程里计上行、下行字节（从表里的 `up_bytes`、`down_bytes` 接着算）、开着的连接数、每秒的连接与请求（令牌桶）；超了拒绝新连接，传输中超了字节上限就断开；每 5 秒把增量写回 `sandbox_grants` 与当天的 `sandbox_usage.egress_bytes`。租户每天的出网字节（`quota.daily_egress_bytes`）由 Worker 签进凭据的 `q.egress_bytes`。计数在进程里，所以 Chart 只起一个副本。
+- 收回：授权缓存 2 秒（`AR_EGRESS_GRANT_TTL_MS`），开着的连接每秒核对一次（撤销、到期、Task 换了、环境没了就断开）。Task 结束时 task-service 的 `FinishTask`（Session 的 activity，命令序列不变）把这个 Task 的授权改成 revoked，再通知网关的 `/admin/revoke` 立即断开（`AR_EGRESS_GATEWAY_ADMIN_URL`；通知失败只差这几秒）。租户删除时 `SandboxBroker.destroy_tenant` 收回全部。
+- 审计：每个连接（放行、拒绝、断开）一行 `sandbox_egress_audit`（迁移 203：租户作用域；Task、环境、授权、方向、主机、端口、地址、开始时间、时长、字节数、结果与原因），一行 JSON 日志，配了 `OTEL_EXPORTER_OTLP_ENDPOINT` 时一个 `runtime.egress` span（按租户）。Worker 的 `GrantStore.audit(租户, Task)` 按 Task 列出来。
+- 申请的两种来源：
+  - 提交时的 `network_request`：task-service 按租户策略核对（与 Worker 同一套规则，`taskapi/network.go` 与 `sandbox.grants.check_request`），批准的写进 `sandbox_grants`（授权号由 task_id 定，重投递不多写），从提交时起算。有 Registry 时策略取它的当前租户策略，否则取开发用的租户策略文件（条目里的 `sandbox.network`）。表还没建（Worker 还没迁移）时 transient。
+  - 运行中的 `request_network`：write_irreversible，tool_loop 里逐次人工审批（D16 的现成机制，问题里列出主机、端口、时长与理由）；Node Executor 把审批人交给工具（`ToolInvocation.approved_by`，ToolDriver 的接口加了这个参数）。
+- 托管后端（登记里没有网关的，例如 Cloudflare；登记可写 `egress_gateway: false`）：Task 有授权时环境建成按域名放行（`allow_hosts` 是各授权主机的并集，记在环境表的 `allow_hosts` 列），授权变了就换一个环境；授权带用量上限（字节、连接、频率）时只能落在经网关的后端（W11：首选的托管后端跳过，回退列表里没有经网关的就拒绝）。
+- 预览：`request_network` 带 `preview_port` 时，在本会话的环境上开（要会话级沙箱；后端实现 `SandboxPreview.preview_address`：K8s 是 Pod 的地址，开发实现是本机），授权记下 `preview_env` 与 `preview_target`，工具返回 `https://<环境号>.<AR_PREVIEW_DOMAIN>/?ar_preview=<令牌>`（令牌是用途 preview 的环境凭据，到期同授权）。网关核对令牌、授权与环境，第一次把令牌换成 Cookie 并重定向到去掉令牌的地址，转发时去掉这个 Cookie；每个环境每秒的请求有上限。令牌像预签名地址一样会出现在工具的结果里（要给到用户或回调方）。
+- 测试用密钥：租户 SecretStore 的 `sandbox/test-env`（名字到值的 JSON 对象）注入每条命令；不能盖掉镜像与代理的变量；span 只记名字（`sandbox.test_env`）。
+- Chart：`egressGateway`（`values-cloud.yaml` 打开）：单副本的 Deployment、Service、网络策略（沙箱只出到网关的 8095，进沙箱的只有网关；网关的管理端口只给 Runtime 与 observability，预览端口只给入口控制器；网关出公网任意端口但不含私有网段与云元数据），预览地址的 IngressRoute（`HostRegexp`，只认环境号的主机名）；Worker 的 `AR_EGRESS_GATEWAY_URL`、`AR_PREVIEW_DOMAIN`，task-service 的 `AR_EGRESS_GATEWAY_ADMIN_URL`。镜像 `egress-gateway`（`deploy/images/go.Dockerfile`）。
+- 与改动稿的出入：
+  - W8 说两种申请都经 HumanChannel 问人、选项是“允许 15、30、60 分钟”与“拒绝”。实现里提交时的申请以提交本身为批准（提交者就是那个人；approver = admin 时要带 `task.approve` 的身份），没有再问一遍；运行中的申请沿用 tool_loop 的逐次审批，选项仍是批准与拒绝，时长由申请的参数（15、30、60）定。这样 Task 工作流的命令序列不用改（不加版本分支）。
+  - approver = admin 时，运行中的申请由提交者本人批准的不算（人工回复只接受提交者与带 `task.approve` 的人，所以别人批的就是管理员批的）；管理员自己提交的 Task 要另一个管理员批。
+  - 授权从批准时起算，Task 排队的时间也算在内。
+- 契约（S-01，**待人审**，基线没更新）：`SubmitTaskRequest.network_request`（`NetworkRequest`：hosts、ports、minutes、reason）；租户策略 `sandbox.network.max_rps`；`host_pattern` 收紧为最后一段以字母开头（`10.0.0.1` 这类写法不再合法）。环境凭据的用途加 `preview`（`tests/contract/sandbox_credential_vectors.json` 加了正例与反例）。
+- 没覆盖的：集群里经网络策略的连通性（沙箱只连得到网关与镜像）与真实 DNS、真实的 TLS 站点要真集群；`runtime.egress` span 进 Tempo、按 Task 列出访问记录的界面（现在有业务库的审计表与 `GrantStore.audit`，还没有 API 与面板）；`dev_stack.py` 还不拉起网关；Cloudflare 后端按域名放行的那一路只对着开发实现测了（真桥要 `AR_LIVE_CLOUDFLARE=1`）；HTTPS 解密（W8 说默认不做）。

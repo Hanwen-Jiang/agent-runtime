@@ -60,6 +60,10 @@ ENV_SANDBOX_RECONCILE_INTERVAL_S = "AR_SANDBOX_RECONCILE_INTERVAL_S"
 ENV_SANDBOX_RUNTIME = "AR_SANDBOX_RUNTIME"
 # 包镜像的地址（D-15），例如 http://ar-agent-runtime-pkg-mirror:8093：设了就给 K8s 与本地后端的命令注入镜像源变量。
 ENV_PKG_MIRROR_URL = "AR_PKG_MIRROR_URL"
+# 出网网关的代理地址（D-16），例如 http://ar-agent-runtime-egress-gateway:8095：设了就给 K8s 与本地后端的命令注入代理变量，
+# 并登记 request_network 工具；预览地址的域名（例如 preview.example.com），设了 request_network 才能开预览地址。
+ENV_EGRESS_GATEWAY_URL = "AR_EGRESS_GATEWAY_URL"
+ENV_PREVIEW_DOMAIN = "AR_PREVIEW_DOMAIN"
 
 
 @dataclass(frozen=True)
@@ -109,6 +113,8 @@ class WorkerConfig:
     sandbox_reconcile_interval_s: int = 60
     sandbox_runtime: str = "python"
     pkg_mirror_url: str = ""
+    egress_gateway_url: str = ""
+    preview_domain: str = ""
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> WorkerConfig:
@@ -195,6 +201,8 @@ class WorkerConfig:
             sandbox_reconcile_interval_s=interval,
             sandbox_runtime=env.get(ENV_SANDBOX_RUNTIME, "").strip() or cls.sandbox_runtime,
             pkg_mirror_url=env.get(ENV_PKG_MIRROR_URL, "").strip(),
+            egress_gateway_url=env.get(ENV_EGRESS_GATEWAY_URL, "").strip(),
+            preview_domain=env.get(ENV_PREVIEW_DOMAIN, "").strip(),
         )
 
     def store_paths(self, root: Path) -> tuple[Path, Path]:

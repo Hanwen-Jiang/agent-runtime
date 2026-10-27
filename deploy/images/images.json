@@ -63,6 +63,13 @@
         "MODULE": "services/go-pkg-mirror",
         "MAIN": "./cmd/pkg-mirror"
       }
+    },
+    "egress-gateway": {
+      "dockerfile": "deploy/images/go.Dockerfile",
+      "args": {
+        "MODULE": "services/go-egress-gateway",
+        "MAIN": "./cmd/egress-gateway"
+      }
     }
   }
 }

@@ -169,6 +169,19 @@ class Sandboxes:
         """SecretStore 平台作用域（sandbox）里的一个密钥；没有时 None。"""
         return await self._secret(name)
 
+    async def read_tenant_secret(self, tenant_id: str, name: str) -> bytes | None:
+        """租户自己的 SecretStore 里的一个密钥（测试用密钥 sandbox/test-env，D-16）；没有时 None。"""
+        if self._secrets_file is None:
+            return None
+        from agentruntime_core.dev.secret_store import LocalFileSecretStoreProvider
+        from agentruntime_core.tenancy import TenantContext
+
+        try:
+            value = (await LocalFileSecretStoreProvider(self._secrets_file).bind(TenantContext(tenant_id=tenant_id)).read(name)).reveal()
+        except NotFoundError:
+            return None
+        return value.encode() if isinstance(value, str) else value
+
     async def _secret(self, name: str) -> bytes | None:
         if self._secrets_file is None:
             return None

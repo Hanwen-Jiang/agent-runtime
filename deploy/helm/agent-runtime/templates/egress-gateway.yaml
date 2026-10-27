@@ -1,0 +1,215 @@
+{{- /* 出网网关（docs/plan/cloud-deploy.md D-16；设计书改动稿 W8）：沙箱默认断网，联网只经它，按 Task 的联网授权放行。
+       - 沙箱命名空间的 Pod 只能连它的 8095（代理）与包镜像；管理端口 8096（收回授权、指标）只给 Runtime 与 observability；
+         预览入口 8097 只给入口控制器（Traefik 在 kube-system）。
+       - 它自己出公网的任意 TCP 端口（端口由授权限定，网关自己核对），私有网段、链路本地与云元数据、CGNAT 一律不行
+         （网关里也拦，这里是第二道）；另外只连业务库与 DNS。预览时连进沙箱 Pod（沙箱命名空间放行它进来）。
+       - 授权的用量计数在进程里（定期写回业务库）：单副本，避免多个副本各算各的把上限放大。
+       - 集群的 Pod、Service 网段经 AR_EGRESS_DENY_CIDRS 再拒一遍。 */ -}}
+{{- $e := .Values.egressGateway -}}
+{{- if $e.enabled }}
+{{- if not .Values.secrets.relationalDsn.name }}
+{{- fail "egressGateway.enabled 要配 secrets.relationalDsn：授权、用量与审计在业务库里，与 Worker 共用" }}
+{{- end }}
+{{- $name := printf "%s-egress-gateway" (include "ar.fullname" .) -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "egress-gateway") | nindent 4 }}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels:
+      {{- include "ar.selector" (list . "egress-gateway") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ar.labels" (list . "egress-gateway") | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "ar.fullname" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: egress-gateway
+          image: {{ include "ar.image" (list . "egress-gateway") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["serve"]
+          ports:
+            - name: proxy
+              containerPort: 8095
+            - name: admin
+              containerPort: 8096
+            - name: preview
+              containerPort: 8097
+          env:
+            {{- include "ar.storeEnv" . | nindent 12 }}
+            {{- include "ar.dsnEnv" . | nindent 12 }}
+            - name: AR_EGRESS_ADDR
+              value: ":8095"
+            - name: AR_EGRESS_ADMIN_ADDR
+              value: ":8096"
+            {{- if $e.previewDomain }}
+            - name: AR_EGRESS_PREVIEW_ADDR
+              value: ":8097"
+            - name: AR_EGRESS_PREVIEW_DOMAIN
+              value: {{ $e.previewDomain | quote }}
+            {{- end }}
+            - name: AR_EGRESS_DENY_CIDRS
+              value: {{ join "," $e.denyCidrs | quote }}
+            - name: AR_EGRESS_GRANT_TTL_MS
+              value: {{ $e.grantTTLMillis | int | quote }}
+          readinessProbe:
+            httpGet: {path: /healthz, port: admin}
+            periodSeconds: 5
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          resources:
+            {{- toYaml $e.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "ar.volumeMounts" . | nindent 12 }}
+      volumes:
+        {{- include "ar.volumes" . | nindent 8 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "egress-gateway") | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "ar.selector" (list . "egress-gateway") | nindent 4 }}
+  ports:
+    - name: proxy
+      port: 8095
+      targetPort: proxy
+    - name: admin
+      port: 8096
+      targetPort: admin
+    - name: preview
+      port: 8097
+      targetPort: preview
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "egress-gateway") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ar.selector" (list . "egress-gateway") | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.worker.shell.sandboxNamespace }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+      ports:
+        - {protocol: TCP, port: 8095}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - {protocol: TCP, port: 8096}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $e.ingressNamespace }}
+      ports:
+        - {protocol: TCP, port: 8097}
+  egress:
+    - ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data
+      ports:
+        - {protocol: TCP, port: 5432}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.worker.shell.sandboxNamespace }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/managed-by: agentruntime-sandbox
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10, 127.0.0.0/8]
+      ports:
+        - {protocol: TCP, port: 1, endPort: 65535}
+{{- if eq .Values.worker.shell.mode "sandbox" }}
+---
+# 沙箱命名空间里默认拒绝一切（deploy/cluster/sandboxes.yaml）：出只放行到网关的 8095；进只放行网关（预览入口转发进来）。
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sandboxes-egress-gateway
+  namespace: {{ .Values.worker.shell.sandboxNamespace }}
+  labels:
+    {{- include "ar.labels" (list . "egress-gateway") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/managed-by: agentruntime-sandbox
+  policyTypes: [Ingress, Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+          podSelector:
+            matchLabels:
+              {{- include "ar.selector" (list . "egress-gateway") | nindent 14 }}
+      ports:
+        - {protocol: TCP, port: 8095}
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+          podSelector:
+            matchLabels:
+              {{- include "ar.selector" (list . "egress-gateway") | nindent 14 }}
+{{- end }}
+{{- if and $e.previewDomain .Values.ingress.enabled (eq .Values.ingress.type "traefik") }}
+---
+# 预览地址 https://<环境号>.<预览域名>：经入口转给网关的 8097；令牌由网关核对（不在入口做）。
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ $name }}-preview
+  labels:
+    {{- include "ar.labels" (list . "egress-gateway") | nindent 4 }}
+spec:
+  entryPoints:
+    {{- toYaml .Values.ingress.traefik.entryPoints | nindent 4 }}
+  routes:
+    - kind: Rule
+      match: {{ printf "HostRegexp(`^sbe-[0-9a-f]{16}\\.%s$`)" (replace "." "\\." $e.previewDomain) | quote }}
+      services:
+        - name: {{ $name }}
+          port: preview
+  tls:
+    {{- if $e.previewTLSSecretName }}
+    secretName: {{ $e.previewTLSSecretName }}
+    {{- else }}
+    {}
+    {{- end }}
+{{- end }}
+{{- end }}

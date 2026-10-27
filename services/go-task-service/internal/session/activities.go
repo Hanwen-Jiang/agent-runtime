@@ -20,6 +20,7 @@ import (
 	workflowv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1"
 
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/events"
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/sandboxgrants"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/taskstore"
 )
 
@@ -34,6 +35,8 @@ type Activities struct {
 	Clock clock.Clock
 	// Retention 是推流事件的保留时间，断线续传靠它（设计书 4.14）。
 	Retention time.Duration
+	// Egress 在 Task 结束、收回联网授权后通知出网网关立即断开（D-16）；为空时只靠网关几秒的缓存。
+	Egress *sandboxgrants.Notifier
 }
 
 func (a *Activities) now() time.Time {
@@ -64,10 +67,16 @@ func (a *Activities) AcceptTask(ctx context.Context, tenant *commonv1.TenantCont
 
 // FinishTask 推送 TASK_FINISHED（载荷是 Task 的结局），并把终态与结局记进业务库。重复调用只推一次：
 // 业务库里已经记下结局时（上一次调用做完了），即使 Cache 里的标记随 Cache 重启丢了，也不再推。
+// 推送之前先收回这个 Task 的联网授权（D-16：授权属于 Task，Task 结束即收回；收回是幂等的，重试时再做一遍也无妨）。
 func (a *Activities) FinishTask(ctx context.Context, tenant *commonv1.TenantContext, result *workflowv1.TaskWorkflowResult) error {
 	data, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(result)
 	if err != nil {
 		return activityError(err)
+	}
+	if n, err := sandboxgrants.RevokeTask(ctx, a.Store, tenant, result.GetTaskId(), a.now()); err != nil {
+		return activityError(err)
+	} else if n > 0 {
+		_ = a.Egress.Revoked(ctx, tenant.GetTenantId(), result.GetTaskId())
 	}
 	tasks := taskstore.New(a.Store)
 	if row, ok, err := tasks.LookupTask(ctx, tenant, result.GetTaskId()); err != nil {

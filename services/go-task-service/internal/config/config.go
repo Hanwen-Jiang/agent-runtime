@@ -38,6 +38,9 @@ const (
 	// 不能与 Task API 共用端口，也不能再配 AR_PINNED_VERSIONS_FILE。EnvSchemasDir 是 Registry 校验 document 用的 /schemas，默认 schemas。
 	EnvRegistryAddr = "AR_REGISTRY_ADDR"
 	EnvSchemasDir   = "AR_SCHEMAS_DIR"
+	// EnvEgressAdminURL 是出网网关的管理地址（D-16），例如 http://ar-agent-runtime-egress-gateway:8096：Task 结束、收回联网授权
+	// 之后通知它立即断开；管理令牌取 AR_SECRETS_FILE 平台作用域的 egress-gateway/admin-token。没设时只靠网关几秒的缓存。
+	EnvEgressAdminURL = "AR_EGRESS_GATEWAY_ADMIN_URL"
 )
 
 // DefaultClaimCheckThreshold 是 Claim-Check 的默认阈值（字节）。
@@ -97,6 +100,8 @@ type Config struct {
 	// RegistryAddr 为空表示不启用 Registry；SchemasDir 见 EnvSchemasDir。
 	RegistryAddr string
 	SchemasDir   string
+	// EgressAdminURL 见 EnvEgressAdminURL。
+	EgressAdminURL string
 }
 
 // FromEnv 读取并校验配置。错误信息只提变量名，不带取值。
@@ -117,6 +122,7 @@ func FromEnv(getenv func(string) string) (Config, error) {
 		RegistryAddr:       getenv(EnvRegistryAddr),
 		SchemasDir:         or(EnvSchemasDir, "schemas"),
 		Session:            session.DefaultConfig(),
+		EgressAdminURL:     getenv(EnvEgressAdminURL),
 	}
 	cfg.PublicBaseURL = or(EnvPublicBaseURL, "http://"+cfg.HTTPAddr)
 	cfg.ObjectStoreDir = or(EnvObjectStoreDir, filepath.Join(cfg.DataDir, "objects"))

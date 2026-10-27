@@ -227,6 +227,16 @@ class K8sPodSandbox:
         pod = await self._lookup(env_id)
         return await self._p._agent.read_file(self._p.endpoint(env_id, pod), path)
 
+    async def preview_address(self, env_id: str, port: int) -> str:
+        """预览地址转发到 Pod 的这个端口（出网网关在集群里直连 Pod；沙箱命名空间的网络策略只放行网关进来，D-16）。"""
+        if not 1 <= int(port) <= 65535 or int(port) == self._p.config.agent_port:
+            raise InvalidError("invalid_port", "端口要在 1 到 65535 之间，且不能是 agent 的端口")
+        pod = await self._lookup(env_id)
+        ip = (pod.get("status") or {}).get("podIP")
+        if not ip:
+            raise TransientError("sandbox_unavailable", "沙箱 Pod 还没有地址")
+        return f"[{ip}]:{int(port)}" if ":" in ip else f"{ip}:{int(port)}"
+
     async def destroy(self, env_id: str) -> None:
         p = self._p
         p._faults.check("destroy")

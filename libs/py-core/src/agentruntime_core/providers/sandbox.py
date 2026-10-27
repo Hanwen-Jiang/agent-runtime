@@ -112,3 +112,10 @@ class SandboxLister(Protocol):
     只列本部署建的环境（K8s 按标签、桥按令牌），别的部署的不碰。"""
 
     async def list_environments(self) -> list[ListedEnvironment]: ...
+
+
+class SandboxPreview(Protocol):
+    """能给环境的一个端口开预览地址的后端（进网，设计书改动稿 W8；D-16）：返回出网网关的预览入口转发到的地址
+    （host:port，K8s 是 Pod 的地址，开发实现是本机）。作用域同 exec：别的作用域的环境 not_found。托管后端没有这一项。"""
+
+    async def preview_address(self, env_id: str, port: int) -> str: ...

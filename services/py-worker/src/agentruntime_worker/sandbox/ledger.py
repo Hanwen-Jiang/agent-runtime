@@ -104,6 +104,29 @@ MIGRATIONS = (
         "CREATE INDEX sandbox_grants_session ON sandbox_grants (session_id, state)",
         "CREATE INDEX sandbox_grants_task ON sandbox_grants (task_id, state)",
     )),
+    # D-16：预览地址落在哪个环境、转发到哪里；托管后端按域名放行时环境建起来带的主机名单；出网网关逐连接的审计。
+    Migration(203, "sandbox_egress", (
+        "ALTER TABLE sandbox_grants ADD COLUMN preview_env TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE sandbox_grants ADD COLUMN preview_target TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE sandbox_envs ADD COLUMN allow_hosts TEXT NOT NULL DEFAULT ''",
+        """CREATE TABLE sandbox_egress_audit (
+            audit_id TEXT PRIMARY KEY,
+            grant_id TEXT NOT NULL DEFAULT '',
+            task_id TEXT NOT NULL DEFAULT '',
+            env_ref TEXT NOT NULL,
+            direction TEXT NOT NULL,
+            host TEXT NOT NULL,
+            port BIGINT NOT NULL DEFAULT 0,
+            address TEXT NOT NULL DEFAULT '',
+            started_at TEXT NOT NULL,
+            duration_ms BIGINT NOT NULL DEFAULT 0,
+            up_bytes BIGINT NOT NULL DEFAULT 0,
+            down_bytes BIGINT NOT NULL DEFAULT 0,
+            result TEXT NOT NULL,
+            reason TEXT NOT NULL DEFAULT ''
+        )""",
+        "CREATE INDEX sandbox_egress_audit_task ON sandbox_egress_audit (task_id, started_at)",
+    )),
 )
 
 
@@ -174,6 +197,8 @@ class EnvRecord:
     cost_usd: float = 0.0
     fallback_from: str = ""
     reason: str = ""
+    # 托管后端（没有出网网关）按域名放行时，环境建起来带的主机名单（JSON 数组，排好序）；空表示断网（D-16）。
+    allow_hosts: str = ""
 
     @classmethod
     def from_row(cls, owner: str, row: Mapping[str, Any]) -> EnvRecord:
@@ -245,6 +270,7 @@ class SandboxLedger:
         max_lifetime: timedelta,
         quota: Quota | None = None,
         fallback_from: str = "",
+        allow_hosts: str = "",
     ) -> EnvRecord:
         """落一行 creating（先写平台目录再写租户的行），同一个事务里核对配额与预算。超了 denied。"""
         await self.migrate()
@@ -252,7 +278,7 @@ class SandboxLedger:
         record = EnvRecord(
             env_ref=new_env_ref(), owner=owner, backend=backend, kind=kind, isolation=isolation, state="creating", created_at=iso(now),
             workspace_id=workspace_id, session_id=session_id, task_id=task_id, writable=1 if writable else 0, runtime=runtime, image=image,
-            idle_seconds=int(idle.total_seconds()), max_until=iso(now + max_lifetime), fallback_from=fallback_from,
+            idle_seconds=int(idle.total_seconds()), max_until=iso(now + max_lifetime), fallback_from=fallback_from, allow_hosts=allow_hosts,
         )
         await self._directory(record, "creating")
         try:

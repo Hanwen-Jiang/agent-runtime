@@ -95,6 +95,7 @@
             "max_up_bytes": 10485760,
             "max_down_bytes": 104857600,
             "max_conns": 16,
+            "max_rps": 20,
             "preview": true
           }
         }
@@ -292,6 +293,45 @@
             "hosts": [
               "https://api.github.com/"
             ]
+          }
+        }
+      }
+    },
+    {
+      "name": "network_host_is_an_ip",
+      "description": "放行的是主机名，IP 地址（含点分写法）不行：网关自己解析并锁定地址（W8）",
+      "violates": [
+        {
+          "path": "/sandbox/network/hosts/0",
+          "keyword": "pattern"
+        }
+      ],
+      "instance": {
+        "sandbox": {
+          "backend": "kata",
+          "network": {
+            "allowed": true,
+            "hosts": [
+              "169.254.169.254"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "network_negative_rps",
+      "description": "每秒请求数的上限不能是负数",
+      "violates": [
+        {
+          "path": "/sandbox/network/max_rps",
+          "keyword": "minimum"
+        }
+      ],
+      "instance": {
+        "sandbox": {
+          "backend": "kata",
+          "network": {
+            "max_rps": -1
           }
         }
       }

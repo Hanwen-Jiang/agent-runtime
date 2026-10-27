@@ -31,33 +31,59 @@ func (p StaticPolicy) Resolve(context.Context, *commonv1.TenantContext) (Default
 //
 //	{"tenants": {"<tenant_id>": {"effect_ceiling": "write_irreversible"}}}
 //
-// effect_ceiling 取附录 A 的 effect 名。文件不存在、或租户没有列出时用 Fallback。
+// effect_ceiling 取附录 A 的 effect 名。文件不存在、或租户没有列出时用 Fallback。条目里的 sandbox.network 与租户策略的
+// 写法相同（D-16），FilePolicyResolver 同时是 NetworkPolicySource。
 type FilePolicyResolver struct {
 	Path     string
 	Fallback Defaults
 }
 
+type policyEntry struct {
+	EffectCeiling string `json:"effect_ceiling"`
+	Sandbox       struct {
+		Network NetworkPolicy `json:"network"`
+	} `json:"sandbox"`
+}
+
 type policyFile struct {
-	Tenants map[string]struct {
-		EffectCeiling string `json:"effect_ceiling"`
-	} `json:"tenants"`
+	Tenants map[string]policyEntry `json:"tenants"`
+}
+
+func (r FilePolicyResolver) read() (policyFile, bool, error) {
+	if r.Path == "" {
+		return policyFile{}, false, nil
+	}
+	data, err := os.ReadFile(r.Path)
+	if errors.Is(err, os.ErrNotExist) {
+		return policyFile{}, false, nil
+	}
+	if err != nil {
+		return policyFile{}, false, providererr.Wrap(providererr.Transient, "tenant_policy_unavailable", "读不到租户策略文件", err)
+	}
+	var file policyFile
+	if err := json.Unmarshal(data, &file); err != nil {
+		return policyFile{}, false, providererr.Wrap(providererr.Invalid, "tenant_policy_malformed", "租户策略文件格式不对", err)
+	}
+	return file, true, nil
+}
+
+// NetworkPolicy 实现 NetworkPolicySource：租户条目里的 sandbox.network；没有时不允许联网。
+func (r FilePolicyResolver) NetworkPolicy(_ context.Context, tenant *commonv1.TenantContext) (NetworkPolicy, error) {
+	file, ok, err := r.read()
+	if err != nil || !ok {
+		return NetworkPolicy{}, err
+	}
+	return file.Tenants[tenant.GetTenantId()].Sandbox.Network, nil
 }
 
 func (r FilePolicyResolver) Resolve(_ context.Context, tenant *commonv1.TenantContext) (Defaults, error) {
 	out := r.Fallback.clone()
-	if r.Path == "" {
-		return out, nil
-	}
-	data, err := os.ReadFile(r.Path)
-	if errors.Is(err, os.ErrNotExist) {
-		return out, nil
-	}
+	file, found, err := r.read()
 	if err != nil {
-		return Defaults{}, providererr.Wrap(providererr.Transient, "tenant_policy_unavailable", "读不到租户策略文件", err)
+		return Defaults{}, err
 	}
-	var file policyFile
-	if err := json.Unmarshal(data, &file); err != nil {
-		return Defaults{}, providererr.Wrap(providererr.Invalid, "tenant_policy_malformed", "租户策略文件格式不对", err)
+	if !found {
+		return out, nil
 	}
 	entry, ok := file.Tenants[tenant.GetTenantId()]
 	if !ok || entry.EffectCeiling == "" {

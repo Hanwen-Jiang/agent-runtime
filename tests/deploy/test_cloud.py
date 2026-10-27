@@ -210,7 +210,10 @@ def test_temporal_namespace_retention_is_set_on_install() -> None:
 
 def test_cloud_entry_is_a_traefik_route_to_the_task_api_only(cloud: list[dict[str, Any]]) -> None:
     assert not by_kind(cloud, "Ingress")
-    [route] = by_kind(cloud, "IngressRoute")
+    routes = by_kind(cloud, "IngressRoute")
+    [route] = [r for r in routes if r["metadata"]["name"].endswith("-task-service")]
+    others = [r["metadata"]["name"] for r in routes if r is not route]
+    assert all(name.endswith("-egress-gateway-preview") for name in others), f"入口只有 Task API 与预览地址（D-16）：{others}"
     [rule] = route["spec"]["routes"]
     [service] = rule["services"]
     assert service["name"].endswith("-task-service") and service["port"] == "http"
@@ -647,3 +650,81 @@ def test_worker_runs_shell_in_the_universal_runtime(cloud: list[dict[str, Any]])
         if b["kind"] == "k8s":
             assert "universal" in b.get("images", {}), f"K8s 后端 {name} 要给出 universal 的镜像"
 
+
+
+# --- D-16 出网网关 ---
+
+
+def gateway_parts(manifests: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """出网网关的 Deployment、Service、它自己的 NetworkPolicy 与沙箱命名空间里放行到它的那条。"""
+    [deployment] = [m for m in by_kind(manifests, "Deployment") if m["metadata"]["name"].endswith("-egress-gateway")]
+    [service] = [m for m in by_kind(manifests, "Service") if m["metadata"]["name"].endswith("-egress-gateway")]
+    policies = {m["metadata"]["name"]: m for m in by_kind(manifests, "NetworkPolicy")}
+    own = next(p for name, p in policies.items() if name.endswith("-egress-gateway"))
+    return deployment, service, own, policies["sandboxes-egress-gateway"]
+
+
+def test_egress_gateway_is_a_single_replica_on_the_shared_business_database(cloud: list[dict[str, Any]]) -> None:
+    deployment, service, _, _ = gateway_parts(cloud)
+    assert deployment["spec"]["replicas"] == 1, "授权的用量计数在进程里：单副本，免得各算各的把上限放大"
+    spec = pod_spec(deployment)
+    [c] = spec["containers"]
+    env = env_of(c)
+    assert c["args"] == ["serve"] and c["image"].rsplit("/", 1)[1].startswith("egress-gateway:")
+    assert env["AR_RELATIONAL_DSN"]["valueFrom"]["secretKeyRef"]["name"] == cloud_values()["secrets"]["relationalDsn"]["name"], "授权与审计在与 Worker 同一个业务库"
+    assert env["AR_EGRESS_ADDR"]["value"] == ":8095" and env["AR_EGRESS_ADMIN_ADDR"]["value"] == ":8096" and env["AR_EGRESS_PREVIEW_ADDR"]["value"] == ":8097"
+    assert {"10.42.0.0/16", "10.43.0.0/16"} <= set(env["AR_EGRESS_DENY_CIDRS"]["value"].split(",")), "集群的 Pod 与 Service 网段再拒一遍"
+    assert env["AR_EGRESS_PREVIEW_DOMAIN"]["value"] == cloud_values()["egressGateway"]["previewDomain"]
+    assert spec["automountServiceAccountToken"] is False and c["securityContext"]["readOnlyRootFilesystem"] is True
+    assert {p["port"] for p in service["spec"]["ports"]} == {8095, 8096, 8097}
+
+
+def test_sandboxes_reach_the_internet_only_through_the_gateway(cloud: list[dict[str, Any]]) -> None:
+    """W8：沙箱只出到网关的 8095（另外是包镜像）；网关的管理端口只给 Runtime 与 observability，预览端口只给入口控制器；
+    网关自己连不到私有网段与云元数据，能连进沙箱 Pod（预览）。"""
+    from agentruntime_core.adapters.k8s_sandbox import LABELS
+
+    deployment, _, own, sandbox_side = gateway_parts(cloud)
+    sandbox_ns = cloud_values()["worker"]["shell"]["sandboxNamespace"]
+    labels = deployment["spec"]["template"]["metadata"]["labels"]
+    assert sandbox_side["metadata"]["namespace"] == sandbox_ns and set(sandbox_side["spec"]["policyTypes"]) == {"Ingress", "Egress"}
+    assert sandbox_side["spec"]["podSelector"]["matchLabels"].items() <= LABELS.items()
+    [out] = sandbox_side["spec"]["egress"]
+    assert out["to"][0]["podSelector"]["matchLabels"].items() <= labels.items() and [p["port"] for p in out["ports"]] == [8095], "管理与预览端口不对沙箱开放"
+    [inbound] = sandbox_side["spec"]["ingress"]
+    assert inbound["from"][0]["podSelector"]["matchLabels"].items() <= labels.items(), "进沙箱的只有网关（预览）"
+    proxy, admin, preview = own["spec"]["ingress"]
+    sources = lambda rule: {f["namespaceSelector"]["matchLabels"]["kubernetes.io/metadata.name"] for f in rule["from"]}  # noqa: E731
+    assert [p["port"] for p in proxy["ports"]] == [8095] and sandbox_ns in sources(proxy)
+    assert [p["port"] for p in admin["ports"]] == [8096] and sandbox_ns not in sources(admin)
+    assert [p["port"] for p in preview["ports"]] == [8097] and sources(preview) == {"kube-system"}
+    [rule] = [r for r in own["spec"]["egress"] if any("ipBlock" in t for t in r.get("to", []))]
+    block = rule["to"][0]["ipBlock"]
+    assert block["cidr"] == "0.0.0.0/0" and {"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "100.64.0.0/10", "127.0.0.0/8"} <= set(block["except"])
+
+
+def test_preview_route_matches_only_environment_hosts(cloud: list[dict[str, Any]]) -> None:
+    [route] = [m for m in by_kind(cloud, "IngressRoute") if m["metadata"]["name"].endswith("-egress-gateway-preview")]
+    [r] = route["spec"]["routes"]
+    domain = cloud_values()["egressGateway"]["previewDomain"]
+    assert r["match"] == "HostRegexp(`^sbe-[0-9a-f]{16}\\." + domain.replace(".", "\\.") + "$`)"
+    assert r["services"][0]["port"] == "preview" and route["spec"]["tls"]["secretName"] == cloud_values()["egressGateway"]["previewTLSSecretName"]
+
+
+def test_workers_and_task_service_point_at_the_gateway(cloud: list[dict[str, Any]]) -> None:
+    _, service, _, _ = gateway_parts(cloud)
+    workers = [m for m in by_kind(cloud, "Deployment") if "-worker-" in m["metadata"]["name"]]
+    proxy = f"http://{service['metadata']['name']}.agent-runtime.svc:8095"
+    assert workers and all(env_of(c)["AR_EGRESS_GATEWAY_URL"]["value"] == proxy for w in workers for c in pod_spec(w)["containers"])
+    assert all(env_of(c)["AR_PREVIEW_DOMAIN"]["value"] == cloud_values()["egressGateway"]["previewDomain"] for w in workers for c in pod_spec(w)["containers"])
+    [ts] = [m for m in by_kind(cloud, "Deployment") if m["metadata"]["name"].endswith("-task-service")]
+    assert env_of(pod_spec(ts)["containers"][0])["AR_EGRESS_GATEWAY_ADMIN_URL"]["value"] == f"http://{service['metadata']['name']}.agent-runtime.svc:8096"
+
+
+def test_egress_gateway_is_off_by_default_and_needs_the_shared_business_database() -> None:
+    manifests = render()
+    assert not [m for m in manifests if "egress-gateway" in m["metadata"]["name"]]
+    assert all("AR_EGRESS_GATEWAY_URL" not in env_of(c) and "AR_EGRESS_GATEWAY_ADMIN_URL" not in env_of(c) for _, c in containers(manifests))
+    assert "secrets.relationalDsn" in render_fails("egressGateway.enabled=true")
+    text = (CLUSTER / "secrets" / "secrets.example.yaml").read_text("utf-8")
+    assert '"egress-gateway/admin-token": "REPLACE_ME"' in text

@@ -103,6 +103,9 @@ type Deps struct {
 	Defaults      Defaults
 	// Policies 按租户给出预算与 effect 上限；为空时所有租户都用 Defaults。
 	Policies PolicyResolver
+	// Network 给出租户策略的 sandbox.network（提交时的 network_request 按它核对，D-16）；为空时用 Policies（它实现了
+	// NetworkPolicySource 的话），否则谁都不能申请联网。
+	Network NetworkPolicySource
 }
 
 // Server 实现 taskapiv1connect.TaskServiceHandler。
@@ -116,6 +119,16 @@ func (s *Server) policies() PolicyResolver {
 		return s.d.Policies
 	}
 	return StaticPolicy{Defaults: s.d.Defaults}
+}
+
+func (s *Server) networkPolicy(ctx context.Context, tenant *commonv1.TenantContext) (NetworkPolicy, error) {
+	if s.d.Network != nil {
+		return s.d.Network.NetworkPolicy(ctx, tenant)
+	}
+	if src, ok := s.policies().(NetworkPolicySource); ok {
+		return src.NetworkPolicy(ctx, tenant)
+	}
+	return NetworkPolicy{}, nil
 }
 
 var _ taskapiv1connect.TaskServiceHandler = (*Server)(nil)
@@ -247,6 +260,27 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 			return nil, providererr.New(providererr.Denied, "effect_ceiling_exceeds_policy", "请求的 effect 上限高于租户策略允许的")
 		}
 	}
+	// 联网申请（D-16）同样在建 Task 之前按租户策略核对；批准的申请在投递之前写成这个 Task 的联网授权。
+	var network *checkedNetwork
+	var networkPolicy NetworkPolicy
+	if req.GetNetworkRequest() != nil {
+		policy, err := s.policies().Resolve(ctx, tenant)
+		if err != nil {
+			return nil, err
+		}
+		ceiling := policy.EffectCeiling
+		if want := req.GetEffectCeiling(); want != commonv1.Effect_EFFECT_UNSPECIFIED && want < ceiling {
+			ceiling = want
+		}
+		if networkPolicy, err = s.networkPolicy(ctx, tenant); err != nil {
+			return nil, err
+		}
+		checked, err := CheckNetworkRequest(networkPolicy, req.GetNetworkRequest(), ceiling, id.Scopes)
+		if err != nil {
+			return nil, err
+		}
+		network = &checked
+	}
 
 	now := s.d.Clock.Now()
 	sessionID := req.GetSessionId()
@@ -312,6 +346,11 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	}
 	if task.Priority == commonv1.Priority_PRIORITY_UNSPECIFIED {
 		task.Priority = commonv1.Priority_PRIORITY_INTERACTIVE
+	}
+	if network != nil {
+		if err := writeSubmitGrant(ctx, s.d.Store, tenant, row.TaskID, *network, networkPolicy, id.UserID, now); err != nil {
+			return nil, err
+		}
 	}
 	engine, err := s.d.Durable.Bind(tenant)
 	if err != nil {

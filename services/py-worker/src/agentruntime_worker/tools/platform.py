@@ -15,6 +15,8 @@
 - web_fetch（配了 fetch_hosts 才登记）：只认 http、https；只去名单里的主机（"*" 任何主机，"*.example.com" 子域名）；
   解析出的地址是内网、回环、链路本地等一律拒绝（allow_private_fetch 只给测试用）；不走代理、不跟随重定向（返回状态码与
   Location）；正文有大小上限。
+- request_network（shell_sandbox = sandbox、有沙箱环境表，且配了出网网关或登记了托管后端时登记；tools/network.py，D-16）：
+  write_irreversible，运行中申请联网授权，经人工审批。
 - context_read（给了 Context Builder 的 ObjectStore 就登记，不要别的配置）：按 obj:// 路径取回本租户 context/ 与
   node-results/ 下的对象（Context Builder 外置或遮蔽的内容、Node 的外置结果），长内容按 offset 分段（R-03 评审 D11）。
   别的租户的路径一律 not_found，别的前缀 denied。
@@ -81,6 +83,9 @@ class PlatformToolsConfig:
     session_sandboxes: bool = False
     # shell_sandbox = sandbox 时用哪个运行环境（D-14）：后端登记把它映射到镜像，例如 universal（多语言）或 python。
     shell_runtime: str = "python"
+    # 登记 request_network（D-16）：配了出网网关时打开；登记了托管后端（按域名放行）时也登记。预览地址的域名。
+    network_requests: bool = False
+    preview_domain: str = ""
     # shell_run 的 stdout、stderr 与 repo_read 的内容各自最多这么多字符。
     output_limit: int = 64 * 1024
     fetch_limit: int = 1024 * 1024
@@ -123,6 +128,14 @@ def register_platform_tools(
     broker = SandboxBroker(sandboxes) if isinstance(sandboxes, Sandboxes) else sandboxes
     if config.workspace_root is not None:
         tools += _Workspaces(Path(config.workspace_root), config, broker, telemetry).tools()
+    if config.shell_sandbox == "sandbox" and broker is not None and broker.grants is not None:
+        hosted = any(broker.sandboxes.spec(n).get("kind") not in ("k8s", "local") for n in broker.sandboxes.names)
+        if config.network_requests or hosted:
+            from agentruntime_worker.tools.network import NetworkTool
+
+            tools.append(NetworkTool(
+                broker, preview_domain=config.preview_domain, runtime=config.shell_runtime, session_sandboxes=config.session_sandboxes,
+            ).tool())
     if config.fetch_hosts:
         tools.append(_Fetcher(config).tool())
     if objects is not None:

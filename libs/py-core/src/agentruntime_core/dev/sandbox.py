@@ -138,6 +138,13 @@ class LocalSubprocessSandbox:
             raise NotFoundError("not_found", "文件不存在")
         return target.read_bytes()
 
+    async def preview_address(self, env_id: str, port: int) -> str:
+        """预览地址转发到本机的这个端口（开发实现的命令就在本机跑；D-16）。"""
+        self._env(env_id)
+        if not 1 <= int(port) <= 65535:
+            raise InvalidError("invalid_port", "端口要在 1 到 65535 之间")
+        return f"127.0.0.1:{int(port)}"
+
     async def destroy(self, env_id: str) -> None:
         self._provider._faults.check("destroy")
         env = self._env(env_id, allow_destroyed=True)
