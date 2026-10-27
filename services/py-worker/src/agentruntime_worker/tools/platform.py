@@ -79,6 +79,8 @@ class PlatformToolsConfig:
     shell_pids: int = 512
     # shell_sandbox = sandbox 时按（工作区，会话）复用环境（D-13）；要有沙箱环境表（业务库）才生效。
     session_sandboxes: bool = False
+    # shell_sandbox = sandbox 时用哪个运行环境（D-14）：后端登记把它映射到镜像，例如 universal（多语言）或 python。
+    shell_runtime: str = "python"
     # shell_run 的 stdout、stderr 与 repo_read 的内容各自最多这么多字符。
     output_limit: int = 64 * 1024
     fetch_limit: int = 1024 * 1024
@@ -366,7 +368,7 @@ class _Workspaces:
         tenant = TenantContext(tenant_id=invocation.tenant_id, workspace_id=workspace, session_id=invocation.session_id, user_id=invocation.user_id)
         c = self.config
         spec = SandboxSpec(
-            runtime="python",
+            runtime=c.shell_runtime,
             cpu_millis=parse_cpu_millis(c.shell_cpus),
             memory_mb=parse_memory_mb(c.shell_memory),
             network="none",
@@ -405,8 +407,6 @@ class _Workspaces:
                     meter: dict[str, Any] = {**lease.attributes, "sandbox.exec_ms": exec_ms}
                     if not reuse:
                         meter["sandbox.lifetime_ms"] = int((time.monotonic() - started) * 1000)
-                    if lease.record is not None and lease.record.image:
-                        meter["sandbox.image"] = lease.record.image
                     if lease.record is not None and lease.record.state == "destroyed":
                         meter["sandbox.cost_usd"] = lease.record.cost_usd
                     if result is not None:

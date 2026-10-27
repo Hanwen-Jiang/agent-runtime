@@ -145,6 +145,14 @@ class Sandboxes:
     def isolation(self, name: str) -> str:
         return str(self.spec(name).get("isolation", "container"))
 
+    def image_for(self, name: str, runtime: str) -> str:
+        """登记里这个后端给这个运行环境配的镜像（K8s 的 images，或只给了 image 时的 python）；没配时为空。"""
+        spec = self.spec(name)
+        images = dict(spec.get("images") or {})
+        if runtime in images:
+            return str(images[runtime])
+        return str(spec.get("image") or "") if runtime == "python" else ""
+
     async def backend(self, name: str) -> Backend:
         if name not in self._specs:
             raise InvalidError("unknown_sandbox_backend", f"沙箱后端 {name} 没有登记")
@@ -188,7 +196,10 @@ class Sandboxes:
                 fields["max_envs_per_scope"] = int(spec["max_envs_per_scope"])
             if "startup_timeout_s" in spec:
                 fields["startup_timeout"] = timedelta(seconds=float(spec["startup_timeout_s"]))
-            config = K8sSandboxConfig(images={"python": str(spec.get("image") or "python:3.13-slim")}, **fields)
+            # runtime → 镜像（D-14）：images 里列全；只给 image 时就是 python 的镜像（D-05 的写法）。
+            images = {str(k): str(v) for k, v in dict(spec.get("images") or {}).items()}
+            images.setdefault("python", str(spec.get("image") or "python:3.13-slim"))
+            config = K8sSandboxConfig(images=images, **fields)
             return K8sPodSandboxProvider(KubeAPI.load(spec.get("kubeconfig") or None), config, token_key=await self._secret(TOKEN_KEY_SECRET))
         from agentruntime_core.adapters.cloudflare_sandbox import CloudflareSandboxProvider
 

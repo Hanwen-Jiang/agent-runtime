@@ -532,3 +532,35 @@ def test_worker_rbac_on_a_real_api_server(cloud: list[dict[str, Any]], tmp_path:
         assert not can("get", "pods", "sandboxes", "proxy"), "pod_ip 时不给 pods/proxy"
     finally:
         run([*k, "delete", "-f", manifest, "--ignore-not-found"], check=False)
+
+
+def test_sandbox_images_are_prepulled_on_every_node(cloud: list[dict[str, Any]]) -> None:
+    """D-14：每个节点上预拉 kind=k8s 后端登记里的镜像（运行环境与 agent），满足沙箱命名空间的 restricted，断网。"""
+    [ds] = [m for m in by_kind(cloud, "DaemonSet") if m["metadata"]["name"].endswith("-sandbox-prepull")]
+    assert ds["metadata"]["namespace"] == "sandboxes"
+    spec = ds["spec"]["template"]["spec"]
+    pulled = {c["image"] for c in spec["initContainers"]}
+    backends = cloud_values()["worker"]["shell"]["backends"]
+    wanted = set()
+    for b in backends.values():
+        if b["kind"] == "k8s":
+            wanted |= {b["image"], b["agent_image"], *b.get("images", {}).values()}
+    assert wanted <= pulled, f"没有预拉：{sorted(wanted - pulled)}"
+    assert spec["automountServiceAccountToken"] is False and spec["securityContext"]["runAsNonRoot"] is True
+    assert ds["spec"]["template"]["metadata"]["labels"]["agentruntime.io/network"] == "none", "默认拒绝的网络策略管得到它"
+    for c in [*spec["initContainers"], *spec["containers"]]:
+        sc = c["securityContext"]
+        assert sc["allowPrivilegeEscalation"] is False and sc["readOnlyRootFilesystem"] is True and sc["capabilities"]["drop"] == ["ALL"], c["name"]
+        assert "limits" in c["resources"]
+
+
+def test_worker_runs_shell_in_the_universal_runtime(cloud: list[dict[str, Any]]) -> None:
+    """D-14：集群里 shell_run 默认用多语言的 universal；每个 K8s 后端都把它映射到镜像。"""
+    workers = [m for m in by_kind(cloud, "Deployment") if "-worker-" in m["metadata"]["name"]]
+    assert workers and all(env_of(c)["AR_SANDBOX_RUNTIME"]["value"] == "universal" for w in workers for c in pod_spec(w)["containers"])
+    [cm] = [m for m in by_kind(cloud, "ConfigMap") if m["metadata"]["name"].endswith("-sandbox-backends")]
+    registry = json.loads(cm["data"]["backends.json"])
+    for name, b in registry["backends"].items():
+        if b["kind"] == "k8s":
+            assert "universal" in b.get("images", {}), f"K8s 后端 {name} 要给出 universal 的镜像"
+

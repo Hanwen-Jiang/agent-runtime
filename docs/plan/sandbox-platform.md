@@ -101,3 +101,10 @@ JSON：{"e": env_ref, "t": tenant_id, "w": workspace_id, "s": session_id, "x": �
 - 一个工作区同一时间只有一个可写的环境：别的会话的那个闲着就回收，正在跑命令就拒绝（`workspace_busy`）。所以同一个工作区的两个会话会轮流拿到环境（后来的回收先来的那个闲着的环境），工作区的文件不受影响。
 - 没做的：Session 关闭时销毁（`SandboxBroker.destroy_session` 有了，但 Session 工作流在 Go 里，还没有把关闭的信号送过来；靠空闲期限兜底，W5 的待定问题 1）；验收 4 的“20 条命令在 Kata 上的总耗时”要 Kata 节点。
 
+**D-14（2026-10-27）**
+
+- 镜像：`deploy/images/universal/Dockerfile`（`sandbox-universal`）以 Python 3.13.16 的官方镜像为底，Node 22.23.3、Go 1.27.2、Temurin 21.0.11 加 Maven 3.10.0、Rust 1.99.0 各从官方镜像复制成一层，外加 build-essential、git 与 sandbox-agent；版本都发布满两周。单语言的 `sandbox-node`、`sandbox-go` 用 `deploy/images/sandbox.Dockerfile`（`BASE_IMAGE` 在 `images.json` 里写死）。Python 的那个仍是 `sandbox-python`（Cloudflare 桥引用它）。
+- 后端登记的 `images` 把运行环境映射到镜像（只给 `image` 时就是 python 的）；shell_run 用 Worker 的 `AR_SANDBOX_RUNTIME`（Chart 的 `worker.shell.runtime`，`values-cloud.yaml` 是 universal）。环境表与 span 记 `runtime` 与 `image`：K8s 后端报了实际的 imageID（按 digest）就以它为准，否则记登记里配的。Chart 里的镜像仍按标签写（构建前不知道 digest），实际用的 digest 从 kubelet 来。
+- 预拉：`worker.shell.prepull`（`values-cloud.yaml` 打开）在沙箱命名空间起一个 DaemonSet，initContainer 逐个用一遍 K8s 后端登记里的镜像与 agent 镜像。
+- 没做的：Cloudflare 桥仍只有 python 的镜像（universal 三四 GB，先不放到 Cloudflare 上）；构建与在镜像里编译、测试五种语言的样例（`tests/deploy/test_images.py`，`AR_TEST_IMAGES=1`）要拉六个基础镜像，等你同意下载再跑；gVisor、Kata 上的同一项与冷启动的数字要在集群里量。
+

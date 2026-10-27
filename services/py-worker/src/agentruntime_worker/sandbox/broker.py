@@ -52,6 +52,10 @@ class Lease:
         if self.record is not None:
             out["sandbox.env_ref"] = self.record.env_ref
             out["sandbox.reused"] = self.reused
+            if self.record.runtime:
+                out["sandbox.runtime"] = self.record.runtime
+            if self.record.image:
+                out["sandbox.image"] = self.record.image
         if self.fallback_from:
             out["sandbox.fallback_from"] = self.fallback_from
             out["sandbox.fallback_reason"] = self.fallback_reason
@@ -121,7 +125,7 @@ class SandboxBroker:
                     await self.ledger.mark_failed(record, f"{err.code}: {err.message}")  # type: ignore[union-attr]
                 raise
             if record is not None:
-                record = await self.ledger.mark_ready(record, env.env_id)  # type: ignore[union-attr]
+                record = await self.ledger.mark_ready(record, env.env_id, image=env.image)  # type: ignore[union-attr]
                 if busy_for is not None:
                     record = await self.ledger.touch(record, task_id=task_id, busy_for=busy_for)  # type: ignore[union-attr]
             return Lease(backend, box, env.env_id, record, fallback_from=fallback_from, fallback_reason=reason)
@@ -138,7 +142,7 @@ class SandboxBroker:
         kwargs: dict[str, Any] = dict(
             backend=backend.name, kind=backend.kind, isolation=backend.isolation, workspace_id=spec.workspace_id,
             session_id=tenant.session_id if reuse else "", task_id=task_id, writable=writable and bool(spec.workspace_id),
-            runtime=spec.runtime, image=str(self.sandboxes.spec(backend.name).get("image") or ""), idle=idle,
+            runtime=spec.runtime, image=self.sandboxes.image_for(backend.name, spec.runtime), idle=idle,
             max_lifetime=policy.max_lifetime, quota=policy.quota, fallback_from=fallback_from,
         )
         try:

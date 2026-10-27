@@ -309,11 +309,15 @@ class SandboxLedger:
             if float((month or {}).get("c") or 0) >= quota.monthly_cost_usd:
                 raise DeniedError("sandbox_budget_exceeded", f"本月的沙箱花费到了上限（{quota.monthly_cost_usd} 美元）")
 
-    async def mark_ready(self, record: EnvRecord, backend_env_id: str) -> EnvRecord:
+    async def mark_ready(self, record: EnvRecord, backend_env_id: str, *, image: str = "") -> EnvRecord:
+        """就绪；image 是后端报的实际镜像（按 digest，D-14），报了就以它为准。"""
         now = self._clock()
         expires = min(now + timedelta(seconds=record.idle_seconds), parse_iso(record.max_until) or now)
-        ready = replace(record, state="ready", backend_env_id=backend_env_id, ready_at=iso(now), last_used_at=iso(now), expires_at=iso(expires))
-        await self._update(ready, ("state", "backend_env_id", "ready_at", "last_used_at", "expires_at"))
+        ready = replace(
+            record, state="ready", backend_env_id=backend_env_id, ready_at=iso(now), last_used_at=iso(now), expires_at=iso(expires),
+            image=image or record.image,
+        )
+        await self._update(ready, ("state", "backend_env_id", "ready_at", "last_used_at", "expires_at", "image"))
         await self._directory(ready, "ready")
         return ready
 

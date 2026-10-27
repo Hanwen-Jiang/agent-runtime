@@ -70,6 +70,9 @@ worker:
     # 邀请制租户默认 gVisor；公开注册的租户由租户策略的 sandbox.backend 指到 kata（或 cloudflare，见 deploy/cloudflare）。
     defaultBackend: gvisor
     sandboxNamespace: sandboxes
+    # 默认用多语言的运行环境（D-14）；只用 Python 的租户也能跑（universal 里有 Python）。
+    runtime: universal
+    prepull: true
     backends:
       gvisor:
         kind: k8s
@@ -77,6 +80,10 @@ worker:
         runtime_class: gvisor
         namespace: sandboxes
         image: ghcr.io/agentruntime/sandbox-python:0.1.0
+        images:
+          universal: ghcr.io/agentruntime/sandbox-universal:0.1.0
+          node: ghcr.io/agentruntime/sandbox-node:0.1.0
+          go: ghcr.io/agentruntime/sandbox-go:0.1.0
         agent_image: ghcr.io/agentruntime/sandbox-agent:0.1.0
         connect: pod_ip
         workspace_claim: workspaces
@@ -88,6 +95,10 @@ worker:
         runtime_class: kata
         namespace: sandboxes
         image: ghcr.io/agentruntime/sandbox-python:0.1.0
+        images:
+          universal: ghcr.io/agentruntime/sandbox-universal:0.1.0
+          node: ghcr.io/agentruntime/sandbox-node:0.1.0
+          go: ghcr.io/agentruntime/sandbox-go:0.1.0
         agent_image: ghcr.io/agentruntime/sandbox-agent:0.1.0
         connect: pod_ip
         workspace_claim: workspaces

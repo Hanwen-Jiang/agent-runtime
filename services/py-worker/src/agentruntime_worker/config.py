@@ -56,6 +56,8 @@ ENV_RELATIONAL_DSN = "AR_RELATIONAL_DSN"
 ENV_SANDBOX_SESSIONS = "AR_SANDBOX_SESSIONS"
 # 沙箱环境表的对账间隔（秒，D-11）。
 ENV_SANDBOX_RECONCILE_INTERVAL_S = "AR_SANDBOX_RECONCILE_INTERVAL_S"
+# shell_run 在沙箱里用的运行环境（D-14）：后端登记把它映射到镜像，例如 universal（多语言，默认的生产配置）或 python。
+ENV_SANDBOX_RUNTIME = "AR_SANDBOX_RUNTIME"
 
 
 @dataclass(frozen=True)
@@ -103,6 +105,7 @@ class WorkerConfig:
     relational_dsn: str = field(default="", repr=False, compare=False)
     sandbox_sessions: bool = True
     sandbox_reconcile_interval_s: int = 60
+    sandbox_runtime: str = "python"
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> WorkerConfig:
@@ -187,6 +190,7 @@ class WorkerConfig:
             relational_dsn=env.get(ENV_RELATIONAL_DSN, "").strip(),
             sandbox_sessions=sessions == "1",
             sandbox_reconcile_interval_s=interval,
+            sandbox_runtime=env.get(ENV_SANDBOX_RUNTIME, "").strip() or cls.sandbox_runtime,
         )
 
     def store_paths(self, root: Path) -> tuple[Path, Path]:

@@ -144,9 +144,13 @@ worker:
     # 用哪个后端由租户策略的 sandbox.backend 决定，没写时 defaultBackend。
     defaultBackend: ""
     backends: {}
+    # shell_run 用的运行环境（AR_SANDBOX_RUNTIME，D-14）：后端登记的 images 把它映射到镜像，例如 universal（多语言）。
+    runtime: python
     # kind=k8s 的后端把 Pod 建在这个命名空间：Chart 在那里给 Worker 建 Role（只能管 Pod，读不了 Secret），
     # Worker 用自己的 ServiceAccount（其余服务仍然不挂令牌）。
     sandboxNamespace: sandboxes
+    # 在每个节点上预先拉好 kind=k8s 后端用到的镜像（D-14）：第一次建环境不用现下载几个 GB 的镜像。
+    prepull: false
   # 按任务队列分池（设计书 3.6、附录 K.5），每个池一个 Deployment 与一个 KEDA ScaledObject。
   # 池名就是队列名（agentruntime_worker.names）；task 池按工作流积压扩缩，其余按 activity 积压。
   pools:

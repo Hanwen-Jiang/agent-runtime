@@ -50,7 +50,7 @@ def _store_key(config: WorkerConfig) -> tuple[object, ...]:
 def _key(config: WorkerConfig) -> tuple[object, ...]:
     return (
         config.tool_workspace_root, config.tool_fetch_hosts, config.mcp_tools_file, config.tool_shell_sandbox,
-        config.sandbox_backends_file, config.registry_address, config.sandbox_sessions, *_store_key(config),
+        config.sandbox_backends_file, config.registry_address, config.sandbox_sessions, config.sandbox_runtime, *_store_key(config),
     )
 
 
@@ -112,6 +112,7 @@ def dev_tools(config: WorkerConfig) -> LocalToolDriverProvider:
                 shell_sandbox=config.tool_shell_sandbox,
                 shell_image=config.tool_shell_image,
                 session_sandboxes=config.sandbox_sessions,
+                shell_runtime=config.sandbox_runtime,
             ),
             objects=context_objects(config),
             sandboxes=sandbox_broker(config),

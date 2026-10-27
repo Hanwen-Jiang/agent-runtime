@@ -203,7 +203,7 @@ class K8sPodSandbox:
             await p._delete(env_id)
             raise
         p._last_touch[env_id] = time.monotonic()
-        return SandboxEnv(env_id=env_id, spec=spec)
+        return SandboxEnv(env_id=env_id, spec=spec, image=_image_id(pod))
 
     async def exec(self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"") -> ExecResult:
         self._p._faults.check("exec")
@@ -384,6 +384,15 @@ class K8sPodSandbox:
             },
             "spec": pod_spec,
         }
+
+
+def _image_id(pod: Mapping[str, Any]) -> str:
+    """跑命令的容器实际用的镜像（kubelet 报的 imageID，按 digest）；还没报时为空。"""
+    for cs in (pod.get("status") or {}).get("containerStatuses") or []:
+        if cs.get("name") == "sandbox":
+            image = str(cs.get("imageID") or "")
+            return image.removeprefix("docker-pullable://")
+    return ""
 
 
 def _format_time(t: datetime) -> str:

@@ -43,6 +43,8 @@ class SandboxSpec:
 class SandboxEnv:
     env_id: str
     spec: SandboxSpec
+    # 环境实际用的镜像（后端量得出时按 digest，例如 K8s 的 imageID；D-14），记进沙箱环境表与 trace；量不出时为空。
+    image: str = ""
 
 
 @dataclass(frozen=True)

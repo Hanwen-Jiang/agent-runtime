@@ -476,6 +476,7 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
 | D-11 | 沙箱环境表（业务库，迁移 201、202）、SandboxBroker、对账工作流；三种后端都能列出环境（桥加了列表接口与目录）；按价目结算花费并计入 Task；租户删除时销毁全部环境 | `test_sandbox_ledger.py`：本地与 Cloudflare 假桥的状态序列、花费与用量（SQLite 与 Postgres 各一遍）、两种中断后对账修好、手工删掉记为丢失、宽限内不删、空闲回收与忙时不回收、越权查不到、对账工作流只起一个；桥过了 `tsc` | K8s 的那一条要 `AR_TEST_KIND=1`；真 Postgres 业务库与真桥（线上） |
 | D-12 | 租户策略 schema 的 `sandbox.fallback`、`min_isolation`、`quota` 等（契约待人审）；SandboxBroker 的首选 + 回退、事务里的配额与预算 | `test_sandbox_quota.py`：20 个并发配额 5 恰好 5 个（SQLite 与 Postgres）、日与月的预算、当天时长、transient 回退并记录、denied 与 invalid 不回退、只剩更弱的拒绝、min_isolation、工作区同组、策略写错拒绝、span 里的回退；契约的正例与反例 | 契约人审后更新 `proto/breaking-baseline.binpb`（这一项只有 schema） |
 | D-13 | 会话级沙箱：按（工作区，会话）复用、空闲与活满由对账回收、丢失时透明换新、一个工作区只有一个可写环境 | `test_sandbox_sessions.py`：同一会话复用（后台进程第二条命令看得到）、不同工作区各用各的、关掉或没有会话时一次性、空闲回收后工作区还在、另一个副本（只共用业务库与后端）复用同一个环境、可写环境的抢占与拒绝、丢失后透明换新 | 20 条命令的耗时要在 Kata 上量；Session 关闭的信号 |
+| D-14 | `sandbox-universal`（五种语言各一层，版本写死）、`sandbox-node`、`sandbox-go`；后端登记的 `images` 与 `AR_SANDBOX_RUNTIME`；环境表与 span 记运行环境与镜像（K8s 报的 imageID 优先）；预拉的 DaemonSet | 静态检查（各层、版本、缓存在 /tmp、单语言镜像的基础镜像）；Chart 的预拉覆盖全部 K8s 后端的镜像且满足 restricted；Worker 记下的镜像与换版本后旧行不变（`test_sandbox_runtime.py`） | 构建并在镜像里编译、测试五种语言（`AR_TEST_IMAGES=1`，要下载基础镜像）；gVisor、Kata 上与冷启动的数字 |
 
 实现中与本计划写法不同的：
 
