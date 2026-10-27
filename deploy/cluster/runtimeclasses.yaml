@@ -1,6 +1,6 @@
 # 沙箱的两种隔离强度（docs/plan/cloud-deploy.md 第 4 节、D-02）。Worker 的 K8s 沙箱后端按配置选 RuntimeClass：
 #   gvisor  容器级：gVisor 的 runsc，用户态内核，不需要 KVM（containerd 的 runsc 由 install.sh 配好）
-#   kata    microVM 级：Kata Containers，每个 Pod 一台轻量 VM，要 /dev/kvm（kata-deploy 装好后有 kata-clh 等 handler）
+#   kata    microVM 级：Kata Containers，每个 Pod 一台轻量 VM，要 /dev/kvm（kata-deploy 装好后有 kata-<shim> 的 handler）
 # overhead 让调度器把 VM 自己的开销算进去。
 apiVersion: node.k8s.io/v1
 kind: RuntimeClass
@@ -12,8 +12,9 @@ apiVersion: node.k8s.io/v1
 kind: RuntimeClass
 metadata:
   name: kata
-# Cloud Hypervisor：Firecracker 不支持 virtio-fs，用它还要配 devmapper 快照器。
-handler: kata-clh
+# Cloud Hypervisor，跑在 Kata 4 默认的 Rust 运行时上（runtime-rs；2026-07 的 4.0 起 Go 运行时进入弃用期，保留到 5.0）。
+# 不用 Firecracker：它不支持 virtio-fs（节点上的工作区挂不进去），kata-deploy 4.2 里也只有 Go 运行时的 fc。
+handler: kata-clh-runtime-rs
 overhead:
   podFixed:
     memory: 160Mi

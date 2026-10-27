@@ -147,7 +147,7 @@ def test_namespaces_and_sandbox_constraints() -> None:
     assert deny["podSelector"] == {} and set(deny["policyTypes"]) == {"Ingress", "Egress"} and not deny.get("egress")
     assert {d["kind"] for d in all_docs if d["metadata"].get("namespace") == "sandboxes"} >= {"ResourceQuota", "LimitRange"}
     classes = {d["metadata"]["name"]: d["handler"] for d in all_docs if d["kind"] == "RuntimeClass"}
-    assert classes == {"gvisor": "runsc", "kata": "kata-clh"}
+    assert classes == {"gvisor": "runsc", "kata": "kata-clh-runtime-rs"}, "Kata 4 默认的 Rust 运行时上的 Cloud Hypervisor"
 
 
 # --- D-03 数据层 ---

@@ -60,8 +60,9 @@
 
 `install.sh` 先放 containerd 模板（`config-v3.toml.tmpl`，加 runsc），再装 kata-deploy。kata-deploy 在 k3s 上会改同一个模板加上
 自己的 handler；`install.sh` 装完核对 runsc 还在。不在时（kata-deploy 的版本改了做法）：把 `k3s/config-v3.toml.tmpl` 里的 runsc
-一段追加回模板，`systemctl restart k3s`。Kata 用 Cloud Hypervisor（`kata-clh`）：Firecracker 不支持 virtio-fs，用它要另配
-devmapper 快照器。
+一段追加回模板，`systemctl restart k3s`。Kata 用 Cloud Hypervisor，跑在 Kata 4 默认的 Rust 运行时上（`kata-clh-runtime-rs`；
+4.0 起 Go 运行时的 `kata-clh` 进入弃用期）。不用 Firecracker：它不支持 virtio-fs，用它要另配 devmapper 快照器，kata-deploy 4.2
+里也只有 Go 运行时的 `fc`。
 
 ## 单节点的前提，加节点之前要换掉的
 

@@ -1,4 +1,4 @@
-# 云上部署与沙箱后端（D-01～D-18）
+# 云上部署与沙箱后端（D-01～D-17）
 
 > 2026-10-26 用户要求：把系统部署到云端，以最有性价比的布局展示完整形态；沙箱考虑 Cloudflare Containers，或者容器与 microVM 混用。
 > 依据：设计书 4.10（Sandbox）、4.12（SecretStore）、4.15（仓库结构）、附录 L.11、L.13、L.19；T-15 的 [Helm、KEDA 与 Telemetry](deploy-telemetry.md)。
@@ -50,7 +50,7 @@
 
 ### 4.1 概念
 
-containerd 只管容器，隔离强度由它下面的 OCI 运行时决定：runc（普通容器）、runsc（gVisor，用户态内核，不需要 KVM）、Kata（每个 Pod 一台轻量 VM，后端 QEMU、Cloud Hypervisor 或 Firecracker）。三者都作为 containerd 的 shim 接入，K8s 用 RuntimeClass 按 Pod 选，所以“一部分容器、一部分 microVM”在一个集群里就能做。Cloudflare Containers 不是自管的 containerd，是托管服务（每个实例一个 Firecracker microVM），只能经 Cloudflare Worker 调用；它在这里是 Sandbox 接口的另一个后端。
+containerd 只管容器，隔离强度由它下面的 OCI 运行时决定：runc（普通容器）、runsc（gVisor，用户态内核，不需要 KVM）、Kata（每个 Pod 一台轻量 VM，后端 QEMU、Cloud Hypervisor、Dragonball 或 Firecracker；我们用 Cloud Hypervisor，跑在 Kata 4 默认的 Rust 运行时上，handler `kata-clh-runtime-rs`）。三者都作为 containerd 的 shim 接入，K8s 用 RuntimeClass 按 Pod 选，所以“一部分容器、一部分 microVM”在一个集群里就能做。Cloudflare Containers 不是自管的 containerd，是托管服务（每个实例一个 Firecracker microVM），只能经 Cloudflare Worker 调用；它在这里是 Sandbox 接口的另一个后端。
 
 ### 4.2 沙箱等级到后端
 
@@ -267,37 +267,37 @@ containerd 只管容器，隔离强度由它下面的 OCI 运行时决定：runc
 
 **依赖**：D-04、D-05。
 
-### D-11～D-18：沙箱平台（设计改动先行）
+### D-11～D-17：沙箱平台
 
-2026-10-27 用户要求加入。设计书改动稿：[design-changes-workspace.md](design-changes-workspace.md) 的 W5～W11（与 W1 的 E2B）；按 CLAUDE.md 的规则，人确认、更新设计书原文档并重新导出之后才开工。各项之间：D-11 是底座；D-12、D-13、D-15 建在它上面；D-16 要 D-11、D-12；D-14 只依赖设计确认，可以最先做；D-17 最后做。
+2026-10-27 用户要求加入，同日确认改动稿并要求开始实现（设计书原文档仍待人更新，见 [design-changes-workspace.md](design-changes-workspace.md) 第 8 节）。改动稿：[design-changes-workspace.md](design-changes-workspace.md) 的 W5～W11；实现的细化（表结构、凭据、各组件之间怎么连）见 [sandbox-platform.md](sandbox-platform.md)。各项之间：D-11 是底座；D-12、D-13、D-15 建在它上面；D-16 要 D-11、D-12；D-14 只依赖设计确认，可以最先做；D-17 最后做。
 
-### D-11 沙箱账本与对账（强档）
+### D-11 沙箱环境表与对账（强档）
 
-**目标**：Runtime 记下每个环境，跨后端对账、清孤儿；用量与花费从账本出（W9）。
+**目标**：Runtime 记下每个环境，跨后端对账、清孤儿；用量与花费从环境表出（W9）。
 
-**交付**：业务库的环境表（按租户行级安全）；Sandbox 的调用经账本（创建中 → 就绪，销毁中 → 已销毁）；对账的定时工作流（Worker 里跑，每个后端列出在跑的环境、清孤儿、记丢失）；Cloudflare 桥加列表接口；按后端价目算花费，计入 Task 与租户的用量；租户删除时销毁全部环境。
+**交付**：业务库的环境表（按租户行级安全）；Sandbox 的调用经环境表（创建中 → 就绪，销毁中 → 已销毁）；对账的定时工作流（Worker 里跑，每个后端列出在跑的环境、清孤儿、记丢失）；Cloudflare 桥加列表接口；按后端价目算花费，计入 Task 与租户的用量；租户删除时销毁全部环境。
 
 **难点与防错**
 
 - 崩溃一致：调后端之前先落账，之后补状态；对账能修复任何一步中断留下的状态，不靠进程内的记忆。
-- 对账只删账本里没有或已销毁的环境；账本里就绪而后端没有的只记为丢失，不在后端重建。
+- 对账只删环境表里没有或已销毁的环境；环境表里就绪而后端没有的只记为丢失，不在后端重建。
 - 列出各后端的环境时带租户过滤：别的部署或别的租户的环境不碰（K8s 用部署的标签，桥按令牌）。
 - 定时工作流的代码必须确定（CLAUDE.md），调用后端都在 activity 里。
 
 **验收**
 
-1. 一致性测试：每个后端（K8s、Cloudflare 假桥、本地）建、用、销毁都在账本里留下正确的状态序列。
+1. 一致性测试：每个后端（K8s、Cloudflare 假桥、本地）建、用、销毁都在环境表里留下正确的状态序列。
 2. 故障注入：在“记了创建中、后端已建好”之间杀掉 Worker，对账后要么补成就绪、要么销毁，不留孤儿；后端手工删掉的环境被记为丢失。
-3. 越权：租户 A 的账本查询看不到租户 B 的环境（行级安全）。
+3. 越权：租户 A 的环境表查询看不到租户 B 的环境（行级安全）。
 4. 一次任务的沙箱花费出现在 Task 的用量与 Grafana 面板上。
 
 **依赖**：设计确认（W9）。
 
 ### D-12 跨后端配额、预算与有序回退（强档，含契约变更）
 
-**目标**：配额与预算跨所有后端按账本算；后端暂时不可用时按列表回退，绝不降级（W10、W11）。
+**目标**：配额与预算跨所有后端按环境表算；后端暂时不可用时按列表回退，绝不降级（W10、W11）。
 
-**交付**：租户策略 schema 加 `sandbox.quota`、`sandbox.fallback`、`sandbox.min_isolation`（走 S-01：改 schema、契约测试、人审）；创建环境时在事务里核对配额与预算；Worker 的后端选择改为“首选 + 回退”；落点与回退原因记进 trace 与账本。
+**交付**：租户策略 schema 加 `sandbox.quota`、`sandbox.fallback`、`sandbox.min_isolation`（走 S-01：改 schema、契约测试、人审）；创建环境时在事务里核对配额与预算；Worker 的后端选择改为“首选 + 回退”；落点与回退原因记进 trace 与环境表。
 
 **难点与防错**
 
@@ -311,7 +311,7 @@ containerd 只管容器，隔离强度由它下面的 OCI 运行时决定：runc
 1. 契约测试：schema 的正例与反例；配额超了是 `sandbox_quota_exceeded`、花费超了是 `sandbox_budget_exceeded`，都是 denied。
 2. 并发：同时建 20 个环境、配额 5，恰好成功 5 个。
 3. 首选后端注入 transient 时落到下一个；注入 denied 时不回退；回退列表里只剩更弱的后端时拒绝。
-4. trace 与账本里记着实际落点与回退原因。
+4. trace 与环境表里记着实际落点与回退原因。
 
 **依赖**：D-11；S-01 流程。
 
@@ -319,13 +319,13 @@ containerd 只管容器，隔离强度由它下面的 OCI 运行时决定：runc
 
 **目标**：同一会话复用一个环境，空闲到期或活满才销毁（W5）。
 
-**交付**：`SandboxSpec.session_id`；Worker 的 `shell_run`（D-06 之后还有 `repo_*`）改为“按（租户，workspace，Session）查账本、没有就建”；idle_timeout 与 max_lifetime 由租户策略约束；Session 关闭时销毁；联网授权随 Task 收回、不随环境。
+**交付**：`SandboxSpec.session_id`；Worker 的 `shell_run`（D-06 之后还有 `repo_*`）改为“按（租户，workspace，Session）查环境表、没有就建”；idle_timeout 与 max_lifetime 由租户策略约束；Session 关闭时销毁；联网授权随 Task 收回、不随环境。
 
 **难点与防错**
 
-- 环境由任何 Worker 副本都能找到（查账本），不靠进程内的缓存。
+- 环境由任何 Worker 副本都能找到（查环境表），不靠进程内的缓存。
 - 环境被回收后，下一条命令透明地在新环境里跑；工作区内容不丢。
-- 会写的 Task 持有工作区租约（D-06）；在 D-06 之前，同一工作区同一时间只允许一个可写的环境（按账本核对）。
+- 会写的 Task 持有工作区租约（D-06）；在 D-06 之前，同一工作区同一时间只允许一个可写的环境（按环境表核对）。
 
 **验收**
 
@@ -340,7 +340,7 @@ containerd 只管容器，隔离强度由它下面的 OCI 运行时决定：runc
 
 **目标**：沙箱里有常用语言的工具链；各后端用同一个镜像（W6 第 1、2 条）。
 
-**交付**：`deploy/images/universal`（Python 3.13、Node 22 LTS、Go、JDK 21、Rust stable、build-essential、git，加 sandbox-agent），与几个单语言的精简镜像；沙箱后端登记把 runtime 映射到镜像；镜像按 digest 固定，每次运行记进 trace；节点预拉；Cloudflare 桥与（D-18 时）E2B 的模板用同一份 Dockerfile。
+**交付**：`deploy/images/universal`（Python 3.13、Node 22 LTS、Go、JDK 21、Rust stable、build-essential、git，加 sandbox-agent），与几个单语言的精简镜像；沙箱后端登记把 runtime 映射到镜像；镜像按 digest 固定，每次运行记进 trace；节点预拉；Cloudflare 桥用同一份 Dockerfile。
 
 **难点与防错**
 
@@ -366,7 +366,7 @@ containerd 只管容器，隔离强度由它下面的 OCI 运行时决定：runc
 
 - 校验：包文件的哈希对不上时不缓存、不返回（报错让客户端重试），并记告警。
 - 淘汰不能删掉正在被读的文件（引用计数或延迟删除）。
-- 未命中配额按租户计，命中不计；凭据由账本解析到租户，请求里写的租户不作数。
+- 未命中配额按租户计，命中不计；凭据由环境表解析到租户，请求里写的租户不作数。
 - 上游只用写死的官方源；私有源第一期不支持。
 
 **验收**
@@ -384,7 +384,7 @@ containerd 只管容器，隔离强度由它下面的 OCI 运行时决定：runc
 
 **目标**：沙箱默认断网；联网经申请、批准、到期收回，网关侧限制与审计；进网只有预览地址（W8）。
 
-**交付**：`services/go-egress-gateway`（Go，只用标准库）；Task API 的 `network_request` 与租户策略的 `sandbox.network`（走 S-01）；Worker 的 `request_network` 工具（write_irreversible，经 HumanChannel 审批）；联网授权记在账本；网关按 SNI、Host、端口放行，自己解析并锁定地址，拒绝私有网段、链路本地与云元数据地址、集群内服务；按授权的字节、连接、频率与时长上限；逐连接的审计进 trace；预览地址（经入口、签名的短期令牌、频率限制）；测试用密钥从租户的 SecretStore 注入环境；托管的 microVM 后端把主机名单交给它们原生的白名单。
+**交付**：`services/go-egress-gateway`（Go，只用标准库）；Task API 的 `network_request` 与租户策略的 `sandbox.network`（走 S-01）；Worker 的 `request_network` 工具（write_irreversible，经 HumanChannel 审批）；联网授权记在环境表；网关按 SNI、Host、端口放行，自己解析并锁定地址，拒绝私有网段、链路本地与云元数据地址、集群内服务；按授权的字节、连接、频率与时长上限；逐连接的审计进 trace；预览地址（经入口、签名的短期令牌、频率限制）；测试用密钥从租户的 SecretStore 注入环境；托管的 microVM 后端把主机名单交给它们原生的白名单。
 
 **难点与防错**
 
@@ -424,17 +424,9 @@ containerd 只管容器，隔离强度由它下面的 OCI 运行时决定：runc
 
 **依赖**：D-14、D-15、D-16。
 
-### D-18 E2B 后端（中档，可选）
+### D-18（不在 main）
 
-**目标**：托管的 microVM 后端之一，只在人拍板后做（W1 的 E2B 取舍）。
-
-**交付**：`agentruntime_core.adapters.e2b_sandbox`（直接调 E2B 的 HTTP 接口，不引入 SDK）；模板用 D-14 的同一份 Dockerfile；账本（D-11）里的列表与对账；暂停与恢复作为会话级沙箱（D-13）的快速路径。
-
-**难点与防错**：与 Cloudflare 后端一样，网络只能用它原生的控制；按秒计费，暂停时不收计算费，但快照的存储可能另计（接入前核对价格页）。
-
-**验收**：Sandbox 一致性测试对 E2B 通过（真实端点设开关才跑，花钱、不进 CI）；暂停后恢复，工作区与后台进程都在。
-
-**依赖**：D-11；人决定接 E2B 而不是（或在 Cloudflare 之外）再接一家。
+main 不接 E2B（2026-10-27 用户定）。自托管 E2B 的设计、适配器与部署脚手架在可插拔的分支 `e2b`（那里的 `docs/plan/e2b-backend.md`）。
 
 ## 6. 顺序与里程碑
 
@@ -443,7 +435,7 @@ containerd 只管容器，隔离强度由它下面的 OCI 运行时决定：runc
 | M1 先上线 | D-01、D-02、D-03、D-04、D-05（gVisor） | 公网可用；邀请制租户在 gVisor 沙箱里跑任务；工作区仍是单节点本地盘 |
 | M2 microVM | D-05（Kata）、D-08 | 按租户策略选 gVisor 或 Kata；沙箱等级经 Task API 传入 |
 | M3 完整形态 | D-06（设计书更新后）、D-07、D-09、D-10 | 工作区跟着沙箱走；Cloudflare 做第二个 microVM 后端；可以加节点 |
-| M4 沙箱平台 | D-11～D-17（设计书更新后），D-18 可选 | 会话级沙箱、多语言环境；依赖经包镜像、联网经申请与网关；配额、预算与回退跨后端统一 |
+| M4 沙箱平台 | D-11～D-17 | 会话级沙箱、多语言环境；依赖经包镜像、联网经申请与网关；配额、预算与回退跨后端统一 |
 
 D-01 与 D-02 可以并行；D-05 动 Worker 的工具（不在 Task Loop → Stage Runner → Node Executor 核心链路上），可以与 D-03、D-04 并行。
 M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12、D-13、D-15 可以并行（D-13 与 D-12 都改 Worker 的后端选择，同一时间只由一个人改）；D-16 在 D-11、D-12 之后；D-17 最后。
@@ -463,7 +455,7 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
 - 设计书 4.10 说“本期只定义接口；开发时用本地子进程实现”。为 coding agent 加的 Docker 沙箱绕过了接口，直接在 shell_run 里调 docker；D-05 改回走接口。
 - 设计书没有“工作区”一层；D-06 要先改设计书（建议见 D-06）。
 - 设计书 4.4 的向量库现行是 Qdrant；改为 Milvus 的草稿（C1）还没进设计书，D-03 按现行版本做。
-- 设计书改动稿：[design-changes-workspace.md](design-changes-workspace.md)（W1 Sandbox 的后端与 E2B 的取舍、W2 Workspace 层、W3 effect_ceiling、W4 租户策略的沙箱后端；W5～W11：会话级沙箱、运行环境、包镜像、出网网关与联网授权、沙箱账本、跨后端配额、有序回退）。
+- 设计书改动稿：[design-changes-workspace.md](design-changes-workspace.md)（W1 Sandbox 的后端、W2 Workspace 层、W3 effect_ceiling、W4 租户策略的沙箱后端；W5～W11：会话级沙箱、运行环境、包镜像、出网网关与联网授权、沙箱环境表、跨后端配额、有序回退）。
 - 第 4.2 节“完全访问只能落在 microVM 后端”：有了出网网关（W8、D-16），集群里的 gVisor 也能按域名放行；改动稿建议改为按租户策略决定，仍建议陌生租户用 microVM。
 
 ## 10. 进度（2026-10-26）
@@ -480,7 +472,7 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
 | D-08 | `SubmitTaskRequest.effect_ceiling`、租户策略的 `sandbox.backend` | 契约测试、Task API 的测试、按策略选后端 | **proto 与 schema 的改动待人审**，之后更新 `proto/breaking-baseline.binpb` |
 | D-09 | ObjectStore 的 S3 兼容实现（Python 与 Go，标准库的 SigV4），task-service 与 Worker 接上 | 一致性测试对着会核对签名的假服务（带与不带前缀）、AWS 文档里的签名例子 | 真实 R2（`AR_LIVE_S3=1`）；task-service 与 Worker 不共用卷时的 Claim-Check（线上） |
 | D-10 | `deploy/cluster/demo.md`；Grafana 面板；`runtime.sandbox` span（后端、存活、执行与 CPU 时间）；K8s 后端每个租户的配额 | 面板查的名字与代码对得上；CPU 时间与配额在 kind 上 | 照手册在线上走一遍；面板的 TraceQL 指标查询在真 Tempo 上 |
-| D-11～D-18 | 只有设计书改动稿（W5～W11，2026-10-27）与本节的工作项 | — | 人确认改动稿、更新设计书之后开工；E2B（D-18）另要人拍板 |
+| D-11～D-17 | 2026-10-27 开始实现（见下面各项的进度） | — | 设计书原文档待人更新 |
 
 实现中与本计划写法不同的：
 
@@ -496,4 +488,4 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
 - [Temporal Cloud 价格](https://docs.temporal.io/cloud/pricing)、[没有最低消费](https://temporal.io/blog/paygo-developer-support)
 - [Ingress NGINX 停止维护](https://kubernetes.io/blog/2025/11/11/ingress-Nginx-retirement/)
 - Kata：[kata-deploy](https://github.com/kata-containers/kata-containers/blob/3.3.0-test/tools/packaging/kata-deploy/README.md)、[AWS 上的 Kata](https://aws.amazon.com/blogs/containers/enhancing-kubernetes-workload-isolation-and-security-using-kata-containers/)
-- 对照：[E2B 的计价](https://docs.e2b.dev/faq/calculate-sandbox-price)、[Fly.io 2026 年价格](https://fly.io/pricing-update/)
+- 对照：[Fly.io 2026 年价格](https://fly.io/pricing-update/)；三类后端与 VMM 的对比见 [sandbox-backends.md](../reference/sandbox-backends.md)
