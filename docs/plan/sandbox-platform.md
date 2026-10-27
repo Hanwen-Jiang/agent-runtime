@@ -162,4 +162,4 @@ JSON：{"e": env_ref, "t": tenant_id, "w": workspace_id, "s": session_id, "x": �
   - “推到租户自己的镜像仓库路径”是部署的环境镜像仓库里按租户分的路径，不是租户自带的仓库。
   - “长期不用的镜像定期清掉”是随用随清（这个租户下次用到时），没有另起定时任务；只删清单，仓库的 blob 要另跑 registry 的 garbage-collect（要停写），还没有接。
   - devcontainer 的 `features`、`dockerComposeFile` 不支持；`.tool-versions` 只认五种工具。
-- 没覆盖的：真实的 BuildKit 在 Kata 里构建、拉基础镜像经网关、节点从 NodePort 拉镜像，都要真集群（验收 1 的两次耗时现在只有进程里的数）；验收 2 在运行时的那一半（构建里访问宿主、内网、别的租户的镜像失败）靠准入策略、网络策略与 Kata，要在集群里跑恶意样例；Cloudflare 后端不能用项目环境（镜像在桥里写死）。sandbox-agent 的 `upload` 子命令是早先“构建往外传”的写法留下的，改成 Worker 去取之后没用了，待删。
+- 没覆盖的：真实的 BuildKit 在 Kata 里构建、拉基础镜像经网关、节点从 NodePort 拉镜像，都要真集群（验收 1 的两次耗时现在只有进程里的数）；验收 2 在运行时的那一半（构建里访问宿主、内网、别的租户的镜像失败）靠准入策略、网络策略与 Kata，要在集群里跑恶意样例；Cloudflare 后端不能用项目环境（镜像在桥里写死）。
