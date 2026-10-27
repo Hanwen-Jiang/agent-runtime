@@ -1,0 +1,14 @@
+# value: null 删掉上游的 value: random，换成取自 Secret（同一个 env 不能同时有 value 与 valueFrom）。
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: e2b
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: seed
+          env:
+            - name: SEED_TEAM_API_KEY
+              value: null
+              valueFrom: {secretKeyRef: {name: e2b-api, key: TEAM_API_KEY}}

@@ -41,7 +41,7 @@ L.11 的表格后加一句：
 
 > 本期实现了“容器 + gVisor”“microVM”两类（K8s 的 Kata、Cloudflare Containers），WASM 暂不做。托管的 microVM 后端另有 E2B 作备选：按秒、按分配的 vCPU 与内存计费，暂停时保留文件系统与内存、不收计算费。托管后端只接一家，接哪家按需要的特性定（E2B 长于暂停与恢复，Cloudflare 长于出网白名单与同栈的 R2）。
 
-**E2B 的取舍**（给人拍板）：K8s 节点有 KVM 时 Kata 就是集群里的 microVM，不需要 E2B；E2B 只在节点没有 KVM、要超出一台机器的弹性、或要“暂停后带内存恢复”的长寿命沙箱时值得接。接的话是 Sandbox 接口的又一个适配器（直接调它的 HTTP 接口，不引入 SDK），同一套一致性测试，计划里是 D-18。
+**E2B 的取舍**（2026-10-27 用户定）：main 不接 E2B。自托管的 E2B（开源运行时 e2b-dev/runtime，跑在专用的 KVM 节点上）放在单独的可插拔分支 `e2b`，设计、适配器与部署脚手架都在那里（[e2b-backend.md](e2b-backend.md)）。理由：K8s 节点有 KVM 时 Kata 就是集群里的 microVM；E2B 只在要“暂停后带内存恢复”的长寿命沙箱、fork 或高密度快速新建时值得多养一套控制面。
 
 ## W2　Workspace 层
 
@@ -334,7 +334,7 @@ W5～W11 与 E2B 的工作项写在[云上部署计划](cloud-deploy.md)第 5 �
 | D-15 | 包镜像：PyPI、npm、Go；容量与按租户的限制 | W7 | 强 |
 | D-16 | 出网网关与联网授权（含 Task API 的契约变更）、预览地址、测试用密钥的注入 | W8 | 强 |
 | D-17 | 按项目定制的运行环境（在 microVM 里构建） | W6 第 3 条 | 强 |
-| D-18 | E2B 后端（可选，人拍板后才做） | W1 | 中 |
+| D-18 | 自托管 E2B 后端（只在 e2b 分支，见 [e2b-backend.md](e2b-backend.md)） | W1 | 中 |
 
 ## 7. 影响汇总（给人审）
 

@@ -424,17 +424,9 @@ containerd 只管容器，隔离强度由它下面的 OCI 运行时决定：runc
 
 **依赖**：D-14、D-15、D-16。
 
-### D-18 E2B 后端（中档，可选）
+### D-18 自托管 E2B 后端（e2b 分支）
 
-**目标**：托管的 microVM 后端之一，只在人拍板后做（W1 的 E2B 取舍）。
-
-**交付**：`agentruntime_core.adapters.e2b_sandbox`（直接调 E2B 的 HTTP 接口，不引入 SDK）；模板用 D-14 的同一份 Dockerfile；账本（D-11）里的列表与对账；暂停与恢复作为会话级沙箱（D-13）的快速路径。
-
-**难点与防错**：与 Cloudflare 后端一样，网络只能用它原生的控制；按秒计费，暂停时不收计算费，但快照的存储可能另计（接入前核对价格页）。
-
-**验收**：Sandbox 一致性测试对 E2B 通过（真实端点设开关才跑，花钱、不进 CI）；暂停后恢复，工作区与后台进程都在。
-
-**依赖**：D-11；人决定接 E2B 而不是（或在 Cloudflare 之外）再接一家。
+2026-10-27 用户定：main 不接 E2B；自托管的 E2B 放在单独的可插拔分支 `e2b`。设计、工作项（E-01～E-05）、验收与和 D-11～D-16 的对接都在 [e2b-backend.md](e2b-backend.md)。本分支里 E-01～E-03（适配器、Worker 的登记、部署脚手架）已做，E-04 等 main 的 D-11～D-16 做完后合并再接，E-05 要 KVM 节点。
 
 ## 6. 顺序与里程碑
 
@@ -480,7 +472,8 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
 | D-08 | `SubmitTaskRequest.effect_ceiling`、租户策略的 `sandbox.backend` | 契约测试、Task API 的测试、按策略选后端 | **proto 与 schema 的改动待人审**，之后更新 `proto/breaking-baseline.binpb` |
 | D-09 | ObjectStore 的 S3 兼容实现（Python 与 Go，标准库的 SigV4），task-service 与 Worker 接上 | 一致性测试对着会核对签名的假服务（带与不带前缀）、AWS 文档里的签名例子 | 真实 R2（`AR_LIVE_S3=1`）；task-service 与 Worker 不共用卷时的 Claim-Check（线上） |
 | D-10 | `deploy/cluster/demo.md`；Grafana 面板；`runtime.sandbox` span（后端、存活、执行与 CPU 时间）；K8s 后端每个租户的配额 | 面板查的名字与代码对得上；CPU 时间与配额在 kind 上 | 照手册在线上走一遍；面板的 TraceQL 指标查询在真 Tempo 上 |
-| D-11～D-18 | 只有设计书改动稿（W5～W11，2026-10-27）与本节的工作项 | — | 人确认改动稿、更新设计书之后开工；E2B（D-18）另要人拍板 |
+| D-11～D-17 | 只有设计书改动稿（W5～W11，2026-10-27）与本节的工作项 | — | 人确认改动稿、更新设计书之后开工 |
+| D-18（e2b 分支） | 自托管 E2B：适配器与 envd 客户端、Worker 的 `kind: e2b`、Embed 的 overlay、防火墙、模板脚本（[e2b-backend.md](e2b-backend.md) 的 E-01～E-03） | 一致性测试与专门用例对着假 E2B（api 与 client-proxy，命令是本机的真实子进程）；部署的静态检查；模板脚本对着假 E2B | KVM 节点上装 Embed、建模板、`AR_LIVE_E2B=1`（E-05）；合并 main 后接账本、回退、会话级沙箱与出网网关（E-04） |
 
 实现中与本计划写法不同的：
 

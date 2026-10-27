@@ -1,0 +1,19 @@
+# 上游的 ready 容器把 sdk.env（含 team 的 API key）原样打进日志。这里只等 seed 写好 key，sdk.env 里不放 key，
+# 就绪探针（test -s /run/e2b/sdk.env）照旧。key 本身在 Secret e2b-api 的 TEAM_API_KEY 里。
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: e2b
+spec:
+  template:
+    spec:
+      containers:
+        - name: ready
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until test -s /run/e2b/team-api-key; do sleep 2; done
+              printf 'export E2B_API_URL=http://%s:3000\nexport E2B_SANDBOX_URL=http://%s:3002\n' "$NODE_IP" "$NODE_IP" > /run/e2b/sdk.env
+              echo "E2B stack is up on $NODE_IP (the team API key is not printed; it is TEAM_API_KEY in the e2b-api Secret)."
+              exec sleep 2147483647

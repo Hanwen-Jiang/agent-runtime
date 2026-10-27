@@ -1,0 +1,9 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: e2b
+spec:
+  template:
+    spec:
+      tolerations:
+        - {key: agentruntime.io/dedicated, operator: Equal, value: e2b, effect: NoSchedule}

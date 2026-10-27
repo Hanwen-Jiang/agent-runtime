@@ -1,0 +1,38 @@
+# 自托管 E2B（e2b 分支，docs/plan/e2b-backend.md 第 2 节）：E2B Embed 的单节点 StatefulSet，叠在一台专用的 KVM 节点上。
+#
+# 上游固定在 github.com/e2b-dev/runtime 的提交 67b3182（2026-10-12，满两周）；升级时同时改这里与 docs/plan/e2b-backend.md，
+# 再跑 tests/deploy/test_e2b.py 与适配器的一致性测试（AR_LIVE_E2B=1）。
+#
+# 装之前（步骤见 deploy/e2b/README.md）：
+#   1. 节点：KVM、内核 6.8 以上、2 MiB 大页 4 GiB（在 kubelet 启动前预留），标签 e2b.dev/single-node=true，
+#      污点 agentruntime.io/dedicated=e2b:NoSchedule（别的工作负载不上这台）。
+#   2. 防火墙：deploy/e2b/firewall.sh（3000、3002 只给集群；5008 等十个端口只在本机）。
+#   3. Secret e2b/e2b-api：ADMIN_TOKEN、SANDBOX_ACCESS_TOKEN_HASH_SEED、TEAM_API_KEY（与 Runtime 的 SecretStore 里
+#      sandbox/e2b-api-key 同一个值），由 SOPS 解出后 apply。
+# 然后：kubectl apply -k deploy/e2b
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: e2b
+resources:
+  - https://github.com/e2b-dev/runtime//embed/kubernetes?ref=67b318240f4b6acc497411aa968b817b338f62e6
+
+patches:
+  # 容忍专用节点的污点（上游只按标签选节点）。
+  - path: patches/dedicated-node.yaml
+    target: {kind: StatefulSet, name: e2b}
+  # team 的 API key 用我们给的（Secret 的 TEAM_API_KEY），不让 seed 随机生成：Runtime 要事先知道它。
+  - path: patches/team-key.yaml
+    target: {kind: StatefulSet, name: e2b}
+  # 不要网页控制台（它把 key 存在浏览器里，Runtime 用不到）。
+  - path: patches/no-dashboard.yaml
+    target: {kind: StatefulSet, name: e2b}
+  # 上游的 ready 容器把 API key 打进日志；换成只等 key 就绪、不打印。
+  - path: patches/quiet-ready.yaml
+    target: {kind: StatefulSet, name: e2b}
+
+configMapGenerator:
+  - name: e2b-settings
+    behavior: merge
+    literals:
+      # E2B 自己的 OTLP/gRPC 导出（host:port，节点上要能到）。默认不导；要看 E2B 的 span 时填 Collector 的 gRPC 地址。
+      - OTEL_COLLECTOR_GRPC_ENDPOINT=

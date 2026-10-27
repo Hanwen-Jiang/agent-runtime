@@ -1,0 +1,12 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: e2b
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: dashboard-api
+          $patch: delete
+        - name: dashboard
+          $patch: delete

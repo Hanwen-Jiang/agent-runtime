@@ -19,6 +19,7 @@ AR_TOOL_SHELL_SANDBOX=sandbox 时 shell_run 经 Sandbox 接口跑：每条命令
   max_envs_per_scope（每个租户同时最多几个环境，D-10；超了 denied）。
 - cloudflare：agentruntime_core.adapters.cloudflare_sandbox；桥的令牌取自 SecretStore 平台作用域的 sandbox/cloudflare-bridge-token。
 - local：本地子进程（开发实现），不隔离，只给开发与测试。
+- e2b：自托管的 E2B（e2b 分支），见 tools/sandbox_e2b.py。
 用哪个后端由租户策略的 sandbox.backend 决定（经 Registry 读当前版本，按租户缓存一分钟），没写时用 default；模型与请求都不能指定。
 登记里没有的名字一律拒绝，不悄悄换后端。K8s 后端的 agent 令牌密钥（同一部署的 Worker 共用）取自 SecretStore 平台作用域的
 sandbox/token-key；没有时每个进程随机一把（只有一个 Worker 进程时可以）。
@@ -40,7 +41,7 @@ from typing import Any
 from agentruntime_core.errors import InvalidError, NotFoundError
 from agentruntime_core.providers.sandbox import SandboxProvider
 
-KINDS = ("k8s", "cloudflare", "local")
+KINDS = ("k8s", "cloudflare", "local", "e2b")
 ISOLATIONS = ("none", "container", "microvm")
 TOKEN_KEY_SECRET = "sandbox/token-key"
 BRIDGE_TOKEN_SECRET = "sandbox/cloudflare-bridge-token"
@@ -81,6 +82,10 @@ class Sandboxes:
                 raise ValueError(f"沙箱后端 {name} 的 kind 只能是 {'、'.join(KINDS)}")
             if spec.get("isolation", "container") not in ISOLATIONS:
                 raise ValueError(f"沙箱后端 {name} 的 isolation 只能是 {'、'.join(ISOLATIONS)}")
+            if spec["kind"] == "e2b":
+                from agentruntime_worker.tools import sandbox_e2b
+
+                sandbox_e2b.check_spec(name, spec)
         self._specs = dict(specs)
         self.default = default
         self._workspace_root = workspace_root
@@ -173,6 +178,10 @@ class Sandboxes:
                 fields["startup_timeout"] = timedelta(seconds=float(spec["startup_timeout_s"]))
             config = K8sSandboxConfig(images={"python": str(spec.get("image") or "python:3.13-slim")}, **fields)
             return K8sPodSandboxProvider(KubeAPI.load(spec.get("kubeconfig") or None), config, token_key=await self._secret(TOKEN_KEY_SECRET))
+        if kind == "e2b":
+            from agentruntime_worker.tools import sandbox_e2b
+
+            return await sandbox_e2b.build(name, spec, self._secret)
         from agentruntime_core.adapters.cloudflare_sandbox import CloudflareSandboxProvider
 
         token = await self._secret(BRIDGE_TOKEN_SECRET)

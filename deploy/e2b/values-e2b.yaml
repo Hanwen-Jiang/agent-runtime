@@ -1,0 +1,18 @@
+# 自托管 E2B 作沙箱后端（e2b 分支，docs/plan/e2b-backend.md）：叠在 values-cloud.yaml 后面。
+#   helm upgrade --install ar deploy/helm/agent-runtime -f deploy/helm/agent-runtime/values-cloud.yaml -f deploy/e2b/values-e2b.yaml
+# 只是多登记一个后端；哪个租户用它由租户策略的 sandbox.backend 决定（例如 {"sandbox": {"backend": "e2b"}}）。
+# E2B 的 API key 放 SecretStore 种子里平台作用域的 sandbox/e2b-api-key（与 Secret e2b/e2b-api 的 TEAM_API_KEY 同一个值）。
+worker:
+  shell:
+    backends:
+      e2b:
+        kind: e2b
+        isolation: microvm
+        # 换成 E2B 节点的内网地址（firewall.sh 只放行集群来的连接）。
+        api_url: http://e2b-node.internal:3000
+        sandbox_url: http://e2b-node.internal:3002
+        template: agentruntime-python
+        # 列出与对账时只看本部署的沙箱。
+        deployment: cloud
+        # 空闲到期暂停（内存与进程都留下）而不是删掉，下次用时恢复。
+        pause_on_idle: true
