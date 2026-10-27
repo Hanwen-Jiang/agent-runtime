@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from agentruntime_core.adapters.s3_object_store import S3Settings
@@ -50,6 +50,20 @@ ENV_TOOL_SHELL_SANDBOX = "AR_TOOL_SHELL_SANDBOX"
 ENV_TOOL_SHELL_IMAGE = "AR_TOOL_SHELL_IMAGE"
 ENV_SANDBOX_BACKENDS_FILE = "AR_SANDBOX_BACKENDS_FILE"
 SHELL_SANDBOXES = ("host", "docker", "sandbox")
+# 业务库（沙箱环境表在这里，D-11）：设了是 Postgres（行级安全，与 task-service 同一个库），没设是数据目录下的 SQLite。
+ENV_RELATIONAL_DSN = "AR_RELATIONAL_DSN"
+# 会话级沙箱（D-13）：sandbox 时默认按（工作区，会话）复用环境；设 0 改回每条命令一个环境。
+ENV_SANDBOX_SESSIONS = "AR_SANDBOX_SESSIONS"
+# 沙箱环境表的对账间隔（秒，D-11）。
+ENV_SANDBOX_RECONCILE_INTERVAL_S = "AR_SANDBOX_RECONCILE_INTERVAL_S"
+# shell_run 在沙箱里用的运行环境（D-14）：后端登记把它映射到镜像，例如 universal（多语言，默认的生产配置）或 python。
+ENV_SANDBOX_RUNTIME = "AR_SANDBOX_RUNTIME"
+# 包镜像的地址（D-15），例如 http://ar-agent-runtime-pkg-mirror:8093：设了就给 K8s 与本地后端的命令注入镜像源变量。
+ENV_PKG_MIRROR_URL = "AR_PKG_MIRROR_URL"
+# 出网网关的代理地址（D-16），例如 http://ar-agent-runtime-egress-gateway:8095：设了就给 K8s 与本地后端的命令注入代理变量，
+# 并登记 request_network 工具；预览地址的域名（例如 preview.example.com），设了 request_network 才能开预览地址。
+ENV_EGRESS_GATEWAY_URL = "AR_EGRESS_GATEWAY_URL"
+ENV_PREVIEW_DOMAIN = "AR_PREVIEW_DOMAIN"
 
 
 @dataclass(frozen=True)
@@ -93,6 +107,14 @@ class WorkerConfig:
     tool_shell_sandbox: str = "host"
     tool_shell_image: str = "python:3.13-slim"
     sandbox_backends_file: Path | None = None
+    # 业务库的连接串（AR_RELATIONAL_DSN）；里面有口令，不进 repr 与比较。
+    relational_dsn: str = field(default="", repr=False, compare=False)
+    sandbox_sessions: bool = True
+    sandbox_reconcile_interval_s: int = 60
+    sandbox_runtime: str = "python"
+    pkg_mirror_url: str = ""
+    egress_gateway_url: str = ""
+    preview_domain: str = ""
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> WorkerConfig:
@@ -138,6 +160,15 @@ class WorkerConfig:
         backends = env.get(ENV_SANDBOX_BACKENDS_FILE, "").strip()
         if sandbox == "sandbox" and not backends:
             raise ValueError(f"{ENV_TOOL_SHELL_SANDBOX}=sandbox 时要给 {ENV_SANDBOX_BACKENDS_FILE}")
+        sessions = env.get(ENV_SANDBOX_SESSIONS, "").strip() or "1"
+        if sessions not in ("0", "1"):
+            raise ValueError(f"{ENV_SANDBOX_SESSIONS} 只能是 0 或 1")
+        interval = cls.sandbox_reconcile_interval_s
+        raw = env.get(ENV_SANDBOX_RECONCILE_INTERVAL_S, "")
+        if raw:
+            if not raw.isdigit() or int(raw) < 5:
+                raise ValueError(f"{ENV_SANDBOX_RECONCILE_INTERVAL_S} 必须是不小于 5 的整数（秒）")
+            interval = int(raw)
         seed = env.get(ENV_SECRETS_SEED_FILE, "").strip()
         if seed and not secrets:
             raise ValueError(f"设了 {ENV_SECRETS_SEED_FILE} 还要设 {ENV_SECRETS_FILE}（种子并进哪个文件）")
@@ -165,6 +196,13 @@ class WorkerConfig:
             tool_shell_sandbox=sandbox,
             tool_shell_image=env.get(ENV_TOOL_SHELL_IMAGE, "").strip() or cls.tool_shell_image,
             sandbox_backends_file=Path(backends) if backends else None,
+            relational_dsn=env.get(ENV_RELATIONAL_DSN, "").strip(),
+            sandbox_sessions=sessions == "1",
+            sandbox_reconcile_interval_s=interval,
+            sandbox_runtime=env.get(ENV_SANDBOX_RUNTIME, "").strip() or cls.sandbox_runtime,
+            pkg_mirror_url=env.get(ENV_PKG_MIRROR_URL, "").strip(),
+            egress_gateway_url=env.get(ENV_EGRESS_GATEWAY_URL, "").strip(),
+            preview_domain=env.get(ENV_PREVIEW_DOMAIN, "").strip(),
         )
 
     def store_paths(self, root: Path) -> tuple[Path, Path]:

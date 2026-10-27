@@ -1,0 +1,94 @@
+{{- /* 按项目定制的运行环境（docs/plan/cloud-deploy.md D-17）：Worker 在构建的命名空间（deploy/cluster/builds.yaml）里建一次性的
+       构建 Job。Worker 的权限只到这个命名空间：建、读、删 Job；建、删这次构建的 ConfigMap 与 Secret（读不了 Secret）；读 Pod 与
+       构建日志。构建只能连出网网关的 8095 与包镜像的 8093（拉基础镜像经网关的授权，装依赖经镜像）。可选的环境镜像仓库在
+       env-registry.yaml。 */ -}}
+{{- $shell := .Values.worker.shell -}}
+{{- $env := $shell.environments -}}
+{{- if and (eq $shell.mode "sandbox") $env.enabled }}
+{{- if not .Values.egressGateway.enabled }}
+{{- fail "worker.shell.environments.enabled 要打开 egressGateway：构建拉基础镜像只经出网网关" }}
+{{- end }}
+{{- if not $env.registry.pullHost }}
+{{- fail "worker.shell.environments.registry.pullHost 要写节点拉镜像用的主机（单节点用 127.0.0.1:30500）" }}
+{{- end }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "ar.workerServiceAccount" . }}-builds
+  namespace: {{ $env.builder.namespace }}
+  labels:
+    {{- include "ar.labels" (list . "worker") | nindent 4 }}
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "delete"]
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "ar.workerServiceAccount" . }}-builds
+  namespace: {{ $env.builder.namespace }}
+  labels:
+    {{- include "ar.labels" (list . "worker") | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "ar.workerServiceAccount" . }}-builds
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "ar.workerServiceAccount" . }}
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: builds-egress
+  namespace: {{ $env.builder.namespace }}
+  labels:
+    {{- include "ar.labels" (list . "worker") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/managed-by: agentruntime-env-builder
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+          podSelector:
+            matchLabels:
+              {{- include "ar.selector" (list . "egress-gateway") | nindent 14 }}
+      ports:
+        - {protocol: TCP, port: 8095}
+    {{- if .Values.pkgMirror.enabled }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+          podSelector:
+            matchLabels:
+              {{- include "ar.selector" (list . "pkg-mirror") | nindent 14 }}
+      ports:
+        - {protocol: TCP, port: 8093}
+    {{- end }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+{{- end }}

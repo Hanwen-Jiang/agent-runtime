@@ -209,7 +209,7 @@ async def test_list_environments_filters_by_deployment_and_follows_pages(fake: e
         listed = await mine.list_environments()
         assert sorted(e.env_id for e in listed) == sorted(e.env_id for e in envs)
         assert {e.owner for e in listed} == {tenant_a().tenant_id, tenant_b().tenant_id}
-        assert all(e.state == "running" and e.started_at is not None for e in listed)
+        assert all(e.state == "running" and e.created_at is not None for e in listed)
         for env, tenant in zip(envs, (tenant_a(), tenant_a(), tenant_b()), strict=True):
             await mine.bind(tenant).destroy(env.env_id)
         await theirs.bind(tenant_a()).destroy(foreign.env_id)

@@ -25,7 +25,7 @@ secrets:
   # 上面的 secrets.json 作为种子在启动时并进去（AR_SECRETS_SEED_FILE；种子里的密钥覆盖旧值，已生成的 kek 不换）。
   # 为空时直接读只读的 secrets.json，写 kek 会失败，只适合不卸载大载荷的试跑。
   storeClaim: ""
-  # 业务库的连接串（AR_RELATIONAL_DSN）；name 为空时 task-service 与 Memory Service 用 AR_DATA_DIR 下的 SQLite。
+  # 业务库的连接串（AR_RELATIONAL_DSN）；name 为空时 task-service、Memory Service 与 Worker（沙箱环境表，D-11）用 AR_DATA_DIR 下的 SQLite。
   relationalDsn:
     name: ""
     key: dsn
@@ -128,6 +128,39 @@ memory:
     requests: {cpu: 250m, memory: 256Mi}
     limits: {cpu: "1", memory: 1Gi}
 
+# 包镜像（docs/plan/cloud-deploy.md D-15）：沙箱装依赖的本地源（PyPI、npm、Go），按需拉取、按内容寻址缓存。
+# 打开后 Worker 给 K8s 沙箱的命令注入镜像源变量（AR_PKG_MIRROR_URL），沙箱命名空间放行到它的 8093。
+# 预算：包文件与元数据各自的上限（字节）；用量到 90% 开始淘汰，降到 75% 停；超过 maxFileBytes 的文件只转发。
+pkgMirror:
+  enabled: false
+  storage: 120Gi
+  storageClassName: ""
+  # 已有的 PVC；空时 Chart 建一个。
+  claimName: ""
+  blobBudgetBytes: 107374182400
+  metaBudgetBytes: 5368709120
+  maxFileBytes: 524288000
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: "2", memory: 1Gi}
+
+# 出网网关（docs/plan/cloud-deploy.md D-16）：沙箱联网只经它，按 Task 的联网授权放行；要配 secrets.relationalDsn。
+# 打开后 Worker 给命令注入代理变量并登记 request_network，task-service 在 Task 结束时通知它收回。
+egressGateway:
+  enabled: false
+  # 预览地址的域名（https://<环境号>.<域名>）；空表示不开预览入口。ingress.type 是 traefik 时 Chart 建它的 IngressRoute。
+  previewDomain: ""
+  previewTLSSecretName: ""
+  # 入口控制器所在的命名空间（只有它能连预览端口；k3s 的 Traefik 在 kube-system）。
+  ingressNamespace: kube-system
+  # 另外拒绝的网段：集群的 Pod 与 Service 网段（k3s 默认 10.42.0.0/16、10.43.0.0/16）。
+  denyCidrs: ["10.42.0.0/16", "10.43.0.0/16"]
+  # 授权缓存多久（毫秒）：撤销最迟这么久生效；Task 结束时 task-service 另外主动通知。
+  grantTTLMillis: 2000
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: "1", memory: 512Mi}
+
 worker:
   # 真正的 Planner、Reviewer 与 tool_loop（经 Model Gateway）；stub 只用于端到端测试。
   planner: model
@@ -144,9 +177,47 @@ worker:
     # 用哪个后端由租户策略的 sandbox.backend 决定，没写时 defaultBackend。
     defaultBackend: ""
     backends: {}
+    # shell_run 用的运行环境（AR_SANDBOX_RUNTIME，D-14）：后端登记的 images 把它映射到镜像，例如 universal（多语言）。
+    runtime: python
     # kind=k8s 的后端把 Pod 建在这个命名空间：Chart 在那里给 Worker 建 Role（只能管 Pod，读不了 Secret），
     # Worker 用自己的 ServiceAccount（其余服务仍然不挂令牌）。
     sandboxNamespace: sandboxes
+    # 在每个节点上预先拉好 kind=k8s 后端用到的镜像（D-14）：第一次建环境不用现下载几个 GB 的镜像。
+    prepull: false
+    # 按项目定制的运行环境（D-17）：仓库自带 devcontainer.json、.tool-versions 或 Dockerfile 时在 Kata 里构建一次、缓存复用；
+    # 构建好之前、失败时退回 runtime（universal），并在 shell_run 的结果里说明。要打开 egressGateway（拉基础镜像经它）。
+    environments:
+      enabled: false
+      # 生成 .tool-versions 的镜像时的底（按 digest 固定；baseDigest 为空时按标签）。
+      baseImage: ""
+      baseDigest: ""
+      registry:
+        # 推送地址：空时用 Chart 建的 env-registry（deploy: true）。
+        url: ""
+        # 节点拉镜像用的主机：单节点经 NodePort 是 127.0.0.1:30500（k3s 的 registries.yaml 里配它的凭据与 http）。
+        pullHost: ""
+        prefix: envs
+        deploy: false
+        image: registry:2.8.3
+        storage: 50Gi
+        nodePort: 30500
+        # 能经 NodePort 拉镜像的地址（节点的网段）。
+        nodeCidr: 0.0.0.0/0
+        # htpasswd 的 Secret（键 htpasswd）；Worker 推送用的凭据另放在 SecretStore 的 sandbox/env-registry。
+        htpasswdSecret: ""
+      builder:
+        namespace: sandbox-builds
+        # 必须是 microVM 级的 RuntimeClass。
+        runtimeClass: kata
+        agentImage: ""
+        buildkitImage: moby/buildkit:v0.25.1
+      # 构建能经出网网关访问的主机（拉基础镜像、装系统包）。
+      buildHosts: [registry-1.docker.io, auth.docker.io, production.cloudflare.docker.com, ghcr.io, pkg-containers.githubusercontent.com, deb.debian.org, security.debian.org]
+      limits:
+        maxImages: 5
+        maxImageBytes: 8589934592
+        buildTimeoutSeconds: 1800
+        idleDays: 14
   # 按任务队列分池（设计书 3.6、附录 K.5），每个池一个 Deployment 与一个 KEDA ScaledObject。
   # 池名就是队列名（agentruntime_worker.names）；task 池按工作流积压扩缩，其余按 activity 积压。
   pools:

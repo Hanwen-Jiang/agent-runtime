@@ -63,6 +63,17 @@ modelGateway:
 memory:
   replicas: 1
 
+pkgMirror:
+  enabled: true
+  # 单节点：local-path 的卷，预算 100 GiB（包文件）+ 5 GiB（元数据），留出余量。
+  storage: 120Gi
+
+# 出网网关（D-16）：联网经申请与批准；预览地址是 https://<环境号>.preview.<域名>（Cloudflare 上配 *.preview 的通配记录与证书）。
+egressGateway:
+  enabled: true
+  previewDomain: preview.agent-runtime.example.com
+  previewTLSSecretName: cloudflare-origin-tls
+
 worker:
   workspacesClaim: workspaces
   shell:
@@ -70,6 +81,19 @@ worker:
     # 邀请制租户默认 gVisor；公开注册的租户由租户策略的 sandbox.backend 指到 kata（或 cloudflare，见 deploy/cloudflare）。
     defaultBackend: gvisor
     sandboxNamespace: sandboxes
+    # 默认用多语言的运行环境（D-14）；只用 Python 的租户也能跑（universal 里有 Python）。
+    runtime: universal
+    prepull: true
+    # 按项目定制的运行环境（D-17）：构建在 Kata 里，镜像放 Chart 建的环境镜像仓库（单节点经 NodePort 拉）。
+    environments:
+      enabled: true
+      baseImage: ghcr.io/agentruntime/sandbox-universal:0.1.0
+      registry:
+        pullHost: 127.0.0.1:30500
+        deploy: true
+        htpasswdSecret: agent-runtime-env-registry
+      builder:
+        agentImage: ghcr.io/agentruntime/sandbox-agent:0.1.0
     backends:
       gvisor:
         kind: k8s
@@ -77,6 +101,10 @@ worker:
         runtime_class: gvisor
         namespace: sandboxes
         image: ghcr.io/agentruntime/sandbox-python:0.1.0
+        images:
+          universal: ghcr.io/agentruntime/sandbox-universal:0.1.0
+          node: ghcr.io/agentruntime/sandbox-node:0.1.0
+          go: ghcr.io/agentruntime/sandbox-go:0.1.0
         agent_image: ghcr.io/agentruntime/sandbox-agent:0.1.0
         connect: pod_ip
         workspace_claim: workspaces
@@ -88,6 +116,10 @@ worker:
         runtime_class: kata
         namespace: sandboxes
         image: ghcr.io/agentruntime/sandbox-python:0.1.0
+        images:
+          universal: ghcr.io/agentruntime/sandbox-universal:0.1.0
+          node: ghcr.io/agentruntime/sandbox-node:0.1.0
+          go: ghcr.io/agentruntime/sandbox-go:0.1.0
         agent_image: ghcr.io/agentruntime/sandbox-agent:0.1.0
         connect: pod_ip
         workspace_claim: workspaces

@@ -6,6 +6,8 @@
 - 环境只属于创建它的作用域；别的作用域访问：not_found。销毁后访问：not_found。destroy 重复调用不报错。
 - argv[0] 为 spec.runtime 时由实现映射到环境内的解释器，例如 runtime = python 时 ["python", "-c", "..."]。
 - exec 超时不抛异常：返回 timed_out=True，exit_code 为 None。代码自身的非零退出码照常返回。
+- exec 的 env 是这一条命令额外的环境变量（包镜像地址、出网代理与测试用密钥，D-15、D-16），只对这一条有效；名字要是
+  [A-Za-z_][A-Za-z0-9_]*，不能以 AGENT_ 开头，最多 64 个、共 64 KiB，否则 invalid。
 - ExecResult.cpu_time 是命令用掉的 CPU 时间（计量用，docs/plan/cloud-deploy.md D-10）；实现量不出来时为 None。
 - 文件路径相对于环境的工作目录；绝对路径、含 .. 段或反斜杠：invalid。读不存在的文件：not_found。
 - 不同环境的文件互不可见。
@@ -18,11 +20,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Literal, Protocol
 
+from agentruntime_core.errors import InvalidError
 from agentruntime_core.providers.base import Bindable
 
 
@@ -35,12 +39,19 @@ class SandboxSpec:
     allow_hosts: tuple[str, ...] = ()
     idle_timeout: timedelta = timedelta(minutes=10)
     workspace_id: str = ""
+    # 环境所属的会话（会话级沙箱，D-13）：只用来归属与复用（Worker 的 SandboxBroker 按它在沙箱环境表里找），后端不用解释它。
+    session_id: str = ""
+    # 显式的镜像（按项目定制的运行环境，D-17）：给了就不按 runtime 查登记。后端只接受部署登记的环境镜像仓库下的引用
+    # （K8s 的 custom_image_prefix），别的一律 invalid；不支持的后端 invalid（unsupported_image）。
+    image: str = ""
 
 
 @dataclass(frozen=True)
 class SandboxEnv:
     env_id: str
     spec: SandboxSpec
+    # 环境实际用的镜像（后端量得出时按 digest，例如 K8s 的 imageID；D-14），记进沙箱环境表与 trace；量不出时为空。
+    image: str = ""
 
 
 @dataclass(frozen=True)
@@ -56,7 +67,7 @@ class Sandbox(Protocol):
     async def create(self, spec: SandboxSpec) -> SandboxEnv: ...
 
     async def exec(
-        self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b""
+        self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"", env: Mapping[str, str] | None = None
     ) -> ExecResult: ...
 
     async def write_file(self, env_id: str, path: str, data: bytes) -> None: ...
@@ -68,3 +79,46 @@ class Sandbox(Protocol):
 
 class SandboxProvider(Bindable[Sandbox], Protocol):
     pass
+
+
+_ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+MAX_EXEC_ENV = 64
+MAX_EXEC_ENV_BYTES = 64 * 1024
+
+
+def check_exec_env(env: Mapping[str, str] | None) -> dict[str, str]:
+    """exec 的 env 的规则（各实现共用，与 sandbox-agent 一致）。"""
+    if not env:
+        return {}
+    out = {str(k): str(v) for k, v in env.items()}
+    if len(out) > MAX_EXEC_ENV or sum(len(k) + len(v) for k, v in out.items()) > MAX_EXEC_ENV_BYTES:
+        raise InvalidError("invalid_env", "env 太多或太大")
+    for k, v in out.items():
+        if not _ENV_NAME.match(k) or k.upper().startswith("AGENT_") or "\x00" in v:
+            raise InvalidError("invalid_env", f"env 的名字 {k} 不合法")
+    return out
+
+
+@dataclass(frozen=True)
+class ListedEnvironment:
+    """后端里实际在跑的一个环境（对账用，D-11）。owner 是所属作用域（租户 ID 或 _platform）；created_at 是后端记的创建时间，
+    对账据此给刚建、还没来得及记进沙箱环境表的环境留出宽限。"""
+
+    env_id: str
+    owner: str
+    created_at: datetime | None
+    state: str = "running"
+
+
+class SandboxLister(Protocol):
+    """能列出本部署在跑的环境的后端（K8s、Cloudflare 桥、开发实现都能）。这是平台级的操作，不绑定租户：
+    只列本部署建的环境（K8s 按标签、桥按令牌），别的部署的不碰。"""
+
+    async def list_environments(self) -> list[ListedEnvironment]: ...
+
+
+class SandboxPreview(Protocol):
+    """能给环境的一个端口开预览地址的后端（进网，设计书改动稿 W8；D-16）：返回出网网关的预览入口转发到的地址
+    （host:port，K8s 是 Pod 的地址，开发实现是本机）。作用域同 exec：别的作用域的环境 not_found。托管后端没有这一项。"""
+
+    async def preview_address(self, env_id: str, port: int) -> str: ...

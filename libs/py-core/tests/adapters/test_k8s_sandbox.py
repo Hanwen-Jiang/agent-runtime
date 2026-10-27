@@ -167,6 +167,30 @@ async def test_network_allowlist_needs_a_microvm_backend(harness: Harness) -> No
         await harness.provider.bind(tenant_a()).create(SandboxSpec(network="allowlist", allow_hosts=("pypi.org",)))
 
 
+async def test_explicit_images_only_from_the_own_tenant_path_by_digest(harness: Harness) -> None:
+    """D-17：按项目定制的运行环境的镜像只能是环境镜像仓库里、本租户路径下按 digest 写的；别的写法在建 Pod 之前就拒绝。"""
+    digest = "sha256:" + "0" * 64
+    with expect_error(ErrorCategory.INVALID, "unsupported_image"):
+        await harness.provider.bind(tenant_a()).create(SandboxSpec(image=f"127.0.0.1:30500/envs/{tenant_a().tenant_id}/env@{digest}"))
+    scoped = make_provider(harness.cluster, custom_image_prefix="127.0.0.1:30500/envs")
+    try:
+        a = scoped.bind(tenant_a())
+        for image in (
+            f"127.0.0.1:30500/envs/{tenant_b().tenant_id}/env@{digest}",  # 别的租户的路径
+            f"127.0.0.1:30500/envs/{tenant_a().tenant_id}/env:latest",  # 按标签
+            f"evil.example.com/envs/{tenant_a().tenant_id}/env@{digest}",  # 别的仓库
+            "python:3.13-slim",
+        ):
+            with expect_error(ErrorCategory.INVALID, "unsupported_image"):
+                await a.create(SandboxSpec(image=image))
+        with expect_error(ErrorCategory.INVALID, "unsupported_image"):
+            await scoped.bind_platform("check").create(SandboxSpec(image=f"127.0.0.1:30500/envs/_platform/env@{digest}"))
+        pods = (await scoped.kube.json("GET", scoped.pods_path() + "?labelSelector=" + label_selector(LABELS)))["items"]
+        assert not pods, "拒绝的都没有建 Pod"
+    finally:
+        await scoped.aclose()
+
+
 async def test_idle_environments_are_reaped(harness: Harness) -> None:
     box = harness.provider.bind(tenant_a())
     env = await box.create(SandboxSpec(idle_timeout=timedelta(seconds=1)))

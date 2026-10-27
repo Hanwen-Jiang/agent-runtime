@@ -1,0 +1,76 @@
+{{- /* 沙箱镜像的预拉（docs/plan/cloud-deploy.md D-14）：每个节点上起一个什么都不做的 Pod，initContainer 逐个用一遍 kind=k8s
+       后端登记里的镜像（运行环境与 agent），节点上就有了这些镜像，第一次建环境不用现下载几个 GB。建在沙箱命名空间里，
+       满足 Pod Security 的 restricted（非 root、只读根文件系统、去掉全部 capability、不挂令牌），断网（默认拒绝的网络策略）。 */ -}}
+{{- $shell := .Values.worker.shell -}}
+{{- if and (eq $shell.mode "sandbox") $shell.prepull }}
+{{- $images := list }}
+{{- $agents := list }}
+{{- range $name, $b := $shell.backends }}
+{{- if eq $b.kind "k8s" }}
+{{- if $b.image }}{{ $images = append $images $b.image }}{{ end }}
+{{- range $runtime, $image := ($b.images | default dict) }}{{ $images = append $images $image }}{{ end }}
+{{- if $b.agent_image }}{{ $agents = append $agents $b.agent_image }}{{ end }}
+{{- end }}
+{{- end }}
+{{- $images = $images | uniq | sortAlpha }}
+{{- $agents = $agents | uniq | sortAlpha }}
+{{- if $images }}
+{{- $security := dict "allowPrivilegeEscalation" false "readOnlyRootFilesystem" true "capabilities" (dict "drop" (list "ALL")) "runAsNonRoot" true "runAsUser" 10001 "runAsGroup" 10001 }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ printf "%s-sandbox-prepull" (include "ar.fullname" .) }}
+  namespace: {{ $shell.sandboxNamespace }}
+  labels:
+    {{- include "ar.labels" (list . "sandbox-prepull") | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "ar.selector" (list . "sandbox-prepull") | nindent 6 }}
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 100%}
+  template:
+    metadata:
+      labels:
+        {{- include "ar.labels" (list . "sandbox-prepull") | nindent 8 }}
+        agentruntime.io/network: none
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 5
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      initContainers:
+        {{- range $i, $image := $images }}
+        - name: {{ printf "pull-%d" $i }}
+          image: {{ $image | quote }}
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c", "exit 0"]
+          securityContext: {{ toJson $security }}
+          resources: {requests: {cpu: 10m, memory: 16Mi}, limits: {cpu: 100m, memory: 64Mi}}
+        {{- end }}
+        {{- range $i, $image := $agents }}
+        - name: {{ printf "pull-agent-%d" $i }}
+          image: {{ $image | quote }}
+          imagePullPolicy: IfNotPresent
+          command: ["/sandbox-agent", "install", "/scratch/sandbox-agent"]
+          securityContext: {{ toJson $security }}
+          resources: {requests: {cpu: 10m, memory: 16Mi}, limits: {cpu: 100m, memory: 64Mi}}
+          volumeMounts: [{name: scratch, mountPath: /scratch}]
+        {{- end }}
+      containers:
+        - name: hold
+          image: {{ first $images | quote }}
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c", "trap 'exit 0' TERM; while :; do sleep 3600 & wait $!; done"]
+          securityContext: {{ toJson $security }}
+          resources: {requests: {cpu: 1m, memory: 8Mi}, limits: {cpu: 20m, memory: 32Mi}}
+      volumes:
+        - name: scratch
+          emptyDir: {sizeLimit: 64Mi}
+{{- end }}
+{{- end }}

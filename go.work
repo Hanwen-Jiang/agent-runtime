@@ -3,7 +3,9 @@ go 1.26.0
 use (
 	./libs/go-core
 	./proto/gen/go
+	./services/go-egress-gateway
 	./services/go-model-gateway
+	./services/go-pkg-mirror
 	./services/go-sandbox-agent
 	./services/go-task-service
 	./tests/contract/go

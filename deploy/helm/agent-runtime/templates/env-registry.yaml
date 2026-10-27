@@ -1,0 +1,132 @@
+{{- /* 环境镜像仓库（docs/plan/cloud-deploy.md D-17，可选）：放按项目定制的运行环境的镜像，<prefix>/<租户>/env。单节点的做法：
+       CNCF Distribution（registry），htpasswd 认证（Secret 的 htpasswd 键；推是 Worker，拉是节点上的 kubelet，凭据写在 k3s 的
+       registries.yaml，见 deploy/cluster/README.md），打开删除（长期不用的镜像清掉）。集群内经 Service 的 5000 推，节点经 NodePort
+       （默认 30500）拉。构建里没有它的凭据：构建产物由 Worker 推进来，路径由 Worker 按租户定。 */ -}}
+{{- $env := .Values.worker.shell.environments -}}
+{{- if and (eq .Values.worker.shell.mode "sandbox") $env.enabled $env.registry.deploy }}
+{{- $name := printf "%s-env-registry" (include "ar.fullname" .) -}}
+{{- if not $env.registry.htpasswdSecret }}
+{{- fail "worker.shell.environments.registry.deploy 要给 htpasswdSecret（键 htpasswd）" }}
+{{- end }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "env-registry") | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: {{ $env.registry.storage }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "env-registry") | nindent 4 }}
+data:
+  # htpasswd 认证、打开删除（长期不用的镜像清掉）。
+  config.yml: |
+    version: 0.1
+    storage:
+      filesystem: {rootdirectory: /var/lib/registry}
+      delete: {enabled: true}
+    auth:
+      htpasswd: {realm: agentruntime-envs, path: /auth/htpasswd}
+    http:
+      addr: :5000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "env-registry") | nindent 4 }}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels:
+      {{- include "ar.selector" (list . "env-registry") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ar.labels" (list . "env-registry") | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: registry
+          image: {{ $env.registry.image }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: oci
+              containerPort: 5000
+          readinessProbe:
+            tcpSocket: {port: oci}
+            periodSeconds: 10
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/registry}
+            - {name: auth, mountPath: /auth, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+            - {name: config, mountPath: /etc/docker/registry, readOnly: true}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $name }}
+        - name: auth
+          secret:
+            secretName: {{ $env.registry.htpasswdSecret }}
+        - name: tmp
+          emptyDir: {sizeLimit: 1Gi}
+        - name: config
+          configMap:
+            name: {{ $name }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "env-registry") | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    {{- include "ar.selector" (list . "env-registry") | nindent 4 }}
+  ports:
+    - name: oci
+      port: 5000
+      targetPort: oci
+      nodePort: {{ $env.registry.nodePort }}
+---
+# 推只来自 Runtime（Worker）；拉来自节点上的 kubelet（经 NodePort）。沙箱与构建的命名空间默认拒绝出网，连不到它。
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "env-registry") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ar.selector" (list . "env-registry") | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+        - ipBlock:
+            cidr: {{ $env.registry.nodeCidr }}
+      ports:
+        - {protocol: TCP, port: 5000}
+  egress: []
+{{- end }}

@@ -52,6 +52,7 @@ import (
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/events"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/ids"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/registry"
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/sandboxgrants"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/session"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/taskapi"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/taskstore"
@@ -145,6 +146,27 @@ func newClaimCheck(s3 *s3objects.Options, objectStoreDir, secretsFile string, th
 		return nil, err
 	}
 	return claimcheck.New(claimcheck.Options{Objects: objects, Secrets: secrets, Threshold: threshold})
+}
+
+// egressNotifier：配了出网网关的管理地址（AR_EGRESS_GATEWAY_ADMIN_URL）时，Task 结束收回联网授权后通知网关立即断开（D-16）；
+// 管理令牌取 SecretStore 平台作用域的 egress-gateway/admin-token（没有时不带令牌，网关会拒绝）。
+func egressNotifier(ctx context.Context, cfg config.Config) (*sandboxgrants.Notifier, error) {
+	if cfg.EgressAdminURL == "" {
+		return nil, nil
+	}
+	n := &sandboxgrants.Notifier{URL: cfg.EgressAdminURL}
+	secrets, err := filesecrets.New(filesecrets.Options{Path: cfg.SecretsFile})
+	if err != nil {
+		return nil, err
+	}
+	platform, err := secrets.BindPlatform("egress-gateway")
+	if err != nil {
+		return nil, err
+	}
+	if v, err := platform.Read(ctx, "egress-gateway/admin-token"); err == nil {
+		n.Token = string(v.Reveal())
+	}
+	return n, nil
 }
 
 // newRelationalStore 构造业务库：配置了 AR_RELATIONAL_DSN 时用 Postgres（行级安全，S-12a），否则用 SQLite 开发实现。
@@ -283,6 +305,9 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	// 固定版本：配了 Registry（AR_REGISTRY_ADDR）时由它给出，并在单独的内部端口上提供 RegistryService；否则读固定版本文件。
 	var pins taskapi.PinResolver = taskapi.FilePinResolver{Path: cfg.PinnedVersionsFile}
 	var registrySrv *http.Server
+	// 提交时的联网申请按租户策略的 sandbox.network 核对（D-16）：有 Registry 时读它的当前租户策略（与 Worker 同一个来源），
+	// 否则读开发用的租户策略文件。
+	var network taskapi.NetworkPolicySource
 	if cfg.RegistryAddr != "" {
 		reg, err := newRegistry(ctx, store, cfg.SecretsFile, cfg.SchemasDir, logger)
 		if err != nil {
@@ -290,6 +315,17 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		}
 		pins = registry.Pins{Registry: reg}
 		registrySrv = registryServer(cfg.RegistryAddr, reg)
+		network = taskapi.NetworkPolicyFunc(func(ctx context.Context, tenant *commonv1.TenantContext) (taskapi.NetworkPolicy, error) {
+			doc, found, err := reg.CurrentTenantPolicy(ctx, tenant)
+			if err != nil || !found {
+				return taskapi.NetworkPolicy{}, err
+			}
+			return taskapi.NetworkPolicyFromDocument(doc)
+		})
+	}
+	egress, err := egressNotifier(ctx, cfg)
+	if err != nil {
+		return err
 	}
 	cacheProvider := memcache.New(memcache.Options{Clock: clk})
 	ing := localingress.New(localingress.Options{
@@ -297,7 +333,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	})
 
 	w := worker.New(c, session.SessionTaskQueue, worker.Options{})
-	session.Register(w, cfg.Session, &session.Activities{Cache: cacheProvider, Store: store, Clock: clk, Retention: 24 * time.Hour})
+	session.Register(w, cfg.Session, &session.Activities{Cache: cacheProvider, Store: store, Clock: clk, Retention: 24 * time.Hour, Egress: egress})
 	if err := w.Start(); err != nil {
 		return fmt.Errorf("Session Worker 启动失败：%w", err)
 	}
@@ -317,6 +353,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		PublicBaseURL: cfg.PublicBaseURL,
 		Defaults:      defaults,
 		Policies:      taskapi.FilePolicyResolver{Path: cfg.TenantPoliciesFile, Fallback: defaults},
+		Network:       network,
 	})
 	if err != nil {
 		return err

@@ -5,7 +5,12 @@
       "name": "dev_policy_file_entry",
       "source": "开发用策略文件（AR_DEV_TENANT_POLICIES_FILE）的租户条目：task-service 的 FilePolicyResolver 与 Model Gateway 的 FileAllowlist",
       "notes": "",
-      "instance": {"effect_ceiling": "read", "model_allowlist": ["a6api/gpt-4o-mini@2026-10"]}
+      "instance": {
+        "effect_ceiling": "read",
+        "model_allowlist": [
+          "a6api/gpt-4o-mini@2026-10"
+        ]
+      }
     },
     {
       "name": "hooks_and_budget",
@@ -13,16 +18,32 @@
       "notes": "Hook 名是示意。",
       "instance": {
         "effect_ceiling": "write_irreversible",
-        "model_allowlist": ["a6api/claude-sonnet-5-5@2026-10", "a6api/gpt-5.5@2026-10"],
-        "hooks": {"before_node": ["pii_redaction"], "on_task_end": ["audit_export"]},
-        "budget": {"usd": 5.0, "tool_calls": 200, "wall_clock_min": 60}
+        "model_allowlist": [
+          "a6api/claude-sonnet-5-5@2026-10",
+          "a6api/gpt-5.5@2026-10"
+        ],
+        "hooks": {
+          "before_node": [
+            "pii_redaction"
+          ],
+          "on_task_end": [
+            "audit_export"
+          ]
+        },
+        "budget": {
+          "usd": 5.0,
+          "tool_calls": 200,
+          "wall_clock_min": 60
+        }
       }
     },
     {
       "name": "empty_allowlist_denies_all",
       "source": "Model Gateway 的 FileAllowlist：model_allowlist 为空数组表示一个模型都不允许",
       "notes": "",
-      "instance": {"model_allowlist": []}
+      "instance": {
+        "model_allowlist": []
+      }
     },
     {
       "name": "all_platform_defaults",
@@ -34,51 +55,320 @@
       "name": "microvm_sandbox_for_public_tenant",
       "source": "docs/plan/cloud-deploy.md 第 4.2 节、D-08：公开注册的租户的命令在 microVM 级的沙箱里跑",
       "notes": "后端名取自 Worker 的沙箱后端登记。",
-      "instance": {"effect_ceiling": "write_reversible", "sandbox": {"backend": "kata"}}
+      "instance": {
+        "effect_ceiling": "write_reversible",
+        "sandbox": {
+          "backend": "kata"
+        }
+      }
+    },
+    {
+      "name": "sandbox_platform_limits",
+      "source": "设计书改动稿 W5、W8、W10、W11（docs/plan/cloud-deploy.md D-12、D-13、D-16）：回退、会话回收、配额与预算、联网授权的上限",
+      "notes": "后端名取自 Worker 的沙箱后端登记；主机名是示意。",
+      "instance": {
+        "effect_ceiling": "write_reversible",
+        "sandbox": {
+          "backend": "kata",
+          "fallback": [
+            "cloudflare"
+          ],
+          "min_isolation": "microvm",
+          "idle_timeout_s": 600,
+          "max_lifetime_s": 7200,
+          "quota": {
+            "max_concurrent": 4,
+            "daily_sandbox_seconds": 36000,
+            "daily_egress_bytes": 1073741824,
+            "daily_mirror_miss_bytes": 2147483648,
+            "daily_cost_usd": 5,
+            "monthly_cost_usd": 50
+          },
+          "network": {
+            "allowed": true,
+            "hosts": [
+              "api.github.com",
+              "*.pypi.org"
+            ],
+            "max_grant_minutes": 60,
+            "approver": "submitter",
+            "max_up_bytes": 10485760,
+            "max_down_bytes": 104857600,
+            "max_conns": 16,
+            "max_rps": 20,
+            "preview": true
+          }
+        }
+      }
     }
   ],
   "invalid": [
     {
       "name": "unknown_effect",
       "description": "effect_ceiling 取附录 A 的 effect",
-      "violates": [{"path": "/effect_ceiling", "keyword": "enum"}],
-      "instance": {"effect_ceiling": "write"}
+      "violates": [
+        {
+          "path": "/effect_ceiling",
+          "keyword": "enum"
+        }
+      ],
+      "instance": {
+        "effect_ceiling": "write"
+      }
     },
     {
       "name": "duplicate_allowlist_entry",
       "description": "白名单不重复",
-      "violates": [{"path": "/model_allowlist", "keyword": "uniqueItems"}],
-      "instance": {"model_allowlist": ["a6api/gpt-4o-mini@2026-10", "a6api/gpt-4o-mini@2026-10"]}
+      "violates": [
+        {
+          "path": "/model_allowlist",
+          "keyword": "uniqueItems"
+        }
+      ],
+      "instance": {
+        "model_allowlist": [
+          "a6api/gpt-4o-mini@2026-10",
+          "a6api/gpt-4o-mini@2026-10"
+        ]
+      }
     },
     {
       "name": "allowlist_not_profile_id",
       "description": "白名单里是 Model Profile 的 id（provider/model@version），不是 Tier",
-      "violates": [{"path": "/model_allowlist/0", "keyword": "pattern"}],
-      "instance": {"model_allowlist": ["strong@medium"]}
+      "violates": [
+        {
+          "path": "/model_allowlist/0",
+          "keyword": "pattern"
+        }
+      ],
+      "instance": {
+        "model_allowlist": [
+          "strong@medium"
+        ]
+      }
     },
     {
       "name": "tenant_id_in_document",
       "description": "租户是条目所在的作用域，由服务端按认证身份确定，不写在正文里",
-      "violates": [{"path": "", "keyword": "unevaluatedProperties"}],
-      "instance": {"tenant_id": "t1", "effect_ceiling": "read"}
+      "violates": [
+        {
+          "path": "",
+          "keyword": "unevaluatedProperties"
+        }
+      ],
+      "instance": {
+        "tenant_id": "t1",
+        "effect_ceiling": "read"
+      }
     },
     {
       "name": "bad_hook_name",
       "description": "Hook 名是小写 snake_case",
-      "violates": [{"path": "/hooks/after_node/0", "keyword": "pattern"}],
-      "instance": {"hooks": {"after_node": ["Audit-Log"]}}
+      "violates": [
+        {
+          "path": "/hooks/after_node/0",
+          "keyword": "pattern"
+        }
+      ],
+      "instance": {
+        "hooks": {
+          "after_node": [
+            "Audit-Log"
+          ]
+        }
+      }
     },
     {
       "name": "sandbox_backend_not_a_name",
       "description": "沙箱后端是登记里的名字（小写字母、数字、- 与 _），不是镜像或地址",
-      "violates": [{"path": "/sandbox/backend", "keyword": "pattern"}],
-      "instance": {"sandbox": {"backend": "https://sandbox.example.workers.dev"}}
+      "violates": [
+        {
+          "path": "/sandbox/backend",
+          "keyword": "pattern"
+        }
+      ],
+      "instance": {
+        "sandbox": {
+          "backend": "https://sandbox.example.workers.dev"
+        }
+      }
     },
     {
       "name": "sandbox_without_backend",
       "description": "写了 sandbox 就要写 backend",
-      "violates": [{"path": "/sandbox", "keyword": "required"}],
-      "instance": {"sandbox": {}}
+      "violates": [
+        {
+          "path": "/sandbox",
+          "keyword": "required"
+        }
+      ],
+      "instance": {
+        "sandbox": {}
+      }
+    },
+    {
+      "name": "fallback_not_a_name",
+      "description": "回退列表里也是登记里的名字",
+      "violates": [
+        {
+          "path": "/sandbox/fallback/0",
+          "keyword": "pattern"
+        }
+      ],
+      "instance": {
+        "sandbox": {
+          "backend": "kata",
+          "fallback": [
+            "Cloud Flare"
+          ]
+        }
+      }
+    },
+    {
+      "name": "unknown_isolation",
+      "description": "隔离强度只有 none、container、microvm",
+      "violates": [
+        {
+          "path": "/sandbox/min_isolation",
+          "keyword": "enum"
+        }
+      ],
+      "instance": {
+        "sandbox": {
+          "backend": "kata",
+          "min_isolation": "vm"
+        }
+      }
+    },
+    {
+      "name": "zero_concurrent_quota",
+      "description": "同时在跑的环境数至少是 1（不让用沙箱就别给 write 的 effect）",
+      "violates": [
+        {
+          "path": "/sandbox/quota/max_concurrent",
+          "keyword": "minimum"
+        }
+      ],
+      "instance": {
+        "sandbox": {
+          "backend": "kata",
+          "quota": {
+            "max_concurrent": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "unknown_quota_field",
+      "description": "配额只有列出的那几项",
+      "violates": [
+        {
+          "path": "/sandbox/quota",
+          "keyword": "additionalProperties"
+        }
+      ],
+      "instance": {
+        "sandbox": {
+          "backend": "kata",
+          "quota": {
+            "gpu_hours": 1
+          }
+        }
+      }
+    },
+    {
+      "name": "network_host_is_a_url",
+      "description": "放行的是主机名，不是地址",
+      "violates": [
+        {
+          "path": "/sandbox/network/hosts/0",
+          "keyword": "pattern"
+        }
+      ],
+      "instance": {
+        "sandbox": {
+          "backend": "kata",
+          "network": {
+            "allowed": true,
+            "hosts": [
+              "https://api.github.com/"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "network_host_is_an_ip",
+      "description": "放行的是主机名，IP 地址（含点分写法）不行：网关自己解析并锁定地址（W8）",
+      "violates": [
+        {
+          "path": "/sandbox/network/hosts/0",
+          "keyword": "pattern"
+        }
+      ],
+      "instance": {
+        "sandbox": {
+          "backend": "kata",
+          "network": {
+            "allowed": true,
+            "hosts": [
+              "169.254.169.254"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "network_negative_rps",
+      "description": "每秒请求数的上限不能是负数",
+      "violates": [
+        {
+          "path": "/sandbox/network/max_rps",
+          "keyword": "minimum"
+        }
+      ],
+      "instance": {
+        "sandbox": {
+          "backend": "kata",
+          "network": {
+            "max_rps": -1
+          }
+        }
+      }
+    },
+    {
+      "name": "unknown_approver",
+      "description": "审批人只有 submitter 与 admin",
+      "violates": [
+        {
+          "path": "/sandbox/network/approver",
+          "keyword": "enum"
+        }
+      ],
+      "instance": {
+        "sandbox": {
+          "backend": "kata",
+          "network": {
+            "approver": "anyone"
+          }
+        }
+      }
+    },
+    {
+      "name": "idle_timeout_too_short",
+      "description": "空闲回收至少一分钟",
+      "violates": [
+        {
+          "path": "/sandbox/idle_timeout_s",
+          "keyword": "minimum"
+        }
+      ],
+      "instance": {
+        "sandbox": {
+          "backend": "kata",
+          "idle_timeout_s": 5
+        }
+      }
     }
   ]
 }

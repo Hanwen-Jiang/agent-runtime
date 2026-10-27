@@ -147,7 +147,7 @@ def test_namespaces_and_sandbox_constraints() -> None:
     assert deny["podSelector"] == {} and set(deny["policyTypes"]) == {"Ingress", "Egress"} and not deny.get("egress")
     assert {d["kind"] for d in all_docs if d["metadata"].get("namespace") == "sandboxes"} >= {"ResourceQuota", "LimitRange"}
     classes = {d["metadata"]["name"]: d["handler"] for d in all_docs if d["kind"] == "RuntimeClass"}
-    assert classes == {"gvisor": "runsc", "kata": "kata-clh"}
+    assert classes == {"gvisor": "runsc", "kata": "kata-clh-runtime-rs"}, "Kata 4 默认的 Rust 运行时上的 Cloud Hypervisor"
 
 
 # --- D-03 数据层 ---
@@ -210,7 +210,10 @@ def test_temporal_namespace_retention_is_set_on_install() -> None:
 
 def test_cloud_entry_is_a_traefik_route_to_the_task_api_only(cloud: list[dict[str, Any]]) -> None:
     assert not by_kind(cloud, "Ingress")
-    [route] = by_kind(cloud, "IngressRoute")
+    routes = by_kind(cloud, "IngressRoute")
+    [route] = [r for r in routes if r["metadata"]["name"].endswith("-task-service")]
+    others = [r["metadata"]["name"] for r in routes if r is not route]
+    assert all(name.endswith("-egress-gateway-preview") for name in others), f"入口只有 Task API 与预览地址（D-16）：{others}"
     [rule] = route["spec"]["routes"]
     [service] = rule["services"]
     assert service["name"].endswith("-task-service") and service["port"] == "http"
@@ -281,13 +284,14 @@ def test_bad_sandbox_values_are_refused(sets: list[str], message: str) -> None:
 
 def test_worker_may_only_manage_pods_in_the_sandbox_namespace(cloud: list[dict[str, Any]]) -> None:
     sandbox_ns = cloud_values()["worker"]["shell"]["sandboxNamespace"]
-    [role] = by_kind(cloud, "Role")
-    assert role["metadata"]["namespace"] == sandbox_ns
+    # 构建的命名空间里另有一个只管构建 Job 的 Role（D-17，test_environment_builds_are_registered_and_confined）。
+    [role] = [r for r in by_kind(cloud, "Role") if r["metadata"]["namespace"] == sandbox_ns]
+    assert {r["metadata"]["namespace"] for r in by_kind(cloud, "Role")} <= {sandbox_ns, "sandbox-builds"}
     for rule in role["rules"]:
         assert rule["apiGroups"] == [""] and set(rule["resources"]) <= {"pods", "pods/proxy"}, "只管 Pod，读不了 Secret"
         assert set(rule["verbs"]) <= {"create", "get", "list", "patch", "delete", "update"}
     assert not by_kind(cloud, "ClusterRole") and not by_kind(cloud, "ClusterRoleBinding")
-    [binding] = by_kind(cloud, "RoleBinding")
+    [binding] = [b for b in by_kind(cloud, "RoleBinding") if b["metadata"]["namespace"] == sandbox_ns]
     assert binding["metadata"]["namespace"] == sandbox_ns and binding["roleRef"]["name"] == role["metadata"]["name"]
     [subject] = binding["subjects"]
     for workload, c in containers(cloud):
@@ -304,9 +308,9 @@ def test_worker_may_only_manage_pods_in_the_sandbox_namespace(cloud: list[dict[s
 
 def test_api_proxy_backends_also_get_pods_proxy() -> None:
     manifests = render(CLOUD_VALUES, set_values=["worker.shell.backends.gvisor.connect=api_proxy"])
-    [role] = by_kind(manifests, "Role")
+    [role] = [r for r in by_kind(manifests, "Role") if r["metadata"]["namespace"] == "sandboxes"]
     assert any("pods/proxy" in r["resources"] for r in role["rules"])
-    [plain] = by_kind(render(CLOUD_VALUES), "Role")
+    [plain] = [r for r in by_kind(render(CLOUD_VALUES), "Role") if r["metadata"]["namespace"] == "sandboxes"]
     assert not any("pods/proxy" in r["resources"] for r in plain["rules"]), "pod_ip 时不给 pods/proxy"
 
 
@@ -532,3 +536,266 @@ def test_worker_rbac_on_a_real_api_server(cloud: list[dict[str, Any]], tmp_path:
         assert not can("get", "pods", "sandboxes", "proxy"), "pod_ip 时不给 pods/proxy"
     finally:
         run([*k, "delete", "-f", manifest, "--ignore-not-found"], check=False)
+
+
+def test_sandbox_images_are_prepulled_on_every_node(cloud: list[dict[str, Any]]) -> None:
+    """D-14：每个节点上预拉 kind=k8s 后端登记里的镜像（运行环境与 agent），满足沙箱命名空间的 restricted，断网。"""
+    [ds] = [m for m in by_kind(cloud, "DaemonSet") if m["metadata"]["name"].endswith("-sandbox-prepull")]
+    assert ds["metadata"]["namespace"] == "sandboxes"
+    spec = ds["spec"]["template"]["spec"]
+    pulled = {c["image"] for c in spec["initContainers"]}
+    backends = cloud_values()["worker"]["shell"]["backends"]
+    wanted = set()
+    for b in backends.values():
+        if b["kind"] == "k8s":
+            wanted |= {b["image"], b["agent_image"], *b.get("images", {}).values()}
+    assert wanted <= pulled, f"没有预拉：{sorted(wanted - pulled)}"
+    assert spec["automountServiceAccountToken"] is False and spec["securityContext"]["runAsNonRoot"] is True
+    assert ds["spec"]["template"]["metadata"]["labels"]["agentruntime.io/network"] == "none", "默认拒绝的网络策略管得到它"
+    for c in [*spec["initContainers"], *spec["containers"]]:
+        sc = c["securityContext"]
+        assert sc["allowPrivilegeEscalation"] is False and sc["readOnlyRootFilesystem"] is True and sc["capabilities"]["drop"] == ["ALL"], c["name"]
+        assert "limits" in c["resources"]
+
+
+# --- D-15 包镜像 ---
+
+
+def mirror_parts(manifests: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """包镜像的 Deployment、Service、它自己的 NetworkPolicy 与沙箱命名空间里放行到它的那条。"""
+    [deployment] = [m for m in by_kind(manifests, "Deployment") if m["metadata"]["name"].endswith("-pkg-mirror")]
+    [service] = [m for m in by_kind(manifests, "Service") if m["metadata"]["name"].endswith("-pkg-mirror")]
+    policies = {m["metadata"]["name"]: m for m in by_kind(manifests, "NetworkPolicy")}
+    own = next(p for name, p in policies.items() if name.endswith("-pkg-mirror"))
+    return deployment, service, own, policies["sandboxes-to-pkg-mirror"]
+
+
+def test_pkg_mirror_runs_from_its_own_volume_with_the_cloud_budgets(cloud: list[dict[str, Any]]) -> None:
+    deployment, service, _, _ = mirror_parts(cloud)
+    values = cloud_values()["pkgMirror"]
+    assert deployment["spec"]["replicas"] == 1 and deployment["spec"]["strategy"]["type"] == "Recreate", "卷是 ReadWriteOnce：单副本、先停后起"
+    spec = pod_spec(deployment)
+    [c] = spec["containers"]
+    env = env_of(c)
+    assert c["args"] == ["serve"] and c["image"].rsplit("/", 1)[1].startswith("pkg-mirror:")
+    assert env["AR_RELATIONAL_DSN"]["valueFrom"]["secretKeyRef"]["name"] == cloud_values()["secrets"]["relationalDsn"]["name"], "未命中的字节记进与 Worker 同一个业务库"
+    assert env["AR_SECRETS_SEED_FILE"], "环境凭据的密钥取自 SecretStore 的平台作用域"
+    assert env["AR_PKG_MIRROR_ADDR"]["value"] == ":8093" and env["AR_PKG_MIRROR_ADMIN_ADDR"]["value"] == ":8094"
+    budgets = {k: int(env[k]["value"]) for k in ("AR_PKG_MIRROR_BLOB_BUDGET", "AR_PKG_MIRROR_META_BUDGET", "AR_PKG_MIRROR_MAX_FILE")}
+    assert budgets == {"AR_PKG_MIRROR_BLOB_BUDGET": 100 << 30, "AR_PKG_MIRROR_META_BUDGET": 5 << 30, "AR_PKG_MIRROR_MAX_FILE": 500 << 20}
+    [claim] = [m for m in by_kind(cloud, "PersistentVolumeClaim") if m["metadata"]["name"].endswith("-pkg-mirror")]
+    assert mem_gi(claim["spec"]["resources"]["requests"]["storage"]) >= (100 + 5) * 1.1, "卷比两份预算的和大，留出余量"
+    assert claim["spec"]["resources"]["requests"]["storage"] == values["storage"]
+    mounts = {m["mountPath"]: m["name"] for m in c["volumeMounts"]}
+    vols = {v["name"]: v for v in spec["volumes"]}
+    assert vols[mounts["/cache"]]["persistentVolumeClaim"]["claimName"] == claim["metadata"]["name"]
+    assert spec["automountServiceAccountToken"] is False and c["securityContext"]["readOnlyRootFilesystem"] is True
+    assert {p["port"] for p in service["spec"]["ports"]} == {8093, 8094}
+
+
+def test_workers_point_sandboxes_at_the_mirror_service(cloud: list[dict[str, Any]]) -> None:
+    _, service, _, _ = mirror_parts(cloud)
+    wanted = f"http://{service['metadata']['name']}.agent-runtime.svc:8093"
+    workers = [m for m in by_kind(cloud, "Deployment") if "-worker-" in m["metadata"]["name"]]
+    assert workers and all(env_of(c)["AR_PKG_MIRROR_URL"]["value"] == wanted for w in workers for c in pod_spec(w)["containers"])
+
+
+def test_sandboxes_reach_only_the_mirror_and_the_mirror_reaches_only_the_internet(cloud: list[dict[str, Any]]) -> None:
+    """W7：沙箱装依赖只经包镜像；镜像是集群里唯一能访问官方源的组件，它自己连不到私有网段与云元数据地址。"""
+    deployment, _, own, outbound = mirror_parts(cloud)
+    sandbox_ns = cloud_values()["worker"]["shell"]["sandboxNamespace"]
+    mirror_labels = deployment["spec"]["template"]["metadata"]["labels"]
+    # 沙箱命名空间一侧：选中适配器建的沙箱 Pod，只出到镜像的 8093 与 DNS。
+    from agentruntime_core.adapters.k8s_sandbox import LABELS
+
+    assert outbound["metadata"]["namespace"] == sandbox_ns and outbound["spec"]["policyTypes"] == ["Egress"]
+    assert outbound["spec"]["podSelector"]["matchLabels"].items() <= LABELS.items(), "选中的是 K8s 适配器建的沙箱 Pod"
+    to_mirror, to_dns = outbound["spec"]["egress"]
+    [peer] = to_mirror["to"]
+    assert peer["namespaceSelector"]["matchLabels"]["kubernetes.io/metadata.name"] == "agent-runtime"
+    assert peer["podSelector"]["matchLabels"].items() <= mirror_labels.items()
+    assert [p["port"] for p in to_mirror["ports"]] == [8093], "管理端口不对沙箱开放"
+    assert to_dns["to"][0]["podSelector"]["matchLabels"] == {"k8s-app": "kube-dns"} and {p["port"] for p in to_dns["ports"]} == {53}
+    # 镜像一侧：8093 收沙箱与 Runtime 的，8094 只收 Runtime 与 observability 的。
+    public, admin = own["spec"]["ingress"]
+    sources = lambda rule: {f["namespaceSelector"]["matchLabels"]["kubernetes.io/metadata.name"] for f in rule["from"]}  # noqa: E731
+    assert [p["port"] for p in public["ports"]] == [8093] and sandbox_ns in sources(public)
+    assert [p["port"] for p in admin["ports"]] == [8094] and sandbox_ns not in sources(admin)
+    internet = [r for r in own["spec"]["egress"] if any("ipBlock" in t for t in r.get("to", []))]
+    [rule] = internet
+    block = rule["to"][0]["ipBlock"]
+    assert block["cidr"] == "0.0.0.0/0" and {"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "100.64.0.0/10"} <= set(block["except"])
+    assert {p["port"] for p in rule["ports"]} == {80, 443}, "只出 http 与 https"
+
+
+def test_pkg_mirror_is_off_by_default_and_needs_the_shared_business_database() -> None:
+    manifests = render()
+    assert not [m for m in manifests if "pkg-mirror" in m["metadata"]["name"]]
+    assert all("AR_PKG_MIRROR_URL" not in env_of(c) for _, c in containers(manifests))
+    assert "secrets.relationalDsn" in render_fails("pkgMirror.enabled=true")
+
+
+def test_secret_example_has_the_credential_key_and_the_mirror_admin_token() -> None:
+    text = (CLUSTER / "secrets" / "secrets.example.yaml").read_text("utf-8")
+    for name in ("sandbox/env-credential-key", "pkg-mirror/admin-token"):
+        assert f'"{name}": "REPLACE_ME"' in text, f"SecretStore 的种子里要有 {name}（占位符）"
+
+
+def test_worker_runs_shell_in_the_universal_runtime(cloud: list[dict[str, Any]]) -> None:
+    """D-14：集群里 shell_run 默认用多语言的 universal；每个 K8s 后端都把它映射到镜像。"""
+    workers = [m for m in by_kind(cloud, "Deployment") if "-worker-" in m["metadata"]["name"]]
+    assert workers and all(env_of(c)["AR_SANDBOX_RUNTIME"]["value"] == "universal" for w in workers for c in pod_spec(w)["containers"])
+    [cm] = [m for m in by_kind(cloud, "ConfigMap") if m["metadata"]["name"].endswith("-sandbox-backends")]
+    registry = json.loads(cm["data"]["backends.json"])
+    for name, b in registry["backends"].items():
+        if b["kind"] == "k8s":
+            assert "universal" in b.get("images", {}), f"K8s 后端 {name} 要给出 universal 的镜像"
+
+
+
+# --- D-16 出网网关 ---
+
+
+def gateway_parts(manifests: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """出网网关的 Deployment、Service、它自己的 NetworkPolicy 与沙箱命名空间里放行到它的那条。"""
+    [deployment] = [m for m in by_kind(manifests, "Deployment") if m["metadata"]["name"].endswith("-egress-gateway")]
+    [service] = [m for m in by_kind(manifests, "Service") if m["metadata"]["name"].endswith("-egress-gateway")]
+    policies = {m["metadata"]["name"]: m for m in by_kind(manifests, "NetworkPolicy")}
+    own = next(p for name, p in policies.items() if name.endswith("-egress-gateway"))
+    return deployment, service, own, policies["sandboxes-egress-gateway"]
+
+
+def test_egress_gateway_is_a_single_replica_on_the_shared_business_database(cloud: list[dict[str, Any]]) -> None:
+    deployment, service, _, _ = gateway_parts(cloud)
+    assert deployment["spec"]["replicas"] == 1, "授权的用量计数在进程里：单副本，免得各算各的把上限放大"
+    spec = pod_spec(deployment)
+    [c] = spec["containers"]
+    env = env_of(c)
+    assert c["args"] == ["serve"] and c["image"].rsplit("/", 1)[1].startswith("egress-gateway:")
+    assert env["AR_RELATIONAL_DSN"]["valueFrom"]["secretKeyRef"]["name"] == cloud_values()["secrets"]["relationalDsn"]["name"], "授权与审计在与 Worker 同一个业务库"
+    assert env["AR_EGRESS_ADDR"]["value"] == ":8095" and env["AR_EGRESS_ADMIN_ADDR"]["value"] == ":8096" and env["AR_EGRESS_PREVIEW_ADDR"]["value"] == ":8097"
+    assert {"10.42.0.0/16", "10.43.0.0/16"} <= set(env["AR_EGRESS_DENY_CIDRS"]["value"].split(",")), "集群的 Pod 与 Service 网段再拒一遍"
+    assert env["AR_EGRESS_PREVIEW_DOMAIN"]["value"] == cloud_values()["egressGateway"]["previewDomain"]
+    assert spec["automountServiceAccountToken"] is False and c["securityContext"]["readOnlyRootFilesystem"] is True
+    assert {p["port"] for p in service["spec"]["ports"]} == {8095, 8096, 8097}
+
+
+def test_sandboxes_reach_the_internet_only_through_the_gateway(cloud: list[dict[str, Any]]) -> None:
+    """W8：沙箱只出到网关的 8095（另外是包镜像）；网关的管理端口只给 Runtime 与 observability，预览端口只给入口控制器；
+    网关自己连不到私有网段与云元数据，能连进沙箱 Pod（预览）。"""
+    from agentruntime_core.adapters.k8s_sandbox import LABELS
+
+    deployment, _, own, sandbox_side = gateway_parts(cloud)
+    sandbox_ns = cloud_values()["worker"]["shell"]["sandboxNamespace"]
+    labels = deployment["spec"]["template"]["metadata"]["labels"]
+    assert sandbox_side["metadata"]["namespace"] == sandbox_ns and set(sandbox_side["spec"]["policyTypes"]) == {"Ingress", "Egress"}
+    assert sandbox_side["spec"]["podSelector"]["matchLabels"].items() <= LABELS.items()
+    [out] = sandbox_side["spec"]["egress"]
+    assert out["to"][0]["podSelector"]["matchLabels"].items() <= labels.items() and [p["port"] for p in out["ports"]] == [8095], "管理与预览端口不对沙箱开放"
+    [inbound] = sandbox_side["spec"]["ingress"]
+    assert inbound["from"][0]["podSelector"]["matchLabels"].items() <= labels.items(), "进沙箱的只有网关（预览）"
+    proxy, admin, preview = own["spec"]["ingress"]
+    sources = lambda rule: {f["namespaceSelector"]["matchLabels"]["kubernetes.io/metadata.name"] for f in rule["from"]}  # noqa: E731
+    assert [p["port"] for p in proxy["ports"]] == [8095] and sandbox_ns in sources(proxy)
+    assert [p["port"] for p in admin["ports"]] == [8096] and sandbox_ns not in sources(admin)
+    assert [p["port"] for p in preview["ports"]] == [8097] and sources(preview) == {"kube-system"}
+    [rule] = [r for r in own["spec"]["egress"] if any("ipBlock" in t for t in r.get("to", []))]
+    block = rule["to"][0]["ipBlock"]
+    assert block["cidr"] == "0.0.0.0/0" and {"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "100.64.0.0/10", "127.0.0.0/8"} <= set(block["except"])
+
+
+def test_preview_route_matches_only_environment_hosts(cloud: list[dict[str, Any]]) -> None:
+    [route] = [m for m in by_kind(cloud, "IngressRoute") if m["metadata"]["name"].endswith("-egress-gateway-preview")]
+    [r] = route["spec"]["routes"]
+    domain = cloud_values()["egressGateway"]["previewDomain"]
+    assert r["match"] == "HostRegexp(`^sbe-[0-9a-f]{16}\\." + domain.replace(".", "\\.") + "$`)"
+    assert r["services"][0]["port"] == "preview" and route["spec"]["tls"]["secretName"] == cloud_values()["egressGateway"]["previewTLSSecretName"]
+
+
+def test_workers_and_task_service_point_at_the_gateway(cloud: list[dict[str, Any]]) -> None:
+    _, service, _, _ = gateway_parts(cloud)
+    workers = [m for m in by_kind(cloud, "Deployment") if "-worker-" in m["metadata"]["name"]]
+    proxy = f"http://{service['metadata']['name']}.agent-runtime.svc:8095"
+    assert workers and all(env_of(c)["AR_EGRESS_GATEWAY_URL"]["value"] == proxy for w in workers for c in pod_spec(w)["containers"])
+    assert all(env_of(c)["AR_PREVIEW_DOMAIN"]["value"] == cloud_values()["egressGateway"]["previewDomain"] for w in workers for c in pod_spec(w)["containers"])
+    [ts] = [m for m in by_kind(cloud, "Deployment") if m["metadata"]["name"].endswith("-task-service")]
+    assert env_of(pod_spec(ts)["containers"][0])["AR_EGRESS_GATEWAY_ADMIN_URL"]["value"] == f"http://{service['metadata']['name']}.agent-runtime.svc:8096"
+
+
+def test_egress_gateway_is_off_by_default_and_needs_the_shared_business_database() -> None:
+    manifests = render()
+    assert not [m for m in manifests if "egress-gateway" in m["metadata"]["name"]]
+    assert all("AR_EGRESS_GATEWAY_URL" not in env_of(c) and "AR_EGRESS_GATEWAY_ADMIN_URL" not in env_of(c) for _, c in containers(manifests))
+    assert "secrets.relationalDsn" in render_fails("egressGateway.enabled=true")
+    text = (CLUSTER / "secrets" / "secrets.example.yaml").read_text("utf-8")
+    assert '"egress-gateway/admin-token": "REPLACE_ME"' in text
+
+
+# --- D-17 按项目定制的运行环境 ---
+
+
+def test_environment_builds_are_registered_and_confined(cloud: list[dict[str, Any]]) -> None:
+    """D-17：后端登记里有 environments 一节；Worker 只在构建的命名空间里管 Job（读不了 Secret）；构建只连网关与包镜像；
+    构建的命名空间只许 Kata、不许宿主网络与宿主路径（deploy/cluster/builds.yaml）。"""
+    [cm] = [m for m in by_kind(cloud, "ConfigMap") if m["metadata"]["name"].endswith("-sandbox-backends")]
+    env = json.loads(cm["data"]["backends.json"])["environments"]
+    values = cloud_values()["worker"]["shell"]["environments"]
+    assert env["builder"]["runtime_class"] == "kata" and env["builder"]["isolation"] == "microvm" and env["builder"]["namespace"] == "sandbox-builds"
+    assert env["registry"]["pull_host"] == values["registry"]["pullHost"] and env["registry"]["url"].endswith("-env-registry.agent-runtime.svc:5000")
+    assert env["base_image"] == values["baseImage"] and env["limits"]["max_images"] >= 1
+    [role] = [m for m in by_kind(cloud, "Role") if m["metadata"]["namespace"] == "sandbox-builds"]
+    rules = {(tuple(r["apiGroups"]), tuple(r["resources"])): set(r["verbs"]) for r in role["rules"]}
+    assert rules[(("",), ("configmaps", "secrets"))] == {"create", "delete"}, "读不了 Secret"
+    assert rules[(("batch",), ("jobs",))] == {"create", "get", "delete"}
+    [policy] = [m for m in by_kind(cloud, "NetworkPolicy") if m["metadata"]["name"] == "builds-egress"]
+    ports = sorted(p["port"] for rule in policy["spec"]["egress"] for p in rule.get("ports", []))
+    assert ports == [53, 53, 8093, 8095], "构建只连网关、包镜像与 DNS"
+    builds = (CLUSTER / "builds.yaml").read_text("utf-8")
+    assert "runtimeClassName == 'kata'" in builds and "hostPath" in builds and "default-deny-all" in builds
+
+
+def test_env_registry_takes_pushes_only_from_the_runtime(cloud: list[dict[str, Any]]) -> None:
+    [deployment] = [m for m in by_kind(cloud, "Deployment") if m["metadata"]["name"].endswith("-env-registry")]
+    [c] = pod_spec(deployment)["containers"]
+    [cm] = [m for m in by_kind(cloud, "ConfigMap") if m["metadata"]["name"].endswith("-env-registry")]
+    config = yaml.safe_load(cm["data"]["config.yml"])
+    assert config["auth"]["htpasswd"]["path"] == "/auth/htpasswd" and config["storage"]["delete"]["enabled"] is True
+    assert {m["mountPath"] for m in c["volumeMounts"]} >= {"/auth", "/etc/docker/registry", "/var/lib/registry"}
+    [service] = [m for m in by_kind(cloud, "Service") if m["metadata"]["name"].endswith("-env-registry")]
+    assert service["spec"]["type"] == "NodePort" and service["spec"]["ports"][0]["nodePort"] == 30500
+    [policy] = [m for m in by_kind(cloud, "NetworkPolicy") if m["metadata"]["name"].endswith("-env-registry")]
+    assert policy["spec"]["egress"] == [] and policy["spec"]["ingress"][0]["from"][0]["namespaceSelector"]["matchLabels"]["kubernetes.io/metadata.name"] == "agent-runtime"
+    text = (CLUSTER / "secrets" / "secrets.example.yaml").read_text("utf-8")
+    assert '"sandbox/env-registry": "REPLACE_ME"' in text and "agent-runtime-env-registry" in text
+    assert (CLUSTER / "k3s" / "registries.yaml.tmpl").is_file()
+
+
+def test_environments_need_the_egress_gateway() -> None:
+    message = render_fails("worker.shell.mode=sandbox", "worker.workspacesClaim=w", "worker.shell.backends.local.kind=local",
+                           "worker.shell.defaultBackend=local", "worker.shell.environments.enabled=true", "worker.shell.environments.registry.pullHost=h:1")
+    assert "egressGateway" in message
+
+
+def test_workers_can_collect_build_outputs_and_builds_read_only_their_workspace(cloud: list[dict[str, Any]]) -> None:
+    """构建产物由 Worker 去取（构建 Pod 里的 sandbox-agent，7070）：构建的命名空间只放行 Worker 进来；构建读仓库里的文件
+    经工作区目录的第三个静态 PV（只读）；Kata 的 handler 要 privileged_without_host_devices（install.sh 核对）。"""
+    builds = docs(CLUSTER / "builds.yaml")
+    [ingress] = [d for d in builds if d["kind"] == "NetworkPolicy" and d["metadata"]["name"] == "worker-to-builder"]
+    from agentruntime_worker.sandbox.env_builder import AGENT_PORT, MANAGED_BY
+
+    assert ingress["spec"]["podSelector"]["matchLabels"] == {"app.kubernetes.io/managed-by": MANAGED_BY}
+    [rule] = ingress["spec"]["ingress"]
+    assert [p["port"] for p in rule["ports"]] == [AGENT_PORT]
+    source = rule["from"][0]
+    assert source["namespaceSelector"]["matchLabels"]["kubernetes.io/metadata.name"] == "agent-runtime"
+    workers = [w for w in by_kind(cloud, "Deployment") if w["metadata"]["labels"].get(WORKER) == "worker"]
+    assert workers and all(source["podSelector"]["matchLabels"].items() <= w["spec"]["template"]["metadata"]["labels"].items() for w in workers)
+    [cm] = [m for m in by_kind(cloud, "ConfigMap") if m["metadata"]["name"].endswith("-sandbox-backends")]
+    claim = json.loads(cm["data"]["backends.json"])["environments"]["builder"]["workspace_claim"]
+    manifests = [*cluster_docs(), *builds]
+    pvcs = {(d["metadata"]["namespace"], d["metadata"]["name"]): d for d in manifests if d["kind"] == "PersistentVolumeClaim"}
+    assert pvcs[("sandbox-builds", claim)]["spec"]["accessModes"] == ["ReadOnlyMany"], "构建只读仓库里的文件"
+    pvs = {d["metadata"]["name"]: d for d in manifests if d["kind"] == "PersistentVolume"}
+    paths = {pv["spec"]["hostPath"]["path"] for pv in pvs.values() if pv["metadata"]["labels"].get("agentruntime.io/volume") == "workspaces"}
+    assert len(paths) == 1 and pvs[pvcs[("sandbox-builds", claim)]["spec"]["volumeName"]]["spec"]["claimRef"]["namespace"] == "sandbox-builds"
+    assert "privileged_without_host_devices" in (CLUSTER / "install.sh").read_text("utf-8")

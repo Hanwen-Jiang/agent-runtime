@@ -14,14 +14,14 @@ import re
 import secrets
 import shutil
 import sys
-from collections.abc import Sequence
-from dataclasses import dataclass
-from datetime import timedelta
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from agentruntime_core.dev._common import scope_id
 from agentruntime_core.errors import InvalidError, NotFoundError
-from agentruntime_core.providers.sandbox import ExecResult, SandboxEnv, SandboxSpec
+from agentruntime_core.providers.sandbox import ExecResult, ListedEnvironment, SandboxEnv, SandboxSpec, check_exec_env
 from agentruntime_core.tenancy import Scope, TenantContext, platform_scope, tenant_scope
 from agentruntime_core.testing import FaultInjector
 
@@ -38,6 +38,7 @@ class _Env:
     destroyed: bool = False
     # 绑定 workspace 的环境销毁时只删记录，不删目录。
     owns_workdir: bool = True
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 def _relative(path: str) -> Path:
@@ -65,6 +66,10 @@ class LocalSubprocessSandboxProvider:
     async def aclose(self) -> None:
         self._envs.clear()
 
+    async def list_environments(self) -> list[ListedEnvironment]:
+        """本进程建的、还没销毁的环境（开发实现的环境只在进程内）。"""
+        return [ListedEnvironment(env_id, env.owner, env.created_at) for env_id, env in sorted(self._envs.items()) if not env.destroyed]
+
 
 class LocalSubprocessSandbox:
     def __init__(self, provider: LocalSubprocessSandboxProvider, scope: Scope) -> None:
@@ -82,6 +87,8 @@ class LocalSubprocessSandbox:
         self._provider._faults.check("create")
         if spec.runtime != "python":
             raise InvalidError("unsupported_runtime", "开发实现只支持 python")
+        if spec.image:
+            raise InvalidError("unsupported_image", "开发实现不用镜像")
         env_id = "env-" + secrets.token_hex(8)
         if spec.workspace_id:
             workdir = workspace_dir(self._provider._workspaces, self._scope, spec.workspace_id)
@@ -93,19 +100,22 @@ class LocalSubprocessSandbox:
         self._provider._envs[env_id] = _Env(owner=self._owner, spec=spec, workdir=workdir)
         return SandboxEnv(env_id=env_id, spec=spec)
 
-    async def exec(self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"") -> ExecResult:
+    async def exec(
+        self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"", env: Mapping[str, str] | None = None
+    ) -> ExecResult:
         self._provider._faults.check("exec")
-        env = self._env(env_id)
+        extra = check_exec_env(env)
+        box = self._env(env_id)
         if not argv:
             raise InvalidError("invalid_argument", "argv 不能为空")
-        command = [sys.executable if argv[0] == env.spec.runtime else argv[0], *argv[1:]]
+        command = [sys.executable if argv[0] == box.spec.runtime else argv[0], *argv[1:]]
         process = await asyncio.create_subprocess_exec(
             *command,
-            cwd=env.workdir,
+            cwd=box.workdir,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            env={**{k: os.environ[k] for k in _ENV if k in os.environ}, "PYTHONIOENCODING": "utf-8"},
+            env={**{k: os.environ[k] for k in _ENV if k in os.environ}, "PYTHONIOENCODING": "utf-8", **extra},
         )
         try:
             stdout, stderr = await asyncio.wait_for(process.communicate(stdin), timeout=timeout.total_seconds())
@@ -129,6 +139,13 @@ class LocalSubprocessSandbox:
         if not target.is_file():
             raise NotFoundError("not_found", "文件不存在")
         return target.read_bytes()
+
+    async def preview_address(self, env_id: str, port: int) -> str:
+        """预览地址转发到本机的这个端口（开发实现的命令就在本机跑；D-16）。"""
+        self._env(env_id)
+        if not 1 <= int(port) <= 65535:
+            raise InvalidError("invalid_port", "端口要在 1 到 65535 之间")
+        return f"127.0.0.1:{int(port)}"
 
     async def destroy(self, env_id: str) -> None:
         self._provider._faults.check("destroy")

@@ -13,9 +13,11 @@
 //	AGENT_MAX_TIMEOUT_S              一条命令最长多少秒，默认 3600
 //	AGENT_OUTPUT_LIMIT               stdout、stderr 各自最多保留多少字节，默认 8 MiB
 //	AGENT_FILE_LIMIT                 一个文件最多多少字节，默认 64 MiB
+//	AGENT_ENV_PASSTHROUGH            另外交给命令的变量名（空格或逗号分隔）：镜像用它声明工具链要的变量（D-14）
 //
 // 命令只拿到这些环境变量：PATH、HOME（默认 /tmp）、LANG（默认 C.UTF-8）、LC_ALL、TZ（Windows 上另有 SYSTEMROOT、WINDIR、
-// PATHEXT），加上 PYTHONIOENCODING=utf-8 与 PYTHONDONTWRITEBYTECODE=1；AGENT_* 一个都不给。
+// PATHEXT），加上 PYTHONIOENCODING=utf-8 与 PYTHONDONTWRITEBYTECODE=1，加上 AGENT_ENV_PASSTHROUGH 列出的；AGENT_* 一个都不给。
+// 每次执行还可以带这次的环境变量（请求的 env）。
 package main
 
 import (
@@ -92,7 +94,7 @@ func commandEnv() []string {
 			env = append(env, k+"="+v)
 		}
 	}
-	return env
+	return append(env, agent.PassThrough(os.Environ(), os.Getenv("AGENT_ENV_PASSTHROUGH"))...)
 }
 
 func install(dest string) error {

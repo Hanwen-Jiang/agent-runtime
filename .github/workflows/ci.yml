@@ -153,6 +153,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 沙箱的测试要编译 sandbox-agent（Cloudflare 假桥里跑它，D-11）。
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+
       - uses: astral-sh/setup-uv@v6
         with:
           version: "0.12.x"
@@ -164,6 +169,13 @@ jobs:
           curl -sSfL "https://github.com/temporalio/cli/releases/download/v${TEMPORAL_CLI_VERSION}/temporal_cli_${TEMPORAL_CLI_VERSION}_linux_amd64.tar.gz" \
             | tar -xz -C "$HOME/.local/bin" temporal
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # 沙箱环境表的测试在 SQLite 与 Postgres（行级安全）上各跑一遍（D-11）。
+      - name: 找到预装的 Postgres 二进制（initdb、pg_ctl、psql）
+        run: |
+          bin="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)"
+          test -x "$bin/initdb"
+          echo "AR_POSTGRES_BIN=$bin" >> "$GITHUB_ENV"
 
       - name: py-worker
         run: python3 scripts/check.py --only py-worker --junit-dir "$RUNNER_TEMP/junit"

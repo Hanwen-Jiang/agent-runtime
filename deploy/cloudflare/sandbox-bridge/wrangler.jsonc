@@ -17,7 +17,14 @@
     }
   ],
   "durable_objects": {
-    "bindings": [{ "name": "SANDBOX", "class_name": "Sandbox" }]
+    "bindings": [
+      { "name": "SANDBOX", "class_name": "Sandbox" },
+      // 本部署全部环境的目录（GET /v1/sandboxes，给沙箱环境表对账）。
+      { "name": "DIRECTORY", "class_name": "Directory" }
+    ]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Sandbox"] }]
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Sandbox"] },
+    { "tag": "v2", "new_sqlite_classes": ["Directory"] }
+  ]
 }

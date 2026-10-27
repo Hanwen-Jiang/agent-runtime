@@ -15,6 +15,8 @@
 - web_fetch（配了 fetch_hosts 才登记）：只认 http、https；只去名单里的主机（"*" 任何主机，"*.example.com" 子域名）；
   解析出的地址是内网、回环、链路本地等一律拒绝（allow_private_fetch 只给测试用）；不走代理、不跟随重定向（返回状态码与
   Location）；正文有大小上限。
+- request_network（shell_sandbox = sandbox、有沙箱环境表，且配了出网网关或登记了托管后端时登记；tools/network.py，D-16）：
+  write_irreversible，运行中申请联网授权，经人工审批。
 - context_read（给了 Context Builder 的 ObjectStore 就登记，不要别的配置）：按 obj:// 路径取回本租户 context/ 与
   node-results/ 下的对象（Context Builder 外置或遮蔽的内容、Node 的外置结果），长内容按 offset 分段（R-03 评审 D11）。
   别的租户的路径一律 not_found，别的前缀 denied。
@@ -34,7 +36,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import timedelta
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -48,6 +50,8 @@ from agentruntime_core.providers.telemetry import TelemetryProvider
 from agentruntime_core.providers.tool_driver import ToolHandler, ToolInvocation, ToolSpec
 from agentruntime_core.tenancy import TenantContext
 
+from agentruntime_worker.sandbox.broker import SandboxBroker
+from agentruntime_worker.sandbox.environments import Resolution, workspace_reader
 from agentruntime_worker.tools.sandboxes import Sandboxes, parse_cpu_millis, parse_memory_mb
 
 VERSION = "v1"
@@ -76,6 +80,13 @@ class PlatformToolsConfig:
     shell_cpus: str = "2"
     shell_memory: str = "2g"
     shell_pids: int = 512
+    # shell_sandbox = sandbox 时按（工作区，会话）复用环境（D-13）；要有沙箱环境表（业务库）才生效。
+    session_sandboxes: bool = False
+    # shell_sandbox = sandbox 时用哪个运行环境（D-14）：后端登记把它映射到镜像，例如 universal（多语言）或 python。
+    shell_runtime: str = "python"
+    # 登记 request_network（D-16）：配了出网网关时打开；登记了托管后端（按域名放行）时也登记。预览地址的域名。
+    network_requests: bool = False
+    preview_domain: str = ""
     # shell_run 的 stdout、stderr 与 repo_read 的内容各自最多这么多字符。
     output_limit: int = 64 * 1024
     fetch_limit: int = 1024 * 1024
@@ -107,7 +118,7 @@ def register_platform_tools(
     config: PlatformToolsConfig,
     *,
     objects: ObjectStoreProvider | None = None,
-    sandboxes: Sandboxes | None = None,
+    sandboxes: Sandboxes | SandboxBroker | None = None,
     telemetry: TelemetryProvider | None = None,
 ) -> list[str]:
     """按配置登记平台内工具，返回登记了的名字。给了 objects（Context Builder 外置内容的 ObjectStore）就登记 context_read；
@@ -115,8 +126,17 @@ def register_platform_tools(
     if config.shell_sandbox == "sandbox" and config.workspace_root is not None and sandboxes is None:
         raise ValueError("shell_sandbox = sandbox 时要给沙箱后端（AR_SANDBOX_BACKENDS_FILE）")
     tools: list[tuple[ToolSpec, ToolHandler]] = []
+    broker = SandboxBroker(sandboxes) if isinstance(sandboxes, Sandboxes) else sandboxes
     if config.workspace_root is not None:
-        tools += _Workspaces(Path(config.workspace_root), config, sandboxes, telemetry).tools()
+        tools += _Workspaces(Path(config.workspace_root), config, broker, telemetry).tools()
+    if config.shell_sandbox == "sandbox" and broker is not None and broker.grants is not None:
+        hosted = any(broker.sandboxes.spec(n).get("kind") not in ("k8s", "local") for n in broker.sandboxes.names)
+        if config.network_requests or hosted:
+            from agentruntime_worker.tools.network import NetworkTool
+
+            tools.append(NetworkTool(
+                broker, preview_domain=config.preview_domain, runtime=config.shell_runtime, session_sandboxes=config.session_sandboxes,
+            ).tool())
     if config.fetch_hosts:
         tools.append(_Fetcher(config).tool())
     if objects is not None:
@@ -131,11 +151,11 @@ def register_platform_tools(
 
 class _Workspaces:
     def __init__(
-        self, root: Path, config: PlatformToolsConfig, sandboxes: Sandboxes | None = None, telemetry: TelemetryProvider | None = None
+        self, root: Path, config: PlatformToolsConfig, broker: SandboxBroker | None = None, telemetry: TelemetryProvider | None = None
     ) -> None:
         self.root = root
         self.config = config
-        self.sandboxes = sandboxes
+        self.broker = broker
         self.telemetry = telemetry
 
     def tools(self) -> list[tuple[ToolSpec, ToolHandler]]:
@@ -350,36 +370,58 @@ class _Workspaces:
         return {"exit_code": proc.returncode, "timed_out": False, "sandbox": "docker", **self._outputs(stdout, stderr)}
 
     async def _sandbox_shell(self, invocation: ToolInvocation, root: Path, argv: list[str], timeout: int) -> Any:
-        """经 Sandbox 接口：按租户策略选后端，建一个绑定本 workspace、断网的环境，跑完销毁。
+        """经 Sandbox 接口（SandboxBroker）：按租户策略选后端（暂时不可用时按回退列表换），环境绑定本 workspace、断网。
+        会话级沙箱（D-13）打开时按（工作区，会话）复用环境，用完不删；否则每条命令一个环境，跑完销毁。复用的环境在后端里
+        没了（被回收）时，记为丢失、换一个新环境再跑一次，工作区的文件不受影响。
 
-        计量（docs/plan/cloud-deploy.md D-07、D-10）：每次运行一个 runtime.sandbox span，记后端、隔离强度、环境的存活时间、
-        执行时间与 CPU 时间（后端量得出时）；Grafana 的面板按它算各后端的沙箱时长。不记命令与输出。"""
-        assert self.sandboxes is not None
-        backend = await self.sandboxes.for_tenant(invocation.tenant_id)
+        计量（docs/plan/cloud-deploy.md D-07、D-10、D-11）：每次运行一个 runtime.sandbox span，记后端、隔离强度、环境号、
+        是否复用与回退、执行时间与 CPU 时间（后端量得出时），一次性的环境另记存活时间；环境的存活时间与花费在环境表里。
+        不记命令与输出。"""
+        assert self.broker is not None
         workspace = root.name
-        tenant = TenantContext(tenant_id=invocation.tenant_id, workspace_id=workspace)
-        box = backend.provider.bind(tenant)
+        tenant = TenantContext(tenant_id=invocation.tenant_id, workspace_id=workspace, session_id=invocation.session_id, user_id=invocation.user_id)
         c = self.config
         spec = SandboxSpec(
-            runtime="python",
+            runtime=c.shell_runtime,
             cpu_millis=parse_cpu_millis(c.shell_cpus),
             memory_mb=parse_memory_mb(c.shell_memory),
             network="none",
             idle_timeout=timedelta(seconds=timeout + 120),
             workspace_id=workspace,
+            session_id=invocation.session_id,
         )
-        attributes = {
-            "gen_ai.tool.name": "shell_run", "sandbox.backend": backend.name, "sandbox.kind": backend.kind,
-            "sandbox.isolation": backend.isolation, "sandbox.cpu_millis": spec.cpu_millis, "sandbox.memory_mb": spec.memory_mb,
-        }
+        reuse = c.session_sandboxes and bool(invocation.session_id) and self.broker.ledger is not None
+        busy = timedelta(seconds=timeout + 60)
+        environment = await self._environment(tenant, root)
+        if environment is not None and environment.image:
+            spec = replace(spec, image=environment.image)
+        attributes: dict[str, Any] = {"gen_ai.tool.name": "shell_run", "sandbox.cpu_millis": spec.cpu_millis, "sandbox.memory_mb": spec.memory_mb}
+        if environment is not None:
+            attributes["sandbox.environment"] = environment.state
         span_cm = self.telemetry.bind(tenant).start_span("runtime.sandbox", attributes=attributes) if self.telemetry else contextlib.nullcontext()
         async with span_cm as span:
             started = time.monotonic()
-            env = await box.create(spec)
+            try:
+                lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy)
+            except InvalidError as err:
+                if err.code != "unsupported_image" or environment is None:
+                    raise
+                # 项目环境的镜像落不到这个后端（例如回退到了托管后端）：退回 universal，并说明。
+                spec = replace(spec, image="")
+                environment = replace(environment, state="fallback", image="", note=f"{err.message}，这次用 universal")
+                lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy)
             ran = time.monotonic()
             result = None
             try:
-                result = await box.exec(env.env_id, argv, timeout=timedelta(seconds=timeout))
+                try:
+                    result = await lease.box.exec(lease.env_id, argv, timeout=timedelta(seconds=timeout), env=lease.env or None)
+                except NotFoundError:
+                    if not lease.reused:
+                        raise
+                    await self.broker.discard(lease, "后端里已经没有这个环境（被回收或节点重启）")
+                    lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy)
+                    ran = time.monotonic()
+                    result = await lease.box.exec(lease.env_id, argv, timeout=timedelta(seconds=timeout), env=lease.env or None)
             except InvalidError as err:
                 if err.code == "command_not_found":
                     raise InvalidError("command_not_found", f"启动不了 {argv[0]}") from None
@@ -387,15 +429,39 @@ class _Workspaces:
             finally:
                 exec_ms = int((time.monotonic() - ran) * 1000)
                 with contextlib.suppress(ProviderError):
-                    await box.destroy(env.env_id)
+                    await self.broker.release(lease, result=result, keep=reuse)
                 if span is not None:
-                    meter: dict[str, Any] = {"sandbox.lifetime_ms": int((time.monotonic() - started) * 1000), "sandbox.exec_ms": exec_ms}
+                    meter: dict[str, Any] = {**lease.attributes, "sandbox.exec_ms": exec_ms}
+                    if not reuse:
+                        meter["sandbox.lifetime_ms"] = int((time.monotonic() - started) * 1000)
+                    if lease.record is not None and lease.record.state == "destroyed":
+                        meter["sandbox.cost_usd"] = lease.record.cost_usd
                     if result is not None:
                         meter["sandbox.timed_out"] = result.timed_out
                         if result.cpu_time is not None:
                             meter["sandbox.cpu_ms"] = int(result.cpu_time.total_seconds() * 1000)
                     span.set_attributes(meter)
-        return {"exit_code": result.exit_code, "timed_out": result.timed_out, "sandbox": backend.name, **self._outputs(result.stdout, result.stderr)}
+        out = {"exit_code": result.exit_code, "timed_out": result.timed_out, "sandbox": lease.backend.name, **self._outputs(result.stdout, result.stderr)}
+        if lease.record is not None and lease.record.state == "destroyed" and lease.record.cost_usd > 0:
+            # 一次性环境的花费（按后端价目）：Node Executor 计入这个 Node 的 meta.cost_usd，进 Round 与 Task 的花费。
+            out["sandbox_cost_usd"] = lease.record.cost_usd
+        if environment is not None:
+            # 仓库自带环境定义时说明用的是哪个（D-17）：没用上时写明原因，不悄悄退回。
+            out["environment"] = environment.as_output()
+        return out
+
+    async def _environment(self, tenant: TenantContext, root: Path) -> Resolution | None:
+        """按项目定制的运行环境（D-17）：只对首选后端能用环境镜像的租户查（K8s，或登记里写了 custom_images: true）；
+        仓库没有环境定义时 None。"""
+        manager = self.broker.environments if self.broker is not None else None
+        if manager is None:
+            return None
+        policy = await self.broker.sandboxes.policy_for(tenant.tenant_id)  # type: ignore[union-attr]
+        backend = self.broker.sandboxes.spec(policy.backend)  # type: ignore[union-attr]
+        if backend.get("kind") != "k8s" and backend.get("custom_images") is not True:
+            return None
+        resolution = await manager.resolve(tenant, workspace_reader(root))
+        return None if resolution.state == "none" else resolution
 
     def _outputs(self, stdout: bytes, stderr: bytes) -> dict[str, Any]:
         limit = self.config.output_limit

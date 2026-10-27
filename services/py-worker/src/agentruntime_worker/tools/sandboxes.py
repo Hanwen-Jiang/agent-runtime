@@ -41,6 +41,8 @@ from typing import Any
 from agentruntime_core.errors import InvalidError, NotFoundError
 from agentruntime_core.providers.sandbox import SandboxProvider
 
+from agentruntime_worker.sandbox.policy import SandboxPolicy
+
 KINDS = ("k8s", "cloudflare", "local", "e2b")
 ISOLATIONS = ("none", "container", "microvm")
 TOKEN_KEY_SECRET = "sandbox/token-key"
@@ -72,6 +74,7 @@ class Sandboxes:
         secrets_file: Path | None = None,
         policy: PolicyLookup | None = None,
         cache_ttl: float = 60,
+        environments: Mapping[str, Any] | None = None,
     ) -> None:
         if default not in specs:
             raise ValueError(f"沙箱后端的 default {default!r} 没有登记")
@@ -93,8 +96,10 @@ class Sandboxes:
         self._policy = policy
         self._cache_ttl = cache_ttl
         self._backends: dict[str, Backend] = {}
-        self._choices: dict[str, tuple[float, str]] = {}
+        self._policies: dict[str, tuple[float, SandboxPolicy]] = {}
         self._lock = asyncio.Lock()
+        # 登记文件里的 environments 一节（按项目定制的运行环境，D-17；格式见 tools/__init__.py 的 environment_manager）。
+        self.environments: dict[str, Any] = dict(environments or {})
 
     @classmethod
     def from_file(cls, path: Path, **kwargs: Any) -> Sandboxes:
@@ -105,7 +110,10 @@ class Sandboxes:
         backends = doc.get("backends")
         if not isinstance(backends, dict) or not backends:
             raise ValueError("沙箱后端的登记文件里没有 backends")
-        return cls(backends, str(doc.get("default") or ""), **kwargs)
+        environments = doc.get("environments")
+        if environments is not None and not isinstance(environments, dict):
+            raise ValueError("沙箱后端登记文件的 environments 要是一个对象")
+        return cls(backends, str(doc.get("default") or ""), environments=environments, **kwargs)
 
     @property
     def names(self) -> tuple[str, ...]:
@@ -116,22 +124,45 @@ class Sandboxes:
         return await self.backend(await self.choice(tenant_id))
 
     async def choice(self, tenant_id: str) -> str:
-        cached = self._choices.get(tenant_id)
+        return (await self.policy_for(tenant_id)).backend
+
+    async def policy_for(self, tenant_id: str) -> SandboxPolicy:
+        """这个租户的沙箱策略（首选、回退、最低隔离强度、配额、空闲与活满），按租户缓存 cache_ttl 秒。
+        首选或回退里有没登记的名字一律拒绝，不悄悄换后端。"""
+        cached = self._policies.get(tenant_id)
         if cached and time.monotonic() - cached[0] < self._cache_ttl:
             return cached[1]
-        name = self.default
+        doc = None
         if self._policy is not None:
             try:
-                policy = await self._policy(tenant_id)
+                doc = await self._policy(tenant_id)
             except NotFoundError:
-                policy = None
-            wanted = ((policy or {}).get("sandbox") or {}).get("backend")
-            if wanted:
-                if wanted not in self._specs:
-                    raise InvalidError("unknown_sandbox_backend", f"租户策略要的沙箱后端 {wanted} 在这个部署里没有登记")
-                name = str(wanted)
-        self._choices[tenant_id] = (time.monotonic(), name)
-        return name
+                doc = None
+        policy = SandboxPolicy.from_document(doc, self.default)
+        for name in policy.names:
+            if name not in self._specs:
+                raise InvalidError("unknown_sandbox_backend", f"租户策略要的沙箱后端 {name} 在这个部署里没有登记")
+        if policy.min_isolation and policy.min_isolation not in ISOLATIONS:
+            raise InvalidError("invalid_min_isolation", f"租户策略的 min_isolation 只能是 {'、'.join(ISOLATIONS)}")
+        self._policies[tenant_id] = (time.monotonic(), policy)
+        return policy
+
+    def spec(self, name: str) -> Mapping[str, Any]:
+        """登记里这个后端的原始配置（价目、工作区卷等，给 broker 用）。"""
+        if name not in self._specs:
+            raise InvalidError("unknown_sandbox_backend", f"沙箱后端 {name} 没有登记")
+        return self._specs[name]
+
+    def isolation(self, name: str) -> str:
+        return str(self.spec(name).get("isolation", "container"))
+
+    def image_for(self, name: str, runtime: str) -> str:
+        """登记里这个后端给这个运行环境配的镜像（K8s 的 images，或只给了 image 时的 python）；没配时为空。"""
+        spec = self.spec(name)
+        images = dict(spec.get("images") or {})
+        if runtime in images:
+            return str(images[runtime])
+        return str(spec.get("image") or "") if runtime == "python" else ""
 
     async def backend(self, name: str) -> Backend:
         if name not in self._specs:
@@ -144,6 +175,23 @@ class Sandboxes:
                 backend = Backend(name=name, kind=spec["kind"], isolation=spec.get("isolation", "container"), provider=provider)
                 self._backends[name] = backend
             return backend
+
+    async def read_secret(self, name: str) -> bytes | None:
+        """SecretStore 平台作用域（sandbox）里的一个密钥；没有时 None。"""
+        return await self._secret(name)
+
+    async def read_tenant_secret(self, tenant_id: str, name: str) -> bytes | None:
+        """租户自己的 SecretStore 里的一个密钥（测试用密钥 sandbox/test-env，D-16）；没有时 None。"""
+        if self._secrets_file is None:
+            return None
+        from agentruntime_core.dev.secret_store import LocalFileSecretStoreProvider
+        from agentruntime_core.tenancy import TenantContext
+
+        try:
+            value = (await LocalFileSecretStoreProvider(self._secrets_file).bind(TenantContext(tenant_id=tenant_id)).read(name)).reveal()
+        except NotFoundError:
+            return None
+        return value.encode() if isinstance(value, str) else value
 
     async def _secret(self, name: str) -> bytes | None:
         if self._secrets_file is None:
@@ -176,7 +224,14 @@ class Sandboxes:
                 fields["max_envs_per_scope"] = int(spec["max_envs_per_scope"])
             if "startup_timeout_s" in spec:
                 fields["startup_timeout"] = timedelta(seconds=float(spec["startup_timeout_s"]))
-            config = K8sSandboxConfig(images={"python": str(spec.get("image") or "python:3.13-slim")}, **fields)
+            if self.environments.get("registry"):
+                # 按项目定制的运行环境（D-17）：接受本部署的环境镜像仓库里的镜像。
+                reg = dict(self.environments["registry"])
+                fields["custom_image_prefix"] = f"{reg['pull_host']}/{reg.get('prefix', 'envs')}".rstrip("/")
+            # runtime → 镜像（D-14）：images 里列全；只给 image 时就是 python 的镜像（D-05 的写法）。
+            images = {str(k): str(v) for k, v in dict(spec.get("images") or {}).items()}
+            images.setdefault("python", str(spec.get("image") or "python:3.13-slim"))
+            config = K8sSandboxConfig(images=images, **fields)
             return K8sPodSandboxProvider(KubeAPI.load(spec.get("kubeconfig") or None), config, token_key=await self._secret(TOKEN_KEY_SECRET))
         if kind == "e2b":
             from agentruntime_worker.tools import sandbox_e2b

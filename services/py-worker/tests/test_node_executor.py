@@ -101,6 +101,24 @@ async def test_program_node_invokes_the_tool_named_by_its_template(fx: ExecutorF
     invocation = fx.invocations[-1]
     assert invocation.tenant_id == "t1", "工具拿到的租户来自作用域，不来自参数"
     assert invocation.idempotency_key is None, "只读节点不带幂等键"
+    assert invocation.task_id == TASK_ID and invocation.session_id == TENANT.session_id, "工具知道是哪个 Task、哪个会话（D-13、D-16）"
+
+
+async def test_sandbox_cost_reported_by_a_tool_goes_into_the_node_cost(fx: ExecutorFixture) -> None:
+    """D-11：平台内工具在沙箱里跑完时报出 sandbox_cost_usd，Node 的 meta.cost_usd 带上它，Stage Runner 把它算进 Round 与 Task。"""
+
+    async def costly(invocation: Any) -> dict[str, Any]:
+        return {"exit_code": 0, "sandbox_cost_usd": 0.0125}
+
+    fx.behaviors["lookup_rate"] = costly
+    out = await run_program(fx, program("q", "lookup_rate"))
+    assert out["meta"]["cost_usd"] == pytest.approx(0.0125)
+    fx.behaviors["lookup_rate"] = lambda inv: _done({"sandbox_cost_usd": "not a number"})
+    assert "cost_usd" not in (await run_program(fx, program("q2", "lookup_rate")))["meta"]
+
+
+async def _done(value: Any) -> Any:
+    return value
 
 
 async def test_tool_with_a_higher_effect_than_the_node_is_denied(fx: ExecutorFixture) -> None:

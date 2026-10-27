@@ -47,6 +47,11 @@ spec:
               value: /schemas
             - name: AR_DATA_DIR
               value: /data
+            {{- if .Values.egressGateway.enabled }}
+            # Task 结束、收回联网授权后通知出网网关立即断开（D-16）；管理令牌在 SecretStore 的 egress-gateway/admin-token。
+            - name: AR_EGRESS_GATEWAY_ADMIN_URL
+              value: {{ printf "http://%s-egress-gateway.%s.svc:8096" (include "ar.fullname" .) .Release.Namespace | quote }}
+            {{- end }}
             {{- include "ar.objectStoreEnv" . | nindent 12 }}
           readinessProbe:
             httpGet:

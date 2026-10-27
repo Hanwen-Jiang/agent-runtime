@@ -38,7 +38,7 @@ from agentruntime_core.adapters.sandbox_agent import AgentClient, AgentEndpoint,
 from agentruntime_core.dev._common import scope_id
 from agentruntime_core.dev.sandbox import workspace_subpath
 from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError, TransientError
-from agentruntime_core.providers.sandbox import ExecResult, SandboxEnv, SandboxSpec
+from agentruntime_core.providers.sandbox import ExecResult, ListedEnvironment, SandboxEnv, SandboxSpec
 from agentruntime_core.tenancy import Scope, TenantContext, platform_scope, tenant_scope
 from agentruntime_core.testing import FaultInjector
 
@@ -73,6 +73,9 @@ class K8sSandboxConfig:
     max_lifetime: timedelta = timedelta(hours=6)
     # 一个作用域（租户）同时最多几个环境；0 表示不限（只受命名空间的 ResourceQuota 约束）。
     max_envs_per_scope: int = 0
+    # 按项目定制的运行环境（D-17）：SandboxSpec.image 只接受这个前缀下、属于本作用域的引用（<前缀>/<租户>/env@sha256:…）；
+    # 为空时不接受显式的镜像。
+    custom_image_prefix: str = ""
 
 
 class K8sPodSandboxProvider:
@@ -142,6 +145,21 @@ class K8sPodSandboxProvider:
                 deleted += 1
         return deleted
 
+    async def list_environments(self) -> list[ListedEnvironment]:
+        """本部署建的沙箱 Pod（按 managed-by 标签；正在删除的不算），给沙箱环境表对账（D-11）。"""
+        listed = await self.kube.json("GET", self.pods_path() + "?labelSelector=" + label_selector(LABELS))
+        out: list[ListedEnvironment] = []
+        for pod in listed.get("items") or []:
+            meta = pod.get("metadata") or {}
+            name = str(meta.get("name") or "")
+            if not _ENV_ID.match(name) or meta.get("deletionTimestamp"):
+                continue
+            owner = str((meta.get("annotations") or {}).get(OWNER_ANNOTATION) or "")
+            created = meta.get("creationTimestamp")
+            phase = str((pod.get("status") or {}).get("phase") or "")
+            out.append(ListedEnvironment(name, owner, _parse_time(created) if created else None, "running" if phase in ("Pending", "Running") else phase.lower()))
+        return out
+
     async def _delete(self, name: str) -> None:
         status, _ = await self.kube.request("DELETE", self.pods_path(name), {"gracePeriodSeconds": 0, "propagationPolicy": "Background"})
         if status not in (200, 202, 404):
@@ -159,6 +177,12 @@ class K8sPodSandbox:
         p, c = self._p, self._p.config
         p._faults.check("create")
         image = c.images.get(spec.runtime)
+        if spec.image:
+            # 显式的镜像只能是本部署的环境镜像仓库里、本租户路径下按 digest 写的（D-17）。
+            own = f"{c.custom_image_prefix.rstrip('/')}/{self._scope.tenant_id}/env@sha256:"
+            if not c.custom_image_prefix or self._scope.is_platform or not spec.image.startswith(own):
+                raise InvalidError("unsupported_image", "只接受本租户在环境镜像仓库里、按 digest 写的镜像")
+            image = spec.image
         if not image:
             raise InvalidError("unsupported_runtime", f"没有配置 runtime {spec.runtime} 的镜像")
         if spec.network != "none":
@@ -188,15 +212,17 @@ class K8sPodSandbox:
             await p._delete(env_id)
             raise
         p._last_touch[env_id] = time.monotonic()
-        return SandboxEnv(env_id=env_id, spec=spec)
+        return SandboxEnv(env_id=env_id, spec=spec, image=_image_id(pod))
 
-    async def exec(self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"") -> ExecResult:
+    async def exec(
+        self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"", env: Mapping[str, str] | None = None
+    ) -> ExecResult:
         self._p._faults.check("exec")
         pod = await self._lookup(env_id)
         if not argv:
             raise InvalidError("invalid_argument", "argv 不能为空")
         await self._touch(env_id, pod)
-        return await self._p._agent.exec(self._p.endpoint(env_id, pod), argv, timeout=timeout, stdin=stdin)
+        return await self._p._agent.exec(self._p.endpoint(env_id, pod), argv, timeout=timeout, stdin=stdin, env=env)
 
     async def write_file(self, env_id: str, path: str, data: bytes) -> None:
         self._p._faults.check("write_file")
@@ -209,6 +235,16 @@ class K8sPodSandbox:
         check_path(path)
         pod = await self._lookup(env_id)
         return await self._p._agent.read_file(self._p.endpoint(env_id, pod), path)
+
+    async def preview_address(self, env_id: str, port: int) -> str:
+        """预览地址转发到 Pod 的这个端口（出网网关在集群里直连 Pod；沙箱命名空间的网络策略只放行网关进来，D-16）。"""
+        if not 1 <= int(port) <= 65535 or int(port) == self._p.config.agent_port:
+            raise InvalidError("invalid_port", "端口要在 1 到 65535 之间，且不能是 agent 的端口")
+        pod = await self._lookup(env_id)
+        ip = (pod.get("status") or {}).get("podIP")
+        if not ip:
+            raise TransientError("sandbox_unavailable", "沙箱 Pod 还没有地址")
+        return f"[{ip}]:{int(port)}" if ":" in ip else f"{ip}:{int(port)}"
 
     async def destroy(self, env_id: str) -> None:
         p = self._p
@@ -369,6 +405,15 @@ class K8sPodSandbox:
             },
             "spec": pod_spec,
         }
+
+
+def _image_id(pod: Mapping[str, Any]) -> str:
+    """跑命令的容器实际用的镜像（kubelet 报的 imageID，按 digest）；还没报时为空。"""
+    for cs in (pod.get("status") or {}).get("containerStatuses") or []:
+        if cs.get("name") == "sandbox":
+            image = str(cs.get("imageID") or "")
+            return image.removeprefix("docker-pullable://")
+    return ""
 
 
 def _format_time(t: datetime) -> str:

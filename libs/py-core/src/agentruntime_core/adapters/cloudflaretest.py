@@ -44,6 +44,7 @@ class _Env:
     workdir: Path
     allow_hosts: list[str] = field(default_factory=list)
     idle_seconds: int = 600
+    created_at: str = field(default_factory=lambda: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
 
 
 class FakeBridge:
@@ -63,6 +64,7 @@ class FakeBridge:
             raise RuntimeError(f"编译 sandbox-agent 失败：{result.stderr}")
         self.envs: dict[str, _Env] = {}
         self.created: list[dict[str, Any]] = []
+        self.calls: list[tuple[str, str]] = []
         self._lock = threading.Lock()
         bridge = self
 
@@ -91,6 +93,7 @@ class FakeBridge:
     def handle(self, h: BaseHTTPRequestHandler) -> None:
         if h.path == "/healthz":
             return self._send(h, 200, b"ok")
+        self.calls.append((h.command, h.path))
         want = f"Bearer {self.token}"
         if not hmac.compare_digest(h.headers.get("Authorization", ""), want):
             return self._problem(h, 401, "unauthorized")
@@ -99,6 +102,12 @@ class FakeBridge:
             return self._problem(h, 400, "invalid_owner")
         length = int(h.headers.get("Content-Length") or 0)
         body = h.rfile.read(length) if length else b""
+        if h.command == "GET" and h.path == "/v1/sandboxes":
+            if owner != "_platform":
+                return self._problem(h, 403, "platform_only")
+            with self._lock:
+                items = [{"env_id": k, "owner": e.owner, "created_at": e.created_at} for k, e in sorted(self.envs.items())]
+            return self._send(h, 200, json.dumps({"environments": items}).encode(), "application/json")
         if h.command == "POST" and h.path == "/v1/sandboxes":
             spec = json.loads(body or b"{}")
             env_id = "cfs-" + secrets.token_hex(8)

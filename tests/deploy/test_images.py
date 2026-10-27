@@ -11,6 +11,11 @@
 - 全部镜像都能构建；以 10001、只读根文件系统（另挂 /tmp）启动：task-service、model-gateway 的 /healthz 返回 200，
   Memory Service 的 gRPC 端口接受连接（它没有 /healthz），Worker 连上 Temporal 开始轮询，sandbox-agent 的 /healthz 返回 200。
 - 镜像里我们加进去的部分没有 .env、*.key、secrets.json。
+
+D-14（运行环境）：
+- 静态：universal 的每种工具链各占一层（从写死版本的官方镜像复制），缓存目录都在 /tmp；单语言镜像的基础镜像写死版本。
+- 构建与运行：在 sandbox-universal 里（断网、只读根文件系统、以 10001 运行）编译并测试五种语言的样例（tests/deploy/samples）；
+  sandbox-node、sandbox-go 的 agent 能起来。
 """
 
 from __future__ import annotations
@@ -83,8 +88,11 @@ def test_chart_images_are_all_built(values: Path | None) -> None:
         assert all(ref.endswith(":" + version) for ref in refs), "默认标签是 Chart 的 appVersion"
 
 
-def test_the_five_services_and_two_sandbox_images_are_listed() -> None:
-    assert set(MANIFEST) == {"task-service", "model-gateway", "worker", "memory", "learning", "sandbox-agent", "sandbox-python"}
+def test_the_five_services_and_the_sandbox_images_are_listed() -> None:
+    assert set(MANIFEST) == {
+        "task-service", "model-gateway", "worker", "memory", "learning",
+        "sandbox-agent", "sandbox-python", "sandbox-universal", "sandbox-node", "sandbox-go", "pkg-mirror", "egress-gateway",
+    }
     for name, spec in MANIFEST.items():
         assert (REPO_ROOT / spec["dockerfile"]).is_file(), f"{name} 的 Dockerfile 不存在"
 
@@ -112,6 +120,62 @@ def test_dockerfile_runs_as_10001_from_pinned_bases(path: str) -> None:
     for forbidden in ("deploy/dev", ".env", "secrets.json", ".git"):
         assert not re.search(rf"(?mi)^(COPY|ADD)\s[^\n]*{re.escape(forbidden)}", text), f"{path} 不能复制 {forbidden}"
     assert not re.search(r"(?mi)^ADD\s", text), f"{path} 用 COPY，不用 ADD（ADD 会自动解包、可拉远程地址）"
+
+
+UNIVERSAL = IMAGES_DIR / "universal" / "Dockerfile"
+
+
+def test_universal_has_one_layer_per_toolchain_from_pinned_images() -> None:
+    """D-14：每种语言的工具链各占一层，从写死版本的官方镜像复制；升级一种语言只换一层。"""
+    text = UNIVERSAL.read_text("utf-8")
+    pins = dict(re.findall(r"(?m)^ARG (\w+_IMAGE)=(\S+)$", text))
+    for arg, image in {
+        "PYTHON_IMAGE": "python:3.13.", "NODE_IMAGE": "node:22.", "GO_IMAGE": "golang:1.27.", "JDK_IMAGE": "eclipse-temurin:21.",
+        "MAVEN_IMAGE": "maven:3.", "RUST_IMAGE": "rust:1.",
+    }.items():
+        assert pins.get(arg, "").startswith(image), f"{arg} 要写死 {image}x 的版本：{pins.get(arg)}"
+        assert re.search(r"\d+\.\d+\.\d+", pins[arg]), f"{arg} 写到补丁版本，不跟着浮动的标签走：{pins[arg]}"
+    final = final_stage(text)
+    for source in ("--from=node /usr/local/bin/node", "--from=go /usr/local/go", "--from=jdk /opt/java/openjdk", "--from=maven /usr/share/maven",
+                   "--from=rust /usr/local/rustup", "--from=rust /usr/local/cargo", "--from=agent /out/sandbox-agent"):
+        assert f"COPY {source}" in final, f"运行阶段要有 COPY {source}"
+    assert "build-essential" in final and "git" in final
+    for var in ("PIP_CACHE_DIR=/tmp/", "npm_config_cache=/tmp/", "GOCACHE=/tmp/", "GOMODCACHE=/tmp/", "CARGO_HOME=/tmp/", "maven.repo.local=/tmp/", "HOME=/tmp"):
+        assert var in final, f"根文件系统只读：{var.split('=')[0]} 要指到 /tmp"
+    assert "GOTOOLCHAIN=local" in final, "Go 不自己去下载别的工具链（沙箱默认断网）"
+    assert not re.search(r"curl[^\n|]*\|\s*(ba)?sh", text), "不把下载的脚本管道给 shell"
+
+
+# sandbox-agent 自己就交给命令的变量（services/go-sandbox-agent/cmd/sandbox-agent 的 commandEnv）与它自己的配置。
+AGENT_BASE_ENV = {"PATH", "HOME", "LANG", "LC_ALL", "TZ", "PYTHONIOENCODING", "PYTHONDONTWRITEBYTECODE"}
+
+
+def env_names(stage: str) -> tuple[set[str], set[str]]:
+    """运行阶段 ENV 设的变量名，与 AGENT_ENV_PASSTHROUGH 列出的。"""
+    body = "\n".join(m.group(1) for m in re.finditer(r"(?ms)^ENV\s+(.*?)(?<!\\)$", stage))
+    pairs = dict(re.findall(r'(\w+)=("[^"]*"|\S+)', body))
+    return set(pairs), set(pairs.get("AGENT_ENV_PASSTHROUGH", "").strip('"').replace(",", " ").split())
+
+
+@pytest.mark.parametrize("path", ["deploy/images/universal/Dockerfile", "deploy/images/sandbox.Dockerfile"])
+def test_sandbox_images_pass_every_toolchain_variable_to_commands(path: str) -> None:
+    """D-15：sandbox-agent 只把基本变量与 AGENT_ENV_PASSTHROUGH 列出的交给命令；镜像 ENV 设的工具链变量都要列上，
+    否则 K8s 后端经 agent 跑的命令拿不到（rustc 找不到 RUSTUP_HOME、Maven 写只读的 ~/.m2）。"""
+    names, passed = env_names(final_stage((REPO_ROOT / path).read_text("utf-8")))
+    assert passed, f"{path} 要声明 AGENT_ENV_PASSTHROUGH"
+    missing = {n for n in names if not n.startswith("AGENT_") and n not in AGENT_BASE_ENV} - passed
+    assert not missing, f"{path} 的 AGENT_ENV_PASSTHROUGH 漏了 {sorted(missing)}"
+    assert not {n for n in passed if n.startswith("AGENT_")}, "AGENT_* 不交给命令"
+    assert passed <= names, f"列出的变量要在 ENV 里设：{sorted(passed - names)}"
+    for var in ("PIP_INDEX_URL", "npm_config_registry", "GOPROXY"):
+        assert var not in names, f"包镜像的地址（{var}）每次执行时注入，不写死在镜像里"
+
+
+def test_single_language_images_pin_their_base() -> None:
+    for name in ("sandbox-node", "sandbox-go"):
+        base = MANIFEST[name]["args"].get("BASE_IMAGE", "")
+        assert re.search(r":\d+\.\d+\.\d+", base), f"{name} 的基础镜像写到补丁版本：{base!r}"
+        assert MANIFEST[name]["dockerfile"] == "deploy/images/sandbox.Dockerfile"
 
 
 def test_python_images_install_from_the_lockfile() -> None:
@@ -331,7 +395,7 @@ def test_learning_image_runs_the_pipeline_cli(built: dict[str, str]) -> None:
     assert out.returncode == 0, out.stdout + out.stderr
 
 
-@pytest.mark.parametrize("name", ["sandbox-agent", "sandbox-python"])
+@pytest.mark.parametrize("name", ["sandbox-agent", "sandbox-python", "sandbox-universal", "sandbox-node", "sandbox-go"])
 def test_sandbox_agent_serves_healthz(built: dict[str, str], started: list[str], name: str) -> None:
     port = free_port()
     cid = run_detached(built[name], ports={port: 7070}, env={"AGENT_TOKEN": secrets.token_hex(24), "AGENT_ADDR": ":7070", "AGENT_WORKDIR": "/tmp"})
@@ -340,6 +404,33 @@ def test_sandbox_agent_serves_healthz(built: dict[str, str], started: list[str],
         assert wait_http(f"http://127.0.0.1:{port}/healthz") == 200
     except OSError:
         pytest.fail(logs(cid), pytrace=False)
+
+
+SAMPLES = REPO_ROOT / "tests" / "deploy" / "samples"
+SAMPLE_SCRIPT = " && ".join([
+    "cd /workspace/python && python -m unittest -q",
+    "cd /workspace/node && node --test",
+    "cd /workspace/go && go test ./...",
+    "cd /workspace/java && javac -d /tmp/jout Calc.java && java -ea -cp /tmp/jout Calc && mvn -v > /dev/null",
+    "cd /workspace/rust && cargo test --offline -q",
+    "echo all-five-ok",
+])
+
+
+def test_universal_compiles_and_tests_five_languages_offline(built: dict[str, str], tmp_path: Path) -> None:
+    """D-14 验收 1：断网、只读根文件系统、以 10001 运行，五种语言的样例都能编译、测试通过（gVisor、Kata 上的同一项在集群里做）。"""
+    work = tmp_path / "workspace"
+    shutil.copytree(SAMPLES, work)  # 复制到本地盘：仓库在网络盘上时 Docker 挂不了 UNC 路径
+    if hasattr(os, "chmod"):
+        for path in [work, *work.rglob("*")]:
+            path.chmod(0o777 if path.is_dir() else 0o666)
+    out = docker(
+        "run", "--rm", "--network", "none", "--user", f"{UID}:{UID}", "--read-only", "--tmpfs", "/tmp:rw,exec,size=2g", "--cap-drop", "ALL",
+        "--security-opt", "no-new-privileges", "-v", f"{work}:/workspace", "--entrypoint", "/bin/sh", built["sandbox-universal"], "-c", SAMPLE_SCRIPT,
+        check=False, timeout=1200,
+    )
+    assert out.returncode == 0 and "all-five-ok" in out.stdout, out.stdout[-4000:] + out.stderr[-4000:]
+    assert "java ok" in out.stdout
 
 
 # 我们加进镜像的部分（基础镜像自带的系统文件不在这里检查）。

@@ -17,19 +17,29 @@ import json
 import re
 import urllib.error
 import urllib.request
-from collections.abc import Sequence
-from datetime import timedelta
+from collections.abc import Mapping, Sequence
+from datetime import datetime, timedelta
 
 from agentruntime_core.adapters.sandbox_agent import AgentClient, AgentEndpoint, check_path
 from agentruntime_core.dev._common import scope_id
 from agentruntime_core.errors import InvalidError, NotFoundError, TransientError
-from agentruntime_core.providers.sandbox import ExecResult, SandboxEnv, SandboxSpec
+from agentruntime_core.providers.sandbox import ExecResult, ListedEnvironment, SandboxEnv, SandboxSpec
 from agentruntime_core.tenancy import Scope, TenantContext, platform_scope, tenant_scope
 from agentruntime_core.testing import FaultInjector
 
 _ENV_ID = re.compile(r"^cfs-[0-9a-f]{16}$")
 _HOST = re.compile(r"^(\*\.)?[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$")
 MAX_HOSTS = 50
+PLATFORM_OWNER = "_platform"
+
+
+def _parse_time(value: object) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 class CloudflareSandboxProvider:
@@ -52,6 +62,21 @@ class CloudflareSandboxProvider:
 
     async def aclose(self) -> None:
         return None
+
+    async def list_environments(self) -> list[ListedEnvironment]:
+        """桥的目录里本部署的全部环境（GET /v1/sandboxes，平台作用域），给沙箱环境表对账（D-11）。"""
+        status, body = await self.call("GET", "/v1/sandboxes", PLATFORM_OWNER)
+        AgentClient.raise_for(status, body)
+        try:
+            items = json.loads(body)["environments"]
+        except (ValueError, KeyError, TypeError):
+            raise TransientError("sandbox_bad_response", "桥返回的列表格式不对") from None
+        out: list[ListedEnvironment] = []
+        for item in items if isinstance(items, list) else []:
+            env_id = str((item or {}).get("env_id") or "")
+            if _ENV_ID.match(env_id):
+                out.append(ListedEnvironment(env_id, str(item.get("owner") or ""), _parse_time(item.get("created_at"))))
+        return out
 
     def headers(self, owner: str) -> dict[str, str]:
         return {"Authorization": f"Bearer {self._token}", "X-Sandbox-Owner": owner}
@@ -93,6 +118,8 @@ class CloudflareSandbox:
         self._p._faults.check("create")
         if spec.runtime != "python":
             raise InvalidError("unsupported_runtime", "Cloudflare 后端的镜像只有 python")
+        if spec.image:
+            raise InvalidError("unsupported_image", "Cloudflare 后端的镜像在桥里写死，不能按项目定制（D-17）")
         if spec.workspace_id:
             raise InvalidError("unsupported_workspace", "Cloudflare 后端要等工作区跟着沙箱走（D-06）才能绑定 workspace")
         hosts: list[str] = []
@@ -115,9 +142,11 @@ class CloudflareSandbox:
             raise TransientError("sandbox_bad_response", "桥返回的环境 id 格式不对")
         return SandboxEnv(env_id=env_id, spec=spec)
 
-    async def exec(self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"") -> ExecResult:
+    async def exec(
+        self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"", env: Mapping[str, str] | None = None
+    ) -> ExecResult:
         self._p._faults.check("exec")
-        return await self._p._agent.exec(self._endpoint(env_id), argv, timeout=timeout, stdin=stdin)
+        return await self._p._agent.exec(self._endpoint(env_id), argv, timeout=timeout, stdin=stdin, env=env)
 
     async def write_file(self, env_id: str, path: str, data: bytes) -> None:
         self._p._faults.check("write_file")

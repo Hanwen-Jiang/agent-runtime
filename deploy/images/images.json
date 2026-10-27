@@ -1,25 +1,37 @@
 {
-  "_comment": "Runtime 的镜像（docs/plan/cloud-deploy.md D-01）：名字 → Dockerfile 与构建参数。构建上下文都是仓库根目录。scripts/build_images.py 按这里构建；tests/deploy/test_images.py 核对 Chart 引用的镜像都在这里。",
+  "_comment": "Runtime 的镜像（docs/plan/cloud-deploy.md D-01）：名字 → Dockerfile 与构建参数。构建上下文都是仓库根目录。scripts/build_images.py 按这里构建；tests/deploy/test_images.py 核对 Chart 引用的镜像都在这里。 沙箱的运行环境（D-14）：sandbox-universal 是默认的多语言镜像，sandbox-python、sandbox-node、sandbox-go 是单语言的精简镜像。",
   "images": {
     "task-service": {
       "dockerfile": "deploy/images/go.Dockerfile",
-      "args": {"MODULE": "services/go-task-service", "MAIN": "./cmd/task-service"}
+      "args": {
+        "MODULE": "services/go-task-service",
+        "MAIN": "./cmd/task-service"
+      }
     },
     "model-gateway": {
       "dockerfile": "deploy/images/go.Dockerfile",
-      "args": {"MODULE": "services/go-model-gateway", "MAIN": "./cmd/model-gateway"}
+      "args": {
+        "MODULE": "services/go-model-gateway",
+        "MAIN": "./cmd/model-gateway"
+      }
     },
     "worker": {
       "dockerfile": "deploy/images/python.Dockerfile",
-      "args": {"PACKAGE": "agentruntime-worker"}
+      "args": {
+        "PACKAGE": "agentruntime-worker"
+      }
     },
     "memory": {
       "dockerfile": "deploy/images/python.Dockerfile",
-      "args": {"PACKAGE": "agentruntime-memory"}
+      "args": {
+        "PACKAGE": "agentruntime-memory"
+      }
     },
     "learning": {
       "dockerfile": "deploy/images/python.Dockerfile",
-      "args": {"PACKAGE": "agentruntime-learning"}
+      "args": {
+        "PACKAGE": "agentruntime-learning"
+      }
     },
     "sandbox-agent": {
       "dockerfile": "deploy/images/sandbox-agent.Dockerfile",
@@ -28,6 +40,36 @@
     "sandbox-python": {
       "dockerfile": "deploy/images/sandbox-python/Dockerfile",
       "args": {}
+    },
+    "sandbox-universal": {
+      "dockerfile": "deploy/images/universal/Dockerfile",
+      "args": {}
+    },
+    "sandbox-node": {
+      "dockerfile": "deploy/images/sandbox.Dockerfile",
+      "args": {
+        "BASE_IMAGE": "node:22.23.3-bookworm-slim"
+      }
+    },
+    "sandbox-go": {
+      "dockerfile": "deploy/images/sandbox.Dockerfile",
+      "args": {
+        "BASE_IMAGE": "golang:1.27.2-bookworm"
+      }
+    },
+    "pkg-mirror": {
+      "dockerfile": "deploy/images/go.Dockerfile",
+      "args": {
+        "MODULE": "services/go-pkg-mirror",
+        "MAIN": "./cmd/pkg-mirror"
+      }
+    },
+    "egress-gateway": {
+      "dockerfile": "deploy/images/go.Dockerfile",
+      "args": {
+        "MODULE": "services/go-egress-gateway",
+        "MAIN": "./cmd/egress-gateway"
+      }
     }
   }
 }

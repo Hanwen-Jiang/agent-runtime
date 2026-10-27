@@ -42,7 +42,7 @@ from agentruntime_core.adapters.envd import EnvdClient, EnvdEndpoint, header_rou
 from agentruntime_core.adapters.sandbox_agent import check_path
 from agentruntime_core.dev._common import scope_id
 from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError, TransientError
-from agentruntime_core.providers.sandbox import ExecResult, SandboxEnv, SandboxSpec
+from agentruntime_core.providers.sandbox import ExecResult, ListedEnvironment, SandboxEnv, SandboxSpec, check_exec_env
 from agentruntime_core.tenancy import Scope, TenantContext, platform_scope, tenant_scope
 from agentruntime_core.testing import FaultInjector
 
@@ -91,14 +91,6 @@ class _Known:
     touched: float = 0.0
 
 
-@dataclass(frozen=True)
-class ListedEnv:
-    env_id: str
-    owner: str
-    state: str
-    started_at: datetime | None
-
-
 class E2BSandboxProvider:
     def __init__(
         self,
@@ -143,9 +135,9 @@ class E2BSandboxProvider:
 
     # --- 给沙箱环境表对账（main 的 D-11）---
 
-    async def list_environments(self) -> list[ListedEnv]:
-        """本部署在 E2B 上的全部沙箱（running 与 paused）。按部署标签过滤，别的部署的不碰。"""
-        out: list[ListedEnv] = []
+    async def list_environments(self) -> list[ListedEnvironment]:
+        """本部署在 E2B 上的全部沙箱（running 与 paused；SandboxLister）。按部署标签过滤，别的部署的不碰。"""
+        out: list[ListedEnvironment] = []
         token = ""
         for _ in range(1000):
             query = {"metadata": f"{_q(DEPLOYMENT_KEY)}={_q(self.config.deployment)}", "state": "running,paused", "limit": "100"}
@@ -158,7 +150,9 @@ class E2BSandboxProvider:
                 metadata = item.get("metadata") or {}
                 if not _SANDBOX_ID.match(sandbox_id) or metadata.get(DEPLOYMENT_KEY) != self.config.deployment:
                     continue
-                out.append(ListedEnv("e2b-" + sandbox_id, str(metadata.get(OWNER_KEY) or ""), str(item.get("state") or ""), _parse_time(item.get("startedAt"))))
+                out.append(ListedEnvironment(
+                    "e2b-" + sandbox_id, str(metadata.get(OWNER_KEY) or ""), _parse_time(item.get("startedAt")), state=str(item.get("state") or "running"),
+                ))
             token = headers.get("X-Next-Token", "")
             if not token:
                 break
@@ -213,6 +207,8 @@ class E2BSandbox:
         template = c.templates.get(spec.runtime)
         if not template:
             raise InvalidError("unsupported_runtime", f"没有配置 runtime {spec.runtime} 的 E2B 模板")
+        if spec.image:
+            raise InvalidError("unsupported_image", "E2B 后端的环境来自模板，不能按项目定制镜像（main 的 D-17）")
         if spec.workspace_id:
             raise InvalidError("unsupported_workspace", "E2B 后端要等工作区能存档与恢复（D-06）才能绑定 workspace")
         if spec.cpu_millis <= 0 or spec.memory_mb <= 0:
@@ -258,14 +254,19 @@ class E2BSandbox:
         p._known[env_id] = known
         return SandboxEnv(env_id=env_id, spec=spec)
 
-    async def exec(self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"") -> ExecResult:
+    async def exec(
+        self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"", env: Mapping[str, str] | None = None
+    ) -> ExecResult:
         self._p._faults.check("exec")
+        extra = check_exec_env(env)
         known = await self._lookup(env_id)
         if not argv:
             raise InvalidError("invalid_argument", "argv 不能为空")
         await self._touch(env_id, known)
         c = self._p.config
-        return await self._p._envd.run(self._p.endpoint(known), list(argv), cwd=c.workdir, envs=dict(c.envs), timeout=timeout, stdin=stdin)
+        # 这条命令自己的环境变量（包镜像、出网代理与测试用密钥，main 的 D-15、D-16）盖过登记里的 envs，只给这一条。
+        envs = {**dict(c.envs), **extra}
+        return await self._p._envd.run(self._p.endpoint(known), list(argv), cwd=c.workdir, envs=envs, timeout=timeout, stdin=stdin)
 
     async def write_file(self, env_id: str, path: str, data: bytes) -> None:
         self._p._faults.check("write_file")
@@ -445,4 +446,4 @@ def _q(value: str) -> str:
     return urllib.parse.quote(value, safe="")
 
 
-__all__ = ["E2BSandbox", "E2BSandboxConfig", "E2BSandboxProvider", "ListedEnv"]
+__all__ = ["E2BSandbox", "E2BSandboxConfig", "E2BSandboxProvider"]

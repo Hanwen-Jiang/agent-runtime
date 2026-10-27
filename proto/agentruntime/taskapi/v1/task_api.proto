@@ -43,6 +43,23 @@ message SubmitTaskRequest {
   // 这个 Task 的 effect 上限，只能比租户策略的上限低或相等；高于时返回 denied（不悄悄截断）。
   // 不填时用租户策略的上限。应用按用户选的沙箱等级填它（docs/plan/cloud-deploy.md D-08）。
   agentruntime.common.v1.Effect effect_ceiling = 10;
+  // 这个 Task 要联网（设计书改动稿 W8；docs/plan/cloud-deploy.md D-16）。沙箱默认断网；按租户策略的 sandbox.network 核对，
+  // 不允许联网、主机不在范围里、时长超过上限、只读的 Task（effect 上限是 read）一律 denied 并说明原因，不悄悄截断。
+  NetworkRequest network_request = 11;
+}
+
+// NetworkRequest 是提交时声明的联网申请。批准：租户策略的 approver 是 submitter（默认）时，提交本身就是提交者的批准；
+// 是 admin 时只接受带审批权限（task.approve）的身份提交，否则 denied（改为运行中由 agent 经 request_network 申请、管理员批）。
+// 批准的申请成为这个 Task 的联网授权（gate 记录，附录 D.4），从提交时起算；Task 结束、到期或被撤销即收回。
+message NetworkRequest {
+  // 目标主机，可以用 *. 开头表示子域名；不能是 IP 地址，不带端口与路径。
+  repeated string hosts = 1;
+  // 端口；不填为 80 与 443。
+  repeated int32 ports = 2;
+  // 授权多久（分钟）：15、30 或 60，不超过租户策略的 max_grant_minutes。
+  int32 minutes = 3;
+  // 为什么要联网，记进授权与审计。
+  string reason = 4;
 }
 
 message SubmitTaskResponse {

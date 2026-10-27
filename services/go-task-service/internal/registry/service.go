@@ -391,6 +391,23 @@ func (r *Registry) GetTenantPolicy(ctx context.Context, req *connect.Request[reg
 	}}), nil
 }
 
+// CurrentTenantPolicy 是租户策略的当前版本（JSON 文档）；没有策略时 found 为 false。task-service 核对提交时的联网申请用（D-16）。
+func (r *Registry) CurrentTenantPolicy(ctx context.Context, tenant *commonv1.TenantContext) (doc []byte, found bool, err error) {
+	resp, err := r.GetTenantPolicy(ctx, connect.NewRequest(&registryv1.GetTenantPolicyRequest{Tenant: tenant}))
+	if err != nil {
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	value := resp.Msg.GetTenantPolicy().GetDocument().GetValue()
+	if value == nil {
+		return nil, false, nil
+	}
+	doc, err = protojson.Marshal(value)
+	return doc, err == nil, err
+}
+
 // ResolvePinnedVersions 给出新 Task 要固定的版本。
 func (r *Registry) ResolvePinnedVersions(ctx context.Context, req *connect.Request[registryv1.ResolvePinnedVersionsRequest]) (*connect.Response[registryv1.ResolvePinnedVersionsResponse], error) {
 	pins, err := r.resolve(ctx, req.Msg.GetTenant(), req.Msg.GetTaskFamily(), req.Msg.GetRecipe())

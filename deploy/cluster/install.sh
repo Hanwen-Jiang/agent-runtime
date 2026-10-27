@@ -47,6 +47,13 @@ install -m 0600 "$HERE/k3s/psa.yaml" /etc/rancher/k3s/psa.yaml
 install -d /var/lib/rancher/k3s/agent/etc/containerd /var/lib/rancher/k3s/server/manifests
 install -m 0644 "$HERE/k3s/config-v3.toml.tmpl" /var/lib/rancher/k3s/agent/etc/containerd/config-v3.toml.tmpl
 install -m 0644 "$HERE/k3s/traefik-config.yaml" /var/lib/rancher/k3s/server/manifests/traefik-config.yaml
+# 环境镜像仓库（D-17）的拉取凭据：设了 ENV_REGISTRY_USER、ENV_REGISTRY_PASSWORD 才写（与 SecretStore 的 sandbox/env-registry 相同）。
+if [[ -n "${ENV_REGISTRY_USER:-}" && -n "${ENV_REGISTRY_PASSWORD:-}" ]]; then
+  ( umask 077 && sed -e "s|\${ENV_REGISTRY_USER}|$ENV_REGISTRY_USER|" -e "s|\${ENV_REGISTRY_PASSWORD}|$ENV_REGISTRY_PASSWORD|" \
+      "$HERE/k3s/registries.yaml.tmpl" > /etc/rancher/k3s/registries.yaml )
+else
+  log "没设 ENV_REGISTRY_USER、ENV_REGISTRY_PASSWORD：节点拉不了环境镜像仓库里的镜像（按项目定制的运行环境会退回 universal）"
+fi
 
 if ! command -v k3s >/dev/null || [[ "$(k3s --version | head -1)" != *"$K3S_VERSION"* ]]; then
   log "安装 k3s $K3S_VERSION"
@@ -70,6 +77,10 @@ if [[ -e /dev/kvm ]]; then
   # kata-deploy 会改 containerd 的模板；核对 gVisor 的 runsc 还在。
   grep -q 'runtimes.runsc' /var/lib/rancher/k3s/agent/etc/containerd/config-v3.toml.tmpl \
     || die "kata-deploy 改写 containerd 模板时丢了 runsc，见 README 的“Kata 与 gVisor 共存”"
+  # 按项目定制的运行环境的构建（D-17）要特权跑 BuildKit：特权只能停在 VM 里，Kata 的 handler 要 privileged_without_host_devices。
+  awk '/^[[:space:]]*\[/{s=($0 ~ /kata-clh-runtime-rs/)} s && /privileged_without_host_devices[[:space:]]*=[[:space:]]*true/{f=1} END{exit !f}' \
+      /var/lib/rancher/k3s/agent/etc/containerd/config-v3.toml.tmpl /var/lib/rancher/k3s/agent/etc/containerd/config.toml 2>/dev/null \
+    || die "Kata 的 handler 没有 privileged_without_host_devices = true：构建环境的特权会碰到宿主的设备，见 README 的“项目环境的构建”"
 else
   log "没有 /dev/kvm：跳过 Kata（kata RuntimeClass 的沙箱起不来，租户策略别指到 kata）"
 fi
@@ -82,6 +93,8 @@ log "命名空间、沙箱约束、RuntimeClass、卷"
 kubectl apply -f "$HERE/namespaces.yaml"
 kubectl apply -f "$HERE/runtimeclasses.yaml"
 kubectl apply -f "$HERE/sandboxes.yaml"
+# 按项目定制的运行环境的构建（D-17）：只在 Kata 里。没有 Kata 时也建命名空间（构建会被准入策略拒绝，环境退回 universal）。
+kubectl apply -f "$HERE/builds.yaml"
 kubectl apply -f "$HERE/workspaces.yaml"
 kubectl apply -f "$HERE/storage.yaml"
 

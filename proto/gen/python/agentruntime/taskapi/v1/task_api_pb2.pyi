@@ -44,7 +44,7 @@ TASK_EVENT_TYPE_TASK_FINISHED: TaskEventType
 TASK_EVENT_TYPE_HEARTBEAT: TaskEventType
 
 class SubmitTaskRequest(_message.Message):
-    __slots__ = ("tenant_id", "workspace_id", "session_id", "client_request_id", "message", "inputs", "attachments", "session_access", "priority", "effect_ceiling")
+    __slots__ = ("tenant_id", "workspace_id", "session_id", "client_request_id", "message", "inputs", "attachments", "session_access", "priority", "effect_ceiling", "network_request")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
     SESSION_ID_FIELD_NUMBER: _ClassVar[int]
@@ -55,6 +55,7 @@ class SubmitTaskRequest(_message.Message):
     SESSION_ACCESS_FIELD_NUMBER: _ClassVar[int]
     PRIORITY_FIELD_NUMBER: _ClassVar[int]
     EFFECT_CEILING_FIELD_NUMBER: _ClassVar[int]
+    NETWORK_REQUEST_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
     workspace_id: str
     session_id: str
@@ -65,7 +66,20 @@ class SubmitTaskRequest(_message.Message):
     session_access: _enums_pb2.SessionAccess
     priority: _enums_pb2.Priority
     effect_ceiling: _enums_pb2.Effect
-    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., session_id: _Optional[str] = ..., client_request_id: _Optional[str] = ..., message: _Optional[str] = ..., inputs: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., attachments: _Optional[_Iterable[str]] = ..., session_access: _Optional[_Union[_enums_pb2.SessionAccess, str]] = ..., priority: _Optional[_Union[_enums_pb2.Priority, str]] = ..., effect_ceiling: _Optional[_Union[_enums_pb2.Effect, str]] = ...) -> None: ...
+    network_request: NetworkRequest
+    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., session_id: _Optional[str] = ..., client_request_id: _Optional[str] = ..., message: _Optional[str] = ..., inputs: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., attachments: _Optional[_Iterable[str]] = ..., session_access: _Optional[_Union[_enums_pb2.SessionAccess, str]] = ..., priority: _Optional[_Union[_enums_pb2.Priority, str]] = ..., effect_ceiling: _Optional[_Union[_enums_pb2.Effect, str]] = ..., network_request: _Optional[_Union[NetworkRequest, _Mapping]] = ...) -> None: ...
+
+class NetworkRequest(_message.Message):
+    __slots__ = ("hosts", "ports", "minutes", "reason")
+    HOSTS_FIELD_NUMBER: _ClassVar[int]
+    PORTS_FIELD_NUMBER: _ClassVar[int]
+    MINUTES_FIELD_NUMBER: _ClassVar[int]
+    REASON_FIELD_NUMBER: _ClassVar[int]
+    hosts: _containers.RepeatedScalarFieldContainer[str]
+    ports: _containers.RepeatedScalarFieldContainer[int]
+    minutes: int
+    reason: str
+    def __init__(self, hosts: _Optional[_Iterable[str]] = ..., ports: _Optional[_Iterable[int]] = ..., minutes: _Optional[int] = ..., reason: _Optional[str] = ...) -> None: ...
 
 class SubmitTaskResponse(_message.Message):
     __slots__ = ("task_id", "session_id", "events_url", "deduplicated")

@@ -143,6 +143,14 @@
         }
       ],
       "unevaluatedProperties": false
+    },
+    "sandbox_isolation": {
+      "description": "沙箱的隔离强度，从弱到强：none（开发用的本地子进程）、container（gVisor 等容器级）、microvm（Kata、Firecracker 等虚拟机级）。设计书改动稿 W11",
+      "enum": ["none", "container", "microvm"]
+    },
+    "network_approver": {
+      "description": "联网授权由谁批：submitter 是提交者本人，admin 要有 task.approve 权限的人。设计书改动稿 W8",
+      "enum": ["submitter", "admin"]
     }
   }
 }

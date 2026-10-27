@@ -64,7 +64,7 @@ Worker 一侧：后端登记的 `kind: e2b`（`tools/sandbox_e2b.py`），要写
 | E-01 | 适配器与 envd 客户端；Sandbox 一致性测试对假 E2B 通过；网络映射、作用域、换副本、暂停与恢复、顺延、幂等重试、列出与分页、错误映射的专门用例 | 已做（`libs/py-core/tests/adapters/test_e2b_sandbox.py`） |
 | E-02 | Worker 的后端登记 `kind: e2b`；API key 取自 SecretStore；登记文件读进来时就核对 | 已做（`services/py-worker/tests/test_sandbox_e2b.py`） |
 | E-03 | 部署：Embed 的 overlay（固定提交、四个补丁）、防火墙、Secret 样例、Helm 叠加、模板脚本 | 已做脚手架（`tests/deploy/test_e2b.py`）；`kubectl kustomize` 要联网取上游，没在本机跑 |
-| E-04 | 合并 main 后按第 5 节对接 D-11、D-12、D-13、D-16 | 等 main 完成 |
+| E-04 | 合并 main 后按第 5 节对接 D-11、D-12、D-13、D-16 | 2026-10-27 合并了 main（到 D-17）。已接：exec 的 `env`（包镜像、代理与测试用密钥只给那一条命令）；`list_environments` 改成 main 的 `SandboxLister`，对账照常列 E2B；`SandboxSpec.image`（D-17）拒绝（模板定环境）；登记里 `pause_on_idle` 的后端空闲到期不删、复用时找回暂停的环境，只在活满时删（`test_sandbox_sessions.py`）；回退按 microvm 与 429 transient（D-12 原有逻辑）。没接：出网网关的 SOCKS5 入口（main 的网关只有 HTTP 代理），所以 E2B 按托管后端处理：授权的主机走 E2B 原生的 allowOut，没有字节上限与逐连接审计，带用量上限的授权落不到 E2B；预览地址（`SandboxPreview`）还没做 |
 | E-05 | 真机验收：KVM 节点上 `kubectl apply -k deploy/e2b`、建模板、`AR_LIVE_E2B=1` 的一致性测试与断网、暂停后恢复时后台进程还在 | 要机器（你来买） |
 
 **验收**（E-05）：

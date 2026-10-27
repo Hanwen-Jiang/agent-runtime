@@ -473,14 +473,22 @@ class NodeExecutor:
         if name == names.SANDBOX_TEMPLATE:
             output = await self._sandbox(node, tenant)
         else:
-            output = await self._tool(node, tenant, name, version, span)
+            approved_by = inp.gate.approved_by if inp.gate is not None and str(node.get("effect", "")) == "write_irreversible" else ""
+            output = await self._tool(node, tenant, name, version, span, task_id=inp.task_id, approved_by=approved_by)
         if schema is not None:
             errors = validate(schema, output)
             if errors:
                 raise _error(f"{node['id']} 的结果不符合 output_schema：" + "；".join(errors), INVALID_OUTPUT)
-        return {"result": output, "meta": {"latency_ms": int((time.monotonic() - started) * 1000)}}
+        meta: dict[str, Any] = {"latency_ms": int((time.monotonic() - started) * 1000)}
+        # 平台内工具在沙箱里跑完时报出沙箱的花费（sandbox_cost_usd，D-11）：计入 meta.cost_usd，Stage Runner 把它加进 Round 与 Task 的花费。
+        cost = output.get("sandbox_cost_usd") if isinstance(output, Mapping) else None
+        if isinstance(cost, int | float) and cost > 0:
+            meta["cost_usd"] = float(cost)
+        return {"result": output, "meta": meta}
 
-    async def _tool(self, node: Mapping[str, Any], tenant: TenantContext, name: str, version: str, span: Span) -> Any:
+    async def _tool(
+        self, node: Mapping[str, Any], tenant: TenantContext, name: str, version: str, span: Span, *, task_id: str = "", approved_by: str = ""
+    ) -> Any:
         driver = self.deps.tools.bind(tenant)
         spec = await driver.describe(name, version)
         effect = str(node.get("effect", "none"))
@@ -502,7 +510,9 @@ class NodeExecutor:
             credential = await secrets.issue_credential(f"tool.{name}", ttl=ttl)
         try:
             try:
-                result = await driver.invoke(name, version, node.get("inputs", {}), idempotency_key=key, credential=credential)
+                result = await driver.invoke(
+                    name, version, node.get("inputs", {}), idempotency_key=key, credential=credential, task_id=task_id, approved_by=approved_by
+                )
                 span.set_attributes({"replayed": result.replayed})
                 return _redact_output(result.output, credential, name, span)
             except TransientError as err:

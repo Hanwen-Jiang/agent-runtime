@@ -10,14 +10,61 @@
     "hooks": {"$ref": "defs.schema.json#/$defs/hook_set"},
     "budget": {"description": "新 Task 的预算", "$ref": "task_plan.schema.json#/properties/budget"},
     "sandbox": {
-      "description": "该租户的沙箱：backend 是 Worker 的沙箱后端登记（AR_SANDBOX_BACKENDS_FILE）里的名字，例如 gvisor、kata、cloudflare；不写用部署的默认后端。由策略决定，模型与请求都不能指定；登记里没有的名字一律拒绝（docs/plan/cloud-deploy.md D-08）。",
+      "description": "该租户的沙箱：backend 是 Worker 的沙箱后端登记（AR_SANDBOX_BACKENDS_FILE）里的名字，例如 gvisor、kata、cloudflare；不写 sandbox 时用部署的默认后端。由策略决定，模型与请求都不能指定；登记里没有的名字一律拒绝（docs/plan/cloud-deploy.md D-08）。fallback、min_isolation 是有序回退（设计书改动稿 W11，D-12），idle_timeout_s、max_lifetime_s 是会话级沙箱的回收（W5，D-13，只能调低部署的默认值），quota 是跨后端的配额与预算（W10，D-12），network 是联网授权的上限（W8，D-16）。",
       "type": "object",
       "properties": {
-        "backend": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,62}$"}
+        "backend": {"$ref": "#/$defs/backend_name"},
+        "fallback": {
+          "description": "首选后端暂时不可用（容量满、故障）时依次试的后端；只能平级或升级隔离强度，denied、invalid 不回退",
+          "type": "array", "uniqueItems": true, "maxItems": 5, "items": {"$ref": "#/$defs/backend_name"}
+        },
+        "min_isolation": {"description": "回退时不能低于的隔离强度；不写取首选后端的", "$ref": "defs.schema.json#/$defs/sandbox_isolation"},
+        "idle_timeout_s": {"description": "会话级沙箱空闲多久回收（秒）；高于部署的默认值（15 分钟）时按默认值", "type": "integer", "minimum": 60, "maximum": 86400},
+        "max_lifetime_s": {"description": "一个环境最多活多久（秒）；高于部署的默认值（6 小时）时按默认值", "type": "integer", "minimum": 300, "maximum": 86400},
+        "quota": {
+          "description": "跨所有后端，按沙箱环境表核对；超了拒绝（sandbox_quota_exceeded 或 sandbox_budget_exceeded），不排队、不降级。不写的项不限",
+          "type": "object",
+          "properties": {
+            "max_concurrent": {"description": "同时在跑的环境数", "type": "integer", "minimum": 1},
+            "daily_sandbox_seconds": {"description": "每天的沙箱时长（秒，UTC 日）", "type": "integer", "minimum": 0},
+            "daily_egress_bytes": {"description": "每天经出网网关的流量（上行加下行）", "type": "integer", "minimum": 0},
+            "daily_mirror_miss_bytes": {"description": "每天包镜像未命中时从上游拉的字节数", "type": "integer", "minimum": 0},
+            "daily_cost_usd": {"type": "number", "minimum": 0},
+            "monthly_cost_usd": {"type": "number", "minimum": 0}
+          },
+          "additionalProperties": false
+        },
+        "network": {
+          "description": "联网授权的上限：沙箱默认断网，按 Task 申请、人批准后经出网网关出去，到期或 Task 结束即收回",
+          "type": "object",
+          "properties": {
+            "allowed": {"description": "是否允许申请联网；不写为 false", "type": "boolean"},
+            "hosts": {
+              "description": "能放行的主机范围（可以用 *. 开头）；申请的主机要落在这里",
+              "type": "array", "uniqueItems": true, "maxItems": 100, "items": {"$ref": "#/$defs/host_pattern"}
+            },
+            "max_grant_minutes": {"description": "一次授权最长多久", "type": "integer", "minimum": 1, "maximum": 1440},
+            "approver": {"description": "谁来批", "$ref": "defs.schema.json#/$defs/network_approver"},
+            "max_up_bytes": {"description": "一次授权的上行字节上限", "type": "integer", "minimum": 0},
+            "max_down_bytes": {"description": "一次授权的下行字节上限", "type": "integer", "minimum": 0},
+            "max_conns": {"description": "一次授权的并发连接上限", "type": "integer", "minimum": 0},
+            "max_rps": {"description": "一次授权每秒最多新建的连接与请求数", "type": "integer", "minimum": 0},
+            "preview": {"description": "是否允许给环境的端口开预览地址（进网）", "type": "boolean"}
+          },
+          "additionalProperties": false
+        }
       },
       "required": ["backend"],
       "additionalProperties": false
     }
   },
-  "unevaluatedProperties": false
+  "unevaluatedProperties": false,
+  "$defs": {
+    "backend_name": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,62}$"},
+    "host_pattern": {
+      "description": "主机名，可以用 *. 开头表示子域名；不是地址（最后一段以字母开头，所以 10.0.0.1 这类写法不合法）、不带端口与路径",
+      "type": "string", "maxLength": 253,
+      "pattern": "^(\\*\\.)?[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*\\.[a-z]([a-z0-9-]{0,61}[a-z0-9])?$"
+    }
+  }
 }

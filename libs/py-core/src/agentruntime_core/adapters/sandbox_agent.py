@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 
 from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError, ProviderError, TransientError
-from agentruntime_core.providers.sandbox import ExecResult
+from agentruntime_core.providers.sandbox import ExecResult, check_exec_env
 
 TOKEN_HEADER = "X-Sandbox-Token"
 _DRIVE = re.compile(r"^[A-Za-z]:")
@@ -50,11 +50,17 @@ class AgentClient:
     def __init__(self, *, request_timeout: timedelta = timedelta(seconds=60)) -> None:
         self._request_timeout = request_timeout
 
-    async def exec(self, endpoint: AgentEndpoint, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"") -> ExecResult:
+    async def exec(
+        self, endpoint: AgentEndpoint, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"", env: Mapping[str, str] | None = None
+    ) -> ExecResult:
         if not argv:
             raise InvalidError("invalid_argument", "argv 不能为空")
         ms = max(1, int(timeout.total_seconds() * 1000))
-        body = json.dumps({"argv": list(argv), "stdin": _b64(stdin), "timeout_ms": ms}).encode()
+        request: dict[str, object] = {"argv": list(argv), "stdin": _b64(stdin), "timeout_ms": ms}
+        extra = check_exec_env(env)
+        if extra:
+            request["env"] = extra
+        body = json.dumps(request).encode()
         status, data = await self._call(
             endpoint, "POST", "/v1/exec", body, {"Content-Type": "application/json"}, timeout.total_seconds() + self._request_timeout.total_seconds()
         )

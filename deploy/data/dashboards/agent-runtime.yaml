@@ -1,6 +1,6 @@
 # Grafana 面板（docs/plan/cloud-deploy.md D-10）：任务数、模型花费、各沙箱后端的时长与估算花费。数据全部来自 Tempo 里的 span
 # （TraceQL 的指标查询），span 名与属性取自代码：invoke_workflow（收尾补记，runtime.cost_usd、runtime.task_status）、
-# chat（runtime.cost_usd）、runtime.sandbox（sandbox.backend、sandbox.lifetime_ms、sandbox.cpu_ms）。
+# chat（runtime.cost_usd）、runtime.sandbox（sandbox.backend、sandbox.lifetime_ms、sandbox.cpu_ms、sandbox.cost_usd）。
 # Grafana 的 sidecar 按标签 grafana_dashboard 收（deploy/data/values/grafana.yaml）。tests/deploy/test_cloud.py 核对名字对得上。
 apiVersion: v1
 kind: ConfigMap
@@ -75,6 +75,15 @@ data:
           "datasource": {"type": "tempo", "uid": "tempo"},
           "targets": [{"refId": "A", "queryType": "traceql", "limit": 50, "tableType": "spans",
                        "query": "{ name = \"invoke_workflow\" } | select(span.task_id, span.tenant_id, span.runtime.task_status, span.runtime.cost_usd, span.runtime.rounds)"}]
+        },
+        {
+          "id": 7, "type": "timeseries", "title": "沙箱花费（美元，按租户；环境表按后端价目算）",
+          "description": "一次性的环境在 shell_run 的 span 上带 sandbox.cost_usd（D-11）；会话级的环境在回收时才结算，花费在沙箱环境表的 sandbox_usage 里。",
+          "gridPos": {"x": 0, "y": 22, "w": 24, "h": 8},
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "fieldConfig": {"defaults": {"unit": "currencyUSD"}},
+          "targets": [{"refId": "A", "queryType": "traceql", "metricsQueryType": "range",
+                       "query": "{ name = \"runtime.sandbox\" } | sum_over_time(span.sandbox.cost_usd) by (span.tenant_id)"}]
         }
       ]
     }

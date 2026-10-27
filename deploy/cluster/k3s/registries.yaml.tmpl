@@ -1,0 +1,12 @@
+# 节点拉环境镜像仓库里的镜像（按项目定制的运行环境，docs/plan/cloud-deploy.md D-17）：仓库是 Chart 建的 env-registry，
+# 经 NodePort 30500、http。install.sh 把 ENV_REGISTRY_USER、ENV_REGISTRY_PASSWORD 填进来，写到 /etc/rancher/k3s/registries.yaml
+# （0600）；与 SecretStore 里的 sandbox/env-registry、Secret agent-runtime-env-registry 的 htpasswd 是同一个用户。
+mirrors:
+  "127.0.0.1:30500":
+    endpoint:
+      - "http://127.0.0.1:30500"
+configs:
+  "127.0.0.1:30500":
+    auth:
+      username: "${ENV_REGISTRY_USER}"
+      password: "${ENV_REGISTRY_PASSWORD}"
