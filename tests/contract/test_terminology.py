@@ -7,6 +7,7 @@ test_enum_parity.py 核对，这里只拦旧叫法。docs/ 不在检查范围内
 from __future__ import annotations
 
 import json
+import os
 import re
 from collections.abc import Iterator
 from pathlib import Path
@@ -65,15 +66,13 @@ def _files() -> Iterator[Path]:
         if root.is_file():
             yield root
         elif root.is_dir():
-            for path in root.rglob("*"):
-                if (
-                    path.is_file()
-                    and path.suffix in TEXT_SUFFIXES
-                    and path.name not in SKIP_FILES
-                    and not SKIP_DIRS.intersection(path.relative_to(REPO_ROOT).parts)
-                    and path.resolve() != THIS_FILE
-                ):
-                    yield path
+            # 跳过的目录不往下走（共享盘上别处留下的 .pytest_cache 可能读不了）。
+            for dirpath, dirnames, filenames in os.walk(root):
+                dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+                for name in sorted(filenames):
+                    path = Path(dirpath) / name
+                    if path.suffix in TEXT_SUFFIXES and name not in SKIP_FILES and path.resolve() != THIS_FILE:
+                        yield path
 
 
 def _text(path: Path) -> str:
