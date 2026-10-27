@@ -1,0 +1,45 @@
+# 在 kind 上彩排 D-04（scripts/kind_rehearsal.py）：叠在 values-cloud.yaml 上，只改 kind 里没有或不需要的东西。
+# - 镜像用本机构建的（scripts/build_images.py --registry agentruntime-test --tag d01-test），装进 kind 的节点，不拉。
+# - Temporal 是集群里的开发服务（temporalio/temporal 的 start-dev，data 命名空间里的 temporal-frontend）。
+# - 业务库用 SQLite、向量放内存（彩排不装 Postgres 与 Qdrant）；模型用 mock，Planner、Reviewer、tool_loop 用桩。
+# - 不起 Collector（导出失败不影响业务）与 Learning（要 Redpanda）。
+# 其余（Worker 经 Sandbox 跑 shell_run 与它的 RBAC、共用的业务对象卷、可写的 SecretStore 加种子、KEDA、入口）与 values-cloud.yaml 相同。
+image:
+  registry: agentruntime-test
+  tag: d01-test
+  pullPolicy: Never
+
+secrets:
+  relationalDsn:
+    name: ""
+
+external:
+  temporal:
+    address: temporal-frontend.data.svc:7233
+    namespace: agent-runtime
+  qdrant:
+    url: ""
+
+modelGateway:
+  provider: mock
+
+worker:
+  planner: stub
+  reviewer: stub
+  toolLoop: stub
+  shell:
+    backends:
+      gvisor:
+        image: agentruntime-test/sandbox-python:d01-test
+        agent_image: agentruntime-test/sandbox-agent:d01-test
+        image_pull_policy: Never
+      kata:
+        image: agentruntime-test/sandbox-python:d01-test
+        agent_image: agentruntime-test/sandbox-agent:d01-test
+        image_pull_policy: Never
+
+collector:
+  replicas: 0
+
+learning:
+  enabled: false
