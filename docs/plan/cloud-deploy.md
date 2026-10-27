@@ -474,6 +474,7 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
 | D-10 | `deploy/cluster/demo.md`；Grafana 面板；`runtime.sandbox` span（后端、存活、执行与 CPU 时间）；K8s 后端每个租户的配额 | 面板查的名字与代码对得上；CPU 时间与配额在 kind 上 | 照手册在线上走一遍；面板的 TraceQL 指标查询在真 Tempo 上 |
 | D-11～D-17 | 2026-10-27 开始实现（见下面各项的进度） | — | 设计书原文档待人更新 |
 | D-11 | 沙箱环境表（业务库，迁移 201、202）、SandboxBroker、对账工作流；三种后端都能列出环境（桥加了列表接口与目录）；按价目结算花费并计入 Task；租户删除时销毁全部环境 | `test_sandbox_ledger.py`：本地与 Cloudflare 假桥的状态序列、花费与用量（SQLite 与 Postgres 各一遍）、两种中断后对账修好、手工删掉记为丢失、宽限内不删、空闲回收与忙时不回收、越权查不到、对账工作流只起一个；桥过了 `tsc` | K8s 的那一条要 `AR_TEST_KIND=1`；真 Postgres 业务库与真桥（线上） |
+| D-12 | 租户策略 schema 的 `sandbox.fallback`、`min_isolation`、`quota` 等（契约待人审）；SandboxBroker 的首选 + 回退、事务里的配额与预算 | `test_sandbox_quota.py`：20 个并发配额 5 恰好 5 个（SQLite 与 Postgres）、日与月的预算、当天时长、transient 回退并记录、denied 与 invalid 不回退、只剩更弱的拒绝、min_isolation、工作区同组、策略写错拒绝、span 里的回退；契约的正例与反例 | 契约人审后更新 `proto/breaking-baseline.binpb`（这一项只有 schema） |
 
 实现中与本计划写法不同的：
 

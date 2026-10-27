@@ -85,3 +85,11 @@ JSON：{"e": env_ref, "t": tenant_id, "w": workspace_id, "s": session_id, "x": �
 - 花费：一次性的环境在销毁时按后端登记里的价目（`price: {per_hour, per_cpu_hour}`）结算，写进行、当天的 `sandbox_usage`，并经 shell_run 的输出（`sandbox_cost_usd`）进 Node 的 `meta.cost_usd`，由 Stage Runner 计入 Round 与 Task 的花费（工作流代码没改）；span 上是 `sandbox.cost_usd`，Grafana 加了按租户的沙箱花费。会话级的环境在回收时才结算，花费只在环境表里（不进当时那个 Task 的花费）。
 - 租户删除：`SandboxBroker.destroy_tenant`（设计书还没有租户删除的流程，先给出沙箱一侧要做的）。
 - 没覆盖的：程序节点 `sandbox_exec`（Node Executor 的开发沙箱）还没经 broker；“杀掉 Worker”的故障注入是在进程内用异常模拟的（`test_sandbox_ledger.py`），没在端到端里杀进程。
+
+**D-12（2026-10-27）**
+
+- 契约（S-01，**待人审**，基线没更新）：`tenant_policy.schema.json` 的 `sandbox` 加 `fallback`、`min_isolation`、`idle_timeout_s`、`max_lifetime_s`、`quota`、`network`（D-13、D-16 要的字段一并加了，免得审三次）；新的枚举放在 `defs.schema.json`（`sandbox_isolation`、`network_approver`）。`backend` 仍是写了 `sandbox` 就必填。
+- 回退在 SandboxBroker：候选是首选加回退去重；隔离强度低于下限（`min_isolation`，没写取首选的）的跳过并在报错里写明；绑定 workspace 时只在同一组之间回退（同一个 PVC 的 K8s 后端、本地实现；托管后端各自一组）；只有 transient 才换下一个。首选本身低于 `min_isolation` 时直接从够强的回退开始。
+- 配额在建环境的事务里核对（`sandbox_quota_lock` 那一行先更新，Postgres 上是行锁）：同时在跑的数、当天的沙箱秒数（已结束的加上在跑的）、当天的出网与镜像未命中字节、当天与当月的花费。
+- 没做的：“要出网审计的 Task 只在支持网关的后端之间回退”等 D-16 有了网关再加（后端登记要标明是否经网关出网）。
+
