@@ -437,6 +437,20 @@ def test_memory_requests_leave_room_for_sandboxes(cloud: list[dict[str, Any]]) -
     assert total <= 60, f"64 GB 的机器上 requests 合计 {total:.1f} GiB，超出预算（deploy/cluster/README.md）"
 
 
+# --- D-07 Cloudflare 桥 ---
+
+
+def test_bridge_dependencies_are_pinned_and_locked() -> None:
+    """桥的 npm 依赖写明确切版本（不用 ^ 或 ~），package-lock.json 提交进仓库、与 package.json 对得上（npm ci 可复现）。"""
+    bridge = REPO_ROOT / "deploy" / "cloudflare" / "sandbox-bridge"
+    package = json.loads((bridge / "package.json").read_text("utf-8"))
+    lock = json.loads((bridge / "package-lock.json").read_text("utf-8"))
+    for group in ("dependencies", "devDependencies"):
+        for name, version in package.get(group, {}).items():
+            assert re.fullmatch(r"\d+\.\d+\.\d+", version), f"{name} 要写确切版本，得到 {version}"
+            assert lock["packages"][f"node_modules/{name}"]["version"] == version, f"package-lock.json 里 {name} 的版本对不上"
+
+
 # --- D-10 面板 ---
 
 

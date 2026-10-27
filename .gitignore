@@ -22,3 +22,4 @@ build/
 # Cloudflare 桥（D-07）的依赖与 wrangler 的本地状态
 /deploy/cloudflare/sandbox-bridge/node_modules/
 /deploy/cloudflare/sandbox-bridge/.wrangler/
+/deploy/cloudflare/sandbox-bridge/.dev.vars

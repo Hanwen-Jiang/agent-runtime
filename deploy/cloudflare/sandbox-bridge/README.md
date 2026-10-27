@@ -8,8 +8,9 @@ Sandbox 的第二个 microVM 后端（docs/plan/cloud-deploy.md D-07）。Runtim
 
 ```bash
 cd deploy/cloudflare/sandbox-bridge
-npm install
+npm ci                                 # 按 package-lock.json 装（版本都写死了）
 npx tsc --noEmit
+npx wrangler deploy --dry-run --outdir /tmp/bridge-dist   # 只打包、构建镜像，不上传
 npx wrangler secret put BRIDGE_TOKEN   # Runtime 调桥用的令牌，至少 32 个字符；同一个值写进 Runtime 的 SecretStore（见下）
 npx wrangler secret put AGENT_KEY      # 派生每个沙箱的 agent 令牌，只在桥里用
 npx wrangler deploy
@@ -30,8 +31,14 @@ npx wrangler deploy
 
 真实端点的用例：`AR_LIVE_CLOUDFLARE=1`、`AR_CLOUDFLARE_BRIDGE_URL`、`AR_CLOUDFLARE_BRIDGE_TOKEN`，在 `libs/py-core` 下 `pytest tests/adapters/test_cloudflare_sandbox.py`（花钱、不进 CI）。
 
-## 还没验证的
+本机试跑：`.dev.vars` 里写 `BRIDGE_TOKEN=…`、`AGENT_KEY=…`（不提交），`npx wrangler dev`。带容器的本地开发 wrangler 只支持
+Linux 与 macOS（Windows 上要在 WSL 里跑）；Windows 上可以 `npx wrangler dev --enable-containers=false` 看鉴权与路由，凡是要用到容器的请求都是 500。
+Linux 或 WSL 里 `wrangler dev` 起来之后，把 `AR_CLOUDFLARE_BRIDGE_URL` 设成 `http://127.0.0.1:8787`、令牌设成 `.dev.vars` 里的，就能对本地的桥跑上面的用例（不花钱）。
 
-本机没有 Node，`src/index.ts` 没有经过 `tsc` 与真实部署；`@cloudflare/containers` 0.3.7 的接口按它的 README 写（`startAndWaitForPorts`、`containerFetch`、`setAllowedHosts`、`onActivityExpired`、`getContainer`），`wrangler.jsonc` 的 `image_build_context` 也要部署时核对。第一次部署后跑一遍上面的真实端点用例。
+## 验到哪一步了（2026-10-27）
+
+- 过了：`tsc --noEmit`（修了三处：`getState()` 返回的是 Promise、`sleepAfter` 的类型、`override`）；`wrangler deploy --dry-run` 打包成功、
+  按 `image_build_context` 用仓库根构建出镜像；Windows 上不带容器的 `wrangler dev` 里鉴权（401）、作用域格式（400）、环境 id 格式（404）。
+- 没过的环节：带容器的本地运行（要 Linux 或 WSL）与真实部署。第一次部署后跑一遍上面的真实端点用例。
 
 绑定 workspace（编码任务用）要等 D-06“工作区跟着沙箱走”：现在 Cloudflare 后端只能跑不绑定 workspace 的环境，Worker 的 shell_run 选到它会报 `unsupported_workspace`。

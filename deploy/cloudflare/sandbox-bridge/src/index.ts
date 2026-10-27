@@ -28,9 +28,10 @@ const HOST = /^(\*\.)?[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,
 const MAX_HOSTS = 50;
 
 export class Sandbox extends Container<Env> {
-  defaultPort = AGENT_PORT;
-  enableInternet = false;
-  sleepAfter = "10m";
+  override defaultPort = AGENT_PORT;
+  override enableInternet = false;
+  // 建环境时按 idle_seconds 改成秒数，所以类型要与基类一样宽。
+  override sleepAfter: string | number = "10m";
 
   // 建环境：记下作用域与参数，起容器，等 agent 的端口可连。
   async open(owner: string, idleSeconds: number, allowHosts: string[]): Promise<void> {
@@ -47,7 +48,8 @@ export class Sandbox extends Container<Env> {
 
   // 把一个请求转给容器里的 agent，带上 agent 的令牌。容器停了（例如重启过）就按记下的参数重新起。
   async agent(method: string, path: string, body: ArrayBuffer | null, contentType: string): Promise<Response> {
-    if (this.getState().status !== "running" && this.getState().status !== "healthy") {
+    const { status } = await this.getState();
+    if (status !== "running" && status !== "healthy") {
       await this.boot();
     }
     this.renewActivityTimeout();
