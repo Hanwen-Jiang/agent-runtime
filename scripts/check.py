@@ -135,7 +135,8 @@ def all_steps(root: Path, *, committed: bool = False) -> dict[str, Step]:
         ),
         _python("py-memory", "services/py-memory（开发后端与 Postgres + Qdrant）", root / "services" / "py-memory", "agentruntime-memory", ["tests"], ["uv", "postgres", "qdrant"]),
         _python("py-learning", "services/py-learning", root / "services" / "py-learning", "agentruntime-learning", ["tests"], ["uv"]),
-        _python("py-worker", "services/py-worker", root / "services" / "py-worker", "agentruntime-worker", ["tests"], ["uv", "temporal"]),
+        _python("py-worker", "services/py-worker（沙箱环境表在 SQLite 与 Postgres 上各跑一遍）", root / "services" / "py-worker", "agentruntime-worker", ["tests"],
+                ["uv", "temporal", "postgres", "go"]),
         _python("e2e", "端到端测试（不含故障注入）", root / "tests" / "e2e", "agentruntime-e2e-tests", ["-m", "not faults"], ["uv", "go", "temporal"]),
         _python("faults", "故障注入与恢复套件", root / "tests" / "e2e", "agentruntime-e2e-tests", ["faults"], ["uv", "go", "temporal"]),
     ]

@@ -238,7 +238,7 @@ name = "agentruntime-worker"
 version = "0.0.0"
 source = { editable = "services/py-worker" }
 dependencies = [
-    { name = "agentruntime-core", extra = ["otel", "temporal"] },
+    { name = "agentruntime-core", extra = ["otel", "postgres", "temporal"] },
     { name = "agentruntime-proto" },
     { name = "grpcio" },
     { name = "jsonschema" },
@@ -259,7 +259,7 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agentruntime-core", extras = ["otel", "temporal"], editable = "libs/py-core" },
+    { name = "agentruntime-core", extras = ["otel", "postgres", "temporal"], editable = "libs/py-core" },
     { name = "agentruntime-proto", editable = "proto/gen/python" },
     { name = "grpcio", specifier = ">=1.84.0" },
     { name = "jsonschema", specifier = ">=4.26" },

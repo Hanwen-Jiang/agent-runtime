@@ -15,13 +15,13 @@ import secrets
 import shutil
 import sys
 from collections.abc import Sequence
-from dataclasses import dataclass
-from datetime import timedelta
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from agentruntime_core.dev._common import scope_id
 from agentruntime_core.errors import InvalidError, NotFoundError
-from agentruntime_core.providers.sandbox import ExecResult, SandboxEnv, SandboxSpec
+from agentruntime_core.providers.sandbox import ExecResult, ListedEnvironment, SandboxEnv, SandboxSpec
 from agentruntime_core.tenancy import Scope, TenantContext, platform_scope, tenant_scope
 from agentruntime_core.testing import FaultInjector
 
@@ -38,6 +38,7 @@ class _Env:
     destroyed: bool = False
     # 绑定 workspace 的环境销毁时只删记录，不删目录。
     owns_workdir: bool = True
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 def _relative(path: str) -> Path:
@@ -64,6 +65,10 @@ class LocalSubprocessSandboxProvider:
 
     async def aclose(self) -> None:
         self._envs.clear()
+
+    async def list_environments(self) -> list[ListedEnvironment]:
+        """本进程建的、还没销毁的环境（开发实现的环境只在进程内）。"""
+        return [ListedEnvironment(env_id, env.owner, env.created_at) for env_id, env in sorted(self._envs.items()) if not env.destroyed]
 
 
 class LocalSubprocessSandbox:

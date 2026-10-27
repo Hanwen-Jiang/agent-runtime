@@ -18,18 +18,28 @@ import re
 import urllib.error
 import urllib.request
 from collections.abc import Sequence
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from agentruntime_core.adapters.sandbox_agent import AgentClient, AgentEndpoint, check_path
 from agentruntime_core.dev._common import scope_id
 from agentruntime_core.errors import InvalidError, NotFoundError, TransientError
-from agentruntime_core.providers.sandbox import ExecResult, SandboxEnv, SandboxSpec
+from agentruntime_core.providers.sandbox import ExecResult, ListedEnvironment, SandboxEnv, SandboxSpec
 from agentruntime_core.tenancy import Scope, TenantContext, platform_scope, tenant_scope
 from agentruntime_core.testing import FaultInjector
 
 _ENV_ID = re.compile(r"^cfs-[0-9a-f]{16}$")
 _HOST = re.compile(r"^(\*\.)?[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$")
 MAX_HOSTS = 50
+PLATFORM_OWNER = "_platform"
+
+
+def _parse_time(value: object) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 class CloudflareSandboxProvider:
@@ -52,6 +62,21 @@ class CloudflareSandboxProvider:
 
     async def aclose(self) -> None:
         return None
+
+    async def list_environments(self) -> list[ListedEnvironment]:
+        """桥的目录里本部署的全部环境（GET /v1/sandboxes，平台作用域），给沙箱环境表对账（D-11）。"""
+        status, body = await self.call("GET", "/v1/sandboxes", PLATFORM_OWNER)
+        AgentClient.raise_for(status, body)
+        try:
+            items = json.loads(body)["environments"]
+        except (ValueError, KeyError, TypeError):
+            raise TransientError("sandbox_bad_response", "桥返回的列表格式不对") from None
+        out: list[ListedEnvironment] = []
+        for item in items if isinstance(items, list) else []:
+            env_id = str((item or {}).get("env_id") or "")
+            if _ENV_ID.match(env_id):
+                out.append(ListedEnvironment(env_id, str(item.get("owner") or ""), _parse_time(item.get("created_at"))))
+        return out
 
     def headers(self, owner: str) -> dict[str, str]:
         return {"Authorization": f"Bearer {self._token}", "X-Sandbox-Owner": owner}

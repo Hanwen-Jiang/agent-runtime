@@ -14,7 +14,8 @@
   同一幂等键配不同参数：conflict。幂等记录按作用域隔离。
 - 超时：transient（code = timeout）。写操作超时后结果未知，由 Node Executor 先用 lookup 对账（附录 K.4）。
 - lookup 按幂等键查询写操作是否已经生效：已生效返回结果，没有返回 None；工具不支持查询：invalid（code = lookup_unsupported）。
-- 工具执行时拿到的租户上下文来自客户端的作用域，参数无法改变它。
+- 工具执行时拿到的租户上下文来自客户端的作用域，参数无法改变它。task_id 由调用方（Node Executor）给出，只用来归属，
+  不参与幂等（同一幂等键的再次调用即使 task_id 不同也返回第一次的结果）。
 """
 
 from __future__ import annotations
@@ -52,6 +53,11 @@ class ToolInvocation:
     credential: Credential | None
     # 调用者的 workspace（来自客户端的作用域，没有为空串），参数改变不了它；平台内工具按它划分工作区（T-10）。
     workspace_id: str = ""
+    # 调用者的会话与用户（同样来自作用域），会话级沙箱按会话复用环境（D-13）。
+    session_id: str = ""
+    user_id: str = ""
+    # 发起调用的 Task（由 Node Executor 给出，不来自参数）；联网授权属于 Task（D-16）。
+    task_id: str = ""
 
 
 ToolHandler = Callable[[ToolInvocation], Awaitable[Any]]
@@ -78,6 +84,7 @@ class ToolDriver(Protocol):
         *,
         idempotency_key: str | None = None,
         credential: Credential | None = None,
+        task_id: str = "",
     ) -> ToolResult: ...
 
     async def lookup(self, name: str, version: str, idempotency_key: str) -> ToolResult | None: ...

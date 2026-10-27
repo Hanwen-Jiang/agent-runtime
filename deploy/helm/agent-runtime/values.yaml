@@ -25,7 +25,7 @@ secrets:
   # 上面的 secrets.json 作为种子在启动时并进去（AR_SECRETS_SEED_FILE；种子里的密钥覆盖旧值，已生成的 kek 不换）。
   # 为空时直接读只读的 secrets.json，写 kek 会失败，只适合不卸载大载荷的试跑。
   storeClaim: ""
-  # 业务库的连接串（AR_RELATIONAL_DSN）；name 为空时 task-service 与 Memory Service 用 AR_DATA_DIR 下的 SQLite。
+  # 业务库的连接串（AR_RELATIONAL_DSN）；name 为空时 task-service、Memory Service 与 Worker（沙箱环境表，D-11）用 AR_DATA_DIR 下的 SQLite。
   relationalDsn:
     name: ""
     key: dsn

@@ -473,6 +473,7 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
 | D-09 | ObjectStore 的 S3 兼容实现（Python 与 Go，标准库的 SigV4），task-service 与 Worker 接上 | 一致性测试对着会核对签名的假服务（带与不带前缀）、AWS 文档里的签名例子 | 真实 R2（`AR_LIVE_S3=1`）；task-service 与 Worker 不共用卷时的 Claim-Check（线上） |
 | D-10 | `deploy/cluster/demo.md`；Grafana 面板；`runtime.sandbox` span（后端、存活、执行与 CPU 时间）；K8s 后端每个租户的配额 | 面板查的名字与代码对得上；CPU 时间与配额在 kind 上 | 照手册在线上走一遍；面板的 TraceQL 指标查询在真 Tempo 上 |
 | D-11～D-17 | 2026-10-27 开始实现（见下面各项的进度） | — | 设计书原文档待人更新 |
+| D-11 | 沙箱环境表（业务库，迁移 201、202）、SandboxBroker、对账工作流；三种后端都能列出环境（桥加了列表接口与目录）；按价目结算花费并计入 Task；租户删除时销毁全部环境 | `test_sandbox_ledger.py`：本地与 Cloudflare 假桥的状态序列、花费与用量（SQLite 与 Postgres 各一遍）、两种中断后对账修好、手工删掉记为丢失、宽限内不删、空闲回收与忙时不回收、越权查不到、对账工作流只起一个；桥过了 `tsc` | K8s 的那一条要 `AR_TEST_KIND=1`；真 Postgres 业务库与真桥（线上） |
 
 实现中与本计划写法不同的：
 

@@ -75,3 +75,13 @@ JSON：{"e": env_ref, "t": tenant_id, "w": workspace_id, "s": session_id, "x": �
 ## 5. 与改动稿、计划的出入（实现时定的）
 
 （按工作项写，做完一项补一项。）
+
+**D-11（2026-10-27）**
+
+- 环境表在 Worker 里写：`agentruntime_worker.sandbox.ledger`（表与状态迁移）、`sandbox.broker`（SandboxBroker：shell_run 经它借还环境）、`sandbox.reconcile`（对账的 activity，在 program 队列）与 `workflows/sandbox_reconcile.py`（平台级的定时工作流，固定 ID `platform-sandbox-reconcile`，订阅 task 队列又配了沙箱后端的 Worker 启动时确保它在跑；每 `AR_SANDBOX_RECONCILE_INTERVAL_S` 秒一轮，默认 60，跑满 120 轮 continue_as_new）。
+- 业务库：Worker 设了 `AR_RELATIONAL_DSN` 时用 Postgres（行级安全；Chart 在 sandbox 模式下把 task-service 的那个连接串也给 Worker），没设时是 `<AR_DATA_DIR>/relational` 下的 SQLite（与 task-service、包镜像、出网网关的布局相同）。py-worker 的测试因此要 Postgres 的二进制（与 go 一样，check.py 与 CI 都加上了）。
+- 后端的列表：`ListedEnvironment` 与 `SandboxLister`（`providers/sandbox.py`）；K8s 按 managed-by 标签列 Pod，Cloudflare 桥加了 `GET /v1/sandboxes`（一个名为 directory 的 Durable Object 记着环境，建时登记、删时去掉；只给平台作用域），开发实现列进程内的环境。同一个命名空间里的 gvisor 与 kata 会互相列出对方的 Pod，所以对账按后端给的环境 id 找行、不限后端。
+- 孤儿的宽限按后端记的创建时间（默认 10 分钟）：刚建、还没来得及落账的环境不删。
+- 花费：一次性的环境在销毁时按后端登记里的价目（`price: {per_hour, per_cpu_hour}`）结算，写进行、当天的 `sandbox_usage`，并经 shell_run 的输出（`sandbox_cost_usd`）进 Node 的 `meta.cost_usd`，由 Stage Runner 计入 Round 与 Task 的花费（工作流代码没改）；span 上是 `sandbox.cost_usd`，Grafana 加了按租户的沙箱花费。会话级的环境在回收时才结算，花费只在环境表里（不进当时那个 Task 的花费）。
+- 租户删除：`SandboxBroker.destroy_tenant`（设计书还没有租户删除的流程，先给出沙箱一侧要做的）。
+- 没覆盖的：程序节点 `sandbox_exec`（Node Executor 的开发沙箱）还没经 broker；“杀掉 Worker”的故障注入是在进程内用异常模拟的（`test_sandbox_ledger.py`），没在端到端里杀进程。

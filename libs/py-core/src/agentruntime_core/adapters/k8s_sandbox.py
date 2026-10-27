@@ -38,7 +38,7 @@ from agentruntime_core.adapters.sandbox_agent import AgentClient, AgentEndpoint,
 from agentruntime_core.dev._common import scope_id
 from agentruntime_core.dev.sandbox import workspace_subpath
 from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError, TransientError
-from agentruntime_core.providers.sandbox import ExecResult, SandboxEnv, SandboxSpec
+from agentruntime_core.providers.sandbox import ExecResult, ListedEnvironment, SandboxEnv, SandboxSpec
 from agentruntime_core.tenancy import Scope, TenantContext, platform_scope, tenant_scope
 from agentruntime_core.testing import FaultInjector
 
@@ -141,6 +141,21 @@ class K8sPodSandboxProvider:
                 await self._delete(meta.get("name", ""))
                 deleted += 1
         return deleted
+
+    async def list_environments(self) -> list[ListedEnvironment]:
+        """本部署建的沙箱 Pod（按 managed-by 标签；正在删除的不算），给沙箱环境表对账（D-11）。"""
+        listed = await self.kube.json("GET", self.pods_path() + "?labelSelector=" + label_selector(LABELS))
+        out: list[ListedEnvironment] = []
+        for pod in listed.get("items") or []:
+            meta = pod.get("metadata") or {}
+            name = str(meta.get("name") or "")
+            if not _ENV_ID.match(name) or meta.get("deletionTimestamp"):
+                continue
+            owner = str((meta.get("annotations") or {}).get(OWNER_ANNOTATION) or "")
+            created = meta.get("creationTimestamp")
+            phase = str((pod.get("status") or {}).get("phase") or "")
+            out.append(ListedEnvironment(name, owner, _parse_time(created) if created else None, "running" if phase in ("Pending", "Running") else phase.lower()))
+        return out
 
     async def _delete(self, name: str) -> None:
         status, _ = await self.kube.request("DELETE", self.pods_path(name), {"gracePeriodSeconds": 0, "propagationPolicy": "Background"})

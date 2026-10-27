@@ -40,6 +40,8 @@ from typing import Any
 from agentruntime_core.errors import InvalidError, NotFoundError
 from agentruntime_core.providers.sandbox import SandboxProvider
 
+from agentruntime_worker.sandbox.policy import SandboxPolicy
+
 KINDS = ("k8s", "cloudflare", "local")
 ISOLATIONS = ("none", "container", "microvm")
 TOKEN_KEY_SECRET = "sandbox/token-key"
@@ -88,7 +90,7 @@ class Sandboxes:
         self._policy = policy
         self._cache_ttl = cache_ttl
         self._backends: dict[str, Backend] = {}
-        self._choices: dict[str, tuple[float, str]] = {}
+        self._policies: dict[str, tuple[float, SandboxPolicy]] = {}
         self._lock = asyncio.Lock()
 
     @classmethod
@@ -111,22 +113,37 @@ class Sandboxes:
         return await self.backend(await self.choice(tenant_id))
 
     async def choice(self, tenant_id: str) -> str:
-        cached = self._choices.get(tenant_id)
+        return (await self.policy_for(tenant_id)).backend
+
+    async def policy_for(self, tenant_id: str) -> SandboxPolicy:
+        """这个租户的沙箱策略（首选、回退、最低隔离强度、配额、空闲与活满），按租户缓存 cache_ttl 秒。
+        首选或回退里有没登记的名字一律拒绝，不悄悄换后端。"""
+        cached = self._policies.get(tenant_id)
         if cached and time.monotonic() - cached[0] < self._cache_ttl:
             return cached[1]
-        name = self.default
+        doc = None
         if self._policy is not None:
             try:
-                policy = await self._policy(tenant_id)
+                doc = await self._policy(tenant_id)
             except NotFoundError:
-                policy = None
-            wanted = ((policy or {}).get("sandbox") or {}).get("backend")
-            if wanted:
-                if wanted not in self._specs:
-                    raise InvalidError("unknown_sandbox_backend", f"租户策略要的沙箱后端 {wanted} 在这个部署里没有登记")
-                name = str(wanted)
-        self._choices[tenant_id] = (time.monotonic(), name)
-        return name
+                doc = None
+        policy = SandboxPolicy.from_document(doc, self.default)
+        for name in policy.names:
+            if name not in self._specs:
+                raise InvalidError("unknown_sandbox_backend", f"租户策略要的沙箱后端 {name} 在这个部署里没有登记")
+        if policy.min_isolation and policy.min_isolation not in ISOLATIONS:
+            raise InvalidError("invalid_min_isolation", f"租户策略的 min_isolation 只能是 {'、'.join(ISOLATIONS)}")
+        self._policies[tenant_id] = (time.monotonic(), policy)
+        return policy
+
+    def spec(self, name: str) -> Mapping[str, Any]:
+        """登记里这个后端的原始配置（价目、工作区卷等，给 broker 用）。"""
+        if name not in self._specs:
+            raise InvalidError("unknown_sandbox_backend", f"沙箱后端 {name} 没有登记")
+        return self._specs[name]
+
+    def isolation(self, name: str) -> str:
+        return str(self.spec(name).get("isolation", "container"))
 
     async def backend(self, name: str) -> Backend:
         if name not in self._specs:

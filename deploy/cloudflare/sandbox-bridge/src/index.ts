@@ -3,6 +3,7 @@
 // Cloudflare Container（Firecracker microVM），容器里跑 sandbox-agent（services/go-sandbox-agent）。
 //
 //   GET    /healthz                                   不要令牌
+//   GET    /v1/sandboxes                              本部署在跑的环境（X-Sandbox-Owner 要是 _platform）→ {"environments": […]}
 //   POST   /v1/sandboxes                              {"idle_seconds", "allow_hosts"} → {"env_id"}
 //   DELETE /v1/sandboxes/<env_id>                     销毁；已经没了也是 204
 //   *      /v1/sandboxes/<env_id>/agent/<agent 路径>   原样转给容器里的 agent（/v1/exec、/v1/files/…）
@@ -12,13 +13,43 @@
 // agent 的令牌由 AGENT_KEY（wrangler secret）对 Durable Object 的 id 做 HMAC 得到，只在桥里用，不回给调用方。
 // 网络：类上 enableInternet = false；allow_hosts 非空时用 setAllowedHosts 只放行这些主机（只有 80、443 与 DNS）。
 // 磁盘是临时的：空闲超过 idle_seconds 后容器停掉，环境一并忘掉（之后访问是 404）。
+// 列表：一个名为 directory 的 Directory（Durable Object）记着每个环境的作用域与创建时间，建时登记、删时去掉，
+// 给 Runtime 的沙箱环境表对账（D-11）。
 
+import { DurableObject } from "cloudflare:workers";
 import { Container, getContainer } from "@cloudflare/containers";
 
 export interface Env {
   SANDBOX: DurableObjectNamespace<Sandbox>;
+  DIRECTORY: DurableObjectNamespace<Directory>;
   BRIDGE_TOKEN: string;
   AGENT_KEY: string;
+}
+
+interface Listed {
+  env_id: string;
+  owner: string;
+  created_at: string;
+}
+
+// 本部署全部环境的目录（只有一个实例，按名字 directory 取）。
+export class Directory extends DurableObject<Env> {
+  async add(envId: string, owner: string, createdAt: string): Promise<void> {
+    await this.ctx.storage.put(`env:${envId}`, { env_id: envId, owner, created_at: createdAt } satisfies Listed);
+  }
+
+  async remove(envId: string): Promise<void> {
+    await this.ctx.storage.delete(`env:${envId}`);
+  }
+
+  async list(): Promise<Listed[]> {
+    const entries = await this.ctx.storage.list<Listed>({ prefix: "env:" });
+    return [...entries.values()];
+  }
+}
+
+function directory(env: Env): DurableObjectStub<Directory> {
+  return env.DIRECTORY.get(env.DIRECTORY.idFromName("directory"));
 }
 
 const AGENT_PORT = 7070;
@@ -34,11 +65,12 @@ export class Sandbox extends Container<Env> {
   override sleepAfter: string | number = "10m";
 
   // 建环境：记下作用域与参数，起容器，等 agent 的端口可连。
-  async open(owner: string, idleSeconds: number, allowHosts: string[]): Promise<void> {
+  async open(envId: string, owner: string, idleSeconds: number, allowHosts: string[]): Promise<void> {
     if (await this.ctx.storage.get<string>("owner")) {
       throw new Error("environment exists");
     }
-    await this.ctx.storage.put({ owner, idleSeconds, allowHosts });
+    await this.ctx.storage.put({ envId, owner, idleSeconds, allowHosts });
+    await directory(this.env).add(envId, owner, new Date().toISOString());
     await this.boot();
   }
 
@@ -59,7 +91,9 @@ export class Sandbox extends Container<Env> {
   }
 
   async close(): Promise<void> {
+    const envId = await this.ctx.storage.get<string>("envId");
     await this.ctx.storage.deleteAll();
+    if (envId) await directory(this.env).remove(envId);
     await this.destroy().catch(() => undefined);
   }
 
@@ -96,6 +130,12 @@ export default {
     const owner = request.headers.get("X-Sandbox-Owner") ?? "";
     if (!OWNER.test(owner)) return problem(400, "invalid_owner", "X-Sandbox-Owner 的格式不对");
 
+    if (request.method === "GET" && url.pathname === "/v1/sandboxes") {
+      // 列出全部环境是部署级的操作，只给平台作用域。
+      if (owner !== "_platform") return problem(403, "platform_only", "列出环境只给平台作用域");
+      return Response.json({ environments: await directory(env).list() });
+    }
+
     if (request.method === "POST" && url.pathname === "/v1/sandboxes") {
       let spec: { idle_seconds?: unknown; allow_hosts?: unknown };
       try {
@@ -110,7 +150,7 @@ export default {
         return problem(400, "invalid_argument", "allow_hosts 要是主机名（可以用 *. 开头），最多 50 个");
       }
       const envId = "cfs-" + randomHex(8);
-      await getContainer(env.SANDBOX, envId).open(owner, idle, hosts as string[]);
+      await getContainer(env.SANDBOX, envId).open(envId, owner, idle, hosts as string[]);
       return Response.json({ env_id: envId }, { status: 201 });
     }
 

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Literal, Protocol
 
 from agentruntime_core.providers.base import Bindable
@@ -35,6 +35,8 @@ class SandboxSpec:
     allow_hosts: tuple[str, ...] = ()
     idle_timeout: timedelta = timedelta(minutes=10)
     workspace_id: str = ""
+    # 环境所属的会话（会话级沙箱，D-13）：只用来归属与复用（Worker 的 SandboxBroker 按它在沙箱环境表里找），后端不用解释它。
+    session_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -68,3 +70,21 @@ class Sandbox(Protocol):
 
 class SandboxProvider(Bindable[Sandbox], Protocol):
     pass
+
+
+@dataclass(frozen=True)
+class ListedEnvironment:
+    """后端里实际在跑的一个环境（对账用，D-11）。owner 是所属作用域（租户 ID 或 _platform）；created_at 是后端记的创建时间，
+    对账据此给刚建、还没来得及记进沙箱环境表的环境留出宽限。"""
+
+    env_id: str
+    owner: str
+    created_at: datetime | None
+    state: str = "running"
+
+
+class SandboxLister(Protocol):
+    """能列出本部署在跑的环境的后端（K8s、Cloudflare 桥、开发实现都能）。这是平台级的操作，不绑定租户：
+    只列本部署建的环境（K8s 按标签、桥按令牌），别的部署的不碰。"""
+
+    async def list_environments(self) -> list[ListedEnvironment]: ...
