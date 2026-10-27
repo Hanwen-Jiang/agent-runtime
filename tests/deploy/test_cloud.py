@@ -554,6 +554,89 @@ def test_sandbox_images_are_prepulled_on_every_node(cloud: list[dict[str, Any]])
         assert "limits" in c["resources"]
 
 
+# --- D-15 包镜像 ---
+
+
+def mirror_parts(manifests: list[dict[str, Any]]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """包镜像的 Deployment、Service、它自己的 NetworkPolicy 与沙箱命名空间里放行到它的那条。"""
+    [deployment] = [m for m in by_kind(manifests, "Deployment") if m["metadata"]["name"].endswith("-pkg-mirror")]
+    [service] = [m for m in by_kind(manifests, "Service") if m["metadata"]["name"].endswith("-pkg-mirror")]
+    policies = {m["metadata"]["name"]: m for m in by_kind(manifests, "NetworkPolicy")}
+    own = next(p for name, p in policies.items() if name.endswith("-pkg-mirror"))
+    return deployment, service, own, policies["sandboxes-to-pkg-mirror"]
+
+
+def test_pkg_mirror_runs_from_its_own_volume_with_the_cloud_budgets(cloud: list[dict[str, Any]]) -> None:
+    deployment, service, _, _ = mirror_parts(cloud)
+    values = cloud_values()["pkgMirror"]
+    assert deployment["spec"]["replicas"] == 1 and deployment["spec"]["strategy"]["type"] == "Recreate", "卷是 ReadWriteOnce：单副本、先停后起"
+    spec = pod_spec(deployment)
+    [c] = spec["containers"]
+    env = env_of(c)
+    assert c["args"] == ["serve"] and c["image"].rsplit("/", 1)[1].startswith("pkg-mirror:")
+    assert env["AR_RELATIONAL_DSN"]["valueFrom"]["secretKeyRef"]["name"] == cloud_values()["secrets"]["relationalDsn"]["name"], "未命中的字节记进与 Worker 同一个业务库"
+    assert env["AR_SECRETS_SEED_FILE"], "环境凭据的密钥取自 SecretStore 的平台作用域"
+    assert env["AR_PKG_MIRROR_ADDR"]["value"] == ":8093" and env["AR_PKG_MIRROR_ADMIN_ADDR"]["value"] == ":8094"
+    budgets = {k: int(env[k]["value"]) for k in ("AR_PKG_MIRROR_BLOB_BUDGET", "AR_PKG_MIRROR_META_BUDGET", "AR_PKG_MIRROR_MAX_FILE")}
+    assert budgets == {"AR_PKG_MIRROR_BLOB_BUDGET": 100 << 30, "AR_PKG_MIRROR_META_BUDGET": 5 << 30, "AR_PKG_MIRROR_MAX_FILE": 500 << 20}
+    [claim] = [m for m in by_kind(cloud, "PersistentVolumeClaim") if m["metadata"]["name"].endswith("-pkg-mirror")]
+    assert mem_gi(claim["spec"]["resources"]["requests"]["storage"]) >= (100 + 5) * 1.1, "卷比两份预算的和大，留出余量"
+    assert claim["spec"]["resources"]["requests"]["storage"] == values["storage"]
+    mounts = {m["mountPath"]: m["name"] for m in c["volumeMounts"]}
+    vols = {v["name"]: v for v in spec["volumes"]}
+    assert vols[mounts["/cache"]]["persistentVolumeClaim"]["claimName"] == claim["metadata"]["name"]
+    assert spec["automountServiceAccountToken"] is False and c["securityContext"]["readOnlyRootFilesystem"] is True
+    assert {p["port"] for p in service["spec"]["ports"]} == {8093, 8094}
+
+
+def test_workers_point_sandboxes_at_the_mirror_service(cloud: list[dict[str, Any]]) -> None:
+    _, service, _, _ = mirror_parts(cloud)
+    wanted = f"http://{service['metadata']['name']}.agent-runtime.svc:8093"
+    workers = [m for m in by_kind(cloud, "Deployment") if "-worker-" in m["metadata"]["name"]]
+    assert workers and all(env_of(c)["AR_PKG_MIRROR_URL"]["value"] == wanted for w in workers for c in pod_spec(w)["containers"])
+
+
+def test_sandboxes_reach_only_the_mirror_and_the_mirror_reaches_only_the_internet(cloud: list[dict[str, Any]]) -> None:
+    """W7：沙箱装依赖只经包镜像；镜像是集群里唯一能访问官方源的组件，它自己连不到私有网段与云元数据地址。"""
+    deployment, _, own, outbound = mirror_parts(cloud)
+    sandbox_ns = cloud_values()["worker"]["shell"]["sandboxNamespace"]
+    mirror_labels = deployment["spec"]["template"]["metadata"]["labels"]
+    # 沙箱命名空间一侧：选中适配器建的沙箱 Pod，只出到镜像的 8093 与 DNS。
+    from agentruntime_core.adapters.k8s_sandbox import LABELS
+
+    assert outbound["metadata"]["namespace"] == sandbox_ns and outbound["spec"]["policyTypes"] == ["Egress"]
+    assert outbound["spec"]["podSelector"]["matchLabels"].items() <= LABELS.items(), "选中的是 K8s 适配器建的沙箱 Pod"
+    to_mirror, to_dns = outbound["spec"]["egress"]
+    [peer] = to_mirror["to"]
+    assert peer["namespaceSelector"]["matchLabels"]["kubernetes.io/metadata.name"] == "agent-runtime"
+    assert peer["podSelector"]["matchLabels"].items() <= mirror_labels.items()
+    assert [p["port"] for p in to_mirror["ports"]] == [8093], "管理端口不对沙箱开放"
+    assert to_dns["to"][0]["podSelector"]["matchLabels"] == {"k8s-app": "kube-dns"} and {p["port"] for p in to_dns["ports"]} == {53}
+    # 镜像一侧：8093 收沙箱与 Runtime 的，8094 只收 Runtime 与 observability 的。
+    public, admin = own["spec"]["ingress"]
+    sources = lambda rule: {f["namespaceSelector"]["matchLabels"]["kubernetes.io/metadata.name"] for f in rule["from"]}  # noqa: E731
+    assert [p["port"] for p in public["ports"]] == [8093] and sandbox_ns in sources(public)
+    assert [p["port"] for p in admin["ports"]] == [8094] and sandbox_ns not in sources(admin)
+    internet = [r for r in own["spec"]["egress"] if any("ipBlock" in t for t in r.get("to", []))]
+    [rule] = internet
+    block = rule["to"][0]["ipBlock"]
+    assert block["cidr"] == "0.0.0.0/0" and {"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "100.64.0.0/10"} <= set(block["except"])
+    assert {p["port"] for p in rule["ports"]} == {80, 443}, "只出 http 与 https"
+
+
+def test_pkg_mirror_is_off_by_default_and_needs_the_shared_business_database() -> None:
+    manifests = render()
+    assert not [m for m in manifests if "pkg-mirror" in m["metadata"]["name"]]
+    assert all("AR_PKG_MIRROR_URL" not in env_of(c) for _, c in containers(manifests))
+    assert "secrets.relationalDsn" in render_fails("pkgMirror.enabled=true")
+
+
+def test_secret_example_has_the_credential_key_and_the_mirror_admin_token() -> None:
+    text = (CLUSTER / "secrets" / "secrets.example.yaml").read_text("utf-8")
+    for name in ("sandbox/env-credential-key", "pkg-mirror/admin-token"):
+        assert f'"{name}": "REPLACE_ME"' in text, f"SecretStore 的种子里要有 {name}（占位符）"
+
+
 def test_worker_runs_shell_in_the_universal_runtime(cloud: list[dict[str, Any]]) -> None:
     """D-14：集群里 shell_run 默认用多语言的 universal；每个 K8s 后端都把它映射到镜像。"""
     workers = [m for m in by_kind(cloud, "Deployment") if "-worker-" in m["metadata"]["name"]]

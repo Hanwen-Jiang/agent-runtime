@@ -8,13 +8,15 @@
   不靠进程内的缓存。用完不删（release(keep=True)），空闲到期或活满时由对账回收（sandbox.reconcile）。
 - 一个工作区同一时间只有一个可写的环境：别的会话占着、但那边没有命令在跑时，回收它再建；正在跑就报 denied（workspace_busy）。
 - 没有环境表（ledger 为 None，只在单元测试与没配业务库的开发里）时退回原来的做法：直接调后端，不复用、不核对配额。
+- 环境的短期凭据（D-15）：配了 credentials 时，每次借到的环境带上这条命令要的环境变量（Lease.env：包镜像的地址与凭据，
+  sandbox.credentials），调用方经 exec 的 env 给到命令；不进 repr、环境表与 trace。
 """
 
 from __future__ import annotations
 
 import contextlib
 import logging
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -23,6 +25,7 @@ from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError, P
 from agentruntime_core.providers.sandbox import ExecResult, Sandbox, SandboxSpec
 from agentruntime_core.tenancy import TenantContext
 
+from agentruntime_worker.sandbox.credentials import EnvCredentials
 from agentruntime_worker.sandbox.ledger import EnvRecord, SandboxLedger
 from agentruntime_worker.sandbox.policy import ISOLATION_RANK, SandboxPolicy
 
@@ -44,6 +47,8 @@ class Lease:
     reused: bool = False
     fallback_from: str = ""
     fallback_reason: str = ""
+    # 给这条命令的环境变量（包镜像与出网代理的地址、凭据）；里面有凭据，不进 repr。
+    env: dict[str, str] = field(default_factory=dict, repr=False)
 
     @property
     def attributes(self) -> dict[str, Any]:
@@ -63,9 +68,10 @@ class Lease:
 
 
 class SandboxBroker:
-    def __init__(self, sandboxes: Sandboxes, ledger: SandboxLedger | None = None) -> None:
+    def __init__(self, sandboxes: Sandboxes, ledger: SandboxLedger | None = None, *, credentials: EnvCredentials | None = None) -> None:
         self.sandboxes = sandboxes
         self.ledger = ledger
+        self.credentials = credentials
 
     # --- 借 ---
 
@@ -90,8 +96,15 @@ class SandboxBroker:
             if found is not None:
                 backend = await self.sandboxes.backend(found.backend)
                 record = await self.ledger.touch(found, task_id=task_id, busy_for=busy_for)
-                return Lease(backend, backend.provider.bind(tenant), record.backend_env_id, record, reused=True)
-        return await self._create(tenant, owner, spec, policy, task_id=task_id, writable=writable, reuse=reuse, busy_for=busy_for)
+                lease = Lease(backend, backend.provider.bind(tenant), record.backend_env_id, record, reused=True)
+                return await self._with_env(lease, policy)
+        lease = await self._create(tenant, owner, spec, policy, task_id=task_id, writable=writable, reuse=reuse, busy_for=busy_for)
+        return await self._with_env(lease, policy)
+
+    async def _with_env(self, lease: Lease, policy: SandboxPolicy) -> Lease:
+        if self.credentials is not None and lease.record is not None:
+            lease.env = await self.credentials.exec_env(lease.record, self.sandboxes.spec(lease.backend.name), policy.quota)
+        return lease
 
     async def _create(
         self, tenant: TenantContext, owner: str, spec: SandboxSpec, policy: SandboxPolicy, *, task_id: str, writable: bool, reuse: bool,

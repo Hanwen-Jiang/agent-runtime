@@ -17,7 +17,7 @@ import json
 import re
 import urllib.error
 import urllib.request
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
 
 from agentruntime_core.adapters.sandbox_agent import AgentClient, AgentEndpoint, check_path
@@ -140,9 +140,11 @@ class CloudflareSandbox:
             raise TransientError("sandbox_bad_response", "桥返回的环境 id 格式不对")
         return SandboxEnv(env_id=env_id, spec=spec)
 
-    async def exec(self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"") -> ExecResult:
+    async def exec(
+        self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"", env: Mapping[str, str] | None = None
+    ) -> ExecResult:
         self._p._faults.check("exec")
-        return await self._p._agent.exec(self._endpoint(env_id), argv, timeout=timeout, stdin=stdin)
+        return await self._p._agent.exec(self._endpoint(env_id), argv, timeout=timeout, stdin=stdin, env=env)
 
     async def write_file(self, env_id: str, path: str, data: bytes) -> None:
         self._p._faults.check("write_file")

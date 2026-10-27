@@ -20,12 +20,14 @@ import tempfile
 from collections.abc import AsyncIterator
 from pathlib import Path
 
+from agentruntime_core import envcred
 from agentruntime_core.dev.object_store import LocalDiskObjectStoreProvider
 from agentruntime_core.dev.tool_driver import LocalToolDriverProvider
 from agentruntime_core.providers.object_store import ObjectStoreProvider
 
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.sandbox.broker import SandboxBroker
+from agentruntime_worker.sandbox.credentials import EnvCredentials
 from agentruntime_worker.sandbox.ledger import SandboxLedger
 from agentruntime_worker.sandbox.store import relational_store
 from agentruntime_worker.telemetry import worker_telemetry
@@ -55,7 +57,10 @@ def _key(config: WorkerConfig) -> tuple[object, ...]:
 
 
 def _broker_key(config: WorkerConfig) -> tuple[object, ...]:
-    return (config.tool_shell_sandbox, config.sandbox_backends_file, config.registry_address, config.data_dir, config.secrets_file, config.relational_dsn)
+    return (
+        config.tool_shell_sandbox, config.sandbox_backends_file, config.registry_address, config.data_dir, config.secrets_file, config.relational_dsn,
+        config.pkg_mirror_url,
+    )
 
 
 def sandboxes(config: WorkerConfig) -> Sandboxes | None:
@@ -79,7 +84,8 @@ def sandbox_broker(config: WorkerConfig) -> SandboxBroker | None:
             _brokers[key] = None
         else:
             root = config.data_dir or Path(tempfile.mkdtemp(prefix="agentruntime-sandbox-ledger-"))
-            _brokers[key] = SandboxBroker(boxes, SandboxLedger(relational_store(config.relational_dsn, root)))
+            credentials = EnvCredentials(lambda: boxes.read_secret(envcred.SECRET_NAME), mirror_url=config.pkg_mirror_url)
+            _brokers[key] = SandboxBroker(boxes, SandboxLedger(relational_store(config.relational_dsn, root)), credentials=credentials)
     return _brokers[key]
 
 

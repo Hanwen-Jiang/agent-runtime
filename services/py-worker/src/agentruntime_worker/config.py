@@ -58,6 +58,8 @@ ENV_SANDBOX_SESSIONS = "AR_SANDBOX_SESSIONS"
 ENV_SANDBOX_RECONCILE_INTERVAL_S = "AR_SANDBOX_RECONCILE_INTERVAL_S"
 # shell_run 在沙箱里用的运行环境（D-14）：后端登记把它映射到镜像，例如 universal（多语言，默认的生产配置）或 python。
 ENV_SANDBOX_RUNTIME = "AR_SANDBOX_RUNTIME"
+# 包镜像的地址（D-15），例如 http://ar-agent-runtime-pkg-mirror:8093：设了就给 K8s 与本地后端的命令注入镜像源变量。
+ENV_PKG_MIRROR_URL = "AR_PKG_MIRROR_URL"
 
 
 @dataclass(frozen=True)
@@ -106,6 +108,7 @@ class WorkerConfig:
     sandbox_sessions: bool = True
     sandbox_reconcile_interval_s: int = 60
     sandbox_runtime: str = "python"
+    pkg_mirror_url: str = ""
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> WorkerConfig:
@@ -191,6 +194,7 @@ class WorkerConfig:
             sandbox_sessions=sessions == "1",
             sandbox_reconcile_interval_s=interval,
             sandbox_runtime=env.get(ENV_SANDBOX_RUNTIME, "").strip() or cls.sandbox_runtime,
+            pkg_mirror_url=env.get(ENV_PKG_MIRROR_URL, "").strip(),
         )
 
     def store_paths(self, root: Path) -> tuple[Path, Path]:

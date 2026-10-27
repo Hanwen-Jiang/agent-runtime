@@ -63,6 +63,11 @@ modelGateway:
 memory:
   replicas: 1
 
+pkgMirror:
+  enabled: true
+  # 单节点：local-path 的卷，预算 100 GiB（包文件）+ 5 GiB（元数据），留出余量。
+  storage: 120Gi
+
 worker:
   workspacesClaim: workspaces
   shell:

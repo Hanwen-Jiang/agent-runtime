@@ -205,13 +205,15 @@ class K8sPodSandbox:
         p._last_touch[env_id] = time.monotonic()
         return SandboxEnv(env_id=env_id, spec=spec, image=_image_id(pod))
 
-    async def exec(self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"") -> ExecResult:
+    async def exec(
+        self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"", env: Mapping[str, str] | None = None
+    ) -> ExecResult:
         self._p._faults.check("exec")
         pod = await self._lookup(env_id)
         if not argv:
             raise InvalidError("invalid_argument", "argv 不能为空")
         await self._touch(env_id, pod)
-        return await self._p._agent.exec(self._p.endpoint(env_id, pod), argv, timeout=timeout, stdin=stdin)
+        return await self._p._agent.exec(self._p.endpoint(env_id, pod), argv, timeout=timeout, stdin=stdin, env=env)
 
     async def write_file(self, env_id: str, path: str, data: bytes) -> None:
         self._p._faults.check("write_file")

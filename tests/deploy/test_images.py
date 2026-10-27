@@ -91,7 +91,7 @@ def test_chart_images_are_all_built(values: Path | None) -> None:
 def test_the_five_services_and_the_sandbox_images_are_listed() -> None:
     assert set(MANIFEST) == {
         "task-service", "model-gateway", "worker", "memory", "learning",
-        "sandbox-agent", "sandbox-python", "sandbox-universal", "sandbox-node", "sandbox-go",
+        "sandbox-agent", "sandbox-python", "sandbox-universal", "sandbox-node", "sandbox-go", "pkg-mirror",
     }
     for name, spec in MANIFEST.items():
         assert (REPO_ROOT / spec["dockerfile"]).is_file(), f"{name} 的 Dockerfile 不存在"
@@ -144,6 +144,31 @@ def test_universal_has_one_layer_per_toolchain_from_pinned_images() -> None:
         assert var in final, f"根文件系统只读：{var.split('=')[0]} 要指到 /tmp"
     assert "GOTOOLCHAIN=local" in final, "Go 不自己去下载别的工具链（沙箱默认断网）"
     assert not re.search(r"curl[^\n|]*\|\s*(ba)?sh", text), "不把下载的脚本管道给 shell"
+
+
+# sandbox-agent 自己就交给命令的变量（services/go-sandbox-agent/cmd/sandbox-agent 的 commandEnv）与它自己的配置。
+AGENT_BASE_ENV = {"PATH", "HOME", "LANG", "LC_ALL", "TZ", "PYTHONIOENCODING", "PYTHONDONTWRITEBYTECODE"}
+
+
+def env_names(stage: str) -> tuple[set[str], set[str]]:
+    """运行阶段 ENV 设的变量名，与 AGENT_ENV_PASSTHROUGH 列出的。"""
+    body = "\n".join(m.group(1) for m in re.finditer(r"(?ms)^ENV\s+(.*?)(?<!\\)$", stage))
+    pairs = dict(re.findall(r'(\w+)=("[^"]*"|\S+)', body))
+    return set(pairs), set(pairs.get("AGENT_ENV_PASSTHROUGH", "").strip('"').replace(",", " ").split())
+
+
+@pytest.mark.parametrize("path", ["deploy/images/universal/Dockerfile", "deploy/images/sandbox.Dockerfile"])
+def test_sandbox_images_pass_every_toolchain_variable_to_commands(path: str) -> None:
+    """D-15：sandbox-agent 只把基本变量与 AGENT_ENV_PASSTHROUGH 列出的交给命令；镜像 ENV 设的工具链变量都要列上，
+    否则 K8s 后端经 agent 跑的命令拿不到（rustc 找不到 RUSTUP_HOME、Maven 写只读的 ~/.m2）。"""
+    names, passed = env_names(final_stage((REPO_ROOT / path).read_text("utf-8")))
+    assert passed, f"{path} 要声明 AGENT_ENV_PASSTHROUGH"
+    missing = {n for n in names if not n.startswith("AGENT_") and n not in AGENT_BASE_ENV} - passed
+    assert not missing, f"{path} 的 AGENT_ENV_PASSTHROUGH 漏了 {sorted(missing)}"
+    assert not {n for n in passed if n.startswith("AGENT_")}, "AGENT_* 不交给命令"
+    assert passed <= names, f"列出的变量要在 ENV 里设：{sorted(passed - names)}"
+    for var in ("PIP_INDEX_URL", "npm_config_registry", "GOPROXY"):
+        assert var not in names, f"包镜像的地址（{var}）每次执行时注入，不写死在镜像里"
 
 
 def test_single_language_images_pin_their_base() -> None:

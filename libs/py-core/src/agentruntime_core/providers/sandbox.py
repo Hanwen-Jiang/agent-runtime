@@ -6,6 +6,8 @@
 - 环境只属于创建它的作用域；别的作用域访问：not_found。销毁后访问：not_found。destroy 重复调用不报错。
 - argv[0] 为 spec.runtime 时由实现映射到环境内的解释器，例如 runtime = python 时 ["python", "-c", "..."]。
 - exec 超时不抛异常：返回 timed_out=True，exit_code 为 None。代码自身的非零退出码照常返回。
+- exec 的 env 是这一条命令额外的环境变量（包镜像地址、出网代理与测试用密钥，D-15、D-16），只对这一条有效；名字要是
+  [A-Za-z_][A-Za-z0-9_]*，不能以 AGENT_ 开头，最多 64 个、共 64 KiB，否则 invalid。
 - ExecResult.cpu_time 是命令用掉的 CPU 时间（计量用，docs/plan/cloud-deploy.md D-10）；实现量不出来时为 None。
 - 文件路径相对于环境的工作目录；绝对路径、含 .. 段或反斜杠：invalid。读不存在的文件：not_found。
 - 不同环境的文件互不可见。
@@ -18,11 +20,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Literal, Protocol
 
+from agentruntime_core.errors import InvalidError
 from agentruntime_core.providers.base import Bindable
 
 
@@ -60,7 +64,7 @@ class Sandbox(Protocol):
     async def create(self, spec: SandboxSpec) -> SandboxEnv: ...
 
     async def exec(
-        self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b""
+        self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"", env: Mapping[str, str] | None = None
     ) -> ExecResult: ...
 
     async def write_file(self, env_id: str, path: str, data: bytes) -> None: ...
@@ -72,6 +76,24 @@ class Sandbox(Protocol):
 
 class SandboxProvider(Bindable[Sandbox], Protocol):
     pass
+
+
+_ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+MAX_EXEC_ENV = 64
+MAX_EXEC_ENV_BYTES = 64 * 1024
+
+
+def check_exec_env(env: Mapping[str, str] | None) -> dict[str, str]:
+    """exec 的 env 的规则（各实现共用，与 sandbox-agent 一致）。"""
+    if not env:
+        return {}
+    out = {str(k): str(v) for k, v in env.items()}
+    if len(out) > MAX_EXEC_ENV or sum(len(k) + len(v) for k, v in out.items()) > MAX_EXEC_ENV_BYTES:
+        raise InvalidError("invalid_env", "env 太多或太大")
+    for k, v in out.items():
+        if not _ENV_NAME.match(k) or k.upper().startswith("AGENT_") or "\x00" in v:
+            raise InvalidError("invalid_env", f"env 的名字 {k} 不合法")
+    return out
 
 
 @dataclass(frozen=True)

@@ -56,6 +56,13 @@
       "args": {
         "BASE_IMAGE": "golang:1.27.2-bookworm"
       }
+    },
+    "pkg-mirror": {
+      "dockerfile": "deploy/images/go.Dockerfile",
+      "args": {
+        "MODULE": "services/go-pkg-mirror",
+        "MAIN": "./cmd/pkg-mirror"
+      }
     }
   }
 }

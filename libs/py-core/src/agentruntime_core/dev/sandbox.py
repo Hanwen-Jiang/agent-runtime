@@ -14,14 +14,14 @@ import re
 import secrets
 import shutil
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from agentruntime_core.dev._common import scope_id
 from agentruntime_core.errors import InvalidError, NotFoundError
-from agentruntime_core.providers.sandbox import ExecResult, ListedEnvironment, SandboxEnv, SandboxSpec
+from agentruntime_core.providers.sandbox import ExecResult, ListedEnvironment, SandboxEnv, SandboxSpec, check_exec_env
 from agentruntime_core.tenancy import Scope, TenantContext, platform_scope, tenant_scope
 from agentruntime_core.testing import FaultInjector
 
@@ -98,19 +98,22 @@ class LocalSubprocessSandbox:
         self._provider._envs[env_id] = _Env(owner=self._owner, spec=spec, workdir=workdir)
         return SandboxEnv(env_id=env_id, spec=spec)
 
-    async def exec(self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"") -> ExecResult:
+    async def exec(
+        self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"", env: Mapping[str, str] | None = None
+    ) -> ExecResult:
         self._provider._faults.check("exec")
-        env = self._env(env_id)
+        extra = check_exec_env(env)
+        box = self._env(env_id)
         if not argv:
             raise InvalidError("invalid_argument", "argv 不能为空")
-        command = [sys.executable if argv[0] == env.spec.runtime else argv[0], *argv[1:]]
+        command = [sys.executable if argv[0] == box.spec.runtime else argv[0], *argv[1:]]
         process = await asyncio.create_subprocess_exec(
             *command,
-            cwd=env.workdir,
+            cwd=box.workdir,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            env={**{k: os.environ[k] for k in _ENV if k in os.environ}, "PYTHONIOENCODING": "utf-8"},
+            env={**{k: os.environ[k] for k in _ENV if k in os.environ}, "PYTHONIOENCODING": "utf-8", **extra},
         )
         try:
             stdout, stderr = await asyncio.wait_for(process.communicate(stdin), timeout=timeout.total_seconds())

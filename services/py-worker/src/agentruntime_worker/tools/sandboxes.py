@@ -165,6 +165,10 @@ class Sandboxes:
                 self._backends[name] = backend
             return backend
 
+    async def read_secret(self, name: str) -> bytes | None:
+        """SecretStore 平台作用域（sandbox）里的一个密钥；没有时 None。"""
+        return await self._secret(name)
+
     async def _secret(self, name: str) -> bytes | None:
         if self._secrets_file is None:
             return None

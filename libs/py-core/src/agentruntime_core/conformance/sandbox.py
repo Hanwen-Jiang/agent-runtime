@@ -72,6 +72,17 @@ class SandboxConformance(StandardRules):
         )
         assert result.stdout.strip() == b"ABC"
 
+    async def test_exec_env_is_only_for_that_command(self, sandbox: Sandbox) -> None:
+        env = await sandbox.create(SandboxSpec())
+        code = ["python", "-c", "import os; print(os.environ.get('AR_TEST_EXEC_ENV', 'unset'))"]
+        first = await sandbox.exec(env.env_id, code, timeout=TIMEOUT, env={"AR_TEST_EXEC_ENV": "given"})
+        assert first.stdout.strip() == b"given"
+        second = await sandbox.exec(env.env_id, code, timeout=TIMEOUT)
+        assert second.stdout.strip() == b"unset", "env 只对那一条命令有效"
+        for bad in ({"AGENT_TOKEN": "x"}, {"BAD-NAME": "x"}):
+            with expect_error(ErrorCategory.INVALID):
+                await sandbox.exec(env.env_id, code, timeout=TIMEOUT, env=bad)
+
     async def test_exec_timeout_is_reported_not_raised(self, sandbox: Sandbox) -> None:
         env = await sandbox.create(SandboxSpec())
         result = await sandbox.exec(env.env_id, ["python", "-c", "import time; time.sleep(30)"], timeout=timedelta(milliseconds=500))

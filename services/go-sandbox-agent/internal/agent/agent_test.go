@@ -223,6 +223,53 @@ func TestCommandsOnlySeeTheConfiguredEnvironment(t *testing.T) {
 	}
 }
 
+func TestRequestEnvIsAddedAndCannotTouchAgentVariables(t *testing.T) {
+	h := newHarness(t, nil)
+	run := func(name string, env map[string]string) (int, execResponse, apiError) {
+		body, _ := json.Marshal(execRequest{Argv: h.run("env", name), TimeoutMS: 30000, Env: env})
+		res := h.request(http.MethodPost, "/v1/exec", bytes.NewReader(body), testToken)
+		defer res.Body.Close()
+		var ok execResponse
+		var bad apiError
+		data, _ := io.ReadAll(res.Body)
+		if res.StatusCode == http.StatusOK {
+			_ = json.Unmarshal(data, &ok)
+		} else {
+			_ = json.Unmarshal(data, &bad)
+		}
+		return res.StatusCode, ok, bad
+	}
+	if _, out, _ := run("PIP_INDEX_URL", map[string]string{"PIP_INDEX_URL": "http://mirror/pypi/simple/"}); string(out.Stdout) != "http://mirror/pypi/simple/" {
+		t.Fatalf("请求的 env 要给命令：%q", out.Stdout)
+	}
+	if _, out, _ := run("VISIBLE", map[string]string{"VISIBLE": "replaced"}); string(out.Stdout) != "replaced" {
+		t.Fatalf("同名的以请求为准：%q", out.Stdout)
+	}
+	if _, out, _ := run("PIP_INDEX_URL", nil); string(out.Stdout) != "<unset>" {
+		t.Fatalf("上一次请求的 env 不留到下一次：%q", out.Stdout)
+	}
+	for _, env := range []map[string]string{{"AGENT_TOKEN": "x"}, {"agent_addr": "x"}, {"BAD-NAME": "x"}, {"A": "x\x00y"}} {
+		if status, _, bad := run("A", env); status != http.StatusBadRequest || bad.Code != "invalid_env" {
+			t.Fatalf("%v：应为 400 invalid_env，实际 %d %+v", env, status, bad)
+		}
+	}
+	many := map[string]string{}
+	for i := 0; i <= maxRequestEnv; i++ {
+		many[fmt.Sprintf("V%d", i)] = "x"
+	}
+	if status, _, _ := run("V1", many); status != http.StatusBadRequest {
+		t.Fatalf("太多的 env 要拒绝：%d", status)
+	}
+}
+
+func TestPassThroughOnlyGivesTheListedNonAgentVariables(t *testing.T) {
+	environ := []string{"RUSTUP_HOME=/usr/local/rustup", "GOCACHE=/tmp/go", "SECRET=nope", "AGENT_TOKEN=nope"}
+	got := PassThrough(environ, "RUSTUP_HOME, GOCACHE AGENT_TOKEN missing")
+	if strings.Join(got, ";") != "GOCACHE=/tmp/go;RUSTUP_HOME=/usr/local/rustup" {
+		t.Fatalf("%v", got)
+	}
+}
+
 func TestFilesRoundtripAndAreVisibleToCommands(t *testing.T) {
 	h := newHarness(t, nil)
 	res := h.request(http.MethodPut, "/v1/files/data/input.txt", strings.NewReader("退款"), testToken)

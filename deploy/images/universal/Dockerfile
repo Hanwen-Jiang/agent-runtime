@@ -7,7 +7,9 @@
 #   Python 3.13.16（2026-09-30）、Node 22.23.3（2026-09-23）、Go 1.27.2、Temurin 21.0.11、Maven 3.10.0（2026-10-01）、
 #   Rust 1.99.0。升级时改这里的 ARG，并跑 tests/deploy/test_images.py（AR_TEST_IMAGES=1 时在镜像里编译、测试五种语言的样例）。
 # - 以 10001 运行、根文件系统只读：各工具的缓存与下载目录都指到 /tmp（K8s 后端给的 emptyDir）或工作区，不写镜像里的目录。
-#   包镜像的地址（PIP_INDEX_URL、npm_config_registry、GOPROXY 等，D-15）由 Runtime 建环境时注入，不写死在镜像里。
+#   包镜像的地址（PIP_INDEX_URL、npm_config_registry、GOPROXY 等，D-15）由 Runtime 每次执行时注入，不写死在镜像里。
+# - sandbox-agent 只把基本的几个变量交给命令；工具链要的变量都列在 AGENT_ENV_PASSTHROUGH 里（漏了的话 rustc 找不到工具链、
+#   Maven 写只读的 ~/.m2；tests/deploy/test_images.py 核对 ENV 里的每一个都列了）。
 ARG PYTHON_IMAGE=python:3.13.16-slim-bookworm
 ARG NODE_IMAGE=node:22.23.3-bookworm-slim
 ARG GO_IMAGE=golang:1.27.2-bookworm
@@ -67,7 +69,8 @@ ENV PATH=/usr/local/cargo/bin:/usr/local/go/bin:/opt/java/openjdk/bin:/usr/share
     npm_config_cache=/tmp/.npm npm_config_update_notifier=false npm_config_fund=false \
     GOPATH=/tmp/go GOCACHE=/tmp/.cache/go-build GOMODCACHE=/tmp/go/pkg/mod GOTOOLCHAIN=local GOFLAGS=-modcacherw \
     JAVA_HOME=/opt/java/openjdk MAVEN_HOME=/usr/share/maven MAVEN_ARGS="-Dmaven.repo.local=/tmp/.m2/repository" \
-    RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/tmp/.cargo
+    RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/tmp/.cargo \
+    AGENT_ENV_PASSTHROUGH="PIP_CACHE_DIR PIP_DISABLE_PIP_VERSION_CHECK npm_config_cache npm_config_update_notifier npm_config_fund GOPATH GOCACHE GOMODCACHE GOTOOLCHAIN GOFLAGS JAVA_HOME MAVEN_HOME MAVEN_ARGS RUSTUP_HOME CARGO_HOME"
 WORKDIR /workspace
 USER 10001:10001
 EXPOSE 7070

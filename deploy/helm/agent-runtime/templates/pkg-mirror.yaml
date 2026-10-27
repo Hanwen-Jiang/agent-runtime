@@ -1,0 +1,193 @@
+{{- /* 包镜像（docs/plan/cloud-deploy.md D-15；设计书改动稿 W7）：沙箱装依赖只经它，它是集群里唯一能访问各家官方源的组件。
+       - 沙箱命名空间的 Pod 只能连它的 8093（另放行 DNS）；管理端口 8094（清除与拉黑、指标）只给 Runtime 与 observability。
+       - 它自己只能出公网的 80、443（私有网段、链路本地与云元数据地址都不行），加上业务库（记未命中的字节）与 DNS。
+       - 缓存放在一块专用的卷上；单副本（卷是 ReadWriteOnce），升级时先停后起。
+       - 按租户的未命中字节记进业务库的 sandbox_usage（Worker 建的表、也读它），所以要与 Worker 同一个 Postgres。 */ -}}
+{{- $m := .Values.pkgMirror -}}
+{{- if $m.enabled }}
+{{- if not .Values.secrets.relationalDsn.name }}
+{{- fail "pkgMirror.enabled 要配 secrets.relationalDsn：未命中的字节记进业务库，与 Worker 共用" }}
+{{- end }}
+{{- $name := printf "%s-pkg-mirror" (include "ar.fullname" .) -}}
+{{- if not $m.claimName }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "pkg-mirror") | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with $m.storageClassName }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $m.storage }}
+---
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "pkg-mirror") | nindent 4 }}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels:
+      {{- include "ar.selector" (list . "pkg-mirror") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ar.labels" (list . "pkg-mirror") | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "ar.fullname" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: pkg-mirror
+          image: {{ include "ar.image" (list . "pkg-mirror") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["serve"]
+          ports:
+            - name: http
+              containerPort: 8093
+            - name: admin
+              containerPort: 8094
+          env:
+            {{- include "ar.storeEnv" . | nindent 12 }}
+            {{- include "ar.dsnEnv" . | nindent 12 }}
+            - name: AR_PKG_MIRROR_ADDR
+              value: ":8093"
+            - name: AR_PKG_MIRROR_ADMIN_ADDR
+              value: ":8094"
+            - name: AR_PKG_MIRROR_DIR
+              value: /cache
+            - name: AR_PKG_MIRROR_BLOB_BUDGET
+              value: {{ $m.blobBudgetBytes | int64 | quote }}
+            - name: AR_PKG_MIRROR_META_BUDGET
+              value: {{ $m.metaBudgetBytes | int64 | quote }}
+            - name: AR_PKG_MIRROR_MAX_FILE
+              value: {{ $m.maxFileBytes | int64 | quote }}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 5
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          resources:
+            {{- toYaml $m.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "ar.volumeMounts" . | nindent 12 }}
+            - name: cache
+              mountPath: /cache
+      volumes:
+        {{- include "ar.volumes" . | nindent 8 }}
+        - name: cache
+          persistentVolumeClaim:
+            claimName: {{ $m.claimName | default $name }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "pkg-mirror") | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "ar.selector" (list . "pkg-mirror") | nindent 4 }}
+  ports:
+    - name: http
+      port: 8093
+      targetPort: http
+    - name: admin
+      port: 8094
+      targetPort: admin
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "pkg-mirror") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ar.selector" (list . "pkg-mirror") | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.worker.shell.sandboxNamespace }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+      ports:
+        - {protocol: TCP, port: 8093}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - {protocol: TCP, port: 8094}
+  egress:
+    - ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data
+      ports:
+        - {protocol: TCP, port: 5432}
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10, 127.0.0.0/8]
+      ports:
+        - {protocol: TCP, port: 443}
+        - {protocol: TCP, port: 80}
+{{- if eq .Values.worker.shell.mode "sandbox" }}
+---
+# 沙箱命名空间里默认拒绝一切（deploy/cluster/sandboxes.yaml）；这里只放行到包镜像的 8093 与 DNS。
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sandboxes-to-pkg-mirror
+  namespace: {{ .Values.worker.shell.sandboxNamespace }}
+  labels:
+    {{- include "ar.labels" (list . "pkg-mirror") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/managed-by: agentruntime-sandbox
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+          podSelector:
+            matchLabels:
+              {{- include "ar.selector" (list . "pkg-mirror") | nindent 14 }}
+      ports:
+        - {protocol: TCP, port: 8093}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+{{- end }}
+{{- end }}

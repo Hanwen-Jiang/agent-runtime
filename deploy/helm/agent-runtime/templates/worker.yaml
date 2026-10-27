@@ -64,6 +64,10 @@ spec:
               value: /etc/agentruntime/sandbox/backends.json
             - name: AR_SANDBOX_RUNTIME
               value: {{ $shell.runtime | default "python" | quote }}
+            {{- if $.Values.pkgMirror.enabled }}
+            - name: AR_PKG_MIRROR_URL
+              value: {{ printf "http://%s-pkg-mirror.%s.svc:8093" (include "ar.fullname" $) $.Release.Namespace | quote }}
+            {{- end }}
             # 沙箱环境表在业务库里（D-11）；没配连接串时是 /data 下的 SQLite，只有一个 Worker 副本时可以。
             {{- include "ar.dsnEnv" $ | nindent 12 }}
             {{- end }}

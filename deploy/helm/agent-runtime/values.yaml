@@ -128,6 +128,22 @@ memory:
     requests: {cpu: 250m, memory: 256Mi}
     limits: {cpu: "1", memory: 1Gi}
 
+# 包镜像（docs/plan/cloud-deploy.md D-15）：沙箱装依赖的本地源（PyPI、npm、Go），按需拉取、按内容寻址缓存。
+# 打开后 Worker 给 K8s 沙箱的命令注入镜像源变量（AR_PKG_MIRROR_URL），沙箱命名空间放行到它的 8093。
+# 预算：包文件与元数据各自的上限（字节）；用量到 90% 开始淘汰，降到 75% 停；超过 maxFileBytes 的文件只转发。
+pkgMirror:
+  enabled: false
+  storage: 120Gi
+  storageClassName: ""
+  # 已有的 PVC；空时 Chart 建一个。
+  claimName: ""
+  blobBudgetBytes: 107374182400
+  metaBudgetBytes: 5368709120
+  maxFileBytes: 524288000
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: "2", memory: 1Gi}
+
 worker:
   # 真正的 Planner、Reviewer 与 tool_loop（经 Model Gateway）；stub 只用于端到端测试。
   planner: model

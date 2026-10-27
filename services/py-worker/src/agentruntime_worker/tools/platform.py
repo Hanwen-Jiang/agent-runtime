@@ -387,14 +387,14 @@ class _Workspaces:
             result = None
             try:
                 try:
-                    result = await lease.box.exec(lease.env_id, argv, timeout=timedelta(seconds=timeout))
+                    result = await lease.box.exec(lease.env_id, argv, timeout=timedelta(seconds=timeout), env=lease.env or None)
                 except NotFoundError:
                     if not lease.reused:
                         raise
                     await self.broker.discard(lease, "后端里已经没有这个环境（被回收或节点重启）")
                     lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy)
                     ran = time.monotonic()
-                    result = await lease.box.exec(lease.env_id, argv, timeout=timedelta(seconds=timeout))
+                    result = await lease.box.exec(lease.env_id, argv, timeout=timedelta(seconds=timeout), env=lease.env or None)
             except InvalidError as err:
                 if err.code == "command_not_found":
                     raise InvalidError("command_not_found", f"启动不了 {argv[0]}") from None

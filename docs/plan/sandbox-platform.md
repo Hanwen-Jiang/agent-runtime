@@ -51,14 +51,16 @@
 
 ```text
 ar1.<base64url(JSON)>.<base64url(HMAC-SHA256(key, "ar1." + base64url(JSON)))>
-JSON：{"e": env_ref, "t": tenant_id, "w": workspace_id, "s": session_id, "x": 到期的 Unix 秒, "k": 用途}
+JSON：{"e": env_ref, "t": tenant_id, "w": workspace_id, "s": session_id, "x": 到期的 Unix 秒, "k": 用途, "q": {限额}}
 ```
 
 - 密钥取自 SecretStore 平台作用域的 `sandbox/env-credential-key`（部署共用，至少 32 字节），与 agent 令牌的 `sandbox/token-key` 分开。
 - 用途 `k`：`mirror`（包镜像）或 `egress`（出网网关）；一个凭据只能用在一处。
 - 到期时间等于环境的 max_until；环境销毁后网关与镜像按环境表拒绝（凭据本身还没过期也一样）。
-- 两种语言的签发与校验对着同一组向量测试（`tests/contract/sandbox_credential_vectors.json`）。
-- 沙箱里的样子：`PIP_INDEX_URL=https://mirror:<凭据>@pkg-mirror…/pypi/simple/`、`npm_config_registry`（`//pkg-mirror…/npm/:_authToken=<凭据>`）、`GOPROXY=https://mirror:<凭据>@pkg-mirror…/go/`；出网 `HTTPS_PROXY=http://<env_ref>:<凭据>@egress…:3128`。日志与 trace 里只记环境号，不记凭据。
+- 限额 `q`：签发时从租户策略抄进来（包镜像用 `mirror_miss_bytes`），Go 服务不用再去查租户策略；策略改了，下一个环境生效。
+- 两种语言的签发与校验对着同一组向量测试（`tests/contract/sandbox_credential_vectors.json`）：`agentruntime_core.envcred` 与 `libs/go-core/envcred`。
+- 沙箱里的样子（包镜像）：凭据放在路径前缀里，`PIP_INDEX_URL=http://pkg-mirror…:8093/t/<凭据>/pypi/simple/`、`npm_config_registry=…/t/<凭据>/npm/`、`GOPROXY=…/t/<凭据>/go`。pip、npm、go 对 userinfo 与认证头的处理各不相同（npm 的 `_authToken` 要按主机另配，go 的 GOPROXY 不带认证头），路径前缀三家都原样带着。包镜像也接受 `Authorization: Basic`（口令是凭据）与 `Bearer`。出网（D-16）的样子在那一项定。日志与 trace 里只记环境号，不记凭据（包镜像的访问日志把路径里的凭据换成 `***`）。
+- 凭据只经 Sandbox 的 `exec(env=…)` 给到那一条命令（每次执行可以带环境变量：名字是 `[A-Za-z_][A-Za-z0-9_]*`、不以 `AGENT_` 开头，至多 64 个、合计 64 KiB），不写进 Pod 的定义、环境表与 span。
 
 ## 4. 各项的落点
 
@@ -68,7 +70,7 @@ JSON：{"e": env_ref, "t": tenant_id, "w": workspace_id, "s": session_id, "x": �
 | D-12 | `tenant_policy.schema.json` 的 `sandbox.fallback`、`min_isolation`、`quota`（S-01，待人审）；`sandbox.broker` 的首选 + 回退与事务里的配额核对 |
 | D-13 | `SandboxSpec.session_id`；`ToolInvocation.session_id`、`task_id`；`sandbox.broker` 按（工作区、会话）复用；空闲与活满的回收在对账里 |
 | D-14 | `deploy/images/universal`；后端登记的 `images`（runtime → 镜像 digest）；`runtime.sandbox` span 的 `sandbox.image` |
-| D-15 | `services/go-pkg-mirror` |
+| D-15 | `services/go-pkg-mirror`（`internal/cache` 内容寻址与淘汰、`internal/mirror` 三种协议与管理接口、`internal/usage` 未命中字节）；`envcred`（Python 与 Go）；Sandbox 的 `exec(env=…)` 与 sandbox-agent 的 `env`、`AGENT_ENV_PASSTHROUGH`；`agentruntime_worker.sandbox.credentials`；Chart 的 `pkgMirror` |
 | D-16 | `services/go-egress-gateway`；`SubmitTaskRequest.network_request` 与 `sandbox.network`（S-01，待人审）；Worker 的 `request_network` 工具 |
 | D-17 | `agentruntime_worker.sandbox.environments`（识别定义文件、算键、配额、退回 universal）与构建器的 Job 清单 |
 
@@ -108,3 +110,15 @@ JSON：{"e": env_ref, "t": tenant_id, "w": workspace_id, "s": session_id, "x": �
 - 预拉：`worker.shell.prepull`（`values-cloud.yaml` 打开）在沙箱命名空间起一个 DaemonSet，initContainer 逐个用一遍 K8s 后端登记里的镜像与 agent 镜像。
 - 没做的：Cloudflare 桥仍只有 python 的镜像（universal 三四 GB，先不放到 Cloudflare 上）；构建与在镜像里编译、测试五种语言的样例（`tests/deploy/test_images.py`，`AR_TEST_IMAGES=1`）要拉六个基础镜像，等你同意下载再跑；gVisor、Kata 上的同一项与冷启动的数字要在集群里量。
 
+**D-15（2026-10-27）**
+
+- `services/go-pkg-mirror`：只用标准库与 `libs/go-core`（业务库的适配器、开发 SecretStore、环境凭据）。上游写死官方源（pypi.org 与 files.pythonhosted.org、registry.npmjs.org、proxy.golang.org 与 sum.golang.org）。对沙箱的端口 8093，管理端口 8094（清除与拉黑要 `pkg-mirror/admin-token`；`/metrics` 是 Prometheus 文本格式，不要令牌，网络策略只放行 Runtime 与 observability）。
+- 包文件：按 sha256 存（`blobs/<前两位>/<sha256>`），落盘前对上游给的哈希（PyPI 的 `#sha256=`、npm 的 `integrity` sha512 或 `shasum`、Go 的 `.zip` 由客户端对 sumdb 核对，镜像只按内容寻址）；每次读都重新校验，对不上就删掉、记告警并当未命中重拉。两段 LRU（第一次进试用段，再被读到进保护段；保护段最多占 80%），用量到 90% 开始从试用段淘汰，降到 75% 停。正在被读的文件只做标记，读完才删。常驻包（`AR_PKG_MIRROR_PINNED_FILE`）不淘汰。超过 `AR_PKG_MIRROR_MAX_FILE` 的只转发。下载到一半的临时文件一小时后清掉；重启后按盘上的状态文件恢复，状态里没有的文件当孤儿删掉。
+- 元数据（PyPI 的 simple 页、npm 的 packument、Go 的 list 与 info）：另一份预算，默认 10 分钟过期（sumdb 的应答 5 分钟），过期后先给旧的、后台刷新；上游不可用时继续给旧的（直到被元数据的预算淘汰）。下载地址改写成指回镜像（带着同一个凭据前缀）。同一个文件并发只拉一次。
+- 未命中配额：按凭据里的租户与限额（`q.mirror_miss_bytes`）计当天的未命中字节，命中不计；超过 1 倍后只转发不缓存，超过 2 倍拒绝（429）。计数每 10 秒写进业务库的 `sandbox_usage`（与 Worker 同一个，D-12 的当天配额读它）；表还没建或写不进时留在内存里下次再写。平台作用域的请求不计。
+- 清除与拉黑：`POST /admin/purge {"ecosystem","name","version"}` 删掉缓存并拉黑，所有租户都拿不到（拉黑名单存盘，重启后还在）；`version` 为空时整个包。
+- Worker 一侧：`EnvCredentials` 按环境签发（到期是环境的活满时间），SandboxBroker 借出环境时把镜像变量放进 `Lease.env`，shell_run 经 `exec(env=…)` 交给那一条命令。K8s 与本地后端用 `AR_PKG_MIRROR_URL`；托管后端默认不注入（登记里写了 `pkg_mirror_url` 的用它）。
+- Chart：`pkgMirror.enabled`（`values-cloud.yaml` 打开）建 PVC、单副本的 Deployment（Recreate）、Service 与两条网络策略：沙箱命名空间里适配器建的 Pod 只能出到它的 8093 与 DNS；它只能出公网的 80、443（私有网段、链路本地与云元数据、CGNAT 都排除）、业务库与 DNS。要配 `secrets.relationalDsn`（不配时渲染失败）。
+- 镜像：`pkg-mirror`（`deploy/images/go.Dockerfile`）。沙箱镜像加了 `AGENT_ENV_PASSTHROUGH`：sandbox-agent 只把基本变量交给命令，工具链要的（RUSTUP_HOME、JAVA_HOME、各种缓存目录）要列在那里，不然经 agent 跑的命令找不到 Rust 工具链、往只读的目录里写；`tests/deploy/test_images.py` 核对镜像 ENV 里的每一个都列了。
+- 与计划的出入：计划写“只用标准库”，实际还依赖 `libs/go-core`（业务库要 Postgres 驱动）。Maven、crates 与 R2 冷层仍放第二步。
+- 没覆盖的：Grafana 面板（集群里还没有 Prometheus 抓 `/metrics`，计数先在 `/metrics` 与日志里）；真实客户端的测试对着本机的假官方源（不联网），没对真的 PyPI、npm、Go 代理跑；集群里经网络策略的连通性（沙箱连得到镜像、连不到外网）要真集群（`deploy/cluster/verify.sh` 还没加这一条）。

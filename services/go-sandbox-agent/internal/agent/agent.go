@@ -3,7 +3,7 @@
 // 适配器只认这一套 HTTP 接口：
 //
 //	GET  /healthz                 不要令牌，就绪探针用
-//	POST /v1/exec                 {"argv": [...], "stdin": base64, "timeout_ms": n} → {"exit_code", "timed_out", "stdout", "stderr", "truncated"}
+//	POST /v1/exec                 {"argv": [...], "stdin": base64, "timeout_ms": n, "env": {…}} → {"exit_code", "timed_out", "stdout", "stderr", "truncated"}
 //	PUT  /v1/files/<相对路径>      请求体是文件内容
 //	GET  /v1/files/<相对路径>      响应体是文件内容；不存在（或是目录）时 404
 //
@@ -11,7 +11,8 @@
 // 出错时返回 {"code", "message"}：400 是参数不对（invalid），401 是令牌不对，404 是不存在，413 是太大，500 是 agent 自己出错。
 //
 // 语义与 agentruntime_core.providers.sandbox 一致：路径一律相对工作目录（绝对路径、空段、. 与 ..、反斜杠、盘符都拒绝）；
-// 超时不报错，返回 timed_out 与空的 exit_code，并杀掉整个进程组；非零退出码照常返回；命令只拿到 Config.Env 里的环境变量。
+// 超时不报错，返回 timed_out 与空的 exit_code，并杀掉整个进程组；非零退出码照常返回；命令只拿到 Config.Env 里的环境变量，
+// 加上这次请求的 env（Runtime 给这个环境的包镜像地址、出网代理与测试用的密钥，D-15、D-16；名字要合法，AGENT_ 开头的一律拒绝）。
 package agent
 
 import (
@@ -27,6 +28,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -120,9 +122,73 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 // --- 命令 ---
 
 type execRequest struct {
-	Argv      []string `json:"argv"`
-	Stdin     []byte   `json:"stdin"`
-	TimeoutMS int64    `json:"timeout_ms"`
+	Argv      []string          `json:"argv"`
+	Stdin     []byte            `json:"stdin"`
+	TimeoutMS int64             `json:"timeout_ms"`
+	Env       map[string]string `json:"env"`
+}
+
+// 一次请求最多带多少个环境变量、总共多少字节。
+const (
+	maxRequestEnv      = 64
+	maxRequestEnvBytes = 64 << 10
+)
+
+var envName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
+// mergeEnv 把这次请求的环境变量并到配置的环境上（同名的以请求为准）；名字不合法、AGENT_ 开头、太多太大时报错。
+func mergeEnv(base []string, extra map[string]string) ([]string, error) {
+	if len(extra) == 0 {
+		return base, nil
+	}
+	if len(extra) > maxRequestEnv {
+		return nil, fmt.Errorf("env 最多 %d 个", maxRequestEnv)
+	}
+	size := 0
+	for k, v := range extra {
+		if !envName.MatchString(k) || strings.HasPrefix(strings.ToUpper(k), "AGENT_") || strings.ContainsRune(v, 0) {
+			return nil, fmt.Errorf("env 的名字 %q 不合法", k)
+		}
+		size += len(k) + len(v)
+	}
+	if size > maxRequestEnvBytes {
+		return nil, errors.New("env 太大")
+	}
+	out := make([]string, 0, len(base)+len(extra))
+	for _, kv := range base {
+		k, _, _ := strings.Cut(kv, "=")
+		if _, replaced := extra[k]; !replaced {
+			out = append(out, kv)
+		}
+	}
+	keys := make([]string, 0, len(extra))
+	for k := range extra {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		out = append(out, k+"="+extra[k])
+	}
+	return out, nil
+}
+
+// PassThrough 从 agent 自己的环境里挑出 names（空格或逗号分隔）列出的变量交给命令：镜像用 AGENT_ENV_PASSTHROUGH 声明
+// 工具链要的变量（RUSTUP_HOME、GOCACHE 等，D-14）。AGENT_ 开头的不给。
+func PassThrough(environ []string, names string) []string {
+	wanted := map[string]bool{}
+	for _, n := range strings.FieldsFunc(names, func(r rune) bool { return r == ' ' || r == ',' }) {
+		if envName.MatchString(n) && !strings.HasPrefix(strings.ToUpper(n), "AGENT_") {
+			wanted[n] = true
+		}
+	}
+	var out []string
+	for _, kv := range environ {
+		if k, _, ok := strings.Cut(kv, "="); ok && wanted[k] {
+			out = append(out, kv)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 type execResponse struct {
@@ -160,7 +226,12 @@ func (s *server) exec(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusRequestEntityTooLarge, "too_large", "stdin 太大")
 		return
 	}
-	program, err := lookPath(req.Argv[0], s.c.Env)
+	env, err := mergeEnv(s.c.Env, req.Env)
+	if err != nil {
+		fail(w, http.StatusBadRequest, "invalid_env", err.Error())
+		return
+	}
+	program, err := lookPath(req.Argv[0], env)
 	if err != nil {
 		fail(w, http.StatusBadRequest, "command_not_found", fmt.Sprintf("找不到 %s", req.Argv[0]))
 		return
@@ -168,7 +239,7 @@ func (s *server) exec(w http.ResponseWriter, r *http.Request) {
 	cmd := exec.Command(program, req.Argv[1:]...)
 	cmd.Args[0] = req.Argv[0]
 	cmd.Dir = s.c.Workdir
-	cmd.Env = s.c.Env
+	cmd.Env = env
 	cmd.Stdin = bytes.NewReader(req.Stdin)
 	stdout, stderr := newTail(s.c.OutputLimit), newTail(s.c.OutputLimit)
 	cmd.Stdout, cmd.Stderr = stdout, stderr
