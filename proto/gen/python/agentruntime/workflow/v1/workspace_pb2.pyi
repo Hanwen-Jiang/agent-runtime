@@ -18,6 +18,11 @@ class WorkspaceOperation(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     WORKSPACE_OPERATION_PUSH: _ClassVar[WorkspaceOperation]
     WORKSPACE_OPERATION_ARCHIVE: _ClassVar[WorkspaceOperation]
     WORKSPACE_OPERATION_DELETE: _ClassVar[WorkspaceOperation]
+    WORKSPACE_OPERATION_LIST_FILES: _ClassVar[WorkspaceOperation]
+    WORKSPACE_OPERATION_READ_FILE: _ClassVar[WorkspaceOperation]
+    WORKSPACE_OPERATION_LOG: _ClassVar[WorkspaceOperation]
+    WORKSPACE_OPERATION_DISCARD: _ClassVar[WorkspaceOperation]
+    WORKSPACE_OPERATION_SYNC: _ClassVar[WorkspaceOperation]
 WORKSPACE_OPERATION_UNSPECIFIED: WorkspaceOperation
 WORKSPACE_OPERATION_CREATE: WorkspaceOperation
 WORKSPACE_OPERATION_DIFF: WorkspaceOperation
@@ -25,6 +30,11 @@ WORKSPACE_OPERATION_COMMIT: WorkspaceOperation
 WORKSPACE_OPERATION_PUSH: WorkspaceOperation
 WORKSPACE_OPERATION_ARCHIVE: WorkspaceOperation
 WORKSPACE_OPERATION_DELETE: WorkspaceOperation
+WORKSPACE_OPERATION_LIST_FILES: WorkspaceOperation
+WORKSPACE_OPERATION_READ_FILE: WorkspaceOperation
+WORKSPACE_OPERATION_LOG: WorkspaceOperation
+WORKSPACE_OPERATION_DISCARD: WorkspaceOperation
+WORKSPACE_OPERATION_SYNC: WorkspaceOperation
 
 class WorkspaceOperationInput(_message.Message):
     __slots__ = ("tenant", "operation_id", "operation", "workspace_id", "args", "sealed_credential", "requested_by")

@@ -12,6 +12,8 @@ class WorkspaceServiceStub:
     工作区属于（租户，workspace_id），生命周期跨 Task；文件放在承载它的沙箱环境里，空闲时存档到 ObjectStore，用时恢复。
     租户由认证身份确定，请求里的 tenant_id 只用来校验一致；别的租户的工作区一律 NotFound。
     克隆与推送的凭据（GitCredential）由应用随请求传入，只在这一次调用里用：Runtime 不保存，不进日志、事件历史与错误信息。
+    路径（ListFiles、ReadFile、InitialFile）：相对工作区根、用 / 分隔；绝对路径、盘符、空段、. 与 ..、反斜杠、NUL 一律
+    InvalidArgument；任何一级是 .git 也是 InvalidArgument（.git 只经 git 操作，不直接给应用读）。
     """
 
     def __init__(self, channel):
@@ -55,6 +57,31 @@ class WorkspaceServiceStub:
                 request_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DeleteWorkspaceRequest.SerializeToString,
                 response_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DeleteWorkspaceResponse.FromString,
                 _registered_method=True)
+        self.ListFiles = channel.unary_unary(
+                '/agentruntime.workspace.v1.WorkspaceService/ListFiles',
+                request_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.ListFilesRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.ListFilesResponse.FromString,
+                _registered_method=True)
+        self.ReadFile = channel.unary_unary(
+                '/agentruntime.workspace.v1.WorkspaceService/ReadFile',
+                request_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.ReadFileRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.ReadFileResponse.FromString,
+                _registered_method=True)
+        self.GetLog = channel.unary_unary(
+                '/agentruntime.workspace.v1.WorkspaceService/GetLog',
+                request_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.GetLogRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.GetLogResponse.FromString,
+                _registered_method=True)
+        self.DiscardChanges = channel.unary_unary(
+                '/agentruntime.workspace.v1.WorkspaceService/DiscardChanges',
+                request_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DiscardChangesRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DiscardChangesResponse.FromString,
+                _registered_method=True)
+        self.SyncWorkspace = channel.unary_unary(
+                '/agentruntime.workspace.v1.WorkspaceService/SyncWorkspace',
+                request_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.SyncWorkspaceRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.SyncWorkspaceResponse.FromString,
+                _registered_method=True)
 
 
 class WorkspaceServiceServicer:
@@ -64,10 +91,13 @@ class WorkspaceServiceServicer:
     工作区属于（租户，workspace_id），生命周期跨 Task；文件放在承载它的沙箱环境里，空闲时存档到 ObjectStore，用时恢复。
     租户由认证身份确定，请求里的 tenant_id 只用来校验一致；别的租户的工作区一律 NotFound。
     克隆与推送的凭据（GitCredential）由应用随请求传入，只在这一次调用里用：Runtime 不保存，不进日志、事件历史与错误信息。
+    路径（ListFiles、ReadFile、InitialFile）：相对工作区根、用 / 分隔；绝对路径、盘符、空段、. 与 ..、反斜杠、NUL 一律
+    InvalidArgument；任何一级是 .git 也是 InvalidArgument（.git 只经 git 操作，不直接给应用读）。
     """
 
     def CreateWorkspace(self, request, context):
-        """建一个工作区；给了 repo_url 时克隆它（可以带 ref）。已有同名的工作区时 AlreadyExists。
+        """建一个工作区：给了 repo_url 时克隆它（可以带 ref）；给了 from_workspace_id 时复制同租户的另一个工作区；都没给时
+        git init，再写入 files 并做一次初始提交（没有 files 时不提交）。三种来源只能给一种。已有同名的工作区时 AlreadyExists。
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -116,6 +146,45 @@ class WorkspaceServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ListFiles(self, request, context):
+        """列一个目录（不写 path 为工作区根）：按名字排序，最多 1000 项（truncated）；不列 .git；不跟随符号链接。目录不存在时 NotFound。
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ReadFile(self, request, context):
+        """读一个文件：超过 512 KiB 时 too_large、不给内容；前 8 KiB 里有 NUL 时 binary、不给内容；其余按 UTF-8 给出 content
+        （不合法的字节换成 U+FFFD）。不存在或是目录时 NotFound。
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetLog(self, request, context):
+        """最近的提交（从 HEAD 往回，新的在前）；给了 base 时只给 HEAD 有、base 没有的提交（git log base..HEAD）。
+        base 不存在时 NotFound；还没有提交时为空。
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DiscardChanges(self, request, context):
+        """丢弃未提交的改动：回到 HEAD，删掉未跟踪的文件与目录（.gitignore 忽略的不删）。返回 HEAD。
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SyncWorkspace(self, request, context):
+        """从远端取 branch 的最新提交，把工作区切到这个分支的这个提交上（PR 合并之后开始下一轮）。要求没有未提交的改动
+        （否则 AlreadyExists，code 为 workspace_dirty）；远端是建工作区时的 repo_url（从别的工作区复制的沿用那边的），
+        没有远端时 InvalidArgument。凭据同 PushWorkspace，只用这一次。
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_WorkspaceServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -154,6 +223,31 @@ def add_WorkspaceServiceServicer_to_server(servicer, server):
                     request_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DeleteWorkspaceRequest.FromString,
                     response_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DeleteWorkspaceResponse.SerializeToString,
             ),
+            'ListFiles': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListFiles,
+                    request_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.ListFilesRequest.FromString,
+                    response_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.ListFilesResponse.SerializeToString,
+            ),
+            'ReadFile': grpc.unary_unary_rpc_method_handler(
+                    servicer.ReadFile,
+                    request_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.ReadFileRequest.FromString,
+                    response_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.ReadFileResponse.SerializeToString,
+            ),
+            'GetLog': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetLog,
+                    request_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.GetLogRequest.FromString,
+                    response_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.GetLogResponse.SerializeToString,
+            ),
+            'DiscardChanges': grpc.unary_unary_rpc_method_handler(
+                    servicer.DiscardChanges,
+                    request_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DiscardChangesRequest.FromString,
+                    response_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DiscardChangesResponse.SerializeToString,
+            ),
+            'SyncWorkspace': grpc.unary_unary_rpc_method_handler(
+                    servicer.SyncWorkspace,
+                    request_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.SyncWorkspaceRequest.FromString,
+                    response_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.SyncWorkspaceResponse.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
             'agentruntime.workspace.v1.WorkspaceService', rpc_method_handlers)
@@ -169,6 +263,8 @@ class WorkspaceService:
     工作区属于（租户，workspace_id），生命周期跨 Task；文件放在承载它的沙箱环境里，空闲时存档到 ObjectStore，用时恢复。
     租户由认证身份确定，请求里的 tenant_id 只用来校验一致；别的租户的工作区一律 NotFound。
     克隆与推送的凭据（GitCredential）由应用随请求传入，只在这一次调用里用：Runtime 不保存，不进日志、事件历史与错误信息。
+    路径（ListFiles、ReadFile、InitialFile）：相对工作区根、用 / 分隔；绝对路径、盘符、空段、. 与 ..、反斜杠、NUL 一律
+    InvalidArgument；任何一级是 .git 也是 InvalidArgument（.git 只经 git 操作，不直接给应用读）。
     """
 
     @staticmethod
@@ -350,6 +446,141 @@ class WorkspaceService:
             '/agentruntime.workspace.v1.WorkspaceService/DeleteWorkspace',
             agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DeleteWorkspaceRequest.SerializeToString,
             agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DeleteWorkspaceResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListFiles(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.workspace.v1.WorkspaceService/ListFiles',
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.ListFilesRequest.SerializeToString,
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.ListFilesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ReadFile(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.workspace.v1.WorkspaceService/ReadFile',
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.ReadFileRequest.SerializeToString,
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.ReadFileResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetLog(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.workspace.v1.WorkspaceService/GetLog',
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.GetLogRequest.SerializeToString,
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.GetLogResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DiscardChanges(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.workspace.v1.WorkspaceService/DiscardChanges',
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DiscardChangesRequest.SerializeToString,
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DiscardChangesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SyncWorkspace(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.workspace.v1.WorkspaceService/SyncWorkspace',
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.SyncWorkspaceRequest.SerializeToString,
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.SyncWorkspaceResponse.FromString,
             options,
             channel_credentials,
             insecure,

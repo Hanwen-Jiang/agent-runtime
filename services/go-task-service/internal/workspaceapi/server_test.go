@@ -349,6 +349,14 @@ func TestListWorkspacesReadsTheBusinessDatabase(t *testing.T) {
 	}
 }
 
+func TestDraftMethodsAreUnimplementedUntilReviewed(t *testing.T) {
+	h := newHarness(t)
+	_, err := h.client.ListFiles(context.Background(), authed(h, "t1", &workspacev1.ListFilesRequest{WorkspaceId: "w1"}))
+	if code(t, err) != connect.CodeUnimplemented || len(h.w.started) != 0 {
+		t.Fatalf("契约草案的方法审过之前回 Unimplemented：%v", err)
+	}
+}
+
 func TestWorkflowNameMatchesTheContract(t *testing.T) {
 	v := workflowv1.File_agentruntime_workflow_v1_names_proto.Enums().ByName("WorkflowType").Values().ByName(protoreflect.Name("WORKFLOW_TYPE_WORKSPACE_OPERATION"))
 	if v == nil {

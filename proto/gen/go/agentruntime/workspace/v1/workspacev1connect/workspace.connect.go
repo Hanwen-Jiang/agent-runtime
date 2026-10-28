@@ -54,11 +54,26 @@ const (
 	// WorkspaceServiceDeleteWorkspaceProcedure is the fully-qualified name of the WorkspaceService's
 	// DeleteWorkspace RPC.
 	WorkspaceServiceDeleteWorkspaceProcedure = "/agentruntime.workspace.v1.WorkspaceService/DeleteWorkspace"
+	// WorkspaceServiceListFilesProcedure is the fully-qualified name of the WorkspaceService's
+	// ListFiles RPC.
+	WorkspaceServiceListFilesProcedure = "/agentruntime.workspace.v1.WorkspaceService/ListFiles"
+	// WorkspaceServiceReadFileProcedure is the fully-qualified name of the WorkspaceService's ReadFile
+	// RPC.
+	WorkspaceServiceReadFileProcedure = "/agentruntime.workspace.v1.WorkspaceService/ReadFile"
+	// WorkspaceServiceGetLogProcedure is the fully-qualified name of the WorkspaceService's GetLog RPC.
+	WorkspaceServiceGetLogProcedure = "/agentruntime.workspace.v1.WorkspaceService/GetLog"
+	// WorkspaceServiceDiscardChangesProcedure is the fully-qualified name of the WorkspaceService's
+	// DiscardChanges RPC.
+	WorkspaceServiceDiscardChangesProcedure = "/agentruntime.workspace.v1.WorkspaceService/DiscardChanges"
+	// WorkspaceServiceSyncWorkspaceProcedure is the fully-qualified name of the WorkspaceService's
+	// SyncWorkspace RPC.
+	WorkspaceServiceSyncWorkspaceProcedure = "/agentruntime.workspace.v1.WorkspaceService/SyncWorkspace"
 )
 
 // WorkspaceServiceClient is a client for the agentruntime.workspace.v1.WorkspaceService service.
 type WorkspaceServiceClient interface {
-	// 建一个工作区；给了 repo_url 时克隆它（可以带 ref）。已有同名的工作区时 AlreadyExists。
+	// 建一个工作区：给了 repo_url 时克隆它（可以带 ref）；给了 from_workspace_id 时复制同租户的另一个工作区；都没给时
+	// git init，再写入 files 并做一次初始提交（没有 files 时不提交）。三种来源只能给一种。已有同名的工作区时 AlreadyExists。
 	CreateWorkspace(context.Context, *connect.Request[v1.CreateWorkspaceRequest]) (*connect.Response[v1.CreateWorkspaceResponse], error)
 	// 列出本租户的工作区（不含已删除的）。
 	ListWorkspaces(context.Context, *connect.Request[v1.ListWorkspacesRequest]) (*connect.Response[v1.ListWorkspacesResponse], error)
@@ -73,6 +88,20 @@ type WorkspaceServiceClient interface {
 	ArchiveWorkspace(context.Context, *connect.Request[v1.ArchiveWorkspaceRequest]) (*connect.Response[v1.ArchiveWorkspaceResponse], error)
 	// 删除工作区与它的存档，销毁承载它的环境。
 	DeleteWorkspace(context.Context, *connect.Request[v1.DeleteWorkspaceRequest]) (*connect.Response[v1.DeleteWorkspaceResponse], error)
+	// 列一个目录（不写 path 为工作区根）：按名字排序，最多 1000 项（truncated）；不列 .git；不跟随符号链接。目录不存在时 NotFound。
+	ListFiles(context.Context, *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error)
+	// 读一个文件：超过 512 KiB 时 too_large、不给内容；前 8 KiB 里有 NUL 时 binary、不给内容；其余按 UTF-8 给出 content
+	// （不合法的字节换成 U+FFFD）。不存在或是目录时 NotFound。
+	ReadFile(context.Context, *connect.Request[v1.ReadFileRequest]) (*connect.Response[v1.ReadFileResponse], error)
+	// 最近的提交（从 HEAD 往回，新的在前）；给了 base 时只给 HEAD 有、base 没有的提交（git log base..HEAD）。
+	// base 不存在时 NotFound；还没有提交时为空。
+	GetLog(context.Context, *connect.Request[v1.GetLogRequest]) (*connect.Response[v1.GetLogResponse], error)
+	// 丢弃未提交的改动：回到 HEAD，删掉未跟踪的文件与目录（.gitignore 忽略的不删）。返回 HEAD。
+	DiscardChanges(context.Context, *connect.Request[v1.DiscardChangesRequest]) (*connect.Response[v1.DiscardChangesResponse], error)
+	// 从远端取 branch 的最新提交，把工作区切到这个分支的这个提交上（PR 合并之后开始下一轮）。要求没有未提交的改动
+	// （否则 AlreadyExists，code 为 workspace_dirty）；远端是建工作区时的 repo_url（从别的工作区复制的沿用那边的），
+	// 没有远端时 InvalidArgument。凭据同 PushWorkspace，只用这一次。
+	SyncWorkspace(context.Context, *connect.Request[v1.SyncWorkspaceRequest]) (*connect.Response[v1.SyncWorkspaceResponse], error)
 }
 
 // NewWorkspaceServiceClient constructs a client for the agentruntime.workspace.v1.WorkspaceService
@@ -128,6 +157,36 @@ func NewWorkspaceServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(workspaceServiceMethods.ByName("DeleteWorkspace")),
 			connect.WithClientOptions(opts...),
 		),
+		listFiles: connect.NewClient[v1.ListFilesRequest, v1.ListFilesResponse](
+			httpClient,
+			baseURL+WorkspaceServiceListFilesProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("ListFiles")),
+			connect.WithClientOptions(opts...),
+		),
+		readFile: connect.NewClient[v1.ReadFileRequest, v1.ReadFileResponse](
+			httpClient,
+			baseURL+WorkspaceServiceReadFileProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("ReadFile")),
+			connect.WithClientOptions(opts...),
+		),
+		getLog: connect.NewClient[v1.GetLogRequest, v1.GetLogResponse](
+			httpClient,
+			baseURL+WorkspaceServiceGetLogProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("GetLog")),
+			connect.WithClientOptions(opts...),
+		),
+		discardChanges: connect.NewClient[v1.DiscardChangesRequest, v1.DiscardChangesResponse](
+			httpClient,
+			baseURL+WorkspaceServiceDiscardChangesProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("DiscardChanges")),
+			connect.WithClientOptions(opts...),
+		),
+		syncWorkspace: connect.NewClient[v1.SyncWorkspaceRequest, v1.SyncWorkspaceResponse](
+			httpClient,
+			baseURL+WorkspaceServiceSyncWorkspaceProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("SyncWorkspace")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -140,6 +199,11 @@ type workspaceServiceClient struct {
 	pushWorkspace    *connect.Client[v1.PushWorkspaceRequest, v1.PushWorkspaceResponse]
 	archiveWorkspace *connect.Client[v1.ArchiveWorkspaceRequest, v1.ArchiveWorkspaceResponse]
 	deleteWorkspace  *connect.Client[v1.DeleteWorkspaceRequest, v1.DeleteWorkspaceResponse]
+	listFiles        *connect.Client[v1.ListFilesRequest, v1.ListFilesResponse]
+	readFile         *connect.Client[v1.ReadFileRequest, v1.ReadFileResponse]
+	getLog           *connect.Client[v1.GetLogRequest, v1.GetLogResponse]
+	discardChanges   *connect.Client[v1.DiscardChangesRequest, v1.DiscardChangesResponse]
+	syncWorkspace    *connect.Client[v1.SyncWorkspaceRequest, v1.SyncWorkspaceResponse]
 }
 
 // CreateWorkspace calls agentruntime.workspace.v1.WorkspaceService.CreateWorkspace.
@@ -177,10 +241,36 @@ func (c *workspaceServiceClient) DeleteWorkspace(ctx context.Context, req *conne
 	return c.deleteWorkspace.CallUnary(ctx, req)
 }
 
+// ListFiles calls agentruntime.workspace.v1.WorkspaceService.ListFiles.
+func (c *workspaceServiceClient) ListFiles(ctx context.Context, req *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error) {
+	return c.listFiles.CallUnary(ctx, req)
+}
+
+// ReadFile calls agentruntime.workspace.v1.WorkspaceService.ReadFile.
+func (c *workspaceServiceClient) ReadFile(ctx context.Context, req *connect.Request[v1.ReadFileRequest]) (*connect.Response[v1.ReadFileResponse], error) {
+	return c.readFile.CallUnary(ctx, req)
+}
+
+// GetLog calls agentruntime.workspace.v1.WorkspaceService.GetLog.
+func (c *workspaceServiceClient) GetLog(ctx context.Context, req *connect.Request[v1.GetLogRequest]) (*connect.Response[v1.GetLogResponse], error) {
+	return c.getLog.CallUnary(ctx, req)
+}
+
+// DiscardChanges calls agentruntime.workspace.v1.WorkspaceService.DiscardChanges.
+func (c *workspaceServiceClient) DiscardChanges(ctx context.Context, req *connect.Request[v1.DiscardChangesRequest]) (*connect.Response[v1.DiscardChangesResponse], error) {
+	return c.discardChanges.CallUnary(ctx, req)
+}
+
+// SyncWorkspace calls agentruntime.workspace.v1.WorkspaceService.SyncWorkspace.
+func (c *workspaceServiceClient) SyncWorkspace(ctx context.Context, req *connect.Request[v1.SyncWorkspaceRequest]) (*connect.Response[v1.SyncWorkspaceResponse], error) {
+	return c.syncWorkspace.CallUnary(ctx, req)
+}
+
 // WorkspaceServiceHandler is an implementation of the agentruntime.workspace.v1.WorkspaceService
 // service.
 type WorkspaceServiceHandler interface {
-	// 建一个工作区；给了 repo_url 时克隆它（可以带 ref）。已有同名的工作区时 AlreadyExists。
+	// 建一个工作区：给了 repo_url 时克隆它（可以带 ref）；给了 from_workspace_id 时复制同租户的另一个工作区；都没给时
+	// git init，再写入 files 并做一次初始提交（没有 files 时不提交）。三种来源只能给一种。已有同名的工作区时 AlreadyExists。
 	CreateWorkspace(context.Context, *connect.Request[v1.CreateWorkspaceRequest]) (*connect.Response[v1.CreateWorkspaceResponse], error)
 	// 列出本租户的工作区（不含已删除的）。
 	ListWorkspaces(context.Context, *connect.Request[v1.ListWorkspacesRequest]) (*connect.Response[v1.ListWorkspacesResponse], error)
@@ -195,6 +285,20 @@ type WorkspaceServiceHandler interface {
 	ArchiveWorkspace(context.Context, *connect.Request[v1.ArchiveWorkspaceRequest]) (*connect.Response[v1.ArchiveWorkspaceResponse], error)
 	// 删除工作区与它的存档，销毁承载它的环境。
 	DeleteWorkspace(context.Context, *connect.Request[v1.DeleteWorkspaceRequest]) (*connect.Response[v1.DeleteWorkspaceResponse], error)
+	// 列一个目录（不写 path 为工作区根）：按名字排序，最多 1000 项（truncated）；不列 .git；不跟随符号链接。目录不存在时 NotFound。
+	ListFiles(context.Context, *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error)
+	// 读一个文件：超过 512 KiB 时 too_large、不给内容；前 8 KiB 里有 NUL 时 binary、不给内容；其余按 UTF-8 给出 content
+	// （不合法的字节换成 U+FFFD）。不存在或是目录时 NotFound。
+	ReadFile(context.Context, *connect.Request[v1.ReadFileRequest]) (*connect.Response[v1.ReadFileResponse], error)
+	// 最近的提交（从 HEAD 往回，新的在前）；给了 base 时只给 HEAD 有、base 没有的提交（git log base..HEAD）。
+	// base 不存在时 NotFound；还没有提交时为空。
+	GetLog(context.Context, *connect.Request[v1.GetLogRequest]) (*connect.Response[v1.GetLogResponse], error)
+	// 丢弃未提交的改动：回到 HEAD，删掉未跟踪的文件与目录（.gitignore 忽略的不删）。返回 HEAD。
+	DiscardChanges(context.Context, *connect.Request[v1.DiscardChangesRequest]) (*connect.Response[v1.DiscardChangesResponse], error)
+	// 从远端取 branch 的最新提交，把工作区切到这个分支的这个提交上（PR 合并之后开始下一轮）。要求没有未提交的改动
+	// （否则 AlreadyExists，code 为 workspace_dirty）；远端是建工作区时的 repo_url（从别的工作区复制的沿用那边的），
+	// 没有远端时 InvalidArgument。凭据同 PushWorkspace，只用这一次。
+	SyncWorkspace(context.Context, *connect.Request[v1.SyncWorkspaceRequest]) (*connect.Response[v1.SyncWorkspaceResponse], error)
 }
 
 // NewWorkspaceServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -246,6 +350,36 @@ func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.Han
 		connect.WithSchema(workspaceServiceMethods.ByName("DeleteWorkspace")),
 		connect.WithHandlerOptions(opts...),
 	)
+	workspaceServiceListFilesHandler := connect.NewUnaryHandler(
+		WorkspaceServiceListFilesProcedure,
+		svc.ListFiles,
+		connect.WithSchema(workspaceServiceMethods.ByName("ListFiles")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workspaceServiceReadFileHandler := connect.NewUnaryHandler(
+		WorkspaceServiceReadFileProcedure,
+		svc.ReadFile,
+		connect.WithSchema(workspaceServiceMethods.ByName("ReadFile")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workspaceServiceGetLogHandler := connect.NewUnaryHandler(
+		WorkspaceServiceGetLogProcedure,
+		svc.GetLog,
+		connect.WithSchema(workspaceServiceMethods.ByName("GetLog")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workspaceServiceDiscardChangesHandler := connect.NewUnaryHandler(
+		WorkspaceServiceDiscardChangesProcedure,
+		svc.DiscardChanges,
+		connect.WithSchema(workspaceServiceMethods.ByName("DiscardChanges")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workspaceServiceSyncWorkspaceHandler := connect.NewUnaryHandler(
+		WorkspaceServiceSyncWorkspaceProcedure,
+		svc.SyncWorkspace,
+		connect.WithSchema(workspaceServiceMethods.ByName("SyncWorkspace")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/agentruntime.workspace.v1.WorkspaceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case WorkspaceServiceCreateWorkspaceProcedure:
@@ -262,6 +396,16 @@ func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.Han
 			workspaceServiceArchiveWorkspaceHandler.ServeHTTP(w, r)
 		case WorkspaceServiceDeleteWorkspaceProcedure:
 			workspaceServiceDeleteWorkspaceHandler.ServeHTTP(w, r)
+		case WorkspaceServiceListFilesProcedure:
+			workspaceServiceListFilesHandler.ServeHTTP(w, r)
+		case WorkspaceServiceReadFileProcedure:
+			workspaceServiceReadFileHandler.ServeHTTP(w, r)
+		case WorkspaceServiceGetLogProcedure:
+			workspaceServiceGetLogHandler.ServeHTTP(w, r)
+		case WorkspaceServiceDiscardChangesProcedure:
+			workspaceServiceDiscardChangesHandler.ServeHTTP(w, r)
+		case WorkspaceServiceSyncWorkspaceProcedure:
+			workspaceServiceSyncWorkspaceHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -297,4 +441,24 @@ func (UnimplementedWorkspaceServiceHandler) ArchiveWorkspace(context.Context, *c
 
 func (UnimplementedWorkspaceServiceHandler) DeleteWorkspace(context.Context, *connect.Request[v1.DeleteWorkspaceRequest]) (*connect.Response[v1.DeleteWorkspaceResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.workspace.v1.WorkspaceService.DeleteWorkspace is not implemented"))
+}
+
+func (UnimplementedWorkspaceServiceHandler) ListFiles(context.Context, *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.workspace.v1.WorkspaceService.ListFiles is not implemented"))
+}
+
+func (UnimplementedWorkspaceServiceHandler) ReadFile(context.Context, *connect.Request[v1.ReadFileRequest]) (*connect.Response[v1.ReadFileResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.workspace.v1.WorkspaceService.ReadFile is not implemented"))
+}
+
+func (UnimplementedWorkspaceServiceHandler) GetLog(context.Context, *connect.Request[v1.GetLogRequest]) (*connect.Response[v1.GetLogResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.workspace.v1.WorkspaceService.GetLog is not implemented"))
+}
+
+func (UnimplementedWorkspaceServiceHandler) DiscardChanges(context.Context, *connect.Request[v1.DiscardChangesRequest]) (*connect.Response[v1.DiscardChangesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.workspace.v1.WorkspaceService.DiscardChanges is not implemented"))
+}
+
+func (UnimplementedWorkspaceServiceHandler) SyncWorkspace(context.Context, *connect.Request[v1.SyncWorkspaceRequest]) (*connect.Response[v1.SyncWorkspaceResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.workspace.v1.WorkspaceService.SyncWorkspace is not implemented"))
 }

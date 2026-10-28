@@ -10,8 +10,11 @@ import "google/protobuf/timestamp.proto";
 // 工作区属于（租户，workspace_id），生命周期跨 Task；文件放在承载它的沙箱环境里，空闲时存档到 ObjectStore，用时恢复。
 // 租户由认证身份确定，请求里的 tenant_id 只用来校验一致；别的租户的工作区一律 NotFound。
 // 克隆与推送的凭据（GitCredential）由应用随请求传入，只在这一次调用里用：Runtime 不保存，不进日志、事件历史与错误信息。
+// 路径（ListFiles、ReadFile、InitialFile）：相对工作区根、用 / 分隔；绝对路径、盘符、空段、. 与 ..、反斜杠、NUL 一律
+// InvalidArgument；任何一级是 .git 也是 InvalidArgument（.git 只经 git 操作，不直接给应用读）。
 service WorkspaceService {
-  // 建一个工作区；给了 repo_url 时克隆它（可以带 ref）。已有同名的工作区时 AlreadyExists。
+  // 建一个工作区：给了 repo_url 时克隆它（可以带 ref）；给了 from_workspace_id 时复制同租户的另一个工作区；都没给时
+  // git init，再写入 files 并做一次初始提交（没有 files 时不提交）。三种来源只能给一种。已有同名的工作区时 AlreadyExists。
   rpc CreateWorkspace(CreateWorkspaceRequest) returns (CreateWorkspaceResponse);
   // 列出本租户的工作区（不含已删除的）。
   rpc ListWorkspaces(ListWorkspacesRequest) returns (ListWorkspacesResponse);
@@ -26,6 +29,20 @@ service WorkspaceService {
   rpc ArchiveWorkspace(ArchiveWorkspaceRequest) returns (ArchiveWorkspaceResponse);
   // 删除工作区与它的存档，销毁承载它的环境。
   rpc DeleteWorkspace(DeleteWorkspaceRequest) returns (DeleteWorkspaceResponse);
+  // 列一个目录（不写 path 为工作区根）：按名字排序，最多 1000 项（truncated）；不列 .git；不跟随符号链接。目录不存在时 NotFound。
+  rpc ListFiles(ListFilesRequest) returns (ListFilesResponse);
+  // 读一个文件：超过 512 KiB 时 too_large、不给内容；前 8 KiB 里有 NUL 时 binary、不给内容；其余按 UTF-8 给出 content
+  // （不合法的字节换成 U+FFFD）。不存在或是目录时 NotFound。
+  rpc ReadFile(ReadFileRequest) returns (ReadFileResponse);
+  // 最近的提交（从 HEAD 往回，新的在前）；给了 base 时只给 HEAD 有、base 没有的提交（git log base..HEAD）。
+  // base 不存在时 NotFound；还没有提交时为空。
+  rpc GetLog(GetLogRequest) returns (GetLogResponse);
+  // 丢弃未提交的改动：回到 HEAD，删掉未跟踪的文件与目录（.gitignore 忽略的不删）。返回 HEAD。
+  rpc DiscardChanges(DiscardChangesRequest) returns (DiscardChangesResponse);
+  // 从远端取 branch 的最新提交，把工作区切到这个分支的这个提交上（PR 合并之后开始下一轮）。要求没有未提交的改动
+  // （否则 AlreadyExists，code 为 workspace_dirty）；远端是建工作区时的 repo_url（从别的工作区复制的沿用那边的），
+  // 没有远端时 InvalidArgument。凭据同 PushWorkspace，只用这一次。
+  rpc SyncWorkspace(SyncWorkspaceRequest) returns (SyncWorkspaceResponse);
 }
 
 // GitCredential 是克隆或推送用的凭据（例如 HTTPS 的用户名与令牌），只用这一次。
@@ -54,6 +71,16 @@ message Workspace {
   int32 files = 7;
   google.protobuf.Timestamp created_at = 8;
   google.protobuf.Timestamp updated_at = 9;
+  // 当前的分支；分离头指针或还不知道时为空。
+  string branch = 10;
+}
+
+// InitialFile 是建空工作区时写入的一个文件（例如示例项目）。
+message InitialFile {
+  // 相对工作区根的路径，规则见 WorkspaceService 的说明。
+  string path = 1;
+  // 文件内容（UTF-8 文本）。全部 files 合计最多 1 MiB、200 个。
+  string content = 2;
 }
 
 message CreateWorkspaceRequest {
@@ -66,6 +93,14 @@ message CreateWorkspaceRequest {
   // 分支或标签；为空时用远端的默认分支。
   string ref = 4;
   GitCredential credential = 5;
+  // 复制同租户的这个工作区：内容是它最近的状态（含 .git 与未提交的改动；存档模式下是它最近的快照，复制前先给它闲着的
+  // 可写环境存一份），远端（repo_url）也沿用。不存在时 NotFound。与 repo_url、files 互斥。
+  string from_workspace_id = 6;
+  // 建空工作区时写入的文件，写完做一次初始提交（提交说明 Initial commit，作者见下）。与 repo_url、from_workspace_id 互斥。
+  repeated InitialFile files = 7;
+  // 初始提交的作者；为空时用 Agent Runtime 的默认作者。
+  string author_name = 8;
+  string author_email = 9;
 }
 
 message CreateWorkspaceResponse {
@@ -85,6 +120,18 @@ message GetDiffRequest {
   string workspace_id = 2;
   // commit、分支或标签；为空时相对 HEAD。
   string base = 3;
+  // 检测改名（git diff --find-renames）：改名的文件在 diff 与 stats 里是一项，不是一删一加。
+  bool find_renames = 4;
+}
+
+// DiffStat 是一个改动文件的行数（git diff --numstat）。
+message DiffStat {
+  // 改名时是新路径。
+  string path = 1;
+  int32 added = 2;
+  int32 deleted = 3;
+  // 二进制文件没有行数（added、deleted 为 0）。
+  bool binary = 4;
 }
 
 message GetDiffResponse {
@@ -94,6 +141,10 @@ message GetDiffResponse {
   repeated string files = 2;
   bool truncated = 3;
   string head = 4;
+  // 每个改动文件的行数，与 files 同序。
+  repeated DiffStat stats = 5;
+  // 当前的分支；分离头指针时为空。
+  string branch = 6;
 }
 
 message CommitWorkspaceRequest {
@@ -142,3 +193,92 @@ message DeleteWorkspaceRequest {
 }
 
 message DeleteWorkspaceResponse {}
+
+enum FileType {
+  FILE_TYPE_UNSPECIFIED = 0;
+  FILE_TYPE_FILE = 1;
+  FILE_TYPE_DIRECTORY = 2;
+  FILE_TYPE_SYMLINK = 3;
+}
+
+// FileEntry 是目录里的一项。
+message FileEntry {
+  string name = 1;
+  FileType type = 2;
+  // 只有普通文件有。
+  int64 size = 3;
+}
+
+message ListFilesRequest {
+  string tenant_id = 1;
+  string workspace_id = 2;
+  // 目录；为空时是工作区根。
+  string path = 3;
+}
+
+message ListFilesResponse {
+  repeated FileEntry entries = 1;
+  // 超过 1000 项时只给前 1000 项。
+  bool truncated = 2;
+}
+
+message ReadFileRequest {
+  string tenant_id = 1;
+  string workspace_id = 2;
+  string path = 3;
+}
+
+message ReadFileResponse {
+  int64 size = 1;
+  // 超过 512 KiB：不给内容。
+  bool too_large = 2;
+  // 二进制文件：不给内容。
+  bool binary = 3;
+  string content = 4;
+}
+
+message GetLogRequest {
+  string tenant_id = 1;
+  string workspace_id = 2;
+  // 最多几个提交：0 时 30，最多 200。
+  int32 limit = 3;
+  // commit、分支（含 origin/<分支>）或标签；给了时只给 HEAD 有、它没有的提交。
+  string base = 4;
+}
+
+// Commit 是一个提交。
+message Commit {
+  string sha = 1;
+  string author_name = 2;
+  string author_email = 3;
+  google.protobuf.Timestamp authored_at = 4;
+  // 提交说明的第一行。
+  string subject = 5;
+}
+
+message GetLogResponse {
+  repeated Commit commits = 1;
+}
+
+message DiscardChangesRequest {
+  string tenant_id = 1;
+  string workspace_id = 2;
+}
+
+message DiscardChangesResponse {
+  string head = 1;
+}
+
+message SyncWorkspaceRequest {
+  string tenant_id = 1;
+  string workspace_id = 2;
+  // 远端的分支名，例如 main。
+  string branch = 3;
+  GitCredential credential = 4;
+}
+
+message SyncWorkspaceResponse {
+  // 切过去之后的 HEAD。
+  string head = 1;
+  string branch = 2;
+}

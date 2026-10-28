@@ -12,7 +12,7 @@
 | D-06c | 工作区的存档（Worker 的 `agentruntime_worker.workspace`）：按文件内容寻址存进 ObjectStore，加逐文件的清单；恢复后按清单核对；保留最近 3 份、清掉没人引用的块；业务库迁移 205 | D-06b | 做完 |
 | D-06d | 承载与工具：登记里 `workspace: archive` 的后端不挂工作区卷，建环境后从最近的存档恢复，销毁之前存档；这些后端之间可以互相回退；`repo_read`、`repo_list`、`repo_grep`、`repo_edit` 在承载它的环境里执行 | D-06c、D-11、D-12、D-13 | 做完 |
 | D-06e | Workspace API：task-service 的 `WorkspaceService` 起 Worker 的 `WorkspaceOperationWorkflow`，操作在承载工作区的沙箱里执行；推送是 write_irreversible（gate 记录、幂等键、先对账） | D-06a、D-06d | 做完 |
-| D-06f | 应用：coding-agent 改用 Workspace API（在 coding-agent 仓库） | D-06e | 卡在契约：见第 7 节 |
+| D-06f | 应用：coding-agent 改用 Workspace API（在 coding-agent 仓库） | D-06e | 契约草案已写（第 8 节），待人审；审过之后实现、再改 coding-agent |
 | D-06g | 部署：后端登记的 `workspace` 一项进 Helm 与 `dev_stack.py`；Cloudflare 后端登记为 archive；单节点仍默认挂卷 | D-06d | 做完（真集群上没验） |
 
 ## 2. 存档的格式
@@ -84,12 +84,7 @@ ObjectStore（租户作用域）
 
 ## 7. 没做的与出入（给人看）
 
-- **D-06f（coding-agent 改用 Workspace API）卡在契约。** coding-agent 现在在共用的工作区卷上自己跑 git，除了克隆、diff、提交、推送，还要：列目录与读文件（网页的文件树）、`git log`（提交记录）、丢弃改动（`reset --hard` 加 `clean`）、从示例建项目（写入示例文件）、每个会话从项目的基线复制一份（`clone --local`）。`WorkspaceService` 里没有这些。建议在 S-01 里给 `WorkspaceService` 加（都在承载工作区的沙箱里执行，Worker 一侧照现在的 `WorkspaceOperation` 加枚举值）：
-  - `ListFiles`（路径 → 目录项）与 `ReadFile`（路径 → 内容，有大小上限，二进制只给大小）：经 SandboxBrowse 与 read_file；
-  - `GetLog`（最近 N 个提交）；
-  - `DiscardChanges`（回到 HEAD，删掉未跟踪的文件）；
-  - `CreateWorkspace` 加 `from_workspace_id`（从同租户的另一个工作区复制：存档模式下直接复制快照的清单，块共用要改成按租户而不是按工作区寻址，或者复制块）与 `files`（建空工作区时写入的初始文件，示例项目用）。
-  这些加进契约并经人审之后，coding-agent 的 `projects.go`、`sessions.go`、`publish.go` 换成调 Workspace API；PR 照旧由 coding-agent 经各平台的 API 开。在那之前 coding-agent 仍用挂卷的工作区（单节点的默认配置），不受影响。
+- **D-06f（coding-agent 改用 Workspace API）卡在契约。** coding-agent 现在在共用的工作区卷上自己跑 git，除了克隆、diff、提交、推送，还要：列目录与读文件（网页的文件树）、`git log`（提交记录、比基线多几个提交）、丢弃改动（`reset --hard` 加 `clean`）、从示例建项目（写入示例文件）、每个会话从项目的基线复制一份（`clone --local`）、PR 合并之后切回基线的最新提交（`fetch` 加 `checkout -B`）、diff 的逐文件行数与当前分支。2026-10-28 按用户要求把这些写成了契约草案（第 8 节），待人审；审过之后 coding-agent 的 `projects.go`、`sessions.go`、`publish.go` 换成调 Workspace API，PR 照旧由 coding-agent 经各平台的 API 开。在那之前 coding-agent 仍用挂卷的工作区（单节点的默认配置），不受影响。
 - **租约**：改动稿写的是“会写的 Task 持有工作区的租约，随心跳续期”。实现是 D-13 的规则加强版：一个工作区同一时间只有一个可写的环境（存档模式下不分会话），命令在跑时（busy_until）别人不能抢，命令之间可以被别的会话抢占（先存档）。没有跨命令、按 Task 持有的租约；需要时在 `workspaces` 表加租约列。
 - **只读 Task 用快照**：读的工具在没有本会话可写环境时借只读的环境（在最近一次快照上），没有按 Task 的 effect 区分。
 - **ObjectStore 没有流式的 put/get**：块一次一个读进内存；单个大文件（几百 MB）多的仓库要等 ObjectStore 加流式接口。Cloudflare 桥把导入的请求体整个读进内存（Workers 的内存上限 128 MB），存档模式下大仓库落 Cloudflare 后端会失败。
@@ -97,3 +92,31 @@ ObjectStore（租户作用域）
 - **WorkspaceOperationWorkflow 没有 golden 事件历史**：同 D-11、D-17 的平台工作流，只排一个 activity；以后改它的命令序列时要补版本分支与 golden。
 - **删除与推送的权限**：同租户的任何用户都能删工作区、推送（推送的批准人记的是发起的用户）；要限制时按 Task API 的做法加 scope。
 - **真环境没验**：kind 里的 K8s 后端跑了存档的一致性测试；Kata、gVisor、真 Cloudflare 桥与 R2 上的存档恢复没验。
+
+## 8. 契约草案：应用浏览与管理工作区（2026-10-28，待人审）
+
+给 coding-agent 换掉本地 git 用（第 7 节第 1 条）。只加不改：`buf breaking` 对兼容性基线（还没有 workspace 的 proto）与对上一版草案（提交 3896039）都通过；**兼容性基线没有更新**。task-service 里这五个方法在审过之前回 Unimplemented（内嵌生成的 `UnimplementedWorkspaceServiceHandler`），Worker 收到新的操作枚举值时报 invalid（invalid_operation），所以合进来不改变现在的行为。
+
+| coding-agent 现在做的 | 契约里的 |
+| --- | --- |
+| 文件树（`os.ReadDir`，不列 .git） | `ListFiles`：按名字排序，最多 1000 项，不列 .git，不跟随符号链接 |
+| 看文件（512 KiB 以上只给大小，前 8 KiB 有 NUL 当二进制） | `ReadFile`：同样的两条规则；内容按 UTF-8 给出 |
+| 提交记录（`git log -n 30`）、比基线多几个提交（`rev-list origin/<base>..HEAD`） | `GetLog`：`limit`（默认 30，最多 200）、可选 `base`（只给 HEAD 有、base 没有的） |
+| 丢弃改动（`reset --hard HEAD` 加 `clean -fd`） | `DiscardChanges`：同样的语义（.gitignore 忽略的不删），返回 HEAD |
+| PR 合并之后切回基线（`fetch origin <base>` 加 `checkout -B <base>`） | `SyncWorkspace`：要求没有未提交的改动（否则 AlreadyExists，`workspace_dirty`），远端是建工作区时的 repo_url，凭据只用这一次 |
+| 从示例建项目（写文件、`git init -b main`、初始提交） | `CreateWorkspace.files`（合计最多 1 MiB、200 个）与 `author_name`、`author_email` |
+| 每个会话从项目的基线复制一份（`clone --local`） | `CreateWorkspace.from_workspace_id`：复制同租户的另一个工作区（含 .git 与未提交的改动，远端沿用） |
+| diff 的逐文件行数（`--numstat`）、改名检测、当前分支 | `GetDiffRequest.find_renames`；`GetDiffResponse.stats`、`branch`；`Workspace.branch` |
+
+Worker 一侧：`WorkspaceOperation` 加 `LIST_FILES`、`READ_FILE`、`LOG`、`DISCARD`、`SYNC`（7～11）；建与复制仍是 `CREATE`，参数放 `args`（`from_workspace_id`、`files`、`path`、`limit`、`find_renames` 等，名字与 Request 的字段相同）。
+
+要人拍板的几处：
+
+1. **.git 不给应用直接读**（ListFiles、ReadFile 遇到任何一级 .git 都是 InvalidArgument）：与 coding-agent 现在的做法一致；要看 git 的信息只经 GetLog、GetDiff。
+2. **SyncWorkspace 有未提交的改动时用 AlreadyExists**：统一错误模型没有 FailedPrecondition，最接近的是 conflict；另一个办法是在错误模型里加一类（改动更大）。
+3. **复制的内容含未提交的改动**：coding-agent 复制的是项目的基线（本来就干净），含不含都行；含的话实现最简单（存档模式下复制快照）。实现时块的寻址要改成按租户（现在按工作区），或者复制时把块也复制一份——不影响契约。
+4. **files 进事件历史**：初始文件随 `args` 进 Temporal（超过 64 KiB 的由 Claim-Check 卸载到 ObjectStore），所以限在 1 MiB；示例项目都远小于这个。
+5. **DiscardChanges 的 effect**：丢掉的改动找不回来，按“调用者自己的操作”处理（同 DeleteWorkspace，不另要审批）；要审批时加 scope。
+6. **没有写文件的接口**：应用不直接改工作区里的文件（改动由 Task 里的 agent 做），这是有意不加的。
+
+审过之后的实现顺序：Worker 的五个操作（ListFiles、ReadFile 经 SandboxBrowse 与 read_file；GetLog、DiscardChanges、SyncWorkspace 跑 git；复制与初始文件在 CREATE 里）→ task-service 的五个方法 → 端到端 → coding-agent（单独的仓库）。

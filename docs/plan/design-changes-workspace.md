@@ -106,7 +106,7 @@ L.11 的表格后加一句：
 2. 只读 Task 用快照还是直接读活跃环境？快照更干净，但要多一次恢复；建议快照。（实现：快照）
 3. Workspace API 放 task-service 还是单独的服务？建议先放 task-service（同一个 Ingress 与业务库），量大了再拆。（实现：task-service）
 
-实现时与上面原文的出入（改原文档时一并考虑）：“写者”一段的租约实现为“一个工作区同一时间只有一个可写的环境（存档模式不分会话），命令在跑时不能被抢”，没有按 Task、随心跳续期的租约；Workspace API 要给应用（coding-agent）用，还缺列目录、读文件、log、丢弃改动、从别的工作区复制（[workspace-layer.md](workspace-layer.md) 第 7 节）。
+实现时与上面原文的出入（改原文档时一并考虑）：“写者”一段的租约实现为“一个工作区同一时间只有一个可写的环境（存档模式不分会话），命令在跑时不能被抢”，没有按 Task、随心跳续期的租约；Workspace API 要给应用（coding-agent）用，还缺列目录、读文件、log、丢弃改动、与远端同步、从别的工作区复制或写入初始文件；2026-10-28 写成了契约草案（[workspace-layer.md](workspace-layer.md) 第 8 节，待人审），审过之后 4.10.1 的 Workspace API 一句要相应加上“列目录、读文件、看提交记录、丢弃改动、与远端同步”。
 
 ## W3　Task 提交时的 effect 上限
 

@@ -16,7 +16,8 @@ message WorkspaceOperationInput {
   string operation_id = 2;
   WorkspaceOperation operation = 3;
   string workspace_id = 4;
-  // 不含凭据的参数：repo_url、ref、base、message、author_name、author_email、branch。
+  // 不含凭据的参数，名字与 workspace.v1 里对应 Request 的字段相同：repo_url、ref、base、find_renames、message、
+  // author_name、author_email、branch、from_workspace_id、files（[{path, content}]）、path、limit。
   google.protobuf.Struct args = 5;
   // wsc1.<base64url(nonce || 密文)>；没有凭据时为空。
   string sealed_credential = 6;
@@ -32,6 +33,12 @@ enum WorkspaceOperation {
   WORKSPACE_OPERATION_PUSH = 4;
   WORKSPACE_OPERATION_ARCHIVE = 5;
   WORKSPACE_OPERATION_DELETE = 6;
+  // 应用（例如 coding-agent）浏览与管理工作区要的几项（docs/plan/workspace-layer.md 第 7 节）。
+  WORKSPACE_OPERATION_LIST_FILES = 7;
+  WORKSPACE_OPERATION_READ_FILE = 8;
+  WORKSPACE_OPERATION_LOG = 9;
+  WORKSPACE_OPERATION_DISCARD = 10;
+  WORKSPACE_OPERATION_SYNC = 11;
 }
 
 message WorkspaceOperationResult {

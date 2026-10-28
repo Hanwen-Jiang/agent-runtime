@@ -77,8 +77,12 @@ type Deps struct {
 	NewOperationID func() string
 }
 
-// Server 实现 workspacev1connect.WorkspaceServiceHandler。
-type Server struct{ d Deps }
+// Server 实现 workspacev1connect.WorkspaceServiceHandler。ListFiles、ReadFile、GetLog、DiscardChanges、SyncWorkspace 是
+// 待人审的契约草案（docs/plan/workspace-layer.md 第 7 节），审过之前返回 Unimplemented。
+type Server struct {
+	workspacev1connect.UnimplementedWorkspaceServiceHandler
+	d Deps
+}
 
 var _ workspacev1connect.WorkspaceServiceHandler = (*Server)(nil)
 
