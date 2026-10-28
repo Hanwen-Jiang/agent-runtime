@@ -294,8 +294,10 @@ class SandboxLedger:
         quota: Quota | None = None,
         fallback_from: str = "",
         allow_hosts: str = "",
+        exclusive: bool = False,
     ) -> EnvRecord:
-        """落一行 creating（先写平台目录再写租户的行），同一个事务里核对配额与预算。超了 denied。"""
+        """落一行 creating（先写平台目录再写租户的行），同一个事务里核对配额与预算。超了 denied。
+        exclusive（存档模式的工作区，D-06）：这个工作区不管哪个会话（含没有会话的一次性环境）有可写的环境都算占用。"""
         await self.migrate()
         now = self._clock()
         record = EnvRecord(
@@ -305,13 +307,13 @@ class SandboxLedger:
         )
         await self._directory(record, "creating")
         try:
-            await self._insert_checked(record, quota, now)
+            await self._insert_checked(record, quota, now, exclusive=exclusive)
         except BaseException:
             await self._directory(record, "failed")
             raise
         return record
 
-    async def _insert_checked(self, record: EnvRecord, quota: Quota | None, now: datetime) -> None:
+    async def _insert_checked(self, record: EnvRecord, quota: Quota | None, now: datetime, *, exclusive: bool = False) -> None:
         workspace_id, session_id, writable = record.workspace_id, record.session_id, bool(record.writable)
         async with self.bind(record.owner).transaction() as tx:
             await tx.execute(
@@ -320,11 +322,13 @@ class SandboxLedger:
             if quota is not None:
                 await self._check_quota(tx, quota, now)
             if writable and workspace_id:
-                # 一个工作区同一时间只有一个可写的环境（W5 第 3 条；D-06 之前按环境表核对）。
+                # 一个工作区同一时间只有一个可写的环境（W5 第 3 条）。挂卷时同一个会话的几个环境看到的是同一处，只拦别的会话；
+                # 存档模式（exclusive）每个环境各有一份，谁都拦。
+                same_session = "" if exclusive else "AND session_id <> $2 "
                 row = await tx.query_one(
-                    "SELECT COUNT(*) AS n FROM sandbox_envs WHERE workspace_id = $1 AND session_id <> $2 AND writable = 1 "
+                    f"SELECT COUNT(*) AS n FROM sandbox_envs WHERE workspace_id = $1 {same_session}AND writable = 1 "
                     "AND state IN ('creating', 'ready')",
-                    (workspace_id, session_id),
+                    (workspace_id,) if exclusive else (workspace_id, session_id),
                 )
                 if row and int(row["n"]) > 0:
                     # 由 broker 决定：别的会话的那个环境闲着就回收它再建（sandbox.broker），正在跑命令就报给调用方。
@@ -409,15 +413,21 @@ class SandboxLedger:
             record, last_used_at=iso(now), expires_at=iso(expires), cpu_ms=record.cpu_ms + int(cpu_ms), task_id=task_id or record.task_id, busy_until=busy
         )
 
-    async def writable_holders(self, owner: str, *, workspace_id: str, session_id: str) -> list[EnvRecord]:
-        """别的会话里占着这个工作区的可写环境（creating 或 ready）。"""
+    async def writable_holders(self, owner: str, *, workspace_id: str, session_id: str | None) -> list[EnvRecord]:
+        """别的会话里占着这个工作区的可写环境（creating 或 ready）；session_id 为 None 时不分会话（存档模式，D-06）。"""
         await self.migrate()
         async with self.bind(owner).transaction(read_only=True) as tx:
-            rows = await tx.query(
-                f"SELECT {', '.join(_COLUMNS)} FROM sandbox_envs WHERE workspace_id = $1 AND session_id <> $2 AND writable = 1 "
-                "AND state IN ('creating', 'ready')",
-                (workspace_id, session_id),
-            )
+            if session_id is None:
+                rows = await tx.query(
+                    f"SELECT {', '.join(_COLUMNS)} FROM sandbox_envs WHERE workspace_id = $1 AND writable = 1 AND state IN ('creating', 'ready')",
+                    (workspace_id,),
+                )
+            else:
+                rows = await tx.query(
+                    f"SELECT {', '.join(_COLUMNS)} FROM sandbox_envs WHERE workspace_id = $1 AND session_id <> $2 AND writable = 1 "
+                    "AND state IN ('creating', 'ready')",
+                    (workspace_id, session_id),
+                )
         return [EnvRecord.from_row(owner, r) for r in rows]
 
     def idle_now(self, record: EnvRecord) -> bool:

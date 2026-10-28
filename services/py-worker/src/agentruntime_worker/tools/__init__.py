@@ -3,7 +3,8 @@
 - dev_tools(config)：Worker 进程内唯一的开发用 ToolDriver（LocalToolDriverProvider）。按配置登记平台内工具（platform.py）；
   Node Executor、resolve_catalog、tool_loop_step 共用它。同样的工具配置得到同一个实例。context_read 总是登记。
 - sandbox_broker(config)：shell_run 经它借还沙箱环境（sandbox.broker）：登记的后端、按租户策略选，建与删都记进沙箱环境表
-  （业务库：AR_RELATIONAL_DSN 的 Postgres，没设时数据目录下的 SQLite；D-11）；对账的 activity 用同一个。
+  （业务库：AR_RELATIONAL_DSN 的 Postgres，没设时数据目录下的 SQLite；D-11）；对账的 activity 用同一个。存档模式的
+  工作区（D-06）经它的 WorkspaceArchiver：快照记在同一个业务库，块与清单放在 context_objects 的 ObjectStore。
 - context_objects(config)：Context Builder 外置内容的 ObjectStore，context_read 读的也是它（R-03 评审 D11）。位置同
   Node Executor（设了 AR_S3_ENDPOINT 时是 S3 兼容的对象存储，否则 AR_OBJECT_STORE_DIR 或数据目录下的 objects）；
   都没配时是进程内同一个临时目录。
@@ -35,6 +36,7 @@ from agentruntime_worker.tools.catalog import DevCatalog, ToolCatalog, latest, l
 from agentruntime_worker.tools.mcp import McpGateway
 from agentruntime_worker.tools.platform import CONTEXT_READ, PlatformToolsConfig, register_platform_tools
 from agentruntime_worker.tools.sandboxes import Sandboxes, registry_policy
+from agentruntime_worker.workspace.archive import WorkspaceArchiver
 
 __all__ = [
     "CONTEXT_READ", "DevCatalog", "ToolCatalog", "context_objects", "dev_tools", "latest", "latest_spec", "sandbox_broker", "tool_sessions",
@@ -60,7 +62,7 @@ def _key(config: WorkerConfig) -> tuple[object, ...]:
 def _broker_key(config: WorkerConfig) -> tuple[object, ...]:
     return (
         config.tool_shell_sandbox, config.sandbox_backends_file, config.registry_address, config.data_dir, config.secrets_file, config.relational_dsn,
-        config.pkg_mirror_url, config.egress_gateway_url,
+        config.pkg_mirror_url, config.egress_gateway_url, *_store_key(config),
     )
 
 
@@ -89,7 +91,10 @@ def sandbox_broker(config: WorkerConfig) -> SandboxBroker | None:
                 lambda: boxes.read_secret(envcred.SECRET_NAME), mirror_url=config.pkg_mirror_url, egress_url=config.egress_gateway_url,
                 test_env=lambda tenant: boxes.read_tenant_secret(tenant, TEST_ENV_SECRET),
             )
-            broker = SandboxBroker(boxes, SandboxLedger(relational_store(config.relational_dsn, root)), credentials=credentials)
+            store = relational_store(config.relational_dsn, root)
+            # 存档模式的工作区（D-06）：快照的行在同一个业务库，块与清单在 Context Builder 用的同一个 ObjectStore（租户作用域）。
+            archiver = WorkspaceArchiver(store, context_objects(config))
+            broker = SandboxBroker(boxes, SandboxLedger(store), credentials=credentials, archiver=archiver)
             if boxes.environments:
                 # 按项目定制的运行环境（D-17；登记文件的 environments 一节，格式见 sandbox.env_build.environment_manager）。
                 from agentruntime_worker.sandbox.env_build import environment_manager

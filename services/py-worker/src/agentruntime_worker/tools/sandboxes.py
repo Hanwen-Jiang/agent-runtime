@@ -19,6 +19,8 @@ AR_TOOL_SHELL_SANDBOX=sandbox 时 shell_run 经 Sandbox 接口跑：每条命令
   max_envs_per_scope（每个租户同时最多几个环境，D-10；超了 denied）。
 - cloudflare：agentruntime_core.adapters.cloudflare_sandbox；桥的令牌取自 SecretStore 平台作用域的 sandbox/cloudflare-bridge-token。
 - local：本地子进程（开发实现），不隔离，只给开发与测试。
+- 每个后端可以写 workspace：mount（工作区挂进环境：K8s 的 workspace_claim、本地实现的工作区根）或 archive（不挂卷，
+  Worker 建环境后从存档恢复、销毁前存档，D-06，docs/plan/workspace-layer.md 第 4 节）；没写时 Cloudflare 是 archive，其余是 mount。
 用哪个后端由租户策略的 sandbox.backend 决定（经 Registry 读当前版本，按租户缓存一分钟），没写时用 default；模型与请求都不能指定。
 登记里没有的名字一律拒绝，不悄悄换后端。K8s 后端的 agent 令牌密钥（同一部署的 Worker 共用）取自 SecretStore 平台作用域的
 sandbox/token-key；没有时每个进程随机一把（只有一个 Worker 进程时可以）。
@@ -44,6 +46,7 @@ from agentruntime_worker.sandbox.policy import SandboxPolicy
 
 KINDS = ("k8s", "cloudflare", "local")
 ISOLATIONS = ("none", "container", "microvm")
+WORKSPACE_MODES = ("mount", "archive")
 TOKEN_KEY_SECRET = "sandbox/token-key"
 BRIDGE_TOKEN_SECRET = "sandbox/cloudflare-bridge-token"
 SECRET_PURPOSE = "sandbox"
@@ -84,6 +87,8 @@ class Sandboxes:
                 raise ValueError(f"沙箱后端 {name} 的 kind 只能是 {'、'.join(KINDS)}")
             if spec.get("isolation", "container") not in ISOLATIONS:
                 raise ValueError(f"沙箱后端 {name} 的 isolation 只能是 {'、'.join(ISOLATIONS)}")
+            if spec.get("workspace", "mount") not in WORKSPACE_MODES:
+                raise ValueError(f"沙箱后端 {name} 的 workspace 只能是 {'、'.join(WORKSPACE_MODES)}")
         self._specs = dict(specs)
         self.default = default
         self._workspace_root = workspace_root
@@ -150,6 +155,16 @@ class Sandboxes:
 
     def isolation(self, name: str) -> str:
         return str(self.spec(name).get("isolation", "container"))
+
+    def workspace_mode(self, name: str) -> str:
+        """工作区怎么到环境里（D-06）：mount（挂卷）或 archive（不挂卷，建环境后从存档恢复、销毁前存档）。
+        没写时 Cloudflare 是 archive（挂不了卷），其余是 mount。"""
+        spec = self.spec(name)
+        return str(spec.get("workspace") or ("archive" if spec.get("kind") == "cloudflare" else "mount"))
+
+    @property
+    def has_archive_backends(self) -> bool:
+        return any(self.workspace_mode(n) == "archive" for n in self._specs)
 
     def image_for(self, name: str, runtime: str) -> str:
         """登记里这个后端给这个运行环境配的镜像（K8s 的 images，或只给了 image 时的 python）；没配时为空。"""

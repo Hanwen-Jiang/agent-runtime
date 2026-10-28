@@ -2,7 +2,10 @@
 
 - 选后端：租户策略的首选，暂时不可用（transient：容量满、故障）时按回退列表依次试；隔离强度按 none < container < microvm，
   回退的后端不能比 min_isolation（没写时取首选的）更弱；denied、invalid 原样报出，不回退（W11）。绑定了 workspace 时
-  只在共用同一个工作区卷的后端之间回退（工作区跨后端要等 D-06 的存档与恢复）。落点与回退原因记进环境表与 span。
+  只在同一组后端之间回退：挂同一个工作区卷的算一组，存档模式的（workspace: archive）都算一组。落点与回退原因记进环境表与 span。
+- 存档模式（D-06，docs/plan/workspace-layer.md 第 4 节）：后端不挂工作区卷，建环境后从最近的快照恢复（不一致时换一个环境再试
+  一次，仍不一致报 invalid），可写的环境销毁之前先存档（还、回收、被抢占、换环境都一样）；存档失败时暂时性的留着环境、由下一轮
+  对账再试，活满或永久性的失败照样销毁。每个环境各有一份工作区，所以一个工作区同一时间只有一个可写的环境，不分会话。
 - 配额与预算：建环境前在环境表的事务里核对（W10，SandboxLedger.begin_create）。
 - 会话级复用（W5）：reuse 时先按（租户，工作区，会话）在环境表里找没到期的 ready 环境，找不到才建；任何 Worker 副本都一样，
   不靠进程内的缓存。用完不删（release(keep=True)），空闲到期或活满时由对账回收（sandbox.reconcile）。
@@ -38,6 +41,7 @@ from agentruntime_worker.sandbox.policy import ISOLATION_RANK, SandboxPolicy
 if TYPE_CHECKING:
     # 运行时不导入：tools 包的 __init__ 又导入本模块。
     from agentruntime_worker.tools.sandboxes import Backend, Sandboxes
+    from agentruntime_worker.workspace.archive import WorkspaceArchiver
 
 log = logging.getLogger(__name__)
 
@@ -58,6 +62,12 @@ class Lease:
     # 联网的方式：none（断网）、gateway（经出网网关，按授权放行）、allowlist（托管后端按域名放行）；注入的测试用密钥的名字。
     network: str = "none"
     test_env_names: tuple[str, ...] = ()
+    # 工作区（D-06）：所属作用域、工作区、是否存档模式（建时恢复、还时存档）、是否可写；restored 是恢复用的快照。
+    owner: str = ""
+    workspace_id: str = ""
+    archive: bool = False
+    writable: bool = False
+    restored: str = ""
 
     @property
     def attributes(self) -> dict[str, Any]:
@@ -76,17 +86,33 @@ class Lease:
         if self.fallback_from:
             out["sandbox.fallback_from"] = self.fallback_from
             out["sandbox.fallback_reason"] = self.fallback_reason
+        if self.archive:
+            out["workspace.mode"] = "archive"
+            if self.restored:
+                out["workspace.restored_snapshot"] = self.restored
         return out
 
 
 class SandboxBroker:
-    def __init__(self, sandboxes: Sandboxes, ledger: SandboxLedger | None = None, *, credentials: EnvCredentials | None = None) -> None:
+    def __init__(
+        self, sandboxes: Sandboxes, ledger: SandboxLedger | None = None, *, credentials: EnvCredentials | None = None,
+        archiver: WorkspaceArchiver | None = None,
+    ) -> None:
         self.sandboxes = sandboxes
         self.ledger = ledger
         self.credentials = credentials
         self.grants = GrantStore(ledger) if ledger is not None else None
         # 按项目定制的运行环境（D-17）：shell_run 借环境之前问它用哪个镜像；没配时为 None。
         self.environments: EnvironmentManager | None = None
+        # 存档模式的工作区（D-06）：没配时存档模式的后端不能绑定工作区（invalid）。
+        self.archiver = archiver
+
+    def archive_mode(self, name: str) -> bool:
+        return self.sandboxes.workspace_mode(name) == "archive"
+
+    async def archive_mode_for(self, tenant_id: str) -> bool:
+        """这个租户的工作区是不是存档模式（按首选后端；回退只在同一组里，所以组里都一样）。"""
+        return self.archive_mode((await self.sandboxes.policy_for(tenant_id)).backend)
 
     # --- 借 ---
 
@@ -105,10 +131,14 @@ class SandboxBroker:
         grants = await self.task_grants(owner, task_id)
         session = tenant.session_id
         if reuse and session and self.ledger is not None:
-            # 没绑工作区的环境不算可写（与 begin_create 的记法一致）。
-            found = await self.ledger.find_reusable(
-                owner, workspace_id=spec.workspace_id, session_id=session, backends=policy.names, writable=writable and bool(spec.workspace_id)
-            )
+            found = None
+            # 没绑工作区的环境不算可写（与 begin_create 的记法一致）。存档模式下读的也先找本会话可写的环境：
+            # 只读的环境是在快照上建的，看不到本会话刚写的内容。
+            prefer_writable = not writable and bool(spec.workspace_id) and self.archive_mode(policy.backend)
+            for want in ((True, False) if prefer_writable else (writable and bool(spec.workspace_id),)):
+                found = await self.ledger.find_reusable(owner, workspace_id=spec.workspace_id, session_id=session, backends=policy.names, writable=want)
+                if found is not None:
+                    break
             if found is not None and (not self._fits_grants(found.backend, found, grants) or (spec.image and not same_image(spec.image, found.image))):
                 # 托管后端的域名白名单是建环境时定的：授权变了（或要审计却不经网关），这个环境不能再用，闲着就换掉；
                 # 项目环境的镜像构建好了（D-17），之前用 universal 建的环境也换掉。
@@ -118,7 +148,10 @@ class SandboxBroker:
             if found is not None:
                 backend = await self.sandboxes.backend(found.backend)
                 record = await self.ledger.touch(found, task_id=task_id, busy_for=busy_for)
-                lease = Lease(backend, backend.provider.bind(tenant), record.backend_env_id, record, reused=True)
+                lease = Lease(
+                    backend, backend.provider.bind(tenant), record.backend_env_id, record, reused=True, owner=owner, workspace_id=found.workspace_id,
+                    archive=bool(found.workspace_id) and self.archive_mode(found.backend), writable=bool(found.writable),
+                )
                 return await self._with_env(lease, policy, grants)
         lease = await self._create(tenant, owner, spec, policy, task_id=task_id, writable=writable, reuse=reuse, busy_for=busy_for, grants=grants)
         return await self._with_env(lease, policy, grants)
@@ -172,39 +205,86 @@ class SandboxBroker:
             fallback_from = preferred if name != preferred else ""
             reason = errors[-1] if errors else ""
             allow_hosts = self._allow_hosts(name, grants)
-            record = None
-            if self.ledger is not None:
-                record = await self._begin(owner, backend, spec, policy, task_id=task_id, writable=writable, reuse=reuse, idle=idle,
-                                           fallback_from=fallback_from, tenant=tenant, allow_hosts=allow_hosts)
-            box = backend.provider.bind(tenant)
-            create_spec = replace(spec, idle_timeout=max(spec.idle_timeout, idle))
-            if allow_hosts:
-                create_spec = replace(create_spec, network="allowlist", allow_hosts=tuple(json.loads(allow_hosts)))
-            try:
-                env = await box.create(create_spec)
-            except TransientError as err:
-                errors.append(f"{name}：{err.code}")
-                if record is not None:
-                    await self.ledger.mark_failed(record, f"{err.code}: {err.message}")  # type: ignore[union-attr]
-                log.warning("沙箱后端 %s 暂时不可用（%s），试下一个", name, err.code)
-                continue
-            except ProviderError as err:
-                if record is not None:
-                    await self.ledger.mark_failed(record, f"{err.code}: {err.message}")  # type: ignore[union-attr]
-                raise
-            if record is not None:
-                record = await self.ledger.mark_ready(record, env.env_id, image=env.image)  # type: ignore[union-attr]
-                if busy_for is not None:
-                    record = await self.ledger.touch(record, task_id=task_id, busy_for=busy_for)  # type: ignore[union-attr]
-            return Lease(backend, box, env.env_id, record, fallback_from=fallback_from, fallback_reason=reason)
+            archive = bool(spec.workspace_id) and self.archive_mode(name)
+            if archive:
+                if self.archiver is None:
+                    raise InvalidError("workspace_archive_unavailable", f"沙箱后端 {name} 是存档模式，这个 Worker 没有配工作区的存档")
+                # 第一次用到这个工作区时补一行，按租户策略的工作区个数核对（D-06）。
+                await self.archiver.ensure(owner, spec.workspace_id, policy.workspace)
+            # 存档模式下恢复的结果与清单不一致时换一个环境再试一次（workspace-layer.md 第 2 节）。
+            for attempt in range(2 if archive else 1):
+                lease = await self._create_one(
+                    tenant, owner, backend, spec, policy, task_id=task_id, writable=writable, reuse=reuse, busy_for=busy_for, idle=idle,
+                    fallback_from=fallback_from, allow_hosts=allow_hosts, archive=archive, errors=errors,
+                )
+                if lease is None:
+                    break  # 这个后端暂时不可用：试下一个
+                lease.fallback_reason = reason
+                if not archive:
+                    return lease
+                try:
+                    snap = await self.archiver.restore(  # type: ignore[union-attr]
+                        lease.box, lease.env_id, owner, spec.workspace_id, max_bytes=policy.workspace.max_bytes
+                    )
+                except TransientError as err:
+                    await self._destroy(lease, snapshot=False, reason=f"restore failed: {err.code}")
+                    if err.code != "workspace_restore_mismatch":
+                        raise
+                    if attempt == 1:
+                        raise InvalidError("workspace_restore_mismatch", "工作区的快照恢复了两次都与清单不一致，不在半个工作区上执行") from None
+                    log.warning("工作区 %s 恢复后与清单不一致，换一个环境再试", spec.workspace_id)
+                    continue
+                except BaseException:
+                    with contextlib.suppress(ProviderError):
+                        await self._destroy(lease, snapshot=False, reason="restore failed")
+                    raise
+                lease.restored = snap.snapshot_id if snap is not None else ""
+                return lease
         tried = "、".join(errors)
         weaker = [s for s in skipped if "隔离强度" in s]
         hint = f"；回退列表里更弱的后端不用：{'、'.join(weaker)}" if weaker else ""
         raise TransientError("sandbox_unavailable", f"沙箱后端都暂时不可用（{tried}）{hint}")
 
+    async def _create_one(
+        self, tenant: TenantContext, owner: str, backend: Backend, spec: SandboxSpec, policy: SandboxPolicy, *, task_id: str, writable: bool,
+        reuse: bool, busy_for: timedelta | None, idle: timedelta, fallback_from: str, allow_hosts: str, archive: bool, errors: list[str],
+    ) -> Lease | None:
+        """在一个后端上建一个环境；后端暂时不可用（transient）时记进 errors、返回 None，别的错误照报。"""
+        name = backend.name
+        record = None
+        if self.ledger is not None:
+            record = await self._begin(owner, backend, spec, policy, task_id=task_id, writable=writable, reuse=reuse, idle=idle,
+                                       fallback_from=fallback_from, tenant=tenant, allow_hosts=allow_hosts, exclusive=archive)
+        box = backend.provider.bind(tenant)
+        create_spec = replace(spec, idle_timeout=max(spec.idle_timeout, idle))
+        if archive:
+            create_spec = replace(create_spec, workspace_id="")  # 不挂卷：建好后从快照恢复
+        if allow_hosts:
+            create_spec = replace(create_spec, network="allowlist", allow_hosts=tuple(json.loads(allow_hosts)))
+        try:
+            env = await box.create(create_spec)
+        except TransientError as err:
+            errors.append(f"{name}：{err.code}")
+            if record is not None:
+                await self.ledger.mark_failed(record, f"{err.code}: {err.message}")  # type: ignore[union-attr]
+            log.warning("沙箱后端 %s 暂时不可用（%s），试下一个", name, err.code)
+            return None
+        except ProviderError as err:
+            if record is not None:
+                await self.ledger.mark_failed(record, f"{err.code}: {err.message}")  # type: ignore[union-attr]
+            raise
+        if record is not None:
+            record = await self.ledger.mark_ready(record, env.env_id, image=env.image)  # type: ignore[union-attr]
+            if busy_for is not None:
+                record = await self.ledger.touch(record, task_id=task_id, busy_for=busy_for)  # type: ignore[union-attr]
+        return Lease(
+            backend, box, env.env_id, record, fallback_from=fallback_from, owner=owner, workspace_id=spec.workspace_id, archive=archive,
+            writable=writable and bool(spec.workspace_id),
+        )
+
     async def _begin(
         self, owner: str, backend: Backend, spec: SandboxSpec, policy: SandboxPolicy, *, task_id: str, writable: bool, reuse: bool,
-        idle: timedelta, fallback_from: str, tenant: TenantContext, allow_hosts: str = "",
+        idle: timedelta, fallback_from: str, tenant: TenantContext, allow_hosts: str = "", exclusive: bool = False,
     ) -> EnvRecord:
         assert self.ledger is not None
         kwargs: dict[str, Any] = dict(
@@ -212,18 +292,23 @@ class SandboxBroker:
             session_id=tenant.session_id if reuse else "", task_id=task_id, writable=writable and bool(spec.workspace_id),
             runtime=spec.runtime, image=spec.image or self.sandboxes.image_for(backend.name, spec.runtime), idle=idle,
             max_lifetime=policy.max_lifetime, quota=policy.quota, fallback_from=fallback_from, allow_hosts=allow_hosts,
+            exclusive=exclusive and writable,
         )
         try:
             return await self.ledger.begin_create(owner, **kwargs)
         except DeniedError as err:
             if err.code != "workspace_busy":
                 raise
-        # 别的会话占着这个工作区的可写环境：那边闲着就回收，再建一次；正在跑命令就报给调用方。
-        holders = await self.ledger.writable_holders(owner, workspace_id=spec.workspace_id, session_id=kwargs["session_id"])
+        # 别的会话（存档模式下不分会话）占着这个工作区的可写环境：那边闲着就回收（存档模式先存档），再建一次；
+        # 正在跑命令就报给调用方。
+        holders = await self.ledger.writable_holders(
+            owner, workspace_id=spec.workspace_id, session_id=None if kwargs["exclusive"] else kwargs["session_id"]
+        )
         if any(not self.ledger.idle_now(h) for h in holders):
-            raise DeniedError("workspace_busy", "这个工作区正被另一个会话的可写环境用着（命令还在跑），稍后再试")
+            raise DeniedError("workspace_busy", "这个工作区正被另一个可写的环境用着（命令还在跑），稍后再试")
+        why = "preempted: 另一个环境要写同一个工作区（存档模式）" if kwargs["exclusive"] else "preempted: 另一个会话要写同一个工作区"
         for holder in holders:
-            await self._destroy_record(holder, "preempted: 另一个会话要写同一个工作区")
+            await self._destroy_record(holder, why)
         return await self.ledger.begin_create(owner, **kwargs)
 
     def _candidates(self, policy: SandboxPolicy, spec: SandboxSpec, *, gateway_only: bool = False) -> tuple[list[str], list[str]]:
@@ -247,8 +332,11 @@ class SandboxBroker:
         return out, skipped
 
     def _workspace_group(self, name: str) -> str | None:
-        """能挂同一个工作区的后端算一组：同一个 PVC 的 K8s 后端、本地实现；托管后端各自一组（还挂不了工作区）。"""
+        """能用同一个工作区的后端算一组：存档模式的都是一组（内容在 ObjectStore 里，D-06）；挂卷的按卷分：同一个 PVC 的
+        K8s 后端、本地实现；没登记存档模式的托管后端各自一组（挂不了工作区）。"""
         spec = self.sandboxes.spec(name)
+        if self.archive_mode(name):
+            return "archive"
         if spec.get("kind") == "k8s":
             return "pvc:" + str(spec.get("workspace_claim") or "")
         if spec.get("kind") == "local":
@@ -258,19 +346,33 @@ class SandboxBroker:
     # --- 还 ---
 
     async def release(self, lease: Lease, *, result: ExecResult | None = None, keep: bool = False) -> None:
-        """用完：会话级的环境留着（顺延空闲、记 CPU 时间），一次性的销毁。"""
+        """用完：会话级的环境留着（顺延空闲、记 CPU 时间），一次性的销毁（存档模式的可写环境先存档）。存档暂时失败时环境
+        留着、报错，由下一轮对账或下一个要写的环境再存；永久性的失败（invalid，例如超过大小上限）照样销毁、报错。"""
         cpu_ms = int(result.cpu_time.total_seconds() * 1000) if result is not None and result.cpu_time is not None else 0
-        if lease.record is None:
-            if not keep:
-                with contextlib.suppress(ProviderError):
-                    await lease.box.destroy(lease.env_id)
-            return
-        assert self.ledger is not None
-        if keep:
+        if lease.record is not None:
+            assert self.ledger is not None
             lease.record = await self.ledger.touch(lease.record, cpu_ms=cpu_ms)
+        if keep:
             return
-        lease.record = await self.ledger.touch(lease.record, cpu_ms=cpu_ms)
+        if lease.archive and lease.writable:
+            try:
+                await self.snapshot(lease)
+            except InvalidError as err:
+                await self._destroy(lease, reason=f"存档失败：{err.code}")
+                raise
+        if lease.record is None:
+            with contextlib.suppress(ProviderError):
+                await lease.box.destroy(lease.env_id)
+            return
         await self._destroy(lease)
+
+    async def snapshot(self, lease: Lease) -> Any:
+        """把借到的环境里的工作区存一份快照（存档模式；Workspace API 的立即存档也用它，挂卷的后端一样能导出）。"""
+        if self.archiver is None or not lease.workspace_id:
+            raise InvalidError("workspace_archive_unavailable", "这个 Worker 没有配工作区的存档，或环境没有绑定工作区")
+        limits = (await self.sandboxes.policy_for(lease.owner)).workspace
+        env_ref = lease.record.env_ref if lease.record is not None else ""
+        return await self.archiver.snapshot(lease.box, lease.env_id, lease.owner, lease.workspace_id, max_bytes=limits.max_bytes, env_ref=env_ref)
 
     async def discard(self, lease: Lease, reason: str) -> None:
         """后端里已经没有这个环境（被回收、节点重启）：记为丢失，尽量删掉残留。"""
@@ -279,9 +381,14 @@ class SandboxBroker:
         with contextlib.suppress(ProviderError):
             await lease.box.destroy(lease.env_id)
 
-    async def _destroy(self, lease: Lease) -> None:
-        assert self.ledger is not None and lease.record is not None
-        record = await self.ledger.begin_destroy(lease.record)
+    async def _destroy(self, lease: Lease, *, snapshot: bool = False, reason: str = "") -> None:
+        if snapshot and lease.archive and lease.writable:
+            await self.snapshot(lease)
+        if lease.record is None or self.ledger is None:
+            with contextlib.suppress(ProviderError):
+                await lease.box.destroy(lease.env_id)
+            return
+        record = await self.ledger.begin_destroy(lease.record, reason)
         try:
             await lease.box.destroy(lease.env_id)
         except NotFoundError:
@@ -293,9 +400,30 @@ class SandboxBroker:
             return
         lease.record = await self.ledger.mark_destroyed(record, **self._prices(record.backend))
 
-    async def _destroy_record(self, record: EnvRecord, reason: str) -> EnvRecord:
-        """按环境表的一行销毁（对账、回收、抢占用）；后端里已经没了也算销毁完成。"""
+    def _archived(self, record: EnvRecord) -> bool:
+        """这一行是存档模式下可写、还活着的环境：销毁之前要存档。"""
+        return (
+            self.archiver is not None and bool(record.workspace_id) and bool(record.writable) and record.state == "ready"
+            and bool(record.backend_env_id) and record.backend in self.sandboxes.names and self.archive_mode(record.backend)
+        )
+
+    async def _destroy_record(self, record: EnvRecord, reason: str, *, snapshot: bool = True, force: bool = False) -> EnvRecord:
+        """按环境表的一行销毁（对账、回收、抢占用）；后端里已经没了也算销毁完成。存档模式的可写环境先存档：存档暂时失败时
+        报错、环境留着（force 时照样销毁，例如活满）；永久性的失败（invalid，例如超过大小上限）照样销毁，原因记进环境表。"""
         assert self.ledger is not None
+        if snapshot and self._archived(record):
+            backend = await self.sandboxes.backend(record.backend)
+            box = backend.provider.bind(TenantContext(tenant_id=record.owner, workspace_id=record.workspace_id))
+            lease = Lease(backend, box, record.backend_env_id, record, owner=record.owner, workspace_id=record.workspace_id, archive=True, writable=True)
+            try:
+                await self.snapshot(lease)
+            except NotFoundError:
+                return await self.ledger.mark_lost(record, "存档时后端里已经没有这个环境")
+            except ProviderError as err:
+                if not force and not isinstance(err, InvalidError):
+                    raise
+                log.warning("工作区 %s 销毁前存档失败（%s），照样销毁，这个环境里的改动丢了", record.workspace_id, err.code)
+                reason = f"{reason}; 存档失败：{err.code}"
         if record.backend == BUILD_BACKEND:
             # 构建记的环境（BuildNetwork）：Job 由构建器自己删，这里只收尾记录与授权。
             if self.grants is not None and record.task_id:
@@ -342,7 +470,26 @@ class SandboxBroker:
             if record.state == "creating":
                 await self.ledger.mark_failed(record, "tenant deleted")
                 continue
-            await self._destroy_record(record, "tenant deleted")
+            await self._destroy_record(record, "tenant deleted", snapshot=False)
+            n += 1
+        if self.archiver is not None:
+            # 工作区与它的存档一并删除（4.10.1 的“删除”）。
+            for workspace in await self.archiver.list_workspaces(tenant_id):
+                await self.archiver.delete(tenant_id, workspace.workspace_id)
+        return n
+
+    async def destroy_workspace(self, tenant_id: str, workspace_id: str) -> int:
+        """删除工作区时销毁它的全部环境（不存档）；返回销毁了几个。正在跑命令的也销毁。"""
+        if self.ledger is None:
+            return 0
+        n = 0
+        for record in await self.ledger.active(tenant_id):
+            if record.workspace_id != workspace_id:
+                continue
+            if record.state == "creating":
+                await self.ledger.mark_failed(record, "workspace deleted")
+                continue
+            await self._destroy_record(record, "workspace deleted", snapshot=False)
             n += 1
         return n
 

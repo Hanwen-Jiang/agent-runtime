@@ -8,6 +8,7 @@
 - backend 没写时用部署的默认后端；fallback 是暂时不可用时依次试的后端；min_isolation 没写时取首选后端的隔离强度。
 - idle_timeout_s、max_lifetime_s 只能调低部署的默认值（15 分钟、6 小时），写得更高按默认值算。
 - 由策略决定，模型与请求都不能指定。
+- 顶层的 workspace（D-06）：{"max_workspaces": 10, "max_bytes": 2147483648, "push_branches": ["agent/*"]}，见 WorkspaceLimits。
 """
 
 from __future__ import annotations
@@ -25,6 +26,26 @@ DEFAULT_MAX_LIFETIME = timedelta(hours=6)
 
 
 @dataclass(frozen=True)
+class WorkspaceLimits:
+    """租户策略的 workspace 一节（设计书改动稿 W2；D-06，docs/plan/workspace-layer.md）：同时存在的工作区个数、单个工作区
+    （存档）的字节上限、能推送的远端分支（glob：* 匹配不含 / 的一段，** 匹配任意多段）。不写的项用部署的默认值。"""
+
+    max_workspaces: int = 20
+    max_bytes: int = 2 << 30
+    push_branches: tuple[str, ...] = ("agent/*",)
+
+    @classmethod
+    def from_policy(cls, doc: Mapping[str, Any] | None) -> WorkspaceLimits:
+        section = dict(((doc or {}).get("workspace") or {}))
+        default = cls()
+        return cls(
+            max_workspaces=int(section.get("max_workspaces") or default.max_workspaces),
+            max_bytes=int(section["max_bytes"]) if section.get("max_bytes") is not None else default.max_bytes,
+            push_branches=tuple(str(b) for b in section.get("push_branches") or default.push_branches),
+        )
+
+
+@dataclass(frozen=True)
 class SandboxPolicy:
     backend: str
     fallback: tuple[str, ...] = ()
@@ -33,6 +54,8 @@ class SandboxPolicy:
     idle_timeout: timedelta = DEFAULT_IDLE
     max_lifetime: timedelta = DEFAULT_MAX_LIFETIME
     network: Mapping[str, Any] = field(default_factory=dict)
+    # 不在 sandbox 一节里，是租户策略顶层的 workspace（D-06）；跟着沙箱策略一起按租户缓存。
+    workspace: WorkspaceLimits = field(default_factory=WorkspaceLimits)
 
     @classmethod
     def from_document(
@@ -58,6 +81,7 @@ class SandboxPolicy:
             idle_timeout=idle,
             max_lifetime=lifetime,
             network=dict(sandbox.get("network") or {}),
+            workspace=WorkspaceLimits.from_policy(doc),
         )
 
     @property

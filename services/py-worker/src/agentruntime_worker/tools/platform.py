@@ -3,9 +3,11 @@
 登记进开发用的 LocalToolDriverProvider（平台作用域，所有租户可见），经 ToolDriver 的契约调用：参数按 input_schema 校验、
 写操作要幂等键、幂等记录、超时都由 LocalToolDriver 负责，这里只写工具本身。
 
-- 工作区类（配了 workspace_root 才登记）：repo_read、repo_list、repo_grep（read）、repo_edit、shell_run（write_reversible）。
-  工作区是 <workspace_root>/<tenant_id>/<workspace_id，没有为 default>，租户与 workspace 来自调用的作用域
-  （ToolInvocation），参数改变不了它。路径一律相对工作区；绝对路径、盘符、..、反斜杠、规范化后出界（含经符号链接）都拒绝。
+- 工作区类（配了 workspace_root，或登记了存档模式的沙箱后端时登记）：repo_read、repo_list、repo_grep（read）、repo_edit、
+  shell_run（write_reversible）。工作区是 <workspace_root>/<tenant_id>/<workspace_id，没有为 default>，租户与 workspace 来自
+  调用的作用域（ToolInvocation），参数改变不了它。路径一律相对工作区；绝对路径、盘符、..、反斜杠、规范化后出界（含经符号链接）
+  都拒绝。租户的沙箱后端是存档模式（workspace: archive，D-06）时，这几个工具都在承载工作区的环境里执行（经 SandboxBroker 借：
+  写的借可写的环境，读的先找本会话可写的环境、没有时借只读的），Worker 的工作区目录不碰。
 - shell_run：argv 列表、不经 shell，在工作区里执行；子进程的环境只留 PATH 等必需的变量，Worker 的其他环境变量（含密钥）
   带不进去；输出截断；超时杀掉进程并返回 timed_out，不抛异常；非零退出码照常返回。shell_sandbox = host 时直接在宿主机上跑
   （开发实现，没有资源限制与网络隔离）；= docker 时在一次性容器里跑：只挂载本工作区到 /workspace，不联网，限 CPU、内存
@@ -127,8 +129,11 @@ def register_platform_tools(
         raise ValueError("shell_sandbox = sandbox 时要给沙箱后端（AR_SANDBOX_BACKENDS_FILE）")
     tools: list[tuple[ToolSpec, ToolHandler]] = []
     broker = SandboxBroker(sandboxes) if isinstance(sandboxes, Sandboxes) else sandboxes
-    if config.workspace_root is not None:
-        tools += _Workspaces(Path(config.workspace_root), config, broker, telemetry).tools()
+    # 存档模式的后端（D-06）不用 Worker 的工作区目录：只登记了这类后端时不配 workspace_root 也有工作区类工具。
+    archived = config.shell_sandbox == "sandbox" and broker is not None and broker.sandboxes.has_archive_backends
+    if config.workspace_root is not None or archived:
+        root = Path(config.workspace_root) if config.workspace_root is not None else None
+        tools += _Workspaces(root, config, broker, telemetry).tools()
     if config.shell_sandbox == "sandbox" and broker is not None and broker.grants is not None:
         hosted = any(broker.sandboxes.spec(n).get("kind") not in ("k8s", "local") for n in broker.sandboxes.names)
         if config.network_requests or hosted:
@@ -151,7 +156,7 @@ def register_platform_tools(
 
 class _Workspaces:
     def __init__(
-        self, root: Path, config: PlatformToolsConfig, broker: SandboxBroker | None = None, telemetry: TelemetryProvider | None = None
+        self, root: Path | None, config: PlatformToolsConfig, broker: SandboxBroker | None = None, telemetry: TelemetryProvider | None = None
     ) -> None:
         self.root = root
         self.config = config
@@ -200,15 +205,73 @@ class _Workspaces:
 
     # 路径
 
-    def _workspace(self, invocation: ToolInvocation) -> Path:
+    @staticmethod
+    def _workspace_id(invocation: ToolInvocation) -> str:
         tenant, workspace = invocation.tenant_id, invocation.workspace_id or "default"
         if not tenant:
             raise DeniedError("no_tenant", "工作区类工具只在租户作用域里可用")
         if not _SLUG.match(tenant) or not _SLUG.match(workspace):
             raise InvalidError("invalid_workspace", "租户或 workspace 的格式不对")
-        root = self.root / tenant / workspace
+        return workspace
+
+    def _workspace(self, invocation: ToolInvocation) -> Path:
+        workspace = self._workspace_id(invocation)
+        if self.root is None:
+            raise InvalidError("unsupported_workspace", "这个 Worker 没有配工作区目录，租户的沙箱后端也不是存档模式")
+        root = self.root / invocation.tenant_id / workspace
         root.mkdir(parents=True, exist_ok=True)
         return root.resolve()
+
+    async def _archived(self, invocation: ToolInvocation) -> bool:
+        """租户的沙箱后端是存档模式（D-06）：工具在承载工作区的环境里执行。"""
+        if self.config.shell_sandbox != "sandbox" or self.broker is None or not invocation.tenant_id:
+            return False
+        return await self.broker.archive_mode_for(invocation.tenant_id)
+
+    @staticmethod
+    def _env_path(path: Any, *, allow_root: bool = False) -> str:
+        """存档模式下的路径：规则同 _resolve（经符号链接出界由环境里的 agent 管：它只在沙箱自己的文件系统里）。"""
+        if not isinstance(path, str) or not path or "\\" in path or "\x00" in path:
+            raise InvalidError("path_outside_workspace", "路径要相对工作区，用 / 分隔")
+        pure = PurePosixPath(path)
+        if pure.is_absolute() or ".." in pure.parts or (pure.parts and ":" in pure.parts[0]):
+            raise InvalidError("path_outside_workspace", f"路径 {path} 不在工作区里")
+        rel = "/".join(p for p in pure.parts if p != ".")
+        if not rel and not allow_root:
+            raise InvalidError("path_outside_workspace", "要给工作区里的一个文件")
+        return rel
+
+    async def _in_env(self, invocation: ToolInvocation, *, writable: bool, run: Any) -> Any:
+        """在承载工作区的环境里做一件事（存档模式）：按会话复用环境（会话级沙箱打开时），复用的环境在后端里没了就换一个再做一次。"""
+        assert self.broker is not None
+        workspace = self._workspace_id(invocation)
+        tenant = TenantContext(tenant_id=invocation.tenant_id, workspace_id=workspace, session_id=invocation.session_id, user_id=invocation.user_id)
+        spec = SandboxSpec(
+            runtime=self.config.shell_runtime, cpu_millis=parse_cpu_millis(self.config.shell_cpus), memory_mb=parse_memory_mb(self.config.shell_memory),
+            network="none", idle_timeout=timedelta(minutes=5), workspace_id=workspace, session_id=invocation.session_id,
+        )
+        reuse = self.config.session_sandboxes and bool(invocation.session_id) and self.broker.ledger is not None
+        busy = timedelta(minutes=2)
+        lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=writable, reuse=reuse, busy_for=busy)
+        done = False
+        try:
+            try:
+                out = await run(lease.box, lease.env_id)
+            except NotFoundError as err:
+                if not lease.reused or err.code != "unknown_env":
+                    raise
+                await self.broker.discard(lease, "后端里已经没有这个环境（被回收或节点重启）")
+                lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=writable, reuse=reuse, busy_for=busy)
+                out = await run(lease.box, lease.env_id)
+            done = True
+        finally:
+            try:
+                await self.broker.release(lease, keep=reuse)
+            except ProviderError:
+                # 写的工具的改动没存进快照：照实报错（读的工具还环境失败不影响结果）。
+                if done and writable:
+                    raise
+        return out
 
     @staticmethod
     def _resolve(root: Path, path: Any) -> Path:
@@ -229,12 +292,27 @@ class _Workspaces:
     # 工具
 
     async def read(self, invocation: ToolInvocation) -> Any:
-        root = self._workspace(invocation)
         args = invocation.arguments
+        if await self._archived(invocation):
+            rel = self._env_path(args["path"])
+
+            async def fetch(box: Any, env_id: str) -> bytes:
+                try:
+                    return await box.read_file(env_id, rel)
+                except NotFoundError as err:
+                    if err.code == "unknown_env":
+                        raise
+                    raise NotFoundError("file_not_found", f"工作区里没有文件 {args['path']}") from None
+
+            return self._window(rel, await self._in_env(invocation, writable=False, run=fetch), args)
+        root = self._workspace(invocation)
         target = self._resolve(root, args["path"])
         if not target.is_file():
             raise NotFoundError("file_not_found", f"工作区里没有文件 {args['path']}")
-        lines = target.read_bytes().decode("utf-8", errors="replace").splitlines(keepends=True)
+        return self._window(self._relative(root, target), target.read_bytes(), args)
+
+    def _window(self, path: str, data: bytes, args: Any) -> dict[str, Any]:
+        lines = data.decode("utf-8", errors="replace").splitlines(keepends=True)
         start = int(args.get("start_line") or 1)
         count = int(args.get("max_lines") or 400)
         window = lines[start - 1 : start - 1 + count]
@@ -243,7 +321,7 @@ class _Workspaces:
         if len(content) > self.config.output_limit:
             content, truncated = content[: self.config.output_limit], True
         return {
-            "path": self._relative(root, target),
+            "path": path,
             "content": content,
             "start_line": start,
             "end_line": start + len(window) - 1,
@@ -252,6 +330,20 @@ class _Workspaces:
         }
 
     async def list(self, invocation: ToolInvocation) -> Any:
+        if await self._archived(invocation):
+            rel = self._env_path(invocation.arguments.get("path", "."), allow_root=True)
+
+            async def listing(box: Any, env_id: str) -> Any:
+                try:
+                    return await box.list_dir(env_id, rel)
+                except NotFoundError as err:
+                    if err.code == "unknown_env":
+                        raise
+                    raise NotFoundError("dir_not_found", "工作区里没有这个目录") from None
+
+            items = await self._in_env(invocation, writable=False, run=listing)
+            entries = [{"name": e.name, "type": e.type, **({"size": e.size} if e.type == "file" else {})} for e in items]
+            return {"path": rel or ".", "entries": entries}
         root = self._workspace(invocation)
         target = self._resolve(root, invocation.arguments.get("path", "."))
         if not target.is_dir():
@@ -265,8 +357,17 @@ class _Workspaces:
         return {"path": self._relative(root, target), "entries": entries}
 
     async def grep(self, invocation: ToolInvocation) -> Any:
-        root = self._workspace(invocation)
         args = invocation.arguments
+        if await self._archived(invocation):
+            rel = self._env_path(args.get("path", "."), allow_root=True)
+            limit = int(args.get("max_matches") or 100)
+
+            async def search(box: Any, env_id: str) -> Any:
+                return await box.grep(env_id, str(args["pattern"]), path=rel, max_matches=limit)
+
+            matches, truncated = await self._in_env(invocation, writable=False, run=search)
+            return {"matches": [{"path": m.path, "line": m.line, "text": m.text} for m in matches], "truncated": truncated}
+        root = self._workspace(invocation)
         try:
             pattern = re.compile(args["pattern"])
         except re.error as err:
@@ -289,37 +390,58 @@ class _Workspaces:
         return {"matches": matches, "truncated": False}
 
     async def edit(self, invocation: ToolInvocation) -> Any:
-        root = self._workspace(invocation)
         args = invocation.arguments
+        if await self._archived(invocation):
+            rel = self._env_path(args["path"])
+
+            async def change(box: Any, env_id: str) -> Any:
+                try:
+                    old: bytes | None = await box.read_file(env_id, rel)
+                except NotFoundError as err:
+                    if err.code == "unknown_env":
+                        raise
+                    old = None
+                data = self._edited(args, old)
+                await box.write_file(env_id, rel, data)
+                return {"path": rel, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(), "created": old is None}
+
+            return await self._in_env(invocation, writable=True, run=change)
+        root = self._workspace(invocation)
         target = self._resolve(root, args["path"])
         existed = target.is_file()
-        new = str(args["new"])
-        if "old" in args:
-            if not existed:
-                raise NotFoundError("file_not_found", f"工作区里没有文件 {args['path']}")
-            text = target.read_bytes().decode("utf-8")
-            count = text.count(args["old"])
-            if count == 0:
-                raise InvalidError("edit_no_match", "文件里找不到 old")
-            if count > 1:
-                raise InvalidError("edit_ambiguous", f"old 在文件里出现了 {count} 次，要能唯一定位")
-            content = text.replace(args["old"], new, 1)
-        else:
-            content = new
-        data = content.encode("utf-8")
+        data = self._edited(args, target.read_bytes() if existed else None)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(data)
         return {"path": self._relative(root, target), "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(), "created": not existed}
 
+    @staticmethod
+    def _edited(args: Any, old: bytes | None) -> bytes:
+        """repo_edit 的新内容：给了 old 就把它唯一的一处替换成 new（文件要存在），否则 new 是整个文件。"""
+        new = str(args["new"])
+        if "old" not in args:
+            return new.encode("utf-8")
+        if old is None:
+            raise NotFoundError("file_not_found", f"工作区里没有文件 {args['path']}")
+        text = old.decode("utf-8")
+        count = text.count(args["old"])
+        if count == 0:
+            raise InvalidError("edit_no_match", "文件里找不到 old")
+        if count > 1:
+            raise InvalidError("edit_ambiguous", f"old 在文件里出现了 {count} 次，要能唯一定位")
+        return text.replace(args["old"], new, 1).encode("utf-8")
+
     async def shell(self, invocation: ToolInvocation) -> Any:
-        root = self._workspace(invocation)
         args = invocation.arguments
         argv = [str(a) for a in args["argv"]]
         timeout = min(int(args.get("timeout_s") or self.config.shell_timeout_s), self.config.max_shell_timeout_s)
+        if await self._archived(invocation):
+            # 存档模式（D-06）：不碰 Worker 的工作区目录；项目环境（D-17）要读工作区卷，这里不用。
+            return await self._sandbox_shell(invocation, self._workspace_id(invocation), argv, timeout, None)
+        root = self._workspace(invocation)
         if self.config.shell_sandbox == "docker":
             return await self._docker_shell(root, argv, timeout)
         if self.config.shell_sandbox == "sandbox":
-            return await self._sandbox_shell(invocation, root, argv, timeout)
+            return await self._sandbox_shell(invocation, root.name, argv, timeout, root)
         env = {k: os.environ[k] for k in _SHELL_ENV if k in os.environ}
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -369,16 +491,15 @@ class _Workspaces:
             raise TransientError("sandbox_unavailable", "Docker 沙箱启动失败：" + stderr.decode("utf-8", errors="replace")[-500:])
         return {"exit_code": proc.returncode, "timed_out": False, "sandbox": "docker", **self._outputs(stdout, stderr)}
 
-    async def _sandbox_shell(self, invocation: ToolInvocation, root: Path, argv: list[str], timeout: int) -> Any:
+    async def _sandbox_shell(self, invocation: ToolInvocation, workspace: str, argv: list[str], timeout: int, root: Path | None) -> Any:
         """经 Sandbox 接口（SandboxBroker）：按租户策略选后端（暂时不可用时按回退列表换），环境绑定本 workspace、断网。
         会话级沙箱（D-13）打开时按（工作区，会话）复用环境，用完不删；否则每条命令一个环境，跑完销毁。复用的环境在后端里
         没了（被回收）时，记为丢失、换一个新环境再跑一次，工作区的文件不受影响。
 
         计量（docs/plan/cloud-deploy.md D-07、D-10、D-11）：每次运行一个 runtime.sandbox span，记后端、隔离强度、环境号、
         是否复用与回退、执行时间与 CPU 时间（后端量得出时），一次性的环境另记存活时间；环境的存活时间与花费在环境表里。
-        不记命令与输出。"""
+        不记命令与输出。存档模式（root 为 None，D-06）时环境建好后从快照恢复、一次性的环境用完先存档，见 SandboxBroker。"""
         assert self.broker is not None
-        workspace = root.name
         tenant = TenantContext(tenant_id=invocation.tenant_id, workspace_id=workspace, session_id=invocation.session_id, user_id=invocation.user_id)
         c = self.config
         spec = SandboxSpec(
@@ -392,13 +513,14 @@ class _Workspaces:
         )
         reuse = c.session_sandboxes and bool(invocation.session_id) and self.broker.ledger is not None
         busy = timedelta(seconds=timeout + 60)
-        environment = await self._environment(tenant, root)
+        environment = await self._environment(tenant, root) if root is not None else None
         if environment is not None and environment.image:
             spec = replace(spec, image=environment.image)
         attributes: dict[str, Any] = {"gen_ai.tool.name": "shell_run", "sandbox.cpu_millis": spec.cpu_millis, "sandbox.memory_mb": spec.memory_mb}
         if environment is not None:
             attributes["sandbox.environment"] = environment.state
         span_cm = self.telemetry.bind(tenant).start_span("runtime.sandbox", attributes=attributes) if self.telemetry else contextlib.nullcontext()
+        archive_error: dict[str, str] | None = None
         async with span_cm as span:
             started = time.monotonic()
             try:
@@ -428,8 +550,12 @@ class _Workspaces:
                 raise
             finally:
                 exec_ms = int((time.monotonic() - ran) * 1000)
-                with contextlib.suppress(ProviderError):
+                try:
                     await self.broker.release(lease, result=result, keep=reuse)
+                except ProviderError as err:
+                    if lease.archive and lease.writable:
+                        # 存档模式下这次的改动没存进快照（D-06）：告诉调用方，不当作成功悄悄丢掉。
+                        archive_error = {"code": err.code, "message": err.message}
                 if span is not None:
                     meter: dict[str, Any] = {**lease.attributes, "sandbox.exec_ms": exec_ms}
                     if not reuse:
@@ -448,6 +574,8 @@ class _Workspaces:
         if environment is not None:
             # 仓库自带环境定义时说明用的是哪个（D-17）：没用上时写明原因，不悄悄退回。
             out["environment"] = environment.as_output()
+        if archive_error is not None:
+            out["workspace_error"] = archive_error
         return out
 
     async def _environment(self, tenant: TenantContext, root: Path) -> Resolution | None:

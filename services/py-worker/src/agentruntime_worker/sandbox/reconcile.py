@@ -8,7 +8,7 @@
 2. 平台目录里没结束的环境，逐个绑定到所属租户读它的行：
    - creating 超过宽限还没就绪：记为 failed（后端要是已经建了，下面当孤儿删掉）；
    - ready 而后端的列表里没有：记为丢失（不在后端重建）；
-   - ready 且空闲到期或活满、没有命令在跑：销毁（会话级沙箱的回收，W5）；
+   - ready 且空闲到期或活满、没有命令在跑：销毁（会话级沙箱的回收，W5）；存档模式的可写环境先存档（D-06）；
    - destroying：再删一次，删掉了（或后端里已经没了）记为 destroyed。
    目录里有、租户的行没有（写了目录、没写成行就中断了）：超过宽限把目录记为 failed。
 3. 后端列出来的环境，环境表里没有或已经结束的：超过宽限（按后端记的创建时间）就是孤儿，销毁。只碰本部署建的环境
@@ -93,7 +93,10 @@ async def reconcile_once(broker: SandboxBroker, *, grace: timedelta = timedelta(
                     await ledger.mark_lost(record, "后端的列表里没有这个环境")
                     report.lost += 1
                 elif record.expired(now) and ledger.idle_now(record):
-                    await broker._destroy_record(record, "idle expired" if record.expires_at <= iso(now) else "max lifetime")  # noqa: SLF001
+                    # 存档模式的可写环境先存档（D-06）：存档暂时失败时留着、下一轮再试；活满了照样销毁。
+                    lifetime = bool(record.max_until and record.max_until <= iso(now))
+                    reason = "max lifetime" if lifetime else "idle expired"
+                    await broker._destroy_record(record, reason, force=lifetime)  # noqa: SLF001
                     report.reaped += 1
             elif record.state == "destroying":
                 await broker._destroy_record(record, record.reason or "retry destroy")  # noqa: SLF001
