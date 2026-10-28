@@ -17,12 +17,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"connectrpc.com/connect"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -641,5 +643,21 @@ func TestConnectErrorMapping(t *testing.T) {
 	}
 	if ConnectError(rate).Meta().Get("Retry-After") != "3" {
 		t.Error("限流错误应带 Retry-After（秒）")
+	}
+	// 说明是中文；应用按 ErrorInfo 里稳定的 code 翻译。
+	denied := ConnectError(providererr.New(providererr.Denied, "network_not_allowed", "租户策略不允许沙箱联网"))
+	var reasons []string
+	for _, d := range denied.Details() {
+		if v, err := d.Value(); err == nil {
+			if info, ok := v.(*errdetails.ErrorInfo); ok && info.GetDomain() == ErrorDomain {
+				reasons = append(reasons, info.GetReason())
+			}
+		}
+	}
+	if !slices.Equal(reasons, []string{"network_not_allowed"}) {
+		t.Errorf("错误应带 ErrorInfo{reason: network_not_allowed}，实际 %v", reasons)
+	}
+	if len(ConnectError(errors.New("unclassified")).Details()) != 0 {
+		t.Error("没分类的错误不带 code")
 	}
 }

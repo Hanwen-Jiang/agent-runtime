@@ -20,6 +20,7 @@ import (
 	"unicode"
 
 	"connectrpc.com/connect"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -501,9 +502,13 @@ func (s *Server) status(ctx context.Context, engine durable.Engine, row taskstor
 	}
 }
 
+// ErrorDomain 是 ConnectError 附带的 google.rpc.ErrorInfo 的 domain。
+const ErrorDomain = "agentruntime"
+
 // ConnectError 把统一错误模型映射为 connect 错误码：invalid → InvalidArgument，denied → PermissionDenied
 // （凭据问题为 Unauthenticated），not_found → NotFound，conflict → AlreadyExists，transient → Unavailable
-// （限流为 ResourceExhausted，并带 Retry-After）。错误信息里不带凭据。
+// （限流为 ResourceExhausted，并带 Retry-After）。错误信息里不带凭据。错误模型的 code 放进 google.rpc.ErrorInfo
+// （domain 为 ErrorDomain）。
 func ConnectError(err error) *connect.Error {
 	var ce *connect.Error
 	if errors.As(err, &ce) {
@@ -534,6 +539,13 @@ func ConnectError(err error) *connect.Error {
 	}
 	// 只带错误模型里的说明，不带底层原因：原因里可能有 SQL、内部地址之类的细节。
 	out := connect.NewError(code, errors.New(pe.Message))
+	// 错误模型里稳定的 code（例如 network_not_allowed）放进标准的 google.rpc.ErrorInfo：说明是中文，应用按 code
+	// 翻译成自己界面的语言；HTTP + JSON 的调用方在 details[].debug.reason 里读到它。
+	if pe.Code != "" {
+		if detail, err := connect.NewErrorDetail(&errdetails.ErrorInfo{Reason: pe.Code, Domain: ErrorDomain}); err == nil {
+			out.AddDetail(detail)
+		}
+	}
 	if pe.RetryAfter > 0 {
 		out.Meta().Set("Retry-After", strconv.Itoa(int(math.Ceil(pe.RetryAfter.Seconds()))))
 	}
