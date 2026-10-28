@@ -12,7 +12,7 @@
 | D-06c | 工作区的存档（Worker 的 `agentruntime_worker.workspace`）：按文件内容寻址存进 ObjectStore，加逐文件的清单；恢复后按清单核对；保留最近 3 份、清掉没人引用的块；业务库迁移 205 | D-06b | 做完 |
 | D-06d | 承载与工具：登记里 `workspace: archive` 的后端不挂工作区卷，建环境后从最近的存档恢复，销毁之前存档；这些后端之间可以互相回退；`repo_read`、`repo_list`、`repo_grep`、`repo_edit` 在承载它的环境里执行 | D-06c、D-11、D-12、D-13 | 做完 |
 | D-06e | Workspace API：task-service 的 `WorkspaceService` 起 Worker 的 `WorkspaceOperationWorkflow`，操作在承载工作区的沙箱里执行；推送是 write_irreversible（gate 记录、幂等键、先对账） | D-06a、D-06d | 做完 |
-| D-06f | 应用：coding-agent 改用 Workspace API（在 coding-agent 仓库） | D-06e | 契约草案已写（第 8 节），待人审；审过之后实现、再改 coding-agent |
+| D-06f | 应用：coding-agent 改用 Workspace API（在 coding-agent 仓库）；为它补的契约与实现见第 8 节 | D-06e | 契约人审通过（2026-10-28），Runtime 一侧实现了 |
 | D-06g | 部署：后端登记的 `workspace` 一项进 Helm 与 `dev_stack.py`；Cloudflare 后端登记为 archive；单节点仍默认挂卷 | D-06d | 做完（真集群上没验） |
 
 ## 2. 存档的格式
@@ -69,7 +69,8 @@ ObjectStore（租户作用域）
   - 推送：分支要符合 `workspace.push_branches`（默认 `agent/*`），先写 gate 记录（approved_by 是发起的用户），先按远端分支的当前 sha 对账（`git ls-remote`），已经是这个 sha 就不推（reconciled）；推送不自动重试，超时或结果不明时记 failed，下一次调用先对账。
   - 存档：立即存档（挂卷的后端也可以：从环境里导出）。
   - 删除：销毁这个工作区的环境、删掉存档（块、清单、快照行），挂卷的后端另删工作区目录；行记 deleted。
-- 只在 Worker 配了沙箱（`AR_TOOL_SHELL_SANDBOX=sandbox`）时可用；否则 activity 报 invalid（`workspace_api_unavailable`）。测试用的本地远端（`file://`）只在 `AR_WORKSPACE_ALLOW_LOCAL_REMOTES=1` 时收，生产只收 https。
+- Worker 配了沙箱（`AR_TOOL_SHELL_SANDBOX=sandbox`）时操作在沙箱里做；没配沙箱（host、docker）但配了 `AR_TOOL_WORKSPACE_ROOT` 时，用一个只登记本地后端的 broker，直接在 `<工作区根>/<租户>/<workspace>` 里做（与 shell_run、repo_* 是同一处；2026-10-28 为 coding-agent 加的，它在开发时用 `--sandbox docker`）；都没有时 activity 报 invalid（`workspace_api_unavailable`）。测试用的本地远端（`file://`）只在 `AR_WORKSPACE_ALLOW_LOCAL_REMOTES=1` 时收，生产只收 https。
+- git 的安全：远端一律用业务库里记的 repo_url（不读沙箱里 `.git/config` 的 origin，沙箱里的代码改得了它）；凭据只对那台主机生效（`http.<https://主机/>.extraHeader`，重定向到别处不带）；不跑仓库里的 hooks（`core.hooksPath=/dev/null`）。联网授权只在后端约束网络时记（经出网网关、托管后端按域名放行）。
 
 ## 6. 验收（D-06 的四条加上细化）
 
@@ -119,4 +120,4 @@ Worker 一侧：`WorkspaceOperation` 加 `LIST_FILES`、`READ_FILE`、`LOG`、`D
 5. **DiscardChanges 的 effect**：丢掉的改动找不回来，按“调用者自己的操作”处理（同 DeleteWorkspace，不另要审批）；要审批时加 scope。
 6. **没有写文件的接口**：应用不直接改工作区里的文件（改动由 Task 里的 agent 做），这是有意不加的。
 
-审过之后的实现顺序：Worker 的五个操作（ListFiles、ReadFile 经 SandboxBrowse 与 read_file；GetLog、DiscardChanges、SyncWorkspace 跑 git；复制与初始文件在 CREATE 里）→ task-service 的五个方法 → 端到端 → coding-agent（单独的仓库）。
+实现（2026-10-28）：Worker 的五个操作（ListFiles 经 SandboxBrowse；ReadFile 先从上级目录看大小，大文件不读进来；GetLog、DiscardChanges、SyncWorkspace 跑 git，同步把远端分支记在 `origin/<分支>` 下，之后 `GetLog` 的 base 可以写它）；复制是从源的只读环境导出、导进新的可写环境（两种模式一样，不复制快照的块）；初始文件写完 `git add -A` 加一次提交。task-service 的五个方法做形式检查后起工作流。测试：py-worker 的 `test_workspace_operations.py`（存档与挂卷各一遍，另有没配沙箱的一条）、task-service 的 `internal/workspaceapi`、端到端 `tests/e2e/test_workspace_api.py`。

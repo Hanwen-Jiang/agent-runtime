@@ -9,6 +9,13 @@
 5. 凭据：封给别的租户或别的操作的凭据解不开（denied）；错误信息里没有凭据。
 6. 别的租户同名的工作区 not_found；存档、删除（删除后快照与环境都没了，挂卷时目录也删了）。
 7. 经 Temporal 跑工作流：结果原样带回；推送遇到暂时性的错误不重试，写成 transient 的结果。
+
+D-06f（第 8 节，应用浏览与管理工作区）：
+8. 列目录（不列 .git）、读文件（大文件只给大小、二进制不给内容、.git 拒绝）；提交记录（含 base..HEAD）。
+9. 丢弃改动（未跟踪的删掉、.gitignore 忽略的留着）；同步（有改动时 workspace_dirty；干净时切到远端分支的最新提交）。
+10. 从初始文件建（初始提交带作者）、从别的工作区复制（含未提交的改动，远端沿用，复制的能推送）；三种来源互斥。
+11. diff 的逐文件行数、改名检测与当前分支。
+12. 没配沙箱（shell_run 是 host）时也能用：直接在 <工作区根>/<租户>/<workspace> 里做。
 """
 
 from __future__ import annotations
@@ -252,3 +259,140 @@ async def test_the_workflow_carries_results_and_does_not_retry_pushes(tmp_path: 
         ), timeout=60)
         assert out.error.category == error_pb2.ERROR_CATEGORY_TRANSIENT and out.error.code == "sandbox_unavailable", out
         assert (datetime.now(UTC) - started).total_seconds() < 5, "推送不自动重试"
+
+
+# --- D-06f：应用浏览与管理工作区 ---
+
+
+def py(code: str) -> dict[str, Any]:
+    return {"argv": ["python", "-c", code]}
+
+
+@pytest.mark.parametrize("mode", ["archive", "mount"])
+async def test_browse_log_discard_and_sync(tmp_path: Path, mode: str) -> None:
+    url, bare = make_remote(tmp_path)
+    s = Setup(tmp_path, mode=mode)
+    await s.run(Op.WORKSPACE_OPERATION_CREATE, repo_url=url)
+    await s.tool("shell_run", py(
+        "import os; os.makedirs('src', exist_ok=True); open('src/new.py', 'wb').write(b'n = 1\\n'); "
+        "open('big.bin', 'wb').write(b'x' * 600000); open('blob.dat', 'wb').write(b'ab\\x00cd'); "
+        "open('.git/info/exclude', 'ab').write(b'ignored.txt\\n'); open('ignored.txt', 'wb').write(b'keep me\\n'); "
+        "open('app.py', 'ab').write(b'# changed\\n')"
+    ))
+
+    listed = await s.run(Op.WORKSPACE_OPERATION_LIST_FILES)
+    by_name = {e["name"]: e for e in listed["entries"]}
+    assert ".git" not in by_name and by_name["src"]["type"] == "FILE_TYPE_DIRECTORY" and by_name["README.md"]["type"] == "FILE_TYPE_FILE"
+    assert by_name["README.md"]["size"] == str(len(b"# refund service\n")) and listed.get("truncated", False) is False
+    assert [e["name"] for e in (await s.run(Op.WORKSPACE_OPERATION_LIST_FILES, path="src"))["entries"]] == ["new.py"]
+    for bad in (".git", "src/../..", "/etc"):
+        assert (await s.error(Op.WORKSPACE_OPERATION_LIST_FILES, path=bad)).category == error_pb2.ERROR_CATEGORY_INVALID
+    assert (await s.error(Op.WORKSPACE_OPERATION_LIST_FILES, path="missing")).category == error_pb2.ERROR_CATEGORY_NOT_FOUND
+
+    assert (await s.run(Op.WORKSPACE_OPERATION_READ_FILE, path="src/new.py")) == {"size": "6", "content": "n = 1\n"}
+    assert (await s.run(Op.WORKSPACE_OPERATION_READ_FILE, path="big.bin")) == {"size": "600000", "too_large": True}
+    assert (await s.run(Op.WORKSPACE_OPERATION_READ_FILE, path="blob.dat")) == {"size": "5", "binary": True}
+    assert (await s.error(Op.WORKSPACE_OPERATION_READ_FILE, path=".git/HEAD")).category == error_pb2.ERROR_CATEGORY_INVALID
+    for missing in ("nope.txt", "src"):
+        assert (await s.error(Op.WORKSPACE_OPERATION_READ_FILE, path=missing)).category == error_pb2.ERROR_CATEGORY_NOT_FOUND
+
+    log = (await s.run(Op.WORKSPACE_OPERATION_LOG))["commits"]
+    assert [(c["subject"], c["author_name"], c["author_email"]) for c in log] == [("seed", "t", "t@example.com")] and log[0]["authored_at"]
+    assert (await s.run(Op.WORKSPACE_OPERATION_LOG, base="origin/main")).get("commits", []) == [], "还没有比远端多的提交"
+    assert (await s.error(Op.WORKSPACE_OPERATION_LOG, base="no-such-branch")).category == error_pb2.ERROR_CATEGORY_NOT_FOUND
+
+    # 有改动时不能同步；丢弃改动之后能。
+    other = tmp_path / "other"
+    git("clone", "--quiet", str(bare), str(other))
+    (other / "CHANGELOG.md").write_bytes(b"merged upstream\n")
+    git("add", "-A", cwd=other)
+    git("-c", "user.name=o", "-c", "user.email=o@example.com", "commit", "--quiet", "-m", "upstream", cwd=other)
+    git("push", "--quiet", "origin", "main", cwd=other)
+    dirty = await s.error(Op.WORKSPACE_OPERATION_SYNC, branch="main")
+    assert dirty.category == error_pb2.ERROR_CATEGORY_CONFLICT and dirty.code == "workspace_dirty"
+    discarded = await s.run(Op.WORKSPACE_OPERATION_DISCARD)
+    assert discarded["head"] == git("rev-parse", "HEAD~1", cwd=other)
+    names_after = {e["name"] for e in (await s.run(Op.WORKSPACE_OPERATION_LIST_FILES))["entries"]}
+    assert names_after == {"README.md", "app.py", "ignored.txt"}, "未跟踪的删了，.gitignore 忽略的留着"
+    assert (await s.run(Op.WORKSPACE_OPERATION_DIFF)).get("files", []) == []
+    synced = await s.run(Op.WORKSPACE_OPERATION_SYNC, branch="main")
+    assert synced == {"head": git("rev-parse", "HEAD", cwd=other), "branch": "main"}
+    assert (await s.run(Op.WORKSPACE_OPERATION_READ_FILE, path="CHANGELOG.md"))["content"] == "merged upstream\n"
+
+    await s.tool("repo_edit", {"path": "fix.py", "new": "fixed = True\n"})
+    await s.run(Op.WORKSPACE_OPERATION_COMMIT, message="fix")
+    ahead = (await s.run(Op.WORKSPACE_OPERATION_LOG, base="origin/main"))["commits"]
+    assert [c["subject"] for c in ahead] == ["fix"], "比远端多一个提交"
+
+
+async def test_create_from_files_or_from_another_workspace(tmp_path: Path) -> None:
+    url, bare = make_remote(tmp_path)
+    s = Setup(tmp_path, mode="archive")
+    files = [{"path": "README.md", "content": "# 示例\n"}, {"path": "src/a.py", "content": "x = 1\n"}]
+    created = (await s.run(Op.WORKSPACE_OPERATION_CREATE, workspace="w-sample", files=files, author_name="Alice", author_email="alice@example.com"))["workspace"]
+    assert created["branch"] == "main" and created["head"]
+    [first] = (await s.run(Op.WORKSPACE_OPERATION_LOG, workspace="w-sample"))["commits"]
+    assert (first["subject"], first["author_name"]) == ("Initial commit", "Alice")
+    assert (await s.run(Op.WORKSPACE_OPERATION_READ_FILE, workspace="w-sample", path="src/a.py"))["content"] == "x = 1\n"
+    for bad in ([{"path": ".git/config", "content": "x"}], [{"path": "a", "content": "1"}, {"path": "a", "content": "2"}], [{"path": "../x", "content": "1"}]):
+        assert (await s.error(Op.WORKSPACE_OPERATION_CREATE, workspace="w-bad", files=bad)).category == error_pb2.ERROR_CATEGORY_INVALID
+    both = await s.error(Op.WORKSPACE_OPERATION_CREATE, workspace="w-bad", repo_url=url, files=files)
+    assert both.code == "conflicting_sources"
+    assert await s.archiver.get("t1", "w-bad") is None, "参数不对时不留行"
+
+    await s.run(Op.WORKSPACE_OPERATION_CREATE, workspace="w-base", repo_url=url)
+    await s.tool("repo_edit", {"path": "draft.md", "new": "not committed yet\n"}, workspace="w-base")
+    copied = (await s.run(Op.WORKSPACE_OPERATION_CREATE, workspace="w-copy", from_workspace_id="w-base"))["workspace"]
+    assert copied["repo_url"] == url and copied["head"] == git("rev-parse", "main", cwd=bare) and copied["branch"] == "main"
+    assert (await s.run(Op.WORKSPACE_OPERATION_DIFF, workspace="w-copy"))["files"] == ["draft.md"], "复制的含未提交的改动"
+    await s.run(Op.WORKSPACE_OPERATION_COMMIT, workspace="w-copy", message="from the copy")
+    pushed = await s.run(Op.WORKSPACE_OPERATION_PUSH, workspace="w-copy", branch="agent/copy")
+    assert git("rev-parse", "agent/copy", cwd=bare) == pushed["sha"]
+    assert (await s.run(Op.WORKSPACE_OPERATION_DIFF, workspace="w-base"))["files"] == ["draft.md"], "源工作区不受影响"
+    missing = await s.error(Op.WORKSPACE_OPERATION_CREATE, workspace="w-copy2", from_workspace_id="w-nope")
+    assert missing.category == error_pb2.ERROR_CATEGORY_NOT_FOUND and await s.archiver.get("t1", "w-copy2") is None
+    other_tenant = await s.error(Op.WORKSPACE_OPERATION_CREATE, workspace="w-copy3", tenant="t2", from_workspace_id="w-base")
+    assert other_tenant.category == error_pb2.ERROR_CATEGORY_NOT_FOUND, "不能复制别的租户的工作区"
+
+
+async def test_diff_counts_lines_detects_renames_and_reports_the_branch(tmp_path: Path) -> None:
+    url, _ = make_remote(tmp_path)
+    s = Setup(tmp_path, mode="mount")
+    await s.run(Op.WORKSPACE_OPERATION_CREATE, repo_url=url)
+    await s.tool("shell_run", py(
+        "import os; os.rename('app.py', 'refund.py'); open('README.md', 'ab').write(b'one\\ntwo\\n'); open('logo.png', 'wb').write(b'\\x89PNG\\x00\\x01')"
+    ))
+    plain = await s.run(Op.WORKSPACE_OPERATION_DIFF)
+    assert plain["branch"] == "main" and sorted(plain["files"]) == ["README.md", "app.py", "logo.png", "refund.py"]
+    stats = {st["path"]: st for st in plain["stats"]}
+    assert stats["README.md"]["added"] == 2 and stats["README.md"].get("deleted", 0) == 0
+    assert stats["logo.png"]["binary"] is True and stats["app.py"]["deleted"] == 2
+    renamed = await s.run(Op.WORKSPACE_OPERATION_DIFF, find_renames=True)
+    assert sorted(renamed["files"]) == ["README.md", "logo.png", "refund.py"] and "rename from app.py" in renamed["diff"]
+    assert [st["path"] for st in renamed["stats"]] == renamed["files"], "stats 与 files 同序"
+
+
+async def test_the_api_works_without_a_sandbox(tmp_path: Path) -> None:
+    """shell_run 是 host（或 docker）时：Workspace API 直接在 <工作区根>/<租户>/<workspace> 里做，与工具是同一处。"""
+    from agentruntime_worker.config import WorkerConfig
+    from agentruntime_worker.tools import workspace_operations
+
+    url, _ = make_remote(tmp_path)
+    root = tmp_path / "workspaces"
+    config = WorkerConfig(
+        tool_workspace_root=root, data_dir=tmp_path / "data", object_store_dir=tmp_path / "objects", secrets_file=tmp_path / "secrets.json",
+        tool_shell_sandbox="host", workspace_allow_local_remotes=True,
+    )
+    ops = workspace_operations(config)
+    assert ops is not None
+    out = await ops.run(Setup.inp(Op.WORKSPACE_OPERATION_CREATE, workspace="w-host", repo_url=url))
+    assert not out.HasField("error"), out
+    assert (root / "t1" / "w-host" / "README.md").read_bytes() == b"# refund service\n", "就是宿主上的工作区目录"
+    (root / "t1" / "w-host" / "new.txt").write_bytes(b"hi\n")
+    diff = json_format.MessageToDict((await ops.run(Setup.inp(Op.WORKSPACE_OPERATION_DIFF, workspace="w-host"))).result)
+    assert diff["files"] == ["new.txt"]
+    assert not (await ops.run(Setup.inp(Op.WORKSPACE_OPERATION_DELETE, workspace="w-host"))).HasField("error")
+    assert not (root / "t1" / "w-host").exists()
+    unavailable = WorkspaceActivities(workspace_operations(WorkerConfig(tool_shell_sandbox="host")))
+    res = await unavailable.workspace_operation(Setup.inp(Op.WORKSPACE_OPERATION_DIFF))
+    assert res.error.code == "workspace_api_unavailable"

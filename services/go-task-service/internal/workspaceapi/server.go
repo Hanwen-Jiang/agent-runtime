@@ -58,8 +58,11 @@ var (
 )
 
 const (
-	maxURL     = 2048
-	maxMessage = 10_000
+	maxURL          = 2048
+	maxMessage      = 10_000
+	maxInitialFiles = 200
+	maxInitialBytes = 1 << 20
+	maxLog          = 200
 )
 
 // Deps 是 Server 的依赖。
@@ -77,12 +80,8 @@ type Deps struct {
 	NewOperationID func() string
 }
 
-// Server 实现 workspacev1connect.WorkspaceServiceHandler。ListFiles、ReadFile、GetLog、DiscardChanges、SyncWorkspace 是
-// 待人审的契约草案（docs/plan/workspace-layer.md 第 7 节），审过之前返回 Unimplemented。
-type Server struct {
-	workspacev1connect.UnimplementedWorkspaceServiceHandler
-	d Deps
-}
+// Server 实现 workspacev1connect.WorkspaceServiceHandler。
+type Server struct{ d Deps }
 
 var _ workspacev1connect.WorkspaceServiceHandler = (*Server)(nil)
 
@@ -233,6 +232,35 @@ func checkRef(field, v string) error {
 	return nil
 }
 
+// checkPath 是路径的形式检查（相对、/ 分隔、没有 . 与 .. 段、不碰 .git）；Worker 那边再按同样的规则核一遍。
+func checkPath(p string, allowRoot bool) error {
+	if p == "" || p == "." {
+		if allowRoot {
+			return nil
+		}
+		return invalid("invalid_path", "要给工作区里的一个文件")
+	}
+	if strings.ContainsAny(p, "\\\x00") || strings.HasPrefix(p, "/") || (len(p) > 1 && p[1] == ':') {
+		return invalid("invalid_path", "路径要相对工作区根，用 / 分隔")
+	}
+	for _, part := range strings.Split(p, "/") {
+		switch part {
+		case "", ".", "..":
+			return invalid("invalid_path", "路径不得含空段、. 或 ..")
+		case ".git":
+			return invalid("invalid_path", "不能直接访问 .git")
+		}
+	}
+	return nil
+}
+
+func checkAuthor(name, email string) error {
+	if strings.ContainsAny(name+email, "<>\n\x00") || len(name) > 200 || len(email) > 200 {
+		return invalid("invalid_author", "作者的名字或邮箱不合法")
+	}
+	return nil
+}
+
 func (s *Server) CreateWorkspace(ctx context.Context, req *connect.Request[workspacev1.CreateWorkspaceRequest]) (*connect.Response[workspacev1.CreateWorkspaceResponse], error) {
 	m := req.Msg
 	if err := s.checkRepoURL(m.GetRepoUrl()); err != nil {
@@ -241,8 +269,40 @@ func (s *Server) CreateWorkspace(ctx context.Context, req *connect.Request[works
 	if err := checkRef("ref", m.GetRef()); err != nil {
 		return nil, taskapi.ConnectError(err)
 	}
+	sources := 0
+	for _, given := range []bool{m.GetRepoUrl() != "", m.GetFromWorkspaceId() != "", len(m.GetFiles()) > 0} {
+		if given {
+			sources++
+		}
+	}
+	switch {
+	case sources > 1:
+		return nil, taskapi.ConnectError(invalid("conflicting_sources", "repo_url、from_workspace_id、files 只能给一种"))
+	case m.GetFromWorkspaceId() != "" && (!slug.MatchString(m.GetFromWorkspaceId()) || m.GetFromWorkspaceId() == m.GetWorkspaceId()):
+		return nil, taskapi.ConnectError(invalid("invalid_source", "from_workspace_id 要是同租户里另一个工作区"))
+	case len(m.GetFiles()) > maxInitialFiles:
+		return nil, taskapi.ConnectError(invalid("invalid_files", "files 最多 200 个"))
+	}
+	if err := checkAuthor(m.GetAuthorName(), m.GetAuthorEmail()); err != nil {
+		return nil, taskapi.ConnectError(err)
+	}
+	files := make([]any, 0, len(m.GetFiles()))
+	total := 0
+	for _, f := range m.GetFiles() {
+		if err := checkPath(f.GetPath(), false); err != nil {
+			return nil, taskapi.ConnectError(err)
+		}
+		total += len(f.GetContent())
+		files = append(files, map[string]any{"path": f.GetPath(), "content": f.GetContent()})
+	}
+	if total > maxInitialBytes {
+		return nil, taskapi.ConnectError(invalid("invalid_files", "files 合计最多 1 MiB"))
+	}
 	out := &workspacev1.CreateWorkspaceResponse{}
-	args := map[string]any{"repo_url": m.GetRepoUrl(), "ref": m.GetRef()}
+	args := map[string]any{
+		"repo_url": m.GetRepoUrl(), "ref": m.GetRef(), "from_workspace_id": m.GetFromWorkspaceId(), "files": files,
+		"author_name": m.GetAuthorName(), "author_email": m.GetAuthorEmail(),
+	}
 	if err := s.operate(ctx, req.Header(), "workspace_create", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_CREATE, args, m.GetCredential(), out); err != nil {
 		return nil, taskapi.ConnectError(err)
 	}
@@ -255,7 +315,8 @@ func (s *Server) GetDiff(ctx context.Context, req *connect.Request[workspacev1.G
 		return nil, taskapi.ConnectError(err)
 	}
 	out := &workspacev1.GetDiffResponse{}
-	if err := s.operate(ctx, req.Header(), "workspace_diff", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_DIFF, map[string]any{"base": m.GetBase()}, nil, out); err != nil {
+	args := map[string]any{"base": m.GetBase(), "find_renames": m.GetFindRenames()}
+	if err := s.operate(ctx, req.Header(), "workspace_diff", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_DIFF, args, nil, out); err != nil {
 		return nil, taskapi.ConnectError(err)
 	}
 	return connect.NewResponse(out), nil
@@ -305,6 +366,70 @@ func (s *Server) DeleteWorkspace(ctx context.Context, req *connect.Request[works
 	m := req.Msg
 	out := &workspacev1.DeleteWorkspaceResponse{}
 	if err := s.operate(ctx, req.Header(), "workspace_delete", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_DELETE, nil, nil, out); err != nil {
+		return nil, taskapi.ConnectError(err)
+	}
+	return connect.NewResponse(out), nil
+}
+
+func (s *Server) ListFiles(ctx context.Context, req *connect.Request[workspacev1.ListFilesRequest]) (*connect.Response[workspacev1.ListFilesResponse], error) {
+	m := req.Msg
+	if err := checkPath(m.GetPath(), true); err != nil {
+		return nil, taskapi.ConnectError(err)
+	}
+	out := &workspacev1.ListFilesResponse{}
+	if err := s.operate(ctx, req.Header(), "workspace_read", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_LIST_FILES, map[string]any{"path": m.GetPath()}, nil, out); err != nil {
+		return nil, taskapi.ConnectError(err)
+	}
+	return connect.NewResponse(out), nil
+}
+
+func (s *Server) ReadFile(ctx context.Context, req *connect.Request[workspacev1.ReadFileRequest]) (*connect.Response[workspacev1.ReadFileResponse], error) {
+	m := req.Msg
+	if err := checkPath(m.GetPath(), false); err != nil {
+		return nil, taskapi.ConnectError(err)
+	}
+	out := &workspacev1.ReadFileResponse{}
+	if err := s.operate(ctx, req.Header(), "workspace_read", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_READ_FILE, map[string]any{"path": m.GetPath()}, nil, out); err != nil {
+		return nil, taskapi.ConnectError(err)
+	}
+	return connect.NewResponse(out), nil
+}
+
+func (s *Server) GetLog(ctx context.Context, req *connect.Request[workspacev1.GetLogRequest]) (*connect.Response[workspacev1.GetLogResponse], error) {
+	m := req.Msg
+	if m.GetLimit() < 0 || m.GetLimit() > maxLog {
+		return nil, taskapi.ConnectError(invalid("invalid_limit", "limit 最多 200"))
+	}
+	if err := checkRef("base", m.GetBase()); err != nil {
+		return nil, taskapi.ConnectError(err)
+	}
+	out := &workspacev1.GetLogResponse{}
+	args := map[string]any{"limit": float64(m.GetLimit()), "base": m.GetBase()}
+	if err := s.operate(ctx, req.Header(), "workspace_read", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_LOG, args, nil, out); err != nil {
+		return nil, taskapi.ConnectError(err)
+	}
+	return connect.NewResponse(out), nil
+}
+
+func (s *Server) DiscardChanges(ctx context.Context, req *connect.Request[workspacev1.DiscardChangesRequest]) (*connect.Response[workspacev1.DiscardChangesResponse], error) {
+	m := req.Msg
+	out := &workspacev1.DiscardChangesResponse{}
+	if err := s.operate(ctx, req.Header(), "workspace_discard", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_DISCARD, nil, nil, out); err != nil {
+		return nil, taskapi.ConnectError(err)
+	}
+	return connect.NewResponse(out), nil
+}
+
+func (s *Server) SyncWorkspace(ctx context.Context, req *connect.Request[workspacev1.SyncWorkspaceRequest]) (*connect.Response[workspacev1.SyncWorkspaceResponse], error) {
+	m := req.Msg
+	if m.GetBranch() == "" {
+		return nil, taskapi.ConnectError(invalid("invalid_branch", "要给远端的分支名"))
+	}
+	if err := checkRef("branch", m.GetBranch()); err != nil {
+		return nil, taskapi.ConnectError(err)
+	}
+	out := &workspacev1.SyncWorkspaceResponse{}
+	if err := s.operate(ctx, req.Header(), "workspace_sync", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_SYNC, map[string]any{"branch": m.GetBranch()}, m.GetCredential(), out); err != nil {
 		return nil, taskapi.ConnectError(err)
 	}
 	return connect.NewResponse(out), nil

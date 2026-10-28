@@ -110,12 +110,32 @@ def test_the_workspace_lifecycle_through_the_api(ws_stack: DevStack, remote: Pat
     archived = api.ok("ArchiveWorkspace", {"workspaceId": "w-e2e"})
     assert archived["snapshotId"].startswith("wss-")
 
+    # 应用浏览与管理工作区（第 8 节）：文件树、读文件、提交记录、从别的工作区复制、丢弃改动、与远端同步。
+    entries = {e["name"]: e["type"] for e in api.ok("ListFiles", {"workspaceId": "w-e2e"})["entries"]}
+    assert entries == {"README.md": "FILE_TYPE_FILE"}, "不列 .git"
+    assert api.ok("ReadFile", {"workspaceId": "w-e2e", "path": "README.md"})["content"] == "# e2e\n"
+    status, refused = api.call("ReadFile", {"workspaceId": "w-e2e", "path": ".git/config"})
+    assert status == 400, refused
+    [commit_entry] = api.ok("GetLog", {"workspaceId": "w-e2e"})["commits"]
+    assert commit_entry["subject"] == "seed" and commit_entry["sha"] == created["head"] and commit_entry["authoredAt"]
+    copy = api.ok("CreateWorkspace", {"workspaceId": "w-e2e-copy", "fromWorkspaceId": "w-e2e"})["workspace"]
+    assert copy["repoUrl"] == url and copy["branch"] == "main"
+    sample = api.ok("CreateWorkspace", {"workspaceId": "w-sample", "files": [{"path": "hello.py", "content": "print('hi')\n"}],
+                                        "authorName": "Alice", "authorEmail": "alice@example.com"})["workspace"]
+    assert api.ok("GetLog", {"workspaceId": "w-sample"})["commits"][0]["authorName"] == "Alice" and sample["head"]
+    assert api.ok("DiscardChanges", {"workspaceId": "w-e2e-copy"})["head"] == created["head"]
+    synced = api.ok("SyncWorkspace", {"workspaceId": "w-e2e-copy", "branch": "agent/e2e", "credential": credential})
+    assert synced == {"head": created["head"], "branch": "agent/e2e"}
+
     other = Api(ws_stack.task_api, ws_stack.token("t2", "u-bob"))
     status, missing = other.call("GetDiff", {"workspaceId": "w-e2e"})
     assert status == 404 and missing["code"] == "not_found", missing
+    status, missing = other.call("ListFiles", {"workspaceId": "w-e2e"})
+    assert status == 404, missing
     assert other.ok("ListWorkspaces", {}).get("workspaces", []) == []
 
-    assert api.ok("DeleteWorkspace", {"workspaceId": "w-e2e"}) == {}
+    for ws in ("w-e2e", "w-e2e-copy", "w-sample"):
+        assert api.ok("DeleteWorkspace", {"workspaceId": ws}) == {}
     assert api.ok("ListWorkspaces", {}).get("workspaces", []) == []
 
     for name in ("task-service", "worker"):

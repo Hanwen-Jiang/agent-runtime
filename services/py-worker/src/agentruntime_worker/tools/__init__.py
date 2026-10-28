@@ -107,15 +107,34 @@ def sandbox_broker(config: WorkerConfig) -> SandboxBroker | None:
 
 
 def workspace_operations(config: WorkerConfig) -> WorkspaceOperations | None:
-    """Workspace API 的操作（D-06e）：经 sandbox_broker 在承载工作区的沙箱里执行；不是 sandbox 时为 None（activity 报
-    workspace_api_unavailable）。封凭据的密钥取 SecretStore 平台作用域的 workspace/credential-key。"""
-    broker = sandbox_broker(config)
+    """Workspace API 的操作（D-06e）：经 sandbox_broker 在承载工作区的沙箱里执行。shell_run 不经沙箱（host、docker）但配了
+    工作区目录时，用一个只登记本地后端（挂工作区目录）的 broker：操作直接在 <工作区根>/<租户>/<workspace> 里跑 git，与
+    shell_run、repo_* 是同一处。两者都没有时为 None（activity 报 workspace_api_unavailable）。封凭据的密钥取 SecretStore
+    平台作用域的 workspace/credential-key。"""
+    broker = sandbox_broker(config) or host_broker(config)
     if broker is None:
         return None
     return WorkspaceOperations(
         broker, secret=lambda: broker.sandboxes.read_secret(CREDENTIAL_SECRET), runtime=config.sandbox_runtime,
         allow_local_remotes=config.workspace_allow_local_remotes,
     )
+
+
+def host_broker(config: WorkerConfig) -> SandboxBroker | None:
+    """没配沙箱时 Workspace API 用的 broker：只登记一个挂工作区目录的本地后端（不隔离，同 shell_run 的 host）；环境表、
+    快照与工作区的行记在同一个业务库。没配工作区目录时为 None。"""
+    if config.tool_workspace_root is None:
+        return None
+    key = ("host", *_broker_key(config), config.tool_workspace_root)
+    if key not in _brokers:
+        boxes = Sandboxes(
+            {"host": {"kind": "local", "isolation": "none"}}, "host", workspace_root=config.tool_workspace_root, secrets_file=config.secrets_file,
+            policy=registry_policy(config.registry_address) if config.registry_address else None,
+        )
+        root = config.data_dir or Path(tempfile.mkdtemp(prefix="agentruntime-sandbox-ledger-"))
+        store = relational_store(config.relational_dsn, root)
+        _brokers[key] = SandboxBroker(boxes, SandboxLedger(store), archiver=WorkspaceArchiver(store, context_objects(config)))
+    return _brokers[key]
 
 
 def context_objects(config: WorkerConfig) -> ObjectStoreProvider:

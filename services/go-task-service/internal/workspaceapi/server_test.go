@@ -349,11 +349,94 @@ func TestListWorkspacesReadsTheBusinessDatabase(t *testing.T) {
 	}
 }
 
-func TestDraftMethodsAreUnimplementedUntilReviewed(t *testing.T) {
+func TestBrowseAndManageCarryTheirArgumentsAndResults(t *testing.T) {
 	h := newHarness(t)
-	_, err := h.client.ListFiles(context.Background(), authed(h, "t1", &workspacev1.ListFilesRequest{WorkspaceId: "w1"}))
-	if code(t, err) != connect.CodeUnimplemented || len(h.w.started) != 0 {
-		t.Fatalf("契约草案的方法审过之前回 Unimplemented：%v", err)
+	ctx := context.Background()
+	results := map[workflowv1.WorkspaceOperation]map[string]any{
+		workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_LIST_FILES: {"entries": []any{map[string]any{"name": "src", "type": "FILE_TYPE_DIRECTORY"}}, "truncated": false},
+		workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_READ_FILE:  {"size": "6", "content": "n = 1\n"},
+		workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_LOG: {"commits": []any{map[string]any{
+			"sha": "abc", "author_name": "Alice", "author_email": "a@example.com", "authored_at": "2026-10-28T09:00:00+08:00", "subject": "fix"}}},
+		workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_DISCARD: {"head": "abc"},
+		workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_SYNC:    {"head": "def", "branch": "main"},
+	}
+	h.w.handle = func(in *workflowv1.WorkspaceOperationInput) (*workflowv1.WorkspaceOperationResult, error) {
+		res, _ := structpb.NewStruct(results[in.GetOperation()])
+		return &workflowv1.WorkspaceOperationResult{Result: res}, nil
+	}
+	files, err := h.client.ListFiles(ctx, authed(h, "t1", &workspacev1.ListFilesRequest{WorkspaceId: "w1", Path: "src"}))
+	if err != nil || files.Msg.GetEntries()[0].GetType() != workspacev1.FileType_FILE_TYPE_DIRECTORY {
+		t.Fatalf("ListFiles：%v %v", files, err)
+	}
+	read, err := h.client.ReadFile(ctx, authed(h, "t1", &workspacev1.ReadFileRequest{WorkspaceId: "w1", Path: "a.py"}))
+	if err != nil || read.Msg.GetContent() != "n = 1\n" || read.Msg.GetSize() != 6 {
+		t.Fatalf("ReadFile：%v %v", read, err)
+	}
+	logResp, err := h.client.GetLog(ctx, authed(h, "t1", &workspacev1.GetLogRequest{WorkspaceId: "w1", Limit: 5, Base: "origin/main"}))
+	if err != nil || logResp.Msg.GetCommits()[0].GetAuthoredAt().AsTime().UTC().Hour() != 1 {
+		t.Fatalf("GetLog（时间带时区）：%v %v", logResp, err)
+	}
+	if _, err := h.client.DiscardChanges(ctx, authed(h, "t1", &workspacev1.DiscardChangesRequest{WorkspaceId: "w1"})); err != nil {
+		t.Fatal(err)
+	}
+	synced, err := h.client.SyncWorkspace(ctx, authed(h, "t1", &workspacev1.SyncWorkspaceRequest{
+		WorkspaceId: "w1", Branch: "main", Credential: &workspacev1.GitCredential{Username: "bot", Password: "pw-SECRET-123"},
+	}))
+	if err != nil || synced.Msg.GetHead() != "def" {
+		t.Fatalf("SyncWorkspace：%v %v", synced, err)
+	}
+	args := map[workflowv1.WorkspaceOperation]map[string]any{}
+	for _, in := range h.w.started {
+		args[in.GetOperation()] = in.GetArgs().AsMap()
+	}
+	if args[workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_LIST_FILES]["path"] != "src" || args[workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_LOG]["limit"] != float64(5) ||
+		args[workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_LOG]["base"] != "origin/main" || args[workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_SYNC]["branch"] != "main" {
+		t.Fatalf("参数没有带给 Worker：%v", args)
+	}
+	if last := h.w.started[len(h.w.started)-1]; last.GetSealedCredential() == "" || strings.Contains(last.GetSealedCredential(), "pw-SECRET-123") {
+		t.Fatal("同步的凭据要封起来")
+	}
+}
+
+func TestCreateFromFilesOrAnotherWorkspaceIsChecked(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	files := []*workspacev1.InitialFile{{Path: "README.md", Content: "# 示例\n"}, {Path: "src/a.py", Content: "x = 1\n"}}
+	if _, err := h.client.CreateWorkspace(ctx, authed(h, "t1", &workspacev1.CreateWorkspaceRequest{WorkspaceId: "w1", Files: files, AuthorName: "Alice"})); err != nil {
+		t.Fatal(err)
+	}
+	got := h.w.started[0].GetArgs().AsMap()
+	if fs, _ := got["files"].([]any); len(fs) != 2 || got["author_name"] != "Alice" {
+		t.Fatalf("初始文件与作者没有带给 Worker：%v", got)
+	}
+	if _, err := h.client.CreateWorkspace(ctx, authed(h, "t1", &workspacev1.CreateWorkspaceRequest{WorkspaceId: "w2", FromWorkspaceId: "w1"})); err != nil {
+		t.Fatal(err)
+	}
+	bad := []*workspacev1.CreateWorkspaceRequest{
+		{WorkspaceId: "w3", FromWorkspaceId: "w1", Files: files},
+		{WorkspaceId: "w3", RepoUrl: "https://git.example.com/r.git", FromWorkspaceId: "w1"},
+		{WorkspaceId: "w3", FromWorkspaceId: "w3"},
+		{WorkspaceId: "w3", FromWorkspaceId: "W1"},
+		{WorkspaceId: "w3", Files: []*workspacev1.InitialFile{{Path: ".git/config", Content: "x"}}},
+		{WorkspaceId: "w3", Files: []*workspacev1.InitialFile{{Path: "../x", Content: "x"}}},
+		{WorkspaceId: "w3", Files: []*workspacev1.InitialFile{{Path: "big", Content: strings.Repeat("x", maxInitialBytes+1)}}},
+		{WorkspaceId: "w3", AuthorEmail: "<evil>"},
+	}
+	for i, m := range bad {
+		if _, err := h.client.CreateWorkspace(ctx, authed(h, "t1", m)); code(t, err) != connect.CodeInvalidArgument {
+			t.Fatalf("第 %d 个要 InvalidArgument：%v", i, err)
+		}
+	}
+	for _, p := range []string{".git", "a/../b", "/etc/passwd", "a\\b"} {
+		if _, err := h.client.ReadFile(ctx, authed(h, "t1", &workspacev1.ReadFileRequest{WorkspaceId: "w1", Path: p})); code(t, err) != connect.CodeInvalidArgument {
+			t.Fatalf("ReadFile %q 要 InvalidArgument：%v", p, err)
+		}
+	}
+	if _, err := h.client.GetLog(ctx, authed(h, "t1", &workspacev1.GetLogRequest{WorkspaceId: "w1", Limit: 500})); code(t, err) != connect.CodeInvalidArgument {
+		t.Fatalf("limit 太大：%v", err)
+	}
+	if len(h.w.started) != 2 {
+		t.Fatalf("被拒的请求不起工作流：起了 %d 个", len(h.w.started))
 	}
 }
 
