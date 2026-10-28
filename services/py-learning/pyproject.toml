@@ -11,6 +11,9 @@ dependencies = [
     "jsonschema>=4.26",
     "jsonschema-specifications>=2025.9.1",
     "referencing>=0.37",
+    # 集群里的 Job 直接消费 Collector 写的 trace 主题（agentruntime_learning.pipeline.stream；设计书 3.5、4.6 的 Kafka 协议，
+    # Redpanda 与 Kafka 都能接）。librdkafka 的官方 Python 客户端，wheel 里带好 librdkafka，没有别的依赖。待人确认引入。
+    "confluent-kafka>=2.15",
 ]
 
 [project.optional-dependencies]

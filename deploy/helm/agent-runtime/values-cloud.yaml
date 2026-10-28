@@ -158,9 +158,10 @@ worker:
         requests: {cpu: 250m, memory: 512Mi}
         limits: {cpu: "2", memory: 1Gi}
 
+# Learning Pipeline（T-16）：Job 直接消费 Collector 写进 Redpanda 的 telemetry.spans（values.yaml 的 learning 一节）。
+# 租户与任务族换成线上要学的那一个：--set learning.tenant=<租户> --set learning.family=<任务族>。
 learning:
   enabled: true
-  tracesClaim: ""
 
 collector:
   replicas: 1

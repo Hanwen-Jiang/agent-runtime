@@ -117,6 +117,10 @@ def test_tool_versions_match_the_nightly_job_and_claude_md() -> None:
     launcher = (REPO_ROOT / "libs" / "py-core" / "src" / "agentruntime_core" / "adapters" / "milvustest.py").read_text("utf-8")
     default = re.search(r'DEFAULT_IMAGE = "([^"]+)"', launcher)
     assert default and env_value(t, "AR_MILVUS_IMAGE") == default.group(1), "CI 的 Milvus 镜像与 milvustest 的默认镜像一致"
+    launcher = (REPO_ROOT / "services" / "py-learning" / "tests" / "redpanda_support.py").read_text("utf-8")
+    default = re.search(r'DEFAULT_IMAGE = "([^"]+)"', launcher)
+    assert default and env_value(t, "AR_REDPANDA_IMAGE") == default.group(1), "CI 的 Redpanda 镜像与 redpanda_support 的默认镜像一致"
+    assert 'docker pull "$AR_REDPANDA_IMAGE"' in t, "py-learning 的 job 预拉 Redpanda 镜像"
     assert env_value(t, "BUF_VERSION").startswith("1.73"), "buf 1.73（CLAUDE.md）"
 
 

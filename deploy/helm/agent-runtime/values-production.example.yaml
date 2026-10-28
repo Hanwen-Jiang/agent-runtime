@@ -83,8 +83,10 @@ worker:
         requests: {cpu: "1", memory: 1Gi}
         limits: {cpu: "4", memory: 2Gi}
 
+# Learning Pipeline：Job 直接消费 external.redpanda 上的 telemetry.spans（values.yaml 的 learning 一节）；租户与任务族按要学的改。
 learning:
-  tracesClaim: agent-runtime-traces
+  tenant: t1
+  family: finance.invoice_coding
 
 collector:
   replicas: 2

@@ -24,6 +24,8 @@ env:
   TEMPORAL_CLI_VERSION: "1.9.1"
   QDRANT_VERSION: "1.19.1"
   AR_MILVUS_IMAGE: "milvusdb/milvus:v3.0.2"
+  # py-learning 的测试拉起 Redpanda（Learning Pipeline 直接消费 trace 主题），与集群里的同版。
+  AR_REDPANDA_IMAGE: "redpandadata/redpanda:v26.2.4"
   BUF_VERSION: "1.73.0"
   HELM_VERSION: "3.19.0"
   OTELCOL_VERSION: "0.135.0"
@@ -133,8 +135,10 @@ jobs:
           test -x "$bin/initdb"
           echo "AR_POSTGRES_BIN=$bin" >> "$GITHUB_ENV"
 
-      - name: 预拉 Milvus 镜像（py-core 的测试用 Docker 拉起单机版容器）
-        run: docker pull "$AR_MILVUS_IMAGE"
+      - name: 预拉 Milvus 与 Redpanda 镜像（py-core、py-learning 的测试用 Docker 拉起容器）
+        run: |
+          docker pull "$AR_MILVUS_IMAGE"
+          docker pull "$AR_REDPANDA_IMAGE"
 
       - name: py-core、py-memory、py-learning
         run: python3 scripts/check.py --only py-core,py-memory,py-learning --junit-dir "$RUNNER_TEMP/junit"

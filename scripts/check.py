@@ -134,7 +134,8 @@ def all_steps(root: Path, *, committed: bool = False) -> dict[str, Step]:
             ["uv", "temporal", "postgres", "qdrant", "docker", "go", "kind", "kubectl"],
         ),
         _python("py-memory", "services/py-memory（开发后端与 Postgres + Qdrant）", root / "services" / "py-memory", "agentruntime-memory", ["tests"], ["uv", "postgres", "qdrant"]),
-        _python("py-learning", "services/py-learning", root / "services" / "py-learning", "agentruntime-learning", ["tests"], ["uv"]),
+        _python("py-learning", "services/py-learning（含消费 trace 主题的 Redpanda 容器）", root / "services" / "py-learning", "agentruntime-learning", ["tests"],
+                ["uv", "docker"]),
         _python("py-worker", "services/py-worker（沙箱环境表在 SQLite 与 Postgres 上各跑一遍）", root / "services" / "py-worker", "agentruntime-worker", ["tests"],
                 ["uv", "temporal", "postgres", "go"]),
         _python("e2e", "端到端测试（不含故障注入）", root / "tests" / "e2e", "agentruntime-e2e-tests", ["-m", "not faults"], ["uv", "go", "temporal"]),
@@ -207,7 +208,8 @@ def tool_available(tool: str, env: Mapping[str, str]) -> bool:
             return path.is_file() or shutil.which("qdrant", path=str(path)) is not None
         return _which("qdrant", env) is not None
     if tool in ("docker", "kubectl"):
-        # docker：Milvus 适配器的测试拉起单机版容器（milvustest），K8s 沙箱的测试用 kind（kindtest）。
+        # docker：Milvus 适配器的测试拉起单机版容器（milvustest），K8s 沙箱的测试用 kind（kindtest），
+        # Learning Pipeline 消费 trace 主题的测试拉起 Redpanda（services/py-learning/tests/redpanda_support.py）。
         # kubectl：kindtest 用它应用 deploy/cluster 的清单；Docker Desktop 把它与 docker 放在同一目录。
         configured = env.get("AR_DOCKER_BIN", "")
         if configured:

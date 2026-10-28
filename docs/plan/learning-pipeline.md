@@ -4,6 +4,7 @@
 > 依据：设计书 3.5、3.5.1、附录 J（J.1–J.5）、H.5、实施计划 S-12 的“跨租户读取”；`docs/plan/registry.md`（Publish、Promote 与评测证据）；
 > `docs/plan/deploy-telemetry.md`（T-15：trace 的 span 与 Collector）。
 > 状态：已实现（2026-10-23）。第 4 节的决定与第 5 节的验收测试经人确认；实现记录见第 6 节。
+> 2026-10-28：集群里的 Job 直接消费 trace 主题（第 7 节；新依赖 confluent-kafka 待人确认）。
 
 ## 1. 目标
 
@@ -15,12 +16,13 @@ R-06 的评审重点：未过评测不能发布；后台任务单独记预算；
 ## 2. 第一期范围
 
 一条命令跑一遍（`python -m agentruntime_learning.pipeline run --tenant <租户> --family <任务族> --traces <文件>…`），按顺序五步。
-退出码：0 跑完（已发布、发布被拒、没有候选、dry-run 都算）；1 Registry 写失败（含 Promote 被拒）；2 参数或环境不对（例如不是 dry-run 却没有 `AR_REGISTRY_ADDRESS`）。
+退出码：0 跑完（已发布、发布被拒、没有候选、dry-run 都算）；1 Registry 写失败（含 Promote 被拒）；2 参数或环境不对（例如不是 dry-run 却没有 `AR_REGISTRY_ADDRESS`）；
+3 读主题或提交消费组的位置失败（第 7 节）。
 
 1. **读 trace**（J.1）：输入是 T-15 定下的 span：Task 级 `invoke_workflow` 与它下面的 `runtime.round`。两种格式，解析成同一个模型：
    - `otlp_json`：Collector 的 kafka 导出器（与 `file` 导出器）写的 OTLP JSON，每行一个 `ExportTraceServiceRequest`；
    - `console`：控制台 Telemetry 写到标准错误的 JSON 行（本地开发）。
-   第一期从文件读（`--traces`，可以给多个）；从 Redpanda 消费要等 EventStream 的 Kafka 适配器（见“不做”）。
+   从文件读（`--traces`，可以给多个），或在集群里直接消费 Collector 写的主题（`--topic`、`--group`，见第 7 节）。
    归并成 `TaskTrace`：租户、task_id、任务族、结局、用过的 Recipe、成本、各 Round（verdict、triage_level、成本、Stage 形状）。
    同一个 task_id 出现多次（至少一次投递）只算一次；缺关键属性的 Task 跳过并计数。
 2. **按租户过滤并留审计**：trace 里混着所有租户（Collector 不分租户）。一次运行只处理 `--tenant` 指定的租户，按 span 上的 `tenant_id`
@@ -56,7 +58,8 @@ R-06 的评审重点：未过评测不能发布；后台任务单独记预算；
 
 **不做（登记到后续）**
 
-- 从 Redpanda 消费（EventStream 的 Kafka 适配器）与 KEDA ScaledJob 真正跑起来：T-15 的 Chart 已按设计配好 ScaledJob，Job 第一期只能读文件。
+- EventStream 的 Kafka 适配器（按租户绑定的 append 与消费）：Learning 读的是 Collector 写的、不带作用域头的主题，直接用 Kafka 客户端（第 7 节）。
+- trace 原文存进 ObjectStore（3.5）：现在历史只到主题的保留期（第 7 节）。
 - offline 队列上的 Temporal 工作流（3.5“作为 offline 队列上的工作流运行”）：第一期是一次性命令，失败重跑整条即可（读 trace、算门槛都是确定的，发布按门槛结果幂等）。
 - 影子流量的分流与对比（J.3“影子评测”）：第一期是观测式评测（见第 4 节第 1 条）。
 - 灰度放量与指标变差自动回滚（J.3 末句）。
@@ -123,3 +126,48 @@ Round 的 Stage 形状是 `agentruntime_worker.workflows.verdicts.stage_shape`�
 fixture 已经种下的模板：端到端环境整个会话共用，另种模板会进入别的用例里新 Task 的固定版本。
 
 **没验证的**：真模型的归因没跑过（供应商额度，见 T-03）；R-06 评审没做（要另一家的强模型或人，写审分离）。
+
+## 7. 云上的输入（2026-10-28）
+
+第一次上线时 ScaledJob 按 Redpanda 的积压起 Job，Job 却读 `tracesClaim` 卷里的文件；卷没配，回退成 emptyDir，每半分钟起一个失败的 Job，
+线上先关了（`cloud-deploy.md` 的“第一次上线”）。两条路：(a) Job 直接消费 `telemetry.spans`，用的就是 KEDA 盯的消费组，跑完才提交；
+(b) Collector 另用 file 导出器写到共用的卷，Job 挂这个卷。**选 (a)**：
+
+- 设计书 3.5 写的就是“消费者从 Redpanda 读取 trace 事件……由 KEDA 按 Redpanda 消费延迟与队列积压扩缩”，3.5.1 是“trace 经 EventStream 到达”，
+  4.13 的第三路导出写明“供 Learning Pipeline 消费”。(b) 要给 Collector 加设计里没有的第四路导出。
+- (b) 与 KEDA 的触发器合不上：没人提交消费组的位置，延迟只增不减，Job 一轮接一轮地起，每轮重算全部；要么改成定时触发，离开 3.5。
+- (b) 的卷要 Collector 与 Job 共用：只有单节点的 local-path 行，多节点要 RWX；Collector 多副本时几个进程写同一个文件；文件只增不减，轮转又一样丢历史。
+- (a) 的代价：新依赖 Kafka 客户端（confluent-kafka，librdkafka 的官方 Python 客户端，wheel 自带 librdkafka；待人确认）；py-learning 的测试要 Docker 里的 Redpanda。
+
+**做法**（`agentruntime_learning.pipeline.stream`；命令行 `--topic <主题> --group <消费组>`，broker 取 `AR_EVENT_STREAM_BROKERS`）：
+
+1. 快照：各分区当前最早保留的位置与末尾，从最早保留的读到末尾，按（分区，偏移）排好，一条记录一行交给第 2 节第 1 步。
+   **每次都从头读**：J.3 要每组至少 100 条样本，只读上次之后的新记录凑不够；重读的 Task 由第 2 节的去重处理（与至少一次投递同一条路）。
+2. 跑完（退出码 0：已发布、发布被拒、没有候选）才把快照的末尾提交为消费组的位置。Registry 写失败（1）、坏记录（2）、读不到主题或提交失败（3）
+   一律不提交：KEDA 看到的延迟不变，下一轮整条重跑（第 2 节“不做”里的“失败重跑整条即可”）。发布被拒也提交：同一批 trace 再跑结论相同。
+   dry-run 不提交。快照之后才到的记录不提交，留作下一轮的延迟。
+3. 消费组的位置因此只表示“评测到了哪里”，KEDA 的延迟就是上次评测成功之后新到的记录。Job 不加入消费组（assign，不 subscribe），提交时用组名。
+4. 主题里混着所有租户，记录上没有 EventStream 的作用域头，所以不经按租户绑定的 EventStream 接口读（4.6 的接口注释：跨租户读取由 S-12 另行提供）。
+   按租户过滤与审计不变；审计 `learning.read_traces` 的 `learning.files` 写“主题#分区:起-止”。坏记录的报错写出分区与偏移。
+
+**Chart**（`templates/learning.yaml`）：
+
+- Job 的参数是 `--topic`、`--group`，与触发器的主题、消费组取自同一个值；`AR_EVENT_STREAM_BROKERS` 与触发器的 bootstrapServers 都是 `external.redpanda.brokers`。
+  不再挂 trace 的卷；`learning.tracesClaim`、`learning.tracesFile` 设了就渲染失败，不被悄悄忽略。
+- 触发器 `offsetResetPolicy: earliest`：没提交过时延迟按全部记录算。默认的 latest 只算 1，`activationLagThreshold` 永远达不到，Job 起不来，也就永远不提交。
+- `activationLagThreshold`（默认 100 条记录；Collector 每批 span 写一条）：攒够新记录再起 Job，不是来一条就重算全部历史。
+- `pollingInterval`（默认 600 秒）：也是失败后重跑的间隔，不再是 KEDA 默认的 30 秒。
+
+**验收**：`services/py-learning/tests/test_pipeline_stream.py`。对着 Docker 里的 Redpanda（`redpanda_support`，与集群同版 v26.2.4）：读全部历史、提交末尾、延迟归零；
+下一轮仍看到早先的 trace；失败与坏记录不提交、修好后下一轮跑通；快照之后到的记录留作延迟；dry-run 不动消费组；主题还不存在时当作空。
+命令行的提交规则另用假的读者测（各退出码、读与提交出错、审计）。部署：`tests/deploy/test_helm_chart.py`（三套 values：Job 读的就是触发器盯的主题与消费组、
+earliest、激活阈值、轮询间隔、旧设置被拒）、`test_cloud.py`（云上的 Job 消费的就是 Collector 的 kafka 导出器写的主题与 broker）。
+
+**与设计书不一致、没做的**
+
+- 历史只到主题的保留期（主题是自动建的，用 Redpanda 的默认保留期，7 天）。设计书 3.5 是“评测集与 trace 原文存于 ObjectStore”：要更长的历史，
+  Job 把本租户的 Task 与 Round span 存进 ObjectStore、只读上次之后的新记录。登记到后续。
+- 每次读全部保留的记录，Job 的内存随主题的大小涨（限 1 GiB）；量大了同样要上面的存档。
+- 主题里一条坏记录会让之后的每一轮都失败，直到它过了保留期。Collector 写的是合法的 OTLP JSON，出现坏记录就是配置错了，宁可停下报错。
+- 一个 ScaledJob 只学一个租户的一个任务族；多个任务族要多个 ScaledJob、各用各的消费组，Chart 还不支持列表。
+- 真集群里没跑过（KEDA 读这个消费组的延迟、Job 连 `redpanda.data.svc:9093`），线上重新打开时看。

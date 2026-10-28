@@ -3,9 +3,13 @@
 {{- if ne (int $lp.maxReplicaCount) 1 }}
 {{- fail "learning.maxReplicaCount 只能是 1：同一租户同一任务族的两次运行并发时，后一次的 Promote 覆盖前一次（R-06 评审第 4 节第 3 条）" }}
 {{- end }}
+{{- if or $lp.tracesClaim $lp.tracesFile }}
+{{- fail "learning.tracesClaim、learning.tracesFile 不再使用：Job 直接消费 learning.topic（docs/plan/learning-pipeline.md 第 7 节）" }}
+{{- end }}
 # Learning Pipeline（T-16）：KEDA 按消费组在 trace 主题上的延迟起 Job（设计书 3.5）；每个 Job 跑一遍
 # python -m agentruntime_learning.pipeline run，过评测门槛才经 Registry 发布。
-# 第一期 Job 读文件形式的 trace（tracesClaim）；从 Redpanda 消费要等 EventStream 的 Kafka 适配器。
+# Job 直接消费 Collector 写的主题（docs/plan/learning-pipeline.md 第 7 节）：从最早保留的记录读到起跑时的末尾，跑完（退出码 0）
+# 才把末尾提交为 consumerGroup 的位置。KEDA 的延迟因此是上次评测成功之后新到的记录；失败不提交，pollingInterval 之后整条重跑。
 # 一个 ScaledJob 对应一个租户的一个任务族，同一时间只跑一个 Job（R-06 评审）。
 apiVersion: keda.sh/v1alpha1
 kind: ScaledJob
@@ -14,6 +18,7 @@ metadata:
   labels:
     {{- include "ar.labels" (list . "learning") | nindent 4 }}
 spec:
+  pollingInterval: {{ int $lp.pollingInterval }}
   maxReplicaCount: 1
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
@@ -42,8 +47,10 @@ spec:
               - {{ $lp.tenant | quote }}
               - --family
               - {{ $lp.family | quote }}
-              - --traces
-              - {{ $lp.tracesFile | quote }}
+              - --topic
+              - {{ $lp.topic | quote }}
+              - --group
+              - {{ $lp.consumerGroup | quote }}
               - --format
               - otlp_json
               - --report-dir
@@ -52,6 +59,8 @@ spec:
               - {{ $lp.budgetUsd | quote }}
             env:
               {{- include "ar.commonEnv" . | nindent 14 }}
+              - name: AR_EVENT_STREAM_BROKERS
+                value: {{ .Values.external.redpanda.brokers | quote }}
               - name: AR_REGISTRY_ADDRESS
                 value: {{ printf "%s:%v" (include "ar.registryService" .) .Values.taskService.registryPort | quote }}
               - name: AR_MODEL_GATEWAY_ADDRESS
@@ -68,9 +77,6 @@ spec:
                 mountPath: /tmp
               - name: reports
                 mountPath: /reports
-              - name: traces
-                mountPath: /traces
-                readOnly: true
         volumes:
           - name: secrets
             secret:
@@ -82,14 +88,6 @@ spec:
             emptyDir: {}
           - name: reports
             emptyDir: {}
-          - name: traces
-          {{- if $lp.tracesClaim }}
-            persistentVolumeClaim:
-              claimName: {{ $lp.tracesClaim }}
-              readOnly: true
-          {{- else }}
-            emptyDir: {}
-          {{- end }}
   triggers:
     - type: kafka
       metadata:
@@ -97,4 +95,7 @@ spec:
         consumerGroup: {{ $lp.consumerGroup | quote }}
         topic: {{ $lp.topic | quote }}
         lagThreshold: {{ $lp.lagThreshold | quote }}
+        activationLagThreshold: {{ $lp.activationLagThreshold | quote }}
+        # 还没提交过时按全部记录算延迟（Job 从头读）；默认的 latest 只算 1，activationLagThreshold 永远达不到。
+        offsetResetPolicy: earliest
 {{- end }}

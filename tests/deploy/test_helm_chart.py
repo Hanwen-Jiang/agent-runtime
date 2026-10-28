@@ -316,6 +316,51 @@ def test_learning_is_a_scaled_job_on_the_spans_topic(manifests: list[dict[str, A
     assert "agentruntime_learning.pipeline" in " ".join(args)
 
 
+def arg_after(args: list[str], flag: str) -> str | None:
+    return args[args.index(flag) + 1] if flag in args else None
+
+
+def test_learning_reads_the_topic_its_trigger_watches(manifests: list[dict[str, Any]]) -> None:
+    """Job 的 trace 就是触发它的那个主题与消费组（learning-pipeline.md 第 7 节）。2026-10-28 上线时 Job 读的是 emptyDir 里不存在的
+    文件，每一轮都失败，KEDA 每半分钟起一个新的。"""
+    job = only(by_kind(manifests, "ScaledJob"), "Learning Pipeline 的 ScaledJob")
+    [trigger] = job["spec"]["triggers"]
+    meta = trigger["metadata"]
+    c = main_container(job)
+    args = c["args"]
+    assert "--traces" not in args, "不读文件"
+    assert (arg_after(args, "--topic"), arg_after(args, "--group")) == (meta["topic"], meta["consumerGroup"])
+    assert arg_after(args, "--format") == "otlp_json", "Collector 的 kafka 导出器写 otlp_json"
+    assert env_of(c)["AR_EVENT_STREAM_BROKERS"]["value"] == meta["bootstrapServers"]
+    assert not [v for v in pod_spec(job)["volumes"] if v["name"] == "traces"], "不再挂放 trace 文件的卷"
+
+
+def test_learning_trigger_counts_every_record_until_the_first_commit(manifests: list[dict[str, Any]]) -> None:
+    """Job 从头读、跑完才提交，所以没提交过时延迟要按全部记录算（earliest）：默认的 latest 只算 1，
+    activationLagThreshold 永远达不到，Job 起不来，也就永远不提交。"""
+    job = only(by_kind(manifests, "ScaledJob"), "Learning Pipeline 的 ScaledJob")
+    [trigger] = job["spec"]["triggers"]
+    assert trigger["metadata"]["offsetResetPolicy"] == "earliest"
+    assert int(trigger["metadata"]["activationLagThreshold"]) >= 1, "攒够新记录再起 Job，不是来一条就重算全部历史"
+
+
+def test_a_failing_learning_job_is_not_restarted_every_30_seconds(manifests: list[dict[str, Any]]) -> None:
+    """失败的 Job 不提交，下一轮重跑；轮询间隔就是重试间隔，KEDA 默认的 30 秒太密（上线时就是这样空转的）。"""
+    job = only(by_kind(manifests, "ScaledJob"), "Learning Pipeline 的 ScaledJob")
+    assert int(job["spec"]["pollingInterval"]) >= 300
+    assert int(job["spec"]["jobTargetRef"]["backoffLimit"]) == 0, "Job 内不重试：重跑由下一轮负责"
+
+
+def test_learning_refuses_the_old_trace_file_settings() -> None:
+    helm = require_tool("helm")
+    proc = subprocess.run(
+        [helm, "template", RELEASE, CHART_DIR, "--set", "learning.tracesClaim=traces"],
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
+    )
+    assert proc.returncode != 0, "learning.tracesClaim 已不再使用，设了应当渲染失败而不是被悄悄忽略"
+    assert "tracesClaim" in proc.stderr
+
+
 def test_learning_runs_one_job_at_a_time(manifests: list[dict[str, Any]]) -> None:
     """R-06 评审第 4 节第 3 条：一个 ScaledJob 对应一个租户的一个任务族；两次运行并发时，后一次的 Promote 覆盖前一次，所以只许一个 Job 同时跑。"""
     job = only(by_kind(manifests, "ScaledJob"), "Learning Pipeline 的 ScaledJob")

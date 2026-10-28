@@ -1,8 +1,13 @@
-"""命令行：python -m agentruntime_learning.pipeline run --tenant <租户> --family <任务族> --traces <文件>…（T-16）。
+"""命令行：python -m agentruntime_learning.pipeline run --tenant <租户> --family <任务族>（T-16），trace 二选一：
+- --traces <文件>…：本地与离线跑；
+- --topic <主题> --group <消费组>：集群里 KEDA 起的 Job 直接消费 Collector 写的主题（见 stream）。从最早保留的记录读到起跑时的末尾，
+  跑完（退出码 0，不是 dry-run）才把末尾提交为消费组的位置；其他结局一律不提交，KEDA 下一轮再起 Job 整条重跑。
 
 环境变量：AR_REGISTRY_ADDRESS（Registry 的内部端口，不是 dry-run 时必填）；AR_SECRETS_FILE（开发 SecretStore，平台作用域里的
-registry/publish-token 是发布令牌）；AR_MODEL_GATEWAY_ADDRESS（可选：失败归因经 Model Gateway）；OTEL_EXPORTER_OTLP_ENDPOINT（可选：审计与指标发给 Collector）。
-最后一行输出运行摘要的 JSON。退出码：0 跑完（已发布、发布被拒、没有候选、dry-run）；1 Registry 写失败；2 参数或环境不对。
+registry/publish-token 是发布令牌）；AR_EVENT_STREAM_BROKERS（--topic 时必填：EventStream 的 host:port，逗号分隔）；
+AR_MODEL_GATEWAY_ADDRESS（可选：失败归因经 Model Gateway）；OTEL_EXPORTER_OTLP_ENDPOINT（可选：审计与指标发给 Collector）。
+最后一行输出运行摘要的 JSON。退出码：0 跑完（已发布、发布被拒、没有候选、dry-run）；1 Registry 写失败；2 参数、环境或 trace 的格式不对；
+3 读主题或提交消费组的位置失败。
 """
 
 from __future__ import annotations
@@ -16,6 +21,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+from agentruntime_learning.pipeline import stream
 from agentruntime_learning.pipeline.run import PipelineConfig, run_pipeline, summary_line
 from agentruntime_learning.pipeline.traces import FORMATS, TraceFormatError
 
@@ -43,7 +49,10 @@ def _parser() -> argparse.ArgumentParser:
     run = sub.add_parser("run", help="跑一遍闭环")
     run.add_argument("--tenant", required=True, help="租户（只读这个租户的 trace，Recipe 发布在它的作用域）")
     run.add_argument("--family", required=True, help="任务族，形如 finance.invoice_coding")
-    run.add_argument("--traces", required=True, nargs="+", help="trace 文件（每行一条记录）")
+    source = run.add_mutually_exclusive_group(required=True)
+    source.add_argument("--traces", nargs="+", help="trace 文件（每行一条记录）")
+    source.add_argument("--topic", help=f"直接消费的 trace 主题（Collector 的 kafka 导出器写的，broker 取 {stream.ENV_BROKERS}）")
+    run.add_argument("--group", help="配 --topic：KEDA 盯的消费组，跑完才提交它的位置")
     run.add_argument("--format", default="otlp_json", choices=FORMATS)
     run.add_argument("--report-dir", default="learning-reports")
     run.add_argument("--budget-usd", type=float, default=0.5, help="这次运行的模型调用预算（美元）；0 表示不调用模型")
@@ -73,7 +82,7 @@ def _publish_token(env: Mapping[str, str]) -> str | None:
     return asyncio.run(read())
 
 
-async def _run(args: argparse.Namespace, env: Mapping[str, str], lines: list[str]) -> int:
+async def _run(args: argparse.Namespace, env: Mapping[str, str], lines: list[str], sources: list[str]) -> int:
     from agentruntime_core.adapters.otel import telemetry_from_env
 
     registry: Any = None
@@ -101,7 +110,7 @@ async def _run(args: argparse.Namespace, env: Mapping[str, str], lines: list[str
             budget_usd=args.budget_usd,
             dry_run=args.dry_run,
         )
-        report = await run_pipeline(config, lines=lines, fmt=args.format, registry=registry, gateway=gateway, telemetry=telemetry, sources=list(args.traces))
+        report = await run_pipeline(config, lines=lines, fmt=args.format, registry=registry, gateway=gateway, telemetry=telemetry, sources=sources)
         print(summary_line(report))
         return 1 if report.status in FAILED else 0
     finally:
@@ -144,33 +153,71 @@ class _ReadOnlyOrNone:
             await self._client.aclose()
 
 
+def _check(args: argparse.Namespace, env: Mapping[str, str]) -> None:
+    if not TENANT.fullmatch(args.tenant):
+        raise UsageError(f"租户 {args.tenant!r} 不合法")
+    if not FAMILY.fullmatch(args.family):
+        raise UsageError(f"任务族 {args.family!r} 不合法：形如 finance.invoice_coding")
+    if args.budget_usd < 0:
+        raise UsageError("--budget-usd 不能为负")
+    if not args.dry_run and not env.get(ENV_REGISTRY_ADDRESS, "").strip():
+        raise UsageError(f"没有设置 {ENV_REGISTRY_ADDRESS}（Registry 的 host:port）；只看结果可以加 --dry-run")
+    if args.topic is None:
+        if args.group is not None:
+            raise UsageError("--group 只配 --topic 用")
+        return
+    if args.group is None:
+        raise UsageError("--topic 要配 --group（KEDA 盯的消费组，跑完才提交它的位置）")
+    if not stream.NAME.fullmatch(args.topic):
+        raise UsageError(f"主题 {args.topic!r} 不合法")
+    if not stream.NAME.fullmatch(args.group):
+        raise UsageError(f"消费组 {args.group!r} 不合法")
+    if not env.get(stream.ENV_BROKERS, "").strip():
+        raise UsageError(f"没有设置 {stream.ENV_BROKERS}（EventStream 的 host:port，逗号分隔）")
+
+
+def _read_files(names: Sequence[str]) -> list[str]:
+    lines: list[str] = []
+    for name in names:
+        path = Path(name)
+        if not path.is_file():
+            raise UsageError(f"trace 文件不存在：{name}")
+        lines.extend(path.read_text("utf-8").splitlines())
+    return lines
+
+
 def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None) -> int:
     env = os.environ if env is None else env
+    reader: Any = None
+    snapshot: stream.Snapshot | None = None
     try:
         args = _parser().parse_args(argv)
-        if not TENANT.fullmatch(args.tenant):
-            raise UsageError(f"租户 {args.tenant!r} 不合法")
-        if not FAMILY.fullmatch(args.family):
-            raise UsageError(f"任务族 {args.family!r} 不合法：形如 finance.invoice_coding")
-        if args.budget_usd < 0:
-            raise UsageError("--budget-usd 不能为负")
-        if not args.dry_run and not env.get(ENV_REGISTRY_ADDRESS, "").strip():
-            raise UsageError(f"没有设置 {ENV_REGISTRY_ADDRESS}（Registry 的 host:port）；只看结果可以加 --dry-run")
-        lines: list[str] = []
-        for name in args.traces:
-            path = Path(name)
-            if not path.is_file():
-                raise UsageError(f"trace 文件不存在：{name}")
-            lines.extend(path.read_text("utf-8").splitlines())
+        _check(args, env)
         args.publish_token = None if args.dry_run else _publish_token(env)
+        if args.topic is None:
+            lines, sources = _read_files(args.traces), list(args.traces)
+        else:
+            reader = stream.TopicReader(env[stream.ENV_BROKERS].strip(), args.topic, args.group)
+            snapshot = reader.snapshot()
+            lines, sources = snapshot.lines(), snapshot.sources
+        code = asyncio.run(_run(args, env, lines, sources))
+        # 只有跑完才提交：失败时 KEDA 看到的延迟不变，下一轮整条重跑。dry-run 不改消费组的位置。
+        if code == 0 and snapshot is not None and not args.dry_run:
+            reader.commit(snapshot)
+        return code
     except UsageError as err:
         print(f"learning pipeline：{err}", file=sys.stderr)
         return 2
-    try:
-        return asyncio.run(_run(args, env, lines))
     except TraceFormatError as err:
-        print(f"learning pipeline：{err}", file=sys.stderr)
+        where = snapshot.where(err.line) if snapshot is not None else ""
+        print(f"learning pipeline：{err}" + (f"（{where}）" if where else ""), file=sys.stderr)
         return 2
+    except stream.StreamError as err:
+        print(f"learning pipeline：{err}；没有提交消费组的位置", file=sys.stderr)
+        return 3
+    finally:
+        if reader is not None:
+            reader.close()
 
 
 if __name__ == "__main__":

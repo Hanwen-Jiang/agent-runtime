@@ -2,7 +2,7 @@
 
 输入是 T-15 定下的 span：Task 级 invoke_workflow 与它下面的 runtime.round（Worker 收尾写回时打的，见
 agentruntime_worker.reviewer.wrap_up.trace_task）。两种格式解析成同样的 SpanRecord：
-- otlp_json：每行一个 OTLP JSON 的 ExportTraceServiceRequest（Collector 的 kafka 与 file 导出器写的）；
+- otlp_json：每行一个 OTLP JSON 的 ExportTraceServiceRequest（Collector 的 kafka 与 file 导出器写的；读主题时一条记录一行，见 stream）；
 - console：控制台 Telemetry 的 JSON 行（只取 kind 为 span 的）。
 
 归并（task_traces）：
@@ -26,7 +26,11 @@ FORMATS = ("otlp_json", "console")
 
 
 class TraceFormatError(ValueError):
-    """trace 文件的某一行不是合法的 JSON 或格式不对。"""
+    """trace 的某一行（读主题时是某一条记录）不是合法的 JSON 或格式不对。line 是从 1 起的行号，不知道时为 0。"""
+
+    def __init__(self, message: str, line: int = 0) -> None:
+        super().__init__(message)
+        self.line = line
 
 
 @dataclass(frozen=True)
@@ -117,7 +121,7 @@ def read_spans(lines: Iterable[str], fmt: str = "otlp_json") -> list[SpanRecord]
         try:
             spans.extend(parse(json.loads(line)))
         except (json.JSONDecodeError, TraceFormatError, KeyError, TypeError, ValueError) as exc:
-            raise TraceFormatError(f"第 {number} 行不是合法的 {fmt} 记录：{type(exc).__name__}") from None
+            raise TraceFormatError(f"第 {number} 行不是合法的 {fmt} 记录：{type(exc).__name__}", number) from None
     return spans
 
 

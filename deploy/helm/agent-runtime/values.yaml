@@ -252,18 +252,22 @@ worker:
         limits: {cpu: "2", memory: 1Gi}
 
 # Learning Pipeline（T-16）：KEDA ScaledJob，按消费组在 trace 主题上的延迟起 Job（设计书 3.5）。
-# 第一期 Job 只能读文件形式的 trace（tracesClaim 里的 tracesFile）；从 Redpanda 消费要等 EventStream 的 Kafka 适配器。
+# Job 直接消费 Collector 写的主题（broker 是 external.redpanda.brokers）：从最早保留的记录读到起跑时的末尾，跑完才提交
+# consumerGroup 的位置，所以历史只到主题的保留期（docs/plan/learning-pipeline.md 第 7 节）。
 learning:
   enabled: true
   topic: telemetry.spans
+  # 一个 ScaledJob 一个租户的一个任务族；加任务族时另起 release 或复制模板，消费组也要各用各的（位置表示这个任务族评测到了哪里）。
   consumerGroup: learning
+  # 上次评测成功之后新到的记录（Collector 每批 span 一条）超过 activationLagThreshold 才起 Job；pollingInterval 秒查一次。
+  # 失败的 Job 不提交，下一轮重跑，所以 pollingInterval 也是重试的间隔。
+  activationLagThreshold: 100
+  pollingInterval: 600
   lagThreshold: 1000
   maxReplicaCount: 1
   tenant: t1
   family: finance.invoice_coding
   budgetUsd: "0.5"
-  tracesClaim: ""
-  tracesFile: /traces/spans.jsonl
   resources:
     requests: {cpu: 250m, memory: 256Mi}
     limits: {cpu: "1", memory: 1Gi}

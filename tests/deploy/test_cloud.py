@@ -380,6 +380,24 @@ def test_cloud_service_addresses_match_the_data_layer() -> None:
         assert f".{namespace}.svc" in address and release in address, f"{address} 对不上 {release}（{namespace}）"
 
 
+def test_cloud_learning_consumes_what_the_collector_writes(cloud: list[dict[str, Any]]) -> None:
+    """云上的 Learning Pipeline 有真的 trace 来源：Job 消费的主题与 broker，就是集群里 Collector 的 kafka 导出器写的那个
+    （上线时 Job 读 /traces/spans.jsonl，卷是空的，只好先关掉）。"""
+    assert cloud_values()["learning"]["enabled"] is True
+    [job] = by_kind(cloud, "ScaledJob")
+    [c] = pod_spec(job)["containers"]
+    args, env = c["args"], env_of(c)
+    collector = yaml.safe_load((REPO_ROOT / "deploy" / "helm" / "agent-runtime" / "files" / "otel-collector.yaml").read_text("utf-8"))
+    exporter = collector["exporters"]["kafka"]
+    assert "kafka" in collector["service"]["pipelines"]["traces/learning"]["exporters"]
+    assert args[args.index("--topic") + 1] == exporter["traces"]["topic"]
+    assert args[args.index("--format") + 1] == exporter["traces"]["encoding"]
+    [collector_deployment] = [d for d in by_kind(cloud, "Deployment") if d["metadata"]["labels"].get(WORKER) == "otel-collector"]
+    collector_env = env_of(pod_spec(collector_deployment)["containers"][0])
+    assert env["AR_EVENT_STREAM_BROKERS"]["value"] == collector_env["REDPANDA_BROKERS"]["value"] == cloud_values()["external"]["redpanda"]["brokers"]
+    assert "--traces" not in args and "tracesClaim" not in cloud_values()["learning"]
+
+
 # --- 密钥与资源 ---
 
 

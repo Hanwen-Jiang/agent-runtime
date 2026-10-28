@@ -64,7 +64,7 @@ TMP 计划的“完成”只要求 `helm lint` 通过、`helm template` 出合�
 
 - 镜像与 Dockerfile：仓库里还没有，Chart 里镜像名是占位；真部署前补。
 - 第三方组件的 Chart 依赖（subchart）：要联网拉 Chart 仓库，`helm lint` 不应依赖网络。
-- Learning Pipeline 消费 Redpanda 的生产实现（EventStream 的 Kafka 适配器属于“存储类 Provider 的生产实现”）：ScaledJob 按清单配好，但 Job 第一期只能读文件形式的 trace（见 T-16 细化 `learning-pipeline.md`），在集群里真正跑起来要等这个适配器。
+- ~~Learning Pipeline 消费 Redpanda~~：2026-10-28 起 Job 直接消费 `telemetry.spans`（用 Kafka 客户端读 Collector 写的主题，不经 EventStream 接口），见 `learning-pipeline.md` 第 7 节。EventStream 按租户的 Kafka 适配器仍属“存储类 Provider 的生产实现”，没做。
 - offline 队列的 Worker 池：现在没有任何工作流或 activity 用 offline 队列（Learning 第一期不是 Temporal 工作流），等 T-16 之后有了再加。
 - deliver 节点的 token 增量、思考与工具状态的推流 span（附录 K.1；T-11b 登记的后续）。
 - Planner、Reviewer 决策调用的 span（J.1 第三行）：它们经 Model Gateway，Gateway 的 `chat` span 已经带 tier、tokens、cost；

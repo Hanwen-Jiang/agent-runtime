@@ -497,8 +497,12 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
   同步时按策略给本次操作发联网授权，没有这一节就报 `network_not_allowed`。Task 自己联网仍要逐次申请。
 - task-service 的错误带 `google.rpc.ErrorInfo`（reason 是错误模型的 code）：说明是中文，应用按 code 翻成界面的语言（coding-web 的 `runtime_errors.go`）。
 - Learning Pipeline 线上先关（`--set learning.enabled=false`）：`values-cloud.yaml` 的 ScaledJob 按 Redpanda 的积压起 Job，Job 却从
-  `/traces/spans.jsonl` 读 trace，而 `tracesClaim` 是空的，于是每半分钟起一个失败的 Job。要接上：Job 直接消费 `telemetry.spans`，
-  或 Collector 另写一份文件到共用的卷（T-16 的输入）。
+  `/traces/spans.jsonl` 读 trace，而 `tracesClaim` 是空的，于是每半分钟起一个失败的 Job。
+  **2026-10-28 已接上，可以重新打开**：Job 直接消费 Collector 写的 `telemetry.spans`，用的就是 KEDA 盯的消费组，跑完才提交
+  （[learning-pipeline.md](learning-pipeline.md) 第 7 节）；失败的 Job 不提交，`learning.pollingInterval`（600 秒）之后重跑。
+  重新打开：用新的 learning 镜像，`helm upgrade` 去掉 `--set learning.enabled=false`，把 `learning.tenant`、`learning.family` 设成要学的租户与任务族。
+  之后核对：`kubectl -n agent-runtime get scaledjob,job -l app.kubernetes.io/component=learning`，以及
+  `kubectl -n data exec redpanda-0 -- rpk group describe learning`（第一个 Job 跑完后位置等于末尾，延迟归零）。
 
 实现中与本计划写法不同的：
 
