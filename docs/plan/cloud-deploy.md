@@ -493,6 +493,9 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
 - 上线时改的：Traefik Chart 40 的跳转键位置、Kata 4.2 的 handler 在 `config-v3.toml.d` 里、Redpanda 的特权 tuning 容器关掉、
   Workspace API 在挂卷的后端上要先建工作区目录（否则 kubelet 以 root 建 subPath）、租户策略的种子不起名字。
 - Cloudflare 的 Browser Integrity Check 拒绝 Python-urllib 之类的默认 User-Agent（错误 1010）：直接调 `api.cgent.link` 的脚本要带自己的 User-Agent。
+- Learning Pipeline 线上先关（`--set learning.enabled=false`）：`values-cloud.yaml` 的 ScaledJob 按 Redpanda 的积压起 Job，Job 却从
+  `/traces/spans.jsonl` 读 trace，而 `tracesClaim` 是空的，于是每半分钟起一个失败的 Job。要接上：Job 直接消费 `telemetry.spans`，
+  或 Collector 另写一份文件到共用的卷（T-16 的输入）。
 
 实现中与本计划写法不同的：
 
