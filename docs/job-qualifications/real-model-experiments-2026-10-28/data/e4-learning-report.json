@@ -1,0 +1,160 @@
+{
+  "status": "rejected",
+  "tenant_id": "t13",
+  "task_family": "dev.code_fix",
+  "reasons": [
+    "发布被拒：没过评测门槛",
+    "样本不足：候选组 1 条，至少要 100 条",
+    "样本不足：现行组 2 条，至少要 100 条",
+    "成功率的 95% 置信下界 20.7% 低于现行的成功率 100.0% 减 δ（2%）"
+  ],
+  "candidate": "learned_dev_code_fix",
+  "recipe": null,
+  "candidate_document": {
+    "task_family": "dev.code_fix",
+    "description": "从 1 次成功的 Task 归纳的做法（Learning Pipeline）：探索并推进这个任务 → 探索并推进这个任务 → 运行测试获取输出，读取并修复 pricing.py，验证测试通过，交付答案",
+    "risk": "write_irreversible",
+    "typical_cost_usd": 0.262752,
+    "stages": [
+      {
+        "goal": "探索并推进这个任务",
+        "exit_when": "explore 给出结果",
+        "nodes": [
+          {
+            "id": "explore",
+            "kind": "goal",
+            "goal": "CI 挂了：在仓库根目录运行 `python -m unittest` 有用例失败。请找出原因并修好 pricing.py，让全部测试通过；不要改测试文件 test_pricing.py。改完再运行一遍 `python -m unittest` 确认。",
+            "done_when": "回答用户的问题",
+            "mode": "tool_loop",
+            "output_schema": {
+              "type": "object"
+            }
+          }
+        ]
+      },
+      {
+        "goal": "探索并推进这个任务",
+        "exit_when": "explore 给出结果",
+        "nodes": [
+          {
+            "id": "explore",
+            "kind": "goal",
+            "goal": "CI 挂了：在仓库根目录运行 `python -m unittest` 有用例失败。请找出原因并修好 pricing.py，让全部测试通过；不要改测试文件 test_pricing.py。改完再运行一遍 `python -m unittest` 确认。",
+            "done_when": "回答用户的问题",
+            "mode": "tool_loop",
+            "output_schema": {
+              "type": "object"
+            }
+          }
+        ]
+      },
+      {
+        "goal": "运行测试获取输出，读取并修复 pricing.py，验证测试通过，交付答案",
+        "exit_when": "deliver 节点成功给出最终答案",
+        "nodes": [
+          {
+            "id": "fix_and_verify",
+            "kind": "goal",
+            "goal": "运行 python -m unittest 获取测试输出，读取 test_pricing.py 和 pricing.py，找出失败原因，修复 pricing.py 使测试通过，再次运行测试确认全部通过",
+            "done_when": "pricing.py 已修复且 python -m unittest 显示全部测试通过",
+            "mode": "tool_loop",
+            "output_schema": {
+              "properties": {
+                "final_result": {
+                  "type": "string"
+                },
+                "fix_applied": {
+                  "type": "string"
+                },
+                "initial_failures": {
+                  "type": "string"
+                },
+                "root_cause": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "initial_failures",
+                "root_cause",
+                "fix_applied",
+                "final_result"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "id": "deliver",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "after": [
+              "fix_and_verify"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "evidence": {
+    "eval_set": {
+      "name": "traces.dev.code_fix",
+      "version": "8f3f0bedab151aaf"
+    },
+    "task_family": "dev.code_fix",
+    "samples": 1,
+    "candidate": {
+      "success_rate": 1.0,
+      "cost_per_success_usd": 0.262752,
+      "success_rate_ci95": [
+        0.206543,
+        1.0
+      ]
+    },
+    "thresholds": {
+      "delta": 0.02,
+      "epsilon": 0.05
+    },
+    "passed": false,
+    "report": "dev.code_fix-20261028T130258815154Z.json",
+    "evaluated_at": "2026-10-28T13:02:58Z",
+    "baseline": {
+      "success_rate": 1.0,
+      "cost_per_success_usd": 0.345832,
+      "success_rate_ci95": [
+        0.342372,
+        1.0
+      ]
+    }
+  },
+  "baseline": {
+    "kind": "full_planning",
+    "samples": 2
+  },
+  "gate": {
+    "passed": false,
+    "details": {
+      "success_rate": {
+        "candidate_low": 0.206543,
+        "baseline": 1.0,
+        "floor": 0.98
+      },
+      "cost_per_success": {
+        "candidate_upper": 0.262752,
+        "baseline": 0.345832,
+        "ceiling": 0.363124
+      }
+    },
+    "min_samples": 100
+  },
+  "budget": {
+    "limit_usd": 0.5,
+    "spent_usd": 0.0,
+    "calls": 0,
+    "exhausted": false
+  },
+  "attributions": [],
+  "tasks": 5,
+  "skipped": 6,
+  "other_tenant_spans": 0,
+  "path": "C:\\Users\\alex\\.local\\tmp\\e4\\learning-reports\\dev.code_fix-20261028T130258815154Z.json",
+  "attribution_summary": {}
+}

@@ -1,0 +1,69 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 127.0.0.1:14318
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+  batch:
+    send_batch_size: 1024
+    timeout: 5s
+  attributes/redact:
+    actions:
+    - pattern: (?i).*(password|secret|api_key|apikey|authorization|credential|cookie).*
+      action: delete
+  filter/semantic:
+    error_mode: ignore
+    traces:
+      span:
+      - attributes["gen_ai.operation.name"] == nil and not IsMatch(name, "^(runtime\\.|invoke_)")
+exporters:
+  kafka:
+    brokers:
+    - 127.0.0.1:19092
+    traces:
+      topic: telemetry.spans
+      encoding: otlp_json
+  debug:
+    verbosity: basic
+  file/spans:
+    path: C:\Users\alex\.local\tmp\e4\spans.jsonl
+extensions:
+  health_check:
+    endpoint: 127.0.0.1:13133
+service:
+  extensions:
+  - health_check
+  pipelines:
+    traces/learning:
+      receivers:
+      - otlp
+      processors:
+      - memory_limiter
+      - attributes/redact
+      - filter/semantic
+      - batch
+      exporters:
+      - kafka
+      - file/spans
+    metrics:
+      receivers:
+      - otlp
+      processors:
+      - memory_limiter
+      - attributes/redact
+      - batch
+      exporters:
+      - debug
+    logs:
+      receivers:
+      - otlp
+      processors:
+      - memory_limiter
+      - attributes/redact
+      - batch
+      exporters:
+      - debug

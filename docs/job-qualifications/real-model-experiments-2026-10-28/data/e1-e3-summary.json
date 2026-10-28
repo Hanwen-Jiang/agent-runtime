@@ -1,0 +1,2286 @@
+{
+  "runs": [
+    {
+      "variant": "e1",
+      "split": "dev",
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e1\\task-loop--worker--dev--20261028T131059.994832Z.json",
+      "created_at": "2026-10-28T13:10:59.994832+0000",
+      "planner": {
+        "decisions": 26,
+        "passed": 9,
+        "schema_pass_rate": 1.0,
+        "triage_accuracy": 0.9230769230769231,
+        "shape_match_rate": 0.34615384615384615,
+        "rule_violations": 0
+      },
+      "reviewer": {
+        "decisions": 16,
+        "passed": 8,
+        "verdict_accuracy": 0.5,
+        "schema_pass_rate": 1.0
+      },
+      "rounds": {
+        "decisions": 39,
+        "passed": 36,
+        "verdict_accuracy": 0.9230769230769231,
+        "schema_pass_rate": 1.0
+      },
+      "stuck_retry_errors": 3,
+      "cost": {
+        "total_usd": 1.780006,
+        "task_cases_usd": 1.461717,
+        "per_case_usd": 0.056219884615384616,
+        "per_success_usd": 0.162413,
+        "judge_usd": 0.0,
+        "planner_cost_ratio": {
+          "cases": 13,
+          "mean": 0.03586153888888889,
+          "max": 0.15794
+        }
+      },
+      "task_success": [
+        9,
+        26
+      ],
+      "s09": {
+        "passed": true,
+        "gaps": []
+      },
+      "s10": {
+        "passed": false,
+        "gaps": [
+          "reviewer.verdict_accuracy=0.5（门槛 >= 0.85）",
+          "stuck_retry_errors=3（门槛 <= 0）"
+        ]
+      },
+      "model_call_failures": {
+        "bad_structured_output": 7,
+        "models_exhausted": 22
+      }
+    },
+    {
+      "variant": "e1-holdout",
+      "split": "holdout",
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e1-holdout\\task-loop--worker--holdout--20261028T132203.551938Z.json",
+      "created_at": "2026-10-28T13:22:03.551938+0000",
+      "planner": {
+        "decisions": 14,
+        "passed": 7,
+        "schema_pass_rate": 1.0,
+        "triage_accuracy": 1.0,
+        "shape_match_rate": 0.5,
+        "rule_violations": 0
+      },
+      "reviewer": {
+        "decisions": 8,
+        "passed": 6,
+        "verdict_accuracy": 0.75,
+        "schema_pass_rate": 1.0
+      },
+      "rounds": {
+        "decisions": 16,
+        "passed": 15,
+        "verdict_accuracy": 0.9375,
+        "schema_pass_rate": 1.0
+      },
+      "stuck_retry_errors": 0,
+      "cost": {
+        "total_usd": 0.91856,
+        "task_cases_usd": 0.713163,
+        "per_case_usd": 0.05094021428571428,
+        "per_success_usd": 0.10188042857142857,
+        "judge_usd": 0.0,
+        "planner_cost_ratio": {
+          "cases": 5,
+          "mean": 0.07436764666666666,
+          "max": 0.19731
+        }
+      },
+      "task_success": null,
+      "s09": {
+        "passed": true,
+        "gaps": []
+      },
+      "s10": {
+        "passed": false,
+        "gaps": [
+          "reviewer.verdict_accuracy=0.75（门槛 >= 0.85）"
+        ]
+      },
+      "model_call_failures": {
+        "bad_structured_output": 4
+      }
+    },
+    {
+      "variant": "e1b",
+      "split": "dev",
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e1b\\task-loop--worker--dev--20261028T134143.240437Z.json",
+      "created_at": "2026-10-28T13:41:43.240437+0000",
+      "planner": {
+        "decisions": 26,
+        "passed": 13,
+        "schema_pass_rate": 1.0,
+        "triage_accuracy": 1.0,
+        "shape_match_rate": 0.5,
+        "rule_violations": 0
+      },
+      "reviewer": {
+        "decisions": 16,
+        "passed": 8,
+        "verdict_accuracy": 0.5,
+        "schema_pass_rate": 1.0
+      },
+      "rounds": {
+        "decisions": 39,
+        "passed": 37,
+        "verdict_accuracy": 0.9487179487179487,
+        "schema_pass_rate": 1.0
+      },
+      "stuck_retry_errors": 3,
+      "cost": {
+        "total_usd": 1.986424,
+        "task_cases_usd": 1.670669,
+        "per_case_usd": 0.0642565,
+        "per_success_usd": 0.128513,
+        "judge_usd": 0.0,
+        "planner_cost_ratio": {
+          "cases": 13,
+          "mean": 0.0329929876068376,
+          "max": 0.12999888888888889
+        }
+      },
+      "task_success": [
+        13,
+        26
+      ],
+      "s09": {
+        "passed": true,
+        "gaps": []
+      },
+      "s10": {
+        "passed": false,
+        "gaps": [
+          "reviewer.verdict_accuracy=0.5（门槛 >= 0.85）",
+          "stuck_retry_errors=3（门槛 <= 0）"
+        ]
+      },
+      "model_call_failures": {
+        "bad_structured_output": 7,
+        "models_exhausted": 4
+      }
+    },
+    {
+      "variant": "e1c",
+      "split": "dev",
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e1c\\task-loop--worker--dev--20261028T134142.860994Z.json",
+      "created_at": "2026-10-28T13:41:42.860994+0000",
+      "planner": {
+        "decisions": 26,
+        "passed": 11,
+        "schema_pass_rate": 1.0,
+        "triage_accuracy": 1.0,
+        "shape_match_rate": 0.4230769230769231,
+        "rule_violations": 0
+      },
+      "reviewer": {
+        "decisions": 16,
+        "passed": 8,
+        "verdict_accuracy": 0.5,
+        "schema_pass_rate": 1.0
+      },
+      "rounds": {
+        "decisions": 39,
+        "passed": 37,
+        "verdict_accuracy": 0.9487179487179487,
+        "schema_pass_rate": 1.0
+      },
+      "stuck_retry_errors": 3,
+      "cost": {
+        "total_usd": 1.809232,
+        "task_cases_usd": 1.5794650000000001,
+        "per_case_usd": 0.06074865384615385,
+        "per_success_usd": 0.14358772727272728,
+        "judge_usd": 0.0,
+        "planner_cost_ratio": {
+          "cases": 13,
+          "mean": 0.03379268034188034,
+          "max": 0.075575
+        }
+      },
+      "task_success": [
+        11,
+        26
+      ],
+      "s09": {
+        "passed": true,
+        "gaps": []
+      },
+      "s10": {
+        "passed": false,
+        "gaps": [
+          "reviewer.verdict_accuracy=0.5（门槛 >= 0.85）",
+          "stuck_retry_errors=3（门槛 <= 0）"
+        ]
+      },
+      "model_call_failures": {
+        "bad_structured_output": 7,
+        "models_exhausted": 4
+      }
+    },
+    {
+      "variant": "e1d",
+      "split": "dev",
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e1d\\task-loop--worker--dev--20261028T164655.770639Z.json",
+      "created_at": "2026-10-28T16:46:55.770639+0000",
+      "planner": {
+        "decisions": 26,
+        "passed": 11,
+        "schema_pass_rate": 1.0,
+        "triage_accuracy": 1.0,
+        "shape_match_rate": 0.4230769230769231,
+        "rule_violations": 0
+      },
+      "reviewer": {
+        "decisions": 16,
+        "passed": 6,
+        "verdict_accuracy": 0.375,
+        "schema_pass_rate": 1.0
+      },
+      "rounds": {
+        "decisions": 39,
+        "passed": 34,
+        "verdict_accuracy": 0.8717948717948718,
+        "schema_pass_rate": 1.0
+      },
+      "stuck_retry_errors": 4,
+      "cost": {
+        "total_usd": 2.0065,
+        "task_cases_usd": 1.56478,
+        "per_case_usd": 0.06018384615384616,
+        "per_success_usd": 0.14225272727272728,
+        "judge_usd": 0.0,
+        "planner_cost_ratio": {
+          "cases": 13,
+          "mean": 0.02453351282051282,
+          "max": 0.050125
+        }
+      },
+      "task_success": [
+        11,
+        26
+      ],
+      "s09": {
+        "passed": true,
+        "gaps": []
+      },
+      "s10": {
+        "passed": false,
+        "gaps": [
+          "reviewer.verdict_accuracy=0.375（门槛 >= 0.85）",
+          "stuck_retry_errors=4（门槛 <= 0）"
+        ]
+      },
+      "model_call_failures": {
+        "models_exhausted": 1
+      }
+    },
+    {
+      "variant": "e2-geminiflash",
+      "split": "dev",
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e2-geminiflash\\task-loop--worker--dev--20261028T131800.848896Z.json",
+      "created_at": "2026-10-28T13:18:00.848896+0000",
+      "planner": {
+        "decisions": 26,
+        "passed": 10,
+        "schema_pass_rate": 1.0,
+        "triage_accuracy": 0.9615384615384616,
+        "shape_match_rate": 0.38461538461538464,
+        "rule_violations": 0
+      },
+      "reviewer": {
+        "decisions": 16,
+        "passed": 10,
+        "verdict_accuracy": 0.625,
+        "schema_pass_rate": 1.0
+      },
+      "rounds": {
+        "decisions": 39,
+        "passed": 35,
+        "verdict_accuracy": 0.8974358974358975,
+        "schema_pass_rate": 1.0
+      },
+      "stuck_retry_errors": 4,
+      "cost": {
+        "total_usd": 0.264718,
+        "task_cases_usd": 0.210131,
+        "per_case_usd": 0.00808196153846154,
+        "per_success_usd": 0.0210131,
+        "judge_usd": 0.0,
+        "planner_cost_ratio": {
+          "cases": 13,
+          "mean": 0.0030478376068376065,
+          "max": 0.005015
+        }
+      },
+      "task_success": [
+        10,
+        26
+      ],
+      "s09": {
+        "passed": true,
+        "gaps": []
+      },
+      "s10": {
+        "passed": false,
+        "gaps": [
+          "reviewer.verdict_accuracy=0.625（门槛 >= 0.85）",
+          "stuck_retry_errors=4（门槛 <= 0）"
+        ]
+      },
+      "model_call_failures": {
+        "bad_structured_output": 1
+      }
+    },
+    {
+      "variant": "e2-gpt55",
+      "split": "dev",
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e2-gpt55\\task-loop--worker--dev--20261028T130739.553367Z.json",
+      "created_at": "2026-10-28T13:07:39.553367+0000",
+      "planner": {
+        "decisions": 26,
+        "passed": 9,
+        "schema_pass_rate": 1.0,
+        "triage_accuracy": 0.8461538461538461,
+        "shape_match_rate": 0.34615384615384615,
+        "rule_violations": 0
+      },
+      "reviewer": {
+        "decisions": 16,
+        "passed": 9,
+        "verdict_accuracy": 0.5625,
+        "schema_pass_rate": 1.0
+      },
+      "rounds": {
+        "decisions": 39,
+        "passed": 32,
+        "verdict_accuracy": 0.8205128205128205,
+        "schema_pass_rate": 1.0
+      },
+      "stuck_retry_errors": 5,
+      "cost": {
+        "total_usd": 1.141378,
+        "task_cases_usd": 0.718272,
+        "per_case_usd": 0.027625846153846154,
+        "per_success_usd": 0.089784,
+        "judge_usd": 0.0,
+        "planner_cost_ratio": {
+          "cases": 13,
+          "mean": 0.01191228247863248,
+          "max": 0.05203833333333334
+        }
+      },
+      "task_success": [
+        8,
+        26
+      ],
+      "s09": {
+        "passed": false,
+        "gaps": [
+          "planner.triage_accuracy=0.846（门槛 >= 0.9）"
+        ]
+      },
+      "s10": {
+        "passed": false,
+        "gaps": [
+          "reviewer.verdict_accuracy=0.562（门槛 >= 0.85）",
+          "stuck_retry_errors=5（门槛 <= 0）"
+        ]
+      },
+      "model_call_failures": {
+        "bad_structured_output": 3,
+        "models_exhausted": 53
+      }
+    },
+    {
+      "variant": "e2-gpt55-rerun",
+      "split": "dev",
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e2-gpt55-rerun\\task-loop--worker--dev--20261028T165939.724108Z.json",
+      "created_at": "2026-10-28T16:59:39.724108+0000",
+      "planner": {
+        "decisions": 26,
+        "passed": 11,
+        "schema_pass_rate": 1.0,
+        "triage_accuracy": 1.0,
+        "shape_match_rate": 0.4230769230769231,
+        "rule_violations": 0
+      },
+      "reviewer": {
+        "decisions": 16,
+        "passed": 8,
+        "verdict_accuracy": 0.5,
+        "schema_pass_rate": 1.0
+      },
+      "rounds": {
+        "decisions": 39,
+        "passed": 30,
+        "verdict_accuracy": 0.7692307692307693,
+        "schema_pass_rate": 1.0
+      },
+      "stuck_retry_errors": 4,
+      "cost": {
+        "total_usd": 1.297255,
+        "task_cases_usd": 1.092728,
+        "per_case_usd": 0.042027999999999996,
+        "per_success_usd": 0.156104,
+        "judge_usd": 0.0,
+        "planner_cost_ratio": {
+          "cases": 13,
+          "mean": 0.017020553846153846,
+          "max": 0.048448333333333336
+        }
+      },
+      "task_success": [
+        7,
+        26
+      ],
+      "s09": {
+        "passed": true,
+        "gaps": []
+      },
+      "s10": {
+        "passed": false,
+        "gaps": [
+          "reviewer.verdict_accuracy=0.5（门槛 >= 0.85）",
+          "stuck_retry_errors=4（门槛 <= 0）"
+        ]
+      },
+      "model_call_failures": {
+        "bad_structured_output": 2,
+        "models_exhausted": 4
+      }
+    },
+    {
+      "variant": "e2-opus",
+      "split": "dev",
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e2-opus\\task-loop--worker--dev--20261028T132108.975627Z.json",
+      "created_at": "2026-10-28T13:21:08.975627+0000",
+      "planner": {
+        "decisions": 26,
+        "passed": 12,
+        "schema_pass_rate": 1.0,
+        "triage_accuracy": 0.9615384615384616,
+        "shape_match_rate": 0.5,
+        "rule_violations": 0
+      },
+      "reviewer": {
+        "decisions": 16,
+        "passed": 13,
+        "verdict_accuracy": 0.8125,
+        "schema_pass_rate": 1.0
+      },
+      "rounds": {
+        "decisions": 39,
+        "passed": 26,
+        "verdict_accuracy": 0.6666666666666666,
+        "schema_pass_rate": 1.0
+      },
+      "stuck_retry_errors": 1,
+      "cost": {
+        "total_usd": 2.528525,
+        "task_cases_usd": 2.228831,
+        "per_case_usd": 0.08572426923076923,
+        "per_success_usd": 0.37147183333333333,
+        "judge_usd": 0.0,
+        "planner_cost_ratio": {
+          "cases": 13,
+          "mean": 0.057676513675213675,
+          "max": 0.1549
+        }
+      },
+      "task_success": [
+        6,
+        26
+      ],
+      "s09": {
+        "passed": true,
+        "gaps": []
+      },
+      "s10": {
+        "passed": false,
+        "gaps": [
+          "reviewer.verdict_accuracy=0.812（门槛 >= 0.85）",
+          "stuck_retry_errors=1（门槛 <= 0）"
+        ]
+      },
+      "model_call_failures": {}
+    }
+  ],
+  "failure_reasons_dev": {
+    "e1": {
+      "runs": 1,
+      "top": [
+        [
+          "shape/deliver: 期望有 deliver 节点，实际没有",
+          9
+        ],
+        [
+          "shape/modes: 缺少 Goal Node mode：tool_loop",
+          4
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 replan，却在 repair_change_method 原地重试",
+          2
+        ],
+        [
+          "shape/gate: 期望有 gate（人工确认或不可逆动作前的审批），实际没有",
+          2
+        ],
+        [
+          "shape/human: 期望有 human 节点，实际没有",
+          2
+        ],
+        [
+          "shape/modes: 缺少 Goal Node mode：template",
+          2
+        ],
+        [
+          "shape/quality: 缺少质量包装：revise",
+          2
+        ],
+        [
+          "triage/triage: 期望 fast，得到 full",
+          2
+        ],
+        [
+          "verdict/verdict: 期望 escalate（可接受：escalate），得到 continue",
+          2
+        ],
+        [
+          "verdict/verdict: 期望 replan（可接受：replan），得到 repair",
+          2
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 rollback，却在 repair_retry 原地重试",
+          1
+        ],
+        [
+          "shape/fan_out: 并行宽度期望 至少 2，得到 1",
+          1
+        ]
+      ]
+    },
+    "e1b": {
+      "runs": 1,
+      "top": [
+        [
+          "shape/deliver: 期望有 deliver 节点，实际没有",
+          5
+        ],
+        [
+          "shape/modes: 缺少 Goal Node mode：template",
+          3
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 replan，却在 repair_change_method 原地重试",
+          2
+        ],
+        [
+          "shape/gate: 期望有 gate（人工确认或不可逆动作前的审批），实际没有",
+          2
+        ],
+        [
+          "shape/quality: 缺少质量包装：revise",
+          2
+        ],
+        [
+          "verdict/verdict: 期望 repair（可接受：repair），得到 done",
+          2
+        ],
+        [
+          "verdict/verdict: 期望 replan（可接受：replan），得到 repair",
+          2
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 rollback，却在 repair_retry 原地重试",
+          1
+        ],
+        [
+          "shape/fan_out: 并行宽度期望 至少 2，得到 1",
+          1
+        ],
+        [
+          "shape/fan_out: 并行宽度期望 至少 3，得到 1",
+          1
+        ],
+        [
+          "shape/forbidden_roles: 本轮不该有 role = deliver 的 Node（一轮只规划到下一个信息检查点）",
+          1
+        ],
+        [
+          "shape/human: 期望有 human 节点，实际没有",
+          1
+        ]
+      ]
+    },
+    "e1c": {
+      "runs": 1,
+      "top": [
+        [
+          "shape/deliver: 期望有 deliver 节点，实际没有",
+          7
+        ],
+        [
+          "shape/forbidden_roles: 本轮不该有 role = deliver 的 Node（一轮只规划到下一个信息检查点）",
+          5
+        ],
+        [
+          "shape/modes: 缺少 Goal Node mode：template",
+          3
+        ],
+        [
+          "shape/modes: 缺少 Goal Node mode：tool_loop",
+          3
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 replan，却在 repair_change_method 原地重试",
+          2
+        ],
+        [
+          "shape/gate: 期望有 gate（人工确认或不可逆动作前的审批），实际没有",
+          2
+        ],
+        [
+          "shape/human: 期望有 human 节点，实际没有",
+          2
+        ],
+        [
+          "shape/quality: 缺少质量包装：revise",
+          2
+        ],
+        [
+          "verdict/verdict: 期望 escalate（可接受：escalate），得到 continue",
+          2
+        ],
+        [
+          "verdict/verdict: 期望 repair（可接受：repair），得到 done",
+          2
+        ],
+        [
+          "verdict/verdict: 期望 replan（可接受：replan），得到 repair",
+          2
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 rollback，却在 repair_retry 原地重试",
+          1
+        ]
+      ]
+    },
+    "e1d": {
+      "runs": 1,
+      "top": [
+        [
+          "shape/deliver: 期望有 deliver 节点，实际没有",
+          7
+        ],
+        [
+          "shape/modes: 缺少 Goal Node mode：tool_loop",
+          4
+        ],
+        [
+          "shape/modes: 缺少 Goal Node mode：template",
+          3
+        ],
+        [
+          "verdict/verdict: 期望 replan（可接受：replan），得到 repair",
+          3
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 replan，却在 repair_change_method 原地重试",
+          2
+        ],
+        [
+          "shape/gate: 期望有 gate（人工确认或不可逆动作前的审批），实际没有",
+          2
+        ],
+        [
+          "shape/quality: 缺少质量包装：revise",
+          2
+        ],
+        [
+          "verdict/verdict: 期望 repair（可接受：repair），得到 escalate",
+          2
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 replan，却在 repair_retry 原地重试",
+          1
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 rollback，却在 repair_change_method 原地重试",
+          1
+        ],
+        [
+          "shape/fan_out: 并行宽度期望 至少 2，得到 1",
+          1
+        ],
+        [
+          "shape/fan_out: 并行宽度期望 至少 3，得到 1",
+          1
+        ]
+      ]
+    },
+    "e2-geminiflash": {
+      "runs": 1,
+      "top": [
+        [
+          "shape/deliver: 期望有 deliver 节点，实际没有",
+          7
+        ],
+        [
+          "shape/modes: 缺少 Goal Node mode：tool_loop",
+          5
+        ],
+        [
+          "shape/modes: 缺少 Goal Node mode：template",
+          3
+        ],
+        [
+          "shape/gate: 期望有 gate（人工确认或不可逆动作前的审批），实际没有",
+          2
+        ],
+        [
+          "shape/human: 期望有 human 节点，实际没有",
+          2
+        ],
+        [
+          "shape/quality: 缺少质量包装：revise",
+          2
+        ],
+        [
+          "verdict/verdict: 期望 escalate（可接受：escalate），得到 repair",
+          2
+        ],
+        [
+          "verdict/verdict: 期望 repair（可接受：repair），得到 replan",
+          2
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 escalate，却在 repair_change_method 原地重试",
+          1
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 escalate，却在 repair_retry 原地重试",
+          1
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 replan，却在 repair_change_method 原地重试",
+          1
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 rollback，却在 repair_change_method 原地重试",
+          1
+        ]
+      ]
+    },
+    "e2-gpt55": {
+      "runs": 1,
+      "top": [
+        [
+          "shape/deliver: 期望有 deliver 节点，实际没有",
+          11
+        ],
+        [
+          "shape/modes: 缺少 Goal Node mode：template",
+          4
+        ],
+        [
+          "verdict/verdict: 期望 repair（可接受：repair），得到 replan",
+          3
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 escalate，却在 repair_retry 原地重试",
+          2
+        ],
+        [
+          "shape/gate: 期望有 gate（人工确认或不可逆动作前的审批），实际没有",
+          2
+        ],
+        [
+          "shape/quality: 缺少质量包装：revise",
+          2
+        ],
+        [
+          "triage/triage: 期望 fast，得到 full",
+          2
+        ],
+        [
+          "verdict/verdict: 期望 escalate（可接受：escalate），得到 repair",
+          2
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 replan_change_shape，却在 repair_change_method 原地重试",
+          1
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 replan，却在 repair_retry 原地重试",
+          1
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 rollback，却在 repair_retry 原地重试",
+          1
+        ],
+        [
+          "shape/fan_out: 并行宽度期望 至少 2，得到 1",
+          1
+        ]
+      ]
+    },
+    "e2-gpt55-rerun": {
+      "runs": 1,
+      "top": [
+        [
+          "shape/deliver: 期望有 deliver 节点，实际没有",
+          6
+        ],
+        [
+          "shape/modes: 缺少 Goal Node mode：tool_loop",
+          4
+        ],
+        [
+          "shape/modes: 缺少 Goal Node mode：template",
+          3
+        ],
+        [
+          "verdict/verdict: 期望 done（可接受：done），得到 continue",
+          3
+        ],
+        [
+          "shape/gate: 期望有 gate（人工确认或不可逆动作前的审批），实际没有",
+          2
+        ],
+        [
+          "shape/quality: 缺少质量包装：revise",
+          2
+        ],
+        [
+          "verdict/verdict: 期望 done（可接受：done），得到 repair",
+          2
+        ],
+        [
+          "verdict/verdict: 期望 escalate（可接受：escalate），得到 continue",
+          2
+        ],
+        [
+          "verdict/verdict: 期望 replan（可接受：replan），得到 repair",
+          2
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 escalate，却在 repair_change_method 原地重试",
+          1
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 replan，却在 repair_change_method 原地重试",
+          1
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 replan，却在 repair_retry 原地重试",
+          1
+        ]
+      ]
+    },
+    "e2-opus": {
+      "runs": 1,
+      "top": [
+        [
+          "shape/deliver: 期望有 deliver 节点，实际没有",
+          7
+        ],
+        [
+          "verdict/verdict: 期望 done（可接受：done），得到 repair",
+          6
+        ],
+        [
+          "shape/modes: 缺少 Goal Node mode：template",
+          3
+        ],
+        [
+          "verdict/verdict: 期望 continue（可接受：continue），得到 repair",
+          3
+        ],
+        [
+          "verdict/verdict: 期望 repair（可接受：repair），得到 replan",
+          3
+        ],
+        [
+          "shape/quality: 缺少质量包装：revise",
+          2
+        ],
+        [
+          "escalation/stuck_retry: 至少应升级到 escalate，却在 repair_retry 原地重试",
+          1
+        ],
+        [
+          "shape/fan_out: 并行宽度期望 至少 3，得到 2",
+          1
+        ],
+        [
+          "shape/gate: 期望有 gate（人工确认或不可逆动作前的审批），实际没有",
+          1
+        ],
+        [
+          "shape/human: 期望有 human 节点，实际没有",
+          1
+        ],
+        [
+          "shape/modes: 缺少 Goal Node mode：sub_agent",
+          1
+        ],
+        [
+          "shape/modes: 缺少 Goal Node mode：tool_loop",
+          1
+        ]
+      ]
+    }
+  },
+  "baseline_dev_spread": {
+    "runs": 3,
+    "triage_accuracy": {
+      "values": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "median": 1.0,
+      "min": 1.0,
+      "max": 1.0
+    },
+    "shape_match_rate": {
+      "values": [
+        0.5,
+        0.4230769230769231,
+        0.4230769230769231
+      ],
+      "median": 0.4230769230769231,
+      "min": 0.4230769230769231,
+      "max": 0.5
+    },
+    "reviewer_verdict_accuracy": {
+      "values": [
+        0.5,
+        0.5,
+        0.375
+      ],
+      "median": 0.5,
+      "min": 0.375,
+      "max": 0.5
+    },
+    "rounds_verdict_accuracy": {
+      "values": [
+        0.9487179487179487,
+        0.9487179487179487,
+        0.8717948717948718
+      ],
+      "median": 0.9487179487179487,
+      "min": 0.8717948717948718,
+      "max": 0.9487179487179487
+    },
+    "stuck_retry_errors": {
+      "values": [
+        3,
+        3,
+        4
+      ],
+      "median": 3,
+      "min": 3,
+      "max": 4
+    },
+    "total_usd": {
+      "values": [
+        1.986424,
+        1.809232,
+        2.0065
+      ],
+      "median": 1.986424,
+      "min": 1.809232,
+      "max": 2.0065
+    },
+    "task_success": [
+      [
+        13,
+        26
+      ],
+      [
+        11,
+        26
+      ],
+      [
+        11,
+        26
+      ]
+    ]
+  },
+  "cases_dev": {
+    "labels": [
+      "e1",
+      "e1b",
+      "e1c",
+      "e1d",
+      "e2-geminiflash",
+      "e2-gpt55",
+      "e2-gpt55-rerun",
+      "e2-opus"
+    ],
+    "e1_stable_fail": [
+      "batch_invoice_coding",
+      "batch_label_tickets",
+      "batch_relabel_year_budget",
+      "booking_light_ambiguous_full",
+      "ci_fix_failing_test",
+      "ci_fix_locale_replan",
+      "ci_fix_same_error_three_times",
+      "general_refund_rate_analysis",
+      "multiday_bookkeeping_start",
+      "multiday_csv_export",
+      "naming_kids_watch",
+      "research_pricing_escalate",
+      "research_solid_state_battery",
+      "rs_cosmetic_reflection",
+      "rs_debate_no_convergence",
+      "rs_judge_bias",
+      "rs_reroute_batch",
+      "rs_revise_same_error",
+      "rs_rollback_corrupted_accounts"
+    ],
+    "e1_flaky": [
+      "booking_flight_cheapest",
+      "general_budget_cut_replan",
+      "rs_early_replans",
+      "rs_escalate_nonrefundable",
+      "rs_fanout_conflict",
+      "rs_repair_second_failure",
+      "rs_replan_assumption_broken"
+    ],
+    "stable_fail_fixed_by_other_models": {
+      "batch_invoice_coding": [],
+      "batch_label_tickets": [],
+      "batch_relabel_year_budget": [],
+      "booking_light_ambiguous_full": [
+        "e2-gpt55",
+        "e2-opus"
+      ],
+      "ci_fix_failing_test": [],
+      "ci_fix_locale_replan": [],
+      "ci_fix_same_error_three_times": [],
+      "general_refund_rate_analysis": [],
+      "multiday_bookkeeping_start": [],
+      "multiday_csv_export": [],
+      "naming_kids_watch": [],
+      "research_pricing_escalate": [],
+      "research_solid_state_battery": [],
+      "rs_cosmetic_reflection": [
+        "e2-geminiflash"
+      ],
+      "rs_debate_no_convergence": [],
+      "rs_judge_bias": [],
+      "rs_reroute_batch": [
+        "e2-geminiflash",
+        "e2-opus"
+      ],
+      "rs_revise_same_error": [
+        "e1",
+        "e2-geminiflash",
+        "e2-gpt55",
+        "e2-opus"
+      ],
+      "rs_rollback_corrupted_accounts": [
+        "e2-opus"
+      ]
+    },
+    "matrix": {
+      "batch_invoice_coding": {
+        "e1": false,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "batch_label_light": {
+        "e1": true,
+        "e1b": true,
+        "e1c": true,
+        "e1d": true,
+        "e2-geminiflash": true,
+        "e2-gpt55": true,
+        "e2-gpt55-rerun": true,
+        "e2-opus": false
+      },
+      "batch_label_tickets": {
+        "e1": false,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "batch_relabel_year_budget": {
+        "e1": false,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "booking_flight_cheapest": {
+        "e1": false,
+        "e1b": true,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": true,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "booking_itinerary_fast": {
+        "e1": false,
+        "e1b": true,
+        "e1c": true,
+        "e1d": true,
+        "e2-geminiflash": true,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": true,
+        "e2-opus": false
+      },
+      "booking_light_ambiguous_full": {
+        "e1": false,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": true,
+        "e2-gpt55-rerun": false,
+        "e2-opus": true
+      },
+      "booking_over_budget_escalate": {
+        "e1": true,
+        "e1b": true,
+        "e1c": true,
+        "e1d": true,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": true
+      },
+      "booking_sold_out_replan": {
+        "e1": true,
+        "e1b": true,
+        "e1c": true,
+        "e1d": true,
+        "e2-geminiflash": true,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "ci_fix_failing_test": {
+        "e1": false,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "ci_fix_locale_replan": {
+        "e1": false,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "ci_fix_recipe_hit": {
+        "e1": true,
+        "e1b": true,
+        "e1c": true,
+        "e1d": true,
+        "e2-geminiflash": true,
+        "e2-gpt55": true,
+        "e2-gpt55-rerun": true,
+        "e2-opus": true
+      },
+      "ci_fix_same_error_three_times": {
+        "e1": false,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "general_budget_cut_replan": {
+        "e1": false,
+        "e1b": true,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "general_goodbye_fast": {
+        "e1": false,
+        "e1b": true,
+        "e1c": true,
+        "e1d": true,
+        "e2-geminiflash": true,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": true,
+        "e2-opus": true
+      },
+      "general_refund_rate_analysis": {
+        "e1": false,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "multiday_bookkeeping_start": {
+        "e1": false,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "multiday_csv_export": {
+        "e1": false,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "multiday_next_feature_light": {
+        "e1": true,
+        "e1b": true,
+        "e1c": true,
+        "e1d": true,
+        "e2-geminiflash": true,
+        "e2-gpt55": true,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "naming_cup_light": {
+        "e1": true,
+        "e1b": true,
+        "e1c": true,
+        "e1d": true,
+        "e2-geminiflash": true,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": true,
+        "e2-opus": true
+      },
+      "naming_kids_watch": {
+        "e1": false,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "naming_shorter_fast": {
+        "e1": true,
+        "e1b": true,
+        "e1c": true,
+        "e1d": true,
+        "e2-geminiflash": true,
+        "e2-gpt55": true,
+        "e2-gpt55-rerun": true,
+        "e2-opus": true
+      },
+      "research_competitor_weekly_light": {
+        "e1": true,
+        "e1b": true,
+        "e1c": true,
+        "e1d": true,
+        "e2-geminiflash": true,
+        "e2-gpt55": true,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "research_pricing_escalate": {
+        "e1": false,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "research_retitle_fast": {
+        "e1": true,
+        "e1b": true,
+        "e1c": true,
+        "e1d": true,
+        "e2-geminiflash": true,
+        "e2-gpt55": true,
+        "e2-gpt55-rerun": true,
+        "e2-opus": false
+      },
+      "research_solid_state_battery": {
+        "e1": false,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "rs_abort_budget_exhausted": {
+        "e1": true,
+        "e1b": true,
+        "e1c": true,
+        "e1d": true,
+        "e2-geminiflash": true,
+        "e2-gpt55": true,
+        "e2-gpt55-rerun": true,
+        "e2-opus": true
+      },
+      "rs_continue_after_fetch": {
+        "e1": true,
+        "e1b": true,
+        "e1c": true,
+        "e1d": true,
+        "e2-geminiflash": true,
+        "e2-gpt55": true,
+        "e2-gpt55-rerun": true,
+        "e2-opus": true
+      },
+      "rs_continue_no_deliver": {
+        "e1": true,
+        "e1b": true,
+        "e1c": true,
+        "e1d": true,
+        "e2-geminiflash": true,
+        "e2-gpt55": true,
+        "e2-gpt55-rerun": true,
+        "e2-opus": true
+      },
+      "rs_cosmetic_reflection": {
+        "e1": false,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": true,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "rs_debate_no_convergence": {
+        "e1": false,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "rs_done_report_verified": {
+        "e1": true,
+        "e1b": true,
+        "e1c": true,
+        "e1d": true,
+        "e2-geminiflash": true,
+        "e2-gpt55": true,
+        "e2-gpt55-rerun": true,
+        "e2-opus": true
+      },
+      "rs_early_replans": {
+        "e1": true,
+        "e1b": false,
+        "e1c": true,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": true,
+        "e2-gpt55-rerun": true,
+        "e2-opus": true
+      },
+      "rs_escalate_nonrefundable": {
+        "e1": false,
+        "e1b": true,
+        "e1c": false,
+        "e1d": true,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": true
+      },
+      "rs_fanout_conflict": {
+        "e1": false,
+        "e1b": true,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": true,
+        "e2-gpt55": true,
+        "e2-gpt55-rerun": false,
+        "e2-opus": true
+      },
+      "rs_judge_bias": {
+        "e1": false,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": false
+      },
+      "rs_repair_citation_mismatch": {
+        "e1": true,
+        "e1b": true,
+        "e1c": true,
+        "e1d": true,
+        "e2-geminiflash": true,
+        "e2-gpt55": true,
+        "e2-gpt55-rerun": true,
+        "e2-opus": true
+      },
+      "rs_repair_second_failure": {
+        "e1": true,
+        "e1b": true,
+        "e1c": true,
+        "e1d": false,
+        "e2-geminiflash": true,
+        "e2-gpt55": true,
+        "e2-gpt55-rerun": true,
+        "e2-opus": true
+      },
+      "rs_replan_assumption_broken": {
+        "e1": false,
+        "e1b": false,
+        "e1c": true,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": true,
+        "e2-opus": true
+      },
+      "rs_reroute_batch": {
+        "e1": false,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": true,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": true
+      },
+      "rs_revise_same_error": {
+        "e1": true,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": true,
+        "e2-gpt55": true,
+        "e2-gpt55-rerun": false,
+        "e2-opus": true
+      },
+      "rs_rollback_corrupted_accounts": {
+        "e1": false,
+        "e1b": false,
+        "e1c": false,
+        "e1d": false,
+        "e2-geminiflash": false,
+        "e2-gpt55": false,
+        "e2-gpt55-rerun": false,
+        "e2-opus": true
+      }
+    }
+  },
+  "case_codes": {
+    "batch_invoice_coding": [
+      "deliver",
+      "modes",
+      "verdict"
+    ],
+    "batch_label_tickets": [
+      "deliver",
+      "modes"
+    ],
+    "batch_relabel_year_budget": [
+      "modes",
+      "nodes",
+      "verdict"
+    ],
+    "booking_light_ambiguous_full": [
+      "forbidden_roles",
+      "gate",
+      "human",
+      "triage"
+    ],
+    "ci_fix_failing_test": [
+      "deliver",
+      "modes",
+      "quality"
+    ],
+    "ci_fix_locale_replan": [
+      "deliver",
+      "verdict"
+    ],
+    "ci_fix_same_error_three_times": [
+      "deliver",
+      "modes",
+      "quality"
+    ],
+    "general_refund_rate_analysis": [
+      "fan_out",
+      "forbidden_roles",
+      "verdict"
+    ],
+    "multiday_bookkeeping_start": [
+      "forbidden_roles",
+      "modes",
+      "nodes"
+    ],
+    "multiday_csv_export": [
+      "deliver"
+    ],
+    "naming_kids_watch": [
+      "quality",
+      "verdict"
+    ],
+    "research_pricing_escalate": [
+      "fan_out",
+      "modes",
+      "stuck_retry",
+      "verdict"
+    ],
+    "research_solid_state_battery": [
+      "forbidden_roles",
+      "gate",
+      "human",
+      "nodes"
+    ],
+    "rs_cosmetic_reflection": [
+      "verdict"
+    ],
+    "rs_debate_no_convergence": [
+      "verdict"
+    ],
+    "rs_judge_bias": [
+      "verdict"
+    ],
+    "rs_reroute_batch": [
+      "stuck_retry",
+      "verdict"
+    ],
+    "rs_revise_same_error": [
+      "stuck_retry",
+      "verdict"
+    ],
+    "rs_rollback_corrupted_accounts": [
+      "stuck_retry",
+      "verdict"
+    ],
+    "booking_flight_cheapest": [
+      "forbidden_roles",
+      "modes",
+      "verdict"
+    ],
+    "general_budget_cut_replan": [
+      "deliver",
+      "triage",
+      "verdict"
+    ],
+    "rs_early_replans": [
+      "verdict"
+    ],
+    "rs_escalate_nonrefundable": [
+      "stuck_retry",
+      "verdict"
+    ],
+    "rs_fanout_conflict": [
+      "stuck_retry",
+      "verdict"
+    ],
+    "rs_repair_second_failure": [
+      "verdict"
+    ],
+    "rs_replan_assumption_broken": [
+      "stuck_retry",
+      "verdict"
+    ]
+  },
+  "context": [
+    {
+      "variant": "e1-context",
+      "split": "holdout",
+      "repeat": 1,
+      "gate_passed": true,
+      "metrics": {
+        "mask_only": {
+          "probe_pass_rate": 0.3333333333333333,
+          "repeat_rate": 0.0,
+          "retention_rate": 0.6666666666666666,
+          "summarized": 0.0,
+          "samples": 2.0
+        },
+        "full": {
+          "probe_pass_rate": 0.8333333333333334,
+          "repeat_rate": 0.0,
+          "retention_rate": 0.8333333333333334,
+          "summarized": 2.0,
+          "samples": 2.0
+        }
+      },
+      "ranges": {
+        "mask_only": {
+          "probe_pass_rate": [
+            0.3333333333333333,
+            0.3333333333333333
+          ],
+          "repeat_rate": [
+            0.0,
+            0.0
+          ],
+          "retention_rate": [
+            0.6666666666666666,
+            0.6666666666666666
+          ],
+          "summarized": [
+            0.0,
+            0.0
+          ],
+          "samples": [
+            2.0,
+            2.0
+          ]
+        },
+        "full": {
+          "probe_pass_rate": [
+            0.8333333333333334,
+            0.8333333333333334
+          ],
+          "repeat_rate": [
+            0.0,
+            0.0
+          ],
+          "retention_rate": [
+            0.8333333333333334,
+            0.8333333333333334
+          ],
+          "summarized": [
+            2.0,
+            2.0
+          ],
+          "samples": [
+            2.0,
+            2.0
+          ]
+        }
+      },
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e1-context\\context-worker-context-holdout-20261028T131837Z.json"
+    },
+    {
+      "variant": "e1-context-dev2",
+      "split": "dev",
+      "repeat": 1,
+      "gate_passed": true,
+      "metrics": {
+        "mask_only": {
+          "probe_pass_rate": 0.6956521739130435,
+          "repeat_rate": 0.2,
+          "retention_rate": 0.6521739130434783,
+          "summarized": 0.0,
+          "samples": 5.0
+        },
+        "full": {
+          "probe_pass_rate": 0.782608695652174,
+          "repeat_rate": 0.2,
+          "retention_rate": 0.782608695652174,
+          "summarized": 5.0,
+          "samples": 5.0
+        }
+      },
+      "ranges": {
+        "mask_only": {
+          "probe_pass_rate": [
+            0.6956521739130435,
+            0.6956521739130435
+          ],
+          "repeat_rate": [
+            0.2,
+            0.2
+          ],
+          "retention_rate": [
+            0.6521739130434783,
+            0.6521739130434783
+          ],
+          "summarized": [
+            0.0,
+            0.0
+          ],
+          "samples": [
+            5.0,
+            5.0
+          ]
+        },
+        "full": {
+          "probe_pass_rate": [
+            0.782608695652174,
+            0.782608695652174
+          ],
+          "repeat_rate": [
+            0.2,
+            0.2
+          ],
+          "retention_rate": [
+            0.782608695652174,
+            0.782608695652174
+          ],
+          "summarized": [
+            5.0,
+            5.0
+          ],
+          "samples": [
+            5.0,
+            5.0
+          ]
+        }
+      },
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e1-context-dev2\\context-worker-context-dev-20261028T163243Z.json"
+    },
+    {
+      "variant": "e1-context-dev3",
+      "split": "dev",
+      "repeat": 1,
+      "gate_passed": true,
+      "metrics": {
+        "mask_only": {
+          "probe_pass_rate": 0.6956521739130435,
+          "repeat_rate": 0.2,
+          "retention_rate": 0.6521739130434783,
+          "summarized": 0.0,
+          "samples": 5.0
+        },
+        "full": {
+          "probe_pass_rate": 0.9130434782608695,
+          "repeat_rate": 0.2,
+          "retention_rate": 0.8695652173913043,
+          "summarized": 5.0,
+          "samples": 5.0
+        }
+      },
+      "ranges": {
+        "mask_only": {
+          "probe_pass_rate": [
+            0.6956521739130435,
+            0.6956521739130435
+          ],
+          "repeat_rate": [
+            0.2,
+            0.2
+          ],
+          "retention_rate": [
+            0.6521739130434783,
+            0.6521739130434783
+          ],
+          "summarized": [
+            0.0,
+            0.0
+          ],
+          "samples": [
+            5.0,
+            5.0
+          ]
+        },
+        "full": {
+          "probe_pass_rate": [
+            0.9130434782608695,
+            0.9130434782608695
+          ],
+          "repeat_rate": [
+            0.2,
+            0.2
+          ],
+          "retention_rate": [
+            0.8695652173913043,
+            0.8695652173913043
+          ],
+          "summarized": [
+            5.0,
+            5.0
+          ],
+          "samples": [
+            5.0,
+            5.0
+          ]
+        }
+      },
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e1-context-dev3\\context-worker-context-dev-20261028T163240Z.json"
+    }
+  ],
+  "repeats": [
+    {
+      "variant": "e1-holdout",
+      "split": "holdout",
+      "gate": {
+        "name": "s10",
+        "passed": false,
+        "checks": [
+          {
+            "metric": "reviewer.verdict_accuracy",
+            "label": "Reviewer 样本的 Verdict 准确率",
+            "op": ">=",
+            "threshold": 0.85,
+            "median": 0.75,
+            "min": 0.75,
+            "max": 0.75,
+            "passed": false,
+            "gap": "中位数 75.0%，门槛 ≥ 85.0%，差 10.0 个百分点"
+          },
+          {
+            "metric": "stuck_retry_errors",
+            "label": "该升级却原地重试",
+            "op": "<=",
+            "threshold": 0,
+            "median": 0,
+            "min": 0,
+            "max": 0,
+            "passed": true,
+            "gap": ""
+          },
+          {
+            "metric": "reviewer.schema_pass_rate",
+            "label": "Reviewer 样本的 schema 通过率",
+            "op": ">=",
+            "threshold": 1.0,
+            "median": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "passed": true,
+            "gap": ""
+          },
+          {
+            "metric": "rounds.schema_pass_rate",
+            "label": "判定点的 schema 通过率",
+            "op": ">=",
+            "threshold": 1.0,
+            "median": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "passed": true,
+            "gap": ""
+          }
+        ]
+      },
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e1-holdout\\repeat--task-loop--worker--holdout--20261028T132203.579238Z.json"
+    },
+    {
+      "variant": "e1b",
+      "split": "dev",
+      "gate": {
+        "name": "s10",
+        "passed": false,
+        "checks": [
+          {
+            "metric": "reviewer.verdict_accuracy",
+            "label": "Reviewer 样本的 Verdict 准确率",
+            "op": ">=",
+            "threshold": 0.85,
+            "median": 0.5,
+            "min": 0.5,
+            "max": 0.5,
+            "passed": false,
+            "gap": "中位数 50.0%，门槛 ≥ 85.0%，差 35.0 个百分点"
+          },
+          {
+            "metric": "stuck_retry_errors",
+            "label": "该升级却原地重试",
+            "op": "<=",
+            "threshold": 0,
+            "median": 3,
+            "min": 3,
+            "max": 3,
+            "passed": false,
+            "gap": "中位数 3 次，门槛 ≤ 0 次"
+          },
+          {
+            "metric": "reviewer.schema_pass_rate",
+            "label": "Reviewer 样本的 schema 通过率",
+            "op": ">=",
+            "threshold": 1.0,
+            "median": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "passed": true,
+            "gap": ""
+          },
+          {
+            "metric": "rounds.schema_pass_rate",
+            "label": "判定点的 schema 通过率",
+            "op": ">=",
+            "threshold": 1.0,
+            "median": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "passed": true,
+            "gap": ""
+          }
+        ]
+      },
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e1b\\repeat--task-loop--worker--dev--20261028T134143.250449Z.json"
+    },
+    {
+      "variant": "e1c",
+      "split": "dev",
+      "gate": {
+        "name": "s10",
+        "passed": false,
+        "checks": [
+          {
+            "metric": "reviewer.verdict_accuracy",
+            "label": "Reviewer 样本的 Verdict 准确率",
+            "op": ">=",
+            "threshold": 0.85,
+            "median": 0.5,
+            "min": 0.5,
+            "max": 0.5,
+            "passed": false,
+            "gap": "中位数 50.0%，门槛 ≥ 85.0%，差 35.0 个百分点"
+          },
+          {
+            "metric": "stuck_retry_errors",
+            "label": "该升级却原地重试",
+            "op": "<=",
+            "threshold": 0,
+            "median": 3,
+            "min": 3,
+            "max": 3,
+            "passed": false,
+            "gap": "中位数 3 次，门槛 ≤ 0 次"
+          },
+          {
+            "metric": "reviewer.schema_pass_rate",
+            "label": "Reviewer 样本的 schema 通过率",
+            "op": ">=",
+            "threshold": 1.0,
+            "median": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "passed": true,
+            "gap": ""
+          },
+          {
+            "metric": "rounds.schema_pass_rate",
+            "label": "判定点的 schema 通过率",
+            "op": ">=",
+            "threshold": 1.0,
+            "median": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "passed": true,
+            "gap": ""
+          }
+        ]
+      },
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e1c\\repeat--task-loop--worker--dev--20261028T134142.872133Z.json"
+    },
+    {
+      "variant": "e1d",
+      "split": "dev",
+      "gate": {
+        "name": "s10",
+        "passed": false,
+        "checks": [
+          {
+            "metric": "reviewer.verdict_accuracy",
+            "label": "Reviewer 样本的 Verdict 准确率",
+            "op": ">=",
+            "threshold": 0.85,
+            "median": 0.375,
+            "min": 0.375,
+            "max": 0.375,
+            "passed": false,
+            "gap": "中位数 37.5%，门槛 ≥ 85.0%，差 47.5 个百分点"
+          },
+          {
+            "metric": "stuck_retry_errors",
+            "label": "该升级却原地重试",
+            "op": "<=",
+            "threshold": 0,
+            "median": 4,
+            "min": 4,
+            "max": 4,
+            "passed": false,
+            "gap": "中位数 4 次，门槛 ≤ 0 次"
+          },
+          {
+            "metric": "reviewer.schema_pass_rate",
+            "label": "Reviewer 样本的 schema 通过率",
+            "op": ">=",
+            "threshold": 1.0,
+            "median": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "passed": true,
+            "gap": ""
+          },
+          {
+            "metric": "rounds.schema_pass_rate",
+            "label": "判定点的 schema 通过率",
+            "op": ">=",
+            "threshold": 1.0,
+            "median": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "passed": true,
+            "gap": ""
+          }
+        ]
+      },
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e1d\\repeat--task-loop--worker--dev--20261028T164655.788808Z.json"
+    },
+    {
+      "variant": "e2-geminiflash",
+      "split": "dev",
+      "gate": {
+        "name": "s10",
+        "passed": false,
+        "checks": [
+          {
+            "metric": "reviewer.verdict_accuracy",
+            "label": "Reviewer 样本的 Verdict 准确率",
+            "op": ">=",
+            "threshold": 0.85,
+            "median": 0.625,
+            "min": 0.625,
+            "max": 0.625,
+            "passed": false,
+            "gap": "中位数 62.5%，门槛 ≥ 85.0%，差 22.5 个百分点"
+          },
+          {
+            "metric": "stuck_retry_errors",
+            "label": "该升级却原地重试",
+            "op": "<=",
+            "threshold": 0,
+            "median": 4,
+            "min": 4,
+            "max": 4,
+            "passed": false,
+            "gap": "中位数 4 次，门槛 ≤ 0 次"
+          },
+          {
+            "metric": "reviewer.schema_pass_rate",
+            "label": "Reviewer 样本的 schema 通过率",
+            "op": ">=",
+            "threshold": 1.0,
+            "median": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "passed": true,
+            "gap": ""
+          },
+          {
+            "metric": "rounds.schema_pass_rate",
+            "label": "判定点的 schema 通过率",
+            "op": ">=",
+            "threshold": 1.0,
+            "median": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "passed": true,
+            "gap": ""
+          }
+        ]
+      },
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e2-geminiflash\\repeat--task-loop--worker--dev--20261028T131800.858786Z.json"
+    },
+    {
+      "variant": "e2-gpt55",
+      "split": "dev",
+      "gate": {
+        "name": "s10",
+        "passed": false,
+        "checks": [
+          {
+            "metric": "reviewer.verdict_accuracy",
+            "label": "Reviewer 样本的 Verdict 准确率",
+            "op": ">=",
+            "threshold": 0.85,
+            "median": 0.5625,
+            "min": 0.5625,
+            "max": 0.5625,
+            "passed": false,
+            "gap": "中位数 56.2%，门槛 ≥ 85.0%，差 28.7 个百分点"
+          },
+          {
+            "metric": "stuck_retry_errors",
+            "label": "该升级却原地重试",
+            "op": "<=",
+            "threshold": 0,
+            "median": 5,
+            "min": 5,
+            "max": 5,
+            "passed": false,
+            "gap": "中位数 5 次，门槛 ≤ 0 次"
+          },
+          {
+            "metric": "reviewer.schema_pass_rate",
+            "label": "Reviewer 样本的 schema 通过率",
+            "op": ">=",
+            "threshold": 1.0,
+            "median": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "passed": true,
+            "gap": ""
+          },
+          {
+            "metric": "rounds.schema_pass_rate",
+            "label": "判定点的 schema 通过率",
+            "op": ">=",
+            "threshold": 1.0,
+            "median": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "passed": true,
+            "gap": ""
+          }
+        ]
+      },
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e2-gpt55\\repeat--task-loop--worker--dev--20261028T130739.607519Z.json"
+    },
+    {
+      "variant": "e2-gpt55-rerun",
+      "split": "dev",
+      "gate": {
+        "name": "s10",
+        "passed": false,
+        "checks": [
+          {
+            "metric": "reviewer.verdict_accuracy",
+            "label": "Reviewer 样本的 Verdict 准确率",
+            "op": ">=",
+            "threshold": 0.85,
+            "median": 0.5,
+            "min": 0.5,
+            "max": 0.5,
+            "passed": false,
+            "gap": "中位数 50.0%，门槛 ≥ 85.0%，差 35.0 个百分点"
+          },
+          {
+            "metric": "stuck_retry_errors",
+            "label": "该升级却原地重试",
+            "op": "<=",
+            "threshold": 0,
+            "median": 4,
+            "min": 4,
+            "max": 4,
+            "passed": false,
+            "gap": "中位数 4 次，门槛 ≤ 0 次"
+          },
+          {
+            "metric": "reviewer.schema_pass_rate",
+            "label": "Reviewer 样本的 schema 通过率",
+            "op": ">=",
+            "threshold": 1.0,
+            "median": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "passed": true,
+            "gap": ""
+          },
+          {
+            "metric": "rounds.schema_pass_rate",
+            "label": "判定点的 schema 通过率",
+            "op": ">=",
+            "threshold": 1.0,
+            "median": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "passed": true,
+            "gap": ""
+          }
+        ]
+      },
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e2-gpt55-rerun\\repeat--task-loop--worker--dev--20261028T165939.742338Z.json"
+    },
+    {
+      "variant": "e2-opus",
+      "split": "dev",
+      "gate": {
+        "name": "s10",
+        "passed": false,
+        "checks": [
+          {
+            "metric": "reviewer.verdict_accuracy",
+            "label": "Reviewer 样本的 Verdict 准确率",
+            "op": ">=",
+            "threshold": 0.85,
+            "median": 0.8125,
+            "min": 0.8125,
+            "max": 0.8125,
+            "passed": false,
+            "gap": "中位数 81.2%，门槛 ≥ 85.0%，差 3.7 个百分点"
+          },
+          {
+            "metric": "stuck_retry_errors",
+            "label": "该升级却原地重试",
+            "op": "<=",
+            "threshold": 0,
+            "median": 1,
+            "min": 1,
+            "max": 1,
+            "passed": false,
+            "gap": "中位数 1 次，门槛 ≤ 0 次"
+          },
+          {
+            "metric": "reviewer.schema_pass_rate",
+            "label": "Reviewer 样本的 schema 通过率",
+            "op": ">=",
+            "threshold": 1.0,
+            "median": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "passed": true,
+            "gap": ""
+          },
+          {
+            "metric": "rounds.schema_pass_rate",
+            "label": "判定点的 schema 通过率",
+            "op": ">=",
+            "threshold": 1.0,
+            "median": 1.0,
+            "min": 1.0,
+            "max": 1.0,
+            "passed": true,
+            "gap": ""
+          }
+        ]
+      },
+      "report": "Z:\\agentruntime\\agent-runtime\\services\\py-learning\\.eval-reports\\exp-2026-10-28\\e2-opus\\repeat--task-loop--worker--dev--20261028T132108.988191Z.json"
+    }
+  ]
+}
