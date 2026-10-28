@@ -3,7 +3,7 @@ Model Gateway、Python Worker。人手动演示与 tests/e2e/live 的真模型�
 
     uv run --no-sync python scripts/dev_stack.py up [--root 目录] [--provider mock|openai_compat] [--provider-env 文件]
                                                   [--decisions model|stub] [--tenant-effect 租户=effect]...
-                                                  [--sandbox host|docker] [--json]
+                                                  [--sandbox host|docker|local] [--workspace mount|archive] [--json]
     uv run --no-sync python scripts/dev_stack.py status [--json]      各组件是否在运行、地址与日志
     uv run --no-sync python scripts/dev_stack.py token --tenant t1 --user u1 [--scope task.approve]
     uv run --no-sync python scripts/dev_stack.py kill worker          强杀一个组件（演示“杀 Worker 后恢复”）
@@ -11,7 +11,8 @@ Model Gateway、Python Worker。人手动演示与 tests/e2e/live 的真模型�
     uv run --no-sync python scripts/dev_stack.py env [与 up 相同的选项] [--json]   只打印各组件的环境变量，不启动
     uv run --no-sync python scripts/dev_stack.py down                 停掉全部（再 down 一次不报错）
 
-- 目录（--root，默认 ~/.agentruntime/dev-stack）里放本次运行的一切：编译出的 task-service 与 model-gateway、日志、业务库、
+- 目录（--root，默认 ~/.agentruntime/dev-stack）里放本次运行的一切：编译出的 task-service 与 model-gateway、日志、业务库
+  （data/，task-service 与 Worker 共用一个）、
   开发 SecretStore（shared/secrets.json）、ObjectStore（shared/objects，task-service 与 Worker 共用，Claim-Check 两边要互相取回）、
   平台内工具的工作区（workspaces/<租户>/<workspace>）、状态文件 stack.json。默认不在仓库里，因为 SecretStore 里有供应商的密钥。
 - 供应商：openai_compat 时地址与密钥只从 --provider-env（默认 ~/.agentruntime/model-provider.env，格式 NAME = value）读；
@@ -24,6 +25,11 @@ Model Gateway、Python Worker。人手动演示与 tests/e2e/live 的真模型�
   coding agent）读这份报告接入本机的整套：Task API 地址、工作区根（workspace_root）、开发租户策略文件（policies_file）、
   开发签名密钥所在的文件（signing_key_file，只给路径）与 shell_run 的沙箱（sandbox）。
 - --sandbox docker：Worker 的 shell_run 在一次性 Docker 容器里跑（不联网、限资源），要 PATH 上有 docker。
+- --sandbox local：Worker 经 Sandbox 接口跑（AR_TOOL_SHELL_SANDBOX=sandbox），后端是登记的本地实现（不隔离，只给开发）；
+  Workspace API（D-06）只在这时可用。--workspace archive 时这个后端是存档模式：工作区不在 workspaces/ 下，建环境时从
+  ObjectStore 里的快照恢复、销毁前存档（与 Cloudflare 后端一样）；mount（默认）时挂 workspaces/<租户>/<workspace>。
+  封 Workspace API 凭据的密钥（workspace/credential-key）每次 up 随机生成，经 dev-secret 进开发 SecretStore。
+  --allow-local-remotes 让 Workspace API 收 file:// 的仓库地址（只给测试）。
 """
 
 from __future__ import annotations
@@ -54,6 +60,7 @@ EFFECTS = ("none", "read", "write_reversible", "write_irreversible")
 WORKER_QUEUES = "task,decision,model,program"
 PROVIDER_KEY_NAME = "model-provider/api-key"
 PUBLISH_TOKEN_NAME = "registry/publish-token"
+WORKSPACE_KEY_NAME = "workspace/credential-key"
 # 子进程一律不继承的环境变量：真实密钥只经 dev-secret 的标准输入进入 SecretStore。
 SCRUBBED_ENV = ("AR_MODEL_PROVIDER_API_KEY",)
 EXE = ".exe" if os.name == "nt" else ""
@@ -214,6 +221,16 @@ class Stack:
     def policies_file(self) -> Path:
         return self.root / "tenant_policies.json"
 
+    @property
+    def data_dir(self) -> Path:
+        """task-service 与 Worker 共用的数据目录：业务库（relational/ 下的 SQLite）只有一个，联网授权（D-16）与工作区（D-06）
+        两边读写同一张表（docs/plan/sandbox-platform.md 第 1 节）。"""
+        return self.root / "data"
+
+    @property
+    def sandbox_backends_file(self) -> Path:
+        return self.root / "sandbox-backends.json"
+
     def log(self, name: str) -> Path:
         return self.root / "logs" / f"{name}.log"
 
@@ -244,6 +261,8 @@ class Stack:
                 "tenant_effects": effects,
                 "python": args.python or sys.executable,
                 "sandbox": getattr(args, "sandbox", "host") or "host",
+                "workspace": getattr(args, "workspace", "mount") or "mount",
+                "allow_local_remotes": bool(getattr(args, "allow_local_remotes", False)),
             },
             "ports": {"temporal": free_port(), "temporal_ui": free_port(), "http": free_port(), "registry": free_port(), "gateway": free_port()},
             "components": {},
@@ -294,6 +313,9 @@ class Stack:
             if docker:  # docker 的凭据助手与它在同一目录
                 worker_path = str(Path(docker).parent) + os.pathsep + worker_path
             sandbox = {"AR_TOOL_SHELL_SANDBOX": "docker"}
+        elif self.options.get("sandbox") == "local":
+            sandbox = {"AR_TOOL_SHELL_SANDBOX": "sandbox", "AR_SANDBOX_BACKENDS_FILE": str(self.sandbox_backends_file)}
+        local_remotes = {"AR_WORKSPACE_ALLOW_LOCAL_REMOTES": "1"} if self.options.get("allow_local_remotes") else {}
         return {
             "temporal": {},
             "task-service": {
@@ -301,16 +323,17 @@ class Stack:
                 "AR_HTTP_ADDR": self.address("http"),
                 "AR_PUBLIC_BASE_URL": self.task_api,
                 "AR_DEV_SIGNING_KEY": self.signing_key(),
-                "AR_DATA_DIR": str(self.root / "task-service"),
+                "AR_DATA_DIR": str(self.data_dir),
                 "AR_REGISTRY_ADDR": self.address("registry"),
                 "AR_SCHEMAS_DIR": str(REPO_ROOT / "schemas"),
                 "AR_DEV_TENANT_POLICIES_FILE": str(self.policies_file),
+                **local_remotes,
                 **self.shared_env(),
             },
             "model-gateway": gateway,
             "worker": {
                 "AR_TEMPORAL_ADDRESS": self.address("temporal"),
-                "AR_DATA_DIR": str(self.root / "worker"),
+                "AR_DATA_DIR": str(self.data_dir),
                 "AR_MODEL_GATEWAY_ADDRESS": self.address("gateway"),
                 "AR_REGISTRY_ADDRESS": self.address("registry"),
                 "AR_PLANNER": decisions,
@@ -320,6 +343,7 @@ class Stack:
                 "PYTHONIOENCODING": "utf-8",
                 "PATH": worker_path,
                 **sandbox,
+                **local_remotes,
                 **self.shared_env(),
             },
         }
@@ -351,11 +375,15 @@ class Stack:
             raise StackError(f"model-gateway dev-secret {name} 失败（退出码 {proc.returncode}）：{proc.stderr.replace(value, '***')}")
 
     def prepare(self) -> None:
-        for d in (self.shared, self.objects_dir, self.workspace_root, self.root / "logs", self.root / "task-service", self.root / "worker"):
+        for d in (self.shared, self.objects_dir, self.workspace_root, self.root / "logs", self.data_dir):
             d.mkdir(parents=True, exist_ok=True)
         effects = self.options["tenant_effects"]
         self.policies_file.write_text(json.dumps({"tenants": {t: {"effect_ceiling": e} for t, e in sorted(effects.items())}}), "utf-8")
         self.dev_secret(PUBLISH_TOKEN_NAME, secrets.token_hex(24))
+        self.dev_secret(WORKSPACE_KEY_NAME, secrets.token_hex(32))
+        if self.options.get("sandbox") == "local":
+            backend = {"kind": "local", "isolation": "none", "workspace": self.options.get("workspace", "mount")}
+            self.sandbox_backends_file.write_text(json.dumps({"default": "local", "backends": {"local": backend}}), "utf-8")
         if self.options["provider"] == "openai_compat":
             key = self.provider_values().get("AR_MODEL_PROVIDER_API_KEY", "")
             if not key:
@@ -369,7 +397,7 @@ class Stack:
             self.seed(tenants)
 
     def seed(self, path: Path) -> None:
-        env = child_env({"AR_DATA_DIR": str(self.root / "task-service"), "AR_SCHEMAS_DIR": str(REPO_ROOT / "schemas")})
+        env = child_env({"AR_DATA_DIR": str(self.data_dir), "AR_SCHEMAS_DIR": str(REPO_ROOT / "schemas")})
         proc = subprocess.run([str(self.binary("task-service")), "registry-seed", str(path)], env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
         if proc.returncode != 0:
             raise StackError(f"registry-seed {path.name} 失败：\n{proc.stderr}")
@@ -443,6 +471,9 @@ class Stack:
             "policies_file": str(self.policies_file),
             "signing_key_file": str(self.signing_key_file),
             "sandbox": (self.state.get("options") or {}).get("sandbox", "host"),
+            # Workspace API（D-06）只在 sandbox 为 local 时可用；workspace 是这时工作区的模式（mount 或 archive）。
+            "workspace_api": (self.state.get("options") or {}).get("sandbox") == "local",
+            "workspace": (self.state.get("options") or {}).get("workspace", "mount"),
             "shared_env": self.shared_env(),
             "components": out,
         }
@@ -559,7 +590,12 @@ def parser() -> argparse.ArgumentParser:
         sp.add_argument("--decisions", choices=("model", "stub"), default="model", help="Planner、Reviewer、tool_loop 用真的（model）还是桩")
         sp.add_argument("--tenant-effect", action="append", help="租户=effect 上限，可以写多个")
         sp.add_argument("--python", default="", help="Worker 用的 Python（默认跑这个脚本的）")
-        sp.add_argument("--sandbox", choices=("host", "docker"), default="host", help="Worker 的 shell_run 在宿主机（host）还是一次性 Docker 容器（docker）里跑")
+        sp.add_argument(
+            "--sandbox", choices=("host", "docker", "local"), default="host",
+            help="Worker 的 shell_run 在宿主机（host）、一次性 Docker 容器（docker）里跑，还是经 Sandbox 接口的本地后端（local，Workspace API 要它）",
+        )
+        sp.add_argument("--workspace", choices=("mount", "archive"), default="mount", help="--sandbox local 时工作区挂卷（mount）还是存档模式（archive）")
+        sp.add_argument("--allow-local-remotes", action="store_true", help="Workspace API 收 file:// 的仓库地址（只给测试）")
         sp.add_argument("--json", action="store_true")
 
     up = sub.add_parser("up", help="编译、种 Registry、拉起全部组件")

@@ -132,7 +132,9 @@ func (p *Provider) db(ctx context.Context, owner string) (*sql.DB, error) {
 	db, ok := p.dbs[owner]
 	if !ok {
 		var err error
-		db, err = sql.Open("sqlite", filepath.Join(p.opts.Dir, owner+".sqlite3"))
+		// busy_timeout：开发时 task-service 与 Worker 共用这些库文件（业务库是一个，docs/plan/sandbox-platform.md 第 1 节），
+		// 另一个进程正在写时等一会儿，不立即报 database is locked（Python 侧 sqlite3 默认等 5 秒）。
+		db, err = sql.Open("sqlite", filepath.Join(p.opts.Dir, owner+".sqlite3")+"?_pragma=busy_timeout(5000)")
 		if err != nil {
 			return nil, providererr.Wrap(providererr.Transient, "open_failed", "打开数据库失败", err)
 		}

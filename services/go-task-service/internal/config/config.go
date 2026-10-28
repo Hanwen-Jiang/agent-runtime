@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/s3objects"
 	"github.com/agentruntime/agent-runtime/libs/go-core/secret"
@@ -41,6 +42,9 @@ const (
 	// EnvEgressAdminURL 是出网网关的管理地址（D-16），例如 http://ar-agent-runtime-egress-gateway:8096：Task 结束、收回联网授权
 	// 之后通知它立即断开；管理令牌取 AR_SECRETS_FILE 平台作用域的 egress-gateway/admin-token。没设时只靠网关几秒的缓存。
 	EnvEgressAdminURL = "AR_EGRESS_GATEWAY_ADMIN_URL"
+	// Workspace API（D-06）：等一次工作区操作的最长时间（秒，默认 600）；收不收 file:// 的仓库地址（只给测试，0 或 1）。
+	EnvWorkspaceOperationTimeout  = "AR_WORKSPACE_OPERATION_TIMEOUT_S"
+	EnvWorkspaceAllowLocalRemotes = "AR_WORKSPACE_ALLOW_LOCAL_REMOTES"
 )
 
 // DefaultClaimCheckThreshold 是 Claim-Check 的默认阈值（字节）。
@@ -102,6 +106,10 @@ type Config struct {
 	SchemasDir   string
 	// EgressAdminURL 见 EnvEgressAdminURL。
 	EgressAdminURL string
+	// WorkspaceOperationTimeout 是 WorkspaceService 等一次工作区操作的最长时间（EnvWorkspaceOperationTimeout，默认 10 分钟）；
+	// WorkspaceAllowLocalRemotes 让它收 file:// 的仓库地址（EnvWorkspaceAllowLocalRemotes，只给测试；Worker 读同一个变量）。
+	WorkspaceOperationTimeout  time.Duration
+	WorkspaceAllowLocalRemotes bool
 }
 
 // FromEnv 读取并校验配置。错误信息只提变量名，不带取值。
@@ -184,6 +192,21 @@ func FromEnv(getenv func(string) string) (Config, error) {
 	}
 	if err := cfg.Session.Validate(); err != nil {
 		return Config{}, fmt.Errorf("Session 参数不合法：%w", err)
+	}
+	cfg.WorkspaceOperationTimeout = 10 * time.Minute
+	if raw := getenv(EnvWorkspaceOperationTimeout); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 {
+			return Config{}, fmt.Errorf("%s 必须是正整数（秒）", EnvWorkspaceOperationTimeout)
+		}
+		cfg.WorkspaceOperationTimeout = time.Duration(n) * time.Second
+	}
+	switch getenv(EnvWorkspaceAllowLocalRemotes) {
+	case "", "0":
+	case "1":
+		cfg.WorkspaceAllowLocalRemotes = true
+	default:
+		return Config{}, fmt.Errorf("%s 只能是 0 或 1", EnvWorkspaceAllowLocalRemotes)
 	}
 	return cfg, nil
 }

@@ -1,6 +1,6 @@
 // Command task-service 是 Control Plane 的入口（设计书 3.1）：
 //
-//	task-service serve                                        Task API、SSE 端点与 Session 工作流的 Worker
+//	task-service serve                                        Task API、Workspace API（D-06）、SSE 端点与 Session 工作流的 Worker
 //	task-service dev-token --tenant t1 --user u1 [--ttl 1h] [--scope task.approve]   用 AR_DEV_SIGNING_KEY 签发开发令牌
 //	task-service replay --dir <事件历史目录>                    用当前代码回放 Session 工作流的事件历史
 //	task-service registry-seed <种子文件>                       把一批文档发布到 Registry 并设为默认（开发与端到端测试用）
@@ -42,8 +42,10 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/localingress"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/memcache"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/sqlitestore"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
+	"github.com/agentruntime/agent-runtime/libs/go-core/sealing"
 	"github.com/agentruntime/agent-runtime/libs/go-core/secret"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	workflowv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1"
@@ -56,6 +58,7 @@ import (
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/session"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/taskapi"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/taskstore"
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/workspaceapi"
 )
 
 const usage = `用法：
@@ -167,6 +170,26 @@ func egressNotifier(ctx context.Context, cfg config.Config) (*sandboxgrants.Noti
 		n.Token = string(v.Reveal())
 	}
 	return n, nil
+}
+
+// platformSecret 读 SecretStore 平台作用域里的一个密钥；没有时返回 nil（不是错误）。每次都读文件：密钥可以在运行中补上。
+func platformSecret(ctx context.Context, secretsFile, name string) ([]byte, error) {
+	secrets, err := filesecrets.New(filesecrets.Options{Path: secretsFile})
+	if err != nil {
+		return nil, err
+	}
+	platform, err := secrets.BindPlatform("workspace")
+	if err != nil {
+		return nil, err
+	}
+	v, err := platform.Read(ctx, name)
+	if providererr.CategoryOf(err) == providererr.NotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return v.Reveal(), nil
 }
 
 // newRelationalStore 构造业务库：配置了 AR_RELATIONAL_DSN 时用 Postgres（行级安全，S-12a），否则用 SQLite 开发实现。
@@ -358,8 +381,19 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	// Workspace API（D-06）：同一个端口、同一个 Ingress；封凭据的密钥在 SecretStore 平台作用域的 workspace/credential-key。
+	workspaces, err := workspaceapi.New(workspaceapi.Deps{
+		Ingress: ing, Durable: temporaladapter.New(c), Store: store, Timeout: cfg.WorkspaceOperationTimeout, AllowLocalRemotes: cfg.WorkspaceAllowLocalRemotes,
+		SealingKey: func(ctx context.Context) ([]byte, error) {
+			return platformSecret(ctx, cfg.SecretsFile, sealing.SecretName)
+		},
+	})
+	if err != nil {
+		return err
+	}
 	mux := http.NewServeMux()
 	api.Mount(mux)
+	workspaces.Mount(mux)
 	mux.Handle("/v1/tasks/", events.NewHandler(events.HandlerDeps{Ingress: ing, Cache: cacheProvider, Store: store, Clock: clk}))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "ok") })
 
