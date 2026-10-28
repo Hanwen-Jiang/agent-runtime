@@ -9,12 +9,29 @@ langfuse:
   encryptionKey:
     secretKeyRef: {name: langfuse, key: encryption-key}
   nextauth:
-    url: https://langfuse.example.com
+    # 界面不对外，经端口转发看（deploy/cluster/demo.md：kubectl port-forward svc/langfuse-web 3001:3000）。
+    url: http://localhost:3001
     secret:
       secretKeyRef: {name: langfuse, key: nextauth-secret}
   features:
     telemetryEnabled: false
     signUpDisabled: true
+  # 不开注册，也就没有人能在界面上建项目与 API Key：第一次启动时按下面建好组织、项目、Collector 用的 Key 与一个管理员
+  # （Langfuse 的 headless 初始化，已存在时不动）。Collector 的 agent-runtime-langfuse 是 base64(init-public-key:init-secret-key)。
+  additionalEnv:
+    - {name: LANGFUSE_INIT_ORG_ID, value: agent-runtime}
+    - {name: LANGFUSE_INIT_ORG_NAME, value: Agent Runtime}
+    - {name: LANGFUSE_INIT_PROJECT_ID, value: agent-runtime}
+    - {name: LANGFUSE_INIT_PROJECT_NAME, value: Agent Runtime}
+    - name: LANGFUSE_INIT_PROJECT_PUBLIC_KEY
+      valueFrom: {secretKeyRef: {name: langfuse, key: init-public-key}}
+    - name: LANGFUSE_INIT_PROJECT_SECRET_KEY
+      valueFrom: {secretKeyRef: {name: langfuse, key: init-secret-key}}
+    - name: LANGFUSE_INIT_USER_EMAIL
+      valueFrom: {secretKeyRef: {name: langfuse, key: init-user-email}}
+    - {name: LANGFUSE_INIT_USER_NAME, value: admin}
+    - name: LANGFUSE_INIT_USER_PASSWORD
+      valueFrom: {secretKeyRef: {name: langfuse, key: init-user-password}}
   web:
     resources:
       requests: {cpu: 250m, memory: 512Mi}

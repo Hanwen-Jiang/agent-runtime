@@ -32,7 +32,9 @@
 6. **密钥**：按 `deploy/cluster/secrets/README.md` 填好、加密、`sops -d … | kubectl apply -f -`。
 7. **数据层**：`deploy/data/install.sh`；末尾会打印三个角色的 `rolsuper`、`rolbypassrls`（都应是 `f`）。
    之后跑一次 `deploy/data/restore-drill.sh`（从 R2 恢复到新集群，比对行数与校验和）。
-8. **Langfuse 的 API Key**：登录 Langfuse 建项目与 Key，把 `base64(public:secret)` 写进 Secret `agent-runtime-langfuse`。
+8. **Langfuse 的 API Key**：不用登录界面建。Secret `langfuse` 里的 `init-public-key`、`init-secret-key` 是 Langfuse 第一次启动时
+   建的项目 Key（`values/langfuse.yaml` 的 `LANGFUSE_INIT_*`），`agent-runtime-langfuse` 写 `base64(init-public-key:init-secret-key)`。
+   管理员是 `init-user-email` 与 `init-user-password`，界面经端口转发看（`demo.md`）。
 9. **镜像**：打 `v*` 标签让 CI 推到 GHCR（`.github/workflows/images.yml`），或者本地 `python scripts/build_images.py --push`。
 10. **Runtime**：
 
