@@ -32,10 +32,11 @@ langfuse:
     - {name: LANGFUSE_INIT_USER_NAME, value: admin}
     - name: LANGFUSE_INIT_USER_PASSWORD
       valueFrom: {secretKeyRef: {name: langfuse, key: init-user-password}}
+  # web 的 Node 堆按容器上限的一半左右：1 GiB 时约 500 MB，启动后就 OOM（2026-10-28 线上），给到 2 GiB。
   web:
     resources:
-      requests: {cpu: 250m, memory: 512Mi}
-      limits: {cpu: "1", memory: 1Gi}
+      requests: {cpu: 250m, memory: 1Gi}
+      limits: {cpu: "1", memory: 2Gi}
   worker:
     resources:
       requests: {cpu: 250m, memory: 512Mi}
