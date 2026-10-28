@@ -32,11 +32,16 @@ langfuse:
     - {name: LANGFUSE_INIT_USER_NAME, value: admin}
     - name: LANGFUSE_INIT_USER_PASSWORD
       valueFrom: {secretKeyRef: {name: langfuse, key: init-user-password}}
-  # web 的 Node 堆按容器上限的一半左右：1 GiB 时约 500 MB，启动后就 OOM（2026-10-28 线上），给到 2 GiB。
+  # web 的 Node 堆按容器上限的一半左右：1 GiB 时约 500 MB，启动后就 OOM（2026-10-28 线上），给到 2 GiB。启动时要跑
+  # Postgres 与 ClickHouse 的迁移、初始化，1 核时要一分多钟，Chart 默认的存活探针（20 秒后每 10 秒、3 次）等不到就杀掉它。
   web:
     resources:
       requests: {cpu: 250m, memory: 1Gi}
-      limits: {cpu: "1", memory: 2Gi}
+      limits: {cpu: "2", memory: 2Gi}
+    livenessProbe:
+      initialDelaySeconds: 180
+    readinessProbe:
+      initialDelaySeconds: 30
   worker:
     resources:
       requests: {cpu: 250m, memory: 512Mi}
