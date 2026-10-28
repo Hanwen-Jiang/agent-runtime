@@ -40,6 +40,10 @@ EVENTS_PATCH = "t11b-progress-events"
 # 用完就停（成本口径的人定方案）。都改变了命令序列。
 R01_FIXES_PATCH = "r01-audit-and-budget"
 
+# 2026-10-28（人审通过的 S-01 改动）：顶层 Node 开始时推 node_started，tool_loop 里每次工具调用前后推 tool_status。
+# 多了推送进度事件的 activity，改变了命令序列。
+PROGRESS_DETAIL_PATCH = "progress-node-and-tool"
+
 # 新的运行在第一个工作流任务里一次问完全部版本分支（模块说明）。
 PATCHES_AT_START = "s04-patches-at-start"
 # 只能在末尾追加。
@@ -53,6 +57,7 @@ AT_START = (
     RECONCILE_PATCH,
     TOOL_LOOP_APPROVAL_PATCH,
     R01_FIXES_PATCH,
+    PROGRESS_DETAIL_PATCH,
 )
 
 

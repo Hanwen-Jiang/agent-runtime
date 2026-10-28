@@ -65,7 +65,7 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.workflows import patches
     from agentruntime_worker.workflows import stage_plan as sp
     from agentruntime_worker.workflows import timeouts
-    from agentruntime_worker.workflows.events import EventPublisher
+    from agentruntime_worker.workflows.events import EventPublisher, sandbox_startup_ms, tool_target
     from agentruntime_worker.workflows.failures import caused_by_cancel, failure_class, failure_message
     from agentruntime_worker.workflows.patches import (
         HUMAN_CHANNEL_PATCH,
@@ -444,6 +444,7 @@ class StageRunner:
                             done[nid] = StageResult(role=_role(node), status="skipped", failure_class="upstream_failed", error=f"上游 {failed_dep} 没有成功")
                             await self._node_finished(env, nid, done[nid])
                         else:
+                            await self._node_started(env, node)
                             running[nid] = asyncio.create_task(self._run_node(node, env))
                 if not running:
                     break
@@ -463,6 +464,11 @@ class StageRunner:
         """T-11b：顶层 DAG 里的 Node 结束时推送 node_finished；展开出的子 Node 不推。"""
         if self._ctx.events is not None and env is self._top:
             await self._ctx.events.node_finished(self._ctx.round_seq, node_id, result)
+
+    async def _node_started(self, env: _Env, node: dict[str, Any]) -> None:
+        """顶层 DAG 里的 Node 开始执行时推送 node_started（PROGRESS_DETAIL_PATCH 之后的运行）；展开出的子 Node 不推。"""
+        if self._ctx.events is not None and env is self._top:
+            await self._ctx.events.node_started(self._ctx.round_seq, node)
 
     async def _gather(self, coros: list[Awaitable[Any]]) -> list[Any]:
         """并发执行，结果按传入的顺序返回；取消时一并取消。"""
@@ -996,9 +1002,12 @@ class StageRunner:
         # tool_loop 的主 agent 是唯一写者：会写时整个循环持有写锁。
         async with self._writer(effect, env):
             inner = _Env(results={}, write_held=env.write_held or effect in sp.WRITE_EFFECTS)
-            return _as(await self.tool_loop(node, isolated=False, tool_effects=effects, env=inner), role)
+            # 顶层的 Goal Node 才推每次工具调用的进度（展开出的子 Node、子工作流里都不推）。
+            return _as(await self.tool_loop(node, isolated=False, tool_effects=effects, env=inner, progress=env is self._top), role)
 
-    async def tool_loop(self, node: dict[str, Any], *, isolated: bool, tool_effects: dict[str, str], env: _Env) -> StageResult:
+    async def tool_loop(
+        self, node: dict[str, Any], *, isolated: bool, tool_effects: dict[str, str], env: _Env, progress: bool = False,
+    ) -> StageResult:
         """思考 → 调工具 → 观察，每一步是一个 activity（附录 E.1）。设最大迭代次数，同一错误连续出现就打断（附录 B.8）。
 
         调用 effect 为 write_irreversible 的工具前逐次人工审批（D16，附录 E.1）：拒绝或超时时不调用，把结果作为这一步的
@@ -1008,6 +1017,8 @@ class StageRunner:
         limit = int(node.get("max_iterations") or DEFAULT_MAX_ITERATIONS)
         history: list[dict[str, Any]] = []
         rejections = 0
+        # 每次工具调用前后推 tool_status（只有顶层 Goal Node，且是 PROGRESS_DETAIL_PATCH 之后的运行；见 EventPublisher）。
+        events = self._ctx.events if progress else None
         # 这个循环花的钱（每一步的模型花费，计入 Round 的成本）与最近一步的供应商。
         spent_before = self.spent_usd
         vendor = ""
@@ -1064,6 +1075,10 @@ class StageRunner:
                         if rejections >= MAX_TOOL_REJECTIONS:
                             return _denied(DEFAULT_ROLE, f"{nid} 的不可逆工具调用被拒绝 {rejections} 次（含审批超时），交给 Reviewer")
                         continue
+                target = tool_target(step.args)
+                if events is not None:
+                    await events.tool_status(self._ctx.round_seq, nid, i, step.tool, "running", target=target)
+                called_at = workflow.now()
                 try:
                     async with self._writer(effect, env), self._slot():
                         entry["observation"] = await workflow.execute_activity(
@@ -1087,6 +1102,15 @@ class StageRunner:
                     if caused_by_cancel(err):
                         raise asyncio.CancelledError() from err
                     entry["error"] = failure_message(err)
+                if events is not None:
+                    took = int((workflow.now() - called_at).total_seconds() * 1000)
+                    if "error" in entry:
+                        await events.tool_status(self._ctx.round_seq, nid, i, step.tool, "failed", target=target, duration_ms=took, error=str(entry["error"]))
+                    else:
+                        await events.tool_status(
+                            self._ctx.round_seq, nid, i, step.tool, "succeeded", target=target, duration_ms=took,
+                            startup_ms=sandbox_startup_ms(entry.get("observation")),
+                        )
             history.append(entry)
             if sp.repeated_error(history):
                 return _failed(DEFAULT_ROLE, f"repeated_error：同一错误连续出现 {sp.REPEATED_ERROR_LIMIT} 次：{entry['error']}")

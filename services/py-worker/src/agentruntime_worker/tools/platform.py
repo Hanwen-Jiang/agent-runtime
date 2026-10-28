@@ -533,6 +533,8 @@ class _Workspaces:
                 environment = replace(environment, state="fallback", image="", note=f"{err.message}，这次用 universal")
                 lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy)
             ran = time.monotonic()
+            # 新建了环境时借到它花的时间（冷启动）：进结果，tool_loop 的进度事件 tool_status 带给用户看；复用的环境没有这一项。
+            startup_ms = None if lease.reused else int((ran - started) * 1000)
             result = None
             try:
                 try:
@@ -541,8 +543,10 @@ class _Workspaces:
                     if not lease.reused:
                         raise
                     await self.broker.discard(lease, "后端里已经没有这个环境（被回收或节点重启）")
+                    retry_at = time.monotonic()
                     lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy)
                     ran = time.monotonic()
+                    startup_ms = None if lease.reused else int((ran - retry_at) * 1000)
                     result = await lease.box.exec(lease.env_id, argv, timeout=timedelta(seconds=timeout), env=lease.env or None)
             except InvalidError as err:
                 if err.code == "command_not_found":
@@ -568,6 +572,8 @@ class _Workspaces:
                             meter["sandbox.cpu_ms"] = int(result.cpu_time.total_seconds() * 1000)
                     span.set_attributes(meter)
         out = {"exit_code": result.exit_code, "timed_out": result.timed_out, "sandbox": lease.backend.name, **self._outputs(result.stdout, result.stderr)}
+        if startup_ms is not None:
+            out["sandbox_startup_ms"] = startup_ms
         if lease.record is not None and lease.record.state == "destroyed" and lease.record.cost_usd > 0:
             # 一次性环境的花费（按后端价目）：Node Executor 计入这个 Node 的 meta.cost_usd，进 Round 与 Task 的花费。
             out["sandbox_cost_usd"] = lease.record.cost_usd

@@ -58,7 +58,14 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.workflows.events import EventPublisher
     from agentruntime_worker.workflows.failures import caused_by_cancel as _caused_by_cancel
     from agentruntime_worker.workflows.failures import failure_message as _failure_message
-    from agentruntime_worker.workflows.patches import EVENTS_PATCH, POLICY_PATCH, R01_FIXES_PATCH, REVIEWER_PATCH, STAGE_RUNNER_PATCH
+    from agentruntime_worker.workflows.patches import (
+        EVENTS_PATCH,
+        POLICY_PATCH,
+        PROGRESS_DETAIL_PATCH,
+        R01_FIXES_PATCH,
+        REVIEWER_PATCH,
+        STAGE_RUNNER_PATCH,
+    )
     from agentruntime_worker.workflows.stage_runner import RunContext, StageRunner, effect_name
 
 # Round 上限：兜底。Reviewer 的升级规则与各级次数上限（S-10）让一直失败的 Task 在 12 次评审之内收尾。
@@ -320,7 +327,8 @@ class TaskWorkflow:
         assert self._input is not None
         # T-11b 加入了推送进度事件的 activity：新的运行走版本分支；子 Task 没有自己的事件流，不推。
         if workflow.patched(EVENTS_PATCH) and self._input.depth == 0:
-            self._events = EventPublisher(self._tenant, self._input.task_id)
+            # 2026-10-28 起的运行另推 node_started 与 tool_status（版本分支 PROGRESS_DETAIL_PATCH）。
+            self._events = EventPublisher(self._tenant, self._input.task_id, detail=workflow.patched(PROGRESS_DETAIL_PATCH))
         task_plan: dict[str, Any] | None = None
         last_round: dict[str, Any] | None = None
         rerun: vd.Rerun | None = None

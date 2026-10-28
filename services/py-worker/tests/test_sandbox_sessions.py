@@ -80,11 +80,13 @@ PY = ["python", "-c"]
 
 async def test_same_session_reuses_one_environment_and_sessions_are_separate(tmp_path: Path) -> None:
     s = Setup(tmp_path)
-    await s.shell([*PY, "print(1)"])
-    await s.shell([*PY, "print(2)"])
+    cold = await s.shell([*PY, "print(1)"])
+    warm = await s.shell([*PY, "print(2)"])
     await s.shell([*PY, "print(3)"], session=S2, workspace="w2")  # 同一个工作区只有一个可写环境，另一个会话用别的工作区
     first, second, other = s.spans()
     assert first["sandbox.reused"] is False and second["sandbox.reused"] is True
+    # 新建环境的那一次在结果里报冷启动时间（进度事件 tool_status 带给用户）；复用的没有。
+    assert isinstance(cold["sandbox_startup_ms"], int) and cold["sandbox_startup_ms"] >= 0 and "sandbox_startup_ms" not in warm
     assert first["sandbox.env_ref"] == second["sandbox.env_ref"] != other["sandbox.env_ref"]
     assert "sandbox.lifetime_ms" not in second, "会话级的环境不按一条命令算存活时间"
     active = await s.ledger.active("t1")
@@ -186,5 +188,6 @@ async def test_reused_environment_gone_from_the_backend_is_replaced_transparentl
     await local.bind(TenantContext(tenant_id="t1", workspace_id="w1")).destroy(record.backend_env_id)  # 后端把它回收了
     out = await s.shell([*PY, "print('still works')"])
     assert out["exit_code"] == 0 and "still works" in out["stdout"]
+    assert out["sandbox_startup_ms"] >= 0, "换了新环境：报新环境的冷启动时间"
     assert (await s.ledger.get("t1", record.env_ref)).state == "lost"  # type: ignore[union-attr]
     assert s.spans()[-1]["sandbox.env_ref"] != record.env_ref
