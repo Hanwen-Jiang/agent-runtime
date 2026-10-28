@@ -124,10 +124,20 @@ worker:
           go: ghcr.io/agentruntime/sandbox-go:0.1.0
         agent_image: ghcr.io/agentruntime/sandbox-agent:0.1.0
         connect: pod_ip
-        workspace_claim: workspaces
+        # 存档模式（D-06）：与 Cloudflare 后端同一组，Kata 满了能回退过去（租户策略的 sandbox.fallback）；建环境时从快照恢复。
+        workspace: archive
         # microVM 启动比容器慢。
         startup_timeout_s: 120
         max_envs_per_scope: 2
+      # Cloudflare Containers（D-07，deploy/cloudflare/sandbox-bridge）：总是存档模式；桥的令牌在 SecretStore 的
+      # sandbox/cloudflare-bridge-token。容量有时会暂时不够（transient），所以作回退，不作首选。
+      cloudflare:
+        kind: cloudflare
+        isolation: microvm
+        bridge_url: https://agentruntime-sandbox-bridge.root-60a.workers.dev
+        workspace: archive
+        # 桥部署的是 sandbox-universal 镜像（deploy/cloudflare/sandbox-bridge/wrangler.jsonc），与 Kata 一样跑 universal。
+        runtimes: [universal, python]
   pools:
     task:
       minReplicas: 1

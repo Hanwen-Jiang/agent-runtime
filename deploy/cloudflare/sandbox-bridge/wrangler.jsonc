@@ -8,9 +8,11 @@
   "containers": [
     {
       "class_name": "Sandbox",
-      // 跑命令的镜像：python:3.13-slim 加 sandbox-agent（deploy/images/sandbox-python），构建上下文是仓库根。
-      "image": "../../images/sandbox-python/Dockerfile",
-      "image_build_context": "../../..",
+      // 跑命令的镜像：多语言的 sandbox-universal（与集群里的 Kata、gVisor 同一个，D-14；有 git，Workspace API 要用）。
+      // 它有 2.6 GB，不在这里构建：在构建它的机器上 `wrangler containers push agentruntime-sandbox-universal:<版本>`，
+      // 推到 Cloudflare 的镜像仓库后写在这里。Worker 的后端登记要写 "runtimes": ["universal", "python"]。
+      // 只要 Python 的小镜像时换回 "../../images/sandbox-python/Dockerfile" 加 "image_build_context": "../../.."。
+      "image": "registry.cloudflare.com/60a1944efd471ed11fad60eaba55e59c/agentruntime-sandbox-universal:0.1.0",
       // 1 vCPU、6 GiB、12 GB 盘；一次编码任务约 0.02 美元（计划第 4.3 节）。
       "instance_type": "standard-2",
       "max_instances": 20

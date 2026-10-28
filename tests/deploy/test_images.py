@@ -97,12 +97,18 @@ def test_the_five_services_and_the_sandbox_images_are_listed() -> None:
         assert (REPO_ROOT / spec["dockerfile"]).is_file(), f"{name} 的 Dockerfile 不存在"
 
 
-def test_cloudflare_bridge_builds_the_listed_sandbox_image() -> None:
+def test_cloudflare_bridge_runs_one_of_our_sandbox_images() -> None:
+    """桥跑我们构建的沙箱镜像：要么在这里构建 sandbox-python（Dockerfile，上下文是仓库根），要么是推到 Cloudflare 镜像仓库的
+    sandbox-universal（按版本，不用 latest）。"""
     wrangler = (REPO_ROOT / "deploy" / "cloudflare" / "sandbox-bridge" / "wrangler.jsonc").read_text("utf-8")
     image = re.search(r'"image":\s*"([^"]+)"', wrangler)
+    assert image
+    if image.group(1).startswith("registry.cloudflare.com/"):
+        assert re.fullmatch(r"registry\.cloudflare\.com/[0-9a-f]{32}/agentruntime-sandbox-universal:\d+\.\d+\.\d+", image.group(1))
+        return
     context = re.search(r'"image_build_context":\s*"([^"]+)"', wrangler)
     bridge = REPO_ROOT / "deploy" / "cloudflare" / "sandbox-bridge"
-    assert image and context
+    assert context
     assert (bridge / image.group(1)).resolve() == (REPO_ROOT / MANIFEST["sandbox-python"]["dockerfile"]).resolve()
     assert (bridge / context.group(1)).resolve() == REPO_ROOT.resolve(), "构建上下文是仓库根（.dockerignore 在那里）"
 

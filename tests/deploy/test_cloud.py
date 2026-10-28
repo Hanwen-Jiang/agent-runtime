@@ -324,11 +324,21 @@ def test_backend_registry_matches_the_cluster(cloud: list[dict[str, Any]]) -> No
     images = json.loads((REPO_ROOT / "deploy" / "images" / "images.json").read_text("utf-8"))["images"]
     assert registry["default"] in registry["backends"]
     for name, backend in registry["backends"].items():
+        if backend["kind"] == "cloudflare":
+            # Cloudflare Containers（D-07）：经桥，总是存档模式。
+            assert backend["bridge_url"].startswith("https://") and backend.get("workspace", "archive") == "archive"
+            continue
         assert backend["kind"] == "k8s" and backend["runtime_class"] in classes, f"后端 {name} 的 RuntimeClass 不存在"
-        assert (backend["namespace"], backend["workspace_claim"]) in claims, f"后端 {name} 的工作区卷不在 {backend['namespace']}"
+        if backend.get("workspace") == "archive":
+            assert "workspace_claim" not in backend, f"后端 {name} 是存档模式，不挂工作区卷"
+        else:
+            assert (backend["namespace"], backend["workspace_claim"]) in claims, f"后端 {name} 的工作区卷不在 {backend['namespace']}"
         for key in ("image", "agent_image"):
             assert backend[key].rsplit("/", 1)[1].split(":")[0] in images, f"后端 {name} 的 {key} 不是我们构建的镜像"
     assert {b["isolation"] for b in registry["backends"].values()} == {"container", "microvm"}, "两种隔离强度都有"
+    # Kata 回退到 Cloudflare（租户策略的 sandbox.fallback）要两者在同一工作区组：都是存档模式。
+    modes = {n: b.get("workspace", "archive" if b["kind"] == "cloudflare" else "mount") for n, b in registry["backends"].items()}
+    assert modes.get("kata") == modes.get("cloudflare") == "archive"
 
 
 def test_network_policy_lets_the_rendered_workers_reach_the_agent(cloud: list[dict[str, Any]]) -> None:
@@ -517,6 +527,8 @@ def test_tempo_can_answer_traceql_metrics() -> None:
 def test_backends_have_per_tenant_quotas() -> None:
     backends = cloud_values()["worker"]["shell"]["backends"]
     for name, backend in backends.items():
+        if backend["kind"] != "k8s":
+            continue  # Cloudflare 由桥的 max_instances 与租户策略的 quota 限住
         assert int(backend.get("max_envs_per_scope", 0)) > 0, f"后端 {name} 要有每个租户的沙箱配额（D-10）"
 
 

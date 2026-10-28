@@ -253,7 +253,9 @@ class Sandboxes:
         token = await self._secret(BRIDGE_TOKEN_SECRET)
         if not token:
             raise InvalidError("missing_bridge_token", f"SecretStore 的平台作用域里没有 {BRIDGE_TOKEN_SECRET}（Cloudflare 后端 {name} 要用）")
-        return CloudflareSandboxProvider(str(spec["bridge_url"]), token.decode())
+        # runtimes：桥部署的镜像能跑哪些 runtime（D-14）；不写时是 sandbox-python 镜像，只有 python。
+        runtimes = tuple(str(r) for r in spec.get("runtimes") or ("python",))
+        return CloudflareSandboxProvider(str(spec["bridge_url"]), token.decode(), runtimes=runtimes)
 
     async def aclose(self) -> None:
         for backend in self._backends.values():

@@ -45,13 +45,18 @@ def _parse_time(value: object) -> datetime | None:
 
 
 class CloudflareSandboxProvider:
-    def __init__(self, bridge_url: str, bridge_token: str, *, faults: FaultInjector | None = None, agent: AgentClient | None = None) -> None:
+    def __init__(
+        self, bridge_url: str, bridge_token: str, *, runtimes: tuple[str, ...] = ("python",), faults: FaultInjector | None = None,
+        agent: AgentClient | None = None,
+    ) -> None:
         if not bridge_url.startswith(("https://", "http://127.0.0.1", "http://localhost")):
             raise ValueError("桥的地址要是 https（本机测试除外）")
         if len(bridge_token) < 32:
             raise ValueError("桥的令牌至少 32 个字符")
         self.bridge_url = bridge_url.rstrip("/")
         self._token = bridge_token
+        # 桥的镜像在部署时写死（wrangler.jsonc）：这里登记它能跑哪些 runtime（universal 镜像里也有 python）。
+        self.runtimes = tuple(runtimes)
         self._faults = faults or FaultInjector()
         self._agent = agent or AgentClient()
         self._destroyed: set[tuple[str, str]] = set()
@@ -119,8 +124,8 @@ class CloudflareSandbox:
 
     async def create(self, spec: SandboxSpec) -> SandboxEnv:
         self._p._faults.check("create")
-        if spec.runtime != "python":
-            raise InvalidError("unsupported_runtime", "Cloudflare 后端的镜像只有 python")
+        if spec.runtime not in self._p.runtimes:
+            raise InvalidError("unsupported_runtime", f"Cloudflare 后端的镜像只能跑 {'、'.join(self._p.runtimes)}")
         if spec.image:
             raise InvalidError("unsupported_image", "Cloudflare 后端的镜像在桥里写死，不能按项目定制（D-17）")
         if spec.workspace_id:

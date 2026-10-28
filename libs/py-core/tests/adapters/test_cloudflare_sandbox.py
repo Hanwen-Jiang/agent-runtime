@@ -89,6 +89,18 @@ async def test_workspace_cannot_be_mounted(bridge: cloudflaretest.FakeBridge) ->
         await box.create(SandboxSpec(workspace_id="w1"))
 
 
+async def test_runtimes_follow_the_bridge_image(bridge: cloudflaretest.FakeBridge) -> None:
+    """桥的镜像在部署时定：默认只有 python；登记成 universal 镜像的桥也接 universal（里面有 python），别的仍拒绝。"""
+    default = CloudflareSandboxProvider(bridge.url, bridge.token).bind(tenant_a())
+    with expect_error(ErrorCategory.INVALID, "unsupported_runtime"):
+        await default.create(SandboxSpec(runtime="universal"))
+    universal = CloudflareSandboxProvider(bridge.url, bridge.token, runtimes=("universal", "python")).bind(tenant_a())
+    env = await universal.create(SandboxSpec(runtime="universal"))
+    await universal.destroy(env.env_id)
+    with expect_error(ErrorCategory.INVALID, "unsupported_runtime"):
+        await universal.create(SandboxSpec(runtime="go"))
+
+
 def test_bridge_must_be_https() -> None:
     with pytest.raises(ValueError):
         CloudflareSandboxProvider("http://example.com", "x" * 48)
