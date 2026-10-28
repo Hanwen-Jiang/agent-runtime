@@ -481,6 +481,19 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
 | D-16 | `services/go-egress-gateway`（代理、SSRF、用量、逐连接审计、预览入口、管理接口）；提交时的 `network_request`（task-service 核对并写授权，Task 结束时 `FinishTask` 收回并通知网关）；Worker 的 `request_network`、代理变量、测试用密钥、托管后端按域名放行与要审计时只落在经网关的后端；Chart 的 `egressGateway` 与网络策略 | Go：没有授权连不出去、授权的主机与端口与时限、SSRF 套件（各种 IP 写法、内网名字、重绑定、元数据地址、NAT64、重定向到内网、CONNECT 写地址）、上行超限断开并审计、审计的主机字节时长、收回（管理接口立即断开、只改业务库几秒内断开）、环境销毁、连接数与频率、SNI、每天的出网字节、预览（没令牌、过期、别的环境、收回之后、Cookie、限频）；task-service：申请的正例与反例、被拒不留 Task、重复提交不多写、Task 结束收回、表没建时 transient；Worker：`test_sandbox_egress.py`；契约：proto、schema、凭据向量；部署：网络策略、预览路由、单副本与业务库 | **契约待人审**；集群里的连通性、真实 DNS 与 TLS 站点、`runtime.egress` 进 Tempo 与按 Task 列出的界面、`dev_stack.py` 拉起网关 |
 | D-14 | `sandbox-universal`（五种语言各一层，版本写死）、`sandbox-node`、`sandbox-go`；后端登记的 `images` 与 `AR_SANDBOX_RUNTIME`；环境表与 span 记运行环境与镜像（K8s 报的 imageID 优先）；预拉的 DaemonSet | 静态检查（各层、版本、缓存在 /tmp、单语言镜像的基础镜像）；Chart 的预拉覆盖全部 K8s 后端的镜像且满足 restricted；Worker 记下的镜像与换版本后旧行不变（`test_sandbox_runtime.py`） | 构建并在镜像里编译、测试五种语言（`AR_TEST_IMAGES=1`，要下载基础镜像）；gVisor、Kata 上与冷启动的数字 |
 
+第一次上线（2026-10-28，美国的独服，Ubuntu 24.04、24 线程、125 GB、有 KVM；域名 cgent.link）：
+
+- 入口：`api.cgent.link`（Task API 与 Workspace API）、`code.cgent.link`（coding-web），Cloudflare 代理；源站证书 `cgent.link`、`*.cgent.link`，
+  这两个主机用配置规则设为 Full (strict)（区域的其余主机不动）。防火墙用 `deploy/cluster/firewall.sh`。
+- 镜像在服务器上构建、导进 k3s（不经镜像仓库）；密钥在服务器上生成，SOPS 加密。
+- 验过的：verify.sh 全过（gVisor 与 Kata 的内核、沙箱断网、没令牌）；业务库三个角色都不是超级用户、没有 BYPASSRLS；经 Cloudflare 的
+  Workspace API 在 gVisor 沙箱里建工作区、真模型的只读 Task 跑到 done、SSE 逐条到达；80 跳 443；源站的 443、6443、NodePort 从公网连不上。
+- 还没开的：R2（Postgres 的 WAL 归档与每日备份、Langfuse）等 R2 的令牌；预览地址（`*.preview.cgent.link` 要 Cloudflare 的付费证书，
+  先关着）；coding-web 的第三方登录等新的 OAuth 应用（回调 `https://code.cgent.link/api/auth/<平台>/callback`），上线初期只放行名单里的账号。
+- 上线时改的：Traefik Chart 40 的跳转键位置、Kata 4.2 的 handler 在 `config-v3.toml.d` 里、Redpanda 的特权 tuning 容器关掉、
+  Workspace API 在挂卷的后端上要先建工作区目录（否则 kubelet 以 root 建 subPath）、租户策略的种子不起名字。
+- Cloudflare 的 Browser Integrity Check 拒绝 Python-urllib 之类的默认 User-Agent（错误 1010）：直接调 `api.cgent.link` 的脚本要带自己的 User-Agent。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。

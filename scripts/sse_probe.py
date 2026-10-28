@@ -26,7 +26,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     token = (sys.stdin.read() if args.token_file == "-" else open(args.token_file, encoding="utf-8").read()).strip()
     url = f"{args.base_url.rstrip('/')}/v1/tasks/{args.task_id}/events"
-    request = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}", "Accept": "text/event-stream"})
+    # Cloudflare 的 Browser Integrity Check 拒绝 Python-urllib 的默认 User-Agent（错误 1010）。
+    request = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}", "Accept": "text/event-stream", "User-Agent": "agentruntime-sse-probe/1"})
     start = time.monotonic()
     arrivals: list[tuple[float, str]] = []
     try:

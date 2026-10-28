@@ -128,7 +128,9 @@ def test_containerd_template_adds_runsc_to_the_k3s_base() -> None:
 def test_traefik_redirects_to_https_and_does_not_buffer_sse() -> None:
     doc = yaml.safe_load((CLUSTER / "k3s" / "traefik-config.yaml").read_text("utf-8"))
     values = yaml.safe_load(doc["spec"]["valuesContent"])
-    assert values["ports"]["web"]["redirections"]["entryPoint"]["to"] == "websecure"
+    # Traefik Chart 35 起的位置（k3s 1.36 带 40.x）；旧位置 ports.web.redirections 会被悄悄忽略。
+    assert values["ports"]["web"]["http"]["redirections"]["entryPoint"]["to"] == "websecure"
+    assert "redirections" not in values["ports"]["web"]
     websecure = values["ports"]["websecure"]
     assert websecure["transport"]["respondingTimeouts"]["writeTimeout"] in ("0s", "0", 0), "SSE 是长连接，不设写超时"
     assert websecure["forwardedHeaders"]["trustedIPs"], "只信任 Cloudflare 转发的客户端地址"

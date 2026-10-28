@@ -355,6 +355,22 @@ async def test_create_from_files_or_from_another_workspace(tmp_path: Path) -> No
     assert other_tenant.category == error_pb2.ERROR_CATEGORY_NOT_FOUND, "不能复制别的租户的工作区"
 
 
+async def test_mount_mode_creates_the_workspace_dir_before_borrowing_an_env(tmp_path: Path) -> None:
+    # K8s 后端按 subPath 挂工作区：目录要由 Worker 先建好，否则 kubelet 以 root 建，沙箱与 Worker 都写不进去。
+    s = Setup(tmp_path, mode="mount")
+    seen: list[bool] = []
+    acquire = s.broker.acquire
+
+    async def watching(tenant: TenantContext, spec: Any, **kw: Any) -> Any:
+        seen.append((s.host / tenant.tenant_id / spec.workspace_id).is_dir())
+        return await acquire(tenant, spec, **kw)
+
+    s.broker.acquire = watching  # type: ignore[method-assign]
+    await s.run(Op.WORKSPACE_OPERATION_CREATE, workspace="w-new", files=[{"path": "a.txt", "content": "1\n"}])
+    await s.run(Op.WORKSPACE_OPERATION_LIST_FILES, workspace="w-new")
+    assert seen and all(seen), seen
+
+
 async def test_diff_counts_lines_detects_renames_and_reports_the_branch(tmp_path: Path) -> None:
     url, _ = make_remote(tmp_path)
     s = Setup(tmp_path, mode="mount")

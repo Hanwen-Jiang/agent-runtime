@@ -19,6 +19,9 @@ tls:
   enabled: false
 console:
   enabled: false
+# Chart 默认有一个特权的 tuning 初始化容器（调宿主的 aio 上限），data 命名空间的 Pod Security（baseline）不允许；单个 broker 用不着。
+tuning:
+  tune_aio_events: false
 config:
   cluster:
     auto_create_topics_enabled: true

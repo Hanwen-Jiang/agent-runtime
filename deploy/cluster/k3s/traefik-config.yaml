@@ -11,11 +11,13 @@ spec:
   valuesContent: |-
     ports:
       web:
-        redirections:
-          entryPoint:
-            to: websecure
-            scheme: https
-            permanent: true
+        # Traefik Chart 35 起跳转写在 http 下面（k3s 1.36 带的是 40.x）；写在旧位置会被悄悄忽略。
+        http:
+          redirections:
+            entryPoint:
+              to: websecure
+              scheme: https
+              permanent: true
       websecure:
         transport:
           respondingTimeouts:

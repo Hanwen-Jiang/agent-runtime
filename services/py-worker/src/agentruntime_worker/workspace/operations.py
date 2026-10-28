@@ -509,6 +509,14 @@ class WorkspaceOperations:
         self._remove_host_dir(owner, ws)
         return {}
 
+    async def _ensure_host_dir(self, owner: str, ws: str) -> None:
+        """挂卷的后端：借环境之前以 Worker 的身份建好 <工作区根>/<租户>/<workspace>。K8s 后端按 subPath 挂，目录不在时
+        kubelet 以 root 建，沙箱与 Worker 就都写不进去（工具一侧由 PlatformTools._workspace 建）。存档模式下不建。"""
+        root = self._broker.sandboxes.workspace_root
+        if root is None or not _SLUG.match(owner) or not _SLUG.match(ws) or await self._broker.archive_mode_for(owner):
+            return
+        (Path(root) / owner / ws).mkdir(parents=True, exist_ok=True)
+
     def _remove_host_dir(self, owner: str, ws: str) -> None:
         """挂卷的工作区目录（<工作区根>/<租户>/<workspace>）删掉；存档模式下它本来就不在。"""
         root = self._broker.sandboxes.workspace_root
@@ -585,6 +593,7 @@ class WorkspaceOperations:
             await broker.grants.create(owner, request, policy, task_id=task_id, approved_by=inp.requested_by or "workspace-api", workspace_id=ws)
             granted = True
         spec = SandboxSpec(runtime=self.runtime, network="none", idle_timeout=timedelta(minutes=10), workspace_id=ws)
+        await self._ensure_host_dir(owner, ws)
         try:
             lease = await broker.acquire(tenant, spec, task_id=task_id, writable=writable, reuse=False, busy_for=self.git_timeout + timedelta(minutes=5))
             ok = False

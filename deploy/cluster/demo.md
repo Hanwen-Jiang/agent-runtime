@@ -13,12 +13,20 @@ kubectl -n observability port-forward svc/langfuse-web 3001:3000
 kubectl -n data port-forward svc/temporal-web 8080:8080   # Temporal 的界面，看工作流的事件历史
 ```
 
-租户策略经 Registry 发布：把文档写进种子文件（格式见 `services/go-task-service/internal/registry/seed.go`），
-经端口转发连业务库，用 task-service 的 `registry-seed` 发布（幂等）：
+租户策略经 Registry 发布：把文档写进种子文件（格式见 `services/go-task-service/internal/registry/seed.go`；租户策略一个租户一份，
+不起名字），用 task-service 的 `registry-seed` 发布（幂等）。最省事的是在 task-service 的 Pod 里跑（它有业务库的连接串与 /schemas）：
+
+```bash
+kubectl -n agent-runtime exec -i deploy/ar-agent-runtime-task-service -- /usr/local/bin/app registry-seed /dev/stdin < demo-policies.json
+```
+
+或者经端口转发连业务库，在本机跑：
 
 ```json
-[{"kind": "tenant_policy", "tenant": "demo-invited", "name": "default", "document": {"effect_ceiling": "write_reversible", "sandbox": {"backend": "gvisor"}}},
- {"kind": "tenant_policy", "tenant": "demo-public", "name": "default", "document": {"effect_ceiling": "write_reversible", "sandbox": {"backend": "kata"}}}]
+{"entries": [
+  {"kind": "tenant_policy", "tenant": "demo-invited", "document": {"effect_ceiling": "write_reversible", "sandbox": {"backend": "gvisor"}}},
+  {"kind": "tenant_policy", "tenant": "demo-public", "document": {"effect_ceiling": "write_reversible", "sandbox": {"backend": "kata"}}}
+]}
 ```
 
 ```bash
