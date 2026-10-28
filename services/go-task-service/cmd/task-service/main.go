@@ -331,6 +331,8 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	// 提交时的联网申请按租户策略的 sandbox.network 核对（D-16）：有 Registry 时读它的当前租户策略（与 Worker 同一个来源），
 	// 否则读开发用的租户策略文件。
 	var network taskapi.NetworkPolicySource
+	// effect 上限与预算：有 Registry 时同样按它的租户策略（没有自己策略的租户用平台默认的），开发用的策略文件里列出的租户以文件为准。
+	var registryPolicies func(context.Context, *commonv1.TenantContext) ([]byte, bool, error)
 	if cfg.RegistryAddr != "" {
 		reg, err := newRegistry(ctx, store, cfg.SecretsFile, cfg.SchemasDir, logger)
 		if err != nil {
@@ -338,6 +340,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		}
 		pins = registry.Pins{Registry: reg}
 		registrySrv = registryServer(cfg.RegistryAddr, reg)
+		registryPolicies = reg.CurrentTenantPolicy
 		network = taskapi.NetworkPolicyFunc(func(ctx context.Context, tenant *commonv1.TenantContext) (taskapi.NetworkPolicy, error) {
 			doc, found, err := reg.CurrentTenantPolicy(ctx, tenant)
 			if err != nil || !found {
@@ -366,6 +369,10 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		Budget:        &workflowv1.Budget{UsdMicros: 2_000_000, ToolCalls: 50, WallClock: durationpb.New(20 * time.Minute)},
 		EffectCeiling: commonv1.Effect_EFFECT_READ,
 	}
+	policies := taskapi.FilePolicyResolver{Path: cfg.TenantPoliciesFile, Fallback: defaults}
+	if registryPolicies != nil {
+		policies.Else = taskapi.DocumentPolicyResolver{Source: registryPolicies, Fallback: defaults}
+	}
 	api, err := taskapi.New(taskapi.Deps{
 		Ingress:       ing,
 		Durable:       temporaladapter.New(c),
@@ -375,7 +382,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		IDs:           ids.New(clk, nil),
 		PublicBaseURL: cfg.PublicBaseURL,
 		Defaults:      defaults,
-		Policies:      taskapi.FilePolicyResolver{Path: cfg.TenantPoliciesFile, Fallback: defaults},
+		Policies:      policies,
 		Network:       network,
 	})
 	if err != nil {

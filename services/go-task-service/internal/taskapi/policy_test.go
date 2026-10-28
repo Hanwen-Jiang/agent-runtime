@@ -69,6 +69,55 @@ func TestFilePolicyResolverRereadsAndFallsBack(t *testing.T) {
 	}
 }
 
+// 开了 Registry：effect 上限与预算按 Registry 的租户策略（没有自己策略的租户是平台默认的）；开发用的文件里列出的租户以文件为准。
+func TestRegistryPolicyGivesEffectCeilingAndBudget(t *testing.T) {
+	docs := map[string]string{
+		"open":    `{"effect_ceiling": "write_reversible", "budget": {"usd": 0.5, "tool_calls": 20, "wall_clock_min": 10}, "sandbox": {"backend": "kata"}}`,
+		"partial": `{"sandbox": {"backend": "gvisor"}}`,
+		"broken":  `{"effect_ceiling": "everything"}`,
+	}
+	source := func(_ context.Context, tenant *commonv1.TenantContext) ([]byte, bool, error) {
+		switch tenant.GetTenantId() {
+		case "down":
+			return nil, false, providererr.New(providererr.Transient, "unavailable", "Registry 连不上")
+		case "none":
+			return nil, false, nil
+		}
+		return []byte(docs[tenant.GetTenantId()]), true, nil
+	}
+	reg := DocumentPolicyResolver{Source: source, Fallback: fallback}
+	open, err := resolveFor(t, reg, "open")
+	if err != nil || open.EffectCeiling != commonv1.Effect_EFFECT_WRITE_REVERSIBLE {
+		t.Fatalf("effect 上限取自策略：%v（%v）", open.EffectCeiling, err)
+	}
+	if b := open.Budget; b.GetUsdMicros() != 500_000 || b.GetToolCalls() != 20 || b.GetWallClock().AsDuration().Minutes() != 10 {
+		t.Errorf("预算取自策略：%v", b)
+	}
+	if fallback.Budget.GetUsdMicros() != 2_000_000 {
+		t.Error("改的是副本，默认值不变")
+	}
+	for _, id := range []string{"partial", "none"} {
+		if d, err := resolveFor(t, reg, id); err != nil || d.EffectCeiling != commonv1.Effect_EFFECT_READ || d.Budget.GetUsdMicros() != 2_000_000 {
+			t.Errorf("%s：没写的项、没有策略时用默认值：%v（%v）", id, d, err)
+		}
+	}
+	if _, err := resolveFor(t, reg, "broken"); providererr.CategoryOf(err) != providererr.Invalid {
+		t.Errorf("写错的策略 invalid：%v", err)
+	}
+	if _, err := resolveFor(t, reg, "down"); providererr.CategoryOf(err) != providererr.Transient {
+		t.Errorf("Registry 不可用时 transient（准入失败，不按默认值放行）：%v", err)
+	}
+
+	chain := FilePolicyResolver{Path: writePolicies(t, `{"tenants": {"open": {"effect_ceiling": "read"}}}`), Fallback: fallback, Else: reg}
+	if d, _ := resolveFor(t, chain, "open"); d.EffectCeiling != commonv1.Effect_EFFECT_READ {
+		t.Errorf("文件里列出的租户以文件为准：%v", d.EffectCeiling)
+	}
+	missing := FilePolicyResolver{Path: filepath.Join(t.TempDir(), "absent.json"), Fallback: fallback, Else: reg}
+	if d, _ := resolveFor(t, missing, "open"); d.EffectCeiling != commonv1.Effect_EFFECT_WRITE_REVERSIBLE {
+		t.Errorf("没列出的租户按 Registry：%v", d.EffectCeiling)
+	}
+}
+
 func TestFilePolicyResolverRejectsMalformedPolicies(t *testing.T) {
 	for _, body := range []string{`{not json`, `{"tenants": {"tw": {"effect_ceiling": "everything"}}}`, `{"tenants": {"tw": {"effect_ceiling": "unspecified"}}}`} {
 		r := FilePolicyResolver{Path: writePolicies(t, body), Fallback: fallback}

@@ -175,7 +175,16 @@ func (r *Registry) prepare(kind registryv1.RegistryKind, tenant *commonv1.Tenant
 	if err != nil {
 		return candidate{}, err
 	}
-	sc, err := r.writeScope(spec, tenant)
+	var sc scope
+	if kind == registryv1.RegistryKind_REGISTRY_KIND_TENANT_POLICY && tenant.GetTenantId() == "" {
+		// 不带租户的租户策略只有一份：平台默认（DefaultTenantPolicy），给没有自己策略的租户用。
+		if name != DefaultTenantPolicy {
+			return candidate{}, invalid("tenant_required", "租户策略要带租户；不带租户的只能是平台默认的，名字为 "+DefaultTenantPolicy)
+		}
+		sc, err = r.platformScope()
+	} else {
+		sc, err = r.writeScope(spec, tenant)
+	}
 	if err != nil {
 		return candidate{}, err
 	}
@@ -209,7 +218,7 @@ func (r *Registry) prepare(kind registryv1.RegistryKind, tenant *commonv1.Tenant
 			seen[t.Name] = true
 		}
 	case registryv1.RegistryKind_REGISTRY_KIND_TENANT_POLICY:
-		if name != "" {
+		if !sc.platform && name != "" {
 			return candidate{}, invalid("invalid_name", "租户策略不起名字（一个租户一份）")
 		}
 	}

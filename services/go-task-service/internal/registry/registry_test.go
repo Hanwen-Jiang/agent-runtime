@@ -251,6 +251,49 @@ func TestTenantPolicyTakesEffectOnPublish(t *testing.T) {
 	})
 }
 
+// 平台默认的租户策略：不带租户、名字为 default；没有自己策略的租户读到它（版本 default/vN，固定在 Task 上照原样取回），
+// 租户自己的策略总是优先。
+func TestTenantsWithoutAPolicyGetThePlatformDefault(t *testing.T) {
+	eachBackend(t, func(t *testing.T, h *harness) {
+		_, err := h.getPolicy(t2, "")
+		wantCode(t, "没有平台默认时仍是 NotFound", err, connect.CodeNotFound)
+		_, err = h.publish(nil, kindPolicy, "other", policyDoc)
+		wantCode(t, "不带租户的只能是 default", err, connect.CodeInvalidArgument)
+
+		if resp, err := h.publish(nil, kindPolicy, registry.DefaultTenantPolicy, policyDoc); err != nil || resp.GetState() != stateDefault {
+			t.Fatalf("发布平台默认即生效：%+v（%v）", resp, err)
+		}
+		got, err := h.getPolicy(t2, "")
+		if err != nil || got.GetVersion() != "default/v1" || !proto.Equal(got.GetDocument().GetValue(), value(t, policyDoc)) {
+			t.Fatalf("没有自己策略的租户读到平台默认：%+v（%v）", got, err)
+		}
+		if pins := h.mustResolve(t2, "", ""); pins.GetTenantPolicy() != "default/v1" {
+			t.Errorf("固定的是平台默认的版本：%q", pins.GetTenantPolicy())
+		}
+
+		h.mustPublish(t2, kindPolicy, "", policyDocV2)
+		own, err := h.getPolicy(t2, "")
+		if err != nil || own.GetVersion() != "v1" || !proto.Equal(own.GetDocument().GetValue(), value(t, policyDocV2)) {
+			t.Errorf("租户自己的策略优先：%+v（%v）", own, err)
+		}
+		pinned, err := h.getPolicy(t2, "default/v1")
+		if err != nil || !proto.Equal(pinned.GetDocument().GetValue(), value(t, policyDoc)) {
+			t.Errorf("已固定 default/v1 的 Task 照原样取回：%+v（%v）", pinned, err)
+		}
+
+		h.mustPublish(nil, kindPolicy, registry.DefaultTenantPolicy, policyDocV2)
+		if got, err := h.getPolicy(t1, ""); err != nil || got.GetVersion() != "default/v2" {
+			t.Errorf("平台默认的新版本对没有自己策略的租户立即生效：%+v（%v）", got, err)
+		}
+		for _, bad := range []string{"default/", "default/v0", "default/x"} {
+			_, err := h.getPolicy(t1, bad)
+			wantCode(t, "版本号 "+bad, err, connect.CodeInvalidArgument)
+		}
+		_, err = h.getPolicy(t1, "default/v9")
+		wantCode(t, "没有的平台默认版本", err, connect.CodeNotFound)
+	})
+}
+
 // --- 固定 ---
 
 func TestResolvePinnedVersionsPinsOnlyDefaults(t *testing.T) {

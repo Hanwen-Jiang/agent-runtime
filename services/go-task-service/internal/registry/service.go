@@ -369,17 +369,9 @@ func (r *Registry) ListModelProfiles(ctx context.Context, req *connect.Request[r
 	return connect.NewResponse(out), nil
 }
 
-// GetTenantPolicy 取请求租户的策略；version 为空时取当前版本。
+// GetTenantPolicy 取请求租户的策略；version 为空时取当前版本。租户没有自己的策略时取平台默认的（版本写成 default/vN）。
 func (r *Registry) GetTenantPolicy(ctx context.Context, req *connect.Request[registryv1.GetTenantPolicyRequest]) (*connect.Response[registryv1.GetTenantPolicyResponse], error) {
-	v, err := parseVersion(req.Msg.GetVersion())
-	if err != nil {
-		return nil, fail(err)
-	}
-	own, err := r.tenantScope(req.Msg.GetTenant())
-	if err != nil {
-		return nil, fail(err)
-	}
-	e, found, err := own.get(ctx, kindPolicy, "", v)
+	e, label, found, err := r.tenantPolicy(ctx, req.Msg.GetTenant(), req.Msg.GetVersion())
 	if err != nil {
 		return nil, fail(err)
 	}
@@ -387,8 +379,42 @@ func (r *Registry) GetTenantPolicy(ctx context.Context, req *connect.Request[reg
 		return nil, fail(notFound("tenant_policy_not_found", "没有这个租户策略"))
 	}
 	return connect.NewResponse(&registryv1.GetTenantPolicyResponse{TenantPolicy: &registryv1.TenantPolicy{
-		Version: e.label(), Document: r.payload(e),
+		Version: label, Document: r.payload(e),
 	}}), nil
+}
+
+// tenantPolicy 取租户策略的一个版本与它的版本号：version 为空时是租户自己的当前版本，没有时是平台默认的当前版本；
+// vN 是租户自己的第 N 版；default/vN 是平台默认的第 N 版（固定在 Task 上的版本照原样取回，之后租户有了自己的策略也不变）。
+func (r *Registry) tenantPolicy(ctx context.Context, tenant *commonv1.TenantContext, version string) (entry, string, bool, error) {
+	own, err := r.tenantScope(tenant)
+	if err != nil {
+		return entry{}, "", false, err
+	}
+	if rest, isDefault := strings.CutPrefix(version, defaultPolicyPrefix); isDefault {
+		v, err := parseVersion(rest)
+		if err != nil || v == 0 {
+			return entry{}, "", false, invalid("invalid_version", "版本号要写成 vN 或 "+defaultPolicyPrefix+"vN")
+		}
+		return r.defaultTenantPolicy(ctx, v)
+	}
+	v, err := parseVersion(version)
+	if err != nil {
+		return entry{}, "", false, err
+	}
+	e, found, err := own.get(ctx, kindPolicy, "", v)
+	if err != nil || found || v != 0 {
+		return e, e.label(), found, err
+	}
+	return r.defaultTenantPolicy(ctx, 0)
+}
+
+func (r *Registry) defaultTenantPolicy(ctx context.Context, version int64) (entry, string, bool, error) {
+	platform, err := r.platformScope()
+	if err != nil {
+		return entry{}, "", false, err
+	}
+	e, found, err := platform.get(ctx, kindPolicy, DefaultTenantPolicy, version)
+	return e, defaultPolicyPrefix + e.label(), found, err
 }
 
 // CurrentTenantPolicy 是租户策略的当前版本（JSON 文档）；没有策略时 found 为 false。task-service 核对提交时的联网申请用（D-16）。
@@ -434,16 +460,12 @@ func (r *Registry) resolve(ctx context.Context, tenant *commonv1.TenantContext, 
 			target[e.name] = e.label()
 		}
 	}
-	own, err := r.tenantScope(tenant)
-	if err != nil {
-		return nil, err
-	}
-	policy, found, err := own.get(ctx, kindPolicy, "", 0)
+	_, policy, found, err := r.tenantPolicy(ctx, tenant, "")
 	if err != nil {
 		return nil, err
 	}
 	if found {
-		pins.TenantPolicy = policy.label()
+		pins.TenantPolicy = policy
 	}
 	switch {
 	case recipe != "":

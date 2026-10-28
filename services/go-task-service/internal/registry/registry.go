@@ -3,8 +3,8 @@
 //
 // 规则（细化第 2、4、8 节）：
 //   - 存储：业务库一张表 registry_entries，按作用域隔离由 RelationalStore 负责，SQL 不写租户条件。Node Template、
-//     Model Profile 只在平台作用域（BindPlatform("registry")）；租户策略只在租户作用域；Recipe 两种都有，同名时平台的优先，
-//     租户发布与平台同名的 Recipe 是 Conflict。
+//     Model Profile 只在平台作用域（BindPlatform("registry")）；租户策略在租户作用域，另有平台作用域里一份名为 default
+//     的平台默认策略，给没有自己策略的租户用；Recipe 两种都有，同名时平台的优先，租户发布与平台同名的 Recipe 是 Conflict。
 //   - 版本：同一作用域、种类、名字下按发布顺序编号 v1、v2……；document 一经发布不再修改。新版本是影子（SHADOW）；
 //     Promote 带达标的评测证据把一个版本设为默认（DEFAULT），原默认退役（RETIRED），退役的仍可按版本号读。
 //     租户策略没有影子：发布即成为当前版本，不走 Promote。
@@ -37,6 +37,12 @@ const PublishTokenSecret = "registry/publish-token"
 
 // platformPurpose 是 Registry 在平台作用域的用途（RelationalStore 与 SecretStore 都用它）。
 const platformPurpose = "registry"
+
+// DefaultTenantPolicy 是平台默认的租户策略的名字：发布时不带租户、名字为它；没有自己策略的租户读到它（例如应用开放注册后
+// 新来的租户），固定在 Task 上的版本写成 default/vN。租户自己的策略总是优先。
+const DefaultTenantPolicy = "default"
+
+const defaultPolicyPrefix = DefaultTenantPolicy + "/"
 
 // Options 是 Registry 的依赖。
 type Options struct {

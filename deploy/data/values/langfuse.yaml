@@ -1,8 +1,8 @@
 # Langfuse（langfuse/langfuse Chart 2.x；docs/plan/cloud-deploy.md D-03）：看 token 与花费。装在 observability 命名空间。
 # 2.x 起 ClickHouse 由 ClickHouse 官方的 operator 部署（ClickHouseCluster、KeeperCluster），operator 先由 deploy/data/install.sh 装好；
 # Redis 换成了 Valkey。Postgres 用 deploy/data/postgres.yaml 的 langfuse 库；事件与媒体放 R2（不装 Chart 自带的 SeaweedFS）。
-# 密钥一律取已有的 Secret（deploy/cluster/secrets）：langfuse（salt、nextauth、encryption key、ClickHouse 与 Valkey 的口令）、
-# pg-langfuse 的副本、r2-langfuse。键名 2026-10 对照 langfuse-2.1.4 的 values.yaml。
+# 密钥一律取已有的 Secret（deploy/cluster/secrets）：langfuse（salt、nextauth、encryption key、ClickHouse 的口令、初始化的 Key）、
+# langfuse-redis（Valkey）、pg-langfuse 的副本、r2-langfuse。键名 2026-10 对照 langfuse-2.1.4 的 values.yaml 与 validations.yaml。
 langfuse:
   salt:
     secretKeyRef: {name: langfuse, key: salt}
@@ -74,9 +74,11 @@ clickhouse:
       limits: {cpu: 500m, memory: 512Mi}
 redis:
   deploy: true
+  # Valkey 的 ACL 用户与 Langfuse 连 Valkey 用同一个 Secret：键名是用户名（default，Chart 2.1 起 usersExistingSecret 必填）。
   auth:
-    existingSecret: langfuse
-    existingSecretPasswordKey: redis-password
+    existingSecret: langfuse-redis
+    existingSecretPasswordKey: default
+    usersExistingSecret: langfuse-redis
   resources:
     requests: {cpu: 50m, memory: 128Mi}
     limits: {cpu: 250m, memory: 256Mi}
