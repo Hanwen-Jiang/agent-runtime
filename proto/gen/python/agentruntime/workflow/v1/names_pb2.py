@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 from agentruntime.common.v1 import options_pb2 as agentruntime_dot_common_dot_v1_dot_options__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n$agentruntime/workflow/v1/names.proto\x12\x18\x61gentruntime.workflow.v1\x1a$agentruntime/common/v1/options.proto*\x87\x01\n\x0cWorkflowType\x12\x1d\n\x19WORKFLOW_TYPE_UNSPECIFIED\x10\x00\x12.\n\x15WORKFLOW_TYPE_SESSION\x10\x01\x1a\x13\x92\xb5\x18\x0fSessionWorkflow\x12(\n\x12WORKFLOW_TYPE_TASK\x10\x02\x1a\x10\x92\xb5\x18\x0cTaskWorkflow*\xe5\x01\n\nSignalName\x12\x1b\n\x17SIGNAL_NAME_UNSPECIFIED\x10\x00\x12,\n\x17SIGNAL_NAME_SUBMIT_TASK\x10\x01\x1a\x0f\x92\xb5\x18\x0bsubmit_task\x12,\n\x17SIGNAL_NAME_CANCEL_TASK\x10\x02\x1a\x0f\x92\xb5\x18\x0b\x63\x61ncel_task\x12,\n\x17SIGNAL_NAME_HUMAN_REPLY\x10\x03\x1a\x0f\x92\xb5\x18\x0bhuman_reply\x12\x30\n\x19SIGNAL_NAME_TASK_FINISHED\x10\x04\x1a\x11\x92\xb5\x18\rtask_finished*\x83\x01\n\tQueryName\x12\x1a\n\x16QUERY_NAME_UNSPECIFIED\x10\x00\x12/\n\x18QUERY_NAME_SESSION_STATE\x10\x01\x1a\x11\x92\xb5\x18\rsession_state\x12)\n\x15QUERY_NAME_TASK_STATE\x10\x02\x1a\x0e\x92\xb5\x18\ntask_state*\xfd\x01\n\tTaskQueue\x12\x1a\n\x16TASK_QUEUE_UNSPECIFIED\x10\x00\x12#\n\x12TASK_QUEUE_SESSION\x10\x01\x1a\x0b\x92\xb5\x18\x07session\x12\x1d\n\x0fTASK_QUEUE_TASK\x10\x02\x1a\x08\x92\xb5\x18\x04task\x12%\n\x13TASK_QUEUE_DECISION\x10\x03\x1a\x0c\x92\xb5\x18\x08\x64\x65\x63ision\x12\x1f\n\x10TASK_QUEUE_MODEL\x10\x04\x1a\t\x92\xb5\x18\x05model\x12#\n\x12TASK_QUEUE_PROGRAM\x10\x05\x1a\x0b\x92\xb5\x18\x07program\x12#\n\x12TASK_QUEUE_OFFLINE\x10\x06\x1a\x0b\x92\xb5\x18\x07offline*k\n\x0c\x41\x63tivityName\x12\x1d\n\x19\x41\x43TIVITY_NAME_UNSPECIFIED\x10\x00\x12<\n ACTIVITY_NAME_PUBLISH_TASK_EVENT\x10\x01\x1a\x16\x92\xb5\x18\x12publish_task_eventB\x84\x02\n\x1c\x63om.agentruntime.workflow.v1B\nNamesProtoP\x01ZVgithub.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1;workflowv1\xa2\x02\x03\x41WX\xaa\x02\x18\x41gentruntime.Workflow.V1\xca\x02\x18\x41gentruntime\\Workflow\\V1\xe2\x02$Agentruntime\\Workflow\\V1\\GPBMetadata\xea\x02\x1a\x41gentruntime::Workflow::V1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n$agentruntime/workflow/v1/names.proto\x12\x18\x61gentruntime.workflow.v1\x1a$agentruntime/common/v1/options.proto*\xce\x01\n\x0cWorkflowType\x12\x1d\n\x19WORKFLOW_TYPE_UNSPECIFIED\x10\x00\x12.\n\x15WORKFLOW_TYPE_SESSION\x10\x01\x1a\x13\x92\xb5\x18\x0fSessionWorkflow\x12(\n\x12WORKFLOW_TYPE_TASK\x10\x02\x1a\x10\x92\xb5\x18\x0cTaskWorkflow\x12\x45\n!WORKFLOW_TYPE_WORKSPACE_OPERATION\x10\x03\x1a\x1e\x92\xb5\x18\x1aWorkspaceOperationWorkflow*\xe5\x01\n\nSignalName\x12\x1b\n\x17SIGNAL_NAME_UNSPECIFIED\x10\x00\x12,\n\x17SIGNAL_NAME_SUBMIT_TASK\x10\x01\x1a\x0f\x92\xb5\x18\x0bsubmit_task\x12,\n\x17SIGNAL_NAME_CANCEL_TASK\x10\x02\x1a\x0f\x92\xb5\x18\x0b\x63\x61ncel_task\x12,\n\x17SIGNAL_NAME_HUMAN_REPLY\x10\x03\x1a\x0f\x92\xb5\x18\x0bhuman_reply\x12\x30\n\x19SIGNAL_NAME_TASK_FINISHED\x10\x04\x1a\x11\x92\xb5\x18\rtask_finished*\x83\x01\n\tQueryName\x12\x1a\n\x16QUERY_NAME_UNSPECIFIED\x10\x00\x12/\n\x18QUERY_NAME_SESSION_STATE\x10\x01\x1a\x11\x92\xb5\x18\rsession_state\x12)\n\x15QUERY_NAME_TASK_STATE\x10\x02\x1a\x0e\x92\xb5\x18\ntask_state*\xfd\x01\n\tTaskQueue\x12\x1a\n\x16TASK_QUEUE_UNSPECIFIED\x10\x00\x12#\n\x12TASK_QUEUE_SESSION\x10\x01\x1a\x0b\x92\xb5\x18\x07session\x12\x1d\n\x0fTASK_QUEUE_TASK\x10\x02\x1a\x08\x92\xb5\x18\x04task\x12%\n\x13TASK_QUEUE_DECISION\x10\x03\x1a\x0c\x92\xb5\x18\x08\x64\x65\x63ision\x12\x1f\n\x10TASK_QUEUE_MODEL\x10\x04\x1a\t\x92\xb5\x18\x05model\x12#\n\x12TASK_QUEUE_PROGRAM\x10\x05\x1a\x0b\x92\xb5\x18\x07program\x12#\n\x12TASK_QUEUE_OFFLINE\x10\x06\x1a\x0b\x92\xb5\x18\x07offline*k\n\x0c\x41\x63tivityName\x12\x1d\n\x19\x41\x43TIVITY_NAME_UNSPECIFIED\x10\x00\x12<\n ACTIVITY_NAME_PUBLISH_TASK_EVENT\x10\x01\x1a\x16\x92\xb5\x18\x12publish_task_eventB\x84\x02\n\x1c\x63om.agentruntime.workflow.v1B\nNamesProtoP\x01ZVgithub.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1;workflowv1\xa2\x02\x03\x41WX\xaa\x02\x18\x41gentruntime.Workflow.V1\xca\x02\x18\x41gentruntime\\Workflow\\V1\xe2\x02$Agentruntime\\Workflow\\V1\\GPBMetadata\xea\x02\x1a\x41gentruntime::Workflow::V1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -37,6 +37,8 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_WORKFLOWTYPE'].values_by_name["WORKFLOW_TYPE_SESSION"]._serialized_options = b'\222\265\030\017SessionWorkflow'
   _globals['_WORKFLOWTYPE'].values_by_name["WORKFLOW_TYPE_TASK"]._loaded_options = None
   _globals['_WORKFLOWTYPE'].values_by_name["WORKFLOW_TYPE_TASK"]._serialized_options = b'\222\265\030\014TaskWorkflow'
+  _globals['_WORKFLOWTYPE'].values_by_name["WORKFLOW_TYPE_WORKSPACE_OPERATION"]._loaded_options = None
+  _globals['_WORKFLOWTYPE'].values_by_name["WORKFLOW_TYPE_WORKSPACE_OPERATION"]._serialized_options = b'\222\265\030\032WorkspaceOperationWorkflow'
   _globals['_SIGNALNAME'].values_by_name["SIGNAL_NAME_SUBMIT_TASK"]._loaded_options = None
   _globals['_SIGNALNAME'].values_by_name["SIGNAL_NAME_SUBMIT_TASK"]._serialized_options = b'\222\265\030\013submit_task'
   _globals['_SIGNALNAME'].values_by_name["SIGNAL_NAME_CANCEL_TASK"]._loaded_options = None
@@ -64,13 +66,13 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_ACTIVITYNAME'].values_by_name["ACTIVITY_NAME_PUBLISH_TASK_EVENT"]._loaded_options = None
   _globals['_ACTIVITYNAME'].values_by_name["ACTIVITY_NAME_PUBLISH_TASK_EVENT"]._serialized_options = b'\222\265\030\022publish_task_event'
   _globals['_WORKFLOWTYPE']._serialized_start=105
-  _globals['_WORKFLOWTYPE']._serialized_end=240
-  _globals['_SIGNALNAME']._serialized_start=243
-  _globals['_SIGNALNAME']._serialized_end=472
-  _globals['_QUERYNAME']._serialized_start=475
-  _globals['_QUERYNAME']._serialized_end=606
-  _globals['_TASKQUEUE']._serialized_start=609
-  _globals['_TASKQUEUE']._serialized_end=862
-  _globals['_ACTIVITYNAME']._serialized_start=864
-  _globals['_ACTIVITYNAME']._serialized_end=971
+  _globals['_WORKFLOWTYPE']._serialized_end=311
+  _globals['_SIGNALNAME']._serialized_start=314
+  _globals['_SIGNALNAME']._serialized_end=543
+  _globals['_QUERYNAME']._serialized_start=546
+  _globals['_QUERYNAME']._serialized_end=677
+  _globals['_TASKQUEUE']._serialized_start=680
+  _globals['_TASKQUEUE']._serialized_end=933
+  _globals['_ACTIVITYNAME']._serialized_start=935
+  _globals['_ACTIVITYNAME']._serialized_end=1042
 # @@protoc_insertion_point(module_scope)

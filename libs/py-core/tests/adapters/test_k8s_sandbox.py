@@ -22,7 +22,7 @@ from agentruntime_core.adapters import kindtest
 from agentruntime_core.adapters.k8s_sandbox import LABELS, K8sPodSandboxProvider, K8sSandboxConfig
 from agentruntime_core.adapters.kube import KubeAPI, label_selector
 from agentruntime_core.conformance.common import expect_error, tenant_a, tenant_b
-from agentruntime_core.conformance.sandbox import SandboxWithWorkspaceConformance
+from agentruntime_core.conformance.sandbox import SandboxArchiveConformance, SandboxWithWorkspaceConformance
 from agentruntime_core.errors import ErrorCategory
 from agentruntime_core.providers.sandbox import SandboxSpec
 from agentruntime_core.testing import FaultInjector
@@ -80,8 +80,8 @@ async def harness(kind_cluster: kindtest.Cluster):
     await h.provider.aclose()
 
 
-class TestK8sPodSandbox(SandboxWithWorkspaceConformance):
-    pass
+class TestK8sPodSandbox(SandboxWithWorkspaceConformance, SandboxArchiveConformance):
+    """含工作区的存档模式（D-06）：Pod 里的 agent 导出、导入、列目录与搜索。"""
 
 
 async def run(harness: Harness, code: str) -> tuple[int | None, str, str]:

@@ -1,0 +1,144 @@
+syntax = "proto3";
+
+package agentruntime.workspace.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// WorkspaceService 是 Task API 之外管理工作区的一组接口（设计书改动稿 W2、新增 4.10.1；docs/plan/cloud-deploy.md D-06），
+// 与 Task API 同一个端口、同样经 Ingress 认证。
+//
+// 工作区属于（租户，workspace_id），生命周期跨 Task；文件放在承载它的沙箱环境里，空闲时存档到 ObjectStore，用时恢复。
+// 租户由认证身份确定，请求里的 tenant_id 只用来校验一致；别的租户的工作区一律 NotFound。
+// 克隆与推送的凭据（GitCredential）由应用随请求传入，只在这一次调用里用：Runtime 不保存，不进日志、事件历史与错误信息。
+service WorkspaceService {
+  // 建一个工作区；给了 repo_url 时克隆它（可以带 ref）。已有同名的工作区时 AlreadyExists。
+  rpc CreateWorkspace(CreateWorkspaceRequest) returns (CreateWorkspaceResponse);
+  // 列出本租户的工作区（不含已删除的）。
+  rpc ListWorkspaces(ListWorkspacesRequest) returns (ListWorkspacesResponse);
+  // 工作区相对 base 的改动，内容与在承载它的沙箱里执行 git diff <base> 相同（base 为空时是相对 HEAD，含暂存与未暂存）。
+  rpc GetDiff(GetDiffRequest) returns (GetDiffResponse);
+  // 把工作区里的改动（含新文件）提交成一个 commit；没有改动时 committed 为 false。
+  rpc CommitWorkspace(CommitWorkspaceRequest) returns (CommitWorkspaceResponse);
+  // 推送到远端的分支：write_irreversible，这次调用本身是调用者的批准（gate 记录写进业务库）；分支要符合租户策略的
+  // workspace.push_branches（默认 agent/*）。幂等键含提交的 sha；超时时先按远端分支的当前 sha 对账，不直接重推。
+  rpc PushWorkspace(PushWorkspaceRequest) returns (PushWorkspaceResponse);
+  // 立即存档（逐文件按 sha256 内容寻址的分块与清单，写进 ObjectStore）。
+  rpc ArchiveWorkspace(ArchiveWorkspaceRequest) returns (ArchiveWorkspaceResponse);
+  // 删除工作区与它的存档，销毁承载它的环境。
+  rpc DeleteWorkspace(DeleteWorkspaceRequest) returns (DeleteWorkspaceResponse);
+}
+
+// GitCredential 是克隆或推送用的凭据（例如 HTTPS 的用户名与令牌），只用这一次。
+message GitCredential {
+  string username = 1;
+  string password = 2;
+}
+
+enum WorkspaceState {
+  WORKSPACE_STATE_UNSPECIFIED = 0;
+  WORKSPACE_STATE_ACTIVE = 1;
+  WORKSPACE_STATE_ARCHIVED = 2;
+  WORKSPACE_STATE_DELETED = 3;
+}
+
+message Workspace {
+  string workspace_id = 1;
+  WorkspaceState state = 2;
+  // 克隆的来源，不带凭据。
+  string repo_url = 3;
+  // 当前的 commit。
+  string head = 4;
+  // 最近一次存档。
+  string snapshot_id = 5;
+  int64 size_bytes = 6;
+  int32 files = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message CreateWorkspaceRequest {
+  // 只用来与认证身份做一致性校验。
+  string tenant_id = 1;
+  // 格式同租户 ID。
+  string workspace_id = 2;
+  // 为空时建空的工作区（git init）。只接受 https 地址；主机要在租户策略的 sandbox.network.hosts 范围里。
+  string repo_url = 3;
+  // 分支或标签；为空时用远端的默认分支。
+  string ref = 4;
+  GitCredential credential = 5;
+}
+
+message CreateWorkspaceResponse {
+  Workspace workspace = 1;
+}
+
+message ListWorkspacesRequest {
+  string tenant_id = 1;
+}
+
+message ListWorkspacesResponse {
+  repeated Workspace workspaces = 1;
+}
+
+message GetDiffRequest {
+  string tenant_id = 1;
+  string workspace_id = 2;
+  // commit、分支或标签；为空时相对 HEAD。
+  string base = 3;
+}
+
+message GetDiffResponse {
+  // git diff 的输出（超过上限时截断）。
+  string diff = 1;
+  // 改动的文件（相对仓库根，含未跟踪的新文件）。
+  repeated string files = 2;
+  bool truncated = 3;
+  string head = 4;
+}
+
+message CommitWorkspaceRequest {
+  string tenant_id = 1;
+  string workspace_id = 2;
+  string message = 3;
+  string author_name = 4;
+  string author_email = 5;
+}
+
+message CommitWorkspaceResponse {
+  string sha = 1;
+  // 没有改动时为 false，sha 是原来的 HEAD。
+  bool committed = 2;
+}
+
+message PushWorkspaceRequest {
+  string tenant_id = 1;
+  string workspace_id = 2;
+  // 远端的分支名，例如 agent/fix-ci。
+  string branch = 3;
+  GitCredential credential = 4;
+}
+
+message PushWorkspaceResponse {
+  string sha = 1;
+  string branch = 2;
+  // true 表示这次没有真的推：远端分支已经是这个 sha（重复调用或超时后对账）。
+  bool reconciled = 3;
+}
+
+message ArchiveWorkspaceRequest {
+  string tenant_id = 1;
+  string workspace_id = 2;
+}
+
+message ArchiveWorkspaceResponse {
+  string snapshot_id = 1;
+  int32 files = 2;
+  int64 size_bytes = 3;
+}
+
+message DeleteWorkspaceRequest {
+  string tenant_id = 1;
+  string workspace_id = 2;
+}
+
+message DeleteWorkspaceResponse {}

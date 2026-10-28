@@ -10,6 +10,7 @@ class WorkflowType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     WORKFLOW_TYPE_UNSPECIFIED: _ClassVar[WorkflowType]
     WORKFLOW_TYPE_SESSION: _ClassVar[WorkflowType]
     WORKFLOW_TYPE_TASK: _ClassVar[WorkflowType]
+    WORKFLOW_TYPE_WORKSPACE_OPERATION: _ClassVar[WorkflowType]
 
 class SignalName(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
@@ -42,6 +43,7 @@ class ActivityName(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
 WORKFLOW_TYPE_UNSPECIFIED: WorkflowType
 WORKFLOW_TYPE_SESSION: WorkflowType
 WORKFLOW_TYPE_TASK: WorkflowType
+WORKFLOW_TYPE_WORKSPACE_OPERATION: WorkflowType
 SIGNAL_NAME_UNSPECIFIED: SignalName
 SIGNAL_NAME_SUBMIT_TASK: SignalName
 SIGNAL_NAME_CANCEL_TASK: SignalName

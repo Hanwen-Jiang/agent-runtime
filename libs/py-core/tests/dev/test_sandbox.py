@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from agentruntime_core.conformance.common import expect_error
-from agentruntime_core.conformance.sandbox import SandboxWithWorkspaceConformance
+from agentruntime_core.conformance.sandbox import SandboxArchiveConformance, SandboxWithWorkspaceConformance
 from agentruntime_core.dev.sandbox import LocalSubprocessSandboxProvider
 from agentruntime_core.errors import ErrorCategory
 from agentruntime_core.providers.sandbox import SandboxSpec
@@ -34,7 +34,7 @@ class Harness:
         return self.workspaces / tenant_id / workspace_id
 
 
-class TestLocalSubprocessSandbox(SandboxWithWorkspaceConformance):
+class TestLocalSubprocessSandbox(SandboxWithWorkspaceConformance, SandboxArchiveConformance):
     @pytest.fixture
     async def harness(self, tmp_path: Path):
         harness = Harness(tmp_path)

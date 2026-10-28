@@ -6,6 +6,8 @@
 //	POST /v1/exec                 {"argv": [...], "stdin": base64, "timeout_ms": n, "env": {…}} → {"exit_code", "timed_out", "stdout", "stderr", "truncated"}
 //	PUT  /v1/files/<相对路径>      请求体是文件内容
 //	GET  /v1/files/<相对路径>      响应体是文件内容；不存在（或是目录）时 404
+//	GET、PUT /v1/archive、GET /v1/manifest、GET /v1/list/<相对路径>、POST /v1/grep
+//	                              工作区的存档与恢复、清单、列目录与搜索（D-06；见 archive.go）
 //
 // 认证：除 /healthz 外都要带 X-Sandbox-Token 头。不用 Authorization：经 K8s API Server 的 pods/proxy 转发时它会被拿掉。
 // 出错时返回 {"code", "message"}：400 是参数不对（invalid），401 是令牌不对，404 是不存在，413 是太大，500 是 agent 自己出错。
@@ -90,6 +92,13 @@ func New(c Config) (http.Handler, error) {
 	mux.Handle("POST /v1/exec", s.authed(s.exec))
 	mux.Handle("PUT /v1/files/{path...}", s.authed(s.writeFile))
 	mux.Handle("GET /v1/files/{path...}", s.authed(s.readFile))
+	// 工作区的存档模式与在环境里执行的工作区类工具（D-06，archive.go）。
+	mux.Handle("GET /v1/archive", s.authed(s.exportArchive))
+	mux.Handle("PUT /v1/archive", s.authed(s.importArchive))
+	mux.Handle("GET /v1/manifest", s.authed(s.manifest))
+	mux.Handle("GET /v1/list", s.authed(s.listDir))
+	mux.Handle("GET /v1/list/{path...}", s.authed(s.listDir))
+	mux.Handle("POST /v1/grep", s.authed(s.grep))
 	return mux, nil
 }
 

@@ -115,7 +115,8 @@ def test_every_python_implementation_runs_a_conformance_suite() -> None:
         dotted = ".".join(module.relative_to(PY_CORE / "src").with_suffix("").parts)
         # 引用了这个模块的测试文件里，要有继承一致性测试类的测试类。
         users = [text for text in test_files.values() if dotted in text]
-        if not any(re.search(r"class Test\w+\(\w+Conformance\)", text) for text in users):
+        # 可以同时继承几组（例如 Sandbox 的通用一组加存档的一组，D-06）。
+        if not any(re.search(r"class Test\w+\((?:\w+, )*\w+Conformance(?:, \w+)*\)", text) for text in users):
             missing.append(dotted)
     assert not missing, f"这些实现没有跑一致性测试（含越权用例）：{missing}"
 

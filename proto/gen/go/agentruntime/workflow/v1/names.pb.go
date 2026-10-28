@@ -30,6 +30,9 @@ const (
 	WorkflowType_WORKFLOW_TYPE_SESSION WorkflowType = 1
 	// Python，以 task_id 为工作流 ID。
 	WorkflowType_WORKFLOW_TYPE_TASK WorkflowType = 2
+	// Python，task-service 的 WorkspaceService 启动，以 wsop-<operation_id> 为工作流 ID（D-06）。
+	// 输入是 WorkspaceOperationInput，结果是 WorkspaceOperationResult。
+	WorkflowType_WORKFLOW_TYPE_WORKSPACE_OPERATION WorkflowType = 3
 )
 
 // Enum value maps for WorkflowType.
@@ -38,11 +41,13 @@ var (
 		0: "WORKFLOW_TYPE_UNSPECIFIED",
 		1: "WORKFLOW_TYPE_SESSION",
 		2: "WORKFLOW_TYPE_TASK",
+		3: "WORKFLOW_TYPE_WORKSPACE_OPERATION",
 	}
 	WorkflowType_value = map[string]int32{
-		"WORKFLOW_TYPE_UNSPECIFIED": 0,
-		"WORKFLOW_TYPE_SESSION":     1,
-		"WORKFLOW_TYPE_TASK":        2,
+		"WORKFLOW_TYPE_UNSPECIFIED":         0,
+		"WORKFLOW_TYPE_SESSION":             1,
+		"WORKFLOW_TYPE_TASK":                2,
+		"WORKFLOW_TYPE_WORKSPACE_OPERATION": 3,
 	}
 )
 
@@ -306,11 +311,12 @@ var File_agentruntime_workflow_v1_names_proto protoreflect.FileDescriptor
 
 const file_agentruntime_workflow_v1_names_proto_rawDesc = "" +
 	"\n" +
-	"$agentruntime/workflow/v1/names.proto\x12\x18agentruntime.workflow.v1\x1a$agentruntime/common/v1/options.proto*\x87\x01\n" +
+	"$agentruntime/workflow/v1/names.proto\x12\x18agentruntime.workflow.v1\x1a$agentruntime/common/v1/options.proto*\xce\x01\n" +
 	"\fWorkflowType\x12\x1d\n" +
 	"\x19WORKFLOW_TYPE_UNSPECIFIED\x10\x00\x12.\n" +
 	"\x15WORKFLOW_TYPE_SESSION\x10\x01\x1a\x13\x92\xb5\x18\x0fSessionWorkflow\x12(\n" +
-	"\x12WORKFLOW_TYPE_TASK\x10\x02\x1a\x10\x92\xb5\x18\fTaskWorkflow*\xe5\x01\n" +
+	"\x12WORKFLOW_TYPE_TASK\x10\x02\x1a\x10\x92\xb5\x18\fTaskWorkflow\x12E\n" +
+	"!WORKFLOW_TYPE_WORKSPACE_OPERATION\x10\x03\x1a\x1e\x92\xb5\x18\x1aWorkspaceOperationWorkflow*\xe5\x01\n" +
 	"\n" +
 	"SignalName\x12\x1b\n" +
 	"\x17SIGNAL_NAME_UNSPECIFIED\x10\x00\x12,\n" +

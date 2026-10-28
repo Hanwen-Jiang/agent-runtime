@@ -14,8 +14,8 @@
 - spec.workspace_id 非空时，环境的工作目录就是本租户的这个 workspace（Worker 的工作区类工具读写的同一处，
   <工作区根>/<tenant_id>/<workspace_id>），而不是一个空目录；销毁环境不删 workspace 里的文件。
   工作区根由实现的配置给出，请求改变不了；平台作用域没有 workspace（invalid）；workspace_id 格式同租户 ID，不对时 invalid。
-  实现不支持时 invalid（unsupported_workspace）。这是单节点部署的做法（docs/plan/cloud-deploy.md D-05）；
-  工作区跟着沙箱走（D-06）要等设计书加上 Workspace 一层。
+  实现不支持时 invalid（unsupported_workspace）。这是挂卷的做法（docs/plan/cloud-deploy.md D-05）；不挂卷的后端靠
+  下面的 SandboxArchive 把工作区存档与恢复（D-06，docs/plan/workspace-layer.md），Worker 建环境时 workspace_id 置空。
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Literal, Protocol
+from typing import IO, Literal, Protocol
 
 from agentruntime_core.errors import InvalidError
 from agentruntime_core.providers.base import Bindable
@@ -122,3 +122,78 @@ class SandboxPreview(Protocol):
     （host:port，K8s 是 Pod 的地址，开发实现是本机）。作用域同 exec：别的作用域的环境 not_found。托管后端没有这一项。"""
 
     async def preview_address(self, env_id: str, port: int) -> str: ...
+
+
+@dataclass(frozen=True)
+class FileEntry:
+    """工作目录里的一项（存档的清单，D-06）：path 相对工作目录、/ 分隔；type 是 file、dir、symlink；mode 只留权限位
+    （符号链接为 0）；文件有 size 与 sha256（十六进制），符号链接有 link（相对的目标）。"""
+
+    path: str
+    type: str
+    mode: int
+    size: int = 0
+    sha256: str = ""
+    link: str = ""
+
+    def as_dict(self) -> dict[str, object]:
+        out: dict[str, object] = {"path": self.path, "type": self.type, "mode": self.mode}
+        if self.type == "file":
+            out["size"], out["sha256"] = self.size, self.sha256
+        if self.type == "symlink":
+            out["link"] = self.link
+        return out
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, object]) -> FileEntry:
+        def number(key: str) -> int:
+            value = data.get(key) or 0
+            return int(value) if isinstance(value, (int, float, str)) else 0
+
+        return cls(
+            path=str(data["path"]), type=str(data["type"]), mode=number("mode"), size=number("size"),
+            sha256=str(data.get("sha256") or ""), link=str(data.get("link") or ""),
+        )
+
+
+@dataclass(frozen=True)
+class DirEntry:
+    name: str
+    type: str
+    size: int = 0
+
+
+@dataclass(frozen=True)
+class GrepMatch:
+    path: str
+    line: int
+    text: str
+
+
+class SandboxArchive(Protocol):
+    """能整体导出、导入工作目录的后端（工作区的存档模式，设计书改动稿 W2；D-06）。作用域同 exec：别的作用域的环境 not_found。
+
+    - export_archive：工作目录打成 tar 写进 out（普通文件、目录与不出工作目录的符号链接，只留权限位；设备、管道与指出去的
+      符号链接不进），返回写了多少字节；文件总大小超过 max_bytes 时 invalid（too_large）。
+    - import_archive：把 tar 解到工作目录；工作目录要是空的（invalid，not_empty）；绝对路径、..、反斜杠、硬链接与设备文件、
+      指出工作目录的符号链接、经符号链接写进去的路径、重名的项一律 invalid；超过 max_bytes invalid（too_large）；后端建不了
+      符号链接时 invalid（symlink_unsupported）。目录的权限位至少是 0o700（解开时要能往里写）。
+    - manifest：逐项的清单（FileEntry，按路径的字符串顺序排序）。
+    """
+
+    async def export_archive(self, env_id: str, out: IO[bytes], *, max_bytes: int) -> int: ...
+
+    async def import_archive(self, env_id: str, src: IO[bytes], *, size: int, max_bytes: int) -> None: ...
+
+    async def manifest(self, env_id: str) -> list[FileEntry]: ...
+
+
+class SandboxBrowse(Protocol):
+    """能在环境里列目录、按行搜索的后端（工作区类工具在承载它的环境里执行，D-06）。path 相对工作目录，空为工作目录本身；
+    列目录最多 1000 项、按名字排序，目录不存在 not_found。搜索按行匹配正则（sandbox-agent 是 RE2，开发实现是 Python 的 re），
+    跳过任何一级 .git 目录、二进制（前 1 KiB 有 NUL）与超过 1 MiB 的文件，每行最多 500 个字符，最多 max_matches 条
+    （上限 1000），返回（匹配，是否截断）；正则不合法 invalid。"""
+
+    async def list_dir(self, env_id: str, path: str = "") -> list[DirEntry]: ...
+
+    async def grep(self, env_id: str, pattern: str, *, path: str = "", max_matches: int = 100) -> tuple[list[GrepMatch], bool]: ...

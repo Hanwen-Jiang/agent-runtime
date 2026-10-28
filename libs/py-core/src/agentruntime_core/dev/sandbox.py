@@ -1,7 +1,8 @@
 """本地子进程 Sandbox（开发实现，仅限开发环境）。语义见 agentruntime_core.providers.sandbox。
 
 每个环境一个工作目录：<root>/<作用域>/<env_id>/work；spec.workspace_id 非空时是 <workspaces>/<tenant_id>/<workspace_id>
-（给了 workspaces 才支持）。不提供网络隔离与资源上限，不能运行不可信代码。
+（给了 workspaces 才支持）。不提供网络隔离与资源上限，不能运行不可信代码。也实现工作区的存档模式要的
+SandboxArchive 与 SandboxBrowse（D-06，规则在 dev.workdir）。
 argv[0] 为 python 时换成当前解释器。子进程只拿 _ENV 白名单里的环境变量（与平台内工具 shell_run 相同）：
 Worker 进程的密钥与 AR_* 配置不传给沙箱里的代码（设计书 4.12：节点代码永远拿不到长期密钥）。
 """
@@ -18,10 +19,21 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import IO
 
+from agentruntime_core.dev import workdir
 from agentruntime_core.dev._common import scope_id
 from agentruntime_core.errors import InvalidError, NotFoundError
-from agentruntime_core.providers.sandbox import ExecResult, ListedEnvironment, SandboxEnv, SandboxSpec, check_exec_env
+from agentruntime_core.providers.sandbox import (
+    DirEntry,
+    ExecResult,
+    FileEntry,
+    GrepMatch,
+    ListedEnvironment,
+    SandboxEnv,
+    SandboxSpec,
+    check_exec_env,
+)
 from agentruntime_core.tenancy import Scope, TenantContext, platform_scope, tenant_scope
 from agentruntime_core.testing import FaultInjector
 
@@ -140,6 +152,31 @@ class LocalSubprocessSandbox:
             raise NotFoundError("not_found", "文件不存在")
         return target.read_bytes()
 
+    # --- 工作区的存档模式与在环境里执行的工作区类工具（D-06；规则在 dev.workdir，与 sandbox-agent 相同）---
+
+    async def export_archive(self, env_id: str, out: IO[bytes], *, max_bytes: int) -> int:
+        self._provider._faults.check("export_archive")
+        env = self._env(env_id)
+        return await asyncio.to_thread(workdir.export_dir, env.workdir, out, max_bytes=_limit(max_bytes))
+
+    async def import_archive(self, env_id: str, src: IO[bytes], *, size: int, max_bytes: int) -> None:
+        self._provider._faults.check("import_archive")
+        env = self._env(env_id)
+        await asyncio.to_thread(workdir.import_dir, env.workdir, src, max_bytes=_limit(max_bytes))
+
+    async def manifest(self, env_id: str) -> list[FileEntry]:
+        self._provider._faults.check("manifest")
+        env = self._env(env_id)
+        return await asyncio.to_thread(workdir.manifest_dir, env.workdir)
+
+    async def list_dir(self, env_id: str, path: str = "") -> list[DirEntry]:
+        env = self._env(env_id)
+        return await asyncio.to_thread(workdir.list_dir, env.workdir, path)
+
+    async def grep(self, env_id: str, pattern: str, *, path: str = "", max_matches: int = 100) -> tuple[list[GrepMatch], bool]:
+        env = self._env(env_id)
+        return await asyncio.to_thread(workdir.grep_dir, env.workdir, pattern, rel=path, max_matches=max_matches)
+
     async def preview_address(self, env_id: str, port: int) -> str:
         """预览地址转发到本机的这个端口（开发实现的命令就在本机跑；D-16）。"""
         self._env(env_id)
@@ -154,6 +191,12 @@ class LocalSubprocessSandbox:
             env.destroyed = True
             if env.owns_workdir:
                 shutil.rmtree(env.workdir.parent, ignore_errors=True)
+
+
+def _limit(max_bytes: int) -> int:
+    if not isinstance(max_bytes, int) or max_bytes <= 0:
+        raise InvalidError("invalid_argument", "max_bytes 要是正整数")
+    return max_bytes
 
 
 def workspace_subpath(scope: Scope, workspace_id: str) -> str:

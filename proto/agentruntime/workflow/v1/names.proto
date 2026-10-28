@@ -13,6 +13,9 @@ enum WorkflowType {
   WORKFLOW_TYPE_SESSION = 1 [(agentruntime.common.v1.wire_name) = "SessionWorkflow"];
   // Python，以 task_id 为工作流 ID。
   WORKFLOW_TYPE_TASK = 2 [(agentruntime.common.v1.wire_name) = "TaskWorkflow"];
+  // Python，task-service 的 WorkspaceService 启动，以 wsop-<operation_id> 为工作流 ID（D-06）。
+  // 输入是 WorkspaceOperationInput，结果是 WorkspaceOperationResult。
+  WORKFLOW_TYPE_WORKSPACE_OPERATION = 3 [(agentruntime.common.v1.wire_name) = "WorkspaceOperationWorkflow"];
 }
 
 enum SignalName {

@@ -56,6 +56,20 @@
       },
       "required": ["backend"],
       "additionalProperties": false
+    },
+    "workspace": {
+      "description": "该租户的工作区（设计书改动稿 W2，docs/plan/cloud-deploy.md D-06）：个数与单个大小的上限、能推送的分支。不写的项用部署的默认值（推送只许 agent/*）",
+      "type": "object",
+      "properties": {
+        "max_workspaces": {"description": "同时存在的工作区个数上限", "type": "integer", "minimum": 1},
+        "max_bytes": {"description": "单个工作区（存档）的字节上限", "type": "integer", "minimum": 0},
+        "push_branches": {
+          "description": "能推送的远端分支（glob：* 匹配不含 / 的一段，** 匹配任意多段）；推到别的分支被拒绝",
+          "type": "array", "uniqueItems": true, "minItems": 1, "maxItems": 20,
+          "items": {"type": "string", "pattern": "^[A-Za-z0-9._*/-]{1,200}$"}
+        }
+      },
+      "additionalProperties": false
     }
   },
   "unevaluatedProperties": false,

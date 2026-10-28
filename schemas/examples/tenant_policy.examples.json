@@ -100,6 +100,21 @@
           }
         }
       }
+    },
+    {
+      "name": "workspace_limits",
+      "source": "设计书改动稿 W2（docs/plan/cloud-deploy.md D-06）：工作区的个数、大小与能推送的分支",
+      "instance": {
+        "effect_ceiling": "write_irreversible",
+        "workspace": {
+          "max_workspaces": 10,
+          "max_bytes": 2147483648,
+          "push_branches": [
+            "agent/*",
+            "feature/**"
+          ]
+        }
+      }
     }
   ],
   "invalid": [
@@ -333,6 +348,38 @@
           "network": {
             "max_rps": -1
           }
+        }
+      }
+    },
+    {
+      "name": "workspace_push_branch_with_spaces",
+      "description": "能推送的分支是 glob，不能有空格与 ~ ^ : 这类 git 不收的字符",
+      "violates": [
+        {
+          "path": "/workspace/push_branches/0",
+          "keyword": "pattern"
+        }
+      ],
+      "instance": {
+        "workspace": {
+          "push_branches": [
+            "main branch"
+          ]
+        }
+      }
+    },
+    {
+      "name": "workspace_unknown_field",
+      "description": "工作区一节只有 max_workspaces、max_bytes、push_branches",
+      "violates": [
+        {
+          "path": "/workspace",
+          "keyword": "additionalProperties"
+        }
+      ],
+      "instance": {
+        "workspace": {
+          "max_files": 10
         }
       }
     },

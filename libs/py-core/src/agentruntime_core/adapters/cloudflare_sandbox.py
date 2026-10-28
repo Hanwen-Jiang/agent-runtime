@@ -5,8 +5,8 @@
 - 认证：桥的令牌（SecretStore 平台作用域的 sandbox/cloudflare-bridge-token）放 Authorization；作用域（租户 ID 或 _platform）
   放 X-Sandbox-Owner，桥在建环境时记下、之后每次核对，不对就是 not_found。agent 的令牌只在桥里，适配器拿不到。
 - 网络：none 时出网全断；allowlist 时只放行 allow_hosts（主机名，可以用 *. 开头；只有 80、443 与 DNS）。这是 K8s 后端做不到的。
-- 磁盘是临时的：空闲超过 idle_timeout 后环境被忘掉（之后访问是 not_found）。绑定 workspace 要等 D-06（工作区跟着沙箱走）：
-  workspace_id 非空时报 invalid（unsupported_workspace）。
+- 磁盘是临时的：空闲超过 idle_timeout 后环境被忘掉（之后访问是 not_found）。不能挂工作区：workspace_id 非空时报 invalid
+  （unsupported_workspace）；工作区靠存档与恢复（SandboxArchive，D-06），Worker 把这个后端登记成 workspace: archive。
 - 资源：Cloudflare 按实例类型给 CPU 与内存（桥的 wrangler.jsonc 里配），spec 的 cpu_millis、memory_mb 不再细分。
 """
 
@@ -19,11 +19,12 @@ import urllib.error
 import urllib.request
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
+from typing import IO
 
 from agentruntime_core.adapters.sandbox_agent import AgentClient, AgentEndpoint, check_path
 from agentruntime_core.dev._common import scope_id
 from agentruntime_core.errors import InvalidError, NotFoundError, TransientError
-from agentruntime_core.providers.sandbox import ExecResult, ListedEnvironment, SandboxEnv, SandboxSpec
+from agentruntime_core.providers.sandbox import DirEntry, ExecResult, FileEntry, GrepMatch, ListedEnvironment, SandboxEnv, SandboxSpec
 from agentruntime_core.tenancy import Scope, TenantContext, platform_scope, tenant_scope
 from agentruntime_core.testing import FaultInjector
 
@@ -121,7 +122,7 @@ class CloudflareSandbox:
         if spec.image:
             raise InvalidError("unsupported_image", "Cloudflare 后端的镜像在桥里写死，不能按项目定制（D-17）")
         if spec.workspace_id:
-            raise InvalidError("unsupported_workspace", "Cloudflare 后端要等工作区跟着沙箱走（D-06）才能绑定 workspace")
+            raise InvalidError("unsupported_workspace", "Cloudflare 后端不能挂工作区，要按存档模式用（D-06）")
         hosts: list[str] = []
         if spec.network == "allowlist":
             hosts = [h.lower() for h in spec.allow_hosts]
@@ -157,6 +158,27 @@ class CloudflareSandbox:
         self._p._faults.check("read_file")
         check_path(path)
         return await self._p._agent.read_file(self._endpoint(env_id), path)
+
+    # 工作区的存档模式与在环境里执行的工作区类工具（D-06）：桥原样转给容器里的 agent。桥的 Worker 把请求体整个读进内存
+    # （Workers 的内存上限 128 MB），导入的存档大小受它限制；导出是流式的。
+
+    async def export_archive(self, env_id: str, out: IO[bytes], *, max_bytes: int) -> int:
+        self._p._faults.check("export_archive")
+        return await self._p._agent.export_archive(self._endpoint(env_id), out, max_bytes=max_bytes)
+
+    async def import_archive(self, env_id: str, src: IO[bytes], *, size: int, max_bytes: int) -> None:
+        self._p._faults.check("import_archive")
+        await self._p._agent.import_archive(self._endpoint(env_id), src, size=size, max_bytes=max_bytes)
+
+    async def manifest(self, env_id: str) -> list[FileEntry]:
+        self._p._faults.check("manifest")
+        return await self._p._agent.manifest(self._endpoint(env_id))
+
+    async def list_dir(self, env_id: str, path: str = "") -> list[DirEntry]:
+        return await self._p._agent.list_dir(self._endpoint(env_id), path)
+
+    async def grep(self, env_id: str, pattern: str, *, path: str = "", max_matches: int = 100) -> tuple[list[GrepMatch], bool]:
+        return await self._p._agent.grep(self._endpoint(env_id), pattern, path=path, max_matches=max_matches)
 
     async def destroy(self, env_id: str) -> None:
         self._p._faults.check("destroy")

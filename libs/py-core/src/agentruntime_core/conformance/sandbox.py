@@ -5,6 +5,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import io
+import tarfile
 from datetime import timedelta
 from pathlib import Path
 from typing import Any, Protocol
@@ -21,8 +24,8 @@ from agentruntime_core.conformance.common import (
     tenant_a,
     tenant_b,
 )
-from agentruntime_core.errors import ErrorCategory, NotFoundError
-from agentruntime_core.providers.sandbox import Sandbox, SandboxProvider, SandboxSpec
+from agentruntime_core.errors import ErrorCategory, InvalidError, NotFoundError
+from agentruntime_core.providers.sandbox import FileEntry, Sandbox, SandboxProvider, SandboxSpec
 
 SandboxHarness = Harness[SandboxProvider]
 TIMEOUT = timedelta(seconds=30)
@@ -197,3 +200,150 @@ class SandboxWorkspaceConformance(BindingRules):
 
 class SandboxWithWorkspaceConformance(SandboxConformance, SandboxWorkspaceConformance):
     """支持绑定 workspace 的实现跑的全套：通用规则加 workspace 的规则。"""
+
+
+def tar_of(*items: tuple[str, str, bytes | str]) -> bytes:
+    """测试用的 tar：(名字, 类型 file|dir|symlink|hardlink|char, 内容或链接目标)。"""
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w", format=tarfile.PAX_FORMAT) as tar:
+        for name, kind, payload in items:
+            info = tarfile.TarInfo(name)
+            info.mode = 0o755 if kind == "dir" else 0o644
+            if kind == "file":
+                data = payload if isinstance(payload, bytes) else payload.encode()
+                info.size = len(data)
+                tar.addfile(info, io.BytesIO(data))
+                continue
+            info.type = {"dir": tarfile.DIRTYPE, "symlink": tarfile.SYMTYPE, "hardlink": tarfile.LNKTYPE, "char": tarfile.CHRTYPE}[kind]
+            if kind in ("symlink", "hardlink"):
+                info.linkname = str(payload)
+            tar.addfile(info)
+    return buf.getvalue()
+
+
+def shape(entries: list[FileEntry]) -> list[tuple[str, str, int, str, str]]:
+    """比较两份清单用：路径、类型、大小、内容、链接。权限位不比（Windows 上的开发实现表示不了），由各实现自己的测试覆盖。"""
+    return [(e.path, e.type, e.size, e.sha256, e.link) for e in entries]
+
+
+HOSTILE_ARCHIVES = {
+    "absolute": [("/etc/passwd", "file", "x")],
+    "dotdot": [("../escape.txt", "file", "x")],
+    "nested-dotdot": [("a/../../escape.txt", "file", "x")],
+    "backslash": [("a\\b.txt", "file", "x")],
+    "hardlink": [("a.txt", "file", "x"), ("b.txt", "hardlink", "a.txt")],
+    "device": [("dev", "char", "")],
+    "escaping-link": [("out", "symlink", "../../etc")],
+    "absolute-link": [("out", "symlink", "/etc")],
+    "duplicate": [("a.txt", "file", "x"), ("a.txt", "file", "y")],
+    "file-then-dir": [("a", "file", "x"), ("a/b.txt", "file", "y")],
+}
+
+
+class SandboxArchiveConformance(BindingRules):
+    """工作区的存档模式（D-06）：SandboxArchive 与 SandboxBrowse 的语义（providers.sandbox）。支持的实现（开发实现、K8s、
+    Cloudflare）把这一组与通用的一组一起加进各自的测试类。"""
+
+    @pytest.fixture
+    def box(self, harness: SandboxHarness) -> Any:
+        return harness.provider.bind(tenant_a())
+
+    @staticmethod
+    async def _fresh(box: Any) -> str:
+        return (await box.create(SandboxSpec())).env_id
+
+    async def test_export_then_import_into_a_fresh_environment_keeps_everything(self, box: Any) -> None:
+        src = await self._fresh(box)
+        files = {"README.md": "# 退款\n".encode(), "src/app/main.py": b"print('hi')\n", "empty.txt": b"", ".git/HEAD": b"ref: main\n", "a.txt": b"a"}
+        for path, data in files.items():
+            await box.write_file(src, path, data)
+        assert (await box.exec(src, ["python", "-c", "import os; os.makedirs('empty/dir')"], timeout=TIMEOUT)).exit_code == 0
+        tmp = io.BytesIO()
+        assert await box.export_archive(src, tmp, max_bytes=1 << 20) > 0
+        dst = await self._fresh(box)
+        data = tmp.getvalue()
+        await box.import_archive(dst, io.BytesIO(data), size=len(data), max_bytes=1 << 20)
+        want, got = await box.manifest(src), await box.manifest(dst)
+        assert shape(got) == shape(want)
+        readme = next(e for e in got if e.path == "README.md")
+        assert readme.type == "file" and readme.size == len("# 退款\n".encode()) and readme.sha256 == hashlib.sha256("# 退款\n".encode()).hexdigest()
+        assert {e.path for e in got} >= {"src", "src/app", "src/app/main.py", ".git", ".git/HEAD", "empty.txt", "empty", "empty/dir", "a.txt"}
+        assert [e.path for e in got] == sorted(e.path for e in got), "清单按路径的字符串顺序排序"
+        assert await box.read_file(dst, "src/app/main.py") == b"print('hi')\n"
+
+    async def test_import_needs_an_empty_workdir_and_respects_the_limits(self, box: Any) -> None:
+        env = await self._fresh(box)
+        await box.write_file(env, "already.txt", b"x")
+        small = tar_of(("a.txt", "file", "a"))
+        with expect_error(ErrorCategory.INVALID, "not_empty"):
+            await box.import_archive(env, io.BytesIO(small), size=len(small), max_bytes=1024)
+        big = tar_of(("big.bin", "file", b"x" * 4096))
+        with expect_error(ErrorCategory.INVALID):
+            await box.import_archive(await self._fresh(box), io.BytesIO(big), size=len(big), max_bytes=1024)
+        await box.write_file(env, "big.bin", b"y" * 4096)
+        with expect_error(ErrorCategory.INVALID, "too_large"):
+            await box.export_archive(env, io.BytesIO(), max_bytes=1024)
+
+    @pytest.mark.parametrize("name", sorted(HOSTILE_ARCHIVES))
+    async def test_hostile_archives_are_refused(self, box: Any, name: str) -> None:
+        env = await self._fresh(box)
+        data = tar_of(*HOSTILE_ARCHIVES[name])
+        with expect_error(ErrorCategory.INVALID):
+            await box.import_archive(env, io.BytesIO(data), size=len(data), max_bytes=1 << 20)
+        assert not any(e.path.endswith("escape.txt") for e in await box.manifest(env))
+
+    async def test_symlinks_inside_the_workdir_roundtrip(self, box: Any) -> None:
+        data = tar_of(("pkg", "dir", ""), ("pkg/real.py", "file", "x = 1\n"), ("pkg/alias.py", "symlink", "real.py"), ("top", "symlink", "pkg"))
+        env = await self._fresh(box)
+        try:
+            await box.import_archive(env, io.BytesIO(data), size=len(data), max_bytes=1 << 20)
+        except InvalidError as err:
+            if err.code == "symlink_unsupported":
+                pytest.skip("这个后端所在的系统建不了符号链接（Windows 上的开发实现）")
+            raise
+        links = {e.path: e.link for e in await box.manifest(env) if e.type == "symlink"}
+        assert links == {"pkg/alias.py": "real.py", "top": "pkg"}
+        tmp = io.BytesIO()
+        await box.export_archive(env, tmp, max_bytes=1 << 20)
+        again = await self._fresh(box)
+        await box.import_archive(again, io.BytesIO(tmp.getvalue()), size=len(tmp.getvalue()), max_bytes=1 << 20)
+        assert shape(await box.manifest(again)) == shape(await box.manifest(env))
+
+    async def test_other_tenants_cannot_export_import_or_browse(self, harness: SandboxHarness, box: Any) -> None:
+        env = await self._fresh(box)
+        await box.write_file(env, "secret.txt", b"a")
+        other: Any = harness.provider.bind(tenant_b())
+        data = tar_of(("x.txt", "file", "x"))
+        with expect_error(ErrorCategory.NOT_FOUND):
+            await other.export_archive(env, io.BytesIO(), max_bytes=1 << 20)
+        with expect_error(ErrorCategory.NOT_FOUND):
+            await other.import_archive(env, io.BytesIO(data), size=len(data), max_bytes=1 << 20)
+        with expect_error(ErrorCategory.NOT_FOUND):
+            await other.manifest(env)
+        with expect_error(ErrorCategory.NOT_FOUND):
+            await other.list_dir(env)
+        with expect_error(ErrorCategory.NOT_FOUND):
+            await other.grep(env, "a")
+
+    async def test_list_and_grep_run_inside_the_environment(self, box: Any) -> None:
+        env = await self._fresh(box)
+        files = {
+            "a.py": b"def refund():\n    return 1\n", "pkg/b.py": b"x = 1\r\n# refund policy\r\n", "pkg/c.txt": b"nothing\n",
+            ".git/config": b"refund\n", "pkg/.git/x": b"refund\n", "bin.dat": b"refund\x00\x01",
+        }
+        for path, data in files.items():
+            await box.write_file(env, path, data)
+        assert [(e.name, e.type) for e in await box.list_dir(env)] == [(".git", "dir"), ("a.py", "file"), ("bin.dat", "file"), ("pkg", "dir")]
+        sub = await box.list_dir(env, "pkg")
+        assert [e.name for e in sub] == [".git", "b.py", "c.txt"] and sub[1].size == len(files["pkg/b.py"])
+        with expect_error(ErrorCategory.NOT_FOUND):
+            await box.list_dir(env, "missing")
+        with expect_error(ErrorCategory.INVALID):
+            await box.list_dir(env, "../escape")
+        matches, truncated = await box.grep(env, "refund")
+        assert [(m.path, m.line, m.text) for m in matches] == [("a.py", 1, "def refund():"), ("pkg/b.py", 2, "# refund policy")], "跳过 .git 与二进制"
+        assert not truncated
+        assert [m.path for m in (await box.grep(env, "refund", path="pkg"))[0]] == ["pkg/b.py"]
+        assert (await box.grep(env, "re.und", max_matches=1))[1] is True
+        with expect_error(ErrorCategory.INVALID):
+            await box.grep(env, "(")

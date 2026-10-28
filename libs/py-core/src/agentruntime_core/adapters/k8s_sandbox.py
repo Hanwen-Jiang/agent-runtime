@@ -31,14 +31,14 @@ import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import IO, Any
 
 from agentruntime_core.adapters.kube import KubeAPI, error_for, label_selector
 from agentruntime_core.adapters.sandbox_agent import AgentClient, AgentEndpoint, check_path
 from agentruntime_core.dev._common import scope_id
 from agentruntime_core.dev.sandbox import workspace_subpath
 from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError, TransientError
-from agentruntime_core.providers.sandbox import ExecResult, ListedEnvironment, SandboxEnv, SandboxSpec
+from agentruntime_core.providers.sandbox import DirEntry, ExecResult, FileEntry, GrepMatch, ListedEnvironment, SandboxEnv, SandboxSpec
 from agentruntime_core.tenancy import Scope, TenantContext, platform_scope, tenant_scope
 from agentruntime_core.testing import FaultInjector
 
@@ -235,6 +235,31 @@ class K8sPodSandbox:
         check_path(path)
         pod = await self._lookup(env_id)
         return await self._p._agent.read_file(self._p.endpoint(env_id, pod), path)
+
+    # 工作区的存档模式与在环境里执行的工作区类工具（D-06）：都经 Pod 里的 agent。
+
+    async def export_archive(self, env_id: str, out: IO[bytes], *, max_bytes: int) -> int:
+        self._p._faults.check("export_archive")
+        pod = await self._lookup(env_id)
+        return await self._p._agent.export_archive(self._p.endpoint(env_id, pod), out, max_bytes=max_bytes)
+
+    async def import_archive(self, env_id: str, src: IO[bytes], *, size: int, max_bytes: int) -> None:
+        self._p._faults.check("import_archive")
+        pod = await self._lookup(env_id)
+        await self._p._agent.import_archive(self._p.endpoint(env_id, pod), src, size=size, max_bytes=max_bytes)
+
+    async def manifest(self, env_id: str) -> list[FileEntry]:
+        self._p._faults.check("manifest")
+        pod = await self._lookup(env_id)
+        return await self._p._agent.manifest(self._p.endpoint(env_id, pod))
+
+    async def list_dir(self, env_id: str, path: str = "") -> list[DirEntry]:
+        pod = await self._lookup(env_id)
+        return await self._p._agent.list_dir(self._p.endpoint(env_id, pod), path)
+
+    async def grep(self, env_id: str, pattern: str, *, path: str = "", max_matches: int = 100) -> tuple[list[GrepMatch], bool]:
+        pod = await self._lookup(env_id)
+        return await self._p._agent.grep(self._p.endpoint(env_id, pod), pattern, path=path, max_matches=max_matches)
 
     async def preview_address(self, env_id: str, port: int) -> str:
         """预览地址转发到 Pod 的这个端口（出网网关在集群里直连 Pod；沙箱命名空间的网络策略只放行网关进来，D-16）。"""

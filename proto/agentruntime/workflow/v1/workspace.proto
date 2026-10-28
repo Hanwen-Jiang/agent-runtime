@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package agentruntime.workflow.v1;
+
+import "agentruntime/common/v1/error.proto";
+import "agentruntime/common/v1/tenant.proto";
+import "google/protobuf/struct.proto";
+
+// 工作区的操作（docs/plan/cloud-deploy.md D-06）：task-service 的 WorkspaceService 收到请求后，启动 Python 的
+// WorkspaceOperationWorkflow（task 队列，工作流 ID 是 wsop-<operation_id>）并等它的结果；操作在承载工作区的沙箱里执行。
+// 凭据不进事件历史：sealed_credential 是用 SecretStore 平台作用域的 workspace/credential-key 加密的（AES-GCM，
+// 关联数据是 tenant_id 与 operation_id），Worker 的 activity 解开后只交给这一次的 git 命令。
+message WorkspaceOperationInput {
+  // 服务端根据认证身份构造。
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string operation_id = 2;
+  WorkspaceOperation operation = 3;
+  string workspace_id = 4;
+  // 不含凭据的参数：repo_url、ref、base、message、author_name、author_email、branch。
+  google.protobuf.Struct args = 5;
+  // wsc1.<base64url(nonce || 密文)>；没有凭据时为空。
+  string sealed_credential = 6;
+  // 发起的用户（推送的 gate 记录里的 approved_by）。
+  string requested_by = 7;
+}
+
+enum WorkspaceOperation {
+  WORKSPACE_OPERATION_UNSPECIFIED = 0;
+  WORKSPACE_OPERATION_CREATE = 1;
+  WORKSPACE_OPERATION_DIFF = 2;
+  WORKSPACE_OPERATION_COMMIT = 3;
+  WORKSPACE_OPERATION_PUSH = 4;
+  WORKSPACE_OPERATION_ARCHIVE = 5;
+  WORKSPACE_OPERATION_DELETE = 6;
+}
+
+message WorkspaceOperationResult {
+  // 各操作的结果，字段与 workspace.v1 里对应的 Response 同名。
+  google.protobuf.Struct result = 1;
+  // 失败时的错误（统一错误模型）；成功时为空。
+  agentruntime.common.v1.Error error = 2;
+}
