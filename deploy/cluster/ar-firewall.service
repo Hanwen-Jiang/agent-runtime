@@ -1,0 +1,16 @@
+# 开机时在 k3s 之前装好公网网卡的防火墙（firewall.sh）。安装：
+#   install -m 0755 deploy/cluster/firewall.sh /usr/local/sbin/ar-firewall.sh
+#   install -m 0644 deploy/cluster/ar-firewall.service /etc/systemd/system/ && systemctl enable --now ar-firewall
+[Unit]
+Description=Agent Runtime public-interface firewall
+Wants=network-online.target
+After=network-online.target
+Before=k3s.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/ar-firewall.sh
+
+[Install]
+WantedBy=multi-user.target

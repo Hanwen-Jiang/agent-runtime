@@ -14,7 +14,8 @@
 age-keygen -o ~/.config/sops/age/keys.txt     # 私钥只留在这台机器上
 grep 'public key' ~/.config/sops/age/keys.txt  # 把公钥填进 .sops.yaml
 cp secrets.example.yaml secrets.yaml           # 填好每个 REPLACE_ME
-sops --encrypt secrets.yaml > secrets.enc.yaml
+# .sops.yaml 的规则按文件名 secrets.enc.yaml 匹配：加密明文时用 --filename-override 指过去，否则报没有匹配的规则。
+sops --encrypt --filename-override secrets.enc.yaml secrets.yaml > secrets.enc.yaml
 shred -u secrets.yaml
 ```
 

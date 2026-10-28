@@ -21,7 +21,9 @@
 
 1. **买机器与域名**（你来做）：独服要有 `/dev/kvm`（Kata 要）；域名的 DNS 托管到 Cloudflare。
 2. **防火墙**：443 只放 Cloudflare 的地址段（<https://www.cloudflare.com/ips/>，与 `k3s/traefik-config.yaml` 的 `trustedIPs` 一致）；
-   22 只放自己的地址；6443（API Server）不对外。
+   6443（API Server）、NodePort 不对外。`firewall.sh` 与 `ar-firewall.service`（安装命令在 service 文件的开头）：servicelb 把 443
+   DNAT 给 Traefik，ufw 那种只管 INPUT 的规则拦不住，所以在 raw 表里查。22 默认对所有地址开着；有固定地址时再收紧，
+   并把 sshd 改成只认密钥。
 3. **集群**：把仓库拷到机器上，`sudo deploy/cluster/install.sh`，然后 `deploy/cluster/verify.sh`。
 4. **Cloudflare**：DNS 加一条代理（橙色云）的记录指向机器；SSL/TLS 模式 Full (strict)；Origin Server 里生成源站证书，
    放进 Secret `cloudflare-origin-tls`。SSE 不用另外设置（Cloudflare 不缓冲 `text/event-stream`）。
@@ -58,9 +60,10 @@
 
 ## Kata 与 gVisor 共存
 
-`install.sh` 先放 containerd 模板（`config-v3.toml.tmpl`，加 runsc），再装 kata-deploy。kata-deploy 在 k3s 上会改同一个模板加上
-自己的 handler；`install.sh` 装完核对 runsc 还在。不在时（kata-deploy 的版本改了做法）：把 `k3s/config-v3.toml.tmpl` 里的 runsc
-一段追加回模板，`systemctl restart k3s`。Kata 用 Cloud Hypervisor，跑在 Kata 4 默认的 Rust 运行时上（`kata-clh-runtime-rs`；
+`install.sh` 先放 containerd 模板（`config-v3.toml.tmpl`，加 runsc），再装 kata-deploy。kata-deploy 4.2 在 k3s 上把自己的 handler
+写进 `config-v3.toml.d/kata-deploy.toml`（containerd 的 imports），不动模板（更早的版本改同一个模板）；`install.sh` 装完核对 runsc
+还在、Kata 的 handler 在这几个文件之一里有 `privileged_without_host_devices = true`。runsc 不在时：把 `k3s/config-v3.toml.tmpl`
+里的 runsc 一段追加回模板，`systemctl restart k3s`。Kata 用 Cloud Hypervisor，跑在 Kata 4 默认的 Rust 运行时上（`kata-clh-runtime-rs`；
 4.0 起 Go 运行时的 `kata-clh` 进入弃用期）。不用 Firecracker：它不支持 virtio-fs，用它要另配 devmapper 快照器，kata-deploy 4.2
 里也只有 Go 运行时的 `fc`。
 

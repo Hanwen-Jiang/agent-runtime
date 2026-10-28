@@ -78,8 +78,10 @@ if [[ -e /dev/kvm ]]; then
   grep -q 'runtimes.runsc' /var/lib/rancher/k3s/agent/etc/containerd/config-v3.toml.tmpl \
     || die "kata-deploy 改写 containerd 模板时丢了 runsc，见 README 的“Kata 与 gVisor 共存”"
   # 按项目定制的运行环境的构建（D-17）要特权跑 BuildKit：特权只能停在 VM 里，Kata 的 handler 要 privileged_without_host_devices。
+  # kata-deploy 4.2 起把 handler 写进 config-v3.toml.d/kata-deploy.toml（containerd 的 imports），不再改模板。
   awk '/^[[:space:]]*\[/{s=($0 ~ /kata-clh-runtime-rs/)} s && /privileged_without_host_devices[[:space:]]*=[[:space:]]*true/{f=1} END{exit !f}' \
-      /var/lib/rancher/k3s/agent/etc/containerd/config-v3.toml.tmpl /var/lib/rancher/k3s/agent/etc/containerd/config.toml 2>/dev/null \
+      /var/lib/rancher/k3s/agent/etc/containerd/config-v3.toml.tmpl /var/lib/rancher/k3s/agent/etc/containerd/config.toml \
+      /var/lib/rancher/k3s/agent/etc/containerd/config-v3.toml.d/*.toml 2>/dev/null \
     || die "Kata 的 handler 没有 privileged_without_host_devices = true：构建环境的特权会碰到宿主的设备，见 README 的“项目环境的构建”"
 else
   log "没有 /dev/kvm：跳过 Kata（kata RuntimeClass 的沙箱起不来，租户策略别指到 kata）"
