@@ -35,6 +35,15 @@ npx wrangler deploy
 Linux 与 macOS（Windows 上要在 WSL 里跑）；Windows 上可以 `npx wrangler dev --enable-containers=false` 看鉴权与路由，凡是要用到容器的请求都是 500。
 Linux 或 WSL 里 `wrangler dev` 起来之后，把 `AR_CLOUDFLARE_BRIDGE_URL` 设成 `http://127.0.0.1:8787`、令牌设成 `.dev.vars` 里的，就能对本地的桥跑上面的用例（不花钱）。
 
+## 线上（2026-10-28）
+
+- 部署在 `https://agentruntime-sandbox-bridge.root-60a.workers.dev`（账号已有 Workers 付费版）；`BRIDGE_TOKEN` 与集群 SecretStore 的
+  `sandbox/cloudflare-bridge-token` 同值。`wrangler secret put` 要从文件重定向输入：PowerShell 管道会带上换行，令牌就对不上。
+- 适配器要带自己的 User-Agent：workers.dev 的 Browser Integrity Check 拒绝 Python-urllib（错误 1010）。
+- 真实端点用例 53 条里 40 条一次过；其余是 Cloudflare 那边 “There is no container instance that can be provided to this
+  Durable Object, try again later”（新应用刚上线、一次起很多实例时没有容量），单独重跑能过。适配器把它当 transient，
+  Broker 会回退到下一个后端，所以先只当回退用，不当首选。
+
 ## 验到哪一步了（2026-10-27）
 
 - 过了：`tsc --noEmit`（修了三处：`getState()` 返回的是 Promise、`sleepAfter` 的类型、`override`）；`wrangler deploy --dry-run` 打包成功、

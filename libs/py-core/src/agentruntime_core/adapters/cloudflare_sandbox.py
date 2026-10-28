@@ -32,6 +32,7 @@ _ENV_ID = re.compile(r"^cfs-[0-9a-f]{16}$")
 _HOST = re.compile(r"^(\*\.)?[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$")
 MAX_HOSTS = 50
 PLATFORM_OWNER = "_platform"
+USER_AGENT = "agentruntime-sandbox/1"
 
 
 def _parse_time(value: object) -> datetime | None:
@@ -80,7 +81,8 @@ class CloudflareSandboxProvider:
         return out
 
     def headers(self, owner: str) -> dict[str, str]:
-        return {"Authorization": f"Bearer {self._token}", "X-Sandbox-Owner": owner}
+        # Cloudflare 的 Browser Integrity Check 拒绝 Python-urllib 的默认 User-Agent（错误 1010），桥收不到请求。
+        return {"Authorization": f"Bearer {self._token}", "X-Sandbox-Owner": owner, "User-Agent": USER_AGENT}
 
     async def call(self, method: str, path: str, owner: str, body: dict | None = None) -> tuple[int, bytes]:
         data = json.dumps(body).encode() if body is not None else None
