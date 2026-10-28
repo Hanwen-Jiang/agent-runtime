@@ -7,7 +7,7 @@
 
 | 步 | 内容 | 依赖 | 状态（2026-10-27） |
 | --- | --- | --- | --- |
-| D-06a | 契约：`agentruntime.workspace.v1.WorkspaceService`（建与克隆、列出、diff、提交、推送、存档、删除）；`agentruntime.workflow.v1.WorkspaceOperationInput`、`WorkspaceOperationResult` 与工作流名 `WorkspaceOperationWorkflow`；租户策略的 `workspace`（个数、单个大小、能推送的分支）；凭据封装 `wsc1`（Go 的 `libs/go-core/sealing`、Python 的 `agentruntime_core.sealing`，同一组向量 `tests/contract/sealed_credential_vectors.json`） | S-01（人审） | 做完，契约待人审（基线没动） |
+| D-06a | 契约：`agentruntime.workspace.v1.WorkspaceService`（建与克隆、列出、diff、提交、推送、存档、删除）；`agentruntime.workflow.v1.WorkspaceOperationInput`、`WorkspaceOperationResult` 与工作流名 `WorkspaceOperationWorkflow`；租户策略的 `workspace`（个数、单个大小、能推送的分支）；凭据封装 `wsc1`（Go 的 `libs/go-core/sealing`、Python 的 `agentruntime_core.sealing`，同一组向量 `tests/contract/sealed_credential_vectors.json`） | S-01（人审） | 做完；2026-10-28 人审通过（连同第 8 节的草案），兼容性基线已更新（只加了 workspace 的契约，task_api 里 D-08、D-16 的改动仍待审） |
 | D-06b | 存档与恢复的原语：Sandbox 接口的可选能力 `SandboxArchive`（导出、导入、清单）与 `SandboxBrowse`（列目录、搜索）；sandbox-agent 的 `/v1/archive`、`/v1/manifest`、`/v1/list`、`/v1/grep`；开发实现、K8s、Cloudflare 接上；一致性测试 | — | 做完 |
 | D-06c | 工作区的存档（Worker 的 `agentruntime_worker.workspace`）：按文件内容寻址存进 ObjectStore，加逐文件的清单；恢复后按清单核对；保留最近 3 份、清掉没人引用的块；业务库迁移 205 | D-06b | 做完 |
 | D-06d | 承载与工具：登记里 `workspace: archive` 的后端不挂工作区卷，建环境后从最近的存档恢复，销毁之前存档；这些后端之间可以互相回退；`repo_read`、`repo_list`、`repo_grep`、`repo_edit` 在承载它的环境里执行 | D-06c、D-11、D-12、D-13 | 做完 |
@@ -93,9 +93,9 @@ ObjectStore（租户作用域）
 - **删除与推送的权限**：同租户的任何用户都能删工作区、推送（推送的批准人记的是发起的用户）；要限制时按 Task API 的做法加 scope。
 - **真环境没验**：kind 里的 K8s 后端跑了存档的一致性测试；Kata、gVisor、真 Cloudflare 桥与 R2 上的存档恢复没验。
 
-## 8. 契约草案：应用浏览与管理工作区（2026-10-28，待人审）
+## 8. 契约：应用浏览与管理工作区（2026-10-28 起草，同日人审通过）
 
-给 coding-agent 换掉本地 git 用（第 7 节第 1 条）。只加不改：`buf breaking` 对兼容性基线（还没有 workspace 的 proto）与对上一版草案（提交 3896039）都通过；**兼容性基线没有更新**。task-service 里这五个方法在审过之前回 Unimplemented（内嵌生成的 `UnimplementedWorkspaceServiceHandler`），Worker 收到新的操作枚举值时报 invalid（invalid_operation），所以合进来不改变现在的行为。
+给 coding-agent 换掉本地 git 用（第 7 节第 1 条）。只加不改：`buf breaking` 对兼容性基线与对上一版草案（提交 3896039）都通过。人审通过后更新了兼容性基线：新的基线是原基线加上 workspace 的三处（`workspace/v1/workspace.proto`、`workflow/v1/workspace.proto`、`names.proto` 的 `WORKFLOW_TYPE_WORKSPACE_OPERATION`），`taskapi/v1/task_api.proto` 仍是原基线的版本（D-08 的 `effect_ceiling`、D-16 的 `network_request` 还没审）。下面六处要拍板的，用户都按草案写的定了。
 
 | coding-agent 现在做的 | 契约里的 |
 | --- | --- |
