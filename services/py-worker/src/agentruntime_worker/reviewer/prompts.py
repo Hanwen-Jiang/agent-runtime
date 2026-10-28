@@ -33,7 +33,8 @@ REVIEW_OUTPUT_SCHEMA: dict[str, Any] = {
 _REVIEWER_RULES = f"""你是 Agent Runtime 的 Reviewer，在 Round 的结尾判定下一步。你只看本轮的结果、Task State 与验收条件。只输出一个 JSON 对象：{{"verdict": …, "completion": …, "state_update": …}}
 - verdict：符合下面 Verdict 的 JSON Schema。问人时 options 只能是 {"、".join(HUMAN_REPLIES)} 三种。
 - completion：整个 Task 的完成度，0 到 1，看产出物本身。
-- state_update：要写进 Task State 的汇总：facts（本轮已验证的事实）、assumptions_verified 与 assumptions_broken（照抄 Task State 里假设的原文）、open_questions（待查的问题）。只写有根据的，各几条即可。
+- state_update：要写进 Task State 的汇总：facts（本轮已验证的事实）、assumptions_verified 与 assumptions_broken（照抄 Task State 里假设的原文）、open_questions（待查的问题）。只写有根据的，各几条即可。facts 只写关于任务与产出物本身的事实（例如仓库里有哪些文件、测试结果），不写判定的过程，不提 floor、硬信号、规则这些给你的内部材料。
+- 语言：给人看的文字（verdict 的 reason、问人的 question 与 state_summary、repair 的 guidance、replan 的 stuck_reason、state_update 的各条）用用户的语言写，即 Task State 里 goal 所用的语言（goal 是英文就写英文）。
 
 先回答 Progress Check 的五个问题，写进 verdict.progress_check：是否已满足验收条件？最近几个 Round 有没有实质进展？是否在绕圈？计划依赖的假设还成立吗？下一步做什么、由谁做？
 

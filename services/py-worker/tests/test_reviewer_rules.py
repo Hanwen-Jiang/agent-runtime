@@ -108,6 +108,106 @@ def test_any_failed_node_rules_out_continue_and_done() -> None:
         assert d.verdict["verdict"] == "repair" and d.raised
 
 
+# --- 附录 B.6、B.7 里能由代码算出的几条（2026-10-28 真模型实验第 3.2 条：模型在这些情形下原地重试或假完成） ---
+
+TAX_ERROR = "ImportError: cannot import name 'TaxTable'"
+REVISE_STAGE = stage(goal("fix", quality={"type": "revise", "judge": "run_tests@v1", "max_rounds": 3}), atomic("report", role="deliver", after=("fix",)))
+
+
+@pytest.mark.parametrize(
+    "retried",
+    [{"quality": {"type": "revise", "rounds": 3, "passed": False}}, {"attempts": 3}],
+    ids=["revise_rounds", "attempts"],
+)
+def test_the_same_error_again_after_retrying_inside_the_round_requires_replan(retried: dict[str, Any]) -> None:
+    """附录 B.7：revise 循环里同一错误反复出现，问题在上游，停止修复，升级为 replan（B.3：同一错误连续 3 次时判定 replan）。
+    本轮 Node 自己已重试过（revise 的轮数，或 S-08 样本的 attempts），上一轮又是同一个错误签名。"""
+    results = {"fix": {**failed(TAX_ERROR), **retried}, "report": skipped("fix", role="deliver")}
+    history = [past(1, "repair", failed_nodes={"fix": TAX_ERROR})]
+    d, fl, lg = decide(REVISE_STAGE, results, retry("fix"), history=history)
+    assert "repetition" in lg.signals
+    assert fl.step == "replan" and d.verdict["verdict"] == "replan" and d.raised, d.reasons
+    assert any("B.7" in r for r in fl.reasons)
+
+
+def test_a_wrapped_error_is_still_the_same_error() -> None:
+    """质量包装失败时错误前面带说明（S-08 的 rs_revise_same_error 就是这样）：包含上一轮的错误签名也算同一个错误；太短的签名不按包含算。"""
+    results = {"fix": {**failed(f"revise 三轮都卡在同一错误：{TAX_ERROR}"), "attempts": 3}, "report": skipped("fix", role="deliver")}
+    _, fl, lg = decide(REVISE_STAGE, results, retry("fix"), history=[past(1, "repair", failed_nodes={"fix": TAX_ERROR})])
+    assert lg.repeated == ("fix",) and fl.step == "replan"
+    short = {"fix": {**failed("timeout after retry"), "attempts": 3}, "report": skipped("fix", role="deliver")}
+    _, _, lg2 = decide(REVISE_STAGE, short, retry("fix"), history=[past(1, "repair", failed_nodes={"fix": "timeout"})])
+    assert lg2.repeated == ()
+
+
+def test_a_repeated_error_without_retries_inside_the_round_only_changes_method() -> None:
+    """同一错误第 2 次、但这一轮没在 Node 里重试过：仍按 B.8 换方法（不越级到 replan）。"""
+    results = {"fix": failed(TAX_ERROR), "report": skipped("fix", role="deliver")}
+    _, fl, _ = decide(REVISE_STAGE, results, retry("fix"), history=[past(1, "repair", failed_nodes={"fix": TAX_ERROR})])
+    assert fl.step == "repair_change_method"
+
+
+def test_a_different_error_after_retries_is_not_a_repetition() -> None:
+    results = {"fix": {**failed("AssertionError: 3 != 2"), "attempts": 3}, "report": skipped("fix", role="deliver")}
+    _, fl, lg = decide(REVISE_STAGE, results, retry("fix"), history=[past(1, "repair", failed_nodes={"fix": TAX_ERROR})])
+    assert "repetition" not in lg.signals and fl.step == "repair_change_method"
+
+
+DRAFT_STAGE = stage(
+    atomic("draft", template="synthesize_report@v1", quality={"type": "revise", "judge": "rubric_judge@v1", "max_rounds": 3}),
+    atomic("report", role="deliver", after=("draft",)),
+)
+UNPASSED = {"draft": {**ok(), "quality": {"type": "revise", "rounds": 3, "passed": False}}, "report": ok("deliver")}
+
+
+@pytest.mark.parametrize("proposal", [done("report"), cont()], ids=["done", "continue"])
+def test_a_quality_loop_that_never_passed_its_judge_is_not_done(proposal: dict[str, Any]) -> None:
+    """Stage Runner 把用满 max_rounds 仍没通过 judge 的 revise 记成 succeeded、quality.passed = false（stage_runner._revise）。
+    产出没有经过验证：不能判 done 或 continue；revise 已经原地重试过 max_rounds 轮，换方法（附录 B.7：引入外部判据或独立 judge）。
+    E4 里“做不到却判 done”与 S-08 的 rs_cosmetic_reflection 都是这一类。"""
+    d, fl, _ = decide(DRAFT_STAGE, UNPASSED, proposal)
+    assert fl.step == "repair_change_method"
+    assert d.verdict["verdict"] == "repair" and d.verdict["repair"]["nodes"] == ["draft"] and d.raised, d.verdict
+
+
+def test_a_quality_loop_that_passed_may_be_done() -> None:
+    passed = {"draft": {**ok(), "quality": {"type": "revise", "rounds": 2, "passed": True}}, "report": ok("deliver")}
+    d, fl, _ = decide(DRAFT_STAGE, passed, done("report"))
+    assert fl.step == "none" and d.verdict["verdict"] == "done" and not d.raised
+
+
+FANOUT_STAGE = stage(
+    goal("refactor_api"), goal("refactor_db"), goal("refactor_ui"),
+    atomic("merge", role="aggregate", template="summarize@v1", after=("refactor_api", "refactor_db", "refactor_ui")),
+)
+MERGE_FAILED = {"refactor_api": ok(), "refactor_db": ok(), "refactor_ui": ok(), "merge": failed("三个分支都改了 config.py 的同一段，无法合并", role="aggregate")}
+
+
+def test_a_merge_that_fails_after_fan_out_requires_replan() -> None:
+    """附录 B.7：扇出后子结果冲突、合并困难，是耦合度被低估：收回单一写者，或先定共享接口再扇出。冲突的分支不保留。"""
+    d, fl, lg = decide(FANOUT_STAGE, MERGE_FAILED, retry("merge"))
+    assert "parallel_anomaly" in lg.signals
+    assert fl.step == "replan" and d.verdict["verdict"] == "replan" and d.raised
+    assert not set(d.verdict["replan"].get("keep_nodes") or []) & {"refactor_api", "refactor_db", "refactor_ui"}
+
+
+def test_a_failed_aggregate_over_one_input_is_an_ordinary_failure() -> None:
+    s = stage(goal("collect"), atomic("merge", role="aggregate", template="summarize@v1", after=("collect",)))
+    _, fl, lg = decide(s, {"collect": ok(), "merge": failed("格式不对", role="aggregate")}, retry("merge"))
+    assert "parallel_anomaly" not in lg.signals and fl.step == "repair_retry"
+
+
+def test_done_that_contradicts_its_own_progress_check_is_not_accepted() -> None:
+    """Progress Check 的第一个问题是“是否已满足验收条件”（附录 B.6）；模型自己答了没满足，却判 done，代码不收。"""
+    s = stage(atomic("fix"), atomic("report", role="deliver", after=("fix",)))
+    results = {"fix": ok(), "report": ok("deliver")}
+    contradictory = done("report")
+    contradictory["verdict"]["progress_check"] = {"criteria_met": False, "progress": True, "looping": False, "assumptions_hold": True, "next_step": "再跑一遍测试"}
+    d, _, _ = decide(s, results, contradictory)
+    assert d.verdict["verdict"] == "continue" and d.raised
+    assert any("Progress Check" in r for r in d.reasons)
+
+
 # --- 换形状与预算 ---
 
 

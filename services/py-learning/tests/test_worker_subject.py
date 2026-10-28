@@ -101,8 +101,9 @@ RETRY_IN_PLACE = {
 }
 """对抗性的模型：不管看到什么都说原地重试，Node 还是编的。"""
 
-# 升级的 floor 能从结构化的输入算出来的样本：同一 Node 第 2 次失败、两次 replan 没有进展、预算用尽、写操作被策略拒绝。
-RULE_DECIDED = ("rs_repair_second_failure", "rs_early_replans", "rs_abort_budget_exhausted", "rs_denied_write")
+# 升级的 floor 能从结构化的输入算出来的样本：同一 Node 第 2 次失败、两次 replan 没有进展、预算用尽、写操作被策略拒绝；
+# 2026-10-28 真模型实验第 3.2 条之后加的两条：本轮重试过仍是上一轮的同一错误（附录 B.7）、扇出后合并失败（附录 B.7）。
+RULE_DECIDED = ("rs_repair_second_failure", "rs_early_replans", "rs_abort_budget_exhausted", "rs_denied_write", "rs_revise_same_error", "rs_fanout_conflict")
 
 
 @pytest.mark.parametrize("split", SPLITS)

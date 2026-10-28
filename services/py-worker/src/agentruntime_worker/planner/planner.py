@@ -14,7 +14,7 @@ from agentruntime_worker.activities.types import Tenant
 from agentruntime_worker.executor.model_gateway import ModelGateway
 from agentruntime_worker.planner import prompts, validate
 from agentruntime_worker.planner.context import PlanningContext
-from agentruntime_worker.planner.triage import SIGNALS_SCHEMA, Signals, TriageDecision, decide, parse_signals, reviewer_decision
+from agentruntime_worker.planner.triage import SIGNALS_SCHEMA, UNCLASSIFIED_TASK_FAMILY, Signals, TriageDecision, decide, parse_signals, reviewer_decision
 from agentruntime_worker.workflows import stage_plan as sp
 
 
@@ -205,8 +205,8 @@ class Planner:
             return task_plan
         triage = dict(task_plan.get("triage") or {}) if isinstance(task_plan.get("triage"), dict) else {}
         triage["level"] = decision.level
-        if decision.task_family and "task_family" not in triage:
-            triage["task_family"] = decision.task_family
+        if "task_family" not in triage:
+            triage["task_family"] = decision.task_family or UNCLASSIFIED_TASK_FAMILY
         return {**task_plan, "triage": triage}
 
     async def _plan_with_model(self, request: PlanRequest, decision: TriageDecision, calls: list[ModelCall]) -> PlanResult:
@@ -238,6 +238,8 @@ class Planner:
                     stage = validate.normalize_stage(answer.get("stage"), round_seq=request.round_seq, tenant_id=request.tenant.tenant_id, task_id=request.task_id)
                     task_plan = self._with_triage(answer.get("task_plan"), decision)
                     stage, task_plan, adjusted = validate.drop_unknown_tiers(stage, task_plan, request.context.catalog.tiers)
+                    stage, capped = validate.cap_budgets(stage, validate.task_budget_remaining(request.task_state))
+                    adjusted = [*adjusted, *capped]
                     found = validate.problems(stage, task_plan, level=decision.level, context=request.context, keep_nodes=keep)
                     if not found:
                         return PlanResult(triage_level=decision.level, stage=stage, task_plan=task_plan, decision=decision, calls=calls, adjustments=adjusted)
@@ -257,7 +259,5 @@ class Planner:
             "exit_when": f"{node_id} 给出结果",
             "nodes": [{"id": node_id, "kind": "goal", "goal": goal, "done_when": done_when, "mode": "tool_loop", "output_schema": {"type": "object"}}],
         }
-        triage: dict[str, Any] = {"level": decision.level}
-        if decision.task_family:
-            triage["task_family"] = decision.task_family
+        triage: dict[str, Any] = {"level": decision.level, "task_family": decision.task_family or UNCLASSIFIED_TASK_FAMILY}
         return stage, {"triage": triage, "horizon": "explore"}

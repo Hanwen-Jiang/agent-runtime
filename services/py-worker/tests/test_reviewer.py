@@ -74,6 +74,15 @@ async def test_one_progress_check_call_per_review_in_a_fresh_context() -> None:
     assert [c.purpose for c in result.calls] == ["review"] and result.calls[0].cost_usd > 0
 
 
+async def test_the_rules_ask_for_the_users_language_and_keep_review_internals_out_of_facts() -> None:
+    """2026-10-28 线上日志：英文界面里 Reviewer 的理由与问题是中文，“已验证的事实”里出现“代码计算出的硬信号为空，floor 为 none”。"""
+    gateway = FakeReviewGateway([done("report")])
+    await Reviewer(gateway).review(request(REPORT_STAGE, REPORT_OK, state=report_state()))
+    system = gateway.requests[0].generation.messages[0].text
+    assert "用用户的语言写" in system and "goal 是英文就写英文" in system
+    assert "不提 floor、硬信号、规则" in system
+
+
 async def test_the_prompt_holds_results_state_and_criteria_but_nothing_from_planning() -> None:
     """上下文隔离在代码里限制（计划 S-10 难点）：Task Plan、Planner 与 Node 的 rationale、Triage 的理由都到不了模型。"""
     s = json.loads(json.dumps(REPORT_STAGE))

@@ -29,7 +29,7 @@ from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError
 
 from agentruntime_worker import names
 from agentruntime_worker.activities.types import CatalogInfo, CatalogRequest, PlanRoundInput, StagePolicy, StagePolicyRequest, TemplateInfo
-from agentruntime_worker.planner.context import CatalogView, PlanningContext, RecipeEntry
+from agentruntime_worker.planner.context import STUB_TEMPLATE_PREFIX, CatalogView, PlanningContext, RecipeEntry
 from agentruntime_worker.registry.client import GrpcRegistry
 from agentruntime_worker.tools.catalog import ToolCatalog
 
@@ -97,7 +97,12 @@ class RegistryContextSource:
         recipes = await self.registry.list_recipes(inp.tenant)
         profiles = await self.registry.list_model_profiles(inp.tenant)
         catalog = CatalogView(
-            templates={f"{t.name}@{t.version}": (info.executor, info.effect) for t in templates for info in [template_info(t)]},
+            templates={
+                f"{t.name}@{t.version}": (info.executor, info.effect)
+                for t in templates
+                if not t.name.startswith(STUB_TEMPLATE_PREFIX)
+                for info in [template_info(t)]
+            },
             recipes={f"{r.name}@{r.version}": r.task_family for r in recipes},
             tools=dict(self.defaults.catalog.tools),
             tiers=generation_tiers(_document(p.document) for p in profiles),

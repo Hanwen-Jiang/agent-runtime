@@ -1,7 +1,10 @@
 """升级顺序与触发规则（附录 B.8）：代码判定 floor 与次数上限，模型的提议只会被往上抬。
 
-floor：从台账算出至少要升级到哪一步；预算规则另限定可选的 Verdict。
-enforce：拿模型的提议（或没有提议）依次做三件事——把细节改成合法的（done 只来自本轮成功的 deliver 节点、
+floor：从台账算出至少要升级到哪一步；预算规则另限定可选的 Verdict。除了 B.8 的次数规则，还有附录 B.6、B.7 里代码算得出的三条
+（2026-10-28 真模型实验第 3.2 条）：本轮已在 Node 里重试过、又是上一轮的同一个错误，replan；扇出后合并失败，replan；
+质量包装用满轮数仍没通过 judge 的产出（Stage Runner 记成 succeeded、quality.passed = false），不能 continue 或 done，换方法。
+enforce：拿模型的提议（或没有提议）依次做三件事——把细节改成合法的（done 只来自本轮成功的 deliver 节点、Progress Check
+自己答了验收条件没满足的不能 done、
 Node 必须属于本 Stage、问人只给三种回复、rollback 只退到已有的检查点、reroute 只换到本租户 Catalog 里且不超出
 effect 上限的 Recipe）；低于 floor 的抬到 floor；用满上限的一级换到上一级。纯函数。
 """
@@ -108,9 +111,23 @@ def floor(ledger: Ledger, results: Mapping[str, Mapping[str, Any]], *, completio
         denied = [nid for nid in failed if results[nid].get("failure_class") == "denied"]
         if denied:
             need("replan", f"{'、'.join(denied)} 被拒绝（denied）：原样重试没有用，换做法或问人")
+        for nid in ledger.repeated:
+            tries = retries_within_round(results.get(nid, {}))
+            if tries >= 2:
+                need("replan", f"{nid} 本轮内已重试 {tries} 次，仍是和上一轮相同的错误：问题在上游，停止修复，重规划（附录 B.7）")
+        for nid in ledger.merge_conflicts:
+            need("replan", f"{nid} 合并扇出的结果失败：耦合度被低估，收回单一写者，或先定共享接口再扇出（附录 B.7）")
         replans = ledger.since_progress.get("replan", 0)
         if replans >= 2:
             need("replan_change_shape", f"replan {replans} 次仍无进展：换 Stage 形状、换流程或问人（附录 B.8）")
+
+    unverified = unverified_nodes(results)
+    if unverified:
+        need(
+            "repair_change_method",
+            f"{'、'.join(unverified)} 的质量包装用满轮数仍没通过 judge：产出没有经过验证，不能 continue 或 done；"
+            "已经原地重试过，换方法（引入外部判据或独立 judge，附录 B.7）",
+        )
 
     allowed: set[str] | None = None
     ratio = ledger.spent_ratio()
@@ -202,6 +219,10 @@ class _Rules:
 
     def valid(self, verdict: dict[str, Any], reasons: list[str]) -> dict[str, Any]:
         kind = verdict["verdict"]
+        if kind == "done" and (verdict.get("progress_check") or {}).get("criteria_met") is False:
+            why = "Progress Check 自己答了验收条件没满足，却判 done：不能交付"
+            reasons.append(why)
+            return self.make("continue" if not self.failed else self.floor.step, verdict, [why])
         if kind == "done":
             delivers = self.delivers()
             if not delivers:
@@ -368,10 +389,11 @@ class _Rules:
         return repair_targets(self.nodes, self.results) or (self.failed or sorted(self.nodes)[:1])
 
     def default_keep(self) -> list[str]:
-        """代码抬到 replan 时保留的 Node：本轮成功的，减去被失败的 judge 否掉的上游产出（它正是要重做的）。"""
-        rejected: set[str] = set()
+        """代码抬到 replan 时保留的 Node：本轮成功的，减去被失败的 judge 否掉的上游产出（它正是要重做的）、合并不了的扇出分支，
+        以及质量包装没通过的产出。"""
+        rejected: set[str] = set(unverified_nodes(self.results))
         for nid in self.failed:
-            if _judging(nid, self.nodes, self.results):
+            if _judging(nid, self.nodes, self.results) or nid in self.ledger.merge_conflicts:
                 rejected.update(self.nodes.get(nid, {}).get("after") or [])
         return [n for n in self.succeeded if n not in rejected]
 
@@ -393,9 +415,23 @@ def _judging(nid: str, nodes: Mapping[str, Mapping[str, Any]], results: Mapping[
     return results.get(nid, {}).get("role") in JUDGING_ROLES or nodes.get(nid, {}).get("role") in JUDGING_ROLES
 
 
+def retries_within_round(result: Mapping[str, Any]) -> int:
+    """Node 在本轮里已经试了几次：质量包装的轮数（Stage Runner 的 quality.rounds），或 S-08 样本记的 attempts。"""
+    rounds = (result.get("quality") or {}).get("rounds") if isinstance(result.get("quality"), Mapping) else None
+    return max(int(rounds or 0), int(result.get("attempts") or 0))
+
+
+def unverified_nodes(results: Mapping[str, Mapping[str, Any]]) -> list[str]:
+    """succeeded 但质量包装没通过的 Node（revise 用满 max_rounds 仍没过 judge，stage_runner._revise）。"""
+    return sorted(
+        nid for nid, r in results.items()
+        if r.get("status") == "succeeded" and isinstance(r.get("quality"), Mapping) and r["quality"].get("passed") is False
+    )
+
+
 def repair_targets(nodes: Mapping[str, Mapping[str, Any]], results: Mapping[str, Mapping[str, Any]]) -> list[str]:
-    """要修的 Node：失败的 Node 本身；失败的是 judge 或 gate 时，修它检查的、本轮成功的上游产出。"""
-    out: set[str] = set()
+    """要修的 Node：失败的 Node 本身；失败的是 judge 或 gate 时，修它检查的、本轮成功的上游产出；质量包装没通过的 Node。"""
+    out: set[str] = {nid for nid in unverified_nodes(results) if nid in nodes}
     for nid in sorted(n for n, r in results.items() if is_failed(r)):
         targets = [nid]
         if _judging(nid, nodes, results):

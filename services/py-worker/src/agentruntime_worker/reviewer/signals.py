@@ -37,6 +37,8 @@ PROGRESS_VERDICT = "continue"
 """有进展的 Round：本 Stage 的退出条件满足（有 Node 失败时不能判 continue，见 rules）。"""
 
 SIGNATURE_LIMIT = 200
+SAME_ERROR_MIN_LEN = 12
+"""错误签名按“包含”判同一个错误时，短的那个至少这么长（“failed”“timeout”这样的不算）。"""
 STALL_ROUNDS = 2
 """连续这么多个 Round 没有进展，记停滞。"""
 DRIFT_REPLANS = 2
@@ -62,6 +64,8 @@ class Ledger:
     since_progress：上次进展（continue）之后各级用了几次：repair_retry、repair_change_method、replan（含换形状）。
     per_task：整个 Task 里用了几次：replan_change_shape（含 reroute）、rollback、escalate_tier、escalate_human。
     rounds_without_progress：最近连续几个 Round 没有进展（不含本轮）。
+    repeated：本轮失败、错误签名与上一轮相同的 Node（重复信号，附录 B.6）。
+    merge_conflicts：合并扇出结果失败的 aggregate Node（并行异常，附录 B.7“扇出后子结果冲突”）。
     """
 
     node_failures: Mapping[str, int]
@@ -72,6 +76,8 @@ class Ledger:
     budget_usd: float | None
     checkpoints: tuple[str, ...]
     signals: tuple[str, ...]
+    repeated: tuple[str, ...] = ()
+    merge_conflicts: tuple[str, ...] = ()
 
     def spent_ratio(self) -> float | None:
         """已花的预算占比；没有预算时为 None。"""
@@ -95,6 +101,14 @@ def step_of(verdict: Mapping[str, Any]) -> str:
 def error_signature(text: str) -> str:
     """错误签名：数字换成 #，空白归一，截短。同一个错误换了行号或计数仍是同一个签名。"""
     return " ".join(re.sub(r"\d+", "#", str(text)).split())[:SIGNATURE_LIMIT]
+
+
+def same_error(a: str, b: str) -> bool:
+    """两个错误签名是不是同一个错误：相同，或一个包含另一个（质量包装失败时会在原错误前加上说明）。太短的不按包含算。"""
+    if a == b:
+        return True
+    short, long_ = sorted((a, b), key=len)
+    return len(short) >= SAME_ERROR_MIN_LEN and short in long_
 
 
 def is_failed(result: Mapping[str, Any]) -> bool:
@@ -165,7 +179,8 @@ def ledger(task_state: Mapping[str, Any], stage: Mapping[str, Any], results: Map
 
     signals: set[str] = set()
     last_failed = {nid: error_signature(sig) for nid, sig in ((history[-1].get("failed_nodes") or {}) if history else {}).items()}
-    if any(last_failed.get(nid) == sig for nid, sig in current.items()):
+    repeated = tuple(sorted(nid for nid, sig in current.items() if nid in last_failed and same_error(last_failed[nid], sig)))
+    if repeated:
         signals.add("repetition")
     if any("repeated_error" in str(r.get("error", "")) for r in results.values() if is_failed(r)):
         signals.add("repetition")
@@ -173,7 +188,8 @@ def ledger(task_state: Mapping[str, Any], stage: Mapping[str, Any], results: Map
         signals.add("stall")
     if replans >= DRIFT_REPLANS:
         signals.add("plan_drift")
-    if _parallel_anomaly(stage, results):
+    merges = _merge_conflicts(stage, results)
+    if merges or _parallel_anomaly(stage, results):
         signals.add("parallel_anomaly")
 
     return Ledger(
@@ -185,11 +201,28 @@ def ledger(task_state: Mapping[str, Any], stage: Mapping[str, Any], results: Map
         budget_usd=float(budget) if budget else None,
         checkpoints=checkpoints,
         signals=tuple(sorted(signals)),
+        repeated=repeated,
+        merge_conflicts=merges,
     )
 
 
 def _empty(value: Any) -> bool:
     return value is None or value == {} or value == [] or value == ""
+
+
+def _merge_conflicts(stage: Mapping[str, Any], results: Mapping[str, Mapping[str, Any]]) -> tuple[str, ...]:
+    """失败的 aggregate Node，它合并的是至少两个互不依赖、都成功了的上游（扇出的分支）。"""
+    nodes = {str(n["id"]): n for n in stage.get("nodes") or []}
+    out = []
+    for nid, node in sorted(nodes.items()):
+        result = results.get(nid, {})
+        if not is_failed(result) or "aggregate" not in (node.get("role"), result.get("role")):
+            continue
+        ups = [str(u) for u in node.get("after") or [] if results.get(str(u), {}).get("status") == "succeeded"]
+        branches = [u for u in ups if not set(nodes.get(u, {}).get("after") or []) & set(ups)]
+        if len(branches) >= 2:
+            out.append(nid)
+    return tuple(out)
 
 
 def _parallel_anomaly(stage: Mapping[str, Any], results: Mapping[str, Mapping[str, Any]]) -> bool:

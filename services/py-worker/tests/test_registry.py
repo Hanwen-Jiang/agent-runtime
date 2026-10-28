@@ -13,6 +13,8 @@
 
 from __future__ import annotations
 
+import dataclasses
+
 import grpc
 import pytest
 from temporalio.exceptions import ApplicationError
@@ -332,6 +334,19 @@ async def test_the_planning_context_lists_the_tiers_of_the_model_profiles() -> N
     assert len(profiles) == 5, "分页（每页 2 条）取完"
     assert context.catalog.tiers == ("mid@low", "small@low", "strong@high", "strong@medium"), "<class>@<tier 名>，排序去重；只算能生成的 Profile"
     assert all(r.tenant == tenant_proto() for r in fake.calls("ListModelProfiles"))
+
+
+async def test_stub_templates_stay_out_of_the_real_planners_catalog() -> None:
+    """桩模板（stub_ 开头）只给桩 Planner：2026-10-28 真模型实验第 3.1 条，开发 Registry 的种子把 stub_answer@v1 列给了真 Planner，
+    它拿来当读文件、跑测试的节点。Stage Runner 解析模板（resolve_catalog）不经这里，桩 Planner 的 Stage 照样能跑。"""
+    fake = seeded()
+    fake.add(template("stub_answer", "v1", "model", "none", "generate"))
+    pinned = {**PINNED, "node_templates": {**PINNED["node_templates"], "stub_answer": "v1"}}
+    async with serve(fake) as address:
+        source = RegistryContextSource(GrpcRegistry(address), defaults=DEFAULTS)
+        context = await source.load(dataclasses.replace(plan_input(), pinned=pinned))
+    assert "stub_answer@v1" not in context.catalog.templates
+    assert "answer@v1" in context.catalog.templates
 
 
 async def test_the_effect_ceiling_follows_the_task_constraints() -> None:

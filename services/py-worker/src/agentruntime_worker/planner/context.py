@@ -12,6 +12,11 @@ from typing import Protocol
 from agentruntime_worker.activities.types import PlanRoundInput
 
 
+STUB_TEMPLATE_PREFIX = "stub_"
+"""桩 Planner 专用的 Node Template 名前缀（deploy/dev/registry-seed.json 的 stub_answer、stub_confirm）：真 Planner 的 Node Catalog
+不列它们（2026-10-28 真模型实验第 3.1 条）；Stage Runner 解析模板不受影响。"""
+
+
 @dataclass(frozen=True)
 class RecipeEntry:
     """Recipe 缓存的一条（附录 C.4）：按任务族索引，记下风险等级、最近是否失败与典型成本。"""

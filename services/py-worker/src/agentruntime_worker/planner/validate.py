@@ -7,6 +7,8 @@
 - Stage 与 Task Plan 合 /schemas；Stage 的 DAG 合法（复用 Stage Runner 的检查）。
 - Node Template、Recipe、工具（含 quality 的 judge 与 scorer）都在 Node Catalog 里。
 - effect 不超过上限；Atomic Node 的 effect 不低于模板的 effect；Goal Node 所列工具不高于它自己的 effect 上限。
+- 担任 fetch 或 act 的 Atomic Node 不能由 model 执行（节点或模板的 executor 是 model 都算）：model 节点没有工具，读文件、跑命令、
+  改代码都做不了，只会编出结果（2026-10-28 真模型实验第 3.1 条）。这些步骤要用 program 模板或带 tools 的 tool_loop Goal Node。
 - replan：Reviewer 保留的 Node 不得在新 Stage 里重做。
 
 这里的检查与 S-08 评分器各写各的，评分器才算独立的核对。
@@ -32,6 +34,8 @@ from agentruntime_worker.workflows import stage_plan as sp
 SCHEMAS_DIR = Path(__file__).resolve().parents[5] / "schemas"
 # 顶层 Node 数的上限，与 StagePolicy 的默认值相同。
 MAX_NODES = 200
+# 要从外部取数或做动作的 role：model 执行不了。
+TOOL_ROLES = ("fetch", "act")
 
 
 @cache
@@ -104,6 +108,37 @@ def drop_unknown_tiers(stage: Any, task_plan: Any, tiers: tuple[str, ...]) -> tu
     return stage, task_plan, notes
 
 
+def task_budget_remaining(task_state: Any) -> float | None:
+    """Task 还剩多少预算（美元）：constraints.budget_usd 减去各 Round 的 cost_usd，与 Reviewer 的台账同一口径；没有预算时为 None。"""
+    if not isinstance(task_state, dict):
+        return None
+    budget = (task_state.get("constraints") or {}).get("budget_usd")
+    if not isinstance(budget, int | float) or isinstance(budget, bool) or budget <= 0:
+        return None
+    spent = sum(float(r.get("cost_usd") or 0.0) for r in task_state.get("rounds") or [] if isinstance(r, dict))
+    return round(float(budget) - spent, 4)
+
+
+def cap_budgets(stage: Any, remaining: float | None) -> tuple[Any, list[str]]:
+    """Stage 与各 Node 的预算超过 Task 剩余的，压到剩余（2026-10-28 线上日志：超出的 Node 被 budget_check 整个拒绝，白花一轮）。
+    返回（Stage、压了什么的说明）；没有预算或已经用完时原样返回，用完由 budget_check 拒绝。"""
+    if remaining is None or remaining <= 0 or not isinstance(stage, dict):
+        return stage, []
+    stage = copy.deepcopy(stage)
+    notes: list[str] = []
+
+    def cap(holder: Any, key: str, what: str) -> None:
+        value = holder.get(key) if isinstance(holder, dict) else None
+        if isinstance(value, int | float) and not isinstance(value, bool) and value > remaining:
+            holder[key] = remaining
+            notes.append(f"{what} 的预算 {value:g} 美元超过 Task 剩余的 {remaining:g} 美元，已压到剩余")
+
+    cap(stage.get("budget"), "usd", "Stage")
+    for node in nodes(stage):
+        cap(node.get("budget"), "usd" if node.get("kind") == "goal" else "max_cost_usd", f"Node {node.get('id')}")
+    return stage, notes
+
+
 def _rank(effect: str) -> int:
     return sp.effect_rank(effect) if effect in sp.EFFECT_ORDER else len(sp.EFFECT_ORDER)
 
@@ -145,6 +180,20 @@ def _effect_problems(stage: dict[str, Any], context: PlanningContext) -> list[st
     return found
 
 
+def _role_problems(stage: dict[str, Any], context: PlanningContext) -> list[str]:
+    found: list[str] = []
+    for node in nodes(stage):
+        if node.get("kind") != "atomic" or node.get("role") not in TOOL_ROLES:
+            continue
+        template = context.catalog.templates.get(str(node.get("template")))
+        if node.get("executor") == "model" or (template is not None and template[0] == "model"):
+            found.append(
+                f"{node.get('id')} 担任 {node.get('role')}，却由 model 执行（模板 {node.get('template')}）：model 节点没有工具，读不到文件、跑不了命令、"
+                "也做不了写操作，只会编出结果。要读写文件或执行命令，放进一个带 tools 的 tool_loop Goal Node，或用 Catalog 里 executor 为 program 的模板"
+            )
+    return found
+
+
 def problems(
     stage: Any,
     task_plan: Any,
@@ -161,6 +210,7 @@ def problems(
         found += [f"Stage 的 DAG：{p}" for p in sp.validate_stage(stage, max_nodes=MAX_NODES)]
     found += _catalog_problems(stage, context)
     found += _effect_problems(stage, context)
+    found += _role_problems(stage, context)
     redone = sorted({str(n.get("id")) for n in nodes(stage)} & set(keep_nodes))
     if redone:
         found.append(f"重做了上一轮已验证、要保留的 Node：{'、'.join(redone)}；直接用它们的结果，不要再安排")

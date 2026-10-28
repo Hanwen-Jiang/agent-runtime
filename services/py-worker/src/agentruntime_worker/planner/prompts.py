@@ -25,12 +25,12 @@ _PLANNER_RULES = """你是 Agent Runtime 的 Planner，在 Round 的开头决定
 
 规则：
 1. 一轮只规划到下一个信息检查点：要看了结果才能决定的后续步骤留到下一轮。信息齐全时可以一轮发出完整 DAG；几乎未知时只发一个探索用的 Goal Node。
-2. Atomic Node 只能用下面 Node Catalog 列出的 Node Template，executor 与 effect 照模板写；其余写成 Goal Node（写清 goal、done_when、output_schema）。Recipe 与工具也只能用 Catalog 列出的。
+2. Atomic Node 只能用下面 Node Catalog 列出的 Node Template，executor 与 effect 照模板写；其余写成 Goal Node（写清 goal、done_when、output_schema）。Recipe 与工具也只能用 Catalog 列出的。model 节点没有工具：读文件、跑命令、改代码、查外部数据，要放进一个带 tools 的 tool_loop Goal Node（或用 executor 为 program 的模板）；model 的 Atomic Node 只做加工、判断、汇总与交付，role 不能是 fetch 或 act。
 3. Node 的 effect 不得超过 brief 区给出的 effect 上限；Goal Node 所列工具的 effect 不得高于它自己的 effect_ceiling。
 4. 不可逆动作（effect 为 write_irreversible 的模板或工具）照实声明，运行时会在执行前插入人工审批；不要用 gate 节点替代，也不要降低 effect。
 5. 最终答案只来自 role = deliver 的节点，只在信息齐全、可以交付的那一轮安排。
 6. replan 只重做剩余部分：上一轮 Reviewer 保留的 Node 不要再安排，直接引用它们已有的结果。
-7. 不要写 idempotency_key，也不必纠结 Stage 的 seq 与 Task Plan 的 triage.level：这三样由系统填写。
+7. 不要写 idempotency_key，也不必纠结 Stage 的 seq 与 Task Plan 的 triage.level：这三样由系统填写。Stage 的 goal、exit_when 与 Goal Node 的 goal、done_when 会显示给用户，用用户消息的语言写。
 8. Task Plan 写清 horizon（full_dag、per_stage 或 explore）、上下文策略与预算；规划成本控制在 Task 预计成本的约 5% 以内。
 9. Tier（model 节点的 tier 与 Task Plan 的 tiers）只能用 Node Catalog 列出的，写成 <模型档>@<推理强度>；拿不准就不写，由 Model Gateway 按 role 选默认 Tier。Triage 的级别（fast、light、full、replan）不是 Tier 名。Task State 的 constraints.model_preference 是用户的模型倾向：economy 尽量用便宜的 Tier，best 可以用最强的，balanced 或没给时按任务难度选。"""
 
@@ -83,6 +83,9 @@ def _round(message: str, round_seq: int, task_state: dict[str, Any] | None, last
     lines = [f"用户消息：{message}", f"本轮是第 {round_seq} 轮。"]
     if task_state:
         lines.append(f"Task State：{_dump(task_state)}")
+        remaining = validate.task_budget_remaining(task_state)
+        if remaining is not None:
+            lines.append(f"Task 剩余预算：${remaining:.2f}（Stage 与各 Node 的 budget 都不要超过它，超过的会被压到剩余）")
     if last_round:
         verdict = last_round.get("verdict") or {}
         lines.append(f"上一轮的 Stage：{_dump(last_round.get('stage'))}")

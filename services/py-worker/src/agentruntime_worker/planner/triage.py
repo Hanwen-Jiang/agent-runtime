@@ -63,6 +63,9 @@ class TriageDecision:
 
 
 FAST_KINDS = ("follow_up", "chitchat", "question", "system_question")
+UNCLASSIFIED_TASK_FAMILY = "general.unclassified"
+"""分诊与规划模型都没给出任务族时记的族（2026-10-28 真模型实验第 5 节：空的任务族让 Learning 看不到这些 Task）。
+受控词表与服务端分类见 docs/plan/eval-observability-and-runtime-fixes.md。"""
 """不开新规划的消息类别：续改上一个产出、闲聊、简单问答、关于系统本身的问题。"""
 
 _SIGNALS_VALIDATOR = Draft202012Validator(SIGNALS_SCHEMA)
