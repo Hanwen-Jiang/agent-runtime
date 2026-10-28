@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentruntime.example/schemas/task_event_payload.schema.json",
   "title": "TaskEvent 的载荷：进度事件",
-  "description": "Task 工作流经 publish_task_event 推送、客户端经 SSE 收到的进度事件的载荷（taskapi.v1.TaskEvent.payload；设计书 4.14，T-11b）。event 与 SSE 的事件名相同。只描述 Round、Stage、Node 的进度与等待中的问题，不带 Node 的结果与 rationale：结果只在 task_finished 里（Task 的结局）。task_accepted 没有载荷，task_finished 的载荷是 TaskWorkflowResult，都不在这里。",
+  "description": "Task 工作流经 publish_task_event 推送、客户端经 SSE 收到的进度事件的载荷（taskapi.v1.TaskEvent.payload；设计书 4.14，T-11b）。event 与 SSE 的事件名相同。只描述 Round、Stage、Node、tool_loop 里每次工具调用的进度与等待中的问题，不带 Node 的结果、工具的输出与 rationale：结果只在 task_finished 里（Task 的结局）。task_accepted 没有载荷，task_finished 的载荷是 TaskWorkflowResult，都不在这里。",
   "type": "object",
   "required": ["event"],
   "properties": {
@@ -11,7 +11,9 @@
   "allOf": [
     {"if": {"required": ["event"], "properties": {"event": {"const": "round_started"}}}, "then": {"$ref": "#/$defs/round_started"}},
     {"if": {"required": ["event"], "properties": {"event": {"const": "stage_started"}}}, "then": {"$ref": "#/$defs/stage_started"}},
+    {"if": {"required": ["event"], "properties": {"event": {"const": "node_started"}}}, "then": {"$ref": "#/$defs/node_started"}},
     {"if": {"required": ["event"], "properties": {"event": {"const": "node_finished"}}}, "then": {"$ref": "#/$defs/node_finished"}},
+    {"if": {"required": ["event"], "properties": {"event": {"const": "tool_status"}}}, "then": {"$ref": "#/$defs/tool_status"}},
     {"if": {"required": ["event"], "properties": {"event": {"const": "human_input_required"}}}, "then": {"$ref": "#/$defs/human_input_required"}},
     {"if": {"required": ["event"], "properties": {"event": {"const": "verdict"}}}, "then": {"$ref": "#/$defs/verdict"}}
   ],
@@ -51,6 +53,42 @@
             "unevaluatedProperties": false
           }
         }
+      },
+      "unevaluatedProperties": false
+    },
+    "node_started": {
+      "description": "Stage 的一个顶层 Node 开始执行（上游都成功了、调度到它）；因上游没成功而跳过的不报。客户端据此显示正在做什么",
+      "type": "object",
+      "required": ["event", "round_seq", "node_id", "kind"],
+      "properties": {
+        "event": {"const": "node_started"},
+        "round_seq": {"$ref": "#/$defs/round_seq"},
+        "node_id": {"$ref": "defs.schema.json#/$defs/node_id"},
+        "kind": {"$ref": "defs.schema.json#/$defs/node_kind"},
+        "role": {"$ref": "defs.schema.json#/$defs/role"},
+        "executor": {"$ref": "defs.schema.json#/$defs/executor"},
+        "result": {"$ref": "defs.schema.json#/$defs/forbidden"},
+        "rationale": {"$ref": "defs.schema.json#/$defs/forbidden"}
+      },
+      "unevaluatedProperties": false
+    },
+    "tool_status": {
+      "description": "顶层 Goal Node 的 tool_loop 里一次工具调用的状态（附录 E.1）：调用前 running，调用后 succeeded 或 failed。sub_agent 等子工作流里的调用不推。target 是给人看的简短说明（repo_* 的路径、shell_run 命令的开头），经凭据脱敏；不带工具的输出",
+      "type": "object",
+      "required": ["event", "round_seq", "node_id", "step", "tool", "state"],
+      "properties": {
+        "event": {"const": "tool_status"},
+        "round_seq": {"$ref": "#/$defs/round_seq"},
+        "node_id": {"description": "这次调用所在的 Goal Node", "$ref": "defs.schema.json#/$defs/node_id"},
+        "step": {"description": "tool_loop 的第几步，从 1 开始", "type": "integer", "minimum": 1},
+        "tool": {"type": "string", "minLength": 1, "maxLength": 128},
+        "state": {"$ref": "defs.schema.json#/$defs/tool_call_state"},
+        "target": {"description": "这次调用作用在什么上：路径、命令的开头、网址；经凭据脱敏，截到 160 个字符", "type": "string", "maxLength": 160},
+        "duration_ms": {"description": "succeeded、failed 时这次调用花了多久（工作流时间）", "type": "integer", "minimum": 0},
+        "sandbox_startup_ms": {"description": "这次调用新建了沙箱环境时，借到环境花的时间（冷启动）；复用已有环境时没有这一项", "type": "integer", "minimum": 0},
+        "error": {"description": "failed 时的说明，截到 300 个字符", "type": "string", "maxLength": 300},
+        "output": {"description": "工具的输出不进进度事件", "$ref": "defs.schema.json#/$defs/forbidden"},
+        "rationale": {"description": "rationale 只进 trace", "$ref": "defs.schema.json#/$defs/forbidden"}
       },
       "unevaluatedProperties": false
     },

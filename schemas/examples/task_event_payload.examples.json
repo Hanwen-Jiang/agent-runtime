@@ -75,12 +75,42 @@
       "source": "T-11b 决定 D4；附录 B.4",
       "notes": "",
       "instance": {"event": "verdict", "round_seq": 1, "verdict": "continue", "reason": "三个查询都已返回；华东异常，下一步归因"}
+    },
+    {
+      "name": "node_started_goal",
+      "source": "2026-10-28 人审通过：顶层 Node 开始时推送",
+      "notes": "Goal Node 可以没有 role。",
+      "instance": {"event": "node_started", "round_seq": 1, "node_id": "fix_tests", "kind": "goal"}
+    },
+    {
+      "name": "node_started_atomic",
+      "source": "2026-10-28 人审通过",
+      "notes": "",
+      "instance": {"event": "node_started", "round_seq": 1, "node_id": "q_region", "kind": "atomic", "role": "fetch", "executor": "program"}
+    },
+    {
+      "name": "tool_status_running",
+      "source": "2026-10-28 人审通过：tool_loop 里调用之前推 running",
+      "notes": "",
+      "instance": {"event": "tool_status", "round_seq": 1, "node_id": "fix_tests", "step": 3, "tool": "shell_run", "state": "running", "target": "python -m unittest"}
+    },
+    {
+      "name": "tool_status_succeeded_cold_sandbox",
+      "source": "2026-10-28 人审通过：新建沙箱环境时带冷启动时间",
+      "notes": "",
+      "instance": {"event": "tool_status", "round_seq": 1, "node_id": "fix_tests", "step": 3, "tool": "shell_run", "state": "succeeded", "target": "python -m unittest", "duration_ms": 9800, "sandbox_startup_ms": 8100}
+    },
+    {
+      "name": "tool_status_failed",
+      "source": "2026-10-28 人审通过",
+      "notes": "",
+      "instance": {"event": "tool_status", "round_seq": 2, "node_id": "fix_tests", "step": 1, "tool": "repo_read", "state": "failed", "target": "src/pricing.py", "duration_ms": 40, "error": "文件不存在"}
     }
   ],
   "invalid": [
     {
       "name": "unknown_event",
-      "description": "event 只有五种进度事件；task_accepted、task_finished 不用这个 schema",
+      "description": "event 只有七种进度事件；task_accepted、task_finished 不用这个 schema",
       "violates": [{"path": "/event", "keyword": "enum"}],
       "instance": {"event": "task_finished", "round_seq": 1}
     },
@@ -125,6 +155,36 @@
       "description": "Verdict 只用附录 A 的取值",
       "violates": [{"path": "/verdict", "keyword": "enum"}],
       "instance": {"event": "verdict", "round_seq": 1, "verdict": "retry", "reason": "再试一次"}
+    },
+    {
+      "name": "tool_status_with_output",
+      "description": "工具的输出不进进度事件",
+      "violates": [{"path": "/output", "keyword": "not"}],
+      "instance": {"event": "tool_status", "round_seq": 1, "node_id": "fix_tests", "step": 1, "tool": "repo_read", "state": "succeeded", "output": "import os"}
+    },
+    {
+      "name": "tool_status_unknown_state",
+      "description": "调用只有 running、succeeded、failed 三种状态",
+      "violates": [{"path": "/state", "keyword": "enum"}],
+      "instance": {"event": "tool_status", "round_seq": 1, "node_id": "fix_tests", "step": 1, "tool": "repo_read", "state": "queued"}
+    },
+    {
+      "name": "tool_status_step_zero",
+      "description": "tool_loop 的步数从 1 开始",
+      "violates": [{"path": "/step", "keyword": "minimum"}],
+      "instance": {"event": "tool_status", "round_seq": 1, "node_id": "fix_tests", "step": 0, "tool": "repo_read", "state": "running"}
+    },
+    {
+      "name": "tool_status_long_target",
+      "description": "target 截到 160 个字符",
+      "violates": [{"path": "/target", "keyword": "maxLength"}],
+      "instance": {"event": "tool_status", "round_seq": 1, "node_id": "fix_tests", "step": 1, "tool": "shell_run", "state": "running", "target": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}
+    },
+    {
+      "name": "node_started_without_kind",
+      "description": "node_started 要写明是 Atomic 还是 Goal Node",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {"event": "node_started", "round_seq": 1, "node_id": "q_region"}
     }
   ]
 }
