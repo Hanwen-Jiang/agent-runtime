@@ -58,5 +58,9 @@ RECONCILE_SANDBOXES = "reconcile_sandboxes"
 # 按项目定制的运行环境（D-17）：每个环境定义一个构建工作流（ID 由租户与键定，同一个定义只构建一次）与它的 activity，只在 Python 里。
 ENV_BUILD_WORKFLOW = "EnvironmentBuildWorkflow"
 BUILD_ENVIRONMENT = "build_environment"
+# Workspace API 的操作（D-06）：task-service 的 WorkspaceService 起这个工作流（task 队列，ID wsop-<operation_id>），
+# 工作流名在 names.proto 里；它的 activity 只在 Python 里（program 队列）。
+WORKSPACE_OPERATION_WORKFLOW = "WorkspaceOperationWorkflow"
+WORKSPACE_OPERATION = "workspace_operation"
 
 TASK_STATE_SCHEMA_ID = "https://agentruntime.example/schemas/task_state.schema.json"

@@ -1,0 +1,55 @@
+"""Workspace API 的操作工作流（D-06e；做什么见 agentruntime_worker.workspace.operations）。
+
+task-service 的 WorkspaceService 收到请求后起它（task 队列，ID wsop-<operation_id>），等它的结果。工作流只排一个
+workspace_operation activity（program 队列：在承载工作区的沙箱里跑 git）。activity 把非暂时性的错误写进结果；暂时性的
+抛出来，按这里的重试策略重试，重试完还不行时这里把它写成 transient 的结果。推送是 write_irreversible，不自动重试
+（结果不明时下一次调用先对账）。凭据在输入里是封起来的（wsc1），事件历史里没有明文。工作流代码只排 activity，是确定的。
+"""
+
+from __future__ import annotations
+
+import re
+from datetime import timedelta
+
+from temporalio import workflow
+from temporalio.common import RetryPolicy
+from temporalio.exceptions import ActivityError
+
+with workflow.unsafe.imports_passed_through():
+    from agentruntime.common.v1 import error_pb2
+    from agentruntime.workflow.v1 import workspace_pb2
+
+    from agentruntime_worker import names
+    from agentruntime_worker.workflows.failures import failure_message
+
+_CODE = re.compile(r"^([a-z][a-z0-9_]{0,63}): ")
+
+
+def operation_workflow_id(operation_id: str) -> str:
+    return f"wsop-{operation_id}"
+
+
+@workflow.defn(name=names.WORKSPACE_OPERATION_WORKFLOW)
+class WorkspaceOperationWorkflow:
+    @workflow.run
+    async def run(self, inp: workspace_pb2.WorkspaceOperationInput) -> workspace_pb2.WorkspaceOperationResult:
+        push = inp.operation == workspace_pb2.WORKSPACE_OPERATION_PUSH
+        retry = RetryPolicy(maximum_attempts=1) if push else RetryPolicy(maximum_attempts=3, initial_interval=timedelta(seconds=5))
+        try:
+            return await workflow.execute_activity(
+                names.WORKSPACE_OPERATION,
+                inp,
+                result_type=workspace_pb2.WorkspaceOperationResult,
+                task_queue=names.PROGRAM_QUEUE,
+                start_to_close_timeout=timedelta(minutes=30),
+                retry_policy=retry,
+            )
+        except ActivityError as err:
+            message = failure_message(err)
+            match = _CODE.match(message)
+            code = match.group(1) if match else "workspace_operation_failed"
+            text = message[match.end():] if match else "工作区的操作暂时失败，稍后再试"
+            return workspace_pb2.WorkspaceOperationResult(error=error_pb2.Error(category=error_pb2.ERROR_CATEGORY_TRANSIENT, code=code, message=text))
+
+
+__all__ = ["WorkspaceOperationWorkflow", "operation_workflow_id"]

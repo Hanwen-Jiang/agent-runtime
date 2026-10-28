@@ -42,11 +42,13 @@ from agentruntime_worker.reviewer.activities import dev_reviewer
 from agentruntime_worker.telemetry import worker_telemetry
 from agentruntime_worker.sandbox.env_build import EnvBuildActivities, temporal_starter
 from agentruntime_worker.sandbox.reconcile import ReconcileActivities
-from agentruntime_worker.tools import DevCatalog, ToolCatalog, dev_tools, sandbox_broker, tool_sessions
+from agentruntime_worker.tools import DevCatalog, ToolCatalog, dev_tools, sandbox_broker, tool_sessions, workspace_operations
 from agentruntime_worker.workflows.env_build import EnvironmentBuildWorkflow
 from agentruntime_worker.workflows.sandbox_reconcile import ReconcileInput, SandboxReconcileWorkflow
 from agentruntime_worker.workflows.stage_runner import SubAgentWorkflow, SubgraphWorkflow
 from agentruntime_worker.workflows.task import TaskWorkflow
+from agentruntime_worker.workflows.workspace import WorkspaceOperationWorkflow
+from agentruntime_worker.workspace.operations import WorkspaceActivities
 
 
 @dataclass(frozen=True)
@@ -60,7 +62,10 @@ class QueueComponents:
 
 QUEUE_COMPONENTS: dict[str, QueueComponents] = {
     names.TASK_QUEUE: QueueComponents(
-        workflows=(names.TASK_WORKFLOW, names.SUB_AGENT_WORKFLOW, names.SUBGRAPH_WORKFLOW, names.SANDBOX_RECONCILE_WORKFLOW, names.ENV_BUILD_WORKFLOW),
+        workflows=(
+            names.TASK_WORKFLOW, names.SUB_AGENT_WORKFLOW, names.SUBGRAPH_WORKFLOW, names.SANDBOX_RECONCILE_WORKFLOW, names.ENV_BUILD_WORKFLOW,
+            names.WORKSPACE_OPERATION_WORKFLOW,
+        ),
         local_activities=(names.RUN_HOOKS,),
     ),
     names.DECISION_QUEUE: QueueComponents(
@@ -77,7 +82,10 @@ QUEUE_COMPONENTS: dict[str, QueueComponents] = {
     ),
     names.MODEL_QUEUE: QueueComponents(activities=(names.EXECUTE_MODEL_NODE, names.TOOL_LOOP_STEP)),
     names.PROGRAM_QUEUE: QueueComponents(
-        activities=(names.EXECUTE_PROGRAM_NODE, names.CALL_TOOL, names.RECONCILE_NODE, names.RECONCILE_SANDBOXES, names.BUILD_ENVIRONMENT)
+        activities=(
+            names.EXECUTE_PROGRAM_NODE, names.CALL_TOOL, names.RECONCILE_NODE, names.RECONCILE_SANDBOXES, names.BUILD_ENVIRONMENT,
+            names.WORKSPACE_OPERATION,
+        )
     ),
 }
 
@@ -87,6 +95,7 @@ WORKFLOWS = {
     names.SUBGRAPH_WORKFLOW: SubgraphWorkflow,
     names.SANDBOX_RECONCILE_WORKFLOW: SandboxReconcileWorkflow,
     names.ENV_BUILD_WORKFLOW: EnvironmentBuildWorkflow,
+    names.WORKSPACE_OPERATION_WORKFLOW: WorkspaceOperationWorkflow,
 }
 
 
@@ -162,6 +171,7 @@ def build_workers(
         **(executor or dev_executor(config, client=client)).activities(),
         **ReconcileActivities(sandbox_broker(config)).activities(),
         **EnvBuildActivities(sandbox_broker(config)).activities(),
+        **WorkspaceActivities(workspace_operations(config)).activities(),
     }
     workers = []
     for queue in queues:

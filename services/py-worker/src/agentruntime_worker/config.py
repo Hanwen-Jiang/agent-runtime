@@ -64,6 +64,8 @@ ENV_PKG_MIRROR_URL = "AR_PKG_MIRROR_URL"
 # 并登记 request_network 工具；预览地址的域名（例如 preview.example.com），设了 request_network 才能开预览地址。
 ENV_EGRESS_GATEWAY_URL = "AR_EGRESS_GATEWAY_URL"
 ENV_PREVIEW_DOMAIN = "AR_PREVIEW_DOMAIN"
+# Workspace API 收本地的远端（file://），只给测试与开发用（D-06）；生产只收 https。
+ENV_WORKSPACE_ALLOW_LOCAL_REMOTES = "AR_WORKSPACE_ALLOW_LOCAL_REMOTES"
 
 
 @dataclass(frozen=True)
@@ -115,6 +117,7 @@ class WorkerConfig:
     pkg_mirror_url: str = ""
     egress_gateway_url: str = ""
     preview_domain: str = ""
+    workspace_allow_local_remotes: bool = False
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> WorkerConfig:
@@ -169,6 +172,9 @@ class WorkerConfig:
             if not raw.isdigit() or int(raw) < 5:
                 raise ValueError(f"{ENV_SANDBOX_RECONCILE_INTERVAL_S} 必须是不小于 5 的整数（秒）")
             interval = int(raw)
+        local_remotes = env.get(ENV_WORKSPACE_ALLOW_LOCAL_REMOTES, "").strip() or "0"
+        if local_remotes not in ("0", "1"):
+            raise ValueError(f"{ENV_WORKSPACE_ALLOW_LOCAL_REMOTES} 只能是 0 或 1")
         seed = env.get(ENV_SECRETS_SEED_FILE, "").strip()
         if seed and not secrets:
             raise ValueError(f"设了 {ENV_SECRETS_SEED_FILE} 还要设 {ENV_SECRETS_FILE}（种子并进哪个文件）")
@@ -203,6 +209,7 @@ class WorkerConfig:
             pkg_mirror_url=env.get(ENV_PKG_MIRROR_URL, "").strip(),
             egress_gateway_url=env.get(ENV_EGRESS_GATEWAY_URL, "").strip(),
             preview_domain=env.get(ENV_PREVIEW_DOMAIN, "").strip(),
+            workspace_allow_local_remotes=local_remotes == "1",
         )
 
     def store_paths(self, root: Path) -> tuple[Path, Path]:

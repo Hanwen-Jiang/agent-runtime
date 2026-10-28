@@ -37,9 +37,11 @@ from agentruntime_worker.tools.mcp import McpGateway
 from agentruntime_worker.tools.platform import CONTEXT_READ, PlatformToolsConfig, register_platform_tools
 from agentruntime_worker.tools.sandboxes import Sandboxes, registry_policy
 from agentruntime_worker.workspace.archive import WorkspaceArchiver
+from agentruntime_worker.workspace.operations import CREDENTIAL_SECRET, WorkspaceOperations
 
 __all__ = [
     "CONTEXT_READ", "DevCatalog", "ToolCatalog", "context_objects", "dev_tools", "latest", "latest_spec", "sandbox_broker", "tool_sessions",
+    "workspace_operations",
 ]
 
 _providers: dict[tuple[object, ...], LocalToolDriverProvider] = {}
@@ -102,6 +104,18 @@ def sandbox_broker(config: WorkerConfig) -> SandboxBroker | None:
                 broker.environments = environment_manager(broker, boxes.environments)
             _brokers[key] = broker
     return _brokers[key]
+
+
+def workspace_operations(config: WorkerConfig) -> WorkspaceOperations | None:
+    """Workspace API 的操作（D-06e）：经 sandbox_broker 在承载工作区的沙箱里执行；不是 sandbox 时为 None（activity 报
+    workspace_api_unavailable）。封凭据的密钥取 SecretStore 平台作用域的 workspace/credential-key。"""
+    broker = sandbox_broker(config)
+    if broker is None:
+        return None
+    return WorkspaceOperations(
+        broker, secret=lambda: broker.sandboxes.read_secret(CREDENTIAL_SECRET), runtime=config.sandbox_runtime,
+        allow_local_remotes=config.workspace_allow_local_remotes,
+    )
 
 
 def context_objects(config: WorkerConfig) -> ObjectStoreProvider:

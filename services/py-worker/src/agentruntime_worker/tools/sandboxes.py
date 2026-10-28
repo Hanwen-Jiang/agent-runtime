@@ -119,6 +119,11 @@ class Sandboxes:
     def names(self) -> tuple[str, ...]:
         return tuple(sorted(self._specs))
 
+    @property
+    def workspace_root(self) -> Path | None:
+        """挂卷时 Worker 看到的工作区根（Workspace API 删工作区时一并删目录用）。"""
+        return self._workspace_root
+
     async def for_tenant(self, tenant_id: str) -> Backend:
         """这个租户用的后端：租户策略的 sandbox.backend，没写时 default。"""
         return await self.backend(await self.choice(tenant_id))
