@@ -799,3 +799,37 @@ def test_workers_can_collect_build_outputs_and_builds_read_only_their_workspace(
     paths = {pv["spec"]["hostPath"]["path"] for pv in pvs.values() if pv["metadata"]["labels"].get("agentruntime.io/volume") == "workspaces"}
     assert len(paths) == 1 and pvs[pvcs[("sandbox-builds", claim)]["spec"]["volumeName"]]["spec"]["claimRef"]["namespace"] == "sandbox-builds"
     assert "privileged_without_host_devices" in (CLUSTER / "install.sh").read_text("utf-8")
+
+
+# --- D-06 Workspace ---
+
+
+ARCHIVE_ONLY = ["worker.shell.mode=sandbox", "worker.shell.backends.cf.kind=cloudflare", "worker.shell.backends.cf.isolation=microvm",
+                "worker.shell.backends.cf.bridge_url=https://bridge.example.com", "worker.shell.defaultBackend=cf"]
+
+
+def test_archive_only_backends_need_no_workspace_volume() -> None:
+    """D-06：只有存档模式的后端（Cloudflare 默认如此）时不用 workspacesClaim，Worker 也不挂工作区卷；登记原样带上 workspace。"""
+    manifests = render(set_values=[*ARCHIVE_ONLY, "worker.shell.backends.vm.kind=k8s", "worker.shell.backends.vm.workspace=archive",
+                                   "worker.shell.backends.vm.agent_image=a:1"])
+    workers = [w for w in by_kind(manifests, "Deployment") if w["metadata"]["labels"].get(WORKER) == "worker"]
+    assert workers and all("AR_TOOL_WORKSPACE_ROOT" not in env_of(c) for w in workers for c in pod_spec(w)["containers"])
+    assert all(v.get("name") != "workspaces" for w in workers for v in pod_spec(w).get("volumes") or [])
+    [cm] = [m for m in by_kind(manifests, "ConfigMap") if m["metadata"]["name"].endswith("-sandbox-backends")]
+    assert json.loads(cm["data"]["backends.json"])["backends"]["vm"]["workspace"] == "archive"
+
+
+@pytest.mark.parametrize(("sets", "message"), [
+    (["worker.shell.backends.vm.kind=k8s", "worker.shell.backends.vm.agent_image=a:1"], "workspacesClaim"),
+    (["worker.shell.backends.cf.workspace=elsewhere"], "workspace 只能是"),
+    (["worker.shell.backends.vm.kind=k8s", "worker.shell.backends.vm.workspace=archive", "worker.shell.backends.vm.workspace_claim=w"], "不要再写 workspace_claim"),
+])
+def test_workspace_modes_are_checked(sets: list[str], message: str) -> None:
+    assert message in render_fails(*ARCHIVE_ONLY, *sets)
+
+
+def test_secret_example_has_the_workspace_credential_key() -> None:
+    from agentruntime_worker.workspace.operations import CREDENTIAL_SECRET
+
+    text = (CLUSTER / "secrets" / "secrets.example.yaml").read_text("utf-8")
+    assert f'"{CREDENTIAL_SECRET}": "REPLACE_ME"' in text, "SecretStore 的种子里要有封 Workspace API 凭据的密钥（占位符）"

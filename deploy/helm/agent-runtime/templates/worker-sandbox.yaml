@@ -12,8 +12,21 @@
 {{- if not (hasKey $shell.backends $shell.defaultBackend) }}
 {{- fail "worker.shell.defaultBackend 要是 worker.shell.backends 里的一个" }}
 {{- end }}
-{{- if not .Values.worker.workspacesClaim }}
-{{- fail "worker.shell.mode=sandbox 时要给 worker.workspacesClaim（沙箱挂的是 workspace 的目录）" }}
+{{- /* 工作区怎么到环境里（D-06）：workspace 为 mount（默认；Cloudflare 默认 archive）的后端挂工作区卷，要 workspacesClaim；
+       archive 的后端不挂卷，靠 ObjectStore 里的存档。按项目定制的运行环境（D-17）的构建也挂工作区卷。 */ -}}
+{{- $mounted := false }}
+{{- range $name, $b := $shell.backends }}
+{{- $mode := default (ternary "archive" "mount" (eq $b.kind "cloudflare")) $b.workspace }}
+{{- if not (has $mode (list "mount" "archive")) }}
+{{- fail (printf "沙箱后端 %s 的 workspace 只能是 mount 或 archive" $name) }}
+{{- end }}
+{{- if eq $mode "mount" }}{{ $mounted = true }}{{ end }}
+{{- if and (eq $mode "archive") $b.workspace_claim }}
+{{- fail (printf "沙箱后端 %s 是存档模式（workspace: archive），不要再写 workspace_claim" $name) }}
+{{- end }}
+{{- end }}
+{{- if and (or $mounted $shell.environments.enabled) (not .Values.worker.workspacesClaim) }}
+{{- fail "worker.shell.mode=sandbox 时挂卷的后端（workspace: mount）与项目环境的构建要给 worker.workspacesClaim（沙箱挂的是 workspace 的目录）" }}
 {{- end }}
 apiVersion: v1
 kind: ConfigMap

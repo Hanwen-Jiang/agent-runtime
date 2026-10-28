@@ -5,15 +5,15 @@
 
 ## 1. 拆分
 
-| 步 | 内容 | 依赖 |
-| --- | --- | --- |
-| D-06a | 契约：`agentruntime.workspace.v1.WorkspaceService`（建与克隆、列出、diff、提交、推送、存档、删除）；`agentruntime.workflow.v1.WorkspaceOperationInput`、`WorkspaceOperationResult` 与工作流名 `WorkspaceOperationWorkflow`；租户策略的 `workspace`（个数、单个大小、能推送的分支）；凭据封装 `wsc1`（Go 的 `libs/go-core/sealing`、Python 的 `agentruntime_core.sealing`，同一组向量） | S-01（人审） |
-| D-06b | 存档与恢复的原语：Sandbox 接口的可选能力 `SandboxArchive`（导出、导入、清单）与 `SandboxBrowse`（列目录、搜索）；sandbox-agent 的 `/v1/archive`、`/v1/manifest`、`/v1/list`、`/v1/grep`；开发实现、K8s、Cloudflare 接上；一致性测试 | — |
-| D-06c | 工作区的存档（Worker 的 `agentruntime_worker.workspace`）：按文件内容寻址存进 ObjectStore，加逐文件的清单；恢复后按清单核对；保留最近 3 份、清掉没人引用的块；业务库迁移 205 | D-06b |
-| D-06d | 承载与工具：登记里 `workspace: archive` 的后端不挂工作区卷，建环境后从最近的存档恢复，销毁之前存档；这些后端之间可以互相回退；`repo_read`、`repo_list`、`repo_grep`、`repo_edit` 在承载它的环境里执行 | D-06c、D-11、D-12、D-13 |
-| D-06e | Workspace API：task-service 的 `WorkspaceService` 起 Worker 的 `WorkspaceOperationWorkflow`，操作在承载工作区的沙箱里执行；推送是 write_irreversible（gate 记录、幂等键、先对账） | D-06a、D-06d |
-| D-06f | 应用：coding-agent 改用 Workspace API（在 coding-agent 仓库） | D-06e |
-| D-06g | 部署：后端登记的 `workspace` 一项进 Helm 与 `dev_stack.py`；Cloudflare 后端登记为 archive；单节点仍默认挂卷 | D-06d |
+| 步 | 内容 | 依赖 | 状态（2026-10-27） |
+| --- | --- | --- | --- |
+| D-06a | 契约：`agentruntime.workspace.v1.WorkspaceService`（建与克隆、列出、diff、提交、推送、存档、删除）；`agentruntime.workflow.v1.WorkspaceOperationInput`、`WorkspaceOperationResult` 与工作流名 `WorkspaceOperationWorkflow`；租户策略的 `workspace`（个数、单个大小、能推送的分支）；凭据封装 `wsc1`（Go 的 `libs/go-core/sealing`、Python 的 `agentruntime_core.sealing`，同一组向量 `tests/contract/sealed_credential_vectors.json`） | S-01（人审） | 做完，契约待人审（基线没动） |
+| D-06b | 存档与恢复的原语：Sandbox 接口的可选能力 `SandboxArchive`（导出、导入、清单）与 `SandboxBrowse`（列目录、搜索）；sandbox-agent 的 `/v1/archive`、`/v1/manifest`、`/v1/list`、`/v1/grep`；开发实现、K8s、Cloudflare 接上；一致性测试 | — | 做完 |
+| D-06c | 工作区的存档（Worker 的 `agentruntime_worker.workspace`）：按文件内容寻址存进 ObjectStore，加逐文件的清单；恢复后按清单核对；保留最近 3 份、清掉没人引用的块；业务库迁移 205 | D-06b | 做完 |
+| D-06d | 承载与工具：登记里 `workspace: archive` 的后端不挂工作区卷，建环境后从最近的存档恢复，销毁之前存档；这些后端之间可以互相回退；`repo_read`、`repo_list`、`repo_grep`、`repo_edit` 在承载它的环境里执行 | D-06c、D-11、D-12、D-13 | 做完 |
+| D-06e | Workspace API：task-service 的 `WorkspaceService` 起 Worker 的 `WorkspaceOperationWorkflow`，操作在承载工作区的沙箱里执行；推送是 write_irreversible（gate 记录、幂等键、先对账） | D-06a、D-06d | 做完 |
+| D-06f | 应用：coding-agent 改用 Workspace API（在 coding-agent 仓库） | D-06e | 卡在契约：见第 7 节 |
+| D-06g | 部署：后端登记的 `workspace` 一项进 Helm 与 `dev_stack.py`；Cloudflare 后端登记为 archive；单节点仍默认挂卷 | D-06d | 做完（真集群上没验） |
 
 ## 2. 存档的格式
 
@@ -79,3 +79,21 @@ ObjectStore（租户作用域）
 4. 应用经 Workspace API 拿到的 diff 与沙箱里 `git diff` 一致。
 5. 推送：分支不在策略里时 denied；同一个提交重复推送只推一次（第二次 reconciled）；凭据不出现在事件历史、日志与错误信息里。
 6. 存档按内容寻址：没变的文件不重写；只留最近 3 份；没人引用的块被清掉。
+
+测试：sandbox-agent 的 `archive_test.go`；py-core 的 `SandboxArchiveConformance`（开发实现、Cloudflare 假桥、kind 里的 K8s）；py-worker 的 `test_workspace_archive.py`（验收 1、2、3、6）与 `test_workspace_operations.py`（验收 3、4、5，含经 Temporal 的工作流）；task-service 的 `internal/workspaceapi`；端到端 `tests/e2e/test_workspace_api.py`（经 `dev_stack.py --sandbox local --workspace archive` 拉起的整套）。
+
+## 7. 没做的与出入（给人看）
+
+- **D-06f（coding-agent 改用 Workspace API）卡在契约。** coding-agent 现在在共用的工作区卷上自己跑 git，除了克隆、diff、提交、推送，还要：列目录与读文件（网页的文件树）、`git log`（提交记录）、丢弃改动（`reset --hard` 加 `clean`）、从示例建项目（写入示例文件）、每个会话从项目的基线复制一份（`clone --local`）。`WorkspaceService` 里没有这些。建议在 S-01 里给 `WorkspaceService` 加（都在承载工作区的沙箱里执行，Worker 一侧照现在的 `WorkspaceOperation` 加枚举值）：
+  - `ListFiles`（路径 → 目录项）与 `ReadFile`（路径 → 内容，有大小上限，二进制只给大小）：经 SandboxBrowse 与 read_file；
+  - `GetLog`（最近 N 个提交）；
+  - `DiscardChanges`（回到 HEAD，删掉未跟踪的文件）；
+  - `CreateWorkspace` 加 `from_workspace_id`（从同租户的另一个工作区复制：存档模式下直接复制快照的清单，块共用要改成按租户而不是按工作区寻址，或者复制块）与 `files`（建空工作区时写入的初始文件，示例项目用）。
+  这些加进契约并经人审之后，coding-agent 的 `projects.go`、`sessions.go`、`publish.go` 换成调 Workspace API；PR 照旧由 coding-agent 经各平台的 API 开。在那之前 coding-agent 仍用挂卷的工作区（单节点的默认配置），不受影响。
+- **租约**：改动稿写的是“会写的 Task 持有工作区的租约，随心跳续期”。实现是 D-13 的规则加强版：一个工作区同一时间只有一个可写的环境（存档模式下不分会话），命令在跑时（busy_until）别人不能抢，命令之间可以被别的会话抢占（先存档）。没有跨命令、按 Task 持有的租约；需要时在 `workspaces` 表加租约列。
+- **只读 Task 用快照**：读的工具在没有本会话可写环境时借只读的环境（在最近一次快照上），没有按 Task 的 effect 区分。
+- **ObjectStore 没有流式的 put/get**：块一次一个读进内存；单个大文件（几百 MB）多的仓库要等 ObjectStore 加流式接口。Cloudflare 桥把导入的请求体整个读进内存（Workers 的内存上限 128 MB），存档模式下大仓库落 Cloudflare 后端会失败。
+- **项目环境（D-17）在存档模式下不用**：构建器挂的是工作区卷；K8s 后端改存档模式之前要让构建器从快照取构建上下文。
+- **WorkspaceOperationWorkflow 没有 golden 事件历史**：同 D-11、D-17 的平台工作流，只排一个 activity；以后改它的命令序列时要补版本分支与 golden。
+- **删除与推送的权限**：同租户的任何用户都能删工作区、推送（推送的批准人记的是发起的用户）；要限制时按 Task API 的做法加 scope。
+- **真环境没验**：kind 里的 K8s 后端跑了存档的一致性测试；Kata、gVisor、真 Cloudflare 桥与 R2 上的存档恢复没验。

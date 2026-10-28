@@ -225,7 +225,8 @@ def test_branch_rules() -> None:
 async def test_the_workflow_carries_results_and_does_not_retry_pushes(tmp_path: Path, temporal_env: WorkflowEnvironment) -> None:
     url, _ = make_remote(tmp_path)
     s = Setup(tmp_path, mode="archive")
-    client: Client = temporal_env.client
+    # 工作流名与队列（task、program）是固定的：用单独的连接，与别的用例在同一个客户端上登记的 Worker 不冲突。
+    client = await Client.connect(temporal_env.client.service_client.config.target_host, namespace=temporal_env.client.namespace)
     async with (
         Worker(client, task_queue=names.TASK_QUEUE, workflows=[WorkspaceOperationWorkflow]),
         Worker(client, task_queue=names.PROGRAM_QUEUE, activities=list(WorkspaceActivities(s.ops).activities().values())),

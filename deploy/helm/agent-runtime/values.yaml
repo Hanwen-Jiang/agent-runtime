@@ -174,7 +174,8 @@ worker:
     # docker 要挂 docker.sock（等于节点 root），集群里不允许。
     mode: host
     # mode=sandbox 时的后端登记，写进 ConfigMap 作为 AR_SANDBOX_BACKENDS_FILE（格式见 agentruntime_worker.tools.sandboxes）。
-    # 用哪个后端由租户策略的 sandbox.backend 决定，没写时 defaultBackend。
+    # 用哪个后端由租户策略的 sandbox.backend 决定，没写时 defaultBackend。每个后端的 workspace（D-06）：mount（默认，挂
+    # workspacesClaim）或 archive（不挂卷，工作区存档在 ObjectStore；Cloudflare 默认如此）。只有 archive 的后端时不用 workspacesClaim。
     defaultBackend: ""
     backends: {}
     # shell_run 用的运行环境（AR_SANDBOX_RUNTIME，D-14）：后端登记的 images 把它映射到镜像，例如 universal（多语言）。

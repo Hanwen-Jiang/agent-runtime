@@ -94,6 +94,8 @@ worker:
         htpasswdSecret: agent-runtime-env-registry
       builder:
         agentImage: ghcr.io/agentruntime/sandbox-agent:0.1.0
+    # 单节点上 K8s 后端挂工作区卷（workspace: mount，默认）；加节点之前改成 workspace: archive 并去掉 workspace_claim（D-06，
+    # 工作区存档在 R2，环境建在哪个节点都能恢复）。Cloudflare 后端（deploy/cloudflare）总是 archive。
     backends:
       gvisor:
         kind: k8s

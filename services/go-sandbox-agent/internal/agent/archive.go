@@ -170,6 +170,9 @@ func (s *server) importArchive(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
+	body := http.MaxBytesReader(w, r.Body, limit+limit/8+(1<<20))
+	// 拒绝时先把请求体读完（不超过上面的上限）再回：对方还在发的时候断开连接，它只看到连接断了，看不到 400。
+	defer func() { _, _ = io.Copy(io.Discard, body) }()
 	entries, err := os.ReadDir(s.c.Workdir)
 	if err != nil {
 		fail(w, http.StatusInternalServerError, "read_failed", "读不了工作目录")
@@ -177,12 +180,13 @@ func (s *server) importArchive(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, e := range entries {
 		if e.Name() != marker {
+			_, _ = io.Copy(io.Discard, body)
 			fail(w, http.StatusConflict, "not_empty", "工作目录不是空的：只能把存档导进新建的环境")
 			return
 		}
 	}
-	body := http.MaxBytesReader(w, r.Body, limit+limit/8+(1<<20))
 	if err := s.extract(tar.NewReader(body), limit); err != nil {
+		_, _ = io.Copy(io.Discard, body)
 		var tooBig *http.MaxBytesError
 		var bad badEntry
 		switch {

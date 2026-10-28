@@ -3,7 +3,7 @@
 > 2026-10-26 用户要求：把系统部署到云端，以最有性价比的布局展示完整形态；沙箱考虑 Cloudflare Containers，或者容器与 microVM 混用。
 > 依据：设计书 4.10（Sandbox）、4.12（SecretStore）、4.15（仓库结构）、附录 L.11、L.13、L.19；T-15 的 [Helm、KEDA 与 Telemetry](deploy-telemetry.md)。
 > 范围只是 Runtime。建在 Runtime 上的应用（例如 coding-agent 仓库）各自部署，它们要 Runtime 提供的东西列在第 7 节。
-> 状态（2026-10-26）：代码与配置的适配做完了（D-06 只有设计书改动稿），实体资源（机器、域名、R2、Cloudflare 账号）由用户选购配置之后在真机上验收；进度与没验的部分见第 10 节。价格与产品能力是 2026-10 查的（见第 9 节），下单前再核对一次。
+> 状态（2026-10-26）：代码与配置的适配做完了（D-06 在 2026-10-27 按设计书改动稿实现，coding-agent 一侧卡在契约），实体资源（机器、域名、R2、Cloudflare 账号）由用户选购配置之后在真机上验收；进度与没验的部分见第 10 节。价格与产品能力是 2026-10 查的（见第 9 节），下单前再核对一次。
 
 ## 1. 目标与不做
 
@@ -196,9 +196,9 @@ containerd 只管容器，隔离强度由它下面的 OCI 运行时决定：runc
 - repo_read、repo_list、repo_grep、repo_edit、shell_run 都在工作区所在的沙箱里执行。
 - 应用经 Task API 之外的 Workspace API 取 diff、提交、推送（推送用应用传入的短期凭据，Runtime 不保存）。
 
-按 CLAUDE.md 的规则，设计书由人更新原文档后重新导出；在那之前本项不开工。
+按 CLAUDE.md 的规则，设计书由人更新原文档后重新导出；2026-10-27 用户确认 W2、要求先实现（原文档仍待人更新），实现的细化与进度见 [workspace-layer.md](workspace-layer.md)。
 
-**验收**（设计确认后细化）：工具在远端沙箱里工作；任务之间工作区经存档、恢复后内容一致（逐文件哈希相同）；两个会话的工作区互不可见；应用经 Workspace API 拿到的 diff 与沙箱里 `git diff` 一致。
+**验收**（细化见 workspace-layer.md 第 6 节）：工具在远端沙箱里工作；任务之间工作区经存档、恢复后内容一致（逐文件哈希相同）；两个会话的工作区互不可见；应用经 Workspace API 拿到的 diff 与沙箱里 `git diff` 一致。
 
 **依赖**：D-05；设计书更新。
 
@@ -467,7 +467,7 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
 | D-03 | `deploy/data`：CloudNativePG（三个角色无超级用户、无 BYPASSRLS，每天备份到 R2）、恢复演练脚本、Temporal、Qdrant、Redpanda、Langfuse、Tempo、Grafana 的 values | 静态检查；内存预算（requests 合计不超过 60 GiB）；版本 2026-10-27 按各项目的发布页与 index.yaml 核对过（都满两周），`scripts/check_chart_values.py` 核对 values 的键名与固定版本的 Chart 源码对得上（Temporal 1.x 与 Langfuse 2.x 的结构变了，已改；Langfuse 2.x 要先装 ClickHouse operator） | 各组件起来、角色核对、从 R2 恢复演练、Collector 三路导出 |
 | D-04 | Chart：入口改 Traefik / Gateway API / 通用 Ingress；Worker 经 Sandbox 跑 shell_run 与只在沙箱命名空间里的 Role；ObjectStore 的 S3 变量；可写的 SecretStore 加种子（`AR_SECRETS_SEED_FILE`）；`values-cloud.yaml` | 三套 values 的 helm lint 与结构检查；Worker 的 RBAC 在 kind 的 API Server 上（`kubectl auth can-i`）；**kind 上彩排**（`scripts/kind_rehearsal.py`，2026-10-27 九项全过）：values-cloud.yaml 装上、各 Deployment 与 KEDA 就绪、IngressRoute 被接受、mock 模型跑到 done、100 KB 的 Claim-Check 经共用卷与可写 SecretStore 跨 Pod 往返、Worker 用自己的 ServiceAccount 在 gVisor 沙箱里跑 shell_run、30 个积压时 KEDA 扩到 3 个副本又缩回 1 个、任务进行到一半删掉 task 池的 Pod 后 30 个都跑完 | 真机器上：经 Traefik 与 Cloudflare 的 HTTPS、Postgres 业务库、Registry 端口从公网不可达 |
 | D-05 | K8s 沙箱后端、sandbox-agent、shell_run 走 Sandbox | kind 上的一致性测试、非 root、只读根、没令牌、断网、令牌、回收、配额、CPU 时间；Worker 经 K8s 后端跑 shell_run；**gVisor**：设 `AR_KIND_GVISOR` 时 kindtest 把 gVisor 装进节点，55 项都在 RuntimeClass gvisor 上过了（沙箱里是 gVisor 的内核） | Kata 的 RuntimeClass（要嵌套虚拟化，kind 里没有） |
-| D-06 | 只有设计书改动稿 | — | 人确认 W2、更新设计书之后再开工 |
+| D-06 | 2026-10-27 按改动稿 W2 实现（细化与进度在 [workspace-layer.md](workspace-layer.md)）：WorkspaceService 与凭据封装（契约待人审）；Sandbox 的存档与浏览能力（sandbox-agent、开发实现、K8s、Cloudflare）；工作区的存档（内容寻址、清单核对、保留 3 份，迁移 205）；`workspace: archive` 的后端建环境时恢复、销毁前存档、工具在环境里执行、彼此回退；Workspace API（task-service 起 Worker 的操作工作流：克隆、diff、提交、推送带 gate 与对账、存档、删除）；`dev_stack.py --sandbox local --workspace archive`；Chart 只在有挂卷的后端时要 `workspacesClaim` | 一致性测试（开发实现、Cloudflare 假桥、kind 里的 K8s）；Worker 的存档模式与操作（含 Temporal 上的工作流、事件历史里没有凭据明文）；task-service 的 Workspace API；端到端经整套走完生命周期；部署的结构检查 | **契约待人审**；coding-agent 改用 Workspace API 要先给契约补文件树、读文件、log、丢弃改动、从别的工作区复制（workspace-layer.md 第 7 节）；Kata、真 Cloudflare 桥与 R2 上的存档恢复；设计书原文档待人更新 |
 | D-07 | Cloudflare 桥（TypeScript）与 Python 适配器 | 适配器对着假桥；桥过了 `tsc`（修了三处）与 `wrangler deploy --dry-run`（打包、按仓库根构建镜像）；Windows 上不带容器的 `wrangler dev` 里鉴权与路由（401、400、404） | 带容器的本地运行（wrangler 只在 Linux、macOS 上支持，要 WSL）；真端点（`AR_LIVE_CLOUDFLARE=1`，花钱） |
 | D-08 | `SubmitTaskRequest.effect_ceiling`、租户策略的 `sandbox.backend` | 契约测试、Task API 的测试、按策略选后端 | **proto 与 schema 的改动待人审**，之后更新 `proto/breaking-baseline.binpb` |
 | D-09 | ObjectStore 的 S3 兼容实现（Python 与 Go，标准库的 SigV4），task-service 与 Worker 接上 | 一致性测试对着会核对签名的假服务（带与不带前缀）、AWS 文档里的签名例子 | 真实 R2（`AR_LIVE_S3=1`）；task-service 与 Worker 不共用卷时的 Claim-Check（线上） |
