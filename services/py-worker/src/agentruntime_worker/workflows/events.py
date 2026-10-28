@@ -56,7 +56,7 @@ _TYPES = {
 }
 
 # target 只取这些参数（按顺序第一个有的）：作用在什么上，不取环境变量、请求体之类。
-_TARGET_ARGS = ("command", "path", "file", "url", "query", "q", "pattern", "name")
+_TARGET_ARGS = ("argv", "command", "path", "file", "url", "query", "q", "pattern", "name")
 # 凭据的写法：先换掉带键名的（保留键名），再换掉网址里的账号口令与常见令牌前缀，最后是长的不透明串（字母与数字混在一起、32 个字符以上）。
 _SECRETS = (
     (re.compile(r"(?i)\b(bearer|basic|token)(\s+)[A-Za-z0-9._~+/=-]{6,}"), r"\1\2***"),

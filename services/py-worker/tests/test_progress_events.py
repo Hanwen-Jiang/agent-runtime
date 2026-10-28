@@ -160,7 +160,7 @@ async def test_a_tool_loop_reports_every_tool_call(harness: StageHarness) -> Non
     s.tools.update({"repo_read": "read", "shell_run": "read"})
     s.tool_steps["fix"] = scripted_steps(
         ToolLoopStep(action="tool", tool="repo_read", args={"path": "src/pricing.py"}),
-        ToolLoopStep(action="tool", tool="shell_run", args={"command": "python -m unittest"}),
+        ToolLoopStep(action="tool", tool="shell_run", args={"argv": ["python", "-m", "unittest"]}),
         ToolLoopStep(action="finish", result={"ok": True}),
     )
     s.tool_results["repo_read"] = lambda i: {"content": "SECRET-FILE-CONTENT"}
@@ -226,7 +226,7 @@ async def test_tool_targets_are_short_and_carry_no_credentials(harness: StageHar
     command = "curl -H 'Authorization: Bearer sk-live-0123456789abcdef0123456789' https://bot:hunter2@git.example.com/a.git && " + "echo x " * 60
     s.tool_steps["fix"] = scripted_steps(
         ToolLoopStep(action="tool", tool="shell_run", args={"command": command}),
-        ToolLoopStep(action="tool", tool="shell_run", args={"command": ["python", "-m", "pytest", "-q"], "env": {"API_KEY": "abc"}}),
+        ToolLoopStep(action="tool", tool="shell_run", args={"argv": ["python", "-m", "pytest", "-q"], "env": {"API_KEY": "abc"}}),
         ToolLoopStep(action="tool", tool="web_fetch", args={"url": "https://docs.example.com/guide?token=ghp_0123456789abcdef0123456789abcdef0123"}),
         ToolLoopStep(action="finish", result={"ok": True}),
     )
@@ -238,7 +238,7 @@ async def test_tool_targets_are_short_and_carry_no_credentials(harness: StageHar
     assert len(first) <= 160 and first.startswith("curl"), first
     for secret in ("sk-live-0123456789abcdef0123456789", "hunter2", "ghp_0123456789abcdef0123456789abcdef0123"):
         assert secret not in first + second + third, f"target 里不能有凭据：{secret}"
-    assert second == "python -m pytest -q" and "abc" not in second, "命令写成数组时按空格连起来，环境变量不进 target"
+    assert second == "python -m pytest -q" and "abc" not in second, "shell_run 的 argv 按空格连起来，环境变量不进 target"
     assert third.startswith("https://docs.example.com/guide")
 
 
