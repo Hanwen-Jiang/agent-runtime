@@ -34,6 +34,7 @@ var seedKinds = map[string]registryv1.RegistryKind{
 	"recipe":        kindRecipe,
 	"model_profile": kindProfile,
 	"tenant_policy": kindPolicy,
+	"task_families": kindFamilies,
 }
 
 // seedEvidence 是开发种子设为默认时记下的“证据”：说明它没经过评测。

@@ -77,6 +77,8 @@ class FakeRegistry(rg_grpc.RegistryServiceServicer):
     model_profiles: list[rg.ModelProfile] = field(default_factory=list)
     # (租户, 版本) → 租户策略的正文
     policies: dict[tuple[str, str], dict[str, Any]] = field(default_factory=dict)
+    # 租户 → 任务族词表的正文；键为空串的是平台默认的那份（TMP 计划第 6 节）
+    task_families: dict[str, dict[str, Any]] = field(default_factory=dict)
     abort: Abort | None = None
     page_size: int = 2
     requests: list[tuple[str, Any, dict[str, str]]] = field(default_factory=list)
@@ -137,6 +139,17 @@ class FakeRegistry(rg_grpc.RegistryServiceServicer):
             abort = not_found("tenant_policy_not_found")
             await context.abort(abort.code, abort.details, abort.trailer())
         return rg.GetTenantPolicyResponse(tenant_policy=rg.TenantPolicy(version=request.version, document=json_payload(doc)))
+
+    async def GetTaskFamilies(self, request: rg.GetTaskFamiliesRequest, context: grpc.aio.ServicerContext) -> rg.GetTaskFamiliesResponse:  # noqa: N802
+        await self._enter("GetTaskFamilies", request, context)
+        own = self.task_families.get(request.tenant.tenant_id)
+        doc = own if own is not None else self.task_families.get("")
+        if doc is None:
+            abort = not_found("task_families_not_found")
+            await context.abort(abort.code, abort.details, abort.trailer())
+        return rg.GetTaskFamiliesResponse(
+            task_families=rg.TaskFamilies(version="v1" if own is not None else "default/v1", document=json_payload(doc), platform_default=own is None)
+        )
 
     async def GetRecipe(self, request: rg.GetRecipeRequest, context: grpc.aio.ServicerContext) -> rg.GetRecipeResponse:  # noqa: N802
         await self._enter("GetRecipe", request, context)

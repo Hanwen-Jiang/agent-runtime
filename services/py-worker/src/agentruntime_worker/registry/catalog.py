@@ -120,7 +120,10 @@ class RegistryContextSource:
                 )
             )
         ceiling = (inp.task_state.get("constraints") or {}).get("effect_ceiling") or self.defaults.effect_ceiling
-        return dataclasses.replace(self.defaults, catalog=catalog, recipes=entries, effect_ceiling=str(ceiling))
+        # TMP 计划第 6 节：租户的任务族词表；还没有时为 None，照旧规划。
+        vocabulary = await self.registry.get_task_families(inp.tenant)
+        families = vocabulary.families if vocabulary is not None else None
+        return dataclasses.replace(self.defaults, catalog=catalog, recipes=entries, effect_ceiling=str(ceiling), task_families=families)
 
 
 class RegistryStagePolicy:

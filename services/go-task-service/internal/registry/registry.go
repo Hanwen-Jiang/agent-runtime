@@ -134,6 +134,8 @@ var kinds = map[registryv1.RegistryKind]kindSpec{
 	registryv1.RegistryKind_REGISTRY_KIND_RECIPE:        {schema: "recipe", scope: eitherScope},
 	registryv1.RegistryKind_REGISTRY_KIND_MODEL_PROFILE: {schema: "model_profile", scope: platformOnly},
 	registryv1.RegistryKind_REGISTRY_KIND_TENANT_POLICY: {schema: "tenant_policy", scope: tenantOnly, immediate: true},
+	// TMP 计划第 6 节：任务族词表，规则同租户策略（平台默认一份、租户自己的优先、发布即生效）。
+	registryv1.RegistryKind_REGISTRY_KIND_TASK_FAMILIES: {schema: "task_families", scope: tenantOnly, immediate: true},
 }
 
 // specOf 返回种类的规则。Reasoning Template 第一期不收（还没有 schema）。

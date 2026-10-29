@@ -220,7 +220,9 @@ async def test_review_round_with_rules_only_does_not_call_the_model() -> None:
 
 
 def test_the_new_version_branches_are_appended_at_the_end_of_at_start() -> None:
-    """第 3 节与第 4 节各一个版本分支，按这个顺序追加在 AT_START 末尾（之前的不动）。"""
-    assert patches.AT_START[-2:] == (patches.BUDGETS_PATCH, patches.DECISION_RETRY_PATCH)
-    assert patches.AT_START[-3] == patches.PROGRESS_DETAIL_PATCH
+    """第 3 节与第 4 节各一个版本分支，按这个顺序紧接着 PROGRESS_DETAIL_PATCH 追加（之前的不动）；之后只能再往末尾追加
+    （第 5 节的 CODES_PATCH）。"""
+    i = patches.AT_START.index(patches.PROGRESS_DETAIL_PATCH)
+    assert patches.AT_START[i + 1 : i + 3] == (patches.BUDGETS_PATCH, patches.DECISION_RETRY_PATCH)
+    assert patches.AT_START[-1] == patches.CODES_PATCH
 

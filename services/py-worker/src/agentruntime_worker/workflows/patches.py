@@ -49,6 +49,8 @@ PROGRESS_DETAIL_PATCH = "progress-node-and-tool"
 BUDGETS_PATCH = "tmp-time-tool-budgets"
 # 同一计划第 4 节：plan_round、review_round、tool_loop_step 由工作流重试，重试之前推 decision_retry；用完退回不调模型的做法。
 DECISION_RETRY_PATCH = "tmp-decision-retry"
+# 同一计划第 5 节：问人后停止或没有回复时另推一个带代码的 abort verdict 事件，多了推送的命令。
+CODES_PATCH = "tmp-message-codes"
 
 # 新的运行在第一个工作流任务里一次问完全部版本分支（模块说明）。
 PATCHES_AT_START = "s04-patches-at-start"
@@ -66,6 +68,7 @@ AT_START = (
     PROGRESS_DETAIL_PATCH,
     BUDGETS_PATCH,
     DECISION_RETRY_PATCH,
+    CODES_PATCH,
 )
 
 

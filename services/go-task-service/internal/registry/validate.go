@@ -176,10 +176,10 @@ func (r *Registry) prepare(kind registryv1.RegistryKind, tenant *commonv1.Tenant
 		return candidate{}, err
 	}
 	var sc scope
-	if kind == registryv1.RegistryKind_REGISTRY_KIND_TENANT_POLICY && tenant.GetTenantId() == "" {
-		// 不带租户的租户策略只有一份：平台默认（DefaultTenantPolicy），给没有自己策略的租户用。
+	if perTenant(kind) && tenant.GetTenantId() == "" {
+		// 不带租户的租户策略（任务族词表同样）只有一份：平台默认（DefaultTenantPolicy），给没有自己的租户用。
 		if name != DefaultTenantPolicy {
-			return candidate{}, invalid("tenant_required", "租户策略要带租户；不带租户的只能是平台默认的，名字为 "+DefaultTenantPolicy)
+			return candidate{}, invalid("tenant_required", "要带租户；不带租户的只能是平台默认的，名字为 "+DefaultTenantPolicy)
 		}
 		sc, err = r.platformScope()
 	} else {
@@ -217,9 +217,26 @@ func (r *Registry) prepare(kind registryv1.RegistryKind, tenant *commonv1.Tenant
 			}
 			seen[t.Name] = true
 		}
-	case registryv1.RegistryKind_REGISTRY_KIND_TENANT_POLICY:
+	case registryv1.RegistryKind_REGISTRY_KIND_TENANT_POLICY, registryv1.RegistryKind_REGISTRY_KIND_TASK_FAMILIES:
 		if !sc.platform && name != "" {
-			return candidate{}, invalid("invalid_name", "租户策略不起名字（一个租户一份）")
+			return candidate{}, invalid("invalid_name", "租户策略与任务族词表不起名字（一个租户一份）")
+		}
+		if kind == registryv1.RegistryKind_REGISTRY_KIND_TASK_FAMILIES {
+			var doc struct {
+				Families []struct {
+					ID string `json:"id"`
+				} `json:"families"`
+			}
+			if err := json.Unmarshal(document, &doc); err != nil {
+				return candidate{}, invalid("invalid_document", "任务族词表解析不了")
+			}
+			seen := map[string]bool{}
+			for _, f := range doc.Families {
+				if seen[f.ID] {
+					return candidate{}, invalid("duplicate_task_family", fmt.Sprintf("任务族 %q 重复", f.ID))
+				}
+				seen[f.ID] = true
+			}
 		}
 	}
 	if kind == registryv1.RegistryKind_REGISTRY_KIND_RECIPE {
@@ -392,4 +409,9 @@ func cyclic(nodes []recipeNode) bool {
 		}
 	}
 	return false
+}
+
+// perTenant：一个租户一份、另有一份平台默认的种类（租户策略、任务族词表）。
+func perTenant(kind registryv1.RegistryKind) bool {
+	return kind == registryv1.RegistryKind_REGISTRY_KIND_TENANT_POLICY || kind == registryv1.RegistryKind_REGISTRY_KIND_TASK_FAMILIES
 }

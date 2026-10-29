@@ -95,6 +95,12 @@ def tool_target(args: Any) -> str:
     return ""
 
 
+def code_of(text: str) -> str:
+    """说明写成“代码：说明”（中文或英文冒号）时开头的代码；不是 snake_case 时为空。纯函数。"""
+    head = re.split(r"[:：]", str(text), maxsplit=1)[0].strip() if text else ""
+    return head if head != text and _CODE.match(head) else ""
+
+
 def message_code(text: str) -> str:
     """把错误类型之类的名字整理成 message_code（snake_case）；整理不出来时为空。纯函数。"""
     snake = re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\g<1>", str(text)).lower()
@@ -114,8 +120,8 @@ def _value(data: Any) -> struct_pb2.Value:
     return value
 
 
-def stage_payload(stage: dict[str, Any], triage_level: str | None) -> dict[str, Any]:
-    """stage_started：目标、退出条件与节点清单（只有 id、kind、role）。重跑时没有 triage_level。"""
+def stage_payload(stage: dict[str, Any], triage_level: str | None, goal_code: str = "") -> dict[str, Any]:
+    """stage_started：目标、退出条件与节点清单（只有 id、kind、role）。重跑时没有 triage_level；goal 是代码给的固定说明时带 goal_code。"""
     nodes = []
     for node in stage.get("nodes", []):
         entry = {"id": str(node["id"]), "kind": str(node.get("kind", "atomic"))}
@@ -125,6 +131,8 @@ def stage_payload(stage: dict[str, Any], triage_level: str | None) -> dict[str, 
     payload: dict[str, Any] = {"goal": str(stage.get("goal", "")), "exit_when": str(stage.get("exit_when", "")), "nodes": nodes}
     if triage_level:
         payload["triage_level"] = triage_level
+    if goal_code and _CODE.match(goal_code):
+        payload["goal_code"] = goal_code
     return payload
 
 
@@ -135,8 +143,9 @@ def node_payload(node_id: str, result: StageResult) -> dict[str, Any]:
         payload["failure_class"] = result.failure_class
     if result.error:
         payload["error"] = result.error[:ERROR_CHARS]
-    if result.error_code and _CODE.match(result.error_code):
-        payload["error_code"] = result.error_code
+    code = result.error_code if result.error_code and _CODE.match(result.error_code) else code_of(result.error)
+    if code:
+        payload["error_code"] = code
         if result.params:
             payload["params"] = dict(result.params)
     return payload
@@ -194,8 +203,8 @@ class EventPublisher:
     async def round_started(self, round_seq: int, *, rerun: bool) -> None:
         await self.publish(round_seq, "round_started", {"rerun": rerun})
 
-    async def stage_started(self, round_seq: int, stage: dict[str, Any], triage_level: str | None) -> None:
-        await self.publish(round_seq, "stage_started", stage_payload(stage, triage_level))
+    async def stage_started(self, round_seq: int, stage: dict[str, Any], triage_level: str | None, goal_code: str = "") -> None:
+        await self.publish(round_seq, "stage_started", stage_payload(stage, triage_level, goal_code))
 
     async def node_started(self, round_seq: int, node: dict[str, Any]) -> None:
         if self._detail:
@@ -217,6 +226,9 @@ class EventPublisher:
             payload["sandbox_startup_ms"] = startup_ms
         if error:
             payload["error"] = redact(error)[:ERROR_CHARS]
+            code = code_of(error)
+            if code:
+                payload["error_code"] = code
         await self.publish(round_seq, "tool_status", payload, about=f"{node_id}/{step}/{state}")
 
     async def node_finished(self, round_seq: int, node_id: str, result: StageResult) -> None:
@@ -233,14 +245,15 @@ class EventPublisher:
                 payload["params"] = dict(params)
         await self.publish(round_seq, "human_input_required", payload, about=question_id)
 
-    async def verdict(self, round_seq: int, verdict: dict[str, Any]) -> None:
+    async def verdict(self, round_seq: int, verdict: dict[str, Any], *, about: str = "") -> None:
+        """Verdict；about 区分同一 Round 里的第二个（问人后停止的收尾，去重键 r<Round>/verdict/<about>）。"""
         payload: dict[str, Any] = {"verdict": str(verdict["verdict"]), "reason": str(verdict.get("reason", ""))}
         code = str(verdict.get("reason_code") or "")
         if code and _CODE.match(code):
             payload["reason_code"] = code
             if verdict.get("reason_params"):
                 payload["params"] = dict(verdict["reason_params"])
-        await self.publish(round_seq, "verdict", payload)
+        await self.publish(round_seq, "verdict", payload, about=about)
 
     async def decision_retry(
         self, round_seq: int, step: str, attempt: int, max_attempts: int, *, node_id: str = "", error_code: str = "", error: str = "", about: str = "",

@@ -184,6 +184,9 @@ class Script:
     on_publish: Callable[[str, Any], None] | None = None
     # 每次规划报告的花费（PlanRoundOutput.cost_usd；成本口径的人定方案，2026-10-24）
     plan_cost: float = 0.0
+    # TMP 计划第 5、6 节：plan_round 的结果另带 goal_code 与服务端定的任务族（设了才带）。
+    goal_code: str = ""
+    task_family: str = ""
 
     calls: list[Call] = field(default_factory=list)
     hook_calls: list[HookCall] = field(default_factory=list)
@@ -281,9 +284,10 @@ class Script:
         self.scenario_of[inp.task_id] = scenario
         self.plan_inputs.append(inp)
         plan = copy.deepcopy(self.task_plan)
+        extra = {k: v for k, v in (("goal_code", self.goal_code), ("task_family", self.task_family)) if v}
         if self.plan_for is not None:
-            return PlanRoundOutput(stage=self.plan_for(inp), triage_level="full", task_plan=plan, cost_usd=self.plan_cost)
-        return PlanRoundOutput(stage=copy.deepcopy(self.plans[scenario][inp.round_seq - 1]), triage_level="full", task_plan=plan, cost_usd=self.plan_cost)
+            return PlanRoundOutput(stage=self.plan_for(inp), triage_level="full", task_plan=plan, cost_usd=self.plan_cost, **extra)
+        return PlanRoundOutput(stage=copy.deepcopy(self.plans[scenario][inp.round_seq - 1]), triage_level="full", task_plan=plan, cost_usd=self.plan_cost, **extra)
 
     @activity.defn(name=names.REVIEW_ROUND)
     async def review_round(self, inp: ReviewRoundInput) -> Any:

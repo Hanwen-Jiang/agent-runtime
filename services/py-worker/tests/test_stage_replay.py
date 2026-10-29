@@ -92,13 +92,16 @@ STAGE_CASES: dict[str, tuple[str, str]] = {
     "budget_tool_calls_stop": (names.TASK_WORKFLOW, r'"error_code":\s*"budget_exhausted"'),
     # 第 4 节：决策调用由工作流重试，重试之前推 decision_retry。
     "decision_retry": (names.TASK_WORKFLOW, r'"event":\s*"decision_retry"'),
+    # 第 5 节：问人后人选择停止，另推一个带代码的 abort verdict 事件。
+    "codes_human_stopped": (names.TASK_WORKFLOW, r'"reason_code":\s*"human_stopped"'),
 }
 REVIEW_CASES = ("review_repair_rerun", "review_escalate_human", "review_rollback")
 POLICY_CASES = ("policy_effect_denied", "policy_finish_rejected", "policy_task_mounts")
 EVENTS_CASES = ("events_progress",)
 AT_START_CASES = ("patches_at_start",)
 R01_CASES = ("r01_failed_node_audited", "r01_tool_loop_budget")
-TMP_CASES = ("budget_ask_human", "budget_tool_calls_stop", "decision_retry")
+TMP_CASES = ("budget_ask_human", "budget_tool_calls_stop", "decision_retry", "codes_human_stopped")
+CODES_CASES = ("codes_human_stopped",)
 # 一次问完全部版本分支之后录下的（新历史开头带全部版本标记）。
 NEWER_CASES = (*AT_START_CASES, *R01_CASES, *TMP_CASES)
 
@@ -221,6 +224,11 @@ def test_version_branch_keeps_old_histories_replayable() -> None:
     for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in TMP_CASES)):
         text = history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8"))
         assert patches.BUDGETS_PATCH not in text and patches.DECISION_RETRY_PATCH not in text, f"第 3、4 节之前的 {name} 不该有它们的版本标记"
+    # 第 5 节的版本分支（问人后停止时另推带代码的 verdict 事件）：只有之后录下的有。
+    for name in CODES_CASES:
+        assert patches.CODES_PATCH in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"{name} 应带 {patches.CODES_PATCH}"
+    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in CODES_CASES)):
+        assert patches.CODES_PATCH not in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"第 5 节之前的 {name} 不该有 {patches.CODES_PATCH}"
 
 
 async def test_all_golden_histories_replay_with_the_current_code() -> None:

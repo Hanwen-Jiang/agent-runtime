@@ -237,6 +237,32 @@ def _usage_attributes(node: Mapping[str, Any], model: mg.ModelChoice, usage: Any
     return out
 
 
+REGRESSIONS_SCHEMA: dict[str, Any] = {
+    "description": "被这一轮改坏的、之前已有并验证过的产物（不是“这次的产出不够好”）；没有就给空列表",
+    "type": "array",
+    "maxItems": 20,
+    "items": {
+        "type": "object",
+        "required": ["artifact", "evidence"],
+        "properties": {
+            "artifact": {"description": "被改坏的产物：工作区里的路径、obj:// 地址或名字", "type": "string", "minLength": 1, "maxLength": 300},
+            "evidence": {"description": "凭什么说它被改坏了（测试名、对比结果）", "type": "string", "minLength": 1, "maxLength": 500},
+        },
+        "additionalProperties": False,
+    },
+}
+
+
+def judge_envelope(schema: Mapping[str, Any] | None) -> dict[str, Any]:
+    """judge 的输出外壳（TMP 计划第 7 节，node_output 的 regressions）：result 按原来的 output_schema，另可给 regressions。"""
+    return {
+        "type": "object",
+        "required": ["result"],
+        "properties": {"result": dict(schema) if schema is not None else {}, "regressions": REGRESSIONS_SCHEMA},
+        "additionalProperties": False,
+    }
+
+
 class NodeExecutor:
     def __init__(self, deps: ExecutorDeps, config: ExecutorConfig | None = None) -> None:
         self.deps = deps
@@ -619,21 +645,31 @@ class NodeExecutor:
             span.set_attributes(_usage_attributes(node, embedded.model, embedded.usage))
             return {"result": {"embeddings": [list(e.values) for e in embedded.embeddings]}, "meta": self._meta(node, embedded.model, embedded.usage, started)}
         schema = self._schema(node)
-        response = await self._generate(inp, tenant, schema, None)
+        # TMP 计划第 7 节：judge 按 {result, regressions} 的外壳要输出，拆开后 result 照旧，regressions 另放（只交给 Reviewer）。
+        judge = node.get("role") == "judge"
+        asked = judge_envelope(schema) if judge else schema
+        response = await self._generate(inp, tenant, asked, None)
         result = self._result_of(response)
-        errors = validate(schema, result) if schema is not None else []
+        errors = validate(asked, result) if asked is not None else []
         if errors:
             # 输出不符合 schema：带上校验错误重问一次（附录 D.3、D.6）。
             span.add_event("invalid_output_retry", {"errors": "；".join(errors)})
-            response = await self._generate(inp, tenant, schema, errors)
+            response = await self._generate(inp, tenant, asked, errors)
             result = self._result_of(response)
-            errors = validate(schema, result) if schema is not None else []
+            errors = validate(asked, result) if asked is not None else []
             if errors:
                 raise _error(f"{node['id']} 的输出重问一次后仍不符合 output_schema：" + "；".join(errors), INVALID_OUTPUT)
+        regressions: list[Any] = []
+        if judge:
+            regressions = list(result.get("regressions") or [])
+            result = result.get("result")
         if response.rationale:
             span.add_event("rationale", {"text": response.rationale})
         span.set_attributes(_usage_attributes(node, response.model, response.usage))
-        return {"result": result, "meta": self._meta(node, response.model, response.usage, started)}
+        out: dict[str, Any] = {"result": result, "meta": self._meta(node, response.model, response.usage, started)}
+        if regressions:
+            out["regressions"] = regressions
+        return out
 
     @staticmethod
     def _result_of(response: mg.GenerateResponse) -> Any:

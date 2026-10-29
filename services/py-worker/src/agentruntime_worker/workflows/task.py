@@ -66,6 +66,7 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.workflows.failures import failure_message as _failure_message
     from agentruntime_worker.workflows.patches import (
         BUDGETS_PATCH,
+        CODES_PATCH,
         DECISION_RETRY_PATCH,
         EVENTS_PATCH,
         POLICY_PATCH,
@@ -165,6 +166,8 @@ def _finish_escalation(rejection: str, count: int) -> dict[str, Any]:
     return {
         "verdict": "escalate",
         "reason": f"完成前复核驳回了 {count} 次：{rejection}",
+        "reason_code": "finish_rejected",
+        "reason_params": {"count": count},
         "escalate": {"target": "human", "question": question, "options": list(HUMAN_REPLIES), "state_summary": f"完成前复核：{rejection}"},
     }
 
@@ -215,6 +218,9 @@ class TaskWorkflow:
         self._human_wait_s = 0.0
         # 同一计划第 4 节（DECISION_RETRY_PATCH）：plan_round、review_round 由工作流重试。
         self._retry_in_workflow = False
+        # 第 5 节（CODES_PATCH）：问人后停止或没回复时另推带代码的 abort verdict 事件。第 6 节：服务端定的任务族（第一个报上来的）。
+        self._codes = False
+        self._task_family = ""
 
     @workflow.run
     async def run(self, inp: task_pb2.TaskWorkflowInput) -> task_pb2.TaskWorkflowResult:
@@ -231,6 +237,7 @@ class TaskWorkflow:
         # TMP 计划第 3、4 节的版本分支：新的运行在 at_start 里已经问过，这里只取值；之前的历史没有标记，都是 False。
         self._budgets = workflow.patched(BUDGETS_PATCH)
         self._retry_in_workflow = workflow.patched(DECISION_RETRY_PATCH)
+        self._codes = workflow.patched(CODES_PATCH)
         if self._budgets:
             self._started = workflow.now()
             self._limits = _budget_limits(inp)
@@ -473,6 +480,7 @@ class TaskWorkflow:
                     rerun = None
                     last_round = {**(last_round or {}), "human_reply": {"option": reply.option, "guidance": reply.guidance}}
             triage_level: str | None = None
+            goal_code = ""
             # 这一轮规划的花费：计入 Round 的成本，Stage 执行时已经算进已花的钱（成本口径的人定方案）。原地重跑不经 Planner。
             plan_cost = 0.0
             if rerun is None:
@@ -480,6 +488,10 @@ class TaskWorkflow:
                 stage = plan.stage
                 triage_level = plan.triage_level
                 plan_cost = float(plan.cost_usd or 0.0)
+                goal_code = plan.goal_code
+                if plan.task_family and not self._task_family:
+                    # TMP 计划第 6 节：任务族由第一轮分诊定，之后的重规划不改。
+                    self._task_family = plan.task_family
                 round_entry: dict[str, Any] = {"seq": seq, "stage_goal": stage["goal"], "triage_level": plan.triage_level, "status": "running"}
                 if plan.task_plan:
                     task_plan = plan.task_plan
@@ -491,7 +503,7 @@ class TaskWorkflow:
                 round_entry = {"seq": seq, "stage_goal": stage["goal"], "status": "running"}
             self._state["rounds"].append(round_entry)
             if self._events is not None:
-                await self._events.stage_started(seq, stage, triage_level)
+                await self._events.stage_started(seq, stage, triage_level, goal_code)
 
             results = await self._run_stage(seq, stage, carried=carried, injections=injections, plan_cost=plan_cost)
             round_entry["cost_usd"] = round(plan_cost + self._stage_cost, 6)
@@ -528,9 +540,9 @@ class TaskWorkflow:
                     # 驳回用满上限：不再驳回，问人（同 Reviewer 的 escalate）。
                     reply = await self._ask_human(seq, _finish_escalation(rejection, self._finish_rejections))
                     if reply is None:
-                        return self._aborted(vd.stopped(results, f"完成前复核驳回后问人没有得到回复：{rejection}；按停止处理"))
+                        return await self._stopped(seq, vd.stopped(results, f"完成前复核驳回后问人没有得到回复：{rejection}；按停止处理"), "human_no_reply")
                     if reply.option == "stop_and_wrap_up":
-                        return self._aborted(vd.stopped(results, f"完成前复核驳回后人选择停止并收尾：{rejection}"))
+                        return await self._stopped(seq, vd.stopped(results, f"完成前复核驳回后人选择停止并收尾：{rejection}"), "human_stopped")
                     if reply.option == "continue_as_is":
                         return self._done(verdict, results)
                     last_round["human_reply"] = {"option": reply.option, "guidance": reply.guidance}
@@ -542,9 +554,9 @@ class TaskWorkflow:
             elif kind == "escalate":
                 reply = await self._ask_human(seq, verdict)
                 if reply is None:
-                    return self._aborted(vd.stopped(results, f"问人没有得到回复：{verdict['reason']}；按停止处理，用现有结果收尾"))
+                    return await self._stopped(seq, vd.stopped(results, f"问人没有得到回复：{verdict['reason']}；按停止处理，用现有结果收尾"), "human_no_reply")
                 if reply.option == "stop_and_wrap_up":
-                    return self._aborted(vd.stopped(results, f"人选择停止并用现有结果收尾：{verdict['reason']}"))
+                    return await self._stopped(seq, vd.stopped(results, f"人选择停止并用现有结果收尾：{verdict['reason']}"), "human_stopped")
                 last_round["human_reply"] = {"option": reply.option, "guidance": reply.guidance}
             elif kind == "rollback":
                 round_no = vd.checkpoint_round(verdict)
@@ -721,6 +733,16 @@ class TaskWorkflow:
         self._final_verdict = verdict
         self._set_status(enums_pb2.TASK_STATUS_DONE)
         return self._result(verdict=enums_pb2.VERDICT_DONE, deliver_node=deliver, deliverable=r.result)
+
+    async def _stopped(self, seq: int, verdict: dict[str, Any], code: str) -> task_pb2.TaskWorkflowResult:
+        """问人后停止或没有回复：用现有结果收尾。CODES_PATCH 之后的运行理由带代码，并另推一个 abort 的 verdict 事件
+        （TMP 计划第 5 节），客户端看得到为什么收尾。"""
+        if self._codes:
+            verdict["reason_code"] = code
+            if self._events is not None:
+                # 这个 Round 已经推过 Reviewer 的 verdict：另用一个去重键，不被当成重复的。
+                await self._events.verdict(seq, verdict, about="stopped")
+        return self._aborted(verdict)
 
     def _aborted(self, verdict: dict[str, Any]) -> task_pb2.TaskWorkflowResult:
         """交付部分结果，说清完成了什么、没完成什么、为什么（附录 B.8 第 7 步）。"""
@@ -978,7 +1000,8 @@ class TaskWorkflow:
                     deliver_node=result.deliver_node_id,
                     artifacts=list(result.artifacts),
                     stages=list(self._stages),
-                    task_family=str(((self._task_plan or {}).get("triage") or {}).get("task_family") or ""),
+                    # 服务端定的任务族优先（TMP 计划第 6 节），没有时用 Task Plan 里的。
+                    task_family=self._task_family or str(((self._task_plan or {}).get("triage") or {}).get("task_family") or ""),
                 ),
                 task_queue=names.DECISION_QUEUE,
                 start_to_close_timeout=timeouts.FINALIZE_START_TO_CLOSE,

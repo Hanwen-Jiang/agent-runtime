@@ -298,7 +298,9 @@ async def test_a_reviewer_escalation_asks_the_user(harness: StageHarness) -> Non
     assert asked["text"] == "订不可退改的那班吗？"
     await handle.signal(names.HUMAN_REPLY_SIGNAL, reply("_review", "stop_and_wrap_up"))
     assert (await asyncio.wait_for(handle.result(), timeout=30)).status == enums_pb2.TASK_STATUS_ABORTED
-    assert kinds(progress(harness, inp.task_id))[-2:] == ["verdict", "human_input_required"], "先推判定，再推问题"
+    events = progress(harness, inp.task_id)
+    assert kinds(events)[-3:] == ["verdict", "human_input_required", "verdict"], "先推判定，再推问题；人选择停止后再推收尾的判定"
+    assert (events[-1]["verdict"], events[-1]["reason_code"]) == ("abort", "human_stopped"), "TMP 计划第 5 节：收尾的判定带代码"
 
 
 # --- 推送失败 ---

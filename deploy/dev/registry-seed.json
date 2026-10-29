@@ -367,6 +367,79 @@
           "price_at": "2026-10-21"
         }
       }
+    },
+    {
+      "kind": "task_families",
+      "name": "default",
+      "document": {
+        "families": [
+          {
+            "id": "engineering.ci_fix",
+            "description": "修复失败的 CI、测试或构建",
+            "examples": [
+              "CI 上的单元测试挂了，帮我修好",
+              "构建报错，修一下"
+            ]
+          },
+          {
+            "id": "engineering.bug_fix",
+            "description": "定位并修复代码里的缺陷（不是 CI 本身）",
+            "examples": [
+              "这个接口偶尔返回 500，查一下原因并修好"
+            ]
+          },
+          {
+            "id": "engineering.feature",
+            "description": "在仓库里实现一个新功能或改动",
+            "examples": [
+              "给导出加一个 CSV 格式"
+            ]
+          },
+          {
+            "id": "engineering.code_explain",
+            "description": "读仓库并讲清结构、入口与模块，不改文件",
+            "examples": [
+              "讲讲这个仓库的结构和入口"
+            ]
+          },
+          {
+            "id": "engineering.code_review",
+            "description": "审一段改动或一个 PR，给出问题与建议",
+            "examples": [
+              "帮我看看这个 PR 有没有问题"
+            ]
+          },
+          {
+            "id": "analytics.attribution",
+            "description": "对一个指标的变化做归因分析",
+            "examples": [
+              "上季度退款率为什么上升"
+            ]
+          },
+          {
+            "id": "research.web",
+            "description": "查资料、比较方案并给出有出处的结论",
+            "examples": [
+              "比较三家向量数据库的价格与限制"
+            ]
+          },
+          {
+            "id": "writing.document",
+            "description": "写或改一篇文档、说明、报告",
+            "examples": [
+              "把这份设计写成对外的说明"
+            ]
+          },
+          {
+            "id": "conversation.chat",
+            "description": "闲聊、问候或不需要工具的简单问答",
+            "examples": [
+              "你好",
+              "再短一点"
+            ]
+          }
+        ]
+      }
     }
   ]
 }

@@ -62,14 +62,19 @@ class Thresholds:
 
 @dataclass(frozen=True)
 class Floor:
-    """代码判定的下限：至少要升级到 step；allowed 不为空时只能在这几种 Verdict 里选（预算规则）。"""
+    """代码判定的下限：至少要升级到 step；allowed 不为空时只能在这几种 Verdict 里选（预算规则、硬信号 environment、regressions）。
+
+    code、params 是决定 step 的那一条规则的代码与参数；reason_code、reason_params 是限定 allowed 的那一条的（TMP 计划第 5 节）。
+    """
 
     step: str
     reasons: tuple[str, ...] = ()
     allowed: frozenset[str] | None = None
     signals: tuple[str, ...] = ()
     reason_code: str = ""
-    """因 allowed 改写 Verdict 时理由的代码（TMP 计划第 5 节）；没有时不带。"""
+    reason_params: Mapping[str, Any] = field(default_factory=dict)
+    code: str = ""
+    params: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -95,34 +100,39 @@ def floor(ledger: Ledger, results: Mapping[str, Mapping[str, Any]], *, completio
     step = "none"
     reasons: list[str] = []
     signals: set[str] = set()
+    step_code: tuple[str, dict[str, Any]] = ("", {})
 
-    def need(target: str, why: str) -> None:
-        nonlocal step
+    def need(target: str, why: str, code: str, **params: Any) -> None:
+        nonlocal step, step_code
         reasons.append(why)
         if _RANK[target] > _RANK[step]:
             step = target
+            step_code = (code, params)
 
     failed = sorted(nid for nid, r in results.items() if is_failed(r))
     if failed:
-        need("repair_retry", f"本轮有 Node 失败（{'、'.join(failed)}）：本 Stage 的退出条件不算满足，不能判 continue 或 done")
+        need("repair_retry", f"本轮有 Node 失败（{'、'.join(failed)}）：本 Stage 的退出条件不算满足，不能判 continue 或 done", "rule_node_failed", nodes=failed)
         for nid in failed:
             times = ledger.node_failures.get(nid, 1)
             if times >= 3:
-                need("replan", f"同一 Node（{nid}）已失败 {times} 次：重规划（附录 B.8）")
+                need("replan", f"同一 Node（{nid}）已失败 {times} 次：重规划（附录 B.8）", "rule_failed_thrice", node=nid, times=times)
             elif times == 2:
-                need("repair_change_method", f"同一 Node（{nid}）已失败 2 次：换方法，不能原地重试（附录 B.8）")
+                need("repair_change_method", f"同一 Node（{nid}）已失败 2 次：换方法，不能原地重试（附录 B.8）", "rule_failed_twice", node=nid, times=2)
         denied = [nid for nid in failed if results[nid].get("failure_class") == "denied"]
         if denied:
-            need("replan", f"{'、'.join(denied)} 被拒绝（denied）：原样重试没有用，换做法或问人")
+            need("replan", f"{'、'.join(denied)} 被拒绝（denied）：原样重试没有用，换做法或问人", "rule_denied", nodes=denied)
         for nid in ledger.repeated:
             tries = retries_within_round(results.get(nid, {}))
             if tries >= 2:
-                need("replan", f"{nid} 本轮内已重试 {tries} 次，仍是和上一轮相同的错误：问题在上游，停止修复，重规划（附录 B.7）")
+                need(
+                    "replan", f"{nid} 本轮内已重试 {tries} 次，仍是和上一轮相同的错误：问题在上游，停止修复，重规划（附录 B.7）",
+                    "rule_same_error_after_retry", node=nid, retries=tries,
+                )
         for nid in ledger.merge_conflicts:
-            need("replan", f"{nid} 合并扇出的结果失败：耦合度被低估，收回单一写者，或先定共享接口再扇出（附录 B.7）")
+            need("replan", f"{nid} 合并扇出的结果失败：耦合度被低估，收回单一写者，或先定共享接口再扇出（附录 B.7）", "rule_merge_conflict", node=nid)
         replans = ledger.since_progress.get("replan", 0)
         if replans >= 2:
-            need("replan_change_shape", f"replan {replans} 次仍无进展：换 Stage 形状、换流程或问人（附录 B.8）")
+            need("replan_change_shape", f"replan {replans} 次仍无进展：换 Stage 形状、换流程或问人（附录 B.8）", "rule_replan_no_progress", replans=replans)
 
     unverified = unverified_nodes(results)
     if unverified:
@@ -130,33 +140,58 @@ def floor(ledger: Ledger, results: Mapping[str, Mapping[str, Any]], *, completio
             "repair_change_method",
             f"{'、'.join(unverified)} 的质量包装用满轮数仍没通过 judge：产出没有经过验证，不能 continue 或 done；"
             "已经原地重试过，换方法（引入外部判据或独立 judge，附录 B.7）",
+            "rule_unverified_quality",
+            nodes=unverified,
         )
 
     allowed: set[str] | None = None
+    limit: tuple[str, dict[str, Any]] = ("", {})
+
+    def restrict(outs: set[str], why: str, code: str, **params: Any) -> None:
+        nonlocal allowed, limit
+        reasons.append(why)
+        allowed = set(outs) if allowed is None else allowed & outs
+        limit = (code, params)
+
+    # TMP 计划第 7 节：judge 发现之前已有的产物被这一轮改坏了：至少退回检查点（没有检查点时问人），不能继续、修补或交付。
+    broken = sorted({str(g.get("artifact")) for r in results.values() for g in (r.get("regressions") or []) if isinstance(g, Mapping) and g.get("artifact")})
+    if broken:
+        need("rollback", f"judge 发现被这一轮改坏的既有产物（{'、'.join(broken)}）：退回最近的检查点", "rule_regression", artifacts=broken)
+        restrict({"rollback", "escalate", "abort"}, "既有产物被改坏：只能退回检查点、问人或收尾", "rule_regression", artifacts=broken)
+
     ratio = ledger.spent_ratio()
     if ratio is not None:
         if ratio >= 1.0:
-            allowed = {"escalate", "abort"}
             signals.add("budget_burn")
-            reasons.append(f"预算已用 {ratio:.0%}：只能问人，或交付现有结果收尾")
+            restrict({"escalate", "abort"}, f"预算已用 {ratio:.0%}：只能问人，或交付现有结果收尾", "rule_budget_spent", spent_ratio=round(ratio, 2))
         elif completion is not None and ratio >= thresholds.budget_alarm_spent and completion < thresholds.budget_alarm_completion:
-            allowed = {"replan", "escalate", "abort"}
             signals.add("budget_burn")
-            reasons.append(f"预算已用 {ratio:.0%}，完成度只有 {completion:.0%}：缩小范围或问人（附录 B.8）")
+            restrict(
+                {"replan", "escalate", "abort"}, f"预算已用 {ratio:.0%}，完成度只有 {completion:.0%}：缩小范围或问人（附录 B.8）",
+                "rule_budget_alarm", spent_ratio=round(ratio, 2), completion=round(completion, 2),
+            )
         elif completion and ledger.budget_usd and ledger.spent_usd / completion > ledger.budget_usd:
             signals.add("budget_burn")
             reasons.append("按已花的预算与完成度外推，预计会超出预算")
-    code = ""
     empty = sorted(nid for nid, r in results.items() if "environment" in (r.get("signals") or []))
     if empty:
         # 列工作区根得到空目录：换做法、重规划都没有用。交付“工作区是空的”这类答复是对的，所以 done 仍可以。
         signals.add("environment")
-        code = "workspace_empty"
-        reasons.append(f"{'、'.join(empty)} 列工作区根得到空目录：工作区或执行环境本身不可用，换做法没有用；只能交付现有答复、问人或收尾")
-        outs = {"done", "escalate", "abort"}
-        allowed = outs if allowed is None else allowed & outs
+        restrict(
+            {"done", "escalate", "abort"},
+            f"{'、'.join(empty)} 列工作区根得到空目录：工作区或执行环境本身不可用，换做法没有用；只能交付现有答复、问人或收尾",
+            "workspace_empty",
+            nodes=empty,
+        )
     return Floor(
-        step=step, reasons=tuple(reasons), allowed=frozenset(allowed) if allowed else None, signals=tuple(sorted(signals)), reason_code=code,
+        step=step,
+        reasons=tuple(reasons),
+        allowed=frozenset(allowed) if allowed is not None else None,
+        signals=tuple(sorted(signals)),
+        reason_code=limit[0],
+        reason_params=limit[1],
+        code=step_code[0],
+        params=step_code[1],
     )
 
 
@@ -186,7 +221,7 @@ def enforce(
     verdict = rules.valid(verdict, reasons)
     if _RANK[step_of(verdict)] < _RANK[floor.step]:
         reasons.extend(floor.reasons)
-        verdict = rules.make(floor.step, verdict, list(floor.reasons))
+        verdict = rules.make(floor.step, verdict, list(floor.reasons), code=floor.code, params=floor.params)
     verdict = rules.settle(verdict, reasons)
     if proposal is None and "reason_code" not in verdict:
         verdict["reason_code"] = "rule_fallback"
@@ -229,7 +264,7 @@ class _Rules:
             return {"verdict": "done", "reason": "各 Node 都成功，deliver 节点给出了结果", "done": {"deliver_node": delivers[0]}}
         if not self.failed:
             return {"verdict": "continue", "reason": "各 Node 都成功，本轮还没有交付"}
-        return self.make(self.floor.step, None, list(self.floor.reasons))
+        return self.make(self.floor.step, None, list(self.floor.reasons), code=self.floor.code, params=self.floor.params)
 
     # --- 细节的合法性 ---
 
@@ -238,13 +273,13 @@ class _Rules:
         if kind == "done" and (verdict.get("progress_check") or {}).get("criteria_met") is False:
             why = "Progress Check 自己答了验收条件没满足，却判 done：不能交付"
             reasons.append(why)
-            return self.make("continue" if not self.failed else self.floor.step, verdict, [why])
+            return self.make("continue" if not self.failed else self.floor.step, verdict, [why], code="rule_criteria_not_met")
         if kind == "done":
             delivers = self.delivers()
             if not delivers:
                 why = "本轮没有成功的 deliver 节点：是否完成看产出物，还不能判 done"
                 reasons.append(why)
-                return self.make("continue" if not self.failed else self.floor.step, verdict, [why])
+                return self.make("continue" if not self.failed else self.floor.step, verdict, [why], code="rule_no_deliver")
             if verdict["done"].get("deliver_node") not in delivers:
                 reasons.append(f"done 的交付改为本轮成功的 deliver 节点 {delivers[0]}")
                 verdict["done"] = {"deliver_node": delivers[0]}
@@ -266,21 +301,22 @@ class _Rules:
             if checkpoint not in self.ledger.checkpoints:
                 why = f"没有检查点 {checkpoint}（可退回的：{'、'.join(self.ledger.checkpoints) or '无'}）：退不回去，往上一级"
                 reasons.append(why)
-                return self.make("escalate", verdict, [why])
+                return self.make("escalate", verdict, [why], code="rule_no_checkpoint", params={"checkpoint": str(checkpoint)})
         elif kind == "reroute":
             recipe = verdict["reroute"]["recipe"]
             recipes = self.catalog.recipes if self.catalog else {}
             if recipe not in recipes:
                 why = f"Catalog 里没有 Recipe {recipe}：不能换过去，改为同级的换 Stage 形状"
                 reasons.append(why)
-                return self.make("replan_change_shape", verdict, [why])
+                return self.make("replan_change_shape", verdict, [why], code="rule_unknown_recipe", params={"recipe": str(recipe)})
             assert self.catalog is not None
             risk, ceiling = recipes[recipe], self.catalog.effect_ceiling
             if sp.effect_rank(risk) > sp.effect_rank(ceiling):
                 why = f"{recipe} 的风险 {risk} 超出本 Task 的 effect 上限 {ceiling}：先问人授权"
                 reasons.append(why)
                 question = f"任务更适合换到 {recipe} 的流程，但它的风险等级 {risk} 超出本 Task 允许的 {ceiling}。授权后按它继续、带指导重规划，还是停止？"
-                return self.make("escalate_human", verdict, [why], question=question)
+                params = {"recipe": str(recipe), "risk": str(risk), "ceiling": str(ceiling)}
+                return self.make("escalate_human", verdict, [why], question=question, code="rule_recipe_over_ceiling", params=params)
         elif kind == "escalate":
             esc = verdict["escalate"]
             if esc.get("target") == "human":
@@ -295,15 +331,14 @@ class _Rules:
             kind = verdict["verdict"]
             if allowed is not None and (kind not in allowed or (kind == "escalate" and verdict["escalate"].get("target") == "tier")):
                 reasons.extend(self.floor.reasons)
-                verdict = self.make("escalate_human", verdict, list(self.floor.reasons))
-                if self.floor.reason_code:
-                    verdict["reason_code"] = self.floor.reason_code
+                verdict = self.make("escalate_human", verdict, list(self.floor.reasons), code=self.floor.reason_code, params=self.floor.reason_params)
                 continue
             used, cap, nxt = self.cap_of(verdict)
             if cap is not None and used >= cap:
-                why = f"{_LABEL[self.cap_key(verdict)]}已用满上限（{used}/{cap}）：升一级"
+                key = self.cap_key(verdict)
+                why = f"{_LABEL[key]}已用满上限（{used}/{cap}）：升一级"
                 reasons.append(why)
-                verdict = self.make(nxt, verdict, [why])
+                verdict = self.make(nxt, verdict, [why], code="rule_cap_reached", params={"step": key, "used": used, "cap": cap, "next": nxt})
                 continue
             break
         if verdict["verdict"] == "replan" and self.floor.allowed is not None and not verdict["replan"].get("stuck_reason"):
@@ -334,15 +369,25 @@ class _Rules:
 
     # --- 构造 Verdict ---
 
-    def make(self, step: str, base: Mapping[str, Any] | None, why: list[str], *, question: str = "") -> dict[str, Any]:
-        """按升级步骤构造 Verdict；沿用原提议里还适用的部分（Progress Check、layer、repair 的 Node 与指导、问题等）。"""
+    def make(
+        self, step: str, base: Mapping[str, Any] | None, why: list[str], *, question: str = "", code: str = "", params: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """按升级步骤构造 Verdict；沿用原提议里还适用的部分（Progress Check、layer、repair 的 Node 与指导、问题等）。
+        code、params 是改写理由的规则的代码与参数（TMP 计划第 5 节），客户端按它翻译，reason 作后备。"""
         base = base or {}
         if step == "escalate":
             step = self.escalate_step()
+        if step == "rollback" and not self.ledger.checkpoints:
+            # 没有检查点可退：问人（TMP 计划第 7 节）。
+            step = "escalate_human"
         label = _LABEL.get(step, step)
         text = "；".join(w for w in why if w)
         reason = f"{base['reason']}；按规则改为{label}：{text}" if base.get("reason") else (text or label)
         out: dict[str, Any] = {"reason": reason}
+        if code:
+            out["reason_code"] = code
+            if params:
+                out["reason_params"] = dict(params)
         for key in ("layer", "progress_check"):
             if key in base:
                 out[key] = copy.deepcopy(base[key])
@@ -373,6 +418,8 @@ class _Rules:
                 esc["state_summary"] = old["state_summary"]
             self.human_details(esc, why)
             out.update(verdict="escalate", escalate=esc)
+        elif step == "rollback":
+            out.update(verdict="rollback", rollback={"checkpoint": self.ledger.checkpoints[-1]})
         elif step == "abort":
             old = base.get("abort") if base.get("verdict") == "abort" else None
             out.update(verdict="abort", abort=copy.deepcopy(old) if old else self.abort_details())

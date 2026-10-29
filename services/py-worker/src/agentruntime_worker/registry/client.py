@@ -18,6 +18,7 @@ import contextlib
 import contextvars
 import os
 from collections.abc import AsyncIterator, Mapping
+from dataclasses import dataclass
 from typing import Any
 
 import grpc
@@ -27,11 +28,12 @@ from agentruntime.common.v1 import payload_pb2, tenant_pb2
 from agentruntime.registry.v1 import registry_pb2 as rg
 from agentruntime.registry.v1 import registry_pb2_grpc as rg_grpc
 from agentruntime.workflow.v1 import task_pb2
-from agentruntime_core.errors import InvalidError, TransientError
+from agentruntime_core.errors import InvalidError, NotFoundError, ProviderError, TransientError
 
 from agentruntime_worker.activities.types import Tenant
 from agentruntime_worker.config import ENV_REGISTRY_ADDRESS, WorkerConfig
 from agentruntime_worker.executor.grpc_gateway import restore_error
+from agentruntime_worker.planner.context import TaskFamily
 
 # 每次调用的默认 deadline（秒）。
 DEFAULT_TIMEOUT_S = 10.0
@@ -65,6 +67,15 @@ def json_payload(document: Mapping[str, Any]) -> payload_pb2.JsonPayload:
     value = struct_pb2.Value()
     json_format.ParseDict(dict(document), value)
     return payload_pb2.JsonPayload(value=value)
+
+
+@dataclass(frozen=True)
+class TaskFamilyVocabulary:
+    """GetTaskFamilies 的结果：版本（平台默认的写成 default/vN）、各族与是不是平台默认的那份。"""
+
+    version: str
+    families: tuple[TaskFamily, ...]
+    platform_default: bool
 
 
 class GrpcRegistry:
@@ -150,6 +161,26 @@ class GrpcRegistry:
         """租户策略；version 为空时取当前版本。"""
         resp = await self._call("GetTenantPolicy", rg.GetTenantPolicyRequest(tenant=tenant_context(tenant), version=version))
         return resp.tenant_policy
+
+    async def get_task_families(self, tenant: Tenant) -> TaskFamilyVocabulary | None:
+        """租户的任务族词表（没有自己的就是平台默认的，TMP 计划第 6 节）；Registry 里还没有词表（NotFound），或 task-service
+        还不认这个方法（Unimplemented）时返回 None。"""
+        try:
+            resp = await self._call("GetTaskFamilies", rg.GetTaskFamiliesRequest(tenant=tenant_context(tenant)))
+        except NotFoundError:
+            return None
+        except ProviderError as err:
+            if err.code == "unimplemented":
+                return None
+            raise
+        found = resp.task_families
+        doc = json_format.MessageToDict(found.document.value) if found.document.HasField("value") else {}
+        families = tuple(
+            TaskFamily(id=str(f["id"]), description=str(f.get("description") or ""), examples=tuple(str(e) for e in f.get("examples") or ()))
+            for f in doc.get("families") or []
+            if isinstance(f, dict) and f.get("id")
+        )
+        return TaskFamilyVocabulary(version=found.version, families=families, platform_default=found.platform_default)
 
     async def get_recipe(self, tenant: Tenant, name: str, version: str = "") -> rg.Recipe:
         """Recipe；version 为空时取默认版本。"""

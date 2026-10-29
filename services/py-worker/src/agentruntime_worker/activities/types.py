@@ -48,6 +48,9 @@ class PlanRoundOutput:
     task_plan: dict[str, Any] | None = None
     # 这次规划的模型花费（分诊与规划），计入 Round 的成本（成本口径的人定方案，2026-10-24）。
     cost_usd: float = 0.0
+    # TMP 计划第 5、6 节：goal 是代码给的固定说明时的代码（fast 的 reply_to_message）；这一轮服务端定的任务族（fast 也有）。
+    goal_code: str = ""
+    task_family: str = ""
 
 
 @dataclass
@@ -99,6 +102,8 @@ class StageResult:
     signals: list[str] = field(default_factory=list)
     # 执行这个 Node 发出的工具调用（tool_loop 的调用，含 sub_agent 子工作流里的）；只用来把子工作流里的次数带回父 Stage。
     tool_calls: int = 0
+    # judge 发现的被这一轮改坏的既有产物（node_output 的 regressions，TMP 计划第 7 节）；只交给 Reviewer。
+    regressions: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass

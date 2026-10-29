@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"sort"
 	"strconv"
@@ -33,6 +32,7 @@ const (
 	kindRecipe   = registryv1.RegistryKind_REGISTRY_KIND_RECIPE
 	kindProfile  = registryv1.RegistryKind_REGISTRY_KIND_MODEL_PROFILE
 	kindPolicy   = registryv1.RegistryKind_REGISTRY_KIND_TENANT_POLICY
+	kindFamilies = registryv1.RegistryKind_REGISTRY_KIND_TASK_FAMILIES
 )
 
 // fail 把错误转成带 trailer 的 gRPC 错误；只在 err 不为 nil 时调用。
@@ -418,9 +418,34 @@ func (r *Registry) defaultTenantPolicy(ctx context.Context, version int64) (entr
 	return e, defaultPolicyPrefix + e.label(), found, err
 }
 
-// GetTaskFamilies 取租户的任务族词表（TMP 计划第 6 节）。契约已人审通过（2026-10-28）；第 6 节实现之前回 Unimplemented。
-func (r *Registry) GetTaskFamilies(context.Context, *connect.Request[registryv1.GetTaskFamiliesRequest]) (*connect.Response[registryv1.GetTaskFamiliesResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("任务族词表还没有实现"))
+// GetTaskFamilies 取租户的任务族词表的当前版本（TMP 计划第 6 节）；租户没有自己的时取平台默认的（版本写成 default/vN），
+// 都没有时 NotFound。
+func (r *Registry) GetTaskFamilies(ctx context.Context, req *connect.Request[registryv1.GetTaskFamiliesRequest]) (*connect.Response[registryv1.GetTaskFamiliesResponse], error) {
+	own, err := r.tenantScope(req.Msg.GetTenant())
+	if err != nil {
+		return nil, fail(err)
+	}
+	e, found, err := own.get(ctx, kindFamilies, "", 0)
+	if err != nil {
+		return nil, fail(err)
+	}
+	label, platformDefault := e.label(), false
+	if !found {
+		platform, err := r.platformScope()
+		if err != nil {
+			return nil, fail(err)
+		}
+		if e, found, err = platform.get(ctx, kindFamilies, DefaultTenantPolicy, 0); err != nil {
+			return nil, fail(err)
+		}
+		label, platformDefault = defaultPolicyPrefix+e.label(), true
+	}
+	if !found {
+		return nil, fail(notFound("task_families_not_found", "还没有任务族词表"))
+	}
+	return connect.NewResponse(&registryv1.GetTaskFamiliesResponse{TaskFamilies: &registryv1.TaskFamilies{
+		Version: label, Document: r.payload(e), PlatformDefault: platformDefault,
+	}}), nil
 }
 
 // CurrentTenantPolicy 是租户策略的当前版本（JSON 文档）；没有策略时 found 为 false。task-service 核对提交时的联网申请用（D-16）。

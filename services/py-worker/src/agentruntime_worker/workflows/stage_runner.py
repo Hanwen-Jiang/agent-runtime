@@ -493,7 +493,10 @@ class StageRunner:
                         progressed = True
                         failed_dep = next((d for d in deps if done[d].status != "succeeded"), None)
                         if failed_dep is not None:
-                            done[nid] = StageResult(role=_role(node), status="skipped", failure_class="upstream_failed", error=f"上游 {failed_dep} 没有成功")
+                            done[nid] = StageResult(
+                                role=_role(node), status="skipped", failure_class="upstream_failed", error=f"上游 {failed_dep} 没有成功",
+                                error_code="upstream_failed", params={"node": failed_dep},
+                            )
                             await self._node_finished(env, nid, done[nid])
                         else:
                             await self._node_started(env, node)
@@ -650,7 +653,11 @@ class StageRunner:
         meta = output.get("meta") or {}
         cost = float(meta.get("cost_usd") or 0.0)
         self.spent_usd += cost
-        return StageResult(role=role, status="succeeded", result=output.get("result"), cost_usd=cost, vendor=str(meta.get("vendor") or ""))
+        # TMP 计划第 7 节：judge 发现的被改坏的既有产物只交给 Reviewer（下游只看 result）；别的 role 给了也不算。
+        regressions = [dict(g) for g in output.get("regressions") or [] if isinstance(g, dict)] if role == "judge" else []
+        return StageResult(
+            role=role, status="succeeded", result=output.get("result"), cost_usd=cost, vendor=str(meta.get("vendor") or ""), regressions=regressions,
+        )
 
     async def _reconcile(self, node: dict[str, Any], role: str) -> StageResult:
         try:
@@ -1090,7 +1097,10 @@ class StageRunner:
                 # 成本口径的人定方案：每一步之前查 Task 的预算，用完就停，交给 Reviewer。
                 reason = self._budget_spent(nid)
                 if reason:
-                    return _denied(DEFAULT_ROLE, reason)
+                    # TMP 计划第 5 节：与时间、工具调用预算同一个代码，params 的 budget 是 usd。
+                    budget = self._budget()
+                    params = {"budget": "usd", "limit": budget["task_usd"], "used": budget["spent_usd"]}
+                    return replace(_denied(DEFAULT_ROLE, reason), error_code="budget_exhausted", params=params)
             # TMP 计划第 3 节：时间预算用完就不再请求下一步。
             stop = self._budget_stop(nid, before_call=False)
             if stop is not None:

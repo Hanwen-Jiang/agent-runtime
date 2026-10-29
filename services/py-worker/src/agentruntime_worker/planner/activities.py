@@ -58,7 +58,9 @@ class PlannerActivities:
         )
         stage = await self._with_context_read(inp.tenant, result.stage, context.effect_ceiling)
         cost = round(sum(c.cost_usd for c in result.calls), 6)
-        return PlanRoundOutput(stage=stage, triage_level=result.triage_level, task_plan=result.task_plan, cost_usd=cost)
+        return PlanRoundOutput(
+            stage=stage, triage_level=result.triage_level, task_plan=result.task_plan, cost_usd=cost, goal_code=result.goal_code, task_family=result.task_family,
+        )
 
     async def _with_context_read(self, tenant: Tenant, stage: Any, ceiling: str) -> Any:
         """tool_loop 的 Goal Node 加上 context_read（已有的工具不变，追加在后面）。"""

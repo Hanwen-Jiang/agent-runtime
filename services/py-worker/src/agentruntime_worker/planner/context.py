@@ -41,6 +41,15 @@ class CatalogView:
 
 
 @dataclass(frozen=True)
+class TaskFamily:
+    """任务族词表里的一族（task_families.schema.json，TMP 计划第 6 节）。"""
+
+    id: str
+    description: str
+    examples: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class PlanningContext:
     """规划时用到的 Session 上下文。"""
 
@@ -53,6 +62,8 @@ class PlanningContext:
     session_budget_remaining_usd: float | None = None
     model_profile_updated: bool = False
     """相关 Model Profile 最近更新过（附录 C.2：缓存的 Recipe 不再可信）。"""
+    task_families: tuple[TaskFamily, ...] | None = None
+    """租户的任务族词表（Registry；TMP 计划第 6 节）。有时任务族只能从里面选；None 是还没有词表，照旧取分诊给的。"""
 
 
 class PlanningContextSource(Protocol):

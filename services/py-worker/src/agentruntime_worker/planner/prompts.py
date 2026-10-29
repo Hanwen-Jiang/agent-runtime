@@ -111,8 +111,13 @@ def classifier_messages(message: str, task_state: dict[str, Any] | None, context
     if task_state:
         rounds = task_state.get("rounds") or []
         summary = f"\n当前 Task：目标 {task_state.get('goal', '')}；已有 {len(rounds)} 个 Round" + (f"，最近一个的判定是 {rounds[-1].get('verdict')}" if rounds and rounds[-1].get("verdict") else "")
-    families = sorted({r.task_family for r in context.recipes})
-    hint = f"\n已知的任务族：{'、'.join(families)}" if families else ""
+    if context.task_families is not None:
+        # TMP 计划第 6 节：任务族只能从词表里选，选不出就填 null（记为 general.unclassified）。
+        listed = "\n".join(f"- {f.id}：{f.description}" + (f"（例如：{'；'.join(f.examples)}）" if f.examples else "") for f in context.task_families)
+        hint = f"\ntask_family 只能从下面的词表里选一个，都不合适时填 null：\n{listed}"
+    else:
+        families = sorted({r.task_family for r in context.recipes})
+        hint = f"\n已知的任务族：{'、'.join(families)}" if families else ""
     return [
         mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=f"{_CLASSIFIER_RULES}\n可选的 kind：{'、'.join(MESSAGE_KINDS)}", cache_breakpoint=True),
         mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=f"用户消息：{message}{summary}{hint}"),

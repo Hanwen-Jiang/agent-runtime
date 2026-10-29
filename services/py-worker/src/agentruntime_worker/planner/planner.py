@@ -70,6 +70,10 @@ class PlanResult:
     """最后一次不合格的说明（写入 trace）。"""
     adjustments: list[str] = field(default_factory=list)
     """代码替模型改正了什么（例如去掉不可用的 Tier；写入 trace）。"""
+    task_family: str = ""
+    """这一轮定的任务族（TMP 计划第 6 节）：有词表时由服务端定；fast 也有。"""
+    goal_code: str = ""
+    """goal 是代码给的固定说明时的代码（TMP 计划第 5 节）：fast 的 reply_to_message。"""
 
 
 PLAN_OUTPUT_SCHEMA: dict[str, Any] = {
@@ -96,6 +100,9 @@ class Planner:
         self.config = config or PlannerConfig()
 
     async def plan(self, request: PlanRequest) -> PlanResult:
+        return _settle_family(request, await self._plan(request))
+
+    async def _plan(self, request: PlanRequest) -> PlanResult:
         calls: list[ModelCall] = []
         decided_by_reviewer = reviewer_decision(request.last_round, context=request.context) is not None
         signals = None if decided_by_reviewer else await self._classify(request, calls)
@@ -120,7 +127,8 @@ class Planner:
         if decision.level in ("fast", "light"):
             decision = replace(decision, level="full", reasons=[*decision.reasons, "模型不可用：改走保守规划"])
         stage, task_plan = self._fallback(request, decision, self._keep_nodes(request))
-        return PlanResult(triage_level=decision.level, stage=stage, task_plan=task_plan, decision=decision, calls=[], fallback=True, problems=["模型不可用：决策调用的重试用完"])
+        result = PlanResult(triage_level=decision.level, stage=stage, task_plan=task_plan, decision=decision, calls=[], fallback=True, problems=["模型不可用：决策调用的重试用完"])
+        return _settle_family(request, result)
 
     # --- 模型调用 ---
 
@@ -270,3 +278,24 @@ class Planner:
         }
         triage: dict[str, Any] = {"level": decision.level, "task_family": decision.task_family or UNCLASSIFIED_TASK_FAMILY}
         return stage, {"triage": triage, "horizon": "explore"}
+
+
+FAST_GOAL_CODE = "reply_to_message"
+
+
+def _settle_family(request: PlanRequest, result: PlanResult) -> PlanResult:
+    """定这一轮的任务族与 goal_code（TMP 计划第 5、6 节）。有词表时任务族由服务端定：分诊给的在词表里就用它，否则记
+    general.unclassified，Task Plan 里规划模型写的改成它；没有词表时照旧，取 Task Plan 里的，再没有就取分诊给的。"""
+    vocabulary = request.context.task_families
+    decided = result.decision.task_family
+    task_plan = result.task_plan
+    if vocabulary is not None:
+        family = decided if decided and decided in {f.id for f in vocabulary} else UNCLASSIFIED_TASK_FAMILY
+        if isinstance(task_plan, dict):
+            triage = dict(task_plan.get("triage") or {}) if isinstance(task_plan.get("triage"), dict) else {}
+            task_plan = {**task_plan, "triage": {**triage, "task_family": family}}
+    else:
+        written = ((task_plan or {}).get("triage") or {}).get("task_family") if isinstance(task_plan, dict) else None
+        family = str(written or decided or UNCLASSIFIED_TASK_FAMILY)
+    goal_code = FAST_GOAL_CODE if result.triage_level == "fast" else ""
+    return replace(result, task_plan=task_plan, task_family=family, goal_code=goal_code)

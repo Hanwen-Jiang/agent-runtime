@@ -1,7 +1,7 @@
 # TMP 计划：线上日志的问题、真模型实验的遗留与评测可观测（设计稿）
 
 > 状态：2026-10-28 人确认开工，要人定的几项已定（第 11 节）。第 3～7 节的 S-01 草案人审通过（兼容性基线已更新）；
-> 第 2～4 节已实现（11.7）。第 5～10 节未做。来源两处：
+> 第 2～7 节已实现（11.7、11.8）。第 8～10 节未做。来源两处：
 > - 线上日志（`Z:\agentruntime\1028137pm.log`，code.cgent.link，租户 `gh-nsnzd-kimberlyxie343178`，“读仓库并讲清结构”跑了 5 轮、$0.62，最后卡在“规划下一轮”）；
 > - 真模型实验报告（`docs/job-qualifications/real-model-experiments-2026-10-28/README.md` 第 6 节的 P0、P1）。
 > 已经在本仓库里改掉的列在第 1 节；第 2 到 9 节是重的或要先定的，每节写清问题、证据、做法、要人定的、验收。
@@ -222,8 +222,8 @@ task-service 的 `GetTaskFamilies` 审过之前回 Unimplemented。
 | 用在 | 代码 |
 | --- | --- |
 | verdict 的 reason_code | 规则：`rule_fallback`、`rule_node_failed`、`rule_failed_twice`、`rule_failed_thrice`、`rule_denied`、`rule_same_error_after_retry`、`rule_merge_conflict`、`rule_replan_no_progress`、`rule_unverified_quality`、`rule_budget_spent`、`rule_budget_alarm`、`rule_cap_reached`、`rule_criteria_not_met`、`rule_no_deliver`、`rule_no_checkpoint`、`rule_unknown_recipe`、`rule_recipe_over_ceiling`、`rule_regression`；工作流：`budget_stopped`、`budget_no_reply`、`human_stopped`、`human_no_reply`、`finish_rejected`、`workspace_empty` |
-| human_input_required 的 question_code | `budget_exhausted`、`rule_stuck`、`recipe_over_ceiling`、`finish_rejected`、`workspace_empty` |
-| node_finished、tool_status 的 error_code | `budget_exhausted`、`max_iterations`、`repeated_error`、`tool_not_allowed`、`tool_rejected`、`activity_timeout`，以及工具自己的代码（`file_not_found` 等） |
+| human_input_required 的 question_code | `budget_exhausted`、`finish_rejected`；规则生成的问题与 Verdict 的 reason_code 相同（11.8） |
+| node_finished、tool_status 的 error_code | `budget_exhausted`、`max_iterations`、`repeated_error`、`tool_not_allowed`、`tool_rejected`、`activity_timeout`、`upstream_failed`，以及工具自己的代码（`file_not_found` 等） |
 | decision_retry 的 error_code | activity 失败的类型（`models_exhausted`、`grpc_deadline_exceeded` 等）、`activity_timeout` |
 | stage_started 的 goal_code | `reply_to_message`（fast 规划） |
 
@@ -264,3 +264,54 @@ task-service 的 `GetTaskFamilies` 审过之前回 Unimplemented。
   问题选项与列表比较；撤掉的副本在业务库里留一行 `deleted`，按“没有或已删除”判。
 - 没做：sub_task 的子 Task 照搬父 Task 的预算（它自己的时间与工具调用另算、也会自己问人）；program 节点在 activity 里调的工具不数；
   模板大批量的几批并发时各自按启动时的剩余次数查，合起来可能略超。
+
+### 11.8 第 5～7 节的细化与验收测试（2026-10-28 人确认，已实现）
+
+**第 5 节：代码**（测试 `services/py-worker/tests/test_message_codes.py`）
+
+- 规则给出或改写的 Verdict 带 `reason_code` 与 `reason_params`，取**决定最终去向的那一条规则**的代码；模型自己的理由、规则没改的不带。
+  参数：`rule_failed_twice`、`rule_failed_thrice` 是 `{node, times}`；`rule_denied` 是 `{nodes}`；`rule_cap_reached` 是
+  `{step, used, cap, next}`；`rule_no_checkpoint` 是 `{checkpoint}`；`rule_unknown_recipe` 是 `{recipe}`；`rule_recipe_over_ceiling`
+  是 `{recipe, risk, ceiling}`；`rule_budget_spent` 带 `spent_ratio`；`finish_rejected` 是 `{count}`。
+- **question_code 不另起一套**：问题由规则生成时，`human_input_required` 的 `question_code` 就是 Verdict 的 `reason_code`；模型写的问题不带
+  （11.5 里原来的 `rule_stuck` 不用了）。
+- 问人后停止或没回复，工作流**另推一个 abort 的 verdict 事件**（`human_stopped`、`human_no_reply`），客户端看得到为什么收尾。
+- `node_finished` 的 `error_code`：StageResult 有就用；否则取说明开头“代码：”（中文或英文冒号）里 snake_case 的代码；`budget_check`
+  记为 `budget_exhausted`（params 的 budget 是 usd）；上游没成功而跳过的是 `upstream_failed`（params `{node}`）。`tool_status` 同样从工具
+  错误的开头取。
+- fast 规划：`PlanRoundOutput.goal_code = reply_to_message`（activity 的输出，不是契约），`stage_started` 带出。
+- 不在本仓库：coding-web 按代码翻译（coding-agent 仓库），本节做完后另起。
+
+**第 6 节：任务族词表**（测试 `test_task_families.py`；Go：`internal/registry/tmp_task_families_test.go`、
+`cmd/task-service/tmp_task_families_seed_test.go`）
+
+- Registry：`TASK_FAMILIES` 的规则同租户策略（发布即生效、不走 Promote；平台默认不带租户、名为 default；租户自己的不带名字、优先）；
+  id 重复报 `duplicate_task_family`；开发种子的 kind 是 `task_families`，`deploy/dev/registry-seed.json` 加一份平台默认的词表。
+- Worker：`GrpcRegistry.get_task_families`；规划上下文的 `task_families`（Registry 里没有词表时为空，照旧规划，不算失败）。
+- 有词表时任务族由服务端定：分诊给的不在词表里记 `general.unclassified`；Task Plan 里规划模型写的不算数；分诊的提示列出词表的 id 与说明。
+- `PlanRoundOutput.task_family` 带出这一轮定的任务族（fast 也有）；收尾写回优先用它，没有时用 Task Plan 里的。
+- 没覆盖：未分类的计数（Learning 的报告里统计）、E4 那批 CI 修复请求“全部落在同一族”（要真模型跑）、Learning 提出词表增补。
+
+**第 7 节：regressions**（测试 `test_regressions.py`）
+
+- role 为 judge 的 model 节点：Node Executor 按 `{result, regressions}` 的外壳向模型要输出，拆开后 `result` 照旧、`regressions` 另放（不合格时
+  带着校验错误重问一次）；program 执行的 judge 可以直接在输出顶层给；其他 role 不加外壳，给了也丢掉。
+- Stage Runner 把它放进 StageResult，只交给 Reviewer，下游只看得到 result。
+- Reviewer 的 floor：有 regressions 时至少 rollback，退到最近的检查点；没有检查点或 rollback 已用满上限时问人。代码 `rule_regression`，
+  参数 `{artifacts}`。
+- 评测样本 `rs_rollback_corrupted_accounts` 要在 judge 的结果里补上 regressions 才能由代码判对：那是评测集的标注改动，要人确认，没改。
+
+**实现记录**
+
+- 第 5 节：`reviewer/rules.py`（floor 的每条规则带代码与参数；`make` 带代码；`Floor.code`、`reason_code`）；`workflows/events.py`
+  （`code_of` 从“代码：说明”取代码，`stage_started` 的 `goal_code`）；`workflows/task.py` 的 `_stopped`，版本分支 `CODES_PATCH`
+  （`tmp-message-codes`，追加在 `AT_START` 末尾；第 4 节测试里“最后两项是第 3、4 节的分支”改成“紧接着 PROGRESS_DETAIL_PATCH”）；
+  golden 补 `codes_human_stopped`。
+- 第 6 节：Go `internal/registry`（种类规格、`perTenant`、`duplicate_task_family`、`GetTaskFamilies`、种子的 `task_families`）；
+  `deploy/dev/registry-seed.json` 加平台默认的词表（9 族）；Worker `GrpcRegistry.get_task_families`、`planner/context.TaskFamily`、
+  分诊提示、`planner._settle_family`、`PlanRoundOutput.task_family`、收尾写回优先用它。
+- 第 7 节：`executor/node_executor.judge_envelope`；Stage Runner 只收 judge 的 regressions；floor 的 `rule_regression`（至少 rollback，
+  只允许 rollback、问人、收尾）；`make("rollback")` 退到最近的检查点，没有检查点时问人。
+- 没做：质量包装（revise 等）里的 judge 发现的 regressions 还没有带到被包装的 Node 上；sub_task 等子 Task 不推进度事件，不受影响。
+测试辅助的两处改动：`registry_fakes.FakeRegistry` 加 `GetTaskFamilies`；`stage_harness.Script` 加 `goal_code`、`task_family`（设了才传给
+PlanRoundOutput，不影响其他测试）。
