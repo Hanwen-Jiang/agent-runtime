@@ -29,6 +29,23 @@ DECISION_START_TO_CLOSE = timedelta(minutes=2)
 MODEL_DECISION_START_TO_CLOSE = timedelta(minutes=5)
 FINALIZE_START_TO_CLOSE = timedelta(minutes=1)
 
+# TMP 计划（eval-observability-and-runtime-fixes）第 4 节：DECISION_RETRY_PATCH 之后的运行由工作流重试 plan_round、review_round、
+# tool_loop_step（服务端只试一次），次数与退避同 DECISION_RETRY，第 2 次起每次尝试之前推 decision_retry。
+DECISION_MAX_ATTEMPTS = 5
+DECISION_FIRST_BACKOFF = timedelta(seconds=1)
+DECISION_MAX_BACKOFF = timedelta(seconds=30)
+# 一步决策连同重试的总时限，从第一次尝试算：够两次完整的尝试。到了（或剩下的不够一次 DECISION_MIN_ATTEMPT）就不再试，
+# 规划改用不调模型的保守规划，评审只按规则判定。原来最坏约 27 分钟没有任何事件。
+DECISION_TOTAL = timedelta(minutes=10)
+DECISION_MIN_ATTEMPT = timedelta(seconds=30)
+# 不调模型的那一次（保守规划、只按规则判定）。
+NO_MODEL_START_TO_CLOSE = timedelta(minutes=1)
+
+
+def decision_backoff(attempt: int) -> timedelta:
+    """第 attempt 次尝试失败之后等多久：1、2、4、8……秒，最多 30 秒（与 DECISION_RETRY 相同）。"""
+    return min(DECISION_FIRST_BACKOFF * (2 ** (attempt - 1)), DECISION_MAX_BACKOFF)
+
 
 def model_node_timeouts(timeout_s: float | None) -> tuple[timedelta, timedelta]:
     """由 Node 的 budget.timeout_s 给出 (start_to_close, heartbeat_timeout)，保证 0 < heartbeat < start_to_close。

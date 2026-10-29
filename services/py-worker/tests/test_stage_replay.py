@@ -41,6 +41,7 @@ from agentruntime_worker.workflows.stage_runner import (
     SubAgentWorkflow,
     SubgraphWorkflow,
 )
+from agentruntime_worker.workflows import patches
 from agentruntime_worker.workflows.patches import EVENTS_PATCH, PATCHES_AT_START, R01_FIXES_PATCH
 from agentruntime_worker.workflows.task import POLICY_PATCH, REVIEWER_PATCH, STAGE_RUNNER_PATCH, TaskWorkflow
 
@@ -86,14 +87,20 @@ STAGE_CASES: dict[str, tuple[str, str]] = {
     # R-01 评审之后：执行失败的 Node 也经 audit_log 审计；tool_loop 每一步之前查预算，用完就停（“不再请求下一步”）。
     "r01_failed_node_audited": (names.TASK_WORKFLOW, r'stub_failure.*r01-audit-and-budget.*"hook":\s*"audit_log"'),
     "r01_tool_loop_budget": (names.TASK_WORKFLOW, r'"name":\s*"tool_loop_step".*r01-audit-and-budget.*\\u4e0d\\u518d\\u8bf7\\u6c42\\u4e0b\\u4e00\\u6b65'),
+    # TMP 计划（eval-observability-and-runtime-fixes）第 3 节：时间、工具调用预算用完时问人；tool_loop 因工具调用预算停下。
+    "budget_ask_human": (names.TASK_WORKFLOW, r'"question_id":\s*"_budget"'),
+    "budget_tool_calls_stop": (names.TASK_WORKFLOW, r'"error_code":\s*"budget_exhausted"'),
+    # 第 4 节：决策调用由工作流重试，重试之前推 decision_retry。
+    "decision_retry": (names.TASK_WORKFLOW, r'"event":\s*"decision_retry"'),
 }
 REVIEW_CASES = ("review_repair_rerun", "review_escalate_human", "review_rollback")
 POLICY_CASES = ("policy_effect_denied", "policy_finish_rejected", "policy_task_mounts")
 EVENTS_CASES = ("events_progress",)
 AT_START_CASES = ("patches_at_start",)
 R01_CASES = ("r01_failed_node_audited", "r01_tool_loop_budget")
+TMP_CASES = ("budget_ask_human", "budget_tool_calls_stop", "decision_retry")
 # 一次问完全部版本分支之后录下的（新历史开头带全部版本标记）。
-NEWER_CASES = (*AT_START_CASES, *R01_CASES)
+NEWER_CASES = (*AT_START_CASES, *R01_CASES, *TMP_CASES)
 
 MUTATION_C = "# replay-mutation:C"
 MUTATION_D = "# replay-mutation:D"
@@ -205,8 +212,15 @@ def test_version_branch_keeps_old_histories_replayable() -> None:
     # R-01 评审之后的版本分支：新历史带标记；之前录下的（含 patches_at_start）都没有，开头问到时返回 False，按旧路径回放。
     for name in R01_CASES:
         assert R01_FIXES_PATCH in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"{name} 应带版本标记 {R01_FIXES_PATCH}"
-    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in R01_CASES)):
+    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in R01_CASES + TMP_CASES)):
         assert R01_FIXES_PATCH not in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"R-01 修复之前的 {name} 不该有 {R01_FIXES_PATCH}"
+    # TMP 计划第 3、4 节的版本分支（时间与工具调用预算、工作流里的决策重试）：新历史带两个标记，之前录下的都没有。
+    for name in TMP_CASES:
+        text = history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8"))
+        assert patches.BUDGETS_PATCH in text and patches.DECISION_RETRY_PATCH in text and R01_FIXES_PATCH in text, f"{name} 应带第 3、4 节的版本标记"
+    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in TMP_CASES)):
+        text = history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8"))
+        assert patches.BUDGETS_PATCH not in text and patches.DECISION_RETRY_PATCH not in text, f"第 3、4 节之前的 {name} 不该有它们的版本标记"
 
 
 async def test_all_golden_histories_replay_with_the_current_code() -> None:

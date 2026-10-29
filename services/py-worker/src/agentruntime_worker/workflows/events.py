@@ -12,6 +12,8 @@ ActivityName），参数是租户上下文、去重键与 taskapi.v1.TaskEvent�
 - 2026-10-28（S-01 人审通过，版本分支 patches.PROGRESS_DETAIL_PATCH）：顶层 Node 开始执行时 node_started；顶层 Goal Node
   的 tool_loop 里每次工具调用前 tool_status running、后 succeeded 或 failed（用时、新建沙箱环境时的冷启动时间）。target 是
   tool_target 给出的简短说明，经凭据脱敏；不带工具的输出。
+- TMP 计划（eval-observability-and-runtime-fixes）第 3～5 节：决策调用重试之前推 decision_retry（DECISION_RETRY_PATCH）；
+  node_finished、human_input_required、verdict 带上给客户端翻译用的代码与参数（有的时候）。
 
 是工作流代码：时间用 workflow.now()，不做 I/O。
 """
@@ -53,7 +55,10 @@ _TYPES = {
     "tool_status": task_api_pb2.TASK_EVENT_TYPE_TOOL_STATUS,
     "human_input_required": task_api_pb2.TASK_EVENT_TYPE_HUMAN_INPUT_REQUIRED,
     "verdict": task_api_pb2.TASK_EVENT_TYPE_VERDICT,
+    "decision_retry": task_api_pb2.TASK_EVENT_TYPE_DECISION_RETRY,
 }
+# defs.schema.json 的 message_code。
+_CODE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 
 # target 只取这些参数（按顺序第一个有的）：作用在什么上，不取环境变量、请求体之类。
 _TARGET_ARGS = ("argv", "command", "path", "file", "url", "query", "q", "pattern", "name")
@@ -90,6 +95,13 @@ def tool_target(args: Any) -> str:
     return ""
 
 
+def message_code(text: str) -> str:
+    """把错误类型之类的名字整理成 message_code（snake_case）；整理不出来时为空。纯函数。"""
+    snake = re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\g<1>", str(text)).lower()
+    snake = re.sub(r"[^a-z0-9_]+", "_", snake).strip("_")[:64]
+    return snake if _CODE.match(snake) else ""
+
+
 def sandbox_startup_ms(observation: Any) -> int | None:
     """工具的输出里报的沙箱冷启动时间（shell_run 新建了环境时才有）。"""
     value = observation.get("sandbox_startup_ms") if isinstance(observation, dict) else None
@@ -123,6 +135,10 @@ def node_payload(node_id: str, result: StageResult) -> dict[str, Any]:
         payload["failure_class"] = result.failure_class
     if result.error:
         payload["error"] = result.error[:ERROR_CHARS]
+    if result.error_code and _CODE.match(result.error_code):
+        payload["error_code"] = result.error_code
+        if result.params:
+            payload["params"] = dict(result.params)
     return payload
 
 
@@ -206,9 +222,35 @@ class EventPublisher:
     async def node_finished(self, round_seq: int, node_id: str, result: StageResult) -> None:
         await self.publish(round_seq, "node_finished", node_payload(node_id, result), about=node_id)
 
-    async def human_input_required(self, round_seq: int, question_id: str, kind: str, text: str, options: tuple[str, ...], deadline: str) -> None:
-        payload = {"question_id": question_id, "kind": kind, "text": text, "options": list(options), "deadline": deadline}
+    async def human_input_required(
+        self, round_seq: int, question_id: str, kind: str, text: str, options: tuple[str, ...], deadline: str, *,
+        code: str = "", params: dict[str, Any] | None = None,
+    ) -> None:
+        payload: dict[str, Any] = {"question_id": question_id, "kind": kind, "text": text, "options": list(options), "deadline": deadline}
+        if code and _CODE.match(code):
+            payload["question_code"] = code
+            if params:
+                payload["params"] = dict(params)
         await self.publish(round_seq, "human_input_required", payload, about=question_id)
 
     async def verdict(self, round_seq: int, verdict: dict[str, Any]) -> None:
-        await self.publish(round_seq, "verdict", {"verdict": str(verdict["verdict"]), "reason": str(verdict.get("reason", ""))})
+        payload: dict[str, Any] = {"verdict": str(verdict["verdict"]), "reason": str(verdict.get("reason", ""))}
+        code = str(verdict.get("reason_code") or "")
+        if code and _CODE.match(code):
+            payload["reason_code"] = code
+            if verdict.get("reason_params"):
+                payload["params"] = dict(verdict["reason_params"])
+        await self.publish(round_seq, "verdict", payload)
+
+    async def decision_retry(
+        self, round_seq: int, step: str, attempt: int, max_attempts: int, *, node_id: str = "", error_code: str = "", error: str = "", about: str = "",
+    ) -> None:
+        """决策调用的第 attempt 次尝试之前（attempt ≥ 2）；去重键 r<Round>/decision_retry/<步>[/<about>]/<次>。"""
+        payload: dict[str, Any] = {"step": step, "attempt": attempt, "max_attempts": max_attempts}
+        if node_id:
+            payload["node_id"] = node_id
+        if error_code and _CODE.match(error_code):
+            payload["error_code"] = error_code
+        if error:
+            payload["error"] = redact(error)[:ERROR_CHARS]
+        await self.publish(round_seq, "decision_retry", payload, about="/".join(p for p in (step, about, str(attempt)) if p))

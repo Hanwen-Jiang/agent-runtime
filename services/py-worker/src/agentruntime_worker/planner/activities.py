@@ -34,19 +34,19 @@ class PlannerActivities:
     @activity.defn(name=names.PLAN_ROUND)
     async def plan_round(self, inp: PlanRoundInput) -> PlanRoundOutput:
         context = await self.contexts.load(inp)
-        result = await self.planner.plan(
-            PlanRequest(
-                tenant=inp.tenant,
-                task_id=inp.task_id,
-                round_seq=inp.round_seq,
-                message=inp.message,
-                task_state=inp.task_state,
-                attachments=list(inp.attachments),
-                context=context,
-                task_plan=inp.task_plan,
-                last_round=inp.last_round,
-            )
+        request = PlanRequest(
+            tenant=inp.tenant,
+            task_id=inp.task_id,
+            round_seq=inp.round_seq,
+            message=inp.message,
+            task_state=inp.task_state,
+            attachments=list(inp.attachments),
+            context=context,
+            task_plan=inp.task_plan,
+            last_round=inp.last_round,
         )
+        # 工作流里的决策重试用完时（TMP 计划第 4 节）不调模型，直接给保守规划。
+        result = self.planner.plan_without_model(request) if inp.no_model else await self.planner.plan(request)
         # 判定依据与模型调用写入日志（trace），不传给下游。
         activity.logger.info(
             "Planner：Triage %s，依据 %s；模型调用 %s%s%s",

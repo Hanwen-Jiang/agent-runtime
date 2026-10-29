@@ -270,7 +270,9 @@ async def test_task_state_is_queryable_and_matches_the_schema(harness: Harness) 
     assert state["goal"] == inp.message
     assert state["done_when"] == "给出可执行的建议"
     assert state["status"] == "running"
-    assert state["constraints"] == {"effect_ceiling": "read", "budget_usd": 2.0}
+    # 工具调用预算来自租户策略（TMP 计划第 3 节）；用量在 budget_used。
+    assert state["constraints"] == {"effect_ceiling": "read", "budget_usd": 2.0, "tool_calls": 20}
+    assert state["budget_used"]["tool_calls"] == 0 and state["budget_used"]["extensions"] == 0
     assert state["rounds"][-1]["seq"] == 1 and state["rounds"][-1]["status"] == "running"
     assert "verdict" not in state["rounds"][-1]
     assert state["pinned"] == {
@@ -315,8 +317,9 @@ async def test_reviewer_sees_only_results_state_and_criteria(harness: Harness) -
     assert len(reviews) == 1
     review = reviews[0]
     # S-10：另带本轮执行的 Stage（判 continue 要看它的 exit_when，诊断形状要看 Node 结构）与之前各 Round 的摘要；
-    # 仍然没有 Task Plan、Triage 的理由与任何 rationale。
-    assert {f.name for f in dataclasses.fields(review)} == {"tenant", "task_id", "round_seq", "task_state", "stage_results", "done_when", "stage", "history"}
+    # 仍然没有 Task Plan、Triage 的理由与任何 rationale（rules_only 只是只按规则判定的开关，TMP 计划第 4 节）。
+    assert {f.name for f in dataclasses.fields(review)} == {"tenant", "task_id", "round_seq", "task_state", "stage_results", "done_when", "stage", "history", "rules_only"}
+    assert review.rules_only is False
     assert review.done_when == "每个结论有数据支撑" == review.task_state["done_when"]
     assert set(review.stage_results) == {"answer"}
     answer = review.stage_results["answer"]

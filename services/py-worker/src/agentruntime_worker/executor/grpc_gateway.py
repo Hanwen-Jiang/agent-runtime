@@ -45,6 +45,8 @@ from agentruntime_worker.config import ENV_MODEL_GATEWAY_ADDRESS
 ERROR_TRAILER = "ar-error-bin"
 # Error.details 里的建议重试间隔（整数毫秒），只在 transient 时出现。
 RETRY_AFTER_DETAIL = "retry_after_ms"
+# 网关的 models_exhausted 在 details 里带上最后一次失败的代码（TMP 计划 eval-observability-and-runtime-fixes 第 4 节），写进说明里。
+LAST_ERROR_CODE_DETAIL = "last_error_code"
 # 每次调用的默认 deadline（秒）：容得下网关的三次尝试（go-model-gateway 的 gateway.DefaultAttemptTimeout 是 90 秒）。
 DEFAULT_TIMEOUT_S = 300.0
 # 在 activity 里调用时，deadline 比 activity 剩下的时间再早这么多秒：留给错误回传与 activity 收尾。
@@ -94,7 +96,11 @@ def _from_trailer(raw: Any) -> ProviderError | None:
     except (DecodeError, ValueError, TypeError):
         return None
     retry_after = _retry_after(error) if category is ErrorCategory.TRANSIENT else None
-    return ProviderError.of(category, error.code or "gateway_error", error.message, retry_after=retry_after)
+    message = error.message
+    last = error.details.fields.get(LAST_ERROR_CODE_DETAIL)
+    if last is not None and last.WhichOneof("kind") == "string_value" and last.string_value:
+        message = f"{message}（最后一次失败：{last.string_value}）"
+    return ProviderError.of(category, error.code or "gateway_error", message, retry_after=retry_after)
 
 
 def restore_error(exc: grpc.aio.AioRpcError) -> ProviderError:

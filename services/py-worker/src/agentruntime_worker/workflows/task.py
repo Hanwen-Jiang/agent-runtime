@@ -12,6 +12,12 @@
 - 进度事件（T-11b，workflows/events.py）：每个 Round 推 round_started、stage_started、verdict，Stage Runner 推
   node_finished 与 human_input_required；交给 Go 的 Session Worker 分配 event_id、经 SSE 推给客户端。推送失败不影响 Task。
 
+- 时间与工具调用预算（TMP 计划 eval-observability-and-runtime-fixes 第 3 节，BUDGETS_PATCH）：每个 Round 开头查，用完了问人
+  （_budget，回复三种）：继续就把用完的那项再加一份，重规划时 Planner 拿到人的指导，停止或没回复就用现有结果收尾。时间只算 Agent
+  在跑的时间，等人回复的时间不算。用量写进 Task State 的 budget_used 与各 Round 的 tool_calls。
+- 规划与评审调用由工作流重试（同一计划第 4 节，DECISION_RETRY_PATCH，workflows/decisions.py），重试之前推 decision_retry；
+  用完或到了总时限，规划用不调模型的保守规划，评审只按规则判定。
+
 Stage 由 Stage Runner 执行（S-04，workflows/stage_runner.py）。S-03 的旧执行路径保留在版本分支后面，
 S-03 留下的事件历史仍按旧路径回放；S-10 之前的历史同样按旧的 Round 循环与收尾顺序回放。
 
@@ -53,12 +59,14 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.reviewer.rules import HUMAN_REPLIES
     from agentruntime_worker.reviewer.signals import history_entry
     from agentruntime_worker.reviewer.summary import apply_state_update
-    from agentruntime_worker.workflows import patches, timeouts
+    from agentruntime_worker.workflows import decisions, patches, timeouts
     from agentruntime_worker.workflows import verdicts as vd
     from agentruntime_worker.workflows.events import EventPublisher
     from agentruntime_worker.workflows.failures import caused_by_cancel as _caused_by_cancel
     from agentruntime_worker.workflows.failures import failure_message as _failure_message
     from agentruntime_worker.workflows.patches import (
+        BUDGETS_PATCH,
+        DECISION_RETRY_PATCH,
         EVENTS_PATCH,
         POLICY_PATCH,
         PROGRESS_DETAIL_PATCH,
@@ -75,6 +83,9 @@ MAX_FINISH_REJECTIONS = 2
 # T-09 第一期只认 allow 与 deny 的挂载点（modify、inject 按 deny）；before_compact 还没接，声明了就拒绝。
 STRICT_TASK_MOUNTS = ("on_task_received", "on_task_start", "before_finish")
 DEFAULT_DONE_WHEN = "回答用户的问题"
+# 时间、工具调用预算用完时问人的问题 id（TMP 计划第 3 节）：同 _review，不合 Node id 的格式。
+BUDGET_QUESTION_ID = "_budget"
+_BUDGET_LABELS = {"wall_clock": ("时间预算", "分钟"), "tool_calls": ("工具调用预算", "次")}
 
 DECISION_RETRY = timeouts.DECISION_RETRY
 
@@ -91,6 +102,12 @@ def _to_value(obj: Any) -> struct_pb2.Value:
     value = struct_pb2.Value()
     json_format.ParseDict(obj, value)
     return value
+
+
+def _budget_limits(inp: task_pb2.TaskWorkflowInput) -> dict[str, float]:
+    """租户策略给的时间（秒）与工具调用预算；0 是不限（TMP 计划第 3 节）。"""
+    wall = inp.budget.wall_clock.ToTimedelta().total_seconds() if inp.budget.HasField("wall_clock") else 0.0
+    return {"wall_clock": max(0.0, wall), "tool_calls": float(max(0, inp.budget.tool_calls))}
 
 
 def _initial_state(inp: task_pb2.TaskWorkflowInput) -> dict[str, Any]:
@@ -184,6 +201,20 @@ class TaskWorkflow:
         self._r01 = False
         # T-11b：进度事件；只有顶层 Task 的新运行有（版本分支 EVENTS_PATCH）。
         self._events: EventPublisher | None = None
+        # TMP 计划第 3 节（BUDGETS_PATCH）：现在的上限（用完问人、继续时加一份）与原来的一份；已发出的工具调用；人选择继续的次数；
+        # 上一个 Stage 的工具调用。时间只算 Agent 在跑的时间：正在等的人工问题与等人的累计秒数（几个问题同时在等只算一次）。
+        self._budgets = False
+        self._limits: dict[str, float] = {"wall_clock": 0.0, "tool_calls": 0.0}
+        self._allotment: dict[str, float] = {"wall_clock": 0.0, "tool_calls": 0.0}
+        self._tool_calls = 0
+        self._extensions = 0
+        self._stage_tool_calls = 0
+        self._started: Any = None
+        self._waiting_now: set[str] = set()
+        self._waiting_since: Any = None
+        self._human_wait_s = 0.0
+        # 同一计划第 4 节（DECISION_RETRY_PATCH）：plan_round、review_round 由工作流重试。
+        self._retry_in_workflow = False
 
     @workflow.run
     async def run(self, inp: task_pb2.TaskWorkflowInput) -> task_pb2.TaskWorkflowResult:
@@ -197,6 +228,15 @@ class TaskWorkflow:
             session_id=inp.tenant.session_id,
         )
         self._state = _initial_state(inp)
+        # TMP 计划第 3、4 节的版本分支：新的运行在 at_start 里已经问过，这里只取值；之前的历史没有标记，都是 False。
+        self._budgets = workflow.patched(BUDGETS_PATCH)
+        self._retry_in_workflow = workflow.patched(DECISION_RETRY_PATCH)
+        if self._budgets:
+            self._started = workflow.now()
+            self._limits = _budget_limits(inp)
+            self._allotment = dict(self._limits)
+            self._write_limits()
+            self._refresh_used()
         self._set_status(enums_pb2.TASK_STATUS_RUNNING)
         try:
             result = await self._loop()
@@ -231,6 +271,90 @@ class TaskWorkflow:
         if self._state:
             result.task_state.CopyFrom(payload_pb2.JsonPayload(schema_id=names.TASK_STATE_SCHEMA_ID, value=_to_value(self._state)))
         return result
+
+    # --- TMP 计划第 3 节：时间与工具调用预算 ---
+
+    def _active_s(self) -> float:
+        """Task 开始以来 Agent 在跑的秒数（工作流时间）：减去等人回复的时间。"""
+        if self._started is None:
+            return 0.0
+        now = workflow.now()
+        waiting = (now - self._waiting_since).total_seconds() if self._waiting_now and self._waiting_since is not None else 0.0
+        return max(0.0, (now - self._started).total_seconds() - self._human_wait_s - waiting)
+
+    def _wait_begins(self, question_id: str) -> None:
+        if question_id in self._waiting_now:
+            return
+        if not self._waiting_now:
+            self._waiting_since = workflow.now()
+        self._waiting_now.add(question_id)
+
+    def _wait_ends(self, question_id: str) -> None:
+        if question_id not in self._waiting_now:
+            return
+        self._waiting_now.discard(question_id)
+        if not self._waiting_now and self._waiting_since is not None:
+            self._human_wait_s += (workflow.now() - self._waiting_since).total_seconds()
+            self._waiting_since = None
+
+    def _write_limits(self) -> None:
+        constraints = self._state.setdefault("constraints", {})
+        if self._limits["tool_calls"] > 0:
+            constraints["tool_calls"] = int(self._limits["tool_calls"])
+        if self._limits["wall_clock"] > 0:
+            constraints["wall_clock_min"] = round(self._limits["wall_clock"] / 60, 4)
+        if not constraints:
+            self._state.pop("constraints", None)
+
+    def _refresh_used(self) -> None:
+        if self._budgets and self._state:
+            self._state["budget_used"] = {
+                "wall_clock_min": round(self._active_s() / 60, 4), "tool_calls": self._tool_calls, "extensions": self._extensions,
+            }
+
+    def _exhausted(self) -> list[str]:
+        """用完了的预算（时间在前）；不限的不算。"""
+        out = []
+        if self._limits["wall_clock"] > 0 and self._active_s() >= self._limits["wall_clock"]:
+            out.append("wall_clock")
+        if self._limits["tool_calls"] > 0 and self._tool_calls >= self._limits["tool_calls"]:
+            out.append("tool_calls")
+        return out
+
+    def _budget_params(self, kind: str) -> dict[str, Any]:
+        if kind == "wall_clock":
+            return {"budget": kind, "limit": round(self._limits[kind] / 60, 2), "used": round(self._active_s() / 60, 2)}
+        return {"budget": kind, "limit": int(self._limits[kind]), "used": self._tool_calls}
+
+    async def _budget_gate(self, seq: int, last_results: dict[str, StageResult]) -> tuple[task_pb2.TaskWorkflowResult | None, task_pb2.HumanReplySignal | None]:
+        """Round 开头：预算用完了就问人。返回 (收尾的结果, 人的回复)：没用完时两项都是 None；人选择继续或重规划时，
+        用完的那几项各加一份，返回回复；停止或没有回复时用现有结果收尾，返回结果。"""
+        self._refresh_used()
+        kinds = self._exhausted()
+        if not kinds:
+            return None, None
+        params = self._budget_params(kinds[0])
+        label, unit = _BUDGET_LABELS[kinds[0]]
+        text = (
+            f"{label} {params['limit']:g} {unit}已经用完（已用 {params['used']:g} {unit}）。"
+            "原样继续（再加一份同样的预算）、带指导重规划，还是停止并用现有结果收尾？"
+        )
+        summary = f"已跑 {seq - 1} 轮，{label}用完"
+        reply = await self._ask(seq, BUDGET_QUESTION_ID, text, HUMAN_REPLIES, summary, code="budget_exhausted", params=params)
+        if reply is None or reply.option == "stop_and_wrap_up":
+            why = "问人没有得到回复：按停止处理" if reply is None else "人选择停止"
+            verdict = vd.stopped(last_results, f"{label}用完，{why}，用现有结果收尾")
+            verdict["reason_code"] = "budget_no_reply" if reply is None else "budget_stopped"
+            verdict["reason_params"] = {"budget": kinds[0]}
+            if self._events is not None:
+                await self._events.verdict(seq, verdict)
+            return self._aborted(verdict), None
+        for kind in kinds:
+            self._limits[kind] += self._allotment[kind]
+        self._extensions += 1
+        self._write_limits()
+        self._refresh_used()
+        return None, reply
 
     # --- Round 循环 ---
 
@@ -332,12 +456,22 @@ class TaskWorkflow:
         task_plan: dict[str, Any] | None = None
         last_round: dict[str, Any] | None = None
         rerun: vd.Rerun | None = None
+        # 上一轮的结果：预算用完、人选择停止时据此收尾。
+        last_results: dict[str, StageResult] = {}
         for seq in range(1, MAX_ROUNDS + 1):
             self._round_seq = seq
             carried: dict[str, StageResult] = {}
             injections: dict[str, list[dict[str, Any]]] = {}
             if self._events is not None:
                 await self._events.round_started(seq, rerun=rerun is not None)
+            if self._budgets:
+                # TMP 计划第 3 节：时间或工具调用预算用完了先问人。
+                stopped, reply = await self._budget_gate(seq, last_results)
+                if stopped is not None:
+                    return stopped
+                if reply is not None and reply.option == "replan_with_guidance":
+                    rerun = None
+                    last_round = {**(last_round or {}), "human_reply": {"option": reply.option, "guidance": reply.guidance}}
             triage_level: str | None = None
             # 这一轮规划的花费：计入 Round 的成本，Stage 执行时已经算进已花的钱（成本口径的人定方案）。原地重跑不经 Planner。
             plan_cost = 0.0
@@ -361,6 +495,11 @@ class TaskWorkflow:
 
             results = await self._run_stage(seq, stage, carried=carried, injections=injections, plan_cost=plan_cost)
             round_entry["cost_usd"] = round(plan_cost + self._stage_cost, 6)
+            last_results = results
+            if self._budgets:
+                round_entry["tool_calls"] = self._stage_tool_calls
+                self._tool_calls += self._stage_tool_calls
+                self._refresh_used()
             self._stages.append(vd.stage_summary(stage))
 
             round_entry["status"] = "reviewing"
@@ -498,47 +637,71 @@ class TaskWorkflow:
     ) -> PlanRoundOutput:
         assert self._input is not None
         inp = self._input
+        request = PlanRoundInput(
+            tenant=self._tenant,
+            task_id=inp.task_id,
+            round_seq=seq,
+            task_state=self._state,
+            message=inp.message,
+            inputs=inputs,
+            attachments=list(inp.attachments),
+            pinned=pinned,
+            task_plan=task_plan,
+            last_round=last_round,
+        )
+        if self._retry_in_workflow:
+            return await self._decide(names.PLAN_ROUND, request, dataclasses.replace(request, no_model=True), "plan_round", seq, PlanRoundOutput)
         return await workflow.execute_activity(
             names.PLAN_ROUND,
-            PlanRoundInput(
-                tenant=self._tenant,
-                task_id=inp.task_id,
-                round_seq=seq,
-                task_state=self._state,
-                message=inp.message,
-                inputs=inputs,
-                attachments=list(inp.attachments),
-                pinned=pinned,
-                task_plan=task_plan,
-                last_round=last_round,
-            ),
+            request,
             task_queue=names.DECISION_QUEUE,
             start_to_close_timeout=timeouts.MODEL_DECISION_START_TO_CLOSE,
             retry_policy=DECISION_RETRY,
             result_type=PlanRoundOutput,
         )
 
+    async def _decide(self, activity: str, request: Any, without_model: Any, step: str, seq: int, result_type: type) -> Any:
+        """TMP 计划第 4 节：由工作流重试决策调用，重试之前推 decision_retry；用完或到了总时限，用不调模型的请求再调一次。"""
+        try:
+            return await decisions.run(
+                activity, request, task_queue=names.DECISION_QUEUE, result_type=result_type, step=step, round_seq=seq, events=self._events,
+            )
+        except decisions.DecisionExhausted as exhausted:
+            workflow.logger.warning("%s 试了 %d 次都没成（%s），改用不调模型的做法", step, exhausted.attempts, _failure_message(exhausted.last))
+        return await workflow.execute_activity(
+            activity,
+            without_model,
+            task_queue=names.DECISION_QUEUE,
+            start_to_close_timeout=timeouts.NO_MODEL_START_TO_CLOSE,
+            retry_policy=DECISION_RETRY,
+            result_type=result_type,
+        )
+
     async def _review(self, seq: int, stage: dict[str, Any], results: dict[str, StageResult]) -> tuple[dict[str, Any], dict[str, Any], float]:
         """Reviewer：输入只有 Stage 结果（含本轮执行的 Stage）、Task State、验收条件与之前各 Round 的摘要。
         返回 (Verdict, 要写进 Task State 的汇总, 这次评审的花费)。"""
         assert self._input is not None
-        raw = await workflow.execute_activity(
-            names.REVIEW_ROUND,
-            ReviewRoundInput(
-                tenant=self._tenant,
-                task_id=self._input.task_id,
-                round_seq=seq,
-                task_state=self._state,
-                stage_results=results,
-                done_when=self._state["done_when"],
-                stage=stage,
-                history=list(self._history),
-            ),
-            task_queue=names.DECISION_QUEUE,
-            start_to_close_timeout=timeouts.MODEL_DECISION_START_TO_CLOSE,
-            retry_policy=DECISION_RETRY,
-            result_type=dict,
+        request = ReviewRoundInput(
+            tenant=self._tenant,
+            task_id=self._input.task_id,
+            round_seq=seq,
+            task_state=self._state,
+            stage_results=results,
+            done_when=self._state["done_when"],
+            stage=stage,
+            history=list(self._history),
         )
+        if self._retry_in_workflow:
+            raw = await self._decide(names.REVIEW_ROUND, request, dataclasses.replace(request, rules_only=True), "review_round", seq, dict)
+        else:
+            raw = await workflow.execute_activity(
+                names.REVIEW_ROUND,
+                request,
+                task_queue=names.DECISION_QUEUE,
+                start_to_close_timeout=timeouts.MODEL_DECISION_START_TO_CLOSE,
+                retry_policy=DECISION_RETRY,
+                result_type=dict,
+            )
         verdict, update = vd.review_output(raw)
         return verdict, update, vd.review_cost(raw)
 
@@ -568,11 +731,18 @@ class TaskWorkflow:
 
     async def _ask_human(self, seq: int, verdict: dict[str, Any]) -> task_pb2.HumanReplySignal | None:
         """Reviewer 升级问人（设计书 4.11）：带着状态摘要与具体问题，回复限定三种；超时或发不出问题时返回 None。"""
-        assert self._input is not None
         esc = verdict["escalate"]
         options = tuple(str(o) for o in esc.get("options") or HUMAN_REPLIES)
+        text = str(esc.get("question") or verdict["reason"])
+        code = str(verdict.get("reason_code") or "")
+        return await self._ask(seq, vd.REVIEW_QUESTION_ID, text, options, str(esc.get("state_summary") or ""), code=code, params=verdict.get("reason_params"))
+
+    async def _ask(
+        self, seq: int, qid: str, text: str, options: tuple[str, ...], state_summary: str, *, code: str = "", params: dict[str, Any] | None = None,
+    ) -> task_pb2.HumanReplySignal | None:
+        """经 HumanChannel 问人，等回复：超时或发不出问题时返回 None。Reviewer 的升级与预算用完（TMP 计划第 3 节）共用。"""
+        assert self._input is not None
         timeout_s = (self._stage_policy or StagePolicy()).human_timeout_s
-        qid = vd.REVIEW_QUESTION_ID
         deadline = workflow.now() + timedelta(seconds=timeout_s)
         # 先登记再发问：问题刚发出就到的回复也会收下。
         self.expect_reply(qid, options)
@@ -583,10 +753,10 @@ class TaskWorkflow:
                     tenant=self._tenant,
                     task_id=self._input.task_id,
                     question_id=qid,
-                    text=str(esc.get("question") or verdict["reason"]),
+                    text=text,
                     options=list(options),
                     deadline=deadline.isoformat(),
-                    state_summary=str(esc.get("state_summary") or ""),
+                    state_summary=state_summary,
                     round_seq=seq,
                 ),
                 task_queue=names.DECISION_QUEUE,
@@ -597,28 +767,28 @@ class TaskWorkflow:
             self.forget_reply(qid)
             if _caused_by_cancel(err):
                 raise asyncio.CancelledError() from err
-            workflow.logger.warning("Reviewer 发不出问题：%s", _failure_message(err))
+            workflow.logger.warning("发不出问题 %s：%s", qid, _failure_message(err))
             return None
         except asyncio.CancelledError:
             self.forget_reply(qid)
             raise
         if self._events is not None:
-            await self._events.human_input_required(seq, qid, "escalation", str(esc.get("question") or verdict["reason"]), options, deadline.isoformat())
+            await self._events.human_input_required(seq, qid, "escalation", text, options, deadline.isoformat(), code=code, params=params)
         try:
             reply = await self.wait_for_reply(qid, options, timedelta(seconds=timeout_s))
         except asyncio.CancelledError:
-            await asyncio.shield(asyncio.ensure_future(self._withdraw_question(seq)))
+            await asyncio.shield(asyncio.ensure_future(self._withdraw_question(seq, qid)))
             raise
         if reply is None:
-            await self._withdraw_question(seq)
+            await self._withdraw_question(seq, qid)
         return reply
 
-    async def _withdraw_question(self, seq: int) -> None:
+    async def _withdraw_question(self, seq: int, qid: str = vd.REVIEW_QUESTION_ID) -> None:
         assert self._input is not None
         try:
             await workflow.execute_activity(
                 names.CANCEL_HUMAN,
-                HumanCancel(tenant=self._tenant, task_id=self._input.task_id, question_id=vd.REVIEW_QUESTION_ID, round_seq=seq),
+                HumanCancel(tenant=self._tenant, task_id=self._input.task_id, question_id=qid, round_seq=seq),
                 task_queue=names.DECISION_QUEUE,
                 start_to_close_timeout=timeouts.DECISION_START_TO_CLOSE,
                 retry_policy=DECISION_RETRY,
@@ -656,21 +826,30 @@ class TaskWorkflow:
             spent_before_usd=round(sum(float(r.get("cost_usd") or 0) for r in self._state.get("rounds", [])) + plan_cost, 6),
             events=self._events,
             r01=self._r01,
+            budgets=self._budgets,
+            tool_calls_limit=int(self._limits["tool_calls"]),
+            tool_calls_before=self._tool_calls,
+            wall_clock_limit_s=self._limits["wall_clock"],
+            active_s=self._active_s if self._budgets else None,
+            decision_retry=self._retry_in_workflow,
         )
         runner = StageRunner(ctx, self)
         results = await runner.run(stage, carried=carried, injections=injections)
         self._stage_policy = ctx.policy
         self._stage_cost = runner.spent_usd
+        self._stage_tool_calls = runner.tool_calls
         return results
 
     def expect_reply(self, question_id: str, options: tuple[str, ...]) -> None:
-        """HumanGateway：发问之前先登记，问题刚发出就到的回复也会收下。"""
+        """HumanGateway：发问之前先登记，问题刚发出就到的回复也会收下。从这时起到收到回复不算 Agent 在跑的时间。"""
         self._waiting[question_id] = tuple(options)
+        self._wait_begins(question_id)
 
     def forget_reply(self, question_id: str) -> None:
         """HumanGateway：问题没发出去时撤销登记。"""
         self._waiting.pop(question_id, None)
         self._replies.pop(question_id, None)
+        self._wait_ends(question_id)
 
     async def wait_for_reply(
         self, question_id: str, options: tuple[str, ...], timeout: timedelta | None = None
@@ -678,12 +857,14 @@ class TaskWorkflow:
         """HumanGateway：等 human_reply 信号；只接受 options 里的选项；取消时等待随之结束；超过 timeout 返回 None。
         超时用 wait_condition 的持久化定时器，Worker 不占线程等待。"""
         self._waiting[question_id] = tuple(options)
+        self._wait_begins(question_id)
         try:
             await workflow.wait_condition(lambda: question_id in self._replies, timeout=timeout)
         except asyncio.TimeoutError:
             return None
         finally:
             self._waiting.pop(question_id, None)
+            self._wait_ends(question_id)
         return self._replies.pop(question_id)
 
     async def _run_stage_v1(self, seq: int, stage: dict[str, Any]) -> dict[str, StageResult]:
@@ -743,6 +924,7 @@ class TaskWorkflow:
         error: error_pb2.Error | None = None,
     ) -> task_pb2.TaskWorkflowResult:
         assert self._input is not None
+        self._refresh_used()
         result = task_pb2.TaskWorkflowResult(
             task_id=self._input.task_id,
             status=self._status,

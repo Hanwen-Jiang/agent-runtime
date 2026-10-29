@@ -113,6 +113,15 @@ class Planner:
             decision = replace(decision, level="full", reasons=[*decision.reasons, "命中的 Recipe 展开不出合格的 Stage，改走 full"])
         return await self._plan_with_model(request, decision, calls)
 
+    def plan_without_model(self, request: PlanRequest) -> PlanResult:
+        """不调模型的保守规划：工作流里的决策重试用完或到了总时限时用（TMP 计划 eval-observability-and-runtime-fixes 第 4 节）。
+        分诊按没有信号判定，fast、light 都改走 full；任务族没有就记 general.unclassified。"""
+        decision = decide(None, context=request.context, last_round=request.last_round, confidence_threshold=self.config.confidence_threshold)
+        if decision.level in ("fast", "light"):
+            decision = replace(decision, level="full", reasons=[*decision.reasons, "模型不可用：改走保守规划"])
+        stage, task_plan = self._fallback(request, decision, self._keep_nodes(request))
+        return PlanResult(triage_level=decision.level, stage=stage, task_plan=task_plan, decision=decision, calls=[], fallback=True, problems=["模型不可用：决策调用的重试用完"])
+
     # --- 模型调用 ---
 
     def _tenant(self, request: PlanRequest) -> tenant_pb2.TenantContext:

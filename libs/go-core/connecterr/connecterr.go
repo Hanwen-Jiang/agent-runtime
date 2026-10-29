@@ -21,12 +21,15 @@ const Trailer = "ar-error-bin"
 // RetryAfterDetail 是 common.v1.Error.details 里的字段名：transient 且有 RetryAfter 时为等待的毫秒数（整数）。
 const RetryAfterDetail = "retry_after_ms"
 
+// LastErrorCodeDetail 是 details 里的字段名：汇总了几次失败的错误里最后一次失败的 code（providererr.Error.LastCode）。
+const LastErrorCodeDetail = "last_error_code"
+
 // Error 把错误转成返回给调用方的 *connect.Error，并在 Trailer 里附上 common.v1.Error。
 // 类别到 Connect 码：transient → Unavailable；invalid → InvalidArgument；denied → PermissionDenied；
 // not_found → NotFound；conflict → Aborted。
 //
 //   - *providererr.Error：类别、code、message 原样放进 trailer；Connect 错误的文本只用 message，不含底层原因
-//     （底层原因可能带上游回显的密钥）。transient 且 RetryAfter > 0 时 details 带 retry_after_ms。
+//     （底层原因可能带上游回显的密钥）。transient 且 RetryAfter > 0 时 details 带 retry_after_ms；有 LastCode 时带 last_error_code。
 //   - context.DeadlineExceeded、context.Canceled：transient（code timeout、canceled），Unavailable。
 //   - 其他错误：Internal，trailer 为 transient（code internal），文本固定为“内部错误”，不带原始错误文本。
 //
@@ -46,8 +49,15 @@ func Error(err error) *connect.Error {
 		return withDetail(connect.NewError(connect.CodeInternal, errors.New("内部错误")), &commonv1.Error{Category: providererr.Transient, Code: "internal", Message: "内部错误"})
 	}
 	detail := pe.Proto()
+	details := map[string]any{}
 	if pe.Category == providererr.Transient && pe.RetryAfter > 0 {
-		detail.Details, _ = structpb.NewStruct(map[string]any{RetryAfterDetail: float64(pe.RetryAfter.Milliseconds())})
+		details[RetryAfterDetail] = float64(pe.RetryAfter.Milliseconds())
+	}
+	if pe.LastCode != "" {
+		details[LastErrorCodeDetail] = pe.LastCode
+	}
+	if len(details) > 0 {
+		detail.Details, _ = structpb.NewStruct(details)
 	}
 	return withDetail(connect.NewError(codes[pe.Category], errors.New(pe.Message)), detail)
 }

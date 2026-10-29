@@ -44,6 +44,12 @@ R01_FIXES_PATCH = "r01-audit-and-budget"
 # 多了推送进度事件的 activity，改变了命令序列。
 PROGRESS_DETAIL_PATCH = "progress-node-and-tool"
 
+# TMP 计划（eval-observability-and-runtime-fixes，2026-10-28）第 3 节：时间与工具调用预算（Round 开头查、用完问人，
+# tool_loop 里用完就停）。多了问人与推送的命令，改变了命令序列。
+BUDGETS_PATCH = "tmp-time-tool-budgets"
+# 同一计划第 4 节：plan_round、review_round、tool_loop_step 由工作流重试，重试之前推 decision_retry；用完退回不调模型的做法。
+DECISION_RETRY_PATCH = "tmp-decision-retry"
+
 # 新的运行在第一个工作流任务里一次问完全部版本分支（模块说明）。
 PATCHES_AT_START = "s04-patches-at-start"
 # 只能在末尾追加。
@@ -58,6 +64,8 @@ AT_START = (
     TOOL_LOOP_APPROVAL_PATCH,
     R01_FIXES_PATCH,
     PROGRESS_DETAIL_PATCH,
+    BUDGETS_PATCH,
+    DECISION_RETRY_PATCH,
 )
 
 

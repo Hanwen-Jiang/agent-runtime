@@ -7,7 +7,7 @@
 //  4. 调用：每次尝试有自己的超时（AttemptTimeout，受调用方剩余的 deadline 限制；流式只限到第一个分片）。
 //     transient 失败按 RetryPolicy 带抖动重试，等待时间不短于上游给的 RetryAfter，单次等待不超过 MaxDelay；调用方剩下的时间
 //     不够等这一次时不再等待，返回 Transient（code deadline，RetryAfter 为该等的时间）。同一个 Profile 尝试 MaxAttempts 次
-//     仍失败，切换同档的下一个 Profile（不再等待）；全部失败返回 Transient（code models_exhausted，RetryAfter 取最后一次失败的）。
+//     仍失败，切换同档的下一个 Profile（不再等待）；全部失败返回 Transient（code models_exhausted，RetryAfter 与 LastCode 取最后一次失败的）。
 //     not_found 且 code 为 model_not_found（模型在上游不存在）只说明这一个 Profile 坏了：不重试，直接切换下一个；同档都是这样时
 //     返回这个 not_found。其余非 transient 失败立即返回，不重试、不切换。
 //     StreamGenerate 只在发出第一个分片之前重试与切换；之后出错直接结束流。
@@ -298,6 +298,8 @@ func (s *Server) run(ctx context.Context, c *call, candidates []router.Candidate
 	e := providererr.New(providererr.Transient, "models_exhausted", "同档的模型都暂时不可用："+c.choice.Tier)
 	if last != nil {
 		e.RetryAfter = last.RetryAfter
+		// Worker 在 decision_retry 事件里说明供应商为什么不可用（TMP 计划 eval-observability-and-runtime-fixes 第 4 节）。
+		e.LastCode = last.Code
 	}
 	return tried, e
 }

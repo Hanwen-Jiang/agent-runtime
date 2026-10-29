@@ -27,7 +27,7 @@ STEPS = (
 )
 """附录 B.8 的升级顺序；reroute 与 replan_change_shape 同级。"""
 
-HARD_SIGNALS = ("repetition", "stall", "budget_burn", "plan_drift", "context_health", "parallel_anomaly", "sample_divergence")
+HARD_SIGNALS = ("repetition", "stall", "budget_burn", "plan_drift", "context_health", "parallel_anomaly", "sample_divergence", "environment")
 """defs.schema.json 的 hard_signal。"""
 
 FAILED_STATUSES = ("failed", "unknown")

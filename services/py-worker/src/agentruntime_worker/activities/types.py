@@ -34,6 +34,8 @@ class PlanRoundInput:
     # 上一轮：{"stage", "results": {node_id: StageResult 的字段}, "verdict"}；首轮为空。replan 时
     # verdict.replan.keep_nodes 是要保留的 Node（S-09）。
     last_round: dict[str, Any] | None = None
+    # 决策调用的重试用完或到了总时限（TMP 计划第 4 节）：不调模型，直接给保守规划。
+    no_model: bool = False
 
 
 @dataclass
@@ -90,6 +92,13 @@ class StageResult:
     # 实际服务这个结果的模型供应商（model 节点的 meta.vendor、tool_loop 最后一步的）；program 节点为空。
     # Reviewer 调用时避开它（附录 H.3；R-02 评审第 4 节第 1 条）。
     vendor: str = ""
+    # 失败说明的代码与参数（TMP 计划第 5 节；例如 budget_exhausted 与 {budget, limit, used}），进度事件 node_finished 带出。
+    error_code: str = ""
+    params: dict[str, Any] | None = None
+    # 执行中发现的硬信号（附录 B.6；TMP 计划第 2 节的 environment：列工作区根得到空目录），交给 Reviewer。
+    signals: list[str] = field(default_factory=list)
+    # 执行这个 Node 发出的工具调用（tool_loop 的调用，含 sub_agent 子工作流里的）；只用来把子工作流里的次数带回父 Stage。
+    tool_calls: int = 0
 
 
 @dataclass
@@ -282,6 +291,8 @@ class ReviewRoundInput:
     done_when: str
     stage: dict[str, Any] | None = None
     history: list[dict[str, Any]] = field(default_factory=list)
+    # 决策调用的重试用完或到了总时限（TMP 计划第 4 节）：不调模型，只按规则判定。
+    rules_only: bool = False
 
 
 @dataclass

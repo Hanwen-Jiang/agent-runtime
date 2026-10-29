@@ -1,6 +1,7 @@
 """升级顺序与触发规则（附录 B.8）：代码判定 floor 与次数上限，模型的提议只会被往上抬。
 
-floor：从台账算出至少要升级到哪一步；预算规则另限定可选的 Verdict。除了 B.8 的次数规则，还有附录 B.6、B.7 里代码算得出的三条
+floor：从台账算出至少要升级到哪一步；预算规则与硬信号 environment（工作区或执行环境本身不可用，TMP 计划
+eval-observability-and-runtime-fixes 第 2 节）另限定可选的 Verdict。除了 B.8 的次数规则，还有附录 B.6、B.7 里代码算得出的三条
 （2026-10-28 真模型实验第 3.2 条）：本轮已在 Node 里重试过、又是上一轮的同一个错误，replan；扇出后合并失败，replan；
 质量包装用满轮数仍没通过 judge 的产出（Stage Runner 记成 succeeded、quality.passed = false），不能 continue 或 done，换方法。
 enforce：拿模型的提议（或没有提议）依次做三件事——把细节改成合法的（done 只来自本轮成功的 deliver 节点、Progress Check
@@ -67,6 +68,8 @@ class Floor:
     reasons: tuple[str, ...] = ()
     allowed: frozenset[str] | None = None
     signals: tuple[str, ...] = ()
+    reason_code: str = ""
+    """因 allowed 改写 Verdict 时理由的代码（TMP 计划第 5 节）；没有时不带。"""
 
 
 @dataclass(frozen=True)
@@ -143,7 +146,18 @@ def floor(ledger: Ledger, results: Mapping[str, Mapping[str, Any]], *, completio
         elif completion and ledger.budget_usd and ledger.spent_usd / completion > ledger.budget_usd:
             signals.add("budget_burn")
             reasons.append("按已花的预算与完成度外推，预计会超出预算")
-    return Floor(step=step, reasons=tuple(reasons), allowed=frozenset(allowed) if allowed else None, signals=tuple(sorted(signals)))
+    code = ""
+    empty = sorted(nid for nid, r in results.items() if "environment" in (r.get("signals") or []))
+    if empty:
+        # 列工作区根得到空目录：换做法、重规划都没有用。交付“工作区是空的”这类答复是对的，所以 done 仍可以。
+        signals.add("environment")
+        code = "workspace_empty"
+        reasons.append(f"{'、'.join(empty)} 列工作区根得到空目录：工作区或执行环境本身不可用，换做法没有用；只能交付现有答复、问人或收尾")
+        outs = {"done", "escalate", "abort"}
+        allowed = outs if allowed is None else allowed & outs
+    return Floor(
+        step=step, reasons=tuple(reasons), allowed=frozenset(allowed) if allowed else None, signals=tuple(sorted(signals)), reason_code=code,
+    )
 
 
 # --- enforce ---
@@ -174,6 +188,8 @@ def enforce(
         reasons.extend(floor.reasons)
         verdict = rules.make(floor.step, verdict, list(floor.reasons))
     verdict = rules.settle(verdict, reasons)
+    if proposal is None and "reason_code" not in verdict:
+        verdict["reason_code"] = "rule_fallback"
     proposed = {str(s) for s in (proposal or {}).get("signals") or [] if s in HARD_SIGNALS}
     signals = sorted(set(ledger.signals) | set(floor.signals) | proposed)
     if signals:
@@ -280,6 +296,8 @@ class _Rules:
             if allowed is not None and (kind not in allowed or (kind == "escalate" and verdict["escalate"].get("target") == "tier")):
                 reasons.extend(self.floor.reasons)
                 verdict = self.make("escalate_human", verdict, list(self.floor.reasons))
+                if self.floor.reason_code:
+                    verdict["reason_code"] = self.floor.reason_code
                 continue
             used, cap, nxt = self.cap_of(verdict)
             if cap is not None and used >= cap:

@@ -71,6 +71,7 @@ class ReviewerActivities:
                 results={nid: _result_dict(r) for nid, r in inp.stage_results.items()},
                 history=list(inp.history),
                 catalog=ReviewCatalog(recipes=dict(catalog.recipes), effect_ceiling=ceiling),
+                rules_only=inp.rules_only,
             )
         )
         # 判定依据与模型调用写入日志（trace），不传给下游。

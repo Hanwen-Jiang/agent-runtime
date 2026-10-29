@@ -1,7 +1,7 @@
 # TMP 计划：线上日志的问题、真模型实验的遗留与评测可观测（设计稿）
 
-> 状态：2026-10-28 人确认开工，要人定的几项已定（第 11 节）。第 3～7 节的契约合成一份 S-01 草案，待人审；
-> 第 2～4 节的验收测试已写好，待人确认后实现。来源两处：
+> 状态：2026-10-28 人确认开工，要人定的几项已定（第 11 节）。第 3～7 节的 S-01 草案人审通过（兼容性基线已更新）；
+> 第 2～4 节已实现（11.7）。第 5～10 节未做。来源两处：
 > - 线上日志（`Z:\agentruntime\1028137pm.log`，code.cgent.link，租户 `gh-nsnzd-kimberlyxie343178`，“读仓库并讲清结构”跑了 5 轮、$0.62，最后卡在“规划下一轮”）；
 > - 真模型实验报告（`docs/job-qualifications/real-model-experiments-2026-10-28/README.md` 第 6 节的 P0、P1）。
 > 已经在本仓库里改掉的列在第 1 节；第 2 到 9 节是重的或要先定的，每节写清问题、证据、做法、要人定的、验收。
@@ -201,7 +201,7 @@ task-service 的 `GetTaskFamilies` 审过之前回 Unimplemented。
   attempt、不改命令序列”的做法行不通：**重试挪进工作流**，放在版本分支 `DECISION_RETRY_PATCH` 后面（追加在 `BUDGETS_PATCH` 之后）。
   plan_round、review_round、tool_loop_step 在服务端只试一次，工作流按原来的退避重试，最多 `DECISION_MAX_ATTEMPTS`（5）次；第 2 次起
   每次尝试之前推 `decision_retry`。不可重试的错误不重试、不推。
-- 总时限 `DECISION_TOTAL`（建议 8 分钟，从第一次尝试算）：尝试用完或到了总时限，规划用不调模型的保守规划再调一次
+- 总时限 `DECISION_TOTAL`（10 分钟，从第一次尝试算，够两次 5 分钟的完整尝试；剩下不到 30 秒就不再试）：尝试用完或到了总时限，规划用不调模型的保守规划再调一次
   （`PlanRoundInput.no_model`），评审只按规则判定（`ReviewRoundInput.rules_only`，理由带 reason_code `rule_fallback`）；tool_loop 的一步
   照旧让节点失败。
 - 错误代码取 activity 失败的类型（ApplicationError.type），超时记 `activity_timeout`；网关的 models_exhausted 在 details 里带
@@ -242,11 +242,25 @@ task-service 的 `GetTaskFamilies` 审过之前回 Unimplemented。
 
 ### 11.7 顺序与验收测试
 
-1. 人审 11.3 的 S-01 草案，通过后更新兼容性基线。
-2. 第 3、4 节（核心链路，一个 agent 改）。测试：`services/py-worker/tests/test_task_budgets.py`、`test_decision_retry.py`、
+1. ~~人审 11.3 的 S-01 草案，通过后更新兼容性基线~~（2026-10-28 通过，基线已更新）。
+2. ~~第 3、4 节（核心链路，一个 agent 改）~~（已实现，见下面“实现记录”）。测试：`services/py-worker/tests/test_task_budgets.py`、`test_decision_retry.py`、
    `test_stage_replay.py` 的 `TMP_CASES`（golden 由 `AR_UPDATE_GOLDEN_HISTORIES=1` 补录）、
    `services/go-model-gateway/internal/gateway/tmp_fixes_test.go`。
-3. 第 2 节的代码侧：`services/py-worker/tests/test_empty_workspace.py`。
+3. ~~第 2 节的代码侧~~（已实现）：`services/py-worker/tests/test_empty_workspace.py`。
 4. 第 5 节（Worker 各处出代码；coding-agent 按代码翻译）、第 6 节、第 7 节：草案审过后先写测试、停下确认，再实现。
 5. 第 8 节；9.2（Grafana 面板与 eval span）；9.3（VictoriaMetrics 的部署、Collector 与面板）。
 6. 第 10 节等预算。
+
+**实现记录（2026-10-28）**
+
+- 第 3 节：`workflows/task.py`（Round 开头的 `_budget_gate`、不算等人时间的 `_active_s`、`budget_used`）、`workflows/stage_runner.py`
+  （`_budget_stop`、tool_loop 与子工作流的 `tool_calls`）。版本分支 `BUDGETS_PATCH`。
+- 第 4 节：`workflows/decisions.py`（工作流里的重试与错误代码）、`PlanRoundInput.no_model`、`ReviewRoundInput.rules_only`
+  （`Planner.plan_without_model`、Reviewer 跳过模型、规则判定的理由带 `rule_fallback`）；网关 `providererr.Error.LastCode` →
+  details 的 `last_error_code`，Python 客户端把它写进错误说明。版本分支 `DECISION_RETRY_PATCH`。
+- 第 2 节：`workspace/operations.py` 的复制后核对（源的文件数取源的只读环境里的清单：存档记录的 files 连 .git 一起数）；
+  tool_loop 的 `environment` 标记与 Reviewer floor 的 `workspace_empty`。
+- 验收测试的三处改动（测试本身的错，不是行为的改动）：时间预算的测试把余量放大（3 秒预算、3.5 秒的节点、人 6 秒后回复）；
+  问题选项与列表比较；撤掉的副本在业务库里留一行 `deleted`，按“没有或已删除”判。
+- 没做：sub_task 的子 Task 照搬父 Task 的预算（它自己的时间与工具调用另算、也会自己问人）；program 节点在 activity 里调的工具不数；
+  模板大批量的几批并发时各自按启动时的剩余次数查，合起来可能略超。

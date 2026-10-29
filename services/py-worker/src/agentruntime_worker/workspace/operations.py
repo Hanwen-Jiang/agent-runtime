@@ -279,18 +279,25 @@ class WorkspaceOperations:
         return {"workspace": workspace_dict(record, branch=branch)}
 
     async def _copy(self, inp: workspace_pb2.WorkspaceOperationInput, source: str, *, max_bytes: int) -> tuple[str, str]:
-        """把同租户的 source 工作区复制进新建的（空的）工作区：从源的只读环境导出，再导进新的可写环境；两种模式一样。"""
+        """把同租户的 source 工作区复制进新建的（空的）工作区：从源的只读环境导出，再导进新的可写环境；两种模式一样。
+
+        复制之后核对（TMP 计划 eval-observability-and-runtime-fixes 第 2 节）：新工作区（不算 .git）一个文件也没有、而源有文件时
+        报 workspace_empty_after_copy，由 create 撤掉这一行与环境。源的文件数取源的只读环境里的清单（存档记录的 files 连 .git 一起数，不能用）。
+        """
         owner = inp.tenant.tenant_id
         await self._current(owner, source)
         with tempfile.TemporaryFile() as tmp:
             async with self._lease(inp, writable=False, workspace_id=source) as src:
                 _require(src.box, "export_archive")
                 await src.box.export_archive(src.env_id, tmp, max_bytes=max_bytes)
+                expected = await _file_count(src)
             size = tmp.tell()
             tmp.seek(0)
             async with self._lease(inp, writable=True) as dst:
                 _require(dst.box, "import_archive")
                 await dst.box.import_archive(dst.env_id, tmp, size=size, max_bytes=max_bytes)
+                if expected and not await _file_count(dst):
+                    raise ConflictError("workspace_empty_after_copy", f"从 {source} 复制过来的工作区是空的（源有 {expected} 个文件）：不留空的副本")
                 return await self._head(dst), await self._branch(dst)
 
     # --- 看 ---
@@ -720,6 +727,12 @@ def parse_numstat(text: str) -> list[dict[str, Any]]:
         binary = added == "-" or deleted == "-"
         out.append({"path": path, "added": 0 if binary else int(added or 0), "deleted": 0 if binary else int(deleted or 0), "binary": binary})
     return out
+
+
+async def _file_count(lease: Lease) -> int:
+    """环境里工作区的文件数，不算 .git 里的。"""
+    entries = await lease.box.manifest(lease.env_id)
+    return sum(1 for e in entries if e.type == "file" and e.path != ".git" and not e.path.startswith(".git/"))
 
 
 def _initial_files(value: Any) -> list[tuple[str, str]]:

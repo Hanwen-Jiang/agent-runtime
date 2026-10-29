@@ -67,6 +67,7 @@ def task_input(
     extra_inputs: dict | None = None,
     effect_ceiling: int = enums_pb2.EFFECT_READ,
     depth: int = 0,
+    budget: task_pb2.Budget | None = None,
 ) -> task_pb2.TaskWorkflowInput:
     inputs = struct_pb2.Struct()
     inputs.update({"stub_plan": stub_plan, "stub_rounds": stub_rounds})
@@ -94,7 +95,7 @@ def task_input(
         submitted_at=submitted,
         session_access=enums_pb2.SESSION_ACCESS_READ_WRITE,
         priority=enums_pb2.PRIORITY_INTERACTIVE,
-        budget=task_pb2.Budget(usd_micros=2_000_000, tool_calls=20),
+        budget=budget if budget is not None else task_pb2.Budget(usd_micros=2_000_000, tool_calls=20),
         effect_ceiling=effect_ceiling,
         depth=depth,
     )

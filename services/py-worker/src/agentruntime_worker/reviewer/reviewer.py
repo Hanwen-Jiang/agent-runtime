@@ -51,6 +51,8 @@ class ReviewRequest:
     """Node id → 结果（StageResult 的字段；S-08 的样本另有 attempts）。"""
     history: list[dict[str, Any]]
     catalog: ReviewCatalog | None = None
+    # 决策调用的重试用完或到了总时限（TMP 计划第 4 节）：不调模型，只按规则判定。
+    rules_only: bool = False
 
 
 @dataclass
@@ -99,7 +101,7 @@ class Reviewer:
         calls: list[ModelCall] = []
         problems: list[str] = []
         answer: dict[str, Any] | None = None
-        if not fast:
+        if not fast and not request.rules_only:
             preview = floor(lg, results, completion=None, thresholds=cfg.thresholds)
             view = prompts.review_view(request.task_state, request.stage, results, request.history)
             messages = prompts.review_messages(view, ledger=lg, floor=preview, catalog=request.catalog)
@@ -149,7 +151,7 @@ class Reviewer:
             signals=tuple(verdict.get("signals") or ()),
             floor=fl,
             raised=decision.raised,
-            fallback=not fast and answer is None,
+            fallback=not fast and not request.rules_only and answer is None,
             calls=calls,
             problems=problems if answer is None else [],
             reasons=[*fl.reasons, *decision.reasons],

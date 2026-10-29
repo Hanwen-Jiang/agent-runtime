@@ -11,6 +11,9 @@
    深度不超过 2。
 5. 汇集：结果按 Node id 排序后合并；下游只拿 result，rationale 不往下传。
 6. 进度事件（T-11b）：在顶层 Task 里，Stage 的顶层 Node 结束时推 node_finished，发出人工问题后推 human_input_required。
+7. TMP 计划（eval-observability-and-runtime-fixes）第 2～4 节：tool_loop 每一步之前查时间预算、每次工具调用之前查调用次数，
+   用完就停这个节点（error_code budget_exhausted）；列工作区根得到空目录时结果带硬信号 environment；tool_loop 的一步由工作流
+   重试（workflows/decisions.py）。工具调用次数（含子工作流里的）记在 tool_calls，Task 工作流据此记用量。
 
 叶子 Node（不挂 quality 的 model、program 节点）一开始就排队拿执行名额，名额按 Node 启动的先后发放，所以执行顺序
 与 Node id 的顺序一致；Hook 在名额内执行。组合 Node（quality、Goal）不占名额，由它们展开出的叶子去拿，不会死锁。
@@ -25,7 +28,7 @@ import asyncio
 import contextlib
 import copy
 import json
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field, replace
 from datetime import timedelta
 from typing import Any, Protocol
@@ -62,12 +65,14 @@ with workflow.unsafe.imports_passed_through():
         ToolLoopStep,
         ToolLoopStepInput,
     )
-    from agentruntime_worker.workflows import patches
+    from agentruntime_worker.workflows import decisions, patches
     from agentruntime_worker.workflows import stage_plan as sp
     from agentruntime_worker.workflows import timeouts
     from agentruntime_worker.workflows.events import EventPublisher, sandbox_startup_ms, tool_target
     from agentruntime_worker.workflows.failures import caused_by_cancel, failure_class, failure_message
     from agentruntime_worker.workflows.patches import (
+        BUDGETS_PATCH,
+        DECISION_RETRY_PATCH,
         HUMAN_CHANNEL_PATCH,
         HUMAN_REPLY_RACE_PATCH,
         POLICY_PATCH,
@@ -85,6 +90,20 @@ MAX_TOOL_REJECTIONS = 2
 DEFAULT_ROLE = "transform"
 # 审批问题里写进去的输入（规范化 JSON）最多这么多字符（R-01 评审第 4 节第 2 条）。
 APPROVAL_INPUTS_LIMIT = 2000
+# 列这些路径就是列工作区根（TMP 计划第 2 节的 environment 信号）。
+WORKSPACE_ROOTS = ("", ".", "./", "/")
+
+
+def _minutes(seconds: float) -> float:
+    return round(seconds / 60, 2)
+
+
+def _lists_empty_root(tool: str, args: Any, observation: Any) -> bool:
+    """repo_list 列工作区根得到空目录：工作区本身是空的（TMP 计划第 2 节）。"""
+    if tool != "repo_list" or not isinstance(observation, dict) or observation.get("entries") != []:
+        return False
+    path = args.get("path") if isinstance(args, dict) else None
+    return path is None or (isinstance(path, str) and path.strip() in WORKSPACE_ROOTS)
 
 
 def effect_name(value: int) -> str:
@@ -204,6 +223,15 @@ class RunContext:
     r01: bool = False
     # T-11b：只有顶层 Task 工作流的新运行有；顶层 Node 结束与发出人工问题时推送进度事件。子工作流里为 None。
     events: EventPublisher | None = None
+    # TMP 计划第 3 节（BUDGETS_PATCH 之后的运行为 True）：工具调用次数的上限（0 不限）与这个 Stage 开始之前已发出的；
+    # 时间预算（秒，0 不限）与已用了多少秒（只算 Agent 在跑的时间，由 Task 工作流给出）。
+    budgets: bool = False
+    tool_calls_limit: int = 0
+    tool_calls_before: int = 0
+    wall_clock_limit_s: float = 0.0
+    active_s: Callable[[], float] | None = None
+    # 同一计划第 4 节（DECISION_RETRY_PATCH 之后的运行为 True）：tool_loop 的一步由工作流重试。
+    decision_retry: bool = False
 
 
 @dataclass
@@ -236,6 +264,8 @@ class StageRunner:
         # S-10：重跑时给指定 Node 的注入（错误与 Reviewer 的指导）；本次运行里各次执行花的钱（Round 的成本）。
         self._extra_injections: dict[str, list[dict[str, Any]]] = {}
         self.spent_usd = 0.0
+        # TMP 计划第 3 节：本次运行发出的工具调用（含子工作流里的）。
+        self.tool_calls = 0
         # T-09：本 Stage 开始时 Catalog 取不到的原因（这时整个 Stage 拒绝）；已经问过 Catalog 的模板（没登记的不再问）。
         self._catalog_error = ""
         self._asked_templates: set[str] = set()
@@ -375,6 +405,28 @@ class StageRunner:
         if task_usd is None or spent < task_usd:
             return ""
         return f"budget_check：Task 的预算 {task_usd:g} 美元已经用完（已花 {spent:.4f}），{nid} 不再请求下一步"
+
+    def _budget_stop(self, nid: str, *, before_call: bool) -> StageResult | None:
+        """TMP 计划第 3 节：tool_loop 每一步之前查时间、每次工具调用之前查调用次数，用完了返回让这个节点停下的结果
+        （failed、denied，error_code budget_exhausted）；没用完或不限时 None。纯计算，不产生命令。"""
+        ctx = self._ctx
+        if not ctx.budgets:
+            return None
+        if before_call:
+            limit, used = ctx.tool_calls_limit, ctx.tool_calls_before + self.tool_calls
+            if limit <= 0 or used < limit:
+                return None
+            params: dict[str, Any] = {"budget": "tool_calls", "limit": limit, "used": used}
+            text = f"工具调用预算 {limit} 次已经用完，{nid} 不再调用工具"
+        else:
+            if ctx.wall_clock_limit_s <= 0 or ctx.active_s is None:
+                return None
+            used_s = ctx.active_s()
+            if used_s < ctx.wall_clock_limit_s:
+                return None
+            params = {"budget": "wall_clock", "limit": _minutes(ctx.wall_clock_limit_s), "used": _minutes(used_s)}
+            text = f"时间预算 {params['limit']:g} 分钟已经用完（已跑 {params['used']:g} 分钟），{nid} 不再请求下一步"
+        return StageResult(role=DEFAULT_ROLE, status="failed", failure_class="denied", error=text, error_code="budget_exhausted", params=params)
 
     def _node_hooks(self, node: dict[str, Any], ceiling: str) -> dict[str, list[str]]:
         """按 effect 自动插入的默认 Hook，加上策略声明的；策略只能加 Hook，去不掉默认的；audit_log 永远最后。
@@ -961,6 +1013,7 @@ class StageRunner:
                         goal_inputs=goal_inputs,
                         budget_usd=self._ctx.budget_usd,
                         spent_before_usd=self._budget()["spent_usd"],
+                        **self._child_budgets(),
                     ),
                     id=sp.subworkflow_id(self._ctx.task_id, self._ctx.round_seq, node["id"], f"batch-{number}"),
                     task_queue=names.TASK_QUEUE,
@@ -978,8 +1031,9 @@ class StageRunner:
         merged: dict[str, StageResult] = {}
         for out in outputs:
             merged.update(out.results)
-            # 子图的花费带回父 Stage（成本口径的人定方案）。
+            # 子图的花费与工具调用次数带回父 Stage（成本口径的人定方案；TMP 计划第 3 节）。
             self.spent_usd += float(out.cost_usd or 0.0)
+            self.tool_calls += int(out.tool_calls or 0)
         return _collect(role, [merged[c] for c in collect])
 
     async def _check_tools(self, node: dict[str, Any], ceiling: str, *, read_only: bool) -> tuple[dict[str, str] | None, str]:
@@ -1008,6 +1062,15 @@ class StageRunner:
     async def tool_loop(
         self, node: dict[str, Any], *, isolated: bool, tool_effects: dict[str, str], env: _Env, progress: bool = False,
     ) -> StageResult:
+        """见 _tool_loop。结果另带这次循环发出的工具调用次数与执行中发现的硬信号（TMP 计划第 2、3 节）。"""
+        marks: set[str] = set()
+        calls_before = self.tool_calls
+        result = await self._tool_loop(node, isolated=isolated, tool_effects=tool_effects, env=env, progress=progress, marks=marks)
+        return replace(result, signals=sorted(set(result.signals) | marks), tool_calls=self.tool_calls - calls_before)
+
+    async def _tool_loop(
+        self, node: dict[str, Any], *, isolated: bool, tool_effects: dict[str, str], env: _Env, progress: bool, marks: set[str],
+    ) -> StageResult:
         """思考 → 调工具 → 观察，每一步是一个 activity（附录 E.1）。设最大迭代次数，同一错误连续出现就打断（附录 B.8）。
 
         调用 effect 为 write_irreversible 的工具前逐次人工审批（D16，附录 E.1）：拒绝或超时时不调用，把结果作为这一步的
@@ -1028,28 +1091,42 @@ class StageRunner:
                 reason = self._budget_spent(nid)
                 if reason:
                     return _denied(DEFAULT_ROLE, reason)
+            # TMP 计划第 3 节：时间预算用完就不再请求下一步。
+            stop = self._budget_stop(nid, before_call=False)
+            if stop is not None:
+                return stop
+            step_input = ToolLoopStepInput(
+                tenant=self._ctx.tenant,
+                task_id=self._ctx.task_id,
+                round_seq=self._ctx.round_seq,
+                node=node,
+                iteration=i,
+                history=copy.deepcopy(history),
+                step_id=sp.child_id(nid, 2 * i - 1),
+                isolated=isolated,
+                # sub_agent 是独立上下文：不带 Task State 与 Task Plan。
+                task_state={} if isolated else copy.deepcopy(self._ctx.task_state),
+                task_plan=None if isolated else copy.deepcopy(self._ctx.task_plan),
+            )
             try:
                 async with self._slot():
-                    step = await workflow.execute_activity(
-                        names.TOOL_LOOP_STEP,
-                        ToolLoopStepInput(
-                            tenant=self._ctx.tenant,
-                            task_id=self._ctx.task_id,
-                            round_seq=self._ctx.round_seq,
-                            node=node,
-                            iteration=i,
-                            history=copy.deepcopy(history),
-                            step_id=sp.child_id(nid, 2 * i - 1),
-                            isolated=isolated,
-                            # sub_agent 是独立上下文：不带 Task State 与 Task Plan。
-                            task_state={} if isolated else copy.deepcopy(self._ctx.task_state),
-                            task_plan=None if isolated else copy.deepcopy(self._ctx.task_plan),
-                        ),
-                        task_queue=names.MODEL_QUEUE,
-                        start_to_close_timeout=timeouts.MODEL_DECISION_START_TO_CLOSE,
-                        retry_policy=timeouts.DECISION_RETRY,
-                        result_type=ToolLoopStep,
-                    )
+                    if self._ctx.decision_retry:
+                        # TMP 计划第 4 节：由工作流重试，重试之前推 decision_retry。
+                        step = await decisions.run(
+                            names.TOOL_LOOP_STEP, step_input, task_queue=names.MODEL_QUEUE, result_type=ToolLoopStep,
+                            step="tool_loop_step", round_seq=self._ctx.round_seq, events=events, node_id=nid, about=f"{nid}/{i}",
+                        )
+                    else:
+                        step = await workflow.execute_activity(
+                            names.TOOL_LOOP_STEP,
+                            step_input,
+                            task_queue=names.MODEL_QUEUE,
+                            start_to_close_timeout=timeouts.MODEL_DECISION_START_TO_CLOSE,
+                            retry_policy=timeouts.DECISION_RETRY,
+                            result_type=ToolLoopStep,
+                        )
+            except decisions.DecisionExhausted as exhausted:
+                return _failed(DEFAULT_ROLE, f"tool_loop 第 {i} 步失败（试了 {exhausted.attempts} 次）：{failure_message(exhausted.last)}", failure_class(exhausted.last))
             except FailureError as err:
                 if caused_by_cancel(err):
                     raise asyncio.CancelledError() from err
@@ -1063,6 +1140,10 @@ class StageRunner:
                 entry["error"] = f"工具 {step.tool} 不在 {nid} 的可用列表里"
             else:
                 effect = tool_effects[step.tool]
+                # TMP 计划第 3 节：工具调用次数用完就不再调用（审批之前查，不问用不上的审批）。
+                stop = self._budget_stop(nid, before_call=True)
+                if stop is not None:
+                    return stop
                 call_id = sp.child_id(nid, 2 * i)
                 gate: GateRecord | None = None
                 if effect == "write_irreversible" and workflow.patched(TOOL_LOOP_APPROVAL_PATCH):
@@ -1076,6 +1157,7 @@ class StageRunner:
                             return _denied(DEFAULT_ROLE, f"{nid} 的不可逆工具调用被拒绝 {rejections} 次（含审批超时），交给 Reviewer")
                         continue
                 target = tool_target(step.args)
+                self.tool_calls += 1
                 if events is not None:
                     await events.tool_status(self._ctx.round_seq, nid, i, step.tool, "running", target=target)
                 called_at = workflow.now()
@@ -1102,6 +1184,9 @@ class StageRunner:
                     if caused_by_cancel(err):
                         raise asyncio.CancelledError() from err
                     entry["error"] = failure_message(err)
+                if "error" not in entry and _lists_empty_root(step.tool, step.args, entry.get("observation")):
+                    # TMP 计划第 2 节：工作区根是空的，交给 Reviewer 的硬信号。
+                    marks.add("environment")
                 if events is not None:
                     took = int((workflow.now() - called_at).total_seconds() * 1000)
                     if "error" in entry:
@@ -1157,6 +1242,7 @@ class StageRunner:
                         policy=self.policy,
                         budget_usd=self._ctx.budget_usd,
                         spent_before_usd=self._budget()["spent_usd"],
+                        **self._child_budgets(),
                     ),
                     id=sp.subworkflow_id(self._ctx.task_id, self._ctx.round_seq, node["id"]),
                     task_queue=names.TASK_QUEUE,
@@ -1167,9 +1253,20 @@ class StageRunner:
             if caused_by_cancel(err):
                 raise asyncio.CancelledError() from err
             return _failed(role, f"sub_agent 失败：{failure_message(err)}", failure_class(err))
-        # 子 agent 的花费带回父 Stage（成本口径的人定方案）。
+        # 子 agent 的花费与工具调用次数带回父 Stage（成本口径的人定方案；TMP 计划第 3 节）。
         self.spent_usd += float(out.cost_usd or 0.0)
+        self.tool_calls += int(out.tool_calls or 0)
         return _as(out, role)
+
+    def _child_budgets(self) -> dict[str, Any]:
+        """TMP 计划第 3 节：交给子工作流的时间与工具调用预算（子工作流里没有人工等待，自己按启动以来的时间累加）。"""
+        ctx = self._ctx
+        return {
+            "tool_calls_limit": ctx.tool_calls_limit,
+            "tool_calls_before": ctx.tool_calls_before + self.tool_calls,
+            "wall_clock_limit_s": ctx.wall_clock_limit_s,
+            "active_before_s": ctx.active_s() if ctx.active_s is not None else 0.0,
+        }
 
     async def _sub_task(self, node: dict[str, Any], env: _Env, role: str) -> StageResult:
         """嵌套运行一个完整的 Task Loop，深度不超过 2（附录 E.1）；超过时拒绝并交给 Reviewer。"""
@@ -1239,6 +1336,36 @@ class SubAgentInput:
     # Task 的预算与启动时已花的钱：子 agent 的 tool_loop 每一步之前按它查（成本口径的人定方案）；之前的历史没有，按没有预算。
     budget_usd: float | None = None
     spent_before_usd: float = 0.0
+    # TMP 计划第 3 节：工具调用次数的上限与启动时已发出的、时间预算（秒）与启动时已用的；0 不限，之前的历史没有。
+    tool_calls_limit: int = 0
+    tool_calls_before: int = 0
+    wall_clock_limit_s: float = 0.0
+    active_before_s: float = 0.0
+
+
+def _child_context(inp: SubAgentInput | SubgraphInput, **kw: Any) -> RunContext:
+    """子工作流的 RunContext：版本分支在子工作流自己的历史里问；时间按启动以来的工作流时间累加（子工作流里没有人工等待）。"""
+    started = workflow.now()
+    budgets = workflow.patched(BUDGETS_PATCH)
+    return RunContext(
+        tenant=inp.tenant,
+        task_id=inp.task_id,
+        round_seq=inp.round_seq,
+        effect_ceiling=inp.effect_ceiling,
+        depth=sp.MAX_SUB_TASK_DEPTH,
+        policy=inp.policy,
+        t09=workflow.patched(POLICY_PATCH),
+        budget_usd=inp.budget_usd,
+        spent_before_usd=inp.spent_before_usd,
+        r01=workflow.patched(R01_FIXES_PATCH),
+        budgets=budgets,
+        tool_calls_limit=inp.tool_calls_limit,
+        tool_calls_before=inp.tool_calls_before,
+        wall_clock_limit_s=inp.wall_clock_limit_s,
+        active_s=(lambda: inp.active_before_s + (workflow.now() - started).total_seconds()) if budgets else None,
+        decision_retry=workflow.patched(DECISION_RETRY_PATCH),
+        **kw,
+    )
 
 
 @workflow.defn(name=names.SUB_AGENT_WORKFLOW)
@@ -1248,22 +1375,11 @@ class SubAgentWorkflow:
     @workflow.run
     async def run(self, inp: SubAgentInput) -> StageResult:
         patches.at_start()
-        ctx = RunContext(
-            tenant=inp.tenant,
-            task_id=inp.task_id,
-            round_seq=inp.round_seq,
-            effect_ceiling=inp.effect_ceiling,
-            depth=sp.MAX_SUB_TASK_DEPTH,
-            policy=inp.policy,
-            t09=workflow.patched(POLICY_PATCH),
-            budget_usd=inp.budget_usd,
-            spent_before_usd=inp.spent_before_usd,
-            r01=workflow.patched(R01_FIXES_PATCH),
-        )
+        ctx = _child_context(inp)
         runner = StageRunner(ctx, human=None)
         await runner._ensure_policy()
         result = await runner.tool_loop(inp.node, isolated=True, tool_effects=dict(inp.tools), env=_Env(results={}))
-        return replace(result, cost_usd=round(runner.spent_usd, 6))
+        return replace(result, cost_usd=round(runner.spent_usd, 6), tool_calls=runner.tool_calls)
 
 
 @dataclass
@@ -1283,6 +1399,11 @@ class SubgraphInput:
     # Task 的预算与启动时已花的钱，给子图里的 budget_check（成本口径的人定方案）；之前的历史没有，按没有预算。
     budget_usd: float | None = None
     spent_before_usd: float = 0.0
+    # TMP 计划第 3 节：同 SubAgentInput。
+    tool_calls_limit: int = 0
+    tool_calls_before: int = 0
+    wall_clock_limit_s: float = 0.0
+    active_before_s: float = 0.0
 
 
 @dataclass
@@ -1291,6 +1412,8 @@ class SubgraphOutput:
     results: dict[str, StageResult]
     # 这一批花的钱，父 Stage 加上
     cost_usd: float = 0.0
+    # 这一批发出的工具调用，父 Stage 加上（TMP 计划第 3 节）
+    tool_calls: int = 0
 
 
 @workflow.defn(name=names.SUBGRAPH_WORKFLOW)
@@ -1300,22 +1423,10 @@ class SubgraphWorkflow:
     @workflow.run
     async def run(self, inp: SubgraphInput) -> SubgraphOutput:
         patches.at_start()
-        ctx = RunContext(
-            tenant=inp.tenant,
-            task_id=inp.task_id,
-            round_seq=inp.round_seq,
-            effect_ceiling=inp.effect_ceiling,
-            task_state=inp.task_state,
-            depth=sp.MAX_SUB_TASK_DEPTH,
-            policy=inp.policy,
-            t09=workflow.patched(POLICY_PATCH),
-            budget_usd=inp.budget_usd,
-            spent_before_usd=inp.spent_before_usd,
-            r01=workflow.patched(R01_FIXES_PATCH),
-        )
+        ctx = _child_context(inp, task_state=inp.task_state)
         runner = StageRunner(ctx, human=None)
         await runner._ensure_policy()
         nodes = [n for chain in inp.chains for n in chain]
         await runner._ensure_catalog_for(nodes)
         done = await runner._run_dag(nodes, _Env(results={}, goal_inputs=inp.goal_inputs))
-        return SubgraphOutput(results={c: done[c] for c in inp.collect}, cost_usd=round(runner.spent_usd, 6))
+        return SubgraphOutput(results={c: done[c] for c in inp.collect}, cost_usd=round(runner.spent_usd, 6), tool_calls=runner.tool_calls)

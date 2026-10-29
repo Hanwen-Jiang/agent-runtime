@@ -33,7 +33,9 @@ type Error struct {
 	Message string
 	// RetryAfter 只对 Transient 有意义：建议的最早重试间隔。
 	RetryAfter time.Duration
-	cause      error
+	// LastCode 是汇总了几次失败的错误（例如网关的 models_exhausted）里最后一次失败的 code；没有时为空。
+	LastCode string
+	cause    error
 }
 
 // New 构造一个错误。
