@@ -6,8 +6,8 @@ from agentruntime.registry.v1 import registry_pb2 as agentruntime_dot_registry_d
 
 
 class RegistryServiceStub:
-    """RegistryService 版本化存放 Node Template、Recipe、Reasoning Template、Model Profile 与租户策略
-    （设计书 3.1.2）。本期先定方法签名，实现分阶段补。
+    """RegistryService 版本化存放 Node Template、Recipe、Reasoning Template、Model Profile、租户策略
+    与任务族词表（设计书 3.1.2）。本期先定方法签名，实现分阶段补。
 
     每个请求的字段 1 都是 TenantContext：可见范围、模型白名单等按租户过滤，由服务端执行。
     """
@@ -68,11 +68,16 @@ class RegistryServiceStub:
                 request_serializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetTenantPolicyRequest.SerializeToString,
                 response_deserializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetTenantPolicyResponse.FromString,
                 _registered_method=True)
+        self.GetTaskFamilies = channel.unary_unary(
+                '/agentruntime.registry.v1.RegistryService/GetTaskFamilies',
+                request_serializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetTaskFamiliesRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetTaskFamiliesResponse.FromString,
+                _registered_method=True)
 
 
 class RegistryServiceServicer:
-    """RegistryService 版本化存放 Node Template、Recipe、Reasoning Template、Model Profile 与租户策略
-    （设计书 3.1.2）。本期先定方法签名，实现分阶段补。
+    """RegistryService 版本化存放 Node Template、Recipe、Reasoning Template、Model Profile、租户策略
+    与任务族词表（设计书 3.1.2）。本期先定方法签名，实现分阶段补。
 
     每个请求的字段 1 都是 TenantContext：可见范围、模型白名单等按租户过滤，由服务端执行。
     """
@@ -142,6 +147,13 @@ class RegistryServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetTaskFamilies(self, request, context):
+        """租户当前的任务族词表；租户没有自己的词表时是平台默认的那份。分诊只能从词表里选任务族。
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_RegistryServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -195,6 +207,11 @@ def add_RegistryServiceServicer_to_server(servicer, server):
                     request_deserializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetTenantPolicyRequest.FromString,
                     response_serializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetTenantPolicyResponse.SerializeToString,
             ),
+            'GetTaskFamilies': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetTaskFamilies,
+                    request_deserializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetTaskFamiliesRequest.FromString,
+                    response_serializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetTaskFamiliesResponse.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
             'agentruntime.registry.v1.RegistryService', rpc_method_handlers)
@@ -204,8 +221,8 @@ def add_RegistryServiceServicer_to_server(servicer, server):
 
  # This class is part of an EXPERIMENTAL API.
 class RegistryService:
-    """RegistryService 版本化存放 Node Template、Recipe、Reasoning Template、Model Profile 与租户策略
-    （设计书 3.1.2）。本期先定方法签名，实现分阶段补。
+    """RegistryService 版本化存放 Node Template、Recipe、Reasoning Template、Model Profile、租户策略
+    与任务族词表（设计书 3.1.2）。本期先定方法签名，实现分阶段补。
 
     每个请求的字段 1 都是 TenantContext：可见范围、模型白名单等按租户过滤，由服务端执行。
     """
@@ -470,6 +487,33 @@ class RegistryService:
             '/agentruntime.registry.v1.RegistryService/GetTenantPolicy',
             agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetTenantPolicyRequest.SerializeToString,
             agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetTenantPolicyResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetTaskFamilies(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.registry.v1.RegistryService/GetTaskFamilies',
+            agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetTaskFamiliesRequest.SerializeToString,
+            agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetTaskFamiliesResponse.FromString,
             options,
             channel_credentials,
             insecure,

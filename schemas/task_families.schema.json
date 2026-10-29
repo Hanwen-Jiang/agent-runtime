@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/task_families.schema.json",
+  "title": "任务族词表",
+  "description": "Registry 按租户登记的任务族词表（TMP 计划第 6 节；Registry 种类 TASK_FAMILIES）。平台默认一份（不带租户、名为 default），没有自己词表的租户用它。分诊只能从词表里选任务族，选不出记 general.unclassified；服务端定任务族，Planner 写的不算数。general.unclassified 是保留的，不列在词表里。id 不能重复由 Registry 发布时核对（JSON Schema 表达不了按字段去重）。词表的增补由 Learning 的报告提出，人审后发布。",
+  "type": "object",
+  "required": ["families"],
+  "properties": {
+    "families": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "required": ["id", "description"],
+        "properties": {
+          "id": {"$ref": "defs.schema.json#/$defs/task_family", "not": {"const": "general.unclassified"}},
+          "description": {"description": "给分诊模型看的：这一族是什么样的请求", "type": "string", "minLength": 1, "maxLength": 300},
+          "examples": {"description": "代表性的请求（不放用户数据，写成概括）", "type": "array", "maxItems": 5, "items": {"type": "string", "minLength": 1, "maxLength": 300}}
+        },
+        "unevaluatedProperties": false
+      }
+    }
+  },
+  "unevaluatedProperties": false
+}

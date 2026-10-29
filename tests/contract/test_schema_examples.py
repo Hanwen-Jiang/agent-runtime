@@ -25,6 +25,8 @@ REQUIRED_SCHEMAS = (
     "memory_item",
     # T-11b：SSE 进度事件的载荷（TaskEvent.payload）。
     "task_event_payload",
+    # TMP 计划（eval-observability-and-runtime-fixes）第 6 节：Registry 的任务族词表。
+    "task_families",
 )
 
 # 计划 S-01 交付第 4 条：附录 B、C、D、I 的 YAML 示例都要转成正例。

@@ -29,6 +29,7 @@ class TaskEventType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     TASK_EVENT_TYPE_VERDICT: _ClassVar[TaskEventType]
     TASK_EVENT_TYPE_TASK_FINISHED: _ClassVar[TaskEventType]
     TASK_EVENT_TYPE_HEARTBEAT: _ClassVar[TaskEventType]
+    TASK_EVENT_TYPE_DECISION_RETRY: _ClassVar[TaskEventType]
 TASK_EVENT_TYPE_UNSPECIFIED: TaskEventType
 TASK_EVENT_TYPE_TASK_ACCEPTED: TaskEventType
 TASK_EVENT_TYPE_ROUND_STARTED: TaskEventType
@@ -42,6 +43,7 @@ TASK_EVENT_TYPE_HUMAN_INPUT_REQUIRED: TaskEventType
 TASK_EVENT_TYPE_VERDICT: TaskEventType
 TASK_EVENT_TYPE_TASK_FINISHED: TaskEventType
 TASK_EVENT_TYPE_HEARTBEAT: TaskEventType
+TASK_EVENT_TYPE_DECISION_RETRY: TaskEventType
 
 class SubmitTaskRequest(_message.Message):
     __slots__ = ("tenant_id", "workspace_id", "session_id", "client_request_id", "message", "inputs", "attachments", "session_access", "priority", "effect_ceiling", "network_request")

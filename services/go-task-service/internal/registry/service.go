@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"sort"
 	"strconv"
@@ -415,6 +416,11 @@ func (r *Registry) defaultTenantPolicy(ctx context.Context, version int64) (entr
 	}
 	e, found, err := platform.get(ctx, kindPolicy, DefaultTenantPolicy, version)
 	return e, defaultPolicyPrefix + e.label(), found, err
+}
+
+// GetTaskFamilies 取租户的任务族词表（TMP 计划第 6 节）。契约待人审（S-01），审过之前回 Unimplemented。
+func (r *Registry) GetTaskFamilies(context.Context, *connect.Request[registryv1.GetTaskFamiliesRequest]) (*connect.Response[registryv1.GetTaskFamiliesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("任务族词表的契约待人审"))
 }
 
 // CurrentTenantPolicy 是租户策略的当前版本（JSON 文档）；没有策略时 found 为 false。task-service 核对提交时的联网申请用（D-16）。

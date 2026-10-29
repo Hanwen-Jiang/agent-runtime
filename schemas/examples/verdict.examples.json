@@ -106,6 +106,12 @@
         "signals": ["budget_burn"],
         "abort": {"completed": ["取数", "归因"], "not_completed": ["成稿"]}
       }
+    },
+    {
+      "name": "rule_raised_with_code",
+      "source": "TMP 计划第 5 节",
+      "notes": "规则改写的理由带代码与参数，reason 仍是给人看的后备。",
+      "instance": {"verdict": "replan", "reason": "fix_tests 本轮内已重试 2 次，仍是和上一轮相同的错误：重规划", "reason_code": "rule_same_error_after_retry", "reason_params": {"nodes": ["fix_tests"], "retries": 2}, "replan": {"stuck_reason": "同一错误在重试后仍出现"}}
     }
   ],
   "invalid": [
@@ -187,6 +193,12 @@
       "description": "诊断层级取附录 B.5 的四层",
       "violates": [{"path": "/layer", "keyword": "enum"}],
       "instance": {"verdict": "replan", "reason": "假设不成立", "layer": "strategy"}
+    },
+    {
+      "name": "reason_params_key_not_snake_case",
+      "description": "参数的键是 snake_case",
+      "violates": [{"path": "/reason_params", "keyword": "pattern"}],
+      "instance": {"verdict": "continue", "reason": "x", "reason_code": "rule_fallback", "reason_params": {"Node": "fix_tests"}}
     }
   ]
 }

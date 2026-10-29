@@ -8,6 +8,8 @@
   "properties": {
     "verdict": {"$ref": "defs.schema.json#/$defs/verdict"},
     "reason": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+    "reason_code": {"description": "reason 由代码给出或改写时的代码（规则的升级、预算用完、问人没有回复……；TMP 计划第 5 节）。模型自己写的理由没有这一项；进度事件 verdict 原样带出", "$ref": "defs.schema.json#/$defs/message_code"},
+    "reason_params": {"description": "reason_code 的参数", "$ref": "defs.schema.json#/$defs/message_params"},
     "layer": {"description": "问题出在哪一层（附录 B.5）", "$ref": "defs.schema.json#/$defs/diagnosis_layer"},
     "signals": {"description": "触发的硬信号（附录 B.6）", "type": "array", "items": {"$ref": "defs.schema.json#/$defs/hard_signal"}, "uniqueItems": true},
     "progress_check": {

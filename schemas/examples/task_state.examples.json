@@ -66,6 +66,12 @@
           "reasoning_templates": {}
         }
       }
+    },
+    {
+      "name": "time_and_tool_budget",
+      "source": "TMP 计划第 3 节",
+      "notes": "租户策略给的时间与工具调用预算；人选择继续过一次，各加了一份。",
+      "instance": {"task_id": "tsk_01JC8X5V3Z9K2M4N6P8Q0R2S4T", "session_id": "ses_01JC8X5V3Z9K2M4N6P8Q0R2S4T", "goal": "修复 CI", "done_when": "测试全部通过", "status": "running", "constraints": {"effect_ceiling": "write_reversible", "budget_usd": 1.0, "wall_clock_min": 40, "tool_calls": 100}, "budget_used": {"wall_clock_min": 22.5, "tool_calls": 57, "extensions": 1}, "rounds": [{"seq": 1, "stage_goal": "复现失败", "status": "completed", "verdict": "continue", "cost_usd": 0.12, "tool_calls": 31}, {"seq": 2, "stage_goal": "修复", "status": "running", "tool_calls": 26}]}
     }
   ],
   "invalid": [
@@ -164,6 +170,18 @@
         "done_when": "有结论",
         "pinned": {"recipe": "refund_analysis@v3", "node_templates": {"sql_query": "latest"}}
       }
+    },
+    {
+      "name": "budget_used_unknown_field",
+      "description": "budget_used 只有时间、工具调用与加了几份",
+      "violates": [{"path": "/budget_used", "keyword": "unevaluatedProperties"}],
+      "instance": {"task_id": "tsk_01JC8X5V3Z9K2M4N6P8Q0R2S4T", "session_id": "ses_01JC8X5V3Z9K2M4N6P8Q0R2S4T", "goal": "修复 CI", "done_when": "测试全部通过", "budget_used": {"usd": 0.3}}
+    },
+    {
+      "name": "tool_calls_budget_fractional",
+      "description": "工具调用次数是整数",
+      "violates": [{"path": "/constraints/tool_calls", "keyword": "type"}],
+      "instance": {"task_id": "tsk_01JC8X5V3Z9K2M4N6P8Q0R2S4T", "session_id": "ses_01JC8X5V3Z9K2M4N6P8Q0R2S4T", "goal": "修复 CI", "done_when": "测试全部通过", "constraints": {"tool_calls": 12.5}}
     }
   ]
 }

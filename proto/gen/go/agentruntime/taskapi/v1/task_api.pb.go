@@ -45,6 +45,8 @@ const (
 	// Task 结束：done、abort、取消或失败，见 payload。
 	TaskEventType_TASK_EVENT_TYPE_TASK_FINISHED TaskEventType = 11
 	TaskEventType_TASK_EVENT_TYPE_HEARTBEAT     TaskEventType = 12
+	// 规划、评审或 tool_loop 一步的模型调用在重试（第 2 次及以后的尝试），见 payload。
+	TaskEventType_TASK_EVENT_TYPE_DECISION_RETRY TaskEventType = 13
 )
 
 // Enum value maps for TaskEventType.
@@ -63,6 +65,7 @@ var (
 		10: "TASK_EVENT_TYPE_VERDICT",
 		11: "TASK_EVENT_TYPE_TASK_FINISHED",
 		12: "TASK_EVENT_TYPE_HEARTBEAT",
+		13: "TASK_EVENT_TYPE_DECISION_RETRY",
 	}
 	TaskEventType_value = map[string]int32{
 		"TASK_EVENT_TYPE_UNSPECIFIED":          0,
@@ -78,6 +81,7 @@ var (
 		"TASK_EVENT_TYPE_VERDICT":              10,
 		"TASK_EVENT_TYPE_TASK_FINISHED":        11,
 		"TASK_EVENT_TYPE_HEARTBEAT":            12,
+		"TASK_EVENT_TYPE_DECISION_RETRY":       13,
 	}
 )
 
@@ -976,7 +980,7 @@ const file_agentruntime_taskapi_v1_task_api_proto_rawDesc = "" +
 	"\x04type\x18\x04 \x01(\x0e2&.agentruntime.taskapi.v1.TaskEventTypeR\x04type\x129\n" +
 	"\n" +
 	"emitted_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\temittedAt\x12=\n" +
-	"\apayload\x18\x06 \x01(\v2#.agentruntime.common.v1.JsonPayloadR\apayload*\xcd\x03\n" +
+	"\apayload\x18\x06 \x01(\v2#.agentruntime.common.v1.JsonPayloadR\apayload*\xf1\x03\n" +
 	"\rTaskEventType\x12\x1f\n" +
 	"\x1bTASK_EVENT_TYPE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dTASK_EVENT_TYPE_TASK_ACCEPTED\x10\x01\x12!\n" +
@@ -991,7 +995,8 @@ const file_agentruntime_taskapi_v1_task_api_proto_rawDesc = "" +
 	"\x17TASK_EVENT_TYPE_VERDICT\x10\n" +
 	"\x12!\n" +
 	"\x1dTASK_EVENT_TYPE_TASK_FINISHED\x10\v\x12\x1d\n" +
-	"\x19TASK_EVENT_TYPE_HEARTBEAT\x10\f2\xa6\x03\n" +
+	"\x19TASK_EVENT_TYPE_HEARTBEAT\x10\f\x12\"\n" +
+	"\x1eTASK_EVENT_TYPE_DECISION_RETRY\x10\r2\xa6\x03\n" +
 	"\vTaskService\x12e\n" +
 	"\n" +
 	"SubmitTask\x12*.agentruntime.taskapi.v1.SubmitTaskRequest\x1a+.agentruntime.taskapi.v1.SubmitTaskResponse\x12e\n" +

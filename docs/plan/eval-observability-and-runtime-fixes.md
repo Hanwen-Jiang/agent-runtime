@@ -1,6 +1,7 @@
 # TMP 计划：线上日志的问题、真模型实验的遗留与评测可观测（设计稿）
 
-> 状态：设计稿（2026-10-28），待人确认后按顺序做。来源两处：
+> 状态：2026-10-28 人确认开工，要人定的几项已定（第 11 节）。第 3～7 节的契约合成一份 S-01 草案，待人审；
+> 第 2～4 节的验收测试已写好，待人确认后实现。来源两处：
 > - 线上日志（`Z:\agentruntime\1028137pm.log`，code.cgent.link，租户 `gh-nsnzd-kimberlyxie343178`，“读仓库并讲清结构”跑了 5 轮、$0.62，最后卡在“规划下一轮”）；
 > - 真模型实验报告（`docs/job-qualifications/real-model-experiments-2026-10-28/README.md` 第 6 节的 P0、P1）。
 > 已经在本仓库里改掉的列在第 1 节；第 2 到 9 节是重的或要先定的，每节写清问题、证据、做法、要人定的、验收。
@@ -126,3 +127,126 @@ Learning 不再因任务族跳过 Task。
 
 用 Runtime 跑 SWE-bench Verified 的子集（例如 50 题）与 Terminal-Bench 的子集：适配器把题目变成 Task（工作区 = 题目仓库的快照，验收 = 题目的测试），
 沙箱镜像按题目语言选；每题预计 $0.3–1.0（按 E4 的 $0.37/Task 估）。产出：与公开榜单同口径的解决率，以及本项目自己的指标（Round 数、Verdict 分布、成本）。
+
+## 11. 细化与人定（2026-10-28）
+
+### 11.1 人定的
+
+| 项 | 决定 |
+| --- | --- |
+| 第 3 节：时间、工具调用预算用完 | **先问人**，不直接 abort（建议是 abort，人选了问人）。细则见 11.4 |
+| 第 3～7 节的契约改动 | 合成**一份 S-01 草案**（11.3），人审过再按顺序实现 |
+| 第 2 节的线上诊断 | 本机没有 kubeconfig：**先做代码侧的防护**；诊断由人执行，把输出贴回来再定位 |
+| 9.3 指标后端 | **VictoriaMetrics 单机版**（设计书 4.13、4.15 的改动稿见 11.6） |
+| 第 10 节 Benchmark | 预算未定，不做 |
+
+### 11.2 各节挂在哪个工作项下（CLAUDE.md“怎么接一个任务”第 1 步）
+
+| 节 | 工作项 |
+| --- | --- |
+| 2 | 复制后核对：D-06（Workspace）的后续；environment 硬信号：S-10 的后续（附录 B.6 的扩展） |
+| 3 | S-03、S-04、S-10 的后续：核心链路 Task Loop → Stage Runner，同一时间只由一个 agent 改 |
+| 4 | S-03（决策 activity 的超时与重试）、T-11b（进度事件）、T-05（网关）的后续 |
+| 5 | S-01；S-10（规则的理由）、T-10（工具错误）的后续；coding-agent 仓库按代码翻译 |
+| 6 | S-01；T-08（Registry）、S-09（分诊）、T-16（Learning）的后续 |
+| 7 | S-01；S-10 的后续 |
+| 8 | S-08 的后续 |
+| 9.2、9.3 | T-15 的后续 |
+
+### 11.3 S-01 草案（待人审）
+
+只加不改：`buf lint`、`buf format`、对兼容性基线的 `buf breaking` 都通过，契约测试 472 个全过（本机没有 Postgres，那部分 Go 测试按
+`AR_ALLOW_MISSING_TOOLS=1` 跳过）。兼容性基线没动，人审通过后再 `buf build -o proto/breaking-baseline.binpb`。
+task-service 的 `GetTaskFamilies` 审过之前回 Unimplemented。
+
+| 文件 | 改动 | 给哪一节 |
+| --- | --- | --- |
+| `proto/.../taskapi/v1/task_api.proto` | `TaskEventType` 加 `TASK_EVENT_TYPE_DECISION_RETRY = 13` | 4 |
+| `proto/.../registry/v1/registry.proto` | `RegistryKind` 加 `REGISTRY_KIND_TASK_FAMILIES = 6`；消息 `TaskFamilies`（version、document、platform_default）；方法 `GetTaskFamilies` | 6 |
+| `schemas/defs.schema.json` | `progress_event` 加 `decision_retry`；新 `decision_step`（plan_round、review_round、tool_loop_step）、`budget_kind`（usd、wall_clock、tool_calls）、`message_code`（snake_case，≤64）、`message_params`（键 snake_case，值是标量或短字符串列表，≤12 项）；`hard_signal` 加 `environment` | 2～5 |
+| `schemas/task_event_payload.schema.json` | 新事件 `decision_retry`（round_seq、step、attempt≥2、max_attempts、tool_loop_step 时必带 node_id、error_code、error）；`verdict` 加 `reason_code`、`params`；`human_input_required` 加 `question_code`、`params`，question_id 可以是 `_budget`；`node_finished` 加 `error_code`、`params`；`tool_status` 加 `error_code`；`stage_started` 加 `goal_code` | 3～5 |
+| `schemas/verdict.schema.json` | 加 `reason_code`、`reason_params`（代码给出或改写理由时） | 5 |
+| `schemas/task_state.schema.json` | `constraints` 加 `wall_clock_min`、`tool_calls`；新 `budget_used`（wall_clock_min、tool_calls、extensions）；`rounds[]` 加 `tool_calls` | 3 |
+| `schemas/node_output.schema.json` | 加 `regressions`（judge 发现的被改坏的既有产物：artifact、evidence），只交给 Reviewer | 7 |
+| `schemas/task_families.schema.json`（新） | 任务族词表：families[]（id、description、examples）；`general.unclassified` 保留，不能列 | 6 |
+
+审的时候请看这几处取舍：
+
+1. **代码用 pattern，不用 enum**：新增代码不必再走 S-01；初始取值在 11.5，客户端翻不了就用同一事件里的文字。
+2. **问人的预算问题沿用 `escalation` 与三种回复**：coding-web 不用改就能回复，只多一个 question_code 可翻译。
+3. **`regressions` 放在 node_output 顶层**，不放进 result：不传给下游，也不依赖各个 judge 模板的 output_schema。
+4. **任务族词表是 Registry 的新种类**，不并进租户策略：租户有自己的策略时不用把整份词表抄一遍；与租户策略一样有平台默认的一份。
+5. **`hard_signal` 加 `environment`**、`budget_used` 的口径（不算等人的时间）是设计书的改动，见 11.6。
+
+### 11.4 第 2～4 节的细化（与上面原文不同的地方加粗）
+
+**第 3 节：时间与工具调用预算**
+
+- 关口：每个 Round 开头（规划或重跑之前）查两项预算；Stage 里 tool_loop 每一步之前查时间、每次工具调用之前查次数，用完就停这个
+  节点（failed、denied，error_code `budget_exhausted`，params 写明哪项、上限、用量），交给 Reviewer。**评审前不拦**：评审可能判 done，
+  拦了反而交付不了。**决策 activity 不再与剩余时间赛跑**：问人之后时间不是硬上限，单次决策由第 4 节的总时限兜底；单个长 activity
+  （例如 10 分钟的 Node）不中途打断。
+- 问人：question_id `_budget`，kind `escalation`，回复限定三种，question_code `budget_exhausted`。`continue_as_is`：用完的那项**加一份
+  （与原预算相同）**，接着规划；`replan_with_guidance`：同样加一份，Planner 的 last_round 带上人的指导；`stop_and_wrap_up` 与超时
+  没回复：abort，用现有结果收尾，verdict 事件的 reason_code 是 `budget_stopped`、`budget_no_reply`。每次用完都问，次数不设上限。
+- **时间只算 Agent 在跑的时间**：所有等人回复的时间（human 节点、审批、Reviewer 升级、预算问题，从发问到收到回复）不算。
+- **工具调用只数 tool_loop 里的调用**（含 sub_agent、子图里的）：program 节点在 activity 里调的工具工作流看不见，这一期不数。
+- 美元预算不变：仍由 Reviewer 的 floor 管（用到 100% 只能问人或收尾）。
+- 预算为 0 或没给：不限。新的运行走版本分支 `BUDGETS_PATCH`，追加在 `patches.AT_START` 末尾；golden 补 `budget_ask_human`、
+  `budget_tool_calls_stop`。
+
+**第 4 节：决策调用卡住时看得见**
+
+- **Python 的 activity 推不了进度事件**（推送是 Go 的 Session Worker 上的 publish_task_event，只能由工作流排），所以原文“activity 侧拿
+  attempt、不改命令序列”的做法行不通：**重试挪进工作流**，放在版本分支 `DECISION_RETRY_PATCH` 后面（追加在 `BUDGETS_PATCH` 之后）。
+  plan_round、review_round、tool_loop_step 在服务端只试一次，工作流按原来的退避重试，最多 `DECISION_MAX_ATTEMPTS`（5）次；第 2 次起
+  每次尝试之前推 `decision_retry`。不可重试的错误不重试、不推。
+- 总时限 `DECISION_TOTAL`（建议 8 分钟，从第一次尝试算）：尝试用完或到了总时限，规划用不调模型的保守规划再调一次
+  （`PlanRoundInput.no_model`），评审只按规则判定（`ReviewRoundInput.rules_only`，理由带 reason_code `rule_fallback`）；tool_loop 的一步
+  照旧让节点失败。
+- 错误代码取 activity 失败的类型（ApplicationError.type），超时记 `activity_timeout`；网关的 models_exhausted 在 details 里带
+  `last_error_code`（最后一次失败的代码），Worker 把它当错误代码。
+
+**第 2 节：代码侧的防护**
+
+- 复制后核对：新工作区（不算 `.git`）一个文件也没有、而源有文件时报 `workspace_empty_after_copy`，行与环境都撤掉；源本来就空照常复制。
+  这只抓得到假设 2。**假设 1（Kata 没挂上卷，基线本身就是空的）复制核对抓不到**（0 对 0）：诊断确认是假设 1 时，再加“建完之后用
+  一个新的只读环境再数一遍文件”的核对。
+- Agent 侧早停：tool_loop 里 `repo_list` 列工作区根（path 为空、`.` 或 `/`）得到空目录，这个 Node 的结果带硬信号 `environment`。
+  Reviewer 的 floor 见到它**只允许 done、问人或收尾**（不是一律问人：交付“工作区是空的”这种答复是对的），理由与问题的代码是
+  `workspace_empty`。
+- **kind 里装 Kata 的验收要嵌套虚拟化**，本机（Hyper-V 里的 Windows + WSL 2）大概率跑不了，放到能跑 Kata 的机器或线上复测。
+
+### 11.5 代码表（message_code 的初始取值）
+
+| 用在 | 代码 |
+| --- | --- |
+| verdict 的 reason_code | 规则：`rule_fallback`、`rule_node_failed`、`rule_failed_twice`、`rule_failed_thrice`、`rule_denied`、`rule_same_error_after_retry`、`rule_merge_conflict`、`rule_replan_no_progress`、`rule_unverified_quality`、`rule_budget_spent`、`rule_budget_alarm`、`rule_cap_reached`、`rule_criteria_not_met`、`rule_no_deliver`、`rule_no_checkpoint`、`rule_unknown_recipe`、`rule_recipe_over_ceiling`、`rule_regression`；工作流：`budget_stopped`、`budget_no_reply`、`human_stopped`、`human_no_reply`、`finish_rejected`、`workspace_empty` |
+| human_input_required 的 question_code | `budget_exhausted`、`rule_stuck`、`recipe_over_ceiling`、`finish_rejected`、`workspace_empty` |
+| node_finished、tool_status 的 error_code | `budget_exhausted`、`max_iterations`、`repeated_error`、`tool_not_allowed`、`tool_rejected`、`activity_timeout`，以及工具自己的代码（`file_not_found` 等） |
+| decision_retry 的 error_code | activity 失败的类型（`models_exhausted`、`grpc_deadline_exceeded` 等）、`activity_timeout` |
+| stage_started 的 goal_code | `reply_to_message`（fast 规划） |
+
+### 11.6 设计书的改动建议（由人更新原文档后重新导出）
+
+1. 附录 B.6：硬信号加 environment（工作区或执行环境本身不可用，换做法没用）；有它时只能交付、问人或收尾。
+2. 附录 B.1、B.4、C.3：Task State 加 budget_used；时间预算只算 Agent 在跑的时间；时间与工具调用预算用完先问人，回复三种，
+   继续时加一份；B.4 abort 一行的“预算用尽”限定为美元预算或人选择停止。
+3. 附录 D.2：节点输出加 regressions（judge 发现的被改坏的既有产物），只交给 Reviewer；B.8 加一条：regressions 非空时至少 rollback。
+4. 3.1.2 Registry：存放对象加任务族词表（租户一份，平台默认一份）；附录 C 的分诊只能从词表里选，选不出记 general.unclassified。
+5. 4.14：进度事件加 decision_retry；给人看的说明一律带代码与参数，客户端按代码翻译。
+6. 4.13、4.15：指标后端选 VictoriaMetrics 单机版。Collector 的 metrics 管道经 `prometheusremotewrite` 写进去；Grafana 加
+   Prometheus 类型的数据源；保留 30 天。网关计量（token、成本、延迟、错误率）与评测的数值指标用 OTel metrics 发，按租户、模型、
+   任务族打标签（不带用户数据）。选它而不选 Prometheus：写入走 remote write 不用抓取，单进程、单卷；不选 Mimir：单节点用不上它的
+   分布式组件。
+
+### 11.7 顺序与验收测试
+
+1. 人审 11.3 的 S-01 草案，通过后更新兼容性基线。
+2. 第 3、4 节（核心链路，一个 agent 改）。测试：`services/py-worker/tests/test_task_budgets.py`、`test_decision_retry.py`、
+   `test_stage_replay.py` 的 `TMP_CASES`（golden 由 `AR_UPDATE_GOLDEN_HISTORIES=1` 补录）、
+   `services/go-model-gateway/internal/gateway/tmp_fixes_test.go`。
+3. 第 2 节的代码侧：`services/py-worker/tests/test_empty_workspace.py`。
+4. 第 5 节（Worker 各处出代码；coding-agent 按代码翻译）、第 6 节、第 7 节：草案审过后先写测试、停下确认，再实现。
+5. 第 8 节；9.2（Grafana 面板与 eval span）；9.3（VictoriaMetrics 的部署、Collector 与面板）。
+6. 第 10 节等预算。

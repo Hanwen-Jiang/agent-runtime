@@ -148,4 +148,6 @@ enum TaskEventType {
   // Task 结束：done、abort、取消或失败，见 payload。
   TASK_EVENT_TYPE_TASK_FINISHED = 11;
   TASK_EVENT_TYPE_HEARTBEAT = 12;
+  // 规划、评审或 tool_loop 一步的模型调用在重试（第 2 次及以后的尝试），见 payload。
+  TASK_EVENT_TYPE_DECISION_RETRY = 13;
 }

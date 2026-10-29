@@ -2,12 +2,26 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentruntime.example/schemas/node_output.schema.json",
   "title": "Node Output",
-  "description": "节点输出的三段（附录 A、D.2）：result 按 output_schema，默认只有它传给下游；rationale 只写入 trace，judge 需要时才显式传入；meta 是计量与置信度。大结果写入 ObjectStore，result 只留摘要，路径在 meta.result_ref。",
+  "description": "节点输出的三段（附录 A、D.2）：result 按 output_schema，默认只有它传给下游；rationale 只写入 trace，judge 需要时才显式传入；meta 是计量与置信度。大结果写入 ObjectStore，result 只留摘要，路径在 meta.result_ref。judge 类节点另可给 regressions（TMP 计划第 7 节）。",
   "type": "object",
   "required": ["result"],
   "properties": {
     "result": {},
     "rationale": {"type": "string"},
+    "regressions": {
+      "description": "judge 类节点（role = judge，或质量包装里的 judge）发现的、被这一轮改坏的既有产物（TMP 计划第 7 节）：不是“这次的产出不够好”，而是之前已有、已验证的东西被破坏了。只交给 Reviewer（不传给下游节点）；非空时 Reviewer 的 floor 至少是 rollback（有检查点时，没有时问人）",
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": ["artifact", "evidence"],
+        "properties": {
+          "artifact": {"description": "被破坏的产物：工作区里的路径、obj:// 地址或产物的名字", "type": "string", "minLength": 1, "maxLength": 300},
+          "evidence": {"description": "凭什么说它被破坏了（例如测试名、对比结果），截到 500 个字符", "type": "string", "minLength": 1, "maxLength": 500}
+        },
+        "unevaluatedProperties": false
+      }
+    },
     "meta": {
       "type": "object",
       "properties": {

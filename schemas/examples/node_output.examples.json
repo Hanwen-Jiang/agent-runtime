@@ -65,6 +65,12 @@
         "result": {"text": "华东退款率上升主要因为物流破损"},
         "meta": {"tier": "mid@low", "vendor": "anthropic", "tokens": {"input": 2048, "output": 180, "cache_read": 1536}, "cost_usd": 0.0058, "latency_ms": 2310}
       }
+    },
+    {
+      "name": "judge_with_regressions",
+      "source": "TMP 计划第 7 节；评测样本 rs_rollback_corrupted_accounts",
+      "notes": "judge 发现之前已验证的账户文件被这一轮清空。",
+      "instance": {"result": {"passed": false, "feedback": "账户文件被清空"}, "rationale": "对比上一轮的检查点，accounts.csv 从 120 行变成 0 行", "regressions": [{"artifact": "data/accounts.csv", "evidence": "上一轮检查点 120 行，本轮 0 行；test_accounts_loaded 失败"}], "meta": {"tier": "mid@low", "cost_usd": 0.004}}
     }
   ],
   "invalid": [
@@ -139,6 +145,12 @@
         "result": "ok",
         "rationale": {"steps": ["a", "b"]}
       }
+    },
+    {
+      "name": "regression_without_evidence",
+      "description": "每条 regression 都要说凭什么",
+      "violates": [{"path": "/regressions/0", "keyword": "required"}],
+      "instance": {"result": {"passed": false}, "regressions": [{"artifact": "data/accounts.csv"}]}
     }
   ]
 }

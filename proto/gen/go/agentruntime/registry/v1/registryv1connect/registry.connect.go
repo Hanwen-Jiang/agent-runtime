@@ -61,6 +61,9 @@ const (
 	// RegistryServiceGetTenantPolicyProcedure is the fully-qualified name of the RegistryService's
 	// GetTenantPolicy RPC.
 	RegistryServiceGetTenantPolicyProcedure = "/agentruntime.registry.v1.RegistryService/GetTenantPolicy"
+	// RegistryServiceGetTaskFamiliesProcedure is the fully-qualified name of the RegistryService's
+	// GetTaskFamilies RPC.
+	RegistryServiceGetTaskFamiliesProcedure = "/agentruntime.registry.v1.RegistryService/GetTaskFamilies"
 )
 
 // RegistryServiceClient is a client for the agentruntime.registry.v1.RegistryService service.
@@ -80,6 +83,8 @@ type RegistryServiceClient interface {
 	GetModelProfile(context.Context, *connect.Request[v1.GetModelProfileRequest]) (*connect.Response[v1.GetModelProfileResponse], error)
 	ListModelProfiles(context.Context, *connect.Request[v1.ListModelProfilesRequest]) (*connect.Response[v1.ListModelProfilesResponse], error)
 	GetTenantPolicy(context.Context, *connect.Request[v1.GetTenantPolicyRequest]) (*connect.Response[v1.GetTenantPolicyResponse], error)
+	// 租户当前的任务族词表；租户没有自己的词表时是平台默认的那份。分诊只能从词表里选任务族。
+	GetTaskFamilies(context.Context, *connect.Request[v1.GetTaskFamiliesRequest]) (*connect.Response[v1.GetTaskFamiliesResponse], error)
 }
 
 // NewRegistryServiceClient constructs a client for the agentruntime.registry.v1.RegistryService
@@ -153,6 +158,12 @@ func NewRegistryServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(registryServiceMethods.ByName("GetTenantPolicy")),
 			connect.WithClientOptions(opts...),
 		),
+		getTaskFamilies: connect.NewClient[v1.GetTaskFamiliesRequest, v1.GetTaskFamiliesResponse](
+			httpClient,
+			baseURL+RegistryServiceGetTaskFamiliesProcedure,
+			connect.WithSchema(registryServiceMethods.ByName("GetTaskFamilies")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -168,6 +179,7 @@ type registryServiceClient struct {
 	getModelProfile       *connect.Client[v1.GetModelProfileRequest, v1.GetModelProfileResponse]
 	listModelProfiles     *connect.Client[v1.ListModelProfilesRequest, v1.ListModelProfilesResponse]
 	getTenantPolicy       *connect.Client[v1.GetTenantPolicyRequest, v1.GetTenantPolicyResponse]
+	getTaskFamilies       *connect.Client[v1.GetTaskFamiliesRequest, v1.GetTaskFamiliesResponse]
 }
 
 // Publish calls agentruntime.registry.v1.RegistryService.Publish.
@@ -220,6 +232,11 @@ func (c *registryServiceClient) GetTenantPolicy(ctx context.Context, req *connec
 	return c.getTenantPolicy.CallUnary(ctx, req)
 }
 
+// GetTaskFamilies calls agentruntime.registry.v1.RegistryService.GetTaskFamilies.
+func (c *registryServiceClient) GetTaskFamilies(ctx context.Context, req *connect.Request[v1.GetTaskFamiliesRequest]) (*connect.Response[v1.GetTaskFamiliesResponse], error) {
+	return c.getTaskFamilies.CallUnary(ctx, req)
+}
+
 // RegistryServiceHandler is an implementation of the agentruntime.registry.v1.RegistryService
 // service.
 type RegistryServiceHandler interface {
@@ -238,6 +255,8 @@ type RegistryServiceHandler interface {
 	GetModelProfile(context.Context, *connect.Request[v1.GetModelProfileRequest]) (*connect.Response[v1.GetModelProfileResponse], error)
 	ListModelProfiles(context.Context, *connect.Request[v1.ListModelProfilesRequest]) (*connect.Response[v1.ListModelProfilesResponse], error)
 	GetTenantPolicy(context.Context, *connect.Request[v1.GetTenantPolicyRequest]) (*connect.Response[v1.GetTenantPolicyResponse], error)
+	// 租户当前的任务族词表；租户没有自己的词表时是平台默认的那份。分诊只能从词表里选任务族。
+	GetTaskFamilies(context.Context, *connect.Request[v1.GetTaskFamiliesRequest]) (*connect.Response[v1.GetTaskFamiliesResponse], error)
 }
 
 // NewRegistryServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -307,6 +326,12 @@ func NewRegistryServiceHandler(svc RegistryServiceHandler, opts ...connect.Handl
 		connect.WithSchema(registryServiceMethods.ByName("GetTenantPolicy")),
 		connect.WithHandlerOptions(opts...),
 	)
+	registryServiceGetTaskFamiliesHandler := connect.NewUnaryHandler(
+		RegistryServiceGetTaskFamiliesProcedure,
+		svc.GetTaskFamilies,
+		connect.WithSchema(registryServiceMethods.ByName("GetTaskFamilies")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/agentruntime.registry.v1.RegistryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RegistryServicePublishProcedure:
@@ -329,6 +354,8 @@ func NewRegistryServiceHandler(svc RegistryServiceHandler, opts ...connect.Handl
 			registryServiceListModelProfilesHandler.ServeHTTP(w, r)
 		case RegistryServiceGetTenantPolicyProcedure:
 			registryServiceGetTenantPolicyHandler.ServeHTTP(w, r)
+		case RegistryServiceGetTaskFamiliesProcedure:
+			registryServiceGetTaskFamiliesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -376,4 +403,8 @@ func (UnimplementedRegistryServiceHandler) ListModelProfiles(context.Context, *c
 
 func (UnimplementedRegistryServiceHandler) GetTenantPolicy(context.Context, *connect.Request[v1.GetTenantPolicyRequest]) (*connect.Response[v1.GetTenantPolicyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.registry.v1.RegistryService.GetTenantPolicy is not implemented"))
+}
+
+func (UnimplementedRegistryServiceHandler) GetTaskFamilies(context.Context, *connect.Request[v1.GetTaskFamiliesRequest]) (*connect.Response[v1.GetTaskFamiliesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.registry.v1.RegistryService.GetTaskFamilies is not implemented"))
 }

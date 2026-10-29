@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentruntime.example/schemas/task_event_payload.schema.json",
   "title": "TaskEvent 的载荷：进度事件",
-  "description": "Task 工作流经 publish_task_event 推送、客户端经 SSE 收到的进度事件的载荷（taskapi.v1.TaskEvent.payload；设计书 4.14，T-11b）。event 与 SSE 的事件名相同。只描述 Round、Stage、Node、tool_loop 里每次工具调用的进度与等待中的问题，不带 Node 的结果、工具的输出与 rationale：结果只在 task_finished 里（Task 的结局）。task_accepted 没有载荷，task_finished 的载荷是 TaskWorkflowResult，都不在这里。",
+  "description": "Task 工作流经 publish_task_event 推送、客户端经 SSE 收到的进度事件的载荷（taskapi.v1.TaskEvent.payload；设计书 4.14，T-11b）。event 与 SSE 的事件名相同。只描述 Round、Stage、Node、tool_loop 里每次工具调用的进度、决策调用的重试与等待中的问题，不带 Node 的结果、工具的输出与 rationale：结果只在 task_finished 里（Task 的结局）。task_accepted 没有载荷，task_finished 的载荷是 TaskWorkflowResult，都不在这里。",
   "type": "object",
   "required": ["event"],
   "properties": {
@@ -15,7 +15,8 @@
     {"if": {"required": ["event"], "properties": {"event": {"const": "node_finished"}}}, "then": {"$ref": "#/$defs/node_finished"}},
     {"if": {"required": ["event"], "properties": {"event": {"const": "tool_status"}}}, "then": {"$ref": "#/$defs/tool_status"}},
     {"if": {"required": ["event"], "properties": {"event": {"const": "human_input_required"}}}, "then": {"$ref": "#/$defs/human_input_required"}},
-    {"if": {"required": ["event"], "properties": {"event": {"const": "verdict"}}}, "then": {"$ref": "#/$defs/verdict"}}
+    {"if": {"required": ["event"], "properties": {"event": {"const": "verdict"}}}, "then": {"$ref": "#/$defs/verdict"}},
+    {"if": {"required": ["event"], "properties": {"event": {"const": "decision_retry"}}}, "then": {"$ref": "#/$defs/decision_retry"}}
   ],
   "$defs": {
     "round_seq": {"description": "Round 序号，从 1 开始", "type": "integer", "minimum": 1},
@@ -39,6 +40,7 @@
         "round_seq": {"$ref": "#/$defs/round_seq"},
         "triage_level": {"description": "Planner 的分诊级别；重跑时不经 Planner，没有这一项", "$ref": "defs.schema.json#/$defs/triage_level"},
         "goal": {"type": "string"},
+        "goal_code": {"description": "goal 是代码生成的固定说明时的代码（例如 fast 规划的 reply_to_message）；Planner 写的 goal 没有这一项（TMP 计划第 5 节）", "$ref": "defs.schema.json#/$defs/message_code"},
         "exit_when": {"type": "string"},
         "nodes": {
           "type": "array",
@@ -87,6 +89,7 @@
         "duration_ms": {"description": "succeeded、failed 时这次调用花了多久（工作流时间）", "type": "integer", "minimum": 0},
         "sandbox_startup_ms": {"description": "这次调用新建了沙箱环境时，借到环境花的时间（冷启动）；复用已有环境时没有这一项", "type": "integer", "minimum": 0},
         "error": {"description": "failed 时的说明，截到 300 个字符", "type": "string", "maxLength": 300},
+        "error_code": {"description": "failed 时工具错误的代码（例如 file_not_found）；客户端按它翻译，error 作后备（TMP 计划第 5 节）", "$ref": "defs.schema.json#/$defs/message_code"},
         "output": {"description": "工具的输出不进进度事件", "$ref": "defs.schema.json#/$defs/forbidden"},
         "rationale": {"description": "rationale 只进 trace", "$ref": "defs.schema.json#/$defs/forbidden"}
       },
@@ -104,6 +107,8 @@
         "status": {"description": "结束时的状态（附录 D.6、K.4）", "$ref": "defs.schema.json#/$defs/finished_node_status"},
         "failure_class": {"$ref": "defs.schema.json#/$defs/failure_class"},
         "error": {"description": "失败说明，截到 300 个字符", "type": "string", "maxLength": 300},
+        "error_code": {"description": "失败说明的代码（例如 budget_exhausted、tool_loop 的 max_iterations）；客户端按它翻译，error 作后备（TMP 计划第 5 节）", "$ref": "defs.schema.json#/$defs/message_code"},
+        "params": {"description": "error_code 的参数", "$ref": "defs.schema.json#/$defs/message_params"},
         "result": {"description": "结果不进进度事件", "$ref": "defs.schema.json#/$defs/forbidden"},
         "rationale": {"description": "rationale 只进 trace", "$ref": "defs.schema.json#/$defs/forbidden"}
       },
@@ -116,9 +121,11 @@
       "properties": {
         "event": {"const": "human_input_required"},
         "round_seq": {"$ref": "#/$defs/round_seq"},
-        "question_id": {"description": "SignalTask 的 HumanReply.question_id：human 节点的 id、审批的 <id>.1、tool_loop 里一次调用的审批 <调用 id>.1，或 Reviewer 升级的 _review", "type": "string", "minLength": 1, "maxLength": 160},
+        "question_id": {"description": "SignalTask 的 HumanReply.question_id：human 节点的 id、审批的 <id>.1、tool_loop 里一次调用的审批 <调用 id>.1、Reviewer 升级的 _review，或时间、工具调用预算用完时的 _budget（TMP 计划第 3 节）", "type": "string", "minLength": 1, "maxLength": 160},
         "kind": {"$ref": "defs.schema.json#/$defs/question_kind"},
         "text": {"type": "string", "minLength": 1},
+        "question_code": {"description": "text 是代码生成的问题时的代码（例如 budget_exhausted、rule_stuck）；客户端按它与 params 翻译，text 作后备。Planner、Reviewer 模型写的问题没有这一项（TMP 计划第 5 节）", "$ref": "defs.schema.json#/$defs/message_code"},
+        "params": {"description": "question_code 的参数", "$ref": "defs.schema.json#/$defs/message_params"},
         "options": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
         "deadline": {"description": "等到什么时候（UTC），过了按超时处理", "type": "string", "format": "date-time"}
       },
@@ -132,8 +139,33 @@
         "event": {"const": "verdict"},
         "round_seq": {"$ref": "#/$defs/round_seq"},
         "verdict": {"$ref": "defs.schema.json#/$defs/verdict"},
-        "reason": {"type": "string"}
+        "reason": {"type": "string"},
+        "reason_code": {"description": "理由是代码给出或改写的时候的代码（规则的升级、预算用完、问人没有回复……）；模型自己写的理由没有这一项。客户端按它与 params 翻译，reason 作后备（TMP 计划第 5 节）", "$ref": "defs.schema.json#/$defs/message_code"},
+        "params": {"description": "reason_code 的参数", "$ref": "defs.schema.json#/$defs/message_params"}
       },
+      "unevaluatedProperties": false
+    },
+    "decision_retry": {
+      "description": "要等模型的决策 activity 的第 2 次及以后的尝试开始了（TMP 计划第 4 节）：哪一步、第几次、上次为什么没成。由 activity 自己推，不改工作流的命令序列；同一 Round 同一步的同一次尝试只推一次",
+      "type": "object",
+      "required": ["event", "round_seq", "step", "attempt", "max_attempts"],
+      "properties": {
+        "event": {"const": "decision_retry"},
+        "round_seq": {"$ref": "#/$defs/round_seq"},
+        "step": {"$ref": "defs.schema.json#/$defs/decision_step"},
+        "node_id": {"description": "step 为 tool_loop_step 时，这一步所在的 Goal Node", "$ref": "defs.schema.json#/$defs/node_id"},
+        "attempt": {"description": "这是第几次尝试，从 2 开始", "type": "integer", "minimum": 2},
+        "max_attempts": {"description": "最多尝试几次（重试策略的上限）", "type": "integer", "minimum": 2},
+        "error_code": {"description": "上一次尝试的错误代码（例如 grpc_deadline_exceeded、models_exhausted）；取不到时没有这一项", "$ref": "defs.schema.json#/$defs/message_code"},
+        "error": {"description": "上一次尝试的错误说明，经凭据脱敏，截到 300 个字符", "type": "string", "maxLength": 300}
+      },
+      "allOf": [
+        {
+          "if": {"required": ["step"], "properties": {"step": {"const": "tool_loop_step"}}},
+          "then": {"required": ["node_id"]},
+          "else": {"properties": {"node_id": {"$ref": "defs.schema.json#/$defs/forbidden"}}}
+        }
+      ],
       "unevaluatedProperties": false
     }
   }

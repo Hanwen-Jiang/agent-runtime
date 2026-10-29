@@ -20,6 +20,7 @@ class RegistryKind(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     REGISTRY_KIND_REASONING_TEMPLATE: _ClassVar[RegistryKind]
     REGISTRY_KIND_MODEL_PROFILE: _ClassVar[RegistryKind]
     REGISTRY_KIND_TENANT_POLICY: _ClassVar[RegistryKind]
+    REGISTRY_KIND_TASK_FAMILIES: _ClassVar[RegistryKind]
 
 class ReleaseState(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
@@ -33,6 +34,7 @@ REGISTRY_KIND_RECIPE: RegistryKind
 REGISTRY_KIND_REASONING_TEMPLATE: RegistryKind
 REGISTRY_KIND_MODEL_PROFILE: RegistryKind
 REGISTRY_KIND_TENANT_POLICY: RegistryKind
+REGISTRY_KIND_TASK_FAMILIES: RegistryKind
 RELEASE_STATE_UNSPECIFIED: ReleaseState
 RELEASE_STATE_SHADOW: ReleaseState
 RELEASE_STATE_DEFAULT: ReleaseState
@@ -99,6 +101,16 @@ class TenantPolicy(_message.Message):
     version: str
     document: _payload_pb2.JsonPayload
     def __init__(self, version: _Optional[str] = ..., document: _Optional[_Union[_payload_pb2.JsonPayload, _Mapping]] = ...) -> None: ...
+
+class TaskFamilies(_message.Message):
+    __slots__ = ("version", "document", "platform_default")
+    VERSION_FIELD_NUMBER: _ClassVar[int]
+    DOCUMENT_FIELD_NUMBER: _ClassVar[int]
+    PLATFORM_DEFAULT_FIELD_NUMBER: _ClassVar[int]
+    version: str
+    document: _payload_pb2.JsonPayload
+    platform_default: bool
+    def __init__(self, version: _Optional[str] = ..., document: _Optional[_Union[_payload_pb2.JsonPayload, _Mapping]] = ..., platform_default: _Optional[bool] = ...) -> None: ...
 
 class PublishRequest(_message.Message):
     __slots__ = ("tenant", "kind", "name", "document", "change_note")
@@ -279,3 +291,15 @@ class GetTenantPolicyResponse(_message.Message):
     TENANT_POLICY_FIELD_NUMBER: _ClassVar[int]
     tenant_policy: TenantPolicy
     def __init__(self, tenant_policy: _Optional[_Union[TenantPolicy, _Mapping]] = ...) -> None: ...
+
+class GetTaskFamiliesRequest(_message.Message):
+    __slots__ = ("tenant",)
+    TENANT_FIELD_NUMBER: _ClassVar[int]
+    tenant: _tenant_pb2.TenantContext
+    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ...) -> None: ...
+
+class GetTaskFamiliesResponse(_message.Message):
+    __slots__ = ("task_families",)
+    TASK_FAMILIES_FIELD_NUMBER: _ClassVar[int]
+    task_families: TaskFamilies
+    def __init__(self, task_families: _Optional[_Union[TaskFamilies, _Mapping]] = ...) -> None: ...

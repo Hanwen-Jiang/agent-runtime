@@ -29,11 +29,13 @@
     "horizon": {"description": "一轮规划多远（设计书 3.2.1 第 2 条）：信息齐全时发完整 DAG，部分未知时每轮一个阶段，几乎未知时只发一个探索用的 Goal Node", "enum": ["full_dag", "per_stage", "explore"]},
     "work_mode": {"description": "上下文策略按工作模式区分（附录 G.3）", "enum": ["coding", "research", "conversation", "writing", "data_analysis", "batch", "long_horizon"]},
     "diagnosis_layer": {"description": "四层诊断（附录 B.5）", "enum": ["execution", "plan", "shape", "goal"]},
-    "hard_signal": {"description": "硬信号（附录 B.6）", "enum": ["repetition", "stall", "budget_burn", "plan_drift", "context_health", "parallel_anomaly", "sample_divergence"]},
+    "hard_signal": {"description": "硬信号（附录 B.6）。environment 是 TMP 计划（eval-observability-and-runtime-fixes）第 2 节加的：工作区或执行环境本身不可用（例如工作区根上列不出任何文件），换做法没有用，要问人", "enum": ["repetition", "stall", "budget_burn", "plan_drift", "context_health", "parallel_anomaly", "sample_divergence", "environment"]},
     "repair_strategy": {"description": "repair 的两步（附录 B.8 第 1、2 步）", "enum": ["retry_with_error", "change_method"]},
     "escalate_target": {"description": "escalate 的去向：换更强的 Tier，或问人（附录 B.8 第 6 步）", "enum": ["tier", "human"]},
     "human_reply": {"description": "Reviewer 升级问人时限定的三种回复（设计书 4.11）", "enum": ["continue_as_is", "replan_with_guidance", "stop_and_wrap_up"]},
-    "progress_event": {"description": "进度事件：TaskEvent 载荷的 event，与 SSE 的事件名相同（设计书 4.14，T-11b）。是 proto TaskEventType 里由 Task 工作流推送的那几个；node_started、tool_status 是 2026-10-28 人审通过加的（tool_loop 里的进度）", "enum": ["round_started", "stage_started", "node_started", "node_finished", "tool_status", "human_input_required", "verdict"]},
+    "progress_event": {"description": "进度事件：TaskEvent 载荷的 event，与 SSE 的事件名相同（设计书 4.14，T-11b）。是 proto TaskEventType 里由 Task 工作流（decision_retry 由决策 activity）推送的那几个；node_started、tool_status 是 2026-10-28 人审通过加的（tool_loop 里的进度）；decision_retry 是 TMP 计划第 4 节加的（规划、评审调用重试时看得见）", "enum": ["round_started", "stage_started", "node_started", "node_finished", "tool_status", "human_input_required", "verdict", "decision_retry"]},
+    "decision_step": {"description": "要等模型的决策 activity（进度事件 decision_retry）：规划、评审、tool_loop 的一步", "enum": ["plan_round", "review_round", "tool_loop_step"]},
+    "budget_kind": {"description": "Task 预算的三项（附录 C.3 的 budget）：美元、时间（wall_clock_min）、工具调用次数", "enum": ["usd", "wall_clock", "tool_calls"]},
     "tool_call_state": {"description": "tool_loop 里一次工具调用的状态（进度事件 tool_status）：调用前 running，调用后 succeeded 或 failed", "enum": ["running", "succeeded", "failed"]},
     "finished_node_status": {"description": "Node 结束时的状态：node_status 里已经结束的那几个", "enum": ["succeeded", "failed", "skipped", "cancelled", "unknown"]},
     "question_kind": {"description": "等待人工回复的问题从哪来（T-11b）：human 节点、write_irreversible 前的审批、tool_loop 里不可逆工具调用前的审批、Reviewer 升级问人", "enum": ["human", "approval", "tool_approval", "escalation"]},
@@ -51,6 +53,21 @@
     "non_empty_string": {"type": "string", "minLength": 1},
     "usd": {"description": "美元金额", "type": "number", "minimum": 0},
     "unit_interval": {"type": "number", "minimum": 0, "maximum": 1},
+    "message_code": {"description": "给人看的说明的代码（TMP 计划第 5 节）：客户端按 code 与 params 翻成自己界面的语言，翻不了时用同一事件里的文字作后备。取值见 docs/plan/eval-observability-and-runtime-fixes.md 的代码表；新增代码不改 schema", "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 64},
+    "message_params": {
+      "description": "message_code 的参数：键是 snake_case，值是标量或短字符串列表；不放用户数据之外的内部材料（floor、提示、规则的原文）",
+      "type": "object",
+      "maxProperties": 12,
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_]*$", "maxLength": 64},
+      "additionalProperties": {
+        "anyOf": [
+          {"type": "string", "maxLength": 300},
+          {"type": "number"},
+          {"type": "boolean"},
+          {"type": "array", "maxItems": 20, "items": {"type": "string", "maxLength": 160}}
+        ]
+      }
+    },
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
 
     "tenant_id": {"description": "身份系统分配的租户 ID", "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,62}$"},

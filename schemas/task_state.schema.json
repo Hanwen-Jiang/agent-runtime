@@ -17,8 +17,20 @@
       "properties": {
         "effect_ceiling": {"$ref": "defs.schema.json#/$defs/effect"},
         "budget_usd": {"$ref": "defs.schema.json#/$defs/usd"},
+        "wall_clock_min": {"description": "时间预算（分钟，租户策略的 budget.wall_clock_min）：只算 Agent 在跑的时间，等人回复的时间不算；用完时问人，人选择继续就再加一份（TMP 计划第 3 节）", "type": "number", "minimum": 0},
+        "tool_calls": {"description": "工具调用次数的上限（租户策略的 budget.tool_calls）：用完时问人，人选择继续就再加一份（TMP 计划第 3 节）", "type": "integer", "minimum": 0},
         "deadline_min": {"type": "number", "minimum": 0}
       }
+    },
+    "budget_used": {
+      "description": "时间与工具调用预算的用量（TMP 计划第 3 节）；美元的用量是各 Round 的 cost_usd 之和",
+      "type": "object",
+      "properties": {
+        "wall_clock_min": {"description": "Task 开始以来 Agent 在跑的时间（分钟，工作流时间），不算等人回复的时间", "type": "number", "minimum": 0},
+        "tool_calls": {"description": "已经发出的工具调用：tool_loop 里的每次调用，含 sub_agent、子图等子工作流里的（program 节点在 activity 里调的工具不数）", "type": "integer", "minimum": 0},
+        "extensions": {"description": "时间或工具调用预算用完后，人选择继续、加了几份", "type": "integer", "minimum": 0}
+      },
+      "unevaluatedProperties": false
     },
     "milestones": {"description": "粗计划，可随时调整", "type": "array", "items": {"$ref": "defs.schema.json#/$defs/non_empty_string"}},
     "facts": {"description": "已验证的事实", "type": "array", "items": {"$ref": "defs.schema.json#/$defs/non_empty_string"}},
@@ -49,7 +61,8 @@
         "triage_level": {"$ref": "defs.schema.json#/$defs/triage_level"},
         "status": {"$ref": "defs.schema.json#/$defs/round_status"},
         "verdict": {"$ref": "defs.schema.json#/$defs/verdict"},
-        "cost_usd": {"$ref": "defs.schema.json#/$defs/usd"}
+        "cost_usd": {"$ref": "defs.schema.json#/$defs/usd"},
+        "tool_calls": {"description": "这个 Round 发出的工具调用次数（TMP 计划第 3 节）", "type": "integer", "minimum": 0}
       },
       "allOf": [
         {

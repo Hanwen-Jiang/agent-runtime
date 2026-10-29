@@ -8,8 +8,8 @@ import "agentruntime/common/v1/tenant.proto";
 import "agentruntime/workflow/v1/task.proto";
 import "google/protobuf/struct.proto";
 
-// RegistryService 版本化存放 Node Template、Recipe、Reasoning Template、Model Profile 与租户策略
-// （设计书 3.1.2）。本期先定方法签名，实现分阶段补。
+// RegistryService 版本化存放 Node Template、Recipe、Reasoning Template、Model Profile、租户策略
+// 与任务族词表（设计书 3.1.2）。本期先定方法签名，实现分阶段补。
 //
 // 每个请求的字段 1 都是 TenantContext：可见范围、模型白名单等按租户过滤，由服务端执行。
 service RegistryService {
@@ -28,6 +28,8 @@ service RegistryService {
   rpc GetModelProfile(GetModelProfileRequest) returns (GetModelProfileResponse);
   rpc ListModelProfiles(ListModelProfilesRequest) returns (ListModelProfilesResponse);
   rpc GetTenantPolicy(GetTenantPolicyRequest) returns (GetTenantPolicyResponse);
+  // 租户当前的任务族词表；租户没有自己的词表时是平台默认的那份。分诊只能从词表里选任务族。
+  rpc GetTaskFamilies(GetTaskFamiliesRequest) returns (GetTaskFamiliesResponse);
 }
 
 // RegistryKind：Registry 存放的对象种类。
@@ -38,6 +40,8 @@ enum RegistryKind {
   REGISTRY_KIND_REASONING_TEMPLATE = 3;
   REGISTRY_KIND_MODEL_PROFILE = 4;
   REGISTRY_KIND_TENANT_POLICY = 5;
+  // 任务族词表：正文按 /schemas/task_families.schema.json。
+  REGISTRY_KIND_TASK_FAMILIES = 6;
 }
 
 // ReleaseState：一个版本的发布状态。
@@ -93,6 +97,14 @@ message ModelProfile {
 message TenantPolicy {
   string version = 1;
   agentruntime.common.v1.JsonPayload document = 2;
+}
+
+// TaskFamilies 是任务族词表，正文是 JSON 载荷。
+message TaskFamilies {
+  string version = 1;
+  agentruntime.common.v1.JsonPayload document = 2;
+  // 是平台默认的那份（租户没有自己的词表）。
+  bool platform_default = 3;
 }
 
 message PublishRequest {
@@ -208,4 +220,12 @@ message GetTenantPolicyRequest {
 
 message GetTenantPolicyResponse {
   TenantPolicy tenant_policy = 1;
+}
+
+message GetTaskFamiliesRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+}
+
+message GetTaskFamiliesResponse {
+  TaskFamilies task_families = 1;
 }

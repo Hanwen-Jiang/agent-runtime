@@ -1,0 +1,39 @@
+{
+  "schema": "task_families",
+  "valid": [
+    {
+      "name": "platform_default",
+      "source": "TMP 计划（eval-observability-and-runtime-fixes）第 6 节",
+      "notes": "平台默认的词表（Registry 里不带租户、名为 default）。真模型实验 E4 的 CI 修复请求都应落在 engineering.ci_fix。",
+      "instance": {
+        "families": [
+          {"id": "engineering.ci_fix", "description": "修复失败的 CI、测试或构建", "examples": ["CI 上的单元测试挂了，帮我修好"]},
+          {"id": "engineering.code_explain", "description": "读仓库并讲清结构、入口与模块，不改文件", "examples": ["讲讲这个仓库的结构和入口"]},
+          {"id": "engineering.feature", "description": "在仓库里实现一个新功能或改动"},
+          {"id": "analytics.attribution", "description": "对一个指标的变化做归因分析"},
+          {"id": "conversation.chat", "description": "闲聊、问候或不需要工具的简单问答"}
+        ]
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "lists_reserved_unclassified",
+      "description": "general.unclassified 是保留的，不列在词表里",
+      "violates": [{"path": "/families/0/id", "keyword": "not"}],
+      "instance": {"families": [{"id": "general.unclassified", "description": "其他"}]}
+    },
+    {
+      "name": "family_without_domain",
+      "description": "任务族形如 领域.名字",
+      "violates": [{"path": "/families/0/id", "keyword": "pattern"}],
+      "instance": {"families": [{"id": "ci_fix", "description": "修 CI"}]}
+    },
+    {
+      "name": "empty_vocabulary",
+      "description": "词表至少一族",
+      "violates": [{"path": "/families", "keyword": "minItems"}],
+      "instance": {"families": []}
+    }
+  ]
+}

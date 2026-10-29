@@ -105,12 +105,60 @@
       "source": "2026-10-28 人审通过",
       "notes": "",
       "instance": {"event": "tool_status", "round_seq": 2, "node_id": "fix_tests", "step": 1, "tool": "repo_read", "state": "failed", "target": "src/pricing.py", "duration_ms": 40, "error": "文件不存在"}
+    },
+    {
+      "name": "decision_retry_plan_round",
+      "source": "TMP 计划（eval-observability-and-runtime-fixes）第 4 节",
+      "notes": "上一次尝试网关超时；error 经凭据脱敏。",
+      "instance": {"event": "decision_retry", "round_seq": 6, "step": "plan_round", "attempt": 2, "max_attempts": 5, "error_code": "grpc_deadline_exceeded", "error": "模型调用超时"}
+    },
+    {
+      "name": "decision_retry_tool_loop_step",
+      "source": "TMP 计划第 4 节",
+      "notes": "tool_loop 的一步要带所在的 Goal Node；取不到上一次的错误代码时没有 error_code。",
+      "instance": {"event": "decision_retry", "round_seq": 2, "step": "tool_loop_step", "node_id": "structure_analysis", "attempt": 3, "max_attempts": 5}
+    },
+    {
+      "name": "human_input_required_budget",
+      "source": "TMP 计划第 3 节（2026-10-28 人定：时间、工具调用预算用完先问人）",
+      "notes": "问题由代码生成：question_code 与 params 给客户端翻译，text 作后备；回复仍是三种。",
+      "instance": {"event": "human_input_required", "round_seq": 5, "question_id": "_budget", "kind": "escalation", "text": "时间预算 20 分钟已经用完（已跑 20.4 分钟）。原样继续、带指导重规划，还是停止并用现有结果收尾？", "question_code": "budget_exhausted", "params": {"budget": "wall_clock", "limit": 20, "used": 20.4}, "options": ["continue_as_is", "replan_with_guidance", "stop_and_wrap_up"], "deadline": "2026-10-29T06:00:00Z"}
+    },
+    {
+      "name": "verdict_budget_no_reply",
+      "source": "TMP 计划第 3、5 节",
+      "notes": "预算用完、问人没有得到回复：工作流给出的 abort 带 reason_code。",
+      "instance": {"event": "verdict", "round_seq": 5, "verdict": "abort", "reason": "时间预算用完，问人没有得到回复：按停止处理，用现有结果收尾", "reason_code": "budget_no_reply", "params": {"budget": "wall_clock"}}
+    },
+    {
+      "name": "verdict_rule_raised",
+      "source": "TMP 计划第 5 节；线上日志 1028137pm",
+      "notes": "规则把模型的提议抬了一级；reason 仍是后备文字。",
+      "instance": {"event": "verdict", "round_seq": 3, "verdict": "escalate", "reason": "按规则改为换更强的 Tier：换 Stage 形状已用满上限（1/1）：升一级", "reason_code": "rule_cap_reached", "params": {"step": "replan_change_shape", "used": 1, "cap": 1, "next": "escalate_tier"}}
+    },
+    {
+      "name": "tool_status_failed_with_code",
+      "source": "TMP 计划第 5 节；线上日志 1028137pm",
+      "notes": "",
+      "instance": {"event": "tool_status", "round_seq": 1, "node_id": "structure_analysis", "step": 2, "tool": "repo_read", "state": "failed", "target": "README.md", "duration_ms": 41, "error": "file_not_found：工作区里没有文件 README.md", "error_code": "file_not_found"}
+    },
+    {
+      "name": "stage_started_fast_goal_code",
+      "source": "TMP 计划第 5 节",
+      "notes": "fast 规划的 goal 是代码给的固定说明，带 goal_code。",
+      "instance": {"event": "stage_started", "round_seq": 1, "triage_level": "fast", "goal": "回复用户这条消息", "goal_code": "reply_to_message", "exit_when": "answer 给出回复", "nodes": [{"id": "answer", "kind": "atomic", "role": "deliver"}]}
+    },
+    {
+      "name": "node_finished_budget_code",
+      "source": "TMP 计划第 3、5 节",
+      "notes": "tool_loop 因工具调用预算用完停下。",
+      "instance": {"event": "node_finished", "round_seq": 4, "node_id": "fix_tests", "role": "act", "status": "failed", "failure_class": "denied", "error": "工具调用预算 50 次已经用完", "error_code": "budget_exhausted", "params": {"budget": "tool_calls", "limit": 50, "used": 50}}
     }
   ],
   "invalid": [
     {
       "name": "unknown_event",
-      "description": "event 只有七种进度事件；task_accepted、task_finished 不用这个 schema",
+      "description": "event 只有八种进度事件；task_accepted、task_finished 不用这个 schema",
       "violates": [{"path": "/event", "keyword": "enum"}],
       "instance": {"event": "task_finished", "round_seq": 1}
     },
@@ -185,6 +233,36 @@
       "description": "node_started 要写明是 Atomic 还是 Goal Node",
       "violates": [{"path": "", "keyword": "required"}],
       "instance": {"event": "node_started", "round_seq": 1, "node_id": "q_region"}
+    },
+    {
+      "name": "decision_retry_first_attempt",
+      "description": "第一次尝试不推 decision_retry",
+      "violates": [{"path": "/attempt", "keyword": "minimum"}],
+      "instance": {"event": "decision_retry", "round_seq": 1, "step": "review_round", "attempt": 1, "max_attempts": 5}
+    },
+    {
+      "name": "decision_retry_tool_loop_without_node",
+      "description": "tool_loop 的一步要带 node_id",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {"event": "decision_retry", "round_seq": 1, "step": "tool_loop_step", "attempt": 2, "max_attempts": 5}
+    },
+    {
+      "name": "decision_retry_plan_with_node",
+      "description": "规划与评审不属于某个 Node",
+      "violates": [{"path": "/node_id", "keyword": "not"}],
+      "instance": {"event": "decision_retry", "round_seq": 1, "step": "plan_round", "node_id": "answer", "attempt": 2, "max_attempts": 5}
+    },
+    {
+      "name": "verdict_params_nested",
+      "description": "params 的值只能是标量或字符串列表",
+      "violates": [{"path": "/params/detail", "keyword": "anyOf"}],
+      "instance": {"event": "verdict", "round_seq": 2, "verdict": "replan", "reason": "x", "reason_code": "rule_stuck", "params": {"detail": {"floor": "replan"}}}
+    },
+    {
+      "name": "reason_code_not_snake_case",
+      "description": "代码是 snake_case",
+      "violates": [{"path": "/reason_code", "keyword": "pattern"}],
+      "instance": {"event": "verdict", "round_seq": 2, "verdict": "abort", "reason": "x", "reason_code": "BudgetExhausted"}
     }
   ]
 }
