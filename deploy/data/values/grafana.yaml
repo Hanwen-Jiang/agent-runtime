@@ -1,5 +1,7 @@
 # Grafana（grafana/grafana Chart；docs/plan/cloud-deploy.md D-03、D-10）：看 Tempo 的调用链与面板。装在 observability 命名空间，
 # 管理员口令取 Secret grafana-admin；面板（D-10）以 ConfigMap 的形式放在 deploy/data/dashboards。
+# 指标（TMP 计划第 9.3 节）：VictoriaMetrics 当 Prometheus 数据源读，趋势面板与告警查它；Tempo 仍是默认数据源。
+# 告警只在 Grafana 里显示（没有配 contact point）；要发邮件或 webhook 时在 alerting 里加 contactpoints.yaml。
 admin:
   existingSecret: grafana-admin
   userKey: user
@@ -19,6 +21,82 @@ datasources:
         url: http://tempo.observability.svc:3200
         access: proxy
         isDefault: true
+      - name: VictoriaMetrics
+        type: prometheus
+        uid: victoriametrics
+        url: http://vm-victoria-metrics-single-server.observability.svc:8428
+        access: proxy
+        isDefault: false
+# 告警规则（TMP 计划第 9.3 节）。指标名是 Telemetry 的名字点换下划线：计数器加 _total，直方图有 _sum、_count、_bucket。
+# 阈值是起步值，按实际用量调。
+alerting:
+  rules.yaml:
+    apiVersion: 1
+    groups:
+      - orgId: 1
+        name: Agent Runtime
+        folder: Agent Runtime
+        interval: 1m
+        rules:
+          - uid: ar-model-provider-errors
+            title: 模型供应商不可用率
+            condition: C
+            for: 10m
+            noDataState: OK
+            execErrState: Error
+            annotations:
+              summary: 某个模型供应商最近 15 分钟超过两成的调用失败（按最后尝试的候选的供应商算；Model Gateway 已经重试并切换过）
+            labels:
+              severity: warning
+            data:
+              - refId: A
+                relativeTimeRange: {from: 900, to: 0}
+                datasourceUid: victoriametrics
+                model:
+                  refId: A
+                  instant: true
+                  expr: >-
+                    sum by (gen_ai_provider_name) (increase(runtime_model_calls_total{outcome="error"}[15m]))
+                    / sum by (gen_ai_provider_name) (increase(runtime_model_calls_total[15m]))
+                    and sum by (gen_ai_provider_name) (increase(runtime_model_calls_total[15m])) >= 10
+              - refId: B
+                datasourceUid: __expr__
+                model: {refId: B, type: reduce, expression: A, reducer: last}
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: B
+                  conditions: [{evaluator: {type: gt, params: [0.2]}}]
+          - uid: ar-tenant-hourly-spend
+            title: 租户每小时花费
+            condition: C
+            for: 0s
+            noDataState: OK
+            execErrState: Error
+            annotations:
+              summary: 某个租户最近一小时的模型花费超过 5 美元（Model Gateway 计的费，含 Planner、Reviewer 与各 Node）
+            labels:
+              severity: warning
+            data:
+              - refId: A
+                relativeTimeRange: {from: 3600, to: 0}
+                datasourceUid: victoriametrics
+                model:
+                  refId: A
+                  instant: true
+                  expr: sum by (tenant_id) (increase(runtime_model_cost_usd_sum[1h]))
+              - refId: B
+                datasourceUid: __expr__
+                model: {refId: B, type: reduce, expression: A, reducer: last}
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: B
+                  conditions: [{evaluator: {type: gt, params: [5]}}]
 sidecar:
   dashboards:
     enabled: true

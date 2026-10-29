@@ -8,7 +8,9 @@ repeat--<评测集>--<被测对象>--<划分>--<时间>.json：
     repeat          次数
     runs            每次报告的路径（不写文件时为 null）
     metrics         {指标: {values, median, min, max}}：报告 metrics 展平后的数值指标，另加 failures.<code>
-                    （该失败代码一次评测里出现的次数，没出现记 0）；values 按次序，某次没有该指标记 null，中位数只算有值的
+                    （该失败代码一次评测里出现的次数，没出现记 0）；values 按次序列出每一次，某次没有该指标记 null；
+                    中位数与范围只算有效（valid）且有值的那几次（TMP 计划第 8 节），全部无效时为 null
+    invalid_runs    无效的次数（回退率超过阈值，见 runner）
     gate            null，或 gates.evaluate_gate 的结果（按中位数判）
 
 留出集的单次报告本来就只有汇总，汇总里也只有指标，不出现用例。
@@ -27,7 +29,19 @@ from typing import Any
 from agentruntime_learning.evals.cases import EvalSet
 from agentruntime_learning.evals.gates import GATES, evaluate_gate, gate_lines
 from agentruntime_learning.evals.model import Subject
-from agentruntime_learning.evals.runner import DEFAULT_REPORTS_DIR, LATEST, EvalConfigError, Report, _flatten, _report_name, latest_report, run_eval
+from agentruntime_core.providers.telemetry import Telemetry
+
+from agentruntime_learning.evals.runner import (
+    DEFAULT_MAX_FALLBACK_RATE,
+    DEFAULT_REPORTS_DIR,
+    LATEST,
+    EvalConfigError,
+    Report,
+    _flatten,
+    _report_name,
+    latest_report,
+    run_eval,
+)
 
 FAILURES = "failures."
 
@@ -46,6 +60,7 @@ _SHOWN = (
     ("cost.planner_cost_ratio.mean", "规划成本占 Task 预计成本（均值）", "rate"),
     ("cost.planner_cost_ratio.max", "规划成本占 Task 预计成本（最大）", "rate"),
     ("model_call_failures", "模型调用失败", "count"),
+    ("fallbacks.rate", "回退率", "rate"),
 )
 
 
@@ -65,6 +80,12 @@ class RepeatedReport:
             f"评测 {d['eval_set']['name']}（版本 {d['eval_set']['version'][:12]}）· 被测对象 {d['subject']} · 划分 {d['split']} · "
             f"重复 {d['repeat']} 次：指标取中位数，括号里是各次的范围"
         ]
+        if d.get("invalid_runs"):
+            invalid = [i + 1 for i, r in enumerate(self.runs) if r.data.get("valid") is False]
+            lines.append(
+                f"⚠ {d['invalid_runs']} 次无效（第 {'、'.join(map(str, invalid))} 次，回退率超过阈值）：中位数与范围只算有效的"
+                + ("；全部无效，没有中位数" if d["invalid_runs"] == d["repeat"] else "")
+            )
         for name, label, kind in _SHOWN:
             entry = d["metrics"].get(name)
             if entry is None or entry["median"] is None:
@@ -91,13 +112,14 @@ def _numbers(report: Report) -> dict[str, float]:
 
 
 def aggregate(runs: list[Report]) -> dict[str, dict[str, Any]]:
-    """每个数值指标的各次取值、中位数与范围。"""
+    """每个数值指标的各次取值、中位数与范围；中位数与范围只算有效的运行（没有 valid 的旧报告当有效）。"""
     numbers = [_numbers(r) for r in runs]
+    valid = [r.data.get("valid", True) is not False for r in runs]
     out: dict[str, dict[str, Any]] = {}
     for name in sorted({k for n in numbers for k in n}):
         default = 0.0 if name.startswith(FAILURES) else None
         values = [n.get(name, default) for n in numbers]
-        present = [v for v in values if v is not None]
+        present = [v for v, ok in zip(values, valid, strict=True) if v is not None and ok]
         out[name] = {
             "values": values,
             "median": statistics.median(present) if present else None,
@@ -117,6 +139,8 @@ async def run_repeated(
     compare: Path | str | None = LATEST,
     require_confirmed: bool = False,
     gate: str | None = None,
+    max_fallback_rate: float = DEFAULT_MAX_FALLBACK_RATE,
+    telemetry: Telemetry | None = None,
 ) -> RepeatedReport:
     """跑 repeat 次并汇总；gate 是 GATES 里的名字（s09、s10）时按中位数判门槛。reports_dir 为 None 时不写文件。"""
     if repeat < 1:
@@ -127,7 +151,16 @@ async def run_repeated(
     if compare == LATEST:
         baseline = latest_report(reports_dir, eval_set=eval_set.name, subject=subject.name, split=split) if reports_dir is not None else None
     runs = [
-        await run_eval(eval_set, subject, split=split, reports_dir=reports_dir, compare=baseline, require_confirmed=require_confirmed)
+        await run_eval(
+            eval_set,
+            subject,
+            split=split,
+            reports_dir=reports_dir,
+            compare=baseline,
+            require_confirmed=require_confirmed,
+            max_fallback_rate=max_fallback_rate,
+            telemetry=telemetry,
+        )
         for _ in range(repeat)
     ]
     metrics = aggregate(runs)
@@ -141,6 +174,7 @@ async def run_repeated(
         "repeat": repeat,
         "runs": [str(r.path) if r.path else None for r in runs],
         "metrics": metrics,
+        "invalid_runs": sum(1 for r in runs if r.data.get("valid") is False),
         "gate": evaluate_gate(gate, metrics) if gate else None,
     }
     path = None

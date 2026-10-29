@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 装数据层与观测组件（docs/plan/cloud-deploy.md D-03），deploy/cluster/install.sh 与密钥（deploy/cluster/secrets）之后运行：
 #   deploy/data/install.sh
-# Postgres（CloudNativePG）、Temporal、Qdrant、Redpanda 装在 data；Langfuse、Tempo、Grafana 装在 observability。
+# Postgres（CloudNativePG）、Temporal、Qdrant、Redpanda 装在 data；Langfuse、Tempo、VictoriaMetrics、Grafana 装在 observability。
 # 版本见 deploy/cluster/versions.conf；资源的预算见 deploy/cluster/README.md。重复运行是安全的。
 set -euo pipefail
 
@@ -25,6 +25,7 @@ helm repo add qdrant https://qdrant.github.io/qdrant-helm >/dev/null
 helm repo add redpanda https://charts.redpanda.com >/dev/null
 helm repo add langfuse https://langfuse.github.io/langfuse-k8s >/dev/null
 helm repo add grafana https://grafana-community.github.io/helm-charts >/dev/null
+helm repo add vm https://victoriametrics.github.io/helm-charts >/dev/null
 helm repo update >/dev/null
 
 log "Temporal"
@@ -39,9 +40,11 @@ log "ClickHouse operator（Langfuse 2.x 的 ClickHouse 由它部署；要 cert-m
 helm upgrade --install clickhouse-operator oci://ghcr.io/clickhouse/clickhouse-operator-helm --version "$CLICKHOUSE_OPERATOR_VERSION" \
   -n clickhouse-operator --create-namespace --wait
 
-log "Langfuse、Tempo、Grafana"
+log "Langfuse、Tempo、VictoriaMetrics、Grafana"
 helm upgrade --install langfuse langfuse/langfuse --version "$LANGFUSE_CHART_VERSION" -n observability -f "$HERE/values/langfuse.yaml" --wait --timeout 15m
 helm upgrade --install tempo grafana/tempo --version "$TEMPO_CHART_VERSION" -n observability -f "$HERE/values/tempo.yaml" --wait
+# 指标的后端（TMP 计划第 9.3 节）：Collector 经 remote write 写入，Grafana 的趋势面板与告警读它。
+helm upgrade --install vm vm/victoria-metrics-single --version "$VM_CHART_VERSION" -n observability -f "$HERE/values/victoria-metrics.yaml" --wait
 helm upgrade --install grafana grafana/grafana --version "$GRAFANA_CHART_VERSION" -n observability -f "$HERE/values/grafana.yaml" --wait
 kubectl apply -f "$HERE/dashboards/"
 

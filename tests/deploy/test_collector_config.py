@@ -86,9 +86,10 @@ def test_semantic_pipelines_drop_infrastructure_spans(config: dict[str, Any]) ->
         assert marker in rules, f"filter/semantic 要按 {marker} 留下语义 span"
 
 
-def test_metrics_and_logs_go_to_debug_for_now(config: dict[str, Any]) -> None:
+def test_logs_go_to_debug_for_now(config: dict[str, Any]) -> None:
+    """指标在 TMP 计划第 9.3 节之后写进 VictoriaMetrics（test_observability_quality）；日志的后端仍没选型。"""
     p = pipelines(config)
-    assert p["metrics"]["exporters"] == ["debug"] and p["logs"]["exporters"] == ["debug"]
+    assert p["logs"]["exporters"] == ["debug"]
     assert config["exporters"]["debug"].get("verbosity", "basic") == "basic", "debug 只打摘要，不打属性"
 
 
@@ -106,7 +107,7 @@ def test_collector_redaction_matches_the_application_rules(config: dict[str, Any
         assert any(p.search(key) for p in patterns), f"Collector 删不掉 {key}"
 
 
-@pytest.mark.parametrize("key", [*GENAI_USAGE_COUNT_KEYS, "tenant_id", "gen_ai.operation.name", "runtime.cost_usd", "temporal.workflow_id"])
+@pytest.mark.parametrize("key", [*GENAI_USAGE_COUNT_KEYS, "tenant_id", "gen_ai.operation.name", "gen_ai.token.type", "runtime.cost_usd", "temporal.workflow_id"])
 def test_collector_keeps_ordinary_attributes(config: dict[str, Any], key: str) -> None:
     assert not any(p.search(key) for p in redact_patterns(config)), f"Collector 不该删 {key}"
 
@@ -114,7 +115,10 @@ def test_collector_keeps_ordinary_attributes(config: dict[str, Any], key: str) -
 def test_collector_validates_its_own_config() -> None:
     """有 otelcol-contrib 时用它自己的 validate 校验（缺时按 AR_ALLOW_MISSING_TOOLS 跳过）。"""
     otelcol = require_tool("otelcol-contrib")
-    env_defaults = {"TEMPO_ENDPOINT": "tempo:4317", "LANGFUSE_ENDPOINT": "http://langfuse:3000", "LANGFUSE_AUTH": "eDp5", "REDPANDA_BROKERS": "redpanda:9092"}
+    env_defaults = {
+        "TEMPO_ENDPOINT": "tempo:4317", "LANGFUSE_ENDPOINT": "http://langfuse:3000", "LANGFUSE_AUTH": "eDp5", "REDPANDA_BROKERS": "redpanda:9092",
+        "VM_REMOTE_WRITE_ENDPOINT": "http://vm:8428/api/v1/write",
+    }
     proc = subprocess.run(
         [otelcol, "validate", f"--config={COLLECTOR_CONFIG}"],
         env={**os.environ, **env_defaults},

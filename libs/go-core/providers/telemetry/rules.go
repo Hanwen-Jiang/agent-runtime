@@ -1,6 +1,7 @@
 package telemetry
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/secret"
@@ -14,6 +15,10 @@ var (
 	ReservedKeys = []string{"tenant_id", "user_id", "workspace_id", "session_id", "scope"}
 	// GenAIUsageCountKeys：GenAI 语义约定的 token 计数，键名含 token，但值是整数时不是凭据，不脱敏（T-15）。
 	GenAIUsageCountKeys = []string{"gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens"}
+	// GenAITokenTypeKey：GenAI 指标 gen_ai.client.token.usage 的属性，键名含 token，值是 GenAITokenTypes 之一时不是凭据，不脱敏
+	// （TMP 计划第 9.3 节）。
+	GenAITokenTypeKey = "gen_ai.token.type"
+	GenAITokenTypes   = []string{"input", "output"}
 )
 
 func isReserved(key string) bool {
@@ -39,6 +44,9 @@ func IsSensitive(key string, value any) bool {
 		if k == key && isInteger(value) {
 			return false
 		}
+	}
+	if s, ok := value.(string); ok && key == GenAITokenTypeKey && slices.Contains(GenAITokenTypes, s) {
+		return false
 	}
 	lowered := strings.ToLower(key)
 	for _, s := range SensitiveKeyParts {

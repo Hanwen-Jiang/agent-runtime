@@ -13,6 +13,8 @@ S-11 的增量摘要与 Compaction Probe）——再让被测模型只凭压缩�
 门槛：full 的 Probe 通过率不低于 mask_only，重复操作率不高于 mask_only。留出集只给汇总。
 另给两个与被测模型无关的诊断，不进门槛：答案留在压缩后上下文里的比例（retention_rate），走到 summarize 的样本数（summarized）。
 真模型有随机性：repeat 次重复跑时指标取中位数、门槛按中位数判，每次的结果都保留（T-02）。
+一条样本出错（例如模型给的 JSON 解析不了）只记这一条失败：它的题全算答错、不算重复操作，行里带 error，指标 errors 记出错的
+样本数，整轮照常跑完（TMP 计划第 8 节）。
 
 样本必须长到“只做 mask 之后仍超过 summarize_at”，否则 full 不会摘要，两种策略的差别只剩随机波动：加载时就检查（T-01）。
 
@@ -207,8 +209,8 @@ class ContextReport:
     split: str
     subject: str
     metrics: dict[str, dict[str, float]]
-    """策略 → {"probe_pass_rate", "repeat_rate", "retention_rate", "summarized", "samples"}；重复跑时取各次的中位数。
-    summarized 是走到 summarize 的样本数。"""
+    """策略 → {"probe_pass_rate", "repeat_rate", "retention_rate", "summarized", "errors", "samples"}；重复跑时取各次的中位数。
+    summarized 是走到 summarize 的样本数，errors 是出错的样本数。"""
     gate_passed: bool
     """按 metrics（中位数）判。"""
     samples: list[dict[str, Any]] = field(default_factory=list)
@@ -235,6 +237,7 @@ class ContextReport:
             lines.append(
                 f"  {strategy}：Probe 通过率 {show(strategy, 'probe_pass_rate')}，重复操作率 {show(strategy, 'repeat_rate')}，"
                 f"答案留在上下文里的比例 {show(strategy, 'retention_rate')}，触发摘要 {show(strategy, 'summarized', '{:g}')} 条（共 {int(m['samples'])} 条）"
+                + (f"，⚠ 出错 {show(strategy, 'errors', '{:g}')} 条" if any(r[strategy].get("errors") for r in self.runs) else "")
             )
         lines.append("  门槛（full 不劣于 mask_only）：" + ("通过" if self.gate_passed else "未通过"))
         for row in self.samples:
@@ -242,6 +245,7 @@ class ContextReport:
             lines.append(
                 f"    {run}{row['id']} · {row['strategy']}：Probe {row['passed']}/{len(row['probes'])}，留存 {row['retained']}，"
                 f"阶梯 {'/'.join(row['applied']) or '无'}{'，重复操作' if row['repeated'] else ''}"
+                + (f"，出错：{row['error']}" if "error" in row else "")
             )
         return "\n".join(lines)
 
@@ -280,43 +284,54 @@ async def _run_once(selected: Sequence[ContextSample], subject: ContextSubject, 
     metrics: dict[str, dict[str, float]] = {}
     rows: list[dict[str, Any]] = []
     for strategy in STRATEGIES:
-        questions = passed = retained = repeats = summarized = 0
+        questions = passed = retained = repeats = summarized = errors = 0
         for sample in selected:
-            built = await build_context(sample, strategy, subject.gateway, work_dir / strategy / sample.id)
-            messages = built.messages
-            summarized += int("summarize" in built.applied)
-            answers = await subject.answer(messages, [p["question"] for p in sample.probes])
-            context_text = "\n".join(_context_lines(messages))
-            graded, kept = [], []
-            for i, probe in enumerate(sample.probes):
-                fact = ProbeFact(category="label", text=probe["answer"], answer=probe["answer"])
-                graded.append(grade(fact, answers[i] if i < len(answers) else ""))
-                kept.append(grade(fact, context_text))
-            tool, args = await subject.next_action(messages, list(sample.node.get("tools") or []))
-            repeated = _action(tool, args) in {_action(d["tool"], d["args"]) for d in sample.completed}
+            applied: list[str] = []
+            graded = [False] * len(sample.probes)
+            kept = [False] * len(sample.probes)
+            tool, args, repeated, error = "", {}, False, None
+            try:
+                built = await build_context(sample, strategy, subject.gateway, work_dir / strategy / sample.id)
+                messages, applied = built.messages, list(built.applied)
+                answers = await subject.answer(messages, [p["question"] for p in sample.probes])
+                context_text = "\n".join(_context_lines(messages))
+                for i, probe in enumerate(sample.probes):
+                    fact = ProbeFact(category="label", text=probe["answer"], answer=probe["answer"])
+                    graded[i] = grade(fact, answers[i] if i < len(answers) else "")
+                    kept[i] = grade(fact, context_text)
+                tool, args = await subject.next_action(messages, list(sample.node.get("tools") or []))
+                repeated = _action(tool, args) in {_action(d["tool"], d["args"]) for d in sample.completed}
+            except Exception as exc:  # noqa: BLE001 — 一条样本出错只记这一条（题全算答错），整轮继续
+                graded = [False] * len(sample.probes)
+                tool, args, repeated = "", {}, False
+                error = f"{type(exc).__name__}: {exc}"
+                errors += 1
+            summarized += int("summarize" in applied)
             questions += len(graded)
             passed += sum(graded)
             retained += sum(kept)
             repeats += int(repeated)
             if split == "dev":
-                rows.append(
-                    {
-                        "run": run,
-                        "id": sample.id,
-                        "strategy": strategy,
-                        "applied": built.applied,
-                        "probes": graded,
-                        "passed": sum(graded),
-                        "retained": sum(kept),
-                        "repeated": repeated,
-                        "action": [tool, args],
-                    }
-                )
+                row: dict[str, Any] = {
+                    "run": run,
+                    "id": sample.id,
+                    "strategy": strategy,
+                    "applied": applied,
+                    "probes": graded,
+                    "passed": sum(graded),
+                    "retained": sum(kept),
+                    "repeated": repeated,
+                    "action": [tool, args],
+                }
+                if error is not None:
+                    row["error"] = error
+                rows.append(row)
         metrics[strategy] = {
             "probe_pass_rate": passed / questions if questions else 0.0,
             "repeat_rate": repeats / len(selected) if selected else 0.0,
             "retention_rate": retained / questions if questions else 0.0,
             "summarized": float(summarized),
+            "errors": float(errors),
             "samples": float(len(selected)),
         }
     return metrics, rows

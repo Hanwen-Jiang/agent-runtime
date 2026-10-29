@@ -1,10 +1,13 @@
 # OpenTelemetry Collector（contrib 发行版）的配置（设计书 4.13、L.14；T-15，细化见 docs/plan/deploy-telemetry.md 第 2 节第 3 条）。
-# 一路收（OTLP gRPC 4317、HTTP 4318），三路发：
+# 一路收（OTLP gRPC 4317、HTTP 4318），四路发：
 #   全部 span → Grafana Tempo（otlp）；
 #   语义 span（gen_ai.operation.name，或名字以 runtime.、invoke_ 开头）→ Langfuse（otlphttp，Langfuse 只收 OTLP over HTTP）
-#   与 Redpanda（kafka，otlp_json，主题 telemetry.spans，供 Learning Pipeline 消费）。
-# 指标与日志的后端设计书没有选型，第一期只到 debug。
-# 地址与认证取自环境变量（Helm Chart 注入）：TEMPO_ENDPOINT、LANGFUSE_ENDPOINT、LANGFUSE_AUTH、REDPANDA_BROKERS。
+#   与 Redpanda（kafka，otlp_json，主题 telemetry.spans，供 Learning Pipeline 消费）；
+#   指标 → VictoriaMetrics（prometheusremotewrite；TMP 计划第 9.3 节，2026-10-28 人定）。应用按 delta 时间性发（每次导出只带
+#   这段时间的增量），remote write 要累计值，所以先过 deltatocumulative。名字到了 Prometheus 是点换下划线，计数器加 _total。
+# 日志的后端设计书没有选型，第一期只到 debug。
+# 地址与认证取自环境变量（Helm Chart 注入）：TEMPO_ENDPOINT、LANGFUSE_ENDPOINT、LANGFUSE_AUTH、REDPANDA_BROKERS、
+# VM_REMOTE_WRITE_ENDPOINT。
 
 receivers:
   otlp:
@@ -28,6 +31,9 @@ processors:
     actions:
       - pattern: (?i).*(password|secret|api_key|apikey|authorization|credential|cookie).*
         action: delete
+  # 同一条指标流（名字加属性）的增量累加成累计值；15 分钟没有新数据的流丢掉状态（评测这类短命进程跑完就不再发）。
+  deltatocumulative:
+    max_stale: 15m
   filter/semantic:
     error_mode: ignore
     traces:
@@ -48,6 +54,8 @@ exporters:
     traces:
       topic: telemetry.spans
       encoding: otlp_json
+  prometheusremotewrite/victoriametrics:
+    endpoint: ${env:VM_REMOTE_WRITE_ENDPOINT}
   debug:
     verbosity: basic
 
@@ -72,8 +80,8 @@ service:
       exporters: [kafka]
     metrics:
       receivers: [otlp]
-      processors: [memory_limiter, attributes/redact, batch]
-      exporters: [debug]
+      processors: [memory_limiter, attributes/redact, deltatocumulative, batch]
+      exporters: [prometheusremotewrite/victoriametrics]
     logs:
       receivers: [otlp]
       processors: [memory_limiter, attributes/redact, batch]

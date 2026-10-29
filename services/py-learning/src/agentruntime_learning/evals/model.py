@@ -55,6 +55,8 @@ class PlannerOutput:
     stage: dict[str, Any]
     task_plan: dict[str, Any] | None = None
     usage: list[Usage] = field(default_factory=list)
+    fallback: bool | None = None
+    """经模型的被测对象：这次是否回退成了保守规划（TMP 计划第 8 节）；不经模型的（baseline、oracle）为 None，不算进回退率。"""
 
 
 @dataclass(frozen=True)
@@ -69,6 +71,8 @@ class ReviewerInput:
 class ReviewerOutput:
     verdict: dict[str, Any]
     usage: list[Usage] = field(default_factory=list)
+    fallback: bool | None = None
+    """经模型的被测对象：判定是否只来自规则（Progress Check 不合格或模型出错）；不经模型的为 None。"""
 
 
 class Subject(Protocol):

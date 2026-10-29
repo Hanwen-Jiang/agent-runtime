@@ -496,16 +496,19 @@ def dashboard() -> dict[str, Any]:
     return json.loads(cm["data"]["agent-runtime.json"])
 
 
-def worker_source() -> str:
-    root = REPO_ROOT / "services" / "py-worker" / "src"
-    return "\n".join(p.read_text("utf-8") for p in root.rglob("*.py"))
+def emitting_source() -> str:
+    """发 span 的代码：Worker 与 Model Gateway（模型花费按网关的服务名选，TMP 计划第 9.2 节）。"""
+    worker = REPO_ROOT / "services" / "py-worker" / "src"
+    gateway = REPO_ROOT / "services" / "go-model-gateway"
+    files = [*worker.rglob("*.py"), *(p for p in gateway.rglob("*.go") if not p.name.endswith("_test.go"))]
+    return "\n".join(p.read_text("utf-8") for p in files)
 
 
 def test_dashboard_queries_spans_and_attributes_the_code_emits() -> None:
     board = dashboard()
     queries = [t["query"] for p in board["panels"] for t in p["targets"] if t.get("query")]
     assert queries
-    source = worker_source()
+    source = emitting_source()
     for query in queries:
         for name in re.findall(r'name = \\?"([^"\\]+)\\?"', query):
             assert f'"{name}"' in source, f"面板查的 span {name} 代码里没有"

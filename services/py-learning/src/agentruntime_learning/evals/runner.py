@@ -14,6 +14,8 @@
       rubric        {scored, mean}；没配 judge 时 scored = 0、mean = null（未评，不按 0 分算）
       model_call_failures  本次失败的模型调用次数（只有经 Model Gateway 的被测对象才有，见 worker_subject.CountingGateway）；
                     大于 0 时这次的分数掺了 Planner、Reviewer 的回退，不代表模型的判断
+      fallbacks     {planner, reviewer, decisions, rate}：Planner 回退成保守规划、Reviewer 只按规则判定的次数；decisions 是经模型的
+                    决策数（输出的 fallback 不为 None 的），rate = 回退 / decisions，没有经模型的决策时为 null（TMP 计划第 8 节）
       cost          {total_usd（被测对象的全部成本）, task_cases_usd（Task 用例的规划与判定）,
                      per_case_usd, per_success_usd（按 Task 用例算）, judge_usd（judge 另计）,
                      planner_cost_ratio: {cases, mean, max}}：标为 full 的用例里，规划成本占 Task 预计成本的比例
@@ -23,10 +25,15 @@
     cases           [{id, kind, passed, failures, cost_usd}]，按 id 排序；留出集的报告没有这一项
                     被测对象调用出错时，该次决策记 error 维度的失败（code = subject_error），整轮评测继续
     model_call_failure_codes  {code: 次数}：本次失败的模型调用按 code 分（与 model_call_failures 同时出现）
+    models          {role: {model_profile_id: 次数}}：每个 role 成功的模型调用实际用到的模型；不经模型的被测对象为 {}
+    max_fallback_rate  回退率的阈值；valid 为 false（invalid_reason 说明）时这次的分数不代表模型的判断，--repeat 的中位数不算它
     diff            null，或 {against, comparable, metrics: {名: {before, after, delta}}, now_failing, now_passing}；
                     留出集的 diff 没有 now_failing 与 now_passing
 
 留出集只给汇总：报告与摘要里不出现逐条结果，避免照着留出集调提示。
+
+给了 telemetry（TMP 计划第 9.2 节）时一次运行一个 eval.run span，下面每条用例一个 eval.case span（留出集不发），另发指标
+runtime.eval.runs 与 runtime.eval.score（每个数值指标一次观测）；属性里没有用例原文。
 """
 
 from __future__ import annotations
@@ -35,10 +42,14 @@ import copy
 import json
 import re
 from collections import Counter
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Final
+
+from agentruntime_core.providers.telemetry import Span, Telemetry
 
 from agentruntime_learning.evals.cases import Checkpoint, EvalSet, TaskCase
 from agentruntime_learning.evals.model import PlannerInput, ReviewerInput, Subject
@@ -52,6 +63,16 @@ LATEST: Final = "latest"
 """compare 的默认值：和 reports_dir 里同一被测对象、同一划分、同一评测集的最近一份报告比较。"""
 
 SPLITS = ("dev", "holdout")
+DEFAULT_MAX_FALLBACK_RATE = 0.05
+"""回退率超过它的运行无效（TMP 计划第 8 节）。"""
+# eval.run span 记的数值指标：span 属性 → 报告 metrics 里的路径。runtime.eval.score 的 eval.metric 是属性名去掉 eval.。
+SCORES: Final = {
+    "eval.success_rate": ("success_rate",),
+    "eval.triage_accuracy": ("planner", "triage_accuracy"),
+    "eval.verdict_accuracy": ("reviewer", "verdict_accuracy"),
+    "eval.cost_usd": ("cost", "total_usd"),
+    "eval.fallback_rate": ("fallbacks", "rate"),
+}
 # 摘要里列出的失败原因条数。
 _TOP_REASONS = 12
 
@@ -96,7 +117,8 @@ class Report:
     def summary(self) -> str:
         """给人看的摘要：成功率、成本、主要失败原因、分类明细、与上一版的差异。"""
         d, m = self.data, self.data["metrics"]
-        lines = [
+        lines = [f"⚠ 这次运行无效：{d['invalid_reason']}"] if d.get("valid") is False else []
+        lines += [
             f"评测 {d['eval_set']['name']}（版本 {d['eval_set']['version'][:12]}）· 被测对象 {d['subject']} · 划分 {d['split']}",
             f"标注：已确认 {d['labels']['confirmed']}，待确认 {d['labels']['draft']}"
             + ("（S-09、S-10 的门槛要等标注全部确认，用 --require-confirmed）" if d["labels"]["draft"] else ""),
@@ -119,6 +141,14 @@ class Report:
         if failures:
             codes = "、".join(f"{code} × {n}" for code, n in sorted(d.get("model_call_failure_codes", {}).items()))
             lines.append(f"⚠ 模型调用失败 {failures} 次（{codes}）：Planner、Reviewer 回退到了保守规划或规则判定，这次的分数不代表模型的判断")
+        fb = m.get("fallbacks") or {}
+        if fb.get("decisions"):
+            lines.append(
+                f"回退：Planner {fb['planner']} 次、Reviewer {fb['reviewer']} 次，经模型的决策 {fb['decisions']} 个，"
+                f"回退率 {_pct(fb['rate'])}（阈值 {_pct(d.get('max_fallback_rate'))}）"
+            )
+        if d.get("models"):
+            lines.append("用到的模型：" + "；".join(f"{role} " + "、".join(f"{p} × {n}" for p, n in used.items()) for role, used in d["models"].items()))
         reasons = d["failure_reasons"]
         lines.append("主要失败原因：" + ("无" if not reasons else ""))
         lines += [f"  [{r['dimension']}] {r['message']} × {r['count']}" for r in reasons[:_TOP_REASONS]]
@@ -198,6 +228,61 @@ def _model_call_failures(subject: Subject) -> Counter[str] | None:
     return Counter(failures) if failures is not None else None
 
 
+def _model_calls(subject: Subject) -> Counter[tuple[str, str]]:
+    """被测对象到目前为止成功的模型调用，按 (role, model_profile_id) 计数；不经 Model Gateway 的被测对象为空。"""
+    return Counter(getattr(subject, "model_calls", None) or {})
+
+
+@dataclass
+class _Fallbacks:
+    planner: int = 0
+    reviewer: int = 0
+    decisions: int = 0
+
+    def add(self, side: str, output: Any) -> None:
+        fallback = getattr(output, "fallback", None)
+        if fallback is None:
+            return
+        self.decisions += 1
+        if fallback:
+            setattr(self, side, getattr(self, side) + 1)
+
+    def to_json(self) -> dict[str, Any]:
+        return {"planner": self.planner, "reviewer": self.reviewer, "decisions": self.decisions, "rate": _rate(self.planner + self.reviewer, self.decisions)}
+
+
+@asynccontextmanager
+async def _span(telemetry: Telemetry | None, name: str, attributes: dict[str, Any]) -> AsyncIterator[Span | None]:
+    if telemetry is None:
+        yield None
+        return
+    async with telemetry.start_span(name, attributes=attributes) as span:
+        yield span
+
+
+def _score(metrics: dict[str, Any], path: tuple[str, ...]) -> float | None:
+    value: Any = metrics
+    for key in path:
+        value = value.get(key) if isinstance(value, dict) else None
+    return value if isinstance(value, int | float) and not isinstance(value, bool) else None
+
+
+async def _record(telemetry: Telemetry, span: Span | None, data: dict[str, Any]) -> None:
+    """把一次运行的结果记到 eval.run span 上，并发 runtime.eval.runs 与 runtime.eval.score。只有名字与数值，没有用例原文。"""
+    common = {"eval.set": data["eval_set"]["name"], "eval.subject": data["subject"], "eval.split": data["split"], "eval.valid": data["valid"]}
+    scores = {name: _score(data["metrics"], path) for name, path in SCORES.items()}
+    if span is not None:
+        attributes: dict[str, Any] = {name: value for name, value in scores.items() if value is not None}
+        models = sorted({profile for used in data["models"].values() for profile in used})
+        if models:
+            attributes["eval.models"] = ",".join(models)
+        span.set_attributes({**attributes, "eval.valid": data["valid"]})
+    await telemetry.count("runtime.eval.runs", attributes=common)
+    for name, value in scores.items():
+        if value is not None:
+            await telemetry.observe("runtime.eval.score", float(value), attributes={**common, "eval.metric": name.removeprefix("eval.")})
+
+
 def _slug(text: str) -> str:
     return re.sub(r"[^A-Za-z0-9_-]+", "_", text).strip("_") or "subject"
 
@@ -262,15 +347,39 @@ async def run_eval(
     reports_dir: Path | None = DEFAULT_REPORTS_DIR,
     compare: Path | str | None = LATEST,
     require_confirmed: bool = False,
+    max_fallback_rate: float = DEFAULT_MAX_FALLBACK_RATE,
+    telemetry: Telemetry | None = None,
 ) -> Report:
     """跑一遍 split 划分的用例并评分。
 
     judge_vendor 与 subject_vendor 是事先已知的供应商（例如命令行指定的模型），相同时直接拒绝；
     事后还会逐次核对 judge 实际用的供应商不在被测对象用过的供应商里。
     reports_dir 为 None 时不写文件；compare 为 None 时不比较。
+    回退率（经模型的决策里 Planner、Reviewer 回退的比例）超过 max_fallback_rate 的运行标为无效（TMP 计划第 8 节）。
+    给了 telemetry 时发 eval.run、eval.case span 与 runtime.eval.* 指标（TMP 计划第 9.2 节），由调用方 flush。
     """
     if split not in SPLITS:
         raise EvalConfigError(f"划分只能是 {'、'.join(SPLITS)}，得到 {split!r}")
+    if not 0 <= max_fallback_rate <= 1:
+        raise EvalConfigError(f"回退率的阈值要在 0 到 1 之间，得到 {max_fallback_rate}")
+    async with _span(telemetry, "eval.run", {"eval.set": eval_set.name, "eval.subject": subject.name, "eval.split": split}) as run_span:
+        data = await _run_eval(eval_set, subject, split, judge, judge_vendor, subject_vendor, require_confirmed, max_fallback_rate, telemetry)
+        if telemetry is not None:
+            await _record(telemetry, run_span, data)
+    return _finish(data, eval_set, subject, split, reports_dir, compare)
+
+
+async def _run_eval(
+    eval_set: EvalSet,
+    subject: Subject,
+    split: str,
+    judge: RubricJudge | None,
+    judge_vendor: str | None,
+    subject_vendor: str | None,
+    require_confirmed: bool,
+    max_fallback_rate: float,
+    telemetry: Telemetry | None,
+) -> dict[str, Any]:
     if judge is not None and judge_vendor and subject_vendor and judge_vendor == subject_vendor:
         raise EvalConfigError(f"judge 与被测对象都是 {judge_vendor}：rubric 要用不同家的模型打分")
     es = eval_set.only(split)
@@ -278,37 +387,67 @@ async def run_eval(
         raise UnconfirmedLabelsError(f"还有没经人确认的标注：{'、'.join(es.unconfirmed())}")
     declared = frozenset({subject_vendor}) if subject_vendor else frozenset()
     failures_before = _model_call_failures(subject)
+    models_before = _model_calls(subject)
+    fallbacks = _Fallbacks()
+    case_telemetry = telemetry if split != "holdout" else None  # 留出集只给汇总，不发逐条的 span
 
     items: list[_ItemResult] = []
     plan_scores: dict[str, DecisionScore] = {}
     for case in es.task_cases:
-        item = _ItemResult(id=case.id, kind="task", category=case.category)
-        score, output = await _plan(subject, case, eval_set, split)
-        plan_scores[case.id] = score
-        item.decisions.append(_Decision("plan", score))
-        for i, cp in enumerate(case.rounds, start=1):
-            item.decisions.append(_Decision(f"round {i}", (await _review(subject, cp, split))[0]))
-        if judge is not None and case.rubric and output is not None:
-            material = {"message": case.planner_input["message"], "task_plan": output.task_plan, "stage": output.stage}
-            rubric = await judge.score(criteria=case.rubric, material=material, subject_vendors=score.vendors | declared)
-            item.rubric, item.rubric_cost = rubric.score, rubric.cost_usd
-        items.append(item)
+        async with _span(case_telemetry, "eval.case", {"eval.case_id": case.id, "eval.kind": "task"}) as case_span:
+            item = _ItemResult(id=case.id, kind="task", category=case.category)
+            score, output = await _plan(subject, case, eval_set, split)
+            fallbacks.add("planner", output)
+            plan_scores[case.id] = score
+            item.decisions.append(_Decision("plan", score))
+            for i, cp in enumerate(case.rounds, start=1):
+                round_score, round_output = await _review(subject, cp, split)
+                fallbacks.add("reviewer", round_output)
+                item.decisions.append(_Decision(f"round {i}", round_score))
+            if judge is not None and case.rubric and output is not None:
+                material = {"message": case.planner_input["message"], "task_plan": output.task_plan, "stage": output.stage}
+                rubric = await judge.score(criteria=case.rubric, material=material, subject_vendors=score.vendors | declared)
+                item.rubric, item.rubric_cost = rubric.score, rubric.cost_usd
+            items.append(item)
+            if case_span is not None:
+                case_span.set_attributes({"eval.passed": item.passed, "eval.cost_usd": item.cost})
     for sample in es.reviewer_samples:
-        item = _ItemResult(id=sample.id, kind="reviewer", category=sample.category)
-        score, output = await _review(subject, sample.checkpoint, split)
-        item.decisions.append(_Decision("review", score))
-        if judge is not None and sample.rubric and output is not None:
-            cp = sample.checkpoint
-            material = {"stage": cp.stage, "results": cp.results, "task_state": cp.task_state, "verdict": output.verdict}
-            rubric = await judge.score(criteria=sample.rubric, material=material, subject_vendors=score.vendors | declared)
-            item.rubric, item.rubric_cost = rubric.score, rubric.cost_usd
-        items.append(item)
+        async with _span(case_telemetry, "eval.case", {"eval.case_id": sample.id, "eval.kind": "reviewer"}) as case_span:
+            item = _ItemResult(id=sample.id, kind="reviewer", category=sample.category)
+            score, output = await _review(subject, sample.checkpoint, split)
+            fallbacks.add("reviewer", output)
+            item.decisions.append(_Decision("review", score))
+            if judge is not None and sample.rubric and output is not None:
+                cp = sample.checkpoint
+                material = {"stage": cp.stage, "results": cp.results, "task_state": cp.task_state, "verdict": output.verdict}
+                rubric = await judge.score(criteria=sample.rubric, material=material, subject_vendors=score.vendors | declared)
+                item.rubric, item.rubric_cost = rubric.score, rubric.cost_usd
+            items.append(item)
+            if case_span is not None:
+                case_span.set_attributes({"eval.passed": item.passed, "eval.cost_usd": item.cost})
 
     data = _build(eval_set, es, subject, split, items, plan_scores)
     if failures_before is not None:
         failed = _model_call_failures(subject) - failures_before
         data["metrics"]["model_call_failures"] = sum(failed.values())
         data["model_call_failure_codes"] = dict(sorted(failed.items()))
+    models: dict[str, dict[str, int]] = {}
+    for (role, profile), n in sorted((_model_calls(subject) - models_before).items()):
+        models.setdefault(role, {})[profile] = n
+    data["models"] = models
+    data["metrics"]["fallbacks"] = fallbacks.to_json()
+    data["max_fallback_rate"] = max_fallback_rate
+    rate = data["metrics"]["fallbacks"]["rate"]
+    data["valid"] = rate is None or rate <= max_fallback_rate
+    if not data["valid"]:
+        data["invalid_reason"] = (
+            f"回退率 {rate:.1%} 超过阈值 {max_fallback_rate:.1%}（Planner 回退 {fallbacks.planner} 次、Reviewer 回退 {fallbacks.reviewer} 次，"
+            f"经模型的决策 {fallbacks.decisions} 个）：分数掺了保守规划与规则判定，不代表模型的判断"
+        )
+    return data
+
+
+def _finish(data: dict[str, Any], eval_set: EvalSet, subject: Subject, split: str, reports_dir: Path | None, compare: Path | str | None) -> Report:
     previous: Path | None = None
     if compare == LATEST:
         if reports_dir is not None:

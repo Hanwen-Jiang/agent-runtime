@@ -1,6 +1,8 @@
 # Grafana 面板（docs/plan/cloud-deploy.md D-10）：任务数、模型花费、各沙箱后端的时长与估算花费。数据全部来自 Tempo 里的 span
 # （TraceQL 的指标查询），span 名与属性取自代码：invoke_workflow（收尾补记，runtime.cost_usd、runtime.task_status）、
-# chat（runtime.cost_usd）、runtime.sandbox（sandbox.backend、sandbox.lifetime_ms、sandbox.cpu_ms、sandbox.cost_usd）。
+# Model Gateway 的调用 span（服务名 model-gateway，runtime.cost_usd）、runtime.sandbox（sandbox.backend、sandbox.lifetime_ms、
+# sandbox.cpu_ms、sandbox.cost_usd）。模型花费原先按 name = "chat" 选，只选到 Worker 的 model 节点，漏了 Planner、Reviewer 与
+# Context Builder 的调用（TMP 计划第 9.2 节改成按网关的服务名选）。
 # Grafana 的 sidecar 按标签 grafana_dashboard 收（deploy/data/values/grafana.yaml）。tests/deploy/test_cloud.py 核对名字对得上。
 apiVersion: v1
 kind: ConfigMap
@@ -32,7 +34,7 @@ data:
           "datasource": {"type": "tempo", "uid": "tempo"},
           "fieldConfig": {"defaults": {"unit": "currencyUSD"}},
           "targets": [{"refId": "A", "queryType": "traceql", "metricsQueryType": "range",
-                       "query": "{ name = \"chat\" } | sum_over_time(span.runtime.cost_usd) by (span.tenant_id)"}]
+                       "query": "{ resource.service.name = \"model-gateway\" } | sum_over_time(span.runtime.cost_usd) by (span.tenant_id)"}]
         },
         {
           "id": 3, "type": "timeseries", "title": "沙箱存活时间（秒，按后端）",

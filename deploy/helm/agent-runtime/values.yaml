@@ -41,6 +41,9 @@ external:
     brokers: redpanda:9092
   tempo:
     endpoint: tempo:4317
+  # 指标的后端（TMP 计划第 9.3 节）：Collector 的 metrics 管道经 Prometheus remote write 写到这里。
+  victoriametrics:
+    remoteWrite: http://vm-victoria-metrics-single-server:8428/api/v1/write
   langfuse:
     endpoint: http://langfuse-web:3000
     # Basic 认证（base64 的 public_key:secret_key）所在的 Secret。

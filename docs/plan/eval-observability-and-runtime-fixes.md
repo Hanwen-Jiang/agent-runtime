@@ -1,7 +1,7 @@
 # TMP 计划：线上日志的问题、真模型实验的遗留与评测可观测（设计稿）
 
 > 状态：2026-10-28 人确认开工，要人定的几项已定（第 11 节）。第 3～7 节的 S-01 草案人审通过（兼容性基线已更新）；
-> 第 2～7 节已实现（11.7、11.8）。第 8～10 节未做。来源两处：
+> 第 2～9 节已实现（11.7～11.9；9.1 由同事先做）；第 10 节没有预算，未做。来源两处：
 > - 线上日志（`Z:\agentruntime\1028137pm.log`，code.cgent.link，租户 `gh-nsnzd-kimberlyxie343178`，“读仓库并讲清结构”跑了 5 轮、$0.62，最后卡在“规划下一轮”）；
 > - 真模型实验报告（`docs/job-qualifications/real-model-experiments-2026-10-28/README.md` 第 6 节的 P0、P1）。
 > 已经在本仓库里改掉的列在第 1 节；第 2 到 9 节是重的或要先定的，每节写清问题、证据、做法、要人定的、验收。
@@ -315,3 +315,70 @@ task-service 的 `GetTaskFamilies` 审过之前回 Unimplemented。
 - 没做：质量包装（revise 等）里的 judge 发现的 regressions 还没有带到被包装的 Node 上；sub_task 等子 Task 不推进度事件，不受影响。
 测试辅助的两处改动：`registry_fakes.FakeRegistry` 加 `GetTaskFamilies`；`stage_harness.Script` 加 `goal_code`、`task_family`（设了才传给
 PlanRoundOutput，不影响其他测试）。
+
+### 11.9 第 8、9.2、9.3 节的细化与验收测试（2026-10-29 人确认，已实现）
+
+**第 8 节：评测本身**（测试 `services/py-learning/tests/test_eval_validity.py`）
+
+- 报告加 `models`：每个 role（CallContext.role 的小写名，route、plan、judge……）实际用到的 `model_profile_id` 与次数，由
+  `CountingGateway` 记成功的调用。
+- 报告加 `metrics.fallbacks`：`{planner, reviewer, decisions, rate}`。回退取 Planner 的 `PlanResult.fallback` 与 Reviewer 的
+  `ReviewResult.fallback`；分母只算经模型的那一侧（`planner_subject` 的 Reviewer 是基线，不算）。回退率超过阈值（默认 5%，
+  `run_eval(max_fallback_rate=…)`、命令行 `--max-fallback-rate`）的运行 `valid = false`、写 `invalid_reason`，摘要第一行写“无效”。
+  不经模型的被测对象（baseline、oracle）一律有效。
+- `--repeat` 的汇总：中位数、最小、最大只取有效的运行，`values` 仍列出每一次；`invalid_runs` 记无效的次数，全部无效时没有中位数。
+- S-11 的压缩评测：一条样本出错（例如模型的 JSON 解析不了）只记这一条——行里带 `error`，指标多一项 `errors`——整轮继续。
+- 要人做的：`rs_debate_no_convergence`、`rs_judge_bias` 两条 Reviewer 样本四个模型全错，请复核标注。
+
+**第 9.2 节：面板与评测的 span**（测试 `tests/deploy/test_observability_quality.py`、`services/py-learning/tests/test_eval_telemetry.py`）
+
+- 新面板 `deploy/data/dashboards/quality.yaml`（uid `agent-runtime-quality`，“模型与 Task 质量”）。查 Tempo 的：按模型的 chat
+  延迟 p50/p95（`quantile_over_time(duration, …)`）与错误率、按任务族的 Task 结局与花费（`invoke_workflow` 的
+  `runtime.task_family`、`runtime.task_status`、`runtime.cost_usd`）、每个 Task 的 Round 数（`runtime.rounds`）、Verdict 分布
+  （`runtime.round` 的 `verdict`）、评测运行（`eval.run`）。查 VictoriaMetrics 的趋势见 9.3。
+- **发现的问题（实现时更正）**：原面板“模型花费（美元，按租户）”写的 `name = "chat"` 不是一条也选不到——Worker 的 model 节点的 span
+  就叫 chat——但只选到 Node 的调用，漏了 Planner、Reviewer 与 Context Builder 直接经网关的调用（网关的 span 叫“chat {模型}”）。
+  两边的 span 都带 `gen_ai.operation.name = chat`，只按它选会重复计，所以**模型调用一律按网关的服务名选**
+  （`resource.service.name = "model-gateway"`，新面板再加 `span.gen_ai.operation.name = "chat"`）；原面板的花费改成网关的全部调用
+  （含 embeddings）。`tests/deploy/test_cloud.py` 核对面板名字时因此也读网关的代码。
+- 评测运行发 span：一次运行一个 `eval.run`（集、被测对象、划分、是否有效、数值指标、用到的模型），下面每条用例一个 `eval.case`
+  （id、类别、是否通过、花费）；留出集不发 `eval.case`；不带用例原文。另发指标 `runtime.eval.runs`（计数）与 `runtime.eval.score`
+  （每个数值指标一次观测，属性 `eval.metric`）。命令行设了 `OTEL_EXPORTER_OTLP_ENDPOINT` 时经 OpenTelemetry，按平台作用域 `evals` 绑定。
+
+**第 9.3 节：VictoriaMetrics**（测试 `tests/deploy/test_observability_quality.py`、`test_collector_config.py` 改了两处、
+`services/go-model-gateway/internal/gateway/tmp_metrics_test.go`）
+
+- 部署：`vm/victoria-metrics-single`，装在 observability，`deploy/data/values/victoria-metrics.yaml` 保留 30 天、开持久卷；版本写进
+  `deploy/cluster/versions.conf` 的 `VM_CHART_VERSION`（实现时按发布页核对，取发布满两周的）。
+- Grafana：加 Prometheus 类型的数据源（uid `victoriametrics`），Tempo 仍是默认；告警两条——模型供应商不可用率、租户每小时花费。
+- Collector：metrics 管道 `memory_limiter → attributes/redact → deltatocumulative → batch → prometheusremotewrite/victoriametrics`
+  （应用按 delta 时间性发，remote write 要累计值）；地址由 Chart 的 `external.victoriametrics.remoteWrite` 注入
+  `VM_REMOTE_WRITE_ENDPOINT`。日志仍只到 debug。
+- **指标由应用经已有的 Telemetry 接口发**（`Count`、`Observe`，S-02 早就有，OpenTelemetry 实现也已经导出 OTLP 指标），不在 Collector
+  里从 span 推算：Model Gateway 每次调用 `runtime.model.calls`（outcome、error.type、gen_ai.operation.name、gen_ai.provider.name、
+  gen_ai.response.model、role、tier，租户由绑定加上）与 `gen_ai.client.operation.duration`（**实现时改成每次都记**，失败的也记，
+  同 GenAI 语义约定），上游计了费时（含计了费但网关判为失败的）再记 `runtime.model.cost_usd`、`gen_ai.client.token.usage`
+  （input、output）。Prometheus 里的名字是点换下划线，计数器加 `_total`，直方图有 `_sum`、`_count`、`_bucket`。
+- 风险：`tenant_id` 作标签，开放注册后租户数涨上去，单机 VictoriaMetrics 的序列数跟着涨；眼下规模没问题，到时候按租户聚合或降采样。
+- 本机覆盖不到：`helm` 与 `otelcol-contrib` 不在 PATH，Chart 渲染与 Collector 自检的几条测试跳过（CI 里有）；没有 kubeconfig，
+  集群上的安装没有试。
+
+**实现记录**
+
+- 第 8 节：`evals/model.py`（PlannerOutput、ReviewerOutput 加 `fallback`，不经模型的为 None）；`evals/worker_subject.py`
+  （`CountingGateway.models` 按 role 记成功调用的 model_profile_id，`role_name`）；`evals/runner.py`（`models`、`metrics.fallbacks`、
+  `valid`、`invalid_reason`、`max_fallback_rate`，摘要第一行写“这次运行无效”）；`evals/repeat.py`（中位数只取有效的，`invalid_runs`）；
+  `evals/context.py`（一条样本出错只记这一条：题全算错、不算重复操作，行里带 `error`，指标 `errors`）；命令行 `--max-fallback-rate`。
+- 第 9.2 节：`evals/runner.py` 收 `telemetry`：`eval.run` 与每条用例的 `eval.case` span（留出集不发），`runtime.eval.runs`、
+  `runtime.eval.score`；命令行设了 `OTEL_EXPORTER_OTLP_ENDPOINT` 才发（服务名 learning，平台作用域 evals），导出失败只提示、不让评测失败。
+  面板 `deploy/data/dashboards/quality.yaml`；原面板的模型花费见上面的更正。
+- 第 9.3 节：Model Gateway 的 `traced.metrics`（`gateway.go`）；`gen_ai.token.type` 的值是 input、output 时不脱敏（键名含 token，
+  Python 与 Go 的规则一起改）；`deploy/data/values/victoria-metrics.yaml`、`install.sh`、`versions.conf` 的 `VM_CHART_VERSION=0.49.0`
+  （2026-10-12 发布；Service 名按 Chart 的旧命名核对过）；Grafana 的数据源与两条告警（阈值是起步值：供应商 15 分钟失败率超过两成且
+  至少 10 次调用、持续 10 分钟；租户一小时花费超过 5 美元）；Collector 的 metrics 管道；Chart 的 `external.victoriametrics.remoteWrite`；
+  `scripts/check_chart_values.py` 加上 VictoriaMetrics 的 Chart（2026-10-29 跑过，七个 Chart 的键名都对得上）。
+- 没覆盖：告警没有配 contact point（只在 Grafana 里看）；“供应商不可用率”按调用算，网关切换成功的那次不算失败，要看每次尝试得另加
+  指标；`helm`、`otelcol-contrib` 不在本机，Chart 渲染与 Collector 自检的测试在本机跳过，集群上没有试装；TraceQL 与 PromQL 的查询
+  只核对了用到的名字，没在真的 Tempo、VictoriaMetrics 上跑过。
+- 本机的共享虚拟环境按 `uv sync --all-packages --locked` 补装了锁定的依赖（之前缺 PyYAML、OpenTelemetry 等）。
+

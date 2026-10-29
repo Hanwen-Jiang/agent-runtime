@@ -17,6 +17,9 @@ SENSITIVE_KEY_PARTS = ("password", "secret", "token", "api_key", "apikey", "auth
 RESERVED_KEYS = ("tenant_id", "user_id", "workspace_id", "session_id", "scope")
 # GenAI 语义约定的 token 计数：键名含 token，但值是整数时不是凭据，不脱敏（T-15）。
 GENAI_USAGE_COUNT_KEYS = ("gen_ai.usage.input_tokens", "gen_ai.usage.output_tokens")
+# GenAI 指标 gen_ai.client.token.usage 的属性：键名含 token，值是其中之一时不是凭据，不脱敏（TMP 计划第 9.3 节）。
+GENAI_TOKEN_TYPE_KEY = "gen_ai.token.type"
+GENAI_TOKEN_TYPES = ("input", "output")
 
 
 def _clean_value(value: Any) -> Any:
@@ -29,6 +32,8 @@ def _clean_value(value: Any) -> Any:
 
 def is_sensitive(key: str, value: Any) -> bool:
     if key in GENAI_USAGE_COUNT_KEYS and isinstance(value, int) and not isinstance(value, bool):
+        return False
+    if key == GENAI_TOKEN_TYPE_KEY and value in GENAI_TOKEN_TYPES:
         return False
     lowered = key.lower()
     return any(part in lowered for part in SENSITIVE_KEY_PARTS)

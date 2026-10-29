@@ -31,6 +31,8 @@ external:
     brokers: redpanda.data.svc:9093
   tempo:
     endpoint: tempo.observability.svc:4317
+  victoriametrics:
+    remoteWrite: http://vm-victoria-metrics-single-server.observability.svc:8428/api/v1/write
   langfuse:
     endpoint: http://langfuse-web.observability.svc:3000
     authSecret:

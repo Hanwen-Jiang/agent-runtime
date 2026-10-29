@@ -13,6 +13,9 @@ ModelGateway。没设时两个工厂都报错，不悄悄换成假模型。
 Planner 与 Reviewer 会吞掉模型调用的错误，回退到保守规划或规则判定（生产上就该这样）；评测时这会让分数不再代表模型的
 判断（2026-10-22 实测：供应商额度用完后每次调用都 403，评测照样“跑完”）。所以被测对象把 Gateway 包一层 CountingGateway，
 记下失败的次数与 code，运行器写进报告（metrics.model_call_failures）。
+
+TMP 计划第 8 节：CountingGateway 还记下每个 role 成功调用用到的 model_profile_id（报告的 models），plan、review 的输出带上
+Planner、Reviewer 是否回退（fallback），运行器据此算回退率、判这次运行是否有效。
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ import os
 from collections import Counter
 from typing import Any
 
+from agentruntime.common.v1 import enums_pb2
 from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 from agentruntime_worker.activities.types import Tenant
 from agentruntime_worker.executor.model_gateway import ModelGateway
@@ -61,19 +65,31 @@ def _context(inp: PlannerInput) -> PlanningContext:
     )
 
 
+def role_name(role: int) -> str:
+    """CallContext.role 的小写名（route、plan、judge……），报告的 models 按它分。"""
+    try:
+        return enums_pb2.Role.Name(role).removeprefix("ROLE_").lower()
+    except ValueError:
+        return str(role)
+
+
 class CountingGateway:
-    """包一层 Model Gateway，记下失败的调用（次数与 code），错误照样抛给调用方。"""
+    """包一层 Model Gateway，记下失败的调用（次数与 code）与成功调用用到的模型（role、model_profile_id），错误照样抛给调用方。"""
 
     def __init__(self, inner: ModelGateway) -> None:
         self.inner = inner
         self.failures: Counter[str] = Counter()
+        self.models: Counter[tuple[str, str]] = Counter()
 
     async def _call(self, method: str, request: Any) -> Any:
         try:
-            return await getattr(self.inner, method)(request)
+            response = await getattr(self.inner, method)(request)
         except Exception as exc:
             self.failures[str(getattr(exc, "code", "") or type(exc).__name__)] += 1
             raise
+        profile = response.model.model_profile_id if response.HasField("model") else ""
+        self.models[(role_name(request.call.role), profile or "unknown")] += 1
+        return response
 
     async def generate(self, request: mg.GenerateRequest) -> mg.GenerateResponse:
         return await self._call("generate", request)
@@ -95,6 +111,11 @@ class WorkerPlannerSubject:
         """到目前为止失败的模型调用，按 code 计数（运行器按每次评测前后的差算本次的）。"""
         return Counter(self.gateway.failures)
 
+    @property
+    def model_calls(self) -> Counter[tuple[str, str]]:
+        """到目前为止成功的模型调用，按 (role, model_profile_id) 计数（运行器同样按前后的差算本次的）。"""
+        return Counter(self.gateway.models)
+
     async def plan(self, inp: PlannerInput) -> PlannerOutput:
         state = inp.task_state or {}
         result = await self.planner.plan(
@@ -114,6 +135,7 @@ class WorkerPlannerSubject:
             stage=result.stage,
             task_plan=result.task_plan,
             usage=[Usage(tier=c.tier, vendor=c.vendor, cost_usd=c.cost_usd) for c in result.calls],
+            fallback=result.fallback,
         )
 
     async def review(self, inp: ReviewerInput) -> ReviewerOutput:
@@ -163,7 +185,11 @@ class WorkerSubject(WorkerPlannerSubject):
                 catalog=ReviewCatalog(recipes=dict(self.recipes), effect_ceiling=ceiling),
             )
         )
-        return ReviewerOutput(verdict=result.verdict, usage=[Usage(tier=c.tier, vendor=c.vendor, cost_usd=c.cost_usd) for c in result.calls])
+        return ReviewerOutput(
+            verdict=result.verdict,
+            usage=[Usage(tier=c.tier, vendor=c.vendor, cost_usd=c.cost_usd) for c in result.calls],
+            fallback=result.fallback,
+        )
 
 
 def _gateway() -> ModelGateway:

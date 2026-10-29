@@ -26,9 +26,10 @@ CHARTS = {
     "langfuse": ("langfuse/langfuse-k8s", "langfuse-{v}", "charts/langfuse/values.yaml", "LANGFUSE_CHART_VERSION"),
     "tempo": ("grafana-community/helm-charts", "tempo-{v}", "charts/tempo/values.yaml", "TEMPO_CHART_VERSION"),
     "grafana": ("grafana-community/helm-charts", "grafana-{v}", "charts/grafana/values.yaml", "GRAFANA_CHART_VERSION"),
+    "victoria-metrics": ("VictoriaMetrics/helm-charts", "victoria-metrics-single-{v}", "charts/victoria-metrics-single/values.yaml", "VM_CHART_VERSION"),
 }
 # 顶层里原样交给应用的键；任何层级的 resources（Kubernetes 的资源请求与上限）也不查。
-FREE_FORM = {"qdrant": {"config"}, "grafana": {"grafana.ini", "datasources"}, "redpanda": {"config"}}
+FREE_FORM = {"qdrant": {"config"}, "grafana": {"grafana.ini", "datasources", "alerting"}, "redpanda": {"config"}}
 
 
 def versions() -> dict[str, str]:

@@ -19,6 +19,10 @@
 //  7. trace（附录 J.1；T-15）：配了 Options.Telemetry 时每次 RPC 一个 span，按请求的租户绑定。名字按 GenAI 语义约定是
 //     `{chat|embeddings} {请求的模型}`，属性有请求与实际服务的模型、供应商、token、成本、Tier、尝试次数、task_id、node_id；
 //     失败时 span 为 error、error.type 是错误的 code。不记消息内容、输出内容与密钥。
+//     同一个 Telemetry 还发指标（TMP 计划第 9.3 节，Collector 写进 VictoriaMetrics）：每次 RPC 一次 runtime.model.calls 计数与
+//     gen_ai.client.operation.duration（秒）观测；上游计了费时再记 runtime.model.cost_usd 与 gen_ai.client.token.usage
+//     （gen_ai.token.type 为 input、output 各一次）。属性是 outcome（ok、error）、失败时的 error.type、gen_ai.operation.name、
+//     gen_ai.provider.name、gen_ai.response.model、role、tier，租户由绑定加上。
 //
 // 供应商返回的错误不是 *providererr.Error 时（违反 ModelProvider 约定）：不重试、不切换，按 ConnectError 的“其他错误”返回。
 //
@@ -367,9 +371,13 @@ func (s *Server) meter(c *call, cand router.Candidate, u *commonv1.Usage, errCod
 
 // ---- span（附录 J.1；T-15）----
 
-// traced 是一次 RPC 的模型调用 span；没配 Telemetry 或绑定失败时 span 为 nil，方法都不做事。
+// traced 是一次 RPC 的模型调用 span 与指标；没配 Telemetry 或绑定失败时 tel 为 nil，方法都不做事。
 type traced struct {
-	span telemetry.Span
+	tel       telemetry.Telemetry
+	ctx       context.Context
+	span      telemetry.Span
+	operation string
+	start     time.Time
 }
 
 // startSpan 在选档之后开始 span：名字按 GenAI 语义约定是 `{operation} {请求的模型}`（选档的第一个候选），不含消息内容。
@@ -381,6 +389,8 @@ func (s *Server) startSpan(ctx context.Context, c *call, operation string, strea
 	if err != nil {
 		return &traced{}
 	}
+	// 流式调用在流结束时才记，那时请求的 ctx 可能已取消：指标与 span 不跟着取消。
+	t := &traced{tel: tel, ctx: context.WithoutCancel(ctx), operation: operation, start: time.Now()}
 	model := ""
 	if len(c.choice.Candidates) > 0 {
 		model = c.choice.Candidates[0].Profile.Model
@@ -397,15 +407,27 @@ func (s *Server) startSpan(ctx context.Context, c *call, operation string, strea
 	if stream {
 		attrs = append(attrs, telemetry.Attribute{Key: "runtime.stream", Value: true})
 	}
-	_, span, err := tel.StartSpan(ctx, strings.TrimSpace(operation+" "+model), attrs...)
-	if err != nil {
-		return &traced{}
+	if _, span, err := tel.StartSpan(ctx, strings.TrimSpace(operation+" "+model), attrs...); err == nil {
+		t.span = span
 	}
-	return &traced{span: span}
+	return t
 }
 
 // end 记下实际服务的模型、token、成本与尝试次数并结束 span；err 不为空时 span 记为 error，error.type 是错误的 code。
+// 之后记这次调用的指标（见 metrics）。
 func (t *traced) end(c *call, cand router.Candidate, u *commonv1.Usage, err error) {
+	if t.tel == nil {
+		return
+	}
+	code := ""
+	if err != nil {
+		code = "internal"
+		var pe *providererr.Error
+		if errors.As(err, &pe) {
+			code = pe.Code
+		}
+	}
+	defer t.metrics(c, cand, u, code)
 	if t.span == nil {
 		return
 	}
@@ -426,15 +448,42 @@ func (t *traced) end(c *call, cand router.Candidate, u *commonv1.Usage, err erro
 	}
 	if err != nil {
 		t.span.RecordError(err)
-		code := "internal"
-		var pe *providererr.Error
-		if errors.As(err, &pe) {
-			code = pe.Code
-		}
 		attrs = append(attrs, telemetry.Attribute{Key: "error.type", Value: code})
 	}
 	t.span.SetAttributes(attrs...)
 	t.span.End()
+}
+
+// metrics 记一次调用的指标（TMP 计划第 9.3 节）：调用次数与用时每次都记，成本与 token 只在上游计了费（u 不为空）时记。
+// code 为空表示成功。指标名与 span 属性同一套写法，Collector 写进 VictoriaMetrics 时点换成下划线。
+func (t *traced) metrics(c *call, cand router.Candidate, u *commonv1.Usage, code string) {
+	outcome := "ok"
+	if code != "" {
+		outcome = "error"
+	}
+	attrs := []telemetry.Attribute{
+		{Key: "outcome", Value: outcome},
+		{Key: "gen_ai.operation.name", Value: t.operation},
+		{Key: "gen_ai.provider.name", Value: cand.Profile.Vendor},
+		{Key: "gen_ai.response.model", Value: cand.Profile.Model},
+		{Key: "role", Value: roleName(c.ctx.GetRole())},
+		{Key: "tier", Value: c.choice.Tier},
+	}
+	if code != "" {
+		attrs = append(attrs, telemetry.Attribute{Key: "error.type", Value: code})
+	}
+	_ = t.tel.Count(t.ctx, "runtime.model.calls", 1, attrs...)
+	_ = t.tel.Observe(t.ctx, "gen_ai.client.operation.duration", time.Since(t.start).Seconds(), attrs...)
+	if u == nil {
+		return
+	}
+	_ = t.tel.Observe(t.ctx, "runtime.model.cost_usd", float64(u.GetCostUsdMicros())/1e6, attrs...)
+	for _, tok := range []struct {
+		kind  string
+		count int64
+	}{{"input", u.GetInputTokens()}, {"output", u.GetOutputTokens()}} {
+		_ = t.tel.Observe(t.ctx, "gen_ai.client.token.usage", float64(tok.count), append(slices.Clone(attrs), telemetry.Attribute{Key: "gen_ai.token.type", Value: tok.kind})...)
+	}
 }
 
 // billedFailure 记下一次已计费、但网关判为失败的调用（usage 为空时上游没计费，不记），原样返回 err。

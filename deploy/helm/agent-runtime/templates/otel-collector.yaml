@@ -56,6 +56,8 @@ spec:
                   key: {{ .Values.external.langfuse.authSecret.key }}
             - name: REDPANDA_BROKERS
               value: {{ .Values.external.redpanda.brokers | quote }}
+            - name: VM_REMOTE_WRITE_ENDPOINT
+              value: {{ .Values.external.victoriametrics.remoteWrite | quote }}
           readinessProbe:
             httpGet:
               path: /

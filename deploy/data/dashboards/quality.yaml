@@ -1,0 +1,118 @@
+# Grafana 面板“模型与 Task 质量”（TMP 计划第 9.2、9.3 节）。上半部分查 Tempo 的 span（TraceQL 的指标查询），下半部分的趋势查
+# VictoriaMetrics 的指标（保留 30 天，比 Tempo 的 7 天长）。span 名、属性与指标名取自代码，tests/deploy/test_observability_quality.py 核对：
+# - 模型调用：Model Gateway 的 span（服务名 model-gateway，名字是“chat {模型}”；属性 gen_ai.request.model、gen_ai.response.model、
+#   runtime.cost_usd，失败时 status 为 error）。Worker 的 model 节点也有 gen_ai.operation.name = chat 的 span，所以按服务名选网关的，
+#   不按名字选，也不重复计。
+# - Task 与 Round：Worker 收尾补记的 invoke_workflow（runtime.task_family、runtime.task_status、runtime.cost_usd、runtime.rounds）
+#   与 runtime.round（verdict）。
+# - 评测：eval.run（agentruntime_learning.evals.runner，命令行设了 OTEL_EXPORTER_OTLP_ENDPOINT 时发）。
+# - 趋势：runtime.model.calls、runtime.model.cost_usd（Model Gateway）与 runtime.eval.score（评测），名字点换下划线，计数器加 _total。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-runtime-quality-dashboard
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+data:
+  quality.json: |
+    {
+      "uid": "agent-runtime-quality",
+      "title": "模型与 Task 质量",
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "time": {"from": "now-24h", "to": "now"},
+      "templating": {"list": []},
+      "panels": [
+        {
+          "id": 1, "type": "timeseries", "title": "模型调用延迟（秒，p50 与 p95，按实际服务的模型）",
+          "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "fieldConfig": {"defaults": {"unit": "s"}},
+          "targets": [{"refId": "A", "queryType": "traceql", "metricsQueryType": "range",
+                       "query": "{ resource.service.name = \"model-gateway\" && span.gen_ai.operation.name = \"chat\" } | quantile_over_time(duration, .5, .95) by (span.gen_ai.response.model)"}]
+        },
+        {
+          "id": 2, "type": "timeseries", "title": "模型调用错误率（按请求的模型）",
+          "description": "网关已经重试并切换过候选之后仍失败的调用占比。失败的调用可能没有实际服务的模型，所以按请求的模型（选档的第一个候选）分。",
+          "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+          "datasource": {"type": "__expr__", "uid": "__expr__"},
+          "fieldConfig": {"defaults": {"unit": "percentunit"}},
+          "targets": [
+            {"refId": "A", "datasource": {"type": "tempo", "uid": "tempo"}, "queryType": "traceql", "metricsQueryType": "range", "hide": true,
+             "query": "{ resource.service.name = \"model-gateway\" && span.gen_ai.operation.name = \"chat\" && status = error } | rate() by (span.gen_ai.request.model)"},
+            {"refId": "B", "datasource": {"type": "tempo", "uid": "tempo"}, "queryType": "traceql", "metricsQueryType": "range", "hide": true,
+             "query": "{ resource.service.name = \"model-gateway\" && span.gen_ai.operation.name = \"chat\" } | rate() by (span.gen_ai.request.model)"},
+            {"refId": "C", "datasource": {"type": "__expr__", "uid": "__expr__"}, "type": "math", "expression": "$A / $B"}
+          ]
+        },
+        {
+          "id": 3, "type": "timeseries", "title": "Task 结局（按任务族）",
+          "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "targets": [{"refId": "A", "queryType": "traceql", "metricsQueryType": "range",
+                       "query": "{ name = \"invoke_workflow\" } | count_over_time() by (span.runtime.task_family, span.runtime.task_status)"}]
+        },
+        {
+          "id": 4, "type": "timeseries", "title": "Task 花费（按任务族）",
+          "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "fieldConfig": {"defaults": {"unit": "currencyUSD"}},
+          "targets": [{"refId": "A", "queryType": "traceql", "metricsQueryType": "range",
+                       "query": "{ name = \"invoke_workflow\" } | sum_over_time(span.runtime.cost_usd) by (span.runtime.task_family)"}]
+        },
+        {
+          "id": 5, "type": "timeseries", "title": "Round 数（每个 Task，p50 与 p95，按任务族）",
+          "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "targets": [{"refId": "A", "queryType": "traceql", "metricsQueryType": "range",
+                       "query": "{ name = \"invoke_workflow\" } | quantile_over_time(span.runtime.rounds, .5, .95) by (span.runtime.task_family)"}]
+        },
+        {
+          "id": 6, "type": "timeseries", "title": "Verdict 分布",
+          "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "targets": [{"refId": "A", "queryType": "traceql", "metricsQueryType": "range",
+                       "query": "{ name = \"runtime.round\" } | count_over_time() by (span.verdict)"}]
+        },
+        {
+          "id": 7, "type": "table", "title": "评测（最近的运行）",
+          "description": "eval.valid 为 false 的运行回退率超过阈值，分数不代表模型的判断（TMP 计划第 8 节）。",
+          "gridPos": {"x": 0, "y": 24, "w": 24, "h": 8},
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "targets": [{"refId": "A", "queryType": "traceql", "limit": 50, "tableType": "spans",
+                       "query": "{ name = \"eval.run\" } | select(span.eval.set, span.eval.subject, span.eval.split, span.eval.valid, span.eval.success_rate, span.eval.triage_accuracy, span.eval.verdict_accuracy, span.eval.fallback_rate, span.eval.cost_usd, span.eval.models)"}]
+        },
+        {
+          "id": 8, "type": "row", "title": "趋势（VictoriaMetrics，保留 30 天）", "collapsed": false,
+          "gridPos": {"x": 0, "y": 32, "w": 24, "h": 1}
+        },
+        {
+          "id": 9, "type": "timeseries", "title": "租户每小时花费",
+          "description": "美元。Model Gateway 计的费，含 Planner、Reviewer 与各 Node。告警“租户每小时花费”查同一个指标。",
+          "gridPos": {"x": 0, "y": 33, "w": 8, "h": 8},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "fieldConfig": {"defaults": {"unit": "currencyUSD"}},
+          "targets": [{"refId": "A", "expr": "sum by (tenant_id) (increase(runtime_model_cost_usd_sum[1h]))", "legendFormat": "{{tenant_id}}"}]
+        },
+        {
+          "id": 10, "type": "timeseries", "title": "供应商不可用率",
+          "description": "调用失败的比例，按最后尝试的候选的供应商算。告警“模型供应商不可用率”查同一个指标。",
+          "gridPos": {"x": 8, "y": 33, "w": 8, "h": 8},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "fieldConfig": {"defaults": {"unit": "percentunit"}},
+          "targets": [{"refId": "A",
+                       "expr": "sum by (gen_ai_provider_name) (increase(runtime_model_calls_total{outcome=\"error\"}[15m])) / sum by (gen_ai_provider_name) (increase(runtime_model_calls_total[15m]))",
+                       "legendFormat": "{{gen_ai_provider_name}}"}]
+        },
+        {
+          "id": 11, "type": "timeseries", "title": "评测分数趋势",
+          "description": "只算有效的运行（回退率没超过阈值），按指标与被测对象，一天的窗口取均值；花费不在这里。",
+          "gridPos": {"x": 16, "y": 33, "w": 8, "h": 8},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "targets": [{"refId": "A",
+                       "expr": "sum by (eval_metric, eval_subject) (increase(runtime_eval_score_sum{eval_valid=\"true\", eval_metric!=\"cost_usd\"}[1d])) / sum by (eval_metric, eval_subject) (increase(runtime_eval_score_count{eval_valid=\"true\", eval_metric!=\"cost_usd\"}[1d]))",
+                       "legendFormat": "{{eval_subject}} {{eval_metric}}"}]
+        }
+      ]
+    }

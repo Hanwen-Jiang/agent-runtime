@@ -1,0 +1,14 @@
+# VictoriaMetrics 单机版（vm/victoria-metrics-single Chart；TMP 计划第 9.3 节，2026-10-28 人定）：指标的后端。装在 observability
+# 命名空间，Collector 经 Prometheus remote write（/api/v1/write）写入，Grafana 当 Prometheus 数据源读。保留 30 天、数据放持久卷。
+# 指标由应用经 Telemetry 发（Model Gateway 的 runtime.model.*、gen_ai.client.*，评测的 runtime.eval.*），不在这里抓取。
+# Service 是 vm-victoria-metrics-single-server:8428（旧命名，Chart 的默认）。键名 2026-10 对照 victoria-metrics-single-0.49.0。
+server:
+  retentionPeriod: 30d
+  persistentVolume:
+    enabled: true
+    size: 10Gi
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: "1", memory: 1Gi}
+  scrape:
+    enabled: false
