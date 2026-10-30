@@ -13,7 +13,8 @@
 D-06f（第 8 节，应用浏览与管理工作区）：
 8. 列目录（不列 .git）、读文件（大文件只给大小、二进制不给内容、.git 拒绝）；提交记录（含 base..HEAD）。
 9. 丢弃改动（未跟踪的删掉、.gitignore 忽略的留着）；同步（有改动时 workspace_dirty；干净时切到远端分支的最新提交）。
-10. 从初始文件建（初始提交带作者）、从别的工作区复制（含未提交的改动，远端沿用，复制的能推送）；三种来源互斥。
+10. 从初始文件建（初始提交带作者）、从别的工作区复制（含未提交的改动，远端沿用，复制的能推送）；复制不能与另两种来源同给
+    （克隆加文件、克隆到提交见 test_workspace_at_commit.py）。
 11. diff 的逐文件行数、改名检测与当前分支。
 12. 没配沙箱（shell_run 是 host）时也能用：直接在 <工作区根>/<租户>/<workspace> 里做。
 """
@@ -336,7 +337,8 @@ async def test_create_from_files_or_from_another_workspace(tmp_path: Path) -> No
     assert (await s.run(Op.WORKSPACE_OPERATION_READ_FILE, workspace="w-sample", path="src/a.py"))["content"] == "x = 1\n"
     for bad in ([{"path": ".git/config", "content": "x"}], [{"path": "a", "content": "1"}, {"path": "a", "content": "2"}], [{"path": "../x", "content": "1"}]):
         assert (await s.error(Op.WORKSPACE_OPERATION_CREATE, workspace="w-bad", files=bad)).category == error_pb2.ERROR_CATEGORY_INVALID
-    both = await s.error(Op.WORKSPACE_OPERATION_CREATE, workspace="w-bad", repo_url=url, files=files)
+    # files 可以与 repo_url 同给（test_workspace_at_commit.py），不能与 from_workspace_id 同给。
+    both = await s.error(Op.WORKSPACE_OPERATION_CREATE, workspace="w-bad", from_workspace_id="w-sample", files=files)
     assert both.code == "conflicting_sources"
     assert await s.archiver.get("t1", "w-bad") is None, "参数不对时不留行"
 

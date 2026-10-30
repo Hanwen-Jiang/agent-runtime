@@ -234,12 +234,14 @@ class WorkspaceOperations:
         url = str(args.get("repo_url") or "")
         source = str(args.get("from_workspace_id") or "")
         files = _initial_files(args.get("files"))
-        if sum(bool(x) for x in (url, source, files)) > 1:
-            raise InvalidError("conflicting_sources", "repo_url、from_workspace_id、files 只能给一种")
+        if source and (url or files):
+            raise InvalidError("conflicting_sources", "from_workspace_id 不能与 repo_url、files 同给")
         remote = self._remote(url) if url else None
         ref = str(args.get("ref") or "")
         if ref:
             check_branch(ref)
+        # ref 是完整的提交时只取到它为止的历史（TMP 计划 eval-observability-and-runtime-fixes 11.10）。
+        commit = ref if remote is not None and _SHA.match(ref) else ""
         author = _author(args)
         credential = await self._credential(inp, remote) if remote is not None else None
         origin: WorkspaceRecord | None = None
@@ -254,16 +256,18 @@ class WorkspaceOperations:
                 head, branch = await self._copy(inp, source, max_bytes=limits.max_bytes)
             else:
                 async with self._lease(inp, writable=True, remote=remote) as lease:
-                    if remote is not None:
+                    if commit and remote is not None:
+                        # 之后的提交（例如上游的修复）不进工作区，远端的分支与标签也不取；HEAD 分离在这个提交上。
+                        await self._git(lease, ["init", "--quiet", "-b", "main"], what="初始化")
+                        await self._git(lease, ["fetch", "--quiet", "--no-tags", "--", remote.url, commit], credential=credential, what="取提交")
+                        await self._git(lease, ["checkout", "--quiet", "--detach", "FETCH_HEAD"], what="检出")
+                    elif remote is not None:
                         argv = ["clone", "--quiet", *(["--branch", ref] if ref else []), "--", remote.url, "."]
                         await self._git(lease, argv, credential=credential, what="克隆")
                     else:
                         await self._git(lease, ["init", "--quiet", "-b", "main"], what="初始化")
-                        if files:
-                            for path, content in files:
-                                await lease.box.write_file(lease.env_id, path, content.encode("utf-8"))
-                            await self._git(lease, ["add", "-A"], what="暂存")
-                            await self._git(lease, [*_author_config(author), "commit", "--quiet", "--no-verify", "-m", "Initial commit"], what="初始提交")
+                    if files:
+                        await self._write_and_commit(lease, files, author, cloned=remote is not None)
                     head, branch = await self._head(lease), await self._branch(lease)
             await self._archiver.update(owner, ws, head=head)
         except BaseException:
@@ -277,6 +281,19 @@ class WorkspaceOperations:
         record = await self._archiver.get(owner, ws)
         assert record is not None
         return {"workspace": workspace_dict(record, branch=branch)}
+
+    async def _write_and_commit(self, lease: Lease, files: list[tuple[str, str]], author: tuple[str, str], *, cloned: bool) -> None:
+        """写入建工作区时给的文件并提交：空工作区是初始提交；克隆之后另做一次提交（同名的覆盖）。
+
+        只暂存写入的这几个文件，并且 --force：仓库的 .gitignore 忽略了它们也要进这次提交（不然补丁的基准里没有它们）；
+        内容与仓库里的一样时照样提交（空提交），head 一定是这次提交。
+        """
+        for path, content in files:
+            await lease.box.write_file(lease.env_id, path, content.encode("utf-8"))
+        await self._git(lease, ["add", "--force", "--", *(path for path, _ in files)], what="暂存")
+        message = "Add workspace files" if cloned else "Initial commit"
+        argv = [*_author_config(author), "commit", "--quiet", "--no-verify", *(["--allow-empty"] if cloned else []), "-m", message]
+        await self._git(lease, argv, what="提交写入的文件" if cloned else "初始提交")
 
     async def _copy(self, inp: workspace_pb2.WorkspaceOperationInput, source: str, *, max_bytes: int) -> tuple[str, str]:
         """把同租户的 source 工作区复制进新建的（空的）工作区：从源的只读环境导出，再导进新的可写环境；两种模式一样。
@@ -804,7 +821,10 @@ def _git_error(what: str, stderr: str) -> ProviderError:
         return TransientError("git_unavailable", f"{what}时连不上远端：{stderr}")
     if any(s in lower for s in ("[rejected]", "non-fast-forward", "fetch first", "stale info")):
         return ConflictError("push_rejected", f"{what}被拒绝（远端分支有别的提交）：{stderr}")
-    if any(s in lower for s in ("not found", "does not exist", "couldn't find remote ref", "unknown revision", "bad revision", "invalid upstream")):
+    if any(s in lower for s in (
+        "not found", "does not exist", "couldn't find remote ref", "unknown revision", "bad revision", "invalid upstream",
+        "not our ref", "unadvertised object", "bad object",
+    )):
         return NotFoundError("git_not_found", f"{what}失败：{stderr}")
     return InvalidError("git_failed", f"{what}失败：{stderr}")
 

@@ -269,15 +269,10 @@ func (s *Server) CreateWorkspace(ctx context.Context, req *connect.Request[works
 	if err := checkRef("ref", m.GetRef()); err != nil {
 		return nil, taskapi.ConnectError(err)
 	}
-	sources := 0
-	for _, given := range []bool{m.GetRepoUrl() != "", m.GetFromWorkspaceId() != "", len(m.GetFiles()) > 0} {
-		if given {
-			sources++
-		}
-	}
+	// files 可以与 repo_url 同给（克隆之后写入，另做一次提交；TMP 计划 eval-observability-and-runtime-fixes 11.10）。
 	switch {
-	case sources > 1:
-		return nil, taskapi.ConnectError(invalid("conflicting_sources", "repo_url、from_workspace_id、files 只能给一种"))
+	case m.GetFromWorkspaceId() != "" && (m.GetRepoUrl() != "" || len(m.GetFiles()) > 0):
+		return nil, taskapi.ConnectError(invalid("conflicting_sources", "from_workspace_id 不能与 repo_url、files 同给"))
 	case m.GetFromWorkspaceId() != "" && (!slug.MatchString(m.GetFromWorkspaceId()) || m.GetFromWorkspaceId() == m.GetWorkspaceId()):
 		return nil, taskapi.ConnectError(invalid("invalid_source", "from_workspace_id 要是同租户里另一个工作区"))
 	case len(m.GetFiles()) > maxInitialFiles:

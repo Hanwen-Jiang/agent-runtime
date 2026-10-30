@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.13"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -132,6 +132,7 @@ name = "agentruntime-e2e-tests"
 version = "0.0.0"
 source = { editable = "tests/e2e" }
 dependencies = [
+    { name = "agentruntime-learning" },
     { name = "agentruntime-proto" },
     { name = "agentruntime-worker" },
     { name = "protobuf" },
@@ -142,6 +143,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "agentruntime-learning", editable = "services/py-learning" },
     { name = "agentruntime-proto", editable = "proto/gen/python" },
     { name = "agentruntime-worker", editable = "services/py-worker" },
     { name = "protobuf", specifier = ">=7.36.2,<8" },

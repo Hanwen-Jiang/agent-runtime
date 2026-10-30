@@ -72,8 +72,9 @@ const (
 
 // WorkspaceServiceClient is a client for the agentruntime.workspace.v1.WorkspaceService service.
 type WorkspaceServiceClient interface {
-	// 建一个工作区：给了 repo_url 时克隆它（可以带 ref）；给了 from_workspace_id 时复制同租户的另一个工作区；都没给时
-	// git init，再写入 files 并做一次初始提交（没有 files 时不提交）。三种来源只能给一种。已有同名的工作区时 AlreadyExists。
+	// 建一个工作区：给了 repo_url 时克隆它（可以带 ref，ref 可以是一个提交；可以带 files，克隆之后写入并另做一次提交）；
+	// 给了 from_workspace_id 时复制同租户的另一个工作区；都没给时 git init，再写入 files 并做一次初始提交（没有 files 时不提交）。
+	// from_workspace_id 与另两种来源不能同给。已有同名的工作区时 AlreadyExists。
 	CreateWorkspace(context.Context, *connect.Request[v1.CreateWorkspaceRequest]) (*connect.Response[v1.CreateWorkspaceResponse], error)
 	// 列出本租户的工作区（不含已删除的）。
 	ListWorkspaces(context.Context, *connect.Request[v1.ListWorkspacesRequest]) (*connect.Response[v1.ListWorkspacesResponse], error)
@@ -269,8 +270,9 @@ func (c *workspaceServiceClient) SyncWorkspace(ctx context.Context, req *connect
 // WorkspaceServiceHandler is an implementation of the agentruntime.workspace.v1.WorkspaceService
 // service.
 type WorkspaceServiceHandler interface {
-	// 建一个工作区：给了 repo_url 时克隆它（可以带 ref）；给了 from_workspace_id 时复制同租户的另一个工作区；都没给时
-	// git init，再写入 files 并做一次初始提交（没有 files 时不提交）。三种来源只能给一种。已有同名的工作区时 AlreadyExists。
+	// 建一个工作区：给了 repo_url 时克隆它（可以带 ref，ref 可以是一个提交；可以带 files，克隆之后写入并另做一次提交）；
+	// 给了 from_workspace_id 时复制同租户的另一个工作区；都没给时 git init，再写入 files 并做一次初始提交（没有 files 时不提交）。
+	// from_workspace_id 与另两种来源不能同给。已有同名的工作区时 AlreadyExists。
 	CreateWorkspace(context.Context, *connect.Request[v1.CreateWorkspaceRequest]) (*connect.Response[v1.CreateWorkspaceResponse], error)
 	// 列出本租户的工作区（不含已删除的）。
 	ListWorkspaces(context.Context, *connect.Request[v1.ListWorkspacesRequest]) (*connect.Response[v1.ListWorkspacesResponse], error)

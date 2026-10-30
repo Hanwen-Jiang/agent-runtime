@@ -1,7 +1,8 @@
 # TMP 计划：线上日志的问题、真模型实验的遗留与评测可观测（设计稿）
 
 > 状态：2026-10-28 人确认开工，要人定的几项已定（第 11 节）。第 3～7 节的 S-01 草案人审通过（兼容性基线已更新）；
-> 第 2～9 节已实现（11.7～11.9；9.1 由同事先做）；第 10 节没有预算，未做。来源两处：
+> 第 2～9 节已实现（11.7～11.9；9.1 由同事先做）。第 10 节的第一期（SWE-bench 的适配器）已实现（11.10，S-01 人审通过、
+> 兼容性基线已更新）；真跑要预算与有 Docker 的环境，Terminal-Bench 是第二期。来源两处：
 > - 线上日志（`Z:\agentruntime\1028137pm.log`，code.cgent.link，租户 `gh-nsnzd-kimberlyxie343178`，“读仓库并讲清结构”跑了 5 轮、$0.62，最后卡在“规划下一轮”）；
 > - 真模型实验报告（`docs/job-qualifications/real-model-experiments-2026-10-28/README.md` 第 6 节的 P0、P1）。
 > 已经在本仓库里改掉的列在第 1 节；第 2 到 9 节是重的或要先定的，每节写清问题、证据、做法、要人定的、验收。
@@ -138,7 +139,7 @@ Learning 不再因任务族跳过 Task。
 | 第 3～7 节的契约改动 | 合成**一份 S-01 草案**（11.3），人审过再按顺序实现 |
 | 第 2 节的线上诊断 | 本机没有 kubeconfig：**先做代码侧的防护**；诊断由人执行，把输出贴回来再定位 |
 | 9.3 指标后端 | **VictoriaMetrics 单机版**（设计书 4.13、4.15 的改动稿见 11.6） |
-| 第 10 节 Benchmark | 预算未定，不做 |
+| 第 10 节 Benchmark | 预算未定，不做。2026-10-29 改为：先写 SWE-bench 的适配器与离线验收测试（不花钱），Terminal-Bench 放第二期；真跑之前再定预算与在哪儿跑（11.10） |
 
 ### 11.2 各节挂在哪个工作项下（CLAUDE.md“怎么接一个任务”第 1 步）
 
@@ -152,6 +153,7 @@ Learning 不再因任务族跳过 Task。
 | 7 | S-01；S-10 的后续 |
 | 8 | S-08 的后续 |
 | 9.2、9.3 | T-15 的后续 |
+| 10 | S-08（评测）与 T-13（真模型端到端）的后续；它要的 Workspace API 改动是 D-06 的后续，走 S-01（11.10） |
 
 ### 11.3 S-01 草案（待人审）
 
@@ -381,4 +383,113 @@ PlanRoundOutput，不影响其他测试）。
   指标；`helm`、`otelcol-contrib` 不在本机，Chart 渲染与 Collector 自检的测试在本机跳过，集群上没有试装；TraceQL 与 PromQL 的查询
   只核对了用到的名字，没在真的 Tempo、VictoriaMetrics 上跑过。
 - 本机的共享虚拟环境按 `uv sync --all-packages --locked` 补装了锁定的依赖（之前缺 PyYAML、OpenTelemetry 等）。
+
+### 11.10 第 10 节第一期：SWE-bench Verified 的适配器（2026-10-29 人确认，已实现）
+
+范围：用 Runtime 跑 SWE-bench Verified 的子集，产出官方判分工具能直接用的 predictions，判分用官方工具，报告同时给出与榜单同口径的
+解决率和本项目自己的指标。这一期只写代码与离线验收测试，不花钱；真跑要先定预算，并且要在有 Docker 的地方（云上集群或装了 Docker
+的机器；本 VM 没有 Docker，也没有 WSL）。Terminal-Bench 放第二期：它的 agent 要在题目自己的容器里操作，Runtime 现在的沙箱都是
+自己起环境，要另加一种后端。
+
+**核对过的官方格式**（SWE-bench v5.0.1，2026-08-18 发布，满两周）：
+
+- 题目：Hugging Face 的 `SWE-bench/SWE-bench_Verified`，500 题；字段有 `instance_id`、`repo`、`base_commit`、`problem_statement`、
+  `hints_text`、`image`（例如 `swebench/sweb.eval.x86_64.astropy_1776_astropy-12907:latest`）、`patch`、`test_patch`、
+  `FAIL_TO_PASS`、`PASS_TO_PASS` 等。datasets-server 的 rows 接口（`https://datasets-server.huggingface.co/rows`）只用标准库就能取。
+- 镜像名：`swebench/sweb.eval.x86_64.<instance_id>:latest`，`__` 换成 `_1776_`，全小写；题目里有 `image` 时直接用它。
+- predictions：JSONL，每行 `instance_id`、`model_name_or_path`、`model_patch`。
+- 判分：`python -m swebench.harness.run_evaluation --dataset_name <本地 .jsonl> --predictions_path … --run_id … --report_dir …
+  --instance_ids … --max_workers …`（`--modal true` 在 Modal 上跑，不要本机 Docker，但花钱）；报告是
+  `<report_dir>/<model_name_or_path，/ 换成 __>.<run_id>.json`，有 `resolved_ids`、`unresolved_ids`、`empty_patch_ids`、
+  `error_ids`、`infra_failure_ids`、`incomplete_ids` 等。
+- 官方工具不进本仓库的依赖（设计书 4.15 之外）：判分时用 `--python` 指一个另装了 `swebench` 的 Python。
+
+**S-01：Workspace API（D-06 的后续；2026-10-29 人审通过，兼容性基线已更新）**。现在的 CreateWorkspace 只能克隆到分支或标签，也不能在克隆时再写文件；SWE-bench
+要停在 `base_commit`，还要放进题目的运行环境定义。两处都是只加不改，字段编号不变，`buf breaking` 只看结构，不受影响：
+
+- `CreateWorkspaceRequest.ref`：注释改成“分支、标签，或完整的提交（40 位或 64 位十六进制）。给提交时只取到这个提交为止的历史，
+  不取远端的分支与标签（克隆下来看不到这个提交之后的提交），HEAD 分离在这个提交上（branch 为空）”。Worker 的做法是
+  `git init` → `git fetch --no-tags <远端> <提交>` → `git checkout --detach FETCH_HEAD`。
+- `CreateWorkspaceRequest.files`：注释改成“建空工作区时写入的文件，写完做一次初始提交；与 repo_url 一起给时，克隆之后写入、
+  另做一次提交（提交说明 Add workspace files），workspace.head 是这次提交。与 from_workspace_id 互斥”。task-service 的
+  `conflicting_sources` 改成只拦 from_workspace_id 与另两种同给。
+
+不改的话只能把每道题的仓库截到 base_commit、推到一个自己的 https 仓库再克隆，要在 GitHub 上建镜像仓库，比改两条注释重。
+
+**适配器**：`services/py-learning/src/agentruntime_learning/benchmarks`（`swebench.py`、`client.py`、`__main__.py`）。命令：
+
+```text
+python -m agentruntime_learning.benchmarks swebench fetch --out <instances.jsonl> [--dataset SWE-bench/SWE-bench_Verified] [--split test]
+python -m agentruntime_learning.benchmarks swebench run --instances <文件> --out <目录> (--limit N [--seed S] | --ids <文件>)
+    --task-api <地址> --budget-usd X --task-usd-limit Y [--concurrency 2] [--task-timeout-min 60] [--model-name agent-runtime]
+    [--hints] [--environment official|none] [--repo-url-template https://github.com/{repo}.git] [--keep-workspaces]
+python -m agentruntime_learning.benchmarks swebench grade --out <目录> --python <装了 swebench 的 Python> [--max-workers 4] [--modal]
+python -m agentruntime_learning.benchmarks swebench report --out <目录>
+```
+
+Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。输出目录：`run.json`（这次跑的设定与选中的题）、`instances.jsonl`
+（选中的题，判分时当 `--dataset_name`）、`records/<instance_id>.json`（每题一份）、`predictions.jsonl`、`grading/`、
+`report.json` 与 `report.md`。
+
+每题的流程：
+
+1. 建工作区：`CreateWorkspace(repo_url=模板代入 repo, ref=base_commit, files=运行环境定义)`；记下返回的 head。工作区 id 是
+   `swb-<instance_id 的小写化>-<run_id 与 instance_id 的哈希>`，同一次运行里不重名，换一个 run_id 不撞上留着的工作区。
+2. 运行环境（`--environment official`，默认）：写 `.devcontainer/devcontainer.json`（`build.dockerfile` 指向
+   `.devcontainer/agentruntime.Dockerfile`）与这个 Dockerfile：`FROM <题目的镜像>`，PATH 换成 conda 环境 testbed，`/testbed`
+   换成指向工作区挂载点（默认 `/workspace`）的符号链接。官方镜像把仓库以开发模式装在 `/testbed`，不换的话测试跑的是镜像里没改过的
+   代码，而且不报错。由 D-17 构建（集群里有 `environments` 一节时）。`none` 不写，用默认的运行环境，只给冒烟。
+3. 提交 Task：消息只有题目描述（`--hints` 时加上 hints_text）与固定的说明（改源码、不改已有测试、隐藏测试会判），
+   **不带 patch、test_patch、FAIL_TO_PASS、PASS_TO_PASS**。
+4. 跟着 SSE 走到 task_finished：断线凭 Last-Event-ID 续上，事件按 id 去重；Verdict 按事件计数。无人值守：问人时选项里有
+   stop_and_wrap_up 就回它，审批（approve/reject）回 reject，别的问题取消 Task；回过的问题记进这一题的记录。每收到一个事件（含心跳）
+   至多每 `poll_s` 秒查一次 QueryTask 的花费：超过 `--task-usd-limit` 或超过 `--task-timeout-min` 就取消，记下原因。
+5. 结束后不管结局（done、abort、取消、失败）都取 `GetDiff(base=建好时的 head)` 当补丁：只含 agent 的改动，不含运行环境定义；
+   diff 被截断时记错、补丁为空。之后删工作区（`--keep-workspaces` 时留着）。
+
+总预算：开始一题之前，已花的加上正在跑的每题按 `--task-usd-limit` 预留，再加这一题的上限，超过 `--budget-usd` 就不再开新题，
+剩下的记为没跑。单题会多出取消前的最后一步调用，所以租户策略的 `budget.usd` 应设得不高于 `--task-usd-limit`。
+
+续跑：同一个输出目录再跑一次 `run` 时，`run.json` 的设定与选中的题要一致（不一致就拒绝）；已结束的跳过；记了 task_id 的接着跟，
+不重新提交；建了工作区还没提交的、出错的，删掉工作区重来；已花的钱从记录里算。
+
+报告（`report`，判过分时并进判分结果）：选中、跑了、没跑、出错的题数；解决数，解决率分两种（÷ 选中的，与榜单同口径；÷ 跑了的）；
+总花费、每题平均花费、每解决一题的花费；Round 数的中位数与最大；Verdict 分布；结局分布；自动回复与超限取消的次数；按仓库的解决率；
+判分没跑成的（`error_ids`、`infra_failure_ids`）单列，有这类题时报告标明“判分不完整”。
+
+**验收测试**：
+
+| 测试 | 覆盖 |
+| --- | --- |
+| `services/go-task-service/internal/workspaceapi/server_test.go` 的 `TestCreateAtACommitWithFiles` | repo_url + 提交 + files 能建、参数带给 Worker；files 与 from_workspace_id 同给仍是 InvalidArgument |
+| `services/py-worker/tests/test_workspace_at_commit.py` | 克隆到提交：head 是写入文件的那次提交，它的父提交是 base；看不到之后的提交（`git log --all`、对象都没有）；branch 为空；diff 相对 head 只含之后的改动；不在远端的提交报错且撤掉这一行；存档与挂卷两种模式 |
+| `services/py-learning/tests/test_swebench.py` | 读题与选题（种子可复现、按 id 选、缺字段与重复 id 报错）；不泄题；镜像名；运行环境定义过得了 D-17 的识别与静态检查；工作区 id；predictions 的格式与顺序；总预算（并发时预留）；单题超限与超时取消；无人值守的回复；断线续读不重复计；续跑不重复提交、设定不一致时拒绝；diff 的基准是建好时的 head；判分的参数与读报告（假的官方工具）；报告的各项指标；令牌不进输出目录 |
+| `services/py-learning/tests/test_benchmark_client.py` | 对着假的 HTTP 服务：connect 的路径、认证头、驼峰与下划线字段的换算、int64 的字符串、SSE 带 Last-Event-ID 续读、错误信息里没有令牌；`fetch` 分页取全、条数对不上时报错 |
+| `tests/e2e/test_swebench_e2e.py` | 整套（mock 供应商、桩决策、本地沙箱、存档模式、`--allow-local-remotes`）：命令行 `run` 对着本机裸仓库的一道构造题，工作区停在 base、看不到之后的修复提交、环境定义在 head 的提交里，Task 结束，predictions 有这一题，记录里有结局、Round 数与花费；`report` 写出报告 |
+
+**真跑前要人定的**：总预算与单题上限；在哪儿跑（集群要配 D-17 的 `environments`，构建要能从 Docker Hub 拉 `swebench/*`；
+租户策略的 `sandbox.network.hosts` 要含 github.com，`effect_ceiling` 至少 write_reversible）；判分在哪儿跑（有 Docker 的机器，
+或 Modal）。建议先 5 题冒烟，再 50 题。
+
+**已知的偏差与风险**：官方镜像里带编译扩展的仓库（astropy、matplotlib、scikit-learn，约占 Verified 的 18%）换成工作区以后
+扩展要重新编译，agent 跑测试前得先构建，会多花时间与钱，报告按仓库分开看；每题一个环境镜像，集群的磁盘要够（D-17 闲置清理会回收）；
+子集的解决率与榜单的 500 题全量不完全可比，报告写明子集大小与种子。
+
+**实现记录**
+
+- 契约：`workspace.proto` 改了 CreateWorkspace、`ref`、`files` 三处注释，重新生成（生成代码只有注释变了）；`buf breaking` 通过，
+  兼容性基线已更新。
+- task-service：`conflicting_sources` 只拦 from_workspace_id 与另两种来源同给。Worker（`workspace/operations.py`）：ref 是完整的
+  提交时 `git init` → `git fetch --no-tags <远端> <提交>` → `git checkout --detach FETCH_HEAD`；远端没有这个提交时 git 报
+  “not our ref”，归为 NotFound；相对工作区里没有的提交取 diff 时 git 报 “bad object”，也归为 NotFound（原来是 git_failed）。files 在克隆之后写入，`git add --force` 只暂存写入的这几个文件（仓库的 .gitignore 忽略了也进提交），
+  `--allow-empty` 提交 “Add workspace files”。原有测试里“repo_url 与 files 同给报错”的一条按新契约改成 from_workspace_id 与 files。
+- 适配器：`agentruntime_learning.benchmarks`（`client.py`、`swebench.py`、`__main__.py`）；e2e 包加了对 agentruntime-learning 的依赖
+  （uv.lock 只多这一项）。
+- 对着真数据核对过（2026-10-29）：`fetch` 取到 Verified 的 500 题，全部过得了读题的检查；种子 0 抽 50 题是 django 22、sympy 11、
+  sphinx 6、matplotlib 4……有两题（django__django-15695、sympy__sympy-15599）的题目描述本身带着测试文件的 diff：这是公开的题面，
+  榜单上的 agent 都看得到，不算泄题。
+- 没覆盖：没有真跑（没花钱）；官方判分工具只对着假的测，参数与报告格式对照的是 v5.0.1 的源码；D-17 构建官方镜像与 `/testbed`
+  的符号链接没在集群上试过，带编译扩展的仓库要先重新构建这一点没验证；单题的花费上限靠适配器取消，取消前会多出一步调用；
+  后端登记里没有 `environments` 时 `--environment official` 写进去的定义不会被构建，Task 用默认的运行环境，适配器不报错——真跑前要
+  确认集群配好了。
 

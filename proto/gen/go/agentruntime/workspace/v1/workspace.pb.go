@@ -362,15 +362,17 @@ type CreateWorkspaceRequest struct {
 	WorkspaceId string `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
 	// 为空时建空的工作区（git init）。只接受 https 地址；主机要在租户策略的 sandbox.network.hosts 范围里。
 	RepoUrl string `protobuf:"bytes,3,opt,name=repo_url,json=repoUrl,proto3" json:"repo_url,omitempty"`
-	// 分支或标签；为空时用远端的默认分支。
+	// 分支、标签，或完整的提交（40 位或 64 位十六进制）；为空时用远端的默认分支。给提交时只取到这个提交为止的历史，
+	// 不取远端的分支与标签（克隆下来看不到这个提交之后的提交），HEAD 分离在这个提交上（branch 为空）；远端没有这个提交时 NotFound。
 	Ref        string         `protobuf:"bytes,4,opt,name=ref,proto3" json:"ref,omitempty"`
 	Credential *GitCredential `protobuf:"bytes,5,opt,name=credential,proto3" json:"credential,omitempty"`
 	// 复制同租户的这个工作区：内容是它最近的状态（含 .git 与未提交的改动；存档模式下是它最近的快照，复制前先给它闲着的
 	// 可写环境存一份），远端（repo_url）也沿用。不存在时 NotFound。与 repo_url、files 互斥。
 	FromWorkspaceId string `protobuf:"bytes,6,opt,name=from_workspace_id,json=fromWorkspaceId,proto3" json:"from_workspace_id,omitempty"`
-	// 建空工作区时写入的文件，写完做一次初始提交（提交说明 Initial commit，作者见下）。与 repo_url、from_workspace_id 互斥。
+	// 建空工作区时写入的文件，写完做一次初始提交（提交说明 Initial commit，作者见下）。与 repo_url 一起给时，克隆之后写入
+	// （同名的文件覆盖）、另做一次提交（提交说明 Add workspace files），workspace.head 是这次提交。与 from_workspace_id 互斥。
 	Files []*InitialFile `protobuf:"bytes,7,rep,name=files,proto3" json:"files,omitempty"`
-	// 初始提交的作者；为空时用 Agent Runtime 的默认作者。
+	// 初始提交（或克隆之后写入文件的那次提交）的作者；为空时用 Agent Runtime 的默认作者。
 	AuthorName    string `protobuf:"bytes,8,opt,name=author_name,json=authorName,proto3" json:"author_name,omitempty"`
 	AuthorEmail   string `protobuf:"bytes,9,opt,name=author_email,json=authorEmail,proto3" json:"author_email,omitempty"`
 	unknownFields protoimpl.UnknownFields

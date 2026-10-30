@@ -440,6 +440,32 @@ func TestCreateFromFilesOrAnotherWorkspaceIsChecked(t *testing.T) {
 	}
 }
 
+// TMP 计划 eval-observability-and-runtime-fixes 第 11.10 节（S-01 草案）：克隆到一个提交，并在克隆之后写入文件（SWE-bench 的
+// base_commit 与题目的运行环境定义）。files 只与 from_workspace_id 互斥。
+func TestCreateAtACommitWithFiles(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	commit := strings.Repeat("ab", 20)
+	files := []*workspacev1.InitialFile{{Path: ".devcontainer/devcontainer.json", Content: "{}\n"}}
+	req := &workspacev1.CreateWorkspaceRequest{WorkspaceId: "w1", RepoUrl: "https://git.example.com/r.git", Ref: commit, Files: files}
+	if _, err := h.client.CreateWorkspace(ctx, authed(h, "t1", req)); err != nil {
+		t.Fatalf("repo_url、提交与 files 一起给：%v", err)
+	}
+	got := h.w.started[0].GetArgs().AsMap()
+	if fs, _ := got["files"].([]any); got["ref"] != commit || got["repo_url"] != "https://git.example.com/r.git" || len(fs) != 1 {
+		t.Fatalf("提交与文件没有带给 Worker：%v", got)
+	}
+	if _, err := h.client.CreateWorkspace(ctx, authed(h, "t1", &workspacev1.CreateWorkspaceRequest{WorkspaceId: "w2", Ref: strings.Repeat("c", 64), RepoUrl: "https://git.example.com/r.git"})); err != nil {
+		t.Fatalf("64 位的提交（SHA-256 仓库）：%v", err)
+	}
+	if _, err := h.client.CreateWorkspace(ctx, authed(h, "t1", &workspacev1.CreateWorkspaceRequest{WorkspaceId: "w3", FromWorkspaceId: "w1", Files: files})); code(t, err) != connect.CodeInvalidArgument {
+		t.Fatalf("files 与 from_workspace_id 仍然互斥：%v", err)
+	}
+	if len(h.w.started) != 2 {
+		t.Fatalf("被拒的请求不起工作流：起了 %d 个", len(h.w.started))
+	}
+}
+
 func TestWorkflowNameMatchesTheContract(t *testing.T) {
 	v := workflowv1.File_agentruntime_workflow_v1_names_proto.Enums().ByName("WorkflowType").Values().ByName(protoreflect.Name("WORKFLOW_TYPE_WORKSPACE_OPERATION"))
 	if v == nil {

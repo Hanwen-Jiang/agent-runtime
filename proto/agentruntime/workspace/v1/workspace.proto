@@ -13,8 +13,9 @@ import "google/protobuf/timestamp.proto";
 // 路径（ListFiles、ReadFile、InitialFile）：相对工作区根、用 / 分隔；绝对路径、盘符、空段、. 与 ..、反斜杠、NUL 一律
 // InvalidArgument；任何一级是 .git 也是 InvalidArgument（.git 只经 git 操作，不直接给应用读）。
 service WorkspaceService {
-  // 建一个工作区：给了 repo_url 时克隆它（可以带 ref）；给了 from_workspace_id 时复制同租户的另一个工作区；都没给时
-  // git init，再写入 files 并做一次初始提交（没有 files 时不提交）。三种来源只能给一种。已有同名的工作区时 AlreadyExists。
+  // 建一个工作区：给了 repo_url 时克隆它（可以带 ref，ref 可以是一个提交；可以带 files，克隆之后写入并另做一次提交）；
+  // 给了 from_workspace_id 时复制同租户的另一个工作区；都没给时 git init，再写入 files 并做一次初始提交（没有 files 时不提交）。
+  // from_workspace_id 与另两种来源不能同给。已有同名的工作区时 AlreadyExists。
   rpc CreateWorkspace(CreateWorkspaceRequest) returns (CreateWorkspaceResponse);
   // 列出本租户的工作区（不含已删除的）。
   rpc ListWorkspaces(ListWorkspacesRequest) returns (ListWorkspacesResponse);
@@ -90,15 +91,17 @@ message CreateWorkspaceRequest {
   string workspace_id = 2;
   // 为空时建空的工作区（git init）。只接受 https 地址；主机要在租户策略的 sandbox.network.hosts 范围里。
   string repo_url = 3;
-  // 分支或标签；为空时用远端的默认分支。
+  // 分支、标签，或完整的提交（40 位或 64 位十六进制）；为空时用远端的默认分支。给提交时只取到这个提交为止的历史，
+  // 不取远端的分支与标签（克隆下来看不到这个提交之后的提交），HEAD 分离在这个提交上（branch 为空）；远端没有这个提交时 NotFound。
   string ref = 4;
   GitCredential credential = 5;
   // 复制同租户的这个工作区：内容是它最近的状态（含 .git 与未提交的改动；存档模式下是它最近的快照，复制前先给它闲着的
   // 可写环境存一份），远端（repo_url）也沿用。不存在时 NotFound。与 repo_url、files 互斥。
   string from_workspace_id = 6;
-  // 建空工作区时写入的文件，写完做一次初始提交（提交说明 Initial commit，作者见下）。与 repo_url、from_workspace_id 互斥。
+  // 建空工作区时写入的文件，写完做一次初始提交（提交说明 Initial commit，作者见下）。与 repo_url 一起给时，克隆之后写入
+  // （同名的文件覆盖）、另做一次提交（提交说明 Add workspace files），workspace.head 是这次提交。与 from_workspace_id 互斥。
   repeated InitialFile files = 7;
-  // 初始提交的作者；为空时用 Agent Runtime 的默认作者。
+  // 初始提交（或克隆之后写入文件的那次提交）的作者；为空时用 Agent Runtime 的默认作者。
   string author_name = 8;
   string author_email = 9;
 }
