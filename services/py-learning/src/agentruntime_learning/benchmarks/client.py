@@ -4,6 +4,7 @@
 - SSE 的事件按 task-service 的写法：id、event（TaskEventType 去掉前缀的小写名）与 data（TaskEvent 的 protojson，载荷在
   payload.value）。一次 events() 只读一条连接，断了就结束；续读由调用方带 Last-Event-ID 再调。
 - 令牌只放在 Authorization 头里，不进错误信息。
+- 请求带自己的 User-Agent：线上的 Task API 在 Cloudflare 后面，它的 Browser Integrity Check 拒绝 Python-urllib 的默认值（错误 1010）。
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from typing import Any
 
 TASK_SERVICE = "/agentruntime.taskapi.v1.TaskService/"
 WORKSPACE_SERVICE = "/agentruntime.workspace.v1.WorkspaceService/"
+USER_AGENT = "agentruntime-benchmarks/1"
 
 
 class ApiError(Exception):
@@ -56,7 +58,7 @@ class RuntimeClient:
         return f"RuntimeClient({self.base_url!r})"
 
     def _headers(self, **extra: str) -> dict[str, str]:
-        return {"Authorization": f"Bearer {self._token}", **extra}
+        return {"Authorization": f"Bearer {self._token}", "User-Agent": USER_AGENT, **extra}
 
     def _call(self, service: str, method: str, body: dict[str, Any], *, timeout: float | None = None) -> dict[str, Any]:
         request = urllib.request.Request(

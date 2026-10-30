@@ -5,6 +5,7 @@
 2. 订阅地址是相对路径时按 Task API 的地址补全；SSE 带 Last-Event-ID 续读；事件的载荷取 payload.value。
 3. 出错时是 ApiError（HTTP 状态与 connect 的 code）；错误信息里没有令牌。
 4. fetch：按 datasets-server 的 rows 接口分页取全；条数对不上、有被截断的格子时报错；写出来的是 LF 的 JSONL。
+5. 调 Runtime 的请求（含 SSE）带自己的 User-Agent：线上的 Task API 在 Cloudflare 后面，它拒绝 Python-urllib 的默认值（错误 1010）。
 """
 
 from __future__ import annotations
@@ -175,6 +176,16 @@ def test_errors_carry_the_code_but_not_the_token(server: tuple[str, Fake]) -> No
         c.delete_workspace("w-gone")
     assert (info.value.status, info.value.code) == (404, "not_found")
     assert TOKEN not in str(info.value) and TOKEN not in repr(info.value)
+
+
+def test_requests_carry_their_own_user_agent(server: tuple[str, Fake]) -> None:
+    base, fake = server
+    c = RuntimeClient(base, TOKEN)
+    with pytest.raises(ApiError):
+        c.delete_workspace("w-gone")
+    list(c.events("t-1", f"{base}/v1/tasks/t-1/events"))
+    agents = [r["headers"].get("user-agent", "") for r in fake.requests]
+    assert len(agents) == 2 and all(a.startswith("agentruntime-benchmarks/") for a in agents), agents
 
 
 def test_fetch_pages_through_the_rows_api(server: tuple[str, Fake], tmp_path: Path) -> None:
