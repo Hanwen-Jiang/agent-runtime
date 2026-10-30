@@ -493,3 +493,21 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
   后端登记里没有 `environments` 时 `--environment official` 写进去的定义不会被构建，Task 用默认的运行环境，适配器不报错——真跑前要
   确认集群配好了。
 
+**服务器准备（2026-10-30，没花模型的钱）**
+
+- 跑与判都放在线上那台集群（`ssh cloudnium_cloud`，cgent.link，D-02 的 k3s 单节点）：它有 Docker 29，后端登记里配了 D-17 的
+  `environments`（构建可以访问 Docker Hub）。集群从 5f2658a 升级到 13924d7（第 2～10 节一起上线；步骤与核对见
+  [cloud-deploy.md](cloud-deploy.md) 第 10 节“升级到 13924d7”），之前线上的 Worker 不会克隆到提交。
+- 判分：服务器上 `/opt/swebench/venv`（uv 建的 Python 3.13，swebench 5.0.1，不进本仓库的依赖），适配器用
+  `PYTHONPATH=services/py-learning/src` 直接跑（只用标准库）。题在 `/opt/swebench/data/verified.jsonl`（`fetch` 取的 500 题）。
+- **真判分工具核对过**（不经 Runtime，用适配器自己的写法造输出目录）：pytest-dev__pytest-5262 交官方修复判为 resolved，
+  psf__requests-1724 交空补丁判为 empty_patch，psf__requests-1766 交无关的新文件判为 unresolved；`report` 的标签、解决率、
+  判分完整与官方报告对得上。**psf__requests-2317 交官方修复也判为 unresolved**：补丁打上了，失败的 7 条测试都要连外网的
+  httpbin.org，这个老版本 requests 带的根证书验不过现在的证书（`CERTIFICATE_VERIFY_FAILED`）。Verified 里 requests 的 8 题
+  判分要联网、随时间不可靠，报告里按仓库看时要把它们单列；沙箱默认断网，agent 跑这些测试也会失败。
+- 磁盘：三道题的官方镜像加新的 Runtime 镜像让 Docker 的占用从 17 GB 到 30 GB（一题约 3～4 GB，同一仓库同一版本的共用一部分）。
+  真跑时同一个镜像还会在环境镜像仓库与 k3s 的镜像存储里各有一份；系统盘剩 370 GB，5 题冒烟够，50 题要先把空着的第二块盘
+  （931 GB，没分区）用上，或者每判完一批就删掉题目镜像。
+- 还差：给跑题的租户 `swebench` 发租户策略（预算、配额要放宽：平台默认是单题 1 美元、50 次工具调用、20 分钟，每天沙箱 7200 秒，
+  最多 10 个工作区）与签发令牌，都等人定；D-17 构建官方镜像与 `/testbed` 要在第一次冒烟时看。
+

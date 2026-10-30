@@ -504,6 +504,20 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
   之后核对：`kubectl -n agent-runtime get scaledjob,job -l app.kubernetes.io/component=learning`，以及
   `kubectl -n data exec redpanda-0 -- rpk group describe learning`（第一个 Job 跑完后位置等于末尾，延迟归零）。
 
+升级到 13924d7（2026-10-30，TMP 计划第 2～10 节；之前线上是 5f2658a）：
+
+- 服务器上的代码在 `/opt/agentruntime/agent-runtime`（没有 `.git`，提交记在 `/opt/agentruntime/REVISION`；旧的一份留在
+  `agent-runtime.5f2658a`）。服务器自己的 `deploy/cluster/secrets/.sops.yaml` 与 `secrets.enc.yaml` 不在仓库里，换代码时要带过去。
+- 镜像：`build_images.py --tag 13924d7` 重建 7 个 Runtime 镜像（沙箱的镜像没变，仍是 0.1.0），`docker save | k3s ctr -n k8s.io images import -`
+  导进 k3s。新标签而不是覆盖 0.1.0：回滚就是 `helm rollback ar 6`。
+- 数据层：按 `deploy/data/install.sh` 新加的一步装了 VictoriaMetrics（Chart 0.49.0）；Grafana 用新的 values 升级（数据源、告警），
+  `kubectl apply -f deploy/data/dashboards/` 加了质量面板。没有重跑整个 `install.sh`。
+- Runtime：`helm upgrade` 用第 6 版的 values 快照（`/root/ar-release/values-rev6.yaml`）加 `image.tag=13924d7` 与
+  `external.victoriametrics.remoteWrite`；升级前 `helm template` 与线上 manifest 比过，只差镜像标签、`OTEL_SERVICE_VERSION` 与 Collector 的指标导出。
+  当时没有在跑的 Task；Session 工作流与沙箱对账工作流的代码这次没改。
+- task-service、出网网关、包镜像的新 Pod 第一次启动连不上 Temporal 或业务库、重启一次就好（上一版也一样）：新 Pod 的网络策略
+  生效前有几秒的空档。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
