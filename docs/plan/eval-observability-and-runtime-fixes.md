@@ -529,9 +529,38 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
   - **每次 claude-sonnet-5-5 调用的输入是 11 万～24 万 token、输出约 5 千**；10 月 28 日实验里同一个模型的执行、规划、评审输入中位数是
     3.7k、15k、11.6k。同一 Task 里路由（gemini）只有 745，评审换成 gpt-5.5 只有 4243；Task State 只有 1.9 KB，Reviewer 的输入按规定
     只有 Stage 结果、Task State 与验收条件。所以多出来的十几万 token 很可能不是我们发的内容，而是经 a6api 中转调 Claude 时被抬高或
-    被中转方加进去的。**没证实**：要用几十 token 的提示真调一次看报回的用量（花钱，等人定）。
+    被中转方加进去的。后来核实了：见下面的“中转核实”。
   - django-15561 的探索 Node 只用 `context_read` 去读仓库文件（`obj://django/…`），三次 not_found 后失败，之后预算用完、问人、
-    自动回 stop_and_wrap_up、abort。没调到 repo_* 与 shell_run，所以 D-17 的构建一次也没起，`/testbed` 也没验证到。为什么 Goal Node
-    没用读仓库的工具，还没查。
+    自动回 stop_and_wrap_up、abort。没调到 shell_run，所以 D-17 的构建一次也没起，`/testbed` 也没验证到。另一题（Task 尾号
+    ZJ82K7）的 investigate 用了 repo_grep 与 repo_read（Tempo 里有 `execute_tool` span）。为什么 django 那题没用读仓库的工具，还没查。
 - 留下的：6 个 `swebench` 的工作区（续跑时适配器删了重建）；沙箱都已销毁；没有环境镜像。
+
+**中转核实（2026-10-30，人定花 0.5 美元以内；网关计约 0.08 美元）**
+
+- 做法：在 worker-model 的 Pod 里经线上的 Model Gateway 调（租户 `swebench`，task_id `relay-probe-1`，与冒烟的计量分开），每种请求先
+  gpt-5.5 再 claude-sonnet-5-5，tier strong@medium，用 `pinned_model_profile` 指定模型（都没换）。脚本在服务器的
+  `/opt/swebench/scripts/relay_probe*.py`，不进仓库。
+
+  | 请求 | gpt-5.5 报回的用量 | claude-sonnet-5-5 报回的用量 |
+  | --- | --- | --- |
+  | 两条短消息（约 15 token），思考 low | 输入 21、输出 1，答 OK | 输入 631、输出 3，答 OK |
+  | 同上，思考 medium（只调 Claude） | — | 631、3，没有思考 token |
+  | 500 行已知文本（o200k 约 1 万 token） | 14401（缓存命中 4224），答 500 | 15876，答 500 |
+  | Reviewer 真实的系统区与 Verdict schema，要结构化输出 | 7431、272，回了 JSON | 0、0，finish 是 tool_calls，没有正文 |
+  | tool_loop 的形状，只给一个工具 `repo_read` | 4459、39，调 `repo_read` | 103、0，**调了我们没给的工具 `Bash`** |
+  | 不给工具，问它能调哪些工具 | 4435（缓存命中 4224），答 NONE | 73、0，**又调了 `Bash`** |
+
+- 中转不按比例抬高普通提示的 token：Claude 每次固定多约 610；gpt 多数请求多一段约 4.2k 的前缀（缓存命中 4224；问它时答没有工具）。
+- **a6api 的 Claude 通道不是原样转发**：请求里被加进了我们没给的工具（至少有 `Bash`），不给工具时模型也去调它；要结构化输出时回的
+  是工具调用、没有正文。这几种回答报回的用量是 0 或几十 token，网关计不上。像是包了一层 Claude Code 一类的代理。冒烟里 Claude 每次
+  11 万～24 万输入、约 5 千输出，与我们发的内容对不上：同一 Task 里连续几轮 tool_loop 的输入忽高忽低（129828、141933、119799、
+  153246、127735），真实的对话只会变长。最可能的来源是这层代理自己的系统提示、工具与它内部的多轮，但从我们这边证实不了；中转方
+  按哪个数字扣费也看不到。10 月 28 日经同一个中转的 Claude 用量是正常量级，中转方可能之后换了 Claude 的通道。
+- 影响：经这个中转跑 Claude 的结果不能算作 Runtime 的结果。模型看到的工具不是我们给的，结构化输出走不通，用量也不可信。django 那题
+  不用读仓库的工具，可能与此有关（没证实）。冒烟超支的 12.16 美元是按中转报回的数字算的。另外两条与中转无关，仍要修：Task API 的
+  用量没填，budget_check 拦不住规划与评审。
+- Runtime 这边可以加的防线（要另立工作项，人定）：Model Gateway 把请求里没有的工具调用、要结构化输出却回来的工具调用当作失败
+  （带上已计费的用量），不当正常回答交给调用方；是重试、换同档的下一个 Profile 还是直接报错，到时再定。有回答而用量为 0 的调用记
+  异常，不当作免费。
+- SWE-bench 要换成官方 API 或原样转发的中转再跑；换之前不再跑。
 
