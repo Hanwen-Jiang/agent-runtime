@@ -100,8 +100,11 @@ class RuntimeClient:
             "workspace_id": workspace_id, "message": message, "client_request_id": client_request_id,
             "session_access": "SESSION_ACCESS_READ_WRITE",
         })
-        # 订阅地址是相对路径时（task-service 没配公开地址）按 Task API 的地址补全。
-        return {"task_id": str(out["taskId"]), "events_url": urllib.parse.urljoin(self.base_url + "/", str(out["eventsUrl"]))}
+        # 订阅地址只取路径，按 Task API 的地址补全：SSE 与 unary 是同一个 task-service、同一个端口，而它没配
+        # AR_PUBLIC_BASE_URL 时给的是自己的监听地址（线上是 http://0.0.0.0:8080/…），从别处连不上。
+        parts = urllib.parse.urlsplit(str(out["eventsUrl"]))
+        path = parts.path + (f"?{parts.query}" if parts.query else "")
+        return {"task_id": str(out["taskId"]), "events_url": urllib.parse.urljoin(self.base_url + "/", path)}
 
     def query(self, task_id: str) -> dict[str, Any]:
         out = self._call(TASK_SERVICE, "QueryTask", {"task_id": task_id})

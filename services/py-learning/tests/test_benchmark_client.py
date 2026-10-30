@@ -2,7 +2,8 @@
 
 1. Task API 与 Workspace API 走 connect 协议的 unary JSON：路径是 /<服务>/<方法>，带 Bearer 令牌；请求用 proto 的字段名，
    回应里驼峰的字段名、字符串形式的 int64（花费是 micros）换算成适配器用的形状；没给的 bool 当 false。
-2. 订阅地址是相对路径时按 Task API 的地址补全；SSE 带 Last-Event-ID 续读；事件的载荷取 payload.value。
+2. 订阅地址只取路径，按 Task API 的地址补全：task-service 没配 AR_PUBLIC_BASE_URL 时给的是自己的监听地址（线上是
+   http://0.0.0.0:8080/…），从别处连不上；SSE 带 Last-Event-ID 续读；事件的载荷取 payload.value。
 3. 出错时是 ApiError（HTTP 状态与 connect 的 code）；错误信息里没有令牌。
 4. fetch：按 datasets-server 的 rows 接口分页取全；条数对不上、有被截断的格子时报错；写出来的是 LF 的 JSONL。
 5. 调 Runtime 的请求（含 SSE）带自己的 User-Agent：线上的 Task API 在 Cloudflare 后面，它拒绝 Python-urllib 的默认值（错误 1010）。
@@ -41,6 +42,7 @@ class Fake:
         self.rows: list[dict[str, Any]] = []
         self.rows_total: int | None = None
         self.truncated_cells: list[str] = []
+        self.events_url = "/v1/tasks/t-1/events"
 
     def unary(self, path: str, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         method = path.rsplit("/", 1)[-1]
@@ -51,7 +53,7 @@ class Fake:
         if method == "DeleteWorkspace":
             return (404, {"code": "not_found", "message": "工作区 w-gone 不存在"}) if body["workspace_id"] == "w-gone" else (200, {})
         if method == "SubmitTask":
-            return 200, {"taskId": "t-1", "sessionId": "ses-1", "eventsUrl": "/v1/tasks/t-1/events"}
+            return 200, {"taskId": "t-1", "sessionId": "ses-1", "eventsUrl": self.events_url}
         if method == "QueryTask":
             return 200, {"taskId": "t-1", "status": "TASK_STATUS_RUNNING", "roundSeq": 2, "usage": {"inputTokens": "10", "costUsdMicros": "1250000"}}
         if method in ("SignalTask", "CancelTask"):
@@ -145,6 +147,9 @@ def test_task_calls(server: tuple[str, Fake]) -> None:
     c = RuntimeClient(base, TOKEN)
     sub = c.submit(workspace_id="w-1", message="修 add()", client_request_id="cr-1")
     assert sub == {"task_id": "t-1", "events_url": f"{base}/v1/tasks/t-1/events"}, "相对的订阅地址按 Task API 的地址补全"
+    fake.events_url = "http://0.0.0.0:8080/v1/tasks/t-1/events"
+    sub = c.submit(workspace_id="w-1", message="修 add()", client_request_id="cr-1")
+    assert sub["events_url"] == f"{base}/v1/tasks/t-1/events", "绝对的订阅地址（没配公开地址时是监听地址）也只取路径"
     assert fake.requests[-1]["path"] == TASK + "SubmitTask"
     assert fake.requests[-1]["body"] == {"workspace_id": "w-1", "message": "修 add()", "client_request_id": "cr-1", "session_access": "SESSION_ACCESS_READ_WRITE"}
 
