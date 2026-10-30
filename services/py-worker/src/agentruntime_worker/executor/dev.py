@@ -37,6 +37,7 @@ from agentruntime_worker.executor.grpc_gateway import GrpcModelGateway
 from agentruntime_worker.executor.model_gateway import ModelGateway
 from agentruntime_worker.executor.node_executor import ExecutorConfig, ExecutorDeps, NodeExecutor, workflow_question_id
 from agentruntime_worker.executor.schemas import DictSchemaResolver
+from agentruntime_worker.session.transcript import session_transcript
 from agentruntime_worker.telemetry import worker_telemetry
 from agentruntime_worker.tools import dev_tools
 
@@ -141,5 +142,6 @@ def dev_executor(
         models=model_gateway(config),
         schemas=DictSchemaResolver({}),
         sandbox=LocalSubprocessSandboxProvider(root / "sandbox"),
+        transcript=session_transcript(config.relational_dsn, config.data_dir),
     )
     return NodeExecutor(deps, executor_config)

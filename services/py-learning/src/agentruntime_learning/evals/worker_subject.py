@@ -33,6 +33,7 @@ from agentruntime_worker.planner.context import CatalogView, PlanningContext, Re
 from agentruntime_worker.planner.planner import Planner, PlannerConfig, PlanRequest
 from agentruntime_worker.reviewer.reviewer import Reviewer, ReviewerConfig, ReviewRequest
 from agentruntime_worker.reviewer.rules import ReviewCatalog
+from agentruntime_worker.session.transcript import Turn
 
 from agentruntime_learning.evals import stages
 from agentruntime_learning.evals.cases import DEFAULT_EVAL_SET, EvalSet, load_eval_set
@@ -62,6 +63,8 @@ def _context(inp: PlannerInput) -> PlanningContext:
         recipes=recipes,
         session_budget_remaining_usd=ctx.get("session_budget_remaining_usd"),
         model_profile_updated=bool(ctx.get("model_profile_updated", False)),
+        conversation=tuple(Turn(t["message"], t["reply"], t["status"]) for t in ctx.get("conversation", [])),
+        has_workspace=bool(ctx.get("has_workspace", False)),
     )
 
 

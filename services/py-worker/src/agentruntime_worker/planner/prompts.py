@@ -20,6 +20,11 @@ from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 from agentruntime_worker.planner import validate
 from agentruntime_worker.planner.context import CatalogView, PlanningContext
 from agentruntime_worker.planner.triage import MESSAGE_KINDS, TriageDecision
+from agentruntime_worker.session.transcript import transcript_text
+
+# 提示里放多少之前的对话（字）：分诊是小模型、只要看懂指代，规划要知道用户在接着说什么（TMP 计划第 11.13 节）。
+CLASSIFIER_CONVERSATION_CHARS = 4000
+PLANNING_CONVERSATION_CHARS = 16000
 
 _PLANNER_RULES = """你是 Agent Runtime 的 Planner，在 Round 的开头决定这一轮做什么。只输出一个 JSON 对象：{"task_plan": …, "stage": …}，分别符合下面的 Task Plan 与 Stage 的 JSON Schema。
 
@@ -34,11 +39,11 @@ _PLANNER_RULES = """你是 Agent Runtime 的 Planner，在 Round 的开头决定
 8. Task Plan 写清 horizon（full_dag、per_stage 或 explore）、上下文策略与预算；规划成本控制在 Task 预计成本的约 5% 以内。
 9. Tier（model 节点的 tier 与 Task Plan 的 tiers）只能用 Node Catalog 列出的，写成 <模型档>@<推理强度>；拿不准就不写，由 Model Gateway 按 role 选默认 Tier。Triage 的级别（fast、light、full、replan）不是 Tier 名。Task State 的 constraints.model_preference 是用户的模型倾向：economy 尽量用便宜的 Tier，best 可以用最强的，balanced 或没给时按任务难度选。"""
 
-_CLASSIFIER_RULES = """你给 Agent Runtime 的 Planner 做分诊。读用户这条消息（以及当前 Task 的摘要），只输出一个 JSON 对象：
+_CLASSIFIER_RULES = """你给 Agent Runtime 的 Planner 做分诊。读用户这条消息（以及当前 Task 的摘要、本 Session 之前的对话），只输出一个 JSON 对象：
 - kind：follow_up（续改上一个产出）、constraint（给运行中的 Task 加约束）、new_task（新任务）、question（简单问答）、chitchat（闲聊）、system_question（关于系统本身的问题）。
 - task_family：新任务所属的任务族（形如 analytics.attribution），判断不了就填 null。
 - confidence：你对 kind 与 task_family 的把握，0 到 1。
-- effect：完成这条消息预计需要的最高 effect：none（只要生成文字）、read（要读外部数据）、write_reversible（可回滚的写）、write_irreversible（不可逆的外部动作，例如付款、发送）。
+- effect：完成这条消息预计需要的最高 effect：none（只要生成文字）、read（要读外部数据）、write_reversible（可回滚的写）、write_irreversible（不可逆的外部动作，例如付款、发送）。要读工作区（用户的仓库与文件）才答得好的消息，effect 填 read，不要填 none：包括追问之前读过的仓库里的内容；只凭之前的对话就能答的仍是 none。
 - irreversible_params_explicit：如果要做不可逆动作，它的对象与参数（金额、收件人、日期等）能否从这条消息里明确得出；不涉及不可逆动作时填 true。"""
 
 
@@ -79,8 +84,8 @@ def _brief(context: PlanningContext, decision: TriageDecision, task_plan: dict[s
     return "\n".join(lines)
 
 
-def _round(message: str, round_seq: int, task_state: dict[str, Any] | None, last_round: dict[str, Any] | None, keep_nodes: list[str] | None) -> str:
-    lines = [f"用户消息：{message}", f"本轮是第 {round_seq} 轮。"]
+def _round(message: str, round_seq: int, task_state: dict[str, Any] | None, last_round: dict[str, Any] | None, keep_nodes: list[str] | None, conversation: str = "") -> str:
+    lines = [f"用户消息：{message}", *([conversation] if conversation else []), f"本轮是第 {round_seq} 轮。"]
     if task_state:
         lines.append(f"Task State：{_dump(task_state)}")
         remaining = validate.task_budget_remaining(task_state)
@@ -118,9 +123,11 @@ def classifier_messages(message: str, task_state: dict[str, Any] | None, context
     else:
         families = sorted({r.task_family for r in context.recipes})
         hint = f"\n已知的任务族：{'、'.join(families)}" if families else ""
+    conversation = transcript_text(context.conversation, max_chars=CLASSIFIER_CONVERSATION_CHARS)
+    session = (f"\n{conversation}" if conversation else "") + ("\n这个 Session 有工作区（用户的仓库与文件）。" if context.has_workspace else "")
     return [
         mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=f"{_CLASSIFIER_RULES}\n可选的 kind：{'、'.join(MESSAGE_KINDS)}", cache_breakpoint=True),
-        mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=f"用户消息：{message}{summary}{hint}"),
+        mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=f"用户消息：{message}{summary}{hint}{session}"),
     ]
 
 
@@ -139,7 +146,7 @@ def planning_messages(
     return [
         *system_zone(catalog),
         mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=_brief(context, decision, task_plan)),
-        mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=_round(message, round_seq, task_state, last_round, keep_nodes)),
+        mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=_round(message, round_seq, task_state, last_round, keep_nodes, transcript_text(context.conversation, max_chars=PLANNING_CONVERSATION_CHARS))),
     ]
 
 

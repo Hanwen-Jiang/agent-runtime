@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import subprocess
 import urllib.request
@@ -14,6 +15,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from agentruntime_core.dev.relational_store import SQLiteRelationalStoreProvider
+from agentruntime_worker.activities.types import Tenant
+from agentruntime_worker.session.transcript import SessionTranscript
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 
@@ -79,6 +83,26 @@ def test_a_task_is_delivered_through_the_whole_stack(dev_stack: DevStack) -> Non
     pinned = api.query(sub["taskId"])["taskState"]["value"]["pinned"]
     assert {"stub_answer", "answer"} <= set(pinned.get("node_templates") or {}), "Task 固定的模板版本来自 Registry 的开发种子"
     assert pinned.get("model_profiles"), "Model Profile 的版本也固定"
+
+
+def test_a_later_task_can_read_the_earlier_turn(dev_stack: DevStack) -> None:
+    """TMP 计划第 11.13 节：命令与结局由真的 task-service 记进业务库（Go 的迁移），SessionTranscript 读同一张表：两边对列名与结局的格式要一致。"""
+    api = TaskApi(dev_stack.task_api, dev_stack.token("t1", "u1"))
+    first = api.submit("dev-stack 对话：第一句")
+    assert finished_payload(stream_until_finished(first["eventsUrl"], api.token or "", timeout=180))["status"] == "TASK_STATUS_DONE"
+    second = api.submit("dev-stack 对话：第二句", session_id=first["sessionId"])
+    assert finished_payload(stream_until_finished(second["eventsUrl"], api.token or "", timeout=180))["status"] == "TASK_STATUS_DONE"
+
+    async def read() -> Any:
+        provider = SQLiteRelationalStoreProvider(dev_stack.root / "data" / "relational")
+        try:
+            return await SessionTranscript(provider).load(Tenant(tenant_id="t1", session_id=first["sessionId"]), second["taskId"])
+        finally:
+            await provider.aclose()
+
+    [turn] = asyncio.run(read())
+    assert turn.message == "dev-stack 对话：第一句" and turn.status == "done"
+    assert turn.reply, "结局里的交付读得出来"
 
 
 def test_env_prints_every_component_without_secrets(tmp_path: Path) -> None:

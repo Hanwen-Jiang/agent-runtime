@@ -1,0 +1,161 @@
+{
+  "kind": "task",
+  "id": "session_deep_dive_needs_workspace_full",
+  "split": "dev",
+  "category": "general",
+  "review": {
+    "status": "draft",
+    "notes": "TMP 计划第 11.13 节的回归样本：内容是编的，不含任何租户的内容。标注待人确认，确认后再移进 task-loop。"
+  },
+  "description": "要求深入介绍之前提到的集成：要读仓库 → full，用 tool_loop。不能猜它是哪个外部产品。",
+  "planner": {
+    "input": {
+      "message": "深入介绍一下 notify_bridge 和通知服务是怎么对接的。",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "read",
+        "conversation": [
+          {
+            "message": "读一下这个仓库，讲讲它的结构和主要模块。",
+            "reply": "这是一个发票对账服务。入口是 cmd/reconcile，主要模块有三个：invoice_sync（同步发票）、rate_table（费率表）、notify_bridge（对接通知服务）。",
+            "status": "done"
+          }
+        ],
+        "has_workspace": true
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "risk": "read",
+      "shape": {
+        "modes": [
+          "tool_loop"
+        ],
+        "deliver": true
+      },
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full"
+          },
+          "horizon": "per_stage"
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "读 notify_bridge 的实现并说明对接方式",
+          "exit_when": "explain 给出说明",
+          "nodes": [
+            {
+              "id": "explore",
+              "kind": "goal",
+              "goal": "读 notify_bridge 的实现并说明对接方式",
+              "done_when": "说明了接口、认证与失败处理",
+              "mode": "tool_loop",
+              "output_schema": {
+                "type": "object"
+              },
+              "effect_ceiling": "read",
+              "tools": [
+                "repo_read"
+              ],
+              "max_iterations": 20
+            },
+            {
+              "id": "explain",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "explore"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000940X",
+        "session_id": "ses_01J0000000000000000000940S",
+        "goal": "读 notify_bridge 的实现并说明对接方式",
+        "done_when": "说明了接口、认证与失败处理",
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "读 notify_bridge 的实现并说明对接方式",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "读 notify_bridge 的实现并说明对接方式",
+        "exit_when": "explain 给出说明",
+        "nodes": [
+          {
+            "id": "explore",
+            "kind": "goal",
+            "goal": "读 notify_bridge 的实现并说明对接方式",
+            "done_when": "说明了接口、认证与失败处理",
+            "mode": "tool_loop",
+            "output_schema": {
+              "type": "object"
+            },
+            "effect_ceiling": "read",
+            "tools": [
+              "repo_read"
+            ],
+            "max_iterations": 20
+          },
+          {
+            "id": "explain",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "explore"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "explore": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "files_read": 3
+          }
+        },
+        "explain": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "说明正文"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "已回复",
+          "done": {
+            "deliver_node": "explain"
+          }
+        }
+      }
+    }
+  ]
+}

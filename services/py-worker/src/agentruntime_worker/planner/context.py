@@ -1,15 +1,16 @@
 """Planner 的 Session 上下文（设计书 3.2.1：Planner 的输入是 Task State、Session 上下文、检索到的经验与 Recipe）。
 
 由 PlanningContextSource 提供：设了 Registry 时是 registry.RegistryContextSource（Node Catalog、Recipe 与可用的 Tier），
-开发与测试用 StaticContextSource。Memory Service 还没有接进来。
+开发与测试用 StaticContextSource。Session 之前的对话由 TranscriptContextSource 加上（TMP 计划第 11.13 节）。Memory Service 还没有接进来。
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Protocol
 
 from agentruntime_worker.activities.types import PlanRoundInput
+from agentruntime_worker.session.transcript import TranscriptSource, Turn
 
 
 STUB_TEMPLATE_PREFIX = "stub_"
@@ -64,6 +65,10 @@ class PlanningContext:
     """相关 Model Profile 最近更新过（附录 C.2：缓存的 Recipe 不再可信）。"""
     task_families: tuple[TaskFamily, ...] | None = None
     """租户的任务族词表（Registry；TMP 计划第 6 节）。有时任务族只能从里面选；None 是还没有词表，照旧取分诊给的。"""
+    conversation: tuple[Turn, ...] = ()
+    """同一 Session 里之前的对话，从早到晚（TMP 计划第 11.13 节）。"""
+    has_workspace: bool = False
+    """这个 Session 有工作区：要读文件才答得好的消息不能走单次调用。"""
 
 
 class PlanningContextSource(Protocol):
@@ -79,3 +84,15 @@ class StaticContextSource:
 
     async def load(self, inp: PlanRoundInput) -> PlanningContext:
         return self.by_tenant.get(inp.tenant.tenant_id, self.default)
+
+
+class TranscriptContextSource:
+    """在 inner 给出的规划上下文上加上同一 Session 里之前的对话与有没有工作区（TMP 计划第 11.13 节）。"""
+
+    def __init__(self, inner: PlanningContextSource, transcript: TranscriptSource) -> None:
+        self.inner = inner
+        self.transcript = transcript
+
+    async def load(self, inp: PlanRoundInput) -> PlanningContext:
+        ctx = await self.inner.load(inp)
+        return replace(ctx, conversation=await self.transcript.load(inp.tenant, inp.task_id), has_workspace=bool(inp.tenant.workspace_id))

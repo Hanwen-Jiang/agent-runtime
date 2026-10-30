@@ -73,9 +73,11 @@ async def test_the_registry_planning_context_lists_the_registered_tools(tmp_path
     fake = seeded()
     async with serve(fake) as address:
         planner = dev_planner(config(tmp_path, registry_address=address))
-        assert isinstance(planner.contexts.inner, RegistryContextSource)
+        # 外层是 Session 的对话（TranscriptContextSource），里面是 ToolsContextSource，再里面才是 Registry。
+        registry_source = planner.contexts.inner.inner
+        assert isinstance(registry_source, RegistryContextSource)
         context = await planner.contexts.load(plan_input())
-        await planner.contexts.inner.registry.aclose()
+        await registry_source.registry.aclose()
     assert context.catalog.tools == PLATFORM_TOOLS
     assert "sql_query@v1" in context.catalog.templates, "模板照旧按 Task 固定的版本取自 Registry"
 

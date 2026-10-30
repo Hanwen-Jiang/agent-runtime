@@ -85,7 +85,7 @@
 /schemas                    # Node 与模板的 JSON Schema；schemas/examples 是正例与反例
 /services/go-task-service
 /services/go-model-gateway
-/services/py-worker         # Worker；Context Builder 是其中的库 agentruntime_worker.context（分区、Compaction Ladder、S-11 的增量摘要与 Compaction Probe）；工作区的存档与 Workspace API 的操作在 agentruntime_worker.workspace（D-06）
+/services/py-worker         # Worker；Context Builder 是其中的库 agentruntime_worker.context（分区、Compaction Ladder、S-11 的增量摘要与 Compaction Probe）；工作区的存档与 Workspace API 的操作在 agentruntime_worker.workspace（D-06）；同一 Session 里之前的对话在 agentruntime_worker.session（TMP 计划第 11.13 节，读 task-service 的 tasks 表）
 /services/py-memory         # Memory Service（S-12b、S-13）：作用域 ACL、写入与检索流水线、晋升、级联删除与回滚；gRPC 服务 python -m agentruntime_memory
 /services/go-sandbox-agent  # 沙箱里的 agent（Go，只用标准库；D-05）：HTTP 接受执行与读写文件，K8s 沙箱 Pod 与 Cloudflare 的 microVM 里都跑它
 /services/go-pkg-mirror     # 包镜像（Go，D-15）：沙箱装依赖的 PyPI、npm、Go 按需拉取缓存；环境凭据在 libs/go-core/envcred 与 agentruntime_core.envcred

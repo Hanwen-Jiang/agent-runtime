@@ -18,9 +18,10 @@ from agentruntime_worker import names
 from agentruntime_worker.executor.dev import model_gateway
 from agentruntime_worker.activities.types import PlanRoundInput, PlanRoundOutput, Tenant
 from agentruntime_worker.config import WorkerConfig
-from agentruntime_worker.planner.context import CatalogView, PlanningContext, PlanningContextSource, StaticContextSource
+from agentruntime_worker.planner.context import CatalogView, PlanningContext, PlanningContextSource, StaticContextSource, TranscriptContextSource
 from agentruntime_worker.planner.planner import Planner, PlanRequest
 from agentruntime_worker.registry import RegistryContextSource, registry_client
+from agentruntime_worker.session.transcript import session_transcript
 from agentruntime_worker.tools import CONTEXT_READ, ToolCatalog, dev_tools
 from agentruntime_worker.workflows import stage_plan as sp
 
@@ -112,4 +113,8 @@ def dev_planner(config: WorkerConfig) -> PlannerActivities:
     if config.registry_address:
         inner = RegistryContextSource(registry_client(config), defaults=dataclasses.replace(defaults, catalog=CatalogView()))
     tools = ToolCatalog(dev_tools(config))
-    return PlannerActivities(Planner(model_gateway(config)), ToolsContextSource(inner, tools), tools=tools)
+    source: PlanningContextSource = ToolsContextSource(inner, tools)
+    transcript = session_transcript(config.relational_dsn, config.data_dir)
+    if transcript is not None:
+        source = TranscriptContextSource(source, transcript)
+    return PlannerActivities(Planner(model_gateway(config)), source, tools=tools)

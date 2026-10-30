@@ -709,7 +709,7 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
 - `agentruntime_learning.evals.dashboard_server`（只用标准库）；Chart 的 `templates/eval-dashboard.yaml` 与 `evalDashboard`；发布步骤见 `cloud-deploy.md`。
 - 在浏览器里经这个服务（带 CSP）看过公开版：26 份报告都显示，控制台没有错误。Chart 的测试要 helm，本机没有，在服务器上跑（`AR_REPO_ROOT` 指向解开的目录）。
 
-### 11.13 Session 里的后续消息没有上下文（2026-10-30，P0，测试已写，待人确认后实现）
+### 11.13 Session 里的后续消息没有上下文（2026-10-30，P0，人确认，已实现）
 
 **现象**（人测试的一个 Session，内容已脱敏）：第一条消息让 Agent 读仓库并说明结构，回答里提到了一个模块名。接着：
 
@@ -749,7 +749,7 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
 - fast 的回答发现需要读仓库时不会自己升级；靠分诊判对，错了用户仍会得到“读不了”。评测集要补这类样本。
 - 正在跑的 Task（并行的只读 Task）的中间结果看不到。
 
-**评测集**：按 11.14 的第一例，加几条脱敏的分诊与回复样本（后续追问、“上面说的”、要读工作区的追问）。标注要人确认，先标未确认。
+**评测集**：加了 4 条编写的分诊样本（只凭之前的对话能答的追问、与仓库无关的问题、要读工作区的追问两条），放在单独的 `services/py-learning/evalsets/task-loop-session-drafts`：`task-loop` 要求标注全部确认（`test_every_label_is_confirmed`），未确认的样本放进去 CI 就红。人确认后移进 `task-loop`；跑法是 `… evals run --eval-set evalsets/task-loop-session-drafts --subject <…>`，还没有用真模型跑过。
 
 **验收测试**
 
@@ -757,6 +757,15 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
 | --- | --- |
 | `services/go-task-service/internal/taskapi/session_transcript_test.go` | 提交时记下命令；重复提交不改 |
 | `services/py-worker/tests/test_session_transcript.py` | 读：从早到晚、不串 Session 与租户、取交付、没交付的结局、迁移前的 Task、轮数与字数的上限、读失败不影响 Task、列名与 Go 的迁移对得上。用：分诊与规划的提示、fast 的 Stage 不带对话、answer 节点按真实对话问且不露内部名字、其余节点不变、tool_loop 的 brief |
+| `tests/e2e/test_dev_stack.py::test_a_later_task_can_read_the_earlier_turn` | 真的 task-service 写（Go 的迁移、真的结局格式），SessionTranscript 读同一个 SQLite：两边对得上（离线，不调模型） |
+| `services/py-learning/tests/test_session_regression_cases.py` | 回归样本：都是未确认、不混进主集、参照输出得满分、评测把对话传给 Planner |
+
+**实现记录（2026-10-30）**
+
+- task-service：`taskstore` 的迁移 4 与 `Task.Message`，`SubmitTask` 记命令（重复提交靠 `ON CONFLICT DO NOTHING` 不改）。
+- Worker：`agentruntime_worker.session.transcript`；`planner/context.py`（`conversation`、`has_workspace`、`TranscriptContextSource`）、`planner/prompts.py`、`executor/node_executor.py`（`_conversational`、`CONVERSATION_SYSTEM_PROMPT`）、`executor/tool_loop.py`、`context/builder.py`；组装在 `executor/dev.py`、`executor/tool_loop.py`、`planner/activities.py`，同一个库共用一个 `SessionTranscript`（只建一个连接池）。Reviewer 没有改。
+- 与上面写法不同的：绑定时只传 `tenant_id`（行按租户隔离，Session 是查询条件；`TenantContext` 还会校验 `session_id` 的格式）；交付只有一个文字字段时直接取它（JSON 的转义读着费劲，也更占字数）。
+- 能离线验证的都验了；**模型实际答得对不对、分诊会不会把要读工作区的追问判对，只有真模型才知道**，没有跑（这一轮不花钱）。
 
 ### 11.14 把租户出过的问题整理成可修的条目（2026-10-30，设计稿，要人定）
 

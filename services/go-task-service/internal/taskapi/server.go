@@ -298,7 +298,7 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	}
 	row, existed, err := s.tasks.InsertTask(ctx, tenant, taskstore.Task{
 		TaskID: s.d.IDs.TaskID(), SessionID: sessionID, SessionKey: req.GetSessionId(), ClientRequestID: crid, CreatedAt: now,
-		SubmittedBy: id.UserID,
+		SubmittedBy: id.UserID, Message: req.GetMessage(),
 	})
 	if err != nil {
 		return nil, err

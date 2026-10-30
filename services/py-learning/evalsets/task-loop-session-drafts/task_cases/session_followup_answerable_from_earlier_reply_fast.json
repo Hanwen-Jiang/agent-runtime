@@ -1,0 +1,112 @@
+{
+  "kind": "task",
+  "id": "session_followup_answerable_from_earlier_reply_fast",
+  "split": "dev",
+  "category": "general",
+  "review": {
+    "status": "draft",
+    "notes": "TMP 计划第 11.13 节的回归样本：内容是编的，不含任何租户的内容。标注待人确认，确认后再移进 task-loop。"
+  },
+  "description": "追问上一条回答里已经写明的内容 → fast：只凭之前的对话就能答，不用读工作区。模型要看得到上一条回答，不能说这是第一轮。",
+  "planner": {
+    "input": {
+      "message": "你上面说的三个模块，是哪三个？",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "read",
+        "conversation": [
+          {
+            "message": "读一下这个仓库，讲讲它的结构和主要模块。",
+            "reply": "这是一个发票对账服务。入口是 cmd/reconcile，主要模块有三个：invoice_sync（同步发票）、rate_table（费率表）、notify_bridge（对接通知服务）。",
+            "status": "done"
+          }
+        ],
+        "has_workspace": true
+      }
+    },
+    "expect": {
+      "triage": "fast",
+      "risk": "none",
+      "shape": {
+        "nodes": {
+          "max": 1
+        },
+        "deliver": true
+      },
+      "reference": {
+        "stage": {
+          "seq": 1,
+          "goal": "回复用户这条消息",
+          "exit_when": "reply 给出回复",
+          "nodes": [
+            {
+              "id": "reply",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000910X",
+        "session_id": "ses_01J0000000000000000000910S",
+        "goal": "回复用户这条消息",
+        "done_when": "reply 给出回复",
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "回复用户这条消息",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "回复用户这条消息",
+        "exit_when": "reply 给出回复",
+        "nodes": [
+          {
+            "id": "reply",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate"
+          }
+        ]
+      },
+      "results": {
+        "reply": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "invoice_sync、rate_table 和 notify_bridge。"
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "已回复",
+          "done": {
+            "deliver_node": "reply"
+          }
+        }
+      }
+    }
+  ]
+}

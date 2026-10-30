@@ -22,9 +22,12 @@ from agentruntime_worker.activities.types import ToolLoopStep, ToolLoopStepInput
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.context.builder import ContextBuilder, ContextConfig, ContextRequest, tenant_context
 from agentruntime_worker.executor.model_gateway import ModelGateway
+from agentruntime_worker.session.transcript import TranscriptSource, transcript_text
 from agentruntime_worker.tools.catalog import ToolCatalog
 
 TOOL_LOOP_TIER = "strong@medium"
+# 放进 brief 的之前的对话（字）：上下文的预算要留给工具的结果（TMP 计划第 11.13 节）。
+CONVERSATION_CHARS = 8000
 SYSTEM_PROMPT = """你在执行一个 Goal Node 的 tool_loop：每一步要么调用一个工具，要么在完成条件满足时不再调用工具、直接给出结果。
 
 规则：
@@ -43,16 +46,18 @@ def _value(data: Any) -> struct_pb2.Value:
 
 
 class ModelToolLoop:
-    def __init__(self, gateway: ModelGateway, builder: ContextBuilder, *, tier: str = TOOL_LOOP_TIER, tools: ToolCatalog | None = None) -> None:
+    def __init__(self, gateway: ModelGateway, builder: ContextBuilder, *, tier: str = TOOL_LOOP_TIER, tools: ToolCatalog | None = None, transcript: TranscriptSource | None = None) -> None:
         # 给了 ToolCatalog 时，工具的说明与参数 schema 取自登记，没登记的不给模型（T-10）；没给时只有名字。
         self.tools = tools
         self.gateway = gateway
         self.builder = builder
         self.tier = tier
+        self.transcript = transcript
 
     async def step(self, inp: ToolLoopStepInput) -> ToolLoopStep:
         node = inp.node
         tools = await self._tool_specs(inp, [str(t) for t in node.get("tools") or []])
+        turns = await self.transcript.load(inp.tenant, inp.task_id) if self.transcript is not None else ()
         built = await self.builder.build(
             ContextRequest(
                 tenant=inp.tenant,
@@ -64,6 +69,7 @@ class ModelToolLoop:
                 task_plan=inp.task_plan,
                 system=[SYSTEM_PROMPT],
                 tools=tools,
+                conversation=transcript_text(turns, max_chars=CONVERSATION_CHARS),
             )
         )
         params = mg.GenerateParams(messages=built.messages, tools=tools)
@@ -126,8 +132,9 @@ def dev_tool_loop(config: WorkerConfig) -> ToolLoopActivities:
     循环第一步就结束，只验证组装与链路，压缩效果见 S-11 的评测。
     """
     from agentruntime_worker.executor.dev import model_gateway
+    from agentruntime_worker.session.transcript import session_transcript
     from agentruntime_worker.tools import context_objects, dev_tools
 
     gateway = model_gateway(config)
     builder = ContextBuilder(gateway, context_objects(config), ContextConfig(effective_tokens=config.context_effective_tokens))
-    return ToolLoopActivities(ModelToolLoop(gateway, builder, tools=ToolCatalog(dev_tools(config))))
+    return ToolLoopActivities(ModelToolLoop(gateway, builder, tools=ToolCatalog(dev_tools(config)), transcript=session_transcript(config.relational_dsn, config.data_dir)))

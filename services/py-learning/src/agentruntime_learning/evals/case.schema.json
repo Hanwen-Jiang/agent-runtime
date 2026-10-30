@@ -103,7 +103,18 @@
             "effect_ceiling": {"description": "租户与 Task 的 effect 上限", "$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/effect"},
             "recipes": {"description": "Recipe 缓存里与本租户、Workspace 相关的条目（附录 C.4）", "type": "array", "items": {"$ref": "#/$defs/recipe_hit"}},
             "session_budget_remaining_usd": {"$ref": "https://agentruntime.example/schemas/defs.schema.json#/$defs/usd"},
-            "model_profile_updated": {"description": "相关 Model Profile 最近更新过（附录 C.2）", "type": "boolean"}
+            "model_profile_updated": {"description": "相关 Model Profile 最近更新过（附录 C.2）", "type": "boolean"},
+            "conversation": {
+              "description": "同一 Session 里之前的对话，从早到晚（TMP 计划第 11.13 节）",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["message", "reply", "status"],
+                "properties": {"message": {"type": "string"}, "reply": {"type": "string"}, "status": {"type": "string"}},
+                "unevaluatedProperties": false
+              }
+            },
+            "has_workspace": {"description": "这个 Session 有工作区", "type": "boolean"}
           },
           "unevaluatedProperties": false
         }

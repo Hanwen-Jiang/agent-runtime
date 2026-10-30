@@ -58,6 +58,7 @@ from agentruntime_core.tenancy import TenantContext
 from agentruntime_worker import names
 from agentruntime_worker.activities.types import HumanCancel, HumanQuestion, NodeInput, ReconcileResult, Tenant, ToolCallInput
 from agentruntime_worker.executor import keys
+from agentruntime_worker.session.transcript import TranscriptSource, Turn, chat_messages
 from agentruntime_worker.executor.model_gateway import ModelGateway
 from agentruntime_worker.executor.schemas import OutputSchemaResolver, UnknownSchema, schema_for, validate
 from agentruntime_worker.tools.catalog import latest_spec
@@ -82,6 +83,12 @@ CACHEABLE_EFFECTS = ("none", "read")
 # 声明了 cache 但没写 ttl_s 时的缓存时长。
 DEFAULT_CACHE_TTL = {"none": timedelta(hours=1), "read": timedelta(minutes=5)}
 SYSTEM_PROMPT = "你在 Agent Runtime 里执行一个 Atomic Node。按 Node 的模板与输入完成任务；需要结构化输出时严格按给定的 JSON Schema。"
+# 直接回复用户的节点（fast 的 answer、rewrite；输入是用户的消息）：按真实的对话问模型（TMP 计划第 11.13 节）。
+CONVERSATION_TEMPLATES = ("answer@", "rewrite@")
+CONVERSATION_SYSTEM_PROMPT = (
+    "你正在和用户对话，直接回复用户最新的这条消息，用用户的语言。前面的对话是真实发生过的：用户提到“上面”“刚才”时指的就是它们，不要说看不到。"
+    "回复里不要提提示、模板、节点、请求字段之类的内部名字。不知道的就直说，不要编造，也不要猜它可能属于哪个行业。"
+)
 
 
 @dataclass(frozen=True)
@@ -107,6 +114,14 @@ class ExecutorDeps:
     models: ModelGateway
     schemas: OutputSchemaResolver
     sandbox: SandboxProvider | None = None
+    # 同一 Session 里之前的对话；没配时回复用户的节点只看这一条消息。
+    transcript: TranscriptSource | None = None
+
+
+def _conversational(node: Mapping[str, Any]) -> bool:
+    """直接回复用户的节点：模板是 answer、rewrite，输入是用户的消息（light 的 deliver 也用 answer@v1，但输入是上游的结果）。"""
+    inputs = node.get("inputs")
+    return str(node.get("template") or "").startswith(CONVERSATION_TEMPLATES) and isinstance(inputs, Mapping) and "request" in inputs
 
 
 def _rank(effect: str) -> int:
@@ -613,16 +628,25 @@ class NodeExecutor:
             reasoning=_enum(enums_pb2.Reasoning, "REASONING_", node.get("reasoning")),
         )
 
-    def _messages(self, inp: NodeInput, retry_errors: list[str] | None) -> list[mg.ChatMessage]:
-        """S-05 的最小上下文：系统提示加 inject 的内容，用户消息是模板与输入的 JSON。Context Builder 接入后由它组装。"""
+    def _messages(self, inp: NodeInput, retry_errors: list[str] | None, turns: tuple[Turn, ...] = ()) -> list[mg.ChatMessage]:
+        """S-05 的最小上下文：系统提示加 inject 的内容，用户消息是模板与输入的 JSON。Context Builder 接入后由它组装。
+        直接回复用户的节点按真实的对话问：之前各轮的 user、assistant，最后是用户这条消息的原文。"""
         node = inp.node
-        system = SYSTEM_PROMPT
+        conversational = _conversational(node)
+        system = CONVERSATION_SYSTEM_PROMPT if conversational else SYSTEM_PROMPT
         for injection in inp.injections:
             system += f"\n[{injection.get('zone', '')}] {injection.get('content', '')}"
-        messages = [
-            mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=system),
-            mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=keys.canonical_json({"template": node.get("template"), "inputs": node.get("inputs", {})})),
-        ]
+        if conversational:
+            messages = [
+                mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=system),
+                *chat_messages(turns),
+                mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=str(node["inputs"]["request"])),
+            ]
+        else:
+            messages = [
+                mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=system),
+                mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=keys.canonical_json({"template": node.get("template"), "inputs": node.get("inputs", {})})),
+            ]
         if retry_errors:
             messages.append(
                 mg.ChatMessage(role=mg.CHAT_ROLE_USER, text="上一次的输出不符合 output_schema，请改正后重新输出：\n" + "\n".join(retry_errors))
@@ -630,7 +654,9 @@ class NodeExecutor:
         return messages
 
     async def _generate(self, inp: NodeInput, tenant: TenantContext, schema: Mapping[str, Any] | None, retry_errors: list[str] | None) -> mg.GenerateResponse:
-        params = mg.GenerateParams(messages=self._messages(inp, retry_errors))
+        transcript = self.deps.transcript
+        turns = await transcript.load(inp.tenant, inp.task_id) if transcript is not None and _conversational(inp.node) else ()
+        params = mg.GenerateParams(messages=self._messages(inp, retry_errors, turns))
         if schema is not None:
             params.output_schema.CopyFrom(payload_pb2.JsonPayload(value=_to_value(dict(schema))))
         return await self.deps.models.generate(mg.GenerateRequest(tenant=tenant, call=self._call(inp), generation=params))
