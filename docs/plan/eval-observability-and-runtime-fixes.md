@@ -511,3 +511,27 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
 - 还差：给跑题的租户 `swebench` 发租户策略（预算、配额要放宽：平台默认是单题 1 美元、50 次工具调用、20 分钟，每天沙箱 7200 秒，
   最多 10 个工作区）与签发令牌，都等人定；D-17 构建官方镜像与 `/testbed` 要在第一次冒烟时看。
 
+**5 题冒烟（2026-10-30，人定单题 2 美元、总预算 10 美元；停在半途）**
+
+- 准备：租户 `swebench` 的策略经 `registry-seed` 发布（write_reversible；单题 2 美元、150 次工具调用、60 分钟；gVisor；联网只放
+  github.com；沙箱同时 4 个、每天 10 万秒；工作区 20 个、每个 4 GB）；令牌 72 小时，只在服务器的 `/root/ar-release` 里。线上的
+  Workspace API 克隆到提交过了（pytest 的一题，22 秒，head 是写入文件的提交，HEAD 分离，未知提交 404）。题：种子 0 的 5 题
+  （django 2、sphinx 1、sympy 2）。
+- 第一次：5 题都在订阅事件时连接被拒、被取消（没花钱）。线上没配 `AR_PUBLIC_BASE_URL`，SubmitTask 给的订阅地址是 task-service 的
+  监听地址 `http://0.0.0.0:8080/…`；适配器改为只取路径、按 Task API 的地址补全（0fdd7b4）。**Chart 里没有这个变量**，别的 API 客户端
+  拿到的订阅地址也是 0.0.0.0，要在 Chart 里按 `ingress.host` 配上。
+- 第二次跑了 4 题后人工停下、取消（都是 aborted 或 cancelled，没有补丁）：
+  - **Model Gateway 计的花费是 12.16 美元**（4 个 Task，每个 2.81～3.31），超过了人给的总预算 10 美元。适配器的总预算没起作用：
+    **Task API 的用量从来没填**——task-service 的 QueryTask 与 Worker 的 TaskWorkflowResult 都不设 `usage`，花费恒为 0；花费只在
+    Task State 的 `rounds[].cost_usd`，而且比网关计的少（同一个 Task，Worker 的 budget_check 说 2.20，网关是 2.85）。适配器第一期
+    没核实这一点就当真了（离线测试的假 Runtime 报花费，端到端用的 mock 模型花费本来是 0）。
+  - **单题 2 美元的上限超了四到六成**：budget_check 只在 Node 开始前看，一次 Claude 调用要 0.3～0.5 美元，规划与评审的调用不受它拦。
+  - **每次 claude-sonnet-5-5 调用的输入是 11 万～24 万 token、输出约 5 千**；10 月 28 日实验里同一个模型的执行、规划、评审输入中位数是
+    3.7k、15k、11.6k。同一 Task 里路由（gemini）只有 745，评审换成 gpt-5.5 只有 4243；Task State 只有 1.9 KB，Reviewer 的输入按规定
+    只有 Stage 结果、Task State 与验收条件。所以多出来的十几万 token 很可能不是我们发的内容，而是经 a6api 中转调 Claude 时被抬高或
+    被中转方加进去的。**没证实**：要用几十 token 的提示真调一次看报回的用量（花钱，等人定）。
+  - django-15561 的探索 Node 只用 `context_read` 去读仓库文件（`obj://django/…`），三次 not_found 后失败，之后预算用完、问人、
+    自动回 stop_and_wrap_up、abort。没调到 repo_* 与 shell_run，所以 D-17 的构建一次也没起，`/testbed` 也没验证到。为什么 Goal Node
+    没用读仓库的工具，还没查。
+- 留下的：6 个 `swebench` 的工作区（续跑时适配器删了重建）；沙箱都已销毁；没有环境镜像。
+
