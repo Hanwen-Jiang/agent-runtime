@@ -150,6 +150,18 @@ pkgMirror:
     requests: {cpu: 100m, memory: 128Mi}
     limits: {cpu: "2", memory: 1Gi}
 
+# 评测看板（Eval Dashboard，docs/plan/eval-observability-and-runtime-fixes.md 第 11.12 节）：对外开放的静态页面，只有评测集上的汇总。
+# 要 ingress.enabled 且 ingress.type=traefik。页面由发布步骤写进 ConfigMap（docs/plan/cloud-deploy.md），host 要有 DNS 记录。
+evalDashboard:
+  enabled: false
+  # 对外的域名，例如 evals.cgent.link。
+  host: ""
+  # 入口控制器所在的命名空间（只有它能连；k3s 的 Traefik 在 kube-system）。
+  ingressNamespace: kube-system
+  resources:
+    requests: {cpu: 10m, memory: 32Mi}
+    limits: {cpu: 200m, memory: 96Mi}
+
 # 出网网关（docs/plan/cloud-deploy.md D-16）：沙箱联网只经它，按 Task 的联网授权放行；要配 secrets.relationalDsn。
 # 打开后 Worker 给命令注入代理变量并登记 request_network，task-service 在 Task 结束时通知它收回。
 egressGateway:

@@ -644,3 +644,142 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
   Reviewer 的 `_call` 记上已计费的失败，重问之前看美元预算；`workflows/task.py` 的 `_running_spent`、`_state_with_running_cost`
   与结局的 usage（查询与结局用副本，交给 activity 的 Task State 不变）。
 - 没改 proto、schema，没加版本分支；golden 历史照旧回放。
+
+### 11.12 评测看板对外开放（2026-10-30 人确认，已实现，等 Cloudflare 与部署）
+
+人的要求：评测图表页面对外开放，放在合适的子域名下，定英文与中文的术语名。
+
+**术语与子域名（建议）**
+
+| 项 | 建议 | 理由 |
+| --- | --- | --- |
+| 英文名 | **Eval Dashboard** | “eval”是这个领域通行的叫法（设计书用“内部评测”，英文一般说 evals），dashboard 说的是把图表放在一页 |
+| 中文名 | **评测看板** | 对外展示的数据页通常叫看板；与内部 Grafana 的“面板”、每次运行的“评测报告”（JSON）都分得开 |
+| 子域名 | **`evals.cgent.link`** | 与 `api`、`code` 一样是一个短词，也是这个领域最常见的说法 |
+
+不用 Leaderboard、排行榜（不是外部提交的排名）；不用 Benchmark（目前主要是内部评测集，SWE-bench 以后作为其中一节）；不用 status（那是可用性页面）。
+两个名字设计书附录 A 里还没有，建议由人加一行（见下）。
+
+**挂在哪个工作项下**：第 9.1 节静态页面（T-15 的后续）与 D-04（Runtime 的 Chart 与入口）的后续。
+
+**公开什么**
+
+- 只公开**评测集上的汇总**：门槛指标的趋势、模型对比、各次运行、失败原因（代码与次数）、S-11 的压缩评测。这些数据不来自用户。留出集仍只有汇总。
+- **不公开**生产数据：网关计量与 span 带租户（名字里可能有 GitHub 用户名）、Task id 与每个 Task 的花费；Grafana 也不开放（匿名访问能经数据源查询 trace）。
+- `scripts/eval_dashboard.py --public` 生成公开版：
+  - 给了 `--metering` 或 `--spans` 就报错退出，不生成；
+  - 数据里只有 `generated_at` 与 `reports`，运行行里去掉报告的文件名；页面没有运行指标的几节与卡片；
+  - 标题写两个名字，每节标题中英文都有，开头一段说明这是什么、数字怎么来的（含模型调用经第三方中转、成本按它报的用量与标价算）；
+  - 页面不连外网（没有外部脚本、样式、图片）；超过 1 MB（ConfigMap 的上限）就报错。
+- 不加 `--public` 时内部版不变。
+
+**怎么托管**
+
+- Chart 加组件 `eval-dashboard`（默认关；`evalDashboard.enabled`、`evalDashboard.host`；要 `ingress.enabled` 且 `ingress.type=traefik`，否则渲染失败）：
+  Deployment、ClusterIP 的 Service、Traefik 的 IngressRoute（复用 `ingress.traefik.tlsSecretName`，源站证书已含 `*.cgent.link`）、NetworkPolicy
+  （进只来自 `kube-system` 的入口控制器，出一概不放）。
+- 不加新依赖：用已有的 learning 镜像跑只用标准库的 `agentruntime_learning.evals.dashboard_server`：
+  只答 `/`、`/index.html` 与 `/healthz`，只收 GET、HEAD，带 CSP 等安全响应头，每次请求现读文件，不回显请求内容。
+- Pod 没有 ServiceAccount 令牌、没有 Secret、没有业务环境变量与其他卷，根文件系统只读，以非 root 运行。
+- 页面放在 ConfigMap `<fullname>-eval-dashboard` 的 `index.html`，**由发布步骤写，Chart 不渲染**（否则每次 `helm upgrade` 都会清掉），卷标为 optional（没发布时 `/` 回 404、`/healthz` 仍 200）。发布：
+  生成公开版，`kubectl create configmap … --from-file=index.html=… --dry-run=client -o yaml | kubectl apply -f -`；ConfigMap 更新后约一分钟生效，不用重启。
+
+**要人做的（Cloudflare，我没有这个账号的权限）**
+
+1. 加 DNS 记录 `evals`，开代理，指向与 `api` 相同的源站；
+2. 把 `evals.cgent.link` 加进设为 Full (strict) 的配置规则（否则可能走 Flexible，源站的 80 跳 443 会造成重定向循环）。
+
+**人确认的（2026-10-30）**：英文名 Eval Dashboard、中文名评测看板、子域名 `evals.cgent.link`；只放评测集的汇总，生产数据与 Grafana 不开放；现有的 26 份报告全部放上去，页面开头写明经第三方中转。
+
+**设计书的改动建议（由人更新原文档后重新导出）**：附录 A 加一行：评测看板（Eval Dashboard）：对外展示评测结果的页面，只含评测集上的汇总，不含生产数据。
+
+**没覆盖的**：页面要手动发布（不随评测自动更新）；公开版的运行名（如 `exp-2026-10-28/e2-opus`）是内部分组名，这一期不改；SWE-bench 的结果等真跑之后再加一节。
+
+**验收测试**
+
+| 文件 | 内容 |
+| --- | --- |
+| `services/py-learning/tests/test_eval_dashboard.py` | 公开版：两个名字、中英文标题、说明段；只有评测的几节，数据不带生产字段与文件名；给了生产数据的输入就拒绝；不连外网；超过上限报错；内部版不变 |
+| `services/py-learning/tests/test_eval_dashboard_server.py` | 只答固定路径；安全响应头；只收 GET、HEAD；没发布时的行为；现读文件；不回显、不露版本；只用标准库、`python -m` 能起 |
+| `tests/deploy/test_eval_dashboard.py` | 默认不渲染；打开后的 Deployment、Service、IngressRoute、NetworkPolicy；没有令牌、Secret 与业务变量；Chart 不渲染 ConfigMap；缺 host 或入口不是 traefik 时渲染失败 |
+
+**实现记录（2026-10-30）**
+
+- `scripts/eval_dashboard.py`：`--public`（`render(public=True)`、`public_data`）；运行指标的几节挪到 `RUNTIME_*`，公开版连同脚本一起不出现；内部版不变。
+- `agentruntime_learning.evals.dashboard_server`（只用标准库）；Chart 的 `templates/eval-dashboard.yaml` 与 `evalDashboard`；发布步骤见 `cloud-deploy.md`。
+- 在浏览器里经这个服务（带 CSP）看过公开版：26 份报告都显示，控制台没有错误。Chart 的测试要 helm，本机没有，在服务器上跑（`AR_REPO_ROOT` 指向解开的目录）。
+
+### 11.13 Session 里的后续消息没有上下文（2026-10-30，P0，测试已写，待人确认后实现）
+
+**现象**（人测试的一个 Session，内容已脱敏）：第一条消息让 Agent 读仓库并说明结构，回答里提到了一个模块名。接着：
+
+- 问“解释一下 <模块名>”：回答说没有这方面的可靠信息，开始猜它可能属于哪个行业；
+- 贴回上一条回答并问“这不是你上面说的吗”：回答说执行环境里没有更早的对话，还说“只收到了 request 和 answer@v1 模板”；
+- 重新问一遍读仓库（又花 0.32 美元），再问“深入介绍一下 <模块名> integration”：又说没有信息，并猜了几个拼写相近的产品；
+- 问“你上面说的下面就没有印象了吗”：回答说看不到之前的对话，请用户再贴一次。
+
+**根因**（三处，都不是中转的问题）：
+
+1. **Task 拿不到之前的对话。** Session 里每条消息是一个新 Task；`TaskWorkflowInput` 只有这一条消息；`PlanningContext` 没有对话；`tasks` 表连命令都不记。
+   设计书 3.1.1 的“追加记录（每个 Task 的命令与交付摘要）”、3.2.1 的“Session 上下文”、附录 B.9 的“更新 Session 状态”都没有实现。
+2. **分诊只看这一条消息。** 追问看起来像简单问答，判 fast：单次调用、没有工具，读不了仓库。
+3. **answer 节点的提示泄露内部名字。** 用户消息是 `{"template":"answer@v1","inputs":{"request":…}}`，系统提示说“你在 Agent Runtime 里执行一个 Atomic Node”（S-05 留下的最小上下文），模型照着说了出来。
+
+应用（coding-agent）是对的：同一会话一直传同一个 Runtime 的 `sessionId`。
+
+**挂在哪个工作项下**：S-03（Session 与 Task）、S-05（Node Executor，核心链路）、S-09（分诊）、S-11（Context Builder）的后续。设计书已经这样要求，不是设计改动。
+
+**做法**（不改 /proto、/schemas，不改工作流的命令序列，不用版本分支）：
+
+- **记**：task-service 的 tasks 表加 `message`（迁移 4），提交时记命令原文，重复提交不改。交付已经在 `outcome` 里。迁移之前的 Task 没有原话，交付照样用。
+- **读**：`agentruntime_worker.session.transcript.SessionTranscript`：按认证绑定的租户读同一 Session 里更早的、已结束的 Task（从早到晚）。
+  默认最多 6 轮；最近一轮的回答最多留 16000 字、更早的 4000 字（截断处留头尾并写明省略）；总量 32000 字，超了丢最早的。
+  表归 task-service 所有，这边只读；表不存在或读失败时当作没有对话，Task 照常跑（记警告）。
+- **用**：
+  - 分诊与规划：`PlanningContext` 加 `conversation`、`has_workspace`（`TranscriptContextSource` 填）。分诊的提示带上最近的对话（4000 字以内）与“这个 Session 有工作区”，
+    规则加一条：要读工作区才答得好的（含追问之前读过的内容），effect 填 read，于是不走 fast。规划的提示带 16000 字以内。
+  - fast 的 answer、rewrite 节点（输入有 `request` 时）：按真实的对话问模型（system，之前各轮的 user、assistant 交替，最后是用户这条消息的原文）；系统提示改成对用户的口吻，
+    说明前面的对话是真实发生过的，不提内部的名字。其余 model 节点不变。
+  - tool_loop：Context Builder 的 brief 区放 8000 字以内（每一步相同，不破坏提示缓存）。
+- **对话不进 Node 的 inputs**：activity 自己读。不进工作流历史与进度事件，也到不了 Reviewer（`review_view` 会带 Node 的 inputs，而 Reviewer 的输入按规定不含对话）。
+
+**没覆盖的**（这一期）：
+
+- 设计书说的“Session 摘要”（brief 区的滚动摘要）与 profile 区：这一期只取最近几轮原文，更早的看不到。
+- fast 的回答发现需要读仓库时不会自己升级；靠分诊判对，错了用户仍会得到“读不了”。评测集要补这类样本。
+- 正在跑的 Task（并行的只读 Task）的中间结果看不到。
+
+**评测集**：按 11.14 的第一例，加几条脱敏的分诊与回复样本（后续追问、“上面说的”、要读工作区的追问）。标注要人确认，先标未确认。
+
+**验收测试**
+
+| 文件 | 内容 |
+| --- | --- |
+| `services/go-task-service/internal/taskapi/session_transcript_test.go` | 提交时记下命令；重复提交不改 |
+| `services/py-worker/tests/test_session_transcript.py` | 读：从早到晚、不串 Session 与租户、取交付、没交付的结局、迁移前的 Task、轮数与字数的上限、读失败不影响 Task、列名与 Go 的迁移对得上。用：分诊与规划的提示、fast 的 Stage 不带对话、answer 节点按真实对话问且不露内部名字、其余节点不变、tool_loop 的 brief |
+
+### 11.14 把租户出过的问题整理成可修的条目（2026-10-30，设计稿，要人定）
+
+人的要求：评测系统把租户历史上出现过的问题整理出来并推动修复；识别到用户的语气因平台出现剧烈不满时，相关 trace 要尽快优化；必须脱敏。
+
+**现状**：Learning Pipeline（T-16）读 trace，做失败归因、归纳 Recipe、评测后发布；但 span 按规定不带消息与输出的原文，所以现在**看不到用户说了什么**，也没有“用户不满”这个信号。11.13 这一例就是人自己发现的，系统没有报警。
+
+**建议的做法**（分三层，只有第三层碰原文）：
+
+1. **信号（不存原文）**：分诊本来就对每条消息调一次小模型，在同一次调用里多要两个字段：`frustration`（none、mild、strong）与 `about_platform`（不满是不是冲着平台，而不是用户自己的业务）。
+   不多花一次调用。只把这两个枚举写进 `invoke_workflow` span 与指标 `runtime.user.frustration`（不带文字），Grafana 上 strong 且 about_platform 就告警。
+   另加不靠模型的信号：同一 Session 里重复提交几乎相同的消息、回答里说“看不到之前的对话”、Task 刚开始就被取消。
+2. **问题条目（不存原文）**：Learning Pipeline 按结构化特征归类（例如 `context_lost`、`fast_without_tools`、`internal_name_leak`、`budget_overrun`），每类记次数、影响的租户数（只有数）、最近一次的 trace id、严重度。
+   strong 的优先级最高，排到最前面。条目是内部的，不进公开的评测看板。人或 Agent 据此修；系统不自动改代码、不自动发布提示。
+3. **脱敏样本（只有被选中的 Session，要人审）**：把问题固化成评测集的回归样本，修完以后不再回退：
+   - 先用确定性的规则替换（密钥、邮箱、URL、路径、仓库名、代码标识符、数字），同一个词替换成同一个占位符（`<TERM_1>`），保留对话结构与指代关系，这样“上面说的 <TERM_1>”仍能复现问题；
+   - 原文不离开租户的作用域、不进日志与 trace、不发给外部；
+   - 样本标未确认，人审过才进评测集（CLAUDE.md 的规定不变），不进公开页面。
+
+**要人定的**：
+
+1. **用户内容的使用边界**：第 1、2 层只存枚举与计数；第 3 层要读用户的原文。开放注册之后，这要写进隐私条款，并给租户一个开关（租户策略加一项，走 S-01）。建议第 3 层默认只对内部租户打开，其他租户明确同意后才开。
+2. **分诊的模型经第三方中转**：分诊本来就把消息发给中转；多要两个字段不多发内容，但第 3 层如果用模型脱敏就会多发一次。建议第 3 层只用规则，不用模型。
+3. **优先级**：建议 11.13 先修上线，再做第 1、2 层（可以一起做），第 3 层等第 1 点定了再做。
+
+**第一例**：11.13 就按这个流程走（人已授权看这个 Session）：归类 `context_lost`、`fast_without_tools`、`internal_name_leak`，严重度最高，脱敏样本由我手写（不含原文里的任何专有名词），标未确认。

@@ -1,0 +1,122 @@
+{{- /* 评测看板（Eval Dashboard，docs/plan/eval-observability-and-runtime-fixes.md 第 11.12 节）：对外开放的静态页面，只有评测集上的汇总。
+       learning 镜像跑只用标准库的静态服务；Pod 没有令牌、Secret 与业务环境变量。页面在 ConfigMap 里，由发布步骤写（docs/plan/cloud-deploy.md），
+       Chart 不渲染它，否则每次 helm upgrade 都会清掉；卷标为 optional，还没发布时 Pod 也能起来。 */ -}}
+{{- $d := .Values.evalDashboard -}}
+{{- if $d.enabled }}
+{{- if not $d.host }}
+{{- fail "evalDashboard.enabled 时要给 evalDashboard.host" }}
+{{- end }}
+{{- if not (and .Values.ingress.enabled (eq .Values.ingress.type "traefik")) }}
+{{- fail "evalDashboard 要 ingress.enabled 且 ingress.type=traefik" }}
+{{- end }}
+{{- $name := printf "%s-eval-dashboard" (include "ar.fullname" .) -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "eval-dashboard") | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "ar.selector" (list . "eval-dashboard") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ar.labels" (list . "eval-dashboard") | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: eval-dashboard
+          image: {{ include "ar.image" (list . "learning") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["-m", "agentruntime_learning.evals.dashboard_server", "--dir", "/srv/eval-dashboard", "--port", "8080"]
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          resources:
+            {{- toYaml $d.resources | nindent 12 }}
+          volumeMounts:
+            - name: page
+              mountPath: /srv/eval-dashboard
+              readOnly: true
+      volumes:
+        - name: page
+          configMap:
+            name: {{ $name }}
+            optional: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "eval-dashboard") | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "ar.selector" (list . "eval-dashboard") | nindent 4 }}
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "eval-dashboard") | nindent 4 }}
+spec:
+  entryPoints:
+    {{- toYaml .Values.ingress.traefik.entryPoints | nindent 4 }}
+  routes:
+    - kind: Rule
+      match: {{ printf "Host(`%s`)" $d.host | quote }}
+      services:
+        - name: {{ $name }}
+          port: http
+  tls:
+    {{- if .Values.ingress.traefik.tlsSecretName }}
+    secretName: {{ .Values.ingress.traefik.tlsSecretName }}
+    {{- else }}
+    {}
+    {{- end }}
+---
+# 进只来自入口控制器；静态页面不需要出网，也连不了数据库。
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "eval-dashboard") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ar.selector" (list . "eval-dashboard") | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $d.ingressNamespace }}
+      ports:
+        - {protocol: TCP, port: 8080}
+  egress: []
+{{- end }}

@@ -533,6 +533,15 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
   （0YVRP7 2.847 美元，与网关计量一致；ZJ82K7 2.868 美元，比网关少的 0.327 是旧 Worker 没记上的那次已计费的失败评审）。
   SubmitTask 的订阅地址与网关的防线要真提交 Task 才看得到，没有验证。
 
+评测看板（Eval Dashboard，`evals.cgent.link`；TMP 计划第 11.12 节）：
+
+- 只有评测集上的汇总，不含生产数据；Grafana 不开放。服务是 learning 镜像里的静态服务，Chart 的 `evalDashboard.enabled=true`、`evalDashboard.host=evals.cgent.link`。
+- Cloudflare（人做）：加 DNS 记录 `evals`，开代理，指向与 `api` 相同的源站；把 `evals.cgent.link` 加进设为 Full (strict) 的配置规则（否则可能走 Flexible，源站的 80 跳 443 造成重定向循环）。源站证书已含 `*.cgent.link`。
+- 发布或更新页面（评测报告在跑评测的机器上）：
+  `uv run --no-sync python scripts/eval_dashboard.py --public --out index.html`，传到服务器，
+  `kubectl -n agent-runtime create configmap ar-agent-runtime-eval-dashboard --from-file=index.html --dry-run=client -o yaml | kubectl apply -f -`。
+  约一分钟后 Pod 里的文件更新，不用重启；Cloudflare 最多再缓存 5 分钟。Chart 不渲染这个 ConfigMap，`helm upgrade` 不会清掉它。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
