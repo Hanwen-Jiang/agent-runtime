@@ -243,6 +243,30 @@ def test_other_entry_types_render(sets: list[str], kind: str) -> None:
     assert "registry" not in repr(entry)
 
 
+def task_service_env(manifests: list[dict[str, Any]]) -> dict[str, Any]:
+    [ts] = [m for m in by_kind(manifests, "Deployment") if m["metadata"]["name"].endswith("-task-service")]
+    return env_of(pod_spec(ts)["containers"][0])
+
+
+@pytest.mark.parametrize(
+    ("sets", "expected"),
+    [
+        ([], "https://agent-runtime.example.com"),
+        (["taskService.publicBaseURL=https://api.example.org/"], "https://api.example.org"),
+    ],
+    ids=["ingress-host", "explicit"],
+)
+def test_task_service_hands_out_reachable_event_urls(sets: list[str], expected: str) -> None:
+    """SubmitTask 给的订阅地址按 AR_PUBLIC_BASE_URL 拼；没配时是 task-service 的监听地址 http://0.0.0.0:8080，从别处连不上
+    （TMP 计划 eval-observability-and-runtime-fixes 第 11.10 节的冒烟）。有入口时取入口的域名（https），可以显式覆盖（去掉末尾的 /）。"""
+    assert task_service_env(render(CLOUD_VALUES, set_values=sets))["AR_PUBLIC_BASE_URL"]["value"] == expected
+
+
+def test_without_an_entry_the_event_urls_use_the_in_cluster_service() -> None:
+    env = task_service_env(render())
+    assert env["AR_PUBLIC_BASE_URL"]["value"] == "http://ar-agent-runtime-task-service.agent-runtime.svc:8080"
+
+
 def render_fails(*sets: str, values: Path | None = None) -> str:
     helm = shutil.which("helm") or "helm"
     cmd: list[Any] = [helm, "template", "ar", REPO_ROOT / "deploy" / "helm" / "agent-runtime"]

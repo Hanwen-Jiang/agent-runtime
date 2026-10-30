@@ -89,6 +89,9 @@ taskService:
   # Task API 与 /healthz 同一端口；Registry 是单独的内部端口，只有集群内的 Service（docs/plan/registry.md 第 2 节第 7 条）。
   httpPort: 8080
   registryPort: 8092
+  # 客户端连 Task API 用的地址（AR_PUBLIC_BASE_URL，SubmitTask 的事件订阅地址按它拼）。为空时：开了入口用 https://<ingress.host>，
+  # 否则用集群内的 Service 地址。
+  publicBaseURL: ""
   service:
     type: ClusterIP
   resources:

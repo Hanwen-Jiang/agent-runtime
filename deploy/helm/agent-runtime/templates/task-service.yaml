@@ -40,6 +40,16 @@ spec:
               value: {{ .Values.external.temporal.namespace | quote }}
             - name: AR_HTTP_ADDR
               value: {{ printf "0.0.0.0:%v" $ts.httpPort | quote }}
+            # SubmitTask 给的事件订阅地址按它拼：显式配的优先，其次是入口的域名，没有入口时是集群内的 Service（不配时 task-service
+            # 用自己的监听地址 0.0.0.0，从别处连不上）。
+            - name: AR_PUBLIC_BASE_URL
+              {{- if $ts.publicBaseURL }}
+              value: {{ trimSuffix "/" $ts.publicBaseURL | quote }}
+              {{- else if .Values.ingress.enabled }}
+              value: {{ printf "https://%s" .Values.ingress.host | quote }}
+              {{- else }}
+              value: {{ printf "http://%s.%s.svc:%v" $name .Release.Namespace $ts.httpPort | quote }}
+              {{- end }}
             - name: AR_REGISTRY_ADDR
               value: {{ printf "0.0.0.0:%v" $ts.registryPort | quote }}
             # 镜像里的 /schemas（deploy/images/go.Dockerfile）。
