@@ -11,7 +11,7 @@ from google.protobuf import json_format, struct_pb2
 from agentruntime.common.v1 import enums_pb2, payload_pb2, tenant_pb2
 from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 from agentruntime_worker.activities.types import Tenant
-from agentruntime_worker.executor.model_gateway import ModelGateway
+from agentruntime_worker.executor.model_gateway import ModelGateway, billed_cost_usd
 from agentruntime_worker.planner import prompts, validate
 from agentruntime_worker.planner.context import PlanningContext
 from agentruntime_worker.planner.triage import SIGNALS_SCHEMA, UNCLASSIFIED_TASK_FAMILY, Signals, TriageDecision, decide, parse_signals, reviewer_decision
@@ -142,7 +142,13 @@ class Planner:
             call=mg.CallContext(task_id=request.task_id, node_id=purpose, role=role, tier=tier),
             generation=mg.GenerateParams(messages=messages, output_schema=payload_pb2.JsonPayload(value=_value(output_schema))),
         )
-        response = await self.gateway.generate(req)
+        try:
+            response = await self.gateway.generate(req)
+        except Exception as exc:
+            # 失败之前已经计费的也算进成本（TMP 计划第 11.11 节）。
+            if billed := billed_cost_usd(exc):
+                calls.append(ModelCall(purpose=purpose, tier=tier, vendor="", cost_usd=billed))
+            raise
         calls.append(ModelCall(purpose=purpose, tier=response.model.tier or tier, vendor=response.model.vendor, cost_usd=response.usage.cost_usd_micros / 1_000_000))
         return response
 
@@ -261,6 +267,10 @@ class Planner:
                     if not found:
                         return PlanResult(triage_level=decision.level, stage=stage, task_plan=task_plan, decision=decision, calls=calls, adjustments=adjusted)
             if attempt == 0:
+                if _budget_spent(request.task_state, calls):
+                    # 美元预算已经用完：不再重问，用保守规划（TMP 计划第 11.11 节；第一次规划照常，按 11.4 不拦）。
+                    found = [*found, "美元预算已经用完，不再重问"]
+                    break
                 messages = prompts.retry_messages(messages, answer_text, found)
         stage, task_plan = self._fallback(request, decision, keep)
         return PlanResult(triage_level=decision.level, stage=stage, task_plan=task_plan, decision=decision, calls=calls, fallback=True, problems=found)
@@ -278,6 +288,12 @@ class Planner:
         }
         triage: dict[str, Any] = {"level": decision.level, "task_family": decision.task_family or UNCLASSIFIED_TASK_FAMILY}
         return stage, {"triage": triage, "horizon": "explore"}
+
+
+def _budget_spent(task_state: Any, calls: list[ModelCall]) -> bool:
+    """Task 的美元预算是否已经用完：剩余（预算减去之前各 Round 的成本）再减去这次已调的（分诊与规划），不大于 0。没有预算时为 False。"""
+    remaining = validate.task_budget_remaining(task_state)
+    return remaining is not None and remaining - sum(c.cost_usd for c in calls) <= 0
 
 
 FAST_GOAL_CODE = "reply_to_message"

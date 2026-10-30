@@ -559,8 +559,88 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
 - 影响：经这个中转跑 Claude 的结果不能算作 Runtime 的结果。模型看到的工具不是我们给的，结构化输出走不通，用量也不可信。django 那题
   不用读仓库的工具，可能与此有关（没证实）。冒烟超支的 12.16 美元是按中转报回的数字算的。另外两条与中转无关，仍要修：Task API 的
   用量没填，budget_check 拦不住规划与评审。
-- Runtime 这边可以加的防线（要另立工作项，人定）：Model Gateway 把请求里没有的工具调用、要结构化输出却回来的工具调用当作失败
-  （带上已计费的用量），不当正常回答交给调用方；是重试、换同档的下一个 Profile 还是直接报错，到时再定。有回答而用量为 0 的调用记
-  异常，不当作免费。
+- Runtime 这边的防线：Model Gateway 把请求里没有的工具调用、要结构化输出却回来的工具调用当作失败（带上已计费的用量），有回答而
+  用量为 0 的调用记异常。细化与实现见 11.11。
 - SWE-bench 要换成官方 API 或原样转发的中转再跑；换之前不再跑。
 
+
+### 11.11 冒烟查出的 Runtime 问题：用量、预算与网关的防线（2026-10-30 人确认，已实现）
+
+11.10 的冒烟与中转核实里，下面四件与中转无关、是 Runtime 自己的问题（中转让它们更显眼）：
+
+1. **Task API 的用量从来不填**：`QueryTaskResponse.usage` 与 `TaskWorkflowResult.usage` 都没人设，客户端（SWE-bench 的适配器）的
+   总预算看到的花费恒为 0。
+2. **已计费却失败的调用，Worker 不知道花了钱**：网关对这种调用写一行 status failed 的计量，但错误里不带花费，Planner、Reviewer 的
+   成本里少了它（冒烟里两次评审各 0.33、0.52 美元）。同一次调用里先失败、后换下一个 Profile 成功的，回答的 Usage 也只算成功的那次。
+3. **美元预算用完了，Planner、Reviewer 仍会再问一次**：两者在回答不合格时都带上错误重问一次。冒烟里第二轮规划第一次回答后已经
+   超过 2 美元，仍重问了一次（每次约 0.4 美元）；评审同样。
+4. **中转塞进来的工具与零用量**：模型调了请求里没给的工具（`Bash`），网关当正常回答交了出去；要结构化输出却回来的工具调用也一样。
+   回答的用量为 0 时网关当作免费，计量与成本都记不上。
+
+**挂在哪个工作项下**
+
+| 问题 | 工作项 |
+| --- | --- |
+| 1 | S-03（Task API 的查询、Task 工作流的结局）的后续；Task 工作流是核心链路，同一时间只由一个 agent 改 |
+| 2、4 | T-05（Model Gateway，`docs/plan/model-gateway-direct.md`）的后续，含 Python 客户端 |
+| 3 | S-09（Planner）、S-10（Reviewer）的后续 |
+
+**做法（与 11.10 草稿不同的地方加粗）**
+
+- 用量（问题 1）：美元的用量按 `task_state.schema.json` 的口径，是各 Round 的 `cost_usd` 之和。
+  - Worker 在 `TaskWorkflowResult.usage.cost_usd_micros` 填它（done、abort 都填）。
+  - task-service 的 QueryTask 从工作流的 Task State 算出同一个数；查不到 Task State 时取业务库里记下的结局（`Outcome`）的 usage；
+    两样都没有时不设 usage。
+  - **正在跑的 Round 在查询结果里带上已经花的钱**（规划加上已完成的节点）。只改查询给出的副本，不写进交给 activity 的 Task State：
+    Stage Runner 另外把规划的花费算进已花的钱，写进去会重复计。
+  - token 数这一期不填：Worker 只记美元。
+  - 不改命令序列，不用版本分支；不改 proto 与 schema。
+- 已计费的失败（问题 2）：
+  - 网关的错误在 details 里带 `billed_cost_usd_micros`：这次 RPC 里所有已计费的尝试之和，大于 0 才带。
+  - **成功的回答，Usage 也是这次 RPC 里所有已计费的尝试之和**（token 与成本都加）。计量仍按尝试一行一行写。
+  - Python 客户端把它还原到错误上（`executor.model_gateway.billed_cost_usd(exc)`；构造用 `with_billed_cost`）。
+  - Planner、Reviewer 调用失败时把它记进这次的 `calls`。
+- 不合格时重问（问题 3）：**11.4 定的“评审前不拦”不变**，第一次规划与第一次评审照常调用；只是美元预算已经用完时不再重问：
+  - Planner：Task 预算减去之前各 Round 的成本，再减去这次已调的（分诊与第一次规划），不大于 0 就不重问，直接用保守规划。
+  - Reviewer：台账的已花（含本轮的规划与 Stage）加上这次第一次评审的花费，不小于预算就不重问，按规则判定（`fallback`）。
+  - 没有美元预算时照旧重问。
+- 网关的防线（问题 4）：
+  - **回答里有请求没给的工具调用（没给工具时任何工具调用都算）**：这次尝试记一行 status failed、error_code `unexpected_tool_call`
+    的计量（带上已计费的用量），不在同一个 Profile 上重试，换同档的下一个 Profile。
+  - **同档都这样**：报 Invalid `unexpected_tool_call`，不报 transient：Worker 的决策重试不会再连打几次。
+  - 有回答但 input 与 output token 都是 0：照常交给调用方。计量记 `usage_missing: true`，写一条警告日志，另记计数
+    `runtime.model.usage_missing`（属性同 `runtime.model.calls`），好在 Grafana 上告警。
+  - 流式这一期不查：工具调用的分片在查出问题之前已经发出去了。Worker 的决策与 tool_loop 都用非流式。
+
+**人确认的（2026-10-30）**
+
+1. 上面的四处加粗。“不合格时重问”只在美元预算用完时省掉，第一次规划与评审不拦，保留 11.4 的人定（点按钮时的说法是“规划与
+   评审也受预算拦”，与 11.4 冲突，人确认按 11.4）。
+2. 同档都给出没给的工具调用时报 Invalid，而不是 transient。
+
+**没覆盖的**
+
+- tool_loop 一步的模型调用失败时（activity 失败），这一步已计费的花费仍记不进 Round 的成本；要改 Stage Runner 的失败路径，另做。
+- 单次调用的成本上限（`CallContext.max_cost_usd_micros`）网关仍不看：要先估算输入的 token，估不准；中转虚报的用量本来也拦不住。
+- token 用量。
+
+**验收测试**（覆盖上面每一条）
+
+| 文件 | 内容 |
+| --- | --- |
+| `services/go-model-gateway/internal/gateway/usage_guard_test.go` | 没给的工具调用（有工具、没给工具两种）：记 failed、不重试、换下一个 Profile、回答的 Usage 是两次之和；同档都这样报 Invalid 并带上花费；已计费的 Invalid 带 `billed_cost_usd_micros`；零用量照常返回，计量、日志与计数都记上 |
+| `services/py-worker/tests/test_billed_cost.py` | 客户端还原 `billed_cost_usd`；Planner、Reviewer 记上已计费的失败；美元预算用完时不重问（还有剩余时照旧重问） |
+| `services/py-worker/tests/test_task_usage.py` | done 与 abort 的 `TaskWorkflowResult.usage`；跑到一半查询时本轮带上已花的钱，交给 Stage 的 Task State 里没有 |
+| `services/go-task-service/internal/taskapi/usage_test.go` | QueryTask 的 usage：从 Task State 算；查不到时取记下的结局；都没有时不设 |
+
+**实现记录（2026-10-30）**
+
+- 网关：`internal/gateway/gateway.go`（`checkToolCalls`、`skipsProfile`：没给的工具调用与 model_not_found 一样换下一个 Profile；
+  `call.billed` 与 `meterFailed` 累计已计费的失败，`charged` 带进错误，成功时加进回答的 Usage；`served` 标 `usage_missing`，
+  `metrics` 记 `runtime.model.usage_missing`）。`libs/go-core`：`providererr.Error.BilledCostUSDMicros`，connecterr 写成 details 的
+  `billed_cost_usd_micros`（与 LastCode 同一做法）。
+- task-service：`internal/taskapi/server.go` 的 `taskUsage`。
+- Worker：`executor/model_gateway.py` 的 `billed_cost_usd`、`with_billed_cost`，`grpc_gateway.py` 从 details 还原；Planner 与
+  Reviewer 的 `_call` 记上已计费的失败，重问之前看美元预算；`workflows/task.py` 的 `_running_spent`、`_state_with_running_cost`
+  与结局的 usage（查询与结局用副本，交给 activity 的 Task State 不变）。
+- 没改 proto、schema，没加版本分支；golden 历史照旧回放。

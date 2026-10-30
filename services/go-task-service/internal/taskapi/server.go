@@ -456,7 +456,29 @@ func (s *Server) QueryTask(ctx context.Context, req *connect.Request[taskapiv1.Q
 		RoundSeq:    state.GetRoundSeq(),
 		TaskState:   state.GetTaskState(),
 		LastEventId: row.LastEventID,
+		Usage:       taskUsage(state, row),
 	}), nil
+}
+
+// taskUsage 给出 Task 的用量（TMP 计划第 11.11 节）。美元的用量按 task_state.schema.json 的口径，是各 Round 的 cost_usd 之和
+// （正在跑的 Round 由 Worker 在查询结果里带上已花的钱）；有 Task State 时从它算，否则取业务库里记下的结局里的 usage
+// （被取消的 Task 的结局由 Session 工作流拼出、不带 usage，所以 Task State 优先）；都没有时为 nil。token 数这一期不填。
+func taskUsage(state *workflowv1.TaskStateQueryResult, row taskstore.Task) *commonv1.Usage {
+	if value := state.GetTaskState().GetValue(); value != nil {
+		spent := 0.0
+		for _, r := range value.GetStructValue().GetFields()["rounds"].GetListValue().GetValues() {
+			spent += r.GetStructValue().GetFields()["cost_usd"].GetNumberValue()
+		}
+		return &commonv1.Usage{CostUsdMicros: int64(math.Round(spent * 1e6))}
+	}
+	if row.Outcome == "" {
+		return nil
+	}
+	outcome := &workflowv1.TaskWorkflowResult{}
+	if err := (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal([]byte(row.Outcome), outcome); err != nil {
+		return nil
+	}
+	return outcome.GetUsage()
 }
 
 func terminal(st commonv1.TaskStatus) bool {

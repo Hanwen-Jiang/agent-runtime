@@ -24,12 +24,16 @@ const RetryAfterDetail = "retry_after_ms"
 // LastErrorCodeDetail 是 details 里的字段名：汇总了几次失败的错误里最后一次失败的 code（providererr.Error.LastCode）。
 const LastErrorCodeDetail = "last_error_code"
 
+// BilledCostDetail 是 details 里的字段名：失败之前上游已经计费的花费（微美元，providererr.Error.BilledCostUSDMicros），大于 0 才带。
+const BilledCostDetail = "billed_cost_usd_micros"
+
 // Error 把错误转成返回给调用方的 *connect.Error，并在 Trailer 里附上 common.v1.Error。
 // 类别到 Connect 码：transient → Unavailable；invalid → InvalidArgument；denied → PermissionDenied；
 // not_found → NotFound；conflict → Aborted。
 //
 //   - *providererr.Error：类别、code、message 原样放进 trailer；Connect 错误的文本只用 message，不含底层原因
-//     （底层原因可能带上游回显的密钥）。transient 且 RetryAfter > 0 时 details 带 retry_after_ms；有 LastCode 时带 last_error_code。
+//     （底层原因可能带上游回显的密钥）。transient 且 RetryAfter > 0 时 details 带 retry_after_ms；有 LastCode 时带 last_error_code；
+//     BilledCostUSDMicros > 0 时带 billed_cost_usd_micros。
 //   - context.DeadlineExceeded、context.Canceled：transient（code timeout、canceled），Unavailable。
 //   - 其他错误：Internal，trailer 为 transient（code internal），文本固定为“内部错误”，不带原始错误文本。
 //
@@ -55,6 +59,9 @@ func Error(err error) *connect.Error {
 	}
 	if pe.LastCode != "" {
 		details[LastErrorCodeDetail] = pe.LastCode
+	}
+	if pe.BilledCostUSDMicros > 0 {
+		details[BilledCostDetail] = float64(pe.BilledCostUSDMicros)
 	}
 	if len(details) > 0 {
 		detail.Details, _ = structpb.NewStruct(details)

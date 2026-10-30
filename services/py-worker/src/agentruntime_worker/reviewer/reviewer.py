@@ -20,7 +20,7 @@ from google.protobuf import json_format, struct_pb2
 from agentruntime.common.v1 import enums_pb2, payload_pb2, tenant_pb2
 from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 from agentruntime_worker.activities.types import Tenant
-from agentruntime_worker.executor.model_gateway import ModelGateway
+from agentruntime_worker.executor.model_gateway import ModelGateway, billed_cost_usd
 from agentruntime_worker.planner.planner import ModelCall
 from agentruntime_worker.reviewer import prompts
 from agentruntime_worker.reviewer.rules import Caps, Floor, ReviewCatalog, Thresholds, enforce, floor
@@ -120,6 +120,10 @@ class Reviewer:
                         answer = value
                         break
                 if attempt == 0:
+                    if lg.budget_usd and lg.spent_usd + sum(c.cost_usd for c in calls) >= lg.budget_usd:
+                        # 美元预算已经用完：不再重问，按规则判定（TMP 计划第 11.11 节；第一次评审照常，按 11.4 不拦）。
+                        problems = [*problems, "美元预算已经用完，不再重问"]
+                        break
                     messages = prompts.retry_messages(messages, text, problems)
         completion = float(answer["completion"]) if answer is not None and answer.get("completion") is not None else None
         fl = floor(lg, results, completion=completion, thresholds=cfg.thresholds)
@@ -166,6 +170,12 @@ class Reviewer:
             ),
             generation=mg.GenerateParams(messages=messages, output_schema=payload_pb2.JsonPayload(value=_value(prompts.REVIEW_OUTPUT_SCHEMA))),
         )
-        response = await self.gateway.generate(req)
+        try:
+            response = await self.gateway.generate(req)
+        except Exception as exc:
+            # 失败之前已经计费的也算进成本（TMP 计划第 11.11 节）。
+            if billed := billed_cost_usd(exc):
+                calls.append(ModelCall(purpose="review", tier=self.config.tier, vendor="", cost_usd=billed))
+            raise
         calls.append(ModelCall(purpose="review", tier=response.model.tier or self.config.tier, vendor=response.model.vendor, cost_usd=response.usage.cost_usd_micros / 1_000_000))
         return response

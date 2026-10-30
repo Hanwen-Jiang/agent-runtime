@@ -35,7 +35,9 @@ type Error struct {
 	RetryAfter time.Duration
 	// LastCode 是汇总了几次失败的错误（例如网关的 models_exhausted）里最后一次失败的 code；没有时为空。
 	LastCode string
-	cause    error
+	// BilledCostUSDMicros 是失败之前上游已经计费的花费（例如网关一次 RPC 里已计费却判为失败的尝试之和）；没有时为 0。
+	BilledCostUSDMicros int64
+	cause               error
 }
 
 // New 构造一个错误。

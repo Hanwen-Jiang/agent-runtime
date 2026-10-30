@@ -9,20 +9,27 @@
 //     不够等这一次时不再等待，返回 Transient（code deadline，RetryAfter 为该等的时间）。同一个 Profile 尝试 MaxAttempts 次
 //     仍失败，切换同档的下一个 Profile（不再等待）；全部失败返回 Transient（code models_exhausted，RetryAfter 与 LastCode 取最后一次失败的）。
 //     not_found 且 code 为 model_not_found（模型在上游不存在）只说明这一个 Profile 坏了：不重试，直接切换下一个；同档都是这样时
-//     返回这个 not_found。其余非 transient 失败立即返回，不重试、不切换。
+//     返回这个 not_found。Generate 的回答里有请求没给的工具调用（没给工具时任何工具调用都算；中转塞进来的 Bash 之类）也一样：
+//     Invalid（code unexpected_tool_call），不重试，切换下一个；同档都这样时返回它（TMP 计划第 11.11 节）。
+//     其余非 transient 失败立即返回，不重试、不切换。
 //     StreamGenerate 只在发出第一个分片之前重试与切换；之后出错直接结束流。
 //  5. 计价：响应的 Usage 原样带回上游的 token 数，cost_usd_micros 按实际服务的 Profile 单价计算（profiles.Cost.USDMicros）。
-//  6. 计量：向 Meter 写 JSON 行（MeterRecord），不含消息内容、输出内容与密钥。每次成功的 RPC 一行（status ok）；上游已经计费、
-//     但网关判为失败的尝试也各写一行（status failed，带 error_code），例如结构化输出不是合法 JSON、Classify 给了标签外的值。
+//     这次 RPC 里之前有已计费却判为失败的尝试时，回答的 Usage 再加上它们（token 与成本都加），调用方据此记花费；
+//     返回错误时，details 的 billed_cost_usd_micros 带上这些尝试的花费之和（大于 0 才带）。
+//  6. 计量：向 Meter 写 JSON 行（MeterRecord），不含消息内容、输出内容与密钥。每次成功的 RPC 一行（status ok，只算实际服务的
+//     那次尝试）；上游已经计费、但网关判为失败的尝试也各写一行（status failed，带 error_code），例如结构化输出不是合法 JSON、
+//     Classify 给了标签外的值、没给的工具调用。
 //     请求的 pinned_model_profile 没用上、avoid_vendor 没能避开（按实际服务的 Profile 判断，含切换之后）时，计量记录里标明，
-//     并记一条日志。
+//     并记一条日志。回答的 input 与 output token 都是 0 时照常返回，计量记 usage_missing、记一条警告日志（上游没报用量，
+//     这次调用记不上花费）。
 //  7. trace（附录 J.1；T-15）：配了 Options.Telemetry 时每次 RPC 一个 span，按请求的租户绑定。名字按 GenAI 语义约定是
 //     `{chat|embeddings} {请求的模型}`，属性有请求与实际服务的模型、供应商、token、成本、Tier、尝试次数、task_id、node_id；
 //     失败时 span 为 error、error.type 是错误的 code。不记消息内容、输出内容与密钥。
 //     同一个 Telemetry 还发指标（TMP 计划第 9.3 节，Collector 写进 VictoriaMetrics）：每次 RPC 一次 runtime.model.calls 计数与
 //     gen_ai.client.operation.duration（秒）观测；上游计了费时再记 runtime.model.cost_usd 与 gen_ai.client.token.usage
 //     （gen_ai.token.type 为 input、output 各一次）。属性是 outcome（ok、error）、失败时的 error.type、gen_ai.operation.name、
-//     gen_ai.provider.name、gen_ai.response.model、role、tier，租户由绑定加上。
+//     gen_ai.provider.name、gen_ai.response.model、role、tier，租户由绑定加上。回答没有用量时另记一次 runtime.model.usage_missing
+//     计数（属性同上），好在面板上告警。
 //
 // 供应商返回的错误不是 *providererr.Error 时（违反 ModelProvider 约定）：不重试、不切换，按 ConnectError 的“其他错误”返回。
 //
@@ -143,10 +150,34 @@ type MeterRecord struct {
 	// AvoidVendor 是请求的 avoid_vendor；AvoidVendorUnmet 表示实际服务的模型正是这一家。
 	AvoidVendor      string `json:"avoid_vendor,omitempty"`
 	AvoidVendorUnmet bool   `json:"avoid_vendor_unmet"`
+	// UsageMissing 表示成功的回答 input 与 output token 都是 0：上游没报用量，这次调用记不上花费。
+	UsageMissing bool `json:"usage_missing,omitempty"`
 }
 
 // modelNotFound 是适配层“模型在上游不存在”的 code：只说明这一个 Profile 坏了，切换同档的下一个。
 const modelNotFound = "model_not_found"
+
+// unexpectedToolCall 是“回答里有请求没给的工具调用”的 code：只说明这一个 Profile（多半是它背后的中转）不对，切换同档的下一个。
+const unexpectedToolCall = "unexpected_tool_call"
+
+// skipsProfile 表示这次失败只说明这一个 Profile 不能用：不在它上面重试，直接切换同档的下一个。
+func skipsProfile(pe *providererr.Error) bool {
+	return (pe.Category == providererr.NotFound && pe.Code == modelNotFound) || pe.Code == unexpectedToolCall
+}
+
+// checkToolCalls 检查回答里的工具调用都在请求给的工具里；没给工具时任何工具调用都不合格。
+func checkToolCalls(offered []modelprovider.ToolSpec, calls []modelprovider.ToolCall) error {
+	for _, tc := range calls {
+		if !slices.ContainsFunc(offered, func(t modelprovider.ToolSpec) bool { return t.Name == tc.Name }) {
+			name := tc.Name
+			if r := []rune(name); len(r) > 64 {
+				name = string(r[:64])
+			}
+			return providererr.New(providererr.Invalid, unexpectedToolCall, "模型调用了请求里没给的工具："+name)
+		}
+	}
+	return nil
+}
 
 // Server 实现 ModelGatewayServiceHandler。
 type Server struct {
@@ -213,6 +244,36 @@ type call struct {
 	client modelprovider.Client
 	// attempts 是这次 RPC 一共尝试了几次（含重试与切换），记进 span。
 	attempts int
+	// billed 是这次 RPC 里已计费却判为失败的尝试的用量之和（已计价）；没有时为 nil。
+	billed *commonv1.Usage
+	// usageMissing 表示成功的回答没有用量（见 served）。
+	usageMissing bool
+}
+
+// addUsage 把两份用量（token 与成本）相加；都为 nil 时返回 nil。
+func addUsage(a, b *commonv1.Usage) *commonv1.Usage {
+	if a == nil && b == nil {
+		return nil
+	}
+	return &commonv1.Usage{
+		InputTokens:      a.GetInputTokens() + b.GetInputTokens(),
+		OutputTokens:     a.GetOutputTokens() + b.GetOutputTokens(),
+		CacheReadTokens:  a.GetCacheReadTokens() + b.GetCacheReadTokens(),
+		CacheWriteTokens: a.GetCacheWriteTokens() + b.GetCacheWriteTokens(),
+		ReasoningTokens:  a.GetReasoningTokens() + b.GetReasoningTokens(),
+		CostUsdMicros:    a.GetCostUsdMicros() + b.GetCostUsdMicros(),
+	}
+}
+
+// charged 给返回调用方的错误带上这次 RPC 里已计费的花费（大于 0 时；复制一份，不改原来的错误）。
+func (c *call) charged(err error) error {
+	var pe *providererr.Error
+	if c.billed.GetCostUsdMicros() <= 0 || !errors.As(err, &pe) {
+		return err
+	}
+	out := *pe
+	out.BilledCostUSDMicros = c.billed.GetCostUsdMicros()
+	return &out
 }
 
 func invalid(code, message string) error {
@@ -249,7 +310,8 @@ type attempt func(ctx context.Context, cand router.Candidate) (*commonv1.Usage, 
 // run 按重试与切换规则依次尝试候选，返回成功的候选（失败时返回最后尝试的候选）。bounded 为 true 时每次尝试套上
 // AttemptTimeout；流式调用传 false，自己只把超时套在第一个分片之前。
 func (s *Server) run(ctx context.Context, c *call, candidates []router.Candidate, bounded bool, do attempt) (router.Candidate, error) {
-	var last, missing *providererr.Error
+	// skipped 是让某个 Profile 被跳过的失败（skipsProfile）：同档都这样、又没有 transient 失败时返回它。
+	var last, skipped *providererr.Error
 	var tried router.Candidate
 	for _, cand := range candidates {
 		tried = cand
@@ -271,12 +333,12 @@ func (s *Server) run(ctx context.Context, c *call, candidates []router.Candidate
 				return cand, err
 			}
 			if usage != nil {
-				s.meter(c, cand, priced(cand, usage), pe.Code)
+				s.meterFailed(c, cand, usage, pe.Code)
 			}
 			s.opts.Logger.Warn("模型调用失败", "profile", cand.Profile.ID, "category", pe.Category.String(), "code", pe.Code, "attempt", n)
-			if pe.Category == providererr.NotFound && pe.Code == modelNotFound {
-				missing = pe
-				break attempts // 这个 Profile 的模型在上游不存在：换同档的下一个，不重试、不等待
+			if skipsProfile(pe) {
+				skipped = pe
+				break attempts // 这个 Profile 不能用（模型在上游不存在、给了没给的工具调用）：换同档的下一个，不重试、不等待
 			}
 			if !pe.Retryable() {
 				return cand, pe
@@ -296,8 +358,8 @@ func (s *Server) run(ctx context.Context, c *call, candidates []router.Candidate
 			}
 		}
 	}
-	if last == nil && missing != nil {
-		return tried, missing
+	if last == nil && skipped != nil {
+		return tried, skipped
 	}
 	e := providererr.New(providererr.Transient, "models_exhausted", "同档的模型都暂时不可用："+c.choice.Tier)
 	if last != nil {
@@ -335,7 +397,8 @@ func roleName(r commonv1.Role) string {
 	return strings.ToLower(strings.TrimPrefix(r.String(), "ROLE_"))
 }
 
-// served 在调用成功后检查请求的偏好有没有满足（按实际服务的 Profile），没满足的记一条日志；再写一行 status ok 的计量。
+// served 在调用成功后检查请求的偏好有没有满足（按实际服务的 Profile），没满足的记一条日志；回答没有用量（input 与 output
+// token 都是 0）时记一条警告并在计量里标明；再写一行 status ok 的计量（u 是实际服务的那次尝试的用量）。
 func (s *Server) served(c *call, cand router.Candidate, u *commonv1.Usage) {
 	if pinned := c.ctx.GetPinnedModelProfile(); pinned != "" && pinned != cand.Profile.ID {
 		s.opts.Logger.Warn("请求固定的模型没有用上", "pinned_model_profile", pinned, "profile", cand.Profile.ID, "tier", c.choice.Tier, "task_id", c.ctx.GetTaskId())
@@ -343,7 +406,18 @@ func (s *Server) served(c *call, cand router.Candidate, u *commonv1.Usage) {
 	if avoid := c.ctx.GetAvoidVendor(); avoid != "" && avoid == cand.Profile.Vendor {
 		s.opts.Logger.Warn("avoid_vendor 没能避开：同档只剩这一家", "avoid_vendor", avoid, "profile", cand.Profile.ID, "tier", c.choice.Tier, "task_id", c.ctx.GetTaskId())
 	}
+	if u.GetInputTokens() == 0 && u.GetOutputTokens() == 0 {
+		c.usageMissing = true
+		s.opts.Logger.Warn("上游的回答没有用量，这次调用记不上花费", "usage_missing", true, "profile", cand.Profile.ID, "tier", c.choice.Tier, "task_id", c.ctx.GetTaskId())
+	}
 	s.meter(c, cand, u, "")
+}
+
+// meterFailed 记下一次已计费、但判为失败的尝试：按 Profile 计价写一行 status failed 的计量，并计入这次 RPC 的已计费合计。
+func (s *Server) meterFailed(c *call, cand router.Candidate, usage *commonv1.Usage, code string) {
+	u := priced(cand, usage)
+	c.billed = addUsage(c.billed, u)
+	s.meter(c, cand, u, code)
 }
 
 // meter 写一条计量记录；errCode 为空表示成功（status ok），否则是已计费的失败（status failed）。并发时按行串行。
@@ -360,6 +434,7 @@ func (s *Server) meter(c *call, cand router.Candidate, u *commonv1.Usage, errCod
 		Status: status, ErrorCode: errCode,
 		PinnedModelProfile: pinned, PinIgnored: pinned != "" && pinned != cand.Profile.ID,
 		AvoidVendor: avoid, AvoidVendorUnmet: avoid != "" && avoid == cand.Profile.Vendor,
+		UsageMissing: errCode == "" && c.usageMissing,
 	})
 	if err != nil {
 		return
@@ -474,6 +549,9 @@ func (t *traced) metrics(c *call, cand router.Candidate, u *commonv1.Usage, code
 	}
 	_ = t.tel.Count(t.ctx, "runtime.model.calls", 1, attrs...)
 	_ = t.tel.Observe(t.ctx, "gen_ai.client.operation.duration", time.Since(t.start).Seconds(), attrs...)
+	if code == "" && c.usageMissing {
+		_ = t.tel.Count(t.ctx, "runtime.model.usage_missing", 1, attrs...)
+	}
 	if u == nil {
 		return
 	}
@@ -486,7 +564,7 @@ func (t *traced) metrics(c *call, cand router.Candidate, u *commonv1.Usage, code
 	}
 }
 
-// billedFailure 记下一次已计费、但网关判为失败的调用（usage 为空时上游没计费，不记），原样返回 err。
+// billedFailure 记下一次已计费、但网关判为失败的调用（usage 为空时上游没计费，不记），返回带上这次 RPC 已计费花费的 err。
 func (s *Server) billedFailure(c *call, cand router.Candidate, usage *commonv1.Usage, err error) error {
 	if usage != nil {
 		code := "internal"
@@ -494,9 +572,9 @@ func (s *Server) billedFailure(c *call, cand router.Candidate, usage *commonv1.U
 		if errors.As(err, &pe) {
 			code = pe.Code
 		}
-		s.meter(c, cand, priced(cand, usage), code)
+		s.meterFailed(c, cand, usage, code)
 	}
-	return err
+	return c.charged(err)
 }
 
 // ---- 转换 ----
@@ -636,19 +714,25 @@ func (s *Server) Generate(ctx context.Context, req *connect.Request[modelgateway
 	var result modelprovider.GenerateResult
 	cand, err := s.run(ctx, c, c.choice.Candidates, true, func(ctx context.Context, cand router.Candidate) (*commonv1.Usage, error) {
 		r, err := c.client.Generate(ctx, forCandidate(gen, cand))
+		if err == nil {
+			err = checkToolCalls(gen.Tools, r.ToolCalls)
+		}
 		result = r
 		return r.Usage, err
 	})
 	if err != nil {
-		tr.end(c, cand, nil, err)
+		err = c.charged(err)
+		tr.end(c, cand, c.billed, err)
 		return nil, connecterr.Error(err)
 	}
 	out, err := c.generateResponse(cand, result)
 	if err != nil {
-		tr.end(c, cand, priced(cand, result.Usage), err)
-		return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, err))
+		err = s.billedFailure(c, cand, result.Usage, err)
+		tr.end(c, cand, c.billed, err)
+		return nil, connecterr.Error(err)
 	}
 	s.served(c, cand, out.GetUsage())
+	out.Usage = addUsage(out.GetUsage(), c.billed)
 	tr.end(c, cand, out.GetUsage(), nil)
 	return connect.NewResponse(out), nil
 }
@@ -791,16 +875,18 @@ func (s *Server) Score(ctx context.Context, req *connect.Request[modelgatewayv1.
 		return r.Usage, err
 	})
 	if err != nil {
-		tr.end(c, cand, nil, err)
+		err = c.charged(err)
+		tr.end(c, cand, c.billed, err)
 		return nil, connecterr.Error(err)
 	}
 	if len(result.Scores) != len(m.GetCandidates()) {
-		err := invalid("bad_scores", "分数与候选的个数不一致")
-		tr.end(c, cand, priced(cand, result.Usage), err)
-		return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, err))
+		err := s.billedFailure(c, cand, result.Usage, invalid("bad_scores", "分数与候选的个数不一致"))
+		tr.end(c, cand, c.billed, err)
+		return nil, connecterr.Error(err)
 	}
 	out := &modelgatewayv1.ScoreResponse{Scores: result.Scores, Model: c.choiceOf(cand), Usage: priced(cand, result.Usage)}
 	s.served(c, cand, out.GetUsage())
+	out.Usage = addUsage(out.GetUsage(), c.billed)
 	tr.end(c, cand, out.GetUsage(), nil)
 	return connect.NewResponse(out), nil
 }
@@ -835,19 +921,21 @@ func (s *Server) Embed(ctx context.Context, req *connect.Request[modelgatewayv1.
 		return r.Usage, err
 	})
 	if err != nil {
-		tr.end(c, cand, nil, err)
+		err = c.charged(err)
+		tr.end(c, cand, c.billed, err)
 		return nil, connecterr.Error(err)
 	}
 	if len(result.Vectors) != len(m.GetTexts()) {
-		err := providererr.New(providererr.Transient, "bad_embeddings", "向量与文本的个数不一致")
-		tr.end(c, cand, priced(cand, result.Usage), err)
-		return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, err))
+		err := s.billedFailure(c, cand, result.Usage, providererr.New(providererr.Transient, "bad_embeddings", "向量与文本的个数不一致"))
+		tr.end(c, cand, c.billed, err)
+		return nil, connecterr.Error(err)
 	}
 	out := &modelgatewayv1.EmbedResponse{EmbeddingVersion: cand.Profile.ID, Model: c.choiceOf(cand), Usage: priced(cand, result.Usage)}
 	for _, v := range result.Vectors {
 		out.Embeddings = append(out.Embeddings, &modelgatewayv1.Embedding{Values: v})
 	}
 	s.served(c, cand, out.GetUsage())
+	out.Usage = addUsage(out.GetUsage(), c.billed)
 	tr.end(c, cand, out.GetUsage(), nil)
 	return connect.NewResponse(out), nil
 }
@@ -891,7 +979,8 @@ func (s *Server) Classify(ctx context.Context, req *connect.Request[modelgateway
 		return r.Usage, err
 	})
 	if err != nil {
-		tr.end(c, cand, nil, err)
+		err = c.charged(err)
+		tr.end(c, cand, c.billed, err)
 		return nil, connecterr.Error(err)
 	}
 	var parsed struct {
@@ -901,20 +990,21 @@ func (s *Server) Classify(ctx context.Context, req *connect.Request[modelgateway
 		} `json:"results"`
 	}
 	if err := json.Unmarshal(result.Structured, &parsed); err != nil || len(parsed.Results) != len(texts) {
-		err := invalid("bad_classification", "分类结果不是合法的 JSON，或条数与文本不一致")
-		tr.end(c, cand, priced(cand, result.Usage), err)
-		return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, err))
+		err := s.billedFailure(c, cand, result.Usage, invalid("bad_classification", "分类结果不是合法的 JSON，或条数与文本不一致"))
+		tr.end(c, cand, c.billed, err)
+		return nil, connecterr.Error(err)
 	}
 	out := &modelgatewayv1.ClassifyResponse{Model: c.choiceOf(cand), Usage: priced(cand, result.Usage)}
 	for _, r := range parsed.Results {
 		if !slices.Contains(labels, r.Label) {
-			err := invalid("bad_classification", "分类结果里有不在 labels 里的值")
-			tr.end(c, cand, priced(cand, result.Usage), err)
-			return nil, connecterr.Error(s.billedFailure(c, cand, result.Usage, err))
+			err := s.billedFailure(c, cand, result.Usage, invalid("bad_classification", "分类结果里有不在 labels 里的值"))
+			tr.end(c, cand, c.billed, err)
+			return nil, connecterr.Error(err)
 		}
 		out.Results = append(out.Results, &modelgatewayv1.Classification{Label: r.Label, Confidence: min(max(r.Confidence, 0), 1)})
 	}
 	s.served(c, cand, out.GetUsage())
+	out.Usage = addUsage(out.GetUsage(), c.billed)
 	tr.end(c, cand, out.GetUsage(), nil)
 	return connect.NewResponse(out), nil
 }

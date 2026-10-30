@@ -7,7 +7,8 @@ GrpcModelGateway 实现 executor.model_gateway.ModelGateway：经 grpcio 调用 
 错误还原（与 Go 侧的约定）：
 - trailer ar-error-bin 是序列化的 agentruntime.common.v1.Error：按类别还原为 ProviderError（ProviderError.from_proto），
   code 与 message 原样保留；transient 时 details 里的 retry_after_ms（整数毫秒）还原为 retry_after，
-  它不是非负数时忽略（retry_after 为 None）。
+  它不是非负数时忽略（retry_after 为 None）。details 里的 billed_cost_usd_micros（失败之前已经计费的花费）还原到错误上，
+  调用方用 executor.model_gateway.billed_cost_usd 取出（TMP 计划第 11.11 节）。
 - 没有这个 trailer、trailer 解析不了、或类别是 UNSPECIFIED 与不认识的值时，按 gRPC 状态码映射：UNAVAILABLE、DEADLINE_EXCEEDED、RESOURCE_EXHAUSTED → TransientError；
   INVALID_ARGUMENT → InvalidError；PERMISSION_DENIED、UNAUTHENTICATED → DeniedError；NOT_FOUND → NotFoundError；
   其余 → TransientError。
@@ -40,6 +41,7 @@ from agentruntime.modelgateway.v1 import model_gateway_pb2_grpc as mg_grpc
 from agentruntime_core.errors import DeniedError, ErrorCategory, InvalidError, NotFoundError, ProviderError, TransientError
 
 from agentruntime_worker.config import ENV_MODEL_GATEWAY_ADDRESS
+from agentruntime_worker.executor.model_gateway import with_billed_cost
 
 # trailer 的名字：值是序列化的 agentruntime.common.v1.Error（proto 二进制；-bin 后缀表示二进制元数据）。
 ERROR_TRAILER = "ar-error-bin"
@@ -47,6 +49,8 @@ ERROR_TRAILER = "ar-error-bin"
 RETRY_AFTER_DETAIL = "retry_after_ms"
 # 网关的 models_exhausted 在 details 里带上最后一次失败的代码（TMP 计划 eval-observability-and-runtime-fixes 第 4 节），写进说明里。
 LAST_ERROR_CODE_DETAIL = "last_error_code"
+# details 里失败之前已经计费的花费（微美元），与 Go 侧 connecterr.BilledCostDetail 同名。
+BILLED_COST_DETAIL = "billed_cost_usd_micros"
 # 每次调用的默认 deadline（秒）：容得下网关的三次尝试（go-model-gateway 的 gateway.DefaultAttemptTimeout 是 90 秒）。
 DEFAULT_TIMEOUT_S = 300.0
 # 在 activity 里调用时，deadline 比 activity 剩下的时间再早这么多秒：留给错误回传与 activity 收尾。
@@ -100,7 +104,11 @@ def _from_trailer(raw: Any) -> ProviderError | None:
     last = error.details.fields.get(LAST_ERROR_CODE_DETAIL)
     if last is not None and last.WhichOneof("kind") == "string_value" and last.string_value:
         message = f"{message}（最后一次失败：{last.string_value}）"
-    return ProviderError.of(category, error.code or "gateway_error", message, retry_after=retry_after)
+    restored = ProviderError.of(category, error.code or "gateway_error", message, retry_after=retry_after)
+    billed = error.details.fields.get(BILLED_COST_DETAIL)
+    if billed is not None and billed.WhichOneof("kind") == "number_value" and billed.number_value > 0:
+        with_billed_cost(restored, int(billed.number_value))
+    return restored
 
 
 def restore_error(exc: grpc.aio.AioRpcError) -> ProviderError:

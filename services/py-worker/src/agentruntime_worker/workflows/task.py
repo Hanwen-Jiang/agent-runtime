@@ -17,6 +17,9 @@
   在跑的时间，等人回复的时间不算。用量写进 Task State 的 budget_used 与各 Round 的 tool_calls。
 - 规划与评审调用由工作流重试（同一计划第 4 节，DECISION_RETRY_PATCH，workflows/decisions.py），重试之前推 decision_retry；
   用完或到了总时限，规划用不调模型的保守规划，评审只按规则判定。
+- 用量（同一计划第 11.11 节）：美元的用量是各 Round 的 cost_usd 之和，结局的 usage.cost_usd_micros 填它（token 数不填）。
+  正在跑的 Round 在 task_state 查询的结果里带上已花的钱（规划加上 Stage 里已经花的），只改查询给出的副本：交给 activity 的
+  Task State 不带它（Stage Runner 另外把规划的花费算进已花的钱，写进去会重复计）。不改命令序列。
 
 Stage 由 Stage Runner 执行（S-04，workflows/stage_runner.py）。S-03 的旧执行路径保留在版本分支后面，
 S-03 留下的事件历史仍按旧路径回放；S-10 之前的历史同样按旧的 Round 循环与收尾顺序回放。
@@ -28,6 +31,7 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+from collections.abc import Callable
 from datetime import timedelta
 from typing import Any
 
@@ -38,7 +42,7 @@ from temporalio.exceptions import ApplicationError, CancelledError, FailureError
 with workflow.unsafe.imports_passed_through():
     from google.protobuf import json_format, struct_pb2
 
-    from agentruntime.common.v1 import enums_pb2, error_pb2, payload_pb2
+    from agentruntime.common.v1 import enums_pb2, error_pb2, metering_pb2, payload_pb2
     from agentruntime.workflow.v1 import task_pb2
 
     from agentruntime_worker import names
@@ -195,6 +199,8 @@ class TaskWorkflow:
         self._delivery: tuple[str, Any] | None = None
         self._final_verdict: dict[str, Any] | None = None
         self._stage_cost = 0.0
+        # Stage 正在跑时这一轮已经花的钱（规划加上 Stage Runner 已经花的）；不在跑时为 None。只给查询与结局用。
+        self._running_spent: Callable[[], float] | None = None
         # 当前的 Task Plan：交给 Stage Runner，tool_loop 的 Context Builder 据此取工作模式与阈值（只是输入）。
         self._task_plan: dict[str, Any] | None = None
         # T-09：是否走 Policy Engine 的版本分支；before_finish 已经驳回的次数。
@@ -276,8 +282,19 @@ class TaskWorkflow:
             round_seq=self._round_seq,
         )
         if self._state:
-            result.task_state.CopyFrom(payload_pb2.JsonPayload(schema_id=names.TASK_STATE_SCHEMA_ID, value=_to_value(self._state)))
+            result.task_state.CopyFrom(payload_pb2.JsonPayload(schema_id=names.TASK_STATE_SCHEMA_ID, value=_to_value(self._state_with_running_cost())))
         return result
+
+    def _state_with_running_cost(self) -> dict[str, Any]:
+        """查询给出的 Task State：Stage 正在跑时，这一轮带上已经花的钱（副本，不改工作流里的 Task State）。"""
+        rounds = self._state.get("rounds") or []
+        if self._running_spent is None or not rounds or "cost_usd" in rounds[-1]:
+            return self._state
+        return {**self._state, "rounds": [*rounds[:-1], {**rounds[-1], "cost_usd": round(self._running_spent(), 6)}]}
+
+    def _spent_usd(self) -> float:
+        """Task 已经花的钱：各 Round 的 cost_usd 之和，正在跑的那一轮算上已经花的。"""
+        return sum(float(r.get("cost_usd") or 0.0) for r in self._state_with_running_cost().get("rounds") or [])
 
     # --- TMP 计划第 3 节：时间与工具调用预算 ---
 
@@ -856,7 +873,11 @@ class TaskWorkflow:
             decision_retry=self._retry_in_workflow,
         )
         runner = StageRunner(ctx, self)
-        results = await runner.run(stage, carried=carried, injections=injections)
+        self._running_spent = lambda: plan_cost + runner.spent_usd
+        try:
+            results = await runner.run(stage, carried=carried, injections=injections)
+        finally:
+            self._running_spent = None
         self._stage_policy = ctx.policy
         self._stage_cost = runner.spent_usd
         self._stage_tool_calls = runner.tool_calls
@@ -954,6 +975,7 @@ class TaskWorkflow:
             deliver_node_id=deliver_node,
             rounds=len(self._state.get("rounds", [])),
             artifacts=[str(a) for a in self._state.get("artifacts", [])],
+            usage=metering_pb2.Usage(cost_usd_micros=round(self._spent_usd() * 1_000_000)),
         )
         if deliverable is not None:
             result.deliverable.CopyFrom(payload_pb2.JsonPayload(value=_to_value(deliverable)))
