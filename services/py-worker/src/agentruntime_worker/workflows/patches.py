@@ -51,6 +51,8 @@ BUDGETS_PATCH = "tmp-time-tool-budgets"
 DECISION_RETRY_PATCH = "tmp-decision-retry"
 # 同一计划第 5 节：问人后停止或没有回复时另推一个带代码的 abort verdict 事件，多了推送的命令。
 CODES_PATCH = "tmp-message-codes"
+# docs/plan/running-task-interaction.md 第 1 节：一次模型回答里的多个工具调用都执行，多了并发的 activity，改变了命令序列。
+PARALLEL_TOOL_CALLS_PATCH = "parallel-tool-calls"
 
 # 新的运行在第一个工作流任务里一次问完全部版本分支（模块说明）。
 PATCHES_AT_START = "s04-patches-at-start"
@@ -69,6 +71,7 @@ AT_START = (
     BUDGETS_PATCH,
     DECISION_RETRY_PATCH,
     CODES_PATCH,
+    PARALLEL_TOOL_CALLS_PATCH,
 )
 
 

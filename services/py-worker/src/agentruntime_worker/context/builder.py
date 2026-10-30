@@ -293,6 +293,10 @@ class ContextBuilder:
         observation = step.get("observation")
         if "error" in step:
             text = f"第 {i} 步出错：{step['error']}"
+        elif step.get("rejected"):
+            # 附录 E.1：拒绝时把审批人的指导作为这一步的观察送回循环。
+            guidance = step.get("guidance")
+            text = f"第 {i} 步没有执行：{'审批超时' if step.get('timed_out') else '审批人拒绝'}" + (f"；审批人的指导：{guidance}" if guidance else "")
         elif view is None:
             text = f"第 {i} 步的输出：{_json(observation)}"
         else:
@@ -329,8 +333,20 @@ class ContextBuilder:
             out.append(mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=text))
         if state.restored:
             out.append(mg.ChatMessage(role=mg.CHAT_ROLE_USER, text="【补回的原文】（压缩时丢掉、抽查发现需要的片段）\n" + "\n".join(state.restored)))
+        # 同一次回答的多个工具调用（step 相同）放进一条 assistant 消息，后面跟对应的 tool 消息。
+        action: mg.ChatMessage | None = None
+        previous: Any = None
         for i in range(state.covered, len(state.steps)):
-            out += self._step_messages(i, state.steps[i], state.views.get(i), mode)
+            step = state.steps[i]
+            current, result = self._step_messages(i, step, state.views.get(i), mode)
+            marker = step.get("step")
+            if action is not None and marker is not None and marker == previous:
+                action.tool_calls.extend(current.tool_calls)
+            else:
+                action = current
+                out.append(action)
+            out.append(result)
+            previous = marker
         return out
 
     def _assemble(self, request: ContextRequest, mode: ModePolicy, state: _State) -> list[mg.ChatMessage]:

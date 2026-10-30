@@ -218,6 +218,9 @@ class ToolLoopStep:
     tool: str = ""
     args: dict[str, Any] = field(default_factory=dict)
     result: Any = None
+    # 模型这次回答里的全部工具调用（{"tool", "args"}，按模型给的顺序）；tool、args 是第一个。旧的工作流只用 tool、args，
+    # PARALLEL_TOOL_CALLS_PATCH 之后的运行才看这里（docs/plan/running-task-interaction.md 第 1 节）。
+    calls: list[dict[str, Any]] = field(default_factory=list)
     # 这一步的模型花费（含 Context Builder 的摘要与 Probe），计入 Round 的成本；服务这一步的供应商。
     cost_usd: float = 0.0
     vendor: str = ""

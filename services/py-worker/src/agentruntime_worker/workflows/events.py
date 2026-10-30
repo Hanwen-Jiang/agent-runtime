@@ -218,9 +218,10 @@ class EventPublisher:
 
     async def tool_status(
         self, round_seq: int, node_id: str, step: int, tool: str, state: str, *,
-        target: str = "", duration_ms: int | None = None, startup_ms: int | None = None, error: str = "",
+        target: str = "", duration_ms: int | None = None, startup_ms: int | None = None, error: str = "", call: int = 0,
     ) -> None:
-        """tool_loop 里一次工具调用的状态；去重键 r<Round>/tool_status/<Goal Node>/<步>/<状态>。"""
+        """tool_loop 里一次工具调用的状态；去重键 r<Round>/tool_status/<Goal Node>/<步>/<状态>，同一步的第 2 个调用起再加上 /<序号>
+        （call，从 0 开始；否则会被当成重复的事件丢掉）。"""
         if not self._detail:
             return
         payload: dict[str, Any] = {"node_id": node_id, "step": step, "tool": tool[:TOOL_CHARS], "state": state}
@@ -235,7 +236,7 @@ class EventPublisher:
             code = code_of(error)
             if code:
                 payload["error_code"] = code
-        await self.publish(round_seq, "tool_status", payload, about=f"{node_id}/{step}/{state}")
+        await self.publish(round_seq, "tool_status", payload, about=f"{node_id}/{step}/{state}" + (f"/{call}" if call else ""))
 
     async def node_finished(self, round_seq: int, node_id: str, result: StageResult) -> None:
         await self.publish(round_seq, "node_finished", node_payload(node_id, result), about=node_id)

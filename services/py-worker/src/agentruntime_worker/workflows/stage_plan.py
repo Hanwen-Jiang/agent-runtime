@@ -27,6 +27,8 @@ APPROVAL_OPTIONS = ("approve", "reject")
 
 # 同一个错误连续出现几次就打断循环（附录 B.8）。
 REPEATED_ERROR_LIMIT = 3
+# 模型一次回答最多执行几个工具调用；多的记一条说明，模型可以下一步再调。
+MAX_TOOL_CALLS_PER_STEP = 8
 # Goal Node 嵌套深度上限（附录 E.1）。
 MAX_SUB_TASK_DEPTH = 2
 
@@ -441,11 +443,24 @@ def prune(scores: list[float], beam_width: int) -> list[int]:
 
 
 def repeated_error(history: list[Mapping[str, Any]], limit: int = REPEATED_ERROR_LIMIT) -> bool:
-    """tool_loop 最近 limit 步是否都以同一个错误结束（同一工具、同一错误说明）。"""
-    recent = history[-limit:]
-    if len(recent) < limit or any("error" not in step for step in recent):
+    """tool_loop 最近 limit 步是否都以同一个错误结束（同一工具、同一错误说明）。同一次回答的多个调用（step 相同）算一步，
+    跳过的不算：同一次回答里读三个不存在的文件不是原地重试。"""
+    steps: list[list[Mapping[str, Any]]] = []
+    for entry in history:
+        marker = entry.get("step")
+        if steps and marker is not None and steps[-1][0].get("step") == marker:
+            steps[-1].append(entry)
+        else:
+            steps.append([entry])
+    recent = steps[-limit:]
+    if len(recent) < limit:
         return False
-    signatures = {(step.get("tool"), step.get("error")) for step in recent}
+    signatures: set[tuple[Any, Any]] = set()
+    for group in recent:
+        ran = [entry for entry in group if not entry.get("skipped")]
+        if not ran or any("error" not in entry for entry in ran):
+            return False
+        signatures.update((entry.get("tool"), entry.get("error")) for entry in ran)
     return len(signatures) == 1
 
 

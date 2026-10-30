@@ -28,10 +28,11 @@ from agentruntime_worker.tools.catalog import ToolCatalog
 TOOL_LOOP_TIER = "strong@medium"
 # 放进 brief 的之前的对话（字）：上下文的预算要留给工具的结果（TMP 计划第 11.13 节）。
 CONVERSATION_CHARS = 8000
-SYSTEM_PROMPT = """你在执行一个 Goal Node 的 tool_loop：每一步要么调用一个工具，要么在完成条件满足时不再调用工具、直接给出结果。
+SYSTEM_PROMPT = """你在执行一个 Goal Node 的 tool_loop：每一步要么调用工具，要么在完成条件满足时不再调用工具、直接给出结果。
 
 规则：
-- 一步只调用一个工具；参数写完整、具体。
+- 互不依赖的读取（读几个文件、搜几个词）放在同一步一起调用，不要一个一个来；后面的调用要用前面的结果时才分步。参数写完整、具体。
+- 同一步里的写操作按你写的顺序逐个执行；前面的失败或被拒，后面的都不会执行。
 - 先看【精确状态】与【当前状态】里的进度和最近的错误，不要重做已经完成的步骤，也不要重读已经读过、内容没变的文件。
 - 被遮蔽或外置的输出只给了路径；确实需要细节时，用读取类工具按路径取回，不要凭印象编造。
 - 同一个错误连续出现时换一种做法，不要原地重试。
@@ -95,8 +96,8 @@ class ModelToolLoop:
         cost = round(response.usage.cost_usd_micros / 1_000_000 + built.cost_usd, 6)
         vendor = response.model.vendor
         if response.tool_calls:
-            call = response.tool_calls[0]
-            return ToolLoopStep(action="tool", tool=call.name, args=json_format.MessageToDict(call.arguments), cost_usd=cost, vendor=vendor)
+            calls = [{"tool": call.name, "args": json_format.MessageToDict(call.arguments)} for call in response.tool_calls]
+            return ToolLoopStep(action="tool", tool=calls[0]["tool"], args=calls[0]["args"], calls=calls, cost_usd=cost, vendor=vendor)
         result = json_format.MessageToDict(response.result) if response.HasField("result") else response.text
         return ToolLoopStep(action="finish", result=result, cost_usd=cost, vendor=vendor)
 

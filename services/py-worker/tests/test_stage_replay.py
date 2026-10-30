@@ -94,14 +94,17 @@ STAGE_CASES: dict[str, tuple[str, str]] = {
     "decision_retry": (names.TASK_WORKFLOW, r'"event":\s*"decision_retry"'),
     # 第 5 节：问人后人选择停止，另推一个带代码的 abort verdict 事件。
     "codes_human_stopped": (names.TASK_WORKFLOW, r'"reason_code":\s*"human_stopped"'),
+    # docs/plan/running-task-interaction.md 第 1 节：一次回答里的多个工具调用都执行（第二个的调用 id 是 <调用 id>.2）。
+    "tool_loop_parallel": (names.TASK_WORKFLOW, r'"node_id":\s*"[a-z_]+\.2\.2"'),
 }
 REVIEW_CASES = ("review_repair_rerun", "review_escalate_human", "review_rollback")
 POLICY_CASES = ("policy_effect_denied", "policy_finish_rejected", "policy_task_mounts")
 EVENTS_CASES = ("events_progress",)
 AT_START_CASES = ("patches_at_start",)
 R01_CASES = ("r01_failed_node_audited", "r01_tool_loop_budget")
-TMP_CASES = ("budget_ask_human", "budget_tool_calls_stop", "decision_retry", "codes_human_stopped")
-CODES_CASES = ("codes_human_stopped",)
+PARALLEL_CASES = ("tool_loop_parallel",)
+TMP_CASES = ("budget_ask_human", "budget_tool_calls_stop", "decision_retry", "codes_human_stopped", *PARALLEL_CASES)
+CODES_CASES = ("codes_human_stopped", *PARALLEL_CASES)
 # 一次问完全部版本分支之后录下的（新历史开头带全部版本标记）。
 NEWER_CASES = (*AT_START_CASES, *R01_CASES, *TMP_CASES)
 
@@ -229,6 +232,11 @@ def test_version_branch_keeps_old_histories_replayable() -> None:
         assert patches.CODES_PATCH in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"{name} 应带 {patches.CODES_PATCH}"
     for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in CODES_CASES)):
         assert patches.CODES_PATCH not in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"第 5 节之前的 {name} 不该有 {patches.CODES_PATCH}"
+    # 一次回答里的多个工具调用：只有之后录下的有。
+    for name in PARALLEL_CASES:
+        assert patches.PARALLEL_TOOL_CALLS_PATCH in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"{name} 应带 {patches.PARALLEL_TOOL_CALLS_PATCH}"
+    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in PARALLEL_CASES)):
+        assert patches.PARALLEL_TOOL_CALLS_PATCH not in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"之前的 {name} 不该有 {patches.PARALLEL_TOOL_CALLS_PATCH}"
 
 
 async def test_all_golden_histories_replay_with_the_current_code() -> None:

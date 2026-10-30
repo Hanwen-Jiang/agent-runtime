@@ -76,6 +76,7 @@ with workflow.unsafe.imports_passed_through():
         HUMAN_CHANNEL_PATCH,
         HUMAN_REPLY_RACE_PATCH,
         POLICY_PATCH,
+        PARALLEL_TOOL_CALLS_PATCH,
         R01_FIXES_PATCH,
         RECONCILE_PATCH,
         TOOL_LOOP_APPROVAL_PATCH,
@@ -1082,6 +1083,7 @@ class StageRunner:
 
         调用 effect 为 write_irreversible 的工具前逐次人工审批（D16，附录 E.1）：拒绝或超时时不调用，把结果作为这一步的
         观察送回循环；同一个 Goal Node 被拒 MAX_TOOL_REJECTIONS 次就记为 denied。D16 之前的历史没有审批，按旧路径回放。
+        模型一次回答里有多个工具调用时见 _tool_batch；之前的运行（没有 PARALLEL_TOOL_CALLS_PATCH）只执行第一个。
         """
         nid = node["id"]
         limit = int(node.get("max_iterations") or DEFAULT_MAX_ITERATIONS)
@@ -1145,6 +1147,18 @@ class StageRunner:
             vendor = step.vendor or vendor
             if step.action == "finish":
                 return StageResult(role=DEFAULT_ROLE, status="succeeded", result=step.result, cost_usd=round(self.spent_usd - spent_before, 6), vendor=vendor)
+            if len(step.calls) > 1 and workflow.patched(PARALLEL_TOOL_CALLS_PATCH):
+                entries, stop, rejected = await self._tool_batch(nid, i, step, tool_effects, env, events, marks)
+                if stop is not None:
+                    return stop
+                history.extend(entries)
+                rejections += rejected
+                if rejections >= MAX_TOOL_REJECTIONS:
+                    return _denied(DEFAULT_ROLE, f"{nid} 的不可逆工具调用被拒绝 {rejections} 次（含审批超时），交给 Reviewer")
+                if sp.repeated_error(history):
+                    last = next(e["error"] for e in reversed(history) if "error" in e and not e.get("skipped"))
+                    return _failed(DEFAULT_ROLE, f"repeated_error：同一错误连续出现 {sp.REPEATED_ERROR_LIMIT} 次：{last}")
+                continue
             entry: dict[str, Any] = {"tool": step.tool, "args": step.args}
             if step.tool not in tool_effects:
                 entry["error"] = f"工具 {step.tool} 不在 {nid} 的可用列表里"
@@ -1166,50 +1180,137 @@ class StageRunner:
                         if rejections >= MAX_TOOL_REJECTIONS:
                             return _denied(DEFAULT_ROLE, f"{nid} 的不可逆工具调用被拒绝 {rejections} 次（含审批超时），交给 Reviewer")
                         continue
-                target = tool_target(step.args)
                 self.tool_calls += 1
-                if events is not None:
-                    await events.tool_status(self._ctx.round_seq, nid, i, step.tool, "running", target=target)
-                called_at = workflow.now()
-                try:
-                    async with self._writer(effect, env), self._slot():
-                        entry["observation"] = await workflow.execute_activity(
-                            names.CALL_TOOL,
-                            ToolCallInput(
-                                tenant=self._ctx.tenant,
-                                task_id=self._ctx.task_id,
-                                round_seq=self._ctx.round_seq,
-                                node_id=call_id,
-                                tool=step.tool,
-                                args=step.args,
-                                effect=effect,
-                                gate=gate,
-                            ),
-                            task_queue=names.PROGRAM_QUEUE,
-                            start_to_close_timeout=timeouts.DEFAULT_NODE_TIMEOUT,
-                            retry_policy=RetryPolicy(maximum_attempts=1 if effect in sp.WRITE_EFFECTS else 3),
-                            cancellation_type=workflow.ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
-                        )
-                except FailureError as err:
-                    if caused_by_cancel(err):
-                        raise asyncio.CancelledError() from err
-                    entry["error"] = failure_message(err)
-                if "error" not in entry and _lists_empty_root(step.tool, step.args, entry.get("observation")):
-                    # TMP 计划第 2 节：工作区根是空的，交给 Reviewer 的硬信号。
-                    marks.add("environment")
-                if events is not None:
-                    took = int((workflow.now() - called_at).total_seconds() * 1000)
-                    if "error" in entry:
-                        await events.tool_status(self._ctx.round_seq, nid, i, step.tool, "failed", target=target, duration_ms=took, error=str(entry["error"]))
-                    else:
-                        await events.tool_status(
-                            self._ctx.round_seq, nid, i, step.tool, "succeeded", target=target, duration_ms=took,
-                            startup_ms=sandbox_startup_ms(entry.get("observation")),
-                        )
+                await self._announce_tool_call(nid, i, 0, entry, events)
+                await self._execute_tool_call(nid, i, 0, call_id, entry, effect, gate, env, events, marks)
             history.append(entry)
             if sp.repeated_error(history):
                 return _failed(DEFAULT_ROLE, f"repeated_error：同一错误连续出现 {sp.REPEATED_ERROR_LIMIT} 次：{entry['error']}")
         return _failed(DEFAULT_ROLE, f"max_iterations：{limit} 步内没有完成")
+
+    async def _announce_tool_call(self, nid: str, i: int, ordinal: int, entry: dict[str, Any], events: EventPublisher | None) -> None:
+        if events is not None:
+            await events.tool_status(self._ctx.round_seq, nid, i, entry["tool"], "running", target=tool_target(entry["args"]), call=ordinal)
+
+    async def _execute_tool_call(
+        self, nid: str, i: int, ordinal: int, call_id: str, entry: dict[str, Any], effect: str, gate: GateRecord | None,
+        env: _Env, events: EventPublisher | None, marks: set[str],
+    ) -> None:
+        """执行一次工具调用，结果写进 entry（observation 或 error），完成后推 tool_status。"""
+        tool, args = entry["tool"], entry["args"]
+        called_at = workflow.now()
+        try:
+            async with self._writer(effect, env), self._slot():
+                entry["observation"] = await workflow.execute_activity(
+                    names.CALL_TOOL,
+                    ToolCallInput(
+                        tenant=self._ctx.tenant,
+                        task_id=self._ctx.task_id,
+                        round_seq=self._ctx.round_seq,
+                        node_id=call_id,
+                        tool=tool,
+                        args=args,
+                        effect=effect,
+                        gate=gate,
+                    ),
+                    task_queue=names.PROGRAM_QUEUE,
+                    start_to_close_timeout=timeouts.DEFAULT_NODE_TIMEOUT,
+                    retry_policy=RetryPolicy(maximum_attempts=1 if effect in sp.WRITE_EFFECTS else 3),
+                    cancellation_type=workflow.ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
+                )
+        except FailureError as err:
+            if caused_by_cancel(err):
+                raise asyncio.CancelledError() from err
+            entry["error"] = failure_message(err)
+        if "error" not in entry and _lists_empty_root(tool, args, entry.get("observation")):
+            # TMP 计划第 2 节：工作区根是空的，交给 Reviewer 的硬信号。
+            marks.add("environment")
+        if events is not None:
+            target = tool_target(args)
+            took = int((workflow.now() - called_at).total_seconds() * 1000)
+            if "error" in entry:
+                await events.tool_status(self._ctx.round_seq, nid, i, tool, "failed", target=target, duration_ms=took, error=str(entry["error"]), call=ordinal)
+            else:
+                await events.tool_status(
+                    self._ctx.round_seq, nid, i, tool, "succeeded", target=target, duration_ms=took,
+                    startup_ms=sandbox_startup_ms(entry.get("observation")), call=ordinal,
+                )
+
+    async def _tool_batch(
+        self, nid: str, i: int, step: ToolLoopStep, tool_effects: dict[str, str], env: _Env, events: EventPublisher | None, marks: set[str],
+    ) -> tuple[list[dict[str, Any]], StageResult | None, int]:
+        """模型一次回答里的多个工具调用（docs/plan/running-task-interaction.md 第 1 节）。
+
+        连续的只读调用一批（_run_reads）；写操作按顺序一个一个跑，之前的读先做完。读的失败不影响别的读；写的失败或被拒，这次回答里
+        后面的调用都不执行（它们是按前面成功来写的），每个调用仍有一条记录，下一步的模型调用要配对。调用 id：第一个 <Goal>.<2i>，
+        之后 <Goal>.<2i>.<序号>（序号从 2 开始；审批 id 是 <调用 id>.1，不会撞）。
+        返回（按模型给的顺序的记录、让节点停下的结果、这次被拒的次数）。
+        """
+        entries: list[dict[str, Any]] = [{"tool": str(c.get("tool") or ""), "args": c.get("args") or {}, "step": i} for c in step.calls]
+        reads: list[tuple[int, str, dict[str, Any], str]] = []
+        halted = ""
+        rejected = 0
+        for k, entry in enumerate(entries):
+            if k >= sp.MAX_TOOL_CALLS_PER_STEP:
+                entry.update(error=f"一次最多执行 {sp.MAX_TOOL_CALLS_PER_STEP} 个工具调用，这个没有执行；需要的话下一步再调", skipped=True)
+                continue
+            if halted:
+                entry.update(error=halted, skipped=True)
+                continue
+            tool = entry["tool"]
+            if tool not in tool_effects:
+                entry["error"] = f"工具 {tool} 不在 {nid} 的可用列表里"
+                continue
+            effect = tool_effects[tool]
+            call_id = sp.child_id(nid, 2 * i) if k == 0 else sp.child_id(nid, 2 * i, k + 1)
+            if effect not in sp.WRITE_EFFECTS:
+                reads.append((k, call_id, entry, effect))
+                continue
+            stop = await self._run_reads(nid, i, reads, env, events, marks)
+            reads = []
+            stop = stop or self._budget_stop(nid, before_call=True)
+            if stop is not None:
+                return entries, stop, rejected
+            gate: GateRecord | None = None
+            if effect == "write_irreversible":
+                gate, rejection, reason = await self._tool_approval(call_id, ToolLoopStep(action="tool", tool=tool, args=entry["args"]))
+                if reason:
+                    return entries, _denied(DEFAULT_ROLE, reason), rejected
+                if gate is None:
+                    entry.update(rejection)
+                    rejected += 1
+                    halted = "前面的调用被拒绝，这个没有执行"
+                    continue
+            self.tool_calls += 1
+            await self._announce_tool_call(nid, i, k, entry, events)
+            await self._execute_tool_call(nid, i, k, call_id, entry, effect, gate, env, events, marks)
+            if "error" in entry:
+                halted = "前面的写操作失败，这个没有执行"
+        stop = await self._run_reads(nid, i, reads, env, events, marks)
+        return entries, stop, rejected
+
+    async def _run_reads(
+        self, nid: str, i: int, reads: list[tuple[int, str, dict[str, Any], str]], env: _Env, events: EventPublisher | None, marks: set[str],
+    ) -> StageResult | None:
+        """一批只读调用：第一个先单独跑，它跑完环境就有了，其余的共用；一起开始的话各建一个沙箱，默认配额下第三个会被拒。
+        工具调用预算不够时跑完够的部分，返回让节点停下的结果。"""
+        allowed: list[tuple[int, str, dict[str, Any], str]] = []
+        stop: StageResult | None = None
+        for read in reads:
+            stop = self._budget_stop(nid, before_call=True)
+            if stop is not None:
+                break
+            self.tool_calls += 1
+            allowed.append(read)
+        if allowed:
+            k, call_id, entry, effect = allowed[0]
+            await self._announce_tool_call(nid, i, k, entry, events)
+            await self._execute_tool_call(nid, i, k, call_id, entry, effect, None, env, events, marks)
+        rest = allowed[1:]
+        if rest:
+            await asyncio.gather(*(self._announce_tool_call(nid, i, k, entry, events) for k, _, entry, _ in rest))
+            await asyncio.gather(*(self._execute_tool_call(nid, i, k, call_id, entry, effect, None, env, events, marks) for k, call_id, entry, effect in rest))
+        return stop
 
     async def _tool_approval(self, call_id: str, step: ToolLoopStep) -> tuple[GateRecord | None, dict[str, Any], str]:
         """tool_loop 里一次不可逆工具调用前的人工审批，审批 id 是 <调用 id>.1；超时按拒绝处理。
