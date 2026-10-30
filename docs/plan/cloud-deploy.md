@@ -542,6 +542,18 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
   `kubectl -n agent-runtime create configmap ar-agent-runtime-eval-dashboard --from-file=index.html --dry-run=client -o yaml | kubectl apply -f -`。
   约一分钟后 Pod 里的文件更新，不用重启；Cloudflare 最多再缓存 5 分钟。Chart 不渲染这个 ConfigMap，`helm upgrade` 不会清掉它。
 
+升级到 7210e3e（2026-10-30，TMP 计划第 11.13 节的 Session 上下文，加上第 11.12 节的评测看板；之前线上是 b05aa63）：
+
+- 同上一次的做法：`git archive` 打包、核对 sha256、换代码（旧的一份留在 `agent-runtime.b05aa63`）、重建 7 个 Runtime 镜像并导进 k3s。第 9 版的 values 是第 8 版改 `image.tag`，加上
+  `evalDashboard.enabled=true`、`evalDashboard.host=evals.cgent.link`（`/root/ar-release/values-rev9.yaml`）。`helm template` 与线上的 manifest 比过，只差镜像标签、`OTEL_SERVICE_VERSION` 与看板的 4 个资源。
+  升级前确认没有在跑的 TaskWorkflow。回滚：`helm rollback ar 8`。
+- task-service 启动时跑迁移 4（`tasks.message`）。回滚到第 8 版不用撤这一列：旧代码不读它，有默认值。
+- 页面用 `eval_dashboard.py --public` 生成，按上面的步骤发布。
+- 核对（不花钱）：各 Pod 的镜像都是 7210e3e、都在跑，新 Pod 的日志没有错误（task-service、出网网关、包镜像照旧第一次启动连不上 Temporal、重启一次就好）；`api.cgent.link/healthz` 200。
+  在 Worker 的 Pod 里：用它的连接角色读得到 `tasks`（含 `message` 列），同一个 Session id 换一个租户读到 0 行（行级安全）；按线上配置组装出来的 Planner、Node Executor、tool_loop 都带着 `SessionTranscript`。
+  看板经 Traefik（`curl --resolve evals.cgent.link:443:127.0.0.1`）：页面 200，带 CSP 等响应头，`/secret`、`/.git/config` 404，POST 405。
+- **没有验证**：模型实际答得对不对（要真调模型）；`evals.cgent.link` 的公网访问（DNS 记录与 Full (strict) 规则要人在 Cloudflare 上加，核对时还没有记录）。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。

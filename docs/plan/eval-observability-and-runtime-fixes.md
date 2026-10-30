@@ -645,7 +645,7 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
   与结局的 usage（查询与结局用副本，交给 activity 的 Task State 不变）。
 - 没改 proto、schema，没加版本分支；golden 历史照旧回放。
 
-### 11.12 评测看板对外开放（2026-10-30 人确认，已实现，等 Cloudflare 与部署）
+### 11.12 评测看板对外开放（2026-10-30 人确认，已部署 7210e3e，页面已发布，等 Cloudflare 的 DNS 记录与 Full (strict) 规则）
 
 人的要求：评测图表页面对外开放，放在合适的子域名下，定英文与中文的术语名。
 
@@ -709,7 +709,7 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
 - `agentruntime_learning.evals.dashboard_server`（只用标准库）；Chart 的 `templates/eval-dashboard.yaml` 与 `evalDashboard`；发布步骤见 `cloud-deploy.md`。
 - 在浏览器里经这个服务（带 CSP）看过公开版：26 份报告都显示，控制台没有错误。Chart 的测试要 helm，本机没有，在服务器上跑（`AR_REPO_ROOT` 指向解开的目录）。
 
-### 11.13 Session 里的后续消息没有上下文（2026-10-30，P0，人确认，已实现）
+### 11.13 Session 里的后续消息没有上下文（2026-10-30，P0，人确认，已实现并上线 7210e3e；真模型的效果等人复测）
 
 **现象**（人测试的一个 Session，内容已脱敏）：第一条消息让 Agent 读仓库并说明结构，回答里提到了一个模块名。接着：
 
