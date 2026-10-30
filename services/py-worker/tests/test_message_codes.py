@@ -9,10 +9,13 @@
   上游没成功而跳过的是 upstream_failed；tool_loop 里工具的错误写成“代码: 说明”的，tool_status 带 error_code。
 - 代码写的固定规划（fast、Recipe、保守规划）的 goal、exit_when 带 goal_code、exit_when_code 与 params（PlanRoundOutput，
   stage_started 带出），文字留着作后备；Planner 模型写的不带。原地重跑沿用这个 Stage 的代码，重新规划后换成新规划的。
+- 理由是代码给的 abort，交付带 codes（reason_code、params 与这一轮各 Node 的状态），模型写的不带；下一条消息的上下文看不到 codes。
+- 默认的 done_when 在 Task State 的查询里带 done_when_code；Planner、Reviewer 拿到的 Task State 没有它。
 """
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import pytest
@@ -20,11 +23,13 @@ from temporalio.testing import ActivityEnvironment
 
 from agentruntime.common.v1 import enums_pb2
 
-from agentruntime_worker.activities.types import PlanRoundOutput, StagePolicy, ToolLoopStep
+from agentruntime_worker.activities.types import PlanRoundOutput, StagePolicy, StageResult, ToolLoopStep
 from agentruntime_worker.planner.activities import PlannerActivities
 from agentruntime_worker.planner.context import StaticContextSource
 from agentruntime_worker.planner.planner import Planner
 from agentruntime_worker.reviewer.rules import Caps
+from agentruntime_worker.session.transcript import _reply
+from agentruntime_worker.workflows import verdicts as vd
 from agentruntime_worker.workflows.events import stage_payload
 from agentruntime_worker.workflows.task import _finish_escalation
 
@@ -36,7 +41,8 @@ from .test_planner_activity import plan_input
 from .test_reviewer_rules import LINT_FAIL, LINT_STAGE, decide, lint_history
 from .test_stage_runner import deliver, one_round, stage as run_stage
 from .test_stage_runner import goal as run_goal
-from .test_task_verdicts import out, reply_with, scripted
+from .test_task_verdicts import deliverable, out, reply_with, scripted
+from .test_task_verdicts import task_state as queried_state
 
 temporal = (pytest.mark.temporal, pytest.mark.asyncio(loop_scope="session"))
 
@@ -339,3 +345,101 @@ async def test_a_plan_the_model_wrote_has_no_codes() -> None:
     out_ = await ActivityEnvironment().run(plan_round(gateway), plan_input())
     assert out_.triage_level == "full"
     assert coded(out_) == ("", "", None)
+
+
+# --- abort 的交付 ---
+
+
+ROUND_RESULTS = {
+    "answer": StageResult(role="deliver", status="succeeded", result={"text": "半成品"}),
+    "fix": StageResult(role="act", status="failed", error="工具调用预算 5 次已经用完", error_code="budget_exhausted", params={"budget": "tool_calls", "limit": 5, "used": 5}),
+    "later": StageResult(role="deliver", status="skipped", error="上游 fix 没有成功", error_code="upstream_failed", params={"node": "fix"}),
+}
+
+
+def test_an_abort_result_with_a_coded_reason_carries_codes_next_to_the_text() -> None:
+    verdict = {**vd.stopped(ROUND_RESULTS, "工具调用预算用完，人选择停止"), "reason_code": "budget_stopped", "reason_params": {"budget": "tool_calls"}}
+    body = vd.abort_body(verdict, {"text": "半成品"}, ROUND_RESULTS)
+    assert body["reason"] == "工具调用预算用完，人选择停止" and body["completed"] == ["answer 已完成"], "文字留着作后备"
+    assert body["not_completed"] and body["partial"] == {"text": "半成品"}
+    codes = body["codes"]
+    assert codes["reason_code"] == "budget_stopped" and codes["params"] == {"budget": "tool_calls"}
+    assert [n["node_id"] for n in codes["nodes"]] == ["answer", "fix", "later"], "按 Node id 排序"
+    assert codes["nodes"][1]["error_code"] == "budget_exhausted" and codes["nodes"][1]["params"]["limit"] == 5
+    for node in codes["nodes"]:
+        assert "result" not in node
+        assert_valid("task_event_payload", {"event": "node_finished", "round_seq": 1, **node})
+
+
+def test_an_abort_result_the_model_wrote_has_no_codes() -> None:
+    verdict = {"verdict": "abort", "reason": "做不下去", "abort": {"completed": ["两组数据"], "not_completed": ["归因"]}}
+    assert vd.abort_body(verdict, None, ROUND_RESULTS) == {"reason": "做不下去", "completed": ["两组数据"], "not_completed": ["归因"]}
+
+
+@marked
+async def test_stopping_after_a_question_codes_the_abort_result(harness: StageHarness) -> None:
+    s = harness.script
+    s.plans["main"] = [run_stage(1, deliver("answer"))]
+    s.reviewer = scripted(out("escalate", "要问人", escalate=ESCALATE))
+    s.on_question = reply_with(harness, "stop_and_wrap_up")
+    _, result = await harness.run()
+    assert result.status == enums_pb2.TASK_STATUS_ABORTED
+    codes = deliverable(result)["codes"]
+    assert codes["reason_code"] == "human_stopped" and [n["node_id"] for n in codes["nodes"]] == ["answer"]
+
+
+@marked
+async def test_an_abort_from_the_model_keeps_its_own_text_in_the_result(harness: StageHarness) -> None:
+    s = harness.script
+    s.plans["main"] = [run_stage(1, deliver("answer"))]
+    s.reviewer = scripted(out("abort", "做不下去", abort={"completed": ["两组数据"], "not_completed": ["归因"]}))
+    _, result = await harness.run()
+    assert "codes" not in deliverable(result)
+
+
+@marked
+async def test_a_policy_refusal_is_coded_with_a_detail_that_fits_the_params(harness: StageHarness) -> None:
+    harness.script.policy_error = "策略库连不上" * 80
+    one_round(harness, deliver("answer"))
+    _, result = await harness.run()
+    assert result.status == enums_pb2.TASK_STATUS_ABORTED
+    body = deliverable(result)
+    assert "策略库连不上" in body["reason"] and body["not_completed"], "文字留着作后备"
+    codes = body["codes"]
+    assert codes["reason_code"] == "policy_refused" and codes["nodes"] == []
+    assert codes["params"]["detail"] == body["reason"][:300]
+    assert_valid("verdict", {"verdict": "abort", "reason": "x", "reason_code": codes["reason_code"], "reason_params": codes["params"], "abort": {"completed": [], "not_completed": ["x"]}})
+
+
+def test_the_next_message_does_not_see_the_codes_of_an_abort_result() -> None:
+    verdict = {**vd.stopped(ROUND_RESULTS, "人选择停止"), "reason_code": "human_stopped"}
+    body = vd.abort_body(verdict, None, ROUND_RESULTS)
+    reply = _reply({"status": "TASK_STATUS_ABORTED", "deliverable": {"value": body}})
+    assert json.loads(reply) == {k: v for k, v in body.items() if k != "codes"}, "codes 只给客户端；模型看文字"
+
+
+def test_a_field_named_codes_in_a_normal_result_stays_in_the_next_messages_context() -> None:
+    value = {"codes": ["E1"], "total": 2}
+    assert json.loads(_reply({"status": "TASK_STATUS_DONE", "deliverable": {"value": value}})) == value
+
+
+# --- 默认的 done_when ---
+
+
+@marked
+async def test_the_default_done_when_is_coded_in_the_query_but_not_for_the_models(harness: StageHarness) -> None:
+    s = harness.script
+    one_round(harness, deliver("answer"))
+    inp, _ = await harness.run()
+    state = await queried_state(harness, inp.task_id)
+    assert state["done_when"] == "回答用户的问题" and state["done_when_code"] == "answer_question"
+    assert_valid("task_state", state)
+    assert "done_when_code" not in s.plan_inputs[0].task_state and "done_when_code" not in s.reviews[0].task_state
+
+
+@marked
+async def test_a_done_when_from_the_caller_has_no_code(harness: StageHarness) -> None:
+    one_round(harness, deliver("answer"))
+    inp, _ = await harness.run(done_when="测试全部通过")
+    state = await queried_state(harness, inp.task_id)
+    assert state["done_when"] == "测试全部通过" and "done_when_code" not in state

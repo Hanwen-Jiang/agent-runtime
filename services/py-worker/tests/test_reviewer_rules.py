@@ -289,6 +289,7 @@ def test_escalation_tries_a_stronger_tier_once_then_asks_a_human_twice_then_abor
     last, _, _ = decide(stage(atomic("a")), {"a": failed("e")}, escalate_human(), history=[shape_used, tier_used, *asked])
     assert last.verdict["verdict"] == "abort"
     assert last.verdict["abort"]["not_completed"], "abort 要说清没完成什么"
+    assert last.verdict["reason_code"], "规则写的 abort 带代码，客户端才翻得了它的交付"
 
 
 def test_the_model_may_choose_a_higher_step_than_the_floor() -> None:

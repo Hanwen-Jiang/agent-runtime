@@ -67,6 +67,9 @@ def _reply(outcome: dict[str, Any]) -> str:
         for key in REPLY_KEYS:
             if isinstance(value.get(key), str):
                 return value[key]
+        # abort 的交付里 codes 只给客户端翻译用，说明都在别的字段里，不占对话的字数。
+        if _status(outcome) == "aborted":
+            value = {k: v for k, v in value.items() if k != "codes"}
         # 只有一个文字字段时它就是正文（JSON 的转义读着费劲，也更占字数）。
         if len(value) == 1 and isinstance(next(iter(value.values())), str):
             return next(iter(value.values()))

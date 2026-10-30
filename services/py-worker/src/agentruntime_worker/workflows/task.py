@@ -88,6 +88,9 @@ MAX_FINISH_REJECTIONS = 2
 # T-09 第一期只认 allow 与 deny 的挂载点（modify、inject 按 deny）；before_compact 还没接，声明了就拒绝。
 STRICT_TASK_MOUNTS = ("on_task_received", "on_task_start", "before_finish")
 DEFAULT_DONE_WHEN = "回答用户的问题"
+DEFAULT_DONE_WHEN_CODE = "answer_question"
+# message_params 里字符串的上限（defs.schema.json）。
+PARAM_CHARS = 300
 # 时间、工具调用预算用完时问人的问题 id（TMP 计划第 3 节）：同 _review，不合 Node id 的格式。
 BUDGET_QUESTION_ID = "_budget"
 _BUDGET_LABELS = {"wall_clock": ("时间预算", "分钟"), "tool_calls": ("工具调用预算", "次")}
@@ -197,6 +200,8 @@ class TaskWorkflow:
         self._checkpoints: dict[int, dict[str, Any]] = {}
         self._stages: list[dict[str, Any]] = []
         self._delivery: tuple[str, Any] | None = None
+        # 最近一轮各 Node 的结果：代码给出理由的 abort 据此说清各 Node 的状态（TMP 计划第 11.5 节）。
+        self._round_results: dict[str, StageResult] = {}
         self._final_verdict: dict[str, Any] | None = None
         self._stage_cost = 0.0
         # Stage 正在跑时这一轮已经花的钱（规划加上 Stage Runner 已经花的）；不在跑时为 None。只给查询与结局用。
@@ -282,7 +287,11 @@ class TaskWorkflow:
             round_seq=self._round_seq,
         )
         if self._state:
-            result.task_state.CopyFrom(payload_pb2.JsonPayload(schema_id=names.TASK_STATE_SCHEMA_ID, value=_to_value(self._state_with_running_cost())))
+            state = self._state_with_running_cost()
+            if state.get("done_when") == DEFAULT_DONE_WHEN:
+                # 默认的说明带代码给客户端翻译。只在查询里带：Planner 的提示整份带 Task State，模型不该看到它（TMP 计划第 11.5 节）。
+                state = {**state, "done_when_code": DEFAULT_DONE_WHEN_CODE}
+            result.task_state.CopyFrom(payload_pb2.JsonPayload(schema_id=names.TASK_STATE_SCHEMA_ID, value=_to_value(state)))
         return result
 
     def _state_with_running_cost(self) -> dict[str, Any]:
@@ -525,6 +534,7 @@ class TaskWorkflow:
             results = await self._run_stage(seq, stage, carried=carried, injections=injections, plan_cost=plan_cost)
             round_entry["cost_usd"] = round(plan_cost + self._stage_cost, 6)
             last_results = results
+            self._round_results = results
             if self._budgets:
                 round_entry["tool_calls"] = self._stage_tool_calls
                 self._tool_calls += self._stage_tool_calls
@@ -618,7 +628,13 @@ class TaskWorkflow:
 
     def _refuse(self, reason: str) -> task_pb2.TaskWorkflowResult:
         """Task 级的拒绝：不规划，以 abort 收尾。"""
-        return self._aborted({"verdict": "abort", "reason": reason, "abort": {"completed": [], "not_completed": ["整个 Task（被 Policy Engine 拒绝）"]}})
+        return self._aborted({
+            "verdict": "abort",
+            "reason": reason,
+            "reason_code": "policy_refused",
+            "reason_params": {"detail": reason[:PARAM_CHARS]},
+            "abort": {"completed": [], "not_completed": ["整个 Task（被 Policy Engine 拒绝）"]},
+        })
 
     async def _task_hooks(self, mount: str, hooks: list[str], subject: dict[str, Any]) -> str:
         """在 Task 级挂载点执行 Hook，返回拒绝的理由（放行时为空）。Hook 执行不了按拒绝；第一期这些挂载点只认 allow 与 deny，
@@ -766,7 +782,7 @@ class TaskWorkflow:
         self._final_verdict = verdict
         self._set_status(enums_pb2.TASK_STATUS_ABORTED)
         node, partial = self._delivery or ("", None)
-        return self._result(verdict=enums_pb2.VERDICT_ABORT, deliver_node=node, deliverable=vd.abort_body(verdict, partial))
+        return self._result(verdict=enums_pb2.VERDICT_ABORT, deliver_node=node, deliverable=vd.abort_body(verdict, partial, self._round_results))
 
     async def _ask_human(self, seq: int, verdict: dict[str, Any]) -> task_pb2.HumanReplySignal | None:
         """Reviewer 升级问人（设计书 4.11）：带着状态摘要与具体问题，回复限定三种；超时或发不出问题时返回 None。"""

@@ -19,6 +19,7 @@ from agentruntime_worker.activities.types import StageResult
 from agentruntime_worker.reviewer.rules import repair_targets
 from agentruntime_worker.reviewer.signals import FAILED_STATUSES
 from agentruntime_worker.workflows import stage_plan as sp
+from agentruntime_worker.workflows.events import node_payload
 
 REVIEW_QUESTION_ID = "_review"
 """Reviewer 问人时工作流里的问题 id：不合 Node id 的格式，不会与任何 Node 冲突。"""
@@ -127,8 +128,10 @@ def stopped(results: Mapping[str, StageResult], reason: str) -> dict[str, Any]:
     return {"verdict": "abort", "reason": reason, "abort": {"completed": completed, "not_completed": not_completed or ["交付"]}}
 
 
-def abort_body(verdict: Mapping[str, Any], partial: Any = None) -> dict[str, Any]:
-    """abort 的交付：原因、完成了什么、没完成什么，以及最近一个成功的 deliver 节点的结果（有的话）。"""
+def abort_body(verdict: Mapping[str, Any], partial: Any = None, results: Mapping[str, StageResult] | None = None) -> dict[str, Any]:
+    """abort 的交付：原因、完成了什么、没完成什么，以及最近一个成功的 deliver 节点的结果（有的话）。理由是代码给的时候另带 codes
+    给客户端翻译：reason_code、params 与这一轮各 Node 的状态（字段同 node_finished，按 id 排序）；文字留着作后备（TMP 计划第 11.5 节）。
+    模型自己写的 abort 没有 codes。"""
     details = verdict.get("abort") or {}
     body: dict[str, Any] = {
         "reason": verdict.get("reason", ""),
@@ -137,4 +140,10 @@ def abort_body(verdict: Mapping[str, Any], partial: Any = None) -> dict[str, Any
     }
     if partial is not None:
         body["partial"] = partial
+    code = verdict.get("reason_code")
+    if code:
+        codes: dict[str, Any] = {"reason_code": code, "nodes": [node_payload(nid, r) for nid, r in sorted((results or {}).items())]}
+        if verdict.get("reason_params"):
+            codes["params"] = dict(verdict["reason_params"])
+        body["codes"] = codes
     return body

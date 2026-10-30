@@ -27,6 +27,18 @@
       }
     },
     {
+      "name": "default_done_when_code",
+      "source": "TMP 计划第 11.5 节",
+      "notes": "调用方没给 done_when：查询时带默认说明的代码，客户端按它翻译。",
+      "instance": {
+        "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+        "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "goal": "这个仓库是做什么的？",
+        "done_when": "回答用户的问题",
+        "done_when_code": "answer_question"
+      }
+    },
+    {
       "name": "minimal",
       "source": "附录 B.1 的必填部分",
       "notes": "新建 Task 时只有目标与验收条件。",
@@ -76,6 +88,18 @@
     {"name": "with_guidance_and_highlights", "source": "docs/plan/running-task-interaction.md 第 2、4 节", "notes": "一条已生效的纠偏、一条待生效的；第 1 个 Round 的重要输出。", "instance": {"task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B", "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z", "goal": "修复失败的测试", "done_when": "测试全部通过", "guidance": [{"guidance_id": "g_01", "text": "不要改公共接口", "mode": "next_step", "state": "applied", "applied_round": 1}, {"guidance_id": "g_02", "text": "先跑一遍全部测试", "mode": "interrupt", "state": "pending"}], "rounds": [{"seq": 1, "stage_goal": "定位原因", "status": "completed", "verdict": "continue", "highlights": {"files": [{"path": "src/calc.py", "why": "取整的错误在这里"}, {"path": "src/util.py"}], "answers": ["失败是因为四舍五入用了 int()。"]}}]}}
   ],
   "invalid": [
+    {
+      "name": "done_when_code_not_snake_case",
+      "description": "代码是 snake_case",
+      "violates": [{"path": "/done_when_code", "keyword": "pattern"}],
+      "instance": {
+        "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+        "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "goal": "这个仓库是做什么的？",
+        "done_when": "回答用户的问题",
+        "done_when_code": "AnswerQuestion"
+      }
+    },
     {
       "name": "missing_goal",
       "description": "Task State 必须有目标（附录 B.1）",

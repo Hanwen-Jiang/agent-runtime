@@ -10,6 +10,7 @@
     "session_id": {"$ref": "defs.schema.json#/$defs/session_id"},
     "goal": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
     "done_when": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+    "done_when_code": {"description": "done_when 是代码给的默认说明时的代码（例如 answer_question）；调用方给的 done_when 没有这一项。只在查询 Task State 时带，不进工作流里的 Task State，模型看不到（TMP 计划第 11.5 节）", "$ref": "defs.schema.json#/$defs/message_code"},
     "status": {"$ref": "defs.schema.json#/$defs/task_status"},
     "constraints": {
       "description": "通用约束有固定字段；其余是领域约束，例如 quarter，节点用 $task.constraints.<名> 引用",
