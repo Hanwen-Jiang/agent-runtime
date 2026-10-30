@@ -145,8 +145,20 @@
     {
       "name": "stage_started_fast_goal_code",
       "source": "TMP 计划第 5 节",
-      "notes": "fast 规划的 goal 是代码给的固定说明，带 goal_code。",
-      "instance": {"event": "stage_started", "round_seq": 1, "triage_level": "fast", "goal": "回复用户这条消息", "goal_code": "reply_to_message", "exit_when": "answer 给出回复", "nodes": [{"id": "answer", "kind": "atomic", "role": "deliver"}]}
+      "notes": "fast 规划的 goal、exit_when 是代码给的固定说明，带 goal_code、exit_when_code。",
+      "instance": {"event": "stage_started", "round_seq": 1, "triage_level": "fast", "goal": "回复用户这条消息", "goal_code": "reply_to_message", "exit_when": "answer 给出回复", "exit_when_code": "reply_given", "nodes": [{"id": "answer", "kind": "atomic", "role": "deliver"}]}
+    },
+    {
+      "name": "stage_started_recipe_codes",
+      "source": "TMP 计划第 11.5 节",
+      "notes": "Recipe 规划：goal_code 的参数是 Recipe；goal 的文字带用户消息，只作后备。",
+      "instance": {"event": "stage_started", "round_seq": 1, "triage_level": "light", "goal": "按 ci_fix@v2 完成：修一下 CI", "goal_code": "run_recipe", "exit_when": "Recipe 的子图完成，结果已交付", "exit_when_code": "recipe_delivered", "params": {"recipe": "ci_fix@v2"}, "nodes": [{"id": "run_recipe", "kind": "goal"}, {"id": "deliver", "kind": "atomic", "role": "deliver"}]}
+    },
+    {
+      "name": "stage_started_conservative_codes",
+      "source": "TMP 计划第 11.5 节",
+      "notes": "保守规划：exit_when_code 的参数是实际用的 Node。",
+      "instance": {"event": "stage_started", "round_seq": 2, "triage_level": "full", "goal": "探索并推进这个任务", "goal_code": "explore_task", "exit_when": "explore 给出结果", "exit_when_code": "node_result", "params": {"node": "explore"}, "nodes": [{"id": "explore", "kind": "goal"}]}
     },
     {
       "name": "node_finished_budget_code",
@@ -263,6 +275,12 @@
       "description": "代码是 snake_case",
       "violates": [{"path": "/reason_code", "keyword": "pattern"}],
       "instance": {"event": "verdict", "round_seq": 2, "verdict": "abort", "reason": "x", "reason_code": "BudgetExhausted"}
+    },
+    {
+      "name": "exit_when_code_not_snake_case",
+      "description": "代码是 snake_case",
+      "violates": [{"path": "/exit_when_code", "keyword": "pattern"}],
+      "instance": {"event": "stage_started", "round_seq": 1, "goal": "x", "exit_when": "x", "exit_when_code": "ReplyGiven", "nodes": []}
     }
   ]
 }

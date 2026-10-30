@@ -42,6 +42,8 @@
         "goal": {"type": "string"},
         "goal_code": {"description": "goal 是代码生成的固定说明时的代码（例如 fast 规划的 reply_to_message）；Planner 写的 goal 没有这一项（TMP 计划第 5 节）", "$ref": "defs.schema.json#/$defs/message_code"},
         "exit_when": {"type": "string"},
+        "exit_when_code": {"description": "exit_when 是代码生成的固定说明时的代码（例如 fast 规划的 reply_given）；Planner 写的 exit_when 没有这一项（TMP 计划第 11.5 节）", "$ref": "defs.schema.json#/$defs/message_code"},
+        "params": {"description": "goal_code、exit_when_code 的参数（例如 run_recipe 的 recipe、node_result 的 node）", "$ref": "defs.schema.json#/$defs/message_params"},
         "nodes": {
           "type": "array",
           "items": {

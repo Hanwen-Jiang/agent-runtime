@@ -14,6 +14,8 @@ ActivityName），参数是租户上下文、去重键与 taskapi.v1.TaskEvent�
   tool_target 给出的简短说明，经凭据脱敏；不带工具的输出。
 - TMP 计划（eval-observability-and-runtime-fixes）第 3～5 节：决策调用重试之前推 decision_retry（DECISION_RETRY_PATCH）；
   node_finished、human_input_required、verdict 带上给客户端翻译用的代码与参数（有的时候）。
+- 第 11.5 节：Stage 的 goal、exit_when 是代码写的固定说明时，stage_started 带 goal_code、exit_when_code 与 params；原地重跑
+  沿用这个 Stage 的文字，也沿用它的代码。只改 activity 的入参，不改命令序列。
 
 是工作流代码：时间用 workflow.now()，不做 I/O。
 """
@@ -36,7 +38,7 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime.taskapi.v1 import task_api_pb2
 
     from agentruntime_worker import names
-    from agentruntime_worker.activities.types import StageResult, Tenant
+    from agentruntime_worker.activities.types import PlanRoundOutput, StageResult, Tenant
     from agentruntime_worker.workflows.failures import caused_by_cancel, failure_message
 
 PUBLISH_START_TO_CLOSE = timedelta(seconds=5)
@@ -120,8 +122,9 @@ def _value(data: Any) -> struct_pb2.Value:
     return value
 
 
-def stage_payload(stage: dict[str, Any], triage_level: str | None, goal_code: str = "") -> dict[str, Any]:
-    """stage_started：目标、退出条件与节点清单（只有 id、kind、role）。重跑时没有 triage_level；goal 是代码给的固定说明时带 goal_code。"""
+def stage_payload(stage: dict[str, Any], triage_level: str | None, plan: PlanRoundOutput | None = None) -> dict[str, Any]:
+    """stage_started：目标、退出条件与节点清单（只有 id、kind、role）。重跑时没有 triage_level；goal、exit_when 是代码给的固定说明时带
+    plan（这个 Stage 的规划）里的代码与参数。"""
     nodes = []
     for node in stage.get("nodes", []):
         entry = {"id": str(node["id"]), "kind": str(node.get("kind", "atomic"))}
@@ -131,8 +134,11 @@ def stage_payload(stage: dict[str, Any], triage_level: str | None, goal_code: st
     payload: dict[str, Any] = {"goal": str(stage.get("goal", "")), "exit_when": str(stage.get("exit_when", "")), "nodes": nodes}
     if triage_level:
         payload["triage_level"] = triage_level
-    if goal_code and _CODE.match(goal_code):
-        payload["goal_code"] = goal_code
+    if plan is not None:
+        codes = {k: v for k, v in (("goal_code", plan.goal_code), ("exit_when_code", plan.exit_when_code)) if v and _CODE.match(v)}
+        payload.update(codes)
+        if codes and plan.params:
+            payload["params"] = dict(plan.params)
     return payload
 
 
@@ -203,8 +209,8 @@ class EventPublisher:
     async def round_started(self, round_seq: int, *, rerun: bool) -> None:
         await self.publish(round_seq, "round_started", {"rerun": rerun})
 
-    async def stage_started(self, round_seq: int, stage: dict[str, Any], triage_level: str | None, goal_code: str = "") -> None:
-        await self.publish(round_seq, "stage_started", stage_payload(stage, triage_level, goal_code))
+    async def stage_started(self, round_seq: int, stage: dict[str, Any], triage_level: str | None, plan: PlanRoundOutput | None = None) -> None:
+        await self.publish(round_seq, "stage_started", stage_payload(stage, triage_level, plan))
 
     async def node_started(self, round_seq: int, node: dict[str, Any]) -> None:
         if self._detail:

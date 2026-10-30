@@ -7,7 +7,8 @@
   驳回用满上限后的问人是 finish_rejected。
 - Node 失败的说明写成“代码：说明”的，node_finished 带 error_code（budget_check 记为 budget_exhausted、budget 为 usd），
   上游没成功而跳过的是 upstream_failed；tool_loop 里工具的错误写成“代码: 说明”的，tool_status 带 error_code。
-- fast 规划的固定 goal 带 goal_code reply_to_message（PlanRoundOutput.goal_code，stage_started 带出）。
+- 代码写的固定规划（fast、Recipe、保守规划）的 goal、exit_when 带 goal_code、exit_when_code 与 params（PlanRoundOutput，
+  stage_started 带出），文字留着作后备；Planner 模型写的不带。原地重跑沿用这个 Stage 的代码，重新规划后换成新规划的。
 """
 
 from __future__ import annotations
@@ -19,14 +20,15 @@ from temporalio.testing import ActivityEnvironment
 
 from agentruntime.common.v1 import enums_pb2
 
-from agentruntime_worker.activities.types import StagePolicy, ToolLoopStep
+from agentruntime_worker.activities.types import PlanRoundOutput, StagePolicy, ToolLoopStep
 from agentruntime_worker.planner.activities import PlannerActivities
 from agentruntime_worker.planner.context import StaticContextSource
 from agentruntime_worker.planner.planner import Planner
 from agentruntime_worker.reviewer.rules import Caps
+from agentruntime_worker.workflows.events import stage_payload
 from agentruntime_worker.workflows.task import _finish_escalation
 
-from .planner_support import FakeGateway, context, signals
+from .planner_support import CI_RECIPE, FakeGateway, context, last_round, plan_answer, signals
 from .reviewer_support import HUMAN_REPLIES, answer, atomic, done, failed, goal, ok, past, retry, rounds, stage, task_state
 from .stage_harness import StageHarness, harness  # noqa: F401 — harness 是 fixture
 from .support import assert_valid
@@ -228,18 +230,112 @@ async def test_the_fast_goal_is_coded_in_stage_started(harness: StageHarness) ->
     assert started["goal_code"] == "reply_to_message"
 
 
-# --- Planner：fast 的 goal ---
+EXPLORE_CODES = {"goal_code": "explore_task", "exit_when_code": "node_result", "params": {"node": "explore"}}
 
 
-async def test_a_fast_plan_returns_the_goal_code() -> None:
+def has_no_codes(event: dict[str, Any]) -> bool:
+    return not set(EXPLORE_CODES) & set(event)
+
+
+@marked
+async def test_stage_started_carries_the_plans_codes_next_to_the_text(harness: StageHarness) -> None:
+    harness.script.plan_codes[1] = EXPLORE_CODES
+    one_round(harness, deliver("answer"))
+    inp, _ = await harness.run()
+    started = events(harness, inp.task_id, "stage_started")[0]
+    assert {k: started[k] for k in EXPLORE_CODES} == EXPLORE_CODES
+    assert started["goal"] == "第 1 轮" and started["exit_when"] == "完成", "文字留着作后备"
+    assert_valid("task_event_payload", started)
+
+
+@marked
+async def test_a_rerun_keeps_the_stages_codes_and_a_new_plan_replaces_them(harness: StageHarness) -> None:
+    """原地重跑不经 Planner，goal、exit_when 还是这个 Stage 的文字，代码也得跟着：否则英文界面重跑时又是中文。"""
+    s = harness.script
+    s.plans["main"] = [run_stage(i, deliver("answer")) for i in (1, 2, 3)]
+    s.deliver["main"] = "answer"
+    s.plan_codes[1] = EXPLORE_CODES
+    s.reviewer = scripted(
+        out("repair", "再试一次", repair={"nodes": ["answer"], "strategy": "retry_with_error", "guidance": "换个写法"}),
+        out("continue", "下一轮回 Planner"),
+        out("done", "成稿", done={"deliver_node": "answer"}),
+    )
+    inp, result = await harness.run()
+    assert result.status == enums_pb2.TASK_STATUS_DONE and len(s.plan_inputs) == 2, "第 2 轮原地重跑，第 3 轮回 Planner"
+    _, rerun, replanned = events(harness, inp.task_id, "stage_started")
+    assert "triage_level" not in rerun and {k: rerun[k] for k in EXPLORE_CODES} == EXPLORE_CODES
+    assert replanned["triage_level"] == "full" and has_no_codes(replanned), "新规划没有代码时不留上一个的"
+    for e in harness.script.progress(inp.task_id):
+        assert_valid("task_event_payload", e)
+
+
+def test_stage_payload_drops_a_malformed_code_but_keeps_the_text() -> None:
+    stage_ = {"goal": "文字", "exit_when": "也是文字", "nodes": []}
+    plan = PlanRoundOutput(stage=stage_, triage_level="fast", goal_code="Not A Code", exit_when_code="reply_given")
+    payload = stage_payload(stage_, "fast", plan)
+    assert "goal_code" not in payload and payload["exit_when_code"] == "reply_given"
+    assert payload["goal"] == "文字" and payload["exit_when"] == "也是文字"
+
+
+def test_stage_payload_has_no_params_without_a_code() -> None:
+    stage_ = {"goal": "文字", "exit_when": "也是文字", "nodes": []}
+    plan = PlanRoundOutput(stage=stage_, triage_level="full", params={"node": "explore"})
+    assert "params" not in stage_payload(stage_, "full", plan)
+
+
+# --- Planner：代码写的固定规划 ---
+
+
+def plan_round(gateway: FakeGateway, ctx: Any = None) -> Any:
+    return PlannerActivities(Planner(gateway), StaticContextSource(ctx or context())).plan_round
+
+
+def coded(out_: PlanRoundOutput) -> tuple[str, str, Any]:
+    """规划的代码与参数；顺带核对 stage_started 的载荷符合 schema，Stage 里的文字还在。"""
+    assert out_.stage["goal"] and out_.stage["exit_when"], "文字留着作后备"
+    assert_valid("task_event_payload", {"event": "stage_started", "round_seq": 1, **stage_payload(out_.stage, out_.triage_level, out_)})
+    return out_.goal_code, out_.exit_when_code, out_.params
+
+
+async def test_a_fast_plan_codes_its_goal_and_exit_condition() -> None:
     gateway = FakeGateway(triage=signals("follow_up", family=None, effect="none"))
-    out_ = await ActivityEnvironment().run(PlannerActivities(Planner(gateway), StaticContextSource(context())).plan_round, plan_input("再短一点"))
-    assert out_.triage_level == "fast" and out_.goal_code == "reply_to_message"
+    out_ = await ActivityEnvironment().run(plan_round(gateway), plan_input("再短一点"))
+    assert out_.triage_level == "fast"
+    assert coded(out_) == ("reply_to_message", "reply_given", None)
 
 
-async def test_a_planned_goal_has_no_goal_code() -> None:
-    from .planner_support import plan_answer
+async def test_a_recipe_plan_codes_its_goal_and_exit_condition_with_the_recipe() -> None:
+    gateway = FakeGateway(triage=signals("new_task", family="engineering.ci_fix", effect="write_reversible"))
+    ctx = context(risk="write_reversible", ceiling="write_reversible", recipes=[CI_RECIPE], budget=5.0)
+    out_ = await ActivityEnvironment().run(plan_round(gateway, ctx), plan_input("还按老办法修一下"))
+    assert out_.triage_level == "light"
+    assert coded(out_) == ("run_recipe", "recipe_delivered", {"recipe": CI_RECIPE.recipe})
+    assert "还按老办法修一下" in out_.stage["goal"], "后备的文字仍是完整的说明"
 
+
+async def test_a_conservative_plan_without_the_model_codes_its_goal_and_exit_condition() -> None:
+    gateway = FakeGateway()
+    out_ = await ActivityEnvironment().run(plan_round(gateway), plan_input(no_model=True))
+    assert not gateway.requests
+    assert coded(out_) == ("explore_task", "node_result", {"node": "explore"})
+
+
+async def test_a_conservative_plan_after_two_bad_answers_is_coded_the_same_way() -> None:
+    gateway = FakeGateway(triage=signals(confidence=0.6), plan=["这不是 JSON", {"stage": "也不对"}])
+    out_ = await ActivityEnvironment().run(plan_round(gateway), plan_input())
+    assert coded(out_) == ("explore_task", "node_result", {"node": "explore"})
+
+
+async def test_the_exit_condition_names_the_node_the_conservative_plan_really_uses() -> None:
+    """要保留的 Node 占了 explore 这个 id 时，保守规划换一个 id，参数跟着换。"""
+    replan = last_round({"verdict": "replan", "reason": "假设被证伪", "replan": {"keep_nodes": ["explore"]}})
+    out_ = await ActivityEnvironment().run(plan_round(FakeGateway()), plan_input(round_seq=2, last_round=replan, no_model=True))
+    assert out_.stage["nodes"][0]["id"] == "explore_rest"
+    assert coded(out_) == ("explore_task", "node_result", {"node": "explore_rest"})
+
+
+async def test_a_plan_the_model_wrote_has_no_codes() -> None:
     gateway = FakeGateway(triage=signals(confidence=0.6), plan=[plan_answer()])
-    out_ = await ActivityEnvironment().run(PlannerActivities(Planner(gateway), StaticContextSource(context())).plan_round, plan_input())
-    assert out_.triage_level == "full" and out_.goal_code == ""
+    out_ = await ActivityEnvironment().run(plan_round(gateway), plan_input())
+    assert out_.triage_level == "full"
+    assert coded(out_) == ("", "", None)

@@ -51,6 +51,9 @@ class PlanRoundOutput:
     # TMP 计划第 5、6 节：goal 是代码给的固定说明时的代码（fast 的 reply_to_message）；这一轮服务端定的任务族（fast 也有）。
     goal_code: str = ""
     task_family: str = ""
+    # 第 11.5 节：exit_when 是代码给的固定说明时的代码；goal_code、exit_when_code 的参数。
+    exit_when_code: str = ""
+    params: dict[str, Any] | None = None
 
 
 @dataclass

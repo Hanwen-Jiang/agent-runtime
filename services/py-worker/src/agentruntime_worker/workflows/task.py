@@ -482,6 +482,8 @@ class TaskWorkflow:
         rerun: vd.Rerun | None = None
         # 上一轮的结果：预算用完、人选择停止时据此收尾。
         last_results: dict[str, StageResult] = {}
+        # 当前 Stage 的规划：原地重跑不经 Planner，goal、exit_when 还是它的文字，进度事件也沿用它的代码（TMP 计划第 11.5 节）。
+        plan: PlanRoundOutput | None = None
         for seq in range(1, MAX_ROUNDS + 1):
             self._round_seq = seq
             carried: dict[str, StageResult] = {}
@@ -497,7 +499,6 @@ class TaskWorkflow:
                     rerun = None
                     last_round = {**(last_round or {}), "human_reply": {"option": reply.option, "guidance": reply.guidance}}
             triage_level: str | None = None
-            goal_code = ""
             # 这一轮规划的花费：计入 Round 的成本，Stage 执行时已经算进已花的钱（成本口径的人定方案）。原地重跑不经 Planner。
             plan_cost = 0.0
             if rerun is None:
@@ -505,7 +506,6 @@ class TaskWorkflow:
                 stage = plan.stage
                 triage_level = plan.triage_level
                 plan_cost = float(plan.cost_usd or 0.0)
-                goal_code = plan.goal_code
                 if plan.task_family and not self._task_family:
                     # TMP 计划第 6 节：任务族由第一轮分诊定，之后的重规划不改。
                     self._task_family = plan.task_family
@@ -520,7 +520,7 @@ class TaskWorkflow:
                 round_entry = {"seq": seq, "stage_goal": stage["goal"], "status": "running"}
             self._state["rounds"].append(round_entry)
             if self._events is not None:
-                await self._events.stage_started(seq, stage, triage_level, goal_code)
+                await self._events.stage_started(seq, stage, triage_level, plan)
 
             results = await self._run_stage(seq, stage, carried=carried, injections=injections, plan_cost=plan_cost)
             round_entry["cost_usd"] = round(plan_cost + self._stage_cost, 6)

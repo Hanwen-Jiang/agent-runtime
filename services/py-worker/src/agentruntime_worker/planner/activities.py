@@ -61,6 +61,7 @@ class PlannerActivities:
         cost = round(sum(c.cost_usd for c in result.calls), 6)
         return PlanRoundOutput(
             stage=stage, triage_level=result.triage_level, task_plan=result.task_plan, cost_usd=cost, goal_code=result.goal_code, task_family=result.task_family,
+            exit_when_code=result.exit_when_code, params=result.params,
         )
 
     async def _with_context_read(self, tenant: Tenant, stage: Any, ceiling: str) -> Any:

@@ -227,7 +227,8 @@ task-service 的 `GetTaskFamilies` 审过之前回 Unimplemented。
 | human_input_required 的 question_code | `budget_exhausted`、`finish_rejected`；规则生成的问题与 Verdict 的 reason_code 相同（11.8） |
 | node_finished、tool_status 的 error_code | `budget_exhausted`、`max_iterations`、`repeated_error`、`tool_not_allowed`、`tool_rejected`、`activity_timeout`、`upstream_failed`，以及工具自己的代码（`file_not_found` 等） |
 | decision_retry 的 error_code | activity 失败的类型（`models_exhausted`、`grpc_deadline_exceeded` 等）、`activity_timeout` |
-| stage_started 的 goal_code | `reply_to_message`（fast 规划） |
+| stage_started 的 goal_code | `reply_to_message`（fast 规划）、`run_recipe`（Recipe 规划，params `{recipe}`）、`explore_task`（保守规划） |
+| stage_started 的 exit_when_code（2026-10-30 S-01 人审通过，`stage_started` 加 `exit_when_code`、`params`） | `reply_given`（fast 规划）、`recipe_delivered`（Recipe 规划）、`node_result`（保守规划，params `{node}`） |
 
 ### 11.6 设计书的改动建议（由人更新原文档后重新导出）
 
@@ -281,7 +282,12 @@ task-service 的 `GetTaskFamilies` 审过之前回 Unimplemented。
 - `node_finished` 的 `error_code`：StageResult 有就用；否则取说明开头“代码：”（中文或英文冒号）里 snake_case 的代码；`budget_check`
   记为 `budget_exhausted`（params 的 budget 是 usd）；上游没成功而跳过的是 `upstream_failed`（params `{node}`）。`tool_status` 同样从工具
   错误的开头取。
-- fast 规划：`PlanRoundOutput.goal_code = reply_to_message`（activity 的输出，不是契约），`stage_started` 带出。
+- 代码写的固定规划（fast、Recipe、保守规划）：`PlanRoundOutput` 的 `goal_code`、`exit_when_code`、`params`（activity 的输出，不是契约），
+  `stage_started` 带出；文字留着作后备。原地重跑沿用这个 Stage 的代码；只改 activity 的入参，不改命令序列，不加版本分支。`run_recipe` 的 params 只有
+  Recipe，不放用户消息（`message_params` 的字符串上限 300，消息就显示在计划上方）。
+- 仍是中文、没有代码的（2026-10-30）：abort 交付里的 `{nid} 已完成`、`交付` 与理由（`verdicts.stopped`；同一字段也是 Reviewer 模型写的自由文字，
+  `not_completed` 还带 Node 的错误原文，只给这两处加代码翻不全；停止的理由已在 verdict 事件的 reason_code 里）；Task State 的默认 `done_when`
+  （`DEFAULT_DONE_WHEN`，coding-web 的右栏显示）；桩 Planner 的文字（只用于开发与端到端测试）。
 - 不在本仓库：coding-web 按代码翻译（coding-agent 仓库），本节做完后另起。
 
 **第 6 节：任务族词表**（测试 `test_task_families.py`；Go：`internal/registry/tmp_task_families_test.go`、

@@ -73,7 +73,11 @@ class PlanResult:
     task_family: str = ""
     """这一轮定的任务族（TMP 计划第 6 节）：有词表时由服务端定；fast 也有。"""
     goal_code: str = ""
-    """goal 是代码给的固定说明时的代码（TMP 计划第 5 节）：fast 的 reply_to_message。"""
+    """goal 是代码给的固定说明时的代码（TMP 计划第 5 节、第 11.5 节的代码表）。"""
+    exit_when_code: str = ""
+    """exit_when 是代码给的固定说明时的代码。"""
+    params: dict[str, Any] | None = None
+    """goal_code、exit_when_code 的参数。"""
 
 
 PLAN_OUTPUT_SCHEMA: dict[str, Any] = {
@@ -296,11 +300,19 @@ def _budget_spent(task_state: Any, calls: list[ModelCall]) -> bool:
     return remaining is not None and remaining - sum(c.cost_usd for c in calls) <= 0
 
 
-FAST_GOAL_CODE = "reply_to_message"
+def _stage_codes(result: PlanResult) -> dict[str, Any]:
+    """Stage 的 goal、exit_when 是代码写的固定说明时的代码与参数（TMP 计划第 11.5 节）；Planner 模型写的没有。"""
+    if result.fallback:
+        return {"goal_code": "explore_task", "exit_when_code": "node_result", "params": {"node": result.stage["nodes"][0]["id"]}}
+    if result.triage_level == "fast":
+        return {"goal_code": "reply_to_message", "exit_when_code": "reply_given"}
+    if result.triage_level == "light":
+        return {"goal_code": "run_recipe", "exit_when_code": "recipe_delivered", "params": {"recipe": result.task_plan["recipe"]}}
+    return {}
 
 
 def _settle_family(request: PlanRequest, result: PlanResult) -> PlanResult:
-    """定这一轮的任务族与 goal_code（TMP 计划第 5、6 节）。有词表时任务族由服务端定：分诊给的在词表里就用它，否则记
+    """定这一轮的任务族与 Stage 的代码（TMP 计划第 5、6 节）。有词表时任务族由服务端定：分诊给的在词表里就用它，否则记
     general.unclassified，Task Plan 里规划模型写的改成它；没有词表时照旧，取 Task Plan 里的，再没有就取分诊给的。"""
     vocabulary = request.context.task_families
     decided = result.decision.task_family
@@ -313,5 +325,4 @@ def _settle_family(request: PlanRequest, result: PlanResult) -> PlanResult:
     else:
         written = ((task_plan or {}).get("triage") or {}).get("task_family") if isinstance(task_plan, dict) else None
         family = str(written or decided or UNCLASSIFIED_TASK_FAMILY)
-    goal_code = FAST_GOAL_CODE if result.triage_level == "fast" else ""
-    return replace(result, task_plan=task_plan, task_family=family, goal_code=goal_code)
+    return replace(result, task_plan=task_plan, task_family=family, **_stage_codes(result))
