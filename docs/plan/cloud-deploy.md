@@ -518,6 +518,21 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
 - task-service、出网网关、包镜像的新 Pod 第一次启动连不上 Temporal 或业务库、重启一次就好（上一版也一样）：新 Pod 的网络策略
   生效前有几秒的空档。
 
+升级到 b05aa63（2026-10-30，TMP 计划第 11.11 节的用量、预算与网关的防线，加上 Chart 的 `AR_PUBLIC_BASE_URL`；之前线上是 13924d7）：
+
+- 代码同上一次的做法换成 b05aa63（`git archive` 打包、scp、核对 sha256；旧的一份留在 `agent-runtime.13924d7`，`REVISION.13924d7`
+  是旧的提交记录）。服务器自己的两个密钥文件照样带过去。
+- 镜像：`build_images.py --tag b05aa63 --only task-service,model-gateway,worker,memory,learning,pkg-mirror,egress-gateway`（层大多
+  命中缓存，3 分钟），`docker save | k3s ctr -n k8s.io images import -`。
+- Runtime：第 7 版的 values 快照（`/root/ar-release/values-live-rev7.yaml`，与 `values-rev7.yaml` 相同）只改 `image.tag`，存为
+  `values-rev8.yaml`；`helm template` 与线上的 manifest（`manifest-rev7.yaml`）比过，只差镜像标签、`OTEL_SERVICE_VERSION` 与新加的
+  `AR_PUBLIC_BASE_URL=https://api.cgent.link`。升级前确认没有在跑的 TaskWorkflow（只有空闲的 Session 工作流与沙箱对账工作流，它们的
+  代码没改）。回滚：`helm rollback ar 7`。
+- 新 Pod 里 task-service、出网网关、包镜像照旧第一次启动连不上 Temporal、重启一次就好。
+- 核对（不花钱）：各 Pod 的镜像都是 b05aa63；经 `api.cgent.link` 的 `/healthz` 200；QueryTask 对冒烟留下的已结束 Task 给出了用量
+  （0YVRP7 2.847 美元，与网关计量一致；ZJ82K7 2.868 美元，比网关少的 0.327 是旧 Worker 没记上的那次已计费的失败评审）。
+  SubmitTask 的订阅地址与网关的防线要真提交 Task 才看得到，没有验证。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
