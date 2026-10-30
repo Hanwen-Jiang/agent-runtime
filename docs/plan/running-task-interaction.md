@@ -1,6 +1,6 @@
 # 运行中的交互：并行工具调用、纠偏与打断、上下文占比、输出汇总
 
-> 状态：2026-10-30 第 6 节的决定都按建议定了，第 5 节的 S-01 草案人审通过。来源：人测试 coding-web 时提的四件事。第 1 节已实现；第 2～4 节的验收测试写好后停下给人看。
+> 状态：2026-10-30 第 6 节的决定都按建议定了，第 5 节的 S-01 草案人审通过。来源：人测试 coding-web 时提的四件事。第 1 节已实现；第 2～4 节的验收测试已写（第 8 节列出文件与当前结果），等人确认后再实现。
 
 | 节 | 问题 | 工作项 | 改契约 |
 | --- | --- | --- | --- |
@@ -94,8 +94,13 @@
 - 被打断的模型调用不占 `max_iterations`：模型没有回答，这一步还是同一步。
 - 同时跑着几个 tool_loop 时，纠偏与打断对它们全都生效。
 - 没有 `GUIDANCE_PATCH` 的旧运行收到信号只记日志，界面等 `task_finished` 再提示没有生效。
+- 写测试时发现的现有缺陷，不只影响打断，**现在取消整个 Task 也一样**：
+  - `AgentClient.exec` 是 `asyncio.to_thread` 里的阻塞请求：协程取消了，连接不断，K8s 与 Cloudflare 沙箱里的命令一直跑到超时。
+  - 本地后端与 host 的 `shell_run` 取消时不杀进程，超时也只杀直接的子进程。
+  - 真的 Cloudflare 桥（`containerFetch`）不转发客户端的断开，假桥转发。要改桥，并用 `AR_LIVE_CLOUDFLARE=1` 验证（花钱）。
+- activity 分不清打断与取消整个 Task（都是取消）。所以取消整个 Task 时，正在跑的这次写调用也会被杀掉并还原；之前跑完的不动。
 
-**验收**（S-01 审过后写）：上表每一格一条；撤回与生效的先后；每种后端的进程真的停了；检查点还原后工作副本与调用前一致（含未跟踪文件），用户的索引与分支不变；被打断的写调用不重试；write_irreversible 不被打断；取消整个 Task 优先于打断；重放。
+**验收**：上表每一格一条；撤回与生效的先后；每种后端的进程真的停了；检查点还原后工作副本与调用前一致（含未跟踪文件），用户的索引与分支不变；被打断的写调用不重试；write_irreversible 不被打断；取消整个 Task 优先于打断；重放。文件见第 8 节。
 
 **设计书的改动建议**：附录 A 加“纠偏（Guidance）”；3.2.2 与附录 C.2 写明用户可以选生效时机，以及打断的撤销规则。
 
@@ -125,7 +130,8 @@
 - 来源：
   - 走 Reviewer 模型的轮：Progress Check 的回答多一个 `highlights`，**同一次调用**，不多花一次模型请求。
   - fast 的轮（不调 Reviewer 模型）：代码取回答开头两句，不调模型。
-  - 文件路径由代码核对：模型写的路径要在这一轮的工具调用目标或工作区里存在，否则去掉（防编造）。改动过的文件由代码补上。
+  - 文件路径由代码核对：模型写的路径要是这一轮工具调用的目标，否则去掉（防编造）。工作流不能做 I/O，Reviewer 碰不到工作区，所以不查工作区；这一轮没碰过的文件也算不上这一轮的重要输出。改动过的文件（`repo_edit` 的目标）由代码补上；`shell_run` 改了什么代码不知道，不补。
+  - Reviewer 模型出错、回答里 `highlights` 不合格，或者这一轮被纠偏、打断（没有 Reviewer 的回答）：同 fast 的轮，代码取开头两句。不合格的 `highlights` 不为它重问。
 - 界面：按 Task、Round 分组；文件点开进文件抽屉；答案旁有“在对话里看”。不显示全文。
 
 ## 5. S-01（都是只加不改）
@@ -164,3 +170,34 @@
 3. 第 3、4 节（风险低）。
 4. 第 2 节：先纠偏与撤回、修改，再立刻打断（要加心跳、进程组与检查点，风险最高）。
 5. coding-web：每一步的界面跟着上线，改动放在 coding-agent 仓库。
+
+## 8. 验收测试（2026-10-30 写好，都还没实现）
+
+都在工作区里没有提交：跑起来是红的，提交了 CI 就红了。实现之前只有下面标“现在就过”的是绿的。
+
+| 文件 | 看什么 | 现在 |
+| --- | --- | --- |
+| `services/py-worker/tests/test_task_guidance.py` | 第 2 节两张表的每一格（工作流）：等模型、跑工具、等审批、Atomic Node、模板、sub_agent、子 Task、规划中、评审中、收尾；撤回与修改的先后；取消整个 Task 优先；Planner 与 Reviewer 看得到；文字不进事件与日志 | 红 |
+| `services/py-worker/tests/test_interrupt_undo.py` | 真的 activity：等模型时发心跳、取消送到；进程组被杀、文件还原、撤不回的照实说 | 红（gRPC 取消、跑完的调用保留改动是绿的） |
+| `services/py-worker/tests/test_workspace_checkpoint.py` | 检查点：还原后一致（含未跟踪文件）、用户的索引与分支不变、被忽略的文件与调用自己动了分支照实说、还原失败不报成功 | 红 |
+| `services/py-worker/tests/test_context_usage.py` | 第 3 节：各类占比加起来等于总数、对话算 Messages、工具分系统与 MCP、真实窗口、没有内容、不多调模型、事件 | 红（不多调模型等 3 条是绿的） |
+| `services/py-worker/tests/test_round_highlights.py` | 第 4 节：同一次调用、不合格不重问、路径核对、改动文件补上、截断、脱敏、fast 的轮取开头两句 | 红 |
+| `services/py-worker/tests/test_stage_replay.py` | 补了 `guidance_next_step`、`guidance_interrupt_tool_loop`、`guidance_interrupt_stage` 三份 golden 的路径，实现后录 | 红 |
+| `libs/py-core/.../conformance/sandbox.py` | 一致性测试加“取消 exec 后命令与子进程都停了”，本地、假桥上真的 agent、kind、真桥都跑这一条 | 红（kind 与真桥这里没跑） |
+| `libs/py-core/tests/adapters/test_sandbox_exec_cancel.py` | `AgentClient` 取消时断开连接 | 红 |
+| `services/go-sandbox-agent/.../disconnect_test.go` | agent 看到断开就杀进程组（Windows 上只看直接的进程） | 现在就过 |
+| `services/go-model-gateway/.../interaction_test.go` | 回答带窗口；取消不重试、不切换；计量记 `cancelled` | 窗口与计量红，其余绿 |
+| `services/go-task-service/.../taskapi/guidance_test.go` | 权限同取消、租户取自认证身份、参数校验、已结束与还没开始的原因码、修改排队的消息发给 Session | 红（校验与别的租户是绿的，但校验现在是碰巧过：还不认识这些信号） |
+| `services/go-task-service/.../session/guidance_test.go` | 原位替换保持顺序、最后一次算数、开始之后不改、续接带上、每次修改一个事件、活动重试不重复、只有 Session 能推 | 红 |
+| `coding-agent` 的 `internal/server/interaction_test.go` | 转发给 Task API、原因翻成人话 | 红 |
+| `coding-agent` 的 `internal/web/interaction_test.go` | 真的页面：Enter、Ctrl+Enter、菜单里排队、撤回、修改、已生效、不可逆的说明、排队的修改、结束时作为新任务；占比的数字与百分比、压缩线、工具折叠、任务详情；各轮汇总、不显示全文 | 红 |
+
+为了让测试编译得过，`services/go-task-service/internal/session/activities.go` 里加了一个返回错误的桩 `RecordQueuedEdit`。
+
+**测试覆盖不到的**
+
+- 真的 K8s（kind）与真的 Cloudflare 桥：这台机器没有，夜间任务或人工跑。
+- Docker 沙箱（`--sandbox docker`）的取消：这台机器没有 Docker，要 `docker rm -f`。
+- 真模型上 Reviewer 给的 `highlights` 好不好：要评测，花钱，这里只测形状。
+- `repo_edit` 在被打断时：一次写文件做不到“写到一半”，没有单独测。
+- 没有 `GUIDANCE_PATCH` 的旧运行收到信号：只能看代码，重放测试只证明旧历史仍能回放。
