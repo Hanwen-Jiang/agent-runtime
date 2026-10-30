@@ -91,6 +91,10 @@ const (
 	// Task 工作流结束时（done、abort、取消或失败）发给 Session 工作流，载荷为 TaskWorkflowResult。
 	// Session 工作流 Continue-As-New 之后拿不到上一次运行启动的子工作流的 future，只能靠它得知结束。
 	SignalName_SIGNAL_NAME_TASK_FINISHED SignalName = 4
+	// 发给 Task 工作流，载荷为 TaskGuidanceSignal。
+	SignalName_SIGNAL_NAME_TASK_GUIDANCE SignalName = 5
+	// 发给 Session 工作流，载荷为 EditQueuedTaskSignal。
+	SignalName_SIGNAL_NAME_EDIT_QUEUED_TASK SignalName = 6
 )
 
 // Enum value maps for SignalName.
@@ -101,13 +105,17 @@ var (
 		2: "SIGNAL_NAME_CANCEL_TASK",
 		3: "SIGNAL_NAME_HUMAN_REPLY",
 		4: "SIGNAL_NAME_TASK_FINISHED",
+		5: "SIGNAL_NAME_TASK_GUIDANCE",
+		6: "SIGNAL_NAME_EDIT_QUEUED_TASK",
 	}
 	SignalName_value = map[string]int32{
-		"SIGNAL_NAME_UNSPECIFIED":   0,
-		"SIGNAL_NAME_SUBMIT_TASK":   1,
-		"SIGNAL_NAME_CANCEL_TASK":   2,
-		"SIGNAL_NAME_HUMAN_REPLY":   3,
-		"SIGNAL_NAME_TASK_FINISHED": 4,
+		"SIGNAL_NAME_UNSPECIFIED":      0,
+		"SIGNAL_NAME_SUBMIT_TASK":      1,
+		"SIGNAL_NAME_CANCEL_TASK":      2,
+		"SIGNAL_NAME_HUMAN_REPLY":      3,
+		"SIGNAL_NAME_TASK_FINISHED":    4,
+		"SIGNAL_NAME_TASK_GUIDANCE":    5,
+		"SIGNAL_NAME_EDIT_QUEUED_TASK": 6,
 	}
 )
 
@@ -316,14 +324,16 @@ const file_agentruntime_workflow_v1_names_proto_rawDesc = "" +
 	"\x19WORKFLOW_TYPE_UNSPECIFIED\x10\x00\x12.\n" +
 	"\x15WORKFLOW_TYPE_SESSION\x10\x01\x1a\x13\x92\xb5\x18\x0fSessionWorkflow\x12(\n" +
 	"\x12WORKFLOW_TYPE_TASK\x10\x02\x1a\x10\x92\xb5\x18\fTaskWorkflow\x12E\n" +
-	"!WORKFLOW_TYPE_WORKSPACE_OPERATION\x10\x03\x1a\x1e\x92\xb5\x18\x1aWorkspaceOperationWorkflow*\xe5\x01\n" +
+	"!WORKFLOW_TYPE_WORKSPACE_OPERATION\x10\x03\x1a\x1e\x92\xb5\x18\x1aWorkspaceOperationWorkflow*\xcf\x02\n" +
 	"\n" +
 	"SignalName\x12\x1b\n" +
 	"\x17SIGNAL_NAME_UNSPECIFIED\x10\x00\x12,\n" +
 	"\x17SIGNAL_NAME_SUBMIT_TASK\x10\x01\x1a\x0f\x92\xb5\x18\vsubmit_task\x12,\n" +
 	"\x17SIGNAL_NAME_CANCEL_TASK\x10\x02\x1a\x0f\x92\xb5\x18\vcancel_task\x12,\n" +
 	"\x17SIGNAL_NAME_HUMAN_REPLY\x10\x03\x1a\x0f\x92\xb5\x18\vhuman_reply\x120\n" +
-	"\x19SIGNAL_NAME_TASK_FINISHED\x10\x04\x1a\x11\x92\xb5\x18\rtask_finished*\x83\x01\n" +
+	"\x19SIGNAL_NAME_TASK_FINISHED\x10\x04\x1a\x11\x92\xb5\x18\rtask_finished\x120\n" +
+	"\x19SIGNAL_NAME_TASK_GUIDANCE\x10\x05\x1a\x11\x92\xb5\x18\rtask_guidance\x126\n" +
+	"\x1cSIGNAL_NAME_EDIT_QUEUED_TASK\x10\x06\x1a\x14\x92\xb5\x18\x10edit_queued_task*\x83\x01\n" +
 	"\tQueryName\x12\x1a\n" +
 	"\x16QUERY_NAME_UNSPECIFIED\x10\x00\x12/\n" +
 	"\x18QUERY_NAME_SESSION_STATE\x10\x01\x1a\x11\x92\xb5\x18\rsession_state\x12)\n" +

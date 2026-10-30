@@ -4,6 +4,7 @@ package agentruntime.workflow.v1;
 
 import "agentruntime/common/v1/tenant.proto";
 import "agentruntime/workflow/v1/task.proto";
+import "google/protobuf/timestamp.proto";
 
 // SessionWorkflowInput 是 Session 工作流的输入（附录 K.1），首次启动与 Continue-As-New 都用它。
 // Task State 不放在 Session 工作流里，只在各自的 Task 子工作流中。
@@ -35,6 +36,14 @@ message SubmitTaskSignal {
 message CancelTaskSignal {
   string task_id = 1;
   string reason = 2;
+}
+
+// EditQueuedTaskSignal 修改排队中的 Task 的消息，在队列里原位替换，保持顺序；Task 已经开始时不改。
+message EditQueuedTaskSignal {
+  string task_id = 1;
+  string message = 2;
+  string by_user_id = 3;
+  google.protobuf.Timestamp at = 4;
 }
 
 // SessionState 是 session_state 查询的结果。

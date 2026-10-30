@@ -46,6 +46,8 @@ message ModelChoice {
   string model_profile_id = 1;
   string tier = 2;
   string vendor = 3;
+  // 这个模型的上下文窗口（Model Profile 的 constraints.context_window，token 数）；没配时是 0。
+  int32 context_window = 4;
 }
 
 enum ChatRole {

@@ -165,12 +165,21 @@
       "source": "TMP 计划第 3、5 节",
       "notes": "tool_loop 因工具调用预算用完停下。",
       "instance": {"event": "node_finished", "round_seq": 4, "node_id": "fix_tests", "role": "act", "status": "failed", "failure_class": "denied", "error": "工具调用预算 50 次已经用完", "error_code": "budget_exhausted", "params": {"budget": "tool_calls", "limit": 50, "used": 50}}
-    }
+    },
+    {"name": "guidance_pending", "source": "docs/plan/running-task-interaction.md 第 2、3 节", "notes": "收到一条纠偏", "instance": {"event": "guidance_updated", "guidance_id": "g_01", "state": "pending", "mode": "next_step"}},
+    {"name": "guidance_applied", "source": "docs/plan/running-task-interaction.md 第 2、3 节", "notes": "第 2 个 Round 生效", "instance": {"event": "guidance_updated", "guidance_id": "g_01", "state": "applied", "mode": "next_step", "round_seq": 2}},
+    {"name": "guidance_waits_for_irreversible", "source": "docs/plan/running-task-interaction.md 第 2、3 节", "notes": "打断要等不可逆的调用结束", "instance": {"event": "guidance_updated", "guidance_id": "g_01", "state": "pending", "mode": "interrupt", "reason_code": "irreversible_in_flight"}},
+    {"name": "guidance_retracted", "source": "docs/plan/running-task-interaction.md 第 2、3 节", "notes": "撤回", "instance": {"event": "guidance_updated", "guidance_id": "g_01", "state": "retracted", "mode": "next_step"}},
+    {"name": "guidance_rejected_unknown", "source": "docs/plan/running-task-interaction.md 第 2、3 节", "notes": "撤回一条不存在的纠偏：不知道它的 mode", "instance": {"event": "guidance_updated", "guidance_id": "g_01", "state": "rejected", "reason_code": "not_found"}},
+    {"name": "task_message_edited", "source": "docs/plan/running-task-interaction.md 第 2、3 节", "notes": "排队中的消息改好了", "instance": {"event": "task_message_edited", "state": "applied"}},
+    {"name": "task_message_edit_too_late", "source": "docs/plan/running-task-interaction.md 第 2、3 节", "notes": "Task 已经开始", "instance": {"event": "task_message_edited", "state": "rejected", "reason_code": "task_started"}},
+    {"name": "context_usage_tool_loop", "source": "docs/plan/running-task-interaction.md 第 2、3 节", "notes": "tool_loop 的一步", "instance": {"event": "context_usage", "round_seq": 2, "node_id": "fix_tests", "step": 3, "window_tokens": 200000, "effective_tokens": 32000, "total_tokens": 9100, "categories": [{"name": "system_prompt", "tokens": 600}, {"name": "system_tools", "tokens": 1500}, {"name": "mcp_tools", "tokens": 400}, {"name": "memory", "tokens": 100}, {"name": "task_brief", "tokens": 500}, {"name": "messages", "tokens": 6000}], "tools": [{"name": "repo_read", "tokens": 700}, {"name": "repo_edit", "tokens": 800}, {"name": "github.search", "tokens": 400, "mcp": true}], "applied": ["offload", "mask"]}},
+    {"name": "context_usage_answer", "source": "docs/plan/running-task-interaction.md 第 2、3 节", "notes": "fast 的 answer 节点没有 step，也没有工具", "instance": {"event": "context_usage", "round_seq": 1, "node_id": "answer", "window_tokens": 200000, "effective_tokens": 32000, "total_tokens": 700, "categories": [{"name": "system_prompt", "tokens": 100}, {"name": "messages", "tokens": 600}]}}
   ],
   "invalid": [
     {
       "name": "unknown_event",
-      "description": "event 只有八种进度事件；task_accepted、task_finished 不用这个 schema",
+      "description": "event 只有十一种进度事件；task_accepted、task_finished 不用这个 schema",
       "violates": [{"path": "/event", "keyword": "enum"}],
       "instance": {"event": "task_finished", "round_seq": 1}
     },
@@ -281,6 +290,14 @@
       "description": "代码是 snake_case",
       "violates": [{"path": "/exit_when_code", "keyword": "pattern"}],
       "instance": {"event": "stage_started", "round_seq": 1, "goal": "x", "exit_when": "x", "exit_when_code": "ReplyGiven", "nodes": []}
-    }
+    },
+    {"name": "guidance_with_text", "description": "进度事件不带纠偏的文字", "violates": [{"path": "", "keyword": "unevaluatedProperties"}], "instance": {"event": "guidance_updated", "guidance_id": "g_01", "state": "pending", "mode": "next_step", "text": "不要改 b.py"}},
+    {"name": "guidance_applied_without_round", "description": "已生效要写明在哪个 Round", "violates": [{"path": "", "keyword": "required"}], "instance": {"event": "guidance_updated", "guidance_id": "g_01", "state": "applied", "mode": "next_step"}},
+    {"name": "guidance_rejected_without_reason", "description": "被拒绝要有原因", "violates": [{"path": "", "keyword": "required"}], "instance": {"event": "guidance_updated", "guidance_id": "g_01", "state": "rejected", "mode": "next_step"}},
+    {"name": "guidance_bad_id", "description": "id 只能是字母、数字、下划线与连字符", "violates": [{"path": "/guidance_id", "keyword": "pattern"}], "instance": {"event": "guidance_updated", "guidance_id": "g 1", "state": "pending", "mode": "next_step"}},
+    {"name": "task_message_edited_with_text", "description": "不带消息的文字", "violates": [{"path": "", "keyword": "unevaluatedProperties"}], "instance": {"event": "task_message_edited", "state": "applied", "message": "新的消息"}},
+    {"name": "context_usage_with_content", "description": "上下文占比没有内容", "violates": [{"path": "", "keyword": "unevaluatedProperties"}], "instance": {"event": "context_usage", "round_seq": 2, "node_id": "fix_tests", "step": 3, "window_tokens": 200000, "effective_tokens": 32000, "total_tokens": 9100, "categories": [{"name": "system_prompt", "tokens": 600}, {"name": "system_tools", "tokens": 1500}, {"name": "mcp_tools", "tokens": 400}, {"name": "memory", "tokens": 100}, {"name": "task_brief", "tokens": 500}, {"name": "messages", "tokens": 6000}], "tools": [{"name": "repo_read", "tokens": 700}, {"name": "repo_edit", "tokens": 800}, {"name": "github.search", "tokens": 400, "mcp": true}], "applied": ["offload", "mask"], "messages": ["用户的话"]}},
+    {"name": "context_usage_unknown_category", "description": "类别是固定的几种", "violates": [{"path": "/categories/0/name", "keyword": "enum"}], "instance": {"event": "context_usage", "round_seq": 2, "node_id": "fix_tests", "step": 3, "window_tokens": 200000, "effective_tokens": 32000, "total_tokens": 9100, "categories": [{"name": "secrets", "tokens": 1}], "tools": [{"name": "repo_read", "tokens": 700}, {"name": "repo_edit", "tokens": 800}, {"name": "github.search", "tokens": 400, "mcp": true}], "applied": ["offload", "mask"]}},
+    {"name": "context_usage_without_window", "description": "要有窗口", "violates": [{"path": "", "keyword": "required"}], "instance": {"event": "context_usage", "round_seq": 2, "node_id": "fix_tests", "step": 3, "effective_tokens": 32000, "total_tokens": 9100, "categories": [{"name": "system_prompt", "tokens": 600}, {"name": "system_tools", "tokens": 1500}, {"name": "mcp_tools", "tokens": 400}, {"name": "memory", "tokens": 100}, {"name": "task_brief", "tokens": 500}, {"name": "messages", "tokens": 6000}], "tools": [{"name": "repo_read", "tokens": 700}, {"name": "repo_edit", "tokens": 800}, {"name": "github.search", "tokens": 400, "mcp": true}], "applied": ["offload", "mask"]}}
   ]
 }

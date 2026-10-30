@@ -252,8 +252,10 @@ type ModelChoice struct {
 	ModelProfileId string                 `protobuf:"bytes,1,opt,name=model_profile_id,json=modelProfileId,proto3" json:"model_profile_id,omitempty"`
 	Tier           string                 `protobuf:"bytes,2,opt,name=tier,proto3" json:"tier,omitempty"`
 	Vendor         string                 `protobuf:"bytes,3,opt,name=vendor,proto3" json:"vendor,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// 这个模型的上下文窗口（Model Profile 的 constraints.context_window，token 数）；没配时是 0。
+	ContextWindow int32 `protobuf:"varint,4,opt,name=context_window,json=contextWindow,proto3" json:"context_window,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ModelChoice) Reset() {
@@ -305,6 +307,13 @@ func (x *ModelChoice) GetVendor() string {
 		return x.Vendor
 	}
 	return ""
+}
+
+func (x *ModelChoice) GetContextWindow() int32 {
+	if x != nil {
+		return x.ContextWindow
+	}
+	return 0
 }
 
 type ChatMessage struct {
@@ -1440,11 +1449,12 @@ const file_agentruntime_modelgateway_v1_model_gateway_proto_rawDesc = "" +
 	"\treasoning\x18\x06 \x01(\x0e2!.agentruntime.common.v1.ReasoningR\treasoning\x120\n" +
 	"\x14pinned_model_profile\x18\a \x01(\tR\x12pinnedModelProfile\x12!\n" +
 	"\favoid_vendor\x18\b \x01(\tR\vavoidVendor\x12-\n" +
-	"\x13max_cost_usd_micros\x18\t \x01(\x03R\x10maxCostUsdMicros\"c\n" +
+	"\x13max_cost_usd_micros\x18\t \x01(\x03R\x10maxCostUsdMicros\"\x8a\x01\n" +
 	"\vModelChoice\x12(\n" +
 	"\x10model_profile_id\x18\x01 \x01(\tR\x0emodelProfileId\x12\x12\n" +
 	"\x04tier\x18\x02 \x01(\tR\x04tier\x12\x16\n" +
-	"\x06vendor\x18\x03 \x01(\tR\x06vendor\"\xf1\x01\n" +
+	"\x06vendor\x18\x03 \x01(\tR\x06vendor\x12%\n" +
+	"\x0econtext_window\x18\x04 \x01(\x05R\rcontextWindow\"\xf1\x01\n" +
 	"\vChatMessage\x12:\n" +
 	"\x04role\x18\x01 \x01(\x0e2&.agentruntime.modelgateway.v1.ChatRoleR\x04role\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12E\n" +

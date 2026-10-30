@@ -155,3 +155,12 @@ enum Priority {
   PRIORITY_INTERACTIVE = 1;
   PRIORITY_BATCH = 2;
 }
+
+// GuidanceMode：运行中的纠偏什么时候生效（docs/plan/running-task-interaction.md 第 2 节），由用户选。
+enum GuidanceMode {
+  GUIDANCE_MODE_UNSPECIFIED = 0;
+  // 下一个检查点生效。
+  GUIDANCE_MODE_NEXT_STEP = 1;
+  // 放弃正在进行的调用，马上生效。
+  GUIDANCE_MODE_INTERRUPT = 2;
+}

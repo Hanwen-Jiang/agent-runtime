@@ -40,6 +40,8 @@ func TestNamesMatchContract(t *testing.T) {
 		{"QueryName", "QUERY_NAME_SESSION_STATE", QuerySessionState},
 		{"QueryName", "QUERY_NAME_TASK_STATE", QueryTaskState},
 		{"SignalName", "SIGNAL_NAME_HUMAN_REPLY", SignalHumanReply},
+		{"SignalName", "SIGNAL_NAME_TASK_GUIDANCE", SignalTaskGuidance},
+		{"SignalName", "SIGNAL_NAME_EDIT_QUEUED_TASK", SignalEditQueuedTask},
 		{"TaskQueue", "TASK_QUEUE_SESSION", SessionTaskQueue},
 		{"TaskQueue", "TASK_QUEUE_TASK", TaskTaskQueue},
 		// T-11b：Task 工作流推送进度事件的跨语言 activity。

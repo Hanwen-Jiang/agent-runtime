@@ -9,12 +9,24 @@ from google.protobuf import duration_pb2 as _duration_pb2
 from google.protobuf import struct_pb2 as _struct_pb2
 from google.protobuf import timestamp_pb2 as _timestamp_pb2
 from google.protobuf.internal import containers as _containers
+from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from collections.abc import Iterable as _Iterable, Mapping as _Mapping
 from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
+
+class TaskGuidanceKind(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    TASK_GUIDANCE_KIND_UNSPECIFIED: _ClassVar[TaskGuidanceKind]
+    TASK_GUIDANCE_KIND_SUBMIT: _ClassVar[TaskGuidanceKind]
+    TASK_GUIDANCE_KIND_EDIT: _ClassVar[TaskGuidanceKind]
+    TASK_GUIDANCE_KIND_RETRACT: _ClassVar[TaskGuidanceKind]
+TASK_GUIDANCE_KIND_UNSPECIFIED: TaskGuidanceKind
+TASK_GUIDANCE_KIND_SUBMIT: TaskGuidanceKind
+TASK_GUIDANCE_KIND_EDIT: TaskGuidanceKind
+TASK_GUIDANCE_KIND_RETRACT: TaskGuidanceKind
 
 class TaskWorkflowInput(_message.Message):
     __slots__ = ("tenant", "task_id", "pinned_versions", "message", "inputs", "attachments", "submitted_at", "session_access", "priority", "budget", "effect_ceiling", "parent_task_id", "depth")
@@ -138,3 +150,19 @@ class HumanReplySignal(_message.Message):
     replied_by_user_id: str
     replied_at: _timestamp_pb2.Timestamp
     def __init__(self, question_id: _Optional[str] = ..., option: _Optional[str] = ..., guidance: _Optional[str] = ..., replied_by_user_id: _Optional[str] = ..., replied_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+
+class TaskGuidanceSignal(_message.Message):
+    __slots__ = ("guidance_id", "kind", "text", "mode", "by_user_id", "at")
+    GUIDANCE_ID_FIELD_NUMBER: _ClassVar[int]
+    KIND_FIELD_NUMBER: _ClassVar[int]
+    TEXT_FIELD_NUMBER: _ClassVar[int]
+    MODE_FIELD_NUMBER: _ClassVar[int]
+    BY_USER_ID_FIELD_NUMBER: _ClassVar[int]
+    AT_FIELD_NUMBER: _ClassVar[int]
+    guidance_id: str
+    kind: TaskGuidanceKind
+    text: str
+    mode: _enums_pb2.GuidanceMode
+    by_user_id: str
+    at: _timestamp_pb2.Timestamp
+    def __init__(self, guidance_id: _Optional[str] = ..., kind: _Optional[_Union[TaskGuidanceKind, str]] = ..., text: _Optional[str] = ..., mode: _Optional[_Union[_enums_pb2.GuidanceMode, str]] = ..., by_user_id: _Optional[str] = ..., at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...

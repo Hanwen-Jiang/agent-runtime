@@ -10,6 +10,7 @@ import (
 	v1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -230,6 +231,75 @@ func (x *CancelTaskSignal) GetReason() string {
 	return ""
 }
 
+// EditQueuedTaskSignal 修改排队中的 Task 的消息，在队列里原位替换，保持顺序；Task 已经开始时不改。
+type EditQueuedTaskSignal struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TaskId        string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	ByUserId      string                 `protobuf:"bytes,3,opt,name=by_user_id,json=byUserId,proto3" json:"by_user_id,omitempty"`
+	At            *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=at,proto3" json:"at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EditQueuedTaskSignal) Reset() {
+	*x = EditQueuedTaskSignal{}
+	mi := &file_agentruntime_workflow_v1_session_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EditQueuedTaskSignal) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EditQueuedTaskSignal) ProtoMessage() {}
+
+func (x *EditQueuedTaskSignal) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_workflow_v1_session_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EditQueuedTaskSignal.ProtoReflect.Descriptor instead.
+func (*EditQueuedTaskSignal) Descriptor() ([]byte, []int) {
+	return file_agentruntime_workflow_v1_session_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *EditQueuedTaskSignal) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *EditQueuedTaskSignal) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *EditQueuedTaskSignal) GetByUserId() string {
+	if x != nil {
+		return x.ByUserId
+	}
+	return ""
+}
+
+func (x *EditQueuedTaskSignal) GetAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.At
+	}
+	return nil
+}
+
 // SessionState 是 session_state 查询的结果。
 type SessionState struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
@@ -246,7 +316,7 @@ type SessionState struct {
 
 func (x *SessionState) Reset() {
 	*x = SessionState{}
-	mi := &file_agentruntime_workflow_v1_session_proto_msgTypes[3]
+	mi := &file_agentruntime_workflow_v1_session_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -258,7 +328,7 @@ func (x *SessionState) String() string {
 func (*SessionState) ProtoMessage() {}
 
 func (x *SessionState) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workflow_v1_session_proto_msgTypes[3]
+	mi := &file_agentruntime_workflow_v1_session_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -271,7 +341,7 @@ func (x *SessionState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionState.ProtoReflect.Descriptor instead.
 func (*SessionState) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workflow_v1_session_proto_rawDescGZIP(), []int{3}
+	return file_agentruntime_workflow_v1_session_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SessionState) GetSessionId() string {
@@ -320,7 +390,7 @@ var File_agentruntime_workflow_v1_session_proto protoreflect.FileDescriptor
 
 const file_agentruntime_workflow_v1_session_proto_rawDesc = "" +
 	"\n" +
-	"&agentruntime/workflow/v1/session.proto\x12\x18agentruntime.workflow.v1\x1a#agentruntime/common/v1/tenant.proto\x1a#agentruntime/workflow/v1/task.proto\"\xf3\x03\n" +
+	"&agentruntime/workflow/v1/session.proto\x12\x18agentruntime.workflow.v1\x1a#agentruntime/common/v1/tenant.proto\x1a#agentruntime/workflow/v1/task.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf3\x03\n" +
 	"\x14SessionWorkflowInput\x12=\n" +
 	"\x06tenant\x18\x01 \x01(\v2%.agentruntime.common.v1.TenantContextR\x06tenant\x12D\n" +
 	"\apending\x18\x02 \x03(\v2*.agentruntime.workflow.v1.SubmitTaskSignalR\apending\x121\n" +
@@ -337,7 +407,13 @@ const file_agentruntime_workflow_v1_session_proto_rawDesc = "" +
 	"\x04task\x18\x02 \x01(\v2+.agentruntime.workflow.v1.TaskWorkflowInputR\x04task\"C\n" +
 	"\x10CancelTaskSignal\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x16\n" +
-	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x92\x02\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x93\x01\n" +
+	"\x14EditQueuedTaskSignal\x12\x17\n" +
+	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12\x1c\n" +
+	"\n" +
+	"by_user_id\x18\x03 \x01(\tR\bbyUserId\x12*\n" +
+	"\x02at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\"\x92\x02\n" +
 	"\fSessionState\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12&\n" +
@@ -360,26 +436,29 @@ func file_agentruntime_workflow_v1_session_proto_rawDescGZIP() []byte {
 	return file_agentruntime_workflow_v1_session_proto_rawDescData
 }
 
-var file_agentruntime_workflow_v1_session_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_agentruntime_workflow_v1_session_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_agentruntime_workflow_v1_session_proto_goTypes = []any{
-	(*SessionWorkflowInput)(nil), // 0: agentruntime.workflow.v1.SessionWorkflowInput
-	(*SubmitTaskSignal)(nil),     // 1: agentruntime.workflow.v1.SubmitTaskSignal
-	(*CancelTaskSignal)(nil),     // 2: agentruntime.workflow.v1.CancelTaskSignal
-	(*SessionState)(nil),         // 3: agentruntime.workflow.v1.SessionState
-	nil,                          // 4: agentruntime.workflow.v1.SessionWorkflowInput.SubmittedEntry
-	(*v1.TenantContext)(nil),     // 5: agentruntime.common.v1.TenantContext
-	(*TaskWorkflowInput)(nil),    // 6: agentruntime.workflow.v1.TaskWorkflowInput
+	(*SessionWorkflowInput)(nil),  // 0: agentruntime.workflow.v1.SessionWorkflowInput
+	(*SubmitTaskSignal)(nil),      // 1: agentruntime.workflow.v1.SubmitTaskSignal
+	(*CancelTaskSignal)(nil),      // 2: agentruntime.workflow.v1.CancelTaskSignal
+	(*EditQueuedTaskSignal)(nil),  // 3: agentruntime.workflow.v1.EditQueuedTaskSignal
+	(*SessionState)(nil),          // 4: agentruntime.workflow.v1.SessionState
+	nil,                           // 5: agentruntime.workflow.v1.SessionWorkflowInput.SubmittedEntry
+	(*v1.TenantContext)(nil),      // 6: agentruntime.common.v1.TenantContext
+	(*TaskWorkflowInput)(nil),     // 7: agentruntime.workflow.v1.TaskWorkflowInput
+	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
 }
 var file_agentruntime_workflow_v1_session_proto_depIdxs = []int32{
-	5, // 0: agentruntime.workflow.v1.SessionWorkflowInput.tenant:type_name -> agentruntime.common.v1.TenantContext
+	6, // 0: agentruntime.workflow.v1.SessionWorkflowInput.tenant:type_name -> agentruntime.common.v1.TenantContext
 	1, // 1: agentruntime.workflow.v1.SessionWorkflowInput.pending:type_name -> agentruntime.workflow.v1.SubmitTaskSignal
-	4, // 2: agentruntime.workflow.v1.SessionWorkflowInput.submitted:type_name -> agentruntime.workflow.v1.SessionWorkflowInput.SubmittedEntry
-	6, // 3: agentruntime.workflow.v1.SubmitTaskSignal.task:type_name -> agentruntime.workflow.v1.TaskWorkflowInput
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	5, // 2: agentruntime.workflow.v1.SessionWorkflowInput.submitted:type_name -> agentruntime.workflow.v1.SessionWorkflowInput.SubmittedEntry
+	7, // 3: agentruntime.workflow.v1.SubmitTaskSignal.task:type_name -> agentruntime.workflow.v1.TaskWorkflowInput
+	8, // 4: agentruntime.workflow.v1.EditQueuedTaskSignal.at:type_name -> google.protobuf.Timestamp
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_agentruntime_workflow_v1_session_proto_init() }
@@ -394,7 +473,7 @@ func file_agentruntime_workflow_v1_session_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agentruntime_workflow_v1_session_proto_rawDesc), len(file_agentruntime_workflow_v1_session_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

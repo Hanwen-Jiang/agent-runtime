@@ -92,3 +92,23 @@ message HumanReplySignal {
   string replied_by_user_id = 4;
   google.protobuf.Timestamp replied_at = 5;
 }
+
+// TaskGuidanceKind：纠偏信号要做什么。
+enum TaskGuidanceKind {
+  TASK_GUIDANCE_KIND_UNSPECIFIED = 0;
+  TASK_GUIDANCE_KIND_SUBMIT = 1;
+  TASK_GUIDANCE_KIND_EDIT = 2;
+  TASK_GUIDANCE_KIND_RETRACT = 3;
+}
+
+// TaskGuidanceSignal 把纠偏送到 Task 工作流。工作流是单线程的：撤回与生效谁的信号先到谁算。
+message TaskGuidanceSignal {
+  string guidance_id = 1;
+  TaskGuidanceKind kind = 2;
+  // SUBMIT、EDIT 时是纠偏的文字。不进 span 与日志。
+  string text = 3;
+  // SUBMIT 时才有。
+  agentruntime.common.v1.GuidanceMode mode = 4;
+  string by_user_id = 5;
+  google.protobuf.Timestamp at = 6;
+}

@@ -10,6 +10,7 @@ TASK_WORKFLOW = "TaskWorkflow"
 
 # Task 工作流收到的信号与提供的查询。
 HUMAN_REPLY_SIGNAL = "human_reply"
+TASK_GUIDANCE_SIGNAL = "task_guidance"
 TASK_STATE_QUERY = "task_state"
 # Task 工作流结束时发给 Session 工作流。
 TASK_FINISHED_SIGNAL = "task_finished"

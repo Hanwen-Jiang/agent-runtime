@@ -16,7 +16,10 @@
     {"if": {"required": ["event"], "properties": {"event": {"const": "tool_status"}}}, "then": {"$ref": "#/$defs/tool_status"}},
     {"if": {"required": ["event"], "properties": {"event": {"const": "human_input_required"}}}, "then": {"$ref": "#/$defs/human_input_required"}},
     {"if": {"required": ["event"], "properties": {"event": {"const": "verdict"}}}, "then": {"$ref": "#/$defs/verdict"}},
-    {"if": {"required": ["event"], "properties": {"event": {"const": "decision_retry"}}}, "then": {"$ref": "#/$defs/decision_retry"}}
+    {"if": {"required": ["event"], "properties": {"event": {"const": "decision_retry"}}}, "then": {"$ref": "#/$defs/decision_retry"}},
+    {"if": {"required": ["event"], "properties": {"event": {"const": "guidance_updated"}}}, "then": {"$ref": "#/$defs/guidance_updated"}},
+    {"if": {"required": ["event"], "properties": {"event": {"const": "task_message_edited"}}}, "then": {"$ref": "#/$defs/task_message_edited"}},
+    {"if": {"required": ["event"], "properties": {"event": {"const": "context_usage"}}}, "then": {"$ref": "#/$defs/context_usage"}}
   ],
   "$defs": {
     "round_seq": {"description": "Round 序号，从 1 开始", "type": "integer", "minimum": 1},
@@ -144,6 +147,80 @@
         "reason": {"type": "string"},
         "reason_code": {"description": "理由是代码给出或改写的时候的代码（规则的升级、预算用完、问人没有回复……）；模型自己写的理由没有这一项。客户端按它与 params 翻译，reason 作后备（TMP 计划第 5 节）", "$ref": "defs.schema.json#/$defs/message_code"},
         "params": {"description": "reason_code 的参数", "$ref": "defs.schema.json#/$defs/message_params"}
+      },
+      "unevaluatedProperties": false
+    },
+    "guidance_updated": {
+      "description": "一条纠偏的状态变了（docs/plan/running-task-interaction.md 第 2 节）：pending 待生效（收到、改过，或者打断要等不可逆的调用结束），applied 已生效，retracted 已撤回，rejected 被拒绝。不带纠偏的文字",
+      "type": "object",
+      "required": ["event", "guidance_id", "state"],
+      "properties": {
+        "event": {"const": "guidance_updated"},
+        "guidance_id": {"$ref": "defs.schema.json#/$defs/guidance_id"},
+        "state": {"$ref": "defs.schema.json#/$defs/guidance_event_state"},
+        "mode": {"description": "撤回或修改一条不存在的纠偏时没有", "$ref": "defs.schema.json#/$defs/guidance_mode"},
+        "round_seq": {"description": "state 为 applied 时，在哪个 Round 生效", "$ref": "#/$defs/round_seq"},
+        "reason_code": {"description": "rejected 的原因（task_finished、already_applied、not_found、too_many_pending），或 pending 的说明（irreversible_in_flight：这一步不可撤销，完成后立刻生效）", "$ref": "defs.schema.json#/$defs/message_code"}
+      },
+      "allOf": [
+        {"if": {"required": ["state"], "properties": {"state": {"const": "applied"}}}, "then": {"required": ["round_seq"]}},
+        {"if": {"required": ["state"], "properties": {"state": {"const": "rejected"}}}, "then": {"required": ["reason_code"]}}
+      ],
+      "unevaluatedProperties": false
+    },
+    "task_message_edited": {
+      "description": "排队中的 Task 的消息改好了（applied），或者 Task 已经开始、没有改（rejected）。不带消息的文字：客户端重新查 Task",
+      "type": "object",
+      "required": ["event", "state"],
+      "properties": {
+        "event": {"const": "task_message_edited"},
+        "state": {"$ref": "defs.schema.json#/$defs/queued_edit_state"},
+        "reason_code": {"$ref": "defs.schema.json#/$defs/message_code"}
+      },
+      "if": {"required": ["state"], "properties": {"state": {"const": "rejected"}}},
+      "then": {"required": ["reason_code"]},
+      "unevaluatedProperties": false
+    },
+    "context_usage": {
+      "description": "一次模型调用的上下文里各类内容占多少（docs/plan/running-task-interaction.md 第 3 节）：每次模型调用之后一条，token 是估算。只有数字与类别名，没有内容",
+      "type": "object",
+      "required": ["event", "round_seq", "node_id", "window_tokens", "effective_tokens", "total_tokens", "categories"],
+      "properties": {
+        "event": {"const": "context_usage"},
+        "round_seq": {"$ref": "#/$defs/round_seq"},
+        "node_id": {"$ref": "defs.schema.json#/$defs/node_id"},
+        "step": {"description": "tool_loop 的第几步；fast 的 answer 这样的模型节点没有", "type": "integer", "minimum": 1},
+        "window_tokens": {"description": "模型的真实窗口（Model Profile 的 context_window）；取不到时等于 effective_tokens", "type": "integer", "minimum": 1},
+        "effective_tokens": {"description": "Runtime 的压缩线：Context Builder 按它算阈值", "type": "integer", "minimum": 1},
+        "total_tokens": {"description": "各类之和；Free space 由客户端用窗口减它", "type": "integer", "minimum": 0},
+        "categories": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name", "tokens"],
+            "properties": {
+              "name": {"$ref": "defs.schema.json#/$defs/context_category"},
+              "tokens": {"type": "integer", "minimum": 0}
+            },
+            "unevaluatedProperties": false
+          }
+        },
+        "tools": {
+          "description": "每个工具的定义占多少，名字来自工具登记；界面默认只看合计",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "tokens"],
+            "properties": {
+              "name": {"type": "string", "minLength": 1, "maxLength": 128},
+              "tokens": {"type": "integer", "minimum": 0},
+              "mcp": {"type": "boolean"}
+            },
+            "unevaluatedProperties": false
+          }
+        },
+        "applied": {"description": "这次用到的压缩步骤，按阶梯的顺序", "type": "array", "items": {"$ref": "defs.schema.json#/$defs/context_step"}}
       },
       "unevaluatedProperties": false
     },

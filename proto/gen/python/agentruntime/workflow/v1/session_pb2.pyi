@@ -1,5 +1,8 @@
+import datetime
+
 from agentruntime.common.v1 import tenant_pb2 as _tenant_pb2
 from agentruntime.workflow.v1 import task_pb2 as _task_pb2
+from google.protobuf import timestamp_pb2 as _timestamp_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
@@ -48,6 +51,18 @@ class CancelTaskSignal(_message.Message):
     task_id: str
     reason: str
     def __init__(self, task_id: _Optional[str] = ..., reason: _Optional[str] = ...) -> None: ...
+
+class EditQueuedTaskSignal(_message.Message):
+    __slots__ = ("task_id", "message", "by_user_id", "at")
+    TASK_ID_FIELD_NUMBER: _ClassVar[int]
+    MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    BY_USER_ID_FIELD_NUMBER: _ClassVar[int]
+    AT_FIELD_NUMBER: _ClassVar[int]
+    task_id: str
+    message: str
+    by_user_id: str
+    at: _timestamp_pb2.Timestamp
+    def __init__(self, task_id: _Optional[str] = ..., message: _Optional[str] = ..., by_user_id: _Optional[str] = ..., at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class SessionState(_message.Message):
     __slots__ = ("session_id", "queued_task_ids", "running_write_task_id", "running_read_only_task_ids", "accepted_tasks", "run_generation")

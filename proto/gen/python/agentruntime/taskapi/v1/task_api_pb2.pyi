@@ -30,6 +30,9 @@ class TaskEventType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     TASK_EVENT_TYPE_TASK_FINISHED: _ClassVar[TaskEventType]
     TASK_EVENT_TYPE_HEARTBEAT: _ClassVar[TaskEventType]
     TASK_EVENT_TYPE_DECISION_RETRY: _ClassVar[TaskEventType]
+    TASK_EVENT_TYPE_GUIDANCE_UPDATED: _ClassVar[TaskEventType]
+    TASK_EVENT_TYPE_TASK_MESSAGE_EDITED: _ClassVar[TaskEventType]
+    TASK_EVENT_TYPE_CONTEXT_USAGE: _ClassVar[TaskEventType]
 TASK_EVENT_TYPE_UNSPECIFIED: TaskEventType
 TASK_EVENT_TYPE_TASK_ACCEPTED: TaskEventType
 TASK_EVENT_TYPE_ROUND_STARTED: TaskEventType
@@ -44,6 +47,9 @@ TASK_EVENT_TYPE_VERDICT: TaskEventType
 TASK_EVENT_TYPE_TASK_FINISHED: TaskEventType
 TASK_EVENT_TYPE_HEARTBEAT: TaskEventType
 TASK_EVENT_TYPE_DECISION_RETRY: TaskEventType
+TASK_EVENT_TYPE_GUIDANCE_UPDATED: TaskEventType
+TASK_EVENT_TYPE_TASK_MESSAGE_EDITED: TaskEventType
+TASK_EVENT_TYPE_CONTEXT_USAGE: TaskEventType
 
 class SubmitTaskRequest(_message.Message):
     __slots__ = ("tenant_id", "workspace_id", "session_id", "client_request_id", "message", "inputs", "attachments", "session_access", "priority", "effect_ceiling", "network_request")
@@ -112,18 +118,56 @@ class CancelTaskResponse(_message.Message):
     def __init__(self, status: _Optional[_Union[_enums_pb2.TaskStatus, str]] = ...) -> None: ...
 
 class SignalTaskRequest(_message.Message):
-    __slots__ = ("tenant_id", "task_id", "human_reply")
+    __slots__ = ("tenant_id", "task_id", "human_reply", "submit_guidance", "edit_guidance", "retract_guidance", "edit_queued_message")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     TASK_ID_FIELD_NUMBER: _ClassVar[int]
     HUMAN_REPLY_FIELD_NUMBER: _ClassVar[int]
+    SUBMIT_GUIDANCE_FIELD_NUMBER: _ClassVar[int]
+    EDIT_GUIDANCE_FIELD_NUMBER: _ClassVar[int]
+    RETRACT_GUIDANCE_FIELD_NUMBER: _ClassVar[int]
+    EDIT_QUEUED_MESSAGE_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
     task_id: str
     human_reply: HumanReply
-    def __init__(self, tenant_id: _Optional[str] = ..., task_id: _Optional[str] = ..., human_reply: _Optional[_Union[HumanReply, _Mapping]] = ...) -> None: ...
+    submit_guidance: SubmitGuidance
+    edit_guidance: EditGuidance
+    retract_guidance: RetractGuidance
+    edit_queued_message: EditQueuedMessage
+    def __init__(self, tenant_id: _Optional[str] = ..., task_id: _Optional[str] = ..., human_reply: _Optional[_Union[HumanReply, _Mapping]] = ..., submit_guidance: _Optional[_Union[SubmitGuidance, _Mapping]] = ..., edit_guidance: _Optional[_Union[EditGuidance, _Mapping]] = ..., retract_guidance: _Optional[_Union[RetractGuidance, _Mapping]] = ..., edit_queued_message: _Optional[_Union[EditQueuedMessage, _Mapping]] = ...) -> None: ...
 
 class SignalTaskResponse(_message.Message):
     __slots__ = ()
     def __init__(self) -> None: ...
+
+class SubmitGuidance(_message.Message):
+    __slots__ = ("guidance_id", "text", "mode")
+    GUIDANCE_ID_FIELD_NUMBER: _ClassVar[int]
+    TEXT_FIELD_NUMBER: _ClassVar[int]
+    MODE_FIELD_NUMBER: _ClassVar[int]
+    guidance_id: str
+    text: str
+    mode: _enums_pb2.GuidanceMode
+    def __init__(self, guidance_id: _Optional[str] = ..., text: _Optional[str] = ..., mode: _Optional[_Union[_enums_pb2.GuidanceMode, str]] = ...) -> None: ...
+
+class EditGuidance(_message.Message):
+    __slots__ = ("guidance_id", "text")
+    GUIDANCE_ID_FIELD_NUMBER: _ClassVar[int]
+    TEXT_FIELD_NUMBER: _ClassVar[int]
+    guidance_id: str
+    text: str
+    def __init__(self, guidance_id: _Optional[str] = ..., text: _Optional[str] = ...) -> None: ...
+
+class RetractGuidance(_message.Message):
+    __slots__ = ("guidance_id",)
+    GUIDANCE_ID_FIELD_NUMBER: _ClassVar[int]
+    guidance_id: str
+    def __init__(self, guidance_id: _Optional[str] = ...) -> None: ...
+
+class EditQueuedMessage(_message.Message):
+    __slots__ = ("message",)
+    MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    message: str
+    def __init__(self, message: _Optional[str] = ...) -> None: ...
 
 class HumanReply(_message.Message):
     __slots__ = ("question_id", "option", "guidance")

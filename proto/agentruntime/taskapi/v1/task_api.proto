@@ -86,10 +86,39 @@ message SignalTaskRequest {
   string task_id = 2;
   oneof signal {
     HumanReply human_reply = 3;
+    SubmitGuidance submit_guidance = 4;
+    EditGuidance edit_guidance = 5;
+    RetractGuidance retract_guidance = 6;
+    EditQueuedMessage edit_queued_message = 7;
   }
 }
 
 message SignalTaskResponse {}
+
+// SubmitGuidance 给运行中的 Task 加一条纠偏，不开新 Task（设计书 3.2.2、附录 C.2）。
+// 结果由事件 guidance_updated 告诉客户端（信号没有返回值）。
+message SubmitGuidance {
+  // 客户端生成，同一个 Task 里唯一；重发同一个 id 不算新的一条。撤回与修改靠它。
+  string guidance_id = 1;
+  string text = 2;
+  agentruntime.common.v1.GuidanceMode mode = 3;
+}
+
+// EditGuidance 修改一条还没生效的纠偏；已经生效的被拒绝（guidance_updated 的 state 为 rejected）。
+message EditGuidance {
+  string guidance_id = 1;
+  string text = 2;
+}
+
+// RetractGuidance 撤回一条还没生效的纠偏；已经生效的被拒绝。立刻打断发出去就生效了，不能撤回。
+message RetractGuidance {
+  string guidance_id = 1;
+}
+
+// EditQueuedMessage 修改还在排队的 Task 的消息，在队列里原位替换。已经开始的被拒绝（事件 task_message_edited）。
+message EditQueuedMessage {
+  string message = 1;
+}
 
 // HumanReply 是人对 human 节点或 Reviewer 升级问题的回复（设计书 4.11）。
 // 回复限定为问题给出的选项；Reviewer 升级时选项为 continue_as_is、replan_with_guidance、stop_and_wrap_up。
@@ -150,4 +179,10 @@ enum TaskEventType {
   TASK_EVENT_TYPE_HEARTBEAT = 12;
   // 规划、评审或 tool_loop 一步的模型调用在重试（第 2 次及以后的尝试），见 payload。
   TASK_EVENT_TYPE_DECISION_RETRY = 13;
+  // 一条纠偏的状态变了：待生效、已生效、已撤回、被拒绝。不带纠偏的文字。
+  TASK_EVENT_TYPE_GUIDANCE_UPDATED = 14;
+  // 排队中的 Task 的消息改了，或者改晚了。不带消息的文字。由 Session 工作流推送。
+  TASK_EVENT_TYPE_TASK_MESSAGE_EDITED = 15;
+  // 一次模型调用的上下文里各类内容占多少。只有数字与类别名。
+  TASK_EVENT_TYPE_CONTEXT_USAGE = 16;
 }

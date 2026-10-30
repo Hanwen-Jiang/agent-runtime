@@ -52,9 +52,9 @@
 | Task 正在 | 纠偏（下一个检查点） | 立刻打断 |
 | --- | --- | --- |
 | tool_loop 等模型 | 这一步回来后，只读的工具照跑；**写的不执行**（用户可能正是要拦它），下一次模型调用带上纠偏 | 取消这次模型调用，丢弃未完成的输出，下一步带上纠偏，同一个循环继续、上下文不丢 |
-| tool_loop 跑工具 | 跑完这批，下一次模型调用带上 | 按下表撤销，再继续 |
+| tool_loop 跑工具 | 已经开始的跑完，还没开始的写不执行（同上一行的理由），下一次模型调用带上 | 按下表撤销，再继续 |
 | 等审批或问人 | 继续等，回复后带上 | 撤回问题，按拒绝处理，带上纠偏 |
-| Atomic Node、模板、sub_agent、子 Task | 这个 Stage 跑完回 Planner，以 replan 重做剩余部分 | 取消这个 Stage，已成功的 Node 保留，以 replan 继续（verdict 的 `reason_code` 是 `user_interrupt`） |
+| Atomic Node、模板、sub_agent、子 Task | 这个 Stage 跑完回 Planner，以 replan 重做剩余部分（不调 Reviewer 的模型，判定由代码给出，`reason_code` 是 `user_guidance`；这个 Stage 里有 tool_loop 已经带上了纠偏时，照常走 Reviewer） | 取消这个 Stage，已成功的 Node 保留，以 replan 继续（verdict 的 `reason_code` 是 `user_interrupt`） |
 | Planner 规划中 | 规划完放弃这个 Stage，带上纠偏重新规划 | 取消规划，带上纠偏重新规划 |
 | Reviewer 评审中 | 不管判了什么（含 done）都不收尾，回 Planner | 取消评审，回 Planner |
 | 已结束 | 拒绝（`task_finished`），界面提示可作为新任务发送 | 同左 |
@@ -90,6 +90,10 @@
 - 打断时已发出的只读调用也要等取消完成，才写 history；每个 `tool_call` 都要有结果，否则下一次模型调用会被拒。
 - `shell_run` 的取消要杀进程组，三种后端（local、K8s、Cloudflare）都要测。
 - 改变命令序列：版本分支 `GUIDANCE_PATCH`；golden 补 `guidance_next_step`、`guidance_interrupt_tool_loop`、`guidance_interrupt_stage`。
+- Temporal 的心跳有节流（heartbeat 超时的 0.8 倍）。现在 Node 的 heartbeat 超时最长 30 秒，取消要 24 秒才送到，不算“立刻”。能被打断的 activity 的 heartbeat 超时要短到几秒，实际发心跳也要跟上。
+- 被打断的模型调用不占 `max_iterations`：模型没有回答，这一步还是同一步。
+- 同时跑着几个 tool_loop 时，纠偏与打断对它们全都生效。
+- 没有 `GUIDANCE_PATCH` 的旧运行收到信号只记日志，界面等 `task_finished` 再提示没有生效。
 
 **验收**（S-01 审过后写）：上表每一格一条；撤回与生效的先后；每种后端的进程真的停了；检查点还原后工作副本与调用前一致（含未跟踪文件），用户的索引与分支不变；被打断的写调用不重试；write_irreversible 不被打断；取消整个 Task 优先于打断；重放。
 
@@ -124,17 +128,24 @@
   - 文件路径由代码核对：模型写的路径要在这一轮的工具调用目标或工作区里存在，否则去掉（防编造）。改动过的文件由代码补上。
 - 界面：按 Task、Round 分组；文件点开进文件抽屉；答案旁有“在对话里看”。不显示全文。
 
-## 5. S-01 草案（待人审，都是只加不改）
+## 5. S-01（都是只加不改）
+
+草案 2026-10-30 人审通过，已提交。**兼容性基线还没更新**：下面标“草案之外”的几处是实现时才发现要加的，等人看过再 `buf build -o proto/breaking-baseline.binpb`。
 
 | 文件 | 改动 | 给哪一节 |
 | --- | --- | --- |
-| `proto/.../taskapi/v1/task_api.proto` | 枚举 `GuidanceMode`（`NEXT_STEP`、`INTERRUPT`）；消息 `SubmitGuidance`（guidance_id、text、mode）、`EditGuidance`（guidance_id、text）、`RetractGuidance`（guidance_id）、`EditQueuedMessage`（message）；`SignalTaskRequest.signal` 加这四个；`TaskEventType` 加 `GUIDANCE_UPDATED`、`TASK_MESSAGE_EDITED`、`CONTEXT_USAGE`（编号等另一个会话提交后再定） | 2、3 |
-| `proto/.../workflow/v1/task.proto` | `TaskGuidanceSignal`（guidance_id、kind、text、mode、by_user_id、at）；`EditQueuedTaskSignal`（task_id、message） | 2 |
-| `schemas/task_state.schema.json` | 顶层 `guidance[]`（guidance_id、text、mode、state、applied_round）；`rounds[].highlights`（files、answers） | 2、4 |
-| `schemas/task_event_payload.schema.json` | 事件 `guidance_updated`（guidance_id、state 为 pending、applied、retracted、rejected，mode，reason_code）、`task_message_edited`、`context_usage`（round_seq、node_id、step、window_tokens、total_tokens、categories、applied） | 2、3 |
+| `proto/.../common/v1/enums.proto` | 枚举 `GuidanceMode`（`NEXT_STEP`、`INTERRUPT`）。草案写在 task_api.proto，但工作流的信号也要用，两边都引用 common，所以放这里（**草案之外**） | 2 |
+| `proto/.../taskapi/v1/task_api.proto` | 消息 `SubmitGuidance`（guidance_id、text、mode）、`EditGuidance`（guidance_id、text）、`RetractGuidance`（guidance_id）、`EditQueuedMessage`（message）；`SignalTaskRequest.signal` 加这四个（4～7）；`TaskEventType` 加 `GUIDANCE_UPDATED` = 14、`TASK_MESSAGE_EDITED` = 15、`CONTEXT_USAGE` = 16 | 2、3 |
+| `proto/.../workflow/v1/task.proto` | 枚举 `TaskGuidanceKind`（`SUBMIT`、`EDIT`、`RETRACT`）；`TaskGuidanceSignal`（guidance_id、kind、text、mode、by_user_id、at） | 2 |
+| `proto/.../workflow/v1/session.proto` | `EditQueuedTaskSignal`（task_id、message、by_user_id、at）。草案写在 task.proto，但发给 Session 工作流的信号都在这个文件（**草案之外**） | 2 |
+| `proto/.../workflow/v1/names.proto` | `SIGNAL_NAME_TASK_GUIDANCE`（`task_guidance`）、`SIGNAL_NAME_EDIT_QUEUED_TASK`（`edit_queued_task`）（**草案之外**） | 2 |
+| `proto/.../modelgateway/v1/model_gateway.proto` | `ModelChoice.context_window`：网关把 Model Profile 的窗口带回来，第 3 节的分母才是真实窗口（**草案之外**） | 3 |
+| `schemas/defs.schema.json` | `progress_event` 加三种；`guidance_id`、`guidance_mode`、`guidance_state`、`guidance_event_state`、`queued_edit_state`、`context_category`、`context_step`（枚举只能放在 defs，契约测试要求） | 2、3 |
+| `schemas/task_state.schema.json` | 顶层 `guidance[]`（guidance_id、text、mode、state 为 pending 或 applied、applied_round）；`rounds[].highlights`（`files[]` 为 path、why，`answers[]` 不超过 300 字，各最多 5 条）。撤回的不留在 Task State，模型看不到 | 2、4 |
+| `schemas/task_event_payload.schema.json` | `guidance_updated`（guidance_id、state、mode、round_seq、reason_code）；`task_message_edited`（state、reason_code，不带文字）；`context_usage`（round_seq、node_id、step、window_tokens、total_tokens、categories、applied，**另加** `effective_tokens` 与 `tools`：界面要标压缩线、能展开每个工具；`step` 可选，answer 节点没有） | 2、3 |
 | `reviewer/prompts.py` 的输出 schema（代码里，不走 S-01） | Progress Check 加 `highlights` | 4 |
 
-`reason_code` 的 `user_interrupt` 不用改 schema（代码用 pattern）。
+`reason_code` 的 `user_interrupt`、`user_guidance` 不用改 schema（代码用 pattern）。
 
 ## 6. 要人定的
 

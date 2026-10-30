@@ -47,6 +47,12 @@ const (
 	TaskEventType_TASK_EVENT_TYPE_HEARTBEAT     TaskEventType = 12
 	// 规划、评审或 tool_loop 一步的模型调用在重试（第 2 次及以后的尝试），见 payload。
 	TaskEventType_TASK_EVENT_TYPE_DECISION_RETRY TaskEventType = 13
+	// 一条纠偏的状态变了：待生效、已生效、已撤回、被拒绝。不带纠偏的文字。
+	TaskEventType_TASK_EVENT_TYPE_GUIDANCE_UPDATED TaskEventType = 14
+	// 排队中的 Task 的消息改了，或者改晚了。不带消息的文字。由 Session 工作流推送。
+	TaskEventType_TASK_EVENT_TYPE_TASK_MESSAGE_EDITED TaskEventType = 15
+	// 一次模型调用的上下文里各类内容占多少。只有数字与类别名。
+	TaskEventType_TASK_EVENT_TYPE_CONTEXT_USAGE TaskEventType = 16
 )
 
 // Enum value maps for TaskEventType.
@@ -66,6 +72,9 @@ var (
 		11: "TASK_EVENT_TYPE_TASK_FINISHED",
 		12: "TASK_EVENT_TYPE_HEARTBEAT",
 		13: "TASK_EVENT_TYPE_DECISION_RETRY",
+		14: "TASK_EVENT_TYPE_GUIDANCE_UPDATED",
+		15: "TASK_EVENT_TYPE_TASK_MESSAGE_EDITED",
+		16: "TASK_EVENT_TYPE_CONTEXT_USAGE",
 	}
 	TaskEventType_value = map[string]int32{
 		"TASK_EVENT_TYPE_UNSPECIFIED":          0,
@@ -82,6 +91,9 @@ var (
 		"TASK_EVENT_TYPE_TASK_FINISHED":        11,
 		"TASK_EVENT_TYPE_HEARTBEAT":            12,
 		"TASK_EVENT_TYPE_DECISION_RETRY":       13,
+		"TASK_EVENT_TYPE_GUIDANCE_UPDATED":     14,
+		"TASK_EVENT_TYPE_TASK_MESSAGE_EDITED":  15,
+		"TASK_EVENT_TYPE_CONTEXT_USAGE":        16,
 	}
 )
 
@@ -502,6 +514,10 @@ type SignalTaskRequest struct {
 	// Types that are valid to be assigned to Signal:
 	//
 	//	*SignalTaskRequest_HumanReply
+	//	*SignalTaskRequest_SubmitGuidance
+	//	*SignalTaskRequest_EditGuidance
+	//	*SignalTaskRequest_RetractGuidance
+	//	*SignalTaskRequest_EditQueuedMessage
 	Signal        isSignalTaskRequest_Signal `protobuf_oneof:"signal"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -567,6 +583,42 @@ func (x *SignalTaskRequest) GetHumanReply() *HumanReply {
 	return nil
 }
 
+func (x *SignalTaskRequest) GetSubmitGuidance() *SubmitGuidance {
+	if x != nil {
+		if x, ok := x.Signal.(*SignalTaskRequest_SubmitGuidance); ok {
+			return x.SubmitGuidance
+		}
+	}
+	return nil
+}
+
+func (x *SignalTaskRequest) GetEditGuidance() *EditGuidance {
+	if x != nil {
+		if x, ok := x.Signal.(*SignalTaskRequest_EditGuidance); ok {
+			return x.EditGuidance
+		}
+	}
+	return nil
+}
+
+func (x *SignalTaskRequest) GetRetractGuidance() *RetractGuidance {
+	if x != nil {
+		if x, ok := x.Signal.(*SignalTaskRequest_RetractGuidance); ok {
+			return x.RetractGuidance
+		}
+	}
+	return nil
+}
+
+func (x *SignalTaskRequest) GetEditQueuedMessage() *EditQueuedMessage {
+	if x != nil {
+		if x, ok := x.Signal.(*SignalTaskRequest_EditQueuedMessage); ok {
+			return x.EditQueuedMessage
+		}
+	}
+	return nil
+}
+
 type isSignalTaskRequest_Signal interface {
 	isSignalTaskRequest_Signal()
 }
@@ -575,7 +627,31 @@ type SignalTaskRequest_HumanReply struct {
 	HumanReply *HumanReply `protobuf:"bytes,3,opt,name=human_reply,json=humanReply,proto3,oneof"`
 }
 
+type SignalTaskRequest_SubmitGuidance struct {
+	SubmitGuidance *SubmitGuidance `protobuf:"bytes,4,opt,name=submit_guidance,json=submitGuidance,proto3,oneof"`
+}
+
+type SignalTaskRequest_EditGuidance struct {
+	EditGuidance *EditGuidance `protobuf:"bytes,5,opt,name=edit_guidance,json=editGuidance,proto3,oneof"`
+}
+
+type SignalTaskRequest_RetractGuidance struct {
+	RetractGuidance *RetractGuidance `protobuf:"bytes,6,opt,name=retract_guidance,json=retractGuidance,proto3,oneof"`
+}
+
+type SignalTaskRequest_EditQueuedMessage struct {
+	EditQueuedMessage *EditQueuedMessage `protobuf:"bytes,7,opt,name=edit_queued_message,json=editQueuedMessage,proto3,oneof"`
+}
+
 func (*SignalTaskRequest_HumanReply) isSignalTaskRequest_Signal() {}
+
+func (*SignalTaskRequest_SubmitGuidance) isSignalTaskRequest_Signal() {}
+
+func (*SignalTaskRequest_EditGuidance) isSignalTaskRequest_Signal() {}
+
+func (*SignalTaskRequest_RetractGuidance) isSignalTaskRequest_Signal() {}
+
+func (*SignalTaskRequest_EditQueuedMessage) isSignalTaskRequest_Signal() {}
 
 type SignalTaskResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -613,6 +689,212 @@ func (*SignalTaskResponse) Descriptor() ([]byte, []int) {
 	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{6}
 }
 
+// SubmitGuidance 给运行中的 Task 加一条纠偏，不开新 Task（设计书 3.2.2、附录 C.2）。
+// 结果由事件 guidance_updated 告诉客户端（信号没有返回值）。
+type SubmitGuidance struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 客户端生成，同一个 Task 里唯一；重发同一个 id 不算新的一条。撤回与修改靠它。
+	GuidanceId    string          `protobuf:"bytes,1,opt,name=guidance_id,json=guidanceId,proto3" json:"guidance_id,omitempty"`
+	Text          string          `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	Mode          v1.GuidanceMode `protobuf:"varint,3,opt,name=mode,proto3,enum=agentruntime.common.v1.GuidanceMode" json:"mode,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubmitGuidance) Reset() {
+	*x = SubmitGuidance{}
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubmitGuidance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubmitGuidance) ProtoMessage() {}
+
+func (x *SubmitGuidance) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubmitGuidance.ProtoReflect.Descriptor instead.
+func (*SubmitGuidance) Descriptor() ([]byte, []int) {
+	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *SubmitGuidance) GetGuidanceId() string {
+	if x != nil {
+		return x.GuidanceId
+	}
+	return ""
+}
+
+func (x *SubmitGuidance) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *SubmitGuidance) GetMode() v1.GuidanceMode {
+	if x != nil {
+		return x.Mode
+	}
+	return v1.GuidanceMode(0)
+}
+
+// EditGuidance 修改一条还没生效的纠偏；已经生效的被拒绝（guidance_updated 的 state 为 rejected）。
+type EditGuidance struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GuidanceId    string                 `protobuf:"bytes,1,opt,name=guidance_id,json=guidanceId,proto3" json:"guidance_id,omitempty"`
+	Text          string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EditGuidance) Reset() {
+	*x = EditGuidance{}
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EditGuidance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EditGuidance) ProtoMessage() {}
+
+func (x *EditGuidance) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EditGuidance.ProtoReflect.Descriptor instead.
+func (*EditGuidance) Descriptor() ([]byte, []int) {
+	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *EditGuidance) GetGuidanceId() string {
+	if x != nil {
+		return x.GuidanceId
+	}
+	return ""
+}
+
+func (x *EditGuidance) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+// RetractGuidance 撤回一条还没生效的纠偏；已经生效的被拒绝。立刻打断发出去就生效了，不能撤回。
+type RetractGuidance struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GuidanceId    string                 `protobuf:"bytes,1,opt,name=guidance_id,json=guidanceId,proto3" json:"guidance_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RetractGuidance) Reset() {
+	*x = RetractGuidance{}
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RetractGuidance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RetractGuidance) ProtoMessage() {}
+
+func (x *RetractGuidance) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RetractGuidance.ProtoReflect.Descriptor instead.
+func (*RetractGuidance) Descriptor() ([]byte, []int) {
+	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *RetractGuidance) GetGuidanceId() string {
+	if x != nil {
+		return x.GuidanceId
+	}
+	return ""
+}
+
+// EditQueuedMessage 修改还在排队的 Task 的消息，在队列里原位替换。已经开始的被拒绝（事件 task_message_edited）。
+type EditQueuedMessage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EditQueuedMessage) Reset() {
+	*x = EditQueuedMessage{}
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EditQueuedMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EditQueuedMessage) ProtoMessage() {}
+
+func (x *EditQueuedMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EditQueuedMessage.ProtoReflect.Descriptor instead.
+func (*EditQueuedMessage) Descriptor() ([]byte, []int) {
+	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *EditQueuedMessage) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 // HumanReply 是人对 human 节点或 Reviewer 升级问题的回复（设计书 4.11）。
 // 回复限定为问题给出的选项；Reviewer 升级时选项为 continue_as_is、replan_with_guidance、stop_and_wrap_up。
 type HumanReply struct {
@@ -627,7 +909,7 @@ type HumanReply struct {
 
 func (x *HumanReply) Reset() {
 	*x = HumanReply{}
-	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[7]
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -639,7 +921,7 @@ func (x *HumanReply) String() string {
 func (*HumanReply) ProtoMessage() {}
 
 func (x *HumanReply) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[7]
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -652,7 +934,7 @@ func (x *HumanReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HumanReply.ProtoReflect.Descriptor instead.
 func (*HumanReply) Descriptor() ([]byte, []int) {
-	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{7}
+	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *HumanReply) GetQuestionId() string {
@@ -686,7 +968,7 @@ type QueryTaskRequest struct {
 
 func (x *QueryTaskRequest) Reset() {
 	*x = QueryTaskRequest{}
-	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[8]
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -698,7 +980,7 @@ func (x *QueryTaskRequest) String() string {
 func (*QueryTaskRequest) ProtoMessage() {}
 
 func (x *QueryTaskRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[8]
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -711,7 +993,7 @@ func (x *QueryTaskRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryTaskRequest.ProtoReflect.Descriptor instead.
 func (*QueryTaskRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{8}
+	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *QueryTaskRequest) GetTenantId() string {
@@ -746,7 +1028,7 @@ type QueryTaskResponse struct {
 
 func (x *QueryTaskResponse) Reset() {
 	*x = QueryTaskResponse{}
-	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[9]
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -758,7 +1040,7 @@ func (x *QueryTaskResponse) String() string {
 func (*QueryTaskResponse) ProtoMessage() {}
 
 func (x *QueryTaskResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[9]
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -771,7 +1053,7 @@ func (x *QueryTaskResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryTaskResponse.ProtoReflect.Descriptor instead.
 func (*QueryTaskResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{9}
+	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *QueryTaskResponse) GetTaskId() string {
@@ -839,7 +1121,7 @@ type TaskEvent struct {
 
 func (x *TaskEvent) Reset() {
 	*x = TaskEvent{}
-	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[10]
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -851,7 +1133,7 @@ func (x *TaskEvent) String() string {
 func (*TaskEvent) ProtoMessage() {}
 
 func (x *TaskEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[10]
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -864,7 +1146,7 @@ func (x *TaskEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TaskEvent.ProtoReflect.Descriptor instead.
 func (*TaskEvent) Descriptor() ([]byte, []int) {
-	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{10}
+	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *TaskEvent) GetEventId() int64 {
@@ -945,14 +1227,32 @@ const file_agentruntime_taskapi_v1_task_api_proto_rawDesc = "" +
 	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12\x16\n" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason\"P\n" +
 	"\x12CancelTaskResponse\x12:\n" +
-	"\x06status\x18\x01 \x01(\x0e2\".agentruntime.common.v1.TaskStatusR\x06status\"\x9b\x01\n" +
+	"\x06status\x18\x01 \x01(\x0e2\".agentruntime.common.v1.TaskStatusR\x06status\"\xf2\x03\n" +
 	"\x11SignalTaskRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x17\n" +
 	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12F\n" +
 	"\vhuman_reply\x18\x03 \x01(\v2#.agentruntime.taskapi.v1.HumanReplyH\x00R\n" +
-	"humanReplyB\b\n" +
+	"humanReply\x12R\n" +
+	"\x0fsubmit_guidance\x18\x04 \x01(\v2'.agentruntime.taskapi.v1.SubmitGuidanceH\x00R\x0esubmitGuidance\x12L\n" +
+	"\redit_guidance\x18\x05 \x01(\v2%.agentruntime.taskapi.v1.EditGuidanceH\x00R\feditGuidance\x12U\n" +
+	"\x10retract_guidance\x18\x06 \x01(\v2(.agentruntime.taskapi.v1.RetractGuidanceH\x00R\x0fretractGuidance\x12\\\n" +
+	"\x13edit_queued_message\x18\a \x01(\v2*.agentruntime.taskapi.v1.EditQueuedMessageH\x00R\x11editQueuedMessageB\b\n" +
 	"\x06signal\"\x14\n" +
-	"\x12SignalTaskResponse\"a\n" +
+	"\x12SignalTaskResponse\"\x7f\n" +
+	"\x0eSubmitGuidance\x12\x1f\n" +
+	"\vguidance_id\x18\x01 \x01(\tR\n" +
+	"guidanceId\x12\x12\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\x128\n" +
+	"\x04mode\x18\x03 \x01(\x0e2$.agentruntime.common.v1.GuidanceModeR\x04mode\"C\n" +
+	"\fEditGuidance\x12\x1f\n" +
+	"\vguidance_id\x18\x01 \x01(\tR\n" +
+	"guidanceId\x12\x12\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\"2\n" +
+	"\x0fRetractGuidance\x12\x1f\n" +
+	"\vguidance_id\x18\x01 \x01(\tR\n" +
+	"guidanceId\"-\n" +
+	"\x11EditQueuedMessage\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\"a\n" +
 	"\n" +
 	"HumanReply\x12\x1f\n" +
 	"\vquestion_id\x18\x01 \x01(\tR\n" +
@@ -980,7 +1280,7 @@ const file_agentruntime_taskapi_v1_task_api_proto_rawDesc = "" +
 	"\x04type\x18\x04 \x01(\x0e2&.agentruntime.taskapi.v1.TaskEventTypeR\x04type\x129\n" +
 	"\n" +
 	"emitted_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\temittedAt\x12=\n" +
-	"\apayload\x18\x06 \x01(\v2#.agentruntime.common.v1.JsonPayloadR\apayload*\xf1\x03\n" +
+	"\apayload\x18\x06 \x01(\v2#.agentruntime.common.v1.JsonPayloadR\apayload*\xe3\x04\n" +
 	"\rTaskEventType\x12\x1f\n" +
 	"\x1bTASK_EVENT_TYPE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dTASK_EVENT_TYPE_TASK_ACCEPTED\x10\x01\x12!\n" +
@@ -996,7 +1296,10 @@ const file_agentruntime_taskapi_v1_task_api_proto_rawDesc = "" +
 	"\x12!\n" +
 	"\x1dTASK_EVENT_TYPE_TASK_FINISHED\x10\v\x12\x1d\n" +
 	"\x19TASK_EVENT_TYPE_HEARTBEAT\x10\f\x12\"\n" +
-	"\x1eTASK_EVENT_TYPE_DECISION_RETRY\x10\r2\xa6\x03\n" +
+	"\x1eTASK_EVENT_TYPE_DECISION_RETRY\x10\r\x12$\n" +
+	" TASK_EVENT_TYPE_GUIDANCE_UPDATED\x10\x0e\x12'\n" +
+	"#TASK_EVENT_TYPE_TASK_MESSAGE_EDITED\x10\x0f\x12!\n" +
+	"\x1dTASK_EVENT_TYPE_CONTEXT_USAGE\x10\x102\xa6\x03\n" +
 	"\vTaskService\x12e\n" +
 	"\n" +
 	"SubmitTask\x12*.agentruntime.taskapi.v1.SubmitTaskRequest\x1a+.agentruntime.taskapi.v1.SubmitTaskResponse\x12e\n" +
@@ -1020,7 +1323,7 @@ func file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP() []byte {
 }
 
 var file_agentruntime_taskapi_v1_task_api_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_agentruntime_taskapi_v1_task_api_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_agentruntime_taskapi_v1_task_api_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_agentruntime_taskapi_v1_task_api_proto_goTypes = []any{
 	(TaskEventType)(0),            // 0: agentruntime.taskapi.v1.TaskEventType
 	(*SubmitTaskRequest)(nil),     // 1: agentruntime.taskapi.v1.SubmitTaskRequest
@@ -1030,46 +1333,56 @@ var file_agentruntime_taskapi_v1_task_api_proto_goTypes = []any{
 	(*CancelTaskResponse)(nil),    // 5: agentruntime.taskapi.v1.CancelTaskResponse
 	(*SignalTaskRequest)(nil),     // 6: agentruntime.taskapi.v1.SignalTaskRequest
 	(*SignalTaskResponse)(nil),    // 7: agentruntime.taskapi.v1.SignalTaskResponse
-	(*HumanReply)(nil),            // 8: agentruntime.taskapi.v1.HumanReply
-	(*QueryTaskRequest)(nil),      // 9: agentruntime.taskapi.v1.QueryTaskRequest
-	(*QueryTaskResponse)(nil),     // 10: agentruntime.taskapi.v1.QueryTaskResponse
-	(*TaskEvent)(nil),             // 11: agentruntime.taskapi.v1.TaskEvent
-	(*structpb.Struct)(nil),       // 12: google.protobuf.Struct
-	(v1.SessionAccess)(0),         // 13: agentruntime.common.v1.SessionAccess
-	(v1.Priority)(0),              // 14: agentruntime.common.v1.Priority
-	(v1.Effect)(0),                // 15: agentruntime.common.v1.Effect
-	(v1.TaskStatus)(0),            // 16: agentruntime.common.v1.TaskStatus
-	(*v1.JsonPayload)(nil),        // 17: agentruntime.common.v1.JsonPayload
-	(*v1.Usage)(nil),              // 18: agentruntime.common.v1.Usage
-	(*timestamppb.Timestamp)(nil), // 19: google.protobuf.Timestamp
+	(*SubmitGuidance)(nil),        // 8: agentruntime.taskapi.v1.SubmitGuidance
+	(*EditGuidance)(nil),          // 9: agentruntime.taskapi.v1.EditGuidance
+	(*RetractGuidance)(nil),       // 10: agentruntime.taskapi.v1.RetractGuidance
+	(*EditQueuedMessage)(nil),     // 11: agentruntime.taskapi.v1.EditQueuedMessage
+	(*HumanReply)(nil),            // 12: agentruntime.taskapi.v1.HumanReply
+	(*QueryTaskRequest)(nil),      // 13: agentruntime.taskapi.v1.QueryTaskRequest
+	(*QueryTaskResponse)(nil),     // 14: agentruntime.taskapi.v1.QueryTaskResponse
+	(*TaskEvent)(nil),             // 15: agentruntime.taskapi.v1.TaskEvent
+	(*structpb.Struct)(nil),       // 16: google.protobuf.Struct
+	(v1.SessionAccess)(0),         // 17: agentruntime.common.v1.SessionAccess
+	(v1.Priority)(0),              // 18: agentruntime.common.v1.Priority
+	(v1.Effect)(0),                // 19: agentruntime.common.v1.Effect
+	(v1.TaskStatus)(0),            // 20: agentruntime.common.v1.TaskStatus
+	(v1.GuidanceMode)(0),          // 21: agentruntime.common.v1.GuidanceMode
+	(*v1.JsonPayload)(nil),        // 22: agentruntime.common.v1.JsonPayload
+	(*v1.Usage)(nil),              // 23: agentruntime.common.v1.Usage
+	(*timestamppb.Timestamp)(nil), // 24: google.protobuf.Timestamp
 }
 var file_agentruntime_taskapi_v1_task_api_proto_depIdxs = []int32{
-	12, // 0: agentruntime.taskapi.v1.SubmitTaskRequest.inputs:type_name -> google.protobuf.Struct
-	13, // 1: agentruntime.taskapi.v1.SubmitTaskRequest.session_access:type_name -> agentruntime.common.v1.SessionAccess
-	14, // 2: agentruntime.taskapi.v1.SubmitTaskRequest.priority:type_name -> agentruntime.common.v1.Priority
-	15, // 3: agentruntime.taskapi.v1.SubmitTaskRequest.effect_ceiling:type_name -> agentruntime.common.v1.Effect
+	16, // 0: agentruntime.taskapi.v1.SubmitTaskRequest.inputs:type_name -> google.protobuf.Struct
+	17, // 1: agentruntime.taskapi.v1.SubmitTaskRequest.session_access:type_name -> agentruntime.common.v1.SessionAccess
+	18, // 2: agentruntime.taskapi.v1.SubmitTaskRequest.priority:type_name -> agentruntime.common.v1.Priority
+	19, // 3: agentruntime.taskapi.v1.SubmitTaskRequest.effect_ceiling:type_name -> agentruntime.common.v1.Effect
 	2,  // 4: agentruntime.taskapi.v1.SubmitTaskRequest.network_request:type_name -> agentruntime.taskapi.v1.NetworkRequest
-	16, // 5: agentruntime.taskapi.v1.CancelTaskResponse.status:type_name -> agentruntime.common.v1.TaskStatus
-	8,  // 6: agentruntime.taskapi.v1.SignalTaskRequest.human_reply:type_name -> agentruntime.taskapi.v1.HumanReply
-	16, // 7: agentruntime.taskapi.v1.QueryTaskResponse.status:type_name -> agentruntime.common.v1.TaskStatus
-	17, // 8: agentruntime.taskapi.v1.QueryTaskResponse.task_state:type_name -> agentruntime.common.v1.JsonPayload
-	18, // 9: agentruntime.taskapi.v1.QueryTaskResponse.usage:type_name -> agentruntime.common.v1.Usage
-	0,  // 10: agentruntime.taskapi.v1.TaskEvent.type:type_name -> agentruntime.taskapi.v1.TaskEventType
-	19, // 11: agentruntime.taskapi.v1.TaskEvent.emitted_at:type_name -> google.protobuf.Timestamp
-	17, // 12: agentruntime.taskapi.v1.TaskEvent.payload:type_name -> agentruntime.common.v1.JsonPayload
-	1,  // 13: agentruntime.taskapi.v1.TaskService.SubmitTask:input_type -> agentruntime.taskapi.v1.SubmitTaskRequest
-	4,  // 14: agentruntime.taskapi.v1.TaskService.CancelTask:input_type -> agentruntime.taskapi.v1.CancelTaskRequest
-	6,  // 15: agentruntime.taskapi.v1.TaskService.SignalTask:input_type -> agentruntime.taskapi.v1.SignalTaskRequest
-	9,  // 16: agentruntime.taskapi.v1.TaskService.QueryTask:input_type -> agentruntime.taskapi.v1.QueryTaskRequest
-	3,  // 17: agentruntime.taskapi.v1.TaskService.SubmitTask:output_type -> agentruntime.taskapi.v1.SubmitTaskResponse
-	5,  // 18: agentruntime.taskapi.v1.TaskService.CancelTask:output_type -> agentruntime.taskapi.v1.CancelTaskResponse
-	7,  // 19: agentruntime.taskapi.v1.TaskService.SignalTask:output_type -> agentruntime.taskapi.v1.SignalTaskResponse
-	10, // 20: agentruntime.taskapi.v1.TaskService.QueryTask:output_type -> agentruntime.taskapi.v1.QueryTaskResponse
-	17, // [17:21] is the sub-list for method output_type
-	13, // [13:17] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	20, // 5: agentruntime.taskapi.v1.CancelTaskResponse.status:type_name -> agentruntime.common.v1.TaskStatus
+	12, // 6: agentruntime.taskapi.v1.SignalTaskRequest.human_reply:type_name -> agentruntime.taskapi.v1.HumanReply
+	8,  // 7: agentruntime.taskapi.v1.SignalTaskRequest.submit_guidance:type_name -> agentruntime.taskapi.v1.SubmitGuidance
+	9,  // 8: agentruntime.taskapi.v1.SignalTaskRequest.edit_guidance:type_name -> agentruntime.taskapi.v1.EditGuidance
+	10, // 9: agentruntime.taskapi.v1.SignalTaskRequest.retract_guidance:type_name -> agentruntime.taskapi.v1.RetractGuidance
+	11, // 10: agentruntime.taskapi.v1.SignalTaskRequest.edit_queued_message:type_name -> agentruntime.taskapi.v1.EditQueuedMessage
+	21, // 11: agentruntime.taskapi.v1.SubmitGuidance.mode:type_name -> agentruntime.common.v1.GuidanceMode
+	20, // 12: agentruntime.taskapi.v1.QueryTaskResponse.status:type_name -> agentruntime.common.v1.TaskStatus
+	22, // 13: agentruntime.taskapi.v1.QueryTaskResponse.task_state:type_name -> agentruntime.common.v1.JsonPayload
+	23, // 14: agentruntime.taskapi.v1.QueryTaskResponse.usage:type_name -> agentruntime.common.v1.Usage
+	0,  // 15: agentruntime.taskapi.v1.TaskEvent.type:type_name -> agentruntime.taskapi.v1.TaskEventType
+	24, // 16: agentruntime.taskapi.v1.TaskEvent.emitted_at:type_name -> google.protobuf.Timestamp
+	22, // 17: agentruntime.taskapi.v1.TaskEvent.payload:type_name -> agentruntime.common.v1.JsonPayload
+	1,  // 18: agentruntime.taskapi.v1.TaskService.SubmitTask:input_type -> agentruntime.taskapi.v1.SubmitTaskRequest
+	4,  // 19: agentruntime.taskapi.v1.TaskService.CancelTask:input_type -> agentruntime.taskapi.v1.CancelTaskRequest
+	6,  // 20: agentruntime.taskapi.v1.TaskService.SignalTask:input_type -> agentruntime.taskapi.v1.SignalTaskRequest
+	13, // 21: agentruntime.taskapi.v1.TaskService.QueryTask:input_type -> agentruntime.taskapi.v1.QueryTaskRequest
+	3,  // 22: agentruntime.taskapi.v1.TaskService.SubmitTask:output_type -> agentruntime.taskapi.v1.SubmitTaskResponse
+	5,  // 23: agentruntime.taskapi.v1.TaskService.CancelTask:output_type -> agentruntime.taskapi.v1.CancelTaskResponse
+	7,  // 24: agentruntime.taskapi.v1.TaskService.SignalTask:output_type -> agentruntime.taskapi.v1.SignalTaskResponse
+	14, // 25: agentruntime.taskapi.v1.TaskService.QueryTask:output_type -> agentruntime.taskapi.v1.QueryTaskResponse
+	22, // [22:26] is the sub-list for method output_type
+	18, // [18:22] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_agentruntime_taskapi_v1_task_api_proto_init() }
@@ -1079,6 +1392,10 @@ func file_agentruntime_taskapi_v1_task_api_proto_init() {
 	}
 	file_agentruntime_taskapi_v1_task_api_proto_msgTypes[5].OneofWrappers = []any{
 		(*SignalTaskRequest_HumanReply)(nil),
+		(*SignalTaskRequest_SubmitGuidance)(nil),
+		(*SignalTaskRequest_EditGuidance)(nil),
+		(*SignalTaskRequest_RetractGuidance)(nil),
+		(*SignalTaskRequest_EditQueuedMessage)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -1086,7 +1403,7 @@ func file_agentruntime_taskapi_v1_task_api_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agentruntime_taskapi_v1_task_api_proto_rawDesc), len(file_agentruntime_taskapi_v1_task_api_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   11,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

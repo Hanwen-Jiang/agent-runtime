@@ -10,6 +10,8 @@ const (
 	SignalSubmitTask = "submit_task"
 	// 发给 Session 工作流，载荷为 CancelTaskSignal。
 	SignalCancelTask = "cancel_task"
+	// 发给 Session 工作流，载荷为 EditQueuedTaskSignal。
+	SignalEditQueuedTask = "edit_queued_task"
 	// Task 子工作流结束时发给 Session 工作流，载荷为 TaskWorkflowResult。
 	// Continue-As-New 之后，新的运行拿不到上一次运行启动的子工作流的 future，只能靠这个信号得知结束。
 	SignalTaskFinished = "task_finished"
@@ -17,8 +19,9 @@ const (
 	QuerySessionState = "session_state"
 
 	// Task 工作流的查询与信号，Task API 直接发给 Task 子工作流。
-	QueryTaskState   = "task_state"
-	SignalHumanReply = "human_reply"
+	QueryTaskState     = "task_state"
+	SignalHumanReply   = "human_reply"
+	SignalTaskGuidance = "task_guidance"
 
 	// Session 工作流与它的 activity 所在的任务队列。
 	SessionTaskQueue = "session"

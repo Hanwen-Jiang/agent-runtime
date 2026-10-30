@@ -847,6 +847,58 @@ func (Priority) EnumDescriptor() ([]byte, []int) {
 	return file_agentruntime_common_v1_enums_proto_rawDescGZIP(), []int{13}
 }
 
+// GuidanceMode：运行中的纠偏什么时候生效（docs/plan/running-task-interaction.md 第 2 节），由用户选。
+type GuidanceMode int32
+
+const (
+	GuidanceMode_GUIDANCE_MODE_UNSPECIFIED GuidanceMode = 0
+	// 下一个检查点生效。
+	GuidanceMode_GUIDANCE_MODE_NEXT_STEP GuidanceMode = 1
+	// 放弃正在进行的调用，马上生效。
+	GuidanceMode_GUIDANCE_MODE_INTERRUPT GuidanceMode = 2
+)
+
+// Enum value maps for GuidanceMode.
+var (
+	GuidanceMode_name = map[int32]string{
+		0: "GUIDANCE_MODE_UNSPECIFIED",
+		1: "GUIDANCE_MODE_NEXT_STEP",
+		2: "GUIDANCE_MODE_INTERRUPT",
+	}
+	GuidanceMode_value = map[string]int32{
+		"GUIDANCE_MODE_UNSPECIFIED": 0,
+		"GUIDANCE_MODE_NEXT_STEP":   1,
+		"GUIDANCE_MODE_INTERRUPT":   2,
+	}
+)
+
+func (x GuidanceMode) Enum() *GuidanceMode {
+	p := new(GuidanceMode)
+	*p = x
+	return p
+}
+
+func (x GuidanceMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (GuidanceMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_agentruntime_common_v1_enums_proto_enumTypes[14].Descriptor()
+}
+
+func (GuidanceMode) Type() protoreflect.EnumType {
+	return &file_agentruntime_common_v1_enums_proto_enumTypes[14]
+}
+
+func (x GuidanceMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use GuidanceMode.Descriptor instead.
+func (GuidanceMode) EnumDescriptor() ([]byte, []int) {
+	return file_agentruntime_common_v1_enums_proto_rawDescGZIP(), []int{14}
+}
+
 var File_agentruntime_common_v1_enums_proto protoreflect.FileDescriptor
 
 const file_agentruntime_common_v1_enums_proto_rawDesc = "" +
@@ -950,7 +1002,11 @@ const file_agentruntime_common_v1_enums_proto_rawDesc = "" +
 	"\bPriority\x12\x18\n" +
 	"\x14PRIORITY_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14PRIORITY_INTERACTIVE\x10\x01\x12\x12\n" +
-	"\x0ePRIORITY_BATCH\x10\x02B\xf6\x01\n" +
+	"\x0ePRIORITY_BATCH\x10\x02*g\n" +
+	"\fGuidanceMode\x12\x1d\n" +
+	"\x19GUIDANCE_MODE_UNSPECIFIED\x10\x00\x12\x1b\n" +
+	"\x17GUIDANCE_MODE_NEXT_STEP\x10\x01\x12\x1b\n" +
+	"\x17GUIDANCE_MODE_INTERRUPT\x10\x02B\xf6\x01\n" +
 	"\x1acom.agentruntime.common.v1B\n" +
 	"EnumsProtoP\x01ZRgithub.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1;commonv1\xa2\x02\x03ACX\xaa\x02\x16Agentruntime.Common.V1\xca\x02\x16Agentruntime\\Common\\V1\xe2\x02\"Agentruntime\\Common\\V1\\GPBMetadata\xea\x02\x18Agentruntime::Common::V1b\x06proto3"
 
@@ -966,7 +1022,7 @@ func file_agentruntime_common_v1_enums_proto_rawDescGZIP() []byte {
 	return file_agentruntime_common_v1_enums_proto_rawDescData
 }
 
-var file_agentruntime_common_v1_enums_proto_enumTypes = make([]protoimpl.EnumInfo, 14)
+var file_agentruntime_common_v1_enums_proto_enumTypes = make([]protoimpl.EnumInfo, 15)
 var file_agentruntime_common_v1_enums_proto_goTypes = []any{
 	(Executor)(0),      // 0: agentruntime.common.v1.Executor
 	(Effect)(0),        // 1: agentruntime.common.v1.Effect
@@ -982,6 +1038,7 @@ var file_agentruntime_common_v1_enums_proto_goTypes = []any{
 	(TaskStatus)(0),    // 11: agentruntime.common.v1.TaskStatus
 	(SessionAccess)(0), // 12: agentruntime.common.v1.SessionAccess
 	(Priority)(0),      // 13: agentruntime.common.v1.Priority
+	(GuidanceMode)(0),  // 14: agentruntime.common.v1.GuidanceMode
 }
 var file_agentruntime_common_v1_enums_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -1001,7 +1058,7 @@ func file_agentruntime_common_v1_enums_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agentruntime_common_v1_enums_proto_rawDesc), len(file_agentruntime_common_v1_enums_proto_rawDesc)),
-			NumEnums:      14,
+			NumEnums:      15,
 			NumMessages:   0,
 			NumExtensions: 0,
 			NumServices:   0,

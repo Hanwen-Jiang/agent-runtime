@@ -61,14 +61,16 @@ class CallContext(_message.Message):
     def __init__(self, task_id: _Optional[str] = ..., node_id: _Optional[str] = ..., role: _Optional[_Union[_enums_pb2.Role, str]] = ..., task_family: _Optional[str] = ..., tier: _Optional[str] = ..., reasoning: _Optional[_Union[_enums_pb2.Reasoning, str]] = ..., pinned_model_profile: _Optional[str] = ..., avoid_vendor: _Optional[str] = ..., max_cost_usd_micros: _Optional[int] = ...) -> None: ...
 
 class ModelChoice(_message.Message):
-    __slots__ = ("model_profile_id", "tier", "vendor")
+    __slots__ = ("model_profile_id", "tier", "vendor", "context_window")
     MODEL_PROFILE_ID_FIELD_NUMBER: _ClassVar[int]
     TIER_FIELD_NUMBER: _ClassVar[int]
     VENDOR_FIELD_NUMBER: _ClassVar[int]
+    CONTEXT_WINDOW_FIELD_NUMBER: _ClassVar[int]
     model_profile_id: str
     tier: str
     vendor: str
-    def __init__(self, model_profile_id: _Optional[str] = ..., tier: _Optional[str] = ..., vendor: _Optional[str] = ...) -> None: ...
+    context_window: int
+    def __init__(self, model_profile_id: _Optional[str] = ..., tier: _Optional[str] = ..., vendor: _Optional[str] = ..., context_window: _Optional[int] = ...) -> None: ...
 
 class ChatMessage(_message.Message):
     __slots__ = ("role", "text", "tool_calls", "tool_call_id", "cache_breakpoint")

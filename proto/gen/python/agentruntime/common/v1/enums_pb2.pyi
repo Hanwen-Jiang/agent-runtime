@@ -125,6 +125,12 @@ class Priority(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     PRIORITY_UNSPECIFIED: _ClassVar[Priority]
     PRIORITY_INTERACTIVE: _ClassVar[Priority]
     PRIORITY_BATCH: _ClassVar[Priority]
+
+class GuidanceMode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    GUIDANCE_MODE_UNSPECIFIED: _ClassVar[GuidanceMode]
+    GUIDANCE_MODE_NEXT_STEP: _ClassVar[GuidanceMode]
+    GUIDANCE_MODE_INTERRUPT: _ClassVar[GuidanceMode]
 EXECUTOR_UNSPECIFIED: Executor
 EXECUTOR_MODEL: Executor
 EXECUTOR_PROGRAM: Executor
@@ -205,3 +211,6 @@ SESSION_ACCESS_READ_WRITE: SessionAccess
 PRIORITY_UNSPECIFIED: Priority
 PRIORITY_INTERACTIVE: Priority
 PRIORITY_BATCH: Priority
+GUIDANCE_MODE_UNSPECIFIED: GuidanceMode
+GUIDANCE_MODE_NEXT_STEP: GuidanceMode
+GUIDANCE_MODE_INTERRUPT: GuidanceMode

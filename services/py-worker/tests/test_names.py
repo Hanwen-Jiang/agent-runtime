@@ -34,6 +34,7 @@ def wire_name(enum: str, value: str) -> str:
         ("WorkflowType", "WORKFLOW_TYPE_TASK", names.TASK_WORKFLOW),
         ("WorkflowType", "WORKFLOW_TYPE_WORKSPACE_OPERATION", names.WORKSPACE_OPERATION_WORKFLOW),
         ("SignalName", "SIGNAL_NAME_HUMAN_REPLY", names.HUMAN_REPLY_SIGNAL),
+        ("SignalName", "SIGNAL_NAME_TASK_GUIDANCE", names.TASK_GUIDANCE_SIGNAL),
         ("SignalName", "SIGNAL_NAME_TASK_FINISHED", names.TASK_FINISHED_SIGNAL),
         ("QueryName", "QUERY_NAME_TASK_STATE", names.TASK_STATE_QUERY),
         ("TaskQueue", "TASK_QUEUE_TASK", names.TASK_QUEUE),
