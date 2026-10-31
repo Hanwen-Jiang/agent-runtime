@@ -72,8 +72,8 @@ Change the source code so that the issue is resolved. Hidden tests will be run a
 DIFFICULTIES = ("<15 min fix", "15 min - 1 hour", "1-4 hours", ">4 hours")
 
 
-# Runtime 报沙箱环境配额满时错误信息里的字样（Worker 的 ledger）。Workspace API 不带可比较的原因码，只能看文字。
-QUOTA_FULL = "个沙箱环境"
+# Runtime 报沙箱配额满时错误信息里的字样（Worker 的 ledger 说“个沙箱环境”，K8s 后端说“个沙箱”）。Workspace API 不带可比较的原因码，只能看文字。
+QUOTA_FULL = "个沙箱"
 T = TypeVar("T")
 
 

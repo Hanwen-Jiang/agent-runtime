@@ -427,9 +427,9 @@ class Flaky(FakeRuntime):
 
 
 def test_a_full_sandbox_quota_is_waited_out(tmp_path: Path, insts: list[sb.Instance]) -> None:
-    """配额满只说明前面的环境还没回收（做完的 Task 的环境留着等复用），等一等就有名额，不算这一题出错。"""
+    """配额满只说明前面的环境还没回收（做完的 Task 的环境留着等复用），等一等就有名额，不算这一题出错。两层配额的说法不同，都要认。"""
     waits: list[float] = []
-    fake = Flaky(create_errors=[QUOTA, QUOTA])
+    fake = Flaky(create_errors=[QUOTA, ApiError(403, "permission_denied", "同时最多 4 个沙箱，先等前面的结束")])
     sb.run(fake, insts[:1], tmp_path / "out", settings(budget_usd=10, task_usd_limit=2, sleep=waits.append))
     [rec] = records(tmp_path / "out").values()
     assert rec["state"] == "finished" and "error" not in rec
