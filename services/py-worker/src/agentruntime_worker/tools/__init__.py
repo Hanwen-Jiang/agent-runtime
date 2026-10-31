@@ -9,7 +9,7 @@
   Node Executor（设了 AR_S3_ENDPOINT 时是 S3 兼容的对象存储，否则 AR_OBJECT_STORE_DIR 或数据目录下的 objects）；
   都没配时是进程内同一个临时目录。
 - tool_sessions(config)：Worker 运行期间的 MCP 会话：配了 AR_MCP_TOOLS_FILE 时启动 MCP Gateway（mcp.py），把登记了的
-  MCP 工具登记进 dev_tools(config)，退出时关闭会话。
+  MCP 工具登记进 dev_tools(config)，退出时关闭会话。mcp_tool_names(config) 是现在登记了的 MCP 工具的名字（上下文占比里单独一类）。
 - ToolCatalog、DevCatalog、latest_spec：工具的 effect 与定义取自登记（catalog.py）。
 """
 
@@ -40,13 +40,14 @@ from agentruntime_worker.workspace.archive import WorkspaceArchiver
 from agentruntime_worker.workspace.operations import CREDENTIAL_SECRET, WorkspaceOperations
 
 __all__ = [
-    "CONTEXT_READ", "DevCatalog", "ToolCatalog", "context_objects", "dev_tools", "latest", "latest_spec", "sandbox_broker", "tool_sessions",
-    "workspace_operations",
+    "CONTEXT_READ", "DevCatalog", "ToolCatalog", "context_objects", "dev_tools", "latest", "latest_spec", "mcp_tool_names", "sandbox_broker",
+    "tool_sessions", "workspace_operations",
 ]
 
 _providers: dict[tuple[object, ...], LocalToolDriverProvider] = {}
 _objects: dict[tuple[object, ...], ObjectStoreProvider] = {}
 _brokers: dict[tuple[object, ...], SandboxBroker | None] = {}
+_mcp_names: dict[tuple[object, ...], frozenset[str]] = {}
 
 
 def _store_key(config: WorkerConfig) -> tuple[object, ...]:
@@ -185,4 +186,12 @@ async def tool_sessions(config: WorkerConfig) -> AsyncIterator[McpGateway | None
         yield None
         return
     async with McpGateway(dev_tools(config), config.mcp_tools_file) as gateway:
-        yield gateway
+        _mcp_names[_key(config)] = frozenset(gateway.registered)
+        try:
+            yield gateway
+        finally:
+            _mcp_names.pop(_key(config), None)
+
+
+def mcp_tool_names(config: WorkerConfig) -> frozenset[str]:
+    return _mcp_names.get(_key(config), frozenset())

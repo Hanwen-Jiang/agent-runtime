@@ -444,9 +444,11 @@ def prune(scores: list[float], beam_width: int) -> list[int]:
 
 def repeated_error(history: list[Mapping[str, Any]], limit: int = REPEATED_ERROR_LIMIT) -> bool:
     """tool_loop 最近 limit 步是否都以同一个错误结束（同一工具、同一错误说明）。同一次回答的多个调用（step 相同）算一步，
-    跳过的不算：同一次回答里读三个不存在的文件不是原地重试。"""
+    跳过的不算：同一次回答里读三个不存在的文件不是原地重试。用户打断或纠偏带来的记录也不算（不是工具一直在报错）。"""
     steps: list[list[Mapping[str, Any]]] = []
     for entry in history:
+        if "user_guidance" in entry:
+            continue
         marker = entry.get("step")
         if steps and marker is not None and steps[-1][0].get("step") == marker:
             steps[-1].append(entry)
@@ -457,7 +459,7 @@ def repeated_error(history: list[Mapping[str, Any]], limit: int = REPEATED_ERROR
         return False
     signatures: set[tuple[Any, Any]] = set()
     for group in recent:
-        ran = [entry for entry in group if not entry.get("skipped")]
+        ran = [entry for entry in group if not entry.get("skipped") and not entry.get("interrupted")]
         if not ran or any("error" not in entry for entry in ran):
             return False
         signatures.update((entry.get("tool"), entry.get("error")) for entry in ran)

@@ -26,15 +26,18 @@ REVIEW_OUTPUT_SCHEMA: dict[str, Any] = {
         "verdict": {"type": "object"},
         "completion": {"type": "number", "minimum": 0, "maximum": 1},
         "state_update": {"type": "object"},
+        "highlights": {"type": "object"},
     },
 }
 """Progress Check 的结构化输出外层；Verdict 的完整 schema 放在 system 区（模型网关不解析 $ref）。"""
 
-_REVIEWER_RULES = f"""你是 Agent Runtime 的 Reviewer，在 Round 的结尾判定下一步。你只看本轮的结果、Task State 与验收条件。只输出一个 JSON 对象：{{"verdict": …, "completion": …, "state_update": …}}
+_REVIEWER_RULES = f"""你是 Agent Runtime 的 Reviewer，在 Round 的结尾判定下一步。你只看本轮的结果、Task State 与验收条件。只输出一个 JSON 对象：{{"verdict": …, "completion": …, "state_update": …, "highlights": …}}
 - verdict：符合下面 Verdict 的 JSON Schema。问人时 options 只能是 {"、".join(HUMAN_REPLIES)} 三种。
 - completion：整个 Task 的完成度，0 到 1，看产出物本身。
 - state_update：要写进 Task State 的汇总：facts（本轮已验证的事实）、assumptions_verified 与 assumptions_broken（照抄 Task State 里假设的原文）、open_questions（待查的问题）。只写有根据的，各几条即可。facts 只写关于任务与产出物本身的事实（例如仓库里有哪些文件、测试结果），不写判定的过程，不提 floor、硬信号、规则这些给你的内部材料。
-- 语言：给人看的文字（verdict 的 reason、问人的 question 与 state_summary、repair 的 guidance、replan 的 stuck_reason、state_update 的各条）用用户的语言写，即 Task State 里 goal 所用的语言（goal 是英文就写英文）。
+- highlights：这一轮给人看的重要输出：files（重要文件，每项 path 与 why，why 一句话说明为什么重要；path 只写这一轮工具调用碰过的文件）、answers（重要答案，每条不超过 300 字），各最多 5 条。没有就省略。
+- guidance：Task State 里的 guidance 是用户在运行中发来的纠偏，按它验收：产出不符合用户的纠偏就不算完成。
+- 语言：给人看的文字（verdict 的 reason、问人的 question 与 state_summary、repair 的 guidance、replan 的 stuck_reason、state_update 与 highlights 的各条）用用户的语言写，即 Task State 里 goal 所用的语言（goal 是英文就写英文）。
 
 先回答 Progress Check 的五个问题，写进 verdict.progress_check：是否已满足验收条件？最近几个 Round 有没有实质进展？是否在绕圈？计划依赖的假设还成立吗？下一步做什么、由谁做？
 
@@ -56,7 +59,7 @@ _REVIEWER_RULES = f"""你是 Agent Runtime 的 Reviewer，在 Round 的结尾判
 
 _DEFS = ("verdict", "non_empty_string", "diagnosis_layer", "hard_signal", "node_id", "repair_strategy", "escalate_target", "tier", "human_reply", "recipe_ref", "versioned_ref")
 
-_TASK_STATE_KEYS = ("task_id", "session_id", "goal", "done_when", "status", "constraints", "milestones", "facts", "assumptions", "open_questions", "rounds", "artifacts")
+_TASK_STATE_KEYS = ("task_id", "session_id", "goal", "done_when", "status", "constraints", "milestones", "facts", "assumptions", "open_questions", "guidance", "rounds", "artifacts")
 _ROUND_KEYS = ("seq", "stage_goal", "triage_level", "status", "verdict", "cost_usd")
 _STAGE_KEYS = ("seq", "goal", "exit_when", "budget", "nodes")
 _NODE_KEYS = (
@@ -121,6 +124,18 @@ def review_messages(view: dict[str, Any], *, ledger: Ledger, floor: Floor, catal
         findings["effect_ceiling"] = catalog.effect_ceiling
     text = f"本轮的材料：{_dump(view)}\n代码算出的硬信号、floor 与可选项：{_dump(findings)}"
     return [*system_zone(), mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=text)]
+
+
+def checked_highlights(raw: Any) -> dict[str, Any] | None:
+    """模型给的 highlights：形状不对就整个不要（给人看的，判定才要紧，不为它重问）。路径的核对与截断在工作流里（workflows/highlights.py）。"""
+    if not isinstance(raw, Mapping):
+        return None
+    files, answers = raw.get("files", []), raw.get("answers", [])
+    if not isinstance(files, list) or not all(isinstance(f, Mapping) and isinstance(f.get("path"), str) and f["path"].strip() and isinstance(f.get("why", ""), str) for f in files):
+        return None
+    if not isinstance(answers, list) or not all(isinstance(a, str) for a in answers):
+        return None
+    return dict(raw) if files or answers else None
 
 
 def retry_messages(previous: list[mg.ChatMessage], answer: str, problems: list[str]) -> list[mg.ChatMessage]:

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os/exec"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -62,6 +63,14 @@ func helper(mode string, args []string) {
 		if err := os.WriteFile(args[0], []byte(args[1]), 0o644); err != nil {
 			os.Exit(2)
 		}
+	case "beat":
+		beat(args[0])
+	case "tree":
+		child := exec.Command(os.Args[0], "agent-helper", "beat", args[0]+".child")
+		if err := child.Start(); err != nil {
+			os.Exit(3)
+		}
+		beat(args[0])
 	case "spam":
 		n, _ := strconv.Atoi(args[0])
 		os.Stdout.Write(bytes.Repeat([]byte("x"), n))

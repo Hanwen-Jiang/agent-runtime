@@ -6,15 +6,21 @@ Cloudflare 经桥（Worker）转发。agent 的令牌放 X-Sandbox-Token 头，�
 
 错误：agent 的 400、409（导入存档时工作目录不空）、413 是 invalid；404 是 not_found；401、403 是 denied（令牌或权限配错了）；
 连不上、传输中断、5xx、429 是 transient。存档的导出与导入（D-06）走流式的请求，不把整个工作区读进内存。
+
+取消：请求在线程里阻塞，协程取消了线程还在等，所以取消时直接断开连接（_Connection），agent 看到断开就杀掉命令的进程组。中间隔着
+K8s API Server 或 Cloudflare 的桥时断开不一定传得到，所以 exec 另发 POST /v1/exec/cancel（docs/plan/running-task-interaction.md 第 2 节）。
 """
 
 from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import http.client
 import json
 import re
+import secrets
+import socket
 import ssl
 import urllib.error
 import urllib.parse
@@ -28,6 +34,7 @@ from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError, P
 from agentruntime_core.providers.sandbox import DirEntry, ExecResult, FileEntry, GrepMatch, check_exec_env
 
 TOKEN_HEADER = "X-Sandbox-Token"
+CANCEL_TIMEOUT_S = 3.0
 _DRIVE = re.compile(r"^[A-Za-z]:")
 T = TypeVar("T")
 
@@ -56,6 +63,53 @@ def check_path(path: str) -> str:
     return path
 
 
+class _Connection:
+    """一次请求的连接：取消时从别的线程断开，阻塞在读响应的线程随之出错返回。还在建连接时取消，连上之后马上断开。"""
+
+    def __init__(self) -> None:
+        self._conn: http.client.HTTPConnection | None = None
+        self._aborted = False
+
+    def _made(self, conn: http.client.HTTPConnection) -> None:
+        self._conn = conn
+        if self._aborted:
+            self.abort()
+            raise ConnectionAbortedError("请求被取消")
+
+    def abort(self) -> None:
+        self._aborted = True
+        sock = self._conn.sock if self._conn is not None else None
+        if sock is not None:
+            try:
+                sock.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            sock.close()
+
+    def opener(self, context: ssl.SSLContext | None) -> urllib.request.OpenerDirector:
+        watch = self
+
+        class Plain(http.client.HTTPConnection):
+            def connect(self) -> None:
+                super().connect()
+                watch._made(self)
+
+        class Secure(http.client.HTTPSConnection):
+            def connect(self) -> None:
+                super().connect()
+                watch._made(self)
+
+        class PlainHandler(urllib.request.HTTPHandler):
+            def http_open(self, req: urllib.request.Request) -> http.client.HTTPResponse:
+                return self.do_open(Plain, req)
+
+        class SecureHandler(urllib.request.HTTPSHandler):
+            def https_open(self, req: urllib.request.Request) -> http.client.HTTPResponse:
+                return self.do_open(Secure, req, context=context)
+
+        return urllib.request.build_opener(urllib.request.ProxyHandler({}), PlainHandler(), SecureHandler())
+
+
 class AgentClient:
     def __init__(self, *, request_timeout: timedelta = timedelta(seconds=60)) -> None:
         self._request_timeout = request_timeout
@@ -66,14 +120,19 @@ class AgentClient:
         if not argv:
             raise InvalidError("invalid_argument", "argv 不能为空")
         ms = max(1, int(timeout.total_seconds() * 1000))
-        request: dict[str, object] = {"argv": list(argv), "stdin": _b64(stdin), "timeout_ms": ms}
+        exec_id = secrets.token_hex(16)
+        request: dict[str, object] = {"argv": list(argv), "stdin": _b64(stdin), "timeout_ms": ms, "exec_id": exec_id}
         extra = check_exec_env(env)
         if extra:
             request["env"] = extra
         body = json.dumps(request).encode()
-        status, data = await self._call(
-            endpoint, "POST", "/v1/exec", body, {"Content-Type": "application/json"}, timeout.total_seconds() + self._request_timeout.total_seconds()
-        )
+        try:
+            status, data = await self._call(
+                endpoint, "POST", "/v1/exec", body, {"Content-Type": "application/json"}, timeout.total_seconds() + self._request_timeout.total_seconds()
+            )
+        except asyncio.CancelledError:
+            await self._cancel_exec(endpoint, exec_id)
+            raise
         self.raise_for(status, data)
         try:
             out = json.loads(data)
@@ -84,6 +143,12 @@ class AgentClient:
             )
         except (ValueError, KeyError, TypeError):
             raise TransientError("sandbox_bad_response", "沙箱返回的结果格式不对") from None
+
+    async def _cancel_exec(self, endpoint: AgentEndpoint, exec_id: str) -> None:
+        """让 agent 停掉这条命令；等一小会儿，调用方接下来可能要还原工作区。旧的 agent 没有这个接口，还有断开连接这一条。"""
+        body = json.dumps({"exec_id": exec_id}).encode()
+        with contextlib.suppress(TransientError, TimeoutError):
+            await asyncio.wait_for(self._call(endpoint, "POST", "/v1/exec/cancel", body, {"Content-Type": "application/json"}, CANCEL_TIMEOUT_S), CANCEL_TIMEOUT_S)
 
     async def write_file(self, endpoint: AgentEndpoint, path: str, data: bytes) -> None:
         status, body = await self._call(endpoint, "PUT", "/v1/files/" + _quote(check_path(path)), data, {"Content-Type": "application/octet-stream"})
@@ -188,18 +253,26 @@ class AgentClient:
         for k, v in {**endpoint.headers, **headers, TOKEN_HEADER: endpoint.token}.items():
             request.add_header(k, v)
         limit = timeout if timeout is not None else self._request_timeout.total_seconds()
+        connection = _Connection()
 
         def send() -> tuple[int, bytes]:
-            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=endpoint.ssl_context))
+            opener = connection.opener(endpoint.ssl_context)
             try:
                 with opener.open(request, timeout=limit) as resp:
                     return resp.status, resp.read()
             except urllib.error.HTTPError as err:
                 return err.code, err.read()
-            except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as err:
+            except (urllib.error.URLError, http.client.HTTPException, TimeoutError, ConnectionError, OSError) as err:
                 raise TransientError("sandbox_unavailable", f"连不上沙箱（{type(err).__name__}）") from None
 
-        return await asyncio.to_thread(send)
+        running = asyncio.ensure_future(asyncio.to_thread(send))
+        try:
+            return await asyncio.shield(running)
+        except asyncio.CancelledError:
+            connection.abort()
+            # 线程随之出错返回，没有人要它的结果。
+            running.add_done_callback(lambda t: t.cancelled() or t.exception())
+            raise
 
     @staticmethod
     def raise_for(status: int, body: bytes) -> None:

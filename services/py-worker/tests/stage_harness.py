@@ -137,6 +137,39 @@ def barrier(group: str, size: int, inner: Behavior = echo, timeout: float = 10) 
     return behave
 
 
+@dataclass
+class Hold:
+    """把一个 activity 停在这里，直到放开或被取消。cancelled 记下取消是不是真的送到了（Temporal 的取消靠心跳送达）。
+    on_cancel 给了就在被取消时抛它给的异常（模拟工具撤销之后报告结果）。"""
+
+    entered: asyncio.Event = field(default_factory=asyncio.Event)
+    release: asyncio.Event = field(default_factory=asyncio.Event)
+    cancelled: bool = False
+    on_cancel: Callable[[], BaseException] | None = None
+
+    async def wait(self) -> None:
+        self.entered.set()
+        try:
+            while not self.release.is_set():
+                activity.heartbeat()
+                await asyncio.sleep(0.05)
+        except asyncio.CancelledError:
+            self.cancelled = True
+            if self.on_cancel is not None:
+                raise self.on_cancel() from None
+            raise
+
+
+def held(hold: Hold, inner: Behavior = echo) -> Behavior:
+    """Node 的行为：先停在 hold，放开后照 inner 执行。"""
+
+    async def behave(inp: NodeInput, script: Script) -> dict[str, Any]:
+        await hold.wait()
+        return await inner(inp, script)
+
+    return behave
+
+
 def blocks_forever() -> Behavior:
     async def behave(inp: NodeInput, _: Script) -> dict[str, Any]:
         while True:
@@ -189,6 +222,12 @@ class Script:
     task_family: str = ""
     # 第 11.5 节：某一轮 plan_round 的结果另带的代码与参数（Round 序号 → PlanRoundOutput 的字段）。
     plan_codes: dict[int, dict[str, Any]] = field(default_factory=dict)
+    # plan_round 给出的 Triage（docs/plan/running-task-interaction.md 第 4 节要 fast 的轮）。
+    triage_level: str = "full"
+
+    # "<activity>:<id>" → 第一次走到这里时停住（id：tool_loop_step 是 step_id，call_tool 是 node_id，plan_round、review_round
+    # 是 Round 序号，finalize_task 是 Task id）。只停第一次：被打断之后重来的那次不停。
+    holds: dict[str, Hold] = field(default_factory=dict)
 
     calls: list[Call] = field(default_factory=list)
     hook_calls: list[HookCall] = field(default_factory=list)
@@ -210,6 +249,21 @@ class Script:
 
     def tick(self) -> int:
         return next(self._clock)
+
+    def hold(self, key: str, on_cancel: Callable[[], BaseException] | None = None) -> Hold:
+        self.holds[key] = Hold(on_cancel=on_cancel)
+        return self.holds[key]
+
+    async def _held(self, key: str, call: Call | None = None) -> None:
+        hold = self.holds.pop(key, None)
+        if hold is None:
+            return
+        try:
+            await hold.wait()
+        except BaseException:
+            if call is not None and hold.cancelled:
+                call.outcome = "cancelled"
+            raise
 
     # --- 查询记录 ---
 
@@ -285,16 +339,18 @@ class Script:
         scenario = str(inp.inputs.get("scenario") or "main")
         self.scenario_of[inp.task_id] = scenario
         self.plan_inputs.append(inp)
+        await self._held(f"{names.PLAN_ROUND}:{inp.round_seq}")
         plan = copy.deepcopy(self.task_plan)
         extra = {k: v for k, v in (("goal_code", self.goal_code), ("task_family", self.task_family)) if v}
         extra.update(self.plan_codes.get(inp.round_seq, {}))
         if self.plan_for is not None:
-            return PlanRoundOutput(stage=self.plan_for(inp), triage_level="full", task_plan=plan, cost_usd=self.plan_cost, **extra)
-        return PlanRoundOutput(stage=copy.deepcopy(self.plans[scenario][inp.round_seq - 1]), triage_level="full", task_plan=plan, cost_usd=self.plan_cost, **extra)
+            return PlanRoundOutput(stage=self.plan_for(inp), triage_level=self.triage_level, task_plan=plan, cost_usd=self.plan_cost, **extra)
+        return PlanRoundOutput(stage=copy.deepcopy(self.plans[scenario][inp.round_seq - 1]), triage_level=self.triage_level, task_plan=plan, cost_usd=self.plan_cost, **extra)
 
     @activity.defn(name=names.REVIEW_ROUND)
     async def review_round(self, inp: ReviewRoundInput) -> Any:
         self.reviews.append(inp)
+        await self._held(f"{names.REVIEW_ROUND}:{inp.round_seq}")
         if self.reviewer is not None:
             return await self.reviewer(inp)
         scenario = self.scenario_of[inp.task_id]
@@ -309,6 +365,7 @@ class Script:
     @activity.defn(name=names.FINALIZE_TASK)
     async def finalize_task(self, inp: FinalizeTaskInput) -> None:
         self.finalized.append(inp)
+        await self._held(f"{names.FINALIZE_TASK}:{inp.task_id}")
         if self.finalize_error:
             raise ApplicationError(self.finalize_error, type="write_back_failed", non_retryable=True)
 
@@ -340,7 +397,9 @@ class Script:
     @activity.defn(name=names.TOOL_LOOP_STEP)
     async def tool_loop_step(self, inp: ToolLoopStepInput) -> ToolLoopStep:
         info = activity.info()
-        self.calls.append(Call(names.TOOL_LOOP_STEP, inp.step_id, self.tick(), inp, info.workflow_id, info.task_queue, outcome="ok"))
+        call = Call(names.TOOL_LOOP_STEP, inp.step_id, self.tick(), inp, info.workflow_id, info.task_queue, outcome="ok")
+        self.calls.append(call)
+        await self._held(f"{names.TOOL_LOOP_STEP}:{inp.step_id}", call)
         step = self.tool_steps.get(inp.node["id"]) or self.tool_steps[base_id(inp.node["id"])]
         return step(inp)
 
@@ -349,6 +408,7 @@ class Script:
         info = activity.info()
         call = Call(names.CALL_TOOL, inp.node_id, self.tick(), inp, info.workflow_id, info.task_queue)
         self.calls.append(call)
+        await self._held(f"{names.CALL_TOOL}:{inp.node_id}", call)
         produce = self.tool_results.get(inp.tool, lambda i: {"tool": i.tool, "args": i.args})
         value = produce(inp)
         if isinstance(value, Exception):

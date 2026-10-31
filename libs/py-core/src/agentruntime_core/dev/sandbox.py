@@ -24,6 +24,7 @@ from typing import IO
 from agentruntime_core.dev import workdir
 from agentruntime_core.dev._common import scope_id
 from agentruntime_core.errors import InvalidError, NotFoundError
+from agentruntime_core.processes import kill_tree, new_group
 from agentruntime_core.providers.sandbox import (
     DirEntry,
     ExecResult,
@@ -128,13 +129,18 @@ class LocalSubprocessSandbox:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             env={**{k: os.environ[k] for k in _ENV if k in os.environ}, "PYTHONIOENCODING": "utf-8", **extra},
+            **new_group(),
         )
         try:
             stdout, stderr = await asyncio.wait_for(process.communicate(stdin), timeout=timeout.total_seconds())
         except TimeoutError:
-            process.kill()
+            await kill_tree(process)
             stdout, stderr = await process.communicate()
             return ExecResult(exit_code=None, stdout=stdout, stderr=stderr, timed_out=True)
+        except asyncio.CancelledError:
+            # 取消时命令和它的子进程都要停。
+            await kill_tree(process)
+            raise
         return ExecResult(exit_code=process.returncode, stdout=stdout, stderr=stderr, timed_out=False)
 
     async def write_file(self, env_id: str, path: str, data: bytes) -> None:

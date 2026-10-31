@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import io
 import tarfile
@@ -29,6 +30,23 @@ from agentruntime_core.providers.sandbox import FileEntry, Sandbox, SandboxProvi
 
 SandboxHarness = Harness[SandboxProvider]
 TIMEOUT = timedelta(seconds=30)
+
+# 命令和它的子进程各往一个文件里不停地追加，文件不再变长说明进程停了。到时间自己退出：取消没有杀掉它们时（测试失败时）不留在机器上。
+_BEAT = """
+import sys, time
+end = time.monotonic() + 30
+while time.monotonic() < end:
+    with open(sys.argv[1], "a") as f:
+        f.write(".")
+    time.sleep(0.05)
+"""
+_TREE = f"""
+import subprocess, sys
+BEAT = {_BEAT!r}
+subprocess.Popen([sys.executable, "-c", BEAT, "child.beat"])
+sys.argv = ["", "parent.beat"]
+exec(BEAT)
+"""
 
 MALFORMED_PATHS = ["../escape.txt", "/etc/passwd", "a/../../escape.txt", "C:\\Windows\\x", "a\\b", ""]
 
@@ -91,6 +109,34 @@ class SandboxConformance(StandardRules):
         result = await sandbox.exec(env.env_id, ["python", "-c", "import time; time.sleep(30)"], timeout=timedelta(milliseconds=500))
         assert result.timed_out is True
         assert result.exit_code is None
+
+    async def test_cancelling_exec_stops_the_command_and_its_children(self, sandbox: Sandbox) -> None:
+        """打断或取消 Task 时（docs/plan/running-task-interaction.md 第 2 节）Worker 这边的协程被取消，命令要真的停，子进程也要停。"""
+        env = await sandbox.create(SandboxSpec())
+        call = asyncio.create_task(sandbox.exec(env.env_id, ["python", "-c", _TREE], timeout=timedelta(seconds=60)))
+
+        async def beats(name: str) -> int:
+            try:
+                return len(await sandbox.read_file(env.env_id, name))
+            except NotFoundError:
+                return 0
+
+        for _ in range(400):
+            if await beats("parent.beat") and await beats("child.beat"):
+                break
+            assert not call.done(), f"命令提前结束了：{call.result()}"
+            await asyncio.sleep(0.05)
+        else:
+            raise AssertionError("命令没有跑起来")
+        call.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(call, 20)
+        await asyncio.sleep(0.5)
+        before = await beats("parent.beat"), await beats("child.beat")
+        await asyncio.sleep(1.0)
+        after = await beats("parent.beat"), await beats("child.beat")
+        assert after[0] == before[0], "取消之后命令还在跑"
+        assert after[1] == before[1], "取消之后命令的子进程还在跑"
 
     async def test_files_roundtrip_and_are_visible_to_code(self, sandbox: Sandbox) -> None:
         env = await sandbox.create(SandboxSpec())

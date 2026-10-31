@@ -18,6 +18,7 @@ from agentruntime_worker import names
 from agentruntime_worker.executor.dev import model_gateway
 from agentruntime_worker.activities.types import PlanRoundInput, PlanRoundOutput, Tenant
 from agentruntime_worker.config import WorkerConfig
+from agentruntime_worker.executor.heartbeat import heartbeating
 from agentruntime_worker.planner.context import CatalogView, PlanningContext, PlanningContextSource, StaticContextSource, TranscriptContextSource
 from agentruntime_worker.planner.planner import Planner, PlanRequest
 from agentruntime_worker.registry import RegistryContextSource, registry_client
@@ -34,6 +35,10 @@ class PlannerActivities:
 
     @activity.defn(name=names.PLAN_ROUND)
     async def plan_round(self, inp: PlanRoundInput) -> PlanRoundOutput:
+        async with heartbeating():
+            return await self._plan_round(inp)
+
+    async def _plan_round(self, inp: PlanRoundInput) -> PlanRoundOutput:
         context = await self.contexts.load(inp)
         request = PlanRequest(
             tenant=inp.tenant,

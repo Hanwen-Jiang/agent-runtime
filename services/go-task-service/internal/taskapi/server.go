@@ -59,6 +59,9 @@ const ScopeApprove = "task.approve"
 
 var objectURI = regexp.MustCompile(`^obj://([a-z0-9][a-z0-9_-]{0,62})/\S+$`)
 
+// guidanceID 同 defs.schema.json 的 guidance_id。
+var guidanceID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+
 // PinResolver 给出新 Task 固定的版本（设计书 3.1.2“固定”）。Registry 实现之前用 FilePinResolver。
 type PinResolver interface {
 	Resolve(ctx context.Context, tenant *commonv1.TenantContext) (*workflowv1.PinnedVersions, error)
@@ -406,6 +409,23 @@ func (s *Server) SignalTask(ctx context.Context, req *connect.Request[taskapiv1.
 	if err := mayControl(id, row); err != nil {
 		return nil, ConnectError(err)
 	}
+	switch signal := req.Msg.GetSignal().(type) {
+	case *taskapiv1.SignalTaskRequest_SubmitGuidance:
+		return s.signalGuidance(ctx, id, tenant, row, &workflowv1.TaskGuidanceSignal{
+			GuidanceId: signal.SubmitGuidance.GetGuidanceId(), Kind: workflowv1.TaskGuidanceKind_TASK_GUIDANCE_KIND_SUBMIT,
+			Text: signal.SubmitGuidance.GetText(), Mode: signal.SubmitGuidance.GetMode(),
+		})
+	case *taskapiv1.SignalTaskRequest_EditGuidance:
+		return s.signalGuidance(ctx, id, tenant, row, &workflowv1.TaskGuidanceSignal{
+			GuidanceId: signal.EditGuidance.GetGuidanceId(), Kind: workflowv1.TaskGuidanceKind_TASK_GUIDANCE_KIND_EDIT, Text: signal.EditGuidance.GetText(),
+		})
+	case *taskapiv1.SignalTaskRequest_RetractGuidance:
+		return s.signalGuidance(ctx, id, tenant, row, &workflowv1.TaskGuidanceSignal{
+			GuidanceId: signal.RetractGuidance.GetGuidanceId(), Kind: workflowv1.TaskGuidanceKind_TASK_GUIDANCE_KIND_RETRACT,
+		})
+	case *taskapiv1.SignalTaskRequest_EditQueuedMessage:
+		return s.editQueuedMessage(ctx, id, tenant, row, signal.EditQueuedMessage.GetMessage())
+	}
 	reply := req.Msg.GetHumanReply()
 	if reply == nil {
 		return nil, ConnectError(invalid("没有信号内容"))
@@ -431,6 +451,82 @@ func (s *Server) SignalTask(ctx context.Context, req *connect.Request[taskapiv1.
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("Task 还没开始运行"))
 	}
 	if err != nil {
+		return nil, ConnectError(err)
+	}
+	return connect.NewResponse(&taskapiv1.SignalTaskResponse{}), nil
+}
+
+// failedPrecondition 是带稳定 code 的 FailedPrecondition：应用按 ErrorInfo 的 reason 翻译（task_finished、task_not_started）。
+func failedPrecondition(code, message string) error {
+	out := connect.NewError(connect.CodeFailedPrecondition, errors.New(message))
+	if detail, err := connect.NewErrorDetail(&errdetails.ErrorInfo{Reason: code, Domain: ErrorDomain}); err == nil {
+		out.AddDetail(detail)
+	}
+	return out
+}
+
+func checkText(text, what string) error {
+	switch {
+	case strings.TrimSpace(text) == "":
+		return invalid(what + "不能是空的")
+	case len(text) > maxMessageBytes:
+		return invalid(what + "太长")
+	}
+	return nil
+}
+
+// signalGuidance 把纠偏、修改或撤回发给 Task 工作流（docs/plan/running-task-interaction.md 第 2 节）。谁的信号先到谁算，结果靠事件
+// guidance_updated 告诉客户端。文字不进日志。
+func (s *Server) signalGuidance(ctx context.Context, id ingress.Identity, tenant *commonv1.TenantContext, row taskstore.Task, sig *workflowv1.TaskGuidanceSignal) (*connect.Response[taskapiv1.SignalTaskResponse], error) {
+	if !guidanceID.MatchString(sig.GetGuidanceId()) {
+		return nil, ConnectError(invalid("guidance_id 要是 1 到 64 个字母、数字、下划线或连字符"))
+	}
+	if sig.GetKind() != workflowv1.TaskGuidanceKind_TASK_GUIDANCE_KIND_RETRACT {
+		if err := checkText(sig.GetText(), "纠偏的文字"); err != nil {
+			return nil, ConnectError(err)
+		}
+	}
+	if sig.GetKind() == workflowv1.TaskGuidanceKind_TASK_GUIDANCE_KIND_SUBMIT && sig.GetMode() == commonv1.GuidanceMode_GUIDANCE_MODE_UNSPECIFIED {
+		return nil, ConnectError(invalid("要选纠偏的生效时机"))
+	}
+	if terminal(row.Status) {
+		return nil, failedPrecondition("task_finished", "Task 已经结束")
+	}
+	engine, err := s.d.Durable.Bind(tenant)
+	if err != nil {
+		return nil, ConnectError(err)
+	}
+	sig.ByUserId, sig.At = id.UserID, timestamppb.New(s.d.Clock.Now())
+	err = engine.Signal(ctx, row.TaskID, session.SignalTaskGuidance, sig)
+	if providererr.CategoryOf(err) == providererr.NotFound {
+		// 工作流不在：可能刚结束、结局还没记下，再查一次；否则是还在排队。
+		if latest, ok, lookupErr := s.tasks.LookupTask(ctx, tenant, row.TaskID); lookupErr == nil && ok && terminal(latest.Status) {
+			return nil, failedPrecondition("task_finished", "Task 已经结束")
+		}
+		return nil, failedPrecondition("task_not_started", "Task 还没开始运行")
+	}
+	if err != nil {
+		return nil, ConnectError(err)
+	}
+	return connect.NewResponse(&taskapiv1.SignalTaskResponse{}), nil
+}
+
+// editQueuedMessage 把修改发给 Session 工作流：队列在它那里，改不改由它定（Task 可能刚好开始了），结果靠事件 task_message_edited
+// 告诉客户端，业务库也由它同步。
+func (s *Server) editQueuedMessage(ctx context.Context, id ingress.Identity, tenant *commonv1.TenantContext, row taskstore.Task, message string) (*connect.Response[taskapiv1.SignalTaskResponse], error) {
+	if err := checkText(message, "消息"); err != nil {
+		return nil, ConnectError(err)
+	}
+	if terminal(row.Status) {
+		return nil, failedPrecondition("task_finished", "Task 已经结束")
+	}
+	engine, err := s.d.Durable.Bind(tenant)
+	if err != nil {
+		return nil, ConnectError(err)
+	}
+	if err := engine.Signal(ctx, row.SessionID, session.SignalEditQueuedTask, &workflowv1.EditQueuedTaskSignal{
+		TaskId: row.TaskID, Message: message, ByUserId: id.UserID, At: timestamppb.New(s.d.Clock.Now()),
+	}); err != nil {
 		return nil, ConnectError(err)
 	}
 	return connect.NewResponse(&taskapiv1.SignalTaskResponse{}), nil

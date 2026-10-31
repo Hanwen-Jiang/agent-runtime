@@ -84,10 +84,20 @@ def _brief(context: PlanningContext, decision: TriageDecision, task_plan: dict[s
     return "\n".join(lines)
 
 
+def _without_highlights(task_state: dict[str, Any]) -> dict[str, Any]:
+    """各轮的 highlights 是给人看的汇总，不给模型（docs/plan/running-task-interaction.md 第 4 节）。"""
+    rounds = task_state.get("rounds")
+    if not isinstance(rounds, list):
+        return task_state
+    return {**task_state, "rounds": [{k: v for k, v in r.items() if k != "highlights"} if isinstance(r, dict) else r for r in rounds]}
+
+
 def _round(message: str, round_seq: int, task_state: dict[str, Any] | None, last_round: dict[str, Any] | None, keep_nodes: list[str] | None, conversation: str = "") -> str:
     lines = [f"用户消息：{message}", *([conversation] if conversation else []), f"本轮是第 {round_seq} 轮。"]
     if task_state:
-        lines.append(f"Task State：{_dump(task_state)}")
+        lines.append(f"Task State：{_dump(_without_highlights(task_state))}")
+        if task_state.get("guidance"):
+            lines.append("Task State 的 guidance 是用户在运行中发来的纠偏，必须照办；重做剩余部分时不要再走用户否定的路。")
         remaining = validate.task_budget_remaining(task_state)
         if remaining is not None:
             lines.append(f"Task 剩余预算：${remaining:.2f}（Stage 与各 Node 的 budget 都不要超过它，超过的会被压到剩余）")

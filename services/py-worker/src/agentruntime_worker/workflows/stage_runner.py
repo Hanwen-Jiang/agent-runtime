@@ -11,7 +11,10 @@
    深度不超过 2。
 5. 汇集：结果按 Node id 排序后合并；下游只拿 result，rationale 不往下传。
 6. 进度事件（T-11b）：在顶层 Task 里，Stage 的顶层 Node 结束时推 node_finished，发出人工问题后推 human_input_required。
-7. TMP 计划（eval-observability-and-runtime-fixes）第 2～4 节：tool_loop 每一步之前查时间预算、每次工具调用之前查调用次数，
+7. 运行中的纠偏与立刻打断（docs/plan/running-task-interaction.md 第 2 节，GUIDANCE_PATCH；RunContext.guidance）：tool_loop 每次模型调用
+   之前带上还没看过的纠偏，有还没看过的纠偏时还没开始的写不开始；立刻打断时取消模型调用与工具调用（Stage 接着跑，循环带上纠偏），
+   取消别的顶层 Node（已成功的保留，这一轮以 replan 结束），write_irreversible 不打断。这一轮工具调用的目标记在 reads、writes（第 4 节）。
+8. TMP 计划（eval-observability-and-runtime-fixes）第 2～4 节：tool_loop 每一步之前查时间预算、每次工具调用之前查调用次数，
    用完就停这个节点（error_code budget_exhausted）；列工作区根得到空目录时结果带硬信号 environment；tool_loop 的一步由工作流
    重试（workflows/decisions.py）。工具调用次数（含子工作流里的）记在 tool_calls，Task 工作流据此记用量。
 
@@ -65,14 +68,17 @@ with workflow.unsafe.imports_passed_through():
         ToolLoopStep,
         ToolLoopStepInput,
     )
-    from agentruntime_worker.workflows import decisions, patches
+    from agentruntime_worker.workflows import decisions, interrupts, patches
     from agentruntime_worker.workflows import stage_plan as sp
     from agentruntime_worker.workflows import timeouts
     from agentruntime_worker.workflows.events import EventPublisher, sandbox_startup_ms, tool_target
     from agentruntime_worker.workflows.failures import caused_by_cancel, failure_class, failure_message
+    from agentruntime_worker.workflows.guidance import GuidanceBook, LoopView
     from agentruntime_worker.workflows.patches import (
         BUDGETS_PATCH,
+        CONTEXT_USAGE_PATCH,
         DECISION_RETRY_PATCH,
+        GUIDANCE_PATCH,
         HUMAN_CHANNEL_PATCH,
         HUMAN_REPLY_RACE_PATCH,
         POLICY_PATCH,
@@ -233,6 +239,10 @@ class RunContext:
     active_s: Callable[[], float] | None = None
     # 同一计划第 4 节（DECISION_RETRY_PATCH 之后的运行为 True）：tool_loop 的一步由工作流重试。
     decision_retry: bool = False
+    # docs/plan/running-task-interaction.md 第 2 节（GUIDANCE_PATCH 之后的运行）：interruptible 是 activity 用短的 heartbeat 超时，取消很快
+    # 送到（子工作流里也是）；guidance 是纠偏的记录，只有 Task 工作流有。
+    interruptible: bool = False
+    guidance: GuidanceBook | None = None
 
 
 @dataclass
@@ -272,6 +282,17 @@ class StageRunner:
         self._asked_templates: set[str] = set()
         # T-11b：顶层 DAG 的执行环境：它里面的 Node 结束时推送 node_finished。
         self._top: _Env | None = None
+        # docs/plan/running-task-interaction.md 第 2 节：顶层 DAG 正在跑的 Node（立刻打断时取消）；正在跑的不可逆调用（不打断）；
+        # 打断之后不再开始新的 Node；这一轮被打断了（以 replan 结束）；被打断的 Node 的撤销说明。
+        self._top_running: dict[str, asyncio.Task[StageResult]] = {}
+        self._top_nodes: dict[str, dict[str, Any]] = {}
+        self._irreversible: list[str] = []
+        self._stopping = False
+        self.interrupted = False
+        self._undo_notes: dict[str, str] = {}
+        # 第 4 节：这一轮工具调用的目标（路径），成功的才算。
+        self.reads: list[str] = []
+        self.writes: list[str] = []
 
     @property
     def policy(self) -> StagePolicy:
@@ -317,6 +338,8 @@ class StageRunner:
             return {n["id"]: _denied(_role(n), before.denied, status="skipped") for n in sorted(nodes, key=lambda n: n["id"])}
         kept = {n["id"]: carried[n["id"]] for n in nodes if n["id"] in carried}
         self._top = _Env(results=dict(kept))
+        if self._ctx.guidance is not None and self._ctx.guidance.has_pending_interrupt():
+            self.interrupt()
         results = await self._run_dag([n for n in nodes if n["id"] not in kept], self._top)
         results = {**kept, **results}
         after = await self._hooks("after_stage", after_hooks, {**subject, "results": {k: v.status for k, v in sorted(results.items())}})
@@ -464,6 +487,49 @@ class StageRunner:
             return f"effect_mismatch：{node['id']} 写的 effect 是 {node.get('effect', 'none')}，低于模板 {template} 登记的 {info.effect}"
         return ""
 
+    # --- 立刻打断 ---
+
+    def irreversible_in_flight(self) -> bool:
+        return bool(self._irreversible)
+
+    def _holds_irreversible(self, node_id: str) -> bool:
+        return any(i == node_id or i.startswith(f"{node_id}.") for i in self._irreversible)
+
+    def interrupt(self) -> None:
+        """立刻打断（信号处理函数里调用，不等待）：tool_loop 的调用由各自的 Scope 取消，循环带上纠偏接着跑。别的顶层 Node 取消，
+        已成功的保留，这一轮以 replan 结束；正在做不可逆调用的 Node 等它结束。这一轮没有循环接得住时，不再开始新的 Node。"""
+        loops = False
+        for nid in sorted(self._top_running):
+            node = self._top_nodes[nid]
+            if node.get("kind") == "goal" and (node.get("mode") or "tool_loop") == "tool_loop" and not node.get("recipe") and sp.quality_type(node) == "none":
+                loops = True
+            elif not self._holds_irreversible(nid):
+                self._top_running[nid].cancel()
+                self.interrupted = True
+        if not loops:
+            self._stopping = True
+            self.interrupted = True
+
+    def _interrupted_result(self, node: dict[str, Any]) -> StageResult:
+        return StageResult(role=_role(node), status="cancelled", error=self._undo_notes.get(node["id"], interrupts.NO_RESULT_NOTE), error_code="user_interrupt")
+
+    async def _interruptible(self, call: Awaitable[Any]) -> Any:
+        """能被立刻打断的调用：被打断时抛 interrupts.Interrupted。没有纠偏的记录（之前的运行、子工作流）时直接等。"""
+        book = self._ctx.guidance
+        return await call if book is None else await interrupts.run(book.scopes, call)
+
+    def _note_paths(self, args: Any, effect: str) -> None:
+        """docs/plan/running-task-interaction.md 第 4 节：记下这一轮成功的工具调用的目标。shell_run 改了什么代码不知道，没有 path，不记。"""
+        path = args.get("path") or args.get("file") if isinstance(args, dict) else None
+        if isinstance(path, str) and path.strip():
+            (self.writes if effect in sp.WRITE_EFFECTS else self.reads).append(path)
+
+    def _heartbeat(self, heartbeat: timedelta | None = None) -> timedelta | None:
+        """GUIDANCE_PATCH 之后的运行：取消靠心跳送达，超时要短，打断才算立刻。之前的运行不变。"""
+        if not self._ctx.interruptible:
+            return heartbeat
+        return min(heartbeat, timeouts.INTERRUPTIBLE_HEARTBEAT) if heartbeat is not None else timeouts.INTERRUPTIBLE_HEARTBEAT
+
     # --- 调度 ---
 
     def _slot(self) -> asyncio.Semaphore:
@@ -480,6 +546,9 @@ class StageRunner:
         pending = {n["id"]: n for n in nodes}
         done = env.results
         running: dict[str, asyncio.Task[StageResult]] = {}
+        if env is self._top:
+            self._top_running = running
+            self._top_nodes = {n["id"]: n for n in nodes}
         try:
             while pending or running:
                 progressed = True
@@ -499,6 +568,9 @@ class StageRunner:
                                 error_code="upstream_failed", params={"node": failed_dep},
                             )
                             await self._node_finished(env, nid, done[nid])
+                        elif self._stopping:
+                            done[nid] = self._interrupted_result(node)
+                            await self._node_finished(env, nid, done[nid])
                         else:
                             await self._node_started(env, node)
                             running[nid] = asyncio.create_task(self._run_node(node, env))
@@ -506,7 +578,9 @@ class StageRunner:
                     break
                 await workflow.wait(list(running.values()), return_when=asyncio.FIRST_COMPLETED)
                 for nid in sorted(k for k, t in running.items() if t.done()):
-                    done[nid] = running.pop(nid).result()
+                    finished = running.pop(nid)
+                    # 只有立刻打断会单独取消顶层的 Node；取消整个 DAG 走下面的 except。
+                    done[nid] = self._interrupted_result(next(n for n in nodes if n["id"] == nid)) if finished.cancelled() else finished.result()
                     await self._node_finished(env, nid, done[nid])
         except asyncio.CancelledError:
             for task in running.values():
@@ -615,10 +689,10 @@ class StageRunner:
             if gate is None:
                 return _denied(role, reason)
             async with self._writer("write_irreversible", env), self._slot():
-                return await self._execute(node, injections, gate)
-        return await self._execute(node, injections, None)
+                return await self._execute(node, injections, gate, env)
+        return await self._execute(node, injections, None, env)
 
-    async def _execute(self, node: dict[str, Any], injections: list[dict[str, Any]], gate: GateRecord | None) -> StageResult:
+    async def _execute(self, node: dict[str, Any], injections: list[dict[str, Any]], gate: GateRecord | None, env: _Env) -> StageResult:
         role = _role(node)
         model = node.get("executor") == "model"
         effect = str(node.get("effect", "none"))
@@ -628,18 +702,23 @@ class StageRunner:
         start_to_close, heartbeat = timeouts.model_node_timeouts((node.get("budget") or {}).get("timeout_s"))
         # write_irreversible 不自动重试（附录 D.4）。
         attempts = 1 if effect == "write_irreversible" else int((node.get("retry") or {}).get("max", 0)) + 1
+        if effect == "write_irreversible":
+            self._irreversible.append(node["id"])
         try:
             output = await workflow.execute_activity(
                 names.EXECUTE_MODEL_NODE if model else names.EXECUTE_PROGRAM_NODE,
                 NodeInput(tenant=self._ctx.tenant, task_id=self._ctx.task_id, round_seq=self._ctx.round_seq, node=node, gate=gate, injections=list(injections)),
                 task_queue=names.MODEL_QUEUE if model else names.PROGRAM_QUEUE,
                 start_to_close_timeout=start_to_close,
-                heartbeat_timeout=heartbeat,
+                heartbeat_timeout=self._heartbeat(heartbeat),
                 retry_policy=RetryPolicy(initial_interval=timeouts.MIN_HEARTBEAT, maximum_interval=timeouts.MAX_HEARTBEAT, maximum_attempts=attempts),
                 cancellation_type=workflow.ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
                 result_type=dict,
             )
         except FailureError as err:
+            if interrupts.is_tool_interrupted(err):
+                self._undo_notes[node["id"]] = interrupts.interruption_note(err)
+                raise asyncio.CancelledError() from err
             if caused_by_cancel(err):
                 raise asyncio.CancelledError() from err
             if _unknown(err):
@@ -649,16 +728,28 @@ class StageRunner:
             if effect in sp.WRITE_EFFECTS and (_timed_out(err) or _needs_reconcile(err)) and workflow.patched(RECONCILE_PATCH):
                 return await self._reconcile(node, role)
             return _failed(role, failure_message(err), failure_class(err))
+        finally:
+            if effect == "write_irreversible":
+                self._irreversible.remove(node["id"])
+        if not model:
+            self._note_paths(node.get("inputs"), effect)
         # 只取 result；rationale 只写入 trace，不往下传（设计书 3.2.4）。成本计入 Round 的成本（S-10）；
         # vendor 是实际服务它的供应商，Reviewer 避开它（附录 H.3）。
         meta = output.get("meta") or {}
         cost = float(meta.get("cost_usd") or 0.0)
         self.spent_usd += cost
+        if env is self._top:
+            await self._publish_usage(self._ctx.events, node["id"], output.get("context_usage"))
         # TMP 计划第 7 节：judge 发现的被改坏的既有产物只交给 Reviewer（下游只看 result）；别的 role 给了也不算。
         regressions = [dict(g) for g in output.get("regressions") or [] if isinstance(g, dict)] if role == "judge" else []
         return StageResult(
             role=role, status="succeeded", result=output.get("result"), cost_usd=cost, vendor=str(meta.get("vendor") or ""), regressions=regressions,
         )
+
+    async def _publish_usage(self, events: EventPublisher | None, node_id: str, usage: Any, *, step: int | None = None) -> None:
+        """docs/plan/running-task-interaction.md 第 3 节：顶层的模型调用之后推上下文占比；子工作流没有事件流，桩的 tool_loop 没有占比。"""
+        if events is not None and usage and workflow.patched(CONTEXT_USAGE_PATCH):
+            await events.context_usage(self._ctx.round_seq, node_id, dict(usage), step=step)
 
     async def _reconcile(self, node: dict[str, Any], role: str) -> StageResult:
         try:
@@ -719,6 +810,11 @@ class StageRunner:
             if early:
                 self._human.forget_reply(question_id)
             raise
+        if self._ctx.interruptible and interrupts.asked_to_cancel():
+            # 发问的 activity 正好结束时来的取消被它吞了（SDK：activity 正常结束，等它的任务就不再收到取消）：问题已经发出去了，撤回。
+            self._human.forget_reply(question_id)
+            await self._withdraw(question_id)
+            raise asyncio.CancelledError()
         if self._ctx.events is not None:
             await self._ctx.events.human_input_required(self._ctx.round_seq, question_id, kind, text, options, deadline.isoformat())
         try:
@@ -1094,6 +1190,8 @@ class StageRunner:
         # 这个循环花的钱（每一步的模型花费，计入 Round 的成本）与最近一步的供应商。
         spent_before = self.spent_usd
         vendor = ""
+        # 这个循环看过哪些纠偏（docs/plan/running-task-interaction.md 第 2 节）；子工作流、之前的运行没有。
+        view = LoopView(self._ctx.guidance) if self._ctx.guidance is not None else None
         for i in range(1, limit + 1):
             if self._ctx.r01:
                 # 成本口径的人定方案：每一步之前查 Task 的预算，用完就停，交给 Reviewer。
@@ -1107,36 +1205,29 @@ class StageRunner:
             stop = self._budget_stop(nid, before_call=False)
             if stop is not None:
                 return stop
-            step_input = ToolLoopStepInput(
-                tenant=self._ctx.tenant,
-                task_id=self._ctx.task_id,
-                round_seq=self._ctx.round_seq,
-                node=node,
-                iteration=i,
-                history=copy.deepcopy(history),
-                step_id=sp.child_id(nid, 2 * i - 1),
-                isolated=isolated,
-                # sub_agent 是独立上下文：不带 Task State 与 Task Plan。
-                task_state={} if isolated else copy.deepcopy(self._ctx.task_state),
-                task_plan=None if isolated else copy.deepcopy(self._ctx.task_plan),
-            )
             try:
-                async with self._slot():
-                    if self._ctx.decision_retry:
-                        # TMP 计划第 4 节：由工作流重试，重试之前推 decision_retry。
-                        step = await decisions.run(
-                            names.TOOL_LOOP_STEP, step_input, task_queue=names.MODEL_QUEUE, result_type=ToolLoopStep,
-                            step="tool_loop_step", round_seq=self._ctx.round_seq, events=events, node_id=nid, about=f"{nid}/{i}",
-                        )
-                    else:
-                        step = await workflow.execute_activity(
-                            names.TOOL_LOOP_STEP,
-                            step_input,
-                            task_queue=names.MODEL_QUEUE,
-                            start_to_close_timeout=timeouts.MODEL_DECISION_START_TO_CLOSE,
-                            retry_policy=timeouts.DECISION_RETRY,
-                            result_type=ToolLoopStep,
-                        )
+                while True:
+                    if view is not None:
+                        history.extend(view.tell(self._ctx.round_seq))
+                    step_input = ToolLoopStepInput(
+                        tenant=self._ctx.tenant,
+                        task_id=self._ctx.task_id,
+                        round_seq=self._ctx.round_seq,
+                        node=node,
+                        iteration=i,
+                        history=copy.deepcopy(history),
+                        step_id=sp.child_id(nid, 2 * i - 1),
+                        isolated=isolated,
+                        # sub_agent 是独立上下文：不带 Task State 与 Task Plan。
+                        task_state={} if isolated else copy.deepcopy(self._ctx.task_state),
+                        task_plan=None if isolated else copy.deepcopy(self._ctx.task_plan),
+                    )
+                    try:
+                        step = await self._interruptible(self._think(step_input, nid, i, events))
+                    except interrupts.Interrupted:
+                        # 模型没有回答：这一步还是同一步，不占 max_iterations。下一次调用带上纠偏。
+                        continue
+                    break
             except decisions.DecisionExhausted as exhausted:
                 return _failed(DEFAULT_ROLE, f"tool_loop 第 {i} 步失败（试了 {exhausted.attempts} 次）：{failure_message(exhausted.last)}", failure_class(exhausted.last))
             except FailureError as err:
@@ -1145,10 +1236,11 @@ class StageRunner:
                 return _failed(DEFAULT_ROLE, f"tool_loop 第 {i} 步失败：{failure_message(err)}", failure_class(err))
             self.spent_usd += float(step.cost_usd or 0.0)
             vendor = step.vendor or vendor
+            await self._publish_usage(events, nid, step.context_usage, step=i)
             if step.action == "finish":
                 return StageResult(role=DEFAULT_ROLE, status="succeeded", result=step.result, cost_usd=round(self.spent_usd - spent_before, 6), vendor=vendor)
             if len(step.calls) > 1 and workflow.patched(PARALLEL_TOOL_CALLS_PATCH):
-                entries, stop, rejected = await self._tool_batch(nid, i, step, tool_effects, env, events, marks)
+                entries, stop, rejected = await self._tool_batch(nid, i, step, tool_effects, env, events, marks, view)
                 if stop is not None:
                     return stop
                 history.extend(entries)
@@ -1156,7 +1248,7 @@ class StageRunner:
                 if rejections >= MAX_TOOL_REJECTIONS:
                     return _denied(DEFAULT_ROLE, f"{nid} 的不可逆工具调用被拒绝 {rejections} 次（含审批超时），交给 Reviewer")
                 if sp.repeated_error(history):
-                    last = next(e["error"] for e in reversed(history) if "error" in e and not e.get("skipped"))
+                    last = next(e["error"] for e in reversed(history) if "error" in e and not e.get("skipped") and not e.get("interrupted"))
                     return _failed(DEFAULT_ROLE, f"repeated_error：同一错误连续出现 {sp.REPEATED_ERROR_LIMIT} 次：{last}")
                 continue
             entry: dict[str, Any] = {"tool": step.tool, "args": step.args}
@@ -1164,6 +1256,10 @@ class StageRunner:
                 entry["error"] = f"工具 {step.tool} 不在 {nid} 的可用列表里"
             else:
                 effect = tool_effects[step.tool]
+                blocked = view.blocked(effect, writes=sp.WRITE_EFFECTS) if view is not None else None
+                if blocked is not None:
+                    history.append({**entry, **blocked})
+                    continue
                 # TMP 计划第 3 节：工具调用次数用完就不再调用（审批之前查，不问用不上的审批）。
                 stop = self._budget_stop(nid, before_call=True)
                 if stop is not None:
@@ -1176,7 +1272,7 @@ class StageRunner:
                         return _denied(DEFAULT_ROLE, reason)
                     if gate is None:
                         history.append({**entry, **rejection})
-                        rejections += 1
+                        rejections += 0 if rejection.get("interrupted") else 1
                         if rejections >= MAX_TOOL_REJECTIONS:
                             return _denied(DEFAULT_ROLE, f"{nid} 的不可逆工具调用被拒绝 {rejections} 次（含审批超时），交给 Reviewer")
                         continue
@@ -1187,6 +1283,25 @@ class StageRunner:
             if sp.repeated_error(history):
                 return _failed(DEFAULT_ROLE, f"repeated_error：同一错误连续出现 {sp.REPEATED_ERROR_LIMIT} 次：{entry['error']}")
         return _failed(DEFAULT_ROLE, f"max_iterations：{limit} 步内没有完成")
+
+    async def _think(self, step_input: ToolLoopStepInput, nid: str, i: int, events: EventPublisher | None) -> ToolLoopStep:
+        """tool_loop 的一步“思考”。"""
+        async with self._slot():
+            if self._ctx.decision_retry:
+                # TMP 计划第 4 节：由工作流重试，重试之前推 decision_retry。
+                return await decisions.run(
+                    names.TOOL_LOOP_STEP, step_input, task_queue=names.MODEL_QUEUE, result_type=ToolLoopStep,
+                    step="tool_loop_step", round_seq=self._ctx.round_seq, events=events, node_id=nid, about=f"{nid}/{i}",
+                    heartbeat_timeout=self._heartbeat(),
+                )
+            return await workflow.execute_activity(
+                names.TOOL_LOOP_STEP,
+                step_input,
+                task_queue=names.MODEL_QUEUE,
+                start_to_close_timeout=timeouts.MODEL_DECISION_START_TO_CLOSE,
+                retry_policy=timeouts.DECISION_RETRY,
+                result_type=ToolLoopStep,
+            )
 
     async def _announce_tool_call(self, nid: str, i: int, ordinal: int, entry: dict[str, Any], events: EventPublisher | None) -> None:
         if events is not None:
@@ -1199,9 +1314,10 @@ class StageRunner:
         """执行一次工具调用，结果写进 entry（observation 或 error），完成后推 tool_status。"""
         tool, args = entry["tool"], entry["args"]
         called_at = workflow.now()
+        irreversible = effect == "write_irreversible"
         try:
             async with self._writer(effect, env), self._slot():
-                entry["observation"] = await workflow.execute_activity(
+                call = workflow.execute_activity(
                     names.CALL_TOOL,
                     ToolCallInput(
                         tenant=self._ctx.tenant,
@@ -1215,13 +1331,27 @@ class StageRunner:
                     ),
                     task_queue=names.PROGRAM_QUEUE,
                     start_to_close_timeout=timeouts.DEFAULT_NODE_TIMEOUT,
+                    heartbeat_timeout=self._heartbeat(),
                     retry_policy=RetryPolicy(maximum_attempts=1 if effect in sp.WRITE_EFFECTS else 3),
                     cancellation_type=workflow.ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
                 )
+                if irreversible:
+                    # 不可逆的调用不打断（做到一半撤不回）：等它结束，之后立刻生效。
+                    self._irreversible.append(call_id)
+                    try:
+                        entry["observation"] = await call
+                    finally:
+                        self._irreversible.remove(call_id)
+                else:
+                    entry["observation"] = await self._interruptible(call)
+        except interrupts.Interrupted as interrupted:
+            entry.update(error=interrupts.interruption_note(interrupted.reported), interrupted=True)
         except FailureError as err:
-            if caused_by_cancel(err):
+            if caused_by_cancel(err) or interrupts.is_tool_interrupted(err):
                 raise asyncio.CancelledError() from err
             entry["error"] = failure_message(err)
+        if "error" not in entry:
+            self._note_paths(args, effect)
         if "error" not in entry and _lists_empty_root(tool, args, entry.get("observation")):
             # TMP 计划第 2 节：工作区根是空的，交给 Reviewer 的硬信号。
             marks.add("environment")
@@ -1238,6 +1368,7 @@ class StageRunner:
 
     async def _tool_batch(
         self, nid: str, i: int, step: ToolLoopStep, tool_effects: dict[str, str], env: _Env, events: EventPublisher | None, marks: set[str],
+        view: LoopView | None = None,
     ) -> tuple[list[dict[str, Any]], StageResult | None, int]:
         """模型一次回答里的多个工具调用（docs/plan/running-task-interaction.md 第 1 节）。
 
@@ -1266,8 +1397,14 @@ class StageRunner:
             if effect not in sp.WRITE_EFFECTS:
                 reads.append((k, call_id, entry, effect))
                 continue
-            stop = await self._run_reads(nid, i, reads, env, events, marks)
+            stop = await self._run_reads(nid, i, reads, env, events, marks, view)
             reads = []
+            blocked = view.blocked(effect, writes=sp.WRITE_EFFECTS) if view is not None else None
+            if stop is None and blocked is not None:
+                # 这个写没执行，后面的调用是按它成功来写的，也不执行。
+                entry.update(blocked)
+                halted = str(blocked["error"])
+                continue
             stop = stop or self._budget_stop(nid, before_call=True)
             if stop is not None:
                 return entries, stop, rejected
@@ -1278,7 +1415,7 @@ class StageRunner:
                     return entries, _denied(DEFAULT_ROLE, reason), rejected
                 if gate is None:
                     entry.update(rejection)
-                    rejected += 1
+                    rejected += 0 if rejection.get("interrupted") else 1
                     halted = "前面的调用被拒绝，这个没有执行"
                     continue
             self.tool_calls += 1
@@ -1286,17 +1423,22 @@ class StageRunner:
             await self._execute_tool_call(nid, i, k, call_id, entry, effect, gate, env, events, marks)
             if "error" in entry:
                 halted = "前面的写操作失败，这个没有执行"
-        stop = await self._run_reads(nid, i, reads, env, events, marks)
+        stop = await self._run_reads(nid, i, reads, env, events, marks, view)
         return entries, stop, rejected
 
     async def _run_reads(
         self, nid: str, i: int, reads: list[tuple[int, str, dict[str, Any], str]], env: _Env, events: EventPublisher | None, marks: set[str],
+        view: LoopView | None = None,
     ) -> StageResult | None:
         """一批只读调用：第一个先单独跑，它跑完环境就有了，其余的共用；一起开始的话各建一个沙箱，默认配额下第三个会被拒。
-        工具调用预算不够时跑完够的部分，返回让节点停下的结果。"""
+        工具调用预算不够时跑完够的部分，返回让节点停下的结果。还没看过立刻打断时不开始（纠偏不拦读）。"""
         allowed: list[tuple[int, str, dict[str, Any], str]] = []
         stop: StageResult | None = None
         for read in reads:
+            blocked = view.blocked(read[3], writes=sp.WRITE_EFFECTS) if view is not None else None
+            if blocked is not None:
+                read[2].update(blocked)
+                continue
             stop = self._budget_stop(nid, before_call=True)
             if stop is not None:
                 break
@@ -1307,6 +1449,12 @@ class StageRunner:
             await self._announce_tool_call(nid, i, k, entry, events)
             await self._execute_tool_call(nid, i, k, call_id, entry, effect, None, env, events, marks)
         rest = allowed[1:]
+        if view is not None and rest and view.blocked(rest[0][3], writes=sp.WRITE_EFFECTS) is not None:
+            # 第一个跑的时候来了立刻打断：其余的不开始。
+            for _, _, entry, effect in rest:
+                entry.update(view.blocked(effect, writes=sp.WRITE_EFFECTS) or {})
+                self.tool_calls -= 1
+            rest = []
         if rest:
             await asyncio.gather(*(self._announce_tool_call(nid, i, k, entry, events) for k, _, entry, _ in rest))
             await asyncio.gather(*(self._execute_tool_call(nid, i, k, call_id, entry, effect, None, env, events, marks) for k, call_id, entry, effect in rest))
@@ -1323,7 +1471,11 @@ class StageRunner:
         gate_id = sp.child_id(call_id, 1)
         args = json.dumps(step.args, ensure_ascii=False, sort_keys=True)
         text = f"批准调用 {step.tool} 吗？参数：{args}。这是不可撤销的操作。"
-        reply, error = await self._ask_and_wait(gate_id, text, sp.APPROVAL_OPTIONS, self.policy.approval_timeout_s, kind="tool_approval")
+        try:
+            reply, error = await self._interruptible(self._ask_and_wait(gate_id, text, sp.APPROVAL_OPTIONS, self.policy.approval_timeout_s, kind="tool_approval"))
+        except interrupts.Interrupted:
+            # 撤回问题（_ask_and_wait 取消时撤回），按拒绝处理，下一步带上纠偏。不算审批人拒绝。
+            return None, {"rejected": True, "interrupted": True}, ""
         if error:
             return None, {}, error
         if reply is None:
@@ -1475,6 +1627,7 @@ def _child_context(inp: SubAgentInput | SubgraphInput, **kw: Any) -> RunContext:
         wall_clock_limit_s=inp.wall_clock_limit_s,
         active_s=(lambda: inp.active_before_s + (workflow.now() - started).total_seconds()) if budgets else None,
         decision_retry=workflow.patched(DECISION_RETRY_PATCH),
+        interruptible=workflow.patched(GUIDANCE_PATCH),
         **kw,
     )
 

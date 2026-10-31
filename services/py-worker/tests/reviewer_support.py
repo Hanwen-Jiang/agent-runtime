@@ -144,7 +144,7 @@ def request(
 # --- 模型的回答 ---
 
 
-def answer(verdict: dict[str, Any], *, completion: float = 0.5, state_update: dict[str, Any] | None = None) -> dict[str, Any]:
+def answer(verdict: dict[str, Any], *, completion: float = 0.5, state_update: dict[str, Any] | None = None, **extra: Any) -> dict[str, Any]:
     """Progress Check 的结构化输出：Verdict（verdict.schema.json）、完成度与要写进 Task State 的汇总。"""
     verdict = dict(verdict)
     verdict.setdefault("reason", "模型的判断")
@@ -152,7 +152,7 @@ def answer(verdict: dict[str, Any], *, completion: float = 0.5, state_update: di
         "progress_check",
         {"criteria_met": verdict["verdict"] == "done", "progress": True, "looping": False, "assumptions_hold": True, "next_step": "按判定继续"},
     )
-    return {"verdict": verdict, "completion": completion, "state_update": state_update or {}}
+    return {"verdict": verdict, "completion": completion, "state_update": state_update or {}, **extra}
 
 
 def retry(*nodes: str) -> dict[str, Any]:

@@ -24,6 +24,12 @@
 Stage 由 Stage Runner 执行（S-04，workflows/stage_runner.py）。S-03 的旧执行路径保留在版本分支后面，
 S-03 留下的事件历史仍按旧路径回放；S-10 之前的历史同样按旧的 Round 循环与收尾顺序回放。
 
+- 运行中的纠偏与立刻打断（docs/plan/running-task-interaction.md 第 2 节，GUIDANCE_PATCH）：信号写进 GuidanceBook（workflows/guidance.py），事件由一个
+  任务逐个推送。规划中来了纠偏：放弃这个 Stage，带上纠偏重新规划（同一轮）；打断时取消规划。Stage 跑完还有没生效的纠偏（没有 tool_loop
+  接住），或者这一轮被打断：不调 Reviewer，判定由代码给出（replan，reason_code 是 user_guidance、user_interrupt）。评审中来了：不管判了什么都回
+  Planner。问人中被打断：撤回问题，回 Planner。收尾之后到的拒绝。这些 replan 是用户要的，不进 Reviewer 的升级台账。
+- 各轮的重要输出（同一计划第 4 节）：写进 rounds[].highlights，见 workflows/highlights.py；不改命令序列。
+
 工作流代码必须确定：不读系统时间、不用 random、不做 I/O、不调用模型（CLAUDE.md）。
 """
 
@@ -63,16 +69,19 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.reviewer.rules import HUMAN_REPLIES
     from agentruntime_worker.reviewer.signals import history_entry
     from agentruntime_worker.reviewer.summary import apply_state_update
-    from agentruntime_worker.workflows import decisions, patches, timeouts
+    from agentruntime_worker.workflows import decisions, interrupts, patches, timeouts
     from agentruntime_worker.workflows import verdicts as vd
     from agentruntime_worker.workflows.events import EventPublisher
     from agentruntime_worker.workflows.failures import caused_by_cancel as _caused_by_cancel
     from agentruntime_worker.workflows.failures import failure_message as _failure_message
+    from agentruntime_worker.workflows.guidance import INTERRUPT, NEXT_STEP, GuidanceBook
+    from agentruntime_worker.workflows.highlights import round_highlights
     from agentruntime_worker.workflows.patches import (
         BUDGETS_PATCH,
         CODES_PATCH,
         DECISION_RETRY_PATCH,
         EVENTS_PATCH,
+        GUIDANCE_PATCH,
         POLICY_PATCH,
         PROGRESS_DETAIL_PATCH,
         R01_FIXES_PATCH,
@@ -96,6 +105,8 @@ BUDGET_QUESTION_ID = "_budget"
 _BUDGET_LABELS = {"wall_clock": ("时间预算", "分钟"), "tool_calls": ("工具调用预算", "次")}
 
 DECISION_RETRY = timeouts.DECISION_RETRY
+# 判定由代码给出时的理由（docs/plan/running-task-interaction.md 第 2 节）；客户端按 reason_code 翻译。
+GUIDANCE_REASONS = {"user_guidance": "用户发来了纠偏，回 Planner 重做剩余部分", "user_interrupt": "用户打断了这一轮，回 Planner 重做剩余部分"}
 
 
 def _enum_name(value: int, prefix: str, enum: Any) -> str:
@@ -232,6 +243,17 @@ class TaskWorkflow:
         # 第 5 节（CODES_PATCH）：问人后停止或没回复时另推带代码的 abort verdict 事件。第 6 节：服务端定的任务族（第一个报上来的）。
         self._codes = False
         self._task_family = ""
+        # docs/plan/running-task-interaction.md 第 2 节（GUIDANCE_PATCH）：纠偏的记录；工作流开始之前到的信号；正在跑的 Stage；推送事件的任务。
+        self._book: GuidanceBook | None = None
+        self._early_guidance: list[task_pb2.TaskGuidanceSignal] = []
+        self._runner: StageRunner | None = None
+        self._guidance_publisher: asyncio.Future[None] | None = None
+        self._events_decided = False
+        self._closing = False
+        # 上一个 Stage 被打断了；工具调用的目标（第 4 节）。
+        self._stage_interrupted = False
+        self._stage_reads: list[str] = []
+        self._stage_writes: list[str] = []
 
     @workflow.run
     async def run(self, inp: task_pb2.TaskWorkflowInput) -> task_pb2.TaskWorkflowResult:
@@ -249,6 +271,11 @@ class TaskWorkflow:
         self._budgets = workflow.patched(BUDGETS_PATCH)
         self._retry_in_workflow = workflow.patched(DECISION_RETRY_PATCH)
         self._codes = workflow.patched(CODES_PATCH)
+        if workflow.patched(GUIDANCE_PATCH):
+            self._book = GuidanceBook()
+            self._guidance_publisher = asyncio.ensure_future(self._publish_guidance())
+            for early in self._early_guidance:
+                self._on_guidance(early)
         if self._budgets:
             self._started = workflow.now()
             self._limits = _budget_limits(inp)
@@ -278,6 +305,61 @@ class TaskWorkflow:
             workflow.logger.warning("忽略不匹配的人工回复：%s", reply.question_id)
             return
         self._replies[reply.question_id] = reply
+
+    @workflow.signal(name=names.TASK_GUIDANCE_SIGNAL)
+    def task_guidance(self, signal: task_pb2.TaskGuidanceSignal) -> None:
+        """用户发来纠偏、立刻打断，或者撤回、修改一条（docs/plan/running-task-interaction.md 第 2 节）。信号可以先于工作流的第一步到达；
+        没有 GUIDANCE_PATCH 的旧运行只记日志，界面等 task_finished 再提示没有生效。文字不进日志。"""
+        if self._input is None:
+            self._early_guidance.append(signal)
+        elif self._book is None:
+            workflow.logger.warning("这个运行早于纠偏，忽略信号：%s", signal.guidance_id)
+        else:
+            self._on_guidance(signal)
+
+    def _on_guidance(self, signal: task_pb2.TaskGuidanceSignal) -> None:
+        book = self._book
+        assert book is not None
+        if signal.kind == task_pb2.TASK_GUIDANCE_KIND_EDIT:
+            book.edit(signal.guidance_id, signal.text)
+        elif signal.kind == task_pb2.TASK_GUIDANCE_KIND_RETRACT:
+            book.retract(signal.guidance_id)
+        else:
+            mode = INTERRUPT if signal.mode == enums_pb2.GUIDANCE_MODE_INTERRUPT else NEXT_STEP
+            in_flight = self._runner is not None and self._runner.irreversible_in_flight()
+            if book.submit(signal.guidance_id, signal.text, mode, in_flight=in_flight):
+                for scope in list(book.scopes):
+                    scope.interrupt()
+                if self._runner is not None:
+                    self._runner.interrupt()
+            if book.items:
+                self._state.setdefault("guidance", book.items)
+
+    async def _publish_guidance(self) -> None:
+        """按发生的先后逐个推 guidance_updated。_closing 之后推完就结束。"""
+        book = self._book
+        assert book is not None
+        number = 0
+        while True:
+            await workflow.wait_condition(lambda: (bool(book.outbox) and self._events_decided) or self._closing)
+            if not book.outbox:
+                return
+            event = book.outbox.pop(0)
+            if self._events is not None:
+                number += 1
+                await self._events.guidance_updated(max(1, self._round_seq), event, number)
+
+    async def _guidance_published(self) -> None:
+        if self._guidance_publisher is not None:
+            self._events_decided = self._closing = True
+            await asyncio.shield(self._guidance_publisher)
+
+    def _heartbeat(self) -> timedelta | None:
+        return timeouts.INTERRUPTIBLE_HEARTBEAT if self._book is not None else None
+
+    async def _interruptible(self, call: Any) -> Any:
+        """能被立刻打断的调用：被打断时抛 interrupts.Interrupted。之前的运行直接等。"""
+        return await call if self._book is None else await interrupts.run(self._book.scopes, call)
 
     @workflow.query(name=names.TASK_STATE_QUERY)
     def task_state(self) -> task_pb2.TaskStateQueryResult:
@@ -373,7 +455,11 @@ class TaskWorkflow:
             "原样继续（再加一份同样的预算）、带指导重规划，还是停止并用现有结果收尾？"
         )
         summary = f"已跑 {seq - 1} 轮，{label}用完"
-        reply = await self._ask(seq, BUDGET_QUESTION_ID, text, HUMAN_REPLIES, summary, code="budget_exhausted", params=params)
+        try:
+            reply = await self._interruptible(self._ask(seq, BUDGET_QUESTION_ID, text, HUMAN_REPLIES, summary, code="budget_exhausted", params=params))
+        except interrupts.Interrupted:
+            # 用户没回答预算的问题，直接打断要接着做：按“带指导重规划”处理（Planner 看得到纠偏）。
+            reply = task_pb2.HumanReplySignal(question_id=BUDGET_QUESTION_ID, option="replan_with_guidance")
         if reply is None or reply.option == "stop_and_wrap_up":
             why = "问人没有得到回复：按停止处理" if reply is None else "人选择停止"
             verdict = vd.stopped(last_results, f"{label}用完，{why}，用现有结果收尾")
@@ -486,6 +572,7 @@ class TaskWorkflow:
         if workflow.patched(EVENTS_PATCH) and self._input.depth == 0:
             # 2026-10-28 起的运行另推 node_started 与 tool_status（版本分支 PROGRESS_DETAIL_PATCH）。
             self._events = EventPublisher(self._tenant, self._input.task_id, detail=workflow.patched(PROGRESS_DETAIL_PATCH))
+        self._events_decided = True
         task_plan: dict[str, Any] | None = None
         last_round: dict[str, Any] | None = None
         rerun: vd.Rerun | None = None
@@ -507,14 +594,16 @@ class TaskWorkflow:
                 if reply is not None and reply.option == "replan_with_guidance":
                     rerun = None
                     last_round = {**(last_round or {}), "human_reply": {"option": reply.option, "guidance": reply.guidance}}
+            if self._book is not None and self._book.has_pending():
+                # 原地重跑不经 Planner，纠偏要回 Planner。
+                rerun = None
             triage_level: str | None = None
             # 这一轮规划的花费：计入 Round 的成本，Stage 执行时已经算进已花的钱（成本口径的人定方案）。原地重跑不经 Planner。
             plan_cost = 0.0
             if rerun is None:
-                plan = await self._plan(seq, inputs, pinned, task_plan, last_round)
+                plan, plan_cost = await self._planned(seq, inputs, pinned, task_plan, last_round)
                 stage = plan.stage
                 triage_level = plan.triage_level
-                plan_cost = float(plan.cost_usd or 0.0)
                 if plan.task_family and not self._task_family:
                     # TMP 计划第 6 节：任务族由第一轮分诊定，之后的重规划不改。
                     self._task_family = plan.task_family
@@ -542,16 +631,20 @@ class TaskWorkflow:
             self._stages.append(vd.stage_summary(stage))
 
             round_entry["status"] = "reviewing"
-            verdict, update, review_cost = await self._review(seq, stage, results)
+            verdict, update, review_cost, highlights = await self._judged(seq, stage, results)
             round_entry["cost_usd"] = round(round_entry["cost_usd"] + review_cost, 6)
             if self._events is not None:
                 await self._events.verdict(seq, verdict)
+            self._record_highlights(round_entry, highlights, results)
+            verdict = await self._guidance_arrived_meanwhile(seq, verdict, results)
             kind = verdict["verdict"]
             round_entry["status"] = "completed"
             round_entry["verdict"] = kind
             apply_state_update(self._state, update)
             as_dicts = {nid: dataclasses.asdict(r) for nid, r in results.items()}
-            self._history.append(history_entry(seq, verdict, as_dicts))
+            if verdict.get("reason_code") not in GUIDANCE_REASONS:
+                # 用户要的 replan 不进 Reviewer 的升级台账。
+                self._history.append(history_entry(seq, verdict, as_dicts))
             self._remember_delivery(results)
             last_round = {"stage": stage, "results": as_dicts, "verdict": verdict}
 
@@ -565,7 +658,11 @@ class TaskWorkflow:
                 last_round["finish_rejected"] = rejection
                 if self._finish_rejections > MAX_FINISH_REJECTIONS:
                     # 驳回用满上限：不再驳回，问人（同 Reviewer 的 escalate）。
-                    reply = await self._ask_human(seq, _finish_escalation(rejection, self._finish_rejections))
+                    try:
+                        reply = await self._interruptible(self._ask_human(seq, _finish_escalation(rejection, self._finish_rejections)))
+                    except interrupts.Interrupted:
+                        await self._replan_interrupted(seq, round_entry, results, last_round)
+                        continue
                     if reply is None:
                         return await self._stopped(seq, vd.stopped(results, f"完成前复核驳回后问人没有得到回复：{rejection}；按停止处理"), "human_no_reply")
                     if reply.option == "stop_and_wrap_up":
@@ -579,7 +676,11 @@ class TaskWorkflow:
             elif (kind == "repair" and verdict["repair"].get("strategy") == "retry_with_error") or (kind == "escalate" and verdict["escalate"].get("target") == "tier"):
                 rerun = vd.rerun(stage, results, verdict, seq + 1)
             elif kind == "escalate":
-                reply = await self._ask_human(seq, verdict)
+                try:
+                    reply = await self._interruptible(self._ask_human(seq, verdict))
+                except interrupts.Interrupted:
+                    await self._replan_interrupted(seq, round_entry, results, last_round)
+                    continue
                 if reply is None:
                     return await self._stopped(seq, vd.stopped(results, f"问人没有得到回复：{verdict['reason']}；按停止处理，用现有结果收尾"), "human_no_reply")
                 if reply.option == "stop_and_wrap_up":
@@ -594,6 +695,76 @@ class TaskWorkflow:
                 pinned["recipe"] = recipe
             # 其余（continue、replan、repair 换方法、rollback、reroute、问人后继续或重规划）：下一轮回 Planner。
         raise ApplicationError(f"超过 Round 上限 {MAX_ROUNDS}", type="too_many_rounds", non_retryable=True)
+
+    # --- 纠偏与立刻打断在 Round 循环里的去向（docs/plan/running-task-interaction.md 第 2 节） ---
+
+    async def _planned(
+        self, seq: int, inputs: dict[str, Any], pinned: dict[str, Any], task_plan: dict[str, Any] | None, last_round: dict[str, Any] | None
+    ) -> tuple[PlanRoundOutput, float]:
+        """规划。规划中来了纠偏：规划完放弃这个 Stage，带上纠偏重新规划；打断时取消规划。放弃的规划也花了钱，算进这一轮（被取消的
+        那次用量不明，不算）。返回 (规划, 这一轮规划的花费)。"""
+        book = self._book
+        if book is None:
+            plan = await self._plan(seq, inputs, pinned, task_plan, last_round)
+            return plan, float(plan.cost_usd or 0.0)
+        cost = 0.0
+        while True:
+            book.apply_pending(seq)
+            try:
+                plan = await self._interruptible(self._plan(seq, inputs, pinned, task_plan, last_round))
+            except interrupts.Interrupted:
+                continue
+            cost += float(plan.cost_usd or 0.0)
+            if not book.has_pending():
+                return plan, cost
+
+    def _guidance_verdict(self, seq: int, results: dict[str, StageResult], *, interrupted: bool = False) -> dict[str, Any]:
+        """判定由代码给出：回 Planner。待生效的纠偏这时生效。"""
+        book = self._book
+        assert book is not None
+        code = "user_interrupt" if interrupted or book.has_pending_interrupt() else "user_guidance"
+        book.apply_pending(seq)
+        return vd.guidance_replan(results, code, GUIDANCE_REASONS[code])
+
+    async def _judged(self, seq: int, stage: dict[str, Any], results: dict[str, StageResult]) -> tuple[dict[str, Any], dict[str, Any], float, dict[str, Any] | None]:
+        """这一轮的判定。被打断的轮、Stage 跑完还有没生效的纠偏的轮不调 Reviewer；评审中来了纠偏，不管判了什么都回 Planner。"""
+        book = self._book
+        if book is None:
+            return await self._review(seq, stage, results)
+        if self._stage_interrupted or book.has_pending():
+            return self._guidance_verdict(seq, results, interrupted=self._stage_interrupted), {}, 0.0, None
+        try:
+            verdict, update, cost, highlights = await self._interruptible(self._review(seq, stage, results))
+        except interrupts.Interrupted:
+            return self._guidance_verdict(seq, results, interrupted=True), {}, 0.0, None
+        if book.has_pending():
+            verdict = self._guidance_verdict(seq, results)
+        return verdict, update, cost, highlights
+
+    async def _guidance_arrived_meanwhile(self, seq: int, verdict: dict[str, Any], results: dict[str, StageResult]) -> dict[str, Any]:
+        """推 verdict 事件的时候来了纠偏：判了 done、abort 也不收尾，回 Planner（别的去向下一轮规划时自然带上）。"""
+        book = self._book
+        if book is None or verdict["verdict"] not in ("done", "abort") or not book.has_pending():
+            return verdict
+        changed = self._guidance_verdict(seq, results)
+        if self._events is not None:
+            await self._events.verdict(seq, changed, about="guidance")
+        return changed
+
+    async def _replan_interrupted(self, seq: int, round_entry: dict[str, Any], results: dict[str, StageResult], last_round: dict[str, Any]) -> None:
+        """问人的时候被打断：问题已经撤回，回 Planner。"""
+        changed = self._guidance_verdict(seq, results, interrupted=True)
+        round_entry["verdict"] = changed["verdict"]
+        last_round["verdict"] = changed
+        if self._events is not None:
+            await self._events.verdict(seq, changed, about="guidance")
+
+    def _record_highlights(self, round_entry: dict[str, Any], raw: dict[str, Any] | None, results: dict[str, StageResult]) -> None:
+        """docs/plan/running-task-interaction.md 第 4 节：这一轮的重要输出写进 Task State。"""
+        deliverable = next((results[nid].result for nid in sorted(results) if results[nid].role == "deliver" and results[nid].status == "succeeded"), None)
+        highlights = round_highlights(raw, reads=self._stage_reads, writes=self._stage_writes, deliverable=deliverable)
+        if highlights:
+            round_entry["highlights"] = highlights
 
     # --- T-09：Task 级挂载点（细化见 docs/plan/policy-engine.md 第 2 节第 4 条） ---
 
@@ -710,6 +881,7 @@ class TaskWorkflow:
         try:
             return await decisions.run(
                 activity, request, task_queue=names.DECISION_QUEUE, result_type=result_type, step=step, round_seq=seq, events=self._events,
+                heartbeat_timeout=self._heartbeat(),
             )
         except decisions.DecisionExhausted as exhausted:
             workflow.logger.warning("%s 试了 %d 次都没成（%s），改用不调模型的做法", step, exhausted.attempts, _failure_message(exhausted.last))
@@ -722,9 +894,9 @@ class TaskWorkflow:
             result_type=result_type,
         )
 
-    async def _review(self, seq: int, stage: dict[str, Any], results: dict[str, StageResult]) -> tuple[dict[str, Any], dict[str, Any], float]:
+    async def _review(self, seq: int, stage: dict[str, Any], results: dict[str, StageResult]) -> tuple[dict[str, Any], dict[str, Any], float, dict[str, Any] | None]:
         """Reviewer：输入只有 Stage 结果（含本轮执行的 Stage）、Task State、验收条件与之前各 Round 的摘要。
-        返回 (Verdict, 要写进 Task State 的汇总, 这次评审的花费)。"""
+        返回 (Verdict, 要写进 Task State 的汇总, 这次评审的花费, 这一轮的重要输出)。"""
         assert self._input is not None
         request = ReviewRoundInput(
             tenant=self._tenant,
@@ -748,7 +920,7 @@ class TaskWorkflow:
                 result_type=dict,
             )
         verdict, update = vd.review_output(raw)
-        return verdict, update, vd.review_cost(raw)
+        return verdict, update, vd.review_cost(raw), vd.review_highlights(raw)
 
     def _remember_delivery(self, results: dict[str, StageResult]) -> None:
         for nid in sorted(results):
@@ -827,6 +999,11 @@ class TaskWorkflow:
         except asyncio.CancelledError:
             self.forget_reply(qid)
             raise
+        if self._book is not None and interrupts.asked_to_cancel():
+            # 发问的 activity 正好结束时来的取消被它吞了（见 stage_runner._ask_and_wait）：问题已经发出去了，撤回。
+            self.forget_reply(qid)
+            await self._withdraw_question(seq, qid)
+            raise asyncio.CancelledError()
         if self._events is not None:
             await self._events.human_input_required(seq, qid, "escalation", text, options, deadline.isoformat(), code=code, params=params)
         try:
@@ -887,16 +1064,22 @@ class TaskWorkflow:
             wall_clock_limit_s=self._limits["wall_clock"],
             active_s=self._active_s if self._budgets else None,
             decision_retry=self._retry_in_workflow,
+            interruptible=self._book is not None,
+            guidance=self._book,
         )
         runner = StageRunner(ctx, self)
         self._running_spent = lambda: plan_cost + runner.spent_usd
+        self._runner = runner
         try:
             results = await runner.run(stage, carried=carried, injections=injections)
         finally:
             self._running_spent = None
+            self._runner = None
         self._stage_policy = ctx.policy
         self._stage_cost = runner.spent_usd
         self._stage_tool_calls = runner.tool_calls
+        self._stage_interrupted = runner.interrupted
+        self._stage_reads, self._stage_writes = runner.reads, runner.writes
         return results
 
     def expect_reply(self, question_id: str, options: tuple[str, ...]) -> None:
@@ -1006,12 +1189,16 @@ class TaskWorkflow:
 
     async def _wrap_up(self, result: task_pb2.TaskWorkflowResult) -> None:
         """收尾。S-10 起先通知 Session 工作流（交付），再写回：写回全部异步，不阻塞交付（附录 B.9）。
-        S-10 之前的历史是先写回、再通知；那两行调换会改变命令顺序，重放测试据此证明自己有效。"""
+        S-10 之前的历史是先写回、再通知；那两行调换会改变命令顺序，重放测试据此证明自己有效。
+        进入收尾起纠偏一律拒绝；结束之前把 guidance_updated 都推完。"""
+        if self._book is not None:
+            self._book.close()
         if self._s10:
             await self._notify_session(result)
             if self._t09:
                 await self._task_end(result)
             await self._finalize(result)
+            await self._guidance_published()
             return
         await self._finalize(result)  # replay-mutation:A
         await self._notify_session(result)  # replay-mutation:B

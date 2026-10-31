@@ -224,6 +224,8 @@ class ToolLoopStep:
     # 这一步的模型花费（含 Context Builder 的摘要与 Probe），计入 Round 的成本；服务这一步的供应商。
     cost_usd: float = 0.0
     vendor: str = ""
+    # 这次模型调用的上下文里各类内容占多少（进度事件 context_usage 的数字部分）；没有 Context Builder 的桩没有。
+    context_usage: dict[str, Any] | None = None
 
 
 @dataclass
@@ -315,6 +317,8 @@ class ReviewRoundOutput:
     state_update: dict[str, Any] = field(default_factory=dict)
     # 这次评审的模型花费，计入 Round 的成本（成本口径的人定方案，2026-10-24）。
     cost_usd: float = 0.0
+    # 这一轮的重要输出，已查过形状（docs/plan/running-task-interaction.md 第 4 节）；路径的核对在工作流里。
+    highlights: dict[str, Any] | None = None
 
 
 @dataclass

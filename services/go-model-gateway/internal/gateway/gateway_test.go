@@ -144,7 +144,7 @@ func TestProviderIsBoundToTheRequestTenant(t *testing.T) {
 func TestGenerateFillsModelChoiceUsageAndCost(t *testing.T) {
 	h := newHarness(t)
 	resp := h.mustGenerate(t, "t1", call(transform), say("hello"))
-	want := &mg.ModelChoice{ModelProfileId: "test/mid-a@1", Tier: "mid@low", Vendor: "deepseek"}
+	want := &mg.ModelChoice{ModelProfileId: "test/mid-a@1", Tier: "mid@low", Vendor: "deepseek", ContextWindow: 128000}
 	if !proto.Equal(resp.GetModel(), want) {
 		t.Errorf("ModelChoice = %v, want %v", resp.GetModel(), want)
 	}
@@ -165,7 +165,7 @@ func TestGenerateFillsModelChoiceUsageAndCost(t *testing.T) {
 	c := call(transform)
 	c.Tier = "strong@high"
 	resp = h.mustGenerate(t, "t1", c, say("hello"))
-	want = &mg.ModelChoice{ModelProfileId: "test/strong-b@1", Tier: "strong@high", Vendor: "openai"}
+	want = &mg.ModelChoice{ModelProfileId: "test/strong-b@1", Tier: "strong@high", Vendor: "openai", ContextWindow: 400000}
 	if !proto.Equal(resp.GetModel(), want) || resp.GetUsage().GetCostUsdMicros() != 17500 {
 		t.Errorf("strong@high：%v，成本 %d（want 17500）", resp.GetModel(), resp.GetUsage().GetCostUsdMicros())
 	}
@@ -375,7 +375,7 @@ func TestSwitchesToTheNextProfileOfTheSameTier(t *testing.T) {
 	h := newHarness(t)
 	h.fake.failNext("mid-a", transient("timeout", 0), transient("timeout", 0), transient("timeout", 0))
 	resp := h.mustGenerate(t, "t1", call(transform), say("hi"))
-	want := &mg.ModelChoice{ModelProfileId: "test/mid-b@1", Tier: "mid@low", Vendor: "google"}
+	want := &mg.ModelChoice{ModelProfileId: "test/mid-b@1", Tier: "mid@low", Vendor: "google", ContextWindow: 1000000}
 	if !proto.Equal(resp.GetModel(), want) {
 		t.Errorf("ModelChoice = %v, want %v", resp.GetModel(), want)
 	}
@@ -546,7 +546,7 @@ func TestStreamGenerate(t *testing.T) {
 	if !proto.Equal(final.GetUsage(), wantUsage) || !proto.Equal(final.GetFinal().GetUsage(), wantUsage) {
 		t.Errorf("最后分片的 usage %v，final.usage %v，want %v", final.GetUsage(), final.GetFinal().GetUsage(), wantUsage)
 	}
-	if !proto.Equal(final.GetFinal().GetModel(), &mg.ModelChoice{ModelProfileId: "test/mid-a@1", Tier: "mid@low", Vendor: "deepseek"}) {
+	if !proto.Equal(final.GetFinal().GetModel(), &mg.ModelChoice{ModelProfileId: "test/mid-a@1", Tier: "mid@low", Vendor: "deepseek", ContextWindow: 128000}) {
 		t.Errorf("final.model = %v", final.GetFinal().GetModel())
 	}
 	if n := h.fake.callsTo("mid-a"); n != 2 {
@@ -590,7 +590,7 @@ func TestClassifyOnlyReturnsGivenLabels(t *testing.T) {
 	if c := resp.GetResults()[1].GetConfidence(); c != 1 {
 		t.Errorf("confidence 截到 [0, 1]：%v", c)
 	}
-	if !proto.Equal(resp.GetModel(), &mg.ModelChoice{ModelProfileId: "test/small-a@1", Tier: "small@low", Vendor: "openai"}) {
+	if !proto.Equal(resp.GetModel(), &mg.ModelChoice{ModelProfileId: "test/small-a@1", Tier: "small@low", Vendor: "openai", ContextWindow: 128000}) {
 		t.Errorf("Classify 默认 small@low：%v", resp.GetModel())
 	}
 	// (1000-200)*0.1 + 200*0.025 + 500*0.4 = 285。
@@ -698,7 +698,7 @@ func TestEmbed(t *testing.T) {
 		if resp.GetEmbeddingVersion() != "test/embed-a@1" {
 			t.Errorf("embedding_version = %q", resp.GetEmbeddingVersion())
 		}
-		if !proto.Equal(resp.GetModel(), &mg.ModelChoice{ModelProfileId: "test/embed-a@1", Tier: "embed@default", Vendor: "openai"}) {
+		if !proto.Equal(resp.GetModel(), &mg.ModelChoice{ModelProfileId: "test/embed-a@1", Tier: "embed@default", Vendor: "openai", ContextWindow: 8191}) {
 			t.Errorf("model = %v", resp.GetModel())
 		}
 		if len(resp.GetEmbeddings()) != 2 || !slices.Equal(resp.GetEmbeddings()[0].GetValues(), []float32{5, 1}) || !slices.Equal(resp.GetEmbeddings()[1].GetValues(), []float32{4, 1}) {
@@ -739,7 +739,7 @@ func TestScore(t *testing.T) {
 		t.Errorf("scores 与 candidates 一一对应：%v", resp.Msg.GetScores())
 	}
 	// judge 默认 strong@medium，strong-b 更便宜。(1000-200)*1.75 + 200*0.175 + 500*14 = 8435。
-	if !proto.Equal(resp.Msg.GetModel(), &mg.ModelChoice{ModelProfileId: "test/strong-b@1", Tier: "strong@medium", Vendor: "openai"}) ||
+	if !proto.Equal(resp.Msg.GetModel(), &mg.ModelChoice{ModelProfileId: "test/strong-b@1", Tier: "strong@medium", Vendor: "openai", ContextWindow: 400000}) ||
 		resp.Msg.GetUsage().GetCostUsdMicros() != 8435 {
 		t.Errorf("model %v，成本 %d", resp.Msg.GetModel(), resp.Msg.GetUsage().GetCostUsdMicros())
 	}

@@ -172,6 +172,14 @@ func (s *Store) MarkSignaled(ctx context.Context, tenant *commonv1.TenantContext
 	})
 }
 
+// UpdateMessage 改排队中的 Task 的消息（docs/plan/running-task-interaction.md 第 2 节）。
+func (s *Store) UpdateMessage(ctx context.Context, tenant *commonv1.TenantContext, taskID, message string) error {
+	return s.tx(ctx, tenant, false, func(ctx context.Context, tx relational.Tx) error {
+		_, err := tx.Execute(ctx, `UPDATE tasks SET message = $1 WHERE task_id = $2`, message, taskID)
+		return err
+	})
+}
+
 // RecordFinished 记下终态、结局（TaskWorkflowResult 的 protojson）与最后一个事件的 id。
 func (s *Store) RecordFinished(ctx context.Context, tenant *commonv1.TenantContext, taskID string, status commonv1.TaskStatus, lastEventID int64, outcome string) error {
 	return s.tx(ctx, tenant, false, func(ctx context.Context, tx relational.Tx) error {

@@ -3,7 +3,8 @@
 // 适配器只认这一套 HTTP 接口：
 //
 //	GET  /healthz                 不要令牌，就绪探针用
-//	POST /v1/exec                 {"argv": [...], "stdin": base64, "timeout_ms": n, "env": {…}} → {"exit_code", "timed_out", "stdout", "stderr", "truncated"}
+//	POST /v1/exec                 {"argv": [...], "stdin": base64, "timeout_ms": n, "env": {…}, "exec_id": …} → {"exit_code", "timed_out", "stdout", "stderr", "truncated"}
+//	POST /v1/exec/cancel          {"exec_id": …} → 204；杀掉这条命令的进程组（还没开始的不再开始）；调用方断开连接也一样，见 exec
 //	PUT  /v1/files/<相对路径>      请求体是文件内容
 //	GET  /v1/files/<相对路径>      响应体是文件内容；不存在（或是目录）时 404
 //	GET、PUT /v1/archive、GET /v1/manifest、GET /v1/list/<相对路径>、POST /v1/grep
@@ -32,6 +33,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -61,6 +63,10 @@ type Config struct {
 
 type server struct {
 	c Config
+	// 正在跑的命令：exec_id → 让它停的 channel；先到的取消记在 cancelled（请求可能比命令先到），一分钟后忘掉。
+	mu        sync.Mutex
+	running   map[string]chan struct{}
+	cancelled map[string]time.Time
 }
 
 // New 检查配置并返回 agent 的 HTTP 处理器。
@@ -86,10 +92,11 @@ func New(c Config) (http.Handler, error) {
 	if c.WaitDelay <= 0 {
 		c.WaitDelay = 2 * time.Second
 	}
-	s := &server{c: c}
+	s := &server{c: c, running: map[string]chan struct{}{}, cancelled: map[string]time.Time{}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "ok") })
 	mux.Handle("POST /v1/exec", s.authed(s.exec))
+	mux.Handle("POST /v1/exec/cancel", s.authed(s.cancelExec))
 	mux.Handle("PUT /v1/files/{path...}", s.authed(s.writeFile))
 	mux.Handle("GET /v1/files/{path...}", s.authed(s.readFile))
 	// 工作区的存档模式与在环境里执行的工作区类工具（D-06，archive.go）。
@@ -135,6 +142,56 @@ type execRequest struct {
 	Stdin     []byte            `json:"stdin"`
 	TimeoutMS int64             `json:"timeout_ms"`
 	Env       map[string]string `json:"env"`
+	// ExecID 由调用方生成，POST /v1/exec/cancel 按它取消。调用方被打断时（docs/plan/running-task-interaction.md 第 2 节）既断开连接也发取消：
+	// 中间隔着 K8s API Server 或 Cloudflare 的桥时，断开不一定传得到。
+	ExecID string `json:"exec_id"`
+}
+
+// cancelledMemory 是先到的取消记多久。
+const cancelledMemory = time.Minute
+
+// claim 登记一条要跑的命令；已经被取消时返回 false。
+func (s *server) claim(id string) (<-chan struct{}, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, gone := s.cancelled[id]; gone {
+		delete(s.cancelled, id)
+		return nil, false
+	}
+	stop := make(chan struct{})
+	s.running[id] = stop
+	return stop, true
+}
+
+func (s *server) release(id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.running, id)
+}
+
+func (s *server) cancelExec(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ExecID string `json:"exec_id"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&req); err != nil || req.ExecID == "" {
+		fail(w, http.StatusBadRequest, "invalid_argument", "要有 exec_id")
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if stop, ok := s.running[req.ExecID]; ok {
+		close(stop)
+		delete(s.running, req.ExecID)
+	} else {
+		now := time.Now()
+		for id, at := range s.cancelled {
+			if now.Sub(at) > cancelledMemory {
+				delete(s.cancelled, id)
+			}
+		}
+		s.cancelled[req.ExecID] = now
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // 一次请求最多带多少个环境变量、总共多少字节。
@@ -245,6 +302,15 @@ func (s *server) exec(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusBadRequest, "command_not_found", fmt.Sprintf("找不到 %s", req.Argv[0]))
 		return
 	}
+	var stop <-chan struct{}
+	if req.ExecID != "" {
+		var ok bool
+		if stop, ok = s.claim(req.ExecID); !ok {
+			fail(w, http.StatusConflict, "exec_cancelled", "这条命令已经取消了")
+			return
+		}
+		defer s.release(req.ExecID)
+	}
 	cmd := exec.Command(program, req.Argv[1:]...)
 	cmd.Args[0] = req.Argv[0]
 	cmd.Dir = s.c.Workdir
@@ -275,6 +341,11 @@ func (s *server) exec(w http.ResponseWriter, r *http.Request) {
 		// 调用方断开了：命令没人等，杀掉。
 		killGroup(cmd)
 		<-done
+		return
+	case <-stop:
+		killGroup(cmd)
+		<-done
+		fail(w, http.StatusConflict, "exec_cancelled", "这条命令已经取消了")
 		return
 	}
 	resp.Stdout, resp.Stderr = stdout.Bytes(), stderr.Bytes()

@@ -5,10 +5,12 @@ history 是此前的动作与观察，其后是 Task State 的精确状态，最
 同一份交给 Context Builder 计入阈值。模型发起工具调用就返回
 action = tool（只取第一个调用，一步一个动作）；不再调用工具时，结构化结果（没有就用文本）作为 action = finish 的结果。
 模型的 rationale 与压缩情况只写入日志（trace），不进上下文、不传给下游。
+这一步的上下文占比随结果带回（context_usage），工作流推进度事件（docs/plan/running-task-interaction.md 第 3 节）。
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from google.protobuf import json_format, struct_pb2
@@ -21,6 +23,7 @@ from agentruntime_worker import names
 from agentruntime_worker.activities.types import ToolLoopStep, ToolLoopStepInput
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.context.builder import ContextBuilder, ContextConfig, ContextRequest, tenant_context
+from agentruntime_worker.executor.heartbeat import heartbeating
 from agentruntime_worker.executor.model_gateway import ModelGateway
 from agentruntime_worker.session.transcript import TranscriptSource, transcript_text
 from agentruntime_worker.tools.catalog import ToolCatalog
@@ -47,9 +50,14 @@ def _value(data: Any) -> struct_pb2.Value:
 
 
 class ModelToolLoop:
-    def __init__(self, gateway: ModelGateway, builder: ContextBuilder, *, tier: str = TOOL_LOOP_TIER, tools: ToolCatalog | None = None, transcript: TranscriptSource | None = None) -> None:
+    def __init__(
+        self, gateway: ModelGateway, builder: ContextBuilder, *, tier: str = TOOL_LOOP_TIER, tools: ToolCatalog | None = None,
+        transcript: TranscriptSource | None = None, mcp_tools: Callable[[], frozenset[str]] | None = None,
+    ) -> None:
         # 给了 ToolCatalog 时，工具的说明与参数 schema 取自登记，没登记的不给模型（T-10）；没给时只有名字。
         self.tools = tools
+        # 现在登记了的 MCP 工具（Worker 启动时才连上 MCP Server，所以是函数）：上下文占比里单独一类。
+        self.mcp_tools = mcp_tools
         self.gateway = gateway
         self.builder = builder
         self.tier = tier
@@ -70,6 +78,7 @@ class ModelToolLoop:
                 task_plan=inp.task_plan,
                 system=[SYSTEM_PROMPT],
                 tools=tools,
+                mcp_tools=self.mcp_tools() if self.mcp_tools is not None else frozenset(),
                 conversation=transcript_text(turns, max_chars=CONVERSATION_CHARS),
             )
         )
@@ -95,11 +104,12 @@ class ModelToolLoop:
         # 这一步的花费（含 Context Builder 的摘要与 Probe）计入 Round 的成本；vendor 给 Reviewer 避开生成者用。
         cost = round(response.usage.cost_usd_micros / 1_000_000 + built.cost_usd, 6)
         vendor = response.model.vendor
+        usage = built.usage.payload(response.model.context_window, self.builder.config.effective_tokens) if built.usage is not None else None
         if response.tool_calls:
             calls = [{"tool": call.name, "args": json_format.MessageToDict(call.arguments)} for call in response.tool_calls]
-            return ToolLoopStep(action="tool", tool=calls[0]["tool"], args=calls[0]["args"], calls=calls, cost_usd=cost, vendor=vendor)
+            return ToolLoopStep(action="tool", tool=calls[0]["tool"], args=calls[0]["args"], calls=calls, cost_usd=cost, vendor=vendor, context_usage=usage)
         result = json_format.MessageToDict(response.result) if response.HasField("result") else response.text
-        return ToolLoopStep(action="finish", result=result, cost_usd=cost, vendor=vendor)
+        return ToolLoopStep(action="finish", result=result, cost_usd=cost, vendor=vendor, context_usage=usage)
 
     async def _tool_specs(self, inp: ToolLoopStepInput, tools: list[str]) -> list[mg.ToolSpec]:
         if self.tools is None:
@@ -118,7 +128,8 @@ class ToolLoopActivities:
 
     @activity.defn(name=names.TOOL_LOOP_STEP)
     async def tool_loop_step(self, inp: ToolLoopStepInput) -> ToolLoopStep:
-        return await self.loop.step(inp)
+        async with heartbeating():
+            return await self.loop.step(inp)
 
     def activities(self) -> dict[str, Any]:
         return {names.TOOL_LOOP_STEP: self.tool_loop_step}
@@ -134,8 +145,13 @@ def dev_tool_loop(config: WorkerConfig) -> ToolLoopActivities:
     """
     from agentruntime_worker.executor.dev import model_gateway
     from agentruntime_worker.session.transcript import session_transcript
-    from agentruntime_worker.tools import context_objects, dev_tools
+    from agentruntime_worker.tools import context_objects, dev_tools, mcp_tool_names
 
     gateway = model_gateway(config)
     builder = ContextBuilder(gateway, context_objects(config), ContextConfig(effective_tokens=config.context_effective_tokens))
-    return ToolLoopActivities(ModelToolLoop(gateway, builder, tools=ToolCatalog(dev_tools(config)), transcript=session_transcript(config.relational_dsn, config.data_dir)))
+    return ToolLoopActivities(
+        ModelToolLoop(
+            gateway, builder, tools=ToolCatalog(dev_tools(config)), transcript=session_transcript(config.relational_dsn, config.data_dir),
+            mcp_tools=lambda: mcp_tool_names(config),
+        )
+    )

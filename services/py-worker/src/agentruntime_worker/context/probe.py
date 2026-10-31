@@ -76,6 +76,10 @@ def state_lines(task_state: Mapping[str, Any]) -> list[tuple[str, str, str]]:
         for item in task_state.get(field) or []:
             if isinstance(item, str) and item:
                 lines.append((category, prefix + item, salient(item)))
+    # 用户在运行中发来的纠偏：压缩之后也要在。不当事实抽查（没有挖空的答案）。
+    for item in task_state.get("guidance") or []:
+        if isinstance(item, Mapping) and item.get("state") == "applied":
+            lines.append(("guidance", f"用户的纠偏：{item.get('text', '')}", ""))
     return lines
 
 

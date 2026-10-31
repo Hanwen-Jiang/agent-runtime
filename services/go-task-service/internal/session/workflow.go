@@ -47,6 +47,7 @@ func Register(r worker.Registry, cfg Config, acts *Activities) {
 	r.RegisterWorkflowWithOptions(NewWorkflow(cfg), workflow.RegisterOptions{Name: WorkflowName})
 	r.RegisterActivityWithOptions(acts.AcceptTask, activity.RegisterOptions{Name: AcceptTaskActivity})
 	r.RegisterActivityWithOptions(acts.FinishTask, activity.RegisterOptions{Name: FinishTaskActivity})
+	r.RegisterActivityWithOptions(acts.RecordQueuedEdit, activity.RegisterOptions{Name: RecordQueuedEditActivity})
 	r.RegisterActivityWithOptions(acts.PublishTaskEvent, activity.RegisterOptions{Name: PublishTaskEventActivity})
 }
 
@@ -119,6 +120,7 @@ func (s *session) run(pending []*workflowv1.SubmitTaskSignal) error {
 	submitCh := workflow.GetSignalChannel(ctx, SignalSubmitTask)
 	cancelCh := workflow.GetSignalChannel(ctx, SignalCancelTask)
 	finishedCh := workflow.GetSignalChannel(ctx, SignalTaskFinished)
+	editCh := workflow.GetSignalChannel(ctx, SignalEditQueuedTask)
 
 	s.sel = workflow.NewSelector(ctx)
 	s.sel.AddReceive(ctx.Done(), func(workflow.ReceiveChannel, bool) {})
@@ -131,6 +133,11 @@ func (s *session) run(pending []*workflowv1.SubmitTaskSignal) error {
 		sig := &workflowv1.CancelTaskSignal{}
 		c.Receive(ctx, sig)
 		s.cancel(sig.GetTaskId())
+	})
+	s.sel.AddReceive(editCh, func(c workflow.ReceiveChannel, _ bool) {
+		sig := &workflowv1.EditQueuedTaskSignal{}
+		c.Receive(ctx, sig)
+		s.editQueued(sig, s.queue)
 	})
 	s.sel.AddReceive(finishedCh, func(c workflow.ReceiveChannel, _ bool) {
 		result := &workflowv1.TaskWorkflowResult{}
@@ -163,7 +170,7 @@ func (s *session) run(pending []*workflowv1.SubmitTaskSignal) error {
 		}
 		s.schedule()
 		if s.shouldContinueAsNew() {
-			return s.continueAsNew(submitCh, cancelCh, finishedCh)
+			return s.continueAsNew(submitCh, cancelCh, finishedCh, editCh)
 		}
 	}
 	return ctx.Err()
@@ -347,6 +354,26 @@ func (s *session) cancel(id string) {
 	}
 }
 
+// editQueued 修改排队中的 Task 的消息（docs/plan/running-task-interaction.md 第 2 节）：在队列里原位替换，保持顺序。工作流是单线程的：
+// Task 开始之前到的信号算数，开始之后到的不改（task_started），已经结束的是 task_finished。结果经活动记下并推 task_message_edited。
+// 一个还没接受的 Task 不可能有修改，只有续接时排空信号才会碰到（continueAsNew 把它放进 queue 传进来）。
+func (s *session) editQueued(sig *workflowv1.EditQueuedTaskSignal, queue []*workflowv1.SubmitTaskSignal) {
+	applied, reason := false, "task_finished"
+	if s.running(sig.GetTaskId()) {
+		reason = "task_started"
+	}
+	for _, queued := range queue {
+		if queued.GetTask().GetTaskId() == sig.GetTaskId() {
+			queued.GetTask().Message = sig.GetMessage()
+			applied, reason = true, ""
+			break
+		}
+	}
+	if err := workflow.ExecuteActivity(s.activityCtx(), RecordQueuedEditActivity, s.tenant, sig, applied, reason).Get(s.ctx, nil); err != nil {
+		s.warn("记下修改排队的消息失败", "task_id", sig.GetTaskId(), "error", err)
+	}
+}
+
 func (s *session) activityCtx() workflow.Context {
 	return workflow.WithActivityOptions(s.ctx, workflow.ActivityOptions{
 		StartToCloseTimeout: s.cfg.ActivityTimeout,
@@ -396,7 +423,7 @@ func (s *session) shouldContinueAsNew() bool {
 
 // continueAsNew 排空未处理的信号与已就绪的子工作流结果，把状态带入新的运行。
 // 排空的提交不在这次运行里接受（去掉重复），放进 pending 由新的运行接受。
-func (s *session) continueAsNew(submitCh, cancelCh, finishedCh workflow.ReceiveChannel) error {
+func (s *session) continueAsNew(submitCh, cancelCh, finishedCh, editCh workflow.ReceiveChannel) error {
 	var fresh []*workflowv1.SubmitTaskSignal
 	seen := map[string]bool{}
 	for {
@@ -444,6 +471,14 @@ func (s *session) continueAsNew(submitCh, cancelCh, finishedCh workflow.ReceiveC
 				continue
 			}
 			s.cancel(sig.GetTaskId())
+		}
+		for {
+			sig := &workflowv1.EditQueuedTaskSignal{}
+			if !editCh.ReceiveAsync(sig) {
+				break
+			}
+			drained = true
+			s.editQueued(sig, append(append([]*workflowv1.SubmitTaskSignal(nil), s.queue...), fresh...))
 		}
 		// 信号通道已空，此时就绪的只会是子工作流的结果。
 		if s.sel.HasPending() {

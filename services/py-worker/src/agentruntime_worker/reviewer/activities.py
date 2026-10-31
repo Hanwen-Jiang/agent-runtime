@@ -15,6 +15,7 @@ from agentruntime_worker.executor.dev import model_gateway
 from agentruntime_worker.activities.types import FinalizeTaskInput, ReviewRoundInput, ReviewRoundOutput, StageResult, Tenant
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.executor.dev import data_root, dev_object_store
+from agentruntime_worker.executor.heartbeat import heartbeating
 from agentruntime_worker.reviewer.reviewer import Reviewer, ReviewRequest
 from agentruntime_worker.reviewer.rules import ReviewCatalog
 from agentruntime_worker.reviewer.wrap_up import RecordingMemoryClient, WrapUp
@@ -84,11 +85,12 @@ class ReviewerActivities:
             [(c.purpose, c.tier, c.vendor) for c in result.calls],
             "；Progress Check 不可用，只按规则判定" if result.fallback else "",
         )
-        return ReviewRoundOutput(verdict=result.verdict, state_update=result.state_update, cost_usd=round(sum(c.cost_usd for c in result.calls), 6))
+        return ReviewRoundOutput(verdict=result.verdict, state_update=result.state_update, cost_usd=round(sum(c.cost_usd for c in result.calls), 6), highlights=result.highlights)
 
     @activity.defn(name=names.REVIEW_ROUND)
     async def review_round(self, inp: ReviewRoundInput) -> ReviewRoundOutput:
-        return await self.review(inp)
+        async with heartbeating():
+            return await self.review(inp)
 
     @activity.defn(name=names.FINALIZE_TASK)
     async def finalize_task(self, inp: FinalizeTaskInput) -> None:

@@ -18,7 +18,8 @@
 //     返回错误时，details 的 billed_cost_usd_micros 带上这些尝试的花费之和（大于 0 才带）。
 //  6. 计量：向 Meter 写 JSON 行（MeterRecord），不含消息内容、输出内容与密钥。每次成功的 RPC 一行（status ok，只算实际服务的
 //     那次尝试）；上游已经计费、但网关判为失败的尝试也各写一行（status failed，带 error_code），例如结构化输出不是合法 JSON、
-//     Classify 给了标签外的值、没给的工具调用。
+//     Classify 给了标签外的值、没给的工具调用。调用方取消的调用（用户打断，docs/plan/running-task-interaction.md 第 2 节）不重试、
+//     不切换，写一行 status cancelled：上游可能已对部分输出计费，网关拿不到用量，这部分不进成本。
 //     请求的 pinned_model_profile 没用上、avoid_vendor 没能避开（按实际服务的 Profile 判断，含切换之后）时，计量记录里标明，
 //     并记一条日志。回答的 input 与 output token 都是 0 时照常返回，计量记 usage_missing、记一条警告日志（上游没报用量，
 //     这次调用记不上花费）。
@@ -140,7 +141,7 @@ type MeterRecord struct {
 	OutputTokens    int64  `json:"output_tokens"`
 	CacheReadTokens int64  `json:"cache_read_tokens"`
 	CostUSDMicros   int64  `json:"cost_usd_micros"`
-	// Status 是 ok（RPC 成功）或 failed（上游已经计费、网关判为失败的尝试）。
+	// Status 是 ok（RPC 成功）、failed（上游已经计费、网关判为失败的尝试）或 cancelled（调用方取消，用量不明，成本记 0）。
 	Status string `json:"status"`
 	// ErrorCode 是失败时的 code（status 为 failed 时才有）。
 	ErrorCode string `json:"error_code,omitempty"`
@@ -159,6 +160,19 @@ const modelNotFound = "model_not_found"
 
 // unexpectedToolCall 是“回答里有请求没给的工具调用”的 code：只说明这一个 Profile（多半是它背后的中转）不对，切换同档的下一个。
 const unexpectedToolCall = "unexpected_tool_call"
+
+// deadlineMargin：调用方的 deadline 到了时，它那边断开连接，这边的 ctx 可能比自己的 deadline 早一点以 Canceled 结束。离 deadline
+// 不到这么久的取消算超时，不算用户打断。
+const deadlineMargin = time.Second
+
+// callerCancelled 判断调用方是不是主动取消了（不是 deadline 到了）。
+func callerCancelled(ctx context.Context) bool {
+	if !errors.Is(ctx.Err(), context.Canceled) {
+		return false
+	}
+	deadline, ok := ctx.Deadline()
+	return !ok || time.Until(deadline) > deadlineMargin
+}
 
 // skipsProfile 表示这次失败只说明这一个 Profile 不能用：不在它上面重试，直接切换同档的下一个。
 func skipsProfile(pe *providererr.Error) bool {
@@ -327,6 +341,9 @@ func (s *Server) run(ctx context.Context, c *call, candidates []router.Candidate
 			if err == nil {
 				return cand, nil
 			}
+			if callerCancelled(ctx) {
+				return cand, s.cancelled(c, cand)
+			}
 			var pe *providererr.Error
 			if !errors.As(err, &pe) {
 				s.opts.Logger.Warn("模型调用失败", "profile", cand.Profile.ID, "category", "internal", "attempt", n)
@@ -354,6 +371,9 @@ func (s *Server) run(ctx context.Context, c *call, candidates []router.Candidate
 				return cand, e
 			}
 			if err := s.opts.Sleep(ctx, wait); err != nil {
+				if callerCancelled(ctx) {
+					return cand, s.cancelled(c, cand)
+				}
 				return cand, err
 			}
 		}
@@ -387,7 +407,7 @@ func priced(cand router.Candidate, u *commonv1.Usage) *commonv1.Usage {
 }
 
 func (c *call) choiceOf(cand router.Candidate) *modelgatewayv1.ModelChoice {
-	return &modelgatewayv1.ModelChoice{ModelProfileId: cand.Profile.ID, Tier: c.choice.Tier, Vendor: cand.Profile.Vendor}
+	return &modelgatewayv1.ModelChoice{ModelProfileId: cand.Profile.ID, Tier: c.choice.Tier, Vendor: cand.Profile.Vendor, ContextWindow: int32(cand.Profile.Constraints.ContextWindow)}
 }
 
 func roleName(r commonv1.Role) string {
@@ -420,12 +440,23 @@ func (s *Server) meterFailed(c *call, cand router.Candidate, usage *commonv1.Usa
 	s.meter(c, cand, u, code)
 }
 
-// meter 写一条计量记录；errCode 为空表示成功（status ok），否则是已计费的失败（status failed）。并发时按行串行。
+// meter 写一条计量记录；errCode 为空表示成功（status ok），否则是已计费的失败（status failed）。
 func (s *Server) meter(c *call, cand router.Candidate, u *commonv1.Usage, errCode string) {
 	status := "ok"
 	if errCode != "" {
 		status = "failed"
 	}
+	s.writeMeter(c, cand, u, status, errCode)
+}
+
+// cancelled 记下调用方取消的一次调用（status cancelled，成本 0），返回给调用方的错误。
+func (s *Server) cancelled(c *call, cand router.Candidate) error {
+	s.writeMeter(c, cand, &commonv1.Usage{}, "cancelled", "")
+	return providererr.New(providererr.Transient, "canceled", "调用被取消")
+}
+
+// writeMeter 写一条计量记录。并发时按行串行。
+func (s *Server) writeMeter(c *call, cand router.Candidate, u *commonv1.Usage, status, errCode string) {
 	pinned, avoid := c.ctx.GetPinnedModelProfile(), c.ctx.GetAvoidVendor()
 	line, err := json.Marshal(MeterRecord{
 		TenantID: c.tenant.GetTenantId(), TaskID: c.ctx.GetTaskId(), NodeID: c.ctx.GetNodeId(), Role: roleName(c.ctx.GetRole()),
@@ -434,7 +465,7 @@ func (s *Server) meter(c *call, cand router.Candidate, u *commonv1.Usage, errCod
 		Status: status, ErrorCode: errCode,
 		PinnedModelProfile: pinned, PinIgnored: pinned != "" && pinned != cand.Profile.ID,
 		AvoidVendor: avoid, AvoidVendorUnmet: avoid != "" && avoid == cand.Profile.Vendor,
-		UsageMissing: errCode == "" && c.usageMissing,
+		UsageMissing: status == "ok" && c.usageMissing,
 	})
 	if err != nil {
 		return
@@ -804,6 +835,9 @@ func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelg
 			return connecterr.Error(spanErr)
 		}
 		if err != nil {
+			if callerCancelled(ctx) {
+				err = s.cancelled(c, cand)
+			}
 			spanErr = err
 			return connecterr.Error(err)
 		}
@@ -819,6 +853,9 @@ func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelg
 		}
 		if out != nil {
 			if err := stream.Send(out); err != nil {
+				if callerCancelled(ctx) {
+					err = s.cancelled(c, cand)
+				}
 				spanErr = err
 				return err
 			}

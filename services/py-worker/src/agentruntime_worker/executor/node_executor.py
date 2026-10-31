@@ -11,11 +11,16 @@
 - 结果超过 ExecutorConfig.inline_result_limit 字节时写入 ObjectStore（路径带租户前缀），result 只留摘要与引用，
   meta.result_ref 记录 uri、大小与 sha256。
 - rationale 只写入 trace（Telemetry 的 span 事件），不放进 activity 的结果，不进事件历史，不传给下游。
+- 直接回复用户的节点（fast 的 answer）不经 Context Builder，也报一份上下文占比（结果的 context_usage，只有数字：系统提示与对话
+  两类；docs/plan/running-task-interaction.md 第 3 节）。
 - program 节点要求权限的工具，用 SecretStore 签发的短期凭据（角色 tool.<工具名>），调用结束即吊销；凭据不进日志与 trace。
   工具的输出或错误信息带出凭据原文时换成掩码（span 事件 credential_redacted）；吊销失败记 span 事件与警告日志，等租约过期。
 - 写操作超时、结果未知时先按幂等键对账：已生效就取当时的结果；没生效时 write_reversible 可重试（同一幂等键），
   write_irreversible 记为结果未知（unknown），交给 Reviewer，不重试。对账用的查询本身暂时不可用时，不可逆写操作
   报 reconcile，由工作流用 reconcile_node 带重试地再查（计划 S-07 场景 3）。
+- 工具调用被取消（立刻打断或取消整个 Task，docs/plan/running-task-interaction.md 第 2 节）时以 ApplicationError（type tool_interrupted）结束，
+  带回撤销的结果：工具自己还原了的（UndoReport）照报，只读的没什么要撤，别的 write_reversible 撤不回（不在工作副本里，如 MCP）。
+  write_irreversible 不打断，只有取消整个 Task 才会走到这里，照旧是取消。
 - 写操作重试（attempt > 1，例如 Worker 崩溃后被接手）时，工具支持按幂等键查询就先查：外部已生效就取当时的结果，
   不再执行；确认没有生效才执行（设计书 3.6“恢复”）。进程内的幂等记录随 Worker 崩溃丢失，只有外部的记录可信。
 
@@ -33,7 +38,7 @@ import hashlib
 import json
 import logging
 import time
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
@@ -57,11 +62,14 @@ from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker import names
 from agentruntime_worker.activities.types import HumanCancel, HumanQuestion, NodeInput, ReconcileResult, Tenant, ToolCallInput
+from agentruntime_worker.context.builder import message_tokens
 from agentruntime_worker.executor import keys
 from agentruntime_worker.session.transcript import TranscriptSource, Turn, chat_messages
 from agentruntime_worker.executor.model_gateway import ModelGateway
 from agentruntime_worker.executor.schemas import OutputSchemaResolver, UnknownSchema, schema_for, validate
 from agentruntime_worker.tools.catalog import latest_spec
+from agentruntime_worker.tools.checkpoint import UndoReport
+from agentruntime_worker.workflows.interrupts import NO_CHECKPOINT, NOT_NEEDED, tool_interrupted
 
 log = logging.getLogger(__name__)
 
@@ -101,6 +109,8 @@ class ExecutorConfig:
     credential_ttl: timedelta = timedelta(minutes=15)
     # 心跳间隔的上限；实际取 heartbeat 超时的 1/3。
     heartbeat_interval: timedelta = timedelta(seconds=5)
+    # Runtime 的压缩线（同 Context Builder 的 effective_tokens）：上下文占比带上它，取不到模型的窗口时分母也用它。
+    context_effective_tokens: int = 32_000
 
 
 @dataclass
@@ -403,8 +413,10 @@ class NodeExecutor:
                     out = await self._externalize(tenant, inp, out)
                     await self._cache_put(tenant, node, out)
                     return out
-                except (ApplicationError, asyncio.CancelledError):
+                except ApplicationError:
                     raise
+                except asyncio.CancelledError as err:
+                    raise self._cancelled(node, err) from None
                 except ProviderError as err:
                     raise self._from_provider(err, node) from None
                 except Exception as err:  # noqa: BLE001 — 未预料的错误一律不可重试，交给 Reviewer
@@ -413,6 +425,15 @@ class NodeExecutor:
             # 导出失败不影响 Node 的结局（Telemetry 语义：只在 flush 体现，且只能是 transient）。
             with contextlib.suppress(ProviderError):
                 await telemetry.flush()
+
+    @staticmethod
+    def _cancelled(node: Mapping[str, Any], err: asyncio.CancelledError) -> BaseException:
+        effect = str(node.get("effect", "none"))
+        if node.get("executor") != "program" or effect == "write_irreversible":
+            return err
+        if isinstance(err, UndoReport):
+            return tool_interrupted(err.undo)
+        return tool_interrupted(NOT_NEEDED if effect in CACHEABLE_EFFECTS else NO_CHECKPOINT)
 
     @contextlib.asynccontextmanager
     async def _heartbeating(self) -> AsyncIterator[None]:
@@ -653,13 +674,15 @@ class NodeExecutor:
             )
         return messages
 
-    async def _generate(self, inp: NodeInput, tenant: TenantContext, schema: Mapping[str, Any] | None, retry_errors: list[str] | None) -> mg.GenerateResponse:
+    async def _generate(
+        self, inp: NodeInput, tenant: TenantContext, schema: Mapping[str, Any] | None, retry_errors: list[str] | None
+    ) -> tuple[mg.GenerateResponse, Sequence[mg.ChatMessage]]:
         transcript = self.deps.transcript
         turns = await transcript.load(inp.tenant, inp.task_id) if transcript is not None and _conversational(inp.node) else ()
         params = mg.GenerateParams(messages=self._messages(inp, retry_errors, turns))
         if schema is not None:
             params.output_schema.CopyFrom(payload_pb2.JsonPayload(value=_to_value(dict(schema))))
-        return await self.deps.models.generate(mg.GenerateRequest(tenant=tenant, call=self._call(inp), generation=params))
+        return await self.deps.models.generate(mg.GenerateRequest(tenant=tenant, call=self._call(inp), generation=params)), params.messages
 
     async def _model(self, inp: NodeInput, tenant: TenantContext, span: Span) -> dict[str, Any]:
         node = inp.node
@@ -674,13 +697,13 @@ class NodeExecutor:
         # TMP 计划第 7 节：judge 按 {result, regressions} 的外壳要输出，拆开后 result 照旧，regressions 另放（只交给 Reviewer）。
         judge = node.get("role") == "judge"
         asked = judge_envelope(schema) if judge else schema
-        response = await self._generate(inp, tenant, asked, None)
+        response, messages = await self._generate(inp, tenant, asked, None)
         result = self._result_of(response)
         errors = validate(asked, result) if asked is not None else []
         if errors:
             # 输出不符合 schema：带上校验错误重问一次（附录 D.3、D.6）。
             span.add_event("invalid_output_retry", {"errors": "；".join(errors)})
-            response = await self._generate(inp, tenant, asked, errors)
+            response, messages = await self._generate(inp, tenant, asked, errors)
             result = self._result_of(response)
             errors = validate(asked, result) if asked is not None else []
             if errors:
@@ -695,7 +718,20 @@ class NodeExecutor:
         out: dict[str, Any] = {"result": result, "meta": self._meta(node, response.model, response.usage, started)}
         if regressions:
             out["regressions"] = regressions
+        if _conversational(node):
+            out["context_usage"] = self._context_usage(messages, response.model)
         return out
+
+    def _context_usage(self, messages: Sequence[mg.ChatMessage], model: mg.ModelChoice) -> dict[str, Any]:
+        system = message_tokens([m for m in messages if m.role == mg.CHAT_ROLE_SYSTEM])
+        rest = message_tokens(messages) - system
+        effective = self.config.context_effective_tokens
+        return {
+            "window_tokens": model.context_window or effective,
+            "effective_tokens": effective,
+            "total_tokens": system + rest,
+            "categories": [{"name": "system_prompt", "tokens": system}, {"name": "messages", "tokens": rest}],
+        }
 
     @staticmethod
     def _result_of(response: mg.GenerateResponse) -> Any:

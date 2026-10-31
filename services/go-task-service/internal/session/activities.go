@@ -2,6 +2,8 @@ package session
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"strconv"
 	"time"
 
@@ -131,12 +133,54 @@ func (a *Activities) publishOnce(ctx context.Context, tenant *commonv1.TenantCon
 	return id, nil
 }
 
+// RecordQueuedEdit 记下修改排队中的消息的结果：改好了就同步业务库的 message，并推 task_message_edited（不带文字）。
+// docs/plan/running-task-interaction.md 第 2 节。一个 Task 可以改好几次，publishOnce 按事件类型去重不合用：每次修改一个去重键
+// （信号的时间与消息的哈希），活动重试不重复推。没有这个 Task 时没有可告诉的人。
+func (a *Activities) RecordQueuedEdit(ctx context.Context, tenant *commonv1.TenantContext, sig *workflowv1.EditQueuedTaskSignal, applied bool, reason string) error {
+	tasks := taskstore.New(a.Store)
+	_, ok, err := tasks.LookupTask(ctx, tenant, sig.GetTaskId())
+	if err != nil {
+		return activityError(err)
+	}
+	if !ok {
+		return nil
+	}
+	state := "rejected"
+	fields := map[string]any{"event": "task_message_edited"}
+	if applied {
+		state = "applied"
+		if err := tasks.UpdateMessage(ctx, tenant, sig.GetTaskId(), sig.GetMessage()); err != nil {
+			return activityError(err)
+		}
+	} else {
+		fields["reason_code"] = reason
+	}
+	fields["state"] = state
+	value, err := structpb.NewValue(fields)
+	if err != nil {
+		return activityError(err)
+	}
+	ev := &taskapiv1.TaskEvent{
+		TaskId:    sig.GetTaskId(),
+		SessionId: tenant.GetSessionId(),
+		Type:      taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_MESSAGE_EDITED,
+		EmittedAt: timestamppb.New(a.now()),
+		Payload:   &commonv1.JsonPayload{Value: value},
+	}
+	digest := sha256.Sum256([]byte(sig.GetMessage()))
+	key := "queued_edit:" + strconv.FormatInt(sig.GetAt().AsTime().UnixNano(), 10) + ":" + state + ":" + hex.EncodeToString(digest[:8])
+	_, err = a.publishKeyed(ctx, tenant, key, ev)
+	return err
+}
+
 // sessionOnlyEvents 只能由 Session 自己推送：受理、结束与 SSE 的心跳。
 var sessionOnlyEvents = map[taskapiv1.TaskEventType]bool{
 	taskapiv1.TaskEventType_TASK_EVENT_TYPE_UNSPECIFIED:   true,
 	taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_ACCEPTED: true,
 	taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_FINISHED: true,
 	taskapiv1.TaskEventType_TASK_EVENT_TYPE_HEARTBEAT:     true,
+	// 排队中的修改由 Session 工作流处理（RecordQueuedEdit）。
+	taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_MESSAGE_EDITED: true,
 }
 
 // PublishTaskEvent 推送 Task 工作流交来的一个进度事件（跨语言 activity，名字见 names.proto 的 ActivityName；T-11b），
@@ -163,6 +207,12 @@ func (a *Activities) PublishTaskEvent(ctx context.Context, tenant *commonv1.Tena
 	if row.Finished() {
 		return 0, nil
 	}
+	return a.publishKeyed(ctx, tenant, key, ev)
+}
+
+// publishKeyed 分配 event_id 并推送；同一个去重键只推一次，返回第一次的 event_id。
+func (a *Activities) publishKeyed(ctx context.Context, tenant *commonv1.TenantContext, key string, ev *taskapiv1.TaskEvent) (int64, error) {
+	tasks := taskstore.New(a.Store)
 	c, err := a.Cache.Bind(tenant)
 	if err != nil {
 		return 0, activityError(err)

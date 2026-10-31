@@ -53,6 +53,10 @@ DECISION_RETRY_PATCH = "tmp-decision-retry"
 CODES_PATCH = "tmp-message-codes"
 # docs/plan/running-task-interaction.md 第 1 节：一次模型回答里的多个工具调用都执行，多了并发的 activity，改变了命令序列。
 PARALLEL_TOOL_CALLS_PATCH = "parallel-tool-calls"
+# 同一计划第 3 节：每次模型调用之后推 context_usage，多了推送的命令。
+CONTEXT_USAGE_PATCH = "context-usage-events"
+# 同一计划第 2 节：运行中的纠偏与立刻打断（工具调用被拦下、Stage 被打断、回 Planner，多了推送 guidance_updated 的命令）。
+GUIDANCE_PATCH = "guidance-and-interrupt"
 
 # 新的运行在第一个工作流任务里一次问完全部版本分支（模块说明）。
 PATCHES_AT_START = "s04-patches-at-start"
@@ -72,6 +76,8 @@ AT_START = (
     DECISION_RETRY_PATCH,
     CODES_PATCH,
     PARALLEL_TOOL_CALLS_PATCH,
+    CONTEXT_USAGE_PATCH,
+    GUIDANCE_PATCH,
 )
 
 

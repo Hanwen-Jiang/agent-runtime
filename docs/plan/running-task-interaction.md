@@ -1,6 +1,6 @@
 # 运行中的交互：并行工具调用、纠偏与打断、上下文占比、输出汇总
 
-> 状态：2026-10-30 第 6 节的决定都按建议定了，第 5 节的 S-01 草案人审通过。来源：人测试 coding-web 时提的四件事。第 1 节已实现；第 2～4 节的验收测试已写（第 8 节列出文件与当前结果），等人确认后再实现。
+> 状态：2026-10-30 第 6 节的决定都按建议定了，第 5 节的 S-01（含标“草案之外”的几处）人审通过，兼容性基线已更新。来源：人测试 coding-web 时提的四件事。第 1～4 节都已实现（第 9 节列出实现时的改动与还没验证的），还没有部署。
 
 | 节 | 问题 | 工作项 | 改契约 |
 | --- | --- | --- | --- |
@@ -102,6 +102,16 @@
 
 **验收**：上表每一格一条；撤回与生效的先后；每种后端的进程真的停了；检查点还原后工作副本与调用前一致（含未跟踪文件），用户的索引与分支不变；被打断的写调用不重试；write_irreversible 不被打断；取消整个 Task 优先于打断；重放。文件见第 8 节。
 
+**实现时的改动**（2026-10-30，测试是按这些改的）
+
+- 撤销的结果不走 Temporal 的取消失败：Python SDK 对“请求取消后以 CancelledError 结束”的 activity 一律上报不带 details 的取消，结果带不回来。activity 改为抛 `ApplicationError`（type `tool_interrupted`，details 第一项是结果），工作流当取消处理（`workflows/interrupts.py`）。
+- activity 正好正常结束时，它吞掉同时到来的取消（等它的任务不再收到取消）。发问的 activity 正是这样：所以发问之后查一次任务是否被要求取消过（`Task.cancelling()`），是就撤回问题。别的调用吞了也无妨：结果照用，还没看过立刻打断的循环不再开始新的工具调用。
+- Cloudflare 桥不用改：`AgentClient.exec` 给每条命令一个 `exec_id`，取消时既断开连接，也发 `POST /v1/exec/cancel`（agent 的新接口；取消先到时记一分钟，命令不再开始）。经 K8s API Server 或 Cloudflare 的桥时断开不一定传得到，这条路径不依赖它。
+- 模型调用（规划、评审、tool_loop 的一步）被打断时不等取消送到就重来（TRY_CANCEL）：更快，代价是旧的调用最多再跑约 6 秒。工具调用与 Node 仍等取消完成，撤销的结果才带得回来。
+- 能被打断的 activity 的 heartbeat 超时是 8 秒（`INTERRUPTIBLE_HEARTBEAT`），取消约 6 秒内送到。只对 `GUIDANCE_PATCH` 之后的运行。
+- 用户要的 replan 不进 Reviewer 的升级台账（`self._history`）：否则用户纠偏几次会被算成“一直在 replan”，升级去问人。
+- 修改排队中的消息：Session 工作流按信号的先后原位替换。coding-web 自己的任务记录在界面收到 `task_message_edited` 之后才改（`POST .../message/result`），Task API 的 QueryTask 不带消息，这样不用再改契约。
+
 **设计书的改动建议**：附录 A 加“纠偏（Guidance）”；3.2.2 与附录 C.2 写明用户可以选生效时机，以及打断的撤销规则。
 
 ## 3. 侧栏“上下文”：显示占比（参考 Claude Code 的 /context）
@@ -171,33 +181,31 @@
 4. 第 2 节：先纠偏与撤回、修改，再立刻打断（要加心跳、进程组与检查点，风险最高）。
 5. coding-web：每一步的界面跟着上线，改动放在 coding-agent 仓库。
 
-## 8. 验收测试（2026-10-30 写好，都还没实现）
+## 8. 验收测试
 
-都在工作区里没有提交：跑起来是红的，提交了 CI 就红了。实现之前只有下面标“现在就过”的是绿的。
+| 文件 | 看什么 |
+| --- | --- |
+| `services/py-worker/tests/test_task_guidance.py` | 第 2 节两张表的每一格（工作流）：等模型、跑工具、等审批、Atomic Node、模板、sub_agent、子 Task、规划中、评审中、收尾；撤回与修改的先后；取消整个 Task 优先；Planner 与 Reviewer 看得到；文字不进事件与日志 |
+| `services/py-worker/tests/test_interrupt_undo.py` | 真的 activity：等模型时发心跳、取消送到；进程组被杀、文件还原、撤不回的照实说 |
+| `services/py-worker/tests/test_workspace_checkpoint.py` | 检查点：还原后一致（含未跟踪文件）、用户的索引与分支不变、被忽略的文件与调用自己动了分支照实说、还原失败不报成功 |
+| `services/py-worker/tests/test_context_usage.py` | 第 3 节：各类占比加起来等于总数、对话算 Messages、工具分系统与 MCP、真实窗口、没有内容、不多调模型、事件 |
+| `services/py-worker/tests/test_round_highlights.py` | 第 4 节：同一次调用、不合格不重问、路径核对、改动文件补上、截断、脱敏、fast 的轮取开头两句 |
+| `services/py-worker/tests/test_stage_replay.py` | 三份新 golden：`guidance_next_step`、`guidance_interrupt_tool_loop`、`guidance_interrupt_stage` |
+| `libs/py-core/.../conformance/sandbox.py` | 一致性测试“取消 exec 后命令与子进程都停了”，本地、假桥上真的 agent、kind、真桥都跑这一条 |
+| `libs/py-core/tests/adapters/test_sandbox_exec_cancel.py` | `AgentClient` 取消时断开连接 |
+| `services/go-sandbox-agent/.../disconnect_test.go` | agent 看到断开、收到取消都杀进程组；取消先到时命令不开始 |
+| `services/go-model-gateway/.../interaction_test.go` | 回答带窗口；取消不重试、不切换；计量记 `cancelled` |
+| `services/go-task-service/.../taskapi/guidance_test.go` | 权限同取消、租户取自认证身份、参数校验、已结束与还没开始的原因码、修改排队的消息发给 Session |
+| `services/go-task-service/.../session/guidance_test.go` | 原位替换保持顺序、最后一次算数、开始之后不改、续接带上、每次修改一个事件、活动重试不重复、只有 Session 能推 |
+| `coding-agent` 的 `internal/server/interaction_test.go` | 转发给 Task API、原因翻成人话 |
+| `coding-agent` 的 `internal/web/interaction_test.go` | 真的页面：Enter、Ctrl+Enter、菜单里排队、撤回、修改、已生效、不可逆的说明、排队的修改、结束时作为新任务；占比的数字与百分比、压缩线、工具折叠、任务详情；各轮汇总、不显示全文 |
 
-| 文件 | 看什么 | 现在 |
-| --- | --- | --- |
-| `services/py-worker/tests/test_task_guidance.py` | 第 2 节两张表的每一格（工作流）：等模型、跑工具、等审批、Atomic Node、模板、sub_agent、子 Task、规划中、评审中、收尾；撤回与修改的先后；取消整个 Task 优先；Planner 与 Reviewer 看得到；文字不进事件与日志 | 红 |
-| `services/py-worker/tests/test_interrupt_undo.py` | 真的 activity：等模型时发心跳、取消送到；进程组被杀、文件还原、撤不回的照实说 | 红（gRPC 取消、跑完的调用保留改动是绿的） |
-| `services/py-worker/tests/test_workspace_checkpoint.py` | 检查点：还原后一致（含未跟踪文件）、用户的索引与分支不变、被忽略的文件与调用自己动了分支照实说、还原失败不报成功 | 红 |
-| `services/py-worker/tests/test_context_usage.py` | 第 3 节：各类占比加起来等于总数、对话算 Messages、工具分系统与 MCP、真实窗口、没有内容、不多调模型、事件 | 红（不多调模型等 3 条是绿的） |
-| `services/py-worker/tests/test_round_highlights.py` | 第 4 节：同一次调用、不合格不重问、路径核对、改动文件补上、截断、脱敏、fast 的轮取开头两句 | 红 |
-| `services/py-worker/tests/test_stage_replay.py` | 补了 `guidance_next_step`、`guidance_interrupt_tool_loop`、`guidance_interrupt_stage` 三份 golden 的路径，实现后录 | 红 |
-| `libs/py-core/.../conformance/sandbox.py` | 一致性测试加“取消 exec 后命令与子进程都停了”，本地、假桥上真的 agent、kind、真桥都跑这一条 | 红（kind 与真桥这里没跑） |
-| `libs/py-core/tests/adapters/test_sandbox_exec_cancel.py` | `AgentClient` 取消时断开连接 | 红 |
-| `services/go-sandbox-agent/.../disconnect_test.go` | agent 看到断开就杀进程组（Windows 上只看直接的进程） | 现在就过 |
-| `services/go-model-gateway/.../interaction_test.go` | 回答带窗口；取消不重试、不切换；计量记 `cancelled` | 窗口与计量红，其余绿 |
-| `services/go-task-service/.../taskapi/guidance_test.go` | 权限同取消、租户取自认证身份、参数校验、已结束与还没开始的原因码、修改排队的消息发给 Session | 红（校验与别的租户是绿的，但校验现在是碰巧过：还不认识这些信号） |
-| `services/go-task-service/.../session/guidance_test.go` | 原位替换保持顺序、最后一次算数、开始之后不改、续接带上、每次修改一个事件、活动重试不重复、只有 Session 能推 | 红 |
-| `coding-agent` 的 `internal/server/interaction_test.go` | 转发给 Task API、原因翻成人话 | 红 |
-| `coding-agent` 的 `internal/web/interaction_test.go` | 真的页面：Enter、Ctrl+Enter、菜单里排队、撤回、修改、已生效、不可逆的说明、排队的修改、结束时作为新任务；占比的数字与百分比、压缩线、工具折叠、任务详情；各轮汇总、不显示全文 | 红 |
+## 9. 还没验证的
 
-为了让测试编译得过，`services/go-task-service/internal/session/activities.go` 里加了一个返回错误的桩 `RecordQueuedEdit`。
-
-**测试覆盖不到的**
-
-- 真的 K8s（kind）与真的 Cloudflare 桥：这台机器没有，夜间任务或人工跑。
-- Docker 沙箱（`--sandbox docker`）的取消：这台机器没有 Docker，要 `docker rm -f`。
-- 真模型上 Reviewer 给的 `highlights` 好不好：要评测，花钱，这里只测形状。
-- `repo_edit` 在被打断时：一次写文件做不到“写到一半”，没有单独测。
-- 没有 `GUIDANCE_PATCH` 的旧运行收到信号：只能看代码，重放测试只证明旧历史仍能回放。
+- **真的 Cloudflare 桥**：取消经 `POST /v1/exec/cancel` 走桥的通用转发，代码上不用改桥，但没有对真桥跑过（`AR_LIVE_CLOUDFLARE=1`，花钱，要人定）。同一个容器里，桥是不是能在 `/v1/exec` 没结束时处理第二个请求，只有真桥能证明。
+- **真的 K8s（kind）**：这台机器没有，夜间任务或人工跑。sandbox-agent 的镜像要重新构建才有新接口；旧的 agent 收到取消是 404，只剩断开连接这一条路。
+- **Docker 沙箱（`--sandbox docker`）的取消**：写了 `docker rm -f`，这台机器没有 Docker，没跑过。
+- **真模型上 Reviewer 给的 `highlights` 好不好**：要评测，花钱，这里只测形状。
+- **`repo_edit` 在被打断时**：host 上一次写文件没有取消点，做不到“写到一半”；存档模式的环境里没有检查点，照实说没能撤销。
+- **sub_agent 读过的文件**：子工作流的工具调用目标没有带回父 Stage，模型提到它们时被当成“这一轮没碰过”去掉。
+- **没有 `GUIDANCE_PATCH` 的旧运行收到信号**：只能看代码，重放测试只证明旧历史仍能回放。

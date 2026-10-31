@@ -34,8 +34,7 @@ SEED_SCHEMAS = {
     "node_template": "node_template.schema.json",
     "recipe": "recipe.schema.json",
     "model_profile": "model_profile.schema.json",
-    "tenant_policy": "tenant_policy.schema.json",
-}
+    "tenant_policy": "tenant_policy.schema.json", "task_families": "task_families.schema.json"}
 
 
 @pytest.fixture(scope="module")
@@ -142,7 +141,7 @@ def test_the_dev_seed_documents_match_their_schemas() -> None:
     seed = json.loads(SEED_FILE.read_text("utf-8"))
     entries = seed["entries"]
     kinds = {e["kind"] for e in entries}
-    assert kinds == {"node_template", "model_profile"}, "租户策略由 dev_stack.py 按 --tenant-effect 另外种下"
+    assert kinds == {"node_template", "model_profile", "task_families"}, "租户策略由 dev_stack.py 按 --tenant-effect 另外种下"
     names = {e["name"] for e in entries if e["kind"] == "node_template"}
     assert {"stub_answer", "stub_confirm", "answer", "rewrite"} <= names, "桩 Planner 与真 Planner 用到的模板都要登记"
     profiles = json.loads((REPO_ROOT / "deploy" / "dev" / "model-profiles.json").read_text("utf-8"))["profiles"]

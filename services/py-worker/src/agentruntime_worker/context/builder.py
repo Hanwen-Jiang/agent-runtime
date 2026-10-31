@@ -13,6 +13,9 @@
    只用 system、profile、brief、持久摘要与 status 开新上下文。摘要不成功就不 reset。
 summarize 或 reset 之后做 Compaction Probe（probe），答错的事实补回原文片段。
 
+BuiltContext.usage 是这次上下文里各类内容占多少（docs/plan/running-task-interaction.md 第 3 节）：只有数字与类别名，由组装好的分区算出，
+不多调模型。同一 Session 之前的对话放在 brief 分区（不破坏提示缓存），但对用户来说它是 Messages。
+
 精确状态（Task State）单独成段放在 history 之后、status 之前，不交给摘要，也不受 status 的上限截断；超过 state_tokens 时
 按顺序放到上限为止，其余注明条数，完整的 Task State 写进 ObjectStore 给出路径。
 
@@ -27,7 +30,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from google.protobuf import json_format, struct_pb2
@@ -55,6 +58,7 @@ ACTIONS_TOKENS = 400
 RESTORE_TOKENS = 600
 """补回的原文片段总共最多占多少。"""
 SNIPPET_CHARS = 200
+GUIDANCE_HEADER = "【用户的纠偏，必须照办】"
 PROBE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "required": ["answers"],
@@ -102,6 +106,34 @@ class ContextRequest:
     """同一 Session 里之前的对话（session.transcript.transcript_text），放进 brief；每一步相同，不破坏提示缓存。"""
     tools: Sequence[mg.ToolSpec] = ()
     """随请求给出的工具定义：不进 messages，但计入阈值。"""
+    mcp_tools: frozenset[str] = frozenset()
+    """tools 里哪些是 MCP 工具：占比里单独一类。"""
+
+
+@dataclass(frozen=True)
+class ContextUsage:
+    """一次上下文里各类内容占多少。categories 之和等于 total_tokens，也等于 BuiltContext.tokens。"""
+
+    categories: list[dict[str, Any]]
+    """[{"name", "tokens"}]：defs.schema.json 的 context_category，一类不缺，没有的是 0。"""
+    tools: list[dict[str, Any]]
+    """[{"name", "tokens"，MCP 工具另有 "mcp": True}]。"""
+    applied: list[str]
+    total_tokens: int
+
+    def payload(self, window_tokens: int, effective_tokens: int) -> dict[str, Any]:
+        """进度事件 context_usage 的数字部分。取不到模型的窗口时分母用压缩线。"""
+        out: dict[str, Any] = {
+            "window_tokens": window_tokens if window_tokens > 0 else effective_tokens,
+            "effective_tokens": effective_tokens,
+            "total_tokens": self.total_tokens,
+            "categories": self.categories,
+        }
+        if self.tools:
+            out["tools"] = self.tools
+        if self.applied:
+            out["applied"] = self.applied
+        return out
 
 
 @dataclass
@@ -114,6 +146,7 @@ class BuiltContext:
     probes: list[ProbeResult] = field(default_factory=list)
     cost_usd: float = 0.0
     """这次构建里摘要与 Probe 的模型花费（计入调用方这一步的成本）。"""
+    usage: ContextUsage | None = None
 
 
 @dataclass
@@ -235,7 +268,29 @@ class ContextBuilder:
                 self._restore(request, state, failed)
                 messages = self._assemble(request, mode, state)
         tokens = message_tokens(messages) + tool_tokens(request.tools)
-        return BuiltContext(messages=messages, applied=[s for s in LADDER if s in applied], tokens=tokens, probes=probes, cost_usd=round(state.cost_usd, 6))
+        steps = [s for s in LADDER if s in applied]
+        usage = self._usage(request, mode, state, messages, steps)
+        return BuiltContext(messages=messages, applied=steps, tokens=tokens, probes=probes, cost_usd=round(state.cost_usd, 6), usage=usage)
+
+    def _usage(self, request: ContextRequest, mode: ModePolicy, state: _State, messages: Sequence[mg.ChatMessage], applied: list[str]) -> ContextUsage:
+        """各类占多少：Messages 是总数减去前面几类，所以各类之和一定等于总数。"""
+        system = message_tokens(Partitions(system=list(request.system)).to_messages())
+        memory = message_tokens(Partitions(profile=list(request.profile)).to_messages())
+        brief = message_tokens(Partitions(brief=self._brief(replace(request, conversation=""), mode, state)).to_messages())
+        tools = [(t.name, tool_tokens([t]), t.name in request.mcp_tools) for t in request.tools]
+        system_tools = sum(tokens for _, tokens, mcp in tools if not mcp)
+        mcp_tools = sum(tokens for _, tokens, mcp in tools if mcp)
+        rest = message_tokens(messages) - system - memory - brief
+        categories = [
+            {"name": "system_prompt", "tokens": system},
+            {"name": "system_tools", "tokens": system_tools},
+            {"name": "mcp_tools", "tokens": mcp_tools},
+            {"name": "memory", "tokens": memory},
+            {"name": "task_brief", "tokens": brief},
+            {"name": "messages", "tokens": rest},
+        ]
+        listed = [{"name": name, "tokens": tokens, **({"mcp": True} if mcp else {})} for name, tokens, mcp in tools]
+        return ContextUsage(categories=categories, tools=listed, applied=applied, total_tokens=system + system_tools + mcp_tools + memory + brief + rest)
 
     # --- 组装 ---
 
@@ -271,7 +326,7 @@ class ContextBuilder:
         return lines
 
     def _status(self, request: ContextRequest, state: _State) -> str:
-        steps = state.steps
+        steps = [s for s in state.steps if "tool" in s]
         lines = [f"进度：已执行 {len(steps)} 步。"]
         if state.recovered:
             lines.append("补回的关键事实：" + "；".join(state.recovered))
@@ -286,6 +341,8 @@ class ContextBuilder:
         return "\n".join(lines)
 
     def _step_messages(self, i: int, step: Mapping[str, Any], view: tuple[str, str] | None, mode: ModePolicy) -> list[mg.ChatMessage]:
+        if "user_guidance" in step:
+            return [mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=f"{GUIDANCE_HEADER}{step['user_guidance']}")]
         arguments = struct_pb2.Struct()
         json_format.ParseDict(step.get("args") or {}, arguments)
         call_id = f"call_{i}"
@@ -296,7 +353,8 @@ class ContextBuilder:
         elif step.get("rejected"):
             # 附录 E.1：拒绝时把审批人的指导作为这一步的观察送回循环。
             guidance = step.get("guidance")
-            text = f"第 {i} 步没有执行：{'审批超时' if step.get('timed_out') else '审批人拒绝'}" + (f"；审批人的指导：{guidance}" if guidance else "")
+            reason = "用户打断，撤回了审批" if step.get("interrupted") else "审批超时" if step.get("timed_out") else "审批人拒绝"
+            text = f"第 {i} 步没有执行：{reason}" + (f"；审批人的指导：{guidance}" if guidance else "")
         elif view is None:
             text = f"第 {i} 步的输出：{_json(observation)}"
         else:
@@ -315,6 +373,8 @@ class ContextBuilder:
         """摘要掉的步骤里执行过的动作（代码从轨迹算出，去重，留最近的，限 ACTIONS_TOKENS）：避免压缩后重做已完成的步骤。"""
         seen: list[str] = []
         for step in reversed(steps):
+            if "tool" not in step:
+                continue
             action = f"{step.get('tool')} {_json(step.get('args', {}))}" + ("（出错）" if "error" in step else "")
             if action not in seen:
                 seen.append(action)
@@ -338,7 +398,12 @@ class ContextBuilder:
         previous: Any = None
         for i in range(state.covered, len(state.steps)):
             step = state.steps[i]
-            current, result = self._step_messages(i, step, state.views.get(i), mode)
+            messages = self._step_messages(i, step, state.views.get(i), mode)
+            if len(messages) == 1:
+                out.extend(messages)
+                action = None
+                continue
+            current, result = messages
             marker = step.get("step")
             if action is not None and marker is not None and marker == previous:
                 action.tool_calls.extend(current.tool_calls)

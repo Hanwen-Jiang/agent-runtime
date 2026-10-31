@@ -70,6 +70,8 @@ class ReviewResult:
     problems: list[str] = field(default_factory=list)
     reasons: list[str] = field(default_factory=list)
     """判定依据（写入 trace，不传给下游）。"""
+    highlights: dict[str, Any] | None = None
+    """这一轮的重要输出（同一次 Progress Check 给的）；不合格时没有，不为它重问。"""
 
 
 def generator_vendor(results: Mapping[str, Mapping[str, Any]]) -> str:
@@ -108,7 +110,7 @@ class Reviewer:
             for attempt in range(2):
                 try:
                     response = await self._call(request, messages, calls)
-                except Exception as exc:  # noqa: BLE001 — 模型出错算一次不合格，最后按规则判定
+                except Exception as exc:  # noqa: BLE001 — 模型出错算一次不合格，最后按规则判定（取消不是 Exception，原样往外走）
                     problems = [f"调用模型失败：{type(exc).__name__}"]
                     text = ""
                 else:
@@ -159,6 +161,7 @@ class Reviewer:
             calls=calls,
             problems=problems if answer is None else [],
             reasons=[*fl.reasons, *decision.reasons],
+            highlights=prompts.checked_highlights(answer.get("highlights")) if answer is not None else None,
         )
 
     async def _call(self, request: ReviewRequest, messages: list[mg.ChatMessage], calls: list[ModelCall]) -> mg.GenerateResponse:

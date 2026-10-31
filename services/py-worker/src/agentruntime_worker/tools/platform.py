@@ -46,20 +46,24 @@ from typing import Any
 from agentruntime_core.dev.tool_driver import LocalToolDriverProvider
 from agentruntime_core.enums import Effect
 from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError, ProviderError, TransientError
+from agentruntime_core.processes import kill_tree, new_group
 from agentruntime_core.providers.object_store import ObjectStoreProvider
-from agentruntime_core.providers.sandbox import SandboxSpec
+from agentruntime_core.providers.sandbox import ExecResult, SandboxSpec
 from agentruntime_core.providers.telemetry import TelemetryProvider
 from agentruntime_core.providers.tool_driver import ToolHandler, ToolInvocation, ToolSpec
 from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker.sandbox.broker import SandboxBroker
 from agentruntime_worker.sandbox.environments import Resolution, workspace_reader
+from agentruntime_worker.tools.checkpoint import Runner, create_checkpoint, undo_with
 from agentruntime_worker.tools.sandboxes import Sandboxes, parse_cpu_millis, parse_memory_mb
 
 VERSION = "v1"
 CONTEXT_READ = "context_read"
 _CONTEXT_PREFIXES = ("context/", "node-results/")
 # 子进程只带这些环境变量（存在时）：能找到程序、在 Windows 上能启动 Python，别的一概不带。
+# 建检查点与还原的 git 命令在环境里跑的上限：超过就当没有检查点，调用照常执行。
+CHECKPOINT_TIMEOUT = timedelta(seconds=60)
 _SHELL_ENV = ("PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "COMSPEC", "TEMP", "TMP", "HOME", "LANG", "LC_ALL")
 _SLUG = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")
 _TEXT_TYPES = ("text/", "application/json", "application/xml", "application/xhtml")
@@ -438,23 +442,47 @@ class _Workspaces:
             # 存档模式（D-06）：不碰 Worker 的工作区目录；项目环境（D-17）要读工作区卷，这里不用。
             return await self._sandbox_shell(invocation, self._workspace_id(invocation), argv, timeout, None)
         root = self._workspace(invocation)
-        if self.config.shell_sandbox == "docker":
-            return await self._docker_shell(root, argv, timeout)
         if self.config.shell_sandbox == "sandbox":
             return await self._sandbox_shell(invocation, root.name, argv, timeout, root)
+        # 调用前建检查点，被打断时把文件还原回去（docs/plan/running-task-interaction.md 第 2 节）。工作区在 Worker 这边，git 也在这边跑。
+        run = self._host_runner(root)
+        point = await create_checkpoint(run)
+        try:
+            if self.config.shell_sandbox == "docker":
+                return await self._docker_shell(root, argv, timeout)
+            return await self._host_shell(root, argv, timeout)
+        except asyncio.CancelledError:
+            raise await undo_with(run, point) from None
+
+    @staticmethod
+    def _host_runner(root: Path) -> Runner:
+        async def run(argv: list[str], env: dict[str, str] | None = None) -> ExecResult:
+            proc = await asyncio.create_subprocess_exec(
+                *argv, cwd=root, env={**{k: os.environ[k] for k in _SHELL_ENV if k in os.environ}, **(env or {})},
+                stdin=asyncio.subprocess.DEVNULL, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+            return ExecResult(exit_code=proc.returncode, stdout=stdout, stderr=stderr, timed_out=False)
+
+        return run
+
+    async def _host_shell(self, root: Path, argv: list[str], timeout: int) -> Any:
         env = {k: os.environ[k] for k in _SHELL_ENV if k in os.environ}
         try:
             proc = await asyncio.create_subprocess_exec(
-                *argv, cwd=root, env=env, stdin=asyncio.subprocess.DEVNULL, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+                *argv, cwd=root, env=env, stdin=asyncio.subprocess.DEVNULL, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, **new_group()
             )
         except (FileNotFoundError, PermissionError, NotADirectoryError) as err:
             raise InvalidError("command_not_found", f"启动不了 {argv[0]}（{type(err).__name__}）") from None
         try:
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
         except TimeoutError:
-            proc.kill()
+            await kill_tree(proc)
             stdout, stderr = await proc.communicate()
             return {"exit_code": None, "timed_out": True, **self._outputs(stdout, stderr)}
+        except asyncio.CancelledError:
+            await kill_tree(proc)
+            raise
         return {"exit_code": proc.returncode, "timed_out": False, **self._outputs(stdout, stderr)}
 
     async def _docker_shell(self, root: Path, argv: list[str], timeout: int) -> Any:
@@ -486,6 +514,13 @@ class _Workspaces:
             proc.kill()
             stdout, stderr = await proc.communicate()
             return {"exit_code": None, "timed_out": True, "sandbox": "docker", **self._outputs(stdout, stderr)}
+        except asyncio.CancelledError:
+            # 杀 docker 客户端停不了容器。
+            remover = await asyncio.create_subprocess_exec(docker, "rm", "-f", name, env=env, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+            await remover.wait()
+            proc.kill()
+            await proc.wait()
+            raise
         # 125：docker 自己出错（镜像拉不到、daemon 不在）；不是命令的退出码。
         if proc.returncode == 125:
             raise TransientError("sandbox_unavailable", "Docker 沙箱启动失败：" + stderr.decode("utf-8", errors="replace")[-500:])
@@ -536,6 +571,12 @@ class _Workspaces:
             # 新建了环境时借到它花的时间（冷启动）：进结果，tool_loop 的进度事件 tool_status 带给用户看；复用的环境没有这一项。
             startup_ms = None if lease.reused else int((ran - started) * 1000)
             result = None
+
+            # 检查点在环境里建（Worker 碰不到那里的文件），被打断时在环境里还原，之后才归还或存档（docs/plan/running-task-interaction.md 第 2 节）。
+            async def in_env(command: list[str], command_env: dict[str, str] | None = None) -> ExecResult:
+                return await lease.box.exec(lease.env_id, command, timeout=CHECKPOINT_TIMEOUT, env={**(lease.env or {}), **(command_env or {})} or None)
+
+            point = await create_checkpoint(in_env)
             try:
                 try:
                     result = await lease.box.exec(lease.env_id, argv, timeout=timedelta(seconds=timeout), env=lease.env or None)
@@ -552,6 +593,8 @@ class _Workspaces:
                 if err.code == "command_not_found":
                     raise InvalidError("command_not_found", f"启动不了 {argv[0]}") from None
                 raise
+            except asyncio.CancelledError:
+                raise await undo_with(in_env, point) from None
             finally:
                 exec_ms = int((time.monotonic() - ran) * 1000)
                 try:

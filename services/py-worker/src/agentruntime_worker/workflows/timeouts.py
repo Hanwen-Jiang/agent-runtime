@@ -42,6 +42,11 @@ DECISION_MIN_ATTEMPT = timedelta(seconds=30)
 NO_MODEL_START_TO_CLOSE = timedelta(minutes=1)
 
 
+# docs/plan/running-task-interaction.md 第 2 节：取消靠心跳送达，心跳又按 heartbeat 超时的 0.8 倍节流。能被立刻打断的 activity
+# （GUIDANCE_PATCH 之后的运行：规划、评审、tool_loop 的一步、工具调用、Node）用这个超时，取消约 6 秒内送到。
+INTERRUPTIBLE_HEARTBEAT = timedelta(seconds=8)
+
+
 def decision_backoff(attempt: int) -> timedelta:
     """第 attempt 次尝试失败之后等多久：1、2、4、8……秒，最多 30 秒（与 DECISION_RETRY 相同）。"""
     return min(DECISION_FIRST_BACKOFF * (2 ** (attempt - 1)), DECISION_MAX_BACKOFF)

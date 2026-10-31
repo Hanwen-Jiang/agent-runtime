@@ -144,4 +144,4 @@ def dev_executor(
         sandbox=LocalSubprocessSandboxProvider(root / "sandbox"),
         transcript=session_transcript(config.relational_dsn, config.data_dir),
     )
-    return NodeExecutor(deps, executor_config)
+    return NodeExecutor(deps, executor_config or ExecutorConfig(context_effective_tokens=config.context_effective_tokens))

@@ -16,6 +16,8 @@ ActivityName），参数是租户上下文、去重键与 taskapi.v1.TaskEvent�
   node_finished、human_input_required、verdict 带上给客户端翻译用的代码与参数（有的时候）。
 - 第 11.5 节：Stage 的 goal、exit_when 是代码写的固定说明时，stage_started 带 goal_code、exit_when_code 与 params；原地重跑
   沿用这个 Stage 的文字，也沿用它的代码。只改 activity 的入参，不改命令序列。
+- docs/plan/running-task-interaction.md 第 3 节：每次模型调用之后 context_usage（只有数字与类别名；CONTEXT_USAGE_PATCH）。
+  第 2 节：纠偏的状态变了时 guidance_updated（不带文字；GUIDANCE_PATCH）。
 
 是工作流代码：时间用 workflow.now()，不做 I/O。
 """
@@ -58,6 +60,8 @@ _TYPES = {
     "human_input_required": task_api_pb2.TASK_EVENT_TYPE_HUMAN_INPUT_REQUIRED,
     "verdict": task_api_pb2.TASK_EVENT_TYPE_VERDICT,
     "decision_retry": task_api_pb2.TASK_EVENT_TYPE_DECISION_RETRY,
+    "context_usage": task_api_pb2.TASK_EVENT_TYPE_CONTEXT_USAGE,
+    "guidance_updated": task_api_pb2.TASK_EVENT_TYPE_GUIDANCE_UPDATED,
 }
 # defs.schema.json 的 message_code。
 _CODE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
@@ -237,6 +241,18 @@ class EventPublisher:
             if code:
                 payload["error_code"] = code
         await self.publish(round_seq, "tool_status", payload, about=f"{node_id}/{step}/{state}" + (f"/{call}" if call else ""))
+
+    async def context_usage(self, round_seq: int, node_id: str, usage: dict[str, Any], *, step: int | None = None) -> None:
+        """一次模型调用的上下文占比；去重键 r<Round>/context_usage/<Node>[/<步>]。"""
+        payload: dict[str, Any] = {"node_id": node_id, **usage}
+        if step is not None:
+            payload["step"] = step
+        await self.publish(round_seq, "context_usage", payload, about=node_id if step is None else f"{node_id}/{step}")
+
+    async def guidance_updated(self, round_seq: int, event: dict[str, Any], number: int) -> None:
+        """一条纠偏的状态变了；number 是工作流里的序号（同一条可以推好几次 pending，去重键不能只看状态）。"""
+        payload = {k: v for k, v in event.items() if k != "applied_round"}
+        await self.publish(event.get("applied_round") or round_seq, "guidance_updated", payload, about=f"{event['guidance_id']}/{number}")
 
     async def node_finished(self, round_seq: int, node_id: str, result: StageResult) -> None:
         await self.publish(round_seq, "node_finished", node_payload(node_id, result), about=node_id)

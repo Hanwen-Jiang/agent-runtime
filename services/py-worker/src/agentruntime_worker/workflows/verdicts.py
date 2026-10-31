@@ -49,6 +49,20 @@ def review_cost(raw: Any) -> float:
     return 0.0
 
 
+def review_highlights(raw: Any) -> dict[str, Any] | None:
+    """review_round 报告的这一轮的重要输出（ReviewRoundOutput.highlights）；之前的结果没有。"""
+    if isinstance(raw, Mapping) and isinstance(raw.get("verdict"), Mapping) and isinstance(raw.get("highlights"), Mapping):
+        return dict(raw["highlights"])
+    return None
+
+
+def guidance_replan(results: Mapping[str, StageResult], code: str, reason: str) -> dict[str, Any]:
+    """用户纠偏或打断：判定由代码给出，不花一次 Reviewer 的模型调用；已成功的 Node 保留，回 Planner 重做剩余部分
+    （docs/plan/running-task-interaction.md 第 2 节）。"""
+    keep = sorted(nid for nid, r in results.items() if r.status == "succeeded")
+    return {"verdict": "replan", "reason": reason, "reason_code": code, "replan": {"keep_nodes": keep}}
+
+
 # Stage 形状里保留的 Node 字段（T-15）：只有结构，不含 inputs、rationale、幂等键与取自模板的 executor、effect、role、output。
 SHAPE_NODE_KEYS = ("id", "kind", "template", "goal", "done_when", "mode", "output_schema", "after", "tier", "reasoning", "quality")
 

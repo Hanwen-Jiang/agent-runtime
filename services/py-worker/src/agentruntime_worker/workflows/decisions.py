@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from datetime import timedelta
 from typing import Any
 
 from temporalio import workflow
@@ -72,8 +73,10 @@ async def run(
     events: EventPublisher | None,
     node_id: str = "",
     about: str = "",
+    heartbeat_timeout: timedelta | None = None,
 ) -> Any:
-    """执行一个决策 activity，失败时在工作流里重试（规则见模块说明）。about 区分同一 Round 同一步的不同调用（tool_loop 的 Node 与步）。"""
+    """执行一个决策 activity，失败时在工作流里重试（规则见模块说明）。about 区分同一 Round 同一步的不同调用（tool_loop 的 Node 与步）。
+    heartbeat_timeout：GUIDANCE_PATCH 之后的运行要给，取消才送得到（docs/plan/running-task-interaction.md 第 2 节）。"""
     started = workflow.now()
     last: FailureError | None = None
     attempt = 0
@@ -90,6 +93,7 @@ async def run(
                 arg,
                 task_queue=task_queue,
                 start_to_close_timeout=min(timeouts.MODEL_DECISION_START_TO_CLOSE, left),
+                heartbeat_timeout=heartbeat_timeout,
                 retry_policy=RetryPolicy(maximum_attempts=1),
                 result_type=result_type,
             )

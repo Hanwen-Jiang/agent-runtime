@@ -559,5 +559,7 @@ async def test_cancellation_reaches_the_running_tool(fx: ExecutorFixture) -> Non
     run = asyncio.create_task(env.run(fx.executor.execute_program_node, node_input(program("q", "lookup_rate"))))
     await asyncio.wait_for(started.wait(), 5)
     env.cancel()
-    with pytest.raises(asyncio.CancelledError):
+    # 工具被取消时带回撤销的结果（docs/plan/running-task-interaction.md 第 2 节）；只读的工具没什么要撤。
+    with pytest.raises(ApplicationError) as caught:
         await asyncio.wait_for(run, 5)
+    assert caught.value.type == "tool_interrupted" and caught.value.details == ("not_needed",)

@@ -96,13 +96,18 @@ STAGE_CASES: dict[str, tuple[str, str]] = {
     "codes_human_stopped": (names.TASK_WORKFLOW, r'"reason_code":\s*"human_stopped"'),
     # docs/plan/running-task-interaction.md 第 1 节：一次回答里的多个工具调用都执行（第二个的调用 id 是 <调用 id>.2）。
     "tool_loop_parallel": (names.TASK_WORKFLOW, r'"node_id":\s*"[a-z_]+\.2\.2"'),
+    # 第 2 节：纠偏（下一次模型调用带上）、立刻打断（tool_loop 里继续；Stage 被取消，以 replan 继续）。
+    "guidance_next_step": (names.TASK_WORKFLOW, r'"signalName":\s*"task_guidance".*"user_guidance"'),
+    "guidance_interrupt_tool_loop": (names.TASK_WORKFLOW, r'GUIDANCE_MODE_INTERRUPT.*"user_guidance"'),
+    "guidance_interrupt_stage": (names.TASK_WORKFLOW, r'GUIDANCE_MODE_INTERRUPT.*"reason_code":\s*"user_interrupt"'),
 }
 REVIEW_CASES = ("review_repair_rerun", "review_escalate_human", "review_rollback")
 POLICY_CASES = ("policy_effect_denied", "policy_finish_rejected", "policy_task_mounts")
 EVENTS_CASES = ("events_progress",)
 AT_START_CASES = ("patches_at_start",)
 R01_CASES = ("r01_failed_node_audited", "r01_tool_loop_budget")
-PARALLEL_CASES = ("tool_loop_parallel",)
+GUIDANCE_CASES = ("guidance_next_step", "guidance_interrupt_tool_loop", "guidance_interrupt_stage")
+PARALLEL_CASES = ("tool_loop_parallel", *GUIDANCE_CASES)
 TMP_CASES = ("budget_ask_human", "budget_tool_calls_stop", "decision_retry", "codes_human_stopped", *PARALLEL_CASES)
 CODES_CASES = ("codes_human_stopped", *PARALLEL_CASES)
 # 一次问完全部版本分支之后录下的（新历史开头带全部版本标记）。
@@ -237,6 +242,11 @@ def test_version_branch_keeps_old_histories_replayable() -> None:
         assert patches.PARALLEL_TOOL_CALLS_PATCH in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"{name} 应带 {patches.PARALLEL_TOOL_CALLS_PATCH}"
     for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in PARALLEL_CASES)):
         assert patches.PARALLEL_TOOL_CALLS_PATCH not in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"之前的 {name} 不该有 {patches.PARALLEL_TOOL_CALLS_PATCH}"
+    # 第 2 节的纠偏与打断：只有之后录下的有。
+    for name in GUIDANCE_CASES:
+        assert patches.GUIDANCE_PATCH in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"{name} 应带 {patches.GUIDANCE_PATCH}"
+    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in GUIDANCE_CASES)):
+        assert patches.GUIDANCE_PATCH not in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"之前的 {name} 不该有 {patches.GUIDANCE_PATCH}"
 
 
 async def test_all_golden_histories_replay_with_the_current_code() -> None:
