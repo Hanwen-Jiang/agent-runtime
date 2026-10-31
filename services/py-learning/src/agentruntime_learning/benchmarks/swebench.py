@@ -45,6 +45,8 @@ DEFAULT_DATASET = "SWE-bench/SWE-bench_Verified"
 ROWS_URL = "https://datasets-server.huggingface.co/rows"
 DEVCONTAINER = ".devcontainer/devcontainer.json"
 DOCKERFILE = ".devcontainer/agentruntime.Dockerfile"
+# 环境定义的版本：构建失败按定义的哈希一直记着，构建器修好之后升这个数才会重新构建（2026-10-31：出网放行少了 Docker Hub 的一家 CDN）。
+ENV_DEFINITION_VERSION = 2
 STOP_OPTION = "stop_and_wrap_up"
 APPROVAL_KINDS = ("approval", "tool_approval")
 TERMINAL = {"TASK_STATUS_DONE", "TASK_STATUS_ABORTED", "TASK_STATUS_CANCELLED", "TASK_STATUS_FAILED"}
@@ -183,6 +185,7 @@ def environment_files(inst: Instance, *, workspace_path: str = "/workspace") -> 
     devcontainer = {"name": f"SWE-bench {inst.instance_id}", "build": {"dockerfile": DOCKERFILE.rsplit("/", 1)[1], "context": "."}}
     dockerfile = (
         f"FROM {image_of(inst)}\n"
+        f"# agentruntime swebench environment v{ENV_DEFINITION_VERSION}\n"
         "ENV PATH=/opt/miniconda3/envs/testbed/bin:/opt/miniconda3/bin:$PATH CONDA_DEFAULT_ENV=testbed\n"
         f"RUN rm -rf /testbed && ln -s {workspace_path} /testbed\n"
     )
