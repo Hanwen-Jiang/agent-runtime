@@ -594,6 +594,18 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
 - **配额**：做完的 Task 的环境留着等复用（空闲 15 分钟才回收），加上构建，占满 `max_concurrent: 4` 之后，建工作区与取 diff 都被拒。两题做完了、钱花了，补丁没取回来。适配器已修（等配额、Task 做完了续跑只取补丁）。
 - **绕开构建器是可行的**：服务器的 Docker 里按同样的定义构建 3 秒，1.2 GB，uid 10001、只读根文件系统下跑通了项目测试（django-16877，Python 3.11，Django 从 `/workspace` 加载）。题目的官方镜像是可信来源，不需要 Kata 隔离。
 
+**用上官方环境的 5 题（2026-10-31，人定绕开构建器）**
+
+- 做法：`/opt/swebench/scripts/prepare_envs.py` 在服务器的 Docker 里构建，`docker save | k3s ctr images import` 导入，再打上 `127.0.0.1:30500/envs/swebench/env@sha256:…` 的引用（K8s 后端只收这种写法，线上没有配从环境镜像仓库拉取的认证，kubelet 按 IfNotPresent 用本地的），在业务库的 `sandbox_images` 里只给 `swebench` 写 ready 的行。键用 Worker 镜像里的 `detect` 算，与库里已有的失败记录核对过。每题约 3 分钟。租户策略 v3：`max_concurrent` 12，`idle_timeout_s` 60。
+- 结果：**解决 0 / 5**，4.57 美元。`shell_run` 的 `environment` 是 ready，项目测试真的跑得起来。但 4 题的补丁是空的：模型几乎没有走到改代码。在通用环境那次 4 题都有补丁，这次不是环境变差，而是下面几个问题占了上风：
+  - **Planner 回退后的保守规划只给 `context_read`**：Planner 的结构化输出失败就回退到“探索并推进这个任务”，探索节点没有读仓库的工具，又空转一两轮。一题 12 轮里 5 轮是它。
+  - **`tool_loop` 一步失败就让 Node 失败**：`bad_structured_output` 39 次、`unexpected_tool_call` 35 次（`web_search`、`open_page`、`output`）。改代码的节点（`apply_fix`、`implement_escapeseq`）连续失败 5 次就没了。输出只有几百 token，不是截断。
+  - **Reviewer 判“完成”却没有改动**：django-11433 全程没有成功的 `repo_edit`，最后判 done（第 10 节说的假完成）。
+  - 中转报 `system_cpu_overloaded`（`models_exhausted`）的调用也让步骤失败。
+- 中转核实（约 0.02 美元，短请求直连）：结构化输出都是合法 JSON，`output` 工具没有复现，所以还不能说它是我们的 `response_format` 被转成了工具调用。同样的请求有时输入算 4400 多 token、有时 130，说明背后有两种通路，一种带隐藏提示。
+
+**50 题基线（进行中）**：`/opt/swebench/runs/gpt55-base50`，种子 0，按仓库与难度分层，不含 psf/requests，并发 2，单题 3 美元，这一轮上限 145 美元。按人的要求先测基线：上面这些问题这次不修，修复在基线之后。
+
 
 ### 11.11 冒烟查出的 Runtime 问题：用量、预算与网关的防线（2026-10-30 人确认，已实现）
 
