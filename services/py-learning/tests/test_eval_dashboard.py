@@ -3,6 +3,9 @@
 scripts/eval_dashboard.py --public 生成对外开放的页面：只有评测集上的汇总，不带生产数据（网关计量与 span 里有租户、Task id 与
 每个 Task 的花费）。给了生产数据的输入就拒绝；标题写英文与中文两个名字，每节标题中英文都有，开头说明数字怎么来的；不连外网；
 超过 ConfigMap 的上限就报错。不加 --public 时内部版不变。
+
+第 11.12 节的补充（2026-10-31，人定）：读者不懂这个项目也要看得懂（例如 HR）：说清在做什么、怎么考、发现了什么，每张图说明怎么看，
+术语有解释，结论来自报告，也写明还没做的。
 """
 
 from __future__ import annotations
@@ -91,8 +94,8 @@ def test_every_public_section_heading_is_in_both_languages(dashboard: ModuleType
 
 def test_the_public_page_says_what_the_numbers_are(dashboard: ModuleType, reports: Path, tmp_path: Path) -> None:
     page = public_page(dashboard, reports, tmp_path)
-    about = re.search(r'<[a-z]+[^>]*id="about"[^>]*>(.*?)</[a-z]+>', page, re.S)
-    assert about, "开头有一段说明"
+    about = re.search(r'<section[^>]*id="about"[^>]*>(.*?)</section>', page, re.S)
+    assert about, "有一节说明数字怎么来的"
     text = about.group(1)
     assert "internal eval sets" in text and "内部评测集" in text, "说明数据来自内部评测集，不是用户的数据"
     assert "relay" in text and "中转" in text, "说明模型调用经第三方中转，成本按它报的用量算"
@@ -163,3 +166,106 @@ def test_the_internal_page_is_unchanged(dashboard: ModuleType, reports: Path, tm
     assert {"metering", "metering_sources", "spans", "span_sources"} <= set(data)
     assert data["metering"] and all("file" in r for r in data["reports"]["runs"])
     assert '<h2>网关计量：按模型的花费与失败</h2>' in page and 'id="tools"' in page
+
+
+def section(page: str, section_id: str) -> str:
+    found = re.search(rf'<section[^>]*id="{section_id}"[^>]*>(.*?)</section>', page, re.S)
+    assert found, f"页面有这一节：{section_id}"
+    return found.group(1)
+
+
+def has_both_languages(html: str) -> bool:
+    text = re.sub(r"<[^>]+>", " ", html)
+    return bool(re.search(r"[A-Za-z]{3}", text) and re.search(r"[一-鿿]", text))
+
+
+@pytest.mark.parametrize("section_id", ["summary", "what", "how", "findings", "glossary", "next", "about"])
+def test_the_public_page_explains_itself_to_a_reader_outside_the_project(dashboard: ModuleType, reports: Path, tmp_path: Path, section_id: str) -> None:
+    assert has_both_languages(section(public_page(dashboard, reports, tmp_path), section_id))
+
+
+@pytest.mark.parametrize("section_id", ["sec-trend", "sec-scatter", "sec-failures", "sec-context", "sec-runs"])
+def test_every_chart_says_how_to_read_it(dashboard: ModuleType, reports: Path, tmp_path: Path, section_id: str) -> None:
+    body = section(public_page(dashboard, reports, tmp_path), section_id)
+    how = re.findall(r'<(?:p|div)[^>]*class="how[^"]*"[^>]*>(.*?)</(?:p|div)>', body, re.S)
+    assert how and has_both_languages(" ".join(how)), "每张图都说明它在说什么、怎么看"
+
+
+def test_the_summary_comes_from_the_reports(dashboard: ModuleType, reports: Path, tmp_path: Path) -> None:
+    summary = section(public_page(dashboard, reports, tmp_path), "summary")
+    assert "92.0%" in summary and "87.0%" in summary, "最新一次的成绩"
+    assert "90%" in summary and "85%" in summary, "及格线"
+    assert "还没过线" not in summary, "这份数据两项都过了"
+
+
+def test_the_summary_says_when_a_gate_is_not_met(dashboard: ModuleType, tmp_path: Path) -> None:
+    root = tmp_path / "low"
+    group = root / "exp-2026-10-28" / "e5-fixed-v2"
+    group.mkdir(parents=True)
+    low = report("dev", "stuck_retry")
+    low["metrics"]["reviewer"]["verdict_accuracy"] = 0.5625
+    (group / REPORT_FILE).write_text(json.dumps(low), "utf-8")
+    summary = section(public_page(dashboard, root, tmp_path), "summary")
+    assert "56.3%" in summary and "还没过线" in summary and "not passed" in summary.lower()
+
+
+def test_a_run_that_fell_back_to_rules_does_not_set_the_headline(dashboard: ModuleType, tmp_path: Path) -> None:
+    root = tmp_path / "invalid"
+    good, bad = root / "a" / "good", root / "b" / "bad"
+    good.mkdir(parents=True)
+    bad.mkdir(parents=True)
+    (good / "task-loop--worker--dev--20261028T000000Z.json").write_text(json.dumps(report("dev", "x")), "utf-8")
+    invalid = report("dev", "x") | {"created_at": "2026-10-29T00:00:00Z", "model_call_failure_codes": {"models_exhausted": 20}}
+    invalid["metrics"] = {**invalid["metrics"], "reviewer": {"verdict_accuracy": 0.11, "decisions": 10}}
+    (bad / "task-loop--worker--dev--20261029T000000Z.json").write_text(json.dumps(invalid), "utf-8")
+    summary = section(public_page(dashboard, root, tmp_path), "summary")
+    assert "87.0%" in summary and "11.0%" not in summary
+
+
+def test_the_exam_size_comes_from_the_eval_set(dashboard: ModuleType, reports: Path, tmp_path: Path) -> None:
+    root = REPO / "services" / "py-learning" / "evalsets" / "task-loop"
+    total = sum(1 for sub in ("task_cases", "reviewer_samples", "context_samples") for _ in (root / sub).glob("*.json"))
+    assert f"{total}" in section(public_page(dashboard, reports, tmp_path), "how")
+
+
+def test_readers_see_names_not_experiment_ids(dashboard: ModuleType, reports: Path, tmp_path: Path) -> None:
+    page = public_page(dashboard, reports, tmp_path)
+    [run] = [r for r in embedded_data(page)["reports"]["runs"] if r["split"] == "dev"]
+    assert run["label_en"] == "Claude Opus" and run["label_zh"] == "Claude Opus"
+
+
+@pytest.mark.parametrize("code", [
+    "verdict/verdict", "shape/modes", "shape/deliver", "escalation/stuck_retry", "shape/quality", "shape/nodes", "shape/gate",
+    "shape/fan_out", "triage/triage", "shape/forbidden_roles", "shape/human",
+])
+def test_every_failure_reason_has_a_plain_name(dashboard: ModuleType, code: str) -> None:
+    zh, en = dashboard.FAILURE_TEXT[code]
+    assert re.search(r"[一-鿿]", zh) and re.search(r"[A-Za-z]{3}", en)
+    assert code not in zh and code not in en
+
+
+@pytest.mark.parametrize("term", ["Planner", "Stage", "Reviewer", "Triage", "Verdict", "Round", "Token", "开发集", "留出集", "及格线", "回退", "中转"])
+def test_the_glossary_covers_the_terms_on_the_page(dashboard: ModuleType, reports: Path, tmp_path: Path, term: str) -> None:
+    assert term in section(public_page(dashboard, reports, tmp_path), "glossary")
+
+
+@pytest.mark.parametrize("name", ["SWE-bench", "Terminal-Bench", "DeepEval", "Ragas"])
+def test_the_page_says_what_has_not_run_yet(dashboard: ModuleType, reports: Path, tmp_path: Path, name: str) -> None:
+    row = next((r for r in re.findall(r"<tr>(.*?)</tr>", section(public_page(dashboard, reports, tmp_path), "next"), re.S) if name in r), "")
+    assert row and has_both_languages(row), f"{name} 有一行说明现状"
+    assert "%" not in row, "还没有成绩的，不写分数"
+
+
+def test_the_page_opens_in_chinese_and_can_switch(dashboard: ModuleType, reports: Path, tmp_path: Path) -> None:
+    page = public_page(dashboard, reports, tmp_path)
+    assert re.search(r'<html[^>]*lang="zh-CN"[^>]*data-lang="zh"', page)
+    assert 'data-set-lang="en"' in page and 'data-set-lang="zh"' in page
+    script = "".join(re.findall(r"<script>(.*?)</script>", page, re.S))
+    assert re.search(r"try\{[^}]*localStorage", script), "浏览器存储读写失败时页面照常显示"
+
+
+def test_the_internal_page_has_none_of_the_public_explanations(dashboard: ModuleType, reports: Path, tmp_path: Path) -> None:
+    out = tmp_path / "internal.html"
+    assert dashboard.main(["--reports", str(reports), "--out", str(out)]) == 0
+    page = out.read_text("utf-8")
+    assert 'id="glossary"' not in page and 'data-set-lang' not in page

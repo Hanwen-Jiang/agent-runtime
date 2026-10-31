@@ -542,6 +542,7 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
   `uv run --no-sync python scripts/eval_dashboard.py --public --out index.html`，传到服务器，
   `kubectl -n agent-runtime create configmap ar-agent-runtime-eval-dashboard --from-file=index.html --dry-run=client -o yaml | kubectl apply -f -`。
   约一分钟后 Pod 里的文件更新，不用重启；Cloudflare 最多再缓存 5 分钟。Chart 不渲染这个 ConfigMap，`helm upgrade` 不会清掉它。
+- 页面写给不懂这个项目的读者（2026-10-31，人定，例如 HR）：默认中文、可切英文，有结论、怎么考、发现了什么、每张图怎么看、名词解释、还没做完的。“发现了什么”与“还没做完的”是 `scripts/eval_dashboard.py` 里写好的文字（`FINDINGS`、`ROADMAP`），有新进展时改了再发布；其余数字来自报告与评测集。
 
 升级到 7210e3e（2026-10-30，TMP 计划第 11.13 节的 Session 上下文，加上第 11.12 节的评测看板；之前线上是 b05aa63）：
 
