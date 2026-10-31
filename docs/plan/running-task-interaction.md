@@ -106,7 +106,7 @@
 
 - 撤销的结果不走 Temporal 的取消失败：Python SDK 对“请求取消后以 CancelledError 结束”的 activity 一律上报不带 details 的取消，结果带不回来。activity 改为抛 `ApplicationError`（type `tool_interrupted`，details 第一项是结果），工作流当取消处理（`workflows/interrupts.py`）。
 - activity 正好正常结束时，它吞掉同时到来的取消（等它的任务不再收到取消）。发问的 activity 正是这样：所以发问之后查一次任务是否被要求取消过（`Task.cancelling()`），是就撤回问题。别的调用吞了也无妨：结果照用，还没看过立刻打断的循环不再开始新的工具调用。
-- Cloudflare 桥不用改：`AgentClient.exec` 给每条命令一个 `exec_id`，取消时既断开连接，也发 `POST /v1/exec/cancel`（agent 的新接口；取消先到时记一分钟，命令不再开始）。经 K8s API Server 或 Cloudflare 的桥时断开不一定传得到，这条路径不依赖它。
+- Cloudflare 桥不用改：`AgentClient.exec` 给每条命令一个 `exec_id`，取消时既断开连接，也发 `POST /v1/exec/cancel`（agent 的新接口；取消先到时记一分钟，命令不再开始）。经 K8s API Server 或 Cloudflare 的桥时断开不一定传得到，这条路径不依赖它。agent 没有确认（旧的 agent 回 404、桥不通、超时）时抛 `ExecNotStopped`：命令可能还在跑，所以不还原，撤销的结果是 `failed`。
 - 模型调用（规划、评审、tool_loop 的一步）被打断时不等取消送到就重来（TRY_CANCEL）：更快，代价是旧的调用最多再跑约 6 秒。工具调用与 Node 仍等取消完成，撤销的结果才带得回来。
 - 能被打断的 activity 的 heartbeat 超时是 8 秒（`INTERRUPTIBLE_HEARTBEAT`），取消约 6 秒内送到。只对 `GUIDANCE_PATCH` 之后的运行。
 - 用户要的 replan 不进 Reviewer 的升级台账（`self._history`）：否则用户纠偏几次会被算成“一直在 replan”，升级去问人。
@@ -202,7 +202,7 @@
 
 ## 9. 还没验证的
 
-- **真的 Cloudflare 桥**：取消经 `POST /v1/exec/cancel` 走桥的通用转发，代码上不用改桥，但没有对真桥跑过（`AR_LIVE_CLOUDFLARE=1`，花钱，要人定）。同一个容器里，桥是不是能在 `/v1/exec` 没结束时处理第二个请求，只有真桥能证明。
+- **真的 Cloudflare 桥**：取消经 `POST /v1/exec/cancel` 走桥的通用转发，代码上不用改桥，但没有对真桥跑过（`AR_LIVE_CLOUDFLARE=1`，花钱，要人定）。同一个容器里，桥是不是能在 `/v1/exec` 没结束时处理第二个请求，只有真桥能证明。桥部署的 sandbox-universal 镜像里的 agent 是旧的（换它要 Cloudflare 的令牌），换之前这个后端上被打断的命令报“没能撤销”，命令可能跑到自己超时。
 - **真的 K8s（kind）**：这台机器没有，夜间任务或人工跑。sandbox-agent 的镜像要重新构建才有新接口；旧的 agent 收到取消是 404，只剩断开连接这一条路。
 - **Docker 沙箱（`--sandbox docker`）的取消**：写了 `docker rm -f`，这台机器没有 Docker，没跑过。
 - **真模型上 Reviewer 给的 `highlights` 好不好**：要评测，花钱，这里只测形状。

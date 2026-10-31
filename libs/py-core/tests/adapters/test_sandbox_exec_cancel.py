@@ -17,12 +17,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import pytest
 
 from agentruntime_core.adapters.sandbox_agent import AgentClient, AgentEndpoint
+from agentruntime_core.providers.sandbox import ExecNotStopped
 
 
 class _FakeAgent:
-    """收到 /v1/exec 后不回答，一直看连接有没有断。"""
+    """收到 /v1/exec 后不回答，一直看连接有没有断；/v1/exec/cancel 按 cancel_status 回答。"""
 
-    def __init__(self) -> None:
+    def __init__(self, cancel_status: int = 204) -> None:
         self.started = threading.Event()
         self.disconnected = threading.Event()
         outer = self
@@ -30,6 +31,11 @@ class _FakeAgent:
         class Handler(BaseHTTPRequestHandler):
             def do_POST(self) -> None:  # noqa: N802
                 self.rfile.read(int(self.headers.get("Content-Length") or 0))
+                if self.path == "/v1/exec/cancel":
+                    self.send_response(cancel_status)
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
                 outer.started.set()
                 self.connection.settimeout(0.1)
                 deadline = time.monotonic() + 30
@@ -71,5 +77,21 @@ async def test_cancelling_exec_closes_the_connection_to_the_agent() -> None:
         with pytest.raises(asyncio.CancelledError):
             await asyncio.wait_for(call, 5)
         assert await asyncio.to_thread(agent.disconnected.wait, 5), "连接没断：agent 不知道调用方走了，命令会一直跑"
+    finally:
+        agent.close()
+
+
+@pytest.mark.parametrize(("cancel_status", "confirmed"), [(204, True), (404, False), (503, False)])
+async def test_the_caller_learns_whether_the_agent_confirmed_the_stop(cancel_status: int, confirmed: bool) -> None:
+    """旧的 agent 没有取消接口（404），经桥时断开连接又不一定传得到：命令可能还在跑，调用方不能当它停了。"""
+    agent = _FakeAgent(cancel_status)
+    try:
+        endpoint = AgentEndpoint(base_url=agent.url, token="t" * 32)
+        call = asyncio.create_task(AgentClient().exec(endpoint, ["sleep", "600"], timeout=timedelta(seconds=600)))
+        assert await asyncio.to_thread(agent.started.wait, 10)
+        call.cancel()
+        with pytest.raises(asyncio.CancelledError) as caught:
+            await asyncio.wait_for(call, 5)
+        assert isinstance(caught.value, ExecNotStopped) is not confirmed
     finally:
         agent.close()

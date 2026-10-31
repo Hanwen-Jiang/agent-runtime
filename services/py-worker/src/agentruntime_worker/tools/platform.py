@@ -48,15 +48,16 @@ from agentruntime_core.enums import Effect
 from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError, ProviderError, TransientError
 from agentruntime_core.processes import kill_tree, new_group
 from agentruntime_core.providers.object_store import ObjectStoreProvider
-from agentruntime_core.providers.sandbox import ExecResult, SandboxSpec
+from agentruntime_core.providers.sandbox import ExecNotStopped, ExecResult, SandboxSpec
 from agentruntime_core.providers.telemetry import TelemetryProvider
 from agentruntime_core.providers.tool_driver import ToolHandler, ToolInvocation, ToolSpec
 from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker.sandbox.broker import SandboxBroker
 from agentruntime_worker.sandbox.environments import Resolution, workspace_reader
-from agentruntime_worker.tools.checkpoint import Runner, create_checkpoint, undo_with
+from agentruntime_worker.tools.checkpoint import Checkpoint, Runner, UndoReport, create_checkpoint, undo_with
 from agentruntime_worker.tools.sandboxes import Sandboxes, parse_cpu_millis, parse_memory_mb
+from agentruntime_worker.workflows.interrupts import NOT_NEEDED, UNDO_FAILED
 
 VERSION = "v1"
 CONTEXT_READ = "context_read"
@@ -576,9 +577,12 @@ class _Workspaces:
             async def in_env(command: list[str], command_env: dict[str, str] | None = None) -> ExecResult:
                 return await lease.box.exec(lease.env_id, command, timeout=CHECKPOINT_TIMEOUT, env={**(lease.env or {}), **(command_env or {})} or None)
 
-            point = await create_checkpoint(in_env)
+            point: Checkpoint | None = None
+            command_started = False
             try:
                 try:
+                    point = await create_checkpoint(in_env)
+                    command_started = True
                     result = await lease.box.exec(lease.env_id, argv, timeout=timedelta(seconds=timeout), env=lease.env or None)
                 except NotFoundError:
                     if not lease.reused:
@@ -593,7 +597,12 @@ class _Workspaces:
                 if err.code == "command_not_found":
                     raise InvalidError("command_not_found", f"启动不了 {argv[0]}") from None
                 raise
-            except asyncio.CancelledError:
+            except asyncio.CancelledError as err:
+                if not command_started:
+                    raise UndoReport(NOT_NEEDED) from None
+                if isinstance(err, ExecNotStopped):
+                    # 命令可能还在改文件，还原了也会被改回去：不还原，照实说。
+                    raise UndoReport(UNDO_FAILED) from None
                 raise await undo_with(in_env, point) from None
             finally:
                 exec_ms = int((time.monotonic() - ran) * 1000)

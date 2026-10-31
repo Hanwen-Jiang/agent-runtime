@@ -20,6 +20,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -61,6 +62,10 @@ class ExecResult:
     stderr: bytes
     timed_out: bool
     cpu_time: timedelta | None = None
+
+
+class ExecNotStopped(asyncio.CancelledError):
+    """exec 被取消了，但沙箱没有确认命令已经停下：命令可能还在跑、还在改文件。"""
 
 
 class Sandbox(Protocol):

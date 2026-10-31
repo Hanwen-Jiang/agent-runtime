@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import contextlib
 import http.client
 import json
 import re
@@ -31,7 +30,7 @@ from datetime import timedelta
 from typing import IO, Any, TypeVar
 
 from agentruntime_core.errors import DeniedError, InvalidError, NotFoundError, ProviderError, TransientError
-from agentruntime_core.providers.sandbox import DirEntry, ExecResult, FileEntry, GrepMatch, check_exec_env
+from agentruntime_core.providers.sandbox import DirEntry, ExecNotStopped, ExecResult, FileEntry, GrepMatch, check_exec_env
 
 TOKEN_HEADER = "X-Sandbox-Token"
 CANCEL_TIMEOUT_S = 3.0
@@ -131,7 +130,8 @@ class AgentClient:
                 endpoint, "POST", "/v1/exec", body, {"Content-Type": "application/json"}, timeout.total_seconds() + self._request_timeout.total_seconds()
             )
         except asyncio.CancelledError:
-            await self._cancel_exec(endpoint, exec_id)
+            if not await self._cancel_exec(endpoint, exec_id):
+                raise ExecNotStopped() from None
             raise
         self.raise_for(status, data)
         try:
@@ -144,11 +144,14 @@ class AgentClient:
         except (ValueError, KeyError, TypeError):
             raise TransientError("sandbox_bad_response", "沙箱返回的结果格式不对") from None
 
-    async def _cancel_exec(self, endpoint: AgentEndpoint, exec_id: str) -> None:
-        """让 agent 停掉这条命令；等一小会儿，调用方接下来可能要还原工作区。旧的 agent 没有这个接口，还有断开连接这一条。"""
+    async def _cancel_exec(self, endpoint: AgentEndpoint, exec_id: str) -> bool:
+        """让 agent 停掉这条命令；等一小会儿，调用方接下来可能要还原工作区。返回 agent 确认了没有：旧的 agent 没有这个接口，只剩断开连接这一条，经桥时不一定传得到。"""
         body = json.dumps({"exec_id": exec_id}).encode()
-        with contextlib.suppress(TransientError, TimeoutError):
-            await asyncio.wait_for(self._call(endpoint, "POST", "/v1/exec/cancel", body, {"Content-Type": "application/json"}, CANCEL_TIMEOUT_S), CANCEL_TIMEOUT_S)
+        try:
+            status, _ = await asyncio.wait_for(self._call(endpoint, "POST", "/v1/exec/cancel", body, {"Content-Type": "application/json"}, CANCEL_TIMEOUT_S), CANCEL_TIMEOUT_S)
+        except (TransientError, TimeoutError):
+            return False
+        return 200 <= status < 300
 
     async def write_file(self, endpoint: AgentEndpoint, path: str, data: bytes) -> None:
         status, body = await self._call(endpoint, "PUT", "/v1/files/" + _quote(check_path(path)), data, {"Content-Type": "application/octet-stream"})

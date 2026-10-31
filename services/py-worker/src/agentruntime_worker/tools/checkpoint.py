@@ -30,7 +30,7 @@ _RM_BATCH = 100
 
 
 class UndoReport(asyncio.CancelledError):
-    """工具被取消、撤销做完了：还是取消，另带撤销的结果（workflows/interrupts.py 的 RESTORED、UNDO_FAILED、NO_CHECKPOINT）。"""
+    """工具被取消、撤销做完了：还是取消，另带撤销的结果（workflows/interrupts.py 的 RESTORED、UNDO_FAILED、NO_CHECKPOINT、NOT_NEEDED）。"""
 
     def __init__(self, undo: str) -> None:
         super().__init__(undo)

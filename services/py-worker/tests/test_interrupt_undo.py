@@ -26,7 +26,9 @@ from temporalio.exceptions import ApplicationError, CancelledError
 
 from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 from agentruntime.modelgateway.v1 import model_gateway_pb2_grpc as mg_grpc
+from agentruntime_core.dev.sandbox import LocalSubprocessSandbox
 from agentruntime_core.enums import Effect
+from agentruntime_core.providers.sandbox import ExecNotStopped
 from agentruntime_core.providers.tool_driver import ToolInvocation, ToolSpec
 
 from agentruntime_worker import names
@@ -38,6 +40,7 @@ from agentruntime_worker.executor.tool_loop import ModelToolLoop, ToolLoopActivi
 from agentruntime_worker.planner.activities import PlannerActivities
 from agentruntime_worker.planner.context import StaticContextSource
 from agentruntime_worker.planner.planner import Planner
+from agentruntime_worker.sandbox.broker import SandboxBroker
 from agentruntime_worker.tools.platform import PlatformToolsConfig, register_platform_tools
 from agentruntime_worker.tools.sandboxes import Sandboxes
 
@@ -244,6 +247,61 @@ async def test_outside_a_git_repository_it_kills_the_command_and_says_it_could_n
     assert undo_of(err) == "no_checkpoint"
     assert not await still_growing(beats / "child")
     assert (work / "tracked.txt").read_text("utf-8") == "被这次调用改了", "撤不回的不假装撤回了"
+
+
+@pytest.mark.skipif(GIT is None, reason="要 git")
+async def test_a_stop_the_agent_did_not_confirm_is_not_reported_as_undone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """沙箱里的 agent 没确认命令停了（旧的 agent、桥不转发）：命令可能还在改文件，还原了也可能被改回去，所以不还原，照实说。"""
+    original = LocalSubprocessSandbox.exec
+
+    async def unconfirmed(self: LocalSubprocessSandbox, env_id: str, argv: Any, **kwargs: Any) -> Any:
+        try:
+            return await original(self, env_id, argv, **kwargs)
+        except asyncio.CancelledError:
+            raise ExecNotStopped() from None
+
+    monkeypatch.setattr(LocalSubprocessSandbox, "exec", unconfirmed)
+    work = workspace_of(tmp_path)
+    fx = with_platform_tools(tmp_path, "local_sandbox")
+    inp, beats = tree_call(tmp_path)
+    err = await interrupted(fx, inp, beats / "child")
+    assert undo_of(err) == "failed"
+    assert (work / "tracked.txt").read_text("utf-8") == "被这次调用改了"
+
+
+@pytest.mark.skipif(GIT is None, reason="要 git")
+async def test_interrupted_while_making_the_checkpoint_the_environment_goes_back(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """命令还没开始：没有什么要撤，借到的环境照样归还（不归还就一直占着租户的并发额度）。"""
+    original = LocalSubprocessSandbox.exec
+    in_checkpoint = asyncio.Event()
+
+    async def stuck_in_git(self: LocalSubprocessSandbox, env_id: str, argv: Any, **kwargs: Any) -> Any:
+        if argv[0] == "git":
+            in_checkpoint.set()
+            await asyncio.Event().wait()
+        return await original(self, env_id, argv, **kwargs)
+
+    monkeypatch.setattr(LocalSubprocessSandbox, "exec", stuck_in_git)
+    released = []
+    release = SandboxBroker.release
+
+    async def counted(self: SandboxBroker, lease: Any, **kwargs: Any) -> Any:
+        released.append(lease)
+        return await release(self, lease, **kwargs)
+
+    monkeypatch.setattr(SandboxBroker, "release", counted)
+    workspace_of(tmp_path)
+    fx = with_platform_tools(tmp_path, "local_sandbox")
+    inp, beats = tree_call(tmp_path)
+    env = env_for(names.CALL_TOOL, heartbeat=1)
+    task = asyncio.create_task(env.run(fx.executor.call_tool, inp))
+    await asyncio.wait_for(in_checkpoint.wait(), 20)
+    env.cancel()
+    with pytest.raises(ApplicationError) as caught:
+        await asyncio.wait_for(task, 20)
+    assert undo_of(caught.value) == "not_needed"
+    assert len(released) == 1
+    assert not (beats / "parent").exists(), "命令不该开始"
 
 
 @pytest.mark.skipif(GIT is None, reason="要 git")
