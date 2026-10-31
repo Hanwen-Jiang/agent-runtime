@@ -66,6 +66,10 @@ Change the source code so that the issue is resolved. Hidden tests will be run a
 """
 
 
+# Verified 的 difficulty 字段，从易到难。
+DIFFICULTIES = ("<15 min fix", "15 min - 1 hour", "1-4 hours", ">4 hours")
+
+
 class ResumeMismatch(ValueError):
     """输出目录里已有一次运行，这次的选题或影响结果的设定与它不一致。"""
 
@@ -82,6 +86,10 @@ class Instance:
     hints_text: str = ""
     # 原样的一行（判分要用的字段都在里面）。
     raw: dict[str, Any] = field(default_factory=dict, compare=False, hash=False, repr=False)
+
+    @property
+    def difficulty(self) -> str:
+        return str(self.raw.get("difficulty") or "")
 
     @classmethod
     def from_row(cls, row: Mapping[str, Any]) -> Instance:
@@ -124,6 +132,34 @@ def select(instances: Sequence[Instance], *, limit: int | None = None, seed: int
     if limit is None or limit >= len(ordered):
         return ordered
     return sorted(random.Random(seed).sample(ordered, limit), key=lambda i: i.instance_id)
+
+
+def stratified(instances: Sequence[Instance], *, limit: int, seed: int = 0, exclude_repos: Sequence[str] = ()) -> list[Instance]:
+    """分层选题：各仓库按题数成比例（最大余额法；名额够时每个仓库至少一题），仓库内按难度排好、等距取，所以难度也成比例。
+    同一个种子结果相同，与输入顺序无关。"""
+    pool = sorted((i for i in instances if i.repo not in set(exclude_repos)), key=lambda i: i.instance_id)
+    if limit >= len(pool):
+        return pool
+    by_repo: dict[str, list[Instance]] = {}
+    for inst in pool:
+        by_repo.setdefault(inst.repo, []).append(inst)
+    exact = {repo: limit * len(items) / len(pool) for repo, items in by_repo.items()}
+    floor = 1 if limit >= len(by_repo) else 0
+    quota = {repo: max(floor, int(share)) for repo, share in exact.items()}
+    while sum(quota.values()) < limit:
+        quota[max(sorted(quota), key=lambda r: exact[r] - quota[r])] += 1
+    while sum(quota.values()) > limit:
+        quota[max(sorted(r for r in quota if quota[r] > max(floor, 0)), key=lambda r: quota[r] - exact[r])] -= 1
+    rng = random.Random(seed)
+    rank = {name: n for n, name in enumerate(DIFFICULTIES)}
+    picked: list[Instance] = []
+    for repo in sorted(by_repo):
+        items = by_repo[repo]
+        rng.shuffle(items)
+        items.sort(key=lambda i: rank.get(i.difficulty, len(rank)))
+        count = quota[repo]
+        picked += [items[int((k + 0.5) * len(items) / count)] for k in range(count)]
+    return sorted(picked, key=lambda i: i.instance_id)
 
 
 def task_message(inst: Instance, *, hints: bool = False) -> str:
@@ -572,6 +608,7 @@ def report(out_dir: Path) -> dict[str, Any]:
 
     instances = []
     by_repo: dict[str, dict[str, int]] = {}
+    by_difficulty: dict[str, dict[str, int]] = {}
     for iid in ids:
         rec = recs.get(iid) or {}
         state = str(rec.get("state") or "not_run")
@@ -580,12 +617,13 @@ def report(out_dir: Path) -> dict[str, Any]:
             label = "run_error" if state == "error" else "not_run"
         else:
             label = labels.get(iid, "not_graded")
-        entry = by_repo.setdefault(repo, {"selected": 0, "ran": 0, "resolved": 0})
-        entry["selected"] += 1
-        entry["ran"] += state == "finished"
-        entry["resolved"] += iid in resolved_ids
+        difficulty = str(rows.get(iid, {}).get("difficulty") or "unknown")
+        for entry in (by_repo.setdefault(repo, {"selected": 0, "ran": 0, "resolved": 0}), by_difficulty.setdefault(difficulty, {"selected": 0, "ran": 0, "resolved": 0})):
+            entry["selected"] += 1
+            entry["ran"] += state == "finished"
+            entry["resolved"] += iid in resolved_ids
         instances.append({
-            "instance_id": iid, "repo": repo, "state": state, "status": rec.get("status"), "final_verdict": rec.get("final_verdict"),
+            "instance_id": iid, "repo": repo, "difficulty": difficulty, "state": state, "status": rec.get("status"), "final_verdict": rec.get("final_verdict"),
             "rounds": rec.get("rounds"), "cost_usd": rec.get("cost_usd"), "stop_reason": rec.get("stop_reason"),
             "auto_replies": len(rec.get("auto_replies") or []), "patch_files": rec.get("patch_files") or [], "patch_error": rec.get("patch_error"),
             "error": rec.get("error"), "grading": label,
@@ -618,6 +656,7 @@ def report(out_dir: Path) -> dict[str, Any]:
         "auto_replies": sum(len(r.get("auto_replies") or []) for r in done),
         "patch_errors": sum(1 for r in done if r.get("patch_error")),
         "by_repo": by_repo,
+        "by_difficulty": by_difficulty,
         "instances": instances,
     }
     _write_text(out_dir / "report.json", json.dumps(rep, ensure_ascii=False, indent=2) + "\n")
@@ -636,6 +675,10 @@ def _usd(x: float | None) -> str:
 def _markdown(rep: dict[str, Any]) -> str:
     sel = rep["selection"]
     picked = f"种子 {sel['seed']}" if "seed" in sel else ("按 id 选" if sel.get("ids") else "")
+    if sel.get("stratified"):
+        picked += "，按仓库与难度分层"
+    if sel.get("exclude_repos"):
+        picked += f"，不含 {'、'.join(sel['exclude_repos'])}"
     lines = [
         f"# SWE-bench 运行报告：{rep['run_id']}",
         "",
@@ -662,6 +705,10 @@ def _markdown(rep: dict[str, Any]) -> str:
     ]
     for repo, e in sorted(rep["by_repo"].items()):
         lines.append(f"| {repo} | {e['selected']} | {e['ran']} | {e['resolved'] if rep['graded'] else '—'} |")
+    lines += ["", "## 按难度", "", "| 难度 | 选中 | 跑了 | 解决 |", "| --- | --- | --- | --- |"]
+    order = {name: n for n, name in enumerate(DIFFICULTIES)}
+    for difficulty, e in sorted(rep["by_difficulty"].items(), key=lambda kv: order.get(kv[0], len(order))):
+        lines.append(f"| {difficulty} | {e['selected']} | {e['ran']} | {e['resolved'] if rep['graded'] else '—'} |")
     lines += ["", "## 每题", "", "| 题 | 结局 | 最终 Verdict | Round | 花费 | 取消原因 | 判分 |", "| --- | --- | --- | --- | --- | --- | --- |"]
     for i in rep["instances"]:
         lines.append(

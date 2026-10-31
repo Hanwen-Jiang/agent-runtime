@@ -39,6 +39,10 @@ spec:
               value: {{ $gw.provider | quote }}
             - name: AR_MODEL_PROVIDER_BASE_URL
               value: {{ $gw.providerBaseUrl | quote }}
+            {{- if $gw.tenantPoliciesConfigMap }}
+            - name: AR_DEV_TENANT_POLICIES_FILE
+              value: /etc/agentruntime/tenant-policies/tenant-policies.json
+            {{- end }}
           readinessProbe:
             httpGet:
               path: /healthz
@@ -59,11 +63,21 @@ spec:
             - name: model-profiles
               mountPath: /etc/agentruntime/model-profiles
               readOnly: true
+            {{- if $gw.tenantPoliciesConfigMap }}
+            - name: tenant-policies
+              mountPath: /etc/agentruntime/tenant-policies
+              readOnly: true
+            {{- end }}
       volumes:
         {{- include "ar.volumes" . | nindent 8 }}
         - name: model-profiles
           configMap:
             name: {{ $gw.profilesConfigMap }}
+        {{- if $gw.tenantPoliciesConfigMap }}
+        - name: tenant-policies
+          configMap:
+            name: {{ $gw.tenantPoliciesConfigMap }}
+        {{- end }}
 ---
 apiVersion: v1
 kind: Service

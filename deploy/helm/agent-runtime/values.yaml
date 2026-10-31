@@ -123,6 +123,9 @@ modelGateway:
   providerBaseUrl: https://api.example/v1
   # Model Profile 所在的 ConfigMap（键 model-profiles.json，格式同 deploy/dev/model-profiles.json），由运维创建。
   profilesConfigMap: agent-runtime-model-profiles
+  # 按租户限制可选模型的 ConfigMap（键 tenant-policies.json，格式见 go-model-gateway 的 router.FileAllowlist），由运维创建；每次调用都重读，改了不用重启。
+  # 空表示不限制。
+  tenantPoliciesConfigMap: ""
   resources:
     requests: {cpu: 250m, memory: 128Mi}
     limits: {cpu: "1", memory: 256Mi}

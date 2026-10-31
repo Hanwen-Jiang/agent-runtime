@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections import Counter
 import sys
 from pathlib import Path
 
@@ -91,6 +92,55 @@ def test_selection_is_reproducible(insts: list[sb.Instance]) -> None:
     assert [i.instance_id for i in sb.select(insts, ids=["beta__lib-4", "acme__calc-1"])] == ["beta__lib-4", "acme__calc-1"]
     with pytest.raises(ValueError, match="nope__x-9"):
         sb.select(insts, ids=["nope__x-9"])
+
+
+def many(repos: dict[str, int]) -> list[sb.Instance]:
+    """按仓库造题；难度依次轮流。"""
+    out = []
+    for repo, count in repos.items():
+        for n in range(count):
+            row = instance(f"{repo.replace('/', '__')}-{n}", repo)
+            row["difficulty"] = sb.DIFFICULTIES[n % len(sb.DIFFICULTIES)]
+            out.append(sb.Instance.from_row(row))
+    return out
+
+
+def test_stratified_selection_follows_the_repositories() -> None:
+    pool = many({"big/one": 230, "mid/two": 75, "mid/three": 44, "small/four": 2, "small/five": 1})
+    picked = sb.stratified(pool, limit=50, seed=0)
+    counts = Counter(i.repo for i in picked)
+    assert sum(counts.values()) == 50 and len({i.instance_id for i in picked}) == 50
+    assert counts["big/one"] > counts["mid/two"] > counts["mid/three"] > counts["small/four"], "按题数成比例"
+    assert counts["small/four"] >= 1 and counts["small/five"] >= 1, "题少的仓库也要有，否则按仓库看时没有数据"
+
+
+def test_stratified_selection_spreads_the_difficulties() -> None:
+    picked = sb.stratified(many({"big/one": 400}), limit=40, seed=0)
+    assert Counter(i.difficulty for i in picked) == {d: 10 for d in sb.DIFFICULTIES}
+
+
+def test_stratified_selection_is_reproducible() -> None:
+    pool = many({"big/one": 100, "mid/two": 30})
+    picked = [i.instance_id for i in sb.stratified(pool, limit=20, seed=3)]
+    assert picked == [i.instance_id for i in sb.stratified(list(reversed(pool)), limit=20, seed=3)], "同一个种子、与输入顺序无关"
+    assert picked == sorted(picked)
+    assert picked != [i.instance_id for i in sb.stratified(pool, limit=20, seed=4)], "换种子换题"
+
+
+def test_stratified_selection_can_leave_a_repository_out() -> None:
+    """Verified 里 psf/requests 的题判分要连外网，随时间不可靠（计划第 11.10 节），基线不选它们。"""
+    picked = sb.stratified(many({"big/one": 100, "psf/requests": 8}), limit=20, seed=0, exclude_repos=("psf/requests",))
+    assert {i.repo for i in picked} == {"big/one"} and len(picked) == 20
+
+
+def test_stratified_selection_with_few_slots_takes_the_largest_repositories() -> None:
+    picked = sb.stratified(many({"big/one": 200, "mid/two": 90, "mid/three": 40, "small/four": 2, "small/five": 1}), limit=3, seed=0)
+    assert len(picked) == 3 and {i.repo for i in picked} <= {"big/one", "mid/two", "mid/three"}
+
+
+def test_asking_for_more_than_there_are_takes_them_all() -> None:
+    pool = many({"big/one": 3, "psf/requests": 2})
+    assert len(sb.stratified(pool, limit=10, seed=0, exclude_repos=("psf/requests",))) == 3
 
 
 # --- 2. 不泄题 ---
@@ -445,6 +495,23 @@ def test_grading_calls_the_official_harness(tmp_path: Path, insts: list[sb.Insta
     assert sorted(ids) == ["acme__calc-1", "acme__calc-2", "beta__lib-3"], "只判交了 predictions 的题"
     assert graded["resolved_ids"] == ["acme__calc-2"] and graded["error_ids"] == ["beta__lib-3"]
     assert (out / "grading" / "acme__agent.run-1.json").exists()
+
+
+def test_the_report_counts_by_difficulty(tmp_path: Path, insts: list[sb.Instance]) -> None:
+    out = graded_run(tmp_path, insts)
+    instances = out / "instances.jsonl"
+    rows = [json.loads(line) for line in instances.read_text("utf-8").splitlines() if line.strip()]
+    for n, row in enumerate(rows):
+        row["difficulty"] = "<15 min fix" if n == 0 else "1-4 hours"
+    instances.write_text("".join(json.dumps(r) + "\n" for r in rows), "utf-8")
+    env = {"PYTHONPATH": str(fake_harness(tmp_path)), "FAKE_ARGV": str(tmp_path / "argv.json"), "FAKE_RESOLVED": "acme__calc-2", "FAKE_ERRORS": "beta__lib-3"}
+    sb.grade(out, python=sys.executable, env=env)
+    rep = sb.report(out)
+    assert set(rep["by_difficulty"]) == {"<15 min fix", "1-4 hours"}
+    assert sum(e["selected"] for e in rep["by_difficulty"].values()) == rep["selected"]
+    assert rep["resolved"] and sum(e["resolved"] for e in rep["by_difficulty"].values()) == rep["resolved"]
+    assert all(i["difficulty"] in rep["by_difficulty"] for i in rep["instances"])
+    assert "## 按难度" in (out / "report.md").read_text("utf-8")
 
 
 def test_a_failing_harness_is_reported(tmp_path: Path, insts: list[sb.Instance]) -> None:
