@@ -554,6 +554,15 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
   看板经 Traefik（`curl --resolve evals.cgent.link:443:127.0.0.1`）：页面 200，带 CSP 等响应头，`/secret`、`/.git/config` 404，POST 405。
 - **没有验证**：模型实际答得对不对（要真调模型）；`evals.cgent.link` 的公网访问（DNS 记录与 Full (strict) 规则要人在 Cloudflare 上加，核对时还没有记录）。
 
+升级到 52174d9（2026-10-31，运行中的纠偏、立刻打断与撤销、上下文占比、各轮汇总；之前线上是 7210e3e，coding-web 是 380f559）：
+
+- 同上一次的做法换代码（旧的留在 `agent-runtime.7210e3e`、`coding-agent.380f559`）。重建 7 个 Runtime 镜像，这次多了 `sandbox-agent`（K8s 沙箱 Pod 的 initContainer 从它拷 agent，新的才有 `POST /v1/exec/cancel`）与 `coding-web`，都打新标签。运行环境的镜像没变，仍是 0.1.0。
+- Runtime：第 10 版的 values 是第 9 版改 `image.tag` 与三处 `sandbox-agent` 的标签（`/root/ar-release/values-rev10.yaml`）。`helm template` 与线上的 manifest 比过，只差镜像标签、`OTEL_SERVICE_VERSION` 与后端登记里的 agent 镜像。Chart 没改，没有新迁移。升级前确认没有在跑的 TaskWorkflow。回滚：`helm rollback ar 9`。
+- coding-web：`kubectl -n agent-runtime set image deploy/coding-web coding-web=ghcr.io/agentruntime/coding-web:1be5776`；`/root/ar-secrets/coding-web.yaml` 的标签同步改了。刚滚动完时经 Cloudflare 还有 503，几秒后 200。回滚：`kubectl -n agent-runtime rollout undo deploy/coding-web`。
+- Cloudflare 这个回退后端没动：桥部署的 `sandbox-universal:0.1.0` 里的 agent 是旧的，回 404。这个后端上被打断的命令报“没能撤销”（`ExecNotStopped`），命令可能跑到自己超时。换镜像要 Cloudflare 的令牌（`deploy/cloudflare/sandbox-bridge/README.md`）。
+- 核对（不花钱）：各 Pod 的镜像都是新标签、都在跑，新 Pod 最近的日志没有错误（task-service、出网网关、包镜像照旧第一次启动连不上 Temporal、重启一次就好）；`api.cgent.link/healthz` 与 `code.cgent.link` 200；页面的 `app.js`、`i18n.js` 是新版。用新的 task-service 回放线上两条 Session 历史（SWE-bench 冒烟留下的，只有公开数据）通过，改掉活动名的对照失败。经 `api.cgent.link` 给已结束的 Task 发纠偏与修改排队的消息，都是 `failed_precondition` / `task_finished`；不选生效时机 `invalid_argument`；没有令牌 401。
+- **没有验证**：真的 Kata、gVisor 里取消命令与撤销（探测脚本经 `kubectl exec` 跑，被权限规则拦下了，没有跑）；运行中的 Task 真的被纠偏、打断（要真调模型）；coding-web 登录之后的界面（只放行名单里的账号）。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
