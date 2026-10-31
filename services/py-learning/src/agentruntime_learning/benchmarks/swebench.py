@@ -36,7 +36,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, TypeVar
 
 from agentruntime_learning.benchmarks.client import ApiError, Event
 
@@ -70,6 +70,11 @@ Change the source code so that the issue is resolved. Hidden tests will be run a
 
 # Verified 的 difficulty 字段，从易到难。
 DIFFICULTIES = ("<15 min fix", "15 min - 1 hour", "1-4 hours", ">4 hours")
+
+
+# Runtime 报沙箱环境配额满时错误信息里的字样（Worker 的 ledger）。Workspace API 不带可比较的原因码，只能看文字。
+QUOTA_FULL = "个沙箱环境"
+T = TypeVar("T")
 
 
 class ResumeMismatch(ValueError):
@@ -267,6 +272,10 @@ class Settings:
     keep_workspaces: bool = False
     poll_s: float = 30.0
     clock: Callable[[], float] = field(default=time.monotonic, compare=False, repr=False)
+    sleep: Callable[[float], None] = field(default=time.sleep, compare=False, repr=False)
+    # 沙箱环境的配额满时等多久（默认 30 秒试一次，最多半小时）。
+    quota_wait_s: float = 30.0
+    quota_wait_tries: int = 60
 
     def __post_init__(self) -> None:
         if not _RUN_ID.match(self.run_id):
@@ -430,8 +439,35 @@ class _Runner:
         else:
             self._release(iid)
 
+    def _when_room(self, call: Callable[[], T]) -> T:
+        """沙箱环境的配额满了就等一等再试：做完的 Task 的环境留着等复用，空闲到期才回收，这不算这一题出错。"""
+        for _ in range(self.s.quota_wait_tries):
+            try:
+                return call()
+            except ApiError as err:
+                if err.status != 403 or QUOTA_FULL not in err.message:
+                    raise
+            self.s.sleep(self.s.quota_wait_s)
+        return call()
+
     def _attempt(self, inst: Instance, rec: dict[str, Any]) -> None:
         ws = workspace_id(self.s.run_id, inst.instance_id)
+        # Task 已经做完、花过钱时，续跑只取补丁，不重新跑。
+        if not rec.get("task_finished"):
+            self._run_task(inst, rec, ws)
+        diff = self._when_room(lambda: self.rt.diff(ws, base=rec["head"]))
+        if diff["truncated"]:
+            rec.update({"patch": "", "patch_files": list(diff["files"]), "patch_error": "diff_truncated"})
+        else:
+            rec.update({"patch": diff["diff"], "patch_files": list(diff["files"]), "patch_error": None})
+        rec["state"] = "finished"
+        rec.pop("error", None)
+        self._save(rec)
+        if not self.s.keep_workspaces:
+            with contextlib.suppress(ApiError):
+                self.rt.delete_workspace(ws)
+
+    def _run_task(self, inst: Instance, rec: dict[str, Any], ws: str) -> None:
         interactive = True
         if rec.get("state") == "submitted" and rec.get("task_id"):
             interactive = self.rt.query(rec["task_id"])["status"] not in TERMINAL
@@ -444,7 +480,7 @@ class _Runner:
                 rec.pop(key, None)
             files = environment_files(inst, workspace_path=self.s.workspace_path) if self.s.environment == "official" else []
             repo_url = self.s.repo_url_template.format(repo=inst.repo)
-            created = self.rt.create_workspace(ws, repo_url=repo_url, ref=inst.base_commit, files=files)
+            created = self._when_room(lambda: self.rt.create_workspace(ws, repo_url=repo_url, ref=inst.base_commit, files=files))
             rec.update({"state": "created", "workspace_id": ws, "head": created["head"]})
             self._save(rec)
             request_id = hashlib.sha256(f"{self.s.run_id}\x00{inst.instance_id}\x00{created['head']}".encode()).hexdigest()[:32]
@@ -460,17 +496,10 @@ class _Runner:
             "final_verdict": _verdict(finished.get("final_verdict")),
             "rounds": int(finished.get("rounds") or 0),
             "cost_usd": int(usage.get("cost_usd_micros") or 0) / 1_000_000,
+            "task_finished": True,
+            "state": "collecting",
         })
-        diff = self.rt.diff(ws, base=rec["head"])
-        if diff["truncated"]:
-            rec.update({"patch": "", "patch_files": list(diff["files"]), "patch_error": "diff_truncated"})
-        else:
-            rec.update({"patch": diff["diff"], "patch_files": list(diff["files"]), "patch_error": None})
-        rec["state"] = "finished"
         self._save(rec)
-        if not self.s.keep_workspaces:
-            with contextlib.suppress(ApiError):
-                self.rt.delete_workspace(ws)
 
     def _follow(self, rec: dict[str, Any], *, interactive: bool) -> dict[str, Any]:
         """跟着 SSE 走到 task_finished，返回它的载荷；Verdict、自动回复与取消的原因记进 rec。"""

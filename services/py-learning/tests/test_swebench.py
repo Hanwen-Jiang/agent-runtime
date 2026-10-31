@@ -404,6 +404,77 @@ def test_resuming_with_different_settings_is_refused(tmp_path: Path, insts: list
 # --- 11. 补丁取不全 ---
 
 
+QUOTA = ApiError(403, "permission_denied", "同时最多 4 个沙箱环境，先等前面的结束")
+
+
+class Flaky(FakeRuntime):
+    """前几次建工作区或取 diff 按给的错误失败。"""
+
+    def __init__(self, *args: Any, create_errors: list[Exception] | None = None, diff_errors: list[Exception] | None = None, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.create_errors = list(create_errors or [])
+        self.diff_errors = list(diff_errors or [])
+
+    def create_workspace(self, workspace_id: str, **kwargs: Any) -> dict[str, Any]:
+        if self.create_errors:
+            raise self.create_errors.pop(0)
+        return super().create_workspace(workspace_id, **kwargs)
+
+    def diff(self, workspace_id: str, **kwargs: Any) -> dict[str, Any]:
+        if self.diff_errors:
+            raise self.diff_errors.pop(0)
+        return super().diff(workspace_id, **kwargs)
+
+
+def test_a_full_sandbox_quota_is_waited_out(tmp_path: Path, insts: list[sb.Instance]) -> None:
+    """配额满只说明前面的环境还没回收（做完的 Task 的环境留着等复用），等一等就有名额，不算这一题出错。"""
+    waits: list[float] = []
+    fake = Flaky(create_errors=[QUOTA, QUOTA])
+    sb.run(fake, insts[:1], tmp_path / "out", settings(budget_usd=10, task_usd_limit=2, sleep=waits.append))
+    [rec] = records(tmp_path / "out").values()
+    assert rec["state"] == "finished" and "error" not in rec
+    assert len(waits) == 2 and all(w > 0 for w in waits)
+
+
+def test_a_finished_task_keeps_its_patch_when_the_quota_is_full(tmp_path: Path, insts: list[sb.Instance]) -> None:
+    fake = Flaky(diff_errors=[QUOTA], scripts={insts[0].instance_id: Script(events=rounds("done"), rounds=1, cost_usd=0.3, diff="diff --git a/a b/a\n+1\n", files=["a"])})
+    sb.run(fake, insts[:1], tmp_path / "out", settings(budget_usd=10, task_usd_limit=2, sleep=lambda _: None))
+    [rec] = records(tmp_path / "out").values()
+    assert rec["state"] == "finished" and rec["patch"].startswith("diff --git") and len(fake.submits) == 1
+
+
+def test_waiting_for_the_quota_gives_up_eventually(tmp_path: Path, insts: list[sb.Instance]) -> None:
+    fake = Flaky(create_errors=[QUOTA] * 1000)
+    sb.run(fake, insts[:1], tmp_path / "out", settings(budget_usd=10, task_usd_limit=2, sleep=lambda _: None, quota_wait_tries=3))
+    [rec] = records(tmp_path / "out").values()
+    assert rec["state"] == "error" and "沙箱环境" in rec["error"]
+
+
+def test_other_errors_are_not_waited_on(tmp_path: Path, insts: list[sb.Instance]) -> None:
+    waits: list[float] = []
+    fake = Flaky(create_errors=[ApiError(403, "permission_denied", "没有这个权限")])
+    sb.run(fake, insts[:1], tmp_path / "out", settings(budget_usd=10, task_usd_limit=2, sleep=waits.append))
+    [rec] = records(tmp_path / "out").values()
+    assert rec["state"] == "error" and waits == []
+
+
+def test_resuming_after_a_lost_diff_does_not_pay_for_the_task_again(tmp_path: Path, insts: list[sb.Instance]) -> None:
+    """Task 已经做完、花过钱，只是没取到补丁：续跑只取补丁，不删工作区，不重新提交。"""
+    script = {insts[0].instance_id: Script(events=rounds("done"), rounds=1, cost_usd=0.3, diff="diff --git a/a b/a\n+1\n", files=["a"])}
+    out = tmp_path / "out"
+    first = Flaky(diff_errors=[ApiError(0, "unavailable", "连不上")], scripts=script)
+    sb.run(first, insts[:1], out, settings(budget_usd=10, task_usd_limit=2))
+    [rec] = records(out).values()
+    assert rec["state"] == "error" and rec["cost_usd"] == pytest.approx(0.3)
+    second = Flaky(scripts=script)
+    second.tasks = first.tasks
+    second.created = first.created
+    sb.run(second, insts[:1], out, settings(budget_usd=10, task_usd_limit=2))
+    [rec] = records(out).values()
+    assert rec["state"] == "finished" and rec["patch"].startswith("diff --git") and rec["cost_usd"] == pytest.approx(0.3)
+    assert second.submits == [] and second.create_calls == [] and second.deleted == [sb.workspace_id(RUN, insts[0].instance_id)], "只在取到补丁之后才删工作区"
+
+
 def test_a_truncated_diff_is_recorded_and_not_submitted(tmp_path: Path, insts: list[sb.Instance]) -> None:
     fake = FakeRuntime({"acme__calc-1": Script(diff="diff --git a/x b/x\n+half", files=["x"], truncated=True)})
     sb.run(fake, insts[:1], tmp_path / "out", settings())
