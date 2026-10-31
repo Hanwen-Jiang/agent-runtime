@@ -203,7 +203,7 @@
 ## 9. 还没验证的
 
 - **真的 Cloudflare 桥**：取消经 `POST /v1/exec/cancel` 走桥的通用转发，代码上不用改桥，但没有对真桥跑过（`AR_LIVE_CLOUDFLARE=1`，花钱，要人定）。同一个容器里，桥是不是能在 `/v1/exec` 没结束时处理第二个请求，只有真桥能证明。桥部署的 sandbox-universal 镜像里的 agent 是旧的（换它要 Cloudflare 的令牌），换之前这个后端上被打断的命令报“没能撤销”，命令可能跑到自己超时。
-- **真的 K8s（kind）**：这台机器没有，夜间任务或人工跑。sandbox-agent 的镜像要重新构建才有新接口；旧的 agent 收到取消是 404，只剩断开连接这一条路。
+- **真的 K8s**：kind 这台机器没有，夜间任务或人工跑。线上的 Kata 与 gVisor 在 2026-10-31 跑过取消与撤销（cloud-deploy.md 第 10 节）：直接调 Provider，不经 SandboxBroker 与存档，取消也不经 Temporal 的心跳。旧的 agent 收到取消是 404，报“没能撤销”。
 - **Docker 沙箱（`--sandbox docker`）的取消**：写了 `docker rm -f`，这台机器没有 Docker，没跑过。
 - **真模型上 Reviewer 给的 `highlights` 好不好**：要评测，花钱，这里只测形状。
 - **`repo_edit` 在被打断时**：host 上一次写文件没有取消点，做不到“写到一半”；存档模式的环境里没有检查点，照实说没能撤销。

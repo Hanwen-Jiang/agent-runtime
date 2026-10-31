@@ -561,7 +561,8 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
 - coding-web：`kubectl -n agent-runtime set image deploy/coding-web coding-web=ghcr.io/agentruntime/coding-web:1be5776`；`/root/ar-secrets/coding-web.yaml` 的标签同步改了。刚滚动完时经 Cloudflare 还有 503，几秒后 200。回滚：`kubectl -n agent-runtime rollout undo deploy/coding-web`。
 - Cloudflare 这个回退后端没动：桥部署的 `sandbox-universal:0.1.0` 里的 agent 是旧的，回 404。这个后端上被打断的命令报“没能撤销”（`ExecNotStopped`），命令可能跑到自己超时。换镜像要 Cloudflare 的令牌（`deploy/cloudflare/sandbox-bridge/README.md`）。
 - 核对（不花钱）：各 Pod 的镜像都是新标签、都在跑，新 Pod 最近的日志没有错误（task-service、出网网关、包镜像照旧第一次启动连不上 Temporal、重启一次就好）；`api.cgent.link/healthz` 与 `code.cgent.link` 200；页面的 `app.js`、`i18n.js` 是新版。用新的 task-service 回放线上两条 Session 历史（SWE-bench 冒烟留下的，只有公开数据）通过，改掉活动名的对照失败。经 `api.cgent.link` 给已结束的 Task 发纠偏与修改排队的消息，都是 `failed_precondition` / `task_finished`；不选生效时机 `invalid_argument`；没有令牌 401。
-- **没有验证**：真的 Kata、gVisor 里取消命令与撤销（探测脚本经 `kubectl exec` 跑，被权限规则拦下了，没有跑）；运行中的 Task 真的被纠偏、打断（要真调模型）；coding-web 登录之后的界面（只放行名单里的账号）。
+- 真实沙箱（人批准后在 Worker 的 Pod 里跑探测脚本，租户 `swebench`，不调模型）：Kata 与 gVisor 各建一个环境，建检查点，跑一条会改文件、起子进程的命令，取消。两边都是 agent 确认取消（约 0.03 秒）、命令与子进程都停了、改的文件还原、新建的文件删掉，环境随后删除。脚本直接调 Provider，不经 SandboxBroker 与存档，取消也不经 Temporal 的心跳。
+- **没有验证**：运行中的 Task 真的被纠偏、打断（要真调模型）；Kata 的存档模式下打断之后的存档；coding-web 登录之后的界面（只放行名单里的账号）。
 
 实现中与本计划写法不同的：
 
