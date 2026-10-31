@@ -537,6 +537,7 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
 
 - 只有评测集上的汇总，不含生产数据；Grafana 不开放。服务是 learning 镜像里的静态服务，Chart 的 `evalDashboard.enabled=true`、`evalDashboard.host=evals.cgent.link`。
 - Cloudflare（人做）：加 DNS 记录 `evals`，开代理，指向与 `api` 相同的源站；把 `evals.cgent.link` 加进设为 Full (strict) 的配置规则（否则可能走 Flexible，源站的 80 跳 443 造成重定向循环）。源站证书已含 `*.cgent.link`。
+  2026-10-31 已开放：配置规则的表达式加上 `evals.cgent.link`，再加了开代理的 A 记录（先规则后记录，免得中间走 full）。公网核对：页面 200、带 CSP，`/secret`、`/.git/config` 404，POST 405，http 跳 https。
 - 发布或更新页面（评测报告在跑评测的机器上）：
   `uv run --no-sync python scripts/eval_dashboard.py --public --out index.html`，传到服务器，
   `kubectl -n agent-runtime create configmap ar-agent-runtime-eval-dashboard --from-file=index.html --dry-run=client -o yaml | kubectl apply -f -`。
