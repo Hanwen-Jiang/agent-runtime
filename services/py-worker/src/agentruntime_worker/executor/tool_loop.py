@@ -22,6 +22,7 @@ from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 from agentruntime_worker import names
 from agentruntime_worker.activities.types import ToolLoopStep, ToolLoopStepInput
 from agentruntime_worker.config import WorkerConfig
+from agentruntime_worker.memory import Searcher, node_experiences, searcher
 from agentruntime_worker.context.builder import ContextBuilder, ContextConfig, ContextRequest, tenant_context
 from agentruntime_worker.executor.heartbeat import heartbeating
 from agentruntime_worker.executor.model_gateway import ModelGateway
@@ -52,8 +53,9 @@ def _value(data: Any) -> struct_pb2.Value:
 class ModelToolLoop:
     def __init__(
         self, gateway: ModelGateway, builder: ContextBuilder, *, tier: str = TOOL_LOOP_TIER, tools: ToolCatalog | None = None,
-        transcript: TranscriptSource | None = None, mcp_tools: Callable[[], frozenset[str]] | None = None,
+        transcript: TranscriptSource | None = None, mcp_tools: Callable[[], frozenset[str]] | None = None, memory: Searcher | None = None,
     ) -> None:
+        self.memory = memory
         # 给了 ToolCatalog 时，工具的说明与参数 schema 取自登记，没登记的不给模型（T-10）；没给时只有名字。
         self.tools = tools
         # 现在登记了的 MCP 工具（Worker 启动时才连上 MCP Server，所以是函数）：上下文占比里单独一类。
@@ -80,6 +82,7 @@ class ModelToolLoop:
                 tools=tools,
                 mcp_tools=self.mcp_tools() if self.mcp_tools is not None else frozenset(),
                 conversation=transcript_text(turns, max_chars=CONVERSATION_CHARS),
+                experiences=await node_experiences(self.memory, inp.tenant, inp.task_id, node, iteration=inp.iteration),
             )
         )
         params = mg.GenerateParams(messages=built.messages, tools=tools)
@@ -152,6 +155,6 @@ def dev_tool_loop(config: WorkerConfig) -> ToolLoopActivities:
     return ToolLoopActivities(
         ModelToolLoop(
             gateway, builder, tools=ToolCatalog(dev_tools(config)), transcript=session_transcript(config.relational_dsn, config.data_dir),
-            mcp_tools=lambda: mcp_tool_names(config),
+            mcp_tools=lambda: mcp_tool_names(config), memory=searcher(config),
         )
     )

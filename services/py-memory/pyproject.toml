@@ -5,7 +5,7 @@ description = "Memory Service：多租户记忆的作用域、写入、检索、
 requires-python = ">=3.13"
 dependencies = [
     # postgres、qdrant：业务库与向量库的生产适配器（S-12b）；开发时用 py-core 的 SQLite 与内存实现。
-    "agentruntime-core[postgres,qdrant]",
+    "agentruntime-core[milvus,postgres,qdrant]",
     "agentruntime-proto",
     # 条目正文按租户密钥 AES-256-GCM 加密（附录 I.7）。
     "cryptography>=46",

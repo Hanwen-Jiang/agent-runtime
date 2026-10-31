@@ -123,4 +123,9 @@ def dev_planner(config: WorkerConfig) -> PlannerActivities:
     transcript = session_transcript(config.relational_dsn, config.data_dir)
     if transcript is not None:
         source = TranscriptContextSource(source, transcript)
+    from agentruntime_worker.memory import RetrievalContextSource, searcher
+
+    memory = searcher(config)
+    if memory is not None:
+        source = RetrievalContextSource(source, memory)
     return PlannerActivities(Planner(model_gateway(config)), source, tools=tools)

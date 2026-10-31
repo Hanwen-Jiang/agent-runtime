@@ -4,12 +4,13 @@
 - AR_MEMORY_ADDRESS：监听地址，默认 127.0.0.1:50061。
 - AR_DEV_SIGNING_KEY：开发令牌的签名密钥（与 task-service 同一把），必填。
 - AR_RELATIONAL_DSN：业务库用 Postgres（行级安全）；不设时用 AR_DATA_DIR 下的 SQLite。
-- AR_QDRANT_URL：向量库用 Qdrant；不设时用内存实现（进程退出即丢，只适合本地试用）。
+- AR_MILVUS_URI 或 AR_QDRANT_URL：向量库，只能设一个；都不设时用内存实现（进程退出即丢，只适合本地试用，设了 AR_RELATIONAL_DSN 时拒绝启动）。
+- AR_MODEL_GATEWAY_ADDRESS 与 AR_EMBEDDING_VERSION：经 Model Gateway 嵌入，版本是嵌入模型的 Profile id；都不设时用哈希嵌入（只给开发，设了 AR_RELATIONAL_DSN 时拒绝启动）。
 - AR_DATA_DIR：SQLite 与默认密钥文件的目录，默认 ./.agentruntime/memory。
 - AR_SECRETS_FILE：开发版 SecretStore 的文件，默认 AR_DATA_DIR 下的 secrets.json。
 - AR_SECRETS_SEED_FILE：启动时并进 AR_SECRETS_FILE 的种子文件（集群里是只读挂载的 K8s Secret；docs/plan/cloud-deploy.md D-04）。
 
-嵌入暂用确定的哈希嵌入；Model Gateway 接好后换成 GatewayEmbedder。提交的候选在后台处理。
+提交的候选在后台处理。选向量库与 embedder 的规则见 agentruntime_memory.wiring。
 """
 
 from __future__ import annotations
@@ -22,12 +23,11 @@ from pathlib import Path
 from agentruntime_core.adapters.keyring import RelationalKeyRing
 from agentruntime_core.dev.relational_store import SQLiteRelationalStoreProvider
 from agentruntime_core.dev.secret_store import LocalFileSecretStoreProvider
-from agentruntime_core.dev.vector_store import InMemoryVectorStoreProvider
 
-from agentruntime_memory.embedding import HashingEmbedder
 from agentruntime_memory.identity import DevTokenAuthenticator
 from agentruntime_memory.server import start_server
 from agentruntime_memory.service import MemoryService
+from agentruntime_memory.wiring import embedder, vector_store
 
 log = logging.getLogger("agentruntime_memory")
 
@@ -50,15 +50,8 @@ async def serve() -> None:
     else:
         relational = SQLiteRelationalStoreProvider(data_dir / "db")
     keyring = RelationalKeyRing(relational, secrets)
-    qdrant_url = os.environ.get("AR_QDRANT_URL", "")
-    if qdrant_url:
-        from agentruntime_core.adapters.qdrant import QdrantVectorStoreProvider
-
-        vectors = QdrantVectorStoreProvider(url=qdrant_url, keys=keyring)
-    else:
-        log.warning("没有设置 AR_QDRANT_URL：向量放在内存里，进程退出即丢")
-        vectors = InMemoryVectorStoreProvider()
-    service = MemoryService(relational=relational, vectors=vectors, keyring=keyring, embedder=HashingEmbedder())
+    vectors = vector_store(os.environ, keyring)
+    service = MemoryService(relational=relational, vectors=vectors, keyring=keyring, embedder=embedder(os.environ))
     await service.setup()
     server, port = await start_server(
         service, DevTokenAuthenticator(signing_key.encode()), os.environ.get("AR_MEMORY_ADDRESS", "127.0.0.1:50061"), drain_in_background=True

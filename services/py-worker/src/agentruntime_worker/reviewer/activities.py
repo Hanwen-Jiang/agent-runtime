@@ -18,7 +18,8 @@ from agentruntime_worker.executor.dev import data_root, dev_object_store
 from agentruntime_worker.executor.heartbeat import heartbeating
 from agentruntime_worker.reviewer.reviewer import Reviewer, ReviewRequest
 from agentruntime_worker.reviewer.rules import ReviewCatalog
-from agentruntime_worker.reviewer.wrap_up import RecordingMemoryClient, WrapUp
+from agentruntime_worker.memory import memory_client
+from agentruntime_worker.reviewer.wrap_up import WrapUp
 from agentruntime_worker.telemetry import worker_telemetry
 from agentruntime_worker.workflows import stage_plan as sp
 
@@ -107,9 +108,9 @@ class ReviewerActivities:
 def dev_reviewer(config: WorkerConfig) -> ReviewerActivities:
     """AR_REVIEWER=model 时的开发组装：真正的 Reviewer 加桩模型、空的 Recipe 列表与开发实现的写回。
 
-    Model Gateway 接好之前，桩模型答不出合格的 Progress Check，Reviewer 只按规则判定；Memory Service 接好之前，
+    Model Gateway 接好之前，桩模型答不出合格的 Progress Check，Reviewer 只按规则判定；没设 AR_MEMORY_ADDRESS 时
     经验候选只记在进程内。真模型上的跑分见 py-learning 的评测（S-08、S-10）。
     """
     root = data_root(config)
-    wrap_up = WrapUp(objects=dev_object_store(config, root), memory=RecordingMemoryClient(), telemetry=worker_telemetry())
+    wrap_up = WrapUp(objects=dev_object_store(config, root), memory=memory_client(config), telemetry=worker_telemetry())
     return ReviewerActivities(Reviewer(model_gateway(config)), StaticCatalogSource(ReviewCatalog(effect_ceiling="read")), wrap_up)

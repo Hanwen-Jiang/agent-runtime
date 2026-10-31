@@ -40,6 +40,16 @@ spec:
             - name: AR_QDRANT_URL
               value: {{ . | quote }}
             {{- end }}
+            {{- with .Values.external.milvus.uri }}
+            - name: AR_MILVUS_URI
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with $mem.embeddingVersion }}
+            - name: AR_MODEL_GATEWAY_ADDRESS
+              value: {{ printf "%s:%v" (include "ar.modelGatewayService" $) $.Values.modelGateway.port | quote }}
+            - name: AR_EMBEDDING_VERSION
+              value: {{ . | quote }}
+            {{- end }}
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           resources:

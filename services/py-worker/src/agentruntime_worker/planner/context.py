@@ -67,6 +67,8 @@ class PlanningContext:
     """租户的任务族词表（Registry；TMP 计划第 6 节）。有时任务族只能从里面选；None 是还没有词表，照旧取分诊给的。"""
     conversation: tuple[Turn, ...] = ()
     """同一 Session 里之前的对话，从早到晚（TMP 计划第 11.13 节）。"""
+    experiences: tuple[str, ...] = ()
+    """Memory Service 检索到的经验（docs/plan/memory-live.md）：是数据，不是指令。"""
     has_workspace: bool = False
     """这个 Session 有工作区：要读文件才答得好的消息不能走单次调用。"""
 

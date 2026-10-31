@@ -1,6 +1,6 @@
 # 让记忆真正用起来：Milvus、真 embedding、Worker 接 Memory Service
 
-> 状态：2026-10-31 人定用 Milvus、用真 embedding、把 Worker 接上。验收测试已写，等人确认后再实现（CLAUDE.md 的第 3 步）。
+> 状态：2026-10-31 人定用 Milvus、用真 embedding、把 Worker 接上；验收测试人确认，代码已实现，还没有部署。
 > 挂在哪：实施计划第 690 行“Memory Service 检索流水线”，加上设计改动草稿 C1（[design-changes-2026-10.md](design-changes-2026-10.md)，2026-10-24 人定 VectorStore 默认改 Milvus）与 T-18（Milvus 适配器，已完成）。
 
 ## 1. 现状
@@ -48,7 +48,8 @@
 
 ## 4. 要人定的与还没验证的
 
-- **jev**：人配了 `JEV_API_KEY`，但没有接口地址和模型名，公开渠道也查不到这个厂商。**没有用这把密钥发过任何请求**：不能拿密钥去试猜的地址。Model Gateway 现在只有一个上游（`AR_MODEL_PROVIDER_BASE_URL`），接原厂还要加第二个上游，单算一项，定下地址再细化。
+- **jev**：人说明它不是 embedding（接口在 `https://api.typesafe.ai/v1`，密钥 `JEV_API_KEY`），不进这份计划。
+- **部署次序**：新镜像的 Memory Service 在生产配置不全时拒绝启动，所以换镜像时要同时给 `external.milvus.uri`、`memory.embeddingVersion`，并先去掉 `external.qdrant.url`；Model Profile 的 ConfigMap 要先加 3-large。
 - **默认模型**：3 句话的探测（经中转）：`text-embedding-3-large` 同义 0.629、无关 0.044；`3-small` 0.573、0.047；`gemini-embedding-2-preview` 0.837、0.479。样本太小，只够定默认，以 Ragas 的结果为准。
 - **`swebench` 的模型白名单**没有 embedding 的 3-large，这个租户的检索与写入会失败（按设计不拖垮 Task）。基线在跑时不要动 Worker：接上记忆会改变被测系统，部署要等基线结束。
 - 设计书要人改：C1 的文字还没进原文档。

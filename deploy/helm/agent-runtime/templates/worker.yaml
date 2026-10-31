@@ -57,6 +57,11 @@ spec:
             - name: AR_DATA_DIR
               value: /data
             {{- include "ar.objectStoreEnv" $ | nindent 12 }}
+            {{- if $.Values.worker.memory.enabled }}
+            - name: AR_MEMORY_ADDRESS
+              value: {{ printf "%s-memory:%v" (include "ar.fullname" $) $.Values.memory.port | quote }}
+            {{- include "ar.signingKeyEnv" $ | nindent 12 }}
+            {{- end }}
             - name: AR_TOOL_SHELL_SANDBOX
               value: {{ $shell.mode | quote }}
             {{- if eq $shell.mode "sandbox" }}

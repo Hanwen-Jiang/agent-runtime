@@ -189,7 +189,7 @@ name = "agentruntime-memory"
 version = "0.0.0"
 source = { editable = "services/py-memory" }
 dependencies = [
-    { name = "agentruntime-core", extra = ["postgres", "qdrant"] },
+    { name = "agentruntime-core", extra = ["milvus", "postgres", "qdrant"] },
     { name = "agentruntime-proto" },
     { name = "cryptography" },
     { name = "grpcio" },
@@ -209,7 +209,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "agentruntime-core", extras = ["conformance"], marker = "extra == 'test'", editable = "libs/py-core" },
-    { name = "agentruntime-core", extras = ["postgres", "qdrant"], editable = "libs/py-core" },
+    { name = "agentruntime-core", extras = ["milvus", "postgres", "qdrant"], editable = "libs/py-core" },
     { name = "agentruntime-proto", editable = "proto/gen/python" },
     { name = "cryptography", specifier = ">=46" },
     { name = "grpcio", specifier = ">=1.84.0" },

@@ -35,8 +35,11 @@ external:
     address: temporal-frontend:7233
     namespace: default
   qdrant:
-    # 为空时 Memory Service 的向量放在内存里（只适合开发）。
+    # 为空时 Memory Service 的向量放在内存里（只适合开发）。与 milvus.uri 只能设一个。
     url: ""
+  milvus:
+    # Memory Service 的向量库（docs/plan/memory-live.md）。
+    uri: ""
   redpanda:
     brokers: redpanda:9092
   tempo:
@@ -132,6 +135,8 @@ modelGateway:
 
 memory:
   replicas: 1
+  # 嵌入模型的 Model Profile id；设了才经 Model Gateway 嵌入。
+  embeddingVersion: ""
   port: 50061
   resources:
     requests: {cpu: 250m, memory: 256Mi}
@@ -240,6 +245,9 @@ worker:
         maxImageBytes: 8589934592
         buildTimeoutSeconds: 1800
         idleDays: 14
+  # 接 Memory Service：写入经验、规划与 tool_loop 时检索（docs/plan/memory-live.md）。
+  memory:
+    enabled: false
   # 按任务队列分池（设计书 3.6、附录 K.5），每个池一个 Deployment 与一个 KEDA ScaledObject。
   # 池名就是队列名（agentruntime_worker.names）；task 池按工作流积压扩缩，其余按 activity 积压。
   pools:

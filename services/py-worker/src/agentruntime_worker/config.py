@@ -40,6 +40,8 @@ ENV_CONTEXT_EFFECTIVE_TOKENS = "AR_CONTEXT_EFFECTIVE_TOKENS"
 ENV_MODEL_GATEWAY_ADDRESS = "AR_MODEL_GATEWAY_ADDRESS"
 # Registry 的地址（task-service 的内部端口，T-08）；设了才让 resolve_catalog 与 Planner 的上下文改读 Registry。
 ENV_REGISTRY_ADDRESS = "AR_REGISTRY_ADDRESS"
+ENV_MEMORY_ADDRESS = "AR_MEMORY_ADDRESS"
+ENV_DEV_SIGNING_KEY = "AR_DEV_SIGNING_KEY"
 # 平台内工具的工作区根、web_fetch 的主机名单（逗号分隔）、MCP 登记文件（T-10）；没设的那一类工具不登记。
 ENV_TOOL_WORKSPACE_ROOT = "AR_TOOL_WORKSPACE_ROOT"
 ENV_TOOL_FETCH_HOSTS = "AR_TOOL_FETCH_HOSTS"
@@ -101,6 +103,9 @@ class WorkerConfig:
     model_gateway_address: str = ""
     # Registry 的地址（AR_REGISTRY_ADDRESS，T-08）；空表示 Node Catalog 与 Recipe 仍用桩。
     registry_address: str = ""
+    # Memory Service 的地址（AR_MEMORY_ADDRESS）与签它的令牌用的密钥（AR_DEV_SIGNING_KEY）；地址为空时不接（docs/plan/memory-live.md）。
+    memory_address: str = ""
+    dev_signing_key: str = field(default="", repr=False)
     # 平台内工具的工作区根（AR_TOOL_WORKSPACE_ROOT）、web_fetch 的主机名单（AR_TOOL_FETCH_HOSTS）、MCP 登记文件（AR_MCP_TOOLS_FILE），T-10。
     tool_workspace_root: Path | None = None
     tool_fetch_hosts: tuple[str, ...] = ()
@@ -196,6 +201,8 @@ class WorkerConfig:
             context_effective_tokens=effective,
             model_gateway_address=env.get(ENV_MODEL_GATEWAY_ADDRESS, "").strip(),
             registry_address=env.get(ENV_REGISTRY_ADDRESS, "").strip(),
+            memory_address=env.get(ENV_MEMORY_ADDRESS, "").strip(),
+            dev_signing_key=env.get(ENV_DEV_SIGNING_KEY, ""),
             tool_workspace_root=Path(workspace_root) if workspace_root else None,
             tool_fetch_hosts=fetch_hosts,
             mcp_tools_file=Path(mcp_tools) if mcp_tools else None,

@@ -99,6 +99,17 @@
       "freshness": {"price_at": "2026-10-21"}
     },
     {
+      "id": "a6api/text-embedding-3-large@2026-10",
+      "vendor": "openai",
+      "model": "text-embedding-3-large",
+      "class": "embed",
+      "tiers": [{"name": "default"}],
+      "capabilities": ["embed"],
+      "cost": {"in_per_m": 0.13, "out_per_m": 0, "cache_read_per_m": 0},
+      "constraints": {"context_window": 8191, "max_output": 0},
+      "freshness": {"price_at": "2026-10-31"}
+    },
+    {
       "id": "a6api/text-embedding-3-small@2026-10",
       "vendor": "openai",
       "model": "text-embedding-3-small",
