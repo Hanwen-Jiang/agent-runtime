@@ -604,7 +604,17 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
   - 中转报 `system_cpu_overloaded`（`models_exhausted`）的调用也让步骤失败。
 - 中转核实（约 0.02 美元，短请求直连）：结构化输出都是合法 JSON，`output` 工具没有复现，所以还不能说它是我们的 `response_format` 被转成了工具调用。同样的请求有时输入算 4400 多 token、有时 130，说明背后有两种通路，一种带隐藏提示。
 
-**50 题基线（进行中）**：`/opt/swebench/runs/gpt55-base50`，种子 0，按仓库与难度分层，不含 psf/requests，并发 2，单题 3 美元，这一轮上限 145 美元。按人的要求先测基线：上面这些问题这次不修，修复在基线之后。
+**50 题基线（2026-10-31）**：`/opt/swebench/runs/gpt55-base50`，种子 0，按仓库与难度分层，不含 psf/requests，单题 3 美元。按人的要求先测基线：上面这些问题这次没修。
+
+- 结果：**解决 32 / 50（64.0%，95% 区间 50%～76%）**，27.11 美元，每题 0.54 美元，每解决一题 0.85 美元，Round 中位数 4。官方工具判分，判分完整。
+- 按难度：不到 15 分钟 17/18，15 分钟到 1 小时 15/29，1 到 4 小时 0/3。按仓库：django 17/23、sympy 5/8、sphinx 2/4、matplotlib 2/3、scikit-learn 2/3、astropy 1/2、pytest 2/2、flask 1/1、xarray 0/2、seaborn 0/1、pylint 0/1。
+- 没解决的 18 题：目标测试仍失败 10，目标测试过了但弄坏别的测试 3（django-11490、11885、15503），修对一部分 2，没有补丁 3（都是 aborted）。判 done 的 46 题里 15 题没解决：Reviewer 判 done 的准确率 67%。
+- 花费按 role：act 16.66、plan 6.86、judge 3.56 美元。调用 1612 次，`bad_structured_output` 21 次，`unexpected_tool_call` 0 次，`system_cpu_overloaded` 0 次。
+- **不是榜单成绩**：500 题里抽 50 题，不含 psf/requests，模型经中转，只跑了一次。
+
+**同样 5 题再跑一次（检查稳定性，2.65 美元）**：配置不变，隔几小时，**解决 2 / 5**，失败调用 1 次；下午那次 0 / 5，失败调用 74 次。最可能是中转的状态变了（`unexpected_tool_call` 从 35 次到 0 次），没有证实。同一题两次结果也不同（django-16877、sympy-18698 这次解决了）。**以后比较优化前后要在同一时段跑，并且多跑几次**；0 / 5 不能当基线的“修复前”。
+
+累计花费约 42 美元（人定的上限 170 美元）。镜像与 `sandbox_images` 里 `swebench` 的 ready 行都还留着，优化之后还要用。
 
 - **中途换过并发**（人定）：20:14 MSK，完成 4 题之后从 2 改到 6，部署第 13 版（gVisor 的 `max_envs_per_scope` 从 4 到 8，重启 Worker），同一个输出目录续跑，已提交的 Task 接着跟。`sandboxes` 的 `requests.cpu` 是 16、每个沙箱 2 核，最多 8 个 Pod，并发再往上要先调配额。Worker 重启时在跑的 Task 可能有个别调用重试。比较时注明这一点。
 

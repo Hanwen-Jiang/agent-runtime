@@ -269,3 +269,73 @@ def test_the_internal_page_has_none_of_the_public_explanations(dashboard: Module
     assert dashboard.main(["--reports", str(reports), "--out", str(out)]) == 0
     page = out.read_text("utf-8")
     assert 'id="glossary"' not in page and 'data-set-lang' not in page
+
+
+def bench_report(run_id: str = "gpt55-base50", selected: int = 50, resolved: int = 32) -> dict[str, Any]:
+    return {
+        "benchmark": "swe-bench", "run_id": run_id, "model_name": "agent-runtime-gpt-5.5", "selected": selected, "ran": selected, "resolved": resolved,
+        "resolve_rate": resolved / selected, "graded": True, "graded_complete": True, "cost_usd": 27.11, "cost_per_instance_usd": 0.54, "cost_per_resolved_usd": 0.85,
+        "rounds": {"median": 4.0, "mean": 4.5, "max": 10}, "settings": {"environment": "official"},
+        "selection": {"instances_file": "/opt/swebench/data/verified.jsonl", "seed": 0},
+        "by_repo": {"django/django": {"selected": 23, "ran": 23, "resolved": 17}, "pydata/xarray": {"selected": 2, "ran": 2, "resolved": 0}},
+        "by_difficulty": {"<15 min fix": {"selected": 18, "ran": 18, "resolved": 17}, "1-4 hours": {"selected": 3, "ran": 3, "resolved": 0}},
+        "instances": [{"instance_id": "django__django-1", "grading": "resolved", "status": "done"}, {"instance_id": "django__django-2", "grading": "unresolved", "status": "done"}],
+    }
+
+
+@pytest.fixture
+def with_benchmark(reports: Path) -> Path:
+    folder = reports / "benchmarks"
+    folder.mkdir()
+    (folder / "gpt55-base50.json").write_text(json.dumps(bench_report()), "utf-8")
+    (folder / "gpt55-smoke5.json").write_text(json.dumps(bench_report("gpt55-smoke5", 5, 0)), "utf-8")
+    return reports
+
+
+def test_the_benchmark_section_comes_from_the_report(dashboard: ModuleType, with_benchmark: Path, tmp_path: Path) -> None:
+    body = section(public_page(dashboard, with_benchmark, tmp_path), "sec-swebench")
+    assert "32/50" in body and "64.0%" in body and "$0.54" in body
+    assert "django/django" in body and "17/23" in body and "0/3" in body, "按仓库与按难度"
+    assert has_both_languages(body)
+    how = re.findall(r'<p class="how[^"]*"[^>]*>(.*?)</p>', body, re.S)
+    assert how and has_both_languages(" ".join(how))
+
+
+def test_the_benchmark_says_how_far_to_trust_it(dashboard: ModuleType, with_benchmark: Path, tmp_path: Path) -> None:
+    """50 题的抽样误差不小；这不是全部题目、不是榜单成绩，经过了中转。"""
+    body = section(public_page(dashboard, with_benchmark, tmp_path), "sec-swebench")
+    assert "50%" in body and "76%" in body, "95% 区间（Wilson）"
+    assert "榜单" in body and "leaderboard" in body and "中转" in body and "relay" in body
+
+
+def test_earlier_small_runs_are_listed_but_do_not_set_the_headline(dashboard: ModuleType, with_benchmark: Path, tmp_path: Path) -> None:
+    page = public_page(dashboard, with_benchmark, tmp_path)
+    body = section(page, "sec-swebench")
+    assert "0/5" in body, "小规模的试跑也列出来"
+    assert "32/50" in section(page, "summary"), "开头的结论用规模最大的那次"
+
+
+def test_the_public_page_does_not_carry_server_paths(dashboard: ModuleType, with_benchmark: Path, tmp_path: Path) -> None:
+    page = public_page(dashboard, with_benchmark, tmp_path)
+    assert "/opt/swebench" not in page and "instances_file" not in page
+    data = embedded_data(page)["reports"]["benchmarks"]
+    assert {b["run_id"] for b in data} == {"gpt55-base50", "gpt55-smoke5"}
+
+
+def test_without_a_benchmark_there_is_no_section(dashboard: ModuleType, reports: Path, tmp_path: Path) -> None:
+    page = public_page(dashboard, reports, tmp_path)
+    assert 'id="sec-swebench"' not in page
+
+
+def test_an_ungraded_run_shows_no_score(dashboard: ModuleType, reports: Path, tmp_path: Path) -> None:
+    folder = reports / "benchmarks"
+    folder.mkdir()
+    (folder / "x.json").write_text(json.dumps({**bench_report(), "graded": False, "resolved": None, "resolve_rate": None}), "utf-8")
+    page = public_page(dashboard, reports, tmp_path)
+    assert 'id="sec-swebench"' not in page, "还没判分的不算成绩"
+
+
+def test_wilson_interval(dashboard: ModuleType) -> None:
+    low, high = dashboard.wilson(32, 50)
+    assert round(low, 2) == 0.50 and round(high, 2) == 0.76
+    assert dashboard.wilson(0, 5)[0] == 0

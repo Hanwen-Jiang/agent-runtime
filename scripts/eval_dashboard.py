@@ -109,7 +109,27 @@ def collect_reports(root: Path) -> dict[str, Any]:
             "full_retention": _num(full.get("retention_rate")), "repeat_rate": _num(full.get("repeat_rate")),
         })
     runs.sort(key=lambda r: str(r["created_at"] or ""))
-    return {"runs": runs, "contexts": contexts, "failures": {g: c.most_common(10) for g, c in sorted(failures.items())}}
+    return {"runs": runs, "contexts": contexts, "failures": {g: c.most_common(10) for g, c in sorted(failures.items())}, "benchmarks": collect_benchmarks(root / "benchmarks")}
+
+
+def collect_benchmarks(root: Path) -> list[dict[str, Any]]:
+    """公开题库的运行报告（<目录>/*.json，benchmarks swebench report 写的 report.json）：只留汇总，不带路径与补丁。没判分的不算。"""
+    out = []
+    for path in sorted(root.glob("*.json")) if root.is_dir() else []:
+        try:
+            d = json.loads(path.read_text("utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not d.get("graded") or d.get("resolved") is None or not d.get("selected"):
+            continue
+        out.append({
+            "run_id": d.get("run_id"), "model": d.get("model_name"), "selected": d["selected"], "resolved": d["resolved"], "rate": _num(d.get("resolve_rate")),
+            "cost_usd": _num(d.get("cost_usd")), "per_problem_usd": _num(d.get("cost_per_instance_usd")), "complete": bool(d.get("graded_complete")),
+            "rounds_median": (d.get("rounds") or {}).get("median"), "environment": (d.get("settings") or {}).get("environment"),
+            "by_repo": d.get("by_repo") or {}, "by_difficulty": d.get("by_difficulty") or {},
+            "gradings": dict(Counter(str(i.get("grading")) for i in d.get("instances") or [])),
+        })
+    return out
 
 
 def collect_metering(sources: list[tuple[str, Path]]) -> list[dict[str, Any]]:
@@ -352,6 +372,20 @@ FAILURE_TEXT = {
     "shape/forbidden_roles": ("这一轮安排了不该有的步骤", "Planned a step that does not belong in this round"),
     "shape/human": ("该不该问人判断错了", "Misjudged whether to ask a person"),
 }
+# 题库题目自带的难度（预估修复时间）。
+DIFFICULTY_TEXT = {
+    "<15 min fix": ("不到 15 分钟", "Under 15 minutes"),
+    "15 min - 1 hour": ("15 分钟到 1 小时", "15 minutes to 1 hour"),
+    "1-4 hours": ("1 到 4 小时", "1 to 4 hours"),
+    ">4 hours": ("超过 4 小时", "Over 4 hours"),
+}
+# 公开题库的各次运行，按时间排：（中文，英文）。
+BENCHMARK_LABELS = {
+    "gpt55-smoke5": ("5 题试跑：项目环境没建成", "5-problem trial: project environment not built"),
+    "gpt55-smoke5-official": ("同样 5 题：用上官方环境", "Same 5 problems: official environment"),
+    "gpt55-base50": ("50 题基线", "50-problem baseline"),
+    "gpt55-smoke5-again": ("同样 5 题再跑一次（检查稳定性）", "Same 5 problems again (stability check)"),
+}
 FINDINGS = (
     ("10-22", "分数会抖，考一次不算数", "Scores jump around, so one exam proves nothing",
      "第一次用真模型考，验收判断的分数在 37.5% 到 75% 之间跳。于是改成同一张卷考多次、看中位数，差一两题不下结论。",
@@ -368,6 +402,15 @@ FINDINGS = (
     ("10-30", "第一次跑公开题库，先查出了别的问题", "The first run on a public benchmark uncovered other problems first",
      "SWE-bench 的 5 题试跑超了预算（12.16 美元对 10 美元），没有得到分数，我们中途停了。查下来有两个原因：系统的花费统计没有接通（已修好）；第三方中转的 Claude 通道会塞进我们没给的工具，这样测的就不是我们的系统了。所以接下来换一个不受影响的模型重跑。",
      "A 5-problem trial of SWE-bench went over budget (12.16 USD against 10 USD) and produced no score, so we stopped it. There were two causes: the system's cost tracking was not connected (now fixed), and the Claude channel of the third-party relay added tools we had not offered, which meant the test was no longer measuring our system. We will rerun it on a model that is not affected."),
+    ("10-31", "题目的运行环境一直没建起来", "The problems' environments were never being built",
+     "下载镜像的地址没放行；Task 不等构建，构建要 25 分钟，一题 15 分钟就做完了；构建在最后一步失败，而且失败会被永远记住。所以 Agent 一直没在题目自己的环境里工作。现在先在服务器上把镜像建好，每题约 3 分钟。这些产品问题已记录，还没有修。",
+     "A download host was blocked. Tasks did not wait for builds, which took 25 minutes while a problem took 15. Builds failed at the last step, and a failure was remembered forever. So the Agent never worked in the problem's own environment. Images are now built on the server first, in about 3 minutes each. The product problems are recorded but not yet fixed."),
+    ("10-31", "第一次拿到公开题库的基线：50 题解决 32 题", "First public benchmark baseline: 32 of 50 solved",
+     "题目越难差距越明显：预估 15 分钟内的 18 题解决 17 题，15 分钟到 1 小时的 29 题解决 15 题，1 到 4 小时的 3 题一题没解决。判定“做完了”的 46 题里有 15 题其实没解决，说明验收偏松，这和自己考卷上验收判断不及格的结果一致。这是下一步优化的重点。",
+     "The gap widens with difficulty: 17 of 18 problems estimated under 15 minutes were solved, 15 of 29 between 15 minutes and an hour, and none of 3 between one and four hours. Of the 46 problems the system declared done, 15 were not actually solved. Review is too lenient, which matches its failing score on our own papers. This is the next thing to improve."),
+    ("10-31", "配置没变，成绩也会变", "Results move even when nothing in the system changes",
+     "同样的 5 题、同样的配置，隔几小时重跑，从解决 0 题变成解决 2 题，失败的模型调用从 74 次降到 1 次。最可能的原因是第三方中转的状态变了，目前还不能完全证实。所以以后比较优化前后，要在同一时段跑，并且多跑几次。",
+     "The same 5 problems with the same setup, rerun a few hours later, went from 0 solved to 2, and failed model calls fell from 74 to 1. The most likely cause is a change in the state of the third-party relay, though that is not proven. From now on, before-and-after comparisons will run in the same period and more than once."),
 )
 GLOSSARY = (
     ("Agent（智能体）", "Agent", "能自己决定下一步、动手使用工具的 AI 程序，不只是回答问题。", "An AI program that decides its next step and uses tools, rather than only answering questions."),
@@ -392,7 +435,7 @@ GLOSSARY = (
 ROADMAP = (
     ("验收判断过线", "Getting review past the pass line", "让验收判断在正式卷上达到及格线。", "Bring the review score up to the pass line on the holdout set.", "还没过线，是现在最大的短板。", "Not passed yet. This is the biggest gap today."),
     ("SWE-bench Verified", "SWE-bench Verified", "500 道来自真实开源项目的修 bug 题，业内常用来衡量写代码的能力。", "500 bug-fixing problems from real open-source projects, widely used to measure coding ability.",
-     "判分工具已验证。第一次试跑中途停止，没有成绩。基线正在准备。", "The grading tool has been checked. The first trial was stopped and produced no score. The baseline is being prepared."),
+     "基线已测：50 题解决 32 题。接下来修问题，再用同样的题和没用过的题各测一次。", "Baseline measured: 32 of 50 solved. Next: fix problems, then measure on the same problems and on unseen ones."),
     ("Terminal-Bench", "Terminal-Bench", "在命令行里完成多步骤的任务。", "Multi-step tasks carried out on the command line.", "还没开始。", "Not started."),
     ("DeepEval", "DeepEval", "开源评测工具，衡量任务是否完成、工具用得对不对等。", "An open-source evaluation tool that measures things like task completion and correct tool use.", "还没开始。", "Not started."),
     ("Ragas", "Ragas", "开源评测工具，专门衡量“先查资料再回答”（RAG）的质量。", "An open-source evaluation tool for the quality of answering from retrieved documents (RAG).",
@@ -454,7 +497,22 @@ def _gate_tile(label_zh: str, label_en: str, score: float | None, gate: float) -
     return _tile(label_zh, label_en, _percent(score), f"及格线 {gate * 100:.0f}% · {state[0]}", f"Pass line {gate * 100:.0f}% · {state[1]}", "ok" if passed else "bad")
 
 
-def _summary_section(summary: dict[str, Any]) -> str:
+def wilson(hits: int, total: int, z: float = 1.96) -> tuple[float, float]:
+    """比例的 95% 区间（Wilson）：题少时误差很大，要写出来。"""
+    if not total:
+        return 0.0, 1.0
+    share = hits / total
+    centre = (share + z * z / (2 * total)) / (1 + z * z / total)
+    spread = z * math.sqrt(share * (1 - share) / total + z * z / (4 * total * total)) / (1 + z * z / total)
+    return max(0.0, centre - spread), min(1.0, centre + spread)
+
+
+def _main_benchmark(benchmarks: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """开头的结论用规模最大的那次运行。"""
+    return max(benchmarks, key=lambda b: b["selected"], default=None)
+
+
+def _summary_section(summary: dict[str, Any], benchmarks: list[dict[str, Any]]) -> str:
     latest, best = summary["latest"], summary["best"]
     triage, reviewer = (latest["triage"], latest["reviewer"]) if latest else (None, None)
     tiles = "".join((
@@ -462,6 +520,7 @@ def _summary_section(summary: dict[str, Any]) -> str:
         _gate_tile("规划判断（Triage）最新成绩", "Planning (Triage), latest", triage, TRIAGE_GATE),
         _gate_tile("验收判断（Reviewer）最新成绩", "Review (Reviewer), latest", reviewer, REVIEWER_GATE),
         _tile("累计花费", "Total spend", f"${summary['total_usd']:.2f}", "按模型标价估算", "Estimated at list prices"),
+        *([_tile("公开题库 SWE-bench", "Public benchmark SWE-bench", f"{main['resolved']}/{main['selected']}", f"解决率 {_percent(main['rate'])}，见下面的说明", f"{_percent(main['rate'])} solved, see the notes below")] if (main := _main_benchmark(benchmarks)) else []),
     ))
     zh, en = [], []
     if latest:
@@ -551,6 +610,52 @@ def _about_section() -> str:
     )
 
 
+def _bars(rows: list[tuple[str, str, int, int]]) -> str:
+    out = []
+    for zh, en, hit, total in rows:
+        width = hit / total * 100 if total else 0
+        out.append(f'<div class="bar"><span>{_both(zh, en)}</span><span class="track"><i style="width:{width:.1f}%"></i></span><span class="note">{hit}/{total}</span></div>')
+    return "".join(out)
+
+
+def _benchmark_section(benchmarks: list[dict[str, Any]]) -> str:
+    main = _main_benchmark(benchmarks)
+    if main is None:
+        return ""
+    low, high = wilson(main["resolved"], main["selected"])
+    order = {name: n for n, name in enumerate(DIFFICULTY_TEXT)}
+    difficulty = sorted(main["by_difficulty"].items(), key=lambda kv: order.get(kv[0], len(order)))
+    repos = sorted(main["by_repo"].items(), key=lambda kv: (-kv[1]["selected"], kv[0]))
+    tiles = "".join((
+        _tile("解决了多少题", "Problems solved", f"{main['resolved']}/{main['selected']}", f"解决率 {_percent(main['rate'])}", f"{_percent(main['rate'])} solved"),
+        _tile("这个分数的误差", "Margin of error", f"{low * 100:.0f}%–{high * 100:.0f}%", "95% 区间：只有 50 题，误差不小" if main["selected"] == 50 else "95% 区间", "95% interval: few problems, wide margin"),
+        _tile("平均每题花费", "Average cost per problem", f"${main['per_problem_usd']:.2f}" if main["per_problem_usd"] is not None else "—", f"这次共 ${main['cost_usd']:.2f}" if main["cost_usd"] is not None else "", f"${main['cost_usd']:.2f} in total" if main["cost_usd"] is not None else ""),
+    ))
+    table = "".join(
+        f"<tr><td>{_both(*BENCHMARK_LABELS.get(b['run_id'], (b['run_id'], b['run_id'])))}</td><td>{b['resolved']}/{b['selected']}</td><td>{'$' + format(b['cost_usd'], '.2f') if b['cost_usd'] is not None else '—'}</td></tr>"
+        for b in sorted(benchmarks, key=lambda b: list(BENCHMARK_LABELS).index(b["run_id"]) if b["run_id"] in BENCHMARK_LABELS else len(BENCHMARK_LABELS))
+    )
+    head = f'<tr class="head"><th>{_both("哪一次", "Run")}</th><th>{_both("解决", "Solved")}</th><th>{_both("花费", "Cost")}</th></tr>'
+    body = (
+        f'<div class="tiles">{tiles}</div>'
+        f'<div class="card"><b>{_both("按难度（题目自带的预估修复时间）", "By difficulty (the estimated fix time that comes with each problem)")}</b>'
+        + _bars([(DIFFICULTY_TEXT.get(name, (name, name))[0], DIFFICULTY_TEXT.get(name, (name, name))[1], e["resolved"], e["selected"]) for name, e in difficulty])
+        + f'</div><div class="card" style="margin-top:12px"><b>{_both("按开源项目", "By open-source project")}</b>'
+        + _bars([(repo, repo, e["resolved"], e["selected"]) for repo, e in repos])
+        + f'</div><div class="card scroll" style="margin-top:12px"><b>{_both("每一次运行", "Every run")}</b><table class="plain">{head}{table}</table></div>'
+        + _para(
+            "这个分数能说明什么：判分用的是 SWE-bench 官方工具，Agent 事先看不到判分用的测试。不能说明什么：这不是榜单成绩，不能和榜单直接比。题库一共 500 题，这里只抽了 50 题，也没有选判分要连外网、结果不稳定的 psf/requests；模型调用经第三方中转，它的状态会影响结果；这一轮中途把并发从 2 提到了 6。",
+            "What this score shows: it was graded by the official SWE-bench tool, and the Agent cannot see the grading tests in advance. What it does not show: this is not a leaderboard result and cannot be compared directly with one. The benchmark has 500 problems and this is a sample of 50, leaving out psf/requests because its grading needs the internet and is unreliable. Model calls went through a third-party relay whose state affects results, and concurrency was raised from 2 to 6 during this run.",
+        )
+    )
+    return _chart_section(
+        "swebench", "公开题库：SWE-bench", "Public benchmark: SWE-bench",
+        "前面的考卷是我们自己写的。SWE-bench 是业内公开的题库：题目都是真实开源项目里的 bug，Agent 要自己读代码、改代码，再由官方工具跑项目的测试判断修好了没有。全部测试都通过才算解决，修对一部分不算。",
+        "The papers above are our own. SWE-bench is a public benchmark: every problem is a real bug from an open-source project. The Agent has to read and change the code itself, then the official tool runs the project's tests to decide whether it is fixed. A problem only counts as solved if all the tests pass.",
+        body,
+    )
+
+
 def _chart_section(section_id: str, zh: str, en: str, how_zh: str, how_en: str, body: str) -> str:
     return f'<section id="sec-{section_id}">{_heading(zh, en)}<p class="how zh">{how_zh}</p><p class="how en">{how_en}</p>{body}</section>'
 
@@ -590,13 +695,14 @@ def render_public(data: dict[str, Any], title: str, summary: dict[str, Any], cou
     ))
     payload = json.dumps(data, ensure_ascii=False, default=str).replace("</", "<\\/")
     failure_text = json.dumps(FAILURE_TEXT, ensure_ascii=False).replace("</", "<\\/")
+    benchmarks = data["reports"].get("benchmarks") or []
     body = "".join((
         _para(
             "Agent Runtime 是我们正在开发的平台：把一件复杂的工作交给它，它让 AI 自己拆解步骤、动手去做、检查结果，不对就返工，直到做完。AI 每次的表现都不一样，不能凭感觉说好不好，所以我们给它出题考试。这个页面公开每一次考试的成绩，也写明还没考过的地方。",
             "Agent Runtime is a platform we are building. You hand it a complex piece of work, and it lets AI break the work into steps, carry them out, check the result and redo what is wrong until the work is finished. AI behaves differently every time, so we do not judge it by feel: we give it exams. This page shows the result of every exam, including what it has not passed yet.",
             "lead",
         ),
-        _summary_section(summary), _what_section(), _how_section(counts, summary), _findings_section(), charts, _next_section(), _glossary_section(), _about_section(),
+        _summary_section(summary, benchmarks), _what_section(), _how_section(counts, summary), _findings_section(), charts, _benchmark_section(benchmarks), _next_section(), _glossary_section(), _about_section(),
     ))
     page = PUBLIC_PAGE
     for key, value in (("__TITLE__", title), ("__BODY__", body), ("__GENERATED__", str(data["generated_at"])), ("__FAILURE_TEXT__", failure_text), ("__DATA__", payload)):
@@ -628,7 +734,8 @@ table.plain th,table.plain td{text-align:left;white-space:normal;vertical-align:
 .bar{display:grid;grid-template-columns:minmax(0,230px) minmax(120px,1fr) minmax(0,150px);gap:12px;align-items:center;padding:6px 0;font-size:14px;line-height:1.4}.bar .note{color:var(--muted);text-align:right}
 .track{position:relative;height:16px;background:var(--soft);border-radius:3px}.track i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--c1)}.track u{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--bad)}
 .bars2 .bar{grid-template-columns:minmax(0,1fr) minmax(90px,30%) 40px}
-@media (max-width:640px){h1{padding-right:0}.lang{float:none;margin-bottom:12px}.bar,.bars2 .bar{grid-template-columns:1fr auto}.bar .track{grid-column:1/-1;grid-row:2}.timeline li{grid-template-columns:1fr;gap:0}}
+#sec-swebench .bar{grid-template-columns:minmax(0,230px) minmax(120px,1fr) 50px}
+@media (max-width:640px){h1{padding-right:0}.lang{float:none;margin-bottom:12px}.bar,.bars2 .bar,#sec-swebench .bar{grid-template-columns:1fr auto}.bar .track{grid-column:1/-1;grid-row:2}.timeline li{grid-template-columns:1fr;gap:0}}
 svg text{fill:var(--fg);font-size:12px}svg .axis{stroke:var(--line)}svg .thr{stroke:var(--bad);stroke-dasharray:5 4}footer{margin-top:40px;font-size:13px;color:var(--muted)}
 </style></head><body><main>
 <div class="lang"><button type="button" data-set-lang="zh">中文</button><button type="button" data-set-lang="en">English</button></div>
@@ -691,7 +798,10 @@ def public_data(reports: dict[str, Any], generated_at: str) -> dict[str, Any]:
 
     return {
         "generated_at": generated_at,
-        "reports": {"runs": [labelled(r) for r in without_file(reports["runs"])], "contexts": without_file(reports["contexts"]), "failures": reports["failures"]},
+        "reports": {
+            "runs": [labelled(r) for r in without_file(reports["runs"])], "contexts": without_file(reports["contexts"]), "failures": reports["failures"],
+            "benchmarks": reports.get("benchmarks") or [],
+        },
     }
 
 
@@ -714,7 +824,7 @@ def main(argv: list[str] | None = None) -> int:
             parser.error(f"--metering 要写成 名字=文件：{item}")
         metering.append((name, Path(path)))
     generated_at = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
-    reports = collect_reports(args.reports) if args.reports.is_dir() else {"runs": [], "contexts": [], "failures": {}}
+    reports = collect_reports(args.reports) if args.reports.is_dir() else {"runs": [], "contexts": [], "failures": {}, "benchmarks": []}
     out = args.out or (args.reports / "dashboard.html")
     if args.public:
         public = public_data(reports, generated_at)
