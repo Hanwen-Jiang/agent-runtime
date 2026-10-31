@@ -233,8 +233,8 @@ worker:
         runtimeClass: kata
         agentImage: ""
         buildkitImage: moby/buildkit:v0.25.1
-      # 构建能经出网网关访问的主机（拉基础镜像、装系统包）。
-      buildHosts: [registry-1.docker.io, auth.docker.io, production.cloudflare.docker.com, ghcr.io, pkg-containers.githubusercontent.com, deb.debian.org, security.debian.org]
+      # 构建能经出网网关访问的主机（拉基础镜像、装系统包）。Docker Hub 的镜像层从两家 CDN 下载，按镜像而定。
+      buildHosts: [registry-1.docker.io, auth.docker.io, production.cloudflare.docker.com, production.cloudfront.docker.com, ghcr.io, pkg-containers.githubusercontent.com, deb.debian.org, security.debian.org]
       limits:
         maxImages: 5
         maxImageBytes: 8589934592
