@@ -576,6 +576,14 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
   用量为 0 的调用记异常。细化与实现见 11.11。
 - SWE-bench 要换成官方 API 或原样转发的中转再跑；换之前不再跑。
 
+**gpt-5.5 的 5 题冒烟（2026-10-31，人定用 gpt-5.5 经中转，单题 3 美元、总预算 170 美元）**
+
+- 准备：线上第 11 版（`a63e92b` 的 Chart，镜像仍是 52174d9）。Model Gateway 读 `agent-runtime-model-allowlist`，`swebench` 只能用不是 Claude 的模型，于是 strong 档是 gpt-5.5；route、deliver 走最便宜的 gemini-3.5-flash-lite。Reviewer 的 `avoid_vendor` 因此避不开（`avoid_vendor_unmet`）。租户策略 v2：单题 3 美元。选题：`--stratify --exclude-repo psf/requests --seed 0`。另有独立的看守脚本盯网关计量，出现 Claude 或花费超限就停。
+- 结果：**解决 0 / 5**，花费 4.73 美元，每题 0.95 美元。适配器与网关的花费对得上（第 11.11 节的修复生效）。每次调用的输入约 8 千 token，上次经 Claude 通道是 11 万～24 万。结局 aborted 4、done 1；Verdict：replan 11、continue 9、escalate 6、abort 4、repair 2、done 1。补丁都打得上，FAIL_TO_PASS 通过 0/1、6/9、2/4、0/2，sympy 那题没有补丁；PASS_TO_PASS 没有变坏。
+- **官方环境一次也没建成**：Docker Hub 把镜像层重定向到 `production.cloudfront.docker.com`，Chart 只放行了 `production.cloudflare.docker.com`，4 次构建都被出网网关拒绝（`host_not_granted`），Task 退回 universal。所以这次的 0 / 5 不代表有项目环境时的水平。修复在 `e90bf98`（Chart），还没部署。
+- 中转的 GPT 通道也不完全干净：不带工具的 explore 节点上，模型调用了没给的 `open_page`、`output`，网关拒绝（`unexpected_tool_call`，25 次，白花 0.18 美元）。这些节点是 Planner 排的不带工具的 Atomic Node，第 11.11 节之前说的规划问题还在。另有 `bad_structured_output` 12 次，0.17 美元。
+- 一题克隆时出网网关连不上 github.com（`connect_failed`，502），没花钱，续跑时重试成功。基线跑完要检查有没有这种题，再续跑一次。
+
 
 ### 11.11 冒烟查出的 Runtime 问题：用量、预算与网关的防线（2026-10-30 人确认，已实现）
 
