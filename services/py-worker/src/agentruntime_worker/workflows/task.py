@@ -97,6 +97,8 @@ with workflow.unsafe.imports_passed_through():
 MAX_ROUNDS = 20
 # 整个 Task 记下的工具调用最多这么多条（docs/plan/feedback-2026-11-01.md N-03、N-05）。
 TASK_TOOL_LOG_LIMIT = 200
+# 收尾时记进 Session 记录的工具调用条数（N-03）。
+SESSION_ACTIONS = 40
 # T-09：before_finish 最多驳回这么多次；再驳回就问人（附录 F.2：会驳回的 Hook 都有次数上限）。
 MAX_FINISH_REJECTIONS = 2
 # T-09 第一期只认 allow 与 deny 的挂载点（modify、inject 按 deny）；before_compact 还没接，声明了就拒绝。
@@ -1281,6 +1283,7 @@ class TaskWorkflow:
                     stages=list(self._stages),
                     # 服务端定的任务族优先（TMP 计划第 6 节），没有时用 Task Plan 里的。
                     task_family=self._task_family or str(((self._task_plan or {}).get("triage") or {}).get("task_family") or ""),
+                    actions=self._tool_log[-SESSION_ACTIONS:],
                 ),
                 task_queue=names.DECISION_QUEUE,
                 start_to_close_timeout=timeouts.FINALIZE_START_TO_CLOSE,

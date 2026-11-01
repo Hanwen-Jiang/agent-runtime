@@ -343,3 +343,6 @@ class FinalizeTaskInput:
     stages: list[dict[str, Any]] = field(default_factory=list)
     # 任务族（Task Plan 的 triage.task_family；没有时为空），记进 invoke_workflow span（T-15）。
     task_family: str = ""
+    # 这个 Task 实际调过的工具（Stage Runner 的记录，带 Round 序号；作用对象已去凭据），最近 SESSION_ACTIONS 条。
+    # 收尾时记进这一轮的 Session 记录，之后的追问据此知道之前做过什么（docs/plan/feedback-2026-11-01.md N-03）。之前的运行没有。
+    actions: list[dict[str, Any]] = field(default_factory=list)

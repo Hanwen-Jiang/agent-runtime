@@ -31,6 +31,9 @@ from agentruntime_worker.activities.types import FinalizeTaskInput
 
 MEMORY_ITEM_SCHEMA_ID = "https://agentruntime.example/schemas/memory_item.schema.json"
 ARCHIVE_KEY = "tasks/{task_id}/task_state.json"
+# 这一轮对话做过的事（docs/plan/feedback-2026-11-01.md N-03）：之后同一 Session 的追问读它（session/transcript.py）。
+SESSION_RECORD_KEY = "tasks/{task_id}/session_record.json"
+SESSION_RECORD_FACTS = 10
 PROGRESS_VERDICTS = ("continue", "done")
 _CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 _ID_PATTERNS = {
@@ -194,6 +197,19 @@ def memory_candidates(inp: FinalizeTaskInput, *, today: str) -> list[dict[str, A
     ]
 
 
+def session_record(inp: FinalizeTaskInput) -> dict[str, Any]:
+    """这一轮对话做过的事：各 Round 的目标与 Verdict、Reviewer 记下的事实、产物、实际调过的工具（作用对象已去凭据）。
+    不含交付的正文（它在 task-service 的 tasks.outcome 里）。"""
+    state = inp.task_state
+    rounds = [
+        {k: r[k] for k in ("seq", "stage_goal", "triage_level", "verdict", "tool_calls") if k in r}
+        for r in state.get("rounds") or []
+        if isinstance(r, dict)
+    ]
+    facts = [str(f) for f in state.get("facts") or []][-SESSION_RECORD_FACTS:]
+    return {"status": inp.status, "rounds": rounds, "facts": facts, "artifacts": [str(a) for a in inp.artifacts], "actions": list(inp.actions)}
+
+
 class WrapUp:
     def __init__(self, *, objects: ObjectStoreProvider, memory: MemoryClient, telemetry: TelemetryProvider) -> None:
         self.objects = objects
@@ -214,6 +230,12 @@ class WrapUp:
             report.archive_uri = objects.uri(key)
         except Exception as exc:  # noqa: BLE001 — 三件事各自独立，最后一并报告
             errors.append(f"归档 Task State 失败：{type(exc).__name__}")
+
+        try:
+            record = json.dumps(session_record(inp), ensure_ascii=False, sort_keys=True).encode()
+            await objects.put(SESSION_RECORD_KEY.format(task_id=inp.task_id), record, content_type="application/json")
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"写 Session 记录失败：{type(exc).__name__}")
 
         report.candidates = memory_candidates(inp, today=datetime.now(UTC).date().isoformat())
         if report.candidates:

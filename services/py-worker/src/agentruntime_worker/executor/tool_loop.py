@@ -207,14 +207,14 @@ def dev_tool_loop(config: WorkerConfig) -> ToolLoopActivities:
     循环第一步就结束，只验证组装与链路，压缩效果见 S-11 的评测。
     """
     from agentruntime_worker.executor.dev import model_gateway
-    from agentruntime_worker.session.transcript import session_transcript
+    from agentruntime_worker.session.transcript import worker_transcript
     from agentruntime_worker.tools import context_objects, dev_tools, mcp_tool_names
 
     gateway = model_gateway(config)
     builder = ContextBuilder(gateway, context_objects(config), ContextConfig(effective_tokens=config.context_effective_tokens, offload_tokens=config.context_offload_tokens))
     return ToolLoopActivities(
         ModelToolLoop(
-            gateway, builder, tools=ToolCatalog(dev_tools(config)), transcript=session_transcript(config.relational_dsn, config.data_dir),
+            gateway, builder, tools=ToolCatalog(dev_tools(config)), transcript=worker_transcript(config),
             mcp_tools=lambda: mcp_tool_names(config), memory=searcher(config),
         )
     )

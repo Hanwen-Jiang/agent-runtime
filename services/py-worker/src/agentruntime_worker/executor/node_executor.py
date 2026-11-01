@@ -64,7 +64,7 @@ from agentruntime_worker import names
 from agentruntime_worker.activities.types import HumanCancel, HumanQuestion, NodeInput, ReconcileResult, Tenant, ToolCallInput
 from agentruntime_worker.context.builder import message_tokens
 from agentruntime_worker.executor import keys
-from agentruntime_worker.session.transcript import TranscriptSource, Turn, chat_messages
+from agentruntime_worker.session.transcript import TranscriptSource, Turn, actions_text, chat_messages
 from agentruntime_worker.executor.model_gateway import ModelGateway
 from agentruntime_worker.executor.schemas import OutputSchemaResolver, UnknownSchema, schema_for, validate
 from agentruntime_worker.tools.catalog import latest_spec
@@ -96,6 +96,9 @@ CONVERSATION_TEMPLATES = ("answer@", "rewrite@")
 CONVERSATION_SYSTEM_PROMPT = (
     "你正在和用户对话，直接回复用户最新的这条消息，用用户的语言。前面的对话是真实发生过的：用户提到“上面”“刚才”时指的就是它们，不要说看不到。"
     "回复里不要提提示、模板、节点、请求字段之类的内部名字。不知道的就直说，不要编造，也不要猜它可能属于哪个行业。"
+    # docs/plan/feedback-2026-11-01.md N-03：线上日志里追问“你有什么工具”“你是怎么读的目录”，回答一路说自己没有工具、之前的表是编的。
+    "之前的回答是在能读写工作区、能执行命令的执行里得出的（系统记录里列着当时实际调用过的工具）；这一轮你只根据对话与记录回答，不再读文件、不执行命令。"
+    "不要说自己从来没有工具，也不要承认记录里没有的编造；记录与之前的回答对不上时照实说明。要重新查看仓库才答得了的，直说需要再去查看，请用户让你去查。"
 )
 
 
@@ -658,6 +661,9 @@ class NodeExecutor:
         for injection in inp.injections:
             system += f"\n[{injection.get('zone', '')}] {injection.get('content', '')}"
         if conversational:
+            record = actions_text(turns)
+            if record:
+                system += "\n\n" + record
             messages = [
                 mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=system),
                 *chat_messages(turns),

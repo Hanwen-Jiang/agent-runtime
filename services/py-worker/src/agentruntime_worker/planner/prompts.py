@@ -43,7 +43,7 @@ _CLASSIFIER_RULES = """你给 Agent Runtime 的 Planner 做分诊。读用户这
 - kind：follow_up（续改上一个产出）、constraint（给运行中的 Task 加约束）、new_task（新任务）、question（简单问答）、chitchat（闲聊）、system_question（关于系统本身的问题）。
 - task_family：新任务所属的任务族（形如 analytics.attribution），判断不了就填 null。
 - confidence：你对 kind 与 task_family 的把握，0 到 1。
-- effect：完成这条消息预计需要的最高 effect：none（只要生成文字）、read（要读外部数据）、write_reversible（可回滚的写）、write_irreversible（不可逆的外部动作，例如付款、发送）。要读工作区（用户的仓库与文件）才答得好的消息，effect 填 read，不要填 none：包括追问之前读过的仓库里的内容；只凭之前的对话就能答的仍是 none。
+- effect：完成这条消息预计需要的最高 effect：none（只要生成文字）、read（要读外部数据）、write_reversible（可回滚的写）、write_irreversible（不可逆的外部动作，例如付款、发送）。要读工作区（用户的仓库与文件）才答得好的消息，effect 填 read，不要填 none：包括追问之前读过的仓库里的内容；只凭之前的对话就能答的仍是 none。问之前的回答是怎么得出的、用了什么工具的，按对话后面附的系统记录回答，effect 填 none；要求把没做完的事接着做（例如“为什么不递归列出来”其实是要列）的，按要做的事填。
 - irreversible_params_explicit：如果要做不可逆动作，它的对象与参数（金额、收件人、日期等）能否从这条消息里明确得出；不涉及不可逆动作时填 true。"""
 
 

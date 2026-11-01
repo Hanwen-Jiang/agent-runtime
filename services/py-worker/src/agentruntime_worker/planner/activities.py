@@ -22,7 +22,7 @@ from agentruntime_worker.executor.heartbeat import heartbeating
 from agentruntime_worker.planner.context import CatalogView, PlanningContext, PlanningContextSource, StaticContextSource, TranscriptContextSource
 from agentruntime_worker.planner.planner import Planner, PlanRequest
 from agentruntime_worker.registry import RegistryContextSource, registry_client
-from agentruntime_worker.session.transcript import session_transcript
+from agentruntime_worker.session.transcript import worker_transcript
 from agentruntime_worker.tools import CONTEXT_READ, ToolCatalog, dev_tools
 from agentruntime_worker.workflows import stage_plan as sp
 
@@ -121,7 +121,7 @@ def dev_planner(config: WorkerConfig) -> PlannerActivities:
         inner = RegistryContextSource(registry_client(config), defaults=dataclasses.replace(defaults, catalog=CatalogView()))
     tools = ToolCatalog(dev_tools(config))
     source: PlanningContextSource = ToolsContextSource(inner, tools)
-    transcript = session_transcript(config.relational_dsn, config.data_dir)
+    transcript = worker_transcript(config)
     if transcript is not None:
         source = TranscriptContextSource(source, transcript)
     from agentruntime_worker.memory import RetrievalContextSource, searcher

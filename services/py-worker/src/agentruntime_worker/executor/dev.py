@@ -142,6 +142,6 @@ def dev_executor(
         models=model_gateway(config),
         schemas=DictSchemaResolver({}),
         sandbox=LocalSubprocessSandboxProvider(root / "sandbox"),
-        transcript=session_transcript(config.relational_dsn, config.data_dir),
+        transcript=session_transcript(config.relational_dsn, config.data_dir, objects or dev_object_store(config, root)),
     )
     return NodeExecutor(deps, executor_config or ExecutorConfig(context_effective_tokens=config.context_effective_tokens))

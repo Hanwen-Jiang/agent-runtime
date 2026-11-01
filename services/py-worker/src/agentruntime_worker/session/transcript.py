@@ -14,11 +14,12 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Protocol
 
 from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
+from agentruntime_core.providers.object_store import ObjectStoreProvider
 from agentruntime_core.providers.relational_store import RelationalStoreProvider
 from agentruntime_core.tenancy import TenantContext
 
@@ -41,11 +42,60 @@ STATUS_PREFIX = "TASK_STATUS_"
 
 @dataclass(frozen=True)
 class Turn:
-    """一轮对话：用户的命令、交付的文字与结局（done、aborted、cancelled、failed）。"""
+    """一轮对话：用户的命令、交付的文字与结局（done、aborted、cancelled、failed）。actions 是这一轮实际做过的事
+    （收尾写下的 Session 记录，docs/plan/feedback-2026-11-01.md N-03）；没有记录时为空。"""
 
     message: str
     reply: str
     status: str
+    actions: str = ""
+
+
+SESSION_RECORD_KEY = "tasks/{task_id}/session_record.json"
+"""收尾写回写的 Session 记录（reviewer/wrap_up.py）。"""
+ACTIONS_HEADER = "这一轮实际做过的（系统记录，不是用户说的）："
+ACTIONS_CHARS = 1500
+ACTIONS_LISTED = 15
+
+
+def _outcome(call: dict[str, Any]) -> str:
+    if call.get("timed_out"):
+        return "超时"
+    if "exit_code" in call:
+        return f"退出码 {call['exit_code']}"
+    return "成功" if call.get("ok") else "失败"
+
+
+def record_text(record: Any, *, max_chars: int = ACTIONS_CHARS) -> str:
+    """Session 记录写成一段话：各轮的目标与判定、调过的工具（最近 ACTIONS_LISTED 次）、记下的事实。格式不对时为空。纯函数。"""
+    if not isinstance(record, dict):
+        return ""
+    parts: list[str] = []
+    rounds = [r for r in record.get("rounds") or [] if isinstance(r, dict)]
+    if rounds:
+        parts.append("；".join(f"第 {r.get('seq')} 轮 {r.get('stage_goal', '')}（{r.get('verdict') or '未判定'}）" for r in rounds))
+    calls = [c for c in record.get("actions") or [] if isinstance(c, dict)]
+    if calls:
+        shown = calls[-ACTIONS_LISTED:]
+        listed = "；".join(f"{c.get('tool')} {c.get('target') or ''}".rstrip() + f"（{_outcome(c)}）" for c in shown)
+        more = f"（共 {len(calls)} 次，这里是最后 {len(shown)} 次）" if len(calls) > len(shown) else ""
+        parts.append(f"调用过的工具{more}：{listed}")
+    elif rounds:
+        parts.append("没有调用工具")
+    facts = [str(f) for f in record.get("facts") or []]
+    if facts:
+        parts.append("记下的事实：" + "；".join(facts))
+    if not parts:
+        return ""
+    return _trim(ACTIONS_HEADER + "。".join(parts), max_chars)
+
+
+def actions_text(turns: Sequence[Turn]) -> str:
+    """直接回复用户的节点放进系统提示的：之前各轮实际做过的事（只列有记录的）。没有记录时为空串。"""
+    lines = [f"- 第 {i} 条消息「{_trim(t.message, 60)}」：{t.actions}" for i, t in enumerate(turns, start=1) if t.actions]
+    if not lines:
+        return ""
+    return "之前各轮实际做过的事（系统记录；当时能读写工作区、执行命令）：\n" + "\n".join(lines)
 
 
 class TranscriptSource(Protocol):
@@ -100,6 +150,7 @@ class SessionTranscript:
         self,
         store: RelationalStoreProvider,
         *,
+        objects: ObjectStoreProvider | None = None,
         max_turns: int = 6,
         latest_reply_chars: int = 16000,
         reply_chars: int = 4000,
@@ -107,6 +158,8 @@ class SessionTranscript:
         total_chars: int = 32000,
     ) -> None:
         self.store = store
+        # 收尾写的 Session 记录所在的 ObjectStore（N-03）；没给时只有文字，没有“实际做过的事”。
+        self.objects = objects
         self.max_turns = max_turns
         self.latest_reply_chars = latest_reply_chars
         self.reply_chars = reply_chars
@@ -122,7 +175,19 @@ class SessionTranscript:
         except Exception as exc:  # noqa: BLE001 — 读不到对话不能让 Task 失败
             logger.warning("读 Session 之前的对话失败，当作没有对话：%s", type(exc).__name__)
             return ()
-        return self._bounded([self._turn(row) for row in reversed(rows)])
+        turns = [self._turn(row) for row in reversed(rows)]
+        if self.objects is not None:
+            turns = [replace(t, actions=await self._actions(tenant, str(row["task_id"]))) for t, row in zip(turns, reversed(rows), strict=True)]
+        return self._bounded(turns)
+
+    async def _actions(self, tenant: Tenant, task_id: str) -> str:
+        """一轮的 Session 记录；没有（迁移之前的 Task、收尾还没写完、写失败）时为空，不影响对话。"""
+        assert self.objects is not None
+        try:
+            got = await self.objects.bind(TenantContext(tenant_id=tenant.tenant_id)).get(SESSION_RECORD_KEY.format(task_id=task_id))
+            return record_text(json.loads(got.data))
+        except Exception:  # noqa: BLE001 — 记录读不到就当没有
+            return ""
 
     async def _rows(self, tenant: Tenant, task_id: str) -> Sequence[Any]:
         columns = ", ".join(COLUMNS)
@@ -155,7 +220,7 @@ class SessionTranscript:
             return ()
         last = len(turns) - 1
         trimmed = [
-            Turn(_trim(t.message, self.message_chars), _trim(t.reply, self.latest_reply_chars if i == last else self.reply_chars), t.status)
+            Turn(_trim(t.message, self.message_chars), _trim(t.reply, self.latest_reply_chars if i == last else self.reply_chars), t.status, t.actions)
             for i, t in enumerate(turns)
         ]
         # 超过总量时丢最早的，最近一轮总是留下。
@@ -187,9 +252,10 @@ def transcript_text(turns: Sequence[Turn], *, max_chars: int = TEXT_MAX_CHARS) -
         if share < MIN_TURN_CHARS:
             break
         message = _trim(turn.message or MISSING_MESSAGE, share // 4)
-        reply = _trim(turn.reply or _no_delivery(turn), max(share - len(message), MIN_TURN_CHARS // 2))
-        lines.insert(0, f"用户：{message}\n助手：{reply}")
-        remaining -= len(message) + len(reply)
+        actions = _trim(turn.actions, share // 4) if turn.actions else ""
+        reply = _trim(turn.reply or _no_delivery(turn), max(share - len(message) - len(actions), MIN_TURN_CHARS // 2))
+        lines.insert(0, f"用户：{message}\n助手：{reply}" + (f"\n（{actions}）" if actions else ""))
+        remaining -= len(message) + len(reply) + len(actions)
     if not lines:
         return ""
     return CONVERSATION_HEADER + "\n" + "\n".join(lines)
@@ -198,14 +264,23 @@ def transcript_text(turns: Sequence[Turn], *, max_chars: int = TEXT_MAX_CHARS) -
 _shared: dict[tuple[str, str], SessionTranscript] = {}
 
 
-def session_transcript(dsn: str, data_dir: Path | None) -> SessionTranscript | None:
+def session_transcript(dsn: str, data_dir: Path | None, objects: ObjectStoreProvider | None = None) -> SessionTranscript | None:
     """Worker 的组装用：业务库是 Postgres（AR_RELATIONAL_DSN）或数据目录下的 SQLite，与 task-service 同一个。都没配时没有对话可读。
-    同一个库共用一个实例（第一次用到才连，只建一个连接池）。"""
+    同一个库共用一个实例（第一次用到才连，只建一个连接池）。objects 是收尾写 Session 记录的 ObjectStore（N-03）。"""
     if not dsn and data_dir is None:
         return None
     from agentruntime_worker.sandbox.store import relational_store
 
     key = (dsn, str(data_dir or ""))
     if key not in _shared:
-        _shared[key] = SessionTranscript(relational_store(dsn, data_dir or Path()))
+        _shared[key] = SessionTranscript(relational_store(dsn, data_dir or Path()), objects=objects)
+    elif objects is not None and _shared[key].objects is None:
+        _shared[key].objects = objects
     return _shared[key]
+
+
+def worker_transcript(config: Any) -> SessionTranscript | None:
+    """按 Worker 的配置组装：业务库同 session_transcript，Session 记录从与收尾写回同一个 ObjectStore 读。"""
+    from agentruntime_worker.executor.dev import data_root, dev_object_store
+
+    return session_transcript(config.relational_dsn, config.data_dir, dev_object_store(config, data_root(config)))
