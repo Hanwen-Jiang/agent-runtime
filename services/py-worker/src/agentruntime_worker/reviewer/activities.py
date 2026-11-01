@@ -114,4 +114,6 @@ def dev_reviewer(config: WorkerConfig) -> ReviewerActivities:
     """
     root = data_root(config)
     wrap_up = WrapUp(objects=dev_object_store(config, root), memory=memory_client(config), telemetry=worker_telemetry())
-    return ReviewerActivities(Reviewer(model_gateway(config)), StaticCatalogSource(ReviewCatalog(effect_ceiling="read")), wrap_up)
+    # 这份 Catalog 不另设上限：上限是 Task 自己的（constraints.effect_ceiling，review 里取两者较低的）。原来写的 read 让每个 Task 的 Reviewer
+    # 都以为只能读（TMP 计划第 11.15 节）。
+    return ReviewerActivities(Reviewer(model_gateway(config)), StaticCatalogSource(ReviewCatalog(effect_ceiling=sp.EFFECT_ORDER[-1])), wrap_up)

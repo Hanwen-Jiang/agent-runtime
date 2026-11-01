@@ -781,7 +781,7 @@ PUBLIC_PAGE = r"""<!doctype html>
 <title>__TITLE__</title>
 <style>
 :root{--bg:#fbfbfa;--fg:#1f2328;--muted:#5b636c;--line:#d8dde3;--card:#fff;--soft:#f1f3f2;--c1:#2563eb;--c2:#d97706;--c3:#059669;--bad:#dc2626;--ok:#15803d}
-@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#9aa4ae;--line:#30363d;--card:#161b22;--soft:#1c222a;--c1:#60a5fa;--c2:#f59e0b;--c3:#34d399;--bad:#f87171;--ok:#4ade80}}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#9aa4ae;--line:#30363d;--card:#161b22;--soft:#1c222a;--c1:#3b82f6;--c2:#d97706;--c3:#34d399;--bad:#f87171;--ok:#4ade80}}
 *{box-sizing:border-box}html[data-lang="zh"] .en,html[data-lang="en"] .zh{display:none}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
 main{max-width:960px;margin:0 auto;padding:24px 16px 72px}h1{font-size:26px;line-height:1.3;margin:0 0 12px;padding-right:128px}

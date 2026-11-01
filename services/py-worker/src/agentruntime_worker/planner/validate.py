@@ -116,7 +116,7 @@ def task_budget_remaining(task_state: Any) -> float | None:
     if not isinstance(budget, int | float) or isinstance(budget, bool) or budget <= 0:
         return None
     spent = sum(float(r.get("cost_usd") or 0.0) for r in task_state.get("rounds") or [] if isinstance(r, dict))
-    return round(float(budget) - spent, 4)
+    return round(float(budget) - spent, 6)
 
 
 def cap_budgets(stage: Any, remaining: float | None) -> tuple[Any, list[str]]:

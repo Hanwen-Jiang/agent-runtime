@@ -22,7 +22,8 @@ from agentruntime_core.dev.object_store import LocalDiskObjectStoreProvider
 from agentruntime_core.errors import NotFoundError
 from agentruntime_core.tenancy import TenantContext
 from agentruntime_worker.activities.types import FinalizeTaskInput, ReviewRoundInput, ReviewRoundOutput, StageResult
-from agentruntime_worker.reviewer.activities import ReviewerActivities, StaticCatalogSource
+from agentruntime_worker.config import WorkerConfig
+from agentruntime_worker.reviewer.activities import ReviewerActivities, StaticCatalogSource, dev_reviewer
 from agentruntime_worker.reviewer.reviewer import Reviewer
 from agentruntime_worker.reviewer.rules import ReviewCatalog
 from agentruntime_worker.reviewer.wrap_up import RecordingMemoryClient, WrapUp
@@ -78,6 +79,24 @@ async def test_review_round_checks_reroutes_against_the_tenants_own_recipes() ->
     other = TENANT.__class__(tenant_id="t2", user_id="u2", session_id=SESSION_ID)
     t2 = await ActivityEnvironment().run(activities(FakeReviewGateway(always(reroute)), source=source).review_round, review_input(stage=s, results=results, tenant=other))
     assert t2.verdict["verdict"] == "replan", "t2 的 Catalog 里没有这个 Recipe"
+
+
+async def test_the_assembled_reviewer_is_told_the_tasks_own_ceiling(tmp_path: Path) -> None:
+    """Worker 组装的 Reviewer 曾经写死 read：每个 Task 的 Reviewer 都以为只能读，基线 50 题里 4 题因此说“没有写权限”，有的还放弃了。"""
+    gateway = FakeReviewGateway(always(answer({"verdict": "continue"})))
+    acts = dev_reviewer(WorkerConfig(reviewer="model", data_dir=tmp_path))
+    acts.reviewer = Reviewer(gateway)
+    await ActivityEnvironment().run(acts.review_round, review_input(state=task_state(done_when="修好", ceiling="write_reversible")))
+    text = "\n".join(m.text for m in gateway.requests[-1].generation.messages)
+    assert '"effect_ceiling":"write_reversible"' in text and '"effect_ceiling":"read"' not in text
+
+
+async def test_a_read_only_task_is_still_told_it_can_only_read(tmp_path: Path) -> None:
+    gateway = FakeReviewGateway(always(answer({"verdict": "continue"})))
+    acts = dev_reviewer(WorkerConfig(reviewer="model", data_dir=tmp_path))
+    acts.reviewer = Reviewer(gateway)
+    await ActivityEnvironment().run(acts.review_round, review_input(state=task_state(done_when="答完", ceiling="read")))
+    assert '"effect_ceiling":"read"' in "\n".join(m.text for m in gateway.requests[-1].generation.messages)
 
 
 async def test_review_round_refuses_an_input_without_the_stage() -> None:

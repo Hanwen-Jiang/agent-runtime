@@ -6,9 +6,11 @@ from typing import Any
 
 import pytest
 
+from agentruntime_worker.activities.types import Tenant
 from agentruntime_worker.executor import keys
 from agentruntime_worker.planner.planner import Planner
 from agentruntime_worker.planner.triage import UNCLASSIFIED_TASK_FAMILY
+from agentruntime_worker.policy.hooks import HookContext, budget_check
 
 from .planner_support import FakeGateway, context, last_round, plan_answer, prompt_text, request, role, signals
 from .support import assert_valid
@@ -191,12 +193,28 @@ async def test_node_and_stage_budgets_are_capped_at_what_the_task_has_left() -> 
     gateway = FakeGateway(triage=RISKY_FULL, plan=[answer])
     result = await plan(gateway, task_state=SPENT_STATE, round_seq=2)
     nodes = {n["id"]: n for n in result.stage["nodes"]}
-    assert nodes["explore"]["budget"]["usd"] == pytest.approx(0.8242)
-    assert nodes["q_region"]["budget"]["max_cost_usd"] == pytest.approx(0.8242)
-    assert result.stage["budget"]["usd"] == pytest.approx(0.8242)
-    assert any("0.8242" in a for a in result.adjustments)
+    left = round(0.8242 - sum(c.cost_usd for c in result.calls), 6)
+    assert nodes["explore"]["budget"]["usd"] == pytest.approx(left)
+    assert nodes["q_region"]["budget"]["max_cost_usd"] == pytest.approx(left)
+    assert result.stage["budget"]["usd"] == pytest.approx(left)
+    assert any(f"{left:g}" in a for a in result.adjustments)
     [call] = gateway.calls("plan")
     assert "Task 剩余预算：$0.82" in prompt_text(call)
+
+
+async def test_the_cap_leaves_room_for_what_this_round_of_planning_cost() -> None:
+    """budget_check 把这一轮规划的花费也算作已花：基线 50 题里 6 题的 Node 被压到“规划之前的剩余”，还是被整个拒绝，白费一轮。"""
+    big = {"id": "explore", "kind": "goal", "goal": "读仓库", "done_when": "读完", "mode": "tool_loop", "tools": ["repo_read"],
+           "output_schema": {"type": "object"}, "budget": {"usd": 0.9}}
+    gateway = FakeGateway(triage=RISKY_FULL, plan=[plan_answer(big)], cost_micros={"triage": 2_000, "plan": 10_000})
+    result = await plan(gateway, task_state=SPENT_STATE, round_seq=2)
+    node = result.stage["nodes"][0]
+    spent = round(0.1758 + sum(c.cost_usd for c in result.calls), 6)
+    assert spent > 0.1758
+    assert node["budget"]["usd"] == pytest.approx(1.0 - spent)
+    tenant = Tenant(tenant_id="t1", user_id="u1", session_id="s1")
+    verdict = budget_check(HookContext(tenant, "tsk", 2, "before_node", {"node": node, "budget": {"task_usd": 1.0, "spent_usd": spent}}))
+    assert verdict["decision"] == "allow", "压过之后 budget_check 要放行，否则还是白费一轮"
 
 
 async def test_budgets_within_what_is_left_are_kept() -> None:

@@ -265,7 +265,7 @@ class Planner:
                     stage = validate.normalize_stage(answer.get("stage"), round_seq=request.round_seq, tenant_id=request.tenant.tenant_id, task_id=request.task_id)
                     task_plan = self._with_triage(answer.get("task_plan"), decision)
                     stage, task_plan, adjusted = validate.drop_unknown_tiers(stage, task_plan, request.context.catalog.tiers)
-                    stage, capped = validate.cap_budgets(stage, validate.task_budget_remaining(request.task_state))
+                    stage, capped = validate.cap_budgets(stage, self._left_after_planning(request, calls))
                     adjusted = [*adjusted, *capped]
                     found = validate.problems(stage, task_plan, level=decision.level, context=request.context, keep_nodes=keep)
                     if not found:
@@ -278,6 +278,12 @@ class Planner:
                 messages = prompts.retry_messages(messages, answer_text, found)
         stage, task_plan = self._fallback(request, decision, keep)
         return PlanResult(triage_level=decision.level, stage=stage, task_plan=task_plan, decision=decision, calls=calls, fallback=True, problems=found)
+
+    @staticmethod
+    def _left_after_planning(request: PlanRequest, calls: list[ModelCall]) -> float | None:
+        """budget_check 把这一轮规划的花费也算作已花：只压到规划之前的剩余，Node 还是会被整个拒绝（TMP 计划第 11.15 节）。"""
+        left = validate.task_budget_remaining(request.task_state)
+        return None if left is None else round(left - sum(c.cost_usd for c in calls), 6)
 
     def _fallback(self, request: PlanRequest, decision: TriageDecision, keep: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
         """保守规划：一个 tool_loop 的 Goal Node，去探索并完成剩余部分；不重做要保留的 Node。"""
