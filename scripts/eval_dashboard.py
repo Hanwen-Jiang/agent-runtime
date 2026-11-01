@@ -420,6 +420,9 @@ FINDINGS = (
     ("10-31", "配置没变，成绩也会变", "Results move even when nothing in the system changes",
      "同样的 5 题、同样的配置，隔几小时重跑，从解决 0 题变成解决 2 题，失败的模型调用从 74 次降到 1 次。最可能的原因是第三方中转的状态变了，目前还不能完全证实。所以以后比较优化前后，要在同一时段跑，并且多跑几次。",
      "The same 5 problems with the same setup, rerun a few hours later, went from 0 solved to 2, and failed model calls fell from 74 to 1. The most likely cause is a change in the state of the third-party relay, though that is not proven. From now on, before-and-after comparisons will run in the same period and more than once."),
+    ("11-01", "第一轮调优：多解决 2 题，还查出两个一直存在的错误", "First round of tuning: 2 more solved, and two long-standing errors found",
+     "同样的 50 题，从解决 32 题到解决 34 题：新解决 4 题，丢了 2 题，每题花费从 $0.54 涨到 $0.66。差两题还在误差之内，不能说一定变好了。更确定的收获是查出了两个一直存在的错误：验收环节一直被告知“只能读、不能改”，于是有的任务以为没有权限就放弃了；预算算错，导致一些步骤被整个拒绝，白费一轮。这两个错误在基线的 50 题里分别影响了 4 题和 6 题，修好之后没有再出现。一行没改就结束的题从 3 题降到 1 题。",
+     "On the same 50 problems, solved went from 32 to 34: 4 newly solved and 2 lost, while the cost per problem rose from $0.54 to $0.66. A difference of two is within the margin of error, so this does not prove it got better. The firmer gain is two long-standing errors we found. The review step was always told it could only read and not change anything, so some tasks gave up believing they had no permission. A budget miscalculation also refused whole steps, wasting a round. These affected 4 and 6 of the 50 baseline problems and have not appeared since the fix. Problems that ended without changing a line fell from 3 to 1."),
 )
 GLOSSARY = (
     ("Agent（智能体）", "Agent", "能自己决定下一步、动手使用工具的 AI 程序，不只是回答问题。", "An AI program that decides its next step and uses tools, rather than only answering questions."),
@@ -444,11 +447,11 @@ GLOSSARY = (
 ROADMAP = (
     ("验收判断过线", "Getting review past the pass line", "让验收判断在正式卷上达到及格线。", "Bring the review score up to the pass line on the holdout set.", "还没过线，是现在最大的短板。", "Not passed yet. This is the biggest gap today."),
     ("SWE-bench Verified", "SWE-bench Verified", "500 道来自真实开源项目的修 bug 题，业内常用来衡量写代码的能力。", "500 bug-fixing problems from real open-source projects, widely used to measure coding ability.",
-     "基线已测：50 题解决 32 题。接下来修问题，再用同样的题和没用过的题各测一次。", "Baseline measured: 32 of 50 solved. Next: fix problems, then measure on the same problems and on unseen ones."),
-    ("Terminal-Bench", "Terminal-Bench", "在命令行里完成多步骤的任务。", "Multi-step tasks carried out on the command line.", "还没开始。", "Not started."),
-    ("DeepEval", "DeepEval", "开源评测工具，衡量任务是否完成、工具用得对不对等。", "An open-source evaluation tool that measures things like task completion and correct tool use.", "还没开始。", "Not started."),
+     "基线 50 题解决 32 题，第一轮调优解决 34 题。正在测第二轮，然后用没用过的 50 题验证。", "Baseline: 32 of 50 solved. First round of tuning: 34. The second round is running, then a check on 50 unseen problems."),
+    ("Terminal-Bench", "Terminal-Bench", "在命令行里完成多步骤的任务。", "Multi-step tasks carried out on the command line.", "刚开工，还没有分数。", "Just started, no score yet."),
+    ("DeepEval", "DeepEval", "开源评测工具，衡量任务是否完成、工具用得对不对等。", "An open-source evaluation tool that measures things like task completion and correct tool use.", "刚开工，还没有分数。", "Just started, no score yet."),
     ("Ragas", "Ragas", "开源评测工具，专门衡量“先查资料再回答”（RAG）的质量。", "An open-source evaluation tool for the quality of answering from retrieved documents (RAG).",
-     "还没开始。要先把资料检索接进主流程。", "Not started. Retrieval must first be connected to the main flow."),
+     "刚开工，还没有分数。资料检索的代码已写好，还没有上线，也没有接进主流程。", "Just started, no score yet. The retrieval code is written but not live, and not yet connected to the main flow."),
 )
 
 
@@ -623,7 +626,7 @@ def _next_section() -> str:
     head = f'<tr class="head"><th>{_both("项目", "Item")}</th><th>{_both("它是什么", "What it is")}</th><th>{_both("现在的状态", "Status")}</th></tr>'
     return (
         f'<section id="next">{_heading("还没做完的", "What is not done yet")}'
-        + _para("状态截至 2026-10-31。每一项都会先测基线，优化之后再测，把变化画成曲线放到这个页面。", "Status as of 2026-10-31. Each item will get a baseline first, then be measured again after tuning, with the change charted on this page.")
+        + _para("状态截至 2026-11-01。每一项都会先测基线，优化之后再测，把变化画成曲线放到这个页面。", "Status as of 2026-11-01. Each item will get a baseline first, then be measured again after tuning, with the change charted on this page.")
         + f'<div class="card scroll"><table class="plain">{head}{rows}</table></div></section>'
     )
 
