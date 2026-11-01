@@ -131,7 +131,9 @@ def script_charge(h: StageHarness, *steps: ToolLoopStep) -> None:
 
 
 def test_the_version_branch_is_appended_at_the_end_of_at_start() -> None:
-    assert patches.AT_START[-2:] == (patches.GUIDANCE_PATCH, patches.INTERRUPT_WITHDRAW_PATCH)
+    # 追加时在末尾，之后再追加的排在后面（docs/plan/feedback-2026-11-01.md 的 REFERENCES_PATCH）：位置不能变。
+    at = patches.AT_START.index(patches.GUIDANCE_PATCH)
+    assert patches.AT_START[at - 1 : at + 2] == (patches.CONTEXT_USAGE_PATCH, patches.GUIDANCE_PATCH, patches.INTERRUPT_WITHDRAW_PATCH)
 
 
 # --- 第 2 节第一张表：纠偏（下一个检查点） ---
