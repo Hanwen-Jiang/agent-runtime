@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from typing import Any
@@ -33,6 +34,16 @@ class Rerun:
     stage: dict[str, Any]
     carried: dict[str, StageResult] = field(default_factory=dict)
     injections: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
+
+
+PREVIEW_CHARS = 160
+
+
+def preview(value: Any) -> str:
+    """一个结果的一行摘要（给 Planner 看有哪些之前的结果可以引用，N-01）：紧凑的 JSON，超过 PREVIEW_CHARS 截断。纯函数。"""
+    text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    text = " ".join(text.split())
+    return text if len(text) <= PREVIEW_CHARS else text[: PREVIEW_CHARS - 1] + "…"
 
 
 def review_output(raw: Any) -> tuple[dict[str, Any], dict[str, Any]]:

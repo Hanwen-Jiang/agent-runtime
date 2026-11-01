@@ -36,6 +36,9 @@ class PlanRoundInput:
     last_round: dict[str, Any] | None = None
     # 决策调用的重试用完或到了总时限（TMP 计划第 4 节）：不调模型，直接给保守规划。
     no_model: bool = False
+    # 之前各轮成功的顶层 Node 与一行摘要（docs/plan/feedback-2026-11-01.md N-01）：这一轮可以按 id 引用它们的结果。
+    # 之前的运行为 None：只能引用本 Stage 的祖先。
+    earlier_results: dict[str, str] | None = None
 
 
 @dataclass

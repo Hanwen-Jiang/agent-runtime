@@ -87,6 +87,7 @@ with workflow.unsafe.imports_passed_through():
         POLICY_PATCH,
         PROGRESS_DETAIL_PATCH,
         R01_FIXES_PATCH,
+        REFERENCES_PATCH,
         REVIEWER_PATCH,
         STAGE_RUNNER_PATCH,
     )
@@ -226,6 +227,9 @@ class TaskWorkflow:
         self._finish_rejections = 0
         # R-01 评审之后的版本分支：没成功的 Node 也审计，tool_loop 每一步之前查预算。
         self._r01 = False
+        # docs/plan/feedback-2026-11-01.md N-01（REFERENCES_PATCH）：之前各轮成功的顶层 Node 的结果，同一个 id 取最近一轮的。
+        self._references = False
+        self._earlier: dict[str, Any] = {}
         # T-11b：进度事件；只有顶层 Task 的新运行有（版本分支 EVENTS_PATCH）。
         self._events: EventPublisher | None = None
         # TMP 计划第 3 节（BUDGETS_PATCH）：现在的上限（用完问人、继续时加一份）与原来的一份；已发出的工具调用；人选择继续的次数；
@@ -274,6 +278,7 @@ class TaskWorkflow:
         self._budgets = workflow.patched(BUDGETS_PATCH)
         self._retry_in_workflow = workflow.patched(DECISION_RETRY_PATCH)
         self._codes = workflow.patched(CODES_PATCH)
+        self._references = workflow.patched(REFERENCES_PATCH)
         if workflow.patched(GUIDANCE_PATCH):
             self._book = GuidanceBook()
             self._guidance_publisher = asyncio.ensure_future(self._publish_guidance())
@@ -626,6 +631,7 @@ class TaskWorkflow:
             results = await self._run_stage(seq, stage, carried=carried, injections=injections, plan_cost=plan_cost)
             round_entry["cost_usd"] = round(plan_cost + self._stage_cost, 6)
             last_results = results
+            self._remember_earlier(results)
             self._round_results = results
             if self._budgets:
                 round_entry["tool_calls"] = self._stage_tool_calls
@@ -867,6 +873,7 @@ class TaskWorkflow:
             pinned=pinned,
             task_plan=task_plan,
             last_round=last_round,
+            earlier_results=self._earlier_previews(),
         )
         if self._retry_in_workflow:
             return await self._decide(names.PLAN_ROUND, request, dataclasses.replace(request, no_model=True), "plan_round", seq, PlanRoundOutput)
@@ -926,6 +933,20 @@ class TaskWorkflow:
         verdict, update = vd.review_output(raw)
         self._verification.reviewed(verdict)
         return verdict, update, vd.review_cost(raw), vd.review_highlights(raw)
+
+    def _remember_earlier(self, results: dict[str, StageResult]) -> None:
+        """N-01：记下这一轮成功的顶层 Node 的结果，之后各轮可以按 id 引用（同一个 id 取最近一轮的）。"""
+        if not self._references:
+            return
+        for nid in sorted(results):
+            if results[nid].status == "succeeded":
+                self._earlier[nid] = results[nid].result
+
+    def _earlier_previews(self) -> dict[str, str] | None:
+        """给 Planner 的：之前各轮可以引用的 Node 与一行摘要。之前的运行为 None。"""
+        if not self._references:
+            return None
+        return {nid: vd.preview(self._earlier[nid]) for nid in sorted(self._earlier)}
 
     def _remember_delivery(self, results: dict[str, StageResult]) -> None:
         for nid in sorted(results):
@@ -1084,6 +1105,7 @@ class TaskWorkflow:
             interruptible=self._book is not None,
             guidance=self._book,
             verification=self._verification,
+            earlier=dict(self._earlier) if self._references else None,
         )
         runner = StageRunner(ctx, self)
         self._running_spent = lambda: plan_cost + runner.spent_usd

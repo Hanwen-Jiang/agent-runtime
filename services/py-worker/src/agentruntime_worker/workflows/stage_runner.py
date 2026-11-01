@@ -247,6 +247,9 @@ class RunContext:
     # 送到（子工作流里也是）；guidance 是纠偏的记录，只有 Task 工作流有。
     interruptible: bool = False
     guidance: GuidanceBook | None = None
+    # docs/plan/feedback-2026-11-01.md N-01（REFERENCES_PATCH 之后的运行）：之前各轮成功的顶层 Node 的结果。为 None 时是之前的运行：
+    # 嵌在文字里的引用原样传、只能引用本 Stage 的祖先、deliver 不自动带上游。只有 Task 工作流给。
+    earlier: dict[str, Any] | None = None
 
 
 @dataclass
@@ -286,6 +289,8 @@ class StageRunner:
         self._asked_templates: set[str] = set()
         # T-11b：顶层 DAG 的执行环境：它里面的 Node 结束时推送 node_finished。
         self._top: _Env | None = None
+        # 这个 Stage 的顶层 Node id（N-01：本 Stage 有的 id 不取之前各轮的结果）。
+        self._stage_ids: frozenset[str] = frozenset()
         # docs/plan/running-task-interaction.md 第 2 节：顶层 DAG 正在跑的 Node（立刻打断时取消）；正在跑的不可逆调用（不打断）；
         # 打断之后不再开始新的 Node；这一轮被打断了（以 replan 结束）；被打断的 Node 的撤销说明。
         self._top_running: dict[str, asyncio.Task[StageResult]] = {}
@@ -321,7 +326,9 @@ class StageRunner:
         self._extra_injections = {k: list(v) for k, v in (injections or {}).items()}
         await self._prepare(stage)
         nodes = list(stage.get("nodes", []))
-        errors = sp.validate_stage(stage, max_nodes=self.policy.max_inline_nodes)
+        self._stage_ids = frozenset(str(n.get("id")) for n in nodes)
+        earlier = self._ctx.earlier
+        errors = sp.validate_stage(stage, max_nodes=self.policy.max_inline_nodes, earlier=None if earlier is None else set(earlier))
         if errors:
             reason = "invalid_stage：" + "；".join(errors)
             return {n["id"]: StageResult(role=_role(n), status="skipped", error=reason) for n in sorted(nodes, key=lambda n: n["id"])}
@@ -624,6 +631,16 @@ class StageRunner:
                 return _denied(role, reason)
         if resolved:
             inputs = node.get("inputs", {})
+        elif self._ctx.earlier is not None and env is self._top:
+            # N-01：Planner 写的顶层 Node。本 Stage 没有的 id 取之前各轮的结果；嵌在文字里的引用也换；deliver 没写引用时带上上游。
+            visible = {**{k: v for k, v in self._ctx.earlier.items() if k not in self._stage_ids}, **env.view()}
+            try:
+                inputs = sp.resolve_inputs(node.get("inputs", {}), results=visible, task_state=self._ctx.task_state, embedded=True)
+            except sp.UnresolvedReference as err:
+                return _failed(role, f"unresolved_reference：{err}")
+            extra = sp.deliver_inputs(node, results=env.view(), earlier=visible, user_message=str(self._ctx.task_state.get("goal") or ""))
+            if extra:
+                inputs = {**inputs, **extra}
         else:
             try:
                 inputs = sp.resolve_inputs(node.get("inputs", {}), results=env.view(), task_state=self._ctx.task_state, goal_inputs=env.goal_inputs)

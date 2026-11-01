@@ -50,6 +50,7 @@ class PlannerActivities:
             context=context,
             task_plan=inp.task_plan,
             last_round=inp.last_round,
+            earlier=inp.earlier_results,
         )
         # 工作流里的决策重试用完时（TMP 计划第 4 节）不调模型，直接给保守规划。
         result = self.planner.plan_without_model(request) if inp.no_model else await self.planner.plan(request)

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import copy
 import json
+from collections.abc import Mapping
 from functools import cache
 from pathlib import Path
 from typing import Any
@@ -209,13 +210,14 @@ def problems(
     level: str,
     context: PlanningContext,
     keep_nodes: list[str],
+    earlier: Mapping[str, str] | None = None,
 ) -> list[str]:
-    """不合格之处的说明，为空表示合格。说明会原样带给模型重问。"""
+    """不合格之处的说明，为空表示合格。说明会原样带给模型重问。earlier 给了时按 N-01 的规则查引用（与 Stage Runner 一致）。"""
     if not isinstance(stage, dict):
         return ["没有给出 stage（JSON 对象）"]
     found = schema_problems("stage", stage)
     if not found:
-        found += [f"Stage 的 DAG：{p}" for p in sp.validate_stage(stage, max_nodes=MAX_NODES)]
+        found += [f"Stage 的 DAG：{p}" for p in sp.validate_stage(stage, max_nodes=MAX_NODES, earlier=None if earlier is None else set(earlier))]
     found += _catalog_problems(stage, context)
     found += _effect_problems(stage, context)
     found += _role_problems(stage, context)

@@ -60,6 +60,10 @@ GUIDANCE_PATCH = "guidance-and-interrupt"
 # 发问的 activity 还没结束时被立刻打断：问题可能已经发出去了，也要撤回（多一次 cancel_human）。
 INTERRUPT_WITHDRAW_PATCH = "interrupt-withdraws-question"
 
+# docs/plan/feedback-2026-11-01.md N-01：嵌在文字里的引用、引用之前各轮的结果、deliver 没写引用时带上上游。
+# 原来校验不过的 Stage 现在能跑，原来原样传下去的占位符现在可能让 Node 失败，改变了命令序列。
+REFERENCES_PATCH = "n01-references"
+
 # 新的运行在第一个工作流任务里一次问完全部版本分支（模块说明）。
 PATCHES_AT_START = "s04-patches-at-start"
 # 只能在末尾追加。
@@ -81,6 +85,7 @@ AT_START = (
     CONTEXT_USAGE_PATCH,
     GUIDANCE_PATCH,
     INTERRUPT_WITHDRAW_PATCH,
+    REFERENCES_PATCH,
 )
 
 

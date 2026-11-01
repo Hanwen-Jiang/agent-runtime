@@ -45,6 +45,8 @@ class PlanRequest:
     """之前的轮次产出的 Task Plan。"""
     last_round: dict[str, Any] | None = None
     """上一轮：{"stage", "results", "verdict"}；replan 时 verdict.replan.keep_nodes 是要保留的 Node。"""
+    earlier: dict[str, str] | None = None
+    """之前各轮成功、可以按 id 引用的顶层 Node 与一行摘要（N-01）；之前的运行为 None。"""
 
 
 @dataclass(frozen=True)
@@ -183,8 +185,11 @@ class Planner:
         template = self.config.rewrite_template if decision.kind == "follow_up" else self.config.answer_template
         if template not in request.context.catalog.templates:
             return None
-        # 以 $ 开头的输入是引用；用户消息照原样传，开头的 $ 要写成 $$（字面量）。
-        text = "$" + request.message if request.message.startswith("$") else request.message
+        # 以 $ 开头的输入是引用；用户消息照原样传，开头的 $ 要写成 $$（字面量）。N-01 之后的运行连嵌在文字里的也解析，每个 $ 都要转义。
+        if request.earlier is not None:
+            text = request.message.replace("$", "$$")
+        else:
+            text = "$" + request.message if request.message.startswith("$") else request.message
         node = {"id": "answer", "kind": "atomic", "template": template, "executor": "model", "output": "generate", "effect": "none", "role": "deliver", "inputs": {"request": text}}
         return {"seq": request.round_seq, "goal": "回复用户这条消息", "exit_when": "answer 给出回复", "nodes": [node]}
 
@@ -248,6 +253,7 @@ class Planner:
             last_round=request.last_round,
             round_seq=request.round_seq,
             keep_nodes=keep,
+            earlier=request.earlier,
         )
         found: list[str] = []
         for attempt in range(2):
@@ -267,7 +273,7 @@ class Planner:
                     stage, task_plan, adjusted = validate.drop_unknown_tiers(stage, task_plan, request.context.catalog.tiers)
                     stage, capped = validate.cap_budgets(stage, self._left_after_planning(request, calls))
                     adjusted = [*adjusted, *capped]
-                    found = validate.problems(stage, task_plan, level=decision.level, context=request.context, keep_nodes=keep)
+                    found = validate.problems(stage, task_plan, level=decision.level, context=request.context, keep_nodes=keep, earlier=request.earlier)
                     if not found:
                         return PlanResult(triage_level=decision.level, stage=stage, task_plan=task_plan, decision=decision, calls=calls, adjustments=adjusted)
             if attempt == 0:

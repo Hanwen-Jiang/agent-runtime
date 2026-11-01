@@ -18,7 +18,7 @@ from __future__ import annotations
 import copy
 import json
 import re
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Collection, Iterable, Iterator, Mapping
 from typing import Any
 
 EFFECT_ORDER = ("none", "read", "write_reversible", "write_irreversible")
@@ -36,6 +36,13 @@ _CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 # $<node_id>.result[.路径]：node_id 本身可以带“.序号”，取第一个“.result”作分界。
 _NODE_REF = re.compile(r"^([a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*?)\.result(?:\.(.+))?$")
 _SPECIAL_REFS = ("task", "goal", "item")
+# 嵌在文字里的引用（docs/plan/feedback-2026-11-01.md N-01）：$$ 是字面的 $；$task.<路径>、$goal.<路径>（路径必须有）；
+# $<node_id>.result[.路径]。路径只含字母、数字与下划线，句末的“.”不算进路径。
+_EMBEDDED_REF = re.compile(
+    r"\$\$|\$(?P<special>task|goal)(?P<spath>(?:\.[A-Za-z0-9_]+)+)|\$(?P<node>[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*?)\.result(?P<path>(?:\.[A-Za-z0-9_]+)*)"
+)
+# 嵌进文字的一个值最多这么多字；更长的截断并写明。
+EMBEDDED_VALUE_CHARS = 16000
 
 
 class UnresolvedReference(ValueError):
@@ -78,6 +85,42 @@ def _references(value: Any) -> Iterator[str]:
         yield value[1:]
 
 
+def _strings(value: Any) -> Iterator[str]:
+    if isinstance(value, Mapping):
+        for v in value.values():
+            yield from _strings(v)
+    elif isinstance(value, list):
+        for v in value:
+            yield from _strings(v)
+    elif isinstance(value, str):
+        yield value
+
+
+def embedded_references(value: Any) -> Iterator[str]:
+    """嵌在文字里的引用（去掉开头的 $，形如 <id>.result[.路径] 或 task.<路径>）；整串是引用的不算，$$ 不算。"""
+    for text in _strings(value):
+        if _whole_reference(text):
+            continue
+        for m in _EMBEDDED_REF.finditer(text):
+            if m.group("special"):
+                yield m.group("special") + m.group("spath")
+            elif m.group("node"):
+                yield f"{m.group('node')}.result{m.group('path')}"
+
+
+def all_references(value: Any) -> Iterator[str]:
+    """N-01 之后的运行按 resolve_inputs(embedded=True) 的读法找出的全部引用（去掉开头的 $）：整串干净的引用，加上嵌在文字里的。"""
+    for text in _strings(value):
+        if _whole_reference(text):
+            yield text[1:]
+    yield from embedded_references(value)
+
+
+def has_references(value: Any) -> bool:
+    """输入里有没有任何引用（整串的或嵌在文字里的）。"""
+    return next(all_references(value), None) is not None
+
+
 def _node_reference(body: str) -> tuple[str, str] | None:
     """解析 <node_id>.result[.路径]；不是 Node 的 result 引用时返回 None。"""
     match = _NODE_REF.match(body)
@@ -98,7 +141,7 @@ def descendants(stage: Mapping[str, Any], ids: Iterable[str]) -> set[str]:
     return found - set(ids)
 
 
-def validate_stage(stage: Mapping[str, Any], *, max_nodes: int, top_level: bool = True) -> list[str]:
+def validate_stage(stage: Mapping[str, Any], *, max_nodes: int, top_level: bool = True, earlier: Collection[str] | None = None) -> list[str]:
     """校验 JSON Schema 表达不了的规则，返回错误说明（为空表示合法）：
 
     - Node id 唯一，顶层 id 不含“.”；after 引用存在；DAG 无环；
@@ -107,6 +150,9 @@ def validate_stage(stage: Mapping[str, Any], *, max_nodes: int, top_level: bool 
     - 顶层 Node 个数不超过 max_nodes。
 
     top_level 为 False 时用于校验展开出的子图，Node id 可以带“.”。
+
+    earlier 给了时（N-01 之后的运行，docs/plan/feedback-2026-11-01.md）：嵌在文字里的引用也查；本 Stage 里没有的 id，
+    在 earlier（之前各轮成功的顶层 Node）里就可以引用。本 Stage 里有的 id 仍然只能是祖先。
     """
     errors: list[str] = []
     nodes = list(stage.get("nodes", []))
@@ -151,14 +197,23 @@ def validate_stage(stage: Mapping[str, Any], *, max_nodes: int, top_level: bool 
         ancestors[nid] = found
     for node in nodes:
         nid = str(node.get("id", ""))
-        for body in _references(node.get("inputs", {})):
+        inputs = node.get("inputs", {})
+        bodies = list(_references(inputs)) if earlier is None else list(all_references(inputs))
+        for body in bodies:
             head = body.split(".", 1)[0]
             if head in _SPECIAL_REFS:
                 continue
             parsed = _node_reference(body)
             if parsed is None:
                 errors.append(f"{nid} 的输入 ${body} 只能引用上游的 result、Task State 或常量")
-            elif parsed[0] not in ancestors.get(nid, []):
+            elif parsed[0] in ancestors.get(nid, []):
+                continue
+            elif earlier is not None and parsed[0] not in deps and parsed[0] in earlier:
+                continue
+            elif earlier is not None and parsed[0] not in deps:
+                known = "、".join(sorted(earlier)) or "无"
+                errors.append(f"{nid} 的输入引用了 {parsed[0]}：本 Stage 里没有它，之前各轮也没有成功的 {parsed[0]}（可以引用的之前的结果：{known}）")
+            else:
                 errors.append(f"{nid} 的输入引用了 {parsed[0]}，它不是 {nid} 的上游")
         # 写操作的 Atomic Node 重做就是再写一次，不能挂 quality；write_reversible 的 Goal Node 可以（附录 B.3
         # “修复 CI”：tool_loop 是唯一写者，revise 带着测试结果再试）；write_irreversible 一律不行。
@@ -193,17 +248,24 @@ def resolve_inputs(
     task_state: Mapping[str, Any],
     goal_inputs: Mapping[str, Any] | None = None,
     item: Any = _MISSING,
+    embedded: bool = False,
 ) -> Any:
     """把输入里的引用换成值（附录 D.1：只能引用上游 result、Task State 或常量）。
 
     整个字符串是一个引用：$<node_id>.result[.路径]、$task.<路径>、$goal.<路径>（Recipe 子图引用 Goal 的输入）、
     $item[.路径]（逐条目展开时的当前条目）。$$ 开头表示字面的 $。dict 与 list 递归解析，其余原样返回。
+
+    embedded 为 True 时（N-01 之后的运行，只用于 Planner 写的顶层 Node）另把嵌在文字里的引用换成值，见 interpolate。
     """
     if isinstance(value, Mapping):
-        return {k: resolve_inputs(v, results=results, task_state=task_state, goal_inputs=goal_inputs, item=item) for k, v in value.items()}
+        return {k: resolve_inputs(v, results=results, task_state=task_state, goal_inputs=goal_inputs, item=item, embedded=embedded) for k, v in value.items()}
     if isinstance(value, list):
-        return [resolve_inputs(v, results=results, task_state=task_state, goal_inputs=goal_inputs, item=item) for v in value]
-    if not isinstance(value, str) or not value.startswith("$"):
+        return [resolve_inputs(v, results=results, task_state=task_state, goal_inputs=goal_inputs, item=item, embedded=embedded) for v in value]
+    if not isinstance(value, str):
+        return value
+    if embedded and not _whole_reference(value):
+        return interpolate(value, results=results, task_state=task_state, goal_inputs=goal_inputs)
+    if not value.startswith("$"):
         return value
     if value.startswith("$$"):
         return value[1:]
@@ -226,6 +288,84 @@ def resolve_inputs(
     if node_id not in results:
         raise UnresolvedReference(f"{value}：上游 {node_id} 没有结果")
     return _walk(results[node_id], path, value)
+
+
+_WHOLE_SPECIAL = re.compile(r"\$(?:task|goal|item)(?:\.[A-Za-z0-9_]+)*")
+
+
+def _whole_reference(value: str) -> bool:
+    """整串就是一个干净的引用（embedded 模式下按整串的规则解析，保留值的类型）；带别的文字的按嵌入处理。"""
+    if _WHOLE_SPECIAL.fullmatch(value):
+        return True
+    m = _EMBEDDED_REF.fullmatch(value)
+    return m is not None and m.group("node") is not None
+
+
+def _embedded_text(value: Any) -> str:
+    text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    if len(text) > EMBEDDED_VALUE_CHARS:
+        text = text[:EMBEDDED_VALUE_CHARS] + f"…（截断，共 {len(text)} 字）"
+    return text
+
+
+def _lenient_walk(value: Any, path: str) -> Any:
+    """嵌在文字里的引用：路径不存在时退回整个值（给模型看的，宁可多给）。"""
+    try:
+        return _walk(value, path.lstrip("."), "")
+    except UnresolvedReference:
+        return value
+
+
+def interpolate(text: str, *, results: Mapping[str, Any], task_state: Mapping[str, Any], goal_inputs: Mapping[str, Any] | None = None) -> str:
+    """把文字里的引用换成值（docs/plan/feedback-2026-11-01.md N-01）：字符串原样嵌入，其余写成紧凑的 JSON，过长的截断。
+
+    $$ 换成字面的 $。Node 的结果在、路径不存在时嵌入整个结果；Node 没有结果时抛 UnresolvedReference（这个 Node 失败，
+    不把占位符交给模型）。$task.<路径> 找不到时同样抛；没有 Goal 输入时 $goal 原样保留。纯函数，工作流里可用。
+    """
+
+    def replace(m: re.Match[str]) -> str:
+        if m.group(0) == "$$":
+            return "$"
+        if m.group("special") == "task":
+            return _embedded_text(_walk(task_state, m.group("spath").lstrip("."), m.group(0)))
+        if m.group("special") == "goal":
+            return m.group(0) if goal_inputs is None else _embedded_text(_lenient_walk(goal_inputs, m.group("spath")))
+        node_id = m.group("node")
+        if node_id not in results:
+            raise UnresolvedReference(f"{m.group(0)}：上游 {node_id} 没有结果")
+        return _embedded_text(_lenient_walk(results[node_id], m.group("path")))
+
+    return _EMBEDDED_REF.sub(replace, text)
+
+
+# deliver 自动带上的每个上游结果最多这么多字。
+UPSTREAM_VALUE_CHARS = 8000
+
+
+def _clipped(value: Any) -> Any:
+    text = json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    if len(text) <= UPSTREAM_VALUE_CHARS:
+        return copy.deepcopy(value)
+    return text[:UPSTREAM_VALUE_CHARS] + f"…（截断，共 {len(text)} 字）"
+
+
+def deliver_inputs(node: Mapping[str, Any], *, results: Mapping[str, Any], earlier: Mapping[str, Any], user_message: str) -> dict[str, Any] | None:
+    """deliver 的 model 节点一个引用也没写时自动带上的输入（docs/plan/feedback-2026-11-01.md N-01 第 3 条）：
+    {"user_message", "upstream": {id: 结果}}。upstream 取它 after 的那些 Node 的结果；没有 after 时取之前各轮的结果。
+    已经写了引用的、直接回复用户的（输入有 request）、不是 model 的 Atomic Node 都返回 None。纯函数。"""
+    inputs = node.get("inputs") or {}
+    if node.get("role") != "deliver" or node.get("kind", "atomic") != "atomic" or node.get("executor") != "model":
+        return None
+    if not isinstance(inputs, Mapping) or "request" in inputs or has_references(inputs):
+        return None
+    after = [str(d) for d in node.get("after") or []]
+    source = {d: results[d] for d in after if d in results} if after else dict(earlier)
+    if not source:
+        return None
+    extra: dict[str, Any] = {"upstream": {k: _clipped(source[k]) for k in sorted(source)}}
+    if user_message:
+        extra["user_message"] = user_message
+    return {k: v for k, v in extra.items() if k not in inputs}
 
 
 def child_id(parent: str, *seq: int) -> str:

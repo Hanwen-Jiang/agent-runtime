@@ -34,7 +34,7 @@ _PLANNER_RULES = """你是 Agent Runtime 的 Planner，在 Round 的开头决定
 3. Node 的 effect 不得超过 brief 区给出的 effect 上限；Goal Node 所列工具的 effect 不得高于它自己的 effect_ceiling。
 4. 不可逆动作（effect 为 write_irreversible 的模板或工具）照实声明，运行时会在执行前插入人工审批；不要用 gate 节点替代，也不要降低 effect。
 5. 最终答案只来自 role = deliver 的节点，只在信息齐全、可以交付的那一轮安排。
-6. replan 只重做剩余部分：上一轮 Reviewer 保留的 Node 不要再安排，直接引用它们已有的结果。
+6. replan 只重做剩余部分：上一轮 Reviewer 保留的 Node 不要再安排；能不能、怎样引用之前各轮的结果，看本轮的说明。
 7. 不要写 idempotency_key，也不必纠结 Stage 的 seq 与 Task Plan 的 triage.level：这三样由系统填写。Stage 的 goal、exit_when 与 Goal Node 的 goal、done_when 会显示给用户，用用户消息的语言写。
 8. Task Plan 写清 horizon（full_dag、per_stage 或 explore）、上下文策略与预算；规划成本控制在 Task 预计成本的约 5% 以内。
 9. Tier（model 节点的 tier 与 Task Plan 的 tiers）只能用 Node Catalog 列出的，写成 <模型档>@<推理强度>；拿不准就不写，由 Model Gateway 按 role 选默认 Tier。Triage 的级别（fast、light、full、replan）不是 Tier 名。Task State 的 constraints.model_preference 是用户的模型倾向：economy 尽量用便宜的 Tier，best 可以用最强的，balanced 或没给时按任务难度选。"""
@@ -94,8 +94,27 @@ def _without_highlights(task_state: dict[str, Any]) -> dict[str, Any]:
     return {**task_state, "rounds": [{k: v for k, v in r.items() if k != "highlights"} if isinstance(r, dict) else r for r in rounds]}
 
 
-def _round(message: str, round_seq: int, task_state: dict[str, Any] | None, last_round: dict[str, Any] | None, keep_nodes: list[str] | None, conversation: str = "") -> str:
-    lines = [f"用户消息：{message}", *([conversation] if conversation else []), f"本轮是第 {round_seq} 轮。"]
+# docs/plan/feedback-2026-11-01.md N-01：引用的写法（只在新的运行里说，之前的运行做不到）。
+REFERENCE_RULES = (
+    "Node 的 inputs 怎样引用结果：整个字符串写成 $<node_id>.result 或 $<node_id>.result.<字段>，下游拿到原样的值；"
+    "也可以嵌在文字里，例如 \"根因：$diagnose.result.root_cause\"，会换成文字。只能引用本 Stage 的上游（after 的祖先），"
+    "或者下面列出的之前各轮成功的 Node（本 Stage 里不要再用同一个 id）。字面的 $ 写成 $$。"
+    "deliver 节点要写明它用到哪些结果；一个引用也没写时，系统会把它 after 的上游（没有 after 时是之前各轮）的结果带给它。"
+)
+
+
+def _earlier_lines(earlier: dict[str, str] | None) -> list[str]:
+    if earlier is None:
+        return []
+    listed = [f"- {nid}：{earlier[nid]}" for nid in sorted(earlier)]
+    return [REFERENCE_RULES, "之前各轮成功、可以引用的 Node：" + ("\n" + "\n".join(listed) if listed else "无")]
+
+
+def _round(
+    message: str, round_seq: int, task_state: dict[str, Any] | None, last_round: dict[str, Any] | None, keep_nodes: list[str] | None, conversation: str = "",
+    earlier: dict[str, str] | None = None,
+) -> str:
+    lines = [f"用户消息：{message}", *([conversation] if conversation else []), f"本轮是第 {round_seq} 轮。", *_earlier_lines(earlier)]
     if task_state:
         lines.append(f"Task State：{_dump(_without_highlights(task_state))}")
         if task_state.get("guidance"):
@@ -154,11 +173,12 @@ def planning_messages(
     last_round: dict[str, Any] | None,
     round_seq: int,
     keep_nodes: list[str] | None = None,
+    earlier: dict[str, str] | None = None,
 ) -> list[mg.ChatMessage]:
     return [
         *system_zone(catalog),
         mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=_brief(context, decision, task_plan)),
-        mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=_round(message, round_seq, task_state, last_round, keep_nodes, transcript_text(context.conversation, max_chars=PLANNING_CONVERSATION_CHARS))),
+        mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=_round(message, round_seq, task_state, last_round, keep_nodes, transcript_text(context.conversation, max_chars=PLANNING_CONVERSATION_CHARS), earlier)),
     ]
 
 
