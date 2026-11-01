@@ -581,3 +581,5 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
 - [Ingress NGINX 停止维护](https://kubernetes.io/blog/2025/11/11/ingress-Nginx-retirement/)
 - Kata：[kata-deploy](https://github.com/kata-containers/kata-containers/blob/3.3.0-test/tools/packaging/kata-deploy/README.md)、[AWS 上的 Kata](https://aws.amazon.com/blogs/containers/enhancing-kubernetes-workload-isolation-and-security-using-kata-containers/)
 - 对照：[Fly.io 2026 年价格](https://fly.io/pricing-update/)；三类后端与 VMM 的对比见 [sandbox-backends.md](../reference/sandbox-backends.md)
+
+2026-11-01：第 14～16 版（调优第一轮，TMP 计划第 11.15 节）。第 14 版换镜像 3608351；第 15 版用 `memory.imageTag` 把 Memory Service 留在 52174d9：`3eb4fde` 之后的新镜像在生产配置不全时拒绝启动（`docs/plan/memory-live.md` 第 4 节），只换镜像会让它崩溃重启，`helm --wait` 发现不了，要看重启次数；第 16 版换镜像 f43a19f（修 Reviewer 的 effect 上限与预算压缩）。回滚：`helm rollback ar 15`。全是数字的提交号（3608351）当 `image.tag` 时要加引号，现在 Chart 直接报错，不再渲染出错误的镜像名。swebench 的租户策略到第 4 版（工具调用额度 400）。
