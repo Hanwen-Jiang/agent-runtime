@@ -131,7 +131,7 @@ def script_charge(h: StageHarness, *steps: ToolLoopStep) -> None:
 
 
 def test_the_version_branch_is_appended_at_the_end_of_at_start() -> None:
-    assert patches.AT_START[-1] == patches.GUIDANCE_PATCH
+    assert patches.AT_START[-2:] == (patches.GUIDANCE_PATCH, patches.INTERRUPT_WITHDRAW_PATCH)
 
 
 # --- 第 2 节第一张表：纠偏（下一个检查点） ---

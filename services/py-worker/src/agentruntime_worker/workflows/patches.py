@@ -57,6 +57,8 @@ PARALLEL_TOOL_CALLS_PATCH = "parallel-tool-calls"
 CONTEXT_USAGE_PATCH = "context-usage-events"
 # 同一计划第 2 节：运行中的纠偏与立刻打断（工具调用被拦下、Stage 被打断、回 Planner，多了推送 guidance_updated 的命令）。
 GUIDANCE_PATCH = "guidance-and-interrupt"
+# 发问的 activity 还没结束时被立刻打断：问题可能已经发出去了，也要撤回（多一次 cancel_human）。
+INTERRUPT_WITHDRAW_PATCH = "interrupt-withdraws-question"
 
 # 新的运行在第一个工作流任务里一次问完全部版本分支（模块说明）。
 PATCHES_AT_START = "s04-patches-at-start"
@@ -78,6 +80,7 @@ AT_START = (
     PARALLEL_TOOL_CALLS_PATCH,
     CONTEXT_USAGE_PATCH,
     GUIDANCE_PATCH,
+    INTERRUPT_WITHDRAW_PATCH,
 )
 
 

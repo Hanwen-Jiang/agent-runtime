@@ -79,6 +79,7 @@ with workflow.unsafe.imports_passed_through():
         CONTEXT_USAGE_PATCH,
         DECISION_RETRY_PATCH,
         GUIDANCE_PATCH,
+        INTERRUPT_WITHDRAW_PATCH,
         HUMAN_CHANNEL_PATCH,
         HUMAN_REPLY_RACE_PATCH,
         POLICY_PATCH,
@@ -804,19 +805,26 @@ class StageRunner:
             if early:
                 self._human.forget_reply(question_id)
             if caused_by_cancel(err):
+                await self._withdraw_if_interrupted(question_id)
                 raise asyncio.CancelledError() from err
             return None, f"发不出问题：{failure_message(err)}"
         except asyncio.CancelledError:
             if early:
                 self._human.forget_reply(question_id)
+            await self._withdraw_if_interrupted(question_id)
             raise
         if self._ctx.interruptible and interrupts.asked_to_cancel():
             # 发问的 activity 正好结束时来的取消被它吞了（SDK：activity 正常结束，等它的任务就不再收到取消）：问题已经发出去了，撤回。
             self._human.forget_reply(question_id)
             await self._withdraw(question_id)
             raise asyncio.CancelledError()
-        if self._ctx.events is not None:
-            await self._ctx.events.human_input_required(self._ctx.round_seq, question_id, kind, text, options, deadline.isoformat())
+        try:
+            if self._ctx.events is not None:
+                await self._ctx.events.human_input_required(self._ctx.round_seq, question_id, kind, text, options, deadline.isoformat())
+        except asyncio.CancelledError:
+            self._human.forget_reply(question_id)
+            await self._withdraw_if_interrupted(question_id)
+            raise
         try:
             reply = await self._human.wait_for_reply(question_id, options, timedelta(seconds=timeout_s))
         except asyncio.CancelledError:
@@ -825,6 +833,11 @@ class StageRunner:
         if reply is None:
             await self._withdraw(question_id)
         return reply, ""
+
+    async def _withdraw_if_interrupted(self, question_id: str) -> None:
+        """发问的 activity 还没结束就被取消：问题可能已经发出去了，撤回（工作流不等这个 activity 结束）。"""
+        if self._ctx.interruptible and workflow.patched(INTERRUPT_WITHDRAW_PATCH):
+            await asyncio.shield(asyncio.ensure_future(self._withdraw(question_id)))
 
     async def _withdraw(self, question_id: str) -> None:
         with contextlib.suppress(FailureError):

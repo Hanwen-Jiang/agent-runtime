@@ -82,6 +82,7 @@ with workflow.unsafe.imports_passed_through():
         DECISION_RETRY_PATCH,
         EVENTS_PATCH,
         GUIDANCE_PATCH,
+        INTERRUPT_WITHDRAW_PATCH,
         POLICY_PATCH,
         PROGRESS_DETAIL_PATCH,
         R01_FIXES_PATCH,
@@ -993,19 +994,26 @@ class TaskWorkflow:
         except FailureError as err:
             self.forget_reply(qid)
             if _caused_by_cancel(err):
+                await self._withdraw_if_interrupted(seq, qid)
                 raise asyncio.CancelledError() from err
             workflow.logger.warning("发不出问题 %s：%s", qid, _failure_message(err))
             return None
         except asyncio.CancelledError:
             self.forget_reply(qid)
+            await self._withdraw_if_interrupted(seq, qid)
             raise
         if self._book is not None and interrupts.asked_to_cancel():
             # 发问的 activity 正好结束时来的取消被它吞了（见 stage_runner._ask_and_wait）：问题已经发出去了，撤回。
             self.forget_reply(qid)
             await self._withdraw_question(seq, qid)
             raise asyncio.CancelledError()
-        if self._events is not None:
-            await self._events.human_input_required(seq, qid, "escalation", text, options, deadline.isoformat(), code=code, params=params)
+        try:
+            if self._events is not None:
+                await self._events.human_input_required(seq, qid, "escalation", text, options, deadline.isoformat(), code=code, params=params)
+        except asyncio.CancelledError:
+            self.forget_reply(qid)
+            await self._withdraw_if_interrupted(seq, qid)
+            raise
         try:
             reply = await self.wait_for_reply(qid, options, timedelta(seconds=timeout_s))
         except asyncio.CancelledError:
@@ -1014,6 +1022,11 @@ class TaskWorkflow:
         if reply is None:
             await self._withdraw_question(seq, qid)
         return reply
+
+    async def _withdraw_if_interrupted(self, seq: int, qid: str) -> None:
+        """发问的 activity 还没结束就被取消：问题可能已经发出去了，撤回（工作流不等这个 activity 结束）。"""
+        if self._book is not None and workflow.patched(INTERRUPT_WITHDRAW_PATCH):
+            await asyncio.shield(asyncio.ensure_future(self._withdraw_question(seq, qid)))
 
     async def _withdraw_question(self, seq: int, qid: str = vd.REVIEW_QUESTION_ID) -> None:
         assert self._input is not None
