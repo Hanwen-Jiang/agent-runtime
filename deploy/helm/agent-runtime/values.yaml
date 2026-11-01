@@ -135,6 +135,9 @@ modelGateway:
 
 memory:
   replicas: 1
+  # Memory Service 单独用的镜像 tag，空时跟 image.tag。新镜像在生产配置不全时拒绝启动（docs/plan/memory-live.md 第 4 节），
+  # 接上 Milvus 与真 embedding 之前留在旧镜像上。
+  imageTag: ""
   # 嵌入模型的 Model Profile id；设了才经 Model Gateway 嵌入。
   embeddingVersion: ""
   port: 50061

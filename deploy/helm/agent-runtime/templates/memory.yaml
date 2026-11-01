@@ -22,7 +22,7 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: memory
-          image: {{ include "ar.image" (list . "memory") }}
+          image: {{ if $mem.imageTag }}{{ printf "%s/memory:%s" .Values.image.registry $mem.imageTag }}{{ else }}{{ include "ar.image" (list . "memory") }}{{ end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args: ["-m", "agentruntime_memory"]
           ports:

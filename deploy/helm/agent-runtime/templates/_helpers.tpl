@@ -30,7 +30,11 @@ app.kubernetes.io/component: {{ index . 1 }}
 {{/* 镜像；用法：include "ar.image" (list $ "worker") */}}
 {{- define "ar.image" -}}
 {{- $root := index . 0 -}}
-{{- printf "%s/%s:%s" $root.Values.image.registry (index . 1) (default $root.Chart.AppVersion $root.Values.image.tag) -}}
+{{- $tag := default $root.Chart.AppVersion $root.Values.image.tag -}}
+{{- if not (kindIs "string" $tag) -}}
+{{- fail "image.tag 要写成字符串：全是数字的提交号要加引号，否则镜像名是错的" -}}
+{{- end -}}
+{{- printf "%s/%s:%s" $root.Values.image.registry (index . 1) $tag -}}
 {{- end -}}
 
 {{- define "ar.collectorService" -}}

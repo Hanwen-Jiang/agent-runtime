@@ -49,6 +49,7 @@
 ## 4. 要人定的与还没验证的
 
 - **jev**：人说明它不是 embedding（接口在 `https://api.typesafe.ai/v1`，密钥 `JEV_API_KEY`），不进这份计划。
+- **线上现状（2026-10-31）**：rev 14 换了别的镜像，Memory Service 用 `memory.imageTag` 留在 52174d9，配置不变。按下面的次序部署时去掉它。
 - **部署次序**：新镜像的 Memory Service 在生产配置不全时拒绝启动，所以换镜像时要同时给 `external.milvus.uri`、`memory.embeddingVersion`，并先去掉 `external.qdrant.url`；Model Profile 的 ConfigMap 要先加 3-large。
 - **默认模型**：3 句话的探测（经中转）：`text-embedding-3-large` 同义 0.629、无关 0.044；`3-small` 0.573、0.047；`gemini-embedding-2-preview` 0.837、0.479。样本太小，只够定默认，以 Ragas 的结果为准。
 - **`swebench` 的模型白名单**没有 embedding 的 3-large，这个租户的检索与写入会失败（按设计不拖垮 Task）。基线在跑时不要动 Worker：接上记忆会改变被测系统，部署要等基线结束。
