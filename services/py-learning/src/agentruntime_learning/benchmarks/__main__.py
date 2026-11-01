@@ -41,6 +41,7 @@ def _parser() -> argparse.ArgumentParser:
     pick.add_argument("--ids", type=Path, help="按行给 instance_id 的文件")
     run.add_argument("--stratify", action="store_true", help="与 --limit 一起用：按仓库与难度分层抽题")
     run.add_argument("--exclude-repo", action="append", default=[], help="分层抽题时不选这个仓库，可以给多个")
+    run.add_argument("--exclude-ids", type=Path, help="分层抽题时不选这些题（按行给 instance_id 的文件）：验证用的题不和调优用的题重复")
     run.add_argument("--seed", type=int, default=0)
     run.add_argument("--run-id", help="默认取输出目录的名字")
     run.add_argument("--task-api", required=True, help="Task API 的地址（与 Workspace API 同一个），例如 http://127.0.0.1:8080")
@@ -77,11 +78,12 @@ def _run(args: argparse.Namespace) -> int:
     if (args.stratify or args.exclude_repo) and args.limit is None:
         print("--stratify、--exclude-repo 要与 --limit 一起用", file=sys.stderr)
         return 2
-    if args.exclude_repo and not args.stratify:
-        print("--exclude-repo 要与 --stratify 一起用", file=sys.stderr)
+    if (args.exclude_repo or args.exclude_ids) and not args.stratify:
+        print("--exclude-repo、--exclude-ids 要与 --stratify 一起用", file=sys.stderr)
         return 2
+    exclude_ids = [line.strip() for line in args.exclude_ids.read_text("utf-8").splitlines() if line.strip()] if args.exclude_ids else []
     if args.stratify:
-        chosen = sb.stratified(instances, limit=args.limit, seed=args.seed, exclude_repos=args.exclude_repo)
+        chosen = sb.stratified(instances, limit=args.limit, seed=args.seed, exclude_repos=args.exclude_repo, exclude_ids=exclude_ids)
     else:
         chosen = sb.select(instances, limit=args.limit, seed=args.seed, ids=ids)
     run_id = args.run_id or re.sub(r"[^A-Za-z0-9._-]+", "-", args.out.absolute().name).strip("-.") or "run"
@@ -93,7 +95,7 @@ def _run(args: argparse.Namespace) -> int:
     selection = {
         "instances_file": str(args.instances), "instances_sha256": hashlib.sha256(args.instances.read_bytes()).hexdigest(),
         **({"ids_file": str(args.ids), "ids": True} if args.ids else {"limit": args.limit, "seed": args.seed}),
-        **({"stratified": True, "exclude_repos": sorted(args.exclude_repo)} if args.stratify else {}),
+        **({"stratified": True, "exclude_repos": sorted(args.exclude_repo), "excluded_ids": len(exclude_ids)} if args.stratify else {}),
     }
     summary = sb.run(RuntimeClient(args.task_api, token), chosen, args.out, settings, selection=selection)
     print(

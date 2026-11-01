@@ -62,6 +62,14 @@ spec:
               value: {{ printf "%s-memory:%v" (include "ar.fullname" $) $.Values.memory.port | quote }}
             {{- include "ar.signingKeyEnv" $ | nindent 12 }}
             {{- end }}
+            {{- with $.Values.worker.contextEffectiveTokens }}
+            - name: AR_CONTEXT_EFFECTIVE_TOKENS
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with $.Values.worker.contextOffloadTokens }}
+            - name: AR_CONTEXT_OFFLOAD_TOKENS
+              value: {{ . | quote }}
+            {{- end }}
             - name: AR_TOOL_SHELL_SANDBOX
               value: {{ $shell.mode | quote }}
             {{- if eq $shell.mode "sandbox" }}

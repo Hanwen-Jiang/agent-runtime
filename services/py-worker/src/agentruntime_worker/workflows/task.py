@@ -76,6 +76,7 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.workflows.failures import failure_message as _failure_message
     from agentruntime_worker.workflows.guidance import INTERRUPT, NEXT_STEP, GuidanceBook
     from agentruntime_worker.workflows.highlights import round_highlights
+    from agentruntime_worker.workflows.verification import VerificationRecord
     from agentruntime_worker.workflows.patches import (
         BUDGETS_PATCH,
         CODES_PATCH,
@@ -255,6 +256,7 @@ class TaskWorkflow:
         self._stage_interrupted = False
         self._stage_reads: list[str] = []
         self._stage_writes: list[str] = []
+        self._verification = VerificationRecord()
 
     @workflow.run
     async def run(self, inp: task_pb2.TaskWorkflowInput) -> task_pb2.TaskWorkflowResult:
@@ -908,6 +910,7 @@ class TaskWorkflow:
             done_when=self._state["done_when"],
             stage=stage,
             history=list(self._history),
+            verification=self._verification.as_dict(),
         )
         if self._retry_in_workflow:
             raw = await self._decide(names.REVIEW_ROUND, request, dataclasses.replace(request, rules_only=True), "review_round", seq, dict)
@@ -921,6 +924,7 @@ class TaskWorkflow:
                 result_type=dict,
             )
         verdict, update = vd.review_output(raw)
+        self._verification.reviewed(verdict)
         return verdict, update, vd.review_cost(raw), vd.review_highlights(raw)
 
     def _remember_delivery(self, results: dict[str, StageResult]) -> None:
@@ -1079,6 +1083,7 @@ class TaskWorkflow:
             decision_retry=self._retry_in_workflow,
             interruptible=self._book is not None,
             guidance=self._book,
+            verification=self._verification,
         )
         runner = StageRunner(ctx, self)
         self._running_spent = lambda: plan_cost + runner.spent_usd

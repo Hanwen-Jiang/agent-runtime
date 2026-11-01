@@ -208,8 +208,9 @@ def enforce(
     catalog: ReviewCatalog | None = None,
     caps: Caps = Caps(),
     escalate_tier: str = "strong@high",
+    verification: Mapping[str, Any] | None = None,
 ) -> Decision:
-    rules = _Rules(floor, ledger, stage, results, catalog, caps, escalate_tier)
+    rules = _Rules(floor, ledger, stage, results, catalog, caps, escalate_tier, verification)
     reasons: list[str] = []
     if proposal is None:
         verdict = rules.fallback()
@@ -245,7 +246,9 @@ class _Rules:
         catalog: ReviewCatalog | None,
         caps: Caps,
         escalate_tier: str,
+        verification: Mapping[str, Any] | None = None,
     ) -> None:
+        self.verification = verification
         self.floor = floor
         self.ledger = ledger
         self.results = results
@@ -266,6 +269,18 @@ class _Rules:
             return {"verdict": "continue", "reason": "各 Node 都成功，本轮还没有交付"}
         return self.make(self.floor.step, None, list(self.floor.reasons), code=self.floor.code, params=self.floor.params)
 
+    def unproven_done(self) -> tuple[str, str] | None:
+        """判 done 却明显没做完（TMP 计划第 11.15 节）：能改文件却没改，或改完没运行过任何命令。各种情况合计只拦一次：有的任务确实不用改、
+        改完也没法跑，再判 done 就算数。最后一次命令失败不拦：项目可能本来就有失败的测试，由 Reviewer 判断。"""
+        record = self.verification
+        if not record or not record.get("write_capable") or int(record.get("done_blocked") or 0) >= 1:
+            return None
+        if not record.get("wrote"):
+            return "能改文件，却一个文件都没有改就判 done：先确认是不是真的不用改", "rule_done_without_changes"
+        if not record.get("ran_after_write"):
+            return "改完之后没有运行过任何命令：先验证再交付", "rule_done_unverified"
+        return None
+
     # --- 细节的合法性 ---
 
     def valid(self, verdict: dict[str, Any], reasons: list[str]) -> dict[str, Any]:
@@ -280,6 +295,11 @@ class _Rules:
                 why = "本轮没有成功的 deliver 节点：是否完成看产出物，还不能判 done"
                 reasons.append(why)
                 return self.make("continue" if not self.failed else self.floor.step, verdict, [why], code="rule_no_deliver")
+            unproven = self.unproven_done()
+            if unproven is not None:
+                why, code = unproven
+                reasons.append(why)
+                return self.make("continue" if not self.failed else self.floor.step, verdict, [why], code=code)
             if verdict["done"].get("deliver_node") not in delivers:
                 reasons.append(f"done 的交付改为本轮成功的 deliver 节点 {delivers[0]}")
                 verdict["done"] = {"deliver_node": delivers[0]}

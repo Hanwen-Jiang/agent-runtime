@@ -317,8 +317,8 @@ async def test_reviewer_sees_only_results_state_and_criteria(harness: Harness) -
     assert len(reviews) == 1
     review = reviews[0]
     # S-10：另带本轮执行的 Stage（判 continue 要看它的 exit_when，诊断形状要看 Node 结构）与之前各 Round 的摘要；
-    # 仍然没有 Task Plan、Triage 的理由与任何 rationale（rules_only 只是只按规则判定的开关，TMP 计划第 4 节）。
-    assert {f.name for f in dataclasses.fields(review)} == {"tenant", "task_id", "round_seq", "task_state", "stage_results", "done_when", "stage", "history", "rules_only"}
+    # 仍然没有 Task Plan、Triage 的理由与任何 rationale（rules_only 只是只按规则判定的开关，TMP 计划第 4 节；verification 是代码记下的执行事实，第 11.15 节）。
+    assert {f.name for f in dataclasses.fields(review)} == {"tenant", "task_id", "round_seq", "task_state", "stage_results", "done_when", "stage", "history", "rules_only", "verification"}
     assert review.rules_only is False
     assert review.done_when == "每个结论有数据支撑" == review.task_state["done_when"]
     assert set(review.stage_results) == {"answer"}

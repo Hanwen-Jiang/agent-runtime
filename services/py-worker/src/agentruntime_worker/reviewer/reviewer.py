@@ -53,6 +53,8 @@ class ReviewRequest:
     catalog: ReviewCatalog | None = None
     # 决策调用的重试用完或到了总时限（TMP 计划第 4 节）：不调模型，只按规则判定。
     rules_only: bool = False
+    # 这个 Task 改过文件、验证过没有（Stage Runner 记的，TMP 计划第 11.15 节）；评测样本与之前的运行没有。
+    verification: dict[str, Any] | None = None
 
 
 @dataclass
@@ -106,7 +108,7 @@ class Reviewer:
         if not fast and not request.rules_only:
             preview = floor(lg, results, completion=None, thresholds=cfg.thresholds)
             view = prompts.review_view(request.task_state, request.stage, results, request.history)
-            messages = prompts.review_messages(view, ledger=lg, floor=preview, catalog=request.catalog)
+            messages = prompts.review_messages(view, ledger=lg, floor=preview, catalog=request.catalog, verification=request.verification)
             for attempt in range(2):
                 try:
                     response = await self._call(request, messages, calls)
@@ -138,6 +140,7 @@ class Reviewer:
             catalog=request.catalog,
             caps=cfg.caps,
             escalate_tier=cfg.escalate_tier,
+            verification=request.verification,
         )
         verdict = decision.verdict
         update: dict[str, Any] = checked_update(answer.get("state_update") if answer is not None else None, max_items=cfg.max_state_items)

@@ -74,6 +74,7 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.workflows.events import EventPublisher, sandbox_startup_ms, tool_target
     from agentruntime_worker.workflows.failures import caused_by_cancel, failure_class, failure_message
     from agentruntime_worker.workflows.guidance import GuidanceBook, LoopView
+    from agentruntime_worker.workflows.verification import VerificationRecord
     from agentruntime_worker.workflows.patches import (
         BUDGETS_PATCH,
         CONTEXT_USAGE_PATCH,
@@ -238,6 +239,8 @@ class RunContext:
     tool_calls_before: int = 0
     wall_clock_limit_s: float = 0.0
     active_s: Callable[[], float] | None = None
+    # TMP 计划第 11.15 节：这个 Task 改过文件、验证过没有。只有 Task 工作流有，跨 Round 累计。
+    verification: VerificationRecord | None = None
     # 同一计划第 4 节（DECISION_RETRY_PATCH 之后的运行为 True）：tool_loop 的一步由工作流重试。
     decision_retry: bool = False
     # docs/plan/running-task-interaction.md 第 2 节（GUIDANCE_PATCH 之后的运行）：interruptible 是 activity 用短的 heartbeat 超时，取消很快
@@ -1194,6 +1197,8 @@ class StageRunner:
         观察送回循环；同一个 Goal Node 被拒 MAX_TOOL_REJECTIONS 次就记为 denied。D16 之前的历史没有审批，按旧路径回放。
         模型一次回答里有多个工具调用时见 _tool_batch；之前的运行（没有 PARALLEL_TOOL_CALLS_PATCH）只执行第一个。
         """
+        if self._ctx.verification is not None:
+            self._ctx.verification.offered(tool_effects)
         nid = node["id"]
         limit = int(node.get("max_iterations") or DEFAULT_MAX_ITERATIONS)
         history: list[dict[str, Any]] = []
@@ -1365,6 +1370,8 @@ class StageRunner:
             entry["error"] = failure_message(err)
         if "error" not in entry:
             self._note_paths(args, effect)
+            if self._ctx.verification is not None:
+                self._ctx.verification.called(tool, effect, args, entry.get("observation"))
         if "error" not in entry and _lists_empty_root(tool, args, entry.get("observation")):
             # TMP 计划第 2 节：工作区根是空的，交给 Reviewer 的硬信号。
             marks.add("environment")

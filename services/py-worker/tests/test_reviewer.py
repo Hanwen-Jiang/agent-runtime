@@ -104,8 +104,8 @@ async def test_the_prompt_holds_results_state_and_criteria_but_nothing_from_plan
 
 def test_the_review_activity_input_has_no_planning_fields() -> None:
     names = {f.name for f in dataclasses.fields(ReviewRoundInput)}
-    # rules_only 是工作流给的开关（决策重试用完时只按规则判定，TMP 计划第 4 节），不带规划过程。
-    assert names == {"tenant", "task_id", "round_seq", "task_state", "stage_results", "done_when", "stage", "history", "rules_only"}
+    # rules_only 是工作流给的开关（决策重试用完时只按规则判定，TMP 计划第 4 节）；verification 是代码记下的执行事实（第 11.15 节）。都不带规划过程。
+    assert names == {"tenant", "task_id", "round_seq", "task_state", "stage_results", "done_when", "stage", "history", "rules_only", "verification"}
 
 
 # --- 规则先于模型 ---

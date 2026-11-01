@@ -114,7 +114,7 @@ async def test_tool_loop_goal_nodes_get_context_read(tmp_path: Path) -> None:
     activities = PlannerActivities(Planner(invalid_twice()), StaticContextSource(context()), tools=ToolCatalog(dev_tools(worker_config(tmp_path))))
     out = await ActivityEnvironment().run(activities.plan_round, plan_input())
     [goal] = goal_nodes(out.stage)
-    assert goal["mode"] == "tool_loop" and goal["tools"] == [CONTEXT_READ]
+    assert goal["mode"] == "tool_loop" and goal["tools"].count(CONTEXT_READ) == 1
     assert_valid("stage", out.stage)
 
 

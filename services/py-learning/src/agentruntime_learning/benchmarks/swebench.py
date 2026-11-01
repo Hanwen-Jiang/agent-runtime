@@ -31,7 +31,7 @@ import time
 import urllib.parse
 import urllib.request
 from collections import Counter
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -141,10 +141,10 @@ def select(instances: Sequence[Instance], *, limit: int | None = None, seed: int
     return sorted(random.Random(seed).sample(ordered, limit), key=lambda i: i.instance_id)
 
 
-def stratified(instances: Sequence[Instance], *, limit: int, seed: int = 0, exclude_repos: Sequence[str] = ()) -> list[Instance]:
+def stratified(instances: Sequence[Instance], *, limit: int, seed: int = 0, exclude_repos: Sequence[str] = (), exclude_ids: Collection[str] = ()) -> list[Instance]:
     """分层选题：各仓库按题数成比例（最大余额法；名额够时每个仓库至少一题），仓库内按难度排好、等距取，所以难度也成比例。
     同一个种子结果相同，与输入顺序无关。"""
-    pool = sorted((i for i in instances if i.repo not in set(exclude_repos)), key=lambda i: i.instance_id)
+    pool = sorted((i for i in instances if i.repo not in set(exclude_repos) and i.instance_id not in set(exclude_ids)), key=lambda i: i.instance_id)
     if limit >= len(pool):
         return pool
     by_repo: dict[str, list[Instance]] = {}

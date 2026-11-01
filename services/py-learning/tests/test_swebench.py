@@ -143,6 +143,14 @@ def test_asking_for_more_than_there_are_takes_them_all() -> None:
     assert len(sb.stratified(pool, limit=10, seed=0, exclude_repos=("psf/requests",))) == 3
 
 
+def test_stratified_selection_can_leave_out_problems_already_used() -> None:
+    """验证用的题不能和调过的题重复：调优只看基线那 50 题，验证要用没见过的。"""
+    pool = many({"big/one": 100, "mid/two": 40})
+    used = {i.instance_id for i in sb.stratified(pool, limit=20, seed=0)}
+    fresh = sb.stratified(pool, limit=20, seed=0, exclude_ids=used)
+    assert len(fresh) == 20 and not used & {i.instance_id for i in fresh}
+
+
 # --- 2. 不泄题 ---
 
 

@@ -37,6 +37,7 @@ _REVIEWER_RULES = f"""你是 Agent Runtime 的 Reviewer，在 Round 的结尾判
 - state_update：要写进 Task State 的汇总：facts（本轮已验证的事实）、assumptions_verified 与 assumptions_broken（照抄 Task State 里假设的原文）、open_questions（待查的问题）。只写有根据的，各几条即可。facts 只写关于任务与产出物本身的事实（例如仓库里有哪些文件、测试结果），不写判定的过程，不提 floor、硬信号、规则这些给你的内部材料。
 - highlights：这一轮给人看的重要输出：files（重要文件，每项 path 与 why，why 一句话说明为什么重要；path 只写这一轮工具调用碰过的文件）、answers（重要答案，每条不超过 300 字），各最多 5 条。没有就省略。
 - guidance：Task State 里的 guidance 是用户在运行中发来的纠偏，按它验收：产出不符合用户的纠偏就不算完成。
+- verification：代码记下的事实（wrote 改过文件没有，ran_after_write 改完运行过命令没有，last_exit_code 最后一次命令的退出码）。Node 的结果是模型写的，这份不是，两者矛盾时信它。last_exit_code 非零时要分清是这次改坏的，还是已有的失败：看本轮的结果，说不清就不要判 done。
 - 语言：给人看的文字（verdict 的 reason、问人的 question 与 state_summary、repair 的 guidance、replan 的 stuck_reason、state_update 与 highlights 的各条）用用户的语言写，即 Task State 里 goal 所用的语言（goal 是英文就写英文）。
 
 先回答 Progress Check 的五个问题，写进 verdict.progress_check：是否已满足验收条件？最近几个 Round 有没有实质进展？是否在绕圈？计划依赖的假设还成立吗？下一步做什么、由谁做？
@@ -109,7 +110,7 @@ def system_zone() -> list[mg.ChatMessage]:
     return [mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=f"{_REVIEWER_RULES}\n\n{schemas}", cache_breakpoint=True)]
 
 
-def review_messages(view: dict[str, Any], *, ledger: Ledger, floor: Floor, catalog: ReviewCatalog | None) -> list[mg.ChatMessage]:
+def review_messages(view: dict[str, Any], *, ledger: Ledger, floor: Floor, catalog: ReviewCatalog | None, verification: Mapping[str, Any] | None = None) -> list[mg.ChatMessage]:
     findings: dict[str, Any] = {
         "signals": list(ledger.signals),
         "floor": floor.step,
@@ -122,6 +123,8 @@ def review_messages(view: dict[str, Any], *, ledger: Ledger, floor: Floor, catal
     if catalog is not None:
         findings["recipes"] = {name: risk for name, risk in sorted(catalog.recipes.items())}
         findings["effect_ceiling"] = catalog.effect_ceiling
+    if verification:
+        findings["verification"] = dict(verification)
     text = f"本轮的材料：{_dump(view)}\n代码算出的硬信号、floor 与可选项：{_dump(findings)}"
     return [*system_zone(), mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=text)]
 

@@ -143,6 +143,14 @@ def _rank(effect: str) -> int:
     return sp.effect_rank(effect) if effect in sp.EFFECT_ORDER else len(sp.EFFECT_ORDER)
 
 
+def fallback_tools(context: PlanningContext) -> list[str]:
+    """保守规划的 Goal Node 能用的工具：effect 上限以内的都给，否则它读不了也改不了（TMP 计划第 11.15 节）。不可逆的不给：那要逐次审批，
+    不该由回退路径替模型选上。排好序，结果确定。"""
+    return sorted(
+        name for name, effect in context.catalog.tools.items() if effect != "write_irreversible" and _rank(effect) <= _rank(context.effect_ceiling)
+    )
+
+
 def _catalog_problems(stage: dict[str, Any], context: PlanningContext) -> list[str]:
     catalog = context.catalog
     found: list[str] = []

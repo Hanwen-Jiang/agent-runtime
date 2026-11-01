@@ -848,7 +848,7 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
 
 **第一例**：11.13 就按这个流程走（人已授权看这个 Session）：归类 `context_lost`、`fast_without_tools`、`internal_name_leak`，严重度最高，脱敏样本由我手写（不含原文里的任何专有名词），标未确认。
 
-### 11.15 SWE-bench 基线之后的第一轮调优（2026-10-31，验收测试待人确认）
+### 11.15 SWE-bench 基线之后的第一轮调优（2026-10-31，验收测试人已确认，实现完成）
 
 先看基线 50 题的执行记录（Temporal 历史），再定改什么。原来打算的排序有两处被数据否掉了。
 
@@ -864,7 +864,7 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
 **这一轮改什么**（测试：`services/py-worker/tests/test_tuning_*.py`、`tests/deploy/test_worker_context_settings.py`、`test_swebench.py`）
 
 1. **不合格的回答告诉模型错在哪，再问**（`tool_loop`）：`unexpected_tool_call`、`bad_structured_output`、`bad_tool_arguments` 在同一个 activity 里带上改正说明再问，最多 2 次；失败调用的花费计入这一步。不改工作流。其他错误照旧。
-2. **只读不动手的提醒**（`tool_loop`）：节点有写工具、连续 30 次只读调用（含 `sed -n`、`git grep` 这类）时提醒动手；改了文件或跑了别的命令就重新计。只在这一步的上下文里，不进 history。
+2. **只读不动手的提醒**（`tool_loop`）：节点有写工具、连续 20 次只读调用（含 `sed -n`、`git grep` 这类）时提醒动手；改了文件或跑了别的命令就重新计。只在这一步的上下文里，不进 history。
 3. **判 done 要有证据**（`reviewer/rules`，记录由 Stage Runner 给）：能改文件却没改、改完没运行任何命令，这两种各拦一次（`rule_done_without_changes`、`rule_done_unverified`），第二次还判 done 就算数，不能卡死。最后一次命令的退出码告诉 Reviewer，由它判断，代码不拦。`ReviewRoundInput` 加 `verification`：只改活动的输入，不改命令序列，不用版本分支。
 4. **保守规划给工具**（`planner`）：effect 上限以内的工具都给，不可逆的永远不给。
 5. **环境构建的失败**（`sandbox/environments`）：失败记录过 `failed_retry_after`（默认 1 小时）可以重试；失败原因留尾部。
@@ -873,6 +873,15 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
 8. **选题**：`--exclude-ids`，验证用的题不和基线重复。
 
 提示（`tool_loop` 的系统提示里加“改完跑相关模块的测试”）只在这 50 题上调，不写测试，看成绩。
+
+实现时比上面多定的几点（记录在 `workflows/verification.py`）：
+
+- 提醒的门槛是 20 次，不是原来写的 30 次：一个 Task 分几个 Round 时，每个 Node 的只读次数并不高。
+- 只给 `shell_run` 不算“能改文件”：很多只读的任务靠它查东西，不该为此多跑一轮。
+- 只读的命令（`git diff`、`cat` 这类）不算验证：否则测试失败之后 `git diff` 一下，退出码就成了 0。
+- 只用 shell 改文件的（`sed -i`、`git apply`）记不到“改过”，会被拦一次，多花一轮。看调优的结果再决定要不要识别。
+- sub_agent 与 Atomic Node 里的调用不记，只记 Task 工作流自己的 Stage Runner。
+- `verification` 进了 Reviewer 的输入。它是代码记下的执行事实，不是规划过程；CLAUDE.md 与设计书写的是“只有 Stage 结果、Task State 与验收条件”，字面上多了一项，要在设计书里补上。
 
 **怎么比**（基线之后一共约 120 美元，加上已花的约 162 美元，上限 170）
 

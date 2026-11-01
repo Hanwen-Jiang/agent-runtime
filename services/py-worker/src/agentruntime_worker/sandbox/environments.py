@@ -33,7 +33,7 @@ import time
 import urllib.parse
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field, fields
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import PurePosixPath
 from typing import IO, Any, Protocol
 
@@ -433,8 +433,8 @@ class EnvironmentStore:
             rows = await tx.query(f"SELECT {', '.join(_IMAGE_COLUMNS)} FROM sandbox_images ORDER BY created_at")
         return [ImageRecord.from_row(owner, r) for r in rows]
 
-    async def begin_build(self, owner: str, definition: Definition, key: str, *, workspace_id: str, base_image: str, max_images: int) -> ImageRecord:
-        """记一行 building；同一个事务里核对个数配额（building 与 ready 都算），超了 denied。已有这一行时原样返回。"""
+    async def begin_build(self, owner: str, definition: Definition, key: str, *, workspace_id: str, base_image: str, max_images: int, retry_failed: bool = False) -> ImageRecord:
+        """记一行 building；同一个事务里核对个数配额（building 与 ready 都算），超了 denied。已有这一行时原样返回；retry_failed 时失败的那一行重来。"""
         await self.ledger.migrate()
         now = iso(self.ledger.clock())
         record = ImageRecord(
@@ -446,7 +446,7 @@ class EnvironmentStore:
                 "INSERT INTO sandbox_quota_lock (id, version) VALUES ('images', 1) ON CONFLICT (id) DO UPDATE SET version = sandbox_quota_lock.version + 1"
             )
             existing = await tx.query_one(f"SELECT {', '.join(_IMAGE_COLUMNS)} FROM sandbox_images WHERE image_key = $1", (key,))
-            if existing is not None and existing["state"] != "deleted":
+            if existing is not None and existing["state"] != "deleted" and not (retry_failed and existing["state"] == "failed"):
                 return ImageRecord.from_row(owner, existing)
             row = await tx.query_one("SELECT COUNT(*) AS n FROM sandbox_images WHERE state IN ('building', 'ready')")
             if max_images and int((row or {}).get("n") or 0) >= max_images:
@@ -471,7 +471,8 @@ class EnvironmentStore:
                         last_used_at=now, reason="")
 
     async def mark_failed(self, owner: str, key: str, reason: str, *, build_ms: int = 0) -> None:
-        await self._set(owner, key, state="failed", reason=reason[:500], build_ms=int(build_ms))
+        # 日志的结论在最后，留尾部。last_used_at 记下失败的时间，过了 failed_retry_after 可以再试。
+        await self._set(owner, key, state="failed", reason=reason[-500:], build_ms=int(build_ms), last_used_at=iso(self.ledger.clock()))
 
     async def touch(self, owner: str, key: str) -> None:
         await self._set(owner, key, last_used_at=iso(self.ledger.clock()))
@@ -538,6 +539,8 @@ class Limits:
     max_images: int = 5
     max_image_bytes: int = 8 << 30
     build_timeout: timedelta = timedelta(minutes=30)
+    # 构建失败之后多久可以再试：失败可能只是一次网络问题或放行配置错误，不能一直记着。
+    failed_retry_after: timedelta = timedelta(hours=1)
     idle_days: int = 14
 
 
@@ -617,12 +620,13 @@ class EnvironmentManager:
             return Resolution(state="ready", image=record.image, key=key, **base)
         if record is not None and record.state == "building":
             return Resolution(state="building", key=key, note="项目环境还在构建" + fallback, **base)
-        if record is not None and record.state == "failed":
-            return Resolution(state="failed", key=key, note=f"项目环境构建失败：{record.reason}{fallback}；改了环境定义会重新构建", **base)
+        retry = record is not None and record.state == "failed" and self._retry_due(record)
+        if record is not None and record.state == "failed" and not retry:
+            return Resolution(state="failed", key=key, note=f"项目环境构建失败：{record.reason}{fallback}；过一段时间会重试，改了环境定义会马上重新构建", **base)
         if self.builder is None or self.pusher is None or self.starter is None:
             return Resolution(state="unsupported", note="这个部署没有配置环境构建器" + fallback, **base)
         try:
-            await self.store.begin_build(owner, definition, key, workspace_id=tenant.workspace_id, base_image=self._from(), max_images=self.limits.max_images)
+            await self.store.begin_build(owner, definition, key, workspace_id=tenant.workspace_id, base_image=self._from(), max_images=self.limits.max_images, retry_failed=retry)
         except DeniedError as err:
             return Resolution(state="quota", key=key, note=err.message + fallback, **base)
         try:
@@ -631,6 +635,10 @@ class EnvironmentManager:
             await self.store.mark_failed(owner, key, f"起不了构建（{err.code}）")
             return Resolution(state="failed", key=key, note=f"起不了构建（{err.code}）{fallback}", **base)
         return Resolution(state="building", key=key, note="第一次用到这个环境定义，正在构建" + fallback, **base)
+
+    def _retry_due(self, record: ImageRecord) -> bool:
+        stamp = record.last_used_at or record.created_at
+        return self.ledger.clock() - datetime.fromisoformat(stamp.replace("Z", "+00:00")) >= self.limits.failed_retry_after
 
     async def run_build(self, owner: str, key: str) -> ImageRecord:
         """构建一个镜像并推进仓库（构建工作流的 activity）；失败记原因。返回最终的记录。"""

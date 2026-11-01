@@ -306,6 +306,8 @@ class ReviewRoundInput:
     history: list[dict[str, Any]] = field(default_factory=list)
     # 决策调用的重试用完或到了总时限（TMP 计划第 4 节）：不调模型，只按规则判定。
     rules_only: bool = False
+    # 这个 Task 改过文件、验证过没有（workflows/verification.py，TMP 计划第 11.15 节）。之前的运行没有。
+    verification: dict[str, Any] | None = None
 
 
 @dataclass

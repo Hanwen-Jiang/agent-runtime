@@ -74,6 +74,7 @@ class ReviewerActivities:
                 history=list(inp.history),
                 catalog=ReviewCatalog(recipes=dict(catalog.recipes), effect_ceiling=ceiling),
                 rules_only=inp.rules_only,
+                verification=inp.verification,
             )
         )
         # 判定依据与模型调用写入日志（trace），不传给下游。

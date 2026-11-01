@@ -284,11 +284,15 @@ class Planner:
         node_id = next(i for i in ("explore", "explore_rest", "explore_next") if i not in keep)
         done_when = str((request.task_state or {}).get("done_when") or "完成用户的请求")
         goal = request.message if not keep else f"在已验证的 {'、'.join(keep)} 的基础上完成剩余部分：{request.message}"
+        node: dict[str, Any] = {"id": node_id, "kind": "goal", "goal": goal, "done_when": done_when, "mode": "tool_loop", "output_schema": {"type": "object"}}
+        tools = validate.fallback_tools(request.context)
+        if tools:
+            node["tools"] = tools
         stage = {
             "seq": request.round_seq,
             "goal": "探索并推进这个任务",
             "exit_when": f"{node_id} 给出结果",
-            "nodes": [{"id": node_id, "kind": "goal", "goal": goal, "done_when": done_when, "mode": "tool_loop", "output_schema": {"type": "object"}}],
+            "nodes": [node],
         }
         triage: dict[str, Any] = {"level": decision.level, "task_family": decision.task_family or UNCLASSIFIED_TASK_FAMILY}
         return stage, {"triage": triage, "horizon": "explore"}

@@ -35,6 +35,7 @@ ENV_TOOL_LOOP = "AR_TOOL_LOOP"
 TOOL_LOOPS = ("stub", "model")
 # Context Builder 的阈值基准：模型实测的有效长度（token）。Model Profile 接好之前用这个配置（附录 G.2、G.5）。
 ENV_CONTEXT_EFFECTIVE_TOKENS = "AR_CONTEXT_EFFECTIVE_TOKENS"
+ENV_CONTEXT_OFFLOAD_TOKENS = "AR_CONTEXT_OFFLOAD_TOKENS"
 # Model Gateway 的地址（host:port，gRPC）：设了时 Node Executor、Planner、Reviewer 的模型调用都经 GrpcModelGateway；
 # 没设时用桩模型 StubModelGateway（端到端测试的默认）。
 ENV_MODEL_GATEWAY_ADDRESS = "AR_MODEL_GATEWAY_ADDRESS"
@@ -99,6 +100,8 @@ class WorkerConfig:
     tool_loop: str = "stub"
     # 模型实测的有效长度（token），Context Builder 的阈值按它算。
     context_effective_tokens: int = 32_000
+    # 工具的输出超过这么多 token 就转存，只留摘录（Context Builder 的 offload）。
+    context_offload_tokens: int = 2_000
     # Model Gateway 的地址（AR_MODEL_GATEWAY_ADDRESS）；空表示用桩模型。
     model_gateway_address: str = ""
     # Registry 的地址（AR_REGISTRY_ADDRESS，T-08）；空表示 Node Catalog 与 Recipe 仍用桩。
@@ -154,6 +157,12 @@ class WorkerConfig:
             if not raw.isdigit() or int(raw) <= 0:
                 raise ValueError(f"{ENV_CONTEXT_EFFECTIVE_TOKENS} 必须是正整数（token）")
             effective = int(raw)
+        offload = cls.context_offload_tokens
+        raw = env.get(ENV_CONTEXT_OFFLOAD_TOKENS, "")
+        if raw:
+            if not raw.isdigit() or int(raw) <= 0:
+                raise ValueError(f"{ENV_CONTEXT_OFFLOAD_TOKENS} 必须是正整数（token）")
+            offload = int(raw)
         call_log = env.get(ENV_STUB_CALL_LOG, "")
         gate_dir = env.get(ENV_STUB_GATE_DIR, "")
         data_dir = Path(env[ENV_DATA_DIR]) if env.get(ENV_DATA_DIR) else None
@@ -199,6 +208,7 @@ class WorkerConfig:
             reviewer=reviewer,
             tool_loop=tool_loop,
             context_effective_tokens=effective,
+            context_offload_tokens=offload,
             model_gateway_address=env.get(ENV_MODEL_GATEWAY_ADDRESS, "").strip(),
             registry_address=env.get(ENV_REGISTRY_ADDRESS, "").strip(),
             memory_address=env.get(ENV_MEMORY_ADDRESS, "").strip(),

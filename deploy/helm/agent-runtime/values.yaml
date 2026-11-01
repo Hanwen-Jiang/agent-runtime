@@ -188,6 +188,9 @@ egressGateway:
     limits: {cpu: "1", memory: 512Mi}
 
 worker:
+  # Context Builder 的有效长度与转存门槛（token）；空表示用 Worker 的默认值（32000、2000）。
+  contextEffectiveTokens: ""
+  contextOffloadTokens: ""
   # 真正的 Planner、Reviewer 与 tool_loop（经 Model Gateway）；stub 只用于端到端测试。
   planner: model
   reviewer: model
