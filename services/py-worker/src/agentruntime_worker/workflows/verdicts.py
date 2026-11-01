@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import copy
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -113,7 +113,29 @@ def checkpoint_round(verdict: Mapping[str, Any]) -> int | None:
     return int(number) if name.startswith("round_") and number.isdigit() else None
 
 
-def rerun(stage: Mapping[str, Any], results: Mapping[str, StageResult], verdict: Mapping[str, Any], seq: int) -> Rerun:
+# 重做时告诉 Node 上一次的尝试（docs/plan/feedback-2026-11-01.md N-05）：最近这么多次工具调用。
+ATTEMPT_CALLS = 12
+
+
+def attempt_note(calls: Sequence[Mapping[str, Any]]) -> str:
+    """上一次的尝试：调过的工具、作用对象与结果（退出码、失败），最近 ATTEMPT_CALLS 次。纯函数。"""
+    if not calls:
+        return ""
+    shown = list(calls)[-ATTEMPT_CALLS:]
+    parts = []
+    for c in shown:
+        outcome = "超时" if c.get("timed_out") else f"退出码 {c['exit_code']}" if "exit_code" in c else "成功" if c.get("ok") else f"失败：{c.get('error') or ''}".rstrip("：")
+        parts.append(f"{c.get('tool')} {c.get('target') or ''}".rstrip() + f"（{outcome}）")
+    skipped = len(calls) - len(shown)
+    head = f"上一次的尝试（共 {len(calls)} 次工具调用，下面是最后 {len(shown)} 次）" if skipped else "上一次的尝试"
+    return f"{head}：{'；'.join(parts)}。环境里装过的依赖、改过的文件可能还在，先确认再决定要不要重做"
+
+
+def rerun(
+    stage: Mapping[str, Any], results: Mapping[str, StageResult], verdict: Mapping[str, Any], seq: int,
+    attempts: Mapping[str, Sequence[Mapping[str, Any]]] | None = None,
+) -> Rerun:
+    """attempts：这一轮各 Node 的工具调用（Stage Runner 的 tool_log 按 Node 分组；之前的调用方不给）。"""
     nodes = {str(n["id"]): n for n in stage.get("nodes") or []}
     as_dicts = {nid: asdict(r) for nid, r in results.items()}
     tier = ""
@@ -138,7 +160,8 @@ def rerun(stage: Mapping[str, Any], results: Mapping[str, StageResult], verdict:
         if node["id"] not in targets:
             continue
         if node.get("kind") == "goal":
-            node["goal"] = f"{node.get('goal', '')}（重做：{note}）"
+            tried = attempt_note((attempts or {}).get(node["id"]) or [])
+            node["goal"] = f"{node.get('goal', '')}（重做：{note}" + (f"；{tried}" if tried else "") + "）"
         else:
             injections[node["id"]] = [{"zone": "status", "content": f"重做：{note}"}]
             if tier and node.get("executor") == "model":

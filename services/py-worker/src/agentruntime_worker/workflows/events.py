@@ -112,6 +112,9 @@ def tool_target(args: Any) -> str:
             text = redact(" ".join(value.split()))
             if key == "pattern" and isinstance(args.get("path"), str):
                 text = f"{text} in {redact(args['path'])}"
+            elif key in ("argv", "command") and isinstance(args.get("cwd"), str) and args["cwd"].strip() not in ("", "."):
+                # shell_run 的工作目录（docs/plan/feedback-2026-11-01.md N-05）。
+                text = f"{text} in {redact(args['cwd'].strip())}"
             return text if len(text) <= TARGET_CHARS else text[: TARGET_CHARS - 1] + "…"
     return ""
 

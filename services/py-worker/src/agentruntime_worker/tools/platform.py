@@ -70,6 +70,13 @@ _SLUG = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")
 _TEXT_TYPES = ("text/", "application/json", "application/xml", "application/xhtml")
 
 
+def _in_dir(cwd: str, argv: list[str]) -> list[str]:
+    """沙箱里在子目录执行（N-05）：Sandbox 接口的 exec 没有工作目录，用 sh 先 cd 再 exec（不经 shell 解析参数，参数原样传）。"""
+    if not cwd:
+        return argv
+    return ["/bin/sh", "-c", 'cd -- "$1" || exit 2; shift; exec "$@"', "shell_run", cwd, *argv]
+
+
 @dataclass(frozen=True)
 class PlatformToolsConfig:
     # 工作区根；为 None 时不登记工作区类工具（不会退回到当前目录）。
@@ -200,8 +207,9 @@ class _Workspaces:
                 self.edit,
             ),
             (
-                _spec("shell_run", Effect.WRITE_REVERSIBLE, "在工作区里执行一条命令（argv 列表，不经 shell），返回退出码与输出；可能改动工作区", {
+                _spec("shell_run", Effect.WRITE_REVERSIBLE, "在工作区里执行一条命令（argv 列表，不经 shell），返回退出码与输出；可能改动工作区。每次调用是新进程，cd 不会保留：要在子目录里跑就给 cwd", {
                     "argv": {"type": "array", "minItems": 1, "items": {"type": "string"}, "description": "程序与参数，例如 [\"python\", \"-m\", \"pytest\", \"-q\"]"},
+                    "cwd": {"type": "string", "minLength": 1, "description": "工作目录，相对工作区，用 / 分隔，例如 \"services/api\"；不给时是工作区根"},
                     "timeout_s": {"type": "integer", "minimum": 1, "maximum": c.max_shell_timeout_s},
                 }, ["argv"], c.max_shell_timeout_s + 30),
                 self.shell,
@@ -439,19 +447,24 @@ class _Workspaces:
         args = invocation.arguments
         argv = [str(a) for a in args["argv"]]
         timeout = min(int(args.get("timeout_s") or self.config.shell_timeout_s), self.config.max_shell_timeout_s)
+        # 工作目录（docs/plan/feedback-2026-11-01.md N-05）：相对工作区，规则同 repo_* 的路径；空串是工作区根。
+        cwd = self._env_path(args["cwd"], allow_root=True) if args.get("cwd") is not None else ""
         if await self._archived(invocation):
             # 存档模式（D-06）：不碰 Worker 的工作区目录；项目环境（D-17）要读工作区卷，这里不用。
-            return await self._sandbox_shell(invocation, self._workspace_id(invocation), argv, timeout, None)
+            return await self._sandbox_shell(invocation, self._workspace_id(invocation), _in_dir(cwd, argv), timeout, None)
         root = self._workspace(invocation)
         if self.config.shell_sandbox == "sandbox":
-            return await self._sandbox_shell(invocation, root.name, argv, timeout, root)
+            return await self._sandbox_shell(invocation, root.name, _in_dir(cwd, argv), timeout, root)
+        workdir = self._resolve(root, cwd) if cwd else root
+        if not workdir.is_dir():
+            raise InvalidError("dir_not_found", f"工作区里没有目录 {cwd}")
         # 调用前建检查点，被打断时把文件还原回去（docs/plan/running-task-interaction.md 第 2 节）。工作区在 Worker 这边，git 也在这边跑。
         run = self._host_runner(root)
         point = await create_checkpoint(run)
         try:
             if self.config.shell_sandbox == "docker":
-                return await self._docker_shell(root, argv, timeout)
-            return await self._host_shell(root, argv, timeout)
+                return await self._docker_shell(root, argv, timeout, cwd)
+            return await self._host_shell(workdir, argv, timeout)
         except asyncio.CancelledError:
             raise await undo_with(run, point) from None
 
@@ -486,7 +499,7 @@ class _Workspaces:
             raise
         return {"exit_code": proc.returncode, "timed_out": False, **self._outputs(stdout, stderr)}
 
-    async def _docker_shell(self, root: Path, argv: list[str], timeout: int) -> Any:
+    async def _docker_shell(self, root: Path, argv: list[str], timeout: int, cwd: str = "") -> Any:
         """在一次性容器里跑：只挂载本工作区，不联网，限资源；超时删除容器。启动不了 docker 按暂时性错误处理。"""
         c = self.config
         docker = shutil.which(c.shell_docker) or c.shell_docker
@@ -495,7 +508,7 @@ class _Workspaces:
             docker, "run", "--rm", "--name", name, "--network", "none",
             "--cpus", c.shell_cpus, "--memory", c.shell_memory, "--pids-limit", str(c.shell_pids),
             "--security-opt", "no-new-privileges", "--cap-drop", "ALL",
-            "-v", f"{root}:/workspace", "-w", "/workspace", "-e", "HOME=/tmp", "-e", "PYTHONDONTWRITEBYTECODE=1",
+            "-v", f"{root}:/workspace", "-w", "/workspace" + (f"/{cwd}" if cwd else ""), "-e", "HOME=/tmp", "-e", "PYTHONDONTWRITEBYTECODE=1",
         ]
         if hasattr(os, "getuid"):  # Linux 上用 Worker 的用户跑，工作区里新建的文件不归 root
             cmd += ["--user", f"{os.getuid()}:{os.getgid()}"]

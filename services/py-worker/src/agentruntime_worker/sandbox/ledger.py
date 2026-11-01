@@ -14,6 +14,7 @@ Runtime 自己记下每个环境，所有后端的建与删都经过这里；对
 
 from __future__ import annotations
 
+import logging
 import re
 import secrets
 from collections.abc import Callable, Mapping, Sequence
@@ -25,6 +26,8 @@ from agentruntime_core.dev._common import PLATFORM_ID
 from agentruntime_core.errors import DeniedError, InvalidError
 from agentruntime_core.providers.relational_store import Migration, RelationalStore, RelationalStoreProvider, Transaction
 from agentruntime_core.tenancy import TenantContext
+
+log = logging.getLogger(__name__)
 
 PURPOSE = "sandbox"
 ACTIVE = ("creating", "ready", "destroying")
@@ -429,6 +432,25 @@ class SandboxLedger:
                     (workspace_id, session_id),
                 )
         return [EnvRecord.from_row(owner, r) for r in rows]
+
+    async def task_running(self, owner: str, task_id: str) -> bool:
+        """docs/plan/feedback-2026-11-01.md N-05：环境最近一次服务的 Task 还没结束（task-service 的 tasks 表还没有结局）。
+        表归 task-service 所有，这里只读；表不在（Worker 与 task-service 不用同一个库）或读失败时当作已结束，照常回收。"""
+        if not task_id or owner == PLATFORM_ID:
+            return False
+        try:
+            async with self.bind(owner).transaction(read_only=True) as tx:
+                row = await tx.query_one("SELECT outcome FROM tasks WHERE task_id = $1", (task_id,))
+        except Exception as exc:  # noqa: BLE001 — 读不到就按已结束，不让对账失败
+            log.debug("读 Task %s 的状态失败（%s），按已结束处理", task_id, type(exc).__name__)
+            return False
+        return row is not None and not str(row["outcome"] or "")
+
+    async def hold(self, record: EnvRecord, until: datetime) -> EnvRecord:
+        """把空闲到期顺延到 until（等人期间保留环境，N-05）。"""
+        held = replace(record, expires_at=iso(until))
+        await self._update(held, ("expires_at",))
+        return held
 
     def idle_now(self, record: EnvRecord) -> bool:
         """没有命令在跑（busy_until 空或已过），可以回收。"""

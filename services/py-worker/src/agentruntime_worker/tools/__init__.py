@@ -18,6 +18,7 @@ from __future__ import annotations
 import contextlib
 import os
 import tempfile
+from datetime import timedelta
 from collections.abc import AsyncIterator
 from pathlib import Path
 
@@ -98,6 +99,7 @@ def sandbox_broker(config: WorkerConfig) -> SandboxBroker | None:
             # 存档模式的工作区（D-06）：快照的行在同一个业务库，块与清单在 Context Builder 用的同一个 ObjectStore（租户作用域）。
             archiver = WorkspaceArchiver(store, context_objects(config))
             broker = SandboxBroker(boxes, SandboxLedger(store), credentials=credentials, archiver=archiver)
+            broker.hold_max = timedelta(seconds=config.sandbox_hold_max_s)
             if boxes.environments:
                 # 按项目定制的运行环境（D-17；登记文件的 environments 一节，格式见 sandbox.env_build.environment_manager）。
                 from agentruntime_worker.sandbox.env_build import environment_manager

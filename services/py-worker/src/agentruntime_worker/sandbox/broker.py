@@ -106,6 +106,9 @@ class SandboxBroker:
         self.environments: EnvironmentManager | None = None
         # 存档模式的工作区（D-06）：没配时存档模式的后端不能绑定工作区（invalid）。
         self.archiver = archiver
+        # 会话级环境在它的 Task 等人时最多保留多久（docs/plan/feedback-2026-11-01.md N-05）：对账据此顺延。后端自己的空闲到期
+        # （K8s 的注解、Cloudflare 的休眠）要多给这么多，否则后端先把环境删了；什么时候回收仍由对账按环境表决定。
+        self.hold_max = timedelta(0)
 
     def archive_mode(self, name: str) -> bool:
         return self.sandboxes.workspace_mode(name) == "archive"
@@ -256,7 +259,7 @@ class SandboxBroker:
             record = await self._begin(owner, backend, spec, policy, task_id=task_id, writable=writable, reuse=reuse, idle=idle,
                                        fallback_from=fallback_from, tenant=tenant, allow_hosts=allow_hosts, exclusive=archive)
         box = backend.provider.bind(tenant)
-        create_spec = replace(spec, idle_timeout=max(spec.idle_timeout, idle))
+        create_spec = replace(spec, idle_timeout=max(spec.idle_timeout, idle) + (self.hold_max if reuse and self.ledger is not None else timedelta(0)))
         if archive:
             create_spec = replace(create_spec, workspace_id="")  # 不挂卷：建好后从快照恢复
         if allow_hosts:

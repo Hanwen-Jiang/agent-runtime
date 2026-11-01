@@ -95,6 +95,8 @@ with workflow.unsafe.imports_passed_through():
 
 # Round 上限：兜底。Reviewer 的升级规则与各级次数上限（S-10）让一直失败的 Task 在 12 次评审之内收尾。
 MAX_ROUNDS = 20
+# 整个 Task 记下的工具调用最多这么多条（docs/plan/feedback-2026-11-01.md N-03、N-05）。
+TASK_TOOL_LOG_LIMIT = 200
 # T-09：before_finish 最多驳回这么多次；再驳回就问人（附录 F.2：会驳回的 Hook 都有次数上限）。
 MAX_FINISH_REJECTIONS = 2
 # T-09 第一期只认 allow 与 deny 的挂载点（modify、inject 按 deny）；before_compact 还没接，声明了就拒绝。
@@ -230,6 +232,9 @@ class TaskWorkflow:
         # docs/plan/feedback-2026-11-01.md N-01（REFERENCES_PATCH）：之前各轮成功的顶层 Node 的结果，同一个 id 取最近一轮的。
         self._references = False
         self._earlier: dict[str, Any] = {}
+        # N-05、N-03：上一个 Stage 的工具调用，与整个 Task 的（带 Round 序号，最多 TASK_TOOL_LOG_LIMIT 条）。
+        self._stage_tool_log: list[dict[str, Any]] = []
+        self._tool_log: list[dict[str, Any]] = []
         # T-11b：进度事件；只有顶层 Task 的新运行有（版本分支 EVENTS_PATCH）。
         self._events: EventPublisher | None = None
         # TMP 计划第 3 节（BUDGETS_PATCH）：现在的上限（用完问人、继续时加一份）与原来的一份；已发出的工具调用；人选择继续的次数；
@@ -683,7 +688,7 @@ class TaskWorkflow:
             elif kind == "abort":
                 return self._aborted(verdict)
             elif (kind == "repair" and verdict["repair"].get("strategy") == "retry_with_error") or (kind == "escalate" and verdict["escalate"].get("target") == "tier"):
-                rerun = vd.rerun(stage, results, verdict, seq + 1)
+                rerun = vd.rerun(stage, results, verdict, seq + 1, attempts=self._round_attempts())
             elif kind == "escalate":
                 try:
                     reply = await self._interruptible(self._ask_human(seq, verdict))
@@ -934,6 +939,13 @@ class TaskWorkflow:
         self._verification.reviewed(verdict)
         return verdict, update, vd.review_cost(raw), vd.review_highlights(raw)
 
+    def _round_attempts(self) -> dict[str, list[dict[str, Any]]]:
+        """这一轮各 Node 的工具调用（N-05：原地重做时告诉 Node 上一次做了什么）。"""
+        grouped: dict[str, list[dict[str, Any]]] = {}
+        for call in self._stage_tool_log:
+            grouped.setdefault(str(call.get("node")), []).append(call)
+        return grouped
+
     def _remember_earlier(self, results: dict[str, StageResult]) -> None:
         """N-01：记下这一轮成功的顶层 Node 的结果，之后各轮可以按 id 引用（同一个 id 取最近一轮的）。"""
         if not self._references:
@@ -1120,6 +1132,8 @@ class TaskWorkflow:
         self._stage_tool_calls = runner.tool_calls
         self._stage_interrupted = runner.interrupted
         self._stage_reads, self._stage_writes = runner.reads, runner.writes
+        self._stage_tool_log = runner.tool_log
+        self._tool_log = [*self._tool_log, *({"round": seq, **c} for c in runner.tool_log)][-TASK_TOOL_LOG_LIMIT:]
         return results
 
     def expect_reply(self, question_id: str, options: tuple[str, ...]) -> None:

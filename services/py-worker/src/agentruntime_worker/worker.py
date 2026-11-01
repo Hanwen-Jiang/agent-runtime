@@ -15,6 +15,7 @@ import asyncio
 import contextlib
 import dataclasses
 import os
+from datetime import timedelta
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -169,7 +170,7 @@ def build_workers(
     activities = {
         **decision_activities(config, stubs),
         **(executor or dev_executor(config, client=client)).activities(),
-        **ReconcileActivities(sandbox_broker(config)).activities(),
+        **ReconcileActivities(sandbox_broker(config), hold_max=timedelta(seconds=config.sandbox_hold_max_s)).activities(),
         **EnvBuildActivities(sandbox_broker(config)).activities(),
         **WorkspaceActivities(workspace_operations(config)).activities(),
     }

@@ -71,7 +71,7 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.workflows import decisions, interrupts, patches
     from agentruntime_worker.workflows import stage_plan as sp
     from agentruntime_worker.workflows import timeouts
-    from agentruntime_worker.workflows.events import EventPublisher, sandbox_startup_ms, tool_target
+    from agentruntime_worker.workflows.events import EventPublisher, redact, sandbox_startup_ms, tool_target
     from agentruntime_worker.workflows.failures import caused_by_cancel, failure_class, failure_message
     from agentruntime_worker.workflows.guidance import GuidanceBook, LoopView
     from agentruntime_worker.workflows.verification import VerificationRecord
@@ -94,6 +94,9 @@ with workflow.unsafe.imports_passed_through():
 SCOPE_MEMO_KEY = "agentruntime_scope"
 # tool_loop 没写 max_iterations 时的上限。
 DEFAULT_MAX_ITERATIONS = 20
+# 一次 Stage 运行最多记这么多次工具调用（N-05、N-03）；每条错误说明最多这么多字。
+TOOL_LOG_LIMIT = 200
+TOOL_LOG_ERROR_CHARS = 200
 # 同一个 Goal Node 里不可逆工具调用被拒（含超时）几次就记为 denied，交给 Reviewer。
 MAX_TOOL_REJECTIONS = 2
 DEFAULT_ROLE = "transform"
@@ -302,6 +305,9 @@ class StageRunner:
         # 第 4 节：这一轮工具调用的目标（路径），成功的才算。
         self.reads: list[str] = []
         self.writes: list[str] = []
+        # docs/plan/feedback-2026-11-01.md N-05、N-03：这次运行的工具调用（Node、工具、作用对象（已去凭据）、成败、退出码），按发生的先后，
+        # 最多 TOOL_LOG_LIMIT 条。重做时告诉 Node 上一次做了什么；收尾时记进这一轮对话做过的事。只在工作流内存里，不改命令序列。
+        self.tool_log: list[dict[str, Any]] = []
 
     @property
     def policy(self) -> StagePolicy:
@@ -528,6 +534,19 @@ class StageRunner:
         """能被立刻打断的调用：被打断时抛 interrupts.Interrupted。没有纠偏的记录（之前的运行、子工作流）时直接等。"""
         book = self._ctx.guidance
         return await call if book is None else await interrupts.run(book.scopes, call)
+
+    def _log_tool_call(self, nid: str, tool: str, args: Any, entry: dict[str, Any]) -> None:
+        if len(self.tool_log) >= TOOL_LOG_LIMIT:
+            return
+        record: dict[str, Any] = {"node": nid, "tool": tool, "target": tool_target(args), "ok": "error" not in entry}
+        observation = entry.get("observation")
+        if isinstance(observation, dict) and isinstance(observation.get("exit_code"), int) and not isinstance(observation.get("exit_code"), bool):
+            record["exit_code"] = observation["exit_code"]
+        if isinstance(observation, dict) and observation.get("timed_out") is True:
+            record["timed_out"] = True
+        if "error" in entry:
+            record["error"] = redact(str(entry["error"]))[:TOOL_LOG_ERROR_CHARS]
+        self.tool_log.append(record)
 
     def _note_paths(self, args: Any, effect: str) -> None:
         """docs/plan/running-task-interaction.md 第 4 节：记下这一轮成功的工具调用的目标。shell_run 改了什么代码不知道，没有 path，不记。"""
@@ -1392,6 +1411,7 @@ class StageRunner:
         if "error" not in entry and _lists_empty_root(tool, args, entry.get("observation")):
             # TMP 计划第 2 节：工作区根是空的，交给 Reviewer 的硬信号。
             marks.add("environment")
+        self._log_tool_call(nid, tool, args, entry)
         if events is not None:
             target = tool_target(args)
             took = int((workflow.now() - called_at).total_seconds() * 1000)

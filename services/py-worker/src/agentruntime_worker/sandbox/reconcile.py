@@ -8,7 +8,10 @@
 2. 平台目录里没结束的环境，逐个绑定到所属租户读它的行：
    - creating 超过宽限还没就绪：记为 failed（后端要是已经建了，下面当孤儿删掉）；
    - ready 而后端的列表里没有：记为丢失（不在后端重建）；
-   - ready 且空闲到期或活满、没有命令在跑：销毁（会话级沙箱的回收，W5）；存档模式的可写环境先存档（D-06）；
+   - ready 且空闲到期或活满、没有命令在跑：销毁（会话级沙箱的回收，W5）；存档模式的可写环境先存档（D-06）。
+     例外（docs/plan/feedback-2026-11-01.md N-05）：会话级的环境空闲到期、而它最近服务的 Task 还没结束（多半在等人回复）时顺延一个
+     空闲期，从最后一次使用算起最多 hold_max，也不超过活满；
+
    - destroying：再删一次，删掉了（或后端里已经没了）记为 destroyed。
    目录里有、租户的行没有（写了目录、没写成行就中断了）：超过宽限把目录记为 failed。
 3. 后端列出来的环境，环境表里没有或已经结束的：超过宽限（按后端记的创建时间）就是孤儿，销毁。只碰本部署建的环境
@@ -20,8 +23,8 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
-from datetime import timedelta
-from typing import TYPE_CHECKING
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING, Any
 
 from temporalio import activity
 
@@ -41,7 +44,23 @@ log = logging.getLogger(__name__)
 _OWNER = re.compile(r"^(_platform|[a-z0-9][a-z0-9_-]{0,62})$")
 
 
-async def reconcile_once(broker: SandboxBroker, *, grace: timedelta = timedelta(minutes=10)) -> ReconcileReport:
+DEFAULT_HOLD_MAX = timedelta(hours=2)
+
+
+def hold_until(record: Any, now: datetime, hold_max: timedelta) -> datetime | None:
+    """等人期间顺延到什么时候：再给一个空闲期，从最后一次使用算起最多 hold_max，也不超过活满；已经到头时为 None。"""
+    last = parse_iso(record.last_used_at) or parse_iso(record.ready_at)
+    if last is None or not record.session_id:
+        return None
+    candidates = [now + timedelta(seconds=int(record.idle_seconds or 0)), last + hold_max]
+    end = parse_iso(record.max_until)
+    if end is not None:
+        candidates.append(end)
+    until = min(candidates)
+    return until if until > now else None
+
+
+async def reconcile_once(broker: SandboxBroker, *, grace: timedelta = timedelta(minutes=10), hold_max: timedelta = DEFAULT_HOLD_MAX) -> ReconcileReport:
     report = ReconcileReport()
     ledger = broker.ledger
     if ledger is None:
@@ -95,6 +114,11 @@ async def reconcile_once(broker: SandboxBroker, *, grace: timedelta = timedelta(
                 elif record.expired(now) and ledger.idle_now(record):
                     # 存档模式的可写环境先存档（D-06）：存档暂时失败时留着、下一轮再试；活满了照样销毁。
                     lifetime = bool(record.max_until and record.max_until <= iso(now))
+                    until = None if lifetime else hold_until(record, now, hold_max)
+                    if until is not None and await ledger.task_running(record.owner, record.task_id):
+                        await ledger.hold(record, until)
+                        report.held += 1
+                        continue
                     reason = "max lifetime" if lifetime else "idle expired"
                     await broker._destroy_record(record, reason, force=lifetime)  # noqa: SLF001
                     report.reaped += 1
@@ -142,18 +166,19 @@ class _Stub:
 
 
 class ReconcileActivities:
-    def __init__(self, broker: SandboxBroker | None) -> None:
+    def __init__(self, broker: SandboxBroker | None, *, hold_max: timedelta = DEFAULT_HOLD_MAX) -> None:
         self.broker = broker
+        self.hold_max = hold_max
 
     @activity.defn(name=names.RECONCILE_SANDBOXES)
     async def reconcile_sandboxes(self, inp: ReconcileInput) -> ReconcileReport:
         if self.broker is None:
             return ReconcileReport(skipped_backends=["这个 Worker 没有配置沙箱后端"])
-        report = await reconcile_once(self.broker, grace=timedelta(seconds=inp.grace_s))
-        if report.orphans_destroyed or report.lost or report.reaped or report.errors:
+        report = await reconcile_once(self.broker, grace=timedelta(seconds=inp.grace_s), hold_max=self.hold_max)
+        if report.orphans_destroyed or report.lost or report.reaped or report.errors or report.held:
             log.info(
-                "沙箱对账：孤儿 %d、丢失 %d、回收 %d、重删 %d、错误 %d",
-                report.orphans_destroyed, report.lost, report.reaped, report.destroy_retried, len(report.errors),
+                "沙箱对账：孤儿 %d、丢失 %d、回收 %d、重删 %d、等人保留 %d、错误 %d",
+                report.orphans_destroyed, report.lost, report.reaped, report.destroy_retried, report.held, len(report.errors),
             )
         return report
 

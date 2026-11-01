@@ -34,6 +34,8 @@ class ReconcileReport:
     reaped: int = 0
     destroy_retried: int = 0
     stale_failed: int = 0
+    # 空闲到期、但它服务的 Task 还没结束（多半在等人），顺延保留的（docs/plan/feedback-2026-11-01.md N-05）。
+    held: int = 0
     skipped_backends: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 

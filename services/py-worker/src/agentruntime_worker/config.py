@@ -59,6 +59,8 @@ ENV_RELATIONAL_DSN = "AR_RELATIONAL_DSN"
 ENV_SANDBOX_SESSIONS = "AR_SANDBOX_SESSIONS"
 # 沙箱环境表的对账间隔（秒，D-11）。
 ENV_SANDBOX_RECONCILE_INTERVAL_S = "AR_SANDBOX_RECONCILE_INTERVAL_S"
+# 会话级环境在它的 Task 还没结束（等人）时最多保留多久（秒，从最后一次使用算起；docs/plan/feedback-2026-11-01.md N-05）。0 不保留。
+ENV_SANDBOX_HOLD_MAX_S = "AR_SANDBOX_HOLD_MAX_S"
 # shell_run 在沙箱里用的运行环境（D-14）：后端登记把它映射到镜像，例如 universal（多语言，默认的生产配置）或 python。
 ENV_SANDBOX_RUNTIME = "AR_SANDBOX_RUNTIME"
 # 包镜像的地址（D-15），例如 http://ar-agent-runtime-pkg-mirror:8093：设了就给 K8s 与本地后端的命令注入镜像源变量。
@@ -121,6 +123,7 @@ class WorkerConfig:
     relational_dsn: str = field(default="", repr=False, compare=False)
     sandbox_sessions: bool = True
     sandbox_reconcile_interval_s: int = 60
+    sandbox_hold_max_s: int = 7200
     sandbox_runtime: str = "python"
     pkg_mirror_url: str = ""
     egress_gateway_url: str = ""
@@ -180,6 +183,10 @@ class WorkerConfig:
         sessions = env.get(ENV_SANDBOX_SESSIONS, "").strip() or "1"
         if sessions not in ("0", "1"):
             raise ValueError(f"{ENV_SANDBOX_SESSIONS} 只能是 0 或 1")
+        hold_raw = env.get(ENV_SANDBOX_HOLD_MAX_S, "").strip()
+        if hold_raw and (not hold_raw.isdigit()):
+            raise ValueError(f"{ENV_SANDBOX_HOLD_MAX_S} 必须是不小于 0 的整数（秒）")
+        hold_max = int(hold_raw) if hold_raw else cls.sandbox_hold_max_s
         interval = cls.sandbox_reconcile_interval_s
         raw = env.get(ENV_SANDBOX_RECONCILE_INTERVAL_S, "")
         if raw:
@@ -222,6 +229,7 @@ class WorkerConfig:
             relational_dsn=env.get(ENV_RELATIONAL_DSN, "").strip(),
             sandbox_sessions=sessions == "1",
             sandbox_reconcile_interval_s=interval,
+            sandbox_hold_max_s=hold_max,
             sandbox_runtime=env.get(ENV_SANDBOX_RUNTIME, "").strip() or cls.sandbox_runtime,
             pkg_mirror_url=env.get(ENV_PKG_MIRROR_URL, "").strip(),
             egress_gateway_url=env.get(ENV_EGRESS_GATEWAY_URL, "").strip(),
