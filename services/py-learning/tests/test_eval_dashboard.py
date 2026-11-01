@@ -335,6 +335,69 @@ def test_an_ungraded_run_shows_no_score(dashboard: ModuleType, reports: Path, tm
     assert 'id="sec-swebench"' not in page, "还没判分的不算成绩"
 
 
+# --- 调优前后（TMP 计划第 11.15 节） ---
+
+
+def tuned(run_id: str, solved: list[int], *, problems: range = range(50), cost: float = 0.6) -> dict[str, Any]:
+    report = bench_report(run_id, len(problems), len(solved))
+    report["cost_per_instance_usd"] = cost
+    report["instances"] = [{"instance_id": f"p{i}", "grading": "resolved" if i in solved else "unresolved", "status": "done"} for i in problems]
+    return report
+
+
+def write(reports: Path, *runs: dict[str, Any]) -> Path:
+    folder = reports / "benchmarks"
+    folder.mkdir()
+    for run in runs:
+        (folder / f"{run['run_id']}.json").write_text(json.dumps(run), "utf-8")
+    return reports
+
+
+def tuning_of(dashboard: ModuleType, reports: Path, tmp_path: Path) -> list[dict[str, Any]]:
+    return embedded_data(public_page(dashboard, reports, tmp_path))["reports"]["tuning"]
+
+
+def test_tuning_runs_are_compared_problem_by_problem(dashboard: ModuleType, reports: Path, tmp_path: Path) -> None:
+    """总数一样也可能是新解决了几题、又丢了几题，只看总数看不出来。"""
+    write(reports, tuned("gpt55-base50", list(range(30))), tuned("gpt55-tune1", [*range(3, 30), 40, 41, 42]))
+    base, one = tuning_of(dashboard, reports, tmp_path)
+    assert base["run_id"] == "gpt55-base50" and "gained" not in base
+    assert (one["resolved"], one["gained"], one["lost"]) == (30, 3, 3)
+    assert one["same_problems"] is True and one["low"] < one["rate"] < one["high"]
+
+
+def test_runs_on_other_problems_are_not_compared_with_the_baseline(dashboard: ModuleType, reports: Path, tmp_path: Path) -> None:
+    write(reports, tuned("gpt55-base50", list(range(30))), tuned("gpt55-valid50", list(range(100, 125)), problems=range(100, 150)))
+    base, valid = tuning_of(dashboard, reports, tmp_path)
+    assert valid["run_id"] == "gpt55-valid50" and valid["same_problems"] is False and "gained" not in valid
+
+
+def test_the_tuning_line_is_in_a_fixed_order_whatever_the_files_are_called(dashboard: ModuleType, reports: Path, tmp_path: Path) -> None:
+    write(reports, tuned("gpt55-valid50", [1], problems=range(100, 150)), tuned("gpt55-tune2", [1]), tuned("gpt55-tune1", [1]), tuned("gpt55-base50", [1]), bench_report("gpt55-smoke5", 5, 0))
+    assert [p["run_id"] for p in tuning_of(dashboard, reports, tmp_path)] == ["gpt55-base50", "gpt55-tune1", "gpt55-tune2", "gpt55-valid50"]
+
+
+def test_the_chart_appears_once_there_is_something_to_compare(dashboard: ModuleType, reports: Path, tmp_path: Path) -> None:
+    write(reports, tuned("gpt55-base50", list(range(30))))
+    assert 'id="tuning"' not in public_page(dashboard, reports, tmp_path), "只有基线时没有可比的"
+    (reports / "benchmarks" / "gpt55-tune1.json").write_text(json.dumps(tuned("gpt55-tune1", list(range(33)))), "utf-8")
+    page = public_page(dashboard, reports, tmp_path)
+    body = section(page, "sec-swebench")
+    assert 'id="tuning"' in body and 'id="tuning-cost"' in body, "解决率与花费各一张图，不共用一个纵轴"
+    assert has_both_languages(body) and "95%" in body
+
+
+def test_the_headline_moves_to_the_unseen_problems_when_they_exist(dashboard: ModuleType, reports: Path, tmp_path: Path) -> None:
+    write(reports, tuned("gpt55-base50", list(range(30))), tuned("gpt55-tune1", list(range(40))), tuned("gpt55-valid50", list(range(100, 125)), problems=range(100, 150)))
+    assert "25/50" in section(public_page(dashboard, reports, tmp_path), "summary"), "没用过的题最说明问题，不用调过的题给自己打分"
+
+
+def test_the_public_data_has_no_per_problem_lists(dashboard: ModuleType, reports: Path, tmp_path: Path) -> None:
+    write(reports, tuned("gpt55-base50", list(range(30))), tuned("gpt55-tune1", list(range(33))))
+    data = embedded_data(public_page(dashboard, reports, tmp_path))["reports"]["benchmarks"]
+    assert all("problems" not in b and "solved" not in b for b in data)
+
+
 def test_wilson_interval(dashboard: ModuleType) -> None:
     low, high = dashboard.wilson(32, 50)
     assert round(low, 2) == 0.50 and round(high, 2) == 0.76

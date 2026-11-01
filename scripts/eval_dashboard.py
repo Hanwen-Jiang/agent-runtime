@@ -128,6 +128,8 @@ def collect_benchmarks(root: Path) -> list[dict[str, Any]]:
             "rounds_median": (d.get("rounds") or {}).get("median"), "environment": (d.get("settings") or {}).get("environment"),
             "by_repo": d.get("by_repo") or {}, "by_difficulty": d.get("by_difficulty") or {},
             "gradings": dict(Counter(str(i.get("grading")) for i in d.get("instances") or [])),
+            "problems": sorted(str(i.get("instance_id")) for i in d.get("instances") or []),
+            "solved": sorted(str(i.get("instance_id")) for i in d.get("instances") or [] if i.get("grading") == "resolved"),
         })
     return out
 
@@ -385,7 +387,14 @@ BENCHMARK_LABELS = {
     "gpt55-smoke5-official": ("同样 5 题：用上官方环境", "Same 5 problems: official environment"),
     "gpt55-base50": ("50 题基线", "50-problem baseline"),
     "gpt55-smoke5-again": ("同样 5 题再跑一次（检查稳定性）", "Same 5 problems again (stability check)"),
+    "gpt55-tune1": ("调优 1：同样 50 题", "Tuning 1: same 50 problems"),
+    "gpt55-tune2": ("调优 2：同样 50 题", "Tuning 2: same 50 problems"),
+    "gpt55-valid50": ("验证：没用过的 50 题", "Validation: 50 unseen problems"),
 }
+# 调优的折线：同样的题按题配对比较，起点是基线；验证用没用过的题，单独一个点，不和前面连线（TMP 计划第 11.15 节）。
+TUNING_RUNS = ("gpt55-base50", "gpt55-tune1", "gpt55-tune2")
+VALIDATION_RUN = "gpt55-valid50"
+TUNING_SHORT = {"gpt55-base50": ("基线", "Baseline"), "gpt55-tune1": ("调优 1", "Tuning 1"), "gpt55-tune2": ("调优 2", "Tuning 2"), VALIDATION_RUN: ("验证", "Validation")}
 FINDINGS = (
     ("10-22", "分数会抖，考一次不算数", "Scores jump around, so one exam proves nothing",
      "第一次用真模型考，验收判断的分数在 37.5% 到 75% 之间跳。于是改成同一张卷考多次、看中位数，差一两题不下结论。",
@@ -508,8 +517,31 @@ def wilson(hits: int, total: int, z: float = 1.96) -> tuple[float, float]:
 
 
 def _main_benchmark(benchmarks: list[dict[str, Any]]) -> dict[str, Any] | None:
-    """开头的结论用规模最大的那次运行。"""
-    return max(benchmarks, key=lambda b: b["selected"], default=None)
+    """开头的结论用规模最大的运行里最新的一次；验证跑完就是它：没用过的题最说明问题。"""
+    order = list(BENCHMARK_LABELS)
+    return max(benchmarks, key=lambda b: (b["selected"], order.index(b["run_id"]) if b["run_id"] in order else -1), default=None)
+
+
+def tuning_series(benchmarks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """折线图的点。同样的题才按题比较：比基线多解决了几题、丢了几题，只看总数会把这两件事抵消掉。"""
+    by_id = {b["run_id"]: b for b in benchmarks}
+    base = by_id.get(TUNING_RUNS[0])
+    points = []
+    for run_id in (*TUNING_RUNS, VALIDATION_RUN):
+        run = by_id.get(run_id)
+        if run is None:
+            continue
+        low, high = wilson(run["resolved"], run["selected"])
+        zh, en = TUNING_SHORT[run_id]
+        point = {
+            "run_id": run_id, "short_zh": zh, "short_en": en, "resolved": run["resolved"], "selected": run["selected"], "rate": run["rate"], "low": low, "high": high,
+            "per_problem_usd": run["per_problem_usd"], "same_problems": run_id != VALIDATION_RUN,
+        }
+        if base is not None and run is not base and run_id != VALIDATION_RUN and set(run.get("problems") or []) == set(base.get("problems") or []):
+            point["gained"] = len(set(run.get("solved") or []) - set(base.get("solved") or []))
+            point["lost"] = len(set(base.get("solved") or []) - set(run.get("solved") or []))
+        points.append(point)
+    return points
 
 
 def _summary_section(summary: dict[str, Any], benchmarks: list[dict[str, Any]]) -> str:
@@ -610,6 +642,37 @@ def _about_section() -> str:
     )
 
 
+def _tuning_block(benchmarks: list[dict[str, Any]]) -> str:
+    """调优前后的对比；只有基线时还没有什么可比的，不画。"""
+    points = tuning_series(benchmarks)
+    if len(points) < 2:
+        return ""
+    rows = []
+    for p in points:
+        if "gained" in p:
+            change = f'<span class="zh">新解决 {p["gained"]} 题，丢了 {p["lost"]} 题</span><span class="en">{p["gained"]} newly solved, {p["lost"]} lost</span>'
+        elif p["same_problems"]:
+            change = _both("起点", "Starting point")
+        else:
+            change = _both("换了一批题，不能按题比", "Different problems, no per-problem comparison")
+        usd = f'${p["per_problem_usd"]:.2f}' if p["per_problem_usd"] is not None else "—"
+        rows.append(f'<tr><td>{_both(p["short_zh"], p["short_en"])}</td><td>{p["resolved"]}/{p["selected"]}</td><td>{usd}</td><td>{change}</td></tr>')
+    head = f'<tr class="head"><th>{_both("哪一次", "Run")}</th><th>{_both("解决", "Solved")}</th><th>{_both("平均每题", "Per problem")}</th><th>{_both("和基线比", "Against the baseline")}</th></tr>'
+    return (
+        f'<div class="card"><b>{_both("调优前后：解决了多少题", "Before and after tuning: problems solved")}</b>'
+        '<svg id="tuning" width="100%" height="300" role="img" aria-label="Share of problems solved in each tuning run"></svg></div>'
+        f'<div class="card" style="margin-top:12px"><b>{_both("平均每题花多少钱", "Average cost per problem")}</b>'
+        '<svg id="tuning-cost" width="100%" height="190" role="img" aria-label="Average cost per problem in each tuning run"></svg></div>'
+        f'<div class="card scroll" style="margin-top:12px"><table class="plain">{head}{"".join(rows)}</table></div>'
+        + _para(
+            "怎么看：蓝线是同样的题，调优一次跑一遍。竖线是 95% 区间：只有 50 题，差两三题可能只是运气，所以表里还按题比了新解决和丢掉的题。橙色方块是没用过的题，我们没有看着这些题调，所以它最能说明调优有没有用；它和蓝线不是同一批题，不连线。",
+            "How to read this: the blue line is the same problems, run again after each round of tuning. The vertical lines are 95% intervals: with only 50 problems, a difference of two or three may be luck, so the table also compares problem by problem. The orange square is problems we never looked at while tuning, so it says most about whether tuning worked. They are different problems from the blue line, so the two are not joined.",
+            "muted",
+        )
+        + '<div style="height:12px"></div>'
+    )
+
+
 def _bars(rows: list[tuple[str, str, int, int]]) -> str:
     out = []
     for zh, en, hit, total in rows:
@@ -636,8 +699,11 @@ def _benchmark_section(benchmarks: list[dict[str, Any]]) -> str:
         for b in sorted(benchmarks, key=lambda b: list(BENCHMARK_LABELS).index(b["run_id"]) if b["run_id"] in BENCHMARK_LABELS else len(BENCHMARK_LABELS))
     )
     head = f'<tr class="head"><th>{_both("哪一次", "Run")}</th><th>{_both("解决", "Solved")}</th><th>{_both("花费", "Cost")}</th></tr>'
+    source = BENCHMARK_LABELS.get(main["run_id"], (main["run_id"], main["run_id"]))
     body = (
-        f'<div class="tiles">{tiles}</div>'
+        _tuning_block(benchmarks)
+        + _para(f"下面的数字来自“{source[0]}”。", f"The numbers below come from “{source[1]}”.", "muted")
+        + f'<div class="tiles">{tiles}</div>'
         f'<div class="card"><b>{_both("按难度（题目自带的预估修复时间）", "By difficulty (the estimated fix time that comes with each problem)")}</b>'
         + _bars([(DIFFICULTY_TEXT.get(name, (name, name))[0], DIFFICULTY_TEXT.get(name, (name, name))[1], e["resolved"], e["selected"]) for name, e in difficulty])
         + f'</div><div class="card" style="margin-top:12px"><b>{_both("按开源项目", "By open-source project")}</b>'
@@ -715,7 +781,7 @@ PUBLIC_PAGE = r"""<!doctype html>
 <title>__TITLE__</title>
 <style>
 :root{--bg:#fbfbfa;--fg:#1f2328;--muted:#5b636c;--line:#d8dde3;--card:#fff;--soft:#f1f3f2;--c1:#2563eb;--c2:#d97706;--c3:#059669;--bad:#dc2626;--ok:#15803d}
-@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#9aa4ae;--line:#30363d;--card:#161b22;--soft:#1c222a;--c1:#60a5fa;--c2:#fbbf24;--c3:#34d399;--bad:#f87171;--ok:#4ade80}}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#9aa4ae;--line:#30363d;--card:#161b22;--soft:#1c222a;--c1:#60a5fa;--c2:#f59e0b;--c3:#34d399;--bad:#f87171;--ok:#4ade80}}
 *{box-sizing:border-box}html[data-lang="zh"] .en,html[data-lang="en"] .zh{display:none}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
 main{max-width:960px;margin:0 auto;padding:24px 16px 72px}h1{font-size:26px;line-height:1.3;margin:0 0 12px;padding-right:128px}
@@ -764,6 +830,19 @@ const none=()=>both('还没有数据','No data yet');
    if(r[key]==null)return;const c=r.split==='holdout'?C[1]:C[0],cx=x(i),cy=y(r[key]);
    const m=r.split==='holdout'?el('rect',{x:cx-4,y:cy-4,width:8,height:8}):el('circle',{cx,cy,r:4.5});m.setAttribute(r.valid?'fill':'stroke',c);if(!r.valid)m.setAttribute('fill','none');
    m.append(el('title',{},`${r.label_zh} · ${r.split} · ${day} · ${pct(r[key])}`));svg.append(m)})})})();
+(function tuning(){const P=D.reports.tuning||[],svg=document.getElementById('tuning'),cost=document.getElementById('tuning-cost');if(!svg||P.length<2)return;
+ const xs=(w)=>{const same=P.filter(p=>p.same_problems).length,left=70,right=w-40,gap=P.some(p=>!p.same_problems)?1.5:1,unit=(right-left)/Math.max(1,same-1+(gap>1?gap:0));let out=[],seen=0;P.forEach(p=>{if(p.same_problems){out.push(left+seen*unit);seen++}else out.push(left+(same-1+gap)*unit)});return out};
+ const legend=(s,top)=>{const same=P.some(p=>p.same_problems),other=P.some(p=>!p.same_problems);let at=50;if(same){s.append(el('circle',{cx:at,cy:top,r:5,fill:C[0]}));label(s,{x:at+10,y:top+4},'同样的 50 题','The same 50 problems');at+=130}if(other){s.append(el('rect',{x:at-5,y:top-5,width:10,height:10,fill:C[1]}));label(s,{x:at+10,y:top+4},'没用过的 50 题','50 unseen problems')}};
+ const draw=(s,h,value,fmt,top,max,whisker,ticks)=>{const w=frame(s,h),X=xs(w),base=h-26,Y=v=>base-(v/max)*(base-top);
+  for(const v of ticks){s.append(el('line',{x1:44,x2:w-14,y1:Y(v),y2:Y(v),class:'axis',opacity:v?0.5:1}));s.append(el('text',{x:4,y:Y(v)+4},fmt.tick(v)))}
+  const line=P.map((p,i)=>[p,X[i]]).filter(([p])=>p.same_problems&&value(p)!=null);if(line.length>1)s.append(el('polyline',{points:line.map(([p,x])=>`${x},${Y(value(p))}`).join(' '),fill:'none',stroke:C[0],'stroke-width':2,'stroke-linejoin':'round','stroke-linecap':'round'}));
+  P.forEach((p,i)=>{const v=value(p),x=X[i];s.append(el('text',{x,y:base+18,'text-anchor':'middle',class:'zh'},p.short_zh));s.append(el('text',{x,y:base+18,'text-anchor':'middle',class:'en'},p.short_en));if(v==null)return;const c=p.same_problems?C[0]:C[1],y=Y(v);
+   if(whisker){s.append(el('line',{x1:x,x2:x,y1:Y(p.low),y2:Y(p.high),stroke:c,'stroke-width':1.5,'stroke-linecap':'round',opacity:0.55}))}
+   const m=p.same_problems?el('circle',{cx:x,cy:y,r:5,fill:c,stroke:'var(--card)','stroke-width':2}):el('rect',{x:x-5,y:y-5,width:10,height:10,fill:c,stroke:'var(--card)','stroke-width':2});s.append(m);
+   const end=x>w-80;s.append(el('text',{x:end?x-10:x+10,y:y-8,'text-anchor':end?'end':'start',style:'font-weight:600'},fmt.point(p)));
+   const hit=el('circle',{cx:x,cy:y,r:18,fill:'transparent'});hit.append(el('title',{},fmt.title(p)));s.append(hit)})};
+ draw(svg,300,p=>p.rate,{tick:v=>(v*100)+'%',point:p=>`${p.resolved}/${p.selected}`,title:p=>`${p.short_zh} · ${p.resolved}/${p.selected} · ${pct(p.rate)} · 95%: ${pct(p.low)}–${pct(p.high)}`},44,1,true,[0,0.25,0.5,0.75,1]);legend(svg,16);
+ const top=Math.max(...P.map(p=>p.per_problem_usd||0));if(cost&&top>0){const max=Math.ceil(top*2+0.5)/2,ticks=[0,max/2,max];draw(cost,190,p=>p.per_problem_usd,{tick:v=>'$'+v.toFixed(2),point:p=>'$'+p.per_problem_usd.toFixed(2),title:p=>`${p.short_zh} · ${usd(p.per_problem_usd)}`},18,max,false,ticks)}})();
 (function models(){const box=document.getElementById('scatter'),by=new Map();D.reports.runs.filter(r=>r.valid&&r.split==='dev'&&r.reviewer!=null&&String(r.group).startsWith('exp-')).forEach(r=>{(by.get(r.label_en)||by.set(r.label_en,[]).get(r.label_en)).push(r)});
  const rows=[...by.values()].map(l=>({zh:l[0].label_zh,en:l[0].label_en,score:median(l.map(r=>r.reviewer)),cost:median(l.map(r=>r.per_case_usd||0)),n:l.length})).sort((a,b)=>b.score-a.score);
  box.innerHTML=rows.map(r=>`<div class="bar"><span>${both(r.zh,r.en)}</span><span class="track"><i style="width:${r.score*100}%"></i><u style="left:85%"></u></span><span class="note">${pct(r.score)} · ${usd(r.cost)} · ${both(`考了 ${r.n} 次`,`${r.n} run${r.n>1?'s':''}`)}</span></div>`).join('')||none()})();
@@ -800,7 +879,8 @@ def public_data(reports: dict[str, Any], generated_at: str) -> dict[str, Any]:
         "generated_at": generated_at,
         "reports": {
             "runs": [labelled(r) for r in without_file(reports["runs"])], "contexts": without_file(reports["contexts"]), "failures": reports["failures"],
-            "benchmarks": reports.get("benchmarks") or [],
+            "benchmarks": [{k: v for k, v in b.items() if k not in ("problems", "solved")} for b in reports.get("benchmarks") or []],
+            "tuning": tuning_series(reports.get("benchmarks") or []),
         },
     }
 
