@@ -13,6 +13,8 @@ effect 上限的 Recipe）；低于 floor 的抬到 floor；用满上限的一�
 from __future__ import annotations
 
 import copy
+import json
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
@@ -303,6 +305,16 @@ class _Rules:
             if verdict["done"].get("deliver_node") not in delivers:
                 reasons.append(f"done 的交付改为本轮成功的 deliver 节点 {delivers[0]}")
                 verdict["done"] = {"deliver_node": delivers[0]}
+            chosen = str(verdict["done"]["deliver_node"])
+            bad = deliverable_problem(self.results[chosen].get("result"))
+            if bad is not None:
+                # docs/plan/feedback-2026-11-01.md N-02：交付是空的或带着没解析的引用，不管是不是模型判的都不能交付。
+                why, code, params = bad
+                reasons.append(why)
+                out = self.make("replan" if not self.failed else self.floor.step, verdict, [why], code=code, params={"node": chosen, **params})
+                if out["verdict"] == "replan" and chosen in (out["replan"].get("keep_nodes") or []):
+                    out["replan"]["keep_nodes"] = [n for n in out["replan"]["keep_nodes"] if n != chosen]
+                return out
         elif kind == "repair":
             nodes = [n for n in dict.fromkeys(verdict["repair"].get("nodes") or []) if n in self.nodes]
             if not nodes:
@@ -494,6 +506,35 @@ class _Rules:
         not_completed = [f"{nid}：{self.results[nid].get('error') or '失败'}" for nid in self.failed]
         not_completed += [f"{nid}（上游没有成功）" for nid, r in sorted(self.results.items()) if r.get("status") == "skipped"]
         return {"completed": completed, "not_completed": not_completed or ["交付"]}
+
+
+# 交付里没解析的引用（N-01 之前的运行、或模型照抄了占位符）：$<node_id>.result…
+_PLACEHOLDER = re.compile(r"(?<!\$)\$[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*?\.result\b")
+
+
+def _blank(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return not value.strip()
+    if isinstance(value, Mapping):
+        return all(_blank(v) for v in value.values())
+    if isinstance(value, list):
+        return all(_blank(v) for v in value)
+    return False
+
+
+def deliverable_problem(value: Any) -> tuple[str, str, dict[str, Any]] | None:
+    """交付本身就不能交出去的情况（docs/plan/feedback-2026-11-01.md N-02）：空的，或带着没解析的引用。
+    返回（说明、代码、参数）；没问题时为 None。纯函数。"""
+    if _blank(value):
+        return "deliver 的结果是空的：上游的结果没有交到它，不能交付", "rule_deliverable_empty", {}
+    text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+    found = sorted(set(_PLACEHOLDER.findall(text)))
+    if found:
+        shown = found[:3]
+        return f"交付里有没解析的引用（{'、'.join(shown)}）：上游的结果没有交到 deliver，不能交付", "rule_deliverable_unresolved", {"references": shown}
+    return None
 
 
 def _judging(nid: str, nodes: Mapping[str, Mapping[str, Any]], results: Mapping[str, Mapping[str, Any]]) -> bool:

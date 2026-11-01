@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -85,6 +86,15 @@ def generator_vendor(results: Mapping[str, Mapping[str, Any]]) -> str:
     return min(v for v, n in counts.items() if n == top)
 
 
+def _error_code(exc: BaseException) -> str:
+    """模型调用失败的代码：网关的错误代码（取得到时）或异常的类型名，snake_case，最多 64 个字符。"""
+    code = str(getattr(exc, "code", "") or "") if isinstance(getattr(exc, "code", None), str) else ""
+    raw = code or type(exc).__name__
+    snake = re.sub(r"(?<=[a-z0-9])([A-Z])", r"_\g<1>", raw).lower()
+    snake = re.sub(r"[^a-z0-9_]+", "_", snake).strip("_")[:64]
+    return snake or "unknown"
+
+
 def _value(data: Any) -> struct_pb2.Value:
     value = struct_pb2.Value()
     json_format.ParseDict(data, value)
@@ -105,6 +115,8 @@ class Reviewer:
         calls: list[ModelCall] = []
         problems: list[str] = []
         answer: dict[str, Any] | None = None
+        # 没有模型判定时的原因（docs/plan/feedback-2026-11-01.md N-02）：只有代码与错误类型，不含模型的原文。
+        cause: dict[str, Any] = {"cause": "fast_reply"} if fast else {"cause": "decision_retries_exhausted"} if request.rules_only else {}
         if not fast and not request.rules_only:
             preview = floor(lg, results, completion=None, thresholds=cfg.thresholds)
             view = prompts.review_view(request.task_state, request.stage, results, request.history)
@@ -114,11 +126,13 @@ class Reviewer:
                     response = await self._call(request, messages, calls)
                 except Exception as exc:  # noqa: BLE001 — 模型出错算一次不合格，最后按规则判定（取消不是 Exception，原样往外走）
                     problems = [f"调用模型失败：{type(exc).__name__}"]
+                    cause = {"cause": "model_call_failed", "error": _error_code(exc)}
                     text = ""
                 else:
                     value = json_format.MessageToDict(response.result) if response.HasField("result") else None
                     text = response.text if value is None else json.dumps(value, ensure_ascii=False)
                     problems = prompts.answer_problems(value)
+                    cause = {"cause": "invalid_answer", "problems": len(problems)} if problems else {}
                     if not problems:
                         assert isinstance(value, dict)
                         answer = value
@@ -127,6 +141,7 @@ class Reviewer:
                     if lg.budget_usd and lg.spent_usd + sum(c.cost_usd for c in calls) >= lg.budget_usd:
                         # 美元预算已经用完：不再重问，按规则判定（TMP 计划第 11.11 节；第一次评审照常，按 11.4 不拦）。
                         problems = [*problems, "美元预算已经用完，不再重问"]
+                        cause = {**cause, "budget_spent": True}
                         break
                     messages = prompts.retry_messages(messages, text, problems)
         completion = float(answer["completion"]) if answer is not None and answer.get("completion") is not None else None
@@ -143,6 +158,8 @@ class Reviewer:
             verification=request.verification,
         )
         verdict = decision.verdict
+        if answer is None and verdict.get("reason_code") == "rule_fallback" and cause:
+            verdict["reason_params"] = {**(verdict.get("reason_params") or {}), **cause}
         update: dict[str, Any] = checked_update(answer.get("state_update") if answer is not None else None, max_items=cfg.max_state_items)
         stuck = (verdict.get("replan") or {}).get("stuck_reason") if verdict["verdict"] == "replan" else None
         if stuck:
