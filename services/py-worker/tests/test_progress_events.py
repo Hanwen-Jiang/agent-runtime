@@ -28,6 +28,7 @@ from agentruntime.workflow.v1 import task_pb2
 
 from agentruntime_worker import names
 from agentruntime_worker.activities.types import ReviewRoundOutput, StagePolicy, ToolLoopStep
+from agentruntime_worker.workflows.events import tool_target
 
 from .stage_harness import StageHarness, fails, harness, returns  # noqa: F401 — harness 是 fixture
 from .support import assert_valid
@@ -240,6 +241,38 @@ async def test_tool_targets_are_short_and_carry_no_credentials(harness: StageHar
         assert secret not in first + second + third, f"target 里不能有凭据：{secret}"
     assert second == "python -m pytest -q" and "abc" not in second, "shell_run 的 argv 按空格连起来，环境变量不进 target"
     assert third.startswith("https://docs.example.com/guide")
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "archive/legacy-trader/tests/test_order_book_matching_regression_2024.py",
+        "tests/test_portfolio_rebalance_with_fx_v2_q3.py",
+        "src/test/java/OrderBookMatchingEngineRegressionTest2.java",
+        "tests/test_internationalization_settings_2024.py",
+        "/workspace/node-results/tsk_01M6BBAZ52TBEPP3YAS7VPR2TG/run_tests.8-9039211f49b47762.json",
+    ],
+)
+def test_long_file_names_are_not_mistaken_for_credentials(path: str) -> None:
+    """docs/plan/feedback-2026-11-01.md N-06：日志里显示成 tests/***.py 的长文件名照原样显示。"""
+    assert tool_target({"path": path}) == path
+    assert tool_target({"argv": ["python", "-m", "pytest", path]}) == f"python -m pytest {path}"
+
+
+@pytest.mark.parametrize(
+    "secret",
+    [
+        "550e8400-e29b-41d4-a716-446655440000",
+        "aB3dE9fG2hJ4kL6mN8pQ0rS2tU4vW6xY8z",
+        "0123456789abcdef0123456789abcdef01",
+        "abcd1234-efgh5678-ijkl9012-mnop3456",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+        "tsk_01M6BBAZ52TBEPP3YAS7VPR2TG_and_a_suffix_9",
+    ],
+)
+def test_random_looking_strings_are_still_masked(secret: str) -> None:
+    target = tool_target({"command": f"deploy --key {secret} now"})
+    assert secret not in target and "***" in target, target
 
 
 # --- 等待人工回复 ---

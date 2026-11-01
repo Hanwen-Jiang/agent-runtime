@@ -74,15 +74,30 @@ _SECRETS = (
     (re.compile(r"(?i)\b([A-Za-z0-9_]*(?:token|secret|passwd|password|pwd|api[_-]?key|access[_-]?key|credential)[A-Za-z0-9_]*)(\s*[=:]\s*)[^\s&'\"]+"), r"\1\2***"),
     (re.compile(r"://[^/\s:@]+:[^/\s@]+@"), "://***@"),
     (re.compile(r"\b(?:sk|pk|rk|ghp|gho|ghs|ghu|github_pat|glpat|xox[abps])[-_][A-Za-z0-9_-]{6,}"), "***"),
-    (re.compile(r"\b(?=[A-Za-z0-9_-]*\d)(?=[A-Za-z0-9_-]*[A-Za-z])[A-Za-z0-9_-]{32,}\b"), "***"),
 )
+# 长的不透明串（字母与数字混在一起、32 个字符以上）：只在像随机串时才换（docs/plan/feedback-2026-11-01.md N-06）。
+# 按 _ 与 - 切开，每段都像“单词加数字”（test、orderBook、v2、2024、API）的是标识符或文件名，保留；
+# 有 24 个字符以上不断开的一段、某段字母与数字交错（UUID、十六进制、base64），或每段都带数字的才换。
+_OPAQUE = re.compile(r"\b(?=[A-Za-z0-9_-]*\d)(?=[A-Za-z0-9_-]*[A-Za-z])[A-Za-z0-9_-]{32,}\b")
+_WORDLIKE_SEGMENT = re.compile(r"(?:[A-Z]{2,}|[A-Z]?[a-z]+)(?:[A-Z][a-z]{2,})*\d*|\d+")
+_WORD = re.compile(r"[A-Z]{2,}(?![a-z])|[A-Z]?[a-z]+|\d+")
+_LONGEST_WORD = 24
+
+
+def _looks_random(token: str) -> bool:
+    segments = [s for s in re.split(r"[_-]+", token) if s]
+    if not segments or not all(_WORDLIKE_SEGMENT.fullmatch(s) for s in segments):
+        return True
+    if max(len(w) for s in segments for w in _WORD.findall(s)) >= _LONGEST_WORD:
+        return True
+    return len(segments) > 1 and all(any(c.isdigit() for c in s) for s in segments)
 
 
 def redact(text: str) -> str:
-    """把看起来像凭据的部分换成 ***（进度事件给浏览器看，不能带凭据）。"""
+    """把看起来像凭据的部分换成 ***（进度事件给浏览器看，不能带凭据）。纯函数，工作流里可用。"""
     for pattern, replacement in _SECRETS:
         text = pattern.sub(replacement, text)
-    return text
+    return _OPAQUE.sub(lambda m: "***" if _looks_random(m.group(0)) else m.group(0), text)
 
 
 def tool_target(args: Any) -> str:
