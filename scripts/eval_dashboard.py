@@ -725,6 +725,23 @@ def _benchmark_section(benchmarks: list[dict[str, Any]]) -> str:
     )
 
 
+def _live_section() -> str:
+    """实时的一栏（第 11.16 节）：页面每 30 秒取一次 /api/live.json（服务端从 VictoriaMetrics 读评测指标），局部重画。"""
+    return (
+        '<section id="sec-live">'
+        + _heading("正在跑的与最近的考试", "Exams running now and recently")
+        + _para(
+            "评测边跑边把进度发出来：每道题做完记一次对错和花费，整场考完记分数。这一栏每 30 秒自动刷新，花费是评测自己花的钱（模型调用），不涉及任何用户。",
+            "Evaluations report progress as they run: every question records whether it passed and what it cost, and every finished exam records its scores. "
+            "This section refreshes every 30 seconds. Costs are what the evaluations themselves spent on model calls and involve no user.",
+            "how",
+        )
+        + '<p id="live-note" class="muted"></p><div class="card scroll" id="live"></div>'
+        + '<div class="card" id="live-trend-card" hidden><svg id="live-trend" width="100%" height="240" role="img" aria-label="Scores over time"></svg></div>'
+        + "</section>"
+    )
+
+
 def _chart_section(section_id: str, zh: str, en: str, how_zh: str, how_en: str, body: str) -> str:
     return f'<section id="sec-{section_id}">{_heading(zh, en)}<p class="how zh">{how_zh}</p><p class="how en">{how_en}</p>{body}</section>'
 
@@ -771,7 +788,7 @@ def render_public(data: dict[str, Any], title: str, summary: dict[str, Any], cou
             "Agent Runtime is a platform we are building. You hand it a complex piece of work, and it lets AI break the work into steps, carry them out, check the result and redo what is wrong until the work is finished. AI behaves differently every time, so we do not judge it by feel: we give it exams. This page shows the result of every exam, including what it has not passed yet.",
             "lead",
         ),
-        _summary_section(summary, benchmarks), _what_section(), _how_section(counts, summary), _findings_section(), charts, _benchmark_section(benchmarks), _next_section(), _glossary_section(), _about_section(),
+        _live_section(), _summary_section(summary, benchmarks), _what_section(), _how_section(counts, summary), _findings_section(), charts, _benchmark_section(benchmarks), _next_section(), _glossary_section(), _about_section(),
     ))
     page = PUBLIC_PAGE
     for key, value in (("__TITLE__", title), ("__BODY__", body), ("__GENERATED__", str(data["generated_at"])), ("__FAILURE_TEXT__", failure_text), ("__DATA__", payload)):
@@ -805,6 +822,9 @@ table.plain th,table.plain td{text-align:left;white-space:normal;vertical-align:
 .bars2 .bar{grid-template-columns:minmax(0,1fr) minmax(90px,30%) 40px}
 #sec-swebench .bar{grid-template-columns:minmax(0,230px) minmax(120px,1fr) 50px}
 @media (max-width:640px){h1{padding-right:0}.lang{float:none;margin-bottom:12px}.bar,.bars2 .bar,#sec-swebench .bar{grid-template-columns:1fr auto}.bar .track{grid-column:1/-1;grid-row:2}.timeline li{grid-template-columns:1fr;gap:0}}
+.prog{display:inline-block;vertical-align:middle;width:90px;height:8px;margin-right:6px;background:var(--soft);border-radius:4px;overflow:hidden}.prog i{display:block;height:100%;background:var(--c1)}
+.st{display:inline-block;padding:0 7px;border-radius:999px;font-size:12px;border:1px solid var(--line)}.st.running{color:var(--c1);border-color:var(--c1)}.st.stalled{color:var(--bad);border-color:var(--bad)}
+#live td:nth-child(3){text-align:left}#live table{margin-top:0}
 svg text{fill:var(--fg);font-size:12px}svg .axis{stroke:var(--line)}svg .thr{stroke:var(--bad);stroke-dasharray:5 4}footer{margin-top:40px;font-size:13px;color:var(--muted)}
 </style></head><body><main>
 <div class="lang"><button type="button" data-set-lang="zh">中文</button><button type="button" data-set-lang="en">English</button></div>
@@ -859,6 +879,31 @@ const none=()=>both('还没有数据','No data yet');
   svg.append(el('text',{x:x0+bw*0.34,y:h-38,'text-anchor':'middle'},String(r.date||'').slice(5)));label(svg,{x:x0+bw*0.34,y:h-22,'text-anchor':'middle'},r.split==='holdout'?'正式卷':'练习卷',r.split==='holdout'?'Final':'Practice');label(svg,{x:x0+bw*0.34,y:h-6,'text-anchor':'middle',class:r.gate?'':'bad'},r.gate?'过线':'没过',r.gate?'Pass':'Fail')})})();
 document.getElementById('runs').innerHTML='<tr>'+[['这次考的是什么','What was tested'],['卷子','Paper'],['时间','Time'],['规划','Planning'],['形状','Shape'],['验收','Review'],['每轮判定','Round verdicts'],['重试','Retries'],['完整任务','Full tasks'],['花费','Cost'],['回退','Fallbacks']].map(([z,e])=>`<th>${both(z,e)}</th>`).join('')+'</tr>'+
  D.reports.runs.map(r=>`<tr${r.valid?'':' class="void"'}><td>${both(r.label_zh+(r.valid?'':'（作废）'),r.label_en+(r.valid?'':' (invalid)'))}</td><td>${r.split==='holdout'?both('正式卷','Final'):both('练习卷','Practice')}</td><td>${esc(String(r.created_at||'').slice(5,16).replace('T',' '))}</td><td class="${r.triage==null?'':r.triage>=0.9?'ok':'bad'}">${pct(r.triage)}</td><td>${pct(r.shape)}</td><td class="${r.reviewer==null?'':r.reviewer>=0.85?'ok':'bad'}">${pct(r.reviewer)}</td><td>${pct(r.rounds)}</td><td>${r.stuck??'—'}</td><td>${r.task_total?r.task_pass+'/'+r.task_total:'—'}</td><td>${usd(r.total_usd)}</td><td>${r.fallbacks}</td></tr>`).join('');
+(function live(){const box=document.getElementById('live'),note=document.getElementById('live-note'),card=document.getElementById('live-trend-card'),svg=document.getElementById('live-trend');if(!box)return;
+ const SUITE={'task-loop':['规划与验收','Planning and review'],context:['长任务压缩','Long-task compression'],swebench:['SWE-bench Verified','SWE-bench Verified'],'terminal-bench':['Terminal-Bench 2.0','Terminal-Bench 2.0'],deepeval:['DeepEval','DeepEval'],ragas:['Ragas','Ragas']};
+ const MAIN={'task-loop':['success_rate','成功率','Success'],context:['full.probe_pass_rate','压缩后答对','Answered after compression'],swebench:['resolved_rate','解决率','Resolved'],'terminal-bench':['resolved_rate','解决率','Resolved'],deepeval:['pass_rate','通过率','Pass rate'],ragas:['faithfulness','忠实度','Faithfulness']};
+ const ST={running:['进行中','Running'],finished:['已结束','Finished'],stalled:['停了','Stalled']};
+ const OUT={passed:['对','passed'],failed:['错','failed'],error:['出错','errors'],submitted:['已交','submitted']};
+ const ago=t=>{if(!t)return '—';const m=Math.max(0,Math.round((Date.now()-Date.parse(t))/60000));return m<1?both('刚刚','just now'):m<60?both(m+' 分钟前',m+' min ago'):m<2880?both(Math.round(m/60)+' 小时前',Math.round(m/60)+' h ago'):both(Math.round(m/1440)+' 天前',Math.round(m/1440)+' days ago')};
+ const name=s=>SUITE[s]||[s,s];
+ function table(runs){if(!runs.length){box.innerHTML=both('最近一个月还没有发了实时指标的评测。','No evaluation has reported live metrics in the last month.');return}
+  box.innerHTML='<table><tr>'+[['评测','Exam'],['被测对象','Subject'],['进度','Progress'],['结果','Results'],['花费','Cost'],['主要分数','Main score'],['状态','Status'],['更新','Updated']].map(([z,e])=>`<th>${both(z,e)}</th>`).join('')+'</tr>'+
+   runs.map(r=>{const p=r.planned?Math.min(1,r.done/r.planned):0,m=MAIN[r.suite],sc=m&&r.scores[m[0]]!=null?r.scores[m[0]]:null,st=ST[r.status]||[r.status,r.status];
+    const res=Object.entries(r.outcomes||{}).filter(([,v])=>v).map(([k,v])=>both(v+' '+(OUT[k]||[k])[0],v+' '+(OUT[k]||[k,k])[1])).join(' · ')||'—';
+    return `<tr${r.valid===false?' class="void"':''}><td>${both(...name(r.suite))}${r.split?` <span class="muted">${esc(r.split)}</span>`:''}</td><td>${esc(r.model||r.subject)}</td><td><span class="prog"><i style="width:${(p*100).toFixed(1)}%"></i></span>${r.done}/${r.planned}</td><td>${res}</td><td>${usd(r.cost_usd)}</td><td>${sc==null?'—':m[0].endsWith('rate')||sc<=1?pct(sc):esc(sc)}</td><td><span class="st ${esc(r.status)}">${both(...st)}</span>${r.valid===false?' '+both('作废','invalid'):''}</td><td>${ago(r.updated_at)}</td></tr>`}).join('')+'</table>'}
+ function trend(runs){const pts=runs.filter(r=>r.status==='finished'&&r.valid!==false&&MAIN[r.suite]&&r.scores[MAIN[r.suite][0]]!=null&&r.updated_at).map(r=>({s:r.suite,t:Date.parse(r.updated_at),v:r.scores[MAIN[r.suite][0]]})).filter(p=>p.v>=0&&p.v<=1);
+  if(!pts.length){card.hidden=true;return}card.hidden=false;svg.replaceChildren();const h=240,w=frame(svg,h),t0=Math.min(...pts.map(p=>p.t)),t1=Math.max(...pts.map(p=>p.t)),x=t=>56+(t1>t0?(t-t0)/(t1-t0):0.5)*(w-90),y=v=>h-34-v*(h-70);
+  for(const v of [0,0.5,1]){svg.append(el('line',{x1:44,x2:w-14,y1:y(v),y2:y(v),class:'axis',opacity:v?0.5:1}));svg.append(el('text',{x:4,y:y(v)+4},(v*100)+'%'))}
+  const suites=[...new Set(pts.map(p=>p.s))];suites.forEach((s,i)=>{const c=C[i%3],l=pts.filter(p=>p.s===s).sort((a,b)=>a.t-b.t);
+   if(l.length>1)svg.append(el('polyline',{points:l.map(p=>`${x(p.t)},${y(p.v)}`).join(' '),fill:'none',stroke:c,'stroke-width':2}));
+   l.forEach(p=>{const m=el('circle',{cx:x(p.t),cy:y(p.v),r:4,fill:c});m.append(el('title',{},`${name(s)[0]} · ${new Date(p.t).toISOString().slice(5,16).replace('T',' ')} · ${pct(p.v)}`));svg.append(m)});
+   svg.append(el('rect',{x:56+i*170,y:6,width:10,height:10,fill:c}));label(svg,{x:72+i*170,y:15},name(s)[0]+' · '+MAIN[s][1],name(s)[1]+' · '+MAIN[s][2])});
+  svg.append(el('text',{x:x(t0),y:h-12,'text-anchor':'middle'},new Date(t0).toISOString().slice(5,10)));if(t1>t0)svg.append(el('text',{x:x(t1),y:h-12,'text-anchor':'middle'},new Date(t1).toISOString().slice(5,10)))}
+ async function load(){let d=null;try{const r=await fetch('/api/live.json',{cache:'no-store'});if(r.ok)d=await r.json()}catch(e){}
+  if(!d||d.source==='none'){note.innerHTML=both('实时数据还没接上，下面是最后一次发布的静态数据。','Live data is not connected yet; below is the last published snapshot.');if(!box.innerHTML)box.innerHTML='—';return}
+  note.innerHTML=d.stale?both('暂时连不上指标库，显示的是上一次取到的数据。','The metrics store is unreachable right now; showing the last data we got.'):both('数据时间 '+String(d.generated_at||'').replace('T',' ').replace('Z',' UTC'),'Data as of '+String(d.generated_at||'').replace('T',' ').replace('Z',' UTC'));
+  table(d.runs||[]);trend(d.runs||[])}
+ load();setInterval(load,30000)})();
 (function language(){const root=document.documentElement,buttons=document.querySelectorAll('[data-set-lang]');
  const set=(lang,keep)=>{root.dataset.lang=lang;root.lang=lang==='en'?'en':'zh-CN';buttons.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.setLang===lang)));if(keep){try{localStorage.setItem('evals-lang',lang)}catch(e){}}};
  let saved=null;try{saved=localStorage.getItem('evals-lang')}catch(e){}

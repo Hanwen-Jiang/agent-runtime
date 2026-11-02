@@ -243,6 +243,18 @@ def fetch_instances(
 # --- 跑 ---
 
 
+class Live(Protocol):
+    """边跑边发的指标（agentruntime_learning.evals.live.BlockingLive；评测看板第 11.16 节）。"""
+
+    def planned(self, total: int, *, carried: int = 0, carried_cost_usd: float = 0.0) -> None: ...
+    def case(self, outcome: str, cost_usd: float | None = None) -> None: ...
+    def score(self, metric: str, value: float) -> None: ...
+    def finished(self, *, model: str = "") -> None: ...
+
+
+SUITE = "swebench"
+
+
 class Runtime(Protocol):
     """适配器用到的 Runtime 调用（client.RuntimeClient；测试里是假的）。"""
 
@@ -303,17 +315,24 @@ class RunSummary:
     submitted: int
 
 
-def run(runtime: Runtime, instances: Sequence[Instance], out_dir: Path, settings: Settings, *, selection: Mapping[str, Any] | None = None) -> RunSummary:
-    """跑选中的题，写 run.json、instances.jsonl、records/ 与 predictions.jsonl；同一个输出目录再跑是续跑。"""
+def run(
+    runtime: Runtime, instances: Sequence[Instance], out_dir: Path, settings: Settings, *, selection: Mapping[str, Any] | None = None, live: Live | None = None,
+) -> RunSummary:
+    """跑选中的题，写 run.json、instances.jsonl、records/ 与 predictions.jsonl；同一个输出目录再跑是续跑。
+
+    给了 live 时边跑边发进度：开始时一共几题、之前跑完了几题花了多少（续跑），每题跑完一次（交了补丁是 submitted，补丁是空的是
+    failed，出错是 error），这个进程正常跑完时 finished。之前算过的题不重发。"""
     out_dir = Path(out_dir)
     (out_dir / "records").mkdir(parents=True, exist_ok=True)
     _manifest(out_dir, instances, settings, selection)
     _write_text(out_dir / "instances.jsonl", "".join(json.dumps(i.raw, ensure_ascii=False) + "\n" for i in instances))
-    runner = _Runner(runtime, list(instances), out_dir, settings)
+    runner = _Runner(runtime, list(instances), out_dir, settings, live)
     try:
         runner.go()
     finally:
         write_predictions(out_dir, instances, settings.model_name)
+    if live is not None:
+        live.finished(model=settings.model_name)
     return runner.summary()
 
 
@@ -352,7 +371,8 @@ def write_predictions(out_dir: Path, instances: Sequence[Instance], model_name: 
 
 
 class _Runner:
-    def __init__(self, runtime: Runtime, instances: list[Instance], out_dir: Path, settings: Settings) -> None:
+    def __init__(self, runtime: Runtime, instances: list[Instance], out_dir: Path, settings: Settings, live: Live | None = None) -> None:
+        self.live = live
         self.rt = runtime
         self.instances = instances
         self.out = out_dir
@@ -381,6 +401,9 @@ class _Runner:
 
     def go(self) -> None:
         pending = [i for i in self.instances if (self.records.get(i.instance_id) or {}).get("state") != "finished"]
+        if self.live is not None:
+            done = [self.records.get(i.instance_id) or {} for i in self.instances if i not in pending]
+            self.live.planned(len(self.instances), carried=len(done), carried_cost_usd=sum(float(r.get("cost_usd") or 0) for r in done))
         # 上次提交了的先接着跟：钱已经在花了，不受预算门槛的约束（照样占一份预留）。
         following = [i for i in pending if (self.records.get(i.instance_id) or {}).get("state") == "submitted"]
         fresh = [i for i in pending if i not in following]
@@ -433,11 +456,20 @@ class _Runner:
             rec.update({"state": "error", "error": f"{type(err).__name__}: {err}"[:1000]})
             self._save(rec)
             self._release(iid)
+            self._report(rec)
         except BaseException:
             self._release(iid, crashed=True)
             raise
         else:
             self._release(iid)
+            self._report(rec)
+
+    def _report(self, rec: dict[str, Any]) -> None:
+        if self.live is None:
+            return
+        outcome = "error" if rec.get("state") == "error" else "submitted" if rec.get("patch") else "failed"
+        cost = rec.get("cost_usd")
+        self.live.case(outcome, float(cost) if cost is not None else None)
 
     def _when_room(self, call: Callable[[], T]) -> T:
         """沙箱环境的配额满了就等一等再试：做完的 Task 的环境留着等复用，空闲到期才回收，这不算这一题出错。"""
@@ -571,8 +603,11 @@ def _harness_report(out_dir: Path) -> Path:
     return Path(out_dir) / "grading" / f"{name}.{manifest['run_id']}.json"
 
 
-def grade(out_dir: Path, *, python: str, max_workers: int = 4, modal: bool = False, env: Mapping[str, str] | None = None) -> dict[str, Any]:
-    """调官方判分工具（python -m swebench.harness.run_evaluation），只判交了 predictions 的题，返回它的报告。"""
+def grade(
+    out_dir: Path, *, python: str, max_workers: int = 4, modal: bool = False, env: Mapping[str, str] | None = None, live: Live | None = None,
+) -> dict[str, Any]:
+    """调官方判分工具（python -m swebench.harness.run_evaluation），只判交了 predictions 的题，返回它的报告。
+    给了 live 时判完发分数：resolved（解决的题数）与 resolved_rate（占选题的比例）。"""
     out_dir = Path(out_dir).absolute()
     manifest = json.loads((out_dir / "run.json").read_text("utf-8"))
     preds = [json.loads(line) for line in (out_dir / "predictions.jsonl").read_text("utf-8").splitlines() if line.strip()]
@@ -596,7 +631,12 @@ def grade(out_dir: Path, *, python: str, max_workers: int = 4, modal: bool = Fal
     path = _harness_report(out_dir)
     if not path.exists():
         raise RuntimeError(f"官方判分工具跑完了，但没有报告 {path}（日志 {grading / 'harness.log'}）")
-    return json.loads(path.read_text("utf-8"))
+    graded: dict[str, Any] = json.loads(path.read_text("utf-8"))
+    if live is not None:
+        resolved = len(graded.get("resolved_ids") or [])
+        live.score("resolved", float(resolved))
+        live.score("resolved_rate", resolved / max(1, len(manifest["instance_ids"])))
+    return graded
 
 
 # --- 报告 ---

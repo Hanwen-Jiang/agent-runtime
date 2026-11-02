@@ -1,6 +1,7 @@
 """TMP 计划（docs/plan/eval-observability-and-runtime-fixes.md）第 11.12 节：评测看板（Eval Dashboard）的静态服务。
 
-agentruntime_learning.evals.dashboard_server 只用标准库，跑在已有的 learning 镜像里：只答 /、/index.html 与 /healthz，只收 GET、
+agentruntime_learning.evals.dashboard_server 只用标准库，跑在已有的 learning 镜像里：只答 /、/index.html 与 /healthz（第 11.16 节另加
+/api/live.json，见 test_dashboard_live.py），只收 GET、
 HEAD，带安全响应头，每次请求现读文件（ConfigMap 更新后不用重启），不回显请求内容，不露版本。目录里的别的文件一概不给。
 """
 
@@ -20,7 +21,10 @@ import pytest
 from agentruntime_learning.evals.dashboard_server import make_server
 
 PAGE = "<!doctype html><title>Eval Dashboard · 评测看板</title>"
-CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+CSP = (
+    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; "
+    "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+)
 
 
 @pytest.fixture
@@ -56,7 +60,7 @@ def test_the_page_is_served_with_security_headers(site: tuple[int, Path], path: 
     status, headers, body = request(port, "GET", path)
     assert status == 200 and body.decode("utf-8") == PAGE
     assert headers["content-type"] == "text/html; charset=utf-8"
-    assert headers["content-security-policy"] == CSP, "页面只有内联的脚本与样式，别的一概不许"
+    assert headers["content-security-policy"] == CSP, "页面只有内联的脚本与样式，只许连回同源取实时数据（第 11.16 节）"
     assert headers["x-content-type-options"] == "nosniff"
     assert headers["referrer-policy"] == "no-referrer"
     assert headers["cache-control"] == "public, max-age=300", "Cloudflare 可以短暂缓存，发布后几分钟内更新"

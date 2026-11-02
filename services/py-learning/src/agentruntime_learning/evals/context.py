@@ -42,6 +42,7 @@ from google.protobuf import json_format, struct_pb2
 from agentruntime.common.v1 import enums_pb2, payload_pb2
 from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 from agentruntime_core.dev.object_store import LocalDiskObjectStoreProvider
+from agentruntime_core.providers.telemetry import Telemetry
 from agentruntime_worker.activities.types import Tenant
 from agentruntime_worker.context.builder import LADDER, BuiltContext, ContextBuilder, ContextConfig, ContextRequest, tenant_context
 from agentruntime_worker.context.probe import ProbeFact, grade
@@ -51,6 +52,7 @@ from agentruntime_worker.executor.tool_loop import SYSTEM_PROMPT, TOOL_LOOP_TIER
 
 from agentruntime_learning.evals import schemas
 from agentruntime_learning.evals.cases import EvalSetError
+from agentruntime_learning.evals.live import LiveRun
 
 CONTEXT_DIR = "context_samples"
 STRATEGIES = ("mask_only", "full")
@@ -262,15 +264,29 @@ class ContextReport:
         }
 
 
-async def run_context_eval(samples: Sequence[ContextSample], subject: ContextSubject, *, split: str, work_dir: Path, repeat: int = 1) -> ContextReport:
-    """跑 repeat 次（模型有随机性，单次差一两题不下结论）：metrics 取各次的中位数，门槛按中位数判，每次的结果都保留。"""
+# 看板（第 11.16 节）里这组评测的名字，与发出去的分数（策略.指标）。
+SUITE = "context"
+LIVE_SCORES = ("probe_pass_rate", "repeat_rate", "retention_rate")
+
+
+async def run_context_eval(
+    samples: Sequence[ContextSample], subject: ContextSubject, *, split: str, work_dir: Path, repeat: int = 1, telemetry: Telemetry | None = None,
+) -> ContextReport:
+    """跑 repeat 次（模型有随机性，单次差一两题不下结论）：metrics 取各次的中位数，门槛按中位数判，每次的结果都保留。
+    给了 telemetry 时每次都是看板上的一次运行，边跑边发进度（agentruntime_learning.evals.live，第 11.16 节）。"""
     if repeat < 1:
         raise ValueError(f"repeat 至少是 1，得到 {repeat}")
     selected = [s for s in samples if s.split == split]
     runs: list[dict[str, dict[str, float]]] = []
     rows: list[dict[str, Any]] = []
     for run in range(1, repeat + 1):
-        metrics, run_rows = await _run_once(selected, subject, split=split, work_dir=Path(work_dir), run=run)
+        live = LiveRun(telemetry, suite=SUITE, subject=subject.name, split=split)
+        await live.planned(len(STRATEGIES) * len(selected))
+        metrics, run_rows = await _run_once(selected, subject, split=split, work_dir=Path(work_dir), run=run, live=live)
+        for strategy in STRATEGIES:
+            for name in LIVE_SCORES:
+                await live.score(f"{strategy}.{name}", metrics[strategy][name])
+        await live.finished()
         runs.append(metrics)
         rows += run_rows
     medians = {s: {name: statistics.median(r[s][name] for r in runs) for name in runs[0][s]} for s in STRATEGIES}
@@ -280,7 +296,9 @@ async def run_context_eval(samples: Sequence[ContextSample], subject: ContextSub
     return ContextReport(split=split, subject=subject.name, metrics=medians, gate_passed=gate, samples=rows, runs=runs, ranges=ranges)
 
 
-async def _run_once(selected: Sequence[ContextSample], subject: ContextSubject, *, split: str, work_dir: Path, run: int) -> tuple[dict[str, dict[str, float]], list[dict[str, Any]]]:
+async def _run_once(
+    selected: Sequence[ContextSample], subject: ContextSubject, *, split: str, work_dir: Path, run: int, live: LiveRun | None = None,
+) -> tuple[dict[str, dict[str, float]], list[dict[str, Any]]]:
     metrics: dict[str, dict[str, float]] = {}
     rows: list[dict[str, Any]] = []
     for strategy in STRATEGIES:
@@ -306,6 +324,8 @@ async def _run_once(selected: Sequence[ContextSample], subject: ContextSubject, 
                 tool, args, repeated = "", {}, False
                 error = f"{type(exc).__name__}: {exc}"
                 errors += 1
+            if live is not None:
+                await live.case("error" if error is not None else "passed" if all(graded) and not repeated else "failed")
             summarized += int("summarize" in applied)
             questions += len(graded)
             passed += sum(graded)

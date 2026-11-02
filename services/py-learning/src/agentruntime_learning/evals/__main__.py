@@ -14,7 +14,8 @@ S-11 的压缩评测是另一个子命令：
     uv run --package agentruntime-learning python -m agentruntime_learning.evals context --subject lexical
 
 被测对象是 lexical（离线基线）或 <模块>:<工厂函数>；真模型用 agentruntime_learning.evals.worker_subject:context_subject。
---repeat N 跑 N 次，指标取中位数，门槛按中位数判。
+--repeat N 跑 N 次，指标取中位数，门槛按中位数判。设了 OTEL_EXPORTER_OTLP_ENDPOINT 时两个子命令都边跑边发进度（每条用例的结果
+与花费，agentruntime_learning.evals.live），评测看板（evals.cgent.link）读它们（第 11.16 节）。
 
 退出码：0 跑完（不论分数）；2 参数或评测集有问题；3 要求标注全部确认而还有草稿。
 """
@@ -140,7 +141,8 @@ def _context(args: argparse.Namespace) -> int:
         print(exc, file=sys.stderr)
         return 2
     with tempfile.TemporaryDirectory(prefix="context-evals-") as scratch:
-        report = asyncio.run(run_context_eval(samples, subject, split=args.split, work_dir=args.work_dir or Path(scratch), repeat=args.repeat))
+        work_dir = args.work_dir or Path(scratch)
+        report = asyncio.run(_with_telemetry(lambda tel: run_context_eval(samples, subject, split=args.split, work_dir=work_dir, repeat=args.repeat, telemetry=tel)))
     path = None
     if args.reports_dir is not None:  # 先落盘再打印：真模型跑一遍要花钱，打印出问题也不丢报告
         args.reports_dir.mkdir(parents=True, exist_ok=True)

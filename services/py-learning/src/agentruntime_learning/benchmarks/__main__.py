@@ -5,21 +5,33 @@
   不写进输出目录。同一个 --out 再跑是续跑。花钱：--budget-usd 是总预算，--task-usd-limit 是单题上限。
 - grade：调官方判分工具（--python 指一个装了 swebench 的 Python；要 Docker，或 --modal 在 Modal 上跑）。
 - report：写 report.json 与 report.md（判过分时并进判分结果）。
+
+设了 OTEL_EXPORTER_OTLP_ENDPOINT 时 run 边跑边发进度、grade 判完发分数（agentruntime_learning.evals.live），评测看板读它们
+（docs/plan/eval-observability-and-runtime-fixes.md 第 11.16 节）；看板上的运行 id 是 run.json 的 run_id，续跑与判分都对得上。
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
+import json
 import os
 import re
 import sys
+from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 from agentruntime_learning.benchmarks import swebench as sb
 from agentruntime_learning.benchmarks.client import ApiError, RuntimeClient
 
 TOKEN_ENV = "AR_TASK_API_TOKEN"
+OTLP_ENV = "OTEL_EXPORTER_OTLP_ENDPOINT"
+TELEMETRY_SERVICE = "learning"
+TELEMETRY_PURPOSE = "evals"
+# 看板上 SWE-bench 的“划分”：官方的 Verified 集。
+SPLIT = "verified"
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -68,6 +80,26 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+@contextlib.contextmanager
+def _live(run_id: str, model: str) -> Iterator[Any]:
+    """设了 OTEL_EXPORTER_OTLP_ENDPOINT 时边跑边发进度（评测看板，第 11.16 节），结束时导出；没设时为 None。"""
+    if not os.environ.get(OTLP_ENV, "").strip():
+        yield None
+        return
+    from agentruntime_core.adapters.otel import telemetry_from_env
+
+    from agentruntime_learning.evals.live import BlockingLive, LiveRun
+
+    provider = telemetry_from_env(TELEMETRY_SERVICE)
+    live = BlockingLive(LiveRun(provider.bind_platform(TELEMETRY_PURPOSE), suite=sb.SUITE, subject=model or "agent-runtime", split=SPLIT, run_id=run_id, model=model))
+    try:
+        yield live
+    finally:
+        live.flush()
+        live._call(provider.aclose())
+        live.close()
+
+
 def _run(args: argparse.Namespace) -> int:
     token = os.environ.get(TOKEN_ENV, "")
     if not token:
@@ -97,7 +129,8 @@ def _run(args: argparse.Namespace) -> int:
         **({"ids_file": str(args.ids), "ids": True} if args.ids else {"limit": args.limit, "seed": args.seed}),
         **({"stratified": True, "exclude_repos": sorted(args.exclude_repo), "excluded_ids": len(exclude_ids)} if args.stratify else {}),
     }
-    summary = sb.run(RuntimeClient(args.task_api, token), chosen, args.out, settings, selection=selection)
+    with _live(run_id, args.model_name) as live:
+        summary = sb.run(RuntimeClient(args.task_api, token), chosen, args.out, settings, selection=selection, live=live)
     print(
         f"跑完 {summary.finished} 题（这次提交 {summary.submitted} 个 Task），没跑 {summary.not_run} 题，出错 {summary.errors} 题；"
         f"已花 ${summary.spent_usd:.4f}（预算 ${args.budget_usd:.2f}）"
@@ -123,7 +156,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "run":
             return _run(args)
         if args.command == "grade":
-            graded = sb.grade(args.out, python=args.python, max_workers=args.max_workers, modal=args.modal)
+            manifest = json.loads((args.out / "run.json").read_text("utf-8"))
+            with _live(str(manifest["run_id"]), str((manifest.get("settings") or {}).get("model_name") or "")) as live:
+                graded = sb.grade(args.out, python=args.python, max_workers=args.max_workers, modal=args.modal, live=live)
             print(f"判分完成：解决 {len(graded.get('resolved_ids') or [])} 题；报告用 … swebench report --out {args.out}")
             return 0
         rep = sb.report(args.out)

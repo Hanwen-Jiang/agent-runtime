@@ -52,6 +52,7 @@ from typing import Any, Final
 from agentruntime_core.providers.telemetry import Span, Telemetry
 
 from agentruntime_learning.evals.cases import Checkpoint, EvalSet, TaskCase
+from agentruntime_learning.evals.live import LiveRun
 from agentruntime_learning.evals.model import PlannerInput, ReviewerInput, Subject
 from agentruntime_learning.evals.rubric import RubricJudge
 from agentruntime_learning.evals.scoring import DecisionScore, Failure, score_planner, score_reviewer
@@ -73,6 +74,8 @@ SCORES: Final = {
     "eval.cost_usd": ("cost", "total_usd"),
     "eval.fallback_rate": ("fallbacks", "rate"),
 }
+# 看板（第 11.16 节）里这组评测的名字。
+SUITE: Final = "task-loop"
 # 摘要里列出的失败原因条数。
 _TOP_REASONS = 12
 
@@ -267,20 +270,32 @@ def _score(metrics: dict[str, Any], path: tuple[str, ...]) -> float | None:
     return value if isinstance(value, int | float) and not isinstance(value, bool) else None
 
 
-async def _record(telemetry: Telemetry, span: Span | None, data: dict[str, Any]) -> None:
-    """把一次运行的结果记到 eval.run span 上，并发 runtime.eval.runs 与 runtime.eval.score。只有名字与数值，没有用例原文。"""
-    common = {"eval.set": data["eval_set"]["name"], "eval.subject": data["subject"], "eval.split": data["split"], "eval.valid": data["valid"]}
+def _models(data: dict[str, Any]) -> str:
+    return ",".join(sorted({profile for used in data["models"].values() for profile in used}))
+
+
+async def _record(telemetry: Telemetry, span: Span | None, data: dict[str, Any], live: LiveRun) -> None:
+    """把一次运行的结果记到 eval.run span 上，并发 runtime.eval.runs、runtime.eval.score 与 runtime.eval.finished（第 11.16 节）。
+    只有名字与数值，没有用例原文。"""
+    live.model = _models(data)
+    common = live.attributes(**{"eval.set": data["eval_set"]["name"], "eval.valid": data["valid"]})
     scores = {name: _score(data["metrics"], path) for name, path in SCORES.items()}
     if span is not None:
         attributes: dict[str, Any] = {name: value for name, value in scores.items() if value is not None}
-        models = sorted({profile for used in data["models"].values() for profile in used})
-        if models:
-            attributes["eval.models"] = ",".join(models)
-        span.set_attributes({**attributes, "eval.valid": data["valid"]})
+        if live.model:
+            attributes["eval.models"] = live.model
+        span.set_attributes({**attributes, "eval.valid": data["valid"], "eval.run_id": live.run_id})
     await telemetry.count("runtime.eval.runs", attributes=common)
     for name, value in scores.items():
         if value is not None:
             await telemetry.observe("runtime.eval.score", float(value), attributes={**common, "eval.metric": name.removeprefix("eval.")})
+    await live.finished()
+
+
+def _outcome(item: _ItemResult) -> str:
+    if any(f.dimension == "error" for d in item.decisions for f in d.score.failures):
+        return "error"
+    return "passed" if item.passed else "failed"
 
 
 def _slug(text: str) -> str:
@@ -356,16 +371,19 @@ async def run_eval(
     事后还会逐次核对 judge 实际用的供应商不在被测对象用过的供应商里。
     reports_dir 为 None 时不写文件；compare 为 None 时不比较。
     回退率（经模型的决策里 Planner、Reviewer 回退的比例）超过 max_fallback_rate 的运行标为无效（TMP 计划第 8 节）。
-    给了 telemetry 时发 eval.run、eval.case span 与 runtime.eval.* 指标（TMP 计划第 9.2 节），由调用方 flush。
+    给了 telemetry 时发 eval.run、eval.case span 与 runtime.eval.* 指标（TMP 计划第 9.2 节），由调用方 flush；
+    边跑边发的进度（开始时要跑几条、每条的结果与花费、结束）见 agentruntime_learning.evals.live（第 11.16 节）。
     """
     if split not in SPLITS:
         raise EvalConfigError(f"划分只能是 {'、'.join(SPLITS)}，得到 {split!r}")
     if not 0 <= max_fallback_rate <= 1:
         raise EvalConfigError(f"回退率的阈值要在 0 到 1 之间，得到 {max_fallback_rate}")
+    live = LiveRun(telemetry, suite=SUITE, subject=subject.name, split=split)
     async with _span(telemetry, "eval.run", {"eval.set": eval_set.name, "eval.subject": subject.name, "eval.split": split}) as run_span:
-        data = await _run_eval(eval_set, subject, split, judge, judge_vendor, subject_vendor, require_confirmed, max_fallback_rate, telemetry)
+        data = await _run_eval(eval_set, subject, split, judge, judge_vendor, subject_vendor, require_confirmed, max_fallback_rate, telemetry, live)
         if telemetry is not None:
-            await _record(telemetry, run_span, data)
+            await _record(telemetry, run_span, data, live)
+    data["run_id"] = live.run_id
     return _finish(data, eval_set, subject, split, reports_dir, compare)
 
 
@@ -379,6 +397,7 @@ async def _run_eval(
     require_confirmed: bool,
     max_fallback_rate: float,
     telemetry: Telemetry | None,
+    live: LiveRun,
 ) -> dict[str, Any]:
     if judge is not None and judge_vendor and subject_vendor and judge_vendor == subject_vendor:
         raise EvalConfigError(f"judge 与被测对象都是 {judge_vendor}：rubric 要用不同家的模型打分")
@@ -390,6 +409,7 @@ async def _run_eval(
     models_before = _model_calls(subject)
     fallbacks = _Fallbacks()
     case_telemetry = telemetry if split != "holdout" else None  # 留出集只给汇总，不发逐条的 span
+    await live.planned(len(es.task_cases) + len(es.reviewer_samples))
 
     items: list[_ItemResult] = []
     plan_scores: dict[str, DecisionScore] = {}
@@ -411,6 +431,7 @@ async def _run_eval(
             items.append(item)
             if case_span is not None:
                 case_span.set_attributes({"eval.passed": item.passed, "eval.cost_usd": item.cost})
+            await live.case(_outcome(item), item.cost)
     for sample in es.reviewer_samples:
         async with _span(case_telemetry, "eval.case", {"eval.case_id": sample.id, "eval.kind": "reviewer"}) as case_span:
             item = _ItemResult(id=sample.id, kind="reviewer", category=sample.category)
@@ -425,6 +446,7 @@ async def _run_eval(
             items.append(item)
             if case_span is not None:
                 case_span.set_attributes({"eval.passed": item.passed, "eval.cost_usd": item.cost})
+            await live.case(_outcome(item), item.cost)
 
     data = _build(eval_set, es, subject, split, items, plan_scores)
     if failures_before is not None:

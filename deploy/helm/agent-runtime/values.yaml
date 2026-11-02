@@ -169,6 +169,12 @@ evalDashboard:
   host: ""
   # 入口控制器所在的命名空间（只有它能连；k3s 的 Traefik 在 kube-system）。
   ingressNamespace: kube-system
+  # 实时的一栏（docs/plan/eval-observability-and-runtime-fixes.md 第 11.16 节）：VictoriaMetrics 的地址，例如
+  # http://vm-victoria-metrics-single-server.observability.svc:8428；空表示只有静态页。给了时网络策略放行到下面这些 Pod 的端口与 DNS。
+  metricsUrl: ""
+  metricsNamespace: observability
+  metricsPodLabels: {app.kubernetes.io/name: victoria-metrics-single}
+  metricsPort: 8428
   resources:
     requests: {cpu: 10m, memory: 32Mi}
     limits: {cpu: 200m, memory: 96Mi}

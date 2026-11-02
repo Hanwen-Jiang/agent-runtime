@@ -2,7 +2,7 @@
 
 默认不渲染。打开后：learning 镜像跑只用标准库的静态服务，Pod 没有令牌、Secret 与业务环境变量，根文件系统只读；页面在 ConfigMap 里，
 由发布步骤写，Chart 不渲染（否则每次 helm upgrade 都会清掉），卷标为 optional；入口只把这个域名转给这个 Service；NetworkPolicy 进只来自
-入口控制器，出一概不放。缺 host、入口不是 traefik 时渲染失败。
+入口控制器，出一概不放（第 11.16 节：给了 metricsUrl 时只放行到 VictoriaMetrics 与 DNS）。缺 host、入口不是 traefik 时渲染失败。
 """
 
 from __future__ import annotations
@@ -96,6 +96,23 @@ def test_the_network_policy_allows_only_the_ingress_controller_in_and_nothing_ou
     assert [p["port"] for p in rule["ports"]] == [8080]
     [source] = rule["from"]
     assert source["namespaceSelector"]["matchLabels"] == {"kubernetes.io/metadata.name": "kube-system"}
+
+
+def test_with_a_metrics_url_the_pod_may_reach_only_victoriametrics_and_dns() -> None:
+    """第 11.16 节：实时的一栏要读 VictoriaMetrics；出方向只放行到它的 8428 与 DNS，环境变量只有它的地址。"""
+    url = "http://vm-victoria-metrics-single-server.observability.svc:8428"
+    manifests = render(CLOUD_VALUES, set_values=[*ENABLED, f"evalDashboard.metricsUrl={url}"])
+    [container] = pod_spec(named(manifests, "Deployment"))["containers"]
+    assert {k: v["value"] for k, v in env_of(container).items()} == {"AR_EVAL_METRICS_URL": url}
+    egress = named(manifests, "NetworkPolicy")["spec"]["egress"]
+    assert len(egress) == 2
+    vm, dns = egress
+    [peer] = vm["to"]
+    assert peer["namespaceSelector"]["matchLabels"] == {"kubernetes.io/metadata.name": "observability"}
+    assert peer["podSelector"]["matchLabels"] == {"app.kubernetes.io/name": "victoria-metrics-single"}
+    assert vm["ports"] == [{"protocol": "TCP", "port": 8428}]
+    assert {p["port"] for p in dns["ports"]} == {53}
+    assert dns["to"][0]["podSelector"]["matchLabels"] == {"k8s-app": "kube-dns"}
 
 
 @pytest.mark.parametrize(

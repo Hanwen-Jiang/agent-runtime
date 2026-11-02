@@ -909,7 +909,7 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
 同一个 Stage 里前面的 Node 花了钱之后，后面的 Node 仍可能超过剩余而被拒。这次没有改 `budget_check`，等数据说明它还有影响再说。
 
 
-### 11.16 评测看板改成动态的：评测 telemetry 化（2026-11-02，设计稿，要人确认）
+### 11.16 评测看板改成动态的：评测 telemetry 化（2026-11-02，已实现，见本节末尾的实现记录）
 
 人的要求：evals.cgent.link 现在是静态页面（`scripts/eval_dashboard.py --public` 生成、ConfigMap 发布），要做成动态的，“直接把测试 telemetry 化”。
 
@@ -947,7 +947,31 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
 | `services/py-learning/tests/test_dashboard_live.py` | `/api/live.json` 只用固定的查询（假的 VictoriaMetrics 记下收到的查询）；缓存 20 秒；VM 不通时返回最后一份并标明；不接受客户端给的查询参数；CSP 带 `connect-src 'self'`；静态页照旧 |
 | `tests/deploy/test_eval_dashboard.py`（补） | 给了 `metricsUrl` 时渲染出方向到 VM 的网络策略与环境变量；不给时与现在一样 |
 
-**要人定的**
+**人定的**（2026-11-02）
 
-1. 正在跑的评测的**花费**要不要公开（建议公开：都是评测自己花的钱，不涉及租户）。
+1. 正在跑的评测的**花费**公开：都是评测自己花的钱，不涉及租户。
 2. 运行的保留时长：VictoriaMetrics 默认保留期内的都显示；更早的靠静态页里写死的历史（基线、调优 1、调优 2）。
+
+**实现记录**（2026-11-02）
+
+- `agentruntime_learning.evals.live`：`LiveRun`（异步）与 `BlockingLive`（给 SWE-bench 适配器的线程池用，自己一个事件循环线程）。
+  与设计稿的差别：
+  - 另加属性 `eval.process`：同一次运行可以分几个进程跑完（SWE-bench 续跑）。每个进程开始时都发 `cases_planned`（一共几题，看板取最大），
+    续跑时另发 `runtime.eval.cases_carried` 与 `runtime.eval.cost_carried_usd`（之前跑完的题数与花费）。看板按“带过来的 + 这个进程跑完的”
+    取各进程的最大，之前的进程没发指标（例如 2026-11-02 的 sol-rev18）也算得对。
+  - 指标里不带用例 id（span 照旧带）：看板只要条数。
+  - SWE-bench 跑的时候不知道对错，结果是 `submitted`（交了补丁）、`failed`（补丁为空）、`error`；判分后发分数 `resolved`、`resolved_rate`。
+    看板上的 run_id 就是 run.json 的 run_id，续跑与判分对得上。
+  - 指标每 60 秒导出一次（OpenTelemetry 实现的周期），所以看板最多晚一分钟多。
+- 接上的评测：`run_eval`（suite task-loop，报告里记 `run_id`）、`run_context_eval`（suite context，每次 repeat 一次运行，分数是
+  `策略.指标`）、`benchmarks swebench run/grade`。没设 `OTEL_EXPORTER_OTLP_ENDPOINT` 时一条不发；发不出去只记日志，不让评测失败。
+- `dashboard_server`：`/api/live.json`，10 条写死的 MetricsQL（`QUERIES`；用了 VictoriaMetrics 的 `tfirst_over_time`、`tlast_over_time`，
+  2026-11-02 对线上的 VictoriaMetrics 逐条试过），回看 31 天，缓存 20 秒；运行的状态是进行中、已结束、停了（2 小时没有新的结果）。
+- 页面（`scripts/eval_dashboard.py --public`）：最前面一节“正在跑的与最近的考试”，每 30 秒取一次，表格（进度条、各种结果的条数、花费、
+  主要分数、状态）加按时间的主要分数曲线；数据一律转义。取不到时写明下面是静态数据。
+- Chart：`evalDashboard.metricsUrl`（给 `AR_EVAL_METRICS_URL`）、`metricsNamespace`、`metricsPodLabels`、`metricsPort`；给了时网络策略
+  只放行到 VictoriaMetrics 的 Pod 与 DNS。
+- 测试：`services/py-learning/tests/test_eval_live_telemetry.py`、`test_swebench_telemetry.py`、`test_dashboard_live.py`，
+  `test_eval_dashboard.py` 与 `test_eval_dashboard_server.py`（CSP）补了，`tests/deploy/test_eval_dashboard.py` 补了 metricsUrl 一条。
+- 上线要做的：重建 learning 镜像（看板的服务）；`helm upgrade` 时设 `evalDashboard.metricsUrl=http://vm-victoria-metrics-single-server.observability.svc:8428`；
+  重新生成公开页并更新 ConfigMap；服务器上的评测脚本设 `OTEL_EXPORTER_OTLP_ENDPOINT` 指到 Collector。

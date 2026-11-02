@@ -147,6 +147,15 @@ def test_the_public_page_makes_no_external_requests(dashboard: ModuleType, repor
     assert urls <= {"http://www.w3.org/2000/svg"}, f"除了 SVG 的命名空间没有别的地址：{urls}"
 
 
+def test_the_public_page_has_a_live_section(dashboard: ModuleType, reports: Path, tmp_path: Path) -> None:
+    """第 11.16 节：实时的一栏每 30 秒从同源的 /api/live.json 取一次；取不到时写明显示的是静态数据。"""
+    page = public_page(dashboard, reports, tmp_path)
+    assert 'id="sec-live"' in page and 'id="live"' in page
+    assert "fetch('/api/live.json'" in page and "setInterval(load,30000)" in page
+    assert "最后一次发布的静态数据" in page and "last published snapshot" in page
+    assert page.index('id="sec-live"') < page.index('id="sec-trend"'), "实时的一栏在前面"
+
+
 def test_a_page_too_big_for_a_configmap_is_refused(dashboard: ModuleType, reports: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(dashboard, "MAX_PUBLIC_BYTES", 100)
     out = tmp_path / "index.html"

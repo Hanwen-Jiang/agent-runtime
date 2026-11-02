@@ -1,6 +1,8 @@
 {{- /* 评测看板（Eval Dashboard，docs/plan/eval-observability-and-runtime-fixes.md 第 11.12 节）：对外开放的静态页面，只有评测集上的汇总。
        learning 镜像跑只用标准库的静态服务；Pod 没有令牌、Secret 与业务环境变量。页面在 ConfigMap 里，由发布步骤写（docs/plan/cloud-deploy.md），
-       Chart 不渲染它，否则每次 helm upgrade 都会清掉；卷标为 optional，还没发布时 Pod 也能起来。 */ -}}
+       Chart 不渲染它，否则每次 helm upgrade 都会清掉；卷标为 optional，还没发布时 Pod 也能起来。
+       给了 metricsUrl 时页面另有实时的一栏（第 11.16 节）：服务端用写死的几条查询读 VictoriaMetrics 里的 runtime_eval_* 指标，
+       出方向只放行到 VictoriaMetrics 的端口与 DNS。 */ -}}
 {{- $d := .Values.evalDashboard -}}
 {{- if $d.enabled }}
 {{- if not $d.host }}
@@ -34,6 +36,11 @@ spec:
           image: {{ include "ar.image" (list . "learning") }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args: ["-m", "agentruntime_learning.evals.dashboard_server", "--dir", "/srv/eval-dashboard", "--port", "8080"]
+          {{- if $d.metricsUrl }}
+          env:
+            - name: AR_EVAL_METRICS_URL
+              value: {{ $d.metricsUrl | quote }}
+          {{- end }}
           ports:
             - name: http
               containerPort: 8080
@@ -99,7 +106,7 @@ spec:
     {}
     {{- end }}
 ---
-# 进只来自入口控制器；静态页面不需要出网，也连不了数据库。
+# 进只来自入口控制器；出方向只有（给了 metricsUrl 时）VictoriaMetrics 与 DNS，连不了数据库与别的服务。
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -118,5 +125,28 @@ spec:
               kubernetes.io/metadata.name: {{ $d.ingressNamespace }}
       ports:
         - {protocol: TCP, port: 8080}
+  {{- if $d.metricsUrl }}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $d.metricsNamespace }}
+          podSelector:
+            matchLabels:
+              {{- toYaml $d.metricsPodLabels | nindent 14 }}
+      ports:
+        - {protocol: TCP, port: {{ $d.metricsPort }}}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+  {{- else }}
   egress: []
+  {{- end }}
 {{- end }}
