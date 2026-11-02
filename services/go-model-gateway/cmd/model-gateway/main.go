@@ -104,16 +104,12 @@ func serve(ctx context.Context, stdout, stderr io.Writer, getenv func(string) st
 		return 1
 	}
 	defer provider.Close()
-	store, err := newBudgetStore(ctx, cfg)
+	store, err := openBudgetStore(ctx, cfg, stderr, newBudgetStore)
 	if err != nil {
-		fmt.Fprintln(stderr, "model-gateway：预算业务库不可用")
+		fmt.Fprintln(stderr, "model-gateway：预算业务库不可用（连接或迁移失败）")
 		return 1
 	}
 	defer store.Close()
-	if err = store.Migrate(ctx, modelbudget.Migrations()); err != nil {
-		fmt.Fprintln(stderr, "model-gateway：预算迁移失败")
-		return 1
-	}
 	logger := slog.New(slog.NewTextHandler(stderr, nil))
 	// 设了 OTEL_EXPORTER_OTLP_ENDPOINT 时每次模型调用记一个 span 发给 Collector（T-15）；没设时不记
 	// （控制台实现要调用方 flush，网关不在每次调用后 flush）。
@@ -171,6 +167,37 @@ func serve(ctx context.Context, stdout, stderr io.Writer, getenv func(string) st
 		return 1
 	}
 	return 0
+}
+
+// budgetStartTimeout 是启动时等业务库的上限。升级时网络策略刚生效、数据库在重启时，头几秒连不上（2026-11-03 第 19 版：
+// 网关因此退出过一次，靠 Pod 重启才起来）；在这之内退避重试，超过才退出。
+var budgetStartTimeout = 90 * time.Second
+
+// openBudgetStore 连业务库并跑预算账本的迁移（迁移幂等，task-service 跑的是同一组），失败就关掉连接、退避重试。
+// 重试的提示不带错误详情：连接串里有口令。
+func openBudgetStore(ctx context.Context, cfg config.Config, stderr io.Writer,
+	open func(context.Context, config.Config) (relational.Provider, error)) (relational.Provider, error) {
+	deadline := time.Now().Add(budgetStartTimeout)
+	delay := time.Second
+	for attempt := 1; ; attempt++ {
+		store, err := open(ctx, cfg)
+		if err == nil {
+			if err = store.Migrate(ctx, modelbudget.Migrations()); err == nil {
+				return store, nil
+			}
+			_ = store.Close()
+		}
+		if ctx.Err() != nil || time.Now().Add(delay).After(deadline) {
+			return nil, err
+		}
+		fmt.Fprintf(stderr, "model-gateway：预算业务库暂时连不上（第 %d 次），%s 后重试\n", attempt, delay)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(delay):
+		}
+		delay = min(delay*2, 10*time.Second)
+	}
 }
 
 func newBudgetStore(ctx context.Context, cfg config.Config) (relational.Provider, error) {

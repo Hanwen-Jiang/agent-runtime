@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -22,9 +23,11 @@ import (
 	"connectrpc.com/connect"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/filesecrets"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	mg "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/modelgateway/v1"
 	"github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/modelgateway/v1/modelgatewayv1connect"
+	"github.com/agentruntime/agent-runtime/services/go-model-gateway/internal/config"
 )
 
 // leakyKey 是测试用的假密钥，用来断言它不出现在输出里。
@@ -356,5 +359,44 @@ func TestUnknownSubcommandIsAUsageError(t *testing.T) {
 	}
 	if code := run(context.Background(), nil, strings.NewReader(""), &stdout, &stderr, getenv(nil)); code != 2 {
 		t.Errorf("没有子命令应返回 2，实际 %d", code)
+	}
+}
+
+// 启动时业务库头几次连不上（升级时网络策略刚生效）不退出，退避重试；超过上限才放弃；错误提示不带连接串。
+func TestBudgetStoreRetriesUntilTheDatabaseIsReachable(t *testing.T) {
+	old := budgetStartTimeout
+	t.Cleanup(func() { budgetStartTimeout = old })
+	cfg := config.Config{DataDir: t.TempDir()}
+	var stderr strings.Builder
+	calls := 0
+	flaky := func(ctx context.Context, c config.Config) (relational.Provider, error) {
+		calls++
+		if calls < 3 {
+			return nil, errors.New("dial tcp: connection refused (dsn postgres://user:secret@db)")
+		}
+		return newBudgetStore(ctx, c)
+	}
+	budgetStartTimeout = 30 * time.Second
+	store, err := openBudgetStore(context.Background(), cfg, &stderr, flaky)
+	if err != nil || calls != 3 {
+		t.Fatalf("should succeed on the third attempt: calls=%d err=%v", calls, err)
+	}
+	_ = store.Close()
+	if strings.Contains(stderr.String(), "secret") || strings.Count(stderr.String(), "重试") != 2 {
+		t.Fatalf("retry notes, without the error detail: %q", stderr.String())
+	}
+
+	budgetStartTimeout = 1500 * time.Millisecond
+	calls = 0
+	never := func(context.Context, config.Config) (relational.Provider, error) {
+		calls++
+		return nil, errors.New("connection refused")
+	}
+	start := time.Now()
+	if _, err := openBudgetStore(context.Background(), cfg, io.Discard, never); err == nil {
+		t.Fatal("gives up after the timeout")
+	}
+	if calls < 2 || time.Since(start) > 5*time.Second {
+		t.Fatalf("retried within the bound: calls=%d took=%s", calls, time.Since(start))
 	}
 }
