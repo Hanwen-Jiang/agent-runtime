@@ -428,6 +428,13 @@ containerd 只管容器，隔离强度由它下面的 OCI 运行时决定：runc
 
 main 不接 E2B（2026-10-27 用户定）。自托管 E2B 的设计、适配器与部署脚手架在可插拔的分支 `e2b`（那里的 `docs/plan/e2b-backend.md`）。
 
+### D-19～D-27：Firecracker 后端与环境配置（草案，2026-11-01）
+
+细化在两份单独的文档里，等人确认后再写验收测试：
+
+- [firecracker-backend.md](firecracker-backend.md)：D-19 后端登记的启用开关与能力、D-20 firecracker 后端（fc-manager 与 vsock agent）、D-21 客户机的 rootfs、D-22 出网与进网经 vsock、D-26 预热快照。Firecracker 做主路，gVisor 做旁路，由配置文件决定启用哪个。
+- [environment-config.md](environment-config.md)：D-23 环境变量与联网模式、D-24 启动脚本、D-25 多仓库工作区、D-27 个人配置包（占位）。
+
 ## 6. 顺序与里程碑
 
 | 里程碑 | 包含 | 做完之后 |
@@ -436,9 +443,11 @@ main 不接 E2B（2026-10-27 用户定）。自托管 E2B 的设计、适配器�
 | M2 microVM | D-05（Kata）、D-08 | 按租户策略选 gVisor 或 Kata；沙箱等级经 Task API 传入 |
 | M3 完整形态 | D-06（设计书更新后）、D-07、D-09、D-10 | 工作区跟着沙箱走；Cloudflare 做第二个 microVM 后端；可以加节点 |
 | M4 沙箱平台 | D-11～D-17 | 会话级沙箱、多语言环境；依赖经包镜像、联网经申请与网关；配额、预算与回退跨后端统一 |
+| M5 Firecracker 与环境配置（草案） | D-19～D-27 | Firecracker 做主路、gVisor 做旁路；用户能配环境变量、联网模式、启动脚本；工作区可连多个仓库 |
 
 D-01 与 D-02 可以并行；D-05 动 Worker 的工具（不在 Task Loop → Stage Runner → Node Executor 核心链路上），可以与 D-03、D-04 并行。
 M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12、D-13、D-15 可以并行（D-13 与 D-12 都改 Worker 的后端选择，同一时间只由一个人改）；D-16 在 D-11、D-12 之后；D-17 最后。
+M5 的顺序见 [firecracker-backend.md](firecracker-backend.md) 第 7 节：D-19 先做；D-20 与 D-23、D-25 可以并行（后两项不依赖 Firecracker）；D-19 与 D-23 都改 `Sandboxes` 与 Broker，同一时间只由一个人改；D-26 最后。
 
 ## 7. 应用要 Runtime 提供的（以 coding-agent 为例）
 
@@ -457,6 +466,7 @@ M4 的顺序：D-14 只依赖设计确认，可以最先做；D-11 之后 D-12�
 - 设计书 4.4 的向量库现行是 Qdrant；改为 Milvus 的草稿（C1）还没进设计书，D-03 按现行版本做。
 - 设计书改动稿：[design-changes-workspace.md](design-changes-workspace.md)（W1 Sandbox 的后端、W2 Workspace 层、W3 effect_ceiling、W4 租户策略的沙箱后端；W5～W11：会话级沙箱、运行环境、包镜像、出网网关与联网授权、沙箱环境表、跨后端配额、有序回退）。
 - 第 4.2 节“完全访问只能落在 microVM 后端”：有了出网网关（W8、D-16），集群里的 gVisor 也能按域名放行；改动稿建议改为按租户策略决定，仍建议陌生租户用 microVM。
+- 2026-11-01 草案（Firecracker 后端、环境配置、多仓库工作区）建议的设计书改动见 [environment-config.md](environment-config.md) 第 7 节（W12～W15 与附录 A 的新术语）；第 4.2 节的表要加上 firecracker（见 [firecracker-backend.md](firecracker-backend.md) 第 9 节）。
 
 ## 10. 进度（2026-10-26）
 
