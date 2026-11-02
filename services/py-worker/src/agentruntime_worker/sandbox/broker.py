@@ -150,9 +150,16 @@ class SandboxBroker:
                 found = None
             if found is not None:
                 backend = await self.sandboxes.backend(found.backend)
-                record = await self.ledger.touch(found, task_id=task_id, busy_for=busy_for)
+                box = backend.provider.bind(tenant)
+                healthy = False
+                probe = getattr(box, "healthy", None)
+                if probe is not None:
+                    # Same environment at a real lease boundary, never a global scan or a query-side probe.
+                    with contextlib.suppress(ProviderError):
+                        healthy = await probe(found.backend_env_id)
+                record = await self.ledger.touch(found, task_id=task_id, busy_for=busy_for, health_confirmed=healthy, reused=True)
                 lease = Lease(
-                    backend, backend.provider.bind(tenant), record.backend_env_id, record, reused=True, owner=owner, workspace_id=found.workspace_id,
+                    backend, box, record.backend_env_id, record, reused=True, owner=owner, workspace_id=found.workspace_id,
                     archive=bool(found.workspace_id) and self.archive_mode(found.backend), writable=bool(found.writable),
                 )
                 return await self._with_env(lease, policy, grants)
@@ -277,7 +284,7 @@ class SandboxBroker:
                 await self.ledger.mark_failed(record, f"{err.code}: {err.message}")  # type: ignore[union-attr]
             raise
         if record is not None:
-            record = await self.ledger.mark_ready(record, env.env_id, image=env.image)  # type: ignore[union-attr]
+            record = await self.ledger.mark_ready(record, env.env_id, image=env.image, health_confirmed=env.health_confirmed)  # type: ignore[union-attr]
             if busy_for is not None:
                 record = await self.ledger.touch(record, task_id=task_id, busy_for=busy_for)  # type: ignore[union-attr]
         return Lease(

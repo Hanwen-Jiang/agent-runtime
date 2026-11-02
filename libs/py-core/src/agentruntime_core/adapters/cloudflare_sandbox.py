@@ -148,7 +148,10 @@ class CloudflareSandbox:
             raise TransientError("sandbox_bad_response", "桥返回的结果格式不对") from None
         if not _ENV_ID.match(env_id):
             raise TransientError("sandbox_bad_response", "桥返回的环境 id 格式不对")
-        return SandboxEnv(env_id=env_id, spec=spec)
+        return SandboxEnv(env_id=env_id, spec=spec, health_confirmed=await self.healthy(env_id))
+
+    async def healthy(self, env_id: str) -> bool:
+        return await self._p._agent.healthy(self._endpoint(env_id))
 
     async def exec(
         self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"", env: Mapping[str, str] | None = None

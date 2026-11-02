@@ -11,14 +11,14 @@ def test_environment_service_is_read_only_and_tenant_scoped():
     for method in service.methods:
         assert method.input_type.fields_by_name["tenant_id"].number == 1
     fields = env.ListEnvironmentsRequest.DESCRIPTOR.fields_by_name
-    assert {"workspace_id", "session_id", "limit"} <= fields.keys()
+    assert {"workspace_id", "session_id", "limit"} <= set(fields.keys())
 
 
 def test_record_keeps_authoritative_lifecycle_facts_without_credentials():
     fields = env.EnvRecord.DESCRIPTOR.fields_by_name
     assert {"env_ref", "tenant_id", "workspace_id", "session_id", "backend_env_id", "state",
-            "created_at", "ready_at", "expires_at", "max_until", "health_confirmed_at", "reused_at", "ready", "reused"} <= fields.keys()
-    assert not {"secret", "token", "credential", "env", "reason"} & fields.keys()
+            "created_at", "ready_at", "expires_at", "max_until", "health_confirmed_at", "reused_at", "ready", "reused"} <= set(fields.keys())
+    assert not {"secret", "token", "credential", "env", "reason"} & set(fields.keys())
     for name in ("created_at", "health_confirmed_at", "reused_at", "expires_at"):
         assert fields[name].message_type.full_name == "google.protobuf.Timestamp"
     assert env.EnvironmentState.DESCRIPTOR.values_by_number[0].name == "ENVIRONMENT_STATE_UNSPECIFIED"

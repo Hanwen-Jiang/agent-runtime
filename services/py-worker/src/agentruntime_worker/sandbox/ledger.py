@@ -153,6 +153,11 @@ MIGRATIONS = (
         )""",
         "CREATE INDEX sandbox_images_state ON sandbox_images (state, last_used_at)",
     )),
+    # ENV-01: lifecycle facts on the existing row; no second status table.
+    Migration(206, "sandbox_environment_status", (
+        "ALTER TABLE sandbox_envs ADD COLUMN health_confirmed_at TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE sandbox_envs ADD COLUMN reused_at TEXT NOT NULL DEFAULT ''",
+    )),
 )
 
 
@@ -225,6 +230,10 @@ class EnvRecord:
     reason: str = ""
     # 托管后端（没有出网网关）按域名放行时，环境建起来带的主机名单（JSON 数组，排好序）；空表示断网（D-16）。
     allow_hosts: str = ""
+    # Only dedicated provider health checks confirm health. Empty means unknown/not confirmed.
+    health_confirmed_at: str = ""
+    # Actual reacquisition of the same workspace/session, not a command completion/touch.
+    reused_at: str = ""
 
     @classmethod
     def from_row(cls, owner: str, row: Mapping[str, Any]) -> EnvRecord:
@@ -365,15 +374,15 @@ class SandboxLedger:
             if float((month or {}).get("c") or 0) >= quota.monthly_cost_usd:
                 raise DeniedError("sandbox_budget_exceeded", f"本月的沙箱花费到了上限（{quota.monthly_cost_usd} 美元）")
 
-    async def mark_ready(self, record: EnvRecord, backend_env_id: str, *, image: str = "") -> EnvRecord:
+    async def mark_ready(self, record: EnvRecord, backend_env_id: str, *, image: str = "", health_confirmed: bool = False) -> EnvRecord:
         """就绪；image 是后端报的实际镜像（按 digest，D-14），报了就以它为准。"""
         now = self._clock()
         expires = min(now + timedelta(seconds=record.idle_seconds), parse_iso(record.max_until) or now)
         ready = replace(
             record, state="ready", backend_env_id=backend_env_id, ready_at=iso(now), last_used_at=iso(now), expires_at=iso(expires),
-            image=image or record.image,
+            image=image or record.image, health_confirmed_at=iso(now) if health_confirmed else "",
         )
-        await self._update(ready, ("state", "backend_env_id", "ready_at", "last_used_at", "expires_at", "image"))
+        await self._update(ready, ("state", "backend_env_id", "ready_at", "last_used_at", "expires_at", "image", "health_confirmed_at"))
         await self._directory(ready, "ready")
         return ready
 
@@ -400,20 +409,36 @@ class SandboxLedger:
                 return EnvRecord.from_row(owner, row)
         return None
 
-    async def touch(self, record: EnvRecord, *, cpu_ms: int = 0, task_id: str = "", busy_for: timedelta | None = None) -> EnvRecord:
+    async def touch(
+        self, record: EnvRecord, *, cpu_ms: int = 0, task_id: str = "", busy_for: timedelta | None = None,
+        health_confirmed: bool | None = None, reused: bool = False,
+    ) -> EnvRecord:
         """用了一次：顺延空闲到期（不超过活满），累加 CPU 时间。busy_for 给了时记下命令最晚跑到什么时候（这期间别的会话不能回收它），
         没给时清掉（命令跑完了）。"""
         now = self._clock()
         expires = min(now + timedelta(seconds=record.idle_seconds), parse_iso(record.max_until) or now)
         busy = iso(now + busy_for) if busy_for is not None else ""
+        # Optional facts are only written at acquisition. A concurrent ordinary command touch must
+        # not restore an older health/reuse value from its Lease snapshot.
+        facts: dict[str, str] = {}
+        if health_confirmed is not None:
+            facts["health_confirmed_at"] = iso(now) if health_confirmed else ""
+        if reused and record.workspace_id and record.session_id:
+            facts["reused_at"] = iso(now)
+        values: list[Any] = [iso(now), iso(expires), int(cpu_ms), task_id or record.task_id, busy]
+        extra = ""
+        for column, value in facts.items():
+            values.append(value)
+            extra += f", {column} = ${len(values)}"
+        values.append(record.env_ref)
         async with self.bind(record.owner).transaction() as tx:
             await tx.execute(
-                "UPDATE sandbox_envs SET last_used_at = $1, expires_at = $2, cpu_ms = cpu_ms + $3, task_id = $4, busy_until = $5 "
-                "WHERE env_ref = $6 AND state = 'ready'",
-                (iso(now), iso(expires), int(cpu_ms), task_id or record.task_id, busy, record.env_ref),
+                "UPDATE sandbox_envs SET last_used_at = $1, expires_at = $2, cpu_ms = cpu_ms + $3, task_id = $4, busy_until = $5"
+                f"{extra} WHERE env_ref = ${len(values)} AND state = 'ready'", values,
             )
         return replace(
-            record, last_used_at=iso(now), expires_at=iso(expires), cpu_ms=record.cpu_ms + int(cpu_ms), task_id=task_id or record.task_id, busy_until=busy
+            record, last_used_at=iso(now), expires_at=iso(expires), cpu_ms=record.cpu_ms + int(cpu_ms), task_id=task_id or record.task_id, busy_until=busy,
+            **facts,
         )
 
     async def writable_holders(self, owner: str, *, workspace_id: str, session_id: str | None) -> list[EnvRecord]:

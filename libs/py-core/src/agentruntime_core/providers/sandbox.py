@@ -53,6 +53,9 @@ class SandboxEnv:
     spec: SandboxSpec
     # 环境实际用的镜像（后端量得出时按 digest，例如 K8s 的 imageID；D-14），记进沙箱环境表与 trace；量不出时为空。
     image: str = ""
+    # True only after a dedicated backend health check during create; command success is not health.
+    # Backends without such a check leave this false (unknown), preserving old implementations.
+    health_confirmed: bool = False
 
 
 @dataclass(frozen=True)
@@ -84,6 +87,13 @@ class Sandbox(Protocol):
 
 class SandboxProvider(Bindable[Sandbox], Protocol):
     pass
+
+
+class SandboxHealth(Protocol):
+    """Optional dedicated health probe, tenant scoped. Broker calls it only on real reacquisition;
+    read-only EnvironmentService queries do not probe, execute commands, or extend lifetime."""
+
+    async def healthy(self, env_id: str) -> bool: ...
 
 
 _ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")

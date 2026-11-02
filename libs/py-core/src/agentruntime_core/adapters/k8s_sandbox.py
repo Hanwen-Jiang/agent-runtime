@@ -212,7 +212,11 @@ class K8sPodSandbox:
             await p._delete(env_id)
             raise
         p._last_touch[env_id] = time.monotonic()
-        return SandboxEnv(env_id=env_id, spec=spec, image=_image_id(pod))
+        return SandboxEnv(env_id=env_id, spec=spec, image=_image_id(pod), health_confirmed=True)
+
+    async def healthy(self, env_id: str) -> bool:
+        pod = await self._lookup(env_id)
+        return await self._p._agent.healthy(self._p.endpoint(env_id, pod))
 
     async def exec(
         self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"", env: Mapping[str, str] | None = None

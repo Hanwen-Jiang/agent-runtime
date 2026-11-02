@@ -35,7 +35,7 @@ async def test_broker_records_health_and_real_session_workspace_reuse(tmp_path, 
     from agentruntime_core.dev.sandbox import LocalSubprocessSandbox
     from agentruntime_core.providers.sandbox import SandboxEnv, SandboxSpec
     from agentruntime_worker.sandbox.broker import SandboxBroker
-    from test_sandbox_sessions import Setup, S1
+    from agentruntime_worker.tools.sandboxes import Sandboxes
 
     original = LocalSubprocessSandbox.create
     health_calls = []
@@ -51,18 +51,23 @@ async def test_broker_records_health_and_real_session_workspace_reuse(tmp_path, 
 
     monkeypatch.setattr(LocalSubprocessSandbox, "create", create)
     monkeypatch.setattr(LocalSubprocessSandbox, "healthy", healthy, raising=False)
-    s = Setup(tmp_path)
-    tenant = TenantContext(tenant_id="t1", workspace_id="w1", session_id=S1)
+    now = datetime(2026, 11, 3, tzinfo=UTC)
+    boxes = Sandboxes({"local": {"kind": "local", "isolation": "none"}}, "local", workspace_root=tmp_path / "workspaces")
+    store = SQLiteRelationalStoreProvider(tmp_path / "relational")
+    ledger = SandboxLedger(store, clock=lambda: now)
+    broker = SandboxBroker(boxes, ledger)
+    tenant = TenantContext(tenant_id="t1", workspace_id="w1", session_id="ses_01HZY2J5K3M4N5P6Q7R8S9T0VW")
     spec = SandboxSpec(workspace_id="w1")
     try:
-        first = await s.broker.acquire(tenant, spec, reuse=True)
+        first = await broker.acquire(tenant, spec, reuse=True)
         assert first.record.health_confirmed_at and not first.record.reused_at
-        s.clock.now += timedelta(seconds=1)
+        now += timedelta(seconds=1)
         # A new broker reads the same authoritative ledger, not process-local reuse flags.
-        other = SandboxBroker(s.broker.sandboxes, s.ledger)
+        other = SandboxBroker(boxes, ledger)
         second = await other.acquire(tenant, spec, reuse=True)
         assert second.record.env_ref == first.record.env_ref
-        assert second.record.reused_at == second.record.health_confirmed_at == iso(s.clock.now)
+        assert second.record.reused_at == second.record.health_confirmed_at == iso(now)
         assert health_calls == [first.env_id]
     finally:
-        await s.ledger._store.aclose()
+        await store.aclose()
+        await boxes.aclose()
