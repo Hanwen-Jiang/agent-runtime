@@ -115,3 +115,8 @@
 - Aster 项目的设计视图（本机 `Z:\Aster\Aster-artifacts`，不在仓库里）：Aster Runtime 与建在其上的 Aster Code、Aster Care，总结与可借鉴之处见 [aster-project.md](aster-project.md)
 
 两者合起来的建议（在本 Runtime 上重写 Aster Code、Aster Care，RAG 分块与 Milvus 的取舍）见 [runtime-products-and-rag.md](runtime-products-and-rag.md)。
+
+## 9. 云环境配置与网络密钥（2026-11-02 核实）
+
+- [Codex / Claude 云环境核实与本系统对照](cloud-environments-codex-claude.md)：逐项核实界面记录，区分新版 Codex / Legacy、Claude 当前网络级别、变量与代理密钥，列出官方来源和本地实现差异。
+- [环境配置与多仓库工作区草案](../plan/environment-config.md)：沿用现有 D-23 / D-24 草案补齐跨 repo 环境、个人凭据引用、网络密钥阶段、脚本语义和验收；[云部署计划](../plan/cloud-deploy.md) 同步交付入口。均未宣称能力已实现。
