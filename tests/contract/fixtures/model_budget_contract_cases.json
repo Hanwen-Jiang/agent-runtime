@@ -1,0 +1,20 @@
+{
+  "schema": "model_budget_contract_cases",
+  "version": 1,
+  "cases": [
+    {"id": "policy_daily_monthly_fields", "area": "policy", "expect": "review", "assertion": "candidate policy exposes daily_usd and monthly_usd without changing old clients"},
+    {"id": "utc_day_boundary", "area": "accounting", "expect": "allow", "assertion": "usage at UTC midnight belongs to the new day"},
+    {"id": "utc_month_boundary", "area": "accounting", "expect": "allow", "assertion": "usage at the first UTC day of a month belongs to the new month"},
+    {"id": "same_tenant_concurrent_reservation", "area": "concurrency", "expect": "deny", "assertion": "concurrent reservations cannot collectively exceed the tenant limit"},
+    {"id": "different_tenants_are_isolated", "area": "concurrency", "expect": "allow", "assertion": "one tenant reaching its limit does not consume another tenant's budget"},
+    {"id": "gateway_budget_rejection", "area": "enforcement", "expect": "deny", "assertion": "a new model call at or above the limit returns tenant_budget_exceeded"},
+    {"id": "task_admission_budget_rejection", "area": "task_admission", "expect": "deny", "assertion": "new Task admission can reject a tenant whose model budget is exhausted"},
+    {"id": "gateway_second_check", "area": "enforcement", "expect": "deny", "assertion": "direct gateway calls cannot bypass task admission"},
+    {"id": "inflight_call_settles_once", "area": "accounting", "expect": "allow", "assertion": "an in-flight call is settled once when final usage arrives"},
+    {"id": "exceeded_calls_do_not_retry", "area": "enforcement", "expect": "deny", "assertion": "tenant_budget_exceeded is not automatically retried"},
+    {"id": "secret_free_usage_error", "area": "privacy", "expect": "allow", "assertion": "errors and metrics contain limits and usage but no provider secret"},
+    {"id": "usage_source_is_authoritative", "area": "accounting", "expect": "review", "assertion": "the contract names one authoritative usage store instead of a Worker shadow ledger"},
+    {"id": "missing_meter_transient", "area": "failure", "expect": "review", "assertion": "meter availability failure has an explicit reviewed transient policy"},
+    {"id": "default_free_tenant_limits", "area": "defaults", "expect": "review", "assertion": "deployment seed supplies the approved free-tier daily and monthly defaults"}
+  ]
+}
