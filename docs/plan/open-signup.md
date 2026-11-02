@@ -1,6 +1,6 @@
 # 开放注册与普通用户的资源限制
 
-> 状态（2026-10-28）：code.cgent.link 开放注册（coding-web 不再按名单放行）。第 1 节已上线；第 2 节是还没做的，按顺序做。
+> 状态（2026-11-02）：开放注册已上线；第 2 节的 `tenant_busy` 已在 task-service 准入实现默认每租户 2 个未终态 Task，并用租户作用域锁保证并发提交不超额。每日/月度模型预算、模型白名单、防滥用、付费策略和告警仍待完成。Go 验收测试见 `services/go-task-service/internal/taskapi/server_test.go`。
 
 ## 1. 现在的做法：平台默认的租户策略
 
@@ -26,7 +26,7 @@
    做法：租户策略加 `model_budget: {daily_usd, monthly_usd}`（schema 改动，走 S-01）；Model Gateway 按计量记录累计租户当天、
    当月的花费，超了拒绝新的模型调用（`tenant_budget_exceeded`，设计书附录 H.6 的“预算上限”）；task-service 在准入时先查，
    超了不收新 Task。免费账号的默认值建议每天 3 美元、每月 20 美元。
-2. **每个租户同时在跑的 Task 数**：task-service 准入时数本租户未结束的 Task，默认 2 个；超了 `tenant_busy`（应用提示稍后再试）。
+2. ~~**每个租户同时在跑的 Task 数**：task-service 准入时数本租户未结束的 Task，默认 2 个；超了 `tenant_busy`（应用提示稍后再试）。~~ 已完成；策略覆盖和线上告警仍属后续。
 3. **免费账号的模型白名单**：默认策略的 `model_allowlist` 去掉最贵的档（例如 claude-opus），只留 mid、small 与一个 strong。
 4. **防滥用**：coding-web 注册时要求平台账号满 30 天、有验证过的邮箱（GitHub 的 `created_at` 与 `/user/emails`）；
    运维的封禁名单（`CODING_BLOCKED_LOGINS`）；出事时一键回到名单制（重新设 `CODING_ALLOWED_LOGINS`）。

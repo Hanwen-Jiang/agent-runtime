@@ -118,6 +118,10 @@ type Server struct {
 	tasks *taskstore.Store
 }
 
+// defaultMaxConcurrentTasks 是开放注册的默认租户准入上限（docs/plan/open-signup.md）。
+// 后续付费/熟人租户策略可覆盖它；在策略契约接入前不把它扩散到 proto/schema。
+const defaultMaxConcurrentTasks = 2
+
 func (s *Server) policies() PolicyResolver {
 	if s.d.Policies != nil {
 		return s.d.Policies
@@ -299,10 +303,10 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	} else {
 		sessionID = s.d.IDs.SessionID()
 	}
-	row, existed, err := s.tasks.InsertTask(ctx, tenant, taskstore.Task{
+	row, existed, err := s.tasks.InsertTaskWithLimit(ctx, tenant, taskstore.Task{
 		TaskID: s.d.IDs.TaskID(), SessionID: sessionID, SessionKey: req.GetSessionId(), ClientRequestID: crid, CreatedAt: now,
 		SubmittedBy: id.UserID, Message: req.GetMessage(),
-	})
+	}, defaultMaxConcurrentTasks)
 	if err != nil {
 		return nil, err
 	}

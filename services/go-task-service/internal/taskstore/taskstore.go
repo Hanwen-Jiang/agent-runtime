@@ -56,6 +56,17 @@ func Migrations() []relational.Migration {
 		Statements: []string{
 			`ALTER TABLE tasks ADD COLUMN message TEXT NOT NULL DEFAULT ''`,
 		},
+	}, {
+		Version: 5,
+		Name:    "task_service_task_admission_lock",
+		Statements: []string{
+			`CREATE TABLE task_admission_lock (
+				tenant_id TEXT NOT NULL,
+				lock_id BIGINT NOT NULL,
+				touched_at BIGINT NOT NULL,
+				PRIMARY KEY (tenant_id, lock_id)
+			)`,
+		},
 	}}
 }
 
@@ -123,9 +134,51 @@ const taskColumns = `task_id, session_id, session_key, client_request_id, status
 
 // InsertTask 插入一行；（SessionKey, ClientRequestID）已存在时不插入，返回已有的那一行与 true。
 func (s *Store) InsertTask(ctx context.Context, tenant *commonv1.TenantContext, t Task) (Task, bool, error) {
+	return s.insertTask(ctx, tenant, t, 0)
+}
+
+// InsertTaskWithLimit 在插入前原子地限制本租户未终态 Task 数量。
+// task_admission_lock 是每个租户作用域里的一行锁：SQLite 的写事务已经串行化，Postgres 则用这行的 UPDATE
+// 串行化同一租户的提交，避免并发 count 后同时插入超过上限。重复提交先返回原 Task，不消耗准入额度。
+func (s *Store) InsertTaskWithLimit(ctx context.Context, tenant *commonv1.TenantContext, t Task, maxActive int) (Task, bool, error) {
+	if maxActive <= 0 {
+		return s.insertTask(ctx, tenant, t, 0)
+	}
+	return s.insertTask(ctx, tenant, t, maxActive)
+}
+
+func (s *Store) insertTask(ctx context.Context, tenant *commonv1.TenantContext, t Task, maxActive int) (Task, bool, error) {
 	var out Task
 	var existed bool
 	err := s.tx(ctx, tenant, false, func(ctx context.Context, tx relational.Tx) error {
+		if maxActive > 0 {
+			if _, err := tx.Execute(ctx, `INSERT INTO task_admission_lock (tenant_id, lock_id, touched_at) VALUES ($1, 1, $2) ON CONFLICT DO NOTHING`, tenant.GetTenantId(), t.CreatedAt.UnixMilli()); err != nil {
+				return err
+			}
+			if _, err := tx.Execute(ctx, `UPDATE task_admission_lock SET touched_at = touched_at WHERE tenant_id = $1 AND lock_id = 1`, tenant.GetTenantId()); err != nil {
+				return err
+			}
+		}
+		// 先查重复提交：达到上限时，重试同一请求仍应返回原 Task。
+		row, found, err := tx.QueryOne(ctx, `SELECT `+taskColumns+` FROM tasks WHERE session_key = $1 AND client_request_id = $2`,
+			t.SessionKey, t.ClientRequestID)
+		if err != nil {
+			return err
+		}
+		if found {
+			out, existed = decode(row), true
+			return nil
+		}
+		if maxActive > 0 {
+			row, err := tx.QueryOne(ctx, `SELECT COUNT(*) AS active_count FROM tasks WHERE status = $1`, int64(commonv1.TaskStatus_TASK_STATUS_UNSPECIFIED))
+			if err != nil {
+				return err
+			}
+			active, _ := row["active_count"].(int64)
+			if active >= int64(maxActive) {
+				return providererr.New(providererr.Denied, "tenant_busy", fmt.Sprintf("本租户已有 %d 个未完成的 Task", active))
+			}
+		}
 		n, err := tx.Execute(ctx, `INSERT INTO tasks (`+taskColumns+`) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) ON CONFLICT DO NOTHING`,
 			t.TaskID, t.SessionID, t.SessionKey, t.ClientRequestID, int64(t.Status), boolInt(t.Signaled), t.LastEventID, t.CreatedAt.UnixMilli(), t.Outcome, t.SubmittedBy, t.Message)
 		if err != nil {
@@ -135,7 +188,7 @@ func (s *Store) InsertTask(ctx context.Context, tenant *commonv1.TenantContext, 
 			out = t
 			return nil
 		}
-		row, found, err := tx.QueryOne(ctx, `SELECT `+taskColumns+` FROM tasks WHERE session_key = $1 AND client_request_id = $2`,
+		row, found, err = tx.QueryOne(ctx, `SELECT `+taskColumns+` FROM tasks WHERE session_key = $1 AND client_request_id = $2`,
 			t.SessionKey, t.ClientRequestID)
 		if err != nil {
 			return err

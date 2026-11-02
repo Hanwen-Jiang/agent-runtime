@@ -172,6 +172,54 @@ func newRequest(crid string) *taskapiv1.SubmitTaskRequest {
 	return &taskapiv1.SubmitTaskRequest{ClientRequestId: crid, Message: "上季度退款率为什么上升？"}
 }
 
+func seedActiveTask(t *testing.T, f *apiFixture, tenantID, taskID string) {
+	t.Helper()
+	_, _, err := f.tasks.InsertTask(context.Background(), &commonv1.TenantContext{TenantId: tenantID}, taskstore.Task{
+		TaskID: taskID, SessionID: "ses_" + taskID, ClientRequestID: "seed_" + taskID, CreatedAt: f.clock.Now(),
+	})
+	if err != nil {
+		t.Fatalf("seed active task %s: %v", taskID, err)
+	}
+}
+
+func finishSeededTask(t *testing.T, f *apiFixture, tenantID, taskID string) {
+	t.Helper()
+	if err := f.tasks.RecordFinished(context.Background(), &commonv1.TenantContext{TenantId: tenantID}, taskID,
+		commonv1.TaskStatus_TASK_STATUS_DONE, 1, "{}"); err != nil {
+		t.Fatalf("finish seeded task %s: %v", taskID, err)
+	}
+}
+
+// Open-signup 的默认准入上限（docs/plan/open-signup.md）：同一租户最多两个未终态 Task。
+// 这些验收测试先锁定行为；实现必须在创建 Task 的同一事务/原子路径内检查，不能用先 count 再 insert 的竞态方案。
+func TestSubmitRejectsThirdActiveTaskForTenant(t *testing.T) {
+	f := newAPI(t)
+	seedActiveTask(t, f, "t1", "active_1")
+	seedActiveTask(t, f, "t1", "active_2")
+	_, err := f.submit(f.token("t1", "u1"), newRequest("c3"))
+	wantCode(t, "同一租户第三个未终态 Task", err, connect.CodePermissionDenied)
+}
+
+func TestSubmitTenantBusyIgnoresFinishedTasks(t *testing.T) {
+	f := newAPI(t)
+	seedActiveTask(t, f, "t1", "active_1")
+	seedActiveTask(t, f, "t1", "active_2")
+	seedActiveTask(t, f, "t1", "finished")
+	finishSeededTask(t, f, "t1", "finished")
+	_, err := f.submit(f.token("t1", "u1"), newRequest("c4"))
+	wantCode(t, "两个未终态 Task 仍然达到上限", err, connect.CodePermissionDenied)
+
+	finishSeededTask(t, f, "t1", "active_1")
+	f.mustSubmit(f.token("t1", "u1"), newRequest("c5"))
+}
+
+func TestSubmitTenantBusyIsolatedBetweenTenants(t *testing.T) {
+	f := newAPI(t)
+	seedActiveTask(t, f, "t1", "active_1")
+	seedActiveTask(t, f, "t1", "active_2")
+	f.mustSubmit(f.token("t2", "u2"), newRequest("other_tenant"))
+}
+
 // lastSubmitSignal 返回最后一次投递给 Session 工作流的提交信号。
 func (f *apiFixture) lastSubmit() (durableCall, *workflowv1.SubmitTaskSignal) {
 	f.t.Helper()
