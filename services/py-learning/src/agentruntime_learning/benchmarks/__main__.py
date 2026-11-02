@@ -19,7 +19,10 @@ from pathlib import Path
 
 from agentruntime_learning.benchmarks import suite
 from agentruntime_learning.benchmarks import swebench as sb
+from agentruntime_learning.benchmarks import terminalbench as tb
 from agentruntime_learning.benchmarks.client import ApiError, RuntimeClient
+from agentruntime_learning.evals import deepeval_metrics as dm
+from agentruntime_learning.evals import ragas as rg
 
 TOKEN_ENV = "AR_TASK_API_TOKEN"
 
@@ -74,6 +77,28 @@ def _parser() -> argparse.ArgumentParser:
     suite_run.add_argument("--plan", type=Path, required=True)
     suite_run.add_argument("--out", type=Path, required=True)
     suite_run.add_argument("--dry-run", action="store_true")
+
+    terminal = benches.add_parser("terminalbench", help="Terminal-Bench 2.0 首轮适配器")
+    terminal_sub = terminal.add_subparsers(dest="terminal_command", required=True)
+    terminal_run = terminal_sub.add_parser("run", help="运行 fixture、oracle 或 Harbor 模式")
+    terminal_run.add_argument("--tasks", type=Path, help="任务 manifest JSON；不填时使用内置 5 题 smoke manifest")
+    terminal_run.add_argument("--out", type=Path, required=True)
+    terminal_run.add_argument("--budget-usd", type=float, required=True)
+    terminal_run.add_argument("--mode", choices=("fixture", "oracle", "harbor"), default="fixture")
+
+    deepeval = benches.add_parser("deepeval", help="DeepEval 首轮适配器")
+    deepeval_sub = deepeval.add_subparsers(dest="deepeval_command", required=True)
+    deepeval_run = deepeval_sub.add_parser("run", help="运行 Task 轨迹 JSON cases")
+    deepeval_run.add_argument("--cases", type=Path, required=True)
+    deepeval_run.add_argument("--out", type=Path, required=True)
+    deepeval_run.add_argument("--budget-usd", type=float, required=True)
+
+    ragas = benches.add_parser("ragas", help="Ragas 首轮适配器")
+    ragas_sub = ragas.add_subparsers(dest="ragas_command", required=True)
+    ragas_run = ragas_sub.add_parser("run", help="运行检索 JSON cases")
+    ragas_run.add_argument("--cases", type=Path, required=True)
+    ragas_run.add_argument("--out", type=Path, required=True)
+    ragas_run.add_argument("--budget-usd", type=float, required=True)
     return parser
 
 
@@ -130,6 +155,33 @@ def _suite_run(args: argparse.Namespace) -> int:
     return 0 if summary.status == "passed" else 1
 
 
+def _write_json_report(out: Path, report: dict[str, object], *, eval_name: str, budget_usd: float) -> None:
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    manifest = {"eval": eval_name, "mode": "fixture", "budget_usd": budget_usd, "estimated": True, "measured": False,
+                "sample_count": len(report.get("cases") or []) if isinstance(report.get("cases"), list) else 0}
+    (out / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _terminalbench_run(args: argparse.Namespace) -> int:
+    manifest = tb.load_manifest(args.tasks) if args.tasks else tb.smoke_manifest()
+    results = tb.run(manifest, args.out, budget_usd=args.budget_usd, mode=args.mode)
+    return 0 if all(r.status == "completed" and r.verifier_status in {"passed", "resolved", "success"} for r in results) else 1
+
+
+def _deepeval_run(args: argparse.Namespace) -> int:
+    report = dm.evaluate_cases(dm.load_cases(args.cases), source="fixture")
+    _write_json_report(args.out, report, eval_name="deepeval", budget_usd=args.budget_usd)
+    return 0 if all(row.get("status") == "ok" for row in report["cases"]) else 1
+
+
+def _ragas_run(args: argparse.Namespace) -> int:
+    report = rg.run_fixture(args.cases, out=args.out)
+    report["budget_usd"] = args.budget_usd
+    (args.out / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     # 输出重定向到文件时 Windows 用本地代码页（例如 cp1252），中文摘要编码不了：换成转义，不让打印中断。
     for stream in (sys.stdout, sys.stderr):
@@ -142,6 +194,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.benchmark == "suite":
             return _suite_run(args)
+        if args.benchmark == "terminalbench":
+            return _terminalbench_run(args)
+        if args.benchmark == "deepeval":
+            return _deepeval_run(args)
+        if args.benchmark == "ragas":
+            return _ragas_run(args)
         if args.command == "fetch":
             count = sb.fetch_instances(args.out, dataset=args.dataset, split=args.split)
             print(f"取到 {count} 题：{args.out}")

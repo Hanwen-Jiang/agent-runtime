@@ -1,0 +1,4 @@
+# Independent evaluation virtual environment. Keep these out of the Worker image.
+deepeval==4.3.1
+ragas==0.4.3
+harbor==0.24.0

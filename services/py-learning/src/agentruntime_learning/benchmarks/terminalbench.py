@@ -18,7 +18,8 @@ DATASET_VERSION = "terminal-bench-2.0"
 # Stable five-task smoke plan. Task ids are intentionally data-only until the
 # official dataset is installed; callers may provide a manifest with real ids.
 SMOKE_TASKS = [
-    {"task_id": f"tbench-2.0-smoke-{i:02d}", "task_name": f"smoke-{i:02d}"}
+    {"task_id": f"tbench-2.0-smoke-{i:02d}", "task_name": f"smoke-{i:02d}",
+     "verifier": {"status": "passed", "reward": 1.0}}
     for i in range(1, 6)
 ]
 
@@ -55,7 +56,7 @@ def preflight(*, require_harbor: bool) -> tuple[bool, str | None]:
     try:
         mod = importlib.import_module("harbor")
     except ImportError:
-        return False, "harbor 0.24.0 is not installed; install with: uv sync --extra terminalbench"
+        return False, "harbor 0.24.0 is not installed; install the isolated eval venv with: uv pip install -r services/py-learning/eval-requirements.txt"
     version = getattr(mod, "__version__", None)
     if version and version != HARBOR_VERSION:
         return False, f"Harbor {HARBOR_VERSION} required, found {version}"
@@ -72,10 +73,11 @@ def run(manifest: dict[str, Any], out: Path, *, budget_usd: float, mode: str = "
         raise RuntimeError(f"preflight_failed: {error}")
     results: list[Result] = []
     for task in manifest["tasks"]:
-        task_id, name = task["task_id"], task.get("task_name", task_id)
+        task_id = task["task_id"]
+        name = task.get("task_name", task_id)
         # Fixture/oracle uses the same verifier contract as Harbor: explicit status,
         # reward and rounds; missing verifier output is infrastructure failure.
-        verifier = task.get("verifier", {"status": "passed", "reward": 1.0})
+        verifier = task.get("verifier")
         if not isinstance(verifier, dict) or "status" not in verifier:
             results.append(Result(task_id, name, "infra_failed", "not_run", infra_error_code="verifier_missing"))
             continue
