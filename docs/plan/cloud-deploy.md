@@ -576,6 +576,22 @@ M5 的顺序见 [firecracker-backend.md](firecracker-backend.md) 第 7 节：D-1
 - 真实沙箱（人批准后在 Worker 的 Pod 里跑探测脚本，租户 `swebench`，不调模型）：Kata 与 gVisor 各建一个环境，建检查点，跑一条会改文件、起子进程的命令，取消。两边都是 agent 确认取消（约 0.03 秒）、命令与子进程都停了、改的文件还原、新建的文件删掉，环境随后删除。脚本直接调 Provider，不经 SandboxBroker 与存档，取消也不经 Temporal 的心跳。
 - **没有验证**：运行中的 Task 真的被纠偏、打断（要真调模型）；Kata 的存档模式下打断之后的存档；coding-web 登录之后的界面（只放行名单里的账号）。
 
+升级到 8dd79a0（2026-11-02，第 18 版：`docs/plan/feedback-2026-11-01.md` 的 N-01～N-09；之前线上是 f43a19f，coding-web 是 1be5776）：
+
+- 这次从云端会话经 Cloudflare Access 的 SSH（`ssh.cgent.link`，root 用密钥）部署。换代码同以前（`git archive`、核对 sha256，旧的留在
+  `agent-runtime.f43a19f`、`coding-agent.1be5776`，`REVISION.f43a19f`；服务器自己的 `.sops.yaml` 与 `secrets.enc.yaml` 带过去）。
+- 镜像：`build_images.py --tag 9bde1aa --only task-service,model-gateway,worker,learning,pkg-mirror,egress-gateway`，coding-web 是
+  `e06de4a`，都导进 k3s；Memory Service 仍是 52174d9。代码是 8dd79a0：比 9bde1aa 只多了 Chart 里 Jev 密钥卷的 `optional: true`，镜像不受影响。
+- Runtime：第 18 版的 values 是第 17 版改 `image.tag`，加 `worker.judge: jev` 与 `worker.judgeKeySecret.name: agent-runtime-jev`
+  （`/root/ar-release/values-rev18.yaml`，脚本 `rev18.sh`，日志 `rev18.log`）。`helm template` 与第 17 版比过：只差镜像标签、`OTEL_SERVICE_VERSION`，
+  以及 4 个 Worker 的 `AR_JUDGE`、`AR_JUDGE_KEY_FILE` 与可选的密钥卷。升级前确认没有在跑的 TaskWorkflow。回滚：`helm rollback ar 17`。
+- Model Profile 的 ConfigMap（`agent-runtime-model-profiles`）换成 `deploy/dev/model-profiles.json`（models.dev 的单价，加了 gpt-6.1-sol 与
+  text-embedding-3-large）；原来的存在 `rev18/model-profiles.before.yaml`。经网关各打了一次（租户 smoke，固定 Profile）：gpt-6.1-sol 与 gpt-5.5 都正常回答。
+- 核对（不花钱）：各 Pod 都在跑、镜像都是新标签；api、code、evals 的公网地址 200；新 Pod 半小时内的日志没有错误；Worker 读到 `AR_JUDGE=jev`。
+- **人要做的（这个会话的权限不允许改线上的密钥与共用配置）**：建 `agent-runtime-jev` 这个 Secret（在那之前 Jev 没有密钥、不检查，不影响别的）；
+  `agent-runtime-model-allowlist` 里给 `swebench` 加 `a6api/gpt-6.1-sol@2026-11`（加了之后它比 gpt-5.5 便宜，强档就会选它），改完重启网关。
+- **没有验证**：真模型下 N-01～N-09 的效果（日志里那两个任务没有重跑：要用签名密钥签发令牌，这个会话不做）。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
