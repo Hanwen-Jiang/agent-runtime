@@ -33,6 +33,7 @@ class TaskEventType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     TASK_EVENT_TYPE_GUIDANCE_UPDATED: _ClassVar[TaskEventType]
     TASK_EVENT_TYPE_TASK_MESSAGE_EDITED: _ClassVar[TaskEventType]
     TASK_EVENT_TYPE_CONTEXT_USAGE: _ClassVar[TaskEventType]
+    TASK_EVENT_TYPE_PLAN_UPDATED: _ClassVar[TaskEventType]
 TASK_EVENT_TYPE_UNSPECIFIED: TaskEventType
 TASK_EVENT_TYPE_TASK_ACCEPTED: TaskEventType
 TASK_EVENT_TYPE_ROUND_STARTED: TaskEventType
@@ -50,6 +51,7 @@ TASK_EVENT_TYPE_DECISION_RETRY: TaskEventType
 TASK_EVENT_TYPE_GUIDANCE_UPDATED: TaskEventType
 TASK_EVENT_TYPE_TASK_MESSAGE_EDITED: TaskEventType
 TASK_EVENT_TYPE_CONTEXT_USAGE: TaskEventType
+TASK_EVENT_TYPE_PLAN_UPDATED: TaskEventType
 
 class SubmitTaskRequest(_message.Message):
     __slots__ = ("tenant_id", "workspace_id", "session_id", "client_request_id", "message", "inputs", "attachments", "session_access", "priority", "effect_ceiling", "network_request")

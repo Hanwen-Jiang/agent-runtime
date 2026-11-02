@@ -33,7 +33,7 @@
     "repair_strategy": {"description": "repair 的两步（附录 B.8 第 1、2 步）", "enum": ["retry_with_error", "change_method"]},
     "escalate_target": {"description": "escalate 的去向：换更强的 Tier，或问人（附录 B.8 第 6 步）", "enum": ["tier", "human"]},
     "human_reply": {"description": "Reviewer 升级问人时限定的三种回复（设计书 4.11）", "enum": ["continue_as_is", "replan_with_guidance", "stop_and_wrap_up"]},
-    "progress_event": {"description": "进度事件：TaskEvent 载荷的 event，与 SSE 的事件名相同（设计书 4.14，T-11b）。是 proto TaskEventType 里由 Task 工作流（decision_retry 由决策 activity）推送的那几个；node_started、tool_status 是 2026-10-28 人审通过加的（tool_loop 里的进度）；decision_retry 是 TMP 计划第 4 节加的（规划、评审调用重试时看得见）；guidance_updated、task_message_edited（这个由 Session 工作流推送）、context_usage 是 docs/plan/running-task-interaction.md 第 2、3 节加的", "enum": ["round_started", "stage_started", "node_started", "node_finished", "tool_status", "human_input_required", "verdict", "decision_retry", "guidance_updated", "task_message_edited", "context_usage"]},
+    "progress_event": {"description": "进度事件：TaskEvent 载荷的 event，与 SSE 的事件名相同（设计书 4.14，T-11b）。是 proto TaskEventType 里由 Task 工作流（decision_retry 由决策 activity）推送的那几个；node_started、tool_status 是 2026-10-28 人审通过加的（tool_loop 里的进度）；decision_retry 是 TMP 计划第 4 节加的（规划、评审调用重试时看得见）；guidance_updated、task_message_edited（这个由 Session 工作流推送）、context_usage 是 docs/plan/running-task-interaction.md 第 2、3 节加的；plan_updated 是 N-04 加的（docs/plan/feedback-2026-11-01.md，人工验收基线 Q55、Q56）", "enum": ["round_started", "stage_started", "node_started", "node_finished", "tool_status", "human_input_required", "verdict", "decision_retry", "guidance_updated", "task_message_edited", "context_usage", "plan_updated"]},
     "guidance_id": {"description": "一条纠偏的 id：客户端生成，同一个 Task 里唯一", "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$"},
     "guidance_mode": {"description": "纠偏什么时候生效：next_step 是下一个检查点，interrupt 是放弃正在进行的调用、马上生效（proto GuidanceMode）", "enum": ["next_step", "interrupt"]},
     "guidance_state": {"description": "Task State 里一条纠偏的状态：撤回的不留在 Task State 里", "enum": ["pending", "applied"]},
@@ -43,6 +43,29 @@
     "context_step": {"description": "Compaction Ladder 的步骤", "enum": ["offload", "mask", "prune", "summarize", "reset"]},
     "decision_step": {"description": "要等模型的决策 activity（进度事件 decision_retry）：规划、评审、tool_loop 的一步", "enum": ["plan_round", "review_round", "tool_loop_step"]},
     "budget_kind": {"description": "Task 预算的三项（附录 C.3 的 budget）：美元、时间（wall_clock_min）、工具调用次数", "enum": ["usd", "wall_clock", "tool_calls"]},
+    "plan_step_status": {"description": "Task Plan 一步的状态（N-04）：pending 还没开始，active 正在做（同一时刻最多一步），done 做完了，blocked 做不下去（交给 Reviewer 或人）", "enum": ["pending", "active", "done", "blocked"]},
+    "plan_step": {
+      "description": "Task Plan 的一步（N-04）：id 在整个 Task 里不变；title 给人看，用用户消息的语言；round 是最近一次定下它状态的 Round，不晚于快照所在的 Round",
+      "type": "object",
+      "required": ["id", "title", "status", "round"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 64},
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "status": {"$ref": "#/$defs/plan_step_status"},
+        "round": {"type": "integer", "minimum": 1}
+      },
+      "unevaluatedProperties": false
+    },
+    "plan_steps": {
+      "description": "Task Plan 的整体步骤（N-04）：3～8 步，最多一步 active。fast 没有。id 不重复、round 不晚于快照的 Round 由 Planner 与 Task 工作流检查（schema 表达不了）",
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 8,
+      "items": {"$ref": "#/$defs/plan_step"},
+      "contains": {"type": "object", "required": ["status"], "properties": {"status": {"const": "active"}}},
+      "minContains": 0,
+      "maxContains": 1
+    },
     "tool_call_state": {"description": "tool_loop 里一次工具调用的状态（进度事件 tool_status）：调用前 running，调用后 succeeded 或 failed", "enum": ["running", "succeeded", "failed"]},
     "finished_node_status": {"description": "Node 结束时的状态：node_status 里已经结束的那几个", "enum": ["succeeded", "failed", "skipped", "cancelled", "unknown"]},
     "question_kind": {"description": "等待人工回复的问题从哪来（T-11b）：human 节点、write_irreversible 前的审批、tool_loop 里不可逆工具调用前的审批、Reviewer 升级问人", "enum": ["human", "approval", "tool_approval", "escalation"]},

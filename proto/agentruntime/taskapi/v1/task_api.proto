@@ -185,4 +185,6 @@ enum TaskEventType {
   TASK_EVENT_TYPE_TASK_MESSAGE_EDITED = 15;
   // 一次模型调用的上下文里各类内容占多少。只有数字与类别名。
   TASK_EVENT_TYPE_CONTEXT_USAGE = 16;
+  // Task Plan 的步骤变了：带完整的步骤快照（N-04），客户端按它重建计划区。fast 不推。
+  TASK_EVENT_TYPE_PLAN_UPDATED = 17;
 }

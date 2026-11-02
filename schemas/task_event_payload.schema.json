@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentruntime.example/schemas/task_event_payload.schema.json",
   "title": "TaskEvent 的载荷：进度事件",
-  "description": "Task 工作流经 publish_task_event 推送、客户端经 SSE 收到的进度事件的载荷（taskapi.v1.TaskEvent.payload；设计书 4.14，T-11b）。event 与 SSE 的事件名相同。只描述 Round、Stage、Node、tool_loop 里每次工具调用的进度、决策调用的重试与等待中的问题，不带 Node 的结果、工具的输出与 rationale：结果只在 task_finished 里（Task 的结局）。task_accepted 没有载荷，task_finished 的载荷是 TaskWorkflowResult，都不在这里。",
+  "description": "Task 工作流经 publish_task_event 推送、客户端经 SSE 收到的进度事件的载荷（taskapi.v1.TaskEvent.payload；设计书 4.14，T-11b）。event 与 SSE 的事件名相同。只描述 Round、Stage、Node、tool_loop 里每次工具调用的进度、Task Plan 的步骤、决策调用的重试与等待中的问题，不带 Node 的结果、工具的输出与 rationale：结果只在 task_finished 里（Task 的结局）。task_accepted 没有载荷，task_finished 的载荷是 TaskWorkflowResult，都不在这里。",
   "type": "object",
   "required": ["event"],
   "properties": {
@@ -19,7 +19,8 @@
     {"if": {"required": ["event"], "properties": {"event": {"const": "decision_retry"}}}, "then": {"$ref": "#/$defs/decision_retry"}},
     {"if": {"required": ["event"], "properties": {"event": {"const": "guidance_updated"}}}, "then": {"$ref": "#/$defs/guidance_updated"}},
     {"if": {"required": ["event"], "properties": {"event": {"const": "task_message_edited"}}}, "then": {"$ref": "#/$defs/task_message_edited"}},
-    {"if": {"required": ["event"], "properties": {"event": {"const": "context_usage"}}}, "then": {"$ref": "#/$defs/context_usage"}}
+    {"if": {"required": ["event"], "properties": {"event": {"const": "context_usage"}}}, "then": {"$ref": "#/$defs/context_usage"}},
+    {"if": {"required": ["event"], "properties": {"event": {"const": "plan_updated"}}}, "then": {"$ref": "#/$defs/plan_updated"}}
   ],
   "$defs": {
     "round_seq": {"description": "Round 序号，从 1 开始", "type": "integer", "minimum": 1},
@@ -221,6 +222,18 @@
           }
         },
         "applied": {"description": "这次用到的压缩步骤，按阶梯的顺序", "type": "array", "items": {"$ref": "defs.schema.json#/$defs/context_step"}}
+      },
+      "unevaluatedProperties": false
+    },
+    "plan_updated": {
+      "description": "Task Plan 的步骤变了（N-04，人工验收基线 Q55、Q56）：带完整的步骤快照（同 Task State 的 plan），客户端丢掉旧的、按它重建计划区；不是增量。由 Task 工作流推送，是可重放的事件；fast 不推。同一 Round 结束时的最后一份另用去重键",
+      "type": "object",
+      "required": ["event", "round_seq", "steps"],
+      "properties": {
+        "event": {"const": "plan_updated"},
+        "round_seq": {"$ref": "#/$defs/round_seq"},
+        "steps": {"$ref": "defs.schema.json#/$defs/plan_steps"},
+        "current_step": {"description": "正在做的一步（status 为 active 的那步）；没有时不写", "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 64}
       },
       "unevaluatedProperties": false
     },

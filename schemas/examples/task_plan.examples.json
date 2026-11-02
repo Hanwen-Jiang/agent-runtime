@@ -56,7 +56,8 @@
         "context": {"work_mode": "batch", "mask_at": 0.4, "summarize_at": 0.7, "must_keep": ["item_status_table"]},
         "budget": {"usd": 12.0, "tool_calls": 3000, "wall_clock_min": 120}
       }
-    }
+    },
+    {"name": "n04_steps", "source": "N-04", "notes": "整体步骤：3～8 步，最多一步 active", "instance": {"triage": {"level": "full", "task_family": "coding.fix_test", "confidence": 0.7}, "horizon": "per_stage", "steps": [{"id": "locate", "title": "找到出错的测试", "status": "done", "round": 1}, {"id": "fix", "title": "修改代码", "status": "active", "round": 2}, {"id": "verify", "title": "跑测试确认", "status": "pending", "round": 1}]}}
   ],
   "invalid": [
     {
@@ -142,6 +143,11 @@
         "horizon": "per_stage",
         "context": {"work_mode": "chitchat", "mask_at": 0.4, "summarize_at": 0.7}
       }
-    }
+    },
+    {"name": "n04_two_steps", "description": "整体步骤至少 3 步", "violates": [{"path": "/steps", "keyword": "minItems"}], "instance": {"triage": {"level": "full", "task_family": "coding.fix_test", "confidence": 0.7}, "horizon": "per_stage", "steps": [{"id": "locate", "title": "找到出错的测试", "status": "done", "round": 1}, {"id": "fix", "title": "修改代码", "status": "active", "round": 2}]}},
+    {"name": "n04_nine_steps", "description": "整体步骤至多 8 步", "violates": [{"path": "/steps", "keyword": "maxItems"}], "instance": {"triage": {"level": "full", "task_family": "coding.fix_test", "confidence": 0.7}, "horizon": "per_stage", "steps": [{"id": "s1", "title": "第 1 步", "status": "pending", "round": 1}, {"id": "s2", "title": "第 2 步", "status": "pending", "round": 1}, {"id": "s3", "title": "第 3 步", "status": "pending", "round": 1}, {"id": "s4", "title": "第 4 步", "status": "pending", "round": 1}, {"id": "s5", "title": "第 5 步", "status": "pending", "round": 1}, {"id": "s6", "title": "第 6 步", "status": "pending", "round": 1}, {"id": "s7", "title": "第 7 步", "status": "pending", "round": 1}, {"id": "s8", "title": "第 8 步", "status": "pending", "round": 1}, {"id": "s9", "title": "第 9 步", "status": "pending", "round": 1}]}},
+    {"name": "n04_two_active", "description": "同一时刻最多一步 active", "violates": [{"path": "/steps", "keyword": "maxContains"}], "instance": {"triage": {"level": "full", "task_family": "coding.fix_test", "confidence": 0.7}, "horizon": "per_stage", "steps": [{"id": "locate", "title": "找到出错的测试", "status": "active", "round": 1}, {"id": "fix", "title": "修改代码", "status": "active", "round": 2}, {"id": "verify", "title": "跑测试确认", "status": "pending", "round": 1}]}},
+    {"name": "n04_unknown_status", "description": "步骤的状态只有 pending、active、done、blocked", "violates": [{"path": "/steps/0/status", "keyword": "enum"}], "instance": {"triage": {"level": "full", "task_family": "coding.fix_test", "confidence": 0.7}, "horizon": "per_stage", "steps": [{"id": "locate", "title": "找到出错的测试", "status": "skipped", "round": 1}, {"id": "fix", "title": "修改代码", "status": "active", "round": 2}, {"id": "verify", "title": "跑测试确认", "status": "pending", "round": 1}]}},
+    {"name": "n04_step_without_round", "description": "每一步都要有 round", "violates": [{"path": "/steps/0", "keyword": "required"}], "instance": {"triage": {"level": "full", "task_family": "coding.fix_test", "confidence": 0.7}, "horizon": "per_stage", "steps": [{"id": "locate", "title": "找到出错的测试", "status": "done"}, {"id": "fix", "title": "修改代码", "status": "active", "round": 2}, {"id": "verify", "title": "跑测试确认", "status": "pending", "round": 1}]}}
   ]
 }
