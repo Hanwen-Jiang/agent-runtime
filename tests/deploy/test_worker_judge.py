@@ -50,7 +50,7 @@ def test_the_key_can_come_from_its_own_secret_as_a_file() -> None:
         assert env["AR_JUDGE_KEY_FILE"]["value"] == "/etc/agentruntime/judge/api-key"
         assert not any("secretKeyRef" in str(v) and "jev" in str(v) for v in env.values()), "密钥不进环境变量"
         (volume,) = [v for v in spec["volumes"] if v["name"] == "judge-key"]
-        assert volume["secret"]["secretName"] == "agent-runtime-jev"
+        assert volume["secret"]["secretName"] == "agent-runtime-jev" and volume["secret"]["optional"] is True, "Secret 还没建时 Worker 照常启动"
         assert any(m["name"] == "judge-key" and m.get("readOnly") for m in spec["containers"][0]["volumeMounts"])
 
 

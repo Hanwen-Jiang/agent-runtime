@@ -144,6 +144,8 @@ spec:
         - name: judge-key
           secret:
             secretName: {{ . }}
+            # 可选：Secret 还没建时 Worker 照常启动，Jev 只是没有密钥、不检查；建好后约一分钟文件出现，不用重启（每次调用时读）。
+            optional: true
             items:
               - key: {{ $.Values.worker.judgeKeySecret.key }}
                 path: {{ $.Values.worker.judgeKeySecret.key }}
