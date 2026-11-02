@@ -12,6 +12,8 @@
 | ENV-02 云环境 CRUD | Q16–37 已批准环境与 repo 解耦、`.env`、setup/start 门禁、SecretStore 引用和代理 Header 规则。 | 复用 EnvRecord 生命周期实现 CRUD、Setup 缓存键（脚本内容+基础镜像）、失败门禁和外部密钥引用。 | 需要 Runtime 与 coding-agent 跨仓库协同；OIDC/VPN/私有 DNS/私有 Registry 首期暂缓。 | **DEFER**，依赖 ENV-01 |
 | REAL-01 真实验收 | Q94–98 要求 Go、buf、Helm 和真实 Temporal/Postgres/Qdrant/Milvus、Kubernetes、Kata/Firecracker、R2/Cloudflare 全部记录版本与命令。 | 按工具链→基础组件→Sandbox→存储/网络→观测执行，缺资源标记 `blocked_external`。 | 依赖外部账户、节点和凭据；本地静态测试不能替代线上通过。 | **blocked_external** |
 
+MODEL-BUDGET-02 的接口契约子切片已落在 `services/go-model-gateway/internal/budget`：`ReservationProvider` 和仅用于测试的 `MemoryProvider` 覆盖原子预留、实际结算退回、UTC 日/月边界，以及 `tenant_budget_exceeded` 不重试。由于共享权威账本 API 仍未确定，生产 wiring 继续保持 **DEFER**；详见 [model-budget-ledger-interface-2026-11-03.md](model-budget-ledger-interface-2026-11-03.md)。
+
 ## 已确认的实现边界
 
 - 默认免费白名单和云上 ConfigMap 是第一批上线收尾内容，外部 ConfigMap 优先。
