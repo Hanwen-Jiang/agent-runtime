@@ -13,15 +13,15 @@
 
 | 批次 | 范围 | 依赖 | 交付与验收 | 当前决策 |
 | --- | --- | --- | --- | --- |
-| P0-A | S-01/S-02 审查包 | 无 | 契约正反例、字段编号清单、兼容性说明、buf/schema 检查命令；不改 proto/schema 直到人工批准 | 立即推进 |
-| P0-B | D-23/D-24 首版 | P0-A | 私有环境 CRUD、repo 解耦绑定、`.env` 普通值/引用、setup→start 门禁、有限日志；租户/用户隔离与密钥不回显测试 | 契约批准后推进 |
-| P0-C | 开放注册预算 | P0-A、Model Gateway 计量 | `model_budget.daily_usd/monthly_usd`、`tenant_budget_exceeded`、Task 准入与网关调用双重检查、跨日/月边界测试 | 契约批准后推进 |
+| P0-A | S-01/S-02 审查包 | 无 | 契约正反例、字段编号清单、兼容性说明、buf/schema 检查命令；不改 proto/schema 直到人工批准 | 已完成前置包，待人工评审 |
+| P0-B | D-23/D-24 首版 | P0-A | 私有环境 CRUD、repo 解耦绑定、`.env` 普通值/引用、setup→start 门禁、有限日志；租户/用户隔离与密钥不回显测试 | 等 S-01 批准 |
+| P0-C | 开放注册预算 | P0-A、Model Gateway 计量 | `model_budget.daily_usd/monthly_usd`、`tenant_budget_exceeded`、Task 准入与网关调用双重检查、跨日/月边界测试 | 已完成前置包，等契约批准 |
 | P1-A | R-02/R-03 剩余缺口 | 现有运行时代码 | 单次网关预算硬限制、多供应商/限流边界、model 节点 Context Builder、对象存储按需取回；R-01 的 Hook 有限重试已在 `b3b87ba` 完成 | 分模块并行，核心链路单写者 |
 | P1-B | R-04/R-05/R-06 剩余缺口 | SecretStore/Ingress/Registry 当前接口 | 生产 SecretStore 适配边界、工具输出脱敏、Learning 成本与版本固定；R-05 的 round/stage/node/tool/human/verdict/SSE 续传与限流已有，`token_delta`/`thinking_delta` 仍依赖流式模型通道 | 分模块并行，契约项回 S-01 |
-| P1-C | Workspace 与会话 UI | coding-agent 仓库 | Workspace API 文件树/read/log/discard/copy、`/env` 状态投影、旧 SSE 兼容测试 | 跨仓库独立合并 |
+| P1-C | Workspace 与会话 UI | coding-agent 仓库、Runtime EnvironmentService | Workspace API 文件树/read/log/discard/copy、`/env` 状态投影、旧 SSE 兼容测试；当前 coding-agent 没有 EnvRecord/ledger 查询 API，不能安全推断 ready/reused | 跨仓库独立合并，先补 Runtime 契约 |
 | P1-D | Memory-live 部署 | Chart/镜像/模型 Profile | Milvus、真 embedding、Worker→Memory gRPC、租户过滤与部署 smoke；真实集群验收 | 代码先行，资源可用后验收 |
 | P2-A | D-19～D-22/D-26 | P0-B、SandboxBroker | Firecracker/vsock/rootfs、快照顺序冲突决议；不在首版环境配置前引入缓存 | 后续独立切片 |
-| P2-B | N-04/N-19/N-20 | S-01、coding-agent | Task Plan/`plan_updated`、会话快照+增量、首事件延迟分段 | 契约批准后推进 |
+| P2-B | N-04/N-19/N-20 | S-01、coding-agent | Task Plan/`plan_updated`、会话快照+增量、首事件延迟分段；前置验收包已合并，token/thinking delta 仍依赖 StreamGenerate | 契约批准后推进 |
 | P2-C | N-14～N-16/N-18 | Registry/SecretStore/S-01 | 用户 Skill、用户 MCP、多 Agent 协作、文件型交付 | 草案转实施前先补契约 |
 | ENV | D-02～D-05/D-07/D-09～D-17 | 真实主机/域名/凭据 | 真 Postgres/Temporal/Qdrant/Redpanda/Langfuse/R2/Cloudflare/Kata/DNS/TLS/BuildKit/包源/Grafana/Tempo | 资源未提供前只做脚本和 kind gate |
 
@@ -34,9 +34,9 @@
 
 ## 第一轮并行任务
 
-1. P0-A：补齐 S-01/D-23/D-24 的验收与审查包。
-2. P1-A：先核对 R-02/R-03 当前代码与旧评审差异，再选单次预算或 Context Builder 的最小测试切片。
+1. P0-A：已合并 D-23/D-24、模型预算、N-04、N-19/N-20 的验收与审查包，等待 S-01 人工评审。
+2. P1-A：R-01 Hook 有限重试、R-05 进度事件/SSE 续传与限流已有；R-02/R-03 剩余项需要先冻结成本/上下文语义。
 3. P1-D：Memory-live 的 wiring 与 Helm smoke 已有；本轮只保留真实集群验收，不重复造第二套配置。
-4. ENV：把当前 kind/静态检查与真资源缺口整理成可执行 gate 清单。
+4. ENV：已合并 D-02～D-17 gate 矩阵；下一步按资源可用性执行并记录 `blocked_external`。
 
 第一轮完成后，再按单写者边界进入 P0-B/P0-C；任何 proto/schema 变更都暂停在人工评审点。
