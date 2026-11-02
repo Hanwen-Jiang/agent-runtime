@@ -36,3 +36,13 @@ Harbor：在 Python 3.13+、安装了 `harbor==0.24.0` 和本项目包的 eval v
 
 DeepEval/Ragas：设置 `AR_EVAL_GATEWAY_FACTORY=module.path:factory`（factory 返回现有 Model Gateway client），并传入 `--tenant-id`、`--budget-usd`；Ragas 需要 embedding 指标时另外传 `--embedding-version`。三项合计预算可按计划拆分，建议首轮使用总上限 `$30`。
 
+## cloudnium_cloud 实测记录
+
+本次使用分支 `a096b24` 的隔离快照 `/opt/agentruntime/evals-design-closeout-1c49c2c`，没有改动其他支路或生产部署。评测依赖安装在该目录的 `.eval-deps`，Gateway 通过临时 Kubernetes port-forward 接入；当前集群租户策略只配置了 `swebench`，因此真实样本使用该租户。
+
+- DeepEval：1 个 case，`mode=gateway`，`measured=true`，Gateway 实测 `$0.001022`。
+- Ragas 0.4.3：1 个 case，ContextPrecision/ContextRecall/Faithfulness 均返回分数，`measured=true`，Gateway 实测 `$0.045004`。
+- Terminal-Bench 2.0：下载官方 89 题并以 `write-compressor` 单题启动 Harbor 0.24.0；`RuntimeBridgeAgent` 返回码为 0，官方 verifier 返回 reward `0.0`，`measured=true`，模型费用 `$0`。这证明 Harbor 容器、bridge、verifier 和结果解析链路已接通；远端当前没有部署提供真实 Runtime 命令的 CLI，因此这次不代表模型解题成绩。
+
+为兼容 Harbor 0.24.0，CLI 入口使用 `harbor.cli.main`；官方任务工作目录默认使用 `/app`，可用 `AR_TERMINALBENCH_WORKSPACE` 覆盖；结果解析会忽略 job-level 汇总文件，只保留 manifest 中指定的 trial。
+
