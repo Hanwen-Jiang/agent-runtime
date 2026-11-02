@@ -1,0 +1,42 @@
+# 未完成计划执行表（2026-11-02）
+
+> 基线：远端 `main` `c804015`。本表把现有设计计划投影成可交付批次；不修改权威设计书，不把真实基础设施验收伪装成代码完成。
+
+## 发布原则
+
+1. 契约变更先写正反验收用例，再走 S-01：`buf format`、`buf lint`、生成代码检查、`buf breaking`、人工评审和基线更新。
+2. Task Loop / Stage Runner / Node Executor 仍遵守单写者；Provider、评测、部署脚本和文档可以并行。
+3. 每个批次必须有可重复的本地验证；需要 Go、Docker、Kata、真实云服务或供应商额度时，只报告阻塞，不把静态检查当线上验收。
+4. 不新增第二套环境状态机、缓存表、跨系统 generation/hash 或后台轮询；优先复用现有 ledger、Task State、Workspace 和 SecretStore 生命周期。
+
+## 批次
+
+| 批次 | 范围 | 依赖 | 交付与验收 | 当前决策 |
+| --- | --- | --- | --- | --- |
+| P0-A | S-01/S-02 审查包 | 无 | 契约正反例、字段编号清单、兼容性说明、buf/schema 检查命令；不改 proto/schema 直到人工批准 | 立即推进 |
+| P0-B | D-23/D-24 首版 | P0-A | 私有环境 CRUD、repo 解耦绑定、`.env` 普通值/引用、setup→start 门禁、有限日志；租户/用户隔离与密钥不回显测试 | 契约批准后推进 |
+| P0-C | 开放注册预算 | P0-A、Model Gateway 计量 | `model_budget.daily_usd/monthly_usd`、`tenant_budget_exceeded`、Task 准入与网关调用双重检查、跨日/月边界测试 | 契约批准后推进 |
+| P1-A | R-01/R-02/R-03 缺口 | 现有运行时代码 | Hook/工具调用审计与失败语义、单次预算上限、并发/供应商边界、model 节点 Context Builder；每项先正反测试 | 分模块并行，核心链路单写者 |
+| P1-B | R-04/R-05/R-06 缺口 | SecretStore/Ingress/Registry 当前接口 | 生产 SecretStore 适配边界、工具输出脱敏、SSE 事件生产/广播/鉴权/续传、Learning 成本与版本固定 | 分模块并行，契约项回 S-01 |
+| P1-C | Workspace 与会话 UI | coding-agent 仓库 | Workspace API 文件树/read/log/discard/copy、`/env` 状态投影、旧 SSE 兼容测试 | 跨仓库独立合并 |
+| P1-D | Memory-live 部署 | Chart/镜像/模型 Profile | Milvus、真 embedding、Worker→Memory gRPC、租户过滤与部署 smoke；真实集群验收 | 代码先行，资源可用后验收 |
+| P2-A | D-19～D-22/D-26 | P0-B、SandboxBroker | Firecracker/vsock/rootfs、快照顺序冲突决议；不在首版环境配置前引入缓存 | 后续独立切片 |
+| P2-B | N-04/N-19/N-20 | S-01、coding-agent | Task Plan/`plan_updated`、会话快照+增量、首事件延迟分段 | 契约批准后推进 |
+| P2-C | N-14～N-16/N-18 | Registry/SecretStore/S-01 | 用户 Skill、用户 MCP、多 Agent 协作、文件型交付 | 草案转实施前先补契约 |
+| ENV | D-02～D-05/D-07/D-09～D-17 | 真实主机/域名/凭据 | 真 Postgres/Temporal/Qdrant/Redpanda/Langfuse/R2/Cloudflare/Kata/DNS/TLS/BuildKit/包源/Grafana/Tempo | 资源未提供前只做脚本和 kind gate |
+
+## 完成定义
+
+- 代码批次：验收测试通过、`git diff --check` 通过、提交已推送并合并远端 `main`。
+- 契约批次：人工评审、buf/schema 检查和兼容性基线完成后，才允许生成代码和业务实现。
+- 真实环境批次：记录环境、时间、镜像/配置版本和可复现命令；没有真实资源时标记 `blocked_external`。
+- 设计草案：只在计划文档中记录边界、Failure/Evidence/Minimum fix/成本/Decision，不创建未被需求支持的持久状态。
+
+## 第一轮并行任务
+
+1. P0-A：补齐 S-01/D-23/D-24 的验收与审查包。
+2. P1-A：从 R-01 中先做 Hook 失败不无限重试的最小切片。
+3. P1-D：补 Memory-live 的部署 smoke/config 验收，不宣称已上线。
+4. ENV：把当前 kind/静态检查与真资源缺口整理成可执行 gate 清单。
+
+第一轮完成后，再按单写者边界进入 P0-B/P0-C；任何 proto/schema 变更都暂停在人工评审点。
