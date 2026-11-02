@@ -61,6 +61,8 @@ taskService:
 modelGateway:
   replicas: 1
   providerBaseUrl: https://api.example/v1
+  defaultTenantPolicies:
+    enabled: true
 
 memory:
   replicas: 1

@@ -129,6 +129,19 @@ modelGateway:
   # 按租户限制可选模型的 ConfigMap（键 tenant-policies.json，格式见 go-model-gateway 的 router.FileAllowlist），由运维创建；每次调用都重读，改了不用重启。
   # 空表示不限制。
   tenantPoliciesConfigMap: ""
+  # 默认免费策略的内置 ConfigMap。保持关闭可兼容旧部署；云上 values 显式打开。
+  defaultTenantPolicies:
+    enabled: false
+    name: ""
+    modelAllowlist:
+      - a6api/gpt-4o-mini@2026-10
+      - a6api/gemini-3.5-flash-lite@2026-10
+      - a6api/claude-haiku-5-5@2026-10
+      - a6api/deepseek-v4-flash@2026-10
+      - a6api/gemini-3.5-flash@2026-10
+      - a6api/gpt-6.1-sol@2026-11
+      - a6api/text-embedding-3-large@2026-10
+      - a6api/text-embedding-3-small@2026-10
   resources:
     requests: {cpu: 250m, memory: 128Mi}
     limits: {cpu: "1", memory: 256Mi}

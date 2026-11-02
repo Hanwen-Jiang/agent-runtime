@@ -1,0 +1,11 @@
+{{- if and .Values.modelGateway.defaultTenantPolicies.enabled (not .Values.modelGateway.tenantPoliciesConfigMap) }}
+{{- $policy := dict "default" (dict "model_allowlist" .Values.modelGateway.defaultTenantPolicies.modelAllowlist) "tenants" (dict) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ar.modelGatewayTenantPoliciesConfigMap" . }}
+  labels:
+    {{- include "ar.labels" (list . "model-gateway") | nindent 4 }}
+data:
+  tenant-policies.json: {{ $policy | toJson | quote }}
+{{- end }}

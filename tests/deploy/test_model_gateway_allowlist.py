@@ -1,7 +1,6 @@
 """SWE-bench 基线（TMP 计划第 11.10 节）：Model Gateway 按租户限制可选的模型。
 
-网关的白名单读 AR_DEV_TENANT_POLICIES_FILE（router.FileAllowlist，每次调用都重读）。之前 Chart 不设它，线上的白名单不生效。
-Chart 的 modelGateway.tenantPoliciesConfigMap 给了才挂上；不给时与以前一样不限制，不多渲染什么。ConfigMap 由运维创建，同 profilesConfigMap。
+网关的白名单读 AR_DEV_TENANT_POLICIES_FILE（router.FileAllowlist，每次调用都重读）。默认 values 不挂载白名单；values-cloud 显式打开内置免费策略。显式传入 modelGateway.tenantPoliciesConfigMap 时使用外部 ConfigMap。
 """
 
 from __future__ import annotations
@@ -20,18 +19,31 @@ def gateway(manifests: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def test_off_by_default() -> None:
-    for manifests in (render(), render(CLOUD_VALUES)):
-        spec = pod_spec(gateway(manifests))
-        [container] = spec["containers"]
-        assert "AR_DEV_TENANT_POLICIES_FILE" not in env_of(container)
-        assert not [v for v in spec["volumes"] if v["name"] == "tenant-policies"]
+    spec = pod_spec(gateway(render()))
+    [container] = spec["containers"]
+    assert "AR_DEV_TENANT_POLICIES_FILE" not in env_of(container)
+    assert not [v for v in spec["volumes"] if v["name"] == "tenant-policies"]
+
+
+def test_cloud_values_mount_the_builtin_free_policy() -> None:
+    manifests = render(CLOUD_VALUES)
+    spec = pod_spec(gateway(manifests))
+    [container] = spec["containers"]
+    assert env_of(container)["AR_DEV_TENANT_POLICIES_FILE"]["value"] == FILE
+    [volume] = [v for v in spec["volumes"] if v["name"] == "tenant-policies"]
+    assert volume["configMap"]["name"] == "ar-agent-runtime-default-tenant-policies"
+    [policy] = [m for m in by_kind(manifests, "ConfigMap") if m["metadata"]["name"] == volume["configMap"]["name"]]
+    assert "a6api/gpt-6.1-sol@2026-11" in policy["data"]["tenant-policies.json"]
+    assert "a6api/claude-opus-5-5@2026-10" not in policy["data"]["tenant-policies.json"]
 
 
 def test_the_config_map_is_mounted_read_only_when_given() -> None:
-    spec = pod_spec(gateway(render(CLOUD_VALUES, set_values=[f"modelGateway.tenantPoliciesConfigMap={CONFIG_MAP}"])))
+    manifests = render(CLOUD_VALUES, set_values=[f"modelGateway.tenantPoliciesConfigMap={CONFIG_MAP}"])
+    spec = pod_spec(gateway(manifests))
     [container] = spec["containers"]
     assert env_of(container)["AR_DEV_TENANT_POLICIES_FILE"]["value"] == FILE
     [volume] = [v for v in spec["volumes"] if v["name"] == "tenant-policies"]
     assert volume["configMap"]["name"] == CONFIG_MAP
     [mount] = [m for m in container["volumeMounts"] if m["name"] == "tenant-policies"]
     assert mount["readOnly"] is True and FILE.startswith(mount["mountPath"] + "/")
+    assert not [m for m in by_kind(manifests, "ConfigMap") if m["metadata"]["name"] == "ar-agent-runtime-default-tenant-policies"]

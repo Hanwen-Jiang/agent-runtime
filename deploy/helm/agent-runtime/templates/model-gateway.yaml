@@ -1,5 +1,6 @@
 {{- $name := include "ar.modelGatewayService" . -}}
 {{- $gw := .Values.modelGateway -}}
+{{- $tenantPoliciesConfigMap := include "ar.modelGatewayTenantPoliciesConfigMap" . -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -39,7 +40,7 @@ spec:
               value: {{ $gw.provider | quote }}
             - name: AR_MODEL_PROVIDER_BASE_URL
               value: {{ $gw.providerBaseUrl | quote }}
-            {{- if $gw.tenantPoliciesConfigMap }}
+            {{- if $tenantPoliciesConfigMap }}
             - name: AR_DEV_TENANT_POLICIES_FILE
               value: /etc/agentruntime/tenant-policies/tenant-policies.json
             {{- end }}
@@ -63,7 +64,7 @@ spec:
             - name: model-profiles
               mountPath: /etc/agentruntime/model-profiles
               readOnly: true
-            {{- if $gw.tenantPoliciesConfigMap }}
+            {{- if $tenantPoliciesConfigMap }}
             - name: tenant-policies
               mountPath: /etc/agentruntime/tenant-policies
               readOnly: true
@@ -73,10 +74,10 @@ spec:
         - name: model-profiles
           configMap:
             name: {{ $gw.profilesConfigMap }}
-        {{- if $gw.tenantPoliciesConfigMap }}
+        {{- if $tenantPoliciesConfigMap }}
         - name: tenant-policies
           configMap:
-            name: {{ $gw.tenantPoliciesConfigMap }}
+            name: {{ $tenantPoliciesConfigMap }}
         {{- end }}
 ---
 apiVersion: v1

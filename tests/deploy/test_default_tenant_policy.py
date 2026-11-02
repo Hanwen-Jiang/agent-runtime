@@ -8,10 +8,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 POLICY = ROOT / "deploy" / "dev" / "default-tenant-policies.json"
 PROFILES = ROOT / "deploy" / "dev" / "model-profiles.json"
+VALUES = ROOT / "deploy" / "helm" / "agent-runtime" / "values.yaml"
+CLOUD_VALUES = ROOT / "deploy" / "helm" / "agent-runtime" / "values-cloud.yaml"
 
 
 def test_default_policy_references_existing_profiles_and_keeps_expensive_models_out() -> None:
@@ -35,3 +38,13 @@ def test_default_policy_keeps_embedding_profiles_available() -> None:
         "a6api/text-embedding-3-large@2026-10",
         "a6api/text-embedding-3-small@2026-10",
     } <= allowlist
+
+
+def test_cloud_values_explicitly_enable_the_builtin_policy() -> None:
+    base = yaml.safe_load(VALUES.read_text(encoding="utf-8"))
+    cloud = yaml.safe_load(CLOUD_VALUES.read_text(encoding="utf-8"))
+    assert base["modelGateway"]["defaultTenantPolicies"]["enabled"] is False
+    assert cloud["modelGateway"]["defaultTenantPolicies"]["enabled"] is True
+    assert set(base["modelGateway"]["defaultTenantPolicies"]["modelAllowlist"]) == set(
+        json.loads(POLICY.read_text(encoding="utf-8"))["default"]["model_allowlist"]
+    )

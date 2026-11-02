@@ -45,6 +45,15 @@ app.kubernetes.io/component: {{ index . 1 }}
 {{- printf "%s-model-gateway" (include "ar.fullname" .) -}}
 {{- end -}}
 
+{{/* 租户模型白名单 ConfigMap：显式外部引用优先，云上默认策略才使用内置 ConfigMap。 */}}
+{{- define "ar.modelGatewayTenantPoliciesConfigMap" -}}
+{{- if .Values.modelGateway.tenantPoliciesConfigMap -}}
+{{- .Values.modelGateway.tenantPoliciesConfigMap -}}
+{{- else if .Values.modelGateway.defaultTenantPolicies.enabled -}}
+{{- default (printf "%s-default-tenant-policies" (include "ar.fullname" .)) .Values.modelGateway.defaultTenantPolicies.name -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "ar.registryService" -}}
 {{- printf "%s-registry" (include "ar.fullname" .) -}}
 {{- end -}}
