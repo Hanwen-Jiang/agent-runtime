@@ -94,6 +94,6 @@ S-01 候选基线可以进入人工评审的条件：
 - proto/schema 变更清单、兼容性基线计划和生成代码路径明确；
 - 任何实现分支都能在不修改权威设计书的前提下落地。
 
-相关前置审查包：模型预算、Task Plan、N-19/N-20、Firecracker、用户 Skill、D-25 多仓库、Workspace/会话以及 N-15/N-16，均在 `docs/plan/` 中以独立候选基线和 `tests/contract/` 正反例维护；它们不绕过本节的人工审查门槛。
+相关前置审查包：模型预算、R-02/R-03、R-04/R-06、Task Plan、N-19/N-20、Firecracker、用户 Skill、D-25 多仓库、Workspace/会话、N-15/N-16 和 N-18 文件交付，均在 `docs/plan/` 中以独立候选基线和 `tests/contract/` 正反例维护；它们不绕过本节的人工审查门槛。
 
 未满足上述条件时，继续补文档或验收测试，不在业务代码中创建并行契约。
