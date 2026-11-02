@@ -1,0 +1,6 @@
+sku,name,qty,reorder_at
+A100,bolts,120,50
+A101,nuts,40,40
+A102,washers,15,30
+B200,brackets,8,10
+B201,hinges,60,20

@@ -94,6 +94,8 @@ class Script:
     create_error: Exception | None = None
     # 第一次读事件时崩溃（Crash）。
     crash_on_events: bool = False
+    # task_finished 带的交付（DeepEval 的评分用，N-12）。
+    deliverable: Any = None
 
 
 def verdict(v: str) -> tuple[str, dict[str, Any]]:
@@ -191,6 +193,8 @@ class FakeRuntime:
         t.done = True
         value = {"task_id": t.task_id, "status": status, "final_verdict": final, "rounds": s.rounds,
                  "usage": {"cost_usd_micros": str(round(cost * 1_000_000))}}
+        if s.deliverable is not None:
+            value["deliverable"] = s.deliverable
         return Event(len(t.log) + 1, "task_finished", value)
 
     def _next(self, t: _Task) -> Event:

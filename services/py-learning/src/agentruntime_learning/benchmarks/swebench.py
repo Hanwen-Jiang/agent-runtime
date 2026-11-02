@@ -482,8 +482,20 @@ class _Runner:
             self.s.sleep(self.s.quota_wait_s)
         return call()
 
+    # 各题库不同的部分（Terminal-Bench 的适配器覆盖它们）：工作区 id、建工作区的参数、给 Task 的消息。
+
+    def _workspace_id(self, inst: Instance) -> str:
+        return workspace_id(self.s.run_id, inst.instance_id)
+
+    def _workspace_args(self, inst: Instance) -> tuple[str, str, list[dict[str, str]]]:
+        files = environment_files(inst, workspace_path=self.s.workspace_path) if self.s.environment == "official" else []
+        return self.s.repo_url_template.format(repo=inst.repo), inst.base_commit, files
+
+    def _message(self, inst: Instance) -> str:
+        return task_message(inst, hints=self.s.hints)
+
     def _attempt(self, inst: Instance, rec: dict[str, Any]) -> None:
-        ws = workspace_id(self.s.run_id, inst.instance_id)
+        ws = self._workspace_id(inst)
         # Task 已经做完、花过钱时，续跑只取补丁，不重新跑。
         if not rec.get("task_finished"):
             self._run_task(inst, rec, ws)
@@ -510,13 +522,12 @@ class _Runner:
                     self.rt.delete_workspace(ws)
             for key in ("task_id", "events_url", "error", "status", "final_verdict", "stop_reason", "auto_replies", "patch", "patch_files", "patch_error"):
                 rec.pop(key, None)
-            files = environment_files(inst, workspace_path=self.s.workspace_path) if self.s.environment == "official" else []
-            repo_url = self.s.repo_url_template.format(repo=inst.repo)
-            created = self._when_room(lambda: self.rt.create_workspace(ws, repo_url=repo_url, ref=inst.base_commit, files=files))
+            repo_url, ref, files = self._workspace_args(inst)
+            created = self._when_room(lambda: self.rt.create_workspace(ws, repo_url=repo_url, ref=ref, files=files))
             rec.update({"state": "created", "workspace_id": ws, "head": created["head"]})
             self._save(rec)
             request_id = hashlib.sha256(f"{self.s.run_id}\x00{inst.instance_id}\x00{created['head']}".encode()).hexdigest()[:32]
-            sub = self.rt.submit(workspace_id=ws, message=task_message(inst, hints=self.s.hints), client_request_id=request_id)
+            sub = self.rt.submit(workspace_id=ws, message=self._message(inst), client_request_id=request_id)
             rec.update({"state": "submitted", "task_id": sub["task_id"], "events_url": sub["events_url"]})
             self._save(rec)
             with self.cond:
@@ -524,6 +535,7 @@ class _Runner:
         finished = self._follow(rec, interactive=interactive)
         usage = finished.get("usage") or {}
         rec.update({
+            "deliverable": deliverable_text(finished.get("deliverable"))[:DELIVERABLE_CHARS],
             "status": _status(finished.get("status")),
             "final_verdict": _verdict(finished.get("final_verdict")),
             "rounds": int(finished.get("rounds") or 0),
@@ -583,6 +595,24 @@ class _Runner:
             quiet = 0 if fresh else quiet + 1
             if quiet > MAX_RECONNECTS:
                 raise RuntimeError(f"{task_id} 的推流连续 {quiet} 次断开都没有新事件，读不到 task_finished")
+
+
+DELIVERABLE_CHARS = 20000
+
+
+def deliverable_text(value: Any) -> str:
+    """Task 的交付写成文字：{"value": …} 取里面的；常见的正文字段取出来；其余写成 JSON（DeepEval 的评分用，N-12）。"""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, Mapping):
+        if "value" in value and len(value) <= 2:
+            return deliverable_text(value["value"])
+        for key in ("answer", "text", "reply", "content", "summary"):
+            if isinstance(value.get(key), str):
+                return str(value[key])
+    return json.dumps(value, ensure_ascii=False)
 
 
 def _status(value: Any) -> str:

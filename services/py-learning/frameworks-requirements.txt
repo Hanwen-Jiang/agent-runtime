@@ -1,0 +1,8 @@
+# DeepEval 与 Ragas 的单独 Python（docs/plan/feedback-2026-11-01.md N-12、N-13）：不进本仓库的依赖，由桥（src/agentruntime_learning/evals/bridges）调用。
+# 建法（版本是 2026-11-02 试过的；升级时同样只取发布满两周的，可加 --exclude-newer <日期>）：
+#   uv venv -p 3.13 <目录>
+#   uv pip install -p <目录>/bin/python -r services/py-learning/frameworks-requirements.txt
+deepeval==3.9.9
+ragas==0.3.9
+langchain-openai==0.3.35
+rapidfuzz==3.14.6

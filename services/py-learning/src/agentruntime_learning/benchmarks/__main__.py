@@ -6,6 +6,10 @@
 - grade：调官方判分工具（--python 指一个装了 swebench 的 Python；要 Docker，或 --modal 在 Modal 上跑）。
 - report：写 report.json 与 report.md（判过分时并进判分结果）。
 
+terminalbench {fetch,prepare,run,grade,report}（docs/plan/feedback-2026-11-01.md N-11）：fetch 克隆 Terminal-Bench 2.0；prepare 用
+Docker 从官方镜像取出各任务的工作目录（只收文本文件，带不走的记为不可移植）；run 经 Task API 跑（默认只选可移植的）；grade 用 Docker
+在官方镜像里跑隐藏的测试；report 写汇总。令牌、预算、并发、续跑同 swebench。
+
 设了 OTEL_EXPORTER_OTLP_ENDPOINT 时 run 边跑边发进度、grade 判完发分数（agentruntime_learning.evals.live），评测看板读它们
 （docs/plan/eval-observability-and-runtime-fixes.md 第 11.16 节）；看板上的运行 id 是 run.json 的 run_id，续跑与判分都对得上。
 """
@@ -24,6 +28,7 @@ from pathlib import Path
 from typing import Any
 
 from agentruntime_learning.benchmarks import swebench as sb
+from agentruntime_learning.benchmarks import terminalbench as tb
 from agentruntime_learning.benchmarks.client import ApiError, RuntimeClient
 
 TOKEN_ENV = "AR_TASK_API_TOKEN"
@@ -77,11 +82,50 @@ def _parser() -> argparse.ArgumentParser:
 
     rep = sub.add_parser("report", help="写 report.json 与 report.md")
     rep.add_argument("--out", type=Path, required=True)
+
+    tbp = benches.add_parser("terminalbench", help="Terminal-Bench 2.0（N-11）")
+    tsub = tbp.add_subparsers(dest="command", required=True)
+    tf = tsub.add_parser("fetch", help="克隆 Terminal-Bench 2.0 的任务")
+    tf.add_argument("--out", type=Path, required=True, help="克隆到这里")
+    tf.add_argument("--repo", default=tb.DEFAULT_REPO)
+    tf.add_argument("--ref", default="", help="提交或标签；不给时取默认分支的最新")
+    tp = tsub.add_parser("prepare", help="用 Docker 从官方镜像取出各任务的工作目录")
+    tp.add_argument("--tasks", type=Path, required=True, help="fetch 克隆下来的目录")
+    tp.add_argument("--out", type=Path, required=True, help="运行的输出目录（prepared/ 写在里面）")
+    tp.add_argument("--ids", type=Path, help="只准备这些任务（按行给名字）")
+    tp.add_argument("--remove-images", action="store_true", help="取完就删镜像（省磁盘；判分时会再拉）")
+    tr = tsub.add_parser("run", help="经 Task API 跑选中的任务")
+    tr.add_argument("--tasks", type=Path, required=True)
+    tr.add_argument("--out", type=Path, required=True, help="输出目录；同一个目录再跑是续跑")
+    tpick = tr.add_mutually_exclusive_group(required=True)
+    tpick.add_argument("--limit", type=int, help="按种子抽这么多个")
+    tpick.add_argument("--ids", type=Path, help="按行给任务名的文件")
+    tr.add_argument("--seed", type=int, default=0)
+    tr.add_argument("--difficulty", action="append", default=[], choices=tb.DIFFICULTIES)
+    tr.add_argument("--category", action="append", default=[])
+    tr.add_argument("--include-unportable", action="store_true", help="也选不可移植的任务（工作目录里有二进制或太大的文件，带不全）")
+    tr.add_argument("--run-id")
+    tr.add_argument("--task-api", required=True)
+    tr.add_argument("--budget-usd", type=float, required=True)
+    tr.add_argument("--task-usd-limit", type=float, required=True)
+    tr.add_argument("--concurrency", type=int, default=1)
+    tr.add_argument("--task-timeout-min", type=float, default=60.0)
+    tr.add_argument("--poll-s", type=float, default=30.0)
+    tr.add_argument("--model-name", default="agent-runtime")
+    tr.add_argument("--environment", choices=("official", "none"), default="official")
+    tr.add_argument("--workspace-path", default="/workspace")
+    tr.add_argument("--keep-workspaces", action="store_true")
+    tg = tsub.add_parser("grade", help="用 Docker 在官方镜像里跑隐藏的测试")
+    tg.add_argument("--tasks", type=Path, required=True)
+    tg.add_argument("--out", type=Path, required=True)
+    tg.add_argument("--max-workers", type=int, default=4)
+    trep = tsub.add_parser("report", help="写 report.json 与 report.md")
+    trep.add_argument("--out", type=Path, required=True)
     return parser
 
 
 @contextlib.contextmanager
-def _live(run_id: str, model: str) -> Iterator[Any]:
+def _live(run_id: str, model: str, *, suite: str = sb.SUITE, split: str = SPLIT) -> Iterator[Any]:
     """设了 OTEL_EXPORTER_OTLP_ENDPOINT 时边跑边发进度（评测看板，第 11.16 节），结束时导出；没设时为 None。"""
     if not os.environ.get(OTLP_ENV, "").strip():
         yield None
@@ -91,13 +135,61 @@ def _live(run_id: str, model: str) -> Iterator[Any]:
     from agentruntime_learning.evals.live import BlockingLive, LiveRun
 
     provider = telemetry_from_env(TELEMETRY_SERVICE)
-    live = BlockingLive(LiveRun(provider.bind_platform(TELEMETRY_PURPOSE), suite=sb.SUITE, subject=model or "agent-runtime", split=SPLIT, run_id=run_id, model=model))
+    live = BlockingLive(LiveRun(provider.bind_platform(TELEMETRY_PURPOSE), suite=suite, subject=model or "agent-runtime", split=split, run_id=run_id, model=model))
     try:
         yield live
     finally:
         live.flush()
         live._call(provider.aclose())
         live.close()
+
+
+def _lines(path: Path | None) -> list[str]:
+    return [line.strip() for line in path.read_text("utf-8").splitlines() if line.strip()] if path else []
+
+
+def _terminalbench(args: argparse.Namespace) -> int:
+    if args.command == "fetch":
+        print(f"Terminal-Bench 2.0：{args.out}（提交 {tb.fetch(args.out, repo=args.repo, ref=args.ref)}）")
+        return 0
+    if args.command == "prepare":
+        tasks = tb.load_tasks(args.tasks)
+        ids = _lines(args.ids)
+        print(tb.prepare(tb.select(tasks, ids=ids) if ids else tasks, args.out, remove_images=args.remove_images))
+        return 0
+    if args.command == "grade":
+        manifest = json.loads((args.out / "run.json").read_text("utf-8"))
+        with _live(str(manifest["run_id"]), str((manifest.get("settings") or {}).get("model_name") or ""), suite=tb.SUITE, split="2.0") as live:
+            summary = tb.grade(args.out, args.tasks, max_workers=args.max_workers, live=live)
+        print(f"判分完成：判了 {summary['graded']} 个，解决 {len(summary['resolved_ids'])} 个；报告用 … terminalbench report --out {args.out}")
+        return 0
+    if args.command == "report":
+        rep = tb.report(args.out)
+        print((args.out / "report.md").read_text("utf-8"))
+        return 0 if rep["selected"] else 1
+    token = os.environ.get(TOKEN_ENV, "")
+    if not token:
+        print(f"要设环境变量 {TOKEN_ENV}（Task API 的令牌）", file=sys.stderr)
+        return 2
+    tasks = tb.load_tasks(args.tasks)
+    only = None if args.include_unportable else tb.portable_ids(args.out)
+    if only is not None and not only:
+        print(f"{args.out}/prepared 里没有可移植的任务：先跑 terminalbench prepare（要 Docker）", file=sys.stderr)
+        return 2
+    chosen = tb.select(tasks, limit=args.limit, seed=args.seed, ids=_lines(args.ids), difficulties=args.difficulty, categories=args.category, only=only)
+    run_id = args.run_id or re.sub(r"[^A-Za-z0-9._-]+", "-", args.out.absolute().name).strip("-.") or "run"
+    settings = sb.Settings(
+        run_id=run_id, budget_usd=args.budget_usd, task_usd_limit=args.task_usd_limit, model_name=args.model_name, concurrency=args.concurrency,
+        task_timeout_s=args.task_timeout_min * 60, environment=args.environment, workspace_path=args.workspace_path, keep_workspaces=args.keep_workspaces,
+        poll_s=args.poll_s,
+    )
+    selection = {"tasks_dir": str(args.tasks), **({"ids_file": str(args.ids)} if args.ids else {"limit": args.limit, "seed": args.seed}),
+                 "difficulties": sorted(args.difficulty), "categories": sorted(args.category), "portable_only": only is not None}
+    with _live(run_id, args.model_name, suite=tb.SUITE, split="2.0") as live:
+        summary = tb.run(RuntimeClient(args.task_api, token), chosen, args.out, settings, selection=selection, live=live)
+    print(f"跑完 {summary.finished} 个（这次提交 {summary.submitted} 个 Task），没跑 {summary.not_run} 个，出错 {summary.errors} 个；已花 ${summary.spent_usd:.4f}")
+    print(f"判分：… terminalbench grade --tasks {args.tasks} --out {args.out}（要 Docker）")
+    return 1 if summary.errors else 0
 
 
 def _run(args: argparse.Namespace) -> int:
@@ -149,6 +241,8 @@ def main(argv: list[str] | None = None) -> int:
     except SystemExit as exc:
         return 0 if exc.code in (0, None) else 2
     try:
+        if args.benchmark == "terminalbench":
+            return _terminalbench(args)
         if args.command == "fetch":
             count = sb.fetch_instances(args.out, dataset=args.dataset, split=args.split)
             print(f"取到 {count} 题：{args.out}")

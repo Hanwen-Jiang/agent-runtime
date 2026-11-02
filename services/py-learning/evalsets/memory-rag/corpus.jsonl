@@ -1,0 +1,16 @@
+{"id": "m01", "kind": "recipe", "text": "To run this repository's tests, use `uv run pytest` from the repository root; plain `pytest` misses the src layout and fails with ImportError."}
+{"id": "m02", "kind": "fact", "text": "The payments service listens on port 8443 and only accepts TLS connections; health checks go to /healthz on the same port."}
+{"id": "m03", "kind": "fact", "text": "Database migrations live in db/migrations and are applied with `make migrate`; never edit a migration that has already shipped."}
+{"id": "m04", "kind": "success", "text": "When the build fails with 'node: not found' in CI, the job image is missing Node; switch the job to the ci-node20 image instead of installing Node in the script."}
+{"id": "m05", "kind": "preference", "text": "The user prefers answers in Chinese with code identifiers left in English, and wants a short summary before details."}
+{"id": "m06", "kind": "fact", "text": "Feature flags are read from config/flags.yaml at startup; changing a flag requires a restart of the API pods."}
+{"id": "m07", "kind": "success", "text": "Flaky test test_upload_timeout passes when run alone; it fails under parallel runs because it shares the /tmp/uploads directory. Use a per-test temp dir."}
+{"id": "m08", "kind": "fact", "text": "Release tags follow vMAJOR.MINOR.PATCH and are created only from the main branch by the release workflow."}
+{"id": "m09", "kind": "recipe", "text": "To rotate the API signing key, generate a new key, add it as the secondary key, deploy, then promote it to primary after 24 hours."}
+{"id": "m10", "kind": "fact", "text": "The nightly job exports usage reports to the bucket reports-prod under the prefix usage/YYYY/MM/DD/."}
+{"id": "m11", "kind": "success", "text": "A memory leak in the worker was traced to an unbounded LRU cache in parse_template; capping it at 1024 entries fixed it."}
+{"id": "m12", "kind": "fact", "text": "The staging environment resets its database every Sunday at 03:00 UTC from an anonymized production snapshot."}
+{"id": "m13", "kind": "preference", "text": "Code review comments should cite the file and line and propose a concrete fix rather than only pointing out a problem."}
+{"id": "m14", "kind": "recipe", "text": "Before merging a pull request, the change needs one approving review and a green CI run on the latest commit."}
+{"id": "m15", "kind": "fact", "text": "Logs are shipped to Loki with a 14-day retention; older logs are only in the cold archive and take a day to restore."}
+{"id": "m16", "kind": "success", "text": "Rate limiting errors (HTTP 429) from the maps API were solved by caching geocoding results for 7 days."}
