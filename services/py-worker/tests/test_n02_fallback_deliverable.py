@@ -77,6 +77,14 @@ async def test_the_cause_of_a_fallback_is_recorded() -> None:
     assert_valid("verdict", result.verdict)
 
 
+async def test_timeout_fallback_has_a_distinct_reason() -> None:
+    gateway = FakeReviewGateway([TimeoutError("review timed out"), TimeoutError("review timed out")])
+    result = await Reviewer(gateway).review(request(STAGE, results_with({"text": "完成"}), state=task_state(rounds=rounds())))
+    assert result.fallback and result.verdict["reason_code"] == "rule_fallback"
+    assert result.verdict["reason_params"] == {"cause": "model_call_timeout", "error": "timeout_error"}
+    assert_valid("verdict", result.verdict)
+
+
 async def test_the_cause_of_invalid_answers_is_recorded_without_the_text() -> None:
     gateway = FakeReviewGateway(["乱答一通", "还是乱答"])
     result = await Reviewer(gateway).review(request(STAGE, results_with({"text": "完成"}), state=task_state(rounds=rounds())))

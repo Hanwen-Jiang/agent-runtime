@@ -98,6 +98,19 @@ def _error_code(exc: BaseException) -> str:
     return snake or "unknown"
 
 
+def _model_failure_cause(exc: BaseException) -> dict[str, Any]:
+    """Keep timeout fallbacks distinguishable from other model failures.
+
+    The reason is written into the existing rule-fallback parameters so callers
+    can diagnose slow/unavailable gateways without adding a new event or state
+    field. Gateway-specific deadline codes are treated like Python timeouts.
+    """
+    error = _error_code(exc)
+    if isinstance(exc, TimeoutError) or any(token in error for token in ("timeout", "deadline")):
+        return {"cause": "model_call_timeout", "error": error}
+    return {"cause": "model_call_failed", "error": error}
+
+
 def _value(data: Any) -> struct_pb2.Value:
     value = struct_pb2.Value()
     json_format.ParseDict(data, value)
@@ -131,7 +144,7 @@ class Reviewer:
                     response = await self._call(request, messages, calls)
                 except Exception as exc:  # noqa: BLE001 — 模型出错算一次不合格，最后按规则判定（取消不是 Exception，原样往外走）
                     problems = [f"调用模型失败：{type(exc).__name__}"]
-                    cause = {"cause": "model_call_failed", "error": _error_code(exc)}
+                    cause = _model_failure_cause(exc)
                     text = ""
                 else:
                     value = json_format.MessageToDict(response.result) if response.HasField("result") else None
