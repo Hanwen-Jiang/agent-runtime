@@ -17,9 +17,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+terminalbench = [
+    "harbor==0.24.0",
+]
 test = [
     "pytest>=9.1",
     "pytest-asyncio>=1.4",
+]
+ragas = [
+    "ragas==0.4.3",
 ]
 
 [tool.uv.sources]
