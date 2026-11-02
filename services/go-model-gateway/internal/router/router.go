@@ -119,7 +119,7 @@ type FileAllowlist struct {
 	Path string
 }
 
-// modelBudgetPolicy 只在这里做配置文档的严格解码；预算执行复用现有用量账本，由后续准入/网关切片负责。
+// modelBudgetPolicy 只在这里做配置文档的严格解码；预算执行复用现有用量记录，由后续准入/网关切片负责。
 type modelBudgetPolicy struct {
 	DailyUSD   *float64 `json:"daily_usd"`
 	MonthlyUSD *float64 `json:"monthly_usd"`
