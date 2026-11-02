@@ -109,10 +109,11 @@ type Allowlist interface {
 
 // FileAllowlist 每次都重新读取开发用的租户策略文件（与 task-service 同一个文件，AR_DEV_TENANT_POLICIES_FILE）：
 //
-//	{"tenants": {"t1": {"effect_ceiling": "read", "model_allowlist": ["<profile id>"]}}}
+//	{"default": {"model_allowlist": ["<profile id>"]}, "tenants": {"t1": {"effect_ceiling": "read", "model_allowlist": ["<profile id>"]}}}
 //
-// Path 为空、文件不存在、租户没有列出或没有 model_allowlist 字段：不限制。model_allowlist 为空数组：一个模型都不允许。
-// 文件读不到：Transient；格式不对：Invalid。其他字段（例如 effect_ceiling）忽略。
+// Path 为空、文件不存在、租户没有列出且没有 default.model_allowlist，或对应条目没有 model_allowlist：不限制。
+// 租户条目优先于 default；model_allowlist 为空数组：一个模型都不允许。文件读不到：Transient；格式不对：Invalid。
+// 其他字段（例如 effect_ceiling）忽略。
 type FileAllowlist struct {
 	Path string
 }
@@ -130,6 +131,9 @@ func (f FileAllowlist) ModelAllowlist(_ context.Context, tenantID string) ([]str
 		return nil, false, providererr.Wrap(providererr.Transient, "tenant_policy_unavailable", "读不到租户策略文件", err)
 	}
 	var file struct {
+		Default struct {
+			ModelAllowlist *[]string `json:"model_allowlist"`
+		} `json:"default"`
 		Tenants map[string]struct {
 			ModelAllowlist *[]string `json:"model_allowlist"`
 		} `json:"tenants"`
@@ -138,10 +142,13 @@ func (f FileAllowlist) ModelAllowlist(_ context.Context, tenantID string) ([]str
 		return nil, false, providererr.New(providererr.Invalid, "invalid_tenant_policy", "租户策略文件格式不对")
 	}
 	tenant, ok := file.Tenants[tenantID]
-	if !ok || tenant.ModelAllowlist == nil {
+	if ok && tenant.ModelAllowlist != nil {
+		return slices.Clone(*tenant.ModelAllowlist), true, nil
+	}
+	if file.Default.ModelAllowlist == nil {
 		return nil, false, nil
 	}
-	return slices.Clone(*tenant.ModelAllowlist), true, nil
+	return slices.Clone(*file.Default.ModelAllowlist), true, nil
 }
 
 // Router 在一组 Model Profile 里选档，构造后只读，可并发使用。

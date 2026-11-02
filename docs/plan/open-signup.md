@@ -1,6 +1,6 @@
 # 开放注册与普通用户的资源限制
 
-> 状态（2026-11-02）：开放注册已上线；`tenant_busy` 已在 task-service 准入实现默认每租户 2 个未终态 Task，并用租户作用域锁保证并发提交不超额。Model Gateway 已实现 `tenant_policy.model_allowlist` 的空数组/白名单语义；默认免费策略仍需由部署侧发布受限的 allowlist。每日/月度模型预算、防滥用、付费策略和告警仍待完成。Go 验收测试见 `services/go-task-service/internal/taskapi/server_test.go`。
+> 状态（2026-11-03）：开放注册已上线；`tenant_busy` 已在 task-service 准入实现默认每租户 2 个未终态 Task，并用租户作用域锁保证并发提交不超额。Model Gateway 已实现 `tenant_policy.model_allowlist` 的空数组/白名单语义；默认免费策略 seed 已加入 `deploy/dev/default-tenant-policies.json`，生产仍需由部署侧创建 ConfigMap 并挂载。每日/月度模型预算、防滥用、付费策略和告警仍待完成。Go 验收测试见 `services/go-task-service/internal/taskapi/server_test.go`。
 
 ## 1. 现在的做法：平台默认的租户策略
 
@@ -32,3 +32,18 @@
    运维的封禁名单（`CODING_BLOCKED_LOGINS`）；出事时一键回到名单制（重新设 `CODING_ALLOWED_LOGINS`）。
 5. **付费或熟人账号**：给租户发布自己的租户策略（Registry），放宽上面各项；以后有了计费再按套餐出策略。
 6. **兜底与告警**：模型供应商控制台设整月花费上限；Grafana 按租户的花费面板加告警（全平台当天花费超过阈值通知运维）。
+
+## 7. 2026-11-03 默认免费模型白名单切片
+
+| 字段 | 决定 |
+|---|---|
+| Failure | 开放注册租户在部署未挂载策略文件时可选到高价 strong Profile，缺少默认费用边界。 |
+| Evidence | Model Gateway 已支持白名单和 `default` 回退；`open-signup` 明确要求部署侧发布受限 allowlist。 |
+| Minimum fix | 增加可审查的 `default-tenant-policies.json`，只引用现有 Profile；显式租户条目优先，未挂载文件仍保持兼容的不限制行为。 |
+| Benefit | 默认免费策略排除 `gpt-5.5` 与 `claude-opus-5-5`，保留 small/mid、`gpt-6.1-sol` 和 embedding Profile。 |
+| Performance cost | 每次 Gateway 调用读取一次已有策略文件，未增加远程调用或持久状态。 |
+| Implementation cost | FileAllowlist 增加一个 default 分支、一个 seed 和静态部署测试。 |
+| Operational cost | 生产部署需创建 ConfigMap 并设置 `modelGateway.tenantPoliciesConfigMap`；名单变更可通过文件更新生效。 |
+| New failure surface | 默认 seed 引用不存在的 Profile 会导致对应 Tier 无可选模型；静态测试和部署前校验覆盖该错误。 |
+| Release slice | 开放注册部署配置；不改变 proto/schema，不实现日/月预算。 |
+| Decision | **KEEP**；先作为显式部署 seed 发布，生产 ConfigMap rollout 仍单独验收。 |

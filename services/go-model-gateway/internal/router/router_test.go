@@ -383,6 +383,28 @@ func TestFileAllowlist(t *testing.T) {
 	}
 }
 
+func TestFileAllowlistDefaultPolicy(t *testing.T) {
+	ctx := context.Background()
+	path := writePolicies(t, `{"default":{"model_allowlist":["x/small-openai","x/mid-google"]},"tenants":{
+		"t1":{"model_allowlist":["x/strong-openai"]},
+		"t2":{"effect_ceiling":"read"},
+		"t3":{"model_allowlist":[]}}}`)
+	f := router.FileAllowlist{Path: path}
+	for tenant, want := range map[string][]string{
+		"t1": {"x/strong-openai"},
+		"t2": {"x/small-openai", "x/mid-google"},
+		"t-unlisted": {"x/small-openai", "x/mid-google"},
+	} {
+		got, restricted, err := f.ModelAllowlist(ctx, tenant)
+		if err != nil || !restricted || !slices.Equal(got, want) {
+			t.Errorf("%s 的默认/租户白名单：%v %v %v", tenant, got, restricted, err)
+		}
+	}
+	if got, restricted, err := f.ModelAllowlist(ctx, "t3"); err != nil || !restricted || len(got) != 0 {
+		t.Errorf("租户显式空数组应覆盖默认白名单：%v %v %v", got, restricted, err)
+	}
+}
+
 // 白名单读取失败时不能当成“不限制”放行。
 func TestAllowlistErrorIsReturned(t *testing.T) {
 	r := router.New(catalogOf(t, fixture), failingAllowlist{})

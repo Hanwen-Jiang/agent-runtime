@@ -35,6 +35,19 @@ $env:AR_MODEL_PROVIDER_BASE_URL = "<OpenAI 兼容端点，形如 https://host/v1
 model-gateway serve                                        # 默认监听 127.0.0.1:8091；计量记录写标准输出
 ```
 
+开放注册或云上默认免费策略可使用 `default-tenant-policies.json`：它通过 `default.model_allowlist`
+限制未单独配置策略的租户，只保留 small/mid 和 `gpt-6.1-sol` strong 档，同时保留两个 embedding Profile；
+明确排除 `gpt-5.5` 与 `claude-opus-5-5`。租户显式条目优先于 default，未设置白名单的文件仍保持“不限制”的兼容行为。
+
+本地运行时启用：
+
+```powershell
+$env:AR_DEV_TENANT_POLICIES_FILE = "$PWD\deploy\dev\default-tenant-policies.json"
+```
+
+云上把同一文件作为键 `tenant-policies.json` 创建 ConfigMap，再设置 Helm 的
+`modelGateway.tenantPoliciesConfigMap`；不设置该值时 Chart 仍不挂载白名单文件。
+
 不接真实端点时设 `AR_MODEL_PROVIDER=mock`（模拟模型，模型名为 `mock-small`、`mock-embed`，要配一份对应的 Profile 文件：
 `mock-model-profiles.json`）。
 
