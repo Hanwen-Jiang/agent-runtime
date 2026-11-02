@@ -45,7 +45,7 @@ def test_model_budget_inventory_is_grounded_in_the_candidate_docs() -> None:
         "tenant_budget_exceeded",
         "UTC",
         "每次模型调用",
-        "第二份 Worker 账本",
+        "唯一使用量来源",
     ):
         assert term in baseline, term
     assert "每日/月度模型预算" in open_signup
