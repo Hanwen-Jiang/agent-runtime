@@ -1,0 +1,12 @@
+[
+  {"id":"snapshot_has_cursor","category":"snapshot","expected":"snapshot exposes per-task last_event_id and generated_at"},
+  {"id":"delta_starts_after_cursor","category":"snapshot","expected":"delta events have event_id greater than the snapshot cursor"},
+  {"id":"reconnect_resume","category":"snapshot","expected":"Last-Event-ID resumes without dropping an event"},
+  {"id":"expired_cursor_requests_snapshot","category":"snapshot","expected":"expired cursor returns an explicit resnapshot result"},
+  {"id":"duplicate_event_is_idempotent","category":"snapshot","expected":"same event_id is applied once"},
+  {"id":"tenant_and_session_scope","category":"isolation","expected":"snapshot and delta never cross tenant or session scope"},
+  {"id":"secret_free_payload","category":"privacy","expected":"snapshot and events contain no SecretStore value or proxy credential"},
+  {"id":"latency_segments","category":"latency","expected":"queue/planner/sandbox/first_event segments are measurable or unknown"},
+  {"id":"cold_start_is_reused","category":"latency","expected":"sandbox_startup_ms appears only for a cold sandbox"},
+  {"id":"streaming_prerequisite","category":"streaming","expected":"token_delta and thinking_delta stay disabled until StreamGenerate semantics are frozen"}
+]
