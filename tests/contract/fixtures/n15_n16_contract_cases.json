@@ -1,0 +1,28 @@
+{
+  "schema": "n15_n16_contract_cases",
+  "version": 1,
+  "cases": [
+    {"id":"mcp_registration_requires_owner","feature":"N-15","area":"ownership","expect":"deny","assertion":"a connection without tenant/user ownership cannot be registered"},
+    {"id":"mcp_call_requires_allowlist","feature":"N-15","area":"authorization","expect":"deny","assertion":"an unregistered server or tool cannot be invoked"},
+    {"id":"mcp_tool_requires_effect_metadata","feature":"N-15","area":"authorization","expect":"deny","assertion":"a tool missing effect, timeout, schema, or idempotency metadata cannot enter the core registry"},
+    {"id":"mcp_secret_ref_only","feature":"N-15","area":"secrets","expect":"allow","assertion":"runtime carries a secret_ref and proxy injects the value only for the configured host"},
+    {"id":"mcp_wrong_host_secret_denied","feature":"N-15","area":"secrets","expect":"deny","assertion":"a secret is not injected for a host outside its configured HTTPS allowlist"},
+    {"id":"mcp_payload_has_no_secret","feature":"N-15","area":"privacy","expect":"deny","assertion":"responses, logs, events, traces, and errors contain no plaintext MCP secret"},
+    {"id":"mcp_connection_tenant_scope","feature":"N-15","area":"isolation","expect":"deny","assertion":"a user or tenant cannot read or invoke another owner’s connection"},
+    {"id":"mcp_disconnect_revokes_lease","feature":"N-15","area":"lifecycle","expect":"deny","assertion":"disconnect or revoke makes existing lease/token unusable"},
+    {"id":"mcp_lifecycle_is_idempotent","feature":"N-15","area":"lifecycle","expect":"allow","assertion":"duplicate connect, disconnect, revoke, and reconnect requests have one observable outcome"},
+    {"id":"mcp_old_client_ignores_fields","feature":"N-15","area":"compatibility","expect":"allow","assertion":"old clients remain usable when connection responses add fields"},
+    {"id":"agent_identity_is_scoped","feature":"N-16","area":"identity","expect":"allow","assertion":"each child has task, parent, agent, session, and tenant scope identifiers"},
+    {"id":"agent_cross_scope_denied","feature":"N-16","area":"isolation","expect":"deny","assertion":"a child cannot read or write another tenant, task, or session"},
+    {"id":"sub_agent_default_read_only","feature":"N-16","area":"authorization","expect":"deny","assertion":"sub_agent cannot perform a write effect unless explicitly authorized"},
+    {"id":"sub_task_depth_limit","feature":"N-16","area":"lifecycle","expect":"deny","assertion":"sub_task nesting beyond depth two is rejected with a diagnostic reason"},
+    {"id":"shared_artifact_single_writer","feature":"N-16","area":"concurrency","expect":"conflict","assertion":"a shared artifact has one writer at a time and never silently overwrites"},
+    {"id":"parallel_reads_are_scoped","feature":"N-16","area":"concurrency","expect":"allow","assertion":"independent read children may run concurrently within the tenant/task budget"},
+    {"id":"parent_cancel_propagates","feature":"N-16","area":"cancellation","expect":"allow","assertion":"cancelling a parent reaches all active children and prevents new tool calls"},
+    {"id":"child_terminal_is_idempotent","feature":"N-16","area":"cancellation","expect":"allow","assertion":"duplicate child cancel, timeout, completion, and report events do not duplicate effects"},
+    {"id":"tenant_agent_cap_is_enforced","feature":"N-16","area":"quota","expect":"deny","assertion":"unbounded child fanout is rejected by existing tenant/task active limits"},
+    {"id":"agent_trace_is_correlated","feature":"N-16","area":"observability","expect":"allow","assertion":"Task, Round, child agent, and tool spans share correlation identifiers without secrets"},
+    {"id":"agent_old_client_compatibility","feature":"N-16","area":"compatibility","expect":"allow","assertion":"old clients can read task/result when agent and round fields are added"},
+    {"id":"unknown_agent_state_not_success","feature":"N-16","area":"compatibility","expect":"deny","assertion":"unknown child or cancellation states are not treated as successful completion"}
+  ]
+}
