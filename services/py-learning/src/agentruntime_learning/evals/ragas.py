@@ -7,6 +7,7 @@ base learning environment where Ragas is not installed.
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
@@ -86,7 +87,14 @@ class _GatewayBudget:
         self.spent_usd_micros += max(0, int(amount))
 
 
-class ModelGatewayRagasLLM:
+try:
+    from ragas.llms import InstructorBaseRagasLLM as _InstructorBaseRagasLLM
+except ImportError:  # pragma: no cover - optional dependency in the base image
+    class _InstructorBaseRagasLLM:  # type: ignore[no-redef]
+        pass
+
+
+class ModelGatewayRagasLLM(_InstructorBaseRagasLLM):
     """Ragas 0.4.3 structured LLM adapter backed by Model Gateway."""
 
     def __init__(self, gateway: Any, *, tenant_id: str, tier: str = "strong@medium", max_cost_usd_micros: int = 0, budget: _GatewayBudget | None = None) -> None:
@@ -95,7 +103,15 @@ class ModelGatewayRagasLLM:
         self.cost_usd_micros = 0
         self.budget = budget
 
-    async def agenerate(self, prompt_str: str, schema: Any = None, **_: Any) -> Any:
+    def generate(self, prompt: Any, response_model: Any) -> Any:
+        """Synchronous Instructor contract for Ragas callers outside an event loop."""
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(self.agenerate(prompt, response_model))
+        raise RuntimeError("ModelGatewayRagasLLM.generate cannot run inside an active event loop; use agenerate")
+
+    async def agenerate(self, prompt_str: str, response_model: Any = None, **_: Any) -> Any:
         from agentruntime.common.v1 import enums_pb2, payload_pb2, tenant_pb2
         from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
         from google.protobuf import json_format, struct_pb2
@@ -105,7 +121,7 @@ class ModelGatewayRagasLLM:
         remaining = self.budget.remaining() if self.budget else (self.max_cost_usd_micros - self.cost_usd_micros if self.max_cost_usd_micros else 0)
         if (self.budget and remaining <= 0) or (self.max_cost_usd_micros and remaining <= 0):
             raise RuntimeError("ragas_budget_exhausted")
-        output_schema = schema.model_json_schema() if hasattr(schema, "model_json_schema") else schema
+        output_schema = response_model.model_json_schema() if hasattr(response_model, "model_json_schema") else response_model
         generation = mg.GenerateParams(messages=[mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=str(prompt_str))])
         if output_schema:
             value = struct_pb2.Value()
@@ -127,9 +143,9 @@ class ModelGatewayRagasLLM:
         if self.budget:
             self.budget.charge(cost)
         data = json_format.MessageToDict(response.result)
-        if schema is None:
+        if response_model is None:
             return response.text or data
-        return schema.model_validate(data) if hasattr(schema, "model_validate") else data
+        return response_model.model_validate(data) if hasattr(response_model, "model_validate") else data
 
 
 class ModelGatewayRagasEmbeddings:
@@ -254,7 +270,8 @@ async def _score(metric: Any, row: dict[str, Any]) -> float | None:
         if hasattr(metric, "single_turn_ascore"):
             value = metric.single_turn_ascore(sample)
         elif hasattr(metric, "ascore"):
-            value = metric.ascore(**row)
+            parameters = inspect.signature(metric.ascore).parameters
+            value = metric.ascore(**{name: row[name] for name in parameters if name in row})
         else:
             return None
         value = await value if hasattr(value, "__await__") else value

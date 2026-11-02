@@ -57,7 +57,9 @@ class RuntimeBridgeAgent(_HarborBaseAgent):
     by the isolated eval deployment through ``AR_TERMINALBENCH_RUNTIME_COMMAND`` and
     receives the task instruction through ``{instruction}``; its exit code is the
     Runtime-side success signal.  This keeps the bridge explicit without changing the
-    production Worker or monkey-patching Harbor internals.
+    production Worker or monkey-patching Harbor internals. Official Terminal-Bench
+    2.0 tasks use ``/app``; deployments can override it with
+    ``AR_TERMINALBENCH_WORKSPACE``.
     """
 
     def __init__(self, *args: Any, runtime_command: str | None = None, **kwargs: Any) -> None:
@@ -67,6 +69,7 @@ class RuntimeBridgeAgent(_HarborBaseAgent):
         else:
             super().__init__(*args, **kwargs)
         self.runtime_command = runtime_command or os.environ.get("AR_TERMINALBENCH_RUNTIME_COMMAND", "").strip()
+        self.workspace = os.environ.get("AR_TERMINALBENCH_WORKSPACE", "/app").strip() or "/app"
 
     @staticmethod
     def name() -> str:
@@ -84,10 +87,10 @@ class RuntimeBridgeAgent(_HarborBaseAgent):
             raise RuntimeError("AR_TERMINALBENCH_RUNTIME_COMMAND is required for the Harbor Runtime bridge")
         command = self.runtime_command.format(
             instruction=shlex.quote(instruction),
-            workspace="/workspace",
+            workspace=shlex.quote(self.workspace),
             budget_usd=os.environ.get("AR_TERMINALBENCH_BUDGET_USD", ""),
         )
-        result = await environment.exec(command, cwd="/workspace")
+        result = await environment.exec(command, cwd=self.workspace)
         context.metadata = {"agentruntime": {"return_code": result.return_code, "stdout": result.stdout or "", "stderr": result.stderr or ""}}
         if result.return_code != 0:
             raise RuntimeError(f"Runtime bridge exited with code {result.return_code}")
@@ -160,6 +163,10 @@ def _parse_harbor_results(out: Path, manifest: dict[str, Any]) -> list[Result]:
                 continue
             seen.add(key)
             source = by_name.get(task_name, {})
+            if not source:
+                # Job-level summaries use the timestamped job directory as a
+                # fallback task name. They are aggregate metadata, not a trial.
+                continue
             status = "completed" if reward is not None else "infra_failed"
             agent_result = record.get("agent_result") or {}
             cost = record.get("cost_usd")
@@ -175,7 +182,9 @@ def _run_harbor(manifest: dict[str, Any], out: Path, *, budget_usd: float) -> li
         raise RuntimeError("runtime_bridge_command_missing: set AR_TERMINALBENCH_RUNTIME_COMMAND")
     out.mkdir(parents=True, exist_ok=True)
     job_dir = out / "harbor-job"
-    command = [sys.executable, "-m", "harbor", "run", "--dataset", f"terminal-bench@{DATASET_VERSION.removeprefix('terminal-bench-')}", "--agent", HARBOR_AGENT_IMPORT, "--n-concurrent", "1", "--n-tasks", str(len(names)), "--jobs-dir", str(job_dir), "--yes"]
+    # Harbor exposes its CLI from ``harbor.cli.main``; the package itself has
+    # no ``__main__`` module in Harbor 0.24.0.
+    command = [sys.executable, "-m", "harbor.cli.main", "run", "--dataset", f"terminal-bench@{DATASET_VERSION.removeprefix('terminal-bench-')}", "--agent", HARBOR_AGENT_IMPORT, "--n-concurrent", "1", "--n-tasks", str(len(names)), "--jobs-dir", str(job_dir), "--yes"]
     for name in names:
         command.extend(["--include-task-name", name])
     env = os.environ.copy()
