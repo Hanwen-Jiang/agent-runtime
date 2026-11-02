@@ -184,7 +184,7 @@
 | 107 | A：schema、账本、时区、计费规则全部批准后实现 | 已批准，本基线冻结后进入独立实现批次。 | Model Gateway + Task Service / 待实现 |
 | 108 | A：ContextBuilder 输入、截断顺序、replay 语义冻结后实现 | 已批准；模型节点接入仍单独验收。 | Worker / Temporal / 待实现 |
 | 109 | A：工具链 → 基础组件 → Sandbox → 存储/网络 → 观测 | 真实环境按此顺序推进。 | Release + Infra / 已批准 |
-| 110 | A：每题形成 decision、owner、截止日期 | 本文件记录 decision 与 owner；截止日期在工作项看板维护。 | 架构负责人 / 已批准 |
+| 110 | A：每题形成 decision、owner、截止日期 | 决策与 owner 记录在本文件，具体实现截止日期按下方工作项表执行；外部资源项使用“资源到位后”口径。 | 架构负责人 / 已批准 |
 | 111 | A：无法达成一致标记 DEFER | 不由实现人员自行选择更复杂方案。 | 架构负责人 / 已批准 |
 | 112 | A：冻结第一阶段基线 | 后续只接受可追踪变更。 | 架构 + 安全 / 已批准 |
 
@@ -195,6 +195,19 @@
 3. 预算批次：复用现有用量账本，UTC 自然日/月，原子预留与实际结算，Task 准入和 Gateway 双重检查。
 4. R-03 批次：先冻结 Activity 输入与 replay 语义，再接入模型节点 ContextBuilder。
 5. 真实环境：严格按 Q109 顺序执行；缺少组件按 blocked_external 记录。
+
+## 决策责任与截止日期
+
+| 工作项 | Owner | 截止日期 |
+| --- | --- | --- |
+| 默认白名单、Helm ConfigMap 与默认额度收尾 | Model Gateway + Helm | 2026-11-03（已完成静态验收） |
+| 模型预算权威用量记录、原子预留、Task/Gateway 双检查 | Model Gateway + Task Service | 2026-11-06；缺账本接口前保持 DEFER |
+| 多因素模型路由元数据与权重 | Model Gateway + 架构负责人 | 2026-11-07；先冻结 `released_at`、阶段质量、可用性字段 |
+| Activity ContextBuilder 输入与 replay 验收 | Worker + Temporal | 2026-11-07 |
+| Runtime EnvRecord 查询与健康确认 | Runtime EnvironmentService | 2026-11-10；需 Go/buf 和 API 评审 |
+| coding-agent `/env` 只读投影与环境配置 | coding-agent + Runtime | 2026-11-12；依赖 EnvRecord |
+| Skills、MCP、文件交付逐项验收 | Registry + SecretStore + Worker | 2026-11-14 |
+| 真实集群全组件验收 | Release + Infra | 资源到位后 2 个工作日；缺资源标记 `blocked_external` |
 
 ## 基线变更规则
 
