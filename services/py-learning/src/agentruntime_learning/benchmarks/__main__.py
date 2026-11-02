@@ -17,8 +17,10 @@ Docker 从官方镜像取出各任务的工作目录（只收文本文件，带�
 from __future__ import annotations
 
 import argparse
+import asyncio
 import contextlib
 import hashlib
+import importlib
 import json
 import os
 import re
@@ -27,9 +29,13 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
+from agentruntime_learning.benchmarks import suite
 from agentruntime_learning.benchmarks import swebench as sb
+from agentruntime_learning.benchmarks import tbench_harbor
 from agentruntime_learning.benchmarks import terminalbench as tb
 from agentruntime_learning.benchmarks.client import ApiError, RuntimeClient
+from agentruntime_learning.evals import deepeval_metrics as dm
+from agentruntime_learning.evals import ragas as rg
 
 TOKEN_ENV = "AR_TASK_API_TOKEN"
 OTLP_ENV = "OTEL_EXPORTER_OTLP_ENDPOINT"
@@ -121,6 +127,40 @@ def _parser() -> argparse.ArgumentParser:
     tg.add_argument("--max-workers", type=int, default=4)
     trep = tsub.add_parser("report", help="写 report.json 与 report.md")
     trep.add_argument("--out", type=Path, required=True)
+    th = tsub.add_parser("harbor", help="经 Harbor（官方框架）跑：在任务的容器里跑 Runtime 的桥命令、在同一个容器里判分；fixture、oracle 只检查链路")
+    th.add_argument("--tasks", type=Path, help="任务 manifest JSON；不填时使用内置 5 题 smoke manifest")
+    th.add_argument("--out", type=Path, required=True)
+    th.add_argument("--budget-usd", type=float, required=True)
+    th.add_argument("--mode", choices=("fixture", "oracle", "harbor"), default="fixture")
+
+    suite_parser = benches.add_parser("suite", help="并发运行多个评测适配器")
+    suite_sub = suite_parser.add_subparsers(dest="suite_command", required=True)
+    suite_run = suite_sub.add_parser("run", help="按计划运行评测")
+    suite_run.add_argument("--plan", type=Path, required=True)
+    suite_run.add_argument("--out", type=Path, required=True)
+    suite_run.add_argument("--dry-run", action="store_true")
+
+    deepeval = benches.add_parser("deepeval", help="DeepEval 首轮适配器")
+    deepeval_sub = deepeval.add_subparsers(dest="deepeval_command", required=True)
+    deepeval_run = deepeval_sub.add_parser("run", help="运行 Task 轨迹 JSON cases")
+    deepeval_run.add_argument("--cases", type=Path, required=True)
+    deepeval_run.add_argument("--out", type=Path, required=True)
+    deepeval_run.add_argument("--budget-usd", type=float, required=True)
+    deepeval_run.add_argument("--mode", choices=("fixture", "gateway"), default="fixture")
+    deepeval_run.add_argument("--tenant-id", default="evals")
+    deepeval_run.add_argument("--gateway-factory", default=os.environ.get("AR_EVAL_GATEWAY_FACTORY", ""))
+    deepeval_run.add_argument("--judge-tier", default="strong@medium")
+
+    ragas = benches.add_parser("ragas", help="Ragas 首轮适配器")
+    ragas_sub = ragas.add_subparsers(dest="ragas_command", required=True)
+    ragas_run = ragas_sub.add_parser("run", help="运行检索 JSON cases")
+    ragas_run.add_argument("--cases", type=Path, required=True)
+    ragas_run.add_argument("--out", type=Path, required=True)
+    ragas_run.add_argument("--budget-usd", type=float, required=True)
+    ragas_run.add_argument("--mode", choices=("fixture", "gateway"), default="fixture")
+    ragas_run.add_argument("--tenant-id", default="evals")
+    ragas_run.add_argument("--gateway-factory", default=os.environ.get("AR_EVAL_GATEWAY_FACTORY", ""))
+    ragas_run.add_argument("--embedding-version")
     return parser
 
 
@@ -149,6 +189,8 @@ def _lines(path: Path | None) -> list[str]:
 
 
 def _terminalbench(args: argparse.Namespace) -> int:
+    if args.command == "harbor":
+        return _terminalbench_harbor(args)
     if args.command == "fetch":
         print(f"Terminal-Bench 2.0：{args.out}（提交 {tb.fetch(args.out, repo=args.repo, ref=args.ref)}）")
         return 0
@@ -231,6 +273,64 @@ def _run(args: argparse.Namespace) -> int:
     return 1 if summary.errors else 0
 
 
+def _suite_run(args: argparse.Namespace) -> int:
+    try:
+        plan = suite.parse_plan(json.loads(args.plan.read_text("utf-8")))
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"读取评测计划失败：{exc}", file=sys.stderr)
+        return 2
+    if args.dry_run:
+        for argv in suite.dry_run(plan, args.out):
+            print(" ".join(argv))
+        return 0
+    summary = suite.run_suite(plan, args.out)
+    print((args.out / "suite-report.md").read_text("utf-8"))
+    return 0 if summary.status == "passed" else 1
+
+
+def _write_json_report(out: Path, report: dict[str, object], *, eval_name: str, budget_usd: float) -> None:
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    manifest = {"eval": eval_name, "mode": "fixture", "budget_usd": budget_usd, "estimated": True, "measured": False,
+                "sample_count": len(report.get("cases") or []) if isinstance(report.get("cases"), list) else 0}
+    (out / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _terminalbench_harbor(args: argparse.Namespace) -> int:
+    manifest = tbench_harbor.load_manifest(args.tasks) if args.tasks else tbench_harbor.smoke_manifest()
+    results = tbench_harbor.run(manifest, args.out, budget_usd=args.budget_usd, mode=args.mode)
+    return 0 if all(r.status == "completed" and r.verifier_status in {"passed", "resolved", "success"} for r in results) else 1
+
+
+def _load_gateway(spec: str):
+    module_name, sep, attr = spec.partition(":")
+    if not sep or not module_name or not attr:
+        raise ValueError("gateway mode requires --gateway-factory <module>:<factory> or AR_EVAL_GATEWAY_FACTORY")
+    return getattr(importlib.import_module(module_name), attr)()
+
+
+def _deepeval_run(args: argparse.Namespace) -> int:
+    if args.mode == "gateway":
+        report = asyncio.run(dm.evaluate_gateway_cases(dm.load_cases(args.cases), _load_gateway(args.gateway_factory), tenant_id=args.tenant_id, budget_usd=args.budget_usd, tier=args.judge_tier))
+    else:
+        report = dm.evaluate_cases(dm.load_cases(args.cases), source="fixture")
+    _write_json_report(args.out, report, eval_name="deepeval", budget_usd=args.budget_usd)
+    if args.mode == "gateway":
+        (args.out / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        (args.out / "manifest.json").write_text(json.dumps({"eval": "deepeval", "mode": "gateway", "budget_usd": args.budget_usd, "estimated": False, "measured": True, "sample_count": len(report.get("cases") or []), "cost_usd": report.get("cost_usd", 0.0)}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return 0 if all(row.get("status") == "ok" for row in report["cases"]) else 1
+
+
+def _ragas_run(args: argparse.Namespace) -> int:
+    if args.mode == "gateway":
+        report = rg.run_gateway(args.cases, gateway=_load_gateway(args.gateway_factory), tenant_id=args.tenant_id, budget_usd=args.budget_usd, embedding_version=args.embedding_version, out=args.out)
+    else:
+        report = rg.run_fixture(args.cases, out=args.out)
+    report["budget_usd"] = args.budget_usd
+    (args.out / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     # 输出重定向到文件时 Windows 用本地代码页（例如 cp1252），中文摘要编码不了：换成转义，不让打印中断。
     for stream in (sys.stdout, sys.stderr):
@@ -241,8 +341,14 @@ def main(argv: list[str] | None = None) -> int:
     except SystemExit as exc:
         return 0 if exc.code in (0, None) else 2
     try:
+        if args.benchmark == "suite":
+            return _suite_run(args)
         if args.benchmark == "terminalbench":
             return _terminalbench(args)
+        if args.benchmark == "deepeval":
+            return _deepeval_run(args)
+        if args.benchmark == "ragas":
+            return _ragas_run(args)
         if args.command == "fetch":
             count = sb.fetch_instances(args.out, dataset=args.dataset, split=args.split)
             print(f"取到 {count} 题：{args.out}")

@@ -94,7 +94,7 @@ def _parser() -> argparse.ArgumentParser:
     drun.add_argument("--concurrency", type=int, default=2)
     drun.add_argument("--task-timeout-min", type=float, default=30.0)
     drun.add_argument("--model-name", default="agent-runtime", help="被测的系统的标签（看板与报告用）")
-    dscore = dsub.add_parser("score", help="用 DeepEval 的桥给交付打分（要装了 frameworks-requirements.txt 的 Python）")
+    dscore = dsub.add_parser("score", help="用 DeepEval 的桥给交付打分（要装了 eval-requirements.txt 的 Python）")
     dscore.add_argument("--eval-set", type=Path, default=None)
     dscore.add_argument("--out", type=Path, required=True)
     dscore.add_argument("--framework-python", required=True, help="装了 DeepEval 的 Python")

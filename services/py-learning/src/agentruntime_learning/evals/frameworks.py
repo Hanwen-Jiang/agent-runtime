@@ -1,5 +1,5 @@
 """DeepEval 与 Ragas 的接法（docs/plan/feedback-2026-11-01.md N-12、N-13）：两个框架不进本仓库的依赖，装在单独的 Python 里
-（services/py-learning/frameworks-requirements.txt），由这里起它们的桥（evals/bridges/*.py，只用标准库与框架本身），JSONL 进出。
+（services/py-learning/eval-requirements.txt），由这里起它们的桥（evals/bridges/*.py，只用标准库与框架本身），JSONL 进出。
 同 SWE-bench 的官方判分工具的做法。
 
 判分的模型经 OpenAI 兼容的接口。地址、密钥按顺序取：AR_JUDGE_BASE_URL 与 AR_JUDGE_API_KEY；没有时取 AR_MODEL_PROVIDER_BASE_URL 与
@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 
 BRIDGES = Path(__file__).resolve().parent / "bridges"
-REQUIREMENTS = Path(__file__).resolve().parents[3] / "frameworks-requirements.txt"
+REQUIREMENTS = Path(__file__).resolve().parents[3] / "eval-requirements.txt"
 PROVIDER_FILE = Path.home() / ".agentruntime" / "model-provider.env"
 PASS_THROUGH = ("PATH", "HOME", "LANG", "LC_ALL", "SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "https_proxy", "http_proxy", "no_proxy")
 DEFAULT_TIMEOUT_S = 6 * 3600

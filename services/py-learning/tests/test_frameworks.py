@@ -6,7 +6,7 @@
 - 交付质量（DeepEval）：用例与 fixture 的校验；经 Task API 跑（工作区从 fixture 的文件建，没有远端），记下交付；打分只打跑完、
   没打过的；汇总与通过率；报告写明没确认的标注。
 - 记忆检索（Ragas）：评测集校验；lexical 基线；hit、recall、MRR；没给框架的 Python 时不跑桥，给了没给判分模型时只算离线指标。
-- 设 AR_TEST_FRAMEWORKS_PYTHON（装了 frameworks-requirements.txt 的 Python）时对真的 Ragas 跑离线指标、对真的 DeepEval 跑一条 G-Eval
+- 设 AR_TEST_FRAMEWORKS_PYTHON（装了 eval-requirements.txt 的 Python）时对真的 Ragas 跑离线指标、对真的 DeepEval 跑一条 G-Eval
   （判分模型是本机的假接口）。
 """
 
@@ -53,7 +53,7 @@ def test_bridges_import_only_the_stdlib_and_their_framework(bridge: str, allowed
 
 def test_the_framework_versions_are_pinned() -> None:
     lines = [ln for ln in fw.REQUIREMENTS.read_text("utf-8").splitlines() if ln.strip() and not ln.startswith("#")]
-    assert {ln.split("==")[0] for ln in lines} == {"deepeval", "ragas", "langchain-openai", "rapidfuzz"} and all("==" in ln for ln in lines)
+    assert {ln.split("==")[0] for ln in lines} >= {"deepeval", "ragas", "langchain-openai", "rapidfuzz"} and all("==" in ln for ln in lines)
 
 
 # --- 判分模型的配置 ---
@@ -131,7 +131,7 @@ def test_missing_results_are_an_error(bridges: Path, monkeypatch: pytest.MonkeyP
 
 
 def test_a_missing_interpreter_says_how_to_build_one(bridges: Path) -> None:
-    with pytest.raises(fw.BridgeError, match="frameworks-requirements.txt"):
+    with pytest.raises(fw.BridgeError, match="eval-requirements.txt"):
         fw.run_bridge("fake", "/nonexistent/python", [{"id": "a"}], bridges=bridges)
 
 
@@ -289,7 +289,7 @@ def test_a_retriever_can_be_loaded_by_name() -> None:
 # --- 真的框架（设 AR_TEST_FRAMEWORKS_PYTHON 才跑） ---
 
 FRAMEWORKS = os.environ.get("AR_TEST_FRAMEWORKS_PYTHON", "")
-needs_frameworks = pytest.mark.skipif(not FRAMEWORKS, reason="设 AR_TEST_FRAMEWORKS_PYTHON（装了 frameworks-requirements.txt 的 Python）才跑")
+needs_frameworks = pytest.mark.skipif(not FRAMEWORKS, reason="设 AR_TEST_FRAMEWORKS_PYTHON（装了 eval-requirements.txt 的 Python）才跑")
 
 
 @needs_frameworks

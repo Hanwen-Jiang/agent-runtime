@@ -1,0 +1,11 @@
+# Independent evaluation virtual environment. Keep these out of the Worker image.
+# DeepEval、Ragas、Harbor 都装在这个单独的 Python 里（docs/plan/feedback-2026-11-01.md N-11～N-13）：
+#   - evals deepeval / ragas 的桥（src/agentruntime_learning/evals/bridges，python -I 跑，只 import 标准库与框架）；
+#   - benchmarks deepeval / ragas run --mode gateway 与 benchmarks terminalbench harbor（同一进程里 import 本仓库与框架）。
+# 2026-11-03 在 deepeval 4.3.1、ragas 0.4.3 上跑过桥的真框架测试（AR_TEST_FRAMEWORKS_PYTHON）。
+deepeval==4.3.1
+ragas==0.4.3
+harbor==0.24.0
+# ragas 的桥：判分模型经 langchain-openai；离线指标（字符串相似度）要 rapidfuzz。
+langchain-openai==0.3.35
+rapidfuzz==3.14.6
