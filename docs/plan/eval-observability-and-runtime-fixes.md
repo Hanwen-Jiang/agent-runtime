@@ -908,3 +908,46 @@ Task API 的令牌取环境变量 `AR_TASK_API_TOKEN`，不写进输出目录。
 
 同一个 Stage 里前面的 Node 花了钱之后，后面的 Node 仍可能超过剩余而被拒。这次没有改 `budget_check`，等数据说明它还有影响再说。
 
+
+### 11.16 评测看板改成动态的：评测 telemetry 化（2026-11-02，设计稿，要人确认）
+
+人的要求：evals.cgent.link 现在是静态页面（`scripts/eval_dashboard.py --public` 生成、ConfigMap 发布），要做成动态的，“直接把测试 telemetry 化”。
+
+**现状（2026-11-02 在线上查的）**
+
+- 评测已经会发 telemetry（第 9.2 节）：`eval.run`、`eval.case` span，跑完时 `runtime.eval.runs`、`runtime.eval.score`。但只在设了
+  `OTEL_EXPORTER_OTLP_ENDPOINT` 时发；之前的评测都没设，**VictoriaMetrics 里一条评测的序列都没有**（只有网关的 `runtime_model_*`）。
+- 指标只在一次运行结束时发，跑到一半看不到进度。SWE-bench 的适配器不发指标，结果只在输出目录的文件里。
+- 看板的 Pod（learning 镜像里的 `dashboard_server`）只答静态页；网络策略只许入口进 8080，出方向全拒，连不到 VictoriaMetrics。
+
+**做法**
+
+1. **评测边跑边发**（`agentruntime_learning.evals.runner`、`benchmarks.swebench`，以后的 Terminal-Bench、DeepEval、Ragas 用同一组）：
+   - 开始时 `runtime.eval.cases_planned`（计数，值是这次要跑的用例数）；每条用例结束 `runtime.eval.cases`（计数，属性 `eval.outcome`：
+     passed、failed、error）与 `runtime.eval.case_cost_usd`（直方图）；结束时照旧 `runtime.eval.score`，另加 `runtime.eval.finished`。
+   - 共同的属性：`eval.suite`（task-loop、context、swebench……）、`eval.run_id`、`eval.subject`、`eval.split`、`eval.model`（实际服务的 Profile）。
+     只有名字与数字，不带用例原文（同第 9.2 节）。留出集照旧只发汇总。
+   - 服务器上的评测脚本设 `OTEL_EXPORTER_OTLP_ENDPOINT` 指到集群里的 Collector；Collector 已经把指标写进 VictoriaMetrics。
+2. **看板读指标**（`dashboard_server`）：
+   - 新加 `/api/live.json`：服务端用**固定的几条** PromQL 查 VictoriaMetrics（`AR_EVAL_METRICS_URL`），不转发客户端的查询；结果缓存 20 秒。
+     内容：正在跑的运行（已完成 / 总数、到目前的通过率与花费、最后更新时间）、各套件最近一次的分数、按时间的分数曲线。
+   - 页面每 30 秒取一次、局部重画；“正在跑”一栏显示进度条。原来写好的说明（怎么考、发现了什么）保留。VictoriaMetrics 连不上时显示最后一份静态数据并写明。
+   - CSP 加 `connect-src 'self'`；其余不变。
+3. **Chart**：看板的网络策略加出方向到 VictoriaMetrics（observability 命名空间的 8428）与 DNS；`evalDashboard.metricsUrl` 给 `AR_EVAL_METRICS_URL`。
+
+**公开的边界**：只有评测指标（`runtime_eval_*`），查询在服务端写死，生产租户的指标（`runtime_model_*` 等）一条也不出去。
+花费只给评测本身的（评测集与 Benchmark 花了多少），不给租户的。
+
+**验收测试**
+
+| 文件 | 内容 |
+| --- | --- |
+| `services/py-learning/tests/test_eval_live_telemetry.py` | 开始发 planned；每条用例发一次 cases（三种 outcome）与 case_cost_usd；结束发 score 与 finished；属性齐、没有用例原文；留出集只发汇总；没设 OTel 时一条不发 |
+| `services/py-learning/tests/test_swebench_telemetry.py` | 适配器每题提交、结束各发一次；续跑不重复发已经算过的题；判分后发 resolved |
+| `services/py-learning/tests/test_dashboard_live.py` | `/api/live.json` 只用固定的查询（假的 VictoriaMetrics 记下收到的查询）；缓存 20 秒；VM 不通时返回最后一份并标明；不接受客户端给的查询参数；CSP 带 `connect-src 'self'`；静态页照旧 |
+| `tests/deploy/test_eval_dashboard.py`（补） | 给了 `metricsUrl` 时渲染出方向到 VM 的网络策略与环境变量；不给时与现在一样 |
+
+**要人定的**
+
+1. 正在跑的评测的**花费**要不要公开（建议公开：都是评测自己花的钱，不涉及租户）。
+2. 运行的保留时长：VictoriaMetrics 默认保留期内的都显示；更早的靠静态页里写死的历史（基线、调优 1、调优 2）。
