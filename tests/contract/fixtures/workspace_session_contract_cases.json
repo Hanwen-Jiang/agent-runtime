@@ -1,0 +1,18 @@
+{
+  "schema": "workspace_session_contract_cases",
+  "version": 1,
+  "cases": [
+    {"id": "tree_stays_in_workspace", "area": "workspace", "expect": "allow", "assertion": "tree returns only nodes below the authorized workspace root"},
+    {"id": "read_has_size_and_line_limits", "area": "workspace", "expect": "deny", "assertion": "read rejects a file or line window above the configured limit with a bounded error"},
+    {"id": "log_has_bounded_window", "area": "logs", "expect": "allow", "assertion": "log returns a bounded window/cursor and does not require the full log"},
+    {"id": "discard_is_idempotent", "area": "lifecycle", "expect": "allow", "assertion": "repeating discard for the same authorized workspace is safe and has one observable result"},
+    {"id": "copy_requires_explicit_target", "area": "lifecycle", "expect": "deny", "assertion": "copy rejects missing, nested, existing, or quota-exceeding targets"},
+    {"id": "tenant_session_workspace_isolation", "area": "isolation", "expect": "deny", "assertion": "tenant, user, session, and workspace scopes cannot read or mutate one another"},
+    {"id": "reject_parent_path", "area": "path_security", "expect": "deny", "assertion": ".. segments, absolute paths, NUL bytes, and root escapes are rejected"},
+    {"id": "reject_symlink_escape_and_host_mount", "area": "path_security", "expect": "deny", "assertion": "symlink traversal and host mount paths cannot escape the workspace root"},
+    {"id": "secret_free_workspace_payloads", "area": "privacy", "expect": "deny", "assertion": "tree/read/log/copy responses, events, traces, and errors contain no SecretStore value or Git credential"},
+    {"id": "env_requires_runtime_service", "area": "environment_projection", "expect": "blocked_external", "assertion": "without EnvironmentService/ledger query, /env cannot claim ready, reused, or expiry"},
+    {"id": "legacy_sse_event_compatibility", "area": "compatibility", "expect": "allow", "assertion": "old event names and Last-Event-ID resume remain consumable when new fields are added"},
+    {"id": "unknown_state_is_not_success", "area": "compatibility", "expect": "deny", "assertion": "clients do not treat an unknown environment or workspace state as successful"}
+  ]
+}
