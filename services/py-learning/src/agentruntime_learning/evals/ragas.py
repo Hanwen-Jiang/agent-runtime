@@ -51,20 +51,36 @@ def load_cases(path: str | Path) -> list[RagasCase]:
 
 def _metric_classes() -> dict[str, Any]:
     try:
-        from ragas.metrics import ContextPrecision, ContextRecall, Faithfulness
+        from ragas.metrics.collections import ContextPrecision, ContextRecall, Faithfulness
     except ImportError:
-        return {}
+        try:
+            from ragas.metrics import ContextPrecision, ContextRecall, Faithfulness
+        except ImportError:
+            return {}
     return {"context_precision": ContextPrecision, "context_recall": ContextRecall, "faithfulness": Faithfulness}
+
+
+def _sample(row: dict[str, Any]) -> Any:
+    """Build the 0.4.x sample object, with a legacy dict fallback."""
+    try:
+        from ragas import SingleTurnSample
+    except ImportError:
+        try:
+            from ragas.dataset_schema import SingleTurnSample
+        except ImportError:
+            return row
+    return SingleTurnSample(**row)
 
 
 async def _score(metric: Any, row: dict[str, Any]) -> float | None:
     """Best-effort compatibility with Ragas 0.4.x metric APIs."""
+    sample = _sample(row)
     try:
         if hasattr(metric, "single_turn_ascore"):
-            value = metric.single_turn_ascore(row)
+            value = metric.single_turn_ascore(sample)
             return float(await value) if hasattr(value, "__await__") else float(value)
         if hasattr(metric, "ascore"):
-            value = metric.ascore(row)
+            value = metric.ascore(sample)
             return float(await value) if hasattr(value, "__await__") else float(value)
     except Exception:
         return None

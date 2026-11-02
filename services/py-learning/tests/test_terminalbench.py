@@ -28,6 +28,12 @@ def test_harbor_mode_has_explicit_preflight_failure(monkeypatch):
         tb.run(tb.smoke_manifest(), __import__("pathlib").Path("out"), budget_usd=20, mode="harbor")
 
 
+def test_harbor_mode_never_reports_fixture_rows(monkeypatch, tmp_path):
+    monkeypatch.setattr(tb, "preflight", lambda *, require_harbor: (True, None))
+    with pytest.raises(RuntimeError, match="harbor_bridge_not_implemented"):
+        tb.run(tb.smoke_manifest(), tmp_path, budget_usd=20, mode="harbor")
+
+
 def test_missing_verifier_is_infrastructure_failure(tmp_path):
     manifest = {"tasks": [{"task_id": "x", "task_name": "x"}]}
     result = tb.run(manifest, tmp_path, budget_usd=1)[0]

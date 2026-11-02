@@ -71,6 +71,12 @@ def run(manifest: dict[str, Any], out: Path, *, budget_usd: float, mode: str = "
     ok, error = preflight(require_harbor=mode == "harbor")
     if not ok:
         raise RuntimeError(f"preflight_failed: {error}")
+    if mode == "harbor":
+        # A Harbor import alone is not evidence that the Runtime BaseAgent
+        # bridge, task environment, and official verifier ran.  Keep this
+        # path explicit until that bridge is wired instead of reporting
+        # fixture rows as real benchmark results.
+        raise RuntimeError("harbor_bridge_not_implemented: use fixture/oracle until the isolated BaseAgent bridge is configured")
     results: list[Result] = []
     for task in manifest["tasks"]:
         task_id = task["task_id"]
@@ -85,5 +91,16 @@ def run(manifest: dict[str, Any], out: Path, *, budget_usd: float, mode: str = "
     out.mkdir(parents=True, exist_ok=True)
     payload = {"dataset_version": manifest.get("dataset_version", DATASET_VERSION), "mode": mode, "budget_usd": budget_usd, "results": [asdict(r) for r in results]}
     (out / "terminalbench-report.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    (out / "manifest.json").write_text(json.dumps({
+        "eval": "terminalbench",
+        "dataset_version": manifest.get("dataset_version", DATASET_VERSION),
+        "mode": mode,
+        "budget_usd": budget_usd,
+        "estimated": mode != "harbor",
+        "measured": mode == "harbor",
+        "sample_count": len(results),
+        "completed": sum(r.status == "completed" for r in results),
+        "infra_failed": sum(r.status == "infra_failed" for r in results),
+    }, indent=2) + "\n", encoding="utf-8")
     return results
 
