@@ -84,6 +84,10 @@ class NodeInput:
     history: list[dict[str, Any]] = field(default_factory=list)
     task_state: dict[str, Any] = field(default_factory=dict)
     task_plan: dict[str, Any] | None = None
+    # Task 启动时由 Temporal patch 固定；缺省为旧算法，旧 Activity 重试不升级。
+    context_version: int = 1
+    # fast 分诊没有 Task Plan；隔离子 agent 也只带任务族，不带父上下文。
+    task_family: str = ""
 
 
 @dataclass
@@ -217,6 +221,8 @@ class ToolLoopStepInput:
     # sub_agent（isolated）不带。只是输入，不改变命令序列。
     task_state: dict[str, Any] = field(default_factory=dict)
     task_plan: dict[str, Any] | None = None
+    context_version: int = 1
+    task_family: str = ""
 
 
 @dataclass

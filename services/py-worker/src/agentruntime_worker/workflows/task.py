@@ -80,6 +80,7 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.workflows.patches import (
         BUDGETS_PATCH,
         CODES_PATCH,
+        CONTEXT_BUILDER_V2_PATCH,
         DECISION_RETRY_PATCH,
         EVENTS_PATCH,
         GUIDANCE_PATCH,
@@ -273,6 +274,7 @@ class TaskWorkflow:
     async def run(self, inp: task_pb2.TaskWorkflowInput) -> task_pb2.TaskWorkflowResult:
         # 新的运行在第一个工作流任务里一次问完全部版本分支：local activity 之后不再第一次问（workflows/patches.py）。
         patches.at_start()
+        self._context_version = 2 if workflow.patched(CONTEXT_BUILDER_V2_PATCH) else 1
         self._input = inp
         self._tenant = Tenant(
             tenant_id=inp.tenant.tenant_id,
@@ -1105,6 +1107,8 @@ class TaskWorkflow:
             policy=self._stage_policy,
             task_input=self._input,
             task_plan=self._task_plan,
+            context_version=self._context_version,
+            task_family=self._task_family or str(((self._task_plan or {}).get("triage") or {}).get("task_family") or ""),
             t09=self._t09,
             budget_usd=self._input.budget.usd_micros / 1_000_000 if self._input.budget.usd_micros else None,
             spent_before_usd=round(sum(float(r.get("cost_usd") or 0) for r in self._state.get("rounds", [])) + plan_cost, 6),

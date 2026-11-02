@@ -11,7 +11,7 @@
 - 结果超过 ExecutorConfig.inline_result_limit 字节时写入 ObjectStore（路径带租户前缀），result 只留摘要与引用，
   meta.result_ref 记录 uri、大小与 sha256。
 - rationale 只写入 trace（Telemetry 的 span 事件），不放进 activity 的结果，不进事件历史，不传给下游。
-- 直接回复用户的节点（fast 的 answer）不经 Context Builder，也报一份上下文占比（结果的 context_usage，只有数字：系统提示与对话
+- 历史 v1 直接回复用户的节点（fast 的 answer）不经 Context Builder；v2 也走完整构建。都报上下文占比（context_usage，只有数字：系统提示与对话
   两类；docs/plan/running-task-interaction.md 第 3 节）。
 - program 节点要求权限的工具，用 SecretStore 签发的短期凭据（角色 tool.<工具名>），调用结束即吊销；凭据不进日志与 trace。
   工具的输出或错误信息带出凭据原文时换成掩码（span 事件 credential_redacted）；吊销失败记 span 事件与警告日志，等租约过期。
@@ -62,7 +62,7 @@ from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker import names
 from agentruntime_worker.activities.types import HumanCancel, HumanQuestion, NodeInput, ReconcileResult, Tenant, ToolCallInput
-from agentruntime_worker.context.builder import ContextBuilder, ContextRequest, measured, message_tokens
+from agentruntime_worker.context.builder import ContextBuilder, ContextRequest, measured, message_tokens, task_family
 from agentruntime_worker.executor import keys
 from agentruntime_worker.session.transcript import TranscriptSource, Turn, actions_text, chat_messages
 from agentruntime_worker.executor.model_gateway import ModelGateway
@@ -411,13 +411,17 @@ class NodeExecutor:
             async with self._heartbeating(), telemetry.start_span(name, attributes=attributes) as span:
                 try:
                     self._check_rules(inp)
-                    cached = await self._cache_get(tenant, node)
+                    # v2 的结果还取决于 Task State/历史/会话；旧 template+inputs 缓存不覆盖这些输入。
+                    # 本切片直接跳过它，不增加第二套缓存键或持久状态。
+                    contextual = node.get("executor") == "model" and inp.context_version >= 2 and self.deps.context_builder is not None
+                    cached = None if contextual else await self._cache_get(tenant, node)
                     if cached is not None:
                         span.add_event("cache_hit")
                         return cached
                     out = await body(inp, tenant, span)
                     out = await self._externalize(tenant, inp, out)
-                    await self._cache_put(tenant, node, out)
+                    if not contextual:
+                        await self._cache_put(tenant, node, out)
                     return out
                 except ApplicationError:
                     raise
@@ -653,6 +657,7 @@ class NodeExecutor:
             role=_enum(enums_pb2.Role, "ROLE_", node.get("role")),
             tier=str(node.get("tier") or ""),
             reasoning=_enum(enums_pb2.Reasoning, "REASONING_", node.get("reasoning")),
+            task_family=task_family(inp.task_plan, inp.task_family),
         )
 
     def _messages(self, inp: NodeInput, retry_errors: list[str] | None, turns: tuple[Turn, ...] = ()) -> list[mg.ChatMessage]:
@@ -689,23 +694,39 @@ class NodeExecutor:
         transcript = self.deps.transcript
         turns = await transcript.load(inp.tenant, inp.task_id) if transcript is not None and _conversational(inp.node) else ()
         context_cost = 0.0
-        # 旧 Activity 历史没有 ContextBuilder 快照字段；对这类输入继续走原路径，
-        # 避免重放时改变桩模型的提示形状。新 Workflow 提交的 Task State/Plan
-        # 或显式 history 才启用 Activity 内的构建器。
+        # 旧 Activity 缺少快照时仍用原提示；v1 带快照时用原 Builder 算法。
+        # v2 在 Task 启动时固定，覆盖普通和 conversational 生成节点。
         has_context_snapshot = bool(inp.history or inp.task_state or inp.task_plan is not None)
-        if self.deps.context_builder is not None and not _conversational(inp.node) and has_context_snapshot:
-            system = [SYSTEM_PROMPT, keys.canonical_json({"template": inp.node.get("template")})]
+        use_context = inp.context_version >= 2 or (not _conversational(inp.node) and has_context_snapshot)
+        if self.deps.context_builder is not None and use_context:
+            node = inp.node
+            history = list(inp.history)
+            if _conversational(node):
+                system = [CONVERSATION_SYSTEM_PROMPT]
+                if record := actions_text(turns):
+                    system.append(record)
+                # 当前用户消息也是近期消息，不把它当旧工具输入外置。
+                history = [
+                    *({"role": "assistant" if m.role == mg.CHAT_ROLE_ASSISTANT else "user", "content": m.text} for m in chat_messages(turns)),
+                    *history,
+                    {"role": "user", "content": str(node["inputs"]["request"])},
+                ]
+                node = {**node, "inputs": {}}
+            else:
+                system = [SYSTEM_PROMPT, keys.canonical_json({"template": node.get("template")})]
             system.extend(f"[{i.get('zone', '')}] {i.get('content', '')}" for i in inp.injections)
             built = await self.deps.context_builder.build(
                 ContextRequest(
                     tenant=inp.tenant,
                     task_id=inp.task_id,
                     round_seq=inp.round_seq,
-                    node=inp.node,
-                    history=tuple(inp.history),
+                    node=node,
+                    history=tuple(history),
                     task_state=dict(inp.task_state),
                     task_plan=dict(inp.task_plan) if inp.task_plan is not None else None,
                     system=tuple(system),
+                    context_version=inp.context_version,
+                    task_family=inp.task_family,
                 )
             )
             messages = list(built.messages)

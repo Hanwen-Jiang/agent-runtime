@@ -64,6 +64,9 @@ INTERRUPT_WITHDRAW_PATCH = "interrupt-withdraws-question"
 # 原来校验不过的 Stage 现在能跑，原来原样传下去的占位符现在可能让 Node 失败，改变了命令序列。
 REFERENCES_PATCH = "n01-references"
 
+# Q87–Q93：Activity 的 ContextBuilder 版本在 Task 开始时固定；旧 Task 与它后续启动的子工作流保留 v1。
+CONTEXT_BUILDER_V2_PATCH = "q87-context-builder-v2"
+
 # 新的运行在第一个工作流任务里一次问完全部版本分支（模块说明）。
 PATCHES_AT_START = "s04-patches-at-start"
 # 只能在末尾追加。
@@ -86,6 +89,7 @@ AT_START = (
     GUIDANCE_PATCH,
     INTERRUPT_WITHDRAW_PATCH,
     REFERENCES_PATCH,
+    CONTEXT_BUILDER_V2_PATCH,
 )
 
 

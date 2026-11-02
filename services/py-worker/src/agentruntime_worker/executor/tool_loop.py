@@ -27,7 +27,7 @@ from agentruntime_worker import names
 from agentruntime_worker.activities.types import ToolLoopStep, ToolLoopStepInput
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.memory import Searcher, node_experiences, searcher
-from agentruntime_worker.context.builder import ContextBuilder, ContextConfig, ContextRequest, measured, tenant_context
+from agentruntime_worker.context.builder import ContextBuilder, ContextConfig, ContextRequest, measured, tenant_context, task_family
 from agentruntime_worker.executor.heartbeat import heartbeating
 from agentruntime_worker.executor.model_gateway import ModelGateway, billed_cost_usd, with_billed_cost
 from agentruntime_worker.workflows.verification import only_reads
@@ -119,6 +119,8 @@ class ModelToolLoop:
                 history=inp.history,
                 task_state=inp.task_state,
                 task_plan=inp.task_plan,
+                context_version=inp.context_version,
+                task_family=inp.task_family,
                 system=[SYSTEM_PROMPT],
                 tools=tools,
                 mcp_tools=self.mcp_tools() if self.mcp_tools is not None else frozenset(),
@@ -162,7 +164,8 @@ class ModelToolLoop:
                 response = await self.gateway.generate(
                     mg.GenerateRequest(
                         tenant=tenant_context(inp.tenant),
-                        call=mg.CallContext(task_id=inp.task_id, node_id=inp.step_id or str(inp.node.get("id", "")), role=enums_pb2.ROLE_ACT, tier=self.tier),
+                        call=mg.CallContext(task_id=inp.task_id, node_id=inp.step_id or str(inp.node.get("id", "")), role=enums_pb2.ROLE_ACT, tier=self.tier,
+                                            task_family=task_family(inp.task_plan, inp.task_family)),
                         generation=params,
                     )
                 )

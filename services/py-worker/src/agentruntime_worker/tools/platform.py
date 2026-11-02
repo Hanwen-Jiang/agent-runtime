@@ -777,6 +777,11 @@ class _ContextReader:
             raise NotFoundError("not_found", "没有这个路径") from None  # 别的租户的路径：不透露它是否存在
         if not key.startswith(_CONTEXT_PREFIXES):
             raise DeniedError("path_not_allowed", "context_read 只能取回上下文里外置的内容与 Node 的外置结果")
+        if not invocation.task_id:
+            raise DeniedError("no_task", "context_read 需要调用方的 Task 作用域")
+        if key.split("/", 2)[1] != invocation.task_id:
+            # task_id 由 Node Executor 给出。相同租户/Session 也不是跨 Task 授权，且不泄露路径是否存在。
+            raise NotFoundError("not_found", "没有这个路径")
         text = (await store.get(key)).data.decode("utf-8", errors="replace")
         offset = int(invocation.arguments.get("offset") or 0)
         part = text[offset : offset + int(invocation.arguments.get("max_chars") or self.config.context_read_chars)]
