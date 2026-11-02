@@ -100,16 +100,16 @@
           "stream"
         ],
         "cost": {
-          "in_per_m": 0.1,
-          "out_per_m": 0.4,
-          "cache_read_per_m": 0.025
+          "in_per_m": 0.3,
+          "out_per_m": 2.5,
+          "cache_read_per_m": 0.03
         },
         "constraints": {
           "context_window": 1048576,
           "max_output": 65536
         },
         "freshness": {
-          "price_at": "2026-10-21"
+          "price_at": "2026-11-02"
         }
       }
     },
@@ -135,16 +135,16 @@
           "stream"
         ],
         "cost": {
-          "in_per_m": 0.28,
-          "out_per_m": 0.42,
-          "cache_read_per_m": 0.028
+          "in_per_m": 0.15,
+          "out_per_m": 0.6,
+          "cache_read_per_m": 0.003
         },
         "constraints": {
-          "context_window": 128000,
-          "max_output": 8192
+          "context_window": 1048576,
+          "max_output": 393216
         },
         "freshness": {
-          "price_at": "2026-10-21"
+          "price_at": "2026-11-02"
         }
       }
     },
@@ -170,16 +170,16 @@
           "stream"
         ],
         "cost": {
-          "in_per_m": 0.5,
-          "out_per_m": 3.0,
-          "cache_read_per_m": 0.05
+          "in_per_m": 1.5,
+          "out_per_m": 9.0,
+          "cache_read_per_m": 0.15
         },
         "constraints": {
           "context_window": 1048576,
           "max_output": 65536
         },
         "freshness": {
-          "price_at": "2026-10-21"
+          "price_at": "2026-11-02"
         }
       }
     },
@@ -212,14 +212,14 @@
         "cost": {
           "in_per_m": 2.0,
           "out_per_m": 10.0,
-          "cache_read_per_m": 0.2
+          "cache_read_per_m": 0.1
         },
         "constraints": {
-          "context_window": 200000,
-          "max_output": 64000
+          "context_window": 1000000,
+          "max_output": 128000
         },
         "freshness": {
-          "price_at": "2026-10-21"
+          "price_at": "2026-11-02"
         }
       }
     },
@@ -250,16 +250,16 @@
           "stream"
         ],
         "cost": {
-          "in_per_m": 1.75,
-          "out_per_m": 14.0,
-          "cache_read_per_m": 0.175
+          "in_per_m": 5.0,
+          "out_per_m": 30.0,
+          "cache_read_per_m": 0.5
         },
         "constraints": {
-          "context_window": 400000,
+          "context_window": 922000,
           "max_output": 128000
         },
         "freshness": {
-          "price_at": "2026-10-21"
+          "price_at": "2026-11-02"
         }
       }
     },
@@ -327,14 +327,44 @@
         "cost": {
           "in_per_m": 0.1,
           "out_per_m": 0.5,
-          "cache_read_per_m": 0.1
+          "cache_read_per_m": 0.01
         },
         "constraints": {
-          "context_window": 200000,
-          "max_output": 64000
+          "context_window": 1000000,
+          "max_output": 128000
         },
         "freshness": {
-          "price_at": "2026-10-21"
+          "price_at": "2026-11-02"
+        }
+      }
+    },
+    {
+      "kind": "model_profile",
+      "name": "a6api/text-embedding-3-large@2026-10",
+      "document": {
+        "id": "a6api/text-embedding-3-large@2026-10",
+        "vendor": "openai",
+        "model": "text-embedding-3-large",
+        "class": "embed",
+        "tiers": [
+          {
+            "name": "default"
+          }
+        ],
+        "capabilities": [
+          "embed"
+        ],
+        "cost": {
+          "in_per_m": 0.13,
+          "out_per_m": 0.0,
+          "cache_read_per_m": 0.0
+        },
+        "constraints": {
+          "context_window": 8191,
+          "max_output": 0
+        },
+        "freshness": {
+          "price_at": "2026-10-31"
         }
       }
     },
@@ -356,8 +386,8 @@
         ],
         "cost": {
           "in_per_m": 0.02,
-          "out_per_m": 0,
-          "cache_read_per_m": 0
+          "out_per_m": 0.0,
+          "cache_read_per_m": 0.0
         },
         "constraints": {
           "context_window": 8191,
@@ -365,6 +395,46 @@
         },
         "freshness": {
           "price_at": "2026-10-21"
+        }
+      }
+    },
+    {
+      "kind": "model_profile",
+      "name": "a6api/gpt-6.1-sol@2026-11",
+      "document": {
+        "id": "a6api/gpt-6.1-sol@2026-11",
+        "vendor": "openai",
+        "model": "gpt-6.1-sol",
+        "class": "strong",
+        "tiers": [
+          {
+            "name": "medium",
+            "effort": "medium",
+            "thinking_budget": 8192
+          },
+          {
+            "name": "high",
+            "effort": "high",
+            "thinking_budget": 32768
+          }
+        ],
+        "capabilities": [
+          "generate",
+          "structured",
+          "tools",
+          "stream"
+        ],
+        "cost": {
+          "in_per_m": 2.0,
+          "out_per_m": 10.0,
+          "cache_read_per_m": 0.1
+        },
+        "constraints": {
+          "context_window": 922000,
+          "max_output": 128000
+        },
+        "freshness": {
+          "price_at": "2026-11-02"
         }
       }
     },

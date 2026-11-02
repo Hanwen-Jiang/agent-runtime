@@ -7,7 +7,7 @@
 - AR_MODEL_PROVIDER_BASE_URL、AR_MODEL_PROVIDER_API_KEY：必填；
 - AR_MODEL_PROVIDER_MODEL_STRONG、_MID、_LIGHT：各档用的模型，默认 claude-opus-5-5、claude-sonnet-5-5、claude-haiku-5-5；
 - AR_MODEL_PROVIDER_PRICE_STRONG、_MID、_LIGHT：该档模型的单价，“输入,输出[,缓存读]”，美元每百万 token；没给缓存读时按输入单价算。
-  不设时用 DEFAULT_PRICES（默认模型的一方 API 标价）；模型既没配单价、又不在 DEFAULT_PRICES 里，读配置时就报错。
+  不设时用 DEFAULT_PRICES（deploy/dev/model-profiles.json 里的单价，即 models.dev 的一方标价；读不到时用几项后备）；模型既没配单价、又不在 DEFAULT_PRICES 里，读配置时就报错。
 文件放在仓库外面：密钥不进仓库，也不出现在错误信息里。
 
 只做评测用得到的部分：
@@ -91,13 +91,31 @@ class Price:
         return int(total.to_integral_value(rounding=ROUND_HALF_UP))
 
 
-DEFAULT_PRICES: dict[str, Price] = {
-    # Anthropic 一方 API 标价（2026-10-06 取价）。聚合供应商的实价可能不同，用 AR_MODEL_PROVIDER_PRICE_<档> 覆盖。
+# 开发用的 Model Profile（单价由 scripts/sync_model_profiles.py 从 models.dev 取，docs/plan/feedback-2026-11-01.md N-07）。
+PROFILES_FILE = Path(__file__).resolve().parents[5] / "deploy" / "dev" / "model-profiles.json"
+# 读不到 Profile 文件时（例如镜像里没有 deploy/）的后备：Anthropic 一方 API 标价（2026-10-06 取价）。
+FALLBACK_PRICES: dict[str, Price] = {
     "claude-opus-5-5": Price(Decimal("4"), Decimal("20"), Decimal("0.2")),
     "claude-sonnet-5-5": Price(Decimal("2"), Decimal("10"), Decimal("0.2")),
-    # Haiku 5.5 的缓存读单价没查到，按输入单价算。
     "claude-haiku-5-5": Price(Decimal("0.1"), Decimal("0.5"), Decimal("0.1")),
 }
+
+
+def profile_prices(path: Path = PROFILES_FILE) -> dict[str, Price]:
+    """Profile 文件里每个生成模型的单价（模型名 → 单价）；文件不在或格式不对时为空。"""
+    try:
+        profiles = json.loads(path.read_text("utf-8"))["profiles"]
+        return {
+            str(p["model"]): Price(Decimal(str(p["cost"]["in_per_m"])), Decimal(str(p["cost"]["out_per_m"])), Decimal(str(p["cost"]["cache_read_per_m"])))
+            for p in profiles
+            if p.get("class") != "embed"
+        }
+    except (OSError, KeyError, TypeError, ValueError, InvalidOperation):
+        return {}
+
+
+# 默认单价：Profile 文件优先（models.dev 的一方标价），后备是上面几项。聚合供应商的实价可能不同，用 AR_MODEL_PROVIDER_PRICE_<档> 覆盖。
+DEFAULT_PRICES: dict[str, Price] = {**FALLBACK_PRICES, **profile_prices()}
 
 
 @dataclass(frozen=True)

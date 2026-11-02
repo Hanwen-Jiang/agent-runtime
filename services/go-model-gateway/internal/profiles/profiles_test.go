@@ -259,6 +259,7 @@ func TestDevProfilesFileLoads(t *testing.T) {
 		"gemini-3.5-flash":       {"google", "mid", []string{"low"}},
 		"claude-sonnet-5-5":      {"anthropic", "strong", []string{"medium", "high"}},
 		"gpt-5.5":                {"openai", "strong", []string{"medium", "high"}},
+		"gpt-6.1-sol":            {"openai", "strong", []string{"medium", "high"}},
 		"text-embedding-3-small": {"openai", "embed", []string{"default"}},
 	}
 	seen := map[string]bool{}
@@ -276,8 +277,9 @@ func TestDevProfilesFileLoads(t *testing.T) {
 				t.Errorf("%s 应有 Tier %s", p.Model, name)
 			}
 		}
-		if p.Freshness.PriceAt != "2026-10-21" {
-			t.Errorf("%s 的取价日期应为 2026-10-21，实际 %q", p.Model, p.Freshness.PriceAt)
+		// 单价由 scripts/sync_model_profiles.py 从 models.dev 取（docs/plan/feedback-2026-11-01.md N-07），日期随同步变化。
+		if p.Freshness.PriceAt < "2026-10-21" {
+			t.Errorf("%s 的取价日期应不早于 2026-10-21，实际 %q", p.Model, p.Freshness.PriceAt)
 		}
 		if p.Class == "embed" {
 			if !p.Has(profiles.CapEmbed) || p.Cost.InPerM <= 0 {
