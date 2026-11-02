@@ -247,6 +247,49 @@ def iter_json_array(path: Path, *, chunk_size: int = 1 << 22) -> Iterator[Any]:
                 buf += more
 
 
+HF_API = "https://huggingface.co/api/datasets/{dataset}"
+HF_ROWS = "https://datasets-server.huggingface.co/rows"
+
+
+def _get_json(url: str, *, timeout: float = 60) -> Any:
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    with urllib.request.urlopen(request, timeout=timeout) as resp:
+        return json.loads(resp.read())
+
+
+def hf_rows(dataset: str, revision: str, *, config: str = "default", split: str = "test", page_size: int = 100) -> list[dict[str, Any]]:
+    """经 Hugging Face datasets-server 的 rows 接口取全部行（读不了 parquet 时用）。这个接口只给最新的版本，所以先核对
+    数据集当前的提交就是钉死的 revision；有被截断的格子时报错。"""
+    import urllib.parse
+
+    current = _get_json(HF_API.format(dataset=dataset)).get("sha")
+    if current != revision:
+        raise ValueError(f"{dataset} 现在的提交是 {current}，不是钉死的 {revision}：rows 接口取不到旧版本，装 pyarrow 读 parquet，或核对后改版本")
+    rows: list[dict[str, Any]] = []
+    total: int | None = None
+    while total is None or len(rows) < total:
+        query = urllib.parse.urlencode({"dataset": dataset, "config": config, "split": split, "offset": len(rows), "length": page_size})
+        data = _get_json(f"{HF_ROWS}?{query}")
+        total = int(data["num_rows_total"])
+        page = data.get("rows") or []
+        for item in page:
+            if item.get("truncated_cells"):
+                raise ValueError(f"{dataset} 第 {item.get('row_idx')} 行有被截断的格子")
+            rows.append(item["row"])
+        if not page:
+            break
+    if len(rows) != total:
+        raise ValueError(f"{dataset} 只取到 {len(rows)} 行，接口说一共 {total} 行")
+    return rows
+
+
+def parquet_rows(path: Path) -> list[dict[str, Any]]:
+    """读 parquet（要 pyarrow，装在评测的 Python 里：eval-requirements.txt）；没有 pyarrow 时抛 ImportError。"""
+    import pyarrow.parquet as pq  # 可选依赖
+
+    return pq.read_table(path).to_pylist()
+
+
 SAFE_ID = re.compile(r"[^A-Za-z0-9_.-]+")
 
 
@@ -255,6 +298,6 @@ def safe_name(text: str) -> str:
 
 
 __all__ = [
-    "DATA_ENV", "EVAL_TENANT", "Meter", "arguments", "cached_jsonl", "chat", "data_dir", "download", "error_text", "iter_json_array",
-    "messages_record", "read_jsonl", "safe_name", "select", "sha256_file", "tool_call", "tool_spec", "value", "write_atomic",
+    "DATA_ENV", "EVAL_TENANT", "Meter", "arguments", "cached_jsonl", "chat", "data_dir", "download", "error_text", "hf_rows", "iter_json_array",
+    "messages_record", "parquet_rows", "read_jsonl", "safe_name", "select", "sha256_file", "tool_call", "tool_spec", "value", "write_atomic",
 ]
