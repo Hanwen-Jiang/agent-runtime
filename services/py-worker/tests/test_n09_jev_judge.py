@@ -184,3 +184,15 @@ async def test_live_jev_flags_the_reply_from_the_log() -> None:
     assert checks is not None and checks.disowns >= 0.8, checks
     good = await JevJudge(live_key).check("读一下这个仓库讲讲结构", "根目录有 docs/（主体文档）、api-docs/、archive/（归档）、resources/，以及 README.md、AGENTS.md。")
     assert good is not None and good.disowns < 0.5 and good.answers > 0.5, good
+
+
+async def test_the_key_can_be_read_from_a_mounted_file(tmp_path: Any) -> None:
+    from agentruntime_worker.reviewer.activities import dev_reviewer
+    from agentruntime_worker.reviewer.judge import file_key
+
+    path = tmp_path / "api-key"
+    assert await file_key(path)() is None, "文件不在时没有密钥"
+    path.write_text(KEY + "\n", "utf-8")
+    assert await file_key(path)() == KEY
+    reviewer = dev_reviewer(WorkerConfig.from_env({"AR_DATA_DIR": str(tmp_path), "AR_JUDGE": "jev", "AR_JUDGE_KEY_FILE": str(path)})).reviewer
+    assert isinstance(reviewer.judge, JevJudge) and await reviewer.judge.key() == KEY

@@ -119,9 +119,10 @@ def dev_reviewer(config: WorkerConfig) -> ReviewerActivities:
     judge = None
     if config.judge == "jev":
         # 交付的快速检查（docs/plan/feedback-2026-11-01.md N-09）：密钥在 SecretStore 平台作用域的 judge/jev-api-key。
-        from agentruntime_worker.reviewer.judge import JevJudge, secret_key
+        from agentruntime_worker.reviewer.judge import JevJudge, file_key, secret_key
 
-        judge = JevJudge(secret_key(config.store_paths(root)[1]), url=config.judge_url, model=config.judge_model)
+        key = file_key(config.judge_key_file) if config.judge_key_file is not None else secret_key(config.store_paths(root)[1])
+        judge = JevJudge(key, url=config.judge_url, model=config.judge_model)
     # 这份 Catalog 不另设上限：上限是 Task 自己的（constraints.effect_ceiling，review 里取两者较低的）。原来写的 read 让每个 Task 的 Reviewer
     # 都以为只能读（TMP 计划第 11.15 节）。
     return ReviewerActivities(Reviewer(model_gateway(config), judge=judge), StaticCatalogSource(ReviewCatalog(effect_ceiling=sp.EFFECT_ORDER[-1])), wrap_up)

@@ -7,7 +7,8 @@
 Reviewer 在要判 done 时问它（reviewer/reviewer.py）；规则据此拦下（reviewer/rules.py）：disowns 高的不管谁判的都不能交付；没有模型评审
 （fast 的回复、模型评审拿不到）时 answers 低的也不能交付。一次调用约 1 秒，比 Reviewer 的模型调用便宜得多，也和生成者不是同一家。
 
-- 密钥在 SecretStore 平台作用域的 judge/jev-api-key（不进日志、错误说明与 trace）；Worker 设 AR_JUDGE=jev 才用。
+- 密钥在 SecretStore 平台作用域的 judge/jev-api-key，或者 AR_JUDGE_KEY_FILE 指的文件（集群里是单独的 K8s Secret 挂成的文件，
+  不用为它改 SOPS 里的种子）；不进日志、错误说明与 trace。Worker 设 AR_JUDGE=jev 才用。
 - 发给 Jev 的只有用户这条消息与交付的文字（各自截断），不带 Task State、工具输出与别的租户的东西。
 - 调用失败、超时、回答不合格时返回 None：没有检查结果，Reviewer 照常判定，不因此拦下交付。
 """
@@ -171,4 +172,18 @@ def secret_key(secrets_file: Any) -> Callable[[], Awaitable[str | None]]:
     return read
 
 
-__all__ = ["DEFAULT_MODEL", "DEFAULT_URL", "QUESTIONS", "SECRET_NAME", "DeliverableJudge", "JevJudge", "JudgeChecks", "reply_text", "secret_key"]
+def file_key(path: Any) -> Callable[[], Awaitable[str | None]]:
+    """从文件读密钥（AR_JUDGE_KEY_FILE；集群里挂载的 Secret）：每次调用时读，轮换后不用重启；文件不在或是空的时为 None。"""
+    from pathlib import Path
+
+    async def read() -> str | None:
+        try:
+            value = Path(path).read_text("utf-8").strip()
+        except OSError:
+            return None
+        return value or None
+
+    return read
+
+
+__all__ = ["DEFAULT_MODEL", "DEFAULT_URL", "QUESTIONS", "SECRET_NAME", "DeliverableJudge", "JevJudge", "JudgeChecks", "file_key", "reply_text", "secret_key"]

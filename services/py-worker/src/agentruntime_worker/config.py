@@ -33,6 +33,8 @@ ENV_REVIEWER = "AR_REVIEWER"
 ENV_JUDGE = "AR_JUDGE"
 ENV_JUDGE_URL = "AR_JUDGE_URL"
 ENV_JUDGE_MODEL = "AR_JUDGE_MODEL"
+# Jev 的密钥文件（集群里挂载的 Secret）；不给时从 SecretStore 平台作用域的 judge/jev-api-key 读。
+ENV_JUDGE_KEY_FILE = "AR_JUDGE_KEY_FILE"
 JUDGES = ("", "jev")
 REVIEWERS = ("stub", "model")
 # tool_loop 的一步：stub 用桩（默认，第一步就结束）；model 经 Model Gateway，上下文由 Context Builder 组装。
@@ -137,6 +139,7 @@ class WorkerConfig:
     judge: str = ""
     judge_url: str = "https://api.typesafe.ai"
     judge_model: str = "jev-latest"
+    judge_key_file: Path | None = None
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> WorkerConfig:
@@ -227,6 +230,7 @@ class WorkerConfig:
             judge=judge,
             judge_url=env.get(ENV_JUDGE_URL, "").strip() or cls.judge_url,
             judge_model=env.get(ENV_JUDGE_MODEL, "").strip() or cls.judge_model,
+            judge_key_file=Path(env[ENV_JUDGE_KEY_FILE]) if env.get(ENV_JUDGE_KEY_FILE, "").strip() else None,
             tool_loop=tool_loop,
             context_effective_tokens=effective,
             context_offload_tokens=offload,

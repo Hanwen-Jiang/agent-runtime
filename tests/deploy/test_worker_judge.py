@@ -40,3 +40,21 @@ def test_other_judges_are_refused() -> None:
 
 def test_the_secret_seed_lists_the_jev_key() -> None:
     assert '"judge/jev-api-key": "REPLACE_ME"' in (REPO / "deploy" / "cluster" / "secrets" / "secrets.example.yaml").read_text("utf-8")
+
+
+def test_the_key_can_come_from_its_own_secret_as_a_file() -> None:
+    """不用为 Jev 改 SOPS 里的种子：单独一个 Secret，挂成文件，Worker 从 AR_JUDGE_KEY_FILE 读；不进环境变量。"""
+    for worker in workers(render(CLOUD_VALUES, set_values=["worker.judge=jev", "worker.judgeKeySecret.name=agent-runtime-jev"])):
+        spec = pod_spec(worker)
+        env = env_of(spec["containers"][0])
+        assert env["AR_JUDGE_KEY_FILE"]["value"] == "/etc/agentruntime/judge/api-key"
+        assert not any("secretKeyRef" in str(v) and "jev" in str(v) for v in env.values()), "密钥不进环境变量"
+        (volume,) = [v for v in spec["volumes"] if v["name"] == "judge-key"]
+        assert volume["secret"]["secretName"] == "agent-runtime-jev"
+        assert any(m["name"] == "judge-key" and m.get("readOnly") for m in spec["containers"][0]["volumeMounts"])
+
+
+def test_without_a_key_secret_nothing_is_mounted() -> None:
+    for worker in workers(render(CLOUD_VALUES, set_values=["worker.judge=jev"])):
+        spec = pod_spec(worker)
+        assert "AR_JUDGE_KEY_FILE" not in env_of(spec["containers"][0]) and all(v["name"] != "judge-key" for v in spec["volumes"])

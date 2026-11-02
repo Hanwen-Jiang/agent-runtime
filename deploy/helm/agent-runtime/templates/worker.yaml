@@ -61,6 +61,10 @@ spec:
             - name: AR_JUDGE
               value: {{ . | quote }}
             {{- end }}
+            {{- with $.Values.worker.judgeKeySecret.name }}
+            - name: AR_JUDGE_KEY_FILE
+              value: {{ printf "/etc/agentruntime/judge/%s" $.Values.worker.judgeKeySecret.key | quote }}
+            {{- end }}
             - name: AR_DATA_DIR
               value: /data
             {{- include "ar.objectStoreEnv" $ | nindent 12 }}
@@ -119,6 +123,11 @@ spec:
               mountPath: /etc/agentruntime/sandbox
               readOnly: true
             {{- end }}
+            {{- if $.Values.worker.judgeKeySecret.name }}
+            - name: judge-key
+              mountPath: /etc/agentruntime/judge
+              readOnly: true
+            {{- end }}
       volumes:
         {{- include "ar.volumes" $ | nindent 8 }}
         {{- if $.Values.worker.workspacesClaim }}
@@ -130,6 +139,14 @@ spec:
         - name: sandbox-backends
           configMap:
             name: {{ printf "%s-sandbox-backends" (include "ar.fullname" $) }}
+        {{- end }}
+        {{- with $.Values.worker.judgeKeySecret.name }}
+        - name: judge-key
+          secret:
+            secretName: {{ . }}
+            items:
+              - key: {{ $.Values.worker.judgeKeySecret.key }}
+                path: {{ $.Values.worker.judgeKeySecret.key }}
         {{- end }}
 ---
 apiVersion: keda.sh/v1alpha1

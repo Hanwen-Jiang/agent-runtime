@@ -197,6 +197,10 @@ worker:
   # 交付的快速检查（docs/plan/feedback-2026-11-01.md N-09）：空为不检查；jev 为 TypeSafe 的 Jev，密钥放在 SecretStore 种子
   # （secrets.existingSecret 的 secrets.json）平台作用域的 judge/jev-api-key。
   judge: ""
+  # 不想为它改 SOPS 里的种子时：单独一个 Secret，挂成文件给 Worker（AR_JUDGE_KEY_FILE）；name 为空时从 SecretStore 读。
+  judgeKeySecret:
+    name: ""
+    key: api-key
   # 真正的 Planner、Reviewer 与 tool_loop（经 Model Gateway）；stub 只用于端到端测试。
   planner: model
   reviewer: model
