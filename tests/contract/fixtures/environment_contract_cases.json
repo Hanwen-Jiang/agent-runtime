@@ -1,0 +1,21 @@
+{
+  "schema": "environment_contract_cases",
+  "version": 1,
+  "cases": [
+    {"id": "private_owner_read", "area": "ownership", "expect": "allow", "assertion": "same tenant and user may read a PRIVATE environment"},
+    {"id": "cross_user_read", "area": "ownership", "expect": "deny", "assertion": "another user cannot read, edit, bind, or delete a PRIVATE environment"},
+    {"id": "cross_tenant_bind", "area": "ownership", "expect": "deny", "assertion": "a workspace in another tenant cannot bind the environment"},
+    {"id": "stale_expected_version", "area": "concurrency", "expect": "conflict", "assertion": "an update with a stale expected_version is rejected without overwriting"},
+    {"id": "secret_value_not_in_response", "area": "secrets", "expect": "allow", "assertion": "responses contain only secret references and metadata, never the value"},
+    {"id": "secret_value_not_in_log", "area": "secrets", "expect": "deny", "assertion": "environment logs, events, traces, and workflow payloads reject secret values"},
+    {"id": "setup_failure_blocks_command", "area": "lifecycle", "expect": "deny", "assertion": "a non-zero or timed-out setup prevents the first business command"},
+    {"id": "start_warn_policy", "area": "lifecycle", "expect": "allow", "assertion": "start failure may continue only when start_on_failure is WARN"},
+    {"id": "start_block_policy", "area": "lifecycle", "expect": "deny", "assertion": "start failure blocks the first business command when start_on_failure is BLOCK"},
+    {"id": "network_deny", "area": "network", "expect": "allow", "assertion": "DENY produces no outbound grant"},
+    {"id": "network_allowlist_rejects_private", "area": "network", "expect": "deny", "assertion": "ALLOWLIST rejects private, metadata, IP-literal, and port-25 destinations"},
+    {"id": "network_open_requires_policy", "area": "network", "expect": "deny", "assertion": "OPEN is unavailable unless the tenant policy explicitly enables it"},
+    {"id": "repo_is_selected_separately", "area": "binding", "expect": "allow", "assertion": "environment configuration does not store a repository list or Git credential"},
+    {"id": "legacy_client_ignores_unknown_fields", "area": "compatibility", "expect": "allow", "assertion": "old clients remain usable when responses add fields"},
+    {"id": "unknown_state_is_not_success", "area": "compatibility", "expect": "deny", "assertion": "new clients do not treat an unknown lifecycle state as successful"}
+  ]
+}

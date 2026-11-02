@@ -84,6 +84,8 @@ S-01 的最小提交边界是：EnvironmentConfig、binding、log 和错误模�
 
 ## 6. 通过门槛
 
+可执行的首版验收清单保存在 [`tests/contract/fixtures/environment_contract_cases.json`](../../tests/contract/fixtures/environment_contract_cases.json)，对应的结构与基线锚点检查在 `tests/contract/test_environment_contract_cases.py`。这些用例只冻结评审输入，不代表运行时契约已经批准或实现。
+
 S-01 候选基线可以进入人工评审的条件：
 
 - 字段、错误和归属边界与 `environment-config.md` 一致；
