@@ -154,6 +154,8 @@ type tenantPolicyFileEntry struct {
 }
 
 type tenantPolicyFile struct {
+	// Ceiling 是平台的预算硬上限，由 libs/go-core/modelbudget 解释；这里只为严格解析认得它。
+	Ceiling json.RawMessage                  `json:"ceiling"`
 	Default tenantPolicyFileEntry            `json:"default"`
 	Tenants map[string]tenantPolicyFileEntry `json:"tenants"`
 }

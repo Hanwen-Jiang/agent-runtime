@@ -80,7 +80,10 @@ func applyBudget(out Limits, doc *budgetDocument) (Limits, error) {
 	return out, nil
 }
 func (p Policy) Resolve(ctx context.Context, tenantID string) (Limits, error) {
+	// ceiling 是平台硬上限，default 是没单独配置的租户的额度（人工验收第 42、52 题）：租户可以在硬上限之内调高或调低。
+	// 没写 ceiling 时硬上限就是默认额度（原来的行为）。
 	var file struct {
+		Ceiling *budgetDocument           `json:"ceiling"`
 		Default policyDocument            `json:"default"`
 		Tenants map[string]policyDocument `json:"tenants"`
 	}
@@ -95,11 +98,20 @@ func (p Policy) Resolve(ctx context.Context, tenantID string) (Limits, error) {
 			}
 		}
 	}
-	hard, err := applyBudget(DefaultLimits(), file.Default.ModelBudget)
+	base, err := applyBudget(DefaultLimits(), file.Default.ModelBudget)
 	if err != nil {
 		return Limits{}, err
 	}
-	out := hard
+	hard := base
+	if file.Ceiling != nil {
+		if hard, err = applyBudget(base, file.Ceiling); err != nil {
+			return Limits{}, err
+		}
+		if exceeds(base, hard) {
+			return Limits{}, providererr.New(providererr.Invalid, "model_budget_exceeds_platform_limit", "default budget exceeds the platform hard ceiling")
+		}
+	}
+	out := base
 	if p.Source != nil {
 		data, found, err := p.Source(ctx, &commonv1.TenantContext{TenantId: tenantID})
 		if err != nil {
@@ -120,8 +132,12 @@ func (p Policy) Resolve(ctx context.Context, tenantID string) (Limits, error) {
 	if err != nil {
 		return Limits{}, err
 	}
-	if out.Daily.USDMicros > hard.Daily.USDMicros || out.Monthly.USDMicros > hard.Monthly.USDMicros {
+	if exceeds(out, hard) {
 		return Limits{}, providererr.New(providererr.Invalid, "model_budget_exceeds_platform_limit", "tenant budget exceeds the platform hard ceiling")
 	}
 	return out, nil
+}
+
+func exceeds(limits, ceiling Limits) bool {
+	return limits.Daily.USDMicros > ceiling.Daily.USDMicros || limits.Monthly.USDMicros > ceiling.Monthly.USDMicros
 }
