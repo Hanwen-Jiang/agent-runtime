@@ -36,6 +36,17 @@ class MetricResult:
         return out
 
 
+@dataclass(frozen=True)
+class GatewayJudgeResult:
+    """Structured result from a Model Gateway judge call."""
+
+    score: float
+    reason: str
+    model: str
+    usage: dict[str, int]
+    cost_usd: float
+
+
 def validate_case(case: Mapping[str, Any]) -> list[str]:
     """Return human-readable validation errors without mutating ``case``."""
     errors = [f"missing field: {key}" for key in REQUIRED if key not in case]
@@ -128,6 +139,52 @@ def load_cases(path: str | Path) -> list[dict[str, Any]]:
     if not all(isinstance(case, Mapping) for case in cases):
         raise ValueError("cases[] entries must be objects")
     return [dict(case) for case in cases]
+
+
+async def gateway_judge(
+    case: Mapping[str, Any],
+    gateway: Any,
+    *,
+    tenant_id: str,
+    max_cost_usd_micros: int,
+    tier: str = "strong@medium",
+) -> GatewayJudgeResult:
+    """Ask Model Gateway for a controlled completion judgment.
+
+    Imports for protobufs stay inside the function so fixture-only users do not
+    need a running Gateway or its generated dependencies.  The request sends
+    only the normalized case fields and enforces ``role=judge`` plus a budget.
+    """
+    errors = validate_case(case)
+    if errors:
+        raise ValueError("invalid DeepEval case: " + "; ".join(errors))
+    from google.protobuf import json_format, struct_pb2
+    from agentruntime.common.v1 import enums_pb2, payload_pb2, tenant_pb2
+    from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
+
+    schema = struct_pb2.Value()
+    json_format.ParseDict(
+        {"type": "object", "required": ["score", "reason"], "properties": {"score": {"type": "number", "minimum": 0, "maximum": 1}, "reason": {"type": "string"}}, "additionalProperties": False},
+        schema,
+    )
+    material = {key: case.get(key) for key in ("input", "actual_output", "tools_called", "expected_tools", "task_completed", "rounds") if key in case}
+    request = mg.GenerateRequest(
+        tenant=tenant_pb2.TenantContext(tenant_id=tenant_id),
+        call=mg.CallContext(node_id="deepeval_judge", role=enums_pb2.ROLE_JUDGE, tier=tier, max_cost_usd_micros=max(0, int(max_cost_usd_micros))),
+        generation=mg.GenerateParams(
+            messages=[mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text="You are an evaluation judge. Return only the requested JSON."), mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=json.dumps(material, ensure_ascii=False))],
+            output_schema=payload_pb2.JsonPayload(value=schema),
+        ),
+    )
+    response = await gateway.generate(request)
+    data = json_format.MessageToDict(response.result)
+    score = data.get("score") if isinstance(data, Mapping) else None
+    reason = data.get("reason") if isinstance(data, Mapping) else None
+    if isinstance(score, bool) or not isinstance(score, (int, float)) or not 0 <= score <= 1 or not isinstance(reason, str):
+        raise ValueError("judge response does not match score/reason schema")
+    usage = response.usage
+    usage_dict = {"input_tokens": int(usage.input_tokens), "output_tokens": int(usage.output_tokens), "cost_usd_micros": int(usage.cost_usd_micros)}
+    return GatewayJudgeResult(float(score), reason, response.model.vendor, usage_dict, usage.cost_usd_micros / 1_000_000)
 
 
 def main(argv: list[str] | None = None) -> int:
