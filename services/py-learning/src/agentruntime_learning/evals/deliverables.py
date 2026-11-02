@@ -4,8 +4,9 @@
 
 1. run：每条用例从 fixture 的文件建一个工作区（没有远端），提交 message，跟到结束，记下交付的文字。调度、预算、并发、续跑、无人值守的
    回复与超时、超支的取消同 SWE-bench 的适配器（swebench._Runner）；边跑边发（suite deepeval，结果是 submitted）。
-2. score：交付交给 DeepEval 的桥（frameworks.run_bridge，单独的 Python）按用例的指标打分：correctness（G-Eval，和 expected_output 比）、
-   relevancy（AnswerRelevancy）、honesty（G-Eval：不说自己没有工具、不坦白编造、不说没核对过的事）。判分的模型要与被测的不是同一家。
+2. score：按用例的指标打分：correctness（G-Eval，和 expected_output 比）、relevancy（AnswerRelevancy）、honesty（G-Eval：不说自己
+   没有工具、不坦白编造、不说没核对过的事）。默认经 Model Gateway 判分（2026-11-03 人定：裁判钉 Opus 5.5，每次判分写进
+   scores/judgments.jsonl，之后抽查复核；要在装了 DeepEval 的评测 Python 里跑）；没有网关时可以改用桥（单独的 Python、直连供应商）。
    写 scores/<id>.json 与 scores/summary.json；判完发分数（各指标的平均分与通过率，全部指标都过的用例占比 pass_rate）。
 3. report：汇总写 report.json 与 report.md。
 """
@@ -153,11 +154,60 @@ def bridge_cases(cases: Sequence[Case], records: Mapping[str, Mapping[str, Any]]
     return out
 
 
+def _deepeval_metric(spec: Mapping[str, Any], model: Any) -> Any:
+    from deepeval.metrics import AnswerRelevancyMetric, FaithfulnessMetric, GEval
+
+    try:
+        from deepeval.test_case import SingleTurnParams as Params
+    except ImportError:  # pragma: no cover - 旧版 DeepEval
+        from deepeval.test_case import LLMTestCaseParams as Params  # type: ignore[no-redef]
+    params = {"input": Params.INPUT, "actual_output": Params.ACTUAL_OUTPUT, "expected_output": Params.EXPECTED_OUTPUT, "context": Params.RETRIEVAL_CONTEXT}
+    threshold = float(spec.get("threshold", 0.5))
+    if spec["kind"] == "geval":
+        steps = spec.get("evaluation_steps") or None
+        return GEval(name=spec["name"], criteria=None if steps else spec["criteria"], evaluation_steps=steps,
+                     evaluation_params=[params[p] for p in spec.get("params") or ["input", "actual_output"]], model=model, threshold=threshold, async_mode=True)
+    if spec["kind"] == "answer_relevancy":
+        return AnswerRelevancyMetric(model=model, threshold=threshold, async_mode=True)
+    if spec["kind"] == "faithfulness":
+        return FaithfulnessMetric(model=model, threshold=threshold, async_mode=True)
+    raise ValueError(f"unknown metric kind {spec['kind']!r}")
+
+
+async def gateway_scores(
+    rows: Sequence[Mapping[str, Any]], gateway: Any, log_path: Path, *, judge_profile: str = "", subject_models: Sequence[str] = (),
+    metric_factory: Any = _deepeval_metric, test_case: Any = None,
+) -> list[dict[str, Any]]:
+    """在本进程里用 DeepEval 打分，裁判经 Model Gateway（RecordingJudgeGateway：钉裁判模型、逐条落盘）。rows 同 bridge_cases 的输出。"""
+    from agentruntime_learning.evals.deepeval_metrics import GatewayDeepEvalLLM
+    from agentruntime_learning.evals.judging import DEFAULT_JUDGE, RecordingJudgeGateway, judging
+
+    recorder = RecordingJudgeGateway(gateway, log_path, judge_profile=judge_profile or DEFAULT_JUDGE)
+    model = GatewayDeepEvalLLM(recorder, tenant_id="evals", tier="strong@medium")
+    if test_case is None:
+        from deepeval.test_case import LLMTestCase as test_case  # noqa: N813
+    out = []
+    for row in rows:
+        tc = test_case(input=row["input"], actual_output=row.get("actual_output") or "", expected_output=row.get("expected_output"), retrieval_context=row.get("context") or None)
+        scores: dict[str, Any] = {}
+        for spec in row["metrics"]:
+            with judging(eval="deepeval", case_id=row["id"], metric=spec["name"], subject_models=list(subject_models)):
+                try:
+                    metric = metric_factory(spec, model)
+                    await metric.a_measure(tc)
+                    scores[spec["name"]] = {"score": float(metric.score), "success": bool(metric.success), "reason": str(metric.reason or "")[:1000]}
+                except Exception as exc:  # noqa: BLE001 — 一个指标出错只记这一项的类型
+                    scores[spec["name"]] = {"score": None, "success": False, "error": type(exc).__name__}
+        out.append({"id": row["id"], "scores": scores})
+    return out
+
+
 def score(
-    out_dir: Path, *, python: str, judge: frameworks.JudgeConfig, root: Path = DEFAULT_SET, live: Any = None,
-    bridge: Any = frameworks.run_bridge,
+    out_dir: Path, *, python: str = "", judge: frameworks.JudgeConfig | None = None, root: Path = DEFAULT_SET, live: Any = None,
+    bridge: Any = frameworks.run_bridge, gateway: Any = None, judge_profile: str = "", subject_models: Sequence[str] = (),
 ) -> dict[str, Any]:
-    """经 DeepEval 的桥给跑完的用例打分；打过的不重打。返回并写 scores/summary.json。"""
+    """给跑完的用例打分；打过的不重打。给了 gateway 时经 Model Gateway 判分（裁判记录写 scores/judgments.jsonl），否则经 DeepEval 的桥。
+    返回并写 scores/summary.json。"""
     out_dir = Path(out_dir)
     run_doc = json.loads((out_dir / "run.json").read_text("utf-8"))
     cases = [c for c in load_cases(root) if c.instance_id in run_doc["instance_ids"]]
@@ -165,10 +215,25 @@ def score(
     scores_dir.mkdir(parents=True, exist_ok=True)
     done = {p.stem for p in scores_dir.glob("*.json") if p.name != "summary.json"}
     todo = bridge_cases(cases, sb.read_records(out_dir), done=done)
-    if todo:
+    log_path = scores_dir / "judgments.jsonl"
+    if todo and gateway is not None:
+        import asyncio
+
+        from agentruntime_learning.evals.judging import DEFAULT_JUDGE
+
+        rows = asyncio.run(gateway_scores(todo, gateway, log_path, judge_profile=judge_profile, subject_models=subject_models))
+        for row in rows:
+            sb._write_text(scores_dir / f"{row['id']}.json", json.dumps({**row, "judge_model": judge_profile or DEFAULT_JUDGE, "judge": "gateway"}, ensure_ascii=False, indent=2) + "\n")
+    elif todo:
+        if judge is None or not python:
+            raise ValueError("没有网关时要给 --framework-python 与 --judge-model（经桥判分）")
         for row in bridge("deepeval", python, todo, judge=judge):
-            sb._write_text(scores_dir / f"{row['id']}.json", json.dumps({**row, "judge_model": judge.model}, ensure_ascii=False, indent=2) + "\n")
+            sb._write_text(scores_dir / f"{row['id']}.json", json.dumps({**row, "judge_model": judge.model, "judge": "bridge"}, ensure_ascii=False, indent=2) + "\n")
     summary = summarize({p.stem: json.loads(p.read_text("utf-8")) for p in scores_dir.glob("*.json") if p.name != "summary.json"}, len(cases))
+    if log_path.exists():
+        from agentruntime_learning.evals.judging import summarize_log
+
+        summary["judgments"] = summarize_log(log_path)
     sb._write_text(scores_dir / "summary.json", json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
     if live is not None:
         for name, value in summary["metrics"].items():

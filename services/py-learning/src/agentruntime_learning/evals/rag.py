@@ -9,6 +9,8 @@
   （可选 `async aclose()`）。Memory Service 的代码按这个接口接（例如在 py-memory 里用开发后端组装真的 MemoryService）。
 
 Ragas：没有判分模型时只算不要模型的指标（--offline）；给了判分模型时另算 context_precision、context_recall。
+要模型的两项默认经 Model Gateway 判分（judge_gateway；2026-11-03 人定：裁判钉 Opus 5.5，每次判分写进 judgments.jsonl），
+指标名是 llm_context_precision、llm_context_recall；要在装了 Ragas 的评测 Python 里跑。
 边跑边发（suite ragas）：每个问题一条结果（取回了参考条目里的至少一条算 passed），结束发各指标的平均值。
 """
 
@@ -120,6 +122,7 @@ def retrieval_metrics(retrieved: Sequence[str], reference: Sequence[str]) -> dic
 async def run(
     retriever: Any, corpus: Sequence[Mapping[str, str]], questions: Sequence[Question], out_dir: Path, *, top_k: int = DEFAULT_TOP_K,
     python: str | None = None, judge: frameworks.JudgeConfig | None = None, live: Any = None, bridge: Any = frameworks.run_bridge,
+    judge_gateway: Any = None, judge_profile: str = "",
 ) -> dict[str, Any]:
     """检索、打分，写 <out_dir>/results.jsonl 与 summary.json，返回 summary。python 为空时不跑 Ragas，只给自己算的指标。"""
     out_dir = Path(out_dir)
@@ -144,6 +147,8 @@ async def run(
             row["ragas"] = res.get("scores") or {}
             if res.get("errors"):
                 row["ragas_errors"] = res["errors"]
+    if judge_gateway is not None:
+        await _gateway_metrics(rows, judge_gateway, out_dir / "judgments.jsonl", judge_profile)
     for row in rows:
         row.pop("_bridge")
     means: dict[str, float | None] = {}
@@ -154,8 +159,8 @@ async def run(
         means[name] = round(sum(values) / len(values), 4) if values else None
     summary = {
         "framework": "ragas", "retriever": getattr(retriever, "name", type(retriever).__name__), "top_k": top_k, "questions": len(rows),
-        "metrics": means, "ragas": "judged" if (python and judge) else "offline" if python else "skipped",
-        "judge_model": judge.model if judge else None, "unconfirmed": [q.id for q in questions if not q.confirmed],
+        "metrics": means, "ragas": "gateway" if judge_gateway is not None else "judged" if (python and judge) else "offline" if python else "skipped",
+        "judge_model": (judge_profile or "a6api/claude-opus-5-5@2026-10") if judge_gateway is not None else judge.model if judge else None, "unconfirmed": [q.id for q in questions if not q.confirmed],
         "created_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
     (out_dir / "results.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), "utf-8")
@@ -171,6 +176,28 @@ async def run(
         if inspect.isawaitable(result):
             await result
     return summary
+
+
+async def _gateway_metrics(rows: list[dict[str, Any]], gateway: Any, log_path: Path, judge_profile: str) -> None:
+    """要模型的上下文精确率与召回率，在本进程里用 Ragas 算，裁判经 Model Gateway（RecordingJudgeGateway 钉裁判、逐条落盘）。"""
+    from agentruntime_learning.evals import ragas as rg
+    from agentruntime_learning.evals.judging import DEFAULT_JUDGE, RecordingJudgeGateway, judging
+
+    recorder = RecordingJudgeGateway(gateway, log_path, judge_profile=judge_profile or DEFAULT_JUDGE)
+    llm = rg.ModelGatewayRagasLLM(recorder, tenant_id="evals", tier="strong@medium")
+    classes = rg._metric_classes()
+    for row in rows:
+        payload = {"user_input": row["_bridge"]["user_input"], "retrieved_contexts": row["_bridge"]["retrieved_contexts"], "reference": row["_bridge"]["reference"]}
+        for name in ("context_precision", "context_recall"):
+            key = f"llm_{name}"
+            if name not in classes:
+                row.setdefault("ragas_errors", {})[key] = "ragas_not_installed"
+                continue
+            with judging(eval="ragas", case_id=row["id"], metric=key):
+                value = await rg._score(classes[name](llm=llm), payload)
+            row.setdefault("ragas", {})[key] = value
+            if value is None:
+                row.setdefault("ragas_errors", {})[key] = "metric_error"
 
 
 __all__ = ["DEFAULT_SET", "SUITE", "LexicalRetriever", "Question", "load_retriever", "load_set", "retrieval_metrics", "run"]

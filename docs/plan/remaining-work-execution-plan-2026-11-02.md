@@ -25,7 +25,7 @@
 | P2-C | N-14～N-16/N-18 | Registry/SecretStore/S-01 | 用户 Skill、用户 MCP、多 Agent 协作、文件型交付；N-14/D-27、D-25、N-15/N-16、N-18 已合并前置验收包 | 契约已批准；依赖 Registry/SecretStore/对象存储实现 |
 | ENV | D-02～D-05/D-07/D-09～D-17 | 真实主机/域名/凭据 | 真 Postgres/Temporal/Qdrant/Redpanda/Langfuse/R2/Cloudflare/Kata/DNS/TLS/BuildKit/包源/Grafana/Tempo | 资源未提供前只做脚本和 kind gate |
 
-评测分支 `codex/evals-design-closeout` 当前包含会删除主线评测集、bridge、契约包和部署文档的大范围重构，不能作为合并候选；主线已有的 `fe28432` N-11～N-13 实现继续作为唯一基线。
+评测分支 `codex/evals-design-closeout` 已于 2026-11-03 以三方合并合进 main（`76f2b46`）：只新增文件、没有删除主线的评测集与桥（早先“会删除”的判断是拿分支末端直接和 main 比的结果）；Terminal-Bench 两条路并存，见 `feedback-2026-11-01.md` 第 8 节。
 
 ## 完成定义
 

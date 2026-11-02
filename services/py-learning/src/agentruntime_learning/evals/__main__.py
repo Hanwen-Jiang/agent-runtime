@@ -94,11 +94,14 @@ def _parser() -> argparse.ArgumentParser:
     drun.add_argument("--concurrency", type=int, default=2)
     drun.add_argument("--task-timeout-min", type=float, default=30.0)
     drun.add_argument("--model-name", default="agent-runtime", help="被测的系统的标签（看板与报告用）")
-    dscore = dsub.add_parser("score", help="用 DeepEval 的桥给交付打分（要装了 eval-requirements.txt 的 Python）")
+    dscore = dsub.add_parser("score", help="用 DeepEval 给交付打分：默认裁判经 Model Gateway（要在装了 eval-requirements.txt 的 Python 里跑）")
     dscore.add_argument("--eval-set", type=Path, default=None)
     dscore.add_argument("--out", type=Path, required=True)
-    dscore.add_argument("--framework-python", required=True, help="装了 DeepEval 的 Python")
-    dscore.add_argument("--judge-model", required=True, help="判分的模型（与被测的不是同一家）")
+    dscore.add_argument("--judge", choices=("gateway", "bridge"), default="gateway", help="gateway：经 AR_EVAL_GATEWAY_FACTORY 的网关；bridge：桥直连供应商")
+    dscore.add_argument("--judge-profile", default="", help="网关判分时钉的裁判 Profile（默认 Opus 5.5）")
+    dscore.add_argument("--subject-models", default="", help="被测一侧用到的 Profile（逗号分隔），用来标出同家冲突")
+    dscore.add_argument("--framework-python", default="", help="bridge：装了 DeepEval 的 Python")
+    dscore.add_argument("--judge-model", default="", help="bridge：判分的模型（与被测的不是同一家）")
     drep = dsub.add_parser("report", help="写 report.json 与 report.md")
     drep.add_argument("--out", type=Path, required=True)
 
@@ -108,7 +111,9 @@ def _parser() -> argparse.ArgumentParser:
     rg.add_argument("--top-k", type=_positive, default=3)
     rg.add_argument("--out", type=Path, required=True)
     rg.add_argument("--framework-python", default="", help="装了 Ragas 的 Python；不给时只算自己的指标")
-    rg.add_argument("--judge-model", default="", help="判分的模型；不给时 Ragas 只算不要模型的指标")
+    rg.add_argument("--judge-model", default="", help="bridge 判分的模型；不给时桥只算不要模型的指标")
+    rg.add_argument("--judge-gateway", action="store_true", help="要模型的指标经 Model Gateway 判分（AR_EVAL_GATEWAY_FACTORY；裁判钉 --judge-profile，默认 Opus 5.5）")
+    rg.add_argument("--judge-profile", default="")
     rg.add_argument("--embedding-model", default="")
     return parser
 
@@ -199,10 +204,16 @@ def _deepeval(args: argparse.Namespace) -> int:
             print((args.out / "report.md").read_text("utf-8"))
             return 0
         if args.action == "score":
-            judge = frameworks.judge_config(args.judge_model)
             run_doc = json.loads((args.out / "run.json").read_text("utf-8"))
+            subject = [m for m in args.subject_models.split(",") if m]
             with _live(str(run_doc["run_id"]), str(run_doc.get("model_name") or ""), suite=dv.SUITE, split="deliverables") as live:
-                summary = dv.score(args.out, python=args.framework_python, judge=judge, root=root, live=live)
+                if args.judge == "gateway":
+                    from agentruntime_learning.evals.judging import gateway_from_env
+
+                    summary = dv.score(args.out, root=root, live=live, gateway=gateway_from_env(), judge_profile=args.judge_profile, subject_models=subject)
+                else:
+                    judge = frameworks.judge_config(args.judge_model)
+                    summary = dv.score(args.out, python=args.framework_python, judge=judge, root=root, live=live)
             print(f"打分完成：全部指标都通过 {summary['passed_all']}/{summary['selected']}；报告用 … deepeval report --out {args.out}")
             return 0
         token = os.environ.get(TOKEN_ENV, "")
@@ -239,7 +250,13 @@ def _ragas(args: argparse.Namespace) -> int:
 
         async def go(tel: Any) -> dict[str, Any]:
             live = LiveRun(tel, suite=rag.SUITE, subject=args.retriever, split="memory-rag") if tel is not None else None
-            return await rag.run(retriever, corpus, questions, args.out, top_k=args.top_k, python=args.framework_python or None, judge=judge, live=live)
+            judge_gateway = None
+            if args.judge_gateway:
+                from agentruntime_learning.evals.judging import gateway_from_env
+
+                judge_gateway = gateway_from_env()
+            return await rag.run(retriever, corpus, questions, args.out, top_k=args.top_k, python=args.framework_python or None, judge=judge, live=live,
+                                 judge_gateway=judge_gateway, judge_profile=args.judge_profile)
 
         summary = asyncio.run(_with_telemetry(go))
     except (ValueError, OSError, RuntimeError, ImportError, AttributeError) as exc:
