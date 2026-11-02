@@ -54,6 +54,13 @@ spec:
               value: {{ $.Values.worker.reviewer | quote }}
             - name: AR_TOOL_LOOP
               value: {{ $.Values.worker.toolLoop | quote }}
+            {{- if not (has ($.Values.worker.judge | default "") (list "" "jev")) }}
+            {{- fail "worker.judge 只能是空或 jev" }}
+            {{- end }}
+            {{- with $.Values.worker.judge }}
+            - name: AR_JUDGE
+              value: {{ . | quote }}
+            {{- end }}
             - name: AR_DATA_DIR
               value: /data
             {{- include "ar.objectStoreEnv" $ | nindent 12 }}

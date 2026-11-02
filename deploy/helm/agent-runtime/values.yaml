@@ -194,6 +194,9 @@ worker:
   # Context Builder 的有效长度与转存门槛（token）；空表示用 Worker 的默认值（32000、2000）。
   contextEffectiveTokens: ""
   contextOffloadTokens: ""
+  # 交付的快速检查（docs/plan/feedback-2026-11-01.md N-09）：空为不检查；jev 为 TypeSafe 的 Jev，密钥放在 SecretStore 种子
+  # （secrets.existingSecret 的 secrets.json）平台作用域的 judge/jev-api-key。
+  judge: ""
   # 真正的 Planner、Reviewer 与 tool_loop（经 Model Gateway）；stub 只用于端到端测试。
   planner: model
   reviewer: model
