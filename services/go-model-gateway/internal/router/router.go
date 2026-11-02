@@ -128,13 +128,13 @@ type modelBudgetPolicy struct {
 // tenantPolicyFileEntry 只读取 Model Gateway 所需的 model_allowlist；其余已批准的策略字段以 RawMessage
 // 保留形状，避免这里复制 task-service 的完整策略执行逻辑，同时让顶层字段接受严格校验。
 type tenantPolicyFileEntry struct {
-	EffectCeiling json.RawMessage   `json:"effect_ceiling"`
-	ModelAllowlist *[]string        `json:"model_allowlist"`
-	Hooks          json.RawMessage   `json:"hooks"`
-	Budget         json.RawMessage   `json:"budget"`
+	EffectCeiling  json.RawMessage    `json:"effect_ceiling"`
+	ModelAllowlist *[]string          `json:"model_allowlist"`
+	Hooks          json.RawMessage    `json:"hooks"`
+	Budget         json.RawMessage    `json:"budget"`
 	ModelBudget    *modelBudgetPolicy `json:"model_budget"`
-	Sandbox        json.RawMessage   `json:"sandbox"`
-	Workspace      json.RawMessage   `json:"workspace"`
+	Sandbox        json.RawMessage    `json:"sandbox"`
+	Workspace      json.RawMessage    `json:"workspace"`
 }
 
 type tenantPolicyFile struct {
