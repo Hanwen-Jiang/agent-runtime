@@ -745,9 +745,19 @@ class StageRunner:
         if effect == "write_irreversible":
             self._irreversible.append(node["id"])
         try:
+            activity_input = NodeInput(
+                tenant=self._ctx.tenant,
+                task_id=self._ctx.task_id,
+                round_seq=self._ctx.round_seq,
+                node=node,
+                gate=gate,
+                injections=list(injections),
+                task_state=copy.deepcopy(self._ctx.task_state),
+                task_plan=copy.deepcopy(self._ctx.task_plan),
+            )
             output = await workflow.execute_activity(
                 names.EXECUTE_MODEL_NODE if model else names.EXECUTE_PROGRAM_NODE,
-                NodeInput(tenant=self._ctx.tenant, task_id=self._ctx.task_id, round_seq=self._ctx.round_seq, node=node, gate=gate, injections=list(injections)),
+                activity_input,
                 task_queue=names.MODEL_QUEUE if model else names.PROGRAM_QUEUE,
                 start_to_close_timeout=start_to_close,
                 heartbeat_timeout=self._heartbeat(heartbeat),

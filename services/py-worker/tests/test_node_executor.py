@@ -18,6 +18,7 @@ from typing import Any
 import pytest
 from temporalio.exceptions import ApplicationError
 from temporalio.testing import ActivityEnvironment
+from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 
 from agentruntime_core.dev.secret_store import LocalFileSecretStore
 from agentruntime_core.enums import Effect
@@ -28,6 +29,7 @@ from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker import names
 from agentruntime_worker.activities.types import GateRecord, HumanCancel, HumanQuestion
+from agentruntime_worker.context.builder import BuiltContext
 from agentruntime_worker.executor import keys
 from agentruntime_worker.executor import node_executor as ne
 from agentruntime_worker.executor.node_executor import ExecutorConfig
@@ -75,6 +77,44 @@ async def run_program(fx: ExecutorFixture, node: dict[str, Any], **kw: Any) -> d
 
 async def run_model(fx: ExecutorFixture, node: dict[str, Any], **kw: Any) -> dict[str, Any]:
     return await env_for(names.EXECUTE_MODEL_NODE, queue=names.MODEL_QUEUE).run(fx.executor.execute_model_node, node_input(node, **kw))
+
+
+class _ContextSpy:
+    def __init__(self) -> None:
+        self.requests: list[Any] = []
+
+    async def build(self, request: Any) -> BuiltContext:
+        self.requests.append(request)
+        return BuiltContext(
+            messages=[mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text="stable context")],
+            applied=[],
+            tokens=2,
+        )
+
+
+async def test_model_activity_uses_only_serializable_context_snapshot(fx: ExecutorFixture) -> None:
+    """Q87：Builder 在 Activity 内运行，输入来自可 JSON 化的 NodeInput 快照。"""
+    import dataclasses
+    import json
+
+    spy = _ContextSpy()
+    fx.executor.deps = dataclasses.replace(fx.executor.deps, context_builder=spy)
+    fx.models.reply({"summary": "ok"})
+    inp = node_input(
+        model("ctx"),
+        injections=[{"zone": "constraints", "content": "只使用已验证事实"}],
+    )
+    inp.task_state = {"goal": "核验", "done_when": "完成"}
+    inp.task_plan = {"context": {"work_mode": "diagnose"}}
+    inp.history = [{"tool": "repo_list", "args": {}, "observation": {"ok": True}}]
+    json.dumps(dataclasses.asdict(inp), ensure_ascii=False)
+    out = await env_for(names.EXECUTE_MODEL_NODE, queue=names.MODEL_QUEUE).run(fx.executor.execute_model_node, inp)
+    assert out["result"] == {"summary": "ok"}
+    assert len(spy.requests) == 1
+    request = spy.requests[0]
+    assert request.task_state == {"goal": "核验", "done_when": "完成"}
+    assert request.task_plan == {"context": {"work_mode": "diagnose"}}
+    assert request.history[0]["tool"] == "repo_list"
 
 
 async def expect_error(coro: Any, error_type: str, *, retryable: bool = False) -> ApplicationError:

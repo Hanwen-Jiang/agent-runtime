@@ -79,6 +79,11 @@ class NodeInput:
     gate: GateRecord | None = None
     # before_node Hook 的 inject 结果（hook_result.schema.json 的 injection），由 Context Builder 放进对应分区。
     injections: list[dict[str, Any]] = field(default_factory=list)
+    # ContextBuilder 的稳定 Activity 输入。Workflow 在提交 Activity 时复制这些 JSON
+    # 值；Activity 不从外部读取 Workflow 状态，保证 replay 输入可序列化且可重放。
+    history: list[dict[str, Any]] = field(default_factory=list)
+    task_state: dict[str, Any] = field(default_factory=dict)
+    task_plan: dict[str, Any] | None = None
 
 
 @dataclass

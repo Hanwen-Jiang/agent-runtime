@@ -37,6 +37,7 @@ from agentruntime_worker.executor.grpc_gateway import GrpcModelGateway
 from agentruntime_worker.executor.model_gateway import ModelGateway
 from agentruntime_worker.executor.node_executor import ExecutorConfig, ExecutorDeps, NodeExecutor, workflow_question_id
 from agentruntime_worker.executor.schemas import DictSchemaResolver
+from agentruntime_worker.context.builder import ContextBuilder, ContextConfig
 from agentruntime_worker.session.transcript import session_transcript
 from agentruntime_worker.telemetry import worker_telemetry
 from agentruntime_worker.tools import dev_tools
@@ -132,16 +133,23 @@ def dev_executor(
 ) -> NodeExecutor:
     root = data_root(config)
     sink = TemporalReplySink(client) if client is not None else _LoggingSink()
+    model_gateway_instance = model_gateway(config)
+    object_store = objects or dev_object_store(config, root)
     deps = ExecutorDeps(
         tools=dev_tools(config),
-        objects=objects or dev_object_store(config, root),
+        objects=object_store,
         secrets=dev_secret_store(config, root),
         cache=InMemoryCacheProvider(),
         humans=CliHumanChannelProvider(sink, output=sys.stderr),
         telemetry=worker_telemetry(),
-        models=model_gateway(config),
+        models=model_gateway_instance,
         schemas=DictSchemaResolver({}),
         sandbox=LocalSubprocessSandboxProvider(root / "sandbox"),
-        transcript=session_transcript(config.relational_dsn, config.data_dir, objects or dev_object_store(config, root)),
+        transcript=session_transcript(config.relational_dsn, config.data_dir, object_store),
+        context_builder=ContextBuilder(
+            model_gateway_instance,
+            object_store,
+            ContextConfig(effective_tokens=config.context_effective_tokens),
+        ),
     )
     return NodeExecutor(deps, executor_config or ExecutorConfig(context_effective_tokens=config.context_effective_tokens))

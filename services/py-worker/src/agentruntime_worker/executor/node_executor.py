@@ -62,7 +62,7 @@ from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker import names
 from agentruntime_worker.activities.types import HumanCancel, HumanQuestion, NodeInput, ReconcileResult, Tenant, ToolCallInput
-from agentruntime_worker.context.builder import measured, message_tokens
+from agentruntime_worker.context.builder import ContextBuilder, ContextRequest, measured, message_tokens
 from agentruntime_worker.executor import keys
 from agentruntime_worker.session.transcript import TranscriptSource, Turn, actions_text, chat_messages
 from agentruntime_worker.executor.model_gateway import ModelGateway
@@ -129,6 +129,9 @@ class ExecutorDeps:
     sandbox: SandboxProvider | None = None
     # 同一 Session 里之前的对话；没配时回复用户的节点只看这一条消息。
     transcript: TranscriptSource | None = None
+    # 非 conversational model Activity 的上下文组装器。它只接受 NodeInput 中的
+    # 稳定 JSON 快照；未配置时保留原有最小消息路径，便于旧 Activity 历史重放。
+    context_builder: ContextBuilder | None = None
 
 
 def _conversational(node: Mapping[str, Any]) -> bool:
@@ -682,13 +685,42 @@ class NodeExecutor:
 
     async def _generate(
         self, inp: NodeInput, tenant: TenantContext, schema: Mapping[str, Any] | None, retry_errors: list[str] | None
-    ) -> tuple[mg.GenerateResponse, Sequence[mg.ChatMessage]]:
+    ) -> tuple[mg.GenerateResponse, Sequence[mg.ChatMessage], float]:
         transcript = self.deps.transcript
         turns = await transcript.load(inp.tenant, inp.task_id) if transcript is not None and _conversational(inp.node) else ()
-        params = mg.GenerateParams(messages=self._messages(inp, retry_errors, turns))
+        context_cost = 0.0
+        # 旧 Activity 历史没有 ContextBuilder 快照字段；对这类输入继续走原路径，
+        # 避免重放时改变桩模型的提示形状。新 Workflow 提交的 Task State/Plan
+        # 或显式 history 才启用 Activity 内的构建器。
+        has_context_snapshot = bool(inp.history or inp.task_state or inp.task_plan is not None)
+        if self.deps.context_builder is not None and not _conversational(inp.node) and has_context_snapshot:
+            system = [SYSTEM_PROMPT]
+            system.extend(f"[{i.get('zone', '')}] {i.get('content', '')}" for i in inp.injections)
+            built = await self.deps.context_builder.build(
+                ContextRequest(
+                    tenant=inp.tenant,
+                    task_id=inp.task_id,
+                    round_seq=inp.round_seq,
+                    node=inp.node,
+                    history=tuple(inp.history),
+                    task_state=dict(inp.task_state),
+                    task_plan=dict(inp.task_plan) if inp.task_plan is not None else None,
+                    system=tuple(system),
+                )
+            )
+            messages = list(built.messages)
+            context_cost = built.cost_usd
+            if retry_errors:
+                messages.append(
+                    mg.ChatMessage(role=mg.CHAT_ROLE_USER, text="上一次的输出不符合 output_schema，请改正后重新输出：\n" + "\n".join(retry_errors))
+                )
+        else:
+            messages = self._messages(inp, retry_errors, turns)
+        params = mg.GenerateParams(messages=messages)
         if schema is not None:
             params.output_schema.CopyFrom(payload_pb2.JsonPayload(value=_to_value(dict(schema))))
-        return await self.deps.models.generate(mg.GenerateRequest(tenant=tenant, call=self._call(inp), generation=params)), params.messages
+        response = await self.deps.models.generate(mg.GenerateRequest(tenant=tenant, call=self._call(inp), generation=params))
+        return response, params.messages, context_cost
 
     async def _model(self, inp: NodeInput, tenant: TenantContext, span: Span) -> dict[str, Any]:
         node = inp.node
@@ -703,13 +735,14 @@ class NodeExecutor:
         # TMP 计划第 7 节：judge 按 {result, regressions} 的外壳要输出，拆开后 result 照旧，regressions 另放（只交给 Reviewer）。
         judge = node.get("role") == "judge"
         asked = judge_envelope(schema) if judge else schema
-        response, messages = await self._generate(inp, tenant, asked, None)
+        response, messages, context_cost = await self._generate(inp, tenant, asked, None)
         result = self._result_of(response)
         errors = validate(asked, result) if asked is not None else []
         if errors:
             # 输出不符合 schema：带上校验错误重问一次（附录 D.3、D.6）。
             span.add_event("invalid_output_retry", {"errors": "；".join(errors)})
-            response, messages = await self._generate(inp, tenant, asked, errors)
+            response, messages, retry_context_cost = await self._generate(inp, tenant, asked, errors)
+            context_cost += retry_context_cost
             result = self._result_of(response)
             errors = validate(asked, result) if asked is not None else []
             if errors:
@@ -721,7 +754,11 @@ class NodeExecutor:
         if response.rationale:
             span.add_event("rationale", {"text": response.rationale})
         span.set_attributes(_usage_attributes(node, response.model, response.usage))
-        out: dict[str, Any] = {"result": result, "meta": self._meta(node, response.model, response.usage, started)}
+        meta = self._meta(node, response.model, response.usage, started)
+        if context_cost:
+            meta["context_cost_usd"] = context_cost
+            meta["cost_usd"] = round(float(meta.get("cost_usd") or 0.0) + context_cost, 6)
+        out: dict[str, Any] = {"result": result, "meta": meta}
         if regressions:
             out["regressions"] = regressions
         if _conversational(node):
