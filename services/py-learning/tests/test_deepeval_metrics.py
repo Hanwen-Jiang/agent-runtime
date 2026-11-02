@@ -1,4 +1,5 @@
 import asyncio
+import importlib.util
 from types import SimpleNamespace
 from google.protobuf import json_format, struct_pb2
 
@@ -33,6 +34,7 @@ def test_validate_case_rejects_wrong_types():
     assert "tools_called must be a list" in validate_case({"case_id": "x", "input": "x", "actual_output": "x", "tools_called": {}})
 
 
+@__import__('unittest').skipUnless(importlib.util.find_spec('agentruntime') is not None, 'generated proto package unavailable')
 def test_gateway_judge_uses_judge_role_and_budget():
     result = struct_pb2.Value()
     json_format.ParseDict({"score": 0.75, "reason": "acceptable"}, result)

@@ -14,6 +14,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+try:  # optional dependency; fixture mode must import without DeepEval installed
+    from deepeval.models import DeepEvalBaseLLM  # type: ignore
+except ImportError:  # pragma: no cover
+    class DeepEvalBaseLLM:  # type: ignore[no-redef]
+        pass
+
 REQUIRED = ("case_id", "input", "actual_output", "tools_called")
 
 
@@ -45,6 +51,33 @@ class GatewayJudgeResult:
     model: str
     usage: dict[str, int]
     cost_usd: float
+
+
+class GatewayDeepEvalLLM(DeepEvalBaseLLM):
+    """Minimal DeepEval custom model backed by Model Gateway."""
+
+    def __init__(self, gateway: Any, *, tenant_id: str, tier: str = "strong@medium", max_cost_usd_micros: int = 0) -> None:
+        self.gateway, self.tenant_id, self.tier, self.max_cost_usd_micros = gateway, tenant_id, tier, max_cost_usd_micros
+
+    def get_model_name(self) -> str:
+        return f"gateway/{self.tier}"
+
+    async def a_generate(self, prompt: str, schema: Any | None = None, **_: Any) -> Any:
+        from google.protobuf import json_format, struct_pb2
+        from agentruntime.common.v1 import enums_pb2, payload_pb2, tenant_pb2
+        from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
+        spec = schema if isinstance(schema, dict) else {"type": "object"}
+        value = struct_pb2.Value(); json_format.ParseDict(spec, value)
+        response = await self.gateway.generate(mg.GenerateRequest(
+            tenant=tenant_pb2.TenantContext(tenant_id=self.tenant_id),
+            call=mg.CallContext(node_id="deepeval_judge", role=enums_pb2.ROLE_JUDGE, tier=self.tier, max_cost_usd_micros=max(0, int(self.max_cost_usd_micros))),
+            generation=mg.GenerateParams(messages=[mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=prompt)], output_schema=payload_pb2.JsonPayload(value=value)),
+        ))
+        return json_format.MessageToDict(response.result)
+
+    def generate(self, prompt: str, schema: Any | None = None, **kwargs: Any) -> Any:
+        import asyncio
+        return asyncio.run(self.a_generate(prompt, schema, **kwargs))
 
 
 def validate_case(case: Mapping[str, Any]) -> list[str]:
