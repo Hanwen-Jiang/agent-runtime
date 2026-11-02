@@ -44,6 +44,11 @@ service WorkspaceService {
   // （否则 AlreadyExists，code 为 workspace_dirty）；远端是建工作区时的 repo_url（从别的工作区复制的沿用那边的），
   // 没有远端时 InvalidArgument。凭据同 PushWorkspace，只用这一次。
   rpc SyncWorkspace(SyncWorkspaceRequest) returns (SyncWorkspaceResponse);
+  // 删除一个环境配置（ENV-02，Q35）：立即把调用者用它建的工作区上的选用配置标记为已删除，之后这些工作区不再建新的沙箱
+  // 环境（FailedPrecondition，environment_deleted）；已有的沙箱环境由现有的对账（sandbox reconcile）在闲着时异步销毁。
+  // 不删工作区，环境表（EnvironmentService）仍是状态的权威。幂等：再删一次 workspaces 为 0。只认调用者自己选用的
+  // （建工作区的用户），别人的不动。
+  rpc DeleteEnvironmentConfig(DeleteEnvironmentConfigRequest) returns (DeleteEnvironmentConfigResponse);
 }
 
 // GitCredential 是克隆或推送用的凭据（例如 HTTPS 的用户名与令牌），只用这一次。
@@ -74,6 +79,68 @@ message Workspace {
   google.protobuf.Timestamp updated_at = 9;
   // 当前的分支；分离头指针或还不知道时为空。
   string branch = 10;
+  // 建工作区时选用的环境配置的 ID（应用的环境 ID）；没有选用时为空。配置的内容不回显（ENV-02）。
+  string environment_id = 11;
+}
+
+// WorkspaceEnvironment 是应用保存的可复用环境配置（人工验收 Q16–37；docs/plan/env-02-implementation-2026-11-03.md）
+// 在建工作区时的一份快照：环境与仓库无关，同一个环境可以用于多个工作区；之后编辑环境只影响新建的工作区。
+// 里面只有普通值与密钥的名字，没有密钥的值；Runtime 按（租户，工作区）保存这份快照，SandboxBroker 建环境时读它。
+// 环境的状态（setup 是否成功、是否就绪）只以 EnvironmentService 的环境表为准，不从日志推断。
+message WorkspaceEnvironment {
+  // 应用的环境 ID：字母、数字、_ 与 -，最多 128 个字符。删除环境（DeleteEnvironmentConfig）按它找。
+  string environment_id = 1;
+  // 安装脚本（Bash）：每个新的沙箱环境建好、工作区恢复之后，执行任何业务命令之前跑一次（工作区根为当前目录）；
+  // 失败或超时则这个环境不启动（不执行任何业务命令，错误码 environment_setup_failed / environment_setup_timeout）。
+  // 成功的结果按 sha256（脚本内容 + 基础镜像 digest）缓存，失败不缓存、下次重跑。最多 64 KiB。
+  string setup_script = 2;
+  // 启动命令（Bash）：setup 成功之后启动交互运行时（例如后台服务），不安装依赖；要在时限内返回，长期运行的进程放到后台。
+  // 失败只记录、不阻止业务命令。最多 64 KiB。
+  string start_command = 3;
+  // 普通环境变量，.env 格式：一行一个 KEY=value，# 开头的行与空行忽略；值原样（不做引号与变量展开）。
+  // 交给 setup、start 与每条命令，环境的使用者看得到：不要放机密（机密用 secret_headers 引用）。
+  // 最多 64 个、合计 16 KiB；名字规则同 Sandbox 的 exec env，不能盖掉平台注入的变量（代理、包镜像等）。
+  string env = 4;
+  EnvironmentNetwork network = 5;
+  // 网络密钥：出网网关只在向这些 HTTPS 主机（443）的请求上加请求头，值取自 SecretStore；模型与沙箱都拿不到值。
+  repeated SecretHeader secret_headers = 6;
+}
+
+// NetworkMode 是环境的联网档位（Q29）。在 Task 的联网授权与租户策略之内再收窄，不能放宽它们。
+enum NetworkMode {
+  // 旧客户端：环境不另加限制（同 OPEN）。
+  NETWORK_MODE_UNSPECIFIED = 0;
+  // 完全开放：环境不另加限制，放行范围由 Task 的联网授权与租户策略决定。
+  NETWORK_MODE_OPEN = 1;
+  // 受限列表：只放行 hosts 里的主机（另要 Task 的授权覆盖它）。
+  NETWORK_MODE_RESTRICTED = 2;
+  // 禁止：业务出网一律拒绝（包镜像与 Workspace API 自己的 git 操作不受影响）。
+  NETWORK_MODE_DENY = 3;
+}
+
+message EnvironmentNetwork {
+  NetworkMode mode = 1;
+  // RESTRICTED 时的主机名单，最多 50 个。
+  repeated NetworkHost hosts = 2;
+}
+
+// NetworkHost 是一个域名（小写，不能是 IP 或内网名字）；子域名是否匹配显式配置（Q30）。
+message NetworkHost {
+  string host = 1;
+  // true 时 a.host、b.a.host 也匹配；false 时只匹配 host 本身。
+  bool include_subdomains = 2;
+}
+
+// SecretHeader：向 host 的 HTTPS 请求由出网网关加上一个请求头（Q28、Q31、Q32）。只在 443 端口、TLS 上生效；
+// 不写进 URL 的查询参数；重定向到别的主机的请求不带（那是另一个请求，按那台主机自己的配置）。
+message SecretHeader {
+  string host = 1;
+  bool include_subdomains = 2;
+  // 本用户在 SecretStore 里的密钥名（不是值）：租户作用域的 user-secrets/<建工作区的用户>/<secret_name>。
+  // 字母、数字、.、_ 与 -，最多 128 个字符。
+  string secret_name = 3;
+  // 请求头的名字；为空时是 Authorization，值为 "Bearer <密钥>"；别的名字（例如 x-api-key）值为密钥原文。
+  string header = 4;
 }
 
 // InitialFile 是建空工作区时写入的一个文件（例如示例项目）。
@@ -104,6 +171,9 @@ message CreateWorkspaceRequest {
   // 初始提交（或克隆之后写入文件的那次提交）的作者；为空时用 Agent Runtime 的默认作者。
   string author_name = 8;
   string author_email = 9;
+  // 选用的环境配置（ENV-02）：在这个工作区上建的每个沙箱环境都按它准备（setup、start、.env、联网、网络密钥）。
+  // 为空时保持原行为。可以与任一来源同给（应用新建会话时复制基线工作区并选用环境）。
+  WorkspaceEnvironment environment = 10;
 }
 
 message CreateWorkspaceResponse {
@@ -284,4 +354,14 @@ message SyncWorkspaceResponse {
   // 切过去之后的 HEAD。
   string head = 1;
   string branch = 2;
+}
+
+message DeleteEnvironmentConfigRequest {
+  string tenant_id = 1;
+  string environment_id = 2;
+}
+
+message DeleteEnvironmentConfigResponse {
+  // 这次新标记为已删除的工作区个数（已经标记过的不算）。
+  int32 workspaces = 1;
 }

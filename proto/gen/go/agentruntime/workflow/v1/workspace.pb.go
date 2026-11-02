@@ -112,7 +112,8 @@ type WorkspaceOperationInput struct {
 	Operation   WorkspaceOperation `protobuf:"varint,3,opt,name=operation,proto3,enum=agentruntime.workflow.v1.WorkspaceOperation" json:"operation,omitempty"`
 	WorkspaceId string             `protobuf:"bytes,4,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
 	// 不含凭据的参数，名字与 workspace.v1 里对应 Request 的字段相同：repo_url、ref、base、find_renames、message、
-	// author_name、author_email、branch、from_workspace_id、files（[{path, content}]）、path、limit。
+	// author_name、author_email、branch、from_workspace_id、files（[{path, content}]）、path、limit；
+	// 建工作区时另有 environment（workspace.v1.WorkspaceEnvironment 的 protojson，task-service 校验过；只有密钥的名字）。
 	Args *structpb.Struct `protobuf:"bytes,5,opt,name=args,proto3" json:"args,omitempty"`
 	// wsc1.<base64url(nonce || 密文)>；没有凭据时为空。
 	SealedCredential string `protobuf:"bytes,6,opt,name=sealed_credential,json=sealedCredential,proto3" json:"sealed_credential,omitempty"`

@@ -25,6 +25,28 @@ enum EnvironmentState {
   ENVIRONMENT_STATE_LOST = 6;
 }
 
+// SetupState 是环境配置的安装脚本在这个沙箱环境上的结果（ENV-02，Q20–22），记在环境表里。
+enum SetupState {
+  // 旧记录或还没记：未知，不能当作成功。
+  SETUP_STATE_UNSPECIFIED = 0;
+  // 没有选用环境配置，或配置里没有安装脚本。
+  SETUP_STATE_NONE = 1;
+  SETUP_STATE_RUNNING = 2;
+  SETUP_STATE_SUCCEEDED = 3;
+  // 命中缓存（同样的脚本内容与基础镜像之前成功过）：没有再跑。
+  SETUP_STATE_CACHED = 4;
+  // 失败或超时：这个环境不启动、不执行业务命令，随即销毁。
+  SETUP_STATE_FAILED = 5;
+}
+
+// StartState 是启动命令的结果；失败只记录，不阻止业务命令。
+enum StartState {
+  START_STATE_UNSPECIFIED = 0;
+  START_STATE_NONE = 1;
+  START_STATE_SUCCEEDED = 2;
+  START_STATE_FAILED = 3;
+}
+
 // EnvRecord 对应已有 sandbox_envs 的一行，不是可复用环境配置 EnvironmentConfig。
 // 未知时间戳省略；不从 Pod、last_used_at、命令成功或 Kubernetes TTL 补猜。
 message EnvRecord {
@@ -49,7 +71,7 @@ message EnvRecord {
   google.protobuf.Timestamp health_confirmed_at = 16;
   // Broker 实际复借同一 Workspace/Session 的时间；普通命令完成的 touch 不写它。
   google.protobuf.Timestamp reused_at = 17;
-  // 仅 ledger READY、健康已确认、两个明确期限都未到期时为 true；未知不能当 true。
+  // 仅 ledger READY、健康已确认、两个明确期限都未到期，且 setup 为 NONE、SUCCEEDED 或 CACHED 时为 true；未知不能当 true。
   bool ready = 18;
   // 有 reused_at 且归属于非空 Workspace/Session；不以环境号或 Pod 名相同推断。
   bool reused = 19;
@@ -57,6 +79,15 @@ message EnvRecord {
   bool writable = 21;
   string runtime = 22;
   string image = 23;
+  // 准备这个环境时选用的环境配置（应用的环境 ID）；没有时为空。
+  string environment_id = 24;
+  SetupState setup_state = 25;
+  // setup 缓存键：sha256（脚本内容 + 基础镜像 digest）的十六进制；没有 setup 时为空。
+  string setup_key = 26;
+  google.protobuf.Timestamp setup_finished_at = 27;
+  // setup 失败的稳定错误码（environment_setup_failed、environment_setup_timeout）；不含日志与输出。
+  string setup_error = 28;
+  StartState start_state = 29;
 }
 
 message GetEnvironmentRequest {

@@ -68,6 +68,9 @@ const (
 	// WorkspaceServiceSyncWorkspaceProcedure is the fully-qualified name of the WorkspaceService's
 	// SyncWorkspace RPC.
 	WorkspaceServiceSyncWorkspaceProcedure = "/agentruntime.workspace.v1.WorkspaceService/SyncWorkspace"
+	// WorkspaceServiceDeleteEnvironmentConfigProcedure is the fully-qualified name of the
+	// WorkspaceService's DeleteEnvironmentConfig RPC.
+	WorkspaceServiceDeleteEnvironmentConfigProcedure = "/agentruntime.workspace.v1.WorkspaceService/DeleteEnvironmentConfig"
 )
 
 // WorkspaceServiceClient is a client for the agentruntime.workspace.v1.WorkspaceService service.
@@ -103,6 +106,11 @@ type WorkspaceServiceClient interface {
 	// （否则 AlreadyExists，code 为 workspace_dirty）；远端是建工作区时的 repo_url（从别的工作区复制的沿用那边的），
 	// 没有远端时 InvalidArgument。凭据同 PushWorkspace，只用这一次。
 	SyncWorkspace(context.Context, *connect.Request[v1.SyncWorkspaceRequest]) (*connect.Response[v1.SyncWorkspaceResponse], error)
+	// 删除一个环境配置（ENV-02，Q35）：立即把调用者用它建的工作区上的选用配置标记为已删除，之后这些工作区不再建新的沙箱
+	// 环境（FailedPrecondition，environment_deleted）；已有的沙箱环境由现有的对账（sandbox reconcile）在闲着时异步销毁。
+	// 不删工作区，环境表（EnvironmentService）仍是状态的权威。幂等：再删一次 workspaces 为 0。只认调用者自己选用的
+	// （建工作区的用户），别人的不动。
+	DeleteEnvironmentConfig(context.Context, *connect.Request[v1.DeleteEnvironmentConfigRequest]) (*connect.Response[v1.DeleteEnvironmentConfigResponse], error)
 }
 
 // NewWorkspaceServiceClient constructs a client for the agentruntime.workspace.v1.WorkspaceService
@@ -188,23 +196,30 @@ func NewWorkspaceServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(workspaceServiceMethods.ByName("SyncWorkspace")),
 			connect.WithClientOptions(opts...),
 		),
+		deleteEnvironmentConfig: connect.NewClient[v1.DeleteEnvironmentConfigRequest, v1.DeleteEnvironmentConfigResponse](
+			httpClient,
+			baseURL+WorkspaceServiceDeleteEnvironmentConfigProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("DeleteEnvironmentConfig")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // workspaceServiceClient implements WorkspaceServiceClient.
 type workspaceServiceClient struct {
-	createWorkspace  *connect.Client[v1.CreateWorkspaceRequest, v1.CreateWorkspaceResponse]
-	listWorkspaces   *connect.Client[v1.ListWorkspacesRequest, v1.ListWorkspacesResponse]
-	getDiff          *connect.Client[v1.GetDiffRequest, v1.GetDiffResponse]
-	commitWorkspace  *connect.Client[v1.CommitWorkspaceRequest, v1.CommitWorkspaceResponse]
-	pushWorkspace    *connect.Client[v1.PushWorkspaceRequest, v1.PushWorkspaceResponse]
-	archiveWorkspace *connect.Client[v1.ArchiveWorkspaceRequest, v1.ArchiveWorkspaceResponse]
-	deleteWorkspace  *connect.Client[v1.DeleteWorkspaceRequest, v1.DeleteWorkspaceResponse]
-	listFiles        *connect.Client[v1.ListFilesRequest, v1.ListFilesResponse]
-	readFile         *connect.Client[v1.ReadFileRequest, v1.ReadFileResponse]
-	getLog           *connect.Client[v1.GetLogRequest, v1.GetLogResponse]
-	discardChanges   *connect.Client[v1.DiscardChangesRequest, v1.DiscardChangesResponse]
-	syncWorkspace    *connect.Client[v1.SyncWorkspaceRequest, v1.SyncWorkspaceResponse]
+	createWorkspace         *connect.Client[v1.CreateWorkspaceRequest, v1.CreateWorkspaceResponse]
+	listWorkspaces          *connect.Client[v1.ListWorkspacesRequest, v1.ListWorkspacesResponse]
+	getDiff                 *connect.Client[v1.GetDiffRequest, v1.GetDiffResponse]
+	commitWorkspace         *connect.Client[v1.CommitWorkspaceRequest, v1.CommitWorkspaceResponse]
+	pushWorkspace           *connect.Client[v1.PushWorkspaceRequest, v1.PushWorkspaceResponse]
+	archiveWorkspace        *connect.Client[v1.ArchiveWorkspaceRequest, v1.ArchiveWorkspaceResponse]
+	deleteWorkspace         *connect.Client[v1.DeleteWorkspaceRequest, v1.DeleteWorkspaceResponse]
+	listFiles               *connect.Client[v1.ListFilesRequest, v1.ListFilesResponse]
+	readFile                *connect.Client[v1.ReadFileRequest, v1.ReadFileResponse]
+	getLog                  *connect.Client[v1.GetLogRequest, v1.GetLogResponse]
+	discardChanges          *connect.Client[v1.DiscardChangesRequest, v1.DiscardChangesResponse]
+	syncWorkspace           *connect.Client[v1.SyncWorkspaceRequest, v1.SyncWorkspaceResponse]
+	deleteEnvironmentConfig *connect.Client[v1.DeleteEnvironmentConfigRequest, v1.DeleteEnvironmentConfigResponse]
 }
 
 // CreateWorkspace calls agentruntime.workspace.v1.WorkspaceService.CreateWorkspace.
@@ -267,6 +282,11 @@ func (c *workspaceServiceClient) SyncWorkspace(ctx context.Context, req *connect
 	return c.syncWorkspace.CallUnary(ctx, req)
 }
 
+// DeleteEnvironmentConfig calls agentruntime.workspace.v1.WorkspaceService.DeleteEnvironmentConfig.
+func (c *workspaceServiceClient) DeleteEnvironmentConfig(ctx context.Context, req *connect.Request[v1.DeleteEnvironmentConfigRequest]) (*connect.Response[v1.DeleteEnvironmentConfigResponse], error) {
+	return c.deleteEnvironmentConfig.CallUnary(ctx, req)
+}
+
 // WorkspaceServiceHandler is an implementation of the agentruntime.workspace.v1.WorkspaceService
 // service.
 type WorkspaceServiceHandler interface {
@@ -301,6 +321,11 @@ type WorkspaceServiceHandler interface {
 	// （否则 AlreadyExists，code 为 workspace_dirty）；远端是建工作区时的 repo_url（从别的工作区复制的沿用那边的），
 	// 没有远端时 InvalidArgument。凭据同 PushWorkspace，只用这一次。
 	SyncWorkspace(context.Context, *connect.Request[v1.SyncWorkspaceRequest]) (*connect.Response[v1.SyncWorkspaceResponse], error)
+	// 删除一个环境配置（ENV-02，Q35）：立即把调用者用它建的工作区上的选用配置标记为已删除，之后这些工作区不再建新的沙箱
+	// 环境（FailedPrecondition，environment_deleted）；已有的沙箱环境由现有的对账（sandbox reconcile）在闲着时异步销毁。
+	// 不删工作区，环境表（EnvironmentService）仍是状态的权威。幂等：再删一次 workspaces 为 0。只认调用者自己选用的
+	// （建工作区的用户），别人的不动。
+	DeleteEnvironmentConfig(context.Context, *connect.Request[v1.DeleteEnvironmentConfigRequest]) (*connect.Response[v1.DeleteEnvironmentConfigResponse], error)
 }
 
 // NewWorkspaceServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -382,6 +407,12 @@ func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.Han
 		connect.WithSchema(workspaceServiceMethods.ByName("SyncWorkspace")),
 		connect.WithHandlerOptions(opts...),
 	)
+	workspaceServiceDeleteEnvironmentConfigHandler := connect.NewUnaryHandler(
+		WorkspaceServiceDeleteEnvironmentConfigProcedure,
+		svc.DeleteEnvironmentConfig,
+		connect.WithSchema(workspaceServiceMethods.ByName("DeleteEnvironmentConfig")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/agentruntime.workspace.v1.WorkspaceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case WorkspaceServiceCreateWorkspaceProcedure:
@@ -408,6 +439,8 @@ func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.Han
 			workspaceServiceDiscardChangesHandler.ServeHTTP(w, r)
 		case WorkspaceServiceSyncWorkspaceProcedure:
 			workspaceServiceSyncWorkspaceHandler.ServeHTTP(w, r)
+		case WorkspaceServiceDeleteEnvironmentConfigProcedure:
+			workspaceServiceDeleteEnvironmentConfigHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -463,4 +496,8 @@ func (UnimplementedWorkspaceServiceHandler) DiscardChanges(context.Context, *con
 
 func (UnimplementedWorkspaceServiceHandler) SyncWorkspace(context.Context, *connect.Request[v1.SyncWorkspaceRequest]) (*connect.Response[v1.SyncWorkspaceResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.workspace.v1.WorkspaceService.SyncWorkspace is not implemented"))
+}
+
+func (UnimplementedWorkspaceServiceHandler) DeleteEnvironmentConfig(context.Context, *connect.Request[v1.DeleteEnvironmentConfigRequest]) (*connect.Response[v1.DeleteEnvironmentConfigResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.workspace.v1.WorkspaceService.DeleteEnvironmentConfig is not implemented"))
 }

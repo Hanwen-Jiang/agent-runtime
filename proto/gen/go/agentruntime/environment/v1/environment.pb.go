@@ -83,6 +83,122 @@ func (EnvironmentState) EnumDescriptor() ([]byte, []int) {
 	return file_agentruntime_environment_v1_environment_proto_rawDescGZIP(), []int{0}
 }
 
+// SetupState 是环境配置的安装脚本在这个沙箱环境上的结果（ENV-02，Q20–22），记在环境表里。
+type SetupState int32
+
+const (
+	// 旧记录或还没记：未知，不能当作成功。
+	SetupState_SETUP_STATE_UNSPECIFIED SetupState = 0
+	// 没有选用环境配置，或配置里没有安装脚本。
+	SetupState_SETUP_STATE_NONE      SetupState = 1
+	SetupState_SETUP_STATE_RUNNING   SetupState = 2
+	SetupState_SETUP_STATE_SUCCEEDED SetupState = 3
+	// 命中缓存（同样的脚本内容与基础镜像之前成功过）：没有再跑。
+	SetupState_SETUP_STATE_CACHED SetupState = 4
+	// 失败或超时：这个环境不启动、不执行业务命令，随即销毁。
+	SetupState_SETUP_STATE_FAILED SetupState = 5
+)
+
+// Enum value maps for SetupState.
+var (
+	SetupState_name = map[int32]string{
+		0: "SETUP_STATE_UNSPECIFIED",
+		1: "SETUP_STATE_NONE",
+		2: "SETUP_STATE_RUNNING",
+		3: "SETUP_STATE_SUCCEEDED",
+		4: "SETUP_STATE_CACHED",
+		5: "SETUP_STATE_FAILED",
+	}
+	SetupState_value = map[string]int32{
+		"SETUP_STATE_UNSPECIFIED": 0,
+		"SETUP_STATE_NONE":        1,
+		"SETUP_STATE_RUNNING":     2,
+		"SETUP_STATE_SUCCEEDED":   3,
+		"SETUP_STATE_CACHED":      4,
+		"SETUP_STATE_FAILED":      5,
+	}
+)
+
+func (x SetupState) Enum() *SetupState {
+	p := new(SetupState)
+	*p = x
+	return p
+}
+
+func (x SetupState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SetupState) Descriptor() protoreflect.EnumDescriptor {
+	return file_agentruntime_environment_v1_environment_proto_enumTypes[1].Descriptor()
+}
+
+func (SetupState) Type() protoreflect.EnumType {
+	return &file_agentruntime_environment_v1_environment_proto_enumTypes[1]
+}
+
+func (x SetupState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SetupState.Descriptor instead.
+func (SetupState) EnumDescriptor() ([]byte, []int) {
+	return file_agentruntime_environment_v1_environment_proto_rawDescGZIP(), []int{1}
+}
+
+// StartState 是启动命令的结果；失败只记录，不阻止业务命令。
+type StartState int32
+
+const (
+	StartState_START_STATE_UNSPECIFIED StartState = 0
+	StartState_START_STATE_NONE        StartState = 1
+	StartState_START_STATE_SUCCEEDED   StartState = 2
+	StartState_START_STATE_FAILED      StartState = 3
+)
+
+// Enum value maps for StartState.
+var (
+	StartState_name = map[int32]string{
+		0: "START_STATE_UNSPECIFIED",
+		1: "START_STATE_NONE",
+		2: "START_STATE_SUCCEEDED",
+		3: "START_STATE_FAILED",
+	}
+	StartState_value = map[string]int32{
+		"START_STATE_UNSPECIFIED": 0,
+		"START_STATE_NONE":        1,
+		"START_STATE_SUCCEEDED":   2,
+		"START_STATE_FAILED":      3,
+	}
+)
+
+func (x StartState) Enum() *StartState {
+	p := new(StartState)
+	*p = x
+	return p
+}
+
+func (x StartState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (StartState) Descriptor() protoreflect.EnumDescriptor {
+	return file_agentruntime_environment_v1_environment_proto_enumTypes[2].Descriptor()
+}
+
+func (StartState) Type() protoreflect.EnumType {
+	return &file_agentruntime_environment_v1_environment_proto_enumTypes[2]
+}
+
+func (x StartState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use StartState.Descriptor instead.
+func (StartState) EnumDescriptor() ([]byte, []int) {
+	return file_agentruntime_environment_v1_environment_proto_rawDescGZIP(), []int{2}
+}
+
 // EnvRecord 对应已有 sandbox_envs 的一行，不是可复用环境配置 EnvironmentConfig。
 // 未知时间戳省略；不从 Pod、last_used_at、命令成功或 Kubernetes TTL 补猜。
 type EnvRecord struct {
@@ -108,14 +224,23 @@ type EnvRecord struct {
 	HealthConfirmedAt *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=health_confirmed_at,json=healthConfirmedAt,proto3" json:"health_confirmed_at,omitempty"`
 	// Broker 实际复借同一 Workspace/Session 的时间；普通命令完成的 touch 不写它。
 	ReusedAt *timestamppb.Timestamp `protobuf:"bytes,17,opt,name=reused_at,json=reusedAt,proto3" json:"reused_at,omitempty"`
-	// 仅 ledger READY、健康已确认、两个明确期限都未到期时为 true；未知不能当 true。
+	// 仅 ledger READY、健康已确认、两个明确期限都未到期，且 setup 为 NONE、SUCCEEDED 或 CACHED 时为 true；未知不能当 true。
 	Ready bool `protobuf:"varint,18,opt,name=ready,proto3" json:"ready,omitempty"`
 	// 有 reused_at 且归属于非空 Workspace/Session；不以环境号或 Pod 名相同推断。
-	Reused        bool   `protobuf:"varint,19,opt,name=reused,proto3" json:"reused,omitempty"`
-	TaskId        string `protobuf:"bytes,20,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
-	Writable      bool   `protobuf:"varint,21,opt,name=writable,proto3" json:"writable,omitempty"`
-	Runtime       string `protobuf:"bytes,22,opt,name=runtime,proto3" json:"runtime,omitempty"`
-	Image         string `protobuf:"bytes,23,opt,name=image,proto3" json:"image,omitempty"`
+	Reused   bool   `protobuf:"varint,19,opt,name=reused,proto3" json:"reused,omitempty"`
+	TaskId   string `protobuf:"bytes,20,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	Writable bool   `protobuf:"varint,21,opt,name=writable,proto3" json:"writable,omitempty"`
+	Runtime  string `protobuf:"bytes,22,opt,name=runtime,proto3" json:"runtime,omitempty"`
+	Image    string `protobuf:"bytes,23,opt,name=image,proto3" json:"image,omitempty"`
+	// 准备这个环境时选用的环境配置（应用的环境 ID）；没有时为空。
+	EnvironmentId string     `protobuf:"bytes,24,opt,name=environment_id,json=environmentId,proto3" json:"environment_id,omitempty"`
+	SetupState    SetupState `protobuf:"varint,25,opt,name=setup_state,json=setupState,proto3,enum=agentruntime.environment.v1.SetupState" json:"setup_state,omitempty"`
+	// setup 缓存键：sha256（脚本内容 + 基础镜像 digest）的十六进制；没有 setup 时为空。
+	SetupKey        string                 `protobuf:"bytes,26,opt,name=setup_key,json=setupKey,proto3" json:"setup_key,omitempty"`
+	SetupFinishedAt *timestamppb.Timestamp `protobuf:"bytes,27,opt,name=setup_finished_at,json=setupFinishedAt,proto3" json:"setup_finished_at,omitempty"`
+	// setup 失败的稳定错误码（environment_setup_failed、environment_setup_timeout）；不含日志与输出。
+	SetupError    string     `protobuf:"bytes,28,opt,name=setup_error,json=setupError,proto3" json:"setup_error,omitempty"`
+	StartState    StartState `protobuf:"varint,29,opt,name=start_state,json=startState,proto3,enum=agentruntime.environment.v1.StartState" json:"start_state,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -309,6 +434,48 @@ func (x *EnvRecord) GetImage() string {
 		return x.Image
 	}
 	return ""
+}
+
+func (x *EnvRecord) GetEnvironmentId() string {
+	if x != nil {
+		return x.EnvironmentId
+	}
+	return ""
+}
+
+func (x *EnvRecord) GetSetupState() SetupState {
+	if x != nil {
+		return x.SetupState
+	}
+	return SetupState_SETUP_STATE_UNSPECIFIED
+}
+
+func (x *EnvRecord) GetSetupKey() string {
+	if x != nil {
+		return x.SetupKey
+	}
+	return ""
+}
+
+func (x *EnvRecord) GetSetupFinishedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.SetupFinishedAt
+	}
+	return nil
+}
+
+func (x *EnvRecord) GetSetupError() string {
+	if x != nil {
+		return x.SetupError
+	}
+	return ""
+}
+
+func (x *EnvRecord) GetStartState() StartState {
+	if x != nil {
+		return x.StartState
+	}
+	return StartState_START_STATE_UNSPECIFIED
 }
 
 type GetEnvironmentRequest struct {
@@ -534,7 +701,7 @@ var File_agentruntime_environment_v1_environment_proto protoreflect.FileDescript
 
 const file_agentruntime_environment_v1_environment_proto_rawDesc = "" +
 	"\n" +
-	"-agentruntime/environment/v1/environment.proto\x12\x1bagentruntime.environment.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb5\a\n" +
+	"-agentruntime/environment/v1/environment.proto\x12\x1bagentruntime.environment.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf6\t\n" +
 	"\tEnvRecord\x12\x17\n" +
 	"\aenv_ref\x18\x01 \x01(\tR\x06envRef\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12!\n" +
@@ -563,7 +730,16 @@ const file_agentruntime_environment_v1_environment_proto_rawDesc = "" +
 	"\atask_id\x18\x14 \x01(\tR\x06taskId\x12\x1a\n" +
 	"\bwritable\x18\x15 \x01(\bR\bwritable\x12\x18\n" +
 	"\aruntime\x18\x16 \x01(\tR\aruntime\x12\x14\n" +
-	"\x05image\x18\x17 \x01(\tR\x05image\"M\n" +
+	"\x05image\x18\x17 \x01(\tR\x05image\x12%\n" +
+	"\x0eenvironment_id\x18\x18 \x01(\tR\renvironmentId\x12H\n" +
+	"\vsetup_state\x18\x19 \x01(\x0e2'.agentruntime.environment.v1.SetupStateR\n" +
+	"setupState\x12\x1b\n" +
+	"\tsetup_key\x18\x1a \x01(\tR\bsetupKey\x12F\n" +
+	"\x11setup_finished_at\x18\x1b \x01(\v2\x1a.google.protobuf.TimestampR\x0fsetupFinishedAt\x12\x1f\n" +
+	"\vsetup_error\x18\x1c \x01(\tR\n" +
+	"setupError\x12H\n" +
+	"\vstart_state\x18\x1d \x01(\x0e2'.agentruntime.environment.v1.StartStateR\n" +
+	"startState\"M\n" +
 	"\x15GetEnvironmentRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x17\n" +
 	"\aenv_ref\x18\x02 \x01(\tR\x06envRef\"b\n" +
@@ -585,7 +761,21 @@ const file_agentruntime_environment_v1_environment_proto_rawDesc = "" +
 	"\x1cENVIRONMENT_STATE_DESTROYING\x10\x03\x12\x1f\n" +
 	"\x1bENVIRONMENT_STATE_DESTROYED\x10\x04\x12\x1c\n" +
 	"\x18ENVIRONMENT_STATE_FAILED\x10\x05\x12\x1a\n" +
-	"\x16ENVIRONMENT_STATE_LOST\x10\x062\x90\x02\n" +
+	"\x16ENVIRONMENT_STATE_LOST\x10\x06*\xa3\x01\n" +
+	"\n" +
+	"SetupState\x12\x1b\n" +
+	"\x17SETUP_STATE_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10SETUP_STATE_NONE\x10\x01\x12\x17\n" +
+	"\x13SETUP_STATE_RUNNING\x10\x02\x12\x19\n" +
+	"\x15SETUP_STATE_SUCCEEDED\x10\x03\x12\x16\n" +
+	"\x12SETUP_STATE_CACHED\x10\x04\x12\x16\n" +
+	"\x12SETUP_STATE_FAILED\x10\x05*r\n" +
+	"\n" +
+	"StartState\x12\x1b\n" +
+	"\x17START_STATE_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10START_STATE_NONE\x10\x01\x12\x19\n" +
+	"\x15START_STATE_SUCCEEDED\x10\x02\x12\x16\n" +
+	"\x12START_STATE_FAILED\x10\x032\x90\x02\n" +
 	"\x12EnvironmentService\x12y\n" +
 	"\x0eGetEnvironment\x122.agentruntime.environment.v1.GetEnvironmentRequest\x1a3.agentruntime.environment.v1.GetEnvironmentResponse\x12\x7f\n" +
 	"\x10ListEnvironments\x124.agentruntime.environment.v1.ListEnvironmentsRequest\x1a5.agentruntime.environment.v1.ListEnvironmentsResponseB\x9f\x02\n" +
@@ -603,38 +793,43 @@ func file_agentruntime_environment_v1_environment_proto_rawDescGZIP() []byte {
 	return file_agentruntime_environment_v1_environment_proto_rawDescData
 }
 
-var file_agentruntime_environment_v1_environment_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_agentruntime_environment_v1_environment_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_agentruntime_environment_v1_environment_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_agentruntime_environment_v1_environment_proto_goTypes = []any{
 	(EnvironmentState)(0),            // 0: agentruntime.environment.v1.EnvironmentState
-	(*EnvRecord)(nil),                // 1: agentruntime.environment.v1.EnvRecord
-	(*GetEnvironmentRequest)(nil),    // 2: agentruntime.environment.v1.GetEnvironmentRequest
-	(*GetEnvironmentResponse)(nil),   // 3: agentruntime.environment.v1.GetEnvironmentResponse
-	(*ListEnvironmentsRequest)(nil),  // 4: agentruntime.environment.v1.ListEnvironmentsRequest
-	(*ListEnvironmentsResponse)(nil), // 5: agentruntime.environment.v1.ListEnvironmentsResponse
-	(*timestamppb.Timestamp)(nil),    // 6: google.protobuf.Timestamp
+	(SetupState)(0),                  // 1: agentruntime.environment.v1.SetupState
+	(StartState)(0),                  // 2: agentruntime.environment.v1.StartState
+	(*EnvRecord)(nil),                // 3: agentruntime.environment.v1.EnvRecord
+	(*GetEnvironmentRequest)(nil),    // 4: agentruntime.environment.v1.GetEnvironmentRequest
+	(*GetEnvironmentResponse)(nil),   // 5: agentruntime.environment.v1.GetEnvironmentResponse
+	(*ListEnvironmentsRequest)(nil),  // 6: agentruntime.environment.v1.ListEnvironmentsRequest
+	(*ListEnvironmentsResponse)(nil), // 7: agentruntime.environment.v1.ListEnvironmentsResponse
+	(*timestamppb.Timestamp)(nil),    // 8: google.protobuf.Timestamp
 }
 var file_agentruntime_environment_v1_environment_proto_depIdxs = []int32{
 	0,  // 0: agentruntime.environment.v1.EnvRecord.state:type_name -> agentruntime.environment.v1.EnvironmentState
-	6,  // 1: agentruntime.environment.v1.EnvRecord.created_at:type_name -> google.protobuf.Timestamp
-	6,  // 2: agentruntime.environment.v1.EnvRecord.ready_at:type_name -> google.protobuf.Timestamp
-	6,  // 3: agentruntime.environment.v1.EnvRecord.last_used_at:type_name -> google.protobuf.Timestamp
-	6,  // 4: agentruntime.environment.v1.EnvRecord.expires_at:type_name -> google.protobuf.Timestamp
-	6,  // 5: agentruntime.environment.v1.EnvRecord.max_until:type_name -> google.protobuf.Timestamp
-	6,  // 6: agentruntime.environment.v1.EnvRecord.destroyed_at:type_name -> google.protobuf.Timestamp
-	6,  // 7: agentruntime.environment.v1.EnvRecord.health_confirmed_at:type_name -> google.protobuf.Timestamp
-	6,  // 8: agentruntime.environment.v1.EnvRecord.reused_at:type_name -> google.protobuf.Timestamp
-	1,  // 9: agentruntime.environment.v1.GetEnvironmentResponse.environment:type_name -> agentruntime.environment.v1.EnvRecord
-	1,  // 10: agentruntime.environment.v1.ListEnvironmentsResponse.environments:type_name -> agentruntime.environment.v1.EnvRecord
-	2,  // 11: agentruntime.environment.v1.EnvironmentService.GetEnvironment:input_type -> agentruntime.environment.v1.GetEnvironmentRequest
-	4,  // 12: agentruntime.environment.v1.EnvironmentService.ListEnvironments:input_type -> agentruntime.environment.v1.ListEnvironmentsRequest
-	3,  // 13: agentruntime.environment.v1.EnvironmentService.GetEnvironment:output_type -> agentruntime.environment.v1.GetEnvironmentResponse
-	5,  // 14: agentruntime.environment.v1.EnvironmentService.ListEnvironments:output_type -> agentruntime.environment.v1.ListEnvironmentsResponse
-	13, // [13:15] is the sub-list for method output_type
-	11, // [11:13] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	8,  // 1: agentruntime.environment.v1.EnvRecord.created_at:type_name -> google.protobuf.Timestamp
+	8,  // 2: agentruntime.environment.v1.EnvRecord.ready_at:type_name -> google.protobuf.Timestamp
+	8,  // 3: agentruntime.environment.v1.EnvRecord.last_used_at:type_name -> google.protobuf.Timestamp
+	8,  // 4: agentruntime.environment.v1.EnvRecord.expires_at:type_name -> google.protobuf.Timestamp
+	8,  // 5: agentruntime.environment.v1.EnvRecord.max_until:type_name -> google.protobuf.Timestamp
+	8,  // 6: agentruntime.environment.v1.EnvRecord.destroyed_at:type_name -> google.protobuf.Timestamp
+	8,  // 7: agentruntime.environment.v1.EnvRecord.health_confirmed_at:type_name -> google.protobuf.Timestamp
+	8,  // 8: agentruntime.environment.v1.EnvRecord.reused_at:type_name -> google.protobuf.Timestamp
+	1,  // 9: agentruntime.environment.v1.EnvRecord.setup_state:type_name -> agentruntime.environment.v1.SetupState
+	8,  // 10: agentruntime.environment.v1.EnvRecord.setup_finished_at:type_name -> google.protobuf.Timestamp
+	2,  // 11: agentruntime.environment.v1.EnvRecord.start_state:type_name -> agentruntime.environment.v1.StartState
+	3,  // 12: agentruntime.environment.v1.GetEnvironmentResponse.environment:type_name -> agentruntime.environment.v1.EnvRecord
+	3,  // 13: agentruntime.environment.v1.ListEnvironmentsResponse.environments:type_name -> agentruntime.environment.v1.EnvRecord
+	4,  // 14: agentruntime.environment.v1.EnvironmentService.GetEnvironment:input_type -> agentruntime.environment.v1.GetEnvironmentRequest
+	6,  // 15: agentruntime.environment.v1.EnvironmentService.ListEnvironments:input_type -> agentruntime.environment.v1.ListEnvironmentsRequest
+	5,  // 16: agentruntime.environment.v1.EnvironmentService.GetEnvironment:output_type -> agentruntime.environment.v1.GetEnvironmentResponse
+	7,  // 17: agentruntime.environment.v1.EnvironmentService.ListEnvironments:output_type -> agentruntime.environment.v1.ListEnvironmentsResponse
+	16, // [16:18] is the sub-list for method output_type
+	14, // [14:16] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_agentruntime_environment_v1_environment_proto_init() }
@@ -647,7 +842,7 @@ func file_agentruntime_environment_v1_environment_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agentruntime_environment_v1_environment_proto_rawDesc), len(file_agentruntime_environment_v1_environment_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      3,
 			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
