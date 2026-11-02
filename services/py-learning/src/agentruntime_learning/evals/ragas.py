@@ -13,6 +13,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
+from google.protobuf import json_format, struct_pb2
+
 
 @dataclass(frozen=True)
 class RagasCase:
@@ -53,6 +55,64 @@ class GatewayRagasLLM:
 
     async def generate_prompt(self, prompt: Any, **kwargs: Any) -> Any:
         return await self.generate(prompt, **kwargs)
+
+    async def agenerate(self, prompt_str: str, schema: Any = None, **kwargs: Any) -> Any:
+        """Ragas 0.4.3 collections API: generate JSON matching ``schema``."""
+        result = await self.generate(prompt_str, **kwargs)
+        text = result if isinstance(result, str) else result.get("generations", [[{"text": ""}]])[0][0].get("text", "")
+        data = json.loads(text)
+        if schema is None:
+            return data
+        if hasattr(schema, "model_validate"):
+            return schema.model_validate(data)
+        return data
+
+
+class ModelGatewayRagasLLM:
+    """Ragas LLM adapter backed by the existing ModelGateway Generate RPC."""
+
+    def __init__(self, gateway: Any, *, tenant_id: str, tier: str = "strong@medium") -> None:
+        self.gateway, self.tenant_id, self.tier = gateway, tenant_id, tier
+        self.total_cost_usd = 0.0
+
+    async def agenerate(self, prompt_str: str, schema: Any = None, **_: Any) -> Any:
+        from agentruntime.common.v1 import enums_pb2, payload_pb2, tenant_pb2
+        from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
+        value = struct_pb2.Value()
+        output_schema = schema.model_json_schema() if hasattr(schema, "model_json_schema") else schema
+        if output_schema:
+            from google.protobuf import json_format
+            json_format.ParseDict(output_schema, value)
+        generation = mg.GenerateParams(messages=[mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=prompt_str)])
+        if output_schema:
+            generation.output_schema.CopyFrom(payload_pb2.JsonPayload(value=value))
+        req = mg.GenerateRequest(tenant=tenant_pb2.TenantContext(tenant_id=self.tenant_id),
+            call=mg.CallContext(node_id="ragas_judge", role=enums_pb2.ROLE_JUDGE, tier=self.tier), generation=generation)
+        response = await self.gateway.generate(req)
+        self.total_cost_usd += response.usage.cost_usd_micros / 1_000_000
+        data = json_format.MessageToDict(response.result)
+        return schema.model_validate(data) if schema is not None and hasattr(schema, "model_validate") else data
+
+
+class ModelGatewayRagasEmbeddings:
+    """Ragas embeddings adapter backed by ModelGateway Embed RPC."""
+
+    def __init__(self, gateway: Any, *, tenant_id: str, embedding_version: str, tier: str = "") -> None:
+        self.gateway, self.tenant_id, self.embedding_version, self.tier = gateway, tenant_id, embedding_version, tier
+        self.total_cost_usd = 0.0
+
+    async def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        from agentruntime.common.v1 import tenant_pb2
+        from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
+        req = mg.EmbedRequest(tenant=tenant_pb2.TenantContext(tenant_id=self.tenant_id),
+                              call=mg.CallContext(node_id="ragas_embedding", role=0, tier=self.tier),
+                              texts=texts)
+        response = await self.gateway.embed(req)
+        self.total_cost_usd += response.usage.cost_usd_micros / 1_000_000
+        return [[float(x) for x in emb.values] for emb in response.embeddings]
+
+    async def embed_query(self, text: str) -> list[float]:
+        return (await self.embed_documents([text]))[0]
 
 
 class GatewayRagasEmbeddings:
