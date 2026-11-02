@@ -1,6 +1,6 @@
 # 未完成计划执行表（2026-11-02）
 
-> 基线：远端 `main` `bdabf91`。本表把现有设计计划投影成可交付批次；不修改权威设计书，不把真实基础设施验收伪装成代码完成。
+> 基线：远端 `main` `ba9d24f`。本表把现有设计计划投影成可交付批次；不修改权威设计书，不把真实基础设施验收伪装成代码完成。
 
 ## 发布原则
 
@@ -45,7 +45,7 @@
 
 ## 2026-11-03 执行检查点
 
-- 远端 `main`：`bdabf91`；默认免费模型白名单与云上 Helm 接线已推送并合并，没有未提交改动。
+- 远端 `main`：`ba9d24f`；默认免费模型白名单与云上 Helm 接线已推送并合并，没有未提交改动。
 - 新增契约包定向验证：`uv run pytest -q` 加载环境、预算、Task Plan、N-19/N-20、Firecracker、D-25、Workspace、N-15/N-16、N-18、R-02/R-03、R-04/R-06 共 **24 passed**；`git diff --check` 通过。
 - 本轮白名单验证：`uv run pytest -q tests/deploy/test_default_tenant_policy.py tests/contract/test_terminology.py` 为 **4 passed**；Helm 渲染测试因本机未安装 `helm` 按 `AR_ALLOW_MISSING_TOOLS=1` 为 **3 skipped**。默认 values 保持关闭，`values-cloud.yaml` 显式开启，外部 ConfigMap 优先。
 - 全量 `tests/contract` 在已同步 Python 依赖的 `.venv` 中为 **485 passed、25 failed、15 errors**。失败集中在缺少 `go`/`buf`/`helm` 及真实 Temporal/Postgres/Qdrant/Docker/Kind/Kubernetes；跨语言测试和接口 parity 因 Go 不在 PATH 而阻塞。新增契约测试没有失败。
