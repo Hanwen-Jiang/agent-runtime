@@ -48,5 +48,5 @@
 - 远端 `main`：`ba9d24f`；默认免费模型白名单与云上 Helm 接线已推送并合并，没有未提交改动。
 - 新增契约包定向验证：`uv run pytest -q` 加载环境、预算、Task Plan、N-19/N-20、Firecracker、D-25、Workspace、N-15/N-16、N-18、R-02/R-03、R-04/R-06 共 **24 passed**；`git diff --check` 通过。
 - 本轮白名单验证：`uv run pytest -q tests/deploy/test_default_tenant_policy.py tests/contract/test_terminology.py` 为 **4 passed**；Helm 渲染测试因本机未安装 `helm` 按 `AR_ALLOW_MISSING_TOOLS=1` 为 **3 skipped**。默认 values 保持关闭，`values-cloud.yaml` 显式开启，外部 ConfigMap 优先。
-- 全量 `tests/contract` 在已同步 Python 依赖的 `.venv` 中为 **485 passed、25 failed、15 errors**。失败集中在缺少 `go`/`buf`/`helm` 及真实 Temporal/Postgres/Qdrant/Docker/Kind/Kubernetes；跨语言测试和接口 parity 因 Go 不在 PATH 而阻塞。新增契约测试没有失败。
+- 全量 `tests/contract` 在已同步 Python 依赖的 `.venv` 中，以 `AR_ALLOW_MISSING_TOOLS=1` 运行结果为 **485 passed、40 skipped**；跳过项集中在缺少 `go`/`buf`，未发现本轮改动引入的失败。未设置该变量时，工具缺失会按测试约定报告失败；真实 Temporal/Postgres/Qdrant/Docker/Kind/Kubernetes 仍需外部资源验收。
 - `scripts/check.py` 已完成依赖同步；其余 proto、Go、部署和真实环境 gate 继续按 `blocked_external` 记录，不能用本地静态结果替代。
