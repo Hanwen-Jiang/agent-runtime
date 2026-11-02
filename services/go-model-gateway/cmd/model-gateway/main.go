@@ -20,17 +20,28 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
+	"connectrpc.com/connect"
+	"google.golang.org/protobuf/encoding/protojson"
+
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/openaicompat"
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/oteltelemetry"
+	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/postgres"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/filesecrets"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/mockmodel"
+	"github.com/agentruntime/agent-runtime/libs/go-core/dev/sqlitestore"
+	"github.com/agentruntime/agent-runtime/libs/go-core/modelbudget"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/modelprovider"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/telemetry"
+	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	"github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/modelgateway/v1/modelgatewayv1connect"
+	registryv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/registry/v1"
+	"github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/registry/v1/registryv1connect"
 
 	"github.com/agentruntime/agent-runtime/services/go-model-gateway/internal/config"
 	"github.com/agentruntime/agent-runtime/services/go-model-gateway/internal/gateway"
@@ -93,6 +104,16 @@ func serve(ctx context.Context, stdout, stderr io.Writer, getenv func(string) st
 		return 1
 	}
 	defer provider.Close()
+	store, err := newBudgetStore(ctx, cfg)
+	if err != nil {
+		fmt.Fprintln(stderr, "model-gateway：预算业务库不可用")
+		return 1
+	}
+	defer store.Close()
+	if err = store.Migrate(ctx, modelbudget.Migrations()); err != nil {
+		fmt.Fprintln(stderr, "model-gateway：预算迁移失败")
+		return 1
+	}
 	logger := slog.New(slog.NewTextHandler(stderr, nil))
 	// 设了 OTEL_EXPORTER_OTLP_ENDPOINT 时每次模型调用记一个 span 发给 Collector（T-15）；没设时不记
 	// （控制台实现要调用方 flush，网关不在每次调用后 flush）。
@@ -105,11 +126,13 @@ func serve(ctx context.Context, stdout, stderr io.Writer, getenv func(string) st
 		defer tel.Close()
 	}
 	srv, err := gateway.New(gateway.Options{
-		Provider:  provider,
-		Router:    router.New(catalog, router.FileAllowlist{Path: cfg.TenantPoliciesFile}),
-		Meter:     stdout,
-		Logger:    logger,
-		Telemetry: tel,
+		ModelBudget:    modelbudget.New(store),
+		BudgetPolicies: modelbudget.Policy{Path: cfg.TenantPoliciesFile, Source: registryBudgetSource(cfg.RegistryAddress)},
+		Provider:       provider,
+		Router:         router.New(catalog, router.FileAllowlist{Path: cfg.TenantPoliciesFile}),
+		Meter:          stdout,
+		Logger:         logger,
+		Telemetry:      tel,
 	})
 	if err != nil {
 		fmt.Fprintln(stderr, "model-gateway：", err)
@@ -148,6 +171,35 @@ func serve(ctx context.Context, stdout, stderr io.Writer, getenv func(string) st
 		return 1
 	}
 	return 0
+}
+
+func newBudgetStore(ctx context.Context, cfg config.Config) (relational.Provider, error) {
+	if !cfg.RelationalDSN.IsZero() {
+		return postgres.New(ctx, postgres.Options{DSN: cfg.RelationalDSN.RevealString()})
+	}
+	return sqlitestore.New(sqlitestore.Options{Dir: filepath.Join(cfg.DataDir, "relational")})
+}
+
+func registryBudgetSource(address string) func(context.Context, *commonv1.TenantContext) ([]byte, bool, error) {
+	if address == "" {
+		return nil
+	}
+	client := registryv1connect.NewRegistryServiceClient(&http.Client{Timeout: 5 * time.Second}, address)
+	return func(ctx context.Context, tenant *commonv1.TenantContext) ([]byte, bool, error) {
+		resp, err := client.GetTenantPolicy(ctx, connect.NewRequest(&registryv1.GetTenantPolicyRequest{Tenant: tenant}))
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			return nil, false, nil
+		}
+		if err != nil {
+			return nil, false, err
+		}
+		value := resp.Msg.GetTenantPolicy().GetDocument().GetValue()
+		if value == nil {
+			return nil, false, nil
+		}
+		doc, err := protojson.Marshal(value)
+		return doc, err == nil, err
+	}
 }
 
 // newProvider 按配置构造供应商适配层。

@@ -14,7 +14,31 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/conformance"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/modelprovider"
+	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 )
+
+func TestUsageSurvivesDisconnectBeforeDone(t *testing.T) {
+	e := newEnv(t, envConfig{})
+	e.fake.ReplyNext(fakeopenai.Reply{Content: "partial", Usage: &fakeopenai.Usage{PromptTokens: 40, CompletionTokens: 9, CachedTokens: 32}})
+	e.fake.FailNext(fakeopenai.Fault{Path: chatPath, CutStreamAfter: 100})
+	s, err := e.tenantA(t).StreamGenerate(t.Context(), askFake("x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	d := drain(t.Context(), s)
+	if d.err == nil || d.final != nil {
+		t.Fatalf("expected interrupted stream: %v", d.err)
+	}
+	source, ok := s.(interface{ Usage() *commonv1.Usage })
+	if !ok {
+		t.Fatal("stream does not expose received usage")
+	}
+	u := source.Usage()
+	if u.GetInputTokens() != 40 || u.GetOutputTokens() != 9 || u.GetCacheReadTokens() != 32 {
+		t.Fatalf("lost partial usage: %v", u)
+	}
+}
 
 // TestStreamRequestsUsageAndDeltasConcatenateToFinal：请求带 stream 与 stream_options.include_usage；TextDelta 拼接等于 Final.Text；
 // Final 带上游末尾分片的 Usage 与 finish_reason；Final 之后 Recv 返回 io.EOF（再读仍是 io.EOF）。

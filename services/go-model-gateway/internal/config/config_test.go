@@ -25,6 +25,7 @@ func TestFromEnvDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := Config{
+		DataDir:         "data",
 		Addr:            "127.0.0.1:8091",
 		ProfilesFile:    "profiles.json",
 		Provider:        "openai_compat",
@@ -52,7 +53,8 @@ func TestFromEnvReadsAllVariables(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := Config{
-		Addr: "0.0.0.0:9000", ProfilesFile: "/etc/ar/profiles.json", Provider: "openai_compat",
+		DataDir: "data",
+		Addr:    "0.0.0.0:9000", ProfilesFile: "/etc/ar/profiles.json", Provider: "openai_compat",
 		ProviderBaseURL: "http://127.0.0.1:5001/v1", ProviderKeyName: "vendor/key",
 		SecretsFile: "/var/ar/secrets.json", TenantPoliciesFile: "/etc/ar/tenants.json",
 	}

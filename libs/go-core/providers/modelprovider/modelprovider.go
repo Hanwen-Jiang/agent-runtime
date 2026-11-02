@@ -110,10 +110,11 @@ type Stream interface {
 
 // ScoreRequest 是打分请求。
 type ScoreRequest struct {
-	Model      string
-	Query      string
-	Candidates []string
-	Rubric     string
+	MaxOutputTokens int
+	Model           string
+	Query           string
+	Candidates      []string
+	Rubric          string
 }
 
 // ScoreResult 与 Candidates 一一对应。

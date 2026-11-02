@@ -71,6 +71,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/connecterr"
+	"github.com/agentruntime/agent-runtime/libs/go-core/modelbudget"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/modelprovider"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/telemetry"
@@ -104,6 +105,10 @@ const DefaultAttemptTimeout = 90 * time.Second
 
 // Options 是构造参数。
 type Options struct {
+	// ModelBudget is the shared durable ledger; production serve always sets it.
+	ModelBudget    modelbudget.Provider
+	BudgetPolicies modelbudget.PolicyResolver
+	Now            func() time.Time
 	// Provider 是供应商适配层（openaicompat 或 mockmodel），必填。
 	Provider modelprovider.Provider
 	// Router 是选档器，必填。
@@ -203,6 +208,12 @@ var _ modelgatewayv1connect.ModelGatewayServiceHandler = (*Server)(nil)
 
 // New 校验参数并构造 Server。Provider 或 Router 为空时报错。
 func New(opts Options) (*Server, error) {
+	if opts.Now == nil {
+		opts.Now = time.Now
+	}
+	if opts.BudgetPolicies == nil {
+		opts.BudgetPolicies = modelbudget.Policy{}
+	}
 	if opts.Provider == nil {
 		return nil, errors.New("gateway：缺少 Provider")
 	}
@@ -251,11 +262,14 @@ func sleep(ctx context.Context, d time.Duration) error {
 
 // call 是一次 RPC 的公共部分：租户、选档结果与绑定的客户端。
 type call struct {
-	tenant *commonv1.TenantContext
-	ctx    *modelgatewayv1.CallContext
-	method string
-	choice router.Choice
-	client modelprovider.Client
+	inputEstimate int64
+	maxOutput     int
+	reservation   *modelbudget.Reservation
+	tenant        *commonv1.TenantContext
+	ctx           *modelgatewayv1.CallContext
+	method        string
+	choice        router.Choice
+	client        modelprovider.Client
 	// attempts 是这次 RPC 一共尝试了几次（含重试与切换），记进 span。
 	attempts int
 	// billed 是这次 RPC 里已计费却判为失败的尝试的用量之和（已计价）；没有时为 nil。
@@ -286,7 +300,7 @@ func (c *call) charged(err error) error {
 		return err
 	}
 	out := *pe
-	out.BilledCostUSDMicros = c.billed.GetCostUsdMicros()
+	out.BilledCostUSDMicros = max(out.BilledCostUSDMicros, c.billed.GetCostUsdMicros())
 	return &out
 }
 
@@ -332,6 +346,9 @@ func (s *Server) run(ctx context.Context, c *call, candidates []router.Candidate
 		tried = cand
 	attempts:
 		for n := 1; n <= s.opts.Retry.MaxAttempts; n++ {
+			if err := s.reserve(ctx, c, cand); err != nil {
+				return cand, err
+			}
 			actx, cancel := ctx, context.CancelFunc(func() {})
 			if bounded {
 				actx, cancel = context.WithTimeout(ctx, s.opts.AttemptTimeout)
@@ -339,10 +356,18 @@ func (s *Server) run(ctx context.Context, c *call, candidates []router.Candidate
 			c.attempts++
 			usage, err := do(actx, cand)
 			cancel()
+			if bounded || err != nil {
+				if settleErr := s.settle(ctx, c, cand, usage, err); settleErr != nil {
+					return cand, settleErr
+				}
+			}
 			if err == nil {
 				return cand, nil
 			}
 			if callerCancelled(ctx) {
+				if usage != nil {
+					s.meterFailed(c, cand, usage, "canceled")
+				}
 				return cand, s.cancelled(c, cand)
 			}
 			var pe *providererr.Error
@@ -633,6 +658,9 @@ func payloadJSON(p *commonv1.JsonPayload) (json.RawMessage, error) {
 // generateRequest 把 GenerateParams 转成适配层的请求（Model 与思考预算按候选再填）。
 func generateRequest(g *modelgatewayv1.GenerateParams) (modelprovider.GenerateRequest, error) {
 	out := modelprovider.GenerateRequest{MaxOutputTokens: int(g.GetMaxOutputTokens()), ThinkingBudgetTokens: int(g.GetThinkingBudgetTokens())}
+	if out.MaxOutputTokens < 0 || out.ThinkingBudgetTokens < 0 {
+		return out, invalid("invalid_token_limit", "token limits must be nonnegative")
+	}
 	if len(g.GetMessages()) == 0 {
 		return out, invalid("empty_messages", "消息为空")
 	}
@@ -669,6 +697,7 @@ func generateRequest(g *modelgatewayv1.GenerateParams) (modelprovider.GenerateRe
 // forCandidate 填上候选的模型名与思考预算（请求为 0 时用 Tier 的默认值）。
 func forCandidate(req modelprovider.GenerateRequest, cand router.Candidate) modelprovider.GenerateRequest {
 	req.Model = cand.Profile.Model
+	req.MaxOutputTokens = outputLimit(req.MaxOutputTokens, cand)
 	if req.ThinkingBudgetTokens == 0 {
 		req.ThinkingBudgetTokens = cand.Tier.ThinkingBudget
 	}
@@ -743,6 +772,7 @@ func (s *Server) Generate(ctx context.Context, req *connect.Request[modelgateway
 		return nil, connecterr.Error(err)
 	}
 	tr := s.startSpan(ctx, c, "chat", false)
+	c.estimateInput(gen, gen.MaxOutputTokens)
 	var result modelprovider.GenerateResult
 	cand, err := s.run(ctx, c, c.choice.Candidates, true, func(ctx context.Context, cand router.Candidate) (*commonv1.Usage, error) {
 		r, err := c.client.Generate(ctx, forCandidate(gen, cand))
@@ -771,7 +801,7 @@ func (s *Server) Generate(ctx context.Context, req *connect.Request[modelgateway
 
 // StreamGenerate 流式生成。各分片的 text_delta 依次拼接等于最后一个分片 final 的 text；
 // 只有最后一个分片带 usage（含成本），final 里也带同样的 usage 与 ModelChoice。
-func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelgatewayv1.StreamGenerateRequest], stream *connect.ServerStream[modelgatewayv1.StreamGenerateResponse]) error {
+func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelgatewayv1.StreamGenerateRequest], stream *connect.ServerStream[modelgatewayv1.StreamGenerateResponse]) (retErr error) {
 	m := req.Msg
 	if err := checkTenant(m.GetTenant()); err != nil {
 		return connecterr.Error(err)
@@ -785,6 +815,7 @@ func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelg
 		return connecterr.Error(err)
 	}
 	tr := s.startSpan(ctx, c, "chat", true)
+	c.estimateInput(gen, gen.MaxOutputTokens)
 	// span 在流结束时结束：记下实际服务的候选、最后的 Usage 与错误（下面每个出口都先赋值再返回）。
 	var spanCand router.Candidate
 	var spanUsage *commonv1.Usage
@@ -798,12 +829,14 @@ func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelg
 	cand, err := s.run(ctx, c, c.choice.Candidates, false, func(ctx context.Context, cand router.Candidate) (*commonv1.Usage, error) {
 		sctx, cancel := context.WithCancel(ctx)
 		timer := time.AfterFunc(s.opts.AttemptTimeout, cancel)
+		var st modelprovider.Stream
 		fail := func(err error) (*commonv1.Usage, error) {
 			timer.Stop()
 			cancel()
-			return nil, err
+			return streamUsage(st), err
 		}
-		st, err := c.client.StreamGenerate(sctx, forCandidate(gen, cand))
+		var err error
+		st, err = c.client.StreamGenerate(sctx, forCandidate(gen, cand))
 		if err != nil {
 			return fail(err)
 		}
@@ -818,18 +851,34 @@ func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelg
 		if !timer.Stop() { // 第一个分片与超时同时到：流已被取消，按超时处理
 			_ = st.Close()
 			cancel()
-			return nil, providererr.New(providererr.Transient, "timeout", "等第一个分片超时")
+			return streamUsage(st), providererr.New(providererr.Transient, "timeout", "等第一个分片超时")
 		}
 		open, first, release = st, chunk, cancel
 		return nil, nil
 	})
 	spanCand = cand
 	if err != nil {
-		spanErr = err
-		return connecterr.Error(err)
+		spanErr = c.charged(err)
+		return connecterr.Error(spanErr)
 	}
 	defer release()
 	defer open.Close()
+	var rawUsage *commonv1.Usage
+	finalMetered := false
+	defer func() {
+		if rawUsage == nil {
+			rawUsage = streamUsage(open)
+		}
+		if settleErr := s.settle(ctx, c, cand, rawUsage, spanErr); settleErr != nil {
+			spanErr = settleErr
+			retErr = connecterr.Error(settleErr)
+		}
+		if retErr != nil && !finalMetered && rawUsage != nil {
+			s.meterFailed(c, cand, rawUsage, "stream_interrupted")
+			spanUsage = c.billed
+			retErr = connecterr.Error(c.charged(spanErr))
+		}
+	}()
 	for chunk, err := first, error(nil); ; chunk, err = open.Recv(ctx) {
 		if errors.Is(err, io.EOF) {
 			spanErr = providererr.New(providererr.Transient, "stream_truncated", "上游的流没有给出最终结果")
@@ -842,6 +891,9 @@ func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelg
 			spanErr = err
 			return connecterr.Error(err)
 		}
+		if chunk.Final != nil {
+			rawUsage = chunk.Final.Usage
+		}
 		out, final, err := c.streamChunk(cand, chunk)
 		if err != nil {
 			var usage *commonv1.Usage
@@ -850,7 +902,16 @@ func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelg
 				spanUsage = priced(cand, usage)
 			}
 			spanErr = err
+			finalMetered = true
 			return connecterr.Error(s.billedFailure(c, cand, usage, err))
+		}
+		if final {
+			if err := s.settle(ctx, c, cand, rawUsage, nil); err != nil {
+				spanErr = err
+				return connecterr.Error(err)
+			}
+			out.Usage = addUsage(out.GetUsage(), c.billed)
+			out.GetFinal().Usage = out.Usage
 		}
 		if out != nil {
 			if err := stream.Send(out); err != nil {
@@ -863,7 +924,8 @@ func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelg
 		}
 		if final {
 			spanUsage = out.GetUsage()
-			s.served(c, cand, out.GetUsage())
+			s.served(c, cand, priced(cand, rawUsage))
+			finalMetered = true
 			return nil
 		}
 	}
@@ -907,8 +969,9 @@ func (s *Server) Score(ctx context.Context, req *connect.Request[modelgatewayv1.
 	}
 	tr := s.startSpan(ctx, c, "chat", false)
 	var result modelprovider.ScoreResult
+	c.estimateInput(m, 0)
 	cand, err := s.run(ctx, c, c.choice.Candidates, true, func(ctx context.Context, cand router.Candidate) (*commonv1.Usage, error) {
-		r, err := c.client.Score(ctx, modelprovider.ScoreRequest{Model: cand.Profile.Model, Query: m.GetQuery(), Candidates: m.GetCandidates(), Rubric: m.GetRubric()})
+		r, err := c.client.Score(ctx, modelprovider.ScoreRequest{Model: cand.Profile.Model, Query: m.GetQuery(), Candidates: m.GetCandidates(), Rubric: m.GetRubric(), MaxOutputTokens: outputLimit(0, cand)})
 		result = r
 		return r.Usage, err
 	})
@@ -952,6 +1015,7 @@ func (s *Server) Embed(ctx context.Context, req *connect.Request[modelgatewayv1.
 		candidates = candidates[i : i+1]
 	}
 	tr := s.startSpan(ctx, c, "embeddings", false)
+	c.estimateInput(m.GetTexts(), 0)
 	var result modelprovider.EmbedResult
 	cand, err := s.run(ctx, c, candidates, true, func(ctx context.Context, cand router.Candidate) (*commonv1.Usage, error) {
 		r, err := c.client.Embed(ctx, modelprovider.EmbedRequest{Model: cand.Profile.Model, Texts: m.GetTexts()})
@@ -1010,6 +1074,7 @@ func (s *Server) Classify(ctx context.Context, req *connect.Request[modelgateway
 		OutputSchema: classifySchema(labels),
 	}
 	tr := s.startSpan(ctx, c, "chat", false)
+	c.estimateInput(gen, gen.MaxOutputTokens)
 	var result modelprovider.GenerateResult
 	cand, err := s.run(ctx, c, c.choice.Candidates, true, func(ctx context.Context, cand router.Candidate) (*commonv1.Usage, error) {
 		r, err := c.client.Generate(ctx, forCandidate(gen, cand))

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/url"
 	"strings"
+
+	"github.com/agentruntime/agent-runtime/libs/go-core/secret"
 )
 
 // 环境变量名。
@@ -23,6 +25,9 @@ const (
 	EnvSecretsFile = "AR_SECRETS_FILE"
 	// EnvTenantPoliciesFile 是开发用的租户策略文件（可选的模型白名单），与 task-service 同一个文件。
 	EnvTenantPoliciesFile = "AR_DEV_TENANT_POLICIES_FILE"
+	EnvDataDir            = "AR_DATA_DIR"
+	EnvRelationalDSN      = "AR_RELATIONAL_DSN"
+	EnvRegistryAddress    = "AR_REGISTRY_ADDRESS"
 )
 
 // 默认值与取值。
@@ -35,6 +40,9 @@ const (
 
 // Config 是 serve 子命令的配置。
 type Config struct {
+	DataDir            string
+	RelationalDSN      secret.Value
+	RegistryAddress    string
 	Addr               string
 	ProfilesFile       string
 	Provider           string
@@ -52,6 +60,8 @@ type Config struct {
 func FromEnv(getenv func(string) string) (Config, error) {
 	get := func(name string) string { return strings.TrimSpace(getenv(name)) }
 	cfg := Config{
+		DataDir:            or(get(EnvDataDir), "data"),
+		RegistryAddress:    get(EnvRegistryAddress),
 		Addr:               or(get(EnvAddr), DefaultAddr),
 		ProfilesFile:       get(EnvProfilesFile),
 		Provider:           or(get(EnvProvider), ProviderOpenAICompat),
@@ -59,6 +69,20 @@ func FromEnv(getenv func(string) string) (Config, error) {
 		ProviderKeyName:    or(get(EnvProviderKeyName), DefaultKeyName),
 		SecretsFile:        get(EnvSecretsFile),
 		TenantPoliciesFile: get(EnvTenantPoliciesFile),
+	}
+	if dsn := get(EnvRelationalDSN); dsn != "" {
+		cfg.RelationalDSN = secret.New(dsn)
+	}
+	if cfg.RegistryAddress != "" {
+		address := cfg.RegistryAddress
+		if !strings.Contains(address, "://") {
+			address = "http://" + address
+		}
+		u, err := url.Parse(address)
+		if err != nil || u.Hostname() == "" || u.User != nil || (u.Scheme != "http" && u.Scheme != "https") {
+			return Config{}, errors.New(EnvRegistryAddress + " 必须是内部 Registry 的 http(s) 地址或 host:port")
+		}
+		cfg.RegistryAddress = strings.TrimRight(address, "/")
 	}
 	if cfg.ProfilesFile == "" {
 		return Config{}, errors.New("缺少 " + EnvProfilesFile)

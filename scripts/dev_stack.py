@@ -304,6 +304,9 @@ class Stack:
         python_dir = str(Path(self.options["python"]).parent)
         decisions = "model" if self.options["decisions"] == "model" else "stub"
         gateway = {
+            "AR_DATA_DIR": str(self.data_dir),
+            "AR_REGISTRY_ADDRESS": self.address("registry"),
+            "AR_DEV_TENANT_POLICIES_FILE": str(self.policies_file),
             "AR_MODEL_GATEWAY_ADDR": self.address("gateway"),
             "AR_MODEL_PROFILES_FILE": str(PROFILES[self.options["provider"]]),
             "AR_MODEL_PROVIDER": self.options["provider"],

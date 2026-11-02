@@ -93,6 +93,9 @@ func startServe(t *testing.T, env map[string]string) *served {
 	t.Helper()
 	s := &served{addr: freeAddr(t), stdout: &syncBuffer{}, stderr: &syncBuffer{}}
 	env["AR_MODEL_GATEWAY_ADDR"] = s.addr
+	if env["AR_DATA_DIR"] == "" {
+		env["AR_DATA_DIR"] = t.TempDir()
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan int, 1)
 	go func() { done <- run(ctx, []string{"serve"}, strings.NewReader(""), s.stdout, s.stderr, getenv(env)) }()

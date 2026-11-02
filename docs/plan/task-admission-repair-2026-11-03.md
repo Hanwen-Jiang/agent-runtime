@@ -13,4 +13,4 @@
 - **Release slice**：独立修复，预算接线前。
 - **Decision**：KEEP，修复可复现错误，不扩展冻结契约。
 
-验证：Task Store SQLite 用例及 Task API 测试通过；本机缺 initdb，PostgreSQL 用例通过 AR_ALLOW_MISSING_TOOLS=1 明确跳过，不能据此认定生产数据库验收完成。
+验证：Task Store SQLite 用例及 Task API 测试通过。随后在 WSL Debian 找到 PostgreSQL 17.10，用 Go 1.26.5 执行 Task Store、Task API、Registry 与 task-service 命令包测试全部通过，包含真实 PostgreSQL 准入锁、迁移和 RLS。未据此宣称线上 k3s 发布验收完成。
