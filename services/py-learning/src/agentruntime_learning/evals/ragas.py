@@ -13,7 +13,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-from google.protobuf import json_format, struct_pb2
 
 
 @dataclass(frozen=True)
@@ -59,8 +58,13 @@ class GatewayRagasLLM:
     async def agenerate(self, prompt_str: str, schema: Any = None, **kwargs: Any) -> Any:
         """Ragas 0.4.3 collections API: generate JSON matching ``schema``."""
         result = await self.generate(prompt_str, **kwargs)
-        text = result if isinstance(result, str) else result.get("generations", [[{"text": ""}]])[0][0].get("text", "")
-        data = json.loads(text)
+        if isinstance(result, str):
+            text = result
+        elif isinstance(result, dict):
+            text = result.get("generations", [[{"text": ""}]])[0][0].get("text", "")
+        else:
+            text = str(result)
+        data = json.loads(text) if isinstance(text, str) else text
         if schema is None:
             return data
         if hasattr(schema, "model_validate"):
@@ -68,51 +72,107 @@ class GatewayRagasLLM:
         return data
 
 
-class ModelGatewayRagasLLM:
-    """Ragas LLM adapter backed by the existing ModelGateway Generate RPC."""
+@dataclass
+class _GatewayBudget:
+    """Shared per-run spend ledger for Ragas LLM and embedding calls."""
 
-    def __init__(self, gateway: Any, *, tenant_id: str, tier: str = "strong@medium") -> None:
+    limit_usd_micros: int
+    spent_usd_micros: int = 0
+
+    def remaining(self) -> int:
+        return max(0, self.limit_usd_micros - self.spent_usd_micros)
+
+    def charge(self, amount: int) -> None:
+        self.spent_usd_micros += max(0, int(amount))
+
+
+class ModelGatewayRagasLLM:
+    """Ragas 0.4.3 structured LLM adapter backed by Model Gateway."""
+
+    def __init__(self, gateway: Any, *, tenant_id: str, tier: str = "strong@medium", max_cost_usd_micros: int = 0, budget: _GatewayBudget | None = None) -> None:
         self.gateway, self.tenant_id, self.tier = gateway, tenant_id, tier
-        self.total_cost_usd = 0.0
+        self.max_cost_usd_micros = max(0, int(max_cost_usd_micros))
+        self.cost_usd_micros = 0
+        self.budget = budget
 
     async def agenerate(self, prompt_str: str, schema: Any = None, **_: Any) -> Any:
         from agentruntime.common.v1 import enums_pb2, payload_pb2, tenant_pb2
         from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
-        value = struct_pb2.Value()
+        from google.protobuf import json_format, struct_pb2
+
+        if hasattr(prompt_str, "to_string"):
+            prompt_str = prompt_str.to_string()
+        remaining = self.budget.remaining() if self.budget else (self.max_cost_usd_micros - self.cost_usd_micros if self.max_cost_usd_micros else 0)
+        if (self.budget and remaining <= 0) or (self.max_cost_usd_micros and remaining <= 0):
+            raise RuntimeError("ragas_budget_exhausted")
         output_schema = schema.model_json_schema() if hasattr(schema, "model_json_schema") else schema
+        generation = mg.GenerateParams(messages=[mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=str(prompt_str))])
         if output_schema:
-            from google.protobuf import json_format
+            value = struct_pb2.Value()
             json_format.ParseDict(output_schema, value)
-        generation = mg.GenerateParams(messages=[mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=prompt_str)])
-        if output_schema:
             generation.output_schema.CopyFrom(payload_pb2.JsonPayload(value=value))
         req = mg.GenerateRequest(tenant=tenant_pb2.TenantContext(tenant_id=self.tenant_id),
-            call=mg.CallContext(node_id="ragas_judge", role=enums_pb2.ROLE_JUDGE, tier=self.tier), generation=generation)
-        response = await self.gateway.generate(req)
-        self.total_cost_usd += response.usage.cost_usd_micros / 1_000_000
+            call=mg.CallContext(node_id="ragas_judge", role=enums_pb2.ROLE_JUDGE, tier=self.tier,
+                                max_cost_usd_micros=remaining), generation=generation)
+        try:
+            response = await self.gateway.generate(req)
+        except Exception as exc:
+            billed = int(getattr(exc, "billed_cost_usd_micros", 0) or 0)
+            self.cost_usd_micros += billed
+            if self.budget:
+                self.budget.charge(billed)
+            raise
+        cost = int(response.usage.cost_usd_micros)
+        self.cost_usd_micros += cost
+        if self.budget:
+            self.budget.charge(cost)
         data = json_format.MessageToDict(response.result)
-        return schema.model_validate(data) if schema is not None and hasattr(schema, "model_validate") else data
+        if schema is None:
+            return response.text or data
+        return schema.model_validate(data) if hasattr(schema, "model_validate") else data
 
 
 class ModelGatewayRagasEmbeddings:
-    """Ragas embeddings adapter backed by ModelGateway Embed RPC."""
+    """Ragas embeddings adapter backed by Model Gateway Embed RPC."""
 
-    def __init__(self, gateway: Any, *, tenant_id: str, embedding_version: str, tier: str = "") -> None:
+    def __init__(self, gateway: Any, *, tenant_id: str, embedding_version: str, tier: str = "", max_cost_usd_micros: int = 0, budget: _GatewayBudget | None = None) -> None:
         self.gateway, self.tenant_id, self.embedding_version, self.tier = gateway, tenant_id, embedding_version, tier
-        self.total_cost_usd = 0.0
+        self.max_cost_usd_micros = max(0, int(max_cost_usd_micros))
+        self.cost_usd_micros = 0
+        self.budget = budget
 
     async def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        from agentruntime.common.v1 import tenant_pb2
+        from agentruntime.common.v1 import enums_pb2, tenant_pb2
         from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
+        remaining = self.budget.remaining() if self.budget else (self.max_cost_usd_micros - self.cost_usd_micros if self.max_cost_usd_micros else 0)
+        if (self.budget and remaining <= 0) or (self.max_cost_usd_micros and remaining <= 0):
+            raise RuntimeError("ragas_budget_exhausted")
         req = mg.EmbedRequest(tenant=tenant_pb2.TenantContext(tenant_id=self.tenant_id),
-                              call=mg.CallContext(node_id="ragas_embedding", role=0, tier=self.tier),
-                              texts=texts)
-        response = await self.gateway.embed(req)
-        self.total_cost_usd += response.usage.cost_usd_micros / 1_000_000
+                              call=mg.CallContext(node_id="ragas_embedding", role=enums_pb2.ROLE_JUDGE, tier=self.tier,
+                                                  max_cost_usd_micros=remaining),
+                              texts=texts, embedding_version=self.embedding_version)
+        try:
+            response = await self.gateway.embed(req)
+        except Exception as exc:
+            billed = int(getattr(exc, "billed_cost_usd_micros", 0) or 0)
+            self.cost_usd_micros += billed
+            if self.budget:
+                self.budget.charge(billed)
+            raise
+        cost = int(response.usage.cost_usd_micros)
+        self.cost_usd_micros += cost
+        if self.budget:
+            self.budget.charge(cost)
         return [[float(x) for x in emb.values] for emb in response.embeddings]
 
     async def embed_query(self, text: str) -> list[float]:
         return (await self.embed_documents([text]))[0]
+
+    async def aembed_documents(self, texts: list[str]) -> list[list[float]]:
+        return await self.embed_documents(texts)
+
+    async def aembed_query(self, text: str) -> list[float]:
+        return await self.embed_query(text)
 
 
 class GatewayRagasEmbeddings:
@@ -193,16 +253,18 @@ async def _score(metric: Any, row: dict[str, Any]) -> float | None:
     try:
         if hasattr(metric, "single_turn_ascore"):
             value = metric.single_turn_ascore(sample)
-            return float(await value) if hasattr(value, "__await__") else float(value)
-        if hasattr(metric, "ascore"):
-            value = metric.ascore(sample)
-            return float(await value) if hasattr(value, "__await__") else float(value)
+        elif hasattr(metric, "ascore"):
+            value = metric.ascore(**row)
+        else:
+            return None
+        value = await value if hasattr(value, "__await__") else value
+        return float(getattr(value, "value", value))
     except Exception:
         return None
     return None
 
 
-async def run_cases(cases: Iterable[RagasCase], *, metrics: Iterable[str] | None = None) -> dict[str, Any]:
+async def run_cases(cases: Iterable[RagasCase], *, metrics: Iterable[str] | None = None, llm: Any = None, embeddings: Any = None) -> dict[str, Any]:
     """Run enabled metrics serially and return a JSON-ready manifest/report."""
     wanted = list(metrics or ("context_precision", "context_recall", "faithfulness"))
     classes = _metric_classes()
@@ -218,8 +280,14 @@ async def run_cases(cases: Iterable[RagasCase], *, metrics: Iterable[str] | None
                 row["unscored"][name] = "missing_response"
             elif name not in classes:
                 row["unscored"][name] = "ragas_not_installed"
+            elif llm is None:
+                row["unscored"][name] = "gateway_not_configured"
             else:
-                score = await _score(classes[name](), payload)
+                try:
+                    metric = classes[name](llm=llm, embeddings=embeddings) if embeddings is not None else classes[name](llm=llm)
+                except TypeError:
+                    metric = classes[name](llm=llm)
+                score = await _score(metric, payload)
                 if score is None:
                     row["unscored"][name] = "metric_error"
                 else:
@@ -240,4 +308,25 @@ def run_fixture(path: str | Path, *, out: str | Path | None = None) -> dict[str,
     return report
 
 
-__all__ = ["GatewayRagasEmbeddings", "GatewayRagasLLM", "RagasCase", "load_cases", "run_cases", "run_fixture"]
+def run_gateway(path: str | Path, *, gateway: Any, tenant_id: str, budget_usd: float, embedding_version: str | None = None, out: str | Path | None = None) -> dict[str, Any]:
+    """Run Ragas through Model Gateway with a measured budget."""
+    if budget_usd <= 0:
+        raise ValueError("budget-usd must be positive")
+    if not _metric_classes():
+        raise RuntimeError("ragas_not_installed: install ragas==0.4.3 in the isolated eval venv")
+    budget = max(0, int(round(budget_usd * 1_000_000)))
+    ledger = _GatewayBudget(budget)
+    llm = ModelGatewayRagasLLM(gateway, tenant_id=tenant_id, max_cost_usd_micros=budget, budget=ledger)
+    embeddings = ModelGatewayRagasEmbeddings(gateway, tenant_id=tenant_id, embedding_version=embedding_version, max_cost_usd_micros=budget, budget=ledger) if embedding_version else None
+    report = asyncio.run(run_cases(load_cases(path), llm=llm, embeddings=embeddings))
+    report["manifest"] = {"eval": "ragas", "dataset": str(path), "mode": "gateway", "estimated": False,
+                          "measured": True, "budget_usd": budget_usd, "sample_count": report["sample_count"],
+                          "cost_usd": ledger.spent_usd_micros / 1_000_000}
+    if out is not None:
+        destination = Path(out); destination.mkdir(parents=True, exist_ok=True)
+        (destination / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), "utf-8")
+        (destination / "manifest.json").write_text(json.dumps(report["manifest"], ensure_ascii=False, indent=2), "utf-8")
+    return report
+
+
+__all__ = ["GatewayRagasEmbeddings", "GatewayRagasLLM", "ModelGatewayRagasEmbeddings", "ModelGatewayRagasLLM", "RagasCase", "load_cases", "run_cases", "run_fixture", "run_gateway"]

@@ -3,7 +3,7 @@ import importlib.util
 from types import SimpleNamespace
 from google.protobuf import json_format, struct_pb2
 
-from agentruntime_learning.evals.deepeval_metrics import evaluate_cases, gateway_judge, score_case, validate_case
+from agentruntime_learning.evals.deepeval_metrics import GatewayDeepEvalLLM, evaluate_cases, gateway_judge, score_case, validate_case
 
 
 def test_fixture_metrics_and_unscored_semantics():
@@ -32,6 +32,14 @@ def test_invalid_case_is_reported_without_aborting_batch():
 
 def test_validate_case_rejects_wrong_types():
     assert "tools_called must be a list" in validate_case({"case_id": "x", "input": "x", "actual_output": "x", "tools_called": {}})
+
+
+def test_gateway_model_exposes_load_model_and_budget_state():
+    gateway = object()
+    model = GatewayDeepEvalLLM(gateway, tenant_id="evals", max_cost_usd_micros=5)
+    assert model.load_model() is gateway
+    assert model.get_model_name() == "gateway/strong@medium"
+    assert model.max_cost_usd_micros == 5
 
 
 @__import__('unittest').skipUnless(importlib.util.find_spec('agentruntime') is not None, 'generated proto package unavailable')

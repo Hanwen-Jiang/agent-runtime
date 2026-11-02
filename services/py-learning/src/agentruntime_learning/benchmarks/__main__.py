@@ -10,7 +10,9 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import hashlib
+import importlib
 import json
 import os
 import re
@@ -92,6 +94,10 @@ def _parser() -> argparse.ArgumentParser:
     deepeval_run.add_argument("--cases", type=Path, required=True)
     deepeval_run.add_argument("--out", type=Path, required=True)
     deepeval_run.add_argument("--budget-usd", type=float, required=True)
+    deepeval_run.add_argument("--mode", choices=("fixture", "gateway"), default="fixture")
+    deepeval_run.add_argument("--tenant-id", default="evals")
+    deepeval_run.add_argument("--gateway-factory", default=os.environ.get("AR_EVAL_GATEWAY_FACTORY", ""))
+    deepeval_run.add_argument("--judge-tier", default="strong@medium")
 
     ragas = benches.add_parser("ragas", help="Ragas 首轮适配器")
     ragas_sub = ragas.add_subparsers(dest="ragas_command", required=True)
@@ -99,6 +105,10 @@ def _parser() -> argparse.ArgumentParser:
     ragas_run.add_argument("--cases", type=Path, required=True)
     ragas_run.add_argument("--out", type=Path, required=True)
     ragas_run.add_argument("--budget-usd", type=float, required=True)
+    ragas_run.add_argument("--mode", choices=("fixture", "gateway"), default="fixture")
+    ragas_run.add_argument("--tenant-id", default="evals")
+    ragas_run.add_argument("--gateway-factory", default=os.environ.get("AR_EVAL_GATEWAY_FACTORY", ""))
+    ragas_run.add_argument("--embedding-version")
     return parser
 
 
@@ -169,14 +179,30 @@ def _terminalbench_run(args: argparse.Namespace) -> int:
     return 0 if all(r.status == "completed" and r.verifier_status in {"passed", "resolved", "success"} for r in results) else 1
 
 
+def _load_gateway(spec: str):
+    module_name, sep, attr = spec.partition(":")
+    if not sep or not module_name or not attr:
+        raise ValueError("gateway mode requires --gateway-factory <module>:<factory> or AR_EVAL_GATEWAY_FACTORY")
+    return getattr(importlib.import_module(module_name), attr)()
+
+
 def _deepeval_run(args: argparse.Namespace) -> int:
-    report = dm.evaluate_cases(dm.load_cases(args.cases), source="fixture")
+    if args.mode == "gateway":
+        report = asyncio.run(dm.evaluate_gateway_cases(dm.load_cases(args.cases), _load_gateway(args.gateway_factory), tenant_id=args.tenant_id, budget_usd=args.budget_usd, tier=args.judge_tier))
+    else:
+        report = dm.evaluate_cases(dm.load_cases(args.cases), source="fixture")
     _write_json_report(args.out, report, eval_name="deepeval", budget_usd=args.budget_usd)
+    if args.mode == "gateway":
+        (args.out / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        (args.out / "manifest.json").write_text(json.dumps({"eval": "deepeval", "mode": "gateway", "budget_usd": args.budget_usd, "estimated": False, "measured": True, "sample_count": len(report.get("cases") or []), "cost_usd": report.get("cost_usd", 0.0)}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return 0 if all(row.get("status") == "ok" for row in report["cases"]) else 1
 
 
 def _ragas_run(args: argparse.Namespace) -> int:
-    report = rg.run_fixture(args.cases, out=args.out)
+    if args.mode == "gateway":
+        report = rg.run_gateway(args.cases, gateway=_load_gateway(args.gateway_factory), tenant_id=args.tenant_id, budget_usd=args.budget_usd, embedding_version=args.embedding_version, out=args.out)
+    else:
+        report = rg.run_fixture(args.cases, out=args.out)
     report["budget_usd"] = args.budget_usd
     (args.out / "report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return 0

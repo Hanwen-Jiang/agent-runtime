@@ -45,3 +45,20 @@ def test_fixture_writes_report_and_manifest(tmp_path, monkeypatch):
     assert report["manifest"]["mode"] == "fixture"
     assert json.loads((out / "report.json").read_text())["eval"] == "ragas"
     assert json.loads((out / "manifest.json").read_text())["sample_count"] == 1
+
+
+def test_gateway_budget_ledger_is_shared_between_wrappers():
+    ledger = ragas._GatewayBudget(10)
+    assert ledger.remaining() == 10
+    ledger.charge(7)
+    assert ledger.remaining() == 3
+    ledger.charge(9)
+    assert ledger.remaining() == 0
+
+
+def test_gateway_mode_requires_ragas_package(monkeypatch, tmp_path):
+    monkeypatch.setattr(ragas, "_metric_classes", lambda: {})
+    source = tmp_path / "cases.json"
+    source.write_text(json.dumps([_case()]), encoding="utf-8")
+    with __import__("pytest").raises(RuntimeError, match="ragas_not_installed"):
+        ragas.run_gateway(source, gateway=object(), tenant_id="evals", budget_usd=1)
