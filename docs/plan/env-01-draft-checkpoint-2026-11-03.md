@@ -1,5 +1,7 @@
 # ENV-01 未完成草稿保存点（2026-11-03）
 
+> 历史记录：以下描述的是 `3c8b249` 的草稿状态。后续 `f74a530`、`e15b58d` 已补齐服务、ledger/Broker 接线并挂载主程序，合入 main；当前验证与缺口见 [本轮收尾](implementation-closeout-2026-11-03.md)。
+
 用户要求将现有工作保存、推送后暂停。本分支仅保存开发草稿，不合并 main，也不表示 ENV-01 已实现或验收通过。基于 `8d49b3b`；后续实现应先同步 main。
 
 现有文件包括 EnvironmentService 的 Get/List proto、生成的 Go/Python 代码、协议测试，以及 ledger 健康确认和复借行为的目标测试。Go 服务、认证查询接线、ledger 字段和 Broker 健康确认逻辑尚未实现；`test_environment_status.py` 依赖这些缺失实现，不能作为已通过的测试报告。
