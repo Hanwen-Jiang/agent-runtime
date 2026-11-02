@@ -12,7 +12,8 @@ Registry 与 Model Gateway 读的是同一组）。云上的 ConfigMap（Chart �
 - 按 Profile 的 vendor 找 models.dev 里第一方的供应商（openai、anthropic、google、deepseek），按 model 找条目；找不到的不改并列出来。
 - 单价：输入、输出、缓存读（美元每百万 token）取基础价；超过一定长度的加价（models.dev 的 tiers、context_over_200k）这里不记，见计划。
 - 长度：context_window 取 limit.input（有时）与 limit.context 中较小的；max_output 取 limit.output；嵌入模型的 max_output 按 schema 写 0。
-- 有改动的 Profile 把 freshness.price_at 改成今天（或 --date）；没改动的不动。
+- 发布日：仅从合法的 release_date 复制到 released_at；缺失或无效时保留已有数据，不从 price_at 或模型名字推断。
+- 单价/长度改动才把 freshness.price_at 改成今天（或 --date）；只补发布日期时不动取价日期。能力/可靠性评测不由此脚本生成。
 """
 
 from __future__ import annotations
@@ -59,7 +60,7 @@ def _usd(value: Any) -> float:
 
 
 def synced(profile: dict[str, Any], entry: dict[str, Any]) -> dict[str, Any]:
-    """按 models.dev 的条目改单价与长度，其余不动。纯函数。"""
+    """按 models.dev 的条目改单价、长度与真实发布日期，其余不动。纯函数。"""
     cost = entry.get("cost") or {}
     limit = entry.get("limit") or {}
     out = json.loads(json.dumps(profile))
@@ -73,6 +74,15 @@ def synced(profile: dict[str, Any], entry: dict[str, Any]) -> dict[str, Any]:
     elif isinstance(limit.get("output"), int) and limit["output"] > 0:
         constraints["max_output"] = int(limit["output"])
     out["constraints"] = constraints
+    released = entry.get("release_date")
+    if isinstance(released, str):
+        try:
+            parsed = dt.date.fromisoformat(released)
+        except ValueError:
+            pass
+        else:
+            if parsed.isoformat() == released:  # 只接受完整 YYYY-MM-DD，不接受周日期或紧凑格式。
+                out["released_at"] = released
     return out
 
 
@@ -113,7 +123,8 @@ def sync(document: dict[str, Any], catalog: dict[str, Any], today: str) -> tuple
         updated = synced(profile, entry)
         if (updated["cost"], updated["constraints"]) != (profile.get("cost"), profile.get("constraints")):
             updated["freshness"] = {"price_at": today}
-            changed.append(f"{profile['id']}：{profile.get('cost')} {profile.get('constraints')} → {updated['cost']} {updated['constraints']}")
+        if updated != profile:
+            changed.append(f"{profile['id']}：{profile.get('cost')} {profile.get('constraints')} released_at={profile.get('released_at')} → {updated['cost']} {updated['constraints']} released_at={updated.get('released_at')}")
         profiles.append(updated)
     return {**document, "profiles": profiles}, changed, missing
 

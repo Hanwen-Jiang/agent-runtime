@@ -4,15 +4,16 @@
 //  1. 确定 Tier：CallContext.tier 非空时用它（<class>@<tier 名>，格式不对 Invalid）；为空时按调用种类与 role 的默认 Tier
 //     （附录 H.3）：Embed → embed@default；Classify → small@low；role 为 plan → strong@medium；judge → strong@medium；
 //     route → small@low；其余 → mid@low。replan 也是 role plan 的调用，同为 strong@medium。
-//  2. 过滤：只留 class 与 Tier 匹配、并且有该 Tier 名的 Profile；再过租户约束（模型白名单）与能力
+//  2. 过滤：只留 class 与 Tier 匹配、并且有该 Tier 名、availability 不为 false 的 Profile；再过租户约束（模型白名单）与能力
 //     （Generate 要 generate；Stream 另要 stream；要结构化输出另要 structured；带工具另要 tools；Score、Classify 要 generate 与 structured；
 //     Embed 要 embed）。
 //  3. avoid_vendor：剩下的 Profile 里有别家时，排除这一家；只剩这一家时仍可用，并在结果里标明（AvoidVendorUnmet）。
-//  4. 排序：单价（输入单价 + 输出单价）升序，单价相同按 id 升序；pinned_model_profile 在剩余候选里时排到最前（PinApplied）。
+//  4. 排序：任务族/节点职责/推理档能力 45%、发布日期衰减 35%、性价比 15%、可靠性 5%，总分降序；
+//     同分按单价、id 升序；pinned_model_profile 在剩余候选里时排到最前（PinApplied）。
 //     pinned 不在剩余候选里（不在该 Tier、被白名单或能力过滤、被 avoid_vendor 排除）时忽略，不报错。
 //  5. 第一个候选是首选，其余是同档切换的顺序（重试用尽后依次切换）。
 //
-// 没有可选的 Profile 时返回 NotFound（code no_eligible_model）。同样的输入、Profile 与白名单总是选出同样的结果。
+// 没有可选的 Profile 时返回 NotFound（code no_eligible_model）。同样的输入、Profile、白名单与评估时间选出同样的结果。
 package router
 
 import (
@@ -23,8 +24,11 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"math"
 	"os"
 	"slices"
+	"strings"
+	"time"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
@@ -74,6 +78,8 @@ type Request struct {
 	TenantID string
 	Kind     Kind
 	Role     commonv1.Role
+	// TaskFamily 与 Role 共同选择对应工作种类和节点阶段的能力测量。
+	TaskFamily string
 	// Tier 是请求期望的 Tier；为空时用 DefaultTier。
 	Tier          string
 	PinnedProfile string
@@ -88,12 +94,22 @@ type Request struct {
 type Candidate struct {
 	Profile profiles.Profile
 	Tier    profiles.Tier
+	Score   Score
+}
+
+// Score 是可解释的选档分解；各分量都在 [0,1]。缺测量的能力/可靠性用 0.5 先验，
+// 未知发布日期不奖励新鲜度（0）。标记区分实际观测与先验，不能把先验报告为评测结果。
+type Score struct {
+	Total, Capability, Recency, Value, Reliability        float64
+	CapabilityMeasured, ReleaseKnown, ReliabilityMeasured bool
 }
 
 // Choice 是选档结果。
 type Choice struct {
 	// Tier 是实际使用的 Tier 字符串，例如 strong@medium。
 	Tier string
+	// AsOf 是本次排名统一使用的时间，便于重放排名；不进入在线协议。
+	AsOf time.Time
 	// Candidates 非空；第一个是首选，其余是同档切换的顺序。
 	Candidates []Candidate
 	// PinApplied 表示首选是 pinned_model_profile。
@@ -189,11 +205,20 @@ func (f FileAllowlist) ModelAllowlist(_ context.Context, tenantID string) ([]str
 type Router struct {
 	catalog   *profiles.Catalog
 	allowlist Allowlist
+	now       func() time.Time
 }
 
 // New 构造选档器；allowlist 为 nil 表示不限制。
 func New(catalog *profiles.Catalog, allowlist Allowlist) *Router {
-	return &Router{catalog: catalog, allowlist: allowlist}
+	return NewWithClock(catalog, allowlist, time.Now)
+}
+
+// NewWithClock 为测试或重放固定评估时间。now 必须可并发调用；nil 使用系统时钟。
+func NewWithClock(catalog *profiles.Catalog, allowlist Allowlist, now func() time.Time) *Router {
+	if now == nil {
+		now = time.Now
+	}
+	return &Router{catalog: catalog, allowlist: allowlist, now: now}
 }
 
 // needs 是调用种类与请求要求的能力。
@@ -245,14 +270,14 @@ func (r *Router) Select(ctx context.Context, req Request) (Choice, error) {
 	var candidates []Candidate
 	for _, p := range r.catalog.All() {
 		tier, ok := p.Tier(ref.Name)
-		if p.Class != ref.Class || !ok || (allowed != nil && !allowed[p.ID]) {
+		if p.Class != ref.Class || !ok || (allowed != nil && !allowed[p.ID]) || (p.Availability != nil && !*p.Availability) {
 			continue
 		}
 		if !slices.ContainsFunc(required, func(c profiles.Capability) bool { return !p.Has(c) }) {
 			candidates = append(candidates, Candidate{Profile: p, Tier: tier})
 		}
 	}
-	choice := Choice{Tier: ref.String()}
+	choice := Choice{Tier: ref.String(), AsOf: r.now().UTC()}
 	if req.AvoidVendor != "" {
 		others := slices.DeleteFunc(slices.Clone(candidates), func(c Candidate) bool { return c.Profile.Vendor == req.AvoidVendor })
 		if len(others) > 0 {
@@ -264,8 +289,11 @@ func (r *Router) Select(ctx context.Context, req Request) (Choice, error) {
 	if len(candidates) == 0 {
 		return Choice{}, providererr.New(providererr.NotFound, "no_eligible_model", "没有可选的模型："+ref.String())
 	}
+	for i := range candidates {
+		candidates[i].Score = rank(candidates[i], req, choice.AsOf)
+	}
 	slices.SortStableFunc(candidates, func(a, b Candidate) int {
-		return cmp.Or(cmp.Compare(a.Profile.Cost.UnitPrice(), b.Profile.Cost.UnitPrice()), cmp.Compare(a.Profile.ID, b.Profile.ID))
+		return cmp.Or(cmp.Compare(b.Score.Total, a.Score.Total), cmp.Compare(a.Profile.Cost.UnitPrice(), b.Profile.Cost.UnitPrice()), cmp.Compare(a.Profile.ID, b.Profile.ID))
 	})
 	if req.PinnedProfile != "" {
 		if i := slices.IndexFunc(candidates, func(c Candidate) bool { return c.Profile.ID == req.PinnedProfile }); i >= 0 {
@@ -276,4 +304,29 @@ func (r *Router) Select(ctx context.Context, req Request) (Choice, error) {
 	}
 	choice.Candidates = candidates
 	return choice, nil
+}
+
+// rank 不做网络请求或后台采样。首版权重固定在这里，避免新增租户策略或动态调参状态。
+// 新鲜度每 180 天减半；性价比分量是能力 / (1 + 输入输出合计美元/百万 token)，
+// 所以零价有限、相同能力更便宜更优，而价格最多贡献 15%，不能压过明显的能力或代际差距。
+func rank(c Candidate, req Request, asOf time.Time) Score {
+	s := Score{Capability: 0.5, Reliability: 0.5}
+	role := strings.ToLower(strings.TrimPrefix(req.Role.String(), "ROLE_"))
+	for _, measured := range c.Profile.CapabilityScores {
+		if measured.TaskFamily == req.TaskFamily && measured.Role == role && measured.Tier == c.Tier.Name {
+			s.Capability, s.CapabilityMeasured = *measured.Score, true
+			break
+		}
+	}
+	if c.Profile.ReleasedAt != nil {
+		released, _ := time.Parse(time.DateOnly, *c.Profile.ReleasedAt) // Catalog 已校验。
+		days := max(0, asOf.Sub(released).Hours()/24)
+		s.Recency, s.ReleaseKnown = math.Exp2(-days/180), true
+	}
+	if c.Profile.Reliability != nil {
+		s.Reliability, s.ReliabilityMeasured = *c.Profile.Reliability.Score, true
+	}
+	s.Value = s.Capability / (1 + c.Profile.Cost.UnitPrice())
+	s.Total = 0.45*s.Capability + 0.35*s.Recency + 0.15*s.Value + 0.05*s.Reliability
+	return s
 }

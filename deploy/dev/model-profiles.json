@@ -10,7 +10,8 @@
       "capabilities": ["generate", "structured", "tools", "stream"],
       "cost": {"in_per_m": 0.15, "out_per_m": 0.6, "cache_read_per_m": 0.075},
       "constraints": {"context_window": 128000, "max_output": 16384},
-      "freshness": {"price_at": "2026-10-21"}
+      "freshness": {"price_at": "2026-10-21"},
+      "released_at": "2024-07-18"
     },
     {
       "id": "a6api/gemini-3.5-flash-lite@2026-10",
@@ -21,7 +22,8 @@
       "capabilities": ["generate", "structured", "tools", "stream"],
       "cost": {"in_per_m": 0.3, "out_per_m": 2.5, "cache_read_per_m": 0.03},
       "constraints": {"context_window": 1048576, "max_output": 65536},
-      "freshness": {"price_at": "2026-11-02"}
+      "freshness": {"price_at": "2026-11-02"},
+      "released_at": "2026-07-21"
     },
     {
       "id": "a6api/deepseek-v4-flash@2026-10",
@@ -32,7 +34,8 @@
       "capabilities": ["generate", "structured", "tools", "stream"],
       "cost": {"in_per_m": 0.15, "out_per_m": 0.6, "cache_read_per_m": 0.003},
       "constraints": {"context_window": 1048576, "max_output": 393216},
-      "freshness": {"price_at": "2026-11-02"}
+      "freshness": {"price_at": "2026-11-02"},
+      "released_at": "2026-10-17"
     },
     {
       "id": "a6api/gemini-3.5-flash@2026-10",
@@ -43,7 +46,8 @@
       "capabilities": ["generate", "structured", "tools", "stream"],
       "cost": {"in_per_m": 1.5, "out_per_m": 9.0, "cache_read_per_m": 0.15},
       "constraints": {"context_window": 1048576, "max_output": 65536},
-      "freshness": {"price_at": "2026-11-02"}
+      "freshness": {"price_at": "2026-11-02"},
+      "released_at": "2026-05-19"
     },
     {
       "id": "a6api/claude-sonnet-5-5@2026-10",
@@ -57,7 +61,8 @@
       "capabilities": ["generate", "structured", "tools", "stream"],
       "cost": {"in_per_m": 2.0, "out_per_m": 10.0, "cache_read_per_m": 0.1},
       "constraints": {"context_window": 1000000, "max_output": 128000},
-      "freshness": {"price_at": "2026-11-02"}
+      "freshness": {"price_at": "2026-11-02"},
+      "released_at": "2026-09-28"
     },
     {
       "id": "a6api/gpt-5.5@2026-10",
@@ -71,7 +76,8 @@
       "capabilities": ["generate", "structured", "tools", "stream"],
       "cost": {"in_per_m": 5.0, "out_per_m": 30.0, "cache_read_per_m": 0.5},
       "constraints": {"context_window": 922000, "max_output": 128000},
-      "freshness": {"price_at": "2026-11-02"}
+      "freshness": {"price_at": "2026-11-02"},
+      "released_at": "2026-04-23"
     },
     {
       "id": "a6api/claude-opus-5-5@2026-10",
@@ -85,7 +91,8 @@
       "capabilities": ["generate", "structured", "tools", "stream"],
       "cost": {"in_per_m": 4.0, "out_per_m": 20.0, "cache_read_per_m": 0.2},
       "constraints": {"context_window": 1000000, "max_output": 128000},
-      "freshness": {"price_at": "2026-10-21"}
+      "freshness": {"price_at": "2026-10-21"},
+      "released_at": "2026-09-22"
     },
     {
       "id": "a6api/claude-haiku-5-5@2026-10",
@@ -96,7 +103,8 @@
       "capabilities": ["generate", "structured", "tools", "stream"],
       "cost": {"in_per_m": 0.1, "out_per_m": 0.5, "cache_read_per_m": 0.01},
       "constraints": {"context_window": 1000000, "max_output": 128000},
-      "freshness": {"price_at": "2026-11-02"}
+      "freshness": {"price_at": "2026-11-02"},
+      "released_at": "2026-10-07"
     },
     {
       "id": "a6api/text-embedding-3-large@2026-10",
@@ -107,7 +115,8 @@
       "capabilities": ["embed"],
       "cost": {"in_per_m": 0.13, "out_per_m": 0.0, "cache_read_per_m": 0.0},
       "constraints": {"context_window": 8191, "max_output": 0},
-      "freshness": {"price_at": "2026-10-31"}
+      "freshness": {"price_at": "2026-10-31"},
+      "released_at": "2024-01-25"
     },
     {
       "id": "a6api/text-embedding-3-small@2026-10",
@@ -118,7 +127,8 @@
       "capabilities": ["embed"],
       "cost": {"in_per_m": 0.02, "out_per_m": 0.0, "cache_read_per_m": 0.0},
       "constraints": {"context_window": 8191, "max_output": 0},
-      "freshness": {"price_at": "2026-10-21"}
+      "freshness": {"price_at": "2026-10-21"},
+      "released_at": "2024-01-25"
     },
     {
       "id": "a6api/gpt-6.1-sol@2026-11",
@@ -132,7 +142,8 @@
       "capabilities": ["generate", "structured", "tools", "stream"],
       "cost": {"in_per_m": 2.0, "out_per_m": 10.0, "cache_read_per_m": 0.1},
       "constraints": {"context_window": 922000, "max_output": 128000},
-      "freshness": {"price_at": "2026-11-02"}
+      "freshness": {"price_at": "2026-11-02"},
+      "released_at": "2026-09-29"
     }
   ]
 }

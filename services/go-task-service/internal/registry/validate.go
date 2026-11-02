@@ -203,6 +203,11 @@ func (r *Registry) prepare(kind registryv1.RegistryKind, tenant *commonv1.Tenant
 			Tiers []struct {
 				Name string `json:"name"`
 			} `json:"tiers"`
+			CapabilityScores []struct {
+				TaskFamily string `json:"task_family"`
+				Role       string `json:"role"`
+				Tier       string `json:"tier"`
+			} `json:"capability_scores"`
 		}
 		if err := json.Unmarshal(document, &doc); err != nil {
 			return candidate{}, invalid("invalid_document", "Model Profile 解析不了")
@@ -216,6 +221,17 @@ func (r *Registry) prepare(kind registryv1.RegistryKind, tenant *commonv1.Tenant
 				return candidate{}, invalid("duplicate_tier", fmt.Sprintf("Tier 名 %q 重复", t.Name))
 			}
 			seen[t.Name] = true
+		}
+		seenScores := map[[3]string]bool{}
+		for _, score := range doc.CapabilityScores {
+			if !seen[score.Tier] {
+				return candidate{}, invalid("unknown_score_tier", fmt.Sprintf("capability_scores 引用了不存在的 Tier %q", score.Tier))
+			}
+			key := [3]string{score.TaskFamily, score.Role, score.Tier}
+			if seenScores[key] {
+				return candidate{}, invalid("duplicate_capability_score", "capability_scores 的 task_family/role/tier 重复")
+			}
+			seenScores[key] = true
 		}
 	case registryv1.RegistryKind_REGISTRY_KIND_TENANT_POLICY, registryv1.RegistryKind_REGISTRY_KIND_TASK_FAMILIES:
 		if !sc.platform && name != "" {

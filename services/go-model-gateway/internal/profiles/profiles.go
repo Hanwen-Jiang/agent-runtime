@@ -80,7 +80,7 @@ func (c Cost) USDMicros(usage *commonv1.Usage) int64 {
 	return int64(math.Round(math.Round(total*1e6) / 1e6))
 }
 
-// UnitPrice 是选档时比较的单价：输入单价加输出单价。
+// UnitPrice 是性价比分量与同分决胜使用的基础价：输入单价加输出单价。
 func (c Cost) UnitPrice() float64 {
 	return c.InPerM + c.OutPerM
 }
@@ -94,6 +94,22 @@ type Constraints struct {
 // Freshness 记录数据的取得日期。
 type Freshness struct {
 	PriceAt string `json:"price_at"`
+}
+
+// Measurement 是有来源、观测日期的 [0,1] 分数。nil 区分漏填与显式的零分。
+// Source 指向内部评测批次或外部来源；它不是运行时请求的地址。
+type Measurement struct {
+	Score  *float64 `json:"score"`
+	Source string   `json:"source"`
+	At     string   `json:"at"`
+}
+
+// CapabilityScore 只适用于指定任务族、节点职责和推理档，不跨工作种类或阶段借用分数。
+type CapabilityScore struct {
+	TaskFamily string `json:"task_family"`
+	Role       string `json:"role"`
+	Tier       string `json:"tier"`
+	Measurement
 }
 
 // Profile 是一个 Model Profile。
@@ -110,6 +126,12 @@ type Profile struct {
 	Cost         Cost         `json:"cost"`
 	Constraints  Constraints  `json:"constraints"`
 	Freshness    Freshness    `json:"freshness"`
+	// ReleasedAt 是模型真实发布日期；未知时省略，不能用 price_at 或 Profile 版本代替。
+	ReleasedAt *string `json:"released_at,omitempty"`
+	// Availability 为 false 时不参与路由；省略保持旧 Profile 可用。
+	Availability     *bool             `json:"availability,omitempty"`
+	CapabilityScores []CapabilityScore `json:"capability_scores,omitempty"`
+	Reliability      *Measurement      `json:"reliability,omitempty"`
 }
 
 // Has 判断 Profile 是否声明了某项能力。
@@ -142,6 +164,7 @@ func Load(path string) (*Catalog, error) {
 }
 
 var slug = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
+var taskFamily = regexp.MustCompile(`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$`)
 
 func invalid(format string, args ...any) error {
 	return providererr.New(providererr.Invalid, "invalid_profiles", fmt.Sprintf(format, args...))
@@ -219,6 +242,44 @@ func check(p Profile, name string) error {
 	}
 	if _, err := time.Parse(time.DateOnly, p.Freshness.PriceAt); err != nil {
 		return invalid("%s：freshness.price_at 必填，格式 YYYY-MM-DD", name)
+	}
+	if p.ReleasedAt != nil {
+		if _, err := time.Parse(time.DateOnly, *p.ReleasedAt); err != nil {
+			return invalid("%s：released_at 必须是实际发布日期，格式 YYYY-MM-DD", name)
+		}
+	}
+	seenScores := map[[3]string]bool{}
+	for _, score := range p.CapabilityScores {
+		key := [3]string{score.TaskFamily, score.Role, score.Tier}
+		if seenScores[key] {
+			return invalid("%s：capability_scores 的 task_family/role/tier 重复", name)
+		}
+		seenScores[key] = true
+		role, ok := commonv1.Role_value["ROLE_"+strings.ToUpper(score.Role)]
+		if !taskFamily.MatchString(score.TaskFamily) || !ok || role == 0 || score.Role != strings.ToLower(score.Role) || !tiers[score.Tier] {
+			return invalid("%s：capability_scores 必须指定合法的 task_family、role 与本 Profile 的 tier", name)
+		}
+		if err := checkMeasurement(score.Measurement, name+".capability_scores"); err != nil {
+			return err
+		}
+	}
+	if p.Reliability != nil {
+		if err := checkMeasurement(*p.Reliability, name+".reliability"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func checkMeasurement(m Measurement, name string) error {
+	if m.Score == nil || math.IsNaN(*m.Score) || math.IsInf(*m.Score, 0) || *m.Score < 0 || *m.Score > 1 {
+		return invalid("%s：score 必填且在 [0,1] 内", name)
+	}
+	if strings.TrimSpace(m.Source) == "" {
+		return invalid("%s：source 必填", name)
+	}
+	if _, err := time.Parse(time.DateOnly, m.At); err != nil {
+		return invalid("%s：at 必填，格式 YYYY-MM-DD", name)
 	}
 	return nil
 }

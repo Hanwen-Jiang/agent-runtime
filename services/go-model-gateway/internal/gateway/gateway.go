@@ -306,6 +306,7 @@ func checkTenant(t *commonv1.TenantContext) error {
 // prepare 校验租户、选档并绑定客户端。
 func (s *Server) prepare(ctx context.Context, tenant *commonv1.TenantContext, cc *modelgatewayv1.CallContext, method string, req router.Request) (*call, error) {
 	req.TenantID, req.Role, req.Tier = tenant.GetTenantId(), cc.GetRole(), cc.GetTier()
+	req.TaskFamily = cc.GetTaskFamily()
 	req.PinnedProfile, req.AvoidVendor = cc.GetPinnedModelProfile(), cc.GetAvoidVendor()
 	choice, err := s.opts.Router.Select(ctx, req)
 	if err != nil {

@@ -71,6 +71,27 @@ def test_embedding_models_keep_max_output_zero() -> None:
     assert p["constraints"]["max_output"] == 0 and p["cost"]["in_per_m"] == 0.02
 
 
+def test_release_date_is_real_metadata_not_price_refresh_date() -> None:
+    base = sync.synced(profile("gpt-5.5"), CATALOG["openai"]["models"]["gpt-5.5"])
+    base["freshness"] = {"price_at": "2026-10-21"}
+    entry = {**CATALOG["openai"]["models"]["gpt-5.5"], "release_date": "2026-04-23"}
+    catalog = {"openai": {"models": {"gpt-5.5": entry}}}
+    doc, changed, _ = sync.sync({"version": 1, "profiles": [base]}, catalog, "2026-11-03")
+    p = doc["profiles"][0]
+    assert p["released_at"] == "2026-04-23" and len(changed) == 1
+    assert p["freshness"]["price_at"] == "2026-10-21", "release metadata is not a new price observation"
+    assert "capability_scores" not in p and "reliability" not in p, "must not invent evals"
+
+
+@pytest.mark.parametrize("release", [None, "", "2026-02-30", "2026-04", "next week"])
+def test_missing_or_invalid_release_date_is_not_inferred(release: str | None) -> None:
+    entry = {**CATALOG["openai"]["models"]["gpt-5.5"], "release_date": release}
+    base = profile("gpt-5.5")
+    assert "released_at" not in sync.synced(base, entry)
+    base["released_at"] = "2026-04-23"
+    assert sync.synced(base, entry)["released_at"] == "2026-04-23", "missing upstream data must not erase known metadata"
+
+
 def test_a_new_profile_is_built_from_the_catalog() -> None:
     p = sync.new_profile("openai", "gpt-6.1-sol", "strong", ["medium", "high"], CATALOG["openai"]["models"]["gpt-6.1-sol"], "2026-11-02")
     assert p["id"] == "a6api/gpt-6.1-sol@2026-11" and p["class"] == "strong"

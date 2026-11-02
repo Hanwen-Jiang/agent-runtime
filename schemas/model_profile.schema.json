@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentruntime.example/schemas/model_profile.schema.json",
   "title": "Model Profile",
-  "description": "一个模型的档案（附录 H.1 的子集），经 Registry 发布（设计书 3.1.2）。这是 RegistryService.Publish 的 document（kind = MODEL_PROFILE），与开发用的 Profile 文件（deploy/dev/model-profiles.json）里的一条相同；id 必须等于发布时的名字，由 Registry 核对。字段只收 go-model-gateway 的 profiles 包认识的（它拒绝未知字段，以免单价字段拼错后按 0 计、被当成最便宜的选中），H.1 的能力分数、延迟、可靠性等等 Model Gateway 读到时再加。Tier 字符串是 <class>@<tier 名>，所以 class 与 Tier 名都不含 @；Tier 名在一个 Profile 内不重复，由代码校验。",
+  "description": "一个模型的档案（附录 H.1 的已实现子集），经 Registry 发布（设计书 3.1.2）。这是 RegistryService.Publish 的 document（kind = MODEL_PROFILE），与开发用的 Profile 文件（deploy/dev/model-profiles.json）里的一条相同；id 必须等于发布时的名字，由 Registry 核对。字段只收 go-model-gateway 的 profiles 包认识的，未知字段拒绝。Q78 的 released_at、capability_scores、availability、reliability 可选，保持旧 Profile 可加载；能力分数按任务族、节点职责与推理档精确匹配。Tier 字符串是 <class>@<tier 名>；Tier 名唯一、capability_scores 引用已有 Tier 且维度唯一，由代码校验。",
   "type": "object",
   "required": ["id", "vendor", "model", "class", "tiers", "capabilities", "cost", "freshness"],
   "properties": {
@@ -26,6 +26,28 @@
       }
     },
     "capabilities": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "defs.schema.json#/$defs/model_capability"}},
+    "released_at": {"description": "模型实际发布日期。未知时省略；不能用 freshness.price_at、同步时间或 Profile id 版本代替", "$ref": "#/$defs/date"},
+    "availability": {"description": "配置中的可用性；false 排除，省略保持旧 Profile 可用。不是网关实时探测结果", "type": "boolean"},
+    "capability_scores": {
+      "description": "指定任务族 × 节点职责 × 推理档的 [0,1] 质量/成功率测量；必须保留来源和观测日期。缺匹配项使用明确的 0.5 先验，不冒充实测",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "allOf": [{"$ref": "#/$defs/measurement"}],
+        "required": ["task_family", "role", "tier"],
+        "properties": {
+          "task_family": {"$ref": "defs.schema.json#/$defs/task_family"},
+          "role": {"$ref": "defs.schema.json#/$defs/role"},
+          "tier": {"$ref": "#/$defs/slug"}
+        },
+        "unevaluatedProperties": false
+      }
+    },
+    "reliability": {
+      "description": "[0,1] 可用/成功请求比例的观测及其来源日期；缺失用明确的 0.5 先验，本字段不触发探测或新重试机制",
+      "$ref": "#/$defs/measurement",
+      "unevaluatedProperties": false
+    },
     "cost": {
       "description": "单价，单位“美元每百万 token”。三项都要写：缺的单价会被当成 0",
       "type": "object",
@@ -56,6 +78,16 @@
   },
   "unevaluatedProperties": false,
   "$defs": {
+    "date": {"type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+    "measurement": {
+      "type": "object",
+      "required": ["score", "source", "at"],
+      "properties": {
+        "score": {"type": "number", "minimum": 0, "maximum": 1},
+        "source": {"description": "内部评测批次或外部来源的标识；网关不会访问该地址", "$ref": "defs.schema.json#/$defs/non_empty_string"},
+        "at": {"$ref": "#/$defs/date"}
+      }
+    },
     "profile_id": {"description": "provider/model@version（附录 H.1），例如 a6api/gpt-4o-mini@2026-10", "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*@[a-z0-9][a-z0-9._-]*$"},
     "slug": {"description": "小写 slug，不含 @；以字母开头，拼成的 Tier 字符串才符合 defs.schema.json 的 tier", "type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
   }
