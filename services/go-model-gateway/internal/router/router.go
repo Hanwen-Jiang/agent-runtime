@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"io/fs"
 	"os"
 	"slices"
@@ -113,9 +114,49 @@ type Allowlist interface {
 //
 // Path 为空、文件不存在、租户没有列出且没有 default.model_allowlist，或对应条目没有 model_allowlist：不限制。
 // 租户条目优先于 default；model_allowlist 为空数组：一个模型都不允许。文件读不到：Transient；格式不对：Invalid。
-// 其他字段（例如 effect_ceiling）忽略。
+// 其他已知策略字段（例如 effect_ceiling、hooks、budget、sandbox、workspace）保留但不参与选档；未知字段拒绝，避免配置拼写错误静默生效。
 type FileAllowlist struct {
 	Path string
+}
+
+// modelBudgetPolicy 只在这里做配置文档的严格解码；预算执行复用现有用量账本，由后续准入/网关切片负责。
+type modelBudgetPolicy struct {
+	DailyUSD   *float64 `json:"daily_usd"`
+	MonthlyUSD *float64 `json:"monthly_usd"`
+}
+
+// tenantPolicyFileEntry 只读取 Model Gateway 所需的 model_allowlist；其余已批准的策略字段以 RawMessage
+// 保留形状，避免这里复制 task-service 的完整策略执行逻辑，同时让顶层字段接受严格校验。
+type tenantPolicyFileEntry struct {
+	EffectCeiling json.RawMessage   `json:"effect_ceiling"`
+	ModelAllowlist *[]string        `json:"model_allowlist"`
+	Hooks          json.RawMessage   `json:"hooks"`
+	Budget         json.RawMessage   `json:"budget"`
+	ModelBudget    *modelBudgetPolicy `json:"model_budget"`
+	Sandbox        json.RawMessage   `json:"sandbox"`
+	Workspace      json.RawMessage   `json:"workspace"`
+}
+
+type tenantPolicyFile struct {
+	Default tenantPolicyFileEntry            `json:"default"`
+	Tenants map[string]tenantPolicyFileEntry `json:"tenants"`
+}
+
+func decodeTenantPolicyFile(data []byte) (tenantPolicyFile, error) {
+	var file tenantPolicyFile
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&file); err != nil {
+		return tenantPolicyFile{}, err
+	}
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return tenantPolicyFile{}, errors.New("策略文件包含多个 JSON 文档")
+		}
+		return tenantPolicyFile{}, err
+	}
+	return file, nil
 }
 
 // ModelAllowlist 实现 Allowlist。
@@ -130,15 +171,8 @@ func (f FileAllowlist) ModelAllowlist(_ context.Context, tenantID string) ([]str
 	if err != nil {
 		return nil, false, providererr.Wrap(providererr.Transient, "tenant_policy_unavailable", "读不到租户策略文件", err)
 	}
-	var file struct {
-		Default struct {
-			ModelAllowlist *[]string `json:"model_allowlist"`
-		} `json:"default"`
-		Tenants map[string]struct {
-			ModelAllowlist *[]string `json:"model_allowlist"`
-		} `json:"tenants"`
-	}
-	if err := json.NewDecoder(bytes.NewReader(data)).Decode(&file); err != nil {
+	file, err := decodeTenantPolicyFile(data)
+	if err != nil {
 		return nil, false, providererr.New(providererr.Invalid, "invalid_tenant_policy", "租户策略文件格式不对")
 	}
 	tenant, ok := file.Tenants[tenantID]

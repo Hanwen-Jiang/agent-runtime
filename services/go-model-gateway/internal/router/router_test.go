@@ -375,6 +375,14 @@ func TestFileAllowlist(t *testing.T) {
 	wantCategory(t, "格式不对的策略文件", err, providererr.Invalid)
 	_, _, err = router.FileAllowlist{Path: writePolicies(t, `{"tenants":{"t1":{"model_allowlist":"x/mid-google"}}}`)}.ModelAllowlist(ctx, "t1")
 	wantCategory(t, "model_allowlist 不是数组", err, providererr.Invalid)
+	for name, content := range map[string]string{
+		"租户策略未知字段": `{"tenants":{"t1":{"model_allowlist":[],"future_field":true}}}`,
+		"模型预算未知字段": `{"tenants":{"t1":{"model_budget":{"daily_usd":3,"hourly_usd":1}}}}`,
+		"顶层未知字段":   `{"defaults":{"model_allowlist":[]}}`,
+	} {
+		_, _, err := router.FileAllowlist{Path: writePolicies(t, content)}.ModelAllowlist(ctx, "t1")
+		wantCategory(t, name, err, providererr.Invalid)
+	}
 
 	// 经 Router 使用文件白名单。
 	r := router.New(catalogOf(t, fixture), f)

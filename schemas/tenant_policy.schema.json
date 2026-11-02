@@ -9,6 +9,15 @@
     "model_allowlist": {"description": "允许的 Model Profile；不写表示不限制", "type": "array", "uniqueItems": true, "items": {"$ref": "model_profile.schema.json#/$defs/profile_id"}},
     "hooks": {"$ref": "defs.schema.json#/$defs/hook_set"},
     "budget": {"description": "新 Task 的预算", "$ref": "task_plan.schema.json#/properties/budget"},
+    "model_budget": {
+      "description": "该租户的模型花费上限；金额单位为美元，日界按 UTC、月界按自然月",
+      "type": "object",
+      "properties": {
+        "daily_usd": {"description": "UTC 当日模型花费上限", "type": "number", "minimum": 0},
+        "monthly_usd": {"description": "自然月模型花费上限", "type": "number", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
     "sandbox": {
       "description": "该租户的沙箱：backend 是 Worker 的沙箱后端登记（AR_SANDBOX_BACKENDS_FILE）里的名字，例如 gvisor、kata、cloudflare；不写 sandbox 时用部署的默认后端。由策略决定，模型与请求都不能指定；登记里没有的名字一律拒绝（docs/plan/cloud-deploy.md D-08）。fallback、min_isolation 是有序回退（设计书改动稿 W11，D-12），idle_timeout_s、max_lifetime_s 是会话级沙箱的回收（W5，D-13，只能调低部署的默认值），quota 是跨后端的配额与预算（W10，D-12），network 是联网授权的上限（W8，D-16）。",
       "type": "object",
