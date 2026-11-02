@@ -89,6 +89,7 @@ class _ContextSpy:
             messages=[mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text="stable context")],
             applied=[],
             tokens=2,
+            cost_usd=0.02,
         )
 
 
@@ -110,8 +111,13 @@ async def test_model_activity_uses_only_serializable_context_snapshot(fx: Execut
     json.dumps(dataclasses.asdict(inp), ensure_ascii=False)
     out = await env_for(names.EXECUTE_MODEL_NODE, queue=names.MODEL_QUEUE).run(fx.executor.execute_model_node, inp)
     assert out["result"] == {"summary": "ok"}
+    assert_valid("node_output", out)
+    assert out["meta"]["cost_usd"] == pytest.approx(0.02)
+    messages = fx.models.requests[0].generation.messages
+    assert messages[0].text == "stable context"
     assert len(spy.requests) == 1
     request = spy.requests[0]
+    assert json.loads(request.system[1]) == {"template": "summarize@v2"}
     assert request.task_state == {"goal": "核验", "done_when": "完成"}
     assert request.task_plan == {"context": {"work_mode": "diagnose"}}
     assert request.history[0]["tool"] == "repo_list"

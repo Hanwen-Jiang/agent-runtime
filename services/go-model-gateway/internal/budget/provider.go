@@ -41,19 +41,19 @@ type Limits struct {
 // ReservationRequest is the cost upper bound to reserve before a model call.
 // At is interpreted in UTC for both period boundaries.
 type ReservationRequest struct {
-	TenantID       string
-	At             time.Time
-	USDMicros      int64
-	Limits         Limits
+	TenantID  string
+	At        time.Time
+	USDMicros int64
+	Limits    Limits
 }
 
 // Reservation is the opaque handle returned by Reserve. Callers must pass
 // this handle unchanged to Settle; the provider validates it and rejects
 // duplicate or forged handles.
 type Reservation struct {
-	ID       string
-	TenantID string
-	At       time.Time
+	ID        string
+	TenantID  string
+	At        time.Time
 	USDMicros int64
 }
 
@@ -86,11 +86,11 @@ func invalid(code, message string) error {
 // ReservationProvider contract. It is intentionally not a production ledger:
 // state is process-local and is lost on restart.
 type MemoryProvider struct {
-	mu            sync.Mutex
-	nextID        uint64
-	dailyUsage    map[dailyKey]*periodUsage
-	monthlyUsage  map[monthlyKey]*periodUsage
-	reservations  map[string]memoryReservation
+	mu           sync.Mutex
+	nextID       uint64
+	dailyUsage   map[dailyKey]*periodUsage
+	monthlyUsage map[monthlyKey]*periodUsage
+	reservations map[string]memoryReservation
 }
 
 var _ ReservationProvider = (*MemoryProvider)(nil)
@@ -145,7 +145,7 @@ func (p *MemoryProvider) Reserve(ctx context.Context, req ReservationRequest) (R
 		return Reservation{}, err
 	}
 
-	dailyKey, monthlyKey := makePeriodKeys(req.TenantID, req.At)
+	dKey, mKey := makePeriodKeys(req.TenantID, req.At)
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.dailyUsage == nil {
@@ -158,11 +158,11 @@ func (p *MemoryProvider) Reserve(ctx context.Context, req ReservationRequest) (R
 		p.reservations = make(map[string]memoryReservation)
 	}
 
-	daily := p.dailyUsage[dailyKey]
+	daily := p.dailyUsage[dKey]
 	if daily == nil {
 		daily = &periodUsage{}
 	}
-	monthly := p.monthlyUsage[monthlyKey]
+	monthly := p.monthlyUsage[mKey]
 	if monthly == nil {
 		monthly = &periodUsage{}
 	}
@@ -179,12 +179,12 @@ func (p *MemoryProvider) Reserve(ctx context.Context, req ReservationRequest) (R
 	}
 	daily.reserved += req.USDMicros
 	monthly.reserved += req.USDMicros
-	p.dailyUsage[dailyKey] = daily
-	p.monthlyUsage[monthlyKey] = monthly
+	p.dailyUsage[dKey] = daily
+	p.monthlyUsage[mKey] = monthly
 	p.nextID++
 	id := fmt.Sprintf("mem-res-%d", p.nextID)
 	reservation := Reservation{ID: id, TenantID: req.TenantID, At: req.At.UTC(), USDMicros: req.USDMicros}
-	p.reservations[id] = memoryReservation{reservation: reservation, dailyKey: dailyKey, monthlyKey: monthlyKey}
+	p.reservations[id] = memoryReservation{reservation: reservation, dailyKey: dKey, monthlyKey: mKey}
 	return reservation, nil
 }
 

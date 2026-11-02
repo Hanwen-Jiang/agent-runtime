@@ -694,7 +694,7 @@ class NodeExecutor:
         # 或显式 history 才启用 Activity 内的构建器。
         has_context_snapshot = bool(inp.history or inp.task_state or inp.task_plan is not None)
         if self.deps.context_builder is not None and not _conversational(inp.node) and has_context_snapshot:
-            system = [SYSTEM_PROMPT]
+            system = [SYSTEM_PROMPT, keys.canonical_json({"template": inp.node.get("template")})]
             system.extend(f"[{i.get('zone', '')}] {i.get('content', '')}" for i in inp.injections)
             built = await self.deps.context_builder.build(
                 ContextRequest(
@@ -756,7 +756,6 @@ class NodeExecutor:
         span.set_attributes(_usage_attributes(node, response.model, response.usage))
         meta = self._meta(node, response.model, response.usage, started)
         if context_cost:
-            meta["context_cost_usd"] = context_cost
             meta["cost_usd"] = round(float(meta.get("cost_usd") or 0.0) + context_cost, 6)
         out: dict[str, Any] = {"result": result, "meta": meta}
         if regressions:

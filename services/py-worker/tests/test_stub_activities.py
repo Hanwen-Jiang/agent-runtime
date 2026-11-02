@@ -184,6 +184,15 @@ async def test_failing_model_raises_a_non_retryable_error(stubs: StubActivities,
     assert err.value.non_retryable
 
 
+async def test_stub_model_keeps_its_input_protocol_with_context_snapshot(stubs: StubActivities, executor: NodeExecutor) -> None:
+    task_id = new_task_id()
+    stage = await plan(stubs, task_id, "fail_model")
+    inp = dataclasses.replace(answer_input(task_id, stage), task_state={"goal": "snapshot"})
+    with pytest.raises(ApplicationError) as err:
+        await activity_env(names.EXECUTE_MODEL_NODE, names.MODEL_QUEUE).run(executor.execute_model_node, inp)
+    assert err.value.non_retryable
+
+
 # --- Reviewer 桩 ---
 
 

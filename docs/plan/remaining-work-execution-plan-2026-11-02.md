@@ -1,6 +1,6 @@
 # 未完成计划执行表（2026-11-02）
 
-> 基线：远端 `main` `b7a31b7`。本表把现有设计计划投影成可交付批次；不修改权威设计书，不把真实基础设施验收伪装成代码完成。
+> 基线：远端 `main` `f660653`。本表把现有设计计划投影成可交付批次；不修改权威设计书，不把真实基础设施验收伪装成代码完成。
 
 ## 发布原则
 
@@ -45,7 +45,7 @@
 
 ## 2026-11-03 执行检查点
 
-- 远端 `main`：`b7a31b7`；人工验收基线、模型预算字段/默认额度、严格租户配置解析、Helm 默认额度、文件交付 helper、预算 reserve/settle 测试契约和工作项门禁已推送并合并。
+- 远端 `main`：`f660653`；人工验收基线、模型预算字段/默认额度、严格租户配置解析、Helm 默认额度、文件交付 helper、预算 reserve/settle 测试契约、Activity ContextBuilder 最小接入和工作项门禁已推送并合并。
 - 新增契约包定向验证：`uv run pytest -q` 加载环境、预算、Task Plan、N-19/N-20、Firecracker、D-25、Workspace、N-15/N-16、N-18、R-02/R-03、R-04/R-06 共 **24 passed**；`git diff --check` 通过。
 - 本轮白名单验证：`uv run pytest -q tests/deploy/test_default_tenant_policy.py tests/contract/test_terminology.py` 为 **4 passed**；Helm 渲染测试因本机未安装 `helm` 按 `AR_ALLOW_MISSING_TOOLS=1` 为 **3 skipped**。默认 values 保持关闭，`values-cloud.yaml` 显式开启，外部 ConfigMap 优先。
 - 本轮人工验收后策略切片验证：模型预算契约、默认 seed、租户配置未知字段拒绝和术语检查为 **6 passed**；部署白名单/Helm 静态验证为 **4 passed、3 skipped**；Go/gofmt 未安装，Go 编译/单测与原子预算 enforcement 未宣称完成。

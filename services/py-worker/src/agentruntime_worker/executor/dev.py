@@ -146,10 +146,11 @@ def dev_executor(
         schemas=DictSchemaResolver({}),
         sandbox=LocalSubprocessSandboxProvider(root / "sandbox"),
         transcript=session_transcript(config.relational_dsn, config.data_dir, object_store),
+        # 桩模型按固定 JSON 提示协议解释输入；真实 Gateway 才使用 ContextBuilder。
         context_builder=ContextBuilder(
             model_gateway_instance,
             object_store,
             ContextConfig(effective_tokens=config.context_effective_tokens),
-        ),
+        ) if config.model_gateway_address else None,
     )
     return NodeExecutor(deps, executor_config or ExecutorConfig(context_effective_tokens=config.context_effective_tokens))

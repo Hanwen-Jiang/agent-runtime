@@ -42,5 +42,5 @@
 
 ## 验证边界
 
-已检查 `git diff --check`。当前执行环境没有 Go 工具链，因此 `go test ./services/go-model-gateway/internal/budget` 尚未编译或运行；这不构成生产验收结论。
+收口时找到本机缓存的 Go 1.26.5 工具链，修复预留实现中局部变量遮蔽类型名造成的编译错误，并执行 `gofmt`。在 `services/go-model-gateway` 下运行 `go test ./internal/budget ./internal/router`，两个包均通过。`git diff --check` 通过；生产账本接入与双重准入仍未完成。
 
