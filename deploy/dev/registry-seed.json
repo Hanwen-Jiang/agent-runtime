@@ -450,6 +450,88 @@
       }
     },
     {
+      "kind": "model_profile",
+      "name": "a6api/gpt-6-astra@2026-11",
+      "document": {
+        "id": "a6api/gpt-6-astra@2026-11",
+        "vendor": "openai",
+        "model": "gpt-6-astra",
+        "class": "strong",
+        "tiers": [
+          {
+            "name": "medium",
+            "effort": "medium",
+            "thinking_budget": 8192
+          },
+          {
+            "name": "high",
+            "effort": "high",
+            "thinking_budget": 32768
+          }
+        ],
+        "capabilities": [
+          "generate",
+          "structured",
+          "tools",
+          "stream"
+        ],
+        "cost": {
+          "in_per_m": 10.0,
+          "out_per_m": 50.0,
+          "cache_read_per_m": 1.0
+        },
+        "constraints": {
+          "context_window": 922000,
+          "max_output": 128000
+        },
+        "freshness": {
+          "price_at": "2026-11-02"
+        },
+        "released_at": "2026-09-04"
+      }
+    },
+    {
+      "kind": "model_profile",
+      "name": "a6api/claude-fable-5-1@2026-11",
+      "document": {
+        "id": "a6api/claude-fable-5-1@2026-11",
+        "vendor": "anthropic",
+        "model": "claude-fable-5-1",
+        "class": "strong",
+        "tiers": [
+          {
+            "name": "medium",
+            "effort": "medium",
+            "thinking_budget": 8192
+          },
+          {
+            "name": "high",
+            "effort": "high",
+            "thinking_budget": 32768
+          }
+        ],
+        "capabilities": [
+          "generate",
+          "structured",
+          "tools",
+          "stream"
+        ],
+        "cost": {
+          "in_per_m": 10.0,
+          "out_per_m": 50.0,
+          "cache_read_per_m": 0.25
+        },
+        "constraints": {
+          "context_window": 1000000,
+          "max_output": 128000
+        },
+        "freshness": {
+          "price_at": "2026-11-02"
+        },
+        "released_at": "2026-09-01"
+      }
+    },
+    {
       "kind": "task_families",
       "name": "default",
       "document": {
