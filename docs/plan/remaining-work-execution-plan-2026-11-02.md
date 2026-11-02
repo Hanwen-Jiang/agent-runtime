@@ -25,6 +25,8 @@
 | P2-C | N-14～N-16/N-18 | Registry/SecretStore/S-01 | 用户 Skill、用户 MCP、多 Agent 协作、文件型交付 | 草案转实施前先补契约 |
 | ENV | D-02～D-05/D-07/D-09～D-17 | 真实主机/域名/凭据 | 真 Postgres/Temporal/Qdrant/Redpanda/Langfuse/R2/Cloudflare/Kata/DNS/TLS/BuildKit/包源/Grafana/Tempo | 资源未提供前只做脚本和 kind gate |
 
+评测分支 `codex/evals-design-closeout` 当前包含会删除主线评测集、bridge、契约包和部署文档的大范围重构，不能作为合并候选；主线已有的 `fe28432` N-11～N-13 实现继续作为唯一基线。
+
 ## 完成定义
 
 - 代码批次：验收测试通过、`git diff --check` 通过、提交已推送并合并远端 `main`。
