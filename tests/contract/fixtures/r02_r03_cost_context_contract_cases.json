@@ -1,0 +1,25 @@
+{
+  "schema": "r02_r03_cost_context_contract_cases",
+  "version": 1,
+  "cases": [
+    {"id": "input_output_cache_costed", "category": "cost", "expect": "allow", "assertion": "input output and cache-read usage use the frozen profile prices"},
+    {"id": "tool_cost_included", "category": "cost", "expect": "allow", "assertion": "tool-related provider usage is included once in the call total"},
+    {"id": "unknown_price_is_not_zero", "category": "cost", "expect": "review", "assertion": "a profile without a usable price cannot silently pass as zero cost"},
+    {"id": "concurrent_reservation_is_atomic", "category": "cost", "expect": "deny", "assertion": "concurrent calls cannot reserve the same remaining tenant allowance"},
+    {"id": "tenant_cost_isolation", "category": "cost", "expect": "allow", "assertion": "one tenant reaching its ceiling does not consume another tenant allowance"},
+    {"id": "budget_rejection_is_not_retried", "category": "cost", "expect": "deny", "assertion": "tenant_budget_exceeded is final for the request and is not automatically retried"},
+    {"id": "inflight_usage_is_settled", "category": "cost", "expect": "allow", "assertion": "an in-flight call settles final usage and records any non-zero difference"},
+    {"id": "gateway_and_task_share_meter", "category": "cost", "expect": "allow", "assertion": "task admission and gateway checks use one authoritative tenant meter"},
+    {"id": "cost_errors_are_secret_free", "category": "privacy", "expect": "allow", "assertion": "cost errors expose only bounded tenant-period counters and no provider secret"},
+    {"id": "model_node_uses_context_builder", "category": "context", "expect": "allow", "assertion": "model nodes receive the same ordered Context Builder sources as the approved path"},
+    {"id": "tool_loop_does_not_double_inject", "category": "context", "expect": "allow", "assertion": "tool loop and model node share one assembled context without duplicate system or tool text"},
+    {"id": "context_budget_is_deterministic", "category": "context", "expect": "allow", "assertion": "source budgets and truncation are deterministic and replayable"},
+    {"id": "old_request_keeps_compatibility", "category": "compatibility", "expect": "allow", "assertion": "requests without the new context fields keep the existing minimum context"},
+    {"id": "object_uri_requires_tenant_scope", "category": "object", "expect": "deny", "assertion": "obj URI from another tenant or an unregistered prefix is denied"},
+    {"id": "object_read_is_bounded", "category": "object", "expect": "deny", "assertion": "object reads enforce maximum bytes tokens and allowed content types"},
+    {"id": "missing_object_is_explicit", "category": "object", "expect": "deny", "assertion": "missing or expired objects return a bounded not-found result without cross-tenant fallback"},
+    {"id": "object_provider_outage_is_transient", "category": "object", "expect": "review", "assertion": "temporary ObjectStore failure remains distinct from missing or unauthorized data"},
+    {"id": "object_content_is_secret_free", "category": "privacy", "expect": "allow", "assertion": "retrieved content and errors do not echo secret values into events logs or traces"},
+    {"id": "no_second_meter_or_state_machine", "category": "complexity", "expect": "deny", "assertion": "implementation reuses existing meter Task State and ObjectStore lifecycles"}
+  ]
+}
