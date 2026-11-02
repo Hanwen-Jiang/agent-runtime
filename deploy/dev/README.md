@@ -45,8 +45,9 @@ model-gateway serve                                        # 默认监听 127.0.
 $env:AR_DEV_TENANT_POLICIES_FILE = "$PWD\deploy\dev\default-tenant-policies.json"
 ```
 
-云上把同一文件作为键 `tenant-policies.json` 创建 ConfigMap，再设置 Helm 的
-`modelGateway.tenantPoliciesConfigMap`；不设置该值时 Chart 仍不挂载白名单文件。
+云上使用 `values-cloud.yaml` 时会显式启用 Chart 内置的同等 ConfigMap；需要运维覆盖名单时，
+把同一文件作为键 `tenant-policies.json` 创建外部 ConfigMap，再设置 Helm 的
+`modelGateway.tenantPoliciesConfigMap`。默认 values 仍不挂载白名单文件。
 
 不接真实端点时设 `AR_MODEL_PROVIDER=mock`（模拟模型，模型名为 `mock-small`、`mock-embed`，要配一份对应的 Profile 文件：
 `mock-model-profiles.json`）。

@@ -43,7 +43,7 @@
 | Benefit | 默认免费策略排除 `gpt-5.5` 与 `claude-opus-5-5`，保留 small/mid、`gpt-6.1-sol` 和 embedding Profile。 |
 | Performance cost | 每次 Gateway 调用读取一次已有策略文件，未增加远程调用或持久状态。 |
 | Implementation cost | FileAllowlist 增加一个 default 分支、一个 seed 和静态部署测试。 |
-| Operational cost | 生产部署需创建 ConfigMap 并设置 `modelGateway.tenantPoliciesConfigMap`；名单变更可通过文件更新生效。 |
+| Operational cost | `values-cloud.yaml` 默认生成内置 ConfigMap；需要变更名单时可创建外部 ConfigMap 并设置 `modelGateway.tenantPoliciesConfigMap`，名单变更可通过文件更新生效。 |
 | New failure surface | 默认 seed 引用不存在的 Profile 会导致对应 Tier 无可选模型；静态测试和部署前校验覆盖该错误。 |
 | Release slice | 开放注册部署配置；不改变 proto/schema，不实现日/月预算。 |
 | Decision | **KEEP**；先作为显式部署 seed 发布，生产 ConfigMap rollout 仍单独验收。 |
