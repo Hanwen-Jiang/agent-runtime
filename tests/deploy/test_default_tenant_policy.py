@@ -45,6 +45,7 @@ def test_cloud_values_explicitly_enable_the_builtin_policy() -> None:
     cloud = yaml.safe_load(CLOUD_VALUES.read_text(encoding="utf-8"))
     assert base["modelGateway"]["defaultTenantPolicies"]["enabled"] is False
     assert cloud["modelGateway"]["defaultTenantPolicies"]["enabled"] is True
+    assert base["modelGateway"]["defaultTenantPolicies"]["modelBudget"] == {"dailyUsd": 3, "monthlyUsd": 20}
     assert set(base["modelGateway"]["defaultTenantPolicies"]["modelAllowlist"]) == set(
         json.loads(POLICY.read_text(encoding="utf-8"))["default"]["model_allowlist"]
     )

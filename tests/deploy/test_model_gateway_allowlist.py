@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from deploy_tests import CLOUD_VALUES, by_kind, env_of, pod_spec, render
@@ -33,8 +34,10 @@ def test_cloud_values_mount_the_builtin_free_policy() -> None:
     [volume] = [v for v in spec["volumes"] if v["name"] == "tenant-policies"]
     assert volume["configMap"]["name"] == "ar-agent-runtime-default-tenant-policies"
     [policy] = [m for m in by_kind(manifests, "ConfigMap") if m["metadata"]["name"] == volume["configMap"]["name"]]
-    assert "a6api/gpt-6.1-sol@2026-11" in policy["data"]["tenant-policies.json"]
-    assert "a6api/claude-opus-5-5@2026-10" not in policy["data"]["tenant-policies.json"]
+    policy_data = json.loads(policy["data"]["tenant-policies.json"])
+    assert "a6api/gpt-6.1-sol@2026-11" in policy_data["default"]["model_allowlist"]
+    assert "a6api/claude-opus-5-5@2026-10" not in policy_data["default"]["model_allowlist"]
+    assert policy_data["default"]["model_budget"] == {"daily_usd": 3, "monthly_usd": 20}
 
 
 def test_the_config_map_is_mounted_read_only_when_given() -> None:

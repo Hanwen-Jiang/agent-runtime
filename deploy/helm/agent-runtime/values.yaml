@@ -142,6 +142,9 @@ modelGateway:
       - a6api/gpt-6.1-sol@2026-11
       - a6api/text-embedding-3-large@2026-10
       - a6api/text-embedding-3-small@2026-10
+    modelBudget:
+      dailyUsd: 3
+      monthlyUsd: 20
   resources:
     requests: {cpu: 250m, memory: 128Mi}
     limits: {cpu: "1", memory: 256Mi}

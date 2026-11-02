@@ -1,5 +1,5 @@
 {{- if and .Values.modelGateway.defaultTenantPolicies.enabled (not .Values.modelGateway.tenantPoliciesConfigMap) }}
-{{- $policy := dict "default" (dict "model_allowlist" .Values.modelGateway.defaultTenantPolicies.modelAllowlist) "tenants" (dict) }}
+{{- $policy := dict "default" (dict "model_allowlist" .Values.modelGateway.defaultTenantPolicies.modelAllowlist "model_budget" (dict "daily_usd" .Values.modelGateway.defaultTenantPolicies.modelBudget.dailyUsd "monthly_usd" .Values.modelGateway.defaultTenantPolicies.modelBudget.monthlyUsd)) "tenants" (dict) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
