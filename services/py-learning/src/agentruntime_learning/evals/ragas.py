@@ -11,7 +11,7 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 
 @dataclass(frozen=True)
@@ -25,6 +25,61 @@ class RagasCase:
     retrieval_backend: str = "fixture"
     embedding_version: str | None = None
     trace_ref: str | None = None
+
+
+async def _maybe(value: Any) -> Any:
+    return await value if hasattr(value, "__await__") else value
+
+
+class GatewayRagasLLM:
+    """Thin injectable Ragas LLM adapter.
+
+    ``generate`` is either a callable accepting ``(prompt, **kwargs)`` or an
+    object exposing that method. The return value is normalized to the shape
+    accepted by Ragas' llm wrappers while preserving fake-friendly injection.
+    """
+
+    def __init__(self, generate: Callable[..., Any], *, model: str = "judge") -> None:
+        self._generate = generate
+        self.model = model
+
+    async def generate(self, prompt: Any, n: int = 1, temperature: float = 0.0, **kwargs: Any) -> Any:
+        text = prompt.to_string() if hasattr(prompt, "to_string") else str(prompt)
+        fn = getattr(self._generate, "generate", self._generate)
+        result = await _maybe(fn(text, n=n, temperature=temperature, **kwargs))
+        if isinstance(result, str):
+            return {"generations": [[{"text": result}]]}
+        return result
+
+    async def generate_prompt(self, prompt: Any, **kwargs: Any) -> Any:
+        return await self.generate(prompt, **kwargs)
+
+
+class GatewayRagasEmbeddings:
+    """Injectable embedding wrapper compatible with Ragas 0.4.x."""
+
+    def __init__(self, embed: Callable[..., Any], *, model: str = "embedding") -> None:
+        self._embed = embed
+        self.model = model
+
+    async def embed_query(self, text: str) -> list[float]:
+        fn = getattr(self._embed, "embed_query", None)
+        if fn is None:
+            fn = getattr(self._embed, "embed", self._embed)
+        try:
+            value = await _maybe(fn(text))
+        except TypeError:
+            value = await _maybe(fn([text]))
+        if isinstance(value, list) and value and isinstance(value[0], (int, float)):
+            return [float(x) for x in value]
+        return [float(x) for x in value[0]]
+
+    async def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        fn = getattr(self._embed, "embed_documents", None)
+        if fn is None:
+            fn = getattr(self._embed, "embed", self._embed)
+        value = await _maybe(fn(texts))
+        return [[float(x) for x in row] for row in value]
 
 
 def load_cases(path: str | Path) -> list[RagasCase]:
@@ -125,4 +180,4 @@ def run_fixture(path: str | Path, *, out: str | Path | None = None) -> dict[str,
     return report
 
 
-__all__ = ["RagasCase", "load_cases", "run_cases", "run_fixture"]
+__all__ = ["GatewayRagasEmbeddings", "GatewayRagasLLM", "RagasCase", "load_cases", "run_cases", "run_fixture"]
