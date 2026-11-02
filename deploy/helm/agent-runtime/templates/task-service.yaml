@@ -1,5 +1,6 @@
 {{- $name := printf "%s-task-service" (include "ar.fullname" .) -}}
 {{- $ts := .Values.taskService -}}
+{{- $tenantPoliciesConfigMap := include "ar.modelGatewayTenantPoliciesConfigMap" . -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -57,6 +58,10 @@ spec:
               value: /schemas
             - name: AR_DATA_DIR
               value: /data
+            {{- if $tenantPoliciesConfigMap }}
+            - name: AR_DEV_TENANT_POLICIES_FILE
+              value: /etc/agentruntime/tenant-policies/tenant-policies.json
+            {{- end }}
             {{- if .Values.egressGateway.enabled }}
             # Task 结束、收回联网授权后通知出网网关立即断开（D-16）；管理令牌在 SecretStore 的 egress-gateway/admin-token。
             - name: AR_EGRESS_GATEWAY_ADMIN_URL
@@ -80,8 +85,18 @@ spec:
             {{- toYaml $ts.resources | nindent 12 }}
           volumeMounts:
             {{- include "ar.volumeMounts" . | nindent 12 }}
+            {{- if $tenantPoliciesConfigMap }}
+            - name: tenant-policies
+              mountPath: /etc/agentruntime/tenant-policies
+              readOnly: true
+            {{- end }}
       volumes:
         {{- include "ar.volumes" . | nindent 8 }}
+        {{- if $tenantPoliciesConfigMap }}
+        - name: tenant-policies
+          configMap:
+            name: {{ $tenantPoliciesConfigMap }}
+        {{- end }}
 ---
 apiVersion: v1
 kind: Service

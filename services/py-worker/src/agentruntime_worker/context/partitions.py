@@ -8,7 +8,7 @@
 | status | 进度、最近的动作与错误、下一步，放在最末尾，约 500 token 以内 | |
 
 精确状态（Task State 的约束、事实、产物、里程碑、待查与假设）单独成段，放在 history 之后、status 之前（设计书 3.2.7 第 4 条；
-R-03 评审 D7）：不受 status 的上限截断，也不在缓存前缀里；它自己的上限由 Context Builder 控制，超出的外置。
+R-03 评审 D7）：不受 status 的上限截断，也不在缓存前缀里；v2 保留完整 Task State，只有历史 v1 按旧上限外置。
 """
 
 from __future__ import annotations

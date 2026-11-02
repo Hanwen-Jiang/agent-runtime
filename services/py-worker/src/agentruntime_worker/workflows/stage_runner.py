@@ -226,6 +226,8 @@ class RunContext:
     task_input: task_pb2.TaskWorkflowInput | None = None
     # 当前的 Task Plan；tool_loop 的每一步带上它与 Task State，给 Context Builder 用（只是输入）。
     task_plan: dict[str, Any] | None = None
+    context_version: int = 1
+    task_family: str = ""
     # T-09（POLICY_PATCH 之后的运行为 True）：策略声明的 Hook、Hook 的 subject 带预算与写者信息、按 Registry 核对 effect。
     t09: bool = False
     # Task 的预算（美元，没有为 None）与这个 Stage 开始之前已花的钱（之前各 Round 加上这一轮的规划）：budget_check 用。
@@ -262,6 +264,8 @@ class _Env:
     results: dict[str, StageResult]
     goal_inputs: dict[str, Any] | None = None
     write_held: bool = False
+    # 已有 DAG 的依赖边，供 Activity 输入选择祖先结果；不存另一份业务状态。
+    parents: dict[str, list[str]] = field(default_factory=dict)
 
     def view(self) -> dict[str, Any]:
         return {k: r.result for k, r in self.results.items() if r.status == "succeeded"}
@@ -574,6 +578,7 @@ class StageRunner:
     async def _run_dag(self, nodes: list[dict[str, Any]], env: _Env) -> dict[str, StageResult]:
         """按依赖调度一个 DAG：ready 的 Node 按 id 排序后启动，上游没成功的记为 skipped。"""
         pending = {n["id"]: n for n in nodes}
+        env.parents = {n["id"]: list(n.get("after") or []) for n in nodes}
         done = env.results
         running: dict[str, asyncio.Task[StageResult]] = {}
         if env is self._top:
@@ -754,6 +759,9 @@ class StageRunner:
                 injections=list(injections),
                 task_state=copy.deepcopy(self._ctx.task_state),
                 task_plan=copy.deepcopy(self._ctx.task_plan),
+                history=self._context_history(node, env) if model else [],
+                context_version=self._ctx.context_version,
+                task_family=self._ctx.task_family,
             )
             output = await workflow.execute_activity(
                 names.EXECUTE_MODEL_NODE if model else names.EXECUTE_PROGRAM_NODE,
@@ -1174,6 +1182,9 @@ class StageRunner:
                         chains=[chains[i] for i in items],
                         collect=[collect[i] for i in items],
                         task_state=copy.deepcopy(self._ctx.task_state),
+                        task_plan=copy.deepcopy(self._ctx.task_plan) if self._ctx.context_version >= 2 else None,
+                        context_version=self._ctx.context_version,
+                        task_family=self._ctx.task_family,
                         effect_ceiling=self._ctx.effect_ceiling,
                         policy=policy,
                         goal_inputs=goal_inputs,
@@ -1223,19 +1234,54 @@ class StageRunner:
         async with self._writer(effect, env):
             inner = _Env(results={}, write_held=env.write_held or effect in sp.WRITE_EFFECTS)
             # 顶层的 Goal Node 才推每次工具调用的进度（展开出的子 Node、子工作流里都不推）。
-            return _as(await self.tool_loop(node, isolated=False, tool_effects=effects, env=inner, progress=env is self._top), role)
+            return _as(await self.tool_loop(node, isolated=False, tool_effects=effects, env=inner, progress=env is self._top,
+                                           initial_history=self._context_history(node, env)), role)
 
     async def tool_loop(
         self, node: dict[str, Any], *, isolated: bool, tool_effects: dict[str, str], env: _Env, progress: bool = False,
+        initial_history: list[dict[str, Any]] | None = None,
     ) -> StageResult:
         """见 _tool_loop。结果另带这次循环发出的工具调用次数与执行中发现的硬信号（TMP 计划第 2、3 节）。"""
         marks: set[str] = set()
         calls_before = self.tool_calls
-        result = await self._tool_loop(node, isolated=isolated, tool_effects=tool_effects, env=env, progress=progress, marks=marks)
+        result = await self._tool_loop(node, isolated=isolated, tool_effects=tool_effects, env=env, progress=progress, marks=marks,
+                                       initial_history=initial_history)
         return replace(result, signals=sorted(set(result.signals) | marks), tool_calls=self.tool_calls - calls_before)
+
+    def _context_history(self, node: dict[str, Any], env: _Env) -> list[dict[str, Any]]:
+        """只复制已有结果进 Activity，不组装提示、不做 I/O；无 rationale。
+
+        当前 DAG 只取依赖祖先，防止并行无关节点完成的先后影响上下文；顶层还可见之前各 Round 的成功结果。
+        """
+        if self._ctx.context_version < 2:
+            return []
+        visible = {
+            k: v for k, v in (self._ctx.earlier or {}).items() if k not in self._stage_ids
+        } if env is self._top else {}
+        history = [{"node_id": nid, "observation": copy.deepcopy(visible[nid])} for nid in sorted(visible)]
+        ancestors: list[str] = []
+        seen: set[str] = set()
+
+        def visit(nid: str) -> None:
+            if nid in seen:
+                return
+            seen.add(nid)
+            for parent in sorted(env.parents.get(nid, [])):
+                visit(parent)
+            ancestors.append(nid)
+
+        for parent in sorted(node.get("after") or []):
+            visit(parent)
+        # 旧 Round 在前，当前 DAG 按依赖顺序在后；近期结果不会因为 id 字母序被当作最老的结果压缩。
+        for nid in ancestors:
+            result = env.results.get(nid)
+            if result is not None and result.status == "succeeded":
+                history.append({"node_id": nid, "observation": copy.deepcopy(result.result)})
+        return history
 
     async def _tool_loop(
         self, node: dict[str, Any], *, isolated: bool, tool_effects: dict[str, str], env: _Env, progress: bool, marks: set[str],
+        initial_history: list[dict[str, Any]] | None = None,
     ) -> StageResult:
         """思考 → 调工具 → 观察，每一步是一个 activity（附录 E.1）。设最大迭代次数，同一错误连续出现就打断（附录 B.8）。
 
@@ -1247,7 +1293,7 @@ class StageRunner:
             self._ctx.verification.offered(tool_effects)
         nid = node["id"]
         limit = int(node.get("max_iterations") or DEFAULT_MAX_ITERATIONS)
-        history: list[dict[str, Any]] = []
+        history = [] if isolated else list(initial_history or [])
         rejections = 0
         # 每次工具调用前后推 tool_status（只有顶层 Goal Node，且是 PROGRESS_DETAIL_PATCH 之后的运行；见 EventPublisher）。
         events = self._ctx.events if progress else None
@@ -1285,6 +1331,8 @@ class StageRunner:
                         # sub_agent 是独立上下文：不带 Task State 与 Task Plan。
                         task_state={} if isolated else copy.deepcopy(self._ctx.task_state),
                         task_plan=None if isolated else copy.deepcopy(self._ctx.task_plan),
+                        context_version=self._ctx.context_version,
+                        task_family=self._ctx.task_family,
                     )
                     try:
                         step = await self._interruptible(self._think(step_input, nid, i, events))
@@ -1570,6 +1618,8 @@ class StageRunner:
                         effect_ceiling=ceiling,
                         tools=effects,
                         policy=self.policy,
+                        context_version=self._ctx.context_version,
+                        task_family=self._ctx.task_family,
                         budget_usd=self._ctx.budget_usd,
                         spent_before_usd=self._budget()["spent_usd"],
                         **self._child_budgets(),
@@ -1671,6 +1721,8 @@ class SubAgentInput:
     tool_calls_before: int = 0
     wall_clock_limit_s: float = 0.0
     active_before_s: float = 0.0
+    context_version: int = 1
+    task_family: str = ""
 
 
 def _child_context(inp: SubAgentInput | SubgraphInput, **kw: Any) -> RunContext:
@@ -1682,6 +1734,8 @@ def _child_context(inp: SubAgentInput | SubgraphInput, **kw: Any) -> RunContext:
         task_id=inp.task_id,
         round_seq=inp.round_seq,
         effect_ceiling=inp.effect_ceiling,
+        context_version=inp.context_version,
+        task_family=inp.task_family,
         depth=sp.MAX_SUB_TASK_DEPTH,
         policy=inp.policy,
         t09=workflow.patched(POLICY_PATCH),
@@ -1735,6 +1789,9 @@ class SubgraphInput:
     tool_calls_before: int = 0
     wall_clock_limit_s: float = 0.0
     active_before_s: float = 0.0
+    context_version: int = 1
+    task_family: str = ""
+    task_plan: dict[str, Any] | None = None
 
 
 @dataclass
@@ -1754,7 +1811,7 @@ class SubgraphWorkflow:
     @workflow.run
     async def run(self, inp: SubgraphInput) -> SubgraphOutput:
         patches.at_start()
-        ctx = _child_context(inp, task_state=inp.task_state)
+        ctx = _child_context(inp, task_state=inp.task_state, task_plan=inp.task_plan)
         runner = StageRunner(ctx, human=None)
         await runner._ensure_policy()
         nodes = [n for chain in inp.chains for n in chain]

@@ -394,9 +394,10 @@ func scoreRequest(req modelprovider.ScoreRequest) (modelprovider.GenerateRequest
 	n := len(req.Candidates)
 	schema := fmt.Sprintf(`{"type":"object","properties":{"scores":{"type":"array","items":{"type":"number"},"minItems":%d,"maxItems":%d}},"required":["scores"],"additionalProperties":false}`, n, n)
 	return modelprovider.GenerateRequest{
-		Model:        req.Model,
-		Messages:     []modelprovider.Message{{Role: modelprovider.RoleSystem, Text: "你是打分器，只按给定的评分标准打分。"}, {Role: modelprovider.RoleUser, Text: b.String()}},
-		OutputSchema: json.RawMessage(schema),
+		Model:           req.Model,
+		MaxOutputTokens: req.MaxOutputTokens,
+		Messages:        []modelprovider.Message{{Role: modelprovider.RoleSystem, Text: "你是打分器，只按给定的评分标准打分。"}, {Role: modelprovider.RoleUser, Text: b.String()}},
+		OutputSchema:    json.RawMessage(schema),
 	}, nil
 }
 

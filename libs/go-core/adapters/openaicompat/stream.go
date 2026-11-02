@@ -11,6 +11,7 @@ import (
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/modelprovider"
+	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 )
 
 func (c *client) StreamGenerate(ctx context.Context, req modelprovider.GenerateRequest) (modelprovider.Stream, error) {
@@ -52,6 +53,15 @@ type stream struct {
 }
 
 func (s *stream) Format(f fmt.State, _ rune) { _, _ = io.WriteString(f, "openaicompat.stream") }
+
+// Usage returns only usage actually received from the provider, including when
+// a later disconnect prevents a final chunk. It performs no network operation.
+func (s *stream) Usage() *commonv1.Usage {
+	if s.usage == nil {
+		return nil
+	}
+	return s.usage.proto()
+}
 
 type wireDelta struct {
 	Content          *string        `json:"content"`

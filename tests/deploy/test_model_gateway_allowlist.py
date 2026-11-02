@@ -50,3 +50,18 @@ def test_the_config_map_is_mounted_read_only_when_given() -> None:
     [mount] = [m for m in container["volumeMounts"] if m["name"] == "tenant-policies"]
     assert mount["readOnly"] is True and FILE.startswith(mount["mountPath"] + "/")
     assert not [m for m in by_kind(manifests, "ConfigMap") if m["metadata"]["name"] == "ar-agent-runtime-default-tenant-policies"]
+
+
+def test_model_budget_uses_shared_business_database_and_policy() -> None:
+    manifests = render(CLOUD_VALUES)
+    gw = pod_spec(gateway(manifests))
+    [task] = [m for m in by_kind(manifests, "Deployment") if m["metadata"]["name"].endswith("-task-service")]
+    ts = pod_spec(task)
+    gw_env = env_of(gw["containers"][0])
+    ts_env = env_of(ts["containers"][0])
+    assert gw_env["AR_RELATIONAL_DSN"] == ts_env["AR_RELATIONAL_DSN"]
+    assert gw_env["AR_DEV_TENANT_POLICIES_FILE"] == ts_env["AR_DEV_TENANT_POLICIES_FILE"]
+    assert gw_env["AR_REGISTRY_ADDRESS"]["value"].endswith(":8092")
+    for spec in (gw, ts):
+        [volume] = [v for v in spec["volumes"] if v["name"] == "tenant-policies"]
+        assert volume["configMap"]["name"] == "ar-agent-runtime-default-tenant-policies"

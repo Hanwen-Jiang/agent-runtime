@@ -1,6 +1,8 @@
 # 模型预算账本接口切片（2026-11-03）
 
-状态：**测试契约完成；生产接入 DEFER**。
+状态：**历史测试切片，已由共享持久账本与服务接线替代**。当前实现见 [账本](model-budget-ledger-implementation-2026-11-03.md) 和 [接线](model-budget-enforcement-2026-11-03.md)。
+
+差异记录：Q43/Q47 要求按供应商实际用量结算，原 fake 拒绝高于预留的真实费用会漏账。因此持久实现记录实际费用、阻止后续请求；旧内部 fake 已删除，避免保留两套不一致的接口。以下保留最初切片的历史说明，不代表当前生产行为或待办状态。
 
 本切片落实人工验收 Q38–Q54 中可以在没有权威共享账本 API 的前提下验证的最小部分。`services/go-model-gateway/internal/budget` 定义 `ReservationProvider`，并提供只用于单测的 `MemoryProvider`。它证明了预留、结算和并发边界，但不替代生产账本。
 

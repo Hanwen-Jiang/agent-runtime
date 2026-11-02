@@ -42,6 +42,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/localingress"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/memcache"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/sqlitestore"
+	"github.com/agentruntime/agent-runtime/libs/go-core/modelbudget"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
@@ -325,6 +326,9 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	if err := store.Migrate(ctx, taskstore.Migrations()); err != nil {
 		return err
 	}
+	if err := store.Migrate(ctx, modelbudget.Migrations()); err != nil {
+		return err
+	}
 	// 固定版本：配了 Registry（AR_REGISTRY_ADDR）时由它给出，并在单独的内部端口上提供 RegistryService；否则读固定版本文件。
 	var pins taskapi.PinResolver = taskapi.FilePinResolver{Path: cfg.PinnedVersionsFile}
 	var registrySrv *http.Server
@@ -374,16 +378,18 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		policies.Else = taskapi.DocumentPolicyResolver{Source: registryPolicies, Fallback: defaults}
 	}
 	api, err := taskapi.New(taskapi.Deps{
-		Ingress:       ing,
-		Durable:       temporaladapter.New(c),
-		Store:         store,
-		Pins:          pins,
-		Clock:         clk,
-		IDs:           ids.New(clk, nil),
-		PublicBaseURL: cfg.PublicBaseURL,
-		Defaults:      defaults,
-		Policies:      policies,
-		Network:       network,
+		ModelBudget:    modelbudget.New(store),
+		BudgetPolicies: modelbudget.Policy{Path: cfg.TenantPoliciesFile, Source: registryPolicies},
+		Ingress:        ing,
+		Durable:        temporaladapter.New(c),
+		Store:          store,
+		Pins:           pins,
+		Clock:          clk,
+		IDs:            ids.New(clk, nil),
+		PublicBaseURL:  cfg.PublicBaseURL,
+		Defaults:       defaults,
+		Policies:       policies,
+		Network:        network,
 	})
 	if err != nil {
 		return err

@@ -42,8 +42,8 @@ def worker_config(tmp_path: Path) -> WorkerConfig:
     return WorkerConfig(data_dir=tmp_path, object_store_dir=tmp_path / "objects")
 
 
-async def read(config: WorkerConfig, tenant: TenantContext, **args: Any) -> dict[str, Any]:
-    return (await dev_tools(config).bind(tenant).invoke(CONTEXT_READ, "v1", args)).output
+async def read(config: WorkerConfig, tenant: TenantContext, *, task_id: str = TASK_ID, **args: Any) -> dict[str, Any]:
+    return (await dev_tools(config).bind(tenant).invoke(CONTEXT_READ, "v1", args, task_id=task_id)).output
 
 
 # --- 工具 ---
@@ -91,6 +91,43 @@ async def test_context_read_is_always_registered_as_a_read_tool(tmp_path: Path) 
     specs = latest(await dev_tools(config).bind(T1).list_tools())
     assert specs[CONTEXT_READ].effect is Effect.READ
     assert "repo_read" not in specs, "工作区类工具仍要配置才登记"
+
+
+@pytest.mark.parametrize("prefix", ["context", "node-results"])
+async def test_context_read_denies_other_tasks_even_in_the_same_session(tmp_path: Path, prefix: str) -> None:
+    config = worker_config(tmp_path)
+    tenant = TenantContext(tenant_id="t1", user_id="u1", session_id=TENANT.session_id)
+    store = context_objects(config).bind(tenant)
+    key = f"{prefix}/{TASK_ID}-another/r1/result.json"
+    await store.put(key, b'{"private": true}', content_type="application/json")
+    with pytest.raises(NotFoundError):
+        await read(config, tenant, path=store.uri(key), task_id=TASK_ID)
+    with pytest.raises(DeniedError, match="no_task"):
+        await read(config, tenant, path=store.uri(key), task_id="")
+
+
+async def test_context_read_scope_is_enforced_through_real_node_activity(tmp_path: Path) -> None:
+    from agentruntime_worker import names
+    from .executor_harness import make_fixture, node_input, program
+    from .test_node_executor import env_for
+    from temporalio.exceptions import ApplicationError
+    import dataclasses
+
+    config = worker_config(tmp_path)
+    fx = make_fixture(tmp_path / "executor")
+    fx.executor.deps = dataclasses.replace(fx.executor.deps, tools=dev_tools(config))
+    inp = node_input(program("read-context", CONTEXT_READ, inputs={"path": "unused"}))
+    store = context_objects(config).bind(T1)
+    for task in (inp.task_id, "another-task"):
+        key = f"context/{task}/r1/n/v2/step-0.json"
+        await store.put(key, b'{"ok": true}', content_type="application/json")
+        inp.node["inputs"]["path"] = store.uri(key)
+        if task == inp.task_id:
+            result = await env_for(names.EXECUTE_PROGRAM_NODE).run(fx.executor.execute_program_node, inp)
+            assert json.loads(result["result"]["content"]) == {"ok": True}
+        else:
+            with pytest.raises(ApplicationError, match="not_found"):
+                await env_for(names.EXECUTE_PROGRAM_NODE).run(fx.executor.execute_program_node, inp)
 
 
 def test_the_model_tool_loop_offloads_into_the_store_context_read_reads(tmp_path: Path) -> None:

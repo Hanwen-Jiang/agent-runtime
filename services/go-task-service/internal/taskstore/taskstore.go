@@ -144,6 +144,18 @@ func (s *Store) SessionExists(ctx context.Context, tenant *commonv1.TenantContex
 
 const taskColumns = `task_id, session_id, session_key, client_request_id, status, signaled, last_event_id, created_at, outcome, submitted_by, message`
 
+// SubmissionExists exempts retries of an already accepted request from new
+// budget admission. InsertTask still owns atomic request deduplication.
+func (s *Store) SubmissionExists(ctx context.Context, tenant *commonv1.TenantContext, sessionKey, requestID string) (bool, error) {
+	var found bool
+	err := s.tx(ctx, tenant, true, func(ctx context.Context, tx relational.Tx) error {
+		_, ok, err := tx.QueryOne(ctx, `SELECT task_id FROM tasks WHERE session_key=$1 AND client_request_id=$2`, sessionKey, requestID)
+		found = ok
+		return err
+	})
+	return found, err
+}
+
 // InsertTask 插入一行；（SessionKey, ClientRequestID）已存在时不插入，返回已有的那一行与 true。
 func (s *Store) InsertTask(ctx context.Context, tenant *commonv1.TenantContext, t Task) (Task, bool, error) {
 	return s.insertTask(ctx, tenant, t, 0)

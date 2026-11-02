@@ -26,6 +26,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/clock"
+	"github.com/agentruntime/agent-runtime/libs/go-core/modelbudget"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/durable"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/ingress"
@@ -96,12 +97,14 @@ type Defaults struct {
 
 // Deps 是 Server 的依赖。
 type Deps struct {
-	Ingress ingress.Ingress
-	Durable durable.Provider
-	Store   relational.Provider
-	Pins    PinResolver
-	Clock   clock.Clock
-	IDs     ids.Generator
+	ModelBudget    modelbudget.Provider
+	BudgetPolicies modelbudget.PolicyResolver
+	Ingress        ingress.Ingress
+	Durable        durable.Provider
+	Store          relational.Provider
+	Pins           PinResolver
+	Clock          clock.Clock
+	IDs            ids.Generator
 	// PublicBaseURL 用来拼 SSE 订阅地址，例如 https://api.example.com。
 	PublicBaseURL string
 	Defaults      Defaults
@@ -151,6 +154,9 @@ func New(d Deps) (*Server, error) {
 	}
 	if d.Clock == nil {
 		d.Clock = clock.System{}
+	}
+	if d.BudgetPolicies == nil {
+		d.BudgetPolicies = modelbudget.Policy{}
 	}
 	return &Server{d: d, tasks: taskstore.New(d.Store)}, nil
 }
@@ -291,6 +297,21 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	}
 
 	now := s.d.Clock.Now()
+	if s.d.ModelBudget != nil {
+		existing, err := s.tasks.SubmissionExists(ctx, tenant, req.GetSessionId(), crid)
+		if err != nil {
+			return nil, err
+		}
+		if !existing {
+			limits, err := s.d.BudgetPolicies.Resolve(ctx, tenant.GetTenantId())
+			if err != nil {
+				return nil, err
+			}
+			if err := s.d.ModelBudget.Check(ctx, tenant.GetTenantId(), now, limits); err != nil {
+				return nil, err
+			}
+		}
+	}
 	sessionID := req.GetSessionId()
 	if sessionID != "" {
 		ok, err := s.tasks.SessionExists(ctx, tenant, sessionID)

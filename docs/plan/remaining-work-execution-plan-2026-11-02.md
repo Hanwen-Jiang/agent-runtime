@@ -1,6 +1,6 @@
 # 未完成计划执行表（2026-11-02）
 
-> 基线：远端 `main` `f660653`。本表把现有设计计划投影成可交付批次；不修改权威设计书，不把真实基础设施验收伪装成代码完成。
+> 当前已推送代码基线：agent-runtime `main` `23de00b`、coding-agent `main` `384ea04`。用户要求收尾推送后暂停；完整状态见 [暂停检查点](implementation-pause-checkpoint-2026-11-03.md)。本表投影现有设计，不修改冻结设计书；历史工具缺失记录不代表当前阻塞。
 
 ## 发布原则
 
@@ -15,8 +15,8 @@
 | --- | --- | --- | --- | --- |
 | P0-A | S-01/S-02 审查包 | 无 | 契约正反例、字段编号清单、兼容性说明、buf/schema 检查命令；人工验收基线已冻结，生成代码仍按工作项验收 | **契约与设计已批准**，实现逐项放行 |
 | P0-B | D-23/D-24 首版 | P0-A | coding-agent 已完成私有环境 CRUD、repo 解耦绑定、`.env` 校验、setup/start 字段和用户隔离；Runtime EnvRecord/SecretStore/运行时门禁仍待接入 | coding-agent `384ea04` 已推送；先做 Runtime EnvRecord，再接真实执行 |
-| P0-C | 开放注册预算 | P0-A、Model Gateway 计量 | `model_budget.daily_usd/monthly_usd`、`tenant_budget_exceeded`、Task 准入与网关调用双重检查、跨日/月边界测试；默认免费模型白名单已在 `2b6f655` 合并，云上 `values-cloud.yaml` 已在 `bdabf91` 显式启用内置 ConfigMap；字段与 `$3/$20` seed 已在 `ad0aa6a` 合并 | 配置切片完成；账本预留与双重 enforcement 等权威用量 API |
-| P1-A | R-02/R-03 剩余缺口 | 现有运行时代码 | 单次网关预算硬限制、多供应商/限流边界、模型多因素选档；Goal 输入、精确 state、`context_read`、对象按需取回和 Activity ContextBuilder 最小接入已在主线实现；R-02/R-03 前置契约包已合并 | 路由元数据/权重与 Temporal replay/真实 Activity 需单独验收；不把 `price_at` 当发布时间 |
+| P0-C | 开放注册预算 | P0-A、Model Gateway 计量 | 配置、共享业务库账本、原子预留/结算、Task/Gateway 双重检查及部署同源配置已实现；SQLite/PostgreSQL 与 Gateway/Task 测试通过 | 实现完成；线上发布和供应商账单验收待执行 |
+| P1-A | R-02/R-03 剩余缺口 | 现有运行时代码 | 多因素选档已推送 `8d49b3b`，预算执行已推送 `c5ee28c`，Activity ContextBuilder 完整输入和新旧历史重放已推送 `23de00b` | 本地实现验证通过；缺实测评分矩阵、Profile 有效窗口动态接入及线上验收 |
 | P1-B | R-04/R-05/R-06 剩余缺口 | SecretStore/Ingress/Registry 当前接口 | 生产 SecretStore 适配边界、工具输出脱敏、Learning 成本与版本固定；R-04/R-06 前置契约包已合并；R-05 的 round/stage/node/tool/human/verdict/SSE 续传与限流已有，`token_delta`/`thinking_delta` 仍依赖流式模型通道 | 契约已批准，按模块实现；真实 SecretStore/StreamGenerate 仍需资源 |
 | P1-C | Workspace 与会话 UI | coding-agent 仓库、Runtime EnvironmentService | Workspace API 文件树/read/log/discard/copy、`/env` 状态投影、旧 SSE 兼容测试；D-06 前置验收包已合并；当前 coding-agent 没有 EnvRecord/ledger 查询 API，不能安全推断 ready/reused | 跨仓库独立合并，先补 Runtime 契约 |
 | P1-D | Memory-live 部署 | Chart/镜像/模型 Profile | Milvus、真 embedding、Worker→Memory gRPC、租户过滤与部署 smoke；真实集群验收 | 代码先行，资源可用后验收 |
@@ -34,7 +34,7 @@
 - 真实环境批次：记录环境、时间、镜像/配置版本和可复现命令；没有真实资源时标记 `blocked_external`。
 - 设计草案：只在计划文档中记录边界、Failure/Evidence/Minimum fix/成本/Decision，不创建未被需求支持的持久状态。
 
-## 第一轮并行任务
+## 第一轮并行任务（历史安排，当前状态以上表为准）
 
 1. P0-A：1～112 人工验收已由 [人工验收基线](manual-acceptance-baseline-2026-11-03.md) 冻结；默认免费模型白名单、云上 Helm 接线、模型预算字段/默认额度和严格租户配置解析已合并。
 2. P1-A：R-01 Hook 有限重试、R-05 进度事件/SSE 续传与限流已有；R-02/R-03 的 Goal 输入、精确 state、`context_read`、对象按需取回已有；下一步分别是权威预算账本、路由元数据和 Activity ContextBuilder。
@@ -43,7 +43,7 @@
 
 第一轮完成后，再按单写者边界进入 P0-B/P0-C；任何 proto/schema 变更都暂停在人工评审点。
 
-## 2026-11-03 执行检查点
+## 2026-11-03 早期执行检查点（历史记录）
 
 - 远端 `main`：`f660653`；人工验收基线、模型预算字段/默认额度、严格租户配置解析、Helm 默认额度、文件交付 helper、预算 reserve/settle 测试契约、Activity ContextBuilder 最小接入和工作项门禁已推送并合并。
 - 新增契约包定向验证：`uv run pytest -q` 加载环境、预算、Task Plan、N-19/N-20、Firecracker、D-25、Workspace、N-15/N-16、N-18、R-02/R-03、R-04/R-06 共 **24 passed**；`git diff --check` 通过。

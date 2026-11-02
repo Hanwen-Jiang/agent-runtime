@@ -150,7 +150,7 @@ def dev_executor(
         context_builder=ContextBuilder(
             model_gateway_instance,
             object_store,
-            ContextConfig(effective_tokens=config.context_effective_tokens),
+            ContextConfig(effective_tokens=config.context_effective_tokens, offload_tokens=config.context_offload_tokens),
         ) if config.model_gateway_address else None,
     )
     return NodeExecutor(deps, executor_config or ExecutorConfig(context_effective_tokens=config.context_effective_tokens))
