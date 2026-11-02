@@ -11,11 +11,13 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import re
 import sys
 from pathlib import Path
 
+from agentruntime_learning.benchmarks import suite
 from agentruntime_learning.benchmarks import swebench as sb
 from agentruntime_learning.benchmarks.client import ApiError, RuntimeClient
 
@@ -65,6 +67,13 @@ def _parser() -> argparse.ArgumentParser:
 
     rep = sub.add_parser("report", help="写 report.json 与 report.md")
     rep.add_argument("--out", type=Path, required=True)
+
+    suite_parser = benches.add_parser("suite", help="并发运行多个评测适配器")
+    suite_sub = suite_parser.add_subparsers(dest="suite_command", required=True)
+    suite_run = suite_sub.add_parser("run", help="按计划运行评测")
+    suite_run.add_argument("--plan", type=Path, required=True)
+    suite_run.add_argument("--out", type=Path, required=True)
+    suite_run.add_argument("--dry-run", action="store_true")
     return parser
 
 
@@ -106,6 +115,21 @@ def _run(args: argparse.Namespace) -> int:
     return 1 if summary.errors else 0
 
 
+def _suite_run(args: argparse.Namespace) -> int:
+    try:
+        plan = suite.parse_plan(json.loads(args.plan.read_text("utf-8")))
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"读取评测计划失败：{exc}", file=sys.stderr)
+        return 2
+    if args.dry_run:
+        for argv in suite.dry_run(plan, args.out):
+            print(" ".join(argv))
+        return 0
+    summary = suite.run_suite(plan, args.out)
+    print((args.out / "suite-report.md").read_text("utf-8"))
+    return 0 if summary.status == "passed" else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     # 输出重定向到文件时 Windows 用本地代码页（例如 cp1252），中文摘要编码不了：换成转义，不让打印中断。
     for stream in (sys.stdout, sys.stderr):
@@ -116,6 +140,8 @@ def main(argv: list[str] | None = None) -> int:
     except SystemExit as exc:
         return 0 if exc.code in (0, None) else 2
     try:
+        if args.benchmark == "suite":
+            return _suite_run(args)
         if args.command == "fetch":
             count = sb.fetch_instances(args.out, dataset=args.dataset, split=args.split)
             print(f"取到 {count} 题：{args.out}")
