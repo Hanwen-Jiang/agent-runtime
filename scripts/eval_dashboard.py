@@ -351,6 +351,7 @@ PUBLIC_TITLE = "Agent Runtime Eval Dashboard · 评测看板"
 TRIAGE_GATE, REVIEWER_GATE = 0.9, 0.85
 EVALSET = REPO / "services" / "py-learning" / "evalsets" / "task-loop"
 _E = "exp-2026-10-28/"
+_E2 = "exp-2026-11-02/"
 # 分组（报告的子目录）给读者看的名字：（中文，英文）。没列出的显示子目录的最后一段。
 GROUP_LABELS = {
     "history": ("早期运行", "Early runs"),
@@ -359,6 +360,10 @@ GROUP_LABELS = {
     _E + "e2-gpt55": ("GPT-5.5", "GPT-5.5"), _E + "e2-gpt55-rerun": ("GPT-5.5", "GPT-5.5"),
     _E + "e2-geminiflash": ("Gemini 3.5 Flash", "Gemini 3.5 Flash"), _E + "e2-opus": ("Claude Opus", "Claude Opus"),
     _E + "e5-fixed-v1": ("修复之后（Sonnet）", "After the fixes (Sonnet)"), _E + "e5-fixed-v2": ("修复之后（Sonnet）", "After the fixes (Sonnet)"),
+    # 2026-11-02：反馈 N-01～N-09 上线之后在服务器上跑的 S-09、S-10、S-11（Sonnet 5.5 规划与验收，Haiku 5.5 分诊）。
+    _E2 + "s09": ("11-02 反馈修复之后（Sonnet）", "Nov 2, after the feedback fixes (Sonnet)"),
+    _E2 + "s10": ("11-02 反馈修复之后（Sonnet）", "Nov 2, after the feedback fixes (Sonnet)"),
+    _E2 + "s11": ("11-02 反馈修复之后（Sonnet）", "Nov 2, after the feedback fixes (Sonnet)"),
 }
 # 失败原因（维度/代码）的白话：（中文，英文）。
 FAILURE_TEXT = {
