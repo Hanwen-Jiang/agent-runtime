@@ -16,6 +16,10 @@ Planner 与 Reviewer 会吞掉模型调用的错误，回退到保守规划或�
 
 TMP 计划第 8 节：CountingGateway 还记下每个 role 成功调用用到的 model_profile_id（报告的 models），plan、review 的输出带上
 Planner、Reviewer 是否回退（fallback），运行器据此算回退率、判这次运行是否有效。
+
+钉模型（能力矩阵，docs/plan/capability-matrix-evals.md 第 2 节）：在 `pinned(role, profile)` 里造的被测对象，Gateway 外面多包一层
+capability.base.PinningGateway，被测角色的调用填 pinned_model_profile；评测命令的 `--pin role=profile` 用它，跑完按
+`pin_counts(…)` 报告钉住与被污染（没落在钉的模型上或出错）的调用数。
 """
 
 from __future__ import annotations
@@ -23,6 +27,8 @@ from __future__ import annotations
 import importlib
 import os
 from collections import Counter
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 from agentruntime.common.v1 import enums_pb2
@@ -66,6 +72,10 @@ def _context(inp: PlannerInput) -> PlanningContext:
         conversation=tuple(Turn(t["message"], t["reply"], t["status"]) for t in ctx.get("conversation", [])),
         has_workspace=bool(ctx.get("has_workspace", False)),
     )
+
+
+planning_context = _context
+"""PlannerInput → Planner 的 PlanningContext（能力矩阵的 S-09 评测也用它判断一条用例由谁定级）。"""
 
 
 def role_name(role: int) -> str:
@@ -195,12 +205,54 @@ class WorkerSubject(WorkerPlannerSubject):
         )
 
 
+_pin: tuple[str, str, list[Any]] | None = None
+
+
+@contextmanager
+def pinned(role: str, profile: str) -> Iterator[list[Any]]:
+    """这段代码里经 _gateway() 拿到的 Model Gateway 都把 role 的调用钉在 profile 上；产出这些 PinningGateway 的列表。"""
+    from agentruntime_learning.capability.base import role_enum
+
+    role_enum(role)
+    if not profile:
+        raise ValueError("--pin 要写成 role=profile，profile 不能为空")
+    global _pin
+    gateways: list[Any] = []
+    previous, _pin = _pin, (role, profile, gateways)
+    try:
+        yield gateways
+    finally:
+        _pin = previous
+
+
+def pin_counts(gateways: list[Any]) -> dict[str, Any]:
+    """钉住的角色与模型、被测角色的调用数（pinned_calls）与没落在钉的模型上或出错的次数（contaminated_calls）。"""
+    if not gateways:
+        return {}
+    found = gateways
+    first = found[0]
+    return {
+        "role": role_name(first.role),
+        "profile": first.candidate,
+        "pinned_calls": sum(g.pinned_calls for g in found),
+        "contaminated_calls": sum(g.missed_calls for g in found),
+    }
+
+
 def _gateway() -> ModelGateway:
     spec = os.environ.get(ENV_GATEWAY_FACTORY, "")
     module_name, sep, attr = spec.partition(":")
     if not sep or not module_name or not attr:
         raise ValueError(f"要用真模型评测 Worker 的 Planner 与 Reviewer，请设 {ENV_GATEWAY_FACTORY}=<模块>:<工厂函数>（工厂函数返回 Model Gateway）")
-    return getattr(importlib.import_module(module_name), attr)()
+    gateway = getattr(importlib.import_module(module_name), attr)()
+    if _pin is None:
+        return gateway
+    from agentruntime_learning.capability.base import PinningGateway
+
+    role, profile, gateways = _pin
+    wrapped = PinningGateway(gateway, role=role, candidate=profile)
+    gateways.append(wrapped)
+    return wrapped
 
 
 def worker_subject() -> Subject:
