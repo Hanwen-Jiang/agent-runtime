@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package agentruntime.environment.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// EnvironmentService 是 Runtime 沙箱环境表的只读投影（人工验收 Q99–105）。
+// 与 WorkspaceService 同样由 Ingress 认证；请求 tenant_id 只校验身份一致。
+// 查询不建/删环境、不执行命令、不探测后端、不续期，也不维护第二套生命周期。
+// 表未初始化或不可读时返回 Unavailable/environment_status_unavailable，客户端显示 unknown 或 blocked_external。
+service EnvironmentService {
+  // 按 Runtime env_ref 读取；只在认证租户内查询，别的租户/不存在均 NotFound。
+  rpc GetEnvironment(GetEnvironmentRequest) returns (GetEnvironmentResponse);
+  // 查询指定 Workspace/Session 的记录，包含终态；最新创建在前，相同时间按 env_ref 排序。
+  rpc ListEnvironments(ListEnvironmentsRequest) returns (ListEnvironmentsResponse);
+}
+
+enum EnvironmentState {
+  ENVIRONMENT_STATE_UNSPECIFIED = 0;
+  ENVIRONMENT_STATE_CREATING = 1;
+  ENVIRONMENT_STATE_READY = 2;
+  ENVIRONMENT_STATE_DESTROYING = 3;
+  ENVIRONMENT_STATE_DESTROYED = 4;
+  ENVIRONMENT_STATE_FAILED = 5;
+  ENVIRONMENT_STATE_LOST = 6;
+}
+
+// EnvRecord 对应已有 sandbox_envs 的一行，不是可复用环境配置 EnvironmentConfig。
+// 未知时间戳省略；不从 Pod、last_used_at、命令成功或 Kubernetes TTL 补猜。
+message EnvRecord {
+  string env_ref = 1;
+  string tenant_id = 2;
+  string workspace_id = 3;
+  string session_id = 4;
+  string backend = 5;
+  string backend_env_id = 6;
+  string kind = 7;
+  string isolation = 8;
+  // 原始 ledger 状态；READY 本身不代表健康已确认，展示就绪要用下面的 ready。
+  EnvironmentState state = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp ready_at = 11;
+  google.protobuf.Timestamp last_used_at = 12;
+  // 明确的 ledger 空闲到期时间与绝对寿命上限，二者都按原值返回。
+  google.protobuf.Timestamp expires_at = 13;
+  google.protobuf.Timestamp max_until = 14;
+  google.protobuf.Timestamp destroyed_at = 15;
+  // 最近创建/复借边界专用健康检查成功的时间；缺失表示未确认。
+  google.protobuf.Timestamp health_confirmed_at = 16;
+  // Broker 实际复借同一 Workspace/Session 的时间；普通命令完成的 touch 不写它。
+  google.protobuf.Timestamp reused_at = 17;
+  // 仅 ledger READY、健康已确认、两个明确期限都未到期时为 true；未知不能当 true。
+  bool ready = 18;
+  // 有 reused_at 且归属于非空 Workspace/Session；不以环境号或 Pod 名相同推断。
+  bool reused = 19;
+  string task_id = 20;
+  bool writable = 21;
+  string runtime = 22;
+  string image = 23;
+}
+
+message GetEnvironmentRequest {
+  string tenant_id = 1;
+  string env_ref = 2;
+}
+
+message GetEnvironmentResponse {
+  EnvRecord environment = 1;
+}
+
+message ListEnvironmentsRequest {
+  string tenant_id = 1;
+  // 必填，和 session_id 一起限定查询；不列出租户所有会话。
+  string workspace_id = 2;
+  string session_id = 3;
+  // 0 使用默认 50，最大 100。
+  int32 limit = 4;
+}
+
+message ListEnvironmentsResponse {
+  repeated EnvRecord environments = 1;
+  // 还有更早的记录；此 API 用于当前会话状态，不承担历史审计分页。
+  bool truncated = 2;
+}
