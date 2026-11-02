@@ -67,6 +67,18 @@ func Migrations() []relational.Migration {
 				PRIMARY KEY (tenant_id, lock_id)
 			)`,
 		},
+	}, {
+		Version: 6,
+		Name:    "task_service_scoped_admission_lock",
+		Statements: []string{
+			// Lock rows contain no business data. Recreate the v5 table so SQLite
+			// and Postgres both let the provider own the tenant discriminator.
+			`DROP TABLE task_admission_lock`,
+			`CREATE TABLE task_admission_lock (
+				lock_id BIGINT PRIMARY KEY,
+				touched_at BIGINT NOT NULL
+			)`,
+		},
 	}}
 }
 
@@ -152,10 +164,10 @@ func (s *Store) insertTask(ctx context.Context, tenant *commonv1.TenantContext, 
 	var existed bool
 	err := s.tx(ctx, tenant, false, func(ctx context.Context, tx relational.Tx) error {
 		if maxActive > 0 {
-			if _, err := tx.Execute(ctx, `INSERT INTO task_admission_lock (tenant_id, lock_id, touched_at) VALUES ($1, 1, $2) ON CONFLICT DO NOTHING`, tenant.GetTenantId(), t.CreatedAt.UnixMilli()); err != nil {
+			if _, err := tx.Execute(ctx, `INSERT INTO task_admission_lock (lock_id, touched_at) VALUES (1, $1) ON CONFLICT DO NOTHING`, t.CreatedAt.UnixMilli()); err != nil {
 				return err
 			}
-			if _, err := tx.Execute(ctx, `UPDATE task_admission_lock SET touched_at = touched_at WHERE tenant_id = $1 AND lock_id = 1`, tenant.GetTenantId()); err != nil {
+			if _, err := tx.Execute(ctx, `UPDATE task_admission_lock SET touched_at = touched_at WHERE lock_id = 1`); err != nil {
 				return err
 			}
 		}
@@ -170,7 +182,7 @@ func (s *Store) insertTask(ctx context.Context, tenant *commonv1.TenantContext, 
 			return nil
 		}
 		if maxActive > 0 {
-			row, err := tx.QueryOne(ctx, `SELECT COUNT(*) AS active_count FROM tasks WHERE status = $1`, int64(commonv1.TaskStatus_TASK_STATUS_UNSPECIFIED))
+			row, _, err := tx.QueryOne(ctx, `SELECT COUNT(*) AS active_count FROM tasks WHERE status = $1`, int64(commonv1.TaskStatus_TASK_STATUS_UNSPECIFIED))
 			if err != nil {
 				return err
 			}

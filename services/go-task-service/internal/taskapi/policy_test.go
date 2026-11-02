@@ -161,7 +161,7 @@ func TestSubmitEffectCeilingCanOnlyLowerThePolicy(t *testing.T) {
 
 	req := newRequest("c-low")
 	req.EffectCeiling = commonv1.Effect_EFFECT_READ
-	f.mustSubmit(token, req)
+	first := f.mustSubmit(token, req)
 	if _, sig := f.lastSubmit(); sig.GetTask().GetEffectCeiling() != commonv1.Effect_EFFECT_READ {
 		t.Errorf("调低到 read，实际 %v", sig.GetTask().GetEffectCeiling())
 	}
@@ -181,6 +181,9 @@ func TestSubmitEffectCeilingCanOnlyLowerThePolicy(t *testing.T) {
 	if after := len(f.durable.callsOf("SignalWithStart")); after != before {
 		t.Errorf("被拒的请求不应投递给 Session 工作流")
 	}
+	// This test exercises effect policy, so free one slot before the third
+	// valid submission. The separate admission tests cover the two-task cap.
+	finishSeededTask(t, f, "tw", first.GetTaskId())
 	req.EffectCeiling = commonv1.Effect_EFFECT_READ // 同一个 client_request_id 改低了再提交：照常受理
 	f.mustSubmit(token, req)
 
