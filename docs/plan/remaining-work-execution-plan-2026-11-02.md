@@ -47,5 +47,5 @@
 
 - 远端 `main`：`81224bd`；本轮前置包已推送并合并，没有未提交改动。
 - 新增契约包定向验证：`uv run pytest -q` 加载环境、预算、Task Plan、N-19/N-20、Firecracker、D-25、Workspace、N-15/N-16、N-18、R-02/R-03、R-04/R-06 共 **24 passed**；`git diff --check` 通过。
-- 全量 `tests/contract` 在已同步 Python 依赖的 `.venv` 中为 **478 passed、25 failed、15 errors**。失败集中在缺少 `go`/`buf`/`helm` 及真实 Temporal/Postgres/Qdrant/Docker/Kind/Kubernetes；跨语言测试和接口 parity 因 Go 不在 PATH 而阻塞。新增契约测试没有失败。
+- 全量 `tests/contract` 在已同步 Python 依赖的 `.venv` 中为 **485 passed、25 failed、15 errors**。失败集中在缺少 `go`/`buf`/`helm` 及真实 Temporal/Postgres/Qdrant/Docker/Kind/Kubernetes；跨语言测试和接口 parity 因 Go 不在 PATH 而阻塞。新增契约测试没有失败。
 - `scripts/check.py` 已完成依赖同步；其余 proto、Go、部署和真实环境 gate 继续按 `blocked_external` 记录，不能用本地静态结果替代。
