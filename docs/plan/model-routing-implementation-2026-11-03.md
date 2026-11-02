@@ -67,4 +67,6 @@ models.dev 不提供这里定义的任务族/节点阶段/推理档实测矩阵�
 - `python -m pytest tests/deploy/test_model_profiles_sync.py tests/contract/test_model_profile_routing.py tests/contract/test_schema_examples.py -q`：359 项通过。
 - `git diff --check`：通过。
 
-覆盖便宜老模型降权、任务族和角色分别影响结果、不同推理档评分隔离、可靠性、availability/白名单/pin/avoid 语义、固定时间与解释分解、旧 Profile/零价/缺数据兼容、RPC task_family 传入、Registry 交叉字段检查、严格 schema 和同步日期不造假。未执行真实供应商能力评测、PostgreSQL 集成及线上 k3s 验收；不把本地回归写成这些验收已通过。
+覆盖便宜老模型降权、任务族和角色分别影响结果、不同推理档评分隔离、可靠性、availability/白名单/pin/avoid 语义、固定时间与解释分解、旧 Profile/零价/缺数据兼容、RPC task_family 传入、Registry 交叉字段检查、严格 schema 和同步日期不造假。
+
+后续收尾已在 WSL Debian、Go 1.26.5、真实 PostgreSQL 17.10 下通过 Registry、Task Store、Task API、task-service 命令包与 Gateway 测试；上面的 PostgreSQL 跳过仅记录首轮环境。真实供应商能力评测及线上 k3s 验收仍未完成。
