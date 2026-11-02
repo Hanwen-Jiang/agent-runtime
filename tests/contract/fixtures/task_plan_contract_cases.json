@@ -1,0 +1,16 @@
+{
+  "schema": "task_plan_contract_cases",
+  "version": 1,
+  "cases": [
+    {"id": "steps_min_3", "area": "steps", "expect": "allow", "assertion": "A non-fast plan has at least 3 steps."},
+    {"id": "steps_max_8", "area": "steps", "expect": "allow", "assertion": "A non-fast plan has at most 8 steps."},
+    {"id": "step_shape", "area": "steps", "expect": "allow", "assertion": "Every step has stable id, localized title, status, and round."},
+    {"id": "status_values", "area": "status", "expect": "allow", "assertion": "Status is pending, active, done, or blocked."},
+    {"id": "single_active", "area": "status", "expect": "deny", "assertion": "Two active steps in one snapshot are rejected."},
+    {"id": "round_reference", "area": "round", "expect": "deny", "assertion": "A step cannot reference a round later than the snapshot round."},
+    {"id": "event_full_snapshot", "area": "event", "expect": "allow", "assertion": "plan_updated contains the complete step snapshot, current step, and round_seq."},
+    {"id": "compaction_keeps_plan", "area": "context", "expect": "allow", "assertion": "Compaction cannot remove the fixed plan section from the brief."},
+    {"id": "fast_no_plan", "area": "compatibility", "expect": "allow", "assertion": "Fast mode emits no plan and no plan_updated event."},
+    {"id": "old_client_unknown_fields", "area": "compatibility", "expect": "allow", "assertion": "Old clients ignore unknown plan fields/events and keep consuming existing events."}
+  ]
+}
