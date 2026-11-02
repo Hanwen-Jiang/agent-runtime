@@ -52,6 +52,7 @@ import (
 	workflowv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1"
 
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/config"
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/environmentapi"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/events"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/ids"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/registry"
@@ -404,9 +405,14 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	environments, err := environmentapi.New(environmentapi.Deps{Ingress: ing, Store: store})
+	if err != nil {
+		return err
+	}
 	mux := http.NewServeMux()
 	api.Mount(mux)
 	workspaces.Mount(mux)
+	environments.Mount(mux)
 	mux.Handle("/v1/tasks/", events.NewHandler(events.HandlerDeps{Ingress: ing, Cache: cacheProvider, Store: store, Clock: clk}))
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "ok") })
 
