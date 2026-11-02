@@ -62,7 +62,7 @@ from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker import names
 from agentruntime_worker.activities.types import HumanCancel, HumanQuestion, NodeInput, ReconcileResult, Tenant, ToolCallInput
-from agentruntime_worker.context.builder import message_tokens
+from agentruntime_worker.context.builder import measured, message_tokens
 from agentruntime_worker.executor import keys
 from agentruntime_worker.session.transcript import TranscriptSource, Turn, actions_text, chat_messages
 from agentruntime_worker.executor.model_gateway import ModelGateway
@@ -725,7 +725,7 @@ class NodeExecutor:
         if regressions:
             out["regressions"] = regressions
         if _conversational(node):
-            out["context_usage"] = self._context_usage(messages, response.model)
+            out["context_usage"] = measured(self._context_usage(messages, response.model), int(response.usage.input_tokens))
         return out
 
     def _context_usage(self, messages: Sequence[mg.ChatMessage], model: mg.ModelChoice) -> dict[str, Any]:

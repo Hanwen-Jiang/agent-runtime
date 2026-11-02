@@ -136,6 +136,26 @@ class ContextUsage:
         return out
 
 
+def measured(payload: dict[str, Any], input_tokens: int) -> dict[str, Any]:
+    """把估算的占比换成实测（docs/plan/feedback-2026-11-01.md N-17）：总数取供应商这次实际计的输入 token（网关的 input_tokens，
+    含缓存命中），各类与各工具按估算的比例分摊，取整后各类之和正好等于总数（最大余数法）。取不到实测（0）时原样返回。纯函数。"""
+    estimated = sum(int(c.get("tokens") or 0) for c in payload.get("categories") or [])
+    if input_tokens <= 0 or estimated <= 0:
+        return payload
+    out = dict(payload)
+    raw = [(c, int(c.get("tokens") or 0) * input_tokens / estimated) for c in payload["categories"]]
+    floors = [int(v) for _, v in raw]
+    left = input_tokens - sum(floors)
+    order = sorted(range(len(raw)), key=lambda i: (-(raw[i][1] - floors[i]), i))
+    for i in order[:left]:
+        floors[i] += 1
+    out["categories"] = [{**c, "tokens": floors[i]} for i, (c, _) in enumerate(raw)]
+    out["total_tokens"] = input_tokens
+    if payload.get("tools"):
+        out["tools"] = [{**t, "tokens": round(int(t.get("tokens") or 0) * input_tokens / estimated)} for t in payload["tools"]]
+    return out
+
+
 @dataclass
 class BuiltContext:
     messages: list[mg.ChatMessage]

@@ -27,7 +27,7 @@ from agentruntime_worker import names
 from agentruntime_worker.activities.types import ToolLoopStep, ToolLoopStepInput
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.memory import Searcher, node_experiences, searcher
-from agentruntime_worker.context.builder import ContextBuilder, ContextConfig, ContextRequest, tenant_context
+from agentruntime_worker.context.builder import ContextBuilder, ContextConfig, ContextRequest, measured, tenant_context
 from agentruntime_worker.executor.heartbeat import heartbeating
 from agentruntime_worker.executor.model_gateway import ModelGateway, billed_cost_usd, with_billed_cost
 from agentruntime_worker.workflows.verification import only_reads
@@ -145,6 +145,9 @@ class ModelToolLoop:
         cost = round(response.usage.cost_usd_micros / 1_000_000 + built.cost_usd + billed, 6)
         vendor = response.model.vendor
         usage = built.usage.payload(response.model.context_window, self.builder.config.effective_tokens) if built.usage is not None else None
+        if usage is not None:
+            # 总数用这次实际计的输入 token（N-17），各类按估算的比例分摊。
+            usage = measured(usage, int(response.usage.input_tokens))
         if response.tool_calls:
             calls = [{"tool": call.name, "args": json_format.MessageToDict(call.arguments)} for call in response.tool_calls]
             return ToolLoopStep(action="tool", tool=calls[0]["tool"], args=calls[0]["args"], calls=calls, cost_usd=cost, vendor=vendor, context_usage=usage)
