@@ -1,0 +1,24 @@
+{
+  "schema": "n18_file_delivery_contract_cases",
+  "version": 1,
+  "cases": [
+    {"id":"metadata_has_identity_and_scope","area":"metadata","expect":"allow","assertion":"a delivery item exposes stable identity and tenant/session/task scope without file bytes"},
+    {"id":"large_content_uses_object_reference","area":"claim_check","expect":"allow","assertion":"large content is represented by an ObjectStore or Claim-Check reference rather than an event payload"},
+    {"id":"reference_cannot_cross_tenant","area":"isolation","expect":"deny","assertion":"an obj reference from another tenant is rejected even when the URI is syntactically valid"},
+    {"id":"file_count_limit_is_enforced","area":"limits","expect":"deny","assertion":"a delivery exceeding the configured file count limit is rejected"},
+    {"id":"single_and_total_bytes_limits","area":"limits","expect":"deny","assertion":"single-file and aggregate byte limits are checked at write and download boundaries"},
+    {"id":"unsafe_paths_are_rejected","area":"paths","expect":"deny","assertion":"absolute paths, dot-dot segments, symlink escapes, reserved directories, and duplicate targets are rejected"},
+    {"id":"media_type_does_not_enable_execution","area":"content_type","expect":"deny","assertion":"an untrusted filename or media type cannot force browser or worker execution semantics"},
+    {"id":"download_checks_identity_and_scope","area":"authorization","expect":"deny","assertion":"download requires caller identity plus tenant, session, task, and artifact authorization"},
+    {"id":"expired_or_revoked_link_is_invalid","area":"expiry","expect":"deny","assertion":"an expired or revoked lease cannot be reused to download an artifact"},
+    {"id":"retry_reauthorizes_without_extending_expiry","area":"expiry","expect":"allow","assertion":"a retry obtains fresh authorization without extending the original artifact lifetime"},
+    {"id":"secrets_are_never_in_metadata_or_events","area":"privacy","expect":"deny","assertion":"responses, events, SSE, logs, traces, and errors contain no secret or signing key plaintext"},
+    {"id":"idempotent_submission_reuses_confirmed_items","area":"idempotency","expect":"allow","assertion":"repeating the same delivery request returns the same confirmed items without duplicate business records"},
+    {"id":"partial_failure_is_explicit","area":"partial_failure","expect":"conflict","assertion":"per-file ready and failed results are explicit and aggregate success cannot hide a partial delivery"},
+    {"id":"unconfirmed_objects_are_reclaimed","area":"partial_failure","expect":"allow","assertion":"cancelled or timed-out unconfirmed objects follow existing ObjectStore cleanup rules"},
+    {"id":"old_artifact_clients_remain_compatible","area":"compatibility","expect":"allow","assertion":"old clients can still read the existing artifacts string list when metadata fields are added"},
+    {"id":"unknown_state_is_not_download_success","area":"compatibility","expect":"deny","assertion":"an unknown artifact state is not interpreted as ready or downloadable"},
+    {"id":"sse_reconnect_does_not_duplicate_creation","area":"streaming","expect":"allow","assertion":"SSE replay and reconnect resend metadata or a re-fetch hint without creating another artifact"},
+    {"id":"one_time_link_is_not_persisted_in_history","area":"streaming","expect":"deny","assertion":"a short-lived download link is not written into durable task history or replay payloads"}
+  ]
+}
