@@ -1,0 +1,24 @@
+{
+  "schema": "firecracker_contract_cases",
+  "version": 1,
+  "cases": [
+    {"id": "disabled_backend_rejects_new", "area": "backend_registry", "expect": "deny", "assertion": "a disabled backend rejects new environment creation with sandbox_backend_disabled"},
+    {"id": "disabled_backend_keeps_existing", "area": "backend_registry", "expect": "allow", "assertion": "an existing environment on a disabled backend remains executable and destroyable"},
+    {"id": "default_disabled_fails_startup", "area": "backend_registry", "expect": "deny", "assertion": "a default backend marked disabled fails configuration loading with its backend name"},
+    {"id": "unknown_capability_rejects_config", "area": "backend_registry", "expect": "deny", "assertion": "an unknown capability rejects the backend registration"},
+    {"id": "firecracker_no_implicit_gvisor", "area": "isolation", "expect": "deny", "assertion": "firecracker capacity failure does not fall back to gvisor without an explicit lower isolation policy"},
+    {"id": "explicit_container_fallback", "area": "isolation", "expect": "allow", "assertion": "an explicit min_isolation container permits the existing policy fallback and records the source"},
+    {"id": "manager_rejects_user_command", "area": "manager", "expect": "deny", "assertion": "fc-manager never interpolates user-controlled command or path strings into a host shell"},
+    {"id": "manager_worker_scope", "area": "manager", "expect": "deny", "assertion": "only the Worker identity can call fc-manager management endpoints"},
+    {"id": "manager_restart_no_orphans", "area": "manager", "expect": "deny", "assertion": "after fc-manager restart every VM is adopted or terminated and no orphan remains"},
+    {"id": "rootfs_rejects_escape", "area": "rootfs", "expect": "deny", "assertion": "OCI paths, absolute paths, parent traversal, escaping symlinks, devices, and unsafe hard links are rejected"},
+    {"id": "rootfs_platform_images_only", "area": "rootfs", "expect": "deny", "assertion": "an unapproved tenant environment is unsupported on firecracker and receives the universal fallback explanation"},
+    {"id": "vsock_only_fixed_targets", "area": "vsock", "expect": "deny", "assertion": "guest forwarding reaches only the configured egress and package mirror targets"},
+    {"id": "guest_has_no_network", "area": "vsock", "expect": "deny", "assertion": "the guest has only loopback and direct sockets cannot reach arbitrary external addresses"},
+    {"id": "revoked_connection_closes", "area": "vsock", "expect": "allow", "assertion": "revoking a network grant closes existing forwarded connections within the D-16 bound"},
+    {"id": "snapshot_excludes_tenant_data", "area": "snapshot", "expect": "deny", "assertion": "a snapshot excludes workspace contents, direct values, network secrets, and tenant credentials"},
+    {"id": "snapshot_key_is_tenant_scoped", "area": "snapshot", "expect": "deny", "assertion": "snapshot reuse cannot cross tenant or workspace scope and includes image, setup, kernel, and Firecracker versions"},
+    {"id": "snapshot_resets_identity", "area": "snapshot", "expect": "allow", "assertion": "restored VMs receive fresh randomness, machine identity, and vsock connections"},
+    {"id": "no_kvm_is_external_block", "area": "external", "expect": "blocked_external", "assertion": "without /dev/kvm real Firecracker execution is blocked while fake-manager conformance remains runnable"}
+  ]
+}
