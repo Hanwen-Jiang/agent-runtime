@@ -1,0 +1,22 @@
+{
+  "schema": "multirepo_contract_cases",
+  "version": 1,
+  "cases": [
+    {"id": "legacy_root_omits_repo", "area": "compatibility", "expect": "allow", "assertion": "legacy root workspace operations keep their existing omitted-repo behavior"},
+    {"id": "multi_requires_repo", "area": "compatibility", "expect": "deny", "assertion": "multi layout operations without repo are invalid"},
+    {"id": "create_empty_root", "area": "layout", "expect": "allow", "assertion": "an empty root workspace remains supported"},
+    {"id": "create_single_root", "area": "layout", "expect": "allow", "assertion": "a single repository root workspace remains supported"},
+    {"id": "attach_two_repos", "area": "layout", "expect": "allow", "assertion": "multi layout can attach two repositories in distinct child paths"},
+    {"id": "detach_preserves_other_repo", "area": "layout", "expect": "allow", "assertion": "detaching A does not delete or change B"},
+    {"id": "path_traversal_rejected", "area": "path", "expect": "deny", "assertion": "absolute paths, dot segments, symlink escapes, and reserved names are rejected"},
+    {"id": "path_overlap_rejected", "area": "path", "expect": "deny", "assertion": "nested or case-insensitive overlapping repository paths are rejected"},
+    {"id": "repo_quota_rejected", "area": "quota", "expect": "deny", "assertion": "max_repos and max_bytes are enforced before attach"},
+    {"id": "read_repo_write_rejected", "area": "authorization", "expect": "deny", "assertion": "read access rejects commit and push with repo_read_only"},
+    {"id": "repo_branch_policy", "area": "authorization", "expect": "deny", "assertion": "each repository push still obeys workspace push branch policy"},
+    {"id": "repo_credential_isolation", "area": "credentials", "expect": "allow", "assertion": "operation A does not decrypt or depend on repository B credential"},
+    {"id": "repo_network_scope", "area": "network", "expect": "deny", "assertion": "clone sync and push authorize only the repository host within tenant policy"},
+    {"id": "archive_restore_copy_all_repos", "area": "lifecycle", "expect": "allow", "assertion": "archive restore and copy preserve all repository paths and uncommitted changes"},
+    {"id": "golden_replay_before_change", "area": "replay", "expect": "allow", "assertion": "workspace operation golden history replays before and after the multi-repo change"},
+    {"id": "cross_tenant_repo_hidden", "area": "ownership", "expect": "deny", "assertion": "another tenant or user cannot list, read, attach, detach, or operate repositories"}
+  ]
+}
