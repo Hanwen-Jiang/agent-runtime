@@ -24,8 +24,9 @@ from agentruntime_worker.activities.types import Tenant
 from agentruntime_worker.executor.model_gateway import ModelGateway, billed_cost_usd
 from agentruntime_worker.planner.planner import ModelCall
 from agentruntime_worker.reviewer import prompts
-from agentruntime_worker.reviewer.rules import Caps, Floor, ReviewCatalog, Thresholds, enforce, floor
-from agentruntime_worker.reviewer.signals import ledger
+from agentruntime_worker.reviewer.judge import DeliverableJudge, JudgeChecks, reply_text
+from agentruntime_worker.reviewer.rules import Caps, Floor, ReviewCatalog, Thresholds, deliverable_problem, enforce, floor
+from agentruntime_worker.reviewer.signals import is_failed, ledger
 from agentruntime_worker.reviewer.summary import artifacts_in, checked_update
 
 
@@ -75,6 +76,8 @@ class ReviewResult:
     """判定依据（写入 trace，不传给下游）。"""
     highlights: dict[str, Any] | None = None
     """这一轮的重要输出（同一次 Progress Check 给的）；不合格时没有，不为它重问。"""
+    checks: JudgeChecks | None = None
+    """Jev 对要交付的结果的检查（N-09）；没配、不是要判 done、或调用失败时为 None。写入 trace。"""
 
 
 def generator_vendor(results: Mapping[str, Mapping[str, Any]]) -> str:
@@ -102,9 +105,11 @@ def _value(data: Any) -> struct_pb2.Value:
 
 
 class Reviewer:
-    def __init__(self, gateway: ModelGateway, config: ReviewerConfig | None = None) -> None:
+    def __init__(self, gateway: ModelGateway, config: ReviewerConfig | None = None, *, judge: DeliverableJudge | None = None) -> None:
         self.gateway = gateway
         self.config = config or ReviewerConfig()
+        # 交付的快速检查（docs/plan/feedback-2026-11-01.md N-09）；没配时为 None。
+        self.judge = judge
 
     async def review(self, request: ReviewRequest) -> ReviewResult:
         cfg = self.config
@@ -146,6 +151,7 @@ class Reviewer:
                     messages = prompts.retry_messages(messages, text, problems)
         completion = float(answer["completion"]) if answer is not None and answer.get("completion") is not None else None
         fl = floor(lg, results, completion=completion, thresholds=cfg.thresholds)
+        checks = await self._judged(request, results, answer)
         decision = enforce(
             answer["verdict"] if answer is not None else None,
             floor=fl,
@@ -156,6 +162,7 @@ class Reviewer:
             caps=cfg.caps,
             escalate_tier=cfg.escalate_tier,
             verification=request.verification,
+            checks=checks,
         )
         verdict = decision.verdict
         if answer is None and verdict.get("reason_code") == "rule_fallback" and cause:
@@ -182,7 +189,29 @@ class Reviewer:
             problems=problems if answer is None else [],
             reasons=[*fl.reasons, *decision.reasons],
             highlights=prompts.checked_highlights(answer.get("highlights")) if answer is not None else None,
+            checks=checks,
         )
+
+    async def _judged(self, request: ReviewRequest, results: Mapping[str, Mapping[str, Any]], answer: Mapping[str, Any] | None) -> JudgeChecks | None:
+        """要判 done 时请 Jev 看一眼要交付的结果（N-09）：模型提议 done，或没有模型的提议、规则会判 done（没有失败的 Node、有成功的
+        deliver）。交付本身已经是空的或带占位符的不问（规则已经会拦）。"""
+        if self.judge is None:
+            return None
+        proposal = answer.get("verdict") if answer is not None else None
+        if isinstance(proposal, Mapping) and proposal.get("verdict") != "done":
+            return None
+        if proposal is None and any(is_failed(r) for r in results.values()):
+            return None
+        roles = {str(n.get("id")): n.get("role") for n in request.stage.get("nodes") or []}
+        delivers = sorted(nid for nid, r in results.items() if r.get("status") == "succeeded" and "deliver" in (r.get("role"), roles.get(nid)))
+        if not delivers:
+            return None
+        wanted = str(((proposal or {}).get("done") or {}).get("deliver_node") or "")
+        node = wanted if wanted in delivers else delivers[0]
+        value = results[node].get("result")
+        if deliverable_problem(value) is not None:
+            return None
+        return await self.judge.check(str(request.task_state.get("goal") or ""), reply_text(value))
 
     async def _call(self, request: ReviewRequest, messages: list[mg.ChatMessage], calls: list[ModelCall]) -> mg.GenerateResponse:
         t = request.tenant

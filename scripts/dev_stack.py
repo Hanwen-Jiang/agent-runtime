@@ -61,8 +61,10 @@ WORKER_QUEUES = "task,decision,model,program"
 PROVIDER_KEY_NAME = "model-provider/api-key"
 PUBLISH_TOKEN_NAME = "registry/publish-token"
 WORKSPACE_KEY_NAME = "workspace/credential-key"
+# Jev（交付的快速检查，docs/plan/feedback-2026-11-01.md N-09）：供应商配置文件或环境变量里有 JEV_API_KEY 时写进开发 SecretStore，Worker 设 AR_JUDGE=jev。
+JEV_KEY_NAME = "judge/jev-api-key"
 # 子进程一律不继承的环境变量：真实密钥只经 dev-secret 的标准输入进入 SecretStore。
-SCRUBBED_ENV = ("AR_MODEL_PROVIDER_API_KEY",)
+SCRUBBED_ENV = ("AR_MODEL_PROVIDER_API_KEY", "JEV_API_KEY")
 EXE = ".exe" if os.name == "nt" else ""
 
 
@@ -287,6 +289,10 @@ class Stack:
             return {}
         return read_provider_env(Path(self.options["provider_env"]))
 
+    def jev_key(self) -> str:
+        """Jev 的密钥：供应商配置文件里的 JEV_API_KEY，其次是环境变量；都没有时为空（不检查交付）。"""
+        return self.provider_values().get("JEV_API_KEY", "") or os.environ.get("JEV_API_KEY", "")
+
     def signing_key(self) -> str:
         if not self.signing_key_file.exists():
             self.shared.mkdir(parents=True, exist_ok=True)
@@ -339,6 +345,7 @@ class Stack:
                 "AR_PLANNER": decisions,
                 "AR_REVIEWER": decisions,
                 "AR_TOOL_LOOP": decisions,
+                **({"AR_JUDGE": "jev"} if decisions == "model" and self.jev_key() else {}),
                 "AR_TOOL_WORKSPACE_ROOT": str(self.workspace_root),
                 "PYTHONIOENCODING": "utf-8",
                 "PATH": worker_path,
@@ -389,6 +396,9 @@ class Stack:
             if not key:
                 raise StackError(f"{self.options['provider_env']} 里没有 AR_MODEL_PROVIDER_API_KEY")
             self.dev_secret(PROVIDER_KEY_NAME, key)
+        jev = self.jev_key()
+        if jev:
+            self.dev_secret(JEV_KEY_NAME, jev)
         self.seed(SEED_FILE)
         if effects:
             tenants = self.root / "registry-seed.tenants.json"

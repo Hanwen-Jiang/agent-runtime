@@ -29,6 +29,11 @@ ENV_PLANNER = "AR_PLANNER"
 PLANNERS = ("stub", "model")
 # Reviewer 与收尾写回（S-10）：stub 用 S-03 的桩（默认）；model 用真正的 Reviewer（经 Model Gateway）与收尾写回。
 ENV_REVIEWER = "AR_REVIEWER"
+# 交付的快速检查（docs/plan/feedback-2026-11-01.md N-09）：空为不检查，jev 为 TypeSafe 的 Jev（密钥在 SecretStore 平台作用域的 judge/jev-api-key）。
+ENV_JUDGE = "AR_JUDGE"
+ENV_JUDGE_URL = "AR_JUDGE_URL"
+ENV_JUDGE_MODEL = "AR_JUDGE_MODEL"
+JUDGES = ("", "jev")
 REVIEWERS = ("stub", "model")
 # tool_loop 的一步：stub 用桩（默认，第一步就结束）；model 经 Model Gateway，上下文由 Context Builder 组装。
 ENV_TOOL_LOOP = "AR_TOOL_LOOP"
@@ -129,6 +134,9 @@ class WorkerConfig:
     egress_gateway_url: str = ""
     preview_domain: str = ""
     workspace_allow_local_remotes: bool = False
+    judge: str = ""
+    judge_url: str = "https://api.typesafe.ai"
+    judge_model: str = "jev-latest"
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> WorkerConfig:
@@ -148,6 +156,9 @@ class WorkerConfig:
         planner = env.get(ENV_PLANNER, "") or cls.planner
         if planner not in PLANNERS:
             raise ValueError(f"{ENV_PLANNER} 只能是 {'、'.join(PLANNERS)}")
+        judge = env.get(ENV_JUDGE, "").strip()
+        if judge not in JUDGES:
+            raise ValueError(f"{ENV_JUDGE} 只能是空或 jev")
         reviewer = env.get(ENV_REVIEWER, "") or cls.reviewer
         if reviewer not in REVIEWERS:
             raise ValueError(f"{ENV_REVIEWER} 只能是 {'、'.join(REVIEWERS)}")
@@ -213,6 +224,9 @@ class WorkerConfig:
             claim_check_threshold=threshold,
             planner=planner,
             reviewer=reviewer,
+            judge=judge,
+            judge_url=env.get(ENV_JUDGE_URL, "").strip() or cls.judge_url,
+            judge_model=env.get(ENV_JUDGE_MODEL, "").strip() or cls.judge_model,
             tool_loop=tool_loop,
             context_effective_tokens=effective,
             context_offload_tokens=offload,

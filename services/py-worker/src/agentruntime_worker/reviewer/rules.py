@@ -23,6 +23,10 @@ from agentruntime_worker.reviewer.signals import HARD_SIGNALS, STEPS, Ledger, is
 from agentruntime_worker.workflows import stage_plan as sp
 
 HUMAN_REPLIES = ("continue_as_is", "replan_with_guidance", "stop_and_wrap_up")
+# Jev 的检查（docs/plan/feedback-2026-11-01.md N-09）：“不认自己的工具或之前的工作”的概率到这么高就拦；没有模型评审时，
+# “回答了用户问的事”的概率低到这么低就拦。2026-11-01 线上那条“我没有工具”的回复是 0.99。
+JUDGE_DISOWN_THRESHOLD = 0.8
+JUDGE_OFF_TOPIC_THRESHOLD = 0.2
 """Reviewer 升级问人时限定的三种回复（设计书 4.11）。"""
 
 JUDGING_ROLES = ("judge", "gate")
@@ -211,8 +215,10 @@ def enforce(
     caps: Caps = Caps(),
     escalate_tier: str = "strong@high",
     verification: Mapping[str, Any] | None = None,
+    checks: Any = None,
 ) -> Decision:
-    rules = _Rules(floor, ledger, stage, results, catalog, caps, escalate_tier, verification)
+    """checks：Jev 对要交付的结果的检查（reviewer/judge.py 的 JudgeChecks；没配或没问时为 None）。"""
+    rules = _Rules(floor, ledger, stage, results, catalog, caps, escalate_tier, verification, checks=checks, model_reviewed=proposal is not None)
     reasons: list[str] = []
     if proposal is None:
         verdict = rules.fallback()
@@ -249,8 +255,13 @@ class _Rules:
         caps: Caps,
         escalate_tier: str,
         verification: Mapping[str, Any] | None = None,
+        *,
+        checks: Any = None,
+        model_reviewed: bool = True,
     ) -> None:
         self.verification = verification
+        self.checks = checks
+        self.model_reviewed = model_reviewed
         self.floor = floor
         self.ledger = ledger
         self.results = results
@@ -270,6 +281,20 @@ class _Rules:
         if not self.failed:
             return {"verdict": "continue", "reason": "各 Node 都成功，本轮还没有交付"}
         return self.make(self.floor.step, None, list(self.floor.reasons), code=self.floor.code, params=self.floor.params)
+
+    def judged_problem(self) -> tuple[str, str, dict[str, Any]] | None:
+        """Jev 的检查（N-09）：disowns 高的一律拦；answers 低的只在没有模型评审时拦（模型评审过的以模型为准）。"""
+        checks = self.checks
+        if checks is None:
+            return None
+        if checks.disowns >= JUDGE_DISOWN_THRESHOLD:
+            return (
+                "交付说自己没有工具、读不了文件、输入缺了，或承认之前的回答是编的：不能交付，回 Planner 带上工具重做",
+                "rule_judge_disowns", {"probability": round(float(checks.disowns), 2)},
+            )
+        if not self.model_reviewed and checks.answers <= JUDGE_OFF_TOPIC_THRESHOLD:
+            return "交付没有回答用户问的事：不能交付，回 Planner 重做", "rule_judge_off_topic", {"probability": round(float(checks.answers), 2)}
+        return None
 
     def unproven_done(self) -> tuple[str, str] | None:
         """判 done 却明显没做完（TMP 计划第 11.15 节）：能改文件却没改，或改完没运行过任何命令。各种情况合计只拦一次：有的任务确实不用改、
@@ -306,9 +331,10 @@ class _Rules:
                 reasons.append(f"done 的交付改为本轮成功的 deliver 节点 {delivers[0]}")
                 verdict["done"] = {"deliver_node": delivers[0]}
             chosen = str(verdict["done"]["deliver_node"])
-            bad = deliverable_problem(self.results[chosen].get("result"))
+            # docs/plan/feedback-2026-11-01.md N-02：交付是空的或带着没解析的引用，不管是不是模型判的都不能交付；
+            # N-09：Jev 看出交付不认自己的工具、输入或之前的工作，或者（没有模型评审时）没有回答用户问的事。
+            bad = deliverable_problem(self.results[chosen].get("result")) or self.judged_problem()
             if bad is not None:
-                # docs/plan/feedback-2026-11-01.md N-02：交付是空的或带着没解析的引用，不管是不是模型判的都不能交付。
                 why, code, params = bad
                 reasons.append(why)
                 out = self.make("replan" if not self.failed else self.floor.step, verdict, [why], code=code, params={"node": chosen, **params})

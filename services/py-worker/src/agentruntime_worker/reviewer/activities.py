@@ -79,13 +79,15 @@ class ReviewerActivities:
         )
         # 判定依据与模型调用写入日志（trace），不传给下游。
         logger.info(
-            "Reviewer：第 %s 轮判 %s%s；依据 %s；模型调用 %s%s",
+            "Reviewer：第 %s 轮判 %s%s；依据 %s；模型调用 %s%s%s",
             inp.round_seq,
             result.verdict["verdict"],
             "（代码按规则上调）" if result.raised else "",
             "；".join(result.reasons) or "无",
             [(c.purpose, c.tier, c.vendor) for c in result.calls],
             "；Progress Check 不可用，只按规则判定" if result.fallback else "",
+            (f"；Jev（{result.checks.model}，输入 {result.checks.input_tokens} token）：回答了 {result.checks.answers:.2f}、不认工具或输入 {result.checks.disowns:.2f}"
+             if result.checks is not None else ""),
         )
         return ReviewRoundOutput(verdict=result.verdict, state_update=result.state_update, cost_usd=round(sum(c.cost_usd for c in result.calls), 6), highlights=result.highlights)
 
@@ -114,6 +116,12 @@ def dev_reviewer(config: WorkerConfig) -> ReviewerActivities:
     """
     root = data_root(config)
     wrap_up = WrapUp(objects=dev_object_store(config, root), memory=memory_client(config), telemetry=worker_telemetry())
+    judge = None
+    if config.judge == "jev":
+        # 交付的快速检查（docs/plan/feedback-2026-11-01.md N-09）：密钥在 SecretStore 平台作用域的 judge/jev-api-key。
+        from agentruntime_worker.reviewer.judge import JevJudge, secret_key
+
+        judge = JevJudge(secret_key(config.store_paths(root)[1]), url=config.judge_url, model=config.judge_model)
     # 这份 Catalog 不另设上限：上限是 Task 自己的（constraints.effect_ceiling，review 里取两者较低的）。原来写的 read 让每个 Task 的 Reviewer
     # 都以为只能读（TMP 计划第 11.15 节）。
-    return ReviewerActivities(Reviewer(model_gateway(config)), StaticCatalogSource(ReviewCatalog(effect_ceiling=sp.EFFECT_ORDER[-1])), wrap_up)
+    return ReviewerActivities(Reviewer(model_gateway(config), judge=judge), StaticCatalogSource(ReviewCatalog(effect_ceiling=sp.EFFECT_ORDER[-1])), wrap_up)
