@@ -1,6 +1,6 @@
 # 开放注册与普通用户的资源限制
 
-> 状态（2026-11-03）：开放注册已上线；`tenant_busy` 已在 task-service 准入实现默认每租户 2 个未终态 Task，并用租户作用域锁保证并发提交不超额。Model Gateway 已实现 `tenant_policy.model_allowlist` 的空数组/白名单语义；默认免费策略 seed 已加入 `deploy/dev/default-tenant-policies.json`，生产仍需由部署侧创建 ConfigMap 并挂载。每日/月度模型预算、防滥用、付费策略和告警仍待完成。Go 验收测试见 `services/go-task-service/internal/taskapi/server_test.go`。
+> 状态（2026-11-03）：开放注册已上线；`tenant_busy` 已在 task-service 准入实现默认每租户 2 个未终态 Task，并用租户作用域锁保证并发提交不超额。Model Gateway 已实现 `tenant_policy.model_allowlist` 的空数组/白名单语义；默认免费策略 seed 已加入 `deploy/dev/default-tenant-policies.json`，Helm 云配置同时下发每日 3 美元、每月 20 美元默认额度，生产仍需完成账本 enforcement。每日/月度模型预算双重准入、防滥用、付费策略和告警仍待完成。Go 验收测试见 `services/go-task-service/internal/taskapi/server_test.go`。
 
 ## 1. 现在的做法：平台默认的租户策略
 

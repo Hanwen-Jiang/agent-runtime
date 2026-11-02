@@ -180,7 +180,7 @@
 
 | 编号 | 决策 | 补充语义 | 责任 / 状态 |
 | --- | --- | --- | --- |
-| 106 | A：默认模型白名单和云上 ConfigMap | 已在最新提交中上线；本轮做收尾与验收。 | Model Gateway + Helm / 已实现，待工作项验收 |
+| 106 | A：默认模型白名单和云上 ConfigMap | 已在最新提交中上线；内置策略同时包含免费模型白名单和 $3/$20 默认额度，外部 ConfigMap 优先。 | Model Gateway + Helm / 静态验收完成，真实 Helm render 待工具 |
 | 107 | A：schema、账本、时区、计费规则全部批准后实现 | 已批准，本基线冻结后进入独立实现批次。 | Model Gateway + Task Service / 待实现 |
 | 108 | A：ContextBuilder 输入、截断顺序、replay 语义冻结后实现 | 已批准；模型节点接入仍单独验收。 | Worker / Temporal / 待实现 |
 | 109 | A：工具链 → 基础组件 → Sandbox → 存储/网络 → 观测 | 真实环境按此顺序推进。 | Release + Infra / 已批准 |
