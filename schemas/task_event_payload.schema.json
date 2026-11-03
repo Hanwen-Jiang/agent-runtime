@@ -75,19 +75,20 @@
         "kind": {"$ref": "defs.schema.json#/$defs/node_kind"},
         "role": {"$ref": "defs.schema.json#/$defs/role"},
         "executor": {"$ref": "defs.schema.json#/$defs/executor"},
+        "mode": {"description": "Goal Node 的展开方式（N-16）：sub_agent 时客户端把它画成一个子 Agent，之后 node_id 为它的 tool_status、context_usage 是这个子 Agent 的进度；Atomic Node 没有", "$ref": "defs.schema.json#/$defs/mode"},
         "result": {"$ref": "defs.schema.json#/$defs/forbidden"},
         "rationale": {"$ref": "defs.schema.json#/$defs/forbidden"}
       },
       "unevaluatedProperties": false
     },
     "tool_status": {
-      "description": "顶层 Goal Node 的 tool_loop 里一次工具调用的状态（附录 E.1）：调用前 running，调用后 succeeded 或 failed。sub_agent 等子工作流里的调用不推。target 是给人看的简短说明（repo_* 的路径、shell_run 命令的开头），经凭据脱敏；不带工具的输出",
+      "description": "顶层 Goal Node 的 tool_loop 里一次工具调用的状态（附录 E.1）：调用前 running，调用后 succeeded 或 failed。顶层的 sub_agent 在自己的子工作流里调用的也推（N-16），node_id 是那个 sub_agent Goal Node，并行的几个子 Agent 的事件交错到达、按 event_id 排；sub_task、子图等其余子工作流里的调用不推。target 是给人看的简短说明（repo_* 的路径、shell_run 命令的开头），经凭据脱敏；不带工具的输出",
       "type": "object",
       "required": ["event", "round_seq", "node_id", "step", "tool", "state"],
       "properties": {
         "event": {"const": "tool_status"},
         "round_seq": {"$ref": "#/$defs/round_seq"},
-        "node_id": {"description": "这次调用所在的 Goal Node", "$ref": "defs.schema.json#/$defs/node_id"},
+        "node_id": {"description": "这次调用所在的 Goal Node（sub_agent 里的调用是那个 sub_agent Goal Node）", "$ref": "defs.schema.json#/$defs/node_id"},
         "step": {"description": "tool_loop 的第几步，从 1 开始", "type": "integer", "minimum": 1},
         "tool": {"type": "string", "minLength": 1, "maxLength": 128},
         "state": {"$ref": "defs.schema.json#/$defs/tool_call_state"},
