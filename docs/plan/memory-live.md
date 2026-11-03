@@ -58,7 +58,8 @@
 
 ## 5. F2：上线与 LongMemEval_S 验收（2026-11-03）
 
-> 登记在 `work-dag-2026-11-03.md` 的 F 线。M-01～M-03 的代码已在 main 上，F2 只新写评测，其余是部署。验收测试：`services/py-learning/tests/test_longmemeval.py`、`services/py-memory/tests/test_live_retriever.py`（实现前跳过）。
+> 登记在 `work-dag-2026-11-03.md` 的 F 线。M-01～M-03 的代码已在 main 上，F2 只新写评测，其余是部署。验收测试：`services/py-learning/tests/test_longmemeval.py`、`services/py-memory/tests/test_live_retriever.py`。
+> 2026-11-03：下面四条人定照建议；评测与 `live_retriever` 已实现，测试都过了。没做的：可选的 Ragas 一步还没接；真数据（约 270 MB）还没下，第一次真跑等部署之后；部署归同事的主线。
 
 **题库**：LongMemEval（ICLR 2025，MIT），用清洗过的 `xiaowu0162/longmemeval-cleaned` 里的 `longmemeval_s_cleaned.json`（每题约 115k token 的对话历史、约 50 个会话）。2026-11-03 人定：它测 Memory Service 的检索，Ragas 照样打分，`evalsets/memory-rag` 的 10 题留作冒烟。数据不进仓库，`fetch` 下到本地。
 

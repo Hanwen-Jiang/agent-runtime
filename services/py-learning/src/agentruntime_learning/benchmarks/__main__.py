@@ -10,6 +10,8 @@ terminalbench {fetch,prepare,run,grade,report}（docs/plan/feedback-2026-11-01.m
 Docker 从官方镜像取出各任务的工作目录（只收文本文件，带不走的记为不可移植）；run 经 Task API 跑（默认只选可移植的）；grade 用 Docker
 在官方镜像里跑隐藏的测试；report 写汇总。令牌、预算、并发、续跑同 swebench。
 
+longmemeval {fetch,run,report}（docs/plan/memory-live.md 第 5 节，F2）：LongMemEval_S 测 Memory Service 的检索，见 benchmarks.longmemeval。
+
 设了 OTEL_EXPORTER_OTLP_ENDPOINT 时 run 边跑边发进度、grade 判完发分数（agentruntime_learning.evals.live），评测看板读它们
 （docs/plan/eval-observability-and-runtime-fixes.md 第 11.16 节）；看板上的运行 id 是 run.json 的 run_id，续跑与判分都对得上。
 """
@@ -336,6 +338,11 @@ def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(errors="backslashreplace")
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["longmemeval"]:
+        from agentruntime_learning.benchmarks import longmemeval
+
+        return longmemeval.main(argv[1:])
     try:
         args = _parser().parse_args(argv)
     except SystemExit as exc:
