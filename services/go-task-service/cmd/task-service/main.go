@@ -421,7 +421,9 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	api.Mount(mux)
 	workspaces.Mount(mux)
 	environments.Mount(mux)
-	mux.Handle("/v1/tasks/", events.NewHandler(events.HandlerDeps{Ingress: ing, Cache: cacheProvider, Store: store, Clock: clk}))
+	streams := events.NewHandler(events.HandlerDeps{Ingress: ing, Cache: cacheProvider, Store: store, Clock: clk})
+	mux.Handle("/v1/tasks/", streams)
+	mux.Handle("GET /v1/sessions/{session_id}/snapshot", streams)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "ok") })
 
 	protocols := new(http.Protocols)

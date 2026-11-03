@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentruntime.example/schemas/task_event_payload.schema.json",
   "title": "TaskEvent 的载荷：进度事件",
-  "description": "Task 工作流经 publish_task_event 推送、客户端经 SSE 收到的进度事件的载荷（taskapi.v1.TaskEvent.payload；设计书 4.14，T-11b）。event 与 SSE 的事件名相同。只描述 Round、Stage、Node、tool_loop 里每次工具调用的进度、决策调用的重试与等待中的问题，不带 Node 的结果、工具的输出与 rationale：结果只在 task_finished 里（Task 的结局）。task_accepted 没有载荷，task_finished 的载荷是 TaskWorkflowResult，都不在这里。",
+  "description": "Task 工作流经 publish_task_event 推送、客户端经 SSE 收到的进度事件的载荷（taskapi.v1.TaskEvent.payload；设计书 4.14，T-11b）。event 与 SSE 的事件名相同。只描述 Round、Stage、Node、tool_loop 里每次工具调用的进度、Task Plan 的步骤、决策调用的重试与等待中的问题，不带 Node 的结果、工具的输出与 rationale：结果只在 task_finished 里（Task 的结局）。task_accepted 没有载荷，task_finished 的载荷是 TaskWorkflowResult，都不在这里。",
   "type": "object",
   "required": ["event"],
   "properties": {
@@ -19,7 +19,8 @@
     {"if": {"required": ["event"], "properties": {"event": {"const": "decision_retry"}}}, "then": {"$ref": "#/$defs/decision_retry"}},
     {"if": {"required": ["event"], "properties": {"event": {"const": "guidance_updated"}}}, "then": {"$ref": "#/$defs/guidance_updated"}},
     {"if": {"required": ["event"], "properties": {"event": {"const": "task_message_edited"}}}, "then": {"$ref": "#/$defs/task_message_edited"}},
-    {"if": {"required": ["event"], "properties": {"event": {"const": "context_usage"}}}, "then": {"$ref": "#/$defs/context_usage"}}
+    {"if": {"required": ["event"], "properties": {"event": {"const": "context_usage"}}}, "then": {"$ref": "#/$defs/context_usage"}},
+    {"if": {"required": ["event"], "properties": {"event": {"const": "plan_updated"}}}, "then": {"$ref": "#/$defs/plan_updated"}}
   ],
   "$defs": {
     "round_seq": {"description": "Round 序号，从 1 开始", "type": "integer", "minimum": 1},
@@ -74,19 +75,20 @@
         "kind": {"$ref": "defs.schema.json#/$defs/node_kind"},
         "role": {"$ref": "defs.schema.json#/$defs/role"},
         "executor": {"$ref": "defs.schema.json#/$defs/executor"},
+        "mode": {"description": "Goal Node 的展开方式（N-16）：sub_agent 时客户端把它画成一个子 Agent，之后 node_id 为它的 tool_status、context_usage 是这个子 Agent 的进度；Atomic Node 没有", "$ref": "defs.schema.json#/$defs/mode"},
         "result": {"$ref": "defs.schema.json#/$defs/forbidden"},
         "rationale": {"$ref": "defs.schema.json#/$defs/forbidden"}
       },
       "unevaluatedProperties": false
     },
     "tool_status": {
-      "description": "顶层 Goal Node 的 tool_loop 里一次工具调用的状态（附录 E.1）：调用前 running，调用后 succeeded 或 failed。sub_agent 等子工作流里的调用不推。target 是给人看的简短说明（repo_* 的路径、shell_run 命令的开头），经凭据脱敏；不带工具的输出",
+      "description": "顶层 Goal Node 的 tool_loop 里一次工具调用的状态（附录 E.1）：调用前 running，调用后 succeeded 或 failed。顶层的 sub_agent 在自己的子工作流里调用的也推（N-16），node_id 是那个 sub_agent Goal Node，并行的几个子 Agent 的事件交错到达、按 event_id 排；sub_task、子图等其余子工作流里的调用不推。target 是给人看的简短说明（repo_* 的路径、shell_run 命令的开头），经凭据脱敏；不带工具的输出",
       "type": "object",
       "required": ["event", "round_seq", "node_id", "step", "tool", "state"],
       "properties": {
         "event": {"const": "tool_status"},
         "round_seq": {"$ref": "#/$defs/round_seq"},
-        "node_id": {"description": "这次调用所在的 Goal Node", "$ref": "defs.schema.json#/$defs/node_id"},
+        "node_id": {"description": "这次调用所在的 Goal Node（sub_agent 里的调用是那个 sub_agent Goal Node）", "$ref": "defs.schema.json#/$defs/node_id"},
         "step": {"description": "tool_loop 的第几步，从 1 开始", "type": "integer", "minimum": 1},
         "tool": {"type": "string", "minLength": 1, "maxLength": 128},
         "state": {"$ref": "defs.schema.json#/$defs/tool_call_state"},
@@ -221,6 +223,18 @@
           }
         },
         "applied": {"description": "这次用到的压缩步骤，按阶梯的顺序", "type": "array", "items": {"$ref": "defs.schema.json#/$defs/context_step"}}
+      },
+      "unevaluatedProperties": false
+    },
+    "plan_updated": {
+      "description": "Task Plan 的步骤变了（N-04，人工验收基线 Q55、Q56）：带完整的步骤快照（同 Task State 的 plan），客户端丢掉旧的、按它重建计划区；不是增量。由 Task 工作流推送，是可重放的事件；fast 不推。同一 Round 结束时的最后一份另用去重键",
+      "type": "object",
+      "required": ["event", "round_seq", "steps"],
+      "properties": {
+        "event": {"const": "plan_updated"},
+        "round_seq": {"$ref": "#/$defs/round_seq"},
+        "steps": {"$ref": "defs.schema.json#/$defs/plan_steps"},
+        "current_step": {"description": "正在做的一步（status 为 active 的那步）；没有时不写", "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 64}
       },
       "unevaluatedProperties": false
     },

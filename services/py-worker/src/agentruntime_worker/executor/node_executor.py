@@ -65,7 +65,7 @@ from agentruntime_worker.activities.types import HumanCancel, HumanQuestion, Nod
 from agentruntime_worker.context.builder import ContextBuilder, ContextRequest, measured, message_tokens, task_family
 from agentruntime_worker.executor import keys
 from agentruntime_worker.session.transcript import TranscriptSource, Turn, actions_text, chat_messages
-from agentruntime_worker.executor.model_gateway import ModelGateway
+from agentruntime_worker.executor.model_gateway import ModelGateway, generate_streaming
 from agentruntime_worker.executor.schemas import OutputSchemaResolver, UnknownSchema, schema_for, validate
 from agentruntime_worker.tools.catalog import latest_spec
 from agentruntime_worker.tools.checkpoint import UndoReport
@@ -132,6 +132,9 @@ class ExecutorDeps:
     # 非 conversational model Activity 的上下文组装器。它只接受 NodeInput 中的
     # 稳定 JSON 快照；未配置时保留原有最小消息路径，便于旧 Activity 历史重放。
     context_builder: ContextBuilder | None = None
+    # N-19/N-20：deliver 节点经 StreamGenerate 生成（网关客户端支持时），记首个 token 的用时（meta.first_token_ms）。
+    # 片段暂不推送（从 activity 到事件流的通道待定，见 docs/plan/n19-n20-implementation-2026-11-03.md）；默认关（AR_STREAM_DELIVER）。
+    stream_deliver: bool = False
 
 
 def _conversational(node: Mapping[str, Any]) -> bool:
@@ -690,7 +693,7 @@ class NodeExecutor:
 
     async def _generate(
         self, inp: NodeInput, tenant: TenantContext, schema: Mapping[str, Any] | None, retry_errors: list[str] | None
-    ) -> tuple[mg.GenerateResponse, Sequence[mg.ChatMessage], float]:
+    ) -> tuple[mg.GenerateResponse, Sequence[mg.ChatMessage], float, int | None]:
         transcript = self.deps.transcript
         turns = await transcript.load(inp.tenant, inp.task_id) if transcript is not None and _conversational(inp.node) else ()
         context_cost = 0.0
@@ -740,8 +743,13 @@ class NodeExecutor:
         params = mg.GenerateParams(messages=messages)
         if schema is not None:
             params.output_schema.CopyFrom(payload_pb2.JsonPayload(value=_to_value(dict(schema))))
-        response = await self.deps.models.generate(mg.GenerateRequest(tenant=tenant, call=self._call(inp), generation=params))
-        return response, params.messages, context_cost
+        request = mg.GenerateRequest(tenant=tenant, call=self._call(inp), generation=params)
+        first_token_ms: int | None = None
+        if self.deps.stream_deliver and inp.node.get("role") == "deliver":
+            response, first_token_ms = await generate_streaming(self.deps.models, request)
+        else:
+            response = await self.deps.models.generate(request)
+        return response, params.messages, context_cost, first_token_ms
 
     async def _model(self, inp: NodeInput, tenant: TenantContext, span: Span) -> dict[str, Any]:
         node = inp.node
@@ -756,13 +764,13 @@ class NodeExecutor:
         # TMP 计划第 7 节：judge 按 {result, regressions} 的外壳要输出，拆开后 result 照旧，regressions 另放（只交给 Reviewer）。
         judge = node.get("role") == "judge"
         asked = judge_envelope(schema) if judge else schema
-        response, messages, context_cost = await self._generate(inp, tenant, asked, None)
+        response, messages, context_cost, first_token_ms = await self._generate(inp, tenant, asked, None)
         result = self._result_of(response)
         errors = validate(asked, result) if asked is not None else []
         if errors:
             # 输出不符合 schema：带上校验错误重问一次（附录 D.3、D.6）。
             span.add_event("invalid_output_retry", {"errors": "；".join(errors)})
-            response, messages, retry_context_cost = await self._generate(inp, tenant, asked, errors)
+            response, messages, retry_context_cost, _ = await self._generate(inp, tenant, asked, errors)
             context_cost += retry_context_cost
             result = self._result_of(response)
             errors = validate(asked, result) if asked is not None else []
@@ -776,6 +784,9 @@ class NodeExecutor:
             span.add_event("rationale", {"text": response.rationale})
         span.set_attributes(_usage_attributes(node, response.model, response.usage))
         meta = self._meta(node, response.model, response.usage, started)
+        if first_token_ms is not None:
+            # N-20：第一次生成的首个 token 用时（重问的不算）。
+            meta["first_token_ms"] = first_token_ms
         if context_cost:
             meta["cost_usd"] = round(float(meta.get("cost_usd") or 0.0) + context_cost, 6)
         out: dict[str, Any] = {"result": result, "meta": meta}

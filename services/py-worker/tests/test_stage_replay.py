@@ -96,6 +96,10 @@ STAGE_CASES: dict[str, tuple[str, str]] = {
     "codes_human_stopped": (names.TASK_WORKFLOW, r'"reason_code":\s*"human_stopped"'),
     # docs/plan/running-task-interaction.md 第 1 节：一次回答里的多个工具调用都执行（第二个的调用 id 是 <调用 id>.2）。
     "tool_loop_parallel": (names.TASK_WORKFLOW, r'"node_id":\s*"[a-z_]+\.2\.2"'),
+    # docs/plan/feedback-2026-11-01.md N-04：Task Plan 的步骤写进 Task State，推 plan_updated（规划之后与收尾之前各一份）。
+    "n04_plan_updated": (names.TASK_WORKFLOW, r'n04-task-plan.*"plan_updated".*"plan_updated"'),
+    # N-16：顶层 sub_agent 的子工作流推自己的进度事件。
+    "n16_sub_agent_events": (names.SUB_AGENT_WORKFLOW, r'"name":\s*"publish_task_event".*n16-sub-agents'),
     # 第 2 节：纠偏（下一次模型调用带上）、立刻打断（tool_loop 里继续；Stage 被取消，以 replan 继续）。
     "guidance_next_step": (names.TASK_WORKFLOW, r'"signalName":\s*"task_guidance".*"user_guidance"'),
     "guidance_interrupt_tool_loop": (names.TASK_WORKFLOW, r'GUIDANCE_MODE_INTERRUPT.*"user_guidance"'),
@@ -106,7 +110,11 @@ POLICY_CASES = ("policy_effect_denied", "policy_finish_rejected", "policy_task_m
 EVENTS_CASES = ("events_progress",)
 AT_START_CASES = ("patches_at_start",)
 R01_CASES = ("r01_failed_node_audited", "r01_tool_loop_budget")
-GUIDANCE_CASES = ("guidance_next_step", "guidance_interrupt_tool_loop", "guidance_interrupt_stage")
+# N-04 之后录下的（带到 n04-task-plan 为止的全部版本标记）；N-16 之后录下的还带 n16-sub-agents。
+N16_CASES = ("n16_sub_agent_events",)
+N04_CASES = ("n04_plan_updated", *N16_CASES)
+# 纠偏之后录下的：GUIDANCE_PATCH 及之前的版本标记都有。
+GUIDANCE_CASES = ("guidance_next_step", "guidance_interrupt_tool_loop", "guidance_interrupt_stage", *N04_CASES)
 PARALLEL_CASES = ("tool_loop_parallel", *GUIDANCE_CASES)
 TMP_CASES = ("budget_ask_human", "budget_tool_calls_stop", "decision_retry", "codes_human_stopped", *PARALLEL_CASES)
 CODES_CASES = ("codes_human_stopped", *PARALLEL_CASES)
@@ -223,8 +231,17 @@ def test_version_branch_keeps_old_histories_replayable() -> None:
     # R-01 评审之后的版本分支：新历史带标记；之前录下的（含 patches_at_start）都没有，开头问到时返回 False，按旧路径回放。
     for name in R01_CASES:
         assert R01_FIXES_PATCH in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"{name} 应带版本标记 {R01_FIXES_PATCH}"
-    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in R01_CASES + TMP_CASES)):
+    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in R01_CASES + TMP_CASES + N04_CASES)):
         assert R01_FIXES_PATCH not in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"R-01 修复之前的 {name} 不该有 {R01_FIXES_PATCH}"
+    # N-04 的版本分支：新历史带标记；之前录下的都没有，开头问到时返回 False，不推 plan_updated。
+    for name in N16_CASES:
+        assert patches.N16_PATCH in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"{name} 应带版本标记 {patches.N16_PATCH}"
+    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in N16_CASES)):
+        assert patches.N16_PATCH not in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"N-16 之前的 {name} 不该有 {patches.N16_PATCH}"
+    for name in N04_CASES:
+        assert patches.PLAN_PATCH in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"{name} 应带版本标记 {patches.PLAN_PATCH}"
+    for name in (*S03_GOLDEN, *(n for n in STAGE_CASES if n not in N04_CASES)):
+        assert patches.PLAN_PATCH not in history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8")), f"N-04 之前的 {name} 不该有 {patches.PLAN_PATCH}"
     # TMP 计划第 3、4 节的版本分支（时间与工具调用预算、工作流里的决策重试）：新历史带两个标记，之前录下的都没有。
     for name in TMP_CASES:
         text = history_text((HISTORIES_DIR / f"{name}.json").read_text("utf-8"))

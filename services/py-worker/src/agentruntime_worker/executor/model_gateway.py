@@ -10,6 +10,8 @@
 
 from __future__ import annotations
 
+import time
+from collections.abc import Callable
 from typing import Protocol, TypeVar
 
 from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
@@ -23,6 +25,27 @@ class ModelGateway(Protocol):
     async def generate(self, request: mg.GenerateRequest) -> mg.GenerateResponse: ...
 
     async def embed(self, request: mg.EmbedRequest) -> mg.EmbedResponse: ...
+
+
+async def generate_streaming(
+    models: ModelGateway, request: mg.GenerateRequest, on_delta: Callable[[str, str], None] | None = None,
+) -> tuple[mg.GenerateResponse, int | None]:
+    """N-19/N-20：网关客户端有 stream_generate 时经 StreamGenerate 生成，返回 (完整结果, 首个分片的用时毫秒)；没有时退回 Generate，
+    用时为 None（不伪造）。片段交给 on_delta（"text" 或 "thinking"，片段）；中间的片段可以丢（基线 Q62），结果以最后一个分片为准。"""
+    stream = getattr(models, "stream_generate", None)
+    if stream is None:
+        return await models.generate(request), None
+    started = time.monotonic()
+    first: list[int] = []
+
+    def seen(kind: str, text: str) -> None:
+        if not first:
+            first.append(int((time.monotonic() - started) * 1000))
+        if on_delta is not None:
+            on_delta(kind, text)
+
+    response = await stream(request, seen)
+    return response, (first[0] if first else None)
 
 
 def with_billed_cost(exc: _E, cost_usd_micros: int) -> _E:

@@ -82,6 +82,7 @@ with workflow.unsafe.imports_passed_through():
         GUIDANCE_PATCH,
         INTERRUPT_WITHDRAW_PATCH,
         HUMAN_CHANNEL_PATCH,
+        N16_PATCH,
         HUMAN_REPLY_RACE_PATCH,
         POLICY_PATCH,
         PARALLEL_TOOL_CALLS_PATCH,
@@ -237,6 +238,8 @@ class RunContext:
     r01: bool = False
     # T-11b：只有顶层 Task 工作流的新运行有；顶层 Node 结束与发出人工问题时推送进度事件。子工作流里为 None。
     events: EventPublisher | None = None
+    # N-16（N16_PATCH）：sub_agent 推自己的进度、每个 Stage 的 sub_agent 有上限、缺省 effect 上限继承、sub_task 的预算不超过剩下的。
+    n16: bool = False
     # TMP 计划第 3 节（BUDGETS_PATCH 之后的运行为 True）：工具调用次数的上限（0 不限）与这个 Stage 开始之前已发出的；
     # 时间预算（秒，0 不限）与已用了多少秒（只算 Agent 在跑的时间，由 Task 工作流给出）。
     budgets: bool = False
@@ -338,7 +341,10 @@ class StageRunner:
         nodes = list(stage.get("nodes", []))
         self._stage_ids = frozenset(str(n.get("id")) for n in nodes)
         earlier = self._ctx.earlier
-        errors = sp.validate_stage(stage, max_nodes=self.policy.max_inline_nodes, earlier=None if earlier is None else set(earlier))
+        errors = sp.validate_stage(
+            stage, max_nodes=self.policy.max_inline_nodes, earlier=None if earlier is None else set(earlier),
+            max_sub_agents=sp.MAX_SUB_AGENTS if self._ctx.n16 else None,
+        )
         if errors:
             reason = "invalid_stage：" + "；".join(errors)
             return {n["id"]: StageResult(role=_role(n), status="skipped", error=reason) for n in sorted(nodes, key=lambda n: n["id"])}
@@ -646,7 +652,7 @@ class StageRunner:
         role = _role(node)
         nid = node["id"]
         ceiling = self._ctx.effect_ceiling
-        effect = sp.node_effect(node, ceiling)
+        effect = sp.node_effect(node, ceiling, inherit=self._ctx.n16)
         if sp.effect_rank(effect) > sp.effect_rank(ceiling):
             return _denied(role, f"{nid} 的 effect {effect} 超过 Task 允许的 {ceiling}")
         if self._ctx.t09 and node.get("kind") == "atomic":
@@ -798,6 +804,10 @@ class StageRunner:
         self.spent_usd += cost
         if env is self._top:
             await self._publish_usage(self._ctx.events, node["id"], output.get("context_usage"))
+            first_token = meta.get("first_token_ms")
+            if self._ctx.events is not None and self._ctx.events.latency is not None and isinstance(first_token, int) and not isinstance(first_token, bool):
+                # N-20：首个 token 的用时（StreamGenerate 的第一个分片），只记时间，不改命令序列。
+                self._ctx.events.latency.first_token(first_token)
         # TMP 计划第 7 节：judge 发现的被改坏的既有产物只交给 Reviewer（下游只看 result）；别的 role 给了也不算。
         regressions = [dict(g) for g in output.get("regressions") or [] if isinstance(g, dict)] if role == "judge" else []
         return StageResult(
@@ -1104,7 +1114,7 @@ class StageRunner:
         if mode == "tool_loop":
             return await self._inline_tool_loop(node, env, role)
         if mode == "sub_agent":
-            return await self._sub_agent(node, role)
+            return await self._sub_agent(node, role, top=env is self._top)
         if mode == "sub_task":
             return await self._sub_task(node, env, role)
         return _failed(role, f"不认识的 mode {mode}")
@@ -1599,8 +1609,11 @@ class StageRunner:
             return None, {"rejected": True, "guidance": reply.guidance, "replied_by": reply.replied_by_user_id}, ""
         return GateRecord(gate_node=gate_id, option=reply.option, approved_by=reply.replied_by_user_id), {}, ""
 
-    async def _sub_agent(self, node: dict[str, Any], role: str) -> StageResult:
-        ceiling = str(node.get("effect_ceiling") or "read")
+    async def _sub_agent(self, node: dict[str, Any], role: str, *, top: bool = False) -> StageResult:
+        """sub_agent：独立上下文的子 agent（附录 E.1）。权限默认继承、不能提升（人工验收基线 Q74）：effect 上限不高于 read，
+        也不高于 Task 的（_run_node 已拒绝写明了更高的；N-16 之后没写时取两者中低的），工具的 effect 不高于它。
+        N-16 之后顶层的 sub_agent 在子工作流里推自己的 tool_status、context_usage（node_id 是它），客户端画成并行的子 Agent。"""
+        ceiling = str(node.get("effect_ceiling") or sp.node_effect(node, self._ctx.effect_ceiling, inherit=self._ctx.n16))
         if sp.effect_rank(ceiling) > sp.effect_rank("read"):
             return _denied(role, f"sub_agent 只读，effect_ceiling 不能是 {ceiling}")
         effects, reason = await self._check_tools(node, ceiling, read_only=True)
@@ -1622,6 +1635,7 @@ class StageRunner:
                         task_family=self._ctx.task_family,
                         budget_usd=self._ctx.budget_usd,
                         spent_before_usd=self._budget()["spent_usd"],
+                        publish_events=self._ctx.n16 and top and self._ctx.events is not None,
                         **self._child_budgets(),
                     ),
                     id=sp.subworkflow_id(self._ctx.task_id, self._ctx.round_seq, node["id"]),
@@ -1637,6 +1651,27 @@ class StageRunner:
         self.spent_usd += float(out.cost_usd or 0.0)
         self.tool_calls += int(out.tool_calls or 0)
         return _as(out, role)
+
+    def _clamp_child_budget(self, child: task_pb2.TaskWorkflowInput) -> str:
+        """N-16：子 Task 的预算不超过父 Task 剩下的（美元、工具调用次数、时间；Q74 不能提升）。用完了返回拒绝的理由。纯计算。"""
+        ctx = self._ctx
+        if ctx.budget_usd is not None:
+            left = max(0.0, ctx.budget_usd - self._budget()["spent_usd"])
+            if left <= 0:
+                return "budget_exhausted：Task 的美元预算已经用完，不再派生子 Task"
+            micros = int(left * 1_000_000)
+            child.budget.usd_micros = min(child.budget.usd_micros, micros) if child.budget.usd_micros else micros
+        if ctx.tool_calls_limit > 0:
+            left_calls = ctx.tool_calls_limit - (ctx.tool_calls_before + self.tool_calls)
+            if left_calls <= 0:
+                return "budget_exhausted：Task 的工具调用预算已经用完，不再派生子 Task"
+            child.budget.tool_calls = left_calls
+        if ctx.wall_clock_limit_s > 0 and ctx.active_s is not None:
+            left_s = ctx.wall_clock_limit_s - ctx.active_s()
+            if left_s <= 0:
+                return "budget_exhausted：Task 的时间预算已经用完，不再派生子 Task"
+            child.budget.wall_clock.FromTimedelta(timedelta(seconds=left_s))
+        return ""
 
     def _child_budgets(self) -> dict[str, Any]:
         """TMP 计划第 3 节：交给子工作流的时间与工具调用预算（子工作流里没有人工等待，自己按启动以来的时间累加）。"""
@@ -1673,6 +1708,10 @@ class StageRunner:
         usd = (node.get("budget") or {}).get("usd")
         if usd is not None:
             child.budget.usd_micros = int(float(usd) * 1_000_000)
+        if self._ctx.n16:
+            refused = self._clamp_child_budget(child)
+            if refused:
+                return _denied(role, refused)
         try:
             async with self._writer(ceiling, env):
                 result = await workflow.execute_child_workflow(
@@ -1723,6 +1762,8 @@ class SubAgentInput:
     active_before_s: float = 0.0
     context_version: int = 1
     task_family: str = ""
+    # N-16：顶层的 sub_agent 推自己的进度事件（tool_status、context_usage，node_id 是这个 sub_agent）；之前的运行没有。
+    publish_events: bool = False
 
 
 def _child_context(inp: SubAgentInput | SubgraphInput, **kw: Any) -> RunContext:
@@ -1760,10 +1801,11 @@ class SubAgentWorkflow:
     @workflow.run
     async def run(self, inp: SubAgentInput) -> StageResult:
         patches.at_start()
-        ctx = _child_context(inp)
+        events = EventPublisher(inp.tenant, inp.task_id, detail=True) if inp.publish_events and workflow.patched(N16_PATCH) else None
+        ctx = _child_context(inp, events=events, n16=workflow.patched(N16_PATCH))
         runner = StageRunner(ctx, human=None)
         await runner._ensure_policy()
-        result = await runner.tool_loop(inp.node, isolated=True, tool_effects=dict(inp.tools), env=_Env(results={}))
+        result = await runner.tool_loop(inp.node, isolated=True, tool_effects=dict(inp.tools), env=_Env(results={}), progress=events is not None)
         return replace(result, cost_usd=round(runner.spent_usd, 6), tool_calls=runner.tool_calls)
 
 

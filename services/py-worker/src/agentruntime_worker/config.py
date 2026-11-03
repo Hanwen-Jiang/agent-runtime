@@ -39,6 +39,8 @@ JUDGES = ("", "jev")
 REVIEWERS = ("stub", "model")
 # tool_loop 的一步：stub 用桩（默认，第一步就结束）；model 经 Model Gateway，上下文由 Context Builder 组装。
 ENV_TOOL_LOOP = "AR_TOOL_LOOP"
+# N-19/N-20：deliver 节点经 StreamGenerate 生成并记首个 token 的用时（1 打开）。
+ENV_STREAM_DELIVER = "AR_STREAM_DELIVER"
 TOOL_LOOPS = ("stub", "model")
 # Context Builder 的阈值基准：模型实测的有效长度（token）。Model Profile 接好之前用这个配置（附录 G.2、G.5）。
 ENV_CONTEXT_EFFECTIVE_TOKENS = "AR_CONTEXT_EFFECTIVE_TOKENS"
@@ -107,6 +109,8 @@ class WorkerConfig:
     reviewer: str = "stub"
     # 哪个 tool_loop：stub 或 model（Context Builder）。
     tool_loop: str = "stub"
+    # deliver 节点经 StreamGenerate 生成（AR_STREAM_DELIVER=1；网关客户端支持时）。
+    stream_deliver: bool = False
     # 模型实测的有效长度（token），Context Builder 的阈值按它算。
     context_effective_tokens: int = 32_000
     # 工具的输出超过这么多 token 就转存，只留摘录（Context Builder 的 offload）。
@@ -232,6 +236,7 @@ class WorkerConfig:
             judge_model=env.get(ENV_JUDGE_MODEL, "").strip() or cls.judge_model,
             judge_key_file=Path(env[ENV_JUDGE_KEY_FILE]) if env.get(ENV_JUDGE_KEY_FILE, "").strip() else None,
             tool_loop=tool_loop,
+            stream_deliver=env.get(ENV_STREAM_DELIVER, "").strip() == "1",
             context_effective_tokens=effective,
             context_offload_tokens=offload,
             model_gateway_address=env.get(ENV_MODEL_GATEWAY_ADDRESS, "").strip(),

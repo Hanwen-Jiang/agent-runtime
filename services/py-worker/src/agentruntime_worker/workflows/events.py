@@ -18,6 +18,7 @@ ActivityName），参数是租户上下文、去重键与 taskapi.v1.TaskEvent�
   沿用这个 Stage 的文字，也沿用它的代码。只改 activity 的入参，不改命令序列。
 - docs/plan/running-task-interaction.md 第 3 节：每次模型调用之后 context_usage（只有数字与类别名；CONTEXT_USAGE_PATCH）。
   第 2 节：纠偏的状态变了时 guidance_updated（不带文字；GUIDANCE_PATCH）。
+- docs/plan/feedback-2026-11-01.md N-04：Task Plan 的步骤变了时 plan_updated（完整快照；PLAN_PATCH，workflows/plan.py）。
 
 是工作流代码：时间用 workflow.now()，不做 I/O。
 """
@@ -42,6 +43,7 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker import names
     from agentruntime_worker.activities.types import PlanRoundOutput, StageResult, Tenant
     from agentruntime_worker.workflows.failures import caused_by_cancel, failure_message
+    from agentruntime_worker.workflows.latency import FirstEventLatency
 
 PUBLISH_START_TO_CLOSE = timedelta(seconds=5)
 # 连排队带重试的上限：Session Worker 不在时，一个 Round 最多多等这么久（之后这个 Round 不再推）。
@@ -62,6 +64,7 @@ _TYPES = {
     "decision_retry": task_api_pb2.TASK_EVENT_TYPE_DECISION_RETRY,
     "context_usage": task_api_pb2.TASK_EVENT_TYPE_CONTEXT_USAGE,
     "guidance_updated": task_api_pb2.TASK_EVENT_TYPE_GUIDANCE_UPDATED,
+    "plan_updated": task_api_pb2.TASK_EVENT_TYPE_PLAN_UPDATED,
 }
 # defs.schema.json 的 message_code。
 _CODE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
@@ -186,6 +189,11 @@ def node_started_payload(node: dict[str, Any]) -> dict[str, Any]:
         payload["role"] = str(node["role"])
     if payload["kind"] == "atomic" and node.get("executor"):
         payload["executor"] = str(node["executor"])
+    if payload["kind"] == "goal":
+        # N-16：展开方式（没写时与 Stage Runner 一样：有 Recipe 是 template，否则 tool_loop）；客户端据此把 sub_agent 画成一个子 Agent。
+        mode = node.get("mode") or ("template" if node.get("recipe") else "tool_loop")
+        if mode in ("template", "tool_loop", "sub_agent", "sub_task"):
+            payload["mode"] = str(mode)
     return payload
 
 
@@ -200,6 +208,8 @@ class EventPublisher:
         self._detail = detail
         # 推送失败的那个 Round：它余下的事件不再推。
         self._broken_round = 0
+        # N-20：首事件延迟；Task 工作流给了才记（推送成功的第一条可展示事件、第一次冷启动）。
+        self.latency: FirstEventLatency | None = None
 
     async def publish(self, round_seq: int, event: str, payload: dict[str, Any], *, about: str = "") -> None:
         if round_seq == self._broken_round:
@@ -211,7 +221,8 @@ class EventPublisher:
             type=_TYPES[event],
             payload=payload_pb2.JsonPayload(value=_value({"event": event, "round_seq": round_seq, **payload})),
         )
-        message.emitted_at.FromDatetime(workflow.now())
+        emitted = workflow.now()
+        message.emitted_at.FromDatetime(emitted)
         try:
             await workflow.execute_activity(
                 names.PUBLISH_TASK_EVENT,
@@ -227,6 +238,9 @@ class EventPublisher:
                 raise asyncio.CancelledError() from err
             self._broken_round = round_seq
             workflow.logger.warning("推送进度事件 %s 失败，第 %d 轮余下的事件不再推：%s", key, round_seq, failure_message(err))
+            return
+        if self.latency is not None:
+            self.latency.event(event, emitted)
 
     async def round_started(self, round_seq: int, *, rerun: bool) -> None:
         await self.publish(round_seq, "round_started", {"rerun": rerun})
@@ -253,6 +267,8 @@ class EventPublisher:
             payload["duration_ms"] = max(0, duration_ms)
         if startup_ms is not None:
             payload["sandbox_startup_ms"] = startup_ms
+            if self.latency is not None:
+                self.latency.sandbox(startup_ms)
         if error:
             payload["error"] = redact(error)[:ERROR_CHARS]
             code = code_of(error)
@@ -271,6 +287,13 @@ class EventPublisher:
         """一条纠偏的状态变了；number 是工作流里的序号（同一条可以推好几次 pending，去重键不能只看状态）。"""
         payload = {k: v for k, v in event.items() if k != "applied_round"}
         await self.publish(event.get("applied_round") or round_seq, "guidance_updated", payload, about=f"{event['guidance_id']}/{number}")
+
+    async def plan_updated(self, round_seq: int, plan: dict[str, Any], *, about: str = "") -> None:
+        """Task Plan 的步骤变了（N-04）：完整快照，内容同 Task State 的 plan；去重键 r<Round>/plan_updated[/<about>]（收尾时的最后一份是 final）。"""
+        payload: dict[str, Any] = {"steps": [dict(s) for s in plan["steps"]]}
+        if plan.get("current_step"):
+            payload["current_step"] = plan["current_step"]
+        await self.publish(round_seq, "plan_updated", payload, about=about)
 
     async def node_finished(self, round_seq: int, node_id: str, result: StageResult) -> None:
         await self.publish(round_seq, "node_finished", node_payload(node_id, result), about=node_id)
