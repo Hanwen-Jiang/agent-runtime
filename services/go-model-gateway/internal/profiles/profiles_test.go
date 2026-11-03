@@ -261,6 +261,18 @@ func TestDevProfilesFileLoads(t *testing.T) {
 		"gpt-5.5":                {"openai", "strong", []string{"medium", "high"}},
 		"gpt-6.1-sol":            {"openai", "strong", []string{"medium", "high"}},
 		"text-embedding-3-small": {"openai", "embed", []string{"default"}},
+		// 2026-11-03 加的能力矩阵候选：模型名都在中转站的 /v1/models 里，单价与发布日期取自 models.dev 各家自己的条目。
+		"gpt-6-astra":      {"openai", "strong", []string{"medium", "high"}},
+		"claude-fable-5-1": {"anthropic", "strong", []string{"medium", "high"}},
+		"gemini-4-argon":   {"google", "strong", []string{"medium", "high"}},
+		"deepseek-v4-pro":  {"deepseek", "strong", []string{"medium", "high"}},
+		"grok-4.7":         {"xai", "strong", []string{"medium", "high"}},
+		"kimi-k3.1-pro":    {"moonshotai", "strong", []string{"medium", "high"}},
+		"qwen3.8-max":      {"alibaba", "strong", []string{"medium", "high"}},
+		"glm-5.3":          {"zhipuai", "strong", []string{"medium", "high"}},
+		"gemini-3.8-flash": {"google", "mid", []string{"low"}},
+		"gpt-6.1-terra":    {"openai", "mid", []string{"low"}},
+		"gpt-6-luna":       {"openai", "small", []string{"low"}},
 	}
 	seen := map[string]bool{}
 	for _, p := range c.All() {

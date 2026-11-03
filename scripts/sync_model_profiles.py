@@ -31,7 +31,9 @@ PROFILES = REPO / "deploy" / "dev" / "model-profiles.json"
 SEED = REPO / "deploy" / "dev" / "registry-seed.json"
 CATALOG_URL = "https://models.dev/api.json"
 # Profile 的 vendor → models.dev 里第一方的供应商。
-VENDORS = {"openai": "openai", "anthropic": "anthropic", "google": "google", "deepseek": "deepseek"}
+VENDORS = {"openai": "openai", "anthropic": "anthropic", "google": "google", "deepseek": "deepseek",
+           # 2026-11-03 加：中转站也有这几家的新模型，作能力矩阵的候选（models.dev 里各家自己的供应商条目）。
+           "xai": "xai", "moonshotai": "moonshotai", "alibaba": "alibaba", "zhipuai": "zhipuai"}
 # 新加的强档 Profile 的 Tier（与已有的强档一致）。
 TIER_PRESETS = {
     "low": {"name": "low", "effort": "", "thinking_budget": 0},

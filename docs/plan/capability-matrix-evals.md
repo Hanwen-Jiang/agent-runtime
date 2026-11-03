@@ -171,6 +171,27 @@ BFCL、LongBench 这类便宜的题取 n = 100。端到端贵：SWE-bench 50 题
 4. **并发与拆预算**没有复用 `benchmarks suite`（它是按子进程调度端到端评测的）：组件级都在一个进程里，用 asyncio 的并发与总预算。端到端的矩阵（第 2 节的按档钉模型）没做。
 5. 裁判的复核（第 5 节，gpt-6-astra 抽查、kappa）不在这条线。
 
+### 10.1 新候选（2026-11-03）
+
+人定：中转站里比现有 Profile 新的模型都进能力矩阵的候选。`sync_model_profiles.py --add`（models.dev 各家自己的条目；新认了
+xai、moonshotai、alibaba、zhipuai 四家）加了 9 个，模型名都在中转站的 `/v1/models` 里：
+
+| 档 | Profile（模型名） | 单价 入/出/缓存读（美元每百万 token） | 发布 |
+| --- | --- | --- | --- |
+| strong | gemini-4-argon | 2 / 10 / 0.1 | 2026-10-13 |
+| strong | deepseek-v4-pro | 0.66 / 1.98 / 0.022 | 2026-08-13 |
+| strong | grok-4.7 | 2 / 6 / 0.5 | 2026-09-21 |
+| strong | kimi-k3.1-pro | 2 / 10 / 0.2 | 2026-10-23 |
+| strong | qwen3.8-max | 2 / 6 / 0.25 | 2026-08-03 |
+| strong | glm-5.3 | 1.20 / 4.18 / 0.30 | 2026-08-14 |
+| mid | gemini-3.8-flash | 0.75 / 3.75 / 0.075 | 2026-09-02 |
+| mid | gpt-6.1-terra | 1 / 5 / 0.05 | 2026-10-26 |
+| small | gpt-6-luna | 0.1 / 0.5 / 0.01 | 2026-09-22 |
+
+没加：deepseek-v4.1-flash、minimax-m3（models.dev 只有转售商的条目，没有一方单价）；gpt-6-sol（被 gpt-6.1-sol 取代）；
+gemini-3.6/3.7-flash（被 3.8 取代）。新 Profile 只有进了租户的白名单才会被选中：部署时只加进 `evals` 租户的白名单（矩阵用），
+线上其他租户的选档不变，等能力分人审发布后再定放给谁。档位是按单价与各家的定位先定的，矩阵跑完按实测再调。
+
 ## 11. 实现记录：公开数据集（B2 线，2026-11-03）
 
 第 3 节里公开数据集的 CellEval 在 `services/py-learning/src/agentruntime_learning/capability/evals/`，每个模块有 `make(**options)`；

@@ -532,6 +532,360 @@
       }
     },
     {
+      "kind": "model_profile",
+      "name": "a6api/gemini-4-argon@2026-11",
+      "document": {
+        "id": "a6api/gemini-4-argon@2026-11",
+        "vendor": "google",
+        "model": "gemini-4-argon",
+        "class": "strong",
+        "tiers": [
+          {
+            "name": "medium",
+            "effort": "medium",
+            "thinking_budget": 8192
+          },
+          {
+            "name": "high",
+            "effort": "high",
+            "thinking_budget": 32768
+          }
+        ],
+        "capabilities": [
+          "generate",
+          "structured",
+          "tools",
+          "stream"
+        ],
+        "cost": {
+          "in_per_m": 2.0,
+          "out_per_m": 10.0,
+          "cache_read_per_m": 0.1
+        },
+        "constraints": {
+          "context_window": 1048576,
+          "max_output": 32768
+        },
+        "freshness": {
+          "price_at": "2026-11-03"
+        },
+        "released_at": "2026-10-13"
+      }
+    },
+    {
+      "kind": "model_profile",
+      "name": "a6api/deepseek-v4-pro@2026-11",
+      "document": {
+        "id": "a6api/deepseek-v4-pro@2026-11",
+        "vendor": "deepseek",
+        "model": "deepseek-v4-pro",
+        "class": "strong",
+        "tiers": [
+          {
+            "name": "medium",
+            "effort": "medium",
+            "thinking_budget": 8192
+          },
+          {
+            "name": "high",
+            "effort": "high",
+            "thinking_budget": 32768
+          }
+        ],
+        "capabilities": [
+          "generate",
+          "structured",
+          "tools",
+          "stream"
+        ],
+        "cost": {
+          "in_per_m": 0.66,
+          "out_per_m": 1.98,
+          "cache_read_per_m": 0.022
+        },
+        "constraints": {
+          "context_window": 1048576,
+          "max_output": 393216
+        },
+        "freshness": {
+          "price_at": "2026-11-03"
+        },
+        "released_at": "2026-08-13"
+      }
+    },
+    {
+      "kind": "model_profile",
+      "name": "a6api/grok-4.7@2026-11",
+      "document": {
+        "id": "a6api/grok-4.7@2026-11",
+        "vendor": "xai",
+        "model": "grok-4.7",
+        "class": "strong",
+        "tiers": [
+          {
+            "name": "medium",
+            "effort": "medium",
+            "thinking_budget": 8192
+          },
+          {
+            "name": "high",
+            "effort": "high",
+            "thinking_budget": 32768
+          }
+        ],
+        "capabilities": [
+          "generate",
+          "structured",
+          "tools",
+          "stream"
+        ],
+        "cost": {
+          "in_per_m": 2.0,
+          "out_per_m": 6.0,
+          "cache_read_per_m": 0.5
+        },
+        "constraints": {
+          "context_window": 500000,
+          "max_output": 500000
+        },
+        "freshness": {
+          "price_at": "2026-11-03"
+        },
+        "released_at": "2026-09-21"
+      }
+    },
+    {
+      "kind": "model_profile",
+      "name": "a6api/kimi-k3.1-pro@2026-11",
+      "document": {
+        "id": "a6api/kimi-k3.1-pro@2026-11",
+        "vendor": "moonshotai",
+        "model": "kimi-k3.1-pro",
+        "class": "strong",
+        "tiers": [
+          {
+            "name": "medium",
+            "effort": "medium",
+            "thinking_budget": 8192
+          },
+          {
+            "name": "high",
+            "effort": "high",
+            "thinking_budget": 32768
+          }
+        ],
+        "capabilities": [
+          "generate",
+          "structured",
+          "tools",
+          "stream"
+        ],
+        "cost": {
+          "in_per_m": 2.0,
+          "out_per_m": 10.0,
+          "cache_read_per_m": 0.2
+        },
+        "constraints": {
+          "context_window": 1048576,
+          "max_output": 1048576
+        },
+        "freshness": {
+          "price_at": "2026-11-03"
+        },
+        "released_at": "2026-10-23"
+      }
+    },
+    {
+      "kind": "model_profile",
+      "name": "a6api/qwen3.8-max@2026-11",
+      "document": {
+        "id": "a6api/qwen3.8-max@2026-11",
+        "vendor": "alibaba",
+        "model": "qwen3.8-max",
+        "class": "strong",
+        "tiers": [
+          {
+            "name": "medium",
+            "effort": "medium",
+            "thinking_budget": 8192
+          },
+          {
+            "name": "high",
+            "effort": "high",
+            "thinking_budget": 32768
+          }
+        ],
+        "capabilities": [
+          "generate",
+          "structured",
+          "tools",
+          "stream"
+        ],
+        "cost": {
+          "in_per_m": 2.0,
+          "out_per_m": 6.0,
+          "cache_read_per_m": 0.25
+        },
+        "constraints": {
+          "context_window": 1000000,
+          "max_output": 131072
+        },
+        "freshness": {
+          "price_at": "2026-11-03"
+        },
+        "released_at": "2026-08-03"
+      }
+    },
+    {
+      "kind": "model_profile",
+      "name": "a6api/glm-5.3@2026-11",
+      "document": {
+        "id": "a6api/glm-5.3@2026-11",
+        "vendor": "zhipuai",
+        "model": "glm-5.3",
+        "class": "strong",
+        "tiers": [
+          {
+            "name": "medium",
+            "effort": "medium",
+            "thinking_budget": 8192
+          },
+          {
+            "name": "high",
+            "effort": "high",
+            "thinking_budget": 32768
+          }
+        ],
+        "capabilities": [
+          "generate",
+          "structured",
+          "tools",
+          "stream"
+        ],
+        "cost": {
+          "in_per_m": 1.19516,
+          "out_per_m": 4.18306,
+          "cache_read_per_m": 0.29879
+        },
+        "constraints": {
+          "context_window": 1000000,
+          "max_output": 131072
+        },
+        "freshness": {
+          "price_at": "2026-11-03"
+        },
+        "released_at": "2026-08-14"
+      }
+    },
+    {
+      "kind": "model_profile",
+      "name": "a6api/gemini-3.8-flash@2026-11",
+      "document": {
+        "id": "a6api/gemini-3.8-flash@2026-11",
+        "vendor": "google",
+        "model": "gemini-3.8-flash",
+        "class": "mid",
+        "tiers": [
+          {
+            "name": "low",
+            "effort": "",
+            "thinking_budget": 0
+          }
+        ],
+        "capabilities": [
+          "generate",
+          "structured",
+          "tools",
+          "stream"
+        ],
+        "cost": {
+          "in_per_m": 0.75,
+          "out_per_m": 3.75,
+          "cache_read_per_m": 0.075
+        },
+        "constraints": {
+          "context_window": 1048576,
+          "max_output": 65536
+        },
+        "freshness": {
+          "price_at": "2026-11-03"
+        },
+        "released_at": "2026-09-02"
+      }
+    },
+    {
+      "kind": "model_profile",
+      "name": "a6api/gpt-6.1-terra@2026-11",
+      "document": {
+        "id": "a6api/gpt-6.1-terra@2026-11",
+        "vendor": "openai",
+        "model": "gpt-6.1-terra",
+        "class": "mid",
+        "tiers": [
+          {
+            "name": "low",
+            "effort": "",
+            "thinking_budget": 0
+          }
+        ],
+        "capabilities": [
+          "generate",
+          "structured",
+          "tools",
+          "stream"
+        ],
+        "cost": {
+          "in_per_m": 1.0,
+          "out_per_m": 5.0,
+          "cache_read_per_m": 0.05
+        },
+        "constraints": {
+          "context_window": 922000,
+          "max_output": 128000
+        },
+        "freshness": {
+          "price_at": "2026-11-03"
+        },
+        "released_at": "2026-10-26"
+      }
+    },
+    {
+      "kind": "model_profile",
+      "name": "a6api/gpt-6-luna@2026-11",
+      "document": {
+        "id": "a6api/gpt-6-luna@2026-11",
+        "vendor": "openai",
+        "model": "gpt-6-luna",
+        "class": "small",
+        "tiers": [
+          {
+            "name": "low",
+            "effort": "",
+            "thinking_budget": 0
+          }
+        ],
+        "capabilities": [
+          "generate",
+          "structured",
+          "tools",
+          "stream"
+        ],
+        "cost": {
+          "in_per_m": 0.1,
+          "out_per_m": 0.5,
+          "cache_read_per_m": 0.01
+        },
+        "constraints": {
+          "context_window": 922000,
+          "max_output": 128000
+        },
+        "freshness": {
+          "price_at": "2026-11-03"
+        },
+        "released_at": "2026-09-22"
+      }
+    },
+    {
       "kind": "task_families",
       "name": "default",
       "document": {
