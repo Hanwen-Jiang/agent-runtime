@@ -113,6 +113,23 @@ data:
           "targets": [{"refId": "A",
                        "expr": "sum by (eval_metric, eval_subject) (increase(runtime_eval_score_sum{eval_valid=\"true\", eval_metric!=\"cost_usd\"}[1d])) / sum by (eval_metric, eval_subject) (increase(runtime_eval_score_count{eval_valid=\"true\", eval_metric!=\"cost_usd\"}[1d]))",
                        "legendFormat": "{{eval_subject}} {{eval_metric}}"}]
+        },
+        {
+          "id": 12, "type": "stat", "title": "全平台 24 小时花费",
+          "description": "美元，最近 24 小时（滚动）。Model Gateway 计的费，所有租户合计。告警“全平台 24 小时花费”查同一个表达式（超过 50 美元）。",
+          "gridPos": {"x": 0, "y": 41, "w": 8, "h": 6},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "fieldConfig": {"defaults": {"unit": "currencyUSD", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 50}]}}},
+          "options": {"reduceOptions": {"calcs": ["lastNotNull"]}},
+          "targets": [{"refId": "A", "expr": "sum(increase(runtime_model_cost_usd_sum[24h]))", "instant": true}]
+        },
+        {
+          "id": 13, "type": "table", "title": "租户 24 小时花费（前 20）",
+          "description": "美元，最近 24 小时（滚动）。免费账号的每日额度是 3 美元（open-signup.md），超了 Model Gateway 拒绝新的调用。",
+          "gridPos": {"x": 8, "y": 41, "w": 16, "h": 6},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "fieldConfig": {"defaults": {"unit": "currencyUSD"}},
+          "targets": [{"refId": "A", "expr": "topk(20, sum by (tenant_id) (increase(runtime_model_cost_usd_sum[24h])))", "instant": true, "format": "table"}]
         }
       ]
     }

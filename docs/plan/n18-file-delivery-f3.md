@@ -9,10 +9,13 @@
 > - task-service 的 `taskapi/artifacts.go`：`ListTaskArtifacts` 与下载路由；
 > - `main.go` 把 Claim-Check 的同一个 ObjectStore 交给下载，并跑迁移 207；
 > - 两边的建表语句由 `tests/contract/test_task_artifacts_ddl.py` 比对。
+> - coding-web 的交付区（第 2 节第 4 条，coding-agent `ba14689`）：
+>   - `internal/server/artifacts.go`：列表与下载的转发；
+>   - `app.js`：先列文件再给文字；
+>   - 验收：`internal/server/artifacts_test.go`、`internal/web/artifacts_test.go`。
 >
 > **还没做的**：
 > - 第 2 节第 3 条 Reviewer 的 highlights 把文件排前面；
-> - 第 2 节第 4 条 coding-web 的交付区：测试已写，等人审，实现前跳过。测试在 coding-agent 的 `internal/server/artifacts_test.go`（列表与下载的转发）和 `internal/web/artifacts_test.go`（先列文件再给文字、两种语言）；
 > - 第 5 节第 5 条端到端；
 > - 存档模式（Cloudflare）的后端读文件：要借沙箱环境，那部分在 C 线正在改的范围里；
 > - 对象元数据只写 ASCII，非 ASCII 的文件名只出现在对象键里，S3 上要实测。
