@@ -1,6 +1,6 @@
 # EV-DE：DeepEval 工具证据（2026-11-04）
 
-状态：实现与离线验收完成，待提交；开工认领 `3a47cfa` 已先推送。沿用 main 提交的小阶段交付方式，不占用 CACHE-01、ATOK-T、PERF-00 的文件。
+状态：实现与离线验收完成，`c1a307a` 已推送；开工认领 `3a47cfa` 已先推送。沿用 main 提交的小阶段交付方式，不占用 CACHE-01、ATOK-T、PERF-00 的文件。
 
 - Failure：honesty 裁判只收到最终回答，无法核对实际工具调用；旧规则误罚主动纠错。
 - Evidence：handoff-2026-11-03 第 3 节的 DeepEval 结果及 evalsets-review-2026-11-03 第 1、3 节；现有 bridge_cases 未传执行证据。

@@ -30,7 +30,7 @@ C、E 两条线；F1～F4；task-service 默认不限未终态 Task 数（`bb832
 | DEP-W | coding-agent 合 lane/d，部署 coding-web | lane-merge | DEP-R | 待做 | 近 |
 | EV-TB | 查 Terminal-Bench 0/5 的原因，再跑 40 题 | handoff | — | 待做 | 近 |
 | EV-SWE | SWE-bench 补跑 matplotlib-13989 | handoff | — | 待做 | 近 |
-| EV-DE | DeepEval 把工具调用轨迹放进用例 | handoff | — | **进行中**（第 8 节） | 中 |
+| EV-DE | DeepEval 把工具调用轨迹放进用例 | handoff | — | **代码完成**（`c1a307a`）；线上重判待验收，见 [记录](ev-de-tool-evidence-2026-11-04.md) | 中 |
 | MX-RUN | 能力矩阵第一轮（贵模型走淘汰赛） | work-dag 19-run | DEP-R（新 Profile） | 待做（花钱） | 中 |
 | MX-Q | S-09～S-11 格子的改编题：选题与补标签 | work-dag | — | 人定 | 中 |
 | MX-PUB | 能力分人审后经 Registry 发布 | work-dag 19-publish | MX-RUN、MX-Q | 人定 | 中 |
@@ -104,7 +104,7 @@ flowchart LR
   subgraph EVAL["评测"]
     EVTB["EV-TB 查 T-Bench 0/5 → 40 题"]
     EVSWE["EV-SWE 补跑 matplotlib"]
-    EVDE["EV-DE DeepEval 加轨迹"]
+    EVDE["EV-DE 工具轨迹已实现<br/>线上重判待验收"]
     MXQ{{"MX-Q 改编题选题"}}
     MXRUN["MX-RUN 能力矩阵第一轮"]
     MXPUB{{"MX-PUB 能力分人审与发布"}}
@@ -214,7 +214,7 @@ flowchart LR
   class NETOPEN,D25,D27,N14,N15,R04,DISKB,WSR3,BLOB,D26,FCREAL later;
 
   classDef doing fill:#ffd8a8,stroke:#d9480f,stroke-width:2px;
-  class TSP2,ATOKT,PERF0,EVDE doing;
+  class TSP2,ATOKT,PERF0 doing;
 ```
 
 虚线是“建议先有”而不是硬依赖：PERF-00 的数字决定 SBX-01、WS-READ-02 的轻重；WS-READ-03 在多副本时才需要 CACHE-01；Firecracker 下 WS-PULL-01 经块缓存取块；ATOK-F 的 Rust 版随 D-28 一起做。
@@ -250,7 +250,7 @@ flowchart LR
 
 | 编号 | 线 | 谁 | 开始 | 独占的文件 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| EV-DE | 评测线 | Codex 桌面会话 | 2026-11-04 | `services/py-learning` 的 `evals/deliverables.py`、`evals/bridges/deepeval_bridge.py`、`benchmarks/swebench.py` 的事件采集扩展点及对应评测测试、deliverables README | 正在实现；先推送本认领再写测试与实现。范围与验收见 [实施记录](ev-de-tool-evidence-2026-11-04.md) |
+| EV-DE | 评测线 | Codex 桌面会话 | 2026-11-04 | `services/py-learning` 的 `evals/deliverables.py`、`evals/bridges/deepeval_bridge.py`、`evals/frameworks.py` 的 Windows 环境白名单、`benchmarks/swebench.py` 的事件采集扩展点及对应评测测试、deliverables README | 已完成代码与离线验收（认领先推送 `3a47cfa`，实现 `c1a307a`）；线上重判待验收。见 [实施记录](ev-de-tool-evidence-2026-11-04.md) |
 | TSP-1 | TSP 线（TSP-1 → CACHE-01 → TSP-2），直接在 main 上提交 | Claude 桌面会话（Opus 5.5） | 2026-11-03 | `services/go-task-service/internal/config`、`cmd/task-service/main.go` 的 Provider 选择 | 已完成（`aee014a` 测试、`00ef868` 实现；没部署） |
 | CACHE-01 | TSP 线 | Claude 桌面会话（Opus 5.5） | 2026-11-03 | 新包 `libs/go-core/adapters/valkey`（标准库自写 RESP 客户端，不引新依赖）；`deploy/data` 里新加的 Valkey；task-service 的 Cache 选择（`internal/config`、`cmd/task-service/main.go`） | 已完成（`377bcd8` 测试、`5a7334f` 实现；没部署，部署前要先建 `valkey-agentruntime`、`agent-runtime-valkey` 两个 Secret） |
 | TSP-2 | TSP 线 | Claude 桌面会话（Opus 5.5） | 2026-11-03 | task-service 的 `internal/config`、`cmd/task-service/main.go`；Chart 的 `task-service.yaml` 与 values 里 task-service、`secrets.valkeyUrl` 的部分；`libs/go-core/adapters/postgres` 的连接池选项；`tests/e2e` 里新加的两副本用例 | 进行中 |
