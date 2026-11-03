@@ -59,6 +59,16 @@ def test_the_framework_versions_are_pinned() -> None:
     assert all("==" in ln or re.fullmatch(r"[A-Za-z0-9_.-]+ @ git\+https://\S+@[0-9a-f]{40}", ln) for ln in lines)
 
 
+
+def test_harbor_has_its_own_requirements_because_it_cannot_share_an_env_with_tau2() -> None:
+    """harbor 0.24.0 要 litellm>=1.92.0，tau2 2.0.0 要 litellm<1.82.7：分成两份，各自钉死版本。"""
+    main = [ln for ln in fw.REQUIREMENTS.read_text("utf-8").splitlines() if ln.strip() and not ln.startswith("#")]
+    harbor = [ln for ln in (fw.REQUIREMENTS.parent / "eval-requirements-harbor.txt").read_text("utf-8").splitlines() if ln.strip() and not ln.startswith("#")]
+    assert not [ln for ln in main if ln.lower().startswith("harbor")]
+    assert any(ln.startswith("tau2 @ ") for ln in main)
+    assert harbor == ["harbor==0.24.0"]
+
+
 # --- 判分模型的配置 ---
 
 

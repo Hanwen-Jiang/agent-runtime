@@ -499,7 +499,7 @@ M5 的后端顺序见 [firecracker-backend.md](firecracker-backend.md) 第 7 节
 - 镜像在服务器上构建、导进 k3s（不经镜像仓库）；密钥在服务器上生成，SOPS 加密。
 - 验过的：verify.sh 全过（gVisor 与 Kata 的内核、沙箱断网、没令牌）；业务库三个角色都不是超级用户、没有 BYPASSRLS；经 Cloudflare 的
   Workspace API 在 gVisor 沙箱里建工作区、真模型的只读 Task 跑到 done、SSE 逐条到达；80 跳 443；源站的 443、6443、NodePort 从公网连不上。
-- 还没开的：R2（Postgres 的 WAL 归档与每日备份、Langfuse）等 R2 的令牌；预览地址（`*.preview.cgent.link` 要 Cloudflare 的付费证书，
+- 还没开的：~~R2（Postgres 的 WAL 归档与每日备份、Langfuse）等 R2 的令牌~~（之后已开：2026-11-03 核对，Postgres 的 WAL 持续归档到 R2、每天 03:00 备份成功，Langfuse 用 R2 的 `agentruntime-langfuse` 桶，S3 密钥由 Cloudflare 令牌推出（`/root/ar-secrets/r2_creds.py`），Langfuse 4.50 已收到约 3 万条事件；**没切到 R2 的只有 Runtime 自己的 ObjectStore（D-09）**，task-service 与 Worker 仍用共用卷 `AR_OBJECT_STORE_DIR`）；预览地址（`*.preview.cgent.link` 要 Cloudflare 的付费证书，
   先关着）；coding-web 的第三方登录等新的 OAuth 应用（回调 `https://code.cgent.link/api/auth/<平台>/callback`），上线初期只放行名单里的账号。
 - 上线时改的：Traefik Chart 40 的跳转键位置、Kata 4.2 的 handler 在 `config-v3.toml.d` 里、Redpanda 的特权 tuning 容器关掉、
   Workspace API 在挂卷的后端上要先建工作区目录（否则 kubelet 以 root 建 subPath）、租户策略的种子不起名字。

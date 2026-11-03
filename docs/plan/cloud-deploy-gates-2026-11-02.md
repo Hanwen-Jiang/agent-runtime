@@ -2,18 +2,18 @@
 
 > 这份清单把 [cloud-deploy.md](cloud-deploy.md) 的 D-02～D-17 从“已有代码/ kind 验证”投影成可执行的下一步。命令只使用仓库已有脚本或测试入口；真实资源未提供时记录 `blocked_external`，不把静态检查当线上通过。
 >
-> 2026-11-03 更正：本清单写成时没有连到集群，把“新机器和域名”当成了缺的资源。实际上 cgent.link 的单节点集群（美国独服，有 KVM）2026-10-28 已上线，之后多次升级（[cloud-deploy.md](cloud-deploy.md) 第 10 节；线上基线见 [工作 DAG](work-dag-2026-11-03.md)）。下表的状态按第 10 节的记录改过：资源已有但 gate 没有在线上跑的写“没有记录”，不算通过；仍是 `blocked_external` 的只有 R2 的令牌、Cloudflare 桥的令牌（真端点要花钱）与预览地址的付费证书。
+> 2026-11-03 更正：本清单写成时没有连到集群，把“新机器和域名”当成了缺的资源。实际上 cgent.link 的单节点集群（美国独服，有 KVM）2026-10-28 已上线，之后多次升级（[cloud-deploy.md](cloud-deploy.md) 第 10 节；线上基线见 [工作 DAG](work-dag-2026-11-03.md)）。下表的状态按第 10 节的记录改过：资源已有但 gate 没有在线上跑的写“没有记录”，不算通过；仍是 `blocked_external` 的只有 Cloudflare 桥的令牌（真端点要花钱）与预览地址的付费证书。**再更正**：R2 早已开通（Postgres 的 WAL 归档与每日备份、Langfuse 都在用），之前把它列为缺的资源是照着过时的记录写的。
 
 | 项目 | 本地/Kind gate | 真实资源 | 成功判据 | 当前状态 |
 | --- | --- | --- | --- | --- |
 | D-02 集群安装与入口 | `bash deploy/cluster/install.sh`；`bash deploy/cluster/verify.sh`；`python scripts/sse_probe.py --help` | 新机器、gVisor/Kata 内核、Traefik、Cloudflare DNS | install/verify 全部通过；经 Traefik 的 SSE 可持续收事件 | **passed**（2026-10-28，cgent.link）：install.sh 与 verify.sh 全过（gVisor 与 Kata 的内核、沙箱断网、没令牌）；经 Cloudflare 与 Traefik 的 SSE 逐条到达 |
-| D-03 数据组件 | `python scripts/check_chart_values.py`；`pytest -q tests/deploy/test_cloud.py tests/deploy/test_collector_config.py` | PostgreSQL、Temporal、Qdrant、Redpanda、Langfuse、Tempo、Grafana、R2 | 所有组件 Ready；角色无超级用户/BYPASSRLS；从 R2 恢复并完成 Collector 三路导出 | 部分：组件在 cgent.link 上运行，业务库三个角色都不是超级用户、没有 BYPASSRLS；VictoriaMetrics 与 Grafana 2026-10-30 装上。R2 未开（WAL 归档、每日备份、恢复演练、Langfuse），`blocked_external`；Collector 三路导出没有记录 |
+| D-03 数据组件 | `python scripts/check_chart_values.py`；`pytest -q tests/deploy/test_cloud.py tests/deploy/test_collector_config.py` | PostgreSQL、Temporal、Qdrant、Redpanda、Langfuse、Tempo、Grafana、R2 | 所有组件 Ready；角色无超级用户/BYPASSRLS；从 R2 恢复并完成 Collector 三路导出 | 部分：组件在 cgent.link 上运行，业务库三个角色都不是超级用户、没有 BYPASSRLS；VictoriaMetrics 与 Grafana 2026-10-30 装上。R2 已开：WAL 持续归档、每日备份成功（2026-11-02、11-03），Langfuse 用 R2 并已收到约 3 万条事件；恢复演练没有记录；Collector 三路导出（Tempo、Langfuse、Redpanda）都在发，失败 0 |
 | D-04 Helm/RBAC/扩缩容 | `python scripts/kind_rehearsal.py`；`pytest -q tests/deploy/test_helm_chart.py` | 真 K8s、Ingress/Traefik、业务 Postgres、外部访问 | kind 九项彩排等价场景在真集群通过；Registry 不可公网访问 | 部分：Runtime 2026-10-28 起在线上，经 Cloudflare 的 HTTPS、Workspace API、真模型 Task 跑到 done、SSE 都通过；源站的 443、6443、NodePort 从公网连不上。KEDA 扩缩容、删 Pod 后恢复等彩排场景与 Registry 端口没有在真集群上单独记录 |
 | D-05 Sandbox 后端 | `AR_TEST_KIND=1 python -m pytest -q tests/e2e`（按环境过滤）；`AR_KIND_GVISOR=1` 重跑 | Kata RuntimeClass、嵌套虚拟化节点 | gVisor/Kata 的 shell、隔离、回收、配额和失败回退均通过 | 部分：线上 gVisor 与 Kata 都有（verify.sh 的内核与断网检查通过；2026-10-31 两边的取消与撤销直接调 Provider 通过）；回收、配额、失败回退没有在线上单独记录 |
 | D-06 Workspace/存档 | `pytest -q tests/deploy/test_cloud.py` 及 Workspace/沙箱相关测试 | 真 Cloudflare bridge、R2、Kata、coding-agent 新 API | archive/restore、跨会话隔离、diff/commit/push 生命周期完整闭环 | coding-agent 已改用 Workspace API（2026-10-28 起，Workspace 界面 2026-11-03 补齐）；Kata 已有，Kata 上的存档恢复没有记录；真实桥/R2 `blocked_external` |
 | D-07 Cloudflare bridge | TypeScript bridge 的 `tsc`、`wrangler deploy --dry-run`；Python bridge 单测 | Linux/WSL、真实 Cloudflare account、容器端点 | 容器创建/exec/file/destroy 真实闭环，鉴权和路由符合预期 | 假桥已过；真端点 `blocked_external` |
 | D-08 策略契约 | `pytest -q services/go-task-service/internal/taskapi`（有 Go 工具链时）；schema contract tests | 人工 S-01 审查、buf 工具链 | effect ceiling 与 sandbox backend 通过 breaking baseline，生成代码可编译 | `blocked_external`：契约人审 |
-| D-09 ObjectStore/R2 | Python/Go ObjectStore 一致性测试、Claim-Check 测试 | 真 R2、无共享卷的 task-service/Worker | SigV4、前缀、过期、跨进程大载荷 Claim-Check 全通过 | 假服务已覆盖；真 R2 `blocked_external` |
+| D-09 ObjectStore/R2 | Python/Go ObjectStore 一致性测试、Claim-Check 测试 | 真 R2、无共享卷的 task-service/Worker | SigV4、前缀、过期、跨进程大载荷 Claim-Check 全通过 | 假服务已覆盖；R2 已有（备份与 Langfuse 在用），但 task-service 与 Worker 仍用共用卷，没有切到 S3 适配器，没有记录 |
 | D-10 在线演示/观测 | `python scripts/check_chart_values.py`；Telemetry/TraceQL 静态测试 | 公网域名、Tempo、Grafana、Cloudflare | 按手册完成任务；Task 与 sandbox 成本、`runtime.sandbox` span 可查询 | 部分：公网域名与 Cloudflare 已有，评测看板公开（evals.cgent.link），Grafana 质量面板与告警已装；照 demo.md 走一遍、真 Tempo 上的 TraceQL 查询没有记录 |
 | D-11 环境表/对账 | `pytest -q services/py-worker/tests/test_sandbox_ledger.py`；`AR_TEST_KIND=1` | 真 Postgres、K8s Sandbox bridge | 状态序列、回收、丢失修复、租户隔离、单次 reconcile 在真库真桥通过 | SQLite/假桥已有；线上用 Postgres 业务库与 K8s 后端在跑，gate 的各场景没有在线上单独记录 |
 | D-12 配额/回退 | `pytest -q services/py-worker/tests/test_sandbox_quota.py` | 人审后的 schema、Postgres、多个后端 | 并发配额、日/月预算、transient 回退、min isolation 在真库通过 | 代码/测试已有；契约与真库 `blocked_external` |
@@ -27,5 +27,5 @@
 
 1. 先跑不依赖外部资源的静态和 kind gate，保存命令、commit、镜像标签和结果。
 2. S-01/D-08/D-12/D-16 的人工评审完成后，再更新 proto/schema baseline 并运行生成代码检查。
-3. D-02 已在线上通过；其余在 cgent.link 上按 D-04→D-05/D-11→D-09/D-16→D-13/D-14/D-15/D-17→D-10 的顺序执行；每个 gate 单独记录 `passed` 或 `blocked_external`（D-09 与 D-06 的存档等 R2 令牌，D-07 等 Cloudflare 桥令牌）。
+3. D-02 已在线上通过；其余在 cgent.link 上按 D-04→D-05/D-11→D-09/D-16→D-13/D-14/D-15/D-17→D-10 的顺序执行；每个 gate 单独记录 `passed` 或 `blocked_external`（D-07 等 Cloudflare 桥令牌；D-09 与 D-06 的存档不再缺资源，只是没切过去）。
 4. D-06、D-23/D-24 与 coding-agent 的契约迁移独立验收，不把跨仓库改动混入本仓库的 kind gate。

@@ -1,0 +1,4 @@
+# Harbor（Terminal-Bench 官方框架，benchmarks terminalbench harbor）的单独 Python，不进 Worker 镜像。
+# 不与 eval-requirements.txt 装在一起：harbor 0.24.0 要 litellm>=1.92.0，那边的 tau2 2.0.0 要 litellm<1.82.7。
+# 装法：uv venv … && uv pip install -r services/py-learning/eval-requirements-harbor.txt，再装本仓库的包（benchmarks 在同一进程里 import 它）。
+harbor==0.24.0

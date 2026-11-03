@@ -121,7 +121,7 @@ def preflight(*, require_harbor: bool) -> tuple[bool, str | None]:
     try:
         mod = importlib.import_module("harbor")
     except ImportError:
-        return False, "harbor 0.24.0 is not installed; install the isolated eval venv with: uv pip install -r services/py-learning/eval-requirements.txt"
+        return False, "harbor 0.24.0 is not installed; install its own eval venv with: uv pip install -r services/py-learning/eval-requirements-harbor.txt"
     version = getattr(mod, "__version__", None)
     if version and version != HARBOR_VERSION:
         return False, f"Harbor {HARBOR_VERSION} required, found {version}"
