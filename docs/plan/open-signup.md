@@ -33,8 +33,23 @@
 3. ~~**免费账号的模型白名单**：默认策略的 `model_allowlist` 去掉最贵的档（例如 claude-opus），只留 mid、small 与一个 strong。~~ **执行器已完成**：Model Gateway 按租户策略区分“字段缺失=不限制”和“空数组=全部拒绝”，并在候选模型路由前拒绝不在白名单的 Profile；默认免费策略的具体 Profile 列表仍由部署侧 seed 配置。
 4. **防滥用**：coding-web 注册时要求平台账号满 30 天、有验证过的邮箱（GitHub 的 `created_at` 与 `/user/emails`）；
    运维的封禁名单（`CODING_BLOCKED_LOGINS`）；出事时一键回到名单制（重新设 `CODING_ALLOWED_LOGINS`）。
+   2026-11-03（F4）验收测试已写，实现等人审，测试在 coding-agent 的 `internal/server/signup_test.go`，实现前跳过。按测试的规则：
+   - 只管新注册，已有的账号照常登录；名单制里的账号不受限；被拒时不建账号，并说明原因。
+   - GitHub：默认的 scope 加上 `user:email`；读不到邮箱按没验证过处理。
+   - GitLab、Gitee、Gitea：同样查天数。
+   - Google：只查 `email_verified`。
+   - Bitbucket：两样都查不了，新注册不收，只能连接到已有账号（**要人定**）。
+   - 封禁名单：登录与连接都拒绝，已有的账号也一样。
+   - 配置：`CODING_SIGNUP_MIN_ACCOUNT_AGE_DAYS`（默认 30，0 关闭）、`CODING_SIGNUP_REQUIRE_VERIFIED_EMAIL`（默认 true）。
 5. **付费或熟人账号**：给租户发布自己的租户策略（Registry），放宽上面各项；以后有了计费再按套餐出策略。
 6. **兜底与告警**：模型供应商控制台设整月花费上限；Grafana 按租户的花费面板加告警（全平台当天花费超过阈值通知运维）。
+   已经有：“租户每小时花费”面板与告警（单个租户一小时超过 5 美元）。2026-11-03（F4）验收测试 `tests/deploy/test_spend_alerts.py` 已写，实现前跳过：
+   - 看板上加“全平台 24 小时花费”与“租户 24 小时花费（前 20）”；
+   - 告警“全平台 24 小时花费”，超过 50 美元（**要人定**阈值）。
+
+   **要人定**：
+   - 通知发到哪（邮件还是 webhook，要密钥）：现在的告警只在 Grafana 里显示；
+   - 供应商控制台的月度上限：由人在供应商那边设。
 
 ## 7. 2026-11-03 默认免费模型白名单切片
 
