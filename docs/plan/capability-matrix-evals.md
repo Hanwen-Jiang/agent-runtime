@@ -170,3 +170,62 @@ BFCL、LongBench 这类便宜的题取 n = 100。端到端贵：SWE-bench 50 题
 3. **“同一批题”**：追加样本只给与领先者重叠的候选（连同领先者）加题，被甩开的候选停在原来的 n；各候选的题是同一个 seed 下同一个顺序的前缀，不是完全相同的集合。
 4. **并发与拆预算**没有复用 `benchmarks suite`（它是按子进程调度端到端评测的）：组件级都在一个进程里，用 asyncio 的并发与总预算。端到端的矩阵（第 2 节的按档钉模型）没做。
 5. 裁判的复核（第 5 节，gpt-6-astra 抽查、kappa）不在这条线。
+
+## 11. 实现记录：公开数据集（B2 线，2026-11-03）
+
+第 3 节里公开数据集的 CellEval 在 `services/py-learning/src/agentruntime_learning/capability/evals/`，每个模块有 `make(**options)`；
+共用部分在 `_datasets.py`（下载到 `AR_EVAL_DATA_DIR`，默认 `~/.cache/agentruntime-evals`，逐个文件核对 sha256；按 (seed, 题号) 的哈希
+选题，n 变大只在后面追加，有分组时各组轮流取；模型调用经传进来的 Gateway，租户 evals，花费取 usage，失败取错误里的已计费花费；
+出错给 `ItemResult(score=0, error=…)`，`contaminated` 取 PinningGateway 的判定）与 `_judged.py`（要裁判的题）。数据集不进仓库，
+测试用手写的小样本（真实格式）；第三方包只进 `eval-requirements.txt`，不装也能 import、离线测试照过。
+
+| 模块 | role | 数据与钉的版本 | 许可 | 判分 |
+| --- | --- | --- | --- | --- |
+| `bfcl` | act | Gorilla `6ea5797`（2026-03-23）的 `BFCL_v4_*.json` 与 `possible_answer/`；默认 simple（simple_python 400）、multiple 200、parallel 200、parallel_multiple 200，可选 live_* 与 irrelevance | Apache-2.0 | 移植 BFCL 的 Python AST 规则（`ast_checker.py`）；工具按 BFCL 的 FC 模式转换 |
+| `tau2` | act | tau2-bench v2.0.0（`989d328`，2026-10-19），split base：airline 50、retail 114、telecom 114 | MIT | 官方包的 `evaluate_simulation`，按 reward_basis 逐项相乘 |
+| `rewardbench2` | judge | `allenai/reward-bench-2` `7ff0885`（parquet sha256 `c8ec60ef…`），Ties 以外 1763 题 | ODC-BY；回答出自多个模型，各有使用条款 | 官方 ratings 提示（默认）或 four-way 提示 |
+| `judgebench` | judge | `ScalerLab/JudgeBench` `57dd5e0`，默认 gpt 一份 350 对（claude 270 对可选） | MIT（题目来自 MMLU-Pro、LiveBench、LiveCodeBench，各有许可） | 官方 Arena-Hard 裁判提示，两种顺序 |
+| `longbench` | transform | `zai-org/LongBench-v2` `2b48e49`（data.json 465 MB，sha256 `15d61c22…`，拆成逐题缓存），默认 short | Apache-2.0（上下文取自公开文档、书籍等，许可各异） | 官方 0-shot 模板与答案提取 |
+| `simpleqa` | deliver | simple-evals 的 `simple_qa_test_set.csv`（sha256 `feee3f7e…`，4326 题），判分提示取自 simple-evals `652c89d` | MIT | Opus 5.5 按官方 GRADER_TEMPLATE 判 A/B/C |
+| `frames` | deliver | `google/frames-benchmark` `58d9fb6`（test.tsv，824 题） | Apache-2.0 | Opus 5.5 按论文图 6 的 Auto-rating Prompt 判 TRUE/FALSE |
+
+许可：都允许评测使用；ODC-BY（RewardBench 2）要求注明出处，报告里写数据集名与版本即可。没有限制商用评测的条款，但 RewardBench 2、
+JudgeBench 的回答是别家模型生成的，**不要拿来训练**（各模型的使用条款）。
+
+**怎么判，与官方的差别**
+
+- BFCL：只做单轮。多轮（multi_turn_*）要执行 BFCL 自带的模拟 API 类（文件系统、交易等），没做。Gateway 的工具参数是 protobuf
+  Struct，数都是浮点数：按函数声明的类型把整数还原成 int，所以给整数参数写 `10.0` 时原版判类型错、这里判对；别的规则不变。
+  在真实数据上核对过移植：用标准答案当输出，2351 题里只有 9 题不过（都是标准答案本身把必填参数标成可省，原版同样不过）。
+- τ²-bench：对话在本模块里经 Gateway 跑，环境、提示、工具执行与判分用官方包（`OfficialBackend`）；在装了官方包的 Python 里核对过
+  三个领域各一道题按标准动作走一遍都得 1 分、什么都不做的 retail 题得 0 分。用户模拟器默认 `a6api/gpt-5.5@2026-10`（role deliver、
+  明确钉住，所以不被矩阵钉到候选上；官方默认 GPT-4.1），**要人定**。COMMUNICATE 用官方原来的子串匹配；retail 112 题的 reward_basis
+  有 NL_ASSERTION，官方经 litellm 调自己的裁判，这里的模型调用只能经 Gateway，所以先不算（record 的 `skipped` 写明），只按数据库终态判。
+  要算的话把 NL 断言改经 Gateway 的 Opus 裁判，另做。数据从钉死的提交稀疏检出（约 130 MB，要 git），或设 `TAU2_DATA_DIR`。
+- RewardBench 2：Ties 子集的官方分数按一组题算（准确率加分差），不是逐题的，不收。默认 ratings：四个回答各自单独打分，好回答
+  并列第一时按比例给分（同官方），没有位置偏差；`mode="four_way"` 时好回答放在两个不同位置各问一次，两次都选中才算对。
+- JudgeBench：默认两次都判对才算对（人定的“只算前后一致的正确答案”）；官方的算法（判对次数减判反次数大于 0，一对一平局也算对）
+  另记 `official_correct`，`scoring="official"` 时按它。
+- LongBench v2：没有分词器，按 UTF-8 字节数估 token（约 4 字节一个），超过 `max_context_tokens`（默认 12 万，同官方）时截掉上下文中间。
+- SimpleQA、FRAMES：被测作答是 role deliver；裁判是 role judge、`pinned_model_profile` 明确填 Opus 5.5，经 `evals.judging` 的
+  RecordingJudgeGateway 调用，每次判分写一行 JSONL（`judge_log`，默认 `<AR_EVAL_DATA_DIR>/judgments/<评测>.jsonl`，调度可传运行目录里的
+  路径）；`ItemResult.record` 里有裁判的完整输入、结论、理由、实际服务的模型与花费，候选是 Anthropic 的模型时 `same_vendor = True`。
+  裁判没落在 Opus 上时这道题记为出错。**温度 0 做不到**：GenerateParams 没有温度字段（要改契约，走 S-01），按 Profile 的默认值，
+  record 里写 `temperature: "provider default"`。SimpleQA 逐题只有 CORRECT 记 1（同官方），INCORRECT 与 NOT_ATTEMPTED 都记 0
+  但分开记下；要奖励“不知道就不答”得另算官方的 F 分数，**要人定**是否改成逐题给 NOT_ATTEMPTED 部分分。FRAMES 只做论文的
+  naive prompting（不给维基百科条目）；给条目原文的 oracle 设定要另取页面并定怎么钉版本，没做。
+
+**每题花费的估计**（没实测，按 Profile 的单价与估的 token 数；有思考预算的档另加思考 token）
+
+| 评测 | 估的 token（每题） | Sonnet 5.5 | Opus 5.5 | gemini-3.5-flash |
+| --- | --- | --- | --- | --- |
+| BFCL | 输入约 0.6k、输出约 0.1k | 约 0.002 美元 | 约 0.004 | 约 0.002 |
+| τ²-bench | 客服约 150k～300k 输入（政策与工具每轮重发，缓存命中会便宜很多）、约 3k 输出；另加用户模拟器（gpt-5.5）约 60k 输入，约 0.35 美元 | 约 0.7～1.0 | 约 1.0～1.6 | 约 0.6～0.9 |
+| RewardBench 2（ratings） | 4 次 × 约 0.8k 输入、0.25k 输出 | 约 0.016 | 约 0.033 | 约 0.014 |
+| JudgeBench | 2 次 × 约 2.5k 输入、1.2k 输出（Arena-Hard 要裁判先自己作答） | 约 0.034 | 约 0.07 | 约 0.03 |
+| LongBench v2（short） | 约 25k～45k 输入、很少输出 | 约 0.05～0.09 | 约 0.10～0.18 | 约 0.04～0.07 |
+| SimpleQA | 作答很短；Opus 裁判约 1.5k 输入 | 约 0.007（含裁判 0.006） | 约 0.007 | 约 0.007 |
+| FRAMES | 作答约 0.3k～2k 输出；Opus 裁判约 0.4k 输入、0.15k 输出 | 约 0.01～0.03（含裁判 0.005） | 约 0.01～0.05 | 约 0.01～0.025 |
+
+和第 7 节的出入：LongBench 不是 1.5k 输入的短题，n = 100 每个候选约 4～9 美元（mid）；τ²-bench 的 3 × 20 题按上表约 40～60 美元，
+比第 7 节的 20～40 美元高，主要是用户模拟器与政策重发，网关的提示缓存命中后会低一些。真跑第一轮后按实测改这张表。
