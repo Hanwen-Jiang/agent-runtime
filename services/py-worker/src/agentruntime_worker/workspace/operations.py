@@ -53,6 +53,7 @@ from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker import names
 from agentruntime_worker.sandbox.broker import Lease, SandboxBroker
+from agentruntime_worker.sandbox.env_config import EnvironmentConfig
 from agentruntime_worker.sandbox.grants import NetworkPolicy, check_request
 from agentruntime_worker.sandbox.ledger import iso
 from agentruntime_worker.workspace.archive import WorkspaceRecord
@@ -243,6 +244,8 @@ class WorkspaceOperations:
         # ref 是完整的提交时只取到它为止的历史（TMP 计划 eval-observability-and-runtime-fixes 11.10）。
         commit = ref if remote is not None and _SHA.match(ref) else ""
         author = _author(args)
+        # ENV-02：选用的环境配置（task-service 校验过，这里再核一遍）；不对时不建工作区。
+        environment = EnvironmentConfig.from_args(args["environment"]) if args.get("environment") else None
         credential = await self._credential(inp, remote) if remote is not None else None
         origin: WorkspaceRecord | None = None
         if source:
@@ -252,6 +255,8 @@ class WorkspaceOperations:
         limits = (await self._broker.sandboxes.policy_for(owner)).workspace
         await self._archiver.ensure(owner, ws, limits, repo_url=url or (origin.repo_url if origin else ""), exclusive=True)
         try:
+            if environment is not None:
+                await self._archiver.set_environment(owner, ws, environment, owner_user=inp.requested_by or inp.tenant.user_id)
             if origin is not None:
                 head, branch = await self._copy(inp, source, max_bytes=limits.max_bytes)
             else:
@@ -797,7 +802,7 @@ def workspace_dict(record: WorkspaceRecord, *, branch: str = "") -> dict[str, An
     out: dict[str, Any] = {
         "workspace_id": record.workspace_id, "state": "WORKSPACE_STATE_ACTIVE" if record.state == "active" else "WORKSPACE_STATE_DELETED",
         "repo_url": record.repo_url, "head": record.head, "snapshot_id": record.snapshot_id, "size_bytes": str(record.size_bytes), "files": record.files,
-        "branch": branch,
+        "branch": branch, "environment_id": record.environment_id,
     }
     for name in ("created_at", "updated_at"):
         if getattr(record, name):

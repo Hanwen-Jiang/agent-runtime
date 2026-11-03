@@ -36,6 +36,7 @@ from agentruntime_core.providers.relational_store import Migration, RelationalSt
 from agentruntime_core.providers.sandbox import FileEntry
 from agentruntime_core.tenancy import TenantContext
 
+from agentruntime_worker.sandbox.env_config import BoundEnvironment, EnvironmentConfig
 from agentruntime_worker.sandbox.ledger import iso, utc_now
 from agentruntime_worker.sandbox.policy import WorkspaceLimits
 
@@ -83,6 +84,14 @@ MIGRATIONS = (
             finished_at TEXT NOT NULL DEFAULT ''
         )""",
     )),
+    # ENV-02：工作区选用的环境配置的快照（只有普通值与密钥的名字）、选它的用户、删除环境配置的时间（Q35）。
+    Migration(208, "workspace_environment", (
+        "ALTER TABLE workspaces ADD COLUMN environment_id TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE workspaces ADD COLUMN environment TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE workspaces ADD COLUMN environment_owner TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE workspaces ADD COLUMN environment_deleted_at TEXT NOT NULL DEFAULT ''",
+        "CREATE INDEX workspaces_environment ON workspaces (environment_id, environment_owner)",
+    )),
 )
 
 
@@ -110,6 +119,8 @@ class WorkspaceRecord:
     size_bytes: int = 0
     files: int = 0
     deleted_at: str = ""
+    # 选用的环境配置的 ID（ENV-02）；配置本身另读（environment）。
+    environment_id: str = ""
 
     @classmethod
     def from_row(cls, row: Mapping[str, Any]) -> WorkspaceRecord:
@@ -208,7 +219,8 @@ class WorkspaceArchiver:
             if row:
                 await tx.execute(
                     "UPDATE workspaces SET state = 'active', repo_url = $1, head = '', snapshot_id = '', size_bytes = 0, files = 0, "
-                    "created_at = $2, updated_at = $2, deleted_at = '' WHERE workspace_id = $3",
+                    "created_at = $2, updated_at = $2, deleted_at = '', environment_id = '', environment = '', environment_owner = '', "
+                    "environment_deleted_at = '' WHERE workspace_id = $3",
                     (repo_url, now, workspace_id),
                 )
             else:
@@ -230,6 +242,43 @@ class WorkspaceArchiver:
             await tx.execute(
                 f"UPDATE workspaces SET {sets}, updated_at = ${len(columns) + 1} WHERE workspace_id = ${len(columns) + 2}",
                 [*[values[c] for c in columns], iso(self._clock()), workspace_id],
+            )
+
+    # --- 选用的环境配置（ENV-02）---
+
+    async def set_environment(self, owner: str, workspace_id: str, config: EnvironmentConfig, *, owner_user: str) -> None:
+        """记下工作区选用的环境配置（建工作区时）；之后编辑环境只影响新建的工作区。"""
+        await self.migrate()
+        async with self._db(owner).transaction() as tx:
+            await tx.execute(
+                "UPDATE workspaces SET environment_id = $1, environment = $2, environment_owner = $3, environment_deleted_at = '', updated_at = $4 "
+                "WHERE workspace_id = $5",
+                (config.environment_id, config.to_json(), owner_user, iso(self._clock()), workspace_id),
+            )
+
+    async def environment(self, owner: str, workspace_id: str) -> BoundEnvironment | None:
+        """工作区选用的环境配置；没有选用（或工作区不在）时 None。"""
+        if owner == PLATFORM_ID or not owner:
+            return None
+        await self.migrate()
+        async with self._db(owner).transaction(read_only=True) as tx:
+            row = await tx.query_one(
+                "SELECT environment, environment_owner, environment_deleted_at FROM workspaces WHERE workspace_id = $1 AND state <> 'deleted'",
+                (workspace_id,),
+            )
+        if not row or not row["environment"]:
+            return None
+        return BoundEnvironment(EnvironmentConfig.from_json(str(row["environment"])), str(row["environment_owner"]), bool(row["environment_deleted_at"]))
+
+    async def delete_environment(self, owner: str, environment_id: str, *, owner_user: str) -> int:
+        """删除环境配置（Q35；task-service 的 DeleteEnvironmentConfig 做同样的事）：只标记，返回新标记的工作区个数。"""
+        await self.migrate()
+        now = iso(self._clock())
+        async with self._db(owner).transaction() as tx:
+            return await tx.execute(
+                "UPDATE workspaces SET environment_deleted_at = $1, updated_at = $1 WHERE environment_id = $2 AND environment_owner = $3 "
+                "AND environment_deleted_at = ''",
+                (now, environment_id, owner_user),
             )
 
     # --- 快照 ---

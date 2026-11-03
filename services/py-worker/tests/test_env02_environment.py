@@ -107,7 +107,7 @@ class Setup:
         self.boxes = Sandboxes({"local": spec}, "local", workspace_root=self.workspaces)
         store = SQLiteRelationalStoreProvider(tmp_path / "relational")
         self.ledger = SandboxLedger(store, clock=self.clock)
-        self.archiver = WorkspaceArchiver(store, LocalDiskObjectStoreProvider(tmp_path / "objects"), clock=self.clock)
+        self.archiver = WorkspaceArchiver(store, LocalDiskObjectStoreProvider(tmp_path / "objects", signing_key=b"k" * 32), clock=self.clock)
         self.broker = SandboxBroker(self.boxes, self.ledger, archiver=self.archiver)
         self.broker.setup_timeout = timedelta(seconds=setup_timeout_s)
         self.images: ImageSandboxes | None = None

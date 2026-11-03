@@ -82,6 +82,10 @@ def sandboxes(config: WorkerConfig) -> Sandboxes | None:
     )
 
 
+# 出网网关终结 TLS 用的 CA 的证书（SecretStore 平台作用域；私钥是 sandbox/egress-ca-key，只有网关读）。
+EGRESS_CA_CERT_SECRET = "sandbox/egress-ca-cert"
+
+
 def sandbox_broker(config: WorkerConfig) -> SandboxBroker | None:
     """shell_run 与对账共用的 SandboxBroker（同样的配置得到同一个实例）；不是 sandbox 时为 None。"""
     key = _broker_key(config)
@@ -100,6 +104,8 @@ def sandbox_broker(config: WorkerConfig) -> SandboxBroker | None:
             archiver = WorkspaceArchiver(store, context_objects(config))
             broker = SandboxBroker(boxes, SandboxLedger(store), credentials=credentials, archiver=archiver)
             broker.hold_max = timedelta(seconds=config.sandbox_hold_max_s)
+            # ENV-02：网络密钥要沙箱信任出网网关的 CA（只读证书，不读私钥）。
+            broker.egress_ca = lambda: boxes.read_secret(EGRESS_CA_CERT_SECRET)
             if boxes.environments:
                 # 按项目定制的运行环境（D-17；登记文件的 environments 一节，格式见 sandbox.env_build.environment_manager）。
                 from agentruntime_worker.sandbox.env_build import environment_manager
