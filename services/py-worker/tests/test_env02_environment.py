@@ -394,3 +394,26 @@ async def _all_records(s: Setup) -> list[Any]:
     async with s.ledger.bind("t1").transaction(read_only=True) as tx:
         rows = await tx.query(f"SELECT {', '.join(_COLUMNS)} FROM sandbox_envs ORDER BY created_at")
     return [EnvRecord.from_row("t1", r) for r in rows]
+
+
+async def test_secret_headers_make_the_sandbox_trust_the_gateway_ca_without_any_value(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from agentruntime_worker.sandbox import broker as broker_module
+    from agentruntime_worker.sandbox.credentials import EnvCredentials
+
+    bundle = tmp_path / "ca.pem"
+    monkeypatch.setattr(broker_module, "CA_BUNDLE", str(bundle))
+    s = Setup(tmp_path)
+
+    async def key() -> bytes:
+        return bytes(range(32))
+
+    async def ca() -> bytes:
+        return b"-----BEGIN CERTIFICATE-----\nGATEWAY-CA\n-----END CERTIFICATE-----\n"
+
+    s.broker.credentials = EnvCredentials(key, egress_url="http://egress.test:8095")
+    s.broker.egress_ca = ca
+    await s.bind(doc=environment(secret_headers=[{"host": "api.example.com", "secret_name": "example-token"}]))
+    out = await s.shell(["bash", "-c", 'echo "$SSL_CERT_FILE $REQUESTS_CA_BUNDLE $NODE_EXTRA_CA_CERTS"'])
+    assert out["stdout"].split() == [str(bundle)] * 3
+    assert "GATEWAY-CA" in bundle.read_text(), "证书包里有网关 CA（只有证书）"
+    assert "example-token" not in out["stdout"]

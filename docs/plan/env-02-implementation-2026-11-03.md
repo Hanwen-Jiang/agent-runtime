@@ -10,7 +10,7 @@
 | Failure | coding-agent 已能保存与仓库无关的环境配置（名称、描述、setup、start、`.env`），但 Runtime 拿不到它：沙箱环境建好后不跑 setup、start，`.env` 不进命令，联网档位与网络密钥没有执行点，环境表也没有 setup 的事实可查（Q36、Q37）。 |
 | Evidence | Q16、Q17：环境独立保存，启动会话时选 repo，可跨仓库复用；Q20：setup 在新会话的环境启动、代码执行之前；coding-agent 每个会话建一个自己的工作区（`createSession` 的 `from_workspace_id`），会话与工作区一一对应。 |
 | 候选 | A. Runtime 另建环境配置库（CRUD、版本、绑定）；B. 每次提交 Task 带配置（经工作流输入到 Node Executor 与工具）；C. 建工作区时带一份配置快照，存在工作区的行上，SandboxBroker 建环境时读它。 |
-| Minimum fix | **C**：`CreateWorkspaceRequest.environment`（`WorkspaceEnvironment`）。Runtime 按（租户，工作区）保存快照（`workspaces` 加 4 列，迁移 207），只有普通值与密钥的**名字**；`Workspace.environment_id` 回显 ID。删除环境配置用 `WorkspaceService.DeleteEnvironmentConfig`（Q35）。 |
+| Minimum fix | **C**：`CreateWorkspaceRequest.environment`（`WorkspaceEnvironment`）。Runtime 按（租户，工作区）保存快照（`workspaces` 加 4 列，迁移 208），只有普通值与密钥的**名字**；`Workspace.environment_id` 回显 ID。删除环境配置用 `WorkspaceService.DeleteEnvironmentConfig`（Q35）。 |
 | 为什么不是 A | 配置的 CRUD、同名校验（Q18）、描述上限（Q19）、仅自己（Q33）已在 coding-agent 验收；Runtime 再存一份就是第二套配置记录，还要同步。环境的**状态**仍只在 Runtime 的环境表（Q36）。 |
 | 为什么不是 B | 要改 Task 工作流输入、Stage Runner 与 Node Executor（核心链路单写者，另一条线在改）；而且同一个会话的每个 Task 都得重复传，配置在会话中途变了还要定义语义。C 让“编辑环境只影响新会话”（设计草案 4.1）自然成立。 |
 | Benefit | 一处契约改动；Worker 的 activity 里读一行业务库就能拿到配置；不新增服务、不新增工作流命令（WorkspaceOperationWorkflow 不变，`args` 多一个键）。 |
