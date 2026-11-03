@@ -30,7 +30,7 @@ input[type=search] { min-width:220px; flex:1; }
 .row .a { color:var(--muted); overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; }
 .tags { display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
 .badge { font-size:12px; border-radius:999px; padding:1px 8px; border:1px solid var(--line); white-space:nowrap; }
-.confirmed { color:var(--ok); border-color:var(--ok); } .draft { color:var(--warn); border-color:var(--warn); }
+.confirmed { color:var(--ok); border-color:var(--ok); } .draft { color:var(--warn); border-color:var(--warn); } .original { color:var(--accent); border-color:var(--accent); }
 .body { padding:0 12px 12px; }
 .body dl { display:grid; grid-template-columns:max-content minmax(0, 1fr); gap:4px 12px; margin:8px 0; }
 .body dt { color:var(--muted); } .body dd { margin:0; overflow-wrap:anywhere; }
@@ -54,7 +54,7 @@ pre { background:var(--code); border:1px solid var(--line); border-radius:6px; p
     <label><span data-zh="分组" data-en="Group by">分组</span>
       <select id="grouping"></select></label>
     <label><span data-zh="状态" data-en="Status">状态</span>
-      <select id="status"><option value="">*</option><option value="confirmed">confirmed</option><option value="draft">draft</option></select></label>
+      <select id="status"><option value="">*</option><option value="confirmed">confirmed</option><option value="draft">draft</option><option value="original">original</option></select></label>
     <input type="search" id="search" placeholder="搜索题目、答案、来源">
     <span class="muted" id="shown"></span>
   </div>
@@ -72,7 +72,8 @@ pre { background:var(--code); border:1px solid var(--line); border-radius:6px; p
     eval_category: { zh: "评测类别", en: "Eval category" }, source_type: { zh: "来源类型", en: "Source type" },
     framework: { zh: "框架", en: "Framework" }, review: { zh: "人审状态", en: "Review status" }, dataset: { zh: "数据集", en: "Dataset" },
   };
-  const STATUS = { confirmed: { zh: "已人审", en: "reviewed" }, draft: { zh: "未经人审", en: "not reviewed" } };
+  const STATUS = { confirmed: { zh: "已人审", en: "reviewed" }, draft: { zh: "未经人审", en: "not reviewed" }, original: { zh: "官方原题", en: "official" } };
+  const statusOf = (item) => (item.review.status === "confirmed" || item.review.status === "original" ? item.review.status : "draft");
   let site = null, items = [], grouping = "eval_category";
   try { grouping = new URLSearchParams(location.search).get("group") || "eval_category"; } catch (e) {}
 
@@ -84,7 +85,7 @@ pre { background:var(--code); border:1px solid var(--line); border-radius:6px; p
     if (kind === "dataset") { const d = site.datasets.find((x) => x.name === key); return d ? t(d.title) : key; }
     return key;
   }
-  function keyOf(item) { return grouping === "review" ? (item.review.status === "confirmed" ? "confirmed" : "draft") : item[grouping]; }
+  function keyOf(item) { return grouping === "review" ? statusOf(item) : item[grouping]; }
 
   function frameworks() {
     const box = document.getElementById("frameworks"); box.replaceChildren();
@@ -109,7 +110,7 @@ pre { background:var(--code); border:1px solid var(--line); border-radius:6px; p
     const q = el("div", "q", item.question || item.id);
     const a = el("div", "a", text(item.answer));
     const tags = el("div", "tags");
-    const st = item.review.status === "confirmed" ? "confirmed" : "draft";
+    const st = statusOf(item);
     tags.append(el("span", `badge ${st}`, t(STATUS[st])), el("span", "badge", label("source_type", item.source_type)), el("span", "badge", sourceLine(item.source)));
     s.append(q, a, tags); d.append(s);
     d.addEventListener("toggle", () => {
@@ -149,7 +150,7 @@ pre { background:var(--code); border:1px solid var(--line); border-radius:6px; p
     const groups = new Map();
     let n = 0;
     for (const item of items) {
-      if (status && (item.review.status === "confirmed" ? "confirmed" : "draft") !== status) continue;
+      if (status && statusOf(item) !== status) continue;
       if (query && !(`${item.id} ${item.question} ${text(item.answer)} ${sourceLine(item.source)}`.toLowerCase().includes(query))) continue;
       const k = keyOf(item) || "-";
       if (!groups.has(k)) groups.set(k, []);
@@ -180,7 +181,7 @@ pre { background:var(--code); border:1px solid var(--line); border-radius:6px; p
     if (!(site.groupings || []).includes(grouping)) grouping = site.default_grouping || "eval_category";
     sel.value = grouping;
     const st = document.getElementById("status");
-    st.options[0].textContent = lang === "zh" ? "全部" : "all"; st.options[1].textContent = t(STATUS.confirmed); st.options[2].textContent = t(STATUS.draft);
+    st.options[0].textContent = lang === "zh" ? "全部" : "all"; st.options[1].textContent = t(STATUS.confirmed); st.options[2].textContent = t(STATUS.draft); st.options[3].textContent = t(STATUS.original);
     const s = site.sync || {};
     document.getElementById("synced").textContent = s.synced_at ? (lang === "zh" ? "数据更新于 " : "Data updated ") + s.synced_at + (s.stale ? (lang === "zh" ? "（最近一次更新失败，显示的是上一份）" : " (the last update failed; showing the previous copy)") : "") : "";
     frameworks(); render();

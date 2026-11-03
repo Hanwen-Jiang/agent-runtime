@@ -82,7 +82,8 @@
 与本稿不同或没做的：
 
 - 令牌改为挂载的 K8s Secret 文件（第 4 节已改）。
-- **原题数据集还没上页面**：第 3 节第 2 条的选题清单（`public/*.json`）没写，现在 /datasets 只有自编与改编的题。
+- **原题（2026-11-03 补上）**：`evalsets/public/*.jsonl`，来源写在 site.json 的数据集上，状态是 original（官方题，不需人审）。
+  SWE-bench Verified 是 t18-rev19 与 sol-rev18 跑的那 50 题，Terminal-Bench 2.0 是全部 89 题（只有题目说明与测试，**不放官方参考解**，免得题目流进训练数据）；BFCL、JudgeBench、LongBench v2（只有问题与选项，不收长篇原文）、SimpleQA、FRAMES 是能力矩阵第一轮的前缀（`scripts/export_public_items.py`，n = 40、seed = 0）。**τ²-bench 与 RewardBench 2 还没上**：前者要装官方的 tau2 包才选得出题，后者经 Hugging Face 的 rows 接口取回的 JSON 被截断（适配器要改用 parquet）。页面现在公开 437 道，留出集 24 道只计数；所有数据集合起来约 4 MB，页面一次取完，以后可以改成按需加载。
 - 评测结果仍是发布步骤写的整页（第 3 节第 3 条的二选一没做）；主页的结果卡片读实时的一栏。
 - 页面冒烟测试（headless 浏览器）没写，靠手动看过。
 - 上线要：人建只读令牌（fine-grained，只给本仓库 Contents 读），建 Secret `<release>-agent-runtime-eval-site`（键 `token`），

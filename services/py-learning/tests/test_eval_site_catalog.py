@@ -95,8 +95,8 @@ def test_the_index_lists_every_dataset_with_counts(evalsets: Path) -> None:
     assert set(by_name) == {"own", "adapted"}
     own = by_name["own"]
     assert own["source_type"] == "authored" and own["framework"] == "task-loop" and own["eval_category"] == "planning"
-    assert own["counts"] == {"total": 3, "shown": 2, "holdout_hidden": 1, "confirmed": 3, "draft": 0, "excluded": 0}
-    assert by_name["adapted"]["counts"] == {"total": 3, "shown": 2, "holdout_hidden": 0, "confirmed": 0, "draft": 3, "excluded": 1}
+    assert own["counts"] == {"total": 3, "shown": 2, "holdout_hidden": 1, "confirmed": 3, "draft": 0, "original": 0, "excluded": 0}
+    assert by_name["adapted"]["counts"] == {"total": 3, "shown": 2, "holdout_hidden": 0, "confirmed": 0, "draft": 3, "original": 0, "excluded": 1}
     assert index["frameworks"][0]["id"] == "task-loop", "框架介绍来自 site.json"
     assert set(GROUPINGS) == {"eval_category", "source_type", "framework", "review", "dataset"}
     assert index["default_grouping"] == "eval_category"
@@ -155,6 +155,31 @@ def test_items_carry_every_grouping_key(evalsets: Path, grouping: str) -> None:
         for item in catalog.dataset(d["name"])["items"]:
             value = item["review"]["status"] if grouping == "review" else item[grouping]
             assert value, f"{item['id']} 缺 {grouping}"
+
+
+def test_an_original_dataset_takes_its_source_from_site_json(evalsets: Path) -> None:
+    """原题（第 3 节第 2 条）：evalsets/public 里每个数据集一份 JSONL，只有会跑的那些题；来源写在 site.json 的数据集上
+    （上游、版本、许可证），每题加上自己的 id。状态是 original：官方的题与答案，不需人审。"""
+    write(evalsets / "public" / "simpleqa.jsonl", [
+        {"id": "simpleqa-1", "question": "In what year?", "answer": "1991", "extra": {"metadata": "History"}},
+        {"id": "simpleqa-2", "question": "Who?", "answer": "Ada"},
+    ])
+    site = json.loads((evalsets / "site.json").read_text("utf-8"))
+    site["datasets"].append({
+        "name": "simpleqa", "path": "public", "items": "jsonl", "file": "simpleqa.jsonl", "question": "question", "answer": "answer",
+        "source_type": "original", "framework": "official", "eval_category": "factuality",
+        "source": {"dataset": "SimpleQA", "url": "https://github.com/openai/simple-evals", "revision": "652c89d", "license": "MIT",
+                   "selection": "n=40, seed=0"},
+    })
+    write(evalsets / "site.json", site)
+    catalog = build_catalog(evalsets)
+    meta = next(d for d in catalog.index()["datasets"] if d["name"] == "simpleqa")
+    assert meta["counts"]["shown"] == 2 and meta["counts"]["excluded"] == 0 and meta["counts"]["original"] == 2
+    item = catalog.dataset("simpleqa")["items"][0]
+    assert item["review"] == {"status": "original"}
+    assert item["source"]["kind"] == "upstream" and item["source"]["dataset"] == "SimpleQA" and item["source"]["source_id"] == "simpleqa-1"
+    assert item["source"]["license"] == "MIT" and item["source"]["selection"] == "n=40, seed=0"
+    assert item["answer"] == "1991" and item["detail"]["extra"] == {"metadata": "History"}
 
 
 def test_a_dataset_missing_from_site_json_is_not_served(evalsets: Path) -> None:

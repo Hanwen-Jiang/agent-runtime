@@ -4,105 +4,578 @@
     "en": "Every question we evaluate with: written in-house, adapted from public datasets, or used as-is. Each one shows its source and review status, and expands to the full input, answer and scoring rule. Held-out questions are counted but not shown, so that they stay unseen."
   },
   "categories": {
-    "planning": {"zh": "分诊与规划", "en": "Triage and planning"},
-    "review": {"zh": "Reviewer 判定", "en": "Reviewer verdicts"},
-    "context": {"zh": "上下文压缩", "en": "Context compaction"},
-    "delivery": {"zh": "交付质量", "en": "Deliverable quality"},
-    "retrieval": {"zh": "记忆检索", "en": "Memory retrieval"},
-    "coding": {"zh": "写代码", "en": "Coding"},
-    "terminal": {"zh": "终端任务", "en": "Terminal tasks"},
-    "tool-use": {"zh": "工具调用", "en": "Tool use"},
-    "agent": {"zh": "多轮智能体", "en": "Multi-turn agents"},
-    "judge": {"zh": "当裁判", "en": "Judging"},
-    "long-context": {"zh": "长上下文", "en": "Long context"},
-    "factuality": {"zh": "事实问答", "en": "Factual QA"}
+    "planning": {
+      "zh": "分诊与规划",
+      "en": "Triage and planning"
+    },
+    "review": {
+      "zh": "Reviewer 判定",
+      "en": "Reviewer verdicts"
+    },
+    "context": {
+      "zh": "上下文压缩",
+      "en": "Context compaction"
+    },
+    "delivery": {
+      "zh": "交付质量",
+      "en": "Deliverable quality"
+    },
+    "retrieval": {
+      "zh": "记忆检索",
+      "en": "Memory retrieval"
+    },
+    "coding": {
+      "zh": "写代码",
+      "en": "Coding"
+    },
+    "terminal": {
+      "zh": "终端任务",
+      "en": "Terminal tasks"
+    },
+    "tool-use": {
+      "zh": "工具调用",
+      "en": "Tool use"
+    },
+    "agent": {
+      "zh": "多轮智能体",
+      "en": "Multi-turn agents"
+    },
+    "judge": {
+      "zh": "当裁判",
+      "en": "Judging"
+    },
+    "long-context": {
+      "zh": "长上下文",
+      "en": "Long context"
+    },
+    "factuality": {
+      "zh": "事实问答",
+      "en": "Factual QA"
+    }
   },
   "source_types": {
-    "authored": {"zh": "自编", "en": "Written in-house"},
-    "adapted": {"zh": "改编", "en": "Adapted"},
-    "original": {"zh": "原题", "en": "Original"}
+    "authored": {
+      "zh": "自编",
+      "en": "Written in-house"
+    },
+    "adapted": {
+      "zh": "改编",
+      "en": "Adapted"
+    },
+    "original": {
+      "zh": "原题",
+      "en": "Original"
+    }
   },
   "frameworks": [
     {
-      "id": "task-loop", "kind": "authored",
-      "title": {"zh": "Task Loop 评测框架（自研）", "en": "Task Loop harness (in-house)"},
-      "what": {"zh": "把一道题交给被测对象（规则基线、标准答案或真正的 Planner 与 Reviewer），按规则判分：分诊对不对、规划的形状是否合格、Reviewer 的判定是否在可接受的范围里；留出集只给汇总。", "en": "Gives each case to a subject (a rule baseline, the reference answer, or the real Planner and Reviewer) and scores it by rule: correct triage, an acceptable plan shape, a verdict within the accepted set. Held-out results are reported only in aggregate."},
-      "why": {"zh": "没有现成的框架能评我们自己的分诊、Planner 与 Reviewer 的决策：它们的输入输出是本系统特有的格式。", "en": "No existing framework scores our own triage, Planner and Reviewer decisions: their inputs and outputs are specific to this system."},
-      "used_by": ["task-loop-tasks", "task-loop-reviewer", "task-loop-context", "session-drafts", "adapted-natural-plan", "adapted-travelplanner", "adapted-swebench"]
+      "id": "task-loop",
+      "kind": "authored",
+      "title": {
+        "zh": "Task Loop 评测框架（自研）",
+        "en": "Task Loop harness (in-house)"
+      },
+      "what": {
+        "zh": "把一道题交给被测对象（规则基线、标准答案或真正的 Planner 与 Reviewer），按规则判分：分诊对不对、规划的形状是否合格、Reviewer 的判定是否在可接受的范围里；留出集只给汇总。",
+        "en": "Gives each case to a subject (a rule baseline, the reference answer, or the real Planner and Reviewer) and scores it by rule: correct triage, an acceptable plan shape, a verdict within the accepted set. Held-out results are reported only in aggregate."
+      },
+      "why": {
+        "zh": "没有现成的框架能评我们自己的分诊、Planner 与 Reviewer 的决策：它们的输入输出是本系统特有的格式。",
+        "en": "No existing framework scores our own triage, Planner and Reviewer decisions: their inputs and outputs are specific to this system."
+      },
+      "used_by": [
+        "task-loop-tasks",
+        "task-loop-reviewer",
+        "task-loop-context",
+        "session-drafts",
+        "adapted-natural-plan",
+        "adapted-travelplanner",
+        "adapted-swebench"
+      ]
     },
     {
-      "id": "capability-matrix", "kind": "authored",
-      "title": {"zh": "能力矩阵（自研）", "en": "Capability matrix (in-house)"},
-      "what": {"zh": "把一个角色钉在一个模型上，跑组件级与公开数据集的题，用 bootstrap 与收缩估出每个模型在每个角色上的分数与区间，人看过才发布进 Model Profile。", "en": "Pins one role to one model, runs component and public-dataset cells, estimates each model's score and interval per role with bootstrap and shrinkage, and publishes into Model Profiles only after human review."},
-      "why": {"zh": "路由要知道每个模型在每种工作上有多好；公开榜单的分数不按我们的角色划分，也不是在我们的系统里测的。", "en": "Routing needs to know how good each model is at each kind of work; public leaderboards are neither split by our roles nor measured inside our system."},
-      "used_by": []
+      "id": "capability-matrix",
+      "kind": "authored",
+      "title": {
+        "zh": "能力矩阵（自研）",
+        "en": "Capability matrix (in-house)"
+      },
+      "what": {
+        "zh": "把一个角色钉在一个模型上，跑组件级与公开数据集的题，用 bootstrap 与收缩估出每个模型在每个角色上的分数与区间，人看过才发布进 Model Profile。",
+        "en": "Pins one role to one model, runs component and public-dataset cells, estimates each model's score and interval per role with bootstrap and shrinkage, and publishes into Model Profiles only after human review."
+      },
+      "why": {
+        "zh": "路由要知道每个模型在每种工作上有多好；公开榜单的分数不按我们的角色划分，也不是在我们的系统里测的。",
+        "en": "Routing needs to know how good each model is at each kind of work; public leaderboards are neither split by our roles nor measured inside our system."
+      },
+      "used_by": [
+        "bfcl",
+        "judgebench",
+        "longbench",
+        "simpleqa",
+        "frames"
+      ]
     },
     {
-      "id": "deepeval", "kind": "standard",
-      "title": {"zh": "DeepEval（标准框架）", "en": "DeepEval (standard)"},
-      "what": {"zh": "交付质量：正确性（与参考答案比，G-Eval）、切题（AnswerRelevancy）、诚实（G-Eval）。裁判经 Model Gateway 调用，钉在 Opus 5.5，逐条留记录；与被测模型同一家时标出。", "en": "Deliverable quality: correctness against the reference (G-Eval), relevancy (AnswerRelevancy) and honesty (G-Eval). The judge goes through the Model Gateway pinned to Opus 5.5, every judgment logged, and same-vendor pairs flagged."},
-      "why": {"zh": "用官方实现，不自己写判分；改的只有裁判的调用方式（经网关，花费与模型都有记录）。", "en": "The official metrics, not our own; only the judge call is changed (through the gateway, so cost and model are recorded)."},
-      "used_by": ["deliverables", "adapted-swebench-qa"]
+      "id": "deepeval",
+      "kind": "standard",
+      "title": {
+        "zh": "DeepEval（标准框架）",
+        "en": "DeepEval (standard)"
+      },
+      "what": {
+        "zh": "交付质量：正确性（与参考答案比，G-Eval）、切题（AnswerRelevancy）、诚实（G-Eval）。裁判经 Model Gateway 调用，钉在 Opus 5.5，逐条留记录；与被测模型同一家时标出。",
+        "en": "Deliverable quality: correctness against the reference (G-Eval), relevancy (AnswerRelevancy) and honesty (G-Eval). The judge goes through the Model Gateway pinned to Opus 5.5, every judgment logged, and same-vendor pairs flagged."
+      },
+      "why": {
+        "zh": "用官方实现，不自己写判分；改的只有裁判的调用方式（经网关，花费与模型都有记录）。",
+        "en": "The official metrics, not our own; only the judge call is changed (through the gateway, so cost and model are recorded)."
+      },
+      "used_by": [
+        "deliverables",
+        "adapted-swebench-qa"
+      ]
     },
     {
-      "id": "ragas", "kind": "standard",
-      "title": {"zh": "Ragas（标准框架）", "en": "Ragas (standard)"},
-      "what": {"zh": "记忆检索：自己算命中率、召回率与 MRR（不要模型），Ragas 算上下文的精确率与召回率；给了裁判时另算要模型的两项。", "en": "Memory retrieval: hit rate, recall and MRR computed without a model, Ragas context precision and recall, and two model-judged metrics when a judge is configured."},
-      "why": {"zh": "检索质量有成熟的指标，照用；数据换成公开的 LongMemEval 之后，这一套继续用来打分。", "en": "Retrieval has established metrics, used as they are; they keep scoring once the data moves to the public LongMemEval."},
-      "used_by": ["memory-rag"]
+      "id": "ragas",
+      "kind": "standard",
+      "title": {
+        "zh": "Ragas（标准框架）",
+        "en": "Ragas (standard)"
+      },
+      "what": {
+        "zh": "记忆检索：自己算命中率、召回率与 MRR（不要模型），Ragas 算上下文的精确率与召回率；给了裁判时另算要模型的两项。",
+        "en": "Memory retrieval: hit rate, recall and MRR computed without a model, Ragas context precision and recall, and two model-judged metrics when a judge is configured."
+      },
+      "why": {
+        "zh": "检索质量有成熟的指标，照用；数据换成公开的 LongMemEval 之后，这一套继续用来打分。",
+        "en": "Retrieval has established metrics, used as they are; they keep scoring once the data moves to the public LongMemEval."
+      },
+      "used_by": [
+        "memory-rag"
+      ]
     },
     {
-      "id": "swebench-harness", "kind": "standard",
-      "title": {"zh": "SWE-bench 官方判分工具（标准框架）", "en": "SWE-bench official harness (standard)"},
-      "what": {"zh": "在题目的官方 Docker 环境里跑隐藏的测试，判这道题修好了没有。", "en": "Runs the hidden tests in each problem's official Docker environment to decide whether it is resolved."},
-      "why": {"zh": "原样用：分数与公开榜单同一口径。", "en": "Used as-is, so scores are comparable with public leaderboards."},
-      "used_by": []
+      "id": "swebench-harness",
+      "kind": "standard",
+      "title": {
+        "zh": "SWE-bench 官方判分工具（标准框架）",
+        "en": "SWE-bench official harness (standard)"
+      },
+      "what": {
+        "zh": "在题目的官方 Docker 环境里跑隐藏的测试，判这道题修好了没有。",
+        "en": "Runs the hidden tests in each problem's official Docker environment to decide whether it is resolved."
+      },
+      "why": {
+        "zh": "原样用：分数与公开榜单同一口径。",
+        "en": "Used as-is, so scores are comparable with public leaderboards."
+      },
+      "used_by": [
+        "swebench-verified"
+      ]
     },
     {
-      "id": "terminalbench-adapted", "kind": "adapted",
-      "title": {"zh": "Terminal-Bench 离线判分（改编）与 Harbor（标准）", "en": "Terminal-Bench offline grading (adapted) and Harbor (standard)"},
-      "what": {"zh": "改编的一条：经 Task API 跑我们的系统，只把工作目录带回来，在官方镜像里换上改动后跑测试。Harbor 一条：在任务原来的容器里跑并判分。", "en": "Adapted path: runs our system through the Task API, brings back only the working directory, and runs the tests in the official image with those changes. Harbor path: runs and grades inside the task's own container."},
-      "why": {"zh": "Task API 不能在任务的容器里跑验收命令，所以改编；代价是靠工作目录以外状态的题判不出来，分数偏保守。两条都留着对照。", "en": "The Task API cannot run a check command inside the task container, hence the adaptation; tasks that depend on state outside the working directory cannot be graded this way, so scores lean conservative. Both paths are kept for comparison."},
-      "used_by": []
+      "id": "terminalbench-adapted",
+      "kind": "adapted",
+      "title": {
+        "zh": "Terminal-Bench 离线判分（改编）与 Harbor（标准）",
+        "en": "Terminal-Bench offline grading (adapted) and Harbor (standard)"
+      },
+      "what": {
+        "zh": "改编的一条：经 Task API 跑我们的系统，只把工作目录带回来，在官方镜像里换上改动后跑测试。Harbor 一条：在任务原来的容器里跑并判分。",
+        "en": "Adapted path: runs our system through the Task API, brings back only the working directory, and runs the tests in the official image with those changes. Harbor path: runs and grades inside the task's own container."
+      },
+      "why": {
+        "zh": "Task API 不能在任务的容器里跑验收命令，所以改编；代价是靠工作目录以外状态的题判不出来，分数偏保守。两条都留着对照。",
+        "en": "The Task API cannot run a check command inside the task container, hence the adaptation; tasks that depend on state outside the working directory cannot be graded this way, so scores lean conservative. Both paths are kept for comparison."
+      },
+      "used_by": [
+        "terminal-bench-2"
+      ]
     },
     {
-      "id": "official-templates", "kind": "adapted",
-      "title": {"zh": "公开数据集的官方模板（个别改编）", "en": "Official templates of public datasets (a few adapted)"},
-      "what": {"zh": "BFCL 移植了官方的 AST 规则，τ²-bench 用官方环境与判分，RewardBench 2、JudgeBench、LongBench v2、SimpleQA、FRAMES 用官方提示。", "en": "BFCL with a port of the official AST checker, τ²-bench with its official environments and grading, and the official prompts for RewardBench 2, JudgeBench, LongBench v2, SimpleQA and FRAMES."},
-      "why": {"zh": "改了两处，都写明了：BFCL 经网关时参数都是浮点数，按函数声明把整数还原，且只做单轮；SimpleQA 老实答“不知道”给 0.25 分（官方给 0），报告里同时给官方口径。", "en": "Two documented changes: BFCL restores integers from the gateway's float arguments by the function signature and covers single turn only; SimpleQA gives 0.25 for an honest “don't know” (official: 0), with the official numbers reported alongside."},
-      "used_by": []
+      "id": "official-templates",
+      "kind": "adapted",
+      "title": {
+        "zh": "公开数据集的官方模板（个别改编）",
+        "en": "Official templates of public datasets (a few adapted)"
+      },
+      "what": {
+        "zh": "BFCL 移植了官方的 AST 规则，τ²-bench 用官方环境与判分，RewardBench 2、JudgeBench、LongBench v2、SimpleQA、FRAMES 用官方提示。",
+        "en": "BFCL with a port of the official AST checker, τ²-bench with its official environments and grading, and the official prompts for RewardBench 2, JudgeBench, LongBench v2, SimpleQA and FRAMES."
+      },
+      "why": {
+        "zh": "改了两处，都写明了：BFCL 经网关时参数都是浮点数，按函数声明把整数还原，且只做单轮；SimpleQA 老实答“不知道”给 0.25 分（官方给 0），报告里同时给官方口径。",
+        "en": "Two documented changes: BFCL restores integers from the gateway's float arguments by the function signature and covers single turn only; SimpleQA gives 0.25 for an honest “don't know” (official: 0), with the official numbers reported alongside."
+      },
+      "used_by": [
+        "bfcl",
+        "judgebench",
+        "longbench",
+        "simpleqa",
+        "frames"
+      ]
     }
   ],
   "datasets": [
-    {"name": "task-loop-tasks", "path": "task-loop", "items": "task_cases", "source_type": "authored", "framework": "task-loop", "eval_category": "planning", "work_item": "S-08、S-09、S-10",
-     "title": {"zh": "Task Loop 任务用例", "en": "Task Loop cases"},
-     "description": {"zh": "一条消息进来，系统怎么分诊、第一步怎么规划；后面每个 Round 结束时 Reviewer 该怎么判。", "en": "How an incoming message should be triaged and planned, and how the Reviewer should judge the end of each round."}},
-    {"name": "task-loop-reviewer", "path": "task-loop", "items": "reviewer_samples", "source_type": "authored", "framework": "task-loop", "eval_category": "review", "work_item": "S-10",
-     "title": {"zh": "Reviewer 样本", "en": "Reviewer samples"},
-     "description": {"zh": "一个 Round 的结果摆在面前，Reviewer 该判完成、继续、修、重规划、回滚、换路、问人还是放弃。", "en": "Given one round's results: done, continue, repair, replan, rollback, reroute, escalate or abort."}},
-    {"name": "task-loop-context", "path": "task-loop", "items": "context_samples", "source_type": "authored", "framework": "task-loop", "eval_category": "context", "work_item": "S-11",
-     "title": {"zh": "长任务样本", "en": "Long-task samples"},
-     "description": {"zh": "长任务压缩上下文之后，关键的事实还在不在、做过的事会不会重做。", "en": "After a long task's context is compacted, are the key facts still there, and is finished work redone?"}},
-    {"name": "session-drafts", "path": "task-loop-session-drafts", "items": "task_cases", "source_type": "authored", "framework": "task-loop", "eval_category": "planning", "work_item": "TMP 11.13",
-     "title": {"zh": "Session 追问（草稿）", "en": "Session follow-ups (drafts)"},
-     "description": {"zh": "同一个会话里的追问：能从之前的回复里答的直接答，要读仓库的才去规划。", "en": "Follow-ups in one session: answer from earlier replies when possible, plan only when the repository must be read."}},
-    {"name": "deliverables", "path": "deliverables", "items": "jsonl", "file": "cases.jsonl", "question": "message", "answer": "expected_output", "source_type": "authored", "framework": "deepeval", "eval_category": "delivery", "work_item": "N-12",
-     "title": {"zh": "交付质量", "en": "Deliverables"},
-     "description": {"zh": "对着一个小仓库提问或改代码，看回答对不对、切不切题、诚不诚实。", "en": "Questions and edits against a small repository: is the answer correct, relevant and honest?"}},
-    {"name": "memory-rag", "path": "memory-rag", "items": "jsonl", "file": "questions.jsonl", "question": "question", "answer": "reference", "context_file": "corpus.jsonl", "context_ids": "reference_ids", "source_type": "authored", "framework": "ragas", "eval_category": "retrieval", "work_item": "N-13",
-     "title": {"zh": "记忆检索", "en": "Memory retrieval"},
-     "description": {"zh": "16 条记忆、10 个问题：检索能不能找到答案所在的那几条。以后换成公开的 LongMemEval。", "en": "16 memories, 10 questions: does retrieval find the ones holding the answer? To be replaced by the public LongMemEval."}},
-    {"name": "adapted-natural-plan", "path": "public-adapted-drafts/natural-plan", "items": "task_cases", "source_type": "adapted", "framework": "task-loop", "eval_category": "planning",
-     "title": {"zh": "NATURAL PLAN（改编）", "en": "NATURAL PLAN (adapted)"},
-     "description": {"zh": "Google DeepMind 的行程、会面与日程规划题，原题原样，套上我们的分诊与规划标注；另有派生的追问与返工题。", "en": "Google DeepMind's trip, meeting and calendar planning problems, verbatim, with our triage and planning labels; plus derived follow-up and replan cases."}},
-    {"name": "adapted-travelplanner", "path": "public-adapted-drafts/travelplanner", "items": "task_cases", "source_type": "adapted", "framework": "task-loop", "eval_category": "planning",
-     "title": {"zh": "TravelPlanner（改编）", "en": "TravelPlanner (adapted)"},
-     "description": {"zh": "OSU 的旅行规划题，带题目给定的历史参考信息，套上我们的分诊与规划标注。", "en": "OSU's travel planning problems with their given reference information, labelled with our triage and planning."}},
-    {"name": "adapted-swebench", "path": "public-adapted-drafts/swebench", "items": "task_cases", "source_type": "adapted", "framework": "task-loop", "eval_category": "planning",
-     "title": {"zh": "SWE-bench Verified（改编为规划题）", "en": "SWE-bench Verified (adapted to planning)"},
-     "description": {"zh": "真实的 GitHub issue，考的是怎么分诊与规划修复；修复补丁与测试不给模型。", "en": "Real GitHub issues, testing how a fix is triaged and planned; the gold patch and tests are withheld from the model."}},
-    {"name": "adapted-swebench-qa", "path": "public-adapted-drafts/swebench", "items": "jsonl", "file": "repository_qa.jsonl", "question": "message", "answer": "expected_output", "source_type": "adapted", "framework": "deepeval", "eval_category": "delivery",
-     "title": {"zh": "SWE-bench 补丁问答（改编）", "en": "SWE-bench patch Q&A (adapted)"},
-     "description": {"zh": "给出原题的实现补丁与测试补丁，问它改了什么、测了什么。", "en": "Given a problem's implementation and test patches: what changed and what is tested?"}}
+    {
+      "name": "task-loop-tasks",
+      "path": "task-loop",
+      "items": "task_cases",
+      "source_type": "authored",
+      "framework": "task-loop",
+      "eval_category": "planning",
+      "work_item": "S-08、S-09、S-10",
+      "title": {
+        "zh": "Task Loop 任务用例",
+        "en": "Task Loop cases"
+      },
+      "description": {
+        "zh": "一条消息进来，系统怎么分诊、第一步怎么规划；后面每个 Round 结束时 Reviewer 该怎么判。",
+        "en": "How an incoming message should be triaged and planned, and how the Reviewer should judge the end of each round."
+      }
+    },
+    {
+      "name": "task-loop-reviewer",
+      "path": "task-loop",
+      "items": "reviewer_samples",
+      "source_type": "authored",
+      "framework": "task-loop",
+      "eval_category": "review",
+      "work_item": "S-10",
+      "title": {
+        "zh": "Reviewer 样本",
+        "en": "Reviewer samples"
+      },
+      "description": {
+        "zh": "一个 Round 的结果摆在面前，Reviewer 该判完成、继续、修、重规划、回滚、换路、问人还是放弃。",
+        "en": "Given one round's results: done, continue, repair, replan, rollback, reroute, escalate or abort."
+      }
+    },
+    {
+      "name": "task-loop-context",
+      "path": "task-loop",
+      "items": "context_samples",
+      "source_type": "authored",
+      "framework": "task-loop",
+      "eval_category": "context",
+      "work_item": "S-11",
+      "title": {
+        "zh": "长任务样本",
+        "en": "Long-task samples"
+      },
+      "description": {
+        "zh": "长任务压缩上下文之后，关键的事实还在不在、做过的事会不会重做。",
+        "en": "After a long task's context is compacted, are the key facts still there, and is finished work redone?"
+      }
+    },
+    {
+      "name": "session-drafts",
+      "path": "task-loop-session-drafts",
+      "items": "task_cases",
+      "source_type": "authored",
+      "framework": "task-loop",
+      "eval_category": "planning",
+      "work_item": "TMP 11.13",
+      "title": {
+        "zh": "Session 追问（草稿）",
+        "en": "Session follow-ups (drafts)"
+      },
+      "description": {
+        "zh": "同一个会话里的追问：能从之前的回复里答的直接答，要读仓库的才去规划。",
+        "en": "Follow-ups in one session: answer from earlier replies when possible, plan only when the repository must be read."
+      }
+    },
+    {
+      "name": "deliverables",
+      "path": "deliverables",
+      "items": "jsonl",
+      "file": "cases.jsonl",
+      "question": "message",
+      "answer": "expected_output",
+      "source_type": "authored",
+      "framework": "deepeval",
+      "eval_category": "delivery",
+      "work_item": "N-12",
+      "title": {
+        "zh": "交付质量",
+        "en": "Deliverables"
+      },
+      "description": {
+        "zh": "对着一个小仓库提问或改代码，看回答对不对、切不切题、诚不诚实。",
+        "en": "Questions and edits against a small repository: is the answer correct, relevant and honest?"
+      }
+    },
+    {
+      "name": "memory-rag",
+      "path": "memory-rag",
+      "items": "jsonl",
+      "file": "questions.jsonl",
+      "question": "question",
+      "answer": "reference",
+      "context_file": "corpus.jsonl",
+      "context_ids": "reference_ids",
+      "source_type": "authored",
+      "framework": "ragas",
+      "eval_category": "retrieval",
+      "work_item": "N-13",
+      "title": {
+        "zh": "记忆检索",
+        "en": "Memory retrieval"
+      },
+      "description": {
+        "zh": "16 条记忆、10 个问题：检索能不能找到答案所在的那几条。以后换成公开的 LongMemEval。",
+        "en": "16 memories, 10 questions: does retrieval find the ones holding the answer? To be replaced by the public LongMemEval."
+      }
+    },
+    {
+      "name": "adapted-natural-plan",
+      "path": "public-adapted-drafts/natural-plan",
+      "items": "task_cases",
+      "source_type": "adapted",
+      "framework": "task-loop",
+      "eval_category": "planning",
+      "title": {
+        "zh": "NATURAL PLAN（改编）",
+        "en": "NATURAL PLAN (adapted)"
+      },
+      "description": {
+        "zh": "Google DeepMind 的行程、会面与日程规划题，原题原样，套上我们的分诊与规划标注；另有派生的追问与返工题。",
+        "en": "Google DeepMind's trip, meeting and calendar planning problems, verbatim, with our triage and planning labels; plus derived follow-up and replan cases."
+      }
+    },
+    {
+      "name": "adapted-travelplanner",
+      "path": "public-adapted-drafts/travelplanner",
+      "items": "task_cases",
+      "source_type": "adapted",
+      "framework": "task-loop",
+      "eval_category": "planning",
+      "title": {
+        "zh": "TravelPlanner（改编）",
+        "en": "TravelPlanner (adapted)"
+      },
+      "description": {
+        "zh": "OSU 的旅行规划题，带题目给定的历史参考信息，套上我们的分诊与规划标注。",
+        "en": "OSU's travel planning problems with their given reference information, labelled with our triage and planning."
+      }
+    },
+    {
+      "name": "adapted-swebench",
+      "path": "public-adapted-drafts/swebench",
+      "items": "task_cases",
+      "source_type": "adapted",
+      "framework": "task-loop",
+      "eval_category": "planning",
+      "title": {
+        "zh": "SWE-bench Verified（改编为规划题）",
+        "en": "SWE-bench Verified (adapted to planning)"
+      },
+      "description": {
+        "zh": "真实的 GitHub issue，考的是怎么分诊与规划修复；修复补丁与测试不给模型。",
+        "en": "Real GitHub issues, testing how a fix is triaged and planned; the gold patch and tests are withheld from the model."
+      }
+    },
+    {
+      "name": "adapted-swebench-qa",
+      "path": "public-adapted-drafts/swebench",
+      "items": "jsonl",
+      "file": "repository_qa.jsonl",
+      "question": "message",
+      "answer": "expected_output",
+      "source_type": "adapted",
+      "framework": "deepeval",
+      "eval_category": "delivery",
+      "title": {
+        "zh": "SWE-bench 补丁问答（改编）",
+        "en": "SWE-bench patch Q&A (adapted)"
+      },
+      "description": {
+        "zh": "给出原题的实现补丁与测试补丁，问它改了什么、测了什么。",
+        "en": "Given a problem's implementation and test patches: what changed and what is tested?"
+      }
+    },
+    {
+      "name": "swebench-verified",
+      "path": "public",
+      "items": "jsonl",
+      "file": "swebench-verified.jsonl",
+      "question": "question",
+      "answer": "answer",
+      "source_type": "original",
+      "framework": "swebench-harness",
+      "eval_category": "coding",
+      "source": {
+        "dataset": "SWE-bench Verified",
+        "url": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified",
+        "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+        "license": "数据集卡未声明；各仓库的补丁按其许可证（多为 BSD、Apache-2.0、MIT）",
+        "selection": "t18-rev19 与 sol-rev18 用的 50 题：seed 0，按仓库与难度分层，不含 psf/requests"
+      },
+      "title": {
+        "zh": "SWE-bench Verified（原题）",
+        "en": "SWE-bench Verified (original)"
+      },
+      "description": {
+        "zh": "真实 GitHub 仓库的 issue：读懂问题、改代码，官方测试判是否修好。答案是官方的修复补丁与测试。",
+        "en": "Real GitHub issues: understand the problem and change the code; official tests decide whether it is fixed. The answer is the official fix and its tests."
+      }
+    },
+    {
+      "name": "terminal-bench-2",
+      "path": "public",
+      "items": "jsonl",
+      "file": "terminal-bench-2.jsonl",
+      "question": "question",
+      "answer": "answer",
+      "source_type": "original",
+      "framework": "terminalbench-adapted",
+      "eval_category": "terminal",
+      "source": {
+        "dataset": "Terminal-Bench 2.0",
+        "url": "https://github.com/laude-institute/terminal-bench-2",
+        "revision": "2fd12b88aafdd04a52c298e3940bcb189f9766d6",
+        "license": "Apache-2.0",
+        "selection": "全部 89 题；portable 为 false 的离线判分做不了，只能经 Harbor"
+      },
+      "title": {
+        "zh": "Terminal-Bench 2.0（原题）",
+        "en": "Terminal-Bench 2.0 (original)"
+      },
+      "description": {
+        "zh": "在终端里完成真实任务（编译、配置、数据处理……），由隐藏测试判分。官方参考解不放在这里（避免题目流进训练数据）。",
+        "en": "Real tasks in a terminal (build, configure, process data…), graded by hidden tests. Official reference solutions are not shown here, to keep them out of training data."
+      }
+    },
+    {
+      "name": "bfcl",
+      "path": "public",
+      "items": "jsonl",
+      "file": "bfcl.jsonl",
+      "question": "question",
+      "answer": "answer",
+      "source_type": "original",
+      "framework": "official-templates",
+      "eval_category": "tool-use",
+      "source": {
+        "dataset": "BFCL v4",
+        "url": "https://github.com/ShishirPatil/gorilla",
+        "revision": "6ea57973c7a6097fd7c5915698c54c17c5b1b6c8",
+        "license": "Apache-2.0",
+        "selection": "能力矩阵第一轮每格的前缀：n = 40、seed = 0（各适配器的哈希排序，n 变大只在后面追加）"
+      },
+      "title": {
+        "zh": "BFCL v4（原题）",
+        "en": "BFCL v4 (original)"
+      },
+      "description": {
+        "zh": "给出函数声明，看模型调不调对函数、参数对不对（单轮）。",
+        "en": "Given function declarations: does the model call the right function with the right arguments (single turn)?"
+      }
+    },
+    {
+      "name": "judgebench",
+      "path": "public",
+      "items": "jsonl",
+      "file": "judgebench.jsonl",
+      "question": "question",
+      "answer": "answer",
+      "source_type": "original",
+      "framework": "official-templates",
+      "eval_category": "judge",
+      "source": {
+        "dataset": "JudgeBench",
+        "url": "https://huggingface.co/datasets/ScalerLab/JudgeBench",
+        "revision": "57dd5e0b9817d07f05ec8f45a91b2ce1e310e308",
+        "license": "MIT（题目来自 MMLU-Pro、LiveBench、LiveCodeBench，各有许可；回答不要拿来训练）",
+        "selection": "能力矩阵第一轮每格的前缀：n = 40、seed = 0（各适配器的哈希排序，n 变大只在后面追加）"
+      },
+      "title": {
+        "zh": "JudgeBench（原题）",
+        "en": "JudgeBench (original)"
+      },
+      "description": {
+        "zh": "两份回答哪份对：难题上的裁判能力，两种顺序各判一次。",
+        "en": "Which of two responses is right: judging on hard questions, in both orders."
+      }
+    },
+    {
+      "name": "longbench",
+      "path": "public",
+      "items": "jsonl",
+      "file": "longbench.jsonl",
+      "question": "question",
+      "answer": "answer",
+      "source_type": "original",
+      "framework": "official-templates",
+      "eval_category": "long-context",
+      "source": {
+        "dataset": "LongBench v2",
+        "url": "https://huggingface.co/datasets/zai-org/LongBench-v2",
+        "revision": "2b48e494f2c7a2f0af81aae178e05c7e1dde0fe9",
+        "license": "Apache-2.0（上下文取自公开文档、书籍等，许可各异）",
+        "selection": "能力矩阵第一轮每格的前缀：n = 40、seed = 0（各适配器的哈希排序，n 变大只在后面追加）"
+      },
+      "title": {
+        "zh": "LongBench v2（原题）",
+        "en": "LongBench v2 (original)"
+      },
+      "description": {
+        "zh": "读很长的材料再做选择题。这里只给问题与选项，长篇原文不展示（太长，许可各异）。",
+        "en": "Multiple choice over very long material. Only the question and options are shown; the long context is not (too long, mixed licences)."
+      }
+    },
+    {
+      "name": "simpleqa",
+      "path": "public",
+      "items": "jsonl",
+      "file": "simpleqa.jsonl",
+      "question": "question",
+      "answer": "answer",
+      "source_type": "original",
+      "framework": "official-templates",
+      "eval_category": "factuality",
+      "source": {
+        "dataset": "SimpleQA",
+        "url": "https://github.com/openai/simple-evals",
+        "revision": "652c89d",
+        "license": "MIT",
+        "selection": "能力矩阵第一轮每格的前缀：n = 40、seed = 0（各适配器的哈希排序，n 变大只在后面追加）"
+      },
+      "title": {
+        "zh": "SimpleQA（原题）",
+        "en": "SimpleQA (original)"
+      },
+      "description": {
+        "zh": "简短的事实题：答对、答错还是老实说不知道。",
+        "en": "Short factual questions: right, wrong, or an honest “don't know”."
+      }
+    },
+    {
+      "name": "frames",
+      "path": "public",
+      "items": "jsonl",
+      "file": "frames.jsonl",
+      "question": "question",
+      "answer": "answer",
+      "source_type": "original",
+      "framework": "official-templates",
+      "eval_category": "factuality",
+      "source": {
+        "dataset": "FRAMES",
+        "url": "https://huggingface.co/datasets/google/frames-benchmark",
+        "revision": "58d9fb6330f3ab1316d1eca12e5e8ef23dcc22ef",
+        "license": "Apache-2.0",
+        "selection": "能力矩阵第一轮每格的前缀：n = 40、seed = 0（各适配器的哈希排序，n 变大只在后面追加）"
+      },
+      "title": {
+        "zh": "FRAMES（原题）",
+        "en": "FRAMES (original)"
+      },
+      "description": {
+        "zh": "要查好几篇资料、再推理的多跳问题。",
+        "en": "Multi-hop questions that need several sources and some reasoning."
+      }
+    }
   ]
 }

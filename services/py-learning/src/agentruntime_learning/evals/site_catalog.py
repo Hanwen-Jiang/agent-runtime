@@ -12,7 +12,8 @@ evalsets/site.json 说明哪些目录上页面、属于哪个评测类别、来�
 - 留出集（split 为 holdout）的题只计数：题目、答案、id、来源都不进输出。
 - 每题要有来源：自编题来自 site.json 的 work_item；改编与原题来自同目录 sources.jsonl 里同 id（或 case_id）的一行。
   缺来源的题不进输出，记进 excluded。
-- 人审状态：task 类的 review.status，jsonl 的 confirmed；已确认的带确认人与日期。
+- 人审状态：task 类的 review.status，jsonl 的 confirmed；已确认的带确认人与日期。原题（source_type 为 original）一律是 original：
+  官方的题与答案，不需人审；来源写在 site.json 的数据集上（``source``），每题加上自己的 id。
 """
 
 from __future__ import annotations
@@ -59,9 +60,12 @@ def _review(doc: dict[str, Any]) -> dict[str, Any]:
     return {"status": "draft"}
 
 
-def _source(spec: dict[str, Any], record: dict[str, Any] | None) -> dict[str, Any] | None:
+def _source(spec: dict[str, Any], record: dict[str, Any] | None, item_id: str) -> dict[str, Any] | None:
     if spec["source_type"] == "authored":
         return {"kind": "authored", "work_item": spec.get("work_item", "")}
+    if record is None and spec["source_type"] == "original" and isinstance(spec.get("source"), dict):
+        # 原题：一个数据集一个来源（上游、版本、许可证），每题加上自己的 id
+        record = {**spec["source"], "source_url": spec["source"].get("url", ""), "source_id": item_id}
     if record is None:
         return None
     url = record.get("source_url") or record.get("upstream_repository") or record.get("dataset_url")
@@ -149,15 +153,17 @@ def _load_dataset(catalog: Catalog, name: str, spec: dict[str, Any], base: Path)
                 detail["context"] = [context[i] for i in row.get(spec["context_ids"], []) if i in context]
             raw.append((str(row.get("id", "")), str(row.get("split", "dev")), str(row.get(spec.get("question", "message"), "")),
                         row.get(spec.get("answer", "expected_output")), _review(row), detail))
-    counts = {"total": len(raw), "shown": 0, "holdout_hidden": 0, "confirmed": 0, "draft": 0, "excluded": 0}
+    counts = {"total": len(raw), "shown": 0, "holdout_hidden": 0, "confirmed": 0, "draft": 0, "original": 0, "excluded": 0}
     items: list[dict[str, Any]] = []
     for item_id, split, question, answer, review, detail in raw:
-        counts["confirmed" if review["status"] == "confirmed" else "draft"] += 1
+        if spec["source_type"] == "original":
+            review = {"status": "original"}  # 官方的题与答案，不需人审
+        counts[review["status"] if review["status"] in ("confirmed", "original") else "draft"] += 1
         if split == "holdout":
             counts["holdout_hidden"] += 1
             continue
         record = sources.get(item_id)
-        source = _source(spec, record)
+        source = _source(spec, record, item_id)
         if source is None or not item_id:
             counts["excluded"] += 1
             catalog.excluded.append({"dataset": name, "id": item_id, "reason": "no_source"})
