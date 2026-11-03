@@ -32,7 +32,7 @@
 
 | 工作项 | Failure / Evidence | Minimum fix | 成本与新失败面 | 当前决定 |
 | --- | --- | --- | --- | --- |
-| AUTH-01 非对称签名与密钥分离 | 第 1.1 节问题 1 | ① Runtime 加一个生产用的 Ingress 实现（`libs/go-core`，只用标准库的 `crypto/ed25519`）：只持公钥验签，令牌用标准 JWT 紧凑格式（头部 `alg: EdDSA`、`kid`），核对 `iss`、`aud`、`exp`、`nbf`；公钥按 `iss` 与 `kid` 配置（文件或 SecretStore），一个签发方可以配允许的租户范围。② coding-agent 持私钥签发，`iss` 是 coding-agent；task-service 不再持有能签令牌的东西。③ 第三方平台令牌的加密密钥改成独立的密钥（SecretStore），不再从签名密钥派生，旧数据读到时用旧密钥解开、用新密钥重新加密。④ `localingress` 留给开发与测试，生产模式（TS-PROD-01）下不许用 | 签发方（coding-agent）仍然能给它服务的所有租户签令牌，这是多租户应用的本分，非对称签名解决的是“校验方也能伪造”和“一把密钥管所有事”；迁移期间两种令牌并存，切换后旧令牌失效（用户重新登录一次） | 进行中（2026-11-03 用户让沿 DAG 做完全部计划；认领见 [总表第 8 节](all-plans-dag-2026-11-03.md)）：先做 Runtime 一侧 |
+| AUTH-01 非对称签名与密钥分离 | 第 1.1 节问题 1 | ① Runtime 加一个生产用的 Ingress 实现（`libs/go-core`，只用标准库的 `crypto/ed25519`）：只持公钥验签，令牌用标准 JWT 紧凑格式（头部 `alg: EdDSA`、`kid`），核对 `iss`、`aud`、`exp`、`nbf`；公钥按 `iss` 与 `kid` 配置（文件或 SecretStore），一个签发方可以配允许的租户范围。② coding-agent 持私钥签发，`iss` 是 coding-agent；task-service 不再持有能签令牌的东西。③ 第三方平台令牌的加密密钥改成独立的密钥（SecretStore），不再从签名密钥派生，旧数据读到时用旧密钥解开、用新密钥重新加密。④ `localingress` 留给开发与测试，生产模式（TS-PROD-01）下不许用 | 签发方（coding-agent）仍然能给它服务的所有租户签令牌，这是多租户应用的本分，非对称签名解决的是“校验方也能伪造”和“一把密钥管所有事”；迁移期间两种令牌并存，切换后旧令牌失效（用户重新登录一次） | 已完成（2026-11-03，没部署）：Runtime `libs/go-core/adapters/jwtingress` 与 task-service 的 `AR_INGRESS_ISSUERS_FILE`、`AR_INGRESS_DEV_TOKENS`、`keygen`（`885a13f`、`0e9ad9f`）；coding-agent 的 `CODING_JWT_KEY_FILE`、`CODING_JWT_KID`、`CODING_TOKEN_KEY`（`ece577f`、`c5e5af3`）。生产模式默认不收开发令牌，云上的 values 在迁移期间显式收。切换步骤见第 4 节 |
 | AUTH-02 短期令牌、受众与可撤销的会话 | 第 1.1 节问题 2、3、4 | 浏览器 Cookie 里放**不透明的会话 id**（服务端会话记录：租户、用户、建立时间、最后活动、撤销标记），不再放 Runtime 令牌；coding-agent 调 Runtime 时按会话现签一个短期令牌（5 分钟，`aud` 为 agent-runtime，带 `jti`），在进程里缓存到快过期。退出登录、停用账号、管理员撤销都是删会话记录，立即生效。会话空闲与绝对有效期可配。密钥按 `kid` 轮换：新旧公钥并存一段时间 | 会话记录先放 coding-agent 现有的存储（JSON 文件，单实例）；coding-agent 改用 Postgres 时一起搬。SSE 长连接只在建立时验令牌：经 coding-agent 代理的流断线重连时换新令牌，不需要长令牌 | 待确认；依赖 AUTH-01 |
 | AUTH-03 Ingress 的生产形态与身份服务 | 设计书 4.14 的网关产品“只定义接口”，至今是开发实现；多平台登录、账号关联都写在应用里；限流在进程内 | 评估身份服务（Keycloak、Ory、Zitadel 一类）接管用户、多平台登录与账号关联，或至少把签发独立成服务并发布 JWKS；网关（Envoy 系、Kong 或云厂商的）做 TLS、全局限流（经 Valkey，CACHE-01）；OAuth 加 PKCE | 多一个要运维的组件；账号数据要迁移；设计书 4.14 要由人更新 | 待确认；排在 AUTH-01、AUTH-02 之后 |
 | AGENT-TOK-01 agent 令牌不让用户命令读到 | 第 1.2 节：`/proc/1/environ` 可能可读，未核实 | 先加测试：在环境里以命令的身份读 `/proc/1/environ`、`/proc/<agent>/environ`、`/proc/<agent>/cmdline`，断言找不到令牌（K8s 的 kind 测试与本地后端各一条）。修法任选其一并在测试里证明：agent 启动后 `prctl(PR_SET_DUMPABLE, 0)`（`/proc/<pid>/` 下的文件属主变成 root，同 uid 读不到）；或令牌改经文件或继承的管道交付、读完即删，环境变量里不出现。D-28（Rust 版 agent）按同一条验收实现 | 不改接口；`PR_SET_DUMPABLE` 也会挡住对 agent 的调试与 core dump，排障时要临时关掉 | 已完成（2026-11-03）：风险属实，修法前 Linux 上的命令从 `/proc/<agent>/environ` 读到了令牌，kind 的 Pod 里同样。修法是 agent 启动时 `PR_SET_DUMPABLE=0`（`69a9a30`，设不上时不起服务）。两条测试是 `cmd/sandbox-agent` 的 Go 测试（真起一个 agent 进程）与 kind 的那一条；本地后端不跑 agent，没有令牌，所以没有本地后端的那一条。Rust 版（D-28）按同一条验收 |
@@ -43,3 +43,13 @@
 2. AUTH-01：改动集中，收益最大（拆掉“一把密钥管所有事”）。
 3. AUTH-02。
 4. AUTH-03：与 CACHE-01、TS-PROD-01 一起排。
+
+## 4. AUTH-01 的切换步骤（部署时做，2026-11-03 写）
+
+代码已在两个仓库的 main 上，默认行为不变：云上的 Runtime values 显式 `taskService.ingress.devTokens: accept`，coding-web 没配 JWT 私钥时照旧发开发令牌。切换按下面的顺序，每一步都能单独回退：
+
+1. 生成密钥对：`task-service keygen --iss coding-agent --kid <kid> --out key.pem`。私钥只放进 coding-web 的 Secret（例如 `coding-jwt`），标准输出的登记（只有公钥）写进 Runtime Chart 的 `taskService.ingress.issuers`。另生成 32 字节的 `CODING_TOKEN_KEY`（base64），也放 Secret。
+2. 部署 Runtime：有了 `issuers`，task-service 两种令牌都收（`devTokens: accept` 还在）。
+3. 部署 coding-web：加 `CODING_JWT_KEY_FILE`、`CODING_JWT_KID`、`CODING_TOKEN_KEY`，`AR_DEV_SIGNING_KEY` 先留着。之后签的都是 JWT；旧的开发令牌 Cookie 不再认，用户重新登录一次；第三方平台的令牌读到时改用 `CODING_TOKEN_KEY` 重新加密。
+4. 过一段时间（每个用户都至少登录过一次、第三方令牌都读过一遍）：Runtime 去掉 `devTokens: accept`（生产模式默认不收开发令牌，task-service 也不再拿到签名密钥），coding-web 去掉 `AR_DEV_SIGNING_KEY`。没被读到过的旧第三方令牌那时会解不开，用户重新连接一次那个平台即可。
+5. 换密钥：新 kid 并进 `issuers`（新旧并存），coding-web 换私钥与 `CODING_JWT_KID`，旧令牌最多 12 小时后过期，再从 `issuers` 里删掉旧 kid。
