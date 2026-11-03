@@ -4,7 +4,20 @@
 > - `services/go-task-service/internal/taskapi/artifacts_test.go`
 > - `services/py-worker/tests/test_deliver_file.py`
 >
-> 实现之前两份测试都跳过；Go 里的 `ListTaskArtifacts` 现在返回未实现。等测试人审后再写实现。登记在 `work-dag-2026-11-03.md` 的 F 线。
+> 测试人审后已实现，两份测试都过了：
+> - Worker 的 `agentruntime_worker.tools.deliver`：配了工作区目录时登记；
+> - task-service 的 `taskapi/artifacts.go`：`ListTaskArtifacts` 与下载路由；
+> - `main.go` 把 Claim-Check 的同一个 ObjectStore 交给下载，并跑迁移 207；
+> - 两边的建表语句由 `tests/contract/test_task_artifacts_ddl.py` 比对。
+>
+> **还没做的**：
+> - 第 2 节第 3 条 Reviewer 的 highlights 把文件排前面；
+> - 第 2 节第 4 条 coding-web 的交付区（coding-agent 仓库，要先写它的测试）；
+> - 第 5 节第 5 条端到端；
+> - 存档模式（Cloudflare）的后端读文件：要借沙箱环境，那部分在 C 线正在改的范围里；
+> - 对象元数据只写 ASCII，非 ASCII 的文件名只出现在对象键里，S3 上要实测。
+>
+> 登记在 `work-dag-2026-11-03.md` 的 F 线。
 > 前置：`n18-file-delivery-contract-baseline-2026-11-03.md`（正反例已批准）；内部 helper `agentruntime_worker.delivery.FileDelivery`（`e3096a8`）。
 >
 > 与下文的出入：

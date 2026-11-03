@@ -2,7 +2,7 @@ package taskapi
 
 // F3 验收（docs/plan/n18-file-delivery-f3.md 第 5 节第 2、3 条）：ListTaskArtifacts 与下载路由。
 //
-// task_artifacts 由 Worker 的迁移 207 建（agentruntime_worker.tools.deliver），task-service 只读；这里用同样的建表语句。
+// task_artifacts 由迁移 207 建（Worker 的 agentruntime_worker.tools.deliver 与这里的 ArtifactMigrations 一致，契约测试比对），task-service 只读。
 // 覆盖：只给元数据、不带对象地址；按创建时间排序；过期的标 EXPIRED；别的租户按不存在处理；下载每次重新核对租户、Task 与有效期；
 // 响应头（attachment、媒体类型的允许列表、nosniff、sandbox、no-store）；内容与 sha256 不符时不给；没配 ObjectStore 时不可用。
 // 实现之前 ListTaskArtifacts 返回未实现，这些测试跳过。
@@ -27,21 +27,6 @@ import (
 	taskapiv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/taskapi/v1"
 )
 
-// artifactsDDL 与 Worker 的迁移 207（task_artifacts）一致；租户列由 RelationalStore 加。
-const artifactsDDL = `CREATE TABLE task_artifacts (
-	artifact_id TEXT PRIMARY KEY,
-	task_id TEXT NOT NULL,
-	idempotency_key TEXT NOT NULL UNIQUE,
-	name TEXT NOT NULL,
-	path TEXT NOT NULL,
-	media_type TEXT NOT NULL,
-	size_bytes BIGINT NOT NULL,
-	sha256 TEXT NOT NULL,
-	object_uri TEXT NOT NULL,
-	created_at TEXT NOT NULL,
-	expires_at TEXT NOT NULL
-)`
-
 type artifactFixture struct {
 	*apiFixture
 	objects *diskobjects.Provider
@@ -59,7 +44,7 @@ func newArtifactAPI(t *testing.T, withObjects bool) *artifactFixture {
 			d.Objects = objects
 		}
 	})
-	if err := f.store.Migrate(context.Background(), []relational.Migration{{Version: 207, Name: "task_artifacts", Statements: []string{artifactsDDL}}}); err != nil {
+	if err := f.store.Migrate(context.Background(), ArtifactMigrations()); err != nil {
 		t.Fatal(err)
 	}
 	// 实现之前跳过。

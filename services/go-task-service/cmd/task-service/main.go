@@ -127,30 +127,32 @@ func quietLogger() tlog.Logger {
 }
 
 // newClaimCheck 用 ObjectStore、SecretStore 的开发实现构造 Claim-Check（S-06）；与 Python Worker 指向同一处。
-func newClaimCheck(s3 *s3objects.Options, objectStoreDir, secretsFile string, threshold int) (*claimcheck.ClaimCheck, error) {
+// 同一个 ObjectStore 也是交付文件所在处（N-18：Worker 的 deliver_file 写，Task API 的下载读）。
+func newClaimCheck(s3 *s3objects.Options, objectStoreDir, secretsFile string, threshold int) (*claimcheck.ClaimCheck, objectstore.Provider, error) {
 	var objects objectstore.Provider
 	if s3 != nil {
 		p, err := s3objects.New(*s3)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		objects = p
 	} else {
 		signingKey := make([]byte, 32)
 		if _, err := rand.Read(signingKey); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		p, err := diskobjects.New(diskobjects.Options{Root: objectStoreDir, SigningKey: signingKey})
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		objects = p
 	}
 	secrets, err := filesecrets.New(filesecrets.Options{Path: secretsFile})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return claimcheck.New(claimcheck.Options{Objects: objects, Secrets: secrets, Threshold: threshold})
+	cc, err := claimcheck.New(claimcheck.Options{Objects: objects, Secrets: secrets, Threshold: threshold})
+	return cc, objects, err
 }
 
 // egressNotifier：配了出网网关的管理地址（AR_EGRESS_GATEWAY_ADMIN_URL）时，Task 结束收回联网授权后通知网关立即断开（D-16）；
@@ -233,7 +235,7 @@ func replay(args []string, stdout, stderr io.Writer, getenv func(string) string)
 	} else if ok {
 		s3 = &opts
 	}
-	cc, err := newClaimCheck(s3, objectStoreDir, secretsFile, threshold)
+	cc, _, err := newClaimCheck(s3, objectStoreDir, secretsFile, threshold)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -304,7 +306,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 			return fmt.Errorf("并入 %s 失败：%w", config.EnvSecretsSeedFile, err)
 		}
 	}
-	cc, err := newClaimCheck(cfg.ObjectStoreS3, cfg.ObjectStoreDir, cfg.SecretsFile, cfg.ClaimCheckThreshold)
+	cc, objects, err := newClaimCheck(cfg.ObjectStoreS3, cfg.ObjectStoreDir, cfg.SecretsFile, cfg.ClaimCheckThreshold)
 	if err != nil {
 		return err
 	}
@@ -328,6 +330,10 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		return err
 	}
 	if err := store.Migrate(ctx, modelbudget.Migrations()); err != nil {
+		return err
+	}
+	// 交付文件的元数据（N-18）：与 Worker 同一个迁移 207，谁先启动谁建。
+	if err := store.Migrate(ctx, taskapi.ArtifactMigrations()); err != nil {
 		return err
 	}
 	// 固定版本：配了 Registry（AR_REGISTRY_ADDR）时由它给出，并在单独的内部端口上提供 RegistryService；否则读固定版本文件。
@@ -392,6 +398,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		Defaults:         defaults,
 		Policies:         policies,
 		Network:          network,
+		Objects:          objects,
 	})
 	if err != nil {
 		return err

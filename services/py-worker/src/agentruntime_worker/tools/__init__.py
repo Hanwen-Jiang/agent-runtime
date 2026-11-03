@@ -11,6 +11,7 @@
 - tool_sessions(config)：Worker 运行期间的 MCP 会话：配了 AR_MCP_TOOLS_FILE 时启动 MCP Gateway（mcp.py），把登记了的
   MCP 工具登记进 dev_tools(config)，退出时关闭会话。mcp_tool_names(config) 是现在登记了的 MCP 工具的名字（上下文占比里单独一类）。
 - ToolCatalog、DevCatalog、latest_spec：工具的 effect 与定义取自登记（catalog.py）。
+- deliver_file（deliver.py，N-18）：配了工作区目录时登记，把工作区里的文件作为 Task 的交付。
 """
 
 from __future__ import annotations
@@ -34,6 +35,7 @@ from agentruntime_worker.sandbox.ledger import SandboxLedger
 from agentruntime_worker.sandbox.store import relational_store
 from agentruntime_worker.telemetry import worker_telemetry
 from agentruntime_worker.tools.catalog import DevCatalog, ToolCatalog, latest, latest_spec
+from agentruntime_worker.tools.deliver import DeliveryLimits, DirectoryReader, register_delivery_tools
 from agentruntime_worker.tools.mcp import McpGateway
 from agentruntime_worker.tools.platform import CONTEXT_READ, PlatformToolsConfig, register_platform_tools
 from agentruntime_worker.tools.sandboxes import Sandboxes, registry_policy
@@ -177,6 +179,12 @@ def dev_tools(config: WorkerConfig) -> LocalToolDriverProvider:
             sandboxes=sandbox_broker(config),
             telemetry=worker_telemetry(),
         )
+        if config.tool_workspace_root is not None:
+            # 交付文件（N-18，F3）：读与 repo_* 同一处的工作区目录，内容进 context_objects 的 ObjectStore，元数据进业务库（task-service 读同一处）。
+            register_delivery_tools(
+                provider, objects=context_objects(config), store=relational_store(config.relational_dsn, config.data_dir or Path(tempfile.mkdtemp(prefix="agentruntime-delivery-"))),
+                reader=DirectoryReader(config.tool_workspace_root), limits=DeliveryLimits.from_env(os.environ),
+            )
         _providers[key] = provider
     return provider
 

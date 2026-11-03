@@ -24,6 +24,8 @@ PLATFORM_TOOLS = {
     "repo_grep": "read",
     "repo_edit": "write_reversible",
     "shell_run": "write_reversible",
+    # 配了工作区目录时登记的交付文件（N-18，F3）。
+    "deliver_file": "write_reversible",
 }
 
 

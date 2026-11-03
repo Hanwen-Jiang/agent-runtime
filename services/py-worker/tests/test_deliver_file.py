@@ -58,7 +58,7 @@ class Env:
 
     async def call(self, args: dict[str, Any], key: str = "k1", driver: LocalToolDriverProvider | None = None) -> Any:
         scope = TenantContext(tenant_id=TENANT, workspace_id=WORKSPACE)
-        return await (driver or self.tools).bind(scope).invoke("deliver_file", "1", args, idempotency_key=key, task_id=TASK)
+        return await (driver or self.tools).bind(scope).invoke("deliver_file", "v1", args, idempotency_key=key, task_id=TASK)
 
     async def rows(self, tenant: str = TENANT) -> list[dict[str, Any]]:
         await self.store.migrate(deliver.MIGRATIONS)
@@ -76,11 +76,11 @@ def env(tmp_path: Path) -> Env:
 
 
 async def test_the_tool_is_registered_as_a_reversible_write(env: Env) -> None:
-    spec = await env.tools.bind(TenantContext(tenant_id=TENANT)).describe("deliver_file", "1")
+    spec = await env.tools.bind(TenantContext(tenant_id=TENANT)).describe("deliver_file", "v1")
     assert spec.effect == Effect.WRITE_REVERSIBLE
     assert spec.input_schema["required"] == ["path"]
     with pytest.raises(InvalidError):
-        await env.tools.bind(TenantContext(tenant_id=TENANT, workspace_id=WORKSPACE)).invoke("deliver_file", "1", {"path": "a.txt"}, task_id=TASK)
+        await env.tools.bind(TenantContext(tenant_id=TENANT, workspace_id=WORKSPACE)).invoke("deliver_file", "v1", {"path": "a.txt"}, task_id=TASK)
 
 
 async def test_a_workspace_file_is_published_and_recorded(env: Env) -> None:

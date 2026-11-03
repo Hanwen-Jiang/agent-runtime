@@ -157,8 +157,8 @@ async def test_tools_go_through_one_dev_tool_driver(tmp_path: Path) -> None:
     provider = dev_tools(config)
     assert provider is dev_tools(config) and executor.deps.tools is provider, "同一进程只有一个开发用 ToolDriver"
     listed = {s.name for s in await provider.bind(TenantContext(tenant_id="t1")).list_tools()}
-    # context_read 总是登记（R-03 评审 D11），其余按配置登记。
-    assert listed == {"repo_read", "repo_list", "repo_grep", "repo_edit", "shell_run", "web_fetch", "context_read"}
+    # context_read 总是登记（R-03 评审 D11），其余按配置登记（deliver_file 跟着工作区目录，N-18）。
+    assert listed == {"repo_read", "repo_list", "repo_grep", "repo_edit", "shell_run", "web_fetch", "context_read", "deliver_file"}
     unconfigured = {s.name for s in await dev_tools(WorkerConfig(data_dir=tmp_path / "other")).bind(TenantContext(tenant_id="t1")).list_tools()}
     assert unconfigured == {"context_read"}, "没配置就只有 context_read"
 

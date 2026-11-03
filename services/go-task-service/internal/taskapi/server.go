@@ -179,6 +179,7 @@ func New(d Deps) (*Server, error) {
 func (s *Server) Mount(mux *http.ServeMux, opts ...connect.HandlerOption) {
 	path, handler := taskapiv1connect.NewTaskServiceHandler(s, opts...)
 	mux.Handle(path, handler)
+	mux.HandleFunc("GET /v1/tasks/{task_id}/artifacts/{artifact_id}", s.downloadArtifact)
 }
 
 func invalid(msg string) error { return providererr.New(providererr.Invalid, "invalid_argument", msg) }
