@@ -161,7 +161,7 @@ BFCL、LongBench 这类便宜的题取 n = 100。端到端贵：SWE-bench 50 题
 | 折算 | `capability/scoring.py` | 第 4 节全部：题级平均、按题（按评测分层）bootstrap 2000 次、k = 10 的收缩、半宽 0.15、污染 5%、“不可分”、淘汰赛与追加样本的判定 |
 | 发布 | `capability/publish.py` | 只写可发布的分数，任务族第一版都是 `general.unclassified`；source 形如 `capmatrix:s09+bfcl-v4@2026-11-10:n=60,r=3:run=round1`；同维度替换，超过 90 天的删掉；按 schema 与 Registry、Gateway 的规则校验后改 `deploy/dev/model-profiles.json` 与 Registry 种子（格式用 `sync_model_profiles.py` 的，多条能力分一行一个），补丁另存 `capability-patch.json` |
 | 命令 | `python -m agentruntime_learning.capability {estimate,run,score,publish}` | 见 CLAUDE.md 的命令表 |
-| 新 Profile | `deploy/dev/model-profiles.json`、`registry-seed.json` | `sync_model_profiles.py --add openai/gpt-6-astra --add anthropic/claude-fable-5-1 --class strong --tiers medium,high`：models.dev 一方条目，gpt-6-astra 输入 10、输出 50、缓存读 1 美元每百万 token，上下文 922k（limit.input），2026-09-04 发布；claude-fable-5-1 为 10、50、0.25，上下文 1M，2026-09-01 发布。中转站是否认这两个模型名还没核实 |
+| 新 Profile | `deploy/dev/model-profiles.json`、`registry-seed.json` | `sync_model_profiles.py --add openai/gpt-6-astra --add anthropic/claude-fable-5-1 --class strong --tiers medium,high`：models.dev 一方条目，gpt-6-astra 输入 10、输出 50、缓存读 1 美元每百万 token，上下文 922k（limit.input），2026-09-04 发布；claude-fable-5-1 为 10、50、0.25，上下文 1M，2026-09-01 发布。2026-11-03 核实：中转站 `GET /v1/models` 列出 151 个模型，13 个 Profile 的模型名（含 `gpt-6-astra`、`claude-fable-5-1`）都在；查法是服务器上的 `/root/ar-release/relay-models.sh`（在 worker-model 的 Pod 里查，只输出模型名，结果在 `relay-models.txt`），由人运行 |
 
 与设计稿不完全一致、要人看的：
 
