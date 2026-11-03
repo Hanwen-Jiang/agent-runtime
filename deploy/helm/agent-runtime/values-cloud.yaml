@@ -20,6 +20,10 @@ secrets:
   relationalDsn:
     name: agent-runtime-postgres
     key: dsn
+  # Runtime 自己的 Valkey（deploy/data/valkey.yaml，CACHE-01）的地址；口令与 data/valkey-agentruntime 相同。
+  valkeyUrl:
+    name: agent-runtime-valkey
+    key: url
 
 external:
   temporal:
@@ -54,7 +58,7 @@ ingress:
 
 taskService:
   replicas: 1
-  # 业务库是上面的 Postgres；没配连接串时拒绝启动，不回落 SQLite（TS-PROD-01）。
+  # 业务库是上面的 Postgres、Cache 是上面的 Valkey；没配时拒绝启动，不回落开发实现（TS-PROD-01）。
   profile: production
   resources:
     requests: {cpu: 250m, memory: 256Mi}

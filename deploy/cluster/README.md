@@ -46,6 +46,9 @@
     ```
 
     `values-cloud.yaml` 里沙箱后端的镜像（`worker.shell.backends.*.image`、`agent_image`）也要换成同一个仓库与版本。
+    已经在跑的集群第一次升级到 task-service 接 Valkey 的版本（CACHE-01、TSP-2）时：先在密钥里加 `valkey-agentruntime`（data）与
+    `agent-runtime-valkey`（agent-runtime）两个 Secret、重跑 `deploy/data/install.sh` 装上 Valkey，再 `helm upgrade`：
+    `values-cloud.yaml` 是生产模式，没有 `secrets.valkeyUrl` 渲染就失败，task-service 连不上 Valkey 也起不来。
 11. **验收**（D-04）：Task API 经 HTTPS 可达、Registry 端口从外面连不上；mock 模型下一个 Task 跑到 done；
     任务跑到一半删掉 Worker Pod，任务照样跑完；积压时 KEDA 把 Worker 扩到不止一个副本；
     `python scripts/sse_probe.py --base-url https://<域名> --task-id <正在跑的 Task>`（D-02 验收 4）。
@@ -55,7 +58,7 @@
 | 部分 | 约 | 出处 |
 | --- | --- | --- |
 | 系统与 k3s（system-reserved、kube-reserved、Traefik、CoreDNS 等） | 3.5 GiB | `k3s/config.yaml` |
-| 数据层：Postgres 2、Temporal 1.25、Qdrant 1、Redpanda 2、Langfuse（含 ClickHouse、Redis）3.1、Tempo 0.5、VictoriaMetrics 0.25、Grafana 0.1 | 10.3 GiB | `deploy/data/` |
+| 数据层：Postgres 2、Runtime 的 Valkey 0.25、Temporal 1.25、Qdrant 1、Redpanda 2、Langfuse（含 ClickHouse、Redis）3.1、Tempo 0.5、VictoriaMetrics 0.25、Grafana 0.1 | 10.6 GiB | `deploy/data/` |
 | Runtime：最少副本时约 2.4，Worker 都扩到上限时约 6.7 | 2.4–6.7 GiB | `values-cloud.yaml` |
 | 沙箱（命名空间配额的 requests） | 32 GiB | `sandboxes.yaml` |
 | 合计（最坏） | 约 52 GiB | `tests/deploy/test_cluster.py` 核对不超过 60 GiB |

@@ -201,7 +201,7 @@ func platformSecret(ctx context.Context, secretsFile, name string) ([]byte, erro
 // 生产模式（AR_PROFILE=production，TS-PROD-01）下没有连接串直接报错，不回落 SQLite。
 func newRelationalStore(ctx context.Context, where config.Store) (relational.Provider, error) {
 	if !where.RelationalDSN.IsZero() {
-		return postgres.New(ctx, postgres.Options{DSN: string(where.RelationalDSN.Reveal())})
+		return postgres.New(ctx, postgres.Options{DSN: string(where.RelationalDSN.Reveal()), MaxConns: int32(where.MaxConns)})
 	}
 	if where.Production {
 		return nil, fmt.Errorf("生产模式要配 %s，不回落 SQLite", config.EnvRelationalDSN)

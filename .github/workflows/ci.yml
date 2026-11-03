@@ -220,6 +220,9 @@ jobs:
             | tar -xz -C "$HOME/.local/bin" temporal
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      - name: 预拉 Valkey 镜像（两个 task-service 副本的用例用 Docker 拉起，TSP-2）
+        run: docker pull "$AR_VALKEY_IMAGE"
+
       - name: 端到端测试
         run: python3 scripts/check.py --only e2e --junit-dir "$RUNNER_TEMP/junit"
 

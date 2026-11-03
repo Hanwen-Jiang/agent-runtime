@@ -7,6 +7,16 @@
 {{- if and (eq $ts.profile "production") (not .Values.secrets.relationalDsn.name) }}
 {{- fail "taskService.profile=production 要配 secrets.relationalDsn：生产模式的 task-service 不回落 SQLite（TS-PROD-01）" }}
 {{- end }}
+{{- if and (eq $ts.profile "production") (not .Values.secrets.valkeyUrl.name) }}
+{{- fail "taskService.profile=production 要配 secrets.valkeyUrl：生产模式的 Cache 不用进程内的开发实现（TS-PROD-01）" }}
+{{- end }}
+{{- if and (gt (int $ts.replicas) 1) (not .Values.secrets.valkeyUrl.name) }}
+{{- fail "taskService.replicas 大于 1 要配 secrets.valkeyUrl：进程内的 Cache 里，各副本看不到彼此的事件流（TS-PROD-01）" }}
+{{- end }}
+{{- $budget := div (int .Values.external.postgres.maxConnections) 4 }}
+{{- if gt (mul (int $ts.replicas) (int $ts.relationalMaxConns)) $budget }}
+{{- fail (printf "taskService.replicas × taskService.relationalMaxConns 超过了 external.postgres.maxConnections 的四分之一（%d）：其余连接留给 Worker、Memory Service、Temporal 与 Langfuse；副本多了在前面加 PgBouncer" $budget) }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -41,6 +51,8 @@ spec:
             {{- include "ar.storeEnv" . | nindent 12 }}
             {{- include "ar.signingKeyEnv" . | nindent 12 }}
             {{- include "ar.dsnEnv" . | nindent 12 }}
+            - name: AR_RELATIONAL_MAX_CONNS
+              value: {{ $ts.relationalMaxConns | quote }}
             - name: AR_PROFILE
               value: {{ $ts.profile | quote }}
             {{- with .Values.secrets.valkeyUrl }}

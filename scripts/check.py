@@ -139,7 +139,8 @@ def all_steps(root: Path, *, committed: bool = False) -> dict[str, Step]:
                 ["uv", "docker"]),
         _python("py-worker", "services/py-worker（沙箱环境表在 SQLite 与 Postgres 上各跑一遍）", root / "services" / "py-worker", "agentruntime-worker", ["tests"],
                 ["uv", "temporal", "postgres", "go"]),
-        _python("e2e", "端到端测试（不含故障注入）", root / "tests" / "e2e", "agentruntime-e2e-tests", ["-m", "not faults"], ["uv", "go", "temporal"]),
+        # docker：两个 task-service 副本的用例拉起 Valkey（tests/e2e/e2e_support/valkey.py，TSP-2）。
+        _python("e2e", "端到端测试（不含故障注入）", root / "tests" / "e2e", "agentruntime-e2e-tests", ["-m", "not faults"], ["uv", "go", "temporal", "docker"]),
         _python("faults", "故障注入与恢复套件", root / "tests" / "e2e", "agentruntime-e2e-tests", ["faults"], ["uv", "go", "temporal"]),
     ]
     return {s.id: s for s in steps}

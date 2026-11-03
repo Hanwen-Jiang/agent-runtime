@@ -56,7 +56,13 @@ const (
 	// EnvValkeyURL 设了时 Cache 用 Valkey（CACHE-01，libs/go-core/adapters/valkey）：形如 valkey://:口令@主机:6379/0，
 	// TLS 用 valkeys://。事件流、限流计数与锁放在那里，几个副本共享、重启不丢；没设时用进程内的开发实现。带口令，按密钥对待。
 	EnvValkeyURL = "AR_VALKEY_URL"
+	// EnvRelationalMaxConns 是业务库（Postgres）连接池的上限（TS-PROD-01）；不设时用适配器的默认值。
+	// 副本数乘它要留在 Postgres max_connections 的配比之内（Chart 的 taskService.relationalMaxConns）。
+	EnvRelationalMaxConns = "AR_RELATIONAL_MAX_CONNS"
 )
+
+// maxRelationalConns 是 AR_RELATIONAL_MAX_CONNS 的上限：超过它多半是写错了（Postgres 默认 max_connections 是 100）。
+const maxRelationalConns = 1000
 
 // AR_PROFILE 的取值。
 const (
@@ -134,7 +140,9 @@ type Config struct {
 	ClaimCheckThreshold int
 	// RelationalDSN 是业务库（Postgres，行级安全）的连接串；为空时用 SQLite 开发实现（S-12a）。可能带口令，打印只显示掩码。
 	RelationalDSN secret.Value
-	// ValkeyURL 见 EnvValkeyURL；为空时 Cache 用进程内的开发实现。打印只显示掩码。
+	// RelationalMaxConns 见 EnvRelationalMaxConns；0 表示用适配器的默认值。
+	RelationalMaxConns int
+	// ValkeyURL 见 EnvValkeyURL；为空时 Cache 用进程内的开发实现（生产模式下不许）。打印只显示掩码。
 	ValkeyURL secret.Value
 	// RateLimitPerMinute 是内置 Ingress 每个租户每个路由每分钟的请求上限。
 	RateLimitPerMinute int
@@ -199,6 +207,17 @@ func FromEnv(getenv func(string) string) (Config, error) {
 		if _, err := valkey.New(valkey.Options{URL: cfg.ValkeyURL}); err != nil {
 			return Config{}, fmt.Errorf("%s 不合法：%w", EnvValkeyURL, err)
 		}
+	}
+	// TS-PROD-01 ②：进程内的 Cache 只能单副本、重启丢流，生产模式下不许。
+	if prod && cfg.ValkeyURL.IsZero() {
+		return Config{}, fmt.Errorf("%s=%s 时要配 %s：生产模式的 Cache 不用进程内的开发实现", EnvProfile, ProfileProduction, EnvValkeyURL)
+	}
+	if raw := getenv(EnvRelationalMaxConns); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 || n > maxRelationalConns {
+			return Config{}, fmt.Errorf("%s 必须是 1 到 %d 的整数", EnvRelationalMaxConns, maxRelationalConns)
+		}
+		cfg.RelationalMaxConns = n
 	}
 	if s3, ok, err := s3objects.OptionsFromEnv(getenv); err != nil {
 		return Config{}, err
@@ -277,11 +296,13 @@ type Store struct {
 	SchemasDir    string
 	// Production 见 Config.Production。
 	Production bool
+	// MaxConns 是 Postgres 连接池的上限，0 表示适配器的默认值。
+	MaxConns int
 }
 
 // Store 返回 serve 用的业务库位置。
 func (c Config) Store() Store {
-	return Store{DataDir: c.DataDir, RelationalDSN: c.RelationalDSN, SchemasDir: c.SchemasDir, Production: c.Production}
+	return Store{DataDir: c.DataDir, RelationalDSN: c.RelationalDSN, SchemasDir: c.SchemasDir, Production: c.Production, MaxConns: c.RelationalMaxConns}
 }
 
 // StoreFromEnv 读取业务库与 schema 目录的位置（AR_DATA_DIR、AR_RELATIONAL_DSN、AR_SCHEMAS_DIR、AR_PROFILE）。

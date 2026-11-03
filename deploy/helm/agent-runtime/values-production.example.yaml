@@ -11,6 +11,10 @@ secrets:
   relationalDsn:
     name: agent-runtime-postgres
     key: dsn
+  # task-service 的 Cache（CACHE-01）：多副本与生产模式都要它。
+  valkeyUrl:
+    name: agent-runtime-valkey
+    key: url
 
 external:
   temporal:
@@ -33,7 +37,7 @@ objectStore:
 
 taskService:
   replicas: 3
-  # 业务库必须是 Postgres（TS-PROD-01）。
+  # 业务库必须是 Postgres、Cache 必须是 Valkey（TS-PROD-01）。
   profile: production
   resources:
     requests: {cpu: 500m, memory: 512Mi}
