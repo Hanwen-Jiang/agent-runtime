@@ -27,6 +27,7 @@ coding-agent → task-service WorkspaceService（workspaceapi/server.go: operate
 - 前端 `replayTasks`（`internal/web/static/app.js`）取最近 12 个 Task，已结束的**逐个**（`await`）开一条 SSE，从头重放全部事件，收到 `task_finished` 才轮到下一个；每个 Task 另有一次 `QueryTask` 取 Task State 里的文字。注释写的原因是浏览器对同一主机的连接数有限。
 - 列任务时 `refresh`（`internal/server/tasks.go`）对没定论的 Task 依次 `QueryTask`（已结束的最多补 8 个）。
 - 已结束的 Task 内容不会再变，却在每次刷新时重放。
+- 事件只存在 Cache 的流里（`session/activities.go`：`events.Append`，保留 24 小时），业务库只在 Task 结束时记 `last_event_id` 与结局（`taskstore.RecordFinished`）。所以进行中的 Task 刷新后只能从 Cache 重放；Cache 一丢（现在是进程内，task-service 重启即丢），进行中 Task 的过程就没了。
 
 ### 1.3 Cache 接口只有进程内的开发实现
 
@@ -50,19 +51,19 @@ coding-agent → task-service WorkspaceService（workspaceapi/server.go: operate
 | 工作项 | Failure / Evidence | Minimum fix | 成本与新失败面 | 当前决定 |
 | --- | --- | --- | --- | --- |
 | PERF-00 先测 | 第 1.1、1.2 节的判断来自读代码，没有耗时数据；不测就说不清改完快了多少 | Workspace 操作记一个 `runtime.workspace_op` span，分段记：工作流排队、建环境、存档、恢复、命令本身、总时长；coding-agent 记历史加载的总时长与请求数。线上取一周的 p50、p95 作基线 | 只加 span 与属性，不改行为；属性不含路径以外的文件内容 | 待确认 |
-| WS-READ-01 读操作不新建沙箱 | 第 1.1 节：列目录、读文件每次新建环境 | 挂卷模式：`list_files`、`read_file` 由 Worker 直接读它挂着的工作区目录（`AR_TOOL_WORKSPACE_ROOT`），路径按（租户、工作区）由服务端拼出，逐级拒绝符号链接与 `..`，不跟随指出工作区的链接。存档模式：会话里有闲着的环境时借它执行（标为 busy，执行完放回），没有时再按现在的做法。`diff`、`log` 要 git，同样先借闲着的环境 | 少了“每次新环境”这层隔离：Worker 直接读用户代码写出来的文件树，符号链接与特殊文件是新的攻击面，要有专门的越权测试；借用闲着的环境要与 D-13 的“同一工作区只有一个可写环境”一致，不能让读操作与正在跑的命令并发 | 待确认 |
+| WS-READ-01 只读操作走快路径，不经 Temporal、不新建沙箱 | 第 1.1 节：列目录、读文件、diff、log 每次起一个工作流、新建环境 | 读与写分开。**写**（建、克隆、提交、丢弃、同步、推送）仍走 `WorkspaceOperationWorkflow`：要耐久、要幂等与对账（推送是 write_irreversible）、要与 Task 共用 Broker 的“一个工作区只有一个可写环境”。**读**（ListFiles、ReadFile、GetDiff、GetLog）由 task-service 直接做：从业务库的环境表（`sandbox_envs`，与 Worker 同一个库）找这个工作区里 ready 的环境，用 sandbox-agent 已有的 `GET /v1/list`、`GET /v1/files/…`，git 经 `POST /v1/exec` 跑并带 `--no-optional-locks`（不抢 index.lock、不和正在跑的命令打架）；没有活着的环境时，存档模式读最新快照的清单与块，挂卷模式退回现在的工作流路径。读不占用环境、不改 busy 状态、不触发存档 | task-service 第一次直接连沙箱：要拿到 agent 令牌的签发（SecretStore 平台作用域 `sandbox/token-key`）与各后端的连接方式（K8s 的 pod_ip、Cloudflare 桥），等于在 Go 里再实现一份 Python Broker 里“找环境、连环境”的部分，两份实现要用同一组一致性用例约束；读到的可能是命令执行到一半的文件，界面要标出“任务进行中”；越权测试覆盖跨租户、跨工作区与符号链接 | 待确认 |
 | WS-READ-02 Workspace 操作单独一个队列 | 第 1.1 节：查看文件与 Task 的 activity 抢同一批 Worker | Workspace 操作的工作流与 activity 换到单独的队列（如 `workspace`），按设计书 3.6 的分池方式单独一个 Worker 池与 KEDA ScaledObject | 多一个 Deployment；队列名是工作流启动参数，新启动的工作流生效，不改命令序列。在途的旧操作仍在旧队列，旧池要留到它们跑完 | 待确认 |
 | WS-READ-03 文件树与 diff 按版本缓存 | 打开抽屉、切文件、节点结束后都会重取，同样的结果反复算 | 业务库 `workspaces` 加一个 `generation`：可写环境里的写工具结束、提交、丢弃改动、同步时加一。task-service 按（租户、工作区、generation、操作与参数）缓存只读操作的结果，经 Cache 接口（先进程内，CACHE-01 之后是 Valkey），设上限与短 TTL 兜底 | `shell_run` 能改任何文件，只能按“可写节点结束”粗粒度加一，节点执行中途看到的可能是旧结果；缓存键必须带租户，跨租户命中要有测试 | 待确认 |
 | WS-BLOB-01 存档块的节点本地缓存 | 存档模式每次恢复都从 ObjectStore 拉全部块 | 块按 sha256 寻址、内容不可变：Worker 节点本地盘一个按大小上限 LRU 淘汰的块目录，恢复时先读本地、读到后核对哈希，没有再取 ObjectStore 并顺手存一份。存档仍然**写穿透**：块先成功写进 ObjectStore 才算存档成功，本地只是读缓存 | 不引入一致性问题（内容寻址）；占节点磁盘，要有上限与监控；本地块损坏时按哈希核对后丢弃重取 | 待确认 |
 | WS-DISK-01 挂卷工作区的大小与冷热分层 | 第 1.4 节：挂卷模式没有大小上限、不清理，单节点的盘会被写满 | ① 挂卷模式也执行 `max_bytes`：可写节点结束时量一次工作区大小，超了拒绝后续写工具并告诉用户；② 冷热分层：工作区闲置超过 N 天（租户策略可配）先按 D-06c 存档到 ObjectStore、核对成功后再删本地目录，状态记进 `workspaces`；下次用到时从存档恢复到本地盘；③ 卷用量超过阈值告警（Grafana） | 冷的工作区第一次打开要等恢复；存档成功之前绝不删本地（不做“先删后存”的写回）；量大小本身要扫目录，大仓库有开销，只在节点结束时做 | 待确认 |
-| HIST-01 历史一次取完（coding-agent 为主） | 第 1.2 节：每次刷新逐个重放已结束 Task 的事件 | 第一步不改契约：coding-agent 在 Task 结束时把要显示的结果（交付的文字、轮次摘要、花费）存进自己的记录，刷新时一次返回，只对进行中的 Task 开 SSE；已结束的加 ETag。第二步（要的话）：Task API 加按 Session 批量取结局的方法，走 S-01 | 第一步只动 coding-agent；存下来的结果与 Runtime 的 Task State 可能不一致，以 Task 结束时的那一份为准、只读 | 待确认；实现放在 coding-agent 仓库 |
+| HIST-01 事件持久化与增量取历史 | 第 1.2 节：刷新后逐个重放；事件只在 Cache 里，进行中的 Task 刷新也要能看到已经发生的部分 | **Runtime**：Session 工作流的 activity 发事件时，先按（租户、task_id、event_id）追加写进业务库一张只追加的事件表（event_id 已由业务库分配、严格递增，天然是增量游标），再写 Cache 流做实时推送；SSE 端点按 Last-Event-ID 先从表里补、再接 Cache；Task API 加一个按 Session 批量取事件的方法（每个 Task 给一个 after_event_id，分页），走 S-01。**coding-agent**：刷新时一次请求取回最近 Task 的事件（进行中的也一样，取到当前为止），之后只对进行中的 Task 开 SSE 并从各自最后的 event_id 续接；浏览器可按 Task 缓存已收到的事件与最后的 event_id，再打开时只取增量。持久化必须在 Runtime 一侧：coding-agent 只在有浏览器连着时才代理 SSE，没人看时的事件它收不到 | 每个事件多一次业务库写（事件很小，文字在 Task State 里）；表要按保留期清理（与 Task 的保留一致）；写库失败时不能丢推送也不能重复：先写库、后写 Cache，Cache 失败只影响实时性 | 待确认；Runtime 与 coding-agent 两边都有实现 |
 | CACHE-01 Cache 接口的 Valkey 适配器 | 第 1.3 节：事件流在进程内，task-service 不能多副本、重启丢流 | 按设计书 4.5 写 Valkey 适配器（`libs/go-core/adapters`），过 Cache 接口的一致性测试；事件流用 Stream、限流用 Lua 脚本的滑动窗口；`deploy/data` 单独装一个 Valkey（不与 Langfuse 共用）；task-service 的 `serve` 按配置选择实现 | 多一个有状态组件与它的备份、监控；Cache 只存可丢失的数据（设计书 4.5），丢了要能从业务库补 | 待确认 |
 
 ## 3. 顺序
 
 1. PERF-00：先拿到基线。
 2. WS-DISK-01 的 ① 与 ③：这是可用性风险（盘满会拖垮同节点的数据库），不依赖性能数据。
-3. WS-READ-01、HIST-01 第一步：按 PERF-00 的数据，预计收益最大。
+3. WS-READ-01、HIST-01：按 PERF-00 的数据，预计收益最大。HIST-01 要改 Task API，先走 S-01。
 4. WS-READ-02、WS-READ-03。
 5. CACHE-01、WS-BLOB-01：前者是 task-service 多副本的前提，后者在加节点、改成存档模式之后才有收益。
 6. WS-DISK-01 的 ②（冷热分层）：活跃租户多了再做。

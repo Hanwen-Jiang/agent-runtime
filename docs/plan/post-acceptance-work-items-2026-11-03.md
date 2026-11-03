@@ -33,10 +33,10 @@ MODEL-BUDGET-02 已由 `libs/go-core/modelbudget` 共享持久实现取代旧 fa
 | 工作项 | 一句话 |
 | --- | --- |
 | PERF-00 | 先给 Workspace 操作与历史加载分段记耗时，取基线 |
-| WS-READ-01 | 列目录、读文件不再每次新建沙箱（挂卷时 Worker 直接读，存档时借会话里闲着的环境） |
+| WS-READ-01 | 只读操作（列目录、读文件、diff、log）由 task-service 直接连已有环境的 sandbox-agent，不经 Temporal、不新建沙箱；写操作仍走工作流 |
 | WS-READ-02 | Workspace 操作单独一个队列与 Worker 池，不与 Task 抢 |
 | WS-READ-03 | 文件树与 diff 按工作区的 generation 缓存 |
 | WS-BLOB-01 | 存档块在节点本地盘做 LRU 读缓存，存档仍写穿透 |
 | WS-DISK-01 | 挂卷模式也执行 `max_bytes`；闲置工作区存档到 ObjectStore 后删本地（冷热分层）；卷用量告警 |
-| HIST-01 | coding-agent 存下已结束 Task 的结果，刷新时一次取完（实现在 coding-agent） |
+| HIST-01 | 事件按 event_id 增量写进业务库；Task API 按 Session 批量取事件，刷新时一次取回（含进行中的），再从最后的 event_id 续接 SSE |
 | CACHE-01 | 设计书 4.5 的 Cache 接 Valkey 适配器，task-service 才能多副本、事件流不随重启丢失 |
