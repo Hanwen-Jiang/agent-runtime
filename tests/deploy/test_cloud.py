@@ -763,6 +763,21 @@ def test_sandboxes_reach_the_internet_only_through_the_gateway(cloud: list[dict[
     assert block["cidr"] == "0.0.0.0/0" and {"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "100.64.0.0/10", "127.0.0.0/8"} <= set(block["except"])
 
 
+def test_egress_gateway_reaches_the_collector(cloud: list[dict[str, Any]]) -> None:
+    """T-15：网关的指标与 runtime.egress 的 span 经 OTLP/HTTP 发给同一命名空间的 Collector。网关的策略不放行内网段，
+    所以要单独放行 Collector 的那个端口（第 20 版之前没有，网关每分钟报一次 failed to upload metrics）。"""
+    deployment, _, own, _ = gateway_parts(cloud)
+    endpoint = env_of(pod_spec(deployment)["containers"][0])["OTEL_EXPORTER_OTLP_ENDPOINT"]["value"]
+    port = int(endpoint.rsplit(":", 1)[1])
+    [collector] = [m for m in by_kind(cloud, "Deployment") if m["metadata"]["name"].endswith("-otel-collector")]
+    labels = collector["spec"]["template"]["metadata"]["labels"]
+    rules = [
+        r for r in own["spec"]["egress"]
+        if any("namespaceSelector" not in t and t.get("podSelector", {}).get("matchLabels", {"-": "-"}).items() <= labels.items() for t in r.get("to", []))
+    ]
+    assert [[p["port"] for p in r["ports"]] for r in rules] == [[port]], "只放行同一命名空间里 Collector 的 OTLP/HTTP 端口"
+
+
 def test_preview_route_matches_only_environment_hosts(cloud: list[dict[str, Any]]) -> None:
     [route] = [m for m in by_kind(cloud, "IngressRoute") if m["metadata"]["name"].endswith("-egress-gateway-preview")]
     [r] = route["spec"]["routes"]
