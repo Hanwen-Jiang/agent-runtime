@@ -17,6 +17,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
+	workflowv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1"
 	workspacev1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workspace/v1"
 
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/sandboxgrants"
@@ -209,4 +210,25 @@ func (s *Server) DeleteEnvironmentConfig(ctx context.Context, req *connect.Reque
 		return nil, taskapi.ConnectError(err)
 	}
 	return connect.NewResponse(&workspacev1.DeleteEnvironmentConfigResponse{Workspaces: int32(n)}), nil
+}
+
+// SetWorkspaceEnvironment 给已有的工作区设置或清除选用的环境配置（应用建好会话的工作副本之后调用）；由 Worker 校验并记下。
+func (s *Server) SetWorkspaceEnvironment(ctx context.Context, req *connect.Request[workspacev1.SetWorkspaceEnvironmentRequest]) (*connect.Response[workspacev1.SetWorkspaceEnvironmentResponse], error) {
+	m := req.Msg
+	args := map[string]any{}
+	if env := m.GetEnvironment(); env != nil {
+		if err := checkEnvironment(env); err != nil {
+			return nil, taskapi.ConnectError(err)
+		}
+		doc, err := environmentArgs(env)
+		if err != nil {
+			return nil, taskapi.ConnectError(invalid("invalid_environment", "环境配置的格式不对"))
+		}
+		args["environment"] = doc
+	}
+	out := &workspacev1.SetWorkspaceEnvironmentResponse{}
+	if err := s.operate(ctx, req.Header(), "workspace_environment_set", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_SET_ENVIRONMENT, args, nil, out); err != nil {
+		return nil, taskapi.ConnectError(err)
+	}
+	return connect.NewResponse(out), nil
 }

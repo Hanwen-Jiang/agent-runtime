@@ -261,6 +261,15 @@ class WorkspaceArchiver:
                 (config.environment_id, config.to_json(), owner_user, iso(self._clock()), workspace_id),
             )
 
+    async def clear_environment(self, owner: str, workspace_id: str) -> None:
+        await self.migrate()
+        async with self._db(owner).transaction() as tx:
+            await tx.execute(
+                "UPDATE workspaces SET environment_id = '', environment = '', environment_owner = '', environment_deleted_at = '', updated_at = $1 "
+                "WHERE workspace_id = $2",
+                (iso(self._clock()), workspace_id),
+            )
+
     async def environment(self, owner: str, workspace_id: str) -> BoundEnvironment | None:
         """工作区选用的环境配置；没有选用（或工作区不在）时 None。"""
         if owner == PLATFORM_ID or not owner:

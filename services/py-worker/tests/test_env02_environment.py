@@ -417,3 +417,34 @@ async def test_secret_headers_make_the_sandbox_trust_the_gateway_ca_without_any_
     assert out["stdout"].split() == [str(bundle)] * 3
     assert "GATEWAY-CA" in bundle.read_text(), "证书包里有网关 CA（只有证书）"
     assert "example-token" not in out["stdout"]
+
+
+async def test_set_workspace_environment_binds_after_creation_and_clears(tmp_path: Path) -> None:
+    from agentruntime.common.v1 import tenant_pb2
+    from agentruntime.workflow.v1 import workspace_pb2
+    from google.protobuf import struct_pb2
+
+    s = Setup(tmp_path)
+    await s.archiver.ensure("t1", "w1", (await s.boxes.policy_for("t1")).workspace)
+
+    async def no_secret() -> bytes | None:
+        return None
+
+    ops = WorkspaceOperations(s.broker, secret=no_secret)
+
+    async def call(doc: dict[str, Any] | None, workspace: str = "w1") -> Any:
+        args = struct_pb2.Struct()
+        if doc is not None:
+            args.update({"environment": doc})
+        return await ops.run(workspace_pb2.WorkspaceOperationInput(
+            tenant=tenant_pb2.TenantContext(tenant_id="t1", user_id="u1"), operation_id=f"op-{os.urandom(4).hex()}",
+            operation=workspace_pb2.WORKSPACE_OPERATION_SET_ENVIRONMENT, workspace_id=workspace, args=args, requested_by="u1",
+        ))
+
+    result = await call(environment())
+    assert not result.HasField("error") and result.result["workspace"]["environment_id"] == "env-py"
+    await s.shell(APPEND)
+    assert s.order() == ["setup", "start", "cmd"]
+    cleared = await call(None)
+    assert cleared.result["workspace"]["environment_id"] == "" and await s.archiver.environment("t1", "w1") is None
+    assert (await call(environment(), workspace="w-missing")).error.code == "workspace_not_found"

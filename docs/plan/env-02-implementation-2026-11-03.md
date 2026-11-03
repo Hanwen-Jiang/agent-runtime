@@ -10,7 +10,7 @@
 | Failure | coding-agent 已能保存与仓库无关的环境配置（名称、描述、setup、start、`.env`），但 Runtime 拿不到它：沙箱环境建好后不跑 setup、start，`.env` 不进命令，联网档位与网络密钥没有执行点，环境表也没有 setup 的事实可查（Q36、Q37）。 |
 | Evidence | Q16、Q17：环境独立保存，启动会话时选 repo，可跨仓库复用；Q20：setup 在新会话的环境启动、代码执行之前；coding-agent 每个会话建一个自己的工作区（`createSession` 的 `from_workspace_id`），会话与工作区一一对应。 |
 | 候选 | A. Runtime 另建环境配置库（CRUD、版本、绑定）；B. 每次提交 Task 带配置（经工作流输入到 Node Executor 与工具）；C. 建工作区时带一份配置快照，存在工作区的行上，SandboxBroker 建环境时读它。 |
-| Minimum fix | **C**：`CreateWorkspaceRequest.environment`（`WorkspaceEnvironment`）。Runtime 按（租户，工作区）保存快照（`workspaces` 加 4 列，迁移 208），只有普通值与密钥的**名字**；`Workspace.environment_id` 回显 ID。删除环境配置用 `WorkspaceService.DeleteEnvironmentConfig`（Q35）。 |
+| Minimum fix | **C**：`CreateWorkspaceRequest.environment`（`WorkspaceEnvironment`）。Runtime 按（租户，工作区）保存快照（`workspaces` 加 4 列，迁移 208），只有普通值与密钥的**名字**；`Workspace.environment_id` 回显 ID。删除环境配置用 `WorkspaceService.DeleteEnvironmentConfig`（Q35）。应用在建好会话的工作副本之后才交接（coding-agent 的 `environmentHandoff`，迁移来的 main 会话不新建工作区），所以另有 `WorkspaceService.SetWorkspaceEnvironment`（设置或清除，效果同建时给），两者是同一份快照。 |
 | 为什么不是 A | 配置的 CRUD、同名校验（Q18）、描述上限（Q19）、仅自己（Q33）已在 coding-agent 验收；Runtime 再存一份就是第二套配置记录，还要同步。环境的**状态**仍只在 Runtime 的环境表（Q36）。 |
 | 为什么不是 B | 要改 Task 工作流输入、Stage Runner 与 Node Executor（核心链路单写者，另一条线在改）；而且同一个会话的每个 Task 都得重复传，配置在会话中途变了还要定义语义。C 让“编辑环境只影响新会话”（设计草案 4.1）自然成立。 |
 | Benefit | 一处契约改动；Worker 的 activity 里读一行业务库就能拿到配置；不新增服务、不新增工作流命令（WorkspaceOperationWorkflow 不变，`args` 多一个键）。 |
@@ -69,3 +69,19 @@
 - 设计草案 4.2 的“直传机密”（命令可读）与 Q27“密钥始终在环境外”冲突：按 Q27 不做直传，只有网络密钥。
 - 设计书附录 A 还没有“环境配置”“联网档位”“安装脚本”“启动命令”这些术语（设计草案第 7 节 W13），需要人更新设计书。
 - host、docker 两种 shell_run（不经 Sandbox 接口的开发方式）不准备环境。
+
+## 8. 给 coding-agent 的接法（`internal/server/envhandoff.go` 的 `environmentHandoff.Bind`）
+
+在会话的工作副本建好之后调 `agentruntime.workspace.v1.WorkspaceService/SetWorkspaceEnvironment`（与 Task API 同一个地址，同一个令牌）：
+
+| 请求字段 | 取自 coding-agent |
+| --- | --- |
+| `tenant_id` | `identity.TenantID`（只校验一致） |
+| `workspace_id` | `Session.WorkspaceID` |
+| `environment.environment_id` | `Environment.ID` |
+| `environment.setup_script`、`start_command`、`env` | `Environment.SetupScript`、`StartCommand`、`Env`（原文；`.env` 上限按 Runtime 的 64 个、16 KiB） |
+| `environment.network.mode` | `deny` → `NETWORK_MODE_DENY`；`allowlist` → `NETWORK_MODE_RESTRICTED`；`open` → `NETWORK_MODE_OPEN` |
+| `environment.network.hosts[]` | `AllowedHosts` 的每一项：`*.example.com` 写成 `{host: "example.com", include_subdomains: true}`（Runtime 的这一项同时匹配 example.com 本身），其余 `{host, include_subdomains: false}` |
+| `environment.secret_headers[]` | `{host, include_subdomains, secret_name, header}`；coding-agent 现在没有网络密钥的配置，先不给 |
+
+应答的 `workspace.environment_id` 回显 ID，成功即可把 `Session.EnvironmentHandoff` 记成已交接；`InvalidArgument` 的稳定错误码（`invalid_env_line`、`env_reserved_name`、`env_secret_name`、`env_too_large`、`invalid_network_host`、`invalid_secret_header`、`environment_script_too_large`、`invalid_environment`）可直接映射成界面文字。删除环境时调 `WorkspaceService/DeleteEnvironmentConfig{tenant_id, environment_id}`（只标记调用者自己交接过的工作区）。setup 的结果与就绪只读 `EnvironmentService` 的 `EnvRecord`（`setup_state`、`setup_error`、`start_state`、`environment_id`、`setup_key`、`setup_finished_at`，`ready` 已含 setup 门禁）。shell_run 的结果另带 `environment_config: {environment_id, setup, start}`；setup 失败时 Task 里的工具错误码是 `environment_setup_failed` / `environment_setup_timeout`。

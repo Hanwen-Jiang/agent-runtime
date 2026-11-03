@@ -224,6 +224,7 @@ class WorkspaceOperations:
             Op.WORKSPACE_OPERATION_LOG: self.log,
             Op.WORKSPACE_OPERATION_DISCARD: self.discard,
             Op.WORKSPACE_OPERATION_SYNC: self.sync,
+            Op.WORKSPACE_OPERATION_SET_ENVIRONMENT: self.set_environment,
         }
         handler = handlers.get(inp.operation)
         if handler is None:
@@ -545,6 +546,17 @@ class WorkspaceOperations:
             async with self._lease(inp, writable=False) as lease:
                 snap = await self._broker.snapshot(lease)
         return {"snapshot_id": snap.snapshot_id, "files": snap.files, "size_bytes": str(snap.size_bytes)}
+
+    async def set_environment(self, inp: workspace_pb2.WorkspaceOperationInput, args: dict[str, Any]) -> dict[str, Any]:
+        """设置或清除选用的环境配置（ENV-02）：只影响之后新准备的环境；不起环境。"""
+        owner, ws = inp.tenant.tenant_id, inp.workspace_id
+        await self._record(inp)
+        if args.get("environment"):
+            config = EnvironmentConfig.from_args(args["environment"])
+            await self._archiver.set_environment(owner, ws, config, owner_user=inp.requested_by or inp.tenant.user_id)
+        else:
+            await self._archiver.clear_environment(owner, ws)
+        return {"workspace": workspace_dict(await self._record(inp))}
 
     async def delete(self, inp: workspace_pb2.WorkspaceOperationInput, args: dict[str, Any]) -> dict[str, Any]:
         owner, ws = inp.tenant.tenant_id, inp.workspace_id

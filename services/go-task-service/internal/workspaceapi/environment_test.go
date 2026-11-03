@@ -13,6 +13,7 @@ import (
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
+	workflowv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1"
 	workspacev1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workspace/v1"
 )
 
@@ -179,5 +180,32 @@ func TestWorkspaceEchoesTheEnvironmentID(t *testing.T) {
 	raw, _ := protojson.Marshal(ws)
 	if strings.Contains(string(raw), "setup") {
 		t.Fatal("不回显配置的内容")
+	}
+}
+
+func TestSetWorkspaceEnvironmentBindsOrClearsThroughTheWorker(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	if _, err := h.client.SetWorkspaceEnvironment(ctx, authed(h, "t1", &workspacev1.SetWorkspaceEnvironmentRequest{TenantId: "t1", WorkspaceId: "w1", Environment: sampleEnvironment()})); err != nil {
+		t.Fatal(err)
+	}
+	in := h.w.started[0]
+	env, ok := in.GetArgs().AsMap()["environment"].(map[string]any)
+	if in.GetOperation() != workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_SET_ENVIRONMENT || !ok || env["environment_id"] != "env-py" || in.GetRequestedBy() != "u-alice" {
+		t.Fatalf("工作流的输入不对：%v", in)
+	}
+	if _, err := h.client.SetWorkspaceEnvironment(ctx, authed(h, "t1", &workspacev1.SetWorkspaceEnvironmentRequest{TenantId: "t1", WorkspaceId: "w1"})); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := h.w.started[1].GetArgs().AsMap()["environment"]; ok {
+		t.Fatal("清除时不带 environment")
+	}
+	bad := sampleEnvironment()
+	bad.Env = "API_TOKEN=x"
+	if _, err := h.client.SetWorkspaceEnvironment(ctx, authed(h, "t1", &workspacev1.SetWorkspaceEnvironmentRequest{TenantId: "t1", WorkspaceId: "w1", Environment: bad})); code(t, err) != connect.CodeInvalidArgument {
+		t.Fatalf("配置不对：%v", err)
+	}
+	if len(h.w.started) != 2 {
+		t.Fatal("配置不对时不起工作流")
 	}
 }
