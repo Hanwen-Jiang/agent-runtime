@@ -114,6 +114,7 @@ def load(splits: Sequence[str], root: Path | None = None) -> list[dict[str, Any]
 class JudgeBenchEval:
     name = NAME
     role = ROLE
+    est_tokens = (5000, 2400)  # 两种顺序各一次，Arena-Hard 要裁判先自己作答
 
     def __init__(self, *, splits: Sequence[str] = ("gpt",), allow_tie: bool = True, scoring: str = "consistent", root: Path | None = None,
                  max_output_tokens: int = 4096) -> None:

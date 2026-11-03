@@ -72,7 +72,8 @@ async def test_simpleqa_answers_then_opus_grades_with_the_official_template(qa_c
     assert judge["messages"][0]["text"] == text_of(judge_req) and judge["temperature"] == "provider default"
     assert res.record["grade"] == "CORRECT" and res.record["same_vendor"] is False and res.cost_usd == pytest.approx(0.006)
     rows = [json.loads(line) for line in log.read_text("utf-8").splitlines()]
-    assert len(rows) == 1 and rows[0]["eval"] == "simpleqa" and rows[0]["case"] == item.id and rows[0]["subject_models"] == [GPT]
+    assert len(rows) == 1 and rows[0]["eval"] == "simpleqa" and rows[0]["case_id"] == item.id and rows[0]["subject_models"] == [GPT]
+    assert judge_req.call.tier == "strong@medium" and simpleqa.SimpleQAEval.uses_judge
     assert rows[0]["judge_pinned_ok"] and rows[0]["text"] == "A"
 
 
@@ -99,6 +100,18 @@ async def test_a_failed_answer_is_an_error_before_judging(qa_csv: Path, tmp_path
     gw = ScriptGateway(lambda r: RuntimeError("provider down"))
     res = await ev.run_item(ev.items(1, 0)[0], gw, candidate=GPT)
     assert res.score == 0.0 and res.error == "RuntimeError: provider down" and len(gw.requests) == 1 and "judge" not in res.record
+
+
+async def test_under_the_matrix_the_judgment_is_logged_once(qa_csv: Path, tmp_path: Path) -> None:
+    from agentruntime_learning.evals.judging import RecordingJudgeGateway, judging
+
+    own_log, matrix_log = tmp_path / "own.jsonl", tmp_path / "run" / "judgments.jsonl"
+    ev = simpleqa.make(source=qa_csv, judge_log=own_log)
+    gw = PinningGateway(RecordingJudgeGateway(scripted("Canberra", "A"), matrix_log), role="deliver", candidate=GPT)
+    with judging(eval="simpleqa", case_id="x", repeat=0, candidate=GPT, subject_models=[GPT]):
+        res = await ev.run_item(ev.items(1, 0)[0], gw, candidate=GPT)
+    assert res.score == 1.0 and not own_log.exists() and len(matrix_log.read_text("utf-8").splitlines()) == 1
+    assert json.loads(matrix_log.read_text("utf-8"))["metric"] == "simpleqa_grade" and res.record["judge"]["log"] == "matrix judgments.jsonl"
 
 
 def test_simpleqa_template_and_data() -> None:

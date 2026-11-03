@@ -76,6 +76,9 @@ class FramesEval:
     name = NAME
     role = ROLE
     version = f"hf@{REVISION[:7]}:naive"
+    uses_judge = True  # 裁判调用经 RecordingJudgeGateway（见 _judged）
+    est_tokens = (100, 800)
+    est_other_usd = 0.005  # Opus 裁判约 0.4k 输入、0.15k 输出
 
     def __init__(self, *, source: Path | None = None, judge_log: Path | str | None = None, max_output_tokens: int = 4096) -> None:
         self.source = source

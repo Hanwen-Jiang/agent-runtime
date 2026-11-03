@@ -86,6 +86,7 @@ async def test_a_conversation_with_tool_calls_is_scored_by_the_end_state() -> No
     assert roles == [role_enum("deliver"), role_enum("act"), role_enum("act"), role_enum("deliver")]
     user_req, agent_req, agent_req2, _ = inner.requests
     assert user_req.call.pinned_model_profile == t2.DEFAULT_USER_MODEL and agent_req.call.pinned_model_profile == CANDIDATE
+    assert user_req.call.tier == "strong@medium", "钉的用户模型要在请求的档里"
     assert [m.text for m in user_req.generation.messages] == [FakeEpisode.user_system_prompt, t2.FIRST_AGENT_MESSAGE]
     assert [m.role for m in user_req.generation.messages] == [mg.CHAT_ROLE_SYSTEM, mg.CHAT_ROLE_USER], "用户模拟器那边角色对调"
     assert [t.name for t in agent_req.generation.tools] == ["cancel_reservation"] and not user_req.generation.tools

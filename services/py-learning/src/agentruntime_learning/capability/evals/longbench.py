@@ -106,6 +106,7 @@ def load_index(base: Path | None = None, *, source: Path | None = None) -> list[
 class LongBenchEval:
     name = NAME
     role = ROLE
+    est_tokens = (35000, 50)  # short 子集的上下文约 2.5 万～4.5 万 token
 
     def __init__(self, *, lengths: Sequence[str] = ("short",), domains: Sequence[str] | None = None, difficulties: Sequence[str] | None = None,
                  max_context_tokens: int = 120_000, max_output_tokens: int = 1024, cache: Path | None = None, source: Path | None = None) -> None:

@@ -48,6 +48,7 @@ SPARSE = ("/data/tau2/domains/airline/", "/data/tau2/domains/retail/", "/data/ta
           "/data/tau2/multilingual/*.json")
 FIRST_AGENT_MESSAGE = "Hi! How can I help you today?"
 DEFAULT_USER_MODEL = "a6api/gpt-5.5@2026-10"
+DEFAULT_USER_TIER = "strong@medium"  # 网关只在请求的档里找钉的模型：换 user_model 时一起换成它的 class
 MAX_STEPS = 100
 MAX_ERRORS = 10
 
@@ -231,9 +232,11 @@ def _tools(specs: Sequence[dict[str, Any]]) -> list[mg.ToolSpec]:
 class Tau2Eval:
     name = NAME
     role = ROLE
+    est_tokens = (200_000, 3000)  # 客服一侧：政策与工具每轮重发（提示缓存命中后便宜很多）
+    est_other_usd = 0.35  # 用户模拟器（默认 gpt-5.5）约 60k 输入
 
     def __init__(self, *, domains: Sequence[str] = DOMAINS, backend: Backend | None = None, user_model: str = DEFAULT_USER_MODEL,
-                 user_role: str = "deliver", user_tier: str = "", max_steps: int = MAX_STEPS, max_errors: int = MAX_ERRORS,
+                 user_role: str = "deliver", user_tier: str = DEFAULT_USER_TIER, max_steps: int = MAX_STEPS, max_errors: int = MAX_ERRORS,
                  max_output_tokens: int = 4096, data_dir: Path | None = None) -> None:
         unknown = set(domains) - set(DOMAINS)
         if unknown:

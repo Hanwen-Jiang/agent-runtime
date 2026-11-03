@@ -345,6 +345,7 @@ def ast_check(category: str, functions: Sequence[Mapping[str, Any]], output: lis
 class BfclEval:
     name = NAME
     role = ROLE
+    est_tokens = (600, 100)  # 矩阵估算花费用：每题被测一侧的输入、输出 token
 
     def __init__(self, *, categories: Sequence[str] = DEFAULT_CATEGORIES, root: Path | None = None, max_output_tokens: int = 4096) -> None:
         self.categories = tuple(categories)

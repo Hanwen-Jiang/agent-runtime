@@ -199,7 +199,7 @@ JudgeBench 的回答是别家模型生成的，**不要拿来训练**（各模�
   在真实数据上核对过移植：用标准答案当输出，2351 题里只有 9 题不过（都是标准答案本身把必填参数标成可省，原版同样不过）。
 - τ²-bench：对话在本模块里经 Gateway 跑，环境、提示、工具执行与判分用官方包（`OfficialBackend`）；在装了官方包的 Python 里核对过
   三个领域各一道题按标准动作走一遍都得 1 分、什么都不做的 retail 题得 0 分。用户模拟器默认 `a6api/gpt-5.5@2026-10`（role deliver、
-  明确钉住，所以不被矩阵钉到候选上；官方默认 GPT-4.1），**要人定**。COMMUNICATE 用官方原来的子串匹配；retail 112 题的 reward_basis
+  明确钉住、tier strong@medium（网关只在请求的档里找钉的模型，换模型时 `user_tier` 一起换），所以不被矩阵钉到候选上；官方默认 GPT-4.1），**要人定**。COMMUNICATE 用官方原来的子串匹配；retail 112 题的 reward_basis
   有 NL_ASSERTION，官方经 litellm 调自己的裁判，这里的模型调用只能经 Gateway，所以先不算（record 的 `skipped` 写明），只按数据库终态判。
   要算的话把 NL 断言改经 Gateway 的 Opus 裁判，另做。数据从钉死的提交稀疏检出（约 130 MB，要 git），或设 `TAU2_DATA_DIR`。
 - RewardBench 2：Ties 子集的官方分数按一组题算（准确率加分差），不是逐题的，不收。默认 ratings：四个回答各自单独打分，好回答
@@ -208,14 +208,15 @@ JudgeBench 的回答是别家模型生成的，**不要拿来训练**（各模�
   另记 `official_correct`，`scoring="official"` 时按它。
 - LongBench v2：没有分词器，按 UTF-8 字节数估 token（约 4 字节一个），超过 `max_context_tokens`（默认 12 万，同官方）时截掉上下文中间。
 - SimpleQA、FRAMES：被测作答是 role deliver；裁判是 role judge、`pinned_model_profile` 明确填 Opus 5.5，经 `evals.judging` 的
-  RecordingJudgeGateway 调用，每次判分写一行 JSONL（`judge_log`，默认 `<AR_EVAL_DATA_DIR>/judgments/<评测>.jsonl`，调度可传运行目录里的
-  路径）；`ItemResult.record` 里有裁判的完整输入、结论、理由、实际服务的模型与花费，候选是 Anthropic 的模型时 `same_vendor = True`。
+  RecordingJudgeGateway 调用，每次判分写一行 JSONL：两个评测声明 `uses_judge = True`，矩阵调度在 gateway 底下包好记录器、写运行目录的
+  `judgments.jsonl`；单独用时（gateway 链上没有记录器）自己包一层，写 `judge_log`（默认 `<AR_EVAL_DATA_DIR>/judgments/<评测>.jsonl`），不会记两遍；`ItemResult.record` 里有裁判的完整输入、结论、理由、实际服务的模型与花费，候选是 Anthropic 的模型时 `same_vendor = True`。
   裁判没落在 Opus 上时这道题记为出错。**温度 0 做不到**：GenerateParams 没有温度字段（要改契约，走 S-01），按 Profile 的默认值，
   record 里写 `temperature: "provider default"`。SimpleQA 逐题只有 CORRECT 记 1（同官方），INCORRECT 与 NOT_ATTEMPTED 都记 0
   但分开记下；要奖励“不知道就不答”得另算官方的 F 分数，**要人定**是否改成逐题给 NOT_ATTEMPTED 部分分。FRAMES 只做论文的
   naive prompting（不给维基百科条目）；给条目原文的 oracle 设定要另取页面并定怎么钉版本，没做。
 
-**每题花费的估计**（没实测，按 Profile 的单价与估的 token 数；有思考预算的档另加思考 token）
+**每题花费的估计**（没实测，按 Profile 的单价与估的 token 数；有思考预算的档另加思考 token）。各评测的 `est_tokens`（被测一侧的输入、
+输出 token）与 `est_other_usd`（裁判、用户模拟器）按这张表填，矩阵的 `estimate` 用它们。
 
 | 评测 | 估的 token（每题） | Sonnet 5.5 | Opus 5.5 | gemini-3.5-flash |
 | --- | --- | --- | --- | --- |

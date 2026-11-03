@@ -129,6 +129,7 @@ class RewardBench2Eval:
         if unknown:
             raise ValueError(f"没有这些子集：{sorted(unknown)}")
         self.mode, self.orders, self.subsets, self.source = mode, orders, tuple(subsets), source
+        self.est_tokens = (3200, 1000) if mode == "ratings" else (2500 * orders, 300 * orders)  # 矩阵估算花费用
         self.max_output_tokens = max_output_tokens
         tag = "" if mode == "ratings" else f":four_way{orders}"
         tag += "" if self.subsets == SUBSETS else ":" + "+".join(s.replace(" ", "_") for s in self.subsets)

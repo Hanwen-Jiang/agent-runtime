@@ -52,6 +52,9 @@ class SimpleQAEval:
     name = NAME
     role = ROLE
     version = "csv@" + CSV_SHA256[:7]
+    uses_judge = True  # 裁判调用经 RecordingJudgeGateway（见 _judged）
+    est_tokens = (50, 150)  # 被测作答（不含思考）
+    est_other_usd = 0.006  # Opus 裁判约 1.5k 输入
 
     def __init__(self, *, source: Path | None = None, judge_log: Path | str | None = None, max_output_tokens: int = 2048) -> None:
         self.source = source
