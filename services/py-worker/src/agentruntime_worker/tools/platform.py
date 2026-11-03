@@ -573,14 +573,14 @@ class _Workspaces:
         async with span_cm as span:
             started = time.monotonic()
             try:
-                lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy)
+                lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy, prepare=True)
             except InvalidError as err:
                 if err.code != "unsupported_image" or environment is None:
                     raise
                 # 项目环境的镜像落不到这个后端（例如回退到了托管后端）：退回 universal，并说明。
                 spec = replace(spec, image="")
                 environment = replace(environment, state="fallback", image="", note=f"{err.message}，这次用 universal")
-                lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy)
+                lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy, prepare=True)
             ran = time.monotonic()
             # 新建了环境时借到它花的时间（冷启动）：进结果，tool_loop 的进度事件 tool_status 带给用户看；复用的环境没有这一项。
             startup_ms = None if lease.reused else int((ran - started) * 1000)
@@ -602,7 +602,7 @@ class _Workspaces:
                         raise
                     await self.broker.discard(lease, "后端里已经没有这个环境（被回收或节点重启）")
                     retry_at = time.monotonic()
-                    lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy)
+                    lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy, prepare=True)
                     ran = time.monotonic()
                     startup_ms = None if lease.reused else int((ran - retry_at) * 1000)
                     result = await lease.box.exec(lease.env_id, argv, timeout=timedelta(seconds=timeout), env=lease.env or None)
@@ -645,6 +645,9 @@ class _Workspaces:
         if environment is not None:
             # 仓库自带环境定义时说明用的是哪个（D-17）：没用上时写明原因，不悄悄退回。
             out["environment"] = environment.as_output()
+        if lease.prepared is not None:
+            # 这次新准备了环境（ENV-02）：用的哪个环境配置，setup（succeeded 或 cached）与 start 的结果。
+            out["environment_config"] = dict(lease.prepared)
         if archive_error is not None:
             out["workspace_error"] = archive_error
         return out

@@ -17,7 +17,8 @@ message WorkspaceOperationInput {
   WorkspaceOperation operation = 3;
   string workspace_id = 4;
   // 不含凭据的参数，名字与 workspace.v1 里对应 Request 的字段相同：repo_url、ref、base、find_renames、message、
-  // author_name、author_email、branch、from_workspace_id、files（[{path, content}]）、path、limit。
+  // author_name、author_email、branch、from_workspace_id、files（[{path, content}]）、path、limit；
+  // 建工作区时另有 environment（workspace.v1.WorkspaceEnvironment 的 protojson，task-service 校验过；只有密钥的名字）。
   google.protobuf.Struct args = 5;
   // wsc1.<base64url(nonce || 密文)>；没有凭据时为空。
   string sealed_credential = 6;
@@ -39,6 +40,8 @@ enum WorkspaceOperation {
   WORKSPACE_OPERATION_LOG = 9;
   WORKSPACE_OPERATION_DISCARD = 10;
   WORKSPACE_OPERATION_SYNC = 11;
+  // 设置或清除工作区选用的环境配置（ENV-02；args 的 environment，没有时清除）。
+  WORKSPACE_OPERATION_SET_ENVIRONMENT = 12;
 }
 
 message WorkspaceOperationResult {

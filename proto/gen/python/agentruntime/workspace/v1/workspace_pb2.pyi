@@ -17,6 +17,13 @@ class WorkspaceState(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     WORKSPACE_STATE_ARCHIVED: _ClassVar[WorkspaceState]
     WORKSPACE_STATE_DELETED: _ClassVar[WorkspaceState]
 
+class NetworkMode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    NETWORK_MODE_UNSPECIFIED: _ClassVar[NetworkMode]
+    NETWORK_MODE_OPEN: _ClassVar[NetworkMode]
+    NETWORK_MODE_RESTRICTED: _ClassVar[NetworkMode]
+    NETWORK_MODE_DENY: _ClassVar[NetworkMode]
+
 class FileType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     FILE_TYPE_UNSPECIFIED: _ClassVar[FileType]
@@ -27,6 +34,10 @@ WORKSPACE_STATE_UNSPECIFIED: WorkspaceState
 WORKSPACE_STATE_ACTIVE: WorkspaceState
 WORKSPACE_STATE_ARCHIVED: WorkspaceState
 WORKSPACE_STATE_DELETED: WorkspaceState
+NETWORK_MODE_UNSPECIFIED: NetworkMode
+NETWORK_MODE_OPEN: NetworkMode
+NETWORK_MODE_RESTRICTED: NetworkMode
+NETWORK_MODE_DENY: NetworkMode
 FILE_TYPE_UNSPECIFIED: FileType
 FILE_TYPE_FILE: FileType
 FILE_TYPE_DIRECTORY: FileType
@@ -41,7 +52,7 @@ class GitCredential(_message.Message):
     def __init__(self, username: _Optional[str] = ..., password: _Optional[str] = ...) -> None: ...
 
 class Workspace(_message.Message):
-    __slots__ = ("workspace_id", "state", "repo_url", "head", "snapshot_id", "size_bytes", "files", "created_at", "updated_at", "branch")
+    __slots__ = ("workspace_id", "state", "repo_url", "head", "snapshot_id", "size_bytes", "files", "created_at", "updated_at", "branch", "environment_id")
     WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
     STATE_FIELD_NUMBER: _ClassVar[int]
     REPO_URL_FIELD_NUMBER: _ClassVar[int]
@@ -52,6 +63,7 @@ class Workspace(_message.Message):
     CREATED_AT_FIELD_NUMBER: _ClassVar[int]
     UPDATED_AT_FIELD_NUMBER: _ClassVar[int]
     BRANCH_FIELD_NUMBER: _ClassVar[int]
+    ENVIRONMENT_ID_FIELD_NUMBER: _ClassVar[int]
     workspace_id: str
     state: WorkspaceState
     repo_url: str
@@ -62,7 +74,52 @@ class Workspace(_message.Message):
     created_at: _timestamp_pb2.Timestamp
     updated_at: _timestamp_pb2.Timestamp
     branch: str
-    def __init__(self, workspace_id: _Optional[str] = ..., state: _Optional[_Union[WorkspaceState, str]] = ..., repo_url: _Optional[str] = ..., head: _Optional[str] = ..., snapshot_id: _Optional[str] = ..., size_bytes: _Optional[int] = ..., files: _Optional[int] = ..., created_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., updated_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., branch: _Optional[str] = ...) -> None: ...
+    environment_id: str
+    def __init__(self, workspace_id: _Optional[str] = ..., state: _Optional[_Union[WorkspaceState, str]] = ..., repo_url: _Optional[str] = ..., head: _Optional[str] = ..., snapshot_id: _Optional[str] = ..., size_bytes: _Optional[int] = ..., files: _Optional[int] = ..., created_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., updated_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., branch: _Optional[str] = ..., environment_id: _Optional[str] = ...) -> None: ...
+
+class WorkspaceEnvironment(_message.Message):
+    __slots__ = ("environment_id", "setup_script", "start_command", "env", "network", "secret_headers")
+    ENVIRONMENT_ID_FIELD_NUMBER: _ClassVar[int]
+    SETUP_SCRIPT_FIELD_NUMBER: _ClassVar[int]
+    START_COMMAND_FIELD_NUMBER: _ClassVar[int]
+    ENV_FIELD_NUMBER: _ClassVar[int]
+    NETWORK_FIELD_NUMBER: _ClassVar[int]
+    SECRET_HEADERS_FIELD_NUMBER: _ClassVar[int]
+    environment_id: str
+    setup_script: str
+    start_command: str
+    env: str
+    network: EnvironmentNetwork
+    secret_headers: _containers.RepeatedCompositeFieldContainer[SecretHeader]
+    def __init__(self, environment_id: _Optional[str] = ..., setup_script: _Optional[str] = ..., start_command: _Optional[str] = ..., env: _Optional[str] = ..., network: _Optional[_Union[EnvironmentNetwork, _Mapping]] = ..., secret_headers: _Optional[_Iterable[_Union[SecretHeader, _Mapping]]] = ...) -> None: ...
+
+class EnvironmentNetwork(_message.Message):
+    __slots__ = ("mode", "hosts")
+    MODE_FIELD_NUMBER: _ClassVar[int]
+    HOSTS_FIELD_NUMBER: _ClassVar[int]
+    mode: NetworkMode
+    hosts: _containers.RepeatedCompositeFieldContainer[NetworkHost]
+    def __init__(self, mode: _Optional[_Union[NetworkMode, str]] = ..., hosts: _Optional[_Iterable[_Union[NetworkHost, _Mapping]]] = ...) -> None: ...
+
+class NetworkHost(_message.Message):
+    __slots__ = ("host", "include_subdomains")
+    HOST_FIELD_NUMBER: _ClassVar[int]
+    INCLUDE_SUBDOMAINS_FIELD_NUMBER: _ClassVar[int]
+    host: str
+    include_subdomains: bool
+    def __init__(self, host: _Optional[str] = ..., include_subdomains: _Optional[bool] = ...) -> None: ...
+
+class SecretHeader(_message.Message):
+    __slots__ = ("host", "include_subdomains", "secret_name", "header")
+    HOST_FIELD_NUMBER: _ClassVar[int]
+    INCLUDE_SUBDOMAINS_FIELD_NUMBER: _ClassVar[int]
+    SECRET_NAME_FIELD_NUMBER: _ClassVar[int]
+    HEADER_FIELD_NUMBER: _ClassVar[int]
+    host: str
+    include_subdomains: bool
+    secret_name: str
+    header: str
+    def __init__(self, host: _Optional[str] = ..., include_subdomains: _Optional[bool] = ..., secret_name: _Optional[str] = ..., header: _Optional[str] = ...) -> None: ...
 
 class InitialFile(_message.Message):
     __slots__ = ("path", "content")
@@ -73,7 +130,7 @@ class InitialFile(_message.Message):
     def __init__(self, path: _Optional[str] = ..., content: _Optional[str] = ...) -> None: ...
 
 class CreateWorkspaceRequest(_message.Message):
-    __slots__ = ("tenant_id", "workspace_id", "repo_url", "ref", "credential", "from_workspace_id", "files", "author_name", "author_email")
+    __slots__ = ("tenant_id", "workspace_id", "repo_url", "ref", "credential", "from_workspace_id", "files", "author_name", "author_email", "environment")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
     REPO_URL_FIELD_NUMBER: _ClassVar[int]
@@ -83,6 +140,7 @@ class CreateWorkspaceRequest(_message.Message):
     FILES_FIELD_NUMBER: _ClassVar[int]
     AUTHOR_NAME_FIELD_NUMBER: _ClassVar[int]
     AUTHOR_EMAIL_FIELD_NUMBER: _ClassVar[int]
+    ENVIRONMENT_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
     workspace_id: str
     repo_url: str
@@ -92,7 +150,8 @@ class CreateWorkspaceRequest(_message.Message):
     files: _containers.RepeatedCompositeFieldContainer[InitialFile]
     author_name: str
     author_email: str
-    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., repo_url: _Optional[str] = ..., ref: _Optional[str] = ..., credential: _Optional[_Union[GitCredential, _Mapping]] = ..., from_workspace_id: _Optional[str] = ..., files: _Optional[_Iterable[_Union[InitialFile, _Mapping]]] = ..., author_name: _Optional[str] = ..., author_email: _Optional[str] = ...) -> None: ...
+    environment: WorkspaceEnvironment
+    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., repo_url: _Optional[str] = ..., ref: _Optional[str] = ..., credential: _Optional[_Union[GitCredential, _Mapping]] = ..., from_workspace_id: _Optional[str] = ..., files: _Optional[_Iterable[_Union[InitialFile, _Mapping]]] = ..., author_name: _Optional[str] = ..., author_email: _Optional[str] = ..., environment: _Optional[_Union[WorkspaceEnvironment, _Mapping]] = ...) -> None: ...
 
 class CreateWorkspaceResponse(_message.Message):
     __slots__ = ("workspace",)
@@ -341,3 +400,33 @@ class SyncWorkspaceResponse(_message.Message):
     head: str
     branch: str
     def __init__(self, head: _Optional[str] = ..., branch: _Optional[str] = ...) -> None: ...
+
+class DeleteEnvironmentConfigRequest(_message.Message):
+    __slots__ = ("tenant_id", "environment_id")
+    TENANT_ID_FIELD_NUMBER: _ClassVar[int]
+    ENVIRONMENT_ID_FIELD_NUMBER: _ClassVar[int]
+    tenant_id: str
+    environment_id: str
+    def __init__(self, tenant_id: _Optional[str] = ..., environment_id: _Optional[str] = ...) -> None: ...
+
+class DeleteEnvironmentConfigResponse(_message.Message):
+    __slots__ = ("workspaces",)
+    WORKSPACES_FIELD_NUMBER: _ClassVar[int]
+    workspaces: int
+    def __init__(self, workspaces: _Optional[int] = ...) -> None: ...
+
+class SetWorkspaceEnvironmentRequest(_message.Message):
+    __slots__ = ("tenant_id", "workspace_id", "environment")
+    TENANT_ID_FIELD_NUMBER: _ClassVar[int]
+    WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
+    ENVIRONMENT_FIELD_NUMBER: _ClassVar[int]
+    tenant_id: str
+    workspace_id: str
+    environment: WorkspaceEnvironment
+    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., environment: _Optional[_Union[WorkspaceEnvironment, _Mapping]] = ...) -> None: ...
+
+class SetWorkspaceEnvironmentResponse(_message.Message):
+    __slots__ = ("workspace",)
+    WORKSPACE_FIELD_NUMBER: _ClassVar[int]
+    workspace: Workspace
+    def __init__(self, workspace: _Optional[_Union[Workspace, _Mapping]] = ...) -> None: ...

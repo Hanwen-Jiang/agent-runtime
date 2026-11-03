@@ -298,6 +298,17 @@ func (s *Server) CreateWorkspace(ctx context.Context, req *connect.Request[works
 		"repo_url": m.GetRepoUrl(), "ref": m.GetRef(), "from_workspace_id": m.GetFromWorkspaceId(), "files": files,
 		"author_name": m.GetAuthorName(), "author_email": m.GetAuthorEmail(),
 	}
+	if env := m.GetEnvironment(); env != nil {
+		// ENV-02：选用的环境配置随建工作区交给 Worker（只有密钥的名字），见 environment.go。
+		if err := checkEnvironment(env); err != nil {
+			return nil, taskapi.ConnectError(err)
+		}
+		doc, err := environmentArgs(env)
+		if err != nil {
+			return nil, taskapi.ConnectError(invalid("invalid_environment", "环境配置的格式不对"))
+		}
+		args["environment"] = doc
+	}
 	if err := s.operate(ctx, req.Header(), "workspace_create", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_CREATE, args, m.GetCredential(), out); err != nil {
 		return nil, taskapi.ConnectError(err)
 	}
@@ -442,24 +453,31 @@ func (s *Server) ListWorkspaces(ctx context.Context, req *connect.Request[worksp
 	}
 	var rows []relational.Row
 	live := map[string]bool{}
-	err = db.Transaction(ctx, relational.TxOptions{ReadOnly: true}, func(ctx context.Context, tx relational.Tx) error {
-		var err error
-		rows, err = tx.Query(ctx, `SELECT workspace_id, repo_url, head, snapshot_id, size_bytes, files, created_at, updated_at
-			FROM workspaces WHERE state <> 'deleted' ORDER BY workspace_id`)
-		if err != nil {
-			return err
-		}
-		envs, err := tx.Query(ctx, `SELECT DISTINCT workspace_id FROM sandbox_envs WHERE state = 'ready' AND workspace_id <> ''`)
-		if err != nil && !sandboxgrants.MissingTable(err) {
-			return err
-		}
-		for _, r := range envs {
-			if w, ok := r["workspace_id"].(string); ok {
-				live[w] = true
+	read := func(columns string) error {
+		return db.Transaction(ctx, relational.TxOptions{ReadOnly: true}, func(ctx context.Context, tx relational.Tx) error {
+			var err error
+			rows, err = tx.Query(ctx, `SELECT workspace_id, repo_url, head, snapshot_id, size_bytes, files, created_at, updated_at`+columns+`
+				FROM workspaces WHERE state <> 'deleted' ORDER BY workspace_id`)
+			if err != nil {
+				return err
 			}
-		}
-		return nil
-	})
+			envs, err := tx.Query(ctx, `SELECT DISTINCT workspace_id FROM sandbox_envs WHERE state = 'ready' AND workspace_id <> ''`)
+			if err != nil && !sandboxgrants.MissingTable(err) {
+				return err
+			}
+			for _, r := range envs {
+				if w, ok := r["workspace_id"].(string); ok {
+					live[w] = true
+				}
+			}
+			return nil
+		})
+	}
+	err = read(", environment_id")
+	if missingColumn(err) {
+		// Worker 还没迁移 207（ENV-02）：没有 environment_id 列，另开一个事务按旧的列读（Postgres 上出错的事务不能再用）。
+		err = read("")
+	}
 	if err != nil && sandboxgrants.MissingTable(err) {
 		rows, err = nil, nil // Worker 还没迁移：还没有工作区
 	}
@@ -494,6 +512,7 @@ func decode(r relational.Row, live map[string]bool) *workspacev1.Workspace {
 	w := &workspacev1.Workspace{
 		WorkspaceId: str("workspace_id"), State: workspacev1.WorkspaceState_WORKSPACE_STATE_ACTIVE, RepoUrl: str("repo_url"), Head: str("head"),
 		SnapshotId: str("snapshot_id"), SizeBytes: num("size_bytes"), Files: int32(num("files")), CreatedAt: ts("created_at"), UpdatedAt: ts("updated_at"),
+		EnvironmentId: str("environment_id"),
 	}
 	if !live[w.WorkspaceId] && w.SnapshotId != "" {
 		w.State = workspacev1.WorkspaceState_WORKSPACE_STATE_ARCHIVED

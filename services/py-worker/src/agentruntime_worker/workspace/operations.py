@@ -23,6 +23,7 @@ activity（program 队列）；这里是它做的事：在承载工作区的沙�
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import contextlib
 import hashlib
@@ -53,9 +54,11 @@ from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker import names
 from agentruntime_worker.sandbox.broker import Lease, SandboxBroker
+from agentruntime_worker.sandbox.env_config import EnvironmentConfig
 from agentruntime_worker.sandbox.grants import NetworkPolicy, check_request
 from agentruntime_worker.sandbox.ledger import iso
 from agentruntime_worker.workspace.archive import WorkspaceRecord
+from agentruntime_worker.workspace.copy import copy_working_copy
 
 log = logging.getLogger(__name__)
 
@@ -221,6 +224,7 @@ class WorkspaceOperations:
             Op.WORKSPACE_OPERATION_LOG: self.log,
             Op.WORKSPACE_OPERATION_DISCARD: self.discard,
             Op.WORKSPACE_OPERATION_SYNC: self.sync,
+            Op.WORKSPACE_OPERATION_SET_ENVIRONMENT: self.set_environment,
         }
         handler = handlers.get(inp.operation)
         if handler is None:
@@ -243,6 +247,8 @@ class WorkspaceOperations:
         # ref 是完整的提交时只取到它为止的历史（TMP 计划 eval-observability-and-runtime-fixes 11.10）。
         commit = ref if remote is not None and _SHA.match(ref) else ""
         author = _author(args)
+        # ENV-02：选用的环境配置（task-service 校验过，这里再核一遍）；不对时不建工作区。
+        environment = EnvironmentConfig.from_args(args["environment"]) if args.get("environment") else None
         credential = await self._credential(inp, remote) if remote is not None else None
         origin: WorkspaceRecord | None = None
         if source:
@@ -252,6 +258,8 @@ class WorkspaceOperations:
         limits = (await self._broker.sandboxes.policy_for(owner)).workspace
         await self._archiver.ensure(owner, ws, limits, repo_url=url or (origin.repo_url if origin else ""), exclusive=True)
         try:
+            if environment is not None:
+                await self._archiver.set_environment(owner, ws, environment, owner_user=inp.requested_by or inp.tenant.user_id)
             if origin is not None:
                 head, branch = await self._copy(inp, source, max_bytes=limits.max_bytes)
             else:
@@ -303,6 +311,20 @@ class WorkspaceOperations:
         """
         owner = inp.tenant.tenant_id
         await self._current(owner, source)
+        # N-10：不经环境复制整个仓库。存档模式引用源的快照（块不搬）；挂卷时在卷上复制，.git/objects 用硬链接。
+        if await self._broker.archive_mode_for(owner):
+            copied = await self._archiver.copy_snapshot(owner, source, inp.workspace_id, max_bytes=max_bytes)
+            if copied is not None:
+                return copied[1], copied[2]
+        else:
+            root = self._broker.sandboxes.workspace_root
+            if root is not None and (Path(root) / owner / source).is_dir():
+                src, dst = Path(root) / owner / source, Path(root) / owner / inp.workspace_id
+                stats = await asyncio.to_thread(copy_working_copy, src, dst, max_bytes=max_bytes)
+                if not stats.worktree_files and await asyncio.to_thread(_has_worktree_files, src):
+                    raise ConflictError("workspace_empty_after_copy", f"从 {source} 复制过来的工作区是空的：不留空的副本")
+                log.info("工作区 %s 从 %s 复制：复制 %d 字节，硬链接 %d 字节", inp.workspace_id, source, stats.copied_bytes, stats.linked_bytes)
+                return await asyncio.to_thread(_host_head, dst)
         with tempfile.TemporaryFile() as tmp:
             async with self._lease(inp, writable=False, workspace_id=source) as src:
                 _require(src.box, "export_archive")
@@ -525,6 +547,17 @@ class WorkspaceOperations:
                 snap = await self._broker.snapshot(lease)
         return {"snapshot_id": snap.snapshot_id, "files": snap.files, "size_bytes": str(snap.size_bytes)}
 
+    async def set_environment(self, inp: workspace_pb2.WorkspaceOperationInput, args: dict[str, Any]) -> dict[str, Any]:
+        """设置或清除选用的环境配置（ENV-02）：只影响之后新准备的环境；不起环境。"""
+        owner, ws = inp.tenant.tenant_id, inp.workspace_id
+        await self._record(inp)
+        if args.get("environment"):
+            config = EnvironmentConfig.from_args(args["environment"])
+            await self._archiver.set_environment(owner, ws, config, owner_user=inp.requested_by or inp.tenant.user_id)
+        else:
+            await self._archiver.clear_environment(owner, ws)
+        return {"workspace": workspace_dict(await self._record(inp))}
+
     async def delete(self, inp: workspace_pb2.WorkspaceOperationInput, args: dict[str, Any]) -> dict[str, Any]:
         owner, ws = inp.tenant.tenant_id, inp.workspace_id
         await self._record(inp)
@@ -746,6 +779,23 @@ def parse_numstat(text: str) -> list[dict[str, Any]]:
     return out
 
 
+def _has_worktree_files(root: Path) -> bool:
+    return any(p.is_file() for p in root.rglob("*") if ".git" not in p.relative_to(root).parts[:1])
+
+
+def _host_head(root: Path) -> tuple[str, str]:
+    """挂卷时复制完直接读 HEAD（不为它起环境）。"""
+    import asyncio as _asyncio
+
+    from agentruntime_worker.workspace.archive import git_head
+
+    async def read(path: str) -> bytes | None:
+        target = root / path
+        return target.read_bytes() if target.is_file() and not target.is_symlink() else None
+
+    return _asyncio.run(git_head(read))
+
+
 async def _file_count(lease: Lease) -> int:
     """环境里工作区的文件数，不算 .git 里的。"""
     entries = await lease.box.manifest(lease.env_id)
@@ -797,7 +847,7 @@ def workspace_dict(record: WorkspaceRecord, *, branch: str = "") -> dict[str, An
     out: dict[str, Any] = {
         "workspace_id": record.workspace_id, "state": "WORKSPACE_STATE_ACTIVE" if record.state == "active" else "WORKSPACE_STATE_DELETED",
         "repo_url": record.repo_url, "head": record.head, "snapshot_id": record.snapshot_id, "size_bytes": str(record.size_bytes), "files": record.files,
-        "branch": branch,
+        "branch": branch, "environment_id": record.environment_id,
     }
     for name in ("created_at", "updated_at"):
         if getattr(record, name):

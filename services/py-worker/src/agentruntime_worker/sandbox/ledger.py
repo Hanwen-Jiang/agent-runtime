@@ -158,6 +158,16 @@ MIGRATIONS = (
         "ALTER TABLE sandbox_envs ADD COLUMN health_confirmed_at TEXT NOT NULL DEFAULT ''",
         "ALTER TABLE sandbox_envs ADD COLUMN reused_at TEXT NOT NULL DEFAULT ''",
     )),
+    # ENV-02：环境配置的 setup、start 在这个环境上的结果（docs/plan/env-02-implementation-2026-11-03.md）；EnvironmentService 投影它们。
+    # 迁移之前的行没有跑过 setup：默认 none。
+    Migration(207, "sandbox_environment_setup", (
+        "ALTER TABLE sandbox_envs ADD COLUMN environment_id TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE sandbox_envs ADD COLUMN setup_state TEXT NOT NULL DEFAULT 'none'",
+        "ALTER TABLE sandbox_envs ADD COLUMN setup_key TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE sandbox_envs ADD COLUMN setup_finished_at TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE sandbox_envs ADD COLUMN setup_error TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE sandbox_envs ADD COLUMN start_state TEXT NOT NULL DEFAULT 'none'",
+    )),
 )
 
 
@@ -234,6 +244,14 @@ class EnvRecord:
     health_confirmed_at: str = ""
     # Actual reacquisition of the same workspace/session, not a command completion/touch.
     reused_at: str = ""
+    # ENV-02：准备这个环境用的环境配置；setup 的结果（none、running、succeeded、cached、failed）、缓存键、完成时间、失败的错误码；
+    # start 的结果（none、succeeded、failed）。
+    environment_id: str = ""
+    setup_state: str = "none"
+    setup_key: str = ""
+    setup_finished_at: str = ""
+    setup_error: str = ""
+    start_state: str = "none"
 
     @classmethod
     def from_row(cls, owner: str, row: Mapping[str, Any]) -> EnvRecord:
@@ -307,6 +325,8 @@ class SandboxLedger:
         fallback_from: str = "",
         allow_hosts: str = "",
         exclusive: bool = False,
+        environment_id: str = "",
+        setup_state: str = "none",
     ) -> EnvRecord:
         """落一行 creating（先写平台目录再写租户的行），同一个事务里核对配额与预算。超了 denied。
         exclusive（存档模式的工作区，D-06）：这个工作区不管哪个会话（含没有会话的一次性环境）有可写的环境都算占用。"""
@@ -316,6 +336,7 @@ class SandboxLedger:
             env_ref=new_env_ref(), owner=owner, backend=backend, kind=kind, isolation=isolation, state="creating", created_at=iso(now),
             workspace_id=workspace_id, session_id=session_id, task_id=task_id, writable=1 if writable else 0, runtime=runtime, image=image,
             idle_seconds=int(idle.total_seconds()), max_until=iso(now + max_lifetime), fallback_from=fallback_from, allow_hosts=allow_hosts,
+            environment_id=environment_id, setup_state=setup_state,
         )
         await self._directory(record, "creating")
         try:
@@ -385,6 +406,15 @@ class SandboxLedger:
         await self._update(ready, ("state", "backend_env_id", "ready_at", "last_used_at", "expires_at", "image", "health_confirmed_at"))
         await self._directory(ready, "ready")
         return ready
+
+    async def mark_setup(self, record: EnvRecord, **facts: str) -> EnvRecord:
+        """记 setup、start 的结果（ENV-02）：只改给出的列（setup_state、setup_key、setup_finished_at、setup_error、start_state）。"""
+        allowed = ("environment_id", "setup_state", "setup_key", "setup_finished_at", "setup_error", "start_state")
+        columns = [c for c in allowed if c in facts]
+        updated = replace(record, **{c: facts[c] for c in columns})
+        if columns:
+            await self._update(updated, columns)
+        return updated
 
     async def mark_failed(self, record: EnvRecord, reason: str) -> EnvRecord:
         failed = replace(record, state="failed", reason=reason[:300], destroyed_at=iso(self._clock()))
