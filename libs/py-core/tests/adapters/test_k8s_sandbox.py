@@ -162,6 +162,36 @@ async def test_agent_only_accepts_its_own_token(harness: Harness) -> None:
         await other.aclose()
 
 
+async def test_commands_cannot_read_the_agent_token_from_proc(harness: Harness) -> None:
+    """AGENT-TOK-01（docs/plan/auth-tokens-2026-11-03.md）：agent 是 PID 1，与命令同一个 uid；令牌经环境变量交给它，
+    os.Unsetenv 改不到 /proc/1/environ。命令扫遍 /proc 也找不到令牌，agent 的 environ、mem 都打不开。"""
+    box = harness.provider.bind(tenant_a())
+    env = await box.create(SandboxSpec())
+    probe = (
+        "import json, os\n"
+        "found = {}\n"
+        "for pid in [p for p in os.listdir('/proc') if p.isdigit()]:\n"
+        "    for name in ('environ', 'cmdline'):\n"
+        "        try:\n"
+        "            found[pid + '/' + name] = open(f'/proc/{pid}/{name}', 'rb').read().decode('latin-1')\n"
+        "        except OSError:\n"
+        "            found[pid + '/' + name] = None\n"
+        "try:\n"
+        "    open('/proc/1/mem', 'rb').close(); mem = True\n"
+        "except OSError:\n"
+        "    mem = False\n"
+        "print(json.dumps({'ppid': os.getppid(), 'files': found, 'mem': mem}))\n"
+    )
+    res = await box.exec(env.env_id, ["python", "-c", probe], timeout=TIMEOUT)
+    assert res.exit_code == 0, res.stderr
+    seen = json.loads(res.stdout)
+    token = harness.provider.token(env.env_id)
+    assert seen["ppid"] == 1, "命令由 agent（PID 1）直接起"
+    assert not [k for k, v in seen["files"].items() if v and token in v], "命令在 /proc 里读到了 agent 的令牌"
+    assert seen["files"]["1/environ"] is None, "agent 的 environ 不该让命令读"
+    assert seen["mem"] is False, "命令能打开 agent 的 mem，内存里的令牌就读得到"
+
+
 async def test_network_allowlist_needs_a_microvm_backend(harness: Harness) -> None:
     with expect_error(ErrorCategory.INVALID, "network_allowlist_unsupported"):
         await harness.provider.bind(tenant_a()).create(SandboxSpec(network="allowlist", allow_hosts=("pypi.org",)))
