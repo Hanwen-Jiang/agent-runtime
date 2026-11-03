@@ -19,10 +19,11 @@ import contextlib
 import hashlib
 import io
 import json
+import re
 import secrets
 import tarfile
 import tempfile
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, fields, replace
 from datetime import datetime
 from pathlib import Path
@@ -91,6 +92,8 @@ MIGRATIONS = (
         "ALTER TABLE workspaces ADD COLUMN environment_owner TEXT NOT NULL DEFAULT ''",
         "ALTER TABLE workspaces ADD COLUMN environment_deleted_at TEXT NOT NULL DEFAULT ''",
         "CREATE INDEX workspaces_environment ON workspaces (environment_id, environment_owner)",
+        # N-10：复制工作区时新快照引用源工作区的块（不复制）；记下引用了哪些工作区的块（,ws1,ws2,），清理时据此保留它们。
+        "ALTER TABLE workspace_snapshots ADD COLUMN blob_sources TEXT NOT NULL DEFAULT ''",
     )),
 )
 
@@ -140,6 +143,8 @@ class Snapshot:
     new_blobs: int = 0
     env_ref: str = ""
     deleted_at: str = ""
+    # 清单里有块放在别的工作区之下（N-10，复制来的）：那些工作区，写成 ,ws1,ws2,；空表示块都在本工作区之下。
+    blob_sources: str = ""
 
     @classmethod
     def from_row(cls, row: Mapping[str, Any]) -> Snapshot:
@@ -294,14 +299,19 @@ class WorkspaceArchiver:
 
     async def entries(self, owner: str, snapshot: Snapshot) -> list[FileEntry]:
         """快照的清单。"""
+        return (await self._manifest(owner, snapshot))[0]
+
+    async def _manifest(self, owner: str, snapshot: Snapshot) -> tuple[list[FileEntry], dict[str, str]]:
+        """快照的清单与“块在别的工作区之下”的那一部分（sha256 → 工作区，N-10）。"""
         try:
             data = (await self._bucket(owner).get(snapshot.manifest_key)).data
         except NotFoundError:
             raise TransientError("workspace_restore_mismatch", "快照的清单不见了（被清理了？），换最新的快照再试") from None
         try:
             doc = json.loads(data)
-            return [FileEntry.from_dict(e) for e in doc["entries"]]
-        except (ValueError, KeyError, TypeError):
+            foreign = {str(k): str(v) for k, v in dict(doc.get("blob_workspaces") or {}).items()}
+            return [FileEntry.from_dict(e) for e in doc["entries"]], foreign
+        except (ValueError, KeyError, TypeError, AttributeError):
             raise InvalidError("workspace_manifest_corrupt", "快照的清单格式不对") from None
 
     async def snapshot(self, box: Any, env_id: str, owner: str, workspace_id: str, *, max_bytes: int, env_ref: str = "") -> Snapshot:
@@ -310,23 +320,29 @@ class WorkspaceArchiver:
         bucket = self._bucket(owner)
         previous = await self.latest(owner, workspace_id)
         known: set[str] = set()
+        foreign: dict[str, str] = {}
         if previous is not None:
             with contextlib.suppress(TransientError, InvalidError):
-                known = {e.sha256 for e in await self.entries(owner, previous) if e.type == "file"}
+                prev_entries, foreign = await self._manifest(owner, previous)
+                known = {e.sha256 for e in prev_entries if e.type == "file" and e.sha256 not in foreign}
         with self._tempfile() as tmp:
             await box.export_archive(env_id, tmp, max_bytes=max_bytes)
             tmp.seek(0)
-            entries, total, new_blobs = await self._store_blobs(bucket, workspace_id, tmp, max_bytes=max_bytes, known=known)
+            entries, total, new_blobs = await self._store_blobs(bucket, workspace_id, tmp, max_bytes=max_bytes, known=known, foreign=foreign)
+        # 复制来的、还没改过的文件：块仍在源工作区之下（N-10），清单照样记着它在哪。
+        used = {e.sha256: foreign[e.sha256] for e in entries if e.type == "file" and e.sha256 in foreign}
         snapshot_id = new_snapshot_id()
         now = iso(self._clock())
         snap = Snapshot(
             snapshot_id=snapshot_id, workspace_id=workspace_id, manifest_key=manifest_key(workspace_id, snapshot_id), created_at=now,
-            files=sum(1 for e in entries if e.type == "file"), size_bytes=total, new_blobs=new_blobs, env_ref=env_ref,
+            files=sum(1 for e in entries if e.type == "file"), size_bytes=total, new_blobs=new_blobs, env_ref=env_ref, blob_sources=_sources(used),
         )
-        doc = {
+        doc: dict[str, Any] = {
             "version": MANIFEST_VERSION, "workspace_id": workspace_id, "snapshot_id": snapshot_id, "created_at": now,
             "entries": [e.as_dict() for e in sorted(entries, key=lambda e: e.path)],
         }
+        if used:
+            doc["blob_workspaces"] = dict(sorted(used.items()))
         await bucket.put(snap.manifest_key, json.dumps(doc, ensure_ascii=False, separators=(",", ":")).encode(), content_type="application/json")
         await self.migrate()
         async with self._db(owner).transaction() as tx:
@@ -344,7 +360,7 @@ class WorkspaceArchiver:
         return snap
 
     async def _store_blobs(
-        self, bucket: ObjectStore, workspace_id: str, src: IO[bytes], *, max_bytes: int, known: set[str]
+        self, bucket: ObjectStore, workspace_id: str, src: IO[bytes], *, max_bytes: int, known: set[str], foreign: Mapping[str, str] | None = None,
     ) -> tuple[list[FileEntry], int, int]:
         entries: list[FileEntry] = []
         seen: set[str] = set()
@@ -374,7 +390,7 @@ class WorkspaceArchiver:
                         if len(data) != member.size:
                             raise TransientError("workspace_archive_truncated", "导出的存档不完整")
                         sha = hashlib.sha256(data).hexdigest()
-                        if sha not in known:
+                        if sha not in known and sha not in (foreign or {}):
                             key = blob_key(workspace_id, sha)
                             try:
                                 await bucket.head(key)
@@ -395,7 +411,7 @@ class WorkspaceArchiver:
         snap = snapshot or await self.latest(owner, workspace_id)
         if snap is None:
             return None
-        entries = await self.entries(owner, snap)
+        entries, foreign = await self._manifest(owner, snap)
         bucket = self._bucket(owner)
         with self._tempfile() as tmp:
             with tarfile.open(fileobj=tmp, mode="w", format=tarfile.PAX_FORMAT) as tar:
@@ -410,7 +426,7 @@ class WorkspaceArchiver:
                         tar.addfile(info)
                     else:
                         try:
-                            data = (await bucket.get(blob_key(workspace_id, entry.sha256))).data
+                            data = (await bucket.get(blob_key(foreign.get(entry.sha256, workspace_id), entry.sha256))).data
                         except NotFoundError:
                             raise TransientError("workspace_restore_mismatch", f"快照里 {entry.path} 的内容不见了") from None
                         if len(data) != entry.size or hashlib.sha256(data).hexdigest() != entry.sha256:
@@ -428,7 +444,7 @@ class WorkspaceArchiver:
     # --- 清理与删除 ---
 
     async def _prune(self, owner: str, workspace_id: str) -> None:
-        """只留最近 keep 份快照；没人引用的块删掉。"""
+        """只留最近 keep 份快照；没人引用的块删掉（别的工作区复制来的快照引用的块也算有人引用，N-10）。"""
         async with self._db(owner).transaction(read_only=True) as tx:
             rows = await tx.query(
                 f"SELECT {', '.join(_SNAP_COLUMNS)} FROM workspace_snapshots WHERE workspace_id = $1 AND deleted_at = '' ORDER BY seq DESC",
@@ -438,23 +454,103 @@ class WorkspaceArchiver:
         kept, dropped = snaps[: self.keep], snaps[self.keep :]
         bucket = self._bucket(owner)
         now = iso(self._clock())
+        sources: set[str] = set()
         for snap in dropped:
+            sources |= _source_set(snap.blob_sources)
             await bucket.delete(snap.manifest_key)
             async with self._db(owner).transaction() as tx:
                 await tx.execute("UPDATE workspace_snapshots SET deleted_at = $1 WHERE snapshot_id = $2", (now, snap.snapshot_id))
         referenced: set[str] = set()
         for snap in kept:
-            referenced |= {e.sha256 for e in await self.entries(owner, snap) if e.type == "file"}
+            entries, foreign = await self._manifest(owner, snap)
+            referenced |= {e.sha256 for e in entries if e.type == "file" and e.sha256 not in foreign}
+        await self._delete_blobs(owner, workspace_id, keep=referenced | await self._shared(owner, workspace_id))
+        await self._collect_deleted_sources(owner, sources)
+
+    async def _shared(self, owner: str, workspace_id: str) -> set[str]:
+        """别的工作区的快照引用的、放在 workspace_id 之下的块（复制来的，N-10）。"""
+        async with self._db(owner).transaction(read_only=True) as tx:
+            rows = await tx.query(
+                f"SELECT {', '.join(_SNAP_COLUMNS)} FROM workspace_snapshots WHERE deleted_at = '' AND workspace_id <> $1 AND blob_sources LIKE $2",
+                (workspace_id, f"%,{workspace_id},%"),
+            )
+        out: set[str] = set()
+        for row in rows:
+            with contextlib.suppress(TransientError):
+                _, foreign = await self._manifest(owner, Snapshot.from_row(row))
+                out |= {sha for sha, ws in foreign.items() if ws == workspace_id}
+        return out
+
+    async def _delete_blobs(self, owner: str, workspace_id: str, *, keep: set[str]) -> None:
+        bucket = self._bucket(owner)
         prefix = f"workspaces/{workspace_id}/blobs/"
         for key in await _keys(bucket, prefix):
-            if key[len(prefix):] not in referenced:
+            if key[len(prefix):] not in keep:
                 await bucket.delete(key)
 
+    async def _collect_deleted_sources(self, owner: str, sources: set[str]) -> None:
+        """源工作区已经删除、只为复制来的快照留着的块：没人引用了就删掉。"""
+        for source in sorted(sources):
+            record = await self.get(owner, source)
+            if record is None or record.state == "deleted":
+                await self._delete_blobs(owner, source, keep=await self._shared(owner, source))
+
+    async def copy_snapshot(self, owner: str, source: str, workspace_id: str, *, max_bytes: int) -> tuple[Snapshot, str, str] | None:
+        """复制工作区（N-10）：新工作区的快照引用源工作区最近一份快照的清单与块，不搬内容、不起环境；之后改了的文件才写进
+        新工作区自己的块。源工作区还没有快照时 None（调用方照旧在环境里复制）。返回（快照，HEAD，分支）。"""
+        src = await self.latest(owner, source)
+        if src is None:
+            return None
+        if src.size_bytes > max_bytes:
+            raise InvalidError("too_large", f"工作区超过上限 {max_bytes} 字节")
+        entries, foreign = await self._manifest(owner, src)
+        located = {e.sha256: foreign.get(e.sha256, source) for e in entries if e.type == "file"}
+        snapshot_id = new_snapshot_id()
+        now = iso(self._clock())
+        snap = Snapshot(
+            snapshot_id=snapshot_id, workspace_id=workspace_id, manifest_key=manifest_key(workspace_id, snapshot_id), created_at=now, seq=1,
+            files=src.files, size_bytes=src.size_bytes, new_blobs=0, blob_sources=_sources(located),
+        )
+        doc = {
+            "version": MANIFEST_VERSION, "workspace_id": workspace_id, "snapshot_id": snapshot_id, "created_at": now,
+            "entries": [e.as_dict() for e in sorted(entries, key=lambda e: e.path)], "blob_workspaces": dict(sorted(located.items())),
+        }
+        bucket = self._bucket(owner)
+        await bucket.put(snap.manifest_key, json.dumps(doc, ensure_ascii=False, separators=(",", ":")).encode(), content_type="application/json")
+        async with self._db(owner).transaction() as tx:
+            await tx.execute(
+                f"INSERT INTO workspace_snapshots ({', '.join(_SNAP_COLUMNS)}) VALUES ({', '.join(f'${i}' for i in range(1, len(_SNAP_COLUMNS) + 1))})",
+                [getattr(snap, c) for c in _SNAP_COLUMNS],
+            )
+            await tx.execute(
+                "UPDATE workspaces SET snapshot_id = $1, size_bytes = $2, files = $3, updated_at = $4 WHERE workspace_id = $5",
+                (snapshot_id, snap.size_bytes, snap.files, now, workspace_id),
+            )
+        by_path = {e.path: e for e in entries}
+
+        async def read(path: str) -> bytes | None:
+            entry = by_path.get(path)
+            if entry is None or entry.type != "file":
+                return None
+            return (await bucket.get(blob_key(located[entry.sha256], entry.sha256))).data
+
+        head, branch = await git_head(read)
+        return snap, head, branch
+
     async def delete(self, owner: str, workspace_id: str) -> bool:
-        """删掉工作区的存档（块、清单）与快照，行记为 deleted；返回删除前是否存在。"""
+        """删掉工作区的存档（块、清单）与快照，行记为 deleted；返回删除前是否存在。别的工作区复制来的快照还引用的块先留着
+        （N-10），等它们不引用了再删。"""
         record = await self.get(owner, workspace_id)
         bucket = self._bucket(owner)
+        shared = await self._shared(owner, workspace_id)
+        sources: set[str] = set()
+        async with self._db(owner).transaction(read_only=True) as tx:
+            for row in await tx.query("SELECT blob_sources FROM workspace_snapshots WHERE workspace_id = $1 AND deleted_at = ''", (workspace_id,)):
+                sources |= _source_set(str(row["blob_sources"] or ""))
+        blobs = f"workspaces/{workspace_id}/blobs/"
         for key in await _keys(bucket, f"workspaces/{workspace_id}/"):
+            if key.startswith(blobs) and key[len(blobs):] in shared:
+                continue
             await bucket.delete(key)
         now = iso(self._clock())
         async with self._db(owner).transaction() as tx:
@@ -464,6 +560,7 @@ class WorkspaceArchiver:
                 "WHERE workspace_id = $2",
                 (now, workspace_id),
             )
+        await self._collect_deleted_sources(owner, sources)
         return record is not None and record.state != "deleted"
 
     @contextlib.contextmanager
@@ -481,6 +578,37 @@ async def _keys(bucket: ObjectStore, prefix: str) -> list[str]:
         if not page.next_cursor:
             return out
         cursor = page.next_cursor
+
+
+def _sources(located: Mapping[str, str]) -> str:
+    names = sorted(set(located.values()))
+    return f",{','.join(names)}," if names else ""
+
+
+def _source_set(text: str) -> set[str]:
+    return {n for n in text.split(",") if n}
+
+
+async def git_head(read: Callable[[str], Awaitable[bytes | None]]) -> tuple[str, str]:
+    """不跑 git，按 .git/HEAD、松散的 ref 与 packed-refs 读出 HEAD 的提交与分支（N-10 的复制要它）；读不出时为空。"""
+    head = ((await read(".git/HEAD")) or b"").decode("utf-8", errors="replace").strip()
+    if not head.startswith("ref: "):
+        return (head if _HEX.match(head) else ""), ""
+    ref = head[5:].strip()
+    branch = ref[len("refs/heads/"):] if ref.startswith("refs/heads/") else ""
+    if ".." in ref.split("/") or not ref.startswith("refs/"):
+        return "", branch
+    loose = ((await read(f".git/{ref}")) or b"").decode("utf-8", errors="replace").strip()
+    if _HEX.match(loose):
+        return loose, branch
+    for line in ((await read(".git/packed-refs")) or b"").decode("utf-8", errors="replace").splitlines():
+        sha, _, name = line.partition(" ")
+        if name.strip() == ref and _HEX.match(sha):
+            return sha, branch
+    return "", branch
+
+
+_HEX = re.compile(r"^[0-9a-f]{40}([0-9a-f]{24})?$")
 
 
 def _require_archive(box: Any) -> None:

@@ -38,11 +38,21 @@ async def test_a_copy_that_comes_out_empty_is_refused_and_leaves_nothing(tmp_pat
     url, _ = make_remote(tmp_path)
     s = Setup(tmp_path, mode=mode)
     await s.run(Op.WORKSPACE_OPERATION_CREATE, workspace="w-base", repo_url=url)
-    # 假设 2：只读的环境里看不到源的文件，导出是空的。
+    # 假设 2：只读的环境里看不到源的文件，导出是空的（存档模式下源还没有快照时照旧经环境复制）；挂卷时在卷上复制出来是空的
+    # （N-10 之后挂卷的复制不经环境）。
+    from agentruntime_worker.workspace import operations
+    from agentruntime_worker.workspace.copy import CopyStats
+
     empty = tmp_path / "nothing"
     empty.mkdir()
     real = workdir.export_dir
     monkeypatch.setattr(workdir, "export_dir", lambda root, out, *, max_bytes: real(empty, out, max_bytes=max_bytes))
+
+    async def no_snapshot(*args: Any, **kwargs: Any) -> None:
+        return None
+
+    monkeypatch.setattr(s.archiver, "copy_snapshot", no_snapshot)
+    monkeypatch.setattr(operations, "copy_working_copy", lambda src, dst, *, max_bytes: CopyStats())
     err = await s.error(Op.WORKSPACE_OPERATION_CREATE, workspace="w-copy", from_workspace_id="w-base")
     assert err.code == "workspace_empty_after_copy"
     left = await s.archiver.get("t1", "w-copy")
