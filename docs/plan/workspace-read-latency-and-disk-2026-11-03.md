@@ -88,7 +88,7 @@ coding-agent → task-service WorkspaceService（workspaceapi/server.go: operate
 - **不做写回**（先写本地、过期再存 ObjectStore）：节点在存回之前挂掉，用户的改动就丢了；增量存档只传新块，写穿透的代价不大。
 - 要人定：冷热分层的闲置天数；`max_bytes` 超限时是拒绝写工具还是只警告；Workspace 单独队列的 Worker 池副本数下限；Valkey 是否要持久化（AOF）。
 - **协议**：环境内的 sandbox-agent 现在是集群内明文 HTTP 加令牌，Cloudflare 经 HTTPS 的桥，Firecracker 计划里改走 vsock。协议开销是毫秒级，慢在建沙箱（秒级）与存档恢复，不在协议；Sandbox Service 对内用 gRPC 是为了与其他内部服务一致、契约有类型，不是为了快。语言另见第 5 节。
-- 要人定：SBX-01 是否做、是否分三期；环境表迁移的归属；第 5 节的语言分工与 SBX-RS-01 是否做。
+- 要人定：SBX-01 是否做、是否分三期；环境表迁移的归属。（第 5 节的 Rust 评估已推迟。）
 
 ## 5. 沙箱内外换成 Rust 的评估（2026-11-03）
 
@@ -148,7 +148,9 @@ Rust 的真实成本（不是理由，是要付的）：
 
 ### 5.4 工作项
 
+**2026-11-03 用户定：SBX-RS-01、SBX-RS-02 推迟（DEFER），先保开发速度。** D-20 按 [firecracker-backend.md](firecracker-backend.md) 原计划用 Go 写；本节的评估留作以后实测时的依据，Firecracker 上线、有了冷启动与密度的基线之后再考虑。
+
 | 工作项 | Failure / Evidence | Minimum fix | 成本与新失败面 | 当前决定 |
 | --- | --- | --- | --- | --- |
-| SBX-RS-01 Rust 版 agent 的原型与实测 | 第 5.2 节的内存、快照、恢复收益是经验值，没有本项目的数字；Firecracker 上线前是换语言代价最小的时候 | 用 Rust 写 agent 的核心：`--init`（PID 1）、vsock 监听、`/v1/exec`（含取消与杀进程组）、`/v1/files`、`/v1/manifest`；只用 `std` 加 `libc`。与 Go 版在独服上同条件对比：常驻内存、静态二进制大小、冷启动到第一条命令返回、快照文件大小与恢复到第一条命令返回（P50、P95），各跑 20 次以上。一致性测试的子集对两版都跑 | 原型约千行；独服上要有 Firecracker 与 KVM（D-20 的真 VM 环境）；原型不进生产 | 待确认 |
-| SBX-RS-02 定语言与依赖规则 | SBX-RS-01 的数字出来之前不定 | 收益明确（例如每台 VM 常驻内存、快照恢复的 P95 有可见下降）时：agent 与 fc-manager 用 Rust，写设计改动稿（4.15 技术栈、4.10 后端）与 Rust 依赖规则，人审后改 firecracker-backend.md 的 D-20；收益不明显时维持 Go，结论与数字记在本节 | 改设计书由人做；D-20 推迟到定下之后开工 | 待确认；依赖 SBX-RS-01 |
+| SBX-RS-01 Rust 版 agent 的原型与实测 | 第 5.2 节的内存、快照、恢复收益是经验值，没有本项目的数字；Firecracker 上线前是换语言代价最小的时候 | 用 Rust 写 agent 的核心：`--init`（PID 1）、vsock 监听、`/v1/exec`（含取消与杀进程组）、`/v1/files`、`/v1/manifest`；只用 `std` 加 `libc`。与 Go 版在独服上同条件对比：常驻内存、静态二进制大小、冷启动到第一条命令返回、快照文件大小与恢复到第一条命令返回（P50、P95），各跑 20 次以上。一致性测试的子集对两版都跑 | 原型约千行；独服上要有 Firecracker 与 KVM（D-20 的真 VM 环境）；原型不进生产 | **DEFER**（2026-11-03 用户定） |
+| SBX-RS-02 定语言与依赖规则 | SBX-RS-01 的数字出来之前不定 | 收益明确（例如每台 VM 常驻内存、快照恢复的 P95 有可见下降）时：agent 与 fc-manager 用 Rust，写设计改动稿（4.15 技术栈、4.10 后端）与 Rust 依赖规则，人审后改 firecracker-backend.md 的 D-20；收益不明显时维持 Go，结论与数字记在本节 | 改设计书由人做；D-20 推迟到定下之后开工 | **DEFER**（2026-11-03 用户定） |
