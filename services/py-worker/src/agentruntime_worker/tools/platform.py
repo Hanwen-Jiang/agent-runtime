@@ -55,10 +55,12 @@ from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker.sandbox.broker import SandboxBroker
 from agentruntime_worker.sandbox.environments import Resolution, workspace_reader
+from agentruntime_worker.sandbox.policy import WorkspaceLimits
 from agentruntime_worker.tools.checkpoint import Checkpoint, Runner, UndoReport, create_checkpoint, undo_with
 from agentruntime_worker.tools.sandboxes import Sandboxes, parse_cpu_millis, parse_memory_mb
 from agentruntime_worker.workflows.interrupts import NOT_NEEDED, UNDO_FAILED
 from agentruntime_worker.workspace import timing
+from agentruntime_worker.workspace.size_guard import WorkspaceSizeGuard
 
 VERSION = "v1"
 CONTEXT_READ = "context_read"
@@ -109,6 +111,10 @@ class PlatformToolsConfig:
     max_read_lines: int = 2000
     # context_read 不写 max_chars 时一次取多少个字符（上限是 output_limit）。
     context_read_chars: int = 16_000
+    # 挂卷工作区的大小核对（DISK-A，workspace/size_guard.py）：没超时两次测量至少隔这么多秒；没有沙箱后端（读不到租户策略）时
+    # 的上限，None 时用租户策略的默认值（WorkspaceLimits.max_bytes）。
+    workspace_size_interval_s: float = 30.0
+    workspace_max_bytes: int | None = None
 
 
 def _spec(name: str, effect: Effect, description: str, properties: dict[str, Any], required: list[str], timeout_s: float) -> ToolSpec:
@@ -175,6 +181,22 @@ class _Workspaces:
         self.config = config
         self.broker = broker
         self.telemetry = telemetry
+        self.size_guard = WorkspaceSizeGuard(self._size_limit, interval=config.workspace_size_interval_s)
+
+    async def _size_limit(self, tenant_id: str) -> int:
+        """挂卷工作区的大小上限：租户策略的 workspace.max_bytes（有沙箱后端时），否则配置的或默认的。"""
+        if self.broker is not None:
+            return (await self.broker.sandboxes.policy_for(tenant_id)).workspace.max_bytes
+        return self.config.workspace_max_bytes or WorkspaceLimits().max_bytes
+
+    async def _guarded(self, invocation: ToolInvocation, root: Path, write: Any) -> Any:
+        """挂卷模式下的写类工具（DISK-A）：超了上限先拒绝；写完到了测量间隔就量，超了在结果里带上 workspace_size。"""
+        await self.size_guard.before_write(invocation.tenant_id, root.name, root)
+        out = await write()
+        warning = await self.size_guard.after_write(invocation.tenant_id, root.name, root)
+        if warning is not None and isinstance(out, dict):
+            out = {**out, "workspace_size": warning}
+        return out
 
     def tools(self) -> list[tuple[ToolSpec, ToolHandler]]:
         c = self.config
@@ -422,11 +444,15 @@ class _Workspaces:
             return await self._in_env(invocation, writable=True, run=change)
         root = self._workspace(invocation)
         target = self._resolve(root, args["path"])
-        existed = target.is_file()
-        data = self._edited(args, target.read_bytes() if existed else None)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(data)
-        return {"path": self._relative(root, target), "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(), "created": not existed}
+
+        async def write() -> Any:
+            existed = target.is_file()
+            data = self._edited(args, target.read_bytes() if existed else None)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+            return {"path": self._relative(root, target), "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(), "created": not existed}
+
+        return await self._guarded(invocation, root, write)
 
     @staticmethod
     def _edited(args: Any, old: bytes | None) -> bytes:
@@ -455,19 +481,23 @@ class _Workspaces:
             return await self._sandbox_shell(invocation, self._workspace_id(invocation), _in_dir(cwd, argv), timeout, None)
         root = self._workspace(invocation)
         if self.config.shell_sandbox == "sandbox":
-            return await self._sandbox_shell(invocation, root.name, _in_dir(cwd, argv), timeout, root)
+            return await self._guarded(invocation, root, lambda: self._sandbox_shell(invocation, root.name, _in_dir(cwd, argv), timeout, root))
         workdir = self._resolve(root, cwd) if cwd else root
         if not workdir.is_dir():
             raise InvalidError("dir_not_found", f"工作区里没有目录 {cwd}")
-        # 调用前建检查点，被打断时把文件还原回去（docs/plan/running-task-interaction.md 第 2 节）。工作区在 Worker 这边，git 也在这边跑。
-        run = self._host_runner(root)
-        point = await create_checkpoint(run)
-        try:
-            if self.config.shell_sandbox == "docker":
-                return await self._docker_shell(root, argv, timeout, cwd)
-            return await self._host_shell(workdir, argv, timeout)
-        except asyncio.CancelledError:
-            raise await undo_with(run, point) from None
+
+        async def run_here() -> Any:
+            # 调用前建检查点，被打断时把文件还原回去（docs/plan/running-task-interaction.md 第 2 节）。工作区在 Worker 这边，git 也在这边跑。
+            run = self._host_runner(root)
+            point = await create_checkpoint(run)
+            try:
+                if self.config.shell_sandbox == "docker":
+                    return await self._docker_shell(root, argv, timeout, cwd)
+                return await self._host_shell(workdir, argv, timeout)
+            except asyncio.CancelledError:
+                raise await undo_with(run, point) from None
+
+        return await self._guarded(invocation, root, run_here)
 
     @staticmethod
     def _host_runner(root: Path) -> Runner:

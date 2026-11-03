@@ -20,10 +20,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
+import shutil
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from temporalio import activity
@@ -31,6 +34,7 @@ from temporalio import activity
 from agentruntime_core.dev._common import PLATFORM_ID
 from agentruntime_core.errors import NotFoundError, ProviderError
 from agentruntime_core.providers.sandbox import ListedEnvironment
+from agentruntime_core.providers.telemetry import TelemetryProvider
 from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker import names
@@ -168,16 +172,40 @@ class _Stub:
     backend: str
 
 
+VOLUME_METRIC = "runtime.workspace.volume_used_ratio"
+
+
+async def report_volume(broker: SandboxBroker, report: ReconcileReport, telemetry: TelemetryProvider | None) -> None:
+    """挂卷的工作区所在卷的已用比例（DISK-A，WS-DISK-01 ③）：记进报告、经 Telemetry 报给看板与告警（超过 80% 告警）。
+    没有挂卷的工作区根（只有存档模式的部署）时不报。"""
+    root = broker.sandboxes.workspace_root
+    if root is None or not Path(root).exists():
+        return
+    usage = await asyncio.to_thread(shutil.disk_usage, root)
+    if usage.total <= 0:
+        return
+    report.volume_used_ratio = usage.used / usage.total
+    if telemetry is not None:
+        bound = telemetry.bind_platform("sandbox-reconcile")
+        await bound.observe(VOLUME_METRIC, report.volume_used_ratio, attributes={"volume": "workspaces"})
+        await bound.flush()
+
+
 class ReconcileActivities:
-    def __init__(self, broker: SandboxBroker | None, *, hold_max: timedelta = DEFAULT_HOLD_MAX) -> None:
+    def __init__(self, broker: SandboxBroker | None, *, hold_max: timedelta = DEFAULT_HOLD_MAX, telemetry: TelemetryProvider | None = None) -> None:
         self.broker = broker
         self.hold_max = hold_max
+        self.telemetry = telemetry
 
     @activity.defn(name=names.RECONCILE_SANDBOXES)
     async def reconcile_sandboxes(self, inp: ReconcileInput) -> ReconcileReport:
         if self.broker is None:
             return ReconcileReport(skipped_backends=["这个 Worker 没有配置沙箱后端"])
         report = await reconcile_once(self.broker, grace=timedelta(seconds=inp.grace_s), hold_max=self.hold_max)
+        try:
+            await report_volume(self.broker, report, self.telemetry)
+        except OSError as err:
+            report.errors.append(f"工作区卷用量：{type(err).__name__}")
         if report.orphans_destroyed or report.lost or report.reaped or report.errors or report.held:
             log.info(
                 "沙箱对账：孤儿 %d、丢失 %d、回收 %d、重删 %d、等人保留 %d、错误 %d",
@@ -189,4 +217,4 @@ class ReconcileActivities:
         return {names.RECONCILE_SANDBOXES: self.reconcile_sandboxes}
 
 
-__all__ = ["ReconcileActivities", "reconcile_once"]
+__all__ = ["VOLUME_METRIC", "ReconcileActivities", "reconcile_once", "report_volume"]

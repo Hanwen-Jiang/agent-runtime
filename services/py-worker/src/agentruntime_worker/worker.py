@@ -170,7 +170,7 @@ def build_workers(
     activities = {
         **decision_activities(config, stubs),
         **(executor or dev_executor(config, client=client)).activities(),
-        **ReconcileActivities(sandbox_broker(config), hold_max=timedelta(seconds=config.sandbox_hold_max_s)).activities(),
+        **ReconcileActivities(sandbox_broker(config), hold_max=timedelta(seconds=config.sandbox_hold_max_s), telemetry=worker_telemetry()).activities(),
         **EnvBuildActivities(sandbox_broker(config)).activities(),
         **WorkspaceActivities(workspace_operations(config)).activities(),
     }

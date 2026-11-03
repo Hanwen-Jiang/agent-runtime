@@ -38,6 +38,8 @@ class ReconcileReport:
     held: int = 0
     skipped_backends: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    # 挂卷的工作区所在卷的已用比例（DISK-A）；没有挂卷的工作区根时为 None。
+    volume_used_ratio: float | None = None
 
 
 @workflow.defn(name=names.SANDBOX_RECONCILE_WORKFLOW)

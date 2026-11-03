@@ -116,6 +116,15 @@ data:
           "fieldConfig": {"defaults": {"unit": "bytes"}},
           "targets": [{"refId": "A", "legendFormat": "{{worker_activity}} {{worker_channel}} {{worker_direction}}",
                        "expr": "sum by (worker_activity, worker_channel, worker_direction) (increase(runtime_worker_bytes_total[1h]))"}]
+        },
+        {
+          "id": 11, "type": "timeseries", "title": "工作区卷用量",
+          "description": "DISK-A：挂卷的工作区所在卷（节点本地盘）的已用比例，Worker 的沙箱对账每一轮报一次（runtime.workspace.volume_used_ratio）。超过 80% 告警：盘满会连带同节点上的 Postgres、Temporal。",
+          "gridPos": {"x": 0, "y": 46, "w": 12, "h": 8},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "fieldConfig": {"defaults": {"unit": "percentunit", "max": 1, "min": 0}},
+          "targets": [{"refId": "A",
+                       "expr": "max(increase(runtime_workspace_volume_used_ratio_sum[15m]) / increase(runtime_workspace_volume_used_ratio_count[15m]))"}]
         }
       ]
     }
