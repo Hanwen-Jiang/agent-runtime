@@ -545,6 +545,27 @@ def test_dashboard_queries_spans_and_attributes_the_code_emits() -> None:
         assert wanted in titles, f"面板缺“{wanted}”（D-10：任务数、各后端的沙箱时长与花费、模型花费）"
 
 
+def test_dashboard_metrics_and_labels_come_from_the_code() -> None:
+    """查 VictoriaMetrics 的面板（PERF-00）：指标名是代码里的名字点换下划线（计数器加 _total，直方图加 _bucket），
+    分组的标签同样点换下划线；都要是 Worker 真发的。"""
+    board = dashboard()
+    exprs = [t["expr"] for p in board["panels"] for t in p["targets"] if t.get("expr")]
+    assert exprs
+    source = emitting_source()
+    metrics = {s.replace(".", "_") for s in re.findall(r'"(runtime\.[a-z_.]+)"', source)}
+    keys = {s.replace(".", "_") for s in re.findall(r'"([a-z_]+(?:\.[a-z_]+)+)"', source)}
+    for expr in exprs:
+        names = re.findall(r"\b(runtime_[a-z_]+?)_(?:bucket|total|sum|count)\b", expr)
+        assert names, expr
+        for name in names:
+            assert name in metrics, f"面板查的指标 {name} 代码里没有"
+        for group in re.findall(r"by \(([^)]*)\)", expr):
+            for label in (g.strip() for g in group.split(",")):
+                if label in ("le", "tenant_id"):
+                    continue  # 直方图的桶；绑定租户的 Telemetry 自动加上
+                assert label in keys, f"面板按 {label} 分组，代码里没有这个属性"
+
+
 def test_tempo_can_answer_traceql_metrics() -> None:
     tempo = yaml.safe_load((DATA / "values" / "tempo.yaml").read_text("utf-8"))["tempo"]
     assert tempo["metricsGenerator"]["enabled"] is True
