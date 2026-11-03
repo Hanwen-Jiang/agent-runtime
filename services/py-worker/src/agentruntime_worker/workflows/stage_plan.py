@@ -31,6 +31,8 @@ REPEATED_ERROR_LIMIT = 3
 MAX_TOOL_CALLS_PER_STEP = 8
 # Goal Node 嵌套深度上限（附录 E.1）。
 MAX_SUB_TASK_DEPTH = 2
+# 一个 Stage 里 sub_agent 的个数上限（N-16）：多 agent 的 token 消耗远高于单 agent（附录 E.1），不许无界派生。
+MAX_SUB_AGENTS = 4
 
 _CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 # $<node_id>.result[.路径]：node_id 本身可以带“.序号”，取第一个“.result”作分界。
@@ -60,12 +62,15 @@ def effect_rank(effect: str) -> int:
     return EFFECT_ORDER.index(effect)
 
 
-def node_effect(node: Mapping[str, Any], task_ceiling: str) -> str:
-    """Node 的 effect：Atomic Node 取 effect；Goal Node 取 effect_ceiling，sub_agent 缺省为 read，其余缺省为 task_ceiling。"""
+def node_effect(node: Mapping[str, Any], task_ceiling: str, *, inherit: bool = False) -> str:
+    """Node 的 effect：Atomic Node 取 effect；Goal Node 取 effect_ceiling，sub_agent 缺省为 read，其余缺省为 task_ceiling。
+    inherit（N-16，人工验收基线 Q74 默认继承）时 sub_agent 缺省取 read 与 task_ceiling 中低的一个。"""
     if node.get("kind") == "goal":
         if node.get("effect_ceiling"):
             return str(node["effect_ceiling"])
-        return "read" if node.get("mode") == "sub_agent" else task_ceiling
+        if node.get("mode") == "sub_agent":
+            return lower_effect("read", task_ceiling) if inherit else "read"
+        return task_ceiling
     return str(node.get("effect", "none"))
 
 
@@ -141,13 +146,20 @@ def descendants(stage: Mapping[str, Any], ids: Iterable[str]) -> set[str]:
     return found - set(ids)
 
 
-def validate_stage(stage: Mapping[str, Any], *, max_nodes: int, top_level: bool = True, earlier: Collection[str] | None = None) -> list[str]:
+def lower_effect(a: str, b: str) -> str:
+    """两个 effect 里低的一个（不认识的按最高算）。"""
+    return a if effect_rank(a) <= effect_rank(b) else b
+
+
+def validate_stage(
+    stage: Mapping[str, Any], *, max_nodes: int, top_level: bool = True, earlier: Collection[str] | None = None, max_sub_agents: int | None = None,
+) -> list[str]:
     """校验 JSON Schema 表达不了的规则，返回错误说明（为空表示合法）：
 
     - Node id 唯一，顶层 id 不含“.”；after 引用存在；DAG 无环；
     - 输入里的 $<id>.result 只能引用祖先 Node（after 的传递闭包）；
     - 写操作的 Atomic Node 与 write_irreversible 的 Node 不能挂 quality（生成会重做）；
-    - 顶层 Node 个数不超过 max_nodes。
+    - 顶层 Node 个数不超过 max_nodes；给了 max_sub_agents 时（N-16），mode 为 sub_agent 的顶层 Goal Node 不超过它。
 
     top_level 为 False 时用于校验展开出的子图，Node id 可以带“.”。
 
@@ -158,6 +170,10 @@ def validate_stage(stage: Mapping[str, Any], *, max_nodes: int, top_level: bool 
     nodes = list(stage.get("nodes", []))
     if len(nodes) > max_nodes:
         errors.append(f"Stage 有 {len(nodes)} 个 Node，超过上限 {max_nodes}")
+    if max_sub_agents is not None:
+        agents = sum(1 for n in nodes if isinstance(n, Mapping) and n.get("kind") == "goal" and n.get("mode") == "sub_agent")
+        if agents > max_sub_agents:
+            errors.append(f"Stage 有 {agents} 个 sub_agent，超过上限 {max_sub_agents}（多 agent 的成本远高于单 agent，拆成几轮或合并范围）")
     ids: list[str] = [str(n.get("id", "")) for n in nodes]
     seen: list[str] = []
     for nid in ids:

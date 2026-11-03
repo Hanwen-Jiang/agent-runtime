@@ -139,6 +139,21 @@ async def trace_task(telemetry: Any, inp: FinalizeTaskInput, metrics: dict[str, 
                 pass
 
 
+async def trace_latency(telemetry: Any, inp: FinalizeTaskInput) -> None:
+    """N-20 的首事件延迟：一个 runtime.task.first_event span（各段的毫秒数，缺的记 unknown），各段另记指标
+    runtime.task.first_event_ms（属性 segment）。收尾时事后补记，标 runtime.synthetic。"""
+    if not inp.latency:
+        return
+    segments = inp.latency.get("segments_ms") or {}
+    attributes: dict[str, Any] = {"task_id": inp.task_id, "runtime.first_event": str(inp.latency.get("first_event") or "unknown"), "runtime.synthetic": True}
+    attributes.update({f"runtime.latency.{name}_ms": value for name, value in sorted(segments.items())})
+    async with telemetry.start_span("runtime.task.first_event", attributes=attributes):
+        pass
+    for name, value in sorted(segments.items()):
+        if isinstance(value, int) and not isinstance(value, bool):
+            await telemetry.observe("runtime.task.first_event_ms", float(value), attributes={"segment": name})
+
+
 def _scope(inp: FinalizeTaskInput) -> dict[str, Any]:
     t = inp.tenant
     raw = {"tenant": t.tenant_id, "workspace": t.workspace_id, "user": t.user_id, "session": t.session_id or inp.task_state.get("session_id", ""), "task": inp.task_id}
@@ -255,6 +270,7 @@ class WrapUp:
         try:
             telemetry = self.telemetry.bind(tenant)
             await trace_task(telemetry, inp, report.metrics)
+            await trace_latency(telemetry, inp)
             await telemetry.observe("task.cost_usd", report.metrics["cost_usd"], attributes={"status": inp.status})
             if inp.status == "done":
                 await telemetry.observe("task.success_cost_usd", report.metrics["cost_usd"])

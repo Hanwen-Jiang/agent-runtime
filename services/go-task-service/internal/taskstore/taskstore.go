@@ -241,6 +241,26 @@ func (s *Store) LookupTask(ctx context.Context, tenant *commonv1.TenantContext, 
 	return out, ok, err
 }
 
+// SessionTasks 读一个 Session 里最近的 limit 个 Task，按提交的先后（早的在前）；more 表示更早的还有。
+// 会话快照用（N-19）。别的租户的 Session 读不到（RelationalStore 按租户隔离）。
+func (s *Store) SessionTasks(ctx context.Context, tenant *commonv1.TenantContext, sessionID string, limit int) (tasks []Task, more bool, err error) {
+	err = s.tx(ctx, tenant, true, func(ctx context.Context, tx relational.Tx) error {
+		rows, err := tx.Query(ctx, `SELECT `+taskColumns+` FROM tasks WHERE session_id = $1 ORDER BY created_at DESC, task_id DESC LIMIT $2`, sessionID, limit+1)
+		if err != nil {
+			return err
+		}
+		if len(rows) > limit {
+			more, rows = true, rows[:limit]
+		}
+		tasks = make([]Task, len(rows))
+		for i, row := range rows {
+			tasks[len(rows)-1-i] = decode(row)
+		}
+		return nil
+	})
+	return tasks, more, err
+}
+
 // MarkSignaled 记下提交信号已经送达。
 func (s *Store) MarkSignaled(ctx context.Context, tenant *commonv1.TenantContext, taskID string) error {
 	return s.tx(ctx, tenant, false, func(ctx context.Context, tx relational.Tx) error {

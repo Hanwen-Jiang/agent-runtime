@@ -30,7 +30,7 @@ from agentruntime_worker.planner.planner import Planner
 from agentruntime_worker.tools import CONTEXT_READ, ToolCatalog, context_objects, dev_tools, latest
 
 from .context_support import TASK_ID, TENANT, ContextGateway, read_step, request
-from .planner_support import FakeGateway, context, signals
+from .planner_support import PLAN_STEPS, FakeGateway, context, signals
 from .support import assert_valid
 from .test_planner_activity import plan_input
 
@@ -167,7 +167,7 @@ async def test_model_planned_goal_nodes_keep_their_tools_and_get_context_read(tm
         "output_schema": {"type": "object"},
     }
     plan = {
-        "task_plan": {"triage": {"level": "full", "task_family": "analytics.attribution", "confidence": 0.7}, "horizon": "per_stage"},
+        "task_plan": {"triage": {"level": "full", "task_family": "analytics.attribution", "confidence": 0.7}, "horizon": "per_stage", "steps": PLAN_STEPS},
         "stage": {"seq": 1, "goal": "查原因", "exit_when": "找到原因", "nodes": [investigate]},
     }
     gateway = FakeGateway(triage=signals(confidence=0.6), plan=[plan])

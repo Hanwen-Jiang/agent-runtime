@@ -11,13 +11,16 @@
 //	AR_EGRESS_PREVIEW_ADDR    预览入口的端口（经集群的入口转发），空表示不开；AR_EGRESS_PREVIEW_DOMAIN 是预览地址的域名
 //	AR_EGRESS_DENY_CIDRS      另外拒绝的网段（逗号分隔），填集群的 Pod 与 Service 网段，例如 10.42.0.0/16,10.43.0.0/16
 //	AR_EGRESS_GRANT_TTL_MS    授权缓存的时长（毫秒），默认 2000
-//	AR_SECRETS_FILE           SecretStore：平台作用域的 sandbox/env-credential-key（校验环境凭据）与 egress-gateway/admin-token
+//	AR_SECRETS_FILE           SecretStore：平台作用域的 sandbox/env-credential-key（校验环境凭据）与 egress-gateway/admin-token；
+//	                          可选 sandbox/egress-ca-cert 与 sandbox/egress-ca-key（网络密钥终结 TLS 用的网关 CA，ENV-02）；
+//	                          网络密钥的值在租户作用域的 user-secrets/<用户>/<名字>
 //	AR_DATA_DIR、AR_RELATIONAL_DSN   业务库（环境表、联网授权、用量、审计），与 Worker 同一个
 //	OTEL_EXPORTER_OTLP_ENDPOINT      设了时每个连接一个 runtime.egress span 发给 Collector
 package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -39,6 +42,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/envcred"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/telemetry"
+	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	"github.com/agentruntime/agent-runtime/services/go-egress-gateway/internal/grants"
 	"github.com/agentruntime/agent-runtime/services/go-egress-gateway/internal/netguard"
 	"github.com/agentruntime/agent-runtime/services/go-egress-gateway/internal/proxy"
@@ -117,10 +121,33 @@ func serve(log *slog.Logger, getenv func(string) string, stderr io.Writer) error
 		defer tel.Close()
 	}
 	grantStore := grants.New(store, ttl, nil)
+	// ENV-02 的网络密钥：网关 CA（没有时配了网络密钥的主机一律拒绝）；密钥按租户作用域每个请求现读。
+	var ca *tls.Certificate
+	if cert, err := platform.Read(ctx, "sandbox/egress-ca-cert"); err == nil {
+		caKey, err := platform.Read(ctx, "sandbox/egress-ca-key")
+		if err != nil {
+			return errors.New("SecretStore 的平台作用域里有 sandbox/egress-ca-cert 却没有 sandbox/egress-ca-key")
+		}
+		if ca, err = proxy.ParseCA(cert.Reveal(), caKey.Reveal()); err != nil {
+			return err
+		}
+	}
+	readSecret := func(ctx context.Context, tenantID, name string) ([]byte, error) {
+		scope, err := secrets.Bind(&commonv1.TenantContext{TenantId: tenantID})
+		if err != nil {
+			return nil, err
+		}
+		v, err := scope.Read(ctx, name)
+		if err != nil {
+			return nil, err
+		}
+		return v.Reveal(), nil
+	}
 	gw := proxy.New(proxy.Config{
 		Key: key.Reveal(), Store: grantStore, Deny: deny, Log: log, Telemetry: tel,
 		Dialer:        &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second},
 		PreviewDomain: getenv("AR_EGRESS_PREVIEW_DOMAIN"),
+		CA:            ca, Secrets: readSecret,
 	})
 	servers := []*http.Server{
 		{Addr: addr, Handler: gw, ReadHeaderTimeout: 10 * time.Second},

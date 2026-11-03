@@ -255,6 +255,8 @@ class Planner:
             keep_nodes=keep,
             earlier=request.earlier,
         )
+        # N-04：第一次完整规划（Task State 里还没有 plan）要给出整体步骤。
+        require_steps = decision.level == "full" and not (request.task_state or {}).get("plan")
         found: list[str] = []
         for attempt in range(2):
             try:
@@ -273,7 +275,7 @@ class Planner:
                     stage, task_plan, adjusted = validate.drop_unknown_tiers(stage, task_plan, request.context.catalog.tiers)
                     stage, capped = validate.cap_budgets(stage, self._left_after_planning(request, calls))
                     adjusted = [*adjusted, *capped]
-                    found = validate.problems(stage, task_plan, level=decision.level, context=request.context, keep_nodes=keep, earlier=request.earlier)
+                    found = validate.problems(stage, task_plan, level=decision.level, context=request.context, keep_nodes=keep, earlier=request.earlier, require_steps=require_steps)
                     if not found:
                         return PlanResult(triage_level=decision.level, stage=stage, task_plan=task_plan, decision=decision, calls=calls, adjustments=adjusted)
             if attempt == 0:

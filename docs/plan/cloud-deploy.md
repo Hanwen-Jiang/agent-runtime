@@ -499,7 +499,7 @@ M5 的后端顺序见 [firecracker-backend.md](firecracker-backend.md) 第 7 节
 - 镜像在服务器上构建、导进 k3s（不经镜像仓库）；密钥在服务器上生成，SOPS 加密。
 - 验过的：verify.sh 全过（gVisor 与 Kata 的内核、沙箱断网、没令牌）；业务库三个角色都不是超级用户、没有 BYPASSRLS；经 Cloudflare 的
   Workspace API 在 gVisor 沙箱里建工作区、真模型的只读 Task 跑到 done、SSE 逐条到达；80 跳 443；源站的 443、6443、NodePort 从公网连不上。
-- 还没开的：R2（Postgres 的 WAL 归档与每日备份、Langfuse）等 R2 的令牌；预览地址（`*.preview.cgent.link` 要 Cloudflare 的付费证书，
+- 还没开的：~~R2（Postgres 的 WAL 归档与每日备份、Langfuse）等 R2 的令牌~~（之后已开：2026-11-03 核对，Postgres 的 WAL 持续归档到 R2、每天 03:00 备份成功，Langfuse 用 R2 的 `agentruntime-langfuse` 桶，S3 密钥由 Cloudflare 令牌推出（`/root/ar-secrets/r2_creds.py`），Langfuse 4.50 已收到约 3 万条事件；**没切到 R2 的只有 Runtime 自己的 ObjectStore（D-09）**，task-service 与 Worker 仍用共用卷 `AR_OBJECT_STORE_DIR`）；预览地址（`*.preview.cgent.link` 要 Cloudflare 的付费证书，
   先关着）；coding-web 的第三方登录等新的 OAuth 应用（回调 `https://code.cgent.link/api/auth/<平台>/callback`），上线初期只放行名单里的账号。
 - 上线时改的：Traefik Chart 40 的跳转键位置、Kata 4.2 的 handler 在 `config-v3.toml.d` 里、Redpanda 的特权 tuning 容器关掉、
   Workspace API 在挂卷的后端上要先建工作区目录（否则 kubelet 以 root 建 subPath）、租户策略的种子不起名字。
@@ -636,6 +636,17 @@ M5 的后端顺序见 [firecracker-backend.md](firecracker-backend.md) 第 7 节
 - 核对：`/`、`/results`、`/datasets`、`/api/site.json`、`/api/datasets/swebench-verified.json` 200，`/index.html` 301，未知数据集 404；
   同步来自 GitHub main，17 个数据集、公开 437 道、留出集 24 道只计数；公网浏览器里分组与框架介绍正常。回滚：`helm rollback ar 21`。
 - 令牌到期后换一个：重建这个 Secret，再 `kubectl -n agent-runtime rollout restart deploy/ar-agent-runtime-eval-dashboard`（令牌在启动时读）。
+
+第 23 版（2026-11-03，D-09：Runtime 的 ObjectStore 切到 R2；目录 `rev25`）：
+
+- task-service 与 4 个 Worker 改用 R2 的桶 `agentruntime-objects`（`objectStore.s3.*`；S3 密钥由 Cloudflare 令牌推出，`/root/ar-secrets/r2.env`，
+  密钥本身在 Secret `agent-runtime-object-store`）。桶是用 S3 接口建的：Cloudflare 的 API 令牌能列桶、不能建桶（403）。
+- 迁移（`rev25/migrate_objects.py`，经本仓库的 S3 适配器写，元数据与 sha256 照原样）：共用卷上 5947 个对象（308 MB，7 个租户）
+  第一遍全写、逐个核对 sha256；切换之后第二遍只补 R2 没有的（0 个）；抽样回读 30 与 60 个，数据、sha256、内容类型、元数据全一致。
+  对象的创建时间在 R2 上是迁移时间，过期规则从这时算起（Claim-Check 的对象晚几天清理）。
+- 只变了 5 个 Deployment 的环境变量（脚本核对）；共用卷仍挂着，回滚 `helm rollback ar 22`（切换后新写进 R2 的对象要先拷回卷）。
+- 核对：新 Pod 启动后在桶上设了自己的过期规则；api 200；四个服务 15 分钟内日志无错误。**没有验证**：真 Task 的大载荷 Claim-Check 经 R2 往返（要提交 Task）。
+- 共用卷上的旧对象没删，确认一段时间没问题后再清。
 
 实现中与本计划写法不同的：
 

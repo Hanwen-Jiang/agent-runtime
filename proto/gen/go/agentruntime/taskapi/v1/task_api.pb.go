@@ -102,6 +102,8 @@ const (
 	TaskEventType_TASK_EVENT_TYPE_TASK_MESSAGE_EDITED TaskEventType = 15
 	// 一次模型调用的上下文里各类内容占多少。只有数字与类别名。
 	TaskEventType_TASK_EVENT_TYPE_CONTEXT_USAGE TaskEventType = 16
+	// Task Plan 的步骤变了：带完整的步骤快照（N-04），客户端按它重建计划区。fast 不推。
+	TaskEventType_TASK_EVENT_TYPE_PLAN_UPDATED TaskEventType = 17
 )
 
 // Enum value maps for TaskEventType.
@@ -124,6 +126,7 @@ var (
 		14: "TASK_EVENT_TYPE_GUIDANCE_UPDATED",
 		15: "TASK_EVENT_TYPE_TASK_MESSAGE_EDITED",
 		16: "TASK_EVENT_TYPE_CONTEXT_USAGE",
+		17: "TASK_EVENT_TYPE_PLAN_UPDATED",
 	}
 	TaskEventType_value = map[string]int32{
 		"TASK_EVENT_TYPE_UNSPECIFIED":          0,
@@ -143,6 +146,7 @@ var (
 		"TASK_EVENT_TYPE_GUIDANCE_UPDATED":     14,
 		"TASK_EVENT_TYPE_TASK_MESSAGE_EDITED":  15,
 		"TASK_EVENT_TYPE_CONTEXT_USAGE":        16,
+		"TASK_EVENT_TYPE_PLAN_UPDATED":         17,
 	}
 )
 
@@ -1576,7 +1580,7 @@ const file_agentruntime_taskapi_v1_task_api_proto_rawDesc = "" +
 	"\x11TaskArtifactState\x12#\n" +
 	"\x1fTASK_ARTIFACT_STATE_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19TASK_ARTIFACT_STATE_READY\x10\x01\x12\x1f\n" +
-	"\x1bTASK_ARTIFACT_STATE_EXPIRED\x10\x02*\xe3\x04\n" +
+	"\x1bTASK_ARTIFACT_STATE_EXPIRED\x10\x02*\x85\x05\n" +
 	"\rTaskEventType\x12\x1f\n" +
 	"\x1bTASK_EVENT_TYPE_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dTASK_EVENT_TYPE_TASK_ACCEPTED\x10\x01\x12!\n" +
@@ -1595,7 +1599,8 @@ const file_agentruntime_taskapi_v1_task_api_proto_rawDesc = "" +
 	"\x1eTASK_EVENT_TYPE_DECISION_RETRY\x10\r\x12$\n" +
 	" TASK_EVENT_TYPE_GUIDANCE_UPDATED\x10\x0e\x12'\n" +
 	"#TASK_EVENT_TYPE_TASK_MESSAGE_EDITED\x10\x0f\x12!\n" +
-	"\x1dTASK_EVENT_TYPE_CONTEXT_USAGE\x10\x102\xa2\x04\n" +
+	"\x1dTASK_EVENT_TYPE_CONTEXT_USAGE\x10\x10\x12 \n" +
+	"\x1cTASK_EVENT_TYPE_PLAN_UPDATED\x10\x112\xa2\x04\n" +
 	"\vTaskService\x12e\n" +
 	"\n" +
 	"SubmitTask\x12*.agentruntime.taskapi.v1.SubmitTaskRequest\x1a+.agentruntime.taskapi.v1.SubmitTaskResponse\x12e\n" +

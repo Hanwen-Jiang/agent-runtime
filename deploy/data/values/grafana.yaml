@@ -97,6 +97,34 @@ alerting:
                   type: threshold
                   expression: B
                   conditions: [{evaluator: {type: gt, params: [5]}}]
+          - uid: ar-platform-daily-spend
+            title: 全平台 24 小时花费
+            condition: C
+            for: 0s
+            noDataState: OK
+            execErrState: Error
+            annotations:
+              summary: 全平台最近 24 小时的模型花费超过 50 美元（Model Gateway 计的费，所有租户合计；open-signup.md 第 2 节第 6 条）
+            labels:
+              severity: critical
+            data:
+              - refId: A
+                relativeTimeRange: {from: 86400, to: 0}
+                datasourceUid: victoriametrics
+                model:
+                  refId: A
+                  instant: true
+                  expr: sum(increase(runtime_model_cost_usd_sum[24h]))
+              - refId: B
+                datasourceUid: __expr__
+                model: {refId: B, type: reduce, expression: A, reducer: last}
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: B
+                  conditions: [{evaluator: {type: gt, params: [50]}}]
 sidecar:
   dashboards:
     enabled: true

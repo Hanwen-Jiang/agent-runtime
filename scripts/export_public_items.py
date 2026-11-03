@@ -67,6 +67,11 @@ def export(name: str, n: int, seed: int) -> Path:
             if name == "longbench":  # 索引里只有元数据；问题与选项在逐题的缓存里（长篇原文不收）
                 row = json.loads((cell.base() / "items" / f"{item.id}.json").read_text("utf-8"))
                 payload.update({k: row[k] for k in ("question", "choice_A", "choice_B", "choice_C", "choice_D") if k in row})
+            if name == "tau2":  # 选题只有领域与任务号；题目（用户场景）与判分标准在官方包的任务对象里
+                task = cell.backend()._load(payload["domain"])[payload["task_id"]]
+                dump = lambda v: v.model_dump(mode="json", exclude_none=True) if hasattr(v, "model_dump") else v  # noqa: E731
+                payload.update({"user_scenario": dump(task.user_scenario), "evaluation_criteria": dump(task.evaluation_criteria),
+                                "description": dump(getattr(task, "description", None))})
             qk, question = _pick(payload, QUESTION_KEYS)
             ak, answer = _pick(payload, ANSWER_KEYS)
             extra = {k: _trim(v) for k, v in payload.items() if k not in {qk, ak, "id"} | DROP_KEYS}

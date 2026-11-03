@@ -40,6 +40,17 @@
     "rounds": {"type": "array", "items": {"$ref": "#/$defs/round"}},
     "guidance": {"description": "用户在运行中发来的纠偏（docs/plan/running-task-interaction.md 第 2 节），按发出的顺序。Planner 与 Reviewer 都看得到，Reviewer 据此验收。撤回的不在这里，模型看不到", "type": "array", "items": {"$ref": "#/$defs/guidance"}},
     "artifacts": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/object_uri"}},
+    "plan": {
+      "description": "当前的 Task Plan 步骤（N-04，人工验收基线 Q55）：Task 工作流是唯一写者，Planner 每轮给出的步骤通过检查后替换它，结束时正在做的一步记为 done（done）或 blocked（其余结局）。每次变了都推 plan_updated（同样的内容）。fast 与之前的运行没有",
+      "type": "object",
+      "required": ["steps", "round_seq"],
+      "properties": {
+        "steps": {"$ref": "defs.schema.json#/$defs/plan_steps"},
+        "round_seq": {"description": "定下这份步骤的 Round", "type": "integer", "minimum": 1},
+        "current_step": {"description": "正在做的一步（status 为 active 的那步）；没有时不写", "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "maxLength": 64}
+      },
+      "unevaluatedProperties": false
+    },
     "pinned": {
       "description": "Task 启动时固定的版本，运行中不受新发布影响（设计书 3.1.2）",
       "type": "object",
@@ -81,7 +92,7 @@
             "required": ["path"],
             "properties": {
               "path": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
-              "why": {"description": "为什么重要，一句话；代码补上的改动文件可以没有", "type": "string", "maxLength": 300}
+              "why": {"description": "为什么重要，一句话；代码补上的改动文件可以没有", "type": "string", "maxLength": 300}, "delivered": {"description": "这一轮经 deliver_file 交付给了用户（N-18，docs/plan/n18-file-delivery-f3.md）：排在最前面，客户端可以给下载入口；没交付的文件不写", "type": "boolean"}
             },
             "unevaluatedProperties": false
           }

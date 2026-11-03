@@ -48,11 +48,24 @@ def signals(kind: str = "new_task", *, family: str | None = "analytics.attributi
     return {"kind": kind, "task_family": family, "confidence": confidence, "effect": effect, "irreversible_params_explicit": explicit}
 
 
-def plan_answer(*nodes: dict[str, Any], level: str = "full", horizon: str = "per_stage", goal: str = "取数", seq: int = 7) -> dict[str, Any]:
-    """模型的规划输出：Task Plan 与 Stage。seq 故意写错，代码应改成本轮序号。"""
+# N-04：第一次完整规划要给出的整体步骤（3～8 步，最多一步 active）。
+PLAN_STEPS = [
+    {"id": "fetch_data", "title": "取数", "status": "active", "round": 1},
+    {"id": "analyze", "title": "分析原因", "status": "pending", "round": 1},
+    {"id": "report", "title": "写出结论", "status": "pending", "round": 1},
+]
+
+
+def plan_answer(
+    *nodes: dict[str, Any], level: str = "full", horizon: str = "per_stage", goal: str = "取数", seq: int = 7, steps: list[dict[str, Any]] | None = PLAN_STEPS,
+) -> dict[str, Any]:
+    """模型的规划输出：Task Plan 与 Stage。seq 故意写错，代码应改成本轮序号。steps 为 None 时不带整体步骤。"""
     stage_nodes = list(nodes) or [{"id": "q_region", "kind": "atomic", "template": "sql_query@v1", "executor": "program", "effect": "read", "role": "fetch"}]
+    task_plan: dict[str, Any] = {"triage": {"level": level, "task_family": "analytics.attribution", "confidence": 0.7}, "horizon": horizon}
+    if steps is not None:
+        task_plan["steps"] = [dict(s) for s in steps]
     return {
-        "task_plan": {"triage": {"level": level, "task_family": "analytics.attribution", "confidence": 0.7}, "horizon": horizon},
+        "task_plan": task_plan,
         "stage": {"seq": seq, "goal": goal, "exit_when": "数据齐全", "nodes": stage_nodes},
     }
 

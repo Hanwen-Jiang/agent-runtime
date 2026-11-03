@@ -85,7 +85,8 @@ def write_atomic(path: Path, text: str) -> None:
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
-    return [json.loads(line) for line in Path(path).read_text("utf-8").splitlines() if line.strip()]
+    # 只按 \n 分行：缓存用 ensure_ascii=False 写，字符串里的 U+2028、U+0085 等是原样的，str.splitlines 会把它们也当换行，把一行 JSON 切断。
+    return [json.loads(line) for line in Path(path).read_text("utf-8").split("\n") if line.strip()]
 
 
 def cached_jsonl(path: Path, build: Callable[[], Iterable[Mapping[str, Any]]]) -> list[dict[str, Any]]:

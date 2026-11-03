@@ -6,7 +6,7 @@
 - 路径是规范化的 POSIX 相对路径：拒绝绝对路径、空段、. 与 ..、反斜杠、控制字符、.git 等保留目录、逃出工作区的符号链接。
 - 上限（单文件、每个 Task 的个数与总字节数）只能由部署收窄（AR_DELIVERY_MAX_FILE_BYTES、AR_DELIVERY_MAX_FILES、
   AR_DELIVERY_MAX_TASK_BYTES，大于硬上限的按硬上限）；超限时不写对象也不写记录。
-- 内容写进 ObjectStore（租户作用域，deliveries/<task>/<随机>/<名字>），元数据写进业务库的 task_artifacts（迁移 207，租户作用域；
+- 内容写进 ObjectStore（租户作用域，deliveries/<task>/<随机>/<名字>），元数据写进业务库的 task_artifacts（迁移 209，租户作用域；
   task-service 只读，ListTaskArtifacts 与下载路由用它）。保留 7 天（RETENTION），到期由 ObjectStore 的生命周期规则清掉。
 - 工具的输出与日志里没有对象地址与文件内容。
 """
@@ -49,7 +49,7 @@ _MEDIA = {
 }
 
 MIGRATIONS = (
-    Migration(207, "task_artifacts", (
+    Migration(209, "task_artifacts", (
         """CREATE TABLE task_artifacts (
             artifact_id TEXT PRIMARY KEY,
             task_id TEXT NOT NULL,

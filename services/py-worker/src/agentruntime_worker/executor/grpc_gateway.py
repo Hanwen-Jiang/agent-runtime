@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -173,6 +173,27 @@ class GrpcModelGateway:
             return await self._client().Generate(request, timeout=timeout)
         except grpc.aio.AioRpcError as exc:
             raise restore_error(exc) from None
+
+    async def stream_generate(self, request: mg.GenerateRequest, on_delta: Callable[[str, str], None] | None = None) -> mg.GenerateResponse:
+        """调用 ModelGatewayService.StreamGenerate（N-19/N-20）：text_delta、thinking_delta 依次交给 on_delta（"text" 或 "thinking"，片段），
+        返回最后一个分片里的完整结果（与 Generate 的响应相同，usage 取分片上的）。网关只在第一个分片之前重试与切换模型；
+        之后出错直接结束流，这里抛 ProviderError；没有最后一个分片就结束的按 transient 处理。"""
+        timeout = self._deadline()
+        stream_request = mg.StreamGenerateRequest(tenant=request.tenant, call=request.call, generation=request.generation)
+        try:
+            async for chunk in self._client().StreamGenerate(stream_request, timeout=timeout):
+                kind = chunk.WhichOneof("chunk")
+                if kind == "final":
+                    final = mg.GenerateResponse()
+                    final.CopyFrom(chunk.final)
+                    if chunk.HasField("usage") and not final.HasField("usage"):
+                        final.usage.CopyFrom(chunk.usage)
+                    return final
+                if on_delta is not None and kind in ("text_delta", "thinking_delta"):
+                    on_delta("text" if kind == "text_delta" else "thinking", getattr(chunk, kind))
+        except grpc.aio.AioRpcError as exc:
+            raise restore_error(exc) from None
+        raise TransientError("stream_incomplete", "流式生成没有给出最后一个分片就结束了")
 
     async def embed(self, request: mg.EmbedRequest) -> mg.EmbedResponse:
         """调用 ModelGatewayService.Embed；请求与响应原样传递。失败抛 ProviderError（见模块说明）。"""

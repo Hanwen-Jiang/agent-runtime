@@ -241,14 +241,14 @@ async def test_a_step_without_usage_publishes_nothing(harness: StageHarness) -> 
 
 @pytest.mark.temporal
 @pytest.mark.asyncio(loop_scope="session")
-async def test_a_sub_agent_does_not_publish_context_usage(harness: StageHarness) -> None:
-    """只有顶层 Goal Node（同 tool_status）：子工作流没有自己的事件流。"""
+async def test_a_top_level_sub_agent_publishes_its_own_context_usage(harness: StageHarness) -> None:
+    """N-16（N16_PATCH）之后顶层的 sub_agent 在子工作流里推自己的 context_usage（同 tool_status），node_id 是它：客户端画成并行的子 Agent。"""
     s = harness.script
     s.tools["web_search"] = "read"
     s.tool_steps["research"] = scripted_steps(ToolLoopStep(action="finish", result={"found": True}, context_usage=USAGE))
     one_round(harness, goal("research", "sub_agent", tools=["web_search"]), deliver(after=["research"]))
     inp, _ = await harness.run()
-    assert usage_events(harness, inp.task_id) == []
+    assert [e["node_id"] for e in usage_events(harness, inp.task_id)] == ["research"]
 
 
 @pytest.mark.temporal

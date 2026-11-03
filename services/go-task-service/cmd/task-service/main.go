@@ -332,7 +332,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	if err := store.Migrate(ctx, modelbudget.Migrations()); err != nil {
 		return err
 	}
-	// 交付文件的元数据（N-18）：与 Worker 同一个迁移 207，谁先启动谁建。
+	// 交付文件的元数据（N-18）：与 Worker 同一个迁移 209，谁先启动谁建。
 	if err := store.Migrate(ctx, taskapi.ArtifactMigrations()); err != nil {
 		return err
 	}
@@ -421,7 +421,9 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	api.Mount(mux)
 	workspaces.Mount(mux)
 	environments.Mount(mux)
-	mux.Handle("/v1/tasks/", events.NewHandler(events.HandlerDeps{Ingress: ing, Cache: cacheProvider, Store: store, Clock: clk}))
+	streams := events.NewHandler(events.HandlerDeps{Ingress: ing, Cache: cacheProvider, Store: store, Clock: clk})
+	mux.Handle("/v1/tasks/", streams)
+	mux.Handle("GET /v1/sessions/{session_id}/snapshot", streams)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "ok") })
 
 	protocols := new(http.Protocols)
