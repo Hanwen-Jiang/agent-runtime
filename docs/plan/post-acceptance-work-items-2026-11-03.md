@@ -46,6 +46,9 @@ MODEL-BUDGET-02 已由 `libs/go-core/modelbudget` 共享持久实现取代旧 fa
 | SBX-RS-02 | **已定**（2026-11-03 用户定）：fc-manager 与 sandbox-agent 都用 Rust；Sandbox Service 留在 Go |
 | D-28 | sandbox-agent 按现有 HTTP 接口原样改写为 Rust，K8s、Cloudflare、测试一起换，存档格式互通，一个发布周期后删 Go 版；D-20 依赖它 |
 | WS-PULL-01 | D-28 之后：agent 按调用方给的清单直接拉块（Firecracker 经 fc-manager 的块缓存，其他后端用逐块的预签名地址）、只上传缺的块；git 不作为恢复来源，懒加载不做 |
+| WK-LITE-01 | 命令输出超过上限时由 agent 直接写进 ObjectStore，Worker 只拿摘录、大小、哈希与键 |
+| WK-LITE-02 | `deliver_file` 由 agent 经单对象的预签名 PUT 直传，Worker 只核配额、签地址、写记录 |
+| WK-LITE-03 | 量每个 activity 进出 Worker 的字节数（并入 PERF-00） |
 
 ## 追加：登录令牌与 agent 令牌（2026-11-03，草案）
 

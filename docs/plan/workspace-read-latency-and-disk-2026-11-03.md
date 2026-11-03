@@ -182,3 +182,38 @@ Rust 的真实成本（不是理由，是要付的）：
 | 工作项 | Failure / Evidence | Minimum fix | 成本与新失败面 | 当前决定 |
 | --- | --- | --- | --- | --- |
 | WS-PULL-01 agent 按清单直接拉取与上传块 | 第 6.1 节：存档与恢复的数据都经 Worker 中转，整份 tar 落盘、哈希在 Python 里算 | Rust 版 agent（D-28 之后）加 `POST /v1/restore` 与 `POST /v1/snapshot`；块的来源是 fc-manager 的块服务（Firecracker）或逐块的预签名地址（K8s、Cloudflare）；调用方保留清单、快照行与“缺哪些块”的判断；现在的 `/v1/archive` 留作回退与本地后端用 | 新的数据面：预签名地址可能被用户代码看到，所以每个地址只对一个块、只读或只写、几分钟有效，并且只签发给这一次操作；agent 写盘时照样做路径校验（`..`、绝对路径、指出去的链接）；块下载失败按块重试，整体超时就判恢复失败、销毁环境；要有越权测试：用拿到的地址读不到别的块、写不到别的键 | 待确认；依赖 D-28，Firecracker 下另依赖 D-20、WS-BLOB-01 |
+
+## 7. 给 Worker 减负：大块数据不经 Worker（2026-11-03 起草）
+
+用户要求：流经 Worker 的数据能减就减。
+
+### 7.1 原则
+
+- **Worker 只走两类东西**：控制信息（借还、状态、元数据、签名）与模型要看的内容（有上限，按 Context Builder 的 `offload_tokens` 量级）。
+- **大块数据走“环境 ↔ 存储”直连**：Worker（SBX-01 之后是 Sandbox Service）只签发限时、单对象的地址，记录元数据并核对大小与哈希，自己不搬字节。
+- **activity 的结果返回引用，不返回内容**：大内容先进 ObjectStore，Temporal 的事件历史里只有键与摘要；Claim-Check（S-06）留作兜底，而不是常规通道。
+- 凭据的规则不变：环境里只拿到单对象、单方向、几分钟有效的地址（第 6.2 节）。
+
+### 7.2 现在流经 Worker 的数据
+
+| 数据 | 现在的路径 | 量级 | 处理 |
+| --- | --- | --- | --- |
+| 工作区存档与恢复 | 环境 ⇄ Worker 临时文件（整份 tar）⇄ ObjectStore | 与仓库同量级，可到 GB | WS-PULL-01（第 6 节） |
+| Workspace API 的读（列目录、读文件、diff、log） | 环境 → Worker activity → **Temporal 事件历史**（大的经 Claim-Check）→ task-service | 文件与 diff 的大小 | WS-READ-01：改由 task-service 经 Sandbox Service 直接读，不进工作流 |
+| 命令输出（`shell_run`） | agent 的 `/v1/exec` 回整段 stdout、stderr（各最多 8 MiB，base64 进 JSON）→ Worker → 超过 `offload_tokens` 的再写进 ObjectStore | 每条命令最多十几 MB | WK-LITE-01 |
+| 交付文件（`deliver_file`，N-18） | Worker 从环境读整个文件（`tools/deliver.py`）→ `ObjectStore.put` | 单个文件到 `AR_DELIVERY_MAX_FILE_BYTES` | WK-LITE-02 |
+| `repo_read` 等读文件工具 | 环境 → Worker → 模型 | 按窗口取，本来就有上限 | 不动：这是模型要看的内容 |
+| 模型调用、Context Builder 的外置与摘要 | Worker ⇄ Model Gateway、ObjectStore | 上下文大小 | 不动：属于 Worker 的本职 |
+| 克隆、环境构建 | 在沙箱或 Kata 的 Job 里直接连远端 | — | 已经不经 Worker |
+
+### 7.3 工作项
+
+| 工作项 | Failure / Evidence | Minimum fix | 成本与新失败面 | 当前决定 |
+| --- | --- | --- | --- | --- |
+| WK-LITE-01 命令输出在环境里外置 | 第 7.2 节：每条命令的完整输出先整段回到 Worker，Worker 再写进 ObjectStore，模型只看摘录 | `/v1/exec` 加可选的 `output_sink`：调用方给一个限时的单对象 PUT 地址（Firecracker 下由 fc-manager 代收）；输出超过 `inline_limit`（默认与 `offload_tokens` 对齐）时，agent 把完整的 stdout、stderr 直接写过去，回给 Worker 的只有开头与结尾的摘录、总字节数、sha256 与对象键；Context Builder 把它当成已外置的观察（`context_read` 按键取回，取的时候才经 Worker，而且按窗口）。没给 `output_sink` 时行为不变（兼容） | 上传失败时退回现在的做法并记一条（不丢输出）；对象的键与保留期沿用 Context Builder 的 `context/<task_id>/…` 约定；预签名地址只对这一个键 | 待确认；依赖 D-28（加在 Rust 版 agent 上） |
+| WK-LITE-02 交付文件由环境直传 | 第 7.2 节：`deliver_file` 由 Worker 读整个文件再上传 | Worker 先核对配额（个数、单个与合计大小，用 agent 报的文件大小）、生成对象键，签一个只写这个键、带 `If-None-Match: *` 的 PUT 地址；agent 新增 `POST /v1/upload`（路径、地址）直接上传并回大小与 sha256；Worker 用 `head` 核对大小后写 `task_artifacts`。ObjectStore 经预签名上传的对象没有 sha256 元数据（`s3_object_store.py` 的说明），哈希以 agent 回报为准，下载时照现在的做法按内容核对 | 上传与写库之间崩溃会留下没人引用的对象：按交付的保留期（7 天）由生命周期清掉；配额按 agent 报的大小先占，`head` 不一致时删对象并报错 | 待确认；依赖 D-28 |
+| WK-LITE-03 量一下 Worker 搬了多少 | 没有数字就说不清减负的效果 | PERF-00 的 span 里加：每个 activity 进出 Worker 的字节数（沙箱 HTTP 的请求与响应、ObjectStore 的读写），按操作类型汇总进看板 | 只加计数，不改行为 | 待确认；并入 PERF-00 |
+
+### 7.4 顺序
+
+WK-LITE-03 随 PERF-00 先做；WS-READ-01（不进工作流）收益最直接；WK-LITE-01、WK-LITE-02、WS-PULL-01 都加在 Rust 版 agent 上，D-28 之后按 WK-LITE-03 的数字排先后。
