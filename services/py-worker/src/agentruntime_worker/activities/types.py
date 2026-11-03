@@ -357,3 +357,5 @@ class FinalizeTaskInput:
     # 这个 Task 实际调过的工具（Stage Runner 的记录，带 Round 序号；作用对象已去凭据），最近 SESSION_ACTIONS 条。
     # 收尾时记进这一轮的 Session 记录，之后的追问据此知道之前做过什么（docs/plan/feedback-2026-11-01.md N-03）。之前的运行没有。
     actions: list[dict[str, Any]] = field(default_factory=list)
+    # N-20：首事件延迟（workflows/latency.py 的 as_dict）；只有推进度事件的顶层 Task 有，之前的运行没有。
+    latency: dict[str, Any] = field(default_factory=dict)

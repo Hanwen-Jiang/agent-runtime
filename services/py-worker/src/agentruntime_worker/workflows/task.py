@@ -40,7 +40,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 from collections.abc import Callable
-from datetime import timedelta
+from datetime import timedelta, timezone
 from typing import Any
 
 from temporalio import workflow
@@ -79,6 +79,7 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.workflows.failures import failure_message as _failure_message
     from agentruntime_worker.workflows.guidance import INTERRUPT, NEXT_STEP, GuidanceBook
     from agentruntime_worker.workflows.highlights import round_highlights
+    from agentruntime_worker.workflows.latency import FirstEventLatency
     from agentruntime_worker.workflows.verification import VerificationRecord
     from agentruntime_worker.workflows.patches import (
         BUDGETS_PATCH,
@@ -289,6 +290,9 @@ class TaskWorkflow:
             session_id=inp.tenant.session_id,
         )
         self._state = _initial_state(inp)
+        # N-20：首事件延迟，只记时间（不改命令序列），收尾时交给 finalize_task。
+        accepted = inp.submitted_at.ToDatetime(tzinfo=timezone.utc) if inp.HasField("submitted_at") else None
+        self._latency = FirstEventLatency(accepted, workflow.now())
         # TMP 计划第 3、4 节的版本分支：新的运行在 at_start 里已经问过，这里只取值；之前的历史没有标记，都是 False。
         self._budgets = workflow.patched(BUDGETS_PATCH)
         self._retry_in_workflow = workflow.patched(DECISION_RETRY_PATCH)
@@ -596,6 +600,7 @@ class TaskWorkflow:
         if workflow.patched(EVENTS_PATCH) and self._input.depth == 0:
             # 2026-10-28 起的运行另推 node_started 与 tool_status（版本分支 PROGRESS_DETAIL_PATCH）。
             self._events = EventPublisher(self._tenant, self._input.task_id, detail=workflow.patched(PROGRESS_DETAIL_PATCH))
+            self._events.latency = self._latency
         self._events_decided = True
         task_plan: dict[str, Any] | None = None
         last_round: dict[str, Any] | None = None
@@ -626,7 +631,9 @@ class TaskWorkflow:
             plan_cost = 0.0
             planned = rerun is None
             if rerun is None:
+                planning_started = workflow.now()
                 plan, plan_cost = await self._planned(seq, inputs, pinned, task_plan, last_round)
+                self._latency.planning(planning_started, workflow.now())
                 stage = plan.stage
                 triage_level = plan.triage_level
                 if plan.task_family and not self._task_family:
@@ -1287,6 +1294,7 @@ class TaskWorkflow:
         进入收尾起纠偏一律拒绝；结束之前把 guidance_updated 都推完。"""
         if self._book is not None:
             self._book.close()
+        self._latency.finished(workflow.now())
         if self._s10:
             if self._plans:
                 await self._plan_finished(result)
@@ -1324,6 +1332,7 @@ class TaskWorkflow:
                     # 服务端定的任务族优先（TMP 计划第 6 节），没有时用 Task Plan 里的。
                     task_family=self._task_family or str(((self._task_plan or {}).get("triage") or {}).get("task_family") or ""),
                     actions=self._tool_log[-SESSION_ACTIONS:],
+                    latency=self._latency.as_dict() if self._events is not None else {},
                 ),
                 task_queue=names.DECISION_QUEUE,
                 start_to_close_timeout=timeouts.FINALIZE_START_TO_CLOSE,

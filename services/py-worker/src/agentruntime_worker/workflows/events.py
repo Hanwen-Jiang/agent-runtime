@@ -43,6 +43,7 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker import names
     from agentruntime_worker.activities.types import PlanRoundOutput, StageResult, Tenant
     from agentruntime_worker.workflows.failures import caused_by_cancel, failure_message
+    from agentruntime_worker.workflows.latency import FirstEventLatency
 
 PUBLISH_START_TO_CLOSE = timedelta(seconds=5)
 # 连排队带重试的上限：Session Worker 不在时，一个 Round 最多多等这么久（之后这个 Round 不再推）。
@@ -202,6 +203,8 @@ class EventPublisher:
         self._detail = detail
         # 推送失败的那个 Round：它余下的事件不再推。
         self._broken_round = 0
+        # N-20：首事件延迟；Task 工作流给了才记（推送成功的第一条可展示事件、第一次冷启动）。
+        self.latency: FirstEventLatency | None = None
 
     async def publish(self, round_seq: int, event: str, payload: dict[str, Any], *, about: str = "") -> None:
         if round_seq == self._broken_round:
@@ -213,7 +216,8 @@ class EventPublisher:
             type=_TYPES[event],
             payload=payload_pb2.JsonPayload(value=_value({"event": event, "round_seq": round_seq, **payload})),
         )
-        message.emitted_at.FromDatetime(workflow.now())
+        emitted = workflow.now()
+        message.emitted_at.FromDatetime(emitted)
         try:
             await workflow.execute_activity(
                 names.PUBLISH_TASK_EVENT,
@@ -229,6 +233,9 @@ class EventPublisher:
                 raise asyncio.CancelledError() from err
             self._broken_round = round_seq
             workflow.logger.warning("推送进度事件 %s 失败，第 %d 轮余下的事件不再推：%s", key, round_seq, failure_message(err))
+            return
+        if self.latency is not None:
+            self.latency.event(event, emitted)
 
     async def round_started(self, round_seq: int, *, rerun: bool) -> None:
         await self.publish(round_seq, "round_started", {"rerun": rerun})
@@ -255,6 +262,8 @@ class EventPublisher:
             payload["duration_ms"] = max(0, duration_ms)
         if startup_ms is not None:
             payload["sandbox_startup_ms"] = startup_ms
+            if self.latency is not None:
+                self.latency.sandbox(startup_ms)
         if error:
             payload["error"] = redact(error)[:ERROR_CHARS]
             code = code_of(error)
