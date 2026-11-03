@@ -43,6 +43,15 @@ spec:
             {{- include "ar.dsnEnv" . | nindent 12 }}
             - name: AR_PROFILE
               value: {{ $ts.profile | quote }}
+            {{- with .Values.secrets.valkeyUrl }}
+            {{- if .name }}
+            - name: AR_VALKEY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .name }}
+                  key: {{ .key }}
+            {{- end }}
+            {{- end }}
             - name: AR_TEMPORAL_ADDRESS
               value: {{ .Values.external.temporal.address | quote }}
             - name: AR_TEMPORAL_NAMESPACE

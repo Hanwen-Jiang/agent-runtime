@@ -5,8 +5,8 @@
 //	task-service replay --dir <事件历史目录>                    用当前代码回放 Session 工作流的事件历史
 //	task-service registry-seed <种子文件>                       把一批文档发布到 Registry 并设为默认（开发与端到端测试用）
 //
-// 配置见 internal/config 的环境变量。serve 目前接的是开发实现（内置 Ingress、内存 Cache、SQLite），
-// 生产实现接入后在这里替换。
+// 配置见 internal/config 的环境变量。业务库配了 AR_RELATIONAL_DSN 用 Postgres、Cache 配了 AR_VALKEY_URL 用 Valkey，
+// 否则是开发实现（SQLite、内存 Cache）；Ingress 还是内置的开发实现，生产实现接入后在这里替换。
 package main
 
 import (
@@ -36,6 +36,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/s3objects"
 	temporaladapter "github.com/agentruntime/agent-runtime/libs/go-core/adapters/temporal"
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/temporal/claimcheck"
+	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/valkey"
 	"github.com/agentruntime/agent-runtime/libs/go-core/clock"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/diskobjects"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/filesecrets"
@@ -44,6 +45,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/sqlitestore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/modelbudget"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/cache"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	"github.com/agentruntime/agent-runtime/libs/go-core/sealing"
@@ -211,6 +213,25 @@ func newRelationalStore(ctx context.Context, where config.Store) (relational.Pro
 	return sqlitestore.New(sqlitestore.Options{Dir: dir})
 }
 
+// newCache 构造 Cache：配了 AR_VALKEY_URL 时用 Valkey（CACHE-01），启动时 Ping 一次，配错的地址或口令尽早暴露；
+// 否则用进程内的开发实现（只能单副本，重启丢流）。
+func newCache(ctx context.Context, cfg config.Config, clk clock.Clock) (cache.Provider, error) {
+	if cfg.ValkeyURL.IsZero() {
+		return memcache.New(memcache.Options{Clock: clk}), nil
+	}
+	p, err := valkey.New(valkey.Options{URL: cfg.ValkeyURL, Clock: clk})
+	if err != nil {
+		return nil, err
+	}
+	pingCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	if err := p.Ping(pingCtx); err != nil {
+		_ = p.Close()
+		return nil, fmt.Errorf("连不上 %s 指向的 Valkey：%w", config.EnvValkeyURL, err)
+	}
+	return p, nil
+}
+
 func replay(args []string, stdout, stderr io.Writer, getenv func(string) string) int {
 	fs := flag.NewFlagSet("replay", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -367,7 +388,11 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	cacheProvider := memcache.New(memcache.Options{Clock: clk})
+	cacheProvider, err := newCache(ctx, cfg, clk)
+	if err != nil {
+		return err
+	}
+	defer cacheProvider.Close()
 	ing := localingress.New(localingress.Options{
 		SigningKey: cfg.DevSigningKey.Reveal(), Clock: clk, Limit: cfg.RateLimitPerMinute, Window: time.Minute,
 	})

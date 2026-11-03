@@ -26,6 +26,8 @@ env:
   AR_MILVUS_IMAGE: "milvusdb/milvus:v3.0.2"
   # py-learning 的测试拉起 Redpanda（Learning Pipeline 直接消费 trace 主题），与集群里的同版。
   AR_REDPANDA_IMAGE: "redpandadata/redpanda:v26.2.4"
+  # libs/go-core 的 Valkey 适配器的测试拉起 Valkey（CACHE-01），与 deploy/data/valkey.yaml 同版。
+  AR_VALKEY_IMAGE: "valkey/valkey:9.1.2"
   BUF_VERSION: "1.73.0"
   HELM_VERSION: "3.19.0"
   OTELCOL_VERSION: "0.135.0"
@@ -94,6 +96,9 @@ jobs:
           bin="$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -n 1)"
           test -x "$bin/initdb"
           echo "AR_POSTGRES_BIN=$bin" >> "$GITHUB_ENV"
+
+      - name: 预拉 Valkey 镜像（libs/go-core 的 Valkey 适配器的测试用 Docker 拉起容器，CACHE-01）
+        run: docker pull "$AR_VALKEY_IMAGE"
 
       - name: Go
         run: python3 scripts/check.py --only go

@@ -29,6 +29,11 @@ secrets:
   relationalDsn:
     name: ""
     key: dsn
+  # task-service 的 Cache 用的 Valkey 地址（AR_VALKEY_URL，CACHE-01；deploy/data/valkey.yaml）：valkey://:口令@主机:6379/0。
+  # name 为空时用进程内的 Cache，只能单副本、重启丢流。
+  valkeyUrl:
+    name: ""
+    key: url
 
 external:
   temporal:

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 装数据层与观测组件（docs/plan/cloud-deploy.md D-03），deploy/cluster/install.sh 与密钥（deploy/cluster/secrets）之后运行：
 #   deploy/data/install.sh
-# Postgres（CloudNativePG）、Temporal、Qdrant、Redpanda 装在 data；Langfuse、Tempo、VictoriaMetrics、Grafana 装在 observability。
+# Postgres（CloudNativePG）、Runtime 的 Valkey、Temporal、Qdrant、Redpanda 装在 data；Langfuse、Tempo、VictoriaMetrics、Grafana 装在 observability。
 # 版本见 deploy/cluster/versions.conf；资源的预算见 deploy/cluster/README.md。重复运行是安全的。
 set -euo pipefail
 
@@ -11,7 +11,7 @@ source "$HERE/../cluster/versions.conf"
 export KUBECONFIG="${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}"
 log() { printf '==> %s\n' "$*"; }
 
-for s in pg-agentruntime pg-temporal pg-langfuse r2-backup; do
+for s in pg-agentruntime pg-temporal pg-langfuse r2-backup valkey-agentruntime; do
   kubectl -n data get secret "$s" >/dev/null || { echo "data 命名空间缺 Secret $s（见 deploy/cluster/secrets/README.md）" >&2; exit 1; }
 done
 
@@ -19,6 +19,10 @@ log "Postgres"
 kubectl apply -f "$HERE/networkpolicy.yaml"
 kubectl apply -f "$HERE/postgres.yaml"
 kubectl -n data wait --for=condition=Ready cluster/pg --timeout=15m
+
+log "Valkey（Runtime 的 Cache，CACHE-01）"
+kubectl apply -f "$HERE/valkey.yaml"
+kubectl -n data rollout status deploy/valkey-agentruntime --timeout=5m
 
 helm repo add temporal https://go.temporal.io/helm-charts >/dev/null
 helm repo add qdrant https://qdrant.github.io/qdrant-helm >/dev/null

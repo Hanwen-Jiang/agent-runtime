@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/s3objects"
+	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/valkey"
 	"github.com/agentruntime/agent-runtime/libs/go-core/secret"
 
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/session"
@@ -52,6 +53,9 @@ const (
 	// EnvProfile 是运行模式（TS-PROD-01，docs/plan/workspace-read-latency-and-disk-2026-11-03.md）：不设或 development 时
 	// 开发实现可以兜底；production 时业务库必须是 Postgres，没有 AR_RELATIONAL_DSN 拒绝启动，不回落 AR_DATA_DIR 下的 SQLite。
 	EnvProfile = "AR_PROFILE"
+	// EnvValkeyURL 设了时 Cache 用 Valkey（CACHE-01，libs/go-core/adapters/valkey）：形如 valkey://:口令@主机:6379/0，
+	// TLS 用 valkeys://。事件流、限流计数与锁放在那里，几个副本共享、重启不丢；没设时用进程内的开发实现。带口令，按密钥对待。
+	EnvValkeyURL = "AR_VALKEY_URL"
 )
 
 // AR_PROFILE 的取值。
@@ -130,6 +134,8 @@ type Config struct {
 	ClaimCheckThreshold int
 	// RelationalDSN 是业务库（Postgres，行级安全）的连接串；为空时用 SQLite 开发实现（S-12a）。可能带口令，打印只显示掩码。
 	RelationalDSN secret.Value
+	// ValkeyURL 见 EnvValkeyURL；为空时 Cache 用进程内的开发实现。打印只显示掩码。
+	ValkeyURL secret.Value
 	// RateLimitPerMinute 是内置 Ingress 每个租户每个路由每分钟的请求上限。
 	RateLimitPerMinute int
 	Session            session.Config
@@ -187,6 +193,13 @@ func FromEnv(getenv func(string) string) (Config, error) {
 		return Config{}, errNoDSNInProduction
 	}
 	cfg.Production = prod
+	if raw := getenv(EnvValkeyURL); raw != "" {
+		cfg.ValkeyURL = secret.New(raw)
+		// 只校验格式，不连接（serve 启动时再 Ping）；错误信息不带原文。
+		if _, err := valkey.New(valkey.Options{URL: cfg.ValkeyURL}); err != nil {
+			return Config{}, fmt.Errorf("%s 不合法：%w", EnvValkeyURL, err)
+		}
+	}
 	if s3, ok, err := s3objects.OptionsFromEnv(getenv); err != nil {
 		return Config{}, err
 	} else if ok {

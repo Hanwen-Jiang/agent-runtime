@@ -128,7 +128,8 @@ def all_steps(root: Path, *, committed: bool = False) -> dict[str, Step]:
             ["tests/contract", *(["tests/deploy"] if deploy else []), "-k", "not test_go_modules_build_vet_and_test"],
             ["uv", "buf", "go", *(["helm"] if deploy else [])],
         ),
-        Step(id="go", title="Go：go.work 的每个模块 build、vet、test", commands=go, tools=["go", "temporal", "postgres"]),
+        # docker：libs/go-core 的 Valkey 适配器的测试拉起一次性容器（valkeytest，CACHE-01）。
+        Step(id="go", title="Go：go.work 的每个模块 build、vet、test", commands=go, tools=["go", "temporal", "postgres", "docker"]),
         _python(
             "py-core", "libs/py-core（含 Postgres、Qdrant、Milvus 适配器与 K8s 沙箱）", root / "libs" / "py-core", "agentruntime-core", ["tests"],
             ["uv", "temporal", "postgres", "qdrant", "docker", "go", "kind", "kubectl"],
@@ -209,7 +210,8 @@ def tool_available(tool: str, env: Mapping[str, str]) -> bool:
         return _which("qdrant", env) is not None
     if tool in ("docker", "kubectl"):
         # docker：Milvus 适配器的测试拉起单机版容器（milvustest），K8s 沙箱的测试用 kind（kindtest），
-        # Learning Pipeline 消费 trace 主题的测试拉起 Redpanda（services/py-learning/tests/redpanda_support.py）。
+        # Learning Pipeline 消费 trace 主题的测试拉起 Redpanda（services/py-learning/tests/redpanda_support.py），
+        # Go 的 Valkey 适配器的测试拉起 Valkey（libs/go-core/adapters/valkey/valkeytest）。
         # kubectl：kindtest 用它应用 deploy/cluster 的清单；Docker Desktop 把它与 docker 放在同一目录。
         configured = env.get("AR_DOCKER_BIN", "")
         if configured:
