@@ -98,6 +98,8 @@ DEFAULT_MAX_ITERATIONS = 20
 # 一次 Stage 运行最多记这么多次工具调用（N-05、N-03）；每条错误说明最多这么多字。
 TOOL_LOG_LIMIT = 200
 TOOL_LOG_ERROR_CHARS = 200
+# 交付文件的工具（agentruntime_worker.tools.deliver.TOOL；工作流里不引那个模块，它带着 I/O）。
+DELIVER_TOOL = "deliver_file"
 # 同一个 Goal Node 里不可逆工具调用被拒（含超时）几次就记为 denied，交给 Reviewer。
 MAX_TOOL_REJECTIONS = 2
 DEFAULT_ROLE = "transform"
@@ -312,6 +314,8 @@ class StageRunner:
         # 第 4 节：这一轮工具调用的目标（路径），成功的才算。
         self.reads: list[str] = []
         self.writes: list[str] = []
+        # N-18（F3）：这一轮成功交付给用户的文件（deliver_file 的 path），重要输出里排第一。只在工作流内存里，不改命令序列。
+        self.delivered: list[str] = []
         # docs/plan/feedback-2026-11-01.md N-05、N-03：这次运行的工具调用（Node、工具、作用对象（已去凭据）、成败、退出码），按发生的先后，
         # 最多 TOOL_LOG_LIMIT 条。重做时告诉 Node 上一次做了什么；收尾时记进这一轮对话做过的事。只在工作流内存里，不改命令序列。
         self.tool_log: list[dict[str, Any]] = []
@@ -558,11 +562,14 @@ class StageRunner:
             record["error"] = redact(str(entry["error"]))[:TOOL_LOG_ERROR_CHARS]
         self.tool_log.append(record)
 
-    def _note_paths(self, args: Any, effect: str) -> None:
-        """docs/plan/running-task-interaction.md 第 4 节：记下这一轮成功的工具调用的目标。shell_run 改了什么代码不知道，没有 path，不记。"""
+    def _note_paths(self, args: Any, effect: str, tool: str = "") -> None:
+        """docs/plan/running-task-interaction.md 第 4 节：记下这一轮成功的工具调用的目标。shell_run 改了什么代码不知道，没有 path，不记。
+        deliver_file（N-18）的文件另记进 delivered。"""
         path = args.get("path") or args.get("file") if isinstance(args, dict) else None
         if isinstance(path, str) and path.strip():
             (self.writes if effect in sp.WRITE_EFFECTS else self.reads).append(path)
+            if tool == DELIVER_TOOL:
+                self.delivered.append(path)
 
     def _heartbeat(self, heartbeat: timedelta | None = None) -> timedelta | None:
         """GUIDANCE_PATCH 之后的运行：取消靠心跳送达，超时要短，打断才算立刻。之前的运行不变。"""
@@ -1473,7 +1480,7 @@ class StageRunner:
                 raise asyncio.CancelledError() from err
             entry["error"] = failure_message(err)
         if "error" not in entry:
-            self._note_paths(args, effect)
+            self._note_paths(args, effect, tool)
             if self._ctx.verification is not None:
                 self._ctx.verification.called(tool, effect, args, entry.get("observation"))
         if "error" not in entry and _lists_empty_root(tool, args, entry.get("observation")):

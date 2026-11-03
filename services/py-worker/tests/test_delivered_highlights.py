@@ -99,4 +99,4 @@ async def test_a_failed_deliver_file_call_is_not_marked(harness: StageHarness) -
     s.reviewer = scripted(ReviewRoundOutput(verdict=out("done", "完成", done={"deliver_node": "answer"}).verdict))
     inp, _ = await harness.run(effect_ceiling=IRREVERSIBLE)
     state = await task_state(harness, inp.task_id)
-    assert all(not f.get("delivered") for f in state["rounds"][0]["highlights"].get("files", []))
+    assert all(not f.get("delivered") for f in state["rounds"][0].get("highlights", {}).get("files", [])), "这一轮什么也没有时不写 highlights"

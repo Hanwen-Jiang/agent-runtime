@@ -50,8 +50,8 @@ agent-runtime 的测试（这台 Windows 机器，没有 Postgres，`AR_ALLOW_MI
 | coding-web 的计划区：读 `plan_updated` 与快照里的 `plan`，高亮当前步骤 | N-04 | 我们做（D 线的网页），等合并后先写测试 |
 | coding-web 的并行子 Agent 进度 | N-16 | 同上 |
 | coding-web 用快照画首屏、处理 409 | N-19 | 同上 |
-| Grafana 加 `runtime.task.first_event_ms` 按段的分位数 | N-20 | 我们做：验收测试 `tests/deploy/test_first_event_panel.py` 已写（实现前跳过），等人审 |
-| F3 剩下的：Reviewer 把文件排前面、端到端 | F3 | 前者的验收测试与 schema 的 CONTRACT DRAFT 已写，等人审（见 `n18-file-delivery-f3.md`）；端到端在后面 |
+| Grafana 加 `runtime.task.first_event_ms` 按段的分位数 | N-20 | 2026-11-03 已加（`deploy/data/dashboards/quality.yaml`，验收 `tests/deploy/test_first_event_panel.py`），没部署 |
+| F3 剩下的：Reviewer 把文件排前面、端到端 | F3 | 前者 2026-11-03 已做（schema 草案人审通过）；端到端在后面 |
 | `token_delta`、`thinking_delta` 的推送 | N-20 | **要人定**：要在 task-service 的内部端口开一个新入口和平台令牌，属于安全评审 |
 | 用户密钥的写入、列举、删除接口（coding-agent 的“网络密钥”页依赖它） | ENV-02 | 要新的契约（S-01），先出草案 |
 | `open` 档位的公网授权（`sandbox.network.modes`、授权的 `scope: public`） | ENV-02 | 另一份契约，原记录里是 DEFER |

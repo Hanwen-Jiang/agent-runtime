@@ -130,6 +130,17 @@ data:
           "datasource": {"type": "prometheus", "uid": "victoriametrics"},
           "fieldConfig": {"defaults": {"unit": "currencyUSD"}},
           "targets": [{"refId": "A", "expr": "topk(20, sum by (tenant_id) (increase(runtime_model_cost_usd_sum[24h])))", "instant": true, "format": "table"}]
+        },
+        {
+          "id": 14, "type": "timeseries", "title": "首事件延迟（毫秒，p50 与 p95，按段）",
+          "description": "提交到第一条可展示事件（N-20）：排队、规划、沙箱冷启动、第一个 token 与总的首事件，一小时的窗口。Worker 收尾时补记，缺的段不进指标。",
+          "gridPos": {"x": 0, "y": 47, "w": 24, "h": 8},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "fieldConfig": {"defaults": {"unit": "ms"}},
+          "targets": [
+            {"refId": "A", "expr": "histogram_quantile(0.5, sum by (le, segment) (increase(runtime_task_first_event_ms_bucket[1h])))", "legendFormat": "{{segment}} p50"},
+            {"refId": "B", "expr": "histogram_quantile(0.95, sum by (le, segment) (increase(runtime_task_first_event_ms_bucket[1h])))", "legendFormat": "{{segment}} p95"}
+          ]
         }
       ]
     }

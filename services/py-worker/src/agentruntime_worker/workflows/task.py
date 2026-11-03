@@ -278,6 +278,7 @@ class TaskWorkflow:
         self._stage_interrupted = False
         self._stage_reads: list[str] = []
         self._stage_writes: list[str] = []
+        self._stage_delivered: list[str] = []
         self._verification = VerificationRecord()
 
     @workflow.run
@@ -825,7 +826,7 @@ class TaskWorkflow:
     def _record_highlights(self, round_entry: dict[str, Any], raw: dict[str, Any] | None, results: dict[str, StageResult]) -> None:
         """docs/plan/running-task-interaction.md 第 4 节：这一轮的重要输出写进 Task State。"""
         deliverable = next((results[nid].result for nid in sorted(results) if results[nid].role == "deliver" and results[nid].status == "succeeded"), None)
-        highlights = round_highlights(raw, reads=self._stage_reads, writes=self._stage_writes, deliverable=deliverable)
+        highlights = round_highlights(raw, reads=self._stage_reads, writes=self._stage_writes, delivered=self._stage_delivered, deliverable=deliverable)
         if highlights:
             round_entry["highlights"] = highlights
 
@@ -1183,7 +1184,7 @@ class TaskWorkflow:
         self._stage_cost = runner.spent_usd
         self._stage_tool_calls = runner.tool_calls
         self._stage_interrupted = runner.interrupted
-        self._stage_reads, self._stage_writes = runner.reads, runner.writes
+        self._stage_reads, self._stage_writes, self._stage_delivered = runner.reads, runner.writes, runner.delivered
         self._stage_tool_log = runner.tool_log
         self._tool_log = [*self._tool_log, *({"round": seq, **c} for c in runner.tool_log)][-TASK_TOOL_LOG_LIMIT:]
         return results
