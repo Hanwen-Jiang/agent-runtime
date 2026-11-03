@@ -1,7 +1,7 @@
 # ENV-02 云环境执行链：实施记录（2026-11-03）
 
 > 依据：[人工验收基线](manual-acceptance-baseline-2026-11-03.md) Q16–37；[实现工作项](post-acceptance-work-items-2026-11-03.md) 的 ENV-02 行；[环境配置设计草案](environment-config.md) 第 4、6 节（D-23、D-24）。coding-agent 已有的配置 CRUD 在它的仓库 `internal/server/environments.go`（`384ea04`、`a319601`）。
-> 状态：契约是 **CONTRACT DRAFT**，待 S-01 人审；兼容性基线没有更新。实现与验收测试在同一分支，合并前一并评审。
+> 状态：契约 2026-11-03 人审通过（照草案，S-01），随 C、E 两条线一起合进 main，兼容性基线已更新（连同 ENV-01 的 `environment.proto`）。见 `lane-merge-2026-11-03.md`。
 
 ## 1. 环境配置怎么到 Runtime（决定）
 
@@ -18,7 +18,7 @@
 | Implementation cost | 契约一处（含删除、事后绑定两个 RPC 与 EnvRecord 的 6 个字段）、两个迁移、Broker 的准备步骤、网关的档位与网络密钥。 |
 | Operational cost | 无新组件；网络密钥要部署方在 SecretStore 平台作用域放一对网关 CA（`sandbox/egress-ca-cert`、`sandbox/egress-ca-key`）。 |
 | New failure surface | 快照里的配置失效（例如引用的密钥被删）：请求时报错、不静默继续；网关 CA 泄露的影响面（只签发给配置了网络密钥的主机，见第 4 节）。 |
-| Decision | **KEEP C**（待 S-01 人审）。会话中途换环境、显式“应用更新”到已有工作区不在本项（设计草案 4.1 的显式应用更新另做）。 |
+| Decision | **KEEP C**（2026-11-03 人审通过）。会话中途换环境、显式“应用更新”到已有工作区不在本项（设计草案 4.1 的显式应用更新另做）。 |
 
 ## 2. setup 与 start（Q20–24）
 
@@ -64,7 +64,7 @@
 | Performance | 新环境多一次 setup（命中缓存时省掉）与 start；有网络密钥的主机每个请求多一次 TLS 终结与一次 SecretStore 读；叶子证书按主机在进程内缓存。 |
 | Operational | 网关 CA 的生成、轮换与保管（SecretStore 平台作用域）；setup 镜像占环境镜像仓库的配额（D-17 的 `max_images`、`idle_days` 照管）。 |
 | New failure surface | setup 脚本慢或失败直接挡住会话（按设计）；网关 CA 被拿到可冒充名单里的主机（只限这个部署的沙箱信任它）；HTTP/2 不终结（ALPN 只给 http/1.1）。 |
-| Decision | KEEP（待人审）；`open` 的公网授权、密钥写入的公开接口、显式应用更新为后续。 |
+| Decision | KEEP（2026-11-03 人审通过）；`open` 的公网授权、密钥写入的公开接口、显式应用更新为后续。 |
 
 ## 7. 没覆盖的、与设计不一致的
 

@@ -1,7 +1,7 @@
 # C、D、E 三条线的合并与缺口（2026-11-03）
 
 > 同事把三条线推到了 `origin/lane/c`、`origin/lane/e`（agent-runtime）与 `origin/lane/d`（coding-agent），由这边接着做。
-> 合并前要先过 S-01：分支上有 7 个 CONTRACT DRAFT 提交，没有人审过，兼容性基线也没更新。
+> 2026-11-03 人审通过（照草案）：C、E 两条线已合进 main，兼容性基线已更新（连同 `environment.proto`）。coding-agent 的 lane/d 等 Runtime 部署之后再合。
 
 ## 1. 试合并（本地，没推）
 

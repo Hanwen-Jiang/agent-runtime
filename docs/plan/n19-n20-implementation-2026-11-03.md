@@ -4,7 +4,7 @@
 Q57～Q62，候选基线 [n19-n20-contract-baseline.md](n19-n20-contract-baseline.md) 与契约清单 `tests/contract/fixtures/n19_n20_contract_cases.json`。
 前端（局部更新、虚拟化、token 合并到每帧一次）是 D 线的事；这里只做 Runtime 一侧。
 
-## 契约（CONTRACT DRAFT 提交，待人审）
+## 契约（CONTRACT DRAFT 提交；2026-11-03 人审通过，已合进 main）
 
 - `schemas/session_snapshot.schema.json`（新）：`GET /v1/sessions/{session_id}/snapshot` 的响应；`defs` 加 `snapshot_task_status`、
   `snapshot_source`、`snapshot_error_code`。没有 proto 改动：快照是 Ingress 上与 SSE 并列的 HTTP 只读端点，不新增 gRPC 方法。

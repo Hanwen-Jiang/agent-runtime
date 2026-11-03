@@ -10,7 +10,7 @@
   `StagePolicy.max_parallel` 限制）；结果按 Node id 排序合并；取消父 Task 会取消正在跑的子工作流；sub_task 深度不超过 2；
   sub_agent 的子工作流里不能再派 sub_task（深度按上限算）；写明了高于 Task 上限的 effect 由 `_run_node` 拒绝。
 
-## 契约（CONTRACT DRAFT 提交，待人审）
+## 契约（CONTRACT DRAFT 提交；2026-11-03 人审通过，已合进 main）
 
 - `node_started` 加可选的 `mode`（Goal Node 的展开方式，没写时按 Stage Runner 的规则解析）。
 - `tool_status` 的说明：顶层 sub_agent 在自己的子工作流里的调用也推，`node_id` 是那个 sub_agent；并行的几个交错到达、按

@@ -3,7 +3,7 @@
 对应 [feedback-2026-11-01.md](feedback-2026-11-01.md) N-04、人工验收基线 Q55（Plan 是持久状态）、Q56（plan_updated 是可重放事件），
 契约清单 `tests/contract/fixtures/task_plan_contract_cases.json`。此文只记实现增量，不改冻结的设计书。
 
-## 契约（CONTRACT DRAFT 提交，待人审）
+## 契约（CONTRACT DRAFT 提交；2026-11-03 人审通过，已合进 main）
 
 - `defs.schema.json`：`plan_step_status`（pending、active、done、blocked）、`plan_step`（id、title、status、round）、`plan_steps`
   （3～8 步，`maxContains: 1` 限制最多一步 active）；`progress_event` 加 `plan_updated`。
