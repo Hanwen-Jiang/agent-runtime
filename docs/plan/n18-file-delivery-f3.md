@@ -15,9 +15,9 @@
 >   - 验收：`internal/server/artifacts_test.go`、`internal/web/artifacts_test.go`。
 > - 交付的文件在本轮重要输出里排第一（第 2 节第 3 条）：Stage Runner 记下这一轮成功的 `deliver_file`，`round_highlights` 把它们排第一、标 `delivered: true`；
 >   `task_state.schema.json` 的 `round_highlights.files` 加了可选的 `delivered`（CONTRACT DRAFT `a4dfde0`，2026-11-03 人审通过）。验收：`services/py-worker/tests/test_delivered_highlights.py`。
+> - 端到端（第 5 节第 5 条）：`tests/e2e/test_file_delivery.py`（`ca4fc2e`），dev_stack 起整套，桩计划调真的 deliver_file，列出、下载、highlights、越租户都验了。
 >
 > **还没做的**：
-> - 第 5 节第 5 条端到端；
 > - 存档模式（Cloudflare）的后端读文件：要借沙箱环境，那部分在 C 线正在改的范围里；
 > - 对象元数据只写 ASCII，非 ASCII 的文件名只出现在对象键里，S3 上要实测。
 >
