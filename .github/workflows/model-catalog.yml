@@ -1,0 +1,68 @@
+# 模型目录自动同步（docs/plan/model-catalog-sync.md，F1）：每天拉中转站的 /models 与 models.dev，Profile 与白名单有变化就开或更新一个 PR，
+# 报告当 PR 正文；人合进 main 后随部署上线（2026-11-03 人定方案 A）。
+# 要在仓库的 Actions Secrets 里配 AR_MODEL_PROVIDER_BASE_URL（含 /v1）与 AR_MODEL_PROVIDER_API_KEY；没配时只提示，不算失败。
+# 开 PR 要打开仓库设置里的 “Allow GitHub Actions to create and approve pull requests”。用 GITHUB_TOKEN 开的 PR 不会触发 ci.yml，合并前手动跑一次检查。
+name: model-catalog
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: model-catalog
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: 同步模型目录
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BRANCH: model-catalog/auto
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.x"
+
+      - name: 同步
+        id: sync
+        env:
+          AR_MODEL_PROVIDER_BASE_URL: ${{ secrets.AR_MODEL_PROVIDER_BASE_URL }}
+          AR_MODEL_PROVIDER_API_KEY: ${{ secrets.AR_MODEL_PROVIDER_API_KEY }}
+        run: |
+          if [ -z "$AR_MODEL_PROVIDER_BASE_URL" ] || [ -z "$AR_MODEL_PROVIDER_API_KEY" ]; then
+            echo "::warning::没有配置 AR_MODEL_PROVIDER_BASE_URL 与 AR_MODEL_PROVIDER_API_KEY，跳过"
+            exit 0
+          fi
+          uv run --no-project --python 3.13 python scripts/sync_model_catalog.py --report .catalog-report
+          if git diff --quiet; then
+            echo "没有改动"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 开或更新 PR
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          day=$(date -u +%F)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C "$BRANCH"
+          git add deploy/dev/model-profiles.json deploy/dev/registry-seed.json deploy/dev/default-tenant-policies.json deploy/helm/agent-runtime/values.yaml
+          git commit -q -m "chore(models): model catalog sync $day"
+          git push -q --force origin "$BRANCH"
+          body=".catalog-report/model-catalog-$day.md"
+          if [ "$(gh pr view "$BRANCH" --json state -q .state 2>/dev/null)" = "OPEN" ]; then
+            gh pr edit "$BRANCH" --title "模型目录同步 $day" --body-file "$body"
+          else
+            gh pr create --head "$BRANCH" --base main --title "模型目录同步 $day" --body-file "$body"
+          fi

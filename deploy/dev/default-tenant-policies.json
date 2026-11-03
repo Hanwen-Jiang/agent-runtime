@@ -5,14 +5,24 @@
       "monthly_usd": 20
     },
     "model_allowlist": [
-      "a6api/gpt-4o-mini@2026-10",
       "a6api/gemini-3.5-flash-lite@2026-10",
-      "a6api/claude-haiku-5-5@2026-10",
       "a6api/deepseek-v4-flash@2026-10",
-      "a6api/gemini-3.5-flash@2026-10",
-      "a6api/gpt-6.1-sol@2026-11",
+      "a6api/claude-sonnet-5-5@2026-10",
+      "a6api/claude-haiku-5-5@2026-10",
       "a6api/text-embedding-3-large@2026-10",
-      "a6api/text-embedding-3-small@2026-10"
+      "a6api/text-embedding-3-small@2026-10",
+      "a6api/gpt-6.1-sol@2026-11",
+      "a6api/gemini-4-argon@2026-11",
+      "a6api/deepseek-v4-pro@2026-11",
+      "a6api/grok-4.7@2026-11",
+      "a6api/kimi-k3.1-pro@2026-11",
+      "a6api/qwen3.8-max@2026-11",
+      "a6api/glm-5.3@2026-11",
+      "a6api/gemini-3.8-flash@2026-11",
+      "a6api/gpt-6.1-terra@2026-11",
+      "a6api/gpt-6-luna@2026-11",
+      "a6api/glm-5.3-flash@2026-11",
+      "a6api/qwen3.8-flash@2026-11"
     ]
   },
   "tenants": {}

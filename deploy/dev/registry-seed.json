@@ -76,7 +76,8 @@
         "freshness": {
           "price_at": "2026-10-21"
         },
-        "released_at": "2024-07-18"
+        "released_at": "2024-07-18",
+        "availability": false
       }
     },
     {
@@ -184,7 +185,8 @@
         "freshness": {
           "price_at": "2026-11-02"
         },
-        "released_at": "2026-05-19"
+        "released_at": "2026-05-19",
+        "availability": false
       }
     },
     {
@@ -266,7 +268,8 @@
         "freshness": {
           "price_at": "2026-11-02"
         },
-        "released_at": "2026-04-23"
+        "released_at": "2026-04-23",
+        "availability": false
       }
     },
     {
@@ -883,6 +886,159 @@
           "price_at": "2026-11-03"
         },
         "released_at": "2026-09-22"
+      }
+    },
+    {
+      "kind": "model_profile",
+      "name": "a6api/longcat-2.0@2026-11",
+      "document": {
+        "id": "a6api/longcat-2.0@2026-11",
+        "vendor": "meituan",
+        "model": "LongCat-2.0",
+        "class": "strong",
+        "tiers": [
+          {
+            "name": "medium",
+            "effort": "medium",
+            "thinking_budget": 8192
+          },
+          {
+            "name": "high",
+            "effort": "high",
+            "thinking_budget": 32768
+          }
+        ],
+        "capabilities": [
+          "generate",
+          "tools",
+          "stream"
+        ],
+        "cost": {
+          "in_per_m": 0.3,
+          "out_per_m": 1.2,
+          "cache_read_per_m": 0.006
+        },
+        "constraints": {
+          "context_window": 1048576,
+          "max_output": 131072
+        },
+        "freshness": {
+          "price_at": "2026-11-03"
+        },
+        "released_at": "2026-06-30"
+      }
+    },
+    {
+      "kind": "model_profile",
+      "name": "a6api/glm-5.3-flash@2026-11",
+      "document": {
+        "id": "a6api/glm-5.3-flash@2026-11",
+        "vendor": "zhipuai",
+        "model": "glm-5.3-flash",
+        "class": "small",
+        "tiers": [
+          {
+            "name": "low",
+            "effort": "",
+            "thinking_budget": 0
+          }
+        ],
+        "capabilities": [
+          "generate",
+          "structured",
+          "tools",
+          "stream"
+        ],
+        "cost": {
+          "in_per_m": 0.11952,
+          "out_per_m": 0.41831,
+          "cache_read_per_m": 0.03436
+        },
+        "constraints": {
+          "context_window": 1000000,
+          "max_output": 131072
+        },
+        "freshness": {
+          "price_at": "2026-11-03"
+        },
+        "released_at": "2026-08-26"
+      }
+    },
+    {
+      "kind": "model_profile",
+      "name": "a6api/mimo-v2.6-pro@2026-11",
+      "document": {
+        "id": "a6api/mimo-v2.6-pro@2026-11",
+        "vendor": "xiaomi",
+        "model": "mimo-v2.6-pro",
+        "class": "strong",
+        "tiers": [
+          {
+            "name": "medium",
+            "effort": "medium",
+            "thinking_budget": 8192
+          },
+          {
+            "name": "high",
+            "effort": "high",
+            "thinking_budget": 32768
+          }
+        ],
+        "capabilities": [
+          "generate",
+          "structured",
+          "tools",
+          "stream"
+        ],
+        "cost": {
+          "in_per_m": 0.435,
+          "out_per_m": 0.87,
+          "cache_read_per_m": 0.0036
+        },
+        "constraints": {
+          "context_window": 1048576,
+          "max_output": 131072
+        },
+        "freshness": {
+          "price_at": "2026-11-03"
+        },
+        "released_at": "2026-09-22"
+      }
+    },
+    {
+      "kind": "model_profile",
+      "name": "a6api/qwen3.8-flash@2026-11",
+      "document": {
+        "id": "a6api/qwen3.8-flash@2026-11",
+        "vendor": "alibaba",
+        "model": "qwen3.8-flash",
+        "class": "small",
+        "tiers": [
+          {
+            "name": "low",
+            "effort": "",
+            "thinking_budget": 0
+          }
+        ],
+        "capabilities": [
+          "generate",
+          "structured",
+          "tools",
+          "stream"
+        ],
+        "cost": {
+          "in_per_m": 0.15,
+          "out_per_m": 0.47,
+          "cache_read_per_m": 0.016
+        },
+        "constraints": {
+          "context_window": 1000000,
+          "max_output": 131072
+        },
+        "freshness": {
+          "price_at": "2026-11-03"
+        },
+        "released_at": "2026-08-26"
       }
     },
     {

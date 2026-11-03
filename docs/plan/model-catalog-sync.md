@@ -1,6 +1,6 @@
 # 模型目录自动同步（F1，N-07 的延续）
 
-> 状态：2026-11-03 设计稿与验收测试（`tests/deploy/test_model_catalog_sync.py`），实现等人看过测试再写。登记在 `work-dag-2026-11-03.md` 的 F 线。
+> 状态：2026-11-03 已实现（`scripts/sync_model_catalog.py`，验收 `tests/deploy/test_model_catalog_sync.py`）。第 5 节四条人定照建议，定期跑用方案 A（`.github/workflows/model-catalog.yml`）。还没部署：线上的 Profile 与白名单 ConfigMap 要随下一次部署更新（第 7 节）。登记在 `work-dag-2026-11-03.md` 的 F 线。
 
 ## 1. 要解决的
 
@@ -70,9 +70,9 @@
 - **中转站对 Claude 不是直通**（会注入工具、结构化输出不稳）：免费档里现在已经有 claude-haiku-5-5，这次不改变这一点；swebench 照旧去掉 anthropic。
 - 线的键是按名字算的。厂商改名（gpt-5.5 → gpt-6-sol）只能靠 `aliases`，报告里会提示“同一家有更新一代、但不在同一条线”的情况。
 
-## 5. 要人定的
+## 5. 人定的（2026-11-03，四条都照建议）
 
-| # | 问题 | 建议 |
+| # | 问题 | 决定 |
 | --- | --- | --- |
 | 1 | 定期跑用 A 还是 B | A；同意的话，要把中转站地址与密钥放进 Actions Secrets（人放，不经聊天） |
 | 2 | 免费档 strong 的单价上限 | 输入 2、输出 10 美元每百万 token：sonnet-5-5、gpt-6.1-sol、gemini-4-argon、kimi-k3.1-pro、qwen3.8-max、glm-5.3、grok-4.7、deepseek-v4-pro 在内，astra、fable、opus 不在。每天 3 美元的预算照样兜底 |
@@ -94,3 +94,20 @@
 11. 拉不到列表、或一半以上的可用 Profile 不在列表上：不改文件，退出码非 0。
 12. 密钥不出现在标准输出、标准错误与报告里（对着一个要求认证的本地假中转站测）。
 13. 仓库里的规则文件引用的线、租户与 Profile 都对得上。
+
+## 7. 第一次运行（2026-11-03）与上线
+
+对着中转站与 models.dev 跑了一次，仓库里的 Profile、种子、默认策略与 values.yaml 已经按结果改好（第二遍 `--check` 没有出入）：
+
+- 加了：glm-5.3-flash、qwen3.8-flash（服务）；mimo-v2.6-pro、LongCat-2.0（候选，只给 evals；id 一律小写，例如 `a6api/longcat-2.0@2026-11`）。
+- 停用：gpt-5.5、gpt-4o-mini、gemini-3.5-flash，分别由 gpt-6.1-sol、gpt-6-luna、gemini-3.8-flash 接替。
+- 有更新的版本但没有一方价格：deepseek-v4.1-flash（第 5 节第 3 条，先不加）。
+- 新线，只列出来：mimo-v2.6-flash、glm-5.3-flashx、kimi-k3。
+- 免费档的白名单从 8 个变成 18 个：去掉了停用的两个，加上了 claude-sonnet-5-5、gemini-4-argon、deepseek-v4-pro、grok-4.7、kimi-k3.1-pro、qwen3.8-max、glm-5.3、gemini-3.8-flash、gpt-6.1-terra、gpt-6-luna、glm-5.3-flash、qwen3.8-flash。
+
+上线要做的（部署时）：
+1. Profile 的 ConfigMap（`agent-runtime-model-profiles`）从新的 `deploy/dev/model-profiles.json` 重建，Registry 按新种子发布，网关重启后读到。
+2. 线上的白名单 ConfigMap（`agent-runtime-model-allowlist`）不在仓库里：拿它的副本跑 `scripts/sync_model_catalog.py --policies <副本> --relay-models …`（或直接联网），
+   `default` 与 `gh-hanwen-jiang`、`evals`、`swebench` 的列表按规则重算，`ceiling` 与各租户的预算原样，再更新 ConfigMap。
+3. 方案 A 的工作流要人先做两件事：在仓库的 Actions Secrets 里配 `AR_MODEL_PROVIDER_BASE_URL`、`AR_MODEL_PROVIDER_API_KEY`；
+   在仓库设置里打开 “Allow GitHub Actions to create and approve pull requests”。用 `GITHUB_TOKEN` 开的 PR 不会触发 ci.yml，合并前手动跑一次检查。

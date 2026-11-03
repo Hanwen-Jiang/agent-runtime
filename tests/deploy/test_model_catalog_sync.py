@@ -9,6 +9,7 @@ from __future__ import annotations
 import http.server
 import importlib.util
 import json
+import sys
 import threading
 from collections.abc import Iterator
 from pathlib import Path
@@ -27,6 +28,7 @@ def _module() -> Any:
     spec = importlib.util.spec_from_file_location("sync_model_catalog", SCRIPT)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module  # dataclass 要在 sys.modules 里找到所在的模块
     spec.loader.exec_module(module)
     return module
 
@@ -298,6 +300,15 @@ def test_untracked_new_lines_are_only_reported(planned: Any) -> None:
 def test_tracked_new_line_is_added_with_the_rule_class(planned: Any) -> None:
     glm = _by_id(planned.document)["a6api/glm-5.3-flash@2026-11"]
     assert glm["vendor"] == "zhipuai" and glm["class"] == "small" and glm["tiers"] == [LOW]
+
+
+def test_profile_id_is_lowercase_but_the_model_keeps_its_case() -> None:
+    catalog = {**CATALOG, "longcat": {"models": {"LongCat-2.0": _entry("2026-06-30", 0.3, 1.2)}}}
+    rules = _rules(vendors={**_rules()["vendors"], "meituan": {"provider": "longcat", "prefixes": ["longcat-"]}},
+                   track=[{"line": "meituan:longcat-*", "class": "strong", "tiers": ["medium", "high"], "candidate": True}])
+    result = cat.plan(_profiles(), [*RELAY, "LongCat-2.0"], catalog, rules, TODAY)
+    new = _by_id(result.document)["a6api/longcat-2.0@2026-11"]
+    assert new["model"] == "LongCat-2.0" and new["vendor"] == "meituan"
 
 
 def test_old_new_lines_are_left_out_of_the_report() -> None:
