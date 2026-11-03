@@ -113,7 +113,9 @@
         "judgebench",
         "longbench",
         "simpleqa",
-        "frames"
+        "frames",
+        "tau2",
+        "rewardbench2"
       ]
     },
     {
@@ -213,7 +215,9 @@
         "judgebench",
         "longbench",
         "simpleqa",
-        "frames"
+        "frames",
+        "tau2",
+        "rewardbench2"
       ]
     }
   ],
@@ -575,6 +579,58 @@
       "description": {
         "zh": "要查好几篇资料、再推理的多跳问题。",
         "en": "Multi-hop questions that need several sources and some reasoning."
+      }
+    },
+    {
+      "name": "tau2",
+      "path": "public",
+      "items": "jsonl",
+      "file": "tau2.jsonl",
+      "question": "question",
+      "answer": "answer",
+      "source_type": "original",
+      "framework": "official-templates",
+      "eval_category": "agent",
+      "source": {
+        "dataset": "τ²-bench",
+        "url": "https://github.com/sierra-research/tau2-bench",
+        "revision": "989d3285ae669e49503324bdb9981bf14fccedeb",
+        "license": "MIT",
+        "selection": "能力矩阵第一轮每格的前缀：n = 40、seed = 0（各适配器的哈希排序，n 变大只在后面追加）；三个领域轮流取"
+      },
+      "title": {
+        "zh": "τ²-bench（原题）",
+        "en": "τ²-bench (original)"
+      },
+      "description": {
+        "zh": "航空、零售、电信的客服场景：题目是模拟用户拿到的场景说明，答案是官方的期望动作与判分依据（按最终状态判）。",
+        "en": "Airline, retail and telecom support: the question is the simulated user's scenario; the answer is the official expected actions and grading basis (judged on the final state)."
+      }
+    },
+    {
+      "name": "rewardbench2",
+      "path": "public",
+      "items": "jsonl",
+      "file": "rewardbench2.jsonl",
+      "question": "question",
+      "answer": "answer",
+      "source_type": "original",
+      "framework": "official-templates",
+      "eval_category": "judge",
+      "source": {
+        "dataset": "RewardBench 2",
+        "url": "https://huggingface.co/datasets/allenai/reward-bench-2",
+        "revision": "7ff08853b0d5686e79b13fda8677024f566a104a",
+        "license": "ODC-BY（回答出自多个模型，各有使用条款；不要拿来训练）",
+        "selection": "能力矩阵第一轮每格的前缀：n = 40、seed = 0（各适配器的哈希排序，n 变大只在后面追加）"
+      },
+      "title": {
+        "zh": "RewardBench 2（原题）",
+        "en": "RewardBench 2 (original)"
+      },
+      "description": {
+        "zh": "几份回答里挑出最好的：考当裁判的能力。答案是好回答，被拒的回答在展开的细节里。",
+        "en": "Pick the best of several responses: a test of judging. The answer is the chosen response; the rejected ones are in the details."
       }
     }
   ]

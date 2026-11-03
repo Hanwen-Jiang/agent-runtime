@@ -83,7 +83,7 @@
 
 - 令牌改为挂载的 K8s Secret 文件（第 4 节已改）。
 - **原题（2026-11-03 补上）**：`evalsets/public/*.jsonl`，来源写在 site.json 的数据集上，状态是 original（官方题，不需人审）。
-  SWE-bench Verified 是 t18-rev19 与 sol-rev18 跑的那 50 题，Terminal-Bench 2.0 是全部 89 题（只有题目说明与测试，**不放官方参考解**，免得题目流进训练数据）；BFCL、JudgeBench、LongBench v2（只有问题与选项，不收长篇原文）、SimpleQA、FRAMES 是能力矩阵第一轮的前缀（`scripts/export_public_items.py`，n = 40、seed = 0）。**τ²-bench 与 RewardBench 2 还没上**：前者要装官方的 tau2 包才选得出题，后者经 Hugging Face 的 rows 接口取回的 JSON 被截断（适配器要改用 parquet）。页面现在公开 437 道，留出集 24 道只计数；所有数据集合起来约 4 MB，页面一次取完，以后可以改成按需加载。题目里形似访问令牌的字符串（Terminal-Bench 的 sanitize-git-repo 故意放了 4 个假令牌）换成了占位符，题目的 extra 里注明：GitHub 的推送保护会拦，也不该进仓库。
+  SWE-bench Verified 是 t18-rev19 与 sol-rev18 跑的那 50 题，Terminal-Bench 2.0 是全部 89 题（只有题目说明与测试，**不放官方参考解**，免得题目流进训练数据）；BFCL、JudgeBench、LongBench v2（只有问题与选项，不收长篇原文）、SimpleQA、FRAMES 是能力矩阵第一轮的前缀（`scripts/export_public_items.py`，n = 40、seed = 0）。**τ²-bench 与 RewardBench 2 后来补上**：在服务器上装了评测依赖的环境里导出（`eval-requirements.txt` 里 harbor 0.24.0 与 tau2 2.0.0 对 litellm 的要求冲突，装不进同一个环境，导出用的环境去掉了 harbor）；RewardBench 2 原来读缓存时把回答里的 U+2028 当换行切断了 JSON（`_datasets.read_jsonl` 已改）。τ²-bench 的题目是模拟用户拿到的场景，答案是官方的期望动作与判分依据。页面现在公开 437 道，留出集 24 道只计数；所有数据集合起来约 4 MB，页面一次取完，以后可以改成按需加载。题目里形似访问令牌的字符串（Terminal-Bench 的 sanitize-git-repo 故意放了 4 个假令牌）换成了占位符，题目的 extra 里注明：GitHub 的推送保护会拦，也不该进仓库。
 - 评测结果仍是发布步骤写的整页（第 3 节第 3 条的二选一没做）；主页的结果卡片读实时的一栏。
 - 页面冒烟测试（headless 浏览器）没写，靠手动看过。
 - 上线要：人建只读令牌（fine-grained，只给本仓库 Contents 读），建 Secret `<release>-agent-runtime-eval-site`（键 `token`），
