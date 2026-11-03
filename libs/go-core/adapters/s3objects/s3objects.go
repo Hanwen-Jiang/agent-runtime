@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -27,6 +28,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -479,6 +481,31 @@ func (s *store) TemporaryURL(_ context.Context, key string, ttl time.Duration, m
 	}
 	seconds := min(maxPresign, max(1, int(math.Ceil(ttl.Seconds()))))
 	return Presign(method, s.p.URL(name, ""), seconds, s.p.opts.AccessKeyID, s.p.opts.SecretAccessKey, s.p.opts.Region, "s3", s.p.clock.Now())
+}
+
+// SignedUpload 签进 x-amz-checksum-sha256（存储按内容核对）、If-None-Match: *（不覆盖）与 Content-Length（STOR-SEC）。
+// 上线前要在选定的存储上实测这三个头是否被强制执行（AR_LIVE_S3 的一致性测试）。
+func (s *store) SignedUpload(_ context.Context, key string, ttl time.Duration, sha256 string, size int64) (objectstore.SignedUpload, error) {
+	name, err := s.name(key)
+	if err != nil {
+		return objectstore.SignedUpload{}, err
+	}
+	if err := objectstore.CheckSignedUpload(sha256, size, ttl); err != nil {
+		return objectstore.SignedUpload{}, err
+	}
+	if err := s.p.opts.Faults.Check("SignedUpload"); err != nil {
+		return objectstore.SignedUpload{}, err
+	}
+	digest, _ := hex.DecodeString(sha256)
+	headers := map[string]string{
+		"Content-Length": strconv.FormatInt(size, 10), "If-None-Match": "*", "x-amz-checksum-sha256": base64.StdEncoding.EncodeToString(digest),
+	}
+	seconds := int(math.Ceil(ttl.Seconds()))
+	u, err := PresignHeaders(http.MethodPut, s.p.URL(name, ""), seconds, s.p.opts.AccessKeyID, s.p.opts.SecretAccessKey, s.p.opts.Region, "s3", s.p.clock.Now(), headers)
+	if err != nil {
+		return objectstore.SignedUpload{}, err
+	}
+	return objectstore.SignedUpload{URL: u, Headers: headers}, nil
 }
 
 // 生命周期配置：解析时保留不认识的规则原样（innerxml），只替换本作用域的。

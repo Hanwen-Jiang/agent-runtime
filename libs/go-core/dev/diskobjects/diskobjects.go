@@ -238,40 +238,53 @@ func (p *Provider) allLocked(owner string) ([]meta, error) {
 	return out, nil
 }
 
-func (p *Provider) sign(owner, key, method string, expires int64) string {
+// sign 签临时地址；upload 是 SignedUpload 签进去的“sha256:size”（与 Python 侧同样的写法），空表示普通地址。
+func (p *Provider) sign(owner, key, method string, expires int64, upload string) string {
 	mac := hmac.New(sha256.New, p.opts.SigningKey)
 	fmt.Fprintf(mac, "%s\n%s\n%s\n%d", owner, key, method, expires)
+	if upload != "" {
+		fmt.Fprintf(mac, "\n%s", upload)
+	}
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
-func (p *Provider) verify(raw, method string) (string, string, error) {
+func (p *Provider) url(owner, key, method string, expires int64, upload string) string {
+	extra := ""
+	if upload != "" {
+		extra = "&upload=" + upload
+	}
+	return fmt.Sprintf("devobj://%s/%s?method=%s&expires=%d%s&sig=%s",
+		owner, base64.URLEncoding.EncodeToString([]byte(key)), method, expires, extra, p.sign(owner, key, method, expires, upload))
+}
+
+func (p *Provider) verify(raw, method string) (string, string, string, error) {
 	denied := providererr.New(providererr.Denied, "invalid_url", "临时地址无效")
 	u, err := url.Parse(raw)
 	if err != nil || u.Scheme != "devobj" {
-		return "", "", denied
+		return "", "", "", denied
 	}
 	keyBytes, err := base64.URLEncoding.DecodeString(strings.TrimPrefix(u.Path, "/"))
 	if err != nil {
-		return "", "", denied
+		return "", "", "", denied
 	}
 	q := u.Query()
 	expires, err := strconv.ParseInt(q.Get("expires"), 10, 64)
 	if err != nil || q.Get("method") != method {
-		return "", "", denied
+		return "", "", "", denied
 	}
-	owner, key := u.Host, string(keyBytes)
-	if !hmac.Equal([]byte(q.Get("sig")), []byte(p.sign(owner, key, method, expires))) {
-		return "", "", denied
+	owner, key, upload := u.Host, string(keyBytes), q.Get("upload")
+	if !hmac.Equal([]byte(q.Get("sig")), []byte(p.sign(owner, key, method, expires, upload))) {
+		return "", "", "", denied
 	}
 	if expires <= p.clock.Now().Unix() {
-		return "", "", providererr.New(providererr.Denied, "expired_url", "临时地址已过期")
+		return "", "", "", providererr.New(providererr.Denied, "expired_url", "临时地址已过期")
 	}
-	return owner, key, nil
+	return owner, key, upload, nil
 }
 
 // FetchURL 用 GET 临时地址取对象（开发专用）。
 func (p *Provider) FetchURL(_ context.Context, raw string) ([]byte, error) {
-	owner, key, err := p.verify(raw, "GET")
+	owner, key, _, err := p.verify(raw, "GET")
 	if err != nil {
 		return nil, err
 	}
@@ -282,15 +295,47 @@ func (p *Provider) FetchURL(_ context.Context, raw string) ([]byte, error) {
 }
 
 // UploadURL 用 PUT 临时地址上传（开发专用）。
-func (p *Provider) UploadURL(_ context.Context, raw string, data []byte) error {
-	owner, key, err := p.verify(raw, "PUT")
+func (p *Provider) UploadURL(ctx context.Context, raw string, data []byte) error {
+	return p.UploadSignedURL(ctx, raw, data, nil)
+}
+
+// UploadSignedURL 同 UploadURL；SignedUpload 的地址要带上它给的 headers，内容的 sha256、长度与签的一致，对象不存在才写（开发专用）。
+func (p *Provider) UploadSignedURL(_ context.Context, raw string, data []byte, headers map[string]string) error {
+	owner, key, upload, err := p.verify(raw, "PUT")
 	if err != nil {
 		return err
 	}
+	opts := objectstore.PutOptions{}
+	if upload != "" {
+		digest, sizeText, _ := strings.Cut(upload, ":")
+		size, _ := strconv.ParseInt(sizeText, 10, 64)
+		got := map[string]string{}
+		for k, v := range headers {
+			got[strings.ToLower(k)] = v
+		}
+		for k, v := range signedHeaders(digest, size) {
+			if !strings.EqualFold(k, "Content-Length") && got[strings.ToLower(k)] != v {
+				return providererr.New(providererr.Denied, "invalid_url", "上传没有带上签进去的头")
+			}
+		}
+		sum := sha256.Sum256(data)
+		if int64(len(data)) != size || hex.EncodeToString(sum[:]) != digest {
+			return providererr.New(providererr.Invalid, "bad_digest", "上传的内容与签的 sha256 或长度不符")
+		}
+		opts.IfAbsent = true
+	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	_, err = p.writeLocked(owner, key, data, objectstore.PutOptions{})
+	_, err = p.writeLocked(owner, key, data, opts)
 	return err
+}
+
+// signedHeaders 是 SignedUpload 要求带上的头：与 S3 实现同样的三个（开发实现自己核对）。
+func signedHeaders(sha256Hex string, size int64) map[string]string {
+	digest, _ := hex.DecodeString(sha256Hex)
+	return map[string]string{
+		"Content-Length": strconv.FormatInt(size, 10), "If-None-Match": "*", "x-amz-checksum-sha256": base64.StdEncoding.EncodeToString(digest),
+	}
 }
 
 // RunLifecycle 立即执行一次生命周期清理（开发专用）。
@@ -460,8 +505,22 @@ func (s *store) TemporaryURL(_ context.Context, key string, ttl time.Duration, m
 		return "", err
 	}
 	expires := s.p.clock.Now().Add(ttl).Unix()
-	return fmt.Sprintf("devobj://%s/%s?method=%s&expires=%d&sig=%s",
-		s.owner, base64.URLEncoding.EncodeToString([]byte(key)), method, expires, s.p.sign(s.owner, key, method, expires)), nil
+	return s.p.url(s.owner, key, method, expires, ""), nil
+}
+
+func (s *store) SignedUpload(_ context.Context, key string, ttl time.Duration, sha256Hex string, size int64) (objectstore.SignedUpload, error) {
+	if err := CheckKey(key); err != nil {
+		return objectstore.SignedUpload{}, err
+	}
+	if err := objectstore.CheckSignedUpload(sha256Hex, size, ttl); err != nil {
+		return objectstore.SignedUpload{}, err
+	}
+	if err := s.p.faults.Check("SignedUpload"); err != nil {
+		return objectstore.SignedUpload{}, err
+	}
+	expires := s.p.clock.Now().Add(ttl).Unix()
+	upload := sha256Hex + ":" + strconv.FormatInt(size, 10)
+	return objectstore.SignedUpload{URL: s.p.url(s.owner, key, "PUT", expires, upload), Headers: signedHeaders(sha256Hex, size)}, nil
 }
 
 func (s *store) SetLifecycle(_ context.Context, rules []objectstore.LifecycleRule) error {

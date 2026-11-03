@@ -80,20 +80,26 @@ def sign(
     return out
 
 
-def presign(method: str, url: str, *, expires: int, access_key: str, secret: str, region: str, service: str = "s3", now: datetime) -> str:
-    """预签名地址（查询串里带签名）：只签 host 头，载荷不签（UNSIGNED-PAYLOAD）。"""
+def presign(
+    method: str, url: str, *, expires: int, access_key: str, secret: str, region: str, service: str = "s3", now: datetime,
+    headers: Mapping[str, str] | None = None,
+) -> str:
+    """预签名地址（查询串里带签名）：签 host 头与 headers（使用方要原样带上它们），载荷不签（UNSIGNED-PAYLOAD）。"""
     parts = urllib.parse.urlsplit(url)
     amz_date, date = _stamp(now)
     scope = f"{date}/{region}/{service}/aws4_request"
+    lower = {k.lower(): str(v) for k, v in (headers or {}).items()}
+    lower["host"] = parts.netloc
+    signed = sorted(lower)
     params = urllib.parse.parse_qsl(parts.query, keep_blank_values=True) + [
         ("X-Amz-Algorithm", ALGORITHM),
         ("X-Amz-Credential", f"{access_key}/{scope}"),
         ("X-Amz-Date", amz_date),
         ("X-Amz-Expires", str(expires)),
-        ("X-Amz-SignedHeaders", "host"),
+        ("X-Amz-SignedHeaders", ";".join(signed)),
     ]
     query = "&".join(f"{quote(k)}={quote(v)}" for k, v in params)
-    request = canonical_request(method, parts.path, query, {"host": parts.netloc}, ["host"], UNSIGNED_PAYLOAD)
+    request = canonical_request(method, parts.path, query, lower, signed, UNSIGNED_PAYLOAD)
     to_sign = "\n".join([ALGORITHM, amz_date, scope, hashlib.sha256(request.encode()).hexdigest()])
     signature = hmac.new(signing_key(secret, date, region, service), to_sign.encode(), hashlib.sha256).hexdigest()
     return urllib.parse.urlunsplit((parts.scheme, parts.netloc, parts.path, f"{query}&X-Amz-Signature={signature}", ""))

@@ -21,7 +21,7 @@ from urllib.parse import parse_qs, urlsplit
 from agentruntime_core.clock import Clock, SystemClock
 from agentruntime_core.dev._common import PLATFORM_ID, check_positive, scope_id
 from agentruntime_core.errors import ConflictError, DeniedError, InvalidError, NotFoundError
-from agentruntime_core.providers.object_store import LifecycleRule, ObjectData, ObjectInfo, ObjectPage
+from agentruntime_core.providers.object_store import LifecycleRule, ObjectData, ObjectInfo, ObjectPage, SignedUpload, check_signed_upload
 from agentruntime_core.tenancy import Scope, TenantContext, platform_scope, tenant_scope
 from agentruntime_core.testing import FaultInjector
 
@@ -38,6 +38,11 @@ def check_key(key: str) -> str:
     if any(segment in ("", ".", "..") for segment in key.split("/")):
         raise InvalidError("invalid_key", "键不得有空段、. 或 .. 段")
     return key
+
+
+def _signed_headers(sha256: str, size: int) -> dict[str, str]:
+    """signed_upload 要求带上的头：与 S3 实现同样的三个（开发实现自己核对）。"""
+    return {"Content-Length": str(size), "If-None-Match": "*", "x-amz-checksum-sha256": base64.b64encode(bytes.fromhex(sha256)).decode()}
 
 
 def key_of_uri(uri: str, owner: str) -> str:
@@ -80,15 +85,17 @@ class LocalDiskObjectStoreProvider:
 
     # --- 开发专用：临时地址与生命周期 ---
 
-    def _sign(self, owner: str, key: str, method: str, expires: int) -> str:
-        message = f"{owner}\n{key}\n{method}\n{expires}".encode()
-        return hmac.new(self._signing_key, message, hashlib.sha256).hexdigest()
+    def _sign(self, owner: str, key: str, method: str, expires: int, upload: str = "") -> str:
+        message = f"{owner}\n{key}\n{method}\n{expires}" + (f"\n{upload}" if upload else "")
+        return hmac.new(self._signing_key, message.encode(), hashlib.sha256).hexdigest()
 
-    def _url(self, owner: str, key: str, method: str, expires: int) -> str:
+    def _url(self, owner: str, key: str, method: str, expires: int, upload: str = "") -> str:
+        """upload 是 signed_upload 签进去的“sha256:size”；签名同时覆盖它，改了就对不上。"""
         encoded = base64.urlsafe_b64encode(key.encode()).decode()
-        return f"devobj://{owner}/{encoded}?method={method}&expires={expires}&sig={self._sign(owner, key, method, expires)}"
+        extra = f"&upload={upload}" if upload else ""
+        return f"devobj://{owner}/{encoded}?method={method}&expires={expires}{extra}&sig={self._sign(owner, key, method, expires, upload)}"
 
-    def _verify(self, url: str, method: str) -> tuple[str, str]:
+    def _verify(self, url: str, method: str) -> tuple[str, str, str]:
         try:
             parts = urlsplit(url)
             query = {k: v[0] for k, v in parse_qs(parts.query).items()}
@@ -97,23 +104,35 @@ class LocalDiskObjectStoreProvider:
             expires = int(query["expires"])
             signature = query["sig"]
             signed_method = query["method"]
+            upload = query.get("upload", "")
         except (KeyError, ValueError, UnicodeDecodeError) as error:
             raise DeniedError("invalid_url", "临时地址无效") from error
         if parts.scheme != "devobj" or signed_method != method:
             raise DeniedError("invalid_url", "临时地址无效")
-        if not hmac.compare_digest(signature, self._sign(owner, key, method, expires)):
+        if not hmac.compare_digest(signature, self._sign(owner, key, method, expires, upload)):
             raise DeniedError("invalid_url", "临时地址签名不对")
         if expires <= int(self._clock.now().timestamp()):
             raise DeniedError("expired_url", "临时地址已过期")
-        return owner, key
+        return owner, key, upload
 
     async def fetch_url(self, url: str) -> bytes:
-        owner, key = self._verify(url, "GET")
+        owner, key, _ = self._verify(url, "GET")
         return _Files(self, owner).read(key).data
 
-    async def upload_url(self, url: str, data: bytes) -> None:
-        owner, key = self._verify(url, "PUT")
-        _Files(self, owner).write(key, data, "application/octet-stream", {}, if_absent=False)
+    async def upload_url(self, url: str, data: bytes, *, headers: Mapping[str, str] | None = None) -> None:
+        """用 PUT 地址上传。signed_upload 的地址要带上它给的 headers，内容的 sha256、长度与签的一致，对象不存在才写。"""
+        owner, key, upload = self._verify(url, "PUT")
+        if not upload:
+            _Files(self, owner).write(key, data, "application/octet-stream", {}, if_absent=False)
+            return
+        sha256, size = upload.split(":")
+        want = _signed_headers(sha256, int(size))
+        got = {k.lower(): v for k, v in (headers or {}).items()}
+        if any(got.get(k.lower()) != v for k, v in want.items() if k.lower() != "content-length"):
+            raise DeniedError("invalid_url", "上传没有带上签进去的头")
+        if len(data) != int(size) or hashlib.sha256(data).hexdigest() != sha256:
+            raise InvalidError("bad_digest", "上传的内容与签的 sha256 或长度不符")
+        _Files(self, owner).write(key, data, "application/octet-stream", {}, if_absent=True)
 
     async def run_lifecycle(self) -> None:
         if not self._root.exists():
@@ -278,6 +297,13 @@ class LocalDiskObjectStore:
             raise InvalidError("invalid_argument", "method 只能是 GET 或 PUT")
         expires = int((self._provider._clock.now() + ttl).timestamp())
         return self._provider._url(self._owner, key, method, expires)
+
+    async def signed_upload(self, key: str, *, ttl: timedelta, sha256: str, size: int) -> SignedUpload:
+        self._enter("signed_upload")
+        check_key(key)
+        check_signed_upload(sha256, size, ttl)
+        expires = int((self._provider._clock.now() + ttl).timestamp())
+        return SignedUpload(url=self._provider._url(self._owner, key, "PUT", expires, f"{sha256}:{size}"), headers=_signed_headers(sha256, size))
 
     async def set_lifecycle(self, rules: Sequence[LifecycleRule]) -> None:
         self._enter("set_lifecycle")

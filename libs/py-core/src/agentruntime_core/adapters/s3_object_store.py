@@ -36,7 +36,7 @@ from agentruntime_core.clock import Clock, SystemClock
 from agentruntime_core.dev._common import scope_id
 from agentruntime_core.dev.object_store import check_key, key_of_uri
 from agentruntime_core.errors import ConflictError, DeniedError, InvalidError, NotFoundError, ProviderError, TransientError
-from agentruntime_core.providers.object_store import LifecycleRule, ObjectData, ObjectInfo, ObjectPage
+from agentruntime_core.providers.object_store import LifecycleRule, ObjectData, ObjectInfo, ObjectPage, SignedUpload, check_signed_upload
 from agentruntime_core.secrets import Secret
 from agentruntime_core.tenancy import Scope, TenantContext, platform_scope, tenant_scope
 from agentruntime_core.testing import FaultInjector
@@ -305,6 +305,22 @@ class S3ObjectStore:
             method, self._p.url(self._name(key)), expires=seconds, access_key=self._p._access_key,
             secret=secret if isinstance(secret, str) else secret.decode(), region=self._p.region, now=self._p._now(),
         )
+
+    async def signed_upload(self, key: str, *, ttl: timedelta, sha256: str, size: int) -> SignedUpload:
+        """只能写一次、只能写这份内容的 PUT 地址（STOR-SEC）：签进 x-amz-checksum-sha256（存储按内容核对）、If-None-Match: *
+        （不覆盖）与 Content-Length。上线前要在选定的存储上实测这三个头是否被强制执行（AR_LIVE_S3 的一致性测试）。"""
+        self._p._faults.check("signed_upload")
+        check_signed_upload(sha256, size, ttl)
+        headers = {
+            "Content-Length": str(size), "If-None-Match": "*",
+            "x-amz-checksum-sha256": base64.b64encode(bytes.fromhex(sha256)).decode(),
+        }
+        secret = self._p._secret.reveal()
+        url = sigv4.presign(
+            "PUT", self._p.url(self._name(key)), expires=math.ceil(ttl.total_seconds()), access_key=self._p._access_key,
+            secret=secret if isinstance(secret, str) else secret.decode(), region=self._p.region, now=self._p._now(), headers=headers,
+        )
+        return SignedUpload(url=url, headers=headers)
 
     async def set_lifecycle(self, rules: Sequence[LifecycleRule]) -> None:
         self._p._faults.check("set_lifecycle")

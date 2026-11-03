@@ -132,18 +132,32 @@ func Sign(req *http.Request, payloadHash, accessKey string, secretKey secret.Val
 
 // Presign 生成预签名地址（查询串里带签名）：只签 host 头，载荷不签。
 func Presign(method, rawURL string, expires int, accessKey string, secretKey secret.Value, region, service string, now time.Time) (string, error) {
+	return PresignHeaders(method, rawURL, expires, accessKey, secretKey, region, service, now, nil)
+}
+
+// PresignHeaders 同 Presign，另把 headers 签进去（使用方要原样带上它们）。
+func PresignHeaders(method, rawURL string, expires int, accessKey string, secretKey secret.Value, region, service string, now time.Time, headers map[string]string) (string, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return "", err
 	}
 	amzDate, date := stamp(now)
 	scope := date + "/" + region + "/" + service + "/aws4_request"
+	lower := map[string]string{"host": u.Host}
+	for k, v := range headers {
+		lower[strings.ToLower(k)] = v
+	}
+	signed := make([]string, 0, len(lower))
+	for name := range lower {
+		signed = append(signed, name)
+	}
+	sort.Strings(signed)
 	params := [][2]string{
 		{"X-Amz-Algorithm", algorithm},
 		{"X-Amz-Credential", accessKey + "/" + scope},
 		{"X-Amz-Date", amzDate},
 		{"X-Amz-Expires", strconv.Itoa(expires)},
-		{"X-Amz-SignedHeaders", "host"},
+		{"X-Amz-SignedHeaders", strings.Join(signed, ";")},
 	}
 	parts := []string{}
 	if u.RawQuery != "" {
@@ -153,7 +167,7 @@ func Presign(method, rawURL string, expires int, accessKey string, secretKey sec
 		parts = append(parts, Escape(p[0], false)+"="+Escape(p[1], false))
 	}
 	query := strings.Join(parts, "&")
-	request := canonicalRequest(method, u.EscapedPath(), query, map[string]string{"host": u.Host}, []string{"host"}, UnsignedPayload)
+	request := canonicalRequest(method, u.EscapedPath(), query, lower, signed, UnsignedPayload)
 	u.RawQuery = query + "&X-Amz-Signature=" + signature(secretKey.RevealString(), date, region, service, amzDate, scope, request)
 	return u.String(), nil
 }
