@@ -9,3 +9,11 @@ harbor==0.24.0
 # ragas 的桥：判分模型经 langchain-openai；离线指标（字符串相似度）要 rapidfuzz。
 langchain-openai==0.3.35
 rapidfuzz==3.14.6
+# 能力矩阵（capability.evals，docs/plan/capability-matrix-evals.md）：
+#   - τ²-bench 在同一进程里用官方的环境、提示与终态判分：tau2 2.0.0 是 v2.0.0 标签的提交（不在 PyPI 上；PyPI 上同名的 tau2 是别的包）。
+#     Python 3.13 去掉了 audioop，tau2 的语音部分 import 时要它。数据另取（TAU2_DATA_DIR，或 capability.evals.tau2.fetch_data）。
+#   - RewardBench 2 读官方的 parquet（没有时退回 datasets-server 的 rows 接口）。
+# 2026-11-03 在 tau2 2.0.0、audioop-lts 0.2.2、pyarrow 26.0.0 上核对过（三个领域各一道题按标准动作走一遍得 1 分）。
+tau2 @ git+https://github.com/sierra-research/tau2-bench@989d3285ae669e49503324bdb9981bf14fccedeb
+audioop-lts==0.2.2
+pyarrow==26.0.0
