@@ -141,9 +141,15 @@ func TestFromEnvProfile(t *testing.T) {
 
 	dsn := "postgres://app:s3cret-password@db.internal:5432/agentruntime"
 	m[EnvRelationalDSN] = dsn
+	// TSP-2（TS-PROD-01 ②）：生产模式的 Cache 也必须是 Valkey，进程内的 Cache 只能单副本、重启丢流。
+	_, err = FromEnv(env(m))
+	if err == nil || !strings.Contains(err.Error(), EnvValkeyURL) {
+		t.Fatalf("生产模式没有 %s 应当拒绝启动并指出变量名，实际 %v", EnvValkeyURL, err)
+	}
+	m[EnvValkeyURL] = "valkey://:valkey-s3cret@valkey-agentruntime.data.svc:6379/0"
 	cfg, err := FromEnv(env(m))
 	if err != nil {
-		t.Fatalf("生产模式配了连接串应当能起来：%v", err)
+		t.Fatalf("生产模式配了连接串与 Valkey 应当能起来：%v", err)
 	}
 	if !cfg.Production || cfg.RelationalDSN.RevealString() != dsn {
 		t.Errorf("生产模式与连接串没有读进来：production=%v", cfg.Production)
@@ -209,6 +215,27 @@ func TestFromEnvValkeyURL(t *testing.T) {
 			t.Errorf("%q 应当报错并指出变量名，实际 %v", bad, err)
 		} else if strings.Contains(err.Error(), "valkey-s3cret") {
 			t.Errorf("错误信息带出了口令：%v", err)
+		}
+	}
+}
+
+// TSP-2（TS-PROD-01 ①）：业务库连接池的上限可配（AR_RELATIONAL_MAX_CONNS），副本多了以后按 Postgres 的
+// max_connections 配比（Chart 的 taskService.relationalMaxConns）；不设时用适配器的默认值。
+func TestFromEnvRelationalMaxConns(t *testing.T) {
+	cfg, err := FromEnv(env(base()))
+	if err != nil || cfg.RelationalMaxConns != 0 || cfg.Store().MaxConns != 0 {
+		t.Fatalf("不设时用适配器的默认值：%d %v", cfg.RelationalMaxConns, err)
+	}
+	m := base()
+	m[EnvRelationalMaxConns] = "12"
+	cfg, err = FromEnv(env(m))
+	if err != nil || cfg.RelationalMaxConns != 12 || cfg.Store().MaxConns != 12 {
+		t.Fatalf("连接池上限没有读进来：%d %v", cfg.RelationalMaxConns, err)
+	}
+	for _, bad := range []string{"0", "-1", "many", "100000"} {
+		m[EnvRelationalMaxConns] = bad
+		if _, err := FromEnv(env(m)); err == nil || !strings.Contains(err.Error(), EnvRelationalMaxConns) {
+			t.Errorf("%q 应当报错并指出变量名，实际 %v", bad, err)
 		}
 	}
 }

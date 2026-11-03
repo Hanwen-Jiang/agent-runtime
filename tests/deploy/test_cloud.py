@@ -479,7 +479,7 @@ def chart_memory_requests(manifests: list[dict[str, Any]]) -> float:
 
 def data_memory_requests() -> float:
     total = 0.0
-    for path in [DATA / "postgres.yaml", *(DATA / "values").glob("*.yaml")]:
+    for path in [DATA / "postgres.yaml", DATA / "valkey.yaml", *(DATA / "values").glob("*.yaml")]:
         for match in re.finditer(r"requests: \{cpu: [^,]+, memory: ([0-9.]+[MG]i)\}", path.read_text("utf-8")):
             total += mem_gi(match.group(1))
     redpanda = yaml.safe_load((DATA / "values" / "redpanda.yaml").read_text("utf-8"))
