@@ -366,8 +366,10 @@ func (x *Workspace) GetEnvironmentId() string {
 }
 
 // WorkspaceEnvironment 是应用保存的可复用环境配置（人工验收 Q16–37；docs/plan/env-02-implementation-2026-11-03.md）
-// 在建工作区时的一份快照：环境与仓库无关，同一个环境可以用于多个工作区；之后编辑环境只影响新建的工作区。
-// 里面只有普通值与密钥的名字，没有密钥的值；Runtime 按（租户，工作区）保存这份快照，SandboxBroker 建环境时读它。
+// 在建会话时的一份快照：环境与仓库无关，同一个环境可以用于多个工作区；之后编辑环境只影响新建的会话。
+// 非机密的设置（setup_script、start_command、network）一直跟着会话；机密部分（env、secret_headers）只在配置还在时交，
+// 配置删除时立即删掉（DeleteEnvironmentConfig）。没有密钥的值，只有它们在 SecretStore 里的名字；Runtime 按（租户，工作区）
+// 保存这份快照，SandboxBroker 建环境时读它。
 // 环境的状态（setup 是否成功、是否就绪）只以 EnvironmentService 的环境表为准，不从日志推断。
 type WorkspaceEnvironment struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -381,7 +383,8 @@ type WorkspaceEnvironment struct {
 	// 失败只记录、不阻止业务命令。最多 64 KiB。
 	StartCommand string `protobuf:"bytes,3,opt,name=start_command,json=startCommand,proto3" json:"start_command,omitempty"`
 	// 普通环境变量，.env 格式：一行一个 KEY=value，# 开头的行与空行忽略；值原样（不做引号与变量展开）。
-	// 交给 setup、start 与每条命令，环境的使用者看得到：不要放机密（机密用 secret_headers 引用）。
+	// 交给 setup、start 与每条命令，环境的使用者看得到（Q25）；按配置的机密部分处理：配置删除时一并删掉。真正的密钥不放这里，
+	// 用 secret_headers 引用。
 	// 最多 64 个、合计 16 KiB；名字规则同 Sandbox 的 exec env，不能盖掉平台注入的变量（代理、包镜像等）。
 	Env     string              `protobuf:"bytes,4,opt,name=env,proto3" json:"env,omitempty"`
 	Network *EnvironmentNetwork `protobuf:"bytes,5,opt,name=network,proto3" json:"network,omitempty"`
@@ -2416,7 +2419,7 @@ func (x *DeleteEnvironmentConfigRequest) GetEnvironmentId() string {
 
 type DeleteEnvironmentConfigResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 这次新标记为已删除的工作区个数（已经标记过的不算）。
+	// 这次删掉机密部分、标记为已删除的工作区个数（已经标记过的不算）。
 	Workspaces    int32 `protobuf:"varint,1,opt,name=workspaces,proto3" json:"workspaces,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

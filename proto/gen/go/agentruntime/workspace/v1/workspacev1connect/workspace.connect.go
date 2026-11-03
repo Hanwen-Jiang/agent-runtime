@@ -109,14 +109,17 @@ type WorkspaceServiceClient interface {
 	// （否则 AlreadyExists，code 为 workspace_dirty）；远端是建工作区时的 repo_url（从别的工作区复制的沿用那边的），
 	// 没有远端时 InvalidArgument。凭据同 PushWorkspace，只用这一次。
 	SyncWorkspace(context.Context, *connect.Request[v1.SyncWorkspaceRequest]) (*connect.Response[v1.SyncWorkspaceResponse], error)
-	// 删除一个环境配置（ENV-02，Q35）：立即把调用者用它建的工作区上的选用配置标记为已删除，之后这些工作区不再建新的沙箱
-	// 环境（FailedPrecondition，environment_deleted）；已有的沙箱环境由现有的对账（sandbox reconcile）在闲着时异步销毁。
-	// 不删工作区，环境表（EnvironmentService）仍是状态的权威。幂等：再删一次 workspaces 为 0。只认调用者自己选用的
-	// （建工作区的用户），别人的不动。
+	// 删除一个环境配置（ENV-02，Q35；2026-11-03 用户定：还有会话在用时也可以删）：在调用者用它建的工作区上，立即删掉
+	// 这个配置的机密部分（env 与 secret_headers），并记下删除时间；会话照常使用建会话时的快照里的非机密设置（setup、start、
+	// network），之后的命令不再拿到 .env 的变量，出网网关不再加网络密钥的头。已经在跑的进程里已有的变量收不回来。
+	// 不删工作区、不销毁环境，环境表（EnvironmentService）仍是状态的权威。幂等：再删一次 workspaces 为 0。只认调用者
+	// 自己选用的（建工作区的用户），别人的不动。
 	DeleteEnvironmentConfig(context.Context, *connect.Request[v1.DeleteEnvironmentConfigRequest]) (*connect.Response[v1.DeleteEnvironmentConfigResponse], error)
 	// 给已有的工作区设置（或清除：不给 environment）选用的环境配置（ENV-02）：应用建好会话的工作副本之后、第一个 Task 之前调用，
 	// 与 CreateWorkspaceRequest.environment 的效果相同。只影响之后新准备的沙箱环境；已经准备好的环境不重跑 setup。
 	// 调用者记为选用它的用户（网络密钥按他的名字读，删除环境配置只认他）。工作区不存在时 NotFound。
+	// 配置已经删除的会话只交非机密的快照：同一个 environment_id 在这个工作区上已删除时，再带 env 或 secret_headers 被拒
+	// （PermissionDenied，code 为 environment_deleted）。
 	SetWorkspaceEnvironment(context.Context, *connect.Request[v1.SetWorkspaceEnvironmentRequest]) (*connect.Response[v1.SetWorkspaceEnvironmentResponse], error)
 }
 
@@ -340,14 +343,17 @@ type WorkspaceServiceHandler interface {
 	// （否则 AlreadyExists，code 为 workspace_dirty）；远端是建工作区时的 repo_url（从别的工作区复制的沿用那边的），
 	// 没有远端时 InvalidArgument。凭据同 PushWorkspace，只用这一次。
 	SyncWorkspace(context.Context, *connect.Request[v1.SyncWorkspaceRequest]) (*connect.Response[v1.SyncWorkspaceResponse], error)
-	// 删除一个环境配置（ENV-02，Q35）：立即把调用者用它建的工作区上的选用配置标记为已删除，之后这些工作区不再建新的沙箱
-	// 环境（FailedPrecondition，environment_deleted）；已有的沙箱环境由现有的对账（sandbox reconcile）在闲着时异步销毁。
-	// 不删工作区，环境表（EnvironmentService）仍是状态的权威。幂等：再删一次 workspaces 为 0。只认调用者自己选用的
-	// （建工作区的用户），别人的不动。
+	// 删除一个环境配置（ENV-02，Q35；2026-11-03 用户定：还有会话在用时也可以删）：在调用者用它建的工作区上，立即删掉
+	// 这个配置的机密部分（env 与 secret_headers），并记下删除时间；会话照常使用建会话时的快照里的非机密设置（setup、start、
+	// network），之后的命令不再拿到 .env 的变量，出网网关不再加网络密钥的头。已经在跑的进程里已有的变量收不回来。
+	// 不删工作区、不销毁环境，环境表（EnvironmentService）仍是状态的权威。幂等：再删一次 workspaces 为 0。只认调用者
+	// 自己选用的（建工作区的用户），别人的不动。
 	DeleteEnvironmentConfig(context.Context, *connect.Request[v1.DeleteEnvironmentConfigRequest]) (*connect.Response[v1.DeleteEnvironmentConfigResponse], error)
 	// 给已有的工作区设置（或清除：不给 environment）选用的环境配置（ENV-02）：应用建好会话的工作副本之后、第一个 Task 之前调用，
 	// 与 CreateWorkspaceRequest.environment 的效果相同。只影响之后新准备的沙箱环境；已经准备好的环境不重跑 setup。
 	// 调用者记为选用它的用户（网络密钥按他的名字读，删除环境配置只认他）。工作区不存在时 NotFound。
+	// 配置已经删除的会话只交非机密的快照：同一个 environment_id 在这个工作区上已删除时，再带 env 或 secret_headers 被拒
+	// （PermissionDenied，code 为 environment_deleted）。
 	SetWorkspaceEnvironment(context.Context, *connect.Request[v1.SetWorkspaceEnvironmentRequest]) (*connect.Response[v1.SetWorkspaceEnvironmentResponse], error)
 }
 

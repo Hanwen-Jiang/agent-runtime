@@ -44,14 +44,17 @@ service WorkspaceService {
   // （否则 AlreadyExists，code 为 workspace_dirty）；远端是建工作区时的 repo_url（从别的工作区复制的沿用那边的），
   // 没有远端时 InvalidArgument。凭据同 PushWorkspace，只用这一次。
   rpc SyncWorkspace(SyncWorkspaceRequest) returns (SyncWorkspaceResponse);
-  // 删除一个环境配置（ENV-02，Q35）：立即把调用者用它建的工作区上的选用配置标记为已删除，之后这些工作区不再建新的沙箱
-  // 环境（FailedPrecondition，environment_deleted）；已有的沙箱环境由现有的对账（sandbox reconcile）在闲着时异步销毁。
-  // 不删工作区，环境表（EnvironmentService）仍是状态的权威。幂等：再删一次 workspaces 为 0。只认调用者自己选用的
-  // （建工作区的用户），别人的不动。
+  // 删除一个环境配置（ENV-02，Q35；2026-11-03 用户定：还有会话在用时也可以删）：在调用者用它建的工作区上，立即删掉
+  // 这个配置的机密部分（env 与 secret_headers），并记下删除时间；会话照常使用建会话时的快照里的非机密设置（setup、start、
+  // network），之后的命令不再拿到 .env 的变量，出网网关不再加网络密钥的头。已经在跑的进程里已有的变量收不回来。
+  // 不删工作区、不销毁环境，环境表（EnvironmentService）仍是状态的权威。幂等：再删一次 workspaces 为 0。只认调用者
+  // 自己选用的（建工作区的用户），别人的不动。
   rpc DeleteEnvironmentConfig(DeleteEnvironmentConfigRequest) returns (DeleteEnvironmentConfigResponse);
   // 给已有的工作区设置（或清除：不给 environment）选用的环境配置（ENV-02）：应用建好会话的工作副本之后、第一个 Task 之前调用，
   // 与 CreateWorkspaceRequest.environment 的效果相同。只影响之后新准备的沙箱环境；已经准备好的环境不重跑 setup。
   // 调用者记为选用它的用户（网络密钥按他的名字读，删除环境配置只认他）。工作区不存在时 NotFound。
+  // 配置已经删除的会话只交非机密的快照：同一个 environment_id 在这个工作区上已删除时，再带 env 或 secret_headers 被拒
+  // （PermissionDenied，code 为 environment_deleted）。
   rpc SetWorkspaceEnvironment(SetWorkspaceEnvironmentRequest) returns (SetWorkspaceEnvironmentResponse);
 }
 
@@ -88,8 +91,10 @@ message Workspace {
 }
 
 // WorkspaceEnvironment 是应用保存的可复用环境配置（人工验收 Q16–37；docs/plan/env-02-implementation-2026-11-03.md）
-// 在建工作区时的一份快照：环境与仓库无关，同一个环境可以用于多个工作区；之后编辑环境只影响新建的工作区。
-// 里面只有普通值与密钥的名字，没有密钥的值；Runtime 按（租户，工作区）保存这份快照，SandboxBroker 建环境时读它。
+// 在建会话时的一份快照：环境与仓库无关，同一个环境可以用于多个工作区；之后编辑环境只影响新建的会话。
+// 非机密的设置（setup_script、start_command、network）一直跟着会话；机密部分（env、secret_headers）只在配置还在时交，
+// 配置删除时立即删掉（DeleteEnvironmentConfig）。没有密钥的值，只有它们在 SecretStore 里的名字；Runtime 按（租户，工作区）
+// 保存这份快照，SandboxBroker 建环境时读它。
 // 环境的状态（setup 是否成功、是否就绪）只以 EnvironmentService 的环境表为准，不从日志推断。
 message WorkspaceEnvironment {
   // 应用的环境 ID：字母、数字、_ 与 -，最多 128 个字符。删除环境（DeleteEnvironmentConfig）按它找。
@@ -102,7 +107,8 @@ message WorkspaceEnvironment {
   // 失败只记录、不阻止业务命令。最多 64 KiB。
   string start_command = 3;
   // 普通环境变量，.env 格式：一行一个 KEY=value，# 开头的行与空行忽略；值原样（不做引号与变量展开）。
-  // 交给 setup、start 与每条命令，环境的使用者看得到：不要放机密（机密用 secret_headers 引用）。
+  // 交给 setup、start 与每条命令，环境的使用者看得到（Q25）；按配置的机密部分处理：配置删除时一并删掉。真正的密钥不放这里，
+  // 用 secret_headers 引用。
   // 最多 64 个、合计 16 KiB；名字规则同 Sandbox 的 exec env，不能盖掉平台注入的变量（代理、包镜像等）。
   string env = 4;
   EnvironmentNetwork network = 5;
@@ -366,7 +372,7 @@ message DeleteEnvironmentConfigRequest {
 }
 
 message DeleteEnvironmentConfigResponse {
-  // 这次新标记为已删除的工作区个数（已经标记过的不算）。
+  // 这次删掉机密部分、标记为已删除的工作区个数（已经标记过的不算）。
   int32 workspaces = 1;
 }
 
