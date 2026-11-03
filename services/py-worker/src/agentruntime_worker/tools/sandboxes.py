@@ -21,6 +21,10 @@ AR_TOOL_SHELL_SANDBOX=sandbox 时 shell_run 经 Sandbox 接口跑：每条命令
 - local：本地子进程（开发实现），不隔离，只给开发与测试。
 - 每个后端可以写 workspace：mount（工作区挂进环境：K8s 的 workspace_claim、本地实现的工作区根）或 archive（不挂卷，
   Worker 建环境后从存档恢复、销毁前存档，D-06，docs/plan/workspace-layer.md 第 4 节）；没写时 Cloudflare 是 archive，其余是 mount。
+- 启用与能力（D-19，docs/plan/firecracker-backend.md）：enabled（默认 true）为 false 的后端不接新环境（新建报 denied
+  sandbox_backend_disabled），已有的环境照常复用、执行、销毁，对账照常看见（排空）；default 不能指向停用的后端。capabilities 是
+  这个后端支持的能力（snapshot、block_attach、vsock），依赖能力的功能在缺它的后端上走通用路径。改登记靠滚动重启 Worker。
+- firecracker：每个环境一台 Firecracker VM，总是存档模式；实现在 D-20，在那之前只能登记为 enabled: false。
 用哪个后端由租户策略的 sandbox.backend 决定（经 Registry 读当前版本，按租户缓存一分钟），没写时用 default；模型与请求都不能指定。
 登记里没有的名字一律拒绝，不悄悄换后端。K8s 后端的 agent 令牌密钥（同一部署的 Worker 共用）取自 SecretStore 平台作用域的
 sandbox/token-key；没有时每个进程随机一把（只有一个 Worker 进程时可以）。
@@ -44,7 +48,10 @@ from agentruntime_core.providers.sandbox import SandboxProvider
 
 from agentruntime_worker.sandbox.policy import SandboxPolicy
 
-KINDS = ("k8s", "cloudflare", "local")
+KINDS = ("k8s", "cloudflare", "local", "firecracker")
+# 有实现、能建出 Provider 的种类；firecracker 等 D-20。
+BUILDABLE_KINDS = ("k8s", "cloudflare", "local")
+CAPABILITIES = ("snapshot", "block_attach", "vsock")
 ISOLATIONS = ("none", "container", "microvm")
 WORKSPACE_MODES = ("mount", "archive")
 TOKEN_KEY_SECRET = "sandbox/token-key"
@@ -89,6 +96,18 @@ class Sandboxes:
                 raise ValueError(f"沙箱后端 {name} 的 isolation 只能是 {'、'.join(ISOLATIONS)}")
             if spec.get("workspace", "mount") not in WORKSPACE_MODES:
                 raise ValueError(f"沙箱后端 {name} 的 workspace 只能是 {'、'.join(WORKSPACE_MODES)}")
+            if not isinstance(spec.get("enabled", True), bool):
+                raise ValueError(f"沙箱后端 {name} 的 enabled 只能是 true 或 false")
+            caps = spec.get("capabilities", [])
+            if not isinstance(caps, list) or any(c not in CAPABILITIES for c in caps):
+                raise ValueError(f"沙箱后端 {name} 的 capabilities 只能取 {'、'.join(CAPABILITIES)}（数组）")
+            if spec["kind"] == "firecracker":
+                if spec.get("workspace") != "archive":
+                    raise ValueError(f"沙箱后端 {name} 是 firecracker，要写 workspace: archive（客户机不挂卷，工作区经存档恢复）")
+                if spec.get("enabled", True):
+                    raise ValueError(f"沙箱后端 {name}：firecracker 后端还没有实现（D-20），只能登记为 enabled: false")
+        if not specs[default].get("enabled", True):
+            raise ValueError(f"沙箱后端的 default {default!r} 在登记里停用了（enabled: false）")
         self._specs = dict(specs)
         self.default = default
         self._workspace_root = workspace_root
@@ -118,6 +137,26 @@ class Sandboxes:
     @property
     def names(self) -> tuple[str, ...]:
         return tuple(sorted(self._specs))
+
+    @property
+    def enabled_names(self) -> tuple[str, ...]:
+        """接新环境的后端（D-19）。"""
+        return tuple(n for n in self.names if self.enabled(n))
+
+    def enabled(self, name: str) -> bool:
+        """这个后端接不接新环境；停用的（enabled: false）只排空已有的环境。"""
+        return bool(self.spec(name).get("enabled", True))
+
+    def capabilities(self, name: str) -> frozenset[str]:
+        """登记里写的能力（D-19）：snapshot、block_attach、vsock。"""
+        return frozenset(self.spec(name).get("capabilities") or ())
+
+    def has_capability(self, name: str, capability: str) -> bool:
+        return capability in self.capabilities(name)
+
+    def buildable(self, name: str) -> bool:
+        """这个后端的种类有没有实现（firecracker 要等 D-20）。"""
+        return self.spec(name).get("kind") in BUILDABLE_KINDS
 
     @property
     def workspace_root(self) -> Path | None:
@@ -182,6 +221,8 @@ class Sandboxes:
     async def backend(self, name: str) -> Backend:
         if name not in self._specs:
             raise InvalidError("unknown_sandbox_backend", f"沙箱后端 {name} 没有登记")
+        if not self.buildable(name):
+            raise InvalidError("sandbox_backend_unimplemented", f"沙箱后端 {name} 的种类 {self._specs[name]['kind']} 还没有实现")
         async with self._lock:
             backend = self._backends.get(name)
             if backend is None:
@@ -297,4 +338,4 @@ def parse_memory_mb(value: str) -> int:
     return max(16, int(number * (unit if unit is not None else 1)))
 
 
-__all__ = ["Backend", "PolicyLookup", "Sandboxes", "parse_cpu_millis", "parse_memory_mb", "registry_policy"]
+__all__ = ["CAPABILITIES", "KINDS", "Backend", "PolicyLookup", "Sandboxes", "parse_cpu_millis", "parse_memory_mb", "registry_policy"]

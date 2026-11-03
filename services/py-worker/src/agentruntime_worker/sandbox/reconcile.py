@@ -69,6 +69,9 @@ async def reconcile_once(broker: SandboxBroker, *, grace: timedelta = timedelta(
     now = ledger.clock()
     listings: dict[str, dict[str, ListedEnvironment]] = {}
     for name in sandboxes.names:
+        if not sandboxes.buildable(name):
+            continue  # 还没有实现的种类（firecracker，D-20）只能登记为停用，里面不会有环境
+        # 停用的后端（D-19）照常列出：排空中的环境要照常判丢失、回收，孤儿照常删。
         try:
             backend = await sandboxes.backend(name)
         except ProviderError as err:

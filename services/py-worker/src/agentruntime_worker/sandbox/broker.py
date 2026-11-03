@@ -1,6 +1,7 @@
 """SandboxBroker：Worker 里建、用、销毁沙箱环境都经它（D-11、D-12、D-13；docs/plan/sandbox-platform.md）。
 
-- 选后端：租户策略的首选，暂时不可用（transient：容量满、故障）时按回退列表依次试；隔离强度按 none < container < microvm，
+- 选后端：登记里停用的后端（enabled: false，D-19）不接新环境：首选停用时报 denied（sandbox_backend_disabled），回退里停用的跳过；
+  它们已有的环境照常复用到回收（排空）。租户策略的首选，暂时不可用（transient：容量满、故障）时按回退列表依次试；隔离强度按 none < container < microvm，
   回退的后端不能比 min_isolation（没写时取首选的）更弱；denied、invalid 原样报出，不回退（W11）。绑定了 workspace 时
   只在同一组后端之间回退：挂同一个工作区卷的算一组，存档模式的（workspace: archive）都算一组。落点与回退原因记进环境表与 span。
 - 存档模式（D-06，docs/plan/workspace-layer.md 第 4 节）：后端不挂工作区卷，建环境后从最近的快照恢复（不一致时换一个环境再试
@@ -353,6 +354,11 @@ class SandboxBroker:
         busy_for: timedelta | None, grants: list[Grant] | None = None, pending: tuple[str, str] = ("", "none"),
     ) -> Lease:
         grants = grants or []
+        if not self.sandboxes.enabled(policy.backend):
+            # 排空中的后端（D-19）：不接新环境；已有的环境在上面的复用里照常用。不悄悄换到回退的后端。
+            raise DeniedError(
+                "sandbox_backend_disabled", f"沙箱后端 {policy.backend} 在登记里停用了（enabled: false）：不接新环境，已有的环境照常用到回收"
+            )
         candidates, skipped = self._candidates(policy, spec, gateway_only=any(g.audited for g in grants))
         if not candidates:
             raise InvalidError("no_sandbox_backend", "租户策略里没有满足隔离强度、工作区与出网审计要求的沙箱后端：" + "；".join(skipped))
@@ -402,6 +408,9 @@ class SandboxBroker:
         tried = "、".join(errors)
         weaker = [s for s in skipped if "隔离强度" in s]
         hint = f"；回退列表里更弱的后端不用：{'、'.join(weaker)}" if weaker else ""
+        disabled = [s for s in skipped if "停用" in s]
+        if disabled:
+            hint += f"；回退列表里停用的后端不接新环境：{'、'.join(disabled)}"
         raise TransientError("sandbox_unavailable", f"沙箱后端都暂时不可用（{tried}）{hint}")
 
     async def _create_one(
@@ -480,6 +489,9 @@ class SandboxBroker:
         out: list[str] = []
         skipped: list[str] = []
         for name in names:
+            if not self.sandboxes.enabled(name):
+                skipped.append(f"{name}（登记里停用了）")
+                continue
             if ISOLATION_RANK[self.sandboxes.isolation(name)] < floor_rank:
                 skipped.append(f"{name}（隔离强度 {self.sandboxes.isolation(name)} 低于 {floor}）")
                 continue

@@ -28,6 +28,38 @@
 {{- if and (or $mounted $shell.environments.enabled) (not .Values.worker.workspacesClaim) }}
 {{- fail "worker.shell.mode=sandbox 时挂卷的后端（workspace: mount）与项目环境的构建要给 worker.workspacesClaim（沙箱挂的是 workspace 的目录）" }}
 {{- end }}
+{{- /* 启用与能力（D-19，docs/plan/firecracker-backend.md）：与 Worker 加载登记时的校验一致，写错就渲染失败。
+       enabled 不写时为 true（Sprig 的 default 会把 false 当成空，所以按 hasKey 判断）。 */ -}}
+{{- range $name, $b := $shell.backends }}
+{{- $enabled := true }}
+{{- if hasKey $b "enabled" }}
+{{- if not (kindIs "bool" $b.enabled) }}
+{{- fail (printf "沙箱后端 %s 的 enabled 只能是 true 或 false" $name) }}
+{{- end }}
+{{- $enabled = $b.enabled }}
+{{- end }}
+{{- if hasKey $b "capabilities" }}
+{{- if not (kindIs "slice" $b.capabilities) }}
+{{- fail (printf "沙箱后端 %s 的 capabilities 要是数组，取值 snapshot、block_attach、vsock" $name) }}
+{{- end }}
+{{- range $c := $b.capabilities }}
+{{- if not (has $c (list "snapshot" "block_attach" "vsock")) }}
+{{- fail (printf "沙箱后端 %s 的 capabilities 只能取 snapshot、block_attach、vsock，得到 %v" $name $c) }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if eq $b.kind "firecracker" }}
+{{- if ne (toString $b.workspace) "archive" }}
+{{- fail (printf "沙箱后端 %s 是 firecracker，要写 workspace: archive" $name) }}
+{{- end }}
+{{- if $enabled }}
+{{- fail (printf "沙箱后端 %s：firecracker 后端还没有实现（D-20），只能登记为 enabled: false" $name) }}
+{{- end }}
+{{- end }}
+{{- if and (eq $name $shell.defaultBackend) (not $enabled) }}
+{{- fail (printf "worker.shell.defaultBackend 指向停用的后端 %s（enabled: false）" $name) }}
+{{- end }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

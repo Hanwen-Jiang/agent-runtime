@@ -152,6 +152,14 @@ worker:
         workspace: archive
         # 桥部署的是 sandbox-universal 镜像（deploy/cloudflare/sandbox-bridge/wrangler.jsonc），与 Kata 一样跑 universal。
         runtimes: [universal, python]
+      # Firecracker（docs/plan/firecracker-backend.md）：每个环境一台 VM，总是存档模式。实现在 D-20，在那之前只登记、不启用
+      # （enabled: false 的后端不接新环境，D-19）。
+      firecracker:
+        kind: firecracker
+        isolation: microvm
+        workspace: archive
+        enabled: false
+        capabilities: [snapshot, block_attach, vsock]
   pools:
     task:
       minReplicas: 1

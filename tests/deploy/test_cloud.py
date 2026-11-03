@@ -352,6 +352,10 @@ def test_backend_registry_matches_the_cluster(cloud: list[dict[str, Any]]) -> No
             # Cloudflare Containers（D-07）：经桥，总是存档模式。
             assert backend["bridge_url"].startswith("https://") and backend.get("workspace", "archive") == "archive"
             continue
+        if backend["kind"] == "firecracker":
+            # 只登记、不启用（D-19；实现在 D-20），总是存档模式。
+            assert backend["enabled"] is False and backend["workspace"] == "archive"
+            continue
         assert backend["kind"] == "k8s" and backend["runtime_class"] in classes, f"后端 {name} 的 RuntimeClass 不存在"
         if backend.get("workspace") == "archive":
             assert "workspace_claim" not in backend, f"后端 {name} 是存档模式，不挂工作区卷"

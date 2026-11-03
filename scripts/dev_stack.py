@@ -393,7 +393,12 @@ class Stack:
         self.dev_secret(WORKSPACE_KEY_NAME, secrets.token_hex(32))
         if self.options.get("sandbox") == "local":
             backend = {"kind": "local", "isolation": "none", "workspace": self.options.get("workspace", "mount")}
-            self.sandbox_backends_file.write_text(json.dumps({"default": "local", "backends": {"local": backend}}), "utf-8")
+            # Firecracker 只登记、不启用（D-19；实现在 D-20）。
+            firecracker = {"kind": "firecracker", "isolation": "microvm", "workspace": "archive", "enabled": False,
+                           "capabilities": ["snapshot", "block_attach", "vsock"]}
+            self.sandbox_backends_file.write_text(
+                json.dumps({"default": "local", "backends": {"local": backend, "firecracker": firecracker}}), "utf-8"
+            )
         if self.options["provider"] == "openai_compat":
             key = self.provider_values().get("AR_MODEL_PROVIDER_API_KEY", "")
             if not key:
