@@ -62,7 +62,7 @@ coding-agent → task-service WorkspaceService（workspaceapi/server.go: operate
 
 | 工作项 | Failure / Evidence | Minimum fix | 成本与新失败面 | 当前决定 |
 | --- | --- | --- | --- | --- |
-| PERF-00 先测 | 第 1.1、1.2 节的判断来自读代码，没有耗时数据；不测就说不清改完快了多少 | Workspace 操作记一个 `runtime.workspace_op` span，分段记：工作流排队、建环境、存档、恢复、命令本身、总时长；coding-agent 记历史加载的总时长与请求数。线上取一周的 p50、p95 作基线 | 只加 span 与属性，不改行为；属性不含路径以外的文件内容 | Runtime 一侧进行中（2026-11-03 用户让沿 DAG 往下做；认领见 [总表第 8 节](all-plans-dag-2026-11-03.md)）；coding-agent 一侧待做 |
+| PERF-00 先测 | 第 1.1、1.2 节的判断来自读代码，没有耗时数据；不测就说不清改完快了多少 | Workspace 操作记一个 `runtime.workspace_op` span，分段记：工作流排队、建环境、存档、恢复、命令本身、总时长；coding-agent 记历史加载的总时长与请求数。线上取一周的 p50、p95 作基线 | 只加 span 与属性，不改行为；属性不含路径以外的文件内容 | Runtime 一侧已完成（`fb971d2`：`runtime.workspace_op` span、直方图 `runtime.workspace_op.duration_ms`、计数器 `runtime.worker.bytes`，Agent Runtime 面板第 8～10 个；没部署，基线等部署后取一周）；coding-agent 一侧待做 |
 | WS-READ-01 只读操作走快路径，不经 Temporal、不新建沙箱 | 第 1.1 节：列目录、读文件、diff、log 每次起一个工作流、新建环境 | 读与写分开。**写**（建、克隆、提交、丢弃、同步、推送）仍走 `WorkspaceOperationWorkflow`：要耐久、要幂等与对账（推送是 write_irreversible）。**读**（ListFiles、ReadFile、GetDiff、GetLog）由 task-service 调 SBX-01 的 Sandbox Service 的只读方法，只给（租户、工作区、会话、操作），不关心环境在哪、怎么连；git 带 `--no-optional-locks`，读不占用环境、不改 busy、不触发存档。SBX-01 的第一阶段之前不做：不在 task-service 里另写一份 Go 版的“找环境、连环境” | 读到的可能是命令执行到一半的文件，界面要标出“任务进行中”；越权测试覆盖跨租户、跨工作区与符号链接 | 待确认；依赖 SBX-01 第一阶段 |
 | WS-READ-02 Workspace 操作单独一个队列 | 第 1.1 节：查看文件与 Task 的 activity 抢同一批 Worker | Workspace 操作的工作流与 activity 换到单独的队列（如 `workspace`），按设计书 3.6 的分池方式单独一个 Worker 池与 KEDA ScaledObject | 多一个 Deployment；队列名是工作流启动参数，新启动的工作流生效，不改命令序列。在途的旧操作仍在旧队列，旧池要留到它们跑完 | 待确认 |
 | WS-READ-03 文件树与 diff 按版本缓存 | 打开抽屉、切文件、节点结束后都会重取，同样的结果反复算 | 业务库 `workspaces` 加一个 `generation`：可写环境里的写工具结束、提交、丢弃改动、同步时加一。task-service 按（租户、工作区、generation、操作与参数）缓存只读操作的结果，经 Cache 接口（先进程内，CACHE-01 之后是 Valkey），设上限与短 TTL 兜底 | `shell_run` 能改任何文件，只能按“可写节点结束”粗粒度加一，节点执行中途看到的可能是旧结果；缓存键必须带租户，跨租户命中要有测试 | 待确认 |
@@ -212,7 +212,7 @@ Rust 的真实成本（不是理由，是要付的）：
 | --- | --- | --- | --- | --- |
 | WK-LITE-01 命令输出在环境里外置 | 第 7.2 节：每条命令的完整输出先整段回到 Worker，Worker 再写进 ObjectStore，模型只看摘录 | `/v1/exec` 加可选的 `output_sink`：调用方给一个限时的单对象 PUT 地址（Firecracker 下由 fc-manager 代收）；输出超过 `inline_limit`（默认与 `offload_tokens` 对齐）时，agent 把完整的 stdout、stderr 直接写过去，回给 Worker 的只有开头与结尾的摘录、总字节数、sha256 与对象键；Context Builder 把它当成已外置的观察（`context_read` 按键取回，取的时候才经 Worker，而且按窗口）。没给 `output_sink` 时行为不变（兼容） | 上传失败时退回现在的做法并记一条（不丢输出）；对象的键与保留期沿用 Context Builder 的 `context/<task_id>/…` 约定；预签名地址只对这一个键 | 待确认；依赖 D-28（加在 Rust 版 agent 上） |
 | WK-LITE-02 交付文件由环境直传 | 第 7.2 节：`deliver_file` 由 Worker 读整个文件再上传 | Worker 先核对配额（个数、单个与合计大小，用 agent 报的文件大小）、生成对象键，签一个只写这个键、带 `If-None-Match: *` 的 PUT 地址；agent 新增 `POST /v1/upload`（路径、地址）直接上传并回大小与 sha256；Worker 用 `head` 核对大小后写 `task_artifacts`。ObjectStore 经预签名上传的对象没有 sha256 元数据（`s3_object_store.py` 的说明），哈希以 agent 回报为准，下载时照现在的做法按内容核对 | 上传与写库之间崩溃会留下没人引用的对象：按交付的保留期（7 天）由生命周期清掉；配额按 agent 报的大小先占，`head` 不一致时删对象并报错 | 待确认；依赖 D-28 |
-| WK-LITE-03 量一下 Worker 搬了多少 | 没有数字就说不清减负的效果 | PERF-00 的 span 里加：每个 activity 进出 Worker 的字节数（沙箱 HTTP 的请求与响应、ObjectStore 的读写），按操作类型汇总进看板 | 只加计数，不改行为 | 待确认；并入 PERF-00 |
+| WK-LITE-03 量一下 Worker 搬了多少 | 没有数字就说不清减负的效果 | PERF-00 的 span 里加：每个 activity 进出 Worker 的字节数（沙箱 HTTP 的请求与响应、ObjectStore 的读写），按操作类型汇总进看板 | 只加计数，不改行为 | 随 PERF-00 完成（`fb971d2`）：数的是载荷，不含 HTTP、JSON 与 base64 的开销；列目录、清单与 grep 的结果不计 |
 
 ### 7.4 顺序
 
