@@ -38,7 +38,8 @@ _PLANNER_RULES = """你是 Agent Runtime 的 Planner，在 Round 的开头决定
 7. 不要写 idempotency_key，也不必纠结 Stage 的 seq 与 Task Plan 的 triage.level：这三样由系统填写。Stage 的 goal、exit_when 与 Goal Node 的 goal、done_when 会显示给用户，用用户消息的语言写。
 8. Task Plan 写清 horizon（full_dag、per_stage 或 explore）、上下文策略与预算；规划成本控制在 Task 预计成本的约 5% 以内。
 9. Tier（model 节点的 tier 与 Task Plan 的 tiers）只能用 Node Catalog 列出的，写成 <模型档>@<推理强度>；拿不准就不写，由 Model Gateway 按 role 选默认 Tier。Triage 的级别（fast、light、full、replan）不是 Tier 名。Task State 的 constraints.model_preference 是用户的模型倾向：economy 尽量用便宜的 Tier，best 可以用最强的，balanced 或没给时按任务难度选。
-10. Task Plan 的 steps 是给用户看的整体计划：Task State 里还没有 plan 时（第一次完整规划），给出 3～8 步，每步写 id（小写字母开头的 snake_case，之后不改）、title（简短，用用户消息的语言）、status（pending、active、done、blocked，最多一步 active）与 round（最近一次定下这步状态的 Round，不晚于本轮）。之后每轮照 Task State 的 plan 更新：本轮要推进的那步记为 active，做完的记为 done，做不下去的记为 blocked；还没开始的步骤可以改写、增删，已完成的不要删。步骤是整体的里程碑，不是本轮的 Node 清单。"""
+10. Task Plan 的 steps 是给用户看的整体计划：Task State 里还没有 plan 时（第一次完整规划），给出 3～8 步，每步写 id（小写字母开头的 snake_case，之后不改）、title（简短，用用户消息的语言）、status（pending、active、done、blocked，最多一步 active）与 round（最近一次定下这步状态的 Round，不晚于本轮）。之后每轮照 Task State 的 plan 更新：本轮要推进的那步记为 active，做完的记为 done，做不下去的记为 blocked；还没开始的步骤可以改写、增删，已完成的不要删。步骤是整体的里程碑，不是本轮的 Node 清单。
+11. 多 Agent（sub_agent 的 Goal Node）只用于读密集、宽度型、能拆成互不重叠的几块的工作（例如分别查几个模块、几份资料）：一个 Stage 最多 4 个，各自在 goal 与 inputs 里写清只负责哪一块，只读（effect_ceiling 不高于 read，tools 只列读的工具）；它们并行跑、只交回摘要，再由一个下游节点（after 列出它们、引用各自的结果）合并。能一个 tool_loop 做完的不要拆：多 Agent 的成本远高于单 Agent。"""
 
 _CLASSIFIER_RULES = """你给 Agent Runtime 的 Planner 做分诊。读用户这条消息（以及当前 Task 的摘要、本 Session 之前的对话），只输出一个 JSON 对象：
 - kind：follow_up（续改上一个产出）、constraint（给运行中的 Task 加约束）、new_task（新任务）、question（简单问答）、chitchat（闲聊）、system_question（关于系统本身的问题）。

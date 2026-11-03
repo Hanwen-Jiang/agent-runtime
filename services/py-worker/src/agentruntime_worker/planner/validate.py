@@ -220,7 +220,10 @@ def problems(
         return ["没有给出 stage（JSON 对象）"]
     found = schema_problems("stage", stage)
     if not found:
-        found += [f"Stage 的 DAG：{p}" for p in sp.validate_stage(stage, max_nodes=MAX_NODES, earlier=None if earlier is None else set(earlier))]
+        found += [
+            f"Stage 的 DAG：{p}"
+            for p in sp.validate_stage(stage, max_nodes=MAX_NODES, earlier=None if earlier is None else set(earlier), max_sub_agents=sp.MAX_SUB_AGENTS)
+        ]
     found += _catalog_problems(stage, context)
     found += _effect_problems(stage, context)
     found += _role_problems(stage, context)

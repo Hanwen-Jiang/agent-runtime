@@ -189,6 +189,11 @@ def node_started_payload(node: dict[str, Any]) -> dict[str, Any]:
         payload["role"] = str(node["role"])
     if payload["kind"] == "atomic" and node.get("executor"):
         payload["executor"] = str(node["executor"])
+    if payload["kind"] == "goal":
+        # N-16：展开方式（没写时与 Stage Runner 一样：有 Recipe 是 template，否则 tool_loop）；客户端据此把 sub_agent 画成一个子 Agent。
+        mode = node.get("mode") or ("template" if node.get("recipe") else "tool_loop")
+        if mode in ("template", "tool_loop", "sub_agent", "sub_task"):
+            payload["mode"] = str(mode)
     return payload
 
 

@@ -70,6 +70,10 @@ CONTEXT_BUILDER_V2_PATCH = "q87-context-builder-v2"
 # docs/plan/feedback-2026-11-01.md N-04：Task Plan 的整体步骤写进 Task State，变了就推 plan_updated（规划之后、收尾之前），多了推送的命令。
 PLAN_PATCH = "n04-task-plan"
 
+# docs/plan/feedback-2026-11-01.md N-16：并行的子 Agent——sub_agent 的子工作流推自己的进度事件、每个 Stage 的 sub_agent 有上限、
+# sub_agent 缺省的 effect 上限继承 Task 的（不高于 read）、sub_task 的预算不超过父 Task 剩下的。多了推送与拒绝，改变了命令序列。
+N16_PATCH = "n16-sub-agents"
+
 # 新的运行在第一个工作流任务里一次问完全部版本分支（模块说明）。
 PATCHES_AT_START = "s04-patches-at-start"
 # 只能在末尾追加。
@@ -94,6 +98,7 @@ AT_START = (
     REFERENCES_PATCH,
     CONTEXT_BUILDER_V2_PATCH,
     PLAN_PATCH,
+    N16_PATCH,
 )
 
 

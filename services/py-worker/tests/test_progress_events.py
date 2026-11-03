@@ -27,6 +27,7 @@ from agentruntime.common.v1 import enums_pb2
 from agentruntime.workflow.v1 import task_pb2
 
 from agentruntime_worker import names
+from agentruntime_worker.workflows import stage_plan as sp
 from agentruntime_worker.activities.types import ReviewRoundOutput, StagePolicy, ToolLoopStep
 from agentruntime_worker.workflows.events import tool_target
 
@@ -136,17 +137,18 @@ async def test_parallel_nodes_are_each_reported_once(harness: StageHarness) -> N
     assert kinds(events)[-1] == "verdict"
 
 
-async def test_child_workflows_do_not_publish(harness: StageHarness) -> None:
+async def test_only_top_level_sub_agents_publish_from_child_workflows(harness: StageHarness) -> None:
+    """N-16 起顶层 sub_agent 的子工作流推它自己的 tool_status（node_id 是它）；别的子工作流仍不推（见 test_n16_sub_agents.py）。"""
     s = harness.script
     s.tools.update({"web_search": "read"})
     s.tool_steps["research"] = scripted_steps(ToolLoopStep(action="tool", tool="web_search", args={"q": "退款率"}), ToolLoopStep(action="finish", result={"ok": True}))
     one_round(harness, goal("research", "sub_agent", tools=["web_search"]), deliver(after=["research"]))
     inp, _ = await harness.run()
     publishers = {w for _, e, w in s.published if e.task_id == inp.task_id}
-    assert publishers == {inp.task_id}, f"只有 Task 工作流推送，子工作流不推：{publishers}"
+    assert publishers == {inp.task_id, sp.subworkflow_id(inp.task_id, 1, "research")}, f"Task 工作流与顶层 sub_agent 的子工作流推送：{publishers}"
     events = progress(harness, inp.task_id)
     assert [e["node_id"] for e in events if e["event"] == "node_finished"] == ["research", "answer"]
-    assert "tool_status" not in kinds(events), "sub_agent 在子工作流里调用工具，不推 tool_status"
+    assert {e["node_id"] for e in events if e["event"] == "tool_status"} == {"research"}, "sub_agent 的工具调用以它的 node_id 推"
 
 
 # --- tool_loop 里每次工具调用（node_started、tool_status） ---
@@ -176,7 +178,7 @@ async def test_a_tool_loop_reports_every_tool_call(harness: StageHarness) -> Non
         "tool_status", "tool_status", "tool_status", "tool_status",
         "node_finished", "node_started", "node_finished", "verdict",
     ]
-    assert events[2] == {"event": "node_started", "round_seq": 1, "node_id": "fix", "kind": "goal"}
+    assert events[2] == {"event": "node_started", "round_seq": 1, "node_id": "fix", "kind": "goal", "mode": "tool_loop"}, "N-16 起 Goal Node 带 mode"
     calls = tool_statuses(events)
     assert [(c["step"], c["tool"], c["state"]) for c in calls] == [
         (1, "repo_read", "running"), (1, "repo_read", "succeeded"), (2, "shell_run", "running"), (2, "shell_run", "succeeded"),

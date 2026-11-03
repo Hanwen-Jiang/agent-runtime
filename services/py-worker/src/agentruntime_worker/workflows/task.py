@@ -90,6 +90,7 @@ with workflow.unsafe.imports_passed_through():
         GUIDANCE_PATCH,
         INTERRUPT_WITHDRAW_PATCH,
         POLICY_PATCH,
+        N16_PATCH,
         PLAN_PATCH,
         PROGRESS_DETAIL_PATCH,
         R01_FIXES_PATCH,
@@ -242,6 +243,8 @@ class TaskWorkflow:
         self._earlier: dict[str, Any] = {}
         # N-04（PLAN_PATCH）：Task State 的 plan 由这里写（workflows/plan.py），变了就推 plan_updated。
         self._plans = False
+        # N-16（N16_PATCH）：并行子 Agent 的进度、个数上限、权限继承与子 Task 的预算（workflows/stage_runner.py）。
+        self._n16 = False
         # N-05、N-03：上一个 Stage 的工具调用，与整个 Task 的（带 Round 序号，最多 TASK_TOOL_LOG_LIMIT 条）。
         self._stage_tool_log: list[dict[str, Any]] = []
         self._tool_log: list[dict[str, Any]] = []
@@ -299,6 +302,7 @@ class TaskWorkflow:
         self._codes = workflow.patched(CODES_PATCH)
         self._references = workflow.patched(REFERENCES_PATCH)
         self._plans = workflow.patched(PLAN_PATCH)
+        self._n16 = workflow.patched(N16_PATCH)
         if workflow.patched(GUIDANCE_PATCH):
             self._book = GuidanceBook()
             self._guidance_publisher = asyncio.ensure_future(self._publish_guidance())
@@ -1165,6 +1169,7 @@ class TaskWorkflow:
             guidance=self._book,
             verification=self._verification,
             earlier=dict(self._earlier) if self._references else None,
+            n16=self._n16,
         )
         runner = StageRunner(ctx, self)
         self._running_spent = lambda: plan_cost + runner.spent_usd
