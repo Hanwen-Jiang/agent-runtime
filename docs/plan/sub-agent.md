@@ -4,6 +4,13 @@
 设计书附录 E.1（Goal Node 的 sub_agent）、3.2.1 第 4 步、附录 B.3（行业研究报告的 Stage 2）、附录 F（sub_agent 用中模型）、附录 J.1（`invoke_agent` span）。
 work-dag 里 N-16 在 **E 线（核心链路，单写者）**：本稿只写设计与验收清单，实现由 E 线做，或与 E 线说好后交给别的线。
 
+> **2026-11-03 对齐**：E 线在分支 `lane/e`（`d52a497`，还没合进 main，契约 `48d029d` 待人审）已经做了 N-16 的一部分，见那边的
+> `docs/plan/n16-sub-agents-implementation-2026-11-03.md`：Planner 规则 11（只给读密集、宽度型、能拆成互不重叠的几块的工作用，由下游节点合并）、
+> 每个 Stage 最多 4 个 sub_agent（超了整个 Stage 拒绝）、effect 上限缺省继承 min(read, Task 上限)、sub_task 的预算压到父 Task 剩下的、
+> 顶层 sub_agent 的子工作流推 `tool_status` 与 `context_usage`（`node_started` 带 `mode`）。下面第 1 节写的是 main 上的现状。
+> 合并之后本稿还要做的是：第 4 节的 brief、第 5 节的来源卡片与必接的综合节点、第 6 节的预算份额与 mid 档、第 9 节的评测对照；
+> 数量上限以 E 线的 4 为准（第 3 节的 8 作废，评测证明需要更多再放宽）。
+
 ## 1. 现状：执行层有，Planner 不派
 
 | 环节 | 现在 | 问题 |
