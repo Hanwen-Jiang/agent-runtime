@@ -51,8 +51,9 @@ class TaskApi:
         read_only: bool = False,
         tenant_id: str = "",
         inputs: dict[str, Any] | None = None,
+        workspace_id: str = "",
     ) -> dict[str, Any]:
-        """inputs 并入 Task 的 inputs（例如故障 Worker 的 fault_stage）。"""
+        """inputs 并入 Task 的 inputs（例如故障 Worker 的 fault_stage）。workspace_id 给了就在这个工作区里跑（repo_*、deliver_file 读它）。"""
         body: dict[str, Any] = {
             "client_request_id": client_request_id or uuid.uuid4().hex,
             "message": message,
@@ -63,7 +64,13 @@ class TaskApi:
             body["session_id"] = session_id
         if tenant_id:
             body["tenant_id"] = tenant_id
+        if workspace_id:
+            body["workspace_id"] = workspace_id
         return self.call("SubmitTask", body)
+
+    def list_artifacts(self, task_id: str) -> dict[str, Any]:
+        """N-18：Task 交付的文件（只有元数据）。"""
+        return self.call("ListTaskArtifacts", {"task_id": task_id})
 
     def cancel(self, task_id: str, reason: str = "e2e") -> dict[str, Any]:
         return self.call("CancelTask", {"task_id": task_id, "reason": reason})

@@ -46,7 +46,7 @@ from agentruntime_worker.activities.types import (
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.executor.tool_gate import require_tool_gate
 
-STUB_PLANS = ("answer", "slow_answer", "human_gate", "fail_model")
+STUB_PLANS = ("answer", "slow_answer", "human_gate", "fail_model", "deliver_file")
 HUMAN_OPTIONS = ("approve", "reject")
 _MODES = {"slow_answer": "slow", "fail_model": "fail"}
 # 等门打开时轮询的间隔；心跳由 SDK 按 heartbeat 超时节流后再发给服务端。
@@ -149,6 +149,22 @@ class StubActivities:
             }
             answer["after"] = ["confirm"]
             nodes = [confirm, answer]
+        if plan == "deliver_file":
+            # N-18（F3）的端到端：一个 tool_loop 先调 deliver_file 交付工作区里的文件（inputs.stub_file），再由 answer 交付文字。
+            path = str(inp.inputs.get("stub_file") or "out/report.txt")
+            deliver = {
+                "id": "deliver_file",
+                "kind": "goal",
+                "mode": "tool_loop",
+                "goal": "把工作区里的文件交付给用户",
+                "done_when": "文件已交付",
+                "output_schema": "result_v1",
+                "tools": ["deliver_file"],
+                "effect_ceiling": "write_reversible",
+                "inputs": {"stub_tool_calls": [{"tool": "deliver_file", "args": {"path": path}}]},
+            }
+            answer["after"] = ["deliver_file"]
+            nodes = [deliver, answer]
         stage = {
             "seq": inp.round_seq,
             "goal": "回答用户的问题" if final else f"第 {inp.round_seq} 轮：收集信息",
@@ -212,7 +228,13 @@ class StubActivities:
 
     @activity.defn(name=names.TOOL_LOOP_STEP)
     async def tool_loop_step(self, inp: ToolLoopStepInput) -> ToolLoopStep:
-        """桩模型：第一步就结束，结果为空。"""
+        """桩模型：第一步就结束，结果为空。Goal Node 的 inputs 写了 stub_tool_calls 时，第一步照它调工具（一次可以几个），
+        第二步结束并带回各次的观察（端到端测试用，例如 deliver_file 桩计划）。"""
+        calls = [c for c in (inp.node.get("inputs") or {}).get("stub_tool_calls") or [] if isinstance(c, dict) and c.get("tool")]
+        if calls and not inp.history:
+            return ToolLoopStep(action="tool", tool=str(calls[0]["tool"]), args=dict(calls[0].get("args") or {}), calls=calls)
+        if calls:
+            return ToolLoopStep(action="finish", result={"observations": [h.get("observation", {"error": h.get("error")}) for h in inp.history]})
         return ToolLoopStep(action="finish", result={})
 
     @activity.defn(name=names.CALL_TOOL)
