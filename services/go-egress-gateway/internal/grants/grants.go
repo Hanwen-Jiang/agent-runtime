@@ -56,12 +56,85 @@ type Grant struct {
 // Active：授权还在期限内。
 func (g Grant) Active(now time.Time) bool { return now.Before(g.ExpiresAt) }
 
-// Session 是一个环境此刻的样子：正在用它的 Task 与那个 Task 的有效授权（按 grant_id 排好序）。
+// Session 是一个环境此刻的样子：正在用它的 Task 与那个 Task 的有效授权（按 grant_id 排好序），以及它的工作区选用的环境配置。
 type Session struct {
 	Tenant string
 	EnvRef string
 	TaskID string
 	Grants []Grant
+	// Env 是工作区选用的环境配置（ENV-02）；没有选用、或 Worker 还没迁移时为 nil（不另加限制）。
+	Env *Environment
+}
+
+// NetHost 是联网名单里的一个主机；子域名是否匹配显式配置（Q30）。
+type NetHost struct {
+	Host              string `json:"host"`
+	IncludeSubdomains bool   `json:"include_subdomains"`
+}
+
+func (h NetHost) covers(host string) bool {
+	return host == h.Host || (h.IncludeSubdomains && strings.HasSuffix(host, "."+h.Host))
+}
+
+// SecretHeader 是一个网络密钥：向 Host 的 HTTPS 请求加上 Header（值从 SecretStore 现读）。
+type SecretHeader struct {
+	Host              string `json:"host"`
+	IncludeSubdomains bool   `json:"include_subdomains"`
+	SecretName        string `json:"secret_name"`
+	Header            string `json:"header"`
+}
+
+// Environment 是 Worker 存在 workspaces.environment 里的快照（agentruntime_worker.sandbox.env_config 的 to_json）里网关用到的部分。
+type Environment struct {
+	ID      string `json:"environment_id"`
+	Network struct {
+		Mode  string    `json:"mode"`
+		Hosts []NetHost `json:"hosts"`
+	} `json:"network"`
+	SecretHeaders []SecretHeader `json:"secret_headers"`
+	// Owner 是建工作区的用户（网络密钥按他的名字读）；Deleted：环境配置删除了（Q35），按 deny。
+	Owner   string `json:"-"`
+	Deleted bool   `json:"-"`
+}
+
+// Allows：环境的联网档位放不放行这个主机（在 Task 的授权之内再收窄，Q29）；放行时为空，否则是拒绝的原因。
+func (e *Environment) Allows(host string) string {
+	if e == nil {
+		return ""
+	}
+	switch {
+	case e.Deleted || e.Network.Mode == "deny":
+		return "environment_network_denied"
+	case e.Network.Mode == "restricted":
+		for _, h := range e.Network.Hosts {
+			if h.covers(host) {
+				return ""
+			}
+		}
+		return "environment_host_not_allowed"
+	case e.Network.Mode == "" || e.Network.Mode == "open":
+		return ""
+	}
+	return "environment_network_denied" // 认不出的档位：不放行
+}
+
+// HeaderFor 是这个主机的网络密钥；没有时 nil。
+func (e *Environment) HeaderFor(host string) *SecretHeader {
+	if e == nil || e.Deleted {
+		return nil
+	}
+	for i := range e.SecretHeaders {
+		h := e.SecretHeaders[i]
+		if (NetHost{Host: h.Host, IncludeSubdomains: h.IncludeSubdomains}).covers(host) {
+			return &e.SecretHeaders[i]
+		}
+	}
+	return nil
+}
+
+// SecretName 是网络密钥在 SecretStore（租户作用域）里的名字：建工作区的用户名下。
+func (e *Environment) SecretName(h *SecretHeader) string {
+	return "user-secrets/" + e.Owner + "/" + h.SecretName
 }
 
 type cacheKey struct{ tenant, env string }
@@ -160,14 +233,16 @@ func (s *Store) load(ctx context.Context, tenant, envRef string, now time.Time) 
 		return Session{}, err
 	}
 	sess := Session{Tenant: tenant, EnvRef: envRef}
+	var workspaceID string
 	err = db.Transaction(ctx, relational.TxOptions{ReadOnly: true}, func(ctx context.Context, tx relational.Tx) error {
-		row, ok, err := tx.QueryOne(ctx, "SELECT task_id, state FROM sandbox_envs WHERE env_ref = $1", envRef)
+		row, ok, err := tx.QueryOne(ctx, "SELECT task_id, state, workspace_id FROM sandbox_envs WHERE env_ref = $1", envRef)
 		if err != nil {
 			return err
 		}
 		if !ok || str(row["state"]) != "ready" {
 			return ErrEnvGone
 		}
+		workspaceID = str(row["workspace_id"])
 		sess.TaskID = str(row["task_id"])
 		if sess.TaskID == "" {
 			return nil
@@ -182,7 +257,43 @@ func (s *Store) load(ctx context.Context, tenant, envRef string, now time.Time) 
 		}
 		return nil
 	})
+	if err != nil || workspaceID == "" {
+		return sess, storeError(err)
+	}
+	sess.Env, err = loadEnvironment(ctx, db, workspaceID)
 	return sess, storeError(err)
+}
+
+// loadEnvironment 读工作区选用的环境配置（另一个事务：Worker 还没迁移 208 时这一句会出错，Postgres 上出错的事务不能再用）。
+func loadEnvironment(ctx context.Context, db relational.Store, workspaceID string) (*Environment, error) {
+	var env *Environment
+	err := db.Transaction(ctx, relational.TxOptions{ReadOnly: true}, func(ctx context.Context, tx relational.Tx) error {
+		row, ok, err := tx.QueryOne(ctx, "SELECT environment, environment_owner, environment_deleted_at FROM workspaces WHERE workspace_id = $1", workspaceID)
+		if err != nil || !ok || str(row["environment"]) == "" {
+			return err
+		}
+		env = &Environment{}
+		if json.Unmarshal([]byte(str(row["environment"])), env) != nil {
+			// 存的配置读不懂：不放行业务出网，也不加任何密钥。
+			env = &Environment{Deleted: true}
+		}
+		env.Owner, env.Deleted = str(row["environment_owner"]), env.Deleted || str(row["environment_deleted_at"]) != ""
+		return nil
+	})
+	if err != nil && (missingTable(err) || missingColumn(err)) {
+		return nil, nil
+	}
+	return env, err
+}
+
+func missingColumn(err error) bool {
+	for e := err; e != nil; e = errors.Unwrap(e) {
+		text := strings.ToLower(e.Error())
+		if strings.Contains(text, "no such column") || (strings.Contains(text, "column") && strings.Contains(text, "does not exist")) {
+			return true
+		}
+	}
+	return false
 }
 
 // PreviewGrant 找这个环境这个端口的预览授权（有效的那一个）。

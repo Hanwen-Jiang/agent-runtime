@@ -20,6 +20,8 @@ import (
 	"bufio"
 	"context"
 	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -73,6 +75,12 @@ type Config struct {
 	// PreviewDomain 是预览地址的域名（preview.example.com），PreviewRPS 是每个环境每秒的请求上限（默认 20）。
 	PreviewDomain string
 	PreviewRPS    int
+	// ENV-02 的网络密钥（intercept.go）：CA 是终结 TLS 用的网关 CA（SecretStore 平台作用域的 sandbox/egress-ca-cert 与
+	// sandbox/egress-ca-key）；Secrets 读租户作用域的密钥；UpstreamRoots 校验上游证书（nil 用系统的）。CA 或 Secrets 为 nil 时，
+	// 配了网络密钥的主机一律拒绝（不裸发）。
+	CA            *tls.Certificate
+	Secrets       func(ctx context.Context, tenantID, name string) ([]byte, error)
+	UpstreamRoots *x509.CertPool
 }
 
 // Gateway 是网关。
@@ -90,6 +98,9 @@ type Gateway struct {
 
 	previewMu      sync.Mutex
 	previewBuckets map[string]*bucket
+
+	leafMu sync.Mutex
+	leaves map[string]*tls.Certificate
 }
 
 type liveKey struct{ tenant, task string }
@@ -134,7 +145,7 @@ func New(cfg Config) *Gateway {
 	if cfg.Dialer == nil {
 		cfg.Dialer = &net.Dialer{Timeout: 10 * time.Second}
 	}
-	return &Gateway{cfg: cfg, live: map[liveKey]map[*liveConn]struct{}{}, previewBuckets: map[string]*bucket{}}
+	return &Gateway{cfg: cfg, live: map[liveKey]map[*liveConn]struct{}{}, previewBuckets: map[string]*bucket{}, leaves: map[string]*tls.Certificate{}}
 }
 
 // ServeHTTP 是代理的入口。
@@ -228,6 +239,10 @@ func (g *Gateway) admit(ctx context.Context, claims envcred.Claims, rawHost stri
 		return &admission{claims: claims, sess: sess, host: host, port: port}, &refusal{http.StatusForbidden, reason}
 	}
 	adm := &admission{claims: claims, sess: sess, grant: grant, host: host, port: port}
+	// 工作区选用的环境配置的联网档位（ENV-02）：在授权之内再收窄。
+	if why := sess.Env.Allows(host); why != "" {
+		return adm, &refusal{http.StatusForbidden, why}
+	}
 	if limit := claims.Limits["egress_bytes"]; limit > 0 && g.cfg.Store.UsedToday(ctx, claims.TenantID) >= limit {
 		return adm, &refusal{http.StatusForbidden, "daily_egress_exceeded"}
 	}
@@ -283,6 +298,16 @@ func (g *Gateway) handleConnect(w http.ResponseWriter, r *http.Request) {
 	}
 	defer adm.meter.Close()
 	rec.GrantID, rec.TaskID, rec.Host, rec.Address = adm.grant.ID, adm.sess.TaskID, adm.host, adm.addr.String()
+	// 网络密钥（ENV-02）：只对配置的主机的 443（HTTPS）终结 TLS、加请求头；没配网关 CA 时拒绝，不裸发。
+	binding := adm.sess.Env.HeaderFor(adm.host)
+	if binding != nil && port == 443 {
+		if g.cfg.CA == nil || g.cfg.Secrets == nil {
+			g.refuse(w, rec, adm, &refusal{http.StatusForbidden, "secret_injection_unavailable"})
+			return
+		}
+		g.handleIntercept(w, r, rec, adm, binding)
+		return
+	}
 	upstream, err := g.cfg.Dialer.DialContext(r.Context(), "tcp", netip.AddrPortFrom(adm.addr, uint16(port)).String())
 	if err != nil {
 		g.refuse(w, rec, adm, &refusal{http.StatusBadGateway, "connect_failed"})
@@ -336,6 +361,10 @@ func (g *Gateway) checkSNI(reader *bufio.Reader, adm *admission) string {
 		return "sni_" + reason
 	}
 	if !slices.ContainsFunc(adm.grant.Hosts, func(p string) bool { return netguard.Covers(p, host) }) {
+		return "sni_not_granted"
+	}
+	if adm.sess.Env.Allows(host) != "" || adm.sess.Env.HeaderFor(host) != nil {
+		// 名单之外的 SNI；或 SNI 换成了配了网络密钥的主机（那要经终结 TLS 的那条路，见 intercept.go）。
 		return "sni_not_granted"
 	}
 	return ""
