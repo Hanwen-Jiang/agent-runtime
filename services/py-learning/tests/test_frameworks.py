@@ -15,6 +15,7 @@ from __future__ import annotations
 import ast
 import json
 import os
+import re
 import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -53,7 +54,9 @@ def test_bridges_import_only_the_stdlib_and_their_framework(bridge: str, allowed
 
 def test_the_framework_versions_are_pinned() -> None:
     lines = [ln for ln in fw.REQUIREMENTS.read_text("utf-8").splitlines() if ln.strip() and not ln.startswith("#")]
-    assert {ln.split("==")[0] for ln in lines} >= {"deepeval", "ragas", "langchain-openai", "rapidfuzz"} and all("==" in ln for ln in lines)
+    assert {ln.split("==")[0] for ln in lines} >= {"deepeval", "ragas", "langchain-openai", "rapidfuzz"}
+    # 版本号钉死；不在 PyPI 上的（τ²-bench 的 tau2）钉到完整的提交
+    assert all("==" in ln or re.fullmatch(r"[A-Za-z0-9_.-]+ @ git\+https://\S+@[0-9a-f]{40}", ln) for ln in lines)
 
 
 # --- 判分模型的配置 ---
