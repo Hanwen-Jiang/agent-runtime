@@ -627,6 +627,16 @@ M5 的后端顺序见 [firecracker-backend.md](firecracker-backend.md) 第 7 节
 - 核对：升级后网关不再报 `failed to upload metrics`（之前每分钟一次）。网关自己不记指标，只有 `runtime.egress` 的 span 经 Collector 进 Tempo；
   升级后还没有经网关的出网，所以 Tempo 里还没看到新的 span。回滚：`helm rollback ar 20`。
 
+第 22 版（2026-11-03，评测网站 docs/plan/eval-site.md；目录 `rev24`）：
+
+- 只换看板：Chart 与 learning 镜像都是 `ff3a385`，看板经新加的 `evalDashboard.imageTag` 用它，别的组件仍是 26b30ee（main 上别的线的改动，例如 F3、
+  `bb832bf`，不随这次上线）。values 是第 21 版加 `evalDashboard.imageTag`、`evalDashboard.site.repo=Hanwen-Jiang/agent-runtime`、
+  `evalDashboard.site.tokenSecret=agent-runtime-eval-site`；脚本核对只有看板的 Deployment 与 NetworkPolicy 变了。
+- 只读令牌（fine-grained，只读本仓库的 Contents，由人建）在 Secret `agent-runtime-eval-site` 的 `token` 键；部署前核对过能读仓库与取 tarball。
+- 核对：`/`、`/results`、`/datasets`、`/api/site.json`、`/api/datasets/swebench-verified.json` 200，`/index.html` 301，未知数据集 404；
+  同步来自 GitHub main，17 个数据集、公开 437 道、留出集 24 道只计数；公网浏览器里分组与框架介绍正常。回滚：`helm rollback ar 21`。
+- 令牌到期后换一个：重建这个 Secret，再 `kubectl -n agent-runtime rollout restart deploy/ar-agent-runtime-eval-dashboard`（令牌在启动时读）。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
