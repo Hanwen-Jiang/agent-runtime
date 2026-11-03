@@ -136,7 +136,7 @@ coding-agent → task-service WorkspaceService（workspaceapi/server.go: operate
 | 组件 | 建议 | 理由 |
 | --- | --- | --- |
 | sandbox-agent | Rust，经 SBX-RS-01 实测确认后切换 | 每台 VM 都有一份；PID 1 与 vsock 是底层工作；代码小、有黑盒一致性测试 |
-| fc-manager | Rust（若 agent 用 Rust）；否则 Go | 还没写；与 agent 共用 vsock 协议 |
+| fc-manager | **Rust（2026-11-03 用户定）** | 还没写，没有改写成本；宿主上权限最高、长期运行、并发管很多 VM |
 | Sandbox Service | Go | 控制面，瓶颈不在 CPU；与 task-service 共用租户与安全相关的代码 |
 | 存档、恢复的数据路径 | 挪到 agent 与 fc-manager 一侧 | 收益最大的一块，与语言选择绑在一起做 |
 
@@ -148,7 +148,7 @@ Rust 的真实成本（不是理由，是要付的）：
 
 ### 5.4 工作项
 
-**2026-11-03 用户定：SBX-RS-01、SBX-RS-02 推迟（DEFER），先保开发速度。** D-20 按 [firecracker-backend.md](firecracker-backend.md) 原计划用 Go 写；本节的评估留作以后实测时的依据，Firecracker 上线、有了冷启动与密度的基线之后再考虑。
+**2026-11-03 用户定：fc-manager 用 Rust**（[firecracker-backend.md](firecracker-backend.md) 第 1 节第 5 条、第 10 节）；**sandbox-agent 换 Rust 的原型与实测（SBX-RS-01）推迟**，先保开发速度，Firecracker 上线、有了冷启动与密度的基线之后再考虑；SBX-RS-02 只剩 agent 的语言待定。
 
 | 工作项 | Failure / Evidence | Minimum fix | 成本与新失败面 | 当前决定 |
 | --- | --- | --- | --- | --- |

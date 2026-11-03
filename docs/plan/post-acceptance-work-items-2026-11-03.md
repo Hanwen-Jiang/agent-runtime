@@ -43,4 +43,4 @@ MODEL-BUDGET-02 已由 `libs/go-core/modelbudget` 共享持久实现取代旧 fa
 | TS-PROD-01 | task-service 生产模式：没有 Postgres 的 DSN 拒绝启动（不静默回落 SQLite）、连接池与 PgBouncer、Cache 必须是 Valkey，之后放开多副本 |
 | SBX-01 | Broker 从 Worker 独立成 Go 的 Sandbox Service（gRPC）：调用方只给（租户、工作区、会话、操作），找环境、连环境、存档、对账都在服务里；分三期，先只读 |
 | SBX-RS-01 | **DEFER**（2026-11-03 用户定，先保开发速度）：Rust 版 sandbox-agent 的原型与实测 |
-| SBX-RS-02 | **DEFER**：agent 与 fc-manager 暂按原计划用 Go；评估留在该文第 5 节 |
+| SBX-RS-02 | fc-manager **定为 Rust**（2026-11-03 用户定，firecracker-backend.md 第 10 节）；sandbox-agent 暂留 Go，是否换 Rust 随 SBX-RS-01 推迟 |

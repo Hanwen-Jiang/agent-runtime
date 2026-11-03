@@ -10,6 +10,7 @@
 2. **gVisor 做旁路**：留在后端登记里，**由配置文件决定哪个启用、哪个是默认**；不删。
 3. **不自动降级**：firecracker 不可用时不回退到 gVisor，除非租户策略显式写 `min_isolation: container`。这是 W11 现有规则（回退只能平级或升级隔离强度）的直接结果，不加特例。
 4. 用户的环境配置（环境变量、联网模式、启动脚本，以及以后的个人配置包）**经 Sandbox 接口的通用操作交付**（`exec(env=…)`、写文件、出网网关的授权），不依赖 Firecracker 独有的能力。所以旁路的 gVisor 上同样可用；快照、块盘只是加速。
+5. **fc-manager 用 Rust 写**（2026-11-03 用户定）。客户机里的 sandbox-agent 仍是 Go（换 Rust 的评估与实测推迟，见 [workspace-read-latency-and-disk-2026-11-03.md](workspace-read-latency-and-disk-2026-11-03.md) 第 5 节）；两者之间是 vsock 上的 HTTP，与语言无关，不共用代码。Rust 的依赖规则与工具链见第 10 节。
 
 ## 2. 现状（对照代码，2026-11-01）
 
@@ -37,7 +38,7 @@ Worker（SandboxBroker）──► Sandboxes（登记：enabled、default、capa
 FirecrackerSandboxProvider（Python 适配器；复用 sandbox_agent 的 HTTP 客户端）
         │ HTTPS + 令牌（令牌在 SecretStore 平台作用域的 sandbox/fc-manager-token）
         ▼
-fc-manager（Go，宿主机上的 systemd 服务，不在 Pod 里）
+fc-manager（Rust，宿主机上的 systemd 服务，不在 Pod 里）
    ├─ 每个环境：jailer ► firecracker 进程 ► 一台 microVM
    ├─ 磁盘：只读 rootfs（按镜像 digest 缓存）＋ 每台一个稀疏的可写层 scratch
    └─ vsock：agent 的管理通道 ＋ 两条出口转发（出网网关、包镜像）＋ 预览隧道
@@ -51,7 +52,7 @@ fc-manager（Go，宿主机上的 systemd 服务，不在 Pod 里）
 - **管理通道走 vsock**，客户机没有对外的网络入口；命令执行不再依赖 Pod IP 与 NetworkPolicy。
 - **客户机里没有网卡**。联网只有“环回地址 → vsock → fc-manager 的转发 → 出网网关或包镜像”这一条路（D-22）。凭据与授权照旧由网关校验，所以 D-16 的联网授权、SSRF 防线、审计原样适用。
 - **工作区用 `workspace: archive`**：Firecracker 没有 virtio-fs，不挂卷；Worker 建环境后从 ObjectStore 的存档恢复、销毁前存档（D-06 已有的流程）。
-- fc-manager 是宿主上新增的**最高权限组件**（要开 `/dev/kvm`、起 jailer）：代码保持小、只用标准库、输入全部校验、不把用户可控的字符串拼进命令、只允许 Worker 访问（见 D-20 的防错）。
+- fc-manager 是宿主上新增的**最高权限组件**（要开 `/dev/kvm`、起 jailer）：代码保持小、依赖按第 10 节的清单人审、输入全部校验、不把用户可控的字符串拼进命令、只允许 Worker 访问（见 D-20 的防错）。
 
 ## 4. 与其他后端的差异
 
@@ -106,7 +107,7 @@ fc-manager（Go，宿主机上的 systemd 服务，不在 Pod 里）
 
 **交付**：
 
-- `services/go-fc-manager`（新的 Go 模块，进 `go.work`；只用标准库）：宿主机上的服务，管 VM 的创建、销毁、列出，以及到客户机 agent 的反向代理（`/v1/envs/{id}/agent/…`）。
+- `services/rs-fc-manager`（新的 Rust crate，单独的 `Cargo.toml` 与提交进仓库的 `Cargo.lock`；依赖见第 10 节）：宿主机上的服务，管 VM 的创建、销毁、列出，以及到客户机 agent 的反向代理（`/v1/envs/{id}/agent/…`）。
 - `libs/py-core/src/agentruntime_core/adapters/firecracker_sandbox.py`：`FirecrackerSandboxProvider`，实现 Sandbox 与 `SandboxArchive`、`SandboxBrowse`、`SandboxLister`；agent 的 HTTP 客户端复用 `sandbox_agent.py`。登记字段：`manager_url`、`images`（运行环境 → 镜像，写法同 K8s）、`kernel`、`workspace: archive`、`egress_gateway: true`。
 - `services/go-sandbox-agent`：`AGENT_LISTEN=vsock:<端口>`，以及 `--init`（当 PID 1：挂 `/proc`、`/sys`、`/dev`，设主机名，挂数据盘，回收孤儿进程，响应关机信号）。
 - `deploy/images/firecracker/`：客户机内核的固定版本与构建脚本（配置裁剪：无模块、串口控制台）；版本要发布满两周（沿用 D-14 的原则）。
@@ -117,7 +118,8 @@ fc-manager（Go，宿主机上的 systemd 服务，不在 Pod 里）
 **难点与防错**
 
 - **不能真跑的机器**：见第 6 节。
-- **纯标准库做 AF_VSOCK**：Go 标准库的 `net` 不直接支持，要用 `syscall` 手写 sockaddr。如果这样不可行，先说明理由，再决定是否引入 `golang.org/x/sys`（违反“agent 只用标准库”，不默认引入）。
+- **AF_VSOCK 两端**：fc-manager（Rust）一侧经 `libc` 调用，不需要额外的库；客户机的 sandbox-agent（Go）一侧标准库的 `net` 不直接支持，要用 `syscall` 手写 sockaddr。如果 Go 一侧这样不可行，先说明理由，再决定是否引入 `golang.org/x/sys`（违反“agent 只用标准库”，不默认引入）。
+- **fc-manager 里不写 `unsafe`，除了 vsock 与少数系统调用的薄封装**：这些封装集中在一个模块里，单独评审。
 - **PID 1 的职责**：回收僵尸进程；命令超时或取消时杀整个进程组；取消后没确认命令已停（`ExecNotStopped`）则这台环境视为被污染，销毁而不是复用。
 - **命令拿不到 agent 令牌**（沿用 D-05 的检查）：`AGENT_*` 不给命令；令牌不放在客户机里非 agent 进程能读到的地方（`/proc/cmdline`、`/proc/1/environ`、磁盘文件）。具体怎么交付令牌留到写验收测试时定。
 - **非 root、只读根**：命令以普通用户运行，根文件系统只读，可写的只有工作目录与 `/tmp`（与 K8s 后端一致）。
@@ -255,7 +257,7 @@ fc-manager（Go，宿主机上的 systemd 服务，不在 Pod 里）
 ## 8. 没有验证的、要实测的
 
 - 单宿主上同时能跑多少台 VM、冷启动 P50 与 P95、快照恢复耗时：**都没有数字**。
-- `AF_VSOCK` 能否只靠标准库做到。
+- Go 一侧（sandbox-agent）的 `AF_VSOCK` 能否只靠标准库做到。
 - 选定的 Firecracker 与内核版本是否通知客户机“被克隆过”（影响 D-26 的重置方式）。
 - fc-manager 重启时接管还是终止（D-20 细化时定）。
 - 多宿主调度不在本期（登记里 `manager_url` 先是单个地址）。
@@ -265,3 +267,12 @@ fc-manager（Go，宿主机上的 systemd 服务，不在 Pod 里）
 - cloud-deploy.md 第 4.2 节“公开注册的租户 → microVM（Kata 或 Cloudflare）”：建议加上 firecracker。陌生租户的默认仍应是 microVM 级，这一点不变。
 - 同一节“完全访问只能落在 microVM 后端”：沿用 [design-changes-workspace.md](design-changes-workspace.md) 已经建议的口径（按租户策略决定）；firecracker 属于 microVM。
 - 设计书 4.10、附录 L.11 里“Sandbox 的后端”要加 firecracker 一种；这是设计书的改动，列在 [environment-config.md](environment-config.md) 第 7 节，由人更新原文档。
+
+## 10. fc-manager 的 Rust 依赖与工具链（2026-11-03）
+
+用户定 fc-manager 用 Rust（第 1 节第 5 条）。以下是要落地的规则，实现 D-20 前先由人确认依赖清单。
+
+- **设计书与 CLAUDE.md**：设计书 4.15 的技术栈与仓库结构加 Rust 与 `services/rs-fc-manager`，由人更新原文档后重新导出；CLAUDE.md 的仓库结构与常用命令同步加上（实现时改）。
+- **依赖**：`Cargo.lock` 提交；只收发布满两周的版本（与 Python 的 `exclude-newer` 同一原则）；`cargo deny` 检查许可证、安全公告与重复版本，进 CI。拟定的最小清单：`libc`（vsock、cgroup 与进程相关的系统调用）、`serde` 与 `serde_json`（API 与 Firecracker 的 JSON 配置）。HTTP：fc-manager 的对外 API 与连 Firecracker 的 API（UDS 上的 HTTP）要么用一个小的 HTTP 库，要么自己写最小的 HTTP/1.1；TLS 要么用 `rustls`，要么让 fc-manager 只听宿主内的 UDS 或回环地址、由已有的入口做 TLS。**这两项在实现前比较后定，写进本节**，不默认引入异步运行时。
+- **工具链**：固定 Rust 版本（`rust-toolchain.toml`，同样满两周）；`scripts/check.py` 加一步 `rust`：`cargo fmt --check`、`cargo clippy -D warnings`、`cargo test`、`cargo deny check`；目标 `x86_64-unknown-linux-musl` 静态链接；`deploy/images` 不需要镜像（systemd 服务），`deploy/cluster/install.sh` 装二进制并核对哈希。本机是 Windows：Linux 目标在容器里编译。
+- **测试**：第 6 节的假 fc-manager 在 Python 测试里，与 fc-manager 的语言无关，照旧；fc-manager 自己的单元测试在 `cargo test` 里，真 VM 的用例同样由 `AR_TEST_FIRECRACKER=1` 控制。
