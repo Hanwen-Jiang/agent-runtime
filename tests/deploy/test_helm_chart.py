@@ -212,6 +212,13 @@ def test_no_secret_values_are_rendered(manifests: list[dict[str, Any]]) -> None:
         assert not re.search(r"(?i)(sk-[a-z0-9]|BEGIN [A-Z ]*PRIVATE KEY)", text), f"ConfigMap {cm['metadata']['name']} 里像有密钥"
 
 
+def test_github_app_key_is_not_in_the_runtime_chart(manifests: list[dict[str, Any]]) -> None:
+    """G-01（coding-agent 的 docs/plan/github-app.md）：GitHub App 的私钥只挂进 coding-web，Runtime 的 Chart（含沙箱）里没有。"""
+    text = repr(manifests)
+    for marker in ("CODING_GITHUB_APP", "coding-github-app", "github-app.private-key"):
+        assert marker not in text, f"Runtime 的清单里出现了 {marker}"
+
+
 def test_sample_secret_values_never_leak(tmp_path: Path) -> None:
     """有人把密钥填进 values（例如 Langfuse 的认证）也不能进清单：Chart 只认 Secret 的名字。"""
     leaked = "PLAINTEXT-sk-should-not-render"
