@@ -616,9 +616,16 @@ M5 的后端顺序见 [firecracker-backend.md](firecracker-backend.md) 第 7 节
   `evals.cgent.link/api/live.json` 200；code 在切换的那一刻 503，随后 200；网关这次没有重启；出网网关与包镜像照旧第一次启动连不上业务库、
   重启一次就好；新 Pod 的日志里只有一种错误：出网网关每分钟一次 `failed to upload metrics`（连 Collector 的 4318 被拒）。它的网络策略
   （`templates/egress-gateway.yaml`）只放行 DNS、data 里的 Postgres、沙箱与公网（排除内网段），没有放行同一命名空间的 Collector，
-  所以出网网关的指标一直没进 Collector；这一版没改这个模板，不是这次引入的，要另修。回滚：`helm rollback ar 19`，coding-web 用
+  所以出网网关的指标一直没进 Collector；这一版没改这个模板，不是这次引入的，第 21 版修了。回滚：`helm rollback ar 19`，coding-web 用
   `kubectl -n agent-runtime set image deploy/coding-web coding-web=ghcr.io/agentruntime/coding-web:a319601`。
 - **没有验证**：内部租户真的能同时跑 2 个以上的 Task（要提交 Task）；coding-web 的新界面登录之后的样子。
+
+第 21 版（2026-11-03，只改 Chart：`f58ab45`；目录 `rev23`）：
+
+- 出网网关的 NetworkPolicy 多一条出站：同一命名空间里 Collector 的 Pod，TCP 4318（`tests/deploy/test_cloud.py` 的
+  `test_egress_gateway_reaches_the_collector`）。镜像仍是 26b30ee，values 同第 20 版；脚本按文档逐个比 manifest，只许这一处变化。没有 Pod 重启。
+- 核对：升级后网关不再报 `failed to upload metrics`（之前每分钟一次）。网关自己不记指标，只有 `runtime.egress` 的 span 经 Collector 进 Tempo；
+  升级后还没有经网关的出网，所以 Tempo 里还没看到新的 span。回滚：`helm rollback ar 20`。
 
 实现中与本计划写法不同的：
 
