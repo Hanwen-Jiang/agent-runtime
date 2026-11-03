@@ -204,9 +204,16 @@ evalDashboard:
   metricsNamespace: observability
   metricsPodLabels: {app.kubernetes.io/name: victoria-metrics-single}
   metricsPort: 8428
+  # /datasets 的数据（docs/plan/eval-site.md）：从这个仓库（owner/name）的 ref 每 5 分钟取 evalsets；空表示没有 /datasets 的数据。
+  # 私有仓库要只读令牌：Secret tokenSecret（默认 <release>-agent-runtime-eval-site）的 token 键，可以没有（公开仓库）。
+  site:
+    repo: ""
+    ref: main
+    tokenSecret: ""
+    cacheSize: 256Mi
   resources:
     requests: {cpu: 10m, memory: 32Mi}
-    limits: {cpu: 200m, memory: 96Mi}
+    limits: {cpu: 200m, memory: 192Mi}
 
 # 出网网关（docs/plan/cloud-deploy.md D-16）：沙箱联网只经它，按 Task 的联网授权放行；要配 secrets.relationalDsn。
 # 打开后 Worker 给命令注入代理变量并登记 request_network，task-service 在 Task 结束时通知它收回。

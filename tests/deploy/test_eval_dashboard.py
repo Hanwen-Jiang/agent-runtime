@@ -115,6 +115,52 @@ def test_with_a_metrics_url_the_pod_may_reach_only_victoriametrics_and_dns() -> 
     assert dns["to"][0]["podSelector"]["matchLabels"] == {"k8s-app": "kube-dns"}
 
 
+SITE = [*ENABLED, "evalDashboard.site.repo=Hanwen-Jiang/agent-runtime", "evalDashboard.site.tokenSecret=agent-runtime-eval-site"]
+PRIVATE = {"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "100.64.0.0/10", "127.0.0.0/8"}
+
+
+def test_with_a_site_repo_the_server_syncs_evalsets_from_github() -> None:
+    """docs/plan/eval-site.md 第 3 节：数据不在发布时生成，服务每 5 分钟从仓库 main 取 evalsets。令牌是挂进来的文件（可选），
+    缓存放 emptyDir（根文件系统只读），环境变量只有仓库、分支、令牌文件与缓存目录。"""
+    manifests = render(CLOUD_VALUES, set_values=SITE)
+    spec = pod_spec(named(manifests, "Deployment"))
+    [container] = spec["containers"]
+    env = {k: v["value"] for k, v in env_of(container).items()}
+    assert env == {
+        "AR_EVAL_SITE_REPO": "Hanwen-Jiang/agent-runtime",
+        "AR_EVAL_SITE_REF": "main",
+        "AR_EVAL_SITE_TOKEN_FILE": "/var/run/eval-site/token",
+        "AR_EVAL_SITE_CACHE_DIR": "/var/cache/eval-site",
+    }
+    volumes = {v["name"]: v for v in spec["volumes"]}
+    mounts = {m["mountPath"]: m for m in container["volumeMounts"]}
+    token = next(v for v in volumes.values() if "secret" in v)
+    assert token["secret"]["secretName"] == "agent-runtime-eval-site" and token["secret"]["optional"] is True, "公开仓库不要令牌，Secret 可以没有"
+    assert mounts["/var/run/eval-site"]["readOnly"] is True and mounts["/var/run/eval-site"]["name"] == token["name"]
+    cache = mounts["/var/cache/eval-site"]
+    assert "emptyDir" in volumes[cache["name"]] and volumes[cache["name"]]["emptyDir"].get("sizeLimit"), "缓存有大小上限"
+    assert container["securityContext"]["readOnlyRootFilesystem"] is True
+
+
+def test_with_a_site_repo_the_pod_may_reach_the_internet_on_443_only() -> None:
+    """取 GitHub 要出公网：只放 443 与 DNS，排除内网段与云元数据（NetworkPolicy 不认域名）。"""
+    egress = named(render(CLOUD_VALUES, set_values=SITE), "NetworkPolicy")["spec"]["egress"]
+    internet = [r for r in egress if any("ipBlock" in t for t in r.get("to", []))]
+    [rule] = internet
+    block = rule["to"][0]["ipBlock"]
+    assert block["cidr"] == "0.0.0.0/0" and PRIVATE <= set(block["except"])
+    assert rule["ports"] == [{"protocol": "TCP", "port": 443}]
+    assert any({p["port"] for p in r.get("ports", [])} == {53} for r in egress), "DNS"
+
+
+def test_without_a_site_repo_nothing_changes() -> None:
+    """不设仓库时与原来一样：没有环境变量、只有页面的卷、出方向不放公网。"""
+    manifests = render(CLOUD_VALUES, set_values=ENABLED)
+    [container] = pod_spec(named(manifests, "Deployment"))["containers"]
+    assert env_of(container) == {}
+    assert not [r for r in named(manifests, "NetworkPolicy")["spec"].get("egress") or [] if any("ipBlock" in t for t in r.get("to", []))]
+
+
 @pytest.mark.parametrize(
     ("sets", "needle"),
     [

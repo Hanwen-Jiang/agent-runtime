@@ -2,7 +2,9 @@
        learning 镜像跑只用标准库的静态服务；Pod 没有令牌、Secret 与业务环境变量。页面在 ConfigMap 里，由发布步骤写（docs/plan/cloud-deploy.md），
        Chart 不渲染它，否则每次 helm upgrade 都会清掉；卷标为 optional，还没发布时 Pod 也能起来。
        给了 metricsUrl 时页面另有实时的一栏（第 11.16 节）：服务端用写死的几条查询读 VictoriaMetrics 里的 runtime_eval_* 指标，
-       出方向只放行到 VictoriaMetrics 的端口与 DNS。 */ -}}
+       出方向只放行到 VictoriaMetrics 的端口与 DNS。
+       给了 site.repo 时另有 /datasets（docs/plan/eval-site.md）：服务每 5 分钟从仓库取 evalsets，令牌是可选挂载的 Secret 文件，
+       缓存在 emptyDir；出方向另放行公网 443（排除内网段，NetworkPolicy 不认域名）。 */ -}}
 {{- $d := .Values.evalDashboard -}}
 {{- if $d.enabled }}
 {{- if not $d.host }}
@@ -36,10 +38,22 @@ spec:
           image: {{ include "ar.image" (list . "learning") }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args: ["-m", "agentruntime_learning.evals.dashboard_server", "--dir", "/srv/eval-dashboard", "--port", "8080"]
-          {{- if $d.metricsUrl }}
+          {{- if or $d.metricsUrl $d.site.repo }}
           env:
+            {{- if $d.metricsUrl }}
             - name: AR_EVAL_METRICS_URL
               value: {{ $d.metricsUrl | quote }}
+            {{- end }}
+            {{- if $d.site.repo }}
+            - name: AR_EVAL_SITE_REPO
+              value: {{ $d.site.repo | quote }}
+            - name: AR_EVAL_SITE_REF
+              value: {{ $d.site.ref | default "main" | quote }}
+            - name: AR_EVAL_SITE_TOKEN_FILE
+              value: /var/run/eval-site/token
+            - name: AR_EVAL_SITE_CACHE_DIR
+              value: /var/cache/eval-site
+            {{- end }}
           {{- end }}
           ports:
             - name: http
@@ -63,11 +77,30 @@ spec:
             - name: page
               mountPath: /srv/eval-dashboard
               readOnly: true
+            {{- if $d.site.repo }}
+            - name: site-token
+              mountPath: /var/run/eval-site
+              readOnly: true
+            - name: site-cache
+              mountPath: /var/cache/eval-site
+            {{- end }}
       volumes:
         - name: page
           configMap:
             name: {{ $name }}
             optional: true
+        {{- if $d.site.repo }}
+        - name: site-token
+          secret:
+            secretName: {{ $d.site.tokenSecret | default (printf "%s-eval-site" (include "ar.fullname" .)) }}
+            optional: true
+            items:
+              - key: token
+                path: token
+        - name: site-cache
+          emptyDir:
+            sizeLimit: {{ $d.site.cacheSize | default "256Mi" }}
+        {{- end }}
 ---
 apiVersion: v1
 kind: Service
@@ -125,8 +158,9 @@ spec:
               kubernetes.io/metadata.name: {{ $d.ingressNamespace }}
       ports:
         - {protocol: TCP, port: 8080}
-  {{- if $d.metricsUrl }}
+  {{- if or $d.metricsUrl $d.site.repo }}
   egress:
+    {{- if $d.metricsUrl }}
     - to:
         - namespaceSelector:
             matchLabels:
@@ -136,6 +170,7 @@ spec:
               {{- toYaml $d.metricsPodLabels | nindent 14 }}
       ports:
         - {protocol: TCP, port: {{ $d.metricsPort }}}
+    {{- end }}
     - to:
         - namespaceSelector:
             matchLabels:
@@ -146,6 +181,15 @@ spec:
       ports:
         - {protocol: UDP, port: 53}
         - {protocol: TCP, port: 53}
+    {{- if $d.site.repo }}
+    # 取 GitHub 的 evalsets：只出公网 443，内网段与云元数据都不放。
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10, 127.0.0.0/8]
+      ports:
+        - {protocol: TCP, port: 443}
+    {{- end }}
   {{- else }}
   egress: []
   {{- end }}

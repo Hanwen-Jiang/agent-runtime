@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import threading
 import time
@@ -32,10 +33,25 @@ from pathlib import Path
 from typing import Any, Final
 from urllib.parse import urlsplit
 
+from agentruntime_learning.evals.site_catalog import Catalog, build_catalog
+from agentruntime_learning.evals.site_sync import SiteSync
+
 PAGE_NAME = "index.html"
-PAGE_PATHS = frozenset({"/", "/index.html"})
+# 评测网站（docs/plan/eval-site.md）：/ 是主页，原来的看板搬到 /results，旧地址 /index.html 永久跳过去。
+RESULTS_PATH = "/results"
+OLD_RESULTS_PATH = "/index.html"
+STATIC_DIR = Path(__file__).parent / "site_pages"
+STATIC_PAGES: Final[dict[str, str]] = {"/": "home.html", "/datasets": "datasets.html"}
 HEALTH_PATH = "/healthz"
 LIVE_PATH = "/api/live.json"
+SITE_INDEX_PATH = "/api/site.json"
+DATASET_PATH_RE = re.compile(r"^/api/datasets/([a-z0-9][a-z0-9-]{0,63})\.json$")
+SITE_CACHE_CONTROL = "public, max-age=60"
+SITE_TTL_S = 30.0
+SITE_REPO_ENV = "AR_EVAL_SITE_REPO"
+SITE_REF_ENV = "AR_EVAL_SITE_REF"
+SITE_TOKEN_FILE_ENV = "AR_EVAL_SITE_TOKEN_FILE"
+SITE_CACHE_DIR_ENV = "AR_EVAL_SITE_CACHE_DIR"
 CONTENT_SECURITY_POLICY = (
     "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; "
     "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
@@ -220,10 +236,55 @@ class LiveSource:
             return self._body
 
 
-def make_server(root: Path, host: str, port: int, *, live: LiveSource | None = None) -> ThreadingHTTPServer:
-    """绑定地址、还没开始服务的 HTTP 服务；port 为 0 时随机分配。live 不给时 /api/live.json 回 source 为 none。"""
+class SiteSource:
+    """/api/site.json 与 /api/datasets/<名字>.json 的数据（docs/plan/eval-site.md）：读 SiteSync 当前的一份 evalsets，
+    建一次目录缓存 SITE_TTL_S 秒；同步换了新的一份时下一次请求就用新的。"""
+
+    def __init__(self, sync: SiteSync | None, *, clock: Callable[[], float] = time.time, ttl_s: float = SITE_TTL_S) -> None:
+        self.sync = sync
+        self.clock = clock
+        self.ttl_s = ttl_s
+        self._lock = threading.Lock()
+        self._catalog: Catalog | None = None
+        self._key: tuple[Path | None, float] = (None, float("-inf"))
+
+    def _get(self) -> Catalog | None:
+        if self.sync is None or self.sync.current() is None:
+            return None
+        with self._lock:
+            root, now = self.sync.current(), self.clock()
+            if self._catalog is None or self._key[0] != root or now - self._key[1] >= self.ttl_s:
+                try:
+                    self._catalog = build_catalog(root)  # type: ignore[arg-type]
+                except (OSError, ValueError):
+                    self._catalog = self._catalog or Catalog()
+                self._key = (root, now)
+            return self._catalog
+
+    def index(self) -> bytes:
+        catalog = self._get()
+        sync = self.sync.status() if self.sync is not None else {"source": "none"}
+        doc = {**(catalog.index() if catalog else {"datasets": [], "frameworks": [], "groupings": [], "default_grouping": "eval_category", "excluded": []}),
+               "sync": sync}
+        doc.pop("excluded", None)  # 只给运维看（日志），页面不用
+        return json.dumps(doc, ensure_ascii=False, separators=(",", ":")).encode()
+
+    def dataset(self, name: str) -> bytes | None:
+        catalog = self._get()
+        doc = catalog.dataset(name) if catalog else None
+        return None if doc is None else json.dumps(doc, ensure_ascii=False, separators=(",", ":")).encode()
+
+
+def _static_page(name: str) -> bytes:
+    return (STATIC_DIR / name).read_bytes()
+
+
+def make_server(root: Path, host: str, port: int, *, live: LiveSource | None = None, site: SiteSync | None = None) -> ThreadingHTTPServer:
+    """绑定地址、还没开始服务的 HTTP 服务；port 为 0 时随机分配。live 不给时 /api/live.json 回 source 为 none；
+    site 不给时 /api/site.json 回 source 为 none、没有数据集。"""
     page = Path(root) / PAGE_NAME
     source = live or LiveSource(None)
+    site_source = SiteSource(site)
 
     class Handler(BaseHTTPRequestHandler):
         timeout = REQUEST_TIMEOUT_S
@@ -262,7 +323,24 @@ def make_server(root: Path, host: str, port: int, *, live: LiveSource | None = N
                 # 查询参数一概不用：查什么在服务端写死。
                 self._reply(HTTPStatus.OK, source.get(), "application/json; charset=utf-8", Cache_Control=LIVE_CACHE_CONTROL)
                 return
-            if path not in PAGE_PATHS:
+            if path == SITE_INDEX_PATH:
+                self._reply(HTTPStatus.OK, site_source.index(), "application/json; charset=utf-8", Cache_Control=SITE_CACHE_CONTROL)
+                return
+            match = DATASET_PATH_RE.match(path)
+            if match:
+                body = site_source.dataset(match.group(1))
+                if body is None:
+                    self._text(HTTPStatus.NOT_FOUND)
+                else:
+                    self._reply(HTTPStatus.OK, body, "application/json; charset=utf-8", Cache_Control=SITE_CACHE_CONTROL)
+                return
+            if path in STATIC_PAGES:
+                self._reply(HTTPStatus.OK, _static_page(STATIC_PAGES[path]), "text/html; charset=utf-8", Cache_Control=PAGE_CACHE_CONTROL)
+                return
+            if path == OLD_RESULTS_PATH:
+                self._text(HTTPStatus.MOVED_PERMANENTLY, Location=RESULTS_PATH)
+                return
+            if path != RESULTS_PATH:
                 self._text(HTTPStatus.NOT_FOUND)
                 return
             try:
@@ -287,10 +365,38 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=int, default=8080)
     parser.add_argument("--host", default="0.0.0.0")  # noqa: S104 — 在 Pod 里监听，入站由 NetworkPolicy 限定
     parser.add_argument("--metrics-url", default=os.environ.get(METRICS_URL_ENV, ""), help=f"VictoriaMetrics 的地址（默认取 {METRICS_URL_ENV}）")
+    parser.add_argument("--site-repo", default=os.environ.get(SITE_REPO_ENV, ""), help=f"取 evalsets 的仓库 owner/name（默认取 {SITE_REPO_ENV}）")
+    parser.add_argument("--site-ref", default=os.environ.get(SITE_REF_ENV, "main"))
+    parser.add_argument("--site-token-file", default=os.environ.get(SITE_TOKEN_FILE_ENV, ""), help="只读令牌的文件（可以没有）")
+    parser.add_argument("--site-cache-dir", type=Path, default=Path(os.environ.get(SITE_CACHE_DIR_ENV, "/tmp/eval-site")))  # noqa: S108
+    parser.add_argument("--site-dir", type=Path, default=None, help="本机：直接读这个 evalsets 目录，不联网")
     args = parser.parse_args(argv)
-    with make_server(args.dir, args.host, args.port, live=LiveSource(args.metrics_url)) as server:
+    site = _site_from_args(args)
+    with make_server(args.dir, args.host, args.port, live=LiveSource(args.metrics_url), site=site) as server:
         server.serve_forever()
     return 0
+
+
+def _site_from_args(args: argparse.Namespace) -> SiteSync | None:
+    if args.site_dir is not None:
+        return SiteSync.local(args.site_dir)
+    if not args.site_repo:
+        return None
+    token = None
+    if args.site_token_file:
+        try:
+            token = Path(args.site_token_file).read_text("utf-8").strip() or None
+        except OSError:
+            token = None  # 公开仓库不要令牌；Secret 没挂上时照样能取公开仓库
+    sync = SiteSync(repo=args.site_repo, ref=args.site_ref, token=token, cache_dir=args.site_cache_dir)
+
+    def loop() -> None:
+        while True:
+            sync.refresh()
+            time.sleep(15)
+
+    threading.Thread(target=loop, name="eval-site-sync", daemon=True).start()
+    return sync
 
 
 if __name__ == "__main__":

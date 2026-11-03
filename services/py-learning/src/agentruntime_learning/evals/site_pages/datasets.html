@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Datasets · 数据集</title>
+<style>
+:root { --bg:#ffffff; --fg:#1b1f24; --muted:#5b6470; --card:#f6f7f9; --line:#e3e6ea; --accent:#2f5bd3; --ok:#1f7a4d; --warn:#9a6200; --code:#f0f2f5; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --fg:#e8eaed; --muted:#9aa3ad; --card:#181b21; --line:#2a2f37; --accent:#7ea0ff; --ok:#5fcf98; --warn:#e6b454; --code:#11141a; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+main { max-width:1100px; margin:0 auto; padding:24px 16px 64px; }
+a { color:var(--accent); }
+header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+h1 { font-size:24px; margin:0; } h2 { font-size:19px; margin:28px 0 8px; } h3 { font-size:16px; margin:20px 0 6px; }
+.lang { border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:6px; padding:4px 10px; cursor:pointer; }
+.muted { color:var(--muted); }
+.fw { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:12px; }
+.fw details { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+.fw summary { cursor:pointer; font-weight:600; }
+.controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:12px 0; position:sticky; top:0; background:var(--bg); padding:8px 0; border-bottom:1px solid var(--line); }
+select, input[type=search] { background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font:inherit; }
+input[type=search] { min-width:220px; flex:1; }
+.group { margin-top:18px; }
+.group > h3 { display:flex; gap:8px; align-items:baseline; }
+.row { border:1px solid var(--line); border-radius:8px; margin:6px 0; background:var(--card); }
+.row > summary { list-style:none; cursor:pointer; padding:8px 12px; display:grid; grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) auto; gap:12px; align-items:start; }
+.row > summary::-webkit-details-marker { display:none; }
+.row .q { overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; }
+.row .a { color:var(--muted); overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; }
+.tags { display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
+.badge { font-size:12px; border-radius:999px; padding:1px 8px; border:1px solid var(--line); white-space:nowrap; }
+.confirmed { color:var(--ok); border-color:var(--ok); } .draft { color:var(--warn); border-color:var(--warn); }
+.body { padding:0 12px 12px; }
+.body dl { display:grid; grid-template-columns:max-content minmax(0, 1fr); gap:4px 12px; margin:8px 0; }
+.body dt { color:var(--muted); } .body dd { margin:0; overflow-wrap:anywhere; }
+pre { background:var(--code); border:1px solid var(--line); border-radius:6px; padding:8px; overflow:auto; max-height:420px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.count { color:var(--muted); font-size:14px; font-weight:400; }
+@media (max-width: 720px) { .row > summary { grid-template-columns: 1fr; } .tags { justify-content:flex-start; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div><a href="/" data-zh="← 评测首页" data-en="← Evaluations">← 评测首页</a>
+    <h1 data-zh="数据集与框架" data-en="Datasets and frameworks">数据集与框架</h1></div>
+    <button class="lang" id="lang" type="button">English</button>
+  </header>
+  <p class="muted" id="intro"></p>
+  <h2 data-zh="测试框架" data-en="Frameworks">测试框架</h2>
+  <div class="fw" id="frameworks"></div>
+  <h2 data-zh="题目" data-en="Questions">题目</h2>
+  <div class="controls">
+    <label><span data-zh="分组" data-en="Group by">分组</span>
+      <select id="grouping"></select></label>
+    <label><span data-zh="状态" data-en="Status">状态</span>
+      <select id="status"><option value="">*</option><option value="confirmed">confirmed</option><option value="draft">draft</option></select></label>
+    <input type="search" id="search" placeholder="搜索题目、答案、来源">
+    <span class="muted" id="shown"></span>
+  </div>
+  <div id="groups"></div>
+  <p class="muted" id="synced"></p>
+</main>
+<script>
+(() => {
+  let lang = "zh";
+  try { lang = localStorage.getItem("evals-lang") || "zh"; } catch (e) {}
+  const t = (o) => (o && typeof o === "object" ? (o[lang] || o.zh || o.en || "") : (o || ""));
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined && text !== null) n.textContent = text; return n; };
+  const text = (v) => (v === null || v === undefined ? "" : typeof v === "string" ? v : JSON.stringify(v, null, 2));
+  const GROUP_LABEL = {
+    eval_category: { zh: "评测类别", en: "Eval category" }, source_type: { zh: "来源类型", en: "Source type" },
+    framework: { zh: "框架", en: "Framework" }, review: { zh: "人审状态", en: "Review status" }, dataset: { zh: "数据集", en: "Dataset" },
+  };
+  const STATUS = { confirmed: { zh: "已人审", en: "reviewed" }, draft: { zh: "未经人审", en: "not reviewed" } };
+  let site = null, items = [], grouping = "eval_category";
+  try { grouping = new URLSearchParams(location.search).get("group") || "eval_category"; } catch (e) {}
+
+  function label(kind, key) {
+    if (kind === "eval_category") return t((site.categories || {})[key]) || key;
+    if (kind === "source_type") return t((site.source_types || {})[key]) || key;
+    if (kind === "framework") { const f = (site.frameworks || []).find((x) => x.id === key); return f ? t(f.title) : key; }
+    if (kind === "review") return t(STATUS[key]) || key;
+    if (kind === "dataset") { const d = site.datasets.find((x) => x.name === key); return d ? t(d.title) : key; }
+    return key;
+  }
+  function keyOf(item) { return grouping === "review" ? (item.review.status === "confirmed" ? "confirmed" : "draft") : item[grouping]; }
+
+  function frameworks() {
+    const box = document.getElementById("frameworks"); box.replaceChildren();
+    for (const f of site.frameworks || []) {
+      const d = el("details"); d.append(el("summary", "", t(f.title)));
+      if (f.what) { d.append(el("p", "", t(f.what))); }
+      if (f.why) { const p = el("p", "muted"); p.textContent = (lang === "zh" ? "为什么这样做：" : "Why: ") + t(f.why); d.append(p); }
+      const used = (f.used_by || []).map((n) => label("dataset", n)).filter(Boolean);
+      if (used.length) d.append(el("p", "muted", (lang === "zh" ? "用于：" : "Used by: ") + used.join(lang === "zh" ? "、" : ", ")));
+      box.append(d);
+    }
+  }
+
+  function sourceLine(s) {
+    if (s.kind === "authored") return (lang === "zh" ? "自编" : "in-house") + (s.work_item ? ` · ${s.work_item}` : "");
+    return [s.dataset, s.source_id || s.instance_id || (s.row_index_zero_based !== undefined ? `row ${s.row_index_zero_based}` : ""), s.revision ? `@${String(s.revision).slice(0, 7)}` : ""].filter(Boolean).join(" · ");
+  }
+
+  function row(item) {
+    const d = el("details", "row");
+    const s = el("summary");
+    const q = el("div", "q", item.question || item.id);
+    const a = el("div", "a", text(item.answer));
+    const tags = el("div", "tags");
+    const st = item.review.status === "confirmed" ? "confirmed" : "draft";
+    tags.append(el("span", `badge ${st}`, t(STATUS[st])), el("span", "badge", label("source_type", item.source_type)), el("span", "badge", sourceLine(item.source)));
+    s.append(q, a, tags); d.append(s);
+    d.addEventListener("toggle", () => {
+      if (!d.open || d.dataset.filled) return;
+      d.dataset.filled = "1";
+      const body = el("div", "body");
+      const dl = el("dl");
+      const add = (k, v, href) => { if (v === undefined || v === null || v === "") return; dl.append(el("dt", "", k)); const dd = el("dd"); if (href) { const link = el("a", "", v); link.href = href; link.rel = "noopener noreferrer"; dd.append(link); } else dd.textContent = v; dl.append(dd); };
+      add("id", item.id);
+      add(lang === "zh" ? "数据集" : "Dataset", label("dataset", item.dataset));
+      add(lang === "zh" ? "框架" : "Framework", label("framework", item.framework));
+      add(lang === "zh" ? "人审" : "Review", [t(STATUS[st]), item.review.confirmed_by, item.review.confirmed_at].filter(Boolean).join(" · "));
+      if (item.source.kind === "upstream") {
+        add(lang === "zh" ? "来源" : "Source", sourceLine(item.source), /^https:\/\//.test(item.source.url || "") ? item.source.url : null);
+        add(lang === "zh" ? "许可证" : "License", item.source.license);
+        if (item.source.derived_from) add(lang === "zh" ? "派生自" : "Derived from", item.source.derived_from);
+        if (item.source.authored_fields) add(lang === "zh" ? "我们补的部分" : "Authored by us", text(item.source.authored_fields).replace(/[\[\]"\n]/g, " ").trim());
+        if (item.source.round_origin) add(lang === "zh" ? "模拟轮次" : "Synthetic rounds", item.source.round_origin);
+      } else add(lang === "zh" ? "来源" : "Source", sourceLine(item.source));
+      if (item.group_id && item.group_id !== item.id) add(lang === "zh" ? "同组原题" : "Group", item.group_id);
+      body.append(dl);
+      body.append(el("h4", "", lang === "zh" ? "题目（完整输入）" : "Question (full input)"), el("pre", "", item.question));
+      body.append(el("h4", "", lang === "zh" ? "答案 / 标注" : "Answer / labels"), el("pre", "", text(item.answer)));
+      const detail = Object.assign({}, item.detail);
+      if (detail.rubric) { body.append(el("h4", "", lang === "zh" ? "判分标准" : "Scoring rule"), el("pre", "", text(detail.rubric))); delete detail.rubric; }
+      if (item.source.source_fields) { body.append(el("h4", "", lang === "zh" ? "保留的上游原字段" : "Upstream fields kept"), el("pre", "", text(item.source.source_fields))); }
+      const more = el("details"); more.append(el("summary", "", lang === "zh" ? "完整用例（JSON）" : "Full case (JSON)"), el("pre", "", text(detail)));
+      body.append(more);
+      d.append(body);
+    });
+    return d;
+  }
+
+  function render() {
+    const query = document.getElementById("search").value.trim().toLowerCase();
+    const status = document.getElementById("status").value;
+    const groups = new Map();
+    let n = 0;
+    for (const item of items) {
+      if (status && (item.review.status === "confirmed" ? "confirmed" : "draft") !== status) continue;
+      if (query && !(`${item.id} ${item.question} ${text(item.answer)} ${sourceLine(item.source)}`.toLowerCase().includes(query))) continue;
+      const k = keyOf(item) || "-";
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(item); n += 1;
+    }
+    const box = document.getElementById("groups"); box.replaceChildren();
+    const keys = [...groups.keys()].sort((a, b) => label(grouping, a).localeCompare(label(grouping, b)));
+    for (const k of keys) {
+      const g = el("section", "group");
+      const h = el("h3", "", label(grouping, k)); h.append(el("span", "count", ` ${groups.get(k).length}`));
+      g.append(h);
+      for (const item of groups.get(k)) g.append(row(item));
+      box.append(g);
+    }
+    const hidden = site.datasets.reduce((s, d) => s + d.counts.holdout_hidden, 0);
+    document.getElementById("shown").textContent = lang === "zh" ? `显示 ${n} 道；另有 ${hidden} 道留出集只计数、不公开` : `${n} shown; ${hidden} held-out questions are counted but not shown`;
+  }
+
+  function applyLang() {
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-zh]").forEach((n) => { n.textContent = n.dataset[lang]; });
+    document.getElementById("lang").textContent = lang === "zh" ? "English" : "中文";
+    document.getElementById("search").placeholder = lang === "zh" ? "搜索题目、答案、来源" : "Search questions, answers, sources";
+    if (!site) return;
+    document.getElementById("intro").textContent = t(site.intro);
+    const sel = document.getElementById("grouping"); sel.replaceChildren();
+    for (const g of site.groupings || []) { const o = el("option", "", t(GROUP_LABEL[g]) || g); o.value = g; sel.append(o); }
+    if (!(site.groupings || []).includes(grouping)) grouping = site.default_grouping || "eval_category";
+    sel.value = grouping;
+    const st = document.getElementById("status");
+    st.options[0].textContent = lang === "zh" ? "全部" : "all"; st.options[1].textContent = t(STATUS.confirmed); st.options[2].textContent = t(STATUS.draft);
+    const s = site.sync || {};
+    document.getElementById("synced").textContent = s.synced_at ? (lang === "zh" ? "数据更新于 " : "Data updated ") + s.synced_at + (s.stale ? (lang === "zh" ? "（最近一次更新失败，显示的是上一份）" : " (the last update failed; showing the previous copy)") : "") : "";
+    frameworks(); render();
+  }
+
+  document.getElementById("lang").addEventListener("click", () => { lang = lang === "zh" ? "en" : "zh"; try { localStorage.setItem("evals-lang", lang); } catch (e) {} applyLang(); });
+  document.getElementById("grouping").addEventListener("change", (e) => { grouping = e.target.value; try { history.replaceState(null, "", `?group=${encodeURIComponent(grouping)}`); } catch (err) {} render(); });
+  document.getElementById("status").addEventListener("change", render);
+  document.getElementById("search").addEventListener("input", render);
+
+  fetch("/api/site.json").then((r) => r.json()).then(async (d) => {
+    site = d;
+    const parts = await Promise.all(site.datasets.map((ds) => fetch(`/api/datasets/${encodeURIComponent(ds.name)}.json`).then((r) => (r.ok ? r.json() : { items: [] })).catch(() => ({ items: [] }))));
+    items = parts.flatMap((p) => p.items || []);
+    applyLang();
+  }).catch(() => { document.getElementById("groups").textContent = lang === "zh" ? "数据暂时取不到。" : "Data is unavailable right now."; });
+  applyLang();
+})();
+</script>
+</body>
+</html>

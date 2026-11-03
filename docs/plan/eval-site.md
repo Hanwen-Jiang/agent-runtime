@@ -48,7 +48,7 @@
 - **每题必须有来源**：自编题写“自编”和所属工作项，改编与原题写上游仓库、版本、题号与许可证；缺来源的题不上页面，服务端日志记一条。
 - **不展示的**：LongBench 的长篇上下文（只给问题、选项与链接）、租户数据（评测集本来就不含）。
 - 服务端只答固定的路径：`/`、`/results`、`/datasets`、`/api/live.json`、`/api/site.json`、`/api/datasets/<名字>.json`（名字只认索引里有的），其余一律 404；请求的路径不拼进文件名（沿用现有约束）。
-- 只读令牌放在 SecretStore 平台作用域（`eval-site/github-read-token`），只读这个仓库的内容；日志与页面不出现它。
+- 只读令牌是 K8s Secret `agent-runtime-eval-site` 挂进来的文件（可选，公开仓库不要），只读这个仓库的内容；日志、页面与状态里不出现它。看板现在不接 SecretStore，为一个令牌接上它太重，所以不放 SecretStore（写验收测试时改的）。
 - 网络：看板的 NetworkPolicy 现在只出到 VictoriaMetrics 与 DNS，要加一条出到公网 443（排除内网段），只为取 GitHub。
 
 ## 5. 验收测试（先写，写完停下给人看）
@@ -66,3 +66,24 @@
 - 各公开数据集的选题清单（`public/*.json`），从现有适配器按计划与种子导出。
 - `site.json`：框架与各数据集的双语说明。
 - 自编集的“评测类别”映射（task-loop 现有的 category 是业务分组，与页面的评测类别不同）。
+
+## 6. 实现记录（2026-11-03）
+
+- `agentruntime_learning.evals.site_catalog`：按 `evalsets/site.json` 读各数据集（task 类目录、jsonl），留出集只计数，缺来源的剔除并记进 excluded（不上页面）。
+  仓库现有 10 个数据集：公开 98 道，留出集 24 道只计数，没有缺来源的。
+- `agentruntime_learning.evals.site_sync`：tarball 接口 + 标准库 tarfile，只解 evalsets，跳过不安全的条目，失败留上一份；`SiteSync.local` 给本机。
+- `dashboard_server`：`/` 主页、`/results`（原看板，`/index.html` 301 过去）、`/datasets`、`/api/site.json`、`/api/datasets/<名字>.json`；
+  主页与 /datasets 的页面在 `evals/site_pages/`（随 learning 镜像）。`--site-dir` 本机直接读一个目录。
+- Chart：`evalDashboard.site.{repo,ref,tokenSecret,cacheSize}`；给了 repo 才有环境变量、令牌卷、缓存卷与公网 443 的出站。
+  内存上限 96Mi 改成 192Mi（目录在内存里建）。
+- 验证：py-learning 新加与改过的测试 77 条全过；整套 697 过、3 失败（`test_terminalbench.py` 的判分三条，没动到的代码）；
+  部署测试在服务器上跑（本机没有 helm）：`test_eval_dashboard.py` 全过，`helm lint --strict` 过。本机起服务在浏览器里看过三页、分组切换、展开与中英。
+
+与本稿不同或没做的：
+
+- 令牌改为挂载的 K8s Secret 文件（第 4 节已改）。
+- **原题数据集还没上页面**：第 3 节第 2 条的选题清单（`public/*.json`）没写，现在 /datasets 只有自编与改编的题。
+- 评测结果仍是发布步骤写的整页（第 3 节第 3 条的二选一没做）；主页的结果卡片读实时的一栏。
+- 页面冒烟测试（headless 浏览器）没写，靠手动看过。
+- 上线要：人建只读令牌（fine-grained，只给本仓库 Contents 读），建 Secret `<release>-agent-runtime-eval-site`（键 `token`），
+  `helm upgrade` 时设 `evalDashboard.site.repo=Hanwen-Jiang/agent-runtime`，换新的 learning 镜像。

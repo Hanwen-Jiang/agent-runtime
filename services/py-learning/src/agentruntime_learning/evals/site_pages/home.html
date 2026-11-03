@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evals · 评测</title>
+<style>
+:root { --bg:#ffffff; --fg:#1b1f24; --muted:#5b6470; --card:#f6f7f9; --line:#e3e6ea; --accent:#2f5bd3; --ok:#1f7a4d; --warn:#9a6200; }
+@media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --fg:#e8eaed; --muted:#9aa3ad; --card:#181b21; --line:#2a2f37; --accent:#7ea0ff; --ok:#5fcf98; --warn:#e6b454; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+main { max-width:1040px; margin:0 auto; padding:32px 16px 64px; }
+header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+h1 { font-size:26px; margin:0; }
+.lang { border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:6px; padding:4px 10px; cursor:pointer; }
+p.lead { color:var(--muted); max-width:760px; }
+.cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:16px; margin-top:24px; }
+a.card { display:block; text-decoration:none; color:inherit; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:20px; }
+a.card:hover { border-color:var(--accent); }
+.card h2 { margin:0 0 6px; font-size:19px; }
+.card .more { color:var(--accent); margin-top:12px; display:inline-block; }
+.stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:10px; margin-top:14px; }
+.stat { border:1px solid var(--line); border-radius:8px; padding:8px 10px; background:var(--bg); }
+.stat b { display:block; font-size:22px; font-variant-numeric:tabular-nums; }
+.stat span { color:var(--muted); font-size:13px; }
+ul.runs { list-style:none; padding:0; margin:14px 0 0; }
+ul.runs li { display:flex; justify-content:space-between; gap:8px; border-top:1px solid var(--line); padding:6px 0; font-size:14px; }
+.muted { color:var(--muted); }
+.badge { font-size:12px; border-radius:999px; padding:1px 8px; border:1px solid var(--line); }
+.running { color:var(--warn); } .finished { color:var(--ok); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 data-zh="评测" data-en="Evaluations">评测</h1>
+    <button class="lang" id="lang" type="button">English</button>
+  </header>
+  <p class="lead" data-zh="我们怎么测 Agent Runtime：用了哪些题、哪些框架，测出了什么。两个子页各有细节。" data-en="How we test the Agent Runtime: which questions and frameworks we use, and what the results are. Each sub-page has the details.">我们怎么测 Agent Runtime：用了哪些题、哪些框架，测出了什么。两个子页各有细节。</p>
+  <div class="cards">
+    <a class="card" href="/results">
+      <h2 data-zh="评测结果" data-en="Results">评测结果</h2>
+      <div class="muted" data-zh="各次评测的分数、花费与正在跑的评测。" data-en="Scores and cost of each run, and the runs in progress.">各次评测的分数、花费与正在跑的评测。</div>
+      <div class="stats" id="run-stats"></div>
+      <ul class="runs" id="runs"></ul>
+      <span class="more" data-zh="查看全部结果 →" data-en="All results →">查看全部结果 →</span>
+    </a>
+    <a class="card" href="/datasets">
+      <h2 data-zh="数据集与框架" data-en="Datasets and frameworks">数据集与框架</h2>
+      <div class="muted" data-zh="每一道题、它的答案与来源，以及用哪套框架判分。" data-en="Every question, its answer and source, and the framework that scores it.">每一道题、它的答案与来源，以及用哪套框架判分。</div>
+      <div class="stats" id="set-stats"></div>
+      <span class="more" data-zh="查看全部题目 →" data-en="All questions →">查看全部题目 →</span>
+    </a>
+  </div>
+  <p class="muted" id="synced"></p>
+</main>
+<script>
+(() => {
+  let lang = "zh";
+  try { lang = localStorage.getItem("evals-lang") || "zh"; } catch (e) {}
+  const t = (o) => (o && (o[lang] || o.zh || o.en)) || "";
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
+  const stat = (box, value, label) => { const s = el("div", "stat"); s.append(el("b", "", String(value)), el("span", "", label)); box.append(s); };
+  let site = null, live = null;
+  function applyLang() {
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-zh]").forEach((n) => { n.textContent = n.dataset[lang]; });
+    document.getElementById("lang").textContent = lang === "zh" ? "English" : "中文";
+    render();
+  }
+  function render() {
+    const sets = document.getElementById("set-stats"); sets.replaceChildren();
+    if (site) {
+      const total = { authored: 0, adapted: 0, original: 0 }; let shown = 0, hidden = 0, confirmed = 0;
+      for (const d of site.datasets) { total[d.source_type] += d.counts.total; shown += d.counts.shown; hidden += d.counts.holdout_hidden; confirmed += d.counts.confirmed; }
+      stat(sets, shown, lang === "zh" ? "公开的题" : "questions shown");
+      stat(sets, hidden, lang === "zh" ? "留出集（不公开）" : "held out (hidden)");
+      stat(sets, confirmed, lang === "zh" ? "已人审" : "human-reviewed");
+      for (const k of ["authored", "adapted", "original"]) if (total[k]) stat(sets, total[k], t((site.source_types || {})[k]) || k);
+      stat(sets, (site.frameworks || []).length, lang === "zh" ? "套框架" : "frameworks");
+      const s = site.sync || {};
+      document.getElementById("synced").textContent = s.synced_at ? (lang === "zh" ? "题目数据更新于 " : "Question data updated ") + s.synced_at + (s.stale ? (lang === "zh" ? "（最近一次更新失败，显示的是上一份）" : " (the last update failed; showing the previous copy)") : "") : "";
+    }
+    const rs = document.getElementById("run-stats"), list = document.getElementById("runs"); rs.replaceChildren(); list.replaceChildren();
+    if (live && live.runs) {
+      const running = live.runs.filter((r) => r.status === "running");
+      stat(rs, running.length, lang === "zh" ? "正在跑" : "running");
+      stat(rs, live.runs.filter((r) => r.status === "finished").length, lang === "zh" ? "最近完成" : "finished recently");
+      for (const r of live.runs.slice(0, 5)) {
+        const li = el("li");
+        const left = el("span", "", `${r.suite || ""} · ${r.subject || r.run_id}`);
+        const score = Object.entries(r.scores || {})[0];
+        const right = el("span", r.status, score ? `${score[0]} ${(score[1] * 100).toFixed(1)}%` : `${r.done}/${r.planned}`);
+        li.append(left, right); list.append(li);
+      }
+    }
+  }
+  document.getElementById("lang").addEventListener("click", () => { lang = lang === "zh" ? "en" : "zh"; try { localStorage.setItem("evals-lang", lang); } catch (e) {} applyLang(); });
+  fetch("/api/site.json").then((r) => r.json()).then((d) => { site = d; render(); }).catch(() => {});
+  fetch("/api/live.json").then((r) => r.json()).then((d) => { live = d; render(); }).catch(() => {});
+  applyLang();
+})();
+</script>
+</body>
+</html>
