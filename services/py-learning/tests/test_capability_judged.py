@@ -77,11 +77,27 @@ async def test_simpleqa_answers_then_opus_grades_with_the_official_template(qa_c
     assert rows[0]["judge_pinned_ok"] and rows[0]["text"] == "A"
 
 
-@pytest.mark.parametrize(("verdict", "grade"), [("B", "INCORRECT"), ("C", "NOT_ATTEMPTED"), ("unsure", "NOT_ATTEMPTED")])
-async def test_simpleqa_only_correct_scores(qa_csv: Path, tmp_path: Path, verdict: str, grade: str) -> None:
+@pytest.mark.parametrize(("verdict", "grade", "score"), [("B", "INCORRECT", 0.0), ("C", "NOT_ATTEMPTED", 0.25), ("unsure", "NOT_ATTEMPTED", 0.25)])
+async def test_simpleqa_credits_an_honest_abstention(qa_csv: Path, tmp_path: Path, verdict: str, grade: str, score: float) -> None:
+    """2026-11-03 人定：deliver 要测“不编造”，老实说不知道（NOT_ATTEMPTED）记 0.25，编错记 0；官方逐题规则（只有答对记 1）
+    会把不知道与瞎编算成一样。abstain_credit=0 回到官方规则，版本号里写着用的是哪种。"""
     ev = simpleqa.make(source=qa_csv, judge_log=tmp_path / "j.jsonl")
     res = await ev.run_item(ev.items(1, 0)[0], scripted("I don't know.", verdict), candidate=GPT)
-    assert res.score == 0.0 and res.record["grade"] == grade and res.error is None
+    assert res.score == score and res.record["grade"] == grade and res.error is None
+    official = simpleqa.make(source=qa_csv, judge_log=tmp_path / "j.jsonl", abstain_credit=0)
+    res = await official.run_item(official.items(1, 0)[0], scripted("I don't know.", verdict), candidate=GPT)
+    assert res.score == 0.0 and official.version != ev.version and ev.version.endswith(":abstain=0.25")
+    with pytest.raises(ValueError):
+        simpleqa.make(source=qa_csv, abstain_credit=1)
+
+
+def test_simpleqa_official_metrics() -> None:
+    """报告里另附官方口径：答对率、答了的里答对的比例、两者的调和平均（F 分数），以及答了的里答错的比例。"""
+    m = simpleqa.official_metrics(["CORRECT"] * 3 + ["INCORRECT"] * 1 + ["NOT_ATTEMPTED"] * 4)
+    assert m["n"] == 8 and m["correct"] == 0.375 and m["not_attempted"] == 0.5 and m["incorrect"] == 0.125
+    assert m["correct_given_attempted"] == 0.75 and m["incorrect_given_attempted"] == 0.25
+    assert m["f_score"] == pytest.approx(2 * 0.375 * 0.75 / (0.375 + 0.75))
+    assert simpleqa.official_metrics(["NOT_ATTEMPTED"] * 2)["f_score"] == 0.0
 
 
 async def test_same_vendor_is_flagged_and_an_unpinned_judge_is_an_error(qa_csv: Path, tmp_path: Path) -> None:
@@ -142,3 +158,16 @@ def test_frames_decision_parsing() -> None:
     assert frames.parse_decision('"Explanation:" x\n"Decision:" ("TRUE" or "FALSE")\nExplanation: y\nDecision: FALSE')[0] is False
     assert frames.parse_decision("decision: true")[0] is True and frames.parse_decision("no verdict")[0] is None
     assert _judged.same_vendor(SONNET) and not _judged.same_vendor(GPT)
+
+
+def test_the_matrix_report_carries_simpleqa_official_metrics_per_candidate() -> None:
+    from agentruntime_learning.capability import matrix as mx
+
+    def row(candidate: str, grade: str | None, error: str | None = None) -> dict:
+        return {"eval": "simpleqa", "candidate": candidate, "error": error, "record": {"grade": grade} if grade else {}}
+
+    rows = [row(GPT, "CORRECT"), row(GPT, "NOT_ATTEMPTED"), row(SONNET, "INCORRECT"), row(SONNET, None, "JudgeNotPinned"),
+            {"eval": "frames", "candidate": GPT, "error": None, "record": {"grade": "CORRECT"}}]
+    extras = mx.eval_extras(rows)
+    assert set(extras) == {"simpleqa"} and set(extras["simpleqa"]) == {GPT, SONNET}
+    assert extras["simpleqa"][GPT]["n"] == 2 and extras["simpleqa"][SONNET]["incorrect_given_attempted"] == 1.0, "出错的题不算"

@@ -211,8 +211,9 @@ JudgeBench 的回答是别家模型生成的，**不要拿来训练**（各模�
   RecordingJudgeGateway 调用，每次判分写一行 JSONL：两个评测声明 `uses_judge = True`，矩阵调度在 gateway 底下包好记录器、写运行目录的
   `judgments.jsonl`；单独用时（gateway 链上没有记录器）自己包一层，写 `judge_log`（默认 `<AR_EVAL_DATA_DIR>/judgments/<评测>.jsonl`），不会记两遍；`ItemResult.record` 里有裁判的完整输入、结论、理由、实际服务的模型与花费，候选是 Anthropic 的模型时 `same_vendor = True`。
   裁判没落在 Opus 上时这道题记为出错。**温度 0 做不到**：GenerateParams 没有温度字段（要改契约，走 S-01），按 Profile 的默认值，
-  record 里写 `temperature: "provider default"`。SimpleQA 逐题只有 CORRECT 记 1（同官方），INCORRECT 与 NOT_ATTEMPTED 都记 0
-  但分开记下；要奖励“不知道就不答”得另算官方的 F 分数，**要人定**是否改成逐题给 NOT_ATTEMPTED 部分分。FRAMES 只做论文的
+  record 里写 `temperature: "provider default"`。SimpleQA 逐题：CORRECT 记 1、NOT_ATTEMPTED
+  （老实说不知道）记 0.25、INCORRECT（编错）记 0（2026-11-03 人定：deliver 测“不编造”，官方规则把不知道与瞎编算成一样；
+  `abstain_credit` 可调，写在版本号里）；scores.json 每格另附官方口径（答对率、答了的里答对的比例、F 分数、答了的里答错的比例）。FRAMES 只做论文的
   naive prompting（不给维基百科条目）；给条目原文的 oracle 设定要另取页面并定怎么钉版本，没做。
 
 **每题花费的估计**（没实测，按 Profile 的单价与估的 token 数；有思考预算的档另加思考 token）。各评测的 `est_tokens`（被测一侧的输入、

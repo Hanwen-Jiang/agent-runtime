@@ -626,7 +626,22 @@ def score_results(plan: MatrixPlan, rows: Sequence[Mapping[str, Any]]) -> dict[s
                 **cell.to_json(),
             }
         )
+        extras = eval_extras(mine)
+        if extras:
+            cells[-1]["extras"] = extras
     return {"plan": plan.name, "seed": plan.seed, "scored_at": datetime.now(UTC).isoformat(timespec="seconds"), "cells": cells}
+
+
+def eval_extras(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """评测自带的另一种口径，按候选汇总，只写进报告、不进分数：SimpleQA 的官方 F 分数与答错率（simpleqa.official_metrics）。出错的题不算。"""
+    from agentruntime_learning.capability.evals import simpleqa
+
+    grades: dict[str, list[str]] = defaultdict(list)
+    for r in rows:
+        grade = (r.get("record") or {}).get("grade")
+        if r.get("eval") == simpleqa.NAME and not r.get("error") and grade:
+            grades[str(r["candidate"])].append(str(grade))
+    return {simpleqa.NAME: {c: simpleqa.official_metrics(g) for c, g in sorted(grades.items())}} if grades else {}
 
 
 def write_scores(out_dir: Path, report: Mapping[str, Any]) -> Path:
