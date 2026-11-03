@@ -135,7 +135,7 @@ coding-agent → task-service WorkspaceService（workspaceapi/server.go: operate
 
 | 组件 | 建议 | 理由 |
 | --- | --- | --- |
-| sandbox-agent | Rust，经 SBX-RS-01 实测确认后切换 | 每台 VM 都有一份；PID 1 与 vsock 是底层工作；代码小、有黑盒一致性测试 |
+| sandbox-agent | **Rust（2026-11-03 用户定，D-28 原样改写）** | 每台 VM 都有一份；PID 1 与 vsock 是底层工作；代码小、有黑盒一致性测试 |
 | fc-manager | **Rust（2026-11-03 用户定）** | 还没写，没有改写成本；宿主上权限最高、长期运行、并发管很多 VM |
 | Sandbox Service | Go | 控制面，瓶颈不在 CPU；与 task-service 共用租户与安全相关的代码 |
 | 存档、恢复的数据路径 | 挪到 agent 与 fc-manager 一侧 | 收益最大的一块，与语言选择绑在一起做 |
@@ -148,9 +148,9 @@ Rust 的真实成本（不是理由，是要付的）：
 
 ### 5.4 工作项
 
-**2026-11-03 用户定：fc-manager 用 Rust**（[firecracker-backend.md](firecracker-backend.md) 第 1 节第 5 条、第 10 节）；**sandbox-agent 换 Rust 的原型与实测（SBX-RS-01）推迟**，先保开发速度，Firecracker 上线、有了冷启动与密度的基线之后再考虑；SBX-RS-02 只剩 agent 的语言待定。
+**2026-11-03 用户定：fc-manager 与 sandbox-agent 都用 Rust**（[firecracker-backend.md](firecracker-backend.md) 第 1 节第 5 条、D-28、第 10 节）。SBX-RS-01 的“先做原型再决定”不再需要，SBX-RS-02 已定；两者的内存、二进制大小改在 D-28 的验收里记录。
 
 | 工作项 | Failure / Evidence | Minimum fix | 成本与新失败面 | 当前决定 |
 | --- | --- | --- | --- | --- |
-| SBX-RS-01 Rust 版 agent 的原型与实测 | 第 5.2 节的内存、快照、恢复收益是经验值，没有本项目的数字；Firecracker 上线前是换语言代价最小的时候 | 用 Rust 写 agent 的核心：`--init`（PID 1）、vsock 监听、`/v1/exec`（含取消与杀进程组）、`/v1/files`、`/v1/manifest`；只用 `std` 加 `libc`。与 Go 版在独服上同条件对比：常驻内存、静态二进制大小、冷启动到第一条命令返回、快照文件大小与恢复到第一条命令返回（P50、P95），各跑 20 次以上。一致性测试的子集对两版都跑 | 原型约千行；独服上要有 Firecracker 与 KVM（D-20 的真 VM 环境）；原型不进生产 | **DEFER**（2026-11-03 用户定） |
-| SBX-RS-02 定语言与依赖规则 | SBX-RS-01 的数字出来之前不定 | 收益明确（例如每台 VM 常驻内存、快照恢复的 P95 有可见下降）时：agent 与 fc-manager 用 Rust，写设计改动稿（4.15 技术栈、4.10 后端）与 Rust 依赖规则，人审后改 firecracker-backend.md 的 D-20；收益不明显时维持 Go，结论与数字记在本节 | 改设计书由人做；D-20 推迟到定下之后开工 | **DEFER**（2026-11-03 用户定） |
+| SBX-RS-01 Rust 版 agent 的原型与实测 | 第 5.2 节的内存、快照、恢复收益是经验值，没有本项目的数字；Firecracker 上线前是换语言代价最小的时候 | 用 Rust 写 agent 的核心：`--init`（PID 1）、vsock 监听、`/v1/exec`（含取消与杀进程组）、`/v1/files`、`/v1/manifest`；只用 `std` 加 `libc`。与 Go 版在独服上同条件对比：常驻内存、静态二进制大小、冷启动到第一条命令返回、快照文件大小与恢复到第一条命令返回（P50、P95），各跑 20 次以上。一致性测试的子集对两版都跑 | 原型约千行；独服上要有 Firecracker 与 KVM（D-20 的真 VM 环境）；原型不进生产 | **取消**：用户直接定 Rust，改为 D-28，数字在其验收里记录 |
+| SBX-RS-02 定语言与依赖规则 | SBX-RS-01 的数字出来之前不定 | 收益明确（例如每台 VM 常驻内存、快照恢复的 P95 有可见下降）时：agent 与 fc-manager 用 Rust，写设计改动稿（4.15 技术栈、4.10 后端）与 Rust 依赖规则，人审后改 firecracker-backend.md 的 D-20；收益不明显时维持 Go，结论与数字记在本节 | 改设计书由人做；D-20 推迟到定下之后开工 | **已定**：两者都用 Rust（firecracker-backend.md 第 1 节第 5 条、第 10 节） |

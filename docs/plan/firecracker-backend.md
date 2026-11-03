@@ -10,7 +10,7 @@
 2. **gVisor 做旁路**：留在后端登记里，**由配置文件决定哪个启用、哪个是默认**；不删。
 3. **不自动降级**：firecracker 不可用时不回退到 gVisor，除非租户策略显式写 `min_isolation: container`。这是 W11 现有规则（回退只能平级或升级隔离强度）的直接结果，不加特例。
 4. 用户的环境配置（环境变量、联网模式、启动脚本，以及以后的个人配置包）**经 Sandbox 接口的通用操作交付**（`exec(env=…)`、写文件、出网网关的授权），不依赖 Firecracker 独有的能力。所以旁路的 gVisor 上同样可用；快照、块盘只是加速。
-5. **fc-manager 用 Rust 写**（2026-11-03 用户定）。客户机里的 sandbox-agent 仍是 Go（换 Rust 的评估与实测推迟，见 [workspace-read-latency-and-disk-2026-11-03.md](workspace-read-latency-and-disk-2026-11-03.md) 第 5 节）；两者之间是 vsock 上的 HTTP，与语言无关，不共用代码。Rust 的依赖规则与工具链见第 10 节。
+5. **fc-manager 与 sandbox-agent 都用 Rust 写**（2026-11-03 用户定）。sandbox-agent 先按现有 HTTP 接口原样改写（D-28），K8s、Cloudflare、本地后端一起换过去，D-20 的 `--init` 与 vsock 直接写在 Rust 版里，不再在 Go 版里做。两者放在同一个 Cargo workspace，共用 vsock 与系统调用的薄封装。规则见第 10 节。
 
 ## 2. 现状（对照代码，2026-11-01）
 
@@ -109,7 +109,7 @@ fc-manager（Rust，宿主机上的 systemd 服务，不在 Pod 里）
 
 - `services/rs-fc-manager`（新的 Rust crate，单独的 `Cargo.toml` 与提交进仓库的 `Cargo.lock`；依赖见第 10 节）：宿主机上的服务，管 VM 的创建、销毁、列出，以及到客户机 agent 的反向代理（`/v1/envs/{id}/agent/…`）。
 - `libs/py-core/src/agentruntime_core/adapters/firecracker_sandbox.py`：`FirecrackerSandboxProvider`，实现 Sandbox 与 `SandboxArchive`、`SandboxBrowse`、`SandboxLister`；agent 的 HTTP 客户端复用 `sandbox_agent.py`。登记字段：`manager_url`、`images`（运行环境 → 镜像，写法同 K8s）、`kernel`、`workspace: archive`、`egress_gateway: true`。
-- `services/go-sandbox-agent`：`AGENT_LISTEN=vsock:<端口>`，以及 `--init`（当 PID 1：挂 `/proc`、`/sys`、`/dev`，设主机名，挂数据盘，回收孤儿进程，响应关机信号）。
+- `services/rs-sandbox-agent`（D-28 改写后的 Rust 版）：`AGENT_LISTEN=vsock:<端口>`，以及 `--init`（当 PID 1：挂 `/proc`、`/sys`、`/dev`，设主机名，挂数据盘，回收孤儿进程，响应关机信号）。
 - `deploy/images/firecracker/`：客户机内核的固定版本与构建脚本（配置裁剪：无模块、串口控制台）；版本要发布满两周（沿用 D-14 的原则）。
 - `deploy/cluster/fc-manager.service`（systemd，仿 `ar-firewall.service`）；`install.sh` 核对 `/dev/kvm`；Worker 到 fc-manager 的 NetworkPolicy（只放行 Worker）。
 - 资源：vCPU、内存按 `SandboxSpec`；可写层大小有上限；jailer（非 root、chroot、独立 PID 与网络命名空间）、seccomp、cgroup v2；每宿主并发 VM 数上限。
@@ -118,7 +118,7 @@ fc-manager（Rust，宿主机上的 systemd 服务，不在 Pod 里）
 **难点与防错**
 
 - **不能真跑的机器**：见第 6 节。
-- **AF_VSOCK 两端**：fc-manager（Rust）一侧经 `libc` 调用，不需要额外的库；客户机的 sandbox-agent（Go）一侧标准库的 `net` 不直接支持，要用 `syscall` 手写 sockaddr。如果 Go 一侧这样不可行，先说明理由，再决定是否引入 `golang.org/x/sys`（违反“agent 只用标准库”，不默认引入）。
+- **AF_VSOCK**：两端都是 Rust，经 `libc` 调用，封装放在 workspace 里共用的一个 crate，不需要别的库。
 - **fc-manager 里不写 `unsafe`，除了 vsock 与少数系统调用的薄封装**：这些封装集中在一个模块里，单独评审。
 - **PID 1 的职责**：回收僵尸进程；命令超时或取消时杀整个进程组；取消后没确认命令已停（`ExecNotStopped`）则这台环境视为被污染，销毁而不是复用。
 - **命令拿不到 agent 令牌**（沿用 D-05 的检查）：`AGENT_*` 不给命令；令牌不放在客户机里非 agent 进程能读到的地方（`/proc/cmdline`、`/proc/1/environ`、磁盘文件）。具体怎么交付令牌留到写验收测试时定。
@@ -234,6 +234,35 @@ fc-manager（Rust，宿主机上的 systemd 服务，不在 Pod 里）
 
 **依赖**：D-20、D-21、D-24。无契约变更。
 
+### D-28 sandbox-agent 改写为 Rust（强档）
+
+**目标**：用 Rust 原样实现现有 sandbox-agent 的接口与行为，所有后端换过去，之后删掉 Go 版。2026-11-03 用户定。
+
+**交付**：
+
+- `services/rs-sandbox-agent`：与 `services/go-sandbox-agent` 同样的 HTTP 接口（`/healthz`、`/v1/exec`、`/v1/exec/cancel`、`/v1/files`、`/v1/archive`、`/v1/manifest`、`/v1/list`、`/v1/grep`）、同样的令牌校验、同样的环境变量白名单（`AGENT_*` 一个都不给命令）、同样的存档格式与路径规则（`archive.go`，以及与之对齐的 `agentruntime_core.dev.workdir`）。Linux 与 Windows 都能编译（Windows 只给本机开发测试，进程组的做法照 `proc_windows.go`）。
+- 换过去的地方：`deploy/images/sandbox-python`、`universal` 等镜像的构建阶段；Cloudflare 桥的容器镜像（`deploy/cloudflare/sandbox-bridge`）；测试里本机编译 agent 的地方（`adapters/kindtest.py`、`adapters/cloudflaretest.py`、`tests/adapters/test_sandbox_exec_cancel.py`、py-worker 的 `test_interrupt_undo.py`）改成 `cargo build`；注释里指向 Go 版的路径（`processes.py`、`dev/workdir.py`、CLAUDE.md）。
+- 一个发布周期内两版并存，之后删除 `services/go-sandbox-agent`。
+
+**难点与防错**
+
+- **行为对齐靠黑盒测试**：`agentruntime_core.conformance.sandbox` 与 Go 版自己的测试（约 810 行）里的用例，先整理成对两版都跑的黑盒用例（起一个 agent 进程、经 HTTP 验证），两版都过才切换；Go 版的单元测试里测内部函数的，改写成等价的黑盒用例或 Rust 的单元测试。
+- **存档格式不能变**：已有的快照（ObjectStore 里的清单与块）要能被 Rust 版导入；测试用 Go 版导出的 tar 与清单做 golden，Rust 版导入后清单一致，Rust 版导出的再被 Go 版导入一致。
+- **取消与超时**：杀整个进程组、取消后确认已停（`ExecNotStopped` 的语义）、输出截断上限，与 Go 版一致。
+- **依赖比 Go 版多**：Go 版只用标准库（含 `archive/tar`、`crypto/sha256`）；Rust 版至少要 tar、sha256、JSON 的库，它跑在每个沙箱里、握着 agent 令牌，依赖清单按第 10 节人审，tar 的解包路径校验（`..`、绝对路径、指出去的符号链接、设备文件）不交给库的默认行为，自己再核一遍。
+- **令牌不落到命令看得到的地方**：沿用 D-05 的检查（`/proc/<pid>/environ`、命令行、磁盘）。
+
+**验收**
+
+1. 两版对同一套黑盒用例全部通过（Linux；Windows 跑本机开发用的子集）。
+2. 存档互通：Go 版导出 → Rust 版导入、Rust 版导出 → Go 版导入，清单逐项一致。
+3. 恶意 tar 套件（同 D-21 验收 3）导入失败，工作目录之外没有写出。
+4. 命令读不到 agent 令牌；`AGENT_*` 不进命令的环境。
+5. K8s（kind，`AR_TEST_KIND=1`）与 Cloudflare 假桥的测试用 Rust 版通过。
+6. 记录两版的常驻内存与静态二进制大小（只记录，不设门槛）。
+
+**依赖**：无（D-20 依赖它）。无契约变更。
+
 ## 6. 测试策略（没有 KVM 的机器）
 
 沿用仓库已有的做法（`AR_TEST_KIND=1`、`AR_LIVE_CLOUDFLARE=1`）：
@@ -246,6 +275,7 @@ fc-manager（Rust，宿主机上的 systemd 服务，不在 Pod 里）
 
 | 步 | 内容 | 说明 |
 | --- | --- | --- |
+| 0 | D-28（sandbox-agent 改写为 Rust） | 与 D-19 并行；D-20 依赖它 |
 | 1 | D-19 | 先做；它和 D-23 都改 `Sandboxes`/Broker，同一时间只由一个人改 |
 | 2 | D-20（先用假 fc-manager 跑通） | 与 environment-config.md 的 D-23、D-25 可并行：它们不依赖 Firecracker |
 | 3 | D-21、D-22 | D-20 之后；两者可并行 |
@@ -257,7 +287,7 @@ fc-manager（Rust，宿主机上的 systemd 服务，不在 Pod 里）
 ## 8. 没有验证的、要实测的
 
 - 单宿主上同时能跑多少台 VM、冷启动 P50 与 P95、快照恢复耗时：**都没有数字**。
-- Go 一侧（sandbox-agent）的 `AF_VSOCK` 能否只靠标准库做到。
+- （已不适用：sandbox-agent 改用 Rust 后，vsock 两端都经 `libc`。）
 - 选定的 Firecracker 与内核版本是否通知客户机“被克隆过”（影响 D-26 的重置方式）。
 - fc-manager 重启时接管还是终止（D-20 细化时定）。
 - 多宿主调度不在本期（登记里 `manager_url` 先是单个地址）。
@@ -268,11 +298,13 @@ fc-manager（Rust，宿主机上的 systemd 服务，不在 Pod 里）
 - 同一节“完全访问只能落在 microVM 后端”：沿用 [design-changes-workspace.md](design-changes-workspace.md) 已经建议的口径（按租户策略决定）；firecracker 属于 microVM。
 - 设计书 4.10、附录 L.11 里“Sandbox 的后端”要加 firecracker 一种；这是设计书的改动，列在 [environment-config.md](environment-config.md) 第 7 节，由人更新原文档。
 
-## 10. fc-manager 的 Rust 依赖与工具链（2026-11-03）
+## 10. Rust 的依赖与工具链（fc-manager 与 sandbox-agent，2026-11-03）
 
-用户定 fc-manager 用 Rust（第 1 节第 5 条）。以下是要落地的规则，实现 D-20 前先由人确认依赖清单。
+用户定 fc-manager 与 sandbox-agent 都用 Rust（第 1 节第 5 条）。以下是要落地的规则，开工 D-28 前先由人确认依赖清单。
 
-- **设计书与 CLAUDE.md**：设计书 4.15 的技术栈与仓库结构加 Rust 与 `services/rs-fc-manager`，由人更新原文档后重新导出；CLAUDE.md 的仓库结构与常用命令同步加上（实现时改）。
-- **依赖**：`Cargo.lock` 提交；只收发布满两周的版本（与 Python 的 `exclude-newer` 同一原则）；`cargo deny` 检查许可证、安全公告与重复版本，进 CI。拟定的最小清单：`libc`（vsock、cgroup 与进程相关的系统调用）、`serde` 与 `serde_json`（API 与 Firecracker 的 JSON 配置）。HTTP：fc-manager 的对外 API 与连 Firecracker 的 API（UDS 上的 HTTP）要么用一个小的 HTTP 库，要么自己写最小的 HTTP/1.1；TLS 要么用 `rustls`，要么让 fc-manager 只听宿主内的 UDS 或回环地址、由已有的入口做 TLS。**这两项在实现前比较后定，写进本节**，不默认引入异步运行时。
-- **工具链**：固定 Rust 版本（`rust-toolchain.toml`，同样满两周）；`scripts/check.py` 加一步 `rust`：`cargo fmt --check`、`cargo clippy -D warnings`、`cargo test`、`cargo deny check`；目标 `x86_64-unknown-linux-musl` 静态链接；`deploy/images` 不需要镜像（systemd 服务），`deploy/cluster/install.sh` 装二进制并核对哈希。本机是 Windows：Linux 目标在容器里编译。
+- **布局**：仓库根一个 Cargo workspace（与 `go.work` 并列），成员 `services/rs-sandbox-agent`、`services/rs-fc-manager` 与共用的 `libs/rs-sys`（vsock、进程组、cgroup 等系统调用的薄封装；`unsafe` 只允许在这里）。
+
+- **设计书与 CLAUDE.md**：设计书 4.15 的技术栈与仓库结构加 Rust、`services/rs-sandbox-agent`、`services/rs-fc-manager` 与 `libs/rs-sys`，由人更新原文档后重新导出；CLAUDE.md 的仓库结构与常用命令同步加上（实现时改）。
+- **依赖**：`Cargo.lock` 提交；只收发布满两周的版本（与 Python 的 `exclude-newer` 同一原则）；`cargo deny` 检查许可证、安全公告与重复版本，进 CI。拟定的最小清单：两者共用 `libc`（vsock、cgroup 与进程相关的系统调用）、`serde` 与 `serde_json`；sandbox-agent 另要 `sha2` 与一个 tar 库（或自写只支持所需子集的 tar 读写，实现前比较后定）。HTTP：fc-manager 的对外 API 与连 Firecracker 的 API（UDS 上的 HTTP）要么用一个小的 HTTP 库，要么自己写最小的 HTTP/1.1；TLS 要么用 `rustls`，要么让 fc-manager 只听宿主内的 UDS 或回环地址、由已有的入口做 TLS。**这两项在实现前比较后定，写进本节**，不默认引入异步运行时。
+- **工具链**：固定 Rust 版本（`rust-toolchain.toml`，同样满两周）；`scripts/check.py` 加一步 `rust`：`cargo fmt --check`、`cargo clippy -D warnings`、`cargo test`、`cargo deny check`；目标 `x86_64-unknown-linux-musl` 静态链接；fc-manager 不需要镜像（systemd 服务），`deploy/cluster/install.sh` 装二进制并核对哈希；sandbox-agent 在 `deploy/images` 的各镜像里换成 Rust 的构建阶段，D-21 的 rootfs 转换注入同一个静态二进制。本机是 Windows：Linux 目标在容器里编译。
 - **测试**：第 6 节的假 fc-manager 在 Python 测试里，与 fc-manager 的语言无关，照旧；fc-manager 自己的单元测试在 `cargo test` 里，真 VM 的用例同样由 `AR_TEST_FIRECRACKER=1` 控制。
