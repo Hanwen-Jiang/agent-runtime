@@ -13,6 +13,8 @@ import (
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/localingress"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/ingress"
+
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/config"
 )
 
 const signingKey = "cmd-test-signing-key"
@@ -63,6 +65,70 @@ func TestUnknownSubcommandIsAUsageError(t *testing.T) {
 	if code := run(nil, &out, &errOut, getenv(nil)); code != 2 {
 		t.Errorf("没有子命令应返回 2，实际 %d", code)
 	}
+}
+
+// TSP-1 验收（TS-PROD-01 ①）：生产模式下 serve 没有 AR_RELATIONAL_DSN 时在连 Temporal 之前就以配置错误退出（2），
+// 不在 AR_DATA_DIR 下建 SQLite。
+func TestServeRefusesSQLiteInProduction(t *testing.T) {
+	dataDir := t.TempDir()
+	var out, errOut bytes.Buffer
+	code := run([]string{"serve"}, &out, &errOut, getenv(map[string]string{
+		"AR_PROFILE":          "production",
+		"AR_TEMPORAL_ADDRESS": "127.0.0.1:1",
+		"AR_DEV_SIGNING_KEY":  signingKey,
+		"AR_DATA_DIR":         dataDir,
+	}))
+	if code != 2 {
+		t.Fatalf("应以配置错误退出（2），实际 %d：%s", code, errOut.String())
+	}
+	if !strings.Contains(errOut.String(), "AR_RELATIONAL_DSN") {
+		t.Errorf("错误信息指出缺的是 AR_RELATIONAL_DSN：%s", errOut.String())
+	}
+	if strings.Contains(errOut.String(), signingKey) {
+		t.Error("错误信息不能带出签名密钥")
+	}
+	if _, err := os.Stat(filepath.Join(dataDir, "relational")); !os.IsNotExist(err) {
+		t.Errorf("不应建 SQLite 的目录：%v", err)
+	}
+}
+
+// registry-seed 在生产模式下同样不回落 SQLite。
+func TestRegistrySeedRefusesSQLiteInProduction(t *testing.T) {
+	dataDir := t.TempDir()
+	seed := filepath.Join(t.TempDir(), "seed.json")
+	if err := os.WriteFile(seed, []byte(`{"entries":[]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out, errOut bytes.Buffer
+	code := run([]string{"registry-seed", seed}, &out, &errOut, getenv(map[string]string{
+		"AR_PROFILE":  "production",
+		"AR_DATA_DIR": dataDir,
+	}))
+	if code == 0 {
+		t.Fatal("生产模式没有连接串时 registry-seed 应失败")
+	}
+	if !strings.Contains(errOut.String(), "AR_RELATIONAL_DSN") {
+		t.Errorf("错误信息指出缺的是 AR_RELATIONAL_DSN：%s", errOut.String())
+	}
+	if _, err := os.Stat(filepath.Join(dataDir, "relational")); !os.IsNotExist(err) {
+		t.Errorf("不应建 SQLite 的目录：%v", err)
+	}
+}
+
+// 构造业务库的函数本身也守住这一条：生产模式下没有连接串直接报错，不建目录（防止以后新的调用方绕过配置校验）。
+func TestNewRelationalStoreNeverFallsBackInProduction(t *testing.T) {
+	dataDir := t.TempDir()
+	if _, err := newRelationalStore(context.Background(), config.Store{DataDir: dataDir, Production: true}); err == nil {
+		t.Fatal("生产模式没有连接串应当报错")
+	}
+	if _, err := os.Stat(filepath.Join(dataDir, "relational")); !os.IsNotExist(err) {
+		t.Errorf("不应建 SQLite 的目录：%v", err)
+	}
+	store, err := newRelationalStore(context.Background(), config.Store{DataDir: dataDir})
+	if err != nil {
+		t.Fatalf("开发模式回落 SQLite：%v", err)
+	}
+	_ = store.Close()
 }
 
 func TestReplaySubcommand(t *testing.T) {

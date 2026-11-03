@@ -108,6 +108,77 @@ func TestFromEnvRelationalDSN(t *testing.T) {
 	}
 }
 
+// TSP-1 验收（TS-PROD-01 ①，docs/plan/workspace-read-latency-and-disk-2026-11-03.md 第 2 节）：AR_PROFILE=production 时
+// 业务库必须是 Postgres，没配 AR_RELATIONAL_DSN 就拒绝启动，不静默回落到 AR_DATA_DIR 下的 SQLite；
+// 不设或设 development 时行为不变（开发与端到端测试不设它）。
+func TestFromEnvProfile(t *testing.T) {
+	for _, profile := range []string{"", ProfileDevelopment} {
+		m := base()
+		m[EnvProfile] = profile
+		cfg, err := FromEnv(env(m))
+		if err != nil {
+			t.Fatalf("AR_PROFILE=%q 时没有连接串也能起来（SQLite 开发实现）：%v", profile, err)
+		}
+		if cfg.Production {
+			t.Errorf("AR_PROFILE=%q 不是生产模式", profile)
+		}
+	}
+
+	m := base()
+	m[EnvProfile] = ProfileProduction
+	_, err := FromEnv(env(m))
+	if err == nil {
+		t.Fatal("生产模式没有 AR_RELATIONAL_DSN 应当拒绝启动")
+	}
+	for _, name := range []string{EnvRelationalDSN, EnvProfile} {
+		if !strings.Contains(err.Error(), name) {
+			t.Errorf("错误信息指出变量名 %s：%v", name, err)
+		}
+	}
+	if strings.Contains(err.Error(), key) {
+		t.Error("错误信息不能带出签名密钥")
+	}
+
+	dsn := "postgres://app:s3cret-password@db.internal:5432/agentruntime"
+	m[EnvRelationalDSN] = dsn
+	cfg, err := FromEnv(env(m))
+	if err != nil {
+		t.Fatalf("生产模式配了连接串应当能起来：%v", err)
+	}
+	if !cfg.Production || cfg.RelationalDSN.RevealString() != dsn {
+		t.Errorf("生产模式与连接串没有读进来：production=%v", cfg.Production)
+	}
+
+	for _, bad := range []string{"prod", "Production", " production", "staging"} {
+		m := base()
+		m[EnvRelationalDSN] = dsn
+		m[EnvProfile] = bad
+		_, err := FromEnv(env(m))
+		if err == nil || !strings.Contains(err.Error(), EnvProfile) {
+			t.Errorf("AR_PROFILE=%q 应当报错并指出变量名，实际 %v", bad, err)
+		}
+	}
+}
+
+// registry-seed 写的是 serve 用的同一个业务库：生产模式下同样不回落 SQLite（否则种子写进了没人读的文件）。
+func TestStoreFromEnvProfile(t *testing.T) {
+	s, err := StoreFromEnv(env(map[string]string{}))
+	if err != nil || s.Production || s.DataDir != "data" || s.SchemasDir != "schemas" {
+		t.Errorf("不设时是开发模式、默认目录：%+v %v", s, err)
+	}
+	_, err = StoreFromEnv(env(map[string]string{EnvProfile: ProfileProduction}))
+	if err == nil || !strings.Contains(err.Error(), EnvRelationalDSN) {
+		t.Errorf("生产模式没有连接串应当报错并指出 %s，实际 %v", EnvRelationalDSN, err)
+	}
+	s, err = StoreFromEnv(env(map[string]string{EnvProfile: ProfileProduction, EnvRelationalDSN: "postgres://db/agentruntime"}))
+	if err != nil || !s.Production || s.RelationalDSN.IsZero() {
+		t.Errorf("生产模式配了连接串：%+v %v", s, err)
+	}
+	if _, err := StoreFromEnv(env(map[string]string{EnvProfile: "prod"})); err == nil {
+		t.Error("AR_PROFILE 取值不对应当报错")
+	}
+}
+
 func TestFromEnvRejectsBadValues(t *testing.T) {
 	cases := map[string]map[string]string{
 		"缺少 Temporal 地址": {EnvTemporalAddress: ""},
