@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -73,6 +74,10 @@ def export(name: str, n: int, seed: int) -> Path:
                 extra["context_omitted_chars"] = len(str(payload["context"]))
             row = {"id": item.id, "question": _trim(question if isinstance(question, str) else json.dumps(question, ensure_ascii=False, default=str)),
                    "answer": _trim(answer), "extra": extra, "selection": {"n": n, "seed": seed, "eval": name}}
+            hits: list[int] = []
+            row = scrub(row, hits)
+            if hits:
+                row["extra"]["redacted"] = f"{len(hits)} 个形似访问令牌的字符串换成了占位符"
             f.write(json.dumps(row, ensure_ascii=False, default=str) + "\n")
     return path
 
