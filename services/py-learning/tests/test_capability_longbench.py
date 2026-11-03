@@ -10,7 +10,7 @@ import pytest
 from agentruntime_learning.capability.base import role_enum
 from agentruntime_learning.capability.evals import longbench as lb
 
-from capability_support import ScriptGateway, text_of
+from capability_datasets_support import ScriptGateway, text_of
 
 
 def row(i: int, length: str = "short", answer: str = "D", context: str = "") -> dict:

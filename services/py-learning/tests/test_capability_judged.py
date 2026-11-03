@@ -13,7 +13,7 @@ from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 from agentruntime_learning.capability.base import PinningGateway, role_enum
 from agentruntime_learning.capability.evals import _judged, frames, simpleqa
 
-from capability_support import ScriptGateway, text_of
+from capability_datasets_support import ScriptGateway, text_of
 
 OPUS = "a6api/claude-opus-5-5@2026-10"
 GPT = "a6api/gpt-5.5@2026-10"

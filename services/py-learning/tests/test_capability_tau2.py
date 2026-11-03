@@ -15,7 +15,7 @@ from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 from agentruntime_learning.capability.base import PinningGateway, role_enum
 from agentruntime_learning.capability.evals import tau2 as t2
 
-from capability_support import ScriptGateway
+from capability_datasets_support import ScriptGateway
 
 CANDIDATE = "a6api/claude-sonnet-5-5@2026-10"
 TOOL = {"name": "cancel_reservation", "description": "Cancel a reservation.",

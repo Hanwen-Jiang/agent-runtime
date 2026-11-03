@@ -12,7 +12,7 @@ from agentruntime_learning.capability.base import role_enum
 from agentruntime_learning.capability.evals import judgebench as jb
 from agentruntime_learning.capability.evals import rewardbench2 as rb
 
-from capability_support import ScriptGateway, text_of, write_jsonl
+from capability_datasets_support import ScriptGateway, text_of, write_jsonl
 
 CANDIDATE = "a6api/claude-opus-5-5@2026-10"
 
