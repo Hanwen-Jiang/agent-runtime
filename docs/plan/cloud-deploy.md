@@ -637,6 +637,17 @@ M5 的后端顺序见 [firecracker-backend.md](firecracker-backend.md) 第 7 节
   同步来自 GitHub main，17 个数据集、公开 437 道、留出集 24 道只计数；公网浏览器里分组与框架介绍正常。回滚：`helm rollback ar 21`。
 - 令牌到期后换一个：重建这个 Secret，再 `kubectl -n agent-runtime rollout restart deploy/ar-agent-runtime-eval-dashboard`（令牌在启动时读）。
 
+第 23 版（2026-11-03，D-09：Runtime 的 ObjectStore 切到 R2；目录 `rev25`）：
+
+- task-service 与 4 个 Worker 改用 R2 的桶 `agentruntime-objects`（`objectStore.s3.*`；S3 密钥由 Cloudflare 令牌推出，`/root/ar-secrets/r2.env`，
+  密钥本身在 Secret `agent-runtime-object-store`）。桶是用 S3 接口建的：Cloudflare 的 API 令牌能列桶、不能建桶（403）。
+- 迁移（`rev25/migrate_objects.py`，经本仓库的 S3 适配器写，元数据与 sha256 照原样）：共用卷上 5947 个对象（308 MB，7 个租户）
+  第一遍全写、逐个核对 sha256；切换之后第二遍只补 R2 没有的（0 个）；抽样回读 30 与 60 个，数据、sha256、内容类型、元数据全一致。
+  对象的创建时间在 R2 上是迁移时间，过期规则从这时算起（Claim-Check 的对象晚几天清理）。
+- 只变了 5 个 Deployment 的环境变量（脚本核对）；共用卷仍挂着，回滚 `helm rollback ar 22`（切换后新写进 R2 的对象要先拷回卷）。
+- 核对：新 Pod 启动后在桶上设了自己的过期规则；api 200；四个服务 15 分钟内日志无错误。**没有验证**：真 Task 的大载荷 Claim-Check 经 R2 往返（要提交 Task）。
+- 共用卷上的旧对象没删，确认一段时间没问题后再清。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
