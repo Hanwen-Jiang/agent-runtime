@@ -149,7 +149,7 @@ def _inline(value: Any) -> str:
 
 
 def dump_profiles(document: dict[str, Any]) -> str:
-    """Profile 文件按原来的手写格式：每个 Profile 的键一行一个，值写在一行里；多个 Tier 时一行一个。"""
+    """Profile 文件按原来的手写格式：每个 Profile 的键一行一个，值写在一行里；多个 Tier、多条能力分时一行一个。"""
     lines = ["{"]
     head = [f"  {_inline(k)}: {_inline(v)}," for k, v in document.items() if k != "profiles"]
     lines += head
@@ -158,9 +158,9 @@ def dump_profiles(document: dict[str, Any]) -> str:
     for profile in document.get("profiles") or []:
         fields = []
         for key, value in profile.items():
-            if key == "tiers" and isinstance(value, list) and len(value) > 1:
+            if key in ("tiers", "capability_scores") and isinstance(value, list) and len(value) > 1:
                 inner = ",\n".join(f"        {_inline(t)}" for t in value)
-                fields.append(f'      "tiers": [\n{inner}\n      ]')
+                fields.append(f"      {_inline(key)}: [\n{inner}\n      ]")
             else:
                 fields.append(f"      {_inline(key)}: {_inline(value)}")
         blocks.append("    {\n" + ",\n".join(fields) + "\n    }")

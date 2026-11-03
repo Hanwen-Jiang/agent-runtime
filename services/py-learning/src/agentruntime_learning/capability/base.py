@@ -74,7 +74,16 @@ class ItemResult:
 
 
 class CellEval(Protocol):
-    """给一个角色出分的一套题。"""
+    """给一个角色出分的一套题。
+
+    items(n, seed) 要按 seed 确定、并且前缀稳定：items(n + 20, seed) 的前 n 道就是 items(n, seed)（矩阵的淘汰赛与追加样本
+    都靠它保证各候选做的是同一批题）。题不够 n 道时给全部。
+
+    可选的属性（矩阵调度用 getattr 读，没有也行）：
+    - est_tokens：(输入, 输出)，被测角色每道题大约的 token 数，估算花费按候选的单价算；
+    - est_other_usd：每道题其他角色（照常选档）大约的花费；
+    - uses_judge：True 时调度把裁判调用经 evals.judging.RecordingJudgeGateway（钉 Opus 5.5、逐条落盘）；被测角色是 judge 的格子不能用。
+    """
 
     name: str  # 例如 "bfcl-v4"、"s09"；写进 capability_scores 的 source
     role: str  # 附录 A 的 role 名
@@ -87,34 +96,48 @@ class CellEval(Protocol):
 
 class PinningGateway:
     """包一层 Model Gateway：被测角色的调用填 pinned_model_profile = 候选模型，其他角色不动；并记下每次调用实际用的 Profile，
-    被测角色只要有一次没落在候选模型上（或调用出错），`contaminated` 就为 True。每道题每次重复用一个新的实例。"""
+    被测角色只要有一次没落在候选模型上（或调用出错），`contaminated` 就为 True。每道题每次重复用一个新的实例。
 
-    def __init__(self, inner: ModelGateway, *, role: str, candidate: str) -> None:
+    tier（形如 strong@medium）给了时，被测角色的调用一律改成这个 Tier：网关只在请求的档里找钉的模型（router.go），
+    候选与评测默认的档不同类时（例如压缩默认 small@low，候选是 mid 档的模型）不改就钉不上。矩阵调度给的是
+    `<候选的 class>@<格子的 tier>`。pinned_calls、missed_calls 是被测角色的调用次数与其中没落在候选上（或出错）的次数，
+    评测命令的 --pin 按它们报告。"""
+
+    def __init__(self, inner: ModelGateway, *, role: str, candidate: str, tier: str | None = None) -> None:
         self.inner = inner
         self.role = role_enum(role)
         self.candidate = candidate
+        self.tier = tier or None
         self.calls: Counter[tuple[str, str]] = Counter()
         self.cost_usd = 0.0
         self.contaminated = False
+        self.pinned_calls = 0
+        self.missed_calls = 0
 
     def _pin(self, request: Any) -> Any:
         if request.call.role == self.role:
             request = type(request).FromString(request.SerializeToString())
             request.call.pinned_model_profile = self.candidate
+            if self.tier:
+                request.call.tier = self.tier
         return request
 
     async def _call(self, method: str, request: Any) -> Any:
         pinned = request.call.role == self.role
+        if pinned:
+            self.pinned_calls += 1
         try:
             response = await getattr(self.inner, method)(self._pin(request))
         except Exception:
             if pinned:
                 self.contaminated = True
+                self.missed_calls += 1
             raise
         profile = response.model.model_profile_id if response.HasField("model") else ""
         self.calls[(role_name(request.call.role), profile or "unknown")] += 1
         if pinned and profile != self.candidate:
             self.contaminated = True
+            self.missed_calls += 1
         if response.HasField("usage"):
             self.cost_usd += response.usage.cost_usd_micros / 1_000_000
         return response

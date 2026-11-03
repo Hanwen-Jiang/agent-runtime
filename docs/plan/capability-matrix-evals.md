@@ -146,3 +146,27 @@ BFCL、LongBench 这类便宜的题取 n = 100。端到端贵：SWE-bench 50 题
 3. 第 5 节复核的抽样比例（10%）与 kappa 门槛（0.6）。
 4. embedding 固定选哪一个：`memory-live.md` 的探测里 `text-embedding-3-large` 区分度最好（同义 0.629、无关 0.044）；
    要换更新的，先做一次同样的探测再定，定了就不再变。
+
+## 10. 实施记录（B1 线，2026-11-03）
+
+做了第 8 节的 1、2，4 的后半（两个贵模型的 Profile），以及组件级的三个评测；公开数据集的适配器（BFCL v4 等）是 B2 线，裁判记录是主线的 `evals/judging.py`。都不改契约。
+
+| 部分 | 位置 | 说明 |
+| --- | --- | --- |
+| 钉模型 | `capability/base.py` 的 `PinningGateway` | 加了可选的 `tier`：被测角色的调用改成 `<候选的 class>@<格子的 tier>`（网关只在请求的档里找钉的模型，压缩默认 small@low，mid 档的候选不改就钉不上）；加了 `pinned_calls`、`missed_calls`。原接口不变 |
+| `--pin role=profile` | `evals/__main__.py`（`run`、`context`）、`evals/worker_subject.py` 的 `pinned()` | 只对经 Model Gateway 的被测对象有效（baseline、oracle 报错退出 2）；报告加 `pin`：钉住的调用数与被污染的次数 |
+| 评测的写法 | `capability/evals/__init__.py` | `<模块>[:<工厂函数>]`，短名指 `capability.evals.<短名>`（包里没有时再当顶层模块找），工厂默认 `make(**options)`。CellEval 可选的属性：`est_tokens`、`est_other_usd`（估算花费）、`uses_judge`（裁判调用经 `RecordingJudgeGateway`，钉 Opus、逐条落盘到 `judgments.jsonl`；judge 格子不能用）。`items(n, seed)` 要前缀稳定 |
+| 组件级的格子 | `capability/evals/s09.py`、`s10.py`、`s11.py` | 一条用例一道题，评分复用 `evals.scoring` 与 `evals.context`。`s09`（plan）：标为 full、replan 的 25 条，S-09 的规划决策全部通过记 1；`s09:route`（route）：由分诊模型定级的 36 条，Triage 对记 1，规划角色的调用在本地拒掉（只花分诊的钱）；`s10`（judge）：Reviewer 样本 24 条加 Task 用例里每个 Round 的判定点 55 个（`checkpoints: samples` 只用 24 条）；`s11`（transform）：7 条长任务样本按 full 压缩，分数 = (答对的 Probe 题 + 没重做已完成的动作) / (题数 + 1)。默认 dev、holdout 都用（给模型打分，不调提示）；留出集的题只记失败的维度与代码 |
+| 调度 | `capability/matrix.py` | 计划格式见模块说明。每个 候选 × 格子 × 评测 × 题 × 重复 一个新的 PinningGateway，结果（含 record）写 `results.jsonl`，续跑跳过做完的，评测集版本变了拒绝续跑；`item_usd_limit` 单题上限（超了按被污染处理）、`--budget-usd` 总预算；跑之前打印估算（做过的按实际平均花费）；实时指标 suite `capability`，每个候选一个 run。贵的候选（`expensive`）先跑 n = 20、r = 1 的淘汰赛；`extend: true` 时按第 4 节追加样本（默认关：要分清时才花这个钱） |
+| 折算 | `capability/scoring.py` | 第 4 节全部：题级平均、按题（按评测分层）bootstrap 2000 次、k = 10 的收缩、半宽 0.15、污染 5%、“不可分”、淘汰赛与追加样本的判定 |
+| 发布 | `capability/publish.py` | 只写可发布的分数，任务族第一版都是 `general.unclassified`；source 形如 `capmatrix:s09+bfcl-v4@2026-11-10:n=60,r=3:run=round1`；同维度替换，超过 90 天的删掉；按 schema 与 Registry、Gateway 的规则校验后改 `deploy/dev/model-profiles.json` 与 Registry 种子（格式用 `sync_model_profiles.py` 的，多条能力分一行一个），补丁另存 `capability-patch.json` |
+| 命令 | `python -m agentruntime_learning.capability {estimate,run,score,publish}` | 见 CLAUDE.md 的命令表 |
+| 新 Profile | `deploy/dev/model-profiles.json`、`registry-seed.json` | `sync_model_profiles.py --add openai/gpt-6-astra --add anthropic/claude-fable-5-1 --class strong --tiers medium,high`：models.dev 一方条目，gpt-6-astra 输入 10、输出 50、缓存读 1 美元每百万 token，上下文 922k（limit.input），2026-09-04 发布；claude-fable-5-1 为 10、50、0.25，上下文 1M，2026-09-01 发布。中转站是否认这两个模型名还没核实 |
+
+与设计稿不完全一致、要人看的：
+
+1. **S-10 的题数**：设计稿写“S-10 现有 24 条”，24 条凑不到每格 40 道（半宽必然超过 0.15），所以默认把 Task 用例里的 55 个 Round 判定点也算进来（共 79 道）。同一条用例的几个 Round 不完全独立，区间会略窄。
+2. **plan 格子只用 full、replan 的 25 条**：fast、light 的用例根本不调规划模型，放进来只会把各候选的分数拉向一样；route 格子因此也去掉了由上一轮 Verdict 定级的用例。两格都不到 40 道，在 B2 的改编题补上之前不会有可发布的分数。S-11 只有 7 条，同理要等 LongBench v2。
+3. **“同一批题”**：追加样本只给与领先者重叠的候选（连同领先者）加题，被甩开的候选停在原来的 n；各候选的题是同一个 seed 下同一个顺序的前缀，不是完全相同的集合。
+4. **并发与拆预算**没有复用 `benchmarks suite`（它是按子进程调度端到端评测的）：组件级都在一个进程里，用 asyncio 的并发与总预算。端到端的矩阵（第 2 节的按档钉模型）没做。
+5. 裁判的复核（第 5 节，gpt-6-astra 抽查、kappa）不在这条线。

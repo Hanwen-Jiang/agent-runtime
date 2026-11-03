@@ -6,7 +6,8 @@
 --split（dev 或 holdout，默认 dev）、--reports-dir、--compare（报告路径、latest 或 none，默认 latest）、
 --require-confirmed（还有没确认的标注时报错）、--repeat N（跑 N 次，另写一份带中位数与范围的汇总）、
 --gate s09|s10（按中位数判 S-09 或 S-10 的门槛，写出差距；见 gates.py）、--max-fallback-rate（回退率超过它的运行无效，
-默认 0.05；TMP 计划第 8 节）。设了 OTEL_EXPORTER_OTLP_ENDPOINT 时每次运行经 OpenTelemetry 发 eval.run、eval.case span 与
+默认 0.05；TMP 计划第 8 节）、--pin role=profile（把这个角色的调用钉在一个 Model Profile 上，其他角色照常选档；只对经
+Model Gateway 的被测对象有效，报告里的 pin 记钉住的调用数与被污染的次数；能力矩阵第 2 节）。设了 OTEL_EXPORTER_OTLP_ENDPOINT 时每次运行经 OpenTelemetry 发 eval.run、eval.case span 与
 runtime.eval.* 指标（按平台作用域 evals 绑定；TMP 计划第 9.2 节），没设时不发。
 
 S-11 的压缩评测是另一个子命令：
@@ -14,7 +15,7 @@ S-11 的压缩评测是另一个子命令：
     uv run --package agentruntime-learning python -m agentruntime_learning.evals context --subject lexical
 
 被测对象是 lexical（离线基线）或 <模块>:<工厂函数>；真模型用 agentruntime_learning.evals.worker_subject:context_subject。
---repeat N 跑 N 次，指标取中位数，门槛按中位数判。设了 OTEL_EXPORTER_OTLP_ENDPOINT 时两个子命令都边跑边发进度（每条用例的结果
+--repeat N 跑 N 次，指标取中位数，门槛按中位数判；--pin 同 run。设了 OTEL_EXPORTER_OTLP_ENDPOINT 时两个子命令都边跑边发进度（每条用例的结果
 与花费，agentruntime_learning.evals.live），评测看板（evals.cgent.link）读它们（第 11.16 节）。
 
 退出码：0 跑完（不论分数）；2 参数或评测集有问题；3 要求标注全部确认而还有草稿。
@@ -50,6 +51,7 @@ from agentruntime_learning.evals.runner import (
     run_eval,
 )
 from agentruntime_learning.evals.subjects import load_subject
+from agentruntime_learning.evals import worker_subject
 
 T = TypeVar("T")
 ENV_OTLP_ENDPOINT = "OTEL_EXPORTER_OTLP_ENDPOINT"
@@ -72,6 +74,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--max-fallback-rate", type=_fraction, default=DEFAULT_MAX_FALLBACK_RATE, help="Planner、Reviewer 的回退率超过它的运行无效（默认 0.05）"
     )
+    run.add_argument("--pin", type=_pin, default=None, metavar="ROLE=PROFILE", help="把这个角色（plan、route、judge……）的调用钉在一个 Model Profile 上")
     context = commands.add_parser("context", help="S-11 压缩评测：长任务样本上比较 full 与 mask_only 的 Probe 通过率与重复操作率")
     context.add_argument("--eval-set", type=Path, default=DEFAULT_EVAL_SET, help="评测集目录（读其中的 context_samples）")
     context.add_argument("--subject", required=True, help="lexical（离线基线）或 <模块>:<工厂函数>")
@@ -80,6 +83,7 @@ def _parser() -> argparse.ArgumentParser:
     context.add_argument("--reports-dir", type=Path, default=None, help="给了就把报告（JSON）写在这里")
     context.add_argument("--require-confirmed", action="store_true", help="还有没经人确认的样本标注时报错")
     context.add_argument("--repeat", type=_positive, default=1, help="跑几次（默认 1）；指标取中位数，门槛按中位数判")
+    context.add_argument("--pin", type=_pin, default=None, metavar="ROLE=PROFILE", help="把这个角色（transform、act、judge……）的调用钉在一个 Model Profile 上")
 
     de = commands.add_parser("deepeval", help="交付质量（N-12）：经 Task API 跑 evalsets/deliverables，再用 DeepEval 打分")
     dsub = de.add_subparsers(dest="action", required=True)
@@ -128,6 +132,43 @@ def _positive(text: str) -> int:
     return value
 
 
+def _pin(text: str) -> tuple[str, str]:
+    from agentruntime_learning.capability.base import ROLES
+
+    role, sep, profile = text.partition("=")
+    if not sep or role not in ROLES or not profile.strip():
+        raise argparse.ArgumentTypeError(f"--pin 要写成 role=profile（role 是 {'、'.join(ROLES)} 之一），得到 {text!r}")
+    return role, profile.strip()
+
+
+@contextlib.contextmanager
+def _pinning(pin: tuple[str, str] | None) -> Any:
+    """--pin 给了时，这段里造的被测对象的 Gateway 都包一层 PinningGateway；产出它们的列表（没给时为 None）。"""
+    if pin is None:
+        yield None
+        return
+    with worker_subject.pinned(*pin) as gateways:
+        yield gateways
+
+
+def _pin_report(pin: tuple[str, str] | None, gateways: list[Any] | None) -> dict[str, Any] | None:
+    """钉住的调用与被污染的次数；给了 --pin 而被测对象不经 Model Gateway 时报 ValueError。"""
+    if pin is None:
+        return None
+    if not gateways:
+        raise ValueError("--pin 只对经 Model Gateway 的被测对象有效（例如 worker_subject:planner_subject、worker_subject:context_subject）")
+    return worker_subject.pin_counts(gateways)
+
+
+def _pin_line(counts: dict[str, Any]) -> str:
+    line = f"钉住 {counts['role']} = {counts['profile']}：被测角色的调用 {counts['pinned_calls']} 次，没落在钉的模型上或出错 {counts['contaminated_calls']} 次"
+    if not counts["pinned_calls"]:
+        line += "（⚠ 被测角色一次都没被调用，钉了也没测到）"
+    elif counts["contaminated_calls"]:
+        line += "（⚠ 有被污染的调用：这些分数掺了别的模型）"
+    return line
+
+
 def _fraction(text: str) -> float:
     try:
         value = float(text)
@@ -172,19 +213,27 @@ def _context(args: argparse.Namespace) -> int:
         print(f"这些样本的标注还没经人确认：{', '.join(drafts)}", file=sys.stderr)
         return 3
     try:
-        subject = load_context_subject(args.subject)
+        with _pinning(args.pin) as gateways:
+            subject = load_context_subject(args.subject)
+        _pin_report(args.pin, gateways)
     except ValueError as exc:
         print(exc, file=sys.stderr)
         return 2
     with tempfile.TemporaryDirectory(prefix="context-evals-") as scratch:
         work_dir = args.work_dir or Path(scratch)
         report = asyncio.run(_with_telemetry(lambda tel: run_context_eval(samples, subject, split=args.split, work_dir=work_dir, repeat=args.repeat, telemetry=tel)))
+    pin = _pin_report(args.pin, gateways)
     path = None
     if args.reports_dir is not None:  # 先落盘再打印：真模型跑一遍要花钱，打印出问题也不丢报告
         args.reports_dir.mkdir(parents=True, exist_ok=True)
         path = args.reports_dir / f"context-{report.subject}-{report.split}-{datetime.now(UTC):%Y%m%dT%H%M%SZ}.json"
-        path.write_text(json.dumps(report.to_json(), ensure_ascii=False, indent=2), "utf-8")
+        data = report.to_json()
+        if pin is not None:
+            data["pin"] = pin
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), "utf-8")
     print(report.summary())
+    if pin is not None:
+        print(_pin_line(pin))
     if path is not None:
         print(f"报告：{path}")
     return 0
@@ -288,7 +337,9 @@ def main(argv: list[str] | None = None) -> int:
         print(exc, file=sys.stderr)
         return 2
     try:
-        subject = load_subject(args.subject, eval_set)
+        with _pinning(args.pin) as gateways:
+            subject = load_subject(args.subject, eval_set)
+        _pin_report(args.pin, gateways)
     except ValueError as exc:
         print(exc, file=sys.stderr)
         return 2
@@ -313,7 +364,14 @@ def main(argv: list[str] | None = None) -> int:
     except (EvalConfigError, OSError) as exc:
         print(exc, file=sys.stderr)
         return 2
+    pin = _pin_report(args.pin, gateways)
+    if pin is not None:
+        report.data["pin"] = pin
+        if report.path is not None:  # 报告已经写好：补上钉模型的计数
+            report.path.write_text(json.dumps(report.data, ensure_ascii=False, indent=2), "utf-8")
     print(report.summary())
+    if pin is not None:
+        print(_pin_line(pin))
     if report.path is not None:
         print(f"报告：{report.path}")
     return 0
