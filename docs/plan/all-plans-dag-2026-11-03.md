@@ -63,7 +63,7 @@ C、E 两条线；F1～F4；task-service 默认不限未终态 Task 数（`bb832
 | PERF-00 | 分段量 Workspace 操作与历史加载的耗时；含 WK-LITE-03（进出 Worker 的字节数） | workspace-read 第 2、7 节 | — | 草案 | 近 |
 | DISK-A | WS-DISK-01 ① 挂卷也执行大小上限、③ 卷用量告警 | workspace-read | — | 草案 | 近 |
 | DISK-B | WS-DISK-01 ② 冷热分层（先存档成功再删本地） | workspace-read | DISK-A | 草案 | 远 |
-| TSP-1 | TS-PROD-01 ① 生产模式没有 Postgres DSN 拒绝启动 | workspace-read | — | 草案 | 近 |
+| TSP-1 | TS-PROD-01 ① 生产模式没有 Postgres DSN 拒绝启动 | workspace-read | — | **进行中**（第 8 节） | 近 |
 | CACHE-01 | Cache 的 Valkey 适配器与部署 | workspace-read | — | 草案 | 中 |
 | TSP-2 | TS-PROD-01 ②③ Cache 必须是 Valkey、连接池、task-service 多副本 | workspace-read | TSP-1、CACHE-01 | 草案 | 中 |
 | HIST-01 | 事件按 event_id 持久化，按 Session 批量取（S-01）；网页增量加载 | workspace-read | 契约人审 | 草案 | 中 |
@@ -86,7 +86,7 @@ C、E 两条线；F1～F4；task-service 默认不限未终态 Task 数（`bb832
 
 ## 4. DAG
 
-方框的颜色：绿 = 近期建议、蓝 = 部署、白 = 待做或草案、六边形 = 人定或评审、灰 = 推迟或卡外部资源。只画未完成的；已完成的见第 1 节。
+方框的颜色：绿 = 近期建议、蓝 = 部署、白 = 待做或草案、六边形 = 人定或评审、灰 = 推迟或卡外部资源、橙 = 正在实现（第 8 节）。只画未完成的；已完成的见第 1 节。
 
 ```mermaid
 flowchart LR
@@ -212,6 +212,9 @@ flowchart LR
   class EVTB,EVSWE,PERF0,DISKA,TSP1,ATOKT,ATOKF near;
   class MXQ,MXPUB,EVREAL,SECAPI,DELTA,HISTC,SBXD human;
   class NETOPEN,D25,D27,N14,N15,R04,DISKB,WSR3,BLOB,D26,FCREAL later;
+
+  classDef doing fill:#ffd8a8,stroke:#d9480f,stroke-width:2px;
+  class TSP1 doing;
 ```
 
 虚线是“建议先有”而不是硬依赖：PERF-00 的数字决定 SBX-01、WS-READ-02 的轻重；WS-READ-03 在多副本时才需要 CACHE-01；Firecracker 下 WS-PULL-01 经块缓存取块；ATOK-F 的 Rust 版随 D-28 一起做。
@@ -240,3 +243,11 @@ flowchart LR
 - 设计改动：SBX-01（设计书 4.10）；Rust 进技术栈（4.15，D-20、D-28 的依赖清单）；Ingress（4.14，AUTH-03）；附录 A 的环境配置术语（ENV-02）。
 - 花钱：MX-RUN、EV-REAL、EV-TB 的 40 题。
 - 其他：MX-Q 的选题与标签；DELTA 的内部入口（安全评审）；F4 告警的通知渠道；DISK-B 的闲置天数与 `max_bytes` 超限的处理；Valkey 是否持久化。
+
+## 8. 正在实现（认领）
+
+开工前先在这里登记并推送，做完改成“已完成”并写上提交；别的会话看到“进行中”的不要同时改它独占的文件。
+
+| 编号 | 线 | 谁 | 开始 | 独占的文件 | 状态 |
+| --- | --- | --- | --- | --- | --- |
+| TSP-1 | TSP 线（TSP-1 → CACHE-01 → TSP-2），直接在 main 上提交 | Claude 桌面会话（Opus 5.5） | 2026-11-03 | `services/go-task-service/internal/config`、`cmd/task-service/main.go` 的 Provider 选择 | 进行中 |
