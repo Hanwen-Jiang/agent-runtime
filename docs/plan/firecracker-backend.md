@@ -243,6 +243,7 @@ fc-manager（Rust，宿主机上的 systemd 服务，不在 Pod 里）
 - `services/rs-sandbox-agent`：与 `services/go-sandbox-agent` 同样的 HTTP 接口（`/healthz`、`/v1/exec`、`/v1/exec/cancel`、`/v1/files`、`/v1/archive`、`/v1/manifest`、`/v1/list`、`/v1/grep`）、同样的令牌校验、同样的环境变量白名单（`AGENT_*` 一个都不给命令）、同样的存档格式与路径规则（`archive.go`，以及与之对齐的 `agentruntime_core.dev.workdir`）。Linux 与 Windows 都能编译（Windows 只给本机开发测试，进程组的做法照 `proc_windows.go`）。
 - 换过去的地方：`deploy/images/sandbox-python`、`universal` 等镜像的构建阶段；Cloudflare 桥的容器镜像（`deploy/cloudflare/sandbox-bridge`）；测试里本机编译 agent 的地方（`adapters/kindtest.py`、`adapters/cloudflaretest.py`、`tests/adapters/test_sandbox_exec_cancel.py`、py-worker 的 `test_interrupt_undo.py`）改成 `cargo build`；注释里指向 Go 版的路径（`processes.py`、`dev/workdir.py`、CLAUDE.md）。
 - 一个发布周期内两版并存，之后删除 `services/go-sandbox-agent`。
+- 本项只做原样改写。agent 按清单直接拉取、上传块（`/v1/restore`、`/v1/snapshot`）是之后的 WS-PULL-01（[workspace-read-latency-and-disk-2026-11-03.md](workspace-read-latency-and-disk-2026-11-03.md) 第 6 节），不混在本项里。
 
 **难点与防错**
 

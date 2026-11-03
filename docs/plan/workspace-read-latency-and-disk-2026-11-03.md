@@ -154,3 +154,31 @@ Rust 的真实成本（不是理由，是要付的）：
 | --- | --- | --- | --- | --- |
 | SBX-RS-01 Rust 版 agent 的原型与实测 | 第 5.2 节的内存、快照、恢复收益是经验值，没有本项目的数字；Firecracker 上线前是换语言代价最小的时候 | 用 Rust 写 agent 的核心：`--init`（PID 1）、vsock 监听、`/v1/exec`（含取消与杀进程组）、`/v1/files`、`/v1/manifest`；只用 `std` 加 `libc`。与 Go 版在独服上同条件对比：常驻内存、静态二进制大小、冷启动到第一条命令返回、快照文件大小与恢复到第一条命令返回（P50、P95），各跑 20 次以上。一致性测试的子集对两版都跑 | 原型约千行；独服上要有 Firecracker 与 KVM（D-20 的真 VM 环境）；原型不进生产 | **取消**：用户直接定 Rust，改为 D-28，数字在其验收里记录 |
 | SBX-RS-02 定语言与依赖规则 | SBX-RS-01 的数字出来之前不定 | 收益明确（例如每台 VM 常驻内存、快照恢复的 P95 有可见下降）时：agent 与 fc-manager 用 Rust，写设计改动稿（4.15 技术栈、4.10 后端）与 Rust 依赖规则，人审后改 firecracker-backend.md 的 D-20；收益不明显时维持 Go，结论与数字记在本节 | 改设计书由人做；D-20 推迟到定下之后开工 | **已定**：两者都用 Rust（firecracker-backend.md 第 1 节第 5 条、第 10 节） |
+
+## 6. 环境自己拉取工作区（WS-PULL-01，2026-11-03 起草）
+
+### 6.1 现状
+
+- 恢复：Worker 从 ObjectStore 取出全部块、在自己的临时文件里拼成 tar，再经 `PUT /v1/archive` 推给 agent，最后取 agent 的清单逐项核对（`workspace/archive.py` 的 `restore`）。存档反过来：agent 导出整个 tar 给 Worker，Worker 逐个文件算 sha256、上传没有的块。
+- 数据因此要多走一跳（ObjectStore → Worker → 环境），整份 tar 落一次 Worker 的盘，哈希在 Python 里算；GB 级的仓库，这一跳是存档与恢复的大头。
+- D-28 是原样改写，不改这个流程；agent 本身从不主动去外面拿文件。
+- ObjectStore 已经能签发限时的 GET、PUT 地址（`ObjectStore.temporary_url`，S3 实现是 SigV4 预签名）。
+
+### 6.2 设计
+
+**原则：凭据和“拉什么”由环境外面决定，环境里的 agent 只按清单拉、按哈希验。** 环境里跑的是用户代码，agent 与用户命令同一个 uid（AGENT-TOK-01），所以 agent 手里不能有能列目录、能读别的工作区、能长期使用的凭据。
+
+- **恢复**：调用方（现在是 Worker 的 Broker，SBX-01 之后是 Sandbox Service）读快照清单，给 agent 一份**恢复计划**：每个文件的路径、类型、权限、大小、sha256，以及每个块的来源。agent 新增 `POST /v1/restore`：并行拉块、逐块核对 sha256、写到位、最后自己出清单并与计划比对，不一致报错（不在半个工作区上继续）。
+- **块的来源按后端分**：
+  - Firecracker：来源是 fc-manager 经 vsock 提供的块服务。fc-manager 先查宿主上的块缓存（WS-BLOB-01），没有再用它自己的凭据去 ObjectStore 取。客户机里没有任何存储凭据，也不需要联网。
+  - K8s、Cloudflare：来源是逐块的预签名 GET 地址，只对这一个块、几分钟有效，经出网网关放行到对象存储的主机。
+  - 本地后端：直接读开发用的 ObjectStore 目录，或沿用现在的 tar 路径。
+- **存档**：agent 新增 `POST /v1/snapshot`：自己遍历工作区、算 sha256、出清单交给调用方；调用方对照 ObjectStore 回一份“缺哪些块”的列表，并给每个缺的块签一个预签名 PUT（Firecracker 下由 fc-manager 代收）；agent 只上传这些块。最后由调用方写清单与快照行（同 D-06c），agent 不碰清单与快照表。
+- **git 不是工作区的来源**：快照才是权威，里面有没提交的改动。没有任何快照的新工作区仍由 Workspace API 的克隆来建（现在的做法）。快照丢失时报错并说明，不悄悄从 git 重新克隆，否则用户没提交的改动会无声无息地丢掉。
+- **懒加载（先起环境、文件用到才拉）不做**：shell 命令直接读文件系统，要懒加载就得在客户机里做 FUSE 一类的文件系统，Firecracker 又没有 virtio-fs；成本与新攻击面都大。先做“并行拉、只拉缺的”，按 PERF-00 的数字再看要不要。
+
+### 6.3 工作项
+
+| 工作项 | Failure / Evidence | Minimum fix | 成本与新失败面 | 当前决定 |
+| --- | --- | --- | --- | --- |
+| WS-PULL-01 agent 按清单直接拉取与上传块 | 第 6.1 节：存档与恢复的数据都经 Worker 中转，整份 tar 落盘、哈希在 Python 里算 | Rust 版 agent（D-28 之后）加 `POST /v1/restore` 与 `POST /v1/snapshot`；块的来源是 fc-manager 的块服务（Firecracker）或逐块的预签名地址（K8s、Cloudflare）；调用方保留清单、快照行与“缺哪些块”的判断；现在的 `/v1/archive` 留作回退与本地后端用 | 新的数据面：预签名地址可能被用户代码看到，所以每个地址只对一个块、只读或只写、几分钟有效，并且只签发给这一次操作；agent 写盘时照样做路径校验（`..`、绝对路径、指出去的链接）；块下载失败按块重试，整体超时就判恢复失败、销毁环境；要有越权测试：用拿到的地址读不到别的块、写不到别的键 | 待确认；依赖 D-28，Firecracker 下另依赖 D-20、WS-BLOB-01 |
