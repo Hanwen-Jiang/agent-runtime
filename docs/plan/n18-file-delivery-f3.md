@@ -15,7 +15,10 @@
 >   - 验收：`internal/server/artifacts_test.go`、`internal/web/artifacts_test.go`。
 >
 > **还没做的**：
-> - 第 2 节第 3 条 Reviewer 的 highlights 把文件排前面；
+> - 第 2 节第 3 条 Reviewer 的 highlights 把文件排前面：2026-11-03 写了验收测试 `services/py-worker/tests/test_delivered_highlights.py`，实现前跳过。
+>   - 交付的文件在 `highlights.files` 里排第一，带 `delivered: true`。
+>   - 要给 `task_state.schema.json` 的 `round_highlights.files` 每项加可选的 `delivered`，是 CONTRACT DRAFT，等 S-01 人审。
+>   - 工作流里由 Stage Runner 记下这一轮成功的 `deliver_file` 调用，不读业务库，因为工作流不能做 I/O。
 > - 第 5 节第 5 条端到端；
 > - 存档模式（Cloudflare）的后端读文件：要借沙箱环境，那部分在 C 线正在改的范围里；
 > - 对象元数据只写 ASCII，非 ASCII 的文件名只出现在对象键里，S3 上要实测。
