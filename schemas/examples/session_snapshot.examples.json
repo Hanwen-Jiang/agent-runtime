@@ -1,0 +1,302 @@
+{
+  "schema": "session_snapshot",
+  "valid": [
+    {
+      "name": "running_task_with_plan",
+      "source": "N-19",
+      "instance": {
+        "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "generated_at": "2026-11-03T08:00:05Z",
+        "tasks": [
+          {
+            "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+            "status": "running",
+            "created_at": "2026-11-03T08:00:00Z",
+            "last_event_id": 3,
+            "events": [
+              {
+                "event_id": 1,
+                "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+                "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+                "type": "TASK_EVENT_TYPE_TASK_ACCEPTED",
+                "emitted_at": "2026-11-03T08:00:01Z"
+              },
+              {
+                "event_id": 2,
+                "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+                "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+                "type": "TASK_EVENT_TYPE_ROUND_STARTED",
+                "emitted_at": "2026-11-03T08:00:02Z",
+                "payload": {
+                  "value": {
+                    "event": "round_started",
+                    "round_seq": 1,
+                    "rerun": false
+                  }
+                }
+              },
+              {
+                "event_id": 3,
+                "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+                "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+                "type": "TASK_EVENT_TYPE_PLAN_UPDATED",
+                "emitted_at": "2026-11-03T08:00:03Z",
+                "payload": {
+                  "value": {
+                    "event": "plan_updated",
+                    "round_seq": 1,
+                    "steps": [
+                      {
+                        "id": "a",
+                        "title": "读代码",
+                        "status": "active",
+                        "round": 1
+                      },
+                      {
+                        "id": "b",
+                        "title": "改",
+                        "status": "pending",
+                        "round": 1
+                      },
+                      {
+                        "id": "c",
+                        "title": "测",
+                        "status": "pending",
+                        "round": 1
+                      }
+                    ],
+                    "current_step": "a"
+                  }
+                }
+              }
+            ],
+            "plan": {
+              "event_id": 3,
+              "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+              "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+              "type": "TASK_EVENT_TYPE_PLAN_UPDATED",
+              "emitted_at": "2026-11-03T08:00:03Z",
+              "payload": {
+                "value": {
+                  "event": "plan_updated",
+                  "round_seq": 1,
+                  "steps": [
+                    {
+                      "id": "a",
+                      "title": "读代码",
+                      "status": "active",
+                      "round": 1
+                    },
+                    {
+                      "id": "b",
+                      "title": "改",
+                      "status": "pending",
+                      "round": 1
+                    },
+                    {
+                      "id": "c",
+                      "title": "测",
+                      "status": "pending",
+                      "round": 1
+                    }
+                  ],
+                  "current_step": "a"
+                }
+              }
+            },
+            "source": "events"
+          }
+        ],
+        "errors": []
+      }
+    },
+    {
+      "name": "fallback_to_record",
+      "source": "N-19、Q58",
+      "notes": "事件流读不出来：退回业务库的记录并报告，不悄悄给空",
+      "instance": {
+        "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "generated_at": "2026-11-03T08:00:05Z",
+        "tasks": [
+          {
+            "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z2C",
+            "status": "done",
+            "last_event_id": 9,
+            "events": [
+              {
+                "event_id": 9,
+                "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z2C",
+                "type": "TASK_EVENT_TYPE_TASK_FINISHED",
+                "payload": {
+                  "value": {
+                    "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z2C",
+                    "status": "TASK_STATUS_DONE"
+                  }
+                }
+              }
+            ],
+            "source": "record"
+          }
+        ],
+        "errors": [
+          {
+            "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z2C",
+            "code": "events_unavailable"
+          }
+        ]
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "task_without_cursor",
+      "description": "每个 Task 都要有续传游标",
+      "violates": [
+        {
+          "path": "/tasks/0",
+          "keyword": "required"
+        }
+      ],
+      "instance": {
+        "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "generated_at": "2026-11-03T08:00:05Z",
+        "tasks": [
+          {
+            "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+            "status": "running",
+            "created_at": "2026-11-03T08:00:00Z",
+            "events": [
+              {
+                "event_id": 1,
+                "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+                "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+                "type": "TASK_EVENT_TYPE_TASK_ACCEPTED",
+                "emitted_at": "2026-11-03T08:00:01Z"
+              },
+              {
+                "event_id": 2,
+                "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+                "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+                "type": "TASK_EVENT_TYPE_ROUND_STARTED",
+                "emitted_at": "2026-11-03T08:00:02Z",
+                "payload": {
+                  "value": {
+                    "event": "round_started",
+                    "round_seq": 1,
+                    "rerun": false
+                  }
+                }
+              },
+              {
+                "event_id": 3,
+                "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+                "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+                "type": "TASK_EVENT_TYPE_PLAN_UPDATED",
+                "emitted_at": "2026-11-03T08:00:03Z",
+                "payload": {
+                  "value": {
+                    "event": "plan_updated",
+                    "round_seq": 1,
+                    "steps": [
+                      {
+                        "id": "a",
+                        "title": "读代码",
+                        "status": "active",
+                        "round": 1
+                      },
+                      {
+                        "id": "b",
+                        "title": "改",
+                        "status": "pending",
+                        "round": 1
+                      },
+                      {
+                        "id": "c",
+                        "title": "测",
+                        "status": "pending",
+                        "round": 1
+                      }
+                    ],
+                    "current_step": "a"
+                  }
+                }
+              }
+            ],
+            "plan": {
+              "event_id": 3,
+              "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+              "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+              "type": "TASK_EVENT_TYPE_PLAN_UPDATED",
+              "emitted_at": "2026-11-03T08:00:03Z",
+              "payload": {
+                "value": {
+                  "event": "plan_updated",
+                  "round_seq": 1,
+                  "steps": [
+                    {
+                      "id": "a",
+                      "title": "读代码",
+                      "status": "active",
+                      "round": 1
+                    },
+                    {
+                      "id": "b",
+                      "title": "改",
+                      "status": "pending",
+                      "round": 1
+                    },
+                    {
+                      "id": "c",
+                      "title": "测",
+                      "status": "pending",
+                      "round": 1
+                    }
+                  ],
+                  "current_step": "a"
+                }
+              }
+            },
+            "source": "events"
+          }
+        ],
+        "errors": []
+      }
+    },
+    {
+      "name": "unknown_error_code",
+      "description": "错误代码只有两种",
+      "violates": [
+        {
+          "path": "/errors/0/code",
+          "keyword": "enum"
+        }
+      ],
+      "instance": {
+        "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "generated_at": "2026-11-03T08:00:05Z",
+        "tasks": [],
+        "errors": [
+          {
+            "task_id": "tsk_01JA8Q3V5K7M9P2R4T6W8Y0Z1B",
+            "code": "oops"
+          }
+        ]
+      }
+    },
+    {
+      "name": "without_errors",
+      "description": "errors 一定要有（没有问题时为空数组）",
+      "violates": [
+        {
+          "path": "",
+          "keyword": "required"
+        }
+      ],
+      "instance": {
+        "session_id": "ses_01JA8Q2N4H6K8M0P2R4T6V8X0Z",
+        "generated_at": "2026-11-03T08:00:05Z",
+        "tasks": []
+      }
+    }
+  ]
+}

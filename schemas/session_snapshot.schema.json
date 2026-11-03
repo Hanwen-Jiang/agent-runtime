@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/session_snapshot.schema.json",
+  "title": "会话快照",
+  "description": "GET /v1/sessions/{session_id}/snapshot 的响应（docs/plan/feedback-2026-11-01.md N-19；人工验收基线 Q57、Q58）：会话里最近的 Task、各自最近的事件与续传游标。客户端先用快照画首屏，再对每个没结束的 Task 用 last_event_id 作 Last-Event-ID 订阅 SSE，只追加增量；增量按 event_id 幂等应用。SSE 的 Last-Event-ID 早于事件流还留着的最早一条（中间的已过保留期）时，SSE 端点返回 409 与 {\"code\": \"resnapshot_required\"}，客户端重新取快照（基线清单 expired_cursor_requests_snapshot）。快照只读，不带 SecretStore 的值与工具的输出（事件本来就不带）。事件读不出来时不悄悄给空：这个 Task 退回业务库里的记录（source 为 record），errors 写明原因。",
+  "type": "object",
+  "required": ["session_id", "generated_at", "tasks", "errors"],
+  "properties": {
+    "session_id": {"$ref": "defs.schema.json#/$defs/session_id"},
+    "generated_at": {"description": "生成快照的时间（UTC）", "type": "string", "format": "date-time"},
+    "tasks": {"description": "按提交的先后，最多 tasks 参数给的个数（默认 20，最多 50），取最近的", "type": "array", "items": {"$ref": "#/$defs/task"}},
+    "tasks_truncated": {"description": "更早的 Task 没有放进来", "type": "boolean"},
+    "errors": {"description": "生成快照时出的问题；没有时为空数组", "type": "array", "items": {"$ref": "#/$defs/error"}}
+  },
+  "$defs": {
+    "task": {
+      "type": "object",
+      "required": ["task_id", "status", "last_event_id", "events", "source"],
+      "properties": {
+        "task_id": {"$ref": "defs.schema.json#/$defs/task_id"},
+        "status": {"$ref": "defs.schema.json#/$defs/snapshot_task_status"},
+        "created_at": {"type": "string", "format": "date-time"},
+        "last_event_id": {"description": "续传游标：SSE 的 Last-Event-ID 用它，之后的事件 event_id 都比它大。source 为 record 时取业务库记的最后一个 event_id", "type": "integer", "minimum": 0},
+        "events": {"description": "最近的事件，按 event_id 从小到大，最多 events 参数给的条数（默认 50，最多 200）", "type": "array", "items": {"$ref": "#/$defs/event"}},
+        "events_truncated": {"description": "更早的事件没有放进来", "type": "boolean"},
+        "plan": {"description": "这个 Task 最新的 plan_updated（N-04）；已经在 events 里时也给，客户端不必翻找", "$ref": "#/$defs/event"},
+        "source": {"$ref": "defs.schema.json#/$defs/snapshot_source"}
+      },
+      "unevaluatedProperties": false
+    },
+    "event": {
+      "description": "SSE 推的 TaskEvent（taskapi.v1.TaskEvent 的 JSON，proto 字段名），与 SSE 的 data 相同",
+      "type": "object",
+      "required": ["event_id", "task_id", "type"],
+      "properties": {
+        "event_id": {"type": "integer", "minimum": 1},
+        "task_id": {"$ref": "defs.schema.json#/$defs/task_id"},
+        "session_id": {"$ref": "defs.schema.json#/$defs/session_id"},
+        "type": {"type": "string", "pattern": "^TASK_EVENT_TYPE_[A-Z_]+$"},
+        "emitted_at": {"type": "string", "format": "date-time"},
+        "payload": {"description": "JsonPayload：value 是进度事件的载荷（task_event_payload.schema.json）或 task_finished 的结局"}
+      }
+    },
+    "error": {
+      "type": "object",
+      "required": ["task_id", "code"],
+      "properties": {
+        "task_id": {"$ref": "defs.schema.json#/$defs/task_id"},
+        "code": {"$ref": "defs.schema.json#/$defs/snapshot_error_code"}
+      },
+      "unevaluatedProperties": false
+    }
+  },
+  "unevaluatedProperties": false
+}

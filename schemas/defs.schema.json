@@ -43,6 +43,9 @@
     "context_step": {"description": "Compaction Ladder 的步骤", "enum": ["offload", "mask", "prune", "summarize", "reset"]},
     "decision_step": {"description": "要等模型的决策 activity（进度事件 decision_retry）：规划、评审、tool_loop 的一步", "enum": ["plan_round", "review_round", "tool_loop_step"]},
     "budget_kind": {"description": "Task 预算的三项（附录 C.3 的 budget）：美元、时间（wall_clock_min）、工具调用次数", "enum": ["usd", "wall_clock", "tool_calls"]},
+    "snapshot_task_status": {"description": "会话快照里 Task 的状态（N-19）：结束的取业务库的终态；没结束的，除 task_accepted 之外还有事件时为 running，否则为 queued", "enum": ["queued", "running", "done", "aborted", "cancelled", "failed"]},
+    "snapshot_source": {"description": "会话快照里一个 Task 的来源（N-19、Q58）：events 读的是事件流；record 是事件流读不出来，退回业务库的记录（终态与游标；结束的 Task 带补发的 task_finished）", "enum": ["events", "record"]},
+    "snapshot_error_code": {"description": "生成会话快照时的问题（N-19）：events_unavailable 事件流读不出来，这个 Task 退回记录；event_undecodable 有一条事件解不开，跳过了它（游标照样往后）", "enum": ["events_unavailable", "event_undecodable"]},
     "plan_step_status": {"description": "Task Plan 一步的状态（N-04）：pending 还没开始，active 正在做（同一时刻最多一步），done 做完了，blocked 做不下去（交给 Reviewer 或人）", "enum": ["pending", "active", "done", "blocked"]},
     "plan_step": {
       "description": "Task Plan 的一步（N-04）：id 在整个 Task 里不变；title 给人看，用用户消息的语言；round 是最近一次定下它状态的 Round，不晚于快照所在的 Round",
