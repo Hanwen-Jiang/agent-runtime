@@ -39,6 +39,12 @@ taskService:
   replicas: 3
   # 业务库必须是 Postgres、Cache 必须是 Valkey（TS-PROD-01）。
   profile: production
+  # 只收签发方用 Ed25519 签的 JWT（AUTH-01，生产模式的默认）：公钥换成 task-service keygen 打印的，私钥只给签发方。
+  ingress:
+    issuers:
+      - iss: coding-agent
+        keys:
+          k1: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
   resources:
     requests: {cpu: 500m, memory: 512Mi}
     limits: {cpu: "2", memory: 1Gi}

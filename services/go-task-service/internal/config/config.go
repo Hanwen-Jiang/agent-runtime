@@ -59,6 +59,17 @@ const (
 	// EnvRelationalMaxConns 是业务库（Postgres）连接池的上限（TS-PROD-01）；不设时用适配器的默认值。
 	// 副本数乘它要留在 Postgres max_connections 的配比之内（Chart 的 taskService.relationalMaxConns）。
 	EnvRelationalMaxConns = "AR_RELATIONAL_MAX_CONNS"
+	// EnvIngressIssuersFile 是签发方的登记文件（AUTH-01，libs/go-core/adapters/jwtingress 的 Config）：设了就验 Ed25519 签名的
+	// JWT，task-service 只持签发方的公钥。EnvIngressDevTokens 决定收不收开发令牌（AR_DEV_SIGNING_KEY 的 HMAC，localingress）：
+	// accept 或 refuse；开发模式默认 accept，生产模式默认 refuse，迁移期间生产模式可以显式 accept（启动时记一条警告）。
+	EnvIngressIssuersFile = "AR_INGRESS_ISSUERS_FILE"
+	EnvIngressDevTokens   = "AR_INGRESS_DEV_TOKENS"
+)
+
+// AR_INGRESS_DEV_TOKENS 的取值。
+const (
+	DevTokensAccept = "accept"
+	DevTokensRefuse = "refuse"
 )
 
 // maxRelationalConns 是 AR_RELATIONAL_MAX_CONNS 的上限：超过它多半是写错了（Postgres 默认 max_connections 是 100）。
@@ -119,8 +130,11 @@ type Config struct {
 	PublicBaseURL     string
 	// Production 是 AR_PROFILE=production：业务库必须是 Postgres（RelationalDSN 非空）。
 	Production bool
-	// DevSigningKey 是开发用内置 Ingress 的签名密钥，打印与日志里只显示掩码。
-	DevSigningKey      secret.Value
+	// DevSigningKey 是开发用内置 Ingress 的签名密钥，打印与日志里只显示掩码；不收开发令牌（DevTokens 为 false）时不读。
+	DevSigningKey secret.Value
+	// IngressIssuersFile 见 EnvIngressIssuersFile；为空时只收开发令牌。DevTokens 是收不收开发令牌（EnvIngressDevTokens）。
+	IngressIssuersFile string
+	DevTokens          bool
 	DataDir            string
 	PinnedVersionsFile string
 	// TenantPoliciesFile 是开发用的租户策略文件（各租户的 effect 上限），见 taskapi.FilePolicyResolver；空表示都用默认值。
@@ -185,11 +199,6 @@ func FromEnv(getenv func(string) string) (Config, error) {
 	if cfg.TemporalAddress == "" {
 		return Config{}, fmt.Errorf("缺少 %s", EnvTemporalAddress)
 	}
-	key := getenv(EnvDevSigningKey)
-	if key == "" {
-		return Config{}, fmt.Errorf("缺少 %s", EnvDevSigningKey)
-	}
-	cfg.DevSigningKey = secret.New(key)
 	if dsn := getenv(EnvRelationalDSN); dsn != "" {
 		cfg.RelationalDSN = secret.New(dsn)
 	}
@@ -285,7 +294,38 @@ func FromEnv(getenv func(string) string) (Config, error) {
 	default:
 		return Config{}, fmt.Errorf("%s 只能是 0 或 1", EnvWorkspaceAllowLocalRemotes)
 	}
+	if err := cfg.readIngress(getenv); err != nil {
+		return Config{}, err
+	}
 	return cfg, nil
+}
+
+// readIngress 读 Ingress 的配置（AUTH-01）：签发方登记的路径、收不收开发令牌与开发令牌的签名密钥。登记文件在 serve 启动时读。
+func (cfg *Config) readIngress(getenv func(string) string) error {
+	cfg.IngressIssuersFile = getenv(EnvIngressIssuersFile)
+	switch getenv(EnvIngressDevTokens) {
+	case "":
+		cfg.DevTokens = !cfg.Production
+	case DevTokensAccept:
+		cfg.DevTokens = true
+	case DevTokensRefuse:
+		cfg.DevTokens = false
+	default:
+		return fmt.Errorf("%s 只能是 %s 或 %s", EnvIngressDevTokens, DevTokensAccept, DevTokensRefuse)
+	}
+	if !cfg.DevTokens {
+		if cfg.IngressIssuersFile == "" {
+			return fmt.Errorf("不收开发令牌时要配 %s（签发方的公钥）：生产模式默认不收开发令牌，迁移期间可以设 %s=%s",
+				EnvIngressIssuersFile, EnvIngressDevTokens, DevTokensAccept)
+		}
+		return nil
+	}
+	key := getenv(EnvDevSigningKey)
+	if key == "" {
+		return fmt.Errorf("缺少 %s（收开发令牌时要它；只收 JWT 时设 %s=%s 并配 %s）", EnvDevSigningKey, EnvIngressDevTokens, DevTokensRefuse, EnvIngressIssuersFile)
+	}
+	cfg.DevSigningKey = secret.New(key)
+	return nil
 }
 
 // Store 是业务库与 schema 目录的位置：registry-seed 子命令只需要这几项，不要求 Temporal 地址与签名密钥。

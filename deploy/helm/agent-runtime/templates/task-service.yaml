@@ -13,6 +13,14 @@
 {{- if and (gt (int $ts.replicas) 1) (not .Values.secrets.valkeyUrl.name) }}
 {{- fail "taskService.replicas 大于 1 要配 secrets.valkeyUrl：进程内的 Cache 里，各副本看不到彼此的事件流（TS-PROD-01）" }}
 {{- end }}
+{{- /* AUTH-01：收不收开发令牌，空时按 profile（development 收、production 不收）；不收时要有签发方的公钥。 */}}
+{{- $devTokens := $ts.ingress.devTokens | default (ternary "refuse" "accept" (eq $ts.profile "production")) }}
+{{- if not (has $devTokens (list "accept" "refuse")) }}
+{{- fail "taskService.ingress.devTokens 只能是 accept、refuse 或留空（按 profile）" }}
+{{- end }}
+{{- if and (eq $devTokens "refuse") (not $ts.ingress.issuers) }}
+{{- fail "taskService.ingress.devTokens 是 refuse（生产模式的默认）时要配 taskService.ingress.issuers（签发方的公钥，task-service keygen 生成；AUTH-01）；迁移期间可以写 accept" }}
+{{- end }}
 {{- $budget := div (int .Values.external.postgres.maxConnections) 4 }}
 {{- if gt (mul (int $ts.replicas) (int $ts.relationalMaxConns)) $budget }}
 {{- fail (printf "taskService.replicas × taskService.relationalMaxConns 超过了 external.postgres.maxConnections 的四分之一（%d）：其余连接留给 Worker、Memory Service、Temporal 与 Langfuse；副本多了在前面加 PgBouncer" $budget) }}
@@ -49,7 +57,16 @@ spec:
               containerPort: {{ $ts.registryPort }}
           env:
             {{- include "ar.storeEnv" . | nindent 12 }}
+            # Ingress（AUTH-01）：只收 JWT 时不给签名密钥，task-service 不持有能签令牌的东西。
+            - name: AR_INGRESS_DEV_TOKENS
+              value: {{ $devTokens | quote }}
+            {{- if eq $devTokens "accept" }}
             {{- include "ar.signingKeyEnv" . | nindent 12 }}
+            {{- end }}
+            {{- if $ts.ingress.issuers }}
+            - name: AR_INGRESS_ISSUERS_FILE
+              value: /etc/agentruntime/ingress/issuers.json
+            {{- end }}
             {{- include "ar.dsnEnv" . | nindent 12 }}
             - name: AR_RELATIONAL_MAX_CONNS
               value: {{ $ts.relationalMaxConns | quote }}
@@ -123,12 +140,22 @@ spec:
               mountPath: /etc/agentruntime/tenant-policies
               readOnly: true
             {{- end }}
+            {{- if $ts.ingress.issuers }}
+            - name: ingress-issuers
+              mountPath: /etc/agentruntime/ingress
+              readOnly: true
+            {{- end }}
       volumes:
         {{- include "ar.volumes" . | nindent 8 }}
         {{- if $tenantPoliciesConfigMap }}
         - name: tenant-policies
           configMap:
             name: {{ $tenantPoliciesConfigMap }}
+        {{- end }}
+        {{- if $ts.ingress.issuers }}
+        - name: ingress-issuers
+          configMap:
+            name: {{ $name }}-ingress-issuers
         {{- end }}
 ---
 apiVersion: v1
@@ -161,3 +188,15 @@ spec:
     - name: grpc
       port: {{ $ts.registryPort }}
       targetPort: registry
+{{- if $ts.ingress.issuers }}
+---
+# 签发方的登记（AUTH-01）：只有公钥，不是密钥，放 ConfigMap；私钥只在签发方（coding-agent）那里。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}-ingress-issuers
+  labels:
+    {{- include "ar.labels" (list . "task-service") | nindent 4 }}
+data:
+  issuers.json: {{ dict "audience" $ts.ingress.audience "issuers" $ts.ingress.issuers | toJson | quote }}
+{{- end }}

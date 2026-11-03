@@ -2,16 +2,20 @@
 //
 //	task-service serve                                        Task API、Workspace API（D-06）、SSE 端点与 Session 工作流的 Worker
 //	task-service dev-token --tenant t1 --user u1 [--ttl 1h] [--scope task.approve]   用 AR_DEV_SIGNING_KEY 签发开发令牌
+//	task-service dev-token ... --jwt-key <私钥文件> --iss <签发方> --kid <kid>          改用 Ed25519 私钥签 JWT（AUTH-01）
+//	task-service keygen --iss <签发方> --kid <kid> --out <私钥文件>                     生成密钥对：私钥写文件，标准输出是签发方登记
 //	task-service replay --dir <事件历史目录>                    用当前代码回放 Session 工作流的事件历史
 //	task-service registry-seed <种子文件>                       把一批文档发布到 Registry 并设为默认（开发与端到端测试用）
 //
 // 配置见 internal/config 的环境变量。业务库配了 AR_RELATIONAL_DSN 用 Postgres、Cache 配了 AR_VALKEY_URL 用 Valkey，
-// 否则是开发实现（SQLite、内存 Cache）；Ingress 还是内置的开发实现，生产实现接入后在这里替换。
+// 否则是开发实现（SQLite、内存 Cache）。Ingress：配了 AR_INGRESS_ISSUERS_FILE 时验签发方用 Ed25519 签的 JWT（只持公钥，
+// libs/go-core/adapters/jwtingress）；AR_INGRESS_DEV_TOKENS 决定还收不收开发令牌（生产模式默认不收）。
 package main
 
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -32,6 +36,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 	"google.golang.org/protobuf/types/known/durationpb"
 
+	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/jwtingress"
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/postgres"
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/s3objects"
 	temporaladapter "github.com/agentruntime/agent-runtime/libs/go-core/adapters/temporal"
@@ -46,6 +51,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/modelbudget"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/cache"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/ingress"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	"github.com/agentruntime/agent-runtime/libs/go-core/sealing"
@@ -66,7 +72,8 @@ import (
 
 const usage = `用法：
   task-service serve
-  task-service dev-token --tenant <租户> --user <用户> [--ttl 1h] [--scope <scope>]...
+  task-service dev-token --tenant <租户> --user <用户> [--ttl 1h] [--scope <scope>]... [--jwt-key <私钥文件> --iss <签发方> --kid <kid>]
+  task-service keygen --iss <签发方> --kid <kid> --out <私钥文件>
   task-service replay --dir <事件历史目录>
   task-service registry-seed <种子文件>
 `
@@ -86,6 +93,8 @@ func run(args []string, stdout, stderr io.Writer, getenv func(string) string) in
 		return serve(stderr, getenv)
 	case "dev-token":
 		return devToken(args[1:], stdout, stderr, getenv)
+	case "keygen":
+		return keygen(args[1:], stdout, stderr)
 	case "registry-seed":
 		return registrySeed(args[1:], stdout, stderr, getenv)
 	case "replay":
@@ -107,12 +116,38 @@ func devToken(args []string, stdout, stderr io.Writer, getenv func(string) strin
 		scopes = append(scopes, s)
 		return nil
 	})
+	jwtKey := fs.String("jwt-key", "", "Ed25519 私钥文件（keygen 生成的）：给了就签 JWT，不用 AR_DEV_SIGNING_KEY")
+	issuer := fs.String("iss", "", "签 JWT 时的签发方（与签发方登记的 iss 一致）")
+	kid := fs.String("kid", "", "签 JWT 时的密钥编号（与签发方登记的 kid 一致）")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
 	if *tenant == "" || *user == "" || *ttl <= 0 {
 		fmt.Fprint(stderr, usage)
 		return 2
+	}
+	if *jwtKey != "" {
+		if *issuer == "" || *kid == "" {
+			fmt.Fprint(stderr, usage)
+			return 2
+		}
+		raw, err := os.ReadFile(*jwtKey)
+		if err != nil {
+			fmt.Fprintf(stderr, "读不了私钥文件：%v\n", err)
+			return 1
+		}
+		private, err := jwtingress.ParsePrivateKey(raw)
+		if err != nil {
+			fmt.Fprintf(stderr, "私钥文件不对：%v\n", err)
+			return 1
+		}
+		token, err := jwtingress.NewSigner(*issuer, *kid, private, nil).Issue(jwtingress.Claims{Tenant: *tenant, User: *user, Scopes: scopes, TTL: *ttl})
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		fmt.Fprintln(stdout, token)
+		return 0
 	}
 	key := getenv(config.EnvDevSigningKey)
 	if key == "" {
@@ -121,6 +156,77 @@ func devToken(args []string, stdout, stderr io.Writer, getenv func(string) strin
 	}
 	fmt.Fprintln(stdout, localingress.New(localingress.Options{SigningKey: []byte(key)}).IssueTokenWithScopes(*tenant, *user, *ttl, scopes...))
 	return 0
+}
+
+// keygen 生成签发方的一对 Ed25519 密钥（AUTH-01）：私钥（PKCS#8 PEM）写进 --out，只给签发方（例如 coding-agent），
+// 不进 Runtime；标准输出是只含公钥的签发方登记，放进 AR_INGRESS_ISSUERS_FILE（换密钥时把新的 kid 并进已有的登记）。
+func keygen(args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("keygen", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	issuer := fs.String("iss", "", "签发方")
+	kid := fs.String("kid", "", "密钥编号")
+	out := fs.String("out", "", "私钥写到哪个文件（已有时不覆盖）")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if *issuer == "" || *kid == "" || *out == "" {
+		fmt.Fprint(stderr, usage)
+		return 2
+	}
+	public, private, err := jwtingress.GenerateKey()
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	f, err := os.OpenFile(*out, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		fmt.Fprintf(stderr, "写不了私钥文件（已有的不覆盖）：%v\n", err)
+		return 1
+	}
+	if _, err := f.Write(private); err != nil {
+		f.Close()
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	if err := f.Close(); err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	entry := jwtingress.Config{Audience: jwtingress.DefaultAudience, Issuers: []jwtingress.Issuer{{Issuer: *issuer, Keys: map[string]string{*kid: public}}}}
+	enc := json.NewEncoder(stdout)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(entry); err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	return 0
+}
+
+// newIngress 按配置构造 Ingress（AUTH-01）：配了签发方登记时验 JWT，限流经 Cache（配了 Valkey 时几个副本共用一份计数）；
+// 收开发令牌时把它们交给内置的开发实现（迁移期间，生产模式下记一条警告）。只收开发令牌时就是开发实现本身。
+func newIngress(cfg config.Config, caches cache.Provider, clk clock.Clock, logger *slog.Logger) (ingress.Ingress, error) {
+	var dev ingress.Ingress
+	if cfg.DevTokens {
+		dev = localingress.New(localingress.Options{SigningKey: cfg.DevSigningKey.Reveal(), Clock: clk, Limit: cfg.RateLimitPerMinute, Window: time.Minute})
+		if cfg.Production {
+			logger.Warn("生产模式仍收开发令牌：AUTH-01 迁移期间，coding-agent 改发 JWT 后去掉", "env", config.EnvIngressDevTokens)
+		}
+	}
+	if cfg.IngressIssuersFile == "" {
+		if dev == nil {
+			return nil, fmt.Errorf("既不收开发令牌、又没有 %s：没有能用的 Ingress", config.EnvIngressIssuersFile)
+		}
+		return dev, nil
+	}
+	issuers, err := jwtingress.LoadConfig(cfg.IngressIssuersFile)
+	if err != nil {
+		return nil, fmt.Errorf("%s：%w", config.EnvIngressIssuersFile, err)
+	}
+	limits, err := caches.BindPlatform("ingress")
+	if err != nil {
+		return nil, err
+	}
+	return jwtingress.New(jwtingress.Options{Config: issuers, Clock: clk, Limits: limits, Limit: cfg.RateLimitPerMinute, Window: time.Minute, Fallback: dev})
 }
 
 func quietLogger() tlog.Logger {
@@ -393,9 +499,11 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		return err
 	}
 	defer cacheProvider.Close()
-	ing := localingress.New(localingress.Options{
-		SigningKey: cfg.DevSigningKey.Reveal(), Clock: clk, Limit: cfg.RateLimitPerMinute, Window: time.Minute,
-	})
+	ing, err := newIngress(cfg, cacheProvider, clk, logger)
+	if err != nil {
+		return err
+	}
+	defer ing.Close()
 
 	w := worker.New(c, session.SessionTaskQueue, worker.Options{})
 	session.Register(w, cfg.Session, &session.Activities{Cache: cacheProvider, Store: store, Clock: clk, Retention: 24 * time.Hour, Egress: egress})
