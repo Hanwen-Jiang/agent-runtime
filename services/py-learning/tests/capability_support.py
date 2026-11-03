@@ -154,3 +154,38 @@ class FakeTelemetry:
 
     async def flush(self) -> None:
         pass
+
+
+class ContextModel:
+    """S-11 的假模型：摘要、Probe 与答题按抽取作答（ExtractiveGateway），下一步动作不调工具。"""
+
+    def __init__(self) -> None:
+        from agentruntime_learning.evals.context import ExtractiveGateway
+
+        self.extractive = ExtractiveGateway()
+
+    async def generate(self, request: mg.GenerateRequest) -> mg.GenerateResponse:
+        if request.call.node_id.endswith("#next"):
+            return mg.GenerateResponse(finish_reason=mg.FINISH_REASON_STOP)
+        return await self.extractive.generate(request)
+
+    async def embed(self, request: mg.EmbedRequest) -> mg.EmbedResponse:
+        raise AssertionError("不做嵌入")
+
+
+def serving() -> ServingGateway:
+    """AR_EVAL_GATEWAY_FACTORY=capability_support:serving：按脚本作答（什么都答不对）、像网关那样服务钉的模型。"""
+    from fake_gateway import ScriptedGateway
+
+    return ServingGateway(ScriptedGateway())
+
+
+def serving_switched() -> ServingGateway:
+    """钉 Opus 时网关切到了 Sonnet（钉的模型没用上）。"""
+    from fake_gateway import ScriptedGateway
+
+    return ServingGateway(ScriptedGateway(), switch_pins={OPUS: SONNET})
+
+
+def serving_context() -> ServingGateway:
+    return ServingGateway(ContextModel())

@@ -14,7 +14,6 @@ from agentruntime_learning.capability.base import PinningGateway
 from agentruntime_learning.capability.evals import load_eval
 from agentruntime_learning.capability.evals.s09 import planner_input
 from agentruntime_learning.evals.cases import DEFAULT_EVAL_SET, load_eval_set
-from agentruntime_learning.evals.context import ExtractiveGateway
 from agentruntime_learning.evals.worker_subject import planning_context
 from agentruntime_worker.planner.triage import reviewer_decision
 
@@ -110,20 +109,8 @@ async def test_a_judge_pin_that_lands_elsewhere_is_contaminated() -> None:
     assert pin.contaminated and pin.missed_calls == pin.pinned_calls > 0
 
 
-class _ContextModel:
-    """S-11 的假模型：摘要与 Probe 按抽取作答（ExtractiveGateway），下一步动作不调工具。"""
-
-    def __init__(self) -> None:
-        self.extractive = ExtractiveGateway()
-
-    async def generate(self, request: mg.GenerateRequest) -> mg.GenerateResponse:
-        if request.call.node_id.endswith("#next"):
-            return mg.GenerateResponse(finish_reason=mg.FINISH_REASON_STOP)
-        return await self.extractive.generate(request)
-
-
 async def test_the_compression_cell_pins_the_summary_calls() -> None:
-    results = await run("s11", "transform", cs.FLASH, "mid@low", _ContextModel)
+    results = await run("s11", "transform", cs.FLASH, "mid@low", cs.ContextModel)
     assert len(results) == 7
     for item, result, inner, pin in results:
         transform = [r for r in inner.requests if r.call.role == enums_pb2.ROLE_TRANSFORM]
@@ -137,7 +124,7 @@ async def test_the_compression_cell_pins_the_summary_calls() -> None:
 
 
 async def test_a_broken_compression_answer_scores_zero_with_the_error() -> None:
-    class Broken(_ContextModel):
+    class Broken(cs.ContextModel):
         async def generate(self, request: mg.GenerateRequest) -> mg.GenerateResponse:
             if request.call.node_id.endswith("#answer"):
                 raise RuntimeError("bad json")
