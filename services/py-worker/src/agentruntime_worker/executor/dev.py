@@ -146,6 +146,7 @@ def dev_executor(
         schemas=DictSchemaResolver({}),
         sandbox=LocalSubprocessSandboxProvider(root / "sandbox"),
         transcript=session_transcript(config.relational_dsn, config.data_dir, object_store),
+        stream_deliver=config.stream_deliver,
         # 桩模型按固定 JSON 提示协议解释输入；真实 Gateway 才使用 ContextBuilder。
         context_builder=ContextBuilder(
             model_gateway_instance,

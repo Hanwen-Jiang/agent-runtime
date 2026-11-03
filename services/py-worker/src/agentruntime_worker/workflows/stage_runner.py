@@ -804,6 +804,10 @@ class StageRunner:
         self.spent_usd += cost
         if env is self._top:
             await self._publish_usage(self._ctx.events, node["id"], output.get("context_usage"))
+            first_token = meta.get("first_token_ms")
+            if self._ctx.events is not None and self._ctx.events.latency is not None and isinstance(first_token, int) and not isinstance(first_token, bool):
+                # N-20：首个 token 的用时（StreamGenerate 的第一个分片），只记时间，不改命令序列。
+                self._ctx.events.latency.first_token(first_token)
         # TMP 计划第 7 节：judge 发现的被改坏的既有产物只交给 Reviewer（下游只看 result）；别的 role 给了也不算。
         regressions = [dict(g) for g in output.get("regressions") or [] if isinstance(g, dict)] if role == "judge" else []
         return StageResult(

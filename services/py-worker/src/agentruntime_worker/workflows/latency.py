@@ -5,7 +5,7 @@
 - queue：submitted_at → Task 工作流开始跑（Session 里排队，加上 Worker 取到工作流任务的时间）；
 - planning：第一轮规划（plan_round，含分诊与重试）的用时；
 - sandbox_cold_start：第一次新建沙箱环境借到环境的用时（tool_status 的 sandbox_startup_ms）；
-- first_token：第一个模型 token（只有流式通道才有；没有时是 unknown，不伪造）；
+- first_token：第一次流式生成（deliver 节点经 StreamGenerate，AR_STREAM_DELIVER）从发出请求到第一个分片的用时；没有流式时是 unknown，不伪造；
 - first_event：submitted_at → 第一条可展示事件（总数）。
 
 缺的段记为 unknown。时间都是工作流时间（workflow.now()），submitted_at 是 Task Service 的时钟，两者来源不同（基线已列为新的失败面）。
@@ -59,6 +59,11 @@ class FirstEventLatency:
         """收尾时还没有可展示的事件：第一条就是 Session 推的 task_finished。"""
         if self.first_event_at is None:
             self.first_event_at, self.first_event = at, "task_finished"
+
+    def first_token(self, ms: int) -> None:
+        """第一次流式生成里首个分片的用时（Node Executor 的 meta.first_token_ms）；只记第一次。"""
+        if self.first_token_ms is None and ms >= 0:
+            self.first_token_ms = ms
 
     def sandbox(self, startup_ms: int) -> None:
         if self.sandbox_cold_start_ms is None:
