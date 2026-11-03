@@ -29,7 +29,10 @@ coding-agent → task-service WorkspaceService（workspaceapi/server.go: operate
 - 已结束的 Task 内容不会再变，却在每次刷新时重放。
 - 事件只存在 Cache 的流里（`session/activities.go`：`events.Append`，保留 24 小时），业务库只在 Task 结束时记 `last_event_id` 与结局（`taskstore.RecordFinished`）。所以进行中的 Task 刷新后只能从 Cache 重放；Cache 一丢（现在是进程内，task-service 重启即丢），进行中 Task 的过程就没了。
 
-### 1.3 Cache 接口只有进程内的开发实现
+### 1.3 task-service 的 Provider：业务库已能接 Postgres，Cache 与 Ingress 还是开发实现
+
+- 业务库按配置选：设了 `AR_RELATIONAL_DSN` 用 Postgres（行级安全），没设回落到 `AR_DATA_DIR` 下的 SQLite（`cmd/task-service/main.go` 的 `newRelationalStore`）。云上的 `values-cloud.yaml` 配了 `relationalDsn`，线上是 Postgres；但回落是静默的，配漏了也能起来，只是数据写进了容器里的 SQLite。
+- Ingress 是内置的 `localingress`（一把签名密钥验令牌）。
 
 设计书 4.5 的 Cache（推荐 Valkey：限流计数、SSE 跨节点广播、短期缓存、分布式锁）在 task-service 里接的是 `memcache.New`（`cmd/task-service/main.go`）。后果：
 
@@ -44,6 +47,15 @@ coding-agent → task-service WorkspaceService（workspaceapi/server.go: operate
 - 挂卷的工作区只有被删除时才删目录；长期不用的副本不会清理（coding-agent 计划第 8 节写着“清理长期不用的副本”还没做）。
 - 结论：一个租户理论上就能占 20 × 2 GiB 以上，几个活跃租户（加上 `node_modules`、构建产物）就能写满节点的盘，而盘满会连带 Postgres、Temporal 等同节点上的组件。
 
+### 1.5 沙箱的代码分在三处，Broker 在 Worker 里
+
+- Sandbox 接口与各后端的适配器（K8s、Cloudflare、本地；自写的标准库 K8s REST 客户端）在 Python 的 `libs/py-core`（`providers/sandbox.py`、`adapters/k8s_sandbox.py` 等）。
+- 借还环境的 Broker、环境表（`sandbox_envs`）、配额、联网授权、按项目构建环境、工作区存档与恢复在 Worker 的 `agentruntime_worker.sandbox` 与 `agentruntime_worker.workspace`；对账是 Worker 里的一个 Temporal 工作流（`workflows/sandbox_reconcile.py`）。这几处合计约 4300 行 Python。
+- 沙箱里跑的 sandbox-agent 是 Go（只用标准库），明文 HTTP 加令牌（`go-sandbox-agent/cmd`：`ListenAndServe`，令牌由 Worker 按 `sandbox/token-key` 签），接口有 exec、读写文件、列目录、grep、存档的导出导入与清单。Cloudflare 的环境经 HTTPS 的桥。
+- task-service（Go）只读环境表（EnvironmentService），不会找环境、连环境。设计书 2.4 对 Sandbox 只写了“只定义接口”。
+
+后果：谁要在沙箱里做点事（Task 的 shell_run、Workspace API 的每次操作），都得进 Worker；task-service 想直接读文件，只能在 Go 里再实现一份“找环境、连环境”。
+
 ## 2. 工作项
 
 编号沿用 [人工验收后的实现工作项](post-acceptance-work-items-2026-11-03.md) 的写法。决定一栏全部是“待确认”。
@@ -51,24 +63,29 @@ coding-agent → task-service WorkspaceService（workspaceapi/server.go: operate
 | 工作项 | Failure / Evidence | Minimum fix | 成本与新失败面 | 当前决定 |
 | --- | --- | --- | --- | --- |
 | PERF-00 先测 | 第 1.1、1.2 节的判断来自读代码，没有耗时数据；不测就说不清改完快了多少 | Workspace 操作记一个 `runtime.workspace_op` span，分段记：工作流排队、建环境、存档、恢复、命令本身、总时长；coding-agent 记历史加载的总时长与请求数。线上取一周的 p50、p95 作基线 | 只加 span 与属性，不改行为；属性不含路径以外的文件内容 | 待确认 |
-| WS-READ-01 只读操作走快路径，不经 Temporal、不新建沙箱 | 第 1.1 节：列目录、读文件、diff、log 每次起一个工作流、新建环境 | 读与写分开。**写**（建、克隆、提交、丢弃、同步、推送）仍走 `WorkspaceOperationWorkflow`：要耐久、要幂等与对账（推送是 write_irreversible）、要与 Task 共用 Broker 的“一个工作区只有一个可写环境”。**读**（ListFiles、ReadFile、GetDiff、GetLog）由 task-service 直接做：从业务库的环境表（`sandbox_envs`，与 Worker 同一个库）找这个工作区里 ready 的环境，用 sandbox-agent 已有的 `GET /v1/list`、`GET /v1/files/…`，git 经 `POST /v1/exec` 跑并带 `--no-optional-locks`（不抢 index.lock、不和正在跑的命令打架）；没有活着的环境时，存档模式读最新快照的清单与块，挂卷模式退回现在的工作流路径。读不占用环境、不改 busy 状态、不触发存档 | task-service 第一次直接连沙箱：要拿到 agent 令牌的签发（SecretStore 平台作用域 `sandbox/token-key`）与各后端的连接方式（K8s 的 pod_ip、Cloudflare 桥），等于在 Go 里再实现一份 Python Broker 里“找环境、连环境”的部分，两份实现要用同一组一致性用例约束；读到的可能是命令执行到一半的文件，界面要标出“任务进行中”；越权测试覆盖跨租户、跨工作区与符号链接 | 待确认 |
+| WS-READ-01 只读操作走快路径，不经 Temporal、不新建沙箱 | 第 1.1 节：列目录、读文件、diff、log 每次起一个工作流、新建环境 | 读与写分开。**写**（建、克隆、提交、丢弃、同步、推送）仍走 `WorkspaceOperationWorkflow`：要耐久、要幂等与对账（推送是 write_irreversible）。**读**（ListFiles、ReadFile、GetDiff、GetLog）由 task-service 调 SBX-01 的 Sandbox Service 的只读方法，只给（租户、工作区、会话、操作），不关心环境在哪、怎么连；git 带 `--no-optional-locks`，读不占用环境、不改 busy、不触发存档。SBX-01 的第一阶段之前不做：不在 task-service 里另写一份 Go 版的“找环境、连环境” | 读到的可能是命令执行到一半的文件，界面要标出“任务进行中”；越权测试覆盖跨租户、跨工作区与符号链接 | 待确认；依赖 SBX-01 第一阶段 |
 | WS-READ-02 Workspace 操作单独一个队列 | 第 1.1 节：查看文件与 Task 的 activity 抢同一批 Worker | Workspace 操作的工作流与 activity 换到单独的队列（如 `workspace`），按设计书 3.6 的分池方式单独一个 Worker 池与 KEDA ScaledObject | 多一个 Deployment；队列名是工作流启动参数，新启动的工作流生效，不改命令序列。在途的旧操作仍在旧队列，旧池要留到它们跑完 | 待确认 |
 | WS-READ-03 文件树与 diff 按版本缓存 | 打开抽屉、切文件、节点结束后都会重取，同样的结果反复算 | 业务库 `workspaces` 加一个 `generation`：可写环境里的写工具结束、提交、丢弃改动、同步时加一。task-service 按（租户、工作区、generation、操作与参数）缓存只读操作的结果，经 Cache 接口（先进程内，CACHE-01 之后是 Valkey），设上限与短 TTL 兜底 | `shell_run` 能改任何文件，只能按“可写节点结束”粗粒度加一，节点执行中途看到的可能是旧结果；缓存键必须带租户，跨租户命中要有测试 | 待确认 |
 | WS-BLOB-01 存档块的节点本地缓存 | 存档模式每次恢复都从 ObjectStore 拉全部块 | 块按 sha256 寻址、内容不可变：Worker 节点本地盘一个按大小上限 LRU 淘汰的块目录，恢复时先读本地、读到后核对哈希，没有再取 ObjectStore 并顺手存一份。存档仍然**写穿透**：块先成功写进 ObjectStore 才算存档成功，本地只是读缓存 | 不引入一致性问题（内容寻址）；占节点磁盘，要有上限与监控；本地块损坏时按哈希核对后丢弃重取 | 待确认 |
 | WS-DISK-01 挂卷工作区的大小与冷热分层 | 第 1.4 节：挂卷模式没有大小上限、不清理，单节点的盘会被写满 | ① 挂卷模式也执行 `max_bytes`：可写节点结束时量一次工作区大小，超了拒绝后续写工具并告诉用户；② 冷热分层：工作区闲置超过 N 天（租户策略可配）先按 D-06c 存档到 ObjectStore、核对成功后再删本地目录，状态记进 `workspaces`；下次用到时从存档恢复到本地盘；③ 卷用量超过阈值告警（Grafana） | 冷的工作区第一次打开要等恢复；存档成功之前绝不删本地（不做“先删后存”的写回）；量大小本身要扫目录，大仓库有开销，只在节点结束时做 | 待确认 |
 | HIST-01 事件持久化与增量取历史 | 第 1.2 节：刷新后逐个重放；事件只在 Cache 里，进行中的 Task 刷新也要能看到已经发生的部分 | **Runtime**：Session 工作流的 activity 发事件时，先按（租户、task_id、event_id）追加写进业务库一张只追加的事件表（event_id 已由业务库分配、严格递增，天然是增量游标），再写 Cache 流做实时推送；SSE 端点按 Last-Event-ID 先从表里补、再接 Cache；Task API 加一个按 Session 批量取事件的方法（每个 Task 给一个 after_event_id，分页），走 S-01。**coding-agent**：刷新时一次请求取回最近 Task 的事件（进行中的也一样，取到当前为止），之后只对进行中的 Task 开 SSE 并从各自最后的 event_id 续接；浏览器可按 Task 缓存已收到的事件与最后的 event_id，再打开时只取增量。持久化必须在 Runtime 一侧：coding-agent 只在有浏览器连着时才代理 SSE，没人看时的事件它收不到 | 每个事件多一次业务库写（事件很小，文字在 Task State 里）；表要按保留期清理（与 Task 的保留一致）；写库失败时不能丢推送也不能重复：先写库、后写 Cache，Cache 失败只影响实时性 | 待确认；Runtime 与 coding-agent 两边都有实现 |
 | CACHE-01 Cache 接口的 Valkey 适配器 | 第 1.3 节：事件流在进程内，task-service 不能多副本、重启丢流 | 按设计书 4.5 写 Valkey 适配器（`libs/go-core/adapters`），过 Cache 接口的一致性测试；事件流用 Stream、限流用 Lua 脚本的滑动窗口；`deploy/data` 单独装一个 Valkey（不与 Langfuse 共用）；task-service 的 `serve` 按配置选择实现 | 多一个有状态组件与它的备份、监控；Cache 只存可丢失的数据（设计书 4.5），丢了要能从业务库补 | 待确认 |
+| TS-PROD-01 task-service 的生产 Provider | 第 1.3 节：业务库回落 SQLite 是静默的；Cache、Ingress 是开发实现，task-service 只能单副本 | ① 业务库：加 `AR_PROFILE=production`（或等价开关），生产模式下没有 `AR_RELATIONAL_DSN` 直接拒绝启动，不回落 SQLite；连接池上限可配，Chart 给出与 Postgres `max_connections` 的配比，副本多了以后前面加 PgBouncer（transaction 模式，核对 RLS 用的会话变量在事务内设置）；② Cache：接 CACHE-01 的 Valkey，同样生产模式下必填；③ 两者都接好后 task-service 的 Chart 允许 `replicas > 1`，SSE 端点在任一副本上都能续传（端到端测试：两个副本，连 A 提交、连 B 收事件、杀掉 A 再续传）。Ingress 换生产实现另起工作项，不在这里 | 生产模式开关是新的配置面，开发、端到端测试不设它，行为不变；多副本后 Session 工作流的 Worker 也随副本变多，Temporal 按队列分发，不需要选主 | 待确认 |
+| SBX-01 Sandbox Service（Broker 独立成服务） | 第 1.5 节：沙箱能力散在 py-core 与 Worker，只有 Worker 能用；task-service 要读文件只能重写一份 | 新服务 `services/go-sandbox-service`（Go，只用标准库与 `libs/go-core`；K8s 照 `kube.py` 的做法自写 REST，不引 client-go），gRPC（与 Model Gateway、Memory Service 一致）。调用方只说“对（租户、工作区、会话）以只读或可写方式做某个操作”：`Exec`、`ReadFile`、`ListDir`、`Grep`、`Snapshot`，以及显式的 `Acquire` / `Release`（Task 一次借用里跑多条命令时用）；找环境、建环境、复用、配额、联网授权、存档与恢复、对账都在服务里。租户由调用方的服务令牌与请求里的 TenantContext 双重核对（服务端定租户，同 CLAUDE.md 的租户隔离规则）。分三期：**一期**只读方法，读现有的环境表、连已有的环境，task-service 的 WS-READ-01 用它；**二期**借还与 exec 搬过来，Worker 的 `shell_run`、`repo_*` 与 Workspace 操作改调服务，Python 的 Broker 只留一个薄客户端；**三期**对账、环境构建搬过来，删掉 Python 里的重复实现 | 多一个在每个 Task 关键路径上的有状态服务：要多副本、要和 Worker 一样能扛重启（借出中的环境以环境表为准，服务重启后按表恢复）；每次 exec 多一跳网内 gRPC（毫秒级，相对命令本身可忽略）；二期动 Node Executor 的工具实现，按 CLAUDE.md“核心链路同一时间只由一个 agent 修改”排期；环境表的迁移现在由 Worker（Python）管，搬家期间两边读写同一张表，迁移归属要先定；这是架构改动，设计书 4.10 要由人更新 | 待确认；需要先写设计改动稿 |
 
 ## 3. 顺序
 
 1. PERF-00：先拿到基线。
-2. WS-DISK-01 的 ① 与 ③：这是可用性风险（盘满会拖垮同节点的数据库），不依赖性能数据。
-3. WS-READ-01、HIST-01：按 PERF-00 的数据，预计收益最大。HIST-01 要改 Task API，先走 S-01。
-4. WS-READ-02、WS-READ-03。
-5. CACHE-01、WS-BLOB-01：前者是 task-service 多副本的前提，后者在加节点、改成存档模式之后才有收益。
-6. WS-DISK-01 的 ②（冷热分层）：活跃租户多了再做。
+2. WS-DISK-01 的 ① 与 ③：可用性风险（盘满会拖垮同节点的数据库），不依赖性能数据。
+3. TS-PROD-01 的 ①（生产模式不回落 SQLite）：改动小，防配错。
+4. HIST-01（先走 S-01）与 CACHE-01、TS-PROD-01 的 ②③：事件持久化、Valkey、多副本是一组。
+5. SBX-01 一期 → WS-READ-01：先写设计改动稿，人定之后做。
+6. WS-READ-02、WS-READ-03；SBX-01 二期、三期。
+7. WS-BLOB-01（加节点、改存档模式之后）、WS-DISK-01 的 ②（冷热分层）。
 
 ## 4. 不做的与要人定的
 
 - **不做写回**（先写本地、过期再存 ObjectStore）：节点在存回之前挂掉，用户的改动就丢了；增量存档只传新块，写穿透的代价不大。
 - 要人定：冷热分层的闲置天数；`max_bytes` 超限时是拒绝写工具还是只警告；Workspace 单独队列的 Worker 池副本数下限；Valkey 是否要持久化（AOF）。
+- **协议不换成 HTTPS 以外的东西，也不为此改用 Rust**：环境内的 sandbox-agent 现在是集群内明文 HTTP 加令牌，Cloudflare 经 HTTPS 的桥；协议开销是毫秒级，慢在建沙箱（秒级）与存档恢复，不在协议。Sandbox Service 对内用 gRPC 是为了与其他内部服务一致、有类型化的契约，不是为了快。sandbox-agent 用 Go 写、只用标准库，一个静态二进制，换 Rust 省下的是每个环境几 MB 内存，只有 microVM 密度成为瓶颈时才值得重新评估。
+- 要人定：SBX-01 是否做、是否分三期；Sandbox Service 的语言（拟 Go）；环境表迁移的归属。
