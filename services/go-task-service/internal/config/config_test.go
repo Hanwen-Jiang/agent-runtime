@@ -179,6 +179,40 @@ func TestStoreFromEnvProfile(t *testing.T) {
 	}
 }
 
+// CACHE-01：设了 AR_VALKEY_URL 时 Cache 用 Valkey（事件流、限流、锁跨副本共享），否则用进程内的开发实现。
+// 地址里有口令，按密钥对待；格式不对在启动时就报错（错误信息不带原文）。
+func TestFromEnvValkeyURL(t *testing.T) {
+	cfg, err := FromEnv(env(base()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.ValkeyURL.IsZero() {
+		t.Error("没配置时 Cache 用进程内的开发实现")
+	}
+	m := base()
+	u := "valkey://:valkey-s3cret@valkey-agentruntime.data.svc:6379/0"
+	m[EnvValkeyURL] = u
+	cfg, err = FromEnv(env(m))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ValkeyURL.RevealString() != u {
+		t.Error("Valkey 地址没有读进来")
+	}
+	if strings.Contains(fmt.Sprintf("%v %+v %#v", cfg, cfg, cfg), "valkey-s3cret") {
+		t.Error("打印配置时不能带出 Valkey 的口令")
+	}
+	for _, bad := range []string{"http://:valkey-s3cret@cache:6379", "valkey://:valkey-s3cret@", "not a url valkey-s3cret"} {
+		m[EnvValkeyURL] = bad
+		_, err := FromEnv(env(m))
+		if err == nil || !strings.Contains(err.Error(), EnvValkeyURL) {
+			t.Errorf("%q 应当报错并指出变量名，实际 %v", bad, err)
+		} else if strings.Contains(err.Error(), "valkey-s3cret") {
+			t.Errorf("错误信息带出了口令：%v", err)
+		}
+	}
+}
+
 func TestFromEnvRejectsBadValues(t *testing.T) {
 	cases := map[string]map[string]string{
 		"缺少 Temporal 地址": {EnvTemporalAddress: ""},

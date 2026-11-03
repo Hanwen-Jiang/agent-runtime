@@ -121,6 +121,12 @@ def test_tool_versions_match_the_nightly_job_and_claude_md() -> None:
     default = re.search(r'DEFAULT_IMAGE = "([^"]+)"', launcher)
     assert default and env_value(t, "AR_REDPANDA_IMAGE") == default.group(1), "CI 的 Redpanda 镜像与 redpanda_support 的默认镜像一致"
     assert 'docker pull "$AR_REDPANDA_IMAGE"' in t, "py-learning 的 job 预拉 Redpanda 镜像"
+    launcher = (REPO_ROOT / "libs" / "go-core" / "adapters" / "valkey" / "valkeytest" / "valkeytest.go").read_text("utf-8")
+    default = re.search(r'DefaultImage = "([^"]+)"', launcher)
+    assert default and env_value(t, "AR_VALKEY_IMAGE") == default.group(1), "CI 的 Valkey 镜像与 valkeytest 的默认镜像一致"
+    deployed = (REPO_ROOT / "deploy" / "data" / "valkey.yaml").read_text("utf-8")
+    assert f"image: {default.group(1)}" in deployed, "测试用的 Valkey 与 deploy/data 部署的同版"
+    assert 'docker pull "$AR_VALKEY_IMAGE"' in jobs()["go"], "go 的 job 预拉 Valkey 镜像"
     assert env_value(t, "BUF_VERSION").startswith("1.73"), "buf 1.73（CLAUDE.md）"
 
 

@@ -6,13 +6,17 @@ package main
 import (
 	"bytes"
 	"context"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/agentruntime/agent-runtime/libs/go-core/clock"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/localingress"
+	"github.com/agentruntime/agent-runtime/libs/go-core/dev/memcache"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/ingress"
+	"github.com/agentruntime/agent-runtime/libs/go-core/secret"
 
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/config"
 )
@@ -129,6 +133,32 @@ func TestNewRelationalStoreNeverFallsBackInProduction(t *testing.T) {
 		t.Fatalf("开发模式回落 SQLite：%v", err)
 	}
 	_ = store.Close()
+}
+
+// CACHE-01：配了 AR_VALKEY_URL 而连不上时 serve 起不来（不悄悄退回进程内的 Cache），错误信息不带口令；没配时是开发实现。
+func TestNewCacheFailsFastWhenValkeyIsUnreachable(t *testing.T) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := l.Addr().String()
+	_ = l.Close()
+	cfg := config.Config{ValkeyURL: secret.New("valkey://:cmd-valkey-s3cret@" + addr)}
+	_, err = newCache(context.Background(), cfg, clock.System{})
+	if err == nil {
+		t.Fatal("连不上 Valkey 时应当报错")
+	}
+	if !strings.Contains(err.Error(), "AR_VALKEY_URL") || strings.Contains(err.Error(), "cmd-valkey-s3cret") {
+		t.Errorf("错误信息要指出变量名、不带口令：%v", err)
+	}
+	p, err := newCache(context.Background(), config.Config{}, clock.System{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := p.(*memcache.Provider); !ok {
+		t.Errorf("没配 AR_VALKEY_URL 时用进程内的开发实现，实际 %T", p)
+	}
+	_ = p.Close()
 }
 
 func TestReplaySubcommand(t *testing.T) {
