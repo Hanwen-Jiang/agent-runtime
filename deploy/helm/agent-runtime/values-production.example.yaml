@@ -33,6 +33,8 @@ objectStore:
 
 taskService:
   replicas: 3
+  # 业务库必须是 Postgres（TS-PROD-01）。
+  profile: production
   resources:
     requests: {cpu: 500m, memory: 512Mi}
     limits: {cpu: "2", memory: 1Gi}

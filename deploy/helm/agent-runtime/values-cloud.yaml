@@ -54,6 +54,8 @@ ingress:
 
 taskService:
   replicas: 1
+  # 业务库是上面的 Postgres；没配连接串时拒绝启动，不回落 SQLite（TS-PROD-01）。
+  profile: production
   resources:
     requests: {cpu: 250m, memory: 256Mi}
     limits: {cpu: "1", memory: 512Mi}

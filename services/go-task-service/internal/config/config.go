@@ -49,7 +49,31 @@ const (
 	// EnvTenantActiveTasks 按租户给准入时未终态 Task 的上限（没列出的租户不设上限，2026-11-03 人定，docs/plan/open-signup.md）：
 	// 逗号分隔的“租户=个数”，0 也表示不设上限，例如 t1=2,t2=4。按用户类型的策略进租户策略的契约之前（S-01）放在部署配置里。
 	EnvTenantActiveTasks = "AR_TENANT_ACTIVE_TASKS"
+	// EnvProfile 是运行模式（TS-PROD-01，docs/plan/workspace-read-latency-and-disk-2026-11-03.md）：不设或 development 时
+	// 开发实现可以兜底；production 时业务库必须是 Postgres，没有 AR_RELATIONAL_DSN 拒绝启动，不回落 AR_DATA_DIR 下的 SQLite。
+	EnvProfile = "AR_PROFILE"
 )
+
+// AR_PROFILE 的取值。
+const (
+	ProfileDevelopment = "development"
+	ProfileProduction  = "production"
+)
+
+// production 读 AR_PROFILE：只认空、development 与 production，别的取值报错（拼错了不能悄悄当成开发模式）。
+func production(getenv func(string) string) (bool, error) {
+	switch getenv(EnvProfile) {
+	case "", ProfileDevelopment:
+		return false, nil
+	case ProfileProduction:
+		return true, nil
+	default:
+		return false, fmt.Errorf("%s 只能是 %s 或 %s", EnvProfile, ProfileDevelopment, ProfileProduction)
+	}
+}
+
+// errNoDSNInProduction 是生产模式没配业务库时的错误。
+var errNoDSNInProduction = fmt.Errorf("%s=%s 时要配 %s：生产模式不回落到 %s 下的 SQLite", EnvProfile, ProfileProduction, EnvRelationalDSN, EnvDataDir)
 
 // DefaultClaimCheckThreshold 是 Claim-Check 的默认阈值（字节）。
 const DefaultClaimCheckThreshold = 64 << 10
@@ -83,6 +107,8 @@ type Config struct {
 	TemporalNamespace string
 	HTTPAddr          string
 	PublicBaseURL     string
+	// Production 是 AR_PROFILE=production：业务库必须是 Postgres（RelationalDSN 非空）。
+	Production bool
 	// DevSigningKey 是开发用内置 Ingress 的签名密钥，打印与日志里只显示掩码。
 	DevSigningKey      secret.Value
 	DataDir            string
@@ -153,6 +179,14 @@ func FromEnv(getenv func(string) string) (Config, error) {
 	if dsn := getenv(EnvRelationalDSN); dsn != "" {
 		cfg.RelationalDSN = secret.New(dsn)
 	}
+	prod, err := production(getenv)
+	if err != nil {
+		return Config{}, err
+	}
+	if prod && cfg.RelationalDSN.IsZero() {
+		return Config{}, errNoDSNInProduction
+	}
+	cfg.Production = prod
 	if s3, ok, err := s3objects.OptionsFromEnv(getenv); err != nil {
 		return Config{}, err
 	} else if ok {
@@ -225,13 +259,20 @@ func FromEnv(getenv func(string) string) (Config, error) {
 // Store 是业务库与 schema 目录的位置：registry-seed 子命令只需要这几项，不要求 Temporal 地址与签名密钥。
 type Store struct {
 	DataDir string
-	// RelationalDSN 为空时用 DataDir 下的 SQLite；打印只显示掩码。
+	// RelationalDSN 为空时用 DataDir 下的 SQLite（生产模式下不许）；打印只显示掩码。
 	RelationalDSN secret.Value
 	SchemasDir    string
+	// Production 见 Config.Production。
+	Production bool
 }
 
-// StoreFromEnv 读取业务库与 schema 目录的位置（AR_DATA_DIR、AR_RELATIONAL_DSN、AR_SCHEMAS_DIR）。
-func StoreFromEnv(getenv func(string) string) Store {
+// Store 返回 serve 用的业务库位置。
+func (c Config) Store() Store {
+	return Store{DataDir: c.DataDir, RelationalDSN: c.RelationalDSN, SchemasDir: c.SchemasDir, Production: c.Production}
+}
+
+// StoreFromEnv 读取业务库与 schema 目录的位置（AR_DATA_DIR、AR_RELATIONAL_DSN、AR_SCHEMAS_DIR、AR_PROFILE）。
+func StoreFromEnv(getenv func(string) string) (Store, error) {
 	s := Store{DataDir: getenv(EnvDataDir), SchemasDir: getenv(EnvSchemasDir)}
 	if s.DataDir == "" {
 		s.DataDir = "data"
@@ -242,7 +283,15 @@ func StoreFromEnv(getenv func(string) string) Store {
 	if dsn := getenv(EnvRelationalDSN); dsn != "" {
 		s.RelationalDSN = secret.New(dsn)
 	}
-	return s
+	prod, err := production(getenv)
+	if err != nil {
+		return Store{}, err
+	}
+	if prod && s.RelationalDSN.IsZero() {
+		return Store{}, errNoDSNInProduction
+	}
+	s.Production = prod
+	return s, nil
 }
 
 // parseActiveTaskLimits 解析 AR_TENANT_ACTIVE_TASKS：“租户=个数”，逗号分隔，个数是非负整数（0 表示不设上限）。

@@ -89,6 +89,9 @@ containerSecurityContext:
 
 taskService:
   replicas: 1
+  # 运行模式（AR_PROFILE，TS-PROD-01）：development 时没配 secrets.relationalDsn 就用 /data 下的 SQLite；
+  # production 时业务库必须是 Postgres，没配连接串 Chart 渲染失败（task-service 本身也拒绝启动）。
+  profile: development
   # Task API 与 /healthz 同一端口；Registry 是单独的内部端口，只有集群内的 Service（docs/plan/registry.md 第 2 节第 7 条）。
   httpPort: 8080
   registryPort: 8092

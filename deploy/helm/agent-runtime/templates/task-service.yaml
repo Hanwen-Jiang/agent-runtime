@@ -1,6 +1,12 @@
 {{- $name := printf "%s-task-service" (include "ar.fullname" .) -}}
 {{- $ts := .Values.taskService -}}
 {{- $tenantPoliciesConfigMap := include "ar.modelGatewayTenantPoliciesConfigMap" . -}}
+{{- if not (has $ts.profile (list "development" "production")) }}
+{{- fail "taskService.profile 只能是 development 或 production" }}
+{{- end }}
+{{- if and (eq $ts.profile "production") (not .Values.secrets.relationalDsn.name) }}
+{{- fail "taskService.profile=production 要配 secrets.relationalDsn：生产模式的 task-service 不回落 SQLite（TS-PROD-01）" }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -35,6 +41,8 @@ spec:
             {{- include "ar.storeEnv" . | nindent 12 }}
             {{- include "ar.signingKeyEnv" . | nindent 12 }}
             {{- include "ar.dsnEnv" . | nindent 12 }}
+            - name: AR_PROFILE
+              value: {{ $ts.profile | quote }}
             - name: AR_TEMPORAL_ADDRESS
               value: {{ .Values.external.temporal.address | quote }}
             - name: AR_TEMPORAL_NAMESPACE

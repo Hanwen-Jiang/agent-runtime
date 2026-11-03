@@ -64,8 +64,12 @@ func registrySeed(args []string, stdout, stderr io.Writer, getenv func(string) s
 		return 1
 	}
 	ctx := context.Background()
-	where := config.StoreFromEnv(getenv)
-	store, err := newRelationalStore(ctx, where.DataDir, where.RelationalDSN)
+	where, err := config.StoreFromEnv(getenv)
+	if err != nil {
+		fmt.Fprintf(stderr, "registry-seed：配置不合法：%v\n", err)
+		return 2
+	}
+	store, err := newRelationalStore(ctx, where)
 	if err != nil {
 		fmt.Fprintf(stderr, "registry-seed：打不开业务库：%v\n", err)
 		return 1

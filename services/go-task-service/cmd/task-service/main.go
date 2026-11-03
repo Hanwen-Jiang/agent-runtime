@@ -47,7 +47,6 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	"github.com/agentruntime/agent-runtime/libs/go-core/sealing"
-	"github.com/agentruntime/agent-runtime/libs/go-core/secret"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	workflowv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1"
 
@@ -196,12 +195,16 @@ func platformSecret(ctx context.Context, secretsFile, name string) ([]byte, erro
 	return v.Reveal(), nil
 }
 
-// newRelationalStore 构造业务库：配置了 AR_RELATIONAL_DSN 时用 Postgres（行级安全，S-12a），否则用 SQLite 开发实现。
-func newRelationalStore(ctx context.Context, dataDir string, dsn secret.Value) (relational.Provider, error) {
-	if !dsn.IsZero() {
-		return postgres.New(ctx, postgres.Options{DSN: string(dsn.Reveal())})
+// newRelationalStore 构造业务库：配置了 AR_RELATIONAL_DSN 时用 Postgres（行级安全，S-12a），否则用 SQLite 开发实现；
+// 生产模式（AR_PROFILE=production，TS-PROD-01）下没有连接串直接报错，不回落 SQLite。
+func newRelationalStore(ctx context.Context, where config.Store) (relational.Provider, error) {
+	if !where.RelationalDSN.IsZero() {
+		return postgres.New(ctx, postgres.Options{DSN: string(where.RelationalDSN.Reveal())})
 	}
-	dir := filepath.Join(dataDir, "relational")
+	if where.Production {
+		return nil, fmt.Errorf("生产模式要配 %s，不回落 SQLite", config.EnvRelationalDSN)
+	}
+	dir := filepath.Join(where.DataDir, "relational")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, err
 	}
@@ -321,7 +324,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	defer c.Close()
 
 	clk := clock.System{}
-	store, err := newRelationalStore(ctx, cfg.DataDir, cfg.RelationalDSN)
+	store, err := newRelationalStore(ctx, cfg.Store())
 	if err != nil {
 		return err
 	}
