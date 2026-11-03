@@ -1,6 +1,8 @@
 # 未完成计划执行表（2026-11-02）
 
-> 当前已推送代码基线：agent-runtime `main` `23de00b`、coding-agent `main` `384ea04`。用户要求收尾推送后暂停；完整状态见 [暂停检查点](implementation-pause-checkpoint-2026-11-03.md)。本表投影现有设计，不修改冻结设计书；历史工具缺失记录不代表当前阻塞。
+> 当前已推送代码基线：agent-runtime `main` `23de00b`、coding-agent `main` `384ea04`。用户要求收尾推送后暂停；完整状态见 [暂停检查点](implementation-pause-checkpoint-2026-11-03.md) 与之后的 [收尾记录](implementation-closeout-2026-11-03.md)。
+>
+> 2026-11-03 核对两个仓库的 main：agent-runtime 之后又合进了 EnvironmentService（ENV-01 的只读查询，`f74a530`、`e15b58d`）与能力矩阵评测（`lane/b1`、`lane/b2`）；coding-agent 到了 `d61bfef`，环境配置界面、`/env` 投影与 Workspace 界面都已完成。下表的 P0-B、P1-C 按此改过。本表投影现有设计，不修改冻结设计书；历史工具缺失记录不代表当前阻塞。
 
 ## 发布原则
 
@@ -14,16 +16,16 @@
 | 批次 | 范围 | 依赖 | 交付与验收 | 当前决策 |
 | --- | --- | --- | --- | --- |
 | P0-A | S-01/S-02 审查包 | 无 | 契约正反例、字段编号清单、兼容性说明、buf/schema 检查命令；人工验收基线已冻结，生成代码仍按工作项验收 | **契约与设计已批准**，实现逐项放行 |
-| P0-B | D-23/D-24 首版 | P0-A | coding-agent 已完成私有环境 CRUD、repo 解耦绑定、`.env` 校验、setup/start 字段和用户隔离；Runtime EnvRecord/SecretStore/运行时门禁仍待接入 | coding-agent `384ea04` 已推送；先做 Runtime EnvRecord，再接真实执行 |
+| P0-B | D-23/D-24 首版 | P0-A | coding-agent 已完成私有环境 CRUD、repo 解耦绑定、`.env` 校验、setup/start 字段和用户隔离，以及配置界面与新会话选环境（`b417f4e`）；Runtime EnvRecord 的只读查询已在 main（`f74a530`、`e15b58d`）；SecretStore/运行时门禁仍待接入 | 下一步是 ENV-02 真实执行（setup/start、失败门禁、`.env` 注入、网络密钥代理）；coding-agent 的接缝 `environmentHandoff` 在契约定下前不发请求 |
 | P0-C | 开放注册预算 | P0-A、Model Gateway 计量 | 配置、共享业务库账本、原子预留/结算、Task/Gateway 双重检查及部署同源配置已实现；SQLite/PostgreSQL 与 Gateway/Task 测试通过 | 实现完成；线上发布和供应商账单验收待执行 |
 | P1-A | R-02/R-03 剩余缺口 | 现有运行时代码 | 多因素选档已推送 `8d49b3b`，预算执行已推送 `c5ee28c`，Activity ContextBuilder 完整输入和新旧历史重放已推送 `23de00b` | 本地实现验证通过；缺实测评分矩阵、Profile 有效窗口动态接入及线上验收 |
 | P1-B | R-04/R-05/R-06 剩余缺口 | SecretStore/Ingress/Registry 当前接口 | 生产 SecretStore 适配边界、工具输出脱敏、Learning 成本与版本固定；R-04/R-06 前置契约包已合并；R-05 的 round/stage/node/tool/human/verdict/SSE 续传与限流已有，`token_delta`/`thinking_delta` 仍依赖流式模型通道 | 契约已批准，按模块实现；真实 SecretStore/StreamGenerate 仍需资源 |
-| P1-C | Workspace 与会话 UI | coding-agent 仓库、Runtime EnvironmentService | Workspace API 文件树/read/log/discard/copy、`/env` 状态投影、旧 SSE 兼容测试；D-06 前置验收包已合并；当前 coding-agent 没有 EnvRecord/ledger 查询 API，不能安全推断 ready/reused | 跨仓库独立合并，先补 Runtime 契约 |
+| P1-C | Workspace 与会话 UI | coding-agent 仓库、Runtime EnvironmentService | Workspace API 文件树/read/log/discard/copy、`/env` 状态投影、旧 SSE 兼容测试；D-06 前置验收包已合并 | **已完成**：`/env` 改读 EnvironmentService（coding-agent `4970480`），Workspace 界面补齐复制、拉取、文件树、提交记录（`8e6c557`、`96219d2`）；旧 SSE 兼容测试没有核对。还没做：会话之间合并改动、归档会话、清理长期不用的副本 |
 | P1-D | Memory-live 部署 | Chart/镜像/模型 Profile | Milvus、真 embedding、Worker→Memory gRPC、租户过滤与部署 smoke；真实集群验收 | 代码先行，资源可用后验收 |
 | P2-A | D-19～D-22/D-26 | P0-B、SandboxBroker | Firecracker/vsock/rootfs、快照顺序冲突决议；不在首版环境配置前引入缓存；已合并前置验收包 | 契约已批准；按 Sandbox 后端逐项实现，缺 KVM 标记 `blocked_external` |
 | P2-B | N-04/N-19/N-20 | S-01、coding-agent | Task Plan/`plan_updated`、会话快照+增量、首事件延迟分段；前置验收包已合并，token/thinking delta 仍依赖 StreamGenerate | 契约已批准；运行时和流式通道逐项实现 |
 | P2-C | N-14～N-16/N-18 | Registry/SecretStore/S-01 | 用户 Skill、用户 MCP、多 Agent 协作、文件型交付；N-14/D-27、D-25、N-15/N-16、N-18 已合并前置验收包 | 契约已批准；依赖 Registry/SecretStore/对象存储实现 |
-| ENV | D-02～D-05/D-07/D-09～D-17 | 真实主机/域名/凭据 | 真 Postgres/Temporal/Qdrant/Redpanda/Langfuse/R2/Cloudflare/Kata/DNS/TLS/BuildKit/包源/Grafana/Tempo | 资源未提供前只做脚本和 kind gate |
+| ENV | D-02～D-05/D-07/D-09～D-17 | 真实主机/域名/凭据 | 真 Postgres/Temporal/Qdrant/Redpanda/Langfuse/R2/Cloudflare/Kata/DNS/TLS/BuildKit/包源/Grafana/Tempo | 主机与域名已有：cgent.link 单节点集群 2026-10-28 上线（[cloud-deploy.md](cloud-deploy.md) 第 10 节）；仍缺 R2 令牌、Cloudflare 桥令牌与预览证书，逐项状态见 [gate 清单](cloud-deploy-gates-2026-11-02.md) |
 
 评测分支 `codex/evals-design-closeout` 已于 2026-11-03 以三方合并合进 main（`76f2b46`）：只新增文件、没有删除主线的评测集与桥（早先“会删除”的判断是拿分支末端直接和 main 比的结果）；Terminal-Bench 两条路并存，见 `feedback-2026-11-01.md` 第 8 节。
 

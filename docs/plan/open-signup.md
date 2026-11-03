@@ -22,10 +22,13 @@
 
 ## 2. 还缺的（按优先级）
 
-1. **每个租户每天、每月的模型花费上限**（最要紧）。现在只有每个 Task 的预算，Task 的个数不限，所以一个账号一天的花费没有上限。
+1. ~~**每个租户每天、每月的模型花费上限**（最要紧）。现在只有每个 Task 的预算，Task 的个数不限，所以一个账号一天的花费没有上限。
    做法：租户策略加 `model_budget: {daily_usd, monthly_usd}`（schema 改动，走 S-01）；Model Gateway 按计量记录累计租户当天、
    当月的花费，超了拒绝新的模型调用（`tenant_budget_exceeded`，设计书附录 H.6 的“预算上限”）；task-service 在准入时先查，
-   超了不收新 Task。免费账号的默认值建议每天 3 美元、每月 20 美元。
+   超了不收新 Task。免费账号的默认值建议每天 3 美元、每月 20 美元。~~ **已实现，没上线**（2026-11-03）：策略字段、默认 3/20 美元与严格解析
+   （MODEL-BUDGET-01，`ad0aa6a`、`61c8765`，Helm 默认额度 `187a372`）；task-service 与 Model Gateway 共用业务库里的 `model_usage` 记录，每次模型调用先原子预留、
+   按实际用量结算，超了返回 `tenant_budget_exceeded`，不重试、不换便宜模型（MODEL-BUDGET-02，`377e1db`、`b2bd9f6`、`c5ee28c`，
+   见 [model-budget-enforcement-2026-11-03.md](model-budget-enforcement-2026-11-03.md)）。线上发布与供应商账单核对仍待做。
 2. ~~**每个租户同时在跑的 Task 数**：task-service 准入时数本租户未结束的 Task，默认 2 个；超了 `tenant_busy`（应用提示稍后再试）。~~ 已完成；内部租户（评测、跑分）的覆盖先放在部署配置里：task-service 的 `AR_TENANT_ACTIVE_TASKS`（Chart 的 `taskService.activeTaskLimits`，“租户=个数”，0 不设上限；2026-11-03 加，起因是 rev19 上 SWE-bench 50 题被拒掉 42 题）。写进租户策略的契约（S-01）和线上告警仍属后续。
 3. ~~**免费账号的模型白名单**：默认策略的 `model_allowlist` 去掉最贵的档（例如 claude-opus），只留 mid、small 与一个 strong。~~ **执行器已完成**：Model Gateway 按租户策略区分“字段缺失=不限制”和“空数组=全部拒绝”，并在候选模型路由前拒绝不在白名单的 Profile；默认免费策略的具体 Profile 列表仍由部署侧 seed 配置。
 4. **防滥用**：coding-web 注册时要求平台账号满 30 天、有验证过的邮箱（GitHub 的 `created_at` 与 `/user/emails`）；
