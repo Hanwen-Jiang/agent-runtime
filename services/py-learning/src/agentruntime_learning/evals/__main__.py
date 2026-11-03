@@ -246,7 +246,7 @@ def _deepeval(args: argparse.Namespace) -> int:
     from agentruntime_learning.evals import deliverables as dv
     from agentruntime_learning.evals import frameworks
 
-    root = args.eval_set or dv.DEFAULT_SET
+    root = getattr(args, "eval_set", None) or dv.DEFAULT_SET  # report 子命令不收 --eval-set
     try:
         if args.action == "report":
             dv.report(args.out)

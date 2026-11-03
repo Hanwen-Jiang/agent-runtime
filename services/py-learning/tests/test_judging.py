@@ -23,8 +23,9 @@ from agentruntime_learning.evals.judging import DEFAULT_JUDGE, RecordingJudgeGat
 
 
 class FakeGateway:
-    def __init__(self, *, serve: str | None = None, fail: bool = False, result: dict[str, Any] | None = None) -> None:
+    def __init__(self, *, serve: str | None = None, fail: bool = False, result: dict[str, Any] | None = None, serve_first: list[str] | None = None) -> None:
         self.serve, self.fail, self.result = serve, fail, result
+        self.serve_first = list(serve_first or [])
         self.seen: list[mg.GenerateRequest] = []
 
     async def generate(self, request: mg.GenerateRequest) -> mg.GenerateResponse:
@@ -32,7 +33,7 @@ class FakeGateway:
         if self.fail:
             raise RuntimeError("provider down")
         out = mg.GenerateResponse(text="judged")
-        out.model.model_profile_id = self.serve or request.call.pinned_model_profile or "a6api/default@1"
+        out.model.model_profile_id = (self.serve_first.pop(0) if self.serve_first else None) or self.serve or request.call.pinned_model_profile or "a6api/default@1"
         out.usage.input_tokens, out.usage.output_tokens, out.usage.cost_usd_micros = 120, 30, 1500
         if self.result is not None:
             value = struct_pb2.Value()
@@ -72,13 +73,28 @@ async def test_judge_calls_are_pinned_and_recorded(tmp_path: Path) -> None:
 
 
 async def test_misses_and_errors_are_recorded(tmp_path: Path) -> None:
-    gw = RecordingJudgeGateway(FakeGateway(serve="a6api/other@1"), tmp_path / "j.jsonl")
+    gw = RecordingJudgeGateway(FakeGateway(serve="a6api/other@1"), tmp_path / "j.jsonl", pin_attempts=2)
     await gw.generate(judge_request())
     bad = RecordingJudgeGateway(FakeGateway(fail=True), tmp_path / "j.jsonl")
     with pytest.raises(RuntimeError):
         await bad.generate(judge_request())
     summary = summarize_log(tmp_path / "j.jsonl")
-    assert (summary["calls"], summary["errors"], summary["not_pinned"]) == (2, 1, 1)
+    assert (summary["calls"], summary["retried"], summary["errors"], summary["not_pinned"]) == (3, 1, 1, 1)
+    assert summary["cost_usd"] == 0.003, "被取代的那次也花了钱"
+
+
+async def test_a_judgment_from_another_model_is_asked_again(tmp_path: Path) -> None:
+    """裁判超时、Gateway 回退到别的模型：重问，直到落在钉的模型上；两次都记下，用的是钉中的那次。"""
+    inner = FakeGateway(serve_first=["a6api/claude-sonnet-5-5@2026-10"])
+    gw = RecordingJudgeGateway(inner, tmp_path / "j.jsonl")
+    with judging(eval="ragas", case_id="q1", metric="llm_context_recall"):
+        out = await gw.generate(judge_request())
+    assert out.model.model_profile_id == DEFAULT_JUDGE and len(inner.seen) == 2
+    first, second = rows(tmp_path / "j.jsonl")
+    assert (first["attempt"], first["superseded"], first["judge_pinned_ok"]) == (1, True, False)
+    assert (second["attempt"], second["judge_pinned_ok"], second["case_id"]) == (2, True, "q1") and "superseded" not in second
+    summary = summarize_log(tmp_path / "j.jsonl")
+    assert (summary["calls"], summary["retried"], summary["not_pinned"]) == (2, 1, 0)
 
 
 def test_vendors() -> None:

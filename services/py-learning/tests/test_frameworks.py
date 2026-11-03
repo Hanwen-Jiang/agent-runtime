@@ -211,6 +211,8 @@ def test_scoring_covers_finished_unscored_cases_and_summarizes(tmp_path: Path) -
     assert calls == [3], "打过分的不重打"
     rep = dv.report(out)
     assert rep["unconfirmed"] and "没经人确认" in (out / "report.md").read_text("utf-8")
+    from agentruntime_learning.evals.__main__ import main
+    assert main(["deepeval", "report", "--out", str(out)]) == 0, "report 子命令没有 --eval-set（2026-11-03 t18 里报 AttributeError）"
 
 
 # --- 记忆检索（Ragas） ---
