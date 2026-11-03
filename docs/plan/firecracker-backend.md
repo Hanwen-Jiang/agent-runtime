@@ -250,7 +250,7 @@ fc-manager（Rust，宿主机上的 systemd 服务，不在 Pod 里）
 - **存档格式不能变**：已有的快照（ObjectStore 里的清单与块）要能被 Rust 版导入；测试用 Go 版导出的 tar 与清单做 golden，Rust 版导入后清单一致，Rust 版导出的再被 Go 版导入一致。
 - **取消与超时**：杀整个进程组、取消后确认已停（`ExecNotStopped` 的语义）、输出截断上限，与 Go 版一致。
 - **依赖比 Go 版多**：Go 版只用标准库（含 `archive/tar`、`crypto/sha256`）；Rust 版至少要 tar、sha256、JSON 的库，它跑在每个沙箱里、握着 agent 令牌，依赖清单按第 10 节人审，tar 的解包路径校验（`..`、绝对路径、指出去的符号链接、设备文件）不交给库的默认行为，自己再核一遍。
-- **令牌不落到命令看得到的地方**：沿用 D-05 的检查（`/proc/<pid>/environ`、命令行、磁盘）。
+- **令牌不落到命令看得到的地方**：沿用 D-05 的检查（`/proc/<pid>/environ`、命令行、磁盘）。Go 版只查了子进程的环境，`/proc/1/environ` 没查（[auth-tokens-2026-11-03.md](auth-tokens-2026-11-03.md) 的 AGENT-TOK-01）；Rust 版启动后 `prctl(PR_SET_DUMPABLE, 0)`，验收 4 要包含读 `/proc/<agent>/environ` 与 `cmdline`。
 
 **验收**
 

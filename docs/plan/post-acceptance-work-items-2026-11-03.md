@@ -45,3 +45,14 @@ MODEL-BUDGET-02 已由 `libs/go-core/modelbudget` 共享持久实现取代旧 fa
 | SBX-RS-01 | **取消**：不做原型，直接改写（firecracker-backend.md 的 D-28） |
 | SBX-RS-02 | **已定**（2026-11-03 用户定）：fc-manager 与 sandbox-agent 都用 Rust；Sandbox Service 留在 Go |
 | D-28 | sandbox-agent 按现有 HTTP 接口原样改写为 Rust，K8s、Cloudflare、测试一起换，存档格式互通，一个发布周期后删 Go 版；D-20 依赖它 |
+
+## 追加：登录令牌与 agent 令牌（2026-11-03，草案）
+
+依据与细节见 [auth-tokens-2026-11-03.md](auth-tokens-2026-11-03.md)，全部 **待确认**：
+
+| 工作项 | 一句话 |
+| --- | --- |
+| AUTH-01 | 令牌改成 Ed25519 签名的标准 JWT：coding-agent 持私钥签发，Runtime 只持公钥验签；第三方平台令牌的加密密钥独立出来；`localingress` 只留给开发 |
+| AUTH-02 | 浏览器只拿可撤销的会话 id；coding-agent 调 Runtime 时现签 5 分钟、`aud` 为 Runtime 的令牌；按 `kid` 轮换密钥 |
+| AUTH-03 | Ingress 的生产形态：身份服务或独立签发服务（JWKS）、网关的全局限流、OAuth 加 PKCE |
+| AGENT-TOK-01 | 先测用户命令能不能从 `/proc/1/environ` 读到 agent 令牌，确认后用 `PR_SET_DUMPABLE` 或改交付方式修掉；Rust 版 agent 按同一条验收 |
