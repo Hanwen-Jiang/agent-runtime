@@ -23,7 +23,8 @@ from typing import Any
 BRIDGES = Path(__file__).resolve().parent / "bridges"
 REQUIREMENTS = Path(__file__).resolve().parents[3] / "eval-requirements.txt"
 PROVIDER_FILE = Path.home() / ".agentruntime" / "model-provider.env"
-PASS_THROUGH = ("PATH", "HOME", "LANG", "LC_ALL", "SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "https_proxy", "http_proxy", "no_proxy")
+# Windows 的 asyncio/_overlapped 初始化 Winsock 需要 SystemRoot；不传会在导入 DeepEval 时失败。
+PASS_THROUGH = ("PATH", "HOME", "SYSTEMROOT", "SystemRoot", "LANG", "LC_ALL", "SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "https_proxy", "http_proxy", "no_proxy")
 DEFAULT_TIMEOUT_S = 6 * 3600
 
 

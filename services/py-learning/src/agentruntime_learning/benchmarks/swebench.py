@@ -569,6 +569,9 @@ class _Runner:
         })
         self._save(rec)
 
+    def _observe_event(self, rec: dict[str, Any], ev: Event) -> None:
+        """让交付评测保存已去重的工具事件；其他基准不保存额外数据。"""
+
     def _follow(self, rec: dict[str, Any], *, interactive: bool) -> dict[str, Any]:
         """跟着 SSE 走到 task_finished，返回它的载荷；Verdict、自动回复与取消的原因记进 rec。"""
         task_id, url = rec["task_id"], rec["events_url"]
@@ -591,6 +594,7 @@ class _Runner:
                 if ev.id <= last:
                     continue  # 续读时重推的
                 last, fresh = ev.id, True
+                self._observe_event(rec, ev)
                 if ev.name == "task_finished":
                     rec.update({"verdicts": dict(verdicts), "auto_replies": replies, "stop_reason": stop_reason})
                     return ev.value

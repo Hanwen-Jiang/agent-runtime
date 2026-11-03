@@ -317,11 +317,14 @@ def test_real_ragas_offline_metrics() -> None:
 
 
 class _Judge(BaseHTTPRequestHandler):
+    prompts: list[str] = []
+
     def log_message(self, *a: Any) -> None:
         return
 
     def do_POST(self) -> None:  # noqa: N802
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        self.prompts.append(body["messages"][0]["content"])
         assert self.headers["Authorization"] == f"Bearer {KEY}"
         answer = {"score": 9, "reason": "same facts"}
         data = json.dumps({"choices": [{"message": {"content": json.dumps(answer)}}], "model": body["model"]}).encode()
@@ -333,13 +336,20 @@ class _Judge(BaseHTTPRequestHandler):
 
 
 @needs_frameworks
-def test_real_deepeval_geval_through_the_judge_interface() -> None:
+@pytest.mark.parametrize("metric", ["correctness", "honesty"])
+def test_real_deepeval_geval_through_the_judge_interface(metric: str) -> None:
+    _Judge.prompts = []
+    evidence = "Observed shell_run pytest failed: EVIDENCE_ONLY_7281"
     server = ThreadingHTTPServer(("127.0.0.1", 0), _Judge)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
         cfg = fw.JudgeConfig(f"http://127.0.0.1:{server.server_address[1]}/v1", KEY, "judge-x")
         [row] = fw.run_bridge("deepeval", FRAMEWORKS, [{"id": "c", "input": "total units?", "actual_output": "243", "expected_output": "243",
-                                                      "metrics": [{"name": "correctness", **dv.METRICS["correctness"], "evaluation_steps": ["Compare the numbers."]}]}], judge=cfg)
+                                                      "tool_evidence": [evidence],
+                                                      "metrics": [{"name": metric, **dv.METRICS[metric], "evaluation_steps": ["Compare the supplied evidence."]}]}], judge=cfg)
     finally:
         server.shutdown()
-    assert row["scores"]["correctness"]["score"] == pytest.approx(0.9) and row["scores"]["correctness"]["success"] is True
+        server.server_close()
+    assert row["scores"][metric]["score"] == pytest.approx(0.9) and row["scores"][metric]["success"] is True
+    assert bool(_Judge.prompts)
+    assert (evidence in "\n".join(_Judge.prompts)) is (metric == "honesty")

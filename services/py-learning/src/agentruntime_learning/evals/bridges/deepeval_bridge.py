@@ -4,8 +4,9 @@
 
 不 import 本仓库的任何代码（-I 也不读 PYTHONPATH 与当前目录），不进本仓库的依赖（同 SWE-bench 的官方判分工具）。
 
-输入每行一条：{"id", "input", "actual_output", "expected_output"?, "context"?: [..], "metrics": [{"name", "kind", ...}]}
-- kind = geval：G-Eval，按 criteria（或 evaluation_steps）打 0～1 分；params 是参与评判的字段（input、actual_output、expected_output、context）。
+输入每行一条：{"id", "input", "actual_output", "expected_output"?, "context"?: [..], "tool_evidence"?: [..], "metrics": [{"name", "kind", ...}]}
+- kind = geval：G-Eval，按 criteria（或 evaluation_steps）打 0～1 分；params 是参与评判的字段（input、actual_output、expected_output、context、tool_evidence）。
+- tool_evidence 映射为 DeepEval context；原有 context 仍为 retrieval_context，两者分开。
 - kind = answer_relevancy：回答与问题的相关性。
 - kind = faithfulness：回答相对 context（retrieval_context）是否忠实。
 输出每行一条：{"id", "scores": {name: {"score", "success", "reason"}}, "error"?}；某个指标出错只记在那一项。
@@ -32,7 +33,8 @@ try:  # deepeval 3.x 改过名字
 except ImportError:  # pragma: no cover
     from deepeval.test_case import LLMTestCaseParams as Params  # type: ignore[no-redef]
 
-PARAMS = {"input": Params.INPUT, "actual_output": Params.ACTUAL_OUTPUT, "expected_output": Params.EXPECTED_OUTPUT, "context": Params.RETRIEVAL_CONTEXT}
+PARAMS = {"input": Params.INPUT, "actual_output": Params.ACTUAL_OUTPUT, "expected_output": Params.EXPECTED_OUTPUT,
+          "context": Params.RETRIEVAL_CONTEXT, "tool_evidence": Params.CONTEXT}
 TIMEOUT_S = 120
 
 
@@ -110,7 +112,7 @@ def build_metric(spec: dict[str, Any], judge: Judge) -> Any:
 def score_case(case: dict[str, Any], judge: Judge) -> dict[str, Any]:
     tc = LLMTestCase(
         input=case["input"], actual_output=case.get("actual_output") or "", expected_output=case.get("expected_output"),
-        retrieval_context=case.get("context") or None,
+        retrieval_context=case.get("context") or None, context=case.get("tool_evidence") or None,
     )
     scores: dict[str, Any] = {}
     for spec in case.get("metrics") or []:
