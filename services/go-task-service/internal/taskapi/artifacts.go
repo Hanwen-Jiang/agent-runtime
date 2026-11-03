@@ -3,7 +3,7 @@ package taskapi
 // N-18 文件交付的公开入口（docs/plan/n18-file-delivery-f3.md，F3）：ListTaskArtifacts 与下载路由
 // GET /v1/tasks/{task_id}/artifacts/{artifact_id}。
 //
-// 元数据在业务库的 task_artifacts（Worker 的 deliver_file 写，这里只读）；表由两边的迁移 207 建，建表语句一致（契约测试比对），
+// 元数据在业务库的 task_artifacts（Worker 的 deliver_file 写，这里只读）；表由两边的迁移 209 建，建表语句一致（契约测试比对），
 // 谁先启动谁建。内容在 ObjectStore（与 Worker、Claim-Check 同一处）。下载每次都重新核对：令牌里的租户、Task 属于这个租户、
 // 文件属于这个 Task、没过期、内容与记下的 sha256 一致。ObjectStore 只有整个读出的 Get，单文件上限 25 MiB 时整个读出再写回。
 // 错误不带对象地址；越租户、越 Task 一律按不存在处理。
@@ -34,7 +34,7 @@ const (
 	routeDownloadArtifact = "download_task_artifact"
 )
 
-// ArtifactsDDL 与 Worker 的迁移 207（agentruntime_worker.tools.deliver.MIGRATIONS）一致；租户列由 RelationalStore 加。
+// ArtifactsDDL 与 Worker 的迁移 209（agentruntime_worker.tools.deliver.MIGRATIONS）一致；租户列由 RelationalStore 加。
 const ArtifactsDDL = `CREATE TABLE task_artifacts (
 	artifact_id TEXT PRIMARY KEY,
 	task_id TEXT NOT NULL,
@@ -49,9 +49,9 @@ const ArtifactsDDL = `CREATE TABLE task_artifacts (
 	expires_at TEXT NOT NULL
 )`
 
-// ArtifactMigrations 返回 task_artifacts 的迁移（207，与 Worker 同一个版本号；已经建过的跳过）。
+// ArtifactMigrations 返回 task_artifacts 的迁移（209，与 Worker 同一个版本号；已经建过的跳过）。
 func ArtifactMigrations() []relational.Migration {
-	return []relational.Migration{{Version: 207, Name: "task_artifacts", Statements: []string{ArtifactsDDL}}}
+	return []relational.Migration{{Version: 209, Name: "task_artifacts", Statements: []string{ArtifactsDDL}}}
 }
 
 var artifactIDPattern = regexp.MustCompile(`^art_[0-7][0-9A-HJKMNP-TV-Z]{25}$`)

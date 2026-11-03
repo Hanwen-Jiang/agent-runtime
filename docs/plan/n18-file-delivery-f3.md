@@ -7,7 +7,7 @@
 > 测试人审后已实现，两份测试都过了：
 > - Worker 的 `agentruntime_worker.tools.deliver`：配了工作区目录时登记；
 > - task-service 的 `taskapi/artifacts.go`：`ListTaskArtifacts` 与下载路由；
-> - `main.go` 把 Claim-Check 的同一个 ObjectStore 交给下载，并跑迁移 207；
+> - `main.go` 把 Claim-Check 的同一个 ObjectStore 交给下载，并跑迁移 209；
 > - 两边的建表语句由 `tests/contract/test_task_artifacts_ddl.py` 比对。
 > - coding-web 的交付区（第 2 节第 4 条，coding-agent `ba14689`）：
 >   - `internal/server/artifacts.go`：列表与下载的转发；
@@ -25,7 +25,7 @@
 >
 > 与下文的出入：
 > - **下载**：Go 的 ObjectStore 接口只有整个读出的 `Get`，下载按单文件 25 MiB 的上限整个读出再写回，不是流式。
-> - **建表**：`task_artifacts` 由 Worker 的迁移 207 建（同 202 的 sandbox_grants：Worker 建，Go 服务只读）。
+> - **建表**：`task_artifacts` 由 Worker 的迁移 209 建（同 202 的 sandbox_grants：Worker 建，Go 服务只读）。
 
 ## 1. 要做到的
 

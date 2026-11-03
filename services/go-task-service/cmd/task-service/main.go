@@ -332,7 +332,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	if err := store.Migrate(ctx, modelbudget.Migrations()); err != nil {
 		return err
 	}
-	// 交付文件的元数据（N-18）：与 Worker 同一个迁移 207，谁先启动谁建。
+	// 交付文件的元数据（N-18）：与 Worker 同一个迁移 209，谁先启动谁建。
 	if err := store.Migrate(ctx, taskapi.ArtifactMigrations()); err != nil {
 		return err
 	}

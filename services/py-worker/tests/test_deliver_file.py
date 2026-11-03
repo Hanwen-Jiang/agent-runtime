@@ -1,6 +1,6 @@
 """F3 验收（docs/plan/n18-file-delivery-f3.md 第 5 节第 1 条）：Worker 的 deliver_file 工具（agentruntime_worker.tools.deliver）。
 
-- 登记成 write_reversible、要幂等键；读工作区里的文件，经 ObjectStore 存到 deliveries/<task>/…，元数据写进业务库的 task_artifacts（迁移 207）；
+- 登记成 write_reversible、要幂等键；读工作区里的文件，经 ObjectStore 存到 deliveries/<task>/…，元数据写进业务库的 task_artifacts（迁移 209）；
 - 路径：拒绝绝对路径、..、符号链接逃逸、空段；上限（单文件、每个 Task 的个数与总字节数）只能由部署收窄；超限时不留下对象与记录；
 - 同一个幂等键只写一次，Worker 重启后（换一个 ToolDriver）也一样；输出与日志里没有对象地址与文件内容；
 - 沙箱模式经读取接口取文件，不碰本机目录。

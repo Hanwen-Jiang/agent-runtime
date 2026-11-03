@@ -2,7 +2,7 @@ package taskapi
 
 // F3 验收（docs/plan/n18-file-delivery-f3.md 第 5 节第 2、3 条）：ListTaskArtifacts 与下载路由。
 //
-// task_artifacts 由迁移 207 建（Worker 的 agentruntime_worker.tools.deliver 与这里的 ArtifactMigrations 一致，契约测试比对），task-service 只读。
+// task_artifacts 由迁移 209 建（Worker 的 agentruntime_worker.tools.deliver 与这里的 ArtifactMigrations 一致，契约测试比对），task-service 只读。
 // 覆盖：只给元数据、不带对象地址；按创建时间排序；过期的标 EXPIRED；别的租户按不存在处理；下载每次重新核对租户、Task 与有效期；
 // 响应头（attachment、媒体类型的允许列表、nosniff、sandbox、no-store）；内容与 sha256 不符时不给；没配 ObjectStore 时不可用。
 // 实现之前 ListTaskArtifacts 返回未实现，这些测试跳过。
