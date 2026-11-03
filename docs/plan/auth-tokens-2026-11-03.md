@@ -52,4 +52,23 @@
 2. 部署 Runtime：有了 `issuers`，task-service 两种令牌都收（`devTokens: accept` 还在）。
 3. 部署 coding-web：加 `CODING_JWT_KEY_FILE`、`CODING_JWT_KID`、`CODING_TOKEN_KEY`，`AR_DEV_SIGNING_KEY` 先留着。之后签的都是 JWT；旧的开发令牌 Cookie 不再认，用户重新登录一次；第三方平台的令牌读到时改用 `CODING_TOKEN_KEY` 重新加密。
 4. 过一段时间（每个用户都至少登录过一次、第三方令牌都读过一遍）：Runtime 去掉 `devTokens: accept`（生产模式默认不收开发令牌，task-service 也不再拿到签名密钥），coding-web 去掉 `AR_DEV_SIGNING_KEY`。没被读到过的旧第三方令牌那时会解不开，用户重新连接一次那个平台即可。
-5. 换密钥：新 kid 并进 `issuers`（新旧并存），coding-web 换私钥与 `CODING_JWT_KID`，旧令牌最多 12 小时后过期，再从 `issuers` 里删掉旧 kid。
+5. 换密钥：新 kid 并进 `issuers`（新旧并存），coding-web 换私钥与 `CODING_JWT_KID`。AUTH-02 之后 Runtime 令牌只有 5 分钟，几分钟后就可以从 `issuers` 里删掉旧 kid。
+
+## 5. AUTH-03 的评估（2026-11-03；选型人定）
+
+已经做了、不用人定的：
+
+- **全局限流**：`jwtingress` 的 `Admit` 经 Cache 的 `RateLimit`，生产是 Valkey，几个 task-service 副本共用一份计数（AUTH-01）。入口的 Traefik 只做 TLS 与转发，不靠它限流（它的限流按实例算）。
+- **PKCE**：coding-agent 的 OAuth 对 GitHub、GitLab、Gitea、Google 加 S256；code_verifier 只在只对 `/api/auth/<平台>` 有效的 HttpOnly Cookie 里。Gitee、Bitbucket 没核实，照旧不带。
+- **JWKS**：coding-agent 在 JWT 模式下发布 `/.well-known/jwks.json`（OKP Ed25519，只有公钥）。task-service 仍读手写的签发方登记，不在运行时去拉 JWKS：少一个启动与运行时的依赖，换密钥本来就要人改配置。以后要按 JWKS 自动刷新，另起一项。
+
+要人定的：用不用身份服务接管用户、多平台登录与账号关联。设计书 4.14 的改动由人更新。
+
+| 选项 | 接管什么 | 代价 |
+| --- | --- | --- |
+| 维持现状（coding-agent 自己做多平台登录，Ed25519 签发） | — | 多平台登录与账号关联的代码在应用里；第二个面向用户的应用要再做一遍，或者调 coding-agent |
+| Keycloak | 用户、各家平台的登录（有现成的身份提供方）、账号关联、OIDC 与 JWKS、SAML | Java，几个选项里最重，要 Postgres，运维面最大；企业 SSO 最全 |
+| Ory Kratos 加 Hydra | 用户与登录（Kratos）、OAuth2 与 OIDC 签发（Hydra） | Go、较轻，但是两个组件，登录界面要自己做 |
+| Zitadel | 用户、各家平台的登录、OIDC、自带多租户 | Go 单个服务，要 Postgres；比 Keycloak 新，生态小一些 |
+
+建议：单节点、只有 coding-agent 一个面向用户的应用，现阶段维持现状。出现第二个面向用户的应用，或者要企业 SSO（SAML、SCIM）时，再在 Zitadel 与 Keycloak 里选。
