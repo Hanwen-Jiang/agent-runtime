@@ -25,3 +25,18 @@ MODEL-BUDGET-02 已由 `libs/go-core/modelbudget` 共享持久实现取代旧 fa
 - Kata、gVisor、Firecracker 都是可选 Sandbox 后端；隔离更弱的后端不能静默降级。
 - `/env` 是只读投影；查询不到 Runtime 状态展示 `blocked_external` 或 `unknown`。
 - coding-agent 的环境配置 CRUD 已在其仓库 `384ea04` 推送；Runtime EnvRecord 的只读查询（`f74a530`、`e15b58d`）与 coding-agent 的 ready/reused/expiry 投影（`4970480`）之后已完成，跨语言同库联验与真实后端验收仍待做。
+
+## 追加：工作区查看的延迟与工作区磁盘（2026-11-03，草案）
+
+用户反映看文件树、diff 卡，刷新后历史记录慢慢出来，并问挂卷工作区的磁盘。读代码的结论与拟定的工作项见 [workspace-read-latency-and-disk-2026-11-03.md](workspace-read-latency-and-disk-2026-11-03.md)，全部 **待确认**：
+
+| 工作项 | 一句话 |
+| --- | --- |
+| PERF-00 | 先给 Workspace 操作与历史加载分段记耗时，取基线 |
+| WS-READ-01 | 列目录、读文件不再每次新建沙箱（挂卷时 Worker 直接读，存档时借会话里闲着的环境） |
+| WS-READ-02 | Workspace 操作单独一个队列与 Worker 池，不与 Task 抢 |
+| WS-READ-03 | 文件树与 diff 按工作区的 generation 缓存 |
+| WS-BLOB-01 | 存档块在节点本地盘做 LRU 读缓存，存档仍写穿透 |
+| WS-DISK-01 | 挂卷模式也执行 `max_bytes`；闲置工作区存档到 ObjectStore 后删本地（冷热分层）；卷用量告警 |
+| HIST-01 | coding-agent 存下已结束 Task 的结果，刷新时一次取完（实现在 coding-agent） |
+| CACHE-01 | 设计书 4.5 的 Cache 接 Valkey 适配器，task-service 才能多副本、事件流不随重启丢失 |
