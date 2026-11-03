@@ -1,0 +1,166 @@
+{
+  "kind": "task",
+  "id": "np_meeting_planning_0200",
+  "split": "dev",
+  "category": "booking_payment",
+  "review": {
+    "status": "draft",
+    "notes": "AI 起草，待人工确认。原题与标准答案见 sources.jsonl；分诊、Stage、模拟 Round 均为本地补标，不是官方标签或实测轨迹。"
+  },
+  "description": "NATURAL PLAN / meeting_planning_example_200。新建受约束的规划任务，无 Recipe 命中，建议 full；只生成文字，risk=none。Stage 是一种合格解法，不要求唯一拆分。",
+  "planner": {
+    "input": {
+      "message": "You are visiting San Francisco for the day and want to meet as many friends as possible. Solve the problem by considering various different schedules and picking the best one to optimize your goals.\n\nTravel distances (in minutes):\nBayview to Alamo Square: 16.\nBayview to Union Square: 17.\nBayview to Golden Gate Park: 22.\nAlamo Square to Bayview: 16.\nAlamo Square to Union Square: 14.\nAlamo Square to Golden Gate Park: 9.\nUnion Square to Bayview: 15.\nUnion Square to Alamo Square: 15.\nUnion Square to Golden Gate Park: 22.\nGolden Gate Park to Bayview: 23.\nGolden Gate Park to Alamo Square: 10.\nGolden Gate Park to Union Square: 22.\n\nCONSTRAINTS: You arrive at Bayview at 9:00AM. Ronald will be at Alamo Square from 8:30AM to 7:45PM. You'd like to meet Ronald for a minimum of 90 minutes. Richard will be at Union Square from 2:30PM to 9:45PM. You'd like to meet Richard for a minimum of 30 minutes. Kenneth will be at Golden Gate Park from 10:00AM to 3:15PM. You'd like to meet Kenneth for a minimum of 60 minutes.\n\nYour response should start with 'SOLUTION:'.",
+      "context": {
+        "risk_before": "none",
+        "effect_ceiling": "none",
+        "recipes": []
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "risk": "none",
+      "shape": {
+        "deliver": true
+      },
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full",
+            "task_family": "general.unclassified",
+            "confidence": 0.8
+          },
+          "horizon": "full_dag",
+          "first_stage": {
+            "goal": "Construct a plan satisfying the supplied constraints",
+            "nodes": [
+              "solve",
+              "reply"
+            ]
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "Construct a plan satisfying the supplied constraints",
+          "exit_when": "A plan addressing the supplied constraints has been delivered",
+          "nodes": [
+            {
+              "id": "solve",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "transform",
+              "output": "generate",
+              "inputs": {
+                "instruction": "Solve the planning request using only the supplied constraints and reference information. Check dates, durations and all stated restrictions before returning the plan."
+              }
+            },
+            {
+              "id": "reply",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "solve"
+              ],
+              "inputs": {
+                "plan": "$solve.result"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000008103X",
+        "session_id": "ses_01J0000000000000000008103S",
+        "goal": "You are visiting San Francisco for the day and want to meet as many friends as possible. Solve the problem by considering various different schedules and picking the best one to optimize your goals.\n\nTravel distances (in minutes):\nBayview to Alamo Square: 16.\nBayview to Union Square: 17.\nBayview to Golden Gate Park: 22.\nAlamo Square to Bayview: 16.\nAlamo Square to Union Square: 14.\nAlamo Square to Golden Gate Park: 9.\nUnion Square to Bayview: 15.\nUnion Square to Alamo Square: 15.\nUnion Square to Golden Gate Park: 22.\nGolden Gate Park to Bayview: 23.\nGolden Gate Park to Alamo Square: 10.\nGolden Gate Park to Union Square: 22.\n\nCONSTRAINTS: You arrive at Bayview at 9:00AM. Ronald will be at Alamo Square from 8:30AM to 7:45PM. You'd like to meet Ronald for a minimum of 90 minutes. Richard will be at Union Square from 2:30PM to 9:45PM. You'd like to meet Richard for a minimum of 30 minutes. Kenneth will be at Golden Gate Park from 10:00AM to 3:15PM. You'd like to meet Kenneth for a minimum of 60 minutes.\n\nYour response should start with 'SOLUTION:'.",
+        "done_when": "A plan addressing the supplied constraints has been delivered",
+        "constraints": {
+          "effect_ceiling": "none"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "Construct a plan satisfying the supplied constraints",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "Construct a plan satisfying the supplied constraints",
+        "exit_when": "A plan addressing the supplied constraints has been delivered",
+        "nodes": [
+          {
+            "id": "solve",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "transform",
+            "output": "generate",
+            "inputs": {
+              "instruction": "Solve the planning request using only the supplied constraints and reference information. Check dates, durations and all stated restrictions before returning the plan."
+            }
+          },
+          {
+            "id": "reply",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "solve"
+            ],
+            "inputs": {
+              "plan": "$solve.result"
+            }
+          }
+        ]
+      },
+      "results": {
+        "solve": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": "You start at Bayview at 9:00AM.\nYou travel to Alamo Square in 16 minutes and arrive at 9:16AM.\nYou meet Ronald for 90 minutes from 9:16AM to 10:46AM.\nYou travel to Golden Gate Park in 9 minutes and arrive at 10:55AM.\nYou meet Kenneth for 60 minutes from 10:55AM to 11:55AM.\nYou travel to Union Square in 22 minutes and arrive at 12:17PM.\nYou wait until 2:30PM.\nYou meet Richard for 30 minutes from 2:30PM to 3:00PM."
+        },
+        "reply": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "You start at Bayview at 9:00AM.\nYou travel to Alamo Square in 16 minutes and arrive at 9:16AM.\nYou meet Ronald for 90 minutes from 9:16AM to 10:46AM.\nYou travel to Golden Gate Park in 9 minutes and arrive at 10:55AM.\nYou meet Kenneth for 60 minutes from 10:55AM to 11:55AM.\nYou travel to Union Square in 22 minutes and arrive at 12:17PM.\nYou wait until 2:30PM.\nYou meet Richard for 30 minutes from 2:30PM to 3:00PM."
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "模拟完成检查点：交付内容取自上游标准答案；不是本系统执行结果。",
+          "done": {
+            "deliver_node": "reply"
+          }
+        }
+      }
+    }
+  ],
+  "rubric": [
+    "full 的依据是新规划任务且没有 Recipe；none 表示不执行订票、付款或日历写入。",
+    "原题约束必须保留；不要求特定 Node 名称、节点数或质量包装。",
+    "S-09 规则只检查分诊与结构；不等于官方约束求解正确率。模拟 Round 不应充作独立官方裁判题。"
+  ]
+}

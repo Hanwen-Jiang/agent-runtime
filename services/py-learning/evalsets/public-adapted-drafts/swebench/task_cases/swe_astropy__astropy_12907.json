@@ -1,0 +1,215 @@
+{
+  "kind": "task",
+  "id": "swe_astropy__astropy_12907",
+  "split": "dev",
+  "category": "ci_fix",
+  "review": {
+    "status": "draft",
+    "notes": "AI-authored adaptation, not human-confirmed. Source and field ownership are recorded in sources.jsonl. The single round is synthetic, not official execution evidence; do not include it in S-10 capability scoring."
+  },
+  "description": "SWE-bench Verified problem_statement retained verbatim after a task wrapper. New local patch task without a matching Recipe: full; reversible writing requires one writer and test verification. Only S-09 route/plan draft; does not measure official resolved rate. The required Round is a synthetic fixture, not observed upstream execution and not an S-10 capability item.",
+  "planner": {
+    "input": {
+      "message": "In the evaluation scenario, a workspace for astropy/astropy at base commit d16bfe05a744909de4b27f5875fe0d4ed41ce607 is available. Fix the following issue and verify the change with relevant tests.\n\nOriginal SWE-bench problem statement:\nModeling's `separability_matrix` does not compute separability correctly for nested CompoundModels\nConsider the following model:\r\n\r\n```python\r\nfrom astropy.modeling import models as m\r\nfrom astropy.modeling.separable import separability_matrix\r\n\r\ncm = m.Linear1D(10) & m.Linear1D(5)\r\n```\r\n\r\nIt's separability matrix as you might expect is a diagonal:\r\n\r\n```python\r\n>>> separability_matrix(cm)\r\narray([[ True, False],\r\n       [False,  True]])\r\n```\r\n\r\nIf I make the model more complex:\r\n```python\r\n>>> separability_matrix(m.Pix2Sky_TAN() & m.Linear1D(10) & m.Linear1D(5))\r\narray([[ True,  True, False, False],\r\n       [ True,  True, False, False],\r\n       [False, False,  True, False],\r\n       [False, False, False,  True]])\r\n```\r\n\r\nThe output matrix is again, as expected, the outputs and inputs to the linear models are separable and independent of each other.\r\n\r\nIf however, I nest these compound models:\r\n```python\r\n>>> separability_matrix(m.Pix2Sky_TAN() & cm)\r\narray([[ True,  True, False, False],\r\n       [ True,  True, False, False],\r\n       [False, False,  True,  True],\r\n       [False, False,  True,  True]])\r\n```\r\nSuddenly the inputs and outputs are no longer separable?\r\n\r\nThis feels like a bug to me, but I might be missing something?\n",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "write_reversible",
+        "has_workspace": true,
+        "recipes": []
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "risk": "write_reversible",
+      "shape": {
+        "modes": [
+          "tool_loop"
+        ],
+        "single_writer": true,
+        "deliver": true
+      },
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full"
+          },
+          "horizon": "full_dag",
+          "first_stage": {
+            "goal": "Fix astropy__astropy-12907 and verify the reported behavior.",
+            "nodes": [
+              "fix",
+              "report"
+            ]
+          },
+          "context": {
+            "work_mode": "coding"
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "Fix astropy__astropy-12907 and verify the reported behavior.",
+          "exit_when": "The fix is verified and a change summary is delivered.",
+          "nodes": [
+            {
+              "id": "fix",
+              "kind": "goal",
+              "goal": "Fix astropy__astropy-12907 and verify the reported behavior.",
+              "done_when": "Reproduce the issue, fix it, and pass relevant regression tests without weakening existing assertions.",
+              "mode": "tool_loop",
+              "output_schema": {
+                "type": "object"
+              },
+              "quality": {
+                "type": "revise",
+                "judge": "run_tests@v1",
+                "max_rounds": 3
+              },
+              "effect_ceiling": "write_reversible",
+              "tools": [
+                "repo_read",
+                "repo_edit",
+                "shell_test"
+              ],
+              "max_iterations": 40
+            },
+            {
+              "id": "report",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "fix"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000950X",
+        "session_id": "ses_01J0000000000000000000950S",
+        "goal": "Fix astropy__astropy-12907 and verify the reported behavior.",
+        "done_when": "Issue fixed, regression tests pass, and summary delivered.",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "Fix astropy__astropy-12907 and verify the reported behavior.",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "Fix astropy__astropy-12907 and verify the reported behavior.",
+        "exit_when": "The fix is verified and a change summary is delivered.",
+        "nodes": [
+          {
+            "id": "fix",
+            "kind": "goal",
+            "goal": "Fix astropy__astropy-12907 and verify the reported behavior.",
+            "done_when": "Reproduce the issue, fix it, and pass relevant regression tests without weakening existing assertions.",
+            "mode": "tool_loop",
+            "output_schema": {
+              "type": "object"
+            },
+            "quality": {
+              "type": "revise",
+              "judge": "run_tests@v1",
+              "max_rounds": 3
+            },
+            "effect_ceiling": "write_reversible",
+            "tools": [
+              "repo_read",
+              "repo_edit",
+              "shell_test"
+            ],
+            "max_iterations": 40
+          },
+          {
+            "id": "report",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "fix"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "fix": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "fixture_kind": "synthetic_not_executed",
+            "change_summary": "In astropy/modeling/separable.py::_cstack, copy the right-hand dependency matrix into the padded lower-right block instead of filling it with 1. This preserves the independent outputs of the nested linear models. The supplied regression patch covers nested and unnested compound-model arrangements.",
+            "proposed_patch": "diff --git a/astropy/modeling/separable.py b/astropy/modeling/separable.py\n--- a/astropy/modeling/separable.py\n+++ b/astropy/modeling/separable.py\n@@ -242,7 +242,7 @@ def _cstack(left, right):\n         cright = _coord_matrix(right, 'right', noutp)\n     else:\n         cright = np.zeros((noutp, right.shape[1]))\n-        cright[-right.shape[0]:, -right.shape[1]:] = 1\n+        cright[-right.shape[0]:, -right.shape[1]:] = right\n \n     return np.hstack([cleft, cright])\n \n",
+            "regression_test_patch": "diff --git a/astropy/modeling/tests/test_separable.py b/astropy/modeling/tests/test_separable.py\n--- a/astropy/modeling/tests/test_separable.py\n+++ b/astropy/modeling/tests/test_separable.py\n@@ -28,6 +28,13 @@\n p1 = models.Polynomial1D(1, name='p1')\n \n \n+cm_4d_expected = (np.array([False, False, True, True]),\n+                  np.array([[True,  True,  False, False],\n+                            [True,  True,  False, False],\n+                            [False, False, True,  False],\n+                            [False, False, False, True]]))\n+\n+\n compound_models = {\n     'cm1': (map3 & sh1 | rot & sh1 | sh1 & sh2 & sh1,\n             (np.array([False, False, True]),\n@@ -52,7 +59,17 @@\n     'cm7': (map2 | p2 & sh1,\n             (np.array([False, True]),\n              np.array([[True, False], [False, True]]))\n-            )\n+            ),\n+    'cm8': (rot & (sh1 & sh2), cm_4d_expected),\n+    'cm9': (rot & sh1 & sh2, cm_4d_expected),\n+    'cm10': ((rot & sh1) & sh2, cm_4d_expected),\n+    'cm11': (rot & sh1 & (scl1 & scl2),\n+             (np.array([False, False, True, True, True]),\n+              np.array([[True,  True,  False, False, False],\n+                        [True,  True,  False, False, False],\n+                        [False, False, True,  False, False],\n+                        [False, False, False, True,  False],\n+                        [False, False, False, False, True]]))),\n }\n \n \n",
+            "test_outcomes": {
+              "kind": "synthetic_assumptions_not_observed_results",
+              "actually_executed": false,
+              "assumption": "For this fictional checkpoint only, assume the proposed patch has been applied and every test ID below passes after applying the official test patch. These are stipulated scenario facts, not results from an actual run.",
+              "assumed_FAIL_TO_PASS_passed": [
+                "astropy/modeling/tests/test_separable.py::test_separable[compound_model6-result6]",
+                "astropy/modeling/tests/test_separable.py::test_separable[compound_model9-result9]"
+              ],
+              "assumed_PASS_TO_PASS_passed": [
+                "astropy/modeling/tests/test_separable.py::test_coord_matrix",
+                "astropy/modeling/tests/test_separable.py::test_cdot",
+                "astropy/modeling/tests/test_separable.py::test_cstack",
+                "astropy/modeling/tests/test_separable.py::test_arith_oper",
+                "astropy/modeling/tests/test_separable.py::test_separable[compound_model0-result0]",
+                "astropy/modeling/tests/test_separable.py::test_separable[compound_model1-result1]",
+                "astropy/modeling/tests/test_separable.py::test_separable[compound_model2-result2]",
+                "astropy/modeling/tests/test_separable.py::test_separable[compound_model3-result3]",
+                "astropy/modeling/tests/test_separable.py::test_separable[compound_model4-result4]",
+                "astropy/modeling/tests/test_separable.py::test_separable[compound_model5-result5]",
+                "astropy/modeling/tests/test_separable.py::test_separable[compound_model7-result7]",
+                "astropy/modeling/tests/test_separable.py::test_separable[compound_model8-result8]",
+                "astropy/modeling/tests/test_separable.py::test_custom_model_separable"
+              ]
+            }
+          }
+        },
+        "report": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "In astropy/modeling/separable.py::_cstack, copy the right-hand dependency matrix into the padded lower-right block instead of filling it with 1. This preserves the independent outputs of the nested linear models. The supplied regression patch covers nested and unnested compound-model arrangements. In this synthetic scenario, the official FAIL_TO_PASS and PASS_TO_PASS tests listed in fix.test_outcomes are stipulated to pass. No real tests were run while authoring this sample; the patch and regression-test patch are supplied in fix for inspection."
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "The supplied patch and concrete change summary satisfy the issue, and this fictional checkpoint explicitly stipulates passing outcomes for the listed official tests. Done applies only within those synthetic assumptions, not to an actual SWE-bench run.",
+          "done": {
+            "deliver_node": "report"
+          }
+        }
+      }
+    }
+  ],
+  "rubric": [
+    "Keep the original issue requirements; do not infer the correct fix from reference patches that are not in planner input.",
+    "Use tests to verify the patch; do not require exact patch equality.",
+    "The reference Stage is one acceptable shape, not an official SWE-bench plan or human-confirmed label."
+  ]
+}

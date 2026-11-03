@@ -1,0 +1,166 @@
+{
+  "kind": "task",
+  "id": "np_meeting_planning_0400",
+  "split": "dev",
+  "category": "booking_payment",
+  "review": {
+    "status": "draft",
+    "notes": "AI 起草（第二批），待人工确认。原题与标准答案见 sources.jsonl；分诊、Stage、模拟 Round 均为本地补标，不是官方标签或实测轨迹。"
+  },
+  "description": "NATURAL PLAN / meeting_planning_example_400。新建受约束的规划任务，无 Recipe 命中，建议 full；只生成文字，risk=none。Stage 是一种合格解法，不要求唯一拆分。",
+  "planner": {
+    "input": {
+      "message": "You are visiting San Francisco for the day and want to meet as many friends as possible. Solve the problem by considering various different schedules and picking the best one to optimize your goals.\n\nTravel distances (in minutes):\nFisherman's Wharf to Mission District: 22.\nFisherman's Wharf to Alamo Square: 20.\nFisherman's Wharf to North Beach: 6.\nFisherman's Wharf to Sunset District: 27.\nFisherman's Wharf to Haight-Ashbury: 22.\nMission District to Fisherman's Wharf: 22.\nMission District to Alamo Square: 11.\nMission District to North Beach: 17.\nMission District to Sunset District: 24.\nMission District to Haight-Ashbury: 12.\nAlamo Square to Fisherman's Wharf: 19.\nAlamo Square to Mission District: 10.\nAlamo Square to North Beach: 15.\nAlamo Square to Sunset District: 16.\nAlamo Square to Haight-Ashbury: 5.\nNorth Beach to Fisherman's Wharf: 5.\nNorth Beach to Mission District: 18.\nNorth Beach to Alamo Square: 16.\nNorth Beach to Sunset District: 27.\nNorth Beach to Haight-Ashbury: 18.\nSunset District to Fisherman's Wharf: 29.\nSunset District to Mission District: 24.\nSunset District to Alamo Square: 17.\nSunset District to North Beach: 29.\nSunset District to Haight-Ashbury: 15.\nHaight-Ashbury to Fisherman's Wharf: 23.\nHaight-Ashbury to Mission District: 11.\nHaight-Ashbury to Alamo Square: 5.\nHaight-Ashbury to North Beach: 19.\nHaight-Ashbury to Sunset District: 15.\n\nCONSTRAINTS: You arrive at Fisherman's Wharf at 9:00AM. David will be at Mission District from 9:00AM to 6:45PM. You'd like to meet David for a minimum of 105 minutes. Carol will be at Alamo Square from 7:00AM to 8:00PM. You'd like to meet Carol for a minimum of 120 minutes. Kenneth will be at North Beach from 10:30AM to 5:45PM. You'd like to meet Kenneth for a minimum of 105 minutes. Deborah will be at Sunset District from 6:15PM to 8:15PM. You'd like to meet Deborah for a minimum of 120 minutes. Betty will be at Haight-Ashbury from 8:15PM to 9:30PM. You'd like to meet Betty for a minimum of 45 minutes.\n\nYour response should start with 'SOLUTION:'.",
+      "context": {
+        "risk_before": "none",
+        "effect_ceiling": "none",
+        "recipes": []
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "risk": "none",
+      "shape": {
+        "deliver": true
+      },
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full",
+            "task_family": "general.unclassified",
+            "confidence": 0.8
+          },
+          "horizon": "full_dag",
+          "first_stage": {
+            "goal": "Construct a plan satisfying the supplied constraints",
+            "nodes": [
+              "solve",
+              "reply"
+            ]
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "Construct a plan satisfying the supplied constraints",
+          "exit_when": "A plan addressing the supplied constraints has been delivered",
+          "nodes": [
+            {
+              "id": "solve",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "transform",
+              "output": "generate",
+              "inputs": {
+                "instruction": "Solve the planning request using only the supplied constraints and reference information. Check dates, durations and all stated restrictions before returning the plan."
+              }
+            },
+            {
+              "id": "reply",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "solve"
+              ],
+              "inputs": {
+                "plan": "$solve.result"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000008402X",
+        "session_id": "ses_01J0000000000000000008402S",
+        "goal": "You are visiting San Francisco for the day and want to meet as many friends as possible. Solve the problem by considering various different schedules and picking the best one to optimize your goals.\n\nTravel distances (in minutes):\nFisherman's Wharf to Mission District: 22.\nFisherman's Wharf to Alamo Square: 20.\nFisherman's Wharf to North Beach: 6.\nFisherman's Wharf to Sunset District: 27.\nFisherman's Wharf to Haight-Ashbury: 22.\nMission District to Fisherman's Wharf: 22.\nMission District to Alamo Square: 11.\nMission District to North Beach: 17.\nMission District to Sunset District: 24.\nMission District to Haight-Ashbury: 12.\nAlamo Square to Fisherman's Wharf: 19.\nAlamo Square to Mission District: 10.\nAlamo Square to North Beach: 15.\nAlamo Square to Sunset District: 16.\nAlamo Square to Haight-Ashbury: 5.\nNorth Beach to Fisherman's Wharf: 5.\nNorth Beach to Mission District: 18.\nNorth Beach to Alamo Square: 16.\nNorth Beach to Sunset District: 27.\nNorth Beach to Haight-Ashbury: 18.\nSunset District to Fisherman's Wharf: 29.\nSunset District to Mission District: 24.\nSunset District to Alamo Square: 17.\nSunset District to North Beach: 29.\nSunset District to Haight-Ashbury: 15.\nHaight-Ashbury to Fisherman's Wharf: 23.\nHaight-Ashbury to Mission District: 11.\nHaight-Ashbury to Alamo Square: 5.\nHaight-Ashbury to North Beach: 19.\nHaight-Ashbury to Sunset District: 15.\n\nCONSTRAINTS: You arrive at Fisherman's Wharf at 9:00AM. David will be at Mission District from 9:00AM to 6:45PM. You'd like to meet David for a minimum of 105 minutes. Carol will be at Alamo Square from 7:00AM to 8:00PM. You'd like to meet Carol for a minimum of 120 minutes. Kenneth will be at North Beach from 10:30AM to 5:45PM. You'd like to meet Kenneth for a minimum of 105 minutes. Deborah will be at Sunset District from 6:15PM to 8:15PM. You'd like to meet Deborah for a minimum of 120 minutes. Betty will be at Haight-Ashbury from 8:15PM to 9:30PM. You'd like to meet Betty for a minimum of 45 minutes.\n\nYour response should start with 'SOLUTION:'.",
+        "done_when": "A plan addressing the supplied constraints has been delivered",
+        "constraints": {
+          "effect_ceiling": "none"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "Construct a plan satisfying the supplied constraints",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "Construct a plan satisfying the supplied constraints",
+        "exit_when": "A plan addressing the supplied constraints has been delivered",
+        "nodes": [
+          {
+            "id": "solve",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "transform",
+            "output": "generate",
+            "inputs": {
+              "instruction": "Solve the planning request using only the supplied constraints and reference information. Check dates, durations and all stated restrictions before returning the plan."
+            }
+          },
+          {
+            "id": "reply",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "solve"
+            ],
+            "inputs": {
+              "plan": "$solve.result"
+            }
+          }
+        ]
+      },
+      "results": {
+        "solve": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": "You start at Fisherman's Wharf at 9:00AM.\nYou travel to Mission District in 22 minutes and arrive at 9:22AM.\nYou meet David for 105 minutes from 9:22AM to 11:07AM.\nYou travel to Alamo Square in 11 minutes and arrive at 11:18AM.\nYou meet Carol for 120 minutes from 11:18AM to 1:18PM.\nYou travel to North Beach in 15 minutes and arrive at 1:33PM.\nYou meet Kenneth for 105 minutes from 1:33PM to 3:18PM.\nYou travel to Sunset District in 27 minutes and arrive at 3:45PM.\nYou wait until 6:15PM.\nYou meet Deborah for 120 minutes from 6:15PM to 8:15PM.\nYou travel to Haight-Ashbury in 15 minutes and arrive at 8:30PM.\nYou meet Betty for 45 minutes from 8:30PM to 9:15PM."
+        },
+        "reply": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "You start at Fisherman's Wharf at 9:00AM.\nYou travel to Mission District in 22 minutes and arrive at 9:22AM.\nYou meet David for 105 minutes from 9:22AM to 11:07AM.\nYou travel to Alamo Square in 11 minutes and arrive at 11:18AM.\nYou meet Carol for 120 minutes from 11:18AM to 1:18PM.\nYou travel to North Beach in 15 minutes and arrive at 1:33PM.\nYou meet Kenneth for 105 minutes from 1:33PM to 3:18PM.\nYou travel to Sunset District in 27 minutes and arrive at 3:45PM.\nYou wait until 6:15PM.\nYou meet Deborah for 120 minutes from 6:15PM to 8:15PM.\nYou travel to Haight-Ashbury in 15 minutes and arrive at 8:30PM.\nYou meet Betty for 45 minutes from 8:30PM to 9:15PM."
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "模拟完成检查点：交付内容取自上游标准答案；不是本系统执行结果。",
+          "done": {
+            "deliver_node": "reply"
+          }
+        }
+      }
+    }
+  ],
+  "rubric": [
+    "full 的依据是新规划任务且没有 Recipe；none 表示不执行订票、付款或日历写入。",
+    "原题约束必须保留；不要求特定 Node 名称、节点数或质量包装。",
+    "S-09 规则只检查分诊与结构；不等于官方约束求解正确率。模拟 Round 不应充作独立官方裁判题。"
+  ]
+}

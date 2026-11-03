@@ -1,0 +1,120 @@
+{
+  "kind": "task",
+  "id": "np_calendar_scheduling_0700_followup_fast",
+  "split": "dev",
+  "category": "general",
+  "review": {
+    "status": "draft",
+    "notes": "AI 起草（第二批），待人工确认。上一轮的问与答是上游原题与标准答案；追问与它的答案是本地新写的，答案只用上一轮回复里的内容。"
+  },
+  "description": "NATURAL PLAN / calendar_scheduling_example_700 的追问。问的是已选定的会议时间。 追问只问已交付方案里写明的内容，不需要重新求解，建议 fast；只回复文字，risk=none。",
+  "planner": {
+    "input": {
+      "message": "Remind me which day and time you picked for the meeting?",
+      "context": {
+        "risk_before": "none",
+        "effect_ceiling": "none",
+        "has_workspace": false,
+        "conversation": [
+          {
+            "message": "You are an expert at scheduling meetings. You are given a few constraints on the existing schedule of each participant, the meeting duration, and possibly some preferences on the meeting time. Note there exists a solution that works with existing schedule of every participant. Here are a few example tasks and solutions:\n\nTASK: You need to schedule a meeting for Melissa and Ruth for half an hour between the work hours of 9:00 to 17:00 on either Monday, Tuesday or Wednesday. \n\nHere are the existing schedules for everyone during the days: \nMelissa has meetings on Monday during 9:00 to 9:30, 10:30 to 11:30, 13:30 to 14:00, 14:30 to 15:00, Tuesday during 9:00 to 9:30, 12:00 to 12:30, 13:30 to 14:00, 14:30 to 15:00, Wednesday during 9:00 to 10:00, 11:00 to 11:30, 13:00 to 14:30, 16:30 to 17:00; \nRuth is busy on Monday during 9:30 to 11:00, 12:00 to 14:30, 15:00 to 17:00, Tuesday during 10:00 to 10:30, 12:00 to 12:30, 13:30 to 14:30, 15:00 to 15:30, Wednesday during 10:00 to 10:30, 11:00 to 11:30, 12:00 to 13:30, 14:00 to 14:30, 15:30 to 17:00; \n\nMelissa do not want to meet on Tuesday. Wednesday. Find a time that works for everyone's schedule and constraints. \nSOLUTION: ",
+            "reply": "Here is the proposed time: Monday, 11:30 - 12:00 ",
+            "status": "done"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "triage": "fast",
+      "risk": "none",
+      "shape": {
+        "nodes": {
+          "max": 1
+        },
+        "deliver": true
+      },
+      "reference": {
+        "stage": {
+          "seq": 1,
+          "goal": "Answer the follow-up from the plan already delivered",
+          "exit_when": "reply answers the question",
+          "nodes": [
+            {
+              "id": "reply",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000008605X",
+        "session_id": "ses_01J0000000000000000008605S",
+        "goal": "Answer the follow-up from the plan already delivered",
+        "done_when": "reply answers the question",
+        "constraints": {
+          "effect_ceiling": "none"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "Answer the follow-up from the plan already delivered",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "Answer the follow-up from the plan already delivered",
+        "exit_when": "reply answers the question",
+        "nodes": [
+          {
+            "id": "reply",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate"
+          }
+        ]
+      },
+      "results": {
+        "reply": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "The meeting is on Monday, 11:30 - 12:00."
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "模拟检查点：回复与上一轮交付的方案一致",
+          "done": {
+            "deliver_node": "reply"
+          }
+        }
+      }
+    }
+  ],
+  "rubric": [
+    "fast 的依据是答案已在上一轮回复里，不必重新规划或求解；重新跑一遍求解不算错但多花钱，分诊判 full 算错。",
+    "答案必须与上一轮交付的方案一致，不能另起一个方案。",
+    "模拟 Round 不是实测轨迹，不计入独立的 S-10 样本。"
+  ]
+}

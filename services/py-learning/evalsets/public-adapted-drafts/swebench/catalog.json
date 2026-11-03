@@ -1,0 +1,20 @@
+{
+  "templates": {
+    "answer@v1": {
+      "executor": "model",
+      "effect": "none",
+      "description": "直接作答，或交付最终结果"
+    },
+    "run_tests@v1": {
+      "executor": "program",
+      "effect": "read",
+      "description": "运行测试"
+    }
+  },
+  "recipes": {},
+  "tools": {
+    "repo_read": "read",
+    "repo_edit": "write_reversible",
+    "shell_test": "read"
+  }
+}

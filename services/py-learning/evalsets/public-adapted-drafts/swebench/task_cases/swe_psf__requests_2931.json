@@ -1,0 +1,285 @@
+{
+  "kind": "task",
+  "id": "swe_psf__requests_2931",
+  "split": "dev",
+  "category": "ci_fix",
+  "review": {
+    "status": "draft",
+    "notes": "AI-authored adaptation, not human-confirmed. Source and field ownership are recorded in sources.jsonl. The single round is synthetic, not official execution evidence; do not include it in S-10 capability scoring."
+  },
+  "description": "SWE-bench Verified problem_statement retained verbatim after a task wrapper. New local patch task without a matching Recipe: full; reversible writing requires one writer and test verification. Only S-09 route/plan draft; does not measure official resolved rate. The required Round is a synthetic fixture, not observed upstream execution and not an S-10 capability item.",
+  "planner": {
+    "input": {
+      "message": "In the evaluation scenario, a workspace for psf/requests at base commit 5f7a3a74aab1625c2bb65f643197ee885e3da576 is available. Fix the following issue and verify the change with relevant tests.\n\nOriginal SWE-bench problem statement:\nRequest with binary payload fails due to calling to_native_string\nIntroduced with https://github.com/kennethreitz/requests/issues/2844\n\n```\nimport requests\nrequests.put(\"http://httpbin.org/put\", data=u\"ööö\".encode(\"utf-8\"))\n```\n\nThis works with 2.8.1, but not with 2.9.\n\n",
+      "context": {
+        "risk_before": "read",
+        "effect_ceiling": "write_reversible",
+        "has_workspace": true,
+        "recipes": []
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "risk": "write_reversible",
+      "shape": {
+        "modes": [
+          "tool_loop"
+        ],
+        "single_writer": true,
+        "deliver": true
+      },
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full"
+          },
+          "horizon": "full_dag",
+          "first_stage": {
+            "goal": "Fix psf__requests-2931 and verify the reported behavior.",
+            "nodes": [
+              "fix",
+              "report"
+            ]
+          },
+          "context": {
+            "work_mode": "coding"
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "Fix psf__requests-2931 and verify the reported behavior.",
+          "exit_when": "The fix is verified and a change summary is delivered.",
+          "nodes": [
+            {
+              "id": "fix",
+              "kind": "goal",
+              "goal": "Fix psf__requests-2931 and verify the reported behavior.",
+              "done_when": "Reproduce the issue, fix it, and pass relevant regression tests without weakening existing assertions.",
+              "mode": "tool_loop",
+              "output_schema": {
+                "type": "object"
+              },
+              "quality": {
+                "type": "revise",
+                "judge": "run_tests@v1",
+                "max_rounds": 3
+              },
+              "effect_ceiling": "write_reversible",
+              "tools": [
+                "repo_read",
+                "repo_edit",
+                "shell_test"
+              ],
+              "max_iterations": 40
+            },
+            {
+              "id": "report",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "fix"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000000952X",
+        "session_id": "ses_01J0000000000000000000952S",
+        "goal": "Fix psf__requests-2931 and verify the reported behavior.",
+        "done_when": "Issue fixed, regression tests pass, and summary delivered.",
+        "constraints": {
+          "effect_ceiling": "write_reversible"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "Fix psf__requests-2931 and verify the reported behavior.",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "Fix psf__requests-2931 and verify the reported behavior.",
+        "exit_when": "The fix is verified and a change summary is delivered.",
+        "nodes": [
+          {
+            "id": "fix",
+            "kind": "goal",
+            "goal": "Fix psf__requests-2931 and verify the reported behavior.",
+            "done_when": "Reproduce the issue, fix it, and pass relevant regression tests without weakening existing assertions.",
+            "mode": "tool_loop",
+            "output_schema": {
+              "type": "object"
+            },
+            "quality": {
+              "type": "revise",
+              "judge": "run_tests@v1",
+              "max_rounds": 3
+            },
+            "effect_ceiling": "write_reversible",
+            "tools": [
+              "repo_read",
+              "repo_edit",
+              "shell_test"
+            ],
+            "max_iterations": 40
+          },
+          {
+            "id": "report",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "fix"
+            ]
+          }
+        ]
+      },
+      "results": {
+        "fix": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": {
+            "fixture_kind": "synthetic_not_executed",
+            "change_summary": "In requests/models.py::_encode_params, return str/bytes payloads unchanged; in prepare_url, convert str/bytes URL params with to_native_string before encoding. The supplied test prepares a PUT request with UTF-8 bytes for \"ööö\" and checks that the prepared body remains bytes; it does not send a network request.",
+            "proposed_patch": "diff --git a/requests/models.py b/requests/models.py\n--- a/requests/models.py\n+++ b/requests/models.py\n@@ -81,7 +81,7 @@ def _encode_params(data):\n         \"\"\"\n \n         if isinstance(data, (str, bytes)):\n-            return to_native_string(data)\n+            return data\n         elif hasattr(data, 'read'):\n             return data\n         elif hasattr(data, '__iter__'):\n@@ -385,6 +385,9 @@ def prepare_url(self, url, params):\n             if isinstance(fragment, str):\n                 fragment = fragment.encode('utf-8')\n \n+        if isinstance(params, (str, bytes)):\n+            params = to_native_string(params)\n+\n         enc_params = self._encode_params(params)\n         if enc_params:\n             if query:\n",
+            "regression_test_patch": "diff --git a/test_requests.py b/test_requests.py\n--- a/test_requests.py\n+++ b/test_requests.py\n@@ -157,6 +157,11 @@ def test_params_bytes_are_encoded(self):\n                                    params=b'test=foo').prepare()\n         assert request.url == 'http://example.com/?test=foo'\n \n+    def test_binary_put(self):\n+        request = requests.Request('PUT', 'http://example.com',\n+                                   data=u\"ööö\".encode(\"utf-8\")).prepare()\n+        assert isinstance(request.body, bytes)\n+\n     def test_mixed_case_scheme_acceptable(self, httpbin):\n         s = requests.Session()\n         s.proxies = getproxies()\n",
+            "test_outcomes": {
+              "kind": "synthetic_assumptions_not_observed_results",
+              "actually_executed": false,
+              "assumption": "For this fictional checkpoint only, assume the proposed patch has been applied and every test ID below passes after applying the official test patch. These are stipulated scenario facts, not results from an actual run.",
+              "assumed_FAIL_TO_PASS_passed": [
+                "test_requests.py::TestRequests::test_binary_put"
+              ],
+              "assumed_PASS_TO_PASS_passed": [
+                "test_requests.py::TestRequests::test_entry_points",
+                "test_requests.py::TestRequests::test_invalid_url",
+                "test_requests.py::TestRequests::test_basic_building",
+                "test_requests.py::TestRequests::test_path_is_not_double_encoded",
+                "test_requests.py::TestRequests::test_params_are_added_before_fragment",
+                "test_requests.py::TestRequests::test_params_original_order_is_preserved_by_default",
+                "test_requests.py::TestRequests::test_params_bytes_are_encoded",
+                "test_requests.py::TestRequests::test_connection_error_invalid_domain",
+                "test_requests.py::TestRequests::test_connection_error_invalid_port",
+                "test_requests.py::TestRequests::test_LocationParseError",
+                "test_requests.py::TestRequests::test_links",
+                "test_requests.py::TestRequests::test_cookie_parameters",
+                "test_requests.py::TestRequests::test_cookie_as_dict_keeps_len",
+                "test_requests.py::TestRequests::test_cookie_as_dict_keeps_items",
+                "test_requests.py::TestRequests::test_cookie_as_dict_keys",
+                "test_requests.py::TestRequests::test_cookie_as_dict_values",
+                "test_requests.py::TestRequests::test_cookie_as_dict_items",
+                "test_requests.py::TestRequests::test_response_is_iterable",
+                "test_requests.py::TestRequests::test_response_decode_unicode",
+                "test_requests.py::TestRequests::test_get_auth_from_url",
+                "test_requests.py::TestRequests::test_get_auth_from_url_encoded_spaces",
+                "test_requests.py::TestRequests::test_get_auth_from_url_not_encoded_spaces",
+                "test_requests.py::TestRequests::test_get_auth_from_url_percent_chars",
+                "test_requests.py::TestRequests::test_get_auth_from_url_encoded_hashes",
+                "test_requests.py::TestRequests::test_http_error",
+                "test_requests.py::TestRequests::test_transport_adapter_ordering",
+                "test_requests.py::TestRequests::test_long_authinfo_in_url",
+                "test_requests.py::TestRequests::test_nonhttp_schemes_dont_check_URLs",
+                "test_requests.py::TestRequests::test_basic_auth_str_is_always_native",
+                "test_requests.py::TestContentEncodingDetection::test_html4_pragma",
+                "test_requests.py::TestContentEncodingDetection::test_html_charset",
+                "test_requests.py::TestContentEncodingDetection::test_none",
+                "test_requests.py::TestContentEncodingDetection::test_precedence",
+                "test_requests.py::TestContentEncodingDetection::test_xhtml_pragma",
+                "test_requests.py::TestContentEncodingDetection::test_xml",
+                "test_requests.py::TestCaseInsensitiveDict::test_contains",
+                "test_requests.py::TestCaseInsensitiveDict::test_copy",
+                "test_requests.py::TestCaseInsensitiveDict::test_delitem",
+                "test_requests.py::TestCaseInsensitiveDict::test_docstring_example",
+                "test_requests.py::TestCaseInsensitiveDict::test_equality",
+                "test_requests.py::TestCaseInsensitiveDict::test_fixes_649",
+                "test_requests.py::TestCaseInsensitiveDict::test_get",
+                "test_requests.py::TestCaseInsensitiveDict::test_getitem",
+                "test_requests.py::TestCaseInsensitiveDict::test_iter",
+                "test_requests.py::TestCaseInsensitiveDict::test_iterable_init",
+                "test_requests.py::TestCaseInsensitiveDict::test_kwargs_init",
+                "test_requests.py::TestCaseInsensitiveDict::test_len",
+                "test_requests.py::TestCaseInsensitiveDict::test_lower_items",
+                "test_requests.py::TestCaseInsensitiveDict::test_mapping_init",
+                "test_requests.py::TestCaseInsensitiveDict::test_preserve_key_case",
+                "test_requests.py::TestCaseInsensitiveDict::test_preserve_last_key_case",
+                "test_requests.py::TestCaseInsensitiveDict::test_setdefault",
+                "test_requests.py::TestCaseInsensitiveDict::test_update",
+                "test_requests.py::TestCaseInsensitiveDict::test_update_retains_unchanged",
+                "test_requests.py::UtilsTestCase::test_address_in_network",
+                "test_requests.py::UtilsTestCase::test_dotted_netmask",
+                "test_requests.py::UtilsTestCase::test_get_auth_from_url",
+                "test_requests.py::UtilsTestCase::test_get_environ_proxies",
+                "test_requests.py::UtilsTestCase::test_get_environ_proxies_ip_ranges",
+                "test_requests.py::UtilsTestCase::test_guess_filename_when_filename_is_an_int",
+                "test_requests.py::UtilsTestCase::test_guess_filename_when_int",
+                "test_requests.py::UtilsTestCase::test_guess_filename_with_file_like_obj",
+                "test_requests.py::UtilsTestCase::test_guess_filename_with_unicode_name",
+                "test_requests.py::UtilsTestCase::test_is_ipv4_address",
+                "test_requests.py::UtilsTestCase::test_is_valid_cidr",
+                "test_requests.py::UtilsTestCase::test_requote_uri_properly_requotes",
+                "test_requests.py::UtilsTestCase::test_requote_uri_with_unquoted_percents",
+                "test_requests.py::UtilsTestCase::test_select_proxies",
+                "test_requests.py::UtilsTestCase::test_super_len_correctly_calculates_len_of_partially_read_file",
+                "test_requests.py::UtilsTestCase::test_super_len_io_streams",
+                "test_requests.py::TestMorselToCookieExpires::test_expires_invalid_int",
+                "test_requests.py::TestMorselToCookieExpires::test_expires_invalid_str",
+                "test_requests.py::TestMorselToCookieExpires::test_expires_none",
+                "test_requests.py::TestMorselToCookieExpires::test_expires_valid_str",
+                "test_requests.py::TestMorselToCookieMaxAge::test_max_age_invalid_str",
+                "test_requests.py::TestMorselToCookieMaxAge::test_max_age_valid_int",
+                "test_requests.py::TestTimeout::test_connect_timeout",
+                "test_requests.py::TestTimeout::test_total_timeout_connect",
+                "test_requests.py::test_data_argument_accepts_tuples",
+                "test_requests.py::test_prepared_request_empty_copy",
+                "test_requests.py::test_prepared_request_no_cookies_copy",
+                "test_requests.py::test_prepared_request_complete_copy",
+                "test_requests.py::test_prepare_unicode_url",
+                "test_requests.py::test_vendor_aliases"
+              ]
+            }
+          }
+        },
+        "report": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "In requests/models.py::_encode_params, return str/bytes payloads unchanged; in prepare_url, convert str/bytes URL params with to_native_string before encoding. The supplied test prepares a PUT request with UTF-8 bytes for \"ööö\" and checks that the prepared body remains bytes; it does not send a network request. In this synthetic scenario, the official FAIL_TO_PASS and PASS_TO_PASS tests listed in fix.test_outcomes are stipulated to pass. No real tests were run while authoring this sample; the patch and regression-test patch are supplied in fix for inspection."
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "The supplied patch and concrete change summary satisfy the issue, and this fictional checkpoint explicitly stipulates passing outcomes for the listed official tests. Done applies only within those synthetic assumptions, not to an actual SWE-bench run.",
+          "done": {
+            "deliver_node": "report"
+          }
+        }
+      }
+    }
+  ],
+  "rubric": [
+    "Keep the original issue requirements; do not infer the correct fix from reference patches that are not in planner input.",
+    "Use tests to verify the patch; do not require exact patch equality.",
+    "The reference Stage is one acceptable shape, not an official SWE-bench plan or human-confirmed label."
+  ]
+}

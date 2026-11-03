@@ -1,0 +1,166 @@
+{
+  "kind": "task",
+  "id": "np_trip_planning_0200",
+  "split": "dev",
+  "category": "booking_payment",
+  "review": {
+    "status": "draft",
+    "notes": "AI 起草（第二批），待人工确认。原题与标准答案见 sources.jsonl；分诊、Stage、模拟 Round 均为本地补标，不是官方标签或实测轨迹。"
+  },
+  "description": "NATURAL PLAN / trip_planning_example_200。新建受约束的规划任务，无 Recipe 命中，建议 full；只生成文字，risk=none。Stage 是一种合格解法，不要求唯一拆分。",
+  "planner": {
+    "input": {
+      "message": "You plan to visit 4 European cities for 15 days in total. You only take direct flights to commute between cities. You would like to visit Barcelona for 6 days. From day 8 to day 13, there is a annual show you want to attend in Barcelona. You plan to stay in Helsinki for 3 days. You want to spend 6 days in Lyon. During day 3 and day 8, you have to attend a conference in Lyon. You want to spend 3 days in Prague.\n\nHere are the cities that have direct flights:\nPrague and Lyon, Prague and Barcelona, Lyon and Barcelona, Barcelona and Helsinki, Prague and Helsinki.\n\nFind a trip plan of visiting the cities for 15 days by taking direct flights to commute between them.",
+      "context": {
+        "risk_before": "none",
+        "effect_ceiling": "none",
+        "recipes": []
+      }
+    },
+    "expect": {
+      "triage": "full",
+      "risk": "none",
+      "shape": {
+        "deliver": true
+      },
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "full",
+            "task_family": "general.unclassified",
+            "confidence": 0.8
+          },
+          "horizon": "full_dag",
+          "first_stage": {
+            "goal": "Construct a plan satisfying the supplied constraints",
+            "nodes": [
+              "solve",
+              "reply"
+            ]
+          }
+        },
+        "stage": {
+          "seq": 1,
+          "goal": "Construct a plan satisfying the supplied constraints",
+          "exit_when": "A plan addressing the supplied constraints has been delivered",
+          "nodes": [
+            {
+              "id": "solve",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "transform",
+              "output": "generate",
+              "inputs": {
+                "instruction": "Solve the planning request using only the supplied constraints and reference information. Check dates, durations and all stated restrictions before returning the plan."
+              }
+            },
+            {
+              "id": "reply",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "solve"
+              ],
+              "inputs": {
+                "plan": "$solve.result"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000008401X",
+        "session_id": "ses_01J0000000000000000008401S",
+        "goal": "You plan to visit 4 European cities for 15 days in total. You only take direct flights to commute between cities. You would like to visit Barcelona for 6 days. From day 8 to day 13, there is a annual show you want to attend in Barcelona. You plan to stay in Helsinki for 3 days. You want to spend 6 days in Lyon. During day 3 and day 8, you have to attend a conference in Lyon. You want to spend 3 days in Prague.\n\nHere are the cities that have direct flights:\nPrague and Lyon, Prague and Barcelona, Lyon and Barcelona, Barcelona and Helsinki, Prague and Helsinki.\n\nFind a trip plan of visiting the cities for 15 days by taking direct flights to commute between them.",
+        "done_when": "A plan addressing the supplied constraints has been delivered",
+        "constraints": {
+          "effect_ceiling": "none"
+        },
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "Construct a plan satisfying the supplied constraints",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 1,
+        "goal": "Construct a plan satisfying the supplied constraints",
+        "exit_when": "A plan addressing the supplied constraints has been delivered",
+        "nodes": [
+          {
+            "id": "solve",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "transform",
+            "output": "generate",
+            "inputs": {
+              "instruction": "Solve the planning request using only the supplied constraints and reference information. Check dates, durations and all stated restrictions before returning the plan."
+            }
+          },
+          {
+            "id": "reply",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "solve"
+            ],
+            "inputs": {
+              "plan": "$solve.result"
+            }
+          }
+        ]
+      },
+      "results": {
+        "solve": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": "Here is the trip plan for visiting the 4 European cities for 15 days:\n\n**Day 1-3:** Arriving in Prague and visit Prague for 3 days.\n**Day 3:** Fly from Prague to Lyon.\n**Day 3-8:** Visit Lyon for 6 days.\n**Day 8:** Fly from Lyon to Barcelona.\n**Day 8-13:** Visit Barcelona for 6 days.\n**Day 13:** Fly from Barcelona to Helsinki.\n**Day 13-15:** Visit Helsinki for 3 days."
+        },
+        "reply": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "Here is the trip plan for visiting the 4 European cities for 15 days:\n\n**Day 1-3:** Arriving in Prague and visit Prague for 3 days.\n**Day 3:** Fly from Prague to Lyon.\n**Day 3-8:** Visit Lyon for 6 days.\n**Day 8:** Fly from Lyon to Barcelona.\n**Day 8-13:** Visit Barcelona for 6 days.\n**Day 13:** Fly from Barcelona to Helsinki.\n**Day 13-15:** Visit Helsinki for 3 days."
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "模拟完成检查点：交付内容取自上游标准答案；不是本系统执行结果。",
+          "done": {
+            "deliver_node": "reply"
+          }
+        }
+      }
+    }
+  ],
+  "rubric": [
+    "full 的依据是新规划任务且没有 Recipe；none 表示不执行订票、付款或日历写入。",
+    "原题约束必须保留；不要求特定 Node 名称、节点数或质量包装。",
+    "S-09 规则只检查分诊与结构；不等于官方约束求解正确率。模拟 Round 不应充作独立官方裁判题。"
+  ]
+}

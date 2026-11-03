@@ -1,0 +1,254 @@
+{
+  "kind": "task",
+  "id": "np_trip_planning_1000_replan",
+  "split": "dev",
+  "category": "booking_payment",
+  "review": {
+    "status": "draft",
+    "notes": "AI 起草（第二批），待人工确认。原题与标准答案来自上游；上一轮那份漏掉城市的方案、Reviewer 的 replan 与第二轮都是本地合成，不是实测轨迹。"
+  },
+  "description": "NATURAL PLAN / trip_planning_example_1000 的 replan。上一轮交付的方案漏了 Stuttgart，Reviewer 判 replan；Planner 应重新规划并交付，建议 replan；只生成文字，risk=none。",
+  "planner": {
+    "input": {
+      "message": "You plan to visit 8 European cities for 21 days in total. You only take direct flights to commute between cities. You plan to stay in Stuttgart for 3 days. You want to meet a friend in Stuttgart between day 19 and day 21. You would like to visit Bucharest for 2 days. You want to spend 3 days in Copenhagen. You have to attend a workshop in Copenhagen between day 9 and day 11. You plan to stay in Paris for 4 days. You want to spend 2 days in Riga. From day 8 to day 9, there is a annual show you want to attend in Riga. You want to spend 5 days in Santorini. You would like to visit Madrid for 5 days. During day 1 and day 5, you have to attend a conference in Madrid. You plan to stay in Hamburg for 4 days.\n\nHere are the cities that have direct flights:\nRiga and Bucharest, Madrid and Copenhagen, Paris and Copenhagen, Paris and Stuttgart, Copenhagen and Stuttgart, Madrid and Paris, Bucharest and Hamburg, Madrid and Santorini, Madrid and Hamburg, Copenhagen and Bucharest, Riga and Copenhagen, Paris and Riga, Copenhagen and Hamburg, Paris and Hamburg, Madrid and Bucharest, Copenhagen and Santorini, Hamburg and Stuttgart, from Riga to Hamburg, Santorini and Bucharest, Paris and Bucharest.\n\nFind a trip plan of visiting the cities for 21 days by taking direct flights to commute between them.",
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000008707X",
+        "session_id": "ses_01J0000000000000000008707S",
+        "goal": "You plan to visit 8 European cities for 21 days in total. You only take direct flights to commute between cities. You plan to stay in Stuttgart for 3 days. You want to meet a friend in Stuttgart between day 19 and day 21. You would like to visit Bucharest for 2 days. You want to spend 3 days in Copenhagen. You have to attend a workshop in Copenhagen between day 9 and day 11. You plan to stay in Paris for 4 days. You want to spend 2 days in Riga. From day 8 to day 9, there is a annual show you want to attend in Riga. You want to spend 5 days in Santorini. You would like to visit Madrid for 5 days. During day 1 and day 5, you have to attend a conference in Madrid. You plan to stay in Hamburg for 4 days.\n\nHere are the cities that have direct flights:\nRiga and Bucharest, Madrid and Copenhagen, Paris and Copenhagen, Paris and Stuttgart, Copenhagen and Stuttgart, Madrid and Paris, Bucharest and Hamburg, Madrid and Santorini, Madrid and Hamburg, Copenhagen and Bucharest, Riga and Copenhagen, Paris and Riga, Copenhagen and Hamburg, Paris and Hamburg, Madrid and Bucharest, Copenhagen and Santorini, Hamburg and Stuttgart, from Riga to Hamburg, Santorini and Bucharest, Paris and Bucharest.\n\nFind a trip plan of visiting the cities for 21 days by taking direct flights to commute between them.",
+        "done_when": "A plan addressing the supplied constraints has been delivered",
+        "constraints": {
+          "effect_ceiling": "none"
+        },
+        "facts": [
+          "The delivered plan skips Stuttgart; the request asks for 8 cities"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "Construct a plan satisfying the supplied constraints",
+            "status": "completed",
+            "verdict": "replan",
+            "cost_usd": 0.02
+          }
+        ]
+      },
+      "last_round": {
+        "stage": {
+          "seq": 1,
+          "goal": "Construct a plan satisfying the supplied constraints",
+          "exit_when": "A plan addressing the supplied constraints has been delivered",
+          "nodes": [
+            {
+              "id": "solve",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "transform",
+              "output": "generate",
+              "inputs": {
+                "instruction": "Solve the planning request using only the supplied constraints and reference information. Check dates, durations and all stated restrictions before returning the plan."
+              }
+            },
+            {
+              "id": "reply",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "solve"
+              ],
+              "inputs": {
+                "plan": "$solve.result"
+              }
+            }
+          ]
+        },
+        "results": {
+          "solve": {
+            "role": "transform",
+            "status": "succeeded",
+            "result": "Here is the trip plan:\n\n**Day 1-5:** Visit Madrid for 5 days.\n**Day 5-8:** Visit Paris for 4 days.\n**Day 8-9:** Visit Riga for 2 days.\n**Day 9-11:** Visit Copenhagen for 3 days.\n**Day 11-15:** Visit Santorini for 5 days.\n**Day 15-16:** Visit Bucharest for 2 days.\n**Day 16-19:** Visit Hamburg for 4 days."
+          },
+          "reply": {
+            "role": "deliver",
+            "status": "succeeded",
+            "result": {
+              "text": "Here is the trip plan:\n\n**Day 1-5:** Visit Madrid for 5 days.\n**Day 5-8:** Visit Paris for 4 days.\n**Day 8-9:** Visit Riga for 2 days.\n**Day 9-11:** Visit Copenhagen for 3 days.\n**Day 11-15:** Visit Santorini for 5 days.\n**Day 15-16:** Visit Bucharest for 2 days.\n**Day 16-19:** Visit Hamburg for 4 days."
+            }
+          }
+        },
+        "verdict": {
+          "verdict": "replan",
+          "reason": "The plan visits only 7 of 8 cities (Stuttgart is missing)",
+          "replan": {
+            "keep_nodes": [],
+            "stuck_reason": "Stuttgart is missing; the solved plan cannot be patched, solve again"
+          }
+        }
+      },
+      "context": {
+        "risk_before": "none",
+        "effect_ceiling": "none"
+      }
+    },
+    "expect": {
+      "triage": "replan",
+      "risk": "none",
+      "shape": {
+        "deliver": true
+      },
+      "reference": {
+        "task_plan": {
+          "triage": {
+            "level": "replan",
+            "task_family": "general.unclassified",
+            "confidence": 0.8
+          },
+          "horizon": "full_dag",
+          "first_stage": {
+            "goal": "Rebuild the plan so it covers every requested city, including Stuttgart",
+            "nodes": [
+              "solve",
+              "reply"
+            ]
+          }
+        },
+        "stage": {
+          "seq": 2,
+          "goal": "Rebuild the plan so it covers every requested city, including Stuttgart",
+          "exit_when": "A plan addressing the supplied constraints has been delivered",
+          "nodes": [
+            {
+              "id": "solve",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "transform",
+              "output": "generate",
+              "inputs": {
+                "instruction": "The previous plan left out Stuttgart. Solve the request again from the original constraints; every listed city, duration and direct-flight restriction must hold."
+              }
+            },
+            {
+              "id": "reply",
+              "kind": "atomic",
+              "template": "answer@v1",
+              "executor": "model",
+              "effect": "none",
+              "role": "deliver",
+              "output": "generate",
+              "after": [
+                "solve"
+              ],
+              "inputs": {
+                "plan": "$solve.result"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "rounds": [
+    {
+      "task_state": {
+        "task_id": "tsk_01J0000000000000000008707X",
+        "session_id": "ses_01J0000000000000000008707S",
+        "goal": "You plan to visit 8 European cities for 21 days in total. You only take direct flights to commute between cities. You plan to stay in Stuttgart for 3 days. You want to meet a friend in Stuttgart between day 19 and day 21. You would like to visit Bucharest for 2 days. You want to spend 3 days in Copenhagen. You have to attend a workshop in Copenhagen between day 9 and day 11. You plan to stay in Paris for 4 days. You want to spend 2 days in Riga. From day 8 to day 9, there is a annual show you want to attend in Riga. You want to spend 5 days in Santorini. You would like to visit Madrid for 5 days. During day 1 and day 5, you have to attend a conference in Madrid. You plan to stay in Hamburg for 4 days.\n\nHere are the cities that have direct flights:\nRiga and Bucharest, Madrid and Copenhagen, Paris and Copenhagen, Paris and Stuttgart, Copenhagen and Stuttgart, Madrid and Paris, Bucharest and Hamburg, Madrid and Santorini, Madrid and Hamburg, Copenhagen and Bucharest, Riga and Copenhagen, Paris and Riga, Copenhagen and Hamburg, Paris and Hamburg, Madrid and Bucharest, Copenhagen and Santorini, Hamburg and Stuttgart, from Riga to Hamburg, Santorini and Bucharest, Paris and Bucharest.\n\nFind a trip plan of visiting the cities for 21 days by taking direct flights to commute between them.",
+        "done_when": "A plan addressing the supplied constraints has been delivered",
+        "constraints": {
+          "effect_ceiling": "none"
+        },
+        "facts": [
+          "The delivered plan skips Stuttgart; the request asks for 8 cities"
+        ],
+        "rounds": [
+          {
+            "seq": 1,
+            "stage_goal": "Construct a plan satisfying the supplied constraints",
+            "status": "completed",
+            "verdict": "replan",
+            "cost_usd": 0.02
+          },
+          {
+            "seq": 2,
+            "stage_goal": "Rebuild the plan so it covers every requested city, including Stuttgart",
+            "status": "reviewing"
+          }
+        ]
+      },
+      "stage": {
+        "seq": 2,
+        "goal": "Rebuild the plan so it covers every requested city, including Stuttgart",
+        "exit_when": "A plan addressing the supplied constraints has been delivered",
+        "nodes": [
+          {
+            "id": "solve",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "transform",
+            "output": "generate",
+            "inputs": {
+              "instruction": "The previous plan left out Stuttgart. Solve the request again from the original constraints; every listed city, duration and direct-flight restriction must hold."
+            }
+          },
+          {
+            "id": "reply",
+            "kind": "atomic",
+            "template": "answer@v1",
+            "executor": "model",
+            "effect": "none",
+            "role": "deliver",
+            "output": "generate",
+            "after": [
+              "solve"
+            ],
+            "inputs": {
+              "plan": "$solve.result"
+            }
+          }
+        ]
+      },
+      "results": {
+        "solve": {
+          "role": "transform",
+          "status": "succeeded",
+          "result": "Here is the trip plan for visiting the 8 European cities for 21 days:\n\n**Day 1-5:** Arriving in Madrid and visit Madrid for 5 days.\n**Day 5:** Fly from Madrid to Paris.\n**Day 5-8:** Visit Paris for 4 days.\n**Day 8:** Fly from Paris to Riga.\n**Day 8-9:** Visit Riga for 2 days.\n**Day 9:** Fly from Riga to Copenhagen.\n**Day 9-11:** Visit Copenhagen for 3 days.\n**Day 11:** Fly from Copenhagen to Santorini.\n**Day 11-15:** Visit Santorini for 5 days.\n**Day 15:** Fly from Santorini to Bucharest.\n**Day 15-16:** Visit Bucharest for 2 days.\n**Day 16:** Fly from Bucharest to Hamburg.\n**Day 16-19:** Visit Hamburg for 4 days.\n**Day 19:** Fly from Hamburg to Stuttgart.\n**Day 19-21:** Visit Stuttgart for 3 days."
+        },
+        "reply": {
+          "role": "deliver",
+          "status": "succeeded",
+          "result": {
+            "text": "Here is the trip plan for visiting the 8 European cities for 21 days:\n\n**Day 1-5:** Arriving in Madrid and visit Madrid for 5 days.\n**Day 5:** Fly from Madrid to Paris.\n**Day 5-8:** Visit Paris for 4 days.\n**Day 8:** Fly from Paris to Riga.\n**Day 8-9:** Visit Riga for 2 days.\n**Day 9:** Fly from Riga to Copenhagen.\n**Day 9-11:** Visit Copenhagen for 3 days.\n**Day 11:** Fly from Copenhagen to Santorini.\n**Day 11-15:** Visit Santorini for 5 days.\n**Day 15:** Fly from Santorini to Bucharest.\n**Day 15-16:** Visit Bucharest for 2 days.\n**Day 16:** Fly from Bucharest to Hamburg.\n**Day 16-19:** Visit Hamburg for 4 days.\n**Day 19:** Fly from Hamburg to Stuttgart.\n**Day 19-21:** Visit Stuttgart for 3 days."
+          }
+        }
+      },
+      "expect": {
+        "verdict": "done",
+        "acceptable": [
+          "done"
+        ],
+        "min_escalation": "none",
+        "reference": {
+          "verdict": "done",
+          "reason": "模拟检查点：第二轮交付的是上游标准答案，覆盖全部城市",
+          "done": {
+            "deliver_node": "reply"
+          }
+        }
+      }
+    }
+  ],
+  "rubric": [
+    "replan 的依据是上一轮 Reviewer 的 replan 判定与 Task State 里的事实；重新规划要从原始约束出发，不能只把漏掉的城市接在末尾。",
+    "上一轮的方案里没有可保留的 Node，keep_nodes 为空。",
+    "模拟 Round 不是实测轨迹，不计入独立的 S-10 样本。"
+  ]
+}
