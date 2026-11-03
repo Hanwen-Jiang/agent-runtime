@@ -87,5 +87,68 @@ coding-agent → task-service WorkspaceService（workspaceapi/server.go: operate
 
 - **不做写回**（先写本地、过期再存 ObjectStore）：节点在存回之前挂掉，用户的改动就丢了；增量存档只传新块，写穿透的代价不大。
 - 要人定：冷热分层的闲置天数；`max_bytes` 超限时是拒绝写工具还是只警告；Workspace 单独队列的 Worker 池副本数下限；Valkey 是否要持久化（AOF）。
-- **协议不换成 HTTPS 以外的东西，也不为此改用 Rust**：环境内的 sandbox-agent 现在是集群内明文 HTTP 加令牌，Cloudflare 经 HTTPS 的桥；协议开销是毫秒级，慢在建沙箱（秒级）与存档恢复，不在协议。Sandbox Service 对内用 gRPC 是为了与其他内部服务一致、有类型化的契约，不是为了快。sandbox-agent 用 Go 写、只用标准库，一个静态二进制，换 Rust 省下的是每个环境几 MB 内存，只有 microVM 密度成为瓶颈时才值得重新评估。
-- 要人定：SBX-01 是否做、是否分三期；Sandbox Service 的语言（拟 Go）；环境表迁移的归属。
+- **协议**：环境内的 sandbox-agent 现在是集群内明文 HTTP 加令牌，Cloudflare 经 HTTPS 的桥，Firecracker 计划里改走 vsock。协议开销是毫秒级，慢在建沙箱（秒级）与存档恢复，不在协议；Sandbox Service 对内用 gRPC 是为了与其他内部服务一致、契约有类型，不是为了快。语言另见第 5 节。
+- 要人定：SBX-01 是否做、是否分三期；环境表迁移的归属；第 5 节的语言分工与 SBX-RS-01 是否做。
+
+## 5. 沙箱内外换成 Rust 的评估（2026-11-03）
+
+前提：Firecracker 做主路已定（[firecracker-backend.md](firecracker-backend.md)，2026-11-01），但 fc-manager 还没写；sandbox-agent 现有约 1150 行 Go（不含测试 810 行），只用标准库。沙箱是这个项目以后最吃性能的部分，所以按“性能落在哪一层”逐层看，不拿“多一种语言”当理由，但把它的真实成本列出来。
+
+### 5.1 沙箱的性能落在哪里
+
+| 环节 | 现在谁做 | 量级 | 语言能改变多少 |
+| --- | --- | --- | --- |
+| 冷启动：内核引导、rootfs、agent 就绪 | Firecracker（Rust）、客户机内核、agent | 未量（D-20 验收 8 只记录） | agent 的启动是毫秒级，占比小 |
+| 快照恢复（D-26） | Firecracker 加载内存文件、缺页 | 与客户机已用内存成正比 | agent 常驻内存越小，快照越小、恢复越快：这里语言有作用 |
+| 单机密度 | 每台 VM 的固定开销：内核、agent、页表 | 未量 | agent 常驻内存直接叠加到每台 VM |
+| 工作区存档与恢复 | **Python 的 Worker**：导出 tar 写临时文件、逐个文件算 sha256、上传；恢复时拼 tar、导入、再取清单逐项核对 | 与仓库大小成正比，GB 级仓库是秒到分钟 | 最大的一块，但问题是数据在 Worker 和环境之间来回搬，不是哪种语言算哈希 |
+| 出网、预览转发 | fc-manager（计划中） | 字节搬运 | Go、Rust 都能到 GB/s，差别不在这 |
+| 每次查看都新建环境 | Worker 的 Workspace 操作 | 秒级 | 与语言无关（WS-READ-01、SBX-01 解决） |
+
+### 5.2 逐个组件
+
+**客户机里的 sandbox-agent（PID 1、vsock、exec、读写文件、存档）：适合 Rust。**
+
+- 它在每一台 VM、每一份快照里都有一份。Go 运行时与垃圾回收的常驻内存通常是十几 MB 量级，Rust 写的同类程序一般在几 MB 以内（数字是经验值，没在这台机器上量过，SBX-RS-01 要量）。每台 VM 省下的部分同时降低快照体积。按独服 125 GB、每台 VM 0.5–2 GB 估，密度上的收益在百分之一到几之间，不算大，但 D-26 的恢复延迟会直接受益。
+- PID 1 的职责（回收孤儿进程、信号、杀进程组）在 Go 里有一个已知的坑：用 `wait4(-1)` 回收孤儿会抢走 `os/exec` 子进程的退出状态，需要额外绕开（单独一个小 init，或改用 pidfd）。Rust 下进程管理完全由自己控制，没有运行时在背后等子进程。
+- AF_VSOCK：Go 标准库不支持，计划里要用 `syscall` 手写 sockaddr；Rust 用 `libc` 直接调。
+- 同类项目的选择（凭记忆，没在本会话核实）：Kata Containers 2.0 把客户机里的 agent 从 Go 改写成了 Rust，公开的理由主要是内存占用；Firecracker 本身是 Rust；E2B 的环境内 agent 是 Go。
+- 改写成本：约 1150 行，接口照旧（HTTP 的 `/v1/*`，Firecracker 下换成 vsock 上的同一套），现有的一致性测试（`agentruntime_core.conformance.sandbox`）是黑盒的，可以原样验证 Rust 版本。
+
+**宿主上的 fc-manager（起 jailer 与 firecracker、vsock 转发、rootfs 缓存、快照）：可以用 Rust，最好与 agent 一起定。**
+
+- 还没写，没有改写成本，现在定语言代价最小。
+- 它是宿主上权限最高的组件。Go 与 Rust 都是内存安全的；Rust 多的是编译期的数据竞争检查与没有空指针，对“长期跑、并发管很多 VM”的守护进程有价值，但不是决定性的。
+- 性能上它主要是起进程、搬字节、读写文件，Go 不吃亏；namespace、chroot 这些交给 jailer，不在 fc-manager 里做。
+- 如果 agent 用 Rust，vsock 两端的协议、帧格式可以是同一个 crate，这是用 Rust 写 fc-manager 最实在的理由。
+
+**Sandbox Service（SBX-01：借还、配额、环境表、存档编排、对账）：留在 Go。**
+
+- 它是控制面：慢在业务库、K8s API、对象存储与网络，CPU 和内存不是瓶颈，换 Rust 拿不到性能。
+- 它必须与 task-service 共用租户绑定、Postgres 行级安全的连接方式、SecretStore、错误模型与 Telemetry（`libs/go-core`），并过 `tests/contract` 的跨语言一致性比对。用 Rust 写，就要在第三种语言里再实现并持续对齐这些安全相关的代码：这是安全面的成本，不只是“多学一种语言”。
+
+**存档与恢复的数据路径：先换位置，再谈语言。**
+
+- 现在 GB 级的数据在“环境 → Worker 临时文件 → 对象存储”之间来回搬，哈希在 Worker 里算。更快的做法是让数据少走一跳：由 agent（在环境里）直接算清单与哈希、直接与对象存储（或 fc-manager 的本地块缓存，WS-BLOB-01）交换块；Firecracker 下还可以考虑把工作区做成块设备镜像，而不是 tar。这一步与 agent 用什么语言写是同一件事，如果 agent 改 Rust，这部分一起做。
+
+### 5.3 结论与代价
+
+| 组件 | 建议 | 理由 |
+| --- | --- | --- |
+| sandbox-agent | Rust，经 SBX-RS-01 实测确认后切换 | 每台 VM 都有一份；PID 1 与 vsock 是底层工作；代码小、有黑盒一致性测试 |
+| fc-manager | Rust（若 agent 用 Rust）；否则 Go | 还没写；与 agent 共用 vsock 协议 |
+| Sandbox Service | Go | 控制面，瓶颈不在 CPU；与 task-service 共用租户与安全相关的代码 |
+| 存档、恢复的数据路径 | 挪到 agent 与 fc-manager 一侧 | 收益最大的一块，与语言选择绑在一起做 |
+
+Rust 的真实成本（不是理由，是要付的）：
+
+- 依赖规则要另立：CLAUDE.md 的“不引入设计书 4.15 之外的新依赖”与设计书 4.15 的技术栈都要改（由人更新设计书）。拟定：`Cargo.lock` 提交；只收发布满两周的版本（与 Python 的 `exclude-newer` 同一原则）；`cargo deny` 检查许可证与安全公告；agent 只用 `std` 加 `libc`，fc-manager 另列清单。
+- 工具链：CI 加 Rust 的构建、`clippy`、测试；静态链接 musl；镜像构建（`deploy/images`）加 Rust 阶段；本机是 Windows，交叉编译 Linux 目标用容器或 `cargo-zigbuild`。
+- 维护：会写 Rust 的人要能评审 PID 1 与 vsock 这类底层代码。
+
+### 5.4 工作项
+
+| 工作项 | Failure / Evidence | Minimum fix | 成本与新失败面 | 当前决定 |
+| --- | --- | --- | --- | --- |
+| SBX-RS-01 Rust 版 agent 的原型与实测 | 第 5.2 节的内存、快照、恢复收益是经验值，没有本项目的数字；Firecracker 上线前是换语言代价最小的时候 | 用 Rust 写 agent 的核心：`--init`（PID 1）、vsock 监听、`/v1/exec`（含取消与杀进程组）、`/v1/files`、`/v1/manifest`；只用 `std` 加 `libc`。与 Go 版在独服上同条件对比：常驻内存、静态二进制大小、冷启动到第一条命令返回、快照文件大小与恢复到第一条命令返回（P50、P95），各跑 20 次以上。一致性测试的子集对两版都跑 | 原型约千行；独服上要有 Firecracker 与 KVM（D-20 的真 VM 环境）；原型不进生产 | 待确认 |
+| SBX-RS-02 定语言与依赖规则 | SBX-RS-01 的数字出来之前不定 | 收益明确（例如每台 VM 常驻内存、快照恢复的 P95 有可见下降）时：agent 与 fc-manager 用 Rust，写设计改动稿（4.15 技术栈、4.10 后端）与 Rust 依赖规则，人审后改 firecracker-backend.md 的 D-20；收益不明显时维持 Go，结论与数字记在本节 | 改设计书由人做；D-20 推迟到定下之后开工 | 待确认；依赖 SBX-RS-01 |

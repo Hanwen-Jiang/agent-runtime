@@ -42,3 +42,5 @@ MODEL-BUDGET-02 已由 `libs/go-core/modelbudget` 共享持久实现取代旧 fa
 | CACHE-01 | 设计书 4.5 的 Cache 接 Valkey 适配器，task-service 才能多副本、事件流不随重启丢失 |
 | TS-PROD-01 | task-service 生产模式：没有 Postgres 的 DSN 拒绝启动（不静默回落 SQLite）、连接池与 PgBouncer、Cache 必须是 Valkey，之后放开多副本 |
 | SBX-01 | Broker 从 Worker 独立成 Go 的 Sandbox Service（gRPC）：调用方只给（租户、工作区、会话、操作），找环境、连环境、存档、对账都在服务里；分三期，先只读 |
+| SBX-RS-01 | Rust 版 sandbox-agent 的原型，在独服的 Firecracker 上与 Go 版对比常驻内存、快照大小与恢复延迟 |
+| SBX-RS-02 | 按 SBX-RS-01 的数字定 agent 与 fc-manager 的语言；Sandbox Service 留在 Go（评估见该文第 5 节） |
