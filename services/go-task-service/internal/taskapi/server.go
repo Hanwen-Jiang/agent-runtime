@@ -99,12 +99,14 @@ type Defaults struct {
 type Deps struct {
 	ModelBudget    modelbudget.Provider
 	BudgetPolicies modelbudget.PolicyResolver
-	Ingress        ingress.Ingress
-	Durable        durable.Provider
-	Store          relational.Provider
-	Pins           PinResolver
-	Clock          clock.Clock
-	IDs            ids.Generator
+	// ActiveTaskLimits 按租户覆盖准入时未终态 Task 的上限（默认 2 个）；0 表示不设上限。
+	ActiveTaskLimits map[string]int
+	Ingress          ingress.Ingress
+	Durable          durable.Provider
+	Store            relational.Provider
+	Pins             PinResolver
+	Clock            clock.Clock
+	IDs              ids.Generator
 	// PublicBaseURL 用来拼 SSE 订阅地址，例如 https://api.example.com。
 	PublicBaseURL string
 	Defaults      Defaults
@@ -122,8 +124,16 @@ type Server struct {
 }
 
 // defaultMaxConcurrentTasks 是开放注册的默认租户准入上限（docs/plan/open-signup.md）。
-// 后续付费/熟人租户策略可覆盖它；在策略契约接入前不把它扩散到 proto/schema。
+// 内部租户由部署配置覆盖（Deps.ActiveTaskLimits，AR_TENANT_ACTIVE_TASKS）；在策略契约接入前不把它扩散到 proto/schema。
 const defaultMaxConcurrentTasks = 2
+
+// maxActiveTasks 是这个租户准入时未终态 Task 的上限；0 表示不设上限。
+func (s *Server) maxActiveTasks(tenantID string) int {
+	if n, ok := s.d.ActiveTaskLimits[tenantID]; ok {
+		return n
+	}
+	return defaultMaxConcurrentTasks
+}
 
 func (s *Server) policies() PolicyResolver {
 	if s.d.Policies != nil {
@@ -327,7 +337,7 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	row, existed, err := s.tasks.InsertTaskWithLimit(ctx, tenant, taskstore.Task{
 		TaskID: s.d.IDs.TaskID(), SessionID: sessionID, SessionKey: req.GetSessionId(), ClientRequestID: crid, CreatedAt: now,
 		SubmittedBy: id.UserID, Message: req.GetMessage(),
-	}, defaultMaxConcurrentTasks)
+	}, s.maxActiveTasks(tenant.GetTenantId()))
 	if err != nil {
 		return nil, err
 	}

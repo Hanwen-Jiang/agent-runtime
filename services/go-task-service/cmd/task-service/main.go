@@ -379,18 +379,19 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		policies.Else = taskapi.DocumentPolicyResolver{Source: registryPolicies, Fallback: defaults}
 	}
 	api, err := taskapi.New(taskapi.Deps{
-		ModelBudget:    modelbudget.New(store),
-		BudgetPolicies: modelbudget.Policy{Path: cfg.TenantPoliciesFile, Source: registryPolicies},
-		Ingress:        ing,
-		Durable:        temporaladapter.New(c),
-		Store:          store,
-		Pins:           pins,
-		Clock:          clk,
-		IDs:            ids.New(clk, nil),
-		PublicBaseURL:  cfg.PublicBaseURL,
-		Defaults:       defaults,
-		Policies:       policies,
-		Network:        network,
+		ModelBudget:      modelbudget.New(store),
+		BudgetPolicies:   modelbudget.Policy{Path: cfg.TenantPoliciesFile, Source: registryPolicies},
+		ActiveTaskLimits: cfg.ActiveTaskLimits,
+		Ingress:          ing,
+		Durable:          temporaladapter.New(c),
+		Store:            store,
+		Pins:             pins,
+		Clock:            clk,
+		IDs:              ids.New(clk, nil),
+		PublicBaseURL:    cfg.PublicBaseURL,
+		Defaults:         defaults,
+		Policies:         policies,
+		Network:          network,
 	})
 	if err != nil {
 		return err

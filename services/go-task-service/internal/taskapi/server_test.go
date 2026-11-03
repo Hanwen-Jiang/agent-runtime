@@ -13,6 +13,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -218,6 +219,27 @@ func TestSubmitTenantBusyIsolatedBetweenTenants(t *testing.T) {
 	seedActiveTask(t, f, "t1", "active_1")
 	seedActiveTask(t, f, "t1", "active_2")
 	f.mustSubmit(f.token("t2", "u2"), newRequest("other_tenant"))
+}
+
+// 内部租户（评测、跑分、自己的账号）的上限按部署配置覆盖（AR_TENANT_ACTIVE_TASKS）：2026-11-03 SWE-bench 在 rev19 上
+// 50 题被默认的 2 个拒掉 42 题。没列出的租户仍是默认的 2 个；0 表示不设上限。
+func TestSubmitActiveTaskLimitIsOverriddenPerTenant(t *testing.T) {
+	f := newAPIWith(t, func(d *Deps) { d.ActiveTaskLimits = map[string]int{"evals": 3, "swebench": 0} })
+	seedActiveTask(t, f, "evals", "e1")
+	seedActiveTask(t, f, "evals", "e2")
+	f.mustSubmit(f.token("evals", "u1"), newRequest("e3"))
+	_, err := f.submit(f.token("evals", "u1"), newRequest("e4"))
+	wantCode(t, "evals 的第四个未终态 Task", err, connect.CodePermissionDenied)
+
+	for i := 1; i <= 5; i++ {
+		seedActiveTask(t, f, "swebench", fmt.Sprintf("s%d", i))
+	}
+	f.mustSubmit(f.token("swebench", "u1"), newRequest("s6"))
+
+	seedActiveTask(t, f, "t1", "a1")
+	seedActiveTask(t, f, "t1", "a2")
+	_, err = f.submit(f.token("t1", "u1"), newRequest("c3"))
+	wantCode(t, "没列出的租户仍是默认的 2 个", err, connect.CodePermissionDenied)
 }
 
 // lastSubmitSignal 返回最后一次投递给 Session 工作流的提交信号。
@@ -450,10 +472,10 @@ func TestSubmitValidatesTheRequest(t *testing.T) {
 		code   connect.Code
 	}{
 		"缺少 client_request_id": {func(r *taskapiv1.SubmitTaskRequest) { r.ClientRequestId = "" }, connect.CodeInvalidArgument},
-		"空命令":                 {func(r *taskapiv1.SubmitTaskRequest) { r.Message = "  " }, connect.CodeInvalidArgument},
-		"附件不是 obj:// 引用":      {func(r *taskapiv1.SubmitTaskRequest) { r.Attachments = []string{"https://x/y"} }, connect.CodeInvalidArgument},
-		"附件属于别的租户":           {func(r *taskapiv1.SubmitTaskRequest) { r.Attachments = []string{"obj://t2/secret.csv"} }, connect.CodePermissionDenied},
-		"workspace_id 格式不对":   {func(r *taskapiv1.SubmitTaskRequest) { r.WorkspaceId = "Bad Workspace" }, connect.CodeInvalidArgument},
+		"空命令":                  {func(r *taskapiv1.SubmitTaskRequest) { r.Message = "  " }, connect.CodeInvalidArgument},
+		"附件不是 obj:// 引用":       {func(r *taskapiv1.SubmitTaskRequest) { r.Attachments = []string{"https://x/y"} }, connect.CodeInvalidArgument},
+		"附件属于别的租户":             {func(r *taskapiv1.SubmitTaskRequest) { r.Attachments = []string{"obj://t2/secret.csv"} }, connect.CodePermissionDenied},
+		"workspace_id 格式不对":    {func(r *taskapiv1.SubmitTaskRequest) { r.WorkspaceId = "Bad Workspace" }, connect.CodeInvalidArgument},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {

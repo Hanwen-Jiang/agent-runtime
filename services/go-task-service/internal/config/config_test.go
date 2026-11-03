@@ -111,10 +111,10 @@ func TestFromEnvRelationalDSN(t *testing.T) {
 func TestFromEnvRejectsBadValues(t *testing.T) {
 	cases := map[string]map[string]string{
 		"缺少 Temporal 地址": {EnvTemporalAddress: ""},
-		"缺少签名密钥":        {EnvDevSigningKey: ""},
-		"只读上限不是数字":      {EnvReadOnlyLimit: "many"},
-		"只读上限超出范围":      {EnvReadOnlyLimit: "5000"},
-		"续接事件数超出范围":     {EnvContinueAsNewEvents: "50000"},
+		"缺少签名密钥":         {EnvDevSigningKey: ""},
+		"只读上限不是数字":       {EnvReadOnlyLimit: "many"},
+		"只读上限超出范围":       {EnvReadOnlyLimit: "5000"},
+		"续接事件数超出范围":      {EnvContinueAsNewEvents: "50000"},
 		"订阅地址不是 URL":     {EnvPublicBaseURL: "not a url"},
 	}
 	for name, override := range cases {
@@ -189,5 +189,29 @@ func TestFromEnvRegistry(t *testing.T) {
 				t.Errorf("错误信息指出变量名 %s：%v", EnvRegistryAddr, err)
 			}
 		})
+	}
+}
+
+// 按租户覆盖准入时“未终态 Task 至多几个”（默认 2 个，开放注册）：内部租户的评测与跑分要并发。
+func TestFromEnvActiveTaskLimits(t *testing.T) {
+	m := base()
+	m[EnvTenantActiveTasks] = " swebench=8, evals=0 ,gh-hanwen-jiang=6"
+	cfg, err := FromEnv(env(m))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]int{"swebench": 8, "evals": 0, "gh-hanwen-jiang": 6}
+	if fmt.Sprint(cfg.ActiveTaskLimits) != fmt.Sprint(want) {
+		t.Errorf("读到 %v，要 %v", cfg.ActiveTaskLimits, want)
+	}
+	cfg, err = FromEnv(env(base()))
+	if err != nil || len(cfg.ActiveTaskLimits) != 0 {
+		t.Errorf("没设时不覆盖：%v %v", cfg.ActiveTaskLimits, err)
+	}
+	for _, bad := range []string{"swebench", "swebench=-1", "swebench=many", "=3", "a=1,a=2"} {
+		m[EnvTenantActiveTasks] = bad
+		if _, err := FromEnv(env(m)); err == nil {
+			t.Errorf("%q 应当报错", bad)
+		}
 	}
 }

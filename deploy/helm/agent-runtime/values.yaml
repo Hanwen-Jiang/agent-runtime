@@ -95,6 +95,9 @@ taskService:
   # 客户端连 Task API 用的地址（AR_PUBLIC_BASE_URL，SubmitTask 的事件订阅地址按它拼）。为空时：开了入口用 https://<ingress.host>，
   # 否则用集群内的 Service 地址。
   publicBaseURL: ""
+  # 按租户覆盖准入时未终态 Task 的上限（AR_TENANT_ACTIVE_TASKS；默认每个租户 2 个，开放注册），只给内部租户：
+  # 例如 {swebench: 6, evals: 6}；0 表示不设上限。
+  activeTaskLimits: {}
   service:
     type: ClusterIP
   resources:

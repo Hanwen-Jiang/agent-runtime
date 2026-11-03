@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/s3objects"
@@ -45,6 +46,10 @@ const (
 	// Workspace API（D-06）：等一次工作区操作的最长时间（秒，默认 600）；收不收 file:// 的仓库地址（只给测试，0 或 1）。
 	EnvWorkspaceOperationTimeout  = "AR_WORKSPACE_OPERATION_TIMEOUT_S"
 	EnvWorkspaceAllowLocalRemotes = "AR_WORKSPACE_ALLOW_LOCAL_REMOTES"
+	// EnvTenantActiveTasks 按租户覆盖准入时未终态 Task 的上限（默认 2 个，docs/plan/open-signup.md）：
+	// 逗号分隔的“租户=个数”，0 表示不设上限，例如 swebench=8,evals=8。只给内部租户用（评测、跑分）；
+	// 在租户策略的契约里有这一项之前（S-01）放在部署配置里。
+	EnvTenantActiveTasks = "AR_TENANT_ACTIVE_TASKS"
 )
 
 // DefaultClaimCheckThreshold 是 Claim-Check 的默认阈值（字节）。
@@ -85,6 +90,8 @@ type Config struct {
 	PinnedVersionsFile string
 	// TenantPoliciesFile 是开发用的租户策略文件（各租户的 effect 上限），见 taskapi.FilePolicyResolver；空表示都用默认值。
 	TenantPoliciesFile string
+	// ActiveTaskLimits 是按租户覆盖的未终态 Task 上限（AR_TENANT_ACTIVE_TASKS）；没列出的租户用默认值，0 表示不设上限。
+	ActiveTaskLimits map[string]int
 	// ObjectStoreDir、SecretsFile 是 ObjectStore 与 SecretStore 开发实现的位置（Claim-Check 用，S-06）；
 	// 与 Python Worker 指向同一处，两边才能互相解开对方卸载的载荷。默认放在 DataDir 下。
 	ObjectStoreDir string
@@ -193,6 +200,11 @@ func FromEnv(getenv func(string) string) (Config, error) {
 	if err := cfg.Session.Validate(); err != nil {
 		return Config{}, fmt.Errorf("Session 参数不合法：%w", err)
 	}
+	limits, err := parseActiveTaskLimits(getenv(EnvTenantActiveTasks))
+	if err != nil {
+		return Config{}, err
+	}
+	cfg.ActiveTaskLimits = limits
 	cfg.WorkspaceOperationTimeout = 10 * time.Minute
 	if raw := getenv(EnvWorkspaceOperationTimeout); raw != "" {
 		n, err := strconv.Atoi(raw)
@@ -232,4 +244,25 @@ func StoreFromEnv(getenv func(string) string) Store {
 		s.RelationalDSN = secret.New(dsn)
 	}
 	return s
+}
+
+// parseActiveTaskLimits 解析 AR_TENANT_ACTIVE_TASKS：“租户=个数”，逗号分隔，个数是非负整数（0 表示不设上限）。
+func parseActiveTaskLimits(raw string) (map[string]int, error) {
+	out := map[string]int{}
+	if strings.TrimSpace(raw) == "" {
+		return out, nil
+	}
+	for _, part := range strings.Split(raw, ",") {
+		tenant, count, ok := strings.Cut(strings.TrimSpace(part), "=")
+		tenant, count = strings.TrimSpace(tenant), strings.TrimSpace(count)
+		n, err := strconv.Atoi(count)
+		if !ok || tenant == "" || err != nil || n < 0 {
+			return nil, fmt.Errorf("%s 的每一项要写成 租户=个数（非负整数），得到 %q", EnvTenantActiveTasks, strings.TrimSpace(part))
+		}
+		if _, dup := out[tenant]; dup {
+			return nil, fmt.Errorf("%s 里租户 %s 写了两次", EnvTenantActiveTasks, tenant)
+		}
+		out[tenant] = n
+	}
+	return out, nil
 }

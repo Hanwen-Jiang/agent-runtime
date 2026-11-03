@@ -199,3 +199,14 @@ app.kubernetes.io/component: {{ index . 1 }}
   mountPath: /var/lib/agentruntime/secretstore
 {{- end }}
 {{- end -}}
+
+{{/*
+AR_TENANT_ACTIVE_TASKS 的值：taskService.activeTaskLimits（租户 → 个数）按租户名排序，写成 "租户=个数,…"。
+*/}}
+{{- define "ar.activeTaskLimits" -}}
+{{- $parts := list -}}
+{{- range $tenant, $n := . -}}
+{{- $parts = append $parts (printf "%s=%d" $tenant (int $n)) -}}
+{{- end -}}
+{{- join "," $parts -}}
+{{- end -}}
