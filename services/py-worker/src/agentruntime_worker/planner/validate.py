@@ -30,6 +30,7 @@ from referencing import Registry, Resource
 from agentruntime_worker.executor import keys
 from agentruntime_worker.planner.context import PlanningContext
 from agentruntime_worker.workflows import stage_plan as sp
+from agentruntime_worker.workflows import plan as plan_steps
 
 # /schemas 随仓库发布；Worker 镜像里放在同样的相对位置。
 SCHEMAS_DIR = Path(__file__).resolve().parents[5] / "schemas"
@@ -211,8 +212,10 @@ def problems(
     context: PlanningContext,
     keep_nodes: list[str],
     earlier: Mapping[str, str] | None = None,
+    require_steps: bool = False,
 ) -> list[str]:
-    """不合格之处的说明，为空表示合格。说明会原样带给模型重问。earlier 给了时按 N-01 的规则查引用（与 Stage Runner 一致）。"""
+    """不合格之处的说明，为空表示合格。说明会原样带给模型重问。earlier 给了时按 N-01 的规则查引用（与 Stage Runner 一致）。
+    Task Plan 带了 steps 时按 N-04 查（workflows/plan.py，与 Task 工作流一致）；require_steps（第一次完整规划）时没给也不合格。"""
     if not isinstance(stage, dict):
         return ["没有给出 stage（JSON 对象）"]
     found = schema_problems("stage", stage)
@@ -229,4 +232,10 @@ def problems(
             found.append("没有给出 task_plan（JSON 对象）")
         else:
             found += schema_problems("task_plan", task_plan)
+            steps = task_plan.get("steps")
+            if steps is not None:
+                seq = stage.get("seq")
+                found += [p for p in plan_steps.step_problems(steps, seq if isinstance(seq, int) else 1) if p not in found]
+            elif require_steps:
+                found.append("第一次完整规划要在 task_plan.steps 给出 3～8 步的整体计划（见规则 10）")
     return found

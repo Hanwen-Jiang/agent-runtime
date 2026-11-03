@@ -41,6 +41,7 @@ from agentruntime_core.errors import ConflictError, InvalidError, NotFoundError
 from agentruntime_core.providers.object_store import ObjectStore, ObjectStoreProvider
 
 from agentruntime_worker.activities.types import Tenant
+from agentruntime_worker.workflows import plan as plan_steps
 from agentruntime_worker.context import summary as summaries
 from agentruntime_worker.context.modes import ModePolicy, policy_for
 from agentruntime_worker.context.partitions import STATE_HEADER, Partitions
@@ -357,6 +358,8 @@ class ContextBuilder:
         lines.append("计划：" + "，".join(planned))
         if plan.get("first_stage"):
             lines.append(f"计划摘要：{plan['first_stage']}")
+        # N-04：整体步骤在 brief 区，遮蔽、摘要都不动它；同一轮里每一步相同，不破坏提示缓存。
+        lines += plan_steps.brief_lines(state.get("plan"))
         if request.conversation:
             lines.append(request.conversation)
         if request.experiences:

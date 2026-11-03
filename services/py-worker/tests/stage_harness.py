@@ -205,6 +205,8 @@ class Script:
     finalize_error: str = ""
     # Context Builder：Planner 给出的 Task Plan（每轮都给这一份）
     task_plan: dict[str, Any] | None = None
+    # N-04：某一轮的 Task Plan（Round 序号 → Task Plan），给了就代替 task_plan
+    task_plans: dict[int, dict[str, Any] | None] = field(default_factory=dict)
     # T-09：给了就由真的 Policy Engine 执行 Hook（hook_overrides 仍可替换它的第一个结果）
     engine: Any = None
     # T-09：Catalog 来自 Registry（Stage Runner 据此核对 Atomic Node 的 executor、effect）；这时没登记的模板不在结果里
@@ -340,7 +342,7 @@ class Script:
         self.scenario_of[inp.task_id] = scenario
         self.plan_inputs.append(inp)
         await self._held(f"{names.PLAN_ROUND}:{inp.round_seq}")
-        plan = copy.deepcopy(self.task_plan)
+        plan = copy.deepcopy(self.task_plans.get(inp.round_seq, self.task_plan))
         extra = {k: v for k, v in (("goal_code", self.goal_code), ("task_family", self.task_family)) if v}
         extra.update(self.plan_codes.get(inp.round_seq, {}))
         if self.plan_for is not None:

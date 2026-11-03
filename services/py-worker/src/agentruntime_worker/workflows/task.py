@@ -29,6 +29,8 @@ S-03 留下的事件历史仍按旧路径回放；S-10 之前的历史同样按�
   接住），或者这一轮被打断：不调 Reviewer，判定由代码给出（replan，reason_code 是 user_guidance、user_interrupt）。评审中来了：不管判了什么都回
   Planner。问人中被打断：撤回问题，回 Planner。收尾之后到的拒绝。这些 replan 是用户要的，不进 Reviewer 的升级台账。
 - 各轮的重要输出（同一计划第 4 节）：写进 rounds[].highlights，见 workflows/highlights.py；不改命令序列。
+- Task Plan 的整体步骤（docs/plan/feedback-2026-11-01.md N-04，PLAN_PATCH，workflows/plan.py）：Planner 给出的步骤通过检查、又变了时写进
+  Task State 的 plan，在 stage_started 之前推 plan_updated（完整快照）；收尾、通知 Session 之前把正在做的一步记为 done 或 blocked，再推一份。
 
 工作流代码必须确定：不读系统时间、不用 random、不做 I/O、不调用模型（CLAUDE.md）。
 """
@@ -70,6 +72,7 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.reviewer.signals import history_entry
     from agentruntime_worker.reviewer.summary import apply_state_update
     from agentruntime_worker.workflows import decisions, interrupts, patches, timeouts
+    from agentruntime_worker.workflows import plan as plans
     from agentruntime_worker.workflows import verdicts as vd
     from agentruntime_worker.workflows.events import EventPublisher
     from agentruntime_worker.workflows.failures import caused_by_cancel as _caused_by_cancel
@@ -86,6 +89,7 @@ with workflow.unsafe.imports_passed_through():
         GUIDANCE_PATCH,
         INTERRUPT_WITHDRAW_PATCH,
         POLICY_PATCH,
+        PLAN_PATCH,
         PROGRESS_DETAIL_PATCH,
         R01_FIXES_PATCH,
         REFERENCES_PATCH,
@@ -235,6 +239,8 @@ class TaskWorkflow:
         # docs/plan/feedback-2026-11-01.md N-01（REFERENCES_PATCH）：之前各轮成功的顶层 Node 的结果，同一个 id 取最近一轮的。
         self._references = False
         self._earlier: dict[str, Any] = {}
+        # N-04（PLAN_PATCH）：Task State 的 plan 由这里写（workflows/plan.py），变了就推 plan_updated。
+        self._plans = False
         # N-05、N-03：上一个 Stage 的工具调用，与整个 Task 的（带 Round 序号，最多 TASK_TOOL_LOG_LIMIT 条）。
         self._stage_tool_log: list[dict[str, Any]] = []
         self._tool_log: list[dict[str, Any]] = []
@@ -288,6 +294,7 @@ class TaskWorkflow:
         self._retry_in_workflow = workflow.patched(DECISION_RETRY_PATCH)
         self._codes = workflow.patched(CODES_PATCH)
         self._references = workflow.patched(REFERENCES_PATCH)
+        self._plans = workflow.patched(PLAN_PATCH)
         if workflow.patched(GUIDANCE_PATCH):
             self._book = GuidanceBook()
             self._guidance_publisher = asyncio.ensure_future(self._publish_guidance())
@@ -617,6 +624,7 @@ class TaskWorkflow:
             triage_level: str | None = None
             # 这一轮规划的花费：计入 Round 的成本，Stage 执行时已经算进已花的钱（成本口径的人定方案）。原地重跑不经 Planner。
             plan_cost = 0.0
+            planned = rerun is None
             if rerun is None:
                 plan, plan_cost = await self._planned(seq, inputs, pinned, task_plan, last_round)
                 stage = plan.stage
@@ -634,6 +642,8 @@ class TaskWorkflow:
                 rerun = None
                 round_entry = {"seq": seq, "stage_goal": stage["goal"], "status": "running"}
             self._state["rounds"].append(round_entry)
+            if planned and plan is not None and self._plans:
+                await self._plan_changed(seq, plan.task_plan)
             if self._events is not None:
                 await self._events.stage_started(seq, stage, triage_level, plan)
 
@@ -776,6 +786,30 @@ class TaskWorkflow:
         last_round["verdict"] = changed
         if self._events is not None:
             await self._events.verdict(seq, changed, about="guidance")
+
+    # --- N-04：Task Plan 的整体步骤 ---
+
+    async def _plan_changed(self, seq: int, task_plan: dict[str, Any] | None) -> None:
+        """Planner 这一轮给出的步骤通过检查、又和现有的不同时，替换 Task State 的 plan 并推 plan_updated（stage_started 之前）。
+        没给或不合格（fast、light、保守规划）时保留现有的一份。"""
+        steps = plans.steps_from(task_plan, seq)
+        current = self._state.get("plan")
+        if steps is None or (current is not None and steps == current["steps"]):
+            return
+        self._state["plan"] = plans.snapshot(steps, seq)
+        if self._events is not None:
+            await self._events.plan_updated(seq, self._state["plan"])
+
+    async def _plan_finished(self, result: task_pb2.TaskWorkflowResult) -> None:
+        """收尾、通知 Session 之前：正在做的一步按结局记为 done 或 blocked，推最后一份 plan_updated（task_finished 永远是最后一个事件）。
+        取消的 Task 只改 Task State，不再推。"""
+        seq = max(1, self._round_seq)
+        final = plans.finished(self._state.get("plan"), seq, done=result.status == enums_pb2.TASK_STATUS_DONE)
+        if final is None:
+            return
+        self._state["plan"] = final
+        if self._events is not None and result.status != enums_pb2.TASK_STATUS_CANCELLED:
+            await self._events.plan_updated(seq, final, about="final")
 
     def _record_highlights(self, round_entry: dict[str, Any], raw: dict[str, Any] | None, results: dict[str, StageResult]) -> None:
         """docs/plan/running-task-interaction.md 第 4 节：这一轮的重要输出写进 Task State。"""
@@ -1254,6 +1288,8 @@ class TaskWorkflow:
         if self._book is not None:
             self._book.close()
         if self._s10:
+            if self._plans:
+                await self._plan_finished(result)
             await self._notify_session(result)
             if self._t09:
                 await self._task_end(result)

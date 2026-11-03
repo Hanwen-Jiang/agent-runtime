@@ -18,6 +18,7 @@ ActivityName），参数是租户上下文、去重键与 taskapi.v1.TaskEvent�
   沿用这个 Stage 的文字，也沿用它的代码。只改 activity 的入参，不改命令序列。
 - docs/plan/running-task-interaction.md 第 3 节：每次模型调用之后 context_usage（只有数字与类别名；CONTEXT_USAGE_PATCH）。
   第 2 节：纠偏的状态变了时 guidance_updated（不带文字；GUIDANCE_PATCH）。
+- docs/plan/feedback-2026-11-01.md N-04：Task Plan 的步骤变了时 plan_updated（完整快照；PLAN_PATCH，workflows/plan.py）。
 
 是工作流代码：时间用 workflow.now()，不做 I/O。
 """
@@ -62,6 +63,7 @@ _TYPES = {
     "decision_retry": task_api_pb2.TASK_EVENT_TYPE_DECISION_RETRY,
     "context_usage": task_api_pb2.TASK_EVENT_TYPE_CONTEXT_USAGE,
     "guidance_updated": task_api_pb2.TASK_EVENT_TYPE_GUIDANCE_UPDATED,
+    "plan_updated": task_api_pb2.TASK_EVENT_TYPE_PLAN_UPDATED,
 }
 # defs.schema.json 的 message_code。
 _CODE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
@@ -271,6 +273,13 @@ class EventPublisher:
         """一条纠偏的状态变了；number 是工作流里的序号（同一条可以推好几次 pending，去重键不能只看状态）。"""
         payload = {k: v for k, v in event.items() if k != "applied_round"}
         await self.publish(event.get("applied_round") or round_seq, "guidance_updated", payload, about=f"{event['guidance_id']}/{number}")
+
+    async def plan_updated(self, round_seq: int, plan: dict[str, Any], *, about: str = "") -> None:
+        """Task Plan 的步骤变了（N-04）：完整快照，内容同 Task State 的 plan；去重键 r<Round>/plan_updated[/<about>]（收尾时的最后一份是 final）。"""
+        payload: dict[str, Any] = {"steps": [dict(s) for s in plan["steps"]]}
+        if plan.get("current_step"):
+            payload["current_step"] = plan["current_step"]
+        await self.publish(round_seq, "plan_updated", payload, about=about)
 
     async def node_finished(self, round_seq: int, node_id: str, result: StageResult) -> None:
         await self.publish(round_seq, "node_finished", node_payload(node_id, result), about=node_id)
