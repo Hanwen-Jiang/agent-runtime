@@ -153,6 +153,15 @@ def test_with_a_site_repo_the_pod_may_reach_the_internet_on_443_only() -> None:
     assert any({p["port"] for p in r.get("ports", [])} == {53} for r in egress), "DNS"
 
 
+def test_the_dashboard_can_run_its_own_image_tag() -> None:
+    """evalDashboard.imageTag：只换看板的 learning 镜像，别的组件仍跟 image.tag。"""
+    manifests = render(CLOUD_VALUES, set_values=[*ENABLED, "evalDashboard.imageTag=site1"])
+    [container] = pod_spec(named(manifests, "Deployment"))["containers"]
+    assert container["image"].endswith("/learning:site1")
+    others = [c["image"] for m in by_kind(manifests, "Deployment") if m["metadata"]["name"] != NAME for c in pod_spec(m)["containers"]]
+    assert others and not [i for i in others if i.endswith(":site1")]
+
+
 def test_without_a_site_repo_nothing_changes() -> None:
     """不设仓库时与原来一样：没有环境变量、只有页面的卷、出方向不放公网。"""
     manifests = render(CLOUD_VALUES, set_values=ENABLED)

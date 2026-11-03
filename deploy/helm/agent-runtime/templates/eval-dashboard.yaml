@@ -35,7 +35,7 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: eval-dashboard
-          image: {{ include "ar.image" (list . "learning") }}
+          image: {{ if $d.imageTag }}{{ printf "%s/learning:%s" .Values.image.registry $d.imageTag }}{{ else }}{{ include "ar.image" (list . "learning") }}{{ end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args: ["-m", "agentruntime_learning.evals.dashboard_server", "--dir", "/srv/eval-dashboard", "--port", "8080"]
           {{- if or $d.metricsUrl $d.site.repo }}

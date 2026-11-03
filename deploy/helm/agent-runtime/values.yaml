@@ -194,6 +194,8 @@ pkgMirror:
 # 要 ingress.enabled 且 ingress.type=traefik。页面由发布步骤写进 ConfigMap（docs/plan/cloud-deploy.md），host 要有 DNS 记录。
 evalDashboard:
   enabled: false
+  # 看板单独用的 learning 镜像 tag，空时跟 image.tag（只换看板、不动别的组件时用）。
+  imageTag: ""
   # 对外的域名，例如 evals.cgent.link。
   host: ""
   # 入口控制器所在的命名空间（只有它能连；k3s 的 Traefik 在 kube-system）。
