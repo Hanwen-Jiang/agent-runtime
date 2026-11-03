@@ -99,7 +99,7 @@ type Defaults struct {
 type Deps struct {
 	ModelBudget    modelbudget.Provider
 	BudgetPolicies modelbudget.PolicyResolver
-	// ActiveTaskLimits 按租户覆盖准入时未终态 Task 的上限（默认 2 个）；0 表示不设上限。
+	// ActiveTaskLimits 按租户给准入时未终态 Task 的上限（没列出的租户不设上限）；0 也表示不设上限。
 	ActiveTaskLimits map[string]int
 	Ingress          ingress.Ingress
 	Durable          durable.Provider
@@ -123,9 +123,10 @@ type Server struct {
 	tasks *taskstore.Store
 }
 
-// defaultMaxConcurrentTasks 是开放注册的默认租户准入上限（docs/plan/open-signup.md）。
-// 内部租户由部署配置覆盖（Deps.ActiveTaskLimits，AR_TENANT_ACTIVE_TASKS）；在策略契约接入前不把它扩散到 proto/schema。
-const defaultMaxConcurrentTasks = 2
+// defaultMaxConcurrentTasks 是没列出的租户准入时未终态 Task 的上限：0，不设上限（2026-11-03 人定：写死每个租户 2 个太死，
+// 不同类型的用户该有不同策略；免费账号由模型预算兜住，docs/plan/open-signup.md）。要限的租户由部署配置给
+// （Deps.ActiveTaskLimits，AR_TENANT_ACTIVE_TASKS）；按用户类型的策略进租户策略的契约之前（S-01）不扩散到 proto/schema。
+const defaultMaxConcurrentTasks = 0
 
 // maxActiveTasks 是这个租户准入时未终态 Task 的上限；0 表示不设上限。
 func (s *Server) maxActiveTasks(tenantID string) int {

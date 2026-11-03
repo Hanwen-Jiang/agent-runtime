@@ -191,18 +191,29 @@ func finishSeededTask(t *testing.T, f *apiFixture, tenantID, taskID string) {
 	}
 }
 
-// Open-signup 的默认准入上限（docs/plan/open-signup.md）：同一租户最多两个未终态 Task。
-// 这些验收测试先锁定行为；实现必须在创建 Task 的同一事务/原子路径内检查，不能用先 count 再 insert 的竞态方案。
-func TestSubmitRejectsThirdActiveTaskForTenant(t *testing.T) {
+// 准入时未终态 Task 的上限（docs/plan/open-signup.md）：2026-11-03 人定默认不设上限（写死 2 个太死，不同类型的用户该有不同策略）；
+// 要限的租户由部署配置给（Deps.ActiveTaskLimits，AR_TENANT_ACTIVE_TASKS）。
+func TestSubmitHasNoActiveTaskCapByDefault(t *testing.T) {
 	f := newAPI(t)
+	for i := 1; i <= 5; i++ {
+		seedActiveTask(t, f, "t1", fmt.Sprintf("active_%d", i))
+	}
+	f.mustSubmit(f.token("t1", "u1"), newRequest("c6"))
+}
+
+// 给了上限的租户：检查在创建 Task 的同一事务/原子路径内做，不能用先 count 再 insert 的竞态方案。
+func limitT1(d *Deps) { d.ActiveTaskLimits = map[string]int{"t1": 2} }
+
+func TestSubmitRejectsThirdActiveTaskForTenant(t *testing.T) {
+	f := newAPIWith(t, limitT1)
 	seedActiveTask(t, f, "t1", "active_1")
 	seedActiveTask(t, f, "t1", "active_2")
 	_, err := f.submit(f.token("t1", "u1"), newRequest("c3"))
-	wantCode(t, "同一租户第三个未终态 Task", err, connect.CodePermissionDenied)
+	wantCode(t, "上限 2 个的租户的第三个未终态 Task", err, connect.CodePermissionDenied)
 }
 
 func TestSubmitTenantBusyIgnoresFinishedTasks(t *testing.T) {
-	f := newAPI(t)
+	f := newAPIWith(t, limitT1)
 	seedActiveTask(t, f, "t1", "active_1")
 	seedActiveTask(t, f, "t1", "active_2")
 	seedActiveTask(t, f, "t1", "finished")
@@ -215,15 +226,13 @@ func TestSubmitTenantBusyIgnoresFinishedTasks(t *testing.T) {
 }
 
 func TestSubmitTenantBusyIsolatedBetweenTenants(t *testing.T) {
-	f := newAPI(t)
+	f := newAPIWith(t, func(d *Deps) { d.ActiveTaskLimits = map[string]int{"t1": 2, "t2": 2} })
 	seedActiveTask(t, f, "t1", "active_1")
 	seedActiveTask(t, f, "t1", "active_2")
 	f.mustSubmit(f.token("t2", "u2"), newRequest("other_tenant"))
 }
 
-// 内部租户（评测、跑分、自己的账号）的上限按部署配置覆盖（AR_TENANT_ACTIVE_TASKS）：2026-11-03 SWE-bench 在 rev19 上
-// 50 题被默认的 2 个拒掉 42 题。没列出的租户仍是默认的 2 个；0 表示不设上限。
-func TestSubmitActiveTaskLimitIsOverriddenPerTenant(t *testing.T) {
+func TestSubmitActiveTaskLimitIsPerTenant(t *testing.T) {
 	f := newAPIWith(t, func(d *Deps) { d.ActiveTaskLimits = map[string]int{"evals": 3, "swebench": 0} })
 	seedActiveTask(t, f, "evals", "e1")
 	seedActiveTask(t, f, "evals", "e2")
@@ -233,13 +242,10 @@ func TestSubmitActiveTaskLimitIsOverriddenPerTenant(t *testing.T) {
 
 	for i := 1; i <= 5; i++ {
 		seedActiveTask(t, f, "swebench", fmt.Sprintf("s%d", i))
+		seedActiveTask(t, f, "t3", fmt.Sprintf("u%d", i))
 	}
 	f.mustSubmit(f.token("swebench", "u1"), newRequest("s6"))
-
-	seedActiveTask(t, f, "t1", "a1")
-	seedActiveTask(t, f, "t1", "a2")
-	_, err = f.submit(f.token("t1", "u1"), newRequest("c3"))
-	wantCode(t, "没列出的租户仍是默认的 2 个", err, connect.CodePermissionDenied)
+	f.mustSubmit(f.token("t3", "u1"), newRequest("没列出的租户不设上限"))
 }
 
 // lastSubmitSignal 返回最后一次投递给 Session 工作流的提交信号。

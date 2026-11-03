@@ -46,9 +46,8 @@ const (
 	// Workspace API（D-06）：等一次工作区操作的最长时间（秒，默认 600）；收不收 file:// 的仓库地址（只给测试，0 或 1）。
 	EnvWorkspaceOperationTimeout  = "AR_WORKSPACE_OPERATION_TIMEOUT_S"
 	EnvWorkspaceAllowLocalRemotes = "AR_WORKSPACE_ALLOW_LOCAL_REMOTES"
-	// EnvTenantActiveTasks 按租户覆盖准入时未终态 Task 的上限（默认 2 个，docs/plan/open-signup.md）：
-	// 逗号分隔的“租户=个数”，0 表示不设上限，例如 swebench=8,evals=8。只给内部租户用（评测、跑分）；
-	// 在租户策略的契约里有这一项之前（S-01）放在部署配置里。
+	// EnvTenantActiveTasks 按租户给准入时未终态 Task 的上限（没列出的租户不设上限，2026-11-03 人定，docs/plan/open-signup.md）：
+	// 逗号分隔的“租户=个数”，0 也表示不设上限，例如 t1=2,t2=4。按用户类型的策略进租户策略的契约之前（S-01）放在部署配置里。
 	EnvTenantActiveTasks = "AR_TENANT_ACTIVE_TASKS"
 )
 
@@ -90,7 +89,7 @@ type Config struct {
 	PinnedVersionsFile string
 	// TenantPoliciesFile 是开发用的租户策略文件（各租户的 effect 上限），见 taskapi.FilePolicyResolver；空表示都用默认值。
 	TenantPoliciesFile string
-	// ActiveTaskLimits 是按租户覆盖的未终态 Task 上限（AR_TENANT_ACTIVE_TASKS）；没列出的租户用默认值，0 表示不设上限。
+	// ActiveTaskLimits 是按租户给的未终态 Task 上限（AR_TENANT_ACTIVE_TASKS）；没列出的租户与 0 都不设上限。
 	ActiveTaskLimits map[string]int
 	// ObjectStoreDir、SecretsFile 是 ObjectStore 与 SecretStore 开发实现的位置（Claim-Check 用，S-06）；
 	// 与 Python Worker 指向同一处，两边才能互相解开对方卸载的载荷。默认放在 DataDir 下。

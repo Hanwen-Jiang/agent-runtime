@@ -192,7 +192,7 @@ func TestFromEnvRegistry(t *testing.T) {
 	}
 }
 
-// 按租户覆盖准入时“未终态 Task 至多几个”（默认 2 个，开放注册）：内部租户的评测与跑分要并发。
+// 按租户给准入时“未终态 Task 至多几个”（没列出的租户不设上限）。
 func TestFromEnvActiveTaskLimits(t *testing.T) {
 	m := base()
 	m[EnvTenantActiveTasks] = " swebench=8, evals=0 ,gh-hanwen-jiang=6"

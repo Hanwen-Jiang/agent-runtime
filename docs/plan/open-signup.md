@@ -1,6 +1,6 @@
 # 开放注册与普通用户的资源限制
 
-> 状态（2026-11-03）：开放注册已上线；`tenant_busy` 已在 task-service 准入实现默认每租户 2 个未终态 Task，并用租户作用域锁保证并发提交不超额。Model Gateway 已实现 `tenant_policy.model_allowlist` 的空数组/白名单语义；默认免费策略 seed 已加入 `deploy/dev/default-tenant-policies.json`，Helm 云配置同时下发每日 3 美元、每月 20 美元默认额度，生产仍需完成账本 enforcement。每日/月度模型预算双重准入、防滥用、付费策略和告警仍待完成。Go 验收测试见 `services/go-task-service/internal/taskapi/server_test.go`。
+> 状态（2026-11-03）：开放注册已上线；`tenant_busy` 已在 task-service 准入实现（租户作用域锁保证并发提交不超额），2026-11-03 起默认不设上限、要限的租户按部署配置给（第 2 节第 2 条）。Model Gateway 已实现 `tenant_policy.model_allowlist` 的空数组/白名单语义；默认免费策略 seed 已加入 `deploy/dev/default-tenant-policies.json`，Helm 云配置同时下发每日 3 美元、每月 20 美元默认额度，生产仍需完成账本 enforcement。每日/月度模型预算双重准入、防滥用、付费策略和告警仍待完成。Go 验收测试见 `services/go-task-service/internal/taskapi/server_test.go`。
 
 ## 1. 现在的做法：平台默认的租户策略
 
@@ -29,7 +29,7 @@
    （MODEL-BUDGET-01，`ad0aa6a`、`61c8765`，Helm 默认额度 `187a372`）；task-service 与 Model Gateway 共用业务库里的 `model_usage` 记录，每次模型调用先原子预留、
    按实际用量结算，超了返回 `tenant_budget_exceeded`，不重试、不换便宜模型（MODEL-BUDGET-02，`377e1db`、`b2bd9f6`、`c5ee28c`，
    见 [model-budget-enforcement-2026-11-03.md](model-budget-enforcement-2026-11-03.md)）。与供应商账单的核对仍待做；网关启动时连不上业务库就退出的问题由 `93110a6` 修了，还没部署。
-2. ~~**每个租户同时在跑的 Task 数**：task-service 准入时数本租户未结束的 Task，默认 2 个；超了 `tenant_busy`（应用提示稍后再试）。~~ 已完成；内部租户（评测、跑分）的覆盖先放在部署配置里：task-service 的 `AR_TENANT_ACTIVE_TASKS`（Chart 的 `taskService.activeTaskLimits`，“租户=个数”，0 不设上限；2026-11-03 加，起因是 rev19 上 SWE-bench 50 题被拒掉 42 题）。写进租户策略的契约（S-01）和线上告警仍属后续。
+2. ~~**每个租户同时在跑的 Task 数**：task-service 准入时数本租户未结束的 Task，默认 2 个；超了 `tenant_busy`（应用提示稍后再试）。~~ 2026-11-03 人定**默认不设上限**：写死每个租户 2 个太死（rev19 上 SWE-bench 50 题被拒掉 42 题），不同类型的用户该有不同策略，免费账号先由第 1 条的模型预算兜住。准入检查留着（与插入同一事务），要限的租户由 task-service 的 `AR_TENANT_ACTIVE_TASKS` 给（Chart 的 `taskService.activeTaskLimits`，“租户=个数”）。按用户类型（免费、付费、内部）的策略写进租户策略的契约（S-01）和线上告警是后续。
 3. ~~**免费账号的模型白名单**：默认策略的 `model_allowlist` 去掉最贵的档（例如 claude-opus），只留 mid、small 与一个 strong。~~ **执行器已完成**：Model Gateway 按租户策略区分“字段缺失=不限制”和“空数组=全部拒绝”，并在候选模型路由前拒绝不在白名单的 Profile；默认免费策略的具体 Profile 列表仍由部署侧 seed 配置。
 4. **防滥用**：coding-web 注册时要求平台账号满 30 天、有验证过的邮箱（GitHub 的 `created_at` 与 `/user/emails`）；
    运维的封禁名单（`CODING_BLOCKED_LOGINS`）；出事时一键回到名单制（重新设 `CODING_ALLOWED_LOGINS`）。

@@ -1,5 +1,5 @@
-"""task-service 准入时未终态 Task 的上限按租户覆盖（AR_TENANT_ACTIVE_TASKS）：默认每个租户 2 个（开放注册，docs/plan/open-signup.md），
-内部租户（评测、跑分）在 values 的 taskService.activeTaskLimits 里放开。不给时不渲染，与以前一样。
+"""task-service 准入时未终态 Task 的上限按租户给（AR_TENANT_ACTIVE_TASKS）：没列出的租户不设上限（2026-11-03 人定，
+docs/plan/open-signup.md），要限的租户写在 values 的 taskService.activeTaskLimits 里。不给时不渲染。
 """
 
 from __future__ import annotations
