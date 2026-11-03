@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"strconv"
@@ -99,7 +100,7 @@ type HandlerDeps struct {
 // routeStream 是 SSE 在 Ingress.Admit 里的限流维度，与提交、取消等路由分开计数。
 const routeStream = "stream_events"
 
-// NewHandler 返回 GET /v1/tasks/{task_id}/events 的处理器。先认证并按租户限流（超限 429，带 Retry-After），
+// NewHandler 返回 GET /v1/tasks/{task_id}/events 与 GET /v1/sessions/{session_id}/snapshot（snapshot.go）的处理器。先认证并按租户限流（超限 429，带 Retry-After），
 // 再确认 Task 属于该租户，然后从 Last-Event-ID（请求头或 last_event_id 查询参数）之后开始推送，推完 task_finished 后结束。
 // 令牌过期时结束这条流（每次心跳与每个事件之前检查），客户端带新令牌与 Last-Event-ID 重连。
 func NewHandler(d HandlerDeps) http.Handler {
@@ -112,6 +113,7 @@ func NewHandler(d HandlerDeps) http.Handler {
 	h := &handler{d: d, tasks: taskstore.New(d.Store)}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /v1/tasks/{task_id}/events", h.serve)
+	mux.HandleFunc("GET /v1/sessions/{session_id}/snapshot", h.snapshot)
 	return mux
 }
 
@@ -170,6 +172,13 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	if row.Finished() {
 		h.serveFinished(ctx, w, c, row, after)
+		return
+	}
+	if needsResnapshot(ctx, c, row, after) {
+		// 游标早于流里还留着的事件：只追加增量会丢，要客户端重新取会话快照（N-19）。
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		_, _ = io.WriteString(w, `{"code":"resnapshot_required"}`)
 		return
 	}
 
