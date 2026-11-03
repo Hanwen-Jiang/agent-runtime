@@ -40,6 +40,8 @@ enum WorkspaceOperation {
   WORKSPACE_OPERATION_LOG = 9;
   WORKSPACE_OPERATION_DISCARD = 10;
   WORKSPACE_OPERATION_SYNC = 11;
+  // 设置或清除工作区选用的环境配置（ENV-02；args 的 environment，没有时清除）。
+  WORKSPACE_OPERATION_SET_ENVIRONMENT = 12;
 }
 
 message WorkspaceOperationResult {

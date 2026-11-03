@@ -87,6 +87,11 @@ class WorkspaceServiceStub:
                 request_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DeleteEnvironmentConfigRequest.SerializeToString,
                 response_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DeleteEnvironmentConfigResponse.FromString,
                 _registered_method=True)
+        self.SetWorkspaceEnvironment = channel.unary_unary(
+                '/agentruntime.workspace.v1.WorkspaceService/SetWorkspaceEnvironment',
+                request_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.SetWorkspaceEnvironmentRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.SetWorkspaceEnvironmentResponse.FromString,
+                _registered_method=True)
 
 
 class WorkspaceServiceServicer:
@@ -201,6 +206,15 @@ class WorkspaceServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def SetWorkspaceEnvironment(self, request, context):
+        """给已有的工作区设置（或清除：不给 environment）选用的环境配置（ENV-02）：应用建好会话的工作副本之后、第一个 Task 之前调用，
+        与 CreateWorkspaceRequest.environment 的效果相同。只影响之后新准备的沙箱环境；已经准备好的环境不重跑 setup。
+        调用者记为选用它的用户（网络密钥按他的名字读，删除环境配置只认他）。工作区不存在时 NotFound。
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_WorkspaceServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -268,6 +282,11 @@ def add_WorkspaceServiceServicer_to_server(servicer, server):
                     servicer.DeleteEnvironmentConfig,
                     request_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DeleteEnvironmentConfigRequest.FromString,
                     response_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DeleteEnvironmentConfigResponse.SerializeToString,
+            ),
+            'SetWorkspaceEnvironment': grpc.unary_unary_rpc_method_handler(
+                    servicer.SetWorkspaceEnvironment,
+                    request_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.SetWorkspaceEnvironmentRequest.FromString,
+                    response_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.SetWorkspaceEnvironmentResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -629,6 +648,33 @@ class WorkspaceService:
             '/agentruntime.workspace.v1.WorkspaceService/DeleteEnvironmentConfig',
             agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DeleteEnvironmentConfigRequest.SerializeToString,
             agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DeleteEnvironmentConfigResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def SetWorkspaceEnvironment(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.workspace.v1.WorkspaceService/SetWorkspaceEnvironment',
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.SetWorkspaceEnvironmentRequest.SerializeToString,
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.SetWorkspaceEnvironmentResponse.FromString,
             options,
             channel_credentials,
             insecure,

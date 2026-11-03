@@ -49,6 +49,10 @@ service WorkspaceService {
   // 不删工作区，环境表（EnvironmentService）仍是状态的权威。幂等：再删一次 workspaces 为 0。只认调用者自己选用的
   // （建工作区的用户），别人的不动。
   rpc DeleteEnvironmentConfig(DeleteEnvironmentConfigRequest) returns (DeleteEnvironmentConfigResponse);
+  // 给已有的工作区设置（或清除：不给 environment）选用的环境配置（ENV-02）：应用建好会话的工作副本之后、第一个 Task 之前调用，
+  // 与 CreateWorkspaceRequest.environment 的效果相同。只影响之后新准备的沙箱环境；已经准备好的环境不重跑 setup。
+  // 调用者记为选用它的用户（网络密钥按他的名字读，删除环境配置只认他）。工作区不存在时 NotFound。
+  rpc SetWorkspaceEnvironment(SetWorkspaceEnvironmentRequest) returns (SetWorkspaceEnvironmentResponse);
 }
 
 // GitCredential 是克隆或推送用的凭据（例如 HTTPS 的用户名与令牌），只用这一次。
@@ -364,4 +368,15 @@ message DeleteEnvironmentConfigRequest {
 message DeleteEnvironmentConfigResponse {
   // 这次新标记为已删除的工作区个数（已经标记过的不算）。
   int32 workspaces = 1;
+}
+
+message SetWorkspaceEnvironmentRequest {
+  string tenant_id = 1;
+  string workspace_id = 2;
+  // 为空时清除选用的环境配置。
+  WorkspaceEnvironment environment = 3;
+}
+
+message SetWorkspaceEnvironmentResponse {
+  Workspace workspace = 1;
 }

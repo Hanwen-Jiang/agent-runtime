@@ -39,6 +39,8 @@ const (
 	WorkspaceOperation_WORKSPACE_OPERATION_LOG        WorkspaceOperation = 9
 	WorkspaceOperation_WORKSPACE_OPERATION_DISCARD    WorkspaceOperation = 10
 	WorkspaceOperation_WORKSPACE_OPERATION_SYNC       WorkspaceOperation = 11
+	// 设置或清除工作区选用的环境配置（ENV-02；args 的 environment，没有时清除）。
+	WorkspaceOperation_WORKSPACE_OPERATION_SET_ENVIRONMENT WorkspaceOperation = 12
 )
 
 // Enum value maps for WorkspaceOperation.
@@ -56,20 +58,22 @@ var (
 		9:  "WORKSPACE_OPERATION_LOG",
 		10: "WORKSPACE_OPERATION_DISCARD",
 		11: "WORKSPACE_OPERATION_SYNC",
+		12: "WORKSPACE_OPERATION_SET_ENVIRONMENT",
 	}
 	WorkspaceOperation_value = map[string]int32{
-		"WORKSPACE_OPERATION_UNSPECIFIED": 0,
-		"WORKSPACE_OPERATION_CREATE":      1,
-		"WORKSPACE_OPERATION_DIFF":        2,
-		"WORKSPACE_OPERATION_COMMIT":      3,
-		"WORKSPACE_OPERATION_PUSH":        4,
-		"WORKSPACE_OPERATION_ARCHIVE":     5,
-		"WORKSPACE_OPERATION_DELETE":      6,
-		"WORKSPACE_OPERATION_LIST_FILES":  7,
-		"WORKSPACE_OPERATION_READ_FILE":   8,
-		"WORKSPACE_OPERATION_LOG":         9,
-		"WORKSPACE_OPERATION_DISCARD":     10,
-		"WORKSPACE_OPERATION_SYNC":        11,
+		"WORKSPACE_OPERATION_UNSPECIFIED":     0,
+		"WORKSPACE_OPERATION_CREATE":          1,
+		"WORKSPACE_OPERATION_DIFF":            2,
+		"WORKSPACE_OPERATION_COMMIT":          3,
+		"WORKSPACE_OPERATION_PUSH":            4,
+		"WORKSPACE_OPERATION_ARCHIVE":         5,
+		"WORKSPACE_OPERATION_DELETE":          6,
+		"WORKSPACE_OPERATION_LIST_FILES":      7,
+		"WORKSPACE_OPERATION_READ_FILE":       8,
+		"WORKSPACE_OPERATION_LOG":             9,
+		"WORKSPACE_OPERATION_DISCARD":         10,
+		"WORKSPACE_OPERATION_SYNC":            11,
+		"WORKSPACE_OPERATION_SET_ENVIRONMENT": 12,
 	}
 )
 
@@ -271,7 +275,7 @@ const file_agentruntime_workflow_v1_workspace_proto_rawDesc = "" +
 	"\frequested_by\x18\a \x01(\tR\vrequestedBy\"\x80\x01\n" +
 	"\x18WorkspaceOperationResult\x12/\n" +
 	"\x06result\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x06result\x123\n" +
-	"\x05error\x18\x02 \x01(\v2\x1d.agentruntime.common.v1.ErrorR\x05error*\x99\x03\n" +
+	"\x05error\x18\x02 \x01(\v2\x1d.agentruntime.common.v1.ErrorR\x05error*\xc2\x03\n" +
 	"\x12WorkspaceOperation\x12#\n" +
 	"\x1fWORKSPACE_OPERATION_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aWORKSPACE_OPERATION_CREATE\x10\x01\x12\x1c\n" +
@@ -285,7 +289,8 @@ const file_agentruntime_workflow_v1_workspace_proto_rawDesc = "" +
 	"\x17WORKSPACE_OPERATION_LOG\x10\t\x12\x1f\n" +
 	"\x1bWORKSPACE_OPERATION_DISCARD\x10\n" +
 	"\x12\x1c\n" +
-	"\x18WORKSPACE_OPERATION_SYNC\x10\vB\x88\x02\n" +
+	"\x18WORKSPACE_OPERATION_SYNC\x10\v\x12'\n" +
+	"#WORKSPACE_OPERATION_SET_ENVIRONMENT\x10\fB\x88\x02\n" +
 	"\x1ccom.agentruntime.workflow.v1B\x0eWorkspaceProtoP\x01ZVgithub.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1;workflowv1\xa2\x02\x03AWX\xaa\x02\x18Agentruntime.Workflow.V1\xca\x02\x18Agentruntime\\Workflow\\V1\xe2\x02$Agentruntime\\Workflow\\V1\\GPBMetadata\xea\x02\x1aAgentruntime::Workflow::V1b\x06proto3"
 
 var (

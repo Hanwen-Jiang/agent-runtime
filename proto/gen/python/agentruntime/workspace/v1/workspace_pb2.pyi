@@ -414,3 +414,19 @@ class DeleteEnvironmentConfigResponse(_message.Message):
     WORKSPACES_FIELD_NUMBER: _ClassVar[int]
     workspaces: int
     def __init__(self, workspaces: _Optional[int] = ...) -> None: ...
+
+class SetWorkspaceEnvironmentRequest(_message.Message):
+    __slots__ = ("tenant_id", "workspace_id", "environment")
+    TENANT_ID_FIELD_NUMBER: _ClassVar[int]
+    WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
+    ENVIRONMENT_FIELD_NUMBER: _ClassVar[int]
+    tenant_id: str
+    workspace_id: str
+    environment: WorkspaceEnvironment
+    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., environment: _Optional[_Union[WorkspaceEnvironment, _Mapping]] = ...) -> None: ...
+
+class SetWorkspaceEnvironmentResponse(_message.Message):
+    __slots__ = ("workspace",)
+    WORKSPACE_FIELD_NUMBER: _ClassVar[int]
+    workspace: Workspace
+    def __init__(self, workspace: _Optional[_Union[Workspace, _Mapping]] = ...) -> None: ...

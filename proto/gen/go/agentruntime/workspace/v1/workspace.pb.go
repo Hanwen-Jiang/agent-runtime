@@ -2459,6 +2459,111 @@ func (x *DeleteEnvironmentConfigResponse) GetWorkspaces() int32 {
 	return 0
 }
 
+type SetWorkspaceEnvironmentRequest struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	TenantId    string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	WorkspaceId string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	// 为空时清除选用的环境配置。
+	Environment   *WorkspaceEnvironment `protobuf:"bytes,3,opt,name=environment,proto3" json:"environment,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetWorkspaceEnvironmentRequest) Reset() {
+	*x = SetWorkspaceEnvironmentRequest{}
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetWorkspaceEnvironmentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetWorkspaceEnvironmentRequest) ProtoMessage() {}
+
+func (x *SetWorkspaceEnvironmentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetWorkspaceEnvironmentRequest.ProtoReflect.Descriptor instead.
+func (*SetWorkspaceEnvironmentRequest) Descriptor() ([]byte, []int) {
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *SetWorkspaceEnvironmentRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *SetWorkspaceEnvironmentRequest) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *SetWorkspaceEnvironmentRequest) GetEnvironment() *WorkspaceEnvironment {
+	if x != nil {
+		return x.Environment
+	}
+	return nil
+}
+
+type SetWorkspaceEnvironmentResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Workspace     *Workspace             `protobuf:"bytes,1,opt,name=workspace,proto3" json:"workspace,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetWorkspaceEnvironmentResponse) Reset() {
+	*x = SetWorkspaceEnvironmentResponse{}
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetWorkspaceEnvironmentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetWorkspaceEnvironmentResponse) ProtoMessage() {}
+
+func (x *SetWorkspaceEnvironmentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetWorkspaceEnvironmentResponse.ProtoReflect.Descriptor instead.
+func (*SetWorkspaceEnvironmentResponse) Descriptor() ([]byte, []int) {
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *SetWorkspaceEnvironmentResponse) GetWorkspace() *Workspace {
+	if x != nil {
+		return x.Workspace
+	}
+	return nil
+}
+
 var File_agentruntime_workspace_v1_workspace_proto protoreflect.FileDescriptor
 
 const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
@@ -2638,7 +2743,13 @@ const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
 	"\x1fDeleteEnvironmentConfigResponse\x12\x1e\n" +
 	"\n" +
 	"workspaces\x18\x01 \x01(\x05R\n" +
-	"workspaces*\x88\x01\n" +
+	"workspaces\"\xb3\x01\n" +
+	"\x1eSetWorkspaceEnvironmentRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
+	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12Q\n" +
+	"\venvironment\x18\x03 \x01(\v2/.agentruntime.workspace.v1.WorkspaceEnvironmentR\venvironment\"e\n" +
+	"\x1fSetWorkspaceEnvironmentResponse\x12B\n" +
+	"\tworkspace\x18\x01 \x01(\v2$.agentruntime.workspace.v1.WorkspaceR\tworkspace*\x88\x01\n" +
 	"\x0eWorkspaceState\x12\x1f\n" +
 	"\x1bWORKSPACE_STATE_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16WORKSPACE_STATE_ACTIVE\x10\x01\x12\x1c\n" +
@@ -2653,7 +2764,7 @@ const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
 	"\x15FILE_TYPE_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eFILE_TYPE_FILE\x10\x01\x12\x17\n" +
 	"\x13FILE_TYPE_DIRECTORY\x10\x02\x12\x15\n" +
-	"\x11FILE_TYPE_SYMLINK\x10\x032\xf4\v\n" +
+	"\x11FILE_TYPE_SYMLINK\x10\x032\x87\r\n" +
 	"\x10WorkspaceService\x12x\n" +
 	"\x0fCreateWorkspace\x121.agentruntime.workspace.v1.CreateWorkspaceRequest\x1a2.agentruntime.workspace.v1.CreateWorkspaceResponse\x12u\n" +
 	"\x0eListWorkspaces\x120.agentruntime.workspace.v1.ListWorkspacesRequest\x1a1.agentruntime.workspace.v1.ListWorkspacesResponse\x12`\n" +
@@ -2667,7 +2778,8 @@ const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
 	"\x06GetLog\x12(.agentruntime.workspace.v1.GetLogRequest\x1a).agentruntime.workspace.v1.GetLogResponse\x12u\n" +
 	"\x0eDiscardChanges\x120.agentruntime.workspace.v1.DiscardChangesRequest\x1a1.agentruntime.workspace.v1.DiscardChangesResponse\x12r\n" +
 	"\rSyncWorkspace\x12/.agentruntime.workspace.v1.SyncWorkspaceRequest\x1a0.agentruntime.workspace.v1.SyncWorkspaceResponse\x12\x90\x01\n" +
-	"\x17DeleteEnvironmentConfig\x129.agentruntime.workspace.v1.DeleteEnvironmentConfigRequest\x1a:.agentruntime.workspace.v1.DeleteEnvironmentConfigResponseB\x8f\x02\n" +
+	"\x17DeleteEnvironmentConfig\x129.agentruntime.workspace.v1.DeleteEnvironmentConfigRequest\x1a:.agentruntime.workspace.v1.DeleteEnvironmentConfigResponse\x12\x90\x01\n" +
+	"\x17SetWorkspaceEnvironment\x129.agentruntime.workspace.v1.SetWorkspaceEnvironmentRequest\x1a:.agentruntime.workspace.v1.SetWorkspaceEnvironmentResponseB\x8f\x02\n" +
 	"\x1dcom.agentruntime.workspace.v1B\x0eWorkspaceProtoP\x01ZXgithub.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workspace/v1;workspacev1\xa2\x02\x03AWX\xaa\x02\x19Agentruntime.Workspace.V1\xca\x02\x19Agentruntime\\Workspace\\V1\xe2\x02%Agentruntime\\Workspace\\V1\\GPBMetadata\xea\x02\x1bAgentruntime::Workspace::V1b\x06proto3"
 
 var (
@@ -2683,7 +2795,7 @@ func file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP() []byte {
 }
 
 var file_agentruntime_workspace_v1_workspace_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_agentruntime_workspace_v1_workspace_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
+var file_agentruntime_workspace_v1_workspace_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
 var file_agentruntime_workspace_v1_workspace_proto_goTypes = []any{
 	(WorkspaceState)(0),                     // 0: agentruntime.workspace.v1.WorkspaceState
 	(NetworkMode)(0),                        // 1: agentruntime.workspace.v1.NetworkMode
@@ -2724,12 +2836,14 @@ var file_agentruntime_workspace_v1_workspace_proto_goTypes = []any{
 	(*SyncWorkspaceResponse)(nil),           // 36: agentruntime.workspace.v1.SyncWorkspaceResponse
 	(*DeleteEnvironmentConfigRequest)(nil),  // 37: agentruntime.workspace.v1.DeleteEnvironmentConfigRequest
 	(*DeleteEnvironmentConfigResponse)(nil), // 38: agentruntime.workspace.v1.DeleteEnvironmentConfigResponse
-	(*timestamppb.Timestamp)(nil),           // 39: google.protobuf.Timestamp
+	(*SetWorkspaceEnvironmentRequest)(nil),  // 39: agentruntime.workspace.v1.SetWorkspaceEnvironmentRequest
+	(*SetWorkspaceEnvironmentResponse)(nil), // 40: agentruntime.workspace.v1.SetWorkspaceEnvironmentResponse
+	(*timestamppb.Timestamp)(nil),           // 41: google.protobuf.Timestamp
 }
 var file_agentruntime_workspace_v1_workspace_proto_depIdxs = []int32{
 	0,  // 0: agentruntime.workspace.v1.Workspace.state:type_name -> agentruntime.workspace.v1.WorkspaceState
-	39, // 1: agentruntime.workspace.v1.Workspace.created_at:type_name -> google.protobuf.Timestamp
-	39, // 2: agentruntime.workspace.v1.Workspace.updated_at:type_name -> google.protobuf.Timestamp
+	41, // 1: agentruntime.workspace.v1.Workspace.created_at:type_name -> google.protobuf.Timestamp
+	41, // 2: agentruntime.workspace.v1.Workspace.updated_at:type_name -> google.protobuf.Timestamp
 	6,  // 3: agentruntime.workspace.v1.WorkspaceEnvironment.network:type_name -> agentruntime.workspace.v1.EnvironmentNetwork
 	8,  // 4: agentruntime.workspace.v1.WorkspaceEnvironment.secret_headers:type_name -> agentruntime.workspace.v1.SecretHeader
 	1,  // 5: agentruntime.workspace.v1.EnvironmentNetwork.mode:type_name -> agentruntime.workspace.v1.NetworkMode
@@ -2743,40 +2857,44 @@ var file_agentruntime_workspace_v1_workspace_proto_depIdxs = []int32{
 	3,  // 13: agentruntime.workspace.v1.PushWorkspaceRequest.credential:type_name -> agentruntime.workspace.v1.GitCredential
 	2,  // 14: agentruntime.workspace.v1.FileEntry.type:type_name -> agentruntime.workspace.v1.FileType
 	25, // 15: agentruntime.workspace.v1.ListFilesResponse.entries:type_name -> agentruntime.workspace.v1.FileEntry
-	39, // 16: agentruntime.workspace.v1.Commit.authored_at:type_name -> google.protobuf.Timestamp
+	41, // 16: agentruntime.workspace.v1.Commit.authored_at:type_name -> google.protobuf.Timestamp
 	31, // 17: agentruntime.workspace.v1.GetLogResponse.commits:type_name -> agentruntime.workspace.v1.Commit
 	3,  // 18: agentruntime.workspace.v1.SyncWorkspaceRequest.credential:type_name -> agentruntime.workspace.v1.GitCredential
-	10, // 19: agentruntime.workspace.v1.WorkspaceService.CreateWorkspace:input_type -> agentruntime.workspace.v1.CreateWorkspaceRequest
-	12, // 20: agentruntime.workspace.v1.WorkspaceService.ListWorkspaces:input_type -> agentruntime.workspace.v1.ListWorkspacesRequest
-	14, // 21: agentruntime.workspace.v1.WorkspaceService.GetDiff:input_type -> agentruntime.workspace.v1.GetDiffRequest
-	17, // 22: agentruntime.workspace.v1.WorkspaceService.CommitWorkspace:input_type -> agentruntime.workspace.v1.CommitWorkspaceRequest
-	19, // 23: agentruntime.workspace.v1.WorkspaceService.PushWorkspace:input_type -> agentruntime.workspace.v1.PushWorkspaceRequest
-	21, // 24: agentruntime.workspace.v1.WorkspaceService.ArchiveWorkspace:input_type -> agentruntime.workspace.v1.ArchiveWorkspaceRequest
-	23, // 25: agentruntime.workspace.v1.WorkspaceService.DeleteWorkspace:input_type -> agentruntime.workspace.v1.DeleteWorkspaceRequest
-	26, // 26: agentruntime.workspace.v1.WorkspaceService.ListFiles:input_type -> agentruntime.workspace.v1.ListFilesRequest
-	28, // 27: agentruntime.workspace.v1.WorkspaceService.ReadFile:input_type -> agentruntime.workspace.v1.ReadFileRequest
-	30, // 28: agentruntime.workspace.v1.WorkspaceService.GetLog:input_type -> agentruntime.workspace.v1.GetLogRequest
-	33, // 29: agentruntime.workspace.v1.WorkspaceService.DiscardChanges:input_type -> agentruntime.workspace.v1.DiscardChangesRequest
-	35, // 30: agentruntime.workspace.v1.WorkspaceService.SyncWorkspace:input_type -> agentruntime.workspace.v1.SyncWorkspaceRequest
-	37, // 31: agentruntime.workspace.v1.WorkspaceService.DeleteEnvironmentConfig:input_type -> agentruntime.workspace.v1.DeleteEnvironmentConfigRequest
-	11, // 32: agentruntime.workspace.v1.WorkspaceService.CreateWorkspace:output_type -> agentruntime.workspace.v1.CreateWorkspaceResponse
-	13, // 33: agentruntime.workspace.v1.WorkspaceService.ListWorkspaces:output_type -> agentruntime.workspace.v1.ListWorkspacesResponse
-	16, // 34: agentruntime.workspace.v1.WorkspaceService.GetDiff:output_type -> agentruntime.workspace.v1.GetDiffResponse
-	18, // 35: agentruntime.workspace.v1.WorkspaceService.CommitWorkspace:output_type -> agentruntime.workspace.v1.CommitWorkspaceResponse
-	20, // 36: agentruntime.workspace.v1.WorkspaceService.PushWorkspace:output_type -> agentruntime.workspace.v1.PushWorkspaceResponse
-	22, // 37: agentruntime.workspace.v1.WorkspaceService.ArchiveWorkspace:output_type -> agentruntime.workspace.v1.ArchiveWorkspaceResponse
-	24, // 38: agentruntime.workspace.v1.WorkspaceService.DeleteWorkspace:output_type -> agentruntime.workspace.v1.DeleteWorkspaceResponse
-	27, // 39: agentruntime.workspace.v1.WorkspaceService.ListFiles:output_type -> agentruntime.workspace.v1.ListFilesResponse
-	29, // 40: agentruntime.workspace.v1.WorkspaceService.ReadFile:output_type -> agentruntime.workspace.v1.ReadFileResponse
-	32, // 41: agentruntime.workspace.v1.WorkspaceService.GetLog:output_type -> agentruntime.workspace.v1.GetLogResponse
-	34, // 42: agentruntime.workspace.v1.WorkspaceService.DiscardChanges:output_type -> agentruntime.workspace.v1.DiscardChangesResponse
-	36, // 43: agentruntime.workspace.v1.WorkspaceService.SyncWorkspace:output_type -> agentruntime.workspace.v1.SyncWorkspaceResponse
-	38, // 44: agentruntime.workspace.v1.WorkspaceService.DeleteEnvironmentConfig:output_type -> agentruntime.workspace.v1.DeleteEnvironmentConfigResponse
-	32, // [32:45] is the sub-list for method output_type
-	19, // [19:32] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	5,  // 19: agentruntime.workspace.v1.SetWorkspaceEnvironmentRequest.environment:type_name -> agentruntime.workspace.v1.WorkspaceEnvironment
+	4,  // 20: agentruntime.workspace.v1.SetWorkspaceEnvironmentResponse.workspace:type_name -> agentruntime.workspace.v1.Workspace
+	10, // 21: agentruntime.workspace.v1.WorkspaceService.CreateWorkspace:input_type -> agentruntime.workspace.v1.CreateWorkspaceRequest
+	12, // 22: agentruntime.workspace.v1.WorkspaceService.ListWorkspaces:input_type -> agentruntime.workspace.v1.ListWorkspacesRequest
+	14, // 23: agentruntime.workspace.v1.WorkspaceService.GetDiff:input_type -> agentruntime.workspace.v1.GetDiffRequest
+	17, // 24: agentruntime.workspace.v1.WorkspaceService.CommitWorkspace:input_type -> agentruntime.workspace.v1.CommitWorkspaceRequest
+	19, // 25: agentruntime.workspace.v1.WorkspaceService.PushWorkspace:input_type -> agentruntime.workspace.v1.PushWorkspaceRequest
+	21, // 26: agentruntime.workspace.v1.WorkspaceService.ArchiveWorkspace:input_type -> agentruntime.workspace.v1.ArchiveWorkspaceRequest
+	23, // 27: agentruntime.workspace.v1.WorkspaceService.DeleteWorkspace:input_type -> agentruntime.workspace.v1.DeleteWorkspaceRequest
+	26, // 28: agentruntime.workspace.v1.WorkspaceService.ListFiles:input_type -> agentruntime.workspace.v1.ListFilesRequest
+	28, // 29: agentruntime.workspace.v1.WorkspaceService.ReadFile:input_type -> agentruntime.workspace.v1.ReadFileRequest
+	30, // 30: agentruntime.workspace.v1.WorkspaceService.GetLog:input_type -> agentruntime.workspace.v1.GetLogRequest
+	33, // 31: agentruntime.workspace.v1.WorkspaceService.DiscardChanges:input_type -> agentruntime.workspace.v1.DiscardChangesRequest
+	35, // 32: agentruntime.workspace.v1.WorkspaceService.SyncWorkspace:input_type -> agentruntime.workspace.v1.SyncWorkspaceRequest
+	37, // 33: agentruntime.workspace.v1.WorkspaceService.DeleteEnvironmentConfig:input_type -> agentruntime.workspace.v1.DeleteEnvironmentConfigRequest
+	39, // 34: agentruntime.workspace.v1.WorkspaceService.SetWorkspaceEnvironment:input_type -> agentruntime.workspace.v1.SetWorkspaceEnvironmentRequest
+	11, // 35: agentruntime.workspace.v1.WorkspaceService.CreateWorkspace:output_type -> agentruntime.workspace.v1.CreateWorkspaceResponse
+	13, // 36: agentruntime.workspace.v1.WorkspaceService.ListWorkspaces:output_type -> agentruntime.workspace.v1.ListWorkspacesResponse
+	16, // 37: agentruntime.workspace.v1.WorkspaceService.GetDiff:output_type -> agentruntime.workspace.v1.GetDiffResponse
+	18, // 38: agentruntime.workspace.v1.WorkspaceService.CommitWorkspace:output_type -> agentruntime.workspace.v1.CommitWorkspaceResponse
+	20, // 39: agentruntime.workspace.v1.WorkspaceService.PushWorkspace:output_type -> agentruntime.workspace.v1.PushWorkspaceResponse
+	22, // 40: agentruntime.workspace.v1.WorkspaceService.ArchiveWorkspace:output_type -> agentruntime.workspace.v1.ArchiveWorkspaceResponse
+	24, // 41: agentruntime.workspace.v1.WorkspaceService.DeleteWorkspace:output_type -> agentruntime.workspace.v1.DeleteWorkspaceResponse
+	27, // 42: agentruntime.workspace.v1.WorkspaceService.ListFiles:output_type -> agentruntime.workspace.v1.ListFilesResponse
+	29, // 43: agentruntime.workspace.v1.WorkspaceService.ReadFile:output_type -> agentruntime.workspace.v1.ReadFileResponse
+	32, // 44: agentruntime.workspace.v1.WorkspaceService.GetLog:output_type -> agentruntime.workspace.v1.GetLogResponse
+	34, // 45: agentruntime.workspace.v1.WorkspaceService.DiscardChanges:output_type -> agentruntime.workspace.v1.DiscardChangesResponse
+	36, // 46: agentruntime.workspace.v1.WorkspaceService.SyncWorkspace:output_type -> agentruntime.workspace.v1.SyncWorkspaceResponse
+	38, // 47: agentruntime.workspace.v1.WorkspaceService.DeleteEnvironmentConfig:output_type -> agentruntime.workspace.v1.DeleteEnvironmentConfigResponse
+	40, // 48: agentruntime.workspace.v1.WorkspaceService.SetWorkspaceEnvironment:output_type -> agentruntime.workspace.v1.SetWorkspaceEnvironmentResponse
+	35, // [35:49] is the sub-list for method output_type
+	21, // [21:35] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_agentruntime_workspace_v1_workspace_proto_init() }
@@ -2790,7 +2908,7 @@ func file_agentruntime_workspace_v1_workspace_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agentruntime_workspace_v1_workspace_proto_rawDesc), len(file_agentruntime_workspace_v1_workspace_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   36,
+			NumMessages:   38,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
