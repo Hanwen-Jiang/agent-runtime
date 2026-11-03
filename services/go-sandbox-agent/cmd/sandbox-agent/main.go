@@ -18,6 +18,8 @@
 // 命令只拿到这些环境变量：PATH、HOME（默认 /tmp）、LANG（默认 C.UTF-8）、LC_ALL、TZ（Windows 上另有 SYSTEMROOT、WINDIR、
 // PATHEXT），加上 PYTHONIOENCODING=utf-8 与 PYTHONDONTWRITEBYTECODE=1，加上 AGENT_ENV_PASSTHROUGH 列出的；AGENT_* 一个都不给。
 // 每次执行还可以带这次的环境变量（请求的 env）。
+//
+// 命令与 agent 是同一个 uid：Linux 上 agent 启动时把自己设成不可转储，命令读不到 /proc/<agent>/environ 与 mem（AGENT-TOK-01）。
 package main
 
 import (
@@ -53,6 +55,10 @@ func main() {
 		default:
 			log.Fatalf("不认识的子命令 %s", os.Args[1])
 		}
+	}
+	// 先于读令牌：令牌在启动时的环境块里，Unsetenv 删不掉，只能不让命令读 agent 的 /proc。做不到就不起服务。
+	if err := hideFromCommands(); err != nil {
+		log.Fatalf("PR_SET_DUMPABLE：%v", err)
 	}
 	token := os.Getenv("AGENT_TOKEN")
 	if file := os.Getenv("AGENT_TOKEN_FILE"); token == "" && file != "" {
