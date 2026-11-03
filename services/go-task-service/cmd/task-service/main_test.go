@@ -6,12 +6,15 @@ package main
 import (
 	"bytes"
 	"context"
+	"log/slog"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/jwtingress"
 	"github.com/agentruntime/agent-runtime/libs/go-core/clock"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/localingress"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/memcache"
@@ -159,6 +162,119 @@ func TestNewCacheFailsFastWhenValkeyIsUnreachable(t *testing.T) {
 		t.Errorf("没配 AR_VALKEY_URL 时用进程内的开发实现，实际 %T", p)
 	}
 	_ = p.Close()
+}
+
+// AUTH-01（docs/plan/auth-tokens-2026-11-03.md）：serve 按配置构造 Ingress。配了签发方登记时验 Ed25519 的 JWT，
+// 收开发令牌时两种都收（迁移期间），不收时开发令牌被拒；生产模式下仍收开发令牌要记一条警告；登记文件坏了起不来。
+func TestNewIngressFollowsTheConfig(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	publicKey, privatePEM, err := jwtingress.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	issuers := filepath.Join(dir, "issuers.json")
+	if err := os.WriteFile(issuers, []byte(`{"issuers": [{"iss": "coding-agent", "keys": {"k1": "`+publicKey+`"}}]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	key, err := jwtingress.ParsePrivateKey(privatePEM)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwt, _ := jwtingress.NewSigner("coding-agent", "k1", key, nil).Issue(jwtingress.Claims{Tenant: "t1", User: "u1", TTL: time.Hour})
+	dev := localingress.New(localingress.Options{SigningKey: []byte(signingKey)}).IssueToken("t1", "u1", time.Hour)
+	caches := memcache.New(memcache.Options{})
+	defer caches.Close()
+	base := config.Config{DevSigningKey: secret.New(signingKey), RateLimitPerMinute: 60}
+	cases := []struct {
+		name         string
+		edit         func(*config.Config)
+		jwtOK, devOK bool
+		warnsInLog   bool
+	}{
+		{"只收开发令牌（开发模式的默认）", func(c *config.Config) { c.DevTokens = true }, false, true, false},
+		{"迁移期间两种都收", func(c *config.Config) { c.DevTokens, c.IngressIssuersFile = true, issuers }, true, true, false},
+		{"只收 JWT", func(c *config.Config) { c.IngressIssuersFile, c.DevSigningKey = issuers, secret.Value{} }, true, false, false},
+		{"生产模式迁移期间", func(c *config.Config) { c.Production, c.DevTokens, c.IngressIssuersFile = true, true, issuers }, true, true, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := base
+			tc.edit(&cfg)
+			var logs bytes.Buffer
+			ing, err := newIngress(cfg, caches, clock.System{}, slog.New(slog.NewTextHandler(&logs, nil)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer ing.Close()
+			for token, want := range map[string]bool{jwt: tc.jwtOK, dev: tc.devOK} {
+				_, err := ing.Authenticate(ctx, ingress.Credentials{BearerToken: token})
+				if (err == nil) != want {
+					t.Errorf("令牌 %.12s…：应当%v，实际 %v", token, map[bool]string{true: "收", false: "拒"}[want], err)
+				}
+			}
+			if warned := strings.Contains(logs.String(), config.EnvIngressDevTokens); warned != tc.warnsInLog {
+				t.Errorf("生产模式收开发令牌时记警告（且只在那时）：%s", logs.String())
+			}
+			if strings.Contains(logs.String(), signingKey) {
+				t.Error("日志不能带出签名密钥")
+			}
+		})
+	}
+	broken := filepath.Join(dir, "broken.json")
+	_ = os.WriteFile(broken, []byte(`{"issuers": []}`), 0o600)
+	for _, path := range []string{broken, filepath.Join(dir, "missing.json")} {
+		if _, err := newIngress(config.Config{IngressIssuersFile: path}, caches, clock.System{}, slog.Default()); err == nil {
+			t.Errorf("登记文件 %s 不合格时 serve 起不来", filepath.Base(path))
+		}
+	}
+}
+
+// AUTH-01：keygen 生成一对密钥，私钥写进 --out（不覆盖已有的文件），标准输出是能直接用的签发方登记（只有公钥）；
+// dev-token --jwt-key 用这把私钥签 JWT，按那份登记验得过。
+func TestKeygenAndJWTDevToken(t *testing.T) {
+	dir := t.TempDir()
+	keyFile := filepath.Join(dir, "coding-agent.pem")
+	var out, errOut bytes.Buffer
+	if code := run([]string{"keygen", "--iss", "coding-agent", "--kid", "k2026", "--out", keyFile}, &out, &errOut, getenv(nil)); code != 0 {
+		t.Fatalf("keygen 应成功，退出码 %d：%s", code, errOut.String())
+	}
+	private, err := os.ReadFile(keyFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := jwtingress.ParsePrivateKey(private); err != nil {
+		t.Fatalf("--out 里是私钥：%v", err)
+	}
+	if strings.Contains(out.String(), "PRIVATE") || strings.Contains(out.String(), strings.TrimSpace(string(private))) {
+		t.Fatal("标准输出不能带出私钥")
+	}
+	issuers := filepath.Join(dir, "issuers.json")
+	if err := os.WriteFile(issuers, out.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := jwtingress.LoadConfig(issuers)
+	if err != nil || len(cfg.Issuers) != 1 || cfg.Issuers[0].Issuer != "coding-agent" || cfg.Issuers[0].Keys["k2026"] == "" {
+		t.Fatalf("标准输出是签发方登记：%+v %v", cfg, err)
+	}
+	if code := run([]string{"keygen", "--iss", "coding-agent", "--kid", "k2", "--out", keyFile}, &out, &errOut, getenv(nil)); code == 0 {
+		t.Error("--out 已经有文件时不覆盖")
+	}
+
+	out.Reset()
+	code := run([]string{"dev-token", "--tenant", "t1", "--user", "u1", "--scope", "task.approve", "--jwt-key", keyFile, "--iss", "coding-agent", "--kid", "k2026"},
+		&out, &errOut, getenv(nil))
+	if code != 0 {
+		t.Fatalf("dev-token --jwt-key 不要 AR_DEV_SIGNING_KEY：退出码 %d：%s", code, errOut.String())
+	}
+	p, err := jwtingress.New(jwtingress.Options{Config: cfg})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := p.Authenticate(context.Background(), ingress.Credentials{BearerToken: strings.TrimSpace(out.String())})
+	if err != nil || id.TenantID != "t1" || id.UserID != "u1" || len(id.Scopes) != 1 || id.Scopes[0] != "task.approve" {
+		t.Fatalf("JWT 验得过并带出 t1/u1/task.approve：%+v %v", id, err)
+	}
 }
 
 func TestReplaySubcommand(t *testing.T) {

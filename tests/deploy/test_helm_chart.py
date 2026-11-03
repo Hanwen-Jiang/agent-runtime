@@ -41,8 +41,8 @@ POOL = "agentruntime.io/pool"
 PYTHON_QUEUES = {names.TASK_QUEUE, names.DECISION_QUEUE, names.MODEL_QUEUE, names.PROGRAM_QUEUE}
 WORKFLOW_QUEUES = {names.TASK_QUEUE}
 SENSITIVE_ENV = re.compile(r"(?i)(password|secret|token|api_?key|signing_key|auth|dsn|credential)")
-# 不是密钥、名字却像的环境变量：它们的值是文件路径或密钥的名字。
-NOT_SECRET_ENV = {"AR_SECRETS_FILE", "AR_SECRETS_SEED_FILE", "AR_MODEL_PROVIDER_KEY_NAME"}
+# 不是密钥、名字却像的环境变量：它们的值是文件路径、密钥的名字或开关（AR_INGRESS_DEV_TOKENS 是 accept 或 refuse，AUTH-01）。
+NOT_SECRET_ENV = {"AR_SECRETS_FILE", "AR_SECRETS_SEED_FILE", "AR_MODEL_PROVIDER_KEY_NAME", "AR_INGRESS_DEV_TOKENS"}
 OTLP_HTTP_PORT = 4318
 
 

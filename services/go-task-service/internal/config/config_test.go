@@ -147,9 +147,11 @@ func TestFromEnvProfile(t *testing.T) {
 		t.Fatalf("生产模式没有 %s 应当拒绝启动并指出变量名，实际 %v", EnvValkeyURL, err)
 	}
 	m[EnvValkeyURL] = "valkey://:valkey-s3cret@valkey-agentruntime.data.svc:6379/0"
+	// AUTH-01：生产模式默认不收开发令牌，要有签发方的登记（见 TestFromEnvIngress）。
+	m[EnvIngressIssuersFile] = "/etc/agent-runtime/ingress-issuers.json"
 	cfg, err := FromEnv(env(m))
 	if err != nil {
-		t.Fatalf("生产模式配了连接串与 Valkey 应当能起来：%v", err)
+		t.Fatalf("生产模式配了连接串、Valkey 与签发方登记应当能起来：%v", err)
 	}
 	if !cfg.Production || cfg.RelationalDSN.RevealString() != dsn {
 		t.Errorf("生产模式与连接串没有读进来：production=%v", cfg.Production)
@@ -263,6 +265,76 @@ func TestFromEnvRejectsBadValues(t *testing.T) {
 				t.Error("错误信息不能带出签名密钥")
 			}
 		})
+	}
+}
+
+// AUTH-01 验收（docs/plan/auth-tokens-2026-11-03.md 第 2 节）：配了 AR_INGRESS_ISSUERS_FILE 时验签发方用 Ed25519 签的 JWT，
+// task-service 只持公钥。开发令牌（AR_DEV_SIGNING_KEY 的 HMAC）由 AR_INGRESS_DEV_TOKENS 决定收不收：开发模式默认 accept，
+// 生产模式默认 refuse（④ localingress 只留给开发）；迁移期间生产模式可以显式 accept。收开发令牌时才要签名密钥；
+// 既不收开发令牌、又没有签发方登记时没有能用的 Ingress，拒绝启动。
+func TestFromEnvIngress(t *testing.T) {
+	const issuers = "/etc/agent-runtime/ingress-issuers.json"
+	prodBase := func() map[string]string {
+		m := base()
+		m[EnvProfile] = ProfileProduction
+		m[EnvRelationalDSN] = "postgres://app@db/agentruntime"
+		m[EnvValkeyURL] = "valkey://valkey-agentruntime.data.svc:6379/0"
+		return m
+	}
+	cfg, err := FromEnv(env(base()))
+	if err != nil || !cfg.DevTokens || cfg.IngressIssuersFile != "" {
+		t.Fatalf("开发模式默认收开发令牌、没有签发方登记：%+v %v", cfg.DevTokens, err)
+	}
+
+	m := base()
+	m[EnvIngressIssuersFile] = issuers
+	cfg, err = FromEnv(env(m))
+	if err != nil || !cfg.DevTokens || cfg.IngressIssuersFile != issuers {
+		t.Fatalf("开发模式配了登记：两种令牌都收：%v", err)
+	}
+	m[EnvIngressDevTokens] = DevTokensRefuse
+	delete(m, EnvDevSigningKey)
+	cfg, err = FromEnv(env(m))
+	if err != nil || cfg.DevTokens || !cfg.DevSigningKey.IsZero() {
+		t.Fatalf("不收开发令牌时不要签名密钥：%v", err)
+	}
+	delete(m, EnvIngressIssuersFile)
+	if _, err := FromEnv(env(m)); err == nil || !strings.Contains(err.Error(), EnvIngressIssuersFile) {
+		t.Fatalf("不收开发令牌又没有登记：拒绝启动并指出 %s，实际 %v", EnvIngressIssuersFile, err)
+	}
+
+	m = prodBase()
+	_, err = FromEnv(env(m))
+	if err == nil || !strings.Contains(err.Error(), EnvIngressIssuersFile) {
+		t.Fatalf("生产模式默认不收开发令牌，没有登记时拒绝启动并指出 %s，实际 %v", EnvIngressIssuersFile, err)
+	}
+	if strings.Contains(err.Error(), key) {
+		t.Error("错误信息不能带出签名密钥")
+	}
+	m[EnvIngressIssuersFile] = issuers
+	cfg, err = FromEnv(env(m))
+	if err != nil || cfg.DevTokens || !cfg.DevSigningKey.IsZero() {
+		t.Fatalf("生产模式有登记：只收 JWT，签名密钥即使设了也不读进来：%+v %v", cfg.DevTokens, err)
+	}
+
+	// 迁移期间（coding-agent 还在发开发令牌）：生产模式显式 accept，照样要签名密钥。
+	m = prodBase()
+	m[EnvIngressDevTokens] = DevTokensAccept
+	cfg, err = FromEnv(env(m))
+	if err != nil || !cfg.DevTokens || cfg.DevSigningKey.RevealString() != key {
+		t.Fatalf("生产模式显式 accept 时收开发令牌：%v", err)
+	}
+	delete(m, EnvDevSigningKey)
+	if _, err := FromEnv(env(m)); err == nil || !strings.Contains(err.Error(), EnvDevSigningKey) {
+		t.Fatalf("收开发令牌要 %s，实际 %v", EnvDevSigningKey, err)
+	}
+
+	for _, bad := range []string{"yes", "Accept", "1", " refuse"} {
+		m := base()
+		m[EnvIngressDevTokens] = bad
+		if _, err := FromEnv(env(m)); err == nil || !strings.Contains(err.Error(), EnvIngressDevTokens) {
+			t.Errorf("%s=%q 应当报错并指出变量名，实际 %v", EnvIngressDevTokens, bad, err)
+		}
 	}
 }
 
