@@ -74,6 +74,8 @@ DIFFICULTIES = ("<15 min fix", "15 min - 1 hour", "1-4 hours", ">4 hours")
 
 # Runtime 报沙箱配额满时错误信息里的字样（Worker 的 ledger 说“个沙箱环境”，K8s 后端说“个沙箱”）。Workspace API 不带可比较的原因码，只能看文字。
 QUOTA_FULL = "个沙箱"
+# 等一等就有名额的拒绝（都是 403 permission_denied）：沙箱环境的配额、租户工作区的配额、租户未完成 Task 的上限（task-service 的准入）。
+WAIT_FOR_ROOM = (QUOTA_FULL, "个工作区", "个未完成的 Task")
 T = TypeVar("T")
 
 
@@ -472,12 +474,13 @@ class _Runner:
         self.live.case(outcome, float(cost) if cost is not None else None)
 
     def _when_room(self, call: Callable[[], T]) -> T:
-        """沙箱环境的配额满了就等一等再试：做完的 Task 的环境留着等复用，空闲到期才回收，这不算这一题出错。"""
+        """配额满了就等一等再试，这不算这一题出错：做完的 Task 的环境留着等复用，空闲到期才回收；工作区由别的题做完时删掉；
+        租户未完成的 Task 有上限（开放注册的默认是 2 个），前面的做完才能交。"""
         for _ in range(self.s.quota_wait_tries):
             try:
                 return call()
             except ApiError as err:
-                if err.status != 403 or QUOTA_FULL not in err.message:
+                if err.status != 403 or not any(m in err.message for m in WAIT_FOR_ROOM):
                     raise
             self.s.sleep(self.s.quota_wait_s)
         return call()
@@ -527,7 +530,14 @@ class _Runner:
             rec.update({"state": "created", "workspace_id": ws, "head": created["head"]})
             self._save(rec)
             request_id = hashlib.sha256(f"{self.s.run_id}\x00{inst.instance_id}\x00{created['head']}".encode()).hexdigest()[:32]
-            sub = self.rt.submit(workspace_id=ws, message=self._message(inst), client_request_id=request_id)
+            try:
+                sub = self._when_room(lambda: self.rt.submit(workspace_id=ws, message=self._message(inst), client_request_id=request_id))
+            except Exception:
+                # 没交上：工作区不留着占配额（续跑时会重建）。
+                if not self.s.keep_workspaces:
+                    with contextlib.suppress(ApiError):
+                        self.rt.delete_workspace(ws)
+                raise
             rec.update({"state": "submitted", "task_id": sub["task_id"], "events_url": sub["events_url"]})
             self._save(rec)
             with self.cond:

@@ -418,10 +418,17 @@ QUOTA = ApiError(403, "permission_denied", "同时最多 4 个沙箱环境，先
 class Flaky(FakeRuntime):
     """前几次建工作区或取 diff 按给的错误失败。"""
 
-    def __init__(self, *args: Any, create_errors: list[Exception] | None = None, diff_errors: list[Exception] | None = None, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, create_errors: list[Exception] | None = None, diff_errors: list[Exception] | None = None,
+                 submit_errors: list[Exception] | None = None, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.create_errors = list(create_errors or [])
         self.diff_errors = list(diff_errors or [])
+        self.submit_errors = list(submit_errors or [])
+
+    def submit(self, **kwargs: Any) -> dict[str, Any]:
+        if self.submit_errors:
+            raise self.submit_errors.pop(0)
+        return super().submit(**kwargs)
 
     def create_workspace(self, workspace_id: str, **kwargs: Any) -> dict[str, Any]:
         if self.create_errors:
@@ -456,6 +463,34 @@ def test_waiting_for_the_quota_gives_up_eventually(tmp_path: Path, insts: list[s
     sb.run(fake, insts[:1], tmp_path / "out", settings(budget_usd=10, task_usd_limit=2, sleep=lambda _: None, quota_wait_tries=3))
     [rec] = records(tmp_path / "out").values()
     assert rec["state"] == "error" and "沙箱环境" in rec["error"]
+
+
+def test_a_busy_tenant_is_waited_out(tmp_path: Path, insts: list[sb.Instance]) -> None:
+    """租户的未完成 Task 到了上限（task-service 的准入），等前面的做完再交，不算这一题出错，也不另建工作区。"""
+    waits: list[float] = []
+    busy = ApiError(403, "permission_denied", "本租户已有 2 个未完成的 Task")
+    fake = Flaky(submit_errors=[busy, busy])
+    sb.run(fake, insts[:1], tmp_path / "out", settings(budget_usd=10, task_usd_limit=2, sleep=waits.append))
+    [rec] = records(tmp_path / "out").values()
+    assert rec["state"] == "finished" and "error" not in rec
+    assert len(waits) == 2 and len(fake.submits) == 1 and len(fake.create_calls) == 1
+
+
+def test_a_full_workspace_quota_is_waited_out(tmp_path: Path, insts: list[sb.Instance]) -> None:
+    waits: list[float] = []
+    fake = Flaky(create_errors=[ApiError(403, "permission_denied", "同时最多 20 个工作区，先删掉不用的")])
+    sb.run(fake, insts[:1], tmp_path / "out", settings(budget_usd=10, task_usd_limit=2, sleep=waits.append))
+    [rec] = records(tmp_path / "out").values()
+    assert rec["state"] == "finished" and len(waits) == 1
+
+
+def test_a_failed_submit_does_not_leave_its_workspace_behind(tmp_path: Path, insts: list[sb.Instance]) -> None:
+    """建了工作区却没交上 Task：删掉它。不删的话出错的题越多占的工作区越多，直到租户的工作区配额满（2026-11-03 t18-rev19）。"""
+    ws = sb.workspace_id("run-1", insts[0].instance_id)
+    fake = Flaky(submit_errors=[ApiError(400, "invalid_argument", "消息太长")])
+    sb.run(fake, insts[:1], tmp_path / "out", settings(budget_usd=10, task_usd_limit=2, sleep=lambda _: None, run_id="run-1"))
+    [rec] = records(tmp_path / "out").values()
+    assert rec["state"] == "error" and fake.deleted.count(ws) >= 1 and not fake.submits
 
 
 def test_other_errors_are_not_waited_on(tmp_path: Path, insts: list[sb.Instance]) -> None:
