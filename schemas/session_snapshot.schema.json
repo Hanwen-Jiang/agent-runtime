@@ -20,7 +20,7 @@
         "task_id": {"$ref": "defs.schema.json#/$defs/task_id"},
         "status": {"$ref": "defs.schema.json#/$defs/snapshot_task_status"},
         "created_at": {"type": "string", "format": "date-time"},
-        "last_event_id": {"description": "续传游标：SSE 的 Last-Event-ID 用它，之后的事件 event_id 都比它大。source 为 record 时取业务库记的最后一个 event_id", "type": "integer", "minimum": 0},
+        "last_event_id": {"description": "续传游标：SSE 的 Last-Event-ID 用它，之后的事件 event_id 都比它大。source 为 record 时：结束的 Task 取业务库记的最后一个 event_id（task_finished）；没结束的为 0，SSE 从头补上流里还留着的（业务库的计数可能领先于正在追加的那条，拿它作游标会丢事件）", "type": "integer", "minimum": 0},
         "events": {"description": "最近的事件，按 event_id 从小到大，最多 events 参数给的条数（默认 50，最多 200）", "type": "array", "items": {"$ref": "#/$defs/event"}},
         "events_truncated": {"description": "更早的事件没有放进来", "type": "boolean"},
         "plan": {"description": "这个 Task 最新的 plan_updated（N-04）；已经在 events 里时也给，客户端不必翻找", "$ref": "#/$defs/event"},
