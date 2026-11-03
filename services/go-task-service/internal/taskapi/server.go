@@ -30,6 +30,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/durable"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/ingress"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	taskapiv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/taskapi/v1"
@@ -115,6 +116,8 @@ type Deps struct {
 	// Network 给出租户策略的 sandbox.network（提交时的 network_request 按它核对，D-16）；为空时用 Policies（它实现了
 	// NetworkPolicySource 的话），否则谁都不能申请联网。
 	Network NetworkPolicySource
+	// Objects 是交付文件所在的 ObjectStore（与 Worker 同一处，N-18，docs/plan/n18-file-delivery-f3.md）；为空时不能下载交付的文件。
+	Objects objectstore.Provider
 }
 
 // Server 实现 taskapiv1connect.TaskServiceHandler。

@@ -41,6 +41,9 @@ const (
 	TaskServiceSignalTaskProcedure = "/agentruntime.taskapi.v1.TaskService/SignalTask"
 	// TaskServiceQueryTaskProcedure is the fully-qualified name of the TaskService's QueryTask RPC.
 	TaskServiceQueryTaskProcedure = "/agentruntime.taskapi.v1.TaskService/QueryTask"
+	// TaskServiceListTaskArtifactsProcedure is the fully-qualified name of the TaskService's
+	// ListTaskArtifacts RPC.
+	TaskServiceListTaskArtifactsProcedure = "/agentruntime.taskapi.v1.TaskService/ListTaskArtifacts"
 )
 
 // TaskServiceClient is a client for the agentruntime.taskapi.v1.TaskService service.
@@ -54,6 +57,9 @@ type TaskServiceClient interface {
 	SignalTask(context.Context, *connect.Request[v1.SignalTaskRequest]) (*connect.Response[v1.SignalTaskResponse], error)
 	// 查询 Task 的状态与 Task State。
 	QueryTask(context.Context, *connect.Request[v1.QueryTaskRequest]) (*connect.Response[v1.QueryTaskResponse], error)
+	// 列出 Task 交付的文件（N-18，docs/plan/n18-file-delivery-f3.md），只给元数据。
+	// 内容从 download_path（GET，同一个 Task API 地址，带同样的认证）取：每次都重新核对租户、Task 与有效期。
+	ListTaskArtifacts(context.Context, *connect.Request[v1.ListTaskArtifactsRequest]) (*connect.Response[v1.ListTaskArtifactsResponse], error)
 }
 
 // NewTaskServiceClient constructs a client for the agentruntime.taskapi.v1.TaskService service. By
@@ -91,15 +97,22 @@ func NewTaskServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(taskServiceMethods.ByName("QueryTask")),
 			connect.WithClientOptions(opts...),
 		),
+		listTaskArtifacts: connect.NewClient[v1.ListTaskArtifactsRequest, v1.ListTaskArtifactsResponse](
+			httpClient,
+			baseURL+TaskServiceListTaskArtifactsProcedure,
+			connect.WithSchema(taskServiceMethods.ByName("ListTaskArtifacts")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // taskServiceClient implements TaskServiceClient.
 type taskServiceClient struct {
-	submitTask *connect.Client[v1.SubmitTaskRequest, v1.SubmitTaskResponse]
-	cancelTask *connect.Client[v1.CancelTaskRequest, v1.CancelTaskResponse]
-	signalTask *connect.Client[v1.SignalTaskRequest, v1.SignalTaskResponse]
-	queryTask  *connect.Client[v1.QueryTaskRequest, v1.QueryTaskResponse]
+	submitTask        *connect.Client[v1.SubmitTaskRequest, v1.SubmitTaskResponse]
+	cancelTask        *connect.Client[v1.CancelTaskRequest, v1.CancelTaskResponse]
+	signalTask        *connect.Client[v1.SignalTaskRequest, v1.SignalTaskResponse]
+	queryTask         *connect.Client[v1.QueryTaskRequest, v1.QueryTaskResponse]
+	listTaskArtifacts *connect.Client[v1.ListTaskArtifactsRequest, v1.ListTaskArtifactsResponse]
 }
 
 // SubmitTask calls agentruntime.taskapi.v1.TaskService.SubmitTask.
@@ -122,6 +135,11 @@ func (c *taskServiceClient) QueryTask(ctx context.Context, req *connect.Request[
 	return c.queryTask.CallUnary(ctx, req)
 }
 
+// ListTaskArtifacts calls agentruntime.taskapi.v1.TaskService.ListTaskArtifacts.
+func (c *taskServiceClient) ListTaskArtifacts(ctx context.Context, req *connect.Request[v1.ListTaskArtifactsRequest]) (*connect.Response[v1.ListTaskArtifactsResponse], error) {
+	return c.listTaskArtifacts.CallUnary(ctx, req)
+}
+
 // TaskServiceHandler is an implementation of the agentruntime.taskapi.v1.TaskService service.
 type TaskServiceHandler interface {
 	// 提交一条命令，立即返回 task_id 与 SSE 订阅地址（设计书 2.5）。
@@ -133,6 +151,9 @@ type TaskServiceHandler interface {
 	SignalTask(context.Context, *connect.Request[v1.SignalTaskRequest]) (*connect.Response[v1.SignalTaskResponse], error)
 	// 查询 Task 的状态与 Task State。
 	QueryTask(context.Context, *connect.Request[v1.QueryTaskRequest]) (*connect.Response[v1.QueryTaskResponse], error)
+	// 列出 Task 交付的文件（N-18，docs/plan/n18-file-delivery-f3.md），只给元数据。
+	// 内容从 download_path（GET，同一个 Task API 地址，带同样的认证）取：每次都重新核对租户、Task 与有效期。
+	ListTaskArtifacts(context.Context, *connect.Request[v1.ListTaskArtifactsRequest]) (*connect.Response[v1.ListTaskArtifactsResponse], error)
 }
 
 // NewTaskServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -166,6 +187,12 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(taskServiceMethods.ByName("QueryTask")),
 		connect.WithHandlerOptions(opts...),
 	)
+	taskServiceListTaskArtifactsHandler := connect.NewUnaryHandler(
+		TaskServiceListTaskArtifactsProcedure,
+		svc.ListTaskArtifacts,
+		connect.WithSchema(taskServiceMethods.ByName("ListTaskArtifacts")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/agentruntime.taskapi.v1.TaskService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TaskServiceSubmitTaskProcedure:
@@ -176,6 +203,8 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 			taskServiceSignalTaskHandler.ServeHTTP(w, r)
 		case TaskServiceQueryTaskProcedure:
 			taskServiceQueryTaskHandler.ServeHTTP(w, r)
+		case TaskServiceListTaskArtifactsProcedure:
+			taskServiceListTaskArtifactsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -199,4 +228,8 @@ func (UnimplementedTaskServiceHandler) SignalTask(context.Context, *connect.Requ
 
 func (UnimplementedTaskServiceHandler) QueryTask(context.Context, *connect.Request[v1.QueryTaskRequest]) (*connect.Response[v1.QueryTaskResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.taskapi.v1.TaskService.QueryTask is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) ListTaskArtifacts(context.Context, *connect.Request[v1.ListTaskArtifactsRequest]) (*connect.Response[v1.ListTaskArtifactsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.taskapi.v1.TaskService.ListTaskArtifacts is not implemented"))
 }

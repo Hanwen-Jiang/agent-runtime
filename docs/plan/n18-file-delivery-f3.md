@@ -1,7 +1,15 @@
 # F3：N-18 文件交付的公开入口（契约草案，待 S-01 人审）
 
-> 状态：2026-11-03 草案。登记在 `work-dag-2026-11-03.md` 的 F 线。前置：`n18-file-delivery-contract-baseline-2026-11-03.md`（正反例已批准），内部 helper `agentruntime_worker.delivery.FileDelivery`（`e3096a8`）。
-> 要改 `/proto`（Task API 加一个 RPC）与一张业务表，按 CLAUDE.md 停在这里等人审；审过再写验收测试与实现。
+> 状态：2026-11-03 第 4 节五条人定照建议（S-01 人审通过）：proto 已加、已生成，兼容性基线已更新。验收测试已写：
+> - `services/go-task-service/internal/taskapi/artifacts_test.go`
+> - `services/py-worker/tests/test_deliver_file.py`
+>
+> 实现之前两份测试都跳过；Go 里的 `ListTaskArtifacts` 现在返回未实现。等测试人审后再写实现。登记在 `work-dag-2026-11-03.md` 的 F 线。
+> 前置：`n18-file-delivery-contract-baseline-2026-11-03.md`（正反例已批准）；内部 helper `agentruntime_worker.delivery.FileDelivery`（`e3096a8`）。
+>
+> 与下文的出入：
+> - **下载**：Go 的 ObjectStore 接口只有整个读出的 `Get`，下载按单文件 25 MiB 的上限整个读出再写回，不是流式。
+> - **建表**：`task_artifacts` 由 Worker 的迁移 207 建（同 202 的 sandbox_grants：Worker 建，Go 服务只读）。
 
 ## 1. 要做到的
 

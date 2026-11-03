@@ -14,6 +14,12 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
+class TaskArtifactState(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    TASK_ARTIFACT_STATE_UNSPECIFIED: _ClassVar[TaskArtifactState]
+    TASK_ARTIFACT_STATE_READY: _ClassVar[TaskArtifactState]
+    TASK_ARTIFACT_STATE_EXPIRED: _ClassVar[TaskArtifactState]
+
 class TaskEventType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     TASK_EVENT_TYPE_UNSPECIFIED: _ClassVar[TaskEventType]
@@ -33,6 +39,9 @@ class TaskEventType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     TASK_EVENT_TYPE_GUIDANCE_UPDATED: _ClassVar[TaskEventType]
     TASK_EVENT_TYPE_TASK_MESSAGE_EDITED: _ClassVar[TaskEventType]
     TASK_EVENT_TYPE_CONTEXT_USAGE: _ClassVar[TaskEventType]
+TASK_ARTIFACT_STATE_UNSPECIFIED: TaskArtifactState
+TASK_ARTIFACT_STATE_READY: TaskArtifactState
+TASK_ARTIFACT_STATE_EXPIRED: TaskArtifactState
 TASK_EVENT_TYPE_UNSPECIFIED: TaskEventType
 TASK_EVENT_TYPE_TASK_ACCEPTED: TaskEventType
 TASK_EVENT_TYPE_ROUND_STARTED: TaskEventType
@@ -204,6 +213,44 @@ class QueryTaskResponse(_message.Message):
     last_event_id: int
     usage: _metering_pb2.Usage
     def __init__(self, task_id: _Optional[str] = ..., session_id: _Optional[str] = ..., status: _Optional[_Union[_enums_pb2.TaskStatus, str]] = ..., round_seq: _Optional[int] = ..., task_state: _Optional[_Union[_payload_pb2.JsonPayload, _Mapping]] = ..., last_event_id: _Optional[int] = ..., usage: _Optional[_Union[_metering_pb2.Usage, _Mapping]] = ...) -> None: ...
+
+class ListTaskArtifactsRequest(_message.Message):
+    __slots__ = ("tenant_id", "task_id")
+    TENANT_ID_FIELD_NUMBER: _ClassVar[int]
+    TASK_ID_FIELD_NUMBER: _ClassVar[int]
+    tenant_id: str
+    task_id: str
+    def __init__(self, tenant_id: _Optional[str] = ..., task_id: _Optional[str] = ...) -> None: ...
+
+class TaskArtifact(_message.Message):
+    __slots__ = ("artifact_id", "name", "path", "media_type", "size_bytes", "sha256", "created_at", "expires_at", "state", "download_path")
+    ARTIFACT_ID_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    PATH_FIELD_NUMBER: _ClassVar[int]
+    MEDIA_TYPE_FIELD_NUMBER: _ClassVar[int]
+    SIZE_BYTES_FIELD_NUMBER: _ClassVar[int]
+    SHA256_FIELD_NUMBER: _ClassVar[int]
+    CREATED_AT_FIELD_NUMBER: _ClassVar[int]
+    EXPIRES_AT_FIELD_NUMBER: _ClassVar[int]
+    STATE_FIELD_NUMBER: _ClassVar[int]
+    DOWNLOAD_PATH_FIELD_NUMBER: _ClassVar[int]
+    artifact_id: str
+    name: str
+    path: str
+    media_type: str
+    size_bytes: int
+    sha256: str
+    created_at: _timestamp_pb2.Timestamp
+    expires_at: _timestamp_pb2.Timestamp
+    state: TaskArtifactState
+    download_path: str
+    def __init__(self, artifact_id: _Optional[str] = ..., name: _Optional[str] = ..., path: _Optional[str] = ..., media_type: _Optional[str] = ..., size_bytes: _Optional[int] = ..., sha256: _Optional[str] = ..., created_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., expires_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., state: _Optional[_Union[TaskArtifactState, str]] = ..., download_path: _Optional[str] = ...) -> None: ...
+
+class ListTaskArtifactsResponse(_message.Message):
+    __slots__ = ("artifacts",)
+    ARTIFACTS_FIELD_NUMBER: _ClassVar[int]
+    artifacts: _containers.RepeatedCompositeFieldContainer[TaskArtifact]
+    def __init__(self, artifacts: _Optional[_Iterable[_Union[TaskArtifact, _Mapping]]] = ...) -> None: ...
 
 class TaskEvent(_message.Message):
     __slots__ = ("event_id", "task_id", "session_id", "type", "emitted_at", "payload")

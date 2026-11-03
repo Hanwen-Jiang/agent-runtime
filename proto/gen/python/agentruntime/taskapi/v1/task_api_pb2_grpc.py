@@ -38,6 +38,11 @@ class TaskServiceStub:
                 request_serializer=agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.QueryTaskRequest.SerializeToString,
                 response_deserializer=agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.QueryTaskResponse.FromString,
                 _registered_method=True)
+        self.ListTaskArtifacts = channel.unary_unary(
+                '/agentruntime.taskapi.v1.TaskService/ListTaskArtifacts',
+                request_serializer=agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.ListTaskArtifactsRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.ListTaskArtifactsResponse.FromString,
+                _registered_method=True)
 
 
 class TaskServiceServicer:
@@ -76,6 +81,14 @@ class TaskServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ListTaskArtifacts(self, request, context):
+        """列出 Task 交付的文件（N-18，docs/plan/n18-file-delivery-f3.md），只给元数据。
+        内容从 download_path（GET，同一个 Task API 地址，带同样的认证）取：每次都重新核对租户、Task 与有效期。
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_TaskServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -98,6 +111,11 @@ def add_TaskServiceServicer_to_server(servicer, server):
                     servicer.QueryTask,
                     request_deserializer=agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.QueryTaskRequest.FromString,
                     response_serializer=agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.QueryTaskResponse.SerializeToString,
+            ),
+            'ListTaskArtifacts': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListTaskArtifacts,
+                    request_deserializer=agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.ListTaskArtifactsRequest.FromString,
+                    response_serializer=agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.ListTaskArtifactsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -212,6 +230,33 @@ class TaskService:
             '/agentruntime.taskapi.v1.TaskService/QueryTask',
             agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.QueryTaskRequest.SerializeToString,
             agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.QueryTaskResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListTaskArtifacts(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.taskapi.v1.TaskService/ListTaskArtifacts',
+            agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.ListTaskArtifactsRequest.SerializeToString,
+            agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.ListTaskArtifactsResponse.FromString,
             options,
             channel_credentials,
             insecure,
