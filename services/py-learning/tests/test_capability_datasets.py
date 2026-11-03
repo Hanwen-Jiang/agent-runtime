@@ -62,3 +62,10 @@ def test_cached_jsonl_builds_once(tmp_path: Path) -> None:
 
     assert ds.cached_jsonl(tmp_path / "c.jsonl", build) == ds.cached_jsonl(tmp_path / "c.jsonl", build) == [{"id": "a"}]
     assert len(calls) == 1
+
+
+def test_cached_jsonl_keeps_unicode_line_separators_inside_strings(tmp_path: Path) -> None:
+    """RewardBench 2 的回答里有 U+2028 等：缓存按 ensure_ascii=False 写，读回来不能把它们当换行切断一行 JSON。"""
+    rows = [{"id": "a", "text": "one twothree fourfive"}, {"id": "b", "text": "plain"}]
+    assert ds.cached_jsonl(tmp_path / "u.jsonl", lambda: rows) == rows
+    assert ds.read_jsonl(tmp_path / "u.jsonl") == rows
