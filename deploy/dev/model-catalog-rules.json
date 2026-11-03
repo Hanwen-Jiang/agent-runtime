@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "_doc": "scripts/sync_model_catalog.py 的规则（docs/plan/model-catalog-sync.md）。线的全名是 <vendor>:<去掉版本号的模型名>，例如 openai:gpt-*-sol。",
+  "vendors": {
+    "openai": {"provider": "openai", "prefixes": ["gpt-", "text-embedding-"]},
+    "anthropic": {"provider": "anthropic", "prefixes": ["claude-"]},
+    "google": {"provider": "google", "prefixes": ["gemini-"]},
+    "deepseek": {"provider": "deepseek", "prefixes": ["deepseek-"]},
+    "xai": {"provider": "xai", "prefixes": ["grok-"]},
+    "moonshotai": {"provider": "moonshotai", "prefixes": ["kimi-"]},
+    "alibaba": {"provider": "alibaba", "prefixes": ["qwen"]},
+    "zhipuai": {"provider": "zhipuai", "prefixes": ["glm-"]},
+    "xiaomi": {"provider": "xiaomi", "prefixes": ["mimo-"]},
+    "meituan": {"provider": "longcat", "prefixes": ["longcat-"]}
+  },
+  "ignore": ["vision", "image", "audio", "tts", "realtime", "search", "omni", "-exp$", "-low$", "-high$"],
+  "aliases": {
+    "openai:gpt-*": "openai:gpt-*-sol",
+    "openai:gpt-*o-mini": "openai:gpt-*-luna"
+  },
+  "track": [
+    {"line": "zhipuai:glm-*-flash", "class": "small", "tiers": ["low"]},
+    {"line": "alibaba:qwen*-flash", "class": "small", "tiers": ["low"]},
+    {"line": "xiaomi:mimo-v*-pro", "class": "strong", "tiers": ["medium", "high"], "candidate": true},
+    {"line": "meituan:longcat-*", "class": "strong", "tiers": ["medium", "high"], "candidate": true}
+  ],
+  "disabled": [],
+  "price_overrides": {},
+  "new_line_max_age_days": 120,
+  "allowlists": {
+    "default": {"classes": ["small", "mid", "embed"], "strong_max": {"in_per_m": 2, "out_per_m": 10}},
+    "tenants": {
+      "gh-hanwen-jiang": {},
+      "evals": {"candidates": true},
+      "swebench": {"exclude_vendors": ["anthropic"]}
+    }
+  }
+}
