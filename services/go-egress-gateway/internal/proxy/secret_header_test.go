@@ -45,6 +45,7 @@ var environmentTables = []relational.Migration{{Version: 205, Name: "workspaces"
 	`ALTER TABLE workspaces ADD COLUMN environment TEXT NOT NULL DEFAULT ''`,
 	`ALTER TABLE workspaces ADD COLUMN environment_owner TEXT NOT NULL DEFAULT ''`,
 	`ALTER TABLE workspaces ADD COLUMN environment_deleted_at TEXT NOT NULL DEFAULT ''`,
+	`ALTER TABLE workspaces ADD COLUMN environment_secrets TEXT NOT NULL DEFAULT ''`,
 }}}
 
 type testCA struct {
@@ -171,8 +172,22 @@ func newSecretHarness(t *testing.T, environment map[string]any) *secretHarness {
 		}
 		return []byte(v), nil
 	}
-	doc, _ := json.Marshal(environment)
-	h.exec(`INSERT INTO workspaces (workspace_id, state, environment_id, environment, environment_owner) VALUES ('w1', 'active', 'env-py', $1, 'u-alice')`, string(doc))
+	// Worker 分两列存：非机密的（network 等）与机密的（secret_headers、env）。
+	nonSecret, secretPart := map[string]any{}, map[string]any{}
+	for k, v := range environment {
+		if k == "secret_headers" || k == "env" {
+			secretPart[k] = v
+		} else {
+			nonSecret[k] = v
+		}
+	}
+	doc, _ := json.Marshal(nonSecret)
+	secretDoc := ""
+	if len(secretPart) > 0 {
+		raw, _ := json.Marshal(secretPart)
+		secretDoc = string(raw)
+	}
+	h.exec(`INSERT INTO workspaces (workspace_id, state, environment_id, environment, environment_secrets, environment_owner) VALUES ('w1', 'active', 'env-py', $1, $2, 'u-alice')`, string(doc), secretDoc)
 	h.exec(`UPDATE sandbox_envs SET workspace_id = 'w1' WHERE env_ref = $1`, envRef)
 	h.grant(grantSpec{id: "g1", hosts: []string{"api.example.com", "*.api.example.com", "x.example.com", "other.example.com"}, ports: []int{80, 443}})
 	return sh
@@ -379,12 +394,17 @@ func TestNetworkModesNarrowTheTaskGrant(t *testing.T) {
 	})
 }
 
-func TestDeletedEnvironmentBlocksEgress(t *testing.T) {
+func TestDeletedConfigKeepsTheNetworkSnapshotButAddsNoSecret(t *testing.T) {
+	// 2026-11-03 用户定：删除配置只立即删掉机密的部分（task-service 的 DeleteEnvironmentConfig 清 environment_secrets）。
 	sh := newSecretHarness(t, defaultEnvironment())
-	sh.exec(`UPDATE workspaces SET environment_deleted_at = '2026-11-03T00:00:00.000000Z' WHERE workspace_id = 'w1'`)
+	sh.exec(`UPDATE workspaces SET environment_secrets = '', environment_deleted_at = '2026-11-03T00:00:00.000000Z' WHERE workspace_id = 'w1'`)
 	sh.store.Invalidate(tenant)
 	plain := sh.client(sh.token("egress", nil), true)
-	if code, _ := sh.get(plain, "http://api.example.com/"); code != http.StatusForbidden {
-		t.Fatalf("删除了环境配置的工作区：%d", code)
+	// 不再终结 TLS：原样隧道到上游（沙箱按上游自己的证书校验）。
+	if code, _ := sh.get(plain, "https://api.example.com/"); code != 200 {
+		t.Fatalf("联网档位照快照（open）放行：%d", code)
+	}
+	if h, _ := sh.upstream.last(); h.Get("Authorization") != "" {
+		t.Fatal("配置删除之后不再加网络密钥的头")
 	}
 }

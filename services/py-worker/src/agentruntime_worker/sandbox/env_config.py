@@ -187,6 +187,33 @@ class EnvironmentConfig:
         }
         return json.dumps(doc, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
+    def public_json(self) -> str:
+        """非机密的部分（一直跟着会话）：environment_id、setup、start、network。"""
+        doc = json.loads(self.to_json())
+        return json.dumps({k: doc[k] for k in ("environment_id", "setup_script", "start_command", "network")}, ensure_ascii=False, sort_keys=True,
+                          separators=(",", ":"))
+
+    def secrets_json(self) -> str:
+        """机密的部分（配置删除时立即删掉，2026-11-03 用户定）：env 与 secret_headers；都没有时为空串。"""
+        if not self.env and not self.secret_headers:
+            return ""
+        doc = json.loads(self.to_json())
+        return json.dumps({k: doc[k] for k in ("env", "secret_headers")}, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+    @property
+    def has_secrets(self) -> bool:
+        return bool(self.env.strip()) or bool(self.secret_headers)
+
+    @classmethod
+    def from_parts(cls, public: str, secrets: str) -> EnvironmentConfig:
+        try:
+            doc = dict(json.loads(public))
+            if secrets:
+                doc.update(dict(json.loads(secrets)))
+        except (ValueError, TypeError):
+            raise InvalidError("invalid_environment", "工作区存的环境配置格式不对") from None
+        return cls.from_args(doc)
+
     @classmethod
     def from_json(cls, text: str) -> EnvironmentConfig:
         try:

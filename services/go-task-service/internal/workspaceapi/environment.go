@@ -181,7 +181,8 @@ func missingColumn(err error) bool {
 	return false
 }
 
-// DeleteEnvironmentConfig 只标记（Q35）：调用者用这个环境建的工作区不再准备新的执行环境，已有的由 Worker 的对账在闲着时销毁。
+// DeleteEnvironmentConfig（Q35；2026-11-03 用户定：还有会话在用时也可以删）：在调用者用这个环境建的工作区上立即删掉机密的部分
+// （environment_secrets：.env 与网络密钥的引用）、记下删除时间；会话照常用非机密的快照（environment 列），不销毁环境。
 func (s *Server) DeleteEnvironmentConfig(ctx context.Context, req *connect.Request[workspacev1.DeleteEnvironmentConfigRequest]) (*connect.Response[workspacev1.DeleteEnvironmentConfigResponse], error) {
 	m := req.Msg
 	id, tenant, err := s.caller(ctx, req.Header(), "workspace_environment_delete", m.GetTenantId(), "")
@@ -199,7 +200,7 @@ func (s *Server) DeleteEnvironmentConfig(ctx context.Context, req *connect.Reque
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000000Z")
 	err = db.Transaction(ctx, relational.TxOptions{}, func(ctx context.Context, tx relational.Tx) error {
 		var e error
-		n, e = tx.Execute(ctx, `UPDATE workspaces SET environment_deleted_at = $1, updated_at = $1
+		n, e = tx.Execute(ctx, `UPDATE workspaces SET environment_secrets = '', environment_deleted_at = $1, updated_at = $1
 			WHERE environment_id = $2 AND environment_owner = $3 AND environment_deleted_at = ''`, now, m.GetEnvironmentId(), id.UserID)
 		return e
 	})

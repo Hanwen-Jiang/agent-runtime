@@ -15,7 +15,7 @@
 | 为什么不是 B | 要改 Task 工作流输入、Stage Runner 与 Node Executor（核心链路单写者，另一条线在改）；而且同一个会话的每个 Task 都得重复传，配置在会话中途变了还要定义语义。C 让“编辑环境只影响新会话”（设计草案 4.1）自然成立。 |
 | Benefit | 一处契约改动；Worker 的 activity 里读一行业务库就能拿到配置；不新增服务、不新增工作流命令（WorkspaceOperationWorkflow 不变，`args` 多一个键）。 |
 | Performance cost | 每次借环境（只在要执行业务命令时）多读一行 `workspaces`；网关每次查环境时多读一行（同样缓存 2 秒）。 |
-| Implementation cost | 契约一处（含删除 RPC 与 EnvRecord 的 6 个字段）、两个迁移、Broker 的准备步骤、网关的档位与网络密钥。 |
+| Implementation cost | 契约一处（含删除、事后绑定两个 RPC 与 EnvRecord 的 6 个字段）、两个迁移、Broker 的准备步骤、网关的档位与网络密钥。 |
 | Operational cost | 无新组件；网络密钥要部署方在 SecretStore 平台作用域放一对网关 CA（`sandbox/egress-ca-cert`、`sandbox/egress-ca-key`）。 |
 | New failure surface | 快照里的配置失效（例如引用的密钥被删）：请求时报错、不静默继续；网关 CA 泄露的影响面（只签发给配置了网络密钥的主机，见第 4 节）。 |
 | Decision | **KEEP C**（待 S-01 人审）。会话中途换环境、显式“应用更新”到已有工作区不在本项（设计草案 4.1 的显式应用更新另做）。 |
@@ -43,15 +43,19 @@
 
 ## 4. 联网档位与网络密钥（Q28–32）
 
-- 档位只在 Task 的联网授权与租户策略**之内**再收窄：`deny` 一律拒绝业务出网（`environment_network_denied`；包镜像与 Workspace API 的 git 操作不经它）；`restricted` 只放行名单里的主机（`environment_host_not_allowed`），每一项显式写 `include_subdomains`；`open` 不另加限制。删除了配置的工作区按 deny。
+- 档位只在 Task 的联网授权与租户策略**之内**再收窄：`deny` 一律拒绝业务出网（`environment_network_denied`；包镜像与 Workspace API 的 git 操作不经它）；`restricted` 只放行名单里的主机（`environment_host_not_allowed`），每一项显式写 `include_subdomains`；`open` 不另加限制。删除了配置的工作区照快照的档位（第 5 节）。
 - **没有做的**：`open` 让 Task 不经逐主机授权就能连所有公网域名，要租户策略的 `sandbox.network.modes` 与授权的 `scope: public`（设计草案第 5 节、10.3），是另外的契约，DEFER。现在 `open` 的上限仍是 Task 拿到的授权。
 - 网络密钥：`SecretHeader{host, include_subdomains, secret_name, header}`。网关只在 CONNECT 到这台主机的 443、且客户端发的是 TLS 时终结 TLS（用部署方的网关 CA 现签这台主机的证书，只签名单里的主机），逐个请求核对 Host 与 CONNECT 一致、去掉沙箱自己写的同名头、加上 `Authorization: Bearer <值>`（默认）或配置的 header 名（值为原文），再以校验上游证书的 TLS 发出去。值从 SecretStore 租户作用域的 `user-secrets/<建工作区的用户>/<secret_name>` 现读（不缓存；读不到就拒绝，Q85）；不写查询参数；明文 HTTP 不加；重定向到别的主机的请求按那台主机自己的配置。
 - 沙箱信任网关 CA：Worker 在准备环境时把 `sandbox/egress-ca-cert`（只有证书）与系统证书包拼成 `/tmp/agentruntime-ca.pem`，经 `SSL_CERT_FILE`、`REQUESTS_CA_BUNDLE`、`CURL_CA_BUNDLE`、`NODE_EXTRA_CA_CERTS`、`GIT_SSL_CAINFO` 交给命令。证书固定（pinning）或自带证书库的客户端不支持，会报证书错误，不回退为把值交给沙箱。
 - 没配网关 CA 时，配了网络密钥的主机一律拒绝（`secret_injection_unavailable`），不裸发。
 
-## 5. 删除（Q35）
+## 5. 删除（Q35；2026-11-03 用户定）
 
-`WorkspaceService.DeleteEnvironmentConfig`：task-service 直接在业务库里把调用者（建工作区的用户）用这个环境建的工作区标记 `environment_deleted_at`，返回个数，幂等。之后这些工作区不再准备新的执行环境（`environment_deleted`），网关按 deny；已有的环境由现有对账在闲着时销毁（原因 `environment deleted`）。不删工作区，不新增状态机或后台任务。
+还有会话在用时也可以删。每个会话保留建会话时的非机密快照（setup、start、联网档位；coding-web 存这份快照并交给 Runtime），配置的机密部分（`.env` 与网络密钥的引用）删除时立即删掉。Runtime 把快照分两列存（`workspaces.environment` 与 `workspaces.environment_secrets`，迁移 208），所以删除就是清一列：
+
+- `WorkspaceService.DeleteEnvironmentConfig`：task-service 直接在业务库里，对调用者（建会话的用户）用这个环境建的工作区清 `environment_secrets`、记 `environment_deleted_at`，返回个数，幂等。不销毁环境、不阻止新的环境：会话之后的新环境照样按快照跑 setup、start，只是命令拿不到 `.env` 的变量；出网网关按快照的档位放行，不再加网络密钥的头（缓存最多 2 秒）。已经在跑的进程里已有的变量收不回来。
+- 配置删除之后再交接（`SetWorkspaceEnvironment` 或建工作区时，同一个 `environment_id`）只收非机密的快照；带了 `env` 或 `secret_headers` 报 `environment_deleted`，删除的标记保留。
+- 不新增状态机或后台任务；环境的状态仍只在环境表。
 
 ## 6. 成本与新的失败面
 
@@ -84,4 +88,4 @@
 | `environment.network.hosts[]` | `AllowedHosts` 的每一项：`*.example.com` 写成 `{host: "example.com", include_subdomains: true}`（Runtime 的这一项同时匹配 example.com 本身），其余 `{host, include_subdomains: false}` |
 | `environment.secret_headers[]` | `{host, include_subdomains, secret_name, header}`；coding-agent 现在没有网络密钥的配置，先不给 |
 
-应答的 `workspace.environment_id` 回显 ID，成功即可把 `Session.EnvironmentHandoff` 记成已交接；`InvalidArgument` 的稳定错误码（`invalid_env_line`、`env_reserved_name`、`env_secret_name`、`env_too_large`、`invalid_network_host`、`invalid_secret_header`、`environment_script_too_large`、`invalid_environment`）可直接映射成界面文字。删除环境时调 `WorkspaceService/DeleteEnvironmentConfig{tenant_id, environment_id}`（只标记调用者自己交接过的工作区）。setup 的结果与就绪只读 `EnvironmentService` 的 `EnvRecord`（`setup_state`、`setup_error`、`start_state`、`environment_id`、`setup_key`、`setup_finished_at`，`ready` 已含 setup 门禁）。shell_run 的结果另带 `environment_config: {environment_id, setup, start}`；setup 失败时 Task 里的工具错误码是 `environment_setup_failed` / `environment_setup_timeout`。
+应答的 `workspace.environment_id` 回显 ID，成功即可把 `Session.EnvironmentHandoff` 记成已交接；`InvalidArgument` 的稳定错误码（`invalid_env_line`、`env_reserved_name`、`env_secret_name`、`env_too_large`、`invalid_network_host`、`invalid_secret_header`、`environment_script_too_large`、`invalid_environment`）可直接映射成界面文字。删除环境时调 `WorkspaceService/DeleteEnvironmentConfig{tenant_id, environment_id}`（清调用者自己交接过的工作区上的机密部分，会话照常）；配置已删的会话再交接时只给快照里的 `environment_id`、`setup_script`、`start_command`、`network`，不给 `env` 与 `secret_headers`（给了报 `environment_deleted`）。setup 的结果与就绪只读 `EnvironmentService` 的 `EnvRecord`（`setup_state`、`setup_error`、`start_state`、`environment_id`、`setup_key`、`setup_finished_at`，`ready` 已含 setup 门禁）。shell_run 的结果另带 `environment_config: {environment_id, setup, start}`；setup 失败时 Task 里的工具错误码是 `environment_setup_failed` / `environment_setup_timeout`。

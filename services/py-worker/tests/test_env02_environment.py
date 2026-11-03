@@ -370,21 +370,31 @@ async def test_failed_setup_never_starts_a_cache_build(tmp_path: Path) -> None:
 # --- 删除 ---
 
 
-async def test_deleted_environment_stops_new_environments_and_reconcile_cleans_up(tmp_path: Path) -> None:
-    s = Setup(tmp_path)
-    await s.bind()
-    await s.shell(APPEND)
-    assert len(await s.ledger.active("t1")) == 1
+async def test_deleting_the_config_keeps_the_session_snapshot_but_drops_its_secrets(tmp_path: Path) -> None:
+    # 2026-11-03 用户定：还有会话在用时也可以删；会话保留建会话时的非机密快照，机密部分（.env、网络密钥）立即删掉。
+    s = Setup(tmp_path, sessions=False)
+    await s.bind(doc=environment(
+        setup_script='echo "setup:${GREETING:-none}" >> order.txt\n', start_command="",
+        secret_headers=[{"host": "api.example.com", "secret_name": "example-token"}],
+    ))
+    await s.shell(["bash", "-c", 'echo "cmd:${GREETING:-none}" >> order.txt'])
+    assert s.order() == ["setup:hello", "world", "cmd:hello", "world"]
     assert await s.archiver.delete_environment("t1", "env-py", owner_user="other-user") == 0, "只认选用它的用户"
     assert await s.archiver.delete_environment("t1", "env-py", owner_user="u1") == 1
     assert await s.archiver.delete_environment("t1", "env-py", owner_user="u1") == 0, "幂等"
+    bound = await s.archiver.environment("t1", "w1")
+    assert bound is not None and bound.deleted and bound.config.setup_script and bound.config.env == "" and bound.config.secret_headers == ()
     report = await reconcile_once(s.broker)
-    assert report.reaped == 1 and await s.ledger.active("t1") == [], "已有的环境闲着时由对账销毁"
-    [record] = await _all_records(s)
-    assert "environment deleted" in record.reason
+    assert report.reaped == 0, "不因删除配置销毁环境"
+    # 会话照常：新的环境照样按快照跑 setup，只是没有了 .env 的变量。
+    out = await s.shell(["bash", "-c", 'echo "cmd:${GREETING:-none}" >> order.txt'])
+    assert out["exit_code"] == 0 and s.order()[-2:] == ["setup:none", "cmd:none"]
+    # 配置删除之后再交接：只收非机密的快照，带机密就拒绝。
     with pytest.raises(DeniedError) as err:
-        await s.shell(APPEND, session=S2)
+        await s.bind()
     assert err.value.code == "environment_deleted"
+    await s.bind(doc=environment(env="", secret_headers=[]))
+    assert (await s.archiver.environment("t1", "w1")).deleted  # type: ignore[union-attr]
     assert await s.archiver.get("t1", "w1") is not None, "不删工作区"
 
 

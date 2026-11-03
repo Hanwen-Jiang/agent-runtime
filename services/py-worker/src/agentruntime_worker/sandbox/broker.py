@@ -17,7 +17,7 @@
   shell_run）读工作区选用的环境配置：新建的环境（或还没准备过的复用环境）在工作区就位之后先跑 setup、再跑 start；setup 失败或超时
   这个环境不启动（记进环境表、销毁，报 environment_setup_failed / environment_setup_timeout），start 失败只记录。.env 的变量进
   Lease.env（平台的变量优先）。setup 成功的结果按 sha256（脚本 + 基础镜像 digest）缓存成环境镜像（配了 D-17 的环境构建时），命中时
-  用缓存的镜像建、不再跑 setup。删除了的环境配置（environment_deleted）不再准备新的环境。
+  用缓存的镜像建、不再跑 setup。环境配置删除之后会话照常按非机密的快照准备，只是没有了 .env 与网络密钥。
 - 联网授权（D-16，sandbox.grants）：授权属于 Task。经出网网关的后端（K8s、本地）环境本身断网，网关按授权放行；托管后端
   没有网关，Task 有授权时环境建成按域名放行（network = allowlist，主机是各授权的并集），授权变了就换一个环境。授权带用量
   上限（字节、连接、频率）时只能落在经网关的后端（W11：要审计的 Task 只在支持网关的后端之间回退）。
@@ -148,9 +148,8 @@ class SandboxBroker:
         policy = await self.sandboxes.policy_for(owner)
         grants = await self.task_grants(owner, task_id)
         session = tenant.session_id
+        # 配置删除之后（2026-11-03 用户定）会话照常用非机密的快照准备环境，只是没有了 .env 与网络密钥。
         bound = await self.bound_environment(owner, spec.workspace_id) if prepare else None
-        if bound is not None and bound.deleted:
-            raise DeniedError("environment_deleted", "这个工作区选用的环境配置已经删除，不再准备新的环境；换一个环境新开会话")
         config = bound.config if bound is not None else None
         if reuse and session and self.ledger is not None:
             found = None

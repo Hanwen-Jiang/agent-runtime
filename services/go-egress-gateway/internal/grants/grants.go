@@ -92,7 +92,8 @@ type Environment struct {
 		Hosts []NetHost `json:"hosts"`
 	} `json:"network"`
 	SecretHeaders []SecretHeader `json:"secret_headers"`
-	// Owner 是建工作区的用户（网络密钥按他的名字读）；Deleted：环境配置删除了（Q35），按 deny。
+	// Owner 是建工作区的用户（网络密钥按他的名字读）；Deleted：环境配置删除了（Q35）。删除之后联网档位照快照，网络密钥已随
+	// 机密的部分（workspaces.environment_secrets）删掉（2026-11-03 用户定）。
 	Owner   string `json:"-"`
 	Deleted bool   `json:"-"`
 }
@@ -103,7 +104,7 @@ func (e *Environment) Allows(host string) string {
 		return ""
 	}
 	switch {
-	case e.Deleted || e.Network.Mode == "deny":
+	case e.Network.Mode == "deny":
 		return "environment_network_denied"
 	case e.Network.Mode == "restricted":
 		for _, h := range e.Network.Hosts {
@@ -120,7 +121,7 @@ func (e *Environment) Allows(host string) string {
 
 // HeaderFor 是这个主机的网络密钥；没有时 nil。
 func (e *Environment) HeaderFor(host string) *SecretHeader {
-	if e == nil || e.Deleted {
+	if e == nil {
 		return nil
 	}
 	for i := range e.SecretHeaders {
@@ -268,15 +269,21 @@ func (s *Store) load(ctx context.Context, tenant, envRef string, now time.Time) 
 func loadEnvironment(ctx context.Context, db relational.Store, workspaceID string) (*Environment, error) {
 	var env *Environment
 	err := db.Transaction(ctx, relational.TxOptions{ReadOnly: true}, func(ctx context.Context, tx relational.Tx) error {
-		row, ok, err := tx.QueryOne(ctx, "SELECT environment, environment_owner, environment_deleted_at FROM workspaces WHERE workspace_id = $1", workspaceID)
+		row, ok, err := tx.QueryOne(ctx, "SELECT environment, environment_secrets, environment_owner, environment_deleted_at FROM workspaces WHERE workspace_id = $1", workspaceID)
 		if err != nil || !ok || str(row["environment"]) == "" {
 			return err
 		}
 		env = &Environment{}
-		if json.Unmarshal([]byte(str(row["environment"])), env) != nil {
-			// 存的配置读不懂：不放行业务出网，也不加任何密钥。
-			env = &Environment{Deleted: true}
+		var secrets struct {
+			SecretHeaders []SecretHeader `json:"secret_headers"`
 		}
+		if json.Unmarshal([]byte(str(row["environment"])), env) != nil || (str(row["environment_secrets"]) != "" && json.Unmarshal([]byte(str(row["environment_secrets"])), &secrets) != nil) {
+			// 存的配置读不懂：不放行业务出网，也不加任何密钥。
+			env = &Environment{}
+			env.Network.Mode = "deny"
+			secrets.SecretHeaders = nil
+		}
+		env.SecretHeaders = secrets.SecretHeaders
 		env.Owner, env.Deleted = str(row["environment_owner"]), env.Deleted || str(row["environment_deleted_at"]) != ""
 		return nil
 	})

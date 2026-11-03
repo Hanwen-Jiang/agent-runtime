@@ -91,6 +91,8 @@ MIGRATIONS = (
         "ALTER TABLE workspaces ADD COLUMN environment TEXT NOT NULL DEFAULT ''",
         "ALTER TABLE workspaces ADD COLUMN environment_owner TEXT NOT NULL DEFAULT ''",
         "ALTER TABLE workspaces ADD COLUMN environment_deleted_at TEXT NOT NULL DEFAULT ''",
+        # 机密的部分（.env 与网络密钥的引用）另放一列：删除环境配置时只清这一列（2026-11-03 用户定）。
+        "ALTER TABLE workspaces ADD COLUMN environment_secrets TEXT NOT NULL DEFAULT ''",
         "CREATE INDEX workspaces_environment ON workspaces (environment_id, environment_owner)",
         # N-10：复制工作区时新快照引用源工作区的块（不复制）；记下引用了哪些工作区的块（,ws1,ws2,），清理时据此保留它们。
         "ALTER TABLE workspace_snapshots ADD COLUMN blob_sources TEXT NOT NULL DEFAULT ''",
@@ -225,7 +227,7 @@ class WorkspaceArchiver:
                 await tx.execute(
                     "UPDATE workspaces SET state = 'active', repo_url = $1, head = '', snapshot_id = '', size_bytes = 0, files = 0, "
                     "created_at = $2, updated_at = $2, deleted_at = '', environment_id = '', environment = '', environment_owner = '', "
-                    "environment_deleted_at = '' WHERE workspace_id = $3",
+                    "environment_deleted_at = '', environment_secrets = '' WHERE workspace_id = $3",
                     (repo_url, now, workspace_id),
                 )
             else:
@@ -252,46 +254,56 @@ class WorkspaceArchiver:
     # --- 选用的环境配置（ENV-02）---
 
     async def set_environment(self, owner: str, workspace_id: str, config: EnvironmentConfig, *, owner_user: str) -> None:
-        """记下工作区选用的环境配置（建工作区时）；之后编辑环境只影响新建的工作区。"""
+        """记下工作区选用的环境配置（建会话时的快照）；之后编辑环境只影响新的会话。非机密的部分与机密的部分分两列存。
+        同一个配置在这个工作区上已经删除时只收非机密的快照（会话保留设置，不再拿机密），带了机密就 environment_deleted。"""
         await self.migrate()
+        now = iso(self._clock())
         async with self._db(owner).transaction() as tx:
+            row = await tx.query_one("SELECT environment_id, environment_deleted_at FROM workspaces WHERE workspace_id = $1", (workspace_id,))
+            deleted = bool(row and row["environment_id"] == config.environment_id and row["environment_deleted_at"])
+            if deleted and config.has_secrets:
+                raise DeniedError("environment_deleted", "这个环境配置已经删除：会话只保留非机密的设置，不再接收 .env 与网络密钥")
             await tx.execute(
-                "UPDATE workspaces SET environment_id = $1, environment = $2, environment_owner = $3, environment_deleted_at = '', updated_at = $4 "
-                "WHERE workspace_id = $5",
-                (config.environment_id, config.to_json(), owner_user, iso(self._clock()), workspace_id),
+                "UPDATE workspaces SET environment_id = $1, environment = $2, environment_secrets = $3, environment_owner = $4, "
+                "environment_deleted_at = $5, updated_at = $6 WHERE workspace_id = $7",
+                (config.environment_id, config.public_json(), config.secrets_json(), owner_user, str(row["environment_deleted_at"]) if deleted else "",
+                 now, workspace_id),
             )
 
     async def clear_environment(self, owner: str, workspace_id: str) -> None:
         await self.migrate()
         async with self._db(owner).transaction() as tx:
             await tx.execute(
-                "UPDATE workspaces SET environment_id = '', environment = '', environment_owner = '', environment_deleted_at = '', updated_at = $1 "
-                "WHERE workspace_id = $2",
+                "UPDATE workspaces SET environment_id = '', environment = '', environment_secrets = '', environment_owner = '', "
+                "environment_deleted_at = '', updated_at = $1 WHERE workspace_id = $2",
                 (iso(self._clock()), workspace_id),
             )
 
     async def environment(self, owner: str, workspace_id: str) -> BoundEnvironment | None:
-        """工作区选用的环境配置；没有选用（或工作区不在）时 None。"""
+        """工作区选用的环境配置；没有选用（或工作区不在）时 None。配置删除之后只剩非机密的部分。"""
         if owner == PLATFORM_ID or not owner:
             return None
         await self.migrate()
         async with self._db(owner).transaction(read_only=True) as tx:
             row = await tx.query_one(
-                "SELECT environment, environment_owner, environment_deleted_at FROM workspaces WHERE workspace_id = $1 AND state <> 'deleted'",
+                "SELECT environment, environment_secrets, environment_owner, environment_deleted_at FROM workspaces "
+                "WHERE workspace_id = $1 AND state <> 'deleted'",
                 (workspace_id,),
             )
         if not row or not row["environment"]:
             return None
-        return BoundEnvironment(EnvironmentConfig.from_json(str(row["environment"])), str(row["environment_owner"]), bool(row["environment_deleted_at"]))
+        config = EnvironmentConfig.from_parts(str(row["environment"]), str(row["environment_secrets"] or ""))
+        return BoundEnvironment(config, str(row["environment_owner"]), bool(row["environment_deleted_at"]))
 
     async def delete_environment(self, owner: str, environment_id: str, *, owner_user: str) -> int:
-        """删除环境配置（Q35；task-service 的 DeleteEnvironmentConfig 做同样的事）：只标记，返回新标记的工作区个数。"""
+        """删除环境配置（Q35；task-service 的 DeleteEnvironmentConfig 做同样的事）：立即删掉机密的部分、记下删除时间，
+        会话照常用非机密的快照；返回新标记的工作区个数。"""
         await self.migrate()
         now = iso(self._clock())
         async with self._db(owner).transaction() as tx:
             return await tx.execute(
-                "UPDATE workspaces SET environment_deleted_at = $1, updated_at = $1 WHERE environment_id = $2 AND environment_owner = $3 "
-                "AND environment_deleted_at = ''",
+                "UPDATE workspaces SET environment_secrets = '', environment_deleted_at = $1, updated_at = $1 WHERE environment_id = $2 "
+                "AND environment_owner = $3 AND environment_deleted_at = ''",
                 (now, environment_id, owner_user),
             )
 

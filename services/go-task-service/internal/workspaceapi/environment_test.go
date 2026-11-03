@@ -106,14 +106,16 @@ func workspaceTable(t *testing.T, h *harness) relational.Store {
 		`ALTER TABLE workspaces ADD COLUMN environment TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE workspaces ADD COLUMN environment_owner TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE workspaces ADD COLUMN environment_deleted_at TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE workspaces ADD COLUMN environment_secrets TEXT NOT NULL DEFAULT ''`,
 	}}}); err != nil {
 		t.Fatal(err)
 	}
 	db, _ := h.store.Bind(&commonv1.TenantContext{TenantId: "t1"})
 	if err := db.Transaction(ctx, relational.TxOptions{}, func(ctx context.Context, tx relational.Tx) error {
 		for _, r := range [][]any{{"w1", "env-py", "u-alice"}, {"w2", "env-py", "u-alice"}, {"w3", "env-py", "u-bob"}, {"w4", "env-other", "u-alice"}} {
-			if _, err := tx.Execute(ctx, `INSERT INTO workspaces (workspace_id, state, created_at, updated_at, environment_id, environment, environment_owner)
-				VALUES ($1, 'active', '2026-11-03T00:00:00.000000Z', '2026-11-03T00:00:00.000000Z', $2, '{}', $3)`, r...); err != nil {
+			if _, err := tx.Execute(ctx, `INSERT INTO workspaces (workspace_id, state, created_at, updated_at, environment_id, environment, environment_owner,
+				environment_secrets) VALUES ($1, 'active', '2026-11-03T00:00:00.000000Z', '2026-11-03T00:00:00.000000Z', $2, '{"setup_script":"x"}', $3,
+				'{"env":"A=1"}')`, r...); err != nil {
 				return err
 			}
 		}
@@ -143,14 +145,17 @@ func TestDeleteEnvironmentConfigMarksOnlyTheCallersBindings(t *testing.T) {
 	}
 	var rows []relational.Row
 	_ = db.Transaction(ctx, relational.TxOptions{ReadOnly: true}, func(ctx context.Context, tx relational.Tx) error {
-		rows, err = tx.Query(ctx, `SELECT workspace_id, state, environment_deleted_at FROM workspaces ORDER BY workspace_id`)
+		rows, err = tx.Query(ctx, `SELECT workspace_id, state, environment, environment_secrets, environment_deleted_at FROM workspaces ORDER BY workspace_id`)
 		return err
 	})
 	deleted := map[string]bool{}
 	for _, r := range rows {
 		deleted[r["workspace_id"].(string)] = r["environment_deleted_at"].(string) != ""
-		if r["state"] != "active" {
-			t.Fatal("不删工作区")
+		if r["state"] != "active" || r["environment"] != `{"setup_script":"x"}` {
+			t.Fatal("不删工作区，会话的非机密快照留着")
+		}
+		if secrets := r["environment_secrets"].(string); (secrets == "") != deleted[r["workspace_id"].(string)] {
+			t.Fatalf("机密的部分随删除立即清掉，别的不动：%v", r)
 		}
 	}
 	if !deleted["w1"] || !deleted["w2"] || deleted["w3"] || deleted["w4"] {

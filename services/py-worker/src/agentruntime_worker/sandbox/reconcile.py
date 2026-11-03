@@ -47,11 +47,6 @@ _OWNER = re.compile(r"^(_platform|[a-z0-9][a-z0-9_-]{0,62})$")
 DEFAULT_HOLD_MAX = timedelta(hours=2)
 
 
-async def _environment_deleted(broker: SandboxBroker, record: Any) -> bool:
-    bound = await broker.bound_environment(record.owner, record.workspace_id)
-    return bound is not None and bound.deleted and bound.config.environment_id == record.environment_id
-
-
 def hold_until(record: Any, now: datetime, hold_max: timedelta) -> datetime | None:
     """等人期间顺延到什么时候：再给一个空闲期，从最后一次使用算起最多 hold_max，也不超过活满；已经到头时为 None。"""
     last = parse_iso(record.last_used_at) or parse_iso(record.ready_at)
@@ -116,10 +111,6 @@ async def reconcile_once(broker: SandboxBroker, *, grace: timedelta = timedelta(
                 if listing is not None and record.backend_env_id not in listing:
                     await ledger.mark_lost(record, "后端的列表里没有这个环境")
                     report.lost += 1
-                elif record.environment_id and ledger.idle_now(record) and await _environment_deleted(broker, record):
-                    # ENV-02（Q35）：工作区选用的环境配置删除了：闲着的环境销毁（照常先存档）。
-                    await broker._destroy_record(record, "environment deleted")  # noqa: SLF001
-                    report.reaped += 1
                 elif record.expired(now) and ledger.idle_now(record):
                     # 存档模式的可写环境先存档（D-06）：存档暂时失败时留着、下一轮再试；活满了照样销毁。
                     lifetime = bool(record.max_until and record.max_until <= iso(now))
