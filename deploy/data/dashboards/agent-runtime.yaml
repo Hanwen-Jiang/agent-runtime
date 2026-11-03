@@ -3,6 +3,9 @@
 # Model Gateway 的调用 span（服务名 model-gateway，runtime.cost_usd）、runtime.sandbox（sandbox.backend、sandbox.lifetime_ms、
 # sandbox.cpu_ms、sandbox.cost_usd）。模型花费原先按 name = "chat" 选，只选到 Worker 的 model 节点，漏了 Planner、Reviewer 与
 # Context Builder 的调用（TMP 计划第 9.2 节改成按网关的服务名选）。
+# Workspace 操作的耗时与进出 Worker 的字节数（PERF-00、WK-LITE-03，agentruntime_worker.workspace.timing）：总时长查 Tempo 的
+# runtime.workspace_op；各阶段与字节数查 VictoriaMetrics 的 runtime.workspace_op.duration_ms（直方图）与 runtime.worker.bytes
+# （计数器），名字点换下划线，计数器加 _total，标签只有操作、阶段、模式、结局、活动、通道、方向与租户。
 # Grafana 的 sidecar 按标签 grafana_dashboard 收（deploy/data/values/grafana.yaml）。tests/deploy/test_cloud.py 核对名字对得上。
 apiVersion: v1
 kind: ConfigMap
@@ -86,6 +89,33 @@ data:
           "fieldConfig": {"defaults": {"unit": "currencyUSD"}},
           "targets": [{"refId": "A", "queryType": "traceql", "metricsQueryType": "range",
                        "query": "{ name = \"runtime.sandbox\" } | sum_over_time(span.sandbox.cost_usd) by (span.tenant_id)"}]
+        },
+        {
+          "id": 8, "type": "timeseries", "title": "Workspace 操作耗时（毫秒，p50 与 p95，按操作）",
+          "description": "PERF-00：每次 Workspace 操作一个 runtime.workspace_op span，workspace.ms.total 是 Worker 里的总时长（不含排队）。",
+          "gridPos": {"x": 0, "y": 30, "w": 12, "h": 8},
+          "datasource": {"type": "tempo", "uid": "tempo"},
+          "fieldConfig": {"defaults": {"unit": "ms"}},
+          "targets": [{"refId": "A", "queryType": "traceql", "metricsQueryType": "range",
+                       "query": "{ name = \"runtime.workspace_op\" } | quantile_over_time(span.workspace.ms.total, .5, .95) by (span.workspace.operation)"}]
+        },
+        {
+          "id": 9, "type": "timeseries", "title": "Workspace 操作各阶段的耗时（毫秒，p95，按阶段）",
+          "description": "独占时间：queue 排队、acquire 借环境（不含恢复）、restore 从快照恢复、command 命令本身、archive 存档、release 归还、other 其余（业务库、策略）。",
+          "gridPos": {"x": 12, "y": 30, "w": 12, "h": 8},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "fieldConfig": {"defaults": {"unit": "ms"}},
+          "targets": [{"refId": "A", "legendFormat": "{{workspace_phase}}",
+                       "expr": "histogram_quantile(0.95, sum by (le, workspace_phase) (rate(runtime_workspace_op_duration_ms_bucket[15m])))"}]
+        },
+        {
+          "id": 10, "type": "timeseries", "title": "进出 Worker 的字节数（每小时，按活动、通道与方向）",
+          "description": "WK-LITE-03：sandbox 是与环境之间（命令输出、读写文件、存档的导出导入），object_store 是存档的块与清单；in 是进 Worker。数的是载荷，不含 HTTP 与编码的开销。",
+          "gridPos": {"x": 0, "y": 38, "w": 24, "h": 8},
+          "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+          "fieldConfig": {"defaults": {"unit": "bytes"}},
+          "targets": [{"refId": "A", "legendFormat": "{{worker_activity}} {{worker_channel}} {{worker_direction}}",
+                       "expr": "sum by (worker_activity, worker_channel, worker_direction) (increase(runtime_worker_bytes_total[1h]))"}]
         }
       ]
     }

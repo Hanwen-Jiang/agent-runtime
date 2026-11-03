@@ -127,7 +127,7 @@ def workspace_operations(config: WorkerConfig) -> WorkspaceOperations | None:
         return None
     return WorkspaceOperations(
         broker, secret=lambda: broker.sandboxes.read_secret(CREDENTIAL_SECRET), runtime=config.sandbox_runtime,
-        allow_local_remotes=config.workspace_allow_local_remotes,
+        allow_local_remotes=config.workspace_allow_local_remotes, telemetry=worker_telemetry(),
     )
 
 

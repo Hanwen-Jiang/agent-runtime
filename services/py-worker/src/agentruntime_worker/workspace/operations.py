@@ -19,6 +19,9 @@ activity（program 队列）；这里是它做的事：在承载工作区的沙�
 - 没配沙箱（AR_TOOL_SHELL_SANDBOX 是 host 或 docker）时 Worker 用一个只登记本地后端的 SandboxBroker（tools.workspace_operations），
   工作区就是 <AR_TOOL_WORKSPACE_ROOT>/<租户>/<workspace>，与 shell_run、repo_* 是同一处。
 - 错误：transient 抛出（activity 按工作流的重试策略重试，推送不重试），别的错误写进结果的 error（统一错误模型）。
+- 计时（PERF-00，见 workspace.timing）：给了 telemetry 时每次操作记一个 runtime.workspace_op span（排队、借环境、恢复、命令、
+  存档、归还的独占耗时与进出 Worker 的字节数），另记直方图 runtime.workspace_op.duration_ms 与计数器 runtime.worker.bytes。
+  不记路径与内容。
 """
 
 from __future__ import annotations
@@ -49,6 +52,7 @@ from agentruntime.workflow.v1 import workspace_pb2
 from agentruntime_core.dev._common import PLATFORM_ID
 from agentruntime_core.errors import ConflictError, DeniedError, InvalidError, NotFoundError, ProviderError, TransientError
 from agentruntime_core.providers.sandbox import ExecResult, SandboxSpec
+from agentruntime_core.providers.telemetry import TelemetryProvider
 from agentruntime_core.sealing import open_sealed
 from agentruntime_core.tenancy import TenantContext
 
@@ -57,6 +61,7 @@ from agentruntime_worker.sandbox.broker import Lease, SandboxBroker
 from agentruntime_worker.sandbox.env_config import EnvironmentConfig
 from agentruntime_worker.sandbox.grants import NetworkPolicy, check_request
 from agentruntime_worker.sandbox.ledger import iso
+from agentruntime_worker.workspace import timing
 from agentruntime_worker.workspace.archive import WorkspaceRecord
 from agentruntime_worker.workspace.copy import copy_working_copy
 
@@ -184,24 +189,74 @@ class WorkspaceOperations:
         runtime: str = "python",
         allow_local_remotes: bool = False,
         git_timeout: timedelta = timedelta(minutes=15),
+        telemetry: TelemetryProvider | None = None,
     ) -> None:
         self.broker = broker
         self._secret = secret
         self.runtime = runtime
         self.allow_local_remotes = allow_local_remotes
         self.git_timeout = git_timeout
+        self.telemetry = telemetry
 
     # --- 入口 ---
 
-    async def run(self, inp: workspace_pb2.WorkspaceOperationInput) -> workspace_pb2.WorkspaceOperationResult:
-        try:
-            result = await self._dispatch(inp)
-        except TransientError:
-            raise  # 交给工作流的重试策略
-        except ProviderError as err:
-            log.info("工作区操作 %s 失败（%s）", Op.Name(inp.operation), err.code)
-            return workspace_pb2.WorkspaceOperationResult(error=err.to_proto())
+    async def run(self, inp: workspace_pb2.WorkspaceOperationInput, *, queued_ms: float | None = None) -> workspace_pb2.WorkspaceOperationResult:
+        """queued_ms：这次尝试从排进队列到开始执行的毫秒数（activity 一侧算好传进来，PERF-00）。"""
+        with timing.metering() as meter:
+            if queued_ms is not None:
+                meter.add_ms("queue", queued_ms)
+            try:
+                async with self._span(inp) as span:
+                    outcome = "internal"
+                    try:
+                        result = await self._dispatch(inp)
+                        outcome = "ok"
+                    except TransientError as err:
+                        outcome = err.code
+                        raise  # 交给工作流的重试策略
+                    except ProviderError as err:
+                        outcome = err.code
+                        log.info("工作区操作 %s 失败（%s）", Op.Name(inp.operation), err.code)
+                        return workspace_pb2.WorkspaceOperationResult(error=err.to_proto())
+                    finally:
+                        await self._report(inp, meter, span, outcome)
+            finally:
+                # 与 Node Executor 一样每次结束时导出；导出失败不影响操作的结果。
+                if self._telemetry_for(inp) is not None:
+                    with contextlib.suppress(ProviderError):
+                        await self._telemetry_for(inp).flush()  # type: ignore[union-attr]
         return workspace_pb2.WorkspaceOperationResult(result=struct(result))
+
+    def _telemetry_for(self, inp: workspace_pb2.WorkspaceOperationInput) -> Any:
+        """只绑租户的 Telemetry（指标与导出用）；没给 telemetry 或租户不合法时 None。"""
+        owner = inp.tenant.tenant_id
+        if self.telemetry is None or not _SLUG.match(owner) or owner == PLATFORM_ID:
+            return None
+        return self.telemetry.bind(TenantContext(tenant_id=owner))
+
+    def _span(self, inp: workspace_pb2.WorkspaceOperationInput) -> Any:
+        if self._telemetry_for(inp) is None:
+            return contextlib.nullcontext()
+        assert self.telemetry is not None
+        ws = inp.workspace_id if _SLUG.match(inp.workspace_id) else ""
+        return self.telemetry.bind(TenantContext(tenant_id=inp.tenant.tenant_id, workspace_id=ws)).start_span("runtime.workspace_op", attributes={
+            "workspace.operation": _op_name(inp.operation),
+        })
+
+    async def _report(self, inp: workspace_pb2.WorkspaceOperationInput, meter: timing.Meter, span: Any, outcome: str) -> None:
+        """PERF-00：span 的属性与指标。记不下来只写日志，不影响操作本身。"""
+        metrics = self._telemetry_for(inp)
+        if span is None or metrics is None:
+            return
+        labels = {"workspace.operation": _op_name(inp.operation), "workspace.mode": meter.labels.get("workspace.mode", "none"), "workspace.outcome": outcome}
+        attributes = meter.attributes()
+        try:
+            span.set_attributes({**labels, **attributes, **{k: v for k, v in meter.labels.items() if k != "workspace.mode"}})
+            # 指标只绑租户：标签不带工作区与会话，不随工作区膨胀。
+            await timing.record_durations(metrics, attributes, labels)
+            await timing.record_bytes(metrics, meter, activity="workspace_operation", labels={"workspace.operation": labels["workspace.operation"]})
+        except Exception:  # noqa: BLE001
+            log.warning("工作区操作 %s 的计时没记下来", Op.Name(inp.operation), exc_info=True)
 
     async def _dispatch(self, inp: workspace_pb2.WorkspaceOperationInput) -> dict[str, Any]:
         if self.broker is None or self.broker.archiver is None:
@@ -297,7 +352,10 @@ class WorkspaceOperations:
         内容与仓库里的一样时照样提交（空提交），head 一定是这次提交。
         """
         for path, content in files:
-            await lease.box.write_file(lease.env_id, path, content.encode("utf-8"))
+            data = content.encode("utf-8")
+            with timing.phase("command"):
+                await lease.box.write_file(lease.env_id, path, data)
+            timing.add_bytes("sandbox", "out", len(data))
         await self._git(lease, ["add", "--force", "--", *(path for path, _ in files)], what="暂存")
         message = "Add workspace files" if cloned else "Initial commit"
         argv = [*_author_config(author), "commit", "--quiet", "--no-verify", *(["--allow-empty"] if cloned else []), "-m", message]
@@ -328,13 +386,17 @@ class WorkspaceOperations:
         with tempfile.TemporaryFile() as tmp:
             async with self._lease(inp, writable=False, workspace_id=source) as src:
                 _require(src.box, "export_archive")
-                await src.box.export_archive(src.env_id, tmp, max_bytes=max_bytes)
+                with timing.phase("command"):
+                    await src.box.export_archive(src.env_id, tmp, max_bytes=max_bytes)
                 expected = await _file_count(src)
             size = tmp.tell()
+            timing.add_bytes("sandbox", "in", size)
             tmp.seek(0)
             async with self._lease(inp, writable=True) as dst:
                 _require(dst.box, "import_archive")
-                await dst.box.import_archive(dst.env_id, tmp, size=size, max_bytes=max_bytes)
+                with timing.phase("command"):
+                    await dst.box.import_archive(dst.env_id, tmp, size=size, max_bytes=max_bytes)
+                timing.add_bytes("sandbox", "out", size)
                 if expected and not await _file_count(dst):
                     raise ConflictError("workspace_empty_after_copy", f"从 {source} 复制过来的工作区是空的（源有 {expected} 个文件）：不留空的副本")
                 return await self._head(dst), await self._branch(dst)
@@ -358,7 +420,9 @@ class WorkspaceOperations:
             common = ["diff", "--cached", "--no-color", "--no-ext-diff", *renames]
             await self._git(lease, [*common, "--binary", f"--output={DIFF_FILE}", *target], extra=index, what="diff")
             numstat = await self._git(lease, [*common, "--numstat", "-z", *target], extra=index, what="diff")
-            data = await lease.box.read_file(lease.env_id, DIFF_FILE)
+            with timing.phase("command"):
+                data = await lease.box.read_file(lease.env_id, DIFF_FILE)
+            timing.add_bytes("sandbox", "in", len(data))
         stats = parse_numstat(numstat.stdout.decode("utf-8", errors="replace"))
         return {
             "diff": data[:MAX_DIFF_BYTES].decode("utf-8", errors="replace"), "files": [s["path"] for s in stats], "stats": stats,
@@ -372,7 +436,8 @@ class WorkspaceOperations:
         async with self._lease(inp, writable=False) as lease:
             _require(lease.box, "list_dir")
             try:
-                items = await lease.box.list_dir(lease.env_id, rel)
+                with timing.phase("command"):
+                    items = await lease.box.list_dir(lease.env_id, rel)
             except NotFoundError as err:
                 if err.code == "unknown_env":
                     raise
@@ -396,7 +461,8 @@ class WorkspaceOperations:
             _require(lease.box, "list_dir")
             # 先从上级目录看大小与类型：大文件不读进来。
             try:
-                listing = await lease.box.list_dir(lease.env_id, parent)
+                with timing.phase("command"):
+                    listing = await lease.box.list_dir(lease.env_id, parent)
             except NotFoundError as err:
                 if err.code == "unknown_env":
                     raise
@@ -408,7 +474,9 @@ class WorkspaceOperations:
                 return {"size": str(entry.size), "too_large": True}
             # 列目录只给前 1000 项：大目录里没列到的，直接读（agent 对单个文件另有上限）。
             try:
-                data = await lease.box.read_file(lease.env_id, rel)
+                with timing.phase("command"):
+                    data = await lease.box.read_file(lease.env_id, rel)
+                timing.add_bytes("sandbox", "in", len(data))
             except NotFoundError as err:
                 if err.code == "unknown_env":
                     raise
@@ -652,19 +720,24 @@ class WorkspaceOperations:
         spec = SandboxSpec(runtime=self.runtime, network="none", idle_timeout=timedelta(minutes=10), workspace_id=ws)
         await self._ensure_host_dir(owner, ws)
         try:
-            lease = await broker.acquire(tenant, spec, task_id=task_id, writable=writable, reuse=False, busy_for=self.git_timeout + timedelta(minutes=5))
+            with timing.phase("acquire"):
+                lease = await broker.acquire(tenant, spec, task_id=task_id, writable=writable, reuse=False, busy_for=self.git_timeout + timedelta(minutes=5))
+            meter = timing.current()
+            if meter is not None:
+                meter.labels.update({"workspace.mode": "archive" if lease.archive else "mount", "sandbox.backend": lease.backend.name})
             ok = False
             try:
                 yield lease
                 ok = True
             finally:
-                if ok:
-                    await broker.release(lease)
-                else:
-                    # 操作失败：不存档（不把做了一半的改动存进快照），环境直接销毁。
-                    lease.writable = False
-                    with contextlib.suppress(ProviderError):
+                with timing.phase("release"):
+                    if ok:
                         await broker.release(lease)
+                    else:
+                        # 操作失败：不存档（不把做了一半的改动存进快照），环境直接销毁。
+                        lease.writable = False
+                        with contextlib.suppress(ProviderError):
+                            await broker.release(lease)
         finally:
             if granted:
                 with contextlib.suppress(ProviderError):
@@ -679,7 +752,9 @@ class WorkspaceOperations:
         for i, (key, value) in enumerate(config):
             env[f"GIT_CONFIG_KEY_{i}"], env[f"GIT_CONFIG_VALUE_{i}"] = key, value
         try:
-            res = await lease.box.exec(lease.env_id, ["git", *argv], timeout=self.git_timeout, stdin=stdin, env=env)
+            with timing.phase("command"):
+                res = await lease.box.exec(lease.env_id, ["git", *argv], timeout=self.git_timeout, stdin=stdin, env=env)
+            timing.exec_bytes(stdin, res)
         except OSError:
             raise InvalidError("git_unavailable", "沙箱里没有 git（运行环境要带 git，例如 universal）") from None
         if res.timed_out:
@@ -798,7 +873,8 @@ def _host_head(root: Path) -> tuple[str, str]:
 
 async def _file_count(lease: Lease) -> int:
     """环境里工作区的文件数，不算 .git 里的。"""
-    entries = await lease.box.manifest(lease.env_id)
+    with timing.phase("command"):
+        entries = await lease.box.manifest(lease.env_id)
     return sum(1 for e in entries if e.type == "file" and e.path != ".git" and not e.path.startswith(".git/"))
 
 
@@ -855,6 +931,14 @@ def workspace_dict(record: WorkspaceRecord, *, branch: str = "") -> dict[str, An
     return out
 
 
+def _op_name(operation: int) -> str:
+    """span 与指标里的操作名：WORKSPACE_OPERATION_LIST_FILES → list_files。"""
+    try:
+        return Op.Name(operation).removeprefix("WORKSPACE_OPERATION_").lower()
+    except ValueError:
+        return "unknown"
+
+
 def _redact(text: str, credential: Credential | None) -> str:
     if credential is not None:
         for secret in credential.secrets:
@@ -897,7 +981,10 @@ class WorkspaceActivities:
                 category=error_pb2.ERROR_CATEGORY_INVALID, code="workspace_api_unavailable",
                 message="这个 Worker 没有配沙箱，也没有配工作区目录（AR_TOOL_WORKSPACE_ROOT），不能执行工作区的操作",
             ))
-        return await self.operations.run(inp)
+        # 排队（PERF-00）：这次尝试从排进 program 队列到被一个 Worker 取走，查看文件与 Task 的 activity 抢的就是这一段。
+        info = activity.info()
+        queued_ms = (info.started_time - info.current_attempt_scheduled_time).total_seconds() * 1000
+        return await self.operations.run(inp, queued_ms=queued_ms)
 
     def activities(self) -> dict[str, object]:
         return {names.WORKSPACE_OPERATION: self.workspace_operation}

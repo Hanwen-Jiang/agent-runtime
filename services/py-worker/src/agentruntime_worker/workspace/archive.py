@@ -40,6 +40,7 @@ from agentruntime_core.tenancy import TenantContext
 from agentruntime_worker.sandbox.env_config import BoundEnvironment, EnvironmentConfig
 from agentruntime_worker.sandbox.ledger import iso, utc_now
 from agentruntime_worker.sandbox.policy import WorkspaceLimits
+from agentruntime_worker.workspace import timing
 
 KEEP = 3
 MANIFEST_VERSION = 1
@@ -328,6 +329,7 @@ class WorkspaceArchiver:
             data = (await self._bucket(owner).get(snapshot.manifest_key)).data
         except NotFoundError:
             raise TransientError("workspace_restore_mismatch", "快照的清单不见了（被清理了？），换最新的快照再试") from None
+        timing.add_bytes("object_store", "in", len(data))
         try:
             doc = json.loads(data)
             foreign = {str(k): str(v) for k, v in dict(doc.get("blob_workspaces") or {}).items()}
@@ -336,7 +338,11 @@ class WorkspaceArchiver:
             raise InvalidError("workspace_manifest_corrupt", "快照的清单格式不对") from None
 
     async def snapshot(self, box: Any, env_id: str, owner: str, workspace_id: str, *, max_bytes: int, env_ref: str = "") -> Snapshot:
-        """把环境里的工作区存一份快照，返回它。"""
+        """把环境里的工作区存一份快照，返回它。耗时记在 archive 阶段（PERF-00）。"""
+        with timing.phase("archive"):
+            return await self._snapshot(box, env_id, owner, workspace_id, max_bytes=max_bytes, env_ref=env_ref)
+
+    async def _snapshot(self, box: Any, env_id: str, owner: str, workspace_id: str, *, max_bytes: int, env_ref: str) -> Snapshot:
         _require_archive(box)
         bucket = self._bucket(owner)
         previous = await self.latest(owner, workspace_id)
@@ -348,6 +354,7 @@ class WorkspaceArchiver:
                 known = {e.sha256 for e in prev_entries if e.type == "file" and e.sha256 not in foreign}
         with self._tempfile() as tmp:
             await box.export_archive(env_id, tmp, max_bytes=max_bytes)
+            timing.add_bytes("sandbox", "in", tmp.tell())
             tmp.seek(0)
             entries, total, new_blobs = await self._store_blobs(bucket, workspace_id, tmp, max_bytes=max_bytes, known=known, foreign=foreign)
         # 复制来的、还没改过的文件：块仍在源工作区之下（N-10），清单照样记着它在哪。
@@ -364,7 +371,9 @@ class WorkspaceArchiver:
         }
         if used:
             doc["blob_workspaces"] = dict(sorted(used.items()))
-        await bucket.put(snap.manifest_key, json.dumps(doc, ensure_ascii=False, separators=(",", ":")).encode(), content_type="application/json")
+        body = json.dumps(doc, ensure_ascii=False, separators=(",", ":")).encode()
+        await bucket.put(snap.manifest_key, body, content_type="application/json")
+        timing.add_bytes("object_store", "out", len(body))
         await self.migrate()
         async with self._db(owner).transaction() as tx:
             row = await tx.query_one("SELECT MAX(seq) AS s FROM workspace_snapshots WHERE workspace_id = $1", (workspace_id,))
@@ -417,6 +426,7 @@ class WorkspaceArchiver:
                                 await bucket.head(key)
                             except NotFoundError:
                                 await bucket.put(key, data)
+                                timing.add_bytes("object_store", "out", len(data))
                                 new_blobs += 1
                             known.add(sha)
                         entries.append(FileEntry(path=rel, type="file", mode=mode, size=len(data), sha256=sha))
@@ -427,11 +437,15 @@ class WorkspaceArchiver:
         return entries, total, new_blobs
 
     async def restore(self, box: Any, env_id: str, owner: str, workspace_id: str, *, max_bytes: int, snapshot: Snapshot | None = None) -> Snapshot | None:
-        """把最近的（或给定的）快照恢复进一个空的环境；没有快照时什么也不做，返回 None。"""
+        """把最近的（或给定的）快照恢复进一个空的环境；没有快照时什么也不做，返回 None。耗时记在 restore 阶段（PERF-00）。"""
         _require_archive(box)
         snap = snapshot or await self.latest(owner, workspace_id)
         if snap is None:
             return None
+        with timing.phase("restore"):
+            return await self._restore(box, env_id, owner, workspace_id, max_bytes=max_bytes, snap=snap)
+
+    async def _restore(self, box: Any, env_id: str, owner: str, workspace_id: str, *, max_bytes: int, snap: Snapshot) -> Snapshot:
         entries, foreign = await self._manifest(owner, snap)
         bucket = self._bucket(owner)
         with self._tempfile() as tmp:
@@ -450,6 +464,7 @@ class WorkspaceArchiver:
                             data = (await bucket.get(blob_key(foreign.get(entry.sha256, workspace_id), entry.sha256))).data
                         except NotFoundError:
                             raise TransientError("workspace_restore_mismatch", f"快照里 {entry.path} 的内容不见了") from None
+                        timing.add_bytes("object_store", "in", len(data))
                         if len(data) != entry.size or hashlib.sha256(data).hexdigest() != entry.sha256:
                             raise TransientError("workspace_restore_mismatch", f"快照里 {entry.path} 的内容与清单不符")
                         info.size = len(data)
@@ -457,6 +472,7 @@ class WorkspaceArchiver:
             size = tmp.tell()
             tmp.seek(0)
             await box.import_archive(env_id, tmp, size=size, max_bytes=max(max_bytes, snap.size_bytes, 1))
+            timing.add_bytes("sandbox", "out", size)
         got = await box.manifest(env_id)
         if shape(got) != shape(entries):
             raise TransientError("workspace_restore_mismatch", "恢复后环境里的文件与快照的清单不一致")

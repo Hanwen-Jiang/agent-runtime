@@ -58,6 +58,7 @@ from agentruntime_worker.sandbox.environments import Resolution, workspace_reade
 from agentruntime_worker.tools.checkpoint import Checkpoint, Runner, UndoReport, create_checkpoint, undo_with
 from agentruntime_worker.tools.sandboxes import Sandboxes, parse_cpu_millis, parse_memory_mb
 from agentruntime_worker.workflows.interrupts import NOT_NEEDED, UNDO_FAILED
+from agentruntime_worker.workspace import timing
 
 VERSION = "v1"
 CONTEXT_READ = "context_read"
@@ -570,7 +571,8 @@ class _Workspaces:
             attributes["sandbox.environment"] = environment.state
         span_cm = self.telemetry.bind(tenant).start_span("runtime.sandbox", attributes=attributes) if self.telemetry else contextlib.nullcontext()
         archive_error: dict[str, str] | None = None
-        async with span_cm as span:
+        # 进出 Worker 的字节数（WK-LITE-03）：命令的输出、存档与恢复搬的数据；记进 span 与计数器 runtime.worker.bytes。
+        async with timing.metered(span_cm) as (span, io_meter):
             started = time.monotonic()
             try:
                 lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy, prepare=True)
@@ -588,7 +590,9 @@ class _Workspaces:
 
             # 检查点在环境里建（Worker 碰不到那里的文件），被打断时在环境里还原，之后才归还或存档（docs/plan/running-task-interaction.md 第 2 节）。
             async def in_env(command: list[str], command_env: dict[str, str] | None = None) -> ExecResult:
-                return await lease.box.exec(lease.env_id, command, timeout=CHECKPOINT_TIMEOUT, env={**(lease.env or {}), **(command_env or {})} or None)
+                res = await lease.box.exec(lease.env_id, command, timeout=CHECKPOINT_TIMEOUT, env={**(lease.env or {}), **(command_env or {})} or None)
+                timing.exec_bytes(None, res)
+                return res
 
             point: Checkpoint | None = None
             command_started = False
@@ -597,6 +601,7 @@ class _Workspaces:
                     point = await create_checkpoint(in_env)
                     command_started = True
                     result = await lease.box.exec(lease.env_id, argv, timeout=timedelta(seconds=timeout), env=lease.env or None)
+                    timing.exec_bytes(None, result)
                 except NotFoundError:
                     if not lease.reused:
                         raise
@@ -606,6 +611,7 @@ class _Workspaces:
                     ran = time.monotonic()
                     startup_ms = None if lease.reused else int((ran - retry_at) * 1000)
                     result = await lease.box.exec(lease.env_id, argv, timeout=timedelta(seconds=timeout), env=lease.env or None)
+                    timing.exec_bytes(None, result)
             except InvalidError as err:
                 if err.code == "command_not_found":
                     raise InvalidError("command_not_found", f"启动不了 {argv[0]}") from None
@@ -635,7 +641,11 @@ class _Workspaces:
                         meter["sandbox.timed_out"] = result.timed_out
                         if result.cpu_time is not None:
                             meter["sandbox.cpu_ms"] = int(result.cpu_time.total_seconds() * 1000)
-                    span.set_attributes(meter)
+                    span.set_attributes({**meter, **io_meter.byte_attributes()})
+        if self.telemetry is not None:
+            # 计数器只绑租户：标签不带工作区与会话。
+            with contextlib.suppress(ProviderError):
+                await timing.record_bytes(self.telemetry.bind(TenantContext(tenant_id=invocation.tenant_id)), io_meter, activity="shell_run")
         out = {"exit_code": result.exit_code, "timed_out": result.timed_out, "sandbox": lease.backend.name, **self._outputs(result.stdout, result.stderr)}
         if startup_ms is not None:
             out["sandbox_startup_ms"] = startup_ms
