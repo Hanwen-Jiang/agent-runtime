@@ -17,7 +17,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from email.utils import format_datetime
@@ -168,6 +168,10 @@ class FakeS3:
             if h.command == "PUT":
                 if h.headers.get("If-None-Match") == "*" and obj is not None:
                     return self._xml_error(h, 412, "PreconditionFailed")
+                # 带了内容的校验和就按内容核对（S3 的 x-amz-checksum-sha256：base64 的 sha256 摘要）。
+                checksum = h.headers.get("x-amz-checksum-sha256")
+                if checksum is not None and checksum != base64.b64encode(hashlib.sha256(body).digest()).decode():
+                    return self._xml_error(h, 400, "BadDigest")
                 kept = {k.lower(): v for k, v in h.headers.items() if k.lower().startswith("x-amz-meta-") or k.lower() == "content-type"}
                 self.objects[name] = _Object(body, kept, self.now())
                 return self._send(h, 200, b"", {"ETag": '"' + hashlib.md5(body, usedforsecurity=False).hexdigest() + '"'})
@@ -228,9 +232,11 @@ class FakeS3:
         self._send(h, status, body, {"Content-Type": "application/xml"}, head=h.command == "HEAD")
 
 
-def fetch(url: str, data: bytes | None = None) -> tuple[int, bytes]:
-    """不带签名地访问一个（预签名）地址：data 为 None 时 GET，否则 PUT。返回状态码与响应体。"""
-    request = urllib.request.Request(url, data=data, method="GET" if data is None else "PUT")
+def fetch(url: str, data: bytes | None = None, headers: Mapping[str, str] | None = None) -> tuple[int, bytes]:
+    """不带签名地访问一个（预签名）地址：data 为 None 时 GET，否则 PUT。headers 原样带上，只有 Content-Length 按 data 算
+    （签进去的长度与 data 不符时签名就对不上）。返回状态码与响应体。"""
+    extra = {k: v for k, v in (headers or {}).items() if k.lower() != "content-length"}
+    request = urllib.request.Request(url, data=data, method="GET" if data is None else "PUT", headers=extra)
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     try:
         with opener.open(request, timeout=30) as resp:

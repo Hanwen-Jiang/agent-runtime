@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping
 from datetime import timedelta
 from pathlib import Path
 
@@ -34,6 +35,9 @@ class Harness:
 
     async def upload(self, url: str, data: bytes) -> None:
         await self.provider.upload_url(url, data)
+
+    async def upload_signed(self, url: str, data: bytes, headers: Mapping[str, str]) -> None:
+        await self.provider.upload_url(url, data, headers=headers)
 
     async def run_lifecycle(self) -> None:
         await self.provider.run_lifecycle()

@@ -11,9 +11,11 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import hashlib
 import os
 import uuid
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -22,7 +24,7 @@ from agentruntime_core.adapters import s3test, sigv4
 from agentruntime_core.adapters.s3_object_store import S3ObjectStoreProvider, S3Settings, rule_id_prefix
 from agentruntime_core.conformance.common import FaultInjectionUnsupported, expect_error, tenant, tenant_a
 from agentruntime_core.conformance.object_store import ObjectStoreConformance
-from agentruntime_core.errors import DeniedError, ErrorCategory, InvalidError
+from agentruntime_core.errors import ConflictError, DeniedError, ErrorCategory, InvalidError
 from agentruntime_core.providers.object_store import LifecycleRule
 from agentruntime_core.testing import FakeClock, FaultInjector
 
@@ -31,10 +33,12 @@ ACCESS = "AKIDCONFORMANCE"
 SECRET = "conformance-secret-key-do-not-log"
 
 
-async def _fetch(url: str, data: bytes | None = None) -> bytes:
-    status, body = await asyncio.to_thread(s3test.fetch, url, data)
+async def _fetch(url: str, data: bytes | None = None, headers: Mapping[str, str] | None = None) -> bytes:
+    status, body = await asyncio.to_thread(s3test.fetch, url, data, headers)
     if status in (401, 403):
         raise DeniedError("expired_url", "临时地址无效或已过期")
+    if status == 412:
+        raise ConflictError("object_exists", "对象已存在")
     if status not in (200, 204):
         raise InvalidError("object_store_invalid", f"HTTP {status}")
     return body
@@ -65,6 +69,9 @@ class FakeHarness:
 
     async def upload(self, url: str, data: bytes) -> None:
         await _fetch(url, data)
+
+    async def upload_signed(self, url: str, data: bytes, headers: Mapping[str, str]) -> None:
+        await _fetch(url, data, headers)
 
     async def run_lifecycle(self) -> None:
         # S3 的生命周期按整天、由存储服务每天跑，不能立即触发；按天清理的行为由下面的 test_lifecycle_* 用假服务的时钟测。
@@ -232,6 +239,45 @@ async def test_presigned_url_is_scoped_to_its_key_and_method(fake: FakeHarness) 
         await fake.fetch(url.replace("/t-alpha/k?", "/t-beta/k?"))
 
 
+async def test_signed_upload_binds_key_method_checksum_precondition_and_length(fake: FakeHarness) -> None:
+    """STOR-SEC（第 8.2 节）：签进去的头是 content-length、host、if-none-match 与 x-amz-checksum-sha256，载荷不签；
+    改路径、改方法、去掉或改动任一个头都被拒（签名不对）。"""
+    store = fake.provider.bind(tenant_a())
+    data = b"block-content"
+    digest = hashlib.sha256(data)
+    signed = await store.signed_upload("blocks/aa", ttl=timedelta(minutes=5), sha256=digest.hexdigest(), size=len(data))
+    assert "X-Amz-SignedHeaders=content-length%3Bhost%3Bif-none-match%3Bx-amz-checksum-sha256" in signed.url
+    assert dict(signed.headers) == {
+        "Content-Length": str(len(data)), "If-None-Match": "*", "x-amz-checksum-sha256": base64.b64encode(digest.digest()).decode(),
+    }
+    with expect_error(ErrorCategory.DENIED):
+        await fake.upload_signed(signed.url.replace("/t-alpha/blocks/aa?", "/t-alpha/blocks/bb?"), data, signed.headers)
+    with expect_error(ErrorCategory.DENIED):
+        await fake.upload_signed(signed.url.replace("/t-alpha/blocks/aa?", "/t-beta/blocks/aa?"), data, signed.headers)
+    with expect_error(ErrorCategory.DENIED):
+        await fake.fetch(signed.url)  # PUT 的签名不能拿来 GET
+    for name in signed.headers:
+        if name != "Content-Length":
+            with expect_error(ErrorCategory.DENIED):
+                await fake.upload_signed(signed.url, data, {k: v for k, v in signed.headers.items() if k != name})
+    assert fake.fake.objects == {}
+    await fake.upload_signed(signed.url, data, signed.headers)
+    assert fake.fake.objects["t-alpha/blocks/aa"].data == data
+
+
+async def test_fake_store_enforces_the_checksum_header() -> None:
+    """假服务本身：PUT 带 x-amz-checksum-sha256 时按内容核对（与 S3 一样），不符报 400 BadDigest。"""
+    h = FakeHarness()
+    try:
+        url = await h.provider.bind(tenant_a()).temporary_url("k", ttl=timedelta(minutes=5), method="PUT")
+        wrong = base64.b64encode(hashlib.sha256(b"other").digest()).decode()
+        status, body = await asyncio.to_thread(s3test.fetch, url, b"data", {"x-amz-checksum-sha256": wrong})
+        assert status == 400 and b"BadDigest" in body
+        assert h.fake.objects == {}
+    finally:
+        h.fake.stop()
+
+
 async def test_presigned_url_lasts_at_most_seven_days(fake: FakeHarness) -> None:
     store = fake.provider.bind(tenant_a())
     url = await store.temporary_url("k", ttl=timedelta(days=30))
@@ -321,6 +367,9 @@ class LiveHarness:
 
     async def upload(self, url: str, data: bytes) -> None:
         await _fetch(url, data)
+
+    async def upload_signed(self, url: str, data: bytes, headers: Mapping[str, str]) -> None:
+        await _fetch(url, data, headers)
 
     async def run_lifecycle(self) -> None:
         raise FaultInjectionUnsupported

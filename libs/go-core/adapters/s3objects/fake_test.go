@@ -6,6 +6,7 @@ package s3objects
 import (
 	"bytes"
 	"crypto/md5"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/xml"
 	"fmt"
@@ -107,6 +108,9 @@ func (f *FakeS3) verify(r *http.Request, body []byte) string {
 	for name, values := range r.Header {
 		headers[strings.ToLower(name)] = strings.Join(values, ",")
 	}
+	if _, ok := headers["content-length"]; !ok && r.ContentLength >= 0 {
+		headers["content-length"] = strconv.FormatInt(r.ContentLength, 10)
+	}
 	var access, date, amzDate, want, payload string
 	var signed []string
 	if sig := q.Get("X-Amz-Signature"); sig != "" {
@@ -181,6 +185,14 @@ func (f *FakeS3) serve(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("If-None-Match") == "*" && ok {
 			f.fail(w, http.StatusPreconditionFailed, "PreconditionFailed")
 			return
+		}
+		// 带了内容的校验和就按内容核对（S3 的 x-amz-checksum-sha256：base64 的 sha256 摘要）。
+		if want := r.Header.Get("X-Amz-Checksum-Sha256"); want != "" {
+			got := sha256.Sum256(body)
+			if want != base64.StdEncoding.EncodeToString(got[:]) {
+				f.fail(w, http.StatusBadRequest, "BadDigest")
+				return
+			}
 		}
 		kept := http.Header{}
 		for k, v := range r.Header {

@@ -24,6 +24,9 @@ type Harness interface {
 	Fetch(ctx context.Context, url string) ([]byte, error)
 	// Upload 用 TemporaryURL 生成的 PUT 地址上传；地址过期或无效时返回 Denied。
 	Upload(ctx context.Context, url string, data []byte) error
+	// UploadSigned 用 SignedUpload 给的地址 PUT data，带上 headers（Content-Length 由 data 定）。被拒时返回错误：
+	// 地址过期或签名不对 Denied，内容与签的哈希不符 Invalid，对象已存在 Conflict。
+	UploadSigned(ctx context.Context, url string, data []byte, headers map[string]string) error
 	// RunLifecycle 立即执行一次生命周期清理；做不到时返回 conformance.ErrUnsupported。
 	RunLifecycle(ctx context.Context) error
 }
@@ -189,6 +192,80 @@ func Run(t *testing.T, newHarness func(t *testing.T) Harness) {
 		conformance.ExpectError(t, err, providererr.Denied, "")
 		_, err = s.TemporaryURL(ctx, "k", 0, "GET")
 		conformance.ExpectError(t, err, providererr.Invalid, "")
+	})
+
+	// SignedUpload（STOR-SEC，docs/plan/workspace-read-latency-and-disk-2026-11-03.md 第 8.2 节）：拿到地址的一方
+	// （环境里的 agent，也就是用户代码）只能把内容正确、长度正确的这一个对象写一次。
+	content := []byte("block \x00\xff content")
+	sum := sha256.Sum256(content)
+	digest := hex.EncodeToString(sum[:])
+	absent := func(t *testing.T, s objectstore.Store) {
+		t.Helper()
+		_, err := s.Head(ctx, "blocks/aa")
+		conformance.ExpectError(t, err, providererr.NotFound, "")
+	}
+	conformance.Case(t, "SignedUploadWritesTheSignedContent", func(t *testing.T) {
+		h, s := setup(t)
+		up := conformance.Must(s.SignedUpload(ctx, "blocks/aa", 5*time.Minute, digest, int64(len(content))))
+		if up.URL == "" || len(up.Headers) == 0 {
+			t.Fatalf("signed upload = %+v", up)
+		}
+		conformance.NoError(t, h.UploadSigned(ctx, up.URL, content, up.Headers))
+		if got := conformance.Must(s.Get(ctx, "blocks/aa")).Data; string(got) != string(content) {
+			t.Fatalf("got %q", got)
+		}
+	})
+	conformance.Case(t, "SignedUploadRejectsOtherContent", func(t *testing.T) {
+		for _, other := range []string{"BLOCK \x00\xff CONTENT", "block \x00\xff content!", "short"} {
+			h, s := setup(t)
+			up := conformance.Must(s.SignedUpload(ctx, "blocks/aa", 5*time.Minute, digest, int64(len(content))))
+			if err := h.UploadSigned(ctx, up.URL, []byte(other), up.Headers); err == nil {
+				t.Fatalf("content %q was accepted", other)
+			}
+			absent(t, s)
+		}
+	})
+	conformance.Case(t, "SignedUploadNeedsItsHeaders", func(t *testing.T) {
+		h, s := setup(t)
+		up := conformance.Must(s.SignedUpload(ctx, "blocks/aa", 5*time.Minute, digest, int64(len(content))))
+		if err := h.UploadSigned(ctx, up.URL, content, map[string]string{}); err == nil {
+			t.Fatal("upload without the signed headers was accepted")
+		}
+		absent(t, s)
+	})
+	conformance.Case(t, "SignedUploadNeverOverwrites", func(t *testing.T) {
+		h, s := setup(t)
+		put(t, s, "blocks/aa", "original")
+		up := conformance.Must(s.SignedUpload(ctx, "blocks/aa", 5*time.Minute, digest, int64(len(content))))
+		if err := h.UploadSigned(ctx, up.URL, content, up.Headers); err == nil {
+			t.Fatal("signed upload overwrote an existing object")
+		}
+		if got := conformance.Must(s.Get(ctx, "blocks/aa")).Data; string(got) != "original" {
+			t.Fatalf("object changed to %q", got)
+		}
+	})
+	conformance.Case(t, "SignedUploadExpires", func(t *testing.T) {
+		h, s := setup(t)
+		up := conformance.Must(s.SignedUpload(ctx, "blocks/aa", 5*time.Minute, digest, int64(len(content))))
+		h.Advance(ctx, 6*time.Minute)
+		conformance.ExpectError(t, h.UploadSigned(ctx, up.URL, content, up.Headers), providererr.Denied, "")
+	})
+	conformance.Case(t, "SignedUploadRejectsBadArguments", func(t *testing.T) {
+		_, s := setup(t)
+		for _, c := range []struct {
+			sha  string
+			size int64
+			ttl  time.Duration
+		}{
+			{"not-hex", 1, time.Minute},
+			{strings.Repeat("A", 64), 1, time.Minute},
+			{strings.Repeat("a", 64), -1, time.Minute},
+			{strings.Repeat("a", 64), 1, 0},
+			{strings.Repeat("a", 64), 1, objectstore.MaxSignedUploadTTL + time.Second},
+		} {
+			_, err := s.SignedUpload(ctx, "blocks/aa", c.ttl, c.sha, c.size)
+			conformance.ExpectError(t, err, providererr.Invalid, "")
+		}
 	})
 	conformance.Case(t, "LifecycleExpiresOldObjects", func(t *testing.T) {
 		h, s := setup(t)

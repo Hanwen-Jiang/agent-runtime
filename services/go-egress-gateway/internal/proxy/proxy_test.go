@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -103,6 +104,31 @@ func TestGrantAllowsOnlyItsHostsPortsAndTime(t *testing.T) {
 	time.Sleep(250 * time.Millisecond) // 缓存过期
 	if status, body := h.get(c, "http://api.example.com/"); status != http.StatusForbidden || !strings.Contains(body, "no_grant") {
 		t.Fatalf("到期之后：%d %s", status, body)
+	}
+}
+
+// STOR-SEC（docs/plan/workspace-read-latency-and-disk-2026-11-03.md 第 8.2 节）：预签名地址是持有即可用的凭证，
+// 出网网关的审计与日志只记主机与端口，不记路径与查询串（里面有 X-Amz-Signature）。
+func TestAuditAndLogsNeverCarryPathsOrQueryStrings(t *testing.T) {
+	h := newHarness(t)
+	h.grant(grantSpec{id: "sbg-0000000000000009", hosts: []string{"api.example.com"}, minutes: 15})
+	c := h.client(h.token("egress", nil), true)
+	const signature = "5d672d79c15b13162d9279b0855cfba6789a8edb4c82c400e06b5924a6f2b5d7"
+	target := "http://api.example.com/blocks/aa?X-Amz-Credential=AKIDEXAMPLE%2F20261103&X-Amz-Signature=" + signature
+	if status, _ := h.get(c, target); status != http.StatusOK {
+		t.Fatalf("status %d", status)
+	}
+	waitFor(t, "审计", func() bool { return len(h.audits()) > 0 })
+	for _, row := range h.audits() {
+		for col, v := range row {
+			if s := fmt.Sprint(v); strings.Contains(s, signature) || strings.Contains(s, "X-Amz") || strings.Contains(s, "blocks/aa") {
+				t.Fatalf("审计的 %s 带出了路径或查询串：%s", col, s)
+			}
+		}
+	}
+	waitFor(t, "日志", func() bool { return strings.Contains(h.logs.String(), "api.example.com") })
+	if logs := h.logs.String(); strings.Contains(logs, signature) || strings.Contains(logs, "X-Amz") || strings.Contains(logs, "blocks/aa") {
+		t.Fatalf("日志带出了路径或查询串：%s", logs)
 	}
 }
 

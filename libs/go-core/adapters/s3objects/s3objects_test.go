@@ -12,6 +12,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -48,7 +49,10 @@ func sha256Hex(s string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func fetch(rawURL string, data []byte) ([]byte, error) {
+func fetch(rawURL string, data []byte) ([]byte, error) { return fetchWith(rawURL, data, nil) }
+
+// fetchWith 带上 headers（Content-Length 按 data 算，签进去的长度与 data 不符时签名就对不上）。
+func fetchWith(rawURL string, data []byte, headers map[string]string) ([]byte, error) {
 	method := http.MethodGet
 	if data != nil {
 		method = http.MethodPut
@@ -56,6 +60,11 @@ func fetch(rawURL string, data []byte) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, method, rawURL, bytes.NewReader(data))
 	if err != nil {
 		return nil, err
+	}
+	for k, v := range headers {
+		if !strings.EqualFold(k, "Content-Length") {
+			req.Header.Set(k, v)
+		}
 	}
 	resp, err := (&http.Client{Transport: &http.Transport{Proxy: nil}}).Do(req)
 	if err != nil {
@@ -66,6 +75,8 @@ func fetch(rawURL string, data []byte) ([]byte, error) {
 	switch {
 	case resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized:
 		return nil, providererr.New(providererr.Denied, "expired_url", "临时地址无效或已过期")
+	case resp.StatusCode == http.StatusPreconditionFailed:
+		return nil, providererr.New(providererr.Conflict, "object_exists", "对象已存在")
 	case resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent:
 		return nil, providererr.New(providererr.Invalid, "object_store_invalid", fmt.Sprint("HTTP ", resp.StatusCode))
 	}
@@ -92,6 +103,10 @@ func (h *harness) Upload(_ context.Context, u string, data []byte) error {
 		data = []byte{}
 	}
 	_, err := fetch(u, data)
+	return err
+}
+func (h *harness) UploadSigned(_ context.Context, u string, data []byte, headers map[string]string) error {
+	_, err := fetchWith(u, data, headers)
 	return err
 }
 
@@ -285,6 +300,45 @@ func TestPresignedURLIsScopedToItsKeyAndMethod(t *testing.T) {
 	long := conformance.Must(s.TemporaryURL(ctx, "k", 30*24*time.Hour, "GET"))
 	if q := conformance.Must(url.Parse(long)).Query(); q.Get("X-Amz-Expires") != "604800" {
 		t.Fatalf("X-Amz-Expires = %s", q.Get("X-Amz-Expires"))
+	}
+}
+
+// STOR-SEC（第 8.2 节）：签进去的头是 content-length、host、if-none-match 与 x-amz-checksum-sha256，与 Python 侧一样；
+// 改路径、改方法、去掉任一个头都被拒（签名不对）。
+func TestSignedUploadBindsKeyMethodChecksumPreconditionAndLength(t *testing.T) {
+	h := newHarness(t, "")
+	s := conformance.Must(h.provider.Bind(conformance.TenantA()))
+	data := []byte("block-content")
+	sum := sha256.Sum256(data)
+	up := conformance.Must(s.SignedUpload(ctx, "blocks/aa", 5*time.Minute, hex.EncodeToString(sum[:]), int64(len(data))))
+	if q := conformance.Must(url.Parse(up.URL)).Query(); q.Get("X-Amz-SignedHeaders") != "content-length;host;if-none-match;x-amz-checksum-sha256" {
+		t.Fatalf("signed headers = %q", q.Get("X-Amz-SignedHeaders"))
+	}
+	want := map[string]string{
+		"Content-Length": fmt.Sprint(len(data)), "If-None-Match": "*", "x-amz-checksum-sha256": base64.StdEncoding.EncodeToString(sum[:]),
+	}
+	if fmt.Sprint(up.Headers) != fmt.Sprint(want) {
+		t.Fatalf("headers = %v, want %v", up.Headers, want)
+	}
+	conformance.ExpectError(t, h.UploadSigned(ctx, strings.Replace(up.URL, "/t-alpha/blocks/aa?", "/t-alpha/blocks/bb?", 1), data, up.Headers), providererr.Denied, "")
+	conformance.ExpectError(t, h.UploadSigned(ctx, strings.Replace(up.URL, "/t-alpha/blocks/aa?", "/t-beta/blocks/aa?", 1), data, up.Headers), providererr.Denied, "")
+	_, err := h.Fetch(ctx, up.URL)
+	conformance.ExpectError(t, err, providererr.Denied, "")
+	for name := range up.Headers {
+		if name == "Content-Length" {
+			continue
+		}
+		rest := map[string]string{}
+		for k, v := range up.Headers {
+			if k != name {
+				rest[k] = v
+			}
+		}
+		conformance.ExpectError(t, h.UploadSigned(ctx, up.URL, data, rest), providererr.Denied, "")
+	}
+	conformance.NoError(t, h.UploadSigned(ctx, up.URL, data, up.Headers))
+	if got := conformance.Must(s.Get(ctx, "blocks/aa")).Data; string(got) != string(data) {
+		t.Fatalf("got %q", got)
 	}
 }
 

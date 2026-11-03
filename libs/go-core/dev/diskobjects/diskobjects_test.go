@@ -31,6 +31,9 @@ func (h *harness) Fetch(ctx context.Context, url string) ([]byte, error) {
 func (h *harness) Upload(ctx context.Context, url string, data []byte) error {
 	return h.provider.UploadURL(ctx, url, data)
 }
+func (h *harness) UploadSigned(ctx context.Context, url string, data []byte, headers map[string]string) error {
+	return h.provider.UploadSignedURL(ctx, url, data, headers)
+}
 func (h *harness) RunLifecycle(ctx context.Context) error { return h.provider.RunLifecycle(ctx) }
 
 func TestConformance(t *testing.T) {

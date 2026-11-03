@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -149,6 +150,26 @@ type harness struct {
 	admin    *httptest.Server
 	preview  *httptest.Server
 	echo     net.Listener
+	// logs 收网关写的日志（JSON 行），核对里面不带凭据与查询串。
+	logs *lockedBuffer
+}
+
+// lockedBuffer 是并发安全的日志缓冲（各连接的 goroutine 都会写）。
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf strings.Builder
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
 }
 
 func upstreamHandler(w http.ResponseWriter, r *http.Request) {
@@ -209,9 +230,10 @@ func newHarness(t *testing.T) *harness {
 		"93.184.216.35:80":   httpSrv.Listener.Addr().String(),
 	}}
 	h.store = grants.New(db, 200*time.Millisecond, h.clock.Now)
+	h.logs = &lockedBuffer{}
 	h.gw = New(Config{
 		Key: h.key, Store: h.store, Resolver: h.resolver, Dialer: h.dialer, Now: h.clock.Now, CheckInterval: 100 * time.Millisecond,
-		PreviewDomain: "preview.example.test", PreviewRPS: 8,
+		PreviewDomain: "preview.example.test", PreviewRPS: 8, Log: slog.New(slog.NewJSONHandler(h.logs, nil)),
 	})
 	h.proxy = httptest.NewServer(h.gw)
 	h.admin = httptest.NewServer(h.gw.Admin(adminTk))
