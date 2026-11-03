@@ -92,7 +92,7 @@
             "required": ["path"],
             "properties": {
               "path": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
-              "why": {"description": "为什么重要，一句话；代码补上的改动文件可以没有", "type": "string", "maxLength": 300}
+              "why": {"description": "为什么重要，一句话；代码补上的改动文件可以没有", "type": "string", "maxLength": 300}, "delivered": {"description": "这一轮经 deliver_file 交付给了用户（N-18，docs/plan/n18-file-delivery-f3.md）：排在最前面，客户端可以给下载入口；没交付的文件不写", "type": "boolean"}
             },
             "unevaluatedProperties": false
           }
