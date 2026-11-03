@@ -593,6 +593,33 @@ M5 的后端顺序见 [firecracker-backend.md](firecracker-backend.md) 第 7 节
   `agent-runtime-model-allowlist` 里给 `swebench` 加 `a6api/gpt-6.1-sol@2026-11`（加了之后它比 gpt-5.5 便宜，强档就会选它），改完重启网关。
 - **没有验证**：真模型下 N-01～N-09 的效果（日志里那两个任务没有重跑：要用签名密钥签发令牌，这个会话不做）。
 
+升级到 b4f37e2（2026-11-03，第 19 版；另一个会话部署，脚本 `/root/ar-release/rev21/rev21.sh`，这里按脚本补记）：
+
+- 预算账本（task-service 启动时建 `model_usage` 等表）、多因素选档、Activity 里的 ContextBuilder、只读 EnvironmentService、N-17；Worker 启动时给
+  `sandbox_envs` 加两列（迁移 206）。coding-web 是 `a319601`。
+- 租户策略的 ConfigMap `agent-runtime-model-allowlist` 改写：平台硬上限每天 10 万美元；没列出的租户每天 3 美元、每月 20 美元，用免费白名单；
+  内部租户 `gh-hanwen-jiang`、`evals` 用全部模型，`swebench` 留着不含 Claude 的白名单，都给硬上限。原来的存在 `rev21/tenant-policies.before.json`。
+- 那时 task-service 对每个租户写死 2 个未终态 Task（`be3cfc5`），SWE-bench 的内部租户也被卡住，见下一版。回滚：`helm rollback ar 18`。
+
+升级到 26b30ee（2026-11-03，第 20 版；`/root/ar-release` 下的目录按那边的编号叫 `rev22`，脚本、日志与 values 都在那里）：
+
+- 内容：`f21626d` 按租户覆盖未终态 Task 的上限，values 加 `taskService.activeTaskLimits`（`evals`、`gh-hanwen-jiang`、`swebench` 都是 0，即不设上限；
+  别的租户仍是 2）；`93110a6` 网关启动时限时重试连业务库；评测与能力矩阵的代码（不在请求路径上）；coding-web `d61bfef`（环境配置界面、新会话选环境、
+  `/env` 读 EnvironmentService、Workspace 界面）。py-worker 与 libs 自 b4f37e2 没变，Worker 镜像只是按新标签重建。没有迁移；租户策略、
+  Model Profile、Memory Service（52174d9）与评测页都没动。
+- 换代码同以前（`git archive`、核对 sha256；旧的留在 `agent-runtime.b4f37e2`、`coding-agent.a319601`、`REVISION.b4f37e2`）。values 是
+  `values-rev21.yaml` 改 `image.tag`、加 `activeTaskLimits`。升级前脚本核对：没有在跑的评测与 TaskWorkflow、线上 manifest 与 `manifest-rev21.yaml`
+  一致；`helm template` 与第 19 版只差镜像标签、`OTEL_SERVICE_VERSION` 与 task-service 的 `AR_TENANT_ACTIVE_TASKS`，多出别的就停。
+  `/root/ar-secrets/coding-web.yaml` 的镜像原来还写着 1be5776，改成 d61bfef（原来的存在 `rev22/coding-web.yaml.before`）。
+- Chart 里 worker 与 pkg-mirror 的模板是 CRLF，渲染出的行尾带 `\r`：按行比 manifest 时要容忍行尾空白（这次的脚本因此停过一次，在 helm 之前，集群没变）。
+- 核对（不花钱）：各 Pod 都在跑、镜像都是新标签；task-service 读到 `AR_TENANT_ACTIVE_TASKS=evals=0,gh-hanwen-jiang=0,swebench=0`；api、evals 与
+  `evals.cgent.link/api/live.json` 200；code 在切换的那一刻 503，随后 200；网关这次没有重启；出网网关与包镜像照旧第一次启动连不上业务库、
+  重启一次就好；新 Pod 的日志里只有一种错误：出网网关每分钟一次 `failed to upload metrics`（连 Collector 的 4318 被拒）。它的网络策略
+  （`templates/egress-gateway.yaml`）只放行 DNS、data 里的 Postgres、沙箱与公网（排除内网段），没有放行同一命名空间的 Collector，
+  所以出网网关的指标一直没进 Collector；这一版没改这个模板，不是这次引入的，要另修。回滚：`helm rollback ar 19`，coding-web 用
+  `kubectl -n agent-runtime set image deploy/coding-web coding-web=ghcr.io/agentruntime/coding-web:a319601`。
+- **没有验证**：内部租户真的能同时跑 2 个以上的 Task（要提交 Task）；coding-web 的新界面登录之后的样子。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
