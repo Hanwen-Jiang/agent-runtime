@@ -76,6 +76,8 @@ DIFFICULTIES = ("<15 min fix", "15 min - 1 hour", "1-4 hours", ">4 hours")
 QUOTA_FULL = "个沙箱"
 # 等一等就有名额的拒绝（都是 403 permission_denied）：沙箱环境的配额、租户工作区的配额、租户未完成 Task 的上限（task-service 的准入）。
 WAIT_FOR_ROOM = (QUOTA_FULL, "个工作区", "个未完成的 Task")
+# 克隆时连不上远端（400，Workspace API 的“取提交失败”）：出网网关连 GitHub 偶尔超时，隔一会儿再试。
+CLONE_UNREACHABLE = ("CONNECT tunnel failed", "Could not resolve host", "Connection timed out", "Failed to connect to")
 T = TypeVar("T")
 
 
@@ -290,6 +292,7 @@ class Settings:
     # 沙箱环境的配额满时等多久（默认 30 秒试一次，最多半小时）。
     quota_wait_s: float = 30.0
     quota_wait_tries: int = 60
+    clone_tries: int = 3
 
     def __post_init__(self) -> None:
         if not _RUN_ID.match(self.run_id):
@@ -485,6 +488,17 @@ class _Runner:
             self.s.sleep(self.s.quota_wait_s)
         return call()
 
+    def _clone(self, call: Callable[[], T]) -> T:
+        """建工作区时连不上远端（网络抖动）：隔 quota_wait_s 再试，至多 clone_tries 次；别的错误照常抛出。"""
+        for attempt in range(1, self.s.clone_tries + 1):
+            try:
+                return call()
+            except ApiError as err:
+                if attempt == self.s.clone_tries or err.status != 400 or not any(m in err.message for m in CLONE_UNREACHABLE):
+                    raise
+            self.s.sleep(self.s.quota_wait_s)
+        raise AssertionError("unreachable")
+
     # 各题库不同的部分（Terminal-Bench 的适配器覆盖它们）：工作区 id、建工作区的参数、给 Task 的消息。
 
     def _workspace_id(self, inst: Instance) -> str:
@@ -526,7 +540,7 @@ class _Runner:
             for key in ("task_id", "events_url", "error", "status", "final_verdict", "stop_reason", "auto_replies", "patch", "patch_files", "patch_error"):
                 rec.pop(key, None)
             repo_url, ref, files = self._workspace_args(inst)
-            created = self._when_room(lambda: self.rt.create_workspace(ws, repo_url=repo_url, ref=ref, files=files))
+            created = self._clone(lambda: self._when_room(lambda: self.rt.create_workspace(ws, repo_url=repo_url, ref=ref, files=files)))
             rec.update({"state": "created", "workspace_id": ws, "head": created["head"]})
             self._save(rec)
             request_id = hashlib.sha256(f"{self.s.run_id}\x00{inst.instance_id}\x00{created['head']}".encode()).hexdigest()[:32]

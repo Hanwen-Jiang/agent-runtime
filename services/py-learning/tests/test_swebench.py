@@ -493,6 +493,21 @@ def test_a_failed_submit_does_not_leave_its_workspace_behind(tmp_path: Path, ins
     assert rec["state"] == "error" and fake.deleted.count(ws) >= 1 and not fake.submits
 
 
+def test_a_clone_that_cannot_reach_the_remote_is_tried_again(tmp_path: Path, insts: list[sb.Instance]) -> None:
+    """克隆时连不上远端（出网网关连 GitHub 超时，Workspace API 报 400“取提交失败 … CONNECT tunnel failed”）：网络抖动，
+    隔一会儿再试，至多 clone_tries 次（2026-11-03 t18-rev19 的 matplotlib 连着两轮碰上）。"""
+    waits: list[float] = []
+    blip = ApiError(400, "invalid_argument", "取提交失败：fatal: unable to access 'https://github.com/x/y.git/': CONNECT tunnel failed, response 502")
+    fake = Flaky(create_errors=[blip, blip])
+    sb.run(fake, insts[:1], tmp_path / "out", settings(budget_usd=10, task_usd_limit=2, sleep=waits.append))
+    [rec] = records(tmp_path / "out").values()
+    assert rec["state"] == "finished" and len(waits) == 2
+    fake = Flaky(create_errors=[blip] * 10)
+    sb.run(fake, insts[1:2], tmp_path / "out2", settings(budget_usd=10, task_usd_limit=2, sleep=lambda _: None))
+    [rec] = records(tmp_path / "out2").values()
+    assert rec["state"] == "error" and "CONNECT" in rec["error"] and len(fake.create_errors) == 7, "试了 clone_tries 次就停"
+
+
 def test_other_errors_are_not_waited_on(tmp_path: Path, insts: list[sb.Instance]) -> None:
     waits: list[float] = []
     fake = Flaky(create_errors=[ApiError(403, "permission_denied", "没有这个权限")])
