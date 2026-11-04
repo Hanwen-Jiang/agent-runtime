@@ -851,7 +851,10 @@ fn bad_configuration_refuses_to_start_without_echoing_secrets() {
         &[("AR_SECRETS_FILE", "/nonexistent/secrets.json")],
         "AR_SECRETS_FILE",
     );
-    check(&rig, &[("AR_FC_ALLOW_NON_ROOT", "")], "root");
+    // 以 root 跑测试时这一条不成立（root 不需要 AR_FC_ALLOW_NON_ROOT）。
+    if ar_sys::geteuid() != 0 {
+        check(&rig, &[("AR_FC_ALLOW_NON_ROOT", "")], "root");
+    }
     check(
         &rig,
         &[("AR_FC_KERNEL", "/nonexistent/vmlinux")],

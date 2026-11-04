@@ -23,3 +23,6 @@ build/
 /deploy/cloudflare/sandbox-bridge/node_modules/
 /deploy/cloudflare/sandbox-bridge/.wrangler/
 /deploy/cloudflare/sandbox-bridge/.dev.vars
+
+# Rust（根 Cargo workspace，D-28）
+/target/

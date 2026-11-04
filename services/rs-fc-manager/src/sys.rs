@@ -1,55 +1,11 @@
-//! 系统调用的薄封装：fc-manager 里唯一允许 `unsafe` 的地方（Cargo.toml 的 lints 在别处一律 deny），单独评审。
-//! 只有 kill、statfs 与 geteuid 三个；/proc 的读取是普通的文件读，也放在这里，便于集中看“怎么认定一个进程是我们的”。
-//! D-28 的 libs/rs-sys 落地后，这些挪过去（docs/plan/firecracker-backend.md 第 10 节）。
+//! fc-manager 用到的系统调用与 /proc 的读取。unsafe 的部分（kill、statfs、geteuid）在 libs/rs-sys（D-28 的根 workspace 落地后
+//! 挪过去，docs/plan/firecracker-backend.md 第 10 节），这里只是转发与“怎么认定一个进程是我们的”。
 //!
 //! 宿主这一侧不需要 AF_VSOCK：Firecracker 的 vsock 在宿主上是 Unix socket 加一行 `CONNECT <端口>` 的握手（vsock.rs）。
-#![allow(unsafe_code)]
 
-use std::ffi::CString;
-use std::io;
-use std::os::unix::ffi::OsStrExt;
+pub use ar_sys::{SIGKILL, geteuid, is_cgroup2, kill};
+#[cfg(test)]
 use std::path::Path;
-
-pub const SIGKILL: i32 = libc::SIGKILL;
-
-/// cgroup2 文件系统的 magic（linux/magic.h 的 CGROUP2_SUPER_MAGIC）。
-const CGROUP2_SUPER_MAGIC: u64 = 0x6367_7270;
-
-pub fn kill(pid: i32, sig: i32) -> io::Result<()> {
-    if pid <= 1 {
-        // 0、-1 与 1 都有特殊含义（进程组、所有进程、init），这里一律不发。
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "拒绝向 pid <= 1 发信号",
-        ));
-    }
-    // SAFETY: kill(2) 只读两个整数参数，不涉及内存。
-    let rc = unsafe { libc::kill(pid, sig) };
-    if rc == 0 {
-        Ok(())
-    } else {
-        Err(io::Error::last_os_error())
-    }
-}
-
-pub fn geteuid() -> u32 {
-    // SAFETY: geteuid(2) 没有参数，总是成功。
-    unsafe { libc::geteuid() }
-}
-
-/// path 所在的文件系统是不是 cgroup v2。
-pub fn is_cgroup2(path: &Path) -> io::Result<bool> {
-    let c = CString::new(path.as_os_str().as_bytes())
-        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "路径里有 NUL"))?;
-    // SAFETY: st 是本函数里的栈变量，按 libc::statfs 的布局清零；c 是以 NUL 结尾的有效 C 字符串，调用期间一直有效。
-    let mut st: libc::statfs = unsafe { std::mem::zeroed() };
-    let rc = unsafe { libc::statfs(c.as_ptr(), &mut st) };
-    if rc != 0 {
-        return Err(io::Error::last_os_error());
-    }
-    #[allow(clippy::unnecessary_cast)]
-    Ok(st.f_type as u64 == CGROUP2_SUPER_MAGIC)
-}
 
 /// /proc/<pid>/stat 的第 22 项（进程的启动时间，单位是时钟滴答）与状态。进程不在时为 None。
 fn proc_stat(pid: i32) -> Option<(char, u64)> {

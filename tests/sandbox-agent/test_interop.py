@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -76,6 +77,9 @@ GREP_PATTERNS = [
     r"(?U)a+", r"[^\x00-\x7f]", r"\pN", r"\D", r"\W", r"\S", "é", r"(?i)É", "Σ", r"(?i)σ", r"x*", r"\v", r"\f", r"[\d]", r"[\w-]",
     r"[^\s]", r"(?m)^t", r"\x41", r"\101", "(", "[z-a]", "a**", r"(?=x)", r"\1", "a{1001}", r"\8", r"\pX", "(?i", "*", "a{2,1}",
     r"[[:word:]]+", r"\_", r"\e", r"\%", "x{1000}", "(?-u:.)", "(?u)",
+    # 随机比对（tests/sandbox-agent 的 fuzz）找出来过的：标志之后的重复作用在前一项上；代理区。
+    "b(?U)(?i){1,3}", "a*(?i)*", "ж(?s){1,3}", r"\p{Cs}", r"\P{Cs}", r"[\p{Cs}x]", r"\x{D800}", r"[\x{D7FF}-\x{E000}]", r"\p{greek}",
+    r"\p{Old_Italic}", r"(?i)\W", "[^\\x00-\\x{10FFFF}]", "(a{100}){100}", "(a{10}){100}", "(?ii)A", "(?i-i)a", "(?)a", "(?P<1a>x)",
 ]
 
 
@@ -98,6 +102,31 @@ def test_grep_regex_semantics_match_go(both) -> None:  # type: ignore[no-untyped
         agents[which] = _grep_all(a)
     diffs = [(p, g, r) for p, g, r in zip(GREP_PATTERNS, agents["go"], agents["rust"]) if g != r]
     assert not diffs, "\n".join(f"{p!r}: go={g!r}\n    rust={r!r}" for p, g, r in diffs)
+
+
+_TOKENS = ["a", "b", "é", "ж", "Σ", "1", "٣", " ", ".", "^", "$", "|", "(", ")", "(?:", "(?i)", "(?m)", "(?s)", "(?U)", "(?i:", "(?P<n>", "[",
+           "]", "[^", "-", "*", "+", "?", "{", "}", "{2}", "{1,3}", "{,2}", "{2,}", "\\", "\\d", "\\D", "\\w", "\\W", "\\s", "\\S",
+           "\\b", "\\B", "\\A", "\\z", "\\pL", "\\PL", "\\p{Greek}", "\\p{^Greek}", "[:alpha:]", "[[:^space:]]", "\\x41",
+           "\\x{416}", "\\101", "\\Q", "\\E", "\\.", "\\<", "&&", "--", "~~", "#", "\\n", "x", "refund", "Straße", "(?-i)", "()",
+           "[\\w-]", "[a-z]", "[z-a]"]
+
+
+def test_grep_random_patterns_match_go(both) -> None:  # type: ignore[no-untyped-def]
+    """随机拼的正则（固定种子）两版的结果逐字节相同：收不收、匹配到哪些行。"""
+    import random
+
+    rng = random.Random(28)
+    patterns = ["".join(rng.choice(_TOKENS) for _ in range(rng.randint(1, 6))) for _ in range(400)]
+    results = {}
+    for which in ("go", "rust"):
+        a = both(which)
+        for rel, body in GREP_CORPUS.items():
+            p = a.workdir / rel
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(body.encode("latin-1") if rel == "invalid.bin.txt" else body.encode())
+        results[which] = [a.request("POST", "/v1/grep", json.dumps({"pattern": p, "max_matches": 1000}).encode()) for p in patterns]
+    diffs = [(p, g.status, g.body, r.status, r.body) for p, g, r in zip(patterns, results["go"], results["rust"]) if (g.status, g.body) != (r.status, r.body)]
+    assert not diffs, diffs[:10]
 
 
 def _battery(agent: Any) -> list[tuple[str, int, bytes]]:
@@ -141,6 +170,6 @@ def test_exec_responses_have_the_same_shape(both) -> None:  # type: ignore[no-un
         out = a.run("print", "x").json()
         shapes.append(list(out.keys()))
         res = a.run("sleep", "5", timeout_ms=200)
-        shapes.append(res.body.replace(b'"cpu_ms":0', b'"cpu_ms":N').replace(b'"cpu_ms":1', b'"cpu_ms":N'))
+        shapes.append(re.sub(rb'"cpu_ms":\d+', b'"cpu_ms":N', res.body))
     assert shapes[0] == shapes[2] and shapes[1] == shapes[3], shapes
 

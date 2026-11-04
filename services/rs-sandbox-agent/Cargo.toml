@@ -1,0 +1,22 @@
+[package]
+name = "rs-sandbox-agent"
+version = "0.1.0"
+description = "The agent inside every sandbox environment: runs commands and reads and writes the workspace over HTTP (D-28)"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "sandbox-agent"
+path = "src/main.rs"
+
+[dependencies]
+rs-sys.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+tar.workspace = true
+regex.workspace = true
+
+[lints]
+workspace = true

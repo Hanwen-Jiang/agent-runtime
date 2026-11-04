@@ -1,14 +1,12 @@
 [package]
 name = "fc-manager"
 version = "0.1.0"
-edition = "2024"
-publish = false
 description = "Host service that runs one Firecracker microVM per sandbox environment (D-20)"
-license = "UNLICENSED"
-
-# D-28 的根 Cargo workspace 落到 main 之前，这个 crate 自成 workspace（Cargo.lock 在本目录）。
-# 根 workspace 落地后：删掉这一节与本目录的 Cargo.lock，在根 Cargo.toml 的 members 里加上 services/rs-fc-manager。
-[workspace]
+# 根 Cargo workspace（D-28）的成员；Cargo.lock 在仓库根。
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
 
 [lib]
 name = "fc_manager"
@@ -24,10 +22,10 @@ name = "fc-fake"
 path = "src/bin/fc-fake.rs"
 
 [dependencies]
-libc = "0.2"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+rs-sys.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
-# unsafe 只在 src/sys.rs（kill、statfs 的薄封装），那里单独放开。
-[lints.rust]
-unsafe_code = "deny"
+# unsafe 只在 libs/rs-sys（根 Cargo.toml 的 workspace.lints 一律 deny）。
+[lints]
+workspace = true

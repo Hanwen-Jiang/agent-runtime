@@ -1,0 +1,31 @@
+# cargo deny check（docs/plan/firecracker-backend.md 第 10 节）：许可证、安全公告、重复版本、来源。
+# scripts/check.py 的 rust 一步与 CI 都跑它。
+
+[graph]
+# 沙箱里的 agent 与宿主的 fc-manager 都是 Linux；Windows 只给本机开发测试。
+targets = ["x86_64-unknown-linux-musl", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-gnu"]
+all-features = false
+
+[advisories]
+# 已知漏洞与已撤回的版本一律不收；没人维护的（unmaintained）也报出来。
+unmaintained = "all"
+yanked = "deny"
+ignore = []
+
+[licenses]
+# 只收宽松许可证；自己的 crate 是 UNLICENSED（不发布）。
+allow = ["MIT", "Apache-2.0", "Unicode-3.0"]
+confidence-threshold = 0.9
+private = { ignore = true }
+
+[bans]
+multiple-versions = "deny"
+wildcards = "deny"
+allow-wildcard-paths = true
+# 同一个 crate 出现两个版本时在这里写明理由才放行。
+skip = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

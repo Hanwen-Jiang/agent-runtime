@@ -1,0 +1,37 @@
+# 根 Cargo workspace（docs/plan/firecracker-backend.md 第 10 节，D-28）：与 go.work 并列。
+# - libs/rs-sys：系统调用的薄封装，全仓唯一允许 unsafe 的 crate；
+# - services/rs-sandbox-agent：沙箱里的 agent（D-28，按 services/go-sandbox-agent 的接口原样改写）；
+# - services/rs-fc-manager：宿主上的 fc-manager（D-20）。
+# 依赖只收发布满两周的版本，Cargo.lock 提交；cargo deny check（deny.toml）查许可证、安全公告与重复版本。
+[workspace]
+resolver = "3"
+members = ["libs/rs-sys", "services/rs-sandbox-agent", "services/rs-fc-manager"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.99"
+license = "UNLICENSED"
+publish = false
+
+# 版本写死：升级时有意识地改这里（发布满两周），再 cargo update -p <crate> --precise <版本>。
+[workspace.dependencies]
+rs-sys = { path = "libs/rs-sys" }
+libc = "=0.2.191"
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+sha2 = { version = "=0.11.1", default-features = false }
+tar = { version = "=0.4.46", default-features = false }
+regex = { version = "=1.13.1", default-features = false, features = ["std", "unicode", "perf-cache", "perf-dfa", "perf-onepass", "perf-backtrack", "perf-inline"] }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+dbg_macro = "deny"
+
+[profile.release]
+# 二进制进每个沙箱镜像：小一点、带上回溯（不 panic=abort：一个连接的线程出错不该带走整个 agent）。
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

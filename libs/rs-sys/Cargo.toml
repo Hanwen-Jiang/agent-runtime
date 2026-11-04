@@ -1,0 +1,15 @@
+[package]
+name = "rs-sys"
+version = "0.1.0"
+description = "Thin system-call wrappers shared by the Rust services; the only crate allowed to use unsafe (D-28, D-20)"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "ar_sys"
+path = "src/lib.rs"
+
+[dependencies]
+libc.workspace = true

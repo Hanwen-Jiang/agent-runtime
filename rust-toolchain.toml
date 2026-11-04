@@ -1,0 +1,7 @@
+# Rust 工具链（docs/plan/firecracker-backend.md 第 10 节）：固定版本，发布满两周（1.99.1 发布于 2026-10-13）。
+# 静态的 Linux 二进制用 x86_64-unknown-linux-musl；Windows 只给本机开发测试（x86_64-pc-windows-gnu）。
+[toolchain]
+channel = "1.99.1"
+profile = "minimal"
+components = ["clippy", "rustfmt"]
+targets = ["x86_64-unknown-linux-musl"]
