@@ -128,12 +128,14 @@ Goal Node 的 inputs 里加一个 `brief`（JSON Schema 载荷，不进 proto）
 | 运行时的份额 | `stage_runner._sub_agent` | Node 有 `budget.usd` 时，子工作流的美元预算 = 启动时已花的 + 份额，不超过 Task 的；用完了这个子 Agent 照现在的规矩停下（denied、`budget_exhausted`）。不论开关都生效（只有 Planner 写了才有） |
 | mid 档 | `executor/tool_loop.py` 的 `SUB_AGENT_TIER` | isolated 的步（子 Agent）用 `mid@low`，主流程不换 |
 | 提示 | `planner/prompts.py` 的规则 12 | 只在开关打开时加进 system 区 |
+| 来源卡片（第二段） | `validate.SOURCE_CARDS_SCHEMA`、`validate.card_outputs` | brief 的 output 要卡片（写了“卡片”或 card）、又没给具体 output_schema（没写或只写 `{"type": "object"}`）的 sub_agent，代码填上 `{"cards": [{claim, evidence, source, confidence, open_questions}]}`。结构化输出在 tool_loop 的 activity 里按它校验，不合格带改正说明重问（现有逻辑），所以不改命令序列 |
+| 卡片与 Reviewer（第二段） | `reviewer/signals.py`、`reviewer/prompts.py` | 交回零张卡片算空结果（`parallel_anomaly`）；Progress Check 的提示写明卡片结论冲突而综合节点没提到时判 repair 综合节点。冲突要看内容，没有代码规则 |
 
-测试：`tests/test_planner_sub_agent.py`、`tests/test_sub_agent_budget.py`。
+测试：`tests/test_planner_sub_agent.py`、`tests/test_sub_agent_budget.py`、`tests/test_sub_agent_cards.py`。
 
 与第 4～6 节不同、没做的：
 
 - Planner 给单个 sub_agent 写 tier（“只能往小调”）：goal_node 没有 tier 字段，要改 schema（S-01），这一段不做；子 Agent 一律 mid。
-- 来源卡片的格式校验与“不合格带错误重问一次”、Reviewer 的“卡片冲突而综合节点没提到时判 repair”：要先定卡片在结果里的位置，下一段。
-- 超份额时带着已有卡片收尾（交回部分结果）：要多一步模型调用，改命令序列，要加版本分支，下一段。现在超份额是 denied。
+- 超份额时带着已有卡片收尾（交回部分结果）：要多一步模型调用，改命令序列，要加版本分支（`SUB_AGENT_BRIEF_PATCH`），没做。现在超份额是 denied。
+- 卡片冲突的代码规则：判断“结论冲突”要看内容，只写进了 Progress Check 的提示。
 - 第 9 节的评测集新题（人审）与评测对照（花钱）。
