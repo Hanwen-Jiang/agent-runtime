@@ -88,3 +88,5 @@
 - 页面冒烟测试（headless 浏览器）没写，靠手动看过。
 - 上线要：人建只读令牌（fine-grained，只给本仓库 Contents 读），建 Secret `<release>-agent-runtime-eval-site`（键 `token`），
   `helm upgrade` 时设 `evalDashboard.site.repo=Hanwen-Jiang/agent-runtime`，换新的 learning 镜像。
+
+2026-11-04：用户觉得页面“还是非常丑”，界面设计重做记为 SITE-UI（[总表](all-plans-dag-2026-11-03.md) 第 3 节）：先出设计稿给人看，数据与接口不变，顺带补页面冒烟测试。

@@ -39,6 +39,7 @@
 | MX-Q | S-09～S-11 格子的改编题：选题与补标签 | work-dag | — | 人定 | 中 |
 | MX-PUB | 能力分人审后经 Registry 发布 | work-dag 19-publish | MX-RUN、MX-Q | 人定 | 中 |
 | SITE | 评测网站（主页、结果、数据集） | eval-site（H 线） | — | 代码已完成（`5035d85`、`2abcba2`，见 eval-site.md 末节）；上线要人建只读令牌、部署新的 learning 镜像 | 中 |
+| SITE-UI | 评测网站的界面设计重做（用户 2026-11-04：“现在还是非常丑”）：主页、结果、数据集三页的信息层级、排版、配色与深浅色、图表样式统一、手机宽度；数据与接口（`/api/*.json`、同步）不变；补上没写的页面冒烟测试（headless 浏览器） | 用户 2026-11-04 | SITE | 待做：先出设计稿（截图或可点的样页）给人看，定了再改 `evals/site` 的页面，随下一版 learning 镜像上线 | 中 |
 | MEM | Memory 上线（Milvus、真 embedding、Worker→Memory），LongMemEval 验收 | P1-D、F2 | DEP-R | 待做（要资源） | 中 |
 | EV-REAL | 真模型下规划质量与子 Agent 拆分的评测 | lane-merge | DEP-R | 人定（花钱） | 中 |
 | WEB-PLAN | 网页：计划区（`plan_updated`、快照里的 plan） | lane-merge（N-04） | DEP-W | 已完成（coding-agent `7983507`，没部署；快照里的 plan 随 WEB-SNAP） | 中 |
@@ -113,6 +114,7 @@ flowchart LR
     MXRUN["MX-RUN 能力矩阵第一轮"]
     MXPUB{{"MX-PUB 能力分人审与发布"}}
     SITE["SITE 评测网站"]
+    SITEUI["SITE-UI 评测网站界面重做"]
     MEM["MEM Memory 上线 + LongMemEval"]
     EVREAL{{"EV-REAL 真模型规划与子 Agent 评测"}}
   end
@@ -184,6 +186,7 @@ flowchart LR
   DEPR --> REAL
   MXQ --> MXPUB
   MXRUN --> MXPUB
+  SITE --> SITEUI
   DEPW --> WPLAN & WSUB & WSNAP & F3E2E
   SECAPI --> WSEC
   G3 --> G6
