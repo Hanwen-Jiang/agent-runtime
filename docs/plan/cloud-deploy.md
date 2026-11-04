@@ -771,7 +771,10 @@ REAL-01 的检查（2026-11-04，在第 27 版上；目录 `rev29`，脚本 `smo
 - 冒烟 2（租户 `evals`，0.1 美元左右）：80 KiB 的输入经 Claim-Check 存进 R2，Temporal 历史里只剩 194 字节的引用；`deliver_file` 三次都 `file_not_found`
   （`repo_edit` 写在沙箱里，`deliver_file` 读 Worker 本机目录），记为 F3-SANDBOX；Node 用完 6 步，Reviewer 升级等人，已取消；最终回答没跑，逐字增量没触发。
 - 数据库恢复（轻量版）：即时备份第一次上传 R2 读超时（`Read timeout on endpoint URL`），重试成功；从 R2 恢复出 `pg-restore`，五个库的表清单与关键表行数一致，删掉。
-- 写好没跑：`smoke3.sh`（测试租户 real01，Kata，只放行 example.com）验预览、出网网关的放行与 SSRF 拦截、Kata 的存档与恢复；要建新租户并自动批准它的联网申请，安全检查要用户点头。
+- 冒烟 3（用户点头后跑，`smoke3.sh`）：Registry 给测试租户 `real01` 发布了租户策略 v1（Kata，只放行 example.com，`approver: submitter`，effect 上限 write_irreversible）。
+  - Kata 的存档模式验过：建工作区（经 `api.cgent.link` 回 Cloudflare 的 524，服务端照样建好了）、`ArchiveWorkspace` 存了 26 个文件，之后 `ReadFile` 从快照读回建工作区时写的 `hello.txt`。
+  - 预览与 SSRF 没验成：Task 的 explore 节点每次第 1 步都是 `tenant_budget_exceeded`（试 5 次），只有 triage 的一次 Haiku 调用（0.00025 美元）成功；Reviewer 一路 repair、replan、escalate，Task 已取消。
+    默认档租户最后一个完成的 Task 在 10-31，预算账本上线后没有，记为 BUDGET-DEFAULT（开放注册的用户都在默认档）。
 
 第 28 版（2026-11-04，只换网关；目录 `rev30`，脚本 `prepare.sh`、`rev30.sh`；用户在对话里选了“D6 只换网关”）：
 
