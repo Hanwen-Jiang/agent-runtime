@@ -38,7 +38,7 @@ const testProfiles = `{"version":1,"profiles":[
   "constraints":{"context_window":128000,"max_output":16384},"freshness":{"price_at":"2026-10-21"}},
  {"id":"test/mid-b@1","vendor":"google","model":"mid-b","class":"mid","tiers":[{"name":"low","effort":"","thinking_budget":0}],
   "capabilities":["generate","structured","tools","stream"],"cost":{"in_per_m":0.3,"out_per_m":2.5,"cache_read_per_m":0.03},
-  "constraints":{"context_window":1000000,"max_output":65536},"freshness":{"price_at":"2026-10-21"}},
+  "constraints":{"context_window":1000000,"max_output":65536},"freshness":{"price_at":"2026-10-28"}},
  {"id":"test/small-a@1","vendor":"openai","model":"small-a","class":"small","tiers":[{"name":"low","effort":"","thinking_budget":0}],
   "capabilities":["generate","structured","tools","stream"],"cost":{"in_per_m":0.1,"out_per_m":0.4,"cache_read_per_m":0.025},
   "constraints":{"context_window":128000,"max_output":16384},"freshness":{"price_at":"2026-10-21"}},
@@ -52,7 +52,7 @@ const testProfiles = `{"version":1,"profiles":[
   "constraints":{"context_window":400000,"max_output":128000},"freshness":{"price_at":"2026-10-21"}},
  {"id":"test/embed-a@1","vendor":"openai","model":"embed-a","class":"embed","tiers":[{"name":"default"}],
   "capabilities":["embed"],"cost":{"in_per_m":0.02,"out_per_m":0,"cache_read_per_m":0},
-  "constraints":{"context_window":8191,"max_output":0},"freshness":{"price_at":"2026-10-21"}}
+  "constraints":{"context_window":8191,"max_output":0},"freshness":{"price_at":"2026-10-30"}}
 ]}`
 
 // leakyKey 是测试用的假密钥，用来断言它不出现在错误、trailer、日志与计量里。

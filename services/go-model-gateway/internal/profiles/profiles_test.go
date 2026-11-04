@@ -165,6 +165,13 @@ func TestParseRejectsInvalidFiles(t *testing.T) {
 		"price_at 不是日期":        func(_, p map[string]any) { p["freshness"] = map[string]any{"price_at": "yesterday"} },
 		// 单价字段拼错后不能被当成 0 而被选成最便宜的。
 		"未知字段": func(_, p map[string]any) { p["cost"].(map[string]any)["in_per_million"] = 0.15 },
+		// 未知的单价不能静默按 0 计费（R-06；schemas/model_profile.schema.json 的 cost 三项都必填）。显式写 0 的照常接受（嵌入模型的 out_per_m）。
+		"缺 cost":                  func(_, p map[string]any) { delete(p, "cost") },
+		"cost 为 null":             func(_, p map[string]any) { p["cost"] = nil },
+		"缺 in_per_m":              func(_, p map[string]any) { delete(p["cost"].(map[string]any), "in_per_m") },
+		"缺 out_per_m":             func(_, p map[string]any) { delete(p["cost"].(map[string]any), "out_per_m") },
+		"缺 cache_read_per_m":      func(_, p map[string]any) { delete(p["cost"].(map[string]any), "cache_read_per_m") },
+		"cache_read_per_m 为 null": func(_, p map[string]any) { p["cost"].(map[string]any)["cache_read_per_m"] = nil },
 		"重复 id": func(f, p map[string]any) {
 			second := f["profiles"].([]any)[1].(map[string]any)
 			second["id"] = p["id"]
