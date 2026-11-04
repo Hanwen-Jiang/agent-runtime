@@ -252,3 +252,19 @@ JudgeBench 的回答是别家模型生成的，**不要拿来训练**（各模�
 
 和第 7 节的出入：LongBench 不是 1.5k 输入的短题，n = 100 每个候选约 4～9 美元（mid）；τ²-bench 的 3 × 20 题按上表约 40～60 美元，
 比第 7 节的 20～40 美元高，主要是用户模拟器与政策重发，网关的提示缓存命中后会低一些。真跑第一轮后按实测改这张表。
+
+## 12. 改编题进 plan、route 两格（MX-Q，2026-11-04）
+
+第 10 节第 2 条说 plan、route 两格不到 40 道题。`evalsets/public-adapted-drafts` 的两批草稿（natural-plan、travelplanner、swebench）补上：
+
+- 计划里写 `{"eval": "s09", "options": {"adapted": ["natural-plan", "travelplanner", "swebench"]}}`（route 格子是 `s09:route`）。不写时题目与评测集版本同原来。
+- 三套共 22 道原题；同一道原题派生的追问（fast）与 replan 只取原题（草稿 README 第 8 条：不重复计为独立样本），所以两格各加 22 道：
+  plan 格子 25 + 22 = 47 道，route 格子 36 + 22 = 58 道，都够第 4 节的 40 道。fast、replan 的边界仍只来自 task-loop 自己的用例。
+- 题号是 `adapted:<套>/<用例>`，各题用自己那套的 Catalog（swebench 的与 task-loop 的不同）；记录里写 `confirmed`（草稿都是 false）与 `adapted`。
+  评测集版本把这几套的版本算进去，换了题续跑会被拒。
+- 标签仍是 AI 起草的 draft，没经人抽查。按总表第 7.2 节（2026-11-04“等人定的一律通过”），MX-PUB 照第 4 节的规则发布，不等人抽查；
+  记录里的 `confirmed: false` 留着，以后有人抽查时按它筛。
+- 顺带发现：task-loop 与草稿里的参照规划都写在 N-04 之前，`task_plan` 没有 `steps`，现在的 Planner 第一次完整规划会拒掉它们
+  （`tests/test_capability_component.py` 的“规划全对”用例因此在 main 上失败）。参照只用于自检、不是标注，测试里的假模型补上三步，评测集没改。
+  真跑的分数不受影响：被测模型自己要给 steps。
+- 没做的：S-11 的长任务（要 LongBench v2，第 11 节）；`light` 仍没有改编题（要真实的 Recipe 命中，草稿 README 第 5 条）。
