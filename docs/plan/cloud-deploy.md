@@ -751,6 +751,18 @@ GitHub App 上线（2026-11-04，APP-LIVE；目录 `app-golive`，脚本 `golive
     `ListTaskArtifacts` 是空的。见总表的 DLV-CHECK。
   - 第一次冒烟被我的脚本误取消：`cost_usd_micros` 当成了美元（实际 0.05 美元），改后重跑。
 
+第 27 版（2026-11-04，v27；目录 `rev29`，脚本 `prepare.sh`、`rev29.sh`，用户在对话里同意）：
+
+- Runtime `de1c0ba`（旧的留在 `agent-runtime.169570a`）：DLV-CHECK（回答说交付了文件、却没有成功的 `deliver_file` 时 Reviewer 拦一次）、DELTA
+  （task-service 的内部端口 8097 与 Service `ar-agent-runtime-task-service-internal`，Worker 经 `AR_TASK_SERVICE_INTERNAL_URL` 推 token_delta、thinking_delta，
+  默认打开；调用方令牌由 task-service 写进共用的 SecretStore，启动时记了“生成了逐字增量的调用方令牌 name=delta/worker”）、R-06-C（迁移 302 已执行）、
+  SITE-DATA、MX-Q 的评测代码。沙箱 agent 没变（仍是 `169570a`），Memory 仍是 52174d9。coding-web `ec36caa`（WEB-DELTA 的草稿回答、DLV-CHECK 的文案）。
+- task-service 第一次有 NetworkPolicy：8080 对所有来源开放（Task API、coding-web、探针），Registry 的 8092 只放本命名空间，8097 只放 Worker 的 Pod
+  （五个 Worker 池都带 `component: worker`）。部署前逐条看过渲染结果，与第 26 版的差别只有 DELTA 的这几处与镜像。
+- 核对：各 Pod 在跑（task-service、出网网关、包镜像、coding-web 照旧第一次启动重启一次）；网关 20 分钟内没有错误；api、code、evals、`/datasets` 200；
+  coding-web 的清单文件与线上一致。回滚：`helm rollback ar 26`、`kubectl -n agent-runtime rollout undo deploy/coding-web`。
+- **没有验证**：逐字增量真的推到浏览器（要一个真 Task 并在网页上看）；DLV-CHECK 在线上拦下一次假交付。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
