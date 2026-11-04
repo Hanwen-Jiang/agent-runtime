@@ -15,11 +15,13 @@ from __future__ import annotations
 import asyncio
 import io
 import json
+from collections.abc import AsyncIterator, Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import pytest
+import pytest_asyncio
 
 from agentruntime_core.dev.relational_store import SQLiteRelationalStoreProvider
 from agentruntime_core.dev.telemetry import ConsoleTelemetryProvider
@@ -47,6 +49,11 @@ LEDGER = Migration(version=301, name="model_usage_test", statements=(
 async def seed(directory: Path, tenant: str, rows: list[tuple[str, int, int | None]]) -> SQLiteRelationalStoreProvider:
     """rows：(task_id, 预留, 实际或 None 表示还没结算)。"""
     provider = SQLiteRelationalStoreProvider(directory)
+    await seed_into(provider, tenant, rows)
+    return provider
+
+
+async def seed_into(provider: Any, tenant: str, rows: list[tuple[str, int, int | None]]) -> None:
     await provider.migrate([LEDGER])
     async with provider.bind(TenantContext(tenant_id=tenant)).transaction() as tx:
         n = len(await tx.query("SELECT reservation_id FROM model_usage"))
@@ -56,11 +63,44 @@ async def seed(directory: Path, tenant: str, rows: list[tuple[str, int, int | No
                 " VALUES ($1, $2, $3, $4, $5, 'n', 'p@1', 'v', 'generate')",
                 (f"mbr_{tenant}_{i}", 1_762_243_200_000 + i, reserved, actual, task),
             )
-    return provider
 
 
-async def test_each_task_costs_the_sum_of_its_attempts_and_pending_or_missing_is_unknown(tmp_path: Path) -> None:
-    provider = await seed(tmp_path, "t1", [
+@pytest.fixture(scope="module")
+def pg_cluster() -> Iterator[Any]:
+    from agentruntime_core.adapters import pgtest
+
+    try:
+        cluster = pgtest.Cluster()
+    except pgtest.MissingTool as err:
+        if pgtest.allow_missing():
+            pytest.skip(str(err))
+        pytest.fail(str(err), pytrace=False)
+    yield cluster
+    cluster.stop()
+
+
+@pytest_asyncio.fixture(params=["sqlite", "postgres"])
+async def store(request: pytest.FixtureRequest, tmp_path: Path) -> AsyncIterator[Any]:
+    """两种业务库各跑一遍：SQLite 是每个租户一个库文件；Postgres 是非超级用户、不带 BYPASSRLS 的角色，租户靠行级安全隔开。"""
+    if request.param == "sqlite":
+        provider: Any = SQLiteRelationalStoreProvider(tmp_path / "relational")
+        yield provider
+        await provider.aclose()
+        return
+    from agentruntime_core.adapters import pgtest
+    from agentruntime_core.adapters.postgres import PostgresRelationalStoreProvider
+
+    cluster = request.getfixturevalue("pg_cluster")
+    db = cluster.new_database("r06d")
+    provider = await PostgresRelationalStoreProvider.connect(cluster.dsn(pgtest.APP_ROLE, db))
+    yield provider
+    await provider.aclose()
+    cluster.drop_database(db)
+
+
+async def test_each_task_costs_the_sum_of_its_attempts_and_pending_or_missing_is_unknown(store: Any) -> None:
+    provider = store
+    await seed_into(provider, "t1", [
         ("task-a", 2_000_000, 1_200_000), ("task-a", 900_000, 300_000),  # 两次尝试都结算了（一次失败也计费）
         ("task-b", 500_000, 400_000), ("task-b", 700_000, None),         # 一次还没结算
         ("", 50_000, 50_000),                                            # 没有 task_id 的调用不归任何 Task
@@ -69,31 +109,27 @@ async def test_each_task_costs_the_sum_of_its_attempts_and_pending_or_missing_is
     assert costs["task-a"] == TaskCost(usd=1.5, attempts=2, pending=0) and costs["task-a"].known
     assert costs["task-b"] == TaskCost(usd=0.4, attempts=2, pending=1) and not costs["task-b"].known, "有一次没结算：成本未知"
     assert costs["task-c"] == TaskCost(usd=0.0, attempts=0, pending=0) and not costs["task-c"].known, "账本里没有：成本未知，不是 0"
-    await provider.aclose()
 
 
-async def test_only_the_bound_tenants_rows_count(tmp_path: Path) -> None:
-    provider = await seed(tmp_path, "t1", [("task-a", 1_000_000, 1_000_000)])
-    await seed(tmp_path, "t2", [("task-a", 9_000_000, 9_000_000)])
-    assert (await ledger_costs(provider, "t1", ["task-a"]))["task-a"].usd == 1.0
-    assert (await ledger_costs(provider, "t2", ["task-a"]))["task-a"].usd == 9.0
-    await provider.aclose()
+async def test_only_the_bound_tenants_rows_count(store: Any) -> None:
+    await seed_into(store, "t1", [("task-a", 1_000_000, 1_000_000)])
+    await seed_into(store, "t2", [("task-a", 9_000_000, 9_000_000)])
+    assert (await ledger_costs(store, "t1", ["task-a"]))["task-a"] == TaskCost(usd=1.0, attempts=1, pending=0)
+    assert (await ledger_costs(store, "t2", ["task-a"]))["task-a"] == TaskCost(usd=9.0, attempts=1, pending=0)
+    assert not (await ledger_costs(store, "t3", ["task-a"]))["task-a"].known, "别的租户的记录看不到"
 
 
-async def test_many_tasks_are_read_in_chunks(tmp_path: Path) -> None:
+async def test_many_tasks_are_read_in_chunks(store: Any) -> None:
     rows: list[tuple[str, int, int | None]] = [(f"task-{i}", 10, 10) for i in range(1200)]
-    provider = await seed(tmp_path, "t1", rows)
-    costs = await ledger_costs(provider, "t1", [f"task-{i}" for i in range(1200)])
+    await seed_into(store, "t1", rows)
+    costs = await ledger_costs(store, "t1", [f"task-{i}" for i in range(1200)])
     assert len(costs) == 1200 and all(c.known and c.usd == 0.00001 for c in costs.values())
-    await provider.aclose()
 
 
-async def test_a_missing_ledger_table_is_an_error_not_free(tmp_path: Path) -> None:
-    provider = SQLiteRelationalStoreProvider(tmp_path)
+async def test_a_missing_ledger_table_is_an_error_not_free(store: Any) -> None:
     with pytest.raises(CostSourceError) as raised:
-        await ledger_costs(provider, "t1", ["task-a"])
+        await ledger_costs(store, "t1", ["task-a"])
     assert "model_usage" in str(raised.value)
-    await provider.aclose()
 
 
 def test_ledger_costs_replace_the_trace_costs() -> None:
