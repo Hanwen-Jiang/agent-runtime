@@ -3,11 +3,11 @@
 Model Gateway 每次 provider attempt 预留时写一行、结算时填实际金额（libs/go-core/modelbudget，迁移 301、302）；Learning 读同一事实源，
 不再信 trace 上的 runtime.cost_usd。守住的：
 
-- 每个 Task 的成本是它全部尝试的实际金额之和（失败的尝试也算）；有还没结算的尝试，或账本里没有这个 Task 的记录，算成本未知
+- 每个 Task 的成本是它全部尝试的实际金额之和（失败的尝试也算）；有还没结算的尝试，或计量表里没有这个 Task 的记录，算成本未知
   （不按 0 算，门槛交人工判断）。没有 task_id 的调用（例如 Learning 自己的失败归因）不算进任何 Task。
 - 只读这个租户的行：租户由服务端绑定（SQLite 是租户自己的库文件，Postgres 是行级安全），SQL 里没有租户条件。
-- 读不了账本（表不存在、库连不上）时整次运行失败（退出码 4），不改消费组的位置，不退回 trace 上的成本。
-- `--cost-source` 默认 auto：配了业务库（AR_RELATIONAL_DSN 或 AR_DATA_DIR）读账本，否则照旧读 trace；报告写明用的是哪个。
+- 读不了计量表（表不存在、库连不上）时整次运行失败（退出码 4），不改消费组的位置，不退回 trace 上的成本。
+- `--cost-source` 默认 auto：配了业务库（AR_RELATIONAL_DSN 或 AR_DATA_DIR）读计量表，否则照旧读 trace；报告写明用的是哪个。
 """
 
 from __future__ import annotations
@@ -108,7 +108,7 @@ async def test_each_task_costs_the_sum_of_its_attempts_and_pending_or_missing_is
     costs = await ledger_costs(provider, "t1", ["task-a", "task-b", "task-c"])
     assert costs["task-a"] == TaskCost(usd=1.5, attempts=2, pending=0) and costs["task-a"].known
     assert costs["task-b"] == TaskCost(usd=0.4, attempts=2, pending=1) and not costs["task-b"].known, "有一次没结算：成本未知"
-    assert costs["task-c"] == TaskCost(usd=0.0, attempts=0, pending=0) and not costs["task-c"].known, "账本里没有：成本未知，不是 0"
+    assert costs["task-c"] == TaskCost(usd=0.0, attempts=0, pending=0) and not costs["task-c"].known, "计量表里没有：成本未知，不是 0"
 
 
 async def test_only_the_bound_tenants_rows_count(store: Any) -> None:
@@ -140,7 +140,7 @@ def test_ledger_costs_replace_the_trace_costs() -> None:
     by_id = {t.task_id: t for t in out}
     assert by_id[first].cost_usd == 2.5 and by_id[first].cost_known
     assert by_id[second].cost_usd == 0.1 and not by_id[second].cost_known
-    assert by_id[third].cost_usd == 0.0 and not by_id[third].cost_known, "账本里没有的 Task 成本未知"
+    assert by_id[third].cost_usd == 0.0 and not by_id[third].cost_known, "计量表里没有的 Task 成本未知"
     assert [t.task_id for t in out] == [t.task_id for t in tasks], "顺序不变"
 
 

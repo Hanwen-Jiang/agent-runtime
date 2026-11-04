@@ -80,7 +80,7 @@ class PipelineReport:
     tasks: int = 0
     skipped: int = 0
     other_tenant_spans: int = 0
-    # 成本从哪里来：model_usage（Gateway 结算的账本，R-06-D）或 trace（span 上的 runtime.cost_usd）；cost_unknown 是成本未知的 Task 数。
+    # 成本从哪里来：model_usage（Gateway 结算的计量表，R-06-D）或 trace（span 上的 runtime.cost_usd）；cost_unknown 是成本未知的 Task 数。
     cost_source: str = "trace"
     cost_unknown: int = 0
     path: Path | None = None
@@ -139,7 +139,7 @@ async def run_pipeline(
     sources: Iterable[str] = (),
     costs: CostSource | None = None,
 ) -> PipelineReport:
-    """sources 是读的 trace 文件，只记进审计。costs 给了时 Task 的成本读账本（model_usage），读不了时 CostSourceError 原样抛出。"""
+    """sources 是读的 trace 文件，只记进审计。costs 给了时 Task 的成本读计量表（model_usage），读不了时 CostSourceError 原样抛出。"""
     now = (now or datetime.now(UTC)).astimezone(UTC)
     # 精确到微秒：同一秒里的两次运行不互相覆盖报告。
     filename = f"{config.task_family}-{now:%Y%m%dT%H%M%S%fZ}.json"

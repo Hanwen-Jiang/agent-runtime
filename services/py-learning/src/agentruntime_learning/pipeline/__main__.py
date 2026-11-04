@@ -68,7 +68,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--epsilon", type=float, default=0.05)
     run.add_argument("--dry-run", action="store_true", help="只出报告，不写 Registry")
     run.add_argument("--cost-source", default="auto", choices=COST_SOURCES,
-                     help=f"Task 的成本读哪里：model_usage（Gateway 结算的账本，要 {ENV_RELATIONAL_DSN} 或 {ENV_DATA_DIR}）、trace，auto 是配了业务库就读账本")
+                     help=f"Task 的成本读哪里：model_usage（Gateway 结算的计量表，要 {ENV_RELATIONAL_DSN} 或 {ENV_DATA_DIR}）、trace，auto 是配了业务库就读计量表")
     return parser
 
 

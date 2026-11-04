@@ -439,7 +439,7 @@ def test_cloud_learning_consumes_what_the_collector_writes(cloud: list[dict[str,
 
 def test_cloud_learning_reads_costs_from_the_gateways_ledger(cloud: list[dict[str, Any]]) -> None:
     """R-06-D：Learning 的成本读 Model Gateway 结算的 model_usage（代审第 7 节第 1 条），所以 Job 拿到与网关同一个业务库的连接串；
-    命令行默认 auto，有连接串就读账本。"""
+    命令行默认 auto，有连接串就读计量表。"""
     [job] = by_kind(cloud, "ScaledJob")
     [c] = pod_spec(job)["containers"]
     env = env_of(c)

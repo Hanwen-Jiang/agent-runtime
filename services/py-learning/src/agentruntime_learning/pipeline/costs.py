@@ -4,11 +4,11 @@ Model Gateway 每次 provider attempt 预留时在 model_usage 写一行、结�
 这张表的迁移归 Go 一侧，这里只读）。Learning 读同一事实源：
 
 - 每个 Task 的成本是它全部尝试的实际金额之和，失败的尝试也算（每次成功成本按全部花费算，附录 H.2）；
-- 有还没结算的尝试（actual_usd_micros 为空：用量未知，网关留着预留），或账本里没有这个 Task 的记录，算成本未知：不按 0 算，
+- 有还没结算的尝试（actual_usd_micros 为空：用量未知，网关留着预留），或计量表里没有这个 Task 的记录，算成本未知：不按 0 算，
   门槛交人工判断（R-06-B）；
 - 没有 task_id 的调用（例如 Learning 自己的失败归因）不归任何 Task。
 
-租户由 RelationalStore 的绑定决定（SQLite 是租户自己的库文件，Postgres 是行级安全），SQL 里没有租户条件。读不了账本时抛
+租户由 RelationalStore 的绑定决定（SQLite 是租户自己的库文件，Postgres 是行级安全），SQL 里没有租户条件。读不了计量表时抛
 CostSourceError，调用方让整次运行失败，不退回 trace 上的成本。
 """
 
@@ -72,7 +72,7 @@ async def ledger_costs(store: Any, tenant_id: str, task_ids: Iterable[str]) -> d
 
 
 def apply_costs(tasks: Iterable[TaskTrace], costs: Mapping[str, TaskCost]) -> list[TaskTrace]:
-    """用账本的成本替换 trace 上的；账本里没有的 Task 成本未知（按 0 填，cost_known 为假）。顺序不变。"""
+    """用计量表的成本替换 trace 上的；计量表里没有的 Task 成本未知（按 0 填，cost_known 为假）。顺序不变。"""
     out = []
     for task in tasks:
         cost = costs.get(task.task_id)
