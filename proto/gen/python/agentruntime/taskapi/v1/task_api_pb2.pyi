@@ -254,6 +254,50 @@ class ListTaskArtifactsResponse(_message.Message):
     artifacts: _containers.RepeatedCompositeFieldContainer[TaskArtifact]
     def __init__(self, artifacts: _Optional[_Iterable[_Union[TaskArtifact, _Mapping]]] = ...) -> None: ...
 
+class ListSessionEventsRequest(_message.Message):
+    __slots__ = ("tenant_id", "session_id", "cursors", "page_size")
+    TENANT_ID_FIELD_NUMBER: _ClassVar[int]
+    SESSION_ID_FIELD_NUMBER: _ClassVar[int]
+    CURSORS_FIELD_NUMBER: _ClassVar[int]
+    PAGE_SIZE_FIELD_NUMBER: _ClassVar[int]
+    tenant_id: str
+    session_id: str
+    cursors: _containers.RepeatedCompositeFieldContainer[TaskEventCursor]
+    page_size: int
+    def __init__(self, tenant_id: _Optional[str] = ..., session_id: _Optional[str] = ..., cursors: _Optional[_Iterable[_Union[TaskEventCursor, _Mapping]]] = ..., page_size: _Optional[int] = ...) -> None: ...
+
+class TaskEventCursor(_message.Message):
+    __slots__ = ("task_id", "after_event_id")
+    TASK_ID_FIELD_NUMBER: _ClassVar[int]
+    AFTER_EVENT_ID_FIELD_NUMBER: _ClassVar[int]
+    task_id: str
+    after_event_id: int
+    def __init__(self, task_id: _Optional[str] = ..., after_event_id: _Optional[int] = ...) -> None: ...
+
+class ListSessionEventsResponse(_message.Message):
+    __slots__ = ("tasks",)
+    TASKS_FIELD_NUMBER: _ClassVar[int]
+    tasks: _containers.RepeatedCompositeFieldContainer[TaskEvents]
+    def __init__(self, tasks: _Optional[_Iterable[_Union[TaskEvents, _Mapping]]] = ...) -> None: ...
+
+class TaskEvents(_message.Message):
+    __slots__ = ("task_id", "found", "events", "next_after_event_id", "more", "events_unavailable", "finished")
+    TASK_ID_FIELD_NUMBER: _ClassVar[int]
+    FOUND_FIELD_NUMBER: _ClassVar[int]
+    EVENTS_FIELD_NUMBER: _ClassVar[int]
+    NEXT_AFTER_EVENT_ID_FIELD_NUMBER: _ClassVar[int]
+    MORE_FIELD_NUMBER: _ClassVar[int]
+    EVENTS_UNAVAILABLE_FIELD_NUMBER: _ClassVar[int]
+    FINISHED_FIELD_NUMBER: _ClassVar[int]
+    task_id: str
+    found: bool
+    events: _containers.RepeatedCompositeFieldContainer[TaskEvent]
+    next_after_event_id: int
+    more: bool
+    events_unavailable: bool
+    finished: bool
+    def __init__(self, task_id: _Optional[str] = ..., found: _Optional[bool] = ..., events: _Optional[_Iterable[_Union[TaskEvent, _Mapping]]] = ..., next_after_event_id: _Optional[int] = ..., more: _Optional[bool] = ..., events_unavailable: _Optional[bool] = ..., finished: _Optional[bool] = ...) -> None: ...
+
 class TaskEvent(_message.Message):
     __slots__ = ("event_id", "task_id", "session_id", "type", "emitted_at", "payload")
     EVENT_ID_FIELD_NUMBER: _ClassVar[int]

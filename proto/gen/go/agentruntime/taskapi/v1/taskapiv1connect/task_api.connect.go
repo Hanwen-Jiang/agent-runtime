@@ -44,6 +44,9 @@ const (
 	// TaskServiceListTaskArtifactsProcedure is the fully-qualified name of the TaskService's
 	// ListTaskArtifacts RPC.
 	TaskServiceListTaskArtifactsProcedure = "/agentruntime.taskapi.v1.TaskService/ListTaskArtifacts"
+	// TaskServiceListSessionEventsProcedure is the fully-qualified name of the TaskService's
+	// ListSessionEvents RPC.
+	TaskServiceListSessionEventsProcedure = "/agentruntime.taskapi.v1.TaskService/ListSessionEvents"
 )
 
 // TaskServiceClient is a client for the agentruntime.taskapi.v1.TaskService service.
@@ -60,6 +63,11 @@ type TaskServiceClient interface {
 	// 列出 Task 交付的文件（N-18，docs/plan/n18-file-delivery-f3.md），只给元数据。
 	// 内容从 download_path（GET，同一个 Task API 地址，带同样的认证）取：每次都重新核对租户、Task 与有效期。
 	ListTaskArtifacts(context.Context, *connect.Request[v1.ListTaskArtifactsRequest]) (*connect.Response[v1.ListTaskArtifactsResponse], error)
+	// 一次取回一个 Session 里若干 Task 的事件（HIST-01，docs/plan/workspace-read-latency-and-disk-2026-11-03.md）：
+	// 每个 Task 给一个游标 after_event_id，返回游标之后的事件（业务库里记下的，按 event_id 排序，与 SSE 的 data 相同），
+	// 一页不够时 more 为真、拿 next_after_event_id 再取。客户端刷新时用它代替逐个 Task 重放 SSE；之后只对没结束的 Task 开 SSE 续传。
+	// 逐字的增量（token_delta、thinking_delta）不在其中。别的租户、别的 Session 的 Task 当作不存在。
+	ListSessionEvents(context.Context, *connect.Request[v1.ListSessionEventsRequest]) (*connect.Response[v1.ListSessionEventsResponse], error)
 }
 
 // NewTaskServiceClient constructs a client for the agentruntime.taskapi.v1.TaskService service. By
@@ -103,6 +111,12 @@ func NewTaskServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(taskServiceMethods.ByName("ListTaskArtifacts")),
 			connect.WithClientOptions(opts...),
 		),
+		listSessionEvents: connect.NewClient[v1.ListSessionEventsRequest, v1.ListSessionEventsResponse](
+			httpClient,
+			baseURL+TaskServiceListSessionEventsProcedure,
+			connect.WithSchema(taskServiceMethods.ByName("ListSessionEvents")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -113,6 +127,7 @@ type taskServiceClient struct {
 	signalTask        *connect.Client[v1.SignalTaskRequest, v1.SignalTaskResponse]
 	queryTask         *connect.Client[v1.QueryTaskRequest, v1.QueryTaskResponse]
 	listTaskArtifacts *connect.Client[v1.ListTaskArtifactsRequest, v1.ListTaskArtifactsResponse]
+	listSessionEvents *connect.Client[v1.ListSessionEventsRequest, v1.ListSessionEventsResponse]
 }
 
 // SubmitTask calls agentruntime.taskapi.v1.TaskService.SubmitTask.
@@ -140,6 +155,11 @@ func (c *taskServiceClient) ListTaskArtifacts(ctx context.Context, req *connect.
 	return c.listTaskArtifacts.CallUnary(ctx, req)
 }
 
+// ListSessionEvents calls agentruntime.taskapi.v1.TaskService.ListSessionEvents.
+func (c *taskServiceClient) ListSessionEvents(ctx context.Context, req *connect.Request[v1.ListSessionEventsRequest]) (*connect.Response[v1.ListSessionEventsResponse], error) {
+	return c.listSessionEvents.CallUnary(ctx, req)
+}
+
 // TaskServiceHandler is an implementation of the agentruntime.taskapi.v1.TaskService service.
 type TaskServiceHandler interface {
 	// 提交一条命令，立即返回 task_id 与 SSE 订阅地址（设计书 2.5）。
@@ -154,6 +174,11 @@ type TaskServiceHandler interface {
 	// 列出 Task 交付的文件（N-18，docs/plan/n18-file-delivery-f3.md），只给元数据。
 	// 内容从 download_path（GET，同一个 Task API 地址，带同样的认证）取：每次都重新核对租户、Task 与有效期。
 	ListTaskArtifacts(context.Context, *connect.Request[v1.ListTaskArtifactsRequest]) (*connect.Response[v1.ListTaskArtifactsResponse], error)
+	// 一次取回一个 Session 里若干 Task 的事件（HIST-01，docs/plan/workspace-read-latency-and-disk-2026-11-03.md）：
+	// 每个 Task 给一个游标 after_event_id，返回游标之后的事件（业务库里记下的，按 event_id 排序，与 SSE 的 data 相同），
+	// 一页不够时 more 为真、拿 next_after_event_id 再取。客户端刷新时用它代替逐个 Task 重放 SSE；之后只对没结束的 Task 开 SSE 续传。
+	// 逐字的增量（token_delta、thinking_delta）不在其中。别的租户、别的 Session 的 Task 当作不存在。
+	ListSessionEvents(context.Context, *connect.Request[v1.ListSessionEventsRequest]) (*connect.Response[v1.ListSessionEventsResponse], error)
 }
 
 // NewTaskServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -193,6 +218,12 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(taskServiceMethods.ByName("ListTaskArtifacts")),
 		connect.WithHandlerOptions(opts...),
 	)
+	taskServiceListSessionEventsHandler := connect.NewUnaryHandler(
+		TaskServiceListSessionEventsProcedure,
+		svc.ListSessionEvents,
+		connect.WithSchema(taskServiceMethods.ByName("ListSessionEvents")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/agentruntime.taskapi.v1.TaskService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case TaskServiceSubmitTaskProcedure:
@@ -205,6 +236,8 @@ func NewTaskServiceHandler(svc TaskServiceHandler, opts ...connect.HandlerOption
 			taskServiceQueryTaskHandler.ServeHTTP(w, r)
 		case TaskServiceListTaskArtifactsProcedure:
 			taskServiceListTaskArtifactsHandler.ServeHTTP(w, r)
+		case TaskServiceListSessionEventsProcedure:
+			taskServiceListSessionEventsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -232,4 +265,8 @@ func (UnimplementedTaskServiceHandler) QueryTask(context.Context, *connect.Reque
 
 func (UnimplementedTaskServiceHandler) ListTaskArtifacts(context.Context, *connect.Request[v1.ListTaskArtifactsRequest]) (*connect.Response[v1.ListTaskArtifactsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.taskapi.v1.TaskService.ListTaskArtifacts is not implemented"))
+}
+
+func (UnimplementedTaskServiceHandler) ListSessionEvents(context.Context, *connect.Request[v1.ListSessionEventsRequest]) (*connect.Response[v1.ListSessionEventsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.taskapi.v1.TaskService.ListSessionEvents is not implemented"))
 }

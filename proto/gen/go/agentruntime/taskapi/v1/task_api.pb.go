@@ -1379,6 +1379,272 @@ func (x *ListTaskArtifactsResponse) GetArtifacts() []*TaskArtifact {
 	return nil
 }
 
+type ListSessionEventsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 只用来与认证身份做一致性校验。
+	TenantId  string `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	SessionId string `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	// 要取的 Task 与各自的游标；最多 50 个 Task，同一个 Task 只能出现一次。
+	Cursors []*TaskEventCursor `protobuf:"bytes,3,rep,name=cursors,proto3" json:"cursors,omitempty"`
+	// 每个 Task 最多返回多少个事件；0 时为 200，最多 1000。
+	PageSize      int32 `protobuf:"varint,4,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSessionEventsRequest) Reset() {
+	*x = ListSessionEventsRequest{}
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSessionEventsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSessionEventsRequest) ProtoMessage() {}
+
+func (x *ListSessionEventsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSessionEventsRequest.ProtoReflect.Descriptor instead.
+func (*ListSessionEventsRequest) Descriptor() ([]byte, []int) {
+	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *ListSessionEventsRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *ListSessionEventsRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *ListSessionEventsRequest) GetCursors() []*TaskEventCursor {
+	if x != nil {
+		return x.Cursors
+	}
+	return nil
+}
+
+func (x *ListSessionEventsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+// TaskEventCursor 是一个 Task 的续读位置：只要 event_id 大于 after_event_id 的事件；0 表示从头。
+type TaskEventCursor struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TaskId        string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	AfterEventId  int64                  `protobuf:"varint,2,opt,name=after_event_id,json=afterEventId,proto3" json:"after_event_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TaskEventCursor) Reset() {
+	*x = TaskEventCursor{}
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TaskEventCursor) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TaskEventCursor) ProtoMessage() {}
+
+func (x *TaskEventCursor) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TaskEventCursor.ProtoReflect.Descriptor instead.
+func (*TaskEventCursor) Descriptor() ([]byte, []int) {
+	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *TaskEventCursor) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *TaskEventCursor) GetAfterEventId() int64 {
+	if x != nil {
+		return x.AfterEventId
+	}
+	return 0
+}
+
+type ListSessionEventsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 与请求里的 cursors 一一对应、顺序相同；不存在的 Task 给 found 为假、没有事件。
+	Tasks         []*TaskEvents `protobuf:"bytes,1,rep,name=tasks,proto3" json:"tasks,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSessionEventsResponse) Reset() {
+	*x = ListSessionEventsResponse{}
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSessionEventsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSessionEventsResponse) ProtoMessage() {}
+
+func (x *ListSessionEventsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSessionEventsResponse.ProtoReflect.Descriptor instead.
+func (*ListSessionEventsResponse) Descriptor() ([]byte, []int) {
+	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *ListSessionEventsResponse) GetTasks() []*TaskEvents {
+	if x != nil {
+		return x.Tasks
+	}
+	return nil
+}
+
+// TaskEvents 是一个 Task 在游标之后的事件。
+type TaskEvents struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	TaskId string                 `protobuf:"bytes,1,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	Found  bool                   `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
+	Events []*TaskEvent           `protobuf:"bytes,3,rep,name=events,proto3" json:"events,omitempty"`
+	// 下次续读的游标：最后一个返回的 event_id；没有新事件时等于请求里的 after_event_id。
+	NextAfterEventId int64 `protobuf:"varint,4,opt,name=next_after_event_id,json=nextAfterEventId,proto3" json:"next_after_event_id,omitempty"`
+	// 这一页之后还有记下的事件。
+	More bool `protobuf:"varint,5,opt,name=more,proto3" json:"more,omitempty"`
+	// 业务库里没有这个 Task 的完整记录（迁移之前开始的 Task）：客户端退回快照或 SSE。
+	EventsUnavailable bool `protobuf:"varint,6,opt,name=events_unavailable,json=eventsUnavailable,proto3" json:"events_unavailable,omitempty"`
+	// Task 已经结束（task_finished 已在业务库里）。
+	Finished      bool `protobuf:"varint,7,opt,name=finished,proto3" json:"finished,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TaskEvents) Reset() {
+	*x = TaskEvents{}
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TaskEvents) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TaskEvents) ProtoMessage() {}
+
+func (x *TaskEvents) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TaskEvents.ProtoReflect.Descriptor instead.
+func (*TaskEvents) Descriptor() ([]byte, []int) {
+	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *TaskEvents) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *TaskEvents) GetFound() bool {
+	if x != nil {
+		return x.Found
+	}
+	return false
+}
+
+func (x *TaskEvents) GetEvents() []*TaskEvent {
+	if x != nil {
+		return x.Events
+	}
+	return nil
+}
+
+func (x *TaskEvents) GetNextAfterEventId() int64 {
+	if x != nil {
+		return x.NextAfterEventId
+	}
+	return 0
+}
+
+func (x *TaskEvents) GetMore() bool {
+	if x != nil {
+		return x.More
+	}
+	return false
+}
+
+func (x *TaskEvents) GetEventsUnavailable() bool {
+	if x != nil {
+		return x.EventsUnavailable
+	}
+	return false
+}
+
+func (x *TaskEvents) GetFinished() bool {
+	if x != nil {
+		return x.Finished
+	}
+	return false
+}
+
 // TaskEvent 是 SSE 推送的事件信封（设计书 4.14）。
 // event_id 在同一个 Task 的事件流内单调递增，客户端断线后凭 Last-Event-ID 续传。
 type TaskEvent struct {
@@ -1395,7 +1661,7 @@ type TaskEvent struct {
 
 func (x *TaskEvent) Reset() {
 	*x = TaskEvent{}
-	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[17]
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1407,7 +1673,7 @@ func (x *TaskEvent) String() string {
 func (*TaskEvent) ProtoMessage() {}
 
 func (x *TaskEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[17]
+	mi := &file_agentruntime_taskapi_v1_task_api_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1420,7 +1686,7 @@ func (x *TaskEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TaskEvent.ProtoReflect.Descriptor instead.
 func (*TaskEvent) Descriptor() ([]byte, []int) {
-	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{17}
+	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *TaskEvent) GetEventId() int64 {
@@ -1567,7 +1833,27 @@ const file_agentruntime_taskapi_v1_task_api_proto_rawDesc = "" +
 	"\rdownload_path\x18\n" +
 	" \x01(\tR\fdownloadPath\"`\n" +
 	"\x19ListTaskArtifactsResponse\x12C\n" +
-	"\tartifacts\x18\x01 \x03(\v2%.agentruntime.taskapi.v1.TaskArtifactR\tartifacts\"\x94\x02\n" +
+	"\tartifacts\x18\x01 \x03(\v2%.agentruntime.taskapi.v1.TaskArtifactR\tartifacts\"\xb7\x01\n" +
+	"\x18ListSessionEventsRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x02 \x01(\tR\tsessionId\x12B\n" +
+	"\acursors\x18\x03 \x03(\v2(.agentruntime.taskapi.v1.TaskEventCursorR\acursors\x12\x1b\n" +
+	"\tpage_size\x18\x04 \x01(\x05R\bpageSize\"P\n" +
+	"\x0fTaskEventCursor\x12\x17\n" +
+	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12$\n" +
+	"\x0eafter_event_id\x18\x02 \x01(\x03R\fafterEventId\"V\n" +
+	"\x19ListSessionEventsResponse\x129\n" +
+	"\x05tasks\x18\x01 \x03(\v2#.agentruntime.taskapi.v1.TaskEventsR\x05tasks\"\x85\x02\n" +
+	"\n" +
+	"TaskEvents\x12\x17\n" +
+	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x14\n" +
+	"\x05found\x18\x02 \x01(\bR\x05found\x12:\n" +
+	"\x06events\x18\x03 \x03(\v2\".agentruntime.taskapi.v1.TaskEventR\x06events\x12-\n" +
+	"\x13next_after_event_id\x18\x04 \x01(\x03R\x10nextAfterEventId\x12\x12\n" +
+	"\x04more\x18\x05 \x01(\bR\x04more\x12-\n" +
+	"\x12events_unavailable\x18\x06 \x01(\bR\x11eventsUnavailable\x12\x1a\n" +
+	"\bfinished\x18\a \x01(\bR\bfinished\"\x94\x02\n" +
 	"\tTaskEvent\x12\x19\n" +
 	"\bevent_id\x18\x01 \x01(\x03R\aeventId\x12\x17\n" +
 	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12\x1d\n" +
@@ -1600,7 +1886,7 @@ const file_agentruntime_taskapi_v1_task_api_proto_rawDesc = "" +
 	" TASK_EVENT_TYPE_GUIDANCE_UPDATED\x10\x0e\x12'\n" +
 	"#TASK_EVENT_TYPE_TASK_MESSAGE_EDITED\x10\x0f\x12!\n" +
 	"\x1dTASK_EVENT_TYPE_CONTEXT_USAGE\x10\x10\x12 \n" +
-	"\x1cTASK_EVENT_TYPE_PLAN_UPDATED\x10\x112\xa2\x04\n" +
+	"\x1cTASK_EVENT_TYPE_PLAN_UPDATED\x10\x112\x9e\x05\n" +
 	"\vTaskService\x12e\n" +
 	"\n" +
 	"SubmitTask\x12*.agentruntime.taskapi.v1.SubmitTaskRequest\x1a+.agentruntime.taskapi.v1.SubmitTaskResponse\x12e\n" +
@@ -1609,7 +1895,8 @@ const file_agentruntime_taskapi_v1_task_api_proto_rawDesc = "" +
 	"\n" +
 	"SignalTask\x12*.agentruntime.taskapi.v1.SignalTaskRequest\x1a+.agentruntime.taskapi.v1.SignalTaskResponse\x12b\n" +
 	"\tQueryTask\x12).agentruntime.taskapi.v1.QueryTaskRequest\x1a*.agentruntime.taskapi.v1.QueryTaskResponse\x12z\n" +
-	"\x11ListTaskArtifacts\x121.agentruntime.taskapi.v1.ListTaskArtifactsRequest\x1a2.agentruntime.taskapi.v1.ListTaskArtifactsResponseB\xff\x01\n" +
+	"\x11ListTaskArtifacts\x121.agentruntime.taskapi.v1.ListTaskArtifactsRequest\x1a2.agentruntime.taskapi.v1.ListTaskArtifactsResponse\x12z\n" +
+	"\x11ListSessionEvents\x121.agentruntime.taskapi.v1.ListSessionEventsRequest\x1a2.agentruntime.taskapi.v1.ListSessionEventsResponseB\xff\x01\n" +
 	"\x1bcom.agentruntime.taskapi.v1B\fTaskApiProtoP\x01ZTgithub.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/taskapi/v1;taskapiv1\xa2\x02\x03ATX\xaa\x02\x17Agentruntime.Taskapi.V1\xca\x02\x17Agentruntime\\Taskapi\\V1\xe2\x02#Agentruntime\\Taskapi\\V1\\GPBMetadata\xea\x02\x19Agentruntime::Taskapi::V1b\x06proto3"
 
 var (
@@ -1625,7 +1912,7 @@ func file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP() []byte {
 }
 
 var file_agentruntime_taskapi_v1_task_api_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_agentruntime_taskapi_v1_task_api_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_agentruntime_taskapi_v1_task_api_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_agentruntime_taskapi_v1_task_api_proto_goTypes = []any{
 	(TaskArtifactState)(0),            // 0: agentruntime.taskapi.v1.TaskArtifactState
 	(TaskEventType)(0),                // 1: agentruntime.taskapi.v1.TaskEventType
@@ -1646,55 +1933,64 @@ var file_agentruntime_taskapi_v1_task_api_proto_goTypes = []any{
 	(*ListTaskArtifactsRequest)(nil),  // 16: agentruntime.taskapi.v1.ListTaskArtifactsRequest
 	(*TaskArtifact)(nil),              // 17: agentruntime.taskapi.v1.TaskArtifact
 	(*ListTaskArtifactsResponse)(nil), // 18: agentruntime.taskapi.v1.ListTaskArtifactsResponse
-	(*TaskEvent)(nil),                 // 19: agentruntime.taskapi.v1.TaskEvent
-	(*structpb.Struct)(nil),           // 20: google.protobuf.Struct
-	(v1.SessionAccess)(0),             // 21: agentruntime.common.v1.SessionAccess
-	(v1.Priority)(0),                  // 22: agentruntime.common.v1.Priority
-	(v1.Effect)(0),                    // 23: agentruntime.common.v1.Effect
-	(v1.TaskStatus)(0),                // 24: agentruntime.common.v1.TaskStatus
-	(v1.GuidanceMode)(0),              // 25: agentruntime.common.v1.GuidanceMode
-	(*v1.JsonPayload)(nil),            // 26: agentruntime.common.v1.JsonPayload
-	(*v1.Usage)(nil),                  // 27: agentruntime.common.v1.Usage
-	(*timestamppb.Timestamp)(nil),     // 28: google.protobuf.Timestamp
+	(*ListSessionEventsRequest)(nil),  // 19: agentruntime.taskapi.v1.ListSessionEventsRequest
+	(*TaskEventCursor)(nil),           // 20: agentruntime.taskapi.v1.TaskEventCursor
+	(*ListSessionEventsResponse)(nil), // 21: agentruntime.taskapi.v1.ListSessionEventsResponse
+	(*TaskEvents)(nil),                // 22: agentruntime.taskapi.v1.TaskEvents
+	(*TaskEvent)(nil),                 // 23: agentruntime.taskapi.v1.TaskEvent
+	(*structpb.Struct)(nil),           // 24: google.protobuf.Struct
+	(v1.SessionAccess)(0),             // 25: agentruntime.common.v1.SessionAccess
+	(v1.Priority)(0),                  // 26: agentruntime.common.v1.Priority
+	(v1.Effect)(0),                    // 27: agentruntime.common.v1.Effect
+	(v1.TaskStatus)(0),                // 28: agentruntime.common.v1.TaskStatus
+	(v1.GuidanceMode)(0),              // 29: agentruntime.common.v1.GuidanceMode
+	(*v1.JsonPayload)(nil),            // 30: agentruntime.common.v1.JsonPayload
+	(*v1.Usage)(nil),                  // 31: agentruntime.common.v1.Usage
+	(*timestamppb.Timestamp)(nil),     // 32: google.protobuf.Timestamp
 }
 var file_agentruntime_taskapi_v1_task_api_proto_depIdxs = []int32{
-	20, // 0: agentruntime.taskapi.v1.SubmitTaskRequest.inputs:type_name -> google.protobuf.Struct
-	21, // 1: agentruntime.taskapi.v1.SubmitTaskRequest.session_access:type_name -> agentruntime.common.v1.SessionAccess
-	22, // 2: agentruntime.taskapi.v1.SubmitTaskRequest.priority:type_name -> agentruntime.common.v1.Priority
-	23, // 3: agentruntime.taskapi.v1.SubmitTaskRequest.effect_ceiling:type_name -> agentruntime.common.v1.Effect
+	24, // 0: agentruntime.taskapi.v1.SubmitTaskRequest.inputs:type_name -> google.protobuf.Struct
+	25, // 1: agentruntime.taskapi.v1.SubmitTaskRequest.session_access:type_name -> agentruntime.common.v1.SessionAccess
+	26, // 2: agentruntime.taskapi.v1.SubmitTaskRequest.priority:type_name -> agentruntime.common.v1.Priority
+	27, // 3: agentruntime.taskapi.v1.SubmitTaskRequest.effect_ceiling:type_name -> agentruntime.common.v1.Effect
 	3,  // 4: agentruntime.taskapi.v1.SubmitTaskRequest.network_request:type_name -> agentruntime.taskapi.v1.NetworkRequest
-	24, // 5: agentruntime.taskapi.v1.CancelTaskResponse.status:type_name -> agentruntime.common.v1.TaskStatus
+	28, // 5: agentruntime.taskapi.v1.CancelTaskResponse.status:type_name -> agentruntime.common.v1.TaskStatus
 	13, // 6: agentruntime.taskapi.v1.SignalTaskRequest.human_reply:type_name -> agentruntime.taskapi.v1.HumanReply
 	9,  // 7: agentruntime.taskapi.v1.SignalTaskRequest.submit_guidance:type_name -> agentruntime.taskapi.v1.SubmitGuidance
 	10, // 8: agentruntime.taskapi.v1.SignalTaskRequest.edit_guidance:type_name -> agentruntime.taskapi.v1.EditGuidance
 	11, // 9: agentruntime.taskapi.v1.SignalTaskRequest.retract_guidance:type_name -> agentruntime.taskapi.v1.RetractGuidance
 	12, // 10: agentruntime.taskapi.v1.SignalTaskRequest.edit_queued_message:type_name -> agentruntime.taskapi.v1.EditQueuedMessage
-	25, // 11: agentruntime.taskapi.v1.SubmitGuidance.mode:type_name -> agentruntime.common.v1.GuidanceMode
-	24, // 12: agentruntime.taskapi.v1.QueryTaskResponse.status:type_name -> agentruntime.common.v1.TaskStatus
-	26, // 13: agentruntime.taskapi.v1.QueryTaskResponse.task_state:type_name -> agentruntime.common.v1.JsonPayload
-	27, // 14: agentruntime.taskapi.v1.QueryTaskResponse.usage:type_name -> agentruntime.common.v1.Usage
-	28, // 15: agentruntime.taskapi.v1.TaskArtifact.created_at:type_name -> google.protobuf.Timestamp
-	28, // 16: agentruntime.taskapi.v1.TaskArtifact.expires_at:type_name -> google.protobuf.Timestamp
+	29, // 11: agentruntime.taskapi.v1.SubmitGuidance.mode:type_name -> agentruntime.common.v1.GuidanceMode
+	28, // 12: agentruntime.taskapi.v1.QueryTaskResponse.status:type_name -> agentruntime.common.v1.TaskStatus
+	30, // 13: agentruntime.taskapi.v1.QueryTaskResponse.task_state:type_name -> agentruntime.common.v1.JsonPayload
+	31, // 14: agentruntime.taskapi.v1.QueryTaskResponse.usage:type_name -> agentruntime.common.v1.Usage
+	32, // 15: agentruntime.taskapi.v1.TaskArtifact.created_at:type_name -> google.protobuf.Timestamp
+	32, // 16: agentruntime.taskapi.v1.TaskArtifact.expires_at:type_name -> google.protobuf.Timestamp
 	0,  // 17: agentruntime.taskapi.v1.TaskArtifact.state:type_name -> agentruntime.taskapi.v1.TaskArtifactState
 	17, // 18: agentruntime.taskapi.v1.ListTaskArtifactsResponse.artifacts:type_name -> agentruntime.taskapi.v1.TaskArtifact
-	1,  // 19: agentruntime.taskapi.v1.TaskEvent.type:type_name -> agentruntime.taskapi.v1.TaskEventType
-	28, // 20: agentruntime.taskapi.v1.TaskEvent.emitted_at:type_name -> google.protobuf.Timestamp
-	26, // 21: agentruntime.taskapi.v1.TaskEvent.payload:type_name -> agentruntime.common.v1.JsonPayload
-	2,  // 22: agentruntime.taskapi.v1.TaskService.SubmitTask:input_type -> agentruntime.taskapi.v1.SubmitTaskRequest
-	5,  // 23: agentruntime.taskapi.v1.TaskService.CancelTask:input_type -> agentruntime.taskapi.v1.CancelTaskRequest
-	7,  // 24: agentruntime.taskapi.v1.TaskService.SignalTask:input_type -> agentruntime.taskapi.v1.SignalTaskRequest
-	14, // 25: agentruntime.taskapi.v1.TaskService.QueryTask:input_type -> agentruntime.taskapi.v1.QueryTaskRequest
-	16, // 26: agentruntime.taskapi.v1.TaskService.ListTaskArtifacts:input_type -> agentruntime.taskapi.v1.ListTaskArtifactsRequest
-	4,  // 27: agentruntime.taskapi.v1.TaskService.SubmitTask:output_type -> agentruntime.taskapi.v1.SubmitTaskResponse
-	6,  // 28: agentruntime.taskapi.v1.TaskService.CancelTask:output_type -> agentruntime.taskapi.v1.CancelTaskResponse
-	8,  // 29: agentruntime.taskapi.v1.TaskService.SignalTask:output_type -> agentruntime.taskapi.v1.SignalTaskResponse
-	15, // 30: agentruntime.taskapi.v1.TaskService.QueryTask:output_type -> agentruntime.taskapi.v1.QueryTaskResponse
-	18, // 31: agentruntime.taskapi.v1.TaskService.ListTaskArtifacts:output_type -> agentruntime.taskapi.v1.ListTaskArtifactsResponse
-	27, // [27:32] is the sub-list for method output_type
-	22, // [22:27] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	20, // 19: agentruntime.taskapi.v1.ListSessionEventsRequest.cursors:type_name -> agentruntime.taskapi.v1.TaskEventCursor
+	22, // 20: agentruntime.taskapi.v1.ListSessionEventsResponse.tasks:type_name -> agentruntime.taskapi.v1.TaskEvents
+	23, // 21: agentruntime.taskapi.v1.TaskEvents.events:type_name -> agentruntime.taskapi.v1.TaskEvent
+	1,  // 22: agentruntime.taskapi.v1.TaskEvent.type:type_name -> agentruntime.taskapi.v1.TaskEventType
+	32, // 23: agentruntime.taskapi.v1.TaskEvent.emitted_at:type_name -> google.protobuf.Timestamp
+	30, // 24: agentruntime.taskapi.v1.TaskEvent.payload:type_name -> agentruntime.common.v1.JsonPayload
+	2,  // 25: agentruntime.taskapi.v1.TaskService.SubmitTask:input_type -> agentruntime.taskapi.v1.SubmitTaskRequest
+	5,  // 26: agentruntime.taskapi.v1.TaskService.CancelTask:input_type -> agentruntime.taskapi.v1.CancelTaskRequest
+	7,  // 27: agentruntime.taskapi.v1.TaskService.SignalTask:input_type -> agentruntime.taskapi.v1.SignalTaskRequest
+	14, // 28: agentruntime.taskapi.v1.TaskService.QueryTask:input_type -> agentruntime.taskapi.v1.QueryTaskRequest
+	16, // 29: agentruntime.taskapi.v1.TaskService.ListTaskArtifacts:input_type -> agentruntime.taskapi.v1.ListTaskArtifactsRequest
+	19, // 30: agentruntime.taskapi.v1.TaskService.ListSessionEvents:input_type -> agentruntime.taskapi.v1.ListSessionEventsRequest
+	4,  // 31: agentruntime.taskapi.v1.TaskService.SubmitTask:output_type -> agentruntime.taskapi.v1.SubmitTaskResponse
+	6,  // 32: agentruntime.taskapi.v1.TaskService.CancelTask:output_type -> agentruntime.taskapi.v1.CancelTaskResponse
+	8,  // 33: agentruntime.taskapi.v1.TaskService.SignalTask:output_type -> agentruntime.taskapi.v1.SignalTaskResponse
+	15, // 34: agentruntime.taskapi.v1.TaskService.QueryTask:output_type -> agentruntime.taskapi.v1.QueryTaskResponse
+	18, // 35: agentruntime.taskapi.v1.TaskService.ListTaskArtifacts:output_type -> agentruntime.taskapi.v1.ListTaskArtifactsResponse
+	21, // 36: agentruntime.taskapi.v1.TaskService.ListSessionEvents:output_type -> agentruntime.taskapi.v1.ListSessionEventsResponse
+	31, // [31:37] is the sub-list for method output_type
+	25, // [25:31] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_agentruntime_taskapi_v1_task_api_proto_init() }
@@ -1715,7 +2011,7 @@ func file_agentruntime_taskapi_v1_task_api_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agentruntime_taskapi_v1_task_api_proto_rawDesc), len(file_agentruntime_taskapi_v1_task_api_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   18,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -43,6 +43,11 @@ class TaskServiceStub:
                 request_serializer=agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.ListTaskArtifactsRequest.SerializeToString,
                 response_deserializer=agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.ListTaskArtifactsResponse.FromString,
                 _registered_method=True)
+        self.ListSessionEvents = channel.unary_unary(
+                '/agentruntime.taskapi.v1.TaskService/ListSessionEvents',
+                request_serializer=agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.ListSessionEventsRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.ListSessionEventsResponse.FromString,
+                _registered_method=True)
 
 
 class TaskServiceServicer:
@@ -89,6 +94,16 @@ class TaskServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def ListSessionEvents(self, request, context):
+        """一次取回一个 Session 里若干 Task 的事件（HIST-01，docs/plan/workspace-read-latency-and-disk-2026-11-03.md）：
+        每个 Task 给一个游标 after_event_id，返回游标之后的事件（业务库里记下的，按 event_id 排序，与 SSE 的 data 相同），
+        一页不够时 more 为真、拿 next_after_event_id 再取。客户端刷新时用它代替逐个 Task 重放 SSE；之后只对没结束的 Task 开 SSE 续传。
+        逐字的增量（token_delta、thinking_delta）不在其中。别的租户、别的 Session 的 Task 当作不存在。
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_TaskServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -116,6 +131,11 @@ def add_TaskServiceServicer_to_server(servicer, server):
                     servicer.ListTaskArtifacts,
                     request_deserializer=agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.ListTaskArtifactsRequest.FromString,
                     response_serializer=agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.ListTaskArtifactsResponse.SerializeToString,
+            ),
+            'ListSessionEvents': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListSessionEvents,
+                    request_deserializer=agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.ListSessionEventsRequest.FromString,
+                    response_serializer=agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.ListSessionEventsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -257,6 +277,33 @@ class TaskService:
             '/agentruntime.taskapi.v1.TaskService/ListTaskArtifacts',
             agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.ListTaskArtifactsRequest.SerializeToString,
             agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.ListTaskArtifactsResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListSessionEvents(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.taskapi.v1.TaskService/ListSessionEvents',
+            agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.ListSessionEventsRequest.SerializeToString,
+            agentruntime_dot_taskapi_dot_v1_dot_task__api__pb2.ListSessionEventsResponse.FromString,
             options,
             channel_credentials,
             insecure,

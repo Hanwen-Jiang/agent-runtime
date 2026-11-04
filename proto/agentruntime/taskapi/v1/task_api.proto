@@ -25,6 +25,11 @@ service TaskService {
   // 列出 Task 交付的文件（N-18，docs/plan/n18-file-delivery-f3.md），只给元数据。
   // 内容从 download_path（GET，同一个 Task API 地址，带同样的认证）取：每次都重新核对租户、Task 与有效期。
   rpc ListTaskArtifacts(ListTaskArtifactsRequest) returns (ListTaskArtifactsResponse);
+  // 一次取回一个 Session 里若干 Task 的事件（HIST-01，docs/plan/workspace-read-latency-and-disk-2026-11-03.md）：
+  // 每个 Task 给一个游标 after_event_id，返回游标之后的事件（业务库里记下的，按 event_id 排序，与 SSE 的 data 相同），
+  // 一页不够时 more 为真、拿 next_after_event_id 再取。客户端刷新时用它代替逐个 Task 重放 SSE；之后只对没结束的 Task 开 SSE 续传。
+  // 逐字的增量（token_delta、thinking_delta）不在其中。别的租户、别的 Session 的 Task 当作不存在。
+  rpc ListSessionEvents(ListSessionEventsRequest) returns (ListSessionEventsResponse);
 }
 
 message SubmitTaskRequest {
@@ -185,6 +190,42 @@ enum TaskArtifactState {
 message ListTaskArtifactsResponse {
   // 按创建时间排序。
   repeated TaskArtifact artifacts = 1;
+}
+
+message ListSessionEventsRequest {
+  // 只用来与认证身份做一致性校验。
+  string tenant_id = 1;
+  string session_id = 2;
+  // 要取的 Task 与各自的游标；最多 50 个 Task，同一个 Task 只能出现一次。
+  repeated TaskEventCursor cursors = 3;
+  // 每个 Task 最多返回多少个事件；0 时为 200，最多 1000。
+  int32 page_size = 4;
+}
+
+// TaskEventCursor 是一个 Task 的续读位置：只要 event_id 大于 after_event_id 的事件；0 表示从头。
+message TaskEventCursor {
+  string task_id = 1;
+  int64 after_event_id = 2;
+}
+
+message ListSessionEventsResponse {
+  // 与请求里的 cursors 一一对应、顺序相同；不存在的 Task 给 found 为假、没有事件。
+  repeated TaskEvents tasks = 1;
+}
+
+// TaskEvents 是一个 Task 在游标之后的事件。
+message TaskEvents {
+  string task_id = 1;
+  bool found = 2;
+  repeated TaskEvent events = 3;
+  // 下次续读的游标：最后一个返回的 event_id；没有新事件时等于请求里的 after_event_id。
+  int64 next_after_event_id = 4;
+  // 这一页之后还有记下的事件。
+  bool more = 5;
+  // 业务库里没有这个 Task 的完整记录（迁移之前开始的 Task）：客户端退回快照或 SSE。
+  bool events_unavailable = 6;
+  // Task 已经结束（task_finished 已在业务库里）。
+  bool finished = 7;
 }
 
 // TaskEvent 是 SSE 推送的事件信封（设计书 4.14）。
