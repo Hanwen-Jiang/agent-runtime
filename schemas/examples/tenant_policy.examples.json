@@ -163,6 +163,18 @@
       }
     },
     {
+      "name": "mcp_connections_allowed",
+      "source": "N-15（docs/plan/n15-mcp-contract.md）：用户可以登记这几个主机上的 MCP Server，工具最高定到 read",
+      "instance": {
+        "mcp": {
+          "allowed": true,
+          "hosts": ["mcp.linear.app", "*.atlassian.net"],
+          "max_connections": 5,
+          "max_effect": "read"
+        }
+      }
+    },
+    {
       "name": "network_allowlist_only",
       "source": "NET-OPEN：只许名单里的主机，与不写 modes 一样",
       "instance": {
@@ -463,6 +475,70 @@
             "allowed": true,
             "modes": []
           }
+        }
+      }
+    },
+    {
+      "name": "mcp_effect_write_reversible",
+      "description": "MCP 工具没有回滚：effect 上限只能是 read 或 write_irreversible",
+      "violates": [
+        {
+          "path": "/mcp/max_effect",
+          "keyword": "enum"
+        }
+      ],
+      "instance": {
+        "mcp": {
+          "allowed": true,
+          "max_effect": "write_reversible"
+        }
+      }
+    },
+    {
+      "name": "mcp_host_is_an_ip",
+      "description": "连接的主机是域名，不能是 IP 字面量",
+      "violates": [
+        {
+          "path": "/mcp/hosts/0",
+          "keyword": "pattern"
+        }
+      ],
+      "instance": {
+        "mcp": {
+          "allowed": true,
+          "hosts": ["10.0.0.5"]
+        }
+      }
+    },
+    {
+      "name": "mcp_zero_connections",
+      "description": "每人至少能登记一个；不允许就写 allowed false",
+      "violates": [
+        {
+          "path": "/mcp/max_connections",
+          "keyword": "minimum"
+        }
+      ],
+      "instance": {
+        "mcp": {
+          "allowed": true,
+          "max_connections": 0
+        }
+      }
+    },
+    {
+      "name": "mcp_unknown_field",
+      "description": "mcp 只有 allowed、hosts、max_connections、max_effect；凭据不放在租户策略里",
+      "violates": [
+        {
+          "path": "/mcp",
+          "keyword": "additionalProperties"
+        }
+      ],
+      "instance": {
+        "mcp": {
+          "allowed": true,
+          "api_key": "sk-not-here"
         }
       }
     },

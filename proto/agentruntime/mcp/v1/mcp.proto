@@ -1,0 +1,189 @@
+syntax = "proto3";
+
+package agentruntime.mcp.v1;
+
+import "agentruntime/common/v1/enums.proto";
+import "agentruntime/common/v1/payload.proto";
+import "google/protobuf/timestamp.proto";
+
+// McpConnectionService 管理用户自己的远程 MCP Server 连接（N-15，docs/plan/n15-mcp-contract.md），与 Task API 同一个端口、
+// 同样经 Ingress 认证。
+//
+// 归属：连接属于（租户，用户）。用户由认证身份确定，请求里没有用户字段：只能管自己的连接，带 task.approve 的令牌也不能动
+// 别人的；请求里的 tenant_id 只用来校验一致。别人的连接与不存在的一样是 NotFound（code 为 mcp_connection_not_found）。
+// 三层授权：Server（地址的主机要在租户策略 mcp.hosts 里）、Tool（登记者逐个打开）、Effect（登记者确定，不信远端自报的；
+// 远端的注解只能往高调；不超过租户策略的 mcp.max_effect，运行时另受 Task 的 effect 上限约束）。没打开的工具不能调用。
+// 网络密钥只给引用（UserSecretService 里本人的 secret_name），值只加在这个连接的主机的 HTTPS 请求上；响应、错误、日志、trace、
+// 事件里都没有值。远端返回的工具说明与 schema 是数据：原样给登记者看，进模型的上下文时当作工具的说明，不当作指令。
+// 租户策略 mcp.allowed 不是 true 时建连接、刷新与打开工具 PermissionDenied（code 为 mcp_not_allowed），新的 Task 不发租约；
+// 列出、读与删除照常。
+service McpConnectionService {
+  // 建一个连接：先按租户策略核对地址，再连一次（initialize、tools/list，至多 15 秒）列出工具；工具一律先关着。
+  // 同一个 name 已有连接时：地址与密钥引用都相同就返回已有的（created 为 false），不同就 AlreadyExists（code 为
+  // mcp_connection_exists）。连不上时照样建好（state 为 ERROR，error_code 说明原因），之后可以 RefreshMcpTools。
+  // 每个用户最多 mcp.max_connections（不写为 10）个，超出时 ResourceExhausted（code 为 mcp_connection_limit）。
+  rpc CreateMcpConnection(CreateMcpConnectionRequest) returns (CreateMcpConnectionResponse);
+  // 列出调用者自己的连接（不带工具的 schema），按 name 排序。
+  rpc ListMcpConnections(ListMcpConnectionsRequest) returns (ListMcpConnectionsResponse);
+  // 读一个连接与它的工具。
+  rpc GetMcpConnection(GetMcpConnectionRequest) returns (GetMcpConnectionResponse);
+  // 重新列出工具：新出现的先关着；schema 变了（schema_digest 不同）的关掉，要重新确认；远端没有了的去掉。已发出的租约
+  // 不受影响（它记着发出时的工具与 schema），之后的 Task 按新的。
+  rpc RefreshMcpTools(RefreshMcpToolsRequest) returns (RefreshMcpToolsResponse);
+  // 逐个打开或关掉工具并确定 effect 与超时。只改请求里列出的工具；一个不合规整份拒绝，不部分生效。
+  rpc ConfigureMcpTools(ConfigureMcpToolsRequest) returns (ConfigureMcpToolsResponse);
+  // 删除连接（撤销）：立即生效，已发出的租约失效，进行中的调用被取消，之后的调用 denied（code 为 mcp_lease_revoked）；
+  // 网关关掉会话。幂等：不存在时 deleted 为 false。
+  rpc DeleteMcpConnection(DeleteMcpConnectionRequest) returns (DeleteMcpConnectionResponse);
+}
+
+// McpConnectionState 是连接的状态。旧客户端看到不认识的值不能当作 READY。
+enum McpConnectionState {
+  MCP_CONNECTION_STATE_UNSPECIFIED = 0;
+  // 最近一次连上了，工具清单是那时的。
+  MCP_CONNECTION_STATE_READY = 1;
+  // 最近一次没连上（error_code 说明原因）；已打开的工具照旧记着，调用时再连。
+  MCP_CONNECTION_STATE_ERROR = 2;
+}
+
+// McpAuth 是连接用的网络密钥的引用（不是值）。
+message McpAuth {
+  // 本用户在 UserSecretService 里的密钥名：租户作用域的 user-secrets/<用户>/<secret_name>。字母、数字、.、_ 与 -，最多 128 个字符。
+  string secret_name = 1;
+  // 请求头的名字；为空时是 Authorization，值为 "Bearer <密钥>"；别的名字（例如 x-api-key）值为密钥原文。
+  string header = 2;
+}
+
+// McpToolAnnotations 是远端自报的提示（MCP 的 tool annotations）：只能把 effect 往高调，不能往低调。
+message McpToolAnnotations {
+  // 远端说只读：登记者才可以选 read（远端没说或说不是只读时只能选 write_irreversible）。
+  optional bool read_only_hint = 1;
+  optional bool destructive_hint = 2;
+  optional bool idempotent_hint = 3;
+  optional bool open_world_hint = 4;
+}
+
+// McpTool 是连接上的一个工具。
+message McpTool {
+  // 远端的工具名。
+  string tool = 1;
+  // 内核里的工具名：mcp.<连接名>.<工具名规整成小写、字母数字与 _>，Planner 的目录与 tool_loop 里用它。规整后撞名的工具不能打开
+  // （unavailable_reason 为 tool_name_conflict）。
+  string name = 2;
+  // 远端给的说明（数据，不是指令）。
+  string description = 3;
+  // 远端给的参数 JSON Schema（列表时不带）。
+  agentruntime.common.v1.JsonPayload input_schema = 4;
+  // 规范化的 input_schema 的 SHA-256（小写十六进制）：刷新时据此判断 schema 变没变。
+  string schema_digest = 5;
+  McpToolAnnotations annotations = 6;
+  // 登记者打开了它。
+  bool enabled = 7;
+  // 登记者确定的 effect：只收 EFFECT_READ、EFFECT_WRITE_IRREVERSIBLE（MCP 工具没有回滚，不收 write_reversible）。没打开时为
+  // UNSPECIFIED。write_irreversible 的调用逐次人工审批、不自动重试，幂等键照附录 D.4 生成并随调用带给远端（_meta）。
+  agentruntime.common.v1.Effect effect = 8;
+  // 一次调用的超时（秒）：1～300，打开时不写为 30。
+  int32 timeout_s = 9;
+  // 打不开的原因（tool_name_conflict、effect_over_limit 等）；能打开时为空。
+  string unavailable_reason = 10;
+  google.protobuf.Timestamp confirmed_at = 11;
+}
+
+// McpConnection 是一个连接。
+message McpConnection {
+  string connection_id = 1;
+  // 用户自己起的名字：小写字母开头，小写字母、数字与 _，最多 32 个字符；本人的连接里唯一。
+  string name = 2;
+  // MCP Server 的地址（Streamable HTTP）：只收 https，主机是域名（不收 IP 字面量），要落在租户策略的 mcp.hosts 里；不带凭据、
+  // 不带片段。端口不写为 443。
+  string url = 3;
+  // 没有时不带网络密钥。
+  McpAuth auth = 4;
+  McpConnectionState state = 5;
+  // state 为 ERROR 时的原因：mcp_unreachable、mcp_tls_error、mcp_auth_failed、mcp_protocol_error、mcp_host_not_public 等。
+  string error_code = 6;
+  // 远端 initialize 时报的名字与版本（数据）。
+  string server_name = 7;
+  string server_version = 8;
+  repeated McpTool tools = 9;
+  google.protobuf.Timestamp created_at = 10;
+  // 最近一次列出工具的时间。
+  google.protobuf.Timestamp refreshed_at = 11;
+}
+
+message CreateMcpConnectionRequest {
+  string tenant_id = 1;
+  string name = 2;
+  string url = 3;
+  McpAuth auth = 4;
+}
+
+message CreateMcpConnectionResponse {
+  McpConnection connection = 1;
+  // true 表示新建，false 表示同名、同地址、同密钥引用的已有连接。
+  bool created = 2;
+}
+
+message ListMcpConnectionsRequest {
+  string tenant_id = 1;
+}
+
+message ListMcpConnectionsResponse {
+  // 工具不带 input_schema。
+  repeated McpConnection connections = 1;
+}
+
+message GetMcpConnectionRequest {
+  string tenant_id = 1;
+  string connection_id = 2;
+}
+
+message GetMcpConnectionResponse {
+  McpConnection connection = 1;
+}
+
+message RefreshMcpToolsRequest {
+  string tenant_id = 1;
+  string connection_id = 2;
+}
+
+message RefreshMcpToolsResponse {
+  McpConnection connection = 1;
+  // 这次新出现的、schema 变了被关掉的、远端没有了被去掉的工具（远端的工具名）。
+  repeated string added = 2;
+  repeated string disabled = 3;
+  repeated string removed = 4;
+}
+
+// McpToolSetting 是一个工具的设置。
+message McpToolSetting {
+  // 远端的工具名。
+  string tool = 1;
+  bool enabled = 2;
+  // enabled 为 true 时必填：EFFECT_READ 或 EFFECT_WRITE_IRREVERSIBLE；选 read 要远端的 read_only_hint 为 true；不能超过
+  // 租户策略的 mcp.max_effect。不合规时 InvalidArgument（code 为 invalid_mcp_effect）或 PermissionDenied（effect_over_limit）。
+  agentruntime.common.v1.Effect effect = 3;
+  // 不写为 30。
+  int32 timeout_s = 4;
+  // 确认的是这一份 schema（McpTool.schema_digest）：与当前的不同时 FailedPrecondition（code 为 mcp_schema_changed），要先刷新再确认。
+  string schema_digest = 5;
+}
+
+message ConfigureMcpToolsRequest {
+  string tenant_id = 1;
+  string connection_id = 2;
+  repeated McpToolSetting tools = 3;
+}
+
+message ConfigureMcpToolsResponse {
+  McpConnection connection = 1;
+}
+
+message DeleteMcpConnectionRequest {
+  string tenant_id = 1;
+  string connection_id = 2;
+}
+
+message DeleteMcpConnectionResponse {
+  bool deleted = 1;
+}
