@@ -113,6 +113,10 @@ func (g *Gateway) servePreview(w http.ResponseWriter, r *http.Request) {
 			pr.Out.Host = pr.In.Host
 			stripPreviewCookie(pr.Out)
 		},
+		ModifyResponse: func(resp *http.Response) error {
+			hostOnlyCookies(resp.Header)
+			return nil
+		},
 		Transport: &http.Transport{
 			Proxy: nil,
 			// 进网直连沙箱（集群里 Pod 的地址）：不经出网用的 Dialer。
@@ -133,6 +137,31 @@ func (g *Gateway) servePreview(w http.ResponseWriter, r *http.Request) {
 		rec.Result = "closed"
 	}
 	g.finish(rec)
+}
+
+// hostOnlyCookies 让沙箱发的 Cookie 只留在环境自己的主机上：预览地址与平台的站点同在一个注册域下，带 Domain 的 Cookie
+// 会被浏览器带去别的站。去掉 Domain 属性，丢掉冒充网关令牌（ar_preview）的；别的属性原样。
+func hostOnlyCookies(h http.Header) {
+	lines := h.Values("Set-Cookie")
+	if len(lines) == 0 {
+		return
+	}
+	h.Del("Set-Cookie")
+	for _, line := range lines {
+		parts := strings.Split(line, ";")
+		name, _, _ := strings.Cut(strings.TrimSpace(parts[0]), "=")
+		if strings.TrimSpace(name) == previewParam {
+			continue
+		}
+		kept := parts[:1]
+		for _, attr := range parts[1:] {
+			key, _, _ := strings.Cut(strings.TrimSpace(attr), "=")
+			if !strings.EqualFold(strings.TrimSpace(key), "domain") {
+				kept = append(kept, attr)
+			}
+		}
+		h.Add("Set-Cookie", strings.Join(kept, ";"))
+	}
 }
 
 func stripPreviewCookie(r *http.Request) {
