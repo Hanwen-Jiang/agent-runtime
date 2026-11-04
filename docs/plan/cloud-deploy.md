@@ -763,6 +763,16 @@ GitHub App 上线（2026-11-04，APP-LIVE；目录 `app-golive`，脚本 `golive
   coding-web 的清单文件与线上一致。回滚：`helm rollback ar 26`、`kubectl -n agent-runtime rollout undo deploy/coding-web`。
 - **没有验证**：逐字增量真的推到浏览器（要一个真 Task 并在网页上看）；DLV-CHECK 在线上拦下一次假交付。
 
+REAL-01 的检查（2026-11-04，在第 27 版上；目录 `rev29`，脚本 `smoke2.sh`、`restore-check.sh`，以及服务器上的 `/root/ar-secrets/sops-sync.sh`）：
+
+- SOPS：`secrets.enc.yaml`（两份副本）补进 9 个 Secret（Valkey 的两个、GitHub App 的私钥、收件箱的库与连接串、预览域名的源站证书、R2 的密钥、
+  评测网站的令牌、Jev 的密钥），`coding-oauth` 换成线上版本（不再带环境变量形式的私钥，带 `CODING_TOKEN_KEY`）；共 24 个，解开后逐项按哈希与集群核对一致；
+  明文只在 `/dev/shm`，用完粉碎；旧文件留了加密的备份。
+- 冒烟 2（租户 `evals`，0.1 美元左右）：80 KiB 的输入经 Claim-Check 存进 R2，Temporal 历史里只剩 194 字节的引用；`deliver_file` 三次都 `file_not_found`
+  （`repo_edit` 写在沙箱里，`deliver_file` 读 Worker 本机目录），记为 F3-SANDBOX；Node 用完 6 步，Reviewer 升级等人，已取消；最终回答没跑，逐字增量没触发。
+- 数据库恢复（轻量版）：即时备份第一次上传 R2 读超时（`Read timeout on endpoint URL`），重试成功；从 R2 恢复出 `pg-restore`，五个库的表清单与关键表行数一致，删掉。
+- 写好没跑：`smoke3.sh`（测试租户 real01，Kata，只放行 example.com）验预览、出网网关的放行与 SSRF 拦截、Kata 的存档与恢复；要建新租户并自动批准它的联网申请，安全检查要用户点头。
+
 第 28 版（2026-11-04，只换网关；目录 `rev30`，脚本 `prepare.sh`、`rev30.sh`；用户在对话里选了“D6 只换网关”）：
 
 - 起因 TOOLS-KIMI（总表第 3 节）：经中转站的 kimi-k3.1-pro 在请求同时带工具与 json_schema 的 response_format 时不再调工具、直接编结果，
