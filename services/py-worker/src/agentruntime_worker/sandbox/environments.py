@@ -305,6 +305,22 @@ class RegistryPath:
         return f"{self.prefix}/{tenant_id}/env" if self.prefix else f"{tenant_id}/env"
 
 
+# 构建日志与失败原因里看着像凭据的东西（EV-TB，docs/plan/ev-tb-0of5-2026-11-04.md）：拉镜像层失败时 BuildKit 会打出镜像仓库 CDN
+# 的签名地址，签名与密钥对的 ID 在查询串里。URL 的 userinfo 与查询串整个去掉，主机与路径留着；截断后剩下的半截签名这类不透明的
+# 长串也去掉（层的 sha256 这类十六进制的 digest 不是凭据，留着）。
+_URL_USERINFO = re.compile(r"(https?://)[^/\s\"'<>@]+@")
+_URL_QUERY = re.compile(r"(https?://[^\s\"'<>?#]+)\?[^\s\"'<>]*")
+_OPAQUE = re.compile(r"[A-Za-z0-9~_\-+=%]{40,}")
+_HEX = re.compile(r"[0-9a-fA-F]+")
+
+
+def scrub(text: str) -> str:
+    """去掉文字里看着像凭据的部分（见上）；给要存下来或给人看的失败原因用。"""
+    text = _URL_USERINFO.sub(r"\1***@", text)
+    text = _URL_QUERY.sub(r"\1?***", text)
+    return _OPAQUE.sub(lambda m: m.group(0) if _HEX.fullmatch(m.group(0)) else "***", text)
+
+
 def check_dockerfile(text: str, *, tenant_id: str, registry: RegistryPath | None) -> list[str]:
     """用户的 Dockerfile 的静态检查；返回不收的原因（空表示通过）。"""
     problems: list[str] = []
@@ -471,8 +487,9 @@ class EnvironmentStore:
                         last_used_at=now, reason="")
 
     async def mark_failed(self, owner: str, key: str, reason: str, *, build_ms: int = 0) -> None:
-        # 日志的结论在最后，留尾部。last_used_at 记下失败的时间，过了 failed_retry_after 可以再试。
-        await self._set(owner, key, state="failed", reason=reason[-500:], build_ms=int(build_ms), last_used_at=iso(self.ledger.clock()))
+        # 日志的结论在最后，留尾部。last_used_at 记下失败的时间，过了 failed_retry_after 可以再试。截过之后再去一遍凭据的样子：
+        # 截断可能把签名地址切成没有 https:// 与 ? 的半截（EV-TB）。
+        await self._set(owner, key, state="failed", reason=scrub(reason[-500:]), build_ms=int(build_ms), last_used_at=iso(self.ledger.clock()))
 
     async def touch(self, owner: str, key: str) -> None:
         await self._set(owner, key, last_used_at=iso(self.ledger.clock()))
@@ -752,6 +769,6 @@ def workspace_reader(root: Any) -> FileReader:
 
 __all__ = [
     "BuildJob", "BuildOutcome", "BuildStarter", "DEFINITION_PATHS", "Definition", "EnvBuilder", "EnvironmentManager", "EnvironmentStore",
-    "ImagePusher", "ImageRecord", "Limits", "RegistryPath", "Resolution", "check_dockerfile", "detect", "same_image", "strip_jsonc",
+    "ImagePusher", "ImageRecord", "Limits", "RegistryPath", "Resolution", "check_dockerfile", "detect", "same_image", "scrub", "strip_jsonc",
     "tool_versions_dockerfile", "workspace_reader",
 ]

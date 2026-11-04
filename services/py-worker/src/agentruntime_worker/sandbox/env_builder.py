@@ -32,7 +32,7 @@ from typing import IO, Any
 
 from agentruntime_core.errors import InvalidError, NotFoundError, TransientError
 
-from agentruntime_worker.sandbox.environments import BuildJob, BuildOutcome
+from agentruntime_worker.sandbox.environments import BuildJob, BuildOutcome, scrub
 
 MANAGED_BY = "agentruntime-env-builder"
 # BuildKit 的版本写死（发布满两周）。
@@ -315,11 +315,12 @@ class K8sJobBuilder:
 
 
 def redact(text: str, job: BuildJob) -> str:
-    """日志里去掉联网变量的值（里面有凭据）与环境凭据的样子。"""
+    """日志里去掉联网变量的值（里面有凭据）、环境凭据的样子，以及别家的签名地址这类看着像凭据的东西（scrub）。在截取尾部之前做，
+    免得签名地址被截成认不出来的半截。"""
     for value in job.env.values():
         if value and len(value) >= 8:
             text = text.replace(value, "***")
-    return re.sub(r"ar1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", "***", text)
+    return scrub(re.sub(r"ar1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", "***", text))
 
 
 def builder_from_spec(spec: Mapping[str, Any], kube: Any) -> K8sJobBuilder:
