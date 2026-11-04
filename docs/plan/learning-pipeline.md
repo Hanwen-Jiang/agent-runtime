@@ -191,12 +191,13 @@ Gateway 结算的实际金额与它不一定一致，用量没回来的调用也
   报告记 `cost_source` 与成本未知的 Task 数 `cost_unknown`，审计 `learning.read_traces` 也带这两项。
 - Chart：Learning 的 Job 拿到与 Model Gateway 同一个 `secrets.relationalDsn`（`templates/learning.yaml`），云上因此读账本。
 
-**验收**：`services/py-learning/tests/test_pipeline_costs.py`（对着 SQLite：合计、未结算与没有记录算未知、没有 task_id 的不算、只读绑定的租户、分批、
-表不存在报错；门槛用账本的成本、一次未结算交人工；命令行的 auto、trace、model_usage 与退出码 4）；`tests/deploy/test_cloud.py` 的
+**验收**：`services/py-learning/tests/test_pipeline_costs.py`（读账本的四条在 SQLite 与临时的 Postgres 上各跑一遍，Postgres 用非超级用户、不带
+BYPASSRLS 的角色：合计、未结算与没有记录算未知、没有 task_id 的不算、只读绑定的租户（第三个租户什么都看不到）、分批、表不存在报错；
+门槛用账本的成本、一次未结算交人工；命令行的 auto、trace、model_usage 与退出码 4）；`tests/deploy/test_cloud.py` 的
 `test_cloud_learning_reads_costs_from_the_gateways_ledger`。
 
 **没做的**
 
-- Postgres 上没对着真库跑（读的是 py-core 的 Postgres 适配器，行级安全在 py-core 与 Go 的测试里验过）；线上 Job 的连接串也没在集群里试过。
+- 线上 Job 的连接串没在集群里试过（随下一版部署）。
 - Task State 里只放引用或摘要（第 1 条的后半句）没有改：Task State 现在不带成本。
 - Registry 修订号进账本（第 2 条）仍没做：Gateway 手上没有修订号。
