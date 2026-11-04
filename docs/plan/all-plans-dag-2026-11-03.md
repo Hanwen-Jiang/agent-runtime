@@ -240,10 +240,27 @@ flowchart LR
 
 ## 7. 要人定的
 
-- 契约人审（S-01）：WS-READ-02、HIST-01、SEC-API、DISK-B 已于 2026-11-04 通过（兼容性基线已更新）；之后的 NET-OPEN、D-25、N-14、N-15。
-- 设计改动：SBX-01（设计书 4.10）；Rust 进技术栈（4.15，D-20、D-28 的依赖清单）；Ingress（4.14，AUTH-03）；附录 A 的环境配置术语（ENV-02）。
-- 花钱：MX-RUN、EV-REAL、EV-TB 的 40 题。
-- 其他：MX-Q 的选题与标签；DELTA 的内部入口（安全评审）；F4 告警的通知渠道；DISK-B 的闲置天数与 `max_bytes` 超限的处理；Valkey 是否持久化。
+还要人审的只剩三份（2026-11-04 用户自己审）：SBX-01 设计改动稿第 9 节的五条；D-28、D-20 的 Rust 依赖清单（firecracker-backend.md 第 10 节）；AUTH-03 的身份服务选型（auth-tokens 第 5 节）。设计书原文档的更新（4.10、4.14、4.15、附录 A）也由人做。之后的 NET-OPEN、D-25、N-14、N-15 契约照旧走 S-01。
+
+### 7.1 2026-11-04 用户授权 Claude 代定的
+
+用户原话：“花钱的随便花”“其他的你帮我做决定就行”“批准”（批准线上沙箱换 ATOK-F 的 agent 并在 Worker 的 Pod 里跑探测脚本）。下面是这次定下的，要改直接改这里。
+
+| 事项 | 决定 | 理由 |
+| --- | --- | --- |
+| 免费档白名单（第 24 版已上，8 → 18 个） | 接受 | 每天 3 美元、每月 20 美元的预算已兜住花费；多给选择不加风险 |
+| MX-Q 改编题 | 由 Claude 从 `public-adapted-drafts` 选题、补标签，全部标“未确认”；人抽查过的才进可发布的分数，没抽查前 MX-PUB 不发布 | 照 work-dag 的建议；不让没经人看的标签进 Registry |
+| DELTA（`token_delta`、`thinking_delta` 的推送入口） | 做，带约束：内部端口只对 Worker 所在命名空间开放（NetworkPolicy）；平台令牌按调用方各一个，放 SecretStore 平台作用域（与 SBX-01 第 9 节第 5 条同一做法）；增量只进 Valkey 的流、保留不超过 10 分钟，不进业务库、Temporal 历史与 trace；默认关闭、按租户打开；先写验收测试 | 增量是体验功能，不该变成新的数据面或泄露面 |
+| F4 告警的通知渠道 | Grafana 的邮件联络点，发到账号所有者的运维邮箱；地址与 SMTP 凭据只放 Secret，不进仓库 | 单人运维，邮件最简单。**SMTP 凭据要人给**，给之前告警只在 Grafana 里看得到 |
+| DISK-B 的闲置天数 | 14 天 | 两周没动的会话副本基本不会再用；转冷后第一次打开多等一次恢复 |
+| DISK-A 超限 | 维持现状：拒绝写类工具并告诉用户 | 只警告挡不住盘满 |
+| Valkey 是否持久化 | 不持久化 | Cache 只放可丢的数据；HIST-01 之后事件以业务库为准 |
+| Valkey 口令 | 写进 `secrets.enc.yaml`（随第 25 版） | 现在只在服务器文件与两个 Secret 里，换机器会丢 |
+| AUTH-01 切换 | coding-web 换成 JWT 签发并验证之后，task-service 的 `ingress.devTokens` 改成 refuse | 开发令牌的对称密钥是 AUTH-01 要拆掉的东西 |
+| EV-TB 的环境配额 | `swebench`、`evals` 租户的 `max_images` 放宽到 20；跑 40 题之前先把环境建好 | 0/5 的原因就是配额满了退回 universal |
+| SITE | 随第 25 版部署新的 learning 镜像；只读令牌第 22 版已建（Secret `agent-runtime-eval-site`） | 不缺资源 |
+| MEM（Memory 上线） | 做，单独一版（第 26 版）：Milvus 3.0.2 单机版、PVC 50Gi、`text-embedding-3-large`；所有租户的白名单加 3-large（`swebench` 也加，之后的基准报告注明 Memory 已打开） | 与 Runtime 的其他改动分开，出问题好查 |
+| 花钱的上限 | 用户说随便花；为防跑飞仍按项设上限：真 Task 冒烟 ≤ 2 美元、EV-SWE 补跑 ≤ 5、DeepEval 线上重判 ≤ 10、LongMemEval ≤ 20、EV-REAL ≤ 40、Terminal-Bench 40 题 ≤ 80、MX-RUN 按 `estimate`、≤ 200；合计约 360 美元 | 单项超了先停下报告，不是不让花 |
 
 ## 8. 正在实现（认领）
 
