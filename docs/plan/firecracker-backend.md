@@ -105,6 +105,8 @@ fc-manager（Rust，宿主机上的 systemd 服务，不在 Pod 里）
 
 ### D-20 firecracker 后端：fc-manager 与 vsock agent（强档）
 
+> 状态（2026-11-04）：**第一段已完成，没部署**（`ac3f243`、`79ef29f`、`04e0e2c`、`3eb02c6`）：`services/rs-fc-manager`、`deploy/images/firecracker` 的客户机内核、`deploy/cluster/fc-manager.service` 与 `install.sh` 第 3b 步，测试对着假的 jailer 与 firecracker（实现记录见本节末尾的“D-20 第一段”）。下一段：firecracker 适配器写进 SBX-01 的 Go Sandbox Service（`services/go-sandbox-service`，2026-11-04 起它接管所有后端适配器，不再写下面交付里的 Python 适配器）；客户机里 agent 的 `--init` 与 vsock 由 D-28 的 Rust 版实现；真 VM 的验收（FC-REAL）在生产独服上跑，要人同意。
+
 **目标**：每个环境一台 Firecracker microVM；Worker 经 `firecracker` 后端使用，接口与其他后端相同。
 
 **交付**：
@@ -142,6 +144,39 @@ fc-manager（Rust，宿主机上的 systemd 服务，不在 Pod 里）
 8. 记录：建环境到第一条命令返回的耗时（P50、P95）、单宿主能同时跑的 VM 数。**只记录，不设门槛**，因为没有基线。
 
 **依赖**：D-19、D-05、D-06。无契约变更。
+
+#### D-20 第一段（2026-11-04）
+
+做了什么（都在 `services/rs-fc-manager`，说明在 `src/lib.rs`）：
+
+- **接口**与 Cloudflare 桥同形：`GET /healthz`；`GET /v1/envs`（只给 `_platform`，带 owner、labels、created_at，给对账）；`POST /v1/envs`（`runtime`、`cpu_millis`、`memory_mb`、`disk_mb`、`labels`，未知字段拒绝）；`DELETE /v1/envs/<id>`（没有也是 204，别的作用域 404）；`/v1/envs/<id>/agent/<路径>` 原样转给客户机里的 agent。认证 `Authorization: Bearer`，令牌是 SecretStore 平台作用域的 `sandbox/fc-manager-token`（`AR_SECRETS_FILE`，文件变了就重新读）；作用域 `X-Sandbox-Owner`。超容量 503 `host_capacity`、启动失败 503 `boot_failed`，都带 `Retry-After`；firecracker 拒绝配置是 500 `vm_config_rejected`。
+- **每台 VM**：jailer（每台自己的 uid、chroot、`--new-pid-ns`、自己的空 netns、cgroup v2 的 `cpu.max`、`memory.max`（加 64 MiB 给 VMM）、`pids.max`），firecracker 自带的 seccomp（不传 `--no-seccomp`、`--seccomp-filter`），jailer 与工具的环境清空；内核与 rootfs 硬链接进 jail（要同一个文件系统，启动时核对），rootfs 只读，scratch 是稀疏文件、0600、属于这台 VM 的 uid；没有网卡。每宿主的 VM 数、vCPU、内存、盘的总量有上限，并发建也守得住。
+- **agent 令牌**：每台 VM 随机生成，只在 fc-manager 的内存里；不进内核命令行、磁盘、日志。客户机启动时 agent（PID 1，最先起来的进程）连宿主（CID 2）的 701 端口读一行令牌，fc-manager 交出一次就关掉这个端口。转发时去掉调用方的 `Authorization`、`X-Sandbox-Owner` 与自带的 `X-Sandbox-Token`，换上这台 VM 的。
+- **重启：终止，不接管**（第 8 节那条“接管还是终止”定了）。理由：接管要把 agent 令牌落盘；宿主上权限最高的组件要小；环境没了 Worker 已经会记 lost、透明换新（D-13）。代价是 fc-manager 一重启，VM 里上次存档之后的改动都没了，所以**升级 fc-manager 前先把后端设成 `enabled: false` 排空**。建环境先写记录、再动宿主；清扫在 `serve` 启动时、systemd 的 ExecStopPost（`fc-manager sweep`）各跑一次，按记录、jail、cgroup、netns、日志里认得出的环境 ID 拆干净；锁文件保证同一个 state 目录只有一个 fc-manager，sweep 不会误杀在服务的 VM。VM 进程自己死了（被杀、内核 panic）由定时的 reaper 发现并拆掉，之后的请求是 `unknown_env`。
+- **宿主侧不需要 AF_VSOCK**：Firecracker 的 vsock 在宿主上是 Unix socket 加一行 `CONNECT <端口>` 的握手（客户机连宿主是 `<uds_path>_<端口>`），fc-manager 用标准库的 UnixStream。`unsafe` 只在 `src/sys.rs`（`kill`、`statfs`、`geteuid`），别处由 lint 禁止；D-28 的 `libs/rs-sys` 落地后挪过去。
+- **部署件**：`deploy/images/firecracker`（linux 6.18.57，2026-10-15 发布；以 Firecracker v1.17.0 的 `microvm-kernel-ci-x86_64-6.18.config` 为底，叠上 `agentruntime.config`：无模块、串口控制台、没有 virtio-net、没有 vsock 回环；源码与配置都按 sha256 核对、先核对再解包，构建后逐项核对叠上的配置还在）；`versions.conf` 的 `FIRECRACKER_VERSION=v1.17.0`（2026-09-10）与它的 sha256；`deploy/cluster/fc-manager.service`（仿 `ar-firewall.service`，`ConditionPathExists=/dev/kvm`，排在防火墙与 k3s 之后，ExecStartPre 与 ExecStopPost 各清扫一次）与 `fc-manager.env.example`（只听 cni0 的 10.42.0.1:8097）；`install.sh` 第 3b 步（有 `/dev/kvm` 才装 Firecracker，给了 `FC_MANAGER_BIN` 与 `FC_MANAGER_SHA256` 才装 fc-manager）。
+
+测试：`tests/acceptance.rs` 19 条对着 `fc-fake`（一个可执行文件按文件名扮演 jailer、firecracker 与 ip；firecracker 在 InstanceStart 之后扮演客户机：取令牌、应答 `CONNECT`、后面是假 agent），只要 Linux，不要 KVM 与 root；`tests/real_vm.rs` 是 FC-REAL，设 `AR_TEST_FIRECRACKER=1` 才编译；`tests/deploy/test_firecracker.py` 查部署件。CI 是单独的 `.github/workflows/rs-fc-manager.yml`，D-28 的 rust 一步落地后并进去。2026-11-04 在 GitHub 的 Linux runner 上：fmt、clippy（`-D warnings`）通过，单元测试 24 条、验收测试 19 条全过，`real_vm.rs` 不设变量时 0 条（没收集）；本机（Windows）跑可移植部分的单元测试，`AR_TEST_FIRECRACKER=1` 时的 `real_vm.rs` 只做过 clippy；部署测试 9 条，8 条在本机过（`bash -n` 那条只在 Linux 上跑，本机用 Git Bash 手工查过），`test_cloud.py` 里核对版本与脚本的 5 条也照旧通过。提交：`ac3f243`（测试）、`79ef29f`（实现）、`04e0e2c`（部署测试）、`3eb02c6`（部署件）。
+
+| 验收 | 本段 |
+| --- | --- |
+| 1 一致性测试对适配器 | 没做：适配器是下一段（Go Sandbox Service） |
+| 2 真 VM：内核不同、PID 1 是 agent、只有 lo | 写在 `real_vm.rs`，没跑（要 D-28 的 vsock agent 与 D-21 的 rootfs） |
+| 3 令牌、非 root、只读根 | 宿主侧已测：令牌不进命令行、磁盘、日志、jailer 的环境，转发不带调用方的令牌；客户机里的那一半在 `real_vm.rs` |
+| 4 内存、磁盘、CPU 的上限 | 已测参数与文件（`cpu.max`、`memory.max`、`pids.max`、vCPU、稀疏 scratch 的大小）；超限的效果在 `real_vm.rs` |
+| 5 超容量 transient、已有的不受影响 | 已测（VM 数、内存、盘，并发建） |
+| 6 销毁无残留、重复销毁、杀掉重启无孤儿 | 已测（进程、jail、cgroup、netns、记录、日志；SIGKILL 后重启、建到一半的三个崩溃点、`sweep` 子命令） |
+| 7 杀掉 VM 记 lost | 宿主侧已测（fc-manager 发现并清理，之后 `unknown_env`）；记 lost、透明换新是适配器的事 |
+| 8 冷启动与密度的数字 | `real_vm.rs` 打印，没跑 |
+
+没做、没核对的：
+
+- 真 VM 上一次都没跑过。按 Firecracker v1.17 的文档与二进制里的参数名写的，要在独服上核对：jailer 会不会自己建 jail 里的 `/run`（fc-manager 先建好并交给这台 VM 的 uid）、vsock 的握手与 `<uds_path>_<端口>`、`--level` 的输出去向。
+- 要 D-28 在 Rust 版 agent 里做的（本段不改它）：`--init` 当 PID 1；`AGENT_LISTEN=vsock:700`（在客户机里监听 vsock 700 端口，小于 1024，非 root 的命令占不了）；`AGENT_TOKEN_VSOCK=701`（启动时连 CID 2 的 701 端口读一行令牌，不从环境变量、文件读）；根是只读的 `/dev/vda`，`/dev/vdb` 是 fc-manager 用 `mkfs.ext4` 格式化好的 scratch（挂成 overlay 的上层与工作目录）。这些参数来自内核命令行（`src/spec.rs` 的 `boot_args`），D-28 定了别的名字就改那一处。
+- D-21 的 rootfs：现在 `AR_FC_IMAGES_DIR/<runtime>.ext4` 要人放（旁边的 `.sha256` 作镜像 digest）。D-22 的出网转发、预览没做：客户机现在完全不能联网。
+- Worker 到 fc-manager 的 NetworkPolicy（只放 Worker）是 Chart 的事，随适配器一起做；现在靠令牌与 cni0 地址。
+- 多宿主不在本期（`manager_url` 是单个地址）。
+- D-28 的根 Cargo workspace 还没到 main：这个 crate 暂时自成 workspace（自己的 `Cargo.lock`）。落地后删掉 `Cargo.toml` 的 `[workspace]` 与本目录的 `Cargo.lock`，在根的 members 里加上，CI 并进 rust 一步，`cargo deny` 用根的 `deny.toml`。
 
 ### D-21 客户机的 rootfs 与镜像（中档）
 
@@ -292,7 +327,7 @@ fc-manager（Rust，宿主机上的 systemd 服务，不在 Pod 里）
 - 单宿主上同时能跑多少台 VM、冷启动 P50 与 P95、快照恢复耗时：**都没有数字**。
 - （已不适用：sandbox-agent 改用 Rust 后，vsock 两端都经 `libc`。）
 - 选定的 Firecracker 与内核版本是否通知客户机“被克隆过”（影响 D-26 的重置方式）。
-- fc-manager 重启时接管还是终止（D-20 细化时定）。
+- ~~fc-manager 重启时接管还是终止~~：定为终止（D-20 第一段，理由见那里）。
 - 多宿主调度不在本期（登记里 `manager_url` 先是单个地址）。
 
 ## 9. 与既有设计的出入
@@ -309,5 +344,9 @@ fc-manager（Rust，宿主机上的 systemd 服务，不在 Pod 里）
 
 - **设计书与 CLAUDE.md**：设计书 4.15 的技术栈与仓库结构加 Rust、`services/rs-sandbox-agent`、`services/rs-fc-manager` 与 `libs/rs-sys`，由人更新原文档后重新导出；CLAUDE.md 的仓库结构与常用命令同步加上（实现时改）。
 - **依赖**：`Cargo.lock` 提交；只收发布满两周的版本（与 Python 的 `exclude-newer` 同一原则）；`cargo deny` 检查许可证、安全公告与重复版本，进 CI。拟定的最小清单：两者共用 `libc`（vsock、cgroup 与进程相关的系统调用）、`serde` 与 `serde_json`；sandbox-agent 另要 `sha2` 与一个 tar 库（或自写只支持所需子集的 tar 读写，实现前比较后定）。HTTP：fc-manager 的对外 API 与连 Firecracker 的 API（UDS 上的 HTTP）要么用一个小的 HTTP 库，要么自己写最小的 HTTP/1.1；TLS 要么用 `rustls`，要么让 fc-manager 只听宿主内的 UDS 或回环地址、由已有的入口做 TLS。**这两项在实现前比较后定，写进本节**，不默认引入异步运行时。
+- **fc-manager 的 HTTP 与 TLS（D-20 比较后定，2026-11-04）**：
+  - HTTP：自己写最小的 HTTP/1.1（`services/rs-fc-manager/src/http.rs`：从严解析、Content-Length 与 chunked、一个连接一个请求），不引入 HTTP 库与异步运行时。fc-manager 只有四个路由加一个按字节转发的代理，连 Firecracker 的 API 是 UDS 上的几个 PUT；小的 HTTP 库也要多审一套依赖，而转发要原样流过请求体并把断开传给 agent，用库反而绕。
+  - TLS：不做，不引入 `rustls`。fc-manager 只听 k3s 的 cni0 地址（`10.42.0.1:8097`），Pod 到它的流量不离开宿主；公网网卡上 `ar-firewall` 只放 22；认证靠 SecretStore 平台作用域的令牌。多宿主（第 8 节，本期不做）时再换 `rustls` 或经已有的入口。
+  - 实际的依赖：`libc` 0.2.191、`serde` 1.0.229（derive）、`serde_json` 1.0.154，以及它们带来的 `itoa`、`memchr`、`proc-macro2`、`quote`、`syn`、`unicode-ident`、`zmij`、`serde_core`、`serde_derive`；2026-11-04 核对 crates.io，都是 2026-10-16 或更早发布的。`cargo deny` 等 D-28 的 `deny.toml`。工具链 1.99.1（2026-10-13）。
 - **工具链**：固定 Rust 版本（`rust-toolchain.toml`，同样满两周）；`scripts/check.py` 加一步 `rust`：`cargo fmt --check`、`cargo clippy -D warnings`、`cargo test`、`cargo deny check`；目标 `x86_64-unknown-linux-musl` 静态链接；fc-manager 不需要镜像（systemd 服务），`deploy/cluster/install.sh` 装二进制并核对哈希；sandbox-agent 在 `deploy/images` 的各镜像里换成 Rust 的构建阶段，D-21 的 rootfs 转换注入同一个静态二进制。本机是 Windows：Linux 目标在容器里编译。
 - **测试**：第 6 节的假 fc-manager 在 Python 测试里，与 fc-manager 的语言无关，照旧；fc-manager 自己的单元测试在 `cargo test` 里，真 VM 的用例同样由 `AR_TEST_FIRECRACKER=1` 控制。
