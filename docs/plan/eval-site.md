@@ -90,3 +90,38 @@
   `helm upgrade` 时设 `evalDashboard.site.repo=Hanwen-Jiang/agent-runtime`，换新的 learning 镜像。
 
 2026-11-04：用户觉得页面“还是非常丑”，界面设计重做记为 SITE-UI（[总表](all-plans-dag-2026-11-03.md) 第 3 节）：先出设计稿给人看，数据与接口不变，顺带补页面冒烟测试。
+
+## 7. 按题型画题（SITE-DATA，2026-11-04）
+
+用户发现成对比较的题只显示题目与 `A>B`，两个候选回答藏在 `extra` 里，看着像判断题配错了答案。改法：`site.json` 给每个 jsonl 数据集写 `layout`（题型），
+`evals/site_views.py` 把每道题整理成页面要画的几块（`view.blocks`）与收起时的一行摘要（`view.summary`），页面照着画。task 类目录（规划、Reviewer、压缩的自编题）
+没写题型，照旧画。
+
+| 题型（layout） | 数据集 | 页面上画什么 | 收起时的摘要 |
+| --- | --- | --- | --- |
+| `pairwise` 成对比较 | JudgeBench | 题目；回答 A、B 并排，更好的标“更好”；原样的标注、来源子集、回答来自哪组 | 更好的是 A |
+| `best_of_n` 多选一的回答 | RewardBench 2 | 题目；好回答在前（绿框），三个差回答在后；子集 | 1 个好回答、3 个差回答 |
+| `multiple_choice` 单选题 | LongBench v2 | 问题；A～D 四个选项，正确的标“正确答案”；领域、子领域、难度、长度档、长篇上下文的字节数（原文不公开） | B. 选项原文 |
+| `tool_call` 工具调用 | BFCL | 对话；可用工具（名字、说明，展开看参数）；期望的调用（每个参数列可接受的值，空字符串表示可以不传）；类别 | 期望调用的函数名 |
+| `agent_scenario` 多轮智能体 | τ²-bench | 用户场景（领域、来电原因、用户知道与不知道的、给模拟用户的要求）；期望的动作按顺序（动作号、函数、参数，用户一侧的标出来）；要告诉用户的信息、自然语言的判定条件、环境断言、计分依据；题目的目的 | 来电原因；期望 n 个动作 |
+| `code_patch` 补丁 | SWE-bench Verified | 仓库（链到 GitHub）、基准提交、版本、难度、提出时间；Issue；提示（有才画）；参考补丁、测试补丁；要转为通过与要继续通过的测试 | Issue 的第一行；补丁改几个文件、几条测试要转为通过 |
+| `terminal_task` 终端任务 | Terminal-Bench 2.0 | 类别、难度、专家用时、镜像、工作目录能不能取出；考什么；题目说明；判分方式；每个测试文件 | 判分方式 |
+| `short_answer` 简答 | SimpleQA、FRAMES | 题目、标准答案；extra 里写成 Python 字面量的 metadata、wiki_links 展开成字段与链接列表 | 答案 |
+| `deliverable` 交付 | 自编交付题、SWE-bench 改编的仓库问答 | 请求、期望的回答、判分维度 | 期望回答的第一行 |
+| `retrieval` 检索 | 记忆检索 | 问题、参考答案、这题引用的记忆（id、种类、原文；语料里没有的单列） | 参考答案的第一行 |
+
+守住的：
+
+- **页面上不少字段**：每种题型认识的字段进专门的块，其余的按值的形状进“其他字段”；测试（`tests/test_eval_site_views.py`）对仓库里每个 jsonl 数据集的每道题核对：
+  一行里的每个值（字段值是 JSON 或 Python 字面量的字符串时展开再核）都出现在 view 里。
+- 有 view 的题不再发原样的 `detail`（内容都在 view 里，不重复发一遍）；没写题型或题型不认识的照旧发 detail、照旧画。
+- 链接只给整条是 `https://` 的地址（字段的 href 由服务端只给 https 的，列表里的由页面判断）；文字一律按纯文本放进页面。
+- 手机宽度：长的来源标记（JudgeBench 的题号）原来不换行，把整页撑到 1447 像素宽；窄屏下标记改为可换行（只改了这一条样式，其余样式归 SITE-UI）。
+
+导出有没有漏字段（`scripts/export_public_items.py` 把适配器的整个 payload 都写进去，只去掉 LongBench 的长篇原文，所以“漏”只可能在适配器选字段时）：
+
+- 判分用到的字段都在。
+- 适配器没带的上游元数据：JudgeBench 的 `response_model`（两个回答是哪个模型写的）与 `original_id`；RewardBench 2 的 `models`、`num_correct`、`num_rejected`、`total_completions`
+  （只收一好三差的五个子集，后三个是定值）；τ²-bench 的 `initial_state`（环境的初始数据，判分时由官方包加载）。要显示它们得改适配器并在装了评测依赖的服务器上重新导出，这次没做。
+
+没做：页面冒烟测试（headless 浏览器）仍归 SITE-UI；本机起服务在浏览器里看过成对比较、τ²-bench、BFCL 三种，桌面与 375 像素宽，中英都看过。
