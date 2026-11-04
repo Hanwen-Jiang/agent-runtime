@@ -41,7 +41,7 @@ C、E 两条线；F1～F4；task-service 默认不限未终态 Task 数（`bb832
 | WEB-SUB | 网页：并行子 Agent 的进度 | lane-merge（N-16） | DEP-W | 已完成（coding-agent `28082cd`，没部署） | 中 |
 | WEB-SNAP | 网页：用快照画首屏、处理 409 | lane-merge（N-19） | DEP-W | 已完成（coding-agent `2b793a1`，没部署；取不到快照时照旧逐个回放，所以可以先于 Runtime 部署） | 中 |
 | F3-E2E | 文件交付的端到端 | n18-file-delivery-f3 | DEP-W | 已完成（`ca4fc2e`，没部署） | 中 |
-| SEC-API | 用户密钥的写入、列举、删除接口（S-01） | lane-merge（ENV-02） | 契约人审 | 契约草案已推（`user_secrets.proto`），**等 S-01 人审**；实现另要 SecretStore 的 Store 接口加写、列举、删除（S-02） | 中 |
+| SEC-API | 用户密钥的写入、列举、删除接口（S-01） | lane-merge（ENV-02） | 契约人审 | 契约 2026-11-04 人审通过（`56f21cd`，基线已更新）；实现待做：另要 SecretStore 的 Store 接口加写、列举、删除（S-02） | 中 |
 | WEB-SEC | 网页：网络密钥页 | coding-agent | SEC-API | 待做 | 中 |
 | NET-OPEN | `open` 档位的公网授权（S-01） | lane-merge | 契约人审 | 推迟 | 远 |
 | D-25 | 多仓库工作区（S-01） | environment-config | 契约人审 | 草案 | 远 |
@@ -62,14 +62,14 @@ C、E 两条线；F1～F4；task-service 默认不限未终态 Task 数（`bb832
 | D-26 | 预热快照 | firecracker-backend | D-20、D-21 | 草案 | 远 |
 | PERF-00 | 分段量 Workspace 操作与历史加载的耗时；含 WK-LITE-03（进出 Worker 的字节数） | workspace-read 第 2、7 节 | — | Runtime 一侧已完成（`d180ae3` 测试、`fb971d2` 实现、`460b167` 面板检查；没部署）；coding-agent 的历史加载已完成（PERF-00-CA，coding-agent `6fc5e16` 测试、`6efb098` 实现；没部署） | 近 |
 | DISK-A | WS-DISK-01 ① 挂卷也执行大小上限、③ 卷用量告警 | workspace-read | — | 已完成（`55ebf81`，没部署；超限按设计稿拒绝写类工具，“拒绝还是只警告”仍可由人改） | 近 |
-| DISK-B | WS-DISK-01 ② 冷热分层（先存档成功再删本地） | workspace-read | DISK-A | 租户策略的契约草案已推（`a66a673`，`workspace.cold_after_days`，1～365，不写时不转冷），**等 S-01 人审**；闲置天数的默认值人定；实现在审过之后 | 远 |
+| DISK-B | WS-DISK-01 ② 冷热分层（先存档成功再删本地） | workspace-read | DISK-A | 租户策略的契约 2026-11-04 人审通过（`a66a673`，`workspace.cold_after_days`，1～365）；实现待做：部署级的默认值做成配置、不配时不转冷（闲置天数的默认值仍由人定） | 远 |
 | TSP-1 | TS-PROD-01 ① 生产模式没有 Postgres DSN 拒绝启动 | workspace-read | — | 已完成（`00ef868`，没部署） | 近 |
 | CACHE-01 | Cache 的 Valkey 适配器与部署 | workspace-read | — | 已完成（`5a7334f`，没部署） | 中 |
 | TSP-2 | TS-PROD-01 ②③ Cache 必须是 Valkey、连接池、task-service 多副本 | workspace-read | TSP-1、CACHE-01 | 已完成（`08e6745`，没部署；部署前先建 Valkey 的 Secret、重跑 `deploy/data/install.sh`） | 中 |
-| HIST-01 | 事件按 event_id 持久化，按 Session 批量取（S-01）；网页增量加载 | workspace-read | 契约人审（只有批量取的接口） | 持久化与读回已完成（`5d8c071`：SSE 从业务库补发、结束的 Task 重放全部、快照读业务库；没部署）；批量取的契约草案 `5760a9f` 等 S-01；网页的增量加载等契约 | 中 |
+| HIST-01 | 事件按 event_id 持久化，按 Session 批量取（S-01）；网页增量加载 | workspace-read | 契约人审（只有批量取的接口） | 持久化与读回已完成（`5d8c071`：SSE 从业务库补发、结束的 Task 重放全部、快照读业务库；没部署）；批量取的契约 2026-11-04 人审通过（`5760a9f`，基线已更新），实现待做；网页的增量加载在它之后 | 中 |
 | SBX-01 | Sandbox Service：设计改动稿 → 一期只读 → 二期借还与 exec（核心链路）→ 三期对账与构建 | workspace-read | 设计改动稿人审 | 设计改动稿已写（[sbx-01-sandbox-service-2026-11-03.md](sbx-01-sandbox-service-2026-11-03.md)），等人审；一期之后的实现等审 | 中 |
 | WS-READ-01 | 只读操作经 Sandbox Service，不进工作流、不新建沙箱 | workspace-read | SBX-01 一期 | 草案 | 中 |
-| WS-READ-02 | Workspace 操作单独一个队列与 Worker 池 | workspace-read | 契约人审（names.proto 加队列） | 契约草案已推（`ebf963e`，`TASK_QUEUE_WORKSPACE`），**等 S-01 人审**后实现 | 中 |
+| WS-READ-02 | Workspace 操作单独一个队列与 Worker 池 | workspace-read | 契约人审（names.proto 加队列） | 契约 2026-11-04 人审通过（`ebf963e`，`TASK_QUEUE_WORKSPACE`，基线已更新）；实现待做 | 中 |
 | WS-READ-03 | 文件树与 diff 按工作区 generation 缓存 | workspace-read | （多副本时 CACHE-01） | 已完成（`d35923b`，没部署） | 远 |
 | WS-BLOB-01 | 存档块的节点本地 LRU 读缓存 | workspace-read | D-20（Firecracker 的块服务） | 草案 | 远 |
 | STOR-SEC | 存储直连的安全要求：PUT 签 checksum、If-None-Match、Content-Length，日志打码，精确主机放行 | workspace-read 第 8 节 | — | 已完成能先做的（`b65ab01`：`ObjectStore.SignedUpload`，两种语言；出网网关审计与日志不带查询串的测试）。真实 R2 上三个头是否强制执行要跑 `AR_LIVE_S3`（写真实的桶，要人点头）；精确主机放行与“只在那一次操作里开授权”随 WS-PULL-01 做 | 中 |
@@ -238,7 +238,7 @@ flowchart LR
 
 ## 7. 要人定的
 
-- 契约人审（S-01）：SEC-API、HIST-01；之后的 NET-OPEN、D-25、N-14、N-15。
+- 契约人审（S-01）：WS-READ-02、HIST-01、SEC-API、DISK-B 已于 2026-11-04 通过（兼容性基线已更新）；之后的 NET-OPEN、D-25、N-14、N-15。
 - 设计改动：SBX-01（设计书 4.10）；Rust 进技术栈（4.15，D-20、D-28 的依赖清单）；Ingress（4.14，AUTH-03）；附录 A 的环境配置术语（ENV-02）。
 - 花钱：MX-RUN、EV-REAL、EV-TB 的 40 题。
 - 其他：MX-Q 的选题与标签；DELTA 的内部入口（安全评审）；F4 告警的通知渠道；DISK-B 的闲置天数与 `max_bytes` 超限的处理；Valkey 是否持久化。
