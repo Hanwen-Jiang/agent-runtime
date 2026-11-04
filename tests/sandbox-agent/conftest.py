@@ -203,7 +203,7 @@ def start_agent(exe: Path, workdir: Path, *, impl: str = "?", extra_env: Mapping
             kwargs["user"] = user
             kwargs["group"] = user
             kwargs["extra_groups"] = []
-        proc = subprocess.Popen([str(exe)], env=env, stdout=out, stderr=subprocess.STDOUT, cwd=str(workdir.parent), **kwargs)
+        proc = subprocess.Popen([str(exe)], env=env, stdout=out, stderr=subprocess.STDOUT, cwd=tempfile.gettempdir(), **kwargs)
     agent = Agent(impl, exe, workdir, port, proc, log, env)
     if wait:
         deadline = time.monotonic() + 20

@@ -49,11 +49,15 @@ def test_paths_cannot_escape_the_workdir(agent: Agent) -> None:
 
 
 def test_unclean_paths_are_redirected_like_go(agent: Agent) -> None:
-    # ServeMux 的规范化：非规范的路径 301 到规范的（GET 与 PUT 都一样）；agent 自己不再处理 . 与 ..。
-    for p in ["/v1/files/a//b", "/v1/files/./a", "/v1/files/a/../b"]:
-        res = agent.request("GET", p)
-        assert res.status == 301, (p, res.status)
-        assert res.headers["location"] in ("/v1/files/a/b", "/v1/files/a", "/v1/files/b")
+    # Go 的 ServeMux 的规范化：非规范的路径 307 到规范的（各个方法都一样，按转义后的路径算）；agent 自己不再处理 . 与 ..。
+    for p, want in [("/v1/files/a//b", "/v1/files/a/b"), ("/v1/files/./a", "/v1/files/a"), ("/v1/files/a/../b", "/v1/files/b"),
+                    ("/v1/files/../../etc/passwd", "/etc/passwd"), ("/v1/files/a/./b?x=1", "/v1/files/a/b?x=1")]:
+        for method in ("GET", "PUT", "HEAD"):
+            res = agent.request(method, p, b"x" if method == "PUT" else None)
+            assert res.status == 307, (method, p, res.status)
+            assert res.headers["location"] == want
+    assert agent.request("GET", "/v1/files").headers.get("location") == "/v1/files/", "缺了结尾的 / 时补上"
+    assert not (agent.workdir / "a").exists()
 
 
 def test_missing_files_and_directories_are_not_found(agent: Agent) -> None:

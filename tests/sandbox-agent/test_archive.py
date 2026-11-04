@@ -121,9 +121,10 @@ def test_import_only_into_an_empty_workdir_and_within_the_limit(make_agent) -> N
 
 
 def test_an_oversized_body_is_refused_with_413(agent: Agent) -> None:
-    # 请求体的上限是 max_bytes + max_bytes/8 + 1 MiB。
-    data = rawtar.build(file("a.txt", b"x" * 100)) + b"\0" * (2 << 20)
-    assert import_tar(agent, data, "1024")[0] == 413
+    # 请求体的上限是 max_bytes + max_bytes/8 + 1 MiB；目录项不算进文件大小，只有请求体的上限拦得住。
+    data = rawtar.build(*[dir(f"d{i}") for i in range(3000)])
+    assert len(data) > 1024 + 128 + (1 << 20)
+    assert import_tar(agent, data, "1024") == (413, "too_large")
 
 
 def test_a_truncated_or_corrupt_archive_is_invalid(make_agent) -> None:  # type: ignore[no-untyped-def]
@@ -360,8 +361,8 @@ def test_grep_skips_git_binary_and_big_files_and_trims_lines(agent: Agent) -> No
     out = agent.request("POST", "/v1/grep", b'{"pattern": "needle", "max_matches": 5000}').json()
     got = [(m["path"], m["line"]) for m in out["matches"]]
     assert got == [("deep/ok.txt", 1), ("deep/ok.txt", 3), ("late-nul.txt", 1), ("long.txt", 1), ("nonl.txt", 1)], got
+    assert out["matches"][0]["text"] == "needle", "行尾的 \\r 去掉"
     by = {m["path"]: m for m in out["matches"]}
-    assert by["deep/ok.txt"]["text"] == "needle", "行尾的 \\r 去掉"
     assert len(by["long.txt"]["text"]) == 500, "按字符截到 500"
 
 
