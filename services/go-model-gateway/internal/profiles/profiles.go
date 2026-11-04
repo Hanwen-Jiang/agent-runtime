@@ -14,7 +14,8 @@
 //   - version 必须为 1；id、vendor、model、class 必填；id 不得重复；未知字段报错（防止单价字段拼错后被当成 0 而被选成最便宜）。
 //   - class 与 Tier 名是小写 slug（[a-z0-9][a-z0-9_-]*），不含 @；每个 Profile 至少一个 Tier，Tier 名在 Profile 内不重复。
 //   - capabilities 至少一项，只能取 generate、structured、tools、stream、embed。
-//   - 单价单位是“美元每百万 token”，不得为负；freshness.price_at 必填，格式 YYYY-MM-DD。
+//   - 单价单位是“美元每百万 token”，三项（in_per_m、out_per_m、cache_read_per_m）都必填、不得为负，免费的写 0；
+//     freshness.price_at 必填，格式 YYYY-MM-DD。
 //   - Tier 字符串写作 <class>@<tier 名>，例如 strong@medium；嵌入模型的 class 为 embed、Tier 为 default。
 //   - 嵌入模型的 embedding_version 等于 Profile id。
 package profiles
@@ -188,9 +189,23 @@ func Parse(data []byte) (*Catalog, error) {
 	if len(file.Profiles) == 0 {
 		return nil, invalid("一个 Profile 都没有")
 	}
+	// 解码之后缺的单价与 null 都成了 0，分不出“免费”与“不知道”：另按原文核对三项单价都写了（R-06：未知价格不得静默按 0 计费）。
+	var prices struct {
+		Profiles []struct {
+			Cost map[string]json.RawMessage `json:"cost"`
+		} `json:"profiles"`
+	}
+	if err := json.Unmarshal(data, &prices); err != nil {
+		return nil, invalid("Profile 文件不是合法的 JSON：%v", err)
+	}
 	seen := map[string]bool{}
 	for i, p := range file.Profiles {
 		name := fmt.Sprintf("第 %d 个 Profile（%s）", i+1, p.ID)
+		for _, key := range []string{"in_per_m", "out_per_m", "cache_read_per_m"} {
+			if raw, ok := prices.Profiles[i].Cost[key]; !ok || string(raw) == "null" {
+				return nil, invalid("%s：cost.%s 必填（不知道单价时不能按 0 计）", name, key)
+			}
+		}
 		if err := check(p, name); err != nil {
 			return nil, err
 		}

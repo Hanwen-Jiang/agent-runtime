@@ -146,6 +146,9 @@ type MeterRecord struct {
 	OutputTokens    int64  `json:"output_tokens"`
 	CacheReadTokens int64  `json:"cache_read_tokens"`
 	CostUSDMicros   int64  `json:"cost_usd_micros"`
+	// PriceAt 是计价用的单价的取得日期（Model Profile 的 freshness.price_at）：与 model_profile_id 一起固定这次调用按哪一版
+	// 单价算的，价格表更新之后仍能复算（R-06）。
+	PriceAt string `json:"price_at"`
 	// Status 是 ok（RPC 成功）、failed（上游已经计费、网关判为失败的尝试）或 cancelled（调用方取消，用量不明，成本记 0）。
 	Status string `json:"status"`
 	// ErrorCode 是失败时的 code（status 为 failed 时才有）。
@@ -488,7 +491,8 @@ func (s *Server) writeMeter(c *call, cand router.Candidate, u *commonv1.Usage, s
 		TenantID: c.tenant.GetTenantId(), TaskID: c.ctx.GetTaskId(), NodeID: c.ctx.GetNodeId(), Role: roleName(c.ctx.GetRole()),
 		Method: c.method, ModelProfileID: cand.Profile.ID, Tier: c.choice.Tier, Vendor: cand.Profile.Vendor,
 		InputTokens: u.GetInputTokens(), OutputTokens: u.GetOutputTokens(), CacheReadTokens: u.GetCacheReadTokens(), CostUSDMicros: u.GetCostUsdMicros(),
-		Status: status, ErrorCode: errCode,
+		PriceAt: cand.Profile.Freshness.PriceAt,
+		Status:  status, ErrorCode: errCode,
 		PinnedModelProfile: pinned, PinIgnored: pinned != "" && pinned != cand.Profile.ID,
 		AvoidVendor: avoid, AvoidVendorUnmet: avoid != "" && avoid == cand.Profile.Vendor,
 		UsageMissing: status == "ok" && c.usageMissing,
