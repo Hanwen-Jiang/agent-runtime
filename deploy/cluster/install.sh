@@ -5,6 +5,8 @@
 #   1. gVisor：下载这个版本的包（runsc、containerd-shim-runsc-v1 与 gvisor-bin/），核对 sha512 后解到 /usr/local/bin。
 #   2. k3s：配置（config.yaml、psa.yaml、containerd 模板、Traefik 配置）放好后按 versions.conf 的版本安装。
 #   3. Kata（机器有 /dev/kvm 时）：kata-deploy 的 Helm Chart；没有 KVM 时跳过并提示，kata RuntimeClass 的 Pod 会起不来。
+#   3b. Firecracker 与 jailer（有 /dev/kvm 时，核对 versions.conf 的 sha256）；给了 FC_MANAGER_BIN、FC_MANAGER_SHA256 时
+#       再装 fc-manager 与它的 systemd 单元（D-20，fc-manager.service）。
 #   4. 工作区目录 /var/lib/agentruntime/workspaces（属主 10001）。
 #   5. 集群里的基础清单：命名空间、沙箱的约束、RuntimeClass、工作区与业务对象的卷。
 #   6. cert-manager、KEDA、CloudNativePG 与它的 Barman Cloud 插件。
@@ -85,6 +87,46 @@ if [[ -e /dev/kvm ]]; then
     || die "Kata 的 handler 没有 privileged_without_host_devices = true：构建环境的特权会碰到宿主的设备，见 README 的“项目环境的构建”"
 else
   log "没有 /dev/kvm：跳过 Kata（kata RuntimeClass 的沙箱起不来，租户策略别指到 kata）"
+fi
+
+# --- 3b. Firecracker 与 fc-manager（D-20，docs/plan/firecracker-backend.md）---
+# 只在有 /dev/kvm 时装。fc-manager 是宿主上的 systemd 服务（不在 Pod 里），二进制由 services/rs-fc-manager 静态编译
+# （x86_64-unknown-linux-musl），给了 FC_MANAGER_BIN 与 FC_MANAGER_SHA256 才装，按哈希核对后再放进 /usr/local/bin。
+if [[ -e /dev/kvm ]]; then
+  [[ -r /dev/kvm && -w /dev/kvm ]] || die "/dev/kvm 存在但读写不了（Firecracker 要它）"
+  if ! command -v firecracker >/dev/null || [[ "$(firecracker --version 2>/dev/null | head -1)" != *"${FIRECRACKER_VERSION#v}"* ]]; then
+    log "安装 Firecracker $FIRECRACKER_VERSION"
+    fc_tgz="firecracker-${FIRECRACKER_VERSION}-x86_64.tgz"
+    curl -fsSL -o "$WORK/$fc_tgz" \
+      "https://github.com/firecracker-microvm/firecracker/releases/download/${FIRECRACKER_VERSION}/$fc_tgz"
+    echo "${FIRECRACKER_SHA256}  $WORK/$fc_tgz" | sha256sum -c - >/dev/null || die "$fc_tgz 的 sha256 与 versions.conf 不一致"
+    tar -xzf "$WORK/$fc_tgz" -C "$WORK"
+    fc_dir="$WORK/release-${FIRECRACKER_VERSION}-x86_64"
+    install -m 0755 "$fc_dir/firecracker-${FIRECRACKER_VERSION}-x86_64" /usr/local/bin/firecracker
+    install -m 0755 "$fc_dir/jailer-${FIRECRACKER_VERSION}-x86_64" /usr/local/bin/jailer
+  fi
+  if [[ -n "${FC_MANAGER_BIN:-}" ]]; then
+    [[ -n "${FC_MANAGER_SHA256:-}" ]] || die "给了 FC_MANAGER_BIN 就要给 FC_MANAGER_SHA256"
+    echo "${FC_MANAGER_SHA256}  ${FC_MANAGER_BIN}" | sha256sum -c - >/dev/null || die "FC_MANAGER_BIN 的 sha256 不对"
+    log "安装 fc-manager"
+    install -m 0755 "$FC_MANAGER_BIN" /usr/local/bin/fc-manager
+    install -d -m 0700 /etc/agentruntime /var/lib/agentruntime/fc /var/lib/agentruntime/fc/state \
+      /var/lib/agentruntime/fc/jail /var/lib/agentruntime/fc/images
+    # 配置只在没有时拷样例；SecretStore 文件（sandbox/fc-manager-token）要人放，见 fc-manager.env.example。
+    [[ -f /etc/agentruntime/fc-manager.env ]] || install -m 0600 "$HERE/fc-manager.env.example" /etc/agentruntime/fc-manager.env
+    install -m 0644 "$HERE/fc-manager.service" /etc/systemd/system/fc-manager.service
+    systemctl daemon-reload
+    if [[ -f /etc/agentruntime/fc-manager-secrets.json && -f /var/lib/agentruntime/fc/images/vmlinux ]]; then
+      ( set -a && source /etc/agentruntime/fc-manager.env && /usr/local/bin/fc-manager check ) || die "fc-manager check 没通过"
+      systemctl enable --now fc-manager
+    else
+      log "fc-manager 装好了但没启动：先放 /etc/agentruntime/fc-manager-secrets.json 与客户机内核（deploy/images/firecracker），再 systemctl enable --now fc-manager"
+    fi
+  else
+    log "没给 FC_MANAGER_BIN：不装 fc-manager（Worker 登记里的 firecracker 后端保持 enabled: false）"
+  fi
+else
+  log "没有 /dev/kvm：跳过 Firecracker 与 fc-manager（firecracker 后端在 Worker 的登记里保持 enabled: false）"
 fi
 
 # --- 4. 工作区 ---

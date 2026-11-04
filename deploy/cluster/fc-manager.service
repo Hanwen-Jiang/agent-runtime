@@ -1,0 +1,38 @@
+# fc-manager（D-20，services/rs-fc-manager）：宿主上管 Firecracker microVM 的服务，每个沙箱环境一台 VM。
+# 有 /dev/kvm 时由 install.sh 的第 3b 步安装（给了 FC_MANAGER_BIN 与 FC_MANAGER_SHA256 才装）：
+#   install -m 0755 fc-manager /usr/local/bin/fc-manager
+#   install -m 0644 deploy/cluster/fc-manager.service /etc/systemd/system/ && systemctl enable --now fc-manager
+# 配置在 /etc/agentruntime/fc-manager.env（样例 fc-manager.env.example，0600）；API 令牌在 AR_SECRETS_FILE 指向的
+# SecretStore 文件的平台作用域 sandbox/fc-manager-token（0600，只给 root），与 Worker 取的是同一个值，不写在这里。
+#
+# fc-manager 重启时终止上一个进程留下的 VM，不接管（src/manager.rs）：启动前（ExecStartPre）与退出后（ExecStopPost，
+# 不管主进程怎么退出）各清扫一次。升级前先把 Worker 登记里的 firecracker 后端设成 enabled: false 排空。
+# 不用 ProtectSystem、PrivateTmp 这类会给服务单独建挂载命名空间的选项：ip netns 的绑定挂载要在宿主的挂载命名空间里，
+# ExecStopPost 的清扫才看得到、删得掉。
+[Unit]
+Description=Agent Runtime Firecracker manager (fc-manager)
+Documentation=https://github.com/Hanwen-Jiang/agent-runtime/blob/main/docs/plan/firecracker-backend.md
+ConditionPathExists=/dev/kvm
+# 公网网卡的防火墙先装好（它挡住了公网到这个端口的路）；监听的是 k3s 的 cni0 地址，所以排在 k3s 之后。
+Requires=ar-firewall.service
+After=network-online.target ar-firewall.service k3s.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/agentruntime/fc-manager.env
+ExecStartPre=/usr/local/bin/fc-manager sweep
+ExecStart=/usr/local/bin/fc-manager serve
+ExecStopPost=/usr/local/bin/fc-manager sweep
+# cni0 在 k3s 起来之后才有地址，绑定失败就隔几秒再试。
+Restart=always
+RestartSec=5
+# fc-manager 自己不提权：jailer 以 root 起、再降到每台 VM 自己的 uid；firecracker 自己装 seccomp。
+NoNewPrivileges=yes
+UMask=0077
+LimitNOFILE=65536
+# 内存紧张时先杀 VM（它们在 agentruntime-fc 的 cgroup 里，各自有 memory.max），不先杀管它们的进程。
+OOMScoreAdjust=-500
+
+[Install]
+WantedBy=multi-user.target
