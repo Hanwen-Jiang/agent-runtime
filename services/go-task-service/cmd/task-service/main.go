@@ -577,7 +577,16 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	workspaces.Mount(mux)
 	environments.Mount(mux)
 	userSecrets.Mount(mux)
-	streams := events.NewHandler(events.HandlerDeps{Ingress: ing, Cache: cacheProvider, Store: store, Clock: clk})
+	// 逐字增量（DELTA）：配了内部端口才收，按租户关掉的不推；没配时 SSE 不订阅增量流。
+	deltasOff := func(string) bool { return true }
+	var internalSrv *http.Server
+	if cfg.InternalAddr != "" {
+		if internalSrv, err = deltaServer(ctx, cfg, cacheProvider, store, clk, logger); err != nil {
+			return err
+		}
+		deltasOff = func(tenantID string) bool { return cfg.DeltaDisabledTenants[tenantID] }
+	}
+	streams := events.NewHandler(events.HandlerDeps{Ingress: ing, Cache: cacheProvider, Store: store, Clock: clk, DeltasOff: deltasOff})
 	mux.Handle("/v1/tasks/", streams)
 	mux.Handle("GET /v1/sessions/{session_id}/snapshot", streams)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "ok") })
@@ -586,12 +595,15 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	protocols.SetHTTP1(true)
 	protocols.SetUnencryptedHTTP2(true) // gRPC 客户端走明文 HTTP/2
 	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: mux, Protocols: protocols, ReadHeaderTimeout: 10 * time.Second}
-	errs := make(chan error, 2)
+	errs := make(chan error, 3)
 	go func() { errs <- srv.ListenAndServe() }()
 	if registrySrv != nil {
 		go func() { errs <- registrySrv.ListenAndServe() }()
 	}
-	logger.Info("task-service 已启动", "http", cfg.HTTPAddr, "registry", cfg.RegistryAddr, "temporal", cfg.TemporalAddress)
+	if internalSrv != nil {
+		go func() { errs <- internalSrv.ListenAndServe() }()
+	}
+	logger.Info("task-service 已启动", "http", cfg.HTTPAddr, "registry", cfg.RegistryAddr, "internal", cfg.InternalAddr, "temporal", cfg.TemporalAddress)
 
 	select {
 	case err := <-errs:
@@ -605,6 +617,9 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	defer cancel()
 	if registrySrv != nil {
 		_ = registrySrv.Shutdown(shutdown)
+	}
+	if internalSrv != nil {
+		_ = internalSrv.Shutdown(shutdown)
 	}
 	return srv.Shutdown(shutdown)
 }

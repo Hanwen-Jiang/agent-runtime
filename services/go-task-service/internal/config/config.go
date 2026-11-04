@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -64,7 +65,17 @@ const (
 	// accept 或 refuse；开发模式默认 accept，生产模式默认 refuse，迁移期间生产模式可以显式 accept（启动时记一条警告）。
 	EnvIngressIssuersFile = "AR_INGRESS_ISSUERS_FILE"
 	EnvIngressDevTokens   = "AR_INGRESS_DEV_TOKENS"
+	// EnvInternalAddr 设了才收逐字增量（DELTA，docs/plan/all-plans-dag-2026-11-03.md 7.1）：Worker 在这个单独的内部端口上
+	// 推 token_delta、thinking_delta（internal/deltas），不能与 Task API、Registry 共用端口；集群里只对 Worker 所在的命名空间开放。
+	// EnvDeltaCallers 是调用方（逗号分隔，默认 worker），令牌各在 AR_SECRETS_FILE 平台作用域的 delta/<调用方>，没有时启动时生成。
+	// EnvDeltaDisabledTenants 是关掉逐字增量的租户（逗号分隔）：出问题时关，而不是回滚。
+	EnvInternalAddr         = "AR_INTERNAL_ADDR"
+	EnvDeltaCallers         = "AR_DELTA_CALLERS"
+	EnvDeltaDisabledTenants = "AR_DELTA_DISABLED_TENANTS"
 )
+
+// callerName 是 AR_DELTA_CALLERS 里一个调用方名字的格式（也是 SecretStore 里令牌名字的一段）。
+var callerName = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,31}$`)
 
 // AR_INGRESS_DEV_TOKENS 的取值。
 const (
@@ -170,6 +181,10 @@ type Config struct {
 	// WorkspaceAllowLocalRemotes 让它收 file:// 的仓库地址（EnvWorkspaceAllowLocalRemotes，只给测试；Worker 读同一个变量）。
 	WorkspaceOperationTimeout  time.Duration
 	WorkspaceAllowLocalRemotes bool
+	// InternalAddr、DeltaCallers、DeltaDisabledTenants 见 EnvInternalAddr；InternalAddr 为空表示不收逐字增量。
+	InternalAddr         string
+	DeltaCallers         []string
+	DeltaDisabledTenants map[string]bool
 }
 
 // FromEnv 读取并校验配置。错误信息只提变量名，不带取值。
@@ -297,7 +312,44 @@ func FromEnv(getenv func(string) string) (Config, error) {
 	if err := cfg.readIngress(getenv); err != nil {
 		return Config{}, err
 	}
+	if err := cfg.readDeltas(getenv); err != nil {
+		return Config{}, err
+	}
 	return cfg, nil
+}
+
+// readDeltas 读逐字增量的入口配置（EnvInternalAddr、EnvDeltaCallers、EnvDeltaDisabledTenants）。
+func (cfg *Config) readDeltas(getenv func(string) string) error {
+	cfg.InternalAddr = getenv(EnvInternalAddr)
+	if cfg.InternalAddr != "" && (cfg.InternalAddr == cfg.HTTPAddr || cfg.InternalAddr == cfg.RegistryAddr) {
+		return fmt.Errorf("%s 要用单独的内部端口，不能与 %s、%s 相同", EnvInternalAddr, EnvHTTPAddr, EnvRegistryAddr)
+	}
+	raw := getenv(EnvDeltaCallers)
+	if raw == "" {
+		raw = "worker"
+	}
+	seen := map[string]bool{}
+	for _, part := range strings.Split(raw, ",") {
+		name := strings.TrimSpace(part)
+		if name == "" {
+			continue
+		}
+		if !callerName.MatchString(name) || seen[name] {
+			return fmt.Errorf("%s 的调用方名字只能是小写字母、数字与连字符（至多 32 个），不能重复", EnvDeltaCallers)
+		}
+		seen[name] = true
+		cfg.DeltaCallers = append(cfg.DeltaCallers, name)
+	}
+	if len(cfg.DeltaCallers) == 0 {
+		return fmt.Errorf("%s 至少要有一个调用方", EnvDeltaCallers)
+	}
+	cfg.DeltaDisabledTenants = map[string]bool{}
+	for _, part := range strings.Split(getenv(EnvDeltaDisabledTenants), ",") {
+		if id := strings.TrimSpace(part); id != "" {
+			cfg.DeltaDisabledTenants[id] = true
+		}
+	}
+	return nil
 }
 
 // readIngress 读 Ingress 的配置（AUTH-01）：签发方登记的路径、收不收开发令牌与开发令牌的签名密钥。登记文件在 serve 启动时读。

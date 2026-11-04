@@ -123,6 +123,8 @@ type HandlerDeps struct {
 	Heartbeat time.Duration
 	// Clock 判断令牌是否过期；nil 时用系统时钟。
 	Clock clock.Clock
+	// DeltasOff 为 true 的租户不推逐字增量（AR_DELTA_DISABLED_TENANTS；没有增量入口时对所有租户为 true）；nil 时都推。
+	DeltasOff func(tenantID string) bool
 }
 
 // routeStream 是 SSE 在 Ingress.Admit 里的限流维度，与提交、取消等路由分开计数。
@@ -248,25 +250,15 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request) {
 		flush()
 	}
 
-	type item struct {
-		ev  cache.StreamEvent
-		err error
-	}
-	items := make(chan item)
-	go func() {
-		defer close(items)
-		for {
-			ev, err := sub.Next(ctx)
-			select {
-			case items <- item{ev, err}:
-			case <-ctx.Done():
-				return
-			}
-			if err != nil {
-				return
-			}
+	items := pump(ctx, sub)
+	// 逐字增量另一条流：从连上时的流尾之后订阅；订阅不上或中途断了只是没有增量，持久的事件照常。
+	var deltas <-chan item
+	if h.d.DeltasOff == nil || !h.d.DeltasOff(tenant.GetTenantId()) {
+		if dsub, err := c.Subscribe(ctx, DeltaStreamName(taskID), deltaTail(ctx, c, taskID)); err == nil {
+			defer dsub.Close()
+			deltas = pump(ctx, dsub)
 		}
-	}()
+	}
 
 	ticker := time.NewTicker(h.d.Heartbeat)
 	defer ticker.Stop()
@@ -302,8 +294,49 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request) {
 			if ev.GetType() == taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_FINISHED {
 				return
 			}
+		case it, ok := <-deltas:
+			if !ok || it.err != nil {
+				deltas = nil
+				continue
+			}
+			if expired() {
+				return
+			}
+			ev := &taskapiv1.TaskEvent{}
+			if protojson.Unmarshal(it.ev.Data, ev) != nil || !IsDelta(ev.GetType()) {
+				continue
+			}
+			if err := writeDelta(w, ev); err != nil {
+				return
+			}
+			flush()
 		}
 	}
+}
+
+type item struct {
+	ev  cache.StreamEvent
+	err error
+}
+
+// pump 把订阅里的事件依次送进通道；出错的一条送出后关闭。
+func pump(ctx context.Context, sub cache.Subscription) <-chan item {
+	items := make(chan item)
+	go func() {
+		defer close(items)
+		for {
+			ev, err := sub.Next(ctx)
+			select {
+			case items <- item{ev, err}:
+			case <-ctx.Done():
+				return
+			}
+			if err != nil {
+				return
+			}
+		}
+	}()
+	return items
 }
 
 // serveStored 推送已结束 Task 在 Last-Event-ID 之后的事件，全部从业务库读（HIST-01），然后结束。
@@ -419,6 +452,16 @@ func writeEvent(w http.ResponseWriter, ev *taskapiv1.TaskEvent) error {
 		return err
 	}
 	_, err = fmt.Fprintf(w, "id: %d\nevent: %s\ndata: %s\n\n", ev.GetEventId(), EventName(ev.GetType()), data)
+	return err
+}
+
+// writeDelta 写一条逐字增量：没有 id 行，浏览器的 Last-Event-ID 停在最后一条持久事件上。
+func writeDelta(w http.ResponseWriter, ev *taskapiv1.TaskEvent) error {
+	data, err := marshal.Marshal(ev)
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(w, "event: %s\ndata: %s\n\n", EventName(ev.GetType()), data)
 	return err
 }
 
