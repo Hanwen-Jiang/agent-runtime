@@ -452,7 +452,10 @@ def secret_refs() -> set[tuple[str, str]]:
     refs |= {("data", n) for n in re.findall(r"existingSecret: (\S+)", (DATA / "values" / "temporal.yaml").read_text("utf-8"))}
     for name in ("langfuse", "grafana"):
         body = (DATA / "values" / f"{name}.yaml").read_text("utf-8")
-        refs |= {("observability", n) for n in re.findall(r"(?:existingSecret: |name: )([a-z0-9-]+)", body) if n not in ("Tempo",)}
+        values = yaml.safe_load(body)
+        # Grafana 告警的联络点也叫 name，不是 Secret。
+        contact_points = {cp["name"] for cp in values.get("alerting", {}).get("contactpoints.yaml", {}).get("contactPoints", [])}
+        refs |= {("observability", n) for n in re.findall(r"(?:existingSecret: |name: )([a-z0-9-]+)", body) if n not in ("Tempo",) and n not in contact_points}
     return refs
 
 
