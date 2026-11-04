@@ -17,7 +17,8 @@ import sys
 from pathlib import Path
 
 import pytest
-from test_workspace_operations import SECRET, Op, Setup, git, make_remote
+
+from .test_workspace_operations import SECRET, Op, Setup, git, make_remote
 
 HTTPS_REMOTE = "https://example.test/acme/refund.git"
 
@@ -73,8 +74,16 @@ async def test_push_after_a_shallow_sync_still_works(tmp_path: Path, mode: str) 
     url, bare = make_remote(tmp_path)
     s = Setup(tmp_path, mode=mode)
     await s.run(Op.WORKSPACE_OPERATION_CREATE, repo_url=url)
-    synced = await s.run(Op.WORKSPACE_OPERATION_SYNC, branch="main", sealed_for=("t1", ""))
-    assert synced["head"] == git("rev-parse", "main", cwd=bare)
+    # 远端另有一个 60 个提交的分支：同步只取最近的 50 个，工作副本缺更早的父提交，要靠 shallow 记下边界。
+    seed = tmp_path / "seed"
+    git("checkout", "--quiet", "-b", "long", cwd=seed)
+    for i in range(60):
+        git("-c", "user.name=t", "-c", "user.email=t@example.com", "commit", "--quiet", "--allow-empty", "-m", f"long {i}", cwd=seed)
+    git("push", "--quiet", str(bare), "long", cwd=seed)
+    synced = await s.run(Op.WORKSPACE_OPERATION_SYNC, branch="long", sealed_for=("t1", ""))
+    assert synced["head"] == git("rev-parse", "long", cwd=bare)
+    commits = (await s.run(Op.WORKSPACE_OPERATION_LOG, limit=200))["commits"]
+    assert len(commits) == 50, "提交记录停在 shallow 的边界上（shallow 交回了工作副本）"
     await s.tool("repo_edit", {"path": "docs/after-sync.md", "new": "after sync\n"})
     commit = await s.run(Op.WORKSPACE_OPERATION_COMMIT, message="同步之后的改动")
     pushed = await s.run(Op.WORKSPACE_OPERATION_PUSH, branch="agent/after-sync", sealed_for=("t1", ""))

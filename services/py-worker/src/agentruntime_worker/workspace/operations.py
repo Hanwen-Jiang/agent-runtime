@@ -16,6 +16,8 @@ activity（program 队列）；这里是它做的事：在承载工作区的沙�
 - 推送：write_irreversible。分支要符合 workspace.push_branches；先写 gate 记录（workspace_pushes，幂等键见 push_key），
   先按远端分支的当前 sha 对账（git ls-remote），已经是这个 sha 就不推；不自动重试，超时或结果不明记 failed，下次调用先对账。
 - 远端一律是业务库里记的 repo_url（建工作区时给的，复制的沿用源的），不读沙箱里 .git/config 的 origin：沙箱里的代码改得了它。
+  连远端的 git（推送前的对账、推送、同步取远端）也不读工作副本的 .git/config（G-03 第 9 条）：在环境里一个临时的裸仓库下跑，
+  对象库指回工作副本（见 _DETACHED_ENV）。建工作区时的克隆与取提交是在刚建的空目录里，配置是这次操作自己写的。
 - 没配沙箱（AR_TOOL_SHELL_SANDBOX 是 host 或 docker）时 Worker 用一个只登记本地后端的 SandboxBroker（tools.workspace_operations），
   工作区就是 <AR_TOOL_WORKSPACE_ROOT>/<租户>/<workspace>，与 shell_run、repo_* 是同一处。
 - 错误：transient 抛出（activity 按工作流的重试策略重试，推送不重试），别的错误写进结果的 error（统一错误模型）。
@@ -34,11 +36,12 @@ import json
 import logging
 import posixpath
 import re
+import secrets
 import shutil
 import stat
 import tempfile
 import urllib.parse
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
@@ -92,6 +95,14 @@ _DRIVE = re.compile(r"^[A-Za-z]:")
 _LOG_FORMAT = "%H%x1f%an%x1f%ae%x1f%aI%x1f%s"
 # 不要 git 读系统的配置、不要问人。
 _GIT_ENV = {"GIT_TERMINAL_PROMPT": "0", "GIT_CONFIG_NOSYSTEM": "1"}
+# 连远端的 git（对账、推送、同步取远端）在环境里一个临时的裸仓库下跑（G-03 第 9 条）：工作副本的 .git/config 是 Agent 改得了的，
+# insteadOf 改写远端、ext 传输、credential.helper、http.<url>.sslVerify 等都能让带凭据的 git 执行它写的命令或把请求头交给别处，
+# 逐项覆盖靠不住，所以根本不读它；全局配置也不读。对象库经 GIT_OBJECT_DIRECTORY 指回工作副本；临时仓库没有引用，
+# gc 与 maintenance 一律关掉，免得按它的引用清掉工作副本的对象。
+_DETACHED_ENV = {"GIT_CONFIG_GLOBAL": "/dev/null"}
+_DETACHED_CONFIG = (("gc.auto", "0"), ("maintenance.auto", "false"))
+# 远端的沙箱里临时仓库放在环境自己的 /tmp（不在工作区的卷上：挂卷时会话的环境也看得到卷）；本地后端放在 Worker 的临时目录。
+DETACHED_PREFIX = "/tmp/agentruntime-git-"
 _FILE_TYPES = {"file": "FILE_TYPE_FILE", "dir": "FILE_TYPE_DIRECTORY", "symlink": "FILE_TYPE_SYMLINK"}
 
 
@@ -165,6 +176,15 @@ class Remote:
         """http.<prefix>.extraHeader 的前缀：只对这台主机生效。"""
         parts = urllib.parse.urlsplit(self.url)
         return f"{parts.scheme}://{parts.netloc}/"
+
+
+@dataclass(frozen=True)
+class Detached:
+    """临时的裸仓库：git_dir 是它，objects 与 shallow 是工作副本的对象库与 shallow 文件（环境里的绝对路径）。"""
+
+    git_dir: str
+    objects: str
+    shallow: str
 
 
 @dataclass(frozen=True)
@@ -566,9 +586,19 @@ class WorkspaceOperations:
             if status.stdout.strip():
                 raise ConflictError("workspace_dirty", "工作区还有未提交的改动：先提交或丢弃")
             # 远端用业务库里记的地址，远端分支记在 origin/<分支> 下（之后 GetLog 的 base 可以写 origin/<分支>）。
-            refspec = f"+refs/heads/{branch}:refs/remotes/origin/{branch}"
-            await self._git(lease, ["fetch", "--quiet", "--depth", "50", "--", remote.url, refspec], credential=credential, what="取远端分支")
-            await self._git(lease, ["checkout", "--quiet", "-B", branch, f"refs/remotes/origin/{branch}"], what="切到远端分支")
+            # 取的时候在临时仓库下（对象直接进工作副本的对象库），之后再把引用与 shallow 交给工作副本。
+            ref = f"refs/remotes/origin/{branch}"
+            async with self._detached(lease) as d:
+                await self._remote_git(lease, d, ["fetch", "--quiet", "--depth", "50", "--", remote.url, f"+refs/heads/{branch}:{ref}"],
+                                       credential=credential, what="取远端分支")
+                fetched = (await self._remote_git(lease, d, ["rev-parse", "--verify", "--quiet", ref], what="读远端分支")).stdout.decode().strip()
+                if not _SHA.match(fetched):
+                    raise NotFoundError("git_not_found", f"远端没有分支 {branch}")
+                # --depth 更新的是临时仓库的 shallow（进来时按工作副本的填好了），原样交回工作副本。
+                if await self._is_shallow(lease, d):
+                    await self._copy_file(lease, f"{d.git_dir}/shallow", d.shallow)
+            await self._git(lease, ["update-ref", ref, fetched], what="记远端分支")
+            await self._git(lease, ["checkout", "--quiet", "-B", branch, ref], what="切到远端分支")
             head = await self._head(lease)
         await self._archiver.update(owner, ws, head=head)
         return {"head": head, "branch": branch}
@@ -592,20 +622,22 @@ class WorkspaceOperations:
             key = push_key(owner, ws, branch, sha)
             approved = inp.requested_by or "workspace-api"
             await self._gate(owner, key, ws=ws, branch=branch, sha=sha, remote=remote.url, approved_by=approved, operation_id=inp.operation_id)
-            # 先对账：远端已经是这个 sha（重复调用，或上一次超时其实推成了）就不推。
-            listed = await self._git(lease, ["ls-remote", "--", remote.url, f"refs/heads/{branch}"], credential=credential, what="查远端分支")
-            current = listed.stdout.decode("utf-8", errors="replace").split("\t", 1)[0].strip()
-            if current == sha:
-                await self._finish(owner, key, "reconciled")
-                return {"sha": sha, "branch": branch, "reconciled": True}
-            try:
-                await self._git(lease, ["push", "--quiet", "--", remote.url, f"HEAD:refs/heads/{branch}"], credential=credential, what="推送")
-            except ProviderError as err:
-                await self._finish(owner, key, "failed", err.code)
-                if isinstance(err, TransientError):
-                    # 结果不明（超时、连接断了）：不重试，下一次调用先对账。
-                    raise TransientError("push_unknown", "推送的结果不明，稍后再调用一次（会先按远端分支的当前 sha 对账）") from None
-                raise
+            async with self._detached(lease) as d:
+                # 先对账：远端已经是这个 sha（重复调用，或上一次超时其实推成了）就不推。
+                listed = await self._remote_git(lease, d, ["ls-remote", "--", remote.url, f"refs/heads/{branch}"], credential=credential, what="查远端分支")
+                current = listed.stdout.decode("utf-8", errors="replace").split("\t", 1)[0].strip()
+                if current == sha:
+                    await self._finish(owner, key, "reconciled")
+                    return {"sha": sha, "branch": branch, "reconciled": True}
+                try:
+                    # 临时仓库没有 HEAD：推的是上面读到的那个提交。
+                    await self._remote_git(lease, d, ["push", "--quiet", "--", remote.url, f"{sha}:refs/heads/{branch}"], credential=credential, what="推送")
+                except ProviderError as err:
+                    await self._finish(owner, key, "failed", err.code)
+                    if isinstance(err, TransientError):
+                        # 结果不明（超时、连接断了）：不重试，下一次调用先对账。
+                        raise TransientError("push_unknown", "推送的结果不明，稍后再调用一次（会先按远端分支的当前 sha 对账）") from None
+                    raise
             await self._finish(owner, key, "pushed")
         return {"sha": sha, "branch": branch, "reconciled": False}
 
@@ -756,9 +788,9 @@ class WorkspaceOperations:
 
     async def _git(
         self, lease: Lease, argv: list[str], *, what: str, credential: Credential | None = None, extra: Mapping[str, str] | None = None,
-        stdin: bytes = b"", check: bool = True,
+        stdin: bytes = b"", check: bool = True, config: tuple[tuple[str, str], ...] = (),
     ) -> ExecResult:
-        config = [("safe.directory", "*"), ("core.hooksPath", NO_HOOKS), ("core.autocrlf", "false"), *(credential.config if credential else ())]
+        config = [("safe.directory", "*"), ("core.hooksPath", NO_HOOKS), ("core.autocrlf", "false"), *config, *(credential.config if credential else ())]
         env = {**lease.env, **_GIT_ENV, "GIT_CONFIG_COUNT": str(len(config)), **(extra or {})}
         for i, (key, value) in enumerate(config):
             env[f"GIT_CONFIG_KEY_{i}"], env[f"GIT_CONFIG_VALUE_{i}"] = key, value
@@ -773,6 +805,48 @@ class WorkspaceOperations:
         if check and res.exit_code != 0:
             raise _git_error(what, _redact(res.stderr.decode("utf-8", errors="replace"), credential))
         return res
+
+    @contextlib.asynccontextmanager
+    async def _detached(self, lease: Lease) -> AsyncIterator[Detached]:
+        """建一个临时的裸仓库给连远端的 git 用（见 _DETACHED_ENV 上面的说明），用完删掉。工作副本是浅的时把 shallow 拷进去。"""
+        paths = await self._git(lease, ["rev-parse", "--path-format=absolute", "--git-path", "objects", "--git-path", "shallow"], what="找对象库")
+        objects, shallow = (paths.stdout.decode("utf-8", errors="replace").splitlines() + ["", ""])[:2]
+        if not objects or not shallow:
+            raise InvalidError("git_failed", "找不到工作副本的对象库")
+        local = lease.backend.kind == "local"
+        git_dir = Path(tempfile.mkdtemp(prefix="agentruntime-git-")).as_posix() if local else DETACHED_PREFIX + secrets.token_hex(8)
+        try:
+            await self._git(lease, ["init", "--quiet", "--bare", "--template=", git_dir], what="准备临时仓库", extra=_DETACHED_ENV)
+            d = Detached(git_dir=git_dir, objects=objects, shallow=shallow)
+            if await self._is_shallow(lease):
+                await self._copy_file(lease, shallow, f"{git_dir}/shallow")
+            yield d
+        finally:
+            if local:
+                shutil.rmtree(git_dir, ignore_errors=True)
+            else:
+                with contextlib.suppress(ProviderError, OSError):
+                    await lease.box.exec(lease.env_id, ["rm", "-rf", "--", git_dir], timeout=self.git_timeout, env=lease.env)
+
+    async def _remote_git(self, lease: Lease, d: Detached, argv: list[str], *, what: str, credential: Credential | None = None) -> ExecResult:
+        """在临时的裸仓库下跑 git：不读工作副本与全局的配置，对象库是工作副本的。"""
+        extra = {**_DETACHED_ENV, "GIT_OBJECT_DIRECTORY": d.objects}
+        return await self._git(lease, ["--git-dir", d.git_dir, *argv], what=what, credential=credential, extra=extra, config=_DETACHED_CONFIG)
+
+    async def _is_shallow(self, lease: Lease, d: Detached | None = None) -> bool:
+        """工作副本（或给了 d 时临时仓库）是不是浅的。"""
+        argv = ["rev-parse", "--is-shallow-repository"]
+        res = await (self._remote_git(lease, d, argv, what="查浅仓库") if d is not None else self._git(lease, argv, what="查浅仓库"))
+        return res.stdout.strip() == b"true"
+
+    async def _copy_file(self, lease: Lease, src: str, dst: str) -> None:
+        """在环境里拷一个文件（两边都是环境里的绝对路径）。本地后端的命令就在本机跑，直接拷。"""
+        if lease.backend.kind == "local":
+            await asyncio.to_thread(shutil.copyfile, src, dst)
+            return
+        res = await lease.box.exec(lease.env_id, ["cp", "-f", "--", src, dst], timeout=self.git_timeout, env=lease.env)
+        if res.exit_code != 0:
+            raise InvalidError("git_failed", "拷贝 shallow 文件失败")
 
     async def _head(self, lease: Lease) -> str:
         res = await self._git(lease, ["rev-parse", "--verify", "--quiet", "HEAD"], what="读 HEAD", check=False)
