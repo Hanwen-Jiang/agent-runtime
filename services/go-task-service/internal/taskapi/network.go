@@ -146,6 +146,10 @@ func CheckNetworkRequest(policy NetworkPolicy, req *taskapiv1.NetworkRequest, ce
 	if !policy.Allowed {
 		return checkedNetwork{}, denied("network_not_allowed", "租户策略不允许沙箱联网（sandbox.network.allowed）")
 	}
+	// NET-OPEN（docs/plan/net-open-contract.md）的契约草案等人审，PUBLIC 还没实现。
+	if req.GetScope() == taskapiv1.NetworkScope_NETWORK_SCOPE_PUBLIC {
+		return checkedNetwork{}, denied("network_scope_unavailable", "公网授权（scope 为 public）还没实现")
+	}
 	switch {
 	case len(req.GetHosts()) == 0:
 		return checkedNetwork{}, invalidNetwork("要写明访问哪些主机")

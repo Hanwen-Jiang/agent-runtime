@@ -60,7 +60,7 @@ message SubmitTaskRequest {
 // 是 admin 时只接受带审批权限（task.approve）的身份提交，否则 denied（改为运行中由 agent 经 request_network 申请、管理员批）。
 // 批准的申请成为这个 Task 的联网授权（gate 记录，附录 D.4），从提交时起算；Task 结束、到期或被撤销即收回。
 message NetworkRequest {
-  // 目标主机，可以用 *. 开头表示子域名；不能是 IP 地址，不带端口与路径。
+  // 目标主机，可以用 *. 开头表示子域名；不能是 IP 地址，不带端口与路径。scope 为 PUBLIC 时必须为空。
   repeated string hosts = 1;
   // 端口；不填为 80 与 443。
   repeated int32 ports = 2;
@@ -68,6 +68,22 @@ message NetworkRequest {
   int32 minutes = 3;
   // 为什么要联网，记进授权与审计。
   string reason = 4;
+  // 放行的范围（NET-OPEN，docs/plan/net-open-contract.md）；不写就是 HOSTS。
+  NetworkScope scope = 5;
+}
+
+// NetworkScope 是联网授权的范围。PUBLIC 只在租户策略的 sandbox.network.modes 含 open 时可以申请（否则 denied，code 为
+// network_open_not_allowed），批准规则（approver）、时长、端口与用量上限都与 HOSTS 相同。
+// 无论哪种范围，出网网关都拒绝：IP 字面量、解析到非公网地址的名字（私网、回环、链路本地、CGNAT 100.64.0.0/10、
+// 云元数据地址）、25 端口；按校验过的地址拨号（不再解析第二次），重定向是另一个请求、重新准入，CONNECT 另核对 TLS 的
+// SNI 与 CONNECT 的主机一致。PUBLIC 不扩大网络密钥的范围：SecretHeader 只加在它自己写明的主机上。
+enum NetworkScope {
+  // 旧客户端：同 HOSTS。
+  NETWORK_SCOPE_UNSPECIFIED = 0;
+  // 只放行 hosts 里的主机（要落在租户策略的 sandbox.network.hosts 里）。
+  NETWORK_SCOPE_HOSTS = 1;
+  // 所有公网域名；hosts 必须为空（否则 InvalidArgument，code 为 invalid_network_request）。
+  NETWORK_SCOPE_PUBLIC = 2;
 }
 
 message SubmitTaskResponse {

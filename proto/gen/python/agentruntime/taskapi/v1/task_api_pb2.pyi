@@ -14,6 +14,12 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
+class NetworkScope(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    NETWORK_SCOPE_UNSPECIFIED: _ClassVar[NetworkScope]
+    NETWORK_SCOPE_HOSTS: _ClassVar[NetworkScope]
+    NETWORK_SCOPE_PUBLIC: _ClassVar[NetworkScope]
+
 class TaskArtifactState(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     TASK_ARTIFACT_STATE_UNSPECIFIED: _ClassVar[TaskArtifactState]
@@ -40,6 +46,9 @@ class TaskEventType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     TASK_EVENT_TYPE_TASK_MESSAGE_EDITED: _ClassVar[TaskEventType]
     TASK_EVENT_TYPE_CONTEXT_USAGE: _ClassVar[TaskEventType]
     TASK_EVENT_TYPE_PLAN_UPDATED: _ClassVar[TaskEventType]
+NETWORK_SCOPE_UNSPECIFIED: NetworkScope
+NETWORK_SCOPE_HOSTS: NetworkScope
+NETWORK_SCOPE_PUBLIC: NetworkScope
 TASK_ARTIFACT_STATE_UNSPECIFIED: TaskArtifactState
 TASK_ARTIFACT_STATE_READY: TaskArtifactState
 TASK_ARTIFACT_STATE_EXPIRED: TaskArtifactState
@@ -89,16 +98,18 @@ class SubmitTaskRequest(_message.Message):
     def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., session_id: _Optional[str] = ..., client_request_id: _Optional[str] = ..., message: _Optional[str] = ..., inputs: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., attachments: _Optional[_Iterable[str]] = ..., session_access: _Optional[_Union[_enums_pb2.SessionAccess, str]] = ..., priority: _Optional[_Union[_enums_pb2.Priority, str]] = ..., effect_ceiling: _Optional[_Union[_enums_pb2.Effect, str]] = ..., network_request: _Optional[_Union[NetworkRequest, _Mapping]] = ...) -> None: ...
 
 class NetworkRequest(_message.Message):
-    __slots__ = ("hosts", "ports", "minutes", "reason")
+    __slots__ = ("hosts", "ports", "minutes", "reason", "scope")
     HOSTS_FIELD_NUMBER: _ClassVar[int]
     PORTS_FIELD_NUMBER: _ClassVar[int]
     MINUTES_FIELD_NUMBER: _ClassVar[int]
     REASON_FIELD_NUMBER: _ClassVar[int]
+    SCOPE_FIELD_NUMBER: _ClassVar[int]
     hosts: _containers.RepeatedScalarFieldContainer[str]
     ports: _containers.RepeatedScalarFieldContainer[int]
     minutes: int
     reason: str
-    def __init__(self, hosts: _Optional[_Iterable[str]] = ..., ports: _Optional[_Iterable[int]] = ..., minutes: _Optional[int] = ..., reason: _Optional[str] = ...) -> None: ...
+    scope: NetworkScope
+    def __init__(self, hosts: _Optional[_Iterable[str]] = ..., ports: _Optional[_Iterable[int]] = ..., minutes: _Optional[int] = ..., reason: _Optional[str] = ..., scope: _Optional[_Union[NetworkScope, str]] = ...) -> None: ...
 
 class SubmitTaskResponse(_message.Message):
     __slots__ = ("task_id", "session_id", "events_url", "deduplicated")

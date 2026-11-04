@@ -145,6 +145,36 @@
           "max_bytes": 2147483648
         }
       }
+    },
+    {
+      "name": "network_open_allowed",
+      "source": "NET-OPEN（docs/plan/net-open-contract.md）：租户显式打开 open，Task 才能申请 scope 为 public 的授权",
+      "instance": {
+        "sandbox": {
+          "backend": "kata",
+          "network": {
+            "allowed": true,
+            "modes": ["deny", "allowlist", "open"],
+            "hosts": ["*.github.com", "pypi.org"],
+            "max_grant_minutes": 30,
+            "approver": "admin"
+          }
+        }
+      }
+    },
+    {
+      "name": "network_allowlist_only",
+      "source": "NET-OPEN：只许名单里的主机，与不写 modes 一样",
+      "instance": {
+        "sandbox": {
+          "backend": "kata",
+          "network": {
+            "allowed": true,
+            "modes": ["deny", "allowlist"],
+            "hosts": ["pypi.org"]
+          }
+        }
+      }
     }
   ],
   "invalid": [
@@ -394,6 +424,63 @@
           "backend": "kata",
           "network": {
             "max_rps": -1
+          }
+        }
+      }
+    },
+    {
+      "name": "network_mode_public",
+      "description": "档位叫 open；public 是授权的 scope，不是租户策略的档位",
+      "violates": [
+        {
+          "path": "/sandbox/network/modes/0",
+          "keyword": "enum"
+        }
+      ],
+      "instance": {
+        "sandbox": {
+          "backend": "kata",
+          "network": {
+            "allowed": true,
+            "modes": ["public"]
+          }
+        }
+      }
+    },
+    {
+      "name": "network_modes_empty",
+      "description": "modes 不能是空的：不联网写 allowed false 或 [\"deny\"]",
+      "violates": [
+        {
+          "path": "/sandbox/network/modes",
+          "keyword": "minItems"
+        }
+      ],
+      "instance": {
+        "sandbox": {
+          "backend": "kata",
+          "network": {
+            "allowed": true,
+            "modes": []
+          }
+        }
+      }
+    },
+    {
+      "name": "network_modes_repeated",
+      "description": "modes 不重复",
+      "violates": [
+        {
+          "path": "/sandbox/network/modes",
+          "keyword": "uniqueItems"
+        }
+      ],
+      "instance": {
+        "sandbox": {
+          "backend": "kata",
+          "network": {
+            "allowed": true,
+            "modes": ["open", "open"]
           }
         }
       }

@@ -24,6 +24,63 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// NetworkScope 是联网授权的范围。PUBLIC 只在租户策略的 sandbox.network.modes 含 open 时可以申请（否则 denied，code 为
+// network_open_not_allowed），批准规则（approver）、时长、端口与用量上限都与 HOSTS 相同。
+// 无论哪种范围，出网网关都拒绝：IP 字面量、解析到非公网地址的名字（私网、回环、链路本地、CGNAT 100.64.0.0/10、
+// 云元数据地址）、25 端口；按校验过的地址拨号（不再解析第二次），重定向是另一个请求、重新准入，CONNECT 另核对 TLS 的
+// SNI 与 CONNECT 的主机一致。PUBLIC 不扩大网络密钥的范围：SecretHeader 只加在它自己写明的主机上。
+type NetworkScope int32
+
+const (
+	// 旧客户端：同 HOSTS。
+	NetworkScope_NETWORK_SCOPE_UNSPECIFIED NetworkScope = 0
+	// 只放行 hosts 里的主机（要落在租户策略的 sandbox.network.hosts 里）。
+	NetworkScope_NETWORK_SCOPE_HOSTS NetworkScope = 1
+	// 所有公网域名；hosts 必须为空（否则 InvalidArgument，code 为 invalid_network_request）。
+	NetworkScope_NETWORK_SCOPE_PUBLIC NetworkScope = 2
+)
+
+// Enum value maps for NetworkScope.
+var (
+	NetworkScope_name = map[int32]string{
+		0: "NETWORK_SCOPE_UNSPECIFIED",
+		1: "NETWORK_SCOPE_HOSTS",
+		2: "NETWORK_SCOPE_PUBLIC",
+	}
+	NetworkScope_value = map[string]int32{
+		"NETWORK_SCOPE_UNSPECIFIED": 0,
+		"NETWORK_SCOPE_HOSTS":       1,
+		"NETWORK_SCOPE_PUBLIC":      2,
+	}
+)
+
+func (x NetworkScope) Enum() *NetworkScope {
+	p := new(NetworkScope)
+	*p = x
+	return p
+}
+
+func (x NetworkScope) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (NetworkScope) Descriptor() protoreflect.EnumDescriptor {
+	return file_agentruntime_taskapi_v1_task_api_proto_enumTypes[0].Descriptor()
+}
+
+func (NetworkScope) Type() protoreflect.EnumType {
+	return &file_agentruntime_taskapi_v1_task_api_proto_enumTypes[0]
+}
+
+func (x NetworkScope) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use NetworkScope.Descriptor instead.
+func (NetworkScope) EnumDescriptor() ([]byte, []int) {
+	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{0}
+}
+
 type TaskArtifactState int32
 
 const (
@@ -57,11 +114,11 @@ func (x TaskArtifactState) String() string {
 }
 
 func (TaskArtifactState) Descriptor() protoreflect.EnumDescriptor {
-	return file_agentruntime_taskapi_v1_task_api_proto_enumTypes[0].Descriptor()
+	return file_agentruntime_taskapi_v1_task_api_proto_enumTypes[1].Descriptor()
 }
 
 func (TaskArtifactState) Type() protoreflect.EnumType {
-	return &file_agentruntime_taskapi_v1_task_api_proto_enumTypes[0]
+	return &file_agentruntime_taskapi_v1_task_api_proto_enumTypes[1]
 }
 
 func (x TaskArtifactState) Number() protoreflect.EnumNumber {
@@ -70,7 +127,7 @@ func (x TaskArtifactState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use TaskArtifactState.Descriptor instead.
 func (TaskArtifactState) EnumDescriptor() ([]byte, []int) {
-	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{0}
+	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{1}
 }
 
 type TaskEventType int32
@@ -161,11 +218,11 @@ func (x TaskEventType) String() string {
 }
 
 func (TaskEventType) Descriptor() protoreflect.EnumDescriptor {
-	return file_agentruntime_taskapi_v1_task_api_proto_enumTypes[1].Descriptor()
+	return file_agentruntime_taskapi_v1_task_api_proto_enumTypes[2].Descriptor()
 }
 
 func (TaskEventType) Type() protoreflect.EnumType {
-	return &file_agentruntime_taskapi_v1_task_api_proto_enumTypes[1]
+	return &file_agentruntime_taskapi_v1_task_api_proto_enumTypes[2]
 }
 
 func (x TaskEventType) Number() protoreflect.EnumNumber {
@@ -174,7 +231,7 @@ func (x TaskEventType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use TaskEventType.Descriptor instead.
 func (TaskEventType) EnumDescriptor() ([]byte, []int) {
-	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{1}
+	return file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP(), []int{2}
 }
 
 type SubmitTaskRequest struct {
@@ -316,14 +373,16 @@ func (x *SubmitTaskRequest) GetNetworkRequest() *NetworkRequest {
 // 批准的申请成为这个 Task 的联网授权（gate 记录，附录 D.4），从提交时起算；Task 结束、到期或被撤销即收回。
 type NetworkRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// 目标主机，可以用 *. 开头表示子域名；不能是 IP 地址，不带端口与路径。
+	// 目标主机，可以用 *. 开头表示子域名；不能是 IP 地址，不带端口与路径。scope 为 PUBLIC 时必须为空。
 	Hosts []string `protobuf:"bytes,1,rep,name=hosts,proto3" json:"hosts,omitempty"`
 	// 端口；不填为 80 与 443。
 	Ports []int32 `protobuf:"varint,2,rep,packed,name=ports,proto3" json:"ports,omitempty"`
 	// 授权多久（分钟）：15、30 或 60，不超过租户策略的 max_grant_minutes。
 	Minutes int32 `protobuf:"varint,3,opt,name=minutes,proto3" json:"minutes,omitempty"`
 	// 为什么要联网，记进授权与审计。
-	Reason        string `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	Reason string `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	// 放行的范围（NET-OPEN，docs/plan/net-open-contract.md）；不写就是 HOSTS。
+	Scope         NetworkScope `protobuf:"varint,5,opt,name=scope,proto3,enum=agentruntime.taskapi.v1.NetworkScope" json:"scope,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -384,6 +443,13 @@ func (x *NetworkRequest) GetReason() string {
 		return x.Reason
 	}
 	return ""
+}
+
+func (x *NetworkRequest) GetScope() NetworkScope {
+	if x != nil {
+		return x.Scope
+	}
+	return NetworkScope_NETWORK_SCOPE_UNSPECIFIED
 }
 
 type SubmitTaskResponse struct {
@@ -1749,12 +1815,13 @@ const file_agentruntime_taskapi_v1_task_api_proto_rawDesc = "" +
 	"\bpriority\x18\t \x01(\x0e2 .agentruntime.common.v1.PriorityR\bpriority\x12E\n" +
 	"\x0eeffect_ceiling\x18\n" +
 	" \x01(\x0e2\x1e.agentruntime.common.v1.EffectR\reffectCeiling\x12P\n" +
-	"\x0fnetwork_request\x18\v \x01(\v2'.agentruntime.taskapi.v1.NetworkRequestR\x0enetworkRequest\"n\n" +
+	"\x0fnetwork_request\x18\v \x01(\v2'.agentruntime.taskapi.v1.NetworkRequestR\x0enetworkRequest\"\xab\x01\n" +
 	"\x0eNetworkRequest\x12\x14\n" +
 	"\x05hosts\x18\x01 \x03(\tR\x05hosts\x12\x14\n" +
 	"\x05ports\x18\x02 \x03(\x05R\x05ports\x12\x18\n" +
 	"\aminutes\x18\x03 \x01(\x05R\aminutes\x12\x16\n" +
-	"\x06reason\x18\x04 \x01(\tR\x06reason\"\x8f\x01\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\x12;\n" +
+	"\x05scope\x18\x05 \x01(\x0e2%.agentruntime.taskapi.v1.NetworkScopeR\x05scope\"\x8f\x01\n" +
 	"\x12SubmitTaskResponse\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x1d\n" +
 	"\n" +
@@ -1862,7 +1929,11 @@ const file_agentruntime_taskapi_v1_task_api_proto_rawDesc = "" +
 	"\x04type\x18\x04 \x01(\x0e2&.agentruntime.taskapi.v1.TaskEventTypeR\x04type\x129\n" +
 	"\n" +
 	"emitted_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\temittedAt\x12=\n" +
-	"\apayload\x18\x06 \x01(\v2#.agentruntime.common.v1.JsonPayloadR\apayload*x\n" +
+	"\apayload\x18\x06 \x01(\v2#.agentruntime.common.v1.JsonPayloadR\apayload*`\n" +
+	"\fNetworkScope\x12\x1d\n" +
+	"\x19NETWORK_SCOPE_UNSPECIFIED\x10\x00\x12\x17\n" +
+	"\x13NETWORK_SCOPE_HOSTS\x10\x01\x12\x18\n" +
+	"\x14NETWORK_SCOPE_PUBLIC\x10\x02*x\n" +
 	"\x11TaskArtifactState\x12#\n" +
 	"\x1fTASK_ARTIFACT_STATE_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19TASK_ARTIFACT_STATE_READY\x10\x01\x12\x1f\n" +
@@ -1911,86 +1982,88 @@ func file_agentruntime_taskapi_v1_task_api_proto_rawDescGZIP() []byte {
 	return file_agentruntime_taskapi_v1_task_api_proto_rawDescData
 }
 
-var file_agentruntime_taskapi_v1_task_api_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_agentruntime_taskapi_v1_task_api_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_agentruntime_taskapi_v1_task_api_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_agentruntime_taskapi_v1_task_api_proto_goTypes = []any{
-	(TaskArtifactState)(0),            // 0: agentruntime.taskapi.v1.TaskArtifactState
-	(TaskEventType)(0),                // 1: agentruntime.taskapi.v1.TaskEventType
-	(*SubmitTaskRequest)(nil),         // 2: agentruntime.taskapi.v1.SubmitTaskRequest
-	(*NetworkRequest)(nil),            // 3: agentruntime.taskapi.v1.NetworkRequest
-	(*SubmitTaskResponse)(nil),        // 4: agentruntime.taskapi.v1.SubmitTaskResponse
-	(*CancelTaskRequest)(nil),         // 5: agentruntime.taskapi.v1.CancelTaskRequest
-	(*CancelTaskResponse)(nil),        // 6: agentruntime.taskapi.v1.CancelTaskResponse
-	(*SignalTaskRequest)(nil),         // 7: agentruntime.taskapi.v1.SignalTaskRequest
-	(*SignalTaskResponse)(nil),        // 8: agentruntime.taskapi.v1.SignalTaskResponse
-	(*SubmitGuidance)(nil),            // 9: agentruntime.taskapi.v1.SubmitGuidance
-	(*EditGuidance)(nil),              // 10: agentruntime.taskapi.v1.EditGuidance
-	(*RetractGuidance)(nil),           // 11: agentruntime.taskapi.v1.RetractGuidance
-	(*EditQueuedMessage)(nil),         // 12: agentruntime.taskapi.v1.EditQueuedMessage
-	(*HumanReply)(nil),                // 13: agentruntime.taskapi.v1.HumanReply
-	(*QueryTaskRequest)(nil),          // 14: agentruntime.taskapi.v1.QueryTaskRequest
-	(*QueryTaskResponse)(nil),         // 15: agentruntime.taskapi.v1.QueryTaskResponse
-	(*ListTaskArtifactsRequest)(nil),  // 16: agentruntime.taskapi.v1.ListTaskArtifactsRequest
-	(*TaskArtifact)(nil),              // 17: agentruntime.taskapi.v1.TaskArtifact
-	(*ListTaskArtifactsResponse)(nil), // 18: agentruntime.taskapi.v1.ListTaskArtifactsResponse
-	(*ListSessionEventsRequest)(nil),  // 19: agentruntime.taskapi.v1.ListSessionEventsRequest
-	(*TaskEventCursor)(nil),           // 20: agentruntime.taskapi.v1.TaskEventCursor
-	(*ListSessionEventsResponse)(nil), // 21: agentruntime.taskapi.v1.ListSessionEventsResponse
-	(*TaskEvents)(nil),                // 22: agentruntime.taskapi.v1.TaskEvents
-	(*TaskEvent)(nil),                 // 23: agentruntime.taskapi.v1.TaskEvent
-	(*structpb.Struct)(nil),           // 24: google.protobuf.Struct
-	(v1.SessionAccess)(0),             // 25: agentruntime.common.v1.SessionAccess
-	(v1.Priority)(0),                  // 26: agentruntime.common.v1.Priority
-	(v1.Effect)(0),                    // 27: agentruntime.common.v1.Effect
-	(v1.TaskStatus)(0),                // 28: agentruntime.common.v1.TaskStatus
-	(v1.GuidanceMode)(0),              // 29: agentruntime.common.v1.GuidanceMode
-	(*v1.JsonPayload)(nil),            // 30: agentruntime.common.v1.JsonPayload
-	(*v1.Usage)(nil),                  // 31: agentruntime.common.v1.Usage
-	(*timestamppb.Timestamp)(nil),     // 32: google.protobuf.Timestamp
+	(NetworkScope)(0),                 // 0: agentruntime.taskapi.v1.NetworkScope
+	(TaskArtifactState)(0),            // 1: agentruntime.taskapi.v1.TaskArtifactState
+	(TaskEventType)(0),                // 2: agentruntime.taskapi.v1.TaskEventType
+	(*SubmitTaskRequest)(nil),         // 3: agentruntime.taskapi.v1.SubmitTaskRequest
+	(*NetworkRequest)(nil),            // 4: agentruntime.taskapi.v1.NetworkRequest
+	(*SubmitTaskResponse)(nil),        // 5: agentruntime.taskapi.v1.SubmitTaskResponse
+	(*CancelTaskRequest)(nil),         // 6: agentruntime.taskapi.v1.CancelTaskRequest
+	(*CancelTaskResponse)(nil),        // 7: agentruntime.taskapi.v1.CancelTaskResponse
+	(*SignalTaskRequest)(nil),         // 8: agentruntime.taskapi.v1.SignalTaskRequest
+	(*SignalTaskResponse)(nil),        // 9: agentruntime.taskapi.v1.SignalTaskResponse
+	(*SubmitGuidance)(nil),            // 10: agentruntime.taskapi.v1.SubmitGuidance
+	(*EditGuidance)(nil),              // 11: agentruntime.taskapi.v1.EditGuidance
+	(*RetractGuidance)(nil),           // 12: agentruntime.taskapi.v1.RetractGuidance
+	(*EditQueuedMessage)(nil),         // 13: agentruntime.taskapi.v1.EditQueuedMessage
+	(*HumanReply)(nil),                // 14: agentruntime.taskapi.v1.HumanReply
+	(*QueryTaskRequest)(nil),          // 15: agentruntime.taskapi.v1.QueryTaskRequest
+	(*QueryTaskResponse)(nil),         // 16: agentruntime.taskapi.v1.QueryTaskResponse
+	(*ListTaskArtifactsRequest)(nil),  // 17: agentruntime.taskapi.v1.ListTaskArtifactsRequest
+	(*TaskArtifact)(nil),              // 18: agentruntime.taskapi.v1.TaskArtifact
+	(*ListTaskArtifactsResponse)(nil), // 19: agentruntime.taskapi.v1.ListTaskArtifactsResponse
+	(*ListSessionEventsRequest)(nil),  // 20: agentruntime.taskapi.v1.ListSessionEventsRequest
+	(*TaskEventCursor)(nil),           // 21: agentruntime.taskapi.v1.TaskEventCursor
+	(*ListSessionEventsResponse)(nil), // 22: agentruntime.taskapi.v1.ListSessionEventsResponse
+	(*TaskEvents)(nil),                // 23: agentruntime.taskapi.v1.TaskEvents
+	(*TaskEvent)(nil),                 // 24: agentruntime.taskapi.v1.TaskEvent
+	(*structpb.Struct)(nil),           // 25: google.protobuf.Struct
+	(v1.SessionAccess)(0),             // 26: agentruntime.common.v1.SessionAccess
+	(v1.Priority)(0),                  // 27: agentruntime.common.v1.Priority
+	(v1.Effect)(0),                    // 28: agentruntime.common.v1.Effect
+	(v1.TaskStatus)(0),                // 29: agentruntime.common.v1.TaskStatus
+	(v1.GuidanceMode)(0),              // 30: agentruntime.common.v1.GuidanceMode
+	(*v1.JsonPayload)(nil),            // 31: agentruntime.common.v1.JsonPayload
+	(*v1.Usage)(nil),                  // 32: agentruntime.common.v1.Usage
+	(*timestamppb.Timestamp)(nil),     // 33: google.protobuf.Timestamp
 }
 var file_agentruntime_taskapi_v1_task_api_proto_depIdxs = []int32{
-	24, // 0: agentruntime.taskapi.v1.SubmitTaskRequest.inputs:type_name -> google.protobuf.Struct
-	25, // 1: agentruntime.taskapi.v1.SubmitTaskRequest.session_access:type_name -> agentruntime.common.v1.SessionAccess
-	26, // 2: agentruntime.taskapi.v1.SubmitTaskRequest.priority:type_name -> agentruntime.common.v1.Priority
-	27, // 3: agentruntime.taskapi.v1.SubmitTaskRequest.effect_ceiling:type_name -> agentruntime.common.v1.Effect
-	3,  // 4: agentruntime.taskapi.v1.SubmitTaskRequest.network_request:type_name -> agentruntime.taskapi.v1.NetworkRequest
-	28, // 5: agentruntime.taskapi.v1.CancelTaskResponse.status:type_name -> agentruntime.common.v1.TaskStatus
-	13, // 6: agentruntime.taskapi.v1.SignalTaskRequest.human_reply:type_name -> agentruntime.taskapi.v1.HumanReply
-	9,  // 7: agentruntime.taskapi.v1.SignalTaskRequest.submit_guidance:type_name -> agentruntime.taskapi.v1.SubmitGuidance
-	10, // 8: agentruntime.taskapi.v1.SignalTaskRequest.edit_guidance:type_name -> agentruntime.taskapi.v1.EditGuidance
-	11, // 9: agentruntime.taskapi.v1.SignalTaskRequest.retract_guidance:type_name -> agentruntime.taskapi.v1.RetractGuidance
-	12, // 10: agentruntime.taskapi.v1.SignalTaskRequest.edit_queued_message:type_name -> agentruntime.taskapi.v1.EditQueuedMessage
-	29, // 11: agentruntime.taskapi.v1.SubmitGuidance.mode:type_name -> agentruntime.common.v1.GuidanceMode
-	28, // 12: agentruntime.taskapi.v1.QueryTaskResponse.status:type_name -> agentruntime.common.v1.TaskStatus
-	30, // 13: agentruntime.taskapi.v1.QueryTaskResponse.task_state:type_name -> agentruntime.common.v1.JsonPayload
-	31, // 14: agentruntime.taskapi.v1.QueryTaskResponse.usage:type_name -> agentruntime.common.v1.Usage
-	32, // 15: agentruntime.taskapi.v1.TaskArtifact.created_at:type_name -> google.protobuf.Timestamp
-	32, // 16: agentruntime.taskapi.v1.TaskArtifact.expires_at:type_name -> google.protobuf.Timestamp
-	0,  // 17: agentruntime.taskapi.v1.TaskArtifact.state:type_name -> agentruntime.taskapi.v1.TaskArtifactState
-	17, // 18: agentruntime.taskapi.v1.ListTaskArtifactsResponse.artifacts:type_name -> agentruntime.taskapi.v1.TaskArtifact
-	20, // 19: agentruntime.taskapi.v1.ListSessionEventsRequest.cursors:type_name -> agentruntime.taskapi.v1.TaskEventCursor
-	22, // 20: agentruntime.taskapi.v1.ListSessionEventsResponse.tasks:type_name -> agentruntime.taskapi.v1.TaskEvents
-	23, // 21: agentruntime.taskapi.v1.TaskEvents.events:type_name -> agentruntime.taskapi.v1.TaskEvent
-	1,  // 22: agentruntime.taskapi.v1.TaskEvent.type:type_name -> agentruntime.taskapi.v1.TaskEventType
-	32, // 23: agentruntime.taskapi.v1.TaskEvent.emitted_at:type_name -> google.protobuf.Timestamp
-	30, // 24: agentruntime.taskapi.v1.TaskEvent.payload:type_name -> agentruntime.common.v1.JsonPayload
-	2,  // 25: agentruntime.taskapi.v1.TaskService.SubmitTask:input_type -> agentruntime.taskapi.v1.SubmitTaskRequest
-	5,  // 26: agentruntime.taskapi.v1.TaskService.CancelTask:input_type -> agentruntime.taskapi.v1.CancelTaskRequest
-	7,  // 27: agentruntime.taskapi.v1.TaskService.SignalTask:input_type -> agentruntime.taskapi.v1.SignalTaskRequest
-	14, // 28: agentruntime.taskapi.v1.TaskService.QueryTask:input_type -> agentruntime.taskapi.v1.QueryTaskRequest
-	16, // 29: agentruntime.taskapi.v1.TaskService.ListTaskArtifacts:input_type -> agentruntime.taskapi.v1.ListTaskArtifactsRequest
-	19, // 30: agentruntime.taskapi.v1.TaskService.ListSessionEvents:input_type -> agentruntime.taskapi.v1.ListSessionEventsRequest
-	4,  // 31: agentruntime.taskapi.v1.TaskService.SubmitTask:output_type -> agentruntime.taskapi.v1.SubmitTaskResponse
-	6,  // 32: agentruntime.taskapi.v1.TaskService.CancelTask:output_type -> agentruntime.taskapi.v1.CancelTaskResponse
-	8,  // 33: agentruntime.taskapi.v1.TaskService.SignalTask:output_type -> agentruntime.taskapi.v1.SignalTaskResponse
-	15, // 34: agentruntime.taskapi.v1.TaskService.QueryTask:output_type -> agentruntime.taskapi.v1.QueryTaskResponse
-	18, // 35: agentruntime.taskapi.v1.TaskService.ListTaskArtifacts:output_type -> agentruntime.taskapi.v1.ListTaskArtifactsResponse
-	21, // 36: agentruntime.taskapi.v1.TaskService.ListSessionEvents:output_type -> agentruntime.taskapi.v1.ListSessionEventsResponse
-	31, // [31:37] is the sub-list for method output_type
-	25, // [25:31] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	25, // 0: agentruntime.taskapi.v1.SubmitTaskRequest.inputs:type_name -> google.protobuf.Struct
+	26, // 1: agentruntime.taskapi.v1.SubmitTaskRequest.session_access:type_name -> agentruntime.common.v1.SessionAccess
+	27, // 2: agentruntime.taskapi.v1.SubmitTaskRequest.priority:type_name -> agentruntime.common.v1.Priority
+	28, // 3: agentruntime.taskapi.v1.SubmitTaskRequest.effect_ceiling:type_name -> agentruntime.common.v1.Effect
+	4,  // 4: agentruntime.taskapi.v1.SubmitTaskRequest.network_request:type_name -> agentruntime.taskapi.v1.NetworkRequest
+	0,  // 5: agentruntime.taskapi.v1.NetworkRequest.scope:type_name -> agentruntime.taskapi.v1.NetworkScope
+	29, // 6: agentruntime.taskapi.v1.CancelTaskResponse.status:type_name -> agentruntime.common.v1.TaskStatus
+	14, // 7: agentruntime.taskapi.v1.SignalTaskRequest.human_reply:type_name -> agentruntime.taskapi.v1.HumanReply
+	10, // 8: agentruntime.taskapi.v1.SignalTaskRequest.submit_guidance:type_name -> agentruntime.taskapi.v1.SubmitGuidance
+	11, // 9: agentruntime.taskapi.v1.SignalTaskRequest.edit_guidance:type_name -> agentruntime.taskapi.v1.EditGuidance
+	12, // 10: agentruntime.taskapi.v1.SignalTaskRequest.retract_guidance:type_name -> agentruntime.taskapi.v1.RetractGuidance
+	13, // 11: agentruntime.taskapi.v1.SignalTaskRequest.edit_queued_message:type_name -> agentruntime.taskapi.v1.EditQueuedMessage
+	30, // 12: agentruntime.taskapi.v1.SubmitGuidance.mode:type_name -> agentruntime.common.v1.GuidanceMode
+	29, // 13: agentruntime.taskapi.v1.QueryTaskResponse.status:type_name -> agentruntime.common.v1.TaskStatus
+	31, // 14: agentruntime.taskapi.v1.QueryTaskResponse.task_state:type_name -> agentruntime.common.v1.JsonPayload
+	32, // 15: agentruntime.taskapi.v1.QueryTaskResponse.usage:type_name -> agentruntime.common.v1.Usage
+	33, // 16: agentruntime.taskapi.v1.TaskArtifact.created_at:type_name -> google.protobuf.Timestamp
+	33, // 17: agentruntime.taskapi.v1.TaskArtifact.expires_at:type_name -> google.protobuf.Timestamp
+	1,  // 18: agentruntime.taskapi.v1.TaskArtifact.state:type_name -> agentruntime.taskapi.v1.TaskArtifactState
+	18, // 19: agentruntime.taskapi.v1.ListTaskArtifactsResponse.artifacts:type_name -> agentruntime.taskapi.v1.TaskArtifact
+	21, // 20: agentruntime.taskapi.v1.ListSessionEventsRequest.cursors:type_name -> agentruntime.taskapi.v1.TaskEventCursor
+	23, // 21: agentruntime.taskapi.v1.ListSessionEventsResponse.tasks:type_name -> agentruntime.taskapi.v1.TaskEvents
+	24, // 22: agentruntime.taskapi.v1.TaskEvents.events:type_name -> agentruntime.taskapi.v1.TaskEvent
+	2,  // 23: agentruntime.taskapi.v1.TaskEvent.type:type_name -> agentruntime.taskapi.v1.TaskEventType
+	33, // 24: agentruntime.taskapi.v1.TaskEvent.emitted_at:type_name -> google.protobuf.Timestamp
+	31, // 25: agentruntime.taskapi.v1.TaskEvent.payload:type_name -> agentruntime.common.v1.JsonPayload
+	3,  // 26: agentruntime.taskapi.v1.TaskService.SubmitTask:input_type -> agentruntime.taskapi.v1.SubmitTaskRequest
+	6,  // 27: agentruntime.taskapi.v1.TaskService.CancelTask:input_type -> agentruntime.taskapi.v1.CancelTaskRequest
+	8,  // 28: agentruntime.taskapi.v1.TaskService.SignalTask:input_type -> agentruntime.taskapi.v1.SignalTaskRequest
+	15, // 29: agentruntime.taskapi.v1.TaskService.QueryTask:input_type -> agentruntime.taskapi.v1.QueryTaskRequest
+	17, // 30: agentruntime.taskapi.v1.TaskService.ListTaskArtifacts:input_type -> agentruntime.taskapi.v1.ListTaskArtifactsRequest
+	20, // 31: agentruntime.taskapi.v1.TaskService.ListSessionEvents:input_type -> agentruntime.taskapi.v1.ListSessionEventsRequest
+	5,  // 32: agentruntime.taskapi.v1.TaskService.SubmitTask:output_type -> agentruntime.taskapi.v1.SubmitTaskResponse
+	7,  // 33: agentruntime.taskapi.v1.TaskService.CancelTask:output_type -> agentruntime.taskapi.v1.CancelTaskResponse
+	9,  // 34: agentruntime.taskapi.v1.TaskService.SignalTask:output_type -> agentruntime.taskapi.v1.SignalTaskResponse
+	16, // 35: agentruntime.taskapi.v1.TaskService.QueryTask:output_type -> agentruntime.taskapi.v1.QueryTaskResponse
+	19, // 36: agentruntime.taskapi.v1.TaskService.ListTaskArtifacts:output_type -> agentruntime.taskapi.v1.ListTaskArtifactsResponse
+	22, // 37: agentruntime.taskapi.v1.TaskService.ListSessionEvents:output_type -> agentruntime.taskapi.v1.ListSessionEventsResponse
+	32, // [32:38] is the sub-list for method output_type
+	26, // [26:32] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_agentruntime_taskapi_v1_task_api_proto_init() }
@@ -2010,7 +2083,7 @@ func file_agentruntime_taskapi_v1_task_api_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agentruntime_taskapi_v1_task_api_proto_rawDesc), len(file_agentruntime_taskapi_v1_task_api_proto_rawDesc)),
-			NumEnums:      2,
+			NumEnums:      3,
 			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,

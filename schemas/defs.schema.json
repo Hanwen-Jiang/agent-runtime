@@ -203,6 +203,10 @@
     "network_approver": {
       "description": "联网授权由谁批：submitter 是提交者本人，admin 要有 task.approve 权限的人。设计书改动稿 W8",
       "enum": ["submitter", "admin"]
+    },
+    "network_policy_mode": {
+      "description": "租户允许的联网档位（NET-OPEN）：deny 不联网，allowlist 只放行 sandbox.network.hosts 范围里的主机（授权 scope 为 hosts），open 是所有公网域名（授权 scope 为 public；内网、云元数据、IP 字面量与 25 端口照样拒绝）",
+      "enum": ["deny", "allowlist", "open"]
     }
   }
 }

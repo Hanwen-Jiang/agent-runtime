@@ -47,7 +47,11 @@
           "description": "联网授权的上限：沙箱默认断网，按 Task 申请、人批准后经出网网关出去，到期或 Task 结束即收回",
           "type": "object",
           "properties": {
-            "allowed": {"description": "是否允许申请联网；不写为 false", "type": "boolean"},
+            "allowed": {"description": "是否允许申请联网；不写为 false。为 false 时 modes 不起作用（一律不联网）", "type": "boolean"},
+            "modes": {
+              "description": "允许的联网档位（NET-OPEN，docs/plan/net-open-contract.md）；不写为 [\"deny\", \"allowlist\"]。只有含 open 才能申请 scope 为 public 的授权；不含 allowlist 时不能申请 scope 为 hosts 的授权",
+              "type": "array", "uniqueItems": true, "minItems": 1, "items": {"$ref": "defs.schema.json#/$defs/network_policy_mode"}
+            },
             "hosts": {
               "description": "能放行的主机范围（可以用 *. 开头）；申请的主机要落在这里",
               "type": "array", "uniqueItems": true, "maxItems": 100, "items": {"$ref": "#/$defs/host_pattern"}
