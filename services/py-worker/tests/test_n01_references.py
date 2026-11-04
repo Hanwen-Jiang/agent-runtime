@@ -13,7 +13,7 @@ from agentruntime.common.v1 import enums_pb2
 from agentruntime_worker.planner import validate
 from agentruntime_worker.planner.context import CatalogView, PlanningContext
 from agentruntime_worker.workflows import stage_plan as sp
-from agentruntime_worker.workflows.patches import AT_START, REFERENCES_PATCH
+from agentruntime_worker.workflows.patches import AT_START, INTERRUPT_WITHDRAW_PATCH, REFERENCES_PATCH
 
 from .stage_harness import StageHarness, harness, returns  # noqa: F401 — harness 是 fixture
 from .test_stage_runner import atomic, deliver, stage
@@ -125,7 +125,8 @@ def test_deliver_that_wrote_references_or_replies_directly_is_left_alone() -> No
 
 
 def test_the_patch_is_asked_at_start() -> None:
-    assert AT_START[-1] == REFERENCES_PATCH
+    # 之后的版本分支（q87、n04、n16）追加在它后面；它自己追加在它之前的最后一个后面，位置不能再动。
+    assert AT_START.index(REFERENCES_PATCH) == AT_START.index(INTERRUPT_WITHDRAW_PATCH) + 1
 
 
 # --- 工作流 ---
