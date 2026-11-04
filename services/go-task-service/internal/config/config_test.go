@@ -396,6 +396,42 @@ func TestFromEnvRegistry(t *testing.T) {
 	}
 }
 
+// DELTA（docs/plan/all-plans-dag-2026-11-03.md 7.1）：逐字增量的入口在单独的内部端口上，调用方的令牌按调用方各一个，
+// 按租户关掉的开关在部署配置里。
+func TestFromEnvDeltas(t *testing.T) {
+	cfg, err := FromEnv(env(base()))
+	if err != nil || cfg.InternalAddr != "" || fmt.Sprint(cfg.DeltaCallers) != "[worker]" || len(cfg.DeltaDisabledTenants) != 0 {
+		t.Fatalf("没设内部端口时不收增量，调用方默认只有 worker：%+v %v", cfg, err)
+	}
+	m := base()
+	m[EnvInternalAddr] = "0.0.0.0:8093"
+	m[EnvDeltaCallers] = "worker, worker-gpu"
+	m[EnvDeltaDisabledTenants] = " t9 ,swebench"
+	cfg, err = FromEnv(env(m))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.InternalAddr != "0.0.0.0:8093" || fmt.Sprint(cfg.DeltaCallers) != "[worker worker-gpu]" ||
+		!cfg.DeltaDisabledTenants["t9"] || !cfg.DeltaDisabledTenants["swebench"] || len(cfg.DeltaDisabledTenants) != 2 {
+		t.Errorf("没读进来：%q %v %v", cfg.InternalAddr, cfg.DeltaCallers, cfg.DeltaDisabledTenants)
+	}
+	for name, override := range map[string]map[string]string{
+		"与 Task API 共用端口": {EnvInternalAddr: "127.0.0.1:8080"},
+		"与 Registry 共用端口": {EnvInternalAddr: "127.0.0.1:8092", EnvRegistryAddr: "127.0.0.1:8092"},
+		"调用方名字不对":         {EnvInternalAddr: "127.0.0.1:8093", EnvDeltaCallers: "Worker/1"},
+		"调用方重复":           {EnvInternalAddr: "127.0.0.1:8093", EnvDeltaCallers: "worker,worker"},
+		"调用方为空":           {EnvInternalAddr: "127.0.0.1:8093", EnvDeltaCallers: " , "},
+	} {
+		m := base()
+		for k, v := range override {
+			m[k] = v
+		}
+		if _, err := FromEnv(env(m)); err == nil {
+			t.Errorf("%s：应当报错", name)
+		}
+	}
+}
+
 // 按租户给准入时“未终态 Task 至多几个”（没列出的租户不设上限）。
 func TestFromEnvActiveTaskLimits(t *testing.T) {
 	m := base()

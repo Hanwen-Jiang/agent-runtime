@@ -51,6 +51,7 @@ type sseOptions struct {
 	heartbeat time.Duration
 	limit     int
 	window    time.Duration
+	deltasOff func(tenantID string) bool
 }
 
 func newSSE(t *testing.T, heartbeat time.Duration) *sseFixture {
@@ -77,7 +78,7 @@ func newSSEWith(t *testing.T, o sseOptions) *sseFixture {
 		t.Fatal(err)
 	}
 	ing := localingress.New(localingress.Options{SigningKey: []byte("sse-test-key"), Clock: clk, Limit: o.limit, Window: o.window})
-	hs := httptest.NewServer(NewHandler(HandlerDeps{Ingress: ing, Cache: c, Store: store, Heartbeat: o.heartbeat, Clock: clk}))
+	hs := httptest.NewServer(NewHandler(HandlerDeps{Ingress: ing, Cache: c, Store: store, Heartbeat: o.heartbeat, Clock: clk, DeltasOff: o.deltasOff}))
 	t.Cleanup(hs.Close)
 	return &sseFixture{t: t, clock: clk, cache: c, ingress: ing, store: store, url: hs.URL}
 }
