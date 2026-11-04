@@ -763,6 +763,18 @@ GitHub App 上线（2026-11-04，APP-LIVE；目录 `app-golive`，脚本 `golive
   coding-web 的清单文件与线上一致。回滚：`helm rollback ar 26`、`kubectl -n agent-runtime rollout undo deploy/coding-web`。
 - **没有验证**：逐字增量真的推到浏览器（要一个真 Task 并在网页上看）；DLV-CHECK 在线上拦下一次假交付。
 
+第 28 版（2026-11-04，只换网关；目录 `rev30`，脚本 `prepare.sh`、`rev30.sh`；用户在对话里选了“D6 只换网关”）：
+
+- 起因 TOOLS-KIMI（总表第 3 节）：经中转站的 kimi-k3.1-pro 在请求同时带工具与 json_schema 的 response_format 时不再调工具、直接编结果，
+  第 27 版上线后的 Terminal-Bench 一题 21 步全部直接 finish。修法 TOOLS-KIMI-FIX：工具与 schema 同时给时，网关把 schema 换成收尾工具 `submit_result`。
+- 只换网关：Chart 新加 `modelGateway.imageTag`（同 `memory.imageTag`）。源码是第 27 版的 `de1c0ba` 打上 `2742179d`、`9c9cd009`（修复）与
+  `1ddfa49f`、`ea8cf34a`（Chart），补丁在 `rev30/tk.patch`，解开的树在 `rev30/x-ar`；镜像 `model-gateway:de1c0ba-tk`，别的组件仍是 `de1c0ba`。
+  values 是第 27 版应用过的那份加 `modelGateway.imageTag: de1c0ba-tk`。渲染结果与第 27 版比只有网关的镜像一行；脚本先核对线上清单与第 27 版一致、
+  镜像在 k3s 里、没有在跑的 TaskWorkflow，再 `helm upgrade`。`/opt/agentruntime/agent-runtime` 没换（仍是 de1c0ba），REVISION 里加了一行网关的说明。
+- 核对：网关滚动换成新 Pod，线上清单与 `manifest-rev30.yaml` 一致，3 分钟内日志没有错误；正在跑的能力矩阵（另一个会话的进程）没断，结果照常增加。
+  经线上网关探测（工具 + 输出 schema，与 tool_loop 的请求同形）：kimi 两次都调了 `shell_run`，gemini-4-argon 也是；第 27 版上同样的请求 kimi 不调、编结果。
+- 回滚：`helm rollback ar 27`。下一版正常发布时 `modelGateway.imageTag` 去掉（跟 image.tag），不然网关会停在这个镜像上。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
