@@ -58,6 +58,9 @@ enum TaskQueue {
   TASK_QUEUE_PROGRAM = 5 [(agentruntime.common.v1.wire_name) = "program"];
   // Learning Pipeline 与记忆提炼。
   TASK_QUEUE_OFFLINE = 6 [(agentruntime.common.v1.wire_name) = "offline"];
+  // Workspace API 的操作（WorkspaceOperationWorkflow 与它的 activity，WS-READ-02）：单独一个 Worker 池，查看文件不与 Task 抢 Worker。
+  // 在这个队列上启动之前就在 task 队列上的操作照旧在那里跑完。
+  TASK_QUEUE_WORKSPACE = 7 [(agentruntime.common.v1.wire_name) = "workspace"];
 }
 
 // ActivityName：跨语言调用的 activity。只在一种语言里用的 activity 不列在这里。

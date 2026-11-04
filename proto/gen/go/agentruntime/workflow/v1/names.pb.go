@@ -214,6 +214,9 @@ const (
 	TaskQueue_TASK_QUEUE_PROGRAM TaskQueue = 5
 	// Learning Pipeline 与记忆提炼。
 	TaskQueue_TASK_QUEUE_OFFLINE TaskQueue = 6
+	// Workspace API 的操作（WorkspaceOperationWorkflow 与它的 activity，WS-READ-02）：单独一个 Worker 池，查看文件不与 Task 抢 Worker。
+	// 在这个队列上启动之前就在 task 队列上的操作照旧在那里跑完。
+	TaskQueue_TASK_QUEUE_WORKSPACE TaskQueue = 7
 )
 
 // Enum value maps for TaskQueue.
@@ -226,6 +229,7 @@ var (
 		4: "TASK_QUEUE_MODEL",
 		5: "TASK_QUEUE_PROGRAM",
 		6: "TASK_QUEUE_OFFLINE",
+		7: "TASK_QUEUE_WORKSPACE",
 	}
 	TaskQueue_value = map[string]int32{
 		"TASK_QUEUE_UNSPECIFIED": 0,
@@ -235,6 +239,7 @@ var (
 		"TASK_QUEUE_MODEL":       4,
 		"TASK_QUEUE_PROGRAM":     5,
 		"TASK_QUEUE_OFFLINE":     6,
+		"TASK_QUEUE_WORKSPACE":   7,
 	}
 )
 
@@ -338,7 +343,7 @@ const file_agentruntime_workflow_v1_names_proto_rawDesc = "" +
 	"\x16QUERY_NAME_UNSPECIFIED\x10\x00\x12/\n" +
 	"\x18QUERY_NAME_SESSION_STATE\x10\x01\x1a\x11\x92\xb5\x18\rsession_state\x12)\n" +
 	"\x15QUERY_NAME_TASK_STATE\x10\x02\x1a\x0e\x92\xb5\x18\n" +
-	"task_state*\xfd\x01\n" +
+	"task_state*\xa6\x02\n" +
 	"\tTaskQueue\x12\x1a\n" +
 	"\x16TASK_QUEUE_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x12TASK_QUEUE_SESSION\x10\x01\x1a\v\x92\xb5\x18\asession\x12\x1d\n" +
@@ -346,7 +351,8 @@ const file_agentruntime_workflow_v1_names_proto_rawDesc = "" +
 	"\x13TASK_QUEUE_DECISION\x10\x03\x1a\f\x92\xb5\x18\bdecision\x12\x1f\n" +
 	"\x10TASK_QUEUE_MODEL\x10\x04\x1a\t\x92\xb5\x18\x05model\x12#\n" +
 	"\x12TASK_QUEUE_PROGRAM\x10\x05\x1a\v\x92\xb5\x18\aprogram\x12#\n" +
-	"\x12TASK_QUEUE_OFFLINE\x10\x06\x1a\v\x92\xb5\x18\aoffline*k\n" +
+	"\x12TASK_QUEUE_OFFLINE\x10\x06\x1a\v\x92\xb5\x18\aoffline\x12'\n" +
+	"\x14TASK_QUEUE_WORKSPACE\x10\a\x1a\r\x92\xb5\x18\tworkspace*k\n" +
 	"\fActivityName\x12\x1d\n" +
 	"\x19ACTIVITY_NAME_UNSPECIFIED\x10\x00\x12<\n" +
 	" ACTIVITY_NAME_PUBLISH_TASK_EVENT\x10\x01\x1a\x16\x92\xb5\x18\x12publish_task_eventB\x84\x02\n" +

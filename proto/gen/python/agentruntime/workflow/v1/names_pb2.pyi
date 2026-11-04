@@ -37,6 +37,7 @@ class TaskQueue(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     TASK_QUEUE_MODEL: _ClassVar[TaskQueue]
     TASK_QUEUE_PROGRAM: _ClassVar[TaskQueue]
     TASK_QUEUE_OFFLINE: _ClassVar[TaskQueue]
+    TASK_QUEUE_WORKSPACE: _ClassVar[TaskQueue]
 
 class ActivityName(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
@@ -63,5 +64,6 @@ TASK_QUEUE_DECISION: TaskQueue
 TASK_QUEUE_MODEL: TaskQueue
 TASK_QUEUE_PROGRAM: TaskQueue
 TASK_QUEUE_OFFLINE: TaskQueue
+TASK_QUEUE_WORKSPACE: TaskQueue
 ACTIVITY_NAME_UNSPECIFIED: ActivityName
 ACTIVITY_NAME_PUBLISH_TASK_EVENT: ActivityName
