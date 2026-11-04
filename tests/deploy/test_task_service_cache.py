@@ -40,12 +40,12 @@ def test_data_valkey_manifest() -> None:
     image = c["image"]
     assert image.startswith("valkey/valkey:") and image.split(":")[1][0].isdigit(), "镜像要钉到具体版本"
     script = " ".join(c["args"])
+    # 不持久化（2026-11-04 用户定，撤回之前的 AOF）：要紧的都在业务库，落盘只会多一份不受保留期管的事件内容与逐字增量。
     assert "--save ''" in script, "不做 RDB 快照"
-    assert "--appendonly yes" in script and "--appendfsync everysec" in script, "开 AOF，每秒刷盘（2026-11-04 用户定）"
-    [pvc] = [d for d in docs if d["kind"] == "PersistentVolumeClaim"]
-    assert pvc["metadata"]["namespace"] == "data"
+    assert "--appendonly no" in script and "--appendonly yes" not in script, "不开 AOF"
+    assert not [d for d in docs if d["kind"] == "PersistentVolumeClaim"], "不要持久卷"
     [data] = [v for v in deploy["spec"]["template"]["spec"]["volumes"] if v["name"] == "data"]
-    assert data["persistentVolumeClaim"]["claimName"] == pvc["metadata"]["name"], "AOF 要写在持久卷上"
+    assert "emptyDir" in data and "persistentVolumeClaim" not in data
     assert "--requirepass" not in script, "口令写进内存卷上的配置文件，不上命令行"
     [pw] = [e for e in c["env"] if e["name"] == "VALKEY_PASSWORD"]
     assert pw["valueFrom"]["secretKeyRef"]["name"] == "valkey-agentruntime"

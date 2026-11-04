@@ -256,7 +256,7 @@ flowchart LR
 | F4 告警的通知渠道 | Grafana 的邮件联络点，经 **Resend 的 SMTP 中继**（`smtp.resend.com:587`，强制 STARTTLS；用户名 `resend`，口令是 Resend 的 API Key），不写代码、不加依赖；Key 与收件地址都在 Secret `grafana-resend`（`deploy/data/values/grafana.yaml`、`tests/deploy/test_alert_email.py`） | 2026-11-04 用户定 Resend，令牌之后给。**要人做**：给 API Key；在 Resend 验证 `cgent.link`（Cloudflare 加它给的 DNS 记录），发件人是 `alerts@cgent.link`。Key 给之前 Secret 里是占位值，告警只在 Grafana 里看得到 |
 | DISK-B 的闲置天数 | 14 天 | 两周没动的会话副本基本不会再用；转冷后第一次打开多等一次恢复 |
 | DISK-A 超限 | 维持现状：拒绝写类工具并告诉用户 | 只警告挡不住盘满 |
-| Valkey 是否持久化 | **开 AOF**，每秒刷盘，不做 RDB 快照；数据放 2Gi 的 PVC（`deploy/data/valkey.yaml`） | 2026-11-04 用户问“为啥不开”，改定：重启后限流计数、锁与推流不清零，代价只是一块小盘与每秒一次的写 |
+| Valkey 是否持久化 | **不持久化**（2026-11-04 用户定，撤回之前的 AOF 与 2Gi 的 PVC；`deploy/data/valkey.yaml`） | 要紧的都在业务库：event_id 由业务库分配，事件先写 `task_events` 再推流，SSE 与快照从业务库补，准入的锁也在 Postgres；重启只丢限流窗口的计数、去重标记与只读缓存。开 AOF 要和 Postgres 抢同一块盘，还会把事件内容与 DELTA 的逐字增量落盘（DELTA 定的是增量不进任何持久存储）。以后 Valkey 成了某样东西唯一的存放处再议 |
 | Valkey 口令 | 写进 `secrets.enc.yaml`（随第 25 版） | 现在只在服务器文件与两个 Secret 里，换机器会丢 |
 | AUTH-01 切换 | coding-web 换成 JWT 签发并验证之后，task-service 的 `ingress.devTokens` 改成 refuse | 开发令牌的对称密钥是 AUTH-01 要拆掉的东西 |
 | EV-TB 的环境配额 | `swebench`、`evals` 租户的 `max_images` 放宽到 20；跑 40 题之前先把环境建好 | 0/5 的原因就是配额满了退回 universal |

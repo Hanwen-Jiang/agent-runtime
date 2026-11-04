@@ -1,8 +1,9 @@
 # Runtime 自己的 Valkey（设计书 4.5 的 Cache；CACHE-01，docs/plan/workspace-read-latency-and-disk-2026-11-03.md）：
 # task-service 的事件流、限流计数与锁放在这里，task-service 才能多副本、重启不丢流（TSP-2）。不与 Langfuse 自带的 Valkey 共用。
 #
-# 存的仍是可丢失或可重建的数据（设计书 4.5），但开 AOF（每秒刷盘，--appendonly yes --appendfsync everysec，不做 RDB 快照）：
-# 2026-11-04 用户定。重启后限流计数、锁与推流不清零，SSE 续传不必全退回业务库；最多丢最后一秒。数据在 PVC valkey-agentruntime-data 上。
+# 存的是可丢失或可重建的数据（设计书 4.5），不持久化（--save '' --appendonly no；2026-11-04 用户定，撤回了之前的 AOF）：
+# event_id 由业务库分配、事件先写业务库的 task_events 再推流，重启后 SSE 与快照从业务库补；丢的只有限流窗口的计数、
+# 去重标记（再查业务库，最多推流里重复一条）与只读缓存。落盘反而多一份不受保留期管的事件内容与逐字增量。
 # 所有键都带过期时间，内存满了按 volatile-lru 淘汰。口令在 data 命名空间的 Secret valkey-agentruntime（deploy/cluster/secrets），
 # 启动时写进内存卷上的配置文件，不出现在 valkey-server 的命令行里。
 apiVersion: apps/v1
@@ -42,7 +43,7 @@ spec:
               umask 077
               printf 'requirepass "%s"\n' "$VALKEY_PASSWORD" > /run/valkey/auth.conf
               unset VALKEY_PASSWORD
-              exec valkey-server /run/valkey/auth.conf --save '' --appendonly yes --appendfsync everysec \
+              exec valkey-server /run/valkey/auth.conf --save '' --appendonly no \
                 --maxmemory 384mb --maxmemory-policy volatile-lru --dir /data
           env:
             - name: VALKEY_PASSWORD
@@ -81,23 +82,8 @@ spec:
             medium: Memory
             sizeLimit: 1Mi
         - name: data
-          persistentVolumeClaim:
-            claimName: valkey-agentruntime-data
----
-# AOF 的数据盘：maxmemory 是 384 MB，AOF 重写前最多约两倍，2Gi 足够。
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: valkey-agentruntime-data
-  namespace: data
-  labels:
-    app.kubernetes.io/name: valkey-agentruntime
-spec:
-  accessModes: [ReadWriteOnce]
-  storageClassName: local-path
-  resources:
-    requests:
-      storage: 2Gi
+          emptyDir:
+            sizeLimit: 64Mi
 ---
 apiVersion: v1
 kind: Service
