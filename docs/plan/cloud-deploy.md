@@ -732,6 +732,25 @@ GitHub App 上线（2026-11-04，APP-LIVE；目录 `app-golive`，脚本 `golive
   （网关不认没有令牌的请求，说明 Cloudflare → Traefik → 网关这一路通了）；源站按 SNI 出示新的源站证书。回滚：`helm rollback ar 24`，DNS 与证书可以留着。
 - **没有验证**：真正的预览（沙箱里起服务、Agent 用 `request_network` 开预览地址、浏览器打开）；要跑一个真 Task。
 
+第 26 版（2026-11-04，v26；目录 `rev28`，脚本 `prepare.sh`、`rev28.sh`、`smoke.sh`，用户在对话里同意）：
+
+- Runtime `169570a`（main，旧的留在 `agent-runtime.6cc16b8`）：WS-READ-02（Workspace 操作单独的 workspace 队列与 Worker 池 `worker-workspace`，KEDA）、
+  SEC-API、HIST-01 的 `ListSessionEvents`、DISK-B（`worker.workspaceColdAfterDays=14`，第 7.1 节定的）、R-06-B、EV-TB 的两处修复、PREVIEW-1、
+  评测网站（看板不再钉 ff3a385，跟着 learning:`169570a`）、沙箱里的 agent 换成 `sandbox-agent:169570a`（ATOK-F；后端登记两处与 `agentImage` 一处）。
+  Memory Service 仍是 52174d9。coding-web `bee449a`（HIST-01-WEB；旧的留在 `coding-agent.b4bb9a9`）。
+- 脚本核对：线上 manifest 与第 25 版一致、没有在跑的 Task；`helm template` 与第 25 版比是 14 个对象：新加 `worker-workspace` 的 Deployment 与 ScaledObject，
+  各 Deployment 只换镜像与 `OTEL_SERVICE_VERSION`（Worker 另加 `AR_WORKSPACE_COLD_AFTER_DAYS`），后端登记只换 agent 镜像，预拉的 DaemonSet 只换 agent 镜像。
+  main 的 CI 比上次多两条出网网关的 Go 测试失败（`TestTaskEndInStoreClosesTunnelWithinTTL` 是清临时目录的竞态，另一条没有断言信息），本机各跑三次都过，当作不稳定的测试。
+- 核对：各 Pod 在跑（task-service、出网网关、包镜像、coding-web 照旧第一次启动重启一次）；api、code、evals 的 `/`、`/datasets`、`/api/site.json` 200；
+  coding-web 的清单文件与线上一致。回滚：`helm rollback ar 25`、`kubectl -n agent-runtime rollout undo deploy/coding-web`。
+- **真 Task 冒烟（REAL-01）**：租户 `evals`，真 Planner、Reviewer、tool_loop 经网关，`tsk_01M6K80GC1CXFQW53707Q4M0GC`，两轮、0.11 美元，done。
+  - 计划步骤（`plan_updated` 三次）、上下文占比、工具进度、Reviewer 的两次 verdict 都在事件里；会话快照从业务库读出（HIST-01、N-19）。
+  - gVisor 沙箱里 `repo_edit` 与 `shell_run` 各 4 次；**ATOK-F 线上验过**：命令里 `/proc/1/environ` 是 `-r-------- root root`，读时 `Permission denied`。
+  - Reviewer 第一轮按规则判 continue（改完之后没再运行命令），第二轮 done。
+  - **发现**：要求用 `deliver_file` 交付 `result.txt`，模型没调这个工具（只写了文件），回答里却写“交付成功（delivered: true）”，Reviewer 也认了；
+    `ListTaskArtifacts` 是空的。见总表的 DLV-CHECK。
+  - 第一次冒烟被我的脚本误取消：`cost_usd_micros` 当成了美元（实际 0.05 美元），改后重跑。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。

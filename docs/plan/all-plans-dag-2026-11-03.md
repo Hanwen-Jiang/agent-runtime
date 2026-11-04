@@ -24,7 +24,7 @@
 
 2026-11-04 第 24 版（DEP-R，`6cc16b8`，记录在 `cloud-deploy.md`）上了：C、E 两条线；F1～F4；`bb832bf`；26 个 Profile 与重算的白名单；首事件延迟与花费面板、告警；TSP-1/TSP-2/CACHE-01（生产模式、Valkey）；AUTH-01（仍收开发令牌）；D-19、DISK-A、STOR-SEC、HIST-01、PERF-00、R-06、G-03-9、WS-READ-03。
 
-还没上的：WS-READ-02（`71b9226`，加 Worker 池）与之后合进 main 的；沙箱里的 agent（ATOK-F，要真沙箱探一次）；Memory Service 的新镜像（MEM）；看板 ff3a385 之后的；AUTH-01 切换的第 1 步起（`auth-tokens-2026-11-03.md` 第 4 节）。coding-web 随后（DEP-W，2026-11-04）换成 `b4bb9a9`：合了 `lane/d`、.env 上限 16 KiB、64 个，网页的计划区、子 Agent、快照首屏与 F3 交付区都上了；GitHub App 的代码在，但用空值的 env 关着，App 上线另做。
+2026-11-04 第 26 版（`169570a`）又上了：WS-READ-02（workspace 队列与 Worker 池）、SEC-API、HIST-01 的批量取、DISK-B（14 天）、R-06-B、EV-TB 的修复、PREVIEW-1、评测网站、沙箱 agent 的 ATOK-F；coding-web `bee449a`（HIST-01-WEB）。还没上的：Memory Service 的新镜像（MEM）、AUTH-01 切换的第 1 步起、Cloudflare 桥的新镜像（令牌缺 Containers 编辑权限）。
 
 ## 3. 未完成的工作项
 
@@ -89,7 +89,8 @@
 | AUTH-01 | Ed25519 签名的标准 JWT，Runtime 只持公钥；第三方令牌的加密密钥独立 | auth-tokens | — | 已完成（代码；没部署，切换步骤见 auth-tokens 第 4 节） | 中 |
 | AUTH-02 | 浏览器只拿可撤销的会话 id，调 Runtime 时现签短期令牌 | auth-tokens | AUTH-01 | 已完成（coding-agent `953fc29`；没部署） | 中 |
 | AUTH-03 | Ingress 的生产形态：身份服务或签发服务、网关的全局限流、PKCE | auth-tokens | AUTH-02、TSP-2 | 2026-11-04 人定维持现状（不上身份服务）；PKCE、JWKS、全局限流已做（coding-agent `c3d8845`） | 远 |
-| REAL-01 | 线上全组件验收（穿插着跑） | post-acceptance、gate 清单 | 各项部署 | 外部（部分）。2026-11-04：用户准用 `CF_NSNZDDOTCOM_ALL_KEY`。桥的新镜像（`sandbox-universal:6cc16b8`，带新 agent）已在服务器上构建，推到 Cloudflare 镜像仓库时令牌拿不到推送凭据（`Authentication error`）：要给令牌加 Containers 的编辑权限（推镜像、`wrangler deploy` 还要 Workers Scripts 编辑）。预览地址已上线（第 25 版）：用户买了单独的 `cgentpreview.website`，免费通配证书加 Origin CA 的源站证书，经 Cloudflare 到网关已通，真正的预览还要一个真 Task 验。其余 gate 不缺资源，只是没在线上跑 | 中 |
+| REAL-01 | 线上全组件验收（穿插着跑） | post-acceptance、gate 清单 | 各项部署 | 外部（部分）。2026-11-04：用户准用 `CF_NSNZDDOTCOM_ALL_KEY`。桥的新镜像（`sandbox-universal:6cc16b8`，带新 agent）已在服务器上构建，推到 Cloudflare 镜像仓库时令牌拿不到推送凭据（`Authentication error`）：要给令牌加 Containers 的编辑权限（推镜像、`wrangler deploy` 还要 Workers Scripts 编辑）。预览地址已上线（第 25 版）：用户买了单独的 `cgentpreview.website`，免费通配证书加 Origin CA 的源站证书，经 Cloudflare 到网关已通，真正的预览还要一个真 Task 验。真 Task 冒烟 2026-11-04 在第 26 版上跑过（done，0.11 美元；ATOK-F 线上验过；文件交付没发生，见 DLV-CHECK）。其余 gate 不缺资源，只是没在线上跑 | 中 |
+| DLV-CHECK | 交付的真假：模型说“已交付”却没调 `deliver_file` 时，Reviewer 要按这一轮的 delivered（round_highlights）与 `task_artifacts` 核对，不能只看回答的文字；Planner 在用户明说要交付文件时给 Goal 加上交付的要求 | 第 26 版的冒烟（cloud-deploy.md） | — | 待做（核心链路：Reviewer 与 Planner，单写者） | 近 |
 | SBX-RS-01 | Rust 版 agent 的原型实测 | workspace-read 第 5 节 | — | 取消（改为 D-28） | — |
 
 ## 4. DAG
