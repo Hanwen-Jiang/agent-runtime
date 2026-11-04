@@ -5,6 +5,8 @@
 > 来源：[work-dag-2026-11-03.md](work-dag-2026-11-03.md)（线与第一波 DAG）、[handoff-2026-11-03.md](handoff-2026-11-03.md)、[lane-merge-2026-11-03.md](lane-merge-2026-11-03.md)、[remaining-work-execution-plan-2026-11-02.md](remaining-work-execution-plan-2026-11-02.md)、[post-acceptance-work-items-2026-11-03.md](post-acceptance-work-items-2026-11-03.md)、[feedback-2026-11-01.md](feedback-2026-11-01.md)（N-xx）、[cloud-deploy.md](cloud-deploy.md) 与 [gate 清单](cloud-deploy-gates-2026-11-02.md)（D-01～D-17）、[firecracker-backend.md](firecracker-backend.md)（D-19～D-22、D-26、D-28）、[environment-config.md](environment-config.md)（D-23～D-27）、[sub-agent.md](sub-agent.md)、[eval-site.md](eval-site.md)、[workspace-read-latency-and-disk-2026-11-03.md](workspace-read-latency-and-disk-2026-11-03.md)、[auth-tokens-2026-11-03.md](auth-tokens-2026-11-03.md)，以及 coding-agent 的 `docs/plan/github-app.md`（G-01～G-06）。
 > 本文只汇总与排依赖，不改各项的内容与决定；各项以原文档为准。状态有变时改原文档，再回来改这里。
 
+> 2026-11-04 用户委托的[代审结论与判定规则](delegated-review-2026-11-04.md)已落盘，覆盖 SEC-API、NET-OPEN、D-25、N-14、N-15、WS-READ-02、AUTH-03、D-28、SBX-01、MX-RUN、EV-REAL、EV-TB、DEP-R/DEP-W/REAL-01、G-03 Client secret 与 R-06。该记录明确通过范围、待关闭条件及后续修复/部署的状态差异，不将代审等同于实现或上线验收完成。
+
 ## 1. 已完成（不再画进 DAG）
 
 | 范围 | 内容 |
