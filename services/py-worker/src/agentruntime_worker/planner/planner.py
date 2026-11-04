@@ -282,7 +282,8 @@ class Planner:
                     rules = self.config.sub_agent_rules
                     if rules:
                         stage, shared = validate.share_sub_agent_budgets(stage, left)
-                        adjusted = [*adjusted, *shared]
+                        stage, cards = validate.card_outputs(stage)
+                        adjusted = [*adjusted, *shared, *cards]
                     found = validate.problems(
                         stage, task_plan, level=decision.level, context=request.context, keep_nodes=keep, earlier=request.earlier, require_steps=require_steps,
                         sub_agent_rules=rules,

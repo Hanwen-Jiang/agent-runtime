@@ -175,6 +175,49 @@ def share_sub_agent_budgets(stage: Any, remaining: float | None) -> tuple[Any, l
 # brief 的必填字段（docs/plan/sub-agent.md 第 4 节）。
 BRIEF_FIELDS = ("objective", "scope", "output")
 
+# 来源卡片（docs/plan/sub-agent.md 第 5 节）：子 Agent 交回结论与依据，不交回全文（全文在 ObjectStore，卡片里留 obj:// 路径）。
+SOURCE_CARDS_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "required": ["cards"],
+    "properties": {
+        "cards": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["claim", "evidence", "source", "confidence"],
+                "properties": {
+                    "claim": {"type": "string", "minLength": 1},
+                    "evidence": {"type": "string"},
+                    "source": {"type": "string"},
+                    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                    "open_questions": {"type": "array", "items": {"type": "string"}},
+                },
+            },
+        }
+    },
+}
+_GENERIC_OUTPUT = ({"type": "object"},)
+
+
+def _wants_cards(brief: Any) -> bool:
+    output = brief.get("output") if isinstance(brief, dict) else None
+    return isinstance(output, str) and ("卡片" in output or "card" in output.lower())
+
+
+def card_outputs(stage: Any) -> tuple[Any, list[str]]:
+    """N16-R：brief 要来源卡片、又没给具体 output_schema（没写或只写了 {"type": "object"}）的 sub_agent，填上卡片的 schema。
+    结构化输出在 tool_loop 的 activity 里按它校验。返回（Stage、说明）。"""
+    agents = [n for n in _sub_agents(stage) if _wants_cards((n.get("inputs") or {}).get("brief")) and n.get("output_schema") in (None, *_GENERIC_OUTPUT)]
+    if not agents:
+        return stage, []
+    stage = copy.deepcopy(stage)
+    notes = []
+    for node in _sub_agents(stage):
+        if _wants_cards((node.get("inputs") or {}).get("brief")) and node.get("output_schema") in (None, *_GENERIC_OUTPUT):
+            node["output_schema"] = copy.deepcopy(SOURCE_CARDS_SCHEMA)
+            notes.append(f"sub_agent {node.get('id')} 按 brief 交回来源卡片")
+    return stage, notes
+
 
 def _sub_agent_problems(stage: dict[str, Any], level: str) -> list[str]:
     """N16-R：派子 Agent 的规矩（AR_SUB_AGENT_POLICY=rules）。"""

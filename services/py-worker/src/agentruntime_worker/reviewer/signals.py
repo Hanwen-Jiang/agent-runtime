@@ -207,7 +207,8 @@ def ledger(task_state: Mapping[str, Any], stage: Mapping[str, Any], results: Map
 
 
 def _empty(value: Any) -> bool:
-    return value is None or value == {} or value == [] or value == ""
+    # N16-R：交回零张来源卡片（{"cards": []}）也是空的。
+    return value is None or value == {} or value == [] or value == "" or value == {"cards": []}
 
 
 def _merge_conflicts(stage: Mapping[str, Any], results: Mapping[str, Mapping[str, Any]]) -> tuple[str, ...]:
