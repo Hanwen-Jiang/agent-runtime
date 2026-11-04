@@ -171,3 +171,32 @@ earliest、激活阈值、轮询间隔、旧设置被拒）、`test_cloud.py`（
 - 主题里一条坏记录会让之后的每一轮都失败，直到它过了保留期。Collector 写的是合法的 OTLP JSON，出现坏记录就是配置错了，宁可停下报错。
 - 一个 ScaledJob 只学一个租户的一个任务族；多个任务族要多个 ScaledJob、各用各的消费组，Chart 还不支持列表。
 - 真集群里没跑过（KEDA 读这个消费组的延迟、Job 连 `redpanda.data.svc:9093`），线上重新打开时看。
+
+## 8. 成本读 Gateway 的账本（R-06-D，2026-11-04）
+
+[代审记录](delegated-review-2026-11-04.md)第 7 节第 1 条定了权威存储是业务库的 `model_usage`，Gateway 结算、Learning 读同一事实源；第 5 条定了含
+pending、unknown 成本的比较不自动晋级（门槛在 R-06-B 已改）。原来 Task 的成本取 trace 上的 `runtime.cost_usd`：Worker 收尾时记的估计，
+Gateway 结算的实际金额与它不一定一致，用量没回来的调用也看不出来。
+
+**做法**（`agentruntime_learning.pipeline.costs`）：
+
+- 按读到的 Task 的 task_id 查 `model_usage`（每次 provider attempt 一行，Go 一侧 `libs/go-core/modelbudget` 的迁移 301、302；Python 只读，不拥有迁移），
+  每个 Task 的成本是全部尝试的实际金额之和，失败的尝试也算。
+- 有一次尝试还没结算（实际金额为空：用量未知，网关留着预留），或账本里没有这个 Task 的记录，这个 Task 算成本未知：按 0 填，`cost_known` 为假，
+  门槛据此交人工判断。没有 task_id 的调用（Learning 自己的失败归因）不归任何 Task。
+- 租户由 RelationalStore 的绑定决定：开发时是租户自己的 SQLite 库文件（`<AR_DATA_DIR>/relational/<租户>.sqlite3`，与 Gateway 同一个），集群里是
+  Postgres 的行级安全；SQL 里没有租户条件。task_id 每 500 个一批查。
+- 读不了账本（表不存在、连不上库）时整次运行失败，退出码 4，不提交消费组的位置，下一轮重跑；不退回 trace 上的成本。错误里不带连接串与库的位置。
+- 命令行 `--cost-source`：`auto`（默认）在配了 `AR_RELATIONAL_DSN` 或 `AR_DATA_DIR` 时读账本，否则读 trace；`model_usage` 要求配了业务库；`trace` 照旧。
+  报告记 `cost_source` 与成本未知的 Task 数 `cost_unknown`，审计 `learning.read_traces` 也带这两项。
+- Chart：Learning 的 Job 拿到与 Model Gateway 同一个 `secrets.relationalDsn`（`templates/learning.yaml`），云上因此读账本。
+
+**验收**：`services/py-learning/tests/test_pipeline_costs.py`（对着 SQLite：合计、未结算与没有记录算未知、没有 task_id 的不算、只读绑定的租户、分批、
+表不存在报错；门槛用账本的成本、一次未结算交人工；命令行的 auto、trace、model_usage 与退出码 4）；`tests/deploy/test_cloud.py` 的
+`test_cloud_learning_reads_costs_from_the_gateways_ledger`。
+
+**没做的**
+
+- Postgres 上没对着真库跑（读的是 py-core 的 Postgres 适配器，行级安全在 py-core 与 Go 的测试里验过）；线上 Job 的连接串也没在集群里试过。
+- Task State 里只放引用或摘要（第 1 条的后半句）没有改：Task State 现在不带成本。
+- Registry 修订号进账本（第 2 条）仍没做：Gateway 手上没有修订号。
