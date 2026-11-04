@@ -1,6 +1,6 @@
 // Sandbox 的 Cloudflare 桥（docs/plan/cloud-deploy.md D-07）。Runtime 的 Python 适配器
 // （agentruntime_core.adapters.cloudflare_sandbox）经 HTTPS 调这个 Worker；每个沙箱环境是一个 Durable Object 加一台
-// Cloudflare Container（Firecracker microVM），容器里跑 sandbox-agent（services/go-sandbox-agent）。
+// Cloudflare Container（Firecracker microVM），容器里跑 sandbox-agent（services/rs-sandbox-agent，D-28）。
 //
 //   GET    /healthz                                   不要令牌
 //   GET    /v1/sandboxes                              本部署在跑的环境（X-Sandbox-Owner 要是 _platform）→ {"environments": […]}

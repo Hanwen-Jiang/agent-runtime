@@ -36,6 +36,8 @@ INSTALLS = {
     "helm": "HELM_VERSION",
     "kind": "KIND_VERSION",
     "kubectl": "预装了 kubectl",  # runner 预装 kubectl；job 里写明靠的是预装的
+    "cargo": "rust-toolchain.toml",  # runner 预装 rustup；job 按 rust-toolchain.toml 装固定的版本
+    "cargo-deny": "CARGO_DENY_VERSION",
 }
 
 

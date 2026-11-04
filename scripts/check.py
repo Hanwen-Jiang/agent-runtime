@@ -3,13 +3,15 @@
 
     uv run --no-sync python scripts/check.py                 # pr 档：除故障注入套件外的全部检查
     uv run --no-sync python scripts/check.py --tier full     # 再加故障注入套件（夜间任务那组）
-    uv run --no-sync python scripts/check.py --only go,py-worker
+    uv run --no-sync python scripts/check.py --only go,rust,py-worker
     uv run --no-sync python scripts/check.py --list          # 只打印计划；加 --json 给机器读
     uv run --no-sync python scripts/check.py --clone D:\\tmp\\ar   # 在当前提交的本地克隆里跑
 
 （这台机器 PATH 上没有裸的 python，用 uv 带的；CI 里直接 python3 scripts/check.py。）
 
-步骤按固定顺序，先快后慢：proto、contract、go、py-core、py-memory、py-learning、py-worker、e2e、faults。
+步骤按固定顺序，先快后慢：proto、contract、go、rust、py-core、py-memory、py-learning、py-worker、e2e、faults。
+- rust：根 Cargo workspace（rs-sys、rs-sandbox-agent、rs-fc-manager）的 cargo fmt、clippy（-D warnings）、test、cargo deny，再跑
+  sandbox-agent 的黑盒测试（tests/sandbox-agent：Go 版与 Rust 版同一套用例，D-28；要 go）。工具链按 rust-toolchain.toml。
 - Python 步骤之前统一 uv sync 一次（--no-sync 跳过），之后都用 uv run --no-sync。
 - contract 不跑 Go 模块的 build、vet、test：那是 go 这一步的事，不跑两遍。有 tests/deploy 时同时跑它（Helm Chart 与 Collector 配置，要 helm）。
 - 每一步先查它要的工具；缺了就失败并写明缺什么，设了 AR_ALLOW_MISSING_TOOLS=1 时跳过这一步。
@@ -33,7 +35,7 @@ from pathlib import Path
 from typing import Any, TextIO
 
 ROOT = Path(__file__).resolve().parents[1]
-STEP_IDS = ("proto", "contract", "go", "py-core", "py-memory", "py-learning", "py-worker", "e2e", "faults")
+STEP_IDS = ("proto", "contract", "go", "rust", "py-core", "py-memory", "py-learning", "py-worker", "e2e", "faults")
 TIERS = {"pr": tuple(s for s in STEP_IDS if s != "faults"), "full": STEP_IDS}
 SYNC = ["uv", "sync", "--all-packages", "--all-extras", "--locked"]
 ALLOW_MISSING = "AR_ALLOW_MISSING_TOOLS"
@@ -130,15 +132,29 @@ def all_steps(root: Path, *, committed: bool = False) -> dict[str, Step]:
         ),
         # docker：libs/go-core 的 Valkey 适配器的测试拉起一次性容器（valkeytest，CACHE-01）。
         Step(id="go", title="Go：go.work 的每个模块 build、vet、test", commands=go, tools=["go", "temporal", "postgres", "docker"]),
+        # D-28：Rust 的检查与 sandbox-agent 的黑盒测试（两版都跑，所以也要 go）。
+        Step(
+            id="rust",
+            title="Rust：cargo fmt、clippy、test、deny，与 sandbox-agent 的黑盒测试（Go 版、Rust 版）",
+            commands=[
+                Command(argv=["cargo", "fmt", "--all", "--check"], cwd=root),
+                Command(argv=["cargo", "clippy", "--locked", "--workspace", "--all-targets", "--", "-D", "warnings"], cwd=root),
+                Command(argv=["cargo", "test", "--locked", "--workspace"], cwd=root),
+                Command(argv=["cargo", "deny", "check"], cwd=root),
+                Command(argv=_pytest("agentruntime-sandbox-agent-tests", "tests/sandbox-agent"), cwd=root),
+            ],
+            tools=["cargo", "cargo-deny", "go", "uv"],
+        ),
         _python(
             "py-core", "libs/py-core（含 Postgres、Qdrant、Milvus 适配器与 K8s 沙箱）", root / "libs" / "py-core", "agentruntime-core", ["tests"],
-            ["uv", "temporal", "postgres", "qdrant", "docker", "go", "kind", "kubectl"],
+            # cargo：K8s 与 Cloudflare 假桥的测试编译 Rust 版 sandbox-agent（agentbuild，D-28）。
+            ["uv", "temporal", "postgres", "qdrant", "docker", "go", "cargo", "kind", "kubectl"],
         ),
         _python("py-memory", "services/py-memory（开发后端与 Postgres + Qdrant）", root / "services" / "py-memory", "agentruntime-memory", ["tests"], ["uv", "postgres", "qdrant"]),
         _python("py-learning", "services/py-learning（含消费 trace 主题的 Redpanda 容器）", root / "services" / "py-learning", "agentruntime-learning", ["tests"],
                 ["uv", "docker"]),
         _python("py-worker", "services/py-worker（沙箱环境表在 SQLite 与 Postgres 上各跑一遍）", root / "services" / "py-worker", "agentruntime-worker", ["tests"],
-                ["uv", "temporal", "postgres", "go"]),
+                ["uv", "temporal", "postgres", "cargo"]),
         # docker：两个 task-service 副本的用例拉起 Valkey（tests/e2e/e2e_support/valkey.py，TSP-2）。
         _python("e2e", "端到端测试（不含故障注入）", root / "tests" / "e2e", "agentruntime-e2e-tests", ["-m", "not faults"], ["uv", "go", "temporal", "docker"]),
         _python("faults", "故障注入与恢复套件", root / "tests" / "e2e", "agentruntime-e2e-tests", ["faults"], ["uv", "go", "temporal"]),

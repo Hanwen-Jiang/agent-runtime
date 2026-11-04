@@ -26,6 +26,7 @@ COPY services/py-learning/ services/py-learning/
 COPY tests/contract/pyproject.toml tests/contract/
 COPY tests/deploy/pyproject.toml tests/deploy/
 COPY tests/e2e/pyproject.toml tests/e2e/
+COPY tests/sandbox-agent/pyproject.toml tests/sandbox-agent/
 COPY schemas/ schemas/
 ARG PACKAGE
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev --package "${PACKAGE}"

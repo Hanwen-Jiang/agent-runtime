@@ -152,7 +152,7 @@ def test_universal_has_one_layer_per_toolchain_from_pinned_images() -> None:
     assert not re.search(r"curl[^\n|]*\|\s*(ba)?sh", text), "不把下载的脚本管道给 shell"
 
 
-# sandbox-agent 自己就交给命令的变量（services/go-sandbox-agent/cmd/sandbox-agent 的 commandEnv）与它自己的配置。
+# sandbox-agent 自己就交给命令的变量（services/rs-sandbox-agent/src/main.rs 的 command_env，与 Go 版相同）与它自己的配置。
 AGENT_BASE_ENV = {"PATH", "HOME", "LANG", "LC_ALL", "TZ", "PYTHONIOENCODING", "PYTHONDONTWRITEBYTECODE"}
 
 

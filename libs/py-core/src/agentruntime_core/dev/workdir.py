@@ -1,5 +1,5 @@
 """工作目录的导出、导入、清单、列目录与搜索（D-06；docs/plan/workspace-layer.md）：开发实现的 Sandbox 直接对本机目录做，
-规则与 sandbox-agent 的 /v1/archive、/v1/manifest、/v1/list、/v1/grep 相同（services/go-sandbox-agent/internal/agent/archive.go）。
+规则与 sandbox-agent 的 /v1/archive、/v1/manifest、/v1/list、/v1/grep 相同（services/rs-sandbox-agent/src/archive.rs；Go 版 services/go-sandbox-agent 并存一个发布周期，D-28）。
 语义见 agentruntime_core.providers.sandbox 的 SandboxArchive、SandboxBrowse。
 
 - 只认普通文件、目录与符号链接；权限位只留 0o777 以内；agent 的标记文件 .agentruntime 不进存档与清单。

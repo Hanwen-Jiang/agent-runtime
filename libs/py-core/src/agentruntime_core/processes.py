@@ -1,7 +1,7 @@
 """子进程树：命令可能再起子进程，超时与取消时都要一起停（docs/plan/running-task-interaction.md 第 2 节）。
 
 POSIX 上让命令自成一个进程组，杀整个组；Windows 上用 taskkill /T。开发实现（本地沙箱、host 的 shell_run）用；K8s 与 Cloudflare 沙箱里的
-agent 自己杀进程组（services/go-sandbox-agent）。只用标准库。
+agent 自己杀进程组（services/rs-sandbox-agent，D-28）。只用标准库。
 """
 
 from __future__ import annotations

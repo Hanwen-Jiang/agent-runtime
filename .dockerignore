@@ -9,6 +9,8 @@
 **/.ruff_cache
 **/.mypy_cache
 **/node_modules
+# Rust 的构建目录（根 Cargo workspace）
+target
 **/.wrangler
 **/.eval-reports
 **/.live-reports
@@ -38,3 +40,5 @@ tests/e2e/e2e_support
 tests/e2e/faults
 tests/e2e/live
 tests/e2e/test_*.py
+tests/sandbox-agent/golden
+tests/sandbox-agent/*.py

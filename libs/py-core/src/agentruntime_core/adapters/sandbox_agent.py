@@ -1,4 +1,4 @@
-"""sandbox-agent 的客户端（agent 在 services/go-sandbox-agent）。K8s 的沙箱 Pod 与 Cloudflare 的 Container 里跑的是同一个 agent，
+"""sandbox-agent 的客户端（agent 在 services/rs-sandbox-agent；Go 版 services/go-sandbox-agent 接口相同，并存一个发布周期，D-28）。K8s 的沙箱 Pod 与 Cloudflare 的 Container 里跑的是同一个 agent，
 Sandbox 的这两个适配器都经它执行命令、读写文件（计划 docs/plan/cloud-deploy.md 的 D-05、D-07）。只用标准库。
 
 怎么连到 agent 由适配器给出（AgentEndpoint）：集群内直连 Pod 的地址；集群外经 K8s API Server 的 pods/proxy；

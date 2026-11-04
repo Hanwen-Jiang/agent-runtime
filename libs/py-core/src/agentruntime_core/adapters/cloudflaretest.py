@@ -1,8 +1,8 @@
 """测试里的 Cloudflare 沙箱桥（docs/plan/cloud-deploy.md D-07）：与 deploy/cloudflare/sandbox-bridge 同一套 HTTP 接口，
-每个环境起一个真的 sandbox-agent 进程（本机编译），转发规则也相同：核对桥的令牌与 X-Sandbox-Owner，agent 的令牌只在桥里。
+每个环境起一个真的 sandbox-agent 进程（本机编译，默认是 Rust 版，见 agentbuild），转发规则也相同：核对桥的令牌与 X-Sandbox-Owner，agent 的令牌只在桥里。
 
 用来跑 Cloudflare 适配器的一致性测试；Cloudflare 那边的东西（microVM、出网白名单、空闲回收）测不到，真实端点的用例要设
-AR_LIVE_CLOUDFLARE=1（花钱、不进 CI）。要 PATH 上的 go。
+AR_LIVE_CLOUDFLARE=1（花钱、不进 CI）。要 PATH 上的 cargo（AR_SANDBOX_AGENT_IMPL=go 时是 go）。
 """
 
 from __future__ import annotations
@@ -25,6 +25,8 @@ from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+
+from agentruntime_core.adapters import agentbuild
 
 REPO_ROOT = Path(__file__).resolve().parents[5]
 _ENV_PATH = re.compile(r"^/v1/sandboxes/([^/]+)(/agent(/.*))?$")
@@ -49,19 +51,13 @@ class _Env:
 
 class FakeBridge:
     def __init__(self, token: str | None = None) -> None:
-        go = shutil.which("go")
-        if go is None:
-            raise MissingTool("找不到 go（要编译 sandbox-agent）")
         self.token = token or secrets.token_hex(24)
         self._agent_key = secrets.token_bytes(32)
         self._dir = Path(tempfile.mkdtemp(prefix="ar-cfbridge-"))
-        self._agent = self._dir / ("sandbox-agent" + (".exe" if os.name == "nt" else ""))
-        result = subprocess.run(
-            [go, "build", "-o", str(self._agent), "./cmd/sandbox-agent"],
-            cwd=REPO_ROOT / "services" / "go-sandbox-agent", capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600,
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"编译 sandbox-agent 失败：{result.stderr}")
+        try:
+            self._agent = agentbuild.build(self._dir)
+        except agentbuild.MissingTool as e:
+            raise MissingTool(str(e)) from None
         self.envs: dict[str, _Env] = {}
         self.created: list[dict[str, Any]] = []
         self.calls: list[tuple[str, str]] = []

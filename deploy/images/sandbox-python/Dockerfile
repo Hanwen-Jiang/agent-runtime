@@ -4,14 +4,20 @@
 #   桥经 AGENT_TOKEN、AGENT_WORKDIR、AGENT_ADDR 配置它。
 # - K8s 后端：同一个镜像也能用（Pod 的 command 指向 initContainer 注入的 agent，ENTRYPOINT 不起作用）。
 # 以 10001 运行；/workspace 归 10001 所有。
-ARG GO_IMAGE=golang:1.27-bookworm
+ARG AGENT_RUST_IMAGE=rust:1.99.1-slim-bookworm
 ARG PYTHON_IMAGE=python:3.13-slim
 
-FROM ${GO_IMAGE} AS build
-WORKDIR /src/services/go-sandbox-agent
-COPY services/go-sandbox-agent/ ./
-ENV GOWORK=off CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOFLAGS=-mod=readonly
-RUN --mount=type=cache,target=/root/.cache/go-build go build -trimpath -ldflags="-s -w" -o /out/sandbox-agent ./cmd/sandbox-agent
+FROM ${AGENT_RUST_IMAGE} AS build
+# Rust 版 agent（services/rs-sandbox-agent，D-28）：musl 静态链接。根 Cargo workspace 的成员都要在（cargo 读 workspace 的清单），
+# 只编译 agent；rust-toolchain.toml 固定的版本、组件与 musl 目标由 rustup 按需装上。
+WORKDIR /src
+COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
+COPY libs/rs-sys/ libs/rs-sys/
+COPY services/rs-sandbox-agent/ services/rs-sandbox-agent/
+COPY services/rs-fc-manager/ services/rs-fc-manager/
+RUN --mount=type=cache,target=/usr/local/cargo/registry --mount=type=cache,target=/src/target \
+    cargo build --locked --release --target x86_64-unknown-linux-musl -p rs-sandbox-agent \
+    && install -D -m 0755 target/x86_64-unknown-linux-musl/release/sandbox-agent /out/sandbox-agent
 
 FROM ${PYTHON_IMAGE}
 COPY --from=build /out/sandbox-agent /usr/local/bin/sandbox-agent

@@ -6,7 +6,7 @@
   工作流据此告诉模型。
 
 K8s 与 Cloudflare 后端的 exec 经 AgentClient，取消时断开连接的测试在 libs/py-core 的 tests/adapters/test_sandbox_exec_cancel.py；
-agent 一侧断开后杀进程组的测试在 services/go-sandbox-agent。
+agent 一侧断开后杀进程组的测试在 tests/sandbox-agent 的 test_cancel.py（Go 版与 Rust 版都跑，D-28）。
 """
 
 from __future__ import annotations

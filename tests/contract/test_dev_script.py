@@ -27,7 +27,7 @@ from contract_tests.paths import REPO_ROOT
 from contract_tests.tools import require_tool, run
 
 SCRIPT = REPO_ROOT / "scripts" / "check.py"
-STEP_IDS = ("proto", "contract", "go", "py-core", "py-memory", "py-learning", "py-worker", "e2e", "faults")
+STEP_IDS = ("proto", "contract", "go", "rust", "py-core", "py-memory", "py-learning", "py-worker", "e2e", "faults")
 
 
 def load() -> ModuleType:
@@ -113,6 +113,15 @@ def test_python_steps_share_one_sync() -> None:
     assert [s["id"] for s in plan("--only", "go")["steps"]] == ["go"], "只跑 Go 时不同步 Python 依赖"
 
 
+def test_rust_step_runs_fmt_clippy_test_deny_and_the_black_box_suite() -> None:
+    commands = [c["argv"] for c in steps_by_id(plan("--only", "rust"))["rust"]["commands"]]
+    assert ["cargo", "fmt", "--all", "--check"] in commands
+    assert ["cargo", "clippy", "--locked", "--workspace", "--all-targets", "--", "-D", "warnings"] in commands
+    assert ["cargo", "test", "--locked", "--workspace"] in commands
+    assert ["cargo", "deny", "check"] in commands
+    assert any("tests/sandbox-agent" in argv and "pytest" in argv for argv in commands), "sandbox-agent 的黑盒测试（D-28）"
+
+
 def test_contract_step_leaves_go_module_tests_to_the_go_step() -> None:
     [command] = steps_by_id(plan("--only", "contract"))["contract"]["commands"]
     argv = command["argv"]
@@ -131,10 +140,11 @@ def test_steps_declare_the_tools_they_need() -> None:
     assert {"buf"} <= tools["proto"]
     assert {"uv", "buf", "go"} <= tools["contract"]
     assert {"go", "temporal", "postgres"} <= tools["go"]
-    assert {"uv", "temporal", "postgres", "qdrant", "docker", "go", "kind", "kubectl"} <= tools["py-core"]
+    assert {"cargo", "cargo-deny", "go", "uv"} <= tools["rust"], "D-28：Rust 的检查与两版 agent 的黑盒测试"
+    assert {"uv", "temporal", "postgres", "qdrant", "docker", "go", "cargo", "kind", "kubectl"} <= tools["py-core"]
     assert {"uv", "postgres", "qdrant"} <= tools["py-memory"]
     assert {"uv", "docker"} <= tools["py-learning"]
-    assert {"uv", "temporal"} <= tools["py-worker"]
+    assert {"uv", "temporal", "cargo"} <= tools["py-worker"], "沙箱的测试编译 Rust 版 sandbox-agent"
     assert {"uv", "go", "temporal"} <= tools["e2e"] and {"uv", "go", "temporal"} <= tools["faults"]
 
 

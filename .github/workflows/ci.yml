@@ -3,7 +3,8 @@
 # 端到端测试留在夜间任务（nightly.yml）。
 # 工具链与夜间任务、CLAUDE.md 一致：Go 1.27、uv 0.12（Python 3.13）、buf 1.73、Temporal CLI 1.9.1、PostgreSQL（runner 预装）、
 # Qdrant 1.19.1、Milvus 3.0.2（py-core 的测试用 runner 预装的 Docker 拉起单机版容器）、kind 0.33.0 与 kubectl（py-core 的
-# K8s 沙箱测试用 kind 拉起集群，Go 编译 sandbox-agent）、Helm 3.19（tests/deploy 用）；
+# K8s 沙箱测试用 kind 拉起集群，编译 Rust 版 sandbox-agent）、Helm 3.19（tests/deploy 用）；Rust 按 rust-toolchain.toml（runner 预装的
+# rustup 装固定的版本）、cargo-deny（rust 这一步，D-28）；
 # otelcol-contrib 与 Chart 里的 Collector 镜像同一版本（tests/deploy 用它校验 Collector 配置）。缺工具就失败，不跳过。
 name: ci
 
@@ -32,6 +33,9 @@ env:
   HELM_VERSION: "3.19.0"
   OTELCOL_VERSION: "0.135.0"
   KIND_VERSION: "0.33.0"
+  # cargo deny check（deny.toml）；发布满两周。
+  CARGO_DENY_VERSION: "0.20.2"
+  CARGO_TERM_COLOR: never
 
 jobs:
   contract:
@@ -103,6 +107,47 @@ jobs:
       - name: Go
         run: python3 scripts/check.py --only go
 
+  rust:
+    name: Rust（Cargo workspace）与 sandbox-agent 的黑盒测试（Go 版、Rust 版，D-28）
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # runner 预装了 rustup：按 rust-toolchain.toml 装固定的版本、组件与 musl 目标。
+      - name: 安装 Rust（rust-toolchain.toml）
+        run: |
+          rustup toolchain install || rustup show
+          cargo --version
+
+      - name: 安装 cargo-deny
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL "https://github.com/EmbarkStudios/cargo-deny/releases/download/${CARGO_DENY_VERSION}/cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl.tar.gz" \
+            | tar -xz -C "$HOME/.local/bin" --strip-components 1 "cargo-deny-${CARGO_DENY_VERSION}-x86_64-unknown-linux-musl/cargo-deny"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # 黑盒测试两版都跑：Go 版要 go。
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+          cache-dependency-path: "**/go.sum"
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.x"
+          enable-cache: true
+
+      - name: Rust
+        run: python3 scripts/check.py --only rust --junit-dir "$RUNNER_TEMP/junit"
+
+      - name: 上传测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-rust
+          path: ${{ runner.temp }}/junit
+
   python:
     name: py-core、py-memory、py-learning（Postgres + Qdrant + Milvus + kind）
     runs-on: ubuntu-latest
@@ -119,6 +164,12 @@ jobs:
         with:
           version: "0.12.x"
           enable-cache: true
+
+      # K8s 与 Cloudflare 假桥的测试编译 Rust 版 sandbox-agent（D-28）。runner 预装了 rustup：按 rust-toolchain.toml 装固定的版本、组件与 musl 目标。
+      - name: 安装 Rust（rust-toolchain.toml）
+        run: |
+          rustup toolchain install || rustup show
+          cargo --version
 
       - name: 安装 Temporal CLI、Qdrant 与 kind
         run: |
@@ -162,10 +213,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 沙箱的测试要编译 sandbox-agent（Cloudflare 假桥里跑它，D-11）。
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.27"
+      # 沙箱的测试要编译 sandbox-agent（Cloudflare 假桥里跑它，D-11；Rust 版，D-28）。runner 预装了 rustup：按 rust-toolchain.toml 装固定的版本、组件与 musl 目标。
+      - name: 安装 Rust（rust-toolchain.toml）
+        run: |
+          rustup toolchain install || rustup show
+          cargo --version
 
       - uses: astral-sh/setup-uv@v6
         with:

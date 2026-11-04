@@ -45,7 +45,10 @@ def _missing(tool: str) -> None:
 def _build(impl: str, out_dir: Path) -> Path:
     given = os.environ.get(f"AR_SANDBOX_AGENT_{impl.upper()}_BIN")
     if given:
-        return Path(given)
+        final = out_dir / f"{impl}-sandbox-agent{EXE}"
+        shutil.copy2(given, final)
+        final.chmod(0o755)
+        return final
     if impl == "go":
         go = shutil.which("go")
         if not go:

@@ -6,7 +6,7 @@
 - 工作区：宿主目录（AR_KIND_WORKSPACES，默认 ~/.local/kindtest/workspaces，要在 Docker 能挂载的本地盘上）经 kind 的
   extraMounts 挂到节点的 /var/lib/agentruntime/workspaces，再按 deploy/cluster/workspaces.yaml 建 PV 与 PVC，同生产的单节点部署。
 - 应用 deploy/cluster 的 namespaces.yaml、sandboxes.yaml、workspaces.yaml（沙箱命名空间的 Pod Security、默认拒绝的网络策略、配额）。
-- 镜像：sandbox-agent 用本仓库的源码编译成 Linux 静态二进制，放进 FROM scratch 的镜像（不用拉基础镜像）；跑命令的镜像默认
+- 镜像：sandbox-agent 用本仓库的源码编译成 Linux 静态二进制（默认是 Rust 版，musl；见 agentbuild），放进 FROM scratch 的镜像（不用拉基础镜像）；跑命令的镜像默认
   python:3.13-slim（本机没有时 docker pull）。都用 kind load 装进节点。AR_SANDBOX_AGENT_IMAGE 给了就用现成的 agent 镜像。
 - gVisor：设 AR_KIND_GVISOR 为 gVisor 发布包（gvisor.tar.zstd 或 .tar.bz2，旁边要有同名的 .sha512）时，核对 sha512、在宿主上
   解开，把 runsc、containerd-shim-runsc-v1 与 gvisor-bin/ 拷进节点，给节点的 containerd 登记 runsc，再应用
@@ -24,6 +24,8 @@ import subprocess
 import tempfile
 import time
 from pathlib import Path
+
+from agentruntime_core.adapters import agentbuild
 
 CLUSTER = "agentruntime-test"
 NODE_WORKSPACES = "/var/lib/agentruntime/workspaces"
@@ -56,7 +58,6 @@ class Cluster:
         self.docker = _tool("docker", docker_dir)
         self.kubectl = _tool("kubectl", docker_dir or str(Path(self.docker).parent))
         self.kind = _tool("kind", os.environ.get("AR_KIND_BIN", ""))
-        self.go = shutil.which("go")
         self._env = {**os.environ, "PATH": os.pathsep.join([str(Path(self.docker).parent), str(Path(self.kind).parent), os.environ.get("PATH", "")])}
         if self._run(self.docker, "info", "--format", "{{.ServerVersion}}", check=False).returncode != 0:
             raise MissingTool("Docker 没在运行（docker info 失败），先启动 Docker Desktop")
@@ -119,17 +120,11 @@ class Cluster:
         return path
 
     def _build_agent(self) -> str:
-        if self.go is None:
-            raise MissingTool("找不到 go（要编译 sandbox-agent）")
         build = self._dir / "agent"
-        build.mkdir()
-        env = {**self._env, "GOOS": "linux", "GOARCH": "amd64", "CGO_ENABLED": "0"}
-        result = subprocess.run(
-            [self.go, "build", "-trimpath", "-o", str(build / "sandbox-agent"), "./cmd/sandbox-agent"],
-            cwd=REPO_ROOT / "services" / "go-sandbox-agent", env=env, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600,
-        )
-        if result.returncode != 0:
-            raise RuntimeError(f"编译 sandbox-agent 失败：{result.stderr}")
+        try:
+            agentbuild.build(build, linux_static=True, env=self._env)
+        except agentbuild.MissingTool as e:
+            raise MissingTool(str(e)) from None
         (build / "Dockerfile").write_text("FROM scratch\nCOPY sandbox-agent /sandbox-agent\nUSER 10001\nENTRYPOINT [\"/sandbox-agent\"]\n", "utf-8")
         self._run(self.docker, "build", "-q", "-t", AGENT_IMAGE, str(build), timeout=600)
         return AGENT_IMAGE

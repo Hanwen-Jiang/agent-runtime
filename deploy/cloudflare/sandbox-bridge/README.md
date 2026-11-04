@@ -16,7 +16,7 @@ npx wrangler secret put AGENT_KEY      # 派生每个沙箱的 agent 令牌，�
 npx wrangler deploy
 ```
 
-镜像是 `deploy/images/sandbox-python/Dockerfile`（python:3.13-slim 加 sandbox-agent），构建上下文是仓库根（`image_build_context`）。实例类型默认 `standard-2`（1 vCPU、6 GiB、12 GB 盘），在 `wrangler.jsonc` 里改。
+镜像是 `deploy/images/sandbox-python/Dockerfile`（python:3.13-slim 加 sandbox-agent；agent 是 Rust 版 `services/rs-sandbox-agent`，在镜像的构建阶段静态编译，D-28），构建上下文是仓库根（`image_build_context`）。实例类型默认 `standard-2`（1 vCPU、6 GiB、12 GB 盘），在 `wrangler.jsonc` 里改。
 
 ## 接到 Runtime
 

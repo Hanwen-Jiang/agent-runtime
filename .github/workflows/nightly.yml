@@ -134,6 +134,12 @@ jobs:
         with:
           version: "0.12.x"
 
+      # py-core 的 K8s 与 Cloudflare 假桥的测试编译 Rust 版 sandbox-agent（D-28）：runner 预装了 rustup，按 rust-toolchain.toml 装。
+      - name: 安装 Rust（rust-toolchain.toml）
+        run: |
+          rustup toolchain install || rustup show
+          cargo --version
+
       - name: 安装 kind（py-core 的 K8s 沙箱测试用它拉起集群；runner 预装了 kubectl）
         run: |
           mkdir -p "$HOME/.local/bin"

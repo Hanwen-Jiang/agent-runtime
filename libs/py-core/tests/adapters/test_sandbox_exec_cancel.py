@@ -3,7 +3,7 @@
 K8s 后端与 Cloudflare 后端都经 AgentClient。agent 看到连接断开才杀进程组；现在是 asyncio.to_thread 里的阻塞请求，协程取消了线程
 还在等，连接不断，命令一直跑。这里不用真的 agent，直接看连接；每个后端的命令真的停了在一致性测试里
 （conformance/sandbox.py 的 test_cancelling_exec_stops_the_command_and_its_children：本地、假桥上真的 agent，kind 要 AR_TEST_KIND，
-真桥要 AR_LIVE_CLOUDFLARE=1）。agent 一侧的测试在 services/go-sandbox-agent。
+真桥要 AR_LIVE_CLOUDFLARE=1）。agent 一侧的测试在 tests/sandbox-agent（Go 版与 Rust 版跑同一套黑盒用例，D-28）。
 """
 
 from __future__ import annotations
