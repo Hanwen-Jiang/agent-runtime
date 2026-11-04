@@ -32,6 +32,7 @@ from agentruntime_worker.activities.types import CatalogInfo, CatalogRequest, Pl
 from agentruntime_worker.planner.context import STUB_TEMPLATE_PREFIX, CatalogView, PlanningContext, RecipeEntry
 from agentruntime_worker.registry.client import GrpcRegistry
 from agentruntime_worker.tools.catalog import ToolCatalog
+from agentruntime_worker.tools.skills import TaskSkillPins, skill_catalog
 
 _REF = re.compile(r"^([a-z][a-z0-9_]*)@(v[0-9]+)$")
 
@@ -88,9 +89,11 @@ class RegistryCatalog:
 
 
 class RegistryContextSource:
-    def __init__(self, registry: GrpcRegistry, *, defaults: PlanningContext) -> None:
+    def __init__(self, registry: GrpcRegistry, *, defaults: PlanningContext, skill_pins: TaskSkillPins | None = None) -> None:
         self.registry = registry
         self.defaults = defaults
+        # N-14：给了就把 Task 固定的 Skill 的名字与说明放进 catalog.skills（固定的版本在业务库的 tasks.skill_pins）。
+        self.skill_pins = skill_pins
 
     async def load(self, inp: PlanRoundInput) -> PlanningContext:
         templates = await self.registry.list_node_templates(inp.tenant, inp.pinned)
@@ -106,6 +109,7 @@ class RegistryContextSource:
             recipes={f"{r.name}@{r.version}": r.task_family for r in recipes},
             tools=dict(self.defaults.catalog.tools),
             tiers=generation_tiers(_document(p.document) for p in profiles),
+            skills=await skill_catalog(self.registry, self.skill_pins, inp) if self.skill_pins is not None else {},
         )
         entries = []
         for r in recipes:

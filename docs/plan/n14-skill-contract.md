@@ -57,6 +57,16 @@
 | 文件交付到沙箱 | 与 D-27 的配置包重复 | 只经 `skill_read` | 少一条交付路径 | 无 | 用户以为文件在工作区里 | DEFER（D-27） |
 | 可执行脚本 | 包里的脚本绕过审批 | 只收文本，不执行 | 首版攻击面小 | 无 | 无 | REJECT |
 
-## 在实现之前
+## 实现（N-14-IMPL，2026-11-04）
 
-Registry 的 `GetSkill`、`ListSkills` 回 Unimplemented（`services/go-task-service/internal/registry/skills.go`），Publish 照旧不收 SKILL（`unsupported_kind`），新 Task 不固定 Skill；`SkillService` 还没挂到 task-service 上，调用得到 Unimplemented。
+| 部分 | 做法 |
+| --- | --- |
+| Registry（`internal/registry/skills.go`） | 三层都在 `registry_entries`，表结构不变：用户层在租户作用域、名字存成 `~<user_id>/<名字>`。同名时上层优先（下层发布上层当前有的名字是 Conflict `name_taken`；上层后来才有的遮住下层的，`shadowed`）。发布即生效，正文与当前版本相同时返回当前版本。`ResolvePinnedVersions` 固定看得到、没被遮住的当前版本。用户层每人 100 个当前的（`registry.ErrSkillLimit`；查数与写入不在同一事务，并发时可能多出一两个）。种子文件收 `kind: skill` |
+| 固定的版本给 Worker | task-service 提交时把 `PinnedVersions.skills` 另记在 `tasks.skill_pins`（taskstore 迁移 8，JSON）。Worker 按 task_id 读它与 `submitted_by`，不经工作流，命令序列不变；没有这行（sub_task 的子 Task）或旧库没有这一列时当作没有 Skill |
+| `SkillService`（`internal/skillapi`） | 挂在 Task API 的端口上，经 Ingress 认证与限流；没配 Registry 时 Unimplemented（`skills_unavailable`）；审计只记租户、用户、名字、版本、动作 |
+| Planner | `RegistryContextSource` 按固定的版本经 `ListSkills` 取名字与说明，放进 `CatalogView.skills`；规划的 brief 列出它们（是数据，不进 system 区）。有 Skill 时 `_with_reads` 给 tool_loop 的 Goal Node 加上 `skill_read`；没有 Skill 的 Task 不把 `skill_read` 列进目录 |
+| `skill_read`（`agentruntime_worker.tools.skills`） | 设了 `AR_REGISTRY_ADDRESS` 才登记，effect read：不给 path 时返回说明、instructions 与文件清单，给 path 时返回那份文件；没固定的名字 `skill_not_pinned`，没有的文件 `skill_file_not_found`；用户层按提交者读 |
+
+验收第 1～8 条有测试：`internal/registry/skills_test.go`（两种后端）、`internal/skillapi/server_test.go`、`internal/taskapi/skill_pins_test.go`、`services/py-worker/tests/test_skills.py`。第 9 条（golden 历史照旧回放）：Worker 的工作流没有改动。
+
+没做的：coding-agent 的“我的 Skill”（另一个仓库，下一步）；端到端用例（task-service + Worker + Registry 真跑一次 skill_read）；租户层的收回（Registry 没有收回的方法，平台层、租户层由运维发新版本）。

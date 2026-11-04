@@ -39,6 +39,8 @@ class CatalogView:
     tools: dict[str, str] = field(default_factory=dict)
     tiers: tuple[str, ...] = ()
     """为空表示不知道有哪些 Tier：规划结果里的 tier 一律去掉，由 Model Gateway 按 role 选默认 Tier（附录 H.3）。"""
+    skills: dict[str, str] = field(default_factory=dict)
+    """Task 固定的 Skill（N-14）：名字 → 说明（用户写的，是数据）。正文不在这里，tool_loop 经 skill_read 读。"""
 
 
 @dataclass(frozen=True)

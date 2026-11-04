@@ -12,6 +12,8 @@
   MCP 工具登记进 dev_tools(config)，退出时关闭会话。mcp_tool_names(config) 是现在登记了的 MCP 工具的名字（上下文占比里单独一类）。
 - ToolCatalog、DevCatalog、latest_spec：工具的 effect 与定义取自登记（catalog.py）。
 - deliver_file（deliver.py，N-18）：配了工作区目录时登记，把工作区里的文件作为 Task 的交付。
+- skill_read（skills.py，N-14）：配了 Registry（AR_REGISTRY_ADDRESS）时登记，按 Task 固定的版本读 Skill；固定的版本取自业务库的
+  tasks.skill_pins（skill_pins(config)，Planner 的目录读同一处）。
 """
 
 from __future__ import annotations
@@ -39,18 +41,28 @@ from agentruntime_worker.tools.deliver import DeliveryLimits, DirectoryReader, r
 from agentruntime_worker.tools.mcp import McpGateway
 from agentruntime_worker.tools.platform import CONTEXT_READ, PlatformToolsConfig, register_platform_tools
 from agentruntime_worker.tools.sandboxes import Sandboxes, registry_policy
+from agentruntime_worker.tools.skills import TaskSkillPins, register_skill_tools
 from agentruntime_worker.workspace.archive import WorkspaceArchiver
 from agentruntime_worker.workspace.operations import CREDENTIAL_SECRET, WorkspaceOperations
 
 __all__ = [
     "CONTEXT_READ", "DevCatalog", "ToolCatalog", "context_objects", "dev_tools", "latest", "latest_spec", "mcp_tool_names", "sandbox_broker",
-    "tool_sessions", "workspace_operations",
+    "skill_pins", "tool_sessions", "workspace_operations",
 ]
 
 _providers: dict[tuple[object, ...], LocalToolDriverProvider] = {}
 _objects: dict[tuple[object, ...], ObjectStoreProvider] = {}
 _brokers: dict[tuple[object, ...], SandboxBroker | None] = {}
 _mcp_names: dict[tuple[object, ...], frozenset[str]] = {}
+_pins: dict[tuple[object, ...], TaskSkillPins] = {}
+
+
+def skill_pins(config: WorkerConfig) -> TaskSkillPins:
+    """Task 固定的 Skill（N-14）：读业务库的 tasks 表（AR_RELATIONAL_DSN 的 Postgres，没设时数据目录下的 SQLite，与 task-service 同一个）。"""
+    key = (config.relational_dsn, config.data_dir)
+    if key not in _pins:
+        _pins[key] = TaskSkillPins(relational_store(config.relational_dsn, config.data_dir or Path(tempfile.mkdtemp(prefix="agentruntime-skills-"))))
+    return _pins[key]
 
 
 def _store_key(config: WorkerConfig) -> tuple[object, ...]:
@@ -198,6 +210,11 @@ def dev_tools(config: WorkerConfig) -> LocalToolDriverProvider:
                 provider, objects=context_objects(config), store=relational_store(config.relational_dsn, config.data_dir or Path(tempfile.mkdtemp(prefix="agentruntime-delivery-"))),
                 reader=DirectoryReader(config.tool_workspace_root), limits=DeliveryLimits.from_env(os.environ),
             )
+        if config.registry_address:
+            # 用户 Skill（N-14）：正文在 Registry，固定的版本在业务库的 tasks.skill_pins。
+            from agentruntime_worker.registry.client import GrpcRegistry
+
+            register_skill_tools(provider, registry=GrpcRegistry(config.registry_address), pins=skill_pins(config))
         _providers[key] = provider
     return provider
 

@@ -3,7 +3,8 @@
 规划之后，每个 tool_loop 的 Goal Node 加上 context_read（R-03 评审 D11）：模型按路径取回 Context Builder 外置或遮蔽的内容。
 只在 context_read 已登记、且这个 Goal 的 effect 上限（effect_ceiling，没写时取 Task 的）允许 read 时加；在 activity 里加，
 不改 Stage Runner。开发组装下 Node Catalog 列出 ToolDriver 登记的全部工具（ToolsContextSource，含 context_read），
-Planner 自己写了 context_read 时不再重复加。
+Planner 自己写了 context_read 时不再重复加。Task 固定了 Skill（N-14）时同样加上 skill_read；Skill 的名字与说明经
+RegistryContextSource 进规划的 brief（设了 AR_REGISTRY_ADDRESS 时）。
 """
 
 from __future__ import annotations
@@ -23,7 +24,8 @@ from agentruntime_worker.planner.context import CatalogView, PlanningContext, Pl
 from agentruntime_worker.planner.planner import Planner, PlannerConfig, PlanRequest
 from agentruntime_worker.registry import RegistryContextSource, registry_client
 from agentruntime_worker.session.transcript import worker_transcript
-from agentruntime_worker.tools import CONTEXT_READ, ToolCatalog, dev_tools
+from agentruntime_worker.tools import CONTEXT_READ, ToolCatalog, dev_tools, skill_pins
+from agentruntime_worker.tools.skills import SKILL_READ
 from agentruntime_worker.workflows import stage_plan as sp
 
 
@@ -63,18 +65,22 @@ class PlannerActivities:
             "；两次都不合格，用了保守规划" if result.fallback else "",
             f"；代码改正：{'；'.join(result.adjustments)}" if result.adjustments else "",
         )
-        stage = await self._with_context_read(inp.tenant, result.stage, context.effect_ceiling)
+        stage = await self._with_reads(inp.tenant, result.stage, context.effect_ceiling, skills=bool(context.catalog.skills))
         cost = round(sum(c.cost_usd for c in result.calls), 6)
         return PlanRoundOutput(
             stage=stage, triage_level=result.triage_level, task_plan=result.task_plan, cost_usd=cost, goal_code=result.goal_code, task_family=result.task_family,
             exit_when_code=result.exit_when_code, params=result.params,
         )
 
-    async def _with_context_read(self, tenant: Tenant, stage: Any, ceiling: str) -> Any:
-        """tool_loop 的 Goal Node 加上 context_read（已有的工具不变，追加在后面）。"""
+    async def _with_reads(self, tenant: Tenant, stage: Any, ceiling: str, *, skills: bool = False) -> Any:
+        """tool_loop 的 Goal Node 加上 context_read，Task 固定了 Skill 时再加上 skill_read（N-14）（已有的工具不变，追加在后面）。
+        只加登记了、effect 为 read 的。"""
         if self.tools is None or not isinstance(stage, dict) or not isinstance(stage.get("nodes"), list):
             return stage
-        if (await self.tools.effects(tenant, [CONTEXT_READ])).get(CONTEXT_READ) != "read":
+        wanted = [CONTEXT_READ, *([SKILL_READ] if skills else [])]
+        effects = await self.tools.effects(tenant, wanted)
+        adding = [name for name in wanted if effects.get(name) == "read"]
+        if not adding:
             return stage
         out = copy.deepcopy(stage)
         for node in out["nodes"]:
@@ -84,8 +90,7 @@ class PlannerActivities:
             if allowed not in sp.EFFECT_ORDER or sp.effect_rank(allowed) < sp.effect_rank("read"):
                 continue
             tools = [str(t) for t in node.get("tools") or []]
-            if CONTEXT_READ not in tools:
-                node["tools"] = [*tools, CONTEXT_READ]
+            node["tools"] = [*tools, *(name for name in adding if name not in tools)]
         return out
 
     def activities(self) -> dict[str, object]:
@@ -103,6 +108,9 @@ class ToolsContextSource:
     async def load(self, inp: PlanRoundInput) -> PlanningContext:
         ctx = await self.inner.load(inp)
         tools = {**ctx.catalog.tools, **await self.tools.all_effects(inp.tenant)}
+        if not ctx.catalog.skills:
+            # N-14：没有 Skill 的 Task 用不上 skill_read，不列给 Planner。
+            tools.pop(SKILL_READ, None)
         ceiling = (inp.task_state.get("constraints") or {}).get("effect_ceiling") or ctx.effect_ceiling
         return dataclasses.replace(ctx, catalog=dataclasses.replace(ctx.catalog, tools=tools), effect_ceiling=str(ceiling))
 
@@ -118,7 +126,8 @@ def dev_planner(config: WorkerConfig) -> PlannerActivities:
     defaults = PlanningContext(risk_authorized="read", effect_ceiling="read", catalog=catalog)
     inner: PlanningContextSource = StaticContextSource(defaults)
     if config.registry_address:
-        inner = RegistryContextSource(registry_client(config), defaults=dataclasses.replace(defaults, catalog=CatalogView()))
+        # N-14：Task 固定的 Skill（tasks.skill_pins）的名字与说明也由它放进目录。
+        inner = RegistryContextSource(registry_client(config), defaults=dataclasses.replace(defaults, catalog=CatalogView()), skill_pins=skill_pins(config))
     tools = ToolCatalog(dev_tools(config))
     source: PlanningContextSource = ToolsContextSource(inner, tools)
     transcript = worker_transcript(config)

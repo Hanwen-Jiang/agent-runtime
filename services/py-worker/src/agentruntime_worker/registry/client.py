@@ -52,7 +52,7 @@ def tenant_context(tenant: Tenant) -> tenant_pb2.TenantContext:
 
 
 def pinned_versions(pinned: Mapping[str, Any] | None) -> task_pb2.PinnedVersions:
-    """Task State 的 pinned（recipe、node_templates、reasoning_templates、model_profiles、tenant_policy）转回 proto。"""
+    """Task State 的 pinned（recipe、node_templates、reasoning_templates、model_profiles、tenant_policy，N-14 的 skills）转回 proto。"""
     pinned = pinned or {}
     return task_pb2.PinnedVersions(
         recipe=pinned.get("recipe") or "",
@@ -60,6 +60,7 @@ def pinned_versions(pinned: Mapping[str, Any] | None) -> task_pb2.PinnedVersions
         reasoning_templates=dict(pinned.get("reasoning_templates") or {}),
         model_profiles=dict(pinned.get("model_profiles") or {}),
         tenant_policy=pinned.get("tenant_policy") or "",
+        skills=dict(pinned.get("skills") or {}),
     )
 
 
@@ -186,6 +187,29 @@ class GrpcRegistry:
         """Recipe；version 为空时取默认版本。"""
         resp = await self._call("GetRecipe", rg.GetRecipeRequest(tenant=tenant_context(tenant), name=name, version=version))
         return resp.recipe
+
+    async def list_skills(self, tenant: Tenant, pins: Mapping[str, str] | None) -> list[rg.Skill]:
+        """Skill 的目录（N-14）：按固定的版本（名字 → <层>/vN）列；pins 为空时列看得到的当前版本。不带正文，分页取完。
+        用户层按 tenant.user_id。"""
+        out: list[rg.Skill] = []
+        token = ""
+        for _ in range(MAX_PAGES):
+            resp = await self._call(
+                "ListSkills",
+                rg.ListSkillsRequest(
+                    tenant=tenant_context(tenant), pinned_versions=task_pb2.PinnedVersions(skills=dict(pins or {})), page_size=PAGE_SIZE, page_token=token,
+                ),
+            )
+            out.extend(resp.skills)
+            token = resp.next_page_token
+            if not token:
+                return out
+        raise TransientError("paging_runaway", "Registry 的分页没有结束")
+
+    async def get_skill(self, tenant: Tenant, name: str, version: str = "") -> rg.Skill:
+        """一个 Skill 的正文（N-14）；version 写成 <层>/vN，为空时取看得到的当前版本。用户层按 tenant.user_id。"""
+        resp = await self._call("GetSkill", rg.GetSkillRequest(tenant=tenant_context(tenant), name=name, version=version))
+        return resp.skill
 
     # --- 写（要发布令牌）---
 
