@@ -36,7 +36,23 @@ input[type=search] { min-width:220px; flex:1; }
 .body dt { color:var(--muted); } .body dd { margin:0; overflow-wrap:anywhere; }
 pre { background:var(--code); border:1px solid var(--line); border-radius:6px; padding:8px; overflow:auto; max-height:420px; font-size:12.5px; white-space:pre-wrap; overflow-wrap:anywhere; }
 .count { color:var(--muted); font-size:14px; font-weight:400; }
-@media (max-width: 720px) { .row > summary { grid-template-columns: 1fr; } .tags { justify-content:flex-start; } }
+.blk h4 { margin:14px 0 6px; font-size:14px; }
+.prose { white-space:pre-wrap; overflow-wrap:anywhere; }
+code { font-family:ui-monospace, SFMono-Regular, Consolas, monospace; font-size:13px; }
+.cands { display:grid; gap:8px; }
+.cands.cols { grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); }
+.cand { border:1px solid var(--line); border-radius:8px; padding:0 10px 8px; background:var(--bg); max-height:520px; overflow:auto; }
+.cand.better, .cand.chosen, .cand.correct { border-color:var(--ok); box-shadow:inset 3px 0 0 var(--ok); }
+.cand.rejected { color:var(--muted); }
+.cand-head { display:flex; gap:8px; align-items:center; padding:6px 0 4px; }
+.mark-better, .mark-chosen, .mark-correct { color:var(--ok); border-color:var(--ok); }
+.msg { display:grid; grid-template-columns:max-content minmax(0, 1fr); gap:8px; align-items:start; margin:4px 0; }
+.call { border-left:3px solid var(--accent); padding:2px 0 2px 10px; margin:6px 0; }
+.call-head { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
+.call pre { margin:4px 0 0; }
+.tool { margin:4px 0; } .tool summary { cursor:pointer; }
+.blk ul { margin:4px 0; padding-left:20px; } .blk li { overflow-wrap:anywhere; }
+@media (max-width: 720px) { .row > summary { grid-template-columns: 1fr; } .tags { justify-content:flex-start; } .badge { white-space:normal; overflow-wrap:anywhere; } }
 </style>
 </head>
 <body>
@@ -104,11 +120,66 @@ pre { background:var(--code); border:1px solid var(--line); border-radius:6px; p
     return [s.dataset, s.source_id || s.instance_id || (s.row_index_zero_based !== undefined ? `row ${s.row_index_zero_based}` : ""), s.revision ? `@${String(s.revision).slice(0, 7)}` : ""].filter(Boolean).join(" · ");
   }
 
+  // 按题型画的块（site_views）：链接只给整条是 https 地址的。
+  const MARK = { better: { zh: "更好", en: "better" }, correct: { zh: "正确答案", en: "correct" } };
+  const linkish = (s) => {
+    if (!/^https:\/\/\S+$/.test(s)) return document.createTextNode(s);
+    const link = el("a", "", s); link.href = s; link.rel = "noopener noreferrer"; return link;
+  };
+  function block(b) {
+    const box = el("section", `blk blk-${b.type}`);
+    if (b.label) box.append(el("h4", "", t(b.label)));
+    const items = b.items || [];
+    if (b.type === "text") box.append(b.mono ? el("pre", "", b.text) : el("div", "prose", b.text));
+    else if (b.type === "candidates") {
+      const wrap = el("div", b.columns ? "cands cols" : "cands");
+      for (const c of items) {
+        const card = el("div", `cand ${c.mark || ""}`);
+        const head = el("div", "cand-head"); head.append(el("strong", "", t(c.label)));
+        if (MARK[c.mark]) head.append(el("span", `badge mark-${c.mark}`, t(MARK[c.mark])));
+        card.append(head, el("div", "prose", c.text)); wrap.append(card);
+      }
+      box.append(wrap);
+    } else if (b.type === "fields") {
+      const dl = el("dl");
+      for (const f of items) {
+        dl.append(el("dt", "", t(f.key)));
+        const dd = el("dd", "prose");
+        if (f.href && /^https:\/\//.test(f.href)) { const link = el("a", "", t(f.value)); link.href = f.href; link.rel = "noopener noreferrer"; dd.append(link); } else dd.append(linkish(t(f.value)));
+        dl.append(dd);
+      }
+      box.append(dl);
+    } else if (b.type === "messages") {
+      for (const m of items) { const line = el("div", "msg"); line.append(el("span", "badge", m.role), el("div", "prose", m.content)); box.append(line); }
+    } else if (b.type === "tools") {
+      for (const x of items) {
+        const tool = el("details", "tool"); const head = el("summary");
+        head.append(el("code", "", x.name), document.createTextNode(x.description ? ` — ${x.description}` : ""));
+        tool.append(head, el("pre", "", text(x.parameters))); box.append(tool);
+      }
+    } else if (b.type === "calls") {
+      if (!items.length) box.append(el("p", "muted", lang === "zh" ? "（无）" : "(none)"));
+      for (const c of items) {
+        const call = el("div", "call"); const head = el("div", "call-head");
+        if (c.id) head.append(el("span", "muted", c.id));
+        head.append(el("code", "", c.name));
+        if (c.by && c.by !== "assistant") head.append(el("span", "badge", c.by));
+        const rest = Object.assign({}, c); delete rest.name; delete rest.id; delete rest.by;
+        const only = Object.keys(rest).length === 1 && "arguments" in rest;
+        call.append(head, el("pre", "", text(only ? rest.arguments : rest))); box.append(call);
+      }
+    } else if (b.type === "list") {
+      const ul = el("ul"); for (const s of items) { const li = el("li"); li.append(linkish(s)); ul.append(li); } box.append(ul);
+    } else if (b.type === "json") box.append(el("pre", "", text(b.value)));
+    return box;
+  }
+
   function row(item) {
     const d = el("details", "row");
     const s = el("summary");
-    const q = el("div", "q", item.question || item.id);
-    const a = el("div", "a", text(item.answer));
+    const sum = item.view && item.view.summary;
+    const q = el("div", "q", sum ? t(sum.question) : (item.question || item.id));
+    const a = el("div", "a", sum ? t(sum.answer) : text(item.answer));
     const tags = el("div", "tags");
     const st = statusOf(item);
     tags.append(el("span", `badge ${st}`, t(STATUS[st])), el("span", "badge", label("source_type", item.source_type)), el("span", "badge", sourceLine(item.source)));
@@ -132,6 +203,11 @@ pre { background:var(--code); border:1px solid var(--line); border-radius:6px; p
       } else add(lang === "zh" ? "来源" : "Source", sourceLine(item.source));
       if (item.group_id && item.group_id !== item.id) add(lang === "zh" ? "同组原题" : "Group", item.group_id);
       body.append(dl);
+      if (item.view) {
+        for (const b of item.view.blocks || []) body.append(block(b));
+        d.append(body);
+        return;
+      }
       body.append(el("h4", "", lang === "zh" ? "题目（完整输入）" : "Question (full input)"), el("pre", "", item.question));
       body.append(el("h4", "", lang === "zh" ? "答案 / 标注" : "Answer / labels"), el("pre", "", text(item.answer)));
       const detail = Object.assign({}, item.detail);

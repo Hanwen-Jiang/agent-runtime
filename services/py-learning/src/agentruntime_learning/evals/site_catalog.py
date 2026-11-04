@@ -14,6 +14,8 @@ evalsets/site.json 说明哪些目录上页面、属于哪个评测类别、来�
   缺来源的题不进输出，记进 excluded。
 - 人审状态：task 类的 review.status，jsonl 的 confirmed；已确认的带确认人与日期。原题（source_type 为 original）一律是 original：
   官方的题与答案，不需人审；来源写在 site.json 的数据集上（``source``），每题加上自己的 id。
+- jsonl 数据集写了 ``layout``（题型，见 site_views）时每题带 ``view``（页面按题型画的几块与摘要），不再带原样的 ``detail``；
+  没写或不认识的照旧带 detail。
 """
 
 from __future__ import annotations
@@ -23,6 +25,8 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+from agentruntime_learning.evals.site_views import build_view
 
 GROUPINGS = ("eval_category", "source_type", "framework", "review", "dataset")
 DEFAULT_GROUPING = "eval_category"
@@ -133,14 +137,15 @@ def _load_dataset(catalog: Catalog, name: str, spec: dict[str, Any], base: Path)
         if key:
             sources[str(key)] = record
     kind = spec.get("items", "task_cases")
-    raw: list[tuple[str, str, str, Any, dict[str, Any], dict[str, Any]]] = []  # id, split, question, answer, review, detail
+    # id, split, question, answer, review, detail, 原样的一行（只有 jsonl 的；按题型画题用）
+    raw: list[tuple[str, str, str, Any, dict[str, Any], dict[str, Any], dict[str, Any] | None]] = []
     if kind in DIR_ITEMS:
         folder = base / kind
         for path in sorted(folder.glob("*.json")) if folder.is_dir() else []:
             doc = _read_json(path)
             question, answer = _task_question_answer(kind, doc)
             detail = {k: v for k, v in doc.items() if k not in ("id", "split", "review", "kind")}
-            raw.append((str(doc.get("id", path.stem)), str(doc.get("split", "dev")), question, answer, _review(doc), detail))
+            raw.append((str(doc.get("id", path.stem)), str(doc.get("split", "dev")), question, answer, _review(doc), detail, None))
     elif kind == "jsonl":
         file = _inside(base, str(spec.get("file", "")))
         context = {}
@@ -152,10 +157,10 @@ def _load_dataset(catalog: Catalog, name: str, spec: dict[str, Any], base: Path)
             if spec.get("context_ids") and context:
                 detail["context"] = [context[i] for i in row.get(spec["context_ids"], []) if i in context]
             raw.append((str(row.get("id", "")), str(row.get("split", "dev")), str(row.get(spec.get("question", "message"), "")),
-                        row.get(spec.get("answer", "expected_output")), _review(row), detail))
+                        row.get(spec.get("answer", "expected_output")), _review(row), detail, row))
     counts = {"total": len(raw), "shown": 0, "holdout_hidden": 0, "confirmed": 0, "draft": 0, "original": 0, "excluded": 0}
     items: list[dict[str, Any]] = []
-    for item_id, split, question, answer, review, detail in raw:
+    for item_id, split, question, answer, review, detail, row in raw:
         if spec["source_type"] == "original":
             review = {"status": "original"}  # 官方的题与答案，不需人审
         counts[review["status"] if review["status"] in ("confirmed", "original") else "draft"] += 1
@@ -169,11 +174,17 @@ def _load_dataset(catalog: Catalog, name: str, spec: dict[str, Any], base: Path)
             catalog.excluded.append({"dataset": name, "id": item_id, "reason": "no_source"})
             continue
         group = (record or {}).get("group_id") or (record or {}).get("derived_from") or item_id
-        items.append({
+        item = {
             "id": item_id, "dataset": name, "source_type": spec["source_type"], "framework": spec.get("framework", ""),
             "eval_category": spec.get("eval_category", ""), "review": review, "question": question, "answer": answer,
             "source": source, "group_id": group, "split": split, "detail": detail,
-        })
+        }
+        view = build_view(str(spec["layout"]), row, question_key=spec.get("question", "message"), answer_key=spec.get("answer", "expected_output"),
+                          context=detail.get("context"), context_ids=spec.get("context_ids", "")) if row is not None and spec.get("layout") else None
+        if view is not None:
+            item["view"] = view
+            del item["detail"]  # 内容都在 view 里
+        items.append(item)
         counts["shown"] += 1
     catalog.items[name] = items
     catalog.holdout[name] = counts["holdout_hidden"]
