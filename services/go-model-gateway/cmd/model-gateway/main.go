@@ -129,6 +129,8 @@ func serve(ctx context.Context, stdout, stderr io.Writer, getenv func(string) st
 		Meter:          stdout,
 		Logger:         logger,
 		Telemetry:      tel,
+		// BUDGET-DEFAULT：请求没写输出上限时的可见输出上限（AR_MODEL_DEFAULT_MAX_OUTPUT）。
+		DefaultMaxOutput: cfg.DefaultMaxOutput,
 	})
 	if err != nil {
 		fmt.Fprintln(stderr, "model-gateway：", err)

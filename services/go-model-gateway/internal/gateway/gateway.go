@@ -128,7 +128,13 @@ type Options struct {
 	// Telemetry 记每次模型调用的 span（附录 J.1；T-15），按请求的租户绑定；nil 表示不记。网关不在每次调用后 flush，
 	// 由 Telemetry 实现按批导出（OpenTelemetry 实现在后台导出，关闭时导出剩下的）。
 	Telemetry telemetry.Provider
+	// DefaultMaxOutput 是请求没写 max_output_tokens 时可见输出的上限（再加上这次的思考预算，不超过 Profile 的 max_output），
+	// 发给供应商与按它预留的是同一个数（BUDGET-DEFAULT）。0 用 DefaultMaxOutputTokens；负数不设，用 Profile 的 max_output。
+	DefaultMaxOutput int
 }
+
+// DefaultMaxOutputTokens 是 Options.DefaultMaxOutput 为 0 时的默认可见输出上限。
+const DefaultMaxOutputTokens = 16384
 
 // MeterRecord 是一条计量记录（每次成功的 RPC 一行 JSON）。不含消息内容与密钥。
 type MeterRecord struct {
@@ -205,6 +211,8 @@ func checkToolCalls(offered []modelprovider.ToolSpec, calls []modelprovider.Tool
 type Server struct {
 	opts    Options
 	meterMu sync.Mutex
+	// defaultOutput 是请求没写输出上限时的可见输出上限（outputLimit）；0 表示不设，用 Profile 的 max_output。
+	defaultOutput int
 }
 
 var _ modelgatewayv1connect.ModelGatewayServiceHandler = (*Server)(nil)
@@ -247,7 +255,11 @@ func New(opts Options) (*Server, error) {
 	if opts.Meter == nil {
 		opts.Meter = io.Discard
 	}
-	return &Server{opts: opts}, nil
+	s := &Server{opts: opts, defaultOutput: opts.DefaultMaxOutput}
+	if opts.DefaultMaxOutput == 0 {
+		s.defaultOutput = DefaultMaxOutputTokens
+	}
+	return s, nil
 }
 
 func sleep(ctx context.Context, d time.Duration) error {
@@ -267,12 +279,14 @@ func sleep(ctx context.Context, d time.Duration) error {
 type call struct {
 	inputEstimate int64
 	maxOutput     int
-	reservation   *modelbudget.Reservation
-	tenant        *commonv1.TenantContext
-	ctx           *modelgatewayv1.CallContext
-	method        string
-	choice        router.Choice
-	client        modelprovider.Client
+	// thinking 是请求写的思考预算（没写为 0）；输出上限的默认值要在它之外留出可见输出。
+	thinking    int
+	reservation *modelbudget.Reservation
+	tenant      *commonv1.TenantContext
+	ctx         *modelgatewayv1.CallContext
+	method      string
+	choice      router.Choice
+	client      modelprovider.Client
 	// attempts 是这次 RPC 一共尝试了几次（含重试与切换），记进 span。
 	attempts int
 	// billed 是这次 RPC 里已计费却判为失败的尝试的用量之和（已计价）；没有时为 nil。
@@ -698,10 +712,10 @@ func generateRequest(g *modelgatewayv1.GenerateParams) (modelprovider.GenerateRe
 	return out, nil
 }
 
-// forCandidate 填上候选的模型名与思考预算（请求为 0 时用 Tier 的默认值）。
-func forCandidate(req modelprovider.GenerateRequest, cand router.Candidate) modelprovider.GenerateRequest {
+// forCandidate 填上候选的模型名、思考预算（请求为 0 时用 Tier 的默认值）与输出上限（outputLimit，与预留的是同一个数）。
+func (s *Server) forCandidate(req modelprovider.GenerateRequest, cand router.Candidate) modelprovider.GenerateRequest {
 	req.Model = cand.Profile.Model
-	req.MaxOutputTokens = outputLimit(req.MaxOutputTokens, cand)
+	req.MaxOutputTokens = s.outputLimit(req.MaxOutputTokens, req.ThinkingBudgetTokens, cand)
 	if req.ThinkingBudgetTokens == 0 {
 		req.ThinkingBudgetTokens = cand.Tier.ThinkingBudget
 	}
@@ -778,10 +792,10 @@ func (s *Server) Generate(ctx context.Context, req *connect.Request[modelgateway
 	tr := s.startSpan(ctx, c, "chat", false)
 	// 选档仍按原请求（要结构化输出、要工具）；发给上游的请求在工具与 schema 同时给时改用收尾工具（finish_tool.go）。
 	sent, finishing := withFinishTool(gen)
-	c.estimateInput(sent, sent.MaxOutputTokens)
+	c.estimateInput(sent, sent.MaxOutputTokens, sent.ThinkingBudgetTokens)
 	var result modelprovider.GenerateResult
 	cand, err := s.run(ctx, c, c.choice.Candidates, true, func(ctx context.Context, cand router.Candidate) (*commonv1.Usage, error) {
-		r, err := c.client.Generate(ctx, forCandidate(sent, cand))
+		r, err := c.client.Generate(ctx, s.forCandidate(sent, cand))
 		if err == nil {
 			err = checkToolCalls(sent.Tools, r.ToolCalls)
 		}
@@ -828,7 +842,7 @@ func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelg
 		return connecterr.Error(err)
 	}
 	tr := s.startSpan(ctx, c, "chat", true)
-	c.estimateInput(gen, gen.MaxOutputTokens)
+	c.estimateInput(gen, gen.MaxOutputTokens, gen.ThinkingBudgetTokens)
 	// span 在流结束时结束：记下实际服务的候选、最后的 Usage 与错误（下面每个出口都先赋值再返回）。
 	var spanCand router.Candidate
 	var spanUsage *commonv1.Usage
@@ -849,7 +863,7 @@ func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelg
 			return streamUsage(st), err
 		}
 		var err error
-		st, err = c.client.StreamGenerate(sctx, forCandidate(gen, cand))
+		st, err = c.client.StreamGenerate(sctx, s.forCandidate(gen, cand))
 		if err != nil {
 			return fail(err)
 		}
@@ -982,9 +996,9 @@ func (s *Server) Score(ctx context.Context, req *connect.Request[modelgatewayv1.
 	}
 	tr := s.startSpan(ctx, c, "chat", false)
 	var result modelprovider.ScoreResult
-	c.estimateInput(m, 0)
+	c.estimateInput(m, 0, 0)
 	cand, err := s.run(ctx, c, c.choice.Candidates, true, func(ctx context.Context, cand router.Candidate) (*commonv1.Usage, error) {
-		r, err := c.client.Score(ctx, modelprovider.ScoreRequest{Model: cand.Profile.Model, Query: m.GetQuery(), Candidates: m.GetCandidates(), Rubric: m.GetRubric(), MaxOutputTokens: outputLimit(0, cand)})
+		r, err := c.client.Score(ctx, modelprovider.ScoreRequest{Model: cand.Profile.Model, Query: m.GetQuery(), Candidates: m.GetCandidates(), Rubric: m.GetRubric(), MaxOutputTokens: s.outputLimit(0, 0, cand)})
 		result = r
 		return r.Usage, err
 	})
@@ -1028,7 +1042,7 @@ func (s *Server) Embed(ctx context.Context, req *connect.Request[modelgatewayv1.
 		candidates = candidates[i : i+1]
 	}
 	tr := s.startSpan(ctx, c, "embeddings", false)
-	c.estimateInput(m.GetTexts(), 0)
+	c.estimateInput(m.GetTexts(), 0, 0)
 	var result modelprovider.EmbedResult
 	cand, err := s.run(ctx, c, candidates, true, func(ctx context.Context, cand router.Candidate) (*commonv1.Usage, error) {
 		r, err := c.client.Embed(ctx, modelprovider.EmbedRequest{Model: cand.Profile.Model, Texts: m.GetTexts()})
@@ -1087,10 +1101,10 @@ func (s *Server) Classify(ctx context.Context, req *connect.Request[modelgateway
 		OutputSchema: classifySchema(labels),
 	}
 	tr := s.startSpan(ctx, c, "chat", false)
-	c.estimateInput(gen, gen.MaxOutputTokens)
+	c.estimateInput(gen, gen.MaxOutputTokens, gen.ThinkingBudgetTokens)
 	var result modelprovider.GenerateResult
 	cand, err := s.run(ctx, c, c.choice.Candidates, true, func(ctx context.Context, cand router.Candidate) (*commonv1.Usage, error) {
-		r, err := c.client.Generate(ctx, forCandidate(gen, cand))
+		r, err := c.client.Generate(ctx, s.forCandidate(gen, cand))
 		result = r
 		return r.Usage, err
 	})

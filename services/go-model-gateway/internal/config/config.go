@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/secret"
@@ -28,6 +29,8 @@ const (
 	EnvDataDir            = "AR_DATA_DIR"
 	EnvRelationalDSN      = "AR_RELATIONAL_DSN"
 	EnvRegistryAddress    = "AR_REGISTRY_ADDRESS"
+	// EnvDefaultMaxOutput 是请求没写输出上限时的可见输出上限（token，BUDGET-DEFAULT）；不设用网关的默认值，0 表示不设上限。
+	EnvDefaultMaxOutput = "AR_MODEL_DEFAULT_MAX_OUTPUT"
 )
 
 // 默认值与取值。
@@ -50,6 +53,8 @@ type Config struct {
 	ProviderKeyName    string
 	SecretsFile        string
 	TenantPoliciesFile string
+	// DefaultMaxOutput 交给 gateway.Options.DefaultMaxOutput：0 是网关的默认值，-1 是不设上限（变量写 0），正数照用。
+	DefaultMaxOutput int
 }
 
 // FromEnv 读取并校验 serve 的配置：
@@ -72,6 +77,16 @@ func FromEnv(getenv func(string) string) (Config, error) {
 	}
 	if dsn := get(EnvRelationalDSN); dsn != "" {
 		cfg.RelationalDSN = secret.New(dsn)
+	}
+	if raw := get(EnvDefaultMaxOutput); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 0 {
+			return Config{}, errors.New(EnvDefaultMaxOutput + " 要是不小于 0 的整数（0 表示不设上限）")
+		}
+		cfg.DefaultMaxOutput = n
+		if n == 0 {
+			cfg.DefaultMaxOutput = -1
+		}
 	}
 	if cfg.RegistryAddress != "" {
 		address := cfg.RegistryAddress

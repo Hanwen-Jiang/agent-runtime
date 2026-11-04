@@ -24,17 +24,33 @@ func streamUsage(st modelprovider.Stream) *commonv1.Usage {
 // estimateInput reserves one token per serialized byte, including a second
 // schema/prompt copy used by the adapter and fixed message framing. This is an
 // estimate, not billed usage; settlement always records the provider's usage.
-func (c *call) estimateInput(input any, maxOutput int) {
+// maxOutput and thinking are what the request asked for (0 when unset).
+func (c *call) estimateInput(input any, maxOutput, thinking int) {
 	raw, _ := json.Marshal(input)
 	c.inputEstimate = int64(len(raw))*2 + 1024
 	c.maxOutput = maxOutput
+	c.thinking = thinking
 }
 
-func outputLimit(requested int, cand router.Candidate) int {
+// outputLimit is the output cap sent to the provider and reserved against the
+// budget. A requested cap is kept (never above the profile's max_output). An
+// unset one gets the gateway default: DefaultMaxOutputTokens of visible output
+// plus this call's thinking budget, never above the profile's max_output; without
+// it a profile declaring a 1M-token max_output reserved more than a whole daily
+// budget for one call (BUDGET-DEFAULT). A negative Options.DefaultMaxOutput keeps
+// the profile's max_output.
+func (s *Server) outputLimit(requested, thinking int, cand router.Candidate) int {
+	limit := cand.Profile.Constraints.MaxOutput
 	if requested > 0 {
-		return min(requested, cand.Profile.Constraints.MaxOutput)
+		return min(requested, limit)
 	}
-	return cand.Profile.Constraints.MaxOutput
+	if s.defaultOutput <= 0 {
+		return limit
+	}
+	if thinking <= 0 {
+		thinking = cand.Tier.ThinkingBudget
+	}
+	return min(limit, s.defaultOutput+max(thinking, 0))
 }
 
 // frozenPrice is the profile's rate card in integer USD micros per 1M tokens,
@@ -63,7 +79,7 @@ func (s *Server) reserve(ctx context.Context, c *call, cand router.Candidate) er
 	if err != nil {
 		return err
 	}
-	output := outputLimit(c.maxOutput, cand)
+	output := s.outputLimit(c.maxOutput, c.thinking, cand)
 	if c.method == "embed" {
 		output = 0
 	}

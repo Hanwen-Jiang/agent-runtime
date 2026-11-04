@@ -6,7 +6,7 @@
 
 - Task Service 对新提交检查共享账本；已受理请求的幂等重试仍返回原 Task。此检查不为整个 Task 虚构费用，每次模型调用仍由 Gateway 原子预留。
 - Generate、StreamGenerate、Score、Embed、Classify 的每次供应商尝试均先预留。tenant_budget_exceeded 沿现有 Denied 错误通道返回，不重试、不切换便宜模型。
-- 输入按序列化字节和适配器提示开销保守预估；输出按请求上限和 Profile max_output 的较小值预留，并把同一上限发送给供应商。未指定输出上限时使用 Profile 上限。预估不是实际计费。
+- 输入按序列化字节和适配器提示开销保守预估；输出按请求上限和 Profile max_output 的较小值预留，并把同一上限发送给供应商。未指定输出上限时使用网关的默认上限：可见输出 16384 个 token（`AR_MODEL_DEFAULT_MAX_OUTPUT`，0 回到 Profile 上限）加上这次的思考预算，不超过 Profile 上限（BUDGET-DEFAULT，2026-11-04：原来用 Profile 上限，kimi-k3.1-pro 的 max_output 是 1,048,576，一次预留 10.49 美元，默认档每天 3 美元的租户第一次调用就被拒）。预估不是实际计费。
 - 收到实际 usage 后按服务该次请求的 Profile 单价结算，缓存命中按 cache_read_per_m 计价。已计费的失败、超时和收到 usage 后中断的流也结算。实际费用超过估值仍记账，之后的请求受实际余额约束。
 - 客户端取消不取消已知费用的结算；结算使用独立的 5 秒超时。存储故障返回不可重试的 model_usage_unsettled，保留预留，避免重新调用模型产生第二笔费用。
 - 断线、超时或成功回答缺 usage 时不伪造零费用，保留预留并记录 reservation_id。已确认的上游权限拒绝/模型不存在可退回零费用。没有引入后台扫描或自动退款；无法取得的供应商费用仍需账单确认。
