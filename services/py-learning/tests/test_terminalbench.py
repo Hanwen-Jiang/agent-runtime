@@ -219,6 +219,36 @@ def test_run_sends_the_working_directory_and_the_instruction_only(tasks_root: Pa
     assert manifest["benchmark"] == "terminal-bench" and manifest["tasks"]["fix-git"]["workdir"] == "/app/personal-site"
 
 
+def test_tasks_ask_for_network_access_only_when_hosts_are_given(tasks_root: Path, tmp_path: Path) -> None:
+    """EV-TB-NET：官方跑法能联网，有的题要从 GitHub 克隆。给了 network_hosts 时每个 Task 提交时带联网申请（主机、分钟、理由），
+    并固定在 run.json 的设置里（换了主机不能续跑）；不给时与原来一样，不带申请，run.json 也没有这一项。"""
+    tasks, out = prepared_run(tasks_root, tmp_path)
+    fake = TBRuntime({"cancel-async-tasks": Script(events=rounds("done"), cost_usd=0.1)})
+    tb.run(fake, tasks[:1], out, settings(network_hosts=("github.com", "download.pytorch.org"), network_minutes=30))
+    [sub] = fake.submits
+    assert sub["network"]["hosts"] == ["github.com", "download.pytorch.org"] and sub["network"]["minutes"] == 30
+    assert "cancel-async-tasks" in sub["network"]["reason"]
+    manifest = json.loads((out / "run.json").read_text("utf-8"))
+    assert manifest["settings"]["network_hosts"] == ["github.com", "download.pytorch.org"] and manifest["settings"]["network_minutes"] == 30
+    with pytest.raises(ValueError):
+        tb.run(TBRuntime({}), tasks[:1], out, settings(network_hosts=("github.com",), network_minutes=30))
+
+    plain_out = tmp_path / "plain"
+    tb.prepare(tasks[:1], plain_out, docker=FakeDocker({tasks[0].docker_image: tar_of(tasks[0].workdir.rsplit("/", 1)[1], {"README.md": b"x\n"})}))
+    plain = TBRuntime({"cancel-async-tasks": Script(events=rounds("done"), cost_usd=0.1)})
+    tb.run(plain, tasks[:1], plain_out, settings())
+    assert "network" not in plain.submits[0]
+    assert "network_hosts" not in json.loads((plain_out / "run.json").read_text("utf-8"))["settings"]
+
+
+@pytest.mark.parametrize("hosts", [("10.0.0.1",), ("github.com:443",), ("github.com/x",), ("",)])
+def test_bad_network_hosts_are_refused(hosts: tuple[str, ...]) -> None:
+    with pytest.raises(ValueError):
+        settings(network_hosts=hosts)
+    with pytest.raises(ValueError):
+        settings(network_hosts=("github.com",), network_minutes=45)
+
+
 def test_an_unprepared_task_is_an_error_not_a_crash(tasks_root: Path, tmp_path: Path) -> None:
     tasks = tb.load_tasks(tasks_root)
     summary = tb.run(TBRuntime({}), tasks[:1], tmp_path / "run", settings())
@@ -329,3 +359,13 @@ def test_the_cli_refuses_to_run_without_prepared_tasks(tasks_root: Path, tmp_pat
     code = main(["terminalbench", "run", "--tasks", str(tasks_root), "--out", str(tmp_path / "r"), "--limit", "1", "--task-api", "http://127.0.0.1:9",
                  "--budget-usd", "1", "--task-usd-limit", "1"])
     assert code == 2
+
+
+def test_the_cli_refuses_bad_network_hosts(tasks_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    from agentruntime_learning.benchmarks.__main__ import main
+
+    tasks, out = prepared_run(tasks_root, tmp_path)
+    monkeypatch.setenv("AR_TASK_API_TOKEN", "t")
+    code = main(["terminalbench", "run", "--tasks", str(tasks_root), "--out", str(out), "--limit", "1", "--task-api", "http://127.0.0.1:9",
+                 "--budget-usd", "1", "--task-usd-limit", "1", "--network-hosts", "github.com,10.0.0.1"])
+    assert code == 2 and "IP" in capsys.readouterr().err, "不合格的主机在提交任何 Task 之前就拒绝"

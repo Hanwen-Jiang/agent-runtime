@@ -160,6 +160,11 @@ def test_task_calls(server: tuple[str, Fake]) -> None:
     assert fake.requests[-1]["path"] == TASK + "SubmitTask"
     assert fake.requests[-1]["body"] == {"workspace_id": "w-1", "message": "修 add()", "client_request_id": "cr-1", "session_access": "SESSION_ACCESS_READ_WRITE"}
 
+    c.submit(workspace_id="w-1", message="修 add()", client_request_id="cr-2",
+             network={"hosts": ["github.com", "download.pytorch.org"], "minutes": 60, "reason": "Terminal-Bench build-cython-ext"})
+    assert fake.requests[-1]["body"]["network_request"] == {"hosts": ["github.com", "download.pytorch.org"], "minutes": 60,
+                                                            "reason": "Terminal-Bench build-cython-ext"}, "EV-TB-NET：提交时带联网申请"
+
     assert c.query("t-1") == {"status": "TASK_STATUS_RUNNING", "cost_usd": 1.25}, "int64 是字符串，micros 换成美元"
     c.reply("t-1", "q-1", "stop_and_wrap_up")
     assert fake.requests[-1]["path"] == TASK + "SignalTask"

@@ -181,10 +181,11 @@ class FakeRuntime:
 
     # --- Task API ---
 
-    def submit(self, *, workspace_id: str, message: str, client_request_id: str) -> dict[str, Any]:
+    def submit(self, *, workspace_id: str, message: str, client_request_id: str, network: dict[str, Any] | None = None) -> dict[str, Any]:
         with self.lock:
             task_id = f"task-{len(self.submits) + 1}"
-            self.submits.append({"workspace_id": workspace_id, "message": message, "client_request_id": client_request_id, "task_id": task_id})
+            self.submits.append({"workspace_id": workspace_id, "message": message, "client_request_id": client_request_id, "task_id": task_id,
+                                 **({"network": network} if network is not None else {})})
             self.tasks[task_id] = _Task(task_id, workspace_id, self.script(workspace_id))
             return {"task_id": task_id, "events_url": f"http://fake/v1/tasks/{task_id}/events", "session_id": f"rs-{task_id}"}
 
