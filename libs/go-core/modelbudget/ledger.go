@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"math"
+	"math/bits"
 	"time"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
@@ -31,6 +32,8 @@ type Limits struct {
 // ReservationRequest records one provider attempt before it starts. Limits
 // are resolved by the caller; pending and settled usage come only from this
 // ledger. At determines the UTC day and natural month charged by the attempt.
+// Price, when given, is frozen on the attempt's row so its charge can be
+// recomputed after the price table changes; rows without it read NULL.
 type ReservationRequest struct {
 	TenantID       string
 	At             time.Time
@@ -41,6 +44,71 @@ type ReservationRequest struct {
 	ModelProfileID string
 	Vendor         string
 	Method         string
+	Price          *Price
+}
+
+// Price is the model profile's rate card at reservation time, in USD micros
+// per one million tokens (1.75 USD per 1M tokens is 1_750_000). PriceAt is
+// the date the rates were taken (the profile's freshness.price_at).
+type Price struct {
+	InPerMMicros        int64
+	OutPerMMicros       int64
+	CacheReadPerMMicros int64
+	PriceAt             string
+}
+
+const (
+	PriceCurrency = "USD"
+	PriceUnit     = "usd_micros_per_1m_tokens"
+)
+
+// Usage is the provider-reported token usage an attempt was settled with.
+// InputTokens includes CacheReadTokens.
+type Usage struct {
+	InputTokens     int64
+	OutputTokens    int64
+	CacheReadTokens int64
+}
+
+// USDMicros recomputes a charge from frozen evidence with the Model Profile
+// formula: uncached input, cache reads (clamped to the input) and output at
+// their rates, rounded half up to whole micros. Integer arithmetic only.
+func (p Price) USDMicros(u Usage) int64 {
+	input := max(u.InputTokens, 0)
+	cached := min(max(u.CacheReadTokens, 0), input)
+	var hi, lo uint64
+	for _, term := range [][2]int64{{input - cached, p.InPerMMicros}, {cached, p.CacheReadPerMMicros}, {max(u.OutputTokens, 0), p.OutPerMMicros}} {
+		h, l := bits.Mul64(uint64(term[0]), uint64(max(term[1], 0)))
+		var carry uint64
+		lo, carry = bits.Add64(lo, l, 0)
+		hi += h + carry
+	}
+	lo, carry := bits.Add64(lo, 500_000, 0)
+	hi += carry
+	if hi >= 1_000_000 {
+		return math.MaxInt64
+	}
+	q, _ := bits.Div64(hi, lo, 1_000_000)
+	return int64(min(q, math.MaxInt64))
+}
+
+func (p *Price) validate() error {
+	if p == nil {
+		return nil
+	}
+	if p.InPerMMicros < 0 || p.OutPerMMicros < 0 || p.CacheReadPerMMicros < 0 {
+		return ledgerInvalid("negative_price", "model price must be non-negative")
+	}
+	if p.PriceAt == "" {
+		return ledgerInvalid("missing_price_date", "model price needs the date it was taken")
+	}
+	return nil
+}
+
+// UsageSettler is implemented by Ledger. Callers that know the provider's
+// token usage settle through it so the row keeps the usage next to the price.
+type UsageSettler interface {
+	SettleUsage(context.Context, Reservation, int64, Usage) error
 }
 
 // Reservation is returned only after the reservation commits. Pass it back
@@ -66,7 +134,10 @@ type Provider interface {
 
 type Ledger struct{ store relational.Provider }
 
-var _ Provider = (*Ledger)(nil)
+var (
+	_ Provider     = (*Ledger)(nil)
+	_ UsageSettler = (*Ledger)(nil)
+)
 
 // New uses an existing business store. The caller owns its lifecycle and must
 // apply Migrations before serving requests.
@@ -77,7 +148,18 @@ func New(store relational.Provider) *Ledger { return &Ledger{store: store} }
 // processes on Postgres; SQLite write transactions already serialize writes.
 // The storage provider adds tenant scope, so application SQL has no tenant
 // column. No aggregate balances or recovery state are maintained separately.
+// 302 adds the frozen price and settled usage of each attempt (R-06-C); all
+// nullable, so rows written before it read as unknown evidence.
 func Migrations() []relational.Migration {
+	evidence := []string{
+		"price_currency TEXT", "price_unit TEXT", "price_at TEXT",
+		"in_usd_micros_per_m BIGINT", "out_usd_micros_per_m BIGINT", "cache_read_usd_micros_per_m BIGINT",
+		"input_tokens BIGINT", "output_tokens BIGINT", "cache_read_tokens BIGINT",
+	}
+	addColumns := make([]string, len(evidence))
+	for i, column := range evidence {
+		addColumns[i] = "ALTER TABLE model_usage ADD COLUMN " + column
+	}
 	return []relational.Migration{{
 		Version: 301,
 		Name:    "model_usage_reservations",
@@ -96,6 +178,10 @@ func Migrations() []relational.Migration {
 			`CREATE INDEX model_usage_by_time ON model_usage (reserved_at)`,
 			`CREATE TABLE model_budget_lock (lock_id BIGINT PRIMARY KEY)`,
 		},
+	}, {
+		Version:    302,
+		Name:       "model_usage_price_evidence",
+		Statements: addColumns,
 	}}
 }
 
@@ -177,6 +263,13 @@ func (l *Ledger) Reserve(ctx context.Context, req ReservationRequest) (Reservati
 	if req.USDMicros < 0 {
 		return Reservation{}, ledgerInvalid("negative_reservation", "reservation amount must be non-negative")
 	}
+	if err := req.Price.validate(); err != nil {
+		return Reservation{}, err
+	}
+	var currency, unit, priceAt, in, out, cacheRead any
+	if p := req.Price; p != nil {
+		currency, unit, priceAt, in, out, cacheRead = PriceCurrency, PriceUnit, p.PriceAt, p.InPerMMicros, p.OutPerMMicros, p.CacheReadPerMMicros
+	}
 	r := Reservation{ID: "mbr_" + rand.Text(), TenantID: req.TenantID, At: req.At.UTC().Truncate(time.Millisecond), USDMicros: req.USDMicros}
 	err := l.transaction(ctx, req.TenantID, false, func(ctx context.Context, tx relational.Tx) error {
 		if err := lockTenant(ctx, tx); err != nil {
@@ -193,9 +286,11 @@ func (l *Ledger) Reserve(ctx context.Context, req ReservationRequest) (Reservati
 			return ledgerInvalid("reservation_overflow", "reservation amount is too large")
 		}
 		_, err = tx.Execute(ctx, `INSERT INTO model_usage
-			(reservation_id, reserved_at, reserved_usd_micros, actual_usd_micros, task_id, node_id, model_profile_id, vendor, method)
-			VALUES ($1, $2, $3, NULL, $4, $5, $6, $7, $8)`,
-			r.ID, r.At.UnixMilli(), r.USDMicros, req.TaskID, req.NodeID, req.ModelProfileID, req.Vendor, req.Method)
+			(reservation_id, reserved_at, reserved_usd_micros, actual_usd_micros, task_id, node_id, model_profile_id, vendor, method,
+			 price_currency, price_unit, price_at, in_usd_micros_per_m, out_usd_micros_per_m, cache_read_usd_micros_per_m)
+			VALUES ($1, $2, $3, NULL, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+			r.ID, r.At.UnixMilli(), r.USDMicros, req.TaskID, req.NodeID, req.ModelProfileID, req.Vendor, req.Method,
+			currency, unit, priceAt, in, out, cacheRead)
 		return err
 	})
 	if err != nil {
@@ -227,6 +322,27 @@ func (l *Ledger) Check(ctx context.Context, tenantID string, at time.Time, limit
 // the resulting total blocks subsequent requests. Unknown usage must remain
 // pending, not be settled to zero merely because a caller disconnected.
 func (l *Ledger) Settle(ctx context.Context, r Reservation, actualUSDMicros int64) error {
+	return l.settle(ctx, r, actualUSDMicros, nil)
+}
+
+// SettleUsage is Settle that also records the provider's token usage next to
+// the frozen price. A retry is idempotent only with the same amount and the
+// same usage; a row settled without usage counts as zero tokens.
+func (l *Ledger) SettleUsage(ctx context.Context, r Reservation, actualUSDMicros int64, u Usage) error {
+	if u.InputTokens < 0 || u.OutputTokens < 0 || u.CacheReadTokens < 0 {
+		return ledgerInvalid("negative_usage", "token usage must be non-negative")
+	}
+	return l.settle(ctx, r, actualUSDMicros, &u)
+}
+
+func storedTokens(row relational.Row, column string) int64 {
+	if v, ok := row[column].(int64); ok {
+		return v
+	}
+	return 0
+}
+
+func (l *Ledger) settle(ctx context.Context, r Reservation, actualUSDMicros int64, u *Usage) error {
 	if r.ID == "" || r.At.IsZero() || r.USDMicros < 0 {
 		return ledgerInvalid("invalid_reservation", "reservation handle is invalid")
 	}
@@ -237,7 +353,8 @@ func (l *Ledger) Settle(ctx context.Context, r Reservation, actualUSDMicros int6
 		if err := lockTenant(ctx, tx); err != nil {
 			return err
 		}
-		row, found, err := tx.QueryOne(ctx, `SELECT reserved_at, reserved_usd_micros, actual_usd_micros FROM model_usage WHERE reservation_id = $1`, r.ID)
+		row, found, err := tx.QueryOne(ctx, `SELECT reserved_at, reserved_usd_micros, actual_usd_micros,
+			input_tokens, output_tokens, cache_read_tokens FROM model_usage WHERE reservation_id = $1`, r.ID)
 		if err != nil {
 			return err
 		}
@@ -248,12 +365,21 @@ func (l *Ledger) Settle(ctx context.Context, r Reservation, actualUSDMicros int6
 			return ledgerInvalid("reservation_mismatch", "reservation handle does not match")
 		}
 		if previous := row["actual_usd_micros"]; previous != nil {
-			if previous.(int64) == actualUSDMicros {
+			same := previous.(int64) == actualUSDMicros
+			if same && u != nil {
+				same = *u == Usage{InputTokens: storedTokens(row, "input_tokens"), OutputTokens: storedTokens(row, "output_tokens"), CacheReadTokens: storedTokens(row, "cache_read_tokens")}
+			}
+			if same {
 				return nil
 			}
 			return providererr.New(providererr.Conflict, "reservation_already_settled", "reservation was settled with different usage")
 		}
-		_, err = tx.Execute(ctx, `UPDATE model_usage SET actual_usd_micros = $1 WHERE reservation_id = $2`, actualUSDMicros, r.ID)
+		if u == nil {
+			_, err = tx.Execute(ctx, `UPDATE model_usage SET actual_usd_micros = $1 WHERE reservation_id = $2`, actualUSDMicros, r.ID)
+			return err
+		}
+		_, err = tx.Execute(ctx, `UPDATE model_usage SET actual_usd_micros = $1, input_tokens = $2, output_tokens = $3, cache_read_tokens = $4
+			WHERE reservation_id = $5`, actualUSDMicros, u.InputTokens, u.OutputTokens, u.CacheReadTokens, r.ID)
 		return err
 	})
 }

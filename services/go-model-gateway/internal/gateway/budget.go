@@ -37,6 +37,21 @@ func outputLimit(requested int, cand router.Candidate) int {
 	return cand.Profile.Constraints.MaxOutput
 }
 
+// frozenPrice is the profile's rate card in integer USD micros per 1M tokens,
+// stored on the attempt's row so the charge can be recomputed later (R-06-C).
+func frozenPrice(cand router.Candidate) (*modelbudget.Price, error) {
+	rates := [3]float64{cand.Profile.Cost.InPerM, cand.Profile.Cost.OutPerM, cand.Profile.Cost.CacheReadPerM}
+	var micros [3]int64
+	for i, rate := range rates {
+		m := math.Round(rate * 1e6)
+		if math.IsInf(m, 0) || math.IsNaN(m) || m < 0 || m >= float64(math.MaxInt64) {
+			return nil, invalid("invalid_model_cost", "model cost cannot be reserved")
+		}
+		micros[i] = int64(m)
+	}
+	return &modelbudget.Price{InPerMMicros: micros[0], OutPerMMicros: micros[1], CacheReadPerMMicros: micros[2], PriceAt: cand.Profile.Freshness.PriceAt}, nil
+}
+
 func (s *Server) reserve(ctx context.Context, c *call, cand router.Candidate) error {
 	if s.opts.ModelBudget == nil {
 		return nil
@@ -62,10 +77,14 @@ func (s *Server) reserve(ctx context.Context, c *call, cand router.Candidate) er
 	if limit := c.ctx.GetMaxCostUsdMicros(); limit > 0 && int64(cost) > limit-c.billed.GetCostUsdMicros() {
 		return providererr.New(providererr.Denied, "model_call_budget_exceeded", "model call exceeds the request budget")
 	}
+	price, err := frozenPrice(cand)
+	if err != nil {
+		return err
+	}
 	r, err := s.opts.ModelBudget.Reserve(ctx, modelbudget.ReservationRequest{
 		TenantID: c.tenant.GetTenantId(), At: s.opts.Now(), USDMicros: int64(cost), Limits: limits,
 		TaskID: c.ctx.GetTaskId(), NodeID: c.ctx.GetNodeId(), ModelProfileID: cand.Profile.ID,
-		Vendor: cand.Profile.Vendor, Method: c.method,
+		Vendor: cand.Profile.Vendor, Method: c.method, Price: price,
 	})
 	if err == nil {
 		c.reservation = &r
@@ -94,7 +113,15 @@ func (s *Server) settle(ctx context.Context, c *call, cand router.Candidate, u *
 	actual := priced(cand, u).GetCostUsdMicros()
 	settleCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
-	if err := s.opts.ModelBudget.Settle(settleCtx, r, actual); err != nil {
+	var err error
+	if us, ok := s.opts.ModelBudget.(modelbudget.UsageSettler); ok {
+		err = us.SettleUsage(settleCtx, r, actual, modelbudget.Usage{
+			InputTokens: max(u.GetInputTokens(), 0), OutputTokens: max(u.GetOutputTokens(), 0), CacheReadTokens: max(u.GetCacheReadTokens(), 0),
+		})
+	} else {
+		err = s.opts.ModelBudget.Settle(settleCtx, r, actual)
+	}
+	if err != nil {
 		s.opts.Logger.Error("model usage settlement failed", "reservation_id", r.ID, "tenant_id", r.TenantID)
 		// Conflict is nonretryable: retrying the model would charge it again.
 		e := providererr.New(providererr.Conflict, "model_usage_unsettled", "model usage settlement failed; reservation retained")
