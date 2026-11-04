@@ -1,0 +1,16 @@
+[project]
+name = "agentruntime-sandbox-agent-tests"
+version = "0.0.0"
+description = "D-28：sandbox-agent 的黑盒测试，Go 版与 Rust 版跑同一套用例"
+requires-python = ">=3.13"
+dependencies = [
+    "pytest>=9.1",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["."]
+addopts = "-ra"
+xfail_strict = true

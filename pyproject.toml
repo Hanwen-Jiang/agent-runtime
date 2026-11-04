@@ -9,6 +9,7 @@ members = [
     "tests/contract",
     "tests/deploy",
     "tests/e2e",
+    "tests/sandbox-agent",
 ]
 
 [tool.uv]
