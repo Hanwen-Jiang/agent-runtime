@@ -53,7 +53,7 @@ agent-runtime 的测试（这台 Windows 机器，没有 Postgres，`AR_ALLOW_MI
 | Grafana 加 `runtime.task.first_event_ms` 按段的分位数 | N-20 | 2026-11-03 已加（`deploy/data/dashboards/quality.yaml`，验收 `tests/deploy/test_first_event_panel.py`），没部署 |
 | F3 剩下的：Reviewer 把文件排前面、端到端 | F3 | 前者 2026-11-03 已做（schema 草案人审通过）；端到端在后面 |
 | `token_delta`、`thinking_delta` 的推送 | N-20 | **要人定**：要在 task-service 的内部端口开一个新入口和平台令牌，属于安全评审 |
-| 用户密钥的写入、列举、删除接口（coding-agent 的“网络密钥”页依赖它） | ENV-02 | 2026-11-03 契约草案已推（SEC-API，`proto/agentruntime/workspace/v1/user_secrets.proto`），等 S-01 人审；实现要先给 SecretStore 的 Store 接口加写、列举、删除（S-02，Go 与 Python 两边） |
+| 用户密钥的写入、列举、删除接口（coding-agent 的“网络密钥”页依赖它） | ENV-02 | 已完成（SEC-API：契约 2026-11-04 人审通过，实现 `f3b02df`：task-service 的 UserSecretService；SecretStore 加了只在 Go 侧的可选接口 Writer，共用接口不变）；网页的网络密钥页是 WEB-SEC |
 | `open` 档位的公网授权（`sandbox.network.modes`、授权的 `scope: public`） | ENV-02 | 另一份契约，原记录里是 DEFER |
 | coding-agent 的 `.env` 上限 64 KiB 改成 16 KiB、64 个（不然 Runtime 拒绝 `env_too_large`） | ENV-02 | 我们做，合 lane/d 时一起改 |
 | 真模型下规划质量与子 Agent 拆分的评测 | N-04、N-16 | **要人定**（花钱） |
