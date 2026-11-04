@@ -27,6 +27,7 @@ from agentruntime_learning.benchmarks.client import ApiError, Event, RuntimeClie
 TOKEN = "tok-SECRET-0123456789"
 TASK = "/agentruntime.taskapi.v1.TaskService/"
 WORKSPACE = "/agentruntime.workspace.v1.WorkspaceService/"
+ENVIRONMENT = "/agentruntime.environment.v1.EnvironmentService/"
 
 
 def sse(event_id: int, name: str, value: dict[str, Any]) -> bytes:
@@ -58,6 +59,12 @@ class Fake:
             return 200, {"taskId": "t-1", "status": "TASK_STATUS_RUNNING", "roundSeq": 2, "usage": {"inputTokens": "10", "costUsdMicros": "1250000"}}
         if method in ("SignalTask", "CancelTask"):
             return 200, {}
+        if method == "ListEnvironments" and path.startswith(ENVIRONMENT):
+            return 200, {"environments": [
+                {"envRef": "env-2", "image": "127.0.0.1:30500/envs/t1/env@sha256:" + "c" * 64, "state": "ENVIRONMENT_STATE_DESTROYED", "runtime": "universal"},
+                {"envRef": "env-1", "image": "ghcr.io/agentruntime/sandbox-universal:0.1.0", "state": "ENVIRONMENT_STATE_DESTROYED", "runtime": "universal"},
+                {"envRef": "env-0", "state": "ENVIRONMENT_STATE_FAILED"},
+            ]}
         return 404, {"code": "unimplemented", "message": method}
 
     def events(self, last: int) -> bytes:
@@ -146,7 +153,7 @@ def test_task_calls(server: tuple[str, Fake]) -> None:
     base, fake = server
     c = RuntimeClient(base, TOKEN)
     sub = c.submit(workspace_id="w-1", message="修 add()", client_request_id="cr-1")
-    assert sub == {"task_id": "t-1", "events_url": f"{base}/v1/tasks/t-1/events"}, "相对的订阅地址按 Task API 的地址补全"
+    assert sub == {"task_id": "t-1", "events_url": f"{base}/v1/tasks/t-1/events", "session_id": "ses-1"}, "相对的订阅地址按 Task API 的地址补全"
     fake.events_url = "http://0.0.0.0:8080/v1/tasks/t-1/events"
     sub = c.submit(workspace_id="w-1", message="修 add()", client_request_id="cr-1")
     assert sub["events_url"] == f"{base}/v1/tasks/t-1/events", "绝对的订阅地址（没配公开地址时是监听地址）也只取路径"
@@ -159,6 +166,18 @@ def test_task_calls(server: tuple[str, Fake]) -> None:
     assert fake.requests[-1]["body"] == {"task_id": "t-1", "human_reply": {"question_id": "q-1", "option": "stop_and_wrap_up"}}
     c.cancel("t-1", "task_usd_limit")
     assert fake.requests[-1]["body"] == {"task_id": "t-1", "reason": "task_usd_limit"}
+
+
+def test_environment_calls(server: tuple[str, Fake]) -> None:
+    """EV-TB-2：按工作区与 Session 列出沙箱环境（含销毁的），只取 image、state、runtime；没有的字段给空字符串。"""
+    base, fake = server
+    envs = RuntimeClient(base, TOKEN).environments("w-1", "ses-1")
+    req = fake.requests[-1]
+    assert req["path"] == ENVIRONMENT + "ListEnvironments" and req["body"] == {"workspace_id": "w-1", "session_id": "ses-1", "limit": 100}
+    assert [e["image"] for e in envs] == ["127.0.0.1:30500/envs/t1/env@sha256:" + "c" * 64, "ghcr.io/agentruntime/sandbox-universal:0.1.0", ""]
+    assert envs[2] == {"image": "", "state": "ENVIRONMENT_STATE_FAILED", "runtime": ""}
+    assert [sb.project_image(e["image"]) for e in envs] == [True, False, False]
+    assert not sb.project_image("ghcr.io/agentruntime/sandbox-universal@sha256:" + "d" * 64), "按 digest 引用的默认运行环境也不算"
 
 
 def test_events_resume_with_last_event_id(server: tuple[str, Fake]) -> None:

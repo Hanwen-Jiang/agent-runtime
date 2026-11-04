@@ -301,6 +301,27 @@ def test_the_report_counts_by_difficulty_and_states_its_limits(tasks_root: Path,
     assert "限制" in (out / "report.md").read_text("utf-8")
 
 
+def test_the_report_singles_out_tasks_that_ran_without_their_environment(tasks_root: Path, tmp_path: Path) -> None:
+    """EV-TB（docs/plan/ev-tb-0of5-2026-11-04.md）：环境配额满了，Task 全在 universal 上跑，0/5 看着像模型不行。"""
+    tasks, out = prepared_run(tasks_root, tmp_path)
+    hello = "diff --git a/out.txt b/out.txt\nnew file mode 100644\n--- /dev/null\n+++ b/out.txt\n@@ -0,0 +1 @@\n+hello\n"
+    project = "127.0.0.1:30500/envs/swebench/env@sha256:" + "b" * 64
+    tb.run(TBRuntime({
+        "cancel-async-tasks": Script(diff=hello, sandbox_images=[project]),
+        "log-summary": Script(sandbox_images=["ghcr.io/agentruntime/sandbox-universal:0.1.0"]),
+    }), [tasks[0], tasks[2]], out, settings())
+    # 只看报告：判分的结果直接写（grade 本身由上面的测试管）。
+    (out / "grading").mkdir()
+    (out / "grading" / "cancel-async-tasks.json").write_text(json.dumps({"task": "cancel-async-tasks", "reward": 1.0, "resolved": True}), "utf-8")
+    (out / "grading" / "log-summary.json").write_text(json.dumps({"task": "log-summary", "reward": 0.0, "resolved": False}), "utf-8")
+    rep = tb.report(out)
+    assert rep["environment_fallback_ids"] == ["log-summary"] and rep["environment_unknown"] == 0
+    assert (rep["resolve_rate"], rep["resolve_rate_with_environment"]) == (0.5, 1.0)
+    assert {r["instance_id"]: r["environment_used"] for r in rep["instances"]} == {"cancel-async-tasks": True, "log-summary": False}
+    md = (out / "report.md").read_text("utf-8")
+    assert "没用上项目环境" in md and "log-summary" in md
+
+
 def test_the_cli_refuses_to_run_without_prepared_tasks(tasks_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from agentruntime_learning.benchmarks.__main__ import main
 

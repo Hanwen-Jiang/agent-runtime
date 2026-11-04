@@ -678,3 +678,56 @@ def test_the_report(tmp_path: Path, insts: list[sb.Instance]) -> None:
     assert grading == {"acme__calc-1": "unresolved", "acme__calc-2": "resolved", "beta__lib-3": "error", "beta__lib-4": "not_run"}
     md = (out / "report.md").read_text("utf-8")
     assert "解决率" in md and "25.0%" in md and "判分不完整" in md
+
+
+# --- EV-TB-2：环境没用上（docs/plan/ev-tb-0of5-2026-11-04.md） ---
+# D-17 的项目环境是 <主机>/<前缀>/<租户>/env@sha256:…；配额满、构建中或构建失败时 shell_run 退回默认的运行环境（universal），
+# 题目照样跑完、照样判分，看着像模型不行。适配器在 Task 结束后、删工作区之前，经 EnvironmentService 查这个工作区的沙箱用的镜像。
+
+PROJECT_IMAGE = "127.0.0.1:30500/envs/swebench/env@sha256:" + "a" * 64
+UNIVERSAL_IMAGE = "ghcr.io/agentruntime/sandbox-universal:0.1.0"
+
+
+def environment_run(tmp_path: Path, insts: list[sb.Instance], **kw: Any) -> tuple[FakeRuntime, Path]:
+    out = tmp_path / "out"
+    fake = FakeRuntime({
+        "acme__calc-1": Script(events=rounds("done"), diff="diff --git a/a b/a\n+1\n", files=["a"], sandbox_images=[UNIVERSAL_IMAGE, PROJECT_IMAGE]),
+        "acme__calc-2": Script(events=rounds("done"), diff="diff --git a/b b/b\n+2\n", files=["b"], sandbox_images=[UNIVERSAL_IMAGE]),
+        "beta__lib-3": Script(events=rounds("done"), diff="diff --git a/c b/c\n+3\n", files=["c"], sandbox_images=None),
+        "beta__lib-4": Script(events=rounds("done"), diff="diff --git a/d b/d\n+4\n", files=["d"], sandbox_images=[]),
+    })
+    sb.run(fake, insts, out, settings(**kw))
+    return fake, out
+
+
+def test_runs_record_whether_the_project_environment_was_used(tmp_path: Path, insts: list[sb.Instance]) -> None:
+    fake, out = environment_run(tmp_path, insts)
+    recs = sb.read_records(out)
+    used = {iid: r.get("environment_used") for iid, r in recs.items()}
+    assert used == {"acme__calc-1": True, "acme__calc-2": False, "beta__lib-3": None, "beta__lib-4": False}, (
+        "有一个沙箱用了项目环境的镜像才算用上；只有默认的运行环境、或没有沙箱都不算；查不到（老 Runtime）记 None")
+    assert recs["acme__calc-2"]["sandbox_images"] == [UNIVERSAL_IMAGE]
+    sessions = {s["workspace_id"]: f"rs-{s['task_id']}" for s in fake.submits}
+    assert sorted(fake.environment_calls) == sorted((ws, sessions[ws], False) for ws in sessions), "按提交时的 Session 查，删工作区之前查"
+    calls = len(fake.environment_calls)
+    sb.run(fake, insts, out, settings())
+    assert len(fake.environment_calls) == calls, "续跑时查过的不再查"
+
+
+def test_environment_none_does_not_check(tmp_path: Path, insts: list[sb.Instance]) -> None:
+    fake, out = environment_run(tmp_path, insts, environment="none")
+    assert fake.environment_calls == [] and all("environment_used" not in r for r in sb.read_records(out).values())
+
+
+def test_the_report_singles_out_runs_without_their_environment(tmp_path: Path, insts: list[sb.Instance]) -> None:
+    _, out = environment_run(tmp_path, insts)
+    env = {"PYTHONPATH": str(fake_harness(tmp_path)), "FAKE_ARGV": str(tmp_path / "argv.json"), "FAKE_RESOLVED": "acme__calc-1,acme__calc-2"}
+    sb.grade(out, python=sys.executable, env=env)
+    rep = sb.report(out)
+    assert rep["environment_fallback_ids"] == ["acme__calc-2", "beta__lib-4"] and rep["environment_unknown"] == 1
+    assert rep["resolve_rate"] == pytest.approx(0.5), "÷ 选中的照旧（同榜单的口径）"
+    assert rep["resolve_rate_with_environment"] == pytest.approx(1.0), "只算用上了项目环境的题：1 / 1"
+    used = {i["instance_id"]: i["environment_used"] for i in rep["instances"]}
+    assert used["acme__calc-2"] is False and used["acme__calc-1"] is True
+    md = (out / "report.md").read_text("utf-8")
+    assert "没用上项目环境" in md and "acme__calc-2" in md and "beta__lib-4" in md

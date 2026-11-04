@@ -96,6 +96,8 @@ class Script:
     crash_on_events: bool = False
     # task_finished 带的交付（DeepEval 的评分用，N-12）。
     deliverable: Any = None
+    # EV-TB-2：EnvironmentService 给这个工作区列出的沙箱镜像；None 时像没有 EnvironmentService 的老 Runtime（Unimplemented）。
+    sandbox_images: list[str] | None = None
 
 
 def verdict(v: str) -> tuple[str, dict[str, Any]]:
@@ -141,6 +143,8 @@ class FakeRuntime:
         self.event_calls: list[tuple[str, int]] = []
         self.tasks: dict[str, _Task] = {}
         self._create_failed: set[str] = set()
+        # ListEnvironments 的调用：（工作区，Session，当时工作区删了没有）。
+        self.environment_calls: list[tuple[str, str, bool]] = []
 
     def script(self, workspace_id: str) -> Script:
         return self.scripts.get(workspace_id, self.default)
@@ -182,7 +186,15 @@ class FakeRuntime:
             task_id = f"task-{len(self.submits) + 1}"
             self.submits.append({"workspace_id": workspace_id, "message": message, "client_request_id": client_request_id, "task_id": task_id})
             self.tasks[task_id] = _Task(task_id, workspace_id, self.script(workspace_id))
-            return {"task_id": task_id, "events_url": f"http://fake/v1/tasks/{task_id}/events"}
+            return {"task_id": task_id, "events_url": f"http://fake/v1/tasks/{task_id}/events", "session_id": f"rs-{task_id}"}
+
+    def environments(self, workspace_id: str, session_id: str) -> list[dict[str, Any]]:
+        with self.lock:
+            self.environment_calls.append((workspace_id, session_id, workspace_id in self.deleted))
+            images = self.script(workspace_id).sandbox_images
+            if images is None:
+                raise ApiError(404, "unimplemented", "EnvironmentService/ListEnvironments")
+            return [{"image": image, "state": "ENVIRONMENT_STATE_DESTROYED"} for image in images]
 
     def _finish(self, t: _Task) -> Event:
         s = t.script
