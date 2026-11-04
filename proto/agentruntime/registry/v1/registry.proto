@@ -7,9 +7,10 @@ import "agentruntime/common/v1/payload.proto";
 import "agentruntime/common/v1/tenant.proto";
 import "agentruntime/workflow/v1/task.proto";
 import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
 
 // RegistryService 版本化存放 Node Template、Recipe、Reasoning Template、Model Profile、租户策略
-// 与任务族词表（设计书 3.1.2）。本期先定方法签名，实现分阶段补。
+// 与任务族词表（设计书 3.1.2），以及 Skill（N-14）。本期先定方法签名，实现分阶段补。
 //
 // 每个请求的字段 1 都是 TenantContext：可见范围、模型白名单等按租户过滤，由服务端执行。
 service RegistryService {
@@ -30,6 +31,10 @@ service RegistryService {
   rpc GetTenantPolicy(GetTenantPolicyRequest) returns (GetTenantPolicyResponse);
   // 租户当前的任务族词表；租户没有自己的词表时是平台默认的那份。分诊只能从词表里选任务族。
   rpc GetTaskFamilies(GetTaskFamiliesRequest) returns (GetTaskFamiliesResponse);
+  // 取一个 Skill 的正文（N-14）。tool_loop 的 skill_read 按 Task 固定的版本读它。
+  rpc GetSkill(GetSkillRequest) returns (GetSkillResponse);
+  // Skill 的目录（N-14）：只有名字、版本、层与说明，不带正文。Planner 的目录读它。
+  rpc ListSkills(ListSkillsRequest) returns (ListSkillsResponse);
 }
 
 // RegistryKind：Registry 存放的对象种类。
@@ -42,6 +47,21 @@ enum RegistryKind {
   REGISTRY_KIND_TENANT_POLICY = 5;
   // 任务族词表：正文按 /schemas/task_families.schema.json。
   REGISTRY_KIND_TASK_FAMILIES = 6;
+  // Skill（N-14）：正文按 /schemas/skill.schema.json。Publish 不带租户是平台层、带租户是租户层（都要发布令牌）；
+  // 用户层只经 agentruntime.skill.v1.SkillService。发布即成为当前版本，不走 Promote。
+  REGISTRY_KIND_SKILL = 7;
+}
+
+// SkillScope：Skill 登记在哪一层（N-14）。同名时上层优先：平台 > 租户 > 用户。下层不能发布上层已有的名字
+// （Conflict，code 为 name_taken）；上层之后才有的同名条目遮住下层的（下层的 shadowed 为 true，不进目录、不被新 Task 固定，
+// 已经固定了它的 Task 照旧读它）。
+enum SkillScope {
+  SKILL_SCOPE_UNSPECIFIED = 0;
+  SKILL_SCOPE_PLATFORM = 1;
+  // 租户里的所有用户都看得到。
+  SKILL_SCOPE_TENANT = 2;
+  // 只有登记者本人看得到，也只有本人提交的 Task 会固定它。
+  SKILL_SCOPE_USER = 3;
 }
 
 // ReleaseState：一个版本的发布状态。
@@ -97,6 +117,28 @@ message ModelProfile {
 message TenantPolicy {
   string version = 1;
   agentruntime.common.v1.JsonPayload document = 2;
+}
+
+// Skill 是一个 Skill 的一个版本（N-14）。名字：小写字母开头，小写字母、数字、_ 与 -，最多 64 个字符；在它看得到的范围里
+// （平台、租户、本人）唯一。版本一经发布不再修改；内容与当前版本相同时再发布不产生新版本。
+message Skill {
+  string name = 1;
+  // 层与该层里的版本号：platform/vN、tenant/vN 或 user/vN。PinnedVersions.skills 固定的就是它。
+  string version = 2;
+  // DEFAULT 是当前版本；RETIRED 是被新版本替换的或被收回的（仍可按版本读）。没有 SHADOW。
+  ReleaseState state = 3;
+  SkillScope scope = 4;
+  // 同 document.description，列目录时也有。
+  string description = 5;
+  // 正文（/schemas/skill.schema.json）。列目录（ListSkills）时为空。
+  agentruntime.common.v1.JsonPayload document = 6;
+  // 用户层的登记者（user_id）；平台层、租户层为空。
+  string owner = 7;
+  // 被上层同名的条目遮住了：不进 Planner 的目录、不被新 Task 固定。只有登记者自己列出时才看得到被遮住的。
+  bool shadowed = 8;
+  google.protobuf.Timestamp published_at = 9;
+  // 规范化正文的 SHA-256（小写十六进制），用来判断内容是否改了。
+  string digest = 10;
 }
 
 // TaskFamilies 是任务族词表，正文是 JSON 载荷。
@@ -228,4 +270,32 @@ message GetTaskFamiliesRequest {
 
 message GetTaskFamiliesResponse {
   TaskFamilies task_families = 1;
+}
+
+// 看得到的范围按 tenant：平台层、tenant_id 的租户层，以及 user_id 本人的用户层；别人的用户层与不存在的一样是 NotFound
+// （code 为 skill_not_found），不透露有没有。
+message GetSkillRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string name = 2;
+  // platform/vN、tenant/vN 或 user/vN（固定在 Task 上的照原样取回，含 RETIRED 与被遮住的）；为空时取看得到的当前版本。
+  string version = 3;
+}
+
+message GetSkillResponse {
+  Skill skill = 1;
+}
+
+message ListSkillsRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  // 按 Task 固定的版本列（PinnedVersions.skills；缺一个就 NotFound，code 为 pinned_skill_not_found）；
+  // 为空时列看得到的当前版本（不含被遮住的）。
+  agentruntime.workflow.v1.PinnedVersions pinned_versions = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+// 按名字排序；Skill 不带 document。
+message ListSkillsResponse {
+  repeated Skill skills = 1;
+  string next_page_token = 2;
 }

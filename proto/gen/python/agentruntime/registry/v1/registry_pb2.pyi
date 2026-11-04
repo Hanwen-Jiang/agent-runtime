@@ -1,8 +1,11 @@
+import datetime
+
 from agentruntime.common.v1 import enums_pb2 as _enums_pb2
 from agentruntime.common.v1 import payload_pb2 as _payload_pb2
 from agentruntime.common.v1 import tenant_pb2 as _tenant_pb2
 from agentruntime.workflow.v1 import task_pb2 as _task_pb2
 from google.protobuf import struct_pb2 as _struct_pb2
+from google.protobuf import timestamp_pb2 as _timestamp_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
@@ -21,6 +24,14 @@ class RegistryKind(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     REGISTRY_KIND_MODEL_PROFILE: _ClassVar[RegistryKind]
     REGISTRY_KIND_TENANT_POLICY: _ClassVar[RegistryKind]
     REGISTRY_KIND_TASK_FAMILIES: _ClassVar[RegistryKind]
+    REGISTRY_KIND_SKILL: _ClassVar[RegistryKind]
+
+class SkillScope(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    SKILL_SCOPE_UNSPECIFIED: _ClassVar[SkillScope]
+    SKILL_SCOPE_PLATFORM: _ClassVar[SkillScope]
+    SKILL_SCOPE_TENANT: _ClassVar[SkillScope]
+    SKILL_SCOPE_USER: _ClassVar[SkillScope]
 
 class ReleaseState(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
@@ -35,6 +46,11 @@ REGISTRY_KIND_REASONING_TEMPLATE: RegistryKind
 REGISTRY_KIND_MODEL_PROFILE: RegistryKind
 REGISTRY_KIND_TENANT_POLICY: RegistryKind
 REGISTRY_KIND_TASK_FAMILIES: RegistryKind
+REGISTRY_KIND_SKILL: RegistryKind
+SKILL_SCOPE_UNSPECIFIED: SkillScope
+SKILL_SCOPE_PLATFORM: SkillScope
+SKILL_SCOPE_TENANT: SkillScope
+SKILL_SCOPE_USER: SkillScope
 RELEASE_STATE_UNSPECIFIED: ReleaseState
 RELEASE_STATE_SHADOW: ReleaseState
 RELEASE_STATE_DEFAULT: ReleaseState
@@ -101,6 +117,30 @@ class TenantPolicy(_message.Message):
     version: str
     document: _payload_pb2.JsonPayload
     def __init__(self, version: _Optional[str] = ..., document: _Optional[_Union[_payload_pb2.JsonPayload, _Mapping]] = ...) -> None: ...
+
+class Skill(_message.Message):
+    __slots__ = ("name", "version", "state", "scope", "description", "document", "owner", "shadowed", "published_at", "digest")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    VERSION_FIELD_NUMBER: _ClassVar[int]
+    STATE_FIELD_NUMBER: _ClassVar[int]
+    SCOPE_FIELD_NUMBER: _ClassVar[int]
+    DESCRIPTION_FIELD_NUMBER: _ClassVar[int]
+    DOCUMENT_FIELD_NUMBER: _ClassVar[int]
+    OWNER_FIELD_NUMBER: _ClassVar[int]
+    SHADOWED_FIELD_NUMBER: _ClassVar[int]
+    PUBLISHED_AT_FIELD_NUMBER: _ClassVar[int]
+    DIGEST_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    version: str
+    state: ReleaseState
+    scope: SkillScope
+    description: str
+    document: _payload_pb2.JsonPayload
+    owner: str
+    shadowed: bool
+    published_at: _timestamp_pb2.Timestamp
+    digest: str
+    def __init__(self, name: _Optional[str] = ..., version: _Optional[str] = ..., state: _Optional[_Union[ReleaseState, str]] = ..., scope: _Optional[_Union[SkillScope, str]] = ..., description: _Optional[str] = ..., document: _Optional[_Union[_payload_pb2.JsonPayload, _Mapping]] = ..., owner: _Optional[str] = ..., shadowed: _Optional[bool] = ..., published_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., digest: _Optional[str] = ...) -> None: ...
 
 class TaskFamilies(_message.Message):
     __slots__ = ("version", "document", "platform_default")
@@ -303,3 +343,39 @@ class GetTaskFamiliesResponse(_message.Message):
     TASK_FAMILIES_FIELD_NUMBER: _ClassVar[int]
     task_families: TaskFamilies
     def __init__(self, task_families: _Optional[_Union[TaskFamilies, _Mapping]] = ...) -> None: ...
+
+class GetSkillRequest(_message.Message):
+    __slots__ = ("tenant", "name", "version")
+    TENANT_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    VERSION_FIELD_NUMBER: _ClassVar[int]
+    tenant: _tenant_pb2.TenantContext
+    name: str
+    version: str
+    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., name: _Optional[str] = ..., version: _Optional[str] = ...) -> None: ...
+
+class GetSkillResponse(_message.Message):
+    __slots__ = ("skill",)
+    SKILL_FIELD_NUMBER: _ClassVar[int]
+    skill: Skill
+    def __init__(self, skill: _Optional[_Union[Skill, _Mapping]] = ...) -> None: ...
+
+class ListSkillsRequest(_message.Message):
+    __slots__ = ("tenant", "pinned_versions", "page_size", "page_token")
+    TENANT_FIELD_NUMBER: _ClassVar[int]
+    PINNED_VERSIONS_FIELD_NUMBER: _ClassVar[int]
+    PAGE_SIZE_FIELD_NUMBER: _ClassVar[int]
+    PAGE_TOKEN_FIELD_NUMBER: _ClassVar[int]
+    tenant: _tenant_pb2.TenantContext
+    pinned_versions: _task_pb2.PinnedVersions
+    page_size: int
+    page_token: str
+    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., pinned_versions: _Optional[_Union[_task_pb2.PinnedVersions, _Mapping]] = ..., page_size: _Optional[int] = ..., page_token: _Optional[str] = ...) -> None: ...
+
+class ListSkillsResponse(_message.Message):
+    __slots__ = ("skills", "next_page_token")
+    SKILLS_FIELD_NUMBER: _ClassVar[int]
+    NEXT_PAGE_TOKEN_FIELD_NUMBER: _ClassVar[int]
+    skills: _containers.RepeatedCompositeFieldContainer[Skill]
+    next_page_token: str
+    def __init__(self, skills: _Optional[_Iterable[_Union[Skill, _Mapping]]] = ..., next_page_token: _Optional[str] = ...) -> None: ...

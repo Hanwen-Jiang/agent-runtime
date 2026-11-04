@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/skill.schema.json",
+  "title": "Skill",
+  "description": "用户自定义的 Skill（N-14；Registry 种类 SKILL）：一段做某类事的说明，加几份参考用的文本文件。名字、版本、层（平台、租户、用户）与登记者是 Registry 的元数据，不写在正文里。Planner 的目录只看 description，tool_loop 按需读 instructions 与 files（经 skill_read，固定在 Task 上的版本）。正文只是文本：不能声明 effect、联网、沙箱后端、凭据或 Hook，文件不会被执行，Skill 不改变任何权限（租户策略与 Node 的 effect 上限照旧）。JSON Schema 表达不了的由 Registry 发布时核对：files 的 path 不分大小写不能重复，也不能一个是另一个的前缀目录；整份正文按 UTF-8 不超过 256 KiB。",
+  "type": "object",
+  "required": ["description", "instructions"],
+  "properties": {
+    "description": {
+      "description": "给 Planner 的目录看的：这个 Skill 做什么、什么时候用它。目录里只有名字与它",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "instructions": {
+      "description": "正文（Markdown）：怎么做。只在 tool_loop 读它的时候进上下文",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 65536
+    },
+    "files": {
+      "description": "参考用的文本文件（模板、示例、清单）。只能读，不会被放进工作区或沙箱，也不会被执行",
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": ["path", "content"],
+        "properties": {
+          "path": {
+            "description": "相对路径，/ 分段，最多 8 段；每段字母、数字、.、_ 与 -，不以 . 开头（因此没有 .、..、.git 与隐藏文件），不能以 / 开头或结尾",
+            "type": "string",
+            "maxLength": 255,
+            "pattern": "^[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}(/[A-Za-z0-9_-][A-Za-z0-9._-]{0,99}){0,7}$"
+          },
+          "media_type": {
+            "description": "内容的类型；不写按 text/plain",
+            "$ref": "defs.schema.json#/$defs/skill_media_type"
+          },
+          "content": {
+            "description": "文本内容（UTF-8）",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 65536
+          }
+        },
+        "unevaluatedProperties": false
+      }
+    }
+  },
+  "unevaluatedProperties": false
+}

@@ -1,0 +1,78 @@
+{
+  "schema": "skill",
+  "valid": [
+    {
+      "name": "instructions_only",
+      "source": "N-14 契约草案（docs/plan/n14-skill-contract.md）",
+      "notes": "最小的 Skill：说明与正文",
+      "instance": {
+        "description": "写周报：把本周合并的 PR 按模块归类，每类一两句，末尾列下周计划",
+        "instructions": "# 周报\n\n1. 用 repo_list 与提交记录找出本周合并的改动。\n2. 按模块归类，每类一两句，写清影响。\n3. 末尾列下周计划，不超过五条。"
+      }
+    },
+    {
+      "name": "with_reference_files",
+      "source": "N-14 契约草案（docs/plan/n14-skill-contract.md）",
+      "notes": "带两份参考文件；代码样例也只是文本，不会被执行",
+      "instance": {
+        "description": "按团队的约定写数据库迁移：先加列再回填，最后才加约束",
+        "instructions": "写迁移前先读 templates/migration.md 与 checklist.json，照模板分三步提交。",
+        "files": [
+          {"path": "templates/migration.md", "media_type": "text/markdown", "content": "## 第一步：加列（可空）\n\n## 第二步：回填\n\n## 第三步：加约束"},
+          {"path": "checklist.json", "media_type": "application/json", "content": "{\"steps\": [\"add_column\", \"backfill\", \"constrain\"]}"},
+          {"path": "examples/backfill_example.py", "content": "# 分批回填，每批 1000 行\n"}
+        ]
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "declares_effect",
+      "description": "Skill 只是文本，不能声明 effect（也不能声明联网、后端、凭据或 Hook）：权限只由租户策略与 Node 定",
+      "violates": [{"path": "", "keyword": "unevaluatedProperties"}],
+      "instance": {"description": "部署到生产", "instructions": "直接推送", "effect": "write_irreversible"}
+    },
+    {
+      "name": "declares_script",
+      "description": "没有可执行的脚本字段：文件不会被执行",
+      "violates": [{"path": "/files/0", "keyword": "unevaluatedProperties"}],
+      "instance": {"description": "装依赖", "instructions": "先跑 setup", "files": [{"path": "setup.sh", "content": "pip install x", "executable": true}]}
+    },
+    {
+      "name": "path_escapes_upward",
+      "description": "路径不能有 ..",
+      "violates": [{"path": "/files/0/path", "keyword": "pattern"}],
+      "instance": {"description": "读配置", "instructions": "见文件", "files": [{"path": "../secrets.txt", "content": "x"}]}
+    },
+    {
+      "name": "absolute_path",
+      "description": "路径不能以 / 开头",
+      "violates": [{"path": "/files/0/path", "keyword": "pattern"}],
+      "instance": {"description": "读配置", "instructions": "见文件", "files": [{"path": "/etc/passwd", "content": "x"}]}
+    },
+    {
+      "name": "hidden_path",
+      "description": "每段不以 . 开头：没有 .git 与隐藏文件",
+      "violates": [{"path": "/files/0/path", "keyword": "pattern"}],
+      "instance": {"description": "钩子", "instructions": "见文件", "files": [{"path": ".git/hooks/pre-commit", "content": "x"}]}
+    },
+    {
+      "name": "binary_media_type",
+      "description": "只收文本类型",
+      "violates": [{"path": "/files/0/media_type", "keyword": "enum"}],
+      "instance": {"description": "图标", "instructions": "见文件", "files": [{"path": "icon.png", "media_type": "image/png", "content": "iVBORw0KGgo="}]}
+    },
+    {
+      "name": "missing_instructions",
+      "description": "正文必填",
+      "violates": [{"path": "", "keyword": "required"}],
+      "instance": {"description": "只有说明"}
+    },
+    {
+      "name": "empty_description",
+      "description": "说明不能为空：Planner 的目录只看它",
+      "violates": [{"path": "/description", "keyword": "minLength"}],
+      "instance": {"description": "", "instructions": "做点什么"}
+    }
+  ]
+}

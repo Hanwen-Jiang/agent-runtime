@@ -64,6 +64,12 @@ const (
 	// RegistryServiceGetTaskFamiliesProcedure is the fully-qualified name of the RegistryService's
 	// GetTaskFamilies RPC.
 	RegistryServiceGetTaskFamiliesProcedure = "/agentruntime.registry.v1.RegistryService/GetTaskFamilies"
+	// RegistryServiceGetSkillProcedure is the fully-qualified name of the RegistryService's GetSkill
+	// RPC.
+	RegistryServiceGetSkillProcedure = "/agentruntime.registry.v1.RegistryService/GetSkill"
+	// RegistryServiceListSkillsProcedure is the fully-qualified name of the RegistryService's
+	// ListSkills RPC.
+	RegistryServiceListSkillsProcedure = "/agentruntime.registry.v1.RegistryService/ListSkills"
 )
 
 // RegistryServiceClient is a client for the agentruntime.registry.v1.RegistryService service.
@@ -85,6 +91,10 @@ type RegistryServiceClient interface {
 	GetTenantPolicy(context.Context, *connect.Request[v1.GetTenantPolicyRequest]) (*connect.Response[v1.GetTenantPolicyResponse], error)
 	// 租户当前的任务族词表；租户没有自己的词表时是平台默认的那份。分诊只能从词表里选任务族。
 	GetTaskFamilies(context.Context, *connect.Request[v1.GetTaskFamiliesRequest]) (*connect.Response[v1.GetTaskFamiliesResponse], error)
+	// 取一个 Skill 的正文（N-14）。tool_loop 的 skill_read 按 Task 固定的版本读它。
+	GetSkill(context.Context, *connect.Request[v1.GetSkillRequest]) (*connect.Response[v1.GetSkillResponse], error)
+	// Skill 的目录（N-14）：只有名字、版本、层与说明，不带正文。Planner 的目录读它。
+	ListSkills(context.Context, *connect.Request[v1.ListSkillsRequest]) (*connect.Response[v1.ListSkillsResponse], error)
 }
 
 // NewRegistryServiceClient constructs a client for the agentruntime.registry.v1.RegistryService
@@ -164,6 +174,18 @@ func NewRegistryServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(registryServiceMethods.ByName("GetTaskFamilies")),
 			connect.WithClientOptions(opts...),
 		),
+		getSkill: connect.NewClient[v1.GetSkillRequest, v1.GetSkillResponse](
+			httpClient,
+			baseURL+RegistryServiceGetSkillProcedure,
+			connect.WithSchema(registryServiceMethods.ByName("GetSkill")),
+			connect.WithClientOptions(opts...),
+		),
+		listSkills: connect.NewClient[v1.ListSkillsRequest, v1.ListSkillsResponse](
+			httpClient,
+			baseURL+RegistryServiceListSkillsProcedure,
+			connect.WithSchema(registryServiceMethods.ByName("ListSkills")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -180,6 +202,8 @@ type registryServiceClient struct {
 	listModelProfiles     *connect.Client[v1.ListModelProfilesRequest, v1.ListModelProfilesResponse]
 	getTenantPolicy       *connect.Client[v1.GetTenantPolicyRequest, v1.GetTenantPolicyResponse]
 	getTaskFamilies       *connect.Client[v1.GetTaskFamiliesRequest, v1.GetTaskFamiliesResponse]
+	getSkill              *connect.Client[v1.GetSkillRequest, v1.GetSkillResponse]
+	listSkills            *connect.Client[v1.ListSkillsRequest, v1.ListSkillsResponse]
 }
 
 // Publish calls agentruntime.registry.v1.RegistryService.Publish.
@@ -237,6 +261,16 @@ func (c *registryServiceClient) GetTaskFamilies(ctx context.Context, req *connec
 	return c.getTaskFamilies.CallUnary(ctx, req)
 }
 
+// GetSkill calls agentruntime.registry.v1.RegistryService.GetSkill.
+func (c *registryServiceClient) GetSkill(ctx context.Context, req *connect.Request[v1.GetSkillRequest]) (*connect.Response[v1.GetSkillResponse], error) {
+	return c.getSkill.CallUnary(ctx, req)
+}
+
+// ListSkills calls agentruntime.registry.v1.RegistryService.ListSkills.
+func (c *registryServiceClient) ListSkills(ctx context.Context, req *connect.Request[v1.ListSkillsRequest]) (*connect.Response[v1.ListSkillsResponse], error) {
+	return c.listSkills.CallUnary(ctx, req)
+}
+
 // RegistryServiceHandler is an implementation of the agentruntime.registry.v1.RegistryService
 // service.
 type RegistryServiceHandler interface {
@@ -257,6 +291,10 @@ type RegistryServiceHandler interface {
 	GetTenantPolicy(context.Context, *connect.Request[v1.GetTenantPolicyRequest]) (*connect.Response[v1.GetTenantPolicyResponse], error)
 	// 租户当前的任务族词表；租户没有自己的词表时是平台默认的那份。分诊只能从词表里选任务族。
 	GetTaskFamilies(context.Context, *connect.Request[v1.GetTaskFamiliesRequest]) (*connect.Response[v1.GetTaskFamiliesResponse], error)
+	// 取一个 Skill 的正文（N-14）。tool_loop 的 skill_read 按 Task 固定的版本读它。
+	GetSkill(context.Context, *connect.Request[v1.GetSkillRequest]) (*connect.Response[v1.GetSkillResponse], error)
+	// Skill 的目录（N-14）：只有名字、版本、层与说明，不带正文。Planner 的目录读它。
+	ListSkills(context.Context, *connect.Request[v1.ListSkillsRequest]) (*connect.Response[v1.ListSkillsResponse], error)
 }
 
 // NewRegistryServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -332,6 +370,18 @@ func NewRegistryServiceHandler(svc RegistryServiceHandler, opts ...connect.Handl
 		connect.WithSchema(registryServiceMethods.ByName("GetTaskFamilies")),
 		connect.WithHandlerOptions(opts...),
 	)
+	registryServiceGetSkillHandler := connect.NewUnaryHandler(
+		RegistryServiceGetSkillProcedure,
+		svc.GetSkill,
+		connect.WithSchema(registryServiceMethods.ByName("GetSkill")),
+		connect.WithHandlerOptions(opts...),
+	)
+	registryServiceListSkillsHandler := connect.NewUnaryHandler(
+		RegistryServiceListSkillsProcedure,
+		svc.ListSkills,
+		connect.WithSchema(registryServiceMethods.ByName("ListSkills")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/agentruntime.registry.v1.RegistryService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RegistryServicePublishProcedure:
@@ -356,6 +406,10 @@ func NewRegistryServiceHandler(svc RegistryServiceHandler, opts ...connect.Handl
 			registryServiceGetTenantPolicyHandler.ServeHTTP(w, r)
 		case RegistryServiceGetTaskFamiliesProcedure:
 			registryServiceGetTaskFamiliesHandler.ServeHTTP(w, r)
+		case RegistryServiceGetSkillProcedure:
+			registryServiceGetSkillHandler.ServeHTTP(w, r)
+		case RegistryServiceListSkillsProcedure:
+			registryServiceListSkillsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -407,4 +461,12 @@ func (UnimplementedRegistryServiceHandler) GetTenantPolicy(context.Context, *con
 
 func (UnimplementedRegistryServiceHandler) GetTaskFamilies(context.Context, *connect.Request[v1.GetTaskFamiliesRequest]) (*connect.Response[v1.GetTaskFamiliesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.registry.v1.RegistryService.GetTaskFamilies is not implemented"))
+}
+
+func (UnimplementedRegistryServiceHandler) GetSkill(context.Context, *connect.Request[v1.GetSkillRequest]) (*connect.Response[v1.GetSkillResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.registry.v1.RegistryService.GetSkill is not implemented"))
+}
+
+func (UnimplementedRegistryServiceHandler) ListSkills(context.Context, *connect.Request[v1.ListSkillsRequest]) (*connect.Response[v1.ListSkillsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.registry.v1.RegistryService.ListSkills is not implemented"))
 }

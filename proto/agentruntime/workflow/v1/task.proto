@@ -49,6 +49,9 @@ message PinnedVersions {
   map<string, string> model_profiles = 4;
   // 租户策略的版本。
   string tenant_policy = 5;
+  // Skill（N-14）：名字 → platform/vN、tenant/vN 或 user/vN（user 是 Task 的提交者）。提交时看得到的当前版本全部固定；
+  // 之后的发布、收回与遮住都不影响这个 Task。
+  map<string, string> skills = 6;
 }
 
 message Budget {

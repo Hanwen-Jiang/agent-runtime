@@ -240,7 +240,10 @@ type PinnedVersions struct {
 	// 键是 Model Profile 的 id，例如 vendor/model。
 	ModelProfiles map[string]string `protobuf:"bytes,4,rep,name=model_profiles,json=modelProfiles,proto3" json:"model_profiles,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// 租户策略的版本。
-	TenantPolicy  string `protobuf:"bytes,5,opt,name=tenant_policy,json=tenantPolicy,proto3" json:"tenant_policy,omitempty"`
+	TenantPolicy string `protobuf:"bytes,5,opt,name=tenant_policy,json=tenantPolicy,proto3" json:"tenant_policy,omitempty"`
+	// Skill（N-14）：名字 → platform/vN、tenant/vN 或 user/vN（user 是 Task 的提交者）。提交时看得到的当前版本全部固定；
+	// 之后的发布、收回与遮住都不影响这个 Task。
+	Skills        map[string]string `protobuf:"bytes,6,rep,name=skills,proto3" json:"skills,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -308,6 +311,13 @@ func (x *PinnedVersions) GetTenantPolicy() string {
 		return x.TenantPolicy
 	}
 	return ""
+}
+
+func (x *PinnedVersions) GetSkills() map[string]string {
+	if x != nil {
+		return x.Skills
+	}
+	return nil
 }
 
 type Budget struct {
@@ -737,13 +747,14 @@ const file_agentruntime_workflow_v1_task_proto_rawDesc = "" +
 	" \x01(\v2 .agentruntime.workflow.v1.BudgetR\x06budget\x12E\n" +
 	"\x0eeffect_ceiling\x18\v \x01(\x0e2\x1e.agentruntime.common.v1.EffectR\reffectCeiling\x12$\n" +
 	"\x0eparent_task_id\x18\f \x01(\tR\fparentTaskId\x12\x14\n" +
-	"\x05depth\x18\r \x01(\x05R\x05depth\"\xd3\x04\n" +
+	"\x05depth\x18\r \x01(\x05R\x05depth\"\xdc\x05\n" +
 	"\x0ePinnedVersions\x12\x16\n" +
 	"\x06recipe\x18\x01 \x01(\tR\x06recipe\x12b\n" +
 	"\x0enode_templates\x18\x02 \x03(\v2;.agentruntime.workflow.v1.PinnedVersions.NodeTemplatesEntryR\rnodeTemplates\x12q\n" +
 	"\x13reasoning_templates\x18\x03 \x03(\v2@.agentruntime.workflow.v1.PinnedVersions.ReasoningTemplatesEntryR\x12reasoningTemplates\x12b\n" +
 	"\x0emodel_profiles\x18\x04 \x03(\v2;.agentruntime.workflow.v1.PinnedVersions.ModelProfilesEntryR\rmodelProfiles\x12#\n" +
-	"\rtenant_policy\x18\x05 \x01(\tR\ftenantPolicy\x1a@\n" +
+	"\rtenant_policy\x18\x05 \x01(\tR\ftenantPolicy\x12L\n" +
+	"\x06skills\x18\x06 \x03(\v24.agentruntime.workflow.v1.PinnedVersions.SkillsEntryR\x06skills\x1a@\n" +
 	"\x12NodeTemplatesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aE\n" +
@@ -751,6 +762,9 @@ const file_agentruntime_workflow_v1_task_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a@\n" +
 	"\x12ModelProfilesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a9\n" +
+	"\vSkillsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x80\x01\n" +
 	"\x06Budget\x12\x1d\n" +
@@ -813,7 +827,7 @@ func file_agentruntime_workflow_v1_task_proto_rawDescGZIP() []byte {
 }
 
 var file_agentruntime_workflow_v1_task_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_agentruntime_workflow_v1_task_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_agentruntime_workflow_v1_task_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_agentruntime_workflow_v1_task_proto_goTypes = []any{
 	(TaskGuidanceKind)(0),         // 0: agentruntime.workflow.v1.TaskGuidanceKind
 	(*TaskWorkflowInput)(nil),     // 1: agentruntime.workflow.v1.TaskWorkflowInput
@@ -826,49 +840,51 @@ var file_agentruntime_workflow_v1_task_proto_goTypes = []any{
 	nil,                           // 8: agentruntime.workflow.v1.PinnedVersions.NodeTemplatesEntry
 	nil,                           // 9: agentruntime.workflow.v1.PinnedVersions.ReasoningTemplatesEntry
 	nil,                           // 10: agentruntime.workflow.v1.PinnedVersions.ModelProfilesEntry
-	(*v1.TenantContext)(nil),      // 11: agentruntime.common.v1.TenantContext
-	(*structpb.Struct)(nil),       // 12: google.protobuf.Struct
-	(*timestamppb.Timestamp)(nil), // 13: google.protobuf.Timestamp
-	(v1.SessionAccess)(0),         // 14: agentruntime.common.v1.SessionAccess
-	(v1.Priority)(0),              // 15: agentruntime.common.v1.Priority
-	(v1.Effect)(0),                // 16: agentruntime.common.v1.Effect
-	(*durationpb.Duration)(nil),   // 17: google.protobuf.Duration
-	(v1.TaskStatus)(0),            // 18: agentruntime.common.v1.TaskStatus
-	(v1.Verdict)(0),               // 19: agentruntime.common.v1.Verdict
-	(*v1.JsonPayload)(nil),        // 20: agentruntime.common.v1.JsonPayload
-	(*v1.Usage)(nil),              // 21: agentruntime.common.v1.Usage
-	(*v1.Error)(nil),              // 22: agentruntime.common.v1.Error
-	(v1.GuidanceMode)(0),          // 23: agentruntime.common.v1.GuidanceMode
+	nil,                           // 11: agentruntime.workflow.v1.PinnedVersions.SkillsEntry
+	(*v1.TenantContext)(nil),      // 12: agentruntime.common.v1.TenantContext
+	(*structpb.Struct)(nil),       // 13: google.protobuf.Struct
+	(*timestamppb.Timestamp)(nil), // 14: google.protobuf.Timestamp
+	(v1.SessionAccess)(0),         // 15: agentruntime.common.v1.SessionAccess
+	(v1.Priority)(0),              // 16: agentruntime.common.v1.Priority
+	(v1.Effect)(0),                // 17: agentruntime.common.v1.Effect
+	(*durationpb.Duration)(nil),   // 18: google.protobuf.Duration
+	(v1.TaskStatus)(0),            // 19: agentruntime.common.v1.TaskStatus
+	(v1.Verdict)(0),               // 20: agentruntime.common.v1.Verdict
+	(*v1.JsonPayload)(nil),        // 21: agentruntime.common.v1.JsonPayload
+	(*v1.Usage)(nil),              // 22: agentruntime.common.v1.Usage
+	(*v1.Error)(nil),              // 23: agentruntime.common.v1.Error
+	(v1.GuidanceMode)(0),          // 24: agentruntime.common.v1.GuidanceMode
 }
 var file_agentruntime_workflow_v1_task_proto_depIdxs = []int32{
-	11, // 0: agentruntime.workflow.v1.TaskWorkflowInput.tenant:type_name -> agentruntime.common.v1.TenantContext
+	12, // 0: agentruntime.workflow.v1.TaskWorkflowInput.tenant:type_name -> agentruntime.common.v1.TenantContext
 	2,  // 1: agentruntime.workflow.v1.TaskWorkflowInput.pinned_versions:type_name -> agentruntime.workflow.v1.PinnedVersions
-	12, // 2: agentruntime.workflow.v1.TaskWorkflowInput.inputs:type_name -> google.protobuf.Struct
-	13, // 3: agentruntime.workflow.v1.TaskWorkflowInput.submitted_at:type_name -> google.protobuf.Timestamp
-	14, // 4: agentruntime.workflow.v1.TaskWorkflowInput.session_access:type_name -> agentruntime.common.v1.SessionAccess
-	15, // 5: agentruntime.workflow.v1.TaskWorkflowInput.priority:type_name -> agentruntime.common.v1.Priority
+	13, // 2: agentruntime.workflow.v1.TaskWorkflowInput.inputs:type_name -> google.protobuf.Struct
+	14, // 3: agentruntime.workflow.v1.TaskWorkflowInput.submitted_at:type_name -> google.protobuf.Timestamp
+	15, // 4: agentruntime.workflow.v1.TaskWorkflowInput.session_access:type_name -> agentruntime.common.v1.SessionAccess
+	16, // 5: agentruntime.workflow.v1.TaskWorkflowInput.priority:type_name -> agentruntime.common.v1.Priority
 	3,  // 6: agentruntime.workflow.v1.TaskWorkflowInput.budget:type_name -> agentruntime.workflow.v1.Budget
-	16, // 7: agentruntime.workflow.v1.TaskWorkflowInput.effect_ceiling:type_name -> agentruntime.common.v1.Effect
+	17, // 7: agentruntime.workflow.v1.TaskWorkflowInput.effect_ceiling:type_name -> agentruntime.common.v1.Effect
 	8,  // 8: agentruntime.workflow.v1.PinnedVersions.node_templates:type_name -> agentruntime.workflow.v1.PinnedVersions.NodeTemplatesEntry
 	9,  // 9: agentruntime.workflow.v1.PinnedVersions.reasoning_templates:type_name -> agentruntime.workflow.v1.PinnedVersions.ReasoningTemplatesEntry
 	10, // 10: agentruntime.workflow.v1.PinnedVersions.model_profiles:type_name -> agentruntime.workflow.v1.PinnedVersions.ModelProfilesEntry
-	17, // 11: agentruntime.workflow.v1.Budget.wall_clock:type_name -> google.protobuf.Duration
-	18, // 12: agentruntime.workflow.v1.TaskWorkflowResult.status:type_name -> agentruntime.common.v1.TaskStatus
-	19, // 13: agentruntime.workflow.v1.TaskWorkflowResult.final_verdict:type_name -> agentruntime.common.v1.Verdict
-	20, // 14: agentruntime.workflow.v1.TaskWorkflowResult.deliverable:type_name -> agentruntime.common.v1.JsonPayload
-	21, // 15: agentruntime.workflow.v1.TaskWorkflowResult.usage:type_name -> agentruntime.common.v1.Usage
-	22, // 16: agentruntime.workflow.v1.TaskWorkflowResult.error:type_name -> agentruntime.common.v1.Error
-	18, // 17: agentruntime.workflow.v1.TaskStateQueryResult.status:type_name -> agentruntime.common.v1.TaskStatus
-	20, // 18: agentruntime.workflow.v1.TaskStateQueryResult.task_state:type_name -> agentruntime.common.v1.JsonPayload
-	13, // 19: agentruntime.workflow.v1.HumanReplySignal.replied_at:type_name -> google.protobuf.Timestamp
-	0,  // 20: agentruntime.workflow.v1.TaskGuidanceSignal.kind:type_name -> agentruntime.workflow.v1.TaskGuidanceKind
-	23, // 21: agentruntime.workflow.v1.TaskGuidanceSignal.mode:type_name -> agentruntime.common.v1.GuidanceMode
-	13, // 22: agentruntime.workflow.v1.TaskGuidanceSignal.at:type_name -> google.protobuf.Timestamp
-	23, // [23:23] is the sub-list for method output_type
-	23, // [23:23] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	11, // 11: agentruntime.workflow.v1.PinnedVersions.skills:type_name -> agentruntime.workflow.v1.PinnedVersions.SkillsEntry
+	18, // 12: agentruntime.workflow.v1.Budget.wall_clock:type_name -> google.protobuf.Duration
+	19, // 13: agentruntime.workflow.v1.TaskWorkflowResult.status:type_name -> agentruntime.common.v1.TaskStatus
+	20, // 14: agentruntime.workflow.v1.TaskWorkflowResult.final_verdict:type_name -> agentruntime.common.v1.Verdict
+	21, // 15: agentruntime.workflow.v1.TaskWorkflowResult.deliverable:type_name -> agentruntime.common.v1.JsonPayload
+	22, // 16: agentruntime.workflow.v1.TaskWorkflowResult.usage:type_name -> agentruntime.common.v1.Usage
+	23, // 17: agentruntime.workflow.v1.TaskWorkflowResult.error:type_name -> agentruntime.common.v1.Error
+	19, // 18: agentruntime.workflow.v1.TaskStateQueryResult.status:type_name -> agentruntime.common.v1.TaskStatus
+	21, // 19: agentruntime.workflow.v1.TaskStateQueryResult.task_state:type_name -> agentruntime.common.v1.JsonPayload
+	14, // 20: agentruntime.workflow.v1.HumanReplySignal.replied_at:type_name -> google.protobuf.Timestamp
+	0,  // 21: agentruntime.workflow.v1.TaskGuidanceSignal.kind:type_name -> agentruntime.workflow.v1.TaskGuidanceKind
+	24, // 22: agentruntime.workflow.v1.TaskGuidanceSignal.mode:type_name -> agentruntime.common.v1.GuidanceMode
+	14, // 23: agentruntime.workflow.v1.TaskGuidanceSignal.at:type_name -> google.protobuf.Timestamp
+	24, // [24:24] is the sub-list for method output_type
+	24, // [24:24] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_agentruntime_workflow_v1_task_proto_init() }
@@ -882,7 +898,7 @@ func file_agentruntime_workflow_v1_task_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agentruntime_workflow_v1_task_proto_rawDesc), len(file_agentruntime_workflow_v1_task_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

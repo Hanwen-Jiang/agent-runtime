@@ -7,7 +7,7 @@ from agentruntime.registry.v1 import registry_pb2 as agentruntime_dot_registry_d
 
 class RegistryServiceStub:
     """RegistryService 版本化存放 Node Template、Recipe、Reasoning Template、Model Profile、租户策略
-    与任务族词表（设计书 3.1.2）。本期先定方法签名，实现分阶段补。
+    与任务族词表（设计书 3.1.2），以及 Skill（N-14）。本期先定方法签名，实现分阶段补。
 
     每个请求的字段 1 都是 TenantContext：可见范围、模型白名单等按租户过滤，由服务端执行。
     """
@@ -73,11 +73,21 @@ class RegistryServiceStub:
                 request_serializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetTaskFamiliesRequest.SerializeToString,
                 response_deserializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetTaskFamiliesResponse.FromString,
                 _registered_method=True)
+        self.GetSkill = channel.unary_unary(
+                '/agentruntime.registry.v1.RegistryService/GetSkill',
+                request_serializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetSkillRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetSkillResponse.FromString,
+                _registered_method=True)
+        self.ListSkills = channel.unary_unary(
+                '/agentruntime.registry.v1.RegistryService/ListSkills',
+                request_serializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.ListSkillsRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.ListSkillsResponse.FromString,
+                _registered_method=True)
 
 
 class RegistryServiceServicer:
     """RegistryService 版本化存放 Node Template、Recipe、Reasoning Template、Model Profile、租户策略
-    与任务族词表（设计书 3.1.2）。本期先定方法签名，实现分阶段补。
+    与任务族词表（设计书 3.1.2），以及 Skill（N-14）。本期先定方法签名，实现分阶段补。
 
     每个请求的字段 1 都是 TenantContext：可见范围、模型白名单等按租户过滤，由服务端执行。
     """
@@ -154,6 +164,20 @@ class RegistryServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetSkill(self, request, context):
+        """取一个 Skill 的正文（N-14）。tool_loop 的 skill_read 按 Task 固定的版本读它。
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListSkills(self, request, context):
+        """Skill 的目录（N-14）：只有名字、版本、层与说明，不带正文。Planner 的目录读它。
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_RegistryServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -212,6 +236,16 @@ def add_RegistryServiceServicer_to_server(servicer, server):
                     request_deserializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetTaskFamiliesRequest.FromString,
                     response_serializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetTaskFamiliesResponse.SerializeToString,
             ),
+            'GetSkill': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetSkill,
+                    request_deserializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetSkillRequest.FromString,
+                    response_serializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetSkillResponse.SerializeToString,
+            ),
+            'ListSkills': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListSkills,
+                    request_deserializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.ListSkillsRequest.FromString,
+                    response_serializer=agentruntime_dot_registry_dot_v1_dot_registry__pb2.ListSkillsResponse.SerializeToString,
+            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
             'agentruntime.registry.v1.RegistryService', rpc_method_handlers)
@@ -222,7 +256,7 @@ def add_RegistryServiceServicer_to_server(servicer, server):
  # This class is part of an EXPERIMENTAL API.
 class RegistryService:
     """RegistryService 版本化存放 Node Template、Recipe、Reasoning Template、Model Profile、租户策略
-    与任务族词表（设计书 3.1.2）。本期先定方法签名，实现分阶段补。
+    与任务族词表（设计书 3.1.2），以及 Skill（N-14）。本期先定方法签名，实现分阶段补。
 
     每个请求的字段 1 都是 TenantContext：可见范围、模型白名单等按租户过滤，由服务端执行。
     """
@@ -514,6 +548,60 @@ class RegistryService:
             '/agentruntime.registry.v1.RegistryService/GetTaskFamilies',
             agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetTaskFamiliesRequest.SerializeToString,
             agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetTaskFamiliesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetSkill(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.registry.v1.RegistryService/GetSkill',
+            agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetSkillRequest.SerializeToString,
+            agentruntime_dot_registry_dot_v1_dot_registry__pb2.GetSkillResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListSkills(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.registry.v1.RegistryService/ListSkills',
+            agentruntime_dot_registry_dot_v1_dot_registry__pb2.ListSkillsRequest.SerializeToString,
+            agentruntime_dot_registry_dot_v1_dot_registry__pb2.ListSkillsResponse.FromString,
             options,
             channel_credentials,
             insecure,

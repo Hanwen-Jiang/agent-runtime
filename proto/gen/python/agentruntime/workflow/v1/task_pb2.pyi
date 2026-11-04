@@ -59,7 +59,7 @@ class TaskWorkflowInput(_message.Message):
     def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., task_id: _Optional[str] = ..., pinned_versions: _Optional[_Union[PinnedVersions, _Mapping]] = ..., message: _Optional[str] = ..., inputs: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., attachments: _Optional[_Iterable[str]] = ..., submitted_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., session_access: _Optional[_Union[_enums_pb2.SessionAccess, str]] = ..., priority: _Optional[_Union[_enums_pb2.Priority, str]] = ..., budget: _Optional[_Union[Budget, _Mapping]] = ..., effect_ceiling: _Optional[_Union[_enums_pb2.Effect, str]] = ..., parent_task_id: _Optional[str] = ..., depth: _Optional[int] = ...) -> None: ...
 
 class PinnedVersions(_message.Message):
-    __slots__ = ("recipe", "node_templates", "reasoning_templates", "model_profiles", "tenant_policy")
+    __slots__ = ("recipe", "node_templates", "reasoning_templates", "model_profiles", "tenant_policy", "skills")
     class NodeTemplatesEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -81,17 +81,26 @@ class PinnedVersions(_message.Message):
         key: str
         value: str
         def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
+    class SkillsEntry(_message.Message):
+        __slots__ = ("key", "value")
+        KEY_FIELD_NUMBER: _ClassVar[int]
+        VALUE_FIELD_NUMBER: _ClassVar[int]
+        key: str
+        value: str
+        def __init__(self, key: _Optional[str] = ..., value: _Optional[str] = ...) -> None: ...
     RECIPE_FIELD_NUMBER: _ClassVar[int]
     NODE_TEMPLATES_FIELD_NUMBER: _ClassVar[int]
     REASONING_TEMPLATES_FIELD_NUMBER: _ClassVar[int]
     MODEL_PROFILES_FIELD_NUMBER: _ClassVar[int]
     TENANT_POLICY_FIELD_NUMBER: _ClassVar[int]
+    SKILLS_FIELD_NUMBER: _ClassVar[int]
     recipe: str
     node_templates: _containers.ScalarMap[str, str]
     reasoning_templates: _containers.ScalarMap[str, str]
     model_profiles: _containers.ScalarMap[str, str]
     tenant_policy: str
-    def __init__(self, recipe: _Optional[str] = ..., node_templates: _Optional[_Mapping[str, str]] = ..., reasoning_templates: _Optional[_Mapping[str, str]] = ..., model_profiles: _Optional[_Mapping[str, str]] = ..., tenant_policy: _Optional[str] = ...) -> None: ...
+    skills: _containers.ScalarMap[str, str]
+    def __init__(self, recipe: _Optional[str] = ..., node_templates: _Optional[_Mapping[str, str]] = ..., reasoning_templates: _Optional[_Mapping[str, str]] = ..., model_profiles: _Optional[_Mapping[str, str]] = ..., tenant_policy: _Optional[str] = ..., skills: _Optional[_Mapping[str, str]] = ...) -> None: ...
 
 class Budget(_message.Message):
     __slots__ = ("usd_micros", "tool_calls", "wall_clock")

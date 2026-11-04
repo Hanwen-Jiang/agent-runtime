@@ -12,6 +12,7 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	structpb "google.golang.org/protobuf/types/known/structpb"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -36,6 +37,9 @@ const (
 	RegistryKind_REGISTRY_KIND_TENANT_POLICY      RegistryKind = 5
 	// 任务族词表：正文按 /schemas/task_families.schema.json。
 	RegistryKind_REGISTRY_KIND_TASK_FAMILIES RegistryKind = 6
+	// Skill（N-14）：正文按 /schemas/skill.schema.json。Publish 不带租户是平台层、带租户是租户层（都要发布令牌）；
+	// 用户层只经 agentruntime.skill.v1.SkillService。发布即成为当前版本，不走 Promote。
+	RegistryKind_REGISTRY_KIND_SKILL RegistryKind = 7
 )
 
 // Enum value maps for RegistryKind.
@@ -48,6 +52,7 @@ var (
 		4: "REGISTRY_KIND_MODEL_PROFILE",
 		5: "REGISTRY_KIND_TENANT_POLICY",
 		6: "REGISTRY_KIND_TASK_FAMILIES",
+		7: "REGISTRY_KIND_SKILL",
 	}
 	RegistryKind_value = map[string]int32{
 		"REGISTRY_KIND_UNSPECIFIED":        0,
@@ -57,6 +62,7 @@ var (
 		"REGISTRY_KIND_MODEL_PROFILE":      4,
 		"REGISTRY_KIND_TENANT_POLICY":      5,
 		"REGISTRY_KIND_TASK_FAMILIES":      6,
+		"REGISTRY_KIND_SKILL":              7,
 	}
 )
 
@@ -85,6 +91,63 @@ func (x RegistryKind) Number() protoreflect.EnumNumber {
 // Deprecated: Use RegistryKind.Descriptor instead.
 func (RegistryKind) EnumDescriptor() ([]byte, []int) {
 	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{0}
+}
+
+// SkillScope：Skill 登记在哪一层（N-14）。同名时上层优先：平台 > 租户 > 用户。下层不能发布上层已有的名字
+// （Conflict，code 为 name_taken）；上层之后才有的同名条目遮住下层的（下层的 shadowed 为 true，不进目录、不被新 Task 固定，
+// 已经固定了它的 Task 照旧读它）。
+type SkillScope int32
+
+const (
+	SkillScope_SKILL_SCOPE_UNSPECIFIED SkillScope = 0
+	SkillScope_SKILL_SCOPE_PLATFORM    SkillScope = 1
+	// 租户里的所有用户都看得到。
+	SkillScope_SKILL_SCOPE_TENANT SkillScope = 2
+	// 只有登记者本人看得到，也只有本人提交的 Task 会固定它。
+	SkillScope_SKILL_SCOPE_USER SkillScope = 3
+)
+
+// Enum value maps for SkillScope.
+var (
+	SkillScope_name = map[int32]string{
+		0: "SKILL_SCOPE_UNSPECIFIED",
+		1: "SKILL_SCOPE_PLATFORM",
+		2: "SKILL_SCOPE_TENANT",
+		3: "SKILL_SCOPE_USER",
+	}
+	SkillScope_value = map[string]int32{
+		"SKILL_SCOPE_UNSPECIFIED": 0,
+		"SKILL_SCOPE_PLATFORM":    1,
+		"SKILL_SCOPE_TENANT":      2,
+		"SKILL_SCOPE_USER":        3,
+	}
+)
+
+func (x SkillScope) Enum() *SkillScope {
+	p := new(SkillScope)
+	*p = x
+	return p
+}
+
+func (x SkillScope) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SkillScope) Descriptor() protoreflect.EnumDescriptor {
+	return file_agentruntime_registry_v1_registry_proto_enumTypes[1].Descriptor()
+}
+
+func (SkillScope) Type() protoreflect.EnumType {
+	return &file_agentruntime_registry_v1_registry_proto_enumTypes[1]
+}
+
+func (x SkillScope) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SkillScope.Descriptor instead.
+func (SkillScope) EnumDescriptor() ([]byte, []int) {
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{1}
 }
 
 // ReleaseState：一个版本的发布状态。
@@ -125,11 +188,11 @@ func (x ReleaseState) String() string {
 }
 
 func (ReleaseState) Descriptor() protoreflect.EnumDescriptor {
-	return file_agentruntime_registry_v1_registry_proto_enumTypes[1].Descriptor()
+	return file_agentruntime_registry_v1_registry_proto_enumTypes[2].Descriptor()
 }
 
 func (ReleaseState) Type() protoreflect.EnumType {
-	return &file_agentruntime_registry_v1_registry_proto_enumTypes[1]
+	return &file_agentruntime_registry_v1_registry_proto_enumTypes[2]
 }
 
 func (x ReleaseState) Number() protoreflect.EnumNumber {
@@ -138,7 +201,7 @@ func (x ReleaseState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ReleaseState.Descriptor instead.
 func (ReleaseState) EnumDescriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{1}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{2}
 }
 
 // NodeTemplate 是 Atomic Node 的模板（附录 D.7）。骨架字段强类型；参数 schema 与默认配置是 JSON 载荷。
@@ -480,6 +543,131 @@ func (x *TenantPolicy) GetDocument() *v1.JsonPayload {
 	return nil
 }
 
+// Skill 是一个 Skill 的一个版本（N-14）。名字：小写字母开头，小写字母、数字、_ 与 -，最多 64 个字符；在它看得到的范围里
+// （平台、租户、本人）唯一。版本一经发布不再修改；内容与当前版本相同时再发布不产生新版本。
+type Skill struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// 层与该层里的版本号：platform/vN、tenant/vN 或 user/vN。PinnedVersions.skills 固定的就是它。
+	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	// DEFAULT 是当前版本；RETIRED 是被新版本替换的或被收回的（仍可按版本读）。没有 SHADOW。
+	State ReleaseState `protobuf:"varint,3,opt,name=state,proto3,enum=agentruntime.registry.v1.ReleaseState" json:"state,omitempty"`
+	Scope SkillScope   `protobuf:"varint,4,opt,name=scope,proto3,enum=agentruntime.registry.v1.SkillScope" json:"scope,omitempty"`
+	// 同 document.description，列目录时也有。
+	Description string `protobuf:"bytes,5,opt,name=description,proto3" json:"description,omitempty"`
+	// 正文（/schemas/skill.schema.json）。列目录（ListSkills）时为空。
+	Document *v1.JsonPayload `protobuf:"bytes,6,opt,name=document,proto3" json:"document,omitempty"`
+	// 用户层的登记者（user_id）；平台层、租户层为空。
+	Owner string `protobuf:"bytes,7,opt,name=owner,proto3" json:"owner,omitempty"`
+	// 被上层同名的条目遮住了：不进 Planner 的目录、不被新 Task 固定。只有登记者自己列出时才看得到被遮住的。
+	Shadowed    bool                   `protobuf:"varint,8,opt,name=shadowed,proto3" json:"shadowed,omitempty"`
+	PublishedAt *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
+	// 规范化正文的 SHA-256（小写十六进制），用来判断内容是否改了。
+	Digest        string `protobuf:"bytes,10,opt,name=digest,proto3" json:"digest,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Skill) Reset() {
+	*x = Skill{}
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Skill) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Skill) ProtoMessage() {}
+
+func (x *Skill) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Skill.ProtoReflect.Descriptor instead.
+func (*Skill) Descriptor() ([]byte, []int) {
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *Skill) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Skill) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *Skill) GetState() ReleaseState {
+	if x != nil {
+		return x.State
+	}
+	return ReleaseState_RELEASE_STATE_UNSPECIFIED
+}
+
+func (x *Skill) GetScope() SkillScope {
+	if x != nil {
+		return x.Scope
+	}
+	return SkillScope_SKILL_SCOPE_UNSPECIFIED
+}
+
+func (x *Skill) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *Skill) GetDocument() *v1.JsonPayload {
+	if x != nil {
+		return x.Document
+	}
+	return nil
+}
+
+func (x *Skill) GetOwner() string {
+	if x != nil {
+		return x.Owner
+	}
+	return ""
+}
+
+func (x *Skill) GetShadowed() bool {
+	if x != nil {
+		return x.Shadowed
+	}
+	return false
+}
+
+func (x *Skill) GetPublishedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.PublishedAt
+	}
+	return nil
+}
+
+func (x *Skill) GetDigest() string {
+	if x != nil {
+		return x.Digest
+	}
+	return ""
+}
+
 // TaskFamilies 是任务族词表，正文是 JSON 载荷。
 type TaskFamilies struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
@@ -493,7 +681,7 @@ type TaskFamilies struct {
 
 func (x *TaskFamilies) Reset() {
 	*x = TaskFamilies{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[4]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -505,7 +693,7 @@ func (x *TaskFamilies) String() string {
 func (*TaskFamilies) ProtoMessage() {}
 
 func (x *TaskFamilies) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[4]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -518,7 +706,7 @@ func (x *TaskFamilies) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TaskFamilies.ProtoReflect.Descriptor instead.
 func (*TaskFamilies) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{4}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *TaskFamilies) GetVersion() string {
@@ -555,7 +743,7 @@ type PublishRequest struct {
 
 func (x *PublishRequest) Reset() {
 	*x = PublishRequest{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[5]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -567,7 +755,7 @@ func (x *PublishRequest) String() string {
 func (*PublishRequest) ProtoMessage() {}
 
 func (x *PublishRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[5]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -580,7 +768,7 @@ func (x *PublishRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishRequest.ProtoReflect.Descriptor instead.
 func (*PublishRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{5}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *PublishRequest) GetTenant() *v1.TenantContext {
@@ -629,7 +817,7 @@ type PublishResponse struct {
 
 func (x *PublishResponse) Reset() {
 	*x = PublishResponse{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[6]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -641,7 +829,7 @@ func (x *PublishResponse) String() string {
 func (*PublishResponse) ProtoMessage() {}
 
 func (x *PublishResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[6]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -654,7 +842,7 @@ func (x *PublishResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PublishResponse.ProtoReflect.Descriptor instead.
 func (*PublishResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{6}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *PublishResponse) GetName() string {
@@ -692,7 +880,7 @@ type PromoteRequest struct {
 
 func (x *PromoteRequest) Reset() {
 	*x = PromoteRequest{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[7]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -704,7 +892,7 @@ func (x *PromoteRequest) String() string {
 func (*PromoteRequest) ProtoMessage() {}
 
 func (x *PromoteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[7]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -717,7 +905,7 @@ func (x *PromoteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PromoteRequest.ProtoReflect.Descriptor instead.
 func (*PromoteRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{7}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *PromoteRequest) GetTenant() *v1.TenantContext {
@@ -764,7 +952,7 @@ type PromoteResponse struct {
 
 func (x *PromoteResponse) Reset() {
 	*x = PromoteResponse{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[8]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -776,7 +964,7 @@ func (x *PromoteResponse) String() string {
 func (*PromoteResponse) ProtoMessage() {}
 
 func (x *PromoteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[8]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -789,7 +977,7 @@ func (x *PromoteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PromoteResponse.ProtoReflect.Descriptor instead.
 func (*PromoteResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{8}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *PromoteResponse) GetPreviousDefaultVersion() string {
@@ -811,7 +999,7 @@ type ResolvePinnedVersionsRequest struct {
 
 func (x *ResolvePinnedVersionsRequest) Reset() {
 	*x = ResolvePinnedVersionsRequest{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[9]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -823,7 +1011,7 @@ func (x *ResolvePinnedVersionsRequest) String() string {
 func (*ResolvePinnedVersionsRequest) ProtoMessage() {}
 
 func (x *ResolvePinnedVersionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[9]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -836,7 +1024,7 @@ func (x *ResolvePinnedVersionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolvePinnedVersionsRequest.ProtoReflect.Descriptor instead.
 func (*ResolvePinnedVersionsRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{9}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ResolvePinnedVersionsRequest) GetTenant() *v1.TenantContext {
@@ -869,7 +1057,7 @@ type ResolvePinnedVersionsResponse struct {
 
 func (x *ResolvePinnedVersionsResponse) Reset() {
 	*x = ResolvePinnedVersionsResponse{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[10]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -881,7 +1069,7 @@ func (x *ResolvePinnedVersionsResponse) String() string {
 func (*ResolvePinnedVersionsResponse) ProtoMessage() {}
 
 func (x *ResolvePinnedVersionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[10]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -894,7 +1082,7 @@ func (x *ResolvePinnedVersionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolvePinnedVersionsResponse.ProtoReflect.Descriptor instead.
 func (*ResolvePinnedVersionsResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{10}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ResolvePinnedVersionsResponse) GetPinnedVersions() *v11.PinnedVersions {
@@ -916,7 +1104,7 @@ type GetNodeTemplateRequest struct {
 
 func (x *GetNodeTemplateRequest) Reset() {
 	*x = GetNodeTemplateRequest{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[11]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -928,7 +1116,7 @@ func (x *GetNodeTemplateRequest) String() string {
 func (*GetNodeTemplateRequest) ProtoMessage() {}
 
 func (x *GetNodeTemplateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[11]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -941,7 +1129,7 @@ func (x *GetNodeTemplateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetNodeTemplateRequest.ProtoReflect.Descriptor instead.
 func (*GetNodeTemplateRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{11}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetNodeTemplateRequest) GetTenant() *v1.TenantContext {
@@ -974,7 +1162,7 @@ type GetNodeTemplateResponse struct {
 
 func (x *GetNodeTemplateResponse) Reset() {
 	*x = GetNodeTemplateResponse{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[12]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -986,7 +1174,7 @@ func (x *GetNodeTemplateResponse) String() string {
 func (*GetNodeTemplateResponse) ProtoMessage() {}
 
 func (x *GetNodeTemplateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[12]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -999,7 +1187,7 @@ func (x *GetNodeTemplateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetNodeTemplateResponse.ProtoReflect.Descriptor instead.
 func (*GetNodeTemplateResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{12}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetNodeTemplateResponse) GetNodeTemplate() *NodeTemplate {
@@ -1022,7 +1210,7 @@ type ListNodeTemplatesRequest struct {
 
 func (x *ListNodeTemplatesRequest) Reset() {
 	*x = ListNodeTemplatesRequest{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[13]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1034,7 +1222,7 @@ func (x *ListNodeTemplatesRequest) String() string {
 func (*ListNodeTemplatesRequest) ProtoMessage() {}
 
 func (x *ListNodeTemplatesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[13]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1047,7 +1235,7 @@ func (x *ListNodeTemplatesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListNodeTemplatesRequest.ProtoReflect.Descriptor instead.
 func (*ListNodeTemplatesRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{13}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ListNodeTemplatesRequest) GetTenant() *v1.TenantContext {
@@ -1088,7 +1276,7 @@ type ListNodeTemplatesResponse struct {
 
 func (x *ListNodeTemplatesResponse) Reset() {
 	*x = ListNodeTemplatesResponse{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[14]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1100,7 +1288,7 @@ func (x *ListNodeTemplatesResponse) String() string {
 func (*ListNodeTemplatesResponse) ProtoMessage() {}
 
 func (x *ListNodeTemplatesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[14]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1113,7 +1301,7 @@ func (x *ListNodeTemplatesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListNodeTemplatesResponse.ProtoReflect.Descriptor instead.
 func (*ListNodeTemplatesResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{14}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ListNodeTemplatesResponse) GetNodeTemplates() []*NodeTemplate {
@@ -1141,7 +1329,7 @@ type GetRecipeRequest struct {
 
 func (x *GetRecipeRequest) Reset() {
 	*x = GetRecipeRequest{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[15]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1153,7 +1341,7 @@ func (x *GetRecipeRequest) String() string {
 func (*GetRecipeRequest) ProtoMessage() {}
 
 func (x *GetRecipeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[15]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1166,7 +1354,7 @@ func (x *GetRecipeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRecipeRequest.ProtoReflect.Descriptor instead.
 func (*GetRecipeRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{15}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetRecipeRequest) GetTenant() *v1.TenantContext {
@@ -1199,7 +1387,7 @@ type GetRecipeResponse struct {
 
 func (x *GetRecipeResponse) Reset() {
 	*x = GetRecipeResponse{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[16]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1211,7 +1399,7 @@ func (x *GetRecipeResponse) String() string {
 func (*GetRecipeResponse) ProtoMessage() {}
 
 func (x *GetRecipeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[16]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1224,7 +1412,7 @@ func (x *GetRecipeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRecipeResponse.ProtoReflect.Descriptor instead.
 func (*GetRecipeResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{16}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetRecipeResponse) GetRecipe() *Recipe {
@@ -1246,7 +1434,7 @@ type ListRecipesRequest struct {
 
 func (x *ListRecipesRequest) Reset() {
 	*x = ListRecipesRequest{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[17]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1258,7 +1446,7 @@ func (x *ListRecipesRequest) String() string {
 func (*ListRecipesRequest) ProtoMessage() {}
 
 func (x *ListRecipesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[17]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1271,7 +1459,7 @@ func (x *ListRecipesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRecipesRequest.ProtoReflect.Descriptor instead.
 func (*ListRecipesRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{17}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ListRecipesRequest) GetTenant() *v1.TenantContext {
@@ -1312,7 +1500,7 @@ type ListRecipesResponse struct {
 
 func (x *ListRecipesResponse) Reset() {
 	*x = ListRecipesResponse{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[18]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1324,7 +1512,7 @@ func (x *ListRecipesResponse) String() string {
 func (*ListRecipesResponse) ProtoMessage() {}
 
 func (x *ListRecipesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[18]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1337,7 +1525,7 @@ func (x *ListRecipesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListRecipesResponse.ProtoReflect.Descriptor instead.
 func (*ListRecipesResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{18}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ListRecipesResponse) GetRecipes() []*Recipe {
@@ -1365,7 +1553,7 @@ type GetModelProfileRequest struct {
 
 func (x *GetModelProfileRequest) Reset() {
 	*x = GetModelProfileRequest{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[19]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1377,7 +1565,7 @@ func (x *GetModelProfileRequest) String() string {
 func (*GetModelProfileRequest) ProtoMessage() {}
 
 func (x *GetModelProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[19]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1390,7 +1578,7 @@ func (x *GetModelProfileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetModelProfileRequest.ProtoReflect.Descriptor instead.
 func (*GetModelProfileRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{19}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GetModelProfileRequest) GetTenant() *v1.TenantContext {
@@ -1423,7 +1611,7 @@ type GetModelProfileResponse struct {
 
 func (x *GetModelProfileResponse) Reset() {
 	*x = GetModelProfileResponse{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[20]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1435,7 +1623,7 @@ func (x *GetModelProfileResponse) String() string {
 func (*GetModelProfileResponse) ProtoMessage() {}
 
 func (x *GetModelProfileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[20]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1448,7 +1636,7 @@ func (x *GetModelProfileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetModelProfileResponse.ProtoReflect.Descriptor instead.
 func (*GetModelProfileResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{20}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *GetModelProfileResponse) GetModelProfile() *ModelProfile {
@@ -1469,7 +1657,7 @@ type ListModelProfilesRequest struct {
 
 func (x *ListModelProfilesRequest) Reset() {
 	*x = ListModelProfilesRequest{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[21]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1481,7 +1669,7 @@ func (x *ListModelProfilesRequest) String() string {
 func (*ListModelProfilesRequest) ProtoMessage() {}
 
 func (x *ListModelProfilesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[21]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1494,7 +1682,7 @@ func (x *ListModelProfilesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListModelProfilesRequest.ProtoReflect.Descriptor instead.
 func (*ListModelProfilesRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{21}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ListModelProfilesRequest) GetTenant() *v1.TenantContext {
@@ -1528,7 +1716,7 @@ type ListModelProfilesResponse struct {
 
 func (x *ListModelProfilesResponse) Reset() {
 	*x = ListModelProfilesResponse{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[22]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1540,7 +1728,7 @@ func (x *ListModelProfilesResponse) String() string {
 func (*ListModelProfilesResponse) ProtoMessage() {}
 
 func (x *ListModelProfilesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[22]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1553,7 +1741,7 @@ func (x *ListModelProfilesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListModelProfilesResponse.ProtoReflect.Descriptor instead.
 func (*ListModelProfilesResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{22}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ListModelProfilesResponse) GetModelProfiles() []*ModelProfile {
@@ -1581,7 +1769,7 @@ type GetTenantPolicyRequest struct {
 
 func (x *GetTenantPolicyRequest) Reset() {
 	*x = GetTenantPolicyRequest{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[23]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1593,7 +1781,7 @@ func (x *GetTenantPolicyRequest) String() string {
 func (*GetTenantPolicyRequest) ProtoMessage() {}
 
 func (x *GetTenantPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[23]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1606,7 +1794,7 @@ func (x *GetTenantPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantPolicyRequest.ProtoReflect.Descriptor instead.
 func (*GetTenantPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{23}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *GetTenantPolicyRequest) GetTenant() *v1.TenantContext {
@@ -1632,7 +1820,7 @@ type GetTenantPolicyResponse struct {
 
 func (x *GetTenantPolicyResponse) Reset() {
 	*x = GetTenantPolicyResponse{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[24]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1644,7 +1832,7 @@ func (x *GetTenantPolicyResponse) String() string {
 func (*GetTenantPolicyResponse) ProtoMessage() {}
 
 func (x *GetTenantPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[24]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1657,7 +1845,7 @@ func (x *GetTenantPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantPolicyResponse.ProtoReflect.Descriptor instead.
 func (*GetTenantPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{24}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *GetTenantPolicyResponse) GetTenantPolicy() *TenantPolicy {
@@ -1676,7 +1864,7 @@ type GetTaskFamiliesRequest struct {
 
 func (x *GetTaskFamiliesRequest) Reset() {
 	*x = GetTaskFamiliesRequest{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[25]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1688,7 +1876,7 @@ func (x *GetTaskFamiliesRequest) String() string {
 func (*GetTaskFamiliesRequest) ProtoMessage() {}
 
 func (x *GetTaskFamiliesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[25]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1701,7 +1889,7 @@ func (x *GetTaskFamiliesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTaskFamiliesRequest.ProtoReflect.Descriptor instead.
 func (*GetTaskFamiliesRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{25}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *GetTaskFamiliesRequest) GetTenant() *v1.TenantContext {
@@ -1720,7 +1908,7 @@ type GetTaskFamiliesResponse struct {
 
 func (x *GetTaskFamiliesResponse) Reset() {
 	*x = GetTaskFamiliesResponse{}
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[26]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1732,7 +1920,7 @@ func (x *GetTaskFamiliesResponse) String() string {
 func (*GetTaskFamiliesResponse) ProtoMessage() {}
 
 func (x *GetTaskFamiliesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[26]
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1745,7 +1933,7 @@ func (x *GetTaskFamiliesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTaskFamiliesResponse.ProtoReflect.Descriptor instead.
 func (*GetTaskFamiliesResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{26}
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *GetTaskFamiliesResponse) GetTaskFamilies() *TaskFamilies {
@@ -1755,11 +1943,241 @@ func (x *GetTaskFamiliesResponse) GetTaskFamilies() *TaskFamilies {
 	return nil
 }
 
+// 看得到的范围按 tenant：平台层、tenant_id 的租户层，以及 user_id 本人的用户层；别人的用户层与不存在的一样是 NotFound
+// （code 为 skill_not_found），不透露有没有。
+type GetSkillRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	Name   string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// platform/vN、tenant/vN 或 user/vN（固定在 Task 上的照原样取回，含 RETIRED 与被遮住的）；为空时取看得到的当前版本。
+	Version       string `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSkillRequest) Reset() {
+	*x = GetSkillRequest{}
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSkillRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSkillRequest) ProtoMessage() {}
+
+func (x *GetSkillRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSkillRequest.ProtoReflect.Descriptor instead.
+func (*GetSkillRequest) Descriptor() ([]byte, []int) {
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *GetSkillRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *GetSkillRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *GetSkillRequest) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+type GetSkillResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Skill         *Skill                 `protobuf:"bytes,1,opt,name=skill,proto3" json:"skill,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSkillResponse) Reset() {
+	*x = GetSkillResponse{}
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSkillResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSkillResponse) ProtoMessage() {}
+
+func (x *GetSkillResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSkillResponse.ProtoReflect.Descriptor instead.
+func (*GetSkillResponse) Descriptor() ([]byte, []int) {
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *GetSkillResponse) GetSkill() *Skill {
+	if x != nil {
+		return x.Skill
+	}
+	return nil
+}
+
+type ListSkillsRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Tenant *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// 按 Task 固定的版本列（PinnedVersions.skills；缺一个就 NotFound，code 为 pinned_skill_not_found）；
+	// 为空时列看得到的当前版本（不含被遮住的）。
+	PinnedVersions *v11.PinnedVersions `protobuf:"bytes,2,opt,name=pinned_versions,json=pinnedVersions,proto3" json:"pinned_versions,omitempty"`
+	PageSize       int32               `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken      string              `protobuf:"bytes,4,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ListSkillsRequest) Reset() {
+	*x = ListSkillsRequest{}
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSkillsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSkillsRequest) ProtoMessage() {}
+
+func (x *ListSkillsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSkillsRequest.ProtoReflect.Descriptor instead.
+func (*ListSkillsRequest) Descriptor() ([]byte, []int) {
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *ListSkillsRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *ListSkillsRequest) GetPinnedVersions() *v11.PinnedVersions {
+	if x != nil {
+		return x.PinnedVersions
+	}
+	return nil
+}
+
+func (x *ListSkillsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListSkillsRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+// 按名字排序；Skill 不带 document。
+type ListSkillsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Skills        []*Skill               `protobuf:"bytes,1,rep,name=skills,proto3" json:"skills,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSkillsResponse) Reset() {
+	*x = ListSkillsResponse{}
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSkillsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSkillsResponse) ProtoMessage() {}
+
+func (x *ListSkillsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_registry_v1_registry_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSkillsResponse.ProtoReflect.Descriptor instead.
+func (*ListSkillsResponse) Descriptor() ([]byte, []int) {
+	return file_agentruntime_registry_v1_registry_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *ListSkillsResponse) GetSkills() []*Skill {
+	if x != nil {
+		return x.Skills
+	}
+	return nil
+}
+
+func (x *ListSkillsResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
 var File_agentruntime_registry_v1_registry_proto protoreflect.FileDescriptor
 
 const file_agentruntime_registry_v1_registry_proto_rawDesc = "" +
 	"\n" +
-	"'agentruntime/registry/v1/registry.proto\x12\x18agentruntime.registry.v1\x1a\"agentruntime/common/v1/enums.proto\x1a$agentruntime/common/v1/payload.proto\x1a#agentruntime/common/v1/tenant.proto\x1a#agentruntime/workflow/v1/task.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xf5\x04\n" +
+	"'agentruntime/registry/v1/registry.proto\x12\x18agentruntime.registry.v1\x1a\"agentruntime/common/v1/enums.proto\x1a$agentruntime/common/v1/payload.proto\x1a#agentruntime/common/v1/tenant.proto\x1a#agentruntime/workflow/v1/task.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf5\x04\n" +
 	"\fNodeTemplate\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12<\n" +
@@ -1788,7 +2206,19 @@ const file_agentruntime_registry_v1_registry_proto_rawDesc = "" +
 	"\bdocument\x18\x04 \x01(\v2#.agentruntime.common.v1.JsonPayloadR\bdocument\"i\n" +
 	"\fTenantPolicy\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12?\n" +
-	"\bdocument\x18\x02 \x01(\v2#.agentruntime.common.v1.JsonPayloadR\bdocument\"\x94\x01\n" +
+	"\bdocument\x18\x02 \x01(\v2#.agentruntime.common.v1.JsonPayloadR\bdocument\"\x9b\x03\n" +
+	"\x05Skill\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\tR\aversion\x12<\n" +
+	"\x05state\x18\x03 \x01(\x0e2&.agentruntime.registry.v1.ReleaseStateR\x05state\x12:\n" +
+	"\x05scope\x18\x04 \x01(\x0e2$.agentruntime.registry.v1.SkillScopeR\x05scope\x12 \n" +
+	"\vdescription\x18\x05 \x01(\tR\vdescription\x12?\n" +
+	"\bdocument\x18\x06 \x01(\v2#.agentruntime.common.v1.JsonPayloadR\bdocument\x12\x14\n" +
+	"\x05owner\x18\a \x01(\tR\x05owner\x12\x1a\n" +
+	"\bshadowed\x18\b \x01(\bR\bshadowed\x12=\n" +
+	"\fpublished_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\vpublishedAt\x12\x16\n" +
+	"\x06digest\x18\n" +
+	" \x01(\tR\x06digest\"\x94\x01\n" +
 	"\fTaskFamilies\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12?\n" +
 	"\bdocument\x18\x02 \x01(\v2#.agentruntime.common.v1.JsonPayloadR\bdocument\x12)\n" +
@@ -1874,7 +2304,22 @@ const file_agentruntime_registry_v1_registry_proto_rawDesc = "" +
 	"\x16GetTaskFamiliesRequest\x12=\n" +
 	"\x06tenant\x18\x01 \x01(\v2%.agentruntime.common.v1.TenantContextR\x06tenant\"f\n" +
 	"\x17GetTaskFamiliesResponse\x12K\n" +
-	"\rtask_families\x18\x01 \x01(\v2&.agentruntime.registry.v1.TaskFamiliesR\ftaskFamilies*\xf1\x01\n" +
+	"\rtask_families\x18\x01 \x01(\v2&.agentruntime.registry.v1.TaskFamiliesR\ftaskFamilies\"~\n" +
+	"\x0fGetSkillRequest\x12=\n" +
+	"\x06tenant\x18\x01 \x01(\v2%.agentruntime.common.v1.TenantContextR\x06tenant\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
+	"\aversion\x18\x03 \x01(\tR\aversion\"I\n" +
+	"\x10GetSkillResponse\x125\n" +
+	"\x05skill\x18\x01 \x01(\v2\x1f.agentruntime.registry.v1.SkillR\x05skill\"\xe1\x01\n" +
+	"\x11ListSkillsRequest\x12=\n" +
+	"\x06tenant\x18\x01 \x01(\v2%.agentruntime.common.v1.TenantContextR\x06tenant\x12Q\n" +
+	"\x0fpinned_versions\x18\x02 \x01(\v2(.agentruntime.workflow.v1.PinnedVersionsR\x0epinnedVersions\x12\x1b\n" +
+	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x04 \x01(\tR\tpageToken\"u\n" +
+	"\x12ListSkillsResponse\x127\n" +
+	"\x06skills\x18\x01 \x03(\v2\x1f.agentruntime.registry.v1.SkillR\x06skills\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken*\x8a\x02\n" +
 	"\fRegistryKind\x12\x1d\n" +
 	"\x19REGISTRY_KIND_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bREGISTRY_KIND_NODE_TEMPLATE\x10\x01\x12\x18\n" +
@@ -1882,13 +2327,19 @@ const file_agentruntime_registry_v1_registry_proto_rawDesc = "" +
 	" REGISTRY_KIND_REASONING_TEMPLATE\x10\x03\x12\x1f\n" +
 	"\x1bREGISTRY_KIND_MODEL_PROFILE\x10\x04\x12\x1f\n" +
 	"\x1bREGISTRY_KIND_TENANT_POLICY\x10\x05\x12\x1f\n" +
-	"\x1bREGISTRY_KIND_TASK_FAMILIES\x10\x06*}\n" +
+	"\x1bREGISTRY_KIND_TASK_FAMILIES\x10\x06\x12\x17\n" +
+	"\x13REGISTRY_KIND_SKILL\x10\a*q\n" +
+	"\n" +
+	"SkillScope\x12\x1b\n" +
+	"\x17SKILL_SCOPE_UNSPECIFIED\x10\x00\x12\x18\n" +
+	"\x14SKILL_SCOPE_PLATFORM\x10\x01\x12\x16\n" +
+	"\x12SKILL_SCOPE_TENANT\x10\x02\x12\x14\n" +
+	"\x10SKILL_SCOPE_USER\x10\x03*}\n" +
 	"\fReleaseState\x12\x1d\n" +
 	"\x19RELEASE_STATE_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14RELEASE_STATE_SHADOW\x10\x01\x12\x19\n" +
 	"\x15RELEASE_STATE_DEFAULT\x10\x02\x12\x19\n" +
-	"\x15RELEASE_STATE_RETIRED\x10\x032\x8a\n" +
-	"\n" +
+	"\x15RELEASE_STATE_RETIRED\x10\x032\xd6\v\n" +
 	"\x0fRegistryService\x12^\n" +
 	"\aPublish\x12(.agentruntime.registry.v1.PublishRequest\x1a).agentruntime.registry.v1.PublishResponse\x12^\n" +
 	"\aPromote\x12(.agentruntime.registry.v1.PromoteRequest\x1a).agentruntime.registry.v1.PromoteResponse\x12\x88\x01\n" +
@@ -1900,7 +2351,10 @@ const file_agentruntime_registry_v1_registry_proto_rawDesc = "" +
 	"\x0fGetModelProfile\x120.agentruntime.registry.v1.GetModelProfileRequest\x1a1.agentruntime.registry.v1.GetModelProfileResponse\x12|\n" +
 	"\x11ListModelProfiles\x122.agentruntime.registry.v1.ListModelProfilesRequest\x1a3.agentruntime.registry.v1.ListModelProfilesResponse\x12v\n" +
 	"\x0fGetTenantPolicy\x120.agentruntime.registry.v1.GetTenantPolicyRequest\x1a1.agentruntime.registry.v1.GetTenantPolicyResponse\x12v\n" +
-	"\x0fGetTaskFamilies\x120.agentruntime.registry.v1.GetTaskFamiliesRequest\x1a1.agentruntime.registry.v1.GetTaskFamiliesResponseB\x87\x02\n" +
+	"\x0fGetTaskFamilies\x120.agentruntime.registry.v1.GetTaskFamiliesRequest\x1a1.agentruntime.registry.v1.GetTaskFamiliesResponse\x12a\n" +
+	"\bGetSkill\x12).agentruntime.registry.v1.GetSkillRequest\x1a*.agentruntime.registry.v1.GetSkillResponse\x12g\n" +
+	"\n" +
+	"ListSkills\x12+.agentruntime.registry.v1.ListSkillsRequest\x1a,.agentruntime.registry.v1.ListSkillsResponseB\x87\x02\n" +
 	"\x1ccom.agentruntime.registry.v1B\rRegistryProtoP\x01ZVgithub.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/registry/v1;registryv1\xa2\x02\x03ARX\xaa\x02\x18Agentruntime.Registry.V1\xca\x02\x18Agentruntime\\Registry\\V1\xe2\x02$Agentruntime\\Registry\\V1\\GPBMetadata\xea\x02\x1aAgentruntime::Registry::V1b\x06proto3"
 
 var (
@@ -1915,114 +2369,134 @@ func file_agentruntime_registry_v1_registry_proto_rawDescGZIP() []byte {
 	return file_agentruntime_registry_v1_registry_proto_rawDescData
 }
 
-var file_agentruntime_registry_v1_registry_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_agentruntime_registry_v1_registry_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
+var file_agentruntime_registry_v1_registry_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_agentruntime_registry_v1_registry_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_agentruntime_registry_v1_registry_proto_goTypes = []any{
 	(RegistryKind)(0),                     // 0: agentruntime.registry.v1.RegistryKind
-	(ReleaseState)(0),                     // 1: agentruntime.registry.v1.ReleaseState
-	(*NodeTemplate)(nil),                  // 2: agentruntime.registry.v1.NodeTemplate
-	(*Recipe)(nil),                        // 3: agentruntime.registry.v1.Recipe
-	(*ModelProfile)(nil),                  // 4: agentruntime.registry.v1.ModelProfile
-	(*TenantPolicy)(nil),                  // 5: agentruntime.registry.v1.TenantPolicy
-	(*TaskFamilies)(nil),                  // 6: agentruntime.registry.v1.TaskFamilies
-	(*PublishRequest)(nil),                // 7: agentruntime.registry.v1.PublishRequest
-	(*PublishResponse)(nil),               // 8: agentruntime.registry.v1.PublishResponse
-	(*PromoteRequest)(nil),                // 9: agentruntime.registry.v1.PromoteRequest
-	(*PromoteResponse)(nil),               // 10: agentruntime.registry.v1.PromoteResponse
-	(*ResolvePinnedVersionsRequest)(nil),  // 11: agentruntime.registry.v1.ResolvePinnedVersionsRequest
-	(*ResolvePinnedVersionsResponse)(nil), // 12: agentruntime.registry.v1.ResolvePinnedVersionsResponse
-	(*GetNodeTemplateRequest)(nil),        // 13: agentruntime.registry.v1.GetNodeTemplateRequest
-	(*GetNodeTemplateResponse)(nil),       // 14: agentruntime.registry.v1.GetNodeTemplateResponse
-	(*ListNodeTemplatesRequest)(nil),      // 15: agentruntime.registry.v1.ListNodeTemplatesRequest
-	(*ListNodeTemplatesResponse)(nil),     // 16: agentruntime.registry.v1.ListNodeTemplatesResponse
-	(*GetRecipeRequest)(nil),              // 17: agentruntime.registry.v1.GetRecipeRequest
-	(*GetRecipeResponse)(nil),             // 18: agentruntime.registry.v1.GetRecipeResponse
-	(*ListRecipesRequest)(nil),            // 19: agentruntime.registry.v1.ListRecipesRequest
-	(*ListRecipesResponse)(nil),           // 20: agentruntime.registry.v1.ListRecipesResponse
-	(*GetModelProfileRequest)(nil),        // 21: agentruntime.registry.v1.GetModelProfileRequest
-	(*GetModelProfileResponse)(nil),       // 22: agentruntime.registry.v1.GetModelProfileResponse
-	(*ListModelProfilesRequest)(nil),      // 23: agentruntime.registry.v1.ListModelProfilesRequest
-	(*ListModelProfilesResponse)(nil),     // 24: agentruntime.registry.v1.ListModelProfilesResponse
-	(*GetTenantPolicyRequest)(nil),        // 25: agentruntime.registry.v1.GetTenantPolicyRequest
-	(*GetTenantPolicyResponse)(nil),       // 26: agentruntime.registry.v1.GetTenantPolicyResponse
-	(*GetTaskFamiliesRequest)(nil),        // 27: agentruntime.registry.v1.GetTaskFamiliesRequest
-	(*GetTaskFamiliesResponse)(nil),       // 28: agentruntime.registry.v1.GetTaskFamiliesResponse
-	(v1.Executor)(0),                      // 29: agentruntime.common.v1.Executor
-	(v1.Effect)(0),                        // 30: agentruntime.common.v1.Effect
-	(v1.Role)(0),                          // 31: agentruntime.common.v1.Role
-	(v1.ModelOutput)(0),                   // 32: agentruntime.common.v1.ModelOutput
-	(*v1.JsonPayload)(nil),                // 33: agentruntime.common.v1.JsonPayload
-	(*structpb.Struct)(nil),               // 34: google.protobuf.Struct
-	(*v1.TenantContext)(nil),              // 35: agentruntime.common.v1.TenantContext
-	(*v11.PinnedVersions)(nil),            // 36: agentruntime.workflow.v1.PinnedVersions
+	(SkillScope)(0),                       // 1: agentruntime.registry.v1.SkillScope
+	(ReleaseState)(0),                     // 2: agentruntime.registry.v1.ReleaseState
+	(*NodeTemplate)(nil),                  // 3: agentruntime.registry.v1.NodeTemplate
+	(*Recipe)(nil),                        // 4: agentruntime.registry.v1.Recipe
+	(*ModelProfile)(nil),                  // 5: agentruntime.registry.v1.ModelProfile
+	(*TenantPolicy)(nil),                  // 6: agentruntime.registry.v1.TenantPolicy
+	(*Skill)(nil),                         // 7: agentruntime.registry.v1.Skill
+	(*TaskFamilies)(nil),                  // 8: agentruntime.registry.v1.TaskFamilies
+	(*PublishRequest)(nil),                // 9: agentruntime.registry.v1.PublishRequest
+	(*PublishResponse)(nil),               // 10: agentruntime.registry.v1.PublishResponse
+	(*PromoteRequest)(nil),                // 11: agentruntime.registry.v1.PromoteRequest
+	(*PromoteResponse)(nil),               // 12: agentruntime.registry.v1.PromoteResponse
+	(*ResolvePinnedVersionsRequest)(nil),  // 13: agentruntime.registry.v1.ResolvePinnedVersionsRequest
+	(*ResolvePinnedVersionsResponse)(nil), // 14: agentruntime.registry.v1.ResolvePinnedVersionsResponse
+	(*GetNodeTemplateRequest)(nil),        // 15: agentruntime.registry.v1.GetNodeTemplateRequest
+	(*GetNodeTemplateResponse)(nil),       // 16: agentruntime.registry.v1.GetNodeTemplateResponse
+	(*ListNodeTemplatesRequest)(nil),      // 17: agentruntime.registry.v1.ListNodeTemplatesRequest
+	(*ListNodeTemplatesResponse)(nil),     // 18: agentruntime.registry.v1.ListNodeTemplatesResponse
+	(*GetRecipeRequest)(nil),              // 19: agentruntime.registry.v1.GetRecipeRequest
+	(*GetRecipeResponse)(nil),             // 20: agentruntime.registry.v1.GetRecipeResponse
+	(*ListRecipesRequest)(nil),            // 21: agentruntime.registry.v1.ListRecipesRequest
+	(*ListRecipesResponse)(nil),           // 22: agentruntime.registry.v1.ListRecipesResponse
+	(*GetModelProfileRequest)(nil),        // 23: agentruntime.registry.v1.GetModelProfileRequest
+	(*GetModelProfileResponse)(nil),       // 24: agentruntime.registry.v1.GetModelProfileResponse
+	(*ListModelProfilesRequest)(nil),      // 25: agentruntime.registry.v1.ListModelProfilesRequest
+	(*ListModelProfilesResponse)(nil),     // 26: agentruntime.registry.v1.ListModelProfilesResponse
+	(*GetTenantPolicyRequest)(nil),        // 27: agentruntime.registry.v1.GetTenantPolicyRequest
+	(*GetTenantPolicyResponse)(nil),       // 28: agentruntime.registry.v1.GetTenantPolicyResponse
+	(*GetTaskFamiliesRequest)(nil),        // 29: agentruntime.registry.v1.GetTaskFamiliesRequest
+	(*GetTaskFamiliesResponse)(nil),       // 30: agentruntime.registry.v1.GetTaskFamiliesResponse
+	(*GetSkillRequest)(nil),               // 31: agentruntime.registry.v1.GetSkillRequest
+	(*GetSkillResponse)(nil),              // 32: agentruntime.registry.v1.GetSkillResponse
+	(*ListSkillsRequest)(nil),             // 33: agentruntime.registry.v1.ListSkillsRequest
+	(*ListSkillsResponse)(nil),            // 34: agentruntime.registry.v1.ListSkillsResponse
+	(v1.Executor)(0),                      // 35: agentruntime.common.v1.Executor
+	(v1.Effect)(0),                        // 36: agentruntime.common.v1.Effect
+	(v1.Role)(0),                          // 37: agentruntime.common.v1.Role
+	(v1.ModelOutput)(0),                   // 38: agentruntime.common.v1.ModelOutput
+	(*v1.JsonPayload)(nil),                // 39: agentruntime.common.v1.JsonPayload
+	(*structpb.Struct)(nil),               // 40: google.protobuf.Struct
+	(*timestamppb.Timestamp)(nil),         // 41: google.protobuf.Timestamp
+	(*v1.TenantContext)(nil),              // 42: agentruntime.common.v1.TenantContext
+	(*v11.PinnedVersions)(nil),            // 43: agentruntime.workflow.v1.PinnedVersions
 }
 var file_agentruntime_registry_v1_registry_proto_depIdxs = []int32{
-	1,  // 0: agentruntime.registry.v1.NodeTemplate.state:type_name -> agentruntime.registry.v1.ReleaseState
-	29, // 1: agentruntime.registry.v1.NodeTemplate.executor:type_name -> agentruntime.common.v1.Executor
-	30, // 2: agentruntime.registry.v1.NodeTemplate.effect:type_name -> agentruntime.common.v1.Effect
-	31, // 3: agentruntime.registry.v1.NodeTemplate.role:type_name -> agentruntime.common.v1.Role
-	32, // 4: agentruntime.registry.v1.NodeTemplate.output:type_name -> agentruntime.common.v1.ModelOutput
-	33, // 5: agentruntime.registry.v1.NodeTemplate.params_schema:type_name -> agentruntime.common.v1.JsonPayload
-	34, // 6: agentruntime.registry.v1.NodeTemplate.defaults:type_name -> google.protobuf.Struct
-	1,  // 7: agentruntime.registry.v1.Recipe.state:type_name -> agentruntime.registry.v1.ReleaseState
-	33, // 8: agentruntime.registry.v1.Recipe.document:type_name -> agentruntime.common.v1.JsonPayload
-	1,  // 9: agentruntime.registry.v1.ModelProfile.state:type_name -> agentruntime.registry.v1.ReleaseState
-	33, // 10: agentruntime.registry.v1.ModelProfile.document:type_name -> agentruntime.common.v1.JsonPayload
-	33, // 11: agentruntime.registry.v1.TenantPolicy.document:type_name -> agentruntime.common.v1.JsonPayload
-	33, // 12: agentruntime.registry.v1.TaskFamilies.document:type_name -> agentruntime.common.v1.JsonPayload
-	35, // 13: agentruntime.registry.v1.PublishRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	0,  // 14: agentruntime.registry.v1.PublishRequest.kind:type_name -> agentruntime.registry.v1.RegistryKind
-	33, // 15: agentruntime.registry.v1.PublishRequest.document:type_name -> agentruntime.common.v1.JsonPayload
-	1,  // 16: agentruntime.registry.v1.PublishResponse.state:type_name -> agentruntime.registry.v1.ReleaseState
-	35, // 17: agentruntime.registry.v1.PromoteRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	0,  // 18: agentruntime.registry.v1.PromoteRequest.kind:type_name -> agentruntime.registry.v1.RegistryKind
-	33, // 19: agentruntime.registry.v1.PromoteRequest.evaluation:type_name -> agentruntime.common.v1.JsonPayload
-	35, // 20: agentruntime.registry.v1.ResolvePinnedVersionsRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	36, // 21: agentruntime.registry.v1.ResolvePinnedVersionsResponse.pinned_versions:type_name -> agentruntime.workflow.v1.PinnedVersions
-	35, // 22: agentruntime.registry.v1.GetNodeTemplateRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	2,  // 23: agentruntime.registry.v1.GetNodeTemplateResponse.node_template:type_name -> agentruntime.registry.v1.NodeTemplate
-	35, // 24: agentruntime.registry.v1.ListNodeTemplatesRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	36, // 25: agentruntime.registry.v1.ListNodeTemplatesRequest.pinned_versions:type_name -> agentruntime.workflow.v1.PinnedVersions
-	2,  // 26: agentruntime.registry.v1.ListNodeTemplatesResponse.node_templates:type_name -> agentruntime.registry.v1.NodeTemplate
-	35, // 27: agentruntime.registry.v1.GetRecipeRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	3,  // 28: agentruntime.registry.v1.GetRecipeResponse.recipe:type_name -> agentruntime.registry.v1.Recipe
-	35, // 29: agentruntime.registry.v1.ListRecipesRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	3,  // 30: agentruntime.registry.v1.ListRecipesResponse.recipes:type_name -> agentruntime.registry.v1.Recipe
-	35, // 31: agentruntime.registry.v1.GetModelProfileRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	4,  // 32: agentruntime.registry.v1.GetModelProfileResponse.model_profile:type_name -> agentruntime.registry.v1.ModelProfile
-	35, // 33: agentruntime.registry.v1.ListModelProfilesRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	4,  // 34: agentruntime.registry.v1.ListModelProfilesResponse.model_profiles:type_name -> agentruntime.registry.v1.ModelProfile
-	35, // 35: agentruntime.registry.v1.GetTenantPolicyRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	5,  // 36: agentruntime.registry.v1.GetTenantPolicyResponse.tenant_policy:type_name -> agentruntime.registry.v1.TenantPolicy
-	35, // 37: agentruntime.registry.v1.GetTaskFamiliesRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	6,  // 38: agentruntime.registry.v1.GetTaskFamiliesResponse.task_families:type_name -> agentruntime.registry.v1.TaskFamilies
-	7,  // 39: agentruntime.registry.v1.RegistryService.Publish:input_type -> agentruntime.registry.v1.PublishRequest
-	9,  // 40: agentruntime.registry.v1.RegistryService.Promote:input_type -> agentruntime.registry.v1.PromoteRequest
-	11, // 41: agentruntime.registry.v1.RegistryService.ResolvePinnedVersions:input_type -> agentruntime.registry.v1.ResolvePinnedVersionsRequest
-	13, // 42: agentruntime.registry.v1.RegistryService.GetNodeTemplate:input_type -> agentruntime.registry.v1.GetNodeTemplateRequest
-	15, // 43: agentruntime.registry.v1.RegistryService.ListNodeTemplates:input_type -> agentruntime.registry.v1.ListNodeTemplatesRequest
-	17, // 44: agentruntime.registry.v1.RegistryService.GetRecipe:input_type -> agentruntime.registry.v1.GetRecipeRequest
-	19, // 45: agentruntime.registry.v1.RegistryService.ListRecipes:input_type -> agentruntime.registry.v1.ListRecipesRequest
-	21, // 46: agentruntime.registry.v1.RegistryService.GetModelProfile:input_type -> agentruntime.registry.v1.GetModelProfileRequest
-	23, // 47: agentruntime.registry.v1.RegistryService.ListModelProfiles:input_type -> agentruntime.registry.v1.ListModelProfilesRequest
-	25, // 48: agentruntime.registry.v1.RegistryService.GetTenantPolicy:input_type -> agentruntime.registry.v1.GetTenantPolicyRequest
-	27, // 49: agentruntime.registry.v1.RegistryService.GetTaskFamilies:input_type -> agentruntime.registry.v1.GetTaskFamiliesRequest
-	8,  // 50: agentruntime.registry.v1.RegistryService.Publish:output_type -> agentruntime.registry.v1.PublishResponse
-	10, // 51: agentruntime.registry.v1.RegistryService.Promote:output_type -> agentruntime.registry.v1.PromoteResponse
-	12, // 52: agentruntime.registry.v1.RegistryService.ResolvePinnedVersions:output_type -> agentruntime.registry.v1.ResolvePinnedVersionsResponse
-	14, // 53: agentruntime.registry.v1.RegistryService.GetNodeTemplate:output_type -> agentruntime.registry.v1.GetNodeTemplateResponse
-	16, // 54: agentruntime.registry.v1.RegistryService.ListNodeTemplates:output_type -> agentruntime.registry.v1.ListNodeTemplatesResponse
-	18, // 55: agentruntime.registry.v1.RegistryService.GetRecipe:output_type -> agentruntime.registry.v1.GetRecipeResponse
-	20, // 56: agentruntime.registry.v1.RegistryService.ListRecipes:output_type -> agentruntime.registry.v1.ListRecipesResponse
-	22, // 57: agentruntime.registry.v1.RegistryService.GetModelProfile:output_type -> agentruntime.registry.v1.GetModelProfileResponse
-	24, // 58: agentruntime.registry.v1.RegistryService.ListModelProfiles:output_type -> agentruntime.registry.v1.ListModelProfilesResponse
-	26, // 59: agentruntime.registry.v1.RegistryService.GetTenantPolicy:output_type -> agentruntime.registry.v1.GetTenantPolicyResponse
-	28, // 60: agentruntime.registry.v1.RegistryService.GetTaskFamilies:output_type -> agentruntime.registry.v1.GetTaskFamiliesResponse
-	50, // [50:61] is the sub-list for method output_type
-	39, // [39:50] is the sub-list for method input_type
-	39, // [39:39] is the sub-list for extension type_name
-	39, // [39:39] is the sub-list for extension extendee
-	0,  // [0:39] is the sub-list for field type_name
+	2,  // 0: agentruntime.registry.v1.NodeTemplate.state:type_name -> agentruntime.registry.v1.ReleaseState
+	35, // 1: agentruntime.registry.v1.NodeTemplate.executor:type_name -> agentruntime.common.v1.Executor
+	36, // 2: agentruntime.registry.v1.NodeTemplate.effect:type_name -> agentruntime.common.v1.Effect
+	37, // 3: agentruntime.registry.v1.NodeTemplate.role:type_name -> agentruntime.common.v1.Role
+	38, // 4: agentruntime.registry.v1.NodeTemplate.output:type_name -> agentruntime.common.v1.ModelOutput
+	39, // 5: agentruntime.registry.v1.NodeTemplate.params_schema:type_name -> agentruntime.common.v1.JsonPayload
+	40, // 6: agentruntime.registry.v1.NodeTemplate.defaults:type_name -> google.protobuf.Struct
+	2,  // 7: agentruntime.registry.v1.Recipe.state:type_name -> agentruntime.registry.v1.ReleaseState
+	39, // 8: agentruntime.registry.v1.Recipe.document:type_name -> agentruntime.common.v1.JsonPayload
+	2,  // 9: agentruntime.registry.v1.ModelProfile.state:type_name -> agentruntime.registry.v1.ReleaseState
+	39, // 10: agentruntime.registry.v1.ModelProfile.document:type_name -> agentruntime.common.v1.JsonPayload
+	39, // 11: agentruntime.registry.v1.TenantPolicy.document:type_name -> agentruntime.common.v1.JsonPayload
+	2,  // 12: agentruntime.registry.v1.Skill.state:type_name -> agentruntime.registry.v1.ReleaseState
+	1,  // 13: agentruntime.registry.v1.Skill.scope:type_name -> agentruntime.registry.v1.SkillScope
+	39, // 14: agentruntime.registry.v1.Skill.document:type_name -> agentruntime.common.v1.JsonPayload
+	41, // 15: agentruntime.registry.v1.Skill.published_at:type_name -> google.protobuf.Timestamp
+	39, // 16: agentruntime.registry.v1.TaskFamilies.document:type_name -> agentruntime.common.v1.JsonPayload
+	42, // 17: agentruntime.registry.v1.PublishRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	0,  // 18: agentruntime.registry.v1.PublishRequest.kind:type_name -> agentruntime.registry.v1.RegistryKind
+	39, // 19: agentruntime.registry.v1.PublishRequest.document:type_name -> agentruntime.common.v1.JsonPayload
+	2,  // 20: agentruntime.registry.v1.PublishResponse.state:type_name -> agentruntime.registry.v1.ReleaseState
+	42, // 21: agentruntime.registry.v1.PromoteRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	0,  // 22: agentruntime.registry.v1.PromoteRequest.kind:type_name -> agentruntime.registry.v1.RegistryKind
+	39, // 23: agentruntime.registry.v1.PromoteRequest.evaluation:type_name -> agentruntime.common.v1.JsonPayload
+	42, // 24: agentruntime.registry.v1.ResolvePinnedVersionsRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	43, // 25: agentruntime.registry.v1.ResolvePinnedVersionsResponse.pinned_versions:type_name -> agentruntime.workflow.v1.PinnedVersions
+	42, // 26: agentruntime.registry.v1.GetNodeTemplateRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	3,  // 27: agentruntime.registry.v1.GetNodeTemplateResponse.node_template:type_name -> agentruntime.registry.v1.NodeTemplate
+	42, // 28: agentruntime.registry.v1.ListNodeTemplatesRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	43, // 29: agentruntime.registry.v1.ListNodeTemplatesRequest.pinned_versions:type_name -> agentruntime.workflow.v1.PinnedVersions
+	3,  // 30: agentruntime.registry.v1.ListNodeTemplatesResponse.node_templates:type_name -> agentruntime.registry.v1.NodeTemplate
+	42, // 31: agentruntime.registry.v1.GetRecipeRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	4,  // 32: agentruntime.registry.v1.GetRecipeResponse.recipe:type_name -> agentruntime.registry.v1.Recipe
+	42, // 33: agentruntime.registry.v1.ListRecipesRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	4,  // 34: agentruntime.registry.v1.ListRecipesResponse.recipes:type_name -> agentruntime.registry.v1.Recipe
+	42, // 35: agentruntime.registry.v1.GetModelProfileRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	5,  // 36: agentruntime.registry.v1.GetModelProfileResponse.model_profile:type_name -> agentruntime.registry.v1.ModelProfile
+	42, // 37: agentruntime.registry.v1.ListModelProfilesRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	5,  // 38: agentruntime.registry.v1.ListModelProfilesResponse.model_profiles:type_name -> agentruntime.registry.v1.ModelProfile
+	42, // 39: agentruntime.registry.v1.GetTenantPolicyRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	6,  // 40: agentruntime.registry.v1.GetTenantPolicyResponse.tenant_policy:type_name -> agentruntime.registry.v1.TenantPolicy
+	42, // 41: agentruntime.registry.v1.GetTaskFamiliesRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	8,  // 42: agentruntime.registry.v1.GetTaskFamiliesResponse.task_families:type_name -> agentruntime.registry.v1.TaskFamilies
+	42, // 43: agentruntime.registry.v1.GetSkillRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	7,  // 44: agentruntime.registry.v1.GetSkillResponse.skill:type_name -> agentruntime.registry.v1.Skill
+	42, // 45: agentruntime.registry.v1.ListSkillsRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	43, // 46: agentruntime.registry.v1.ListSkillsRequest.pinned_versions:type_name -> agentruntime.workflow.v1.PinnedVersions
+	7,  // 47: agentruntime.registry.v1.ListSkillsResponse.skills:type_name -> agentruntime.registry.v1.Skill
+	9,  // 48: agentruntime.registry.v1.RegistryService.Publish:input_type -> agentruntime.registry.v1.PublishRequest
+	11, // 49: agentruntime.registry.v1.RegistryService.Promote:input_type -> agentruntime.registry.v1.PromoteRequest
+	13, // 50: agentruntime.registry.v1.RegistryService.ResolvePinnedVersions:input_type -> agentruntime.registry.v1.ResolvePinnedVersionsRequest
+	15, // 51: agentruntime.registry.v1.RegistryService.GetNodeTemplate:input_type -> agentruntime.registry.v1.GetNodeTemplateRequest
+	17, // 52: agentruntime.registry.v1.RegistryService.ListNodeTemplates:input_type -> agentruntime.registry.v1.ListNodeTemplatesRequest
+	19, // 53: agentruntime.registry.v1.RegistryService.GetRecipe:input_type -> agentruntime.registry.v1.GetRecipeRequest
+	21, // 54: agentruntime.registry.v1.RegistryService.ListRecipes:input_type -> agentruntime.registry.v1.ListRecipesRequest
+	23, // 55: agentruntime.registry.v1.RegistryService.GetModelProfile:input_type -> agentruntime.registry.v1.GetModelProfileRequest
+	25, // 56: agentruntime.registry.v1.RegistryService.ListModelProfiles:input_type -> agentruntime.registry.v1.ListModelProfilesRequest
+	27, // 57: agentruntime.registry.v1.RegistryService.GetTenantPolicy:input_type -> agentruntime.registry.v1.GetTenantPolicyRequest
+	29, // 58: agentruntime.registry.v1.RegistryService.GetTaskFamilies:input_type -> agentruntime.registry.v1.GetTaskFamiliesRequest
+	31, // 59: agentruntime.registry.v1.RegistryService.GetSkill:input_type -> agentruntime.registry.v1.GetSkillRequest
+	33, // 60: agentruntime.registry.v1.RegistryService.ListSkills:input_type -> agentruntime.registry.v1.ListSkillsRequest
+	10, // 61: agentruntime.registry.v1.RegistryService.Publish:output_type -> agentruntime.registry.v1.PublishResponse
+	12, // 62: agentruntime.registry.v1.RegistryService.Promote:output_type -> agentruntime.registry.v1.PromoteResponse
+	14, // 63: agentruntime.registry.v1.RegistryService.ResolvePinnedVersions:output_type -> agentruntime.registry.v1.ResolvePinnedVersionsResponse
+	16, // 64: agentruntime.registry.v1.RegistryService.GetNodeTemplate:output_type -> agentruntime.registry.v1.GetNodeTemplateResponse
+	18, // 65: agentruntime.registry.v1.RegistryService.ListNodeTemplates:output_type -> agentruntime.registry.v1.ListNodeTemplatesResponse
+	20, // 66: agentruntime.registry.v1.RegistryService.GetRecipe:output_type -> agentruntime.registry.v1.GetRecipeResponse
+	22, // 67: agentruntime.registry.v1.RegistryService.ListRecipes:output_type -> agentruntime.registry.v1.ListRecipesResponse
+	24, // 68: agentruntime.registry.v1.RegistryService.GetModelProfile:output_type -> agentruntime.registry.v1.GetModelProfileResponse
+	26, // 69: agentruntime.registry.v1.RegistryService.ListModelProfiles:output_type -> agentruntime.registry.v1.ListModelProfilesResponse
+	28, // 70: agentruntime.registry.v1.RegistryService.GetTenantPolicy:output_type -> agentruntime.registry.v1.GetTenantPolicyResponse
+	30, // 71: agentruntime.registry.v1.RegistryService.GetTaskFamilies:output_type -> agentruntime.registry.v1.GetTaskFamiliesResponse
+	32, // 72: agentruntime.registry.v1.RegistryService.GetSkill:output_type -> agentruntime.registry.v1.GetSkillResponse
+	34, // 73: agentruntime.registry.v1.RegistryService.ListSkills:output_type -> agentruntime.registry.v1.ListSkillsResponse
+	61, // [61:74] is the sub-list for method output_type
+	48, // [48:61] is the sub-list for method input_type
+	48, // [48:48] is the sub-list for extension type_name
+	48, // [48:48] is the sub-list for extension extendee
+	0,  // [0:48] is the sub-list for field type_name
 }
 
 func init() { file_agentruntime_registry_v1_registry_proto_init() }
@@ -2035,8 +2509,8 @@ func file_agentruntime_registry_v1_registry_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agentruntime_registry_v1_registry_proto_rawDesc), len(file_agentruntime_registry_v1_registry_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   27,
+			NumEnums:      3,
+			NumMessages:   32,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
