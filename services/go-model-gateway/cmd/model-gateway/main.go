@@ -173,7 +173,7 @@ func serve(ctx context.Context, stdout, stderr io.Writer, getenv func(string) st
 // 网关因此退出过一次，靠 Pod 重启才起来）；在这之内退避重试，超过才退出。
 var budgetStartTimeout = 90 * time.Second
 
-// openBudgetStore 连业务库并跑预算账本的迁移（迁移幂等，task-service 跑的是同一组），失败就关掉连接、退避重试。
+// openBudgetStore 连业务库并跑预算表的迁移（迁移幂等，task-service 跑的是同一组），失败就关掉连接、退避重试。
 // 重试的提示不带错误详情：连接串里有口令。
 func openBudgetStore(ctx context.Context, cfg config.Config, stderr io.Writer,
 	open func(context.Context, config.Config) (relational.Provider, error)) (relational.Provider, error) {

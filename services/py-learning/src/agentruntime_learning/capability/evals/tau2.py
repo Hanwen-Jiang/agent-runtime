@@ -4,7 +4,7 @@
 
 - **对话**在这里：被测的客服（role act，矩阵的 PinningGateway 钉在候选模型上）与用户模拟器（role `user_role`，默认 deliver，
   `pinned_model_profile` 明确填 `user_model`，所以不被钉、所有候选面对同一个“用户”）轮流说话，都经传进来的 Model Gateway；
-  开场白、回合与出错上限同官方的 Orchestrator（"Hi! How can I help you today?"，max_steps 100，max_errors 10）。
+  开场白、回合与出错上限同官方的对话驱动循环（"Hi! How can I help you today?"，max_steps 100，max_errors 10）。
   用户说出 ###STOP###、###TRANSFER###、###OUT-OF-SCOPE### 时结束。
 - **环境**在 `Backend`/`Episode` 后面：工具定义、执行工具调用、两边的系统提示、结束判断与判分。`OfficialBackend` 用官方的
   tau2 包（`eval-requirements.txt` 钉在 v2.0.0 的提交上，只装在评测的 Python 里；本模块不装它也能 import，离线测试用假的 Episode）：
