@@ -136,6 +136,51 @@ def test_adding_a_model_that_models_dev_does_not_know_fails(tmp_path: Path) -> N
     assert code == 2
 
 
+# R-06-B（docs/plan/delegated-review-2026-11-04.md 第 7 节第 3 条）：要更新或加入的项缺单价时报错并保留原文件，不写 0、不静默跳过；
+# 写明的 0（免费）照收。嵌入模型没有缓存读的计价，models.dev 不给 cache_read 时按 0（规则写在脚本里，不是缺价）。
+
+
+def _files(tmp_path: Path, catalog: dict[str, Any]) -> tuple[list[str], Path, Path]:
+    profiles, seed, api = tmp_path / "model-profiles.json", tmp_path / "registry-seed.json", tmp_path / "api.json"
+    profiles.write_text(sync.dump_profiles({"version": 1, "profiles": [profile("gpt-5.5")]}), "utf-8")
+    seed.write_text(json.dumps({"entries": []}, indent=2) + "\n", "utf-8")
+    api.write_text(json.dumps(catalog), "utf-8")
+    return ["--catalog", str(api), "--profiles", str(profiles), "--seed", str(seed), "--date", "2026-11-04"], profiles, seed
+
+
+@pytest.mark.parametrize("cost", [
+    {"input": 5, "cache_read": 0.5},
+    {"input": 5, "output": None, "cache_read": 0.5},
+    {"output": 30, "cache_read": 0.5},
+    {"input": 5, "output": 30},
+])
+def test_a_missing_price_is_an_error_and_nothing_is_written(tmp_path: Path, cost: dict[str, Any], capsys: pytest.CaptureFixture[str]) -> None:
+    catalog = {"openai": {"models": {"gpt-5.5": {**CATALOG["openai"]["models"]["gpt-5.5"], "cost": cost}}}}
+    args, profiles, seed = _files(tmp_path, catalog)
+    before = (profiles.read_text("utf-8"), seed.read_text("utf-8"))
+    assert sync.main(args) == 1 and sync.main([*args, "--check"]) == 1
+    assert (profiles.read_text("utf-8"), seed.read_text("utf-8")) == before, "缺单价时两个文件都不改"
+    assert "a6api/gpt-5.5@2026-10" in capsys.readouterr().err
+    doc, changed, _ = sync.sync({"version": 1, "profiles": [profile("gpt-5.5")]}, catalog, "2026-11-04")
+    assert doc["profiles"] == [profile("gpt-5.5")] and not changed, "sync 也不把缺的单价写成 0"
+    assert sync.price_errors({"version": 1, "profiles": [profile("gpt-5.5")]}, catalog)
+
+
+def test_an_explicit_zero_price_is_free_not_missing(tmp_path: Path) -> None:
+    catalog = {"openai": {"models": {"gpt-5.5": {**CATALOG["openai"]["models"]["gpt-5.5"], "cost": {"input": 0, "output": 0, "cache_read": 0}}}}}
+    args, profiles, _ = _files(tmp_path, catalog)
+    assert sync.main(args) == 0
+    (p,) = json.loads(profiles.read_text("utf-8"))["profiles"]
+    assert p["cost"] == {"in_per_m": 0.0, "out_per_m": 0.0, "cache_read_per_m": 0.0}
+
+
+def test_adding_a_model_with_a_missing_price_fails(tmp_path: Path) -> None:
+    catalog = {"openai": {"models": {**CATALOG["openai"]["models"], "gpt-6.1-sol": {**CATALOG["openai"]["models"]["gpt-6.1-sol"], "cost": {"input": 2}}}}}
+    args, profiles, _ = _files(tmp_path, catalog)
+    before = profiles.read_text("utf-8")
+    assert sync.main([*args, "--add", "openai/gpt-6.1-sol"]) == 2 and profiles.read_text("utf-8") == before
+
+
 @pytest.mark.parametrize("name", ["model-profiles.json"])
 def test_the_repository_files_are_in_sync_with_each_other(name: str) -> None:
     profiles = json.loads((REPO / "deploy" / "dev" / name).read_text("utf-8"))

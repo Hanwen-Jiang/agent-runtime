@@ -255,6 +255,36 @@ def test_newer_version_without_first_party_price_is_reported_not_added(planned: 
     assert item["hint"] == {"in_per_m": pytest.approx(0.2475), "out_per_m": pytest.approx(0.985)}
 
 
+def _without(model: str, *keys: str) -> dict[str, Any]:
+    """CATALOG 的副本：model 的一方条目去掉这几项单价。"""
+    catalog = json.loads(json.dumps(CATALOG))
+    for provider in catalog.values():
+        entry = provider["models"].get(model)
+        if entry is not None:
+            for key in keys:
+                entry["cost"].pop(key, None)
+    return catalog
+
+
+def test_a_new_version_with_an_incomplete_price_is_unpriced_not_added() -> None:
+    """R-06-B（docs/plan/delegated-review-2026-11-04.md 第 7 节第 3 条）：缺任一项单价同没有一方价格，不加、不写 0，也不让旧版本停用。"""
+    result = cat.plan(_profiles(), RELAY, _without("gpt-6.1-sol", "cache_read"), _rules(), TODAY)
+    assert "a6api/gpt-6.1-sol@2026-11" not in result.added
+    assert not any(p["model"] == "gpt-6.1-sol" for p in result.document["profiles"])
+    assert "a6api/gpt-6-sol@2026-10" in _available(result.document), "没加上的新版本不能顶替旧版本"
+    assert any(u["model"] == "gpt-6.1-sol" for u in result.unpriced), result.unpriced
+
+
+def test_an_existing_profile_with_an_incomplete_price_is_left_alone_and_reported() -> None:
+    result = cat.plan(_profiles(), RELAY, _without("gpt-5.5", "output"), _rules(), TODAY)
+    before = _by_id(_profiles())["a6api/gpt-5.5@2026-10"]
+    after = _by_id(result.document)["a6api/gpt-5.5@2026-10"]
+    assert after["cost"] == before["cost"] and after["freshness"] == before["freshness"], "不写 0，原来的价格与取价日期不动"
+    assert result.price_gaps == ["a6api/gpt-5.5@2026-10：models.dev 没有 output 的单价"]
+    md, _ = cat._report(result, {}, [], TODAY)
+    assert "a6api/gpt-5.5@2026-10" in md and "缺单价" in md
+
+
 def test_price_override_adds_the_model_and_version_beats_release_date() -> None:
     rules = _rules(price_overrides={"deepseek-v4.1-flash": {"in_per_m": 0.15, "out_per_m": 0.6, "cache_read_per_m": 0.003, "source": "人定 2026-11-03"}})
     result = cat.plan(_profiles(), RELAY, CATALOG, rules, TODAY)

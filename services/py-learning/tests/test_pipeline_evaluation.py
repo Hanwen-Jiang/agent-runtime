@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from agentruntime_learning.evals.schemas import problems, validator
@@ -14,7 +16,7 @@ from agentruntime_learning.pipeline.evaluation import (
     non_inferiority,
     wilson,
 )
-from agentruntime_learning.pipeline.traces import TaskTrace, read_spans, task_traces
+from agentruntime_learning.pipeline.traces import TASK_SPAN, TaskTrace, read_spans, task_traces
 
 from pipeline_support import FAMILY, OTHER_FAMILY, ROUTE_A, ROUTE_B, TEMPLATE_EFFECTS, TaskSpec, console_lines, population, route_task
 
@@ -155,6 +157,47 @@ def test_defaults_follow_appendix_j3() -> None:
     gate, _, _ = gate_for(population(a_success=115, a_fail=5, b_success=85, b_fail=35))
     assert gate.thresholds == {"delta": 0.02, "epsilon": 0.05}
     assert gate.min_samples == 100
+    assert not gate.needs_human, "成本都知道、两组都有成功的：门槛自己判"
+
+
+# --- R-06-B（docs/plan/delegated-review-2026-11-04.md 第 2 节 R-06 的 P2、第 7 节第 5 条） ---
+
+
+def outcomes(n: int, successes: int, cost: float = 1.0, unknown: int = 0) -> Outcomes:
+    tasks = tuple((cost, i < successes) for i in range(n))
+    return Outcomes(total=n, successes=successes, tasks=tasks, unknown_costs=unknown)
+
+
+def test_a_baseline_without_successes_goes_to_a_person() -> None:
+    """代审的复现：候选 100 次全成、基线 100 次全败、每次成本 1。基线的每次成功成本无法定义，原来跳过成本比较就通过了。"""
+    gate = non_inferiority(outcomes(100, 100), outcomes(100, 0))
+    assert not gate.passed and gate.needs_human
+    assert any("人工" in r for r in gate.reasons), gate.reasons
+
+
+def test_unknown_costs_never_auto_promote() -> None:
+    """成本还没结算或缺失（span 上没有 runtime.cost_usd）：不按 0 算、不自动晋级，交人工判断。两组都一样。"""
+    good, base = outcomes(120, 118, cost=0.1), outcomes(120, 100, cost=0.2)
+    assert non_inferiority(good, base).passed, "成本都知道时这一对是通过的"
+    for cand, baseline in ((outcomes(120, 118, cost=0.1, unknown=1), base), (good, outcomes(120, 100, cost=0.2, unknown=3))):
+        gate = non_inferiority(cand, baseline)
+        assert not gate.passed and gate.needs_human and any("成本" in r and "人工" in r for r in gate.reasons), gate.reasons
+
+
+def test_a_real_failure_is_not_sent_to_a_person() -> None:
+    gate = non_inferiority(outcomes(120, 60), outcomes(120, 110))
+    assert not gate.passed and not gate.needs_human, "成功率不够就是不通过，不是待人工"
+
+
+def test_traces_without_a_cost_are_marked_unknown() -> None:
+    def line(task: str, attrs: dict[str, object]) -> str:
+        base = {"tenant_id": "t1", "task_id": task, "runtime.task_family": FAMILY, "runtime.task_status": "done", **attrs}
+        return json.dumps({"kind": "span", "name": TASK_SPAN, "trace_id": "tr-" + task, "span_id": "sp-" + task, "attributes": base})
+
+    tasks = task_traces(read_spans([line("a", {"runtime.cost_usd": 0.3}), line("b", {})], fmt="console"), tenant_id="t1").tasks
+    known = {t.task_id: t.cost_known for t in tasks}
+    assert known == {"a": True, "b": False}, known
+    assert Outcomes.from_tasks(tasks).unknown_costs == 1
 
 
 # --- 证据 ---
