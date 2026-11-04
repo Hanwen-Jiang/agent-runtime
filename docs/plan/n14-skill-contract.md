@@ -69,4 +69,6 @@
 
 验收第 1～8 条有测试：`internal/registry/skills_test.go`（两种后端）、`internal/skillapi/server_test.go`、`internal/taskapi/skill_pins_test.go`、`services/py-worker/tests/test_skills.py`。第 9 条（golden 历史照旧回放）：Worker 的工作流没有改动。
 
-没做的：coding-agent 的“我的 Skill”（另一个仓库，下一步）；端到端用例（task-service + Worker + Registry 真跑一次 skill_read）；租户层的收回（Registry 没有收回的方法，平台层、租户层由运维发新版本）。
+端到端：`tests/e2e/test_skills.py`（真的 task-service + Registry + Worker：SkillService 经 Task API 端口、别人读不到、tenant_id 不一致 403、固定的版本跨 Go 与 Python、发布 v2 后新 Task 固定 v2 而 v1 照旧读得到、有 Skill 时 Task 跑完、收回后不再固定）。coding-agent 的“我的 Skill”页见 WEB-SKILLS（coding-agent `f68943b`）。
+
+没做的：tool_loop 真调一次 skill_read 的端到端（要真模型或会调工具的桩模型；单元测试覆盖了 skill_read 本身）；租户层的收回（Registry 没有收回的方法，平台层、租户层由运维发新版本）；端到端里 Worker 的业务库与 task-service 的不是同一个（各自的 AR_DATA_DIR），Worker 读不到 tasks.skill_pins 时当作没有 Skill，线上两边用同一个 Postgres。
