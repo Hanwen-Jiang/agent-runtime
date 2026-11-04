@@ -21,11 +21,10 @@ import (
 	"unicode/utf8"
 
 	"connectrpc.com/connect"
-	"google.golang.org/protobuf/proto"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/clock"
-	"github.com/agentruntime/agent-runtime/libs/go-core/connecterr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/ingress"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
@@ -34,6 +33,8 @@ import (
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	workspacev1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workspace/v1"
 	"github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workspace/v1/workspacev1connect"
+
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/taskapi"
 )
 
 const (
@@ -137,7 +138,8 @@ func (s *Server) writer(tenant *commonv1.TenantContext) (secretstore.Writer, err
 	return w, nil
 }
 
-// errUnavailable 与 errLimit 要的 Connect 码不在统一错误模型的类别里，单独构造（trailer 照样带 common.v1.Error）。
+// errUnavailable 与 errLimit 要的 Connect 码不在统一错误模型的类别里，单独构造；别的错误按 Task API 的映射
+// （taskapi.ConnectError：没认证 Unauthenticated，错误模型的 code 放进 google.rpc.ErrorInfo，应用按它翻译）。
 var (
 	errUnavailable = errors.New("user_secrets_unavailable")
 	errLimit       = errors.New("user_secret_limit")
@@ -146,17 +148,17 @@ var (
 func reply(err error) error {
 	switch {
 	case errors.Is(err, errUnavailable):
-		return withDetail(connect.CodeUnimplemented, providererr.Invalid, "user_secrets_unavailable", "这个部署的 SecretStore 不能写用户密钥")
+		return withReason(connect.CodeUnimplemented, "user_secrets_unavailable", "这个部署的 SecretStore 不能写用户密钥")
 	case errors.Is(err, errLimit):
-		return withDetail(connect.CodeResourceExhausted, providererr.Denied, "user_secret_limit", "每个用户最多 100 个密钥")
+		return withReason(connect.CodeResourceExhausted, "user_secret_limit", "每个用户最多 100 个密钥")
 	}
-	return connecterr.Error(err)
+	return taskapi.ConnectError(err)
 }
 
-func withDetail(code connect.Code, category providererr.Category, errCode, message string) error {
+func withReason(code connect.Code, reason, message string) error {
 	ce := connect.NewError(code, errors.New(message))
-	if raw, err := proto.Marshal(&commonv1.Error{Category: category, Code: errCode, Message: message}); err == nil {
-		ce.Meta().Set(connecterr.Trailer, connect.EncodeBinaryHeader(raw))
+	if detail, err := connect.NewErrorDetail(&errdetails.ErrorInfo{Reason: reason, Domain: taskapi.ErrorDomain}); err == nil {
+		ce.AddDetail(detail)
 	}
 	return ce
 }
