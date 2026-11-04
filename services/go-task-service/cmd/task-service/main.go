@@ -542,6 +542,8 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	// Workspace API（D-06）：同一个端口、同一个 Ingress；封凭据的密钥在 SecretStore 平台作用域的 workspace/credential-key。
 	workspaces, err := workspaceapi.New(workspaceapi.Deps{
 		Ingress: ing, Durable: temporaladapter.New(c), Store: store, Timeout: cfg.WorkspaceOperationTimeout, AllowLocalRemotes: cfg.WorkspaceAllowLocalRemotes,
+		// 只读操作按工作区的版本号缓存（WS-READ-03）：多副本时是共用的 Valkey。
+		Cache: cacheProvider,
 		SealingKey: func(ctx context.Context) ([]byte, error) {
 			return platformSecret(ctx, cfg.SecretsFile, sealing.SecretName)
 		},

@@ -30,6 +30,7 @@ import asyncio
 import contextlib
 import hashlib
 import ipaddress
+import logging
 import os
 import re
 import shutil
@@ -61,6 +62,8 @@ from agentruntime_worker.tools.sandboxes import Sandboxes, parse_cpu_millis, par
 from agentruntime_worker.workflows.interrupts import NOT_NEEDED, UNDO_FAILED
 from agentruntime_worker.workspace import timing
 from agentruntime_worker.workspace.size_guard import WorkspaceSizeGuard
+
+log = logging.getLogger(__name__)
 
 VERSION = "v1"
 CONTEXT_READ = "context_read"
@@ -141,9 +144,11 @@ def register_platform_tools(
     objects: ObjectStoreProvider | None = None,
     sandboxes: Sandboxes | SandboxBroker | None = None,
     telemetry: TelemetryProvider | None = None,
+    generations: Any = None,
 ) -> list[str]:
     """按配置登记平台内工具，返回登记了的名字。给了 objects（Context Builder 外置内容的 ObjectStore）就登记 context_read；
-    shell_sandbox = sandbox 时 shell_run 用 sandboxes 里的后端，每次运行记一个 runtime.sandbox span（给了 telemetry 时）。"""
+    shell_sandbox = sandbox 时 shell_run 用 sandboxes 里的后端，每次运行记一个 runtime.sandbox span（给了 telemetry 时）。
+    generations 是记工作区版本号的（WS-READ-03，有 bump_generation 的 WorkspaceArchiver）；不给时用 broker 的 archiver。"""
     if config.shell_sandbox == "sandbox" and config.workspace_root is not None and sandboxes is None:
         raise ValueError("shell_sandbox = sandbox 时要给沙箱后端（AR_SANDBOX_BACKENDS_FILE）")
     tools: list[tuple[ToolSpec, ToolHandler]] = []
@@ -152,7 +157,7 @@ def register_platform_tools(
     archived = config.shell_sandbox == "sandbox" and broker is not None and broker.sandboxes.has_archive_backends
     if config.workspace_root is not None or archived:
         root = Path(config.workspace_root) if config.workspace_root is not None else None
-        tools += _Workspaces(root, config, broker, telemetry).tools()
+        tools += _Workspaces(root, config, broker, telemetry, generations=generations).tools()
     if config.shell_sandbox == "sandbox" and broker is not None and broker.grants is not None:
         hosted = any(broker.sandboxes.spec(n).get("kind") not in ("k8s", "local") for n in broker.sandboxes.names)
         if config.network_requests or hosted:
@@ -175,13 +180,24 @@ def register_platform_tools(
 
 class _Workspaces:
     def __init__(
-        self, root: Path | None, config: PlatformToolsConfig, broker: SandboxBroker | None = None, telemetry: TelemetryProvider | None = None
+        self, root: Path | None, config: PlatformToolsConfig, broker: SandboxBroker | None = None, telemetry: TelemetryProvider | None = None,
+        *, generations: Any = None,
     ) -> None:
         self.root = root
         self.config = config
         self.broker = broker
         self.telemetry = telemetry
         self.size_guard = WorkspaceSizeGuard(self._size_limit, interval=config.workspace_size_interval_s)
+        self.generations = generations if generations is not None else (broker.archiver if broker is not None else None)
+
+    async def _changed(self, invocation: ToolInvocation) -> None:
+        """写类工具做完：工作区的版本号加一（WS-READ-03）。加不上只少了一次失效，task-service 的缓存有 TTL 兜底。"""
+        if self.generations is None:
+            return
+        try:
+            await self.generations.bump_generation(invocation.tenant_id, self._workspace_id(invocation))
+        except ProviderError as err:
+            log.warning("工作区的版本号没加上（%s）", err.code)
 
     async def _size_limit(self, tenant_id: str) -> int:
         """挂卷工作区的大小上限：租户策略的 workspace.max_bytes（有沙箱后端时），否则配置的或默认的。"""
@@ -441,7 +457,9 @@ class _Workspaces:
                 await box.write_file(env_id, rel, data)
                 return {"path": rel, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(), "created": old is None}
 
-            return await self._in_env(invocation, writable=True, run=change)
+            out = await self._in_env(invocation, writable=True, run=change)
+            await self._changed(invocation)
+            return out
         root = self._workspace(invocation)
         target = self._resolve(root, args["path"])
 
@@ -452,7 +470,9 @@ class _Workspaces:
             target.write_bytes(data)
             return {"path": self._relative(root, target), "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(), "created": not existed}
 
-        return await self._guarded(invocation, root, write)
+        out = await self._guarded(invocation, root, write)
+        await self._changed(invocation)
+        return out
 
     @staticmethod
     def _edited(args: Any, old: bytes | None) -> bytes:
@@ -478,10 +498,14 @@ class _Workspaces:
         cwd = self._env_path(args["cwd"], allow_root=True) if args.get("cwd") is not None else ""
         if await self._archived(invocation):
             # 存档模式（D-06）：不碰 Worker 的工作区目录；项目环境（D-17）要读工作区卷，这里不用。
-            return await self._sandbox_shell(invocation, self._workspace_id(invocation), _in_dir(cwd, argv), timeout, None)
+            out = await self._sandbox_shell(invocation, self._workspace_id(invocation), _in_dir(cwd, argv), timeout, None)
+            await self._changed(invocation)
+            return out
         root = self._workspace(invocation)
         if self.config.shell_sandbox == "sandbox":
-            return await self._guarded(invocation, root, lambda: self._sandbox_shell(invocation, root.name, _in_dir(cwd, argv), timeout, root))
+            out = await self._guarded(invocation, root, lambda: self._sandbox_shell(invocation, root.name, _in_dir(cwd, argv), timeout, root))
+            await self._changed(invocation)
+            return out
         workdir = self._resolve(root, cwd) if cwd else root
         if not workdir.is_dir():
             raise InvalidError("dir_not_found", f"工作区里没有目录 {cwd}")
@@ -497,7 +521,9 @@ class _Workspaces:
             except asyncio.CancelledError:
                 raise await undo_with(run, point) from None
 
-        return await self._guarded(invocation, root, run_here)
+        out = await self._guarded(invocation, root, run_here)
+        await self._changed(invocation)
+        return out
 
     @staticmethod
     def _host_runner(root: Path) -> Runner:

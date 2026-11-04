@@ -163,6 +163,11 @@ def context_objects(config: WorkerConfig) -> ObjectStoreProvider:
     return objects
 
 
+def _generations(config: WorkerConfig) -> WorkspaceArchiver | None:
+    broker = sandbox_broker(config) or host_broker(config)
+    return broker.archiver if broker is not None else None
+
+
 def dev_tools(config: WorkerConfig) -> LocalToolDriverProvider:
     """开发用 ToolDriver：没配置时只有 context_read。"""
     key = _key(config)
@@ -184,6 +189,8 @@ def dev_tools(config: WorkerConfig) -> LocalToolDriverProvider:
             objects=context_objects(config),
             sandboxes=sandbox_broker(config),
             telemetry=worker_telemetry(),
+            # 工作区的版本号（WS-READ-03）记在 Workspace API 用的同一个业务库里：没配沙箱时是 host_broker 的。
+            generations=_generations(config),
         )
         if config.tool_workspace_root is not None:
             # 交付文件（N-18，F3）：读与 repo_* 同一处的工作区目录，内容进 context_objects 的 ObjectStore，元数据进业务库（task-service 读同一处）。

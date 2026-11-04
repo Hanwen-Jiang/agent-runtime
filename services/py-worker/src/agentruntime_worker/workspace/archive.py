@@ -98,6 +98,10 @@ MIGRATIONS = (
         # N-10：复制工作区时新快照引用源工作区的块（不复制）；记下引用了哪些工作区的块（,ws1,ws2,），清理时据此保留它们。
         "ALTER TABLE workspace_snapshots ADD COLUMN blob_sources TEXT NOT NULL DEFAULT ''",
     )),
+    # WS-READ-03：工作区的版本号。改动工作区的（Workspace API 的写操作、写类工具）都加一；task-service 按它缓存只读操作的结果。
+    Migration(210, "workspace_generation", (
+        "ALTER TABLE workspaces ADD COLUMN generation BIGINT NOT NULL DEFAULT 0",
+    )),
 )
 
 
@@ -196,6 +200,19 @@ class WorkspaceArchiver:
         return self._objects.bind(TenantContext(tenant_id=owner))
 
     # --- 工作区的行 ---
+
+    async def bump_generation(self, owner: str, workspace_id: str) -> None:
+        """工作区改动过：版本号加一（WS-READ-03）。没有这一行时什么都不做（不凭空建行）。"""
+        await self.migrate()
+        async with self._db(owner).transaction() as tx:
+            await tx.execute("UPDATE workspaces SET generation = generation + 1 WHERE workspace_id = $1", (workspace_id,))
+
+    async def generation(self, owner: str, workspace_id: str) -> int | None:
+        """工作区的版本号；没有这一行时 None。"""
+        await self.migrate()
+        async with self._db(owner).transaction() as tx:
+            row = await tx.query_one("SELECT generation FROM workspaces WHERE workspace_id = $1", (workspace_id,))
+        return int(row["generation"]) if row else None
 
     async def get(self, owner: str, workspace_id: str) -> WorkspaceRecord | None:
         await self.migrate()

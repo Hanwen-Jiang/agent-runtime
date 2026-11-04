@@ -68,6 +68,10 @@ from agentruntime_worker.workspace.copy import copy_working_copy
 log = logging.getLogger(__name__)
 
 Op = workspace_pb2.WorkspaceOperation
+# 只读的操作：不动工作区的版本号（WS-READ-03），task-service 可以按版本缓存它们的结果。
+READ_OPERATIONS = frozenset({
+    Op.WORKSPACE_OPERATION_LIST_FILES, Op.WORKSPACE_OPERATION_READ_FILE, Op.WORKSPACE_OPERATION_LOG, Op.WORKSPACE_OPERATION_DIFF,
+})
 CREDENTIAL_SECRET = "workspace/credential-key"
 MAX_DIFF_BYTES = 1 << 20
 MAX_READ_BYTES = 512 << 10
@@ -284,7 +288,14 @@ class WorkspaceOperations:
         handler = handlers.get(inp.operation)
         if handler is None:
             raise InvalidError("invalid_operation", "不认识的工作区操作")
-        return await handler(inp, {str(k): v for k, v in args.items()})
+        result = await handler(inp, {str(k): v for k, v in args.items()})
+        if inp.operation not in READ_OPERATIONS:
+            # WS-READ-03：改动过工作区，task-service 按旧版本缓存的只读结果不再命中。加不上只少了一次失效，TTL 兜底。
+            try:
+                await self.broker.archiver.bump_generation(owner, inp.workspace_id)
+            except ProviderError as err:
+                log.warning("工作区 %s 的版本号没加上（%s）", inp.workspace_id, err.code)
+        return result
 
     # --- 建 ---
 

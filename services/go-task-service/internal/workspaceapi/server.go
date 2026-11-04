@@ -13,9 +13,12 @@ package workspaceapi
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base32"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -30,6 +33,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/cache"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/durable"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/ingress"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
@@ -78,7 +82,15 @@ type Deps struct {
 	AllowLocalRemotes bool
 	// NewOperationID 生成 operation_id；为空时用随机的 wso-<26 位>。
 	NewOperationID func() string
+	// Cache 缓存只读操作的结果（WS-READ-03）：列目录、读文件、提交记录、diff 按（租户、工作区、generation、操作与参数）
+	// 缓存；generation 由 Worker 在每次改动工作区后加一（业务库 workspaces.generation）。为 nil 时不缓存。
+	Cache cache.Provider
+	// ReadCacheTTL 是缓存的兜底有效期（工具之外改了工作区、generation 没变时最多旧这么久）；默认 5 分钟。
+	ReadCacheTTL time.Duration
 }
+
+// maxCachedResult 是缓存的单个结果的上限（字节，protojson）；更大的不缓存。
+const maxCachedResult = 256 << 10
 
 // Server 实现 workspacev1connect.WorkspaceServiceHandler。
 type Server struct{ d Deps }
@@ -98,6 +110,9 @@ func New(d Deps) (*Server, error) {
 	}
 	if d.SealingKey == nil {
 		d.SealingKey = func(context.Context) ([]byte, error) { return nil, nil }
+	}
+	if d.ReadCacheTTL <= 0 {
+		d.ReadCacheTTL = 5 * time.Minute
 	}
 	return &Server{d: d}, nil
 }
@@ -147,6 +162,74 @@ func (s *Server) operate(
 	if err != nil {
 		return err
 	}
+	return s.run(ctx, id, tenant, workspaceID, op, args, credential, out)
+}
+
+// operateRead 同 operate，只用于只读操作：工作区在业务库里有行、配了 Cache 时先查缓存（WS-READ-03）。
+func (s *Server) operateRead(
+	ctx context.Context, header http.Header, route, requestTenant, workspaceID string, op workflowv1.WorkspaceOperation,
+	args map[string]any, out proto.Message,
+) error {
+	if workspaceID == "" {
+		return invalid("invalid_workspace", "要给 workspace_id")
+	}
+	id, tenant, err := s.caller(ctx, header, route, requestTenant, workspaceID)
+	if err != nil {
+		return err
+	}
+	c, key := s.readCache(ctx, tenant, workspaceID, op, args)
+	if c != nil {
+		if data, ok, err := c.Get(ctx, key); err == nil && ok && protojson.Unmarshal(data, out) == nil {
+			return nil
+		}
+	}
+	if err := s.run(ctx, id, tenant, workspaceID, op, args, nil, out); err != nil {
+		return err
+	}
+	if c != nil {
+		if data, err := protojson.Marshal(out); err == nil && len(data) <= maxCachedResult {
+			_ = c.Set(ctx, key, data, s.d.ReadCacheTTL)
+		}
+	}
+	return nil
+}
+
+// readCache 返回租户的 Cache 与这次读的键；不缓存时（没配 Cache、业务库里没有这个工作区、查不了版本号）返回 nil。
+// 键里有工作区、版本号、操作与参数的哈希；租户由 Cache 的绑定隔开。
+func (s *Server) readCache(ctx context.Context, tenant *commonv1.TenantContext, workspaceID string, op workflowv1.WorkspaceOperation, args map[string]any) (cache.Cache, string) {
+	if s.d.Cache == nil {
+		return nil, ""
+	}
+	db, err := s.d.Store.Bind(tenant)
+	if err != nil {
+		return nil, ""
+	}
+	var generation string
+	err = db.Transaction(ctx, relational.TxOptions{ReadOnly: true}, func(ctx context.Context, tx relational.Tx) error {
+		rows, err := tx.Query(ctx, `SELECT generation FROM workspaces WHERE workspace_id = $1 AND state <> 'deleted'`, workspaceID)
+		if err == nil && len(rows) == 1 {
+			generation = fmt.Sprint(rows[0]["generation"])
+		}
+		return err
+	})
+	if err != nil || generation == "" {
+		return nil, ""
+	}
+	c, err := s.d.Cache.Bind(tenant)
+	if err != nil {
+		return nil, ""
+	}
+	raw, _ := json.Marshal(args)
+	sum := sha256.Sum256(raw)
+	return c, "wsread:" + workspaceID + ":" + generation + ":" + op.String() + ":" + hex.EncodeToString(sum[:16])
+}
+
+// run 起一次工作区操作的工作流并等结果，结果按 protojson 写进 out。
+func (s *Server) run(
+	ctx context.Context, id ingress.Identity, tenant *commonv1.TenantContext, workspaceID string, op workflowv1.WorkspaceOperation,
+	args map[string]any, credential *workspacev1.GitCredential, out proto.Message,
+) error {
+	var err error
 	operationID := s.d.NewOperationID()
 	in := &workflowv1.WorkspaceOperationInput{
 		Tenant: tenant, OperationId: operationID, Operation: op, WorkspaceId: workspaceID, RequestedBy: id.UserID,
@@ -322,7 +405,7 @@ func (s *Server) GetDiff(ctx context.Context, req *connect.Request[workspacev1.G
 	}
 	out := &workspacev1.GetDiffResponse{}
 	args := map[string]any{"base": m.GetBase(), "find_renames": m.GetFindRenames()}
-	if err := s.operate(ctx, req.Header(), "workspace_diff", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_DIFF, args, nil, out); err != nil {
+	if err := s.operateRead(ctx, req.Header(), "workspace_diff", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_DIFF, args, out); err != nil {
 		return nil, taskapi.ConnectError(err)
 	}
 	return connect.NewResponse(out), nil
@@ -383,7 +466,7 @@ func (s *Server) ListFiles(ctx context.Context, req *connect.Request[workspacev1
 		return nil, taskapi.ConnectError(err)
 	}
 	out := &workspacev1.ListFilesResponse{}
-	if err := s.operate(ctx, req.Header(), "workspace_read", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_LIST_FILES, map[string]any{"path": m.GetPath()}, nil, out); err != nil {
+	if err := s.operateRead(ctx, req.Header(), "workspace_read", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_LIST_FILES, map[string]any{"path": m.GetPath()}, out); err != nil {
 		return nil, taskapi.ConnectError(err)
 	}
 	return connect.NewResponse(out), nil
@@ -395,7 +478,7 @@ func (s *Server) ReadFile(ctx context.Context, req *connect.Request[workspacev1.
 		return nil, taskapi.ConnectError(err)
 	}
 	out := &workspacev1.ReadFileResponse{}
-	if err := s.operate(ctx, req.Header(), "workspace_read", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_READ_FILE, map[string]any{"path": m.GetPath()}, nil, out); err != nil {
+	if err := s.operateRead(ctx, req.Header(), "workspace_read", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_READ_FILE, map[string]any{"path": m.GetPath()}, out); err != nil {
 		return nil, taskapi.ConnectError(err)
 	}
 	return connect.NewResponse(out), nil
@@ -411,7 +494,7 @@ func (s *Server) GetLog(ctx context.Context, req *connect.Request[workspacev1.Ge
 	}
 	out := &workspacev1.GetLogResponse{}
 	args := map[string]any{"limit": float64(m.GetLimit()), "base": m.GetBase()}
-	if err := s.operate(ctx, req.Header(), "workspace_read", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_LOG, args, nil, out); err != nil {
+	if err := s.operateRead(ctx, req.Header(), "workspace_read", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_LOG, args, out); err != nil {
 		return nil, taskapi.ConnectError(err)
 	}
 	return connect.NewResponse(out), nil
