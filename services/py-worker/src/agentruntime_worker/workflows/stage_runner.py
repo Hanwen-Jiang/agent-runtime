@@ -88,8 +88,15 @@ with workflow.unsafe.imports_passed_through():
         PARALLEL_TOOL_CALLS_PATCH,
         R01_FIXES_PATCH,
         RECONCILE_PATCH,
+        SUB_AGENT_WRAP_UP_PATCH,
         TOOL_LOOP_APPROVAL_PATCH,
     )
+
+# N16-R（SUB_AGENT_WRAP_UP_PATCH）：子 Agent 的份额用完时最后一步的说明（history 里一条用户消息）。
+WRAP_UP_NOTE = (
+    "这个子 Agent 的份额（预算）用完了，不能再调用工具。按要求的格式交回到目前为止已有的结论与依据，这是部分结果："
+    "没查完的写进 open_questions（或结果里说明还缺什么），不要编造没查到的内容。"
+)
 
 # memo 里记下所属租户，与 Session 工作流启动 Task 时一致（libs/go-core adapters/temporal）。
 SCOPE_MEMO_KEY = "agentruntime_scope"
@@ -242,6 +249,8 @@ class RunContext:
     events: EventPublisher | None = None
     # N-16（N16_PATCH）：sub_agent 推自己的进度、每个 Stage 的 sub_agent 有上限、缺省 effect 上限继承、sub_task 的预算不超过剩下的。
     n16: bool = False
+    # N16-R（SUB_AGENT_WRAP_UP_PATCH，只在按份额跑的子 Agent 里为 True）：份额用完时不带工具再问一步，交回部分结果。
+    wrap_up: bool = False
     # TMP 计划第 3 节（BUDGETS_PATCH 之后的运行为 True）：工具调用次数的上限（0 不限）与这个 Stage 开始之前已发出的；
     # 时间预算（秒，0 不限）与已用了多少秒（只算 Agent 在跑的时间，由 Task 工作流给出）。
     budgets: bool = False
@@ -1327,7 +1336,10 @@ class StageRunner:
                     # TMP 计划第 5 节：与时间、工具调用预算同一个代码，params 的 budget 是 usd。
                     budget = self._budget()
                     params = {"budget": "usd", "limit": budget["task_usd"], "used": budget["spent_usd"]}
-                    return replace(_denied(DEFAULT_ROLE, reason), error_code="budget_exhausted", params=params)
+                    denied = replace(_denied(DEFAULT_ROLE, reason), error_code="budget_exhausted", params=params)
+                    if isolated and self._ctx.wrap_up and history:
+                        return await self._wrap_up(node, nid, i, history, events, spent_before, denied)
+                    return denied
             # TMP 计划第 3 节：时间预算用完就不再请求下一步。
             stop = self._budget_stop(nid, before_call=False)
             if stop is not None:
@@ -1412,6 +1424,39 @@ class StageRunner:
             if sp.repeated_error(history):
                 return _failed(DEFAULT_ROLE, f"repeated_error：同一错误连续出现 {sp.REPEATED_ERROR_LIMIT} 次：{entry['error']}")
         return _failed(DEFAULT_ROLE, f"max_iterations：{limit} 步内没有完成")
+
+    async def _wrap_up(
+        self, node: dict[str, Any], nid: str, i: int, history: list[dict[str, Any]], events: EventPublisher | None, spent_before: float, denied: StageResult,
+    ) -> StageResult:
+        """N16-R（docs/plan/sub-agent.md 第 6 节）：子 Agent 的份额用完了，不带工具再问一步，按要求的格式交回已有的结论；结果标 partial，
+        算成功（部分结果，不是失败）。这一步照记花费；模型还要调工具、或这一步失败时交回 denied（budget_exhausted）。"""
+        step_input = ToolLoopStepInput(
+            tenant=self._ctx.tenant,
+            task_id=self._ctx.task_id,
+            round_seq=self._ctx.round_seq,
+            node={**node, "tools": []},
+            iteration=i,
+            history=copy.deepcopy([*history, {"role": "user", "content": WRAP_UP_NOTE}]),
+            step_id=sp.child_id(nid, 2 * i - 1),
+            isolated=True,
+            task_state={},
+            task_plan=None,
+            context_version=self._ctx.context_version,
+            task_family=self._ctx.task_family,
+        )
+        try:
+            step = await self._think(step_input, nid, i, events)
+        except decisions.DecisionExhausted:
+            return denied
+        except FailureError as err:
+            if caused_by_cancel(err):
+                raise asyncio.CancelledError() from err
+            return denied
+        self.spent_usd += float(step.cost_usd or 0.0)
+        if step.action != "finish":
+            return denied
+        result = {**step.result, "partial": True} if isinstance(step.result, dict) else {"result": step.result, "partial": True}
+        return StageResult(role=DEFAULT_ROLE, status="succeeded", result=result, cost_usd=round(self.spent_usd - spent_before, 6), vendor=step.vendor or "")
 
     async def _think(self, step_input: ToolLoopStepInput, nid: str, i: int, events: EventPublisher | None) -> ToolLoopStep:
         """tool_loop 的一步“思考”。"""
@@ -1631,8 +1676,11 @@ class StageRunner:
         # N16-R（docs/plan/sub-agent.md 第 6 节）：Node 的 budget.usd 是这个子 Agent 的份额，子工作流按 启动时已花的 + 份额 停下，
         # 不超过 Task 的预算。只改子工作流的输入，不改命令序列。
         share = (node.get("budget") or {}).get("usd")
+        by_share = False
         if isinstance(share, int | float) and not isinstance(share, bool) and share >= 0:
             capped = round(spent + float(share), 6)
+            # 份额比 Task 剩下的紧时才是按份额跑（用完了收尾，SUB_AGENT_WRAP_UP_PATCH）；否则是 Task 的预算在管，照旧 denied。
+            by_share = budget_usd is None or capped < budget_usd
             budget_usd = capped if budget_usd is None else min(budget_usd, capped)
         try:
             async with self._slot():
@@ -1650,6 +1698,7 @@ class StageRunner:
                         task_family=self._ctx.task_family,
                         budget_usd=budget_usd,
                         spent_before_usd=spent,
+                        by_share=by_share,
                         publish_events=self._ctx.n16 and top and self._ctx.events is not None,
                         **self._child_budgets(),
                     ),
@@ -1779,6 +1828,8 @@ class SubAgentInput:
     task_family: str = ""
     # N-16：顶层的 sub_agent 推自己的进度事件（tool_status、context_usage，node_id 是这个 sub_agent）；之前的运行没有。
     publish_events: bool = False
+    # N16-R：budget_usd 来自这个子 Agent 的份额（比 Task 剩下的紧）；用完时收尾（SUB_AGENT_WRAP_UP_PATCH）。之前的运行没有。
+    by_share: bool = False
 
 
 def _child_context(inp: SubAgentInput | SubgraphInput, **kw: Any) -> RunContext:
@@ -1817,7 +1868,7 @@ class SubAgentWorkflow:
     async def run(self, inp: SubAgentInput) -> StageResult:
         patches.at_start()
         events = EventPublisher(inp.tenant, inp.task_id, detail=True) if inp.publish_events and workflow.patched(N16_PATCH) else None
-        ctx = _child_context(inp, events=events, n16=workflow.patched(N16_PATCH))
+        ctx = _child_context(inp, events=events, n16=workflow.patched(N16_PATCH), wrap_up=workflow.patched(SUB_AGENT_WRAP_UP_PATCH) and inp.by_share)
         runner = StageRunner(ctx, human=None)
         await runner._ensure_policy()
         result = await runner.tool_loop(inp.node, isolated=True, tool_effects=dict(inp.tools), env=_Env(results={}), progress=events is not None)

@@ -74,6 +74,9 @@ PLAN_PATCH = "n04-task-plan"
 # sub_agent 缺省的 effect 上限继承 Task 的（不高于 read）、sub_task 的预算不超过父 Task 剩下的。多了推送与拒绝，改变了命令序列。
 N16_PATCH = "n16-sub-agents"
 
+# N16-R（docs/plan/sub-agent.md 第 6 节）：子 Agent 按份额停下时不带工具再问一步、交回部分结果，多了一个 activity，改变了命令序列。
+SUB_AGENT_WRAP_UP_PATCH = "n16r-sub-agent-wrap-up"
+
 # 新的运行在第一个工作流任务里一次问完全部版本分支（模块说明）。
 PATCHES_AT_START = "s04-patches-at-start"
 # 只能在末尾追加。
@@ -99,6 +102,7 @@ AT_START = (
     CONTEXT_BUILDER_V2_PATCH,
     PLAN_PATCH,
     N16_PATCH,
+    SUB_AGENT_WRAP_UP_PATCH,
 )
 
 
