@@ -28,7 +28,6 @@
           "type": "array", "uniqueItems": true, "maxItems": 5, "items": {"$ref": "#/$defs/backend_name"}
         },
         "min_isolation": {"description": "回退时不能低于的隔离强度；不写取首选后端的", "$ref": "defs.schema.json#/$defs/sandbox_isolation"},
-        "service": {"description": "是否经 Sandbox Service 借还环境（SBX-01，按租户灰度）：true 时 Worker 的 shell_run、repo_* 与 Workspace 操作调 Sandbox Service，task-service 的只读工作区操作直接读它；不写为 false（Worker 自己借还）。回退就是改回 false", "type": "boolean"},
         "idle_timeout_s": {"description": "会话级沙箱空闲多久回收（秒）；高于部署的默认值（15 分钟）时按默认值", "type": "integer", "minimum": 60, "maximum": 86400},
         "max_lifetime_s": {"description": "一个环境最多活多久（秒）；高于部署的默认值（6 小时）时按默认值", "type": "integer", "minimum": 300, "maximum": 86400},
         "quota": {

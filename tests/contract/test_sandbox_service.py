@@ -3,7 +3,7 @@
 - 每个请求的字段 1 是 TenantContext（流式导入的是第一条消息的 header），服务据此绑定所有 Provider。
 - 响应里没有凭据：平台注入的环境变量（包镜像、出网代理、测试用密钥）只在服务里，Lease 只给测试用密钥的名字。
 - task-service 能调的只读方法都在服务上，且不带 lease（不借环境）。
-- 租户策略的开关 sandbox.service 是布尔（正例、反例在 schemas/examples）。
+- 不按租户灰度（2026-11-04 用户纠正）：租户策略里没有经不经服务的开关，整个部署一起切。
 """
 
 from __future__ import annotations
@@ -75,9 +75,6 @@ def test_exec_env_is_only_on_the_request() -> None:
     assert "env" not in sb.ExecResponse.DESCRIPTOR.fields_by_name
 
 
-def test_tenant_policy_has_the_service_switch() -> None:
+def test_there_is_no_per_tenant_switch() -> None:
     schema = json.loads((ROOT / "schemas" / "tenant_policy.schema.json").read_text("utf-8"))
-    assert schema["properties"]["sandbox"]["properties"]["service"]["type"] == "boolean"
-    examples = json.loads((ROOT / "schemas" / "examples" / "tenant_policy.examples.json").read_text("utf-8"))
-    assert any(e["name"] == "sandbox_service_switch" for e in examples["valid"])
-    assert any(e["name"] == "sandbox_service_not_boolean" for e in examples["invalid"])
+    assert "service" not in schema["properties"]["sandbox"]["properties"]
