@@ -1,6 +1,6 @@
 # N-14 用户 Skill 的契约草案
 
-> 状态：契约草案（S-01），2026-11-04，**等人审**。`buf lint`、`buf breaking --against proto/breaking-baseline.binpb` 通过，生成代码已更新，契约测试 599 过。审过之后再写实现，并用 `buf build -o proto/breaking-baseline.binpb` 更新基线。
+> 状态：契约 `c1836ba`（S-01），2026-11-04 人审通过（用户在对话里：“Approve all three”；“代审时要明确的”五条照草案）。`buf lint`、`buf breaking` 通过，生成代码已更新，契约测试 599 过；兼容性基线已更新（含本契约）。
 > 依据：[feedback 第 4 节](feedback-2026-11-01.md)（租户登记名称、说明、文件，Planner 的目录列出，tool_loop 按需读入，走 Registry 的新种类）；[代审结论](delegated-review-2026-11-04.md)与[后续](delegated-review-followup-2026-11-04.md)的 N-14 行（不可变版本，用户只能扩展平台，Planner 只拿目录，tool_loop 按需读已选版本的正文；验收：v2 发布后固定 v1 的仍读 v1、用户同名不能遮蔽平台、非授权主体读不到正文）；[配置包前置基线](skills-config-package-baseline-2026-11-02.md)（D-27 不替代本契约）。
 
 ## 草案

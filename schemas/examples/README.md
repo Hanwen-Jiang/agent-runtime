@@ -58,4 +58,4 @@ S-01 的验收样例。每个 schema 一个文件：`<schema>.examples.json`，�
 
 ## Registry 的文档（T-08）
 
-`node_template`、`recipe`、`model_profile`、`tenant_policy`、`task_families`、`skill`（N-14，契约草案等人审，见 `docs/plan/n14-skill-contract.md`）是 `RegistryService.Publish` 的 document，`registry_evaluation` 是 `Promote` 的 evaluation。名字、版本与发布状态是 Registry 的元数据，不写在正文里（Model Profile 的 `id` 例外：它与开发用的 Profile 文件相同，Registry 核对它等于发布名）。细化与取舍见 `docs/plan/registry.md` 第 3 节。
+`node_template`、`recipe`、`model_profile`、`tenant_policy`、`task_families`、`skill`（N-14，见 `docs/plan/n14-skill-contract.md`）是 `RegistryService.Publish` 的 document，`registry_evaluation` 是 `Promote` 的 evaluation。名字、版本与发布状态是 Registry 的元数据，不写在正文里（Model Profile 的 `id` 例外：它与开发用的 Profile 文件相同，Registry 核对它等于发布名）。细化与取舍见 `docs/plan/registry.md` 第 3 节。

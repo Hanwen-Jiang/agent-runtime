@@ -27,9 +27,9 @@
 
 任何字段、RPC 或 schema 变化都必须先补正反例，再执行 S-01 的 buf/schema 检查、兼容性检查和人工评审。
 
-## 具体 wire（契约草案，2026-11-04，等人审）
+## 具体 wire（契约 `e8ca91e`，2026-11-04 人审通过）
 
-`buf lint`、`buf breaking --against proto/breaking-baseline.binpb` 通过；生成代码已更新。审过之后再写实现，并用 `buf build -o proto/breaking-baseline.binpb` 更新基线。
+`buf lint`、`buf breaking` 通过，生成代码已更新；2026-11-04 用户在对话里批准（“Approve all three”），兼容性基线已更新（含本节）。
 
 | 部分 | 草案 |
 | --- | --- |
