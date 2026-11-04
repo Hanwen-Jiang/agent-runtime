@@ -260,7 +260,8 @@ SUITE = "swebench"
 
 
 class Runtime(Protocol):
-    """适配器用到的 Runtime 调用（client.RuntimeClient；测试里是假的）。"""
+    """适配器用到的 Runtime 调用（client.RuntimeClient；测试里是假的）。另有可选的 environments(workspace_id, session_id)
+    （EnvironmentService；没有它的实现当作查不到，见 environment_used）。"""
 
     def create_workspace(self, workspace_id: str, *, repo_url: str, ref: str, files: list[dict[str, str]]) -> dict[str, Any]: ...
     def delete_workspace(self, workspace_id: str) -> None: ...
@@ -521,12 +522,28 @@ class _Runner:
             rec.update({"patch": "", "patch_files": list(diff["files"]), "patch_error": "diff_truncated"})
         else:
             rec.update({"patch": diff["diff"], "patch_files": list(diff["files"]), "patch_error": None})
+        if self.s.environment == "official" and "environment_used" not in rec:
+            rec.update(self._environment_check(ws, str(rec.get("session_id") or "")))
         rec["state"] = "finished"
         rec.pop("error", None)
         self._save(rec)
         if not self.s.keep_workspaces:
             with contextlib.suppress(ApiError):
                 self.rt.delete_workspace(ws)
+
+    def _environment_check(self, ws: str, session_id: str) -> dict[str, Any]:
+        """EV-TB（docs/plan/ev-tb-0of5-2026-11-04.md）：这个工作区的沙箱用上项目环境的镜像没有。配额满、构建中或构建失败时
+        shell_run 退回默认的运行环境，Task 照样跑完、照样判分。要在删工作区之前查（之后环境表还在，但不再归这个工作区用）。
+        查不到（老 Runtime 没有 EnvironmentService、续跑的旧记录没有 Session）时 environment_used 为 None。"""
+        lister = getattr(self.rt, "environments", None)
+        if lister is None or not session_id:
+            return {"environment_used": None}
+        try:
+            envs = lister(ws, session_id)
+        except ApiError:
+            return {"environment_used": None}
+        images = sorted({str(e.get("image") or "") for e in envs if e.get("image")})
+        return {"environment_used": any(project_image(i) for i in images), "sandbox_images": images[:10]}
 
     def _run_task(self, inst: Instance, rec: dict[str, Any], ws: str) -> None:
         interactive = True
@@ -537,7 +554,8 @@ class _Runner:
                 # 上次建了工作区却没跑完：删掉重来（不在了也行）。
                 with contextlib.suppress(ApiError):
                     self.rt.delete_workspace(ws)
-            for key in ("task_id", "events_url", "error", "status", "final_verdict", "stop_reason", "auto_replies", "patch", "patch_files", "patch_error"):
+            for key in ("task_id", "events_url", "session_id", "error", "status", "final_verdict", "stop_reason", "auto_replies", "patch", "patch_files",
+                        "patch_error", "environment_used", "sandbox_images"):
                 rec.pop(key, None)
             repo_url, ref, files = self._workspace_args(inst)
             created = self._clone(lambda: self._when_room(lambda: self.rt.create_workspace(ws, repo_url=repo_url, ref=ref, files=files)))
@@ -552,7 +570,7 @@ class _Runner:
                     with contextlib.suppress(ApiError):
                         self.rt.delete_workspace(ws)
                 raise
-            rec.update({"state": "submitted", "task_id": sub["task_id"], "events_url": sub["events_url"]})
+            rec.update({"state": "submitted", "task_id": sub["task_id"], "events_url": sub["events_url"], "session_id": str(sub.get("session_id") or "")})
             self._save(rec)
             with self.cond:
                 self.submitted += 1
@@ -623,6 +641,38 @@ class _Runner:
             quiet = 0 if fresh else quiet + 1
             if quiet > MAX_RECONNECTS:
                 raise RuntimeError(f"{task_id} 的推流连续 {quiet} 次断开都没有新事件，读不到 task_finished")
+
+
+# D-17 的项目环境镜像在 <主机>/<前缀>/<租户>/env，按 digest 引用（RegistryPath.repo）；默认的运行环境（universal 等）不是这个样子。
+_PROJECT_IMAGE = re.compile(r"(?:^|/)env@sha256:[0-9a-f]{64}$")
+
+
+def project_image(image: str) -> bool:
+    return bool(_PROJECT_IMAGE.search(image))
+
+
+def environment_summary(recs: Mapping[str, Mapping[str, Any]], ids: Sequence[str], resolved_ids: set[str] | None, *, official: bool) -> dict[str, Any]:
+    """报告里的“环境没用上”（EV-TB-2）：跑完了却没用上项目环境的题（判分不算模型的），查不到的题数，只算用上了的题的解决率。"""
+    finished = [i for i in ids if (recs.get(i) or {}).get("state") == "finished"]
+    if not official:
+        return {"environment_fallback_ids": [], "environment_unknown": 0, "resolve_rate_with_environment": None}
+    used = [i for i in finished if (recs.get(i) or {}).get("environment_used") is True]
+    return {
+        "environment_fallback_ids": sorted(i for i in finished if (recs.get(i) or {}).get("environment_used") is False),
+        "environment_unknown": sum(1 for i in finished if (recs.get(i) or {}).get("environment_used") is None),
+        "resolve_rate_with_environment": (len(set(used) & resolved_ids) / len(used)) if resolved_ids is not None and used else None,
+    }
+
+
+def environment_note(rep: Mapping[str, Any]) -> list[str]:
+    """report.md 里“环境没用上”的那一行（没有这样的题时不写）。"""
+    fallback = list(rep.get("environment_fallback_ids") or [])
+    if not fallback:
+        return []
+    rate = rep.get("resolve_rate_with_environment")
+    shown = "、".join(fallback[:20]) + ("…" if len(fallback) > 20 else "")
+    return [f"- ⚠ 没用上项目环境 {len(fallback)} 题（在默认的运行环境上跑的，判分不算模型的）：{shown}"
+            + (f"；只算用上了的题，解决率 {rate * 100:.1f}%" if rate is not None else "")]
 
 
 DELIVERABLE_CHARS = 20000
@@ -756,7 +806,7 @@ def report(out_dir: Path) -> dict[str, Any]:
             "instance_id": iid, "repo": repo, "difficulty": difficulty, "state": state, "status": rec.get("status"), "final_verdict": rec.get("final_verdict"),
             "rounds": rec.get("rounds"), "cost_usd": rec.get("cost_usd"), "stop_reason": rec.get("stop_reason"),
             "auto_replies": len(rec.get("auto_replies") or []), "patch_files": rec.get("patch_files") or [], "patch_error": rec.get("patch_error"),
-            "error": rec.get("error"), "grading": label,
+            "error": rec.get("error"), "grading": label, "environment_used": rec.get("environment_used"),
         })
 
     selected, ran = len(ids), len(done)
@@ -787,6 +837,7 @@ def report(out_dir: Path) -> dict[str, Any]:
         "patch_errors": sum(1 for r in done if r.get("patch_error")),
         "by_repo": by_repo,
         "by_difficulty": by_difficulty,
+        **environment_summary(recs, ids, resolved_ids if graded_doc is not None else None, official=manifest["settings"].get("environment", "official") == "official"),
         "instances": instances,
     }
     _write_text(out_dir / "report.json", json.dumps(rep, ensure_ascii=False, indent=2) + "\n")
@@ -821,6 +872,7 @@ def _markdown(rep: dict[str, Any]) -> str:
             lines.append("- ⚠ 判分不完整：有题判分出错、基础设施失败或没判到，见下表的“判分”一列")
     else:
         lines.append("- 解决率：还没判分（先跑 grade）")
+    lines += environment_note(rep)
     lines += [
         f"- 花费：{_usd(rep['cost_usd'])}；每题 {_usd(rep['cost_per_instance_usd'])}；每解决一题 {_usd(rep['cost_per_resolved_usd'])}",
         f"- Round 数：中位数 {rep['rounds']['median']}，最大 {rep['rounds']['max']}" if rep["rounds"] else "- Round 数：—",

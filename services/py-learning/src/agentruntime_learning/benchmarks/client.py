@@ -20,6 +20,7 @@ from typing import Any
 
 TASK_SERVICE = "/agentruntime.taskapi.v1.TaskService/"
 WORKSPACE_SERVICE = "/agentruntime.workspace.v1.WorkspaceService/"
+ENVIRONMENT_SERVICE = "/agentruntime.environment.v1.EnvironmentService/"
 USER_AGENT = "agentruntime-benchmarks/1"
 
 
@@ -104,7 +105,7 @@ class RuntimeClient:
         # AR_PUBLIC_BASE_URL 时给的是自己的监听地址（线上是 http://0.0.0.0:8080/…），从别处连不上。
         parts = urllib.parse.urlsplit(str(out["eventsUrl"]))
         path = parts.path + (f"?{parts.query}" if parts.query else "")
-        return {"task_id": str(out["taskId"]), "events_url": urllib.parse.urljoin(self.base_url + "/", path)}
+        return {"task_id": str(out["taskId"]), "events_url": urllib.parse.urljoin(self.base_url + "/", path), "session_id": str(out.get("sessionId") or "")}
 
     def query(self, task_id: str) -> dict[str, Any]:
         out = self._call(TASK_SERVICE, "QueryTask", {"task_id": task_id})
@@ -116,6 +117,14 @@ class RuntimeClient:
 
     def cancel(self, task_id: str, reason: str) -> None:
         self._call(TASK_SERVICE, "CancelTask", {"task_id": task_id, "reason": reason})
+
+    # --- Environment API（沙箱环境表的只读投影）---
+
+    def environments(self, workspace_id: str, session_id: str) -> list[dict[str, Any]]:
+        """这个工作区、Session 的沙箱环境（含已销毁的），每个给 image、state、runtime（EV-TB-2：看用上项目环境没有）。"""
+        out = self._call(ENVIRONMENT_SERVICE, "ListEnvironments", {"workspace_id": workspace_id, "session_id": session_id, "limit": 100})
+        return [{"image": str(e.get("image") or ""), "state": str(e.get("state") or ""), "runtime": str(e.get("runtime") or "")}
+                for e in out.get("environments") or []]
 
     def events(self, task_id: str, events_url: str, *, last_event_id: int = 0) -> Iterator[Event]:
         """读一条 SSE 连接上的事件，连接断了（含读超时）就结束。"""

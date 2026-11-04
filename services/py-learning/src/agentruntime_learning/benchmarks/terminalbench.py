@@ -492,6 +492,7 @@ def report(out_dir: Path) -> dict[str, Any]:
             "instance_id": iid, "difficulty": meta.get("difficulty"), "category": meta.get("category"), "state": rec.get("state") or "not_run",
             "status": rec.get("status"), "cost_usd": rec.get("cost_usd"), "rounds": rec.get("rounds"),
             "grading": "resolved" if g.get("resolved") else "error" if g.get("error") else "unresolved" if g else None, "reward": g.get("reward"),
+            "environment_used": rec.get("environment_used"),
         })
     selected = len(rows)
     ran = sum(1 for r in rows if r["state"] == "finished")
@@ -511,7 +512,10 @@ def report(out_dir: Path) -> dict[str, Any]:
         "benchmark": "terminal-bench", "run_id": run_doc["run_id"], "model_name": (run_doc.get("settings") or {}).get("model_name"),
         "selected": selected, "ran": ran, "graded": bool(graded), "resolved": resolved if graded else None,
         "resolve_rate": (resolved / selected) if graded and selected else None, "cost_usd": cost, "cost_per_instance_usd": (cost / ran) if ran else None,
-        "by_difficulty": by("difficulty"), "by_category": by("category"), "instances": rows,
+        "by_difficulty": by("difficulty"), "by_category": by("category"),
+        **sb.environment_summary(records, run_doc["instance_ids"], {r["instance_id"] for r in rows if r["grading"] == "resolved"} if graded else None,
+                                 official=(run_doc.get("settings") or {}).get("environment", "official") == "official"),
+        "instances": rows,
         "limitations": "Only files under each task's working directory are carried to grading; tasks that need state outside it are scored as unresolved.",
     }
     sb._write_text(out_dir / "report.json", json.dumps(rep, ensure_ascii=False, indent=2) + "\n")
@@ -519,6 +523,7 @@ def report(out_dir: Path) -> dict[str, Any]:
         f"# Terminal-Bench 2.0 · {rep['run_id']}", "",
         f"- 选了 {selected} 个任务，跑完 {ran} 个；" + (f"解决 {resolved} 个（{resolved / selected:.1%}）" if graded and selected else "还没判分"),
         f"- 花费 ${cost:.2f}" + (f"，每个跑完的任务 ${cost / ran:.2f}" if ran else ""),
+        *sb.environment_note(rep),
         "- 限制：判分只带回工作目录里的文件，要靠工作目录以外的状态的任务判不出来（分数偏保守）。", "",
         "| 难度 | 选了 | 解决 |", "| --- | --- | --- |",
         *[f"| {k} | {v['selected']} | {v['resolved']} |" for k, v in rep["by_difficulty"].items()],
