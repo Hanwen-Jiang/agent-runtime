@@ -23,7 +23,10 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: model-gateway
-          image: {{ include "ar.image" (list . "model-gateway") }}
+          {{- if and $gw.imageTag (not (kindIs "string" $gw.imageTag)) }}
+          {{- fail "modelGateway.imageTag 要写成字符串：全是数字的提交号要加引号，否则镜像名是错的" }}
+          {{- end }}
+          image: {{ if $gw.imageTag }}{{ printf "%s/model-gateway:%s" .Values.image.registry $gw.imageTag }}{{ else }}{{ include "ar.image" (list . "model-gateway") }}{{ end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args: ["serve"]
           ports:

@@ -154,6 +154,8 @@ ingress:
 modelGateway:
   replicas: 1
   port: 8091
+  # 网关单独用的镜像 tag，空时跟 image.tag（只换网关、不动别的组件时用，例如 TOOLS-KIMI 的修复单独上线）。
+  imageTag: ""
   # openai_compat 或 mock。
   provider: openai_compat
   providerBaseUrl: https://api.example/v1
