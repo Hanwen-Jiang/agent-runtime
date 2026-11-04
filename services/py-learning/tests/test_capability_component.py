@@ -28,7 +28,7 @@ def reference_plan(request: mg.GenerateRequest) -> Any:
     for case in ES.task_cases:
         if case.planner_input["message"] in text and case.planner_expect["triage"] in ("full", "replan"):
             ref = case.planner_expect["reference"]
-            return {"task_plan": ref["task_plan"], "stage": ref["stage"]}
+            return {"task_plan": cs.with_steps(ref["task_plan"]), "stage": ref["stage"]}
     return "?"
 
 

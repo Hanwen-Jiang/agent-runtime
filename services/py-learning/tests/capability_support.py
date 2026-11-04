@@ -142,6 +142,19 @@ def write_plan(path: Path, **plan: Any) -> Path:
     return path
 
 
+def with_steps(task_plan: Any) -> Any:
+    """参照的 Task Plan 补上整体步骤：评测集的参照写在 N-04 之前，没有 steps，第一次完整规划的 Planner 会拒掉它。
+    假的“规划全对”的模型照参照答，再给三步，这样它真的全对（评测集的标注不改）。"""
+    if not isinstance(task_plan, dict) or task_plan.get("steps"):
+        return task_plan
+    steps = [
+        {"id": "understand", "title": "理解要求", "status": "done", "round": 1},
+        {"id": "work", "title": "完成任务", "status": "active", "round": 1},
+        {"id": "deliver", "title": "交付结果", "status": "pending", "round": 1},
+    ]
+    return {**task_plan, "steps": steps}
+
+
 class FakeTelemetry:
     def __init__(self) -> None:
         self.events: list[tuple[str, str, float, dict[str, Any]]] = []
