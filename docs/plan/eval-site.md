@@ -125,3 +125,11 @@
   （只收一好三差的五个子集，后三个是定值）；τ²-bench 的 `initial_state`（环境的初始数据，判分时由官方包加载）。要显示它们得改适配器并在装了评测依赖的服务器上重新导出，这次没做。
 
 没做：页面冒烟测试（headless 浏览器）仍归 SITE-UI；本机起服务在浏览器里看过成对比较、τ²-bench、BFCL 三种，桌面与 375 像素宽，中英都看过。
+
+## 8. 页面冒烟测试（SITE-SMOKE，2026-11-04）
+
+`tests/test_eval_site_pages.py`：真的 `dashboard_server` 读仓库的 evalsets，前面一层代理给页面注入探针，headless 的 Chrome 或 Edge 打开
+（找不到就跳过，`AR_TEST_BROWSER` 可以指定；只用标准库）。主页与数据集页没有脚本错误、数字与 evalsets 一致；数据集页按数据集分组时每个数据集一组、
+搜索能筛、展开一道成对比较的题看得到两个回答、中英切换；390 像素宽时两页都不横向滚动（展开之后也不）；/results（`eval_dashboard.py --public`
+生成）能打开。现在的页面全过。SITE-UI 的设计稿（https://claude.ai/artifact/VtHiCkT3fHaxtvnaRRd5Zr ）定了之后改页面，照这组测试验收；
+选择器（`#grouping`、`#search`、`#lang`、`details.row`、`.blk-candidates`）改了时测试跟着改。
