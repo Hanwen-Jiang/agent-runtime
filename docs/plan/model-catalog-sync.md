@@ -105,7 +105,7 @@
 - 新线，只列出来：mimo-v2.6-flash、glm-5.3-flashx、kimi-k3。
 - 免费档的白名单从 8 个变成 18 个：去掉了停用的两个，加上了 claude-sonnet-5-5、gemini-4-argon、deepseek-v4-pro、grok-4.7、kimi-k3.1-pro、qwen3.8-max、glm-5.3、gemini-3.8-flash、gpt-6.1-terra、gpt-6-luna、glm-5.3-flash、qwen3.8-flash。
 
-上线要做的（部署时）：
+上线要做的（部署时；1、2 在 2026-11-04 第 24 版做了，见 `cloud-deploy.md`）：
 1. Profile 的 ConfigMap（`agent-runtime-model-profiles`）从新的 `deploy/dev/model-profiles.json` 重建，Registry 按新种子发布，网关重启后读到。
 2. 线上的白名单 ConfigMap（`agent-runtime-model-allowlist`）不在仓库里：拿它的副本跑 `scripts/sync_model_catalog.py --policies <副本> --relay-models …`（或直接联网），
    `default` 与 `gh-hanwen-jiang`、`evals`、`swebench` 的列表按规则重算，`ceiling` 与各租户的预算原样，再更新 ConfigMap。

@@ -54,6 +54,8 @@
 4. 过一段时间（每个用户都至少登录过一次、第三方令牌都读过一遍）：Runtime 去掉 `devTokens: accept`（生产模式默认不收开发令牌，task-service 也不再拿到签名密钥），coding-web 去掉 `AR_DEV_SIGNING_KEY`。没被读到过的旧第三方令牌那时会解不开，用户重新连接一次那个平台即可。
 5. 换密钥：新 kid 并进 `issuers`（新旧并存），coding-web 换私钥与 `CODING_JWT_KID`。AUTH-02 之后 Runtime 令牌只有 5 分钟，几分钟后就可以从 `issuers` 里删掉旧 kid。
 
+2026-11-04：第 24 版的 Runtime 已是 AUTH-01 的代码，生产模式加 `devTokens: accept`，还没有 `issuers`：上面第 1 步还没做。
+
 ## 5. AUTH-03 的评估（2026-11-03；选型人定）
 
 已经做了、不用人定的：

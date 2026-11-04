@@ -18,7 +18,9 @@
 
 ## 2. 待部署（已在 main，没上线）
 
-C、E 两条线；F1～F4；task-service 默认不限未终态 Task 数（`bb832bf`）；9 个新候选 Profile（只进 `evals` 租户的白名单）；首事件延迟面板。之后 coding-agent 合 `lane/d`（同时把 `.env` 上限改成 16 KiB、64 个），再部署 coding-web。
+2026-11-04 第 24 版（DEP-R，`6cc16b8`，记录在 `cloud-deploy.md`）上了：C、E 两条线；F1～F4；`bb832bf`；26 个 Profile 与重算的白名单；首事件延迟与花费面板、告警；TSP-1/TSP-2/CACHE-01（生产模式、Valkey）；AUTH-01（仍收开发令牌）；D-19、DISK-A、STOR-SEC、HIST-01、PERF-00、R-06、G-03-9、WS-READ-03。
+
+还没上的：WS-READ-02（`71b9226`，加 Worker 池）与之后合进 main 的；沙箱里的 agent（ATOK-F，要真沙箱探一次）；Memory Service 的新镜像（MEM）；看板 ff3a385 之后的；AUTH-01 切换的第 1 步起（`auth-tokens-2026-11-03.md` 第 4 节）。之后 coding-agent 合 `lane/d`（同时把 `.env` 上限改成 16 KiB、64 个），再部署 coding-web（DEP-W）。
 
 ## 3. 未完成的工作项
 
@@ -26,7 +28,7 @@ C、E 两条线；F1～F4；task-service 默认不限未终态 Task 数（`bb832
 
 | 编号 | 内容 | 出处 | 依赖 | 状态 | 档 |
 | --- | --- | --- | --- | --- | --- |
-| DEP-R | 部署 Runtime 下一版（第 2 节） | lane-merge | — | **进行中**（第 8 节） | 近 |
+| DEP-R | 部署 Runtime 下一版（第 2 节） | lane-merge | — | 已完成（2026-11-04 第 24 版，`6cc16b8`） | 近 |
 | DEP-W | coding-agent 合 lane/d，部署 coding-web | lane-merge | DEP-R | 待做 | 近 |
 | EV-TB | 查 Terminal-Bench 0/5 的原因，再跑 40 题 | handoff | — | 待做 | 近 |
 | EV-SWE | SWE-bench 补跑 matplotlib-13989 | handoff | — | 待做 | 近 |
@@ -280,4 +282,4 @@ flowchart LR
 | WEB-PLAN | F 线（F3-E2E → WEB-PLAN → WEB-SUB），直接在 coding-agent 的 main 上提交 | Claude 桌面会话（Opus 5.5，F 线） | 2026-11-03 | coding-agent 的 `internal/web/static/app.js` 里计划区的部分（新函数，接 `plan_updated`）、`i18n.js` 的 `plan.*` 文字、`style.css` 的计划区样式、新测试 `internal/web/plan_test.go`；不碰 AUTH-01 的 `server.go`、`accounts.go`、`main.go` | 已完成：测试 `f8ff7fd`、实现 `7983507`（coding-agent）；真浏览器用例过；没部署 |
 | WEB-SUB | F 线 | Claude 桌面会话（Opus 5.5，F 线） | 2026-11-03 | coding-agent 的 `internal/web/static/app.js` 里子 Agent 进度的部分（新函数，按 node_id 归组 sub_agent 的 tool_status、context_usage）、`i18n.js` 的 `subagent.*` 文字、`style.css` 的进度样式、新测试 `internal/web/subagent_test.go`；不碰 AUTH 与 G 线的 server 文件 | 已完成：测试 `b4bf4a6`、实现 `28082cd`（coding-agent）；真浏览器用例过；没部署。F 线这一段到此为止，WEB-SNAP 等 AUTH-01 的 coding-agent 一侧（`server.go`） |
 | WEB-SNAP | F 线（WEB-PLAN、WEB-SUB 之后），直接在 coding-agent 的 main 上提交 | Claude 桌面会话（Opus 5.5，F 线） | 2026-11-03 | coding-agent 的 `internal/server/server.go` 里新加的两条路由登记、新文件 `internal/server/snapshot.go`（快照的转发；事件转发接 `last_event_id`、上游 409 换成 `resnapshot_required` 事件，改 `tasks.go` 的 `handleEvents`）、`taskapi.go` 加取快照的方法；`internal/web/static/app.js` 里会话首屏与事件流续传的部分；新测试 `internal/server/snapshot_test.go`、`internal/web/snapshot_test.go` | 已完成：测试 `0bb5940`、实现 `2b793a1`（coding-agent）；后端 4 条与真浏览器的用例都过；没部署 |
-| DEP-R | 部署线（DEP-R → DEP-W），用户 2026-11-03 在对话里同意 | Claude 桌面会话（Opus 5.5，F 线） | 2026-11-03 | 线上 Helm release `ar`（agent-runtime 命名空间）、服务器上的 `/root/ar-release/rev26`、镜像构建；部署期间别的会话不要 `helm upgrade` 或改线上的 ConfigMap、Secret | 进行中 |
+| DEP-R | 部署线（DEP-R → DEP-W），用户 2026-11-03 在对话里同意 | Claude 桌面会话（Opus 5.5，F 线） | 2026-11-03 | 线上 Helm release `ar`（agent-runtime 命名空间）、服务器上的 `/root/ar-release/rev26`、镜像构建；部署期间别的会话不要 `helm upgrade` 或改线上的 ConfigMap、Secret | DEP-R 已完成（第 24 版，`6cc16b8`）；DEP-W 待用户同意 |

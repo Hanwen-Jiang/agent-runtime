@@ -648,6 +648,36 @@ M5 的后端顺序见 [firecracker-backend.md](firecracker-backend.md) 第 7 节
 - 核对：新 Pod 启动后在桶上设了自己的过期规则；api 200；四个服务 15 分钟内日志无错误。**没有验证**：真 Task 的大载荷 Claim-Check 经 R2 往返（要提交 Task）。
 - 共用卷上的旧对象没删，确认一段时间没问题后再清。
 
+第 24 版（2026-11-04，DEP-R：Runtime 下一版；目录 `rev26`，脚本 `prepare.sh`、`build2.sh`、`rev26.sh`，用户在对话里同意）：
+
+- 代码与镜像：main `6cc16b8`（`git archive`、核对 sha256；旧的留在 `agent-runtime.ff3a385`、`REVISION.ff3a385`）。task-service、model-gateway、
+  egress-gateway、pkg-mirror、worker 换成 `6cc16b8`；Memory Service 仍是 52174d9，看板仍是 learning:ff3a385，沙箱里的 agent 仍是 52174d9
+  （ATOK-F 没随这次上：换 agent 之后要在真沙箱里探一次，在 Worker 的 Pod 里跑探测脚本要人批准）。内容：C、E 两条线（ENV-02、N-10、N-04、
+  N-19/N-20、N-16）、F1～F4、`bb832bf`、TSP-1/TSP-2/CACHE-01、AUTH-01、D-19、DISK-A、STOR-SEC、HIST-01、PERF-00、R-06、G-03-9、WS-READ-03。
+  WS-READ-02、SEC-API、DISK-B 在 `6cc16b8` 里只有契约（WS-READ-02 的实现 `71b9226` 是之后合的，要加 Worker 池，下一版）。
+- 生产模式与 Valkey：values 是第 23 版加 `taskService.profile: production`、`taskService.ingress.devTokens: accept`（AUTH-01 迁移期间，
+  task-service 启动时记一条警告）与 `secrets.valkeyUrl`，与 `values-cloud.yaml` 一致；task-service 的连接池上限是默认的 8。没有重跑整个
+  `deploy/data/install.sh`（会连带升级数据层的别的组件），只 `kubectl apply -f deploy/data/valkey.yaml`。口令由脚本生成，只在
+  `/root/ar-secrets/valkey.env` 与两个 Secret（`data/valkey-agentruntime`、`agent-runtime/agent-runtime-valkey`）里，**还没进 `secrets.enc.yaml`**。
+- 脚本核对：线上 manifest 与 `manifest-rev25.yaml` 一致、没有在跑的 TaskWorkflow、要用的镜像都已导进 k3s；`helm template` 与第 23 版比只差
+  9 个 Deployment：镜像标签、`OTEL_SERVICE_VERSION`（Memory 只有这一项），task-service 多 `AR_PROFILE`、`AR_VALKEY_URL`、`AR_RELATIONAL_MAX_CONNS`、
+  `AR_INGRESS_DEV_TOKENS`。在跑的是 317 个 SessionWorkflow 与 1 个 SandboxReconcileWorkflow：Session 的工作流代码自 26b30ee 没变（只改了 activity），
+  对账工作流只给 activity 的结果加了一个字段，这次没有另外回放线上历史。
+- Model Profile 与白名单（F1，`model-catalog-sync.md` 第 7 节）：`agent-runtime-model-profiles` 换成仓库的 26 个 Profile；`agent-runtime-model-allowlist`
+  用 `sync_model_catalog.py --policies <线上副本>` 重算（同一次也核对了中转站、models.dev 与仓库没有出入）：免费档 8 → 18 个，`gh-hanwen-jiang`
+  11 → 21、`evals` 11 → 23（含两个候选）、`swebench` 7 → 17；去掉了 gpt-4o-mini、gemini-3.5-flash 与内部租户的 gpt-5.5；预算与硬上限原样。
+  原来的两个 ConfigMap 存在 `rev26/*.before.yaml`。Registry 按 `deploy/dev/registry-seed.json` 发布（task-service 的 `registry-seed`，内容相同的跳过）。
+- Grafana：线上的 values 与上一版的文件一致，按新文件 `helm upgrade`（Grafana 第 3 版：F4 的花费、DISK-A 的卷用量、G-05 的 coding-web 告警），
+  面板的 ConfigMap 重新 apply（首事件延迟、24 小时花费、PERF-00）。
+- 迁移：task-service 的 7（task_events，HIST-01）与 209（task_artifacts）；Worker 的 207。208（workspace_environment）与 210（workspace_generation）
+  在 Worker 第一次用到工作区存档时才迁（同 205）；在那之前 task-service 读不到这两列，列工作区退回旧的列、只读操作不缓存。
+- 核对（不花钱）：各 Pod 都在跑，task-service、出网网关、包镜像照旧第一次启动连不上 Temporal 或业务库、重启一次就好；网关读到 26 个 Profile；
+  Valkey 上有 task-service 的连接；api、code、evals 200；`/v1/sessions/x/snapshot`、`/v1/tasks/x/artifacts/y`、`/v1/tasks/x/events` 没有令牌 401；
+  新 Pod 12 分钟内日志没有错误。回滚：`helm rollback ar 23`，两个 ConfigMap 用 `rev26/*.before.yaml` 换回（Valkey 与它的 Secret 可以留着）。
+- main 的 CI 从 26b30ee 之前就是红的；与 7ec2453 比新增的失败是测试漂移（`AT_START` 末尾、契约里的 workspace 队列还没人消费）与 G-03-9 两个测试
+  在 CI 里报的错误类别不同（推到假远端 `example.test`），没有发现影响线上的。
+- **没有验证**：真 Task 在生产模式下跑完（Valkey 的推流、快照、文件交付、计划步骤、子 Agent 的事件；要令牌与模型花费）；coding-web 仍是 d61bfef（DEP-W）。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
