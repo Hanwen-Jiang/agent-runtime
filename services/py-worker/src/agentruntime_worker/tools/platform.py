@@ -73,6 +73,9 @@ _CONTEXT_PREFIXES = ("context/", "node-results/")
 CHECKPOINT_TIMEOUT = timedelta(seconds=60)
 _SHELL_ENV = ("PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "COMSPEC", "TEMP", "TMP", "HOME", "LANG", "LC_ALL")
 _SLUG = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")
+# 冷热分层（DISK-B）：核对过不是冷的工作区，这么久里不再查业务库；用到工作区时碰目录的修改时间，最多这么久一次。
+_HOT_FOR = 60.0
+_TOUCH_EVERY = 600.0
 _TEXT_TYPES = ("text/", "application/json", "application/xml", "application/xhtml")
 
 
@@ -189,6 +192,9 @@ class _Workspaces:
         self.telemetry = telemetry
         self.size_guard = WorkspaceSizeGuard(self._size_limit, interval=config.workspace_size_interval_s)
         self.generations = generations if generations is not None else (broker.archiver if broker is not None else None)
+        # 冷热分层（DISK-B）：最近核对过不是冷的工作区、最近碰过修改时间的工作区（<租户>/<workspace> → time.monotonic()）。
+        self._hot: dict[str, float] = {}
+        self._touched: dict[str, float] = {}
 
     async def _changed(self, invocation: ToolInvocation) -> None:
         """写类工具做完：工作区的版本号加一（WS-READ-03）。加不上只少了一次失效，task-service 的缓存有 TTL 兜底。"""
@@ -274,6 +280,28 @@ class _Workspaces:
         root.mkdir(parents=True, exist_ok=True)
         return root.resolve()
 
+    async def _mounted(self, invocation: ToolInvocation) -> Path:
+        """挂卷模式下 repo_* 直接读写的工作区目录（冷热分层，DISK-B）：冷的先经 broker 从快照恢复（与 shell_run 同一条路），
+        正在转冷或恢复时报 transient；用到就碰一下目录的修改时间，转冷的扫描据此算闲置。"""
+        workspace = self._workspace_id(invocation)
+        key = f"{invocation.tenant_id}/{workspace}"
+        archiver = self.broker.archiver if self.broker is not None else None
+        if archiver is not None and time.monotonic() - self._hot.get(key, -_HOT_FOR) >= _HOT_FOR:
+            record = await archiver.get(invocation.tenant_id, workspace)
+            if record is not None and record.state in ("cooling", "restoring"):
+                raise TransientError(f"workspace_{record.state}", "工作区正在转冷或从存档恢复，稍后再试")
+            if record is not None and record.state == "cold":
+                tenant = TenantContext(tenant_id=invocation.tenant_id, workspace_id=workspace, user_id=invocation.user_id)
+                lease = await self.broker.acquire(tenant, SandboxSpec(runtime=self.config.shell_runtime, workspace_id=workspace), writable=False)  # type: ignore[union-attr]
+                await self.broker.release(lease)  # type: ignore[union-attr]
+            self._hot[key] = time.monotonic()
+        root = self._workspace(invocation)
+        if time.monotonic() - self._touched.get(key, -_TOUCH_EVERY) >= _TOUCH_EVERY:
+            with contextlib.suppress(OSError):
+                os.utime(root)
+            self._touched[key] = time.monotonic()
+        return root
+
     async def _archived(self, invocation: ToolInvocation) -> bool:
         """租户的沙箱后端是存档模式（D-06）：工具在承载工作区的环境里执行。"""
         if self.config.shell_sandbox != "sandbox" or self.broker is None or not invocation.tenant_id:
@@ -357,7 +385,7 @@ class _Workspaces:
                     raise NotFoundError("file_not_found", f"工作区里没有文件 {args['path']}") from None
 
             return self._window(rel, await self._in_env(invocation, writable=False, run=fetch), args)
-        root = self._workspace(invocation)
+        root = await self._mounted(invocation)
         target = self._resolve(root, args["path"])
         if not target.is_file():
             raise NotFoundError("file_not_found", f"工作区里没有文件 {args['path']}")
@@ -396,7 +424,7 @@ class _Workspaces:
             items = await self._in_env(invocation, writable=False, run=listing)
             entries = [{"name": e.name, "type": e.type, **({"size": e.size} if e.type == "file" else {})} for e in items]
             return {"path": rel or ".", "entries": entries}
-        root = self._workspace(invocation)
+        root = await self._mounted(invocation)
         target = self._resolve(root, invocation.arguments.get("path", "."))
         if not target.is_dir():
             raise NotFoundError("dir_not_found", "工作区里没有这个目录")
@@ -419,7 +447,7 @@ class _Workspaces:
 
             matches, truncated = await self._in_env(invocation, writable=False, run=search)
             return {"matches": [{"path": m.path, "line": m.line, "text": m.text} for m in matches], "truncated": truncated}
-        root = self._workspace(invocation)
+        root = await self._mounted(invocation)
         try:
             pattern = re.compile(args["pattern"])
         except re.error as err:
@@ -460,7 +488,7 @@ class _Workspaces:
             out = await self._in_env(invocation, writable=True, run=change)
             await self._changed(invocation)
             return out
-        root = self._workspace(invocation)
+        root = await self._mounted(invocation)
         target = self._resolve(root, args["path"])
 
         async def write() -> Any:
@@ -501,7 +529,7 @@ class _Workspaces:
             out = await self._sandbox_shell(invocation, self._workspace_id(invocation), _in_dir(cwd, argv), timeout, None)
             await self._changed(invocation)
             return out
-        root = self._workspace(invocation)
+        root = await self._mounted(invocation)
         if self.config.shell_sandbox == "sandbox":
             out = await self._guarded(invocation, root, lambda: self._sandbox_shell(invocation, root.name, _in_dir(cwd, argv), timeout, root))
             await self._changed(invocation)

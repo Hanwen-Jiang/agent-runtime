@@ -108,6 +108,11 @@ spec:
             - name: AR_TOOL_WORKSPACE_ROOT
               value: /workspaces
             {{- end }}
+            {{- with $.Values.worker.workspaceColdAfterDays }}
+            # 冷热分层（DISK-B）的部署默认值：挂卷的工作区闲置超过这么多天转冷；租户策略的 workspace.cold_after_days 优先。
+            - name: AR_WORKSPACE_COLD_AFTER_DAYS
+              value: {{ . | quote }}
+            {{- end }}
           securityContext:
             {{- toYaml $.Values.containerSecurityContext | nindent 12 }}
           resources:

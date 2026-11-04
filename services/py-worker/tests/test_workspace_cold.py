@@ -70,7 +70,8 @@ async def test_recently_used_or_held_workspaces_stay(tmp_path: Path) -> None:
     s = Setup(tmp_path, mode="mount")
     local = await created(s)
     assert await cool_idle_workspaces(s.broker, default_days=3, now=later(1)) == 0, "没闲置够天数"
-    await s.tool("repo_read", {"path": "README.md"})  # 会话级的环境留着
+    # 挂卷模式下 repo_* 直接读目录、不借环境；shell_run 借的会话级环境留着。
+    await s.tool("shell_run", {"argv": ["python", "-c", "print(1)"]})
     assert await cool_idle_workspaces(s.broker, default_days=3, now=later(10)) == 0, "还有环境占着"
     assert local.exists() and await state(s) == "active"
 

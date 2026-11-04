@@ -275,6 +275,9 @@ worker:
   # 工作区（AR_TOOL_WORKSPACE_ROOT）：Worker 与应用共用的 PVC（单节点见 deploy/cluster/workspaces.yaml），挂在 /workspaces。
   # 为空时不登记 repo_* 与 shell_run。
   workspacesClaim: ""
+  # 冷热分层（DISK-B）的部署默认值（天）：挂卷的工作区闲置超过这么多天，先存档、核对一致后删本地目录，下次用到时恢复。
+  # 0 不转冷；租户策略的 workspace.cold_after_days 优先。
+  workspaceColdAfterDays: 0
   shell:
     # shell_run 在哪里跑（AR_TOOL_SHELL_SANDBOX）：host 不隔离，只给开发；集群里用 sandbox（经 Sandbox 接口，D-05）。
     # docker 要挂 docker.sock（等于节点 root），集群里不允许。
