@@ -8,14 +8,19 @@ Node 的 result 是模型写的，不算证据，这份才算。只改活动的�
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from dataclasses import dataclass
+import posixpath
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass, field
 from typing import Any
 
-# 这些工具的 effect 是写，但调用它们不等于改了文件：shell_run 可能只是在看；request_network 只是要联网。
-NOT_FILE_CHANGES = frozenset({"shell_run", "request_network"})
+# 交付文件的工具（N-18）：成功的调用记进 delivered（DLV-CHECK，docs/plan/all-plans-dag-2026-11-03.md）。
+DELIVER_TOOL = "deliver_file"
+# 这些工具的 effect 是写，但调用它们不等于改了文件：shell_run 可能只是在看；request_network 只是要联网；deliver_file 只是把文件交给用户。
+NOT_FILE_CHANGES = frozenset({"shell_run", "request_network", DELIVER_TOOL})
 # 判 done 被这两条规则拦下时的 reason_code（reviewer/rules.py）。
 DONE_BLOCKED_CODES = frozenset({"rule_done_unverified", "rule_done_without_changes"})
+# 回答说交付了文件、这个 Task 却没交付过时的 reason_code（DLV-CHECK），另记次数。
+UNDELIVERED_CODE = "rule_done_undelivered"
 WRITE_EFFECTS = frozenset({"write_reversible", "write_irreversible"})
 
 _READ_TOOLS = frozenset({"repo_read", "repo_list", "repo_grep", "context_read"})
@@ -50,6 +55,9 @@ class VerificationRecord:
     ran_after_write: bool = False
     last_exit_code: int | None = None
     done_blocked: int = 0
+    # 经 deliver_file 成功交付给用户的文件（规范化的路径，按先后、不重复），跨轮累计；判 done 被 UNDELIVERED_CODE 拦过的次数。
+    delivered: list[str] = field(default_factory=list)
+    delivery_blocked: int = 0
 
     def offered(self, tool_effects: Mapping[str, str]) -> None:
         """一个 Goal Node 拿到了这些工具。只给 shell_run 不算能改文件：很多只读的任务靠它查东西。"""
@@ -60,6 +68,11 @@ class VerificationRecord:
         """一次调用成功返回。工具返回的 error 不算改过，只读的命令不算验证（否则测试失败之后 git diff 一下，退出码就成了 0）。"""
         if isinstance(observation, Mapping) and "error" in observation:
             return
+        if tool == DELIVER_TOOL:
+            path = args.get("path") if isinstance(args, Mapping) else None
+            if isinstance(path, str) and path.strip():
+                self.delivered_files([path])
+            return
         if effect in WRITE_EFFECTS and tool not in NOT_FILE_CHANGES:
             self.wrote = True
             self.ran_after_write = False
@@ -69,15 +82,31 @@ class VerificationRecord:
             code = observation.get("exit_code") if isinstance(observation, Mapping) else None
             self.last_exit_code = code if isinstance(code, int) else None
 
+    def delivered_files(self, paths: Iterable[str]) -> None:
+        for path in paths:
+            # 同 workflows/highlights.normalize_path：./a.txt 与 a.txt 是同一个文件，也可能写反斜杠。
+            normalized = posixpath.normpath(path.strip().replace("\\", "/"))
+            if normalized not in self.delivered:
+                self.delivered.append(normalized)
+
     def reviewed(self, verdict: Mapping[str, Any]) -> None:
-        if verdict.get("reason_code") in DONE_BLOCKED_CODES:
+        code = verdict.get("reason_code")
+        if code in DONE_BLOCKED_CODES:
             self.done_blocked += 1
+        elif code == UNDELIVERED_CODE:
+            self.delivery_blocked += 1
 
     def as_dict(self) -> dict[str, Any]:
-        return {
+        """没交付过、没拦过时不带后两项，与之前的记录一样。"""
+        out: dict[str, Any] = {
             "write_capable": self.write_capable,
             "wrote": self.wrote,
             "ran_after_write": self.ran_after_write,
             "last_exit_code": self.last_exit_code,
             "done_blocked": self.done_blocked,
         }
+        if self.delivered:
+            out["delivered"] = list(self.delivered)
+        if self.delivery_blocked:
+            out["delivery_blocked"] = self.delivery_blocked
+        return out

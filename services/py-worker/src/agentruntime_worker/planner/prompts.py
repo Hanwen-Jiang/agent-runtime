@@ -58,6 +58,12 @@ def _catalog_text(catalog: CatalogView) -> str:
     lines += [f"- Node Template {name}：executor {executor}，effect {effect}" for name, (executor, effect) in sorted(catalog.templates.items())]
     lines += [f"- Recipe {name}：任务族 {family}" for name, family in sorted(catalog.recipes.items())]
     lines += [f"- 工具 {name}：effect {effect}" for name, effect in sorted(catalog.tools.items())]
+    if "deliver_file" in catalog.tools:
+        # DLV-CHECK：只写进工作区、或回答里说交付了，用户都拿不到文件。
+        lines.append(
+            "- 交付文件：用户明说要把文件给他（下载、附件、导出、交付文件，或点名 deliver_file）时，做出这个文件的 tool_loop Goal Node 的 tools 要带 "
+            "deliver_file，done_when 写明用 deliver_file 交付哪几个文件；只写进工作区、或在回答里说交付了，都不算交付"
+        )
     if catalog.tiers:
         lines.append(f"- Tier：{'、'.join(catalog.tiers)}")
     else:

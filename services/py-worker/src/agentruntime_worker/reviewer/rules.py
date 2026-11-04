@@ -30,6 +30,30 @@ JUDGE_OFF_TOPIC_THRESHOLD = 0.2
 """Reviewer 升级问人时限定的三种回复（设计书 4.11）。"""
 
 JUDGING_ROLES = ("judge", "gate")
+
+# DLV-CHECK：回答里说把文件交给用户了（点名 deliver_file、delivered: true、“已交付 result.txt”“文件已上传”“可以下载”等）。
+# 只认明说交付文件的；“已交付修复”“the fix is delivered”这类说的是改动，不算。
+_DELIVERY_CLAIMS = (
+    re.compile(r"deliver_file", re.IGNORECASE),
+    re.compile(r"[\"']?delivered[\"']?\s*[:=]\s*true", re.IGNORECASE),
+    re.compile(r"交付成功|成功交付|可以下载|可供下载|下载(链接|入口)"),
+    re.compile(r"(文件|附件|[\w./-]+\.[A-Za-z0-9]{1,6})\s*(已经|已)(成功)?(交付|上传|附上)"),
+    re.compile(r"(已经|已)(成功)?(交付|上传|附上)(了)?\s*(文件|附件|[\w./-]+\.[A-Za-z0-9]{1,6})"),
+    re.compile(r"\b(delivered|uploaded|attached)\b[^.\n]{0,40}\b(file|attachment)s?\b", re.IGNORECASE),
+    re.compile(r"\b(file|attachment)s?\b[^.\n]{0,40}\b(delivered|uploaded|attached)\b", re.IGNORECASE),
+    re.compile(r"available (for|to) download", re.IGNORECASE),
+)
+
+
+def delivery_claimed(value: Any) -> bool:
+    """交付的结果是不是在说已经把文件交给了用户。结果是对象时看它的 JSON（含 "delivered": true 这类字段）。"""
+    if isinstance(value, Mapping):
+        text = json.dumps(value, ensure_ascii=False)
+    elif isinstance(value, str):
+        text = value
+    else:
+        return False
+    return any(p.search(text) for p in _DELIVERY_CLAIMS)
 _RANK = {s: i for i, s in enumerate(STEPS)}
 _LABEL = {
     "none": "继续",
@@ -308,6 +332,16 @@ class _Rules:
             return "改完之后没有运行过任何命令：先验证再交付", "rule_done_unverified"
         return None
 
+    def undelivered(self, chosen: str) -> tuple[str, str] | None:
+        """DLV-CHECK：回答说把文件交付了，这个 Task 却没有一次成功的 deliver_file（Stage Runner 记的，不看模型写的结果）。只拦一次：
+        说法认错了的，再判 done 就算数。"""
+        record = self.verification
+        if not record or record.get("delivered") or int(record.get("delivery_blocked") or 0) >= 1:
+            return None
+        if not delivery_claimed(self.results[chosen].get("result")):
+            return None
+        return "回答说已经把文件交付给用户，这个 Task 却没有成功调用过 deliver_file：先用 deliver_file 交付，再判 done", "rule_done_undelivered"
+
     # --- 细节的合法性 ---
 
     def valid(self, verdict: dict[str, Any], reasons: list[str]) -> dict[str, Any]:
@@ -341,6 +375,11 @@ class _Rules:
                 if out["verdict"] == "replan" and chosen in (out["replan"].get("keep_nodes") or []):
                     out["replan"]["keep_nodes"] = [n for n in out["replan"]["keep_nodes"] if n != chosen]
                 return out
+            undelivered = self.undelivered(chosen)
+            if undelivered is not None:
+                why, code = undelivered
+                reasons.append(why)
+                return self.make("continue" if not self.failed else self.floor.step, verdict, [why], code=code, params={"node": chosen})
         elif kind == "repair":
             nodes = [n for n in dict.fromkeys(verdict["repair"].get("nodes") or []) if n in self.nodes]
             if not nodes:
