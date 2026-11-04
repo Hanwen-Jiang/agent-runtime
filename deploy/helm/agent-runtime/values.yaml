@@ -279,6 +279,8 @@ worker:
   planner: model
   reviewer: model
   toolLoop: model
+  # 派子 Agent 的规矩（AR_SUB_AGENT_POLICY，N16-R，docs/plan/sub-agent.md 第 12 节）：off 或 rules。默认 off，评测对照通过后再打开。
+  subAgentPolicy: "off"
   # 工作区（AR_TOOL_WORKSPACE_ROOT）：Worker 与应用共用的 PVC（单节点见 deploy/cluster/workspaces.yaml），挂在 /workspaces。
   # 为空时不登记 repo_* 与 shell_run。
   workspacesClaim: ""
