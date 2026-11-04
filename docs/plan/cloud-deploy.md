@@ -678,6 +678,26 @@ M5 的后端顺序见 [firecracker-backend.md](firecracker-backend.md) 第 7 节
   在 CI 里报的错误类别不同（推到假远端 `example.test`），没有发现影响线上的。
 - **没有验证**：真 Task 在生产模式下跑完（Valkey 的推流、快照、文件交付、计划步骤、子 Agent 的事件；要令牌与模型花费）；coding-web 仍是 d61bfef（DEP-W）。
 
+coding-web `b4bb9a9`（2026-11-04，DEP-W；目录 `cw-b4bb9a9`，脚本 `cw.sh`，用户在对话里同意）：
+
+- coding-agent main 合了 `origin/lane/d`（`8894a52`：环境的 .env 密钥只写、会话记下环境配置的快照）与 .env 上限（`b4bb9a9`：16 KiB、64 个变量，
+  与 Runtime 的 `SetWorkspaceEnvironment` 一致）。合并时 `accounts.go` 有冲突：环境密钥的加密密钥改由 `tokenKey()` 派生（配了 `CODING_TOKEN_KEY`
+  就跟着它），解不开时按 `oldKeys()` 再试，AUTH-01 第 4 步去掉开发签名密钥之后照样解得开；lane/d 之前没上线，没有要迁移的数据。
+  同时上线的还有 d61bfef 之后 main 上的：WEB-PLAN、WEB-SUB、WEB-SNAP、F3 的交付区、F4 的注册检查、AUTH-01 的 coding-agent 一侧（没配
+  `CODING_JWT_KEY_FILE`，照旧发开发令牌）、WEB-SEC（默认关）、G-01～G-06 的代码。
+- **GitHub App 仍关着**：`coding-oauth` 里已有 App 的几项，私钥还是环境变量 `CODING_GITHUB_APP_PRIVATE_KEY`，新代码见到它就拒绝启动（G-01）；
+  也还没有 `CODING_GITHUB_APP_SLUG`、`CODING_GITHUB_DSN`。所以 Deployment 用 5 个空值的 env 盖掉 `CODING_GITHUB_APP_ID`、`_CLIENT_ID`、
+  `_CLIENT_SECRET`、`_PRIVATE_KEY` 与 `CODING_GITHUB_WEBHOOK_SECRET`（env 优先于 envFrom），App 的代码按“全不配”走，行为同以前；顺带私钥也不再出现在
+  coding-web 与它起的 git 子进程的环境里。App 上线时：私钥挪进 Secret `coding-github-app` 按文件挂载、从 `coding-oauth` 删掉，补 slug、建收件箱的库、
+  `CODING_TOKEN_KEY`，再去掉这 5 行（`/root/ar-secrets/coding-web.yaml` 里写了注释）。
+- 镜像在服务器上构建（上下文 `/opt/agentruntime`，Runtime 那份是 6cc16b8；本机对着 6cc16b8 编译、`go vet` 过），一次 `kubectl patch` 换镜像并加那 5 个 env，
+  只滚动一次；旧的留在 `coding-agent.d61bfef`，`/root/ar-secrets/coding-web.yaml` 同步改了（与线上 `kubectl diff` 为 0 行），原来的存在
+  `cw-b4bb9a9/coding-web.yaml.before`。
+- 测试：coding-agent 的 `internal/server`、`internal/web`（含浏览器用例）全过；`internal/github` 要 Postgres 的二进制，本机没有，没跑（lane/d 没碰这个包）。
+- 核对：Pod 在跑、没有重启，日志只有启动的一行；code 的 `/`、`/healthz`、`/assets/app.js` 200，页面是新版（计划区、子 Agent、快照、.env 16384）。
+  回滚：`kubectl -n agent-runtime rollout undo deploy/coding-web`，`/root/ar-secrets/coding-web.yaml` 用 `.before` 换回。
+- **没有验证**：登录之后的界面（只放行名单里的账号）；环境配置的保存与 .env 密钥经 Runtime 的往返、会话的快照（要登录并开会话）。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。

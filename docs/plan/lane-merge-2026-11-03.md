@@ -2,6 +2,7 @@
 
 > 同事把三条线推到了 `origin/lane/c`、`origin/lane/e`（agent-runtime）与 `origin/lane/d`（coding-agent），由这边接着做。
 > 2026-11-03 人审通过（照草案）：C、E 两条线已合进 main，兼容性基线已更新（连同 `environment.proto`）。coding-agent 的 lane/d 等 Runtime 部署之后再合。
+> 2026-11-04：Runtime 部署（第 24 版）之后，lane/d 合进 coding-agent main（`8894a52`），.env 上限一起改了（`b4bb9a9`），coding-web 已上线。
 
 ## 1. 试合并（本地，没推）
 
