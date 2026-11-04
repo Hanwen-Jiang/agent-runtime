@@ -94,6 +94,13 @@ worker:
       resources:
         requests: {cpu: "1", memory: 1Gi}
         limits: {cpu: "4", memory: 2Gi}
+    workspace:
+      minReplicas: 2
+      maxReplicas: 20
+      targetQueueSize: 5
+      resources:
+        requests: {cpu: 500m, memory: 512Mi}
+        limits: {cpu: "2", memory: 1Gi}
 
 # Learning Pipeline：Job 直接消费 external.redpanda 上的 telemetry.spans（values.yaml 的 learning 一节）；租户与任务族按要学的改。
 learning:

@@ -57,7 +57,7 @@ COMPONENTS = ("temporal", "task-service", "model-gateway", "worker")
 # 报告里多一个 registry：它在 task-service 进程里，有自己的内部端口（T-08）。
 REPORTED = ("temporal", "task-service", "registry", "model-gateway", "worker")
 EFFECTS = ("none", "read", "write_reversible", "write_irreversible")
-WORKER_QUEUES = "task,decision,model,program"
+WORKER_QUEUES = "task,decision,model,program,workspace"
 PROVIDER_KEY_NAME = "model-provider/api-key"
 PUBLISH_TOKEN_NAME = "registry/publish-token"
 WORKSPACE_KEY_NAME = "workspace/credential-key"

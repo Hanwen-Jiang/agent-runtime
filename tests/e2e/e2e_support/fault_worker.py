@@ -13,7 +13,7 @@
 
 环境变量：AR_FAULT_PLAN（故障计划文件）、AR_FAULT_LEDGER_DIR（外部 ledger 目录），其余同 Worker。
 
-    python -m e2e_support.fault_worker --queues task,decision,model,program
+    python -m e2e_support.fault_worker --queues task,decision,model,program,workspace
 """
 
 from __future__ import annotations

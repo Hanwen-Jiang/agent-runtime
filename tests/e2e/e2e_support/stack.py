@@ -27,7 +27,7 @@ from e2e_support.ledger import ExternalLedger
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 TASK_SERVICE_DIR = REPO_ROOT / "services" / "go-task-service"
-WORKER_QUEUES = "task,decision,model,program"
+WORKER_QUEUES = "task,decision,model,program,workspace"
 
 # 端到端测试的 Session 参数：只读 Task 并行上限 2；每接受 3 个 Task 续接一次，让续接在各个用例里都发生。
 READ_ONLY_LIMIT = 2

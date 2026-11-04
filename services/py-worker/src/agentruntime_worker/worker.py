@@ -2,7 +2,7 @@
 
 四个池用同一份代码与镜像，只是订阅的队列不同：
 
-    python -m agentruntime_worker --queues task,decision,model,program
+    python -m agentruntime_worker --queues task,decision,model,program,workspace
 
 沙箱环境表的对账（D-11）：订阅 task 队列、又配了沙箱后端的 Worker 启动时确保平台级的 SandboxReconcileWorkflow 在跑
 （固定的工作流 ID，已在跑就不再起）；它的 activity 在 program 队列上。
@@ -88,6 +88,9 @@ QUEUE_COMPONENTS: dict[str, QueueComponents] = {
             names.WORKSPACE_OPERATION,
         )
     ),
+    # WS-READ-02：task-service 新起的 Workspace 操作在这里，工作流与 activity 同一个队列。task、program 上照旧登记它们，
+    # 给改之前起的、还在跑的操作；那些跑完之后再从旧队列去掉。
+    names.WORKSPACE_QUEUE: QueueComponents(workflows=(names.WORKSPACE_OPERATION_WORKFLOW,), activities=(names.WORKSPACE_OPERATION,)),
 }
 
 WORKFLOWS = {

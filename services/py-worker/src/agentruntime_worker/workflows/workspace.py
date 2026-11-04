@@ -1,7 +1,9 @@
 """Workspace API 的操作工作流（D-06e；做什么见 agentruntime_worker.workspace.operations）。
 
-task-service 的 WorkspaceService 收到请求后起它（task 队列，ID wsop-<operation_id>），等它的结果。工作流只排一个
-workspace_operation activity（program 队列：在承载工作区的沙箱里跑 git）。activity 把非暂时性的错误写进结果；暂时性的
+task-service 的 WorkspaceService 收到请求后起它（workspace 队列，ID wsop-<operation_id>），等它的结果。工作流只排一个
+workspace_operation activity（在承载工作区的沙箱里跑 git）：排在工作流自己所在的队列，workspace 池一个池就跑得完
+（WS-READ-02）；改之前起在 task 队列的操作照旧排在 program 队列，命令序列不变，旧历史照样回放，不用版本分支。
+activity 把非暂时性的错误写进结果；暂时性的
 抛出来，按这里的重试策略重试，重试完还不行时这里把它写成 transient 的结果。推送是 write_irreversible，不自动重试
 （结果不明时下一次调用先对账）。凭据在输入里是封起来的（wsc1），事件历史里没有明文。工作流代码只排 activity，是确定的。
 """
@@ -35,12 +37,13 @@ class WorkspaceOperationWorkflow:
     async def run(self, inp: workspace_pb2.WorkspaceOperationInput) -> workspace_pb2.WorkspaceOperationResult:
         push = inp.operation == workspace_pb2.WORKSPACE_OPERATION_PUSH
         retry = RetryPolicy(maximum_attempts=1) if push else RetryPolicy(maximum_attempts=3, initial_interval=timedelta(seconds=5))
+        queue = names.WORKSPACE_QUEUE if workflow.info().task_queue == names.WORKSPACE_QUEUE else names.PROGRAM_QUEUE
         try:
             return await workflow.execute_activity(
                 names.WORKSPACE_OPERATION,
                 inp,
                 result_type=workspace_pb2.WorkspaceOperationResult,
-                task_queue=names.PROGRAM_QUEUE,
+                task_queue=queue,
                 start_to_close_timeout=timedelta(minutes=30),
                 retry_policy=retry,
             )

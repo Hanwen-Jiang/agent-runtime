@@ -362,6 +362,14 @@ worker:
       resources:
         requests: {cpu: 250m, memory: 512Mi}
         limits: {cpu: "2", memory: 1Gi}
+    # Workspace API 的操作（WS-READ-02）：查看文件、diff、提交、推送不和 Task 的 activity 抢 Worker。工作流与 activity 同一个队列。
+    workspace:
+      minReplicas: 1
+      maxReplicas: 10
+      targetQueueSize: 5
+      resources:
+        requests: {cpu: 250m, memory: 256Mi}
+        limits: {cpu: "1", memory: 512Mi}
 
 # Learning Pipeline（T-16）：KEDA ScaledJob，按消费组在 trace 主题上的延迟起 Job（设计书 3.5）。
 # Job 直接消费 Collector 写的主题（broker 是 external.redpanda.brokers）：从最早保留的记录读到起跑时的末尾，跑完才提交

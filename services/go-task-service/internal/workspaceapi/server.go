@@ -2,7 +2,7 @@
 // 与 Task API 同一个端口、同样认证。
 //
 // 租户由认证身份确定；请求里的 tenant_id 只用来校验一致（ingress.TenantContextFor）。别的租户的工作区一律 NotFound
-// （Worker 按租户读业务库，查不到）。每个操作起一个 Python 的 WorkspaceOperationWorkflow（task 队列，ID wsop-<operation_id>）
+// （Worker 按租户读业务库，查不到）。每个操作起一个 Python 的 WorkspaceOperationWorkflow（workspace 队列，ID wsop-<operation_id>）
 // 并等它的结果；操作在承载工作区的沙箱里执行。只有 ListWorkspaces 直接读业务库（表由 Worker 迁移，还没有时为空）。
 //
 // 凭据（GitCredential）不进事件历史与日志：用 SecretStore 平台作用域的 workspace/credential-key 封成 wsc1（libs/go-core/sealing，
@@ -45,12 +45,15 @@ import (
 
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/events"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/sandboxgrants"
-	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/session"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/taskapi"
 )
 
 // WorkflowName 是 Worker 一侧的工作流名，等于 names.proto 里 WORKFLOW_TYPE_WORKSPACE_OPERATION 的 wire_name（names_test.go 比对）。
 const WorkflowName = "WorkspaceOperationWorkflow"
+
+// TaskQueue 是操作工作流的任务队列（WS-READ-02）：单独一个 Worker 池，查看文件不和 Task 的 activity 抢 Worker。
+// 等于 names.proto 里 TASK_QUEUE_WORKSPACE 的 wire_name。改之前起在 task 队列的操作照旧在那里跑完。
+const TaskQueue = "workspace"
 
 // WorkflowID 是一次操作的工作流 ID。
 func WorkflowID(operationID string) string { return "wsop-" + operationID }
@@ -259,7 +262,7 @@ func (s *Server) run(
 		return err
 	}
 	if _, err := engine.StartWorkflow(ctx, WorkflowName, durable.StartOptions{
-		WorkflowID: WorkflowID(operationID), TaskQueue: session.TaskTaskQueue, Input: in, ExecutionTimeout: s.d.Timeout + 30*time.Minute,
+		WorkflowID: WorkflowID(operationID), TaskQueue: TaskQueue, Input: in, ExecutionTimeout: s.d.Timeout + 30*time.Minute,
 	}); err != nil {
 		return err
 	}

@@ -169,6 +169,7 @@ spec:
         endpoint: {{ $.Values.external.temporal.address | quote }}
         namespace: {{ $.Values.external.temporal.namespace | quote }}
         taskQueue: {{ $pool | quote }}
-        queueTypes: {{ ternary "workflow" "activity" (eq $pool "task") | quote }}
+        {{- /* task 池只有工作流；workspace 池（WS-READ-02）的工作流与 activity 同一个队列；其余只有 activity。 */}}
+        queueTypes: {{ (eq $pool "task" | ternary "workflow" (eq $pool "workspace" | ternary "workflow,activity" "activity")) | quote }}
         targetQueueSize: {{ $cfg.targetQueueSize | quote }}
 {{- end }}

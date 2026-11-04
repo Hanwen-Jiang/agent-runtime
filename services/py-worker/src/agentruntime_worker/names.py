@@ -21,6 +21,8 @@ SESSION_QUEUE = "session"
 DECISION_QUEUE = "decision"
 MODEL_QUEUE = "model"
 PROGRAM_QUEUE = "program"
+# Workspace API 的操作工作流与它的 activity（WS-READ-02）：单独一个 Worker 池，查看文件不和 Task 的 activity 抢 Worker。
+WORKSPACE_QUEUE = "workspace"
 
 # activity 名。
 PLAN_ROUND = "plan_round"
