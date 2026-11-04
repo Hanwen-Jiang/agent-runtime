@@ -2,6 +2,23 @@
   "schema": "goal_node",
   "valid": [
     {
+      "name": "sub_agent_with_smaller_tier",
+      "source": "docs/plan/sub-agent.md 第 6 节（N16-R）",
+      "notes": "子 Agent 缺省用中模型；单点的查证可以往小调。",
+      "instance": {
+        "id": "check_vendor_a",
+        "kind": "goal",
+        "goal": "查 A 厂商的退款政策",
+        "done_when": "交回带来源的结论卡片",
+        "mode": "sub_agent",
+        "effect_ceiling": "read",
+        "tools": ["web_search"],
+        "tier": "small@low",
+        "inputs": {"brief": {"objective": "查 A 厂商的退款政策", "scope": "只查 A 的公开文档", "output": "来源卡片的数组"}},
+        "output_schema": {"type": "object"}
+      }
+    },
+    {
       "name": "appendix_b2_read_tickets",
       "source": "附录 B.2，Stage 中的 read_tickets 节点",
       "notes": "原文 output_schema 是简写 {reasons: [{name, share, examples}]}，这里展开为等价的 JSON Schema。",
@@ -108,6 +125,20 @@
     }
   ],
   "invalid": [
+    {
+      "name": "tier_outside_sub_agent",
+      "description": "tier 只给 sub_agent；主流程的 tool_loop 不换模型（N16-R）",
+      "violates": [{"path": "/tier", "keyword": "not"}],
+      "instance": {
+        "id": "fix_failing_test",
+        "kind": "goal",
+        "goal": "修复失败的测试",
+        "done_when": "测试通过",
+        "mode": "tool_loop",
+        "tier": "small@low",
+        "output_schema": "code_patch_v1"
+      }
+    },
     {
       "name": "missing_done_when",
       "description": "Goal Node 必须写清 done_when（附录 E.1）",

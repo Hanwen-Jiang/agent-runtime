@@ -19,7 +19,8 @@
     "quality": {"$ref": "defs.schema.json#/$defs/quality_spec"},
     "effect_ceiling": {"description": "展开后可用工具的最高 effect", "$ref": "defs.schema.json#/$defs/effect"},
     "tools": {"type": "array", "items": {"$ref": "defs.schema.json#/$defs/tool_name"}, "uniqueItems": true},
-    "max_iterations": {"description": "循环类 Goal Node 的最大迭代次数（附录 B.8）", "type": "integer", "minimum": 1, "maximum": 500}
+    "max_iterations": {"description": "循环类 Goal Node 的最大迭代次数（附录 B.8）", "type": "integer", "minimum": 1, "maximum": 500},
+    "tier": {"description": "只用于 mode 为 sub_agent 的 Goal Node：子 Agent 的 tool_loop 用的 Tier（附录 F 缺省中模型；运行时只许往小调，比缺省大的按缺省）", "$ref": "defs.schema.json#/$defs/tier"}
   },
   "allOf": [
     {
@@ -31,6 +32,11 @@
       "description": "template 模式展开为预定义子图，必须指定 Recipe（附录 E.1）",
       "if": {"required": ["mode"], "properties": {"mode": {"const": "template"}}},
       "then": {"required": ["recipe"]}
+    },
+    {
+      "description": "tier 只给 sub_agent（N16-R，docs/plan/sub-agent.md 第 6 节）：主流程的 tool_loop 不换模型（提示缓存）",
+      "if": {"not": {"required": ["mode"], "properties": {"mode": {"const": "sub_agent"}}}},
+      "then": {"properties": {"tier": {"$ref": "defs.schema.json#/$defs/forbidden"}}}
     }
   ],
   "unevaluatedProperties": false
