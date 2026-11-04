@@ -84,3 +84,35 @@ func withDetail(ce *connect.Error, detail *commonv1.Error) *connect.Error {
 	}
 	return ce
 }
+
+// Decode 是 Error 的反向：从 connect 客户端拿到的错误里取回统一错误模型的错误（读 ar-error-bin 尾部）。
+// 没有这个尾部时按 connect 的状态码给出类别，错误码为空；err 为 nil 时返回 nil。
+func Decode(err error) *providererr.Error {
+	if err == nil {
+		return nil
+	}
+	var pe *providererr.Error
+	if errors.As(err, &pe) {
+		return pe
+	}
+	var ce *connect.Error
+	if !errors.As(err, &ce) {
+		return providererr.Wrap(providererr.Transient, "unavailable", "调用失败", err)
+	}
+	for _, value := range ce.Meta().Values(Trailer) {
+		raw, decodeErr := connect.DecodeBinaryHeader(value)
+		if decodeErr != nil {
+			continue
+		}
+		var detail commonv1.Error
+		if proto.Unmarshal(raw, &detail) == nil && detail.GetCategory() != 0 {
+			return providererr.FromProto(&detail)
+		}
+	}
+	for category, code := range codes {
+		if code == ce.Code() {
+			return providererr.New(category, "", ce.Message())
+		}
+	}
+	return providererr.New(providererr.Transient, "unavailable", ce.Message())
+}

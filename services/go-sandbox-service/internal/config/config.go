@@ -1,0 +1,128 @@
+// Package config 是 Sandbox Service 的配置（环境变量）。
+//
+//	AR_SANDBOX_SERVICE_ADDR            监听地址（gRPC h2c 与 /healthz 同一个端口），默认 127.0.0.1:8097
+//	AR_SANDBOX_BACKENDS_FILE           沙箱后端的登记（必填；格式见 internal/registry）
+//	AR_TOOL_WORKSPACE_ROOT             挂卷时的工作区根（只读快路径与本地后端用；集群里只读挂工作区卷）
+//	AR_SANDBOX_STATE_DIR               本地后端的环境目录，默认 <AR_DATA_DIR>/sandboxes
+//	AR_SANDBOX_AGENT_BIN               本地后端起的 sandbox-agent，默认 PATH 上的 sandbox-agent
+//	AR_DATA_DIR、AR_RELATIONAL_DSN     业务库：设了 DSN 用 Postgres（行级安全），否则 <AR_DATA_DIR>/relational 下的 SQLite
+//	AR_RELATIONAL_MAX_CONNS            Postgres 连接池上限，默认 8
+//	AR_OBJECT_STORE_DIR、AR_S3_*       工作区存档的对象存储（与 Worker、task-service 同一个）
+//	AR_SECRETS_FILE、AR_SECRETS_SEED_FILE  SecretStore：调用方令牌 sandbox-service/tokens/<调用方>、sandbox/token-key 等
+//	AR_SANDBOX_SERVICE_CALLERS         登记的调用方，逗号分隔，默认 worker,task-service（task-service 只能读）
+//	AR_REGISTRY_ADDRESS                Registry（租户策略）；没设时都用部署的默认后端
+//	AR_DEV_TENANT_POLICIES_FILE        开发用的租户策略文件（{"tenants": {...}}），列出的租户以文件为准
+//	AR_PKG_MIRROR_URL、AR_EGRESS_GATEWAY_URL  包镜像与出网网关（注入给 K8s 与本地后端的命令）
+//	AR_SANDBOX_RUNTIME                 服务自己借环境（git、转冷）用的运行环境，默认 python
+//	AR_SANDBOX_RECONCILE_INTERVAL_S    对账间隔，默认 60；0 不对账
+//	AR_SANDBOX_HOLD_MAX_S              等人期间保留会话级环境的上限，默认 7200
+//	AR_WORKSPACE_COLD_AFTER_DAYS       挂卷工作区闲置多少天转冷（租户策略没写时），默认 0（不转冷）
+//	AR_PROFILE                         production 时没有 AR_RELATIONAL_DSN 拒绝启动
+package config
+
+import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+)
+
+// Config 是服务的配置。
+type Config struct {
+	Addr            string
+	BackendsFile    string
+	WorkspaceRoot   string
+	StateDir        string
+	AgentBinary     string
+	DataDir         string
+	RelationalDSN   string
+	MaxConns        int
+	ObjectStoreDir  string
+	SecretsFile     string
+	SecretsSeedFile string
+	Callers         []string
+	RegistryAddress string
+	PoliciesFile    string
+	MirrorURL       string
+	EgressURL       string
+	Runtime         string
+	ReconcileEvery  time.Duration
+	HoldMax         time.Duration
+	ColdDays        int
+	Production      bool
+}
+
+// FromEnv 读环境变量。
+func FromEnv(getenv func(string) string) (Config, error) {
+	c := Config{
+		Addr: or(getenv("AR_SANDBOX_SERVICE_ADDR"), "127.0.0.1:8097"), BackendsFile: getenv("AR_SANDBOX_BACKENDS_FILE"),
+		WorkspaceRoot: getenv("AR_TOOL_WORKSPACE_ROOT"), StateDir: getenv("AR_SANDBOX_STATE_DIR"), AgentBinary: getenv("AR_SANDBOX_AGENT_BIN"),
+		DataDir: getenv("AR_DATA_DIR"), RelationalDSN: getenv("AR_RELATIONAL_DSN"), ObjectStoreDir: getenv("AR_OBJECT_STORE_DIR"),
+		SecretsFile: getenv("AR_SECRETS_FILE"), SecretsSeedFile: getenv("AR_SECRETS_SEED_FILE"), RegistryAddress: getenv("AR_REGISTRY_ADDRESS"),
+		PoliciesFile: getenv("AR_DEV_TENANT_POLICIES_FILE"), MirrorURL: getenv("AR_PKG_MIRROR_URL"), EgressURL: getenv("AR_EGRESS_GATEWAY_URL"),
+		Runtime: or(getenv("AR_SANDBOX_RUNTIME"), "python"), Production: getenv("AR_PROFILE") == "production",
+	}
+	if c.BackendsFile == "" {
+		return c, errors.New("要设 AR_SANDBOX_BACKENDS_FILE（沙箱后端的登记）")
+	}
+	if c.SecretsFile == "" {
+		return c, errors.New("要设 AR_SECRETS_FILE（调用方令牌与后端的密钥在这里）")
+	}
+	if c.DataDir == "" {
+		c.DataDir = filepath.Join(os.TempDir(), "agentruntime-sandbox-service")
+	}
+	if c.StateDir == "" {
+		c.StateDir = filepath.Join(c.DataDir, "sandboxes")
+	}
+	if c.ObjectStoreDir == "" {
+		c.ObjectStoreDir = filepath.Join(c.DataDir, "objects")
+	}
+	if c.Production && c.RelationalDSN == "" {
+		return c, errors.New("生产模式要配 AR_RELATIONAL_DSN，不回落 SQLite")
+	}
+	for _, v := range strings.Split(or(getenv("AR_SANDBOX_SERVICE_CALLERS"), "worker,task-service"), ",") {
+		if v = strings.TrimSpace(v); v != "" {
+			c.Callers = append(c.Callers, v)
+		}
+	}
+	var err error
+	if c.MaxConns, err = intVar(getenv, "AR_RELATIONAL_MAX_CONNS", 8); err != nil {
+		return c, err
+	}
+	every, err := intVar(getenv, "AR_SANDBOX_RECONCILE_INTERVAL_S", 60)
+	if err != nil {
+		return c, err
+	}
+	c.ReconcileEvery = time.Duration(every) * time.Second
+	hold, err := intVar(getenv, "AR_SANDBOX_HOLD_MAX_S", 7200)
+	if err != nil {
+		return c, err
+	}
+	c.HoldMax = time.Duration(hold) * time.Second
+	if c.ColdDays, err = intVar(getenv, "AR_WORKSPACE_COLD_AFTER_DAYS", 0); err != nil {
+		return c, err
+	}
+	return c, nil
+}
+
+func or(v, fallback string) string {
+	if v == "" {
+		return fallback
+	}
+	return v
+}
+
+func intVar(getenv func(string) string, key string, fallback int) (int, error) {
+	v := getenv(key)
+	if v == "" {
+		return fallback, nil
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n < 0 {
+		return 0, fmt.Errorf("%s 要是非负整数", key)
+	}
+	return n, nil
+}
