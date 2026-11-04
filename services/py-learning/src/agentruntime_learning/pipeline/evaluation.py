@@ -7,6 +7,8 @@
   两组都至少 min_samples 条。默认 δ = 0.02、ε = 0.05、100 条（J.3）。
 - 每次成功成本 = 组内全部 Task 的成本 ÷ 成功数（附录 H.2、S-08 报告的 per_success_usd）：失败的花费也算（R-06 评审 1.1）。
   上界用比率估计量的 delta 方法：R + 1.96 × sd(c − R·s) ÷ (√n · 成功率)，c 是每个 Task 的成本，s 是它成没成（0 或 1）。
+- 不自动晋级、交人工判断（needs_human，R-06-B，docs/plan/delegated-review-2026-11-04.md 第 7 节第 5 条）：有 Task 的成本还没结算或缺失
+  （不按 0 算），或现行组没有成功的、每次成功成本无法定义（原来跳过成本比较就通过了）。不靠删掉失败或高成本的样本绕过。
 """
 
 from __future__ import annotations
@@ -46,11 +48,14 @@ class Outcomes:
     successes: int
     # 每个 Task 的 (成本, 成没成)，按 task_id 的顺序。
     tasks: tuple[tuple[float, bool], ...] = ()
+    # 成本还没结算或缺失的 Task 数（它们在 tasks 里按 0 填）。
+    unknown_costs: int = 0
 
     @classmethod
     def from_tasks(cls, tasks: Iterable[TaskTrace]) -> Outcomes:
-        rows = tuple((float(t.cost_usd), t.status == "done") for t in tasks)
-        return cls(total=len(rows), successes=sum(1 for _, ok in rows if ok), tasks=rows)
+        traces = list(tasks)
+        rows = tuple((float(t.cost_usd), t.status == "done") for t in traces)
+        return cls(total=len(rows), successes=sum(1 for _, ok in rows if ok), tasks=rows, unknown_costs=sum(1 for t in traces if not t.cost_known))
 
     @property
     def success_rate(self) -> float:
@@ -117,6 +122,8 @@ class GateResult:
     min_samples: int
     samples: int
     details: dict[str, Any] = field(default_factory=dict)
+    # 没通过是因为门槛判不了（成本未知、现行组的每次成功成本无法定义）：交人工判断，不是候选更差。
+    needs_human: bool = False
 
 
 def non_inferiority(
@@ -141,14 +148,25 @@ def non_inferiority(
         details["success_rate"] = {"candidate_low": round(low, 6), "baseline": round(baseline.success_rate, 6), "floor": round(floor, 6)}
         if low < floor:
             reasons.append(f"成功率的 95% 置信下界 {low:.1%} 低于现行的成功率 {baseline.success_rate:.1%} 减 δ（{delta:.0%}）")
+    needs_human = False
+    unknown = candidate.unknown_costs + baseline.unknown_costs
+    if unknown:
+        needs_human = True
+        reasons.append(f"有 {unknown} 个 Task 的成本还没结算或缺失（候选组 {candidate.unknown_costs}、现行组 {baseline.unknown_costs}）：不按 0 算、不自动晋级，交人工判断")
     upper, base_cost = candidate.cost_upper_bound(), baseline.cost_per_success
     if upper is None:
         reasons.append("候选组没有成功的 Task")
-    elif base_cost is not None:
+    elif base_cost is None:
+        if baseline.total:
+            needs_human = True
+            reasons.append("现行组没有成功的 Task，每次成功成本无法定义，成本门槛判不了：不自动晋级，交人工判断")
+    elif not unknown:
         ceiling = base_cost * (1 + epsilon)
         details["cost_per_success"] = {"candidate_upper": round(upper, 6), "baseline": round(base_cost, 6), "ceiling": round(ceiling, 6)}
         if upper > ceiling:
             reasons.append(f"每次成功成本的 95% 上界 ${upper:.4f} 高于现行的 ${base_cost:.4f} × (1 + ε)（ε = {epsilon:.0%}）")
+    # 别的原因（样本不足、成功率不够、更贵）是候选没过，不是门槛判不了。
+    needs_human = needs_human and all("人工" in r for r in reasons)
     return GateResult(
         passed=not reasons,
         reasons=reasons,
@@ -158,6 +176,7 @@ def non_inferiority(
         min_samples=min_samples,
         samples=candidate.total,
         details=details,
+        needs_human=needs_human,
     )
 
 

@@ -147,6 +147,8 @@ class Plan:
     unpriced: list[dict[str, Any]] = field(default_factory=list)
     new_lines: list[dict[str, Any]] = field(default_factory=list)
     disagreements: list[dict[str, Any]] = field(default_factory=list)
+    # 已有的 Profile 在 models.dev 里缺单价、这次没改价格的（R-06-B）。
+    price_gaps: list[str] = field(default_factory=list)
 
 
 def _candidates(relay: list[str], catalog: dict[str, Any], rules: dict[str, Any]) -> list[_Candidate]:
@@ -177,6 +179,9 @@ def _candidates(relay: list[str], catalog: dict[str, Any], rules: dict[str, Any]
             base = others[0] if others else {}
             entry = {**base, "release_date": date,
                      "cost": {"input": o.get("in_per_m"), "output": o.get("out_per_m"), "cache_read": o.get("cache_read_per_m")}}
+        # 缺任一项单价同没有一方价格（R-06-B：不写 0）：不加、不当这条线的当前版本，报告里列进“没有一方价格”。
+        if entry is not None and profiles_sync.price_gaps("embed" if "embedding" in lowered else "", entry):
+            entry = None
         line = _line(vendor, model, rules)
         assert line is not None
         out.append(_Candidate(model, vendor, line, line_of(model)[1], date, entry, hint))  # type: ignore[index]
@@ -262,6 +267,9 @@ def plan(document: dict[str, Any], relay: list[str], catalog: dict[str, Any], ru
         if entry is None and p.get("model") in by_model and p["model"] in overrides:
             entry = by_model[p["model"]].entry
         if entry is None:
+            continue
+        if gaps := profiles_sync.price_gaps(str(p.get("class")), entry):
+            result.price_gaps.append(f"{p['id']}：models.dev 没有 {'、'.join(gaps)} 的单价")
             continue
         updated = profiles_sync.synced(p, entry)
         if (updated["cost"], updated["constraints"]) != (p.get("cost"), p.get("constraints")):
@@ -375,7 +383,7 @@ def _dump(value: Any) -> str:
 
 def _report(result: Plan, diffs: dict[str, dict[str, dict[str, list[str]]]], notes: list[str], today: str) -> tuple[str, str]:
     data = {"date": today, "added": result.added, "retired": result.retired, "restored": result.restored, "unpriced": result.unpriced,
-            "new_lines": result.new_lines, "disagreements": result.disagreements, "allowlists": diffs, "notes": notes}
+            "new_lines": result.new_lines, "disagreements": result.disagreements, "price_gaps": result.price_gaps, "allowlists": diffs, "notes": notes}
     md = [f"# 模型目录同步 {today}", ""]
 
     def section(title: str, rows: list[str]) -> None:
@@ -389,6 +397,7 @@ def _report(result: Plan, diffs: dict[str, dict[str, dict[str, list[str]]]], not
     section("新线（只列出来；要跟就加进规则文件的 track）",
             [f"- `{n['model']}`（{n['line']}，{n['released_at']}，猜 {n['class_guess']}，输入 {n['cost']['in_per_m']}、输出 {n['cost']['out_per_m']}）" for n in result.new_lines])
     section("版本号与发布日先后不一致（按版本号）", [f"- {d['line']}：版本号最新 `{d['by_version']}`，发布日最新 `{d['by_date']}`" for d in result.disagreements])
+    section("缺单价、价格没改的 Profile（不写 0；人核实后在规则文件的 price_overrides 里给价格）", [f"- `{g}`" for g in result.price_gaps])
     rows = []
     for path, names in diffs.items():
         for name, change in names.items():

@@ -11,6 +11,8 @@ Registry 与 Model Gateway 读的是同一组）。云上的 ConfigMap（Chart �
 规则：
 - 按 Profile 的 vendor 找 models.dev 里第一方的供应商（openai、anthropic、google、deepseek），按 model 找条目；找不到的不改并列出来。
 - 单价：输入、输出、缓存读（美元每百万 token）取基础价；超过一定长度的加价（models.dev 的 tiers、context_over_200k）这里不记，见计划。
+  要更新或加入的项缺任一项单价（没有这个键或为 null）时报错、两个文件都不改，不写 0、不静默跳过（R-06-B，
+  docs/plan/delegated-review-2026-11-04.md 第 7 节第 3 条）；写明的 0 是免费，照收。嵌入模型没有缓存读的计价，不给 cache_read 时按 0。
 - 长度：context_window 取 limit.input（有时）与 limit.context 中较小的；max_output 取 limit.output；嵌入模型的 max_output 按 schema 写 0。
 - 发布日：仅从合法的 release_date 复制到 released_at；缺失或无效时保留已有数据，不从 price_at 或模型名字推断。
 - 单价/长度改动才把 freshness.price_at 改成今天（或 --date）；只补发布日期时不动取价日期。能力/可靠性评测不由此脚本生成。
@@ -61,8 +63,27 @@ def _usd(value: Any) -> float:
     return round(float(value or 0), 6)
 
 
+def price_gaps(klass: str, entry: dict[str, Any]) -> list[str]:
+    """models.dev 的条目缺的单价（input、output、cache_read）；嵌入模型的 cache_read 不算缺。"""
+    cost = entry.get("cost") or {}
+    needed = ("input", "output") if klass == "embed" else ("input", "output", "cache_read")
+    return [key for key in needed if cost.get(key) is None]
+
+
+def price_errors(document: dict[str, Any], catalog: dict[str, Any]) -> list[str]:
+    """要更新的 Profile 里，models.dev 缺单价的那些（每个一行说明）；models.dev 里找不到的不在这里（照旧不改并列出）。"""
+    out = []
+    for profile in document.get("profiles") or []:
+        entry = entry_for(catalog, str(profile.get("vendor")), str(profile.get("model")))
+        if entry is not None and (gaps := price_gaps(str(profile.get("class")), entry)):
+            out.append(f"{profile.get('id')}：models.dev 没有 {'、'.join(gaps)} 的单价")
+    return out
+
+
 def synced(profile: dict[str, Any], entry: dict[str, Any]) -> dict[str, Any]:
-    """按 models.dev 的条目改单价、长度与真实发布日期，其余不动。纯函数。"""
+    """按 models.dev 的条目改单价、长度与真实发布日期，其余不动。纯函数。缺单价时报错（调用方先用 price_gaps 查）。"""
+    if gaps := price_gaps(str(profile.get("class")), entry):
+        raise ValueError(f"{profile.get('id')}：models.dev 没有 {'、'.join(gaps)} 的单价")
     cost = entry.get("cost") or {}
     limit = entry.get("limit") or {}
     out = json.loads(json.dumps(profile))
@@ -112,7 +133,7 @@ def new_profile(vendor: str, model: str, klass: str, tiers: list[str], entry: di
 
 
 def sync(document: dict[str, Any], catalog: dict[str, Any], today: str) -> tuple[dict[str, Any], list[str], list[str]]:
-    """返回（改好的文件内容、改了的 Profile 及说明、找不到的 Profile）。"""
+    """返回（改好的文件内容、改了的 Profile 及说明、找不到的 Profile）。缺单价的 Profile 原样留着（main 据 price_errors 报错、不写文件）。"""
     changed: list[str] = []
     missing: list[str] = []
     profiles = []
@@ -120,6 +141,9 @@ def sync(document: dict[str, Any], catalog: dict[str, Any], today: str) -> tuple
         entry = entry_for(catalog, str(profile.get("vendor")), str(profile.get("model")))
         if entry is None:
             missing.append(str(profile.get("id")))
+            profiles.append(profile)
+            continue
+        if price_gaps(str(profile.get("class")), entry):
             profiles.append(profile)
             continue
         updated = synced(profile, entry)
@@ -194,8 +218,16 @@ def main(argv: list[str] | None = None) -> int:
         if any(p.get("vendor") == vendor and p.get("model") == model for p in document["profiles"]):
             print(f"已经有 {spec} 的 Profile，不重复加", file=sys.stderr)
             continue
+        if gaps := price_gaps(args.klass, entry):
+            print(f"models.dev 没有 {spec} 的 {'、'.join(gaps)} 单价：不加（不写 0）", file=sys.stderr)
+            return 2
         document["profiles"].append(new_profile(vendor, model, args.klass, [t.strip() for t in args.tiers.split(",") if t.strip()], entry, args.date))
         print(f"加了 {document['profiles'][-1]['id']}")
+    if errors := price_errors(document, catalog):
+        for line in errors:
+            print(f"缺单价：{line}", file=sys.stderr)
+        print("有要更新的 Profile 缺单价：两个文件都没改（不写 0，也不跳过）；人核实价格后再跑", file=sys.stderr)
+        return 1
     updated, changed, missing = sync(document, catalog, args.date)
     seed = json.loads(args.seed.read_text("utf-8"))
     seed_updated = mirror_seed(seed, updated["profiles"])

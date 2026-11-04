@@ -65,6 +65,8 @@ class TaskTrace:
     recipe: str
     cost_usd: float
     rounds: tuple[RoundTrace, ...]
+    # span 上记着成本（runtime.cost_usd）；没有时 cost_usd 按 0 填，但门槛不能当它是 0（R-06-B：成本未知的比较不自动晋级）。
+    cost_known: bool = True
 
 
 @dataclass
@@ -185,6 +187,7 @@ def task_traces(spans: Iterable[SpanRecord], tenant_id: str) -> TraceSet:
                 recipe=str(a.get("recipe") or ""),
                 cost_usd=float(a.get("runtime.cost_usd") or 0.0),
                 rounds=tuple(seen[k] for k in sorted(seen)),
+                cost_known=a.get("runtime.cost_usd") not in (None, ""),
             )
         )
     result.skipped += sum(len(spans_) for parent, spans_ in rounds.items() if parent not in known_parents)
