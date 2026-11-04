@@ -1,6 +1,6 @@
 """N-19/N-20：deliver 节点经 Model Gateway 的 StreamGenerate 生成，记首个 token 的用时（契约清单 streaming_prerequisite、latency_segments）。
 
-片段只用来量首个 token；推送 token_delta、thinking_delta 的通道待定（docs/plan/n19-n20-implementation-2026-11-03.md），这里不推。
+片段推成 token_delta、thinking_delta 的部分（DELTA）见 test_deltas.py。
 """
 
 from __future__ import annotations
@@ -128,9 +128,10 @@ async def test_other_nodes_and_the_default_do_not_stream(fx: ExecutorFixture) ->
     fx.executor.deps = dataclasses.replace(fx.executor.deps, stream_deliver=False)
     fx.models.reply({"summary": "ok"})
     out = await run_model(fx, model("answer", role="deliver"))
-    assert calls == [] and "first_token_ms" not in out["meta"], "默认关"
+    assert calls == [] and "first_token_ms" not in out["meta"], "AR_STREAM_DELIVER=0 时不流式"
 
 
 def test_the_flag_comes_from_the_environment() -> None:
-    assert WorkerConfig.from_env({"AR_STREAM_DELIVER": "1"}).stream_deliver
-    assert not WorkerConfig.from_env({}).stream_deliver
+    # DELTA（docs/plan/all-plans-dag-2026-11-03.md 7.1）起默认打开。
+    assert WorkerConfig.from_env({}).stream_deliver and WorkerConfig.from_env({"AR_STREAM_DELIVER": "1"}).stream_deliver
+    assert not WorkerConfig.from_env({"AR_STREAM_DELIVER": "0"}).stream_deliver
