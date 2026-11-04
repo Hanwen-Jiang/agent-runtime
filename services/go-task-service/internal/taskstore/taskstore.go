@@ -168,6 +168,17 @@ func (s *Store) HasCompleteEvents(ctx context.Context, tenant *commonv1.TenantCo
 	return ok, err
 }
 
+// HasFinishedEvent 表示业务库里已经记着这个 Task 的 task_finished（HIST-01 的批量取用它标 finished）。
+func (s *Store) HasFinishedEvent(ctx context.Context, tenant *commonv1.TenantContext, taskID string) (bool, error) {
+	var ok bool
+	err := s.tx(ctx, tenant, true, func(ctx context.Context, tx relational.Tx) error {
+		_, found, err := tx.QueryOne(ctx, `SELECT event_id FROM task_events WHERE task_id = $1 AND event_type = $2`, taskID, "task_finished")
+		ok = found
+		return err
+	})
+	return ok, err
+}
+
 const eventColumns = `task_id, event_id, dedupe_key, session_id, event_type, data, created_at`
 
 func decodeEvent(row relational.Row) Event {
