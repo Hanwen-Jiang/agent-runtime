@@ -20,7 +20,7 @@ from agentruntime_worker.activities.types import PlanRoundInput, PlanRoundOutput
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.executor.heartbeat import heartbeating
 from agentruntime_worker.planner.context import CatalogView, PlanningContext, PlanningContextSource, StaticContextSource, TranscriptContextSource
-from agentruntime_worker.planner.planner import Planner, PlanRequest
+from agentruntime_worker.planner.planner import Planner, PlannerConfig, PlanRequest
 from agentruntime_worker.registry import RegistryContextSource, registry_client
 from agentruntime_worker.session.transcript import worker_transcript
 from agentruntime_worker.tools import CONTEXT_READ, ToolCatalog, dev_tools
@@ -129,4 +129,6 @@ def dev_planner(config: WorkerConfig) -> PlannerActivities:
     memory = searcher(config)
     if memory is not None:
         source = RetrievalContextSource(source, memory)
-    return PlannerActivities(Planner(model_gateway(config)), source, tools=tools)
+    # N16-R：派子 Agent 的规矩（AR_SUB_AGENT_POLICY=rules，默认 off）。
+    planner = Planner(model_gateway(config), PlannerConfig(sub_agent_rules=config.sub_agent_policy == "rules"))
+    return PlannerActivities(planner, source, tools=tools)

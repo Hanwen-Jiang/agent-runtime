@@ -71,9 +71,14 @@ def _catalog_text(catalog: CatalogView) -> str:
     return "\n".join(lines)
 
 
-def system_zone(catalog: CatalogView) -> list[mg.ChatMessage]:
+# N16-R（docs/plan/sub-agent.md 第 4～6 节；AR_SUB_AGENT_POLICY=rules 时才加，接在规则 11 后面）。
+_SUB_AGENT_RULES = """12. 派 sub_agent 时，每个都在 inputs 里写 brief：objective（一句话，要回答什么）、scope（查什么、到哪为止、不做什么）、output（交回格式：来源卡片的数组，每张 {claim, evidence, source, confidence, open_questions}，或给定的 output_schema），可选 sources（优先的来源或路径）与 budget（{"usd": 上限}，系统会再按 Task 剩余的预算分份额）。两个以上 sub_agent 时，后面接一个综合节点（model 的 transform，after 列出它们全部、inputs 引用各自的结果），列出互相矛盾的卡片与没查到的问题。Triage 是 fast、light 时不派。"""
+
+
+def system_zone(catalog: CatalogView, *, sub_agent_rules: bool = False) -> list[mg.ChatMessage]:
     schemas = "\n".join(f"{name} 的 JSON Schema：{_dump(validate.schema(name))}" for name in ("defs", "atomic_node", "goal_node", "stage", "task_plan"))
-    text = f"{_PLANNER_RULES}\n\n{schemas}\n\n{_catalog_text(catalog)}"
+    rules = f"{_PLANNER_RULES}\n{_SUB_AGENT_RULES}" if sub_agent_rules else _PLANNER_RULES
+    text = f"{rules}\n\n{schemas}\n\n{_catalog_text(catalog)}"
     return [mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=text, cache_breakpoint=True)]
 
 
@@ -182,9 +187,10 @@ def planning_messages(
     round_seq: int,
     keep_nodes: list[str] | None = None,
     earlier: dict[str, str] | None = None,
+    sub_agent_rules: bool = False,
 ) -> list[mg.ChatMessage]:
     return [
-        *system_zone(catalog),
+        *system_zone(catalog, sub_agent_rules=sub_agent_rules),
         mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=_brief(context, decision, task_plan)),
         mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=_round(message, round_seq, task_state, last_round, keep_nodes, transcript_text(context.conversation, max_chars=PLANNING_CONVERSATION_CHARS), earlier)),
     ]

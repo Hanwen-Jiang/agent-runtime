@@ -46,6 +46,10 @@ ENV_STREAM_DELIVER = "AR_STREAM_DELIVER"
 # 推成 token_delta、thinking_delta；令牌取 AR_SECRETS_FILE 平台作用域的 delta/<AR_DELTA_CALLER>（默认 worker）。
 ENV_TASK_SERVICE_INTERNAL_URL = "AR_TASK_SERVICE_INTERNAL_URL"
 ENV_DELTA_CALLER = "AR_DELTA_CALLER"
+# N16-R（docs/plan/sub-agent.md 第 4～6 节）：rules 时 Planner 要 sub_agent 写 brief、接综合节点、按份额写预算，子 Agent 用 mid 档；
+# 默认 off（第 10 节第 1 条：评测对照通过后再默认打开）。
+ENV_SUB_AGENT_POLICY = "AR_SUB_AGENT_POLICY"
+SUB_AGENT_POLICIES = ("off", "rules")
 TOOL_LOOPS = ("stub", "model")
 # Context Builder 的阈值基准：模型实测的有效长度（token）。Model Profile 接好之前用这个配置（附录 G.2、G.5）。
 ENV_CONTEXT_EFFECTIVE_TOKENS = "AR_CONTEXT_EFFECTIVE_TOKENS"
@@ -121,6 +125,8 @@ class WorkerConfig:
     # 逐字增量推到哪里（AR_TASK_SERVICE_INTERNAL_URL）与调用方的名字（AR_DELTA_CALLER）；地址为空时不推。
     task_service_internal_url: str = ""
     delta_caller: str = "worker"
+    # 子 Agent 的规矩（AR_SUB_AGENT_POLICY）：off 或 rules。
+    sub_agent_policy: str = "off"
     # 模型实测的有效长度（token），Context Builder 的阈值按它算。
     context_effective_tokens: int = 32_000
     # 工具的输出超过这么多 token 就转存，只留摘录（Context Builder 的 offload）。
@@ -236,6 +242,9 @@ class WorkerConfig:
         internal = env.get(ENV_TASK_SERVICE_INTERNAL_URL, "").strip().rstrip("/")
         if internal and not re.fullmatch(r"https?://[^/\s]+", internal):
             raise ValueError(f"{ENV_TASK_SERVICE_INTERNAL_URL} 要是 http(s)://主机:端口")
+        sub_agents = env.get(ENV_SUB_AGENT_POLICY, "").strip() or cls.sub_agent_policy
+        if sub_agents not in SUB_AGENT_POLICIES:
+            raise ValueError(f"{ENV_SUB_AGENT_POLICY} 只能是 {'、'.join(SUB_AGENT_POLICIES)}")
         caller = env.get(ENV_DELTA_CALLER, "").strip() or cls.delta_caller
         if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,31}", caller):
             raise ValueError(f"{ENV_DELTA_CALLER} 只能是小写字母、数字与连字符（至多 32 个）")
@@ -264,6 +273,7 @@ class WorkerConfig:
             stream_deliver=stream == "1",
             task_service_internal_url=internal,
             delta_caller=caller,
+            sub_agent_policy=sub_agents,
             context_effective_tokens=effective,
             context_offload_tokens=offload,
             model_gateway_address=env.get(ENV_MODEL_GATEWAY_ADDRESS, "").strip(),

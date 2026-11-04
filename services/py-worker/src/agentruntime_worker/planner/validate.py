@@ -141,6 +141,67 @@ def cap_budgets(stage: Any, remaining: float | None) -> tuple[Any, list[str]]:
     return stage, notes
 
 
+def _sub_agents(stage: Any) -> list[dict[str, Any]]:
+    return [n for n in nodes(stage) if n.get("kind") == "goal" and n.get("mode") == "sub_agent"]
+
+
+def _usd_of(holder: Any) -> float | None:
+    value = holder.get("usd") if isinstance(holder, dict) else None
+    return float(value) if isinstance(value, int | float) and not isinstance(value, bool) and value >= 0 else None
+
+
+def share_sub_agent_budgets(stage: Any, remaining: float | None) -> tuple[Any, list[str]]:
+    """N16-R（docs/plan/sub-agent.md 第 6 节）：每个 sub_agent 的份额 = min(brief.budget.usd, Node 自己的 budget.usd,
+    Task 剩余 ÷ sub_agent 个数)，写进 Node 的 budget.usd（运行时按它给子工作流的美元预算）。都没有时不写。返回（Stage、说明）。"""
+    agents = _sub_agents(stage)
+    if not agents:
+        return stage, []
+    stage = copy.deepcopy(stage)
+    share = round(remaining / len(agents), 6) if remaining is not None and remaining > 0 else None
+    notes: list[str] = []
+    for node in _sub_agents(stage):
+        brief = (node.get("inputs") or {}).get("brief")
+        own = _usd_of(node.get("budget"))
+        options = [v for v in (_usd_of(brief.get("budget")) if isinstance(brief, dict) else None, own, share) if v is not None]
+        if not options:
+            continue
+        usd = round(min(options), 6)
+        if usd != own:
+            node["budget"] = {**(node.get("budget") or {}), "usd": usd}
+            notes.append(f"sub_agent {node.get('id')} 的份额定为 {usd:g} 美元")
+    return stage, notes
+
+
+# brief 的必填字段（docs/plan/sub-agent.md 第 4 节）。
+BRIEF_FIELDS = ("objective", "scope", "output")
+
+
+def _sub_agent_problems(stage: dict[str, Any], level: str) -> list[str]:
+    """N16-R：派子 Agent 的规矩（AR_SUB_AGENT_POLICY=rules）。"""
+    agents = _sub_agents(stage)
+    if not agents:
+        return []
+    if level in ("fast", "light"):
+        return [f"Triage 是 {level} 时不派 sub_agent（{'、'.join(str(a.get('id')) for a in agents)}）：交给主流程的 tool_loop"]
+    found: list[str] = []
+    for node in agents:
+        brief = (node.get("inputs") or {}).get("brief")
+        if not isinstance(brief, dict):
+            found.append(f"sub_agent {node.get('id')} 缺 inputs.brief：写清 objective（要回答什么）、scope（查什么、到哪为止、不做什么）、output（交回格式）")
+            continue
+        missing = [f for f in BRIEF_FIELDS if not (isinstance(brief.get(f), str) and brief[f].strip()) and not (f == "output" and isinstance(brief.get(f), dict) and brief[f])]
+        if missing:
+            found.append(f"sub_agent {node.get('id')} 的 brief 缺 {'、'.join(missing)}")
+    if len(agents) >= 2:
+        ids = {str(a.get("id")) for a in agents}
+        if not any(ids <= {str(x) for x in n.get("after") or []} for n in nodes(stage)):
+            found.append(
+                f"有 {len(agents)} 个 sub_agent（{'、'.join(sorted(ids))}），后面要接一个综合节点：after 列出它们全部，"
+                "输入引用各自的结果，列出互相矛盾的卡片与没查到的问题"
+            )
+    return found
+
+
 def _rank(effect: str) -> int:
     return sp.effect_rank(effect) if effect in sp.EFFECT_ORDER else len(sp.EFFECT_ORDER)
 
@@ -213,9 +274,11 @@ def problems(
     keep_nodes: list[str],
     earlier: Mapping[str, str] | None = None,
     require_steps: bool = False,
+    sub_agent_rules: bool = False,
 ) -> list[str]:
     """不合格之处的说明，为空表示合格。说明会原样带给模型重问。earlier 给了时按 N-01 的规则查引用（与 Stage Runner 一致）。
-    Task Plan 带了 steps 时按 N-04 查（workflows/plan.py，与 Task 工作流一致）；require_steps（第一次完整规划）时没给也不合格。"""
+    Task Plan 带了 steps 时按 N-04 查（workflows/plan.py，与 Task 工作流一致）；require_steps（第一次完整规划）时没给也不合格。
+    sub_agent_rules（N16-R，AR_SUB_AGENT_POLICY=rules）时另查派子 Agent 的规矩（_sub_agent_problems）。"""
     if not isinstance(stage, dict):
         return ["没有给出 stage（JSON 对象）"]
     found = schema_problems("stage", stage)
@@ -227,6 +290,8 @@ def problems(
     found += _catalog_problems(stage, context)
     found += _effect_problems(stage, context)
     found += _role_problems(stage, context)
+    if sub_agent_rules:
+        found += _sub_agent_problems(stage, level)
     redone = sorted({str(n.get("id")) for n in nodes(stage)} & set(keep_nodes))
     if redone:
         found.append(f"重做了上一轮已验证、要保留的 Node：{'、'.join(redone)}；直接用它们的结果，不要再安排")

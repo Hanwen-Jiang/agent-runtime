@@ -1626,6 +1626,14 @@ class StageRunner:
         effects, reason = await self._check_tools(node, ceiling, read_only=True)
         if effects is None:
             return _denied(role, reason)
+        spent = self._budget()["spent_usd"]
+        budget_usd = self._ctx.budget_usd
+        # N16-R（docs/plan/sub-agent.md 第 6 节）：Node 的 budget.usd 是这个子 Agent 的份额，子工作流按 启动时已花的 + 份额 停下，
+        # 不超过 Task 的预算。只改子工作流的输入，不改命令序列。
+        share = (node.get("budget") or {}).get("usd")
+        if isinstance(share, int | float) and not isinstance(share, bool) and share >= 0:
+            capped = round(spent + float(share), 6)
+            budget_usd = capped if budget_usd is None else min(budget_usd, capped)
         try:
             async with self._slot():
                 out = await workflow.execute_child_workflow(
@@ -1640,8 +1648,8 @@ class StageRunner:
                         policy=self.policy,
                         context_version=self._ctx.context_version,
                         task_family=self._ctx.task_family,
-                        budget_usd=self._ctx.budget_usd,
-                        spent_before_usd=self._budget()["spent_usd"],
+                        budget_usd=budget_usd,
+                        spent_before_usd=spent,
                         publish_events=self._ctx.n16 and top and self._ctx.events is not None,
                         **self._child_budgets(),
                     ),

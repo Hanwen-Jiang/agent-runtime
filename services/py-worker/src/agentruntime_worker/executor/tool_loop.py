@@ -35,6 +35,8 @@ from agentruntime_worker.session.transcript import TranscriptSource, transcript_
 from agentruntime_worker.tools.catalog import ToolCatalog
 
 TOOL_LOOP_TIER = "strong@medium"
+# N16-R（附录 F）：只读研究的子 Agent 用中模型；主流程的 tool_loop 不换（提示缓存）。AR_SUB_AGENT_POLICY=rules 时才用。
+SUB_AGENT_TIER = "mid@low"
 # 放进 brief 的之前的对话（字）：上下文的预算要留给工具的结果（TMP 计划第 11.13 节）。
 CONVERSATION_CHARS = 8000
 SYSTEM_PROMPT = """你在执行一个 Goal Node 的 tool_loop：每一步要么调用工具，要么在完成条件满足时不再调用工具、直接给出结果。
@@ -95,8 +97,11 @@ class ModelToolLoop:
     def __init__(
         self, gateway: ModelGateway, builder: ContextBuilder, *, tier: str = TOOL_LOOP_TIER, tools: ToolCatalog | None = None,
         transcript: TranscriptSource | None = None, mcp_tools: Callable[[], frozenset[str]] | None = None, memory: Searcher | None = None,
+        sub_agent_tier: str | None = None,
     ) -> None:
         self.memory = memory
+        # 子 Agent（isolated 的步）用的 Tier；None 时与主流程同一个。
+        self.sub_agent_tier = sub_agent_tier
         # 给了 ToolCatalog 时，工具的说明与参数 schema 取自登记，没登记的不给模型（T-10）；没给时只有名字。
         self.tools = tools
         # 现在登记了的 MCP 工具（Worker 启动时才连上 MCP Server，所以是函数）：上下文占比里单独一类。
@@ -164,7 +169,8 @@ class ModelToolLoop:
                 response = await self.gateway.generate(
                     mg.GenerateRequest(
                         tenant=tenant_context(inp.tenant),
-                        call=mg.CallContext(task_id=inp.task_id, node_id=inp.step_id or str(inp.node.get("id", "")), role=enums_pb2.ROLE_ACT, tier=self.tier,
+                        call=mg.CallContext(task_id=inp.task_id, node_id=inp.step_id or str(inp.node.get("id", "")), role=enums_pb2.ROLE_ACT,
+                                            tier=self.sub_agent_tier if inp.isolated and self.sub_agent_tier else self.tier,
                                             task_family=task_family(inp.task_plan, inp.task_family)),
                         generation=params,
                     )
@@ -222,5 +228,6 @@ def dev_tool_loop(config: WorkerConfig) -> ToolLoopActivities:
         ModelToolLoop(
             gateway, builder, tools=ToolCatalog(dev_tools(config)), transcript=worker_transcript(config),
             mcp_tools=lambda: mcp_tool_names(config), memory=searcher(config),
+            sub_agent_tier=SUB_AGENT_TIER if config.sub_agent_policy == "rules" else None,
         )
     )

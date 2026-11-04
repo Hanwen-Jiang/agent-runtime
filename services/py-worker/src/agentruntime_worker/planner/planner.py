@@ -30,6 +30,8 @@ class PlannerConfig:
     """fast 续改用的 Node Template。"""
     answer_template: str = "answer@v1"
     """fast 作答、light 交付用的 Node Template。"""
+    sub_agent_rules: bool = False
+    """N16-R（AR_SUB_AGENT_POLICY=rules）：sub_agent 要写 brief、接综合节点，份额写进 Node 的 budget.usd。"""
 
 
 @dataclass(frozen=True)
@@ -254,6 +256,7 @@ class Planner:
             round_seq=request.round_seq,
             keep_nodes=keep,
             earlier=request.earlier,
+            sub_agent_rules=self.config.sub_agent_rules,
         )
         # N-04：第一次完整规划（Task State 里还没有 plan）要给出整体步骤。
         require_steps = decision.level == "full" and not (request.task_state or {}).get("plan")
@@ -273,9 +276,17 @@ class Planner:
                     stage = validate.normalize_stage(answer.get("stage"), round_seq=request.round_seq, tenant_id=request.tenant.tenant_id, task_id=request.task_id)
                     task_plan = self._with_triage(answer.get("task_plan"), decision)
                     stage, task_plan, adjusted = validate.drop_unknown_tiers(stage, task_plan, request.context.catalog.tiers)
-                    stage, capped = validate.cap_budgets(stage, self._left_after_planning(request, calls))
+                    left = self._left_after_planning(request, calls)
+                    stage, capped = validate.cap_budgets(stage, left)
                     adjusted = [*adjusted, *capped]
-                    found = validate.problems(stage, task_plan, level=decision.level, context=request.context, keep_nodes=keep, earlier=request.earlier, require_steps=require_steps)
+                    rules = self.config.sub_agent_rules
+                    if rules:
+                        stage, shared = validate.share_sub_agent_budgets(stage, left)
+                        adjusted = [*adjusted, *shared]
+                    found = validate.problems(
+                        stage, task_plan, level=decision.level, context=request.context, keep_nodes=keep, earlier=request.earlier, require_steps=require_steps,
+                        sub_agent_rules=rules,
+                    )
                     if not found:
                         return PlanResult(triage_level=decision.level, stage=stage, task_plan=task_plan, decision=decision, calls=calls, adjustments=adjusted)
             if attempt == 0:
