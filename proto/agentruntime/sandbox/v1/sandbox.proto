@@ -1,0 +1,405 @@
+syntax = "proto3";
+
+package agentruntime.sandbox.v1;
+
+import "agentruntime/common/v1/tenant.proto";
+import "agentruntime/environment/v1/environment.proto";
+import "agentruntime/workspace/v1/workspace.proto";
+
+// SandboxService 管理沙箱环境的生命周期与对环境的操作（SBX-01，docs/plan/sbx-01-sandbox-service-2026-11-03.md）：
+// 借还、选后端（D-12 的回退、D-19 的启用开关）、配额与预算、会话级复用、存档与恢复（D-06）、冷热分层的恢复（DISK-B）、
+// 环境配置的准备（ENV-02）、按项目构建环境（D-17）、对账（D-11）。环境表（sandbox_envs 等）由它负责。
+//
+// 调用方只有 Worker 与 task-service，用户代码永远不直接连它。认证：每个调用方一个服务令牌（SecretStore 平台作用域的
+// sandbox-service/tokens/<调用方>），请求头 authorization: Bearer <令牌> 与 x-agentruntime-caller: <调用方>；task-service
+// 只能调只读的工作区方法（ListFiles、ReadFile、Grep、GetDiff、GetLog、DescribeTenant）。
+//
+// 每个请求的字段 1 都是 TenantContext（由调用方按认证身份填写，服务据此绑定所有 Provider）；tenant_id 为空的请求直接拒绝。
+// 错误按统一错误模型（libs/go-core/providererr）：环境忙 workspace_busy、后端停用 sandbox_backend_disabled、配额
+// sandbox_quota_exceeded 等现有的码原样保留。
+service SandboxService {
+  // --- 工作区的只读操作（WS-READ-01）：不进 Temporal、不改环境的 busy、不触发存档 ---
+  // 会话里有活着的可写环境时在它里面读（看得到没提交的改动）；挂卷时 ListFiles、ReadFile、Grep 直接读卷；存档模式读最近的
+  // 快照（清单与块），不建环境。GetDiff、GetLog 在沙箱里跑 git（不在服务进程里对用户的仓库跑 git）。
+  rpc ListFiles(ListFilesRequest) returns (ListFilesResponse);
+  rpc ReadFile(ReadFileRequest) returns (ReadFileResponse);
+  rpc Grep(GrepRequest) returns (GrepResponse);
+  rpc GetDiff(GetDiffRequest) returns (GetDiffResponse);
+  rpc GetLog(GetLogRequest) returns (GetLogResponse);
+  // 租户的沙箱策略摘要（首选后端、是否存档模式、工作区上限）；Worker 判断工作区怎么用时读它。
+  rpc DescribeTenant(DescribeTenantRequest) returns (DescribeTenantResponse);
+
+  // --- 借还与执行 ---
+  rpc Acquire(AcquireRequest) returns (AcquireResponse);
+  // 在借到的环境里执行一条命令。平台的环境变量（包镜像、出网代理、测试用密钥、.env）由服务按环境表补上，不出服务。
+  rpc Exec(ExecRequest) returns (ExecResponse);
+  rpc WriteFile(WriteFileRequest) returns (WriteFileResponse);
+  rpc ReadLeaseFile(ReadLeaseFileRequest) returns (ReadLeaseFileResponse);
+  rpc ListLeaseDir(ListLeaseDirRequest) returns (ListLeaseDirResponse);
+  rpc GrepLease(GrepLeaseRequest) returns (GrepLeaseResponse);
+  // 工作目录的逐项清单（FileEntry 同 agentruntime_core.providers.sandbox，按路径排序）。
+  rpc Manifest(ManifestRequest) returns (ManifestResponse);
+  // 工作目录打成 tar（语义同 SandboxArchive.export_archive），分块流回。
+  rpc ExportArchive(ExportArchiveRequest) returns (stream ExportArchiveResponse);
+  // 把 tar 解到空的工作目录：第一条消息带 header，之后每条带 chunk。
+  rpc ImportArchive(stream ImportArchiveRequest) returns (ImportArchiveResponse);
+  rpc PreviewAddress(PreviewAddressRequest) returns (PreviewAddressResponse);
+  // 用完：keep 时留着（会话级），否则销毁（存档模式的可写环境先存档）。
+  rpc Release(ReleaseRequest) returns (ReleaseResponse);
+  // 把借到的环境里的工作区存一份快照。
+  rpc Snapshot(SnapshotRequest) returns (SnapshotResponse);
+  // 后端里已经没有这个环境：记为丢失。
+  rpc Discard(DiscardRequest) returns (DiscardResponse);
+
+  // --- 批量 ---
+  rpc DestroySession(DestroySessionRequest) returns (DestroySessionResponse);
+  rpc DestroyWorkspace(DestroyWorkspaceRequest) returns (DestroyWorkspaceResponse);
+  rpc DestroyTenant(DestroyTenantRequest) returns (DestroyTenantResponse);
+}
+
+// --- 只读 ---
+
+message ListFilesRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string workspace_id = 2;
+  // 目录；为空时是工作区根。
+  string path = 3;
+}
+
+message ReadFileRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string workspace_id = 2;
+  string path = 3;
+}
+
+message GrepRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string workspace_id = 2;
+  // RE2 正则，按行匹配。
+  string pattern = 3;
+  string path = 4;
+  // 0 时 100，最多 1000。
+  int32 max_matches = 5;
+}
+
+message GrepMatch {
+  string path = 1;
+  int32 line = 2;
+  string text = 3;
+}
+
+message GrepResponse {
+  repeated GrepMatch matches = 1;
+  bool truncated = 2;
+}
+
+message GrepLeaseResponse {
+  repeated GrepMatch matches = 1;
+  bool truncated = 2;
+}
+
+message GetDiffRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string workspace_id = 2;
+  string base = 3;
+  bool find_renames = 4;
+}
+
+message GetLogRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string workspace_id = 2;
+  int32 limit = 3;
+  string base = 4;
+}
+
+// 下面四个响应包着 Workspace API 的同名响应，task-service 原样转给调用方。
+message ListFilesResponse {
+  agentruntime.workspace.v1.ListFilesResponse response = 1;
+}
+
+message ReadFileResponse {
+  agentruntime.workspace.v1.ReadFileResponse response = 1;
+}
+
+message GetDiffResponse {
+  agentruntime.workspace.v1.GetDiffResponse response = 1;
+}
+
+message GetLogResponse {
+  agentruntime.workspace.v1.GetLogResponse response = 1;
+}
+
+message DescribeTenantRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+}
+
+message DescribeTenantResponse {
+  // 首选后端与回退（去重保序）。
+  repeated string backends = 1;
+  // 首选后端是存档模式（不挂卷，D-06）。
+  bool archive_mode = 2;
+  // 租户策略 workspace 一节：单个工作区的字节上限与工作区个数。
+  int64 workspace_max_bytes = 3;
+  int32 max_workspaces = 4;
+  // 首选后端经出网网关（K8s、本地后端配了网关时）。
+  bool gateway = 5;
+  // 首选后端的种类与隔离强度。
+  string kind = 6;
+  string isolation = 7;
+}
+
+// --- 借还 ---
+
+message Spec {
+  // 运行环境（python、universal、node、go）；空时 python。
+  string runtime = 1;
+  int32 cpu_millis = 2;
+  int32 memory_mb = 3;
+  // 一次性环境的空闲到期（秒）；0 时 600。
+  int32 idle_timeout_s = 4;
+  // 绑定的工作区；空时环境不绑工作区。
+  string workspace_id = 5;
+  // 显式的环境镜像（D-17），只接受部署登记的环境镜像仓库下的引用。
+  string image = 6;
+}
+
+message AcquireRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  Spec spec = 2;
+  string task_id = 3;
+  // 要写工作区（默认只读的调用方要显式给 false）。
+  bool writable = 4;
+  // 会话级复用：按（租户、工作区、会话）找没到期的环境。
+  bool reuse = 5;
+  // 借到后标记忙多久（毫秒）；0 不标。
+  int64 busy_for_ms = 6;
+  // 要执行业务命令（shell_run）：按工作区选用的环境配置准备（ENV-02）。
+  bool prepare = 7;
+  // 冷热分层转冷时自己借的环境（DISK-B），不受“正在转冷”的拦截。
+  bool cooling = 8;
+  // shell_run 第一次用到工作区时按项目定制运行环境（D-17）：服务读工作区里的 devcontainer.json、.tool-versions 或
+  // Dockerfile，镜像就绪时用它，没就绪时起构建并先用 universal。
+  bool project_environment = 9;
+}
+
+message Backend {
+  string name = 1;
+  string kind = 2;
+  string isolation = 3;
+}
+
+message Prepared {
+  string environment_id = 1;
+  string setup = 2;
+  string start = 3;
+}
+
+// Lease 是一次借用。lease_id 就是环境表的 env_ref：服务重启后按环境表恢复，调用方照常用。
+message Lease {
+  string lease_id = 1;
+  Backend backend = 2;
+  // 后端里的环境号（只给 trace 与排障，后续调用一律用 lease_id）。
+  string backend_env_id = 3;
+  bool reused = 4;
+  string fallback_from = 5;
+  string fallback_reason = 6;
+  // none、gateway、allowlist。
+  string network = 7;
+  // 注入的测试用密钥的名字（不给值）。
+  repeated string test_env_names = 8;
+  bool archive = 9;
+  bool writable = 10;
+  // 恢复用的快照（存档模式或冷的工作区）。
+  string restored_snapshot = 11;
+  // 这次借用时准备了环境（ENV-02）；复用已准备好的环境时为空。
+  Prepared prepared = 12;
+  agentruntime.environment.v1.EnvRecord record = 13;
+  double cost_usd = 14;
+  // 项目环境的解析结果（D-17）：{"environment": ...} 的 JSON，给 shell_run 的结果；没要时为空。
+  string environment_json = 15;
+}
+
+message AcquireResponse {
+  Lease lease = 1;
+}
+
+message ManifestRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string lease_id = 2;
+}
+
+message ExecRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string lease_id = 2;
+  repeated string argv = 3;
+  int64 timeout_ms = 4;
+  bytes stdin = 5;
+  // 这一条命令额外的环境变量；与平台注入的同名时平台的优先。
+  map<string, string> env = 6;
+  // 每路输出最多返回多少字节（尾部截断）；0 时 4 MiB。
+  int64 max_output_bytes = 7;
+}
+
+message ExecResponse {
+  // 超时时没有退出码。
+  bool has_exit_code = 1;
+  int32 exit_code = 2;
+  bytes stdout = 3;
+  bytes stderr = 4;
+  bool timed_out = 5;
+  // 量不出时为 -1。
+  int64 cpu_time_ms = 6;
+  bool stdout_truncated = 7;
+  bool stderr_truncated = 8;
+}
+
+message WriteFileRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string lease_id = 2;
+  string path = 3;
+  bytes data = 4;
+}
+
+message WriteFileResponse {}
+
+message ReadLeaseFileRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string lease_id = 2;
+  string path = 3;
+}
+
+message ListLeaseDirRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string lease_id = 2;
+  string path = 3;
+}
+
+message ReadLeaseFileResponse {
+  bytes data = 1;
+}
+
+message DirEntry {
+  string name = 1;
+  // file、dir、symlink。
+  string type = 2;
+  int64 size = 3;
+}
+
+message ListLeaseDirResponse {
+  repeated DirEntry entries = 1;
+}
+
+message GrepLeaseRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string lease_id = 2;
+  string pattern = 3;
+  string path = 4;
+  int32 max_matches = 5;
+}
+
+message ManifestEntry {
+  string path = 1;
+  string type = 2;
+  int32 mode = 3;
+  int64 size = 4;
+  string sha256 = 5;
+  string link = 6;
+}
+
+message ManifestResponse {
+  repeated ManifestEntry entries = 1;
+}
+
+message ExportArchiveRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string lease_id = 2;
+  int64 max_bytes = 3;
+}
+
+message ExportArchiveResponse {
+  bytes data = 1;
+}
+
+message ImportArchiveHeader {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string lease_id = 2;
+  int64 size = 3;
+  int64 max_bytes = 4;
+}
+
+message ImportArchiveRequest {
+  oneof part {
+    ImportArchiveHeader header = 1;
+    bytes chunk = 2;
+  }
+}
+
+message ImportArchiveResponse {}
+
+message PreviewAddressRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string lease_id = 2;
+  int32 port = 3;
+}
+
+message PreviewAddressResponse {
+  string address = 1;
+}
+
+message ReleaseRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string lease_id = 2;
+  bool keep = 3;
+  // 最后一条命令用掉的 CPU 时间（计量）；0 不记。
+  int64 cpu_time_ms = 4;
+}
+
+message ReleaseResponse {
+  Lease lease = 1;
+}
+
+message SnapshotRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string lease_id = 2;
+}
+
+message SnapshotResponse {
+  string snapshot_id = 1;
+  int64 bytes = 2;
+  int32 files = 3;
+}
+
+message DiscardRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string lease_id = 2;
+  string reason = 3;
+}
+
+message DiscardResponse {}
+
+message DestroySessionRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string workspace_id = 2;
+  string session_id = 3;
+}
+
+message DestroyWorkspaceRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string workspace_id = 2;
+}
+
+message DestroyTenantRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+}
+
+message DestroySessionResponse {
+  int32 destroyed = 1;
+}
+
+message DestroyWorkspaceResponse {
+  int32 destroyed = 1;
+}
+
+message DestroyTenantResponse {
+  int32 destroyed = 1;
+}

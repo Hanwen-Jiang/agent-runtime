@@ -74,6 +74,17 @@
       }
     },
     {
+      "name": "sandbox_service_switch",
+      "source": "SBX-01（docs/plan/sbx-01-sandbox-service-2026-11-03.md 第 7、9 节）：按租户灰度，内部租户先经 Sandbox Service 借还环境",
+      "notes": "回退就是去掉它或改成 false。",
+      "instance": {
+        "sandbox": {
+          "backend": "kata",
+          "service": true
+        }
+      }
+    },
+    {
       "name": "sandbox_platform_limits",
       "source": "设计书改动稿 W5、W8、W10、W11（docs/plan/cloud-deploy.md D-12、D-13、D-16）：回退、会话回收、配额与预算、联网授权的上限",
       "notes": "后端名取自 Worker 的沙箱后端登记；主机名是示意。",
@@ -450,6 +461,22 @@
           "network": {
             "approver": "anyone"
           }
+        }
+      }
+    },
+    {
+      "name": "sandbox_service_not_boolean",
+      "description": "Sandbox Service 的开关只能是布尔",
+      "violates": [
+        {
+          "path": "/sandbox/service",
+          "keyword": "type"
+        }
+      ],
+      "instance": {
+        "sandbox": {
+          "backend": "kata",
+          "service": "yes"
         }
       }
     },
