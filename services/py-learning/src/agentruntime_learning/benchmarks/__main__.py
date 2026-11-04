@@ -123,6 +123,8 @@ def _parser() -> argparse.ArgumentParser:
     tr.add_argument("--environment", choices=("official", "none"), default="official")
     tr.add_argument("--workspace-path", default="/workspace")
     tr.add_argument("--keep-workspaces", action="store_true")
+    tr.add_argument("--network-hosts", default="", help="每个 Task 申请联网的主机，逗号分隔（要在租户策略的 sandbox.network 放行里）；不给时不申请")
+    tr.add_argument("--network-minutes", type=int, choices=sb.NETWORK_MINUTES, default=60, help="联网授权多久（分钟）")
     tg = tsub.add_parser("grade", help="用 Docker 在官方镜像里跑隐藏的测试")
     tg.add_argument("--tasks", type=Path, required=True)
     tg.add_argument("--out", type=Path, required=True)
@@ -222,11 +224,16 @@ def _terminalbench(args: argparse.Namespace) -> int:
         return 2
     chosen = tb.select(tasks, limit=args.limit, seed=args.seed, ids=_lines(args.ids), difficulties=args.difficulty, categories=args.category, only=only)
     run_id = args.run_id or re.sub(r"[^A-Za-z0-9._-]+", "-", args.out.absolute().name).strip("-.") or "run"
-    settings = sb.Settings(
-        run_id=run_id, budget_usd=args.budget_usd, task_usd_limit=args.task_usd_limit, model_name=args.model_name, concurrency=args.concurrency,
-        task_timeout_s=args.task_timeout_min * 60, environment=args.environment, workspace_path=args.workspace_path, keep_workspaces=args.keep_workspaces,
-        poll_s=args.poll_s,
-    )
+    hosts = tuple(h.strip().lower() for h in args.network_hosts.split(",") if h.strip())
+    try:
+        settings = sb.Settings(
+            run_id=run_id, budget_usd=args.budget_usd, task_usd_limit=args.task_usd_limit, model_name=args.model_name, concurrency=args.concurrency,
+            task_timeout_s=args.task_timeout_min * 60, environment=args.environment, workspace_path=args.workspace_path, keep_workspaces=args.keep_workspaces,
+            poll_s=args.poll_s, network_hosts=hosts, network_minutes=args.network_minutes,
+        )
+    except ValueError as err:
+        print(str(err), file=sys.stderr)
+        return 2
     selection = {"tasks_dir": str(args.tasks), **({"ids_file": str(args.ids)} if args.ids else {"limit": args.limit, "seed": args.seed}),
                  "difficulties": sorted(args.difficulty), "categories": sorted(args.category), "portable_only": only is not None}
     with _live(run_id, args.model_name, suite=tb.SUITE, split="2.0") as live:

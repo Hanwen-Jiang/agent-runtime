@@ -14,7 +14,7 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -96,11 +96,15 @@ class RuntimeClient:
 
     # --- Task API ---
 
-    def submit(self, *, workspace_id: str, message: str, client_request_id: str) -> dict[str, Any]:
-        out = self._call(TASK_SERVICE, "SubmitTask", {
+    def submit(self, *, workspace_id: str, message: str, client_request_id: str, network: Mapping[str, Any] | None = None) -> dict[str, Any]:
+        """network 是提交时的联网申请（Task API 的 NetworkRequest：hosts、minutes、reason；EV-TB-NET），没有时不带。"""
+        body: dict[str, Any] = {
             "workspace_id": workspace_id, "message": message, "client_request_id": client_request_id,
             "session_access": "SESSION_ACCESS_READ_WRITE",
-        })
+        }
+        if network:
+            body["network_request"] = {"hosts": list(network["hosts"]), "minutes": int(network["minutes"]), "reason": str(network.get("reason") or "")}
+        out = self._call(TASK_SERVICE, "SubmitTask", body)
         # 订阅地址只取路径，按 Task API 的地址补全：SSE 与 unary 是同一个 task-service、同一个端口，而它没配
         # AR_PUBLIC_BASE_URL 时给的是自己的监听地址（线上是 http://0.0.0.0:8080/…），从别处连不上。
         parts = urllib.parse.urlsplit(str(out["eventsUrl"]))

@@ -57,6 +57,10 @@ MAX_RECONNECTS = 5
 EPS = 1e-9
 _COMMIT = re.compile(r"^[0-9a-f]{40}([0-9a-f]{24})?$")
 _RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+_NETWORK_HOST = re.compile(r"(\*\.)?[a-z0-9]([a-z0-9-]{0,62}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,62}[a-z0-9])?)+")
+_IPV4 = re.compile(r"[0-9.]+")
+# Task API 的 NetworkRequest.minutes 只收这几个（不超过租户策略的 max_grant_minutes）。
+NETWORK_MINUTES = (15, 30, 60)
 
 MESSAGE = """Resolve the following issue in the repository {repo}. The workspace is a checkout of the repository at the commit where the issue was reported.
 
@@ -266,7 +270,7 @@ class Runtime(Protocol):
     def create_workspace(self, workspace_id: str, *, repo_url: str, ref: str, files: list[dict[str, str]]) -> dict[str, Any]: ...
     def delete_workspace(self, workspace_id: str) -> None: ...
     def diff(self, workspace_id: str, *, base: str) -> dict[str, Any]: ...
-    def submit(self, *, workspace_id: str, message: str, client_request_id: str) -> dict[str, Any]: ...
+    def submit(self, *, workspace_id: str, message: str, client_request_id: str, network: Mapping[str, Any] | None = None) -> dict[str, Any]: ...
     def events(self, task_id: str, events_url: str, *, last_event_id: int = 0) -> Iterator[Event]: ...
     def query(self, task_id: str) -> dict[str, Any]: ...
     def reply(self, task_id: str, question_id: str, option: str) -> None: ...
@@ -294,10 +298,19 @@ class Settings:
     quota_wait_s: float = 30.0
     quota_wait_tries: int = 60
     clone_tries: int = 3
+    # EV-TB-NET：每个 Task 提交时申请联网的主机（Task API 的 network_request；租户策略的 approver 是 submitter 时提交就是批准）。
+    # 空时不申请，与原来一样。给了就固定在 run.json 的设置里，换了主机不能续跑。
+    network_hosts: tuple[str, ...] = ()
+    network_minutes: int = 60
 
     def __post_init__(self) -> None:
         if not _RUN_ID.match(self.run_id):
             raise ValueError(f"run_id 只能用字母、数字与 . _ -（最长 64）：{self.run_id}")
+        bad = [h for h in self.network_hosts if not _NETWORK_HOST.fullmatch(h) or _IPV4.fullmatch(h.removeprefix("*."))]
+        if bad:
+            raise ValueError(f"联网的主机只写域名（可以 *. 开头），不带端口与路径，不能是 IP：{bad}")
+        if self.network_minutes not in NETWORK_MINUTES:
+            raise ValueError(f"联网授权的分钟数取 {'、'.join(map(str, NETWORK_MINUTES))}：{self.network_minutes}")
         if self.environment not in ("official", "none"):
             raise ValueError(f"environment 取 official 或 none：{self.environment}")
         if "{repo}" not in self.repo_url_template:
@@ -306,7 +319,17 @@ class Settings:
             raise ValueError("预算不能为负，单题上限、并发与时间上限要大于 0")
 
     def pinned(self) -> dict[str, Any]:
-        return {k: getattr(self, k) for k in PINNED}
+        out = {k: getattr(self, k) for k in PINNED}
+        if self.network_hosts:
+            out.update(network_hosts=list(self.network_hosts), network_minutes=self.network_minutes)
+        return out
+
+    def network(self, instance_id: str) -> dict[str, Any] | None:
+        """这道题的联网申请；没给主机时为 None（不申请）。"""
+        if not self.network_hosts:
+            return None
+        return {"hosts": list(self.network_hosts), "minutes": self.network_minutes,
+                "reason": f"{self.run_id} {instance_id}: the official benchmark runs with internet access"}
 
 
 @dataclass(frozen=True)
@@ -563,7 +586,9 @@ class _Runner:
             self._save(rec)
             request_id = hashlib.sha256(f"{self.s.run_id}\x00{inst.instance_id}\x00{created['head']}".encode()).hexdigest()[:32]
             try:
-                sub = self._when_room(lambda: self.rt.submit(workspace_id=ws, message=self._message(inst), client_request_id=request_id))
+                network = self.s.network(inst.instance_id)
+                extra = {"network": network} if network is not None else {}
+                sub = self._when_room(lambda: self.rt.submit(workspace_id=ws, message=self._message(inst), client_request_id=request_id, **extra))
             except Exception:
                 # 没交上：工作区不留着占配额（续跑时会重建）。
                 if not self.s.keep_workspaces:
