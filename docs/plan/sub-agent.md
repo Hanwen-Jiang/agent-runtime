@@ -114,3 +114,26 @@ Goal Node 的 inputs 里加一个 `brief`（JSON Schema 载荷，不进 proto）
 
 - 附录 E.1 只写了“读密集或宽度型用 sub_agent”“默认不派”。建议补上第 3 节的条件与数量表、第 4 节的 brief、第 5 节的来源卡片与必接综合节点。
 - 附录 F 写了 sub_agent 用中模型，但没写“Planner 只能往小调”；建议补上。
+
+## 12. 实施记录：第一段（N16-R，2026-11-04）
+
+第 10 节已批准（总表第 7.2 节）。按第 10 节第 1 条放在开关后面：`AR_SUB_AGENT_POLICY=rules`（Worker 的环境变量，默认 off），
+第 9 节的评测对照通过后再默认打开。不改契约、不改命令序列（没加版本分支）。
+
+| 部分 | 位置 | 说明 |
+| --- | --- | --- |
+| brief | `planner/validate.py` 的 `_sub_agent_problems` | 每个 sub_agent 的 `inputs.brief` 要有 objective、scope、output（output 可以是字符串或对象），缺了回 Planner 重写；fast、light 不派 |
+| 综合节点 | 同上 | 两个以上 sub_agent 时，要有一个节点的 `after` 包含它们全部 |
+| 份额 | `validate.share_sub_agent_budgets`、`planner.py` 规划后处理 | min(brief.budget.usd、Node 的 budget.usd、Task 剩余 ÷ sub_agent 数) 写进 Node 的 `budget.usd`（goal_node 的 budget 本来就有 usd） |
+| 运行时的份额 | `stage_runner._sub_agent` | Node 有 `budget.usd` 时，子工作流的美元预算 = 启动时已花的 + 份额，不超过 Task 的；用完了这个子 Agent 照现在的规矩停下（denied、`budget_exhausted`）。不论开关都生效（只有 Planner 写了才有） |
+| mid 档 | `executor/tool_loop.py` 的 `SUB_AGENT_TIER` | isolated 的步（子 Agent）用 `mid@low`，主流程不换 |
+| 提示 | `planner/prompts.py` 的规则 12 | 只在开关打开时加进 system 区 |
+
+测试：`tests/test_planner_sub_agent.py`、`tests/test_sub_agent_budget.py`。
+
+与第 4～6 节不同、没做的：
+
+- Planner 给单个 sub_agent 写 tier（“只能往小调”）：goal_node 没有 tier 字段，要改 schema（S-01），这一段不做；子 Agent 一律 mid。
+- 来源卡片的格式校验与“不合格带错误重问一次”、Reviewer 的“卡片冲突而综合节点没提到时判 repair”：要先定卡片在结果里的位置，下一段。
+- 超份额时带着已有卡片收尾（交回部分结果）：要多一步模型调用，改命令序列，要加版本分支，下一段。现在超份额是 denied。
+- 第 9 节的评测集新题（人审）与评测对照（花钱）。
