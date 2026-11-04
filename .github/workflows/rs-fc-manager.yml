@@ -1,0 +1,50 @@
+# fc-manager（D-20，services/rs-fc-manager）的检查：cargo fmt、clippy、单元测试与对着假 jailer、firecracker 的验收测试
+# （tests/acceptance.rs，要 Linux，不要 KVM 与 root）。D-28 的根 Cargo workspace 与 scripts/check.py 的 rust 一步落地后，
+# 这个 crate 并进 workspace，这里的 job 并进 ci.yml 的 rust 一步，删掉本文件。
+# 真 VM 的用例（tests/real_vm.rs）要 AR_TEST_FIRECRACKER=1、root 与 /dev/kvm，不在这里跑（docs/plan/firecracker-backend.md 第 6 节）。
+name: rs-fc-manager
+
+on:
+  pull_request:
+    paths: ["services/rs-fc-manager/**", ".github/workflows/rs-fc-manager.yml"]
+  push:
+    branches: [main, "wip/fc-manager-*"]
+    paths: ["services/rs-fc-manager/**", ".github/workflows/rs-fc-manager.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rs-fc-manager-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # 与 docs/plan/firecracker-backend.md 第 10 节一致：发布满两周（1.99.1 发布于 2026-10-13）。
+  RUST_TOOLCHAIN: "1.99.1"
+  CARGO_TERM_COLOR: never
+
+jobs:
+  test:
+    name: fc-manager
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: services/rs-fc-manager
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Rust
+        run: |
+          rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --component clippy,rustfmt
+          rustup default "$RUST_TOOLCHAIN"
+
+      - name: cargo fmt
+        run: cargo fmt --check
+
+      - name: cargo clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test --locked -- --test-threads 4
