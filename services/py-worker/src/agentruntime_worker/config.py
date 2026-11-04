@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -39,8 +40,12 @@ JUDGES = ("", "jev")
 REVIEWERS = ("stub", "model")
 # tool_loop 的一步：stub 用桩（默认，第一步就结束）；model 经 Model Gateway，上下文由 Context Builder 组装。
 ENV_TOOL_LOOP = "AR_TOOL_LOOP"
-# N-19/N-20：deliver 节点经 StreamGenerate 生成并记首个 token 的用时（1 打开）。
+# N-19/N-20：没有输出 schema 的 deliver 节点经 StreamGenerate 生成并记首个 token 的用时（默认打开，0 关掉）。
 ENV_STREAM_DELIVER = "AR_STREAM_DELIVER"
+# DELTA（docs/plan/all-plans-dag-2026-11-03.md 7.1）：task-service 内部端口的地址（http://主机:端口），设了才把流式生成的片段
+# 推成 token_delta、thinking_delta；令牌取 AR_SECRETS_FILE 平台作用域的 delta/<AR_DELTA_CALLER>（默认 worker）。
+ENV_TASK_SERVICE_INTERNAL_URL = "AR_TASK_SERVICE_INTERNAL_URL"
+ENV_DELTA_CALLER = "AR_DELTA_CALLER"
 TOOL_LOOPS = ("stub", "model")
 # Context Builder 的阈值基准：模型实测的有效长度（token）。Model Profile 接好之前用这个配置（附录 G.2、G.5）。
 ENV_CONTEXT_EFFECTIVE_TOKENS = "AR_CONTEXT_EFFECTIVE_TOKENS"
@@ -111,8 +116,11 @@ class WorkerConfig:
     reviewer: str = "stub"
     # 哪个 tool_loop：stub 或 model（Context Builder）。
     tool_loop: str = "stub"
-    # deliver 节点经 StreamGenerate 生成（AR_STREAM_DELIVER=1；网关客户端支持时）。
-    stream_deliver: bool = False
+    # 没有输出 schema 的 deliver 节点经 StreamGenerate 生成（默认打开，AR_STREAM_DELIVER=0 关掉；网关客户端支持时）。
+    stream_deliver: bool = True
+    # 逐字增量推到哪里（AR_TASK_SERVICE_INTERNAL_URL）与调用方的名字（AR_DELTA_CALLER）；地址为空时不推。
+    task_service_internal_url: str = ""
+    delta_caller: str = "worker"
     # 模型实测的有效长度（token），Context Builder 的阈值按它算。
     context_effective_tokens: int = 32_000
     # 工具的输出超过这么多 token 就转存，只留摘录（Context Builder 的 offload）。
@@ -222,6 +230,15 @@ class WorkerConfig:
         if cold_raw and (not cold_raw.isdigit() or int(cold_raw) > 365):
             raise ValueError(f"{ENV_WORKSPACE_COLD_AFTER_DAYS} 必须是 0 到 365 的整数（天）")
         cold_after_days = int(cold_raw) if cold_raw else cls.workspace_cold_after_days
+        stream = env.get(ENV_STREAM_DELIVER, "").strip() or "1"
+        if stream not in ("0", "1"):
+            raise ValueError(f"{ENV_STREAM_DELIVER} 只能是 0 或 1")
+        internal = env.get(ENV_TASK_SERVICE_INTERNAL_URL, "").strip().rstrip("/")
+        if internal and not re.fullmatch(r"https?://[^/\s]+", internal):
+            raise ValueError(f"{ENV_TASK_SERVICE_INTERNAL_URL} 要是 http(s)://主机:端口")
+        caller = env.get(ENV_DELTA_CALLER, "").strip() or cls.delta_caller
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,31}", caller):
+            raise ValueError(f"{ENV_DELTA_CALLER} 只能是小写字母、数字与连字符（至多 32 个）")
         seed = env.get(ENV_SECRETS_SEED_FILE, "").strip()
         if seed and not secrets:
             raise ValueError(f"设了 {ENV_SECRETS_SEED_FILE} 还要设 {ENV_SECRETS_FILE}（种子并进哪个文件）")
@@ -244,7 +261,9 @@ class WorkerConfig:
             judge_model=env.get(ENV_JUDGE_MODEL, "").strip() or cls.judge_model,
             judge_key_file=Path(env[ENV_JUDGE_KEY_FILE]) if env.get(ENV_JUDGE_KEY_FILE, "").strip() else None,
             tool_loop=tool_loop,
-            stream_deliver=env.get(ENV_STREAM_DELIVER, "").strip() == "1",
+            stream_deliver=stream == "1",
+            task_service_internal_url=internal,
+            delta_caller=caller,
             context_effective_tokens=effective,
             context_offload_tokens=offload,
             model_gateway_address=env.get(ENV_MODEL_GATEWAY_ADDRESS, "").strip(),

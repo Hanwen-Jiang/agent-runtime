@@ -33,6 +33,7 @@ from agentruntime_core.providers.object_store import ObjectStoreProvider
 from agentruntime_worker import names
 from agentruntime_worker.activities.stubs import StubModelGateway
 from agentruntime_worker.config import WorkerConfig
+from agentruntime_worker.executor.deltas import DeltaPusher, secret_token
 from agentruntime_worker.executor.grpc_gateway import GrpcModelGateway
 from agentruntime_worker.executor.model_gateway import ModelGateway
 from agentruntime_worker.executor.node_executor import ExecutorConfig, ExecutorDeps, NodeExecutor, workflow_question_id
@@ -147,6 +148,9 @@ def dev_executor(
         sandbox=LocalSubprocessSandboxProvider(root / "sandbox"),
         transcript=session_transcript(config.relational_dsn, config.data_dir, object_store),
         stream_deliver=config.stream_deliver,
+        # 逐字增量（DELTA）：给了 task-service 的内部端口才推。
+        deltas=DeltaPusher(config.task_service_internal_url, secret_token(config.store_paths(root)[1], config.delta_caller))
+        if config.task_service_internal_url else None,
         # 桩模型按固定 JSON 提示协议解释输入；真实 Gateway 才使用 ContextBuilder。
         context_builder=ContextBuilder(
             model_gateway_instance,

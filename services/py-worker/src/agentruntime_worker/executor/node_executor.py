@@ -64,6 +64,7 @@ from agentruntime_worker import names
 from agentruntime_worker.activities.types import HumanCancel, HumanQuestion, NodeInput, ReconcileResult, Tenant, ToolCallInput
 from agentruntime_worker.context.builder import ContextBuilder, ContextRequest, measured, message_tokens, task_family
 from agentruntime_worker.executor import keys
+from agentruntime_worker.executor.deltas import DeltaSink
 from agentruntime_worker.session.transcript import TranscriptSource, Turn, actions_text, chat_messages
 from agentruntime_worker.executor.model_gateway import ModelGateway, generate_streaming
 from agentruntime_worker.executor.schemas import OutputSchemaResolver, UnknownSchema, schema_for, validate
@@ -132,9 +133,10 @@ class ExecutorDeps:
     # 非 conversational model Activity 的上下文组装器。它只接受 NodeInput 中的
     # 稳定 JSON 快照；未配置时保留原有最小消息路径，便于旧 Activity 历史重放。
     context_builder: ContextBuilder | None = None
-    # N-19/N-20：deliver 节点经 StreamGenerate 生成（网关客户端支持时），记首个 token 的用时（meta.first_token_ms）。
-    # 片段暂不推送（从 activity 到事件流的通道待定，见 docs/plan/n19-n20-implementation-2026-11-03.md）；默认关（AR_STREAM_DELIVER）。
-    stream_deliver: bool = False
+    # N-19/N-20：没有输出 schema 的 deliver 节点经 StreamGenerate 生成（网关客户端支持时），记首个 token 的用时（meta.first_token_ms）；
+    # 默认打开，AR_STREAM_DELIVER=0 关掉。片段经 deltas 推成 token_delta、thinking_delta（DELTA，executor.deltas）；没配时不推。
+    stream_deliver: bool = True
+    deltas: DeltaSink | None = None
 
 
 def _conversational(node: Mapping[str, Any]) -> bool:
@@ -745,8 +747,13 @@ class NodeExecutor:
             params.output_schema.CopyFrom(payload_pb2.JsonPayload(value=_to_value(dict(schema))))
         request = mg.GenerateRequest(tenant=tenant, call=self._call(inp), generation=params)
         first_token_ms: int | None = None
-        if self.deps.stream_deliver and inp.node.get("role") == "deliver":
-            response, first_token_ms = await generate_streaming(self.deps.models, request)
+        if self.deps.stream_deliver and inp.node.get("role") == "deliver" and schema is None:
+            sink = self.deps.deltas.node(inp.tenant.tenant_id, inp.task_id, str(inp.node.get("id") or "")) if self.deps.deltas is not None else None
+            try:
+                response, first_token_ms = await generate_streaming(self.deps.models, request, sink)
+            finally:
+                if sink is not None:
+                    await sink.aclose()
         else:
             response = await self.deps.models.generate(request)
         return response, params.messages, context_cost, first_token_ms
