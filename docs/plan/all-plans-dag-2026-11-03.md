@@ -37,7 +37,7 @@
 | EV-TB | 查 Terminal-Bench 0/5 的原因，再跑 40 题 | handoff | — | 原因已查清（[记录](ev-tb-0of5-2026-11-04.md)）：环境配额满了，五题都退回 universal，没用上官方镜像；顺带修了失败原因里的签名地址。再跑之前要放宽配额（7.1 已定放宽到 20）、查镜像仓库为什么是空的；适配器识别“环境没用上”已完成（EV-TB-2，`438d2bb`） | 近 |
 | EV-SWE | SWE-bench 补跑 matplotlib-13989 | handoff | — | 待做 | 近 |
 | EV-DE | DeepEval 把工具调用轨迹放进用例 | handoff | — | **代码完成**（`c1a307a`）；线上重判待验收，见 [记录](ev-de-tool-evidence-2026-11-04.md) | 中 |
-| MX-RUN | 能力矩阵第一轮（贵模型走淘汰赛） | work-dag 19-run | DEP-R（新 Profile） | 待做（花钱） | 中 |
+| MX-RUN | 能力矩阵第一轮（贵模型走淘汰赛） | work-dag 19-run | DEP-R（新 Profile） | 待做（花钱）。计划已写好：`services/py-learning/capability-plans/round1.json`（plan、judge、route 三格与 BFCL；plan、route 带 MX-Q 的改编题；gpt-6-astra、fable-5.1 先 20×1 淘汰赛），`capability estimate` 估约 32.5 美元（贵模型晋级另加约 8 美元）；等用户在对话里点头再跑 | 中 |
 | MX-Q | S-09～S-11 格子的改编题：选题与补标签 | work-dag | — | 已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），可以开工；原状态：人定。已完成（`c3dd34a`，第 8 节）：plan、route 两格加上 22 道改编原题，各够 40 道 | 中 |
 | MX-PUB | 能力分人审后经 Registry 发布 | work-dag 19-publish | MX-RUN、MX-Q | 已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），可以开工；原状态：人定 | 中 |
 | SITE | 评测网站（主页、结果、数据集） | eval-site（H 线） | — | 代码已完成（`5035d85`、`2abcba2`，见 eval-site.md 末节）；上线要人建只读令牌、部署新的 learning 镜像 | 中 |

@@ -1,0 +1,75 @@
+{
+  "name": "round1",
+  "task_family": "general.unclassified",
+  "n": 40,
+  "r": 3,
+  "seed": 0,
+  "concurrency": 4,
+  "item_usd_limit": 0.5,
+  "cells": [
+    {
+      "role": "plan",
+      "tier": "medium",
+      "evals": [{"eval": "s09", "options": {"adapted": ["natural-plan", "travelplanner", "swebench"]}}],
+      "candidates": [
+        "a6api/claude-sonnet-5-5@2026-10",
+        "a6api/claude-opus-5-5@2026-10",
+        "a6api/gpt-6.1-sol@2026-11",
+        "a6api/gemini-4-argon@2026-11",
+        "a6api/deepseek-v4-pro@2026-11",
+        "a6api/grok-4.7@2026-11",
+        "a6api/kimi-k3.1-pro@2026-11",
+        "a6api/qwen3.8-max@2026-11",
+        "a6api/glm-5.3@2026-11",
+        "a6api/longcat-2.0@2026-11",
+        "a6api/mimo-v2.6-pro@2026-11",
+        "a6api/gpt-6-astra@2026-11",
+        "a6api/claude-fable-5-1@2026-11"
+      ],
+      "expensive": ["a6api/gpt-6-astra@2026-11", "a6api/claude-fable-5-1@2026-11"]
+    },
+    {
+      "role": "judge",
+      "tier": "medium",
+      "evals": ["s10"],
+      "candidates": [
+        "a6api/claude-sonnet-5-5@2026-10",
+        "a6api/claude-opus-5-5@2026-10",
+        "a6api/gpt-6.1-sol@2026-11",
+        "a6api/gemini-4-argon@2026-11",
+        "a6api/deepseek-v4-pro@2026-11",
+        "a6api/grok-4.7@2026-11",
+        "a6api/kimi-k3.1-pro@2026-11",
+        "a6api/qwen3.8-max@2026-11",
+        "a6api/glm-5.3@2026-11",
+        "a6api/longcat-2.0@2026-11",
+        "a6api/mimo-v2.6-pro@2026-11",
+        "a6api/gpt-6-astra@2026-11",
+        "a6api/claude-fable-5-1@2026-11"
+      ],
+      "expensive": ["a6api/gpt-6-astra@2026-11", "a6api/claude-fable-5-1@2026-11"]
+    },
+    {
+      "role": "route",
+      "tier": "low",
+      "evals": [{"eval": "s09:route", "options": {"adapted": ["natural-plan", "travelplanner", "swebench"]}}],
+      "candidates": [
+        "a6api/claude-haiku-5-5@2026-10",
+        "a6api/gemini-3.5-flash-lite@2026-10",
+        "a6api/gpt-6-luna@2026-11",
+        "a6api/glm-5.3-flash@2026-11",
+        "a6api/qwen3.8-flash@2026-11"
+      ]
+    },
+    {
+      "role": "act",
+      "tier": "low",
+      "evals": [{"eval": "bfcl", "n": 100, "r": 1}],
+      "candidates": [
+        "a6api/deepseek-v4-flash@2026-10",
+        "a6api/gemini-3.8-flash@2026-11",
+        "a6api/gpt-6.1-terra@2026-11"
+      ]
+    }
+  ]
+}
