@@ -154,6 +154,96 @@ alerting:
                   type: threshold
                   expression: B
                   conditions: [{evaluator: {type: gt, params: [0.8]}}]
+      # G-05（coding-agent 仓库 docs/plan/github-app.md 第 4 节）：coding-web 的 GitHub App 收件箱，经同一个 Collector 发 coding.github.*。
+      - orgId: 1
+        name: Coding Web
+        folder: Agent Runtime
+        interval: 1m
+        rules:
+          - uid: coding-github-dead-letters
+            title: GitHub 投递进了死信
+            condition: C
+            for: 0s
+            noDataState: OK
+            execErrState: Error
+            annotations:
+              summary: coding-web 最近一小时有 GitHub 投递重试用尽进了死信（修好原因后用 coding-web github-replay <delivery> 重新入队）
+            labels:
+              severity: warning
+            data:
+              - refId: A
+                relativeTimeRange: {from: 3600, to: 0}
+                datasourceUid: victoriametrics
+                model:
+                  refId: A
+                  instant: true
+                  expr: sum(increase(coding_github_processed_total{result="dead"}[1h]))
+              - refId: B
+                datasourceUid: __expr__
+                model: {refId: B, type: reduce, expression: A, reducer: last}
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: B
+                  conditions: [{evaluator: {type: gt, params: [0]}}]
+          - uid: coding-github-backlog
+            title: GitHub 投递积压
+            condition: C
+            for: 15m
+            noDataState: OK
+            execErrState: Error
+            annotations:
+              summary: coding-web 的 GitHub 收件箱持续积压超过 50 条（还没处理完的投递；看处理失败的日志与库的连接）
+            labels:
+              severity: warning
+            data:
+              - refId: A
+                relativeTimeRange: {from: 900, to: 0}
+                datasourceUid: victoriametrics
+                model:
+                  refId: A
+                  instant: true
+                  expr: max(increase(coding_github_backlog_sum[15m]) / increase(coding_github_backlog_count[15m]))
+              - refId: B
+                datasourceUid: __expr__
+                model: {refId: B, type: reduce, expression: A, reducer: last}
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: B
+                  conditions: [{evaluator: {type: gt, params: [50]}}]
+          - uid: coding-github-signature-failures
+            title: GitHub Webhook 签名失败突增
+            condition: C
+            for: 0s
+            noDataState: OK
+            execErrState: Error
+            annotations:
+              summary: coding-web 最近 15 分钟有超过 10 次 Webhook 签名校验失败（有人伪造投递，或 Webhook secret 轮换时两边没对上）
+            labels:
+              severity: warning
+            data:
+              - refId: A
+                relativeTimeRange: {from: 900, to: 0}
+                datasourceUid: victoriametrics
+                model:
+                  refId: A
+                  instant: true
+                  expr: sum(increase(coding_github_deliveries_total{result="signature_failed"}[15m]))
+              - refId: B
+                datasourceUid: __expr__
+                model: {refId: B, type: reduce, expression: A, reducer: last}
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: B
+                  conditions: [{evaluator: {type: gt, params: [10]}}]
 sidecar:
   dashboards:
     enabled: true
