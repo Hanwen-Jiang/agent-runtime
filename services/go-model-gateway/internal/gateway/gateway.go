@@ -776,12 +776,14 @@ func (s *Server) Generate(ctx context.Context, req *connect.Request[modelgateway
 		return nil, connecterr.Error(err)
 	}
 	tr := s.startSpan(ctx, c, "chat", false)
-	c.estimateInput(gen, gen.MaxOutputTokens)
+	// 选档仍按原请求（要结构化输出、要工具）；发给上游的请求在工具与 schema 同时给时改用收尾工具（finish_tool.go）。
+	sent, finishing := withFinishTool(gen)
+	c.estimateInput(sent, sent.MaxOutputTokens)
 	var result modelprovider.GenerateResult
 	cand, err := s.run(ctx, c, c.choice.Candidates, true, func(ctx context.Context, cand router.Candidate) (*commonv1.Usage, error) {
-		r, err := c.client.Generate(ctx, forCandidate(gen, cand))
+		r, err := c.client.Generate(ctx, forCandidate(sent, cand))
 		if err == nil {
-			err = checkToolCalls(gen.Tools, r.ToolCalls)
+			err = checkToolCalls(sent.Tools, r.ToolCalls)
 		}
 		result = r
 		return r.Usage, err
@@ -790,6 +792,13 @@ func (s *Server) Generate(ctx context.Context, req *connect.Request[modelgateway
 		err = c.charged(err)
 		tr.end(c, cand, c.billed, err)
 		return nil, connecterr.Error(err)
+	}
+	if finishing {
+		if result, err = fromFinishTool(result); err != nil {
+			err = s.billedFailure(c, cand, result.Usage, err)
+			tr.end(c, cand, c.billed, err)
+			return nil, connecterr.Error(err)
+		}
 	}
 	out, err := c.generateResponse(cand, result)
 	if err != nil {
