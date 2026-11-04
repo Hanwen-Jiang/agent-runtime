@@ -80,6 +80,8 @@ ENV_EGRESS_GATEWAY_URL = "AR_EGRESS_GATEWAY_URL"
 ENV_PREVIEW_DOMAIN = "AR_PREVIEW_DOMAIN"
 # Workspace API 收本地的远端（file://），只给测试与开发用（D-06）；生产只收 https。
 ENV_WORKSPACE_ALLOW_LOCAL_REMOTES = "AR_WORKSPACE_ALLOW_LOCAL_REMOTES"
+# 冷热分层（DISK-B）的部署默认值：挂卷的工作区闲置超过这么多天转冷（租户策略的 workspace.cold_after_days 优先）；不设时不转冷。
+ENV_WORKSPACE_COLD_AFTER_DAYS = "AR_WORKSPACE_COLD_AFTER_DAYS"
 
 
 @dataclass(frozen=True)
@@ -140,6 +142,8 @@ class WorkerConfig:
     egress_gateway_url: str = ""
     preview_domain: str = ""
     workspace_allow_local_remotes: bool = False
+    # 0 表示不转冷（DISK-B）。
+    workspace_cold_after_days: int = 0
     judge: str = ""
     judge_url: str = "https://api.typesafe.ai"
     judge_model: str = "jev-latest"
@@ -214,6 +218,10 @@ class WorkerConfig:
         local_remotes = env.get(ENV_WORKSPACE_ALLOW_LOCAL_REMOTES, "").strip() or "0"
         if local_remotes not in ("0", "1"):
             raise ValueError(f"{ENV_WORKSPACE_ALLOW_LOCAL_REMOTES} 只能是 0 或 1")
+        cold_raw = env.get(ENV_WORKSPACE_COLD_AFTER_DAYS, "").strip()
+        if cold_raw and (not cold_raw.isdigit() or int(cold_raw) > 365):
+            raise ValueError(f"{ENV_WORKSPACE_COLD_AFTER_DAYS} 必须是 0 到 365 的整数（天）")
+        cold_after_days = int(cold_raw) if cold_raw else cls.workspace_cold_after_days
         seed = env.get(ENV_SECRETS_SEED_FILE, "").strip()
         if seed and not secrets:
             raise ValueError(f"设了 {ENV_SECRETS_SEED_FILE} 还要设 {ENV_SECRETS_FILE}（种子并进哪个文件）")
@@ -258,6 +266,7 @@ class WorkerConfig:
             egress_gateway_url=env.get(ENV_EGRESS_GATEWAY_URL, "").strip(),
             preview_domain=env.get(ENV_PREVIEW_DOMAIN, "").strip(),
             workspace_allow_local_remotes=local_remotes == "1",
+            workspace_cold_after_days=cold_after_days,
         )
 
     def store_paths(self, root: Path) -> tuple[Path, Path]:

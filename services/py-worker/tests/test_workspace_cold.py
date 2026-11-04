@@ -129,12 +129,13 @@ async def test_the_reconcile_activity_runs_the_sweep_at_most_hourly(tmp_path: Pa
     activities = ReconcileActivities(s.broker, cold_after_days=3, clock=lambda: clock["now"])
     report = await activities.reconcile_sandboxes(ReconcileInput())
     assert report.cooled == 1
-    await created(s, "w2")
+    await created(s, "w2")  # 按这里的时钟 w2 也闲置够了
     clock["now"] = later(4.01)  # 十几分钟之后：这一轮不扫
     assert (await activities.reconcile_sandboxes(ReconcileInput())).cooled == 0
-    clock["now"] = later(4.1)  # 过了一小时：再扫，w2 还没闲置够三天
-    assert (await activities.reconcile_sandboxes(ReconcileInput())).cooled == 0
     assert await state(s, "w2") == "active"
+    clock["now"] = later(4.1)  # 过了一小时：再扫
+    assert (await activities.reconcile_sandboxes(ReconcileInput())).cooled == 1
+    assert await state(s, "w2") == "cold"
 
 
 def test_the_deployment_default_is_configurable() -> None:

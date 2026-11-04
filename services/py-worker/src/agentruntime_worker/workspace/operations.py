@@ -1003,10 +1003,14 @@ def _require(box: Any, method: str) -> None:
         raise InvalidError("unsupported_archive", "这个沙箱后端不能导出、导入或浏览工作区")
 
 
+# 冷热分层（DISK-B）的 cooling、cold、restoring 都是“不在本地盘上、有存档”：ARCHIVED。
+_STATES = {"active": "WORKSPACE_STATE_ACTIVE", "deleted": "WORKSPACE_STATE_DELETED"}
+
+
 def workspace_dict(record: WorkspaceRecord, *, branch: str = "") -> dict[str, Any]:
     """与 workspace.v1.Workspace 的 JSON 写法一致（task-service 按 protojson 读）。"""
     out: dict[str, Any] = {
-        "workspace_id": record.workspace_id, "state": "WORKSPACE_STATE_ACTIVE" if record.state == "active" else "WORKSPACE_STATE_DELETED",
+        "workspace_id": record.workspace_id, "state": _STATES.get(record.state, "WORKSPACE_STATE_ARCHIVED"),
         "repo_url": record.repo_url, "head": record.head, "snapshot_id": record.snapshot_id, "size_bytes": str(record.size_bytes), "files": record.files,
         "branch": branch, "environment_id": record.environment_id,
     }

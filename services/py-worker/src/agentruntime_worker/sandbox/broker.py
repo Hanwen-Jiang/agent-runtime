@@ -11,6 +11,8 @@
 - 会话级复用（W5）：reuse 时先按（租户，工作区，会话）在环境表里找没到期的 ready 环境，找不到才建；任何 Worker 副本都一样，
   不靠进程内的缓存。用完不删（release(keep=True)），空闲到期或活满时由对账回收（sandbox.reconcile）。
 - 一个工作区同一时间只有一个可写的环境：别的会话占着、但那边没有命令在跑时，回收它再建；正在跑就报 denied（workspace_busy）。
+- 冷热分层（DISK-B，workspace.cold）：挂卷模式下建环境前看工作区的状态：cold 的先清空本地目录、建好环境后从最近的快照恢复
+  （谁先把状态改成 restoring 谁恢复），正在转冷或别人在恢复时报 transient（workspace_cooling、workspace_restoring）。
 - 没有环境表（ledger 为 None，只在单元测试与没配业务库的开发里）时退回原来的做法：直接调后端，不复用、不核对配额。
 - 环境的短期凭据（D-15、D-16）：配了 credentials 时，每次借到的环境带上这条命令要的环境变量（Lease.env：包镜像与出网网关
   的地址与凭据、租户的测试用密钥，sandbox.credentials），调用方经 exec 的 env 给到命令；不进 repr、环境表与 trace。
@@ -29,9 +31,12 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+import shutil
+import stat
 from dataclasses import dataclass, field, replace
 from datetime import timedelta
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from agentruntime_core.dev._common import PLATFORM_ID
@@ -52,6 +57,13 @@ if TYPE_CHECKING:
     from agentruntime_worker.workspace.archive import WorkspaceArchiver
 
 log = logging.getLogger(__name__)
+
+
+def _force_remove(function: Any, path: str, _exc: BaseException) -> None:
+    """Windows 上 .git 里的只读文件：去掉只读再删（同 workspace.operations）。"""
+    with contextlib.suppress(OSError):
+        Path(path).chmod(stat.S_IWRITE)
+        function(path)
 
 
 @dataclass
@@ -143,8 +155,10 @@ class SandboxBroker:
         reuse: bool = False,
         busy_for: timedelta | None = None,
         prepare: bool = False,
+        cooling: bool = False,
     ) -> Lease:
-        """prepare：要在借到的环境里执行业务命令（shell_run）。这时按工作区选用的环境配置准备环境（ENV-02）。"""
+        """prepare：要在借到的环境里执行业务命令（shell_run）。这时按工作区选用的环境配置准备环境（ENV-02）。
+        cooling：冷热分层（DISK-B）转冷时自己借的环境，不受“正在转冷”的拦截。"""
         owner = tenant.tenant_id or PLATFORM_ID
         policy = await self.sandboxes.policy_for(owner)
         grants = await self.task_grants(owner, task_id)
@@ -192,6 +206,7 @@ class SandboxBroker:
         try:
             lease = await self._create(
                 tenant, owner, spec, policy, task_id=task_id, writable=writable, reuse=reuse, busy_for=busy_for, grants=grants, pending=pending,
+                cooling=cooling,
             )
         except InvalidError as err:
             if not cached or err.code != "unsupported_image":
@@ -200,7 +215,7 @@ class SandboxBroker:
             cached = None
             lease = await self._create(
                 tenant, owner, replace(spec, image=""), policy, task_id=task_id, writable=writable, reuse=reuse, busy_for=busy_for, grants=grants,
-                pending=pending,
+                pending=pending, cooling=cooling,
             )
         lease = await self._with_env(lease, policy, grants, config)
         if config is not None:
@@ -350,6 +365,63 @@ class SandboxBroker:
         return lease
 
     async def _create(
+        self, tenant: TenantContext, owner: str, spec: SandboxSpec, policy: SandboxPolicy, *, task_id: str, writable: bool, reuse: bool,
+        busy_for: timedelta | None, grants: list[Grant] | None = None, pending: tuple[str, str] = ("", "none"), cooling: bool = False,
+    ) -> Lease:
+        restoring = False
+        if spec.workspace_id and not cooling and not self.archive_mode(policy.backend):
+            restoring = await self._claim_cold(owner, spec.workspace_id)
+        if not restoring:
+            return await self._create_any(
+                tenant, owner, spec, policy, task_id=task_id, writable=writable, reuse=reuse, busy_for=busy_for, grants=grants, pending=pending,
+            )
+        # 冷的工作区（DISK-B）：本地目录清空，建好挂卷的环境后从最近的快照恢复；失败时退回 cold，下次再恢复。
+        try:
+            self._clear_local(owner, spec.workspace_id)
+            lease = await self._create_any(
+                tenant, owner, spec, policy, task_id=task_id, writable=writable, reuse=reuse, busy_for=busy_for, grants=grants, pending=pending,
+            )
+            try:
+                snap = await self.archiver.restore(  # type: ignore[union-attr]
+                    lease.box, lease.env_id, owner, spec.workspace_id, max_bytes=policy.workspace.max_bytes
+                )
+            except BaseException:
+                with contextlib.suppress(ProviderError):
+                    await self._destroy(lease, reason="restore of a cold workspace failed")
+                raise
+        except BaseException:
+            with contextlib.suppress(ProviderError):
+                await self.archiver.transition(owner, spec.workspace_id, "restoring", "cold")  # type: ignore[union-attr]
+            raise
+        await self.archiver.transition(owner, spec.workspace_id, "restoring", "active")  # type: ignore[union-attr]
+        lease.restored = snap.snapshot_id if snap is not None else ""
+        log.info("工作区 %s 从存档恢复到本地盘（冷热分层）", spec.workspace_id)
+        return lease
+
+    async def _claim_cold(self, owner: str, workspace_id: str) -> bool:
+        """挂卷模式下工作区的冷热状态（DISK-B）：active（或没有记录）照常；cold 时抢到恢复的就返回 True；正在转冷或别人在恢复时
+        报暂时性的错误（不在删到一半或恢复到一半的目录上执行）。"""
+        if self.archiver is None or owner == PLATFORM_ID:
+            return False
+        record = await self.archiver.get(owner, workspace_id)
+        if record is None or record.state in ("active", "deleted"):
+            return False
+        if record.state == "cooling":
+            raise TransientError("workspace_cooling", "工作区正在转冷（存档到对象存储），稍后再试")
+        if record.state == "cold" and await self.archiver.transition(owner, workspace_id, "cold", "restoring"):
+            return True
+        raise TransientError("workspace_restoring", "工作区正在从存档恢复到本地盘，稍后再试")
+
+    def _clear_local(self, owner: str, workspace_id: str) -> None:
+        """清空挂卷的工作区目录（<工作区根>/<租户>/<workspace>）：冷的工作区以快照为准，残留的文件会让恢复后的核对不一致。"""
+        root = self.sandboxes.workspace_root
+        if root is None:
+            return
+        target = (Path(root) / owner / workspace_id).resolve()
+        if target.is_relative_to(Path(root).resolve()) and target != Path(root).resolve() and target.exists():
+            shutil.rmtree(target, onexc=_force_remove)
+
+    async def _create_any(
         self, tenant: TenantContext, owner: str, spec: SandboxSpec, policy: SandboxPolicy, *, task_id: str, writable: bool, reuse: bool,
         busy_for: timedelta | None, grants: list[Grant] | None = None, pending: tuple[str, str] = ("", "none"),
     ) -> Lease:

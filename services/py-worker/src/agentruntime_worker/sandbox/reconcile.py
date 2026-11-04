@@ -24,6 +24,7 @@ import asyncio
 import logging
 import re
 import shutil
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -38,8 +39,9 @@ from agentruntime_core.providers.telemetry import TelemetryProvider
 from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker import names
-from agentruntime_worker.sandbox.ledger import iso, parse_iso
+from agentruntime_worker.sandbox.ledger import iso, parse_iso, utc_now
 from agentruntime_worker.workflows.sandbox_reconcile import ReconcileInput, ReconcileReport
+from agentruntime_worker.workspace.cold import cool_idle_workspaces
 
 if TYPE_CHECKING:
     from agentruntime_worker.sandbox.broker import SandboxBroker
@@ -191,11 +193,23 @@ async def report_volume(broker: SandboxBroker, report: ReconcileReport, telemetr
         await bound.flush()
 
 
+# 冷热分层的扫描（DISK-B）最多这么久一次：要逐个看工作区根下的目录与它们的记录，不必每轮都做。
+COLD_SWEEP_EVERY = timedelta(hours=1)
+
+
 class ReconcileActivities:
-    def __init__(self, broker: SandboxBroker | None, *, hold_max: timedelta = DEFAULT_HOLD_MAX, telemetry: TelemetryProvider | None = None) -> None:
+    def __init__(
+        self, broker: SandboxBroker | None, *, hold_max: timedelta = DEFAULT_HOLD_MAX, telemetry: TelemetryProvider | None = None,
+        cold_after_days: int = 0, runtime: str = "python", clock: Callable[[], datetime] = utc_now,
+    ) -> None:
         self.broker = broker
         self.hold_max = hold_max
         self.telemetry = telemetry
+        # 冷热分层的部署默认值（AR_WORKSPACE_COLD_AFTER_DAYS，0 不转冷；租户策略的 cold_after_days 优先）与转冷时借环境用的运行环境。
+        self.cold_after_days = cold_after_days
+        self.runtime = runtime
+        self.clock = clock
+        self._last_cold_sweep: datetime | None = None
 
     @activity.defn(name=names.RECONCILE_SANDBOXES)
     async def reconcile_sandboxes(self, inp: ReconcileInput) -> ReconcileReport:
@@ -206,10 +220,17 @@ class ReconcileActivities:
             await report_volume(self.broker, report, self.telemetry)
         except OSError as err:
             report.errors.append(f"工作区卷用量：{type(err).__name__}")
-        if report.orphans_destroyed or report.lost or report.reaped or report.errors or report.held:
+        now = self.clock()
+        if self._last_cold_sweep is None or now - self._last_cold_sweep >= COLD_SWEEP_EVERY:
+            self._last_cold_sweep = now
+            try:
+                report.cooled = await cool_idle_workspaces(self.broker, default_days=self.cold_after_days, now=now, runtime=self.runtime)
+            except (ProviderError, OSError) as err:
+                report.errors.append(f"冷热分层：{getattr(err, 'code', type(err).__name__)}")
+        if report.orphans_destroyed or report.lost or report.reaped or report.errors or report.held or report.cooled:
             log.info(
-                "沙箱对账：孤儿 %d、丢失 %d、回收 %d、重删 %d、等人保留 %d、错误 %d",
-                report.orphans_destroyed, report.lost, report.reaped, report.destroy_retried, report.held, len(report.errors),
+                "沙箱对账：孤儿 %d、丢失 %d、回收 %d、重删 %d、等人保留 %d、转冷 %d、错误 %d",
+                report.orphans_destroyed, report.lost, report.reaped, report.destroy_retried, report.held, report.cooled, len(report.errors),
             )
         return report
 

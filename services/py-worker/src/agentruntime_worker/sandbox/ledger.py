@@ -560,6 +560,26 @@ class SandboxLedger:
                 )
         return EnvRecord.from_row(owner, rows[0]) if rows else None
 
+    async def workspace_envs(self, owner: str, workspace_id: str) -> list[EnvRecord]:
+        """还没结束的、绑着这个工作区的环境（creating、ready、destroying）：冷热分层（DISK-B）有它们时不转冷。"""
+        await self.migrate()
+        async with self.bind(owner).transaction(read_only=True) as tx:
+            rows = await tx.query(
+                f"SELECT {', '.join(_COLUMNS)} FROM sandbox_envs WHERE workspace_id = $1 AND state IN ('creating', 'ready', 'destroying')",
+                (workspace_id,),
+            )
+        return [EnvRecord.from_row(owner, r) for r in rows]
+
+    async def workspace_last_used(self, owner: str, workspace_id: str) -> str:
+        """这个工作区的环境最后一次用的时间（ISO 字符串；建、就绪、用过都算）；没有环境时为空串。"""
+        await self.migrate()
+        async with self.bind(owner).transaction(read_only=True) as tx:
+            row = await tx.query_one(
+                "SELECT MAX(last_used_at) AS used, MAX(ready_at) AS ready, MAX(created_at) AS created FROM sandbox_envs WHERE workspace_id = $1",
+                (workspace_id,),
+            )
+        return max((str(v) for v in (row or {}).values() if v), default="")
+
     async def active(self, owner: str) -> list[EnvRecord]:
         await self.migrate()
         async with self.bind(owner).transaction(read_only=True) as tx:

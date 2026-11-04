@@ -40,6 +40,8 @@ class ReconcileReport:
     errors: list[str] = field(default_factory=list)
     # 挂卷的工作区所在卷的已用比例（DISK-A）；没有挂卷的工作区根时为 None。
     volume_used_ratio: float | None = None
+    # 这一轮转冷了几个挂卷的工作区（DISK-B）。
+    cooled: int = 0
 
 
 @workflow.defn(name=names.SANDBOX_RECONCILE_WORKFLOW)

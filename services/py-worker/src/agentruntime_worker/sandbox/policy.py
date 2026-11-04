@@ -8,7 +8,8 @@
 - backend 没写时用部署的默认后端；fallback 是暂时不可用时依次试的后端；min_isolation 没写时取首选后端的隔离强度。
 - idle_timeout_s、max_lifetime_s 只能调低部署的默认值（15 分钟、6 小时），写得更高按默认值算。
 - 由策略决定，模型与请求都不能指定。
-- 顶层的 workspace（D-06）：{"max_workspaces": 10, "max_bytes": 2147483648, "push_branches": ["agent/*"]}，见 WorkspaceLimits。
+- 顶层的 workspace（D-06）：{"max_workspaces": 10, "max_bytes": 2147483648, "push_branches": ["agent/*"], "cold_after_days": 14}，
+  见 WorkspaceLimits。
 """
 
 from __future__ import annotations
@@ -33,6 +34,8 @@ class WorkspaceLimits:
     max_workspaces: int = 20
     max_bytes: int = 2 << 30
     push_branches: tuple[str, ...] = ("agent/*",)
+    # 冷热分层（DISK-B）：挂卷的工作区闲置超过这么多天转冷；0 表示租户没写，用部署的默认值（AR_WORKSPACE_COLD_AFTER_DAYS）。
+    cold_after_days: int = 0
 
     @classmethod
     def from_policy(cls, doc: Mapping[str, Any] | None) -> WorkspaceLimits:
@@ -42,6 +45,7 @@ class WorkspaceLimits:
             max_workspaces=int(section.get("max_workspaces") or default.max_workspaces),
             max_bytes=int(section["max_bytes"]) if section.get("max_bytes") is not None else default.max_bytes,
             push_branches=tuple(str(b) for b in section.get("push_branches") or default.push_branches),
+            cold_after_days=int(section.get("cold_after_days") or default.cold_after_days),
         )
 
 

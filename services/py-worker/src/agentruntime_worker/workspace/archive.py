@@ -269,6 +269,16 @@ class WorkspaceArchiver:
                 [*[values[c] for c in columns], iso(self._clock()), workspace_id],
             )
 
+    async def transition(self, owner: str, workspace_id: str, from_state: str, to_state: str) -> bool:
+        """冷热分层（DISK-B）的状态变化：只在当前是 from_state 时改成 to_state，返回改没改成（谁先改成谁做，别人让开）。
+        active → cooling → cold → restoring → active；中途失败退回前一个状态。不动 updated_at（它算闲置）。"""
+        await self.migrate()
+        async with self._db(owner).transaction() as tx:
+            changed = await tx.execute(
+                "UPDATE workspaces SET state = $1 WHERE workspace_id = $2 AND state = $3", (to_state, workspace_id, from_state)
+            )
+        return changed == 1
+
     # --- 选用的环境配置（ENV-02）---
 
     async def set_environment(self, owner: str, workspace_id: str, config: EnvironmentConfig, *, owner_user: str) -> None:
