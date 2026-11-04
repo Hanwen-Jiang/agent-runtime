@@ -1,7 +1,10 @@
 # Grafana（grafana/grafana Chart；docs/plan/cloud-deploy.md D-03、D-10）：看 Tempo 的调用链与面板。装在 observability 命名空间，
 # 管理员口令取 Secret grafana-admin；面板（D-10）以 ConfigMap 的形式放在 deploy/data/dashboards。
 # 指标（TMP 计划第 9.3 节）：VictoriaMetrics 当 Prometheus 数据源读，趋势面板与告警查它；Tempo 仍是默认数据源。
-# 告警只在 Grafana 里显示（没有配 contact point）；要发邮件或 webhook 时在 alerting 里加 contactpoints.yaml。
+# 告警发邮件（2026-11-04 用户定）：经 Resend 的 SMTP 中继（smtp.resend.com:587，用户名固定是 resend，口令是 Resend 的 API Key），
+# 不写代码、不加依赖。API Key 与收件地址都在 Secret grafana-resend（deploy/cluster/secrets；收件地址不进仓库）；
+# 发件地址 alerts@cgent.link 要先在 Resend 验证 cgent.link 这个域名（在 Cloudflare 加 Resend 给的 DNS 记录）。
+# Key 没给之前 Secret 里是占位值：Grafana 照常启动，告警照常在界面里显示，只是邮件发不出去。
 admin:
   existingSecret: grafana-admin
   userKey: user
@@ -11,6 +14,15 @@ resources:
   limits: {cpu: 500m, memory: 256Mi}
 persistence:
   enabled: false
+smtp:
+  existingSecret: grafana-resend
+  userKey: user
+  passwordKey: password
+envValueFrom:
+  ALERT_EMAIL_TO:
+    secretKeyRef:
+      name: grafana-resend
+      key: to
 datasources:
   datasources.yaml:
     apiVersion: 1
@@ -30,6 +42,25 @@ datasources:
 # 告警规则（TMP 计划第 9.3 节）。指标名是 Telemetry 的名字点换下划线：计数器加 _total，直方图有 _sum、_count、_bucket。
 # 阈值是起步值，按实际用量调。
 alerting:
+  # 所有告警都发到一个邮件联络点；收件地址取环境变量（Grafana 的 provisioning 文件支持 $变量），值在 Secret 里。
+  contactpoints.yaml:
+    apiVersion: 1
+    contactPoints:
+      - orgId: 1
+        name: ops-email
+        receivers:
+          - uid: ops-email
+            type: email
+            settings:
+              addresses: $ALERT_EMAIL_TO
+              singleEmail: true
+  policies.yaml:
+    apiVersion: 1
+    policies:
+      - orgId: 1
+        receiver: ops-email
+        group_by: [grafana_folder, alertname]
+        repeat_interval: 4h
   rules.yaml:
     apiVersion: 1
     groups:
@@ -250,6 +281,12 @@ sidecar:
     label: grafana_dashboard
     searchNamespace: observability
 grafana.ini:
+  smtp:
+    enabled: true
+    host: smtp.resend.com:587
+    from_address: alerts@cgent.link
+    from_name: Agent Runtime
+    startTLS_policy: MandatoryStartTLS
   analytics:
     reporting_enabled: false
     check_for_updates: false

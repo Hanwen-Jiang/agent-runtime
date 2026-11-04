@@ -40,7 +40,12 @@ def test_data_valkey_manifest() -> None:
     image = c["image"]
     assert image.startswith("valkey/valkey:") and image.split(":")[1][0].isdigit(), "镜像要钉到具体版本"
     script = " ".join(c["args"])
-    assert "--save ''" in script and "--appendonly no" in script, "Cache 只存可丢失的数据，不落盘"
+    assert "--save ''" in script, "不做 RDB 快照"
+    assert "--appendonly yes" in script and "--appendfsync everysec" in script, "开 AOF，每秒刷盘（2026-11-04 用户定）"
+    [pvc] = [d for d in docs if d["kind"] == "PersistentVolumeClaim"]
+    assert pvc["metadata"]["namespace"] == "data"
+    [data] = [v for v in deploy["spec"]["template"]["spec"]["volumes"] if v["name"] == "data"]
+    assert data["persistentVolumeClaim"]["claimName"] == pvc["metadata"]["name"], "AOF 要写在持久卷上"
     assert "--requirepass" not in script, "口令写进内存卷上的配置文件，不上命令行"
     [pw] = [e for e in c["env"] if e["name"] == "VALKEY_PASSWORD"]
     assert pw["valueFrom"]["secretKeyRef"]["name"] == "valkey-agentruntime"

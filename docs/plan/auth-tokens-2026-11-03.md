@@ -73,4 +73,4 @@
 | Ory Kratos 加 Hydra | 用户与登录（Kratos）、OAuth2 与 OIDC 签发（Hydra） | Go、较轻，但是两个组件，登录界面要自己做 |
 | Zitadel | 用户、各家平台的登录、OIDC、自带多租户 | Go 单个服务，要 Postgres；比 Keycloak 新，生态小一些 |
 
-建议：单节点、只有 coding-agent 一个面向用户的应用，现阶段维持现状。出现第二个面向用户的应用，或者要企业 SSO（SAML、SCIM）时，再在 Zitadel 与 Keycloak 里选。
+**2026-11-04 用户定：维持现状。**建议：单节点、只有 coding-agent 一个面向用户的应用，现阶段维持现状。出现第二个面向用户的应用，或者要企业 SSO（SAML、SCIM）时，再在 Zitadel 与 Keycloak 里选。

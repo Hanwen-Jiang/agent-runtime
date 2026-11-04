@@ -303,7 +303,7 @@ fc-manager（Rust，宿主机上的 systemd 服务，不在 Pod 里）
 
 ## 10. Rust 的依赖与工具链（fc-manager 与 sandbox-agent，2026-11-03）
 
-用户定 fc-manager 与 sandbox-agent 都用 Rust（第 1 节第 5 条）。以下是要落地的规则，开工 D-28 前先由人确认依赖清单。
+用户定 fc-manager 与 sandbox-agent 都用 Rust（第 1 节第 5 条）。**2026-11-04 用户按清单批准**（原话“按清单批准”）：下面列的库可以用；HTTP 与 TLS 的两处“实现前比较后定”仍由实现的会话比较后写进本节，不用再等人审，除非要加清单之外的库。D-28 可以开工。
 
 - **布局**：仓库根一个 Cargo workspace（与 `go.work` 并列），成员 `services/rs-sandbox-agent`、`services/rs-fc-manager` 与共用的 `libs/rs-sys`（vsock、进程组、cgroup 等系统调用的薄封装；`unsafe` 只允许在这里）。
 

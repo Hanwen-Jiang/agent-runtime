@@ -51,14 +51,14 @@
 | D-25 | 多仓库工作区（S-01） | environment-config | 契约人审 | 草案 | 远 |
 | D-27 | 个人配置包（skills 等） | environment-config | — | 占位 | 远 |
 | N16-R | N-16 剩下的：brief、来源卡片与综合节点、预算份额、mid 档、评测对照（E 线，单写者） | sub-agent | — | 草案 | 中 |
-| DELTA | `token_delta`、`thinking_delta` 的推送入口与平台令牌 | lane-merge（N-20） | 安全评审 | 人定 | 中 |
+| DELTA | `token_delta`、`thinking_delta` 的推送入口与平台令牌 | lane-merge（N-20） | 安全评审 | 人定（2026-11-04）：做，默认打开；约束见 7.1 | 中 |
 | N-14 | 用户自定义 Skill（Registry 新条目，S-01） | feedback 第 4 节 | 契约人审 | 草案 | 远 |
 | N-15 | 用户自己的 MCP Server（S-01） | feedback 第 4 节 | 契约人审 | 草案 | 远 |
 | R-04 | SecretStore 的生产实现 | post-acceptance、P1-B | — | 待做（要资源） | 远 |
 | R-06 | Learning Pipeline 的成本与版本固定 | P1-B | — | 不等存储选型的两条已完成（`f1b017b` 测试、`ccf29a5` 实现：计量记 `price_at`、Profile 文件缺单价拒绝加载；没部署）；剩下**人定**：成本事件的权威存储、usage 延迟的处理；另有 `scripts/sync_model_profiles.py` 把 models.dev 缺的单价写成 0，要人定缺价时是报错还是跳过 | 远 |
 | G-01～G-06 | GitHub App：密钥与配置 → 收件箱 → 身份与令牌 → 事件到动作 → 运维；G-06 自动触发在 G-03、G-04 之后；上线至少 G-01～G-03 | coding-agent github-app | — | G-01 已完成（coding-agent `175100d`，没部署）；G-02 已完成（coding-agent `a3b1331`，没部署）；G-03 的 coding-agent 一侧已完成（`a93fa5a`）；第 9 条的 Runtime 一侧已修（G-03-9，`2e924a3`，没部署；专门的安全评审仍待人排期）；G-04 已完成（`4e223b5`，没部署）；G-05 已完成（coding-agent `8f296eb` 服务端、`7770026` 账号页、`67ee776` 卸载 30 天后去掉安装 ID；Grafana 告警在本仓库；没部署；测试 App 要人注册）；G-06 已完成（coding-agent `f0a229a`，没部署；上线前要在 App 设置里加 Issues 读写与 `issue_comment` 事件） | 中 |
 | D-19 | 后端登记的启用开关与能力 | firecracker-backend | — | 已完成（`f9f0c4d`，没部署） | 中 |
-| D-28 | sandbox-agent 按原接口改写为 Rust | firecracker-backend | — | 草案（Rust 依赖清单要人审） | 中 |
+| D-28 | sandbox-agent 按原接口改写为 Rust | firecracker-backend | — | 依赖清单 2026-11-04 人审通过，可以开工 | 中 |
 | D-20 | fc-manager（Rust）与 vsock agent | firecracker-backend | D-19、D-28 | 草案 | 中 |
 | D-21 | 客户机 rootfs 与镜像缓存 | firecracker-backend | D-20 | 草案 | 远 |
 | D-22 | 出网与预览经 vsock | firecracker-backend | D-20 | 草案 | 远 |
@@ -71,7 +71,7 @@
 | CACHE-01 | Cache 的 Valkey 适配器与部署 | workspace-read | — | 已完成（`5a7334f`，没部署） | 中 |
 | TSP-2 | TS-PROD-01 ②③ Cache 必须是 Valkey、连接池、task-service 多副本 | workspace-read | TSP-1、CACHE-01 | 已完成（`08e6745`，没部署；部署前先建 Valkey 的 Secret、重跑 `deploy/data/install.sh`） | 中 |
 | HIST-01 | 事件按 event_id 持久化，按 Session 批量取（S-01）；网页增量加载 | workspace-read | 契约人审（只有批量取的接口） | 持久化与读回已完成（`5d8c071`：SSE 从业务库补发、结束的 Task 重放全部、快照读业务库；没部署）；批量取 `ListSessionEvents` 已完成（契约 `5760a9f` 2026-11-04 人审通过；实现与测试 `c8865b0`；没部署）；网页的增量加载**进行中**（第 8 节 HIST-01-WEB） | 中 |
-| SBX-01 | Sandbox Service：设计改动稿 → 一期只读 → 二期借还与 exec（核心链路）→ 三期对账与构建 | workspace-read | 设计改动稿人审 | 设计改动稿已写（[sbx-01-sandbox-service-2026-11-03.md](sbx-01-sandbox-service-2026-11-03.md)），等人审；一期之后的实现等审 | 中 |
+| SBX-01 | Sandbox Service：设计改动稿 → 一期只读 → 二期借还与 exec（核心链路）→ 三期对账与构建 | workspace-read | 设计改动稿人审 | 人审通过（2026-11-04），**不分期、一次做完**（见 sbx-01 文档第 9 节）；待认领实现 | 中 |
 | WS-READ-01 | 只读操作经 Sandbox Service，不进工作流、不新建沙箱 | workspace-read | SBX-01 一期 | 草案 | 中 |
 | WS-READ-02 | Workspace 操作单独一个队列与 Worker 池 | workspace-read | 契约人审（names.proto 加队列） | 已完成（契约 `ebf963e` 2026-11-04 人审通过；`1c322b2` 测试、`71b9226` 实现；没部署）。上线后旧的 task、program 队列上的登记留到改之前起的操作跑完再去掉 | 中 |
 | WS-READ-03 | 文件树与 diff 按工作区 generation 缓存 | workspace-read | （多副本时 CACHE-01） | 已完成（`d35923b`，没部署） | 远 |
@@ -84,7 +84,7 @@
 | ATOK-F | AGENT-TOK-01 的修复（Go 版；Rust 版在 D-28 里同一条验收） | auth-tokens | ATOK-T | 已完成（`69a9a30`，Go 版；没部署） | 近 |
 | AUTH-01 | Ed25519 签名的标准 JWT，Runtime 只持公钥；第三方令牌的加密密钥独立 | auth-tokens | — | 已完成（代码；没部署，切换步骤见 auth-tokens 第 4 节） | 中 |
 | AUTH-02 | 浏览器只拿可撤销的会话 id，调 Runtime 时现签短期令牌 | auth-tokens | AUTH-01 | 已完成（coding-agent `953fc29`；没部署） | 中 |
-| AUTH-03 | Ingress 的生产形态：身份服务或签发服务、网关的全局限流、PKCE | auth-tokens | AUTH-02、TSP-2 | 人定：PKCE、JWKS、全局限流已做（coding-agent `c3d8845`）；身份服务选型见 auth-tokens 第 5 节 | 远 |
+| AUTH-03 | Ingress 的生产形态：身份服务或签发服务、网关的全局限流、PKCE | auth-tokens | AUTH-02、TSP-2 | 2026-11-04 人定维持现状（不上身份服务）；PKCE、JWKS、全局限流已做（coding-agent `c3d8845`） | 远 |
 | REAL-01 | 线上全组件验收（穿插着跑） | post-acceptance、gate 清单 | 各项部署 | 外部（部分：Cloudflare 桥令牌、预览证书） | 中 |
 | SBX-RS-01 | Rust 版 agent 的原型实测 | workspace-read 第 5 节 | — | 取消（改为 D-28） | — |
 
@@ -242,10 +242,27 @@ flowchart LR
 
 ## 7. 要人定的
 
-- 契约人审（S-01）：WS-READ-02、HIST-01、SEC-API、DISK-B 已于 2026-11-04 通过（兼容性基线已更新）；之后的 NET-OPEN、D-25、N-14、N-15。
-- 设计改动：SBX-01（设计书 4.10）；Rust 进技术栈（4.15，D-20、D-28 的依赖清单）；Ingress（4.14，AUTH-03）；附录 A 的环境配置术语（ENV-02）。
-- 花钱：MX-RUN、EV-REAL、EV-TB 的 40 题。
-- 其他：MX-Q 的选题与标签；DELTA 的内部入口（安全评审）；F4 告警的通知渠道；DISK-B 的闲置天数与 `max_bytes` 超限的处理；Valkey 是否持久化。
+三份人审 2026-11-04 都已过：SBX-01 五条照建议、但不分期一次做完；Rust 依赖清单按清单批准；AUTH-03 维持现状。设计书原文档的更新（4.10、4.14、4.15、附录 A）也由人做。之后的 NET-OPEN、D-25、N-14、N-15 契约照旧走 S-01。
+
+### 7.1 2026-11-04 用户授权 Claude 代定的
+
+用户原话：“花钱的随便花”“其他的你帮我做决定就行”“批准”（批准线上沙箱换 ATOK-F 的 agent 并在 Worker 的 Pod 里跑探测脚本）。下面是这次定下的，要改直接改这里。
+
+| 事项 | 决定 | 理由 |
+| --- | --- | --- |
+| 免费档白名单（第 24 版已上，8 → 18 个） | 接受 | 每天 3 美元、每月 20 美元的预算已兜住花费；多给选择不加风险 |
+| MX-Q 改编题 | 由 Claude 从 `public-adapted-drafts` 选题、补标签，全部标“未确认”；人抽查过的才进可发布的分数，没抽查前 MX-PUB 不发布 | 照 work-dag 的建议；不让没经人看的标签进 Registry |
+| DELTA（`token_delta`、`thinking_delta` 的推送入口） | 做，**默认打开**（2026-11-04 用户问“默认为啥关闭”，改定）；约束不变：内部端口只对 Worker 所在命名空间开放（NetworkPolicy）；平台令牌按调用方各一个，放 SecretStore 平台作用域；增量只进 Valkey 的流、保留不超过 10 分钟，不进业务库、Temporal 历史与 trace；保留按租户关掉的开关（出问题时关，而不是回滚）；先写验收测试 | 原来定默认关是怕新功能直接压到所有租户；用户要的是体验，有按租户的关掉开关兜底就够了 |
+| F4 告警的通知渠道 | Grafana 的邮件联络点，经 **Resend 的 SMTP 中继**（`smtp.resend.com:587`，强制 STARTTLS；用户名 `resend`，口令是 Resend 的 API Key），不写代码、不加依赖；Key 与收件地址都在 Secret `grafana-resend`（`deploy/data/values/grafana.yaml`、`tests/deploy/test_alert_email.py`） | 2026-11-04 用户定 Resend，令牌之后给。**要人做**：给 API Key；在 Resend 验证 `cgent.link`（Cloudflare 加它给的 DNS 记录），发件人是 `alerts@cgent.link`。Key 给之前 Secret 里是占位值，告警只在 Grafana 里看得到 |
+| DISK-B 的闲置天数 | 14 天 | 两周没动的会话副本基本不会再用；转冷后第一次打开多等一次恢复 |
+| DISK-A 超限 | 维持现状：拒绝写类工具并告诉用户 | 只警告挡不住盘满 |
+| Valkey 是否持久化 | **开 AOF**，每秒刷盘，不做 RDB 快照；数据放 2Gi 的 PVC（`deploy/data/valkey.yaml`） | 2026-11-04 用户问“为啥不开”，改定：重启后限流计数、锁与推流不清零，代价只是一块小盘与每秒一次的写 |
+| Valkey 口令 | 写进 `secrets.enc.yaml`（随第 25 版） | 现在只在服务器文件与两个 Secret 里，换机器会丢 |
+| AUTH-01 切换 | coding-web 换成 JWT 签发并验证之后，task-service 的 `ingress.devTokens` 改成 refuse | 开发令牌的对称密钥是 AUTH-01 要拆掉的东西 |
+| EV-TB 的环境配额 | `swebench`、`evals` 租户的 `max_images` 放宽到 20；跑 40 题之前先把环境建好 | 0/5 的原因就是配额满了退回 universal |
+| SITE | 随第 25 版部署新的 learning 镜像；只读令牌第 22 版已建（Secret `agent-runtime-eval-site`） | 不缺资源 |
+| MEM（Memory 上线） | 做，单独一版（第 26 版）：Milvus 3.0.2 单机版、PVC 50Gi、`text-embedding-3-large`；所有租户的白名单加 3-large（`swebench` 也加，之后的基准报告注明 Memory 已打开） | 与 Runtime 的其他改动分开，出问题好查 |
+| 花钱的上限 | 用户说随便花；为防跑飞仍按项设上限：真 Task 冒烟 ≤ 2 美元、EV-SWE 补跑 ≤ 5、DeepEval 线上重判 ≤ 10、LongMemEval ≤ 20、EV-REAL ≤ 40、Terminal-Bench 40 题 ≤ 80、MX-RUN 按 `estimate`、≤ 200；合计约 360 美元 | 单项超了先停下报告，不是不让花 |
 
 ## 8. 正在实现（认领）
 

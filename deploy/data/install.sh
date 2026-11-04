@@ -14,6 +14,9 @@ log() { printf '==> %s\n' "$*"; }
 for s in pg-agentruntime pg-temporal pg-langfuse r2-backup valkey-agentruntime; do
   kubectl -n data get secret "$s" >/dev/null || { echo "data 命名空间缺 Secret $s（见 deploy/cluster/secrets/README.md）" >&2; exit 1; }
 done
+for s in grafana-admin grafana-resend; do
+  kubectl -n observability get secret "$s" >/dev/null || { echo "observability 命名空间缺 Secret $s（见 deploy/cluster/secrets/README.md）" >&2; exit 1; }
+done
 
 log "Postgres"
 kubectl apply -f "$HERE/networkpolicy.yaml"
