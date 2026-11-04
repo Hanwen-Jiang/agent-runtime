@@ -27,7 +27,7 @@ from jsonschema import Draft202012Validator
 from jsonschema_specifications import REGISTRY as SPECIFICATIONS
 from referencing import Registry, Resource
 
-from agentruntime_worker.executor import keys
+from agentruntime_worker.executor import keys, tiers
 from agentruntime_worker.planner.context import PlanningContext
 from agentruntime_worker.workflows import stage_plan as sp
 from agentruntime_worker.workflows import plan as plan_steps
@@ -235,6 +235,9 @@ def _sub_agent_problems(stage: dict[str, Any], level: str) -> list[str]:
         missing = [f for f in BRIEF_FIELDS if not (isinstance(brief.get(f), str) and brief[f].strip()) and not (f == "output" and isinstance(brief.get(f), dict) and brief[f])]
         if missing:
             found.append(f"sub_agent {node.get('id')} 的 brief 缺 {'、'.join(missing)}")
+    for node in agents:
+        if "tier" in node and not tiers.at_most(str(node["tier"]), tiers.SUB_AGENT_TIER):
+            found.append(f"sub_agent {node.get('id')} 的 tier {node['tier']!r} 只能往小调：不大于 {tiers.SUB_AGENT_TIER}（例如 small@low），或者不写")
     if len(agents) >= 2:
         ids = {str(a.get("id")) for a in agents}
         if not any(ids <= {str(x) for x in n.get("after") or []} for n in nodes(stage)):

@@ -30,13 +30,13 @@ from agentruntime_worker.memory import Searcher, node_experiences, searcher
 from agentruntime_worker.context.builder import ContextBuilder, ContextConfig, ContextRequest, measured, tenant_context, task_family
 from agentruntime_worker.executor.heartbeat import heartbeating
 from agentruntime_worker.executor.model_gateway import ModelGateway, billed_cost_usd, with_billed_cost
+from agentruntime_worker.executor.tiers import SUB_AGENT_TIER, sub_agent_tier
 from agentruntime_worker.workflows.verification import only_reads
 from agentruntime_worker.session.transcript import TranscriptSource, transcript_text
 from agentruntime_worker.tools.catalog import ToolCatalog
 
 TOOL_LOOP_TIER = "strong@medium"
-# N16-R（附录 F）：只读研究的子 Agent 用中模型；主流程的 tool_loop 不换（提示缓存）。AR_SUB_AGENT_POLICY=rules 时才用。
-SUB_AGENT_TIER = "mid@low"
+# N16-R（附录 F）：子 Agent 的 Tier 见 executor.tiers；主流程的 tool_loop 不换（提示缓存）。
 # 放进 brief 的之前的对话（字）：上下文的预算要留给工具的结果（TMP 计划第 11.13 节）。
 CONVERSATION_CHARS = 8000
 SYSTEM_PROMPT = """你在执行一个 Goal Node 的 tool_loop：每一步要么调用工具，要么在完成条件满足时不再调用工具、直接给出结果。
@@ -111,6 +111,12 @@ class ModelToolLoop:
         self.tier = tier
         self.transcript = transcript
 
+    def _tier(self, inp: ToolLoopStepInput) -> str:
+        """主流程用 self.tier；子 Agent 用 sub_agent_tier，Node 写了更小的 tier 时用它（N16-R）。开关关着时都是 self.tier。"""
+        if not (inp.isolated and self.sub_agent_tier):
+            return self.tier
+        return sub_agent_tier(self.sub_agent_tier, inp.node.get("tier"))
+
     async def step(self, inp: ToolLoopStepInput) -> ToolLoopStep:
         node = inp.node
         tools = await self._tool_specs(inp, [str(t) for t in node.get("tools") or []])
@@ -170,7 +176,7 @@ class ModelToolLoop:
                     mg.GenerateRequest(
                         tenant=tenant_context(inp.tenant),
                         call=mg.CallContext(task_id=inp.task_id, node_id=inp.step_id or str(inp.node.get("id", "")), role=enums_pb2.ROLE_ACT,
-                                            tier=self.sub_agent_tier if inp.isolated and self.sub_agent_tier else self.tier,
+                                            tier=self._tier(inp),
                                             task_family=task_family(inp.task_plan, inp.task_family)),
                         generation=params,
                     )

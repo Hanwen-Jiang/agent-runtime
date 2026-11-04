@@ -72,7 +72,7 @@ def _catalog_text(catalog: CatalogView) -> str:
 
 
 # N16-R（docs/plan/sub-agent.md 第 4～6 节；AR_SUB_AGENT_POLICY=rules 时才加，接在规则 11 后面）。
-_SUB_AGENT_RULES = """12. 派 sub_agent 时，每个都在 inputs 里写 brief：objective（一句话，要回答什么）、scope（查什么、到哪为止、不做什么）、output（交回格式：来源卡片的数组，每张 {claim, evidence, source, confidence, open_questions}，或给定的 output_schema），可选 sources（优先的来源或路径）与 budget（{"usd": 上限}，系统会再按 Task 剩余的预算分份额）。两个以上 sub_agent 时，后面接一个综合节点（model 的 transform，after 列出它们全部、inputs 引用各自的结果），列出互相矛盾的卡片与没查到的问题。Triage 是 fast、light 时不派。"""
+_SUB_AGENT_RULES = """12. 派 sub_agent 时，每个都在 inputs 里写 brief：objective（一句话，要回答什么）、scope（查什么、到哪为止、不做什么）、output（交回格式：来源卡片的数组，每张 {claim, evidence, source, confidence, open_questions}，或给定的 output_schema），可选 sources（优先的来源或路径）与 budget（{"usd": 上限}，系统会再按 Task 剩余的预算分份额）。两个以上 sub_agent 时，后面接一个综合节点（model 的 transform，after 列出它们全部、inputs 引用各自的结果），列出互相矛盾的卡片与没查到的问题。Triage 是 fast、light 时不派。子 Agent 默认用 mid@low；查找、归类这类简单的子任务可以在这个 sub_agent 上写 tier 往小调（small@low），不能比 mid@low 大。"""
 
 
 def system_zone(catalog: CatalogView, *, sub_agent_rules: bool = False) -> list[mg.ChatMessage]:
