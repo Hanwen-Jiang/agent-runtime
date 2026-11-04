@@ -61,6 +61,20 @@ def test_the_memory_service_can_stay_on_its_own_image() -> None:
     assert next(v for k, v in plain.items() if k.endswith("-memory")).endswith("/memory:new5678"), "不给时跟 image.tag"
 
 
+def test_the_model_gateway_can_ship_its_own_image() -> None:
+    """TOOLS-KIMI（docs/plan/all-plans-dag-2026-11-03.md）：网关的修复要单独上线，main 上别的改动不跟着走。
+    modelGateway.imageTag 只换网关的镜像，别的组件仍跟 image.tag；不给时跟 image.tag。"""
+    pinned = images(render(CLOUD_VALUES, set_values=["modelGateway.imageTag=fix1234", "image.tag=base5678"]))
+    gateway = [k for k in pinned if k.endswith("-model-gateway")]
+    assert len(gateway) == 1 and pinned[gateway[0]].endswith("/model-gateway:fix1234")
+    others = {k: v for k, v in pinned.items() if k not in gateway and "/agentruntime/" in v and "coding-web" not in k}
+    assert others and all(v.endswith(":base5678") for k, v in others.items() if not k.endswith("-memory")), others
+    plain = images(render(CLOUD_VALUES, set_values=["image.tag=base5678"]))
+    assert next(v for k, v in plain.items() if k.endswith("-model-gateway")).endswith("/model-gateway:base5678"), "不给时跟 image.tag"
+    with pytest.raises(pytest.fail.Exception, match="imageTag"):
+        render(CLOUD_VALUES, set_values=["modelGateway.imageTag=1234567"])
+
+
 def test_a_numeric_image_tag_is_refused_instead_of_rendering_a_wrong_name() -> None:
     """提交号可能全是数字：YAML 把它读成数，镜像名就成了 %!s(float64=...)，Pod 拉不到镜像。"""
     with pytest.raises(pytest.fail.Exception, match="image.tag"):
