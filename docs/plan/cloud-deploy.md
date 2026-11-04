@@ -718,6 +718,20 @@ GitHub App 上线（2026-11-04，APP-LIVE；目录 `app-golive`，脚本 `golive
 - **没有验证**：第一条真实投递（G-02 第 9 条，确认没被 Cloudflare 拦）、安装与授权仓库、经 App 克隆与推送、Issue 评论自动触发（G-06），都要先在 GitHub 上把 App
   装到账号或仓库上。新密钥（`pg-coding-github`、`coding-github-db`、`coding-github-app`、`CODING_TOKEN_KEY`）还没进 SOPS 文件，与 Valkey 的口令一起补。
 
+第 25 版（2026-11-04，REAL-01 的预览地址；目录 `rev27`，脚本 `prev-prepare.sh`、`rev27.sh`）：
+
+- 预览域名是用户单独买的 `cgentpreview.website`（2026-11-04 用户定：不放在 `cgent.link` 下，预览里是用户沙箱的任意内容，单独的注册域名与
+  `code.cgent.link` 的 Cookie 隔离；预览地址 `sbe-<16 位十六进制>.cgentpreview.website` 只有一级，免费版的通配证书就盖得住，不用买 ACM）。
+- Cloudflare（用户准用的令牌，经标准输入传给服务器，不落盘）：`*.cgentpreview.website` 的 A 记录走代理，指向与 `code.cgent.link` 同一台源站；
+  这个 zone 设成 Full (strict)、只走 HTTPS、TLS 1.2 起。源站证书由 Cloudflare Origin CA 签（`*.cgentpreview.website` 与根域名，到 2041-10-31），
+  私钥在服务器上生成，只存在 Secret `cgentpreview-origin-tls` 里。
+- Helm：values 是第 24 版加 `egressGateway.previewDomain=cgentpreview.website`、`egressGateway.previewTLSSecretName=cgentpreview-origin-tls`；
+  Chart 与镜像不变（`6cc16b8`）。脚本核对只多了预览的 IngressRoute、出网网关的 `AR_EGRESS_PREVIEW_ADDR`、`AR_EGRESS_PREVIEW_DOMAIN` 与 4 个
+  Worker 的 `AR_PREVIEW_DOMAIN`。第一次启动时线上有 3 个 Task 在跑，脚本在改动之前停下，等它们跑完（约 16 分钟）才升级。
+- 核对：出网网关在 8097 上开了预览入口（照旧第一次启动重启一次）；`https://sbe-0000000000000000.cgentpreview.website` 经 Cloudflare 回 401
+  （网关不认没有令牌的请求，说明 Cloudflare → Traefik → 网关这一路通了）；源站按 SNI 出示新的源站证书。回滚：`helm rollback ar 24`，DNS 与证书可以留着。
+- **没有验证**：真正的预览（沙箱里起服务、Agent 用 `request_network` 开预览地址、浏览器打开）；要跑一个真 Task。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
