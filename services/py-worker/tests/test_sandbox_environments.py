@@ -61,6 +61,8 @@ class FakeBuilder:
         self.broker = broker
         self.jobs: list[BuildJob] = []
         self.mode = "ok"
+        # mode 为 reason 时原样报这个失败原因（看存下来与给用户看的原因有没有去掉签名之类的东西）。
+        self.reason = ""
         self.during: dict[str, Any] = {}
 
     async def build(self, job: BuildJob, out: IO[bytes]) -> BuildOutcome:
@@ -75,6 +77,8 @@ class FakeBuilder:
             return BuildOutcome(ok=False, reason=f"构建超时（{int(job.timeout.total_seconds())} 秒）", failure="timed_out")
         if self.mode == "error":
             raise TransientError("kube_unavailable", "连不上 Kubernetes API")
+        if self.mode == "reason":
+            return BuildOutcome(ok=False, reason=self.reason, failure="failed")
         layers = [os.urandom(4096)] if self.mode == "big" else [b"tool-versions-layer"]
         out.write(oci_tar(layers))
         return BuildOutcome(ok=True)
@@ -400,6 +404,43 @@ async def test_build_job_outcomes_and_redacted_logs() -> None:
     assert not failed.ok and failed.failure == "failed" and "构建失败" in failed.reason
     assert "ar1.body.sig" not in failed.reason and "ar1.a.b" not in failed.reason, "日志里的凭据去掉"
     assert len(fetch.calls) == 1, "失败、超时时不去取产物"
+
+
+# EV-TB（docs/plan/ev-tb-0of5-2026-11-04.md）：拉官方镜像的层失败时，BuildKit 把镜像仓库 CDN 的签名地址整个打进日志，查询串里是
+# 签名与密钥对的 ID。它们不是我们的密钥，但同样是凭据：不能进失败原因（存在业务库里、经 shell_run 的 environment.note 给用户看）。
+# 编出来的、与真的签名同样形状的值（不用线上看到的）。
+SIGNATURE = "Qm9ndXNTaWduYXR1cmVGb3JUZXN0c0-xYz7~AbCdEfGhIjKlMnOpQrStUv-WxYz0123456789~QwErTyUiOpAsDfGhJkLzXcVbNm-Plo9Okm8Ijn7Uhb"
+SIGNED_URL = ("https://production.cloudfront.docker.com/registry-v2/docker/registry/v2/blobs/sha256/5f/"
+              "5f1e1b7a2c9d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9/data"
+              f"?Expires=1730383200&Signature={SIGNATURE}&Key-Pair-Id=K2B7EXAMPLEKEYPAIR")
+
+
+async def test_build_failure_reasons_drop_signed_urls() -> None:
+    log = (f"#5 [1/2] FROM docker.io/swebench/sweb.eval.x86_64.django:latest\n"
+           f"ERROR: failed to copy: httpReadSeeker: failed open: failed to do request: Get \"{SIGNED_URL}\": dial tcp: i/o timeout\n"
+           f"retrying https://user:hunter2-password@mirror.example/v2/x?token=abcdef0123456789abcdef0123456789ab")
+    failed_kube = FakeKube({}, [pod_status({"terminated": {"exitCode": 1, "reason": "Error"}})], log)
+    failed = await K8sJobBuilder(failed_kube, CFG, fetch=FakeFetch()).build(job_for(), io.BytesIO())
+    assert not failed.ok and "构建失败" in failed.reason
+    for leaked in (SIGNATURE, "K2B7EXAMPLEKEYPAIR", "Expires=1730383200", "hunter2-password", "abcdef0123456789abcdef0123456789ab"):
+        assert leaked not in failed.reason, f"失败原因里不能有 {leaked[:12]}…：{failed.reason}"
+    assert "production.cloudfront.docker.com/registry-v2/docker/registry/v2/blobs/sha256/5f/" in failed.reason, "主机与路径留着，看得出是拉哪一层失败的"
+    assert "5f1e1b7a2c9d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9" in failed.reason, "层的 digest（十六进制）不是凭据，留着"
+    assert "i/o timeout" in failed.reason and "mirror.example" in failed.reason
+
+
+async def test_stored_failure_reasons_drop_signature_fragments(tmp_path: Path, registry: FakeRegistry) -> None:
+    """构建器给的原因被截过时，签名地址只剩半截（没有 https:// 与 ?）：存下来之前再去一遍看着像令牌的长串。"""
+    manager, builder, _, _, _ = setup(tmp_path, registry)
+    root = write(tmp_path, {".tool-versions": TOOL_VERSIONS})
+    building = await manager.resolve(T1, workspace_reader(root))
+    builder.mode = "reason"
+    builder.reason = f"构建失败：{SIGNATURE}~Tr4nc4ted~Fr4gm3ntOfAS1gnedUrl-ZxCvBnMaSdFgHjKlQwErTyUiOp1234&Key-Pair: i/o timeout"
+    record = await manager.run_build("t1", building.key)
+    assert record.state == "failed" and "i/o timeout" in record.reason
+    assert SIGNATURE not in record.reason and "Fr4gm3ntOfAS1gnedUrl" not in record.reason, record.reason
+    again = await manager.resolve(T1, workspace_reader(root))
+    assert again.state == "failed" and SIGNATURE not in again.note and "universal" in again.note
 
 
 # --- shell_run 里 ---
