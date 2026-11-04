@@ -68,7 +68,7 @@
 
 ## 7. 没覆盖的、与设计不一致的
 
-- 用户密钥的写入、列举与删除：2026-11-04 起是 task-service 的 UserSecretService（SEC-API，`f3b02df`）；coding-agent 的“网络密钥”页（WEB-SEC）接它。
+- 用户密钥的写入、列举与删除：2026-11-04 起是 task-service 的 UserSecretService（SEC-API，`f3b02df`）；coding-agent 的“网络密钥”页（WEB-SEC，coding-agent `609e986`）接它，默认关着（`CODING_NETWORK_SECRETS=1`）：环境配置里还不能引用密钥（第 89 行的 `secret_headers`，D-23 第二阶段）。
 - 设计草案 D-24 原定“首个交付不做缓存、setup 失败时可重试修正”；Q21 改为缓存成功结果，本记录按 Q21。D-24 的 `start_on_failure: block` 没做（coding-agent 的配置里没有这一项）。
 - 设计草案 4.2 的“直传机密”（命令可读）与 Q27“密钥始终在环境外”冲突：按 Q27 不做直传，只有网络密钥。
 - 设计书附录 A 还没有“环境配置”“联网档位”“安装脚本”“启动命令”这些术语（设计草案第 7 节 W13），需要人更新设计书。
