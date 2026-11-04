@@ -35,6 +35,16 @@ def test_given_values_reach_every_worker_as_strings() -> None:
         assert env["AR_CONTEXT_OFFLOAD_TOKENS"]["value"] == "8000"
 
 
+def test_the_sub_agent_rules_are_off_unless_asked_for() -> None:
+    """N16-R（docs/plan/sub-agent.md 第 12 节）：默认 off 时不渲染；rules 时每个 Worker 池都拿到；别的取值渲染失败。"""
+    for manifests in (render(), render(CLOUD_VALUES)):
+        assert all("AR_SUB_AGENT_POLICY" not in env_of(pod_spec(w)["containers"][0]) for w in workers(manifests))
+    on = render(CLOUD_VALUES, set_values=["worker.subAgentPolicy=rules"])
+    assert all(env_of(pod_spec(w)["containers"][0])["AR_SUB_AGENT_POLICY"]["value"] == "rules" for w in workers(on))
+    with pytest.raises(pytest.fail.Exception, match="subAgentPolicy"):
+        render(CLOUD_VALUES, set_values=["worker.subAgentPolicy=always"])
+
+
 # --- 调优那次部署遇到的两件事（TMP 计划第 11.15 节） ---
 
 
