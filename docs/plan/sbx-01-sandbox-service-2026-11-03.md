@@ -102,3 +102,6 @@ message WorkspaceRead { TenantContext tenant; string workspace_id; string sessio
 - **D-19**（`f9f0c4d`）的启用开关与能力随二期搬进服务；**D-20** 的 fc-manager 由服务调用。
 - **WS-PULL-01、WK-LITE-01/02** 的签名地址由服务签发（STOR-SEC 的 `SignedUpload` 已就位）。
 - **PERF-00** 的数字（部署后一周）用来确认一期的收益，建议拿到数字再开工二期。
+- **搬进服务时不能丢的（2026-11-04 补记）**：Python 的 Broker 与 Workspace 操作里有两处后加的行为，删 Python 实现之前要在服务里做到同样的事，原来的测试照样要过：
+  - DISK-B 冷热分层（`690770a`、`0a8feb2`）：工作区的 active → cooling → cold → restoring 状态（`workspace/archive.py` 的 `transition`），挂卷时借 cold 的工作区先清空目录、从快照恢复（`sandbox/broker.py` 的 `_claim_cold`、`_create`），转冷的扫描（`workspace/cold.py`，对账的 activity 一小时一次），挂卷模式下 `repo_*` 直接读目录前的恢复与碰修改时间（`tools/platform.py` 的 `_mounted`）。测试：`services/py-worker/tests/test_workspace_cold.py`。
+  - G-03-9 凭据不外泄（`2e924a3`）：带凭据的 git（推送前对账、推送、同步取远端）在环境里一个临时的裸仓库下跑，不读工作副本的 `.git/config`（`workspace/operations.py` 的 `_detached`、`_remote_git`）。测试：`services/py-worker/tests/test_workspace_git_config.py`（含 ext:: 传输拿到 Authorization 头的复现）。
