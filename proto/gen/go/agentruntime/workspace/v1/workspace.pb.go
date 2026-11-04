@@ -22,6 +22,111 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// WorkspaceLayout 是工作区的目录布局（D-25）。建工作区时定下，之后不转换。
+type WorkspaceLayout int32
+
+const (
+	// 旧客户端：同 ROOT。
+	WorkspaceLayout_WORKSPACE_LAYOUT_UNSPECIFIED WorkspaceLayout = 0
+	// 工作区根就是一个仓库（或空的 git init），所有操作照旧，不带 repo。
+	WorkspaceLayout_WORKSPACE_LAYOUT_ROOT WorkspaceLayout = 1
+	// 根目录只是容器，仓库经 AttachRepo 挂在一级子目录里；Diff、Commit、Push、Sync、Log、Discard 必须指明 repo。
+	WorkspaceLayout_WORKSPACE_LAYOUT_MULTI WorkspaceLayout = 2
+)
+
+// Enum value maps for WorkspaceLayout.
+var (
+	WorkspaceLayout_name = map[int32]string{
+		0: "WORKSPACE_LAYOUT_UNSPECIFIED",
+		1: "WORKSPACE_LAYOUT_ROOT",
+		2: "WORKSPACE_LAYOUT_MULTI",
+	}
+	WorkspaceLayout_value = map[string]int32{
+		"WORKSPACE_LAYOUT_UNSPECIFIED": 0,
+		"WORKSPACE_LAYOUT_ROOT":        1,
+		"WORKSPACE_LAYOUT_MULTI":       2,
+	}
+)
+
+func (x WorkspaceLayout) Enum() *WorkspaceLayout {
+	p := new(WorkspaceLayout)
+	*p = x
+	return p
+}
+
+func (x WorkspaceLayout) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (WorkspaceLayout) Descriptor() protoreflect.EnumDescriptor {
+	return file_agentruntime_workspace_v1_workspace_proto_enumTypes[0].Descriptor()
+}
+
+func (WorkspaceLayout) Type() protoreflect.EnumType {
+	return &file_agentruntime_workspace_v1_workspace_proto_enumTypes[0]
+}
+
+func (x WorkspaceLayout) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use WorkspaceLayout.Descriptor instead.
+func (WorkspaceLayout) EnumDescriptor() ([]byte, []int) {
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{0}
+}
+
+// RepoAccess 是一个仓库在这个工作区里的权限（D-25）。
+type RepoAccess int32
+
+const (
+	// 不写时按 READ。
+	RepoAccess_REPO_ACCESS_UNSPECIFIED RepoAccess = 0
+	// 只读：CommitWorkspace、PushWorkspace 返回 PermissionDenied（repo_read_only）；SyncWorkspace、DiscardChanges 可以。
+	RepoAccess_REPO_ACCESS_READ  RepoAccess = 1
+	RepoAccess_REPO_ACCESS_WRITE RepoAccess = 2
+)
+
+// Enum value maps for RepoAccess.
+var (
+	RepoAccess_name = map[int32]string{
+		0: "REPO_ACCESS_UNSPECIFIED",
+		1: "REPO_ACCESS_READ",
+		2: "REPO_ACCESS_WRITE",
+	}
+	RepoAccess_value = map[string]int32{
+		"REPO_ACCESS_UNSPECIFIED": 0,
+		"REPO_ACCESS_READ":        1,
+		"REPO_ACCESS_WRITE":       2,
+	}
+)
+
+func (x RepoAccess) Enum() *RepoAccess {
+	p := new(RepoAccess)
+	*p = x
+	return p
+}
+
+func (x RepoAccess) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (RepoAccess) Descriptor() protoreflect.EnumDescriptor {
+	return file_agentruntime_workspace_v1_workspace_proto_enumTypes[1].Descriptor()
+}
+
+func (RepoAccess) Type() protoreflect.EnumType {
+	return &file_agentruntime_workspace_v1_workspace_proto_enumTypes[1]
+}
+
+func (x RepoAccess) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use RepoAccess.Descriptor instead.
+func (RepoAccess) EnumDescriptor() ([]byte, []int) {
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{1}
+}
+
 type WorkspaceState int32
 
 const (
@@ -58,11 +163,11 @@ func (x WorkspaceState) String() string {
 }
 
 func (WorkspaceState) Descriptor() protoreflect.EnumDescriptor {
-	return file_agentruntime_workspace_v1_workspace_proto_enumTypes[0].Descriptor()
+	return file_agentruntime_workspace_v1_workspace_proto_enumTypes[2].Descriptor()
 }
 
 func (WorkspaceState) Type() protoreflect.EnumType {
-	return &file_agentruntime_workspace_v1_workspace_proto_enumTypes[0]
+	return &file_agentruntime_workspace_v1_workspace_proto_enumTypes[2]
 }
 
 func (x WorkspaceState) Number() protoreflect.EnumNumber {
@@ -71,7 +176,7 @@ func (x WorkspaceState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use WorkspaceState.Descriptor instead.
 func (WorkspaceState) EnumDescriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{0}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{2}
 }
 
 // NetworkMode 是环境的联网档位（Q29）。在 Task 的联网授权与租户策略之内再收窄，不能放宽它们。
@@ -115,11 +220,11 @@ func (x NetworkMode) String() string {
 }
 
 func (NetworkMode) Descriptor() protoreflect.EnumDescriptor {
-	return file_agentruntime_workspace_v1_workspace_proto_enumTypes[1].Descriptor()
+	return file_agentruntime_workspace_v1_workspace_proto_enumTypes[3].Descriptor()
 }
 
 func (NetworkMode) Type() protoreflect.EnumType {
-	return &file_agentruntime_workspace_v1_workspace_proto_enumTypes[1]
+	return &file_agentruntime_workspace_v1_workspace_proto_enumTypes[3]
 }
 
 func (x NetworkMode) Number() protoreflect.EnumNumber {
@@ -128,7 +233,7 @@ func (x NetworkMode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use NetworkMode.Descriptor instead.
 func (NetworkMode) EnumDescriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{1}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{3}
 }
 
 type FileType int32
@@ -167,11 +272,11 @@ func (x FileType) String() string {
 }
 
 func (FileType) Descriptor() protoreflect.EnumDescriptor {
-	return file_agentruntime_workspace_v1_workspace_proto_enumTypes[2].Descriptor()
+	return file_agentruntime_workspace_v1_workspace_proto_enumTypes[4].Descriptor()
 }
 
 func (FileType) Type() protoreflect.EnumType {
-	return &file_agentruntime_workspace_v1_workspace_proto_enumTypes[2]
+	return &file_agentruntime_workspace_v1_workspace_proto_enumTypes[4]
 }
 
 func (x FileType) Number() protoreflect.EnumNumber {
@@ -180,7 +285,122 @@ func (x FileType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use FileType.Descriptor instead.
 func (FileType) EnumDescriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{2}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{4}
+}
+
+// WorkspaceRepo 是多仓库工作区里的一个仓库。
+type WorkspaceRepo struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 工作区内唯一：字母、数字、.、_ 与 -，最多 64 个字符；操作的 repo 字段写它。
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// 只接受 https 地址，不带凭据。
+	Url string `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	// 挂上时要的分支、标签或提交，规则同 CreateWorkspaceRequest.ref。
+	Ref string `protobuf:"bytes,3,opt,name=ref,proto3" json:"ref,omitempty"`
+	// 相对工作区根的一级目录名，规则见 AttachRepo。
+	Path   string     `protobuf:"bytes,4,opt,name=path,proto3" json:"path,omitempty"`
+	Access RepoAccess `protobuf:"varint,5,opt,name=access,proto3,enum=agentruntime.workspace.v1.RepoAccess" json:"access,omitempty"`
+	// 主仓库：应用默认展示与操作的那个；最多一个。
+	Primary bool `protobuf:"varint,6,opt,name=primary,proto3" json:"primary,omitempty"`
+	// 当前的 commit 与分支（分离头指针时分支为空），只在响应里。
+	Head          string                 `protobuf:"bytes,7,opt,name=head,proto3" json:"head,omitempty"`
+	Branch        string                 `protobuf:"bytes,8,opt,name=branch,proto3" json:"branch,omitempty"`
+	AttachedAt    *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=attached_at,json=attachedAt,proto3" json:"attached_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WorkspaceRepo) Reset() {
+	*x = WorkspaceRepo{}
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkspaceRepo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkspaceRepo) ProtoMessage() {}
+
+func (x *WorkspaceRepo) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkspaceRepo.ProtoReflect.Descriptor instead.
+func (*WorkspaceRepo) Descriptor() ([]byte, []int) {
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *WorkspaceRepo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *WorkspaceRepo) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *WorkspaceRepo) GetRef() string {
+	if x != nil {
+		return x.Ref
+	}
+	return ""
+}
+
+func (x *WorkspaceRepo) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *WorkspaceRepo) GetAccess() RepoAccess {
+	if x != nil {
+		return x.Access
+	}
+	return RepoAccess_REPO_ACCESS_UNSPECIFIED
+}
+
+func (x *WorkspaceRepo) GetPrimary() bool {
+	if x != nil {
+		return x.Primary
+	}
+	return false
+}
+
+func (x *WorkspaceRepo) GetHead() string {
+	if x != nil {
+		return x.Head
+	}
+	return ""
+}
+
+func (x *WorkspaceRepo) GetBranch() string {
+	if x != nil {
+		return x.Branch
+	}
+	return ""
+}
+
+func (x *WorkspaceRepo) GetAttachedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.AttachedAt
+	}
+	return nil
 }
 
 // GitCredential 是克隆或推送用的凭据（例如 HTTPS 的用户名与令牌），只用这一次。
@@ -194,7 +414,7 @@ type GitCredential struct {
 
 func (x *GitCredential) Reset() {
 	*x = GitCredential{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[0]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -206,7 +426,7 @@ func (x *GitCredential) String() string {
 func (*GitCredential) ProtoMessage() {}
 
 func (x *GitCredential) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[0]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -219,7 +439,7 @@ func (x *GitCredential) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GitCredential.ProtoReflect.Descriptor instead.
 func (*GitCredential) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{0}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *GitCredential) GetUsername() string {
@@ -254,13 +474,17 @@ type Workspace struct {
 	Branch string `protobuf:"bytes,10,opt,name=branch,proto3" json:"branch,omitempty"`
 	// 建工作区时选用的环境配置的 ID（应用的环境 ID）；没有选用时为空。配置的内容不回显（ENV-02）。
 	EnvironmentId string `protobuf:"bytes,11,opt,name=environment_id,json=environmentId,proto3" json:"environment_id,omitempty"`
+	// 目录布局（D-25）；旧的工作区为 ROOT。
+	Layout WorkspaceLayout `protobuf:"varint,12,opt,name=layout,proto3,enum=agentruntime.workspace.v1.WorkspaceLayout" json:"layout,omitempty"`
+	// MULTI 时挂上的仓库，按 path 排序；ROOT 时为空（repo_url、head、branch 是根仓库的）。
+	Repos         []*WorkspaceRepo `protobuf:"bytes,13,rep,name=repos,proto3" json:"repos,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Workspace) Reset() {
 	*x = Workspace{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[1]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -272,7 +496,7 @@ func (x *Workspace) String() string {
 func (*Workspace) ProtoMessage() {}
 
 func (x *Workspace) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[1]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -285,7 +509,7 @@ func (x *Workspace) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Workspace.ProtoReflect.Descriptor instead.
 func (*Workspace) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{1}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Workspace) GetWorkspaceId() string {
@@ -365,6 +589,20 @@ func (x *Workspace) GetEnvironmentId() string {
 	return ""
 }
 
+func (x *Workspace) GetLayout() WorkspaceLayout {
+	if x != nil {
+		return x.Layout
+	}
+	return WorkspaceLayout_WORKSPACE_LAYOUT_UNSPECIFIED
+}
+
+func (x *Workspace) GetRepos() []*WorkspaceRepo {
+	if x != nil {
+		return x.Repos
+	}
+	return nil
+}
+
 // WorkspaceEnvironment 是应用保存的可复用环境配置（人工验收 Q16–37；docs/plan/env-02-implementation-2026-11-03.md）
 // 在建会话时的一份快照：环境与仓库无关，同一个环境可以用于多个工作区；之后编辑环境只影响新建的会话。
 // 非机密的设置（setup_script、start_command、network）一直跟着会话；机密部分（env、secret_headers）只在配置还在时交，
@@ -396,7 +634,7 @@ type WorkspaceEnvironment struct {
 
 func (x *WorkspaceEnvironment) Reset() {
 	*x = WorkspaceEnvironment{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[2]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -408,7 +646,7 @@ func (x *WorkspaceEnvironment) String() string {
 func (*WorkspaceEnvironment) ProtoMessage() {}
 
 func (x *WorkspaceEnvironment) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[2]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -421,7 +659,7 @@ func (x *WorkspaceEnvironment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkspaceEnvironment.ProtoReflect.Descriptor instead.
 func (*WorkspaceEnvironment) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{2}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *WorkspaceEnvironment) GetEnvironmentId() string {
@@ -477,7 +715,7 @@ type EnvironmentNetwork struct {
 
 func (x *EnvironmentNetwork) Reset() {
 	*x = EnvironmentNetwork{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[3]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -489,7 +727,7 @@ func (x *EnvironmentNetwork) String() string {
 func (*EnvironmentNetwork) ProtoMessage() {}
 
 func (x *EnvironmentNetwork) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[3]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -502,7 +740,7 @@ func (x *EnvironmentNetwork) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnvironmentNetwork.ProtoReflect.Descriptor instead.
 func (*EnvironmentNetwork) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{3}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *EnvironmentNetwork) GetMode() NetworkMode {
@@ -531,7 +769,7 @@ type NetworkHost struct {
 
 func (x *NetworkHost) Reset() {
 	*x = NetworkHost{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[4]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -543,7 +781,7 @@ func (x *NetworkHost) String() string {
 func (*NetworkHost) ProtoMessage() {}
 
 func (x *NetworkHost) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[4]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -556,7 +794,7 @@ func (x *NetworkHost) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkHost.ProtoReflect.Descriptor instead.
 func (*NetworkHost) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{4}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *NetworkHost) GetHost() string {
@@ -590,7 +828,7 @@ type SecretHeader struct {
 
 func (x *SecretHeader) Reset() {
 	*x = SecretHeader{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[5]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -602,7 +840,7 @@ func (x *SecretHeader) String() string {
 func (*SecretHeader) ProtoMessage() {}
 
 func (x *SecretHeader) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[5]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -615,7 +853,7 @@ func (x *SecretHeader) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecretHeader.ProtoReflect.Descriptor instead.
 func (*SecretHeader) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{5}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *SecretHeader) GetHost() string {
@@ -659,7 +897,7 @@ type InitialFile struct {
 
 func (x *InitialFile) Reset() {
 	*x = InitialFile{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[6]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -671,7 +909,7 @@ func (x *InitialFile) String() string {
 func (*InitialFile) ProtoMessage() {}
 
 func (x *InitialFile) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[6]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -684,7 +922,7 @@ func (x *InitialFile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InitialFile.ProtoReflect.Descriptor instead.
 func (*InitialFile) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{6}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *InitialFile) GetPath() string {
@@ -724,14 +962,17 @@ type CreateWorkspaceRequest struct {
 	AuthorEmail string `protobuf:"bytes,9,opt,name=author_email,json=authorEmail,proto3" json:"author_email,omitempty"`
 	// 选用的环境配置（ENV-02）：在这个工作区上建的每个沙箱环境都按它准备（setup、start、.env、联网、网络密钥）。
 	// 为空时保持原行为。可以与任一来源同给（应用新建会话时复制基线工作区并选用环境）。
-	Environment   *WorkspaceEnvironment `protobuf:"bytes,10,opt,name=environment,proto3" json:"environment,omitempty"`
+	Environment *WorkspaceEnvironment `protobuf:"bytes,10,opt,name=environment,proto3" json:"environment,omitempty"`
+	// 目录布局（D-25）；不写时 ROOT。MULTI 时不能给 repo_url、ref、files（仓库之后用 AttachRepo 挂上；InvalidArgument），
+	// 可以给 from_workspace_id（复制那边的整个布局，它也要是 MULTI，否则 FailedPrecondition layout_mismatch）。
+	Layout        WorkspaceLayout `protobuf:"varint,11,opt,name=layout,proto3,enum=agentruntime.workspace.v1.WorkspaceLayout" json:"layout,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateWorkspaceRequest) Reset() {
 	*x = CreateWorkspaceRequest{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[7]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -743,7 +984,7 @@ func (x *CreateWorkspaceRequest) String() string {
 func (*CreateWorkspaceRequest) ProtoMessage() {}
 
 func (x *CreateWorkspaceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[7]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -756,7 +997,7 @@ func (x *CreateWorkspaceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateWorkspaceRequest.ProtoReflect.Descriptor instead.
 func (*CreateWorkspaceRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{7}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *CreateWorkspaceRequest) GetTenantId() string {
@@ -829,6 +1070,13 @@ func (x *CreateWorkspaceRequest) GetEnvironment() *WorkspaceEnvironment {
 	return nil
 }
 
+func (x *CreateWorkspaceRequest) GetLayout() WorkspaceLayout {
+	if x != nil {
+		return x.Layout
+	}
+	return WorkspaceLayout_WORKSPACE_LAYOUT_UNSPECIFIED
+}
+
 type CreateWorkspaceResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Workspace     *Workspace             `protobuf:"bytes,1,opt,name=workspace,proto3" json:"workspace,omitempty"`
@@ -838,7 +1086,7 @@ type CreateWorkspaceResponse struct {
 
 func (x *CreateWorkspaceResponse) Reset() {
 	*x = CreateWorkspaceResponse{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[8]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -850,7 +1098,7 @@ func (x *CreateWorkspaceResponse) String() string {
 func (*CreateWorkspaceResponse) ProtoMessage() {}
 
 func (x *CreateWorkspaceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[8]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -863,7 +1111,7 @@ func (x *CreateWorkspaceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateWorkspaceResponse.ProtoReflect.Descriptor instead.
 func (*CreateWorkspaceResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{8}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *CreateWorkspaceResponse) GetWorkspace() *Workspace {
@@ -882,7 +1130,7 @@ type ListWorkspacesRequest struct {
 
 func (x *ListWorkspacesRequest) Reset() {
 	*x = ListWorkspacesRequest{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[9]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -894,7 +1142,7 @@ func (x *ListWorkspacesRequest) String() string {
 func (*ListWorkspacesRequest) ProtoMessage() {}
 
 func (x *ListWorkspacesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[9]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -907,7 +1155,7 @@ func (x *ListWorkspacesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWorkspacesRequest.ProtoReflect.Descriptor instead.
 func (*ListWorkspacesRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{9}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ListWorkspacesRequest) GetTenantId() string {
@@ -926,7 +1174,7 @@ type ListWorkspacesResponse struct {
 
 func (x *ListWorkspacesResponse) Reset() {
 	*x = ListWorkspacesResponse{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[10]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -938,7 +1186,7 @@ func (x *ListWorkspacesResponse) String() string {
 func (*ListWorkspacesResponse) ProtoMessage() {}
 
 func (x *ListWorkspacesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[10]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -951,7 +1199,7 @@ func (x *ListWorkspacesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWorkspacesResponse.ProtoReflect.Descriptor instead.
 func (*ListWorkspacesResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{10}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ListWorkspacesResponse) GetWorkspaces() []*Workspace {
@@ -968,14 +1216,17 @@ type GetDiffRequest struct {
 	// commit、分支或标签；为空时相对 HEAD。
 	Base string `protobuf:"bytes,3,opt,name=base,proto3" json:"base,omitempty"`
 	// 检测改名（git diff --find-renames）：改名的文件在 diff 与 stats 里是一项，不是一删一加。
-	FindRenames   bool `protobuf:"varint,4,opt,name=find_renames,json=findRenames,proto3" json:"find_renames,omitempty"`
+	FindRenames bool `protobuf:"varint,4,opt,name=find_renames,json=findRenames,proto3" json:"find_renames,omitempty"`
+	// 仓库名（D-25）：MULTI 时必填（没有时 InvalidArgument repo_required，不认识时 NotFound repo_not_found），
+	// 结果只是这个仓库的、路径相对它的根；ROOT 时必须为空（InvalidArgument repo_not_applicable）。下面几个 Request 的 repo 相同。
+	Repo          string `protobuf:"bytes,5,opt,name=repo,proto3" json:"repo,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetDiffRequest) Reset() {
 	*x = GetDiffRequest{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[11]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -987,7 +1238,7 @@ func (x *GetDiffRequest) String() string {
 func (*GetDiffRequest) ProtoMessage() {}
 
 func (x *GetDiffRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[11]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1000,7 +1251,7 @@ func (x *GetDiffRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiffRequest.ProtoReflect.Descriptor instead.
 func (*GetDiffRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{11}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetDiffRequest) GetTenantId() string {
@@ -1031,6 +1282,13 @@ func (x *GetDiffRequest) GetFindRenames() bool {
 	return false
 }
 
+func (x *GetDiffRequest) GetRepo() string {
+	if x != nil {
+		return x.Repo
+	}
+	return ""
+}
+
 // DiffStat 是一个改动文件的行数（git diff --numstat）。
 type DiffStat struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1046,7 +1304,7 @@ type DiffStat struct {
 
 func (x *DiffStat) Reset() {
 	*x = DiffStat{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[12]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1058,7 +1316,7 @@ func (x *DiffStat) String() string {
 func (*DiffStat) ProtoMessage() {}
 
 func (x *DiffStat) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[12]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1071,7 +1329,7 @@ func (x *DiffStat) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiffStat.ProtoReflect.Descriptor instead.
 func (*DiffStat) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{12}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *DiffStat) GetPath() string {
@@ -1120,7 +1378,7 @@ type GetDiffResponse struct {
 
 func (x *GetDiffResponse) Reset() {
 	*x = GetDiffResponse{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[13]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1132,7 +1390,7 @@ func (x *GetDiffResponse) String() string {
 func (*GetDiffResponse) ProtoMessage() {}
 
 func (x *GetDiffResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[13]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1145,7 +1403,7 @@ func (x *GetDiffResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDiffResponse.ProtoReflect.Descriptor instead.
 func (*GetDiffResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{13}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetDiffResponse) GetDiff() string {
@@ -1191,19 +1449,21 @@ func (x *GetDiffResponse) GetBranch() string {
 }
 
 type CommitWorkspaceRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	WorkspaceId   string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
-	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
-	AuthorName    string                 `protobuf:"bytes,4,opt,name=author_name,json=authorName,proto3" json:"author_name,omitempty"`
-	AuthorEmail   string                 `protobuf:"bytes,5,opt,name=author_email,json=authorEmail,proto3" json:"author_email,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	TenantId    string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	WorkspaceId string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	Message     string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	AuthorName  string                 `protobuf:"bytes,4,opt,name=author_name,json=authorName,proto3" json:"author_name,omitempty"`
+	AuthorEmail string                 `protobuf:"bytes,5,opt,name=author_email,json=authorEmail,proto3" json:"author_email,omitempty"`
+	// 同 GetDiffRequest.repo；只读的仓库 PermissionDenied（repo_read_only）。
+	Repo          string `protobuf:"bytes,6,opt,name=repo,proto3" json:"repo,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CommitWorkspaceRequest) Reset() {
 	*x = CommitWorkspaceRequest{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[14]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1215,7 +1475,7 @@ func (x *CommitWorkspaceRequest) String() string {
 func (*CommitWorkspaceRequest) ProtoMessage() {}
 
 func (x *CommitWorkspaceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[14]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1228,7 +1488,7 @@ func (x *CommitWorkspaceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommitWorkspaceRequest.ProtoReflect.Descriptor instead.
 func (*CommitWorkspaceRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{14}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *CommitWorkspaceRequest) GetTenantId() string {
@@ -1266,6 +1526,13 @@ func (x *CommitWorkspaceRequest) GetAuthorEmail() string {
 	return ""
 }
 
+func (x *CommitWorkspaceRequest) GetRepo() string {
+	if x != nil {
+		return x.Repo
+	}
+	return ""
+}
+
 type CommitWorkspaceResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Sha   string                 `protobuf:"bytes,1,opt,name=sha,proto3" json:"sha,omitempty"`
@@ -1277,7 +1544,7 @@ type CommitWorkspaceResponse struct {
 
 func (x *CommitWorkspaceResponse) Reset() {
 	*x = CommitWorkspaceResponse{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[15]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1289,7 +1556,7 @@ func (x *CommitWorkspaceResponse) String() string {
 func (*CommitWorkspaceResponse) ProtoMessage() {}
 
 func (x *CommitWorkspaceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[15]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1302,7 +1569,7 @@ func (x *CommitWorkspaceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CommitWorkspaceResponse.ProtoReflect.Descriptor instead.
 func (*CommitWorkspaceResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{15}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *CommitWorkspaceResponse) GetSha() string {
@@ -1324,15 +1591,18 @@ type PushWorkspaceRequest struct {
 	TenantId    string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	WorkspaceId string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
 	// 远端的分支名，例如 agent/fix-ci。
-	Branch        string         `protobuf:"bytes,3,opt,name=branch,proto3" json:"branch,omitempty"`
-	Credential    *GitCredential `protobuf:"bytes,4,opt,name=credential,proto3" json:"credential,omitempty"`
+	Branch     string         `protobuf:"bytes,3,opt,name=branch,proto3" json:"branch,omitempty"`
+	Credential *GitCredential `protobuf:"bytes,4,opt,name=credential,proto3" json:"credential,omitempty"`
+	// 同 GetDiffRequest.repo；只读的仓库 PermissionDenied（repo_read_only）。凭据只用于这个仓库，分支规则（push_branches）
+	// 与主机授权逐仓库查；幂等键另含仓库名。
+	Repo          string `protobuf:"bytes,5,opt,name=repo,proto3" json:"repo,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PushWorkspaceRequest) Reset() {
 	*x = PushWorkspaceRequest{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[16]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1344,7 +1614,7 @@ func (x *PushWorkspaceRequest) String() string {
 func (*PushWorkspaceRequest) ProtoMessage() {}
 
 func (x *PushWorkspaceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[16]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1357,7 +1627,7 @@ func (x *PushWorkspaceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PushWorkspaceRequest.ProtoReflect.Descriptor instead.
 func (*PushWorkspaceRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{16}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *PushWorkspaceRequest) GetTenantId() string {
@@ -1388,6 +1658,13 @@ func (x *PushWorkspaceRequest) GetCredential() *GitCredential {
 	return nil
 }
 
+func (x *PushWorkspaceRequest) GetRepo() string {
+	if x != nil {
+		return x.Repo
+	}
+	return ""
+}
+
 type PushWorkspaceResponse struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Sha    string                 `protobuf:"bytes,1,opt,name=sha,proto3" json:"sha,omitempty"`
@@ -1400,7 +1677,7 @@ type PushWorkspaceResponse struct {
 
 func (x *PushWorkspaceResponse) Reset() {
 	*x = PushWorkspaceResponse{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[17]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1412,7 +1689,7 @@ func (x *PushWorkspaceResponse) String() string {
 func (*PushWorkspaceResponse) ProtoMessage() {}
 
 func (x *PushWorkspaceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[17]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1425,7 +1702,7 @@ func (x *PushWorkspaceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PushWorkspaceResponse.ProtoReflect.Descriptor instead.
 func (*PushWorkspaceResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{17}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *PushWorkspaceResponse) GetSha() string {
@@ -1459,7 +1736,7 @@ type ArchiveWorkspaceRequest struct {
 
 func (x *ArchiveWorkspaceRequest) Reset() {
 	*x = ArchiveWorkspaceRequest{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[18]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1471,7 +1748,7 @@ func (x *ArchiveWorkspaceRequest) String() string {
 func (*ArchiveWorkspaceRequest) ProtoMessage() {}
 
 func (x *ArchiveWorkspaceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[18]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1484,7 +1761,7 @@ func (x *ArchiveWorkspaceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArchiveWorkspaceRequest.ProtoReflect.Descriptor instead.
 func (*ArchiveWorkspaceRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{18}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ArchiveWorkspaceRequest) GetTenantId() string {
@@ -1512,7 +1789,7 @@ type ArchiveWorkspaceResponse struct {
 
 func (x *ArchiveWorkspaceResponse) Reset() {
 	*x = ArchiveWorkspaceResponse{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[19]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1524,7 +1801,7 @@ func (x *ArchiveWorkspaceResponse) String() string {
 func (*ArchiveWorkspaceResponse) ProtoMessage() {}
 
 func (x *ArchiveWorkspaceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[19]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1537,7 +1814,7 @@ func (x *ArchiveWorkspaceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArchiveWorkspaceResponse.ProtoReflect.Descriptor instead.
 func (*ArchiveWorkspaceResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{19}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ArchiveWorkspaceResponse) GetSnapshotId() string {
@@ -1571,7 +1848,7 @@ type DeleteWorkspaceRequest struct {
 
 func (x *DeleteWorkspaceRequest) Reset() {
 	*x = DeleteWorkspaceRequest{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[20]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1583,7 +1860,7 @@ func (x *DeleteWorkspaceRequest) String() string {
 func (*DeleteWorkspaceRequest) ProtoMessage() {}
 
 func (x *DeleteWorkspaceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[20]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1596,7 +1873,7 @@ func (x *DeleteWorkspaceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteWorkspaceRequest.ProtoReflect.Descriptor instead.
 func (*DeleteWorkspaceRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{20}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *DeleteWorkspaceRequest) GetTenantId() string {
@@ -1621,7 +1898,7 @@ type DeleteWorkspaceResponse struct {
 
 func (x *DeleteWorkspaceResponse) Reset() {
 	*x = DeleteWorkspaceResponse{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[21]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1633,7 +1910,7 @@ func (x *DeleteWorkspaceResponse) String() string {
 func (*DeleteWorkspaceResponse) ProtoMessage() {}
 
 func (x *DeleteWorkspaceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[21]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1646,7 +1923,7 @@ func (x *DeleteWorkspaceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteWorkspaceResponse.ProtoReflect.Descriptor instead.
 func (*DeleteWorkspaceResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{21}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{22}
 }
 
 // FileEntry 是目录里的一项。
@@ -1662,7 +1939,7 @@ type FileEntry struct {
 
 func (x *FileEntry) Reset() {
 	*x = FileEntry{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[22]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1674,7 +1951,7 @@ func (x *FileEntry) String() string {
 func (*FileEntry) ProtoMessage() {}
 
 func (x *FileEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[22]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1687,7 +1964,7 @@ func (x *FileEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FileEntry.ProtoReflect.Descriptor instead.
 func (*FileEntry) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{22}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *FileEntry) GetName() string {
@@ -1723,7 +2000,7 @@ type ListFilesRequest struct {
 
 func (x *ListFilesRequest) Reset() {
 	*x = ListFilesRequest{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[23]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1735,7 +2012,7 @@ func (x *ListFilesRequest) String() string {
 func (*ListFilesRequest) ProtoMessage() {}
 
 func (x *ListFilesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[23]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1748,7 +2025,7 @@ func (x *ListFilesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFilesRequest.ProtoReflect.Descriptor instead.
 func (*ListFilesRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{23}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ListFilesRequest) GetTenantId() string {
@@ -1783,7 +2060,7 @@ type ListFilesResponse struct {
 
 func (x *ListFilesResponse) Reset() {
 	*x = ListFilesResponse{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[24]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1795,7 +2072,7 @@ func (x *ListFilesResponse) String() string {
 func (*ListFilesResponse) ProtoMessage() {}
 
 func (x *ListFilesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[24]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1808,7 +2085,7 @@ func (x *ListFilesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFilesResponse.ProtoReflect.Descriptor instead.
 func (*ListFilesResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{24}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ListFilesResponse) GetEntries() []*FileEntry {
@@ -1836,7 +2113,7 @@ type ReadFileRequest struct {
 
 func (x *ReadFileRequest) Reset() {
 	*x = ReadFileRequest{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[25]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1848,7 +2125,7 @@ func (x *ReadFileRequest) String() string {
 func (*ReadFileRequest) ProtoMessage() {}
 
 func (x *ReadFileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[25]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1861,7 +2138,7 @@ func (x *ReadFileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadFileRequest.ProtoReflect.Descriptor instead.
 func (*ReadFileRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{25}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ReadFileRequest) GetTenantId() string {
@@ -1899,7 +2176,7 @@ type ReadFileResponse struct {
 
 func (x *ReadFileResponse) Reset() {
 	*x = ReadFileResponse{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[26]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1911,7 +2188,7 @@ func (x *ReadFileResponse) String() string {
 func (*ReadFileResponse) ProtoMessage() {}
 
 func (x *ReadFileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[26]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1924,7 +2201,7 @@ func (x *ReadFileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadFileResponse.ProtoReflect.Descriptor instead.
 func (*ReadFileResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{26}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ReadFileResponse) GetSize() int64 {
@@ -1962,14 +2239,16 @@ type GetLogRequest struct {
 	// 最多几个提交：0 时 30，最多 200。
 	Limit int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	// commit、分支（含 origin/<分支>）或标签；给了时只给 HEAD 有、它没有的提交。
-	Base          string `protobuf:"bytes,4,opt,name=base,proto3" json:"base,omitempty"`
+	Base string `protobuf:"bytes,4,opt,name=base,proto3" json:"base,omitempty"`
+	// 同 GetDiffRequest.repo。
+	Repo          string `protobuf:"bytes,5,opt,name=repo,proto3" json:"repo,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetLogRequest) Reset() {
 	*x = GetLogRequest{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[27]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1981,7 +2260,7 @@ func (x *GetLogRequest) String() string {
 func (*GetLogRequest) ProtoMessage() {}
 
 func (x *GetLogRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[27]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1994,7 +2273,7 @@ func (x *GetLogRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLogRequest.ProtoReflect.Descriptor instead.
 func (*GetLogRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{27}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *GetLogRequest) GetTenantId() string {
@@ -2025,6 +2304,13 @@ func (x *GetLogRequest) GetBase() string {
 	return ""
 }
 
+func (x *GetLogRequest) GetRepo() string {
+	if x != nil {
+		return x.Repo
+	}
+	return ""
+}
+
 // Commit 是一个提交。
 type Commit struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
@@ -2040,7 +2326,7 @@ type Commit struct {
 
 func (x *Commit) Reset() {
 	*x = Commit{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[28]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2052,7 +2338,7 @@ func (x *Commit) String() string {
 func (*Commit) ProtoMessage() {}
 
 func (x *Commit) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[28]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2065,7 +2351,7 @@ func (x *Commit) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Commit.ProtoReflect.Descriptor instead.
 func (*Commit) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{28}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *Commit) GetSha() string {
@@ -2112,7 +2398,7 @@ type GetLogResponse struct {
 
 func (x *GetLogResponse) Reset() {
 	*x = GetLogResponse{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[29]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2124,7 +2410,7 @@ func (x *GetLogResponse) String() string {
 func (*GetLogResponse) ProtoMessage() {}
 
 func (x *GetLogResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[29]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2137,7 +2423,7 @@ func (x *GetLogResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLogResponse.ProtoReflect.Descriptor instead.
 func (*GetLogResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{29}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *GetLogResponse) GetCommits() []*Commit {
@@ -2148,16 +2434,18 @@ func (x *GetLogResponse) GetCommits() []*Commit {
 }
 
 type DiscardChangesRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	WorkspaceId   string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	TenantId    string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	WorkspaceId string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	// 同 GetDiffRequest.repo。
+	Repo          string `protobuf:"bytes,3,opt,name=repo,proto3" json:"repo,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DiscardChangesRequest) Reset() {
 	*x = DiscardChangesRequest{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[30]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2169,7 +2457,7 @@ func (x *DiscardChangesRequest) String() string {
 func (*DiscardChangesRequest) ProtoMessage() {}
 
 func (x *DiscardChangesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[30]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2182,7 +2470,7 @@ func (x *DiscardChangesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiscardChangesRequest.ProtoReflect.Descriptor instead.
 func (*DiscardChangesRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{30}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *DiscardChangesRequest) GetTenantId() string {
@@ -2199,6 +2487,13 @@ func (x *DiscardChangesRequest) GetWorkspaceId() string {
 	return ""
 }
 
+func (x *DiscardChangesRequest) GetRepo() string {
+	if x != nil {
+		return x.Repo
+	}
+	return ""
+}
+
 type DiscardChangesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Head          string                 `protobuf:"bytes,1,opt,name=head,proto3" json:"head,omitempty"`
@@ -2208,7 +2503,7 @@ type DiscardChangesResponse struct {
 
 func (x *DiscardChangesResponse) Reset() {
 	*x = DiscardChangesResponse{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[31]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2220,7 +2515,7 @@ func (x *DiscardChangesResponse) String() string {
 func (*DiscardChangesResponse) ProtoMessage() {}
 
 func (x *DiscardChangesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[31]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2233,7 +2528,7 @@ func (x *DiscardChangesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiscardChangesResponse.ProtoReflect.Descriptor instead.
 func (*DiscardChangesResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{31}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *DiscardChangesResponse) GetHead() string {
@@ -2248,15 +2543,17 @@ type SyncWorkspaceRequest struct {
 	TenantId    string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
 	WorkspaceId string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
 	// 远端的分支名，例如 main。
-	Branch        string         `protobuf:"bytes,3,opt,name=branch,proto3" json:"branch,omitempty"`
-	Credential    *GitCredential `protobuf:"bytes,4,opt,name=credential,proto3" json:"credential,omitempty"`
+	Branch     string         `protobuf:"bytes,3,opt,name=branch,proto3" json:"branch,omitempty"`
+	Credential *GitCredential `protobuf:"bytes,4,opt,name=credential,proto3" json:"credential,omitempty"`
+	// 同 GetDiffRequest.repo；远端是这个仓库的 url，凭据只用于它。
+	Repo          string `protobuf:"bytes,5,opt,name=repo,proto3" json:"repo,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SyncWorkspaceRequest) Reset() {
 	*x = SyncWorkspaceRequest{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[32]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2268,7 +2565,7 @@ func (x *SyncWorkspaceRequest) String() string {
 func (*SyncWorkspaceRequest) ProtoMessage() {}
 
 func (x *SyncWorkspaceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[32]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2281,7 +2578,7 @@ func (x *SyncWorkspaceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncWorkspaceRequest.ProtoReflect.Descriptor instead.
 func (*SyncWorkspaceRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{32}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *SyncWorkspaceRequest) GetTenantId() string {
@@ -2312,6 +2609,13 @@ func (x *SyncWorkspaceRequest) GetCredential() *GitCredential {
 	return nil
 }
 
+func (x *SyncWorkspaceRequest) GetRepo() string {
+	if x != nil {
+		return x.Repo
+	}
+	return ""
+}
+
 type SyncWorkspaceResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 切过去之后的 HEAD。
@@ -2323,7 +2627,7 @@ type SyncWorkspaceResponse struct {
 
 func (x *SyncWorkspaceResponse) Reset() {
 	*x = SyncWorkspaceResponse{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[33]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2335,7 +2639,7 @@ func (x *SyncWorkspaceResponse) String() string {
 func (*SyncWorkspaceResponse) ProtoMessage() {}
 
 func (x *SyncWorkspaceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[33]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2348,7 +2652,7 @@ func (x *SyncWorkspaceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncWorkspaceResponse.ProtoReflect.Descriptor instead.
 func (*SyncWorkspaceResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{33}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *SyncWorkspaceResponse) GetHead() string {
@@ -2375,7 +2679,7 @@ type DeleteEnvironmentConfigRequest struct {
 
 func (x *DeleteEnvironmentConfigRequest) Reset() {
 	*x = DeleteEnvironmentConfigRequest{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[34]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2387,7 +2691,7 @@ func (x *DeleteEnvironmentConfigRequest) String() string {
 func (*DeleteEnvironmentConfigRequest) ProtoMessage() {}
 
 func (x *DeleteEnvironmentConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[34]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2400,7 +2704,7 @@ func (x *DeleteEnvironmentConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteEnvironmentConfigRequest.ProtoReflect.Descriptor instead.
 func (*DeleteEnvironmentConfigRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{34}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *DeleteEnvironmentConfigRequest) GetTenantId() string {
@@ -2427,7 +2731,7 @@ type DeleteEnvironmentConfigResponse struct {
 
 func (x *DeleteEnvironmentConfigResponse) Reset() {
 	*x = DeleteEnvironmentConfigResponse{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[35]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2439,7 +2743,7 @@ func (x *DeleteEnvironmentConfigResponse) String() string {
 func (*DeleteEnvironmentConfigResponse) ProtoMessage() {}
 
 func (x *DeleteEnvironmentConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[35]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2452,7 +2756,7 @@ func (x *DeleteEnvironmentConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteEnvironmentConfigResponse.ProtoReflect.Descriptor instead.
 func (*DeleteEnvironmentConfigResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{35}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *DeleteEnvironmentConfigResponse) GetWorkspaces() int32 {
@@ -2474,7 +2778,7 @@ type SetWorkspaceEnvironmentRequest struct {
 
 func (x *SetWorkspaceEnvironmentRequest) Reset() {
 	*x = SetWorkspaceEnvironmentRequest{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[36]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2486,7 +2790,7 @@ func (x *SetWorkspaceEnvironmentRequest) String() string {
 func (*SetWorkspaceEnvironmentRequest) ProtoMessage() {}
 
 func (x *SetWorkspaceEnvironmentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[36]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2499,7 +2803,7 @@ func (x *SetWorkspaceEnvironmentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetWorkspaceEnvironmentRequest.ProtoReflect.Descriptor instead.
 func (*SetWorkspaceEnvironmentRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{36}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *SetWorkspaceEnvironmentRequest) GetTenantId() string {
@@ -2532,7 +2836,7 @@ type SetWorkspaceEnvironmentResponse struct {
 
 func (x *SetWorkspaceEnvironmentResponse) Reset() {
 	*x = SetWorkspaceEnvironmentResponse{}
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[37]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2544,7 +2848,7 @@ func (x *SetWorkspaceEnvironmentResponse) String() string {
 func (*SetWorkspaceEnvironmentResponse) ProtoMessage() {}
 
 func (x *SetWorkspaceEnvironmentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[37]
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2557,7 +2861,7 @@ func (x *SetWorkspaceEnvironmentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetWorkspaceEnvironmentResponse.ProtoReflect.Descriptor instead.
 func (*SetWorkspaceEnvironmentResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{37}
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *SetWorkspaceEnvironmentResponse) GetWorkspace() *Workspace {
@@ -2567,14 +2871,373 @@ func (x *SetWorkspaceEnvironmentResponse) GetWorkspace() *Workspace {
 	return nil
 }
 
+type AttachRepoRequest struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	TenantId    string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	WorkspaceId string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	// name、url、path 必填；ref、access、primary 可选；head、branch、attached_at 忽略。
+	Repo          *WorkspaceRepo `protobuf:"bytes,3,opt,name=repo,proto3" json:"repo,omitempty"`
+	Credential    *GitCredential `protobuf:"bytes,4,opt,name=credential,proto3" json:"credential,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AttachRepoRequest) Reset() {
+	*x = AttachRepoRequest{}
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AttachRepoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AttachRepoRequest) ProtoMessage() {}
+
+func (x *AttachRepoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AttachRepoRequest.ProtoReflect.Descriptor instead.
+func (*AttachRepoRequest) Descriptor() ([]byte, []int) {
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *AttachRepoRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *AttachRepoRequest) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *AttachRepoRequest) GetRepo() *WorkspaceRepo {
+	if x != nil {
+		return x.Repo
+	}
+	return nil
+}
+
+func (x *AttachRepoRequest) GetCredential() *GitCredential {
+	if x != nil {
+		return x.Credential
+	}
+	return nil
+}
+
+type AttachRepoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Repo          *WorkspaceRepo         `protobuf:"bytes,1,opt,name=repo,proto3" json:"repo,omitempty"`
+	Workspace     *Workspace             `protobuf:"bytes,2,opt,name=workspace,proto3" json:"workspace,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AttachRepoResponse) Reset() {
+	*x = AttachRepoResponse{}
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AttachRepoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AttachRepoResponse) ProtoMessage() {}
+
+func (x *AttachRepoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AttachRepoResponse.ProtoReflect.Descriptor instead.
+func (*AttachRepoResponse) Descriptor() ([]byte, []int) {
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *AttachRepoResponse) GetRepo() *WorkspaceRepo {
+	if x != nil {
+		return x.Repo
+	}
+	return nil
+}
+
+func (x *AttachRepoResponse) GetWorkspace() *Workspace {
+	if x != nil {
+		return x.Workspace
+	}
+	return nil
+}
+
+type DetachRepoRequest struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	TenantId    string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	WorkspaceId string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	// 仓库名。
+	Repo string `protobuf:"bytes,3,opt,name=repo,proto3" json:"repo,omitempty"`
+	// 有未提交的改动或没推送的提交时也卸下（丢掉它们）；不给时那种情况 FailedPrecondition（repo_dirty）。
+	DiscardChanges bool `protobuf:"varint,4,opt,name=discard_changes,json=discardChanges,proto3" json:"discard_changes,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *DetachRepoRequest) Reset() {
+	*x = DetachRepoRequest{}
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DetachRepoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DetachRepoRequest) ProtoMessage() {}
+
+func (x *DetachRepoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DetachRepoRequest.ProtoReflect.Descriptor instead.
+func (*DetachRepoRequest) Descriptor() ([]byte, []int) {
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *DetachRepoRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *DetachRepoRequest) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *DetachRepoRequest) GetRepo() string {
+	if x != nil {
+		return x.Repo
+	}
+	return ""
+}
+
+func (x *DetachRepoRequest) GetDiscardChanges() bool {
+	if x != nil {
+		return x.DiscardChanges
+	}
+	return false
+}
+
+type DetachRepoResponse struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Workspace *Workspace             `protobuf:"bytes,1,opt,name=workspace,proto3" json:"workspace,omitempty"`
+	// 卸下时丢掉的东西（discard_changes 时才可能不为 0）：未提交的改动涉及的文件数、不在任何远端分支上的提交数。
+	DiscardedFiles   int32 `protobuf:"varint,2,opt,name=discarded_files,json=discardedFiles,proto3" json:"discarded_files,omitempty"`
+	DiscardedCommits int32 `protobuf:"varint,3,opt,name=discarded_commits,json=discardedCommits,proto3" json:"discarded_commits,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *DetachRepoResponse) Reset() {
+	*x = DetachRepoResponse{}
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DetachRepoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DetachRepoResponse) ProtoMessage() {}
+
+func (x *DetachRepoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DetachRepoResponse.ProtoReflect.Descriptor instead.
+func (*DetachRepoResponse) Descriptor() ([]byte, []int) {
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *DetachRepoResponse) GetWorkspace() *Workspace {
+	if x != nil {
+		return x.Workspace
+	}
+	return nil
+}
+
+func (x *DetachRepoResponse) GetDiscardedFiles() int32 {
+	if x != nil {
+		return x.DiscardedFiles
+	}
+	return 0
+}
+
+func (x *DetachRepoResponse) GetDiscardedCommits() int32 {
+	if x != nil {
+		return x.DiscardedCommits
+	}
+	return 0
+}
+
+type ListReposRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	WorkspaceId   string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListReposRequest) Reset() {
+	*x = ListReposRequest{}
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListReposRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListReposRequest) ProtoMessage() {}
+
+func (x *ListReposRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListReposRequest.ProtoReflect.Descriptor instead.
+func (*ListReposRequest) Descriptor() ([]byte, []int) {
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *ListReposRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *ListReposRequest) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+type ListReposResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Repos         []*WorkspaceRepo       `protobuf:"bytes,1,rep,name=repos,proto3" json:"repos,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListReposResponse) Reset() {
+	*x = ListReposResponse{}
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListReposResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListReposResponse) ProtoMessage() {}
+
+func (x *ListReposResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListReposResponse.ProtoReflect.Descriptor instead.
+func (*ListReposResponse) Descriptor() ([]byte, []int) {
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *ListReposResponse) GetRepos() []*WorkspaceRepo {
+	if x != nil {
+		return x.Repos
+	}
+	return nil
+}
+
 var File_agentruntime_workspace_v1_workspace_proto protoreflect.FileDescriptor
 
 const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
 	"\n" +
-	")agentruntime/workspace/v1/workspace.proto\x12\x19agentruntime.workspace.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"G\n" +
+	")agentruntime/workspace/v1/workspace.proto\x12\x19agentruntime.workspace.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9d\x02\n" +
+	"\rWorkspaceRepo\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
+	"\x03url\x18\x02 \x01(\tR\x03url\x12\x10\n" +
+	"\x03ref\x18\x03 \x01(\tR\x03ref\x12\x12\n" +
+	"\x04path\x18\x04 \x01(\tR\x04path\x12=\n" +
+	"\x06access\x18\x05 \x01(\x0e2%.agentruntime.workspace.v1.RepoAccessR\x06access\x12\x18\n" +
+	"\aprimary\x18\x06 \x01(\bR\aprimary\x12\x12\n" +
+	"\x04head\x18\a \x01(\tR\x04head\x12\x16\n" +
+	"\x06branch\x18\b \x01(\tR\x06branch\x12;\n" +
+	"\vattached_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"attachedAt\"G\n" +
 	"\rGitCredential\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1a\n" +
-	"\bpassword\x18\x02 \x01(\tR\bpassword\"\xa9\x03\n" +
+	"\bpassword\x18\x02 \x01(\tR\bpassword\"\xad\x04\n" +
 	"\tWorkspace\x12!\n" +
 	"\fworkspace_id\x18\x01 \x01(\tR\vworkspaceId\x12?\n" +
 	"\x05state\x18\x02 \x01(\x0e2).agentruntime.workspace.v1.WorkspaceStateR\x05state\x12\x19\n" +
@@ -2591,7 +3254,9 @@ const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
 	"updated_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x16\n" +
 	"\x06branch\x18\n" +
 	" \x01(\tR\x06branch\x12%\n" +
-	"\x0eenvironment_id\x18\v \x01(\tR\renvironmentId\"\xb0\x02\n" +
+	"\x0eenvironment_id\x18\v \x01(\tR\renvironmentId\x12B\n" +
+	"\x06layout\x18\f \x01(\x0e2*.agentruntime.workspace.v1.WorkspaceLayoutR\x06layout\x12>\n" +
+	"\x05repos\x18\r \x03(\v2(.agentruntime.workspace.v1.WorkspaceRepoR\x05repos\"\xb0\x02\n" +
 	"\x14WorkspaceEnvironment\x12%\n" +
 	"\x0eenvironment_id\x18\x01 \x01(\tR\renvironmentId\x12!\n" +
 	"\fsetup_script\x18\x02 \x01(\tR\vsetupScript\x12#\n" +
@@ -2613,7 +3278,7 @@ const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
 	"\x06header\x18\x04 \x01(\tR\x06header\";\n" +
 	"\vInitialFile\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x18\n" +
-	"\acontent\x18\x02 \x01(\tR\acontent\"\xd0\x03\n" +
+	"\acontent\x18\x02 \x01(\tR\acontent\"\x94\x04\n" +
 	"\x16CreateWorkspaceRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x19\n" +
@@ -2628,7 +3293,8 @@ const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
 	"authorName\x12!\n" +
 	"\fauthor_email\x18\t \x01(\tR\vauthorEmail\x12Q\n" +
 	"\venvironment\x18\n" +
-	" \x01(\v2/.agentruntime.workspace.v1.WorkspaceEnvironmentR\venvironment\"]\n" +
+	" \x01(\v2/.agentruntime.workspace.v1.WorkspaceEnvironmentR\venvironment\x12B\n" +
+	"\x06layout\x18\v \x01(\x0e2*.agentruntime.workspace.v1.WorkspaceLayoutR\x06layout\"]\n" +
 	"\x17CreateWorkspaceResponse\x12B\n" +
 	"\tworkspace\x18\x01 \x01(\v2$.agentruntime.workspace.v1.WorkspaceR\tworkspace\"4\n" +
 	"\x15ListWorkspacesRequest\x12\x1b\n" +
@@ -2636,12 +3302,13 @@ const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
 	"\x16ListWorkspacesResponse\x12D\n" +
 	"\n" +
 	"workspaces\x18\x01 \x03(\v2$.agentruntime.workspace.v1.WorkspaceR\n" +
-	"workspaces\"\x87\x01\n" +
+	"workspaces\"\x9b\x01\n" +
 	"\x0eGetDiffRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x12\n" +
 	"\x04base\x18\x03 \x01(\tR\x04base\x12!\n" +
-	"\ffind_renames\x18\x04 \x01(\bR\vfindRenames\"f\n" +
+	"\ffind_renames\x18\x04 \x01(\bR\vfindRenames\x12\x12\n" +
+	"\x04repo\x18\x05 \x01(\tR\x04repo\"f\n" +
 	"\bDiffStat\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x14\n" +
 	"\x05added\x18\x02 \x01(\x05R\x05added\x12\x18\n" +
@@ -2653,24 +3320,26 @@ const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
 	"\ttruncated\x18\x03 \x01(\bR\ttruncated\x12\x12\n" +
 	"\x04head\x18\x04 \x01(\tR\x04head\x129\n" +
 	"\x05stats\x18\x05 \x03(\v2#.agentruntime.workspace.v1.DiffStatR\x05stats\x12\x16\n" +
-	"\x06branch\x18\x06 \x01(\tR\x06branch\"\xb6\x01\n" +
+	"\x06branch\x18\x06 \x01(\tR\x06branch\"\xca\x01\n" +
 	"\x16CommitWorkspaceRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\x12\x1f\n" +
 	"\vauthor_name\x18\x04 \x01(\tR\n" +
 	"authorName\x12!\n" +
-	"\fauthor_email\x18\x05 \x01(\tR\vauthorEmail\"I\n" +
+	"\fauthor_email\x18\x05 \x01(\tR\vauthorEmail\x12\x12\n" +
+	"\x04repo\x18\x06 \x01(\tR\x04repo\"I\n" +
 	"\x17CommitWorkspaceResponse\x12\x10\n" +
 	"\x03sha\x18\x01 \x01(\tR\x03sha\x12\x1c\n" +
-	"\tcommitted\x18\x02 \x01(\bR\tcommitted\"\xb8\x01\n" +
+	"\tcommitted\x18\x02 \x01(\bR\tcommitted\"\xcc\x01\n" +
 	"\x14PushWorkspaceRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x16\n" +
 	"\x06branch\x18\x03 \x01(\tR\x06branch\x12H\n" +
 	"\n" +
 	"credential\x18\x04 \x01(\v2(.agentruntime.workspace.v1.GitCredentialR\n" +
-	"credential\"a\n" +
+	"credential\x12\x12\n" +
+	"\x04repo\x18\x05 \x01(\tR\x04repo\"a\n" +
 	"\x15PushWorkspaceResponse\x12\x10\n" +
 	"\x03sha\x18\x01 \x01(\tR\x03sha\x12\x16\n" +
 	"\x06branch\x18\x02 \x01(\tR\x06branch\x12\x1e\n" +
@@ -2709,12 +3378,13 @@ const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
 	"\x04size\x18\x01 \x01(\x03R\x04size\x12\x1b\n" +
 	"\ttoo_large\x18\x02 \x01(\bR\btooLarge\x12\x16\n" +
 	"\x06binary\x18\x03 \x01(\bR\x06binary\x12\x18\n" +
-	"\acontent\x18\x04 \x01(\tR\acontent\"y\n" +
+	"\acontent\x18\x04 \x01(\tR\acontent\"\x8d\x01\n" +
 	"\rGetLogRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x12\n" +
-	"\x04base\x18\x04 \x01(\tR\x04base\"\xb5\x01\n" +
+	"\x04base\x18\x04 \x01(\tR\x04base\x12\x12\n" +
+	"\x04repo\x18\x05 \x01(\tR\x04repo\"\xb5\x01\n" +
 	"\x06Commit\x12\x10\n" +
 	"\x03sha\x18\x01 \x01(\tR\x03sha\x12\x1f\n" +
 	"\vauthor_name\x18\x02 \x01(\tR\n" +
@@ -2724,19 +3394,21 @@ const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
 	"authoredAt\x12\x18\n" +
 	"\asubject\x18\x05 \x01(\tR\asubject\"M\n" +
 	"\x0eGetLogResponse\x12;\n" +
-	"\acommits\x18\x01 \x03(\v2!.agentruntime.workspace.v1.CommitR\acommits\"W\n" +
+	"\acommits\x18\x01 \x03(\v2!.agentruntime.workspace.v1.CommitR\acommits\"k\n" +
 	"\x15DiscardChangesRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
-	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\",\n" +
+	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x12\n" +
+	"\x04repo\x18\x03 \x01(\tR\x04repo\",\n" +
 	"\x16DiscardChangesResponse\x12\x12\n" +
-	"\x04head\x18\x01 \x01(\tR\x04head\"\xb8\x01\n" +
+	"\x04head\x18\x01 \x01(\tR\x04head\"\xcc\x01\n" +
 	"\x14SyncWorkspaceRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x16\n" +
 	"\x06branch\x18\x03 \x01(\tR\x06branch\x12H\n" +
 	"\n" +
 	"credential\x18\x04 \x01(\v2(.agentruntime.workspace.v1.GitCredentialR\n" +
-	"credential\"C\n" +
+	"credential\x12\x12\n" +
+	"\x04repo\x18\x05 \x01(\tR\x04repo\"C\n" +
 	"\x15SyncWorkspaceResponse\x12\x12\n" +
 	"\x04head\x18\x01 \x01(\tR\x04head\x12\x16\n" +
 	"\x06branch\x18\x02 \x01(\tR\x06branch\"d\n" +
@@ -2752,7 +3424,40 @@ const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12Q\n" +
 	"\venvironment\x18\x03 \x01(\v2/.agentruntime.workspace.v1.WorkspaceEnvironmentR\venvironment\"e\n" +
 	"\x1fSetWorkspaceEnvironmentResponse\x12B\n" +
-	"\tworkspace\x18\x01 \x01(\v2$.agentruntime.workspace.v1.WorkspaceR\tworkspace*\x88\x01\n" +
+	"\tworkspace\x18\x01 \x01(\v2$.agentruntime.workspace.v1.WorkspaceR\tworkspace\"\xdb\x01\n" +
+	"\x11AttachRepoRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
+	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12<\n" +
+	"\x04repo\x18\x03 \x01(\v2(.agentruntime.workspace.v1.WorkspaceRepoR\x04repo\x12H\n" +
+	"\n" +
+	"credential\x18\x04 \x01(\v2(.agentruntime.workspace.v1.GitCredentialR\n" +
+	"credential\"\x96\x01\n" +
+	"\x12AttachRepoResponse\x12<\n" +
+	"\x04repo\x18\x01 \x01(\v2(.agentruntime.workspace.v1.WorkspaceRepoR\x04repo\x12B\n" +
+	"\tworkspace\x18\x02 \x01(\v2$.agentruntime.workspace.v1.WorkspaceR\tworkspace\"\x90\x01\n" +
+	"\x11DetachRepoRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
+	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x12\n" +
+	"\x04repo\x18\x03 \x01(\tR\x04repo\x12'\n" +
+	"\x0fdiscard_changes\x18\x04 \x01(\bR\x0ediscardChanges\"\xae\x01\n" +
+	"\x12DetachRepoResponse\x12B\n" +
+	"\tworkspace\x18\x01 \x01(\v2$.agentruntime.workspace.v1.WorkspaceR\tworkspace\x12'\n" +
+	"\x0fdiscarded_files\x18\x02 \x01(\x05R\x0ediscardedFiles\x12+\n" +
+	"\x11discarded_commits\x18\x03 \x01(\x05R\x10discardedCommits\"R\n" +
+	"\x10ListReposRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
+	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\"S\n" +
+	"\x11ListReposResponse\x12>\n" +
+	"\x05repos\x18\x01 \x03(\v2(.agentruntime.workspace.v1.WorkspaceRepoR\x05repos*j\n" +
+	"\x0fWorkspaceLayout\x12 \n" +
+	"\x1cWORKSPACE_LAYOUT_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15WORKSPACE_LAYOUT_ROOT\x10\x01\x12\x1a\n" +
+	"\x16WORKSPACE_LAYOUT_MULTI\x10\x02*V\n" +
+	"\n" +
+	"RepoAccess\x12\x1b\n" +
+	"\x17REPO_ACCESS_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10REPO_ACCESS_READ\x10\x01\x12\x15\n" +
+	"\x11REPO_ACCESS_WRITE\x10\x02*\x88\x01\n" +
 	"\x0eWorkspaceState\x12\x1f\n" +
 	"\x1bWORKSPACE_STATE_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16WORKSPACE_STATE_ACTIVE\x10\x01\x12\x1c\n" +
@@ -2767,7 +3472,7 @@ const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
 	"\x15FILE_TYPE_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eFILE_TYPE_FILE\x10\x01\x12\x17\n" +
 	"\x13FILE_TYPE_DIRECTORY\x10\x02\x12\x15\n" +
-	"\x11FILE_TYPE_SYMLINK\x10\x032\x87\r\n" +
+	"\x11FILE_TYPE_SYMLINK\x10\x032\xc5\x0f\n" +
 	"\x10WorkspaceService\x12x\n" +
 	"\x0fCreateWorkspace\x121.agentruntime.workspace.v1.CreateWorkspaceRequest\x1a2.agentruntime.workspace.v1.CreateWorkspaceResponse\x12u\n" +
 	"\x0eListWorkspaces\x120.agentruntime.workspace.v1.ListWorkspacesRequest\x1a1.agentruntime.workspace.v1.ListWorkspacesResponse\x12`\n" +
@@ -2782,7 +3487,12 @@ const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
 	"\x0eDiscardChanges\x120.agentruntime.workspace.v1.DiscardChangesRequest\x1a1.agentruntime.workspace.v1.DiscardChangesResponse\x12r\n" +
 	"\rSyncWorkspace\x12/.agentruntime.workspace.v1.SyncWorkspaceRequest\x1a0.agentruntime.workspace.v1.SyncWorkspaceResponse\x12\x90\x01\n" +
 	"\x17DeleteEnvironmentConfig\x129.agentruntime.workspace.v1.DeleteEnvironmentConfigRequest\x1a:.agentruntime.workspace.v1.DeleteEnvironmentConfigResponse\x12\x90\x01\n" +
-	"\x17SetWorkspaceEnvironment\x129.agentruntime.workspace.v1.SetWorkspaceEnvironmentRequest\x1a:.agentruntime.workspace.v1.SetWorkspaceEnvironmentResponseB\x8f\x02\n" +
+	"\x17SetWorkspaceEnvironment\x129.agentruntime.workspace.v1.SetWorkspaceEnvironmentRequest\x1a:.agentruntime.workspace.v1.SetWorkspaceEnvironmentResponse\x12i\n" +
+	"\n" +
+	"AttachRepo\x12,.agentruntime.workspace.v1.AttachRepoRequest\x1a-.agentruntime.workspace.v1.AttachRepoResponse\x12i\n" +
+	"\n" +
+	"DetachRepo\x12,.agentruntime.workspace.v1.DetachRepoRequest\x1a-.agentruntime.workspace.v1.DetachRepoResponse\x12f\n" +
+	"\tListRepos\x12+.agentruntime.workspace.v1.ListReposRequest\x1a,.agentruntime.workspace.v1.ListReposResponseB\x8f\x02\n" +
 	"\x1dcom.agentruntime.workspace.v1B\x0eWorkspaceProtoP\x01ZXgithub.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workspace/v1;workspacev1\xa2\x02\x03AWX\xaa\x02\x19Agentruntime.Workspace.V1\xca\x02\x19Agentruntime\\Workspace\\V1\xe2\x02%Agentruntime\\Workspace\\V1\\GPBMetadata\xea\x02\x1bAgentruntime::Workspace::V1b\x06proto3"
 
 var (
@@ -2797,107 +3507,133 @@ func file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP() []byte {
 	return file_agentruntime_workspace_v1_workspace_proto_rawDescData
 }
 
-var file_agentruntime_workspace_v1_workspace_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_agentruntime_workspace_v1_workspace_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
+var file_agentruntime_workspace_v1_workspace_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_agentruntime_workspace_v1_workspace_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
 var file_agentruntime_workspace_v1_workspace_proto_goTypes = []any{
-	(WorkspaceState)(0),                     // 0: agentruntime.workspace.v1.WorkspaceState
-	(NetworkMode)(0),                        // 1: agentruntime.workspace.v1.NetworkMode
-	(FileType)(0),                           // 2: agentruntime.workspace.v1.FileType
-	(*GitCredential)(nil),                   // 3: agentruntime.workspace.v1.GitCredential
-	(*Workspace)(nil),                       // 4: agentruntime.workspace.v1.Workspace
-	(*WorkspaceEnvironment)(nil),            // 5: agentruntime.workspace.v1.WorkspaceEnvironment
-	(*EnvironmentNetwork)(nil),              // 6: agentruntime.workspace.v1.EnvironmentNetwork
-	(*NetworkHost)(nil),                     // 7: agentruntime.workspace.v1.NetworkHost
-	(*SecretHeader)(nil),                    // 8: agentruntime.workspace.v1.SecretHeader
-	(*InitialFile)(nil),                     // 9: agentruntime.workspace.v1.InitialFile
-	(*CreateWorkspaceRequest)(nil),          // 10: agentruntime.workspace.v1.CreateWorkspaceRequest
-	(*CreateWorkspaceResponse)(nil),         // 11: agentruntime.workspace.v1.CreateWorkspaceResponse
-	(*ListWorkspacesRequest)(nil),           // 12: agentruntime.workspace.v1.ListWorkspacesRequest
-	(*ListWorkspacesResponse)(nil),          // 13: agentruntime.workspace.v1.ListWorkspacesResponse
-	(*GetDiffRequest)(nil),                  // 14: agentruntime.workspace.v1.GetDiffRequest
-	(*DiffStat)(nil),                        // 15: agentruntime.workspace.v1.DiffStat
-	(*GetDiffResponse)(nil),                 // 16: agentruntime.workspace.v1.GetDiffResponse
-	(*CommitWorkspaceRequest)(nil),          // 17: agentruntime.workspace.v1.CommitWorkspaceRequest
-	(*CommitWorkspaceResponse)(nil),         // 18: agentruntime.workspace.v1.CommitWorkspaceResponse
-	(*PushWorkspaceRequest)(nil),            // 19: agentruntime.workspace.v1.PushWorkspaceRequest
-	(*PushWorkspaceResponse)(nil),           // 20: agentruntime.workspace.v1.PushWorkspaceResponse
-	(*ArchiveWorkspaceRequest)(nil),         // 21: agentruntime.workspace.v1.ArchiveWorkspaceRequest
-	(*ArchiveWorkspaceResponse)(nil),        // 22: agentruntime.workspace.v1.ArchiveWorkspaceResponse
-	(*DeleteWorkspaceRequest)(nil),          // 23: agentruntime.workspace.v1.DeleteWorkspaceRequest
-	(*DeleteWorkspaceResponse)(nil),         // 24: agentruntime.workspace.v1.DeleteWorkspaceResponse
-	(*FileEntry)(nil),                       // 25: agentruntime.workspace.v1.FileEntry
-	(*ListFilesRequest)(nil),                // 26: agentruntime.workspace.v1.ListFilesRequest
-	(*ListFilesResponse)(nil),               // 27: agentruntime.workspace.v1.ListFilesResponse
-	(*ReadFileRequest)(nil),                 // 28: agentruntime.workspace.v1.ReadFileRequest
-	(*ReadFileResponse)(nil),                // 29: agentruntime.workspace.v1.ReadFileResponse
-	(*GetLogRequest)(nil),                   // 30: agentruntime.workspace.v1.GetLogRequest
-	(*Commit)(nil),                          // 31: agentruntime.workspace.v1.Commit
-	(*GetLogResponse)(nil),                  // 32: agentruntime.workspace.v1.GetLogResponse
-	(*DiscardChangesRequest)(nil),           // 33: agentruntime.workspace.v1.DiscardChangesRequest
-	(*DiscardChangesResponse)(nil),          // 34: agentruntime.workspace.v1.DiscardChangesResponse
-	(*SyncWorkspaceRequest)(nil),            // 35: agentruntime.workspace.v1.SyncWorkspaceRequest
-	(*SyncWorkspaceResponse)(nil),           // 36: agentruntime.workspace.v1.SyncWorkspaceResponse
-	(*DeleteEnvironmentConfigRequest)(nil),  // 37: agentruntime.workspace.v1.DeleteEnvironmentConfigRequest
-	(*DeleteEnvironmentConfigResponse)(nil), // 38: agentruntime.workspace.v1.DeleteEnvironmentConfigResponse
-	(*SetWorkspaceEnvironmentRequest)(nil),  // 39: agentruntime.workspace.v1.SetWorkspaceEnvironmentRequest
-	(*SetWorkspaceEnvironmentResponse)(nil), // 40: agentruntime.workspace.v1.SetWorkspaceEnvironmentResponse
-	(*timestamppb.Timestamp)(nil),           // 41: google.protobuf.Timestamp
+	(WorkspaceLayout)(0),                    // 0: agentruntime.workspace.v1.WorkspaceLayout
+	(RepoAccess)(0),                         // 1: agentruntime.workspace.v1.RepoAccess
+	(WorkspaceState)(0),                     // 2: agentruntime.workspace.v1.WorkspaceState
+	(NetworkMode)(0),                        // 3: agentruntime.workspace.v1.NetworkMode
+	(FileType)(0),                           // 4: agentruntime.workspace.v1.FileType
+	(*WorkspaceRepo)(nil),                   // 5: agentruntime.workspace.v1.WorkspaceRepo
+	(*GitCredential)(nil),                   // 6: agentruntime.workspace.v1.GitCredential
+	(*Workspace)(nil),                       // 7: agentruntime.workspace.v1.Workspace
+	(*WorkspaceEnvironment)(nil),            // 8: agentruntime.workspace.v1.WorkspaceEnvironment
+	(*EnvironmentNetwork)(nil),              // 9: agentruntime.workspace.v1.EnvironmentNetwork
+	(*NetworkHost)(nil),                     // 10: agentruntime.workspace.v1.NetworkHost
+	(*SecretHeader)(nil),                    // 11: agentruntime.workspace.v1.SecretHeader
+	(*InitialFile)(nil),                     // 12: agentruntime.workspace.v1.InitialFile
+	(*CreateWorkspaceRequest)(nil),          // 13: agentruntime.workspace.v1.CreateWorkspaceRequest
+	(*CreateWorkspaceResponse)(nil),         // 14: agentruntime.workspace.v1.CreateWorkspaceResponse
+	(*ListWorkspacesRequest)(nil),           // 15: agentruntime.workspace.v1.ListWorkspacesRequest
+	(*ListWorkspacesResponse)(nil),          // 16: agentruntime.workspace.v1.ListWorkspacesResponse
+	(*GetDiffRequest)(nil),                  // 17: agentruntime.workspace.v1.GetDiffRequest
+	(*DiffStat)(nil),                        // 18: agentruntime.workspace.v1.DiffStat
+	(*GetDiffResponse)(nil),                 // 19: agentruntime.workspace.v1.GetDiffResponse
+	(*CommitWorkspaceRequest)(nil),          // 20: agentruntime.workspace.v1.CommitWorkspaceRequest
+	(*CommitWorkspaceResponse)(nil),         // 21: agentruntime.workspace.v1.CommitWorkspaceResponse
+	(*PushWorkspaceRequest)(nil),            // 22: agentruntime.workspace.v1.PushWorkspaceRequest
+	(*PushWorkspaceResponse)(nil),           // 23: agentruntime.workspace.v1.PushWorkspaceResponse
+	(*ArchiveWorkspaceRequest)(nil),         // 24: agentruntime.workspace.v1.ArchiveWorkspaceRequest
+	(*ArchiveWorkspaceResponse)(nil),        // 25: agentruntime.workspace.v1.ArchiveWorkspaceResponse
+	(*DeleteWorkspaceRequest)(nil),          // 26: agentruntime.workspace.v1.DeleteWorkspaceRequest
+	(*DeleteWorkspaceResponse)(nil),         // 27: agentruntime.workspace.v1.DeleteWorkspaceResponse
+	(*FileEntry)(nil),                       // 28: agentruntime.workspace.v1.FileEntry
+	(*ListFilesRequest)(nil),                // 29: agentruntime.workspace.v1.ListFilesRequest
+	(*ListFilesResponse)(nil),               // 30: agentruntime.workspace.v1.ListFilesResponse
+	(*ReadFileRequest)(nil),                 // 31: agentruntime.workspace.v1.ReadFileRequest
+	(*ReadFileResponse)(nil),                // 32: agentruntime.workspace.v1.ReadFileResponse
+	(*GetLogRequest)(nil),                   // 33: agentruntime.workspace.v1.GetLogRequest
+	(*Commit)(nil),                          // 34: agentruntime.workspace.v1.Commit
+	(*GetLogResponse)(nil),                  // 35: agentruntime.workspace.v1.GetLogResponse
+	(*DiscardChangesRequest)(nil),           // 36: agentruntime.workspace.v1.DiscardChangesRequest
+	(*DiscardChangesResponse)(nil),          // 37: agentruntime.workspace.v1.DiscardChangesResponse
+	(*SyncWorkspaceRequest)(nil),            // 38: agentruntime.workspace.v1.SyncWorkspaceRequest
+	(*SyncWorkspaceResponse)(nil),           // 39: agentruntime.workspace.v1.SyncWorkspaceResponse
+	(*DeleteEnvironmentConfigRequest)(nil),  // 40: agentruntime.workspace.v1.DeleteEnvironmentConfigRequest
+	(*DeleteEnvironmentConfigResponse)(nil), // 41: agentruntime.workspace.v1.DeleteEnvironmentConfigResponse
+	(*SetWorkspaceEnvironmentRequest)(nil),  // 42: agentruntime.workspace.v1.SetWorkspaceEnvironmentRequest
+	(*SetWorkspaceEnvironmentResponse)(nil), // 43: agentruntime.workspace.v1.SetWorkspaceEnvironmentResponse
+	(*AttachRepoRequest)(nil),               // 44: agentruntime.workspace.v1.AttachRepoRequest
+	(*AttachRepoResponse)(nil),              // 45: agentruntime.workspace.v1.AttachRepoResponse
+	(*DetachRepoRequest)(nil),               // 46: agentruntime.workspace.v1.DetachRepoRequest
+	(*DetachRepoResponse)(nil),              // 47: agentruntime.workspace.v1.DetachRepoResponse
+	(*ListReposRequest)(nil),                // 48: agentruntime.workspace.v1.ListReposRequest
+	(*ListReposResponse)(nil),               // 49: agentruntime.workspace.v1.ListReposResponse
+	(*timestamppb.Timestamp)(nil),           // 50: google.protobuf.Timestamp
 }
 var file_agentruntime_workspace_v1_workspace_proto_depIdxs = []int32{
-	0,  // 0: agentruntime.workspace.v1.Workspace.state:type_name -> agentruntime.workspace.v1.WorkspaceState
-	41, // 1: agentruntime.workspace.v1.Workspace.created_at:type_name -> google.protobuf.Timestamp
-	41, // 2: agentruntime.workspace.v1.Workspace.updated_at:type_name -> google.protobuf.Timestamp
-	6,  // 3: agentruntime.workspace.v1.WorkspaceEnvironment.network:type_name -> agentruntime.workspace.v1.EnvironmentNetwork
-	8,  // 4: agentruntime.workspace.v1.WorkspaceEnvironment.secret_headers:type_name -> agentruntime.workspace.v1.SecretHeader
-	1,  // 5: agentruntime.workspace.v1.EnvironmentNetwork.mode:type_name -> agentruntime.workspace.v1.NetworkMode
-	7,  // 6: agentruntime.workspace.v1.EnvironmentNetwork.hosts:type_name -> agentruntime.workspace.v1.NetworkHost
-	3,  // 7: agentruntime.workspace.v1.CreateWorkspaceRequest.credential:type_name -> agentruntime.workspace.v1.GitCredential
-	9,  // 8: agentruntime.workspace.v1.CreateWorkspaceRequest.files:type_name -> agentruntime.workspace.v1.InitialFile
-	5,  // 9: agentruntime.workspace.v1.CreateWorkspaceRequest.environment:type_name -> agentruntime.workspace.v1.WorkspaceEnvironment
-	4,  // 10: agentruntime.workspace.v1.CreateWorkspaceResponse.workspace:type_name -> agentruntime.workspace.v1.Workspace
-	4,  // 11: agentruntime.workspace.v1.ListWorkspacesResponse.workspaces:type_name -> agentruntime.workspace.v1.Workspace
-	15, // 12: agentruntime.workspace.v1.GetDiffResponse.stats:type_name -> agentruntime.workspace.v1.DiffStat
-	3,  // 13: agentruntime.workspace.v1.PushWorkspaceRequest.credential:type_name -> agentruntime.workspace.v1.GitCredential
-	2,  // 14: agentruntime.workspace.v1.FileEntry.type:type_name -> agentruntime.workspace.v1.FileType
-	25, // 15: agentruntime.workspace.v1.ListFilesResponse.entries:type_name -> agentruntime.workspace.v1.FileEntry
-	41, // 16: agentruntime.workspace.v1.Commit.authored_at:type_name -> google.protobuf.Timestamp
-	31, // 17: agentruntime.workspace.v1.GetLogResponse.commits:type_name -> agentruntime.workspace.v1.Commit
-	3,  // 18: agentruntime.workspace.v1.SyncWorkspaceRequest.credential:type_name -> agentruntime.workspace.v1.GitCredential
-	5,  // 19: agentruntime.workspace.v1.SetWorkspaceEnvironmentRequest.environment:type_name -> agentruntime.workspace.v1.WorkspaceEnvironment
-	4,  // 20: agentruntime.workspace.v1.SetWorkspaceEnvironmentResponse.workspace:type_name -> agentruntime.workspace.v1.Workspace
-	10, // 21: agentruntime.workspace.v1.WorkspaceService.CreateWorkspace:input_type -> agentruntime.workspace.v1.CreateWorkspaceRequest
-	12, // 22: agentruntime.workspace.v1.WorkspaceService.ListWorkspaces:input_type -> agentruntime.workspace.v1.ListWorkspacesRequest
-	14, // 23: agentruntime.workspace.v1.WorkspaceService.GetDiff:input_type -> agentruntime.workspace.v1.GetDiffRequest
-	17, // 24: agentruntime.workspace.v1.WorkspaceService.CommitWorkspace:input_type -> agentruntime.workspace.v1.CommitWorkspaceRequest
-	19, // 25: agentruntime.workspace.v1.WorkspaceService.PushWorkspace:input_type -> agentruntime.workspace.v1.PushWorkspaceRequest
-	21, // 26: agentruntime.workspace.v1.WorkspaceService.ArchiveWorkspace:input_type -> agentruntime.workspace.v1.ArchiveWorkspaceRequest
-	23, // 27: agentruntime.workspace.v1.WorkspaceService.DeleteWorkspace:input_type -> agentruntime.workspace.v1.DeleteWorkspaceRequest
-	26, // 28: agentruntime.workspace.v1.WorkspaceService.ListFiles:input_type -> agentruntime.workspace.v1.ListFilesRequest
-	28, // 29: agentruntime.workspace.v1.WorkspaceService.ReadFile:input_type -> agentruntime.workspace.v1.ReadFileRequest
-	30, // 30: agentruntime.workspace.v1.WorkspaceService.GetLog:input_type -> agentruntime.workspace.v1.GetLogRequest
-	33, // 31: agentruntime.workspace.v1.WorkspaceService.DiscardChanges:input_type -> agentruntime.workspace.v1.DiscardChangesRequest
-	35, // 32: agentruntime.workspace.v1.WorkspaceService.SyncWorkspace:input_type -> agentruntime.workspace.v1.SyncWorkspaceRequest
-	37, // 33: agentruntime.workspace.v1.WorkspaceService.DeleteEnvironmentConfig:input_type -> agentruntime.workspace.v1.DeleteEnvironmentConfigRequest
-	39, // 34: agentruntime.workspace.v1.WorkspaceService.SetWorkspaceEnvironment:input_type -> agentruntime.workspace.v1.SetWorkspaceEnvironmentRequest
-	11, // 35: agentruntime.workspace.v1.WorkspaceService.CreateWorkspace:output_type -> agentruntime.workspace.v1.CreateWorkspaceResponse
-	13, // 36: agentruntime.workspace.v1.WorkspaceService.ListWorkspaces:output_type -> agentruntime.workspace.v1.ListWorkspacesResponse
-	16, // 37: agentruntime.workspace.v1.WorkspaceService.GetDiff:output_type -> agentruntime.workspace.v1.GetDiffResponse
-	18, // 38: agentruntime.workspace.v1.WorkspaceService.CommitWorkspace:output_type -> agentruntime.workspace.v1.CommitWorkspaceResponse
-	20, // 39: agentruntime.workspace.v1.WorkspaceService.PushWorkspace:output_type -> agentruntime.workspace.v1.PushWorkspaceResponse
-	22, // 40: agentruntime.workspace.v1.WorkspaceService.ArchiveWorkspace:output_type -> agentruntime.workspace.v1.ArchiveWorkspaceResponse
-	24, // 41: agentruntime.workspace.v1.WorkspaceService.DeleteWorkspace:output_type -> agentruntime.workspace.v1.DeleteWorkspaceResponse
-	27, // 42: agentruntime.workspace.v1.WorkspaceService.ListFiles:output_type -> agentruntime.workspace.v1.ListFilesResponse
-	29, // 43: agentruntime.workspace.v1.WorkspaceService.ReadFile:output_type -> agentruntime.workspace.v1.ReadFileResponse
-	32, // 44: agentruntime.workspace.v1.WorkspaceService.GetLog:output_type -> agentruntime.workspace.v1.GetLogResponse
-	34, // 45: agentruntime.workspace.v1.WorkspaceService.DiscardChanges:output_type -> agentruntime.workspace.v1.DiscardChangesResponse
-	36, // 46: agentruntime.workspace.v1.WorkspaceService.SyncWorkspace:output_type -> agentruntime.workspace.v1.SyncWorkspaceResponse
-	38, // 47: agentruntime.workspace.v1.WorkspaceService.DeleteEnvironmentConfig:output_type -> agentruntime.workspace.v1.DeleteEnvironmentConfigResponse
-	40, // 48: agentruntime.workspace.v1.WorkspaceService.SetWorkspaceEnvironment:output_type -> agentruntime.workspace.v1.SetWorkspaceEnvironmentResponse
-	35, // [35:49] is the sub-list for method output_type
-	21, // [21:35] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	1,  // 0: agentruntime.workspace.v1.WorkspaceRepo.access:type_name -> agentruntime.workspace.v1.RepoAccess
+	50, // 1: agentruntime.workspace.v1.WorkspaceRepo.attached_at:type_name -> google.protobuf.Timestamp
+	2,  // 2: agentruntime.workspace.v1.Workspace.state:type_name -> agentruntime.workspace.v1.WorkspaceState
+	50, // 3: agentruntime.workspace.v1.Workspace.created_at:type_name -> google.protobuf.Timestamp
+	50, // 4: agentruntime.workspace.v1.Workspace.updated_at:type_name -> google.protobuf.Timestamp
+	0,  // 5: agentruntime.workspace.v1.Workspace.layout:type_name -> agentruntime.workspace.v1.WorkspaceLayout
+	5,  // 6: agentruntime.workspace.v1.Workspace.repos:type_name -> agentruntime.workspace.v1.WorkspaceRepo
+	9,  // 7: agentruntime.workspace.v1.WorkspaceEnvironment.network:type_name -> agentruntime.workspace.v1.EnvironmentNetwork
+	11, // 8: agentruntime.workspace.v1.WorkspaceEnvironment.secret_headers:type_name -> agentruntime.workspace.v1.SecretHeader
+	3,  // 9: agentruntime.workspace.v1.EnvironmentNetwork.mode:type_name -> agentruntime.workspace.v1.NetworkMode
+	10, // 10: agentruntime.workspace.v1.EnvironmentNetwork.hosts:type_name -> agentruntime.workspace.v1.NetworkHost
+	6,  // 11: agentruntime.workspace.v1.CreateWorkspaceRequest.credential:type_name -> agentruntime.workspace.v1.GitCredential
+	12, // 12: agentruntime.workspace.v1.CreateWorkspaceRequest.files:type_name -> agentruntime.workspace.v1.InitialFile
+	8,  // 13: agentruntime.workspace.v1.CreateWorkspaceRequest.environment:type_name -> agentruntime.workspace.v1.WorkspaceEnvironment
+	0,  // 14: agentruntime.workspace.v1.CreateWorkspaceRequest.layout:type_name -> agentruntime.workspace.v1.WorkspaceLayout
+	7,  // 15: agentruntime.workspace.v1.CreateWorkspaceResponse.workspace:type_name -> agentruntime.workspace.v1.Workspace
+	7,  // 16: agentruntime.workspace.v1.ListWorkspacesResponse.workspaces:type_name -> agentruntime.workspace.v1.Workspace
+	18, // 17: agentruntime.workspace.v1.GetDiffResponse.stats:type_name -> agentruntime.workspace.v1.DiffStat
+	6,  // 18: agentruntime.workspace.v1.PushWorkspaceRequest.credential:type_name -> agentruntime.workspace.v1.GitCredential
+	4,  // 19: agentruntime.workspace.v1.FileEntry.type:type_name -> agentruntime.workspace.v1.FileType
+	28, // 20: agentruntime.workspace.v1.ListFilesResponse.entries:type_name -> agentruntime.workspace.v1.FileEntry
+	50, // 21: agentruntime.workspace.v1.Commit.authored_at:type_name -> google.protobuf.Timestamp
+	34, // 22: agentruntime.workspace.v1.GetLogResponse.commits:type_name -> agentruntime.workspace.v1.Commit
+	6,  // 23: agentruntime.workspace.v1.SyncWorkspaceRequest.credential:type_name -> agentruntime.workspace.v1.GitCredential
+	8,  // 24: agentruntime.workspace.v1.SetWorkspaceEnvironmentRequest.environment:type_name -> agentruntime.workspace.v1.WorkspaceEnvironment
+	7,  // 25: agentruntime.workspace.v1.SetWorkspaceEnvironmentResponse.workspace:type_name -> agentruntime.workspace.v1.Workspace
+	5,  // 26: agentruntime.workspace.v1.AttachRepoRequest.repo:type_name -> agentruntime.workspace.v1.WorkspaceRepo
+	6,  // 27: agentruntime.workspace.v1.AttachRepoRequest.credential:type_name -> agentruntime.workspace.v1.GitCredential
+	5,  // 28: agentruntime.workspace.v1.AttachRepoResponse.repo:type_name -> agentruntime.workspace.v1.WorkspaceRepo
+	7,  // 29: agentruntime.workspace.v1.AttachRepoResponse.workspace:type_name -> agentruntime.workspace.v1.Workspace
+	7,  // 30: agentruntime.workspace.v1.DetachRepoResponse.workspace:type_name -> agentruntime.workspace.v1.Workspace
+	5,  // 31: agentruntime.workspace.v1.ListReposResponse.repos:type_name -> agentruntime.workspace.v1.WorkspaceRepo
+	13, // 32: agentruntime.workspace.v1.WorkspaceService.CreateWorkspace:input_type -> agentruntime.workspace.v1.CreateWorkspaceRequest
+	15, // 33: agentruntime.workspace.v1.WorkspaceService.ListWorkspaces:input_type -> agentruntime.workspace.v1.ListWorkspacesRequest
+	17, // 34: agentruntime.workspace.v1.WorkspaceService.GetDiff:input_type -> agentruntime.workspace.v1.GetDiffRequest
+	20, // 35: agentruntime.workspace.v1.WorkspaceService.CommitWorkspace:input_type -> agentruntime.workspace.v1.CommitWorkspaceRequest
+	22, // 36: agentruntime.workspace.v1.WorkspaceService.PushWorkspace:input_type -> agentruntime.workspace.v1.PushWorkspaceRequest
+	24, // 37: agentruntime.workspace.v1.WorkspaceService.ArchiveWorkspace:input_type -> agentruntime.workspace.v1.ArchiveWorkspaceRequest
+	26, // 38: agentruntime.workspace.v1.WorkspaceService.DeleteWorkspace:input_type -> agentruntime.workspace.v1.DeleteWorkspaceRequest
+	29, // 39: agentruntime.workspace.v1.WorkspaceService.ListFiles:input_type -> agentruntime.workspace.v1.ListFilesRequest
+	31, // 40: agentruntime.workspace.v1.WorkspaceService.ReadFile:input_type -> agentruntime.workspace.v1.ReadFileRequest
+	33, // 41: agentruntime.workspace.v1.WorkspaceService.GetLog:input_type -> agentruntime.workspace.v1.GetLogRequest
+	36, // 42: agentruntime.workspace.v1.WorkspaceService.DiscardChanges:input_type -> agentruntime.workspace.v1.DiscardChangesRequest
+	38, // 43: agentruntime.workspace.v1.WorkspaceService.SyncWorkspace:input_type -> agentruntime.workspace.v1.SyncWorkspaceRequest
+	40, // 44: agentruntime.workspace.v1.WorkspaceService.DeleteEnvironmentConfig:input_type -> agentruntime.workspace.v1.DeleteEnvironmentConfigRequest
+	42, // 45: agentruntime.workspace.v1.WorkspaceService.SetWorkspaceEnvironment:input_type -> agentruntime.workspace.v1.SetWorkspaceEnvironmentRequest
+	44, // 46: agentruntime.workspace.v1.WorkspaceService.AttachRepo:input_type -> agentruntime.workspace.v1.AttachRepoRequest
+	46, // 47: agentruntime.workspace.v1.WorkspaceService.DetachRepo:input_type -> agentruntime.workspace.v1.DetachRepoRequest
+	48, // 48: agentruntime.workspace.v1.WorkspaceService.ListRepos:input_type -> agentruntime.workspace.v1.ListReposRequest
+	14, // 49: agentruntime.workspace.v1.WorkspaceService.CreateWorkspace:output_type -> agentruntime.workspace.v1.CreateWorkspaceResponse
+	16, // 50: agentruntime.workspace.v1.WorkspaceService.ListWorkspaces:output_type -> agentruntime.workspace.v1.ListWorkspacesResponse
+	19, // 51: agentruntime.workspace.v1.WorkspaceService.GetDiff:output_type -> agentruntime.workspace.v1.GetDiffResponse
+	21, // 52: agentruntime.workspace.v1.WorkspaceService.CommitWorkspace:output_type -> agentruntime.workspace.v1.CommitWorkspaceResponse
+	23, // 53: agentruntime.workspace.v1.WorkspaceService.PushWorkspace:output_type -> agentruntime.workspace.v1.PushWorkspaceResponse
+	25, // 54: agentruntime.workspace.v1.WorkspaceService.ArchiveWorkspace:output_type -> agentruntime.workspace.v1.ArchiveWorkspaceResponse
+	27, // 55: agentruntime.workspace.v1.WorkspaceService.DeleteWorkspace:output_type -> agentruntime.workspace.v1.DeleteWorkspaceResponse
+	30, // 56: agentruntime.workspace.v1.WorkspaceService.ListFiles:output_type -> agentruntime.workspace.v1.ListFilesResponse
+	32, // 57: agentruntime.workspace.v1.WorkspaceService.ReadFile:output_type -> agentruntime.workspace.v1.ReadFileResponse
+	35, // 58: agentruntime.workspace.v1.WorkspaceService.GetLog:output_type -> agentruntime.workspace.v1.GetLogResponse
+	37, // 59: agentruntime.workspace.v1.WorkspaceService.DiscardChanges:output_type -> agentruntime.workspace.v1.DiscardChangesResponse
+	39, // 60: agentruntime.workspace.v1.WorkspaceService.SyncWorkspace:output_type -> agentruntime.workspace.v1.SyncWorkspaceResponse
+	41, // 61: agentruntime.workspace.v1.WorkspaceService.DeleteEnvironmentConfig:output_type -> agentruntime.workspace.v1.DeleteEnvironmentConfigResponse
+	43, // 62: agentruntime.workspace.v1.WorkspaceService.SetWorkspaceEnvironment:output_type -> agentruntime.workspace.v1.SetWorkspaceEnvironmentResponse
+	45, // 63: agentruntime.workspace.v1.WorkspaceService.AttachRepo:output_type -> agentruntime.workspace.v1.AttachRepoResponse
+	47, // 64: agentruntime.workspace.v1.WorkspaceService.DetachRepo:output_type -> agentruntime.workspace.v1.DetachRepoResponse
+	49, // 65: agentruntime.workspace.v1.WorkspaceService.ListRepos:output_type -> agentruntime.workspace.v1.ListReposResponse
+	49, // [49:66] is the sub-list for method output_type
+	32, // [32:49] is the sub-list for method input_type
+	32, // [32:32] is the sub-list for extension type_name
+	32, // [32:32] is the sub-list for extension extendee
+	0,  // [0:32] is the sub-list for field type_name
 }
 
 func init() { file_agentruntime_workspace_v1_workspace_proto_init() }
@@ -2910,8 +3646,8 @@ func file_agentruntime_workspace_v1_workspace_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agentruntime_workspace_v1_workspace_proto_rawDesc), len(file_agentruntime_workspace_v1_workspace_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   38,
+			NumEnums:      5,
+			NumMessages:   45,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

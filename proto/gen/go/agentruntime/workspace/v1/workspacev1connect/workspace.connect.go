@@ -74,6 +74,15 @@ const (
 	// WorkspaceServiceSetWorkspaceEnvironmentProcedure is the fully-qualified name of the
 	// WorkspaceService's SetWorkspaceEnvironment RPC.
 	WorkspaceServiceSetWorkspaceEnvironmentProcedure = "/agentruntime.workspace.v1.WorkspaceService/SetWorkspaceEnvironment"
+	// WorkspaceServiceAttachRepoProcedure is the fully-qualified name of the WorkspaceService's
+	// AttachRepo RPC.
+	WorkspaceServiceAttachRepoProcedure = "/agentruntime.workspace.v1.WorkspaceService/AttachRepo"
+	// WorkspaceServiceDetachRepoProcedure is the fully-qualified name of the WorkspaceService's
+	// DetachRepo RPC.
+	WorkspaceServiceDetachRepoProcedure = "/agentruntime.workspace.v1.WorkspaceService/DetachRepo"
+	// WorkspaceServiceListReposProcedure is the fully-qualified name of the WorkspaceService's
+	// ListRepos RPC.
+	WorkspaceServiceListReposProcedure = "/agentruntime.workspace.v1.WorkspaceService/ListRepos"
 )
 
 // WorkspaceServiceClient is a client for the agentruntime.workspace.v1.WorkspaceService service.
@@ -121,6 +130,22 @@ type WorkspaceServiceClient interface {
 	// 配置已经删除的会话只交非机密的快照：同一个 environment_id 在这个工作区上已删除时，再带 env 或 secret_headers 被拒
 	// （PermissionDenied，code 为 environment_deleted）。
 	SetWorkspaceEnvironment(context.Context, *connect.Request[v1.SetWorkspaceEnvironmentRequest]) (*connect.Response[v1.SetWorkspaceEnvironmentResponse], error)
+	// 多仓库工作区（D-25，docs/plan/d25-multirepo-contract-baseline.md）：只用于 layout 为 MULTI 的工作区，ROOT 的调用
+	// FailedPrecondition（code 为 workspace_not_multi）。根目录只是容器，每个仓库在自己的一级子目录里，有自己的 .git。
+	//
+	// 挂上一个仓库：克隆 repo.url（可以带 ref）到 repo.path。一次一个仓库、一个 activity；失败只影响这一个，已挂上的不动。
+	// 名字或路径已被占用时 AlreadyExists（repo_exists、repo_path_conflict；路径比较不分大小写，不能互相嵌套）；
+	// 路径不合规时 InvalidArgument（invalid_repo_path：只能是一级目录名，字母、数字、.、_ 与 -，不能是 . 或 ..、不能以 . 开头）；
+	// 超过租户策略的 workspace.max_repos 或 workspace.max_bytes 时 ResourceExhausted（max_repos、max_bytes），在克隆之前查；
+	// 主机不在租户策略的 sandbox.network.hosts 范围里时 PermissionDenied。凭据只用于这个仓库的这一次克隆。
+	// 已有 primary 时再带 primary 为 true：FailedPrecondition（primary_exists）；还没有 primary 时第一个挂上的就是 primary。
+	AttachRepo(context.Context, *connect.Request[v1.AttachRepoRequest]) (*connect.Response[v1.AttachRepoResponse], error)
+	// 卸下一个仓库：删掉它的子目录与记录，别的仓库不动。仓库有未提交的改动（含未跟踪的文件），或有不在任何远端分支上的
+	// 提交时，FailedPrecondition（repo_dirty），什么都不删；带 discard_changes 时照删，响应里写明丢了多少。卸下 primary 之后，
+	// 剩下的仓库里最早挂上的成为 primary。不存在时 NotFound（repo_not_found）。
+	DetachRepo(context.Context, *connect.Request[v1.DetachRepoRequest]) (*connect.Response[v1.DetachRepoResponse], error)
+	// 列出挂上的仓库，按 path 排序。
+	ListRepos(context.Context, *connect.Request[v1.ListReposRequest]) (*connect.Response[v1.ListReposResponse], error)
 }
 
 // NewWorkspaceServiceClient constructs a client for the agentruntime.workspace.v1.WorkspaceService
@@ -218,6 +243,24 @@ func NewWorkspaceServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(workspaceServiceMethods.ByName("SetWorkspaceEnvironment")),
 			connect.WithClientOptions(opts...),
 		),
+		attachRepo: connect.NewClient[v1.AttachRepoRequest, v1.AttachRepoResponse](
+			httpClient,
+			baseURL+WorkspaceServiceAttachRepoProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("AttachRepo")),
+			connect.WithClientOptions(opts...),
+		),
+		detachRepo: connect.NewClient[v1.DetachRepoRequest, v1.DetachRepoResponse](
+			httpClient,
+			baseURL+WorkspaceServiceDetachRepoProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("DetachRepo")),
+			connect.WithClientOptions(opts...),
+		),
+		listRepos: connect.NewClient[v1.ListReposRequest, v1.ListReposResponse](
+			httpClient,
+			baseURL+WorkspaceServiceListReposProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("ListRepos")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -237,6 +280,9 @@ type workspaceServiceClient struct {
 	syncWorkspace           *connect.Client[v1.SyncWorkspaceRequest, v1.SyncWorkspaceResponse]
 	deleteEnvironmentConfig *connect.Client[v1.DeleteEnvironmentConfigRequest, v1.DeleteEnvironmentConfigResponse]
 	setWorkspaceEnvironment *connect.Client[v1.SetWorkspaceEnvironmentRequest, v1.SetWorkspaceEnvironmentResponse]
+	attachRepo              *connect.Client[v1.AttachRepoRequest, v1.AttachRepoResponse]
+	detachRepo              *connect.Client[v1.DetachRepoRequest, v1.DetachRepoResponse]
+	listRepos               *connect.Client[v1.ListReposRequest, v1.ListReposResponse]
 }
 
 // CreateWorkspace calls agentruntime.workspace.v1.WorkspaceService.CreateWorkspace.
@@ -309,6 +355,21 @@ func (c *workspaceServiceClient) SetWorkspaceEnvironment(ctx context.Context, re
 	return c.setWorkspaceEnvironment.CallUnary(ctx, req)
 }
 
+// AttachRepo calls agentruntime.workspace.v1.WorkspaceService.AttachRepo.
+func (c *workspaceServiceClient) AttachRepo(ctx context.Context, req *connect.Request[v1.AttachRepoRequest]) (*connect.Response[v1.AttachRepoResponse], error) {
+	return c.attachRepo.CallUnary(ctx, req)
+}
+
+// DetachRepo calls agentruntime.workspace.v1.WorkspaceService.DetachRepo.
+func (c *workspaceServiceClient) DetachRepo(ctx context.Context, req *connect.Request[v1.DetachRepoRequest]) (*connect.Response[v1.DetachRepoResponse], error) {
+	return c.detachRepo.CallUnary(ctx, req)
+}
+
+// ListRepos calls agentruntime.workspace.v1.WorkspaceService.ListRepos.
+func (c *workspaceServiceClient) ListRepos(ctx context.Context, req *connect.Request[v1.ListReposRequest]) (*connect.Response[v1.ListReposResponse], error) {
+	return c.listRepos.CallUnary(ctx, req)
+}
+
 // WorkspaceServiceHandler is an implementation of the agentruntime.workspace.v1.WorkspaceService
 // service.
 type WorkspaceServiceHandler interface {
@@ -355,6 +416,22 @@ type WorkspaceServiceHandler interface {
 	// 配置已经删除的会话只交非机密的快照：同一个 environment_id 在这个工作区上已删除时，再带 env 或 secret_headers 被拒
 	// （PermissionDenied，code 为 environment_deleted）。
 	SetWorkspaceEnvironment(context.Context, *connect.Request[v1.SetWorkspaceEnvironmentRequest]) (*connect.Response[v1.SetWorkspaceEnvironmentResponse], error)
+	// 多仓库工作区（D-25，docs/plan/d25-multirepo-contract-baseline.md）：只用于 layout 为 MULTI 的工作区，ROOT 的调用
+	// FailedPrecondition（code 为 workspace_not_multi）。根目录只是容器，每个仓库在自己的一级子目录里，有自己的 .git。
+	//
+	// 挂上一个仓库：克隆 repo.url（可以带 ref）到 repo.path。一次一个仓库、一个 activity；失败只影响这一个，已挂上的不动。
+	// 名字或路径已被占用时 AlreadyExists（repo_exists、repo_path_conflict；路径比较不分大小写，不能互相嵌套）；
+	// 路径不合规时 InvalidArgument（invalid_repo_path：只能是一级目录名，字母、数字、.、_ 与 -，不能是 . 或 ..、不能以 . 开头）；
+	// 超过租户策略的 workspace.max_repos 或 workspace.max_bytes 时 ResourceExhausted（max_repos、max_bytes），在克隆之前查；
+	// 主机不在租户策略的 sandbox.network.hosts 范围里时 PermissionDenied。凭据只用于这个仓库的这一次克隆。
+	// 已有 primary 时再带 primary 为 true：FailedPrecondition（primary_exists）；还没有 primary 时第一个挂上的就是 primary。
+	AttachRepo(context.Context, *connect.Request[v1.AttachRepoRequest]) (*connect.Response[v1.AttachRepoResponse], error)
+	// 卸下一个仓库：删掉它的子目录与记录，别的仓库不动。仓库有未提交的改动（含未跟踪的文件），或有不在任何远端分支上的
+	// 提交时，FailedPrecondition（repo_dirty），什么都不删；带 discard_changes 时照删，响应里写明丢了多少。卸下 primary 之后，
+	// 剩下的仓库里最早挂上的成为 primary。不存在时 NotFound（repo_not_found）。
+	DetachRepo(context.Context, *connect.Request[v1.DetachRepoRequest]) (*connect.Response[v1.DetachRepoResponse], error)
+	// 列出挂上的仓库，按 path 排序。
+	ListRepos(context.Context, *connect.Request[v1.ListReposRequest]) (*connect.Response[v1.ListReposResponse], error)
 }
 
 // NewWorkspaceServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -448,6 +525,24 @@ func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.Han
 		connect.WithSchema(workspaceServiceMethods.ByName("SetWorkspaceEnvironment")),
 		connect.WithHandlerOptions(opts...),
 	)
+	workspaceServiceAttachRepoHandler := connect.NewUnaryHandler(
+		WorkspaceServiceAttachRepoProcedure,
+		svc.AttachRepo,
+		connect.WithSchema(workspaceServiceMethods.ByName("AttachRepo")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workspaceServiceDetachRepoHandler := connect.NewUnaryHandler(
+		WorkspaceServiceDetachRepoProcedure,
+		svc.DetachRepo,
+		connect.WithSchema(workspaceServiceMethods.ByName("DetachRepo")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workspaceServiceListReposHandler := connect.NewUnaryHandler(
+		WorkspaceServiceListReposProcedure,
+		svc.ListRepos,
+		connect.WithSchema(workspaceServiceMethods.ByName("ListRepos")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/agentruntime.workspace.v1.WorkspaceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case WorkspaceServiceCreateWorkspaceProcedure:
@@ -478,6 +573,12 @@ func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.Han
 			workspaceServiceDeleteEnvironmentConfigHandler.ServeHTTP(w, r)
 		case WorkspaceServiceSetWorkspaceEnvironmentProcedure:
 			workspaceServiceSetWorkspaceEnvironmentHandler.ServeHTTP(w, r)
+		case WorkspaceServiceAttachRepoProcedure:
+			workspaceServiceAttachRepoHandler.ServeHTTP(w, r)
+		case WorkspaceServiceDetachRepoProcedure:
+			workspaceServiceDetachRepoHandler.ServeHTTP(w, r)
+		case WorkspaceServiceListReposProcedure:
+			workspaceServiceListReposHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -541,4 +642,16 @@ func (UnimplementedWorkspaceServiceHandler) DeleteEnvironmentConfig(context.Cont
 
 func (UnimplementedWorkspaceServiceHandler) SetWorkspaceEnvironment(context.Context, *connect.Request[v1.SetWorkspaceEnvironmentRequest]) (*connect.Response[v1.SetWorkspaceEnvironmentResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.workspace.v1.WorkspaceService.SetWorkspaceEnvironment is not implemented"))
+}
+
+func (UnimplementedWorkspaceServiceHandler) AttachRepo(context.Context, *connect.Request[v1.AttachRepoRequest]) (*connect.Response[v1.AttachRepoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.workspace.v1.WorkspaceService.AttachRepo is not implemented"))
+}
+
+func (UnimplementedWorkspaceServiceHandler) DetachRepo(context.Context, *connect.Request[v1.DetachRepoRequest]) (*connect.Response[v1.DetachRepoResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.workspace.v1.WorkspaceService.DetachRepo is not implemented"))
+}
+
+func (UnimplementedWorkspaceServiceHandler) ListRepos(context.Context, *connect.Request[v1.ListReposRequest]) (*connect.Response[v1.ListReposResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.workspace.v1.WorkspaceService.ListRepos is not implemented"))
 }

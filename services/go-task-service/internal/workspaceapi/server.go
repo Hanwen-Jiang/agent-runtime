@@ -349,6 +349,9 @@ func checkAuthor(name, email string) error {
 
 func (s *Server) CreateWorkspace(ctx context.Context, req *connect.Request[workspacev1.CreateWorkspaceRequest]) (*connect.Response[workspacev1.CreateWorkspaceResponse], error) {
 	m := req.Msg
+	if m.GetLayout() == workspacev1.WorkspaceLayout_WORKSPACE_LAYOUT_MULTI {
+		return nil, errMultiRepo()
+	}
 	if err := s.checkRepoURL(m.GetRepoUrl()); err != nil {
 		return nil, taskapi.ConnectError(err)
 	}

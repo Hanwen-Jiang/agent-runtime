@@ -56,6 +56,61 @@ service WorkspaceService {
   // 配置已经删除的会话只交非机密的快照：同一个 environment_id 在这个工作区上已删除时，再带 env 或 secret_headers 被拒
   // （PermissionDenied，code 为 environment_deleted）。
   rpc SetWorkspaceEnvironment(SetWorkspaceEnvironmentRequest) returns (SetWorkspaceEnvironmentResponse);
+
+  // 多仓库工作区（D-25，docs/plan/d25-multirepo-contract-baseline.md）：只用于 layout 为 MULTI 的工作区，ROOT 的调用
+  // FailedPrecondition（code 为 workspace_not_multi）。根目录只是容器，每个仓库在自己的一级子目录里，有自己的 .git。
+  //
+  // 挂上一个仓库：克隆 repo.url（可以带 ref）到 repo.path。一次一个仓库、一个 activity；失败只影响这一个，已挂上的不动。
+  // 名字或路径已被占用时 AlreadyExists（repo_exists、repo_path_conflict；路径比较不分大小写，不能互相嵌套）；
+  // 路径不合规时 InvalidArgument（invalid_repo_path：只能是一级目录名，字母、数字、.、_ 与 -，不能是 . 或 ..、不能以 . 开头）；
+  // 超过租户策略的 workspace.max_repos 或 workspace.max_bytes 时 ResourceExhausted（max_repos、max_bytes），在克隆之前查；
+  // 主机不在租户策略的 sandbox.network.hosts 范围里时 PermissionDenied。凭据只用于这个仓库的这一次克隆。
+  // 已有 primary 时再带 primary 为 true：FailedPrecondition（primary_exists）；还没有 primary 时第一个挂上的就是 primary。
+  rpc AttachRepo(AttachRepoRequest) returns (AttachRepoResponse);
+  // 卸下一个仓库：删掉它的子目录与记录，别的仓库不动。仓库有未提交的改动（含未跟踪的文件），或有不在任何远端分支上的
+  // 提交时，FailedPrecondition（repo_dirty），什么都不删；带 discard_changes 时照删，响应里写明丢了多少。卸下 primary 之后，
+  // 剩下的仓库里最早挂上的成为 primary。不存在时 NotFound（repo_not_found）。
+  rpc DetachRepo(DetachRepoRequest) returns (DetachRepoResponse);
+  // 列出挂上的仓库，按 path 排序。
+  rpc ListRepos(ListReposRequest) returns (ListReposResponse);
+}
+
+// WorkspaceLayout 是工作区的目录布局（D-25）。建工作区时定下，之后不转换。
+enum WorkspaceLayout {
+  // 旧客户端：同 ROOT。
+  WORKSPACE_LAYOUT_UNSPECIFIED = 0;
+  // 工作区根就是一个仓库（或空的 git init），所有操作照旧，不带 repo。
+  WORKSPACE_LAYOUT_ROOT = 1;
+  // 根目录只是容器，仓库经 AttachRepo 挂在一级子目录里；Diff、Commit、Push、Sync、Log、Discard 必须指明 repo。
+  WORKSPACE_LAYOUT_MULTI = 2;
+}
+
+// RepoAccess 是一个仓库在这个工作区里的权限（D-25）。
+enum RepoAccess {
+  // 不写时按 READ。
+  REPO_ACCESS_UNSPECIFIED = 0;
+  // 只读：CommitWorkspace、PushWorkspace 返回 PermissionDenied（repo_read_only）；SyncWorkspace、DiscardChanges 可以。
+  REPO_ACCESS_READ = 1;
+  REPO_ACCESS_WRITE = 2;
+}
+
+// WorkspaceRepo 是多仓库工作区里的一个仓库。
+message WorkspaceRepo {
+  // 工作区内唯一：字母、数字、.、_ 与 -，最多 64 个字符；操作的 repo 字段写它。
+  string name = 1;
+  // 只接受 https 地址，不带凭据。
+  string url = 2;
+  // 挂上时要的分支、标签或提交，规则同 CreateWorkspaceRequest.ref。
+  string ref = 3;
+  // 相对工作区根的一级目录名，规则见 AttachRepo。
+  string path = 4;
+  RepoAccess access = 5;
+  // 主仓库：应用默认展示与操作的那个；最多一个。
+  bool primary = 6;
+  // 当前的 commit 与分支（分离头指针时分支为空），只在响应里。
+  string head = 7;
+  string branch = 8;
+  google.protobuf.Timestamp attached_at = 9;
 }
 
 // GitCredential 是克隆或推送用的凭据（例如 HTTPS 的用户名与令牌），只用这一次。
@@ -88,6 +143,10 @@ message Workspace {
   string branch = 10;
   // 建工作区时选用的环境配置的 ID（应用的环境 ID）；没有选用时为空。配置的内容不回显（ENV-02）。
   string environment_id = 11;
+  // 目录布局（D-25）；旧的工作区为 ROOT。
+  WorkspaceLayout layout = 12;
+  // MULTI 时挂上的仓库，按 path 排序；ROOT 时为空（repo_url、head、branch 是根仓库的）。
+  repeated WorkspaceRepo repos = 13;
 }
 
 // WorkspaceEnvironment 是应用保存的可复用环境配置（人工验收 Q16–37；docs/plan/env-02-implementation-2026-11-03.md）
@@ -184,6 +243,9 @@ message CreateWorkspaceRequest {
   // 选用的环境配置（ENV-02）：在这个工作区上建的每个沙箱环境都按它准备（setup、start、.env、联网、网络密钥）。
   // 为空时保持原行为。可以与任一来源同给（应用新建会话时复制基线工作区并选用环境）。
   WorkspaceEnvironment environment = 10;
+  // 目录布局（D-25）；不写时 ROOT。MULTI 时不能给 repo_url、ref、files（仓库之后用 AttachRepo 挂上；InvalidArgument），
+  // 可以给 from_workspace_id（复制那边的整个布局，它也要是 MULTI，否则 FailedPrecondition layout_mismatch）。
+  WorkspaceLayout layout = 11;
 }
 
 message CreateWorkspaceResponse {
@@ -205,6 +267,9 @@ message GetDiffRequest {
   string base = 3;
   // 检测改名（git diff --find-renames）：改名的文件在 diff 与 stats 里是一项，不是一删一加。
   bool find_renames = 4;
+  // 仓库名（D-25）：MULTI 时必填（没有时 InvalidArgument repo_required，不认识时 NotFound repo_not_found），
+  // 结果只是这个仓库的、路径相对它的根；ROOT 时必须为空（InvalidArgument repo_not_applicable）。下面几个 Request 的 repo 相同。
+  string repo = 5;
 }
 
 // DiffStat 是一个改动文件的行数（git diff --numstat）。
@@ -236,6 +301,8 @@ message CommitWorkspaceRequest {
   string message = 3;
   string author_name = 4;
   string author_email = 5;
+  // 同 GetDiffRequest.repo；只读的仓库 PermissionDenied（repo_read_only）。
+  string repo = 6;
 }
 
 message CommitWorkspaceResponse {
@@ -250,6 +317,9 @@ message PushWorkspaceRequest {
   // 远端的分支名，例如 agent/fix-ci。
   string branch = 3;
   GitCredential credential = 4;
+  // 同 GetDiffRequest.repo；只读的仓库 PermissionDenied（repo_read_only）。凭据只用于这个仓库，分支规则（push_branches）
+  // 与主机授权逐仓库查；幂等键另含仓库名。
+  string repo = 5;
 }
 
 message PushWorkspaceResponse {
@@ -327,6 +397,8 @@ message GetLogRequest {
   int32 limit = 3;
   // commit、分支（含 origin/<分支>）或标签；给了时只给 HEAD 有、它没有的提交。
   string base = 4;
+  // 同 GetDiffRequest.repo。
+  string repo = 5;
 }
 
 // Commit 是一个提交。
@@ -346,6 +418,8 @@ message GetLogResponse {
 message DiscardChangesRequest {
   string tenant_id = 1;
   string workspace_id = 2;
+  // 同 GetDiffRequest.repo。
+  string repo = 3;
 }
 
 message DiscardChangesResponse {
@@ -358,6 +432,8 @@ message SyncWorkspaceRequest {
   // 远端的分支名，例如 main。
   string branch = 3;
   GitCredential credential = 4;
+  // 同 GetDiffRequest.repo；远端是这个仓库的 url，凭据只用于它。
+  string repo = 5;
 }
 
 message SyncWorkspaceResponse {
@@ -385,4 +461,42 @@ message SetWorkspaceEnvironmentRequest {
 
 message SetWorkspaceEnvironmentResponse {
   Workspace workspace = 1;
+}
+
+message AttachRepoRequest {
+  string tenant_id = 1;
+  string workspace_id = 2;
+  // name、url、path 必填；ref、access、primary 可选；head、branch、attached_at 忽略。
+  WorkspaceRepo repo = 3;
+  GitCredential credential = 4;
+}
+
+message AttachRepoResponse {
+  WorkspaceRepo repo = 1;
+  Workspace workspace = 2;
+}
+
+message DetachRepoRequest {
+  string tenant_id = 1;
+  string workspace_id = 2;
+  // 仓库名。
+  string repo = 3;
+  // 有未提交的改动或没推送的提交时也卸下（丢掉它们）；不给时那种情况 FailedPrecondition（repo_dirty）。
+  bool discard_changes = 4;
+}
+
+message DetachRepoResponse {
+  Workspace workspace = 1;
+  // 卸下时丢掉的东西（discard_changes 时才可能不为 0）：未提交的改动涉及的文件数、不在任何远端分支上的提交数。
+  int32 discarded_files = 2;
+  int32 discarded_commits = 3;
+}
+
+message ListReposRequest {
+  string tenant_id = 1;
+  string workspace_id = 2;
+}
+
+message ListReposResponse {
+  repeated WorkspaceRepo repos = 1;
 }

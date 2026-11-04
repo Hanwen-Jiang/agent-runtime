@@ -42,6 +42,11 @@ enum WorkspaceOperation {
   WORKSPACE_OPERATION_SYNC = 11;
   // 设置或清除工作区选用的环境配置（ENV-02；args 的 environment，没有时清除）。
   WORKSPACE_OPERATION_SET_ENVIRONMENT = 12;
+  // 多仓库工作区（D-25）：args 的 repo（AttachRepo 时是 WorkspaceRepo 的 protojson，其余是仓库名）与 discard_changes；
+  // 一次一个仓库，sealed_credential 只是这个仓库的。别的操作的 args 另有 repo（MULTI 时必填）、建工作区时另有 layout。
+  WORKSPACE_OPERATION_ATTACH_REPO = 13;
+  WORKSPACE_OPERATION_DETACH_REPO = 14;
+  WORKSPACE_OPERATION_LIST_REPOS = 15;
 }
 
 message WorkspaceOperationResult {

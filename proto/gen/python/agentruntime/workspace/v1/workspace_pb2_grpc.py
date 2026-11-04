@@ -92,6 +92,21 @@ class WorkspaceServiceStub:
                 request_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.SetWorkspaceEnvironmentRequest.SerializeToString,
                 response_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.SetWorkspaceEnvironmentResponse.FromString,
                 _registered_method=True)
+        self.AttachRepo = channel.unary_unary(
+                '/agentruntime.workspace.v1.WorkspaceService/AttachRepo',
+                request_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.AttachRepoRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.AttachRepoResponse.FromString,
+                _registered_method=True)
+        self.DetachRepo = channel.unary_unary(
+                '/agentruntime.workspace.v1.WorkspaceService/DetachRepo',
+                request_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DetachRepoRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DetachRepoResponse.FromString,
+                _registered_method=True)
+        self.ListRepos = channel.unary_unary(
+                '/agentruntime.workspace.v1.WorkspaceService/ListRepos',
+                request_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.ListReposRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.ListReposResponse.FromString,
+                _registered_method=True)
 
 
 class WorkspaceServiceServicer:
@@ -218,6 +233,37 @@ class WorkspaceServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def AttachRepo(self, request, context):
+        """多仓库工作区（D-25，docs/plan/d25-multirepo-contract-baseline.md）：只用于 layout 为 MULTI 的工作区，ROOT 的调用
+        FailedPrecondition（code 为 workspace_not_multi）。根目录只是容器，每个仓库在自己的一级子目录里，有自己的 .git。
+
+        挂上一个仓库：克隆 repo.url（可以带 ref）到 repo.path。一次一个仓库、一个 activity；失败只影响这一个，已挂上的不动。
+        名字或路径已被占用时 AlreadyExists（repo_exists、repo_path_conflict；路径比较不分大小写，不能互相嵌套）；
+        路径不合规时 InvalidArgument（invalid_repo_path：只能是一级目录名，字母、数字、.、_ 与 -，不能是 . 或 ..、不能以 . 开头）；
+        超过租户策略的 workspace.max_repos 或 workspace.max_bytes 时 ResourceExhausted（max_repos、max_bytes），在克隆之前查；
+        主机不在租户策略的 sandbox.network.hosts 范围里时 PermissionDenied。凭据只用于这个仓库的这一次克隆。
+        已有 primary 时再带 primary 为 true：FailedPrecondition（primary_exists）；还没有 primary 时第一个挂上的就是 primary。
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DetachRepo(self, request, context):
+        """卸下一个仓库：删掉它的子目录与记录，别的仓库不动。仓库有未提交的改动（含未跟踪的文件），或有不在任何远端分支上的
+        提交时，FailedPrecondition（repo_dirty），什么都不删；带 discard_changes 时照删，响应里写明丢了多少。卸下 primary 之后，
+        剩下的仓库里最早挂上的成为 primary。不存在时 NotFound（repo_not_found）。
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListRepos(self, request, context):
+        """列出挂上的仓库，按 path 排序。
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_WorkspaceServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -290,6 +336,21 @@ def add_WorkspaceServiceServicer_to_server(servicer, server):
                     servicer.SetWorkspaceEnvironment,
                     request_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.SetWorkspaceEnvironmentRequest.FromString,
                     response_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.SetWorkspaceEnvironmentResponse.SerializeToString,
+            ),
+            'AttachRepo': grpc.unary_unary_rpc_method_handler(
+                    servicer.AttachRepo,
+                    request_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.AttachRepoRequest.FromString,
+                    response_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.AttachRepoResponse.SerializeToString,
+            ),
+            'DetachRepo': grpc.unary_unary_rpc_method_handler(
+                    servicer.DetachRepo,
+                    request_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DetachRepoRequest.FromString,
+                    response_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DetachRepoResponse.SerializeToString,
+            ),
+            'ListRepos': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListRepos,
+                    request_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.ListReposRequest.FromString,
+                    response_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.ListReposResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -678,6 +739,87 @@ class WorkspaceService:
             '/agentruntime.workspace.v1.WorkspaceService/SetWorkspaceEnvironment',
             agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.SetWorkspaceEnvironmentRequest.SerializeToString,
             agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.SetWorkspaceEnvironmentResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def AttachRepo(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.workspace.v1.WorkspaceService/AttachRepo',
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.AttachRepoRequest.SerializeToString,
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.AttachRepoResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def DetachRepo(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.workspace.v1.WorkspaceService/DetachRepo',
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DetachRepoRequest.SerializeToString,
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.DetachRepoResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def ListRepos(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.workspace.v1.WorkspaceService/ListRepos',
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.ListReposRequest.SerializeToString,
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.ListReposResponse.FromString,
             options,
             channel_credentials,
             insecure,

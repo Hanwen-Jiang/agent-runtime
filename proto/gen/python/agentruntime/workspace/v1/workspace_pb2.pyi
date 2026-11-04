@@ -10,6 +10,18 @@ from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
+class WorkspaceLayout(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    WORKSPACE_LAYOUT_UNSPECIFIED: _ClassVar[WorkspaceLayout]
+    WORKSPACE_LAYOUT_ROOT: _ClassVar[WorkspaceLayout]
+    WORKSPACE_LAYOUT_MULTI: _ClassVar[WorkspaceLayout]
+
+class RepoAccess(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    REPO_ACCESS_UNSPECIFIED: _ClassVar[RepoAccess]
+    REPO_ACCESS_READ: _ClassVar[RepoAccess]
+    REPO_ACCESS_WRITE: _ClassVar[RepoAccess]
+
 class WorkspaceState(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     WORKSPACE_STATE_UNSPECIFIED: _ClassVar[WorkspaceState]
@@ -30,6 +42,12 @@ class FileType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     FILE_TYPE_FILE: _ClassVar[FileType]
     FILE_TYPE_DIRECTORY: _ClassVar[FileType]
     FILE_TYPE_SYMLINK: _ClassVar[FileType]
+WORKSPACE_LAYOUT_UNSPECIFIED: WorkspaceLayout
+WORKSPACE_LAYOUT_ROOT: WorkspaceLayout
+WORKSPACE_LAYOUT_MULTI: WorkspaceLayout
+REPO_ACCESS_UNSPECIFIED: RepoAccess
+REPO_ACCESS_READ: RepoAccess
+REPO_ACCESS_WRITE: RepoAccess
 WORKSPACE_STATE_UNSPECIFIED: WorkspaceState
 WORKSPACE_STATE_ACTIVE: WorkspaceState
 WORKSPACE_STATE_ARCHIVED: WorkspaceState
@@ -43,6 +61,28 @@ FILE_TYPE_FILE: FileType
 FILE_TYPE_DIRECTORY: FileType
 FILE_TYPE_SYMLINK: FileType
 
+class WorkspaceRepo(_message.Message):
+    __slots__ = ("name", "url", "ref", "path", "access", "primary", "head", "branch", "attached_at")
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    URL_FIELD_NUMBER: _ClassVar[int]
+    REF_FIELD_NUMBER: _ClassVar[int]
+    PATH_FIELD_NUMBER: _ClassVar[int]
+    ACCESS_FIELD_NUMBER: _ClassVar[int]
+    PRIMARY_FIELD_NUMBER: _ClassVar[int]
+    HEAD_FIELD_NUMBER: _ClassVar[int]
+    BRANCH_FIELD_NUMBER: _ClassVar[int]
+    ATTACHED_AT_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    url: str
+    ref: str
+    path: str
+    access: RepoAccess
+    primary: bool
+    head: str
+    branch: str
+    attached_at: _timestamp_pb2.Timestamp
+    def __init__(self, name: _Optional[str] = ..., url: _Optional[str] = ..., ref: _Optional[str] = ..., path: _Optional[str] = ..., access: _Optional[_Union[RepoAccess, str]] = ..., primary: _Optional[bool] = ..., head: _Optional[str] = ..., branch: _Optional[str] = ..., attached_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+
 class GitCredential(_message.Message):
     __slots__ = ("username", "password")
     USERNAME_FIELD_NUMBER: _ClassVar[int]
@@ -52,7 +92,7 @@ class GitCredential(_message.Message):
     def __init__(self, username: _Optional[str] = ..., password: _Optional[str] = ...) -> None: ...
 
 class Workspace(_message.Message):
-    __slots__ = ("workspace_id", "state", "repo_url", "head", "snapshot_id", "size_bytes", "files", "created_at", "updated_at", "branch", "environment_id")
+    __slots__ = ("workspace_id", "state", "repo_url", "head", "snapshot_id", "size_bytes", "files", "created_at", "updated_at", "branch", "environment_id", "layout", "repos")
     WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
     STATE_FIELD_NUMBER: _ClassVar[int]
     REPO_URL_FIELD_NUMBER: _ClassVar[int]
@@ -64,6 +104,8 @@ class Workspace(_message.Message):
     UPDATED_AT_FIELD_NUMBER: _ClassVar[int]
     BRANCH_FIELD_NUMBER: _ClassVar[int]
     ENVIRONMENT_ID_FIELD_NUMBER: _ClassVar[int]
+    LAYOUT_FIELD_NUMBER: _ClassVar[int]
+    REPOS_FIELD_NUMBER: _ClassVar[int]
     workspace_id: str
     state: WorkspaceState
     repo_url: str
@@ -75,7 +117,9 @@ class Workspace(_message.Message):
     updated_at: _timestamp_pb2.Timestamp
     branch: str
     environment_id: str
-    def __init__(self, workspace_id: _Optional[str] = ..., state: _Optional[_Union[WorkspaceState, str]] = ..., repo_url: _Optional[str] = ..., head: _Optional[str] = ..., snapshot_id: _Optional[str] = ..., size_bytes: _Optional[int] = ..., files: _Optional[int] = ..., created_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., updated_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., branch: _Optional[str] = ..., environment_id: _Optional[str] = ...) -> None: ...
+    layout: WorkspaceLayout
+    repos: _containers.RepeatedCompositeFieldContainer[WorkspaceRepo]
+    def __init__(self, workspace_id: _Optional[str] = ..., state: _Optional[_Union[WorkspaceState, str]] = ..., repo_url: _Optional[str] = ..., head: _Optional[str] = ..., snapshot_id: _Optional[str] = ..., size_bytes: _Optional[int] = ..., files: _Optional[int] = ..., created_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., updated_at: _Optional[_Union[datetime.datetime, _timestamp_pb2.Timestamp, _Mapping]] = ..., branch: _Optional[str] = ..., environment_id: _Optional[str] = ..., layout: _Optional[_Union[WorkspaceLayout, str]] = ..., repos: _Optional[_Iterable[_Union[WorkspaceRepo, _Mapping]]] = ...) -> None: ...
 
 class WorkspaceEnvironment(_message.Message):
     __slots__ = ("environment_id", "setup_script", "start_command", "env", "network", "secret_headers")
@@ -130,7 +174,7 @@ class InitialFile(_message.Message):
     def __init__(self, path: _Optional[str] = ..., content: _Optional[str] = ...) -> None: ...
 
 class CreateWorkspaceRequest(_message.Message):
-    __slots__ = ("tenant_id", "workspace_id", "repo_url", "ref", "credential", "from_workspace_id", "files", "author_name", "author_email", "environment")
+    __slots__ = ("tenant_id", "workspace_id", "repo_url", "ref", "credential", "from_workspace_id", "files", "author_name", "author_email", "environment", "layout")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
     REPO_URL_FIELD_NUMBER: _ClassVar[int]
@@ -141,6 +185,7 @@ class CreateWorkspaceRequest(_message.Message):
     AUTHOR_NAME_FIELD_NUMBER: _ClassVar[int]
     AUTHOR_EMAIL_FIELD_NUMBER: _ClassVar[int]
     ENVIRONMENT_FIELD_NUMBER: _ClassVar[int]
+    LAYOUT_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
     workspace_id: str
     repo_url: str
@@ -151,7 +196,8 @@ class CreateWorkspaceRequest(_message.Message):
     author_name: str
     author_email: str
     environment: WorkspaceEnvironment
-    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., repo_url: _Optional[str] = ..., ref: _Optional[str] = ..., credential: _Optional[_Union[GitCredential, _Mapping]] = ..., from_workspace_id: _Optional[str] = ..., files: _Optional[_Iterable[_Union[InitialFile, _Mapping]]] = ..., author_name: _Optional[str] = ..., author_email: _Optional[str] = ..., environment: _Optional[_Union[WorkspaceEnvironment, _Mapping]] = ...) -> None: ...
+    layout: WorkspaceLayout
+    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., repo_url: _Optional[str] = ..., ref: _Optional[str] = ..., credential: _Optional[_Union[GitCredential, _Mapping]] = ..., from_workspace_id: _Optional[str] = ..., files: _Optional[_Iterable[_Union[InitialFile, _Mapping]]] = ..., author_name: _Optional[str] = ..., author_email: _Optional[str] = ..., environment: _Optional[_Union[WorkspaceEnvironment, _Mapping]] = ..., layout: _Optional[_Union[WorkspaceLayout, str]] = ...) -> None: ...
 
 class CreateWorkspaceResponse(_message.Message):
     __slots__ = ("workspace",)
@@ -172,16 +218,18 @@ class ListWorkspacesResponse(_message.Message):
     def __init__(self, workspaces: _Optional[_Iterable[_Union[Workspace, _Mapping]]] = ...) -> None: ...
 
 class GetDiffRequest(_message.Message):
-    __slots__ = ("tenant_id", "workspace_id", "base", "find_renames")
+    __slots__ = ("tenant_id", "workspace_id", "base", "find_renames", "repo")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
     BASE_FIELD_NUMBER: _ClassVar[int]
     FIND_RENAMES_FIELD_NUMBER: _ClassVar[int]
+    REPO_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
     workspace_id: str
     base: str
     find_renames: bool
-    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., base: _Optional[str] = ..., find_renames: _Optional[bool] = ...) -> None: ...
+    repo: str
+    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., base: _Optional[str] = ..., find_renames: _Optional[bool] = ..., repo: _Optional[str] = ...) -> None: ...
 
 class DiffStat(_message.Message):
     __slots__ = ("path", "added", "deleted", "binary")
@@ -212,18 +260,20 @@ class GetDiffResponse(_message.Message):
     def __init__(self, diff: _Optional[str] = ..., files: _Optional[_Iterable[str]] = ..., truncated: _Optional[bool] = ..., head: _Optional[str] = ..., stats: _Optional[_Iterable[_Union[DiffStat, _Mapping]]] = ..., branch: _Optional[str] = ...) -> None: ...
 
 class CommitWorkspaceRequest(_message.Message):
-    __slots__ = ("tenant_id", "workspace_id", "message", "author_name", "author_email")
+    __slots__ = ("tenant_id", "workspace_id", "message", "author_name", "author_email", "repo")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
     MESSAGE_FIELD_NUMBER: _ClassVar[int]
     AUTHOR_NAME_FIELD_NUMBER: _ClassVar[int]
     AUTHOR_EMAIL_FIELD_NUMBER: _ClassVar[int]
+    REPO_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
     workspace_id: str
     message: str
     author_name: str
     author_email: str
-    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., message: _Optional[str] = ..., author_name: _Optional[str] = ..., author_email: _Optional[str] = ...) -> None: ...
+    repo: str
+    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., message: _Optional[str] = ..., author_name: _Optional[str] = ..., author_email: _Optional[str] = ..., repo: _Optional[str] = ...) -> None: ...
 
 class CommitWorkspaceResponse(_message.Message):
     __slots__ = ("sha", "committed")
@@ -234,16 +284,18 @@ class CommitWorkspaceResponse(_message.Message):
     def __init__(self, sha: _Optional[str] = ..., committed: _Optional[bool] = ...) -> None: ...
 
 class PushWorkspaceRequest(_message.Message):
-    __slots__ = ("tenant_id", "workspace_id", "branch", "credential")
+    __slots__ = ("tenant_id", "workspace_id", "branch", "credential", "repo")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
     BRANCH_FIELD_NUMBER: _ClassVar[int]
     CREDENTIAL_FIELD_NUMBER: _ClassVar[int]
+    REPO_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
     workspace_id: str
     branch: str
     credential: GitCredential
-    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., branch: _Optional[str] = ..., credential: _Optional[_Union[GitCredential, _Mapping]] = ...) -> None: ...
+    repo: str
+    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., branch: _Optional[str] = ..., credential: _Optional[_Union[GitCredential, _Mapping]] = ..., repo: _Optional[str] = ...) -> None: ...
 
 class PushWorkspaceResponse(_message.Message):
     __slots__ = ("sha", "branch", "reconciled")
@@ -336,16 +388,18 @@ class ReadFileResponse(_message.Message):
     def __init__(self, size: _Optional[int] = ..., too_large: _Optional[bool] = ..., binary: _Optional[bool] = ..., content: _Optional[str] = ...) -> None: ...
 
 class GetLogRequest(_message.Message):
-    __slots__ = ("tenant_id", "workspace_id", "limit", "base")
+    __slots__ = ("tenant_id", "workspace_id", "limit", "base", "repo")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
     LIMIT_FIELD_NUMBER: _ClassVar[int]
     BASE_FIELD_NUMBER: _ClassVar[int]
+    REPO_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
     workspace_id: str
     limit: int
     base: str
-    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., limit: _Optional[int] = ..., base: _Optional[str] = ...) -> None: ...
+    repo: str
+    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., limit: _Optional[int] = ..., base: _Optional[str] = ..., repo: _Optional[str] = ...) -> None: ...
 
 class Commit(_message.Message):
     __slots__ = ("sha", "author_name", "author_email", "authored_at", "subject")
@@ -368,12 +422,14 @@ class GetLogResponse(_message.Message):
     def __init__(self, commits: _Optional[_Iterable[_Union[Commit, _Mapping]]] = ...) -> None: ...
 
 class DiscardChangesRequest(_message.Message):
-    __slots__ = ("tenant_id", "workspace_id")
+    __slots__ = ("tenant_id", "workspace_id", "repo")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
+    REPO_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
     workspace_id: str
-    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ...) -> None: ...
+    repo: str
+    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., repo: _Optional[str] = ...) -> None: ...
 
 class DiscardChangesResponse(_message.Message):
     __slots__ = ("head",)
@@ -382,16 +438,18 @@ class DiscardChangesResponse(_message.Message):
     def __init__(self, head: _Optional[str] = ...) -> None: ...
 
 class SyncWorkspaceRequest(_message.Message):
-    __slots__ = ("tenant_id", "workspace_id", "branch", "credential")
+    __slots__ = ("tenant_id", "workspace_id", "branch", "credential", "repo")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
     BRANCH_FIELD_NUMBER: _ClassVar[int]
     CREDENTIAL_FIELD_NUMBER: _ClassVar[int]
+    REPO_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
     workspace_id: str
     branch: str
     credential: GitCredential
-    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., branch: _Optional[str] = ..., credential: _Optional[_Union[GitCredential, _Mapping]] = ...) -> None: ...
+    repo: str
+    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., branch: _Optional[str] = ..., credential: _Optional[_Union[GitCredential, _Mapping]] = ..., repo: _Optional[str] = ...) -> None: ...
 
 class SyncWorkspaceResponse(_message.Message):
     __slots__ = ("head", "branch")
@@ -430,3 +488,59 @@ class SetWorkspaceEnvironmentResponse(_message.Message):
     WORKSPACE_FIELD_NUMBER: _ClassVar[int]
     workspace: Workspace
     def __init__(self, workspace: _Optional[_Union[Workspace, _Mapping]] = ...) -> None: ...
+
+class AttachRepoRequest(_message.Message):
+    __slots__ = ("tenant_id", "workspace_id", "repo", "credential")
+    TENANT_ID_FIELD_NUMBER: _ClassVar[int]
+    WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
+    REPO_FIELD_NUMBER: _ClassVar[int]
+    CREDENTIAL_FIELD_NUMBER: _ClassVar[int]
+    tenant_id: str
+    workspace_id: str
+    repo: WorkspaceRepo
+    credential: GitCredential
+    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., repo: _Optional[_Union[WorkspaceRepo, _Mapping]] = ..., credential: _Optional[_Union[GitCredential, _Mapping]] = ...) -> None: ...
+
+class AttachRepoResponse(_message.Message):
+    __slots__ = ("repo", "workspace")
+    REPO_FIELD_NUMBER: _ClassVar[int]
+    WORKSPACE_FIELD_NUMBER: _ClassVar[int]
+    repo: WorkspaceRepo
+    workspace: Workspace
+    def __init__(self, repo: _Optional[_Union[WorkspaceRepo, _Mapping]] = ..., workspace: _Optional[_Union[Workspace, _Mapping]] = ...) -> None: ...
+
+class DetachRepoRequest(_message.Message):
+    __slots__ = ("tenant_id", "workspace_id", "repo", "discard_changes")
+    TENANT_ID_FIELD_NUMBER: _ClassVar[int]
+    WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
+    REPO_FIELD_NUMBER: _ClassVar[int]
+    DISCARD_CHANGES_FIELD_NUMBER: _ClassVar[int]
+    tenant_id: str
+    workspace_id: str
+    repo: str
+    discard_changes: bool
+    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., repo: _Optional[str] = ..., discard_changes: _Optional[bool] = ...) -> None: ...
+
+class DetachRepoResponse(_message.Message):
+    __slots__ = ("workspace", "discarded_files", "discarded_commits")
+    WORKSPACE_FIELD_NUMBER: _ClassVar[int]
+    DISCARDED_FILES_FIELD_NUMBER: _ClassVar[int]
+    DISCARDED_COMMITS_FIELD_NUMBER: _ClassVar[int]
+    workspace: Workspace
+    discarded_files: int
+    discarded_commits: int
+    def __init__(self, workspace: _Optional[_Union[Workspace, _Mapping]] = ..., discarded_files: _Optional[int] = ..., discarded_commits: _Optional[int] = ...) -> None: ...
+
+class ListReposRequest(_message.Message):
+    __slots__ = ("tenant_id", "workspace_id")
+    TENANT_ID_FIELD_NUMBER: _ClassVar[int]
+    WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
+    tenant_id: str
+    workspace_id: str
+    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ...) -> None: ...
+
+class ListReposResponse(_message.Message):
+    __slots__ = ("repos",)
+    REPOS_FIELD_NUMBER: _ClassVar[int]
+    repos: _containers.RepeatedCompositeFieldContainer[WorkspaceRepo]
+    def __init__(self, repos: _Optional[_Iterable[_Union[WorkspaceRepo, _Mapping]]] = ...) -> None: ...

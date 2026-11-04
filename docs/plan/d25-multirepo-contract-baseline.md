@@ -26,3 +26,20 @@
 | `AttachRepo` 批量事务 | N 个仓库一起失败难以恢复 | 设计要求部分成功可保留 | 一个仓库一次 activity，失败单独报告 | 可重试且不拖长单个 activity | N 个仓库 N 次调用 | 低 | 需要展示部分成功 | 中间状态更多 | D-25 | KEEP |
 
 任何字段、RPC 或 schema 变化都必须先补正反例，再执行 S-01 的 buf/schema 检查、兼容性检查和人工评审。
+
+## 具体 wire（契约草案，2026-11-04，等人审）
+
+`buf lint`、`buf breaking --against proto/breaking-baseline.binpb` 通过；生成代码已更新。审过之后再写实现，并用 `buf build -o proto/breaking-baseline.binpb` 更新基线。
+
+| 部分 | 草案 |
+| --- | --- |
+| 布局 | `WorkspaceLayout`：`ROOT`（不写时就是它，旧客户端不变）、`MULTI`；`CreateWorkspaceRequest.layout`，建时定、之后不转换。MULTI 时不能给 `repo_url`、`ref`、`files`；`from_workspace_id` 要复制的也是 MULTI（否则 `layout_mismatch`） |
+| 仓库记录 | `WorkspaceRepo`：`name`（工作区内唯一）、`url`（https、不带凭据）、`ref`、`path`（一级目录名，不分大小写不能重叠，不能以 `.` 开头）、`access`（`RepoAccess`：不写按 READ）、`primary`（最多一个；没有时第一个挂上的就是）、只读的 `head`、`branch`、`attached_at`。`Workspace.layout` 与 `Workspace.repos` |
+| 新 RPC | `AttachRepo`（一次一个仓库、一个 activity；`repo_exists`、`repo_path_conflict`、`invalid_repo_path`、`max_repos`、`max_bytes`、`primary_exists`；凭据只用于这次克隆）、`DetachRepo`、`ListRepos`；ROOT 的工作区上调用 `workspace_not_multi` |
+| 卸下有改动的仓库（代审要明确的） | 有未提交的改动（含未跟踪的文件）或不在任何远端分支上的提交时 FailedPrecondition `repo_dirty`，什么都不删；`discard_changes` 为 true 时照删，响应写明丢了几个文件、几个提交。卸下 primary 后最早挂上的那个成为 primary |
+| 指明仓库 | Diff、Commit、Push、Sync、Log、Discard 的 Request 加 `repo`：MULTI 必填（`repo_required`、`repo_not_found`），ROOT 必须为空（`repo_not_applicable`）；只读仓库的 Commit、Push 是 `repo_read_only`；Push 的分支规则、主机授权与幂等键逐仓库 |
+| 凭据 | 每次操作只封、只解开它指明的那一个仓库的凭据（`sealed_credential` 照旧一次一个） |
+| 工作流 | `workflow.v1.WorkspaceOperation` 加 `ATTACH_REPO`、`DETACH_REPO`、`LIST_REPOS`；仓库参数放在 `args`（`repo`、`discard_changes`、建时的 `layout`），不加字段 |
+| 配额 | 租户策略 `workspace.max_repos`（1～50，不写用部署的默认值）；`max_bytes` 管整个布局 |
+
+在实现之前：task-service 的 `AttachRepo`、`DetachRepo`、`ListRepos` 与 MULTI 的 `CreateWorkspace` 回 Unimplemented（`multi_repo_unavailable`，`internal/workspaceapi/multirepo.go`），只为生成代码能编译；ROOT 的工作区照旧（`repo` 字段现在还没校验）。

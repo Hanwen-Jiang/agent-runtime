@@ -73,6 +73,7 @@
       "properties": {
         "max_workspaces": {"description": "同时存在的工作区个数上限", "type": "integer", "minimum": 1},
         "max_bytes": {"description": "单个工作区（存档）的字节上限", "type": "integer", "minimum": 0},
+        "max_repos": {"description": "多仓库工作区（D-25，layout 为 multi）最多挂几个仓库；AttachRepo 在克隆之前查，超了 ResourceExhausted（max_repos）。不写时用部署的默认值", "type": "integer", "minimum": 1, "maximum": 50},
         "push_branches": {
           "description": "能推送的远端分支（glob：* 匹配不含 / 的一段，** 匹配任意多段）；推到别的分支被拒绝",
           "type": "array", "uniqueItems": true, "minItems": 1, "maxItems": 20,
