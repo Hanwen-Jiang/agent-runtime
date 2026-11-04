@@ -6,8 +6,10 @@
 环境变量：AR_REGISTRY_ADDRESS（Registry 的内部端口，不是 dry-run 时必填）；AR_SECRETS_FILE（开发 SecretStore，平台作用域里的
 registry/publish-token 是发布令牌）；AR_EVENT_STREAM_BROKERS（--topic 时必填：EventStream 的 host:port，逗号分隔）；
 AR_MODEL_GATEWAY_ADDRESS（可选：失败归因经 Model Gateway）；OTEL_EXPORTER_OTLP_ENDPOINT（可选：审计与指标发给 Collector）。
+成本（R-06-D）：--cost-source 默认 auto，配了业务库（AR_RELATIONAL_DSN 是 Postgres，否则 AR_DATA_DIR 下的 relational 是开发用的 SQLite，
+与 Model Gateway 同一个）就读 Gateway 结算的 model_usage，否则读 trace 上的 runtime.cost_usd；model_usage 要求配了业务库，trace 照旧。
 最后一行输出运行摘要的 JSON。退出码：0 跑完（已发布、发布被拒、没有候选、dry-run）；1 Registry 写失败；2 参数、环境或 trace 的格式不对；
-3 读主题或提交消费组的位置失败。
+3 读主题或提交消费组的位置失败；4 读不了业务库的 model_usage（不提交消费组的位置，不退回 trace 上的成本）。
 """
 
 from __future__ import annotations
@@ -22,12 +24,16 @@ from pathlib import Path
 from typing import Any
 
 from agentruntime_learning.pipeline import stream
+from agentruntime_learning.pipeline.costs import CostSourceError, ledger_costs
 from agentruntime_learning.pipeline.run import PipelineConfig, run_pipeline, summary_line
 from agentruntime_learning.pipeline.traces import FORMATS, TraceFormatError
 
 ENV_REGISTRY_ADDRESS = "AR_REGISTRY_ADDRESS"
 ENV_SECRETS_FILE = "AR_SECRETS_FILE"
 ENV_MODEL_GATEWAY_ADDRESS = "AR_MODEL_GATEWAY_ADDRESS"
+ENV_RELATIONAL_DSN = "AR_RELATIONAL_DSN"
+ENV_DATA_DIR = "AR_DATA_DIR"
+COST_SOURCES = ("auto", "model_usage", "trace")
 PUBLISH_TOKEN = "registry/publish-token"
 TENANT = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")
 FAMILY = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$")
@@ -61,6 +67,8 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--delta", type=float, default=0.02)
     run.add_argument("--epsilon", type=float, default=0.05)
     run.add_argument("--dry-run", action="store_true", help="只出报告，不写 Registry")
+    run.add_argument("--cost-source", default="auto", choices=COST_SOURCES,
+                     help=f"Task 的成本读哪里：model_usage（Gateway 结算的账本，要 {ENV_RELATIONAL_DSN} 或 {ENV_DATA_DIR}）、trace，auto 是配了业务库就读账本")
     return parser
 
 
@@ -82,13 +90,37 @@ def _publish_token(env: Mapping[str, str]) -> str | None:
     return asyncio.run(read())
 
 
+async def _ledger(env: Mapping[str, str]) -> Any:
+    """业务库：Postgres（AR_RELATIONAL_DSN）或开发用的 SQLite（AR_DATA_DIR/relational），与 Model Gateway 同一个。"""
+    dsn = env.get(ENV_RELATIONAL_DSN, "").strip()
+    if dsn:
+        from agentruntime_core.adapters.postgres import PostgresRelationalStoreProvider
+        from agentruntime_core.errors import ProviderError
+
+        try:
+            return await PostgresRelationalStoreProvider.connect(dsn, max_conns=1)
+        except ProviderError as err:
+            raise CostSourceError(f"连不上业务库：{err.code}") from None
+    from agentruntime_core.dev.relational_store import SQLiteRelationalStoreProvider
+
+    return SQLiteRelationalStoreProvider(Path(env[ENV_DATA_DIR].strip()) / "relational")
+
+
 async def _run(args: argparse.Namespace, env: Mapping[str, str], lines: list[str], sources: list[str]) -> int:
     from agentruntime_core.adapters.otel import telemetry_from_env
 
     registry: Any = None
     gateway: Any = None
+    ledger: Any = None
     telemetry = telemetry_from_env("learning", env)
     try:
+        costs = None
+        if args.cost_source == "model_usage":
+            ledger = await _ledger(env)
+
+            async def costs(tenant_id: str, task_ids: list[str]) -> Any:
+                return await ledger_costs(ledger, tenant_id, task_ids)
+
         if not args.dry_run:
             from agentruntime_worker.registry import GrpcRegistry
 
@@ -110,11 +142,12 @@ async def _run(args: argparse.Namespace, env: Mapping[str, str], lines: list[str
             budget_usd=args.budget_usd,
             dry_run=args.dry_run,
         )
-        report = await run_pipeline(config, lines=lines, fmt=args.format, registry=registry, gateway=gateway, telemetry=telemetry, sources=sources)
+        report = await run_pipeline(config, lines=lines, fmt=args.format, registry=registry, gateway=gateway, telemetry=telemetry, sources=sources,
+                                    costs=costs)
         print(summary_line(report))
         return 1 if report.status in FAILED else 0
     finally:
-        for client in (registry, gateway):
+        for client in (registry, gateway, ledger):
             if client is not None and hasattr(client, "aclose"):
                 await client.aclose()
         await telemetry.aclose()
@@ -162,6 +195,11 @@ def _check(args: argparse.Namespace, env: Mapping[str, str]) -> None:
         raise UsageError("--budget-usd 不能为负")
     if not args.dry_run and not env.get(ENV_REGISTRY_ADDRESS, "").strip():
         raise UsageError(f"没有设置 {ENV_REGISTRY_ADDRESS}（Registry 的 host:port）；只看结果可以加 --dry-run")
+    has_store = bool(env.get(ENV_RELATIONAL_DSN, "").strip() or env.get(ENV_DATA_DIR, "").strip())
+    if args.cost_source == "auto":
+        args.cost_source = "model_usage" if has_store else "trace"
+    elif args.cost_source == "model_usage" and not has_store:
+        raise UsageError(f"--cost-source model_usage 要设 {ENV_RELATIONAL_DSN}（Postgres）或 {ENV_DATA_DIR}（开发用的 SQLite），与 Model Gateway 同一个业务库")
     if args.topic is None:
         if args.group is not None:
             raise UsageError("--group 只配 --topic 用")
@@ -215,6 +253,9 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
     except stream.StreamError as err:
         print(f"learning pipeline：{err}；没有提交消费组的位置", file=sys.stderr)
         return 3
+    except CostSourceError as err:
+        print(f"learning pipeline：{err}；没有提交消费组的位置", file=sys.stderr)
+        return 4
     finally:
         if reader is not None:
             reader.close()

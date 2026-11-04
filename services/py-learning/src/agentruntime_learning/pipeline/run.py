@@ -28,6 +28,7 @@ from agentruntime_worker.activities.types import Tenant
 from agentruntime_learning.pipeline.attribution import LEARNING_USER, Attribution, attribute_failures
 from agentruntime_learning.pipeline.budget import LearningBudget
 from agentruntime_learning.pipeline.candidates import best_route, mine_recipe, recipe_name, template_refs
+from agentruntime_learning.pipeline.costs import CostSource, apply_costs
 from agentruntime_learning.pipeline.evaluation import (
     DEFAULT_DELTA,
     DEFAULT_EPSILON,
@@ -79,6 +80,9 @@ class PipelineReport:
     tasks: int = 0
     skipped: int = 0
     other_tenant_spans: int = 0
+    # 成本从哪里来：model_usage（Gateway 结算的账本，R-06-D）或 trace（span 上的 runtime.cost_usd）；cost_unknown 是成本未知的 Task 数。
+    cost_source: str = "trace"
+    cost_unknown: int = 0
     path: Path | None = None
 
     @property
@@ -133,8 +137,9 @@ async def run_pipeline(
     telemetry: TelemetryProvider,
     now: datetime | None = None,
     sources: Iterable[str] = (),
+    costs: CostSource | None = None,
 ) -> PipelineReport:
-    """sources 是读的 trace 文件，只记进审计。"""
+    """sources 是读的 trace 文件，只记进审计。costs 给了时 Task 的成本读账本（model_usage），读不了时 CostSourceError 原样抛出。"""
     now = (now or datetime.now(UTC)).astimezone(UTC)
     # 精确到微秒：同一秒里的两次运行不互相覆盖报告。
     filename = f"{config.task_family}-{now:%Y%m%dT%H%M%S%fZ}.json"
@@ -148,6 +153,10 @@ async def run_pipeline(
     spans = read_spans(lines, fmt=fmt)
     traces = task_traces(spans, config.tenant_id)
     tasks = traces.tasks
+    if costs is not None:
+        tasks = apply_costs(tasks, await costs(config.tenant_id, [t.task_id for t in tasks]))
+        report.cost_source = "model_usage"
+    report.cost_unknown = sum(1 for t in tasks if not t.cost_known)
     report.tasks, report.skipped, report.other_tenant_spans = len(tasks), traces.skipped, traces.other_tenant_spans
     await platform.log(
         LogLevel.INFO,
@@ -161,6 +170,8 @@ async def run_pipeline(
             "learning.skipped": traces.skipped,
             "learning.duplicates": traces.duplicates,
             "learning.other_tenant_spans": traces.other_tenant_spans,
+            "learning.cost_source": report.cost_source,
+            "learning.cost_unknown": report.cost_unknown,
         },
     )
 
