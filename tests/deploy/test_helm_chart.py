@@ -161,7 +161,9 @@ def test_registry_port_is_internal_and_distinct(manifests: list[dict[str, Any]])
     http_port, registry_port = port_of(env["AR_HTTP_ADDR"]["value"]), port_of(env["AR_REGISTRY_ADDR"]["value"])
     assert http_port != registry_port, "Registry 用单独的内部端口（docs/plan/registry.md 第 2 节第 7 条）"
     ports = {p["name"]: p["containerPort"] for p in c["ports"]}
-    assert ports == {"http": http_port, "registry": registry_port}
+    # 逐字增量的内部端口（DELTA）另见 test_task_service_deltas.py。
+    internal = {"internal": port_of(env["AR_INTERNAL_ADDR"]["value"])} if "AR_INTERNAL_ADDR" in env else {}
+    assert ports == {"http": http_port, "registry": registry_port, **internal}
     assert "AR_PINNED_VERSIONS_FILE" not in env, "配了 Registry 就不能再配固定版本文件"
     for svc in by_kind(manifests, "Service"):
         exposes_registry = any(p.get("targetPort") in ("registry", registry_port) for p in svc["spec"]["ports"])
