@@ -7,6 +7,8 @@
 // kek 是该作用域的密钥加密密钥，首次生成数据密钥时创建并写回文件。短期凭据的租约只在内存里。
 // 多个进程可以共用一份文件（task-service 与 Worker 互相解开对方的 Claim-Check 数据密钥，S-06）：
 // 写文件时加锁并先重新读，缺 kek 时先重新读文件再生成，不会覆盖别的进程写进去的内容。
+// 绑定的 Store 实现 secretstore.Writer（用户密钥，SEC-API）；Read 每次重新读文件，别的进程刚写进去的、刚删掉的马上看得到
+// （出网网关按名字现读，不缓存）。
 // 文件里是明文，只能用于开发。
 package filesecrets
 
@@ -252,21 +254,30 @@ func (p *Provider) locked(fn func() error) error {
 		time.Sleep(10 * time.Millisecond)
 	}
 	defer func() { _ = os.Remove(lock) }()
-	raw, err := os.ReadFile(p.opts.Path)
-	switch {
-	case err == nil:
-		fresh := file{Version: 1, Scopes: map[string]*scopeEntry{}}
-		if err := json.Unmarshal(raw, &fresh); err != nil {
-			return err
-		}
-		if fresh.Scopes == nil {
-			fresh.Scopes = map[string]*scopeEntry{}
-		}
-		p.data = fresh
-	case !errors.Is(err, fs.ErrNotExist):
+	if err := p.reload(); err != nil {
 		return err
 	}
 	return fn()
+}
+
+// reload 重新读密钥文件（调用方持有 p.mu）；文件还没有时保持内存里的内容。写文件是先写临时文件再改名，读到的总是完整的一份。
+func (p *Provider) reload() error {
+	raw, err := os.ReadFile(p.opts.Path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	fresh := file{Version: 1, Scopes: map[string]*scopeEntry{}}
+	if err := json.Unmarshal(raw, &fresh); err != nil {
+		return err
+	}
+	if fresh.Scopes == nil {
+		fresh.Scopes = map[string]*scopeEntry{}
+	}
+	p.data = fresh
+	return nil
 }
 
 func (p *Provider) save() error {
@@ -308,11 +319,58 @@ func (s *store) Read(_ context.Context, name string) (secret.Value, error) {
 		return secret.Value{}, err
 	}
 	defer s.p.mu.Unlock()
+	if err := s.p.reload(); err != nil {
+		return secret.Value{}, providererr.Wrap(providererr.Transient, "io_error", "读密钥文件失败", err)
+	}
 	v, ok := s.p.scope(s.owner).Secrets[name]
 	if !ok {
 		return secret.Value{}, providererr.New(providererr.NotFound, "not_found", "密钥不存在")
 	}
 	return secret.New(v), nil
+}
+
+var _ secretstore.Writer = (*store)(nil)
+
+// Write 新建或替换本作用域的一个密钥（secretstore.Writer）：在文件锁里先重新读再改，不覆盖别的进程写进去的内容。
+func (s *store) Write(_ context.Context, name string, value secret.Value) error {
+	if name == "" {
+		return providererr.New(providererr.Invalid, "invalid_argument", "密钥名不能为空")
+	}
+	if err := s.enter("Write"); err != nil {
+		return err
+	}
+	defer s.p.mu.Unlock()
+	return ioError(s.p.locked(func() error {
+		s.p.scope(s.owner).Secrets[name] = value.RevealString()
+		return s.p.save()
+	}))
+}
+
+// Delete 删掉本作用域的一个密钥（secretstore.Writer）；不存在时返回 false。
+func (s *store) Delete(_ context.Context, name string) (bool, error) {
+	if err := s.enter("Delete"); err != nil {
+		return false, err
+	}
+	defer s.p.mu.Unlock()
+	var existed bool
+	err := s.p.locked(func() error {
+		secrets := s.p.scope(s.owner).Secrets
+		if _, existed = secrets[name]; !existed {
+			return nil
+		}
+		delete(secrets, name)
+		return s.p.save()
+	})
+	return existed, ioError(err)
+}
+
+// ioError 把读写文件的错误换成 transient（文本不带文件内容）；已经是 providererr 的（例如锁住了）原样返回。
+func ioError(err error) error {
+	var pe *providererr.Error
+	if err == nil || errors.As(err, &pe) {
+		return err
+	}
+	return providererr.Wrap(providererr.Transient, "io_error", "保存密钥文件失败", err)
 }
 
 func (s *store) IssueCredential(_ context.Context, role string, ttl time.Duration) (secretstore.Credential, error) {

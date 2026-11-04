@@ -54,6 +54,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/ingress"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/secretstore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/sealing"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	workflowv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1"
@@ -67,6 +68,7 @@ import (
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/session"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/taskapi"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/taskstore"
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/usersecrets"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/workspaceapi"
 )
 
@@ -466,6 +468,10 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	if err := store.Migrate(ctx, taskapi.ArtifactMigrations()); err != nil {
 		return err
 	}
+	// 用户密钥的名字与时间（SEC-API）；值在 SecretStore 里。
+	if err := store.Migrate(ctx, usersecrets.Migrations()); err != nil {
+		return err
+	}
 	// 固定版本：配了 Registry（AR_REGISTRY_ADDR）时由它给出，并在单独的内部端口上提供 RegistryService；否则读固定版本文件。
 	var pins taskapi.PinResolver = taskapi.FilePinResolver{Path: cfg.PinnedVersionsFile}
 	var registrySrv *http.Server
@@ -555,10 +561,22 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	// 用户密钥（SEC-API）：值写进 AR_SECRETS_FILE 的租户作用域，出网网关读同一份文件；没配时服务报不可用。
+	var userSecretStore secretstore.Provider
+	if cfg.SecretsFile != "" {
+		if userSecretStore, err = filesecrets.New(filesecrets.Options{Path: cfg.SecretsFile}); err != nil {
+			return err
+		}
+	}
+	userSecrets, err := usersecrets.New(usersecrets.Deps{Ingress: ing, Store: store, Secrets: userSecretStore, Clock: clk, Logger: logger})
+	if err != nil {
+		return err
+	}
 	mux := http.NewServeMux()
 	api.Mount(mux)
 	workspaces.Mount(mux)
 	environments.Mount(mux)
+	userSecrets.Mount(mux)
 	streams := events.NewHandler(events.HandlerDeps{Ingress: ing, Cache: cacheProvider, Store: store, Clock: clk})
 	mux.Handle("/v1/tasks/", streams)
 	mux.Handle("GET /v1/sessions/{session_id}/snapshot", streams)

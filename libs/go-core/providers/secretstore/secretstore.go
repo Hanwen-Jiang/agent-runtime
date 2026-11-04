@@ -60,3 +60,14 @@ type Store interface {
 	GenerateDataKey(ctx context.Context, purpose string) (DataKey, error)
 	UnwrapDataKey(ctx context.Context, wrapped []byte, purpose string) (secret.Value, error)
 }
+
+// Writer 是可写的 Store（只在 Go 侧，不属于两种语言共用的接口）：用户自己的网络密钥（SEC-API）由 task-service 写进租户作用域，
+// 出网网关按名字现读。绑定作用域的 Store 实现了它才能写；不实现的（例如只读的生产实现）调用方按不可用处理。
+//   - Write：没有同名的新建，有则替换；之后的 Read 读到新值（别的进程也一样）。
+//   - Delete：删掉本作用域的这个名字，立即生效；不存在时返回 false，不报错。
+//
+// 值是 secret.Value，错误文本与日志里不出现。
+type Writer interface {
+	Write(ctx context.Context, name string, value secret.Value) error
+	Delete(ctx context.Context, name string) (bool, error)
+}

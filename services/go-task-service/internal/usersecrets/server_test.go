@@ -4,7 +4,7 @@ package usersecrets
 //
 //  1. 写入、列举、删除：值写进 SecretStore 租户作用域的 user-secrets/<用户>/<name>（出网网关按这个名字现读）；列举只有名字与
 //     时间、按 name 排序；替换时 created 为假、created_at 不变、updated_at 更新；删除立即生效，再删一次 deleted 为假。
-//  2. 用户来自认证身份：别的用户看不到、删不到；别的租户同样。请求里的 tenant_id 只校验一致；没认证 Unauthenticated。
+//  2. 用户来自认证身份：别的用户看不到、删不到；别的租户同样。请求里的 tenant_id 只校验一致；没认证时 denied（unauthenticated）。
 //  3. 值只进不出：响应、错误信息、日志里都没有值（也没有它的片段）。
 //  4. 校验：name 只收字母、数字、.、_、-，最多 128 个字符；值不能为空、最多 8 KiB、不能有控制字符（水平制表符除外）、要是 UTF-8。
 //  5. 每个用户最多 100 个：第 101 个 ResourceExhausted（code user_secret_limit），替换已有的不受限。
@@ -240,8 +240,12 @@ func TestOnlyTheCallersOwnSecrets(t *testing.T) {
 		}
 		_, err = h.client.ListUserSecrets(ctx, as(h, "t1", "u1", &workspacev1.ListUserSecretsRequest{TenantId: "t2"}))
 		wantCode(t, "tenant_id 与认证身份不一致", err, connect.CodePermissionDenied)
+		// 没认证：与 Task API 的其他方法一样，统一错误模型的 denied（code unauthenticated）。
 		_, err = h.client.PutUserSecret(ctx, as(h, "t1", "", &workspacev1.PutUserSecretRequest{Name: "gh", Value: value}))
-		wantCode(t, "没认证", err, connect.CodeUnauthenticated)
+		wantCode(t, "没认证", err, connect.CodePermissionDenied)
+		if code := errorCode(err); code != "unauthenticated" {
+			t.Fatalf("没认证的 code：%q", code)
+		}
 	})
 }
 
@@ -277,9 +281,9 @@ func TestNamesAndValuesAreValidated(t *testing.T) {
 		h.put(t, "t1", "u1", strings.Repeat("a", 128), "ok")
 		h.put(t, "t1", "u1", "tab", "a\tb")
 		h.put(t, "t1", "u1", "max", strings.Repeat("v", 8<<10))
+		// 不是 UTF-8 的值到不了服务端（proto3 的 string 在客户端就编码不出来），服务端照样核对，这里不测。
 		for what, v := range map[string]string{
-			"空值": "", "超过 8 KiB": strings.Repeat("v", 8<<10+1), "换行": value + "\n", "回车": "a\rb", "NUL": "a\x00b",
-			"不是 UTF-8": "a\xffb", "DEL": "a\x7fb",
+			"空值": "", "超过 8 KiB": strings.Repeat("v", 8<<10+1), "换行": value + "\n", "回车": "a\rb", "NUL": "a\x00b", "DEL": "a\x7fb",
 		} {
 			_, err := h.client.PutUserSecret(ctx, as(h, "t1", "u1", &workspacev1.PutUserSecretRequest{Name: "bad", Value: v}))
 			wantCode(t, what, err, connect.CodeInvalidArgument)
