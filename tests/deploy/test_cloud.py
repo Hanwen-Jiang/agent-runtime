@@ -160,13 +160,14 @@ def test_postgres_roles_cannot_bypass_row_level_security() -> None:
     spec = cluster["spec"]
     assert spec["enableSuperuserAccess"] is False
     roles = {r["name"]: r for r in spec["managed"]["roles"]}
-    assert set(roles) == {"agentruntime", "temporal", "langfuse"}
+    # coding_github 是 coding-web 的 GitHub App 收件箱（coding-agent 的 G-02，2026-11-04 上线）。
+    assert set(roles) == {"agentruntime", "temporal", "langfuse", "coding_github"}
     for name, role in roles.items():
         assert role["superuser"] is False and role["bypassrls"] is False, f"角色 {name} 不能是超级用户或带 BYPASSRLS（S-12a）"
-        assert role["passwordSecret"]["name"] == f"pg-{name}"
+        assert role["passwordSecret"]["name"] == "pg-" + name.replace("_", "-")
     assert spec["bootstrap"]["initdb"]["owner"] == "agentruntime"
     databases = {d["spec"]["name"]: d["spec"]["owner"] for d in docs(DATA / "postgres.yaml") if d["kind"] == "Database"}
-    assert databases == {"temporal": "temporal", "temporal_visibility": "temporal", "langfuse": "langfuse"}
+    assert databases == {"temporal": "temporal", "temporal_visibility": "temporal", "langfuse": "langfuse", "coding_github": "coding_github"}
 
 
 def test_postgres_is_backed_up_daily_to_r2_and_the_drill_restores_without_archiving() -> None:
@@ -448,7 +449,7 @@ def secret_refs() -> set[tuple[str, str]]:
     refs.add(("agent-runtime", values["external"]["langfuse"]["authSecret"]["name"]))
     refs.add(("agent-runtime", values["ingress"]["traefik"]["tlsSecretName"]))
     text = (DATA / "postgres.yaml").read_text("utf-8")
-    refs |= {("data", n) for n in re.findall(r"(?:passwordSecret: \{name: |secret:\s*\n\s*name: |\{name: )(pg-[a-z]+|r2-[a-z]+)", text)}
+    refs |= {("data", n) for n in re.findall(r"(?:passwordSecret: \{name: |secret:\s*\n\s*name: |\{name: )(pg-[a-z][a-z-]*|r2-[a-z]+)", text)}
     refs |= {("data", n) for n in re.findall(r"existingSecret: (\S+)", (DATA / "values" / "temporal.yaml").read_text("utf-8"))}
     for name in ("langfuse", "grafana"):
         body = (DATA / "values" / f"{name}.yaml").read_text("utf-8")

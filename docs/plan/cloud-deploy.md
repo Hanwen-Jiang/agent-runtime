@@ -698,6 +698,26 @@ coding-web `b4bb9a9`（2026-11-04，DEP-W；目录 `cw-b4bb9a9`，脚本 `cw.sh`
   回滚：`kubectl -n agent-runtime rollout undo deploy/coding-web`，`/root/ar-secrets/coding-web.yaml` 用 `.before` 换回。
 - **没有验证**：登录之后的界面（只放行名单里的账号）；环境配置的保存与 .env 密钥经 Runtime 的往返、会话的快照（要登录并开会话）。
 
+GitHub App 上线（2026-11-04，APP-LIVE；目录 `app-golive`，脚本 `golive.sh`，用户在对话里同意，GitHub 一侧用户已配好）：
+
+- coding-web 仍是 `b4bb9a9`，不换镜像。收件箱的库：Postgres 集群 `pg` 加 managed role `coding_github`（口令在 `data/pg-coding-github`）与
+  Database `coding-github`（库名 `coding_github`），与 temporal、langfuse 同一写法，仓库的 `deploy/data/postgres.yaml` 同步加了；连接串在
+  `agent-runtime/coding-github-db`（键 `dsn`，`sslmode=require`）。coding-web 启动时自己建了 `github_deliveries`、`github_redeliveries`。
+- 私钥从 `coding-oauth` 的环境变量挪进 Secret `coding-github-app`（键 `private-key.pem`，按文件挂在 `/etc/coding/github-app`，0400），`coding-oauth`
+  里的那一项删了；`/root/ar-secrets/rotate-github-app-key.sh` 改成写这个 Secret 并重启 coding-web。`coding-oauth` 加了 `CODING_TOKEN_KEY`（32 字节），
+  开发签名密钥先留着：旧的第三方令牌与环境密钥读到时换成新密钥。Deployment 去掉 DEP-W 的 5 个空值，加 `CODING_GITHUB_APP_SLUG=coding-agent-link`、
+  `CODING_GITHUB_APP_PRIVATE_KEY_FILE`、`CODING_GITHUB_DSN`；一次 `kubectl patch`，`/root/ar-secrets/coding-web.yaml` 同步（`kubectl diff` 为 0 行）。
+- 上线前核对（不打印密钥）：已部署的 Client secret 与用户环境变量 `GitHub_App_client_secret` 一致（长度与 sha256 前缀）；Secret 里的私钥与服务器上的 PEM 一致、
+  是合法的密钥；`github.com/apps/coding-agent-link` 存在。
+- 核对：Pod 在跑（第一次启动连不上 Postgres、重启一次就好，同 Runtime 的几个服务）；不带签名的 Webhook 401、没登录的 `/api/github/setup` 401、
+  code 200；启动时的投递对账（App 的 JWT 调 `GET /app/hook/deliveries`）没有报错，没有要重投的。经 GitHub API 读到 App 的设置：Webhook 地址
+  `https://code.cgent.link/api/webhooks/github`（JSON、校验证书）、订阅了 issues、issue_comment、pull_request、push 等，权限有 contents、issues、
+  pull_requests 写；**还没有安装**，所以 GitHub 一条投递也没发过。
+- 回滚：`kubectl -n agent-runtime rollout undo deploy/coding-web`（回到 App 关着；私钥已不在环境变量里，旧的 spec 照样能起），Secret 与库可以留着；
+  备份在 `app-golive/`。
+- **没有验证**：第一条真实投递（G-02 第 9 条，确认没被 Cloudflare 拦）、安装与授权仓库、经 App 克隆与推送、Issue 评论自动触发（G-06），都要先在 GitHub 上把 App
+  装到账号或仓库上。新密钥（`pg-coding-github`、`coding-github-db`、`coding-github-app`、`CODING_TOKEN_KEY`）还没进 SOPS 文件，与 Valkey 的口令一起补。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。

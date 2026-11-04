@@ -55,6 +55,15 @@ spec:
         createdb: false
         createrole: false
         passwordSecret: {name: pg-langfuse}
+      # coding-web 的 GitHub App 收件箱与安装记录（coding-agent 的 G-02，CODING_GITHUB_DSN；2026-11-04 上线）。
+      - name: coding_github
+        ensure: present
+        login: true
+        superuser: false
+        bypassrls: false
+        createdb: false
+        createrole: false
+        passwordSecret: {name: pg-coding-github}
   plugins:
     - name: barman-cloud.cloudnative-pg.io
       isWALArchiver: true
@@ -90,6 +99,16 @@ spec:
   cluster: {name: pg}
   name: langfuse
   owner: langfuse
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: coding-github
+  namespace: data
+spec:
+  cluster: {name: pg}
+  name: coding_github
+  owner: coding_github
 ---
 # 备份的去处：R2 的桶（S3 兼容）。端点与桶名按账号改；凭据在 Secret r2-backup（键 ACCESS_KEY_ID、ACCESS_SECRET_KEY）。
 apiVersion: barmancloud.cnpg.io/v1
