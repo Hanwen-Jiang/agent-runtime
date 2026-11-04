@@ -126,6 +126,15 @@
           ]
         }
       }
+    },
+    {
+      "name": "workspace_cold_tier",
+      "source": "WS-DISK-01 ②（docs/plan/workspace-read-latency-and-disk-2026-11-03.md）：挂卷的工作区闲置 14 天转冷",
+      "instance": {
+        "workspace": {
+          "cold_after_days": 14
+        }
+      }
     }
   ],
   "invalid": [
@@ -397,8 +406,23 @@
       }
     },
     {
+      "name": "workspace_cold_after_zero_days",
+      "description": "转冷的闲置天数至少 1 天：0 天会把正在用的工作区存档后删掉",
+      "violates": [
+        {
+          "path": "/workspace/cold_after_days",
+          "keyword": "minimum"
+        }
+      ],
+      "instance": {
+        "workspace": {
+          "cold_after_days": 0
+        }
+      }
+    },
+    {
       "name": "workspace_unknown_field",
-      "description": "工作区一节只有 max_workspaces、max_bytes、push_branches",
+      "description": "工作区一节只有 max_workspaces、max_bytes、push_branches、cold_after_days",
       "violates": [
         {
           "path": "/workspace",

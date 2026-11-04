@@ -76,6 +76,10 @@
           "description": "能推送的远端分支（glob：* 匹配不含 / 的一段，** 匹配任意多段）；推到别的分支被拒绝",
           "type": "array", "uniqueItems": true, "minItems": 1, "maxItems": 20,
           "items": {"type": "string", "pattern": "^[A-Za-z0-9._*/-]{1,200}$"}
+        },
+        "cold_after_days": {
+          "description": "冷热分层（WS-DISK-01 ②）：挂卷的工作区闲置超过这么多天，先存档到 ObjectStore、核对成功后再删本地目录，下次用到时从存档恢复；存档模式的工作区本来就不占本地盘，不受影响。不写时用部署的默认值，部署也没配时不转冷",
+          "type": "integer", "minimum": 1, "maximum": 365
         }
       },
       "additionalProperties": false
