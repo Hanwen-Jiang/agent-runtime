@@ -7,6 +7,7 @@ package taskstore
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -97,7 +98,30 @@ func Migrations() []relational.Migration {
 				UNIQUE (task_id, dedupe_key)
 			)`,
 		},
+	}, {
+		Version: 8,
+		Name:    "task_service_task_skill_pins",
+		Statements: []string{
+			// N-14：提交时固定的 Skill（名字 → <层>/vN 的 JSON；没有时为空）。Worker 的 Planner 目录与 skill_read 按 task_id 读，只读。
+			`ALTER TABLE tasks ADD COLUMN skill_pins TEXT NOT NULL DEFAULT ''`,
+		},
 	}}
+}
+
+// SetSkillPins 记下 Task 固定的 Skill（N-14）；pins 为空时写空串。
+func (s *Store) SetSkillPins(ctx context.Context, tenant *commonv1.TenantContext, taskID string, pins map[string]string) error {
+	text := ""
+	if len(pins) > 0 {
+		raw, err := json.Marshal(pins)
+		if err != nil {
+			return err
+		}
+		text = string(raw)
+	}
+	return s.tx(ctx, tenant, false, func(ctx context.Context, tx relational.Tx) error {
+		_, err := tx.Execute(ctx, `UPDATE tasks SET skill_pins = $1 WHERE task_id = $2`, text, taskID)
+		return err
+	})
 }
 
 // Event 是业务库里记下的一个 Task 事件；Data 是 TaskEvent 的 protojson（proto 字段名，与推流里的一样，含 event_id）。

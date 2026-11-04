@@ -78,7 +78,16 @@ func (r *Registry) Publish(ctx context.Context, req *connect.Request[registryv1.
 	if err != nil {
 		return nil, fail(err)
 	}
-	return connect.NewResponse(&registryv1.PublishResponse{Name: e.name, Version: e.label(), State: e.state}), nil
+	version := e.label()
+	if msg.GetKind() == kindSkill {
+		// Skill 的版本带层（N-14）：不带租户是平台层，带租户是租户层。
+		l := layerPlatform
+		if msg.GetTenant().GetTenantId() != "" {
+			l = layerTenant
+		}
+		version = skillLabel(l, e.version)
+	}
+	return connect.NewResponse(&registryv1.PublishResponse{Name: e.name, Version: version, State: e.state}), nil
 }
 
 func (r *Registry) publish(ctx context.Context, kind registryv1.RegistryKind, tenant *commonv1.TenantContext, name string, doc *commonv1.JsonPayload, note string) (entry, error) {
@@ -93,6 +102,12 @@ func (r *Registry) publish(ctx context.Context, kind registryv1.RegistryKind, te
 	c, err := r.prepare(kind, tenant, name, raw)
 	if err != nil {
 		return entry{}, err
+	}
+	if kind == kindSkill {
+		// Skill 的正文与当前版本相同时不产生新版本（N-14）。
+		if current, same, err := r.publishedSkill(ctx, c); err != nil || same {
+			return current, err
+		}
 	}
 	return r.write(ctx, c, note)
 }
@@ -474,7 +489,7 @@ func (r *Registry) ResolvePinnedVersions(ctx context.Context, req *connect.Reque
 	return connect.NewResponse(&registryv1.ResolvePinnedVersionsResponse{PinnedVersions: pins}), nil
 }
 
-// resolve：全部模板与 Model Profile 的默认版本、租户策略的当前版本；Recipe 按请求指定的（必须是看得到的默认版本），
+// resolve：全部模板与 Model Profile 的默认版本、租户策略的当前版本、看得到的当前 Skill；Recipe 按请求指定的（必须是看得到的默认版本），
 // 或该任务族恰好一个默认 Recipe 时固定它，否则留空（由 Planner 选）。Reasoning Template 第一期没有。
 func (r *Registry) resolve(ctx context.Context, tenant *commonv1.TenantContext, family, recipe string) (*workflowv1.PinnedVersions, error) {
 	platform, err := r.reader(tenant)
@@ -497,6 +512,10 @@ func (r *Registry) resolve(ctx context.Context, tenant *commonv1.TenantContext, 
 	}
 	if found {
 		pins.TenantPolicy = policy
+	}
+	// N-14：看得到、没被遮住的当前 Skill 全部固定（用户层是 tenant.user_id，即提交者本人的）。
+	if pins.Skills, err = r.pinnedSkills(ctx, tenant); err != nil {
+		return nil, err
 	}
 	switch {
 	case recipe != "":

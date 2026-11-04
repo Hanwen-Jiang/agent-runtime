@@ -184,6 +184,8 @@ type harness struct {
 	store  relational.Provider
 	client registryv1connect.RegistryServiceClient
 	logs   *syncBuffer
+	// reg 是被测的 Registry：用户层的 Skill（N-14）经它的导出方法，不经 gRPC。
+	reg *registry.Registry
 }
 
 // newHarness 迁移业务库、构造 Registry（发布令牌写进 SecretStore 的平台作用域）并挂上 gRPC 服务。
@@ -226,7 +228,7 @@ func newHarness(t *testing.T, store relational.Provider, configure ...func(*regi
 	httpClient := &http.Client{Transport: &http.Transport{Protocols: clientProtocols}}
 	t.Cleanup(httpClient.CloseIdleConnections)
 	return &harness{
-		t: t, store: store, logs: logs,
+		t: t, store: store, logs: logs, reg: reg,
 		client: registryv1connect.NewRegistryServiceClient(httpClient, ts.URL, connect.WithGRPC()),
 	}
 }

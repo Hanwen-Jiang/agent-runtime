@@ -66,6 +66,7 @@ import (
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/registry"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/sandboxgrants"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/session"
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/skillapi"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/taskapi"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/taskstore"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/usersecrets"
@@ -480,6 +481,8 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	var network taskapi.NetworkPolicySource
 	// effect 上限与预算：有 Registry 时同样按它的租户策略（没有自己策略的租户用平台默认的），开发用的策略文件里列出的租户以文件为准。
 	var registryPolicies func(context.Context, *commonv1.TenantContext) ([]byte, bool, error)
+	// 用户的 Skill（N-14）存在 Registry 里：没配 Registry 时 SkillService 报不可用。
+	var skills skillapi.Skills
 	if cfg.RegistryAddr != "" {
 		reg, err := newRegistry(ctx, store, cfg.SecretsFile, cfg.SchemasDir, logger)
 		if err != nil {
@@ -488,6 +491,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		pins = registry.Pins{Registry: reg}
 		registrySrv = registryServer(cfg.RegistryAddr, reg)
 		registryPolicies = reg.CurrentTenantPolicy
+		skills = reg
 		network = taskapi.NetworkPolicyFunc(func(ctx context.Context, tenant *commonv1.TenantContext) (taskapi.NetworkPolicy, error) {
 			doc, found, err := reg.CurrentTenantPolicy(ctx, tenant)
 			if err != nil || !found {
@@ -572,11 +576,16 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	skillService, err := skillapi.New(skillapi.Deps{Ingress: ing, Skills: skills, Logger: logger})
+	if err != nil {
+		return err
+	}
 	mux := http.NewServeMux()
 	api.Mount(mux)
 	workspaces.Mount(mux)
 	environments.Mount(mux)
 	userSecrets.Mount(mux)
+	skillService.Mount(mux)
 	// 逐字增量（DELTA）：配了内部端口才收，按租户关掉的不推；没配时 SSE 不订阅增量流。
 	deltasOff := func(string) bool { return true }
 	var internalSrv *http.Server

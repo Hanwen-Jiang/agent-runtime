@@ -197,6 +197,10 @@ func (r *Registry) prepare(kind registryv1.RegistryKind, tenant *commonv1.Tenant
 		if !namePattern.MatchString(name) {
 			return candidate{}, invalid("invalid_name", fmt.Sprintf("名字 %q 要匹配 %s", name, namePattern))
 		}
+	case registryv1.RegistryKind_REGISTRY_KIND_SKILL:
+		if err := checkSkill(name, document); err != nil {
+			return candidate{}, err
+		}
 	case registryv1.RegistryKind_REGISTRY_KIND_MODEL_PROFILE:
 		var doc struct {
 			ID    string `json:"id"`
@@ -265,7 +269,8 @@ func (r *Registry) prepare(kind registryv1.RegistryKind, tenant *commonv1.Tenant
 	return c, nil
 }
 
-// check 做要读业务库的检查：Recipe 不与平台同名、rollback_template 已发布、Recipe 引用的模板与 effect 规则（附录 D.4）。
+// check 做要读业务库的检查：Recipe 不与平台同名、rollback_template 已发布、Recipe 引用的模板与 effect 规则（附录 D.4）；
+// 租户层的 Skill 不用平台当前有的名字。
 func (r *Registry) check(ctx context.Context, c candidate) error {
 	switch c.kind {
 	case registryv1.RegistryKind_REGISTRY_KIND_NODE_TEMPLATE:
@@ -298,6 +303,8 @@ func (r *Registry) check(ctx context.Context, c candidate) error {
 			}
 		}
 		return r.checkRecipe(ctx, platform, c.document)
+	case registryv1.RegistryKind_REGISTRY_KIND_SKILL:
+		return r.checkSkillName(ctx, c)
 	}
 	return nil
 }

@@ -363,6 +363,10 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	if err != nil {
 		return nil, err
 	}
+	// N-14：固定的 Skill 另记在 Task 的记录上，Worker 按 task_id 读（Planner 的目录与 skill_read），不经工作流。
+	if err := s.tasks.SetSkillPins(ctx, tenant, row.TaskID, pins.GetSkills()); err != nil {
+		return nil, err
+	}
 	policy, err := s.policies().Resolve(ctx, tenant)
 	if err != nil {
 		return nil, err

@@ -13,9 +13,9 @@ import (
 
 // SeedEntry 是开发种子文件（task-service registry-seed）里的一条。
 type SeedEntry struct {
-	// Kind 取 node_template、recipe、model_profile、tenant_policy。
+	// Kind 取 node_template、recipe、model_profile、tenant_policy、task_families、skill。
 	Kind string `json:"kind"`
-	// Tenant 只用于租户作用域的 Recipe 与租户策略。
+	// Tenant 只用于租户作用域的 Recipe、Skill 与租户策略。
 	Tenant   string          `json:"tenant"`
 	Name     string          `json:"name"`
 	Document json.RawMessage `json:"document"`
@@ -35,6 +35,7 @@ var seedKinds = map[string]registryv1.RegistryKind{
 	"model_profile": kindProfile,
 	"tenant_policy": kindPolicy,
 	"task_families": kindFamilies,
+	"skill":         kindSkill,
 }
 
 // seedEvidence 是开发种子设为默认时记下的“证据”：说明它没经过评测。

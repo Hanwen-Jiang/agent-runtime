@@ -10,6 +10,7 @@
 //     租户策略没有影子：发布即成为当前版本，不走 Promote。
 //   - 校验：document 按种类对应的 /schemas 校验，另加 JSON Schema 表达不了的检查（validate.go）。
 //   - 固定：ResolvePinnedVersions 只固定默认版本与当前的租户策略；按固定的版本列模板不受之后的发布与晋升影响。
+//   - Skill（N-14）：平台、租户、用户三层，同名上层优先，固定值写成 <层>/vN；规则见 skills.go。
 //   - 写权限：Publish、Promote 要带发布令牌（authorization: Bearer …，SecretStore 平台作用域的 PublishTokenSecret）；
 //     令牌缺了、不对或没配置一律 denied，说明相同；令牌不进日志与错误。读方法不认证（内部端口，服务间认证留给 mTLS）。
 //   - 读方法一律要租户：缺租户 denied，格式不对 invalid（tenancy.TenantScope）。
@@ -136,6 +137,8 @@ var kinds = map[registryv1.RegistryKind]kindSpec{
 	registryv1.RegistryKind_REGISTRY_KIND_TENANT_POLICY: {schema: "tenant_policy", scope: tenantOnly, immediate: true},
 	// TMP 计划第 6 节：任务族词表，规则同租户策略（平台默认一份、租户自己的优先、发布即生效）。
 	registryv1.RegistryKind_REGISTRY_KIND_TASK_FAMILIES: {schema: "task_families", scope: tenantOnly, immediate: true},
+	// N-14：Skill 发布即生效；不带租户是平台层，带租户是租户层，用户层另走 PutUserSkill（skills.go）。
+	registryv1.RegistryKind_REGISTRY_KIND_SKILL: {schema: "skill", scope: eitherScope, immediate: true},
 }
 
 // specOf 返回种类的规则。Reasoning Template 第一期不收（还没有 schema）。
