@@ -62,7 +62,8 @@ type engine struct {
 }
 
 func (e *engine) StartWorkflow(_ context.Context, typ string, opts durable.StartOptions) (durable.Run, error) {
-	if typ != WorkflowName || opts.TaskQueue != "task" || !strings.HasPrefix(opts.WorkflowID, "wsop-wso-") {
+	// WS-READ-02：新起的操作放 workspace 队列。
+	if typ != WorkflowName || opts.TaskQueue != "workspace" || !strings.HasPrefix(opts.WorkflowID, "wsop-wso-") {
 		return durable.Run{}, providererr.New(providererr.Invalid, "unexpected", typ+" "+opts.TaskQueue+" "+opts.WorkflowID)
 	}
 	in := proto.Clone(opts.Input).(*workflowv1.WorkspaceOperationInput)
@@ -473,5 +474,15 @@ func TestWorkflowNameMatchesTheContract(t *testing.T) {
 	}
 	if name, _ := proto.GetExtension(v.Options(), commonv1.E_WireName).(string); name != WorkflowName {
 		t.Fatalf("工作流名要等于契约里的 %q，实际 %q", name, WorkflowName)
+	}
+}
+
+func TestTaskQueueMatchesTheContract(t *testing.T) {
+	v := workflowv1.File_agentruntime_workflow_v1_names_proto.Enums().ByName("TaskQueue").Values().ByName(protoreflect.Name("TASK_QUEUE_WORKSPACE"))
+	if v == nil {
+		t.Fatal("names.proto 里没有 TASK_QUEUE_WORKSPACE")
+	}
+	if name, _ := proto.GetExtension(v.Options(), commonv1.E_WireName).(string); name != TaskQueue {
+		t.Fatalf("队列名要等于契约里的 %q，实际 %q", name, TaskQueue)
 	}
 }

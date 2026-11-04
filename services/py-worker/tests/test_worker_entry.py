@@ -25,15 +25,27 @@ def contract_queues() -> set[str]:
     return {v.GetOptions().Extensions[options_pb2.wire_name] for v in enum.values if v.number != 0}
 
 
-def test_worker_serves_the_four_python_queues() -> None:
-    assert set(QUEUE_COMPONENTS) == {names.TASK_QUEUE, names.DECISION_QUEUE, names.MODEL_QUEUE, names.PROGRAM_QUEUE}
+def test_worker_serves_the_five_python_queues() -> None:
+    assert set(QUEUE_COMPONENTS) == {names.TASK_QUEUE, names.DECISION_QUEUE, names.MODEL_QUEUE, names.PROGRAM_QUEUE, names.WORKSPACE_QUEUE}
     # session 是 Go 的队列，offline 属于 Learning Pipeline；其余都要有人消费。
     assert contract_queues() - set(QUEUE_COMPONENTS) == {"session", "offline"}
 
 
+def test_workspace_operations_have_their_own_queue() -> None:
+    """WS-READ-02：Workspace 操作的工作流与 activity 都在 workspace 队列；task、program 队列照旧登记它们，给改之前起的、
+    还在跑的操作（旧池留到它们跑完）。"""
+    workspace = QUEUE_COMPONENTS[names.WORKSPACE_QUEUE]
+    assert workspace.workflows == (names.WORKSPACE_OPERATION_WORKFLOW,)
+    assert workspace.activities == (names.WORKSPACE_OPERATION,)
+    assert names.WORKSPACE_OPERATION_WORKFLOW in QUEUE_COMPONENTS[names.TASK_QUEUE].workflows
+    assert names.WORKSPACE_OPERATION in QUEUE_COMPONENTS[names.PROGRAM_QUEUE].activities
+
+
 def test_every_component_is_registered_on_exactly_one_queue() -> None:
-    activities = [a for c in QUEUE_COMPONENTS.values() for a in c.activities + c.local_activities]
-    workflows = [w for c in QUEUE_COMPONENTS.values() for w in c.workflows]
+    """Workspace 操作的工作流与 activity 例外：新旧两个队列都登记（见上一条）。"""
+    queues = {q: c for q, c in QUEUE_COMPONENTS.items() if q != names.WORKSPACE_QUEUE}
+    activities = [a for c in queues.values() for a in c.activities + c.local_activities]
+    workflows = [w for c in queues.values() for w in c.workflows]
     assert sorted(activities) == sorted(set(activities))
     assert workflows == [
         names.TASK_WORKFLOW, names.SUB_AGENT_WORKFLOW, names.SUBGRAPH_WORKFLOW, names.SANDBOX_RECONCILE_WORKFLOW, names.ENV_BUILD_WORKFLOW,
@@ -61,6 +73,7 @@ def test_local_activities_live_with_the_workflows() -> None:
     ("value", "expected"),
     [
         ("task,decision,model,program", ["task", "decision", "model", "program"]),
+        ("task,decision,model,program,workspace", ["task", "decision", "model", "program", "workspace"]),
         ("model", ["model"]),
         (" decision , task ,decision", ["decision", "task"]),
     ],

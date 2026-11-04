@@ -44,6 +44,8 @@ def wire_name(enum: str, value: str) -> str:
         ("TaskQueue", "TASK_QUEUE_DECISION", names.DECISION_QUEUE),
         ("TaskQueue", "TASK_QUEUE_MODEL", names.MODEL_QUEUE),
         ("TaskQueue", "TASK_QUEUE_PROGRAM", names.PROGRAM_QUEUE),
+        # WS-READ-02：Workspace 操作单独一个队列。
+        ("TaskQueue", "TASK_QUEUE_WORKSPACE", names.WORKSPACE_QUEUE),
     ],
 )
 def test_names_match_contract(enum: str, value: str, actual: str) -> None:
