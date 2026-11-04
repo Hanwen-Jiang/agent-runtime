@@ -1,6 +1,7 @@
 {{- $name := printf "%s-task-service" (include "ar.fullname" .) -}}
 {{- $ts := .Values.taskService -}}
 {{- $tenantPoliciesConfigMap := include "ar.modelGatewayTenantPoliciesConfigMap" . -}}
+{{- $deltas := include "ar.deltasEnabled" . -}}
 {{- if not (has $ts.profile (list "development" "production")) }}
 {{- fail "taskService.profile 只能是 development 或 production" }}
 {{- end }}
@@ -55,6 +56,10 @@ spec:
               containerPort: {{ $ts.httpPort }}
             - name: registry
               containerPort: {{ $ts.registryPort }}
+            {{- if $deltas }}
+            - name: internal
+              containerPort: {{ $ts.deltas.port }}
+            {{- end }}
           env:
             {{- include "ar.storeEnv" . | nindent 12 }}
             # Ingress（AUTH-01）：只收 JWT 时不给签名密钥，task-service 不持有能签令牌的东西。
@@ -99,6 +104,15 @@ spec:
               {{- end }}
             - name: AR_REGISTRY_ADDR
               value: {{ printf "0.0.0.0:%v" $ts.registryPort | quote }}
+            {{- if $deltas }}
+            # 逐字增量（DELTA）：调用方 worker 的令牌在共用 SecretStore 平台作用域的 delta/worker，没有时启动时生成。
+            - name: AR_INTERNAL_ADDR
+              value: {{ printf "0.0.0.0:%v" $ts.deltas.port | quote }}
+            {{- with $ts.deltas.disabledTenants }}
+            - name: AR_DELTA_DISABLED_TENANTS
+              value: {{ join "," . | quote }}
+            {{- end }}
+            {{- end }}
             # 镜像里的 /schemas（deploy/images/go.Dockerfile）。
             - name: AR_SCHEMAS_DIR
               value: /schemas
@@ -188,6 +202,53 @@ spec:
     - name: grpc
       port: {{ $ts.registryPort }}
       targetPort: registry
+{{- if $deltas }}
+---
+# 逐字增量的内部端口（DELTA）：只在集群内，不进入口；下面的 NetworkPolicy 只放本命名空间的 Worker。
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ar.taskServiceInternalService" . }}
+  labels:
+    {{- include "ar.labels" (list . "task-service") | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "ar.selector" (list . "task-service") | nindent 4 }}
+  ports:
+    - name: internal
+      port: {{ $ts.deltas.port }}
+      targetPort: internal
+---
+# 选中 task-service 之后没列出的入站都被拒，所以三个端口都写上：Task API 谁都能连（入口、coding-web），
+# Registry 只放本命名空间，逐字增量的内部端口只放本命名空间的 Worker（沙箱与别的命名空间进不来）。
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "task-service") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ar.selector" (list . "task-service") | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - ports:
+        - {protocol: TCP, port: {{ $ts.httpPort }}}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+      ports:
+        - {protocol: TCP, port: {{ $ts.registryPort }}}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "ar.selector" (list . "worker") | nindent 14 }}
+      ports:
+        - {protocol: TCP, port: {{ $ts.deltas.port }}}
+{{- end }}
 {{- if $ts.ingress.issuers }}
 ---
 # 签发方的登记（AUTH-01）：只有公钥，不是密钥，放 ConfigMap；私钥只在签发方（coding-agent）那里。

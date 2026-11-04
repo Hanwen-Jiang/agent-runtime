@@ -58,6 +58,15 @@ app.kubernetes.io/component: {{ index . 1 }}
 {{- printf "%s-registry" (include "ar.fullname" .) -}}
 {{- end -}}
 
+{{/* 逐字增量的内部端口（DELTA）：开了 taskService.deltas 且有共用的 SecretStore 文件时为 "true"。 */}}
+{{- define "ar.deltasEnabled" -}}
+{{- if and .Values.taskService.deltas.enabled .Values.secrets.storeClaim }}true{{ end -}}
+{{- end -}}
+
+{{- define "ar.taskServiceInternalService" -}}
+{{- printf "%s-task-service-internal" (include "ar.fullname" .) -}}
+{{- end -}}
+
 {{/* 各服务共用的环境变量：Telemetry（T-15）与 SecretStore 的文件。
      secrets.storeClaim 设了时（D-04），会写 kek 的服务（task-service、Worker、Memory Service：用 ar.storeEnv）把密钥文件放在
      那个可写的共用卷上，只读的 Secret 作为种子在启动时并进去；只读的服务（model-gateway、learning：用 ar.commonEnv）直接读 Secret。 */}}

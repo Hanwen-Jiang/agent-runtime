@@ -48,6 +48,11 @@ spec:
               value: {{ printf "%s:%v" (include "ar.modelGatewayService" $) $.Values.modelGateway.port | quote }}
             - name: AR_REGISTRY_ADDRESS
               value: {{ printf "%s:%v" (include "ar.registryService" $) $.Values.taskService.registryPort | quote }}
+            {{- if include "ar.deltasEnabled" $ }}
+            # 逐字增量（DELTA）：deliver 节点流式生成的片段推到 task-service 的内部端口；令牌在共用 SecretStore 的 delta/worker。
+            - name: AR_TASK_SERVICE_INTERNAL_URL
+              value: {{ printf "http://%s:%v" (include "ar.taskServiceInternalService" $) $.Values.taskService.deltas.port | quote }}
+            {{- end }}
             - name: AR_PLANNER
               value: {{ $.Values.worker.planner | quote }}
             - name: AR_REVIEWER

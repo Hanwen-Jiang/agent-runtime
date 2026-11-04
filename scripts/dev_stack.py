@@ -266,7 +266,7 @@ class Stack:
                 "workspace": getattr(args, "workspace", "mount") or "mount",
                 "allow_local_remotes": bool(getattr(args, "allow_local_remotes", False)),
             },
-            "ports": {"temporal": free_port(), "temporal_ui": free_port(), "http": free_port(), "registry": free_port(), "gateway": free_port()},
+            "ports": {"temporal": free_port(), "temporal_ui": free_port(), "http": free_port(), "registry": free_port(), "gateway": free_port(), "internal": free_port()},
             "components": {},
         }
 
@@ -325,6 +325,11 @@ class Stack:
         elif self.options.get("sandbox") == "local":
             sandbox = {"AR_TOOL_SHELL_SANDBOX": "sandbox", "AR_SANDBOX_BACKENDS_FILE": str(self.sandbox_backends_file)}
         local_remotes = {"AR_WORKSPACE_ALLOW_LOCAL_REMOTES": "1"} if self.options.get("allow_local_remotes") else {}
+        # 逐字增量（DELTA）：task-service 的内部端口收 Worker 推来的增量；令牌由 task-service 写进共用的 AR_SECRETS_FILE。
+        # 之前 up 的运行目录里没有这个端口，就不开。
+        internal = "internal" in self.state["ports"]
+        deltas_in = {"AR_INTERNAL_ADDR": self.address("internal")} if internal else {}
+        deltas_out = {"AR_TASK_SERVICE_INTERNAL_URL": f"http://{self.address('internal')}"} if internal else {}
         return {
             "temporal": {},
             "task-service": {
@@ -336,6 +341,7 @@ class Stack:
                 "AR_REGISTRY_ADDR": self.address("registry"),
                 "AR_SCHEMAS_DIR": str(REPO_ROOT / "schemas"),
                 "AR_DEV_TENANT_POLICIES_FILE": str(self.policies_file),
+                **deltas_in,
                 **local_remotes,
                 **self.shared_env(),
             },
@@ -352,6 +358,7 @@ class Stack:
                 "AR_TOOL_WORKSPACE_ROOT": str(self.workspace_root),
                 "PYTHONIOENCODING": "utf-8",
                 "PATH": worker_path,
+                **deltas_out,
                 **sandbox,
                 **local_remotes,
                 **self.shared_env(),

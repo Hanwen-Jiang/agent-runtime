@@ -107,6 +107,13 @@ taskService:
   # Task API 与 /healthz 同一端口；Registry 是单独的内部端口，只有集群内的 Service（docs/plan/registry.md 第 2 节第 7 条）。
   httpPort: 8080
   registryPort: 8092
+  # 逐字增量（DELTA，docs/plan/all-plans-dag-2026-11-03.md 7.1）：Worker 推 token_delta、thinking_delta 的内部端口（AR_INTERNAL_ADDR），
+  # 只有集群内的 Service，NetworkPolicy 只放本命名空间的 Worker。调用方的令牌由 task-service 写进共用的 SecretStore 文件，
+  # 所以要 secrets.storeClaim，没配时不开。disabledTenants 是关掉逐字增量的租户（出问题时关，而不是回滚）。
+  deltas:
+    enabled: true
+    port: 8097
+    disabledTenants: []
   # 客户端连 Task API 用的地址（AR_PUBLIC_BASE_URL，SubmitTask 的事件订阅地址按它拼）。为空时：开了入口用 https://<ingress.host>，
   # 否则用集群内的 Service 地址。
   publicBaseURL: ""
