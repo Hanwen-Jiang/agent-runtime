@@ -10,6 +10,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/modelbudget"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/modelprovider"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	mg "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/modelgateway/v1"
 	"github.com/agentruntime/agent-runtime/services/go-model-gateway/internal/gateway"
@@ -24,6 +25,12 @@ func (b fixedBudget) Resolve(context.Context, string) (modelbudget.Limits, error
 var budgetTime = time.Date(2026, 11, 3, 0, 0, 0, 0, time.UTC)
 
 func budgetHarness(t *testing.T, amount int64, adjust ...func(*gateway.Options)) (*harness, *modelbudget.Ledger) {
+	t.Helper()
+	h, ledger, _ := budgetHarnessStore(t, amount, adjust...)
+	return h, ledger
+}
+
+func budgetHarnessStore(t *testing.T, amount int64, adjust ...func(*gateway.Options)) (*harness, *modelbudget.Ledger, *sqlitestore.Provider) {
 	t.Helper()
 	p, err := sqlitestore.New(sqlitestore.Options{Dir: t.TempDir()})
 	if err != nil {
@@ -42,7 +49,100 @@ func budgetHarness(t *testing.T, amount int64, adjust ...func(*gateway.Options))
 			f(o)
 		}
 	})
-	return h, ledger
+	return h, ledger, p
+}
+
+// usageRows reads the tenant's model_usage rows ordered by profile.
+func usageRows(t *testing.T, p *sqlitestore.Provider, tenantID string) []relational.Row {
+	t.Helper()
+	s, err := p.Bind(&commonv1.TenantContext{TenantId: tenantID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rows []relational.Row
+	err = s.Transaction(ctx, relational.TxOptions{ReadOnly: true}, func(ctx context.Context, tx relational.Tx) error {
+		var err error
+		rows, err = tx.Query(ctx, `SELECT model_profile_id, actual_usd_micros, price_currency, price_unit, price_at,
+			in_usd_micros_per_m, out_usd_micros_per_m, cache_read_usd_micros_per_m, input_tokens, output_tokens, cache_read_tokens
+			FROM model_usage ORDER BY model_profile_id, reservation_id`)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return rows
+}
+
+// R-06-C: each attempt's row carries the profile price it was charged at and
+// the provider usage it was settled with, so the charge can be recomputed
+// after the price table changes.
+func TestAttemptRowFreezesProfilePriceAndUsage(t *testing.T) {
+	h, _, p := budgetHarnessStore(t, 1_000_000)
+	h.mustGenerate(t, "t1", call(transform), say("hi"))
+	rows := usageRows(t, p, "t1")
+	if len(rows) != 1 {
+		t.Fatalf("rows: %v", rows)
+	}
+	want := relational.Row{
+		"model_profile_id": "test/mid-a@1", "actual_usd_micros": int64(435),
+		"price_currency": "USD", "price_unit": "usd_micros_per_1m_tokens", "price_at": "2026-10-21",
+		"in_usd_micros_per_m": int64(150_000), "out_usd_micros_per_m": int64(600_000), "cache_read_usd_micros_per_m": int64(75_000),
+		"input_tokens": int64(1000), "output_tokens": int64(500), "cache_read_tokens": int64(200),
+	}
+	for k, v := range want {
+		if rows[0][k] != v {
+			t.Errorf("%s = %#v, want %#v", k, rows[0][k], v)
+		}
+	}
+	frozen := modelbudget.Price{InPerMMicros: 150_000, OutPerMMicros: 600_000, CacheReadPerMMicros: 75_000, PriceAt: "2026-10-21"}
+	if got := frozen.USDMicros(modelbudget.Usage{InputTokens: 1000, OutputTokens: 500, CacheReadTokens: 200}); got != 435 {
+		t.Fatalf("recomputed %d, settled 435", got)
+	}
+}
+
+func TestFallbackAttemptsEachFreezeTheirOwnPrice(t *testing.T) {
+	h, _, p := budgetHarnessStore(t, 1_000_000)
+	h.fake.onGenerate("mid-a", callsTool("Bash"))
+	h.mustGenerate(t, "t1", call(commonv1.Role_ROLE_ACT), withSearchTool(t, "找一下"))
+	rows := usageRows(t, p, "t1")
+	if len(rows) != 2 || rows[0]["model_profile_id"] != "test/mid-a@1" || rows[1]["model_profile_id"] != "test/mid-b@1" {
+		t.Fatalf("a billed failure and its fallback are two rows: %v", rows)
+	}
+	prices := []modelbudget.Price{
+		{InPerMMicros: 150_000, OutPerMMicros: 600_000, CacheReadPerMMicros: 75_000, PriceAt: "2026-10-21"},
+		{InPerMMicros: 300_000, OutPerMMicros: 2_500_000, CacheReadPerMMicros: 30_000, PriceAt: "2026-10-28"},
+	}
+	for i, r := range rows {
+		got := modelbudget.Price{
+			InPerMMicros: r["in_usd_micros_per_m"].(int64), OutPerMMicros: r["out_usd_micros_per_m"].(int64),
+			CacheReadPerMMicros: r["cache_read_usd_micros_per_m"].(int64), PriceAt: r["price_at"].(string),
+		}
+		if got != prices[i] {
+			t.Errorf("%s froze %+v, want %+v", r["model_profile_id"], got, prices[i])
+		}
+		u := modelbudget.Usage{InputTokens: r["input_tokens"].(int64), OutputTokens: r["output_tokens"].(int64), CacheReadTokens: r["cache_read_tokens"].(int64)}
+		if again := got.USDMicros(u); again != r["actual_usd_micros"] {
+			t.Errorf("%s recomputes to %d, settled %v", r["model_profile_id"], again, r["actual_usd_micros"])
+		}
+	}
+}
+
+func TestPendingAttemptKeepsItsPriceAndNoUsage(t *testing.T) {
+	h, _, p := budgetHarnessStore(t, 1_000_000)
+	h.fake.onGenerate("mid-a", func(modelprovider.GenerateRequest) (modelprovider.GenerateResult, error) {
+		return modelprovider.GenerateResult{}, providererr.New(providererr.Invalid, "bad_structured_output", "invalid output without usage")
+	})
+	if _, err := h.generate(t, "t1", call(transform), say("hi")); err == nil {
+		t.Fatal("expected invalid output")
+	}
+	rows := usageRows(t, p, "t1")
+	if len(rows) != 1 {
+		t.Fatalf("rows: %v", rows)
+	}
+	// Unknown usage stays unknown (NULL), never zero tokens.
+	if r := rows[0]; r["price_at"] != "2026-10-21" || r["in_usd_micros_per_m"] != int64(150_000) || r["input_tokens"] != nil || r["actual_usd_micros"] != nil {
+		t.Fatalf("pending row: %v", r)
+	}
 }
 
 func TestPendingCallPreventsConcurrentOverspend(t *testing.T) {
