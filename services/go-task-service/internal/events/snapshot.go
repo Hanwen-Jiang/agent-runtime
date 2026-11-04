@@ -20,6 +20,7 @@ import (
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/cache"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/ingress"
+	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	taskapiv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/taskapi/v1"
 
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/ids"
@@ -108,9 +109,14 @@ func (h *handler) snapshot(w http.ResponseWriter, r *http.Request) {
 	for _, row := range rows {
 		var entry TaskSnapshot
 		var problems []string
-		if cacheErr != nil {
+		// HIST-01：业务库里记着这个 Task 的事件时从它读（完整，不受 Cache 重启与保留期影响）。
+		persisted, err := h.tasks.HasCompleteEvents(ctx, tenant, row.TaskID)
+		switch {
+		case err == nil && persisted:
+			entry, problems = h.storedSnapshot(ctx, tenant, row, eventLimit)
+		case cacheErr != nil:
 			entry, problems = fromRecord(row), []string{errEventsMissing}
-		} else {
+		default:
 			entry, problems = taskSnapshot(ctx, c, row, eventLimit)
 		}
 		out.Tasks = append(out.Tasks, entry)
@@ -128,13 +134,84 @@ func (h *handler) snapshot(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(data)
 }
 
+// collected 把一个 Task 的事件按顺序收起来：留最近 limit 条、最新的 plan_updated，同一个 event_id 与第二个 task_finished 不重复收。
+type collected struct {
+	limit                       int
+	recent                      []*taskapiv1.TaskEvent
+	plan                        *taskapiv1.TaskEvent
+	last                        int64
+	truncated, finished, active bool
+}
+
+func (k *collected) add(ev *taskapiv1.TaskEvent) {
+	if ev.GetEventId() != 0 && ev.GetEventId() <= k.last {
+		return
+	}
+	if ev.GetType() == taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_FINISHED {
+		if k.finished {
+			return
+		}
+		k.finished = true
+	}
+	if ev.GetType() != taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_ACCEPTED {
+		k.active = true
+	}
+	if ev.GetType() == taskapiv1.TaskEventType_TASK_EVENT_TYPE_PLAN_UPDATED {
+		k.plan = ev
+	}
+	k.last = max(k.last, ev.GetEventId())
+	k.recent = append(k.recent, ev)
+	if len(k.recent) > k.limit {
+		k.recent, k.truncated = k.recent[1:], true
+	}
+}
+
+// entry 补上业务库里的结局（结束了而事件里没有 task_finished 时），给出快照里的这一项。
+func (k *collected) entry(row taskstore.Task) TaskSnapshot {
+	if row.Finished() && !k.finished {
+		if ev, err := Finished(row); err == nil {
+			k.add(ev)
+		}
+	}
+	entry := TaskSnapshot{
+		TaskID:          row.TaskID,
+		Status:          statusOf(row, k.active),
+		CreatedAt:       createdAt(row),
+		LastEventID:     k.last,
+		Events:          make([]json.RawMessage, 0, len(k.recent)),
+		EventsTruncated: k.truncated,
+		Source:          "events",
+	}
+	for _, ev := range k.recent {
+		if data, err := marshal.Marshal(ev); err == nil {
+			entry.Events = append(entry.Events, data)
+		}
+	}
+	if k.plan != nil {
+		if data, err := marshal.Marshal(k.plan); err == nil {
+			entry.Plan = data
+		}
+	}
+	return entry
+}
+
+// storedSnapshot 从业务库读这个 Task 的事件（HIST-01）。读不出来时退回业务库的记录并报告。
+func (h *handler) storedSnapshot(ctx context.Context, tenant *commonv1.TenantContext, row taskstore.Task, limit int) (TaskSnapshot, []string) {
+	k := &collected{limit: limit}
+	if err := h.stored(ctx, tenant, row.TaskID, 0, func(ev *taskapiv1.TaskEvent) bool {
+		k.add(ev)
+		return true
+	}); err != nil {
+		return fromRecord(row), []string{errEventsMissing}
+	}
+	return k.entry(row), nil
+}
+
 // taskSnapshot 读这个 Task 的事件流，留最近 limit 条与最新的 plan_updated。
 func taskSnapshot(ctx context.Context, c cache.Cache, row taskstore.Task, limit int) (TaskSnapshot, []string) {
-	var recent []*taskapiv1.TaskEvent
-	var plan *taskapiv1.TaskEvent
+	k := &collected{limit: limit}
 	var problems []string
-	var cursor, last int64
-	truncated, finished, active := false, false, false
+	var cursor int64
 	for {
 		page, err := c.ReadEvents(ctx, StreamName(row.TaskID), cursor, snapshotPageSize)
 		if err != nil {
@@ -149,23 +226,7 @@ func taskSnapshot(ctx context.Context, c cache.Cache, row taskstore.Task, limit 
 				}
 				continue
 			}
-			if ev.GetType() == taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_FINISHED {
-				if finished {
-					continue
-				}
-				finished = true
-			}
-			if ev.GetType() != taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_ACCEPTED {
-				active = true
-			}
-			if ev.GetType() == taskapiv1.TaskEventType_TASK_EVENT_TYPE_PLAN_UPDATED {
-				plan = ev
-			}
-			last = max(last, ev.GetEventId())
-			recent = append(recent, ev)
-			if len(recent) > limit {
-				recent, truncated = recent[1:], true
-			}
+			k.add(ev)
 		}
 		if len(page.Events) < snapshotPageSize {
 			break
@@ -173,38 +234,10 @@ func taskSnapshot(ctx context.Context, c cache.Cache, row taskstore.Task, limit 
 	}
 	// 流是空的而业务库记着分配过 event_id（task_accepted 总是第一条）：流丢了（Cache 重启、过了保留期），退回记录。
 	// 不拿业务库的计数与流里最后一条比：没结束的 Task 正在追加的那条会让两者短暂不一致。
-	if len(recent) == 0 && last == 0 && row.LastEventID > 0 {
+	if len(k.recent) == 0 && k.last == 0 && row.LastEventID > 0 {
 		return fromRecord(row), append(problems, errEventsMissing)
 	}
-	if row.Finished() && !finished {
-		if ev, err := Finished(row); err == nil {
-			recent = append(recent, ev)
-			last = max(last, ev.GetEventId())
-			if len(recent) > limit {
-				recent, truncated = recent[1:], true
-			}
-		}
-	}
-	entry := TaskSnapshot{
-		TaskID:          row.TaskID,
-		Status:          statusOf(row, active),
-		CreatedAt:       createdAt(row),
-		LastEventID:     last,
-		Events:          make([]json.RawMessage, 0, len(recent)),
-		EventsTruncated: truncated,
-		Source:          "events",
-	}
-	for _, ev := range recent {
-		if data, err := marshal.Marshal(ev); err == nil {
-			entry.Events = append(entry.Events, data)
-		}
-	}
-	if plan != nil {
-		if data, err := marshal.Marshal(plan); err == nil {
-			entry.Plan = data
-		}
-	}
-	return entry, problems
+	return k.entry(row), problems
 }
 
 // fromRecord 是事件流读不出来时的退路：业务库的终态与游标；结束的 Task 补发 task_finished。

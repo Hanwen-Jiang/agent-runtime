@@ -104,33 +104,78 @@ func (a *Activities) FinishTask(ctx context.Context, tenant *commonv1.TenantCont
 	return activityError(tasks.RecordFinished(ctx, tenant, result.GetTaskId(), result.GetStatus(), id, string(data)))
 }
 
-// publishOnce 每个 Task 的每类事件只推一次：event_id 由业务库分配（taskstore.NextEventID，Cache 重启也不回退），
-// 推送后在 Cache 里记下标记与 event_id，重试时看到标记就不再推。
-// 推送成功、记标记之前崩溃时，重试会再推一次；宁可重复，不丢事件。
+// publishOnce 每个 Task 的每类事件只推一次（去重键是事件类型），见 publish。
 func (a *Activities) publishOnce(ctx context.Context, tenant *commonv1.TenantContext, ev *taskapiv1.TaskEvent) (int64, error) {
+	id, err := a.publish(ctx, tenant, events.EventName(ev.GetType()), ev)
+	ev.EventId = id
+	return id, err
+}
+
+// ephemeral 是只走推流、不进业务库的事件：逐字的增量量大，历史里有节点与 Task 的结果就够了。
+var ephemeral = map[taskapiv1.TaskEventType]bool{
+	taskapiv1.TaskEventType_TASK_EVENT_TYPE_TOKEN_DELTA:    true,
+	taskapiv1.TaskEventType_TASK_EVENT_TYPE_THINKING_DELTA: true,
+}
+
+// publish 分配 event_id 并推送，同一个去重键只推一次，返回它的 event_id：
+//   - event_id 由业务库分配（taskstore.NextEventID，Cache 重启也不回退）；
+//   - 先把事件记进业务库（HIST-01，taskstore.RecordEvent），再追加到 Cache 的推流，最后在 Cache 里记下标记；
+//   - 重试时先看 Cache 的标记，再看业务库：记过的沿用原来的 event_id 与内容（Cache 重启丢了标记也不再分配新的），
+//     只是推流里可能重复一次，SSE 端点按 event_id 去掉。逐字的增量不进业务库，去重只靠 Cache 的标记。
+func (a *Activities) publish(ctx context.Context, tenant *commonv1.TenantContext, dedupe string, ev *taskapiv1.TaskEvent) (int64, error) {
 	c, err := a.Cache.Bind(tenant)
 	if err != nil {
 		return 0, err
 	}
-	marker := "task_event:" + ev.GetTaskId() + ":" + events.EventName(ev.GetType())
+	marker := "task_event:" + ev.GetTaskId() + ":" + dedupe
 	if raw, ok, err := c.Get(ctx, marker); err != nil {
 		return 0, err
 	} else if ok {
 		id, _ := strconv.ParseInt(string(raw), 10, 64)
 		return id, nil
 	}
-	id, err := taskstore.New(a.Store).NextEventID(ctx, tenant, ev.GetTaskId())
-	if err != nil {
+	tasks := taskstore.New(a.Store)
+	out := proto.Clone(ev).(*taskapiv1.TaskEvent)
+	if out.GetSessionId() == "" {
+		out.SessionId = tenant.GetSessionId()
+	}
+	prior, recorded := taskstore.Event{}, false
+	if !ephemeral[out.GetType()] {
+		if prior, recorded, err = tasks.EventByKey(ctx, tenant, out.GetTaskId(), dedupe); err != nil {
+			return 0, err
+		}
+	}
+	if recorded {
+		if err := protojson.Unmarshal([]byte(prior.Data), out); err != nil {
+			return 0, err
+		}
+		out.EventId = prior.EventID
+	} else {
+		if out.EventId, err = tasks.NextEventID(ctx, tenant, out.GetTaskId()); err != nil {
+			return 0, err
+		}
+		if !ephemeral[out.GetType()] {
+			data, err := events.Encode(out)
+			if err != nil {
+				return 0, err
+			}
+			stored, err := tasks.RecordEvent(ctx, tenant, taskstore.Event{
+				TaskID: out.GetTaskId(), EventID: out.GetEventId(), DedupeKey: dedupe, SessionID: out.GetSessionId(),
+				Type: events.EventName(out.GetType()), Data: string(data), CreatedAt: a.now(),
+			})
+			if err != nil {
+				return 0, err
+			}
+			out.EventId = stored.EventID // 并发的重试先记下了：用它的
+		}
+	}
+	if _, err := events.Append(ctx, c, out, a.retention()); err != nil {
 		return 0, err
 	}
-	ev.EventId = id
-	if _, err := events.Append(ctx, c, ev, a.retention()); err != nil {
+	if err := c.Set(ctx, marker, []byte(strconv.FormatInt(out.GetEventId(), 10)), a.retention()); err != nil {
 		return 0, err
 	}
-	if err := c.Set(ctx, marker, []byte(strconv.FormatInt(id, 10)), a.retention()); err != nil {
-		return 0, err
-	}
-	return id, nil
+	return out.GetEventId(), nil
 }
 
 // RecordQueuedEdit 记下修改排队中的消息的结果：改好了就同步业务库的 message，并推 task_message_edited（不带文字）。
@@ -210,36 +255,10 @@ func (a *Activities) PublishTaskEvent(ctx context.Context, tenant *commonv1.Tena
 	return a.publishKeyed(ctx, tenant, key, ev)
 }
 
-// publishKeyed 分配 event_id 并推送；同一个去重键只推一次，返回第一次的 event_id。
+// publishKeyed 分配 event_id 并推送；同一个去重键只推一次，返回第一次的 event_id（见 publish）。
 func (a *Activities) publishKeyed(ctx context.Context, tenant *commonv1.TenantContext, key string, ev *taskapiv1.TaskEvent) (int64, error) {
-	tasks := taskstore.New(a.Store)
-	c, err := a.Cache.Bind(tenant)
-	if err != nil {
-		return 0, activityError(err)
-	}
-	marker := "task_event:" + ev.GetTaskId() + ":key:" + key
-	if raw, found, err := c.Get(ctx, marker); err != nil {
-		return 0, activityError(err)
-	} else if found {
-		id, _ := strconv.ParseInt(string(raw), 10, 64)
-		return id, nil
-	}
-	id, err := tasks.NextEventID(ctx, tenant, ev.GetTaskId())
-	if err != nil {
-		return 0, activityError(err)
-	}
-	out := proto.Clone(ev).(*taskapiv1.TaskEvent)
-	out.EventId = id
-	if out.GetSessionId() == "" {
-		out.SessionId = tenant.GetSessionId()
-	}
-	if _, err := events.Append(ctx, c, out, a.retention()); err != nil {
-		return 0, activityError(err)
-	}
-	if err := c.Set(ctx, marker, []byte(strconv.FormatInt(id, 10)), a.retention()); err != nil {
-		return 0, activityError(err)
-	}
-	return id, nil
+	id, err := a.publish(ctx, tenant, "key:"+key, ev)
+	return id, activityError(err)
 }
 
 // activityError 让 Temporal 只重试 transient 错误，其余错误不重试（统一错误模型，S-02）。

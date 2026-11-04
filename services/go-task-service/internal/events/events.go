@@ -50,6 +50,9 @@ func EventName(t taskapiv1.TaskEventType) string {
 	return strings.ToLower(strings.TrimPrefix(t.String(), "TASK_EVENT_TYPE_"))
 }
 
+// Encode 是事件在推流、业务库（taskstore.Event.Data）与 SSE 的 data 里共用的 JSON（proto 字段名）。
+func Encode(ev *taskapiv1.TaskEvent) ([]byte, error) { return marshal.Marshal(ev) }
+
 // Append 把事件（连同 ev.EventId）追加到 Task 的流，返回流里的 id。
 func Append(ctx context.Context, c cache.Cache, ev *taskapiv1.TaskEvent, retention time.Duration) (int64, error) {
 	data, err := marshal.Marshal(ev)
@@ -57,6 +60,31 @@ func Append(ctx context.Context, c cache.Cache, ev *taskapiv1.TaskEvent, retenti
 		return 0, err
 	}
 	return c.AppendEvent(ctx, StreamName(ev.GetTaskId()), data, retention)
+}
+
+// stored 读业务库里 after 之后的事件（HIST-01），按 event_id 排好；解不开的一条报错。
+func (h *handler) stored(ctx context.Context, tenant *commonv1.TenantContext, taskID string, after int64, each func(*taskapiv1.TaskEvent) bool) error {
+	const pageSize = 500
+	for {
+		rows, err := h.tasks.ListEvents(ctx, tenant, taskID, after, pageSize)
+		if err != nil {
+			return err
+		}
+		for _, r := range rows {
+			ev := &taskapiv1.TaskEvent{}
+			if err := protojson.Unmarshal([]byte(r.Data), ev); err != nil {
+				return fmt.Errorf("events: 业务库里 %s 的事件 %d 无法解码：%w", taskID, r.EventID, err)
+			}
+			ev.EventId = r.EventID
+			after = r.EventID
+			if !each(ev) {
+				return nil
+			}
+		}
+		if len(rows) < pageSize {
+			return nil
+		}
+	}
 }
 
 // Decode 把流里的一条还原成 TaskEvent；事件里没有 event_id 时取流里的 id。
@@ -170,11 +198,21 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	if row.Finished() {
-		h.serveFinished(ctx, w, c, row, after)
+	// HIST-01：业务库里记着这个 Task 的事件时，它是完整的，先从它补发；推流丢了也不要客户端重取快照。
+	persisted, err := h.tasks.HasCompleteEvents(ctx, tenant, taskID)
+	if err != nil {
+		http.Error(w, "unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	if needsResnapshot(ctx, c, row, after) {
+	if row.Finished() {
+		if persisted {
+			h.serveStored(ctx, w, tenant, row, after)
+		} else {
+			h.serveFinished(ctx, w, c, row, after)
+		}
+		return
+	}
+	if !persisted && needsResnapshot(ctx, c, row, after) {
 		// 游标早于流里还留着的事件：只追加增量会丢，要客户端重新取会话快照（N-19）。
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusConflict)
@@ -193,6 +231,22 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request) {
 	defer sub.Close()
 
 	flush := startStream(w)
+	if persisted {
+		done := false
+		if err := h.stored(ctx, tenant, taskID, after, func(ev *taskapiv1.TaskEvent) bool {
+			if writeEvent(w, ev) != nil {
+				done = true
+				return false
+			}
+			after = ev.GetEventId()
+			done = ev.GetType() == taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_FINISHED
+			return !done
+		}); err != nil || done {
+			flush()
+			return
+		}
+		flush()
+	}
 
 	type item struct {
 		ev  cache.StreamEvent
@@ -236,18 +290,49 @@ func (h *handler) serve(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				return
 			}
+			// 推过的不再推：续传之前的，与推流里重复的同一个 event_id（推送之后、记标记之前崩溃的重试）。
 			if ev.GetEventId() <= after {
 				continue
 			}
 			if err := writeEvent(w, ev); err != nil {
 				return
 			}
+			after = ev.GetEventId()
 			flush()
 			if ev.GetType() == taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_FINISHED {
 				return
 			}
 		}
 	}
+}
+
+// serveStored 推送已结束 Task 在 Last-Event-ID 之后的事件，全部从业务库读（HIST-01），然后结束。
+func (h *handler) serveStored(ctx context.Context, w http.ResponseWriter, tenant *commonv1.TenantContext, row taskstore.Task, after int64) {
+	var out []*taskapiv1.TaskEvent
+	finished := false
+	if err := h.stored(ctx, tenant, row.TaskID, after, func(ev *taskapiv1.TaskEvent) bool {
+		out = append(out, ev)
+		finished = ev.GetType() == taskapiv1.TaskEventType_TASK_EVENT_TYPE_TASK_FINISHED
+		return !finished
+	}); err != nil {
+		http.Error(w, "unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	if !finished && row.LastEventID > after {
+		ev, err := Finished(row)
+		if err != nil {
+			http.Error(w, "unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		out = append(out, ev)
+	}
+	flush := startStream(w)
+	for _, ev := range out {
+		if err := writeEvent(w, ev); err != nil {
+			return
+		}
+	}
+	flush()
 }
 
 // serveFinished 推送已结束 Task 在 Last-Event-ID 之后的事件，然后结束。Cache 里的推流丢了（或读不到）时，

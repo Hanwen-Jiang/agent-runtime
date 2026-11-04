@@ -1,4 +1,4 @@
-// Package taskstore 是 Task Service 在业务库里的两张表：Session 与 Task 的归属、提交去重、Task 的终态。
+// Package taskstore 是 Task Service 在业务库里的表：Session 与 Task 的归属、提交去重、Task 的终态，以及 Task 的事件（HIST-01）。
 // 表按租户隔离由 RelationalStore 负责（providers/relational），这里的 SQL 不写租户条件。
 //
 // Task 事件的 event_id 也由这里分配（NextEventID）：业务库是持久的，Cache 重启后 event_id 也不回退；
@@ -79,7 +79,104 @@ func Migrations() []relational.Migration {
 				touched_at BIGINT NOT NULL
 			)`,
 		},
+	}, {
+		Version: 7,
+		Name:    "task_service_task_events",
+		Statements: []string{
+			// HIST-01：Task 的事件按 event_id 只追加地记下来（Session 的 activity 先写这里、再写 Cache 的推流），推流丢了也读得到。
+			// dedupe_key 是推送的去重键（事件类型或 Task 工作流给的键）：activity 重试时据此沿用原来的 event_id。
+			`CREATE TABLE task_events (
+				task_id TEXT NOT NULL,
+				event_id BIGINT NOT NULL,
+				dedupe_key TEXT NOT NULL,
+				session_id TEXT NOT NULL,
+				event_type TEXT NOT NULL,
+				data TEXT NOT NULL,
+				created_at BIGINT NOT NULL,
+				PRIMARY KEY (task_id, event_id),
+				UNIQUE (task_id, dedupe_key)
+			)`,
+		},
 	}}
+}
+
+// Event 是业务库里记下的一个 Task 事件；Data 是 TaskEvent 的 protojson（proto 字段名，与推流里的一样，含 event_id）。
+type Event struct {
+	TaskID    string
+	EventID   int64
+	DedupeKey string
+	SessionID string
+	Type      string
+	Data      string
+	CreatedAt time.Time
+}
+
+// RecordEvent 记下一个事件。同一个 Task 同一个去重键已经记过时不再写，返回已有的那条（activity 重试沿用它的 event_id）。
+func (s *Store) RecordEvent(ctx context.Context, tenant *commonv1.TenantContext, ev Event) (Event, error) {
+	var out Event
+	err := s.tx(ctx, tenant, false, func(ctx context.Context, tx relational.Tx) error {
+		if _, err := tx.Execute(ctx, `INSERT INTO task_events (task_id, event_id, dedupe_key, session_id, event_type, data, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (task_id, dedupe_key) DO NOTHING`,
+			ev.TaskID, ev.EventID, ev.DedupeKey, ev.SessionID, ev.Type, ev.Data, ev.CreatedAt.UnixMilli()); err != nil {
+			return err
+		}
+		row, found, err := tx.QueryOne(ctx, `SELECT `+eventColumns+` FROM task_events WHERE task_id = $1 AND dedupe_key = $2`, ev.TaskID, ev.DedupeKey)
+		if err == nil && found {
+			out = decodeEvent(row)
+		}
+		return err
+	})
+	return out, err
+}
+
+// EventByKey 读同一个去重键已经记下的事件；没有时 ok 为 false。
+func (s *Store) EventByKey(ctx context.Context, tenant *commonv1.TenantContext, taskID, key string) (Event, bool, error) {
+	var out Event
+	var ok bool
+	err := s.tx(ctx, tenant, true, func(ctx context.Context, tx relational.Tx) error {
+		row, found, err := tx.QueryOne(ctx, `SELECT `+eventColumns+` FROM task_events WHERE task_id = $1 AND dedupe_key = $2`, taskID, key)
+		if err == nil && found {
+			out, ok = decodeEvent(row), true
+		}
+		return err
+	})
+	return out, ok, err
+}
+
+// ListEvents 按 event_id 读 after 之后的至多 limit 个事件（早的在前）。别的租户的 Task 读不到（RelationalStore 按租户隔离）。
+func (s *Store) ListEvents(ctx context.Context, tenant *commonv1.TenantContext, taskID string, after int64, limit int) ([]Event, error) {
+	var out []Event
+	err := s.tx(ctx, tenant, true, func(ctx context.Context, tx relational.Tx) error {
+		rows, err := tx.Query(ctx, `SELECT `+eventColumns+` FROM task_events WHERE task_id = $1 AND event_id > $2 ORDER BY event_id LIMIT $3`, taskID, after, limit)
+		for _, row := range rows {
+			out = append(out, decodeEvent(row))
+		}
+		return err
+	})
+	return out, err
+}
+
+// HasCompleteEvents 表示业务库里记着这个 Task 的第一个事件（task_accepted，event_id 1）：之后的事件都会先记进业务库，
+// 所以它是完整的。迁移 7 之前开始的 Task 没有，读事件时退回 Cache 的推流。
+func (s *Store) HasCompleteEvents(ctx context.Context, tenant *commonv1.TenantContext, taskID string) (bool, error) {
+	var ok bool
+	err := s.tx(ctx, tenant, true, func(ctx context.Context, tx relational.Tx) error {
+		_, found, err := tx.QueryOne(ctx, `SELECT event_id FROM task_events WHERE task_id = $1 AND event_id = 1`, taskID)
+		ok = found
+		return err
+	})
+	return ok, err
+}
+
+const eventColumns = `task_id, event_id, dedupe_key, session_id, event_type, data, created_at`
+
+func decodeEvent(row relational.Row) Event {
+	str := func(k string) string { s, _ := row[k].(string); return s }
+	num := func(k string) int64 { n, _ := row[k].(int64); return n }
+	return Event{
+		TaskID: str("task_id"), EventID: num("event_id"), DedupeKey: str("dedupe_key"), SessionID: str("session_id"),
+		Type: str("event_type"), Data: str("data"), CreatedAt: time.UnixMilli(num("created_at")).UTC(),
+	}
 }
 
 // Task 是一行 Task 记录。
