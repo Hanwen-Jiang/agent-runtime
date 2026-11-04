@@ -437,6 +437,19 @@ def test_cloud_learning_consumes_what_the_collector_writes(cloud: list[dict[str,
     assert "--traces" not in args and "tracesClaim" not in cloud_values()["learning"]
 
 
+def test_cloud_learning_reads_costs_from_the_gateways_ledger(cloud: list[dict[str, Any]]) -> None:
+    """R-06-D：Learning 的成本读 Model Gateway 结算的 model_usage（代审第 7 节第 1 条），所以 Job 拿到与网关同一个业务库的连接串；
+    命令行默认 auto，有连接串就读账本。"""
+    [job] = by_kind(cloud, "ScaledJob")
+    [c] = pod_spec(job)["containers"]
+    env = env_of(c)
+    [gateway] = [d for d in by_kind(cloud, "Deployment") if d["metadata"]["labels"].get(WORKER) == "model-gateway"]
+    gateway_env = env_of(pod_spec(gateway)["containers"][0])
+    dsn = cloud_values()["secrets"]["relationalDsn"]
+    assert env["AR_RELATIONAL_DSN"]["valueFrom"]["secretKeyRef"] == gateway_env["AR_RELATIONAL_DSN"]["valueFrom"]["secretKeyRef"] == {"name": dsn["name"], "key": dsn["key"]}
+    assert "--cost-source" not in c["args"] or c["args"][c["args"].index("--cost-source") + 1] in ("auto", "model_usage")
+
+
 # --- 密钥与资源 ---
 
 
