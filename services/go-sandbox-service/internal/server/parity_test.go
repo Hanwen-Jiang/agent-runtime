@@ -6,6 +6,7 @@ package server_test
 // span）留在 py-worker，对着真的服务进程跑。
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math"
@@ -17,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/agentruntime/agent-runtime/libs/go-core/dev/consoletelemetry"
 	"github.com/agentruntime/agent-runtime/libs/go-core/envcred"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/sandbox"
@@ -536,5 +538,43 @@ func TestMountModeCreatesTheWorkspaceDirBeforeBorrowingAnEnv(t *testing.T) {
 	h.mustAcquire(tenant("t1", "w-new", ""), onWorkspace("w-new"))
 	if len(seen) != 1 || !seen[0] {
 		t.Fatalf("建环境时工作区目录已经在了：%v", seen)
+	}
+}
+
+// --- D-06：存档模式的后端之间回退（同一组），回退的环境也从快照恢复（原 Worker 的 test_workspace_archive.py） ---
+
+func TestArchiveBackendsFallBackToEachOtherAndRestore(t *testing.T) {
+	h := newHarness(t, withBackends(`{"default": "a", "backends": {
+	  "a": {"kind": "local", "isolation": "container", "workspace": "archive"},
+	  "b": {"kind": "local", "isolation": "container", "workspace": "archive"}}}`),
+		withPolicy("t1", map[string]any{"sandbox": map[string]any{"backend": "a", "fallback": []any{"b"}}}))
+	tc := tenant("t1", "w1", "")
+	first := h.mustAcquire(tc, onWorkspace("w1"))
+	h.mustExec(tc, first, "printf 'from a' > a.txt")
+	if _, err := h.release(tc, first, false); err != nil {
+		t.Fatal(err)
+	}
+	h.faults["a"].FailNext("create", providererr.Transient)
+	second := h.mustAcquire(tc, onWorkspace("w1"))
+	if second.GetBackend().GetName() != "b" || second.GetFallbackFrom() != "a" || second.GetRestoredSnapshot() == "" {
+		t.Fatalf("回退到 b，也从快照恢复：%v", second)
+	}
+	if out := h.mustExec(tc, second, "cat a.txt"); out != "from a" {
+		t.Fatalf("a.txt = %q", out)
+	}
+}
+
+// --- DISK-A：对账每一轮报一次工作区卷的已用比例（原 Worker 的 test_workspace_size_guard.py） ---
+
+func TestReconcileReportsTheVolumeUsage(t *testing.T) {
+	var out bytes.Buffer
+	h := newHarness(t, withTelemetry(consoletelemetry.New(consoletelemetry.Options{Writer: &out})))
+	h.mkWorkspace("t1", "w1", nil)
+	report, err := h.svc.Reconcile(context.Background())
+	if err != nil || report.VolumeUsedRatio <= 0 || report.VolumeUsedRatio >= 1 {
+		t.Fatalf("卷用量：%+v %v", report, err)
+	}
+	if text := out.String(); !strings.Contains(text, broker.VolumeMetric) || !strings.Contains(text, "workspaces") {
+		t.Fatalf("经 Telemetry 报给面板与告警：%s", text)
 	}
 }

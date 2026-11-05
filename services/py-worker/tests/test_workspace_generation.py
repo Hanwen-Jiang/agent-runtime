@@ -21,18 +21,8 @@ from google.protobuf import json_format, struct_pb2
 
 from agentruntime.common.v1 import tenant_pb2
 from agentruntime.workflow.v1 import workspace_pb2
-from agentruntime_core.dev.object_store import LocalDiskObjectStoreProvider
-from agentruntime_core.dev.relational_store import SQLiteRelationalStoreProvider
-from agentruntime_core.dev.telemetry import ConsoleTelemetryProvider
-from agentruntime_core.dev.tool_driver import LocalToolDriverProvider
-from agentruntime_core.tenancy import TenantContext
 
-from agentruntime_worker.sandbox.broker import SandboxBroker
-from agentruntime_worker.sandbox.ledger import SandboxLedger
-from agentruntime_worker.tools.platform import PlatformToolsConfig, register_platform_tools
-from agentruntime_worker.tools.sandboxes import Sandboxes
-from agentruntime_worker.workspace import WorkspaceArchiver
-from agentruntime_worker.workspace.operations import WorkspaceOperations
+from . import service_setup
 
 S1 = "ses_01HZY2J5K3M4N5P6Q7R8S9T0VW"
 Op = workspace_pb2.WorkspaceOperation
@@ -54,28 +44,11 @@ def make_remote(tmp_path: Path) -> str:
     return bare.as_uri()
 
 
-class Setup:
+class Setup(service_setup.Setup):
+    """环境经真的 Sandbox Service 借（SBX-01）；版本号记在 Worker 这边的工作区表里。"""
+
     def __init__(self, tmp_path: Path, *, mode: str) -> None:
-        self.host = tmp_path / "workspaces"
-        spec = {"kind": "local", "isolation": "none", "workspace": mode}
-
-        async def lookup(tenant_id: str) -> Mapping[str, Any] | None:
-            return None
-
-        boxes = Sandboxes({"local": spec}, "local", workspace_root=self.host if mode == "mount" else None, policy=lookup)
-        store = SQLiteRelationalStoreProvider(tmp_path / "relational")
-        self.archiver = WorkspaceArchiver(store, LocalDiskObjectStoreProvider(tmp_path / "objects", signing_key=os.urandom(32)))
-        broker = SandboxBroker(boxes, SandboxLedger(store), archiver=self.archiver)
-
-        async def secret() -> bytes:
-            return b"k" * 32
-
-        self.ops = WorkspaceOperations(broker, secret=secret, allow_local_remotes=True)
-        self.tools = LocalToolDriverProvider()
-        register_platform_tools(
-            self.tools, PlatformToolsConfig(workspace_root=self.host if mode == "mount" else None, shell_sandbox="sandbox", session_sandboxes=True),
-            sandboxes=broker, telemetry=ConsoleTelemetryProvider(stream=io.StringIO()),
-        )
+        super().__init__(tmp_path / "setup", mode=mode)
 
     async def run(self, op: int, **args: Any) -> dict[str, Any]:
         msg = workspace_pb2.WorkspaceOperationInput(
@@ -87,10 +60,6 @@ class Setup:
         out = await self.ops.run(msg)
         assert not out.HasField("error"), out.error
         return json_format.MessageToDict(out.result)
-
-    async def tool(self, name: str, args: dict[str, Any], workspace: str = "w1") -> dict[str, Any]:
-        tenant = TenantContext(tenant_id="t1", user_id="u1", workspace_id=workspace, session_id=S1)
-        return (await self.tools.bind(tenant).invoke(name, "v1", args, idempotency_key=f"idk-{os.urandom(4).hex()}")).output
 
     async def generation(self, workspace: str = "w1") -> int | None:
         return await self.archiver.generation("t1", workspace)

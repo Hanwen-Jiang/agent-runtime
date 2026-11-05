@@ -4,6 +4,7 @@ import (
 	"context"
 	"regexp"
 	"sort"
+	"syscall"
 	"time"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
@@ -35,8 +36,25 @@ type Report struct {
 	DestroyRetried   int
 	OrphansDestroyed int
 	Cooled           int
-	SkippedBackends  []string
-	Errors           []string
+	// VolumeUsedRatio 是挂卷的工作区所在卷的已用比例（DISK-A）；没有工作区根时为 -1。
+	VolumeUsedRatio float64
+	SkippedBackends []string
+	Errors          []string
+}
+
+// VolumeMetric 是卷用量的指标名（Grafana 的面板与告警读它，deploy/data）。
+const VolumeMetric = "runtime.workspace.volume_used_ratio"
+
+// volumeUsedRatio 量工作区根所在的卷（不跟随里面的符号链接）；量不出时 -1。
+func volumeUsedRatio(root string) float64 {
+	if root == "" {
+		return -1
+	}
+	var st syscall.Statfs_t
+	if err := syscall.Statfs(root, &st); err != nil || st.Blocks == 0 {
+		return -1
+	}
+	return float64(st.Blocks-st.Bfree) / float64(st.Blocks)
 }
 
 var ownerPattern = regexp.MustCompile(`^(_platform|[a-z0-9][a-z0-9_-]{0,62})$`)
@@ -70,7 +88,7 @@ type listing struct {
 
 // Reconcile 跑一轮对账。
 func (b *Broker) Reconcile(ctx context.Context, grace, holdMax time.Duration) (Report, error) {
-	var report Report
+	report := Report{VolumeUsedRatio: volumeUsedRatio(b.reg.WorkspaceRoot())}
 	now := b.ledger.Now()
 	listings := map[string]map[string]sandbox.ListedEnvironment{}
 	for _, name := range b.reg.Names() {

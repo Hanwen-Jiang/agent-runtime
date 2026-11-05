@@ -21,11 +21,13 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
 	"connectrpc.com/connect"
 
+	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/oteltelemetry"
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/postgres"
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/s3objects"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/diskobjects"
@@ -33,6 +35,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/sqlitestore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/telemetry"
 	"github.com/agentruntime/agent-runtime/libs/go-core/secret"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	registryv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/registry/v1"
@@ -139,9 +142,18 @@ func serve() error {
 	if err != nil {
 		return err
 	}
+	// 设了 OTEL_EXPORTER_OTLP_ENDPOINT 时对账每一轮报一次卷用量给 Collector（DISK-A 的面板与告警）；没设时不报。
+	var tel telemetry.Provider
+	if strings.TrimSpace(os.Getenv(oteltelemetry.EnvEndpoint)) != "" {
+		if tel, err = oteltelemetry.FromEnv("sandbox-service", os.Getenv, os.Stderr); err != nil {
+			return fmt.Errorf("Telemetry 配置不合法：%w", err)
+		}
+		defer tel.Close()
+	}
 	svc, err := server.New(ctx, server.Options{
 		Registry: reg, Relational: store, Objects: objects, Secrets: secrets, Policy: policyLookup(cfg), Callers: cfg.Callers,
 		MirrorURL: cfg.MirrorURL, EgressURL: cfg.EgressURL, Runtime: cfg.Runtime, HoldMax: cfg.HoldMax, ColdDays: cfg.ColdDays, PolicyTTL: cfg.PolicyTTL, Logger: logger,
+		Telemetry: tel,
 	})
 	if err != nil {
 		return err

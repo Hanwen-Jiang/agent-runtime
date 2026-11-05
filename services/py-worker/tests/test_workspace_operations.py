@@ -325,3 +325,14 @@ async def test_the_api_needs_the_sandbox_service(tmp_path: Path) -> None:
     unavailable = WorkspaceActivities(workspace_operations(config))
     res = await unavailable.workspace_operation(Setup.inp(Op.WORKSPACE_OPERATION_DIFF))
     assert res.error.code == "workspace_api_unavailable" and "AR_SANDBOX_SERVICE_ADDRESS" in res.error.message
+
+
+async def test_a_cold_workspace_is_archived_in_the_api(tmp_path: Path) -> None:
+    """DISK-B：转冷（服务做，services/go-sandbox-service 的 cold_test.go）之后，Workspace API 里是 ARCHIVED，不是 DELETED。"""
+    from agentruntime_worker.workspace.operations import workspace_dict
+
+    s = Setup(tmp_path, mode="mount")
+    await s.run(Op.WORKSPACE_OPERATION_CREATE, files=[{"path": "a.txt", "content": "1\n"}])
+    assert await s.archiver.transition("t1", "w1", "active", "cold")
+    record = await s.archiver.get("t1", "w1")
+    assert record is not None and workspace_dict(record)["state"] == "WORKSPACE_STATE_ARCHIVED"

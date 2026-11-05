@@ -28,6 +28,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/sandbox"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/secretstore"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/telemetry"
 	"github.com/agentruntime/agent-runtime/libs/go-core/tenancy"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	environmentv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/environment/v1"
@@ -78,6 +79,8 @@ type Options struct {
 	Projects    broker.ProjectEnvironments
 	Logger      *slog.Logger
 	MaxMsgBytes int
+	// Telemetry 给了时每轮对账报一次卷用量（runtime.workspace.volume_used_ratio，DISK-A）；没给时只在报告里。
+	Telemetry telemetry.Provider
 }
 
 // Service 是一个服务实例。
@@ -162,7 +165,14 @@ func (s *Service) Broker() *broker.Broker { return s.broker }
 
 // Reconcile 跑一轮对账。
 func (s *Service) Reconcile(ctx context.Context) (broker.Report, error) {
-	return s.broker.Reconcile(ctx, s.opts.Grace, s.opts.HoldMax)
+	report, err := s.broker.Reconcile(ctx, s.opts.Grace, s.opts.HoldMax)
+	if err == nil && report.VolumeUsedRatio >= 0 && s.opts.Telemetry != nil {
+		if tel, berr := s.opts.Telemetry.BindPlatform("sandbox-reconcile"); berr == nil {
+			_ = tel.Observe(ctx, broker.VolumeMetric, report.VolumeUsedRatio, telemetry.Attribute{Key: "volume", Value: "workspaces"})
+			_ = tel.Flush(ctx)
+		}
+	}
+	return report, err
 }
 
 // Close 收尾（本地后端的环境不随服务退出）。

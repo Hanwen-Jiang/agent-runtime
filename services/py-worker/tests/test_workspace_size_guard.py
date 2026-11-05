@@ -6,52 +6,42 @@
 2. 清理之后（例如经 Workspace API 丢弃改动）再写，先重新量，量下来不超就放行。
 3. 量大小有开销：没超时两次测量至少隔 workspace_size_interval_s；超了之后每次写都重新量（等清理）。
 4. 存档模式不在这里管（存档时已核对 max_bytes）。
-5. 卷用量：对账每一轮报一次工作区卷的已用比例（runtime.workspace.volume_used_ratio），也记在对账的报告里。
+5. 卷用量：对账每一轮报一次工作区卷的已用比例（runtime.workspace.volume_used_ratio）——对账在 Sandbox Service 里（SBX-01），
+   测试在 services/go-sandbox-service 的 TestReconcileReportsTheVolumeUsage。
+上限取自租户策略，经 Sandbox Service 的 DescribeTenant 读（service_setup 起真的服务进程）。
 """
 
 from __future__ import annotations
 
-import io
 import os
-from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from agentruntime_core.dev.relational_store import SQLiteRelationalStoreProvider
-from agentruntime_core.dev.telemetry import ConsoleTelemetryProvider
 from agentruntime_core.dev.tool_driver import LocalToolDriverProvider
 from agentruntime_core.errors import DeniedError
 from agentruntime_core.tenancy import TenantContext
 
-from agentruntime_worker.sandbox.broker import SandboxBroker
-from agentruntime_worker.sandbox.ledger import SandboxLedger
-from agentruntime_worker.sandbox.reconcile import ReconcileActivities
 from agentruntime_worker.tools.platform import PlatformToolsConfig, register_platform_tools
-from agentruntime_worker.tools.sandboxes import Sandboxes
-from agentruntime_worker.workflows.sandbox_reconcile import ReconcileInput
+
+from .service_setup import LOCAL
+from .service_setup import Setup as ServiceSetup
 
 LIMIT = 4096
 
 
 class Setup:
-    def __init__(self, tmp_path: Path, *, max_bytes: int = LIMIT, interval: float = 0, shell: str = "sandbox",
-                 specs: Mapping[str, Any] | None = None) -> None:
-        self.workspaces = tmp_path / "workspaces"
+    """挂卷的工作区（Worker 挂着工作区卷），沙箱经真的 Sandbox Service；租户策略的 workspace.max_bytes 是上限。"""
+
+    def __init__(self, tmp_path: Path, *, max_bytes: int = LIMIT, interval: float = 0) -> None:
+        self.service = ServiceSetup(tmp_path, specs={"local": LOCAL}, policies={"t1": {"workspace": {"max_bytes": max_bytes}}})
+        self.workspaces = self.service.host
         (self.workspaces / "t1" / "w1").mkdir(parents=True, exist_ok=True)
-        policy = {"workspace": {"max_bytes": max_bytes}}
-
-        async def lookup(tenant_id: str) -> Mapping[str, Any] | None:
-            return policy
-
-        self.boxes = Sandboxes(dict(specs or {"local": {"kind": "local", "isolation": "none"}}), "local", workspace_root=self.workspaces, policy=lookup)
-        self.broker = SandboxBroker(self.boxes, SandboxLedger(SQLiteRelationalStoreProvider(tmp_path / "relational")))
         self.tools = LocalToolDriverProvider()
         register_platform_tools(
-            self.tools,
-            PlatformToolsConfig(workspace_root=self.workspaces, shell_sandbox=shell, workspace_size_interval_s=interval, workspace_max_bytes=max_bytes),
-            sandboxes=self.broker,
+            self.tools, PlatformToolsConfig(workspace_root=self.workspaces, shell_sandbox="sandbox", workspace_size_interval_s=interval),
+            sandboxes=self.service.broker,
         )
 
     @property
@@ -122,14 +112,3 @@ async def test_symlinks_are_not_followed(tmp_path: Path) -> None:
         pytest.skip("这台机器上建不了符号链接")
     out = await s.call("repo_edit", {"path": "a.txt", "new": "x"})
     assert "workspace_size" not in out, "链接指向的大文件不算进工作区"
-
-
-async def test_reconcile_reports_the_volume_usage(tmp_path: Path) -> None:
-    s = Setup(tmp_path)
-    telemetry = ConsoleTelemetryProvider(stream=io.StringIO())
-    report = await ReconcileActivities(s.broker, telemetry=telemetry).reconcile_sandboxes(ReconcileInput())
-    assert report.volume_used_ratio is not None and 0 < report.volume_used_ratio < 1
-    await telemetry.bind_platform("sandbox-reconcile").flush()
-    [metric] = [m for m in telemetry.exported_metrics if m.name == "runtime.workspace.volume_used_ratio"]
-    assert metric.value == pytest.approx(report.volume_used_ratio)
-    assert metric.attributes.get("volume") == "workspaces"
