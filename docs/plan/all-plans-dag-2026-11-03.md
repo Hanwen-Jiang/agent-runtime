@@ -9,6 +9,47 @@
 
 > [第二轮专项代审](delegated-review-followup-2026-11-04.md)记录了 G-03-9 凭据操作放行条件、四份契约的代审范围，以及 SBX、R-06、EV-TB、HIST-01、PREVIEW-1 的复核结果。
 
+## 0. v1 终点线（2026-11-05，先看这一节）
+
+> 用户 2026-11-05：“任务怎么越做越多了”“帮我改也别给我定了，这个权限交给你你来抉择”。由 Claude 定下面的终点线；要改直接改这一节。
+> 起因：本表 11-03 建表时 57 项，到 11-05 关掉 35 项，但线上冒烟与评测又冒出 10 项、用户另提 2 项，表反而到了 69 项；而且建表时就把 MVP 必需的和远期扩展混在一起，没有“做完”的定义。
+
+**规则**
+
+1. 只有下表 V1-1～V1-6 算 v1 要做的；第 3 节里其余未完成的条目一律是 **backlog**（不删，原文与“档”照旧，但 v1 完成之前不开工、不算进“还剩多少”）。
+2. 新发现的问题，只有满足其一才进本表：挡住下面的“完成标准”；安全问题（越权、泄密）；丢用户数据。其余一律记进第 3 节当 backlog。
+3. 代码写完不算完成，**上线并过了完成标准才算**。
+4. 第 8 节的认领规矩照旧。
+
+**v1 要做的**
+
+| 编号 | 内容 | 对应第 3 节 | 状态 |
+| --- | --- | --- | --- |
+| V1-1 | 整版发布 main（Helm 第 32 版，DEP-R32）：SBX-01 与 WS-READ-01（Chart 的 sandbox-service，要 `secrets.relationalDsn`、`secrets.storeClaim`；不灰度，回退是回滚 Release，见 sbx-01-handoff 第 7 节）、`95a3a9e` 之后的提交（TOOL-INT-FLOAT 等）、learning 新镜像（SITE、SITE-DATA）；coding-web 换到 coding-agent main。V1-2、V1-3 能赶上就一起发，赶不上第 32 版先发、它们再跟一版 | SBX-01、SITE、SITE-DATA 等“没部署”的 | 待做 |
+| V1-2 | F3-SANDBOX：`deliver_file` 经 Sandbox Service 取沙箱里的文件 | F3-SANDBOX | 待做 |
+| V1-3 | REVIEW-FALLBACK：查清 Reviewer 的模型判定为什么被自己的校验拒掉并修；修不了的模型从 Reviewer 候选里去掉 | REVIEW-FALLBACK | 待查 |
+| V1-4 | coding-web 的 `i18n.js` 加 `workspace_not_ready` 的说法 | WS-CREATE-RACE 剩下的客户端部分 | 待做 |
+| V1-5 | 补跑 Terminal-Bench 第二批 17 题，凑满 40 题的基线分数：补跑当天把 `swebench` 租户的出网日上限临时放宽到 60 GB，跑完改回 20 GB（不等 ENV-MIRROR） | EV-TB | 待做（在 V1-1～V1-3 上线之后跑） |
+| V1-6 | 上线验收（REAL-01 的 v1 子集），按下面的完成标准逐条在线上跑并记进 `cloud-deploy.md` | REAL-01 | 待做 |
+
+**完成标准**（全部过了，v1 就算做完）
+
+1. 默认档租户经 coding-web：建会话（克隆仓库）→ 提交要改代码并交付文件的 Task → done，交付的文件能在网页上下载。
+2. 同一 Task 里 `shell_run`、`repo_*` 都经 Sandbox Service；杀掉 sandbox-service 的 Pod 后，进行中的 Task 能恢复或明确失败，不卡住（线上做一次 S11）。
+3. Reviewer：v1 修好后线上 10 个 Task 里，`review` 调用按规则回退（`rule_fallback`）的不超过 20%。
+4. Terminal-Bench 40 题全部跑完，分数写进 `ev-tb-0of5-2026-11-04.md`；不设分数门槛，要的是一个能对比的基线。
+5. 第 32 版上线后 48 小时内没有需要回滚的故障。
+
+**放进 backlog 的理由**（只写容易有疑问的）
+
+- Firecracker 全线（D-20 第二段、D-21、D-22、FC-REAL、D-26）、WS-PULL-01、WK-LITE-01/02、WS-BLOB-01：性能与密度的优化，K8s 加 Kata、gVisor 现在能用。
+- D-25、N-15、NET-OPEN、D-27、N16-R 的评测对照、MEM、R-04、R-06 的修订号：新功能或生产化的扩展，v1 不缺。
+- ENV-MIRROR：根本办法，但要定盘与记账；v1 用 V1-5 的临时放宽绕过。
+- SBX-ZOMBIE：只在长寿的会话环境里碰到 pids 上限，有环境销毁兜底。
+- WS-CF-524：coding-web 走集群内地址不受影响，只影响直接调 `api.cgent.link` 的外部客户端。
+- MX-PUB、EV-REAL、EV-DE 的线上重判、SITE-UI：评测与展示，不影响用户用。
+- AUTH-01 切换、G-05/G-06 要人在 GitHub 上做的、F4 告警邮件的 Resend Key：等人给资源，到了就做，不挡 v1。
+
 ## 1. 已完成（不再画进 DAG）
 
 | 范围 | 内容 |
@@ -106,7 +147,7 @@
 
 ## 4. DAG
 
-方框的颜色：绿 = 近期建议、蓝 = 部署、白 = 待做或草案、六边形 = 人定或评审、灰 = 推迟或卡外部资源、橙 = 正在实现（第 8 节）。只画未完成的；已完成的见第 1 节。
+v1 要做的只有第 0 节那几项，本图是全量（含 backlog）。方框的颜色：绿 = 近期建议、蓝 = 部署、白 = 待做或草案、六边形 = 人定或评审、灰 = 推迟或卡外部资源、橙 = 正在实现（第 8 节）。只画未完成的；已完成的见第 1 节。
 
 ```mermaid
 flowchart LR
@@ -367,9 +408,9 @@ flowchart LR
 | D-25-WIRE | D-25 的具体 wire（契约草案，S-01，等人审）：`workspace.v1` 加 `WorkspaceLayout`（root、multi，建时定、不转换）、`WorkspaceRepo`（name、url、ref、path、access、primary、head、branch）、`AttachRepo`、`DetachRepo`（有未提交改动或没推送的提交时 FailedPrecondition `repo_dirty`，除非 `discard_changes`）、`ListRepos`；Diff、Commit、Push、Sync、Log、Discard 加 `repo`（multi 必填、root 必须为空）；`workflow.v1.WorkspaceOperation` 加三项；租户策略 `workspace.max_repos`。只写契约与正反例，不写实现。直接在 main 上提交 | Claude 桌面会话（Opus 5.5） | 2026-11-04 | `proto/agentruntime/workspace/v1/workspace.proto`、`proto/agentruntime/workflow/v1/workspace.proto`、生成代码、`schemas/tenant_policy.schema.json` 与它的正反例、`docs/plan/d25-multirepo-contract-baseline.md` 加一节 | 契约已完成：`e8ca91e` 2026-11-04 人审通过（用户在对话里：“Approve all three”），兼容性基线已更新；buf lint 与 breaking 过，生成代码更新；task-service 的三个新方法与 MULTI 的建工作区先回 Unimplemented（`multi_repo_unavailable`），只为编译；Go 全部模块能编译，契约测试 357 过。审过之后写实现（Worker 的 workspace 操作、task-service 的校验与凭据、存档恢复与复制覆盖整个布局、golden 回放），再更新兼容性基线 |
 | SITE-SMOKE | SITE-UI 里不等设计定稿的一块：评测网站的页面冒烟测试（eval-site 第 5 节最后一行）。真的 dashboard_server 读仓库的 evalsets，测试前面一层代理给页面注入探针，headless 的 Chrome 或 Edge 打开（找不到就跳过，`AR_TEST_BROWSER` 可指定）：主页与数据集页没有脚本错误、数字与 evalsets 一致、切分组、搜索、展开一题、中英切换、手机宽度（390）不横向滚动；/results 能打开。只用标准库，不加依赖。找到的问题顺手修在页面上。直接在 main 上提交 | Claude 桌面会话（Opus 5.5） | 2026-11-04 | 新测试 `services/py-learning/tests/test_eval_site_pages.py`；要修时 `evals/site_pages/` 的页面 | 已完成（`40461fb`）：本机 Edge 下 5 条全过，页面不用改；SITE-UI 改版时照它验收 |
 | N-14-WIRE | N-14 的具体 wire（契约草案，S-01，等人审）：Registry 加种类 `SKILL` 与 `GetSkill`、`ListSkills`（目录只有名字与说明，不带正文）；三层：平台、租户（经 Registry 的 Publish，要发布令牌）、用户（新的公开服务 `skill.v1.SkillService`，经 Ingress 认证，只能管自己的）；同名时上层优先，下层不能发布上层已有的名字；版本发布即生效、不可变；`PinnedVersions.skills` 固定成 `platform/vN`、`tenant/vN`、`user/vN`；正文按新的 `schemas/skill.schema.json`（说明、指令、文本文件，不能声明 effect、联网、凭据或脚本）。只写契约与正反例，不写实现。直接在 main 上提交 | Claude 桌面会话（Opus 5.5） | 2026-11-04 | `proto/agentruntime/registry/v1/registry.proto`、`proto/agentruntime/workflow/v1/task.proto` 的 `PinnedVersions`、新文件 `proto/agentruntime/skill/v1/skill.proto`、生成代码、新的 `schemas/skill.schema.json` 与正反例、Registry 里两个新方法的 Unimplemented 桩、新文档 `docs/plan/n14-skill-contract.md` | 契约已完成：`c1836ba` 2026-11-04 人审通过（用户在对话里：“Approve all three”），五条照草案，兼容性基线已更新；buf lint 与 breaking 过，生成代码更新；Registry 的 `GetSkill`、`ListSkills` 先回 Unimplemented，Publish 照旧不收 SKILL，`SkillService` 没挂；Go 全部模块能编译，Registry 测试过，契约测试 599 过。审过之后写实现（Registry 的三层与固定、`SkillService`、Planner 的目录、tool_loop 的 `skill_read`、coding-agent 的“我的 Skill”），再更新兼容性基线。代审要明确的五条见该文档 |
-| NET-OPEN-WIRE | NET-OPEN 的具体 wire（契约草案，S-01，等人审）：`taskapi.v1.NetworkRequest` 加 `scope`（`NetworkScope`：不写就是 HOSTS，旧客户端不变；PUBLIC 是所有公网域名，hosts 必须为空）；租户策略 `sandbox.network.modes`（deny、allowlist、open，不写为 deny 与 allowlist，只有含 open 的租户才能申请 PUBLIC）；`request_network` 的参数、`sandbox_grants.scope` 与网关的准入只写进文档，实现时再做。只写契约与正反例，不写实现。直接在 main 上提交 | Claude 桌面会话（Opus 5.5） | 2026-11-04 | `proto/agentruntime/taskapi/v1/task_api.proto` 的 `NetworkRequest`、生成代码、`schemas/defs.schema.json` 与 `schemas/tenant_policy.schema.json` 的 `sandbox.network.modes` 与正反例、task-service 提交时对 PUBLIC 的拒绝（`network_scope_unavailable`，实现之前）、新文档 `docs/plan/net-open-contract.md` | 契约草案已提交（`3c0bd0f`），**等人审**：buf lint 与 breaking 过，生成代码更新；task-service 收到 PUBLIC 先 denied（`network_scope_unavailable`），`modes` 只经 Registry 校验、运行时还不读；taskapi 测试过，契约测试 604 过。兼容性基线没有收它（基线更新到 `04679ed`，含 D-25 与 N-14）。代审要明确的三条见该文档 |
+| NET-OPEN-WIRE | NET-OPEN 的具体 wire（契约草案，S-01，等人审）：`taskapi.v1.NetworkRequest` 加 `scope`（`NetworkScope`：不写就是 HOSTS，旧客户端不变；PUBLIC 是所有公网域名，hosts 必须为空）；租户策略 `sandbox.network.modes`（deny、allowlist、open，不写为 deny 与 allowlist，只有含 open 的租户才能申请 PUBLIC）；`request_network` 的参数、`sandbox_grants.scope` 与网关的准入只写进文档，实现时再做。只写契约与正反例，不写实现。直接在 main 上提交 | Claude 桌面会话（Opus 5.5） | 2026-11-04 | `proto/agentruntime/taskapi/v1/task_api.proto` 的 `NetworkRequest`、生成代码、`schemas/defs.schema.json` 与 `schemas/tenant_policy.schema.json` 的 `sandbox.network.modes` 与正反例、task-service 提交时对 PUBLIC 的拒绝（`network_scope_unavailable`，实现之前）、新文档 `docs/plan/net-open-contract.md` | 契约草案已提交（`3c0bd0f`），2026-11-04 人审通过（第 7.3 节），兼容性基线已更新；实现没做，v1 之后（第 0 节 backlog）。提交时的记录：buf lint 与 breaking 过，生成代码更新；task-service 收到 PUBLIC 先 denied（`network_scope_unavailable`），`modes` 只经 Registry 校验、运行时还不读；taskapi 测试过，契约测试 604 过。兼容性基线没有收它（基线更新到 `04679ed`，含 D-25 与 N-14）。代审要明确的三条见该文档 |
 | N-14-IMPL | N-14 的实现（契约 `c1836ba`，2026-11-04 人审通过）：Registry 收 SKILL（平台、租户、用户三层，同名上层优先，发布即生效，内容不变不出新版本，用户层每人 100 个），`GetSkill`、`ListSkills`，`ResolvePinnedVersions` 固定看得到的当前 Skill（`platform/vN`、`tenant/vN`、`user/vN`）；task-service 在 Task API 的端口挂 `SkillService`（经 Ingress，只能管自己的）；Worker 的 Registry 客户端读 Skill，Planner 的目录加一节“Skill：名字 — 说明”（在现有的规划 activity 里读，不改命令序列），tool_loop 的 `skill_read`（effect read，按固定的版本）。先写测试再实现。直接在 main 上提交 | Claude 桌面会话（Opus 5.5） | 2026-11-04 | task-service 的 `internal/registry`（skills.go、validate.go 的 SKILL 一支、service.go 的 resolve）、新包 `internal/skillapi`、`cmd/task-service` 挂载 `SkillService` 的一处；Worker 的 `registry/client.py` 的 Skill 部分、`planner/prompts.py` 的目录一节、新模块 `tools/skills.py` 与登记它的一处（不碰 SBX-01-IMPL 独占的 shell_run、repo_* 部分）；新测试 `internal/registry/skills_test.go`、`internal/skillapi/*_test.go`、`services/py-worker/tests/test_skills.py` | Runtime 一侧已完成（`3d69835`：Registry、SkillService、`tasks.skill_pins`；`274d7c1`：Worker 的目录与 skill_read）：task-service 的 Go 测试全过，Worker 相关的 227 个过；没部署。另外动了 `internal/taskstore`（迁移 8）、`internal/taskapi` 提交时记 skill_pins 的一处、`registry/catalog.py`、`planner/activities.py`。coding-agent 的“我的 Skill”见 WEB-SKILLS（`f68943b`）。端到端用例 `tests/e2e/test_skills.py` 过（真的 task-service、Registry 与 Worker）。没做的：tool_loop 真调一次 skill_read 的端到端（要会调工具的模型） |
-| N-15-WIRE | N-15 的具体 wire（契约草案，S-01，等人审）：新的公开服务 `mcp.v1.McpConnectionService`（经 Ingress，用户只能管自己的连接）：建连接（https 地址、可选的网络密钥引用，建时连一次列出工具，工具一律先关着）、列出、读、刷新工具、逐个打开工具并确定 effect 与超时（只收 read、write_irreversible；远端注解只能往高调）、删除（撤销：已发出的租约立即失效）；租户策略加 `mcp`（allowed、hosts、每人连接数、effect 上限）。租约、网关与调用路径只写进文档。只写契约与正反例，不写实现。直接在 main 上提交 | Claude 桌面会话（Opus 5.5） | 2026-11-04 | 新文件 `proto/agentruntime/mcp/v1/mcp.proto`、生成代码、`schemas/defs.schema.json` 与 `schemas/tenant_policy.schema.json` 的 `mcp` 一节与正反例、新文档 `docs/plan/n15-mcp-contract.md` | 契约草案已提交（`556c881`），**等人审**：buf lint 与 breaking 过，生成代码更新；服务没挂（调用得到 Unimplemented），租户策略的 `mcp` 只经 Registry 校验；契约测试 605 过（另 4 条在干净的 main 上同样失败：SBX-01 的沙箱实现还没有一致性测试包、`localsandbox` 在 Windows 上编不过、克隆的换行让生成代码看着过期）。代审要明确的五条见该文档 |
+| N-15-WIRE | N-15 的具体 wire（契约草案，S-01，等人审）：新的公开服务 `mcp.v1.McpConnectionService`（经 Ingress，用户只能管自己的连接）：建连接（https 地址、可选的网络密钥引用，建时连一次列出工具，工具一律先关着）、列出、读、刷新工具、逐个打开工具并确定 effect 与超时（只收 read、write_irreversible；远端注解只能往高调）、删除（撤销：已发出的租约立即失效）；租户策略加 `mcp`（allowed、hosts、每人连接数、effect 上限）。租约、网关与调用路径只写进文档。只写契约与正反例，不写实现。直接在 main 上提交 | Claude 桌面会话（Opus 5.5） | 2026-11-04 | 新文件 `proto/agentruntime/mcp/v1/mcp.proto`、生成代码、`schemas/defs.schema.json` 与 `schemas/tenant_policy.schema.json` 的 `mcp` 一节与正反例、新文档 `docs/plan/n15-mcp-contract.md` | 契约草案已提交（`556c881`），2026-11-04 人审通过（第 7.3 节），兼容性基线已更新；实现没做，v1 之后（第 0 节 backlog）。提交时的记录：buf lint 与 breaking 过，生成代码更新；服务没挂（调用得到 Unimplemented），租户策略的 `mcp` 只经 Registry 校验；契约测试 605 过（另 4 条在干净的 main 上同样失败：SBX-01 的沙箱实现还没有一致性测试包、`localsandbox` 在 Windows 上编不过、克隆的换行让生成代码看着过期）。代审要明确的五条见该文档 |
 | WEB-SKILLS | N-14 在 coding-agent 里的一页“我的 Skill”：账号页多一个入口，对话框列出看得到的 Skill（平台、团队、我的，标出被遮住的），新建与编辑我的（名字、说明、做法；编辑时原有的文件照旧带上），收回我的。服务端转调 Runtime 的 `SkillService`（带这个用户现签的令牌）；Runtime 没有它（Unimplemented、skills_unavailable）时列表回 `available: false`，页上写明。Runtime 的错误码（name_taken、skill_limit、invalid_name 等）翻成两种语言。先写测试再实现。直接在 coding-agent 的 main 上提交 | Claude 桌面会话（Opus 5.5） | 2026-11-04 | coding-agent 新文件 `internal/server/skills.go`、`internal/server/skills_test.go`、`internal/web/skills_test.go`；`server.go` 里四条路由；`runtime_errors.go` 与 `messages_en.go` 的几条；`internal/web/static/app.js` 账号页的入口与新的 `openSkills`；`i18n.js` 的 `skills.*`（同文件里别的会话没提交的几行不动、不一起提交）；`style.css` 的几条 | 已完成（coding-agent `f68943b`）：服务端测试 4 条、页面测试 3 条（本机 Edge 真跑，中英两种语言）过，coding-agent 全部测试过（服务端包里一条浏览器探针在两个包同时起浏览器时超时过一次，重跑过）；`i18n.js` 里别的会话没提交的 6 行（rule_fast_path 等，Runtime 里还没有这几个代码）没动、没一起提交。没部署 |
 | DEP-BD30 | 部署 BUDGET-DEFAULT 的网关修复（Helm 第 30 版，只换网关；用户 2026-11-04 在对话里点了“Deploy it”）：第 28 版网关的源码树（`de1c0ba` 加 TOOLS-KIMI 的修复）打上 `3556e9b` 里网关的部分，镜像 `model-gateway:de1c0ba-tkbd`；values 是第 29 版应用过的那份加 `modelGateway.imageTag`；渲染与第 29 版比只有网关的镜像一行；没有在跑的 TaskWorkflow 才升级；之后在默认档的测试租户上跑一个真 Task 冒烟 | Claude 桌面会话（Opus 5.5） | 2026-11-05 | 服务器上 `/root/ar-release/rev32`、`values-rev32*.yaml`、`manifest-rev32.yaml`；期间别的会话不要 `helm upgrade` | 已完成（2026-11-05）：Helm 第 30 版，网关 `model-gateway:de1c0ba-tkbd`，线上清单与计划的一致，日志没有错误；默认档租户 `real01` 的冒烟 Task done（0.09 美元，kimi 每次预留 0.28～0.41 美元、之前 10.49，没有 `tenant_budget_exceeded`）。见 cloud-deploy.md 第 30 版。回滚 `helm rollback ar 29` |
 | WS-CREATE-RACE | 修法（只改 task-service，Worker 的 `workspace/` 归 SBX-01-IMPL）：CreateWorkspace 起工作流之前在共用的 Cache 里记下“在建”（兜底过期时间同工作流的执行超时），工作流真正结束时（不跟着客户端断开）才清掉；SubmitTask 带 workspace_id 时有这个标记就拒，`workspace_not_ready`（Transient，稍后重试） | Claude 桌面会话（Opus 5.5，F 线） | 2026-11-05 | 新包 `services/go-task-service/internal/workspaceready`；`internal/workspaceapi/server.go` 的 `run`；`internal/taskapi/server.go` 的 `Deps` 与 `submit` 开头；`cmd/task-service/main.go` 给 taskapi 的 Cache；新测试 `internal/taskapi/workspace_ready_test.go`、`internal/workspaceapi/create_marker_test.go` | 已完成（78075e19；go test 全过，Postgres 的子测试本机没有 initdb 跳过；未部署） |
