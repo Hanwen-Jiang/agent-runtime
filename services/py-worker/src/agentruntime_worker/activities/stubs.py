@@ -6,6 +6,8 @@
     杀 Worker、取消 Task、观察写 Task 串行。
   - human_gate：human 节点 confirm（role = gate，选项 approve、reject）之后才是 answer。
   - fail_model：answer 以不可重试的错误失败。
+  - deliver_file：一个 tool_loop 先调 deliver_file 交付工作区里的文件（inputs.stub_file），再由 answer 交付文字（N-18）。
+  - shell：一个 tool_loop 先调 shell_run 跑 inputs.stub_argv，再由 answer 交付文字（SBX-01 的故障注入 S11）。
 inputs.stub_rounds = N 时，前 N-1 个 Round 的结果标记为未完成，桩 Reviewer 判 continue。
 
 桩 Reviewer 只看 Stage 结果：结果都标记完成时判 done，交付来自 role = deliver 的节点。
@@ -46,7 +48,7 @@ from agentruntime_worker.activities.types import (
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.executor.tool_gate import require_tool_gate
 
-STUB_PLANS = ("answer", "slow_answer", "human_gate", "fail_model", "deliver_file")
+STUB_PLANS = ("answer", "slow_answer", "human_gate", "fail_model", "deliver_file", "shell")
 HUMAN_OPTIONS = ("approve", "reject")
 _MODES = {"slow_answer": "slow", "fail_model": "fail"}
 # 等门打开时轮询的间隔；心跳由 SDK 按 heartbeat 超时节流后再发给服务端。
@@ -165,6 +167,21 @@ class StubActivities:
             }
             answer["after"] = ["deliver_file"]
             nodes = [deliver, answer]
+        if plan == "shell":
+            argv = [str(a) for a in inp.inputs.get("stub_argv") or ["true"]]
+            shell = {
+                "id": "shell",
+                "kind": "goal",
+                "mode": "tool_loop",
+                "goal": "在沙箱里跑一条命令",
+                "done_when": "命令跑完",
+                "output_schema": "result_v1",
+                "tools": ["shell_run"],
+                "effect_ceiling": "write_reversible",
+                "inputs": {"stub_tool_calls": [{"tool": "shell_run", "args": {"argv": argv}}]},
+            }
+            answer["after"] = ["shell"]
+            nodes = [shell, answer]
         stage = {
             "seq": inp.round_seq,
             "goal": "回答用户的问题" if final else f"第 {inp.round_seq} 轮：收集信息",

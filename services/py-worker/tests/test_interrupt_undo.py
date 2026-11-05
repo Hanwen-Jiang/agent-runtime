@@ -5,8 +5,10 @@
 - 报告的结果带回工作流（workflows/interrupts.py，SDK 上报取消时丢掉 details，所以是 type 为 tool_interrupted 的 ApplicationError），
   工作流据此告诉模型。
 
-K8s 与 Cloudflare 后端的 exec 经 AgentClient，取消时断开连接的测试在 libs/py-core 的 tests/adapters/test_sandbox_exec_cancel.py；
-agent 一侧断开后杀进程组的测试在 tests/sandbox-agent 的 test_cancel.py（Go 版与 Rust 版都跑，D-28）。
+沙箱里的命令经 Sandbox Service（SBX-01）：这里的 sandbox 一栏对着真的服务进程（本地后端）。服务把 Worker 的取消转给后端、
+没确认停下时拒绝之后的命令（exec_not_stopped）的测试在 services/go-sandbox-service 的 acceptance_test.go；后端的 exec 经 agent
+客户端，取消时断开连接的测试在 libs/go-core 的 adapters/sandboxagent；agent 一侧断开后杀进程组的测试在 tests/sandbox-agent 的
+test_cancel.py（Go 版与 Rust 版都跑，D-28）。
 """
 
 from __future__ import annotations
@@ -26,9 +28,8 @@ from temporalio.exceptions import ApplicationError, CancelledError
 
 from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 from agentruntime.modelgateway.v1 import model_gateway_pb2_grpc as mg_grpc
-from agentruntime_core.dev.sandbox import LocalSubprocessSandbox
 from agentruntime_core.enums import Effect
-from agentruntime_core.providers.sandbox import ExecNotStopped
+from agentruntime_core.errors import ConflictError
 from agentruntime_core.providers.tool_driver import ToolInvocation, ToolSpec
 
 from agentruntime_worker import names
@@ -40,13 +41,13 @@ from agentruntime_worker.executor.tool_loop import ModelToolLoop, ToolLoopActivi
 from agentruntime_worker.planner.activities import PlannerActivities
 from agentruntime_worker.planner.context import StaticContextSource
 from agentruntime_worker.planner.planner import Planner
-from agentruntime_worker.sandbox.broker import SandboxBroker
+from agentruntime_worker.sandbox.client import RemoteBox, ServiceBroker
 from agentruntime_worker.tools.platform import PlatformToolsConfig, register_platform_tools
-from agentruntime_worker.tools.sandboxes import Sandboxes
 
 from .context_support import config, objects
 from .executor_harness import TASK_ID, TENANT, ExecutorFixture, make_fixture
 from .planner_support import context
+from .service_setup import LOCAL, Setup
 from .test_node_executor import env_for, node_input
 from .test_planner_activity import plan_input
 from .test_reviewer_activity import activities as reviewer_activities
@@ -156,7 +157,7 @@ while time.monotonic() < end:
 
 
 def workspace_of(root: Path, *, git: bool = True) -> Path:
-    work = root / "workspaces" / TENANT.tenant_id / "default"
+    work = root / TENANT.tenant_id / "default"
     work.mkdir(parents=True)
     (work / "tracked.txt").write_text("原来的", "utf-8")
     if git:
@@ -166,18 +167,16 @@ def workspace_of(root: Path, *, git: bool = True) -> Path:
     return work
 
 
-def with_platform_tools(tmp_path: Path, backend: str) -> ExecutorFixture:
+def with_platform_tools(tmp_path: Path, backend: str) -> tuple[ExecutorFixture, Path]:
+    """host：命令在 Worker 的主机上；local_sandbox：经真的 Sandbox Service（本地后端）。返回工作区根。"""
     fx = make_fixture(tmp_path)
-    root = tmp_path / "workspaces"
     if backend == "host":
+        root = tmp_path / "workspaces"
         register_platform_tools(fx.tools, PlatformToolsConfig(workspace_root=root))
-    else:
-        async def no_policy(_: str) -> None:
-            return None
-
-        boxes = Sandboxes({"plain": {"kind": "local", "isolation": "none"}}, "plain", workspace_root=root, policy=no_policy)
-        register_platform_tools(fx.tools, PlatformToolsConfig(workspace_root=root, shell_sandbox="sandbox"), sandboxes=boxes)
-    return fx
+        return fx, root
+    s = Setup(tmp_path / "service", specs={"plain": LOCAL})
+    register_platform_tools(fx.tools, PlatformToolsConfig(workspace_root=s.host, shell_sandbox="sandbox"), sandboxes=s.broker)
+    return fx, s.host
 
 
 def call(tool: str, effect: str, args: dict[str, Any]) -> ToolCallInput:
@@ -227,8 +226,8 @@ async def interrupted(fx: ExecutorFixture, inp: ToolCallInput, ready: Path) -> B
 @pytest.mark.skipif(GIT is None, reason="要 git")
 @pytest.mark.parametrize("backend", ["host", "local_sandbox"])
 async def test_interrupting_shell_run_kills_the_process_tree_and_restores_the_files(tmp_path: Path, backend: str) -> None:
-    work = workspace_of(tmp_path)
-    fx = with_platform_tools(tmp_path, backend)
+    fx, root = with_platform_tools(tmp_path, backend)
+    work = workspace_of(root)
     inp, beats = tree_call(tmp_path)
     err = await interrupted(fx, inp, beats / "child")
     assert undo_of(err) == "restored"
@@ -240,8 +239,8 @@ async def test_interrupting_shell_run_kills_the_process_tree_and_restores_the_fi
 
 @pytest.mark.parametrize("backend", ["host", "local_sandbox"])
 async def test_outside_a_git_repository_it_kills_the_command_and_says_it_could_not_undo(tmp_path: Path, backend: str) -> None:
-    work = workspace_of(tmp_path, git=False)
-    fx = with_platform_tools(tmp_path, backend)
+    fx, root = with_platform_tools(tmp_path, backend)
+    work = workspace_of(root, git=False)
     inp, beats = tree_call(tmp_path)
     err = await interrupted(fx, inp, beats / "child")
     assert undo_of(err) == "no_checkpoint"
@@ -250,19 +249,25 @@ async def test_outside_a_git_repository_it_kills_the_command_and_says_it_could_n
 
 
 @pytest.mark.skipif(GIT is None, reason="要 git")
-async def test_a_stop_the_agent_did_not_confirm_is_not_reported_as_undone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """沙箱里的 agent 没确认命令停了（旧的 agent、桥不转发）：命令可能还在改文件，还原了也可能被改回去，所以不还原，照实说。"""
-    original = LocalSubprocessSandbox.exec
+async def test_a_stop_the_service_did_not_confirm_is_not_reported_as_undone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """沙箱里的 agent 没确认命令停了（旧的 agent、桥不转发）：命令可能还在改文件，服务拒绝之后的命令（conflict，
+    exec_not_stopped，服务一侧见 Go 的测试），还原做不了，照实说。这里让服务对还原报这个错。"""
+    original = RemoteBox.exec
+    cancelled = False
 
-    async def unconfirmed(self: LocalSubprocessSandbox, env_id: str, argv: Any, **kwargs: Any) -> Any:
+    async def unconfirmed(self: RemoteBox, env_id: str, argv: Any, **kwargs: Any) -> Any:
+        nonlocal cancelled
+        if cancelled:
+            raise ConflictError("exec_not_stopped", "这个环境里被取消的命令还没确认停下")
         try:
             return await original(self, env_id, argv, **kwargs)
         except asyncio.CancelledError:
-            raise ExecNotStopped() from None
+            cancelled = True
+            raise
 
-    monkeypatch.setattr(LocalSubprocessSandbox, "exec", unconfirmed)
-    work = workspace_of(tmp_path)
-    fx = with_platform_tools(tmp_path, "local_sandbox")
+    monkeypatch.setattr(RemoteBox, "exec", unconfirmed)
+    fx, root = with_platform_tools(tmp_path, "local_sandbox")
+    work = workspace_of(root)
     inp, beats = tree_call(tmp_path)
     err = await interrupted(fx, inp, beats / "child")
     assert undo_of(err) == "failed"
@@ -272,26 +277,26 @@ async def test_a_stop_the_agent_did_not_confirm_is_not_reported_as_undone(tmp_pa
 @pytest.mark.skipif(GIT is None, reason="要 git")
 async def test_interrupted_while_making_the_checkpoint_the_environment_goes_back(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """命令还没开始：没有什么要撤，借到的环境照样归还（不归还就一直占着租户的并发额度）。"""
-    original = LocalSubprocessSandbox.exec
+    original = RemoteBox.exec
     in_checkpoint = asyncio.Event()
 
-    async def stuck_in_git(self: LocalSubprocessSandbox, env_id: str, argv: Any, **kwargs: Any) -> Any:
+    async def stuck_in_git(self: RemoteBox, env_id: str, argv: Any, **kwargs: Any) -> Any:
         if argv[0] == "git":
             in_checkpoint.set()
             await asyncio.Event().wait()
         return await original(self, env_id, argv, **kwargs)
 
-    monkeypatch.setattr(LocalSubprocessSandbox, "exec", stuck_in_git)
+    monkeypatch.setattr(RemoteBox, "exec", stuck_in_git)
     released = []
-    release = SandboxBroker.release
+    release = ServiceBroker.release
 
-    async def counted(self: SandboxBroker, lease: Any, **kwargs: Any) -> Any:
+    async def counted(self: ServiceBroker, lease: Any, **kwargs: Any) -> Any:
         released.append(lease)
         return await release(self, lease, **kwargs)
 
-    monkeypatch.setattr(SandboxBroker, "release", counted)
-    workspace_of(tmp_path)
-    fx = with_platform_tools(tmp_path, "local_sandbox")
+    monkeypatch.setattr(ServiceBroker, "release", counted)
+    fx, root = with_platform_tools(tmp_path, "local_sandbox")
+    workspace_of(root)
     inp, beats = tree_call(tmp_path)
     env = env_for(names.CALL_TOOL, heartbeat=1)
     task = asyncio.create_task(env.run(fx.executor.call_tool, inp))
@@ -306,8 +311,8 @@ async def test_interrupted_while_making_the_checkpoint_the_environment_goes_back
 
 @pytest.mark.skipif(GIT is None, reason="要 git")
 async def test_a_call_that_finishes_keeps_its_changes(tmp_path: Path) -> None:
-    work = workspace_of(tmp_path)
-    fx = with_platform_tools(tmp_path, "host")
+    fx, root = with_platform_tools(tmp_path, "host")
+    work = workspace_of(root)
     code = "import pathlib; pathlib.Path('tracked.txt').write_text('改好了', encoding='utf-8')"
     out = await env_for(names.CALL_TOOL, heartbeat=1).run(fx.executor.call_tool, call("shell_run", "write_reversible", {"argv": [sys.executable, "-c", code]}))
     assert out["exit_code"] == 0
@@ -317,8 +322,8 @@ async def test_a_call_that_finishes_keeps_its_changes(tmp_path: Path) -> None:
 @pytest.mark.skipif(GIT is None, reason="要 git")
 async def test_a_program_node_is_undone_the_same_way(tmp_path: Path) -> None:
     """Atomic Node 也可以是 shell_run。"""
-    work = workspace_of(tmp_path)
-    fx = with_platform_tools(tmp_path, "host")
+    fx, root = with_platform_tools(tmp_path, "host")
+    work = workspace_of(root)
     inp, beats = tree_call(tmp_path)
     key = keys.idempotency_key(TENANT.tenant_id, TASK_ID, "run", inp.args)
     node = {"id": "run", "kind": "atomic", "template": "shell_run@v1", "executor": "program", "effect": "write_reversible", "role": "act", "idempotency_key": key, "inputs": inp.args}

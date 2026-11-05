@@ -3,9 +3,10 @@
 
 1. 每次操作一个 runtime.workspace_op span：操作名、模式（archive、mount）、后端、结局（ok 或错误码），租户与工作区由绑定加上；
    分段的独占耗时 workspace.ms.<阶段>（acquire、restore、command、archive、release、other）加起来不超过 total。
-2. 存档模式：从快照建的只读环境有 restore，可写的操作归还前有 archive；挂卷模式两者都没有。
-3. 字节（worker.bytes.<通道>_<方向>，in 是进 Worker）：读文件时 sandbox_in 至少是文件的大小；存档模式下存档是 sandbox_in 与
-   object_store_out，恢复是 object_store_in 与 sandbox_out；挂卷模式不碰 ObjectStore。
+2. 存档模式的恢复与存档在 Sandbox Service 里（SBX-01）：分别算在 Worker 的 acquire 与 release 上，Worker 这边没有 restore、
+   archive 两段（服务一侧没有分段的指标，见 SBX-01 的交付说明）。
+3. 字节（worker.bytes.<通道>_<方向>，in 是进 Worker）：读文件时 sandbox_in 至少是文件的大小；两种模式下 Worker 都不碰
+   ObjectStore（存档的块与清单由服务读写）。
 4. 指标：每个阶段（含 total）一条 runtime.workspace_op.duration_ms，每个（通道，方向）一条 runtime.worker.bytes；标签只有操作、
    阶段、模式、结局、通道、方向与租户，不带工作区、会话与用户（不随工作区膨胀）。
 5. 失败的操作也记，结局是错误码；暂时性的错误照样抛给工作流的重试。
@@ -77,13 +78,7 @@ async def test_each_operation_records_one_span_with_exclusive_phases(tmp_path: P
         assert a["tenant_id"] == "t1" and a["workspace_id"] == "w1"
         assert {"acquire", "command", "release", "other"} <= set(phases(a)), a
         assert sum(phases(a).values()) <= a["workspace.ms.total"] + len(phases(a)), "独占时间加起来不超过总时长（毫秒取整的误差除外）"
-    create, listing, commit = got
-    if mode == "archive":
-        assert "archive" in phases(create) and "archive" in phases(commit), "可写的操作归还前存档"
-        assert "restore" in phases(listing) and "restore" in phases(commit), "环境从快照恢复"
-        assert "restore" not in phases(create), "还没有快照时没有恢复"
-    else:
-        assert not [a for a in got if {"restore", "archive"} & set(phases(a))], "挂卷模式不存档也不恢复"
+    assert not [a for a in got if {"restore", "archive"} & set(phases(a))], "恢复与存档在服务里，算在 acquire 与 release 上"
 
 
 @pytest.mark.parametrize("mode", ["archive", "mount"])
@@ -96,11 +91,7 @@ async def test_bytes_through_the_worker(tmp_path: Path, mode: str) -> None:
     create, rd = await spans(telemetry)
     assert rd["worker.bytes.sandbox_in"] >= len(APP), rd
     assert create.get("worker.bytes.sandbox_in", 0) > 0, "git 的输出也算"
-    if mode == "archive":
-        assert create["worker.bytes.sandbox_in"] > 0 and create["worker.bytes.object_store_out"] > 0, "存档：从环境导出、写块与清单"
-        assert rd["worker.bytes.object_store_in"] > 0 and rd["worker.bytes.sandbox_out"] > 0, "恢复：读清单与块、导入环境"
-    else:
-        assert not [k for a in (create, rd) for k in a if k.startswith("worker.bytes.object_store")], "挂卷模式不碰 ObjectStore"
+    assert not [k for a in (create, rd) for k in a if k.startswith("worker.bytes.object_store")], "Worker 不碰 ObjectStore（存档在服务里）"
 
 
 async def test_metrics_carry_only_low_cardinality_labels(tmp_path: Path) -> None:
@@ -112,13 +103,12 @@ async def test_metrics_carry_only_low_cardinality_labels(tmp_path: Path) -> None
     durations = metrics(telemetry, "runtime.workspace_op.duration_ms")
     counted = metrics(telemetry, "runtime.worker.bytes")
     assert {(m["workspace.operation"], m["workspace.phase"]) for m in durations} >= {
-        ("create", "total"), ("create", "acquire"), ("create", "archive"), ("diff", "restore"), ("diff", "command"), ("diff", "other"),
+        ("create", "total"), ("create", "acquire"), ("create", "release"), ("diff", "acquire"), ("diff", "command"), ("diff", "other"),
     }
     diff_total = next(m for m in durations if m["workspace.operation"] == "diff" and m["workspace.phase"] == "total")
     assert diff_total["value"] == got[1]["workspace.ms.total"] and diff_total["workspace.mode"] == "archive" and diff_total["workspace.outcome"] == "ok"
-    assert {(m["worker.channel"], m["worker.direction"]) for m in counted if m["workspace.operation"] == "diff"} >= {
-        ("object_store", "in"), ("sandbox", "out"), ("sandbox", "in"),
-    }
+    assert {(m["worker.channel"], m["worker.direction"]) for m in counted if m["workspace.operation"] == "diff"} >= {("sandbox", "in")}
+    assert not [m for m in counted if m["worker.channel"] == "object_store"], "Worker 不碰 ObjectStore"
     assert all(m["worker.activity"] == "workspace_operation" for m in counted)
     for m in durations + counted:
         assert m["tenant_id"] == "t1"

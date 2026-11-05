@@ -53,11 +53,14 @@ async def test_archive_mode_references_the_source_snapshot(tmp_path: Path) -> No
     s = Setup(tmp_path, mode="archive")
     await _base(s, url)
     before = len(await _blob_keys(s, "w-base"))
-    envs_before = len(await _all_envs(s))
+    envs_before = len(s.envs("t1", active=False))
     copied = (await s.run(Op.WORKSPACE_OPERATION_CREATE, workspace="w-copy", from_workspace_id="w-base"))["workspace"]
     assert copied["branch"] == "main" and len(copied["head"]) == 40
     assert await _blob_keys(s, "w-copy") == [], "复制不搬块"
-    assert len(await _all_envs(s)) == envs_before, "复制不起环境"
+    # SBX-01：先经服务把源工作区别人闲着的可写环境存一份快照（Acquire 的 flush_writable），为此借一个只读环境、马上还掉；
+    # 不起可写的环境，也不搬块。
+    extra = s.envs("t1", active=False)[envs_before:]
+    assert [(e["writable"], e["state"]) for e in extra] == [(0, "destroyed")], extra
     print(f"N-10 archive: shared {before} blobs, wrote 0 for the copy")
     # 副本能用：内容与源一样（含未提交的改动），改了的文件才写进自己的块。
     files = (await s.run(Op.WORKSPACE_OPERATION_DIFF, workspace="w-copy"))["files"]
@@ -80,8 +83,3 @@ async def _blob_keys(s: Setup, workspace: str) -> list[str]:
     from agentruntime_worker.workspace.archive import _keys
 
     return sorted(await _keys(s.archiver._bucket("t1"), f"workspaces/{workspace}/blobs/"))  # noqa: SLF001
-
-
-async def _all_envs(s: Setup) -> list[object]:
-    async with s.ledger.bind("t1").transaction(read_only=True) as tx:
-        return list(await tx.query("SELECT env_ref FROM sandbox_envs"))
