@@ -24,6 +24,7 @@
 3. 新发现的问题，只有满足其一才进本表：挡住下面的完成标准；安全问题（越权、泄密）；丢用户数据。其余记进第 3 节当 backlog。
 4. 代码写完不算完成，**上线、在线上用得起来才算**。
 5. 第 8 节的认领规矩照旧。
+6. **线上发布不用再问用户**（用户 2026-11-05：“每次 helm upgrade 动线上集群也不要问我了”）：`helm upgrade`、换镜像、改线上配置与租户策略、在线上跑冒烟都直接做。发布前按 `cloud-deploy.md` 的步骤备份当前 values 与修订号，发布后照常记进 `cloud-deploy.md`；出问题先 `helm rollback` 回上一版，再查原因。
 
 **v1 要做的**
 
@@ -41,7 +42,7 @@
 
 | 编号 | 内容 | 对应第 3 节 | 状态 |
 | --- | --- | --- | --- |
-| V1-DEP | 整版发布 main（Helm 第 32 版起，DEP-R32）：SBX-01 与 WS-READ-01（Chart 的 sandbox-service，要 `secrets.relationalDsn`、`secrets.storeClaim`；不灰度，回退是回滚 Release，见 sbx-01-handoff 第 7 节）、`95a3a9e` 之后的提交、learning 新镜像；coding-web 换到 coding-agent main。之后核心各项做好一块发一版，不攒 | SBX-01 等“没部署”的 | 待做（`helm upgrade` 前仍要用户在对话里同意） |
+| V1-DEP | 整版发布 main（Helm 第 32 版起，DEP-R32）：SBX-01 与 WS-READ-01（Chart 的 sandbox-service，要 `secrets.relationalDsn`、`secrets.storeClaim`；不灰度，回退是回滚 Release，见 sbx-01-handoff 第 7 节）、`95a3a9e` 之后的提交、learning 新镜像；coding-web 换到 coding-agent main。之后核心各项做好一块发一版，不攒 | SBX-01 等“没部署”的 | 待做（不用再问：见规则第 6 条） |
 | V1-F3 | F3-SANDBOX：`deliver_file` 经 Sandbox Service 取沙箱里的文件 | F3-SANDBOX | 待做 |
 | V1-REV | REVIEW-FALLBACK：查清 Reviewer 的模型判定为什么被自己的校验拒掉并修；修不了的模型从 Reviewer 候选里去掉 | REVIEW-FALLBACK | 待查 |
 | V1-I18N | coding-web 的 `i18n.js` 加 `workspace_not_ready` 的说法 | WS-CREATE-RACE 剩下的客户端部分 | 待做 |
