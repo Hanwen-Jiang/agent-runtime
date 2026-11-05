@@ -65,8 +65,8 @@
 | D-19 | 后端登记的启用开关与能力 | firecracker-backend | — | 已完成（`f9f0c4d`，没部署） | 中 |
 | D-28 | sandbox-agent 按原接口改写为 Rust | firecracker-backend | — | 已完成（2026-11-05，没部署；测试 `b71e578`、`65c0f74`，实现 `ded75be`，切换 `3cff64e`）：两版过同一套黑盒测试；清单外加了 `regex`，待人确认（firecracker-backend.md 第 10 节）；部署要换的镜像与要在真沙箱里探的见 D-28 的“状态” | 中 |
 | D-20 | fc-manager（Rust）与 vsock agent | firecracker-backend | D-19、D-28 | 第一段已完成（2026-11-04，没部署：fc-manager、客户机内核、systemd 单元，对着假 jailer 的测试）；下一段：Go Sandbox Service 里的 firecracker 适配器（等 SBX-01-IMPL 的骨架）与 D-28 的 vsock agent；FC-REAL 在独服上跑要人同意 | 近 |
-| D-21 | 客户机 rootfs 与镜像缓存 | firecracker-backend | D-20 | 已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），可以开工；原状态：草案 | 近 |
-| D-22 | 出网与预览经 vsock | firecracker-backend | D-20 | 已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），可以开工；原状态：草案 | 近 |
+| D-21 | 客户机 rootfs 与镜像缓存 | firecracker-backend | D-20 | 已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），可以开工；原状态：草案。**排在 SBX-01 合进 main 之后**（2026-11-05 核对）：转换器要复用的 `oci_registry` 在 `claude/sbx-01-wip` 上已删掉、改写进 Go Sandbox Service，现在在 main 上做会和接手 SBX-01 的人冲突 | 近 |
+| D-22 | 出网与预览经 vsock | firecracker-backend | D-20 | 已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），可以开工；原状态：草案。**排在 SBX-01 合进 main 之后**（2026-11-05 核对）：代理与包镜像的变量（Worker 的 `sandbox.credentials`）与后端适配器在 `claude/sbx-01-wip` 上都搬进了 Go Sandbox Service | 近 |
 | FC-REAL | 独服上真 VM 的验收（耗时、密度） | firecracker-backend | D-21、D-22 | 待做 | 近 |
 | D-26 | 预热快照 | firecracker-backend | D-20、D-21 | 已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），可以开工；原状态：草案 | 远 |
 | PERF-00 | 分段量 Workspace 操作与历史加载的耗时；含 WK-LITE-03（进出 Worker 的字节数） | workspace-read 第 2、7 节 | — | Runtime 一侧已完成（`d180ae3` 测试、`fb971d2` 实现、`460b167` 面板检查；没部署）；coding-agent 的历史加载已完成（PERF-00-CA，coding-agent `6fc5e16` 测试、`6efb098` 实现；没部署） | 近 |
@@ -82,9 +82,9 @@
 | WS-READ-03 | 文件树与 diff 按工作区 generation 缓存 | workspace-read | （多副本时 CACHE-01） | 已完成（`d35923b`，没部署） | 远 |
 | WS-BLOB-01 | 存档块的节点本地 LRU 读缓存 | workspace-read | D-20（Firecracker 的块服务） | 已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），可以开工；原状态：草案 | 远 |
 | STOR-SEC | 存储直连的安全要求：PUT 签 checksum、If-None-Match、Content-Length，日志打码，精确主机放行 | workspace-read 第 8 节 | — | 已完成能先做的（`b65ab01`：`ObjectStore.SignedUpload`，两种语言；出网网关审计与日志不带查询串的测试）。真实 R2 上三个头是否强制执行要跑 `AR_LIVE_S3`（写真实的桶，要人点头）；精确主机放行与“只在那一次操作里开授权”随 WS-PULL-01 做 | 中 |
-| WS-PULL-01 | agent 按清单拉块、只传缺的块 | workspace-read 第 6 节 | D-28、STOR-SEC；Firecracker 下另要 D-20、WS-BLOB-01 | 已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），可以开工；原状态：草案 | 远 |
-| WK-LITE-01 | 命令输出由 agent 直接外置 | workspace-read 第 7 节 | D-28、STOR-SEC | 已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），可以开工；原状态：草案 | 远 |
-| WK-LITE-02 | 交付文件由 agent 直传 | workspace-read 第 7 节 | D-28、STOR-SEC、DEP-R（F3） | 已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），可以开工；原状态：草案 | 远 |
+| WS-PULL-01 | agent 按清单拉块、只传缺的块 | workspace-read 第 6 节 | D-28、STOR-SEC；Firecracker 下另要 D-20、WS-BLOB-01 | 已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），可以开工；原状态：草案。**排在 SBX-01 合进 main 之后**（2026-11-05 核对）：要改的 shell_run、交付与 Worker 到 agent 的那一段在 `claude/sbx-01-wip` 上都改调 Go Sandbox Service 了 | 远 |
+| WK-LITE-01 | 命令输出由 agent 直接外置 | workspace-read 第 7 节 | D-28、STOR-SEC | 已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），可以开工；原状态：草案。**排在 SBX-01 合进 main 之后**（2026-11-05 核对）：要改的 shell_run、交付与 Worker 到 agent 的那一段在 `claude/sbx-01-wip` 上都改调 Go Sandbox Service 了 | 远 |
+| WK-LITE-02 | 交付文件由 agent 直传 | workspace-read 第 7 节 | D-28、STOR-SEC、DEP-R（F3） | 已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），可以开工；原状态：草案。**排在 SBX-01 合进 main 之后**（2026-11-05 核对）：要改的 shell_run、交付与 Worker 到 agent 的那一段在 `claude/sbx-01-wip` 上都改调 Go Sandbox Service 了 | 远 |
 | ATOK-T | AGENT-TOK-01：测用户命令能否从 `/proc/1/environ` 读到 agent 令牌 | auth-tokens | — | 已完成（`a194d8b`；风险属实，见第 8 节） | 近 |
 | ATOK-F | AGENT-TOK-01 的修复（Go 版；Rust 版在 D-28 里同一条验收） | auth-tokens | ATOK-T | 已完成（`69a9a30`，Go 版；没部署） | 近 |
 | AUTH-01 | Ed25519 签名的标准 JWT，Runtime 只持公钥；第三方令牌的加密密钥独立 | auth-tokens | — | 已完成（代码；没部署，切换步骤见 auth-tokens 第 4 节） | 中 |
