@@ -60,6 +60,7 @@
 | U-2 | Resend：注册、建 API Key、加域名 `cgent.link`，把 Key 放到服务器上（如 `/root/.config/agentruntime/resend.key`，不贴进聊天）；DNS 记录照 Resend 给的加（或由 Claude 用 U-1 的令牌加） | F4 告警发邮件（发件人 `alerts@cgent.link`） | 告警只在 Grafana 里看得到 |
 | U-3 | GitHub App 设置：权限加 Issues 读写，订阅 `issue_comment` 事件；各安装（你自己的账号或组织）点同意新权限 | G-06：在 Issue 里 @ 机器人自动开 Task | 自动触发用不了，其余 App 功能照常 |
 | U-4 | 设计书原文档（Claude Docs）的更新：二选一，你自己按各计划里“设计书的改动建议”改；或者在对话里授权 Claude 用 Claude Docs 的工具直接改并重新导出（给出文档链接） | 设计书与代码一致（4.10、4.14、4.15、附录 A、Memory 的 C1、Sandbox Service） | 不挡 v1，只是设计书越来越旧 |
+| U-6 | 把 `sandbox/fc-manager-token` 加进 `agent-runtime-secrets`：在服务器上自己跑 `/root/ar-release/v1-fc/add-fc-token.sh`（备份 SOPS 文件与线上 Secret、加这一个键、重新加密、只 apply 这一个 Secret，不打印值）；或者在 Claude Code 的权限设置里放行这类操作，由 Claude 跑。两个会话写生产密钥都被自动权限检查拦下了（2026-11-05） | Firecracker 后端打开（第 33 版已登记，`enabled: false`），V1-FC 的线上验收 | Firecracker 一直关着 |
 | U-5（可选） | 模型中转站控制台里设月度花费上限 | 开放注册的兜底 | 平台内的每日、每月预算照样生效 |
 
 不再要用户做的：G-05 的测试 App（属于测试，挪到 v2）；两条 Reviewer 样本的标注复核（评测，挪到 v2）；`evals.cgent.link` 的 DNS（已经有了）；GitHub App 的 Client secret（第 25 版已部署）。
