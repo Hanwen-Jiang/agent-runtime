@@ -895,6 +895,32 @@ REAL-01 的检查（2026-11-04，在第 27 版上；目录 `rev29`，脚本 `smo
 - 租户切换（firecracker 后端在 Chart 里启用之后）：`real01` 的租户策略第 3 版只把 `sandbox.backend` 从 kata 改成 firecracker（种子在 `/root/ar-release/v1-fc/`，
   回退用第 2 版的种子再发一次）。
 
+V1-MCP 线上验收（2026-11-05，总表第 0 节完成标准第 1 条；第 33 版上线 N-15，第 34 版带 `97334bdb` 的修复；脚本与种子在 `/root/ar-release/mcp/`）：
+
+- 测试用的公网 MCP Server：`deploy/dev/mcp-test`（标准库写的 Streamable HTTP，鉴权头 `X-Api-Key`，值在 Secret `mcp-test-auth`）装在 agent-runtime 命名空间，
+  地址 `https://mcp-test.cgentpreview.website/mcp`（Cloudflare 的 `*.cgentpreview.website` 通配回到本机的 Traefik，IngressRoute `mcp-test`；预览的路由只认
+  `sbe-<16 位十六进制>`，不冲突）。工具：`echo`、`list_notes`（远端说只读）、`add_note`（destructive）。不带鉴权头 401。
+- 测试租户 `mcp01`（用户 `u1`，`task-service dev-token` 签的令牌）：租户策略 v1 是平台默认的第 2 版加 `effect_ceiling: write_irreversible` 与
+  `mcp: {allowed: true, hosts: [mcp-test.cgentpreview.website, mcp.deepwiki.com], max_connections: 5}`（`mcp01-policy-seed.json`）。网络密钥 `mcp_test_key`
+  经 UserSecretService 存。
+- 走的是网页背后的同一组调用（McpConnectionService、TaskService），没有在浏览器里点：线上 coding-web 只有第三方登录，这台机器上没有浏览器。
+  线上的 coding-web `fff9d4e` 发出的 `app.js` 里有“我的 MCP”，`/api/config` 的 `network_secrets` 为 true，`/api/mcp` 不登录 401。
+- 结果：
+  - 建连接（`demo`，引用 `mcp_test_key`、请求头 `X-Api-Key`）：第一次 state 为 ERROR、`mcp_unreachable`，`RefreshMcpTools` 之后 READY、3 个工具（Pod 没有 IPv6 出口，
+    第一次多半耗在 IPv6 上；`97334bdb` 改成先试 IPv4、每个地址 5 秒，失败时 task-service 记下传输层的错误）。同名同设置再建 `created` 为 false；
+    把 `add_note` 定成 read 被拒（`invalid_mcp_effect`）；没有 `mcp` 一节的租户 `mcp_not_allowed`；名单外的主机 `mcp_host_not_allowed`。
+  - 第一次提交 Task 报 `invalid_tenant_policy`：模型预算读租户策略时不认识顶层的 `mcp`（`libs/go-core/modelbudget` 与网关的严格解析）。`97334bdb` 修了，第 34 版上线。
+  - read 工具：`tsk_01M6PPEKGMCENBKJZA4A7XHR7C` done，交付里是工具返回的 `hello-mcp-read`，Server 记到 `echo` 调用（4 轮里调了 3 次：多出的轮是 Reviewer
+    的 `bad_structured_output` 回退与 `rule_done_without_changes`，归 V1-REV，不是 MCP 的问题）。0.25 美元。
+  - write_irreversible 拒绝：`tsk_01M6PQ00VJF6GA212QH10Q5MWG` 出了 `tool_approval`（`note_call.2.1`，选项 approve、reject），回 reject 之后 Task done、
+    如实说被拒；Server 上 `add_note` 0 次。批准的对照：`tsk_01M6PQ2BYENF7G6927TQVWMB6Y` approve 之后 Server 收到 1 次 `add_note`，`_meta` 里带着幂等键 `idk_…`。
+  - 删除后再调：`tsk_01M6PQ3G3FNR9DS72PHG9EZ6KK` 等审批时删掉连接（再删一次 `deleted` 为 false），然后 approve：调用被拒（denied），Server 上 0 次。
+    当时的说明是“没有登记”，`9d3ebfbb` 改成说租约已收回（`mcp_lease_revoked`），随下一版上线。调用进行中被收回、中途取消的那条路径没在线上走到。
+- 没做的：平台默认的租户策略没有加 `mcp`（想加 `default/v3`：通配常见的顶级域、`max_effect: read`，被会话的权限检查拦下，等用户定；种子备在
+  `/root/ar-release/mcp/`）。所以现在只有策略里写了 `mcp` 的租户能用，网页上的普通用户建连接会看到“账号的策略不允许登记 MCP Server”。
+- 回退：删掉测试的东西 `kubectl delete -f deploy/dev/mcp-test/mcp-test.yaml`、`kubectl -n agent-runtime delete secret mcp-test-auth configmap mcp-test-server`；
+  代码的回退是 `helm rollback ar 33`（第 34 版的修复）或 `32`（没有 MCP）。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
