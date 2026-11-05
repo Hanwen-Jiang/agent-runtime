@@ -1,0 +1,63 @@
+# 测试用的远程 MCP Server（N-15 线上验收，见 docs/plan/cloud-deploy.md 的 V1-MCP 一节）：公网地址
+# https://mcp-test.cgentpreview.website/mcp（走 Cloudflare 的 *.cgentpreview.website，与沙箱预览同一个通配；
+# 预览的路由只认 sbe-<16 位十六进制>，不冲突）。鉴权头 X-Api-Key 的值在 Secret mcp-test-auth（键 key）。
+# 镜像借用 Worker 的（里面有 Python），脚本在 ConfigMap 里。用完可以整份删掉：kubectl delete -f mcp-test.yaml。
+#
+# 装：kubectl -n agent-runtime create secret generic mcp-test-auth --from-literal=key=$(openssl rand -hex 24)
+#     kubectl -n agent-runtime create configmap mcp-test-server --from-file=server.py --dry-run=client -o yaml | kubectl apply -f -
+#     kubectl apply -f mcp-test.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-test
+  namespace: agent-runtime
+  labels: {app: mcp-test}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: mcp-test}}
+  template:
+    metadata:
+      labels: {app: mcp-test}
+    spec:
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: server
+          image: ghcr.io/agentruntime/worker:2d5c446
+          args: ["-I", "/srv/server.py"]
+          env:
+            - name: MCP_TEST_KEY
+              valueFrom: {secretKeyRef: {name: mcp-test-auth, key: key}}
+          ports: [{name: http, containerPort: 8080}]
+          readinessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 10}
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 128Mi}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          volumeMounts: [{name: script, mountPath: /srv, readOnly: true}]
+      volumes:
+        - name: script
+          configMap: {name: mcp-test-server}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-test
+  namespace: agent-runtime
+spec:
+  selector: {app: mcp-test}
+  ports: [{name: http, port: 8080, targetPort: http}]
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: mcp-test
+  namespace: agent-runtime
+spec:
+  entryPoints: [websecure]
+  routes:
+    - kind: Rule
+      match: Host(`mcp-test.cgentpreview.website`)
+      services: [{name: mcp-test, port: http}]
+  tls:
+    secretName: cgentpreview-origin-tls
