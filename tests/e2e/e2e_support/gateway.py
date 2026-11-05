@@ -131,7 +131,7 @@ class Gateway:
             "AR_MODEL_PROFILES_FILE": str(self.profiles_file),
             "AR_MODEL_PROVIDER": self.provider,
             "AR_SECRETS_FILE": str(self.secrets_file),
-            # 预算账本（R-06 的 model_usage）的 SQLite：不设时网关写进当前目录下的 data/（跑测试时是 tests/e2e/data）。
+            # 预算的用量记录（R-06 的 model_usage）所在的 SQLite：不设时网关写进当前目录下的 data/（跑测试时是 tests/e2e/data）。
             "AR_DATA_DIR": str(self.root / "data"),
         }
         if self.base_url:
