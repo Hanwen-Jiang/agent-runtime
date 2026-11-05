@@ -60,6 +60,10 @@ impl ApiError {
     }
 }
 
+/// 预热池里的 VM 记在这个作用域下（D-26）。它不是合法的 X-Sandbox-Owner（spec::valid_owner 不收），调用方冒充不了，
+/// 列表也不给（对账看不到它们，不会当孤儿删）。交给调用方时改成调用方的作用域，之后与新建的一样。
+pub const POOL_OWNER: &str = "_pool";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum State {
     Creating,
@@ -261,6 +265,11 @@ impl Manager {
                 "unsupported_runtime",
                 format!("没有 runtime {} 的镜像", spec.runtime),
             ));
+        }
+        if owner != POOL_OWNER
+            && let Some(c) = self.take_warm(owner, &spec, &labels)
+        {
+            return Ok(c);
         }
         let image = image_digest(&rootfs);
         let env_id = vm::new_env_id().map_err(|e| {
@@ -488,7 +497,7 @@ impl Manager {
         self.lock()
             .vms
             .values()
-            .filter(|v| v.state == State::Ready)
+            .filter(|v| v.state == State::Ready && v.rec.owner != POOL_OWNER)
             .map(|v| {
                 json!({
                     "env_id": v.rec.env_id,
@@ -504,6 +513,82 @@ impl Manager {
                 })
             })
             .collect()
+    }
+
+    /// 从预热池里拿一台同规格、同镜像的 VM 交给 owner（D-26）。池里的 VM 只起了基础镜像，没有任何租户的数据与变量。
+    fn take_warm(
+        &self,
+        owner: &str,
+        spec: &VmSpec,
+        labels: &BTreeMap<String, String>,
+    ) -> Option<Created> {
+        let current = image_digest(&self.cfg.images_dir.join(format!("{}.ext4", spec.runtime)));
+        let rec = {
+            let mut g = self.lock();
+            let vm = g.vms.values_mut().find(|v| {
+                v.rec.owner == POOL_OWNER
+                    && v.state == State::Ready
+                    && !v.busy
+                    && v.rec.spec == *spec
+                    && v.rec.image == current
+            })?;
+            vm.rec.owner = owner.to_string();
+            vm.rec.labels = labels.clone();
+            vm.rec.created_at = timefmt::rfc3339(SystemTime::now());
+            vm.rec.clone()
+        };
+        if let Err(e) = self.store.write(&rec) {
+            warn!("写 {} 的记录失败：{e}", rec.env_id);
+        }
+        info!("从预热池交出 {}（{owner}）", rec.env_id);
+        Some(Created {
+            env_id: rec.env_id,
+            created_at: rec.created_at,
+            image: rec.image,
+            spec: rec.spec,
+        })
+    }
+
+    /// 把预热池补满（定时跑）：每项按配置的台数补；镜像换了的旧待命 VM 拆掉。补不上（容量满）就等下次。
+    pub fn fill_pool(&self) {
+        for w in &self.cfg.warm_pool {
+            let current = image_digest(&self.cfg.images_dir.join(format!("{}.ext4", w.runtime)));
+            let (have, stale): (u32, Vec<String>) = {
+                let g = self.lock();
+                let mine: Vec<&Vm> = g
+                    .vms
+                    .values()
+                    .filter(|v| {
+                        v.rec.owner == POOL_OWNER
+                            && v.rec.spec.runtime == w.runtime
+                            && v.rec.spec.cpu_millis == w.cpu_millis
+                            && v.rec.spec.memory_mib == w.memory_mb
+                    })
+                    .collect();
+                let stale = mine
+                    .iter()
+                    .filter(|v| v.state == State::Ready && !v.busy && v.rec.image != current)
+                    .map(|v| v.rec.env_id.clone())
+                    .collect();
+                (mine.len() as u32, stale)
+            };
+            for id in &stale {
+                let _ = self.destroy(POOL_OWNER, id);
+            }
+            for _ in (have - stale.len() as u32)..w.count {
+                let req = CreateRequest {
+                    runtime: w.runtime.clone(),
+                    cpu_millis: w.cpu_millis,
+                    memory_mb: w.memory_mb,
+                    disk_mb: None,
+                    labels: BTreeMap::new(),
+                };
+                if let Err(e) = self.create(POOL_OWNER, req) {
+                    warn!("补预热池（{}）失败：{}", w.runtime, e.message);
+                    break;
+                }
+            }
+        }
     }
 
     /// 客户机端口 `port` 的预览入口（D-22）：在 fc-manager 的监听 IP 上开一个端口，返回 `IP:端口`。

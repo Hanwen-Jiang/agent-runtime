@@ -51,6 +51,15 @@ fn serve(cfg: Config) -> Result<(), String> {
             reaper.reap();
         }
     });
+    if !mgr.cfg.warm_pool.is_empty() {
+        let pool = mgr.clone();
+        std::thread::spawn(move || {
+            loop {
+                pool.fill_pool();
+                std::thread::sleep(std::time::Duration::from_secs(2));
+            }
+        });
+    }
     server::serve(mgr, tokens, listener).map_err(|e| e.to_string())
 }
 

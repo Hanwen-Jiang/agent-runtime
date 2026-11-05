@@ -47,7 +47,40 @@ pub struct Config {
     pub egress_target: Option<std::net::SocketAddr>,
     pub mirror_target: Option<std::net::SocketAddr>,
     pub max_forward_conns: usize,
+    /// 预热池（D-26 的待命 VM）：每项（runtime、cpu_millis、memory_mb、台数）。
+    pub warm_pool: Vec<WarmSpec>,
     pub fault: Option<Fault>,
+}
+
+/// 预热池的一项：按这个规格常备几台只有基础镜像、不属于任何租户的 VM。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WarmSpec {
+    pub runtime: String,
+    pub cpu_millis: u64,
+    pub memory_mb: u64,
+    pub count: u32,
+}
+
+/// `AR_FC_WARM_POOL=python:1000:512:2,universal:2000:4096:1`（runtime:毫核:MiB:台数，逗号分隔）。
+fn parse_warm_pool(v: &str) -> Result<Vec<WarmSpec>, String> {
+    let bad = || "AR_FC_WARM_POOL 要写成 runtime:毫核:MiB:台数，逗号分隔".to_string();
+    let mut out = vec![];
+    for item in v.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+        let parts: Vec<&str> = item.split(':').collect();
+        let [runtime, cpu, mem, count] = parts.as_slice() else {
+            return Err(bad());
+        };
+        if !spec::valid_runtime(runtime) {
+            return Err(bad());
+        }
+        out.push(WarmSpec {
+            runtime: runtime.to_string(),
+            cpu_millis: cpu.parse().map_err(|_| bad())?,
+            memory_mb: mem.parse().map_err(|_| bad())?,
+            count: count.parse().map_err(|_| bad())?,
+        });
+    }
+    Ok(out)
 }
 
 /// Unix socket 路径的上限（sun_path 108 字节，含结尾的 0）。
@@ -132,6 +165,7 @@ impl Config {
                     .map_err(|_| format!("{k} 要是 IP:端口（宿主上解析不了集群里的域名）")),
             }
         };
+        let warm_pool = parse_warm_pool(&text("AR_FC_WARM_POOL", ""))?;
         let egress_target = target("AR_FC_EGRESS_TARGET")?;
         let mirror_target = target("AR_FC_MIRROR_TARGET")?;
         let cfg = Config {
@@ -172,6 +206,7 @@ impl Config {
             egress_target,
             mirror_target,
             max_forward_conns: num("AR_FC_MAX_FORWARD_CONNS", 128)? as usize,
+            warm_pool,
             fault,
         };
         if u64::from(cfg.uid_base) + u64::from(cfg.max_vms) > u64::from(u32::MAX - 1) {
@@ -246,6 +281,7 @@ mod tests {
             ("AR_FC_GUEST_INIT", "sandbox-agent"),
             ("AR_FC_FAULT_INJECT", "whenever"),
             ("AR_FC_EGRESS_TARGET", "egress-gateway.svc:8095"),
+            ("AR_FC_WARM_POOL", "python:1000"),
             ("AR_FC_CHROOT_BASE", &format!("/{}", "x".repeat(80))),
         ] {
             let e = cfg(&[(k, v)]).unwrap_err();
