@@ -1,5 +1,6 @@
-"""测试里编译 sandbox-agent（D-28）：默认是 Rust 版（services/rs-sandbox-agent，仓库根的 Cargo workspace），给 kindtest
-（Linux 静态二进制，放进 FROM scratch 的镜像）与 cloudflaretest（本机的二进制，每个环境起一个进程）用。
+"""测试里编译 sandbox-agent（D-28）：默认是 Rust 版（services/rs-sandbox-agent，仓库根的 Cargo workspace）。py-worker 的测试
+（本机的二进制：真的 Sandbox Service 的本地后端每个环境起一个进程，SBX-01）与 scripts/kind_cluster.py（Linux 静态二进制，放进
+FROM scratch 的镜像）用。
 
 - 环境变量 AR_SANDBOX_AGENT_BIN 给现成的二进制时直接用（不编译）。
 - 两版并存的一个发布周期内，AR_SANDBOX_AGENT_IMPL=go 改用 Go 版（services/go-sandbox-agent）对照；之后 Go 版删掉，这个开关一起删。

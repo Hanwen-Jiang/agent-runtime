@@ -40,7 +40,7 @@ class SandboxSpec:
     allow_hosts: tuple[str, ...] = ()
     idle_timeout: timedelta = timedelta(minutes=10)
     workspace_id: str = ""
-    # 环境所属的会话（会话级沙箱，D-13）：只用来归属与复用（Worker 的 SandboxBroker 按它在沙箱环境表里找），后端不用解释它。
+    # 环境所属的会话（会话级沙箱，D-13）：只用来归属与复用（Sandbox Service 按它在沙箱环境表里找，SBX-01），后端不用解释它。
     session_id: str = ""
     # 显式的镜像（按项目定制的运行环境，D-17）：给了就不按 runtime 查登记。后端只接受部署登记的环境镜像仓库下的引用
     # （K8s 的 custom_image_prefix），别的一律 invalid；不支持的后端 invalid（unsupported_image）。

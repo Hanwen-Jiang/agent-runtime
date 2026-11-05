@@ -10,6 +10,7 @@ sandbox-agent 进程）。桩计划 shell 让一个 tool_loop 调 shell_run（in
 
 from __future__ import annotations
 
+import os
 import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
@@ -37,15 +38,14 @@ def s11_stack(tmp_path_factory: pytest.TempPathFactory) -> Iterator[DevStack]:
 
 
 def session_envs(stack: DevStack, session: str) -> list[tuple[str, str]]:
-    """这个会话在环境表里的环境（env_ref、state）：SQLite 时读 <AR_DATA_DIR>/relational/t1.sqlite3，Postgres 时经 psql。"""
-    env = stack.shared_env
-    if env.get("AR_RELATIONAL_DSN"):
-        dsn = with_search_path(env["AR_RELATIONAL_DSN"], stack.business_db.schema)
+    """这个会话在环境表里的环境（env_ref、state）：SQLite 时读 <数据目录>/relational/t1.sqlite3，Postgres 时经 psql。"""
+    if os.environ.get("AR_RELATIONAL_DSN"):
+        dsn = with_search_path(os.environ["AR_RELATIONAL_DSN"], stack.business_db.schema)
         # 行级安全：先在这个会话里设租户（与 Postgres 适配器一样），否则看不到任何行。
         out = psql(dsn, "SELECT set_config('agentruntime.tenant_id', 't1', false); "
                         f"SELECT env_ref || '|' || state FROM sandbox_envs WHERE session_id = '{session}' ORDER BY created_at")
         return [tuple(line.split("|", 1)) for line in out.splitlines() if "|" in line]  # type: ignore[misc]
-    db = Path(env["AR_DATA_DIR"]) / "relational" / "t1.sqlite3"
+    db = stack.data_dir / "relational" / "t1.sqlite3"
     with sqlite3.connect(db) as conn:
         return [(r[0], r[1]) for r in conn.execute("SELECT env_ref, state FROM sandbox_envs WHERE session_id = ? ORDER BY created_at", (session,))]
 

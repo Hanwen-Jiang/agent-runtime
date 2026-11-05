@@ -3,7 +3,7 @@
 应用（coding-agent）保存可复用、与仓库无关的环境配置；建工作区时把一份快照随 CreateWorkspace 带来（workspace.v1.WorkspaceEnvironment，
 task-service 校验过，这里存之前再核一遍），存在 workspaces 的行上（迁移 207，sandbox 不碰别的租户）。里面只有普通值与密钥的名字。
 
-- setup、start：Bash，SandboxBroker 在每个新的执行环境上先后跑（broker 的 _prepare）；各自最多 64 KiB。
+- setup、start：Bash，Sandbox Service 在每个新的执行环境上先后跑（services/go-sandbox-service 的 internal/broker，SBX-01）；各自最多 64 KiB。
 - env：.env 文本，一行一个 KEY=value（# 开头与空行忽略，行首尾空白去掉，值原样）；最多 64 个、合计 16 KiB；名字同 exec env 的规则，
   不能盖掉平台注入的变量（代理、包镜像、CA 证书包、AGENT_*），名字像机密的拒绝（机密只走网络密钥，Q27）。
 - network：open、restricted（hosts，每一项显式 include_subdomains）、deny；空表示旧客户端，不另加限制。执行点在出网网关。

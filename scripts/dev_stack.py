@@ -1,12 +1,12 @@
 """本地拉起整套（T-13，细化见 docs/plan/live-e2e.md 第 2 节第 1 条）：Temporal 开发服务、task-service（Registry 打开）、
-Model Gateway、Python Worker。人手动演示与 tests/e2e/live 的真模型用例用同一个脚本。只用标准库（同 check.py）。
+Model Gateway、Sandbox Service（SBX-01）、Python Worker。人手动演示与 tests/e2e/live 的真模型用例用同一个脚本。只用标准库（同 check.py）。
 
     uv run --no-sync python scripts/dev_stack.py up [--root 目录] [--provider mock|openai_compat] [--provider-env 文件]
                                                   [--decisions model|stub] [--tenant-effect 租户=effect]...
                                                   [--sandbox host|docker|local] [--workspace mount|archive] [--json]
     uv run --no-sync python scripts/dev_stack.py status [--json]      各组件是否在运行、地址与日志
     uv run --no-sync python scripts/dev_stack.py token --tenant t1 --user u1 [--scope task.approve]
-    uv run --no-sync python scripts/dev_stack.py kill worker          强杀一个组件（演示“杀 Worker 后恢复”）
+    uv run --no-sync python scripts/dev_stack.py kill worker          强杀一个组件（演示“杀 Worker 后恢复”；sandbox-service 同理）
     uv run --no-sync python scripts/dev_stack.py start worker         再拉起来
     uv run --no-sync python scripts/dev_stack.py env [与 up 相同的选项] [--json]   只打印各组件的环境变量，不启动
     uv run --no-sync python scripts/dev_stack.py down                 停掉全部（再 down 一次不报错）
@@ -24,10 +24,14 @@ Model Gateway、Python Worker。人手动演示与 tests/e2e/live 的真模型�
 - 输出：up、status 加 --json 时最后一行是 JSON（地址、pid、日志位置），不含任何密钥。建在 Runtime 上的应用（例如单独仓库里的
   coding agent）读这份报告接入本机的整套：Task API 地址、工作区根（workspace_root）、开发租户策略文件（policies_file）、
   开发签名密钥所在的文件（signing_key_file，只给路径）与 shell_run 的沙箱（sandbox）。
+- Sandbox Service（SBX-01）总是起：后端登记（sandbox-backends.json）是本地实现（不隔离，只给开发；每个环境一个 sandbox-agent
+  进程，进程在 sandboxes/ 下，down 时一起杀掉）。sandbox-agent 默认编译 Rust 版（要 cargo），AR_SANDBOX_AGENT_IMPL=go 时 Go 版，
+  AR_SANDBOX_AGENT_BIN 给现成的。Worker 与 task-service 的调用方令牌由 sandbox-service token 写进开发 SecretStore。Workspace API
+  （D-06）经它，三种 --sandbox 都可用。
 - --sandbox docker：Worker 的 shell_run 在一次性 Docker 容器里跑（不联网、限资源），要 PATH 上有 docker。
-- --sandbox local：Worker 经 Sandbox 接口跑（AR_TOOL_SHELL_SANDBOX=sandbox），后端是登记的本地实现（不隔离，只给开发）；
-  Workspace API（D-06）只在这时可用。--workspace archive 时这个后端是存档模式：工作区不在 workspaces/ 下，建环境时从
-  ObjectStore 里的快照恢复、销毁前存档（与 Cloudflare 后端一样）；mount（默认）时挂 workspaces/<租户>/<workspace>。
+- --sandbox local：Worker 的 shell_run 也经 Sandbox Service（AR_TOOL_SHELL_SANDBOX=sandbox）。--workspace archive 时本地后端是
+  存档模式：工作区不在 workspaces/ 下，建环境时从 ObjectStore 里的快照恢复、销毁前存档（与 Cloudflare 后端一样）；mount（默认）
+  时挂 workspaces/<租户>/<workspace>。
   封 Workspace API 凭据的密钥（workspace/credential-key）每次 up 随机生成，经 dev-secret 进开发 SecretStore。
   --allow-local-remotes 让 Workspace API 收 file:// 的仓库地址（只给测试）。
 """
@@ -53,9 +57,9 @@ DEFAULT_ROOT = Path.home() / ".agentruntime" / "dev-stack"
 DEFAULT_PROVIDER_ENV = Path.home() / ".agentruntime" / "model-provider.env"
 SEED_FILE = REPO_ROOT / "deploy" / "dev" / "registry-seed.json"
 PROFILES = {"openai_compat": REPO_ROOT / "deploy" / "dev" / "model-profiles.json", "mock": REPO_ROOT / "deploy" / "dev" / "mock-model-profiles.json"}
-COMPONENTS = ("temporal", "task-service", "model-gateway", "worker")
+COMPONENTS = ("temporal", "task-service", "model-gateway", "sandbox-service", "worker")
 # 报告里多一个 registry：它在 task-service 进程里，有自己的内部端口（T-08）。
-REPORTED = ("temporal", "task-service", "registry", "model-gateway", "worker")
+REPORTED = ("temporal", "task-service", "registry", "model-gateway", "sandbox-service", "worker")
 EFFECTS = ("none", "read", "write_reversible", "write_irreversible")
 WORKER_QUEUES = "task,decision,model,program,workspace"
 PROVIDER_KEY_NAME = "model-provider/api-key"
@@ -233,6 +237,11 @@ class Stack:
     def sandbox_backends_file(self) -> Path:
         return self.root / "sandbox-backends.json"
 
+    @property
+    def sandbox_state(self) -> Path:
+        """本地后端的环境（每个环境一个 sandbox-agent 进程）。"""
+        return self.root / "sandboxes"
+
     def log(self, name: str) -> Path:
         return self.root / "logs" / f"{name}.log"
 
@@ -266,7 +275,8 @@ class Stack:
                 "workspace": getattr(args, "workspace", "mount") or "mount",
                 "allow_local_remotes": bool(getattr(args, "allow_local_remotes", False)),
             },
-            "ports": {"temporal": free_port(), "temporal_ui": free_port(), "http": free_port(), "registry": free_port(), "gateway": free_port(), "internal": free_port()},
+            "ports": {"temporal": free_port(), "temporal_ui": free_port(), "http": free_port(), "registry": free_port(), "gateway": free_port(), "internal": free_port(),
+                      "sandbox": free_port()},
             "components": {},
         }
 
@@ -323,7 +333,10 @@ class Stack:
                 worker_path = str(Path(docker).parent) + os.pathsep + worker_path
             sandbox = {"AR_TOOL_SHELL_SANDBOX": "docker"}
         elif self.options.get("sandbox") == "local":
-            sandbox = {"AR_TOOL_SHELL_SANDBOX": "sandbox", "AR_SANDBOX_BACKENDS_FILE": str(self.sandbox_backends_file)}
+            sandbox = {"AR_TOOL_SHELL_SANDBOX": "sandbox"}
+        # Sandbox Service（SBX-01）：Worker 的沙箱与 Workspace 操作、task-service 的只读工作区方法都经它。之前 up 的运行目录里没有它。
+        service = "sandbox" in self.state["ports"]
+        sandbox_client = {"AR_SANDBOX_SERVICE_ADDRESS": self.address("sandbox"), "AR_SANDBOX_BACKENDS_FILE": str(self.sandbox_backends_file)} if service else {}
         local_remotes = {"AR_WORKSPACE_ALLOW_LOCAL_REMOTES": "1"} if self.options.get("allow_local_remotes") else {}
         # 逐字增量（DELTA）：task-service 的内部端口收 Worker 推来的增量；令牌由 task-service 写进共用的 AR_SECRETS_FILE。
         # 之前 up 的运行目录里没有这个端口，就不开。
@@ -341,11 +354,23 @@ class Stack:
                 "AR_REGISTRY_ADDR": self.address("registry"),
                 "AR_SCHEMAS_DIR": str(REPO_ROOT / "schemas"),
                 "AR_DEV_TENANT_POLICIES_FILE": str(self.policies_file),
+                **({"AR_SANDBOX_SERVICE_ADDRESS": self.address("sandbox")} if service else {}),
                 **deltas_in,
                 **local_remotes,
                 **self.shared_env(),
             },
             "model-gateway": gateway,
+            "sandbox-service": {
+                "AR_SANDBOX_SERVICE_ADDR": self.address("sandbox") if service else "",
+                "AR_SANDBOX_BACKENDS_FILE": str(self.sandbox_backends_file),
+                "AR_TOOL_WORKSPACE_ROOT": str(self.workspace_root),
+                "AR_DATA_DIR": str(self.data_dir),
+                "AR_SANDBOX_STATE_DIR": str(self.sandbox_state),
+                "AR_SANDBOX_AGENT_BIN": str(self.binary("sandbox-agent")),
+                "AR_REGISTRY_ADDRESS": self.address("registry"),
+                "AR_DEV_TENANT_POLICIES_FILE": str(self.policies_file),
+                **self.shared_env(),
+            },
             "worker": {
                 "AR_TEMPORAL_ADDRESS": self.address("temporal"),
                 "AR_DATA_DIR": str(self.data_dir),
@@ -360,6 +385,7 @@ class Stack:
                 "PATH": worker_path,
                 **deltas_out,
                 **sandbox,
+                **sandbox_client,
                 **local_remotes,
                 **self.shared_env(),
             },
@@ -370,12 +396,39 @@ class Stack:
         go = require("go")
         if self.options.get("sandbox") == "docker":
             require("docker")
-        for name, where in (("task-service", "services/go-task-service"), ("model-gateway", "services/go-model-gateway")):
+        for name, where in (("task-service", "services/go-task-service"), ("model-gateway", "services/go-model-gateway"), ("sandbox-service", "services/go-sandbox-service")):
             proc = subprocess.run(
                 [go, "build", "-o", str(self.binary(name)), f"./cmd/{name}"], cwd=REPO_ROOT / where, capture_output=True, text=True, encoding="utf-8", errors="replace"
             )
             if proc.returncode != 0:
                 raise StackError(f"编译 {name} 失败：\n{proc.stderr}")
+        self.build_agent()
+
+    def build_agent(self) -> None:
+        """本地后端每个环境起一个 sandbox-agent（D-28）：AR_SANDBOX_AGENT_BIN 给了就用它，AR_SANDBOX_AGENT_IMPL=go 时编译 Go 版，
+        否则编译 Rust 版（同 agentruntime_core.adapters.agentbuild；这里只用标准库）。"""
+        dest = self.binary("sandbox-agent")
+        given = os.environ.get("AR_SANDBOX_AGENT_BIN")
+        if given:
+            shutil.copy2(given, dest)
+            return
+        if os.environ.get("AR_SANDBOX_AGENT_IMPL", "rust") == "go":
+            args, cwd, built = [require("go"), "build", "-trimpath", "-o", str(dest), "./cmd/sandbox-agent"], REPO_ROOT / "services" / "go-sandbox-agent", dest
+        else:
+            args, cwd, built = [require("cargo"), "build", "--locked", "--release", "-p", "rs-sandbox-agent"], REPO_ROOT, REPO_ROOT / "target" / "release" / f"sandbox-agent{EXE}"
+        proc = subprocess.run(args, cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=1800)
+        if proc.returncode != 0:
+            raise StackError(f"编译 sandbox-agent 失败：\n{proc.stderr[-4000:]}")
+        if built != dest:
+            shutil.copy2(built, dest)
+        dest.chmod(0o755)
+
+    def service_token(self, caller: str) -> None:
+        """Sandbox Service 的调用方令牌（sandbox-service/tokens/<调用方>）：已有时不动，标准输出只有名字。"""
+        proc = subprocess.run([str(self.binary("sandbox-service")), "token", caller], env=child_env({"AR_SECRETS_FILE": str(self.secrets_file)}),
+                              capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
+        if proc.returncode != 0:
+            raise StackError(f"sandbox-service token {caller} 失败：{proc.stderr}")
 
     def dev_secret(self, name: str, value: str) -> None:
         proc = subprocess.run(
@@ -398,14 +451,15 @@ class Stack:
         self.policies_file.write_text(json.dumps({"tenants": {t: {"effect_ceiling": e} for t, e in sorted(effects.items())}}), "utf-8")
         self.dev_secret(PUBLISH_TOKEN_NAME, secrets.token_hex(24))
         self.dev_secret(WORKSPACE_KEY_NAME, secrets.token_hex(32))
-        if self.options.get("sandbox") == "local":
-            backend = {"kind": "local", "isolation": "none", "workspace": self.options.get("workspace", "mount")}
-            # Firecracker 只登记、不启用（D-19；实现在 D-20）。
-            firecracker = {"kind": "firecracker", "isolation": "microvm", "workspace": "archive", "enabled": False,
-                           "capabilities": ["snapshot", "block_attach", "vsock"]}
-            self.sandbox_backends_file.write_text(
-                json.dumps({"default": "local", "backends": {"local": backend, "firecracker": firecracker}}), "utf-8"
-            )
+        # 存档模式只在 --sandbox local 时（宿主机与 Docker 的 shell_run 直接用 workspaces/ 下的目录）。
+        mode = self.options.get("workspace", "mount") if self.options.get("sandbox") == "local" else "mount"
+        backend = {"kind": "local", "isolation": "none", "workspace": mode}
+        # Firecracker 只登记、不启用（D-19；实现在 D-20）。
+        firecracker = {"kind": "firecracker", "isolation": "microvm", "workspace": "archive", "enabled": False,
+                       "capabilities": ["snapshot", "block_attach", "vsock"]}
+        self.sandbox_backends_file.write_text(json.dumps({"default": "local", "backends": {"local": backend, "firecracker": firecracker}}), "utf-8")
+        for caller in ("worker", "task-service"):
+            self.service_token(caller)
         if self.options["provider"] == "openai_compat":
             key = self.provider_values().get("AR_MODEL_PROVIDER_API_KEY", "")
             if not key:
@@ -450,6 +504,10 @@ class Stack:
             components[name] = {"pid": pid, "log": str(log)}
             wait_until(lambda: http_ok(self.task_api + "/healthz"), "task-service 就绪", 90)
             wait_until(lambda: port_open(self.address("registry")), "Registry 的端口可连", 30)
+        elif name == "sandbox-service":
+            pid = spawn([str(self.binary(name)), "serve"], child_env(envs[name]), log)
+            components[name] = {"pid": pid, "log": str(log)}
+            wait_until(lambda: http_ok(f"http://{self.address('sandbox')}/healthz"), "sandbox-service 就绪", 60)
         elif name == "model-gateway":
             stdout = self.root / "logs" / "model-gateway.stdout.log"
             pid = spawn([str(self.binary(name)), "serve"], child_env(envs[name]), log, stdout=stdout)
@@ -474,6 +532,10 @@ class Stack:
     def down(self) -> None:
         for name in reversed(COMPONENTS):
             kill((self.state.get("components", {}).get(name) or {}).get("pid"))
+        # 本地后端的环境不随服务退出（服务重启后环境还在）：down 时一起杀掉。
+        binary = self.binary("sandbox-service")
+        if binary.exists() and self.sandbox_state.exists():
+            subprocess.run([str(binary), "kill-local", str(self.sandbox_state)], capture_output=True, timeout=60)
 
     # 报告
     def report(self) -> dict[str, Any]:
@@ -492,12 +554,15 @@ class Stack:
             "temporal": self.address("temporal") if self.state.get("ports") else "",
             "registry": self.address("registry") if self.state.get("ports") else "",
             "model_gateway": self.address("gateway") if self.state.get("ports") else "",
+            "sandbox_service": self.address("sandbox") if "sandbox" in (self.state.get("ports") or {}) else "",
             "workspace_root": str(self.workspace_root),
+            # 业务库（SQLite 时）所在的数据目录：task-service、Sandbox Service 与 Worker 共用。
+            "data_dir": str(self.data_dir),
             "policies_file": str(self.policies_file),
             "signing_key_file": str(self.signing_key_file),
             "sandbox": (self.state.get("options") or {}).get("sandbox", "host"),
-            # Workspace API（D-06）只在 sandbox 为 local 时可用；workspace 是这时工作区的模式（mount 或 archive）。
-            "workspace_api": (self.state.get("options") or {}).get("sandbox") == "local",
+            # Workspace API（D-06）经 Sandbox Service，起了它就可用；workspace 是本地后端的工作区模式（mount 或 archive）。
+            "workspace_api": "sandbox" in (self.state.get("ports") or {}),
             "workspace": (self.state.get("options") or {}).get("workspace", "mount"),
             "shared_env": self.shared_env(),
             "components": out,
@@ -617,7 +682,7 @@ def parser() -> argparse.ArgumentParser:
         sp.add_argument("--python", default="", help="Worker 用的 Python（默认跑这个脚本的）")
         sp.add_argument(
             "--sandbox", choices=("host", "docker", "local"), default="host",
-            help="Worker 的 shell_run 在宿主机（host）、一次性 Docker 容器（docker）里跑，还是经 Sandbox 接口的本地后端（local，Workspace API 要它）",
+            help="Worker 的 shell_run 在宿主机（host）、一次性 Docker 容器（docker）里跑，还是经 Sandbox Service 的本地后端（local）",
         )
         sp.add_argument("--workspace", choices=("mount", "archive"), default="mount", help="--sandbox local 时工作区挂卷（mount）还是存档模式（archive）")
         sp.add_argument("--allow-local-remotes", action="store_true", help="Workspace API 收 file:// 的仓库地址（只给测试）")

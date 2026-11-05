@@ -1,13 +1,11 @@
-"""工作区的存档与恢复（设计书改动稿 W2；D-06c，docs/plan/workspace-layer.md 第 2、3 节）。
+"""工作区的记录与存档（设计书改动稿 W2；D-06c，docs/plan/workspace-layer.md 第 2、3 节）。
 
-不挂工作区卷的后端（workspace: archive）靠这里把工作区搬进搬出环境：
+把工作区搬进搬出环境（存档：从环境导出 tar、按 sha256 存块、写清单；恢复：拼 tar、导入、逐项核对）在 Sandbox Service 里
+（SBX-01，services/go-sandbox-service 的 internal/archive，存储格式不变）。Worker 这边只留读写记录与 ObjectStore 里的元数据：
 
-- 存档（snapshot）：从环境导出 tar（SandboxArchive.export_archive，先写临时文件），逐个文件按 sha256 存成块
-  （ObjectStore 租户作用域的 workspaces/<ws>/blobs/<sha256>，已有的不再写），再写清单（workspaces/<ws>/snapshots/<id>.json），
-  记一行快照；只留最近 keep 份，没人引用的块删掉。导出的 tar 来自沙箱，不可信：名字、链接、类型与总大小在这里再核对一遍。
-- 恢复（restore）：按清单从块拼出 tar（临时文件，块的内容逐个核对 sha256），导入一个空的环境，再取环境的清单逐项核对
-  （路径、类型、大小、sha256、链接；权限位只恢复、不核对：Windows 上的开发实现表示不了）。不一致是 transient
-  （workspace_restore_mismatch），由 SandboxBroker 换一个环境再试一次。
+- 存储格式：块在 ObjectStore 租户作用域的 workspaces/<ws>/blobs/<sha256>，清单在 workspaces/<ws>/snapshots/<id>.json，
+  快照表记一行；只留最近 keep 份，没人引用的块删掉。
+- Worker 用到的：工作区的行（建、改状态、版本号、选用的环境配置）、最近的快照、复制快照（N-10，只记引用、不搬块）、删除。
 - 业务库（迁移 205，租户作用域）：workspaces、workspace_snapshots、workspace_pushes（推送的 gate 与幂等记录，见 operations）。
 
 同一个工作区同一时间只有一个可写的环境（沙箱环境表的规则），所以同一个工作区的存档与清理不会并发。
@@ -16,30 +14,36 @@
 from __future__ import annotations
 
 import contextlib
-import hashlib
-import io
 import json
 import re
 import secrets
-import tarfile
 import tempfile
 from collections.abc import Awaitable, Callable, Mapping
-from dataclasses import dataclass, fields, replace
+from dataclasses import dataclass, fields
 from datetime import datetime
 from pathlib import Path
-from typing import IO, Any
+from typing import Any
 
 from agentruntime_core.dev._common import PLATFORM_ID
-from agentruntime_core.dev.workdir import clean_name, link_inside
-from agentruntime_core.errors import ConflictError, DeniedError, InvalidError, NotFoundError, TransientError
+from agentruntime_core.errors import (
+    ConflictError,
+    DeniedError,
+    InvalidError,
+    NotFoundError,
+    TransientError,
+)
 from agentruntime_core.providers.object_store import ObjectStore, ObjectStoreProvider
-from agentruntime_core.providers.relational_store import Migration, RelationalStore, RelationalStoreProvider
+from agentruntime_core.providers.relational_store import (
+    Migration,
+    RelationalStore,
+    RelationalStoreProvider,
+)
 from agentruntime_core.providers.sandbox import FileEntry
 from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker.sandbox.env_config import BoundEnvironment, EnvironmentConfig
-from agentruntime_worker.sandbox.times import iso, utc_now
 from agentruntime_worker.sandbox.policy import WorkspaceLimits
+from agentruntime_worker.sandbox.times import iso, utc_now
 from agentruntime_worker.workspace import timing
 
 KEEP = 3
@@ -364,147 +368,6 @@ class WorkspaceArchiver:
         except (ValueError, KeyError, TypeError, AttributeError):
             raise InvalidError("workspace_manifest_corrupt", "快照的清单格式不对") from None
 
-    async def snapshot(self, box: Any, env_id: str, owner: str, workspace_id: str, *, max_bytes: int, env_ref: str = "") -> Snapshot:
-        """把环境里的工作区存一份快照，返回它。耗时记在 archive 阶段（PERF-00）。"""
-        with timing.phase("archive"):
-            return await self._snapshot(box, env_id, owner, workspace_id, max_bytes=max_bytes, env_ref=env_ref)
-
-    async def _snapshot(self, box: Any, env_id: str, owner: str, workspace_id: str, *, max_bytes: int, env_ref: str) -> Snapshot:
-        _require_archive(box)
-        bucket = self._bucket(owner)
-        previous = await self.latest(owner, workspace_id)
-        known: set[str] = set()
-        foreign: dict[str, str] = {}
-        if previous is not None:
-            with contextlib.suppress(TransientError, InvalidError):
-                prev_entries, foreign = await self._manifest(owner, previous)
-                known = {e.sha256 for e in prev_entries if e.type == "file" and e.sha256 not in foreign}
-        with self._tempfile() as tmp:
-            await box.export_archive(env_id, tmp, max_bytes=max_bytes)
-            timing.add_bytes("sandbox", "in", tmp.tell())
-            tmp.seek(0)
-            entries, total, new_blobs = await self._store_blobs(bucket, workspace_id, tmp, max_bytes=max_bytes, known=known, foreign=foreign)
-        # 复制来的、还没改过的文件：块仍在源工作区之下（N-10），清单照样记着它在哪。
-        used = {e.sha256: foreign[e.sha256] for e in entries if e.type == "file" and e.sha256 in foreign}
-        snapshot_id = new_snapshot_id()
-        now = iso(self._clock())
-        snap = Snapshot(
-            snapshot_id=snapshot_id, workspace_id=workspace_id, manifest_key=manifest_key(workspace_id, snapshot_id), created_at=now,
-            files=sum(1 for e in entries if e.type == "file"), size_bytes=total, new_blobs=new_blobs, env_ref=env_ref, blob_sources=_sources(used),
-        )
-        doc: dict[str, Any] = {
-            "version": MANIFEST_VERSION, "workspace_id": workspace_id, "snapshot_id": snapshot_id, "created_at": now,
-            "entries": [e.as_dict() for e in sorted(entries, key=lambda e: e.path)],
-        }
-        if used:
-            doc["blob_workspaces"] = dict(sorted(used.items()))
-        body = json.dumps(doc, ensure_ascii=False, separators=(",", ":")).encode()
-        await bucket.put(snap.manifest_key, body, content_type="application/json")
-        timing.add_bytes("object_store", "out", len(body))
-        await self.migrate()
-        async with self._db(owner).transaction() as tx:
-            row = await tx.query_one("SELECT MAX(seq) AS s FROM workspace_snapshots WHERE workspace_id = $1", (workspace_id,))
-            snap = replace(snap, seq=int((row or {}).get("s") or 0) + 1)
-            await tx.execute(
-                f"INSERT INTO workspace_snapshots ({', '.join(_SNAP_COLUMNS)}) VALUES ({', '.join(f'${i}' for i in range(1, len(_SNAP_COLUMNS) + 1))})",
-                [getattr(snap, c) for c in _SNAP_COLUMNS],
-            )
-            await tx.execute(
-                "UPDATE workspaces SET snapshot_id = $1, size_bytes = $2, files = $3, updated_at = $4 WHERE workspace_id = $5",
-                (snapshot_id, total, snap.files, now, workspace_id),
-            )
-        await self._prune(owner, workspace_id)
-        return snap
-
-    async def _store_blobs(
-        self, bucket: ObjectStore, workspace_id: str, src: IO[bytes], *, max_bytes: int, known: set[str], foreign: Mapping[str, str] | None = None,
-    ) -> tuple[list[FileEntry], int, int]:
-        entries: list[FileEntry] = []
-        seen: set[str] = set()
-        total = new_blobs = 0
-        try:
-            with tarfile.open(fileobj=src, mode="r|") as tar:
-                for member in tar:
-                    rel = clean_name(member.name)
-                    if rel == "." or rel == ".agentruntime":
-                        continue
-                    if rel in seen:
-                        raise InvalidError("invalid_archive", "导出的存档里有重名的项")
-                    seen.add(rel)
-                    mode = member.mode & 0o777
-                    if member.isdir():
-                        entries.append(FileEntry(path=rel, type="dir", mode=mode))
-                    elif member.issym():
-                        if not link_inside(rel, member.linkname):
-                            continue  # 指出工作区的链接不存（与 agent 导出时一样）
-                        entries.append(FileEntry(path=rel, type="symlink", mode=0, link=member.linkname))
-                    elif member.isreg():
-                        total += member.size
-                        if total > max_bytes:
-                            raise InvalidError("too_large", f"工作区超过上限 {max_bytes} 字节")
-                        reader = tar.extractfile(member)
-                        data = reader.read() if reader is not None else b""
-                        if len(data) != member.size:
-                            raise TransientError("workspace_archive_truncated", "导出的存档不完整")
-                        sha = hashlib.sha256(data).hexdigest()
-                        if sha not in known and sha not in (foreign or {}):
-                            key = blob_key(workspace_id, sha)
-                            try:
-                                await bucket.head(key)
-                            except NotFoundError:
-                                await bucket.put(key, data)
-                                timing.add_bytes("object_store", "out", len(data))
-                                new_blobs += 1
-                            known.add(sha)
-                        entries.append(FileEntry(path=rel, type="file", mode=mode, size=len(data), sha256=sha))
-                    else:
-                        raise InvalidError("invalid_archive", "导出的存档里只能有普通文件、目录与符号链接")
-        except tarfile.TarError:
-            raise TransientError("workspace_archive_truncated", "导出的存档不是完整的 tar") from None
-        return entries, total, new_blobs
-
-    async def restore(self, box: Any, env_id: str, owner: str, workspace_id: str, *, max_bytes: int, snapshot: Snapshot | None = None) -> Snapshot | None:
-        """把最近的（或给定的）快照恢复进一个空的环境；没有快照时什么也不做，返回 None。耗时记在 restore 阶段（PERF-00）。"""
-        _require_archive(box)
-        snap = snapshot or await self.latest(owner, workspace_id)
-        if snap is None:
-            return None
-        with timing.phase("restore"):
-            return await self._restore(box, env_id, owner, workspace_id, max_bytes=max_bytes, snap=snap)
-
-    async def _restore(self, box: Any, env_id: str, owner: str, workspace_id: str, *, max_bytes: int, snap: Snapshot) -> Snapshot:
-        entries, foreign = await self._manifest(owner, snap)
-        bucket = self._bucket(owner)
-        with self._tempfile() as tmp:
-            with tarfile.open(fileobj=tmp, mode="w", format=tarfile.PAX_FORMAT) as tar:
-                for entry in sorted(entries, key=lambda e: e.path):
-                    info = tarfile.TarInfo(entry.path)
-                    info.mode = entry.mode & 0o777
-                    if entry.type == "dir":
-                        info.type = tarfile.DIRTYPE
-                        tar.addfile(info)
-                    elif entry.type == "symlink":
-                        info.type, info.linkname, info.mode = tarfile.SYMTYPE, entry.link, 0o777
-                        tar.addfile(info)
-                    else:
-                        try:
-                            data = (await bucket.get(blob_key(foreign.get(entry.sha256, workspace_id), entry.sha256))).data
-                        except NotFoundError:
-                            raise TransientError("workspace_restore_mismatch", f"快照里 {entry.path} 的内容不见了") from None
-                        timing.add_bytes("object_store", "in", len(data))
-                        if len(data) != entry.size or hashlib.sha256(data).hexdigest() != entry.sha256:
-                            raise TransientError("workspace_restore_mismatch", f"快照里 {entry.path} 的内容与清单不符")
-                        info.size = len(data)
-                        tar.addfile(info, io.BytesIO(data))
-            size = tmp.tell()
-            tmp.seek(0)
-            await box.import_archive(env_id, tmp, size=size, max_bytes=max(max_bytes, snap.size_bytes, 1))
-            timing.add_bytes("sandbox", "out", size)
-        got = await box.manifest(env_id)
-        if shape(got) != shape(entries):
-            raise TransientError("workspace_restore_mismatch", "恢复后环境里的文件与快照的清单不一致")
-        return snap
-
     # --- 清理与删除 ---
 
     async def _prune(self, owner: str, workspace_id: str) -> None:
@@ -673,11 +536,6 @@ async def git_head(read: Callable[[str], Awaitable[bytes | None]]) -> tuple[str,
 
 
 _HEX = re.compile(r"^[0-9a-f]{40}([0-9a-f]{24})?$")
-
-
-def _require_archive(box: Any) -> None:
-    if not all(hasattr(box, m) for m in ("export_archive", "import_archive", "manifest")):
-        raise InvalidError("unsupported_archive", "这个沙箱后端不能导出、导入工作区")
 
 
 __all__ = ["KEEP", "MIGRATIONS", "Snapshot", "WorkspaceArchiver", "WorkspaceRecord", "blob_key", "manifest_key", "shape"]

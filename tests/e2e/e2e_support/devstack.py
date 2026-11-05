@@ -23,7 +23,7 @@ from e2e_support.business_db import BusinessDb
 from e2e_support.stack import REPO_ROOT
 
 SCRIPT = REPO_ROOT / "scripts" / "dev_stack.py"
-COMPONENTS = ("temporal", "task-service", "registry", "model-gateway", "worker")
+COMPONENTS = ("temporal", "task-service", "registry", "model-gateway", "sandbox-service", "worker")
 # T-13 live 用例的租户与用户：effect 上限 write_reversible（docs/plan/live-e2e.md 第 3 节第 3 条）。
 LIVE_TENANT = "t13"
 LIVE_USER = "u13"
@@ -116,6 +116,11 @@ class DevStack:
     @property
     def workspace_root(self) -> Path:
         return Path(self.info["workspace_root"])
+
+    @property
+    def data_dir(self) -> Path:
+        """业务库是 SQLite 时它在这下面的 relational/（task-service、Sandbox Service 与 Worker 共用）。"""
+        return Path(self.info["data_dir"])
 
     def log(self, component: str) -> Path:
         return Path(self.info["components"][component]["log"])
