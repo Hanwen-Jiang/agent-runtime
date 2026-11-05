@@ -301,6 +301,17 @@ fc-manager（Rust，宿主机上的 systemd 服务，不在 Pod 里）
 
 **依赖**：无（D-20 依赖它）。无契约变更。
 
+**状态（2026-11-05）：代码与离线验收已完成，没部署。** 测试 `b71e578`、`65c0f74`，实现 `ded75be`，切换 `3cff64e`。
+
+- 黑盒测试 `tests/sandbox-agent`（242 条）对 Go 版与 Rust 版都过：HTTP 与认证、命令、文件、取消与断开、存档（含 26 种恶意 tar）、令牌不可读，以及两版之间逐字节的对照（一组请求的状态码、响应体与关键的头）、随机拼的 400 个正则、Go 版导出的 golden（`golden/go-export.tar` 与清单，`make_golden.py`）与四个方向的交叉导入。Go 版的单元测试测内部函数的（Tail、PassThrough、mergeEnv 等）改成了 Rust 的单元测试与黑盒用例。验收 1～4 由它覆盖；`scripts/check.py` 的 `rust` 一步跑它。
+- 验收 5：Cloudflare 假桥上的一致性测试（`libs/py-core` 的 `test_cloudflare_sandbox.py`、`test_sandbox_exec_cancel.py`）与 py-worker 用假桥的测试已经换成 Rust 版并通过。kind（`AR_TEST_KIND=1`）在这个云开发环境里跑不了：Docker 是 cgroup v1，kind 0.33 的默认节点起不来，换 `kindest/node:v1.31.12` 后 kubelet 也建不了 Pod 的沙箱（嵌套的容器运行时），留给有 cgroup v2 的机器或 CI 的夜间任务（`python-cross-tenant` 那个 job 跑 py-core 的全部测试，含 kind）。镜像的构建阶段在这里用 Docker 验过：`sandbox-agent` 镜像能构建（构建时要信任本环境代理的 CA，正式构建不用），拿出来的二进制过黑盒测试。
+- 验收 6（2026-11-05，本机 Linux，Go 1.26.0 与 Rust 1.99.1）：静态二进制 Go 6,652,066 字节（`-trimpath -ldflags="-s -w"`），Rust 2,106,176 字节（musl、LTO、strip）。常驻内存：空闲 Go 6.4 MiB、Rust 1.4 MiB；跑一组负载（20 条各输出 100 KB 的命令、一条输出 8 MiB 的命令、对 225 个文件的清单、存档导出与搜索）之后，峰值 Go 53.6 MiB、Rust 31.1 MiB，结束后 Go 仍是 53.6 MiB（GC 没还给系统）、Rust 回到 1.8 MiB。
+- 换过去的：`deploy/images` 里 sandbox-agent、sandbox-python（Cloudflare 桥的镜像）、universal 与单一语言镜像的构建阶段（`rust:1.99.1-slim-bookworm`，musl 静态）；`agentruntime_core.adapters.agentbuild`（kindtest、cloudflaretest 用，`AR_SANDBOX_AGENT_IMPL=go` 在两版并存期间换回 Go 版，`AR_SANDBOX_AGENT_BIN` 给现成的）；CI 的 `rust` job 与 py-core、py-worker、夜间任务装 Rust；`rs-fc-manager.yml` 并进 `rust` 一步；fc-manager 成为根 workspace 的成员。
+- 没换的：SBX-01 新加的 `services/go-sandbox-service/internal/server/harness_test.go` 仍 `go build` Go 版 agent（那条线的文件，两版并存期间可用；SBX-01 那边空了时改成 cargo 或 `AR_SANDBOX_AGENT_BIN`）。Go 版 `services/go-sandbox-agent` 按计划保留一个发布周期，之后删掉它、`agentbuild` 的 go 分支与黑盒测试的 go 参数。
+- 与 Go 版有意不同、或做不到一样的：命令的 PATH 里有相对目录（如 `.`）时 Go 会转去查 agent 自己的 PATH，Rust 版跳过这一项；JSON 里不合法的 UTF-8 Go 换成 U+FFFD、Rust 版拒绝（400）；HTTP/1.0 的 keep-alive 不支持（回完就关）；Windows 上不记 CPU 时间（Go 版记）。这几处 Runtime 的客户端都碰不到。
+- Windows：`cargo clippy --target x86_64-pc-windows-gnu` 通过（编译得过），没在 Windows 上跑黑盒测试（这台机器没有 Windows），留给本机。
+- **部署（不归本项）**：要换的镜像是 `sandbox-agent`（K8s 沙箱 Pod 的 initContainer，`worker.shell.backends` 的 `agent_image`、Chart 的 `sandbox-prepull`）、`sandbox-python`（Cloudflare 桥，`wrangler deploy` 重新构建）、`sandbox-universal`、`sandbox-node`、`sandbox-go`，都按新的 tag 重新构建、推送、改 values。上线后要在真沙箱里探：① gVisor 与 Kata 里以 10001 跑的命令读不到 `/proc/<agent>/environ`、`cmdline`、`mem`（gVisor 自己模拟 /proc，PR_SET_DUMPABLE 的效果要实测；kind 那条测试也在 gVisor 上跑一次）；② 经 pods/proxy 与 Cloudflare 桥的取消：断开与 `/v1/exec/cancel` 都杀掉整个进程组；③ 用 Go 版存过的工作区快照恢复进 Rust 版的环境，清单一致；④ 没有 IPv6 的 Pod 里 `:7070` 退回 0.0.0.0；⑤ initContainer 的 `install` 子命令、只读根文件系统下照常；⑥ 真实负载下的常驻内存。出问题时回退：values 里的镜像 tag 换回上一版（Go 版的镜像还在）。
+
 ## 6. 测试策略（没有 KVM 的机器）
 
 沿用仓库已有的做法（`AR_TEST_KIND=1`、`AR_LIVE_CLOUDFLARE=1`）：
@@ -348,5 +359,12 @@ fc-manager（Rust，宿主机上的 systemd 服务，不在 Pod 里）
   - HTTP：自己写最小的 HTTP/1.1（`services/rs-fc-manager/src/http.rs`：从严解析、Content-Length 与 chunked、一个连接一个请求），不引入 HTTP 库与异步运行时。fc-manager 只有四个路由加一个按字节转发的代理，连 Firecracker 的 API 是 UDS 上的几个 PUT；小的 HTTP 库也要多审一套依赖，而转发要原样流过请求体并把断开传给 agent，用库反而绕。
   - TLS：不做，不引入 `rustls`。fc-manager 只听 k3s 的 cni0 地址（`10.42.0.1:8097`），Pod 到它的流量不离开宿主；公网网卡上 `ar-firewall` 只放 22；认证靠 SecretStore 平台作用域的令牌。多宿主（第 8 节，本期不做）时再换 `rustls` 或经已有的入口。
   - 实际的依赖：`libc` 0.2.191、`serde` 1.0.229（derive）、`serde_json` 1.0.154，以及它们带来的 `itoa`、`memchr`、`proc-macro2`、`quote`、`syn`、`unicode-ident`、`zmij`、`serde_core`、`serde_derive`；2026-11-04 核对 crates.io，都是 2026-10-16 或更早发布的。`cargo deny` 等 D-28 的 `deny.toml`。工具链 1.99.1（2026-10-13）。
+- **sandbox-agent 的 HTTP、TLS 与依赖（D-28 比较后定，2026-11-05）**：
+  - HTTP：自己写最小的 HTTP/1.1（`services/rs-sandbox-agent/src/http.rs`），行为照 Go 的 net/http：keep-alive、Content-Length 与 chunked 的请求体、`Expect: 100-continue`、请求头 10 秒内读完、2 KiB 以上的响应分块、HEAD；路由与路径规范化照 Go 的 ServeMux（非规范路径 307、方法不对 405）。不引 HTTP 库与异步运行时：一个连接一个线程，与 Go 版的 goroutine 对应；断开检测（`peer_gone`，peek 套接字）要拿到底层连接，用库反而绕。
+  - TLS：不做，与 Go 版一样是明文 HTTP。agent 只在沙箱里听，经 K8s API Server 的 pods/proxy、Cloudflare 桥或（D-20）vsock 到达，认证靠 `X-Sandbox-Token`（恒定时间比较）。
+  - tar：用 `tar` 0.4.46（`default-features = false`，不带 xattr）。只用它读写头与流，解包不用它的 unpack：名字、类型、上级目录、链接目标都自己核（`archive.rs`），恶意 tar 套件在 `tests/sandbox-agent`。
+  - **清单之外加了一个 `regex` 1.13.1（待人确认）**：`/v1/grep` 要与 Go 的 RE2 语法、语义一致（代审记录第 4 节的验收），自写一个正则引擎风险更大。只开 `std`、`unicode` 与几个不带新依赖的 perf 特性（不开 `perf-literal`，不拉 aho-corasick）；Go 写法到 regex 写法的改写与 Go 不收的写法在 `goregex.rs`，Go 1.26 收的 Unicode 类名表从 Go 生成。随机拼的 9000 个正则两版结果逐字节相同。人不同意时的替代：自写只支持 RE2 子集的回溯引擎，或 grep 退回固定字符串匹配（接口要改）。
+  - 实际的依赖（agent，`cargo tree -p rs-sandbox-agent -e normal`）：`libc` 0.2.191、`serde_json` 1.0.154（带 `serde_core`、`itoa`、`memchr`、`zmij`）、`sha2` 0.11.1（带 `digest`、`block-buffer`、`crypto-common`、`hybrid-array`、`typenum`、`cpufeatures`、`cfg-if`）、`tar` 0.4.46（带 `filetime`）、`regex` 1.13.1（带 `regex-automata` 0.4.18、`regex-syntax` 0.8.11），共 19 个；2026-11-04 核对 crates.io，最新的是 `libc`（2026-10-16），都满两周。没用 `serde` 的 derive（只用 `serde_json::Value`，JSON 自己按 Go 的格式写）。`deny.toml` 在仓库根：只收 MIT、Apache-2.0、Unicode-3.0，重复版本、通配版本、未知来源一律拒绝，安全公告与没人维护的都报；2026-11-04 通过。
+  - `unsafe` 只在 `libs/rs-sys`（prctl、kill、wait4、poll、faccessat、statfs、启动时删环境变量），其余 crate 由 workspace 的 lints 一律 deny；fc-manager 的 kill、geteuid、statfs 也挪了过去。
 - **工具链**：固定 Rust 版本（`rust-toolchain.toml`，同样满两周）；`scripts/check.py` 加一步 `rust`：`cargo fmt --check`、`cargo clippy -D warnings`、`cargo test`、`cargo deny check`；目标 `x86_64-unknown-linux-musl` 静态链接；fc-manager 不需要镜像（systemd 服务），`deploy/cluster/install.sh` 装二进制并核对哈希；sandbox-agent 在 `deploy/images` 的各镜像里换成 Rust 的构建阶段，D-21 的 rootfs 转换注入同一个静态二进制。本机是 Windows：Linux 目标在容器里编译。
 - **测试**：第 6 节的假 fc-manager 在 Python 测试里，与 fc-manager 的语言无关，照旧；fc-manager 自己的单元测试在 `cargo test` 里，真 VM 的用例同样由 `AR_TEST_FIRECRACKER=1` 控制。
