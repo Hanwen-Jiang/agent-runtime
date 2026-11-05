@@ -1,6 +1,6 @@
 # N-15 用户 MCP 连接的契约草案
 
-> 状态：契约草案（S-01），2026-11-04，**等人审**。`buf lint`、`buf breaking --against proto/breaking-baseline.binpb` 通过，生成代码已更新。审过之后再写实现，并更新兼容性基线。
+> 状态：契约 `556c881` 已人审通过；2026-11-05 V1-MCP 实现，见文末“实现”。原状态：契约草案（S-01），2026-11-04，**等人审**。`buf lint`、`buf breaking --against proto/breaking-baseline.binpb` 通过，生成代码已更新。审过之后再写实现，并更新兼容性基线。
 > 依据：[N-15/N-16 前置基线](n15-n16-contract-baseline-2026-11-02.md)与它的 10 个候选正反例（`tests/contract/fixtures/n15_n16_contract_cases.json`）；[代审结论](delegated-review-2026-11-04.md)与[后续](delegated-review-followup-2026-11-04.md)的 N-15 行（tenant/user 是归属边界；Server、Tool、Effect 三层都要授权，effect 由受信登记方定，不信远端自报；SecretStore 只给引用、只向授权的 HTTPS 目标注入；网关管会话，撤销后旧租约立即失效）；设计书 4.9（内核只认强类型的工具契约，外部 MCP 由边缘的 MCP Gateway 包装，effect 等人工补齐，未登记的不能调用）。现有的部署侧 stdio 登记（`AR_MCP_TOOLS_FILE`）不变。
 
 ## 草案
@@ -40,6 +40,18 @@
 4. 租约在提交时发、按当时的设置：之后改设置（比如把一个工具改成 read）不影响已经在跑的 Task。
 5. 远端给的工具说明与 schema 进模型的上下文：当作工具的说明，前面标明来自用户登记的 MCP Server。
 
-## 在实现之前
+## 实现（V1-MCP，2026-11-05）
 
-`McpConnectionService` 没挂到 task-service 上（调用得到 Unimplemented）；租户策略里写了 `mcp` 只经 Registry 校验，运行时不读它。
+`McpConnectionService` 之前没挂到 task-service 上（调用得到 Unimplemented），租户策略的 `mcp` 只经 Registry 校验、运行时不读。现在：
+
+| 部分 | 在哪 | 说明 |
+| --- | --- | --- |
+| 服务 | task-service `internal/mcp`（`dea948d6`） | 与 Task API 同一个端口。表 `mcp_connections`、`mcp_tools`、`mcp_leases` 在业务库，迁移 402。租户策略的 `mcp` 取自 Registry 的当前租户策略，没配 Registry 时一律不允许。连远端用 `libs/go-core/netguard`（出网网关那份规则的拷贝）拨号：只连域名、解析出的地址都要是公网、锁定地址；不跟重定向。`AR_MCP_DENY_CIDRS` 另加拒绝的网段（可选） |
+| 凭据 | 同上 | 连接只记 `secret_name` 与请求头名；值在连远端时从用户密钥那份 SecretStore（`AR_SECRETS_FILE` 的租户作用域 `user-secrets/<用户>/<名字>`）现读 |
+| 租约 | `SubmitTask`（`taskapi` 的 `McpLeases`）发；Session 的 `FinishTask` 与 `DeleteMcpConnection` 收回 | 一个 Task、一个连接一行，`tools` 是 JSON（工具名、内核名、说明、schema、effect、超时）。提交时策略不允许就不发 |
+| 网关 | Worker `agentruntime_worker/tools/mcp_http.py`（`e931b947`） | Streamable HTTP，标准库自写的 HTTP/1.1 客户端；会话按（租户，连接）在进程里持有，404 或断了下次调用重新 initialize。每次调用先查租约，调用中每 2 秒再查，收回了就取消（`mcp_lease_revoked`）。幂等键放在 `_meta` 的 `agentruntime/idempotency_key` |
+| 目录与工具定义 | `ToolCatalog`（带 task_id 时并入租约）、`resolve_catalog`、Planner 的 `ToolsContextSource`、tool_loop、`call_tool`（`LeasedToolDriverProvider.bind_task`） | 都按 task_id 读业务库，不经工作流，命令序列不变。内核名 `mcp.<连接>.<工具>`；给模型时点换成 `__`（厂商的工具名不收点），回来换回 |
+| 人批 | 现有的 tool_loop 逐次审批（`TOOL_LOOP_APPROVAL_PATCH`、`tool_gate`） | effect 取自租约，write_irreversible 每次先问人，拒绝不执行；Task 的 effect 上限要到 write_irreversible 才调得了 |
+| 网页 | coding-agent `internal/server/mcp.go` 与 `app.js` 的 `openMcp`（`04c91e7`） | 账号页的“我的 MCP”：建连接（鉴权头选“网络密钥”页里的名字）、看工具、逐个打开并定只读或不可逆写、刷新、删除。网络密钥页随之打开（`CODING_NETWORK_SECRETS=1`） |
+
+没做的（不挡 v1）：删除连接时 Worker 不主动发 DELETE 结束远端会话（租约收回后下次调用直接 denied，会话空着，Worker 重启时没了）；Planner 的目录只有工具名与 effect，没有说明（tool_loop 里有）；远端的 outputSchema 不校验。
