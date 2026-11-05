@@ -1,4 +1,4 @@
-"""按项目定制的运行环境的构建工作流（D-17；做什么见 agentruntime_worker.sandbox.environments）。
+"""按项目定制的运行环境的构建工作流（D-17）。构建已经搬进 Sandbox Service（SBX-01），这个工作流只为回放旧的运行留着，activity 见 sandbox.retired。
 
 每个（租户，环境定义的键）一个工作流，ID 是 env-build-<租户>-<键的前 32 位>：同一个定义同时只有一个构建。工作流只排一个
 build_environment activity（program 队列：起构建的 Job、等它、把产物推进仓库、记下结果）；构建可能要半小时，Worker 中途

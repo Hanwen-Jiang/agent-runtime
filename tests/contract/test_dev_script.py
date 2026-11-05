@@ -139,12 +139,12 @@ def test_steps_declare_the_tools_they_need() -> None:
     tools = {s["id"]: set(s["tools"]) for s in plan("--tier", "full")["steps"]}
     assert {"buf"} <= tools["proto"]
     assert {"uv", "buf", "go"} <= tools["contract"]
-    assert {"go", "temporal", "postgres"} <= tools["go"]
+    assert {"go", "temporal", "postgres", "docker", "cargo", "kind", "kubectl"} <= tools["go"], "SBX-01：K8s 沙箱的测试在 Go 里，用 kind"
     assert {"cargo", "cargo-deny", "go", "uv"} <= tools["rust"], "D-28：Rust 的检查与两版 agent 的黑盒测试"
-    assert {"uv", "temporal", "postgres", "qdrant", "docker", "go", "cargo", "kind", "kubectl"} <= tools["py-core"]
+    assert {"uv", "temporal", "postgres", "qdrant", "docker"} <= tools["py-core"]
     assert {"uv", "postgres", "qdrant"} <= tools["py-memory"]
     assert {"uv", "docker"} <= tools["py-learning"]
-    assert {"uv", "temporal", "cargo"} <= tools["py-worker"], "沙箱的测试编译 Rust 版 sandbox-agent"
+    assert {"uv", "temporal", "go", "cargo"} <= tools["py-worker"], "沙箱的测试编译 Sandbox Service 与 Rust 版 sandbox-agent"
     assert {"uv", "go", "temporal"} <= tools["e2e"] and {"uv", "go", "temporal"} <= tools["faults"]
 
 

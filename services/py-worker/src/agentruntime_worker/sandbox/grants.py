@@ -20,14 +20,16 @@ import ipaddress
 import json
 import re
 import secrets
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, fields
 from datetime import datetime, timedelta
 from typing import Any
 
 from agentruntime_core.errors import DeniedError, InvalidError
+from agentruntime_core.providers.relational_store import RelationalStore, RelationalStoreProvider
+from agentruntime_core.tenancy import TenantContext
 
-from agentruntime_worker.sandbox.ledger import SandboxLedger, iso
+from agentruntime_worker.sandbox.times import iso, utc_now
 
 GRANT_MINUTES = (15, 30, 60)
 DEFAULT_PORTS = (80, 443)
@@ -212,10 +214,15 @@ def new_grant_id() -> str:
 
 
 class GrantStore:
-    """sandbox_grants 的读写（表在 SandboxLedger 的迁移里）。出网网关（Go）读同一张表，task-service 也写它。"""
+    """sandbox_grants 的读写。表的迁移归 Sandbox Service（SBX-01）；出网网关（Go）读同一张表，task-service 也写它。
+    Worker 只在审批联网（request_network、Workspace 操作连远端）时写，读写都按租户绑定业务库。"""
 
-    def __init__(self, ledger: SandboxLedger) -> None:
-        self.ledger = ledger
+    def __init__(self, store: RelationalStoreProvider, *, clock: Callable[[], datetime] = utc_now) -> None:
+        self._store = store
+        self.clock = clock
+
+    def bind(self, owner: str) -> RelationalStore:
+        return self._store.bind(TenantContext(tenant_id=owner))
 
     async def create(
         self,
@@ -230,8 +237,7 @@ class GrantStore:
         preview_env: str = "",
         preview_target: str = "",
     ) -> Grant:
-        await self.ledger.migrate()
-        now = self.ledger.clock()
+        now = self.clock()
         grant = Grant(
             grant_id=new_grant_id(), owner=owner, task_id=task_id, hosts=request.hosts, ports=request.ports,
             expires_at=iso(now + timedelta(minutes=request.minutes)), state="active", created_at=iso(now), workspace_id=workspace_id,
@@ -242,7 +248,7 @@ class GrantStore:
         row = {c: getattr(grant, c) for c in _COLUMNS if c not in ("hosts", "ports")}
         row["hosts"] = json.dumps(list(grant.hosts))
         row["ports"] = json.dumps(list(grant.ports))
-        async with self.ledger.bind(owner).transaction() as tx:
+        async with self.bind(owner).transaction() as tx:
             await tx.execute(
                 f"INSERT INTO sandbox_grants ({', '.join(_COLUMNS)}) VALUES ({', '.join(f'${i}' for i in range(1, len(_COLUMNS) + 1))})",
                 [row[c] for c in _COLUMNS],
@@ -250,34 +256,30 @@ class GrantStore:
         return grant
 
     async def for_task(self, owner: str, task_id: str, *, active_only: bool = True) -> list[Grant]:
-        await self.ledger.migrate()
-        async with self.ledger.bind(owner).transaction(read_only=True) as tx:
+        async with self.bind(owner).transaction(read_only=True) as tx:
             rows = await tx.query(f"SELECT {', '.join(_COLUMNS)} FROM sandbox_grants WHERE task_id = $1 ORDER BY created_at", (task_id,))
         grants = [Grant.from_row(owner, r) for r in rows]
         if active_only:
-            now = self.ledger.clock()
+            now = self.clock()
             grants = [g for g in grants if g.active(now)]
         return grants
 
     async def revoke_task(self, owner: str, task_id: str) -> int:
         """收回这个 Task 的全部授权；返回收回了几个。Task 结束时 task-service 的 FinishTask 做同样的事。"""
-        await self.ledger.migrate()
-        async with self.ledger.bind(owner).transaction() as tx:
+        async with self.bind(owner).transaction() as tx:
             return await tx.execute(
-                "UPDATE sandbox_grants SET state = 'revoked', revoked_at = $1 WHERE task_id = $2 AND state = 'active'", (iso(self.ledger.clock()), task_id)
+                "UPDATE sandbox_grants SET state = 'revoked', revoked_at = $1 WHERE task_id = $2 AND state = 'active'", (iso(self.clock()), task_id)
             )
 
     async def revoke_all(self, owner: str, reason: str = "tenant deleted") -> int:
-        await self.ledger.migrate()
-        async with self.ledger.bind(owner).transaction() as tx:
+        async with self.bind(owner).transaction() as tx:
             return await tx.execute(
-                "UPDATE sandbox_grants SET state = 'revoked', revoked_at = $1 WHERE state = 'active'", (iso(self.ledger.clock()),)
+                "UPDATE sandbox_grants SET state = 'revoked', revoked_at = $1 WHERE state = 'active'", (iso(self.clock()),)
             )
 
     async def audit(self, owner: str, task_id: str) -> list[dict[str, Any]]:
         """出网网关记下的这个 Task 的每个连接（主机、字节数、时长、结果），按时间排。"""
-        await self.ledger.migrate()
-        async with self.ledger.bind(owner).transaction(read_only=True) as tx:
+        async with self.bind(owner).transaction(read_only=True) as tx:
             rows = await tx.query(
                 "SELECT audit_id, grant_id, env_ref, direction, host, port, address, started_at, duration_ms, up_bytes, down_bytes, result, reason "
                 "FROM sandbox_egress_audit WHERE task_id = $1 ORDER BY started_at, audit_id",

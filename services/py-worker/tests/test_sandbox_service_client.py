@@ -25,7 +25,7 @@ from agentruntime_core.dev.telemetry import ConsoleTelemetryProvider
 from agentruntime_core.dev.tool_driver import LocalToolDriverProvider
 from agentruntime_core.tenancy import TenantContext
 
-from sandbox_service_support import WORKER_TOKEN, SandboxService
+from .sandbox_service_support import WORKER_TOKEN, SandboxService
 
 S1 = "ses_01HZY2J5K3M4N5P6Q7R8S9T0VW"
 S2 = "ses_01HZY2J5K3M4N5P6Q7R8S9T0VX"

@@ -125,6 +125,15 @@ type Broker struct {
 	leases   map[string]*Lease
 	cold     ColdOptions
 	lastCool time.Time
+	// 同一个借用上的命令一条一条执行（execLock）；被取消、沙箱又没确认停下的命令记在 notStopped 里，直到还掉这个借用：
+	// 之后的命令（Worker 还原检查点）报 conflict（exec_not_stopped），不在可能还在跑的命令旁边改文件。
+	execLocks  map[string]*execLock
+	notStopped map[string]bool
+}
+
+type execLock struct {
+	mu   sync.Mutex
+	refs int
 }
 
 // New 构造。
@@ -139,7 +148,7 @@ func New(o Options) *Broker {
 		o.Logger = slog.Default()
 	}
 	return &Broker{reg: o.Registry, policies: o.Policies, ledger: o.Ledger, archiver: o.Archiver, store: o.Store, creds: o.Credentials, opts: o,
-		log: o.Logger, leases: map[string]*Lease{}}
+		log: o.Logger, leases: map[string]*Lease{}, execLocks: map[string]*execLock{}, notStopped: map[string]bool{}}
 }
 
 // Registry、Ledger、Archiver、Policies 给服务的其余部分用。
@@ -812,6 +821,7 @@ func (b *Broker) forget(id string) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	delete(b.leases, id)
+	delete(b.notStopped, id)
 }
 
 // Get 按 lease_id（env_ref）取回借用：先看进程内的，没有时按环境表恢复（服务重启之后）。别的租户、已结束的：not_found。
@@ -871,7 +881,48 @@ func (b *Broker) Exec(ctx context.Context, lease *Lease, argv []string, timeout 
 	for k, v := range lease.Env {
 		env[k] = v
 	}
-	return lease.Box.Exec(ctx, lease.EnvID, argv, sandbox.ExecOptions{Timeout: timeout, Stdin: stdin, Env: env})
+	unlock := b.lockExec(lease.ID())
+	defer unlock()
+	if b.stillRunning(lease.ID()) {
+		return sandbox.ExecResult{}, providererr.New(providererr.Conflict, "exec_not_stopped",
+			"上一条被取消的命令沙箱没确认停下，可能还在跑：这个环境先不执行别的命令，还掉之后再借")
+	}
+	res, err := lease.Box.Exec(ctx, lease.EnvID, argv, sandbox.ExecOptions{Timeout: timeout, Stdin: stdin, Env: env})
+	if errors.Is(err, sandbox.ErrExecNotStopped) {
+		b.mu.Lock()
+		b.notStopped[lease.ID()] = true
+		b.mu.Unlock()
+		b.log.Warn("取消命令之后沙箱没确认它停了", "env_ref", lease.ID(), "backend", lease.Backend)
+	}
+	return res, err
+}
+
+// lockExec 拿到这个借用的执行锁；返回的函数放掉它。
+func (b *Broker) lockExec(id string) func() {
+	b.mu.Lock()
+	l := b.execLocks[id]
+	if l == nil {
+		l = &execLock{}
+		b.execLocks[id] = l
+	}
+	l.refs++
+	b.mu.Unlock()
+	l.mu.Lock()
+	return func() {
+		l.mu.Unlock()
+		b.mu.Lock()
+		l.refs--
+		if l.refs == 0 {
+			delete(b.execLocks, id)
+		}
+		b.mu.Unlock()
+	}
+}
+
+func (b *Broker) stillRunning(id string) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.notStopped[id]
 }
 
 // --- 还 ---
@@ -921,6 +972,9 @@ func (b *Broker) flushHolders(ctx context.Context, owner, workspaceID string) er
 // Release 用完：会话级的环境留着（顺延空闲、记 CPU 时间），一次性的销毁（存档模式的可写环境先存档，skipSnapshot 时不存）。存档暂时
 // 失败时环境留着、报错，由下一轮对账或下一个要写的环境再存；永久性的失败照样销毁、报错。
 func (b *Broker) Release(ctx context.Context, lease *Lease, keep bool, cpuMS int64, skipSnapshot ...bool) error {
+	b.mu.Lock()
+	delete(b.notStopped, lease.ID())
+	b.mu.Unlock()
 	if lease.Record != nil {
 		rec, err := b.ledger.Touch(ctx, *lease.Record, ledger.TouchArgs{CPUMS: cpuMS})
 		if err != nil {

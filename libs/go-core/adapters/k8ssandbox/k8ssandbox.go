@@ -334,6 +334,7 @@ func (b *box) lookup(ctx context.Context, envID string) (*pod, error) {
 }
 
 func (b *box) Create(ctx context.Context, spec sandbox.Spec) (sandbox.Env, error) {
+	spec = spec.WithDefaults()
 	p, c := b.p, b.p.cfg
 	if err := p.faults.Check("create"); err != nil {
 		return sandbox.Env{}, err

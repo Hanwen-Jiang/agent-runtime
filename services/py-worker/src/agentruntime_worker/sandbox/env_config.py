@@ -36,7 +36,7 @@ MODES = {"": "", "NETWORK_MODE_UNSPECIFIED": "", "NETWORK_MODE_OPEN": "open", "N
 # 沙箱信任出网网关 CA 的证书包（有网络密钥时由 broker 写进环境，ENV-02）。
 CA_BUNDLE = "/tmp/agentruntime-ca.pem"
 CA_ENV = ("SSL_CERT_FILE", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE", "NODE_EXTRA_CA_CERTS", "GIT_SSL_CAINFO")
-# 平台注入的变量（sandbox.credentials 的 _RESERVED 加上 CA 证书包）：.env 不能盖掉；与 task-service 的 workspaceapi 一致。
+# 平台注入的变量（Sandbox Service 的 broker.Reserved，含 CA 证书包）：.env 不能盖掉；与 task-service 的 workspaceapi 一致。
 RESERVED = frozenset({
     "PIP_INDEX_URL", "UV_DEFAULT_INDEX", "PIP_TRUSTED_HOST", "NPM_CONFIG_REGISTRY", "GOPROXY", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",
     "ALL_PROXY", "NPM_CONFIG_PROXY", "NPM_CONFIG_HTTPS_PROXY", "NPM_CONFIG_AUDIT", "NPM_CONFIG_FUND", "GONOSUMDB", "GOFLAGS", *CA_ENV,

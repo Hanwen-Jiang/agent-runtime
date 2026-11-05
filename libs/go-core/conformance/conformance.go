@@ -221,3 +221,11 @@ func RunErrorRules[C any](t *testing.T, newHarness func(t *testing.T) (Binder[C]
 		})
 	}
 }
+
+// Must2 同 Must，给返回两个值的调用。
+func Must2[A, B any](a A, b B, err error) (A, B) {
+	if err != nil {
+		panic(mustFailure{err})
+	}
+	return a, b
+}

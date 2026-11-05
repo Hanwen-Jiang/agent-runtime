@@ -222,6 +222,7 @@ func (b *box) get(envID string) (*meta, error) {
 }
 
 func (b *box) Create(ctx context.Context, spec sandbox.Spec) (sandbox.Env, error) {
+	spec = spec.WithDefaults()
 	if err := b.p.opts.Faults.Check("create"); err != nil {
 		return sandbox.Env{}, err
 	}

@@ -99,7 +99,12 @@ func (c Client) Exec(ctx context.Context, ep Endpoint, argv []string, opts sandb
 			cancelCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
 			cb, _ := json.Marshal(map[string]string{"exec_id": id})
-			_, _, _ = c.call(cancelCtx, ep, http.MethodPost, "/v1/exec/cancel", cb, "application/json", 3*time.Second)
+			cs, _, cerr := c.call(cancelCtx, ep, http.MethodPost, "/v1/exec/cancel", cb, "application/json", 3*time.Second)
+			if cerr != nil || cs < 200 || cs >= 300 {
+				// 没确认停下（旧的 agent 没有取消接口是 404）：调用方不能当它停了。
+				return sandbox.ExecResult{}, fmt.Errorf("%w（%w）", ctx.Err(), sandbox.ErrExecNotStopped)
+			}
+			return sandbox.ExecResult{}, ctx.Err()
 		}
 		return sandbox.ExecResult{}, err
 	}

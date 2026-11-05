@@ -78,11 +78,12 @@ jobs:
             ${{ runner.temp }}/e2e-postgres-junit.xml
 
   go-cross-tenant:
-    name: Go 测试（一致性与越权用例，含 Postgres 行级安全）
+    name: Go 测试（一致性与越权用例，含 Postgres 行级安全与 kind 里的 K8s 沙箱）
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       TEMPORAL_CLI_VERSION: "1.9.1"
+      KIND_VERSION: "0.33.0"
     steps:
       - uses: actions/checkout@v4
 
@@ -97,6 +98,18 @@ jobs:
           curl -sSfL "https://github.com/temporalio/cli/releases/download/v${TEMPORAL_CLI_VERSION}/temporal_cli_${TEMPORAL_CLI_VERSION}_linux_amd64.tar.gz" \
             | tar -xz -C "$HOME/.local/bin" temporal
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # libs/go-core 的沙箱后端测试编译 Rust 版 sandbox-agent（testkit，D-28）：runner 预装了 rustup，按 rust-toolchain.toml 装。
+      - name: 安装 Rust（rust-toolchain.toml）
+        run: |
+          rustup toolchain install || rustup show
+          cargo --version
+
+      - name: 安装 kind（libs/go-core 的 K8s 沙箱测试用它拉起集群；runner 预装了 kubectl）
+        run: |
+          curl -sSfL -o "$HOME/.local/bin/kind" "https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-linux-amd64"
+          chmod +x "$HOME/.local/bin/kind"
+          echo "AR_KIND_WORKSPACES=$RUNNER_TEMP/kind-workspaces" >> "$GITHUB_ENV"
 
       - name: 找到预装的 Postgres 二进制（initdb、pg_ctl、psql）
         run: |
@@ -121,32 +134,12 @@ jobs:
       QDRANT_VERSION: "1.19.1"
       AR_MILVUS_IMAGE: "milvusdb/milvus:v3.0.2"
       TEMPORAL_CLI_VERSION: "1.9.1"
-      KIND_VERSION: "0.33.0"
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.27"
-          cache-dependency-path: "**/go.sum"
 
       - uses: astral-sh/setup-uv@v6
         with:
           version: "0.12.x"
-
-      # py-core 的 K8s 与 Cloudflare 假桥的测试编译 Rust 版 sandbox-agent（D-28）：runner 预装了 rustup，按 rust-toolchain.toml 装。
-      - name: 安装 Rust（rust-toolchain.toml）
-        run: |
-          rustup toolchain install || rustup show
-          cargo --version
-
-      - name: 安装 kind（py-core 的 K8s 沙箱测试用它拉起集群；runner 预装了 kubectl）
-        run: |
-          mkdir -p "$HOME/.local/bin"
-          curl -sSfL -o "$HOME/.local/bin/kind" "https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-linux-amd64"
-          chmod +x "$HOME/.local/bin/kind"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          echo "AR_KIND_WORKSPACES=$RUNNER_TEMP/kind-workspaces" >> "$GITHUB_ENV"
 
       - name: 安装 Temporal CLI（py-core 里 DurableEngine 的一致性测试用）
         run: |

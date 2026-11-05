@@ -130,8 +130,9 @@ def all_steps(root: Path, *, committed: bool = False) -> dict[str, Step]:
             ["tests/contract", *(["tests/deploy"] if deploy else []), "-k", "not test_go_modules_build_vet_and_test"],
             ["uv", "buf", "go", *(["helm"] if deploy else [])],
         ),
-        # docker：libs/go-core 的 Valkey 适配器的测试拉起一次性容器（valkeytest，CACHE-01）。
-        Step(id="go", title="Go：go.work 的每个模块 build、vet、test", commands=go, tools=["go", "temporal", "postgres", "docker"]),
+        # docker：libs/go-core 的 Valkey 适配器的测试拉起一次性容器（valkeytest，CACHE-01）；kind、kubectl：libs/go-core 的 K8s 沙箱
+        # 测试用 kind 拉起集群（kindtest，SBX-01 从 py-core 搬来）；cargo：沙箱后端的测试编译 Rust 版 sandbox-agent（testkit，D-28）。
+        Step(id="go", title="Go：go.work 的每个模块 build、vet、test", commands=go, tools=["go", "temporal", "postgres", "docker", "cargo", "kind", "kubectl"]),
         # D-28：Rust 的检查与 sandbox-agent 的黑盒测试（两版都跑，所以也要 go）。
         Step(
             id="rust",
@@ -146,15 +147,15 @@ def all_steps(root: Path, *, committed: bool = False) -> dict[str, Step]:
             tools=["cargo", "cargo-deny", "go", "uv"],
         ),
         _python(
-            "py-core", "libs/py-core（含 Postgres、Qdrant、Milvus 适配器与 K8s 沙箱）", root / "libs" / "py-core", "agentruntime-core", ["tests"],
-            # cargo：K8s 与 Cloudflare 假桥的测试编译 Rust 版 sandbox-agent（agentbuild，D-28）。
-            ["uv", "temporal", "postgres", "qdrant", "docker", "go", "cargo", "kind", "kubectl"],
+            "py-core", "libs/py-core（含 Postgres、Qdrant、Milvus 适配器）", root / "libs" / "py-core", "agentruntime-core", ["tests"],
+            ["uv", "temporal", "postgres", "qdrant", "docker"],
         ),
         _python("py-memory", "services/py-memory（开发后端与 Postgres + Qdrant）", root / "services" / "py-memory", "agentruntime-memory", ["tests"], ["uv", "postgres", "qdrant"]),
         _python("py-learning", "services/py-learning（含消费 trace 主题的 Redpanda 容器）", root / "services" / "py-learning", "agentruntime-learning", ["tests"],
                 ["uv", "docker"]),
-        _python("py-worker", "services/py-worker（沙箱环境表在 SQLite 与 Postgres 上各跑一遍）", root / "services" / "py-worker", "agentruntime-worker", ["tests"],
-                ["uv", "temporal", "postgres", "cargo"]),
+        # go、cargo：py-worker 的沙箱测试编译 Sandbox Service 与 sandbox-agent（SBX-01；agent 默认 Rust 版，D-28）。
+        _python("py-worker", "services/py-worker（沙箱经编译出的 Sandbox Service，SQLite 与 Postgres 各一遍）", root / "services" / "py-worker", "agentruntime-worker", ["tests"],
+                ["uv", "temporal", "postgres", "go", "cargo"]),
         # docker：两个 task-service 副本的用例拉起 Valkey（tests/e2e/e2e_support/valkey.py，TSP-2）。
         _python("e2e", "端到端测试（不含故障注入）", root / "tests" / "e2e", "agentruntime-e2e-tests", ["-m", "not faults"], ["uv", "go", "temporal", "docker"]),
         _python("faults", "故障注入与恢复套件", root / "tests" / "e2e", "agentruntime-e2e-tests", ["faults"], ["uv", "go", "temporal"]),
@@ -226,7 +227,7 @@ def tool_available(tool: str, env: Mapping[str, str]) -> bool:
             return path.is_file() or shutil.which("qdrant", path=str(path)) is not None
         return _which("qdrant", env) is not None
     if tool in ("docker", "kubectl"):
-        # docker：Milvus 适配器的测试拉起单机版容器（milvustest），K8s 沙箱的测试用 kind（kindtest），
+        # docker：Milvus 适配器的测试拉起单机版容器（milvustest），K8s 沙箱的测试用 kind（libs/go-core 的 kindtest），
         # Learning Pipeline 消费 trace 主题的测试拉起 Redpanda（services/py-learning/tests/redpanda_support.py），
         # Go 的 Valkey 适配器的测试拉起 Valkey（libs/go-core/adapters/valkey/valkeytest）。
         # kubectl：kindtest 用它应用 deploy/cluster 的清单；Docker Desktop 把它与 docker 放在同一目录。
