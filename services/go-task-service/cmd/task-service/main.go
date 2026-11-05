@@ -64,6 +64,7 @@ import (
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/events"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/ids"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/registry"
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/sandboxclient"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/sandboxgrants"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/session"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/skillapi"
@@ -552,7 +553,15 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		return err
 	}
 	// Workspace API（D-06）：同一个端口、同一个 Ingress；封凭据的密钥在 SecretStore 平台作用域的 workspace/credential-key。
+	// 配了 Sandbox Service（SBX-01）时只读的方法直接调它（WS-READ-01），不起 Worker 的工作流。
+	var sandboxReader workspaceapi.SandboxReader
+	if cfg.SandboxServiceAddress != "" {
+		sandboxReader = sandboxclient.New(cfg.SandboxServiceAddress, func(ctx context.Context) ([]byte, error) {
+			return platformSecret(ctx, cfg.SecretsFile, sandboxclient.TokenSecret)
+		})
+	}
 	workspaces, err := workspaceapi.New(workspaceapi.Deps{
+		Sandbox: sandboxReader,
 		Ingress: ing, Durable: temporaladapter.New(c), Store: store, Timeout: cfg.WorkspaceOperationTimeout, AllowLocalRemotes: cfg.WorkspaceAllowLocalRemotes,
 		// 只读操作按工作区的版本号缓存（WS-READ-03）：多副本时是共用的 Valkey。
 		Cache: cacheProvider,

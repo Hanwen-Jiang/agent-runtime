@@ -48,6 +48,9 @@ const (
 	// Workspace API（D-06）：等一次工作区操作的最长时间（秒，默认 600）；收不收 file:// 的仓库地址（只给测试，0 或 1）。
 	EnvWorkspaceOperationTimeout  = "AR_WORKSPACE_OPERATION_TIMEOUT_S"
 	EnvWorkspaceAllowLocalRemotes = "AR_WORKSPACE_ALLOW_LOCAL_REMOTES"
+	// EnvSandboxServiceAddress 是 Sandbox Service（SBX-01）的地址（主机:端口）：设了时 Workspace API 的只读方法直接调它
+	// （WS-READ-01），调用方令牌是 AR_SECRETS_FILE 平台作用域的 sandbox-service/tokens/task-service。
+	EnvSandboxServiceAddress = "AR_SANDBOX_SERVICE_ADDRESS"
 	// EnvTenantActiveTasks 按租户给准入时未终态 Task 的上限（没列出的租户不设上限，2026-11-03 人定，docs/plan/open-signup.md）：
 	// 逗号分隔的“租户=个数”，0 也表示不设上限，例如 t1=2,t2=4。按用户类型的策略进租户策略的契约之前（S-01）放在部署配置里。
 	EnvTenantActiveTasks = "AR_TENANT_ACTIVE_TASKS"
@@ -181,6 +184,8 @@ type Config struct {
 	// WorkspaceAllowLocalRemotes 让它收 file:// 的仓库地址（EnvWorkspaceAllowLocalRemotes，只给测试；Worker 读同一个变量）。
 	WorkspaceOperationTimeout  time.Duration
 	WorkspaceAllowLocalRemotes bool
+	// SandboxServiceAddress 见 EnvSandboxServiceAddress；为空时只读操作也起 Worker 的工作流。
+	SandboxServiceAddress string
 	// InternalAddr、DeltaCallers、DeltaDisabledTenants 见 EnvInternalAddr；InternalAddr 为空表示不收逐字增量。
 	InternalAddr         string
 	DeltaCallers         []string
@@ -302,6 +307,7 @@ func FromEnv(getenv func(string) string) (Config, error) {
 		}
 		cfg.WorkspaceOperationTimeout = time.Duration(n) * time.Second
 	}
+	cfg.SandboxServiceAddress = strings.TrimSpace(getenv(EnvSandboxServiceAddress))
 	switch getenv(EnvWorkspaceAllowLocalRemotes) {
 	case "", "0":
 	case "1":

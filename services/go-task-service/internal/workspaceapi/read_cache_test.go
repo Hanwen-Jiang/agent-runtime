@@ -24,12 +24,12 @@ import (
 	workspacev1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workspace/v1"
 )
 
-func cacheHarness(t *testing.T, clk *testkit.FakeClock) *harness {
+func cacheHarness(t *testing.T, clk *testkit.FakeClock, extra ...func(*Deps)) *harness {
 	t.Helper()
-	h := newHarness(t, func(d *Deps) {
+	h := newHarness(t, append([]func(*Deps){func(d *Deps) {
 		d.Cache = memcache.New(memcache.Options{Clock: clk})
 		d.ReadCacheTTL = time.Minute
-	})
+	}}, extra...)...)
 	if err := h.store.Migrate(context.Background(), []relational.Migration{{Version: 205, Name: "workspaces", Statements: []string{
 		`CREATE TABLE workspaces (workspace_id TEXT PRIMARY KEY, state TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
 			generation BIGINT NOT NULL DEFAULT 0)`,

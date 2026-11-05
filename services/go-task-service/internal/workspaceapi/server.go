@@ -32,6 +32,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/agentruntime/agent-runtime/libs/go-core/connecterr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/cache"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/durable"
@@ -39,6 +40,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	"github.com/agentruntime/agent-runtime/libs/go-core/sealing"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
+	sandboxv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/sandbox/v1"
 	workflowv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1"
 	workspacev1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workspace/v1"
 	"github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workspace/v1/workspacev1connect"
@@ -91,6 +93,17 @@ type Deps struct {
 	Cache cache.Provider
 	// ReadCacheTTL 是缓存的兜底有效期（工具之外改了工作区、generation 没变时最多旧这么久）；默认 5 分钟。
 	ReadCacheTTL time.Duration
+	// Sandbox 给了时列目录、读文件、提交记录、diff 直接调 Sandbox Service 的只读方法（WS-READ-01，SBX-01），不起 Worker 的
+	// 工作流；task-service 是只读的调用方。为 nil 时照旧起工作流。
+	Sandbox SandboxReader
+}
+
+// SandboxReader 是 Sandbox Service 的只读方法（sandboxv1connect.SandboxServiceClient 满足它）。
+type SandboxReader interface {
+	ListFiles(context.Context, *connect.Request[sandboxv1.ListFilesRequest]) (*connect.Response[sandboxv1.ListFilesResponse], error)
+	ReadFile(context.Context, *connect.Request[sandboxv1.ReadFileRequest]) (*connect.Response[sandboxv1.ReadFileResponse], error)
+	GetDiff(context.Context, *connect.Request[sandboxv1.GetDiffRequest]) (*connect.Response[sandboxv1.GetDiffResponse], error)
+	GetLog(context.Context, *connect.Request[sandboxv1.GetLogRequest]) (*connect.Response[sandboxv1.GetLogResponse], error)
 }
 
 // maxCachedResult 是缓存的单个结果的上限（字节，protojson）；更大的不缓存。
@@ -187,7 +200,11 @@ func (s *Server) operateRead(
 			return nil
 		}
 	}
-	if err := s.run(ctx, id, tenant, workspaceID, op, args, nil, out); err != nil {
+	if s.d.Sandbox != nil {
+		if err := s.readFromSandbox(ctx, tenant, workspaceID, op, args, out); err != nil {
+			return err
+		}
+	} else if err := s.run(ctx, id, tenant, workspaceID, op, args, nil, out); err != nil {
 		return err
 	}
 	if c != nil {
@@ -195,6 +212,51 @@ func (s *Server) operateRead(
 			_ = c.Set(ctx, key, data, s.d.ReadCacheTTL)
 		}
 	}
+	return nil
+}
+
+// readFromSandbox 调 Sandbox Service 的只读方法（WS-READ-01）：租户是服务端按认证身份定的，服务的结果原样写进 out；
+// 服务的错误按统一错误模型解出来（ar-error-bin）。
+func (s *Server) readFromSandbox(ctx context.Context, tenant *commonv1.TenantContext, workspaceID string, op workflowv1.WorkspaceOperation, args map[string]any, out proto.Message) error {
+	str := func(k string) string { v, _ := args[k].(string); return v }
+	var got proto.Message
+	var err error
+	switch op {
+	case workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_LIST_FILES:
+		var r *connect.Response[sandboxv1.ListFilesResponse]
+		if r, err = s.d.Sandbox.ListFiles(ctx, connect.NewRequest(&sandboxv1.ListFilesRequest{Tenant: tenant, WorkspaceId: workspaceID, Path: str("path")})); err == nil {
+			got = r.Msg.GetResponse()
+		}
+	case workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_READ_FILE:
+		var r *connect.Response[sandboxv1.ReadFileResponse]
+		if r, err = s.d.Sandbox.ReadFile(ctx, connect.NewRequest(&sandboxv1.ReadFileRequest{Tenant: tenant, WorkspaceId: workspaceID, Path: str("path")})); err == nil {
+			got = r.Msg.GetResponse()
+		}
+	case workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_DIFF:
+		renames, _ := args["find_renames"].(bool)
+		var r *connect.Response[sandboxv1.GetDiffResponse]
+		if r, err = s.d.Sandbox.GetDiff(ctx, connect.NewRequest(&sandboxv1.GetDiffRequest{Tenant: tenant, WorkspaceId: workspaceID, Base: str("base"), FindRenames: renames})); err == nil {
+			got = r.Msg.GetResponse()
+		}
+	case workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_LOG:
+		limit, _ := args["limit"].(float64)
+		var r *connect.Response[sandboxv1.GetLogResponse]
+		if r, err = s.d.Sandbox.GetLog(ctx, connect.NewRequest(&sandboxv1.GetLogRequest{Tenant: tenant, WorkspaceId: workspaceID, Limit: int32(limit), Base: str("base")})); err == nil {
+			got = r.Msg.GetResponse()
+		}
+	default:
+		return invalid("invalid_operation", "这个操作不是只读的")
+	}
+	if err != nil {
+		if e := connecterr.Decode(err); e != nil {
+			return e
+		}
+		return providererr.Wrap(providererr.Transient, "sandbox_service_unavailable", "Sandbox Service 暂时不可用，稍后再试", err)
+	}
+	if got == nil {
+		return nil
+	}
+	proto.Merge(out, got)
 	return nil
 }
 
