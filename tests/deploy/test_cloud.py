@@ -29,6 +29,8 @@ from deploy_tests import CLOUD_VALUES, REPO_ROOT, by_kind, containers, env_of, p
 CLUSTER = REPO_ROOT / "deploy" / "cluster"
 DATA = REPO_ROOT / "deploy" / "data"
 WORKER = "app.kubernetes.io/component"
+# K8s 沙箱后端给沙箱 Pod 打的标签（libs/go-core/adapters/k8ssandbox 的 ManagedByLabel、ManagedBy；SBX-01 起建 Pod 的是 Sandbox Service）。
+LABELS = {"app.kubernetes.io/managed-by": "agentruntime-sandbox"}
 
 
 def docs(path: Path) -> list[dict[str, Any]]:
@@ -309,7 +311,13 @@ def test_bad_sandbox_values_are_refused(sets: list[str], message: str) -> None:
     assert message in render_fails(*sets, values=CLOUD_VALUES)
 
 
-def test_worker_may_only_manage_pods_in_the_sandbox_namespace(cloud: list[dict[str, Any]]) -> None:
+def sandbox_service(manifests: list[dict[str, Any]]) -> dict[str, Any]:
+    [deployment] = [d for d in by_kind(manifests, "Deployment") if d["metadata"]["labels"].get(WORKER) == "sandbox-service"]
+    return deployment
+
+
+def test_only_the_sandbox_service_manages_pods_in_the_sandbox_namespace(cloud: list[dict[str, Any]]) -> None:
+    """SBX-01：建沙箱 Pod 的是 Sandbox Service（一个副本，Recreate）；Worker 经它用沙箱，不挂 Kubernetes 的令牌。"""
     sandbox_ns = cloud_values()["worker"]["shell"]["sandboxNamespace"]
     # 构建的命名空间里另有一个只管构建 Job 的 Role（D-17，test_environment_builds_are_registered_and_confined）。
     [role] = [r for r in by_kind(cloud, "Role") if r["metadata"]["namespace"] == sandbox_ns]
@@ -321,16 +329,38 @@ def test_worker_may_only_manage_pods_in_the_sandbox_namespace(cloud: list[dict[s
     [binding] = [b for b in by_kind(cloud, "RoleBinding") if b["metadata"]["namespace"] == sandbox_ns]
     assert binding["metadata"]["namespace"] == sandbox_ns and binding["roleRef"]["name"] == role["metadata"]["name"]
     [subject] = binding["subjects"]
+    service = sandbox_service(cloud)
+    assert service["spec"]["replicas"] == 1 and service["spec"]["strategy"]["type"] == "Recreate", "借出的环境在进程里：一个副本"
+    [svc] = [s for s in by_kind(cloud, "Service") if s["metadata"]["name"] == service["metadata"]["name"]]
+    address = f"{svc['metadata']['name']}:{svc['spec']['ports'][0]['port']}"
     for workload, c in containers(cloud):
         spec = pod_spec(workload)
-        if workload["metadata"]["labels"].get(WORKER) == "worker":
+        env = env_of(c)
+        component = workload["metadata"]["labels"].get(WORKER)
+        if component == "sandbox-service":
             assert spec["serviceAccountName"] == subject["name"] and spec["automountServiceAccountToken"] is True
-            env = env_of(c)
-            assert env["AR_TOOL_SHELL_SANDBOX"]["value"] == "sandbox"
             assert env["AR_SANDBOX_BACKENDS_FILE"]["value"].startswith("/etc/agentruntime/sandbox/")
             assert env["AR_TOOL_WORKSPACE_ROOT"]["value"] == "/workspaces"
-        else:
-            assert spec.get("automountServiceAccountToken") is False, f"{workload['metadata']['name']} 不调 K8s API，不挂令牌"
+            assert env["AR_RELATIONAL_DSN"]["valueFrom"] and env["AR_SECRETS_SEED_FILE"], "与 Worker 共用业务库与 SecretStore"
+            assert not [m for m in c["volumeMounts"] if m["name"] == "workspaces" and m.get("readOnly")], "可写地挂工作区卷"
+            continue
+        assert spec.get("automountServiceAccountToken") is False, f"{workload['metadata']['name']} 不调 K8s API，不挂令牌"
+        if component == "task-service":
+            assert env["AR_SANDBOX_SERVICE_ADDRESS"]["value"] == address, "Workspace API 的只读方法直接调服务（WS-READ-01）"
+        if component == "worker":
+            assert env["AR_TOOL_SHELL_SANDBOX"]["value"] == "sandbox"
+            assert env["AR_SANDBOX_SERVICE_ADDRESS"]["value"] == address
+            assert env["AR_TOOL_WORKSPACE_ROOT"]["value"] == "/workspaces"
+            assert "AR_PKG_MIRROR_URL" not in env, "包镜像的凭据由服务签发"
+    [policy] = [p for p in by_kind(cloud, "NetworkPolicy") if p["metadata"]["name"] == service["metadata"]["name"]]
+    sources = [f["podSelector"]["matchLabels"][WORKER] for rule in policy["spec"]["ingress"] for f in rule["from"]]
+    assert sorted(sources) == ["task-service", "worker"], "只有 Worker 与 task-service 连得进来"
+
+
+def test_sandbox_mode_needs_the_shared_database_and_secret_store() -> None:
+    base = ["worker.shell.mode=sandbox", "worker.shell.backends.local.kind=local", "worker.shell.defaultBackend=local", "worker.workspacesClaim=w"]
+    assert "secrets.relationalDsn" in render_fails(*base)
+    assert "secrets.storeClaim" in render_fails(*base, "secrets.relationalDsn.name=dsn")
 
 
 def test_api_proxy_backends_also_get_pods_proxy() -> None:
@@ -370,13 +400,14 @@ def test_backend_registry_matches_the_cluster(cloud: list[dict[str, Any]]) -> No
     assert modes.get("kata") == modes.get("cloudflare") == "archive"
 
 
-def test_network_policy_lets_the_rendered_workers_reach_the_agent(cloud: list[dict[str, Any]]) -> None:
-    policy = next(d for d in cluster_docs() if d["kind"] == "NetworkPolicy" and d["metadata"]["name"] == "worker-to-agent")
+def test_network_policy_lets_the_rendered_sandbox_service_reach_the_agent(cloud: list[dict[str, Any]]) -> None:
+    policy = next(d for d in cluster_docs() if d["kind"] == "NetworkPolicy" and d["metadata"]["name"] == "sandbox-service-to-agent")
     source = policy["spec"]["ingress"][0]["from"][0]
     assert source["namespaceSelector"]["matchLabels"]["kubernetes.io/metadata.name"] == "agent-runtime"
     wanted = source["podSelector"]["matchLabels"]
+    assert wanted.items() <= sandbox_service(cloud)["spec"]["template"]["metadata"]["labels"].items()
     workers = [w for w in by_kind(cloud, "Deployment") if w["metadata"]["labels"].get(WORKER) == "worker"]
-    assert workers and all(wanted.items() <= w["spec"]["template"]["metadata"]["labels"].items() for w in workers)
+    assert workers and not any(wanted.items() <= w["spec"]["template"]["metadata"]["labels"].items() for w in workers), "Worker 连不进沙箱"
     assert policy["spec"]["ingress"][0]["ports"][0]["port"] == 7070
 
 
@@ -542,10 +573,10 @@ def dashboard() -> dict[str, Any]:
 
 
 def emitting_source() -> str:
-    """发 span 的代码：Worker 与 Model Gateway（模型花费按网关的服务名选，TMP 计划第 9.2 节）。"""
+    """发 span 与指标的代码：Worker、Model Gateway（模型花费按网关的服务名选，TMP 计划第 9.2 节）与 Sandbox Service（卷用量，SBX-01）。"""
     worker = REPO_ROOT / "services" / "py-worker" / "src"
-    gateway = REPO_ROOT / "services" / "go-model-gateway"
-    files = [*worker.rglob("*.py"), *(p for p in gateway.rglob("*.go") if not p.name.endswith("_test.go"))]
+    go = [REPO_ROOT / "services" / "go-model-gateway", REPO_ROOT / "services" / "go-sandbox-service"]
+    files = [*worker.rglob("*.py"), *(p for d in go for p in d.rglob("*.go") if not p.name.endswith("_test.go"))]
     return "\n".join(p.read_text("utf-8") for p in files)
 
 
@@ -694,11 +725,11 @@ def test_pkg_mirror_runs_from_its_own_volume_with_the_cloud_budgets(cloud: list[
     assert {p["port"] for p in service["spec"]["ports"]} == {8093, 8094}
 
 
-def test_workers_point_sandboxes_at_the_mirror_service(cloud: list[dict[str, Any]]) -> None:
+def test_the_sandbox_service_points_sandboxes_at_the_mirror_service(cloud: list[dict[str, Any]]) -> None:
     _, service, _, _ = mirror_parts(cloud)
     wanted = f"http://{service['metadata']['name']}.agent-runtime.svc:8093"
-    workers = [m for m in by_kind(cloud, "Deployment") if "-worker-" in m["metadata"]["name"]]
-    assert workers and all(env_of(c)["AR_PKG_MIRROR_URL"]["value"] == wanted for w in workers for c in pod_spec(w)["containers"])
+    [c] = pod_spec(sandbox_service(cloud))["containers"]
+    assert env_of(c)["AR_PKG_MIRROR_URL"]["value"] == wanted
 
 
 def test_sandboxes_reach_only_the_mirror_and_the_mirror_reaches_only_the_internet(cloud: list[dict[str, Any]]) -> None:
@@ -707,8 +738,6 @@ def test_sandboxes_reach_only_the_mirror_and_the_mirror_reaches_only_the_interne
     sandbox_ns = cloud_values()["worker"]["shell"]["sandboxNamespace"]
     mirror_labels = deployment["spec"]["template"]["metadata"]["labels"]
     # 沙箱命名空间一侧：选中适配器建的沙箱 Pod，只出到镜像的 8093 与 DNS。
-    from agentruntime_core.adapters.k8s_sandbox import LABELS
-
     assert outbound["metadata"]["namespace"] == sandbox_ns and outbound["spec"]["policyTypes"] == ["Egress"]
     assert outbound["spec"]["podSelector"]["matchLabels"].items() <= LABELS.items(), "选中的是 K8s 适配器建的沙箱 Pod"
     to_mirror, to_dns = outbound["spec"]["egress"]
@@ -784,8 +813,6 @@ def test_egress_gateway_is_a_single_replica_on_the_shared_business_database(clou
 def test_sandboxes_reach_the_internet_only_through_the_gateway(cloud: list[dict[str, Any]]) -> None:
     """W8：沙箱只出到网关的 8095（另外是包镜像）；网关的管理端口只给 Runtime 与 observability，预览端口只给入口控制器；
     网关自己连不到私有网段与云元数据，能连进沙箱 Pod（预览）。"""
-    from agentruntime_core.adapters.k8s_sandbox import LABELS
-
     deployment, _, own, sandbox_side = gateway_parts(cloud)
     sandbox_ns = cloud_values()["worker"]["shell"]["sandboxNamespace"]
     labels = deployment["spec"]["template"]["metadata"]["labels"]
@@ -833,6 +860,8 @@ def test_workers_and_task_service_point_at_the_gateway(cloud: list[dict[str, Any
     workers = [m for m in by_kind(cloud, "Deployment") if "-worker-" in m["metadata"]["name"]]
     proxy = f"http://{service['metadata']['name']}.agent-runtime.svc:8095"
     assert workers and all(env_of(c)["AR_EGRESS_GATEWAY_URL"]["value"] == proxy for w in workers for c in pod_spec(w)["containers"])
+    [c] = pod_spec(sandbox_service(cloud))["containers"]
+    assert env_of(c)["AR_EGRESS_GATEWAY_URL"]["value"] == proxy, "代理凭据由 Sandbox Service 签发"
     assert all(env_of(c)["AR_PREVIEW_DOMAIN"]["value"] == cloud_values()["egressGateway"]["previewDomain"] for w in workers for c in pod_spec(w)["containers"])
     [ts] = [m for m in by_kind(cloud, "Deployment") if m["metadata"]["name"].endswith("-task-service")]
     assert env_of(pod_spec(ts)["containers"][0])["AR_EGRESS_GATEWAY_ADMIN_URL"]["value"] == f"http://{service['metadata']['name']}.agent-runtime.svc:8096"
@@ -851,7 +880,7 @@ def test_egress_gateway_is_off_by_default_and_needs_the_shared_business_database
 
 
 def test_environment_builds_are_registered_and_confined(cloud: list[dict[str, Any]]) -> None:
-    """D-17：后端登记里有 environments 一节；Worker 只在构建的命名空间里管 Job（读不了 Secret）；构建只连网关与包镜像；
+    """D-17：后端登记里有 environments 一节；Sandbox Service 只在构建的命名空间里管 Job（读、列不了 Secret）；构建只连网关与包镜像；
     构建的命名空间只许 Kata、不许宿主网络与宿主路径（deploy/cluster/builds.yaml）。"""
     [cm] = [m for m in by_kind(cloud, "ConfigMap") if m["metadata"]["name"].endswith("-sandbox-backends")]
     env = json.loads(cm["data"]["backends.json"])["environments"]
@@ -861,8 +890,11 @@ def test_environment_builds_are_registered_and_confined(cloud: list[dict[str, An
     assert env["base_image"] == values["baseImage"] and env["limits"]["max_images"] >= 1
     [role] = [m for m in by_kind(cloud, "Role") if m["metadata"]["namespace"] == "sandbox-builds"]
     rules = {(tuple(r["apiGroups"]), tuple(r["resources"])): set(r["verbs"]) for r in role["rules"]}
-    assert rules[(("",), ("configmaps", "secrets"))] == {"create", "delete"}, "读不了 Secret"
-    assert rules[(("batch",), ("jobs",))] == {"create", "get", "delete"}
+    assert rules[(("",), ("secrets",))] == {"create", "delete"}, "读、列不了 Secret"
+    assert rules[(("",), ("configmaps",))] == {"create", "list", "delete"}
+    assert rules[(("batch",), ("jobs",))] == {"create", "get", "list", "delete"}
+    [binding] = [m for m in by_kind(cloud, "RoleBinding") if m["metadata"]["namespace"] == "sandbox-builds"]
+    assert binding["subjects"][0]["name"] == pod_spec(sandbox_service(cloud))["serviceAccountName"]
     [policy] = [m for m in by_kind(cloud, "NetworkPolicy") if m["metadata"]["name"] == "builds-egress"]
     ports = sorted(p["port"] for rule in policy["spec"]["egress"] for p in rule.get("ports", []))
     assert ports == [53, 53, 8093, 8095], "构建只连网关、包镜像与 DNS"
@@ -888,24 +920,29 @@ def test_env_registry_takes_pushes_only_from_the_runtime(cloud: list[dict[str, A
 
 def test_environments_need_the_egress_gateway() -> None:
     message = render_fails("worker.shell.mode=sandbox", "worker.workspacesClaim=w", "worker.shell.backends.local.kind=local",
+                           "secrets.relationalDsn.name=dsn", "secrets.storeClaim=store",
                            "worker.shell.defaultBackend=local", "worker.shell.environments.enabled=true", "worker.shell.environments.registry.pullHost=h:1")
     assert "egressGateway" in message
 
 
-def test_workers_can_collect_build_outputs_and_builds_read_only_their_workspace(cloud: list[dict[str, Any]]) -> None:
-    """构建产物由 Worker 去取（构建 Pod 里的 sandbox-agent，7070）：构建的命名空间只放行 Worker 进来；构建读仓库里的文件
+# 构建 Job 的标签与提供产物的端口（services/go-sandbox-service 的 internal/envbuild：ManagedBy、AgentPort）。
+BUILD_MANAGED_BY = "agentruntime-env-builder"
+BUILD_AGENT_PORT = 7070
+
+
+def test_the_sandbox_service_collects_build_outputs_and_builds_read_only_their_workspace(cloud: list[dict[str, Any]]) -> None:
+    """构建产物由 Sandbox Service 去取（构建 Pod 里的 sandbox-agent，7070）：构建的命名空间只放行它进来；构建读仓库里的文件
     经工作区目录的第三个静态 PV（只读）；Kata 的 handler 要 privileged_without_host_devices（install.sh 核对）。"""
     builds = docs(CLUSTER / "builds.yaml")
-    [ingress] = [d for d in builds if d["kind"] == "NetworkPolicy" and d["metadata"]["name"] == "worker-to-builder"]
-    from agentruntime_worker.sandbox.env_builder import AGENT_PORT, MANAGED_BY
-
-    assert ingress["spec"]["podSelector"]["matchLabels"] == {"app.kubernetes.io/managed-by": MANAGED_BY}
+    [ingress] = [d for d in builds if d["kind"] == "NetworkPolicy" and d["metadata"]["name"] == "sandbox-service-to-builder"]
+    managed_by = re.search(r'ManagedBy = "([^"]+)"', (REPO_ROOT / "services" / "go-sandbox-service" / "internal" / "envbuild" / "builder.go").read_text("utf-8"))
+    assert managed_by is not None and managed_by.group(1) == BUILD_MANAGED_BY
+    assert ingress["spec"]["podSelector"]["matchLabels"] == {"app.kubernetes.io/managed-by": BUILD_MANAGED_BY}
     [rule] = ingress["spec"]["ingress"]
-    assert [p["port"] for p in rule["ports"]] == [AGENT_PORT]
+    assert [p["port"] for p in rule["ports"]] == [BUILD_AGENT_PORT]
     source = rule["from"][0]
     assert source["namespaceSelector"]["matchLabels"]["kubernetes.io/metadata.name"] == "agent-runtime"
-    workers = [w for w in by_kind(cloud, "Deployment") if w["metadata"]["labels"].get(WORKER) == "worker"]
-    assert workers and all(source["podSelector"]["matchLabels"].items() <= w["spec"]["template"]["metadata"]["labels"].items() for w in workers)
+    assert source["podSelector"]["matchLabels"].items() <= sandbox_service(cloud)["spec"]["template"]["metadata"]["labels"].items()
     [cm] = [m for m in by_kind(cloud, "ConfigMap") if m["metadata"]["name"].endswith("-sandbox-backends")]
     claim = json.loads(cm["data"]["backends.json"])["environments"]["builder"]["workspace_claim"]
     manifests = [*cluster_docs(), *builds]
@@ -937,15 +974,16 @@ def test_builds_inside_kata_can_use_extended_attributes(cloud: list[dict[str, An
 
 
 ARCHIVE_ONLY = ["worker.shell.mode=sandbox", "worker.shell.backends.cf.kind=cloudflare", "worker.shell.backends.cf.isolation=microvm",
-                "worker.shell.backends.cf.bridge_url=https://bridge.example.com", "worker.shell.defaultBackend=cf"]
+                "worker.shell.backends.cf.bridge_url=https://bridge.example.com", "worker.shell.defaultBackend=cf",
+                "secrets.relationalDsn.name=dsn", "secrets.storeClaim=store"]
 
 
 def test_archive_only_backends_need_no_workspace_volume() -> None:
     """D-06：只有存档模式的后端（Cloudflare 默认如此）时不用 workspacesClaim，Worker 也不挂工作区卷；登记原样带上 workspace。"""
     manifests = render(set_values=[*ARCHIVE_ONLY, "worker.shell.backends.vm.kind=k8s", "worker.shell.backends.vm.workspace=archive",
                                    "worker.shell.backends.vm.agent_image=a:1"])
-    workers = [w for w in by_kind(manifests, "Deployment") if w["metadata"]["labels"].get(WORKER) == "worker"]
-    assert workers and all("AR_TOOL_WORKSPACE_ROOT" not in env_of(c) for w in workers for c in pod_spec(w)["containers"])
+    workers = [w for w in by_kind(manifests, "Deployment") if w["metadata"]["labels"].get(WORKER) in ("worker", "sandbox-service")]
+    assert len(workers) > 1 and all("AR_TOOL_WORKSPACE_ROOT" not in env_of(c) for w in workers for c in pod_spec(w)["containers"])
     assert all(v.get("name") != "workspaces" for w in workers for v in pod_spec(w).get("volumes") or [])
     [cm] = [m for m in by_kind(manifests, "ConfigMap") if m["metadata"]["name"].endswith("-sandbox-backends")]
     assert json.loads(cm["data"]["backends.json"])["backends"]["vm"]["workspace"] == "archive"

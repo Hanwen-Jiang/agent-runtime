@@ -70,6 +70,13 @@
         "MODULE": "services/go-egress-gateway",
         "MAIN": "./cmd/egress-gateway"
       }
+    },
+    "sandbox-service": {
+      "dockerfile": "deploy/images/go.Dockerfile",
+      "args": {
+        "MODULE": "services/go-sandbox-service",
+        "MAIN": "./cmd/sandbox-service"
+      }
     }
   }
 }

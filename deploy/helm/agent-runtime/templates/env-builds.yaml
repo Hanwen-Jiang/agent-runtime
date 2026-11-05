@@ -1,6 +1,6 @@
-{{- /* 按项目定制的运行环境（docs/plan/cloud-deploy.md D-17）：Worker 在构建的命名空间（deploy/cluster/builds.yaml）里建一次性的
-       构建 Job。Worker 的权限只到这个命名空间：建、读、删 Job；建、删这次构建的 ConfigMap 与 Secret（读不了 Secret）；读 Pod 与
-       构建日志。构建只能连出网网关的 8095 与包镜像的 8093（拉基础镜像经网关的授权，装依赖经镜像）。可选的环境镜像仓库在
+{{- /* 按项目定制的运行环境（docs/plan/cloud-deploy.md D-17）：Sandbox Service（SBX-01）在构建的命名空间（deploy/cluster/builds.yaml）
+       里建一次性的构建 Job。它的权限只到这个命名空间：建、读、列、删 Job；建、列、删这次构建的 ConfigMap；建、删 Secret（读、列不了
+       Secret，之前没删干净的按 Job 与 ConfigMap 的名字删）；读 Pod 与构建日志。构建只能连出网网关的 8095 与包镜像的 8093（拉基础镜像经网关的授权，装依赖经镜像）。可选的环境镜像仓库在
        env-registry.yaml。 */ -}}
 {{- $shell := .Values.worker.shell -}}
 {{- $env := $shell.environments -}}
@@ -14,16 +14,19 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: {{ include "ar.workerServiceAccount" . }}-builds
+  name: {{ include "ar.sandboxServiceAccount" . }}-builds
   namespace: {{ $env.builder.namespace }}
   labels:
-    {{- include "ar.labels" (list . "worker") | nindent 4 }}
+    {{- include "ar.labels" (list . "sandbox-service") | nindent 4 }}
 rules:
   - apiGroups: ["batch"]
     resources: ["jobs"]
-    verbs: ["create", "get", "delete"]
+    verbs: ["create", "get", "list", "delete"]
   - apiGroups: [""]
-    resources: ["configmaps", "secrets"]
+    resources: ["configmaps"]
+    verbs: ["create", "list", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
     verbs: ["create", "delete"]
   - apiGroups: [""]
     resources: ["pods"]
@@ -35,17 +38,17 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ include "ar.workerServiceAccount" . }}-builds
+  name: {{ include "ar.sandboxServiceAccount" . }}-builds
   namespace: {{ $env.builder.namespace }}
   labels:
-    {{- include "ar.labels" (list . "worker") | nindent 4 }}
+    {{- include "ar.labels" (list . "sandbox-service") | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ include "ar.workerServiceAccount" . }}-builds
+  name: {{ include "ar.sandboxServiceAccount" . }}-builds
 subjects:
   - kind: ServiceAccount
-    name: {{ include "ar.workerServiceAccount" . }}
+    name: {{ include "ar.sandboxServiceAccount" . }}
     namespace: {{ .Release.Namespace }}
 ---
 apiVersion: networking.k8s.io/v1
@@ -54,7 +57,7 @@ metadata:
   name: builds-egress
   namespace: {{ $env.builder.namespace }}
   labels:
-    {{- include "ar.labels" (list . "worker") | nindent 4 }}
+    {{- include "ar.labels" (list . "sandbox-service") | nindent 4 }}
 spec:
   podSelector:
     matchLabels:

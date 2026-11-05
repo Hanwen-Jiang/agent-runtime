@@ -1,7 +1,7 @@
-# 沙箱命名空间的约束（docs/plan/cloud-deploy.md D-02、D-05）。沙箱 Pod 由 Worker 经 K8s 的 Sandbox 适配器建
-# （agentruntime_core.adapters.k8s_sandbox），标签 app.kubernetes.io/managed-by=agentruntime-sandbox。
+# 沙箱命名空间的约束（docs/plan/cloud-deploy.md D-02、D-05）。沙箱 Pod 由 Sandbox Service 经 K8s 的 Sandbox 适配器建
+# （SBX-01；libs/go-core/adapters/k8ssandbox），标签 app.kubernetes.io/managed-by=agentruntime-sandbox。
 #
-# - 网络：默认拒绝一切进出。沙箱 Pod 只开一个口：Worker 连 agent 的 7070 端口。按域名放行 NetworkPolicy 做不到，
+# - 网络：默认拒绝一切进出。沙箱 Pod 只开一个口：Sandbox Service 连 agent 的 7070 端口（Worker 经服务用沙箱，连不进来）。按域名放行 NetworkPolicy 做不到，
 #   联网的任务走 microVM 后端（D-07）。
 # - 资源：配额限制整个命名空间的总量；LimitRange 给没写资源的容器补默认值（适配器总会写）。
 apiVersion: networking.k8s.io/v1
@@ -16,7 +16,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: worker-to-agent
+  name: sandbox-service-to-agent
   namespace: sandboxes
 spec:
   podSelector:
@@ -30,7 +30,7 @@ spec:
               kubernetes.io/metadata.name: agent-runtime
           podSelector:
             matchLabels:
-              app.kubernetes.io/component: worker
+              app.kubernetes.io/component: sandbox-service
       ports:
         - protocol: TCP
           port: 7070

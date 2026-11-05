@@ -126,6 +126,11 @@ spec:
             - name: AR_TENANT_ACTIVE_TASKS
               value: {{ include "ar.activeTaskLimits" . | quote }}
             {{- end }}
+            {{- if eq .Values.worker.shell.mode "sandbox" }}
+            # Workspace API 的只读方法直接调 Sandbox Service（WS-READ-01，SBX-01）；令牌在共用 SecretStore 的 sandbox-service/tokens/task-service。
+            - name: AR_SANDBOX_SERVICE_ADDRESS
+              value: {{ printf "%s:%v" (include "ar.sandboxService" .) .Values.sandboxService.port | quote }}
+            {{- end }}
             {{- if .Values.egressGateway.enabled }}
             # Task 结束、收回联网授权后通知出网网关立即断开（D-16）；管理令牌在 SecretStore 的 egress-gateway/admin-token。
             - name: AR_EGRESS_GATEWAY_ADMIN_URL

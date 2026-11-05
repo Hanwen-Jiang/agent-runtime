@@ -153,8 +153,8 @@ app.kubernetes.io/component: {{ index . 1 }}
 {{- end }}
 {{- end -}}
 
-{{/* Worker 要不要 Kubernetes 的权限：shell_run 经 Sandbox 接口、且登记了 kind=k8s 的后端时要（在沙箱命名空间里管 Pod）。 */}}
-{{- define "ar.workerNeedsKube" -}}
+{{/* Sandbox Service 要不要在沙箱命名空间里管 Pod：shell_run 经 Sandbox 接口、且登记了 kind=k8s 的后端时要（SBX-01 起建 Pod 的是它，不是 Worker）。 */}}
+{{- define "ar.sandboxNeedsKube" -}}
 {{- $shell := .Values.worker.shell -}}
 {{- if eq $shell.mode "sandbox" -}}
 {{- range $name, $b := $shell.backends -}}
@@ -163,8 +163,12 @@ app.kubernetes.io/component: {{ index . 1 }}
 {{- end -}}
 {{- end -}}
 
-{{- define "ar.workerServiceAccount" -}}
-{{- printf "%s-worker" (include "ar.fullname" .) -}}
+{{- define "ar.sandboxServiceAccount" -}}
+{{- printf "%s-sandbox-service" (include "ar.fullname" .) -}}
+{{- end -}}
+
+{{- define "ar.sandboxService" -}}
+{{- printf "%s-sandbox-service" (include "ar.fullname" .) -}}
 {{- end -}}
 
 {{/* 公共的卷：SecretStore 的文件（只读）、/tmp、数据目录与业务对象目录。 */}}

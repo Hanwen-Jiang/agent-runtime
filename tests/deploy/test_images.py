@@ -92,6 +92,7 @@ def test_the_five_services_and_the_sandbox_images_are_listed() -> None:
     assert set(MANIFEST) == {
         "task-service", "model-gateway", "worker", "memory", "learning",
         "sandbox-agent", "sandbox-python", "sandbox-universal", "sandbox-node", "sandbox-go", "pkg-mirror", "egress-gateway",
+        "sandbox-service",
     }
     for name, spec in MANIFEST.items():
         assert (REPO_ROOT / spec["dockerfile"]).is_file(), f"{name} 的 Dockerfile 不存在"

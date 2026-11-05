@@ -1,11 +1,22 @@
-{{- /* shell_run 经 Sandbox 接口（docs/plan/cloud-deploy.md D-05）：后端登记的 ConfigMap；有 kind=k8s 的后端时，
-       Worker 用自己的 ServiceAccount，只在沙箱命名空间里管 Pod（建、读、改标注、删；api_proxy 时再加 pods/proxy），
-       读不了 Secret，也不能在别的命名空间建 Pod。 */ -}}
+{{- /* Sandbox Service（SBX-01；docs/plan/sbx-01-sandbox-service-2026-11-03.md）：shell_run 与 Workspace 操作经它用沙箱
+       （docs/plan/cloud-deploy.md D-05）。后端登记的 ConfigMap 给它（Worker 也挂着，只看有没有托管后端）；有 kind=k8s 的后端时，
+       它用自己的 ServiceAccount，只在沙箱命名空间里管 Pod（建、读、改标注、删；api_proxy 时再加 pods/proxy），读不了 Secret，
+       也不能在别的命名空间建 Pod。Worker 与 task-service 不再挂 Kubernetes 的令牌。
+       - 一个副本（Recreate）：借出的环境、命令的串行锁在进程里，重启后按环境表恢复借用（S11 的故障注入）。
+       - 与 Worker、task-service 共用业务库（环境表、工作区、联网授权）与 SecretStore（调用方令牌 sandbox-service/tokens/<调用方>
+         没有时启动时生成），所以要 secrets.relationalDsn 与 secrets.storeClaim。
+       - 可写地挂工作区卷（删工作区时删目录、冷热分层、读文件的快路径）。项目环境的构建产物先落 /build-tmp 再推仓库。 */ -}}
 {{- $shell := .Values.worker.shell -}}
 {{- if not (has $shell.mode (list "host" "sandbox")) }}
 {{- fail "worker.shell.mode 只能是 host 或 sandbox（docker 要挂 docker.sock，集群里不允许）" }}
 {{- end }}
 {{- if eq $shell.mode "sandbox" }}
+{{- if not .Values.secrets.relationalDsn.name }}
+{{- fail "worker.shell.mode=sandbox 要配 secrets.relationalDsn：Sandbox Service 与 Worker、task-service 共用业务库（环境表、工作区、联网授权）" }}
+{{- end }}
+{{- if not .Values.secrets.storeClaim }}
+{{- fail "worker.shell.mode=sandbox 要配 secrets.storeClaim：Sandbox Service 启动时把调用方的令牌写进共用的 SecretStore" }}
+{{- end }}
 {{- if not $shell.backends }}
 {{- fail "worker.shell.mode=sandbox 时要登记 worker.shell.backends" }}
 {{- end }}
@@ -65,7 +76,7 @@ kind: ConfigMap
 metadata:
   name: {{ printf "%s-sandbox-backends" (include "ar.fullname" .) }}
   labels:
-    {{- include "ar.labels" (list . "worker") | nindent 4 }}
+    {{- include "ar.labels" (list . "sandbox-service") | nindent 4 }}
 data:
   {{- $registry := dict "default" $shell.defaultBackend "backends" $shell.backends }}
   {{- $env := $shell.environments }}
@@ -73,11 +84,14 @@ data:
   {{- /* 按项目定制的运行环境（D-17）：仓库的推送地址是集群内的 Service，镜像引用写节点拉镜像用的 pullHost。 */ -}}
   {{- $reg := dict "url" (default (printf "http://%s-env-registry.%s.svc:5000" (include "ar.fullname" .) .Release.Namespace) $env.registry.url) "pull_host" $env.registry.pullHost "prefix" $env.registry.prefix }}
   {{- $builder := dict "kind" "k8s" "namespace" $env.builder.namespace "runtime_class" $env.builder.runtimeClass "isolation" "microvm" "agent_image" $env.builder.agentImage "buildkit_image" $env.builder.buildkitImage "workspace_claim" .Values.worker.workspacesClaim }}
-  {{- $limits := dict "max_images" $env.limits.maxImages "max_image_bytes" $env.limits.maxImageBytes "build_timeout_s" $env.limits.buildTimeoutSeconds "idle_days" $env.limits.idleDays }}
+  {{- $limits := dict "max_images" $env.limits.maxImages "max_image_bytes" $env.limits.maxImageBytes "build_timeout_s" $env.limits.buildTimeoutSeconds "idle_days" $env.limits.idleDays "max_concurrent" ($env.limits.maxConcurrent | default 4) }}
   {{- $_ := set $registry "environments" (dict "base_image" $env.baseImage "base_digest" $env.baseDigest "registry" $reg "builder" $builder "build_hosts" $env.buildHosts "limits" $limits) }}
   {{- end }}
   backends.json: {{ $registry | toJson | quote }}
-{{- if include "ar.workerNeedsKube" . }}
+{{- $name := printf "%s-sandbox-service" (include "ar.fullname" .) }}
+{{- $svc := .Values.sandboxService }}
+{{- $kube := or (include "ar.sandboxNeedsKube" .) $env.enabled }}
+{{- if include "ar.sandboxNeedsKube" . }}
 {{- $proxy := false }}
 {{- range $name, $b := $shell.backends }}
 {{- if and (eq $b.kind "k8s") (eq (default "pod_ip" $b.connect) "api_proxy") }}{{ $proxy = true }}{{ end }}
@@ -86,20 +100,13 @@ data:
 {{- end }}
 {{- end }}
 ---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: {{ include "ar.workerServiceAccount" . }}
-  labels:
-    {{- include "ar.labels" (list . "worker") | nindent 4 }}
----
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: {{ include "ar.workerServiceAccount" . }}
+  name: {{ include "ar.sandboxServiceAccount" . }}
   namespace: {{ $shell.sandboxNamespace }}
   labels:
-    {{- include "ar.labels" (list . "worker") | nindent 4 }}
+    {{- include "ar.labels" (list . "sandbox-service") | nindent 4 }}
 rules:
   - apiGroups: [""]
     resources: ["pods"]
@@ -113,17 +120,186 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ include "ar.workerServiceAccount" . }}
+  name: {{ include "ar.sandboxServiceAccount" . }}
   namespace: {{ $shell.sandboxNamespace }}
   labels:
-    {{- include "ar.labels" (list . "worker") | nindent 4 }}
+    {{- include "ar.labels" (list . "sandbox-service") | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ include "ar.workerServiceAccount" . }}
+  name: {{ include "ar.sandboxServiceAccount" . }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "ar.workerServiceAccount" . }}
+    name: {{ include "ar.sandboxServiceAccount" . }}
     namespace: {{ .Release.Namespace }}
 {{- end }}
+{{- if $kube }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "ar.sandboxServiceAccount" . }}
+  labels:
+    {{- include "ar.labels" (list . "sandbox-service") | nindent 4 }}
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "sandbox-service") | nindent 4 }}
+spec:
+  # 借出的环境与命令的串行锁在进程里：一个副本，换版本时先停旧的（重启后按环境表恢复借用）。
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "ar.selector" (list . "sandbox-service") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ar.labels" (list . "sandbox-service") | nindent 8 }}
+    spec:
+      {{- if $kube }}
+      # 只在沙箱命名空间里管 Pod、在构建的命名空间里建构建的 Job（上面与 env-builds.yaml 的 Role）。
+      serviceAccountName: {{ include "ar.sandboxServiceAccount" . }}
+      automountServiceAccountToken: true
+      {{- else }}
+      serviceAccountName: {{ include "ar.fullname" . }}
+      automountServiceAccountToken: false
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: sandbox-service
+          image: {{ include "ar.image" (list . "sandbox-service") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["serve"]
+          ports:
+            - name: grpc
+              containerPort: {{ $svc.port }}
+          env:
+            {{- include "ar.storeEnv" . | nindent 12 }}
+            - name: AR_SANDBOX_SERVICE_ADDR
+              value: {{ printf "0.0.0.0:%v" $svc.port | quote }}
+            - name: AR_SANDBOX_SERVICE_CALLERS
+              value: worker,task-service
+            - name: AR_SANDBOX_BACKENDS_FILE
+              value: /etc/agentruntime/sandbox/backends.json
+            - name: AR_SANDBOX_RUNTIME
+              value: {{ $shell.runtime | default "python" | quote }}
+            - name: AR_PROFILE
+              value: {{ .Values.taskService.profile | quote }}
+            {{- include "ar.dsnEnv" . | nindent 12 }}
+            - name: AR_RELATIONAL_MAX_CONNS
+              value: {{ $svc.relationalMaxConns | quote }}
+            - name: AR_DATA_DIR
+              value: /data
+            {{- include "ar.objectStoreEnv" . | nindent 12 }}
+            - name: AR_REGISTRY_ADDRESS
+              value: {{ printf "%s:%v" (include "ar.registryService" .) .Values.taskService.registryPort | quote }}
+            {{- if .Values.pkgMirror.enabled }}
+            - name: AR_PKG_MIRROR_URL
+              value: {{ printf "http://%s-pkg-mirror.%s.svc:8093" (include "ar.fullname" .) .Release.Namespace | quote }}
+            {{- end }}
+            {{- if .Values.egressGateway.enabled }}
+            # 出网网关（D-16）：命令拿到 HTTP(S)_PROXY（凭据在 userinfo 里，服务签发）。
+            - name: AR_EGRESS_GATEWAY_URL
+              value: {{ printf "http://%s-egress-gateway.%s.svc:8095" (include "ar.fullname" .) .Release.Namespace | quote }}
+            {{- end }}
+            {{- if .Values.worker.workspacesClaim }}
+            - name: AR_TOOL_WORKSPACE_ROOT
+              value: /workspaces
+            {{- end }}
+            {{- with .Values.worker.workspaceColdAfterDays }}
+            # 冷热分层（DISK-B）的部署默认值：挂卷的工作区闲置超过这么多天转冷；租户策略的 workspace.cold_after_days 优先。
+            - name: AR_WORKSPACE_COLD_AFTER_DAYS
+              value: {{ . | quote }}
+            {{- end }}
+            - name: AR_SANDBOX_RECONCILE_INTERVAL_S
+              value: {{ $svc.reconcileIntervalSeconds | quote }}
+            - name: AR_SANDBOX_SETUP_TIMEOUT_S
+              value: {{ $svc.setupTimeoutSeconds | quote }}
+            - name: AR_SANDBOX_TMP_DIR
+              value: /build-tmp
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: grpc
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: grpc
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          resources:
+            {{- toYaml $svc.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "ar.volumeMounts" . | nindent 12 }}
+            {{- if .Values.worker.workspacesClaim }}
+            - name: workspaces
+              mountPath: /workspaces
+            {{- end }}
+            - name: sandbox-backends
+              mountPath: /etc/agentruntime/sandbox
+              readOnly: true
+            - name: build-tmp
+              mountPath: /build-tmp
+      volumes:
+        {{- include "ar.volumes" . | nindent 8 }}
+        {{- if .Values.worker.workspacesClaim }}
+        - name: workspaces
+          persistentVolumeClaim:
+            claimName: {{ .Values.worker.workspacesClaim }}
+        {{- end }}
+        - name: sandbox-backends
+          configMap:
+            name: {{ printf "%s-sandbox-backends" (include "ar.fullname" .) }}
+        # 工作区存档与项目环境的构建产物（几个 GB）先落这里。
+        - name: build-tmp
+          emptyDir:
+            sizeLimit: {{ $svc.tmpSize }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ar.sandboxService" . }}
+  labels:
+    {{- include "ar.labels" (list . "sandbox-service") | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "ar.selector" (list . "sandbox-service") | nindent 4 }}
+  ports:
+    - name: grpc
+      port: {{ $svc.port }}
+      targetPort: grpc
+---
+# 只有 Worker 与 task-service 连得进来（调用方另有令牌，task-service 只能调只读的方法）；沙箱与别的命名空间进不来。
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "sandbox-service") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ar.selector" (list . "sandbox-service") | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "ar.selector" (list . "worker") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- include "ar.selector" (list . "task-service") | nindent 14 }}
+      ports:
+        - {protocol: TCP, port: {{ $svc.port }}}
 {{- end }}

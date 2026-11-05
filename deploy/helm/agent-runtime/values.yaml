@@ -266,6 +266,22 @@ egressGateway:
     requests: {cpu: 50m, memory: 64Mi}
     limits: {cpu: "1", memory: 512Mi}
 
+# Sandbox Service（SBX-01）：worker.shell.mode=sandbox 时起（templates/sandbox-service.yaml）。后端登记、项目环境的构建与冷热分层
+# 的配置仍写在 worker.shell 与 worker.workspaceColdAfterDays 下（格式不变），由它读。
+sandboxService:
+  port: 8097
+  # 业务库连接池上限（AR_RELATIONAL_MAX_CONNS）。
+  relationalMaxConns: 8
+  # 对账间隔（秒）：回收到期的环境、修中断留下的状态、清后端里的孤儿、冷热分层。
+  reconcileIntervalSeconds: 60
+  # 环境配置（ENV-02）的安装脚本的超时（秒）。
+  setupTimeoutSeconds: 600
+  # 工作区存档与项目环境构建产物的临时目录（emptyDir 的上限；要放得下 worker.shell.environments.limits.maxImageBytes）。
+  tmpSize: 20Gi
+  resources:
+    requests: {cpu: 250m, memory: 256Mi}
+    limits: {cpu: "2", memory: 1Gi}
+
 worker:
   # Context Builder 的有效长度与转存门槛（token）；空表示用 Worker 的默认值（32000、2000）。
   contextEffectiveTokens: ""
@@ -290,10 +306,12 @@ worker:
   # 0 不转冷；租户策略的 workspace.cold_after_days 优先。
   workspaceColdAfterDays: 0
   shell:
-    # shell_run 在哪里跑（AR_TOOL_SHELL_SANDBOX）：host 不隔离，只给开发；集群里用 sandbox（经 Sandbox 接口，D-05）。
+    # shell_run 在哪里跑（AR_TOOL_SHELL_SANDBOX）：host 不隔离，只给开发；集群里用 sandbox（经 Sandbox Service，SBX-01；要
+    # secrets.relationalDsn 与 secrets.storeClaim）。
     # docker 要挂 docker.sock（等于节点 root），集群里不允许。
     mode: host
-    # mode=sandbox 时的后端登记，写进 ConfigMap 作为 AR_SANDBOX_BACKENDS_FILE（格式见 agentruntime_worker.tools.sandboxes）。
+    # mode=sandbox 时的后端登记，写进 ConfigMap 作为 Sandbox Service 的 AR_SANDBOX_BACKENDS_FILE（格式见 services/go-sandbox-service
+    # 的 internal/registry）。
     # 用哪个后端由租户策略的 sandbox.backend 决定，没写时 defaultBackend。每个后端的 workspace（D-06）：mount（默认，挂
     # workspacesClaim）或 archive（不挂卷，工作区存档在 ObjectStore；Cloudflare 默认如此）。只有 archive 的后端时不用 workspacesClaim。
     # 每个后端还可以写 enabled（默认 true；false 的不接新环境、已有的排空，defaultBackend 不能指向它）与 capabilities
@@ -303,8 +321,8 @@ worker:
     backends: {}
     # shell_run 用的运行环境（AR_SANDBOX_RUNTIME，D-14）：后端登记的 images 把它映射到镜像，例如 universal（多语言）。
     runtime: python
-    # kind=k8s 的后端把 Pod 建在这个命名空间：Chart 在那里给 Worker 建 Role（只能管 Pod，读不了 Secret），
-    # Worker 用自己的 ServiceAccount（其余服务仍然不挂令牌）。
+    # kind=k8s 的后端把 Pod 建在这个命名空间：Chart 在那里给 Sandbox Service 建 Role（只能管 Pod，读不了 Secret），
+    # 它用自己的 ServiceAccount（其余服务，包括 Worker，都不挂令牌）。
     sandboxNamespace: sandboxes
     # 在每个节点上预先拉好 kind=k8s 后端用到的镜像（D-14）：第一次建环境不用现下载几个 GB 的镜像。
     prepull: false
@@ -327,7 +345,7 @@ worker:
         nodePort: 30500
         # 能经 NodePort 拉镜像的地址（节点的网段）。
         nodeCidr: 0.0.0.0/0
-        # htpasswd 的 Secret（键 htpasswd）；Worker 推送用的凭据另放在 SecretStore 的 sandbox/env-registry。
+        # htpasswd 的 Secret（键 htpasswd）；Sandbox Service 推送用的凭据另放在 SecretStore 的 sandbox/env-registry。
         htpasswdSecret: ""
       builder:
         namespace: sandbox-builds
@@ -342,6 +360,8 @@ worker:
         maxImageBytes: 8589934592
         buildTimeoutSeconds: 1800
         idleDays: 14
+        # Sandbox Service 进程里同时跑的构建数（排队的照样记心跳，不被别人接手）。
+        maxConcurrent: 4
   # 接 Memory Service：写入经验、规划与 tool_loop 时检索（docs/plan/memory-live.md）。
   memory:
     enabled: false

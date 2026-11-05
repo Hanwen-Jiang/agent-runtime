@@ -1,6 +1,5 @@
 {{- /* Worker 按任务队列分池（设计书 3.6、附录 K.5）：每个池一个 Deployment（--queues 只有这个队列）与一个 KEDA ScaledObject。
        副本数交给 KEDA（temporal 触发器按队列积压），Deployment 不写 replicas。 */ -}}
-{{- $kube := include "ar.workerNeedsKube" . }}
 {{- $shell := .Values.worker.shell }}
 {{- range $pool, $cfg := .Values.worker.pools }}
 {{- $name := printf "%s-worker-%s" (include "ar.fullname" $) $pool }}
@@ -23,14 +22,9 @@ spec:
         {{- include "ar.labels" (list $ "worker") | nindent 8 }}
         agentruntime.io/pool: {{ $pool }}
     spec:
-      {{- if $kube }}
-      # 只在沙箱命名空间里管 Pod（worker-sandbox.yaml 的 Role）。
-      serviceAccountName: {{ include "ar.workerServiceAccount" $ }}
-      automountServiceAccountToken: true
-      {{- else }}
+      # 沙箱经 Sandbox Service（SBX-01）：Worker 不挂 Kubernetes 的令牌。
       serviceAccountName: {{ include "ar.fullname" $ }}
       automountServiceAccountToken: false
-      {{- end }}
       securityContext:
         {{- toYaml $.Values.podSecurityContext | nindent 8 }}
       containers:
@@ -96,16 +90,16 @@ spec:
             - name: AR_TOOL_SHELL_SANDBOX
               value: {{ $shell.mode | quote }}
             {{- if eq $shell.mode "sandbox" }}
+            # Sandbox Service（SBX-01）：shell_run 与 Workspace 操作经它；调用方令牌在共用 SecretStore 的 sandbox-service/tokens/worker。
+            - name: AR_SANDBOX_SERVICE_ADDRESS
+              value: {{ printf "%s:%v" (include "ar.sandboxService" $) $.Values.sandboxService.port | quote }}
+            # 后端登记只用来看有没有托管后端（联网授权的形状）；选后端、建环境在服务里。
             - name: AR_SANDBOX_BACKENDS_FILE
               value: /etc/agentruntime/sandbox/backends.json
             - name: AR_SANDBOX_RUNTIME
               value: {{ $shell.runtime | default "python" | quote }}
-            {{- if $.Values.pkgMirror.enabled }}
-            - name: AR_PKG_MIRROR_URL
-              value: {{ printf "http://%s-pkg-mirror.%s.svc:8093" (include "ar.fullname" $) $.Release.Namespace | quote }}
-            {{- end }}
             {{- if $.Values.egressGateway.enabled }}
-            # 出网网关（D-16）：命令拿到 HTTP(S)_PROXY（凭据在 userinfo 里），并登记 request_network；预览地址的域名。
+            # 出网网关（D-16）：登记 request_network；预览地址的域名。代理凭据由 Sandbox Service 签发。
             - name: AR_EGRESS_GATEWAY_URL
               value: {{ printf "http://%s-egress-gateway.%s.svc:8095" (include "ar.fullname" $) $.Release.Namespace | quote }}
             {{- with $.Values.egressGateway.previewDomain }}
@@ -113,17 +107,12 @@ spec:
               value: {{ . | quote }}
             {{- end }}
             {{- end }}
-            # 沙箱环境表在业务库里（D-11）；没配连接串时是 /data 下的 SQLite，只有一个 Worker 副本时可以。
+            # 工作区、联网授权在业务库里，与 Sandbox Service 共用。
             {{- include "ar.dsnEnv" $ | nindent 12 }}
             {{- end }}
             {{- if $.Values.worker.workspacesClaim }}
             - name: AR_TOOL_WORKSPACE_ROOT
               value: /workspaces
-            {{- end }}
-            {{- with $.Values.worker.workspaceColdAfterDays }}
-            # 冷热分层（DISK-B）的部署默认值：挂卷的工作区闲置超过这么多天转冷；租户策略的 workspace.cold_after_days 优先。
-            - name: AR_WORKSPACE_COLD_AFTER_DAYS
-              value: {{ . | quote }}
             {{- end }}
           securityContext:
             {{- toYaml $.Values.containerSecurityContext | nindent 12 }}
