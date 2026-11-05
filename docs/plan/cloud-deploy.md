@@ -844,6 +844,22 @@ REAL-01 的检查（2026-11-04，在第 27 版上；目录 `rev29`，脚本 `smo
   - 花费：0.14 + 0.31（取消）+ 0.15（取消）= 0.60 美元。
 - 回滚：`helm rollback ar 30`，coding-web `rollout undo`（之前的清单在 `rev33/coding-web.yaml.before`）；代码副本 `agent-runtime.de1c0ba`、`coding-agent.ec36caa` 还在。
 
+宿主上的 Firecracker（2026-11-05，V1-FC：宿主上的 systemd 服务，不经 Helm；规矩见总表第 0 节第 6 条）：
+
+- 装了什么（与 `deploy/cluster/install.sh` 第 3b 步相同的命令，分步手工跑，没跑整个 install.sh）：Firecracker 与 jailer v1.17.0（`/usr/local/bin`，按
+  `versions.conf` 的 sha256 核对）；fc-manager（`/usr/local/bin/fc-manager`，从 main 的 `services/rs-fc-manager` 静态编译）；`/etc/systemd/system/fc-manager.service`
+  （enable）；配置 `/etc/agentruntime/fc-manager.env`（样例加上 `AR_FC_EGRESS_TARGET=10.43.202.68:8095`、`AR_FC_MIRROR_TARGET=10.43.23.112:8093`，即出网网关、
+  包镜像的 ClusterIP；`AR_FC_WARM_POOL=universal:2000:2048:2`）；令牌 `/etc/agentruntime/fc-manager-secrets.json`（0600，值另存 `/root/ar-secrets/fc-manager-token`，
+  集群的 SecretStore 要加同名的 `sandbox/fc-manager-token`）；客户机内核 `/var/lib/agentruntime/fc/images/vmlinux`（`build-kernel.sh` 在容器里构建，linux 6.18.57，
+  sha256 `6939628033c1461d184c6ec5222ad0ef194b5622a65f75b54af578a826e1d9bc`）；rootfs（`rootfs.sh`，python、universal、node、go 四个，本机 Docker 里的 0.1.0 镜像）。
+- 核对：`systemctl is-active fc-manager` 是 active，只听 `10.42.0.1:8097`；agent-runtime 命名空间里的 Pod 能连 `/healthz`；宿主连出网网关与包镜像的 ClusterIP 不被
+  NetworkPolicy 挡。真 VM 上的探测见 firecracker-backend.md 的“D-20 第二段、D-21、D-22”与 D-26 一节（建 1.1～1.3 秒、预热池交出 7 毫秒、只有 lo、只读根、
+  令牌不可读、转发与预览通、销毁无残留、杀 VM 后 reaper 清掉）。
+- 升级 fc-manager：先把后端登记设成 `enabled: false` 排空（重启会终止所有 VM），换二进制，`systemctl restart fc-manager`。回退：换回上一份二进制（`/root/fc-build/bin`）
+  或 `systemctl disable --now fc-manager`（Chart 里的 firecracker 后端设回 `enabled: false`）。
+- 租户切换（firecracker 后端在 Chart 里启用之后）：`real01` 的租户策略第 3 版只把 `sandbox.backend` 从 kata 改成 firecracker（种子在 `/root/ar-release/v1-fc/`，
+  回退用第 2 版的种子再发一次）。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
