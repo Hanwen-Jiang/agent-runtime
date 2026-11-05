@@ -34,7 +34,7 @@
 | --- | --- | --- | --- | --- | --- |
 | DEP-R | 部署 Runtime 下一版（第 2 节） | lane-merge | — | 已完成（2026-11-04 第 24 版，`6cc16b8`） | 近 |
 | DEP-W | coding-agent 合 lane/d，部署 coding-web | lane-merge | DEP-R | 已完成（2026-11-04，coding-agent `b4bb9a9`；GitHub App 仍关着） | 近 |
-| EV-TB | 查 Terminal-Bench 0/5 的原因，再跑 40 题 | handoff | — | 原因已查清（[记录](ev-tb-0of5-2026-11-04.md)）：环境配额满了，五题都退回 universal，没用上官方镜像；顺带修了失败原因里的签名地址。再跑之前要放宽配额（7.1 已定放宽到 20）、查镜像仓库为什么是空的；适配器识别“环境没用上”已完成（EV-TB-2，`438d2bb`） | 近 |
+| EV-TB | 查 Terminal-Bench 0/5 的原因，再跑 40 题 | handoff | — | 部分完成（2026-11-05，第 8 节 EV-TB-RUN，[记录第 3.1 节](ev-tb-0of5-2026-11-04.md)）：第 29 版上 40 题解决 7 题（17.5%），跑完的 23 题里 22 题用上项目环境，36.43 美元；第二批 17 题被 `swebench` 当天的出网上限（20 GB）拒了没跑，要放宽上限或分两天补跑，根本办法见 ENV-MIRROR。之前：0/5 的原因已查清（环境配额满了，五题都退回 universal）；适配器识别“环境没用上”已完成（EV-TB-2，`438d2bb`） | 近 |
 | EV-SWE | SWE-bench 补跑 matplotlib-13989 | handoff | — | 已跑（2026-11-04，服务器上一次没在第 8 节认领的运行，`/opt/evals/w1/swe-13989-b`）：done、3 轮、0.11 美元，没解决（0/1） | 近 |
 | TOOLS-KIMI | **线上 Agent 不调工具、编造结果**：经中转站 a6api 调 `kimi-k3.1-pro` 时，请求里同时有工具与输出 schema（tool_loop 的 Goal Node 带 `output_schema` 就是这样）它就不调工具，直接按 schema 编一个结果。11-04 10:46 UTC 之前同样的请求它会调工具（两个 SWE-bench Task 的 tool_loop 带 schema，11 次与 3 次调了工具）；18:01 的 Terminal-Bench 一题 21 步全部直接 finish，结果里写“tool execution did not occur”，Reviewer 规则回退 20 轮。经网关直接探测（工具 + schema）：kimi 不调、编了文件名；gemini-4-argon、gpt-6.1-sol、deepseek-v4-pro 都调了 `shell_run`。v26→v27 之间 tool_loop、网关、适配层、路由与 Model Profile 都没改，变的是上游。凡是 act 选到 kimi 的租户都受影响（`swebench` 上 claude-sonnet-5-5 不在白名单，钉了也落到 kimi） | EV-TB-RUN | — | 已修并上线（TOOLS-KIMI-FIX，Helm 第 28 版 DEP-GW28，只换网关；用户选的 D6，不止血）；线上探测 kimi 带工具与 schema 时调了工具；第 28 版上重跑 Terminal-Bench 一题，Task 发了 183 个工具事件，端到端也好了 | 近 |
 | EV-DE | DeepEval 把工具调用轨迹放进用例 | handoff | — | **代码完成**（`c1a307a`）；线上重判待验收，见 [记录](ev-de-tool-evidence-2026-11-04.md) | 中 |
@@ -97,6 +97,7 @@
 | WS-CF-524 | 经 `api.cgent.link` 调 Workspace API 时，Kata 上建环境超过 Cloudflare 代理的 100 秒，客户端拿到 524（操作本身在服务端做完了）。coding-web 走集群内地址不受影响；对外的客户端要改成异步（先返回、再查结果），或这类调用不经代理 | 第 27 版的冒烟 3 | — | 已定（2026-11-04 用户批准、Claude 选）：做异步——长的 Workspace 操作先返回操作号，客户端轮询结果（契约走 S-01，人审按 7.2 视为已过）；不开绕过 Cloudflare 代理的主机名（会暴露源站 IP、失去 Cloudflare 的防护）。待做 | 中 |
 | WS-CREATE-RACE | 工作区还在建（CreateWorkspace 在服务端没做完）时就在它上面开 Task，建工作区时的初始文件会丢（冒烟 3 第二次：客户端经 Cloudflare 拿到 524 就提交了 Task，存档后读不到 `hello.txt`；改走集群内地址、建完再提交就都在）。Task 准入时工作区不是 active 就排队或拒（`workspace_not_ready`），不要另起一个空环境 | 冒烟 3（cloud-deploy.md） | — | 已修（78075e19，2026-11-04）：CreateWorkspace 起工作流前在 Cache 里记“在建”，工作流结束才清；SubmitTask 见到就拒，`workspace_not_ready`（Unavailable，稍后重试）。没部署，随下一次整版发布；客户端（coding-web）见到这个错误要等一会儿再提交 | 近 |
 | TOOL-INT-FLOAT | 模型常把整数写成 `8000.0`、`10.0`，`request_network` 的 `preview_port`、`minutes` 按 integer 校验就报 `invalid_arguments`（冒烟 3 第一次）。工具参数校验时接受值是整数的浮点数，或在提示里写明 | 冒烟 3 | — | 待做 | 远 |
+| ENV-MIRROR | 环境构建（D-17）配 Docker Hub 的拉取缓存：现在每次构建都在新的 Kata VM 里起新的 BuildKit，没有层缓存，同一个官方镜像每题整份重下（11-05 Terminal-Bench 23 次构建约 42 GB，打满了 `swebench` 一天 20 GB 的出网上限，17 题没提交成）。在集群里起一个拉取缓存（`registry:2.8.3` 的 proxy 模式，与环境镜像仓库同一个镜像，不加依赖），构建时 BuildKit 把 `docker.io` 的 mirror 指向它，缓存自己去 Docker Hub 拉也经出网网关。要人定三件事：缓存的出网记在平台账上还是发起构建的租户账上；缓存放哪块盘、容量上限多大（这台节点的盘已 78%，kubelet 到 85% 驱逐）；先只给评测租户用还是所有租户都用。构建 Job 的配置在 `agentruntime_worker/sandbox/env_builder.py`，归 SBX-01-IMPL | EV-TB-RUN（[ev-tb 第 3.1 节](ev-tb-0of5-2026-11-04.md)） | SBX-01-IMPL（构建代码） | 待做（要人定） | 近 |
 | SBX-RS-01 | Rust 版 agent 的原型实测 | workspace-read 第 5 节 | — | 取消（改为 D-28） | — |
 
 ## 4. DAG
@@ -117,7 +118,7 @@ flowchart LR
   end
 
   subgraph EVAL["评测"]
-    EVTB["EV-TB 查 T-Bench 0/5 → 40 题"]
+    EVTB["EV-TB 40 题：解决 7<br/>17 题待补跑"]
     EVSWE["EV-SWE 补跑 matplotlib"]
     EVDE["EV-DE 工具轨迹已实现<br/>线上重判待验收"]
     MXQ{{"MX-Q 改编题选题"}}
@@ -188,6 +189,7 @@ flowchart LR
     PULL["WS-PULL-01 agent 按清单拉块"]
     WL1["WK-LITE-01 输出直接外置"]
     WL2["WK-LITE-02 交付文件直传"]
+    ENVMIR{{"ENV-MIRROR 构建的 Docker Hub 拉取缓存"}}
   end
 
   DEPR --> DEPW
@@ -226,16 +228,18 @@ flowchart LR
   BLOB -.-> PULL
   DEPR --> WL2
   D28 -.-> ATOKF
+  SBX3 -.-> ENVMIR
+  ENVMIR -.-> EVTB
 
   class DEPR,DEPW deploy;
   class EVTB,EVSWE,PERF0,DISKA,TSP1,ATOKT,ATOKF near;
-  class MXQ,MXPUB,EVREAL,SECAPI,DELTA,HISTC,SBXD human;
+  class MXQ,MXPUB,EVREAL,SECAPI,DELTA,HISTC,SBXD,ENVMIR human;
   class NETOPEN,D25,D27,N14,N15,R04,DISKB,WSR3,BLOB,D26,FCREAL later;
 
   classDef doing fill:#ffd8a8,stroke:#d9480f,stroke-width:2px;
 ```
 
-虚线是“建议先有”而不是硬依赖：PERF-00 的数字决定 SBX-01、WS-READ-02 的轻重；WS-READ-03 在多副本时才需要 CACHE-01；Firecracker 下 WS-PULL-01 经块缓存取块；ATOK-F 的 Rust 版随 D-28 一起做。
+虚线是“建议先有”而不是硬依赖：PERF-00 的数字决定 SBX-01、WS-READ-02 的轻重；WS-READ-03 在多副本时才需要 CACHE-01；Firecracker 下 WS-PULL-01 经块缓存取块；ATOK-F 的 Rust 版随 D-28 一起做；ENV-MIRROR 改的构建代码归 SBX-01-IMPL，EV-TB 剩下的 17 题不等它也能跑（放宽出网上限或分两天）。
 
 ## 5. 不能同时改的文件（单写者与重叠）
 
@@ -343,7 +347,7 @@ flowchart LR
 | APP-LIVE | GitHub App 上线（总表第 4 节的“App 上线”；用户 2026-11-04 同意，GitHub 一侧用户已配好）：收件箱的库与角色、私钥挪进 Secret `coding-github-app` 按文件挂载、`CODING_GITHUB_APP_SLUG`、`CODING_GITHUB_DSN`、`CODING_TOKEN_KEY`，去掉 DEP-W 的 5 个空值，换钥脚本改写新 Secret | Claude 桌面会话（Opus 5.5，F 线） | 2026-11-04 | 线上 `deploy/coding-web`、Secret `coding-oauth`、`coding-github-app`、`coding-github-db`、`data/pg-coding-github`、Postgres 集群 `pg` 的 managed roles 与新 Database、服务器上 `/root/ar-secrets` 的 coding-web 文件；仓库里 `deploy/data/postgres.yaml` 与 `secrets.example.yaml` 的对应部分 | 已完成（见 `cloud-deploy.md`）：App 在线上打开，收件箱的库在 `pg` 的 `coding_github`，私钥按文件挂载；GitHub 一侧的设置经 API 核对过。还没有安装，第一条真实投递要等人在 GitHub 上把 App 装到账号或仓库 |
 | SITE-DATA | 数据集页按题型画全题目（总表第 3 节的 SITE-DATA）：`site.json` 给每个数据集写题型（成对比较、多选一的回答、单选题、工具调用、多轮智能体、补丁、终端任务、简答，自编的规划、Reviewer、压缩、交付、检索），`site_catalog` 按题型把题整理成页面要画的几块（候选回答并排并标出哪个更好、选项与正确答案、对话与可用工具、期望的调用、补丁与测试、`extra` 里给人看的字段），页面照着画、没有题型时照旧；先在 eval-site.md 列出各数据集的题型与字段，顺带核对导出漏没漏字段。不改页面的整体样式（归 SITE-UI）。直接在 main 上提交 | Claude 桌面会话（Opus 5.5，G 线的那个） | 2026-11-04 | `services/py-learning/src/agentruntime_learning/evals/site_catalog.py`、`evals/site_pages/datasets.html` 里画展开内容的部分、`evalsets/site.json` 各数据集新加的 `layout`（不动题目与标注）、`tests/test_eval_site_catalog.py`；`docs/plan/eval-site.md` 新的一节 | 已完成（见本行的提交；没部署，随下一版 learning 镜像上线；evalsets 的 `layout` 推到 main 后旧镜像不认，照旧画）：新模块 `evals/site_views.py` 与测试 `tests/test_eval_site_views.py`（实际没改 `test_eval_site_catalog.py`）；十种题型与各自画的字段见 [eval-site 第 7 节](eval-site.md)。仓库里 12 个 jsonl 数据集的每道题核对过一行里的每个值都在页面上；有题型的题不再重复发原样的 detail。顺带：窄屏下来源标记可换行（原来把整页撑到 1447 像素宽）。没做：适配器没带的上游元数据（JudgeBench 的 `response_model` 等，要在服务器上重新导出）；页面冒烟测试归 SITE-UI。py-learning 739 过；失败的 5 条与 7 个 error 在没有这次改动的 HEAD 上一样（Kafka 客户端没装、Terminal-Bench 判分在 Windows 上、`test_capability_component.py` 的 s09 规划格子：`general_refund_rate_analysis` 期望并行宽度至少 3、得到 1） |
 | R-06-D | R-06 按代审第 7 节第 1、5 条：Learning 的成本改读 `model_usage`（与 Gateway 结算同一事实源），按 task_id 合计每次尝试的实际金额；有还没结算的尝试、或账本里没有这个 Task 的记录，算成本未知（交人工判断，R-06-B 的门槛）。`--cost-source`（auto、model_usage、trace）：auto 在配了业务库（`AR_RELATIONAL_DSN` 或 `AR_DATA_DIR`）时读账本，否则照旧读 trace，报告写明用的是哪个；Chart 给 Learning 的 Job 加业务库的 DSN。直接在 main 上提交 | Claude 桌面会话（Opus 5.5，G 线的那个） | 2026-11-04 | `services/py-learning` 的新模块 `pipeline/costs.py` 与测试 `tests/test_pipeline_costs.py`、`pipeline/run.py` 里接成本的一处与报告字段、`pipeline/__main__.py` 的参数；Chart 的 `templates/learning.yaml` 的环境变量与 `tests/deploy/test_helm_chart.py` 的一条；`docs/plan/learning-pipeline.md` 一段 | 已完成（见本行的提交；没部署）：细节见 [learning-pipeline 第 8 节](learning-pipeline.md)。部署测试实际加在 `tests/deploy/test_cloud.py`（云上的 Job 与网关读同一个连接串），`test_helm_chart.py` 没改。读不了账本时退出码 4、不提交消费组的位置。py-learning 753 过（失败与 error 同 SITE-DATA 记下的那些，没有这次改动的 HEAD 上一样）；部署 338 过，失败的 1 条是本机没装 `otelcol-contrib`。之后补了读账本的四条在临时 Postgres（非超级用户、行级安全）上各跑一遍，都过。没做：Registry 修订号；线上没跑 |
-| EV-ENV | EV-SWE 与 EV-TB 共同的前置：项目环境（D-17）在线上用不上。先只读查清环境镜像仓库为什么是空的而业务库记着 ready（`ev-tb-0of5` 第 2 节第 1 条），再按查到的修：配额按 7.1 放宽到 20（`values-cloud.yaml` 的 `worker.shell.environments.limits.maxImages`，Chart 里是所有租户共用的一个数），记着 ready 但仓库里没有的镜像改为不可用（经代码里已有的路径，不直接删行）。用户 2026-11-04 在对话里同意跑 D1～D3（“Yes, run D1–D3”） | Claude 桌面会话（Opus 5.5，G 线的那个） | 2026-11-04 | 线上环境镜像仓库、业务库里 `swebench`、`evals` 租户的 `sandbox_images` 行、`values-cloud.yaml` 的 environments 一节；要 `helm upgrade` 时先在这里写明，期间别的会话不要升级 | 进行中。只读查到（2026-11-04 晚）：① 配额现在不挡了：`swebench` 的 54 条 ready 已有 53 条是 deleted（今天别的会话清的），building 与 ready 只剩 1 条；`evals` 没有记录。② 环境镜像仓库从 10-28 起一次推送都没收到（日志 32 行、存储 4 KB），但节点的 containerd 里有那 54 个 `127.0.0.1:30500/envs/swebench/env` 镜像，单节点上照样用得上；怎么进去的没查清，多节点或 kubelet 回收镜像时会拉不到。③ 今天 10:41 的一次 Terminal-Bench 构建失败在出网网关给 `auth.docker.io/token` 回了 502；网关 16:17 随第 27 版重启，之后没试过。④ 跑 40 题要 40 个镜像，`max_images` 是所有租户共用的一个数，7.1 定的 20 不够 |
+| EV-ENV | EV-SWE 与 EV-TB 共同的前置：项目环境（D-17）在线上用不上。先只读查清环境镜像仓库为什么是空的而业务库记着 ready（`ev-tb-0of5` 第 2 节第 1 条），再按查到的修：配额按 7.1 放宽到 20（`values-cloud.yaml` 的 `worker.shell.environments.limits.maxImages`，Chart 里是所有租户共用的一个数），记着 ready 但仓库里没有的镜像改为不可用（经代码里已有的路径，不直接删行）。用户 2026-11-04 在对话里同意跑 D1～D3（“Yes, run D1–D3”） | Claude 桌面会话（Opus 5.5，G 线的那个） | 2026-11-04 | 线上环境镜像仓库、业务库里 `swebench`、`evals` 租户的 `sandbox_images` 行、`values-cloud.yaml` 的 environments 一节；要 `helm upgrade` 时先在这里写明，期间别的会话不要升级 | **已完成（2026-11-05）**：项目环境在线上用上了。配额在第 29 版放宽到 50（DEP-TB29 ③；7.1 定的 20 不够 40 题），Kata 里的构建修了扩展属性（DEP-TB29 ①），拉层经出网网关已通；Terminal-Bench 跑完的 23 题里 22 题用上项目环境（EV-TB-RUN）。只读复查（11-05 07:00 UTC）：环境镜像仓库现在收得到推送（存储 8.4 GB，近 30 小时推送 manifest 72 次）；`swebench` 有 25 条 ready（其中 24 条是 11-05 建的）、2 条 building、6 条 failed。没查清的：10-31 那 54 个镜像只在节点的 containerd 里、仓库里没有，是怎么进去的（单节点上照样能用）。没做“记着 ready 但仓库里没有的改为不可用”：那 53 条已被别的会话标成 deleted。留给后面的三件事：① `sandbox-builds` 里两个构建 Job 从 06:10 跑到 07:02 还没完，就是那 2 条 building，一直占着配额，要看是不是卡住了，原因没查；② 盘 78%（containerd 150 GB，k3s 本地存储 13 GB，环境镜像仓库在后者里），离 kubelet 驱逐的 85% 不远，再建一批镜像之前要先清；③ 构建每次都整份重下官方镜像，见第 3 节 ENV-MIRROR。之前只读查到（2026-11-04 晚）：① 配额现在不挡了：`swebench` 的 54 条 ready 已有 53 条是 deleted（今天别的会话清的），building 与 ready 只剩 1 条；`evals` 没有记录。② 环境镜像仓库从 10-28 起一次推送都没收到（日志 32 行、存储 4 KB），但节点的 containerd 里有那 54 个 `127.0.0.1:30500/envs/swebench/env` 镜像，单节点上照样用得上；怎么进去的没查清，多节点或 kubelet 回收镜像时会拉不到。③ 今天 10:41 的一次 Terminal-Bench 构建失败在出网网关给 `auth.docker.io/token` 回了 502；网关 16:17 随第 27 版重启，之后没试过。④ 跑 40 题要 40 个镜像，`max_images` 是所有租户共用的一个数，7.1 定的 20 不够 |
 | EV-SWE-RUN | EV-SWE：用含 `a9fac75` 的客户端续跑 `/opt/swebench/runs/t18-rev19` 里的 matplotlib-13989（上限 5 美元，7.1） | 同上 | 2026-11-04 | 服务器上 `/opt/swebench/runs/t18-rev19` 与 `/opt/evals` 里新的源码与 venv | 撤回（2026-11-04）：服务器上今天已有一次没在这里认领的运行做了（`/opt/evals/w1/swe-13989-b`，`ev_swe_rc=0`），这边不重跑 |
 | EV-TB-RUN | EV-TB：Terminal-Bench 2.0 跑 40 题（上限 80 美元，7.1）；先把要用的环境建好，系统管理类、要服务状态的题不选或走 Harbor | 同上 | 2026-11-04 | 服务器上 `/opt/evals/tb2`（别的运行用的 `/opt/evals/tb` 不动） | **部分完成（2026-11-05）**：40 题解决 7 题（17.5%），跑完 23 题，第二批 17 题因 `swebench` 当天出网流量超了 20 GB 的上限没提交成（构建每次整份重下官方镜像，当天 42 GB）；花 36.43 美元。结果与下一步见 [ev-tb 第 3.1 节](ev-tb-0of5-2026-11-04.md)：剩下 17 题要放宽出网上限或分两天，根本办法是给构建配 Docker Hub 的拉取缓存。之前：第 29 版上一题核对通过（`one-c`：环境镜像建好并用上，`environment_used: true`，1.66 美元，没解决）；40 题（51 道可移植题里按种子 0 选）分两批各 20 题跑（`/opt/evals/tb2/tb40.sh`，`tb40-a`、`tb40-b`，每批 37.5 美元、单题 3 美元、并发 4、带联网授权），批间删掉判分拉进 Docker 的官方镜像，磁盘到 78% 就不开第二批（这台节点的 kubelet 到 85% 就驱逐）。之前：暂停（2026-11-04）：第一题（build-cython-ext）跑完、1.59 美元、20 轮，没用上环境，原因不是环境：Agent 一次工具都没调（见第 3 节 TOOLS-KIMI），所以也没触发构建。第 28 版上重跑（`/opt/evals/tb2/one-b`）：这次调了工具（183 个工具事件），1 小时到点取消，0.69 美元，没解决；又碰到两件事，解决之前不往下跑：① 环境构建拉层已通，但 BuildKit 导出时 `failed to get xattr …: operation not supported`（Kata 里的文件系统不支持扩展属性，这个官方镜像里有带扩展属性的文件），退回 universal；构建在 `agentruntime_worker/sandbox/`，归 SBX-01-IMPL；② 题目要从 GitHub 克隆，出网网关以 `no_grant` 拒绝（这个 Task 没有联网授权），官方跑法能联网，这类题现在判不公平。另外 40 题要约 40 个镜像，`max_images` 是所有租户共用的一个数，7.1 的 20 不够。**提给用户审的三处线上改动（2026-11-04，D7、D8）**：① 构建：根因是 `kata` RuntimeClass（handler `kata-clh-runtime-rs`，配置 `/opt/kata/share/defaults/kata-containers/runtime-rs/runtimes/clh-runtime-rs/configuration-clh-runtime-rs.toml`）的 `virtio_fs_extra_args` 没有 `--xattr`；建议加 `--xattr` 与 `--xattrmap=:prefix:all::user.virtiofs.::bad:all:::`（虚拟机里写的扩展属性在宿主上一律落在 `user.virtiofs.` 前缀下，宿主文件原有的扩展属性对虚拟机隐藏，宿主不会因此多出 security、trusted 一类的属性），只影响之后新起的 Kata Pod，并写进 `deploy/cluster/install.sh`（kata-deploy 升级会覆盖）；另一种是改构建 Job 让 BuildKit 用虚拟机内存里的 tmpfs，要动 SBX-01-IMPL 独占的 `agentruntime_worker/sandbox/env_builder.py`，构建也要更多内存。② 联网：`swebench` 租户策略（现行第 4 版只放行 `github.com`）发布第 5 版，`sandbox.network.hosts` 改为 `github.com`、`codeload.github.com`、`objects.githubusercontent.com`、`raw.githubusercontent.com`、`download.pytorch.org`（按 89 题的题目说明扫出来的；PyPI、npm、Go 走包镜像，不用放行；YouTube、koth.org 之类只有 1 题用到的不放），跑的时候 `--network-hosts` 用同一份。③ 配额：`worker.shell.environments.limits.maxImages` 从 5 改成 50（Helm，所有租户共用；40 个环境镜像按每个 1～2 GB 约加 60 GB，盘从 66% 到约 79%，低于 kubelet 回收镜像的 85%） |
 | MX-RUN | 能力矩阵第一轮：`capability-plans/round1.json`（估约 32.5 美元，贵模型晋级另加约 8 美元；7.1 的上限 200） | 同上 | 2026-11-04 | 服务器上 `/opt/evals` 里新的运行目录；跑完的分数与 `docs/plan/capability-matrix-evals.md` 新的一节（发布归 MX-PUB） | 撤回（2026-11-04）：服务器上已有一个没在这里认领的进程在跑同一个计划（`capability run --plan /opt/evals/mx/round1.json --out /opt/evals/mx/round1 --budget-usd 120`，当地 13:31 起，`results.jsonl` 还在写），这边不另起 |
