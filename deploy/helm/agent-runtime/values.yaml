@@ -355,6 +355,15 @@ worker:
         runtimeClass: kata
         agentImage: ""
         buildkitImage: moby/buildkit:v0.25.1
+      # Docker Hub 的拉取缓存（ENV-MIRROR，templates/docker-mirror.yaml）：构建的 BuildKit 把 docker.io 的 mirror 指向它。
+      dockerMirror:
+        enabled: false
+        remoteUrl: https://registry-1.docker.io
+        # 缓存的 manifest 多久后重新向 Docker Hub 核对（同一个标签可能被改指）。
+        ttl: 168h
+        storage: 16Gi
+        # 超过这么多 GiB 就按最近访问删最久没用的层。
+        maxGiB: 15
       # 构建能经出网网关访问的主机（拉基础镜像、装系统包）。Docker Hub 的镜像层从两家 CDN 下载，按镜像而定。
       buildHosts: [registry-1.docker.io, auth.docker.io, production.cloudflare.docker.com, production.cloudfront.docker.com, ghcr.io, pkg-containers.githubusercontent.com, deb.debian.org, security.debian.org]
       limits:

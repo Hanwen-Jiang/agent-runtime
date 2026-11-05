@@ -110,6 +110,9 @@ worker:
         htpasswdSecret: agent-runtime-env-registry
       builder:
         agentImage: ghcr.io/agentruntime/sandbox-agent:0.1.0
+      # Docker Hub 的拉取缓存（ENV-MIRROR）：所有租户的构建都用，出网记平台账，15 GiB 按最近使用淘汰。
+      dockerMirror:
+        enabled: true
       # 每个租户最多几个项目环境的镜像（building 与 ready 都算）：Terminal-Bench 40 题要约 40 个（DEP-TB29，2026-11-04 用户批准），
       # 每个 1～2 GB；节点的盘在 kubelet 回收镜像的 85% 以下。
       limits:

@@ -1,0 +1,166 @@
+{{- /* Docker Hub 的拉取缓存（ENV-MIRROR，docs/plan/all-plans-dag-2026-11-03.md 第 0 节）：项目环境的构建（D-17）每次都在新的 Kata VM 里
+       起新的 BuildKit，没有层缓存，同一个官方镜像每次整份重下。这里起一个 CNCF Distribution（与环境镜像仓库同一个镜像，不加依赖）的
+       proxy 模式，构建时 BuildKit 把 docker.io 的 mirror 指向它（envbuild 的 BuildScript）；缓存没有的层它自己去 Docker Hub 拉。
+       Claude 定（2026-11-05）：
+         - 出网记平台账：缓存自己直连 Docker Hub（同包镜像，只放行公网的 80、443），不经出网网关、不算进发起构建的租户的出网上限；
+           第一次拉的那个构建仍经网关的授权去拉没进缓存的部分（BuildKit 在 mirror 失败时退回 docker.io）。
+         - 所有租户都用；只有构建的命名空间连得到它（只读：proxy 模式不收推送）。
+         - 容量：PVC 放在节点的盘上，trim 容器按最近访问时间（atime，relatime 下一天精度）删最久没用的层，直到不超过 maxGiB
+           （默认 15 GiB，节点盘 78% 时留出到 kubelet 85% 驱逐线的余量）。删掉的层下次用到时缓存重新去拉。 */ -}}
+{{- $env := .Values.worker.shell.environments -}}
+{{- $m := $env.dockerMirror -}}
+{{- if and (eq .Values.worker.shell.mode "sandbox") $env.enabled $m.enabled }}
+{{- $name := printf "%s-docker-mirror" (include "ar.fullname" .) -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "docker-mirror") | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: {{ $m.storage }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "docker-mirror") | nindent 4 }}
+data:
+  config.yml: |
+    version: 0.1
+    storage:
+      filesystem: {rootdirectory: /var/lib/registry}
+      delete: {enabled: true}
+    proxy:
+      remoteurl: {{ $m.remoteUrl }}
+      ttl: {{ $m.ttl }}
+    http:
+      addr: :5000
+  trim.sh: |
+    set -u
+    limit_mib=$(( {{ int $m.maxGiB }} * 1024 ))
+    blobs=/var/lib/registry/docker/registry/v2/blobs
+    while true; do
+      used=$(du -sm /var/lib/registry 2>/dev/null | cut -f1)
+      if [ -n "$used" ] && [ "$used" -gt "$limit_mib" ] && [ -d "$blobs" ]; then
+        echo "缓存 ${used} MiB，超过 ${limit_mib} MiB：删最久没用的层"
+        find "$blobs" -name data -type f -exec stat -c '%X %n' {} + 2>/dev/null | sort -n | head -n 20 | \
+          while read -r _ f; do rm -f "$f"; rmdir "$(dirname "$f")" 2>/dev/null; done
+        sleep 5
+      else
+        sleep 300
+      fi
+    done
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "docker-mirror") | nindent 4 }}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels:
+      {{- include "ar.selector" (list . "docker-mirror") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ar.labels" (list . "docker-mirror") | nindent 8 }}
+      annotations:
+        checksum/config: {{ printf "%s%s%v%v" $m.remoteUrl $m.ttl $m.maxGiB $m.storage | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: registry
+          image: {{ $env.registry.image }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: oci
+              containerPort: 5000
+          readinessProbe:
+            tcpSocket: {port: oci}
+            periodSeconds: 10
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: "1", memory: 512Mi}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/registry}
+            - {name: tmp, mountPath: /tmp}
+            - {name: config, mountPath: /etc/docker/registry/config.yml, subPath: config.yml, readOnly: true}
+        - name: trim
+          image: {{ $env.registry.image }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: [sh, /trim/trim.sh]
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 200m, memory: 64Mi}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/registry}
+            - {name: config, mountPath: /trim, readOnly: true}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $name }}
+        - name: tmp
+          emptyDir: {sizeLimit: 1Gi}
+        - name: config
+          configMap:
+            name: {{ $name }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "docker-mirror") | nindent 4 }}
+spec:
+  selector:
+    {{- include "ar.selector" (list . "docker-mirror") | nindent 4 }}
+  ports:
+    - name: oci
+      port: 5000
+      targetPort: oci
+---
+# 进只有构建的命名空间；出只有 DNS 与公网的 80、443（Docker Hub 与它的 CDN），内网段一律不放。
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ar.labels" (list . "docker-mirror") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ar.selector" (list . "docker-mirror") | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $env.builder.namespace }}
+      ports:
+        - {protocol: TCP, port: 5000}
+  egress:
+    - ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 100.64.0.0/10, 127.0.0.0/8]
+      ports:
+        - {protocol: TCP, port: 443}
+        - {protocol: TCP, port: 80}
+{{- end }}

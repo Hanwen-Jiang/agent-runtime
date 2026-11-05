@@ -900,7 +900,7 @@ def test_environment_builds_are_registered_and_confined(cloud: list[dict[str, An
     assert binding["subjects"][0]["name"] == pod_spec(sandbox_service(cloud))["serviceAccountName"]
     [policy] = [m for m in by_kind(cloud, "NetworkPolicy") if m["metadata"]["name"] == "builds-egress"]
     ports = sorted(p["port"] for rule in policy["spec"]["egress"] for p in rule.get("ports", []))
-    assert ports == [53, 53, 8093, 8095], "构建只连网关、包镜像与 DNS"
+    assert ports == [53, 53, 5000, 8093, 8095], "构建只连网关、包镜像、Docker Hub 的拉取缓存（ENV-MIRROR）与 DNS"
     builds = (CLUSTER / "builds.yaml").read_text("utf-8")
     assert "runtimeClassName == 'kata'" in builds and "hostPath" in builds and "default-deny-all" in builds
 

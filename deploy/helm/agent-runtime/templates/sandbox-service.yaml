@@ -84,6 +84,9 @@ data:
   {{- /* 按项目定制的运行环境（D-17）：仓库的推送地址是集群内的 Service，镜像引用写节点拉镜像用的 pullHost。 */ -}}
   {{- $reg := dict "url" (default (printf "http://%s-env-registry.%s.svc:5000" (include "ar.fullname" .) .Release.Namespace) $env.registry.url) "pull_host" $env.registry.pullHost "prefix" $env.registry.prefix }}
   {{- $builder := dict "kind" "k8s" "namespace" $env.builder.namespace "runtime_class" $env.builder.runtimeClass "isolation" "microvm" "agent_image" $env.builder.agentImage "buildkit_image" $env.builder.buildkitImage "workspace_claim" .Values.worker.workspacesClaim }}
+  {{- if $env.dockerMirror.enabled }}
+  {{- $_ := set $builder "docker_mirror" (printf "%s-docker-mirror.%s.svc:5000" (include "ar.fullname" .) .Release.Namespace) }}
+  {{- end }}
   {{- $limits := dict "max_images" $env.limits.maxImages "max_image_bytes" $env.limits.maxImageBytes "build_timeout_s" $env.limits.buildTimeoutSeconds "idle_days" $env.limits.idleDays "max_concurrent" ($env.limits.maxConcurrent | default 4) }}
   {{- $_ := set $registry "environments" (dict "base_image" $env.baseImage "base_digest" $env.baseDigest "registry" $reg "builder" $builder "build_hosts" $env.buildHosts "limits" $limits) }}
   {{- end }}

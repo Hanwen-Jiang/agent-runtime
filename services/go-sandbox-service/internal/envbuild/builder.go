@@ -73,7 +73,9 @@ type BuilderConfig struct {
 	CPUMillis       int
 	MemoryMB        int
 	ImagePullPolicy string
-	PollInterval    time.Duration
+	// DockerMirror 是 Docker Hub 的拉取缓存（主机:端口，明文 HTTP，ENV-MIRROR）；空时直连 docker.io（经出网网关）。
+	DockerMirror string
+	PollInterval time.Duration
 	// FetchWindow 是构建结束后留多久给服务取回产物（activeDeadlineSeconds 在构建的超时之外再加这么多）。
 	FetchWindow time.Duration
 }
@@ -156,6 +158,14 @@ func keyLabel(key string) string {
 
 // BuildScript 是构建那一步跑的脚本：联网的变量作为构建参数传给 BuildKit。
 const BuildScript = `set -eu
+# Docker Hub 的拉取缓存（ENV-MIRROR）：mirror 不通时 BuildKit 退回 docker.io（经出网网关）。缓存在集群里，不走代理。
+if [ -n "${DOCKER_MIRROR:-}" ]; then
+  mkdir -p /tmp/buildkit
+  printf '[registry."docker.io"]\n  mirrors = ["%s"]\n[registry."%s"]\n  http = true\n' "$DOCKER_MIRROR" "$DOCKER_MIRROR" > /tmp/buildkit/buildkitd.toml
+  export BUILDKITD_FLAGS="${BUILDKITD_FLAGS:-} --config=/tmp/buildkit/buildkitd.toml"
+  mirror_host="${DOCKER_MIRROR%%:*}"
+  export NO_PROXY="${NO_PROXY:+$NO_PROXY,}$mirror_host" no_proxy="${no_proxy:+$no_proxy,}$mirror_host"
+fi
 args=""
 for v in HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy PIP_INDEX_URL PIP_TRUSTED_HOST UV_DEFAULT_INDEX npm_config_registry GOPROXY; do
   eval "val=\${$v:-}"
@@ -194,6 +204,9 @@ func (b *K8sJobBuilder) Manifests(job BuildJob, name, token string) (configMap, 
 	buildEnv := []any{}
 	for _, k := range netNames {
 		buildEnv = append(buildEnv, map[string]any{"name": k, "valueFrom": map[string]any{"secretKeyRef": map[string]any{"name": name, "key": k}}})
+	}
+	if c.DockerMirror != "" {
+		buildEnv = append(buildEnv, map[string]any{"name": "DOCKER_MIRROR", "value": c.DockerMirror})
 	}
 	unprivileged := map[string]any{"allowPrivilegeEscalation": false, "readOnlyRootFilesystem": true, "capabilities": map[string]any{"drop": []any{"ALL"}},
 		"runAsNonRoot": true, "runAsUser": 10001, "runAsGroup": 10001}
@@ -585,7 +598,7 @@ func BuilderFromSpec(spec map[string]any, k Kube) (*K8sJobBuilder, error) {
 	}
 	cfg := BuilderConfig{AgentImage: str("agent_image"), Namespace: str("namespace"), RuntimeClass: str("runtime_class"), Isolation: str("isolation"),
 		BuildkitImage: str("buildkit_image"), WorkspaceClaim: str("workspace_claim"), ImagePullPolicy: str("image_pull_policy"),
-		CPUMillis: num("cpu_millis"), MemoryMB: num("memory_mb")}
+		CPUMillis: num("cpu_millis"), MemoryMB: num("memory_mb"), DockerMirror: str("docker_mirror")}
 	if _, ok := spec["isolation"]; ok && cfg.Isolation != "microvm" {
 		return nil, errors.New("构建不可信的 Dockerfile 只能在 microVM 里：runtime_class 要是 Kata 一类、isolation 要是 microvm")
 	}

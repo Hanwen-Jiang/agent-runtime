@@ -84,6 +84,18 @@ spec:
       ports:
         - {protocol: TCP, port: 8093}
     {{- end }}
+    {{- if $env.dockerMirror.enabled }}
+    # Docker Hub 的拉取缓存（ENV-MIRROR，docker-mirror.yaml）。
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+          podSelector:
+            matchLabels:
+              {{- include "ar.selector" (list . "docker-mirror") | nindent 14 }}
+      ports:
+        - {protocol: TCP, port: 5000}
+    {{- end }}
     - to:
         - namespaceSelector:
             matchLabels:
