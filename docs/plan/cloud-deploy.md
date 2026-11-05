@@ -801,6 +801,18 @@ REAL-01 的检查（2026-11-04，在第 27 版上；目录 `rev29`，脚本 `smo
   Pod 里读到 50。`values-cloud.yaml` 同步改成 50。回滚：`helm rollback ar 28` 再重启 Worker。
 - 评测代码：服务器上 `/opt/evals/src/2d94680`、`/opt/evals/venv-2d94680`（带 `--network-hosts`，EV-TB-NET）。
 
+第 30 版（2026-11-05，DEP-BD30：只换网关；目录 `rev32`，脚本 `prepare.sh`、`rev32.sh`、`smoke-bd.sh`；用户在对话里点了“Deploy it”）：
+
+- 起因 BUDGET-DEFAULT（总表第 3 节）：请求没写输出上限时网关按 Profile 的 max_output 预留，kimi-k3.1-pro 是 1,048,576 个 token、每百万 10 美元，
+  一次预留 10.49 美元，默认档（每天 3 美元）的租户第一次调用就被拒。修法 `3556e9b`：没写时用默认上限，可见输出 16384 加思考预算，不超过 Profile 的。
+- 只换网关：第 28 版网关的源码树 `rev30/x-ar`（`de1c0ba` 加 TOOLS-KIMI 的修复）复制成 `rev32/x-ar`，打上 `3556e9b` 里网关的部分（`rev32/bd.patch`）；
+  镜像 `model-gateway:de1c0ba-tkbd`。values 是第 29 版应用过的那份把 `modelGateway.imageTag` 换成它；渲染与第 29 版比只有网关的镜像一行。
+  脚本先核对线上是第 29 版、清单与 `manifest-rev31.yaml` 一致、镜像在 k3s 里、没有在跑的 TaskWorkflow，再 `helm upgrade`。
+- 核对：网关滚动换成新 Pod，线上清单与 `manifest-rev32.yaml` 一致，日志没有错误。
+- 冒烟（默认档的测试租户 `real01`，`tsk_01M6MSW92FJK8H8QE1NF25RQ0V`，读工作区里的文件）：done，0.09 美元；11 次模型调用都预留成功，
+  kimi 每次预留 0.28～0.41 美元（之前 10.49），结算成实际的 0.003～0.04 美元；网关没有 `tenant_budget_exceeded`。
+- 回滚：`helm rollback ar 29`。下一版正常发布时 `modelGateway.imageTag` 去掉（跟 image.tag），不然网关会停在这个镜像上。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
