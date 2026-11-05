@@ -917,6 +917,22 @@ def test_workers_can_collect_build_outputs_and_builds_read_only_their_workspace(
     assert "privileged_without_host_devices" in (CLUSTER / "install.sh").read_text("utf-8")
 
 
+def test_builds_inside_kata_can_use_extended_attributes(cloud: list[dict[str, Any]]) -> None:
+    """DEP-TB29：BuildKit 在 Kata 的 VM 里导出镜像要读写扩展属性，virtio-fs 默认不支持（Terminal-Bench 的镜像导出时 failed to get xattr）。
+    install.sh 给 kata handler 用的 virtiofsd 加 --xattr，并把 VM 写的一律映射到宿主的 user.virtiofs. 前缀（宿主不会多出 security、trusted
+    一类的属性），装完核对；sed 改的就是 kata-deploy 装的那一行（替换之后的整行能被同一个核对认出来）。云上的镜像个数上限够 40 题用。"""
+    install = (CLUSTER / "install.sh").read_text("utf-8")
+    assert "runtime-rs/runtimes/clh-runtime-rs/configuration-clh-runtime-rs.toml" in install
+    assert '"--xattr", "--xattrmap=:map::user.virtiofs.:"' in install
+    [sed] = re.findall(r"sed -i -E '(s#.*#)' ", install)
+    _, pattern, replacement, _ = sed.split("#")
+    line = 'virtio_fs_extra_args = ["--thread-pool-size=1", "-o", "announce_submounts"]'
+    patched = re.sub(pattern, replacement.replace("\\1", r"\1"), line)
+    assert patched == 'virtio_fs_extra_args = ["--thread-pool-size=1", "-o", "announce_submounts", "--xattr", "--xattrmap=:map::user.virtiofs.:"]'
+    [cm] = [m for m in by_kind(cloud, "ConfigMap") if m["metadata"]["name"].endswith("-sandbox-backends")]
+    assert json.loads(cm["data"]["backends.json"])["environments"]["limits"]["max_images"] >= 40
+
+
 # --- D-06 Workspace ---
 
 
