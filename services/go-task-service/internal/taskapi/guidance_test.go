@@ -181,11 +181,15 @@ func TestInvalidGuidanceIsRejected(t *testing.T) {
 	}{
 		{"没有 id", func(r *taskapiv1.SignalTaskRequest) { r.Signal = submitGuidance("", "x", nextStep) }},
 		{"id 里有非法字符", func(r *taskapiv1.SignalTaskRequest) { r.Signal = submitGuidance("g 1", "x", nextStep) }},
-		{"id 太长", func(r *taskapiv1.SignalTaskRequest) { r.Signal = submitGuidance(strings.Repeat("g", 65), "x", nextStep) }},
+		{"id 太长", func(r *taskapiv1.SignalTaskRequest) {
+			r.Signal = submitGuidance(strings.Repeat("g", 65), "x", nextStep)
+		}},
 		{"没有文字", func(r *taskapiv1.SignalTaskRequest) { r.Signal = submitGuidance("g1", "", nextStep) }},
 		{"只有空白", func(r *taskapiv1.SignalTaskRequest) { r.Signal = submitGuidance("g1", " \n\t", nextStep) }},
 		{"文字太长", func(r *taskapiv1.SignalTaskRequest) { r.Signal = submitGuidance("g1", long, nextStep) }},
-		{"没有选生效时机", func(r *taskapiv1.SignalTaskRequest) { r.Signal = submitGuidance("g1", "x", commonv1.GuidanceMode_GUIDANCE_MODE_UNSPECIFIED) }},
+		{"没有选生效时机", func(r *taskapiv1.SignalTaskRequest) {
+			r.Signal = submitGuidance("g1", "x", commonv1.GuidanceMode_GUIDANCE_MODE_UNSPECIFIED)
+		}},
 		{"修改没有文字", func(r *taskapiv1.SignalTaskRequest) { r.Signal = editGuidance("g1", "") }},
 		{"修改文字太长", func(r *taskapiv1.SignalTaskRequest) { r.Signal = editGuidance("g1", long) }},
 		{"撤回没有 id", func(r *taskapiv1.SignalTaskRequest) { r.Signal = retractGuidance("") }},

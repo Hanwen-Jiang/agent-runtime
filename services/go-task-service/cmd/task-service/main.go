@@ -49,6 +49,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/memcache"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/sqlitestore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/modelbudget"
+	"github.com/agentruntime/agent-runtime/libs/go-core/netguard"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/cache"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/ingress"
@@ -63,6 +64,7 @@ import (
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/environmentapi"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/events"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/ids"
+	mcpconn "github.com/agentruntime/agent-runtime/services/go-task-service/internal/mcp"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/registry"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/sandboxclient"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/sandboxgrants"
@@ -474,6 +476,10 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	if err := store.Migrate(ctx, usersecrets.Migrations()); err != nil {
 		return err
 	}
+	// 用户的 MCP 连接、工具与 Task 的租约（N-15）。
+	if err := store.Migrate(ctx, mcpconn.Migrations()); err != nil {
+		return err
+	}
 	// 固定版本：配了 Registry（AR_REGISTRY_ADDR）时由它给出，并在单独的内部端口上提供 RegistryService；否则读固定版本文件。
 	var pins taskapi.PinResolver = taskapi.FilePinResolver{Path: cfg.PinnedVersionsFile}
 	var registrySrv *http.Server
@@ -517,12 +523,32 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	defer ing.Close()
 
 	w := worker.New(c, session.SessionTaskQueue, worker.Options{})
-	session.Register(w, cfg.Session, &session.Activities{Cache: cacheProvider, Store: store, Clock: clk, Retention: 24 * time.Hour, Egress: egress})
+	session.Register(w, cfg.Session, &session.Activities{Cache: cacheProvider, Store: store, Clock: clk, Retention: 24 * time.Hour, Egress: egress,
+		McpRevoke: mcpconn.RevokeTask})
 	if err := w.Start(); err != nil {
 		return fmt.Errorf("Session Worker 启动失败：%w", err)
 	}
 	defer w.Stop()
 
+	// 用户的 MCP 连接（N-15）：租户策略的 mcp 一节取自 Registry 的当前租户策略（没配 Registry 时一律不允许）；网络密钥从
+	// 用户密钥同一份 SecretStore 现读；连远端按 netguard 拨号，AR_MCP_DENY_CIDRS 另加拒绝的网段（集群的 Pod、Service 网段）。
+	mcpDeny, err := netguard.ParseCIDRs(os.Getenv("AR_MCP_DENY_CIDRS"))
+	if err != nil {
+		return fmt.Errorf("AR_MCP_DENY_CIDRS 不对：%w", err)
+	}
+	var mcpSecrets secretstore.Provider
+	if cfg.SecretsFile != "" {
+		if mcpSecrets, err = filesecrets.New(filesecrets.Options{Path: cfg.SecretsFile}); err != nil {
+			return err
+		}
+	}
+	mcpService, err := mcpconn.New(mcpconn.Deps{
+		Ingress: ing, Store: store, Secrets: mcpSecrets, Policies: mcpconn.PolicySource(registryPolicies), Clock: clk, Logger: logger,
+		Remote: mcpconn.NewClient(mcpconn.Dialer{Extra: mcpDeny}),
+	})
+	if err != nil {
+		return err
+	}
 	defaults := taskapi.Defaults{
 		Budget:        &workflowv1.Budget{UsdMicros: 2_000_000, ToolCalls: 50, WallClock: durationpb.New(20 * time.Minute)},
 		EffectCeiling: commonv1.Effect_EFFECT_READ,
@@ -547,7 +573,8 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		Network:          network,
 		Objects:          objects,
 		// WS-CREATE-RACE：与 Workspace API 同一个 Cache，提交时查工作区是不是还在建。
-		Cache: cacheProvider,
+		Cache:     cacheProvider,
+		McpLeases: mcpService,
 	})
 	if err != nil {
 		return err
@@ -597,6 +624,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	environments.Mount(mux)
 	userSecrets.Mount(mux)
 	skillService.Mount(mux)
+	mcpService.Mount(mux)
 	// 逐字增量（DELTA）：配了内部端口才收，按租户关掉的不推；没配时 SSE 不订阅增量流。
 	deltasOff := func(string) bool { return true }
 	var internalSrv *http.Server

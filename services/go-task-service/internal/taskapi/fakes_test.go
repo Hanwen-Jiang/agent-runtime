@@ -89,7 +89,9 @@ func (e *fakeEngine) record(c durableCall) error {
 	return e.f.faults.Check(c.Op)
 }
 
-func notFound() error { return providererr.New(providererr.NotFound, "not_found", "工作流不存在") }
+func notFound() error {
+	return providererr.New(providererr.NotFound, "not_found", "工作流不存在")
+}
 
 func (e *fakeEngine) owned(id string) (*fakeWorkflow, error) {
 	w := e.f.workflows[id]

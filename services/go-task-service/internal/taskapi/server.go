@@ -122,6 +122,13 @@ type Deps struct {
 	Objects objectstore.Provider
 	// Cache 与 Workspace API 共用：建工作区期间那里记下“在建”，提交时查（WS-CREATE-RACE）；为空时不查。
 	Cache cache.Provider
+	// McpLeases 在提交时给 Task 发 MCP 租约（N-15，internal/mcp）；为空时不发。
+	McpLeases McpLeaseIssuer
+}
+
+// McpLeaseIssuer 按提交时的设置给 Task 发 MCP 租约（*mcp.Server 实现它）。
+type McpLeaseIssuer interface {
+	IssueLeases(ctx context.Context, tenant *commonv1.TenantContext, taskID, user string) error
 }
 
 // Server 实现 taskapiv1connect.TaskServiceHandler。
@@ -393,6 +400,12 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	// N-14：固定的 Skill 另记在 Task 的记录上，Worker 按 task_id 读（Planner 的目录与 skill_read），不经工作流。
 	if err := s.tasks.SetSkillPins(ctx, tenant, row.TaskID, pins.GetSkills()); err != nil {
 		return nil, err
+	}
+	// N-15：提交者打开了的 MCP 工具按此刻的设置发给这个 Task（Worker 按 task_id 读）；重投递时不变。
+	if s.d.McpLeases != nil {
+		if err := s.d.McpLeases.IssueLeases(ctx, tenant, row.TaskID, id.UserID); err != nil {
+			return nil, err
+		}
 	}
 	policy, err := s.policies().Resolve(ctx, tenant)
 	if err != nil {

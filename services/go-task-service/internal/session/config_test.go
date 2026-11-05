@@ -33,13 +33,13 @@ func TestDefaultConfigIsValidAndWellBelowTemporalLimits(t *testing.T) {
 func TestConfigValidateRejectsOutOfRangeValues(t *testing.T) {
 	cases := map[string]func(*Config){
 		"只读上限为 0":          func(c *Config) { c.ReadOnlyLimit = 0 },
-		"只读上限达到子工作流上限": func(c *Config) { c.ReadOnlyLimit = 2000 },
+		"只读上限达到子工作流上限":     func(c *Config) { c.ReadOnlyLimit = 2000 },
 		"续接事件数为 0":         func(c *Config) { c.ContinueAsNewEvents = 0 },
-		"续接事件数超过告警线":    func(c *Config) { c.ContinueAsNewEvents = 20000 },
+		"续接事件数超过告警线":       func(c *Config) { c.ContinueAsNewEvents = 20000 },
 		"续接 Task 数为负":      func(c *Config) { c.ContinueAsNewTasks = -1 },
 		"去重表上限为 0":         func(c *Config) { c.DedupeLimit = 0 },
 		"去重表过大，续接输入会超载荷上限": func(c *Config) { c.DedupeLimit = 1_000_000 },
-		"activity 超时为 0":    func(c *Config) { c.ActivityTimeout = 0 },
+		"activity 超时为 0":   func(c *Config) { c.ActivityTimeout = 0 },
 		"activity 超时为负":    func(c *Config) { c.ActivityTimeout = -time.Second },
 	}
 	for name, mutate := range cases {

@@ -39,6 +39,8 @@ type Activities struct {
 	Retention time.Duration
 	// Egress 在 Task 结束、收回联网授权后通知出网网关立即断开（D-16）；为空时只靠网关几秒的缓存。
 	Egress *sandboxgrants.Notifier
+	// McpRevoke 在 Task 结束时收回它的 MCP 租约（N-15，mcp.RevokeTask）；为空时不收（这个部署没挂 MCP）。
+	McpRevoke func(ctx context.Context, store relational.Provider, tenant *commonv1.TenantContext, taskID string, now time.Time) error
 }
 
 func (a *Activities) now() time.Time {
@@ -79,6 +81,11 @@ func (a *Activities) FinishTask(ctx context.Context, tenant *commonv1.TenantCont
 		return activityError(err)
 	} else if n > 0 {
 		_ = a.Egress.Revoked(ctx, tenant.GetTenantId(), result.GetTaskId())
+	}
+	if a.McpRevoke != nil {
+		if err := a.McpRevoke(ctx, a.Store, tenant, result.GetTaskId(), a.now()); err != nil {
+			return activityError(err)
+		}
 	}
 	tasks := taskstore.New(a.Store)
 	if row, ok, err := tasks.LookupTask(ctx, tenant, result.GetTaskId()); err != nil {
