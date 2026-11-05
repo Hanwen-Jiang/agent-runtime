@@ -22,7 +22,9 @@ func (h *harness) InjectFault(op string, c providererr.Category) error {
 	h.faults.FailNext(op, c)
 	return nil
 }
-func (h *harness) WorkspacePath(tenant, ws string) string { return filepath.Join(h.workspaces, tenant, ws) }
+func (h *harness) WorkspacePath(tenant, ws string) string {
+	return filepath.Join(h.workspaces, tenant, ws)
+}
 
 func TestLocalSandboxConformance(t *testing.T) {
 	agent, err := testkit.SandboxAgentBinary()

@@ -21,6 +21,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/connecterr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/diskobjects"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/filesecrets"
+	"github.com/agentruntime/agent-runtime/libs/go-core/dev/localsandbox"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/sqlitestore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
@@ -33,23 +34,17 @@ import (
 	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/server"
 )
 
-// 本包的测试用真的 sandbox-agent（本地后端每个环境起一个 agent 进程），在 TestMain 里编译一次。
+// 本包的测试用真的 sandbox-agent（本地后端每个环境起一个 agent 进程），在 TestMain 里编译一次（默认 Rust 版，D-28；
+// AR_SANDBOX_AGENT_IMPL=go 时 Go 版，见 testkit.SandboxAgentBinary）。
 var agentBin string
 
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "sbx-agent-")
+	bin, err := testkit.SandboxAgentBinary()
 	if err != nil {
-		panic(err)
-	}
-	agentBin = filepath.Join(dir, "sandbox-agent")
-	build := exec.Command("go", "build", "-o", agentBin, "github.com/agentruntime/agent-runtime/services/go-sandbox-agent/cmd/sandbox-agent")
-	build.Stdout, build.Stderr = os.Stderr, os.Stderr
-	if err := build.Run(); err != nil {
 		panic(fmt.Sprintf("编译 sandbox-agent 失败：%v", err))
 	}
-	code := pgtest.Main(m)
-	_ = os.RemoveAll(dir)
-	os.Exit(code)
+	agentBin = bin
+	os.Exit(pgtest.Main(m))
 }
 
 const (
@@ -71,6 +66,8 @@ type harness struct {
 	faults     map[string]*testkit.Faults
 	mirror     string
 	egress     string
+	// wrap 按后端名包一层 Provider（测试注入后端的行为）。
+	wrap map[string]func(sandbox.Provider) sandbox.Provider
 
 	svc    *server.Service
 	srv    *httptest.Server
@@ -95,6 +92,16 @@ func withPostgres() option {
 			h.t.Fatal(err)
 		}
 		h.store = store
+	}
+}
+
+// withWrappedProvider 给本地后端 name 的 Provider 包一层（例如让 Exec 在取消时报沙箱没确认停下）。
+func withWrappedProvider(name string, wrap func(sandbox.Provider) sandbox.Provider) option {
+	return func(h *harness) {
+		if h.wrap == nil {
+			h.wrap = map[string]func(sandbox.Provider) sandbox.Provider{}
+		}
+		h.wrap[name] = wrap
 	}
 }
 
@@ -161,8 +168,16 @@ func newHarness(t *testing.T, opts ...option) *harness {
 
 func (h *harness) start() {
 	h.t.Helper()
+	providers := map[string]sandbox.Provider{}
+	for name, wrap := range h.wrap {
+		inner, err := localsandbox.New(localsandbox.Options{Root: filepath.Join(h.state, name), Workspaces: h.workspaces, AgentBinary: agentBin, Faults: h.faults[name]})
+		if err != nil {
+			h.t.Fatal(err)
+		}
+		providers[name] = wrap(inner)
+	}
 	reg, err := registry.Parse([]byte(h.backends), registry.Options{
-		WorkspaceRoot: h.workspaces, StateDir: h.state, AgentBinary: agentBin, Secrets: h.secrets, Faults: h.faults,
+		WorkspaceRoot: h.workspaces, StateDir: h.state, AgentBinary: agentBin, Secrets: h.secrets, Faults: h.faults, Providers: providers,
 	})
 	if err != nil {
 		h.t.Fatal(err)

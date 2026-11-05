@@ -278,8 +278,8 @@ func TestExplicitImagesOnlyFromTheOwnTenantPathByDigest(t *testing.T) {
 	scoped, api := makeProvider(t, nil, "", func(c *k8ssandbox.Config) { c.CustomImagePrefix = "127.0.0.1:30500/envs" })
 	a := conformance.Must(scoped.Bind(conformance.TenantA()))
 	for _, image := range []string{
-		fmt.Sprintf("127.0.0.1:30500/envs/%s/env@%s", conformance.TenantBID, digest), // 别的租户的路径
-		fmt.Sprintf("127.0.0.1:30500/envs/%s/env:latest", conformance.TenantAID),     // 按标签
+		fmt.Sprintf("127.0.0.1:30500/envs/%s/env@%s", conformance.TenantBID, digest),  // 别的租户的路径
+		fmt.Sprintf("127.0.0.1:30500/envs/%s/env:latest", conformance.TenantAID),      // 按标签
 		fmt.Sprintf("evil.example.com/envs/%s/env@%s", conformance.TenantAID, digest), // 别的仓库
 		"python:3.13-slim",
 	} {
