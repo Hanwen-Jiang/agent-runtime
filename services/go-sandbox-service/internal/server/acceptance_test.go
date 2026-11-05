@@ -25,6 +25,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/connecterr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/sandbox"
+	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	sandboxv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/sandbox/v1"
 	"github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/sandbox/v1/sandboxv1connect"
 	workspacev1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workspace/v1"
@@ -798,5 +799,58 @@ func TestDestroyWorkspaceRemovesTheMountedDirectory(t *testing.T) {
 	}
 	if _, err := os.Stat(root); !os.IsNotExist(err) {
 		t.Fatalf("挂卷时删掉卷上的工作区目录：%v", err)
+	}
+}
+
+// notStopping 让 Exec 在调用方取消时像沙箱没确认停下那样报错（旧的 agent 没有取消接口，或经桥时断开传不到）。
+type notStopping struct{ sandbox.Provider }
+
+func (p notStopping) Bind(t *commonv1.TenantContext) (sandbox.Sandbox, error) {
+	inner, err := p.Provider.Bind(t)
+	return notStoppingBox{inner}, err
+}
+
+type notStoppingBox struct{ sandbox.Sandbox }
+
+func (b notStoppingBox) Exec(ctx context.Context, envID string, argv []string, opts sandbox.ExecOptions) (sandbox.ExecResult, error) {
+	if len(argv) == 3 && argv[2] == "hang" {
+		<-ctx.Done()
+		return sandbox.ExecResult{}, fmt.Errorf("%w（%w）", ctx.Err(), sandbox.ErrExecNotStopped)
+	}
+	return b.Sandbox.Exec(ctx, envID, argv, opts)
+}
+
+// 打断 Task 时 Worker 取消 Exec，再在同一个环境里还原检查点（docs/plan/running-task-interaction.md 第 2 节）。沙箱没确认命令
+// 停了时，那条命令可能还在改文件：之后的命令（还原）报 conflict（exec_not_stopped），Worker 照实说没还原；还掉之后恢复正常。
+func TestExecAfterAnUnconfirmedCancelIsRefusedUntilRelease(t *testing.T) {
+	h := newHarness(t, withWrappedProvider("local", func(p sandbox.Provider) sandbox.Provider { return notStopping{p} }))
+	tc := tenant("t1", "w1", s1)
+	h.mkWorkspace("t1", "w1", nil)
+	lease := h.mustAcquire(tc, reuse())
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		_, err := h.worker.Exec(ctx, connect.NewRequest(&sandboxv1.ExecRequest{Tenant: tc, LeaseId: lease.GetLeaseId(), Argv: []string{"sh", "-c", "hang"}, TimeoutMs: 60_000}))
+		done <- err
+	}()
+	time.Sleep(200 * time.Millisecond)
+	cancel()
+	if err := <-done; connect.CodeOf(err) != connect.CodeCanceled {
+		t.Fatalf("取消的 Exec：%v", err)
+	}
+	// 服务那边处理取消（问 agent、记下没停）要一点时间；下一条命令排在它后面，看到的一定是记下之后的状态。
+	_, err := h.exec(tc, lease, "echo restore")
+	if e := connecterr.Decode(err); e == nil || e.Category != providererr.Conflict || e.Code != "exec_not_stopped" {
+		t.Fatalf("还原检查点的命令：%v", err)
+	}
+	if _, err := h.release(tc, lease, true); err != nil {
+		t.Fatal(err)
+	}
+	again := h.mustAcquire(tc, reuse())
+	if again.GetLeaseId() != lease.GetLeaseId() {
+		t.Fatalf("同一会话复用原来的环境：%s %s", again.GetLeaseId(), lease.GetLeaseId())
+	}
+	if out := h.mustExec(tc, again, "echo ok"); strings.TrimSpace(out) != "ok" {
+		t.Fatalf("还掉之后照常执行：%q", out)
 	}
 }

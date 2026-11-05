@@ -1,8 +1,9 @@
-"""测试用的 Sandbox Service（SBX-01）：编译 services/go-sandbox-service 与 sandbox-agent，起一个真的服务进程。
+"""测试用的 Sandbox Service（SBX-01）：编译 services/go-sandbox-service 与 sandbox-agent（默认 Rust 版，见 py-core 的 agentbuild，
+D-28），起一个真的服务进程。
 
 Worker 的沙箱一律经它（不再有进程内的 Broker 与后端适配器）。服务的业务库、对象存储、密钥文件与工作区根都在测试的临时目录里；
 本地后端（kind: local）每个环境起一个 sandbox-agent 进程，环境不随服务退出（服务被杀后按环境表接上）。
-缺 go 时测试失败，设 AR_ALLOW_MISSING_TOOLS=1 改为跳过。
+缺 go（或编译 agent 的 cargo）时测试失败，设 AR_ALLOW_MISSING_TOOLS=1 改为跳过。
 """
 
 from __future__ import annotations
@@ -39,15 +40,19 @@ def _go() -> str:
 def binaries(out: Path) -> tuple[Path, Path]:
     """编译服务与 sandbox-agent（同一个 pytest 进程只编一次）。"""
     if "service" not in _BUILT:
+        from agentruntime_core.adapters import agentbuild
+
         go = _go()
         out.mkdir(parents=True, exist_ok=True)
-        for name, package in (
-            ("service", "./services/go-sandbox-service/cmd/sandbox-service"),
-            ("agent", "./services/go-sandbox-agent/cmd/sandbox-agent"),
-        ):
-            target = out / ("sandbox-service" if name == "service" else "sandbox-agent")
-            subprocess.run([go, "build", "-o", str(target), package], cwd=REPO, check=True)
-            _BUILT[name] = target
+        target = out / "sandbox-service"
+        subprocess.run([go, "build", "-o", str(target), "./services/go-sandbox-service/cmd/sandbox-service"], cwd=REPO, check=True)
+        _BUILT["service"] = target
+        try:
+            _BUILT["agent"] = agentbuild.build(out / "agent")
+        except agentbuild.MissingTool as err:
+            if os.environ.get("AR_ALLOW_MISSING_TOOLS") == "1":
+                pytest.skip(str(err))
+            pytest.fail(str(err), pytrace=False)
     return _BUILT["service"], _BUILT["agent"]
 
 

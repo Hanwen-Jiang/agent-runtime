@@ -7,7 +7,7 @@
 //   - 工作区：宿主目录（AR_KIND_WORKSPACES，默认 ~/.local/kindtest/workspaces）经 kind 的 extraMounts 挂到节点的
 //     /var/lib/agentruntime/workspaces，再按 deploy/cluster/workspaces.yaml 建 PV 与 PVC，同生产的单节点部署。
 //   - 应用 deploy/cluster 的 namespaces.yaml、sandboxes.yaml、workspaces.yaml。
-//   - 镜像：sandbox-agent 用本仓库的源码编译成 Linux 静态二进制，放进 FROM scratch 的镜像；跑命令的镜像默认 python:3.13-slim
+//   - 镜像：sandbox-agent 用本仓库的源码编译成 Linux 静态二进制（默认 Rust 版，见 testkit.BuildSandboxAgent），放进 FROM scratch 的镜像；跑命令的镜像默认 python:3.13-slim
 //     （本机没有时 docker pull）。都用 kind load 装进节点。AR_SANDBOX_AGENT_IMAGE 给了就用现成的 agent 镜像。
 //   - gVisor：设 AR_KIND_GVISOR 为 gVisor 发布包（旁边要有同名的 .sha512）时装进节点、登记 runsc、应用 runtimeclasses.yaml；
 //     之后沙箱 Pod 用 RuntimeClass gvisor（Cluster.RuntimeClass）。Kata 要嵌套虚拟化，kind 里没有。
@@ -23,10 +23,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/agentruntime/agent-runtime/libs/go-core/testkit"
 )
 
 const (
@@ -58,10 +59,7 @@ type Cluster struct {
 }
 
 // RepoRoot 是仓库根。
-func RepoRoot() string {
-	_, file, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(file), "..", "..", "..", "..", "..")
-}
+func RepoRoot() string { return testkit.RepoRoot() }
 
 func tool(name, envDir string) (string, error) {
 	if envDir != "" {
@@ -241,14 +239,12 @@ func (c *Cluster) kubeconfig() error {
 
 func (c *Cluster) buildAgent() error {
 	build := filepath.Join(c.dir, "agent")
-	if err := os.MkdirAll(build, 0o755); err != nil {
+	// 默认 Rust 版（musl 静态），AR_SANDBOX_AGENT_IMPL=go 时 Go 版（D-28，testkit.BuildSandboxAgent）。
+	if _, err := testkit.BuildSandboxAgent(build, true); err != nil {
+		if errors.Is(err, testkit.ErrMissingTool) {
+			return fmt.Errorf("%w：%v", ErrMissing, err)
+		}
 		return err
-	}
-	cmd := exec.Command("go", "build", "-trimpath", "-o", filepath.Join(build, "sandbox-agent"), "./cmd/sandbox-agent")
-	cmd.Dir = filepath.Join(RepoRoot(), "services", "go-sandbox-agent")
-	cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH=amd64", "CGO_ENABLED=0")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("编译 sandbox-agent 失败：%v\n%s", err, out)
 	}
 	dockerfile := "FROM scratch\nCOPY sandbox-agent /sandbox-agent\nUSER 10001\nENTRYPOINT [\"/sandbox-agent\"]\n"
 	if err := os.WriteFile(filepath.Join(build, "Dockerfile"), []byte(dockerfile), 0o644); err != nil {
