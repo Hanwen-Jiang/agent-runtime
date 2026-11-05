@@ -40,10 +40,10 @@ from agentruntime_worker.sandbox.policy import TenantPolicies, registry_policy
 from agentruntime_worker.sandbox.store import relational_store
 from agentruntime_worker.telemetry import worker_telemetry
 from agentruntime_worker.tools.catalog import DevCatalog, ToolCatalog, latest, latest_spec
-from agentruntime_worker.tools.deliver import DeliveryLimits, DirectoryReader, register_delivery_tools
+from agentruntime_worker.tools.deliver import DeliveryLimits, register_delivery_tools
 from agentruntime_worker.tools.mcp import McpGateway
 from agentruntime_worker.tools.mcp_http import LeasedMcpTools, LeaseStore
-from agentruntime_worker.tools.platform import CONTEXT_READ, PlatformToolsConfig, register_platform_tools
+from agentruntime_worker.tools.platform import CONTEXT_READ, PlatformToolsConfig, register_platform_tools, workspace_files
 from agentruntime_worker.tools.skills import TaskSkillPins, register_skill_tools
 from agentruntime_worker.workspace.archive import WorkspaceArchiver
 from agentruntime_worker.workspace.operations import CREDENTIAL_SECRET, WorkspaceOperations
@@ -208,34 +208,39 @@ def dev_tools(config: WorkerConfig) -> LocalToolDriverProvider:
     provider = _providers.get(key)
     if provider is None:
         provider = LocalToolDriverProvider()
+        platform = PlatformToolsConfig(
+            workspace_root=config.tool_workspace_root,
+            fetch_hosts=config.tool_fetch_hosts,
+            shell_sandbox=config.tool_shell_sandbox,
+            shell_image=config.tool_shell_image,
+            session_sandboxes=config.sandbox_sessions,
+            shell_runtime=config.sandbox_runtime,
+            network_requests=bool(config.egress_gateway_url),
+            preview_domain=config.preview_domain,
+            workspace_tools=bool(config.sandbox_service_address),
+            hosted_backends=_hosted_backends(config),
+        )
+        broker = sandbox_broker(config)
+        # 工作区的版本号（WS-READ-03）记在 Workspace API 用的同一个业务库里。
+        generations = _generations(config)
         register_platform_tools(
             provider,
-            PlatformToolsConfig(
-                workspace_root=config.tool_workspace_root,
-                fetch_hosts=config.tool_fetch_hosts,
-                shell_sandbox=config.tool_shell_sandbox,
-                shell_image=config.tool_shell_image,
-                session_sandboxes=config.sandbox_sessions,
-                shell_runtime=config.sandbox_runtime,
-                network_requests=bool(config.egress_gateway_url),
-                preview_domain=config.preview_domain,
-                workspace_tools=bool(config.sandbox_service_address),
-                hosted_backends=_hosted_backends(config),
-            ),
+            platform,
             objects=context_objects(config),
-            sandboxes=sandbox_broker(config),
+            sandboxes=broker,
             telemetry=worker_telemetry(),
-            # 工作区的版本号（WS-READ-03）记在 Workspace API 用的同一个业务库里。
-            generations=_generations(config),
+            generations=generations,
             grants=GrantStore(_relational(config)) if config.sandbox_service_address else None,
             policies=tenant_policies(config),
             credential_key=lambda: _platform_secret(config, envcred.SECRET_NAME),
         )
-        if config.tool_workspace_root is not None:
-            # 交付文件（N-18，F3）：读与 repo_* 同一处的工作区目录，内容进 context_objects 的 ObjectStore，元数据进业务库（task-service 读同一处）。
+        # 交付文件（N-18，F3）：读文件与 repo_read 同一条路（F3-SANDBOX：存档模式经 Sandbox Service 读环境里的文件，挂卷读本机目录），
+        # 内容进 context_objects 的 ObjectStore，元数据进业务库（task-service 读同一处）。
+        files = workspace_files(platform, sandboxes=broker, telemetry=worker_telemetry(), generations=generations)
+        if files is not None:
             register_delivery_tools(
                 provider, objects=context_objects(config), store=relational_store(config.relational_dsn, config.data_dir or Path(tempfile.mkdtemp(prefix="agentruntime-delivery-"))),
-                reader=DirectoryReader(config.tool_workspace_root), limits=DeliveryLimits.from_env(os.environ),
+                reader=files, limits=DeliveryLimits.from_env(os.environ),
             )
         if config.registry_address:
             # 用户 Skill（N-14）：正文在 Registry，固定的版本在业务库的 tasks.skill_pins。

@@ -198,6 +198,53 @@ def register_platform_tools(
     return [spec.name for spec, _ in tools]
 
 
+class WorkspaceFiles:
+    """deliver_file 读工作区里的文件（F3-SANDBOX）：与 repo_read 同一条路。存档模式（或 Worker 没挂工作区卷）时经 Sandbox Service
+    借承载工作区的环境读（文件只在环境里），挂卷时读本机目录（冷的先恢复）。"""
+
+    def __init__(self, workspaces: _Workspaces) -> None:
+        self.w = workspaces
+
+    async def read_invocation(self, invocation: ToolInvocation, path: str, *, max_bytes: int) -> bytes:
+        w = self.w
+        if await w._archived(invocation):
+            rel = w._env_path(path)
+
+            async def fetch(box: Any, env_id: str) -> bytes:
+                try:
+                    return await box.read_file(env_id, rel)
+                except NotFoundError as err:
+                    if err.code == "unknown_env":
+                        raise
+                    raise NotFoundError("file_not_found", f"工作区里没有文件 {path}") from None
+
+            data = await w._in_env(invocation, writable=False, run=fetch)
+        else:
+            root = await w._mounted(invocation)
+            target = w._resolve(root, path)
+            if target == root or not target.is_file():
+                raise NotFoundError("file_not_found", f"工作区里没有文件 {path}")
+            if target.stat().st_size > max_bytes:
+                raise InvalidError("delivery_file_too_large", f"文件超过上限 {max_bytes} 字节")
+            data = target.read_bytes()
+        if len(data) > max_bytes:
+            raise InvalidError("delivery_file_too_large", f"文件超过上限 {max_bytes} 字节")
+        return data
+
+    async def read(self, tenant_id: str, workspace_id: str, path: str, *, max_bytes: int) -> bytes:
+        raise InvalidError("unsupported_workspace", "WorkspaceFiles 要按调用读（read_invocation）")
+
+
+def workspace_files(config: PlatformToolsConfig, *, sandboxes: ServiceBroker | None = None, telemetry: TelemetryProvider | None = None,
+                    generations: Any = None) -> WorkspaceFiles | None:
+    """与 register_platform_tools 同样的条件下给 deliver_file 用的读取器；没有工作区类工具时 None。"""
+    remote = config.shell_sandbox == "sandbox" and sandboxes is not None and config.workspace_tools
+    if config.workspace_root is None and not remote:
+        return None
+    root = Path(config.workspace_root) if config.workspace_root is not None else None
+    return WorkspaceFiles(_Workspaces(root, config, sandboxes, telemetry, generations=generations))
+
+
 async def _no_key() -> bytes | None:
     return None
 

@@ -206,7 +206,11 @@ class DeliverFile:
         args = invocation.arguments
         path = clean_path(args.get("path"))
         name = _name(str(args.get("name") or PurePosixPath(path).name))
-        data = await self.reader.read(invocation.tenant_id, invocation.workspace_id, path, max_bytes=self.limits.max_file_bytes)
+        by_call = getattr(self.reader, "read_invocation", None)
+        if by_call is not None:  # 与 repo_read 同一条路（存档模式经 Sandbox Service 读环境里的文件，F3-SANDBOX）
+            data = await by_call(invocation, path, max_bytes=self.limits.max_file_bytes)
+        else:
+            data = await self.reader.read(invocation.tenant_id, invocation.workspace_id, path, max_bytes=self.limits.max_file_bytes)
         if len(data) > self.limits.max_file_bytes:
             raise InvalidError("delivery_file_too_large", f"文件超过上限 {self.limits.max_file_bytes} 字节")
         async with self.store.bind(tenant).transaction(read_only=True) as tx:
