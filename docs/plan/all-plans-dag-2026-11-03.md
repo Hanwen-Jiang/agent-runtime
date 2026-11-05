@@ -52,6 +52,18 @@
 | V1-AUTH | AUTH-01 切换（auth-tokens 第 4 节）：第 1～3 步随 V1-DEP 一起做（生成密钥对、Runtime 加 `issuers`、coding-web 加 JWT 私钥与 `CODING_TOKEN_KEY`）；一周后做第 4 步（`devTokens` 改 refuse、coding-web 去掉 `AR_DEV_SIGNING_KEY`） | AUTH-01 | 待做 |
 | V1-I18N | coding-web 的 `i18n.js` 加 `workspace_not_ready` 的说法 | WS-CREATE-RACE 剩下的客户端部分 | 待做 |
 
+**只有用户能做的**（2026-11-05 汇总；其余一律由 Claude 做、不等人。做完一条在这里划掉）
+
+| # | 事 | 解开什么 | 不做的话 |
+| --- | --- | --- | --- |
+| U-1 | Cloudflare：给现有令牌 `CF_NSNZDDOTCOM_ALL_KEY` 加 Account 的 Containers 编辑、Workers Scripts 编辑；顺带确认它有没有 `cgent.link` 的 DNS 编辑（有的话 U-2 的 DNS 记录由 Claude 加） | Cloudflare 桥换新镜像（Rust 版 agent，REAL-01） | 桥一直是 Go 版 agent，K8s 与 Firecracker 不受影响 |
+| U-2 | Resend：注册、建 API Key、加域名 `cgent.link`，把 Key 放到服务器上（如 `/root/.config/agentruntime/resend.key`，不贴进聊天）；DNS 记录照 Resend 给的加（或由 Claude 用 U-1 的令牌加） | F4 告警发邮件（发件人 `alerts@cgent.link`） | 告警只在 Grafana 里看得到 |
+| U-3 | GitHub App 设置：权限加 Issues 读写，订阅 `issue_comment` 事件；各安装（你自己的账号或组织）点同意新权限 | G-06：在 Issue 里 @ 机器人自动开 Task | 自动触发用不了，其余 App 功能照常 |
+| U-4 | 设计书原文档（Claude Docs）的更新：二选一，你自己按各计划里“设计书的改动建议”改；或者在对话里授权 Claude 用 Claude Docs 的工具直接改并重新导出（给出文档链接） | 设计书与代码一致（4.10、4.14、4.15、附录 A、Memory 的 C1、Sandbox Service） | 不挡 v1，只是设计书越来越旧 |
+| U-5（可选） | 模型中转站控制台里设月度花费上限 | 开放注册的兜底 | 平台内的每日、每月预算照样生效 |
+
+不再要用户做的：G-05 的测试 App（属于测试，挪到 v2）；两条 Reviewer 样本的标注复核（评测，挪到 v2）；`evals.cgent.link` 的 DNS（已经有了）；GitHub App 的 Client secret（第 25 版已部署）。
+
 **完成标准**（全部在线上做到，v1 就算完；每条手动走一遍，记进 `cloud-deploy.md`，不另写自动化测试）
 
 1. MCP：用户在网页上加一个公网的 MCP Server（带鉴权头），打开一个 read 工具，Task 里调用成功；打开一个 write_irreversible 工具，调用前要审批，拒绝后不执行；删掉连接后进行中的 Task 再调被拒。
