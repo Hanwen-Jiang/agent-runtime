@@ -52,13 +52,13 @@
 | F3-E2E | 文件交付的端到端 | n18-file-delivery-f3 | DEP-W | 已完成（`ca4fc2e`，没部署） | 中 |
 | SEC-API | 用户密钥的写入、列举、删除接口（S-01） | lane-merge（ENV-02） | 契约人审 | 已完成（契约 `56f21cd` 2026-11-04 人审通过；`ae8efc3` 测试、`f3b02df` 实现；没部署） | 中 |
 | WEB-SEC | 网页：网络密钥页 | coding-agent | SEC-API | 已完成（coding-agent `609e986`，没部署）；默认关着（`CODING_NETWORK_SECRETS=1` 才打开）：环境引用密钥是 D-23 第二阶段，要人先选首个真实服务与客户端 | 中 |
-| NET-OPEN | `open` 档位的公网授权（S-01） | lane-merge | 具体 wire 走 S-01 | 具体 wire 的契约草案 `3c0bd0f` **等人审**（第 8 节 NET-OPEN-WIRE，[net-open-contract](net-open-contract.md)）；之前：已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），设计语义代审通过 | 远 |
+| NET-OPEN | `open` 档位的公网授权（S-01） | lane-merge | 具体 wire 走 S-01 | 具体 wire 的契约 `3c0bd0f` 2026-11-04 人审通过（用户：“所有要批准的选项都批准”），兼容性基线已更新（第 8 节 NET-OPEN-WIRE，[net-open-contract](net-open-contract.md)）；之前：已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），设计语义代审通过 | 远 |
 | D-25 | 多仓库工作区（S-01） | environment-config | 具体 wire 走 S-01 | 已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），可以开工；原状态：冻结基线代审通过；wire 需明确未提交改动的 detach 行为。具体 wire 的契约 `e8ca91e` 2026-11-04 人审通过（用户在对话里：“Approve all three”），兼容性基线已更新，接着写实现（第 8 节 D-25-WIRE；detach 有改动时 `repo_dirty`，除非 `discard_changes`） | 远 |
 | D-27 | 个人配置包（skills 等） | environment-config | — | 占位 | 远 |
 | N16-R | N-16 剩下的：brief、来源卡片与综合节点、预算份额、mid 档、评测对照（E 线，单写者） | sub-agent | — | 已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），可以开工；原状态：草案。第一、二段已完成（`99037da`、`e0ff673`，开关 `AR_SUB_AGENT_POLICY`，默认 off；第 8 节）：brief、综合节点、份额、mid 档、来源卡片；第三段超份额收尾（`1bc36e1`）。单个 tier 的契约 `af5fced` 2026-11-04 人审通过（用户在对话里：“Approve all three”）；tier 的实现已完成（`434ca7e`）；剩下评测对照（花钱） | 中 |
 | DELTA | `token_delta`、`thinking_delta` 的推送入口与平台令牌 | lane-merge（N-20） | 安全评审 | 已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），可以开工；原状态：人定（2026-11-04）：做，默认打开；约束见 7.1。**已完成**（2026-11-04，第 8 节；没部署） | 中 |
 | N-14 | 用户自定义 Skill（Registry 新条目，S-01） | feedback 第 4 节 | 具体 wire 走 S-01 | 契约 `c1836ba`（[n14-skill-contract](n14-skill-contract.md)）2026-11-04 人审通过（用户在对话里：“Approve all three”），代审要明确的五条照草案，兼容性基线已更新；实现见第 8 节 N-14-IMPL（Runtime 一侧已完成 `3d69835`、`274d7c1`，没部署；coding-agent 的界面还没做）；之前：已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），版本固定与扩展边界代审通过 | 远 |
-| N-15 | 用户自己的 MCP Server（S-01） | feedback 第 4 节 | 具体 wire 走 S-01 | 具体 wire 的契约草案 `556c881` **等人审**（第 8 节 N-15-WIRE，[n15-mcp-contract](n15-mcp-contract.md)）；之前：已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），归属、授权与撤销语义代审通过 | 远 |
+| N-15 | 用户自己的 MCP Server（S-01） | feedback 第 4 节 | 具体 wire 走 S-01 | 具体 wire 的契约 `556c881` 2026-11-04 人审通过（用户：“所有要批准的选项都批准”），兼容性基线已更新（第 8 节 N-15-WIRE，[n15-mcp-contract](n15-mcp-contract.md)）；之前：已批准（2026-11-04 用户：“等人定的一律通过”，第 7.2 节），归属、授权与撤销语义代审通过 | 远 |
 | R-04 | SecretStore 的生产实现 | post-acceptance、P1-B | — | 待做（要资源） | 远 |
 | R-06 | Learning Pipeline 的成本与版本固定 | P1-B | — | 不等存储选型的两条已完成（`f1b017b` 测试、`ccf29a5` 实现：计量记 `price_at`、Profile 文件缺单价拒绝加载；没部署）；剩下的已由[代审记录](delegated-review-2026-11-04.md)第 7 节定下：发布门槛与同步脚本的缺价已完成（R-06-B）；`model_usage` 每次尝试冻结单价、结算记下用量已完成（R-06-C，`135ef503`；用量未知时留着预留原本就是这样）；Learning 的成本改读 `model_usage` 已完成（R-06-D，没部署）。剩下 Registry 修订号进账本（Gateway 手上没有修订号，要先定从哪里来） | 远 |
 | G-01～G-06 | GitHub App：密钥与配置 → 收件箱 → 身份与令牌 → 事件到动作 → 运维；G-06 自动触发在 G-03、G-04 之后；上线至少 G-01～G-03 | coding-agent github-app | — | G-01 已完成（coding-agent `175100d`，没部署）；G-02 已完成（coding-agent `a3b1331`，没部署）；G-03 的 coding-agent 一侧已完成（`a93fa5a`）；第 9 条的 Runtime 修复 `2e924a3` 已随第 24 版部署；[专项安全代审](delegated-review-followup-2026-11-04.md)已完成，原 URL 重写路径复验通过，sync 预检回调隔离与目标后端验收待关闭；G-04 已完成（`4e223b5`，没部署）；G-05 已完成（coding-agent `8f296eb` 服务端、`7770026` 账号页、`67ee776` 卸载 30 天后去掉安装 ID；Grafana 告警在本仓库；没部署；测试 App 要人注册）；G-06 已完成（coding-agent `f0a229a`，没部署；上线前要在 App 设置里加 Issues 读写与 `issue_comment` 事件） | 中 |
@@ -94,7 +94,7 @@
 | DLV-CHECK | 交付的真假：模型说“已交付”却没调 `deliver_file` 时，Reviewer 要按这一轮的 delivered（round_highlights）与 `task_artifacts` 核对，不能只看回答的文字；Planner 在用户明说要交付文件时给 Goal 加上交付的要求 | 第 26 版的冒烟（cloud-deploy.md） | — | 已完成（`a9deb9c` 测试、`310061e` 实现；没部署；见第 8 节） | 近 |
 | F3-SANDBOX | 线上交付不了文件：`deliver_file` 的 `DirectoryReader` 读 Worker 本机的 `<AR_TOOL_WORKSPACE_ROOT>/<租户>/<工作区>`，而线上 `repo_edit`、`shell_run` 写在沙箱的环境里，两边看到的不是同一处（Kata、Cloudflare 是存档模式，文件只在环境里；只有 gVisor 挂本机目录）（第 27 版冒烟 2：`repo_edit` 写 `report.md` 成功三次，`deliver_file` 三次都是 `file_not_found`）。改成经与 repo_* 相同的路径（沙箱环境或 Workspace 的读文件）取文件；这块代码现在由 SBX-01-IMPL 独占，与它协调 | 第 27 版的冒烟 2（cloud-deploy.md） | SBX-01-IMPL | 待做 | 近 |
 | BUDGET-DEFAULT | 默认档（白名单里没列出的租户，每天 3 美元）的 Task 在 Planner 的第一次模型调用就被拒：`tenant_budget_exceeded`，实际花费 0（第 27 版冒烟 3，测试租户 real01：只有 triage 的 0.00025 美元成功，之后每次都拒、网关不记计量）。默认档租户最后一个完成的 Task 是 2026-10-31，预算账本 11-03 上线之后没有。先查预留额的估算（输入与 max_tokens 按强档单价算、加上未结算的预留）是不是一次就超过日额度；开放注册的用户都在这一档 | 第 27 版的冒烟 3（cloud-deploy.md） | Claude 桌面会话（Opus 5.5），2026-11-04 认领：查清并修在 Model Gateway（`internal/gateway` 的输出上限与预留、`cmd/model-gateway` 的一个环境变量） | 进行中：查清了——请求没写 max_output_tokens 时按 Profile 的 max_output 预留，kimi-k3.1-pro 是 1,048,576 个 token、每百万 10 美元，一次预留 10.49 美元，超过 3 美元的日额度（gpt-6-astra、fable-5.1 是 6.40）。改成没写时用网关的默认上限（可见输出 16384 加思考预算，不超过 Profile 的；`AR_MODEL_DEFAULT_MAX_OUTPUT`，0 回到原来的做法），发给供应商与预留同一个数。代码已完成（`3556e9b5`，网关全部测试过，含新测试：日额度 0.9 美元时原来被拒、现在照常调用）；已上线（Helm 第 30 版，DEP-BD30，2026-11-05）：默认档租户 `real01` 的冒烟 Task done，没有被拒 | 近 |
-| WS-CF-524 | 经 `api.cgent.link` 调 Workspace API 时，Kata 上建环境超过 Cloudflare 代理的 100 秒，客户端拿到 524（操作本身在服务端做完了）。coding-web 走集群内地址不受影响；对外的客户端要改成异步（先返回、再查结果），或这类调用不经代理 | 第 27 版的冒烟 3 | — | 待做 | 中 |
+| WS-CF-524 | 经 `api.cgent.link` 调 Workspace API 时，Kata 上建环境超过 Cloudflare 代理的 100 秒，客户端拿到 524（操作本身在服务端做完了）。coding-web 走集群内地址不受影响；对外的客户端要改成异步（先返回、再查结果），或这类调用不经代理 | 第 27 版的冒烟 3 | — | 已定（2026-11-04 用户批准、Claude 选）：做异步——长的 Workspace 操作先返回操作号，客户端轮询结果（契约走 S-01，人审按 7.2 视为已过）；不开绕过 Cloudflare 代理的主机名（会暴露源站 IP、失去 Cloudflare 的防护）。待做 | 中 |
 | SBX-RS-01 | Rust 版 agent 的原型实测 | workspace-read 第 5 节 | — | 取消（改为 D-28） | — |
 
 ## 4. DAG
@@ -276,6 +276,11 @@ flowchart LR
 | SITE | 随第 25 版部署新的 learning 镜像；只读令牌第 22 版已建（Secret `agent-runtime-eval-site`） | 不缺资源 |
 | MEM（Memory 上线） | 做，单独一版（第 26 版）：Milvus 3.0.2 单机版、PVC 50Gi、`text-embedding-3-large`；所有租户的白名单加 3-large（`swebench` 也加，之后的基准报告注明 Memory 已打开） | 与 Runtime 的其他改动分开，出问题好查 |
 | 花钱的上限 | 用户说随便花；为防跑飞仍按项设上限：真 Task 冒烟 ≤ 2 美元、EV-SWE 补跑 ≤ 5、DeepEval 线上重判 ≤ 10、LongMemEval ≤ 20、EV-REAL ≤ 40、Terminal-Bench 40 题 ≤ 80、MX-RUN 按 `estimate`、≤ 200；合计约 360 美元 | 单项超了先停下报告，不是不让花 |
+
+### 7.3 2026-11-04 Claude 接过另一个会话的部署线（DEP-BD30 之后）
+
+用户：“是否可以接过这个工作，所有要批准的选项我都看了，都批准”。批准的：NET-OPEN 的契约 `3c0bd0f`、N-15 的契约 `556c881`（兼容性基线按 main 重建）；WS-CF-524 选异步的 Workspace 操作。
+下一次完整上线要去掉第 28、30 版加的 `modelGateway.imageTag`（网关钉在 `de1c0ba-tkbd`），否则网关不跟着换。
 
 ### 7.2 2026-11-04 用户：“等人定的一律通过”
 
