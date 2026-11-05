@@ -761,7 +761,6 @@
         ],
         "capabilities": [
           "generate",
-          "structured",
           "tools",
           "stream"
         ],
@@ -986,7 +985,6 @@
         ],
         "capabilities": [
           "generate",
-          "structured",
           "tools",
           "stream"
         ],

@@ -149,6 +149,7 @@ class Reviewer:
                 else:
                     value = json_format.MessageToDict(response.result) if response.HasField("result") else None
                     text = response.text if value is None else json.dumps(value, ensure_ascii=False)
+                    value = prompts.normalize_answer(value)
                     problems = prompts.answer_problems(value)
                     cause = {"cause": "invalid_answer", "problems": len(problems)} if problems else {}
                     if not problems:

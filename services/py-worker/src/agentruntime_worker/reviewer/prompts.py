@@ -9,7 +9,9 @@
 
 from __future__ import annotations
 
+import copy
 import json
+import re
 from collections.abc import Mapping
 from typing import Any
 
@@ -146,6 +148,43 @@ def retry_messages(previous: list[mg.ChatMessage], answer: str, problems: list[s
     """重问：在原对话后附上模型的上次回答与不合格之处。"""
     feedback = "上次的回答不合格：\n" + "\n".join(f"- {p}" for p in problems) + '\n请修正后重新给出完整的 {"verdict": …, "completion": …, "state_update": …}。'
     return [*previous, mg.ChatMessage(role=mg.CHAT_ROLE_ASSISTANT, text=answer or "（没有回答）"), mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=feedback)]
+
+
+_TOP_LEVEL = ("completion", "state_update", "highlights")
+_UNEXPECTED = re.compile(r"'([^']+)'")
+
+
+def normalize_answer(answer: Any) -> Any:
+    """校验前的宽容整理（REVIEW-FALLBACK）：只改形状、不改判定。① 顶层的 completion、state_update、highlights 被写进了 verdict 里的，
+    挪回顶层（顶层已有的以顶层为准）；② verdict 里 schema 不允许的多余字段（unevaluated、additional properties，例如 repair 里多写的
+    reason_params）删掉。整份判定缺字段、取值不对的照旧报错，按原来的规矩重问或按规则判定。"""
+    if not isinstance(answer, dict) or not isinstance(answer.get("verdict"), dict):
+        return answer
+    out = copy.deepcopy(answer)
+    verdict = out["verdict"]
+    for key in _TOP_LEVEL:
+        if key in verdict:
+            moved = verdict.pop(key)
+            out.setdefault(key, moved)
+    checker = validate.validator("verdict")
+    for _ in range(8):
+        removed = False
+        for err in checker.iter_errors(verdict):
+            if err.validator not in ("unevaluatedProperties", "additionalProperties"):
+                continue
+            container: Any = verdict
+            for part in err.absolute_path:
+                container = container[part] if isinstance(container, dict | list) else None
+            if not isinstance(container, dict):
+                continue
+            listed = err.message[err.message.find("(") :] if "(" in err.message else ""
+            for name in _UNEXPECTED.findall(listed):
+                if name in container:
+                    del container[name]
+                    removed = True
+        if not removed:
+            break
+    return out
 
 
 def answer_problems(answer: Any) -> list[str]:

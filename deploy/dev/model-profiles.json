@@ -262,7 +262,7 @@
         {"name": "medium", "effort": "medium", "thinking_budget": 8192},
         {"name": "high", "effort": "high", "thinking_budget": 32768}
       ],
-      "capabilities": ["generate", "structured", "tools", "stream"],
+      "capabilities": ["generate", "tools", "stream"],
       "cost": {"in_per_m": 1.19516, "out_per_m": 4.18306, "cache_read_per_m": 0.29879},
       "constraints": {"context_window": 1000000, "max_output": 131072},
       "freshness": {"price_at": "2026-11-03"},
@@ -340,7 +340,7 @@
         {"name": "medium", "effort": "medium", "thinking_budget": 8192},
         {"name": "high", "effort": "high", "thinking_budget": 32768}
       ],
-      "capabilities": ["generate", "structured", "tools", "stream"],
+      "capabilities": ["generate", "tools", "stream"],
       "cost": {"in_per_m": 0.435, "out_per_m": 0.87, "cache_read_per_m": 0.0036},
       "constraints": {"context_window": 1048576, "max_output": 131072},
       "freshness": {"price_at": "2026-11-03"},
