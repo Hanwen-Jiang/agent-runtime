@@ -879,6 +879,19 @@ REAL-01 的检查（2026-11-04，在第 27 版上；目录 `rev29`，脚本 `smo
   V1-FC 会话核对 docker-mirror 对构建命名空间返回 Docker Hub 的 manifest（200）。
 - 回滚：`helm rollback ar 32`；coding-web `rollout undo`（之前的清单在 `rev35/coding-web.yaml.before`）。
 
+第 34 版（2026-11-05，目录 `rev36`，脚本 `prepare.sh`、`rev36.sh`）：
+
+- Runtime `1a66ba4`：V1-F3（`deliver_file` 与 `repo_read` 同一条读路，存档模式经 Sandbox Service 读环境里的文件）、V1-REV（Reviewer 校验前整理形状；
+  mimo-v2.6-pro、glm-5.3 去掉 `structured`）、N-15 的修复（租户策略解码认 `mcp`；MCP 先拨 IPv4）。coding-web 没变（`fff9d4e`），firecracker 仍 `enabled: false`。
+- 升级前 `agent-runtime-model-profiles` 按仓库的 `model-profiles.json` 换（之前的在 `rev36/model-profiles.before.yaml`）；升级后 Registry 按 `registry-seed.json`
+  发布（mimo-v2.6-pro、glm-5.3 的 model_profile 到 v2，其余跳过）。线上清单与 `manifest-rev36.yaml` 一致，四个对外地址 200。
+- Reviewer 的探测（`rev-probe/probe_review.py`，在 worker-decision 的 Pod 里经网关逐个钉住候选、同一份 Progress Check，租户 `evals`）：
+  gpt-6.1-sol、gemini-4-argon、grok-4.7、deepseek-v4-pro 一次通过；qwen3.8-max 第一次把 completion 等写进 verdict、重问后通过；kimi-k3.1-pro 在 repair
+  里多写 `reason_params` 被整份拒；mimo-v2.6-pro、glm-5.3 两次都写成 `{"status": …}`。修法见上。
+- 冒烟 8（`real01`）：默认档当天的 3 美元用完，每次模型调用 `tenant_budget_exceeded`，Task 照常 repair、replan 空转 7 轮以上（已取消；修法 `67eb036`：第一轮就问人）。
+- 冒烟 9（`evals`，Kata，新建工作区 16 秒）：列目录 0.3 秒、读文件 0.4 秒；`shell_run` 起沙箱 10.1 秒；`repo_read` 成功；**`deliver_file` 成功**（567 毫秒，F3-SANDBOX 修好）。
+- 回滚：`helm rollback ar 33`；`kubectl apply -f rev36/model-profiles.before.yaml` 再重启 model-gateway。
+
 宿主上的 Firecracker（2026-11-05，V1-FC：宿主上的 systemd 服务，不经 Helm；规矩见总表第 0 节第 6 条）：
 
 - 装了什么（与 `deploy/cluster/install.sh` 第 3b 步相同的命令，分步手工跑，没跑整个 install.sh）：Firecracker 与 jailer v1.17.0（`/usr/local/bin`，按
