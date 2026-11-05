@@ -268,3 +268,39 @@ JudgeBench 的回答是别家模型生成的，**不要拿来训练**（各模�
   （`tests/test_capability_component.py` 的“规划全对”用例因此在 main 上失败）。参照只用于自检、不是标注，测试里的假模型补上三步，评测集没改。
   真跑的分数不受影响：被测模型自己要给 steps。
 - 没做的：S-11 的长任务（要 LongBench v2，第 11 节）；`light` 仍没有改编题（要真实的 Recipe 命中，草稿 README 第 5 条）。
+
+## 13. 第一轮的结果（MX-RUN，2026-11-04 至 11-05；记录 MX-RUN-REC）
+
+来源：服务器上的 `/opt/evals/mx/round1`（`plan.json`、`results.jsonl` 5742 条、`scores.json`、`capability-patch.json`）。这次运行没在总表第 8 节认领
+（11-04 13:31 起，`--budget-usd 120`），11-05 01:18 打分并做了发布的 dry-run，**没有发布**。花 120.09 美元，到了上限。
+
+与计划不同的地方：服务器上的 `plan.json` 没打开第 12 节的改编题，plan 格只有 25 题、route 格 36 题，不到第 4 节的 40 题；transform 格没跑；
+judge 格的三个贵模型（Opus 5.5、gpt-6-astra、fable 5.1）预算用完，没有结果。
+
+| 格子 | 题 × 次 | 领先（收缩分） | 按规则可发布 | 不发布的主要原因 |
+| --- | --- | --- | --- | --- |
+| act · medium（BFCL v4） | 100 × 1 | mimo-v2.6-pro 0.891 | 12 个，0.373～0.891 | fable 5.1 淘汰赛 20 题 0 分，被淘汰（像是调用方式的问题，没查） |
+| route · low（s09 分诊） | 36 × 3 | gemini-3.8-flash 0.833 | 6 个，0.739～0.833 | qwen3.8-flash 污染 10%、gpt-6-luna 57% |
+| judge · medium（JudgeBench + RewardBench 2 + S-10） | 24～89 × 3 | mimo-v2.6-pro 0.776 | 2 个：mimo-v2.6-pro 0.776、glm-5.3 0.644 | 8 个污染 6%～79%；3 个贵模型没结果 |
+| plan · medium（s09） | 25 × 3 | gemini-4-argon 0.371（半宽 0.167，不写） | 3 个：Opus 5.5 0.295、fable 5.1 0.248、gpt-6-astra 0.238 | 其余的污染超过 5% 或半宽超过 0.15 |
+
+**plan 格不该照规则发布。**
+
+1. 25 题里有 12 题，13 个模型各跑 3 次全是 0 分（例如 `batch_label_tickets`、`ci_fix_failing_test`、`multiday_csv_export`、`research_cbam_impact`）。
+   失败全在形状检查上：缺 deliver 节点 387 次、缺 Goal Node mode（多是 template）231 次、缺质量包装 169 次，gate、human、并行宽度、节点数也各有几十次。
+   这些都是人确认过的标注。去掉回退的运行也一样（缺 deliver 241 次）。所以要么是 N-04 之后的 Planner 与标注对不上，要么是标注太严，先要查清，分数才有意义。
+2. Planner 回退（没规划成，退回保守规划）975 次里有 276 次：qwen3.8-max 73/75、mimo-v2.6-pro 70/75、gpt-6-astra 57/75，多是 `bad_structured_output`。
+   第 2 节只把“钉的模型没用上”算作污染，回退照样计分，所以回退 76% 的 gpt-6-astra 也“可发布”。`evals run` 回退率超过 5% 就判运行无效，矩阵的计分没有这条。
+3. 按规则能发布的恰好只剩三个贵模型，分数都低于 0.5，其余候选照旧用 0.5 的先验。发出去之后，路由在规划上会避开测过的模型，去用没测过的。
+
+**judge 格的污染**主要来自中转站：502 时网关切到同档别的模型（结果里 `models_exhausted` 236 次、Model Gateway 的 gRPC 超时 72 次）。也就是钉的模型一时不可用，
+不是钉的方式有问题。污染的题没有重跑。
+
+**建议（交人定）：**
+
+- 发 act、route 两格（12 + 6 个分数）与 judge 格的两个分数；plan 格这次不发。发布 = `capability publish` 改 `deploy/dev/model-profiles.json` 与 Registry 种子，人审后经 Registry 发布。
+- 下一轮之前：
+  - 矩阵的计分把 Planner 的回退也算作无效运行，与 `--max-fallback-rate` 同一规则；
+  - 钉的模型 502 时先重试，不切模型，或者只重跑被污染的题；
+  - `plan.json` 打开改编题，让 plan、route 两格都够 40 题；
+  - 查清第 1 条那 12 题。
