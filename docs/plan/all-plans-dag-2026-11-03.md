@@ -24,6 +24,7 @@
 3. 新发现的问题，只有满足其一才进本表：挡住下面的完成标准；安全问题（越权、泄密）；丢用户数据。其余记进第 3 节当 backlog。
 4. 代码写完不算完成，**上线、在线上用得起来才算**。
 5. 第 8 节的认领规矩照旧。
+7. 第 3 节里写着“要资源”“要人定”“等人看”的，先按用户 2026-11-05 的授权由 Claude 定掉再做；真缺外部的东西（令牌权限、第三方账号上的设置）才算等。
 6. **线上发布不用再问用户**（用户 2026-11-05：“每次 helm upgrade 动线上集群也不要问我了”）：`helm upgrade`、换镜像、改线上配置与租户策略、在线上跑冒烟都直接做。发布前按 `cloud-deploy.md` 的步骤备份当前 values 与修订号，发布后照常记进 `cloud-deploy.md`；出问题先 `helm rollback` 回上一版，再查原因。
 
 **v1 要做的**
@@ -45,6 +46,10 @@
 | V1-DEP | 整版发布 main（Helm 第 32 版起，DEP-R32）：SBX-01 与 WS-READ-01（Chart 的 sandbox-service，要 `secrets.relationalDsn`、`secrets.storeClaim`；不灰度，回退是回滚 Release，见 sbx-01-handoff 第 7 节）、`95a3a9e` 之后的提交、learning 新镜像；coding-web 换到 coding-agent main。之后核心各项做好一块发一版，不攒 | SBX-01 等“没部署”的 | 待做（不用再问：见规则第 6 条） |
 | V1-F3 | F3-SANDBOX：`deliver_file` 经 Sandbox Service 取沙箱里的文件 | F3-SANDBOX | 待做 |
 | V1-REV | REVIEW-FALLBACK：查清 Reviewer 的模型判定为什么被自己的校验拒掉并修；修不了的模型从 Reviewer 候选里去掉 | REVIEW-FALLBACK | 待查 |
+| V1-SITE | 评测网站：SITE、SITE-DATA 随 V1-DEP 的 learning 镜像上线（只读令牌第 22 版已建，Secret `agent-runtime-eval-site`）；SITE-UI 的设计稿（https://claude.ai/artifact/VtHiCkT3fHaxtvnaRRd5Zr）由 Claude 定为通过，照稿改 `evals/site_pages` 三页，页面冒烟测试挪到 v2 | SITE、SITE-DATA、SITE-UI | 待做 |
+| V1-MEM | Memory 上线（M-01～M-03，按 7.1 已定：Milvus 3.0.2 单机版、`text-embedding-3-large`、所有租户白名单加 3-large）：`deploy/data` 装 Milvus，Memory Service 换新镜像（同时给 `external.milvus.uri`、`memory.embeddingVersion`，去掉 `external.qdrant.url`），Worker 设 `AR_MEMORY_ADDRESS`。Claude 定：PVC 先给 20Gi（可扩），装之前在服务器上 `df` 看一眼，剩余不到 40G 就先清镜像缓存；上线时不能有基线评测在跑。LongMemEval 验收挪到 v2 | MEM | 待做 |
+| V1-SEC | R-04 生产 SecretStore。Claude 定：不引 Vault、OpenBao、云 KMS（单节点 k3s，多一个要运维的组件）；在现有文件实现上加信封加密：每个作用域一把数据密钥加密值（AES-256-GCM），数据密钥由 KEK 加密，KEK 来自 K8s Secret 挂进需要的服务、不进共用卷；接口不变，旧的明文文件启动时一次性迁移。Go 与 Python 两边一起改 | R-04 | 待做 |
+| V1-AUTH | AUTH-01 切换（auth-tokens 第 4 节）：第 1～3 步随 V1-DEP 一起做（生成密钥对、Runtime 加 `issuers`、coding-web 加 JWT 私钥与 `CODING_TOKEN_KEY`）；一周后做第 4 步（`devTokens` 改 refuse、coding-web 去掉 `AR_DEV_SIGNING_KEY`） | AUTH-01 | 待做 |
 | V1-I18N | coding-web 的 `i18n.js` 加 `workspace_not_ready` 的说法 | WS-CREATE-RACE 剩下的客户端部分 | 待做 |
 
 **完成标准**（全部在线上做到，v1 就算完；每条手动走一遍，记进 `cloud-deploy.md`，不另写自动化测试）
@@ -57,9 +62,9 @@
 6. Reviewer：线上 10 个 Task 里按规则回退（`rule_fallback`）的不超过 20%。
 7. 最后一版上线后 48 小时内没有需要回滚的故障。
 
-**挪到 v2 的**：所有新测试与补测试、EV-TB 补跑 17 题、N16-R 的评测对照、FC-REAL 的耗时与密度测量、EV-REAL、EV-DE 线上重判、MX-PUB、SITE-UI 的页面冒烟测试、STOR-SEC 的真实 R2 核对。
+**挪到 v2 的**：所有新测试与补测试、EV-TB 补跑 17 题、N16-R 的评测对照、FC-REAL 的耗时与密度测量、EV-REAL、EV-DE 线上重判、MX-PUB、SITE-UI 的页面冒烟测试、LongMemEval、STOR-SEC 的真实 R2 核对。
 
-**仍是 backlog 的**（v1 不做）：D-25、NET-OPEN、D-27、MEM、R-04、R-06 的修订号、WS-CF-524（coding-web 走集群内地址不受影响）、SITE-UI；AUTH-01 切换、G-05/G-06 要人在 GitHub 上做的、F4 告警邮件的 Resend Key 等人给资源，到了就做。
+**仍是 backlog 的**（v1 不做）：D-25、NET-OPEN、D-27、R-06 的修订号、WS-CF-524（coding-web 走集群内地址不受影响）；G-05/G-06 要人在 GitHub 上做的、F4 告警邮件的 Resend Key 等人给资源，到了就做。
 
 ## 1. 已完成（不再画进 DAG）
 
