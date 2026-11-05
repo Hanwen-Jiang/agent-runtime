@@ -370,6 +370,11 @@ func (h *handler) DescribeTenant(ctx context.Context, req *connect.Request[sandb
 	if err != nil {
 		return nil, fail(err)
 	}
+	// Worker 先问这个，再往同一个业务库写它自己的记录（联网授权、工作区）：开发时每个租户一个 SQLite 文件，读一次就把这个
+	// 租户的表建好（结构变更归服务）；Postgres 上只是一次小查询。
+	if _, err := h.b().Ledger().Active(ctx, t.GetTenantId()); err != nil {
+		return nil, fail(err)
+	}
 	reg := h.s.opts.Registry
 	return connect.NewResponse(&sandboxv1.DescribeTenantResponse{
 		Backends: p.Names(), ArchiveMode: reg.Archive(p.Backend), WorkspaceMaxBytes: p.Workspace.MaxBytes, MaxWorkspaces: int32(p.Workspace.MaxWorkspaces),

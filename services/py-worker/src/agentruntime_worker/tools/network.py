@@ -92,6 +92,9 @@ class NetworkTool:
             raise DeniedError("network_not_approved", "联网要有人批准（request_network 只能经审批调用）")
         if policy.approver == "admin" and invocation.approved_by == invocation.user_id:
             raise DeniedError("network_needs_admin", "租户策略要求管理员批准联网，提交者本人批的不算")
+        # 授权记在 Sandbox Service 的业务库里（服务按它给命令配代理、给托管后端换放行名单）：先问一次服务，开发时的 SQLite 里这个
+        # 租户的表由服务建好（结构变更归服务，SBX-01）。
+        await self.broker.describe(tenant_id)
         preview_env = preview_target = ""
         if request.preview_port:
             preview_env, preview_target = await self._preview_target(invocation, request.preview_port)

@@ -1055,7 +1055,7 @@ class WorkspaceActivities:
         if self.operations is None:
             return workspace_pb2.WorkspaceOperationResult(error=error_pb2.Error(
                 category=error_pb2.ERROR_CATEGORY_INVALID, code="workspace_api_unavailable",
-                message="这个 Worker 没有配沙箱，也没有配工作区目录（AR_TOOL_WORKSPACE_ROOT），不能执行工作区的操作",
+                message="这个 Worker 没有配 Sandbox Service（AR_SANDBOX_SERVICE_ADDRESS），不能执行工作区的操作",
             ))
         # 排队（PERF-00）：这次尝试从排进 program 队列到被一个 Worker 取走，查看文件与 Task 的 activity 抢的就是这一段。
         info = activity.info()

@@ -20,10 +20,10 @@ from agentruntime_core.tenancy import TenantContext
 from agentruntime_worker import names
 from agentruntime_worker.activities.types import StageResult, ToolLoopStep
 from agentruntime_worker.tools.platform import PlatformToolsConfig, register_platform_tools
-from agentruntime_worker.tools.sandboxes import Sandboxes
 from agentruntime_worker.workflows import verdicts as vd
 from agentruntime_worker.workflows.events import tool_target
 
+from .service_setup import Setup
 from .stage_harness import StageHarness, harness  # noqa: F401 — harness 是 fixture
 from .test_stage_runner import deliver, goal, stage
 from .test_task_verdicts import out, scripted
@@ -65,10 +65,9 @@ async def test_shell_run_refuses_directories_outside_or_missing(tmp_path: Path, 
 
 
 async def test_shell_run_in_a_sandbox_backend_honours_the_directory(tmp_path: Path) -> None:
-    root = workspace(tmp_path)
-    boxes = Sandboxes({"plain": {"kind": "local", "isolation": "none"}}, "plain", workspace_root=root)
-    provider = LocalToolDriverProvider()
-    register_platform_tools(provider, PlatformToolsConfig(workspace_root=root, shell_sandbox="sandbox"), sandboxes=boxes)
+    s = Setup(tmp_path, sessions=False)  # 经 Sandbox Service（SBX-01）
+    (s.host / "t1" / "w1" / "archive" / "legacy-trader").mkdir(parents=True)
+    provider = s.tools
     out_ = await run(provider, {"argv": ["python", "-c", "import os; print(os.path.basename(os.getcwd()))"], "cwd": "archive/legacy-trader"})
     assert out_["exit_code"] == 0 and out_["stdout"].strip() == "legacy-trader", out_
     missing = await run(provider, {"argv": ["true"], "cwd": "nope"})
