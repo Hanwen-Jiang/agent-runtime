@@ -399,7 +399,7 @@ func TestChildOptions(t *testing.T) {
 	}
 
 	for name, mutate := range map[string]func(*workflowv1.TaskWorkflowInput){
-		"缺少租户":       func(in *workflowv1.TaskWorkflowInput) { in.Tenant = nil },
+		"缺少租户":    func(in *workflowv1.TaskWorkflowInput) { in.Tenant = nil },
 		"缺少 task_id": func(in *workflowv1.TaskWorkflowInput) { in.TaskId = "" },
 	} {
 		bad := proto.Clone(task).(*workflowv1.TaskWorkflowInput)
