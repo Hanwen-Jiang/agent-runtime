@@ -9,7 +9,9 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/subtle"
+	"encoding/hex"
 	"errors"
 	"io"
 	"log/slog"
@@ -29,6 +31,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/sandbox"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/secretstore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/telemetry"
+	"github.com/agentruntime/agent-runtime/libs/go-core/secret"
 	"github.com/agentruntime/agent-runtime/libs/go-core/tenancy"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	environmentv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/environment/v1"
@@ -70,14 +73,16 @@ type Options struct {
 	MirrorURL string
 	EgressURL string
 	// Runtime 是服务自己借环境（git、转冷）时用的运行环境；空时 python。
-	Runtime    string
-	HoldMax    time.Duration
-	Grace      time.Duration
-	ColdDays   int
-	PolicyTTL  time.Duration
-	TmpDir     string
-	SetupCache broker.SetupCache
-	Projects   broker.ProjectEnvironments
+	Runtime   string
+	HoldMax   time.Duration
+	Grace     time.Duration
+	ColdDays  int
+	PolicyTTL time.Duration
+	// SetupTimeout 是环境配置的安装脚本的超时（0 时十分钟）。
+	SetupTimeout time.Duration
+	TmpDir       string
+	SetupCache   broker.SetupCache
+	Projects     broker.ProjectEnvironments
 	// Environments 是按项目定制的运行环境（D-17，后端登记的 environments 一节）；给了时它同时是 SetupCache 与 Projects，
 	// 构建在服务进程里跑。
 	Environments *envbuild.Manager
@@ -144,7 +149,7 @@ func New(ctx context.Context, o Options) (*Service, error) {
 	}
 	b := broker.New(broker.Options{
 		Registry: reg, Policies: registry.NewPolicies(reg, o.Policy, o.PolicyTTL), Ledger: led, Archiver: arch, Store: o.Relational,
-		Credentials: broker.NewCredentials(reg, o.MirrorURL, o.EgressURL), SetupCache: o.SetupCache, Projects: o.Projects, HoldMax: o.HoldMax,
+		Credentials: broker.NewCredentials(reg, o.MirrorURL, o.EgressURL), SetupCache: o.SetupCache, Projects: o.Projects, HoldMax: o.HoldMax, SetupTimeout: o.SetupTimeout,
 		EgressCA: func(ctx context.Context) []byte { v, _ := reg.ReadSecret(ctx, "sandbox/egress-ca-cert"); return v }, Logger: o.Logger,
 	})
 	b.SetCold(broker.ColdOptions{DefaultDays: o.ColdDays, Runtime: o.Runtime})
@@ -152,6 +157,9 @@ func New(ctx context.Context, o Options) (*Service, error) {
 		o.Environments.Attach(b)
 	}
 	s := &Service{opts: o, broker: b, log: o.Logger, tokens: map[string][]byte{}}
+	if err := s.ensureTokens(ctx); err != nil {
+		return nil, err
+	}
 	if err := s.loadTokens(ctx); err != nil {
 		return nil, err
 	}
@@ -191,6 +199,42 @@ func (s *Service) Close() error {
 		s.opts.Environments.Close()
 	}
 	return s.opts.Registry.Close()
+}
+
+// ensureTokens 给还没有令牌的调用方生成一个，写进 SecretStore 的平台作用域（同逐字增量的 delta/<调用方>）：集群里 SecretStore
+// 的文件在共用卷上，Worker 与 task-service 读同一份。SecretStore 写不了时什么也不做（令牌由部署种下）。
+func (s *Service) ensureTokens(ctx context.Context) error {
+	if s.opts.Secrets == nil {
+		return nil
+	}
+	store, err := s.opts.Secrets.BindPlatform(registry.SecretPurpose)
+	if err != nil {
+		return err
+	}
+	w, ok := store.(interface {
+		Write(context.Context, string, secret.Value) error
+	})
+	if !ok {
+		return nil
+	}
+	for _, c := range s.opts.Callers {
+		v, err := s.opts.Registry.ReadSecret(ctx, TokenSecretPrefix+c)
+		if err != nil {
+			return err
+		}
+		if len(v) > 0 {
+			continue
+		}
+		raw := make([]byte, 32)
+		if _, err := rand.Read(raw); err != nil {
+			return err
+		}
+		if err := w.Write(ctx, TokenSecretPrefix+c, secret.New(hex.EncodeToString(raw))); err != nil {
+			return err
+		}
+		s.log.Info("生成了调用方的令牌", "caller", c)
+	}
+	return nil
 }
 
 func (s *Service) loadTokens(ctx context.Context) error {

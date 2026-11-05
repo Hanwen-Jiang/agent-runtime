@@ -161,7 +161,7 @@ func serve() error {
 	svc, err := server.New(ctx, server.Options{
 		Registry: reg, Relational: store, Objects: objects, Secrets: secrets, Policy: policyLookup(cfg), Callers: cfg.Callers,
 		MirrorURL: cfg.MirrorURL, EgressURL: cfg.EgressURL, Runtime: cfg.Runtime, HoldMax: cfg.HoldMax, ColdDays: cfg.ColdDays, PolicyTTL: cfg.PolicyTTL, Logger: logger,
-		Telemetry: tel, Environments: environments, TmpDir: cfg.TmpDir,
+		Telemetry: tel, Environments: environments, TmpDir: cfg.TmpDir, SetupTimeout: cfg.SetupTimeout,
 	})
 	if err != nil {
 		return err

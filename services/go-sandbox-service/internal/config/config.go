@@ -16,6 +16,7 @@
 //	AR_SANDBOX_RUNTIME                 服务自己借环境（git、转冷）用的运行环境，默认 python
 //	AR_SANDBOX_RECONCILE_INTERVAL_S    对账间隔，默认 60；0 不对账
 //	AR_SANDBOX_HOLD_MAX_S              等人期间保留会话级环境的上限，默认 7200
+//	AR_SANDBOX_SETUP_TIMEOUT_S         环境配置的安装脚本（ENV-02 的 setup）的超时，默认 600
 //	AR_WORKSPACE_COLD_AFTER_DAYS       挂卷工作区闲置多少天转冷（租户策略没写时），默认 0（不转冷）
 //	AR_SANDBOX_POLICY_TTL_S            租户策略的缓存秒数，默认 60；0 不缓存（测试用）
 //	AR_SANDBOX_TMP_DIR                 临时文件（工作区存档、D-17 构建产物，可达几个 GB）的目录，默认系统的临时目录
@@ -58,7 +59,8 @@ type Config struct {
 	PolicyTTL  time.Duration
 	Production bool
 	// TmpDir 是临时文件的目录（空时系统的临时目录）。
-	TmpDir string
+	TmpDir       string
+	SetupTimeout time.Duration
 }
 
 // FromEnv 读环境变量。
@@ -108,6 +110,14 @@ func FromEnv(getenv func(string) string) (Config, error) {
 		return c, err
 	}
 	c.HoldMax = time.Duration(hold) * time.Second
+	setup, err := intVar(getenv, "AR_SANDBOX_SETUP_TIMEOUT_S", 600)
+	if err != nil {
+		return c, err
+	}
+	if setup == 0 {
+		return c, errors.New("AR_SANDBOX_SETUP_TIMEOUT_S 要是正整数（秒）")
+	}
+	c.SetupTimeout = time.Duration(setup) * time.Second
 	if c.ColdDays, err = intVar(getenv, "AR_WORKSPACE_COLD_AFTER_DAYS", 0); err != nil {
 		return c, err
 	}

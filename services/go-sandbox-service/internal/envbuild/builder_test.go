@@ -337,18 +337,23 @@ func TestBuildFailureReasonsDropSignedURLs(t *testing.T) {
 // 服务在构建中途重启时留下的同一个键的对象，下一次构建开始时删掉。
 func TestLeftoversOfTheSameKeyAreSweptFirst(t *testing.T) {
 	k := newFakeKube(nil, podStatus(done, true, nil))
-	k.leftovers = map[string][]string{"jobs": {"envb-old-1"}, "secrets": {"envb-old-1"}, "configmaps": {"envb-old-1"}}
+	k.leftovers = map[string][]string{"jobs": {"envb-old-1"}, "configmaps": {"envb-old-1", "envb-old-2"}}
 	if o, err := builder(t, k, (&fakeFetch{}).fetch).Build(context.Background(), jobFor(nil), io.Discard); err != nil || !o.OK {
 		t.Fatalf("%+v %v", o, err)
 	}
-	var old int
+	old := map[string]int{}
 	for _, d := range k.deletes() {
-		if strings.HasSuffix(d, "/envb-old-1") {
-			old++
+		if strings.Contains(d, "/envb-old-") {
+			old[d[strings.LastIndex(d, "/")+1:]]++
 		}
 	}
-	if old != 3 {
-		t.Fatalf("旧的 Job、Secret、ConfigMap 都删：%v", k.deletes())
+	if old["envb-old-1"] != 3 || old["envb-old-2"] != 3 {
+		t.Fatalf("旧的 Job、Secret、ConfigMap 都删（Job 已经被 TTL 删掉的也按 ConfigMap 找到）：%v", k.deletes())
+	}
+	for _, c := range k.calls {
+		if c[0] == http.MethodGet && strings.Contains(c[1], "/secrets") {
+			t.Fatalf("不列 Secret（服务读不了 Secret）：%v", c)
+		}
 	}
 	if !strings.Contains(k.calls[0][1], "agentruntime.io%2Fenv-key%3D"+strings.Repeat("ab", 16)) || !strings.Contains(k.calls[0][1], "managed-by%3D"+ManagedBy) {
 		t.Fatalf("按这个键的标签找：%v", k.calls[0])

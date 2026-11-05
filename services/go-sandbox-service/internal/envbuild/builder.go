@@ -332,10 +332,12 @@ func (b *K8sJobBuilder) cleanup(ctx context.Context, name string) {
 	}
 }
 
-// sweep 删掉同一个键之前没删干净的对象（服务在构建中途重启时留下的）。
+// sweep 删掉同一个键之前没删干净的对象（服务在构建中途重启时留下的）。只列 Job 与 ConfigMap（服务读不了 Secret），三者同名，
+// Secret 按名字删。
 func (b *K8sJobBuilder) sweep(ctx context.Context, key string) {
 	selector := "?labelSelector=" + kube.LabelSelector(map[string]string{"app.kubernetes.io/managed-by": ManagedBy, "agentruntime.io/env-key": keyLabel(key)})
-	for _, kind := range []string{"jobs", "secrets", "configmaps"} {
+	names := map[string]bool{}
+	for _, kind := range []string{"jobs", "configmaps"} {
 		var list struct {
 			Items []struct {
 				Metadata struct {
@@ -347,12 +349,16 @@ func (b *K8sJobBuilder) sweep(ctx context.Context, key string) {
 			continue
 		}
 		for _, item := range list.Items {
-			var body any
-			if kind == "jobs" {
-				body = map[string]any{"propagationPolicy": "Background"}
-			}
-			_, _, _ = b.kube.Request(ctx, http.MethodDelete, b.path(kind, item.Metadata.Name), body, "")
+			names[item.Metadata.Name] = true
 		}
+	}
+	sorted := make([]string, 0, len(names))
+	for n := range names {
+		sorted = append(sorted, n)
+	}
+	sort.Strings(sorted)
+	for _, n := range sorted {
+		b.cleanup(ctx, n)
 	}
 }
 
