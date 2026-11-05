@@ -28,6 +28,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/clock"
 	"github.com/agentruntime/agent-runtime/libs/go-core/modelbudget"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/cache"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/durable"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/ingress"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
@@ -41,6 +42,7 @@ import (
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/ids"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/session"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/taskstore"
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/workspaceready"
 )
 
 // 限流的维度（ingress.Ingress.Admit 的 route）。
@@ -118,6 +120,8 @@ type Deps struct {
 	Network NetworkPolicySource
 	// Objects 是交付文件所在的 ObjectStore（与 Worker 同一处，N-18，docs/plan/n18-file-delivery-f3.md）；为空时不能下载交付的文件。
 	Objects objectstore.Provider
+	// Cache 与 Workspace API 共用：建工作区期间那里记下“在建”，提交时查（WS-CREATE-RACE）；为空时不查。
+	Cache cache.Provider
 }
 
 // Server 实现 taskapiv1connect.TaskServiceHandler。
@@ -231,6 +235,26 @@ func (s *Server) lookup(ctx context.Context, header http.Header, route, requestT
 	return id, tenant, row, nil
 }
 
+// workspaceReady：工作区还在建（CreateWorkspace 的工作流没做完）时不收在它上面的 Task（WS-CREATE-RACE）。Worker 建工作区时
+// 一开始就把那一行写成 active，这时开的 Task 会另起空环境、之后盖掉建工作区时写的文件。可以稍后重试，所以是 Transient。
+func (s *Server) workspaceReady(ctx context.Context, tenant *commonv1.TenantContext, workspaceID string) error {
+	if workspaceID == "" || s.d.Cache == nil {
+		return nil
+	}
+	c, err := s.d.Cache.Bind(tenant)
+	if err != nil {
+		return err
+	}
+	pending, err := workspaceready.Pending(ctx, c, workspaceID)
+	if err != nil {
+		return err
+	}
+	if pending {
+		return providererr.New(providererr.Transient, "workspace_not_ready", "工作区还在建，建好之后再提交 Task")
+	}
+	return nil
+}
+
 // mayControl：取消与人工回复只接受提交者或带 ScopeApprove 的用户。没记下提交者的旧 Task 只接受后者。
 func mayControl(id ingress.Identity, row taskstore.Task) error {
 	if (row.SubmittedBy != "" && row.SubmittedBy == id.UserID) || slices.Contains(id.Scopes, ScopeApprove) {
@@ -265,6 +289,9 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	}
 	tenant, err := ingress.TenantContextFor(id, req.GetTenantId(), req.GetWorkspaceId(), "", nil)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.workspaceReady(ctx, tenant, req.GetWorkspaceId()); err != nil {
 		return nil, err
 	}
 	for _, uri := range req.GetAttachments() {

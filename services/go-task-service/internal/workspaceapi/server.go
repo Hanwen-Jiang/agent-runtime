@@ -42,6 +42,7 @@ import (
 	workflowv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1"
 	workspacev1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workspace/v1"
 	"github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workspace/v1/workspacev1connect"
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/workspaceready"
 
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/events"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/sandboxgrants"
@@ -261,10 +262,26 @@ func (s *Server) run(
 	if err != nil {
 		return err
 	}
-	if _, err := engine.StartWorkflow(ctx, WorkflowName, durable.StartOptions{
-		WorkflowID: WorkflowID(operationID), TaskQueue: TaskQueue, Input: in, ExecutionTimeout: s.d.Timeout + 30*time.Minute,
-	}); err != nil {
+	execution := s.d.Timeout + 30*time.Minute
+	// WS-CREATE-RACE：建工作区期间不收在它上面的 Task（taskapi 的 submit 查这个标记）。
+	creating, err := s.markCreating(ctx, tenant, op, workspaceID, operationID, execution)
+	if err != nil {
 		return err
+	}
+	if _, err := engine.StartWorkflow(ctx, WorkflowName, durable.StartOptions{
+		WorkflowID: WorkflowID(operationID), TaskQueue: TaskQueue, Input: in, ExecutionTimeout: execution,
+	}); err != nil {
+		if creating != nil {
+			_ = workspaceready.Clear(context.WithoutCancel(ctx), creating, workspaceID, operationID)
+		}
+		return err
+	}
+	if creating != nil {
+		// 等工作流真正结束再清：客户端断开（例如经 Cloudflare 的 100 秒）只结束这次请求，工作流照样在跑。
+		go func(bg context.Context) {
+			_, _ = engine.Result(bg, WorkflowID(operationID), &workflowv1.WorkspaceOperationResult{}, execution)
+			_ = workspaceready.Clear(bg, creating, workspaceID, operationID)
+		}(context.WithoutCancel(ctx))
 	}
 	result := &workflowv1.WorkspaceOperationResult{}
 	outcome, err := engine.Result(ctx, WorkflowID(operationID), result, s.d.Timeout)
@@ -288,6 +305,21 @@ func (s *Server) run(
 		return providererr.Wrap(providererr.Transient, "workspace_bad_result", "Worker 返回的结果格式不对", err)
 	}
 	return nil
+}
+
+// markCreating 只给建工作区记“在建”的标记（WS-CREATE-RACE）；没配 Cache 时不记，返回 nil。
+func (s *Server) markCreating(ctx context.Context, tenant *commonv1.TenantContext, op workflowv1.WorkspaceOperation, workspaceID, operationID string, ttl time.Duration) (cache.Cache, error) {
+	if op != workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_CREATE || s.d.Cache == nil {
+		return nil, nil
+	}
+	c, err := s.d.Cache.Bind(tenant)
+	if err != nil {
+		return nil, err
+	}
+	if err := workspaceready.Mark(ctx, c, workspaceID, operationID, ttl); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 func (s *Server) checkRepoURL(raw string) error {

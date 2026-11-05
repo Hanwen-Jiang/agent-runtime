@@ -545,6 +545,8 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		Policies:         policies,
 		Network:          network,
 		Objects:          objects,
+		// WS-CREATE-RACE：与 Workspace API 同一个 Cache，提交时查工作区是不是还在建。
+		Cache: cacheProvider,
 	})
 	if err != nil {
 		return err
