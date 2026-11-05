@@ -819,6 +819,31 @@ REAL-01 的检查（2026-11-04，在第 27 版上；目录 `rev29`，脚本 `smo
   kimi 每次预留 0.28～0.41 美元（之前 10.49），结算成实际的 0.003～0.04 美元；网关没有 `tenant_budget_exceeded`。
 - 回滚：`helm rollback ar 29`。下一版正常发布时 `modelGateway.imageTag` 去掉（跟 image.tag），不然网关会停在这个镜像上。
 
+第 31 版（2026-11-05，DEP-R31：整版发布；目录 `rev33`，脚本 `prepare.sh`、`rev33.sh`、`smoke5.sh`、`smoke6.sh`；用户在对话里点了“Yes, deploy it”）：
+
+- Runtime `95a3a9e`（WS-CREATE-RACE、N-14 与它的迁移 `task_service_task_skill_pins`、N16-R（默认 off）、D-28、NET-OPEN 与 N-15 的桩、R-06-D、EV-TB-NET），
+  coding-web `f68943b`（WEB-SKILLS）。values 是第 30 版应用过的那份：`image.tag` 换成 `95a3a9e`；去掉 `modelGateway.imageTag`（网关跟 image.tag，
+  TOOLS-KIMI 与 BUDGET-DEFAULT 都在 main 上）；gVisor、Kata 与环境构建的 agent 镜像换成 `sandbox-agent:95a3a9e`（Rust 版，2,106,176 字节，静态链接）。
+  Memory 仍是 52174d9；沙箱运行环境的镜像仍是 0.1.0（K8s 沙箱的 agent 由 initContainer 从 agent 镜像拷进去）；Cloudflare 桥没动（仍是 Go 版 agent）。
+  渲染与第 30 版比 44 行：镜像 tag、`OTEL_SERVICE_VERSION`、`sandbox-backends` 里三处 agent 镜像、`sandbox-prepull` 的 agent 镜像。
+- prepare 在本次的源码副本里跑 `tests/deploy/test_cloud.py`：68 过 5 失败，都因为服务器上的副本没有 `.git`、没装工作区的包
+  （把 `libs/py-core/src` 加进路径后，两条网络策略的测试都过）。
+- 部署脚本先核对线上是第 30 版且清单与 `manifest-rev32.yaml` 一致、coding-web 是 `ec36caa`、没有在跑的 TaskWorkflow、镜像都在 k3s 里、
+  SOPS 文件没变，再换代码副本、核对渲染与审过的清单逐字节一致、`helm upgrade`。之后线上清单与 `manifest-rev33.yaml` 一致，`tasks.skill_pins` 已加，
+  四个对外地址 200，日志没有错误。egress-gateway、pkg-mirror、task-service、coding-web 各重启一次：新 Pod 启动的第一秒连 `pg-rw` 与 Temporal
+  被拒（connection refused），重启后正常；第 26、27 版是同样四个、各一次，像是新 Pod 的网络规则还没下发。
+- D-28 的真沙箱探测（`smoke5`、`smoke6`：每个 Task 让模型用 shell_run 跑三条命令；脚本另用 kubectl exec 以 Pod 的用户 10001 在同一个 Pod 里跑同样的探测，
+  只打印可读或拒绝，Pod 按租户的 owner 标签挑）：
+  - Kata（`real01`；`evals` 也是 Kata）：读不到 agent（PID 1）的 `environ`、打不开 `mem`；`cmdline` 可读（Linux 的常态，Go 版一样，令牌不在命令行里）。
+  - 超时 5 秒的 `sh -c "sleep 300 & sleep 300"`：agent 回 `timed_out`，整组被杀；之后在 Pod 里看到的 `sleep` 都是僵尸（Z，父进程 1）：
+    agent 当 PID 1 不回收孤儿，Go 版也一样（SBX-ZOMBIE）。
+  - gVisor：用户 `gh-hanwen-jiang` 部署后的一个环境 1.7 秒就绪、健康检查过；`swebench`（gVisor）的冒烟 Task 因为当天出网额度用完
+    （`sandbox_quota_exceeded`）没起沙箱，gVisor 上的 `/proc` 探测待做。
+  - Reviewer：两个 Kata 的 Task 多数轮次是 `rule_fallback`（mimo、gemini 的回答没过校验），real01 那个连跑 4 轮后取消；`swebench` 那个的 Reviewer
+    看到 base64 解码再执行的脚本判了 escalate（要人裁定），以后的冒烟别用 base64 包命令。前一项第 31 版之前就常见，见总表 REVIEW-FALLBACK。
+  - 花费：0.14 + 0.31（取消）+ 0.15（取消）= 0.60 美元。
+- 回滚：`helm rollback ar 30`，coding-web `rollout undo`（之前的清单在 `rev33/coding-web.yaml.before`）；代码副本 `agent-runtime.de1c0ba`、`coding-agent.ec36caa` 还在。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
