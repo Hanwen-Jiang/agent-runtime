@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from jsonschema import Draft202012Validator
-from jsonschema.exceptions import SchemaError
+from jsonschema.exceptions import SchemaError, ValidationError
 
 from agentruntime_core.dev._common import PLATFORM_ID, scope_id
 from agentruntime_core.errors import ConflictError, DeniedError, InvalidError, NotFoundError, TransientError
@@ -61,6 +61,81 @@ class _Record:
 def _hash(arguments: Mapping[str, Any]) -> str:
     canonical = json.dumps(arguments, sort_keys=True, ensure_ascii=False, separators=(",", ":"), default=str)
     return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+# invalid_arguments 的说明（TOOL-INT-FLOAT）：写出哪个参数、违反了什么，模型看了能自己改对。参数是模型写的，可能带着它看到的
+# 凭据，所以说明里的东西只取自 schema（参数名、可选值、类型、上下限），参数的值与 schema 没定义的参数名一律不回显。
+_MESSAGE_PREFIX = "参数不符合工具的 input_schema"
+_MESSAGE_LIMIT = 400
+_SHOWN_LIMIT = 40
+_ENUM_LIMIT = 10
+_COUNTS = {
+    "minimum": "不能小于 {}",
+    "maximum": "不能大于 {}",
+    "exclusiveMinimum": "要大于 {}",
+    "exclusiveMaximum": "要小于 {}",
+    "multipleOf": "要是 {} 的倍数",
+    "minLength": "至少 {} 个字符",
+    "maxLength": "最多 {} 个字符",
+    "minItems": "至少 {} 项",
+    "maxItems": "最多 {} 项",
+    "minProperties": "至少 {} 个字段",
+    "maxProperties": "最多 {} 个字段",
+}
+
+
+def _shown(value: Any) -> str:
+    """schema 里的一个值（可选值、上下限、格式），截短。"""
+    text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, default=str)
+    return text if len(text) <= _SHOWN_LIMIT else text[: _SHOWN_LIMIT - 1] + "…"
+
+
+def _where(error: ValidationError) -> str:
+    """出错的参数位置：数组下标照写；字段名只写 schema 里声明过的（在 schema 路径上出现），别的写成 …。"""
+    declared = {str(part) for part in error.absolute_schema_path}
+    return "/".join(str(part) if isinstance(part, int) or str(part) in declared else "…" for part in error.absolute_path)
+
+
+def _describe(error: ValidationError) -> str:
+    where, kind, limit = _where(error), str(error.validator), error.validator_value
+    subject = where or "参数"
+    if kind == "required" and isinstance(limit, list):
+        present = error.instance if isinstance(error.instance, Mapping) else {}
+        missing = "、".join(str(name) for name in limit if name not in present)
+        return f"{where} 缺少必填的 {missing}" if where else f"缺少必填参数 {missing}"
+    if kind == "additionalProperties":
+        allowed = "、".join(sorted(str(name) for name in (error.schema.get("properties") or {})))
+        text = f"{where} 里有 schema 没定义的参数" if where else "有 schema 没定义的参数"
+        return f"{text}（可用的：{allowed}）" if allowed else text
+    if kind == "enum" and isinstance(limit, list):
+        values = "、".join(_shown(value) for value in limit[:_ENUM_LIMIT]) + (" 等" if len(limit) > _ENUM_LIMIT else "")
+        return f"{subject} 只能是 {values} 之一"
+    if kind == "const":
+        return f"{subject} 只能是 {_shown(limit)}"
+    if kind == "type":
+        types = limit if isinstance(limit, list) else [limit]
+        return f"{subject} 的类型应为 {' 或 '.join(_shown(t) for t in types)}"
+    if kind in _COUNTS:
+        return f"{subject} {_COUNTS[kind].format(_shown(limit))}"
+    if kind == "uniqueItems":
+        return f"{subject} 里不能有重复的项"
+    if kind == "pattern":
+        return f"{subject} 的格式不对（要匹配 {_shown(limit)}）"
+    if kind == "format":
+        return f"{subject} 的格式应为 {_shown(limit)}"
+    return f"{subject} 不满足 schema 的 {kind}"
+
+
+def _argument_error(validator: Draft202012Validator, arguments: Mapping[str, Any]) -> InvalidError | None:
+    """参数合格时为 None；不合格时说明第一处（按位置排序，结果稳定），其余只计数。"""
+    errors = sorted(validator.iter_errors(arguments), key=lambda e: ([str(p) for p in e.absolute_path], str(e.validator)))
+    if not errors:
+        return None
+    rest = f"（另有 {len(errors) - 1} 处不符合）" if len(errors) > 1 else ""
+    message = f"{_MESSAGE_PREFIX}：{_describe(errors[0])}"
+    if len(message) + len(rest) > _MESSAGE_LIMIT:
+        message = message[: _MESSAGE_LIMIT - len(rest) - 1] + "…"
+    return InvalidError("invalid_arguments", message + rest)
 
 
 class LocalToolDriverProvider:
@@ -145,8 +220,9 @@ class LocalToolDriver:
         if missing:
             raise DeniedError("permission_denied", "工具要求的权限没有授予本作用域")
         arguments = dict(arguments)
-        if next(tool.input_validator.iter_errors(arguments), None) is not None:
-            raise InvalidError("invalid_arguments", "参数不符合工具的 input_schema")
+        invalid = _argument_error(tool.input_validator, arguments)
+        if invalid is not None:
+            raise invalid
         if tool.spec.effect.is_write and not idempotency_key:
             raise InvalidError("missing_idempotency_key", "写操作必须带幂等键")
         if not idempotency_key:

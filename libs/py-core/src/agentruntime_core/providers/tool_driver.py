@@ -7,7 +7,7 @@
 语义：
 - 未登记的工具不能调用：not_found。租户专属的工具只对该租户可见；平台工具对所有租户可见。
 - 版本必须写明，形如 v3（与 Task 固定的版本一致）。
-- 参数不符合 input_schema：invalid。工具返回不符合 output_schema：invalid（code = invalid_output）。
+- 参数不符合 input_schema：invalid（code = invalid_arguments；说明写出哪个参数、违反了什么，只取自 schema，不回显参数的值）。工具返回不符合 output_schema：invalid（code = invalid_output）。
 - 工具要求的权限没有授予本作用域：denied。
 - effect 为 write_reversible 或 write_irreversible 的工具必须带幂等键，否则 invalid。
 - 同一作用域、同一工具、同一幂等键：只真正执行一次；再次调用返回第一次的结果，replayed=True。
