@@ -1,4 +1,5 @@
-"""S-07 验收：套件覆盖计划列出的全部 10 个场景，并进入 CI 的夜间任务。不需要端到端环境。"""
+"""S-07 验收：套件覆盖计划列出的全部 10 个场景，加上 SBX-01 第 6 节的 S11（Sandbox Service 被杀），并进入 CI 的夜间任务。
+不需要端到端环境。"""
 
 from __future__ import annotations
 
@@ -11,7 +12,7 @@ import pytest
 from e2e_support.stack import REPO_ROOT
 
 HERE = Path(__file__).parent
-REQUIRED_SCENARIOS = set(range(1, 11))
+REQUIRED_SCENARIOS = set(range(1, 12))
 NIGHTLY_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "nightly.yml"
 
 

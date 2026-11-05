@@ -22,7 +22,7 @@ from e2e_support.api import TaskApi, finished_payload, stream_until_finished
 from e2e_support.business_db import psql, with_search_path
 from e2e_support.devstack import DevStack
 
-pytestmark = [pytest.mark.e2e, pytest.mark.faults]
+pytestmark = [pytest.mark.e2e, pytest.mark.faults, pytest.mark.scenario(11)]
 
 WORKSPACE = "w-s11"
 

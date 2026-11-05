@@ -257,6 +257,36 @@ func TestDiffAndLogRunGitInASandboxNotInTheService(t *testing.T) {
 	}
 }
 
+// Workspace API 的 GetDiff 等直接调服务（WS-READ-01）：错误与原来经 Worker 时一样分类。别的租户、没有的工作区是 not_found
+// （存档模式下不借环境就报），base 不在仓库里也是 not_found（git_not_found），不是 git_failed。
+func TestDiffErrorsAreClassifiedLikeTheWorkerDid(t *testing.T) {
+	for _, mode := range []string{localMount, localArchive} {
+		h := newHarness(t, withBackends(mode))
+		ctx := context.Background()
+		_, err := h.reader.GetDiff(ctx, connect.NewRequest(&sandboxv1.GetDiffRequest{Tenant: tenant("t2", "w1", ""), WorkspaceId: "w1"}))
+		if cat, c := code(t, err); cat != providererr.NotFound || c != "workspace_not_found" {
+			t.Fatalf("%s 别的租户没有这个工作区：%v %s", mode, cat, c)
+		}
+		if mode == localArchive {
+			if n := len(h.rows("t2", "SELECT env_ref FROM sandbox_envs")); n != 0 {
+				t.Fatalf("没有的工作区不借环境：%d", n)
+			}
+		}
+	}
+	h := newHarness(t)
+	root := h.mkWorkspace("t1", "w1", map[string]string{"a.txt": "one\n"})
+	for _, args := range [][]string{{"init", "-q", "-b", "main"}, {"add", "-A"}, {"-c", "user.name=T", "-c", "user.email=t@example.test", "commit", "-qm", "first"}} {
+		if out, err := gitCmd(root, args...).CombinedOutput(); err != nil {
+			t.Fatalf("git %v：%v %s", args, err, out)
+		}
+	}
+	_, err := h.reader.GetDiff(context.Background(), connect.NewRequest(&sandboxv1.GetDiffRequest{Tenant: tenant("t1", "w1", ""), WorkspaceId: "w1",
+		Base: "eb83d60c238dcf0fbfb35347541a272bdc339296"}))
+	if cat, c := code(t, err); cat != providererr.NotFound || c != "git_not_found" {
+		t.Fatalf("base 不在仓库里：%v %s", cat, c)
+	}
+}
+
 // ---------- 二：借还与执行 ----------
 
 func TestOneShotLeaseIsDestroyedOnRelease(t *testing.T) {

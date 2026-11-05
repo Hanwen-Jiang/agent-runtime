@@ -495,6 +495,14 @@ func (b *Broker) gitLease(ctx context.Context, tenant *commonv1.TenantContext, w
 		if lease, err := b.liveWritable(ctx, tenant, workspaceID); err != nil || lease != nil {
 			return lease, true, err
 		}
+		// 没有这个工作区（或已删除）时不借环境：同原来 Worker 的 _record_of。
+		w, err := b.archiver.Get(ctx, tenant.GetTenantId(), workspaceID)
+		if err != nil {
+			return nil, false, err
+		}
+		if w == nil || w.State == "deleted" {
+			return nil, false, providererr.New(providererr.NotFound, "workspace_not_found", "没有这个工作区")
+		}
 	} else if root := b.reg.WorkspaceRoot(); root != "" {
 		if st, err := os.Stat(filepath.Join(root, tenant.GetTenantId(), workspaceID)); err != nil || !st.IsDir() {
 			return nil, false, providererr.New(providererr.NotFound, "workspace_not_found", "没有这个工作区")
@@ -737,10 +745,32 @@ func (b *Broker) Log(ctx context.Context, tenant *commonv1.TenantContext, worksp
 	return out, err
 }
 
+// gitError 按 git 的输出分类（同原来 Worker 的 workspace.operations._git_error）：远端拒绝是 denied，连不上是 transient，
+// 推送被拒是 conflict，分支、提交、对象不在是 not_found，其余 invalid。
 func gitError(what string, res sandbox.ExecResult) error {
 	msg := strings.TrimSpace(string(res.Stderr))
 	if len(msg) > 300 {
 		msg = msg[:300]
+	}
+	lower := strings.ToLower(msg)
+	has := func(words ...string) bool {
+		for _, w := range words {
+			if strings.Contains(lower, w) {
+				return true
+			}
+		}
+		return false
+	}
+	switch {
+	case has("authentication failed", "permission denied", "403", "401", "could not read username"):
+		return providererr.New(providererr.Denied, "git_denied", what+"被远端拒绝（凭据不对或没有权限）："+msg)
+	case has("could not resolve host", "connection timed out", "connection refused", "failed to connect", "early eof", "rpc failed"):
+		return providererr.New(providererr.Transient, "git_unavailable", what+"时连不上远端："+msg)
+	case has("[rejected]", "non-fast-forward", "fetch first", "stale info"):
+		return providererr.New(providererr.Conflict, "push_rejected", what+"被拒绝（远端分支有别的提交）："+msg)
+	case has("not found", "does not exist", "couldn't find remote ref", "unknown revision", "bad revision", "invalid upstream",
+		"not our ref", "unadvertised object", "bad object"):
+		return providererr.New(providererr.NotFound, "git_not_found", what+"失败："+msg)
 	}
 	return providererr.New(providererr.Invalid, "git_failed", what+"失败："+msg)
 }
