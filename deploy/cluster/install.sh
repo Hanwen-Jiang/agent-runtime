@@ -85,6 +85,15 @@ if [[ -e /dev/kvm ]]; then
       /var/lib/rancher/k3s/agent/etc/containerd/config-v3.toml.tmpl /var/lib/rancher/k3s/agent/etc/containerd/config.toml \
       /var/lib/rancher/k3s/agent/etc/containerd/config-v3.toml.d/*.toml 2>/dev/null \
     || die "Kata 的 handler 没有 privileged_without_host_devices = true：构建环境的特权会碰到宿主的设备，见 README 的“项目环境的构建”"
+  # 构建环境的 BuildKit 在 VM 里要读写扩展属性（overlay 的 trusted.*、文件的 security.capability），virtio-fs 默认不支持
+  # （DEP-TB29：Terminal-Bench 的镜像导出时 failed to get xattr）。打开 --xattr，并把 VM 里写的一律映射到宿主的 user.virtiofs. 前缀下、
+  # 宿主原有的对 VM 隐藏：宿主上不会因此多出 security、trusted 一类的属性。kata-deploy 重装会覆盖这个文件，所以每次装完都补一遍。
+  kata_clh=/opt/kata/share/defaults/kata-containers/runtime-rs/runtimes/clh-runtime-rs/configuration-clh-runtime-rs.toml
+  if ! grep -q -- '--xattrmap=:map::user.virtiofs.:' "$kata_clh"; then
+    sed -i -E 's#^(virtio_fs_extra_args = \[.*)\]$#\1, "--xattr", "--xattrmap=:map::user.virtiofs.:"]#' "$kata_clh"
+  fi
+  grep -q -- '"--xattr", "--xattrmap=:map::user.virtiofs.:"' "$kata_clh" \
+    || die "没能给 Kata 的 virtiofsd 加上 --xattr（$kata_clh），项目环境的构建会在导出时失败"
 else
   log "没有 /dev/kvm：跳过 Kata（kata RuntimeClass 的沙箱起不来，租户策略别指到 kata）"
 fi
