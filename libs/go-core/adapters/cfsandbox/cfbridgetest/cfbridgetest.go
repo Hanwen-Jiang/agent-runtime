@@ -30,10 +30,19 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/testkit"
 )
 
+var owner = regexp.MustCompile(`^(_platform|[a-z0-9][a-z0-9_-]{0,62})$`)
+
+// flavor：Cloudflare 桥是 /v1/sandboxes 与 cfs- 开头的 ID；fc-manager（D-20，services/rs-fc-manager）同形，只是 /v1/envs 与 fc-。
+type flavor struct {
+	base    string
+	prefix  string
+	envPath *regexp.Regexp
+	envID   *regexp.Regexp
+}
+
 var (
-	envPath = regexp.MustCompile(`^/v1/sandboxes/([^/]+)(/agent(/.*))?$`)
-	envID   = regexp.MustCompile(`^cfs-[0-9a-f]{16}$`)
-	owner   = regexp.MustCompile(`^(_platform|[a-z0-9][a-z0-9_-]{0,62})$`)
+	bridgeFlavor = flavor{"/v1/sandboxes", "cfs-", regexp.MustCompile(`^/v1/sandboxes/([^/]+)(/agent(/.*))?$`), regexp.MustCompile(`^cfs-[0-9a-f]{16}$`)}
+	fcFlavor     = flavor{"/v1/envs", "fc-", regexp.MustCompile(`^/v1/envs/([^/]+)(/agent(/.*))?$`), regexp.MustCompile(`^fc-[0-9a-f]{16}$`)}
 )
 
 type env struct {
@@ -51,6 +60,7 @@ type Bridge struct {
 	Token string
 
 	server *httptest.Server
+	flavor flavor
 	agent  string
 	dir    string
 	key    []byte
@@ -61,7 +71,12 @@ type Bridge struct {
 }
 
 // New 起一个假桥（要 PATH 上的 go，编译 sandbox-agent）。用完 Close。
-func New() (*Bridge, error) {
+func New() (*Bridge, error) { return start(bridgeFlavor) }
+
+// NewFCManager 起一个假的 fc-manager（接口同桥，路径是 /v1/envs，环境 ID 是 fc- 开头；没有 VM，每个环境一个本机的 agent 进程）。
+func NewFCManager() (*Bridge, error) { return start(fcFlavor) }
+
+func start(f flavor) (*Bridge, error) {
 	agent, err := testkit.SandboxAgentBinary()
 	if err != nil {
 		return nil, err
@@ -70,7 +85,7 @@ func New() (*Bridge, error) {
 	if err != nil {
 		return nil, err
 	}
-	b := &Bridge{Token: randomHex(24), agent: agent, dir: dir, key: []byte(randomHex(32)), envs: map[string]*env{}}
+	b := &Bridge{Token: randomHex(24), flavor: f, agent: agent, dir: dir, key: []byte(randomHex(32)), envs: map[string]*env{}}
 	b.server = httptest.NewServer(http.HandlerFunc(b.handle))
 	b.URL = b.server.URL
 	return b, nil
@@ -112,7 +127,7 @@ func (b *Bridge) handle(w http.ResponseWriter, r *http.Request) {
 		problem(w, http.StatusBadRequest, "invalid_owner")
 		return
 	}
-	if r.URL.Path == "/v1/sandboxes" {
+	if r.URL.Path == b.flavor.base {
 		switch r.Method {
 		case http.MethodGet:
 			if who != "_platform" {
@@ -130,7 +145,7 @@ func (b *Bridge) handle(w http.ResponseWriter, r *http.Request) {
 		case http.MethodPost:
 			spec := map[string]any{}
 			_ = json.NewDecoder(r.Body).Decode(&spec)
-			id := "cfs-" + randomHex(8)
+			id := b.flavor.prefix + randomHex(8)
 			if err := b.start(id, who); err != nil {
 				problem(w, http.StatusServiceUnavailable, "start_failed")
 				return
@@ -145,8 +160,8 @@ func (b *Bridge) handle(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	m := envPath.FindStringSubmatch(r.URL.Path)
-	if m == nil || !envID.MatchString(m[1]) {
+	m := b.flavor.envPath.FindStringSubmatch(r.URL.Path)
+	if m == nil || !b.flavor.envID.MatchString(m[1]) {
 		problem(w, http.StatusNotFound, "unknown_env")
 		return
 	}

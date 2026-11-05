@@ -87,6 +87,8 @@ egressGateway:
   enabled: true
   previewDomain: preview.agent-runtime.example.com
   previewTLSSecretName: cloudflare-origin-tls
+  # Firecracker 的预览入口在宿主（cni0 的地址）上，D-22。
+  previewHostCidrs: ["10.42.0.1/32"]
 
 worker:
   workspacesClaim: workspaces
@@ -156,14 +158,22 @@ worker:
         workspace: archive
         # 桥部署的是 sandbox-universal 镜像（deploy/cloudflare/sandbox-bridge/wrangler.jsonc），与 Kata 一样跑 universal。
         runtimes: [universal, python]
-      # Firecracker（docs/plan/firecracker-backend.md）：每个环境一台 VM，总是存档模式。实现在 D-20，在那之前只登记、不启用
-      # （enabled: false 的后端不接新环境，D-19）。
+      # Firecracker（docs/plan/firecracker-backend.md，D-20～D-22）：每个环境一台 VM，总是存档模式。宿主上的 fc-manager
+      # （systemd，deploy/cluster/fc-manager.service）只听 cni0；令牌在 SecretStore 的 sandbox/fc-manager-token。
+      # 先只给租户策略写了 backend: firecracker 的租户用（evals、real01 等），defaultBackend 仍是 gvisor。
+      # 客户机没有网卡：代理与包镜像指向客户机里的环回转发器（经 vsock 到 fc-manager，再到网关与镜像的 ClusterIP）。
+      # rootfs 由 deploy/images/firecracker/rootfs.sh 从下面同一组镜像转换，放在宿主的 /var/lib/agentruntime/fc/images。
       firecracker:
         kind: firecracker
         isolation: microvm
         workspace: archive
-        enabled: false
-        capabilities: [snapshot, block_attach, vsock]
+        enabled: true
+        manager_url: http://10.42.0.1:8097
+        runtimes: [python, universal, node, go]
+        egress_gateway_url: http://127.0.0.1:3128
+        pkg_mirror_url: http://127.0.0.1:3129
+        capabilities: [vsock]
+        max_envs_per_scope: 4
   pools:
     task:
       minReplicas: 1

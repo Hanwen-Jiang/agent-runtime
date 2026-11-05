@@ -105,7 +105,7 @@ fc-manager（Rust，宿主机上的 systemd 服务，不在 Pod 里）
 
 ### D-20 firecracker 后端：fc-manager 与 vsock agent（强档）
 
-> 状态（2026-11-04）：**第一段已完成，没部署**（`ac3f243`、`79ef29f`、`04e0e2c`、`3eb02c6`）：`services/rs-fc-manager`、`deploy/images/firecracker` 的客户机内核、`deploy/cluster/fc-manager.service` 与 `install.sh` 第 3b 步，测试对着假的 jailer 与 firecracker（实现记录见本节末尾的“D-20 第一段”）。下一段：firecracker 适配器写进 SBX-01 的 Go Sandbox Service（`services/go-sandbox-service`，2026-11-04 起它接管所有后端适配器，不再写下面交付里的 Python 适配器）；客户机里 agent 的 `--init` 与 vsock 由 D-28 的 Rust 版实现；真 VM 的验收（FC-REAL）在生产独服上跑，要人同意。
+> 状态（2026-11-05）：**第二段已完成，fc-manager 已装在线上独服**（见本节末尾“D-20 第二段、D-21、D-22”）。2026-11-04：第一段已完成，没部署（`ac3f243`、`79ef29f`、`04e0e2c`、`3eb02c6`）：`services/rs-fc-manager`、`deploy/images/firecracker` 的客户机内核、`deploy/cluster/fc-manager.service` 与 `install.sh` 第 3b 步，测试对着假的 jailer 与 firecracker（实现记录见本节末尾的“D-20 第一段”）。下一段：firecracker 适配器写进 SBX-01 的 Go Sandbox Service（`services/go-sandbox-service`，2026-11-04 起它接管所有后端适配器，不再写下面交付里的 Python 适配器）；客户机里 agent 的 `--init` 与 vsock 由 D-28 的 Rust 版实现；真 VM 的验收（FC-REAL）在生产独服上跑，要人同意。
 
 **目标**：每个环境一台 Firecracker microVM；Worker 经 `firecracker` 后端使用，接口与其他后端相同。
 
@@ -177,6 +177,16 @@ fc-manager（Rust，宿主机上的 systemd 服务，不在 Pod 里）
 - Worker 到 fc-manager 的 NetworkPolicy（只放 Worker）是 Chart 的事，随适配器一起做；现在靠令牌与 cni0 地址。
 - 多宿主不在本期（`manager_url` 是单个地址）。
 - D-28 的根 Cargo workspace 还没到 main：这个 crate 暂时自成 workspace（自己的 `Cargo.lock`）。落地后删掉 `Cargo.toml` 的 `[workspace]` 与本目录的 `Cargo.lock`，在根的 members 里加上，CI 并进 rust 一步，`cargo deny` 用根的 `deny.toml`。
+
+#### D-20 第二段、D-21、D-22（2026-11-05，V1-FC）
+
+v1 只写实现（all-plans-dag 第 0 节），下面的都没有新测试；已有的 fc-manager 验收测试（19 条，对着 fc-fake）、单元测试与 `tests/deploy` 照旧通过。
+
+- **客户机里的 agent**（`services/rs-sandbox-agent/src/guest.rs`，系统调用在 `libs/rs-sys/src/guest.rs`）：`sandbox-agent --init` 当 PID 1：挂 /proc、/sys、/dev/pts、/dev/shm、/run；`/dev/vdb`（scratch）挂到 `/mnt/scratch`，里面的 `workspace`、`tmp` 绑定挂到 `/workspace`、`/tmp`（nosuid、nodev）；主机名 sandbox，lo 起来；连 CID 2 的 701 取令牌；再起 **agent 子进程**（同一个二进制），令牌经标准输入的管道给（`AGENT_TOKEN_STDIN=1`），子进程以 root 绑好 vsock 700 后降到 10001（`AGENT_UID`）并再设一次不可转储。PID 1 之后只 `wait4(-1)`：命令留下的孤儿过继给它、在这里回收（**SBX-ZOMBIE**）；agent 子进程退出就关机（令牌只交一次，VM 没用了，fc-manager 发现后清掉，Sandbox Service 记 lost、换新）。把 init 与 agent 分成两个进程，是为了 PID 1 的 `wait4(-1)` 抢不到 agent 等它自己的命令的退出状态。镜像的环境变量由 D-21 写进 `/etc/agentruntime/env`，PID 1 交给 agent 并全部列进 `AGENT_ENV_PASSTHROUGH`。
+- **适配器**（`libs/go-core/adapters/fcsandbox`）：与 cfsandbox 同形，经 fc-manager 的 `/v1/envs`、`/v1/envs/<id>/agent/…`；只收 `network: none`（联网一律经网关的授权）、`workspace` 必须 archive、按项目定制的镜像 `unsupported_image`（envbuild 本来就只给 K8s 或 `custom_images: true` 的后端用，所以退回 universal）；`PreviewAddress` 调 fc-manager 的新路由。Sandbox Service 的登记收 `kind: firecracker`（`manager_url`、`runtimes`、`disk_mb`；令牌 `sandbox/fc-manager-token`；isolation 默认 microvm、workspace 默认 archive）。
+- **D-21**（`deploy/images/firecracker/rootfs.sh`）：本机 Docker 里的平台镜像 `docker export` 展平、以 root 解开、注入 agent、建挂载点、写 `/etc/agentruntime/env`，`mkfs.ext4 -d` 打成盘（无日志）；缓存键是镜像 ID＋agent 的 sha256＋脚本格式版本，放 `<images>/cache/<键>.ext4`，复用前核对内容哈希；`<runtime>.ext4` 原子地换成硬链接，`.sha256` 写镜像 ID（环境表的镜像 digest）；链接数为 1 的旧盘删掉。**与计划不同**：没有复用 `oci_registry.read_layout` 的路径检查、也不是“不要 root”，因为本期只转平台自己构建的镜像（计划里同样这么限定）；租户镜像要进来时按计划另做。`install.sh` 第 3b 步给了 `FC_AGENT_BIN` 就转换 `FC_ROOTFS` 列的镜像。线上首次转换：python 389 MiB 6 秒、universal 2318 MiB 57 秒、node 514 MiB 13 秒、go 1221 MiB 48 秒。
+- **D-22**（`services/rs-fc-manager/src/net.rs`）：客户机里 PID 1 的转发器 127.0.0.1:3128 → 宿主 vsock 1080、127.0.0.1:3129 → 1081；fc-manager 在每台 VM 的 `<uds>_1080`、`_1081` 上听，转给 `AR_FC_EGRESS_TARGET`、`AR_FC_MIRROR_TARGET`（ClusterIP:端口，写死在配置里，不解析客户机给的地址）；登记里 `egress_gateway_url: http://127.0.0.1:3128`、`pkg_mirror_url: http://127.0.0.1:3129`，代理变量与凭据由服务照旧注入。预览：`POST /v1/envs/<id>/preview {"port"}` 在 fc-manager 的监听 IP 上开一个端口，连接经 vsock 702 进客户机，第一行 `PORT <n>`，agent 转到 127.0.0.1:<n>；网关的 NetworkPolicy 加 `egressGateway.previewHostCidrs`（云上 10.42.0.1/32）。每台 VM 转发的连接数上限 `AR_FC_MAX_FORWARD_CONNS`（默认 128），预览端口每台最多 8 个；没做带宽上限（用量在网关按凭据记）。
+- **线上第一次真 VM**（2026-11-05，本机，Firecracker v1.17.0、客户机内核 6.18.57）：建 python 的 VM 1.12 秒、universal 1.27 秒（建到 agent 就绪）；客户机里 `id` 是 10001、`uname -r` 是 `6.18.57-agentruntime`、PID 1 是 `sandbox-agent --init`、`/sys/class/net` 只有 `lo`、根只读、`/workspace` 与 `/tmp` 可写、读 PID 1 与 agent 子进程的 `/proc/<pid>/environ` 都是 Permission denied；经转发器连包镜像的 `/healthz` 是 ok，连出网网关得到它的 400（不是代理请求）；后台进程退出后没有僵尸；预览：客户机里 `python3 -m http.server 8000`，经 fc-manager 开的端口取到页面，客户机里没有服务的端口得到空回复；销毁后 jail、netns、VM 的 cgroup、监听都没了，重复销毁 204；手工 `kill -9` firecracker 进程，2 秒内 reaper 清掉，之后的请求是 `unknown_env`。
 
 ### D-21 客户机的 rootfs 与镜像（中档）
 

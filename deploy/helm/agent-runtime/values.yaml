@@ -260,6 +260,8 @@ egressGateway:
   ingressNamespace: kube-system
   # 另外拒绝的网段：集群的 Pod 与 Service 网段（k3s 默认 10.42.0.0/16、10.43.0.0/16）。
   denyCidrs: ["10.42.0.0/16", "10.43.0.0/16"]
+  # 网关的预览入口另外要连的宿主地址（Firecracker：fc-manager 在宿主上为每台 VM 的预览端口开的入口，D-22）。
+  previewHostCidrs: []
   # 授权缓存多久（毫秒）：撤销最迟这么久生效；Task 结束时 task-service 另外主动通知。
   grantTTLMillis: 2000
   resources:

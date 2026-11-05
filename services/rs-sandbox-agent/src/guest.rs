@@ -60,13 +60,16 @@ fn setup_filesystems() -> io::Result<()> {
     let nsd = guest::MS_NOSUID | guest::MS_NODEV;
     mount_or_log("proc", "/proc", "proc", nsd | guest::MS_NOEXEC, "")?;
     mount_or_log("sysfs", "/sys", "sysfs", nsd | guest::MS_NOEXEC, "")?;
-    mount_or_log(
-        "devtmpfs",
-        "/dev",
-        "devtmpfs",
-        guest::MS_NOSUID,
-        "mode=0755",
-    )?;
+    // 内核配了 CONFIG_DEVTMPFS_MOUNT 时 /dev 已经挂好了（看有没有 /dev/null）。
+    if !Path::new("/dev/null").exists() {
+        mount_or_log(
+            "devtmpfs",
+            "/dev",
+            "devtmpfs",
+            guest::MS_NOSUID,
+            "mode=0755",
+        )?;
+    }
     for d in ["/dev/pts", "/dev/shm"] {
         let _ = std::fs::create_dir(d);
     }

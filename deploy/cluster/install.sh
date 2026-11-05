@@ -6,7 +6,7 @@
 #   2. k3s：配置（config.yaml、psa.yaml、containerd 模板、Traefik 配置）放好后按 versions.conf 的版本安装。
 #   3. Kata（机器有 /dev/kvm 时）：kata-deploy 的 Helm Chart；没有 KVM 时跳过并提示，kata RuntimeClass 的 Pod 会起不来。
 #   3b. Firecracker 与 jailer（有 /dev/kvm 时，核对 versions.conf 的 sha256）；给了 FC_MANAGER_BIN、FC_MANAGER_SHA256 时
-#       再装 fc-manager 与它的 systemd 单元（D-20，fc-manager.service）。
+#       再装 fc-manager 与它的 systemd 单元（D-20，fc-manager.service）；给了 FC_AGENT_BIN 时转换客户机的 rootfs（D-21）。
 #   4. 工作区目录 /var/lib/agentruntime/workspaces（属主 10001）。
 #   5. 集群里的基础清单：命名空间、沙箱的约束、RuntimeClass、工作区与业务对象的卷。
 #   6. cert-manager、KEDA、CloudNativePG 与它的 Barman Cloud 插件。
@@ -125,6 +125,13 @@ if [[ -e /dev/kvm ]]; then
     [[ -f /etc/agentruntime/fc-manager.env ]] || install -m 0600 "$HERE/fc-manager.env.example" /etc/agentruntime/fc-manager.env
     install -m 0644 "$HERE/fc-manager.service" /etc/systemd/system/fc-manager.service
     systemctl daemon-reload
+    # 客户机的 rootfs（D-21）：给了 FC_AGENT_BIN（Rust 版 sandbox-agent 的静态二进制）就按 FC_ROOTFS（runtime=镜像，空格分隔；
+    # 镜像要已经在本机 Docker 里）转换。同一个镜像与 agent 第二次直接命中缓存。
+    if [[ -n "${FC_AGENT_BIN:-}" ]]; then
+      for pair in ${FC_ROOTFS:-python=ghcr.io/agentruntime/sandbox-python:0.1.0 universal=ghcr.io/agentruntime/sandbox-universal:0.1.0 node=ghcr.io/agentruntime/sandbox-node:0.1.0 go=ghcr.io/agentruntime/sandbox-go:0.1.0}; do
+        bash "$HERE/../images/firecracker/rootfs.sh" "${pair%%=*}" "${pair#*=}" "$FC_AGENT_BIN"
+      done
+    fi
     if [[ -f /etc/agentruntime/fc-manager-secrets.json && -f /var/lib/agentruntime/fc/images/vmlinux ]]; then
       ( set -a && source /etc/agentruntime/fc-manager.env && /usr/local/bin/fc-manager check ) || die "fc-manager check 没通过"
       systemctl enable --now fc-manager

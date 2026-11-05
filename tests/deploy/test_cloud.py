@@ -384,8 +384,8 @@ def test_backend_registry_matches_the_cluster(cloud: list[dict[str, Any]]) -> No
             assert backend["bridge_url"].startswith("https://") and backend.get("workspace", "archive") == "archive"
             continue
         if backend["kind"] == "firecracker":
-            # 只登记、不启用（D-19；实现在 D-20），总是存档模式。
-            assert backend["enabled"] is False and backend["workspace"] == "archive"
+            # 经宿主上的 fc-manager（D-20），总是存档模式。
+            assert backend["manager_url"].startswith("http://") and backend["workspace"] == "archive"
             continue
         assert backend["kind"] == "k8s" and backend["runtime_class"] in classes, f"后端 {name} 的 RuntimeClass 不存在"
         if backend.get("workspace") == "archive":
@@ -827,7 +827,10 @@ def test_sandboxes_reach_the_internet_only_through_the_gateway(cloud: list[dict[
     assert [p["port"] for p in proxy["ports"]] == [8095] and sandbox_ns in sources(proxy)
     assert [p["port"] for p in admin["ports"]] == [8096] and sandbox_ns not in sources(admin)
     assert [p["port"] for p in preview["ports"]] == [8097] and sources(preview) == {"kube-system"}
-    [rule] = [r for r in own["spec"]["egress"] if any("ipBlock" in t for t in r.get("to", []))]
+    [rule] = [r for r in own["spec"]["egress"] if any(t.get("ipBlock", {}).get("cidr") == "0.0.0.0/0" for t in r.get("to", []))]
+    # Firecracker 的预览入口在宿主上（D-22）：只多放行宿主这一个地址的高端口。
+    host_rules = [r for r in own["spec"]["egress"] if any(t.get("ipBlock", {}).get("cidr", "").endswith("/32") for t in r.get("to", []))]
+    assert all(t["ipBlock"]["cidr"] == "10.42.0.1/32" for r in host_rules for t in r["to"]) and len(host_rules) <= 1
     block = rule["to"][0]["ipBlock"]
     assert block["cidr"] == "0.0.0.0/0" and {"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "169.254.0.0/16", "100.64.0.0/10", "127.0.0.0/8"} <= set(block["except"])
 

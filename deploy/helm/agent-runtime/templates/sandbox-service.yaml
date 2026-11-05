@@ -63,8 +63,8 @@
 {{- if ne (toString $b.workspace) "archive" }}
 {{- fail (printf "沙箱后端 %s 是 firecracker，要写 workspace: archive" $name) }}
 {{- end }}
-{{- if $enabled }}
-{{- fail (printf "沙箱后端 %s：firecracker 后端还没有实现（D-20），只能登记为 enabled: false" $name) }}
+{{- if and $enabled (not $b.manager_url) }}
+{{- fail (printf "沙箱后端 %s 是 firecracker，启用时要写 manager_url（宿主上 fc-manager 的地址）" $name) }}
 {{- end }}
 {{- end }}
 {{- if and (eq $name $shell.defaultBackend) (not $enabled) }}

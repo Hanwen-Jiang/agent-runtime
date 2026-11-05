@@ -153,6 +153,15 @@ spec:
           podSelector:
             matchLabels:
               app.kubernetes.io/managed-by: agentruntime-sandbox
+    {{- with .Values.egressGateway.previewHostCidrs }}
+    # Firecracker 的预览入口在宿主的 fc-manager 上（D-22，services/rs-fc-manager/src/net.rs）：网关连宿主上为这台 VM 开的端口。
+    - to:
+        {{- range . }}
+        - ipBlock: {cidr: {{ . }}}
+        {{- end }}
+      ports:
+        - {protocol: TCP, port: 1024, endPort: 65535}
+    {{- end }}
     # 指标与 runtime.egress 的 span 经 OTLP/HTTP 发给同一命名空间的 Collector（T-15）；下面的公网规则排除了内网段，要单独放行。
     - to:
         - podSelector:

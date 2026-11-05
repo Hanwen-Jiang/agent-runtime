@@ -1,8 +1,8 @@
 """D-19 验收（docs/plan/firecracker-backend.md 第 5 节）：Chart 里沙箱后端登记的启用开关与能力。
 
-云上的登记里有 firecracker（kind firecracker、存档模式、能力 snapshot/block_attach/vsock），但 enabled: false（D-20 之前没有实现）。
+云上的登记里有 firecracker（kind firecracker、存档模式、启用，经宿主上的 fc-manager，D-20）。
 登记写错时 Chart 渲染就失败，与 Worker 加载登记时的校验一致：default 指向停用的后端、能力取值不认识、firecracker 不是存档模式、
-firecracker 设成启用、enabled 不是布尔值。
+firecracker 启用却没写 manager_url、enabled 不是布尔值。
 """
 
 from __future__ import annotations
@@ -21,13 +21,13 @@ def registry(manifests: list[dict[str, Any]]) -> dict[str, Any]:
     return json.loads(cm["data"]["backends.json"])
 
 
-def test_cloud_registers_firecracker_disabled() -> None:
-    backends = registry(render(CLOUD_VALUES))["backends"]
-    fc = backends["firecracker"]
+def test_cloud_registers_firecracker() -> None:
+    reg = registry(render(CLOUD_VALUES))
+    fc = reg["backends"]["firecracker"]
     assert fc["kind"] == "firecracker" and fc["isolation"] == "microvm" and fc["workspace"] == "archive"
-    assert fc["enabled"] is False
-    assert sorted(fc["capabilities"]) == ["block_attach", "snapshot", "vsock"]
-    assert all(b.get("enabled", True) for name, b in backends.items() if name != "firecracker"), "现有后端照旧启用"
+    assert fc["enabled"] is True and fc["manager_url"].startswith("http://10.42.0.1:")
+    assert reg["default"] != "firecracker", "先只给租户策略指到它的租户用"
+    assert all(b.get("enabled", True) for b in reg["backends"].values()), "后端都启用"
 
 
 def render_fails(*set_values: str) -> str:
@@ -45,7 +45,7 @@ def render_fails(*set_values: str) -> str:
     [
         (["worker.shell.backends.gvisor.enabled=false"], "worker.shell.defaultBackend"),
         (["worker.shell.backends.firecracker.workspace=mount"], "archive"),
-        (["worker.shell.backends.firecracker.enabled=true"], "D-20"),
+        (["worker.shell.backends.firecracker.manager_url="], "manager_url"),
         (["worker.shell.backends.gvisor.capabilities={teleport}"], "capabilities"),
         (["worker.shell.backends.gvisor.enabled=no"], "enabled"),
     ],
