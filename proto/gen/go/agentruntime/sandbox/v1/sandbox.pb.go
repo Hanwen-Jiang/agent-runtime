@@ -947,8 +947,11 @@ type AcquireRequest struct {
 	// shell_run 第一次用到工作区时按项目定制运行环境（D-17）：服务读工作区里的 devcontainer.json、.tool-versions 或
 	// Dockerfile，镜像就绪时用它，没就绪时起构建并先用 universal。
 	ProjectEnvironment bool `protobuf:"varint,9,opt,name=project_environment,json=projectEnvironment,proto3" json:"project_environment,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// 存档模式下先把这个工作区别人闲着的可写环境各存一份快照（不销毁它们），借到的只读环境看到的就是最新的；有命令在跑时
+	// denied（workspace_busy）。Workspace 操作的推送、存档、被复制的源用它。
+	FlushWritable bool `protobuf:"varint,10,opt,name=flush_writable,json=flushWritable,proto3" json:"flush_writable,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AcquireRequest) Reset() {
@@ -1040,6 +1043,13 @@ func (x *AcquireRequest) GetCooling() bool {
 func (x *AcquireRequest) GetProjectEnvironment() bool {
 	if x != nil {
 		return x.ProjectEnvironment
+	}
+	return false
+}
+
+func (x *AcquireRequest) GetFlushWritable() bool {
+	if x != nil {
+		return x.FlushWritable
 	}
 	return false
 }
@@ -2596,7 +2606,9 @@ type ReleaseRequest struct {
 	LeaseId string                 `protobuf:"bytes,2,opt,name=lease_id,json=leaseId,proto3" json:"lease_id,omitempty"`
 	Keep    bool                   `protobuf:"varint,3,opt,name=keep,proto3" json:"keep,omitempty"`
 	// 最后一条命令用掉的 CPU 时间（计量）；0 不记。
-	CpuTimeMs     int64 `protobuf:"varint,4,opt,name=cpu_time_ms,json=cpuTimeMs,proto3" json:"cpu_time_ms,omitempty"`
+	CpuTimeMs int64 `protobuf:"varint,4,opt,name=cpu_time_ms,json=cpuTimeMs,proto3" json:"cpu_time_ms,omitempty"`
+	// 销毁之前不存档（操作失败时不把做了一半的改动存进快照；刚存过的不再存）。keep 时不起作用。
+	SkipSnapshot  bool `protobuf:"varint,5,opt,name=skip_snapshot,json=skipSnapshot,proto3" json:"skip_snapshot,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2657,6 +2669,13 @@ func (x *ReleaseRequest) GetCpuTimeMs() int64 {
 		return x.CpuTimeMs
 	}
 	return 0
+}
+
+func (x *ReleaseRequest) GetSkipSnapshot() bool {
+	if x != nil {
+		return x.SkipSnapshot
+	}
+	return false
 }
 
 type ReleaseResponse struct {
@@ -3264,7 +3283,7 @@ const file_agentruntime_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\tmemory_mb\x18\x03 \x01(\x05R\bmemoryMb\x12$\n" +
 	"\x0eidle_timeout_s\x18\x04 \x01(\x05R\fidleTimeoutS\x12!\n" +
 	"\fworkspace_id\x18\x05 \x01(\tR\vworkspaceId\x12\x14\n" +
-	"\x05image\x18\x06 \x01(\tR\x05image\"\xd2\x02\n" +
+	"\x05image\x18\x06 \x01(\tR\x05image\"\xf9\x02\n" +
 	"\x0eAcquireRequest\x12=\n" +
 	"\x06tenant\x18\x01 \x01(\v2%.agentruntime.common.v1.TenantContextR\x06tenant\x121\n" +
 	"\x04spec\x18\x02 \x01(\v2\x1d.agentruntime.sandbox.v1.SpecR\x04spec\x12\x17\n" +
@@ -3274,7 +3293,9 @@ const file_agentruntime_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\vbusy_for_ms\x18\x06 \x01(\x03R\tbusyForMs\x12\x18\n" +
 	"\aprepare\x18\a \x01(\bR\aprepare\x12\x18\n" +
 	"\acooling\x18\b \x01(\bR\acooling\x12/\n" +
-	"\x13project_environment\x18\t \x01(\bR\x12projectEnvironment\"O\n" +
+	"\x13project_environment\x18\t \x01(\bR\x12projectEnvironment\x12%\n" +
+	"\x0eflush_writable\x18\n" +
+	" \x01(\bR\rflushWritable\"O\n" +
 	"\aBackend\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x1c\n" +
@@ -3385,12 +3406,13 @@ const file_agentruntime_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\blease_id\x18\x02 \x01(\tR\aleaseId\x12\x12\n" +
 	"\x04port\x18\x03 \x01(\x05R\x04port\"2\n" +
 	"\x16PreviewAddressResponse\x12\x18\n" +
-	"\aaddress\x18\x01 \x01(\tR\aaddress\"\x9e\x01\n" +
+	"\aaddress\x18\x01 \x01(\tR\aaddress\"\xc3\x01\n" +
 	"\x0eReleaseRequest\x12=\n" +
 	"\x06tenant\x18\x01 \x01(\v2%.agentruntime.common.v1.TenantContextR\x06tenant\x12\x19\n" +
 	"\blease_id\x18\x02 \x01(\tR\aleaseId\x12\x12\n" +
 	"\x04keep\x18\x03 \x01(\bR\x04keep\x12\x1e\n" +
-	"\vcpu_time_ms\x18\x04 \x01(\x03R\tcpuTimeMs\"G\n" +
+	"\vcpu_time_ms\x18\x04 \x01(\x03R\tcpuTimeMs\x12#\n" +
+	"\rskip_snapshot\x18\x05 \x01(\bR\fskipSnapshot\"G\n" +
 	"\x0fReleaseResponse\x124\n" +
 	"\x05lease\x18\x01 \x01(\v2\x1e.agentruntime.sandbox.v1.LeaseR\x05lease\"k\n" +
 	"\x0fSnapshotRequest\x12=\n" +

@@ -158,7 +158,7 @@ class Spec(_message.Message):
     def __init__(self, runtime: _Optional[str] = ..., cpu_millis: _Optional[int] = ..., memory_mb: _Optional[int] = ..., idle_timeout_s: _Optional[int] = ..., workspace_id: _Optional[str] = ..., image: _Optional[str] = ...) -> None: ...
 
 class AcquireRequest(_message.Message):
-    __slots__ = ("tenant", "spec", "task_id", "writable", "reuse", "busy_for_ms", "prepare", "cooling", "project_environment")
+    __slots__ = ("tenant", "spec", "task_id", "writable", "reuse", "busy_for_ms", "prepare", "cooling", "project_environment", "flush_writable")
     TENANT_FIELD_NUMBER: _ClassVar[int]
     SPEC_FIELD_NUMBER: _ClassVar[int]
     TASK_ID_FIELD_NUMBER: _ClassVar[int]
@@ -168,6 +168,7 @@ class AcquireRequest(_message.Message):
     PREPARE_FIELD_NUMBER: _ClassVar[int]
     COOLING_FIELD_NUMBER: _ClassVar[int]
     PROJECT_ENVIRONMENT_FIELD_NUMBER: _ClassVar[int]
+    FLUSH_WRITABLE_FIELD_NUMBER: _ClassVar[int]
     tenant: _tenant_pb2.TenantContext
     spec: Spec
     task_id: str
@@ -177,7 +178,8 @@ class AcquireRequest(_message.Message):
     prepare: bool
     cooling: bool
     project_environment: bool
-    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., spec: _Optional[_Union[Spec, _Mapping]] = ..., task_id: _Optional[str] = ..., writable: _Optional[bool] = ..., reuse: _Optional[bool] = ..., busy_for_ms: _Optional[int] = ..., prepare: _Optional[bool] = ..., cooling: _Optional[bool] = ..., project_environment: _Optional[bool] = ...) -> None: ...
+    flush_writable: bool
+    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., spec: _Optional[_Union[Spec, _Mapping]] = ..., task_id: _Optional[str] = ..., writable: _Optional[bool] = ..., reuse: _Optional[bool] = ..., busy_for_ms: _Optional[int] = ..., prepare: _Optional[bool] = ..., cooling: _Optional[bool] = ..., project_environment: _Optional[bool] = ..., flush_writable: _Optional[bool] = ...) -> None: ...
 
 class Backend(_message.Message):
     __slots__ = ("name", "kind", "isolation")
@@ -443,16 +445,18 @@ class PreviewAddressResponse(_message.Message):
     def __init__(self, address: _Optional[str] = ...) -> None: ...
 
 class ReleaseRequest(_message.Message):
-    __slots__ = ("tenant", "lease_id", "keep", "cpu_time_ms")
+    __slots__ = ("tenant", "lease_id", "keep", "cpu_time_ms", "skip_snapshot")
     TENANT_FIELD_NUMBER: _ClassVar[int]
     LEASE_ID_FIELD_NUMBER: _ClassVar[int]
     KEEP_FIELD_NUMBER: _ClassVar[int]
     CPU_TIME_MS_FIELD_NUMBER: _ClassVar[int]
+    SKIP_SNAPSHOT_FIELD_NUMBER: _ClassVar[int]
     tenant: _tenant_pb2.TenantContext
     lease_id: str
     keep: bool
     cpu_time_ms: int
-    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., lease_id: _Optional[str] = ..., keep: _Optional[bool] = ..., cpu_time_ms: _Optional[int] = ...) -> None: ...
+    skip_snapshot: bool
+    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., lease_id: _Optional[str] = ..., keep: _Optional[bool] = ..., cpu_time_ms: _Optional[int] = ..., skip_snapshot: _Optional[bool] = ...) -> None: ...
 
 class ReleaseResponse(_message.Message):
     __slots__ = ("lease",)
