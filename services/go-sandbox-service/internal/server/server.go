@@ -394,6 +394,7 @@ func (h *handler) Acquire(ctx context.Context, req *connect.Request[sandboxv1.Ac
 		Spec: sandbox.Spec{Runtime: spec.GetRuntime(), CPUMillis: int(spec.GetCpuMillis()), MemoryMB: int(spec.GetMemoryMb()),
 			IdleTimeout: time.Duration(spec.GetIdleTimeoutS()) * time.Second, WorkspaceID: spec.GetWorkspaceId(), Image: spec.GetImage()},
 		TaskID: m.GetTaskId(), Writable: m.GetWritable(), Reuse: m.GetReuse(), Prepare: m.GetPrepare(), Cooling: m.GetCooling(), Project: m.GetProjectEnvironment(),
+		Flush: m.GetFlushWritable(),
 	}
 	if m.GetBusyForMs() > 0 {
 		d := time.Duration(m.GetBusyForMs()) * time.Millisecond
@@ -670,7 +671,7 @@ func (h *handler) Release(ctx context.Context, req *connect.Request[sandboxv1.Re
 	if err != nil {
 		return nil, fail(err)
 	}
-	if err := h.b().Release(ctx, lease, m.GetKeep(), m.GetCpuTimeMs()); err != nil {
+	if err := h.b().Release(ctx, lease, m.GetKeep(), m.GetCpuTimeMs(), m.GetSkipSnapshot()); err != nil {
 		return nil, fail(err)
 	}
 	return connect.NewResponse(&sandboxv1.ReleaseResponse{Lease: h.s.leaseProto(lease)}), nil

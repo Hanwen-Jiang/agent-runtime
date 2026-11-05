@@ -743,3 +743,60 @@ func decode(err error) string {
 	}
 	return err.Error()
 }
+
+// ---------- 契约草案追加的三项（flush_writable、skip_snapshot、DestroyWorkspace 删卷上的目录）----------
+
+func TestFlushWritableSnapshotsIdleHoldersBeforeAReadOnlyLease(t *testing.T) {
+	h := newHarness(t, withBackends(localArchive))
+	writer := tenant("t1", "w1", s1)
+	held := h.mustAcquire(writer, onWorkspace("w1"), reuse())
+	h.mustExec(writer, held, "printf fresh > f.txt")
+	if _, err := h.release(writer, held, true); err != nil {
+		t.Fatal(err)
+	}
+	reader, err := h.acquire(tenant("t1", "w1", ""), onWorkspace("w1"), readOnly(), func(r *sandboxv1.AcquireRequest) { r.FlushWritable = true })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out := h.mustExec(tenant("t1", "w1", ""), reader, "cat f.txt"); out != "fresh" {
+		t.Fatalf("只读环境看到别人闲着的可写环境里最新的内容：%q", out)
+	}
+	if h.envState("t1", held.GetLeaseId()) != "ready" {
+		t.Fatal("存一份快照，不销毁那个环境")
+	}
+	busy := h.mustAcquire(tenant("t1", "w2", s2), onWorkspace("w2"), reuse(), busyFor(time.Hour))
+	_ = busy
+	_, err = h.acquire(tenant("t1", "w2", ""), onWorkspace("w2"), readOnly(), func(r *sandboxv1.AcquireRequest) { r.FlushWritable = true })
+	if cat, c := code(t, err); cat != providererr.Denied || c != "workspace_busy" {
+		t.Fatalf("有命令在跑时 workspace_busy：%v %s", cat, c)
+	}
+}
+
+func TestSkipSnapshotDestroysWithoutArchiving(t *testing.T) {
+	h := newHarness(t, withBackends(localArchive))
+	tc := tenant("t1", "w1", "")
+	lease := h.mustAcquire(tc, onWorkspace("w1"))
+	h.mustExec(tc, lease, "printf half > half.txt")
+	_, err := h.worker.Release(context.Background(), connect.NewRequest(&sandboxv1.ReleaseRequest{Tenant: tc, LeaseId: lease.GetLeaseId(), SkipSnapshot: true}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n := len(h.rows("t1", "SELECT snapshot_id FROM workspace_snapshots WHERE workspace_id = 'w1'")); n != 0 {
+		t.Fatalf("skip_snapshot：不存档，%d 份快照", n)
+	}
+	if h.envState("t1", lease.GetLeaseId()) != "destroyed" {
+		t.Fatal("环境照常销毁")
+	}
+}
+
+func TestDestroyWorkspaceRemovesTheMountedDirectory(t *testing.T) {
+	h := newHarness(t)
+	root := h.mkWorkspace("t1", "w1", map[string]string{"a.txt": "x"})
+	tc := tenant("t1", "w1", "")
+	if _, err := h.worker.DestroyWorkspace(context.Background(), connect.NewRequest(&sandboxv1.DestroyWorkspaceRequest{Tenant: tc, WorkspaceId: "w1"})); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(root); !os.IsNotExist(err) {
+		t.Fatalf("挂卷时删掉卷上的工作区目录：%v", err)
+	}
+}

@@ -174,6 +174,8 @@ type AcquireArgs struct {
 	Cooling  bool
 	// Project：按项目定制运行环境（D-17）。
 	Project bool
+	// Flush：存档模式下先把这个工作区别人闲着的可写环境各存一份快照（不销毁），有命令在跑时 workspace_busy。
+	Flush bool
 }
 
 func defaults(spec sandbox.Spec) sandbox.Spec {
@@ -228,6 +230,11 @@ func (b *Broker) Acquire(ctx context.Context, tenant *commonv1.TenantContext, a 
 			return nil, err
 		}
 		a.Spec.Image, envJSON = image, result
+	}
+	if a.Flush && a.Spec.WorkspaceID != "" && b.reg.Archive(policy.Backend) {
+		if err := b.flushHolders(ctx, owner, a.Spec.WorkspaceID); err != nil {
+			return nil, err
+		}
 	}
 	session := tenant.GetSessionId()
 	if a.Reuse && session != "" {
@@ -704,6 +711,10 @@ func (b *Broker) createOne(ctx context.Context, tenant *commonv1.TenantContext, 
 		spec.IdleTimeout += b.opts.HoldMax
 	}
 	spec.SessionID = tenant.GetSessionId()
+	if !archived && spec.WorkspaceID != "" && b.reg.WorkspaceRoot() != "" {
+		// 挂卷：先以服务的身份建好 <工作区根>/<租户>/<workspace>（K8s 按 subPath 挂，目录不在时 kubelet 以 root 建，沙箱就写不进去）。
+		_ = os.MkdirAll(filepath.Join(b.reg.WorkspaceRoot(), owner, spec.WorkspaceID), 0o755)
+	}
 	if archived {
 		spec.WorkspaceID = "" // 不挂卷：建好后从快照恢复
 	}
@@ -865,9 +876,51 @@ func (b *Broker) Exec(ctx context.Context, lease *Lease, argv []string, timeout 
 
 // --- 还 ---
 
-// Release 用完：会话级的环境留着（顺延空闲、记 CPU 时间），一次性的销毁（存档模式的可写环境先存档）。存档暂时失败时环境留着、
-// 报错，由下一轮对账或下一个要写的环境再存；永久性的失败照样销毁、报错。
-func (b *Broker) Release(ctx context.Context, lease *Lease, keep bool, cpuMS int64) error {
+// flushHolders 把这个工作区别人闲着的可写环境各存一份快照（不销毁它们）；有命令在跑时 workspace_busy（原来 Worker 的 _current）。
+func (b *Broker) flushHolders(ctx context.Context, owner, workspaceID string) error {
+	holders, err := b.ledger.WritableHolders(ctx, owner, workspaceID, nil)
+	if err != nil {
+		return err
+	}
+	for _, h := range holders {
+		if !b.ledger.IdleNow(h) {
+			return providererr.New(providererr.Denied, "workspace_busy", "这个工作区正被一个可写的环境用着（命令还在跑），稍后再试")
+		}
+	}
+	busy := 10 * time.Minute
+	for _, h := range holders {
+		if h.State != "ready" || h.BackendEnvID == "" {
+			continue
+		}
+		// 存的时候占着它，别的命令不在半途改它。
+		rec, err := b.ledger.Touch(ctx, h, ledger.TouchArgs{BusyFor: &busy})
+		if err != nil {
+			return err
+		}
+		lease, err := b.Get(ctx, &commonv1.TenantContext{TenantId: owner, WorkspaceId: workspaceID}, rec.EnvRef)
+		if err == nil {
+			_, err = b.Snapshot(ctx, lease)
+		}
+		if providererr.CategoryOf(err) == providererr.NotFound {
+			b.forget(rec.EnvRef)
+			if _, err := b.ledger.MarkLost(ctx, rec, "存档时后端里已经没有这个环境"); err != nil {
+				return err
+			}
+			continue
+		}
+		if _, terr := b.ledger.Touch(context.WithoutCancel(ctx), rec, ledger.TouchArgs{}); terr != nil && err == nil {
+			err = terr
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Release 用完：会话级的环境留着（顺延空闲、记 CPU 时间），一次性的销毁（存档模式的可写环境先存档，skipSnapshot 时不存）。存档暂时
+// 失败时环境留着、报错，由下一轮对账或下一个要写的环境再存；永久性的失败照样销毁、报错。
+func (b *Broker) Release(ctx context.Context, lease *Lease, keep bool, cpuMS int64, skipSnapshot ...bool) error {
 	if lease.Record != nil {
 		rec, err := b.ledger.Touch(ctx, *lease.Record, ledger.TouchArgs{CPUMS: cpuMS})
 		if err != nil {
@@ -878,7 +931,7 @@ func (b *Broker) Release(ctx context.Context, lease *Lease, keep bool, cpuMS int
 	if keep {
 		return nil
 	}
-	if lease.Archive && lease.Writable {
+	if lease.Archive && lease.Writable && !(len(skipSnapshot) > 0 && skipSnapshot[0]) {
 		if _, err := b.Snapshot(ctx, lease); err != nil {
 			if providererr.CategoryOf(err) == providererr.Invalid {
 				var pe *providererr.Error
@@ -1060,6 +1113,10 @@ func (b *Broker) DestroyWorkspace(ctx context.Context, tenantID, workspaceID str
 			return n, err
 		}
 		n++
+	}
+	// 挂卷时一并删掉卷上的目录（Worker 不一定挂着工作区卷）。
+	if policy, err := b.policies.For(ctx, tenantID); err == nil && !b.reg.Archive(policy.Backend) {
+		b.clearLocal(tenantID, workspaceID)
 	}
 	return n, nil
 }
