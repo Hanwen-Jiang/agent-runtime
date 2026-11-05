@@ -347,7 +347,7 @@ async def test_calls_of_one_response_become_one_assistant_message(tmp_path: Path
 async def test_after_the_first_call_concurrent_reads_share_one_environment(tmp_path: Path) -> None:
     s = Setup(tmp_path)
     tenant = TenantContext(tenant_id="t1", user_id="u1", workspace_id="w1", session_id=S1)
-    spec = SandboxSpec(runtime="python", network="none", idle_timeout=timedelta(minutes=5), workspace_id="w1", session_id=S1)
+    spec = SandboxSpec(runtime="python", network="none", idle_timeout=timedelta(minutes=5), workspace_id="w1")
     busy = timedelta(minutes=2)
     first = await s.broker.acquire(tenant, spec, task_id="tsk", writable=False, reuse=True, busy_for=busy)
     await s.broker.release(first, keep=True)
@@ -355,7 +355,7 @@ async def test_after_the_first_call_concurrent_reads_share_one_environment(tmp_p
     assert {lease.record.env_ref for lease in leases} == {first.record.env_ref}, "环境建好之后并发的读都复用它，不再各建一个"
     for lease in leases:
         await s.broker.release(lease, keep=True)
-    assert len(await s.ledger.active("t1")) == 1
+    assert len(s.envs("t1")) == 1
 
 
 # --- 被拒的调用要让模型知道 ---

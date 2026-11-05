@@ -16,50 +16,39 @@ D-06f（第 8 节，应用浏览与管理工作区）：
 10. 从初始文件建（初始提交带作者）、从别的工作区复制（含未提交的改动，远端沿用，复制的能推送）；复制不能与另两种来源同给
     （克隆加文件、克隆到提交见 test_workspace_at_commit.py）。
 11. diff 的逐文件行数、改名检测与当前分支。
-12. 没配沙箱（shell_run 是 host）时也能用：直接在 <工作区根>/<租户>/<workspace> 里做。
+12. 没配 Sandbox Service 时报 workspace_api_unavailable（SBX-01：工作区的操作一律在服务借的环境里做）。
+
+环境经真的 Sandbox Service 进程借（service_setup）；服务与 Worker 共用业务库、对象存储与工作区根。
 """
 
 from __future__ import annotations
 
 import asyncio
-import io
-import json
 import os
 import subprocess
-import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import pytest
-from google.protobuf import json_format, struct_pb2
+from google.protobuf import json_format
 from temporalio.client import Client
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 
-from agentruntime.common.v1 import error_pb2, tenant_pb2
+from agentruntime.common.v1 import error_pb2
 from agentruntime.workflow.v1 import workspace_pb2
-from agentruntime_core.dev.object_store import LocalDiskObjectStoreProvider
-from agentruntime_core.dev.relational_store import SQLiteRelationalStoreProvider
-from agentruntime_core.dev.telemetry import ConsoleTelemetryProvider
-from agentruntime_core.dev.tool_driver import LocalToolDriverProvider
-from agentruntime_core.errors import ErrorCategory
-from agentruntime_core.sealing import seal
-from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker import names
-from agentruntime_worker.sandbox.broker import SandboxBroker
-from agentruntime_worker.sandbox.ledger import SandboxLedger
-from agentruntime_worker.tools.platform import PlatformToolsConfig, register_platform_tools
-from agentruntime_worker.tools.sandboxes import Sandboxes
 from agentruntime_worker.workflows.workspace import WorkspaceOperationWorkflow, operation_workflow_id
-from agentruntime_worker.workspace import WorkspaceArchiver
-from agentruntime_worker.workspace.operations import WorkspaceActivities, WorkspaceOperations, branch_allowed, check_branch, push_key
+from agentruntime_worker.workspace.operations import WorkspaceActivities, branch_allowed, check_branch, push_key
 
-S1 = "ses_01HZY2J5K3M4N5P6Q7R8S9T0VW"
-KEY = b"k" * 32
-SECRET = "pw-SECRET-1234567890"
+from . import service_setup
+from .service_setup import KEY, S1, SECRET
+
+__all__ = ["KEY", "S1", "SECRET", "Op", "Setup", "git", "make_remote"]
+
 Op = workspace_pb2.WorkspaceOperation
 
 
@@ -82,58 +71,11 @@ def make_remote(tmp_path: Path) -> tuple[str, Path]:
     return bare.as_uri(), bare
 
 
-class Setup:
+class Setup(service_setup.Setup):
+    """存档模式（archive）或挂卷（mount，Worker 挂着工作区卷）；policy 是所有租户的策略。"""
+
     def __init__(self, tmp_path: Path, *, mode: str, policy: Mapping[str, Any] | None = None) -> None:
-        self.host = tmp_path / "workspaces"
-        spec = {"kind": "local", "isolation": "none", "workspace": mode}
-
-        async def lookup(tenant_id: str) -> Mapping[str, Any] | None:
-            return policy
-
-        self.boxes = Sandboxes({"local": spec}, "local", workspace_root=self.host if mode == "mount" else None, policy=lookup)
-        store = SQLiteRelationalStoreProvider(tmp_path / "relational")
-        self.ledger = SandboxLedger(store)
-        self.archiver = WorkspaceArchiver(store, LocalDiskObjectStoreProvider(tmp_path / "objects", signing_key=os.urandom(32)))
-        self.broker = SandboxBroker(self.boxes, self.ledger, archiver=self.archiver)
-
-        async def secret() -> bytes:
-            return KEY
-
-        self.ops = WorkspaceOperations(self.broker, secret=secret, allow_local_remotes=True)
-        self.tools = LocalToolDriverProvider()
-        register_platform_tools(
-            self.tools, PlatformToolsConfig(workspace_root=self.host if mode == "mount" else None, shell_sandbox="sandbox", session_sandboxes=True),
-            sandboxes=self.broker, telemetry=ConsoleTelemetryProvider(stream=io.StringIO()),
-        )
-
-    @staticmethod
-    def inp(op: int, workspace: str = "w1", tenant: str = "t1", sealed_for: tuple[str, str] | None = None, **args: Any) -> workspace_pb2.WorkspaceOperationInput:
-        operation_id = "wso-" + uuid.uuid4().hex[:26]
-        msg = workspace_pb2.WorkspaceOperationInput(
-            tenant=tenant_pb2.TenantContext(tenant_id=tenant, user_id="u-alice"), operation_id=operation_id, operation=op, workspace_id=workspace,
-            requested_by="u-alice",
-        )
-        if args:
-            msg.args.CopyFrom(json_format.ParseDict(args, struct_pb2.Struct()))
-        if sealed_for is not None:
-            for_tenant, for_op = sealed_for
-            msg.sealed_credential = seal(KEY, for_tenant, for_op or operation_id, json.dumps({"username": "bot", "password": SECRET}).encode())
-        return msg
-
-    async def run(self, op: int, **kw: Any) -> dict[str, Any]:
-        out = await self.ops.run(self.inp(op, **kw))
-        if out.HasField("error"):
-            raise AssertionError(f"{out.error.code}: {out.error.message}")
-        return json_format.MessageToDict(out.result)
-
-    async def error(self, op: int, **kw: Any) -> error_pb2.Error:
-        out = await self.ops.run(self.inp(op, **kw))
-        assert out.HasField("error"), out
-        return out.error
-
-    async def tool(self, name: str, args: dict[str, Any], workspace: str = "w1") -> dict[str, Any]:
-        tenant = TenantContext(tenant_id="t1", user_id="u1", workspace_id=workspace, session_id=S1)
-        return (await self.tools.bind(tenant).invoke(name, "v1", args, idempotency_key=f"idk-{os.urandom(4).hex()}")).output
+        super().__init__(tmp_path / "setup", mode=mode, policies={t: policy for t in ("t1", "t2")} if policy else None)
 
 
 @pytest.mark.parametrize("mode", ["archive", "mount"])
@@ -154,7 +96,7 @@ async def test_clone_diff_commit_push(tmp_path: Path, mode: str) -> None:
     assert diff["files"] == ["app.py"] and diff["diff"] == in_sandbox and "+# changed" in diff["diff"], diff
     assert diff["head"] == remote_head and diff["truncated"] is False
     if mode == "archive":
-        writable = [(r.session_id, r.state) for r in await s.ledger.active("t1") if r.writable]
+        writable = [(r["session_id"], r["state"]) for r in s.envs("t1") if r["writable"]]
         assert writable == [(S1, "ready")], "会话的可写环境存档后还在（diff 在只读的环境里做）"
 
     # 新加的文件（未跟踪）也在 diff 里。
@@ -209,7 +151,7 @@ async def test_other_tenants_archive_and_delete(tmp_path: Path, mode: str) -> No
     assert await s.run(Op.WORKSPACE_OPERATION_DELETE) == {}
     assert (await s.archiver.get("t1", "w1")).state == "deleted"  # type: ignore[union-attr]
     assert await s.archiver.latest("t1", "w1") is None
-    assert await s.ledger.active("t1") == []
+    assert s.envs("t1") == []
     assert not (s.host / "t1" / "w1").exists()
     gone = await s.error(Op.WORKSPACE_OPERATION_DIFF)
     assert gone.category == error_pb2.ERROR_CATEGORY_NOT_FOUND
@@ -250,15 +192,14 @@ async def test_the_workflow_carries_results_and_does_not_retry_pushes(tmp_path: 
         assert inp.sealed_credential.encode() in raw and SECRET.encode() not in raw, "事件历史里只有封起来的凭据，没有明文"
         await s.tool("repo_edit", {"path": "x.txt", "new": "x\n"})
         await s.run(Op.WORKSPACE_OPERATION_COMMIT, message="x")
-        backend = await s.boxes.backend("local")
-        backend.provider._faults.fail_next("create", ErrorCategory.TRANSIENT)  # type: ignore[attr-defined]
+        s.svc.kill()  # 借环境时服务不在：transient
         push = s.inp(Op.WORKSPACE_OPERATION_PUSH, branch="agent/x")
         started = datetime.now(UTC)
         out = await asyncio.wait_for(client.execute_workflow(
             names.WORKSPACE_OPERATION_WORKFLOW, push, id=operation_workflow_id(push.operation_id), task_queue=names.TASK_QUEUE,
             result_type=workspace_pb2.WorkspaceOperationResult,
         ), timeout=60)
-        assert out.error.category == error_pb2.ERROR_CATEGORY_TRANSIENT and out.error.code == "sandbox_unavailable", out
+        assert out.error.category == error_pb2.ERROR_CATEGORY_TRANSIENT and out.error.code == "sandbox_service_unavailable", out
         assert (datetime.now(UTC) - started).total_seconds() < 5, "推送不自动重试"
 
 
@@ -357,22 +298,6 @@ async def test_create_from_files_or_from_another_workspace(tmp_path: Path) -> No
     assert other_tenant.category == error_pb2.ERROR_CATEGORY_NOT_FOUND, "不能复制别的租户的工作区"
 
 
-async def test_mount_mode_creates_the_workspace_dir_before_borrowing_an_env(tmp_path: Path) -> None:
-    # K8s 后端按 subPath 挂工作区：目录要由 Worker 先建好，否则 kubelet 以 root 建，沙箱与 Worker 都写不进去。
-    s = Setup(tmp_path, mode="mount")
-    seen: list[bool] = []
-    acquire = s.broker.acquire
-
-    async def watching(tenant: TenantContext, spec: Any, **kw: Any) -> Any:
-        seen.append((s.host / tenant.tenant_id / spec.workspace_id).is_dir())
-        return await acquire(tenant, spec, **kw)
-
-    s.broker.acquire = watching  # type: ignore[method-assign]
-    await s.run(Op.WORKSPACE_OPERATION_CREATE, workspace="w-new", files=[{"path": "a.txt", "content": "1\n"}])
-    await s.run(Op.WORKSPACE_OPERATION_LIST_FILES, workspace="w-new")
-    assert seen and all(seen), seen
-
-
 async def test_diff_counts_lines_detects_renames_and_reports_the_branch(tmp_path: Path) -> None:
     url, _ = make_remote(tmp_path)
     s = Setup(tmp_path, mode="mount")
@@ -390,27 +315,13 @@ async def test_diff_counts_lines_detects_renames_and_reports_the_branch(tmp_path
     assert [st["path"] for st in renamed["stats"]] == renamed["files"], "stats 与 files 同序"
 
 
-async def test_the_api_works_without_a_sandbox(tmp_path: Path) -> None:
-    """shell_run 是 host（或 docker）时：Workspace API 直接在 <工作区根>/<租户>/<workspace> 里做，与工具是同一处。"""
+async def test_the_api_needs_the_sandbox_service(tmp_path: Path) -> None:
+    """没配 Sandbox Service（AR_SANDBOX_SERVICE_ADDRESS）时 Workspace API 不可用，不在 Worker 的工作区目录里自己做（SBX-01）。"""
     from agentruntime_worker.config import WorkerConfig
     from agentruntime_worker.tools import workspace_operations
 
-    url, _ = make_remote(tmp_path)
-    root = tmp_path / "workspaces"
-    config = WorkerConfig(
-        tool_workspace_root=root, data_dir=tmp_path / "data", object_store_dir=tmp_path / "objects", secrets_file=tmp_path / "secrets.json",
-        tool_shell_sandbox="host", workspace_allow_local_remotes=True,
-    )
-    ops = workspace_operations(config)
-    assert ops is not None
-    out = await ops.run(Setup.inp(Op.WORKSPACE_OPERATION_CREATE, workspace="w-host", repo_url=url))
-    assert not out.HasField("error"), out
-    assert (root / "t1" / "w-host" / "README.md").read_bytes() == b"# refund service\n", "就是宿主上的工作区目录"
-    (root / "t1" / "w-host" / "new.txt").write_bytes(b"hi\n")
-    diff = json_format.MessageToDict((await ops.run(Setup.inp(Op.WORKSPACE_OPERATION_DIFF, workspace="w-host"))).result)
-    assert diff["files"] == ["new.txt"]
-    assert not (await ops.run(Setup.inp(Op.WORKSPACE_OPERATION_DELETE, workspace="w-host"))).HasField("error")
-    assert not (root / "t1" / "w-host").exists()
-    unavailable = WorkspaceActivities(workspace_operations(WorkerConfig(tool_shell_sandbox="host")))
+    config = WorkerConfig(tool_workspace_root=tmp_path / "workspaces", tool_shell_sandbox="host", workspace_allow_local_remotes=True)
+    assert workspace_operations(config) is None
+    unavailable = WorkspaceActivities(workspace_operations(config))
     res = await unavailable.workspace_operation(Setup.inp(Op.WORKSPACE_OPERATION_DIFF))
-    assert res.error.code == "workspace_api_unavailable"
+    assert res.error.code == "workspace_api_unavailable" and "AR_SANDBOX_SERVICE_ADDRESS" in res.error.message

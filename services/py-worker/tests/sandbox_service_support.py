@@ -26,6 +26,8 @@ REPO = Path(__file__).resolve().parents[3]
 WORKER_TOKEN = "worker-token-0123456789abcdef0123456789abcdef"
 READER_TOKEN = "task-service-token-0123456789abcdef0123456789"
 _BUILT: dict[str, Path] = {}
+# 这个用例起的服务：conftest 的 autouse 夹具在用例结束时全部停掉（Setup 不是夹具，自己收不了尾）。
+RUNNING: list[SandboxService] = []
 
 
 def _go() -> str:
@@ -104,10 +106,13 @@ class SandboxService:
             "AR_SANDBOX_STATE_DIR": str(self.state),
             "AR_SANDBOX_AGENT_BIN": str(self.agent_bin),
             "AR_SANDBOX_RECONCILE_INTERVAL_S": "3600",
+            "AR_SANDBOX_POLICY_TTL_S": "0",
             **self.extra_env,
         }
 
     def start(self) -> None:
+        if self not in RUNNING:
+            RUNNING.append(self)
         with self.log.open("ab") as log:
             self.process = subprocess.Popen([str(self.service_bin), "serve"], env=self.environ(), stdout=log, stderr=log)
         deadline = time.monotonic() + 30
@@ -143,6 +148,10 @@ class SandboxService:
         self.process = None
         # 本地后端的 agent 进程不随服务退出：测试结束时收掉。
         subprocess.run([str(self.service_bin), "kill-local", str(self.state)], check=False, env=self.environ())
+
+    def write_policies(self, policies: Mapping[str, Any]) -> None:
+        """改租户策略（开发用的策略文件；服务按 AR_POLICY_TTL 缓存，测试里设成 0）。"""
+        self.policies_file.write_text(json.dumps({"tenants": dict(policies)}), "utf-8")
 
     def worker_env(self) -> dict[str, str]:
         """Worker 连这个服务要的环境变量。"""

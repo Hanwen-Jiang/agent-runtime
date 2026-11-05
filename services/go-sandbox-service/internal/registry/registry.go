@@ -241,6 +241,17 @@ func (r *Registry) Enabled(name string) bool {
 	return true
 }
 
+// HasCapability 判断登记里给这个后端写了某项能力（D-19：snapshot、block_attach、vsock）；没写时都没有。
+func (r *Registry) HasCapability(name, capability string) bool {
+	list, _ := r.spec(name)["capabilities"].([]any)
+	for _, v := range list {
+		if v == capability {
+			return true
+		}
+	}
+	return false
+}
+
 // Buildable 判断后端的种类有没有实现。
 func (r *Registry) Buildable(name string) bool {
 	return slices.Contains(BuildableKinds, r.spec(name).Kind())

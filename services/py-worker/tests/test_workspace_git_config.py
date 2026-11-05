@@ -18,6 +18,8 @@ from pathlib import Path
 
 import pytest
 
+from agentruntime_core.errors import ProviderError
+
 from .test_workspace_operations import SECRET, Op, Setup, git, make_remote
 
 HTTPS_REMOTE = "https://example.test/acme/refund.git"
@@ -38,6 +40,14 @@ async def plant(s: Setup, leak: Path) -> None:
     assert out["exit_code"] == 0, out
 
 
+async def failure(s: Setup, op: int, **kw: object) -> str:
+    """操作失败时的错误信息：不管是写进结果的，还是暂时性的（连不上远端，交给工作流重试、抛出来的）。"""
+    try:
+        return (await s.error(op, **kw)).message
+    except ProviderError as err:
+        return err.message
+
+
 def assert_not_leaked(leak: Path, message: str) -> None:
     token = base64.b64encode(f"bot:{SECRET}".encode()).decode()
     assert not leak.exists(), "工作副本配置里的命令不应执行"
@@ -53,8 +63,7 @@ async def test_push_does_not_run_commands_from_the_working_copy_config(tmp_path:
     leak = tmp_path / "leak.txt"
     await plant(s, leak)
     await s.archiver.update("t1", "w1", repo_url=HTTPS_REMOTE)
-    err = await s.error(Op.WORKSPACE_OPERATION_PUSH, branch="agent/fix", sealed_for=("t1", ""))
-    assert_not_leaked(leak, err.message)
+    assert_not_leaked(leak, await failure(s, Op.WORKSPACE_OPERATION_PUSH, branch="agent/fix", sealed_for=("t1", "")))
 
 
 @pytest.mark.parametrize("mode", ["archive", "mount"])
@@ -65,8 +74,7 @@ async def test_sync_does_not_run_commands_from_the_working_copy_config(tmp_path:
     leak = tmp_path / "leak.txt"
     await plant(s, leak)
     await s.archiver.update("t1", "w1", repo_url=HTTPS_REMOTE)
-    err = await s.error(Op.WORKSPACE_OPERATION_SYNC, branch="main", sealed_for=("t1", ""))
-    assert_not_leaked(leak, err.message)
+    assert_not_leaked(leak, await failure(s, Op.WORKSPACE_OPERATION_SYNC, branch="main", sealed_for=("t1", "")))
 
 
 @pytest.mark.parametrize("mode", ["archive", "mount"])

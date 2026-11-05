@@ -17,6 +17,7 @@
 //	AR_SANDBOX_RECONCILE_INTERVAL_S    对账间隔，默认 60；0 不对账
 //	AR_SANDBOX_HOLD_MAX_S              等人期间保留会话级环境的上限，默认 7200
 //	AR_WORKSPACE_COLD_AFTER_DAYS       挂卷工作区闲置多少天转冷（租户策略没写时），默认 0（不转冷）
+//	AR_SANDBOX_POLICY_TTL_S            租户策略的缓存秒数，默认 60；0 不缓存（测试用）
 //	AR_PROFILE                         production 时没有 AR_RELATIONAL_DSN 拒绝启动
 package config
 
@@ -52,6 +53,8 @@ type Config struct {
 	ReconcileEvery  time.Duration
 	HoldMax         time.Duration
 	ColdDays        int
+	// PolicyTTL 是租户策略的缓存时长；负数不缓存（AR_SANDBOX_POLICY_TTL_S=0，测试改策略即时生效）。
+	PolicyTTL time.Duration
 	Production      bool
 }
 
@@ -104,6 +107,14 @@ func FromEnv(getenv func(string) string) (Config, error) {
 	c.HoldMax = time.Duration(hold) * time.Second
 	if c.ColdDays, err = intVar(getenv, "AR_WORKSPACE_COLD_AFTER_DAYS", 0); err != nil {
 		return c, err
+	}
+	ttl, err := intVar(getenv, "AR_SANDBOX_POLICY_TTL_S", 60)
+	if err != nil {
+		return c, err
+	}
+	c.PolicyTTL = time.Duration(ttl) * time.Second
+	if ttl == 0 {
+		c.PolicyTTL = -1
 	}
 	return c, nil
 }

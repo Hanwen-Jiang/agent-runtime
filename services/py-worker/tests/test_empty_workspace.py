@@ -16,7 +16,6 @@ from typing import Any
 import pytest
 
 from agentruntime.common.v1 import enums_pb2
-from agentruntime_core.dev import workdir
 
 from agentruntime_worker.activities.types import ToolLoopStep
 
@@ -40,13 +39,23 @@ async def test_a_copy_that_comes_out_empty_is_refused_and_leaves_nothing(tmp_pat
     await s.run(Op.WORKSPACE_OPERATION_CREATE, workspace="w-base", repo_url=url)
     # 假设 2：只读的环境里看不到源的文件，导出是空的（存档模式下源还没有快照时照旧经环境复制）；挂卷时在卷上复制出来是空的
     # （N-10 之后挂卷的复制不经环境）。
+    import io
+    import tarfile
+
+    from agentruntime_worker.sandbox.client import RemoteBox
     from agentruntime_worker.workspace import operations
     from agentruntime_worker.workspace.copy import CopyStats
 
-    empty = tmp_path / "nothing"
-    empty.mkdir()
-    real = workdir.export_dir
-    monkeypatch.setattr(workdir, "export_dir", lambda root, out, *, max_bytes: real(empty, out, max_bytes=max_bytes))
+    real = RemoteBox.export_archive
+
+    async def empty_export(self: RemoteBox, env_id: str, out: Any, *, max_bytes: int) -> int:
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w"):
+            pass
+        out.write(buf.getvalue())
+        return len(buf.getvalue())
+
+    monkeypatch.setattr(RemoteBox, "export_archive", empty_export)
 
     async def no_snapshot(*args: Any, **kwargs: Any) -> None:
         return None
@@ -57,7 +66,7 @@ async def test_a_copy_that_comes_out_empty_is_refused_and_leaves_nothing(tmp_pat
     assert err.code == "workspace_empty_after_copy"
     left = await s.archiver.get("t1", "w-copy")
     assert left is None or left.state == "deleted", "不留空的副本"
-    monkeypatch.setattr(workdir, "export_dir", real)
+    monkeypatch.setattr(RemoteBox, "export_archive", real)
     entries = (await s.run(Op.WORKSPACE_OPERATION_LIST_FILES, workspace="w-base"))["entries"]
     assert any(e.get("path") == "README.md" or e.get("name") == "README.md" for e in entries), "源不受影响"
 

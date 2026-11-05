@@ -153,7 +153,7 @@ func newHarness(t *testing.T, opts ...option) *harness {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"local", "gvisor", "kata", "cloudflare", "plain", "a", "b"} {
+	for _, name := range []string{"local", "gvisor", "kata", "cloudflare", "plain", "a", "b", "firecracker", "cf"} {
 		h.faults[name] = testkit.NewFaults()
 	}
 	h.start()
