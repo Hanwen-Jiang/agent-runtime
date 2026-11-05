@@ -126,6 +126,7 @@ type SandboxServiceClient interface {
 	Discard(context.Context, *connect.Request[v1.DiscardRequest]) (*connect.Response[v1.DiscardResponse], error)
 	// --- 批量 ---
 	DestroySession(context.Context, *connect.Request[v1.DestroySessionRequest]) (*connect.Response[v1.DestroySessionResponse], error)
+	// 删除工作区时销毁它的全部环境（不存档，正在跑命令的也销毁），挂卷时一并删掉卷上的目录。
 	DestroyWorkspace(context.Context, *connect.Request[v1.DestroyWorkspaceRequest]) (*connect.Response[v1.DestroyWorkspaceResponse], error)
 	DestroyTenant(context.Context, *connect.Request[v1.DestroyTenantRequest]) (*connect.Response[v1.DestroyTenantResponse], error)
 }
@@ -447,6 +448,7 @@ type SandboxServiceHandler interface {
 	Discard(context.Context, *connect.Request[v1.DiscardRequest]) (*connect.Response[v1.DiscardResponse], error)
 	// --- 批量 ---
 	DestroySession(context.Context, *connect.Request[v1.DestroySessionRequest]) (*connect.Response[v1.DestroySessionResponse], error)
+	// 删除工作区时销毁它的全部环境（不存档，正在跑命令的也销毁），挂卷时一并删掉卷上的目录。
 	DestroyWorkspace(context.Context, *connect.Request[v1.DestroyWorkspaceRequest]) (*connect.Response[v1.DestroyWorkspaceResponse], error)
 	DestroyTenant(context.Context, *connect.Request[v1.DestroyTenantRequest]) (*connect.Response[v1.DestroyTenantResponse], error)
 }

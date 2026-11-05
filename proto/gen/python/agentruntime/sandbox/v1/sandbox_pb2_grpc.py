@@ -285,7 +285,8 @@ class SandboxServiceServicer:
         raise NotImplementedError('Method not implemented!')
 
     def DestroyWorkspace(self, request, context):
-        """Missing associated documentation comment in .proto file."""
+        """删除工作区时销毁它的全部环境（不存档，正在跑命令的也销毁），挂卷时一并删掉卷上的目录。
+        """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')

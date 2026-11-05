@@ -53,6 +53,7 @@ service SandboxService {
 
   // --- 批量 ---
   rpc DestroySession(DestroySessionRequest) returns (DestroySessionResponse);
+  // 删除工作区时销毁它的全部环境（不存档，正在跑命令的也销毁），挂卷时一并删掉卷上的目录。
   rpc DestroyWorkspace(DestroyWorkspaceRequest) returns (DestroyWorkspaceResponse);
   rpc DestroyTenant(DestroyTenantRequest) returns (DestroyTenantResponse);
 }
@@ -180,6 +181,9 @@ message AcquireRequest {
   // shell_run 第一次用到工作区时按项目定制运行环境（D-17）：服务读工作区里的 devcontainer.json、.tool-versions 或
   // Dockerfile，镜像就绪时用它，没就绪时起构建并先用 universal。
   bool project_environment = 9;
+  // 存档模式下先把这个工作区别人闲着的可写环境各存一份快照（不销毁它们），借到的只读环境看到的就是最新的；有命令在跑时
+  // denied（workspace_busy）。Workspace 操作的推送、存档、被复制的源用它。
+  bool flush_writable = 10;
 }
 
 message Backend {
@@ -352,6 +356,8 @@ message ReleaseRequest {
   bool keep = 3;
   // 最后一条命令用掉的 CPU 时间（计量）；0 不记。
   int64 cpu_time_ms = 4;
+  // 销毁之前不存档（操作失败时不把做了一半的改动存进快照；刚存过的不再存）。keep 时不起作用。
+  bool skip_snapshot = 5;
 }
 
 message ReleaseResponse {
