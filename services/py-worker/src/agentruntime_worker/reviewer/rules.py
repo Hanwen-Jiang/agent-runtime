@@ -213,6 +213,16 @@ def floor(ledger: Ledger, results: Mapping[str, Mapping[str, Any]], *, completio
             "workspace_empty",
             nodes=empty,
         )
+    broke = sorted(nid for nid in failed if "tenant_budget_exceeded" in f"{results[nid].get('error_code') or ''} {results[nid].get('error') or ''}")
+    if broke:
+        # 租户的模型额度（每天、每月）用完了：网关拒绝之后的每一次调用，重试、换做法、重规划都只会空转，第一次就停下问人。
+        signals.add("budget_burn")
+        restrict(
+            {"escalate", "abort"},
+            f"{'、'.join(broke)} 被网关以 tenant_budget_exceeded 拒绝：这个账号的模型额度用完了，重试与重规划都没有用；只能问人或收尾",
+            "rule_tenant_budget_exceeded",
+            nodes=broke,
+        )
     return Floor(
         step=step,
         reasons=tuple(reasons),
