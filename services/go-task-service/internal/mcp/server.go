@@ -537,6 +537,7 @@ func (s *Server) discover(ctx context.Context, tenant *commonv1.TenantContext, c
 	header, v := headerValue(c.Header, value)
 	found, err := s.d.Remote.Discover(ctx, c.URL, header, v)
 	if err != nil {
+		s.d.Logger.Warn("MCP 连不上", "tenant_id", tenant.GetTenantId(), "connection_id", c.ID, "error", err.Error())
 		return Discovery{}, errorCode(err)
 	}
 	return found, ""

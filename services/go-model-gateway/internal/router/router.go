@@ -151,6 +151,7 @@ type tenantPolicyFileEntry struct {
 	ModelBudget    *modelBudgetPolicy `json:"model_budget"`
 	Sandbox        json.RawMessage    `json:"sandbox"`
 	Workspace      json.RawMessage    `json:"workspace"`
+	MCP            json.RawMessage    `json:"mcp"`
 }
 
 type tenantPolicyFile struct {

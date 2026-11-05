@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"sort"
 	"strings"
 	"time"
 
@@ -84,7 +85,9 @@ func (d Dialer) DialContext(ctx context.Context, network, address string) (net.C
 			return nil, fail("mcp_host_not_public", "解析到非公网地址（"+why+"）")
 		}
 	}
-	var dialer net.Dialer
+	// IPv4 在前：集群里常常没有 IPv6 出口，先试 IPv6 会白白耗掉 15 秒的预算；每个地址至多 5 秒。
+	sort.SliceStable(addrs, func(i, j int) bool { return addrs[i].Is4() && !addrs[j].Is4() })
+	dialer := net.Dialer{Timeout: 5 * time.Second}
 	var last error
 	for _, a := range addrs {
 		conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(a.String(), port))
@@ -150,7 +153,8 @@ func classify(err error) error {
 	if errors.Is(err, context.DeadlineExceeded) {
 		return fail("mcp_unreachable", "超时")
 	}
-	return fail("mcp_unreachable", "连不上")
+	// 传输层的错误里只有地址与原因，没有请求头的值。
+	return fail("mcp_unreachable", "连不上："+clip(err.Error(), 300))
 }
 
 func (s *rpcSession) post(ctx context.Context, body map[string]any, notify bool) (*rpcMessage, error) {

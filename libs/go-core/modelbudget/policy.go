@@ -44,6 +44,8 @@ type policyDocument struct {
 	ModelBudget    *budgetDocument `json:"model_budget"`
 	Sandbox        json.RawMessage `json:"sandbox"`
 	Workspace      json.RawMessage `json:"workspace"`
+	// N-15：用户的 MCP 连接（task-service 的 internal/mcp 解释）。
+	MCP json.RawMessage `json:"mcp"`
 }
 
 func decodePolicy(data []byte, out any) error {

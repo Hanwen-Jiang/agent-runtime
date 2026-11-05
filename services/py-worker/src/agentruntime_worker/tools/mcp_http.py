@@ -117,7 +117,8 @@ async def resolve_public(host: str, port: int, extra: tuple[Any, ...] = ()) -> l
             addrs.append(str(ip))
     if not addrs:
         raise TransientError("mcp_unreachable", f"解析不了 {name}")
-    return addrs
+    # IPv4 在前：集群里常常没有 IPv6 出口。
+    return sorted(addrs, key=lambda a: ":" in a)
 
 
 # --- 最小的 HTTP/1.1 客户端 ---
@@ -198,11 +199,12 @@ async def _request(method: str, url: str, headers: Mapping[str, str], body: byte
     last: Exception | None = None
     for addr in addrs:
         try:
-            reader, writer = await asyncio.open_connection(addr, port, ssl=context, server_hostname=host, limit=_MAX_BODY)
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(addr, port, ssl=context, server_hostname=host, limit=_MAX_BODY), timeout=10)
             break
         except ssl.SSLError:
             raise TransientError("mcp_tls_error", f"和 {host} 的 TLS 握手失败") from None
-        except OSError as err:
+        except (OSError, TimeoutError) as err:
             last = err
     else:
         raise TransientError("mcp_unreachable", f"连不上 {host}（{type(last).__name__}）")
