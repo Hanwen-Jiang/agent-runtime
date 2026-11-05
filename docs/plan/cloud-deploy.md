@@ -844,6 +844,41 @@ REAL-01 的检查（2026-11-04，在第 27 版上；目录 `rev29`，脚本 `smo
   - 花费：0.14 + 0.31（取消）+ 0.15（取消）= 0.60 美元。
 - 回滚：`helm rollback ar 30`，coding-web `rollout undo`（之前的清单在 `rev33/coding-web.yaml.before`）；代码副本 `agent-runtime.de1c0ba`、`coding-agent.ec36caa` 还在。
 
+第 32 版（2026-11-05，V1-DEP / DEP-R32：整版发布；目录 `rev34`，脚本 `prepare.sh`、`rev34.sh`、`smoke7.sh`；用户 2026-11-05 授权线上发布不用再问）：
+
+- Runtime `2d5c446`：SBX-01（Go 的 Sandbox Service 接管沙箱的借还与执行、存档与恢复、对账与 D-17 构建；Worker 不再挂 Kubernetes 令牌）、
+  WS-READ-01（task-service 的只读 Workspace 操作直接调服务）、V1-SUB（`worker.subAgentPolicy` 默认 rules）；coding-web `2f84868`（V1-I18N）。
+  values 是第 31 版应用过的那份：`image.tag` 与三处 sandbox-agent 换成 `2d5c446`；memory 仍是 52174d9，沙箱运行环境的镜像仍是 0.1.0。
+  渲染与第 31 版比：加 sandbox-service 的 Deployment、Service、NetworkPolicy、两个 Role 与绑定、ServiceAccount；去掉 Worker 的两个 Role 与绑定、
+  ServiceAccount；Worker 的 `AR_PKG_MIRROR_URL`、`AR_WORKSPACE_COLD_AFTER_DAYS` 挪到服务，多了 `AR_SANDBOX_SERVICE_ADDRESS`、`AR_SUB_AGENT_POLICY=rules`。
+- `deploy/cluster` 的 `sandboxes.yaml`、`builds.yaml` 改了放行 agent 7070 的 NetworkPolicy（worker → sandbox-service）：升级前 apply 新的，升级后删掉
+  `worker-to-agent`、`worker-to-builder`。
+- 升级时没有在跑的 TaskWorkflow，也没有在跑的 EnvironmentBuildWorkflow。sandbox-service 第一次启动时生成了 worker、task-service 的调用方令牌。
+  egress-gateway、pkg-mirror、sandbox-service、task-service、coding-web 各重启一次（新 Pod 第一秒连 Postgres 或 Temporal 被拒，同第 26～31 版）。
+- 冒烟（`smoke7`，默认档的测试租户 `real01`，Kata，存档模式）：
+  - 新建工作区被 `workspace_quota_exceeded` 拒（real01 的 5 个配额被以前冒烟的工作区占满；删除被会话的权限检查拦下，改用已有的
+    `real01-check-091617`）。
+  - Workspace API 经服务：存档的工作区列目录 0.31 秒、读文件 0.38 秒（WS-READ-01）。
+  - Task：`shell_run` 经服务起 Kata 沙箱 7.6 秒，写 `out.txt` 成功；`repo_read` 成功；Task 结束后经 Workspace API 读得到 `out.txt`（`v1dep-ok`）。
+  - `deliver_file` 一律 `file_not_found`：F3-SANDBOX（交付读 Worker 本机，存档模式的文件只在环境里），模型反复重试交付到 `max_iterations`，
+    之后 Reviewer 按规则 repair、replan 到 escalate，取消。第二轮有一次 `object_store_unavailable`（R2 返回 InternalError），偶发。
+  - 第一次（工作区配额满）那个 Task 的 Reviewer 是模型判定（escalate），不是 `rule_fallback`。花费约 0.23 美元。
+- 回滚：`helm rollback ar 31`，再 apply `agent-runtime.95a3a9e` 里旧的两条 NetworkPolicy；coding-web `rollout undo`。
+
+第 33 版（2026-11-05，目录 `rev35`，脚本 `prepare.sh`、`rev35.sh`）：
+
+- Runtime `f083115`：N-15 MCP（task-service 的 `McpConnectionService` 与迁移 402，Worker 的 Streamable HTTP MCP Gateway）、Firecracker 后端的代码
+  （D-20 第二段、D-21、D-22）、SBX-ZOMBIE（agent 当 PID 1 时回收孤儿）、ENV-MIRROR（构建的 Docker Hub 拉取缓存）；coding-web `fff9d4e`
+  （我的 MCP，`CODING_NETWORK_SECRETS=1`，`/root/ar-secrets/coding-web.yaml` 同步）。
+- values 是第 32 版应用过的那份：`image.tag` 与三处 sandbox-agent 换成 `f083115`；照 `values-cloud.yaml` 加 `egressGateway.previewHostCidrs`
+  （`10.42.0.1/32`）、`worker.shell.environments.dockerMirror.enabled: true`、`worker.shell.backends.firecracker`，但 **firecracker 是 `enabled: false`**：
+  SecretStore 还没有 `sandbox/fc-manager-token`（加密钥的脚本被会话的权限检查拦下，等用户；V1-FC 会话备了 `/root/ar-release/v1-fc/add-fc-token.sh`）。
+- 渲染与第 32 版比：加 docker-mirror 的 ConfigMap、Deployment（registry:2.8.3 加清理的边车）、PVC 16Gi、Service、NetworkPolicy；
+  `sandbox-backends` 的 `backends.json`、出网网关与 `builds-egress` 的 NetworkPolicy 各多一条；其余是镜像 tag。
+- 升级后线上清单与 `manifest-rev35.yaml` 一致，四个对外地址 200；sandbox-service 的后端列出 `cloudflare firecracker gvisor kata`。重启的同第 32 版。
+  V1-FC 会话核对 docker-mirror 对构建命名空间返回 Docker Hub 的 manifest（200）。
+- 回滚：`helm rollback ar 32`；coding-web `rollout undo`（之前的清单在 `rev35/coding-web.yaml.before`）。
+
 宿主上的 Firecracker（2026-11-05，V1-FC：宿主上的 systemd 服务，不经 Helm；规矩见总表第 0 节第 6 条）：
 
 - 装了什么（与 `deploy/cluster/install.sh` 第 3b 步相同的命令，分步手工跑，没跑整个 install.sh）：Firecracker 与 jailer v1.17.0（`/usr/local/bin`，按
