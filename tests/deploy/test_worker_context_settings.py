@@ -35,12 +35,12 @@ def test_given_values_reach_every_worker_as_strings() -> None:
         assert env["AR_CONTEXT_OFFLOAD_TOKENS"]["value"] == "8000"
 
 
-def test_the_sub_agent_rules_are_off_unless_asked_for() -> None:
-    """N16-R（docs/plan/sub-agent.md 第 12 节）：默认 off 时不渲染；rules 时每个 Worker 池都拿到；别的取值渲染失败。"""
+def test_the_sub_agent_rules_are_on_by_default() -> None:
+    """N16-R（docs/plan/sub-agent.md 第 12 节；总表第 0 节 V1-SUB 默认打开）：默认 rules，每个 Worker 池都拿到；off 时不渲染；别的取值渲染失败。"""
     for manifests in (render(), render(CLOUD_VALUES)):
-        assert all("AR_SUB_AGENT_POLICY" not in env_of(pod_spec(w)["containers"][0]) for w in workers(manifests))
-    on = render(CLOUD_VALUES, set_values=["worker.subAgentPolicy=rules"])
-    assert all(env_of(pod_spec(w)["containers"][0])["AR_SUB_AGENT_POLICY"]["value"] == "rules" for w in workers(on))
+        assert all(env_of(pod_spec(w)["containers"][0])["AR_SUB_AGENT_POLICY"]["value"] == "rules" for w in workers(manifests))
+    off = render(CLOUD_VALUES, set_values=["worker.subAgentPolicy=off"])
+    assert all("AR_SUB_AGENT_POLICY" not in env_of(pod_spec(w)["containers"][0]) for w in workers(off))
     with pytest.raises(pytest.fail.Exception, match="subAgentPolicy"):
         render(CLOUD_VALUES, set_values=["worker.subAgentPolicy=always"])
 
