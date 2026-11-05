@@ -12,19 +12,23 @@
 ## 0. v1 终点线（2026-11-05，先看这一节）
 
 > 用户 2026-11-05：“任务怎么越做越多了”“帮我改也别给我定了，这个权限交给你你来抉择”。由 Claude 定下面的终点线；要改直接改这一节。
+> 同日用户纠正：“Skill MCP subagent 这种任务才是重中之重”。三者改为 v1 的核心（V1-7～V1-9），排在最前；原先把 N-15 与 N16-R 的评测对照放进 backlog 是判断错了。
 > 起因：本表 11-03 建表时 57 项，到 11-05 关掉 35 项，但线上冒烟与评测又冒出 10 项、用户另提 2 项，表反而到了 69 项；而且建表时就把 MVP 必需的和远期扩展混在一起，没有“做完”的定义。
 
 **规则**
 
-1. 只有下表 V1-1～V1-6 算 v1 要做的；第 3 节里其余未完成的条目一律是 **backlog**（不删，原文与“档”照旧，但 v1 完成之前不开工、不算进“还剩多少”）。
+1. 只有下表 V1-1～V1-9 算 v1 要做的；第 3 节里其余未完成的条目一律是 **backlog**（不删，原文与“档”照旧，但 v1 完成之前不开工、不算进“还剩多少”）。
 2. 新发现的问题，只有满足其一才进本表：挡住下面的“完成标准”；安全问题（越权、泄密）；丢用户数据。其余一律记进第 3 节当 backlog。
 3. 代码写完不算完成，**上线并过了完成标准才算**。
 4. 第 8 节的认领规矩照旧。
 
-**v1 要做的**
+**v1 要做的**（按优先级：V1-7～V1-9 是核心，与 V1-1～V1-3 并行开工；V1-4～V1-6 收尾）
 
 | 编号 | 内容 | 对应第 3 节 | 状态 |
 | --- | --- | --- | --- |
+| V1-7 | **MCP（N-15）的实现**，按契约 `556c881`（[n15-mcp-contract](n15-mcp-contract.md)）：task-service 挂上 `McpConnectionService`（业务库的连接与工具表、租户策略 `mcp` 的运行时校验、netguard 拨号、凭据只引用 UserSecretService）；Task 提交时发租约、结束与删除时收回；Worker 的 MCP Gateway 加 Streamable HTTP（按连接与 Worker 持会话、断了重连），Planner 的目录与 tool_loop 的工具定义取自租约，write_irreversible 逐次人工审批；coding-agent 加“我的 MCP”页（建连接、看工具、逐个打开并定 effect），网络密钥页为它打开（MCP 的鉴权头引用它）。先写测试再实现；Runtime 与网页可以分两条线并行 | N-15、WEB-SEC | 待做（v1 里最大的一块，最先开工） |
+| V1-8 | **子 Agent（N16-R）默认打开**：补 sub-agent 第 9 节的评测集新题（Claude 写，标“未确认”）、跑评测对照（off 对 rules，`--repeat 3`，上限 40 美元），不劣于 off 就把 `AR_SUB_AGENT_POLICY` 的默认改成 rules 并上线；劣于 off 就按结果修了再比 | N16-R | 待做 |
+| V1-9 | **Skill（N-14）线上验收**：Runtime 与“我的 Skill”页第 31 版已上线，但没人在线上用过。线上建一个用户 Skill → 新 Task 的 brief 里列出它 → tool_loop 经 `skill_read` 读到并照着做；平台层种几条有用的 Skill（如写测试、提交 PR 的做法）；发现的问题在 v1 里修 | N-14、WEB-SKILLS | 待做 |
 | V1-1 | 整版发布 main（Helm 第 32 版，DEP-R32）：SBX-01 与 WS-READ-01（Chart 的 sandbox-service，要 `secrets.relationalDsn`、`secrets.storeClaim`；不灰度，回退是回滚 Release，见 sbx-01-handoff 第 7 节）、`95a3a9e` 之后的提交（TOOL-INT-FLOAT 等）、learning 新镜像（SITE、SITE-DATA）；coding-web 换到 coding-agent main。V1-2、V1-3 能赶上就一起发，赶不上第 32 版先发、它们再跟一版 | SBX-01、SITE、SITE-DATA 等“没部署”的 | 待做 |
 | V1-2 | F3-SANDBOX：`deliver_file` 经 Sandbox Service 取沙箱里的文件 | F3-SANDBOX | 待做 |
 | V1-3 | REVIEW-FALLBACK：查清 Reviewer 的模型判定为什么被自己的校验拒掉并修；修不了的模型从 Reviewer 候选里去掉 | REVIEW-FALLBACK | 待查 |
@@ -33,6 +37,8 @@
 | V1-6 | 上线验收（REAL-01 的 v1 子集），按下面的完成标准逐条在线上跑并记进 `cloud-deploy.md` | REAL-01 | 待做 |
 
 **完成标准**（全部过了，v1 就算做完）
+
+0. 核心三项：① 用户在网页上加一个公网的 MCP Server（带鉴权头），打开一个 read 工具，Task 里调用成功；打开一个 write_irreversible 工具，调用前要审批，拒绝后不执行；删掉连接后进行中的 Task 再调被拒。② 用户 Skill 在线上被 Task 读到并照着做（V1-9）。③ 子 Agent 默认打开，评测对照不劣于关闭，线上一个要并行调研的 Task 派出子 Agent 并有综合节点。
 
 1. 默认档租户经 coding-web：建会话（克隆仓库）→ 提交要改代码并交付文件的 Task → done，交付的文件能在网页上下载。
 2. 同一 Task 里 `shell_run`、`repo_*` 都经 Sandbox Service；杀掉 sandbox-service 的 Pod 后，进行中的 Task 能恢复或明确失败，不卡住（线上做一次 S11）。
@@ -43,7 +49,7 @@
 **放进 backlog 的理由**（只写容易有疑问的）
 
 - Firecracker 全线（D-20 第二段、D-21、D-22、FC-REAL、D-26）、WS-PULL-01、WK-LITE-01/02、WS-BLOB-01：性能与密度的优化，K8s 加 Kata、gVisor 现在能用。
-- D-25、N-15、NET-OPEN、D-27、N16-R 的评测对照、MEM、R-04、R-06 的修订号：新功能或生产化的扩展，v1 不缺。
+- D-25、NET-OPEN、D-27、MEM、R-04、R-06 的修订号：新功能或生产化的扩展，v1 不缺。N16-R 剩下的单个 tier 已做完；卡片冲突的代码规则不做（只靠提示）。
 - ENV-MIRROR：根本办法，但要定盘与记账；v1 用 V1-5 的临时放宽绕过。
 - SBX-ZOMBIE：只在长寿的会话环境里碰到 pids 上限，有环境销毁兜底。
 - WS-CF-524：coding-web 走集群内地址不受影响，只影响直接调 `api.cgent.link` 的外部客户端。
