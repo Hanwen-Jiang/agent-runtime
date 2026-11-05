@@ -1,29 +1,23 @@
-"""租户策略里的沙箱部分（tenant_policy 的 sandbox；W4、W5、W10、W11；D-08、D-12、D-13）。
+"""Worker 还要读的租户策略（SBX-01 之后）。选后端、配额、空闲与活满都在 Sandbox Service 里；Worker 只读：
 
-    {"sandbox": {"backend": "kata", "fallback": ["cloudflare"], "min_isolation": "microvm",
-                 "idle_timeout_s": 600, "max_lifetime_s": 7200,
-                 "quota": {"max_concurrent": 4, "daily_sandbox_seconds": 36000, "daily_cost_usd": 5, ...},
-                 "network": {...}}}
-
-- backend 没写时用部署的默认后端；fallback 是暂时不可用时依次试的后端；min_isolation 没写时取首选后端的隔离强度。
-- idle_timeout_s、max_lifetime_s 只能调低部署的默认值（15 分钟、6 小时），写得更高按默认值算。
-- 由策略决定，模型与请求都不能指定。
 - 顶层的 workspace（D-06）：{"max_workspaces": 10, "max_bytes": 2147483648, "push_branches": ["agent/*"], "cold_after_days": 14}，
-  见 WorkspaceLimits。
+  Workspace 操作建工作区、推送时核对（WorkspaceLimits）。
+- sandbox.network（D-16）：审批联网时核对（request_network、Workspace 操作连远端；规则在 sandbox.grants）。
+
+策略经 Registry 读当前版本（registry_policy），按租户缓存一分钟（TenantPolicies）；没配 Registry 时都用默认值。
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from dataclasses import dataclass, field
-from datetime import timedelta
+import time
+from collections.abc import Awaitable, Callable, Mapping
+from dataclasses import dataclass
 from typing import Any
 
-from agentruntime_worker.sandbox.ledger import Quota
+from agentruntime_core.errors import NotFoundError
 
-ISOLATION_RANK = {"none": 0, "container": 1, "microvm": 2}
-DEFAULT_IDLE = timedelta(minutes=15)
-DEFAULT_MAX_LIFETIME = timedelta(hours=6)
+# 读一个租户的当前策略文档（没有策略时 None）。
+PolicyLookup = Callable[[str], Awaitable[Mapping[str, Any] | None]]
 
 
 @dataclass(frozen=True)
@@ -34,7 +28,6 @@ class WorkspaceLimits:
     max_workspaces: int = 20
     max_bytes: int = 2 << 30
     push_branches: tuple[str, ...] = ("agent/*",)
-    # 冷热分层（DISK-B）：挂卷的工作区闲置超过这么多天转冷；0 表示租户没写，用部署的默认值（AR_WORKSPACE_COLD_AFTER_DAYS）。
     cold_after_days: int = 0
 
     @classmethod
@@ -50,49 +43,52 @@ class WorkspaceLimits:
 
 
 @dataclass(frozen=True)
-class SandboxPolicy:
-    backend: str
-    fallback: tuple[str, ...] = ()
-    min_isolation: str = ""
-    quota: Quota = field(default_factory=Quota)
-    idle_timeout: timedelta = DEFAULT_IDLE
-    max_lifetime: timedelta = DEFAULT_MAX_LIFETIME
-    network: Mapping[str, Any] = field(default_factory=dict)
-    # 不在 sandbox 一节里，是租户策略顶层的 workspace（D-06）；跟着沙箱策略一起按租户缓存。
-    workspace: WorkspaceLimits = field(default_factory=WorkspaceLimits)
+class TenantPolicy:
+    workspace: WorkspaceLimits
+    network: Mapping[str, Any]
 
-    @classmethod
-    def from_document(
-        cls,
-        doc: Mapping[str, Any] | None,
-        default_backend: str,
-        *,
-        idle_default: timedelta = DEFAULT_IDLE,
-        max_default: timedelta = DEFAULT_MAX_LIFETIME,
-    ) -> SandboxPolicy:
+
+class TenantPolicies:
+    """按租户缓存的策略（cache_ttl 秒）。"""
+
+    def __init__(self, lookup: PolicyLookup | None, *, cache_ttl: float = 60) -> None:
+        self._lookup = lookup
+        self._ttl = cache_ttl
+        self._cache: dict[str, tuple[float, TenantPolicy]] = {}
+
+    async def policy_for(self, tenant_id: str) -> TenantPolicy:
+        cached = self._cache.get(tenant_id)
+        if cached and time.monotonic() - cached[0] < self._ttl:
+            return cached[1]
+        doc: Mapping[str, Any] | None = None
+        if self._lookup is not None:
+            try:
+                doc = await self._lookup(tenant_id)
+            except NotFoundError:
+                doc = None
         sandbox = dict(((doc or {}).get("sandbox") or {}))
-        idle = idle_default
-        if sandbox.get("idle_timeout_s"):
-            idle = min(idle_default, timedelta(seconds=int(sandbox["idle_timeout_s"])))
-        lifetime = max_default
-        if sandbox.get("max_lifetime_s"):
-            lifetime = min(max_default, timedelta(seconds=int(sandbox["max_lifetime_s"])))
-        return cls(
-            backend=str(sandbox.get("backend") or default_backend),
-            fallback=tuple(str(b) for b in sandbox.get("fallback") or ()),
-            min_isolation=str(sandbox.get("min_isolation") or ""),
-            quota=Quota.from_policy(sandbox.get("quota")),
-            idle_timeout=idle,
-            max_lifetime=lifetime,
-            network=dict(sandbox.get("network") or {}),
-            workspace=WorkspaceLimits.from_policy(doc),
-        )
+        policy = TenantPolicy(workspace=WorkspaceLimits.from_policy(doc), network=dict(sandbox.get("network") or {}))
+        self._cache[tenant_id] = (time.monotonic(), policy)
+        return policy
 
-    @property
-    def names(self) -> tuple[str, ...]:
-        """首选加回退，去重保序。"""
-        out: list[str] = []
-        for name in (self.backend, *self.fallback):
-            if name not in out:
-                out.append(name)
-        return tuple(out)
+
+def registry_policy(address: str) -> PolicyLookup:
+    """经 Registry 读租户的当前策略文档。"""
+    from google.protobuf import json_format
+
+    from agentruntime_worker.activities.types import Tenant
+    from agentruntime_worker.registry.client import GrpcRegistry
+
+    registry = GrpcRegistry(address)
+
+    async def lookup(tenant_id: str) -> Mapping[str, Any] | None:
+        policy = await registry.get_tenant_policy(Tenant(tenant_id=tenant_id))
+        if not policy.HasField("document"):
+            return None
+        value = json_format.MessageToDict(policy.document.value)
+        return value if isinstance(value, dict) else None
+
+    return lookup
+
+
+__all__ = ["PolicyLookup", "TenantPolicies", "TenantPolicy", "WorkspaceLimits", "registry_policy"]

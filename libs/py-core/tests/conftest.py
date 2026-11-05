@@ -5,7 +5,7 @@ import pytest
 import pytest_asyncio
 from temporalio.testing import WorkflowEnvironment
 
-from agentruntime_core.adapters import kindtest, milvustest, pgtest, qdranttest
+from agentruntime_core.adapters import milvustest, pgtest, qdranttest
 
 # 一致性套件在包内，需要显式开启断言改写，失败时才有详细信息。
 pytest.register_assert_rewrite("agentruntime_core.conformance")
@@ -49,17 +49,6 @@ def milvus_instance() -> Iterator[milvustest.Instance]:
         _missing(str(err))
     yield instance
     instance.stop()
-
-
-@pytest.fixture(scope="session")
-def kind_cluster() -> Iterator[kindtest.Cluster]:
-    """kind 拉起（或复用，AR_KIND_REUSE=1）的小集群，整个测试会话共用（docs/plan/cloud-deploy.md D-05）。"""
-    try:
-        cluster = kindtest.Cluster()
-    except kindtest.MissingTool as err:
-        _missing(str(err))
-    yield cluster
-    cluster.stop()
 
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")

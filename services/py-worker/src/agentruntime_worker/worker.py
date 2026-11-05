@@ -4,8 +4,8 @@
 
     python -m agentruntime_worker --queues task,decision,model,program,workspace
 
-沙箱环境表的对账（D-11）：订阅 task 队列、又配了沙箱后端的 Worker 启动时确保平台级的 SandboxReconcileWorkflow 在跑
-（固定的工作流 ID，已在跑就不再起）；它的 activity 在 program 队列上。
+沙箱的借还、对账与按项目构建环境都在 Sandbox Service 里（SBX-01）。原来的对账工作流与构建工作流照旧登记（Temporal 里可能还有
+它们的运行），activity 换成 sandbox.retired 里的；订阅 task 队列的 Worker 启动时结束还在跑的对账工作流。
 """
 
 from __future__ import annotations
@@ -15,13 +15,11 @@ import asyncio
 import contextlib
 import dataclasses
 import os
-from datetime import timedelta
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
 from temporalio.client import Client
-from temporalio.common import WorkflowIDConflictPolicy
 from temporalio.converter import DataConverter
 from temporalio.worker import Worker
 
@@ -41,11 +39,10 @@ from agentruntime_worker.policy import PolicyEngine
 from agentruntime_worker.registry import RegistryCatalog, RegistryStagePolicy, closing_registries, registry_client
 from agentruntime_worker.reviewer.activities import dev_reviewer
 from agentruntime_worker.telemetry import worker_telemetry
-from agentruntime_worker.sandbox.env_build import EnvBuildActivities, temporal_starter
-from agentruntime_worker.sandbox.reconcile import ReconcileActivities
+from agentruntime_worker.sandbox.retired import RetiredSandboxActivities
 from agentruntime_worker.tools import DevCatalog, ToolCatalog, dev_tools, sandbox_broker, tool_sessions, workspace_operations
 from agentruntime_worker.workflows.env_build import EnvironmentBuildWorkflow
-from agentruntime_worker.workflows.sandbox_reconcile import ReconcileInput, SandboxReconcileWorkflow
+from agentruntime_worker.workflows.sandbox_reconcile import SandboxReconcileWorkflow
 from agentruntime_worker.workflows.stage_runner import SubAgentWorkflow, SubgraphWorkflow
 from agentruntime_worker.workflows.task import TaskWorkflow
 from agentruntime_worker.workflows.workspace import WorkspaceOperationWorkflow
@@ -173,11 +170,7 @@ def build_workers(
     activities = {
         **decision_activities(config, stubs),
         **(executor or dev_executor(config, client=client)).activities(),
-        **ReconcileActivities(
-            sandbox_broker(config), hold_max=timedelta(seconds=config.sandbox_hold_max_s), telemetry=worker_telemetry(),
-            cold_after_days=config.workspace_cold_after_days, runtime=config.sandbox_runtime,
-        ).activities(),
-        **EnvBuildActivities(sandbox_broker(config)).activities(),
+        **RetiredSandboxActivities().activities(),
         **WorkspaceActivities(workspace_operations(config)).activities(),
     }
     workers = []
@@ -198,38 +191,32 @@ async def serve(config: WorkerConfig, queues: Sequence[str]) -> None:
     """连上 Temporal，每个队列起一个 Worker，一直运行到被取消（Ctrl+C 时 asyncio.run 取消它）。
 
     退出时（包括被取消、Worker 出错）关闭本进程为 Node Executor、Planner、Reviewer、tool_loop 创建的 Model Gateway 客户端
-    （GrpcModelGateway.aclose；同一地址共用一个）、Registry 客户端（GrpcRegistry.aclose）与 MCP 会话（tool_sessions，T-10）；
-    桩模型 StubModelGateway 没有要关的东西。
+    （GrpcModelGateway.aclose；同一地址共用一个）、Registry 客户端（GrpcRegistry.aclose）、MCP 会话（tool_sessions，T-10）与
+    Sandbox Service 的连接；桩模型 StubModelGateway 没有要关的东西。
     """
     client = await connect(config)
     async with closing_model_gateways(), closing_registries(), tool_sessions(config), contextlib.AsyncExitStack() as stack:
         for worker in build_workers(client, config, queues):
             await stack.enter_async_context(worker)
         broker = sandbox_broker(config)
-        if broker is not None and broker.environments is not None:
-            # 项目环境的构建交给 Temporal 的构建工作流（D-17）：shell_run 发现要构建时起它，Worker 重启也不丢。
-            broker.environments.starter = temporal_starter(client, timeout_s=int(broker.environments.limits.build_timeout.total_seconds()))
-        if names.TASK_QUEUE in queues and broker is not None:
-            await ensure_sandbox_reconcile(client, config)
+        if broker is not None:
+            stack.push_async_callback(broker.aclose)
+        if names.TASK_QUEUE in queues:
+            await retire_sandbox_reconcile(client)
         await asyncio.Event().wait()
 
 
-async def ensure_sandbox_reconcile(
-    client: Client,
-    config: WorkerConfig,
-    *,
-    workflow_id: str = names.SANDBOX_RECONCILE_WORKFLOW_ID,
-    task_queue: str = names.TASK_QUEUE,
-    activity_queue: str = names.PROGRAM_QUEUE,
-) -> None:
-    """确保对账工作流在跑：固定的工作流 ID，已在跑就沿用（几个 Worker 副本同时启动也只有一个）。"""
-    await client.start_workflow(
-        names.SANDBOX_RECONCILE_WORKFLOW,
-        ReconcileInput(interval_s=config.sandbox_reconcile_interval_s, activity_queue=activity_queue),
-        id=workflow_id,
-        task_queue=task_queue,
-        id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
-    )
+async def retire_sandbox_reconcile(client: Client, *, workflow_id: str = names.SANDBOX_RECONCILE_WORKFLOW_ID) -> bool:
+    """结束还在跑的对账工作流（SBX-01 之前由 Worker 起；对账已经搬进 Sandbox Service）。没有在跑的返回 False。"""
+    from temporalio.service import RPCError, RPCStatusCode
+
+    try:
+        await client.get_workflow_handle(workflow_id).terminate(reason="沙箱的对账已经搬进 Sandbox Service（SBX-01）")
+    except RPCError as err:
+        if err.status == RPCStatusCode.NOT_FOUND:
+            return False
+        raise
+    return True
 
 
 def main(argv: Sequence[str] | None = None) -> int:

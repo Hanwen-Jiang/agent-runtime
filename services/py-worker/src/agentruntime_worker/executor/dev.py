@@ -29,6 +29,7 @@ from agentruntime_core.dev.sandbox import LocalSubprocessSandboxProvider
 from agentruntime_core.dev.secret_store import LocalFileSecretStoreProvider
 from agentruntime_core.providers.human_channel import Reply
 from agentruntime_core.providers.object_store import ObjectStoreProvider
+from agentruntime_core.providers.sandbox import SandboxProvider
 
 from agentruntime_worker import names
 from agentruntime_worker.activities.stubs import StubModelGateway
@@ -41,7 +42,7 @@ from agentruntime_worker.executor.schemas import DictSchemaResolver
 from agentruntime_worker.context.builder import ContextBuilder, ContextConfig
 from agentruntime_worker.session.transcript import session_transcript
 from agentruntime_worker.telemetry import worker_telemetry
-from agentruntime_worker.tools import dev_tools
+from agentruntime_worker.tools import dev_tools, sandbox_broker
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +126,18 @@ def dev_secret_store(config: WorkerConfig, root: Path) -> LocalFileSecretStorePr
     return LocalFileSecretStoreProvider(secrets)
 
 
+def dev_sandbox(config: WorkerConfig, root: Path) -> SandboxProvider:
+    """内置模板 sandbox_exec 用的 Sandbox：配了 Sandbox Service（AR_TOOL_SHELL_SANDBOX=sandbox）时经它借一次性的环境（SBX-01），
+    否则是本机子进程（只给开发与测试）。"""
+    if config.tool_shell_sandbox == "sandbox":
+        broker = sandbox_broker(config)
+        if broker is not None:
+            from agentruntime_worker.sandbox.client import ServiceSandboxProvider
+
+            return ServiceSandboxProvider(broker)  # type: ignore[return-value]
+    return LocalSubprocessSandboxProvider(root / "sandbox")
+
+
 def dev_executor(
     config: WorkerConfig,
     *,
@@ -145,7 +158,7 @@ def dev_executor(
         telemetry=worker_telemetry(),
         models=model_gateway_instance,
         schemas=DictSchemaResolver({}),
-        sandbox=LocalSubprocessSandboxProvider(root / "sandbox"),
+        sandbox=dev_sandbox(config, root),
         transcript=session_transcript(config.relational_dsn, config.data_dir, object_store),
         stream_deliver=config.stream_deliver,
         # 逐字增量（DELTA）：给了 task-service 的内部端口才推。

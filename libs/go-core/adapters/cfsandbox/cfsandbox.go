@@ -170,6 +170,7 @@ func (b *box) endpoint(envID string) (sandboxagent.Endpoint, error) {
 }
 
 func (b *box) Create(ctx context.Context, spec sandbox.Spec) (sandbox.Env, error) {
+	spec = spec.WithDefaults()
 	if err := b.p.faults.Check("create"); err != nil {
 		return sandbox.Env{}, err
 	}

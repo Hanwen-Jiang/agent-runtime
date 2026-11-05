@@ -15,6 +15,7 @@ package sandbox
 
 import (
 	"context"
+	"errors"
 	"io"
 	"regexp"
 	"strings"
@@ -23,6 +24,10 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 )
+
+// ErrExecNotStopped 跟在调用方取消的 Exec 的错误后面（errors.Is 判断）：取消之后沙箱没确认命令停了（旧的 agent 没有取消接口，
+// 或经桥、API Server 时断开连接传不到），命令可能还在跑、还在改文件。调用方不能当它停了（例如不能马上还原检查点）。
+var ErrExecNotStopped = errors.New("sandbox: 取消命令之后沙箱没确认它停了")
 
 // Spec 是建环境的参数。
 type Spec struct {
@@ -37,6 +42,26 @@ type Spec struct {
 	SessionID string
 	// Image 是显式的环境镜像（D-17）；后端只接受部署登记的环境镜像仓库下的引用，不支持的后端 invalid（unsupported_image）。
 	Image string
+}
+
+// WithDefaults 补上没给的项（与原来 Python 的 SandboxSpec 默认值相同）：python、1000 毫核、512 MiB、空闲 10 分钟、断网。
+func (s Spec) WithDefaults() Spec {
+	if s.Runtime == "" {
+		s.Runtime = "python"
+	}
+	if s.CPUMillis <= 0 {
+		s.CPUMillis = 1000
+	}
+	if s.MemoryMB <= 0 {
+		s.MemoryMB = 512
+	}
+	if s.IdleTimeout <= 0 {
+		s.IdleTimeout = 10 * time.Minute
+	}
+	if s.Network == "" {
+		s.Network = "none"
+	}
+	return s
 }
 
 // Env 是建好的环境。

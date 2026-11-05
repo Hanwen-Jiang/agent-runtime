@@ -70,27 +70,20 @@ ENV_MCP_TOOLS_FILE = "AR_MCP_TOOLS_FILE"
 ENV_TOOL_SHELL_SANDBOX = "AR_TOOL_SHELL_SANDBOX"
 ENV_TOOL_SHELL_IMAGE = "AR_TOOL_SHELL_IMAGE"
 ENV_SANDBOX_BACKENDS_FILE = "AR_SANDBOX_BACKENDS_FILE"
+# Sandbox Service 的地址（SBX-01）：Worker 的沙箱一律经它（shell_run、repo_*、Workspace 操作、sandbox_exec）。
+ENV_SANDBOX_SERVICE_ADDRESS = "AR_SANDBOX_SERVICE_ADDRESS"
 SHELL_SANDBOXES = ("host", "docker", "sandbox")
 # 业务库（沙箱环境表在这里，D-11）：设了是 Postgres（行级安全，与 task-service 同一个库），没设是数据目录下的 SQLite。
 ENV_RELATIONAL_DSN = "AR_RELATIONAL_DSN"
 # 会话级沙箱（D-13）：sandbox 时默认按（工作区，会话）复用环境；设 0 改回每条命令一个环境。
 ENV_SANDBOX_SESSIONS = "AR_SANDBOX_SESSIONS"
-# 沙箱环境表的对账间隔（秒，D-11）。
-ENV_SANDBOX_RECONCILE_INTERVAL_S = "AR_SANDBOX_RECONCILE_INTERVAL_S"
-# 会话级环境在它的 Task 还没结束（等人）时最多保留多久（秒，从最后一次使用算起；docs/plan/feedback-2026-11-01.md N-05）。0 不保留。
-ENV_SANDBOX_HOLD_MAX_S = "AR_SANDBOX_HOLD_MAX_S"
 # shell_run 在沙箱里用的运行环境（D-14）：后端登记把它映射到镜像，例如 universal（多语言，默认的生产配置）或 python。
 ENV_SANDBOX_RUNTIME = "AR_SANDBOX_RUNTIME"
-# 包镜像的地址（D-15），例如 http://ar-agent-runtime-pkg-mirror:8093：设了就给 K8s 与本地后端的命令注入镜像源变量。
-ENV_PKG_MIRROR_URL = "AR_PKG_MIRROR_URL"
-# 出网网关的代理地址（D-16），例如 http://ar-agent-runtime-egress-gateway:8095：设了就给 K8s 与本地后端的命令注入代理变量，
-# 并登记 request_network 工具；预览地址的域名（例如 preview.example.com），设了 request_network 才能开预览地址。
+# 出网网关的代理地址（D-16）：设了就登记 request_network 工具（注入代理变量的是 Sandbox Service，SBX-01）；预览地址的域名（例如 preview.example.com），设了 request_network 才能开预览地址。
 ENV_EGRESS_GATEWAY_URL = "AR_EGRESS_GATEWAY_URL"
 ENV_PREVIEW_DOMAIN = "AR_PREVIEW_DOMAIN"
 # Workspace API 收本地的远端（file://），只给测试与开发用（D-06）；生产只收 https。
 ENV_WORKSPACE_ALLOW_LOCAL_REMOTES = "AR_WORKSPACE_ALLOW_LOCAL_REMOTES"
-# 冷热分层（DISK-B）的部署默认值：挂卷的工作区闲置超过这么多天转冷（租户策略的 workspace.cold_after_days 优先）；不设时不转冷。
-ENV_WORKSPACE_COLD_AFTER_DAYS = "AR_WORKSPACE_COLD_AFTER_DAYS"
 
 
 @dataclass(frozen=True)
@@ -142,22 +135,20 @@ class WorkerConfig:
     tool_workspace_root: Path | None = None
     tool_fetch_hosts: tuple[str, ...] = ()
     mcp_tools_file: Path | None = None
-    # shell_run 的沙箱（AR_TOOL_SHELL_SANDBOX）、docker 时的镜像（AR_TOOL_SHELL_IMAGE）、sandbox 时的后端登记文件（AR_SANDBOX_BACKENDS_FILE）。
+    # shell_run 的沙箱（AR_TOOL_SHELL_SANDBOX）、docker 时的镜像（AR_TOOL_SHELL_IMAGE）。sandbox 时经 Sandbox Service
+    # （AR_SANDBOX_SERVICE_ADDRESS，SBX-01）；后端登记文件（AR_SANDBOX_BACKENDS_FILE）归服务，Worker 只看里面有没有托管后端
+    # （有时登记 request_network）。
     tool_shell_sandbox: str = "host"
     tool_shell_image: str = "python:3.13-slim"
     sandbox_backends_file: Path | None = None
+    sandbox_service_address: str = ""
     # 业务库的连接串（AR_RELATIONAL_DSN）；里面有口令，不进 repr 与比较。
     relational_dsn: str = field(default="", repr=False, compare=False)
     sandbox_sessions: bool = True
-    sandbox_reconcile_interval_s: int = 60
-    sandbox_hold_max_s: int = 7200
     sandbox_runtime: str = "python"
-    pkg_mirror_url: str = ""
     egress_gateway_url: str = ""
     preview_domain: str = ""
     workspace_allow_local_remotes: bool = False
-    # 0 表示不转冷（DISK-B）。
-    workspace_cold_after_days: int = 0
     judge: str = ""
     judge_url: str = "https://api.typesafe.ai"
     judge_model: str = "jev-latest"
@@ -214,28 +205,15 @@ class WorkerConfig:
         if sandbox not in SHELL_SANDBOXES:
             raise ValueError(f"{ENV_TOOL_SHELL_SANDBOX} 只能是 {'、'.join(SHELL_SANDBOXES)}")
         backends = env.get(ENV_SANDBOX_BACKENDS_FILE, "").strip()
-        if sandbox == "sandbox" and not backends:
-            raise ValueError(f"{ENV_TOOL_SHELL_SANDBOX}=sandbox 时要给 {ENV_SANDBOX_BACKENDS_FILE}")
+        service = env.get(ENV_SANDBOX_SERVICE_ADDRESS, "").strip()
+        if sandbox == "sandbox" and not service:
+            raise ValueError(f"{ENV_TOOL_SHELL_SANDBOX}=sandbox 时要给 {ENV_SANDBOX_SERVICE_ADDRESS}（沙箱一律经 Sandbox Service）")
         sessions = env.get(ENV_SANDBOX_SESSIONS, "").strip() or "1"
         if sessions not in ("0", "1"):
             raise ValueError(f"{ENV_SANDBOX_SESSIONS} 只能是 0 或 1")
-        hold_raw = env.get(ENV_SANDBOX_HOLD_MAX_S, "").strip()
-        if hold_raw and (not hold_raw.isdigit()):
-            raise ValueError(f"{ENV_SANDBOX_HOLD_MAX_S} 必须是不小于 0 的整数（秒）")
-        hold_max = int(hold_raw) if hold_raw else cls.sandbox_hold_max_s
-        interval = cls.sandbox_reconcile_interval_s
-        raw = env.get(ENV_SANDBOX_RECONCILE_INTERVAL_S, "")
-        if raw:
-            if not raw.isdigit() or int(raw) < 5:
-                raise ValueError(f"{ENV_SANDBOX_RECONCILE_INTERVAL_S} 必须是不小于 5 的整数（秒）")
-            interval = int(raw)
         local_remotes = env.get(ENV_WORKSPACE_ALLOW_LOCAL_REMOTES, "").strip() or "0"
         if local_remotes not in ("0", "1"):
             raise ValueError(f"{ENV_WORKSPACE_ALLOW_LOCAL_REMOTES} 只能是 0 或 1")
-        cold_raw = env.get(ENV_WORKSPACE_COLD_AFTER_DAYS, "").strip()
-        if cold_raw and (not cold_raw.isdigit() or int(cold_raw) > 365):
-            raise ValueError(f"{ENV_WORKSPACE_COLD_AFTER_DAYS} 必须是 0 到 365 的整数（天）")
-        cold_after_days = int(cold_raw) if cold_raw else cls.workspace_cold_after_days
         stream = env.get(ENV_STREAM_DELIVER, "").strip() or "1"
         if stream not in ("0", "1"):
             raise ValueError(f"{ENV_STREAM_DELIVER} 只能是 0 或 1")
@@ -286,16 +264,13 @@ class WorkerConfig:
             tool_shell_sandbox=sandbox,
             tool_shell_image=env.get(ENV_TOOL_SHELL_IMAGE, "").strip() or cls.tool_shell_image,
             sandbox_backends_file=Path(backends) if backends else None,
+            sandbox_service_address=service,
             relational_dsn=env.get(ENV_RELATIONAL_DSN, "").strip(),
             sandbox_sessions=sessions == "1",
-            sandbox_reconcile_interval_s=interval,
-            sandbox_hold_max_s=hold_max,
             sandbox_runtime=env.get(ENV_SANDBOX_RUNTIME, "").strip() or cls.sandbox_runtime,
-            pkg_mirror_url=env.get(ENV_PKG_MIRROR_URL, "").strip(),
             egress_gateway_url=env.get(ENV_EGRESS_GATEWAY_URL, "").strip(),
             preview_domain=env.get(ENV_PREVIEW_DOMAIN, "").strip(),
             workspace_allow_local_remotes=local_remotes == "1",
-            workspace_cold_after_days=cold_after_days,
         )
 
     def store_paths(self, root: Path) -> tuple[Path, Path]:

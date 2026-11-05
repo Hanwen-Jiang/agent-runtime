@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from datetime import timedelta
 from typing import Any
 
@@ -23,20 +24,25 @@ from agentruntime_core.providers.sandbox import SandboxSpec
 from agentruntime_core.providers.tool_driver import ToolHandler, ToolInvocation, ToolSpec
 from agentruntime_core.tenancy import TenantContext
 
-from agentruntime_worker.sandbox.broker import SandboxBroker
-from agentruntime_worker.sandbox.grants import GRANT_MINUTES, MAX_HOSTS, NetworkPolicy, check_request
-from agentruntime_worker.sandbox.ledger import parse_iso
+from agentruntime_worker.sandbox.client import ServiceBroker
+from agentruntime_worker.sandbox.grants import GRANT_MINUTES, MAX_HOSTS, GrantStore, NetworkPolicy, check_request
+from agentruntime_worker.sandbox.policy import TenantPolicies
+from agentruntime_worker.sandbox.times import parse_iso
 
 NAME = "request_network"
 VERSION = "v1"
 
 
 class NetworkTool:
-    def __init__(self, broker: SandboxBroker, *, preview_domain: str = "", runtime: str = "python", session_sandboxes: bool = False) -> None:
-        if broker.grants is None:
-            raise ValueError("request_network 要有沙箱环境表（业务库）")
+    def __init__(
+        self, broker: ServiceBroker, grants: GrantStore, policies: TenantPolicies, credential_key: Callable[[], Awaitable[bytes | None]], *,
+        preview_domain: str = "", runtime: str = "python", session_sandboxes: bool = False,
+    ) -> None:
         self.broker = broker
-        self.grants = broker.grants
+        self.grants = grants
+        self.policies = policies
+        # 预览地址的令牌是环境凭据（用途 preview）：签发的密钥是 SecretStore 平台作用域的 sandbox/env-credential-key。
+        self.credential_key = credential_key
         self.preview_domain = preview_domain.strip(".").lower()
         self.runtime = runtime
         self.session_sandboxes = session_sandboxes
@@ -77,7 +83,7 @@ class NetworkTool:
         if not task_id:
             raise InvalidError("no_task", "联网授权属于 Task，request_network 要在 Task 里调用")
         args = invocation.arguments
-        policy = NetworkPolicy.from_policy((await self.broker.sandboxes.policy_for(tenant_id)).network)
+        policy = NetworkPolicy.from_policy((await self.policies.policy_for(tenant_id)).network)
         request = check_request(
             policy, hosts=list(args["hosts"]), ports=list(args.get("ports") or ()), minutes=int(args["minutes"]), reason=str(args.get("reason") or ""),
             preview_port=int(args.get("preview_port") or 0),
@@ -113,17 +119,15 @@ class NetworkTool:
         spec = SandboxSpec(runtime=self.runtime, workspace_id=tenant.workspace_id, session_id=invocation.session_id, idle_timeout=timedelta(minutes=15))
         lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=True)
         try:
-            address = getattr(lease.box, "preview_address", None)
-            if address is None or lease.record is None:
+            if lease.record is None:
                 raise InvalidError("preview_unsupported", f"沙箱后端 {lease.backend.name} 不能开预览地址")
-            target = await address(lease.env_id, port)
+            target = await lease.box.preview_address(lease.env_id, port)
             return lease.record.env_ref, target
         finally:
             await self.broker.release(lease, keep=True)
 
     async def _preview_url(self, tenant_id: str, env_ref: str, port: int, expires_at: str) -> str:
-        assert self.broker.credentials is not None
-        key = await self.broker.credentials.key()
+        key = await self.credential_key()
         if not key:
             raise InvalidError("preview_unsupported", f"SecretStore 的平台作用域里没有 {envcred.SECRET_NAME}")
         expires = parse_iso(expires_at)

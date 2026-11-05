@@ -1,4 +1,4 @@
-"""沙箱环境表的对账工作流（D-11；做什么见 agentruntime_worker.sandbox.reconcile）。
+"""沙箱环境表的对账工作流（D-11）。对账已经搬进 Sandbox Service（SBX-01），这个工作流只为回放旧的运行留着，activity 见 sandbox.retired。
 
 平台级、固定的工作流 ID（names.SANDBOX_RECONCILE_WORKFLOW_ID），Worker 启动时确保它在跑（已在跑就不再起）。每隔 interval_s
 在 program 队列上跑一次 reconcile_sandboxes activity，跑满 rounds 次后 continue_as_new。工作流代码只排 activity 与计时器，

@@ -2,9 +2,9 @@
 # 所有 job 合起来恰好是脚本 pr 档的全部步骤（tests/contract/test_ci_workflow.py 核对）。故障注入套件与 Postgres 业务库上的
 # 端到端测试留在夜间任务（nightly.yml）。
 # 工具链与夜间任务、CLAUDE.md 一致：Go 1.27、uv 0.12（Python 3.13）、buf 1.73、Temporal CLI 1.9.1、PostgreSQL（runner 预装）、
-# Qdrant 1.19.1、Milvus 3.0.2（py-core 的测试用 runner 预装的 Docker 拉起单机版容器）、kind 0.33.0 与 kubectl（py-core 的
-# K8s 沙箱测试用 kind 拉起集群，编译 Rust 版 sandbox-agent）、Helm 3.19（tests/deploy 用）；Rust 按 rust-toolchain.toml（runner 预装的
-# rustup 装固定的版本）、cargo-deny（rust 这一步，D-28）；
+# Qdrant 1.19.1、Milvus 3.0.2（py-core 的测试用 runner 预装的 Docker 拉起单机版容器）、kind 0.33.0 与 kubectl（libs/go-core 的
+# K8s 沙箱测试用 kind 拉起集群，SBX-01）、Helm 3.19（tests/deploy 用）；Rust 按 rust-toolchain.toml（runner 预装的
+# rustup 装固定的版本；沙箱的测试编译 Rust 版 sandbox-agent）、cargo-deny（rust 这一步，D-28）；
 # otelcol-contrib 与 Chart 里的 Collector 镜像同一版本（tests/deploy 用它校验 Collector 配置）。缺工具就失败，不跳过。
 name: ci
 
@@ -77,9 +77,9 @@ jobs:
           path: ${{ runner.temp }}/junit
 
   go:
-    name: Go（go.work 的每个模块，含 Postgres 行级安全）
+    name: Go（go.work 的每个模块，含 Postgres 行级安全与 kind 里的 K8s 沙箱）
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -88,12 +88,22 @@ jobs:
           go-version: "1.27"
           cache-dependency-path: "**/go.sum"
 
-      - name: 安装 Temporal CLI
+      # libs/go-core 的沙箱后端测试编译 Rust 版 sandbox-agent（testkit，D-28）。runner 预装了 rustup：按 rust-toolchain.toml 装固定的版本。
+      - name: 安装 Rust（rust-toolchain.toml）
+        run: |
+          rustup toolchain install || rustup show
+          cargo --version
+
+      - name: 安装 Temporal CLI 与 kind
         run: |
           mkdir -p "$HOME/.local/bin"
           curl -sSfL "https://github.com/temporalio/cli/releases/download/v${TEMPORAL_CLI_VERSION}/temporal_cli_${TEMPORAL_CLI_VERSION}_linux_amd64.tar.gz" \
             | tar -xz -C "$HOME/.local/bin" temporal
+          curl -sSfL -o "$HOME/.local/bin/kind" "https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-linux-amd64"
+          chmod +x "$HOME/.local/bin/kind"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # runner 预装了 kubectl；kind 集群的工作区放在 runner 的本地盘上（libs/go-core 的 kindtest）。
+          echo "AR_KIND_WORKSPACES=$RUNNER_TEMP/kind-workspaces" >> "$GITHUB_ENV"
 
       - name: 找到预装的 Postgres 二进制（initdb、pg_ctl、psql）
         run: |
@@ -149,41 +159,26 @@ jobs:
           path: ${{ runner.temp }}/junit
 
   python:
-    name: py-core、py-memory、py-learning（Postgres + Qdrant + Milvus + kind）
+    name: py-core、py-memory、py-learning（Postgres + Qdrant + Milvus）
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.27"
-          cache-dependency-path: "**/go.sum"
 
       - uses: astral-sh/setup-uv@v6
         with:
           version: "0.12.x"
           enable-cache: true
 
-      # K8s 与 Cloudflare 假桥的测试编译 Rust 版 sandbox-agent（D-28）。runner 预装了 rustup：按 rust-toolchain.toml 装固定的版本、组件与 musl 目标。
-      - name: 安装 Rust（rust-toolchain.toml）
-        run: |
-          rustup toolchain install || rustup show
-          cargo --version
-
-      - name: 安装 Temporal CLI、Qdrant 与 kind
+      - name: 安装 Temporal CLI 与 Qdrant
         run: |
           mkdir -p "$HOME/.local/bin" "$HOME/.local/qdrant"
           curl -sSfL "https://github.com/temporalio/cli/releases/download/v${TEMPORAL_CLI_VERSION}/temporal_cli_${TEMPORAL_CLI_VERSION}_linux_amd64.tar.gz" \
             | tar -xz -C "$HOME/.local/bin" temporal
           curl -sSfL "https://github.com/qdrant/qdrant/releases/download/v${QDRANT_VERSION}/qdrant-x86_64-unknown-linux-gnu.tar.gz" \
             | tar -xz -C "$HOME/.local/qdrant" qdrant
-          curl -sSfL -o "$HOME/.local/bin/kind" "https://github.com/kubernetes-sigs/kind/releases/download/v${KIND_VERSION}/kind-linux-amd64"
-          chmod +x "$HOME/.local/bin/kind"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           echo "AR_QDRANT_BIN=$HOME/.local/qdrant" >> "$GITHUB_ENV"
-          # runner 预装了 kubectl；kind 集群的工作区放在 runner 的本地盘上。
-          echo "AR_KIND_WORKSPACES=$RUNNER_TEMP/kind-workspaces" >> "$GITHUB_ENV"
 
       - name: 找到预装的 Postgres 二进制（initdb、pg_ctl、psql）
         run: |
@@ -213,11 +208,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 沙箱的测试要编译 sandbox-agent（Cloudflare 假桥里跑它，D-11；Rust 版，D-28）。runner 预装了 rustup：按 rust-toolchain.toml 装固定的版本、组件与 musl 目标。
+      # 沙箱的测试要编译 Sandbox Service（Go）与 sandbox-agent（Rust 版，D-28；SBX-01：Worker 的沙箱一律经服务）。
+      # runner 预装了 rustup：按 rust-toolchain.toml 装固定的版本、组件与 musl 目标。
       - name: 安装 Rust（rust-toolchain.toml）
         run: |
           rustup toolchain install || rustup show
           cargo --version
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
 
       - uses: astral-sh/setup-uv@v6
         with:

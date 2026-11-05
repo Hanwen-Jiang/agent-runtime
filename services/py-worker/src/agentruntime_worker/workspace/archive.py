@@ -38,7 +38,7 @@ from agentruntime_core.providers.sandbox import FileEntry
 from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker.sandbox.env_config import BoundEnvironment, EnvironmentConfig
-from agentruntime_worker.sandbox.ledger import iso, utc_now
+from agentruntime_worker.sandbox.times import iso, utc_now
 from agentruntime_worker.sandbox.policy import WorkspaceLimits
 from agentruntime_worker.workspace import timing
 

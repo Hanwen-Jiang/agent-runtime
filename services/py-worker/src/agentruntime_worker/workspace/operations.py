@@ -18,8 +18,8 @@ activity（program 队列）；这里是它做的事：在承载工作区的沙�
 - 远端一律是业务库里记的 repo_url（建工作区时给的，复制的沿用源的），不读沙箱里 .git/config 的 origin：沙箱里的代码改得了它。
   连远端的 git（推送前的对账、推送、同步取远端）也不读工作副本的 .git/config（G-03 第 9 条）：在环境里一个临时的裸仓库下跑，
   对象库指回工作副本（见 _DETACHED_ENV）。建工作区时的克隆与取提交是在刚建的空目录里，配置是这次操作自己写的。
-- 没配沙箱（AR_TOOL_SHELL_SANDBOX 是 host 或 docker）时 Worker 用一个只登记本地后端的 SandboxBroker（tools.workspace_operations），
-  工作区就是 <AR_TOOL_WORKSPACE_ROOT>/<租户>/<workspace>，与 shell_run、repo_* 是同一处。
+- 环境一律经 Sandbox Service 借（SBX-01，tools.workspace_operations）：挂卷或存档模式由服务按租户策略定；Worker 挂着工作区卷
+  （workspace_root）时，挂卷模式下复制工作区直接在卷上做（.git/objects 用硬链接），否则在环境里导出、导入。
 - 错误：transient 抛出（activity 按工作流的重试策略重试，推送不重试），别的错误写进结果的 error（统一错误模型）。
 - 计时（PERF-00，见 workspace.timing）：给了 telemetry 时每次操作记一个 runtime.workspace_op span（排队、借环境、恢复、命令、
   存档、归还的独占耗时与进出 Worker 的字节数），另记直方图 runtime.workspace_op.duration_ms 与计数器 runtime.worker.bytes。
@@ -60,10 +60,12 @@ from agentruntime_core.sealing import open_sealed
 from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker import names
-from agentruntime_worker.sandbox.broker import Lease, SandboxBroker
+from agentruntime_worker.sandbox.client import RemoteLease as Lease
+from agentruntime_worker.sandbox.client import ServiceBroker
 from agentruntime_worker.sandbox.env_config import EnvironmentConfig
-from agentruntime_worker.sandbox.grants import NetworkPolicy, check_request
-from agentruntime_worker.sandbox.ledger import iso
+from agentruntime_worker.sandbox.grants import GrantStore, NetworkPolicy, check_request
+from agentruntime_worker.sandbox.policy import TenantPolicies
+from agentruntime_worker.sandbox.times import iso
 from agentruntime_worker.workspace import timing
 from agentruntime_worker.workspace.archive import WorkspaceRecord
 from agentruntime_worker.workspace.copy import copy_working_copy
@@ -207,15 +209,22 @@ def struct(value: Mapping[str, Any]) -> struct_pb2.Struct:
 class WorkspaceOperations:
     def __init__(
         self,
-        broker: SandboxBroker | None,
+        broker: ServiceBroker | None,
         *,
         secret: Callable[[], Awaitable[bytes | None]],
         runtime: str = "python",
         allow_local_remotes: bool = False,
         git_timeout: timedelta = timedelta(minutes=15),
         telemetry: TelemetryProvider | None = None,
+        grants: GrantStore | None = None,
+        policies: TenantPolicies | None = None,
+        workspace_root: Path | None = None,
     ) -> None:
         self.broker = broker
+        self.grants = grants
+        self.policies = policies or TenantPolicies(None)
+        # Worker 挂着工作区卷时的根（挂卷模式下复制工作区直接在卷上做）；没挂时 None。
+        self.workspace_root = workspace_root
         self._secret = secret
         self.runtime = runtime
         self.allow_local_remotes = allow_local_remotes
@@ -284,7 +293,7 @@ class WorkspaceOperations:
 
     async def _dispatch(self, inp: workspace_pb2.WorkspaceOperationInput) -> dict[str, Any]:
         if self.broker is None or self.broker.archiver is None:
-            raise InvalidError("workspace_api_unavailable", "这个 Worker 没有配沙箱，也没有配工作区目录（AR_TOOL_WORKSPACE_ROOT），不能执行工作区的操作")
+            raise InvalidError("workspace_api_unavailable", "这个 Worker 没有配 Sandbox Service（AR_SANDBOX_SERVICE_ADDRESS），不能执行工作区的操作")
         owner = inp.tenant.tenant_id
         if not owner or owner == PLATFORM_ID or not _SLUG.match(owner):
             raise InvalidError("invalid_tenant", "工作区只属于租户")
@@ -341,7 +350,7 @@ class WorkspaceOperations:
             if source == ws or not _SLUG.match(source):
                 raise InvalidError("invalid_source", "from_workspace_id 要是同租户里另一个工作区")
             origin = await self._record_of(owner, source)
-        limits = (await self._broker.sandboxes.policy_for(owner)).workspace
+        limits = (await self.policies.policy_for(owner)).workspace
         await self._archiver.ensure(owner, ws, limits, repo_url=url or (origin.repo_url if origin else ""), exclusive=True)
         try:
             if environment is not None:
@@ -406,7 +415,7 @@ class WorkspaceOperations:
             if copied is not None:
                 return copied[1], copied[2]
         else:
-            root = self._broker.sandboxes.workspace_root
+            root = self.workspace_root
             if root is not None and (Path(root) / owner / source).is_dir():
                 src, dst = Path(root) / owner / source, Path(root) / owner / inp.workspace_id
                 stats = await asyncio.to_thread(copy_working_copy, src, dst, max_bytes=max_bytes)
@@ -607,7 +616,7 @@ class WorkspaceOperations:
         owner, ws = inp.tenant.tenant_id, inp.workspace_id
         record = await self._record(inp)
         branch = check_branch(str(args.get("branch") or ""))
-        limits = (await self._broker.sandboxes.policy_for(owner)).workspace
+        limits = (await self.policies.policy_for(owner)).workspace
         if not branch_allowed(limits.push_branches, branch):
             raise DeniedError("branch_not_allowed", f"租户策略只许推到 {'、'.join(limits.push_branches)}")
         if not record.repo_url:
@@ -650,9 +659,8 @@ class WorkspaceOperations:
                 snap = await self._archiver.latest(owner, ws)
             if snap is None:
                 # 还没存过（例如建了以后没用过）：借一个环境恢复（空的）再存一份。
-                async with self._lease(inp, writable=True) as lease:
+                async with self._lease(inp, writable=True, skip_snapshot=True) as lease:
                     snap = await self._broker.snapshot(lease)
-                    lease.writable = False  # 已经存过了，还的时候不再存
         else:
             async with self._lease(inp, writable=False) as lease:
                 snap = await self._broker.snapshot(lease)
@@ -677,17 +685,9 @@ class WorkspaceOperations:
         self._remove_host_dir(owner, ws)
         return {}
 
-    async def _ensure_host_dir(self, owner: str, ws: str) -> None:
-        """挂卷的后端：借环境之前以 Worker 的身份建好 <工作区根>/<租户>/<workspace>。K8s 后端按 subPath 挂，目录不在时
-        kubelet 以 root 建，沙箱与 Worker 就都写不进去（工具一侧由 PlatformTools._workspace 建）。存档模式下不建。"""
-        root = self._broker.sandboxes.workspace_root
-        if root is None or not _SLUG.match(owner) or not _SLUG.match(ws) or await self._broker.archive_mode_for(owner):
-            return
-        (Path(root) / owner / ws).mkdir(parents=True, exist_ok=True)
-
     def _remove_host_dir(self, owner: str, ws: str) -> None:
-        """挂卷的工作区目录（<工作区根>/<租户>/<workspace>）删掉；存档模式下它本来就不在。"""
-        root = self._broker.sandboxes.workspace_root
+        """Worker 挂着工作区卷时，挂卷的工作区目录（<工作区根>/<租户>/<workspace>）删掉（服务的 DestroyWorkspace 也删它）。"""
+        root = self.workspace_root
         if root is None:
             return
         target = (Path(root) / owner / ws).resolve()
@@ -697,7 +697,7 @@ class WorkspaceOperations:
     # --- 环境 ---
 
     @property
-    def _broker(self) -> SandboxBroker:
+    def _broker(self) -> ServiceBroker:
         assert self.broker is not None
         return self.broker
 
@@ -716,52 +716,40 @@ class WorkspaceOperations:
         return record
 
     async def _current(self, owner: str, ws: str) -> Any:
-        """存档模式下把别人闲着的可写环境存一份快照（不销毁它），之后只读的环境看到的就是最新的；有命令在跑时
-        workspace_busy。返回新存的快照（没有可写的环境时 None）。挂卷时什么也不做：只读的环境挂的就是同一处。"""
-        broker = self._broker
-        if broker.ledger is None or not await broker.archive_mode_for(owner):
+        """存档模式下把别人闲着的可写环境存一份快照（不销毁它），之后只读的环境看到的就是最新的；有命令在跑时 workspace_busy。
+        挂卷时什么也不做。服务做这件事（Acquire 的 flush_writable）：这里借一个只读的环境、马上还掉；返回最近的快照。"""
+        if not await self._broker.archive_mode_for(owner):
             return None
-        snap = None
-        for holder in await broker.ledger.writable_holders(owner, workspace_id=ws, session_id=None):
-            if not broker.ledger.idle_now(holder):
-                raise DeniedError("workspace_busy", "这个工作区正被一个可写的环境用着（命令还在跑），稍后再试")
-            if holder.state != "ready" or not holder.backend_env_id:
-                continue
-            backend = await broker.sandboxes.backend(holder.backend)
-            box = backend.provider.bind(TenantContext(tenant_id=owner, workspace_id=ws))
-            # 存的时候占着它，别的命令不在半途改它。
-            record = await broker.ledger.touch(holder, busy_for=timedelta(minutes=10))
-            try:
-                snap = await broker.snapshot(Lease(backend, box, holder.backend_env_id, record, owner=owner, workspace_id=ws, archive=True, writable=True))
-            except NotFoundError:
-                await broker.ledger.mark_lost(record, "存档时后端里已经没有这个环境")
-            finally:
-                if record.state == "ready":
-                    await broker.ledger.touch(record)
-        return snap
+        tenant = TenantContext(tenant_id=owner, workspace_id=ws)
+        with timing.phase("acquire"):
+            lease = await self._broker.acquire(
+                tenant, SandboxSpec(runtime=self.runtime, workspace_id=ws, idle_timeout=timedelta(minutes=5)), writable=False, flush_writable=True,
+            )
+        with timing.phase("release"), contextlib.suppress(ProviderError):
+            await self._broker.release(lease, skip_snapshot=True)
+        return await self._archiver.latest(owner, ws)
 
     async def _network_enforced(self, owner: str) -> bool:
         """后端约束沙箱的网络（经出网网关，或托管后端按域名放行）时才要联网授权；本地后端不隔离网络。"""
-        broker = self._broker
-        name = (await broker.sandboxes.policy_for(owner)).backend
-        return broker.has_gateway(name) or broker.sandboxes.spec(name).get("kind") not in ("local", "k8s")
+        summary = await self._broker.describe(owner)
+        return summary.gateway or summary.kind not in ("local", "k8s")
 
     @contextlib.asynccontextmanager
     async def _lease(
         self, inp: workspace_pb2.WorkspaceOperationInput, *, writable: bool, remote: Remote | None = None, workspace_id: str = "",
+        skip_snapshot: bool = False,
     ) -> Any:
         owner, ws = inp.tenant.tenant_id, workspace_id or inp.workspace_id
         broker = self._broker
         task_id = f"wsop-{inp.operation_id}"
         tenant = TenantContext(tenant_id=owner, user_id=inp.requested_by or inp.tenant.user_id, workspace_id=ws, session_id="")
         granted = False
-        if remote is not None and not remote.local and broker.grants is not None and await self._network_enforced(owner):
-            policy = NetworkPolicy.from_policy((await broker.sandboxes.policy_for(owner)).network)
+        if remote is not None and not remote.local and self.grants is not None and await self._network_enforced(owner):
+            policy = NetworkPolicy.from_policy((await self.policies.policy_for(owner)).network)
             request = check_request(policy, hosts=[remote.host], ports=[remote.port], minutes=15, reason="Workspace API：克隆、推送或同步")
-            await broker.grants.create(owner, request, policy, task_id=task_id, approved_by=inp.requested_by or "workspace-api", workspace_id=ws)
+            await self.grants.create(owner, request, policy, task_id=task_id, approved_by=inp.requested_by or "workspace-api", workspace_id=ws)
             granted = True
         spec = SandboxSpec(runtime=self.runtime, network="none", idle_timeout=timedelta(minutes=10), workspace_id=ws)
-        await self._ensure_host_dir(owner, ws)
         try:
             with timing.phase("acquire"):
                 lease = await broker.acquire(tenant, spec, task_id=task_id, writable=writable, reuse=False, busy_for=self.git_timeout + timedelta(minutes=5))
@@ -775,16 +763,15 @@ class WorkspaceOperations:
             finally:
                 with timing.phase("release"):
                     if ok:
-                        await broker.release(lease)
+                        await broker.release(lease, skip_snapshot=skip_snapshot)
                     else:
                         # 操作失败：不存档（不把做了一半的改动存进快照），环境直接销毁。
-                        lease.writable = False
                         with contextlib.suppress(ProviderError):
-                            await broker.release(lease)
+                            await broker.release(lease, skip_snapshot=True)
         finally:
-            if granted:
+            if granted and self.grants is not None:
                 with contextlib.suppress(ProviderError):
-                    await broker.grants.revoke_task(owner, task_id)  # type: ignore[union-attr]
+                    await self.grants.revoke_task(owner, task_id)
 
     async def _git(
         self, lease: Lease, argv: list[str], *, what: str, credential: Credential | None = None, extra: Mapping[str, str] | None = None,

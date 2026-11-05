@@ -6,7 +6,7 @@
 - 工作区类（配了 workspace_root，或登记了存档模式的沙箱后端时登记）：repo_read、repo_list、repo_grep（read）、repo_edit、
   shell_run（write_reversible）。工作区是 <workspace_root>/<tenant_id>/<workspace_id，没有为 default>，租户与 workspace 来自
   调用的作用域（ToolInvocation），参数改变不了它。路径一律相对工作区；绝对路径、盘符、..、反斜杠、规范化后出界（含经符号链接）
-  都拒绝。租户的沙箱后端是存档模式（workspace: archive，D-06）时，这几个工具都在承载工作区的环境里执行（经 SandboxBroker 借：
+  都拒绝。租户的沙箱后端是存档模式（workspace: archive，D-06）时，这几个工具都在承载工作区的环境里执行（经 Sandbox Service 借，SBX-01；Worker 没挂工作区卷时也一样：
   写的借可写的环境，读的先找本会话可写的环境、没有时借只读的），Worker 的工作区目录不碰。
 - shell_run：argv 列表、不经 shell，在工作区里执行；子进程的环境只留 PATH 等必需的变量，Worker 的其他环境变量（含密钥）
   带不进去；输出截断；超时杀掉进程并返回 timed_out，不抛异常；非零退出码照常返回。shell_sandbox = host 时直接在宿主机上跑
@@ -39,7 +39,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -54,11 +54,8 @@ from agentruntime_core.providers.telemetry import TelemetryProvider
 from agentruntime_core.providers.tool_driver import ToolHandler, ToolInvocation, ToolSpec
 from agentruntime_core.tenancy import TenantContext
 
-from agentruntime_worker.sandbox.broker import SandboxBroker
-from agentruntime_worker.sandbox.environments import Resolution, workspace_reader
-from agentruntime_worker.sandbox.policy import WorkspaceLimits
+from agentruntime_worker.sandbox.client import ServiceBroker
 from agentruntime_worker.tools.checkpoint import Checkpoint, Runner, UndoReport, create_checkpoint, undo_with
-from agentruntime_worker.tools.sandboxes import Sandboxes, parse_cpu_millis, parse_memory_mb
 from agentruntime_worker.workflows.interrupts import NOT_NEEDED, UNDO_FAILED
 from agentruntime_worker.workspace import timing
 from agentruntime_worker.workspace.size_guard import WorkspaceSizeGuard
@@ -77,6 +74,21 @@ _SLUG = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")
 _HOT_FOR = 60.0
 _TOUCH_EVERY = 600.0
 _TEXT_TYPES = ("text/", "application/json", "application/xml", "application/xhtml")
+# 没有沙箱服务（读不到租户策略）时挂卷工作区的大小上限：同租户策略 workspace.max_bytes 的默认值。
+DEFAULT_WORKSPACE_MAX_BYTES = 2 << 30
+
+
+def parse_cpu_millis(value: str) -> int:
+    """docker 写法的 CPU（"2"、"0.5"）换成毫核。"""
+    return max(1, int(float(value) * 1000))
+
+
+def parse_memory_mb(value: str) -> int:
+    """docker 写法的内存（"2g"、"512m"）换成 MiB。"""
+    v = value.strip().lower()
+    unit = {"g": 1024, "m": 1, "k": 1 / 1024}.get(v[-1:], None)
+    number = float(v[:-1]) if unit is not None else float(v) / (1024 * 1024)
+    return max(16, int(number * (unit if unit is not None else 1)))
 
 
 def _in_dir(cwd: str, argv: list[str]) -> list[str]:
@@ -103,8 +115,13 @@ class PlatformToolsConfig:
     shell_cpus: str = "2"
     shell_memory: str = "2g"
     shell_pids: int = 512
-    # shell_sandbox = sandbox 时按（工作区，会话）复用环境（D-13）；要有沙箱环境表（业务库）才生效。
+    # shell_sandbox = sandbox 时按（工作区，会话）复用环境（D-13）。
     session_sandboxes: bool = False
+    # shell_sandbox = sandbox、没有工作区目录（Worker 不挂工作区卷）时也登记工作区类工具：repo_* 与 shell_run 都在 Sandbox Service
+    # 借的环境里执行（SBX-01）。
+    workspace_tools: bool = False
+    # 部署里有托管后端（没有出网网关、按域名放行，D-16）：也登记 request_network。
+    hosted_backends: bool = False
     # shell_sandbox = sandbox 时用哪个运行环境（D-14）：后端登记把它映射到镜像，例如 universal（多语言）或 python。
     shell_runtime: str = "python"
     # 登记 request_network（D-16）：配了出网网关时打开；登记了托管后端（按域名放行）时也登记。预览地址的域名。
@@ -118,7 +135,7 @@ class PlatformToolsConfig:
     # context_read 不写 max_chars 时一次取多少个字符（上限是 output_limit）。
     context_read_chars: int = 16_000
     # 挂卷工作区的大小核对（DISK-A，workspace/size_guard.py）：没超时两次测量至少隔这么多秒；没有沙箱后端（读不到租户策略）时
-    # 的上限，None 时用租户策略的默认值（WorkspaceLimits.max_bytes）。
+    # 的上限，None 时用租户策略的默认值（2 GiB）。
     workspace_size_interval_s: float = 30.0
     workspace_max_bytes: int | None = None
 
@@ -145,30 +162,33 @@ def register_platform_tools(
     config: PlatformToolsConfig,
     *,
     objects: ObjectStoreProvider | None = None,
-    sandboxes: Sandboxes | SandboxBroker | None = None,
+    sandboxes: ServiceBroker | None = None,
     telemetry: TelemetryProvider | None = None,
     generations: Any = None,
+    grants: Any = None,
+    policies: Any = None,
+    credential_key: Any = None,
 ) -> list[str]:
     """按配置登记平台内工具，返回登记了的名字。给了 objects（Context Builder 外置内容的 ObjectStore）就登记 context_read；
-    shell_sandbox = sandbox 时 shell_run 用 sandboxes 里的后端，每次运行记一个 runtime.sandbox span（给了 telemetry 时）。
+    shell_sandbox = sandbox 时 shell_run 经 Sandbox Service（sandboxes）借环境，每次运行记一个 runtime.sandbox span（给了 telemetry 时）。
     generations 是记工作区版本号的（WS-READ-03，有 bump_generation 的 WorkspaceArchiver）；不给时用 broker 的 archiver。"""
-    if config.shell_sandbox == "sandbox" and config.workspace_root is not None and sandboxes is None:
-        raise ValueError("shell_sandbox = sandbox 时要给沙箱后端（AR_SANDBOX_BACKENDS_FILE）")
+    if config.shell_sandbox == "sandbox" and (config.workspace_root is not None or config.workspace_tools) and sandboxes is None:
+        raise ValueError("shell_sandbox = sandbox 时要给 Sandbox Service（AR_SANDBOX_SERVICE_ADDRESS）")
     tools: list[tuple[ToolSpec, ToolHandler]] = []
-    broker = SandboxBroker(sandboxes) if isinstance(sandboxes, Sandboxes) else sandboxes
-    # 存档模式的后端（D-06）不用 Worker 的工作区目录：只登记了这类后端时不配 workspace_root 也有工作区类工具。
-    archived = config.shell_sandbox == "sandbox" and broker is not None and broker.sandboxes.has_archive_backends
-    if config.workspace_root is not None or archived:
+    broker = sandboxes
+    # 经 Sandbox Service 时 Worker 不用自己的工作区目录：不配 workspace_root 也有工作区类工具，都在服务借的环境里执行。
+    remote = config.shell_sandbox == "sandbox" and broker is not None and config.workspace_tools
+    if config.workspace_root is not None or remote:
         root = Path(config.workspace_root) if config.workspace_root is not None else None
         tools += _Workspaces(root, config, broker, telemetry, generations=generations).tools()
-    if config.shell_sandbox == "sandbox" and broker is not None and broker.grants is not None:
-        hosted = any(broker.sandboxes.spec(n).get("kind") not in ("k8s", "local") for n in broker.sandboxes.names)
-        if config.network_requests or hosted:
-            from agentruntime_worker.tools.network import NetworkTool
+    if (config.shell_sandbox == "sandbox" and broker is not None and grants is not None and policies is not None
+            and (config.network_requests or config.hosted_backends)):
+        from agentruntime_worker.tools.network import NetworkTool
 
-            tools.append(NetworkTool(
-                broker, preview_domain=config.preview_domain, runtime=config.shell_runtime, session_sandboxes=config.session_sandboxes,
-            ).tool())
+        tools.append(NetworkTool(
+            broker, grants, policies, credential_key or _no_key, preview_domain=config.preview_domain, runtime=config.shell_runtime,
+            session_sandboxes=config.session_sandboxes,
+        ).tool())
     if config.fetch_hosts:
         tools.append(_Fetcher(config).tool())
     if objects is not None:
@@ -178,12 +198,16 @@ def register_platform_tools(
     return [spec.name for spec, _ in tools]
 
 
+async def _no_key() -> bytes | None:
+    return None
+
+
 # --- 工作区 ---
 
 
 class _Workspaces:
     def __init__(
-        self, root: Path | None, config: PlatformToolsConfig, broker: SandboxBroker | None = None, telemetry: TelemetryProvider | None = None,
+        self, root: Path | None, config: PlatformToolsConfig, broker: ServiceBroker | None = None, telemetry: TelemetryProvider | None = None,
         *, generations: Any = None,
     ) -> None:
         self.root = root
@@ -208,8 +232,8 @@ class _Workspaces:
     async def _size_limit(self, tenant_id: str) -> int:
         """挂卷工作区的大小上限：租户策略的 workspace.max_bytes（有沙箱后端时），否则配置的或默认的。"""
         if self.broker is not None:
-            return (await self.broker.sandboxes.policy_for(tenant_id)).workspace.max_bytes
-        return self.config.workspace_max_bytes or WorkspaceLimits().max_bytes
+            return await self.broker.workspace_max_bytes(tenant_id)
+        return self.config.workspace_max_bytes or DEFAULT_WORKSPACE_MAX_BYTES
 
     async def _guarded(self, invocation: ToolInvocation, root: Path, write: Any) -> Any:
         """挂卷模式下的写类工具（DISK-A）：超了上限先拒绝；写完到了测量间隔就量，超了在结果里带上 workspace_size。"""
@@ -303,9 +327,11 @@ class _Workspaces:
         return root
 
     async def _archived(self, invocation: ToolInvocation) -> bool:
-        """租户的沙箱后端是存档模式（D-06）：工具在承载工作区的环境里执行。"""
+        """工具在承载工作区的环境里执行（经 Sandbox Service 借）：Worker 没有挂工作区卷（SBX-01），或租户的沙箱后端是存档模式（D-06）。"""
         if self.config.shell_sandbox != "sandbox" or self.broker is None or not invocation.tenant_id:
             return False
+        if self.root is None:
+            return True
         return await self.broker.archive_mode_for(invocation.tenant_id)
 
     @staticmethod
@@ -330,7 +356,7 @@ class _Workspaces:
             runtime=self.config.shell_runtime, cpu_millis=parse_cpu_millis(self.config.shell_cpus), memory_mb=parse_memory_mb(self.config.shell_memory),
             network="none", idle_timeout=timedelta(minutes=5), workspace_id=workspace, session_id=invocation.session_id,
         )
-        reuse = self.config.session_sandboxes and bool(invocation.session_id) and self.broker.ledger is not None
+        reuse = self.config.session_sandboxes and bool(invocation.session_id)
         busy = timedelta(minutes=2)
         lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=writable, reuse=reuse, busy_for=busy)
         done = False
@@ -626,13 +652,13 @@ class _Workspaces:
         return {"exit_code": proc.returncode, "timed_out": False, "sandbox": "docker", **self._outputs(stdout, stderr)}
 
     async def _sandbox_shell(self, invocation: ToolInvocation, workspace: str, argv: list[str], timeout: int, root: Path | None) -> Any:
-        """经 Sandbox 接口（SandboxBroker）：按租户策略选后端（暂时不可用时按回退列表换），环境绑定本 workspace、断网。
+        """经 Sandbox Service（SBX-01）借环境：按租户策略选后端（暂时不可用时按回退列表换），环境绑定本 workspace、断网。
         会话级沙箱（D-13）打开时按（工作区，会话）复用环境，用完不删；否则每条命令一个环境，跑完销毁。复用的环境在后端里
         没了（被回收）时，记为丢失、换一个新环境再跑一次，工作区的文件不受影响。
 
         计量（docs/plan/cloud-deploy.md D-07、D-10、D-11）：每次运行一个 runtime.sandbox span，记后端、隔离强度、环境号、
         是否复用与回退、执行时间与 CPU 时间（后端量得出时），一次性的环境另记存活时间；环境的存活时间与花费在环境表里。
-        不记命令与输出。存档模式（root 为 None，D-06）时环境建好后从快照恢复、一次性的环境用完先存档，见 SandboxBroker。"""
+        不记命令与输出。存档模式（root 为 None，D-06）时环境建好后从快照恢复、一次性的环境用完先存档，都在服务里。"""
         assert self.broker is not None
         tenant = TenantContext(tenant_id=invocation.tenant_id, workspace_id=workspace, session_id=invocation.session_id, user_id=invocation.user_id)
         c = self.config
@@ -645,28 +671,21 @@ class _Workspaces:
             workspace_id=workspace,
             session_id=invocation.session_id,
         )
-        reuse = c.session_sandboxes and bool(invocation.session_id) and self.broker.ledger is not None
+        reuse = c.session_sandboxes and bool(invocation.session_id)
         busy = timedelta(seconds=timeout + 60)
-        environment = await self._environment(tenant, root) if root is not None else None
-        if environment is not None and environment.image:
-            spec = replace(spec, image=environment.image)
         attributes: dict[str, Any] = {"gen_ai.tool.name": "shell_run", "sandbox.cpu_millis": spec.cpu_millis, "sandbox.memory_mb": spec.memory_mb}
-        if environment is not None:
-            attributes["sandbox.environment"] = environment.state
         span_cm = self.telemetry.bind(tenant).start_span("runtime.sandbox", attributes=attributes) if self.telemetry else contextlib.nullcontext()
         archive_error: dict[str, str] | None = None
         # 进出 Worker 的字节数（WK-LITE-03）：命令的输出、存档与恢复搬的数据；记进 span 与计数器 runtime.worker.bytes。
         async with timing.metered(span_cm) as (span, io_meter):
             started = time.monotonic()
-            try:
-                lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy, prepare=True)
-            except InvalidError as err:
-                if err.code != "unsupported_image" or environment is None:
-                    raise
-                # 项目环境的镜像落不到这个后端（例如回退到了托管后端）：退回 universal，并说明。
-                spec = replace(spec, image="")
-                environment = replace(environment, state="fallback", image="", note=f"{err.message}，这次用 universal")
-                lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy, prepare=True)
+            # 按项目定制的运行环境（D-17）由服务解析：镜像就绪就用它，没就绪或落不到这个后端时用 universal，结果里说明。
+            lease = await self.broker.acquire(
+                tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy, prepare=True, project_environment=True,
+            )
+            environment = lease.environment
+            if environment is not None and span is not None:
+                span.set_attributes({"sandbox.environment": str(environment.get("state") or "")})
             ran = time.monotonic()
             # 新建了环境时借到它花的时间（冷启动）：进结果，tool_loop 的进度事件 tool_status 带给用户看；复用的环境没有这一项。
             startup_ms = None if lease.reused else int((ran - started) * 1000)
@@ -691,7 +710,9 @@ class _Workspaces:
                         raise
                     await self.broker.discard(lease, "后端里已经没有这个环境（被回收或节点重启）")
                     retry_at = time.monotonic()
-                    lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy, prepare=True)
+                    lease = await self.broker.acquire(
+                        tenant, spec, task_id=invocation.task_id, writable=True, reuse=reuse, busy_for=busy, prepare=True, project_environment=True,
+                    )
                     ran = time.monotonic()
                     startup_ms = None if lease.reused else int((ran - retry_at) * 1000)
                     result = await lease.box.exec(lease.env_id, argv, timeout=timedelta(seconds=timeout), env=lease.env or None)
@@ -738,26 +759,13 @@ class _Workspaces:
             out["sandbox_cost_usd"] = lease.record.cost_usd
         if environment is not None:
             # 仓库自带环境定义时说明用的是哪个（D-17）：没用上时写明原因，不悄悄退回。
-            out["environment"] = environment.as_output()
+            out["environment"] = environment
         if lease.prepared is not None:
             # 这次新准备了环境（ENV-02）：用的哪个环境配置，setup（succeeded 或 cached）与 start 的结果。
             out["environment_config"] = dict(lease.prepared)
         if archive_error is not None:
             out["workspace_error"] = archive_error
         return out
-
-    async def _environment(self, tenant: TenantContext, root: Path) -> Resolution | None:
-        """按项目定制的运行环境（D-17）：只对首选后端能用环境镜像的租户查（K8s，或登记里写了 custom_images: true）；
-        仓库没有环境定义时 None。"""
-        manager = self.broker.environments if self.broker is not None else None
-        if manager is None:
-            return None
-        policy = await self.broker.sandboxes.policy_for(tenant.tenant_id)  # type: ignore[union-attr]
-        backend = self.broker.sandboxes.spec(policy.backend)  # type: ignore[union-attr]
-        if backend.get("kind") != "k8s" and backend.get("custom_images") is not True:
-            return None
-        resolution = await manager.resolve(tenant, workspace_reader(root))
-        return None if resolution.state == "none" else resolution
 
     def _outputs(self, stdout: bytes, stderr: bytes) -> dict[str, Any]:
         limit = self.config.output_limit
