@@ -775,6 +775,12 @@ REAL-01 的检查（2026-11-04，在第 27 版上；目录 `rev29`，脚本 `smo
   - Kata 的存档模式验过：建工作区（经 `api.cgent.link` 回 Cloudflare 的 524，服务端照样建好了）、`ArchiveWorkspace` 存了 26 个文件，之后 `ReadFile` 从快照读回建工作区时写的 `hello.txt`。
   - 预览与 SSRF 没验成：Task 的 explore 节点每次第 1 步都是 `tenant_budget_exceeded`（试 5 次），只有 triage 的一次 Haiku 调用（0.00025 美元）成功；Reviewer 一路 repair、replan、escalate，Task 已取消。
     默认档租户最后一个完成的 Task 在 10-31，预算账本上线后没有，记为 BUDGET-DEFAULT（开放注册的用户都在默认档）。
+- 冒烟 3、4（2026-11-05，第 30 版上，BUDGET-DEFAULT 修好之后；real01 的策略 v2 加了 `sandbox.network.preview: true`；Workspace API 改走集群内的 task-service 地址，避开 Cloudflare 的 100 秒）：
+  - 默认档租户的 Task 跑通（0.21、0.24、0.96 美元；最后一次 Reviewer 多绕了几轮）。
+  - 出网网关：example.com 按授权放行（逐连接记了流量）；`169.254.169.254`、`10.43.0.1` 以 `ip_literal` 拒绝；名单外的 www.wikipedia.org 授权前 `no_grant`、授权后 `host_not_granted`。
+  - 预览：`request_network` 带 `preview_port` 返回 `https://sbe-<16 位>.cgentpreview.website/?ar_preview=…`；Task 运行中访问被放行，转到沙箱 Pod 的 8000 端口（带令牌 302、换 Cookie 后跳回不带令牌的地址；不带令牌 401）；Task 结束的同一秒收回，再访问是 `preview_not_granted`。
+  - Kata 的存档模式：存档后从快照读回建工作区时的 `hello.txt` 和 Task 写的 `net.txt`、`index.html`。
+  - 发现：工作区没建完就开 Task 会丢初始文件（WS-CREATE-RACE）；模型把整数写成 `8000.0` 时 `request_network` 报参数不合（TOOL-INT-FLOAT）；测试租户的策略没开预览时报 `preview_not_allowed`（预期）。
 
 第 28 版（2026-11-04，只换网关；目录 `rev30`，脚本 `prepare.sh`、`rev30.sh`；用户在对话里选了“D6 只换网关”）：
 
