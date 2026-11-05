@@ -202,7 +202,7 @@ class FakeTools:
         self._effects = dict(effects or {})
         self.asked: list[tuple[str, list[str]]] = []
 
-    async def effects(self, tenant: Tenant, names: list[str]) -> dict[str, str]:
+    async def effects(self, tenant: Tenant, names: list[str], task_id: str = "") -> dict[str, str]:
         self.asked.append((tenant.tenant_id, list(names)))
         return {n: self._effects[n] for n in names if n in self._effects}
 

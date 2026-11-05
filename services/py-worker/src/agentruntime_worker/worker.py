@@ -40,7 +40,7 @@ from agentruntime_worker.registry import RegistryCatalog, RegistryStagePolicy, c
 from agentruntime_worker.reviewer.activities import dev_reviewer
 from agentruntime_worker.telemetry import worker_telemetry
 from agentruntime_worker.sandbox.retired import RetiredSandboxActivities
-from agentruntime_worker.tools import DevCatalog, ToolCatalog, dev_tools, sandbox_broker, tool_sessions, workspace_operations
+from agentruntime_worker.tools import DevCatalog, ToolCatalog, dev_tools, mcp_leases, sandbox_broker, tool_sessions, workspace_operations
 from agentruntime_worker.workflows.env_build import EnvironmentBuildWorkflow
 from agentruntime_worker.workflows.sandbox_reconcile import SandboxReconcileWorkflow
 from agentruntime_worker.workflows.stage_runner import SubAgentWorkflow, SubgraphWorkflow
@@ -141,7 +141,7 @@ def decision_activities(config: WorkerConfig, stubs: StubActivities | None = Non
     设了 AR_REGISTRY_ADDRESS 时 resolve_catalog 的模板改按 Task 固定的版本查 Registry（T-08），
     load_stage_policy 改读 Registry 里租户策略与 Recipe 声明的 Hook（T-09）。run_hooks 一律是真的 Policy Engine（T-09）。"""
     activities = (stubs or StubActivities(config)).activities()
-    tools = ToolCatalog(dev_tools(config))
+    tools = ToolCatalog(dev_tools(config), mcp_leases(config))
     activities.update(DevCatalog(tools).activities())
     if config.planner == "model":
         activities.update(dev_planner(config).activities())

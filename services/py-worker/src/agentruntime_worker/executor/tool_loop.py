@@ -59,6 +59,11 @@ READ_ONLY_REMINDER = "【提醒】你已经连续读了很多内容，还没有�
 _WRITE_CAPABLE_TOOLS = frozenset({"repo_edit", "shell_run"})
 
 
+def _wire_name(name: str) -> str:
+    """给模型的工具名：点换成 __（mcp.github.search → mcp__github__search）；平台内工具没有点，不变。"""
+    return name.replace(".", "__")
+
+
 def _value(data: Any) -> struct_pb2.Value:
     value = struct_pb2.Value()
     json_format.ParseDict(data, value)
@@ -120,6 +125,7 @@ class ModelToolLoop:
     async def step(self, inp: ToolLoopStepInput) -> ToolLoopStep:
         node = inp.node
         tools = await self._tool_specs(inp, [str(t) for t in node.get("tools") or []])
+        leased = await self.tools.mcp_names(inp.tenant, inp.task_id) if self.tools is not None else frozenset()
         turns = await self.transcript.load(inp.tenant, inp.task_id) if self.transcript is not None else ()
         built = await self.builder.build(
             ContextRequest(
@@ -134,11 +140,18 @@ class ModelToolLoop:
                 task_family=inp.task_family,
                 system=[SYSTEM_PROMPT],
                 tools=tools,
-                mcp_tools=self.mcp_tools() if self.mcp_tools is not None else frozenset(),
+                mcp_tools=(self.mcp_tools() if self.mcp_tools is not None else frozenset()) | leased,
                 conversation=transcript_text(turns, max_chars=CONVERSATION_CHARS),
                 experiences=await node_experiences(self.memory, inp.tenant, inp.task_id, node, iteration=inp.iteration),
             )
         )
+        # N-15：远程 MCP 工具的内核名带点（mcp.<连接>.<工具>），模型厂商的工具名不收点：给模型时（工具定义与此前的调用）换成 __，
+        # 回来再换回。
+        wire = {_wire_name(t.name): t.name for t in tools}
+        tools = [mg.ToolSpec(name=_wire_name(t.name), description=t.description, params_schema=t.params_schema) for t in tools]
+        for message in built.messages:
+            for call in message.tool_calls:
+                call.name = _wire_name(call.name)
         params = mg.GenerateParams(messages=built.messages, tools=tools)
         if _needs_read_only_reminder(node, inp.history):
             params.messages.append(mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=READ_ONLY_REMINDER))
@@ -162,7 +175,7 @@ class ModelToolLoop:
             # 总数用这次实际计的输入 token（N-17），各类按估算的比例分摊。
             usage = measured(usage, int(response.usage.input_tokens))
         if response.tool_calls:
-            calls = [{"tool": call.name, "args": json_format.MessageToDict(call.arguments)} for call in response.tool_calls]
+            calls = [{"tool": wire.get(call.name, call.name), "args": json_format.MessageToDict(call.arguments)} for call in response.tool_calls]
             return ToolLoopStep(action="tool", tool=calls[0]["tool"], args=calls[0]["args"], calls=calls, cost_usd=cost, vendor=vendor, context_usage=usage)
         result = json_format.MessageToDict(response.result) if response.HasField("result") else response.text
         return ToolLoopStep(action="finish", result=result, cost_usd=cost, vendor=vendor, context_usage=usage)
@@ -195,7 +208,7 @@ class ModelToolLoop:
     async def _tool_specs(self, inp: ToolLoopStepInput, tools: list[str]) -> list[mg.ToolSpec]:
         if self.tools is None:
             return [mg.ToolSpec(name=t, params_schema=payload_pb2.JsonPayload(value=_value({"type": "object"}))) for t in tools]
-        specs = await self.tools.specs(inp.tenant, tools)
+        specs = await self.tools.specs(inp.tenant, tools, inp.task_id)
         return [
             mg.ToolSpec(name=t, description=specs[t].description, params_schema=payload_pb2.JsonPayload(value=_value(dict(specs[t].input_schema))))
             for t in tools
@@ -226,13 +239,13 @@ def dev_tool_loop(config: WorkerConfig) -> ToolLoopActivities:
     """
     from agentruntime_worker.executor.dev import model_gateway
     from agentruntime_worker.session.transcript import worker_transcript
-    from agentruntime_worker.tools import context_objects, dev_tools, mcp_tool_names
+    from agentruntime_worker.tools import context_objects, dev_tools, mcp_leases, mcp_tool_names
 
     gateway = model_gateway(config)
     builder = ContextBuilder(gateway, context_objects(config), ContextConfig(effective_tokens=config.context_effective_tokens, offload_tokens=config.context_offload_tokens))
     return ToolLoopActivities(
         ModelToolLoop(
-            gateway, builder, tools=ToolCatalog(dev_tools(config)), transcript=worker_transcript(config),
+            gateway, builder, tools=ToolCatalog(dev_tools(config), mcp_leases(config)), transcript=worker_transcript(config),
             mcp_tools=lambda: mcp_tool_names(config), memory=searcher(config),
             sub_agent_tier=SUB_AGENT_TIER if config.sub_agent_policy == "rules" else None,
         )

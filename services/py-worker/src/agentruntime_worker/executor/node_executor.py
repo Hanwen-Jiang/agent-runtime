@@ -324,7 +324,7 @@ class NodeExecutor:
         require_tool_gate(inp)
         tenant = _tenant(inp.tenant)
         try:
-            spec = await latest_spec(self.deps.tools.bind(tenant), inp.tool)
+            spec = await latest_spec(await self._driver(tenant, inp.task_id), inp.tool)
         except ProviderError as err:
             raise self._from_provider(err, {}) from None
         if spec is None:
@@ -383,7 +383,7 @@ class NodeExecutor:
         name, version = _split_template(node["template"])
         key = node.get("idempotency_key") or keys.idempotency_key(inp.tenant.tenant_id, inp.task_id, node["id"], node.get("inputs", {}))
         try:
-            driver = self.deps.tools.bind(tenant)
+            driver = await self._driver(tenant, inp.task_id)
             spec = await driver.describe(name, version)
             if not spec.supports_idempotency_lookup:
                 return ReconcileResult(found=False, reason=f"工具 {name} 不支持按幂等键查询，结果未知")
@@ -566,7 +566,7 @@ class NodeExecutor:
     async def _tool(
         self, node: Mapping[str, Any], tenant: TenantContext, name: str, version: str, span: Span, *, task_id: str = "", approved_by: str = ""
     ) -> Any:
-        driver = self.deps.tools.bind(tenant)
+        driver = await self._driver(tenant, task_id)
         spec = await driver.describe(name, version)
         effect = str(node.get("effect", "none"))
         if _rank(spec.effect.value) > _rank(effect):
@@ -607,6 +607,13 @@ class NodeExecutor:
                     # 没吊销成功的租约只能等过期：记进 trace 与日志，事后查得到；Node 的结局不受影响。
                     span.add_event("credential_revoke_failed", {"tool": name, "lease_id": credential.lease_id, "code": err.code})
                     log.warning("吊销工具 %s 的短期凭据失败（租约 %s，%s），等它过期", name, credential.lease_id, err.code)
+
+    async def _driver(self, tenant: TenantContext, task_id: str) -> ToolDriver:
+        """平台内工具；provider 支持 bind_task（N-15 的 LeasedToolDriverProvider）时再加上这个 Task 租约里的远程 MCP 工具。"""
+        bind_task = getattr(self.deps.tools, "bind_task", None)
+        if bind_task is not None and task_id:
+            return await bind_task(tenant, task_id)
+        return self.deps.tools.bind(tenant)
 
     async def _reconcile_timeout(self, driver: ToolDriver, spec: ToolSpec, node: Mapping[str, Any], key: str, err: TransientError) -> Any:
         """写操作超时、结果未知：先按幂等键对账，不直接重试（附录 K.4）。"""

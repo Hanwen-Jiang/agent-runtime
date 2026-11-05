@@ -42,7 +42,8 @@ from agentruntime_worker.executor.schemas import DictSchemaResolver
 from agentruntime_worker.context.builder import ContextBuilder, ContextConfig
 from agentruntime_worker.session.transcript import session_transcript
 from agentruntime_worker.telemetry import worker_telemetry
-from agentruntime_worker.tools import dev_tools, sandbox_broker
+from agentruntime_worker.tools import dev_tools, mcp_leases, sandbox_broker
+from agentruntime_worker.tools.mcp_http import LeasedToolDriverProvider
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +151,8 @@ def dev_executor(
     model_gateway_instance = model_gateway(config)
     object_store = objects or dev_object_store(config, root)
     deps = ExecutorDeps(
-        tools=dev_tools(config),
+        # N-15：call_tool 再加上 Task 租约里的远程 MCP 工具（bind_task）。
+        tools=LeasedToolDriverProvider(dev_tools(config), mcp_leases(config)),
         objects=object_store,
         secrets=dev_secret_store(config, root),
         cache=InMemoryCacheProvider(),

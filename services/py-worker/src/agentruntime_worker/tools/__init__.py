@@ -10,6 +10,8 @@
   都没配时是进程内同一个临时目录。
 - tool_sessions(config)：Worker 运行期间的 MCP 会话：配了 AR_MCP_TOOLS_FILE 时启动 MCP Gateway（mcp.py），把登记了的
   MCP 工具登记进 dev_tools(config)，退出时关闭会话。mcp_tool_names(config) 是现在登记了的 MCP 工具的名字（上下文占比里单独一类）。
+- mcp_leases(config)：用户登记的远程 MCP 工具（N-15，mcp_http.py）：按 Task 的租约（业务库 mcp_leases，task-service 写）给出目录与
+  调用，Streamable HTTP 会话按（租户，连接）在进程里持有；网络密钥从 AR_SECRETS_FILE 的租户作用域现读。AR_MCP_DENY_CIDRS 另加拒绝的网段。
 - ToolCatalog、DevCatalog、latest_spec：工具的 effect 与定义取自登记（catalog.py）。
 - deliver_file（deliver.py，N-18）：配了工作区目录时登记，把工作区里的文件作为 Task 的交付。
 - skill_read（skills.py，N-14）：配了 Registry（AR_REGISTRY_ADDRESS）时登记，按 Task 固定的版本读 Skill；固定的版本取自业务库的
@@ -40,13 +42,14 @@ from agentruntime_worker.telemetry import worker_telemetry
 from agentruntime_worker.tools.catalog import DevCatalog, ToolCatalog, latest, latest_spec
 from agentruntime_worker.tools.deliver import DeliveryLimits, DirectoryReader, register_delivery_tools
 from agentruntime_worker.tools.mcp import McpGateway
+from agentruntime_worker.tools.mcp_http import LeasedMcpTools, LeaseStore
 from agentruntime_worker.tools.platform import CONTEXT_READ, PlatformToolsConfig, register_platform_tools
 from agentruntime_worker.tools.skills import TaskSkillPins, register_skill_tools
 from agentruntime_worker.workspace.archive import WorkspaceArchiver
 from agentruntime_worker.workspace.operations import CREDENTIAL_SECRET, WorkspaceOperations
 
 __all__ = [
-    "CONTEXT_READ", "DevCatalog", "ToolCatalog", "context_objects", "dev_tools", "latest", "latest_spec", "mcp_tool_names", "sandbox_broker",
+    "CONTEXT_READ", "DevCatalog", "ToolCatalog", "context_objects", "dev_tools", "latest", "latest_spec", "mcp_leases", "mcp_tool_names", "sandbox_broker",
     "skill_pins", "tool_sessions", "workspace_operations",
 ]
 
@@ -55,6 +58,36 @@ _objects: dict[tuple[object, ...], ObjectStoreProvider] = {}
 _brokers: dict[tuple[object, ...], ServiceBroker | None] = {}
 _mcp_names: dict[tuple[object, ...], frozenset[str]] = {}
 _pins: dict[tuple[object, ...], TaskSkillPins] = {}
+_leases: dict[tuple[object, ...], LeasedMcpTools] = {}
+
+
+def _deny_cidrs() -> tuple[object, ...]:
+    import ipaddress
+
+    out = []
+    for part in os.environ.get("AR_MCP_DENY_CIDRS", "").split(","):
+        if part.strip():
+            out.append(ipaddress.ip_network(part.strip(), strict=False))
+    return tuple(out)
+
+
+def mcp_leases(config: WorkerConfig) -> LeasedMcpTools:
+    """Task 租约里的远程 MCP 工具（N-15）；同样的配置得到同一个实例（会话在里面）。"""
+    key = (config.relational_dsn, config.data_dir, config.secrets_file)
+    if key not in _leases:
+        store = relational_store(config.relational_dsn, config.data_dir or Path(tempfile.mkdtemp(prefix="agentruntime-mcp-")))
+
+        async def read_secret(tenant_id: str, name: str) -> str | None:
+            if config.secrets_file is None:
+                return None
+            from agentruntime_core.dev.secret_store import LocalFileSecretStoreProvider
+            from agentruntime_core.tenancy import TenantContext
+
+            value = (await LocalFileSecretStoreProvider(config.secrets_file).bind(TenantContext(tenant_id=tenant_id)).read(name)).reveal()
+            return value.decode() if isinstance(value, bytes) else value
+
+        _leases[key] = LeasedMcpTools(LeaseStore(store), read_secret, deny=_deny_cidrs())
+    return _leases[key]
 
 
 def skill_pins(config: WorkerConfig) -> TaskSkillPins:

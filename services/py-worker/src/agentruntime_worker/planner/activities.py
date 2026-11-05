@@ -24,7 +24,7 @@ from agentruntime_worker.planner.context import CatalogView, PlanningContext, Pl
 from agentruntime_worker.planner.planner import Planner, PlannerConfig, PlanRequest
 from agentruntime_worker.registry import RegistryContextSource, registry_client
 from agentruntime_worker.session.transcript import worker_transcript
-from agentruntime_worker.tools import CONTEXT_READ, ToolCatalog, dev_tools, skill_pins
+from agentruntime_worker.tools import CONTEXT_READ, ToolCatalog, dev_tools, mcp_leases, skill_pins
 from agentruntime_worker.tools.skills import SKILL_READ
 from agentruntime_worker.workflows import stage_plan as sp
 
@@ -107,7 +107,7 @@ class ToolsContextSource:
 
     async def load(self, inp: PlanRoundInput) -> PlanningContext:
         ctx = await self.inner.load(inp)
-        tools = {**ctx.catalog.tools, **await self.tools.all_effects(inp.tenant)}
+        tools = {**ctx.catalog.tools, **await self.tools.all_effects(inp.tenant, inp.task_id)}
         if not ctx.catalog.skills:
             # N-14：没有 Skill 的 Task 用不上 skill_read，不列给 Planner。
             tools.pop(SKILL_READ, None)
@@ -128,7 +128,7 @@ def dev_planner(config: WorkerConfig) -> PlannerActivities:
     if config.registry_address:
         # N-14：Task 固定的 Skill（tasks.skill_pins）的名字与说明也由它放进目录。
         inner = RegistryContextSource(registry_client(config), defaults=dataclasses.replace(defaults, catalog=CatalogView()), skill_pins=skill_pins(config))
-    tools = ToolCatalog(dev_tools(config))
+    tools = ToolCatalog(dev_tools(config), mcp_leases(config))
     source: PlanningContextSource = ToolsContextSource(inner, tools)
     transcript = worker_transcript(config)
     if transcript is not None:

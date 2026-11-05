@@ -81,7 +81,7 @@ class RegistryCatalog:
             if not info.executor or not info.effect:
                 raise ApplicationError(f"Registry 给的模板 {ref} 缺 executor 或 effect", type="invalid_template", non_retryable=True)
             templates[ref] = info
-        tools = await self.tools.effects(req.tenant, list(req.tools)) if req.tools else {}
+        tools = await self.tools.effects(req.tenant, list(req.tools), req.task_id) if req.tools else {}
         return CatalogInfo(templates=templates, tools=tools, authoritative=True)
 
     def activities(self) -> dict[str, object]:

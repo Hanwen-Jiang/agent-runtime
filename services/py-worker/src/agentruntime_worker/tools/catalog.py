@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Any
 
 from temporalio import activity
 
@@ -39,25 +40,37 @@ async def latest_spec(driver: ToolDriver, name: str) -> ToolSpec | None:
 
 
 class ToolCatalog:
-    """按租户查工具的登记。只用租户、用户与 workspace 绑定（工具的可见范围不看 Session）。"""
+    """按租户查工具的登记。只用租户、用户与 workspace 绑定（工具的可见范围不看 Session）。
 
-    def __init__(self, provider: ToolDriverProvider) -> None:
+    给了 mcp（N-15 的 LeasedMcpTools）且调用给了 task_id 时，再加上这个 Task 租约里的远程 MCP 工具（没有租约的不给）。"""
+
+    def __init__(self, provider: ToolDriverProvider, mcp: Any | None = None) -> None:
         self.provider = provider
+        self.mcp = mcp
 
-    async def _latest(self, tenant: Tenant) -> dict[str, ToolSpec]:
+    async def _latest(self, tenant: Tenant, task_id: str = "") -> dict[str, ToolSpec]:
         driver = self.provider.bind(TenantContext(tenant_id=tenant.tenant_id, user_id=tenant.user_id, workspace_id=tenant.workspace_id))
-        return latest(await driver.list_tools())
+        found = latest(await driver.list_tools())
+        if self.mcp is not None and task_id:
+            found.update(await self.mcp.specs(tenant.tenant_id, task_id))
+        return found
 
-    async def specs(self, tenant: Tenant, names_: Sequence[str]) -> dict[str, ToolSpec]:
-        found = await self._latest(tenant)
+    async def specs(self, tenant: Tenant, names_: Sequence[str], task_id: str = "") -> dict[str, ToolSpec]:
+        found = await self._latest(tenant, task_id)
         return {n: found[n] for n in names_ if n in found}
 
-    async def effects(self, tenant: Tenant, names_: Sequence[str]) -> dict[str, str]:
-        return {n: spec.effect.value for n, spec in (await self.specs(tenant, names_)).items()}
+    async def effects(self, tenant: Tenant, names_: Sequence[str], task_id: str = "") -> dict[str, str]:
+        return {n: spec.effect.value for n, spec in (await self.specs(tenant, names_, task_id)).items()}
 
-    async def all_effects(self, tenant: Tenant) -> dict[str, str]:
+    async def all_effects(self, tenant: Tenant, task_id: str = "") -> dict[str, str]:
         """这个租户看得到的全部工具 → effect（同名取最大版本），给 Planner 的 Node Catalog 用。"""
-        return {n: spec.effect.value for n, spec in sorted((await self._latest(tenant)).items())}
+        return {n: spec.effect.value for n, spec in sorted((await self._latest(tenant, task_id)).items())}
+
+    async def mcp_names(self, tenant: Tenant, task_id: str) -> frozenset[str]:
+        """这个 Task 租约里的 MCP 工具名（上下文占比里与登记的 MCP 工具同一类）。"""
+        if self.mcp is None or not task_id:
+            return frozenset()
+        return frozenset(await self.mcp.specs(tenant.tenant_id, task_id))
 
 
 class DevCatalog:
@@ -68,7 +81,7 @@ class DevCatalog:
 
     @activity.defn(name=names.RESOLVE_CATALOG)
     async def resolve_catalog(self, req: CatalogRequest) -> CatalogInfo:
-        tools = await self.tools.effects(req.tenant, list(req.tools)) if req.tools else {}
+        tools = await self.tools.effects(req.tenant, list(req.tools), req.task_id) if req.tools else {}
         return CatalogInfo(templates={t: TemplateInfo(executor="program", effect="none") for t in req.templates}, tools=tools)
 
     def activities(self) -> dict[str, object]:
