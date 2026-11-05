@@ -328,6 +328,9 @@ class NodeExecutor:
         except ProviderError as err:
             raise self._from_provider(err, {}) from None
         if spec is None:
+            if inp.tool.startswith("mcp."):
+                # N-15：远程 MCP 工具只在 Task 的租约里；连接删了、Task 结束了，租约就收回了（mcp_lease_revoked）。
+                raise _error(f"MCP 工具 {inp.tool} 的租约已收回（连接被删除或工具被关掉），不能调用（mcp_lease_revoked）", DENIED)
             raise _error(f"工具 {inp.tool} 没有登记，不能调用", DENIED)
         node: dict[str, Any] = {
             "id": inp.node_id,
