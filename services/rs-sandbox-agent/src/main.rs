@@ -17,6 +17,7 @@
 //! AGENT_LISTEN=vsock:<端口>         改在 vsock 上监听（Firecracker 客户机，由 --init 设）；优先于 AGENT_ADDR
 //! AGENT_TOKEN_STDIN=1              令牌从标准输入的第一行读（--init 经管道给）
 //! AGENT_UID                        绑好监听之后降到这个 uid（gid 相同；只在以 root 起来时）
+//! AGENT_REAPED=1                   已经有回收孤儿的 PID 1（以 PID 1 起来、没设它时先分出回收者，guest.rs 的 run_reaper）
 //! AGENT_WORKDIR                    工作目录，默认 /workspace
 //! AGENT_MAX_TIMEOUT_S              一条命令最长多少秒，默认 3600
 //! AGENT_OUTPUT_LIMIT               stdout、stderr 各自最多保留多少字节，默认 8 MiB
@@ -167,6 +168,11 @@ fn main() -> ExitCode {
             }
             _ => fatal(&format!("不认识的子命令 {}", args[1].to_string_lossy())),
         };
+    }
+    // 当了容器的 PID 1（K8s 沙箱 Pod）：先分出回收孤儿的 PID 1，真正的 agent 在子进程里（guest.rs 的 run_reaper，SBX-ZOMBIE）。
+    #[cfg(target_os = "linux")]
+    if ar_sys::guest::is_pid1() && env("AGENT_REAPED").is_none() {
+        return guest::run_reaper();
     }
     // 先于读令牌：令牌在启动时的环境块里，remove_var 删不掉 /proc/<pid>/environ，只能不让命令读 agent 的 /proc。
     // 做不到就不起服务。

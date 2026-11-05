@@ -332,3 +332,42 @@ pub fn run_init() -> ExitCode {
         }
     }
 }
+
+/// K8s 沙箱 Pod 里 agent 就是容器的 PID 1（没有 --init、没有 shareProcessNamespace）：命令留下的孤儿过继给它，没人 wait
+/// 就成了僵尸（SBX-ZOMBIE）。这时 PID 1 只当回收者：把自己设成不可转储（环境块里有 AGENT_TOKEN），以同样的环境起真正的
+/// agent 子进程（多一个 AGENT_REAPED=1，不再进这里），之后只回收；agent 退出时以它的退出码退出（Pod 照常重启或结束）。
+pub fn run_reaper() -> ExitCode {
+    let _ = ar_sys::set_not_dumpable();
+    let exe = match std::env::current_exe() {
+        Ok(e) => e,
+        Err(e) => {
+            log(&format!("找不到自己的可执行文件：{e}"));
+            return ExitCode::from(1);
+        }
+    };
+    let agent = match Command::new(exe).env("AGENT_REAPED", "1").spawn() {
+        Ok(c) => c,
+        Err(e) => {
+            log(&format!("起不了 agent：{e}"));
+            return ExitCode::from(1);
+        }
+    };
+    let agent_pid = agent.id() as i32;
+    loop {
+        match guest::wait_any() {
+            Ok((pid, exit)) if pid == agent_pid => {
+                let code = match (exit.code, exit.signal) {
+                    (Some(c), _) => c,
+                    (None, Some(sig)) => 128 + sig,
+                    _ => 1,
+                };
+                return ExitCode::from(code.clamp(0, 255) as u8);
+            }
+            Ok(_) => {}
+            Err(e) => {
+                log(&format!("wait 出错：{e}"));
+                return ExitCode::from(1);
+            }
+        }
+    }
+}
