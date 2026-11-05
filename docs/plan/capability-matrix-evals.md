@@ -289,8 +289,9 @@ judge 格的三个贵模型（Opus 5.5、gpt-6-astra、fable 5.1）预算用完�
 1. 25 题里有 12 题，13 个模型各跑 3 次全是 0 分（例如 `batch_label_tickets`、`ci_fix_failing_test`、`multiday_csv_export`、`research_cbam_impact`）。
    失败全在形状检查上：缺 deliver 节点 387 次、缺 Goal Node mode（多是 template）231 次、缺质量包装 169 次，gate、human、并行宽度、节点数也各有几十次。
    这些都是人确认过的标注。去掉回退的运行也一样（缺 deliver 241 次）。所以要么是 N-04 之后的 Planner 与标注对不上，要么是标注太严，先要查清，分数才有意义。
-2. Planner 回退（没规划成，退回保守规划）975 次里有 276 次：qwen3.8-max 73/75、mimo-v2.6-pro 70/75、gpt-6-astra 57/75，多是 `bad_structured_output`。
-   第 2 节只把“钉的模型没用上”算作污染，回退照样计分，所以回退 76% 的 gpt-6-astra 也“可发布”。`evals run` 回退率超过 5% 就判运行无效，矩阵的计分没有这条。
+2. Planner 回退（没规划成，退回保守规划）975 次里有 276 次：qwen3.8-max 73/75、mimo-v2.6-pro 70/75、gpt-6-astra 57/75。
+   钉住的调用一抛异常（`bad_structured_output`、网关不可用、超时）就已经记成污染、不计分（`PinningGateway`）；计了 0 分的回退，是模型交了规划、
+   却没过 Planner 的校验。这本来算模型的问题，但 gpt-6-astra 57 次里只有 1 次是调用出错，又和第 1 条一样指向“现在的校验、标注与模型给的规划对不上”，要一起查。
 3. 按规则能发布的恰好只剩三个贵模型，分数都低于 0.5，其余候选照旧用 0.5 的先验。发出去之后，路由在规划上会避开测过的模型，去用没测过的。
 
 **judge 格的污染**主要来自中转站：502 时网关切到同档别的模型（结果里 `models_exhausted` 236 次、Model Gateway 的 gRPC 超时 72 次）。也就是钉的模型一时不可用，
@@ -300,7 +301,6 @@ judge 格的三个贵模型（Opus 5.5、gpt-6-astra、fable 5.1）预算用完�
 
 - 发 act、route 两格（12 + 6 个分数）与 judge 格的两个分数；plan 格这次不发。发布 = `capability publish` 改 `deploy/dev/model-profiles.json` 与 Registry 种子，人审后经 Registry 发布。
 - 下一轮之前：
-  - 矩阵的计分把 Planner 的回退也算作无效运行，与 `--max-fallback-rate` 同一规则；
+  - 查清第 1、2 条：那 12 题与被校验拒掉的规划，是 Planner 的校验、提示与标注对不上，还是标注太严；
   - 钉的模型 502 时先重试，不切模型，或者只重跑被污染的题；
-  - `plan.json` 打开改编题，让 plan、route 两格都够 40 题；
-  - 查清第 1 条那 12 题。
+  - `plan.json` 打开改编题，让 plan、route 两格都够 40 题。
