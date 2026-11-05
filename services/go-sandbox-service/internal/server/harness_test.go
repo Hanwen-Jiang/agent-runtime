@@ -31,6 +31,7 @@ import (
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	sandboxv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/sandbox/v1"
 	"github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/sandbox/v1/sandboxv1connect"
+	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/envbuild"
 	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/registry"
 	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/server"
 )
@@ -70,6 +71,9 @@ type harness struct {
 	// wrap 按后端名包一层 Provider（测试注入后端的行为）。
 	wrap map[string]func(sandbox.Provider) sandbox.Provider
 	tel  telemetry.Provider
+	// envs 给了时每次起服务按它建项目环境的 Manager（D-17）；env 是当前服务用的那个。
+	envs func(h *harness) *envbuild.Manager
+	env  *envbuild.Manager
 
 	svc    *server.Service
 	srv    *httptest.Server
@@ -108,6 +112,10 @@ func withWrappedProvider(name string, wrap func(sandbox.Provider) sandbox.Provid
 }
 
 func withTelemetry(tel telemetry.Provider) option { return func(h *harness) { h.tel = tel } }
+
+func withEnvironments(build func(h *harness) *envbuild.Manager) option {
+	return func(h *harness) { h.envs = build }
+}
 
 func withGateways(mirror, egress string) option {
 	return func(h *harness) { h.mirror, h.egress = mirror, egress }
@@ -186,8 +194,12 @@ func (h *harness) start() {
 	if err != nil {
 		h.t.Fatal(err)
 	}
+	h.env = nil
+	if h.envs != nil {
+		h.env = h.envs(h)
+	}
 	svc, err := server.New(context.Background(), server.Options{
-		Registry: reg, Relational: h.store, Objects: h.objects, Secrets: h.secrets, Clock: h.clock,
+		Registry: reg, Relational: h.store, Objects: h.objects, Secrets: h.secrets, Clock: h.clock, Environments: h.env,
 		Policy: func(_ context.Context, tenantID string) (map[string]any, error) {
 			if p, ok := h.policies[tenantID]; ok {
 				return p, nil

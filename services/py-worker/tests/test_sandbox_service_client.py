@@ -142,7 +142,8 @@ async def test_service_killed_mid_session_keeps_the_environment(service: Sandbox
 def test_the_worker_no_longer_ships_sandbox_backends() -> None:
     gone = [
         "agentruntime_worker.sandbox.broker", "agentruntime_worker.sandbox.ledger", "agentruntime_worker.sandbox.reconcile",
-        "agentruntime_worker.sandbox.env_builder", "agentruntime_worker.tools.sandboxes",
+        "agentruntime_worker.sandbox.env_builder", "agentruntime_worker.sandbox.environments", "agentruntime_worker.sandbox.env_build",
+        "agentruntime_worker.sandbox.credentials", "agentruntime_worker.tools.sandboxes", "agentruntime_core.adapters.oci_registry",
         "agentruntime_core.adapters.k8s_sandbox", "agentruntime_core.adapters.cloudflare_sandbox", "agentruntime_core.adapters.kube",
         "agentruntime_core.adapters.sandbox_agent",
     ]

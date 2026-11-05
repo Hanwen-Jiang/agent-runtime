@@ -1,0 +1,7 @@
+{
+  "name": "SWE-bench acme__calc-1",
+  "build": {
+    "dockerfile": "agentruntime.Dockerfile",
+    "context": "."
+  }
+}

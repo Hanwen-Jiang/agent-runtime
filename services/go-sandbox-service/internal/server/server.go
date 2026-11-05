@@ -37,6 +37,7 @@ import (
 	workspacev1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workspace/v1"
 	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/archive"
 	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/broker"
+	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/envbuild"
 	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/ledger"
 	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/registry"
 )
@@ -69,16 +70,19 @@ type Options struct {
 	MirrorURL string
 	EgressURL string
 	// Runtime 是服务自己借环境（git、转冷）时用的运行环境；空时 python。
-	Runtime     string
-	HoldMax     time.Duration
-	Grace       time.Duration
-	ColdDays    int
-	PolicyTTL   time.Duration
-	TmpDir      string
-	SetupCache  broker.SetupCache
-	Projects    broker.ProjectEnvironments
-	Logger      *slog.Logger
-	MaxMsgBytes int
+	Runtime    string
+	HoldMax    time.Duration
+	Grace      time.Duration
+	ColdDays   int
+	PolicyTTL  time.Duration
+	TmpDir     string
+	SetupCache broker.SetupCache
+	Projects   broker.ProjectEnvironments
+	// Environments 是按项目定制的运行环境（D-17，后端登记的 environments 一节）；给了时它同时是 SetupCache 与 Projects，
+	// 构建在服务进程里跑。
+	Environments *envbuild.Manager
+	Logger       *slog.Logger
+	MaxMsgBytes  int
 	// Telemetry 给了时每轮对账报一次卷用量（runtime.workspace.volume_used_ratio，DISK-A）；没给时只在报告里。
 	Telemetry telemetry.Provider
 }
@@ -135,12 +139,18 @@ func New(ctx context.Context, o Options) (*Service, error) {
 		return nil, err
 	}
 	reg := o.Registry
+	if o.Environments != nil {
+		o.SetupCache, o.Projects = o.Environments, o.Environments
+	}
 	b := broker.New(broker.Options{
 		Registry: reg, Policies: registry.NewPolicies(reg, o.Policy, o.PolicyTTL), Ledger: led, Archiver: arch, Store: o.Relational,
 		Credentials: broker.NewCredentials(reg, o.MirrorURL, o.EgressURL), SetupCache: o.SetupCache, Projects: o.Projects, HoldMax: o.HoldMax,
 		EgressCA: func(ctx context.Context) []byte { v, _ := reg.ReadSecret(ctx, "sandbox/egress-ca-cert"); return v }, Logger: o.Logger,
 	})
 	b.SetCold(broker.ColdOptions{DefaultDays: o.ColdDays, Runtime: o.Runtime})
+	if o.Environments != nil {
+		o.Environments.Attach(b)
+	}
 	s := &Service{opts: o, broker: b, log: o.Logger, tokens: map[string][]byte{}}
 	if err := s.loadTokens(ctx); err != nil {
 		return nil, err
@@ -175,8 +185,13 @@ func (s *Service) Reconcile(ctx context.Context) (broker.Report, error) {
 	return report, err
 }
 
-// Close 收尾（本地后端的环境不随服务退出）。
-func (s *Service) Close() error { return s.opts.Registry.Close() }
+// Close 收尾（本地后端的环境不随服务退出；进程里没跑完的构建留着 building，重启后由用到它的 Acquire 接手）。
+func (s *Service) Close() error {
+	if s.opts.Environments != nil {
+		s.opts.Environments.Close()
+	}
+	return s.opts.Registry.Close()
+}
 
 func (s *Service) loadTokens(ctx context.Context) error {
 	tokens := map[string][]byte{}

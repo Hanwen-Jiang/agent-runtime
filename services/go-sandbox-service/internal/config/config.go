@@ -2,7 +2,7 @@
 //
 //	AR_SANDBOX_SERVICE_ADDR            监听地址（gRPC h2c 与 /healthz 同一个端口），默认 127.0.0.1:8097
 //	AR_SANDBOX_BACKENDS_FILE           沙箱后端的登记（必填；格式见 internal/registry）
-//	AR_TOOL_WORKSPACE_ROOT             挂卷时的工作区根（只读快路径与本地后端用；集群里只读挂工作区卷）
+//	AR_TOOL_WORKSPACE_ROOT             挂卷时的工作区根（读文件的快路径、本地后端、删工作区时删目录；集群里可写地挂工作区卷）
 //	AR_SANDBOX_STATE_DIR               本地后端的环境目录，默认 <AR_DATA_DIR>/sandboxes
 //	AR_SANDBOX_AGENT_BIN               本地后端起的 sandbox-agent，默认 PATH 上的 sandbox-agent
 //	AR_DATA_DIR、AR_RELATIONAL_DSN     业务库：设了 DSN 用 Postgres（行级安全），否则 <AR_DATA_DIR>/relational 下的 SQLite
@@ -18,6 +18,7 @@
 //	AR_SANDBOX_HOLD_MAX_S              等人期间保留会话级环境的上限，默认 7200
 //	AR_WORKSPACE_COLD_AFTER_DAYS       挂卷工作区闲置多少天转冷（租户策略没写时），默认 0（不转冷）
 //	AR_SANDBOX_POLICY_TTL_S            租户策略的缓存秒数，默认 60；0 不缓存（测试用）
+//	AR_SANDBOX_TMP_DIR                 临时文件（工作区存档、D-17 构建产物，可达几个 GB）的目录，默认系统的临时目录
 //	AR_PROFILE                         production 时没有 AR_RELATIONAL_DSN 拒绝启动
 package config
 
@@ -54,8 +55,10 @@ type Config struct {
 	HoldMax         time.Duration
 	ColdDays        int
 	// PolicyTTL 是租户策略的缓存时长；负数不缓存（AR_SANDBOX_POLICY_TTL_S=0，测试改策略即时生效）。
-	PolicyTTL time.Duration
-	Production      bool
+	PolicyTTL  time.Duration
+	Production bool
+	// TmpDir 是临时文件的目录（空时系统的临时目录）。
+	TmpDir string
 }
 
 // FromEnv 读环境变量。
@@ -66,7 +69,7 @@ func FromEnv(getenv func(string) string) (Config, error) {
 		DataDir: getenv("AR_DATA_DIR"), RelationalDSN: getenv("AR_RELATIONAL_DSN"), ObjectStoreDir: getenv("AR_OBJECT_STORE_DIR"),
 		SecretsFile: getenv("AR_SECRETS_FILE"), SecretsSeedFile: getenv("AR_SECRETS_SEED_FILE"), RegistryAddress: getenv("AR_REGISTRY_ADDRESS"),
 		PoliciesFile: getenv("AR_DEV_TENANT_POLICIES_FILE"), MirrorURL: getenv("AR_PKG_MIRROR_URL"), EgressURL: getenv("AR_EGRESS_GATEWAY_URL"),
-		Runtime: or(getenv("AR_SANDBOX_RUNTIME"), "python"), Production: getenv("AR_PROFILE") == "production",
+		Runtime: or(getenv("AR_SANDBOX_RUNTIME"), "python"), Production: getenv("AR_PROFILE") == "production", TmpDir: getenv("AR_SANDBOX_TMP_DIR"),
 	}
 	if c.BackendsFile == "" {
 		return c, errors.New("要设 AR_SANDBOX_BACKENDS_FILE（沙箱后端的登记）")

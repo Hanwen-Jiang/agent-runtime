@@ -268,13 +268,18 @@ func (b *Broker) Acquire(ctx context.Context, tenant *commonv1.TenantContext, a 
 			pendingSetup = "running"
 		}
 	}
+	projectImage := envJSON != "" && a.Spec.Image != "" && cachedKey == ""
 	lease, err := b.create(ctx, tenant, owner, a, policy, grants, pendingEnv, pendingSetup)
 	if err != nil {
 		var pe *providererr.Error
-		if cachedKey == "" || !errors.As(err, &pe) || pe.Code != "unsupported_image" {
+		if (cachedKey == "" && !projectImage) || !errors.As(err, &pe) || pe.Code != "unsupported_image" {
 			return nil, err
 		}
-		// 回退到的后端用不了缓存的镜像：这一次照常跑 setup。
+		// 回退到的后端用不了缓存的镜像：这一次照常跑 setup。项目环境的镜像落不到这个后端（例如回退到了托管后端）：退回 universal，
+		// 并在结果里说明（D-17）。
+		if projectImage {
+			envJSON = fallbackEnvironment(envJSON, pe.Message+"，这次用 universal")
+		}
 		cachedKey, a.Spec.Image = "", ""
 		if lease, err = b.create(ctx, tenant, owner, a, policy, grants, pendingEnv, pendingSetup); err != nil {
 			return nil, err
@@ -1218,4 +1223,15 @@ func (b *Broker) workspaceReader(ctx context.Context, tenant *commonv1.TenantCon
 		}
 		return data, err
 	}
+}
+
+// fallbackEnvironment 把项目环境的解析结果改成 fallback（镜像落不到这次的后端，用了 universal），并写上原因。
+func fallbackEnvironment(envJSON, note string) string {
+	var doc map[string]any
+	if json.Unmarshal([]byte(envJSON), &doc) != nil || doc == nil {
+		doc = map[string]any{}
+	}
+	doc["state"], doc["note"] = "fallback", note
+	data, _ := json.Marshal(doc)
+	return string(data)
 }

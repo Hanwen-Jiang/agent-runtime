@@ -32,7 +32,6 @@ import pytest
 from agentruntime_learning.benchmarks import swebench as sb
 from agentruntime_learning.benchmarks.client import ApiError
 from agentruntime_worker.reviewer.rules import HUMAN_REPLIES
-from agentruntime_worker.sandbox.environments import RegistryPath, check_dockerfile, detect
 
 from swebench_support import (
     HIDDEN,
@@ -185,22 +184,24 @@ def test_image_names_follow_the_official_naming() -> None:
     assert sb.image_of(upper) == "swebench/sweb.eval.x86_64.foo_1776_bar-1:latest"
 
 
-async def test_the_environment_definition_passes_d17(insts: list[sb.Instance]) -> None:
+# D-17 的识别与静态检查在 Sandbox Service 里（Go，SBX-01）：这里的定义与 Go 那边的 testdata 逐字节相同，Go 的
+# TestSWEBenchDefinitionPasses 对着 testdata 核对识别与检查。改了定义就重新生成 testdata（见下面的断言信息）。
+GOLDEN = Path(__file__).resolve().parents[2] / "go-sandbox-service" / "internal" / "envbuild" / "testdata" / "swebench"
+
+
+def test_the_environment_definition_passes_d17(insts: list[sb.Instance]) -> None:
     inst = insts[0]
+    assert inst.instance_id == "acme__calc-1", "testdata 是第一题的定义"
     files = sb.environment_files(inst)
     assert [f["path"] for f in files] == [".devcontainer/devcontainer.json", ".devcontainer/agentruntime.Dockerfile"]
-    by_path = {f["path"]: f["content"].encode() for f in files}
-
-    async def read(path: str) -> bytes | None:
-        return by_path.get(path)
-
-    definition = await detect(read, base_image="ghcr.io/agentruntime/sandbox-universal:1")
-    assert definition is not None and definition.kind == "devcontainer" and definition.problem == "", definition
-    dockerfile = definition.dockerfile
+    by_path = {f["path"]: f["content"] for f in files}
+    dockerfile = by_path[".devcontainer/agentruntime.Dockerfile"]
     assert dockerfile.splitlines()[0] == f"FROM {sb.image_of(inst)}"
     assert "ln -s /workspace /testbed" in dockerfile, "官方镜像把仓库装在 /testbed：换成指向工作区"
     assert "/opt/miniconda3/envs/testbed/bin" in dockerfile, "PATH 用 conda 环境 testbed"
-    assert check_dockerfile(dockerfile, tenant_id="bench", registry=RegistryPath(host="registry.example", prefix="ar")) == []
+    for path, content in by_path.items():
+        golden = (GOLDEN / path).read_bytes().replace(b"\r\n", b"\n")  # Windows 上检出时可能换成了 CRLF
+        assert golden == content.encode(), f"{path} 与 Go 的 testdata 不一致：把 environment_files 的输出写进 {GOLDEN}，再跑 go test ./internal/envbuild"
     other = {f["path"]: f["content"] for f in sb.environment_files(inst, workspace_path="/work")}
     assert "ln -s /work /testbed" in other[".devcontainer/agentruntime.Dockerfile"]
 

@@ -41,6 +41,7 @@ import (
 	registryv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/registry/v1"
 	"github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/registry/v1/registryv1connect"
 	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/config"
+	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/envbuild"
 	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/registry"
 	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/server"
 )
@@ -150,10 +151,17 @@ func serve() error {
 		}
 		defer tel.Close()
 	}
+	// 后端登记里有 environments 一节时按项目定制运行环境（D-17）：构建在本进程里跑，产物推到登记的镜像仓库。
+	var environments *envbuild.Manager
+	if len(reg.Environments) > 0 {
+		if environments, err = envbuild.FromSpec(reg.Environments, envbuild.Deps{ReadSecret: reg.ReadSecret, TmpDir: cfg.TmpDir, Logger: logger}); err != nil {
+			return fmt.Errorf("后端登记的 environments 一节不合法：%w", err)
+		}
+	}
 	svc, err := server.New(ctx, server.Options{
 		Registry: reg, Relational: store, Objects: objects, Secrets: secrets, Policy: policyLookup(cfg), Callers: cfg.Callers,
 		MirrorURL: cfg.MirrorURL, EgressURL: cfg.EgressURL, Runtime: cfg.Runtime, HoldMax: cfg.HoldMax, ColdDays: cfg.ColdDays, PolicyTTL: cfg.PolicyTTL, Logger: logger,
-		Telemetry: tel,
+		Telemetry: tel, Environments: environments, TmpDir: cfg.TmpDir,
 	})
 	if err != nil {
 		return err
