@@ -788,6 +788,19 @@ REAL-01 的检查（2026-11-04，在第 27 版上；目录 `rev29`，脚本 `smo
   经线上网关探测（工具 + 输出 schema，与 tool_loop 的请求同形）：kimi 两次都调了 `shell_run`，gemini-4-argon 也是；第 27 版上同样的请求 kimi 不调、编结果。
 - 回滚：`helm rollback ar 27`。下一版正常发布时 `modelGateway.imageTag` 去掉（跟 image.tag），不然网关会停在这个镜像上。
 
+第 29 版（2026-11-04 至 11-05，DEP-TB29：Terminal-Bench 的三处线上改动；目录 `rev31`，脚本 `kata-xattr.sh`、`prepare.sh`、`rev31.sh`；用户在对话里“三处都批”）：
+
+- ① Kata：`kata` RuntimeClass（handler `kata-clh-runtime-rs`）的配置 `/opt/kata/share/defaults/kata-containers/runtime-rs/runtimes/clh-runtime-rs/configuration-clh-runtime-rs.toml`
+  的 `virtio_fs_extra_args` 加 `"--xattr", "--xattrmap=:map::user.virtiofs.:"`（备份在 `rev31/configuration-clh-runtime-rs.toml.before`），只影响之后新起的 Kata Pod。
+  核对：一次性的 Kata Pod（特权、root）在根文件系统上写读 `user.test`、`trusted.overlay.opaque`、`security.capability` 都成功；第一次核对因为镜像默认非 root
+  写不了 `/root` 失败，脚本按设计还原了配置，改了核对再来。`deploy/cluster/install.sh` 在 kata-deploy 之后补这一行（kata-deploy 重装会覆盖）。
+- ② `swebench` 租户策略第 5 版（`registry-seed`，`swebench-policy-seed-v5.json`）：只改 `sandbox.network.hosts`，加 `codeload.github.com`、
+  `objects.githubusercontent.com`、`raw.githubusercontent.com`、`download.pytorch.org`；发布前核对线上第 4 版与种子一致。回滚：用 v4 的种子再发一次。
+- ③ Helm 第 29 版：values 是第 28 版应用过的那份加 `worker.shell.environments.limits.maxImages: 50`，Chart 仍是 `rev30/x-ar`；渲染与第 28 版比只有
+  `sandbox-backends` 的 `backends.json` 一行，脚本核对其中只有 `max_images` 5 → 50。Worker 只在启动时读后端登记，升级之后五个 Worker 池滚动重启，
+  Pod 里读到 50。`values-cloud.yaml` 同步改成 50。回滚：`helm rollback ar 28` 再重启 Worker。
+- 评测代码：服务器上 `/opt/evals/src/2d94680`、`/opt/evals/venv-2d94680`（带 `--network-hosts`，EV-TB-NET）。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
