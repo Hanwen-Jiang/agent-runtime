@@ -14,6 +14,11 @@ pub const GUEST_CID: u32 = 3;
 pub const AGENT_PORT: u32 = 700;
 /// 客户机启动时向宿主取令牌的端口（宿主侧是 <uds_path>_701，交出一次就删掉）。
 pub const TOKEN_PORT: u32 = 701;
+/// 客户机里 agent（PID 1）收宿主来的预览连接的 vsock 端口（D-22，net.rs）。
+pub const PREVIEW_PORT: u32 = 702;
+/// 客户机连宿主的这两个端口，fc-manager 转给出网网关与包镜像（D-22，net.rs）。
+pub const EGRESS_PORT: u32 = 1080;
+pub const MIRROR_PORT: u32 = 1081;
 /// 以下路径都在 jail 里（firecracker 看到的根）。socket 放在 /run：它属于这台 VM 的 uid，firecracker 才能在里面建 socket。
 pub const API_SOCK: &str = "/run/firecracker.socket";
 pub const VSOCK_UDS: &str = "/run/v.sock";

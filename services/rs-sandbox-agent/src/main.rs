@@ -6,6 +6,7 @@
 //! sandbox-agent                 起服务
 //! sandbox-agent install <路径>  把自己拷到 <路径>：K8s 的 initContainer 用它把 agent 放进共享卷，跑命令的镜像不用自带 agent
 //! sandbox-agent version
+//! sandbox-agent --init          Firecracker 客户机里的 PID 1（guest.rs，D-20）：挂文件系统、取令牌、起 agent 子进程、回收孤儿
 //! ```
 //!
 //! 环境变量：
@@ -13,6 +14,9 @@
 //! ```text
 //! AGENT_TOKEN 或 AGENT_TOKEN_FILE  请求要带的令牌（至少 32 个字符；必填）
 //! AGENT_ADDR                       监听地址，默认 :7070
+//! AGENT_LISTEN=vsock:<端口>         改在 vsock 上监听（Firecracker 客户机，由 --init 设）；优先于 AGENT_ADDR
+//! AGENT_TOKEN_STDIN=1              令牌从标准输入的第一行读（--init 经管道给）
+//! AGENT_UID                        绑好监听之后降到这个 uid（gid 相同；只在以 root 起来时）
 //! AGENT_WORKDIR                    工作目录，默认 /workspace
 //! AGENT_MAX_TIMEOUT_S              一条命令最长多少秒，默认 3600
 //! AGENT_OUTPUT_LIMIT               stdout、stderr 各自最多保留多少字节，默认 8 MiB
@@ -31,6 +35,8 @@ mod exec;
 mod files;
 mod goregex;
 mod gostr;
+#[cfg(target_os = "linux")]
+mod guest;
 mod http;
 mod json;
 
@@ -153,6 +159,8 @@ fn main() -> ExitCode {
                     Err(e) => fatal(&format!("install：{e}")),
                 }
             }
+            #[cfg(target_os = "linux")]
+            Some("--init") => guest::run_init(),
             Some("version") => {
                 println!("{VERSION}");
                 ExitCode::SUCCESS
@@ -173,6 +181,13 @@ fn main() -> ExitCode {
             Ok(t) => token = t.trim().to_string(),
             Err(e) => return fatal(&format!("读不了 AGENT_TOKEN_FILE：{e}")),
         }
+    }
+    if token.is_empty() && env("AGENT_TOKEN_STDIN").as_deref() == Some("1") {
+        let mut line = String::new();
+        if let Err(e) = std::io::stdin().read_line(&mut line) {
+            return fatal(&format!("从标准输入读不了令牌：{e}"));
+        }
+        token = line.trim().to_string();
     }
     // 这时还没有别的线程。
     ar_sys::remove_env_before_threads("AGENT_TOKEN");
@@ -197,6 +212,49 @@ fn main() -> ExitCode {
         Ok(a) => Arc::new(a),
         Err(e) => return fatal(&e),
     };
+    #[cfg(target_os = "linux")]
+    if let Some(port) =
+        env("AGENT_LISTEN").and_then(|v| v.strip_prefix("vsock:").map(str::to_string))
+    {
+        let Ok(port) = port.parse::<u32>() else {
+            return fatal("AGENT_LISTEN 要写成 vsock:<端口>");
+        };
+        let listener = match ar_sys::guest::vsock_listen(port, 128) {
+            Ok(l) => l,
+            Err(e) => return fatal(&format!("listen vsock {port}: {e}")),
+        };
+        if let Some(uid) = env("AGENT_UID") {
+            let Ok(uid) = uid.parse::<u32>() else {
+                return fatal("AGENT_UID 要是整数");
+            };
+            if ar_sys::geteuid() == 0 && uid != 0 {
+                if let Err(e) = ar_sys::guest::drop_privileges(uid, uid) {
+                    return fatal(&format!("降权失败：{e}"));
+                }
+                // 换 uid 之后内核把进程重置成可转储，再关一次。
+                if let Err(e) = ar_sys::set_not_dumpable() {
+                    return fatal(&format!("PR_SET_DUMPABLE：{e}"));
+                }
+            }
+        }
+        log(&format!("sandbox-agent {VERSION} 在 vsock:{port} 上运行"));
+        loop {
+            let stream = match ar_sys::guest::vsock_accept(&listener) {
+                Ok(s) => s,
+                Err(_) => {
+                    std::thread::sleep(Duration::from_millis(10));
+                    continue;
+                }
+            };
+            let app = app.clone();
+            let spawned = std::thread::Builder::new()
+                .stack_size(256 << 10)
+                .spawn(move || http::serve_conn(stream, &|ctx| app.handle(ctx)));
+            if spawned.is_err() {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        }
+    }
     let addr = env_or("AGENT_ADDR", ":7070");
     let listener = match listen(&addr) {
         Ok(l) => l,

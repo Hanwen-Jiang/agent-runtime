@@ -201,6 +201,15 @@ fn route(mgr: &Manager, tokens: &TokenSource, mut conn: Conn<TcpStream>, head: &
             Err(e) => reply(conn, &e),
         };
     }
+    if tail == "preview" {
+        if method != "POST" {
+            return reply(
+                conn,
+                &ApiError::new(405, "method_not_allowed", "只支持 POST"),
+            );
+        }
+        return preview(mgr, &owner, env_id, conn, body);
+    }
     let Some(agent_path) = tail.strip_prefix("agent/") else {
         return reply(conn, &ApiError::new(404, "not_found", "没有这个接口"));
     };
@@ -229,6 +238,39 @@ fn route(mgr: &Manager, tokens: &TokenSource, mut conn: Conn<TcpStream>, head: &
     // 转发期间不设读超时：请求体可能来得慢，命令可能跑很久。
     let _ = conn.get_mut().set_read_timeout(None);
     proxy::forward(conn, head, &target, &route)
+}
+
+fn preview(mgr: &Manager, owner: &str, env_id: &str, mut conn: Conn<TcpStream>, body: Body) -> u16 {
+    let raw = match body {
+        Body::Length(n) if n <= 1024 => match conn.read_body(body, 1024) {
+            Ok(b) => b,
+            Err(_) => return reply(conn, &ApiError::new(400, "invalid_request", "请求体没读完")),
+        },
+        _ => {
+            return reply(
+                conn,
+                &ApiError::new(
+                    400,
+                    "invalid_request",
+                    "请求体要是带 Content-Length 的小 JSON",
+                ),
+            );
+        }
+    };
+    let port = serde_json::from_slice::<Value>(&raw)
+        .ok()
+        .and_then(|v| v.get("port").and_then(Value::as_u64))
+        .filter(|p| (1..=65535).contains(p));
+    let Some(port) = port else {
+        return reply(
+            conn,
+            &ApiError::new(400, "invalid_port", "port 要在 1 到 65535 之间"),
+        );
+    };
+    match mgr.preview(owner, env_id, port as u16) {
+        Ok(addr) => respond(conn, 200, &json!({"address": addr})),
+        Err(e) => reply(conn, &e),
+    }
 }
 
 fn create(mgr: &Manager, owner: &str, mut conn: Conn<TcpStream>, body: Body) -> u16 {

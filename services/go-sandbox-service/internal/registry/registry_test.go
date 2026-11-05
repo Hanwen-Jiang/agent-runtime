@@ -5,7 +5,7 @@ package registry
 //
 //   - 登记文件的格式不对时加载就失败：default 没登记、kind 与 isolation 不认识、后端名格式不对、没有 backends。
 //   - D-19：default 指向 enabled: false 的后端时加载失败；capabilities 不认识、firecracker 没配 workspace: archive、enabled 不是
-//     布尔值都失败，原因里有后端名；firecracker 在 D-20 之前只能登记为 enabled: false；登记的能力查得到。
+//     布尔值、firecracker 没写 manager_url 都失败，原因里有后端名；登记的能力查得到。
 //   - 租户策略：数字从策略里读，空闲与存活时长只能调低部署的默认值；没有策略时用部署的默认后端。
 
 import (
@@ -23,7 +23,7 @@ func parse(t *testing.T, doc map[string]any) (*Registry, error) {
 }
 
 var firecrackerOff = map[string]any{"kind": "firecracker", "isolation": "microvm", "workspace": "archive", "enabled": false,
-	"capabilities": []any{"snapshot", "block_attach", "vsock"}}
+	"manager_url": "http://10.42.0.1:8097", "capabilities": []any{"snapshot", "block_attach", "vsock"}}
 
 func TestBackendsFileIsValidated(t *testing.T) {
 	reg, err := parse(t, map[string]any{"default": "a", "backends": map[string]any{"a": map[string]any{"kind": "local"}}})
@@ -71,7 +71,7 @@ func TestBadRegistryEntriesFailToLoad(t *testing.T) {
 		{map[string]any{"kind": "local", "isolation": "container", "capabilities": "snapshot"}, "capabilities"},
 		{map[string]any{"kind": "local", "isolation": "container", "enabled": "no"}, "enabled"},
 		{with(firecrackerOff, "workspace", "mount"), "archive"},
-		{with(firecrackerOff, "enabled", true), "D-20"},
+		{with(firecrackerOff, "manager_url", ""), "manager_url"},
 	} {
 		_, err := parse(t, map[string]any{"default": "local", "backends": map[string]any{
 			"local": map[string]any{"kind": "local", "isolation": "none"}, "vm": tc.backend}})

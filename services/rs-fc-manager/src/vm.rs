@@ -121,7 +121,7 @@ pub fn new_env_id() -> io::Result<String> {
     Ok(format!("{}{}", spec::ENV_ID_PREFIX, random_hex(8)?))
 }
 
-fn chown(cfg: &Config, path: &Path, uid: u32) -> Result<(), VmError> {
+pub fn chown(cfg: &Config, path: &Path, uid: u32) -> Result<(), VmError> {
     if cfg.allow_non_root && sys::geteuid() != 0 {
         return Ok(());
     }

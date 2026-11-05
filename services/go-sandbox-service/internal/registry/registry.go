@@ -18,7 +18,9 @@
 //	  - local：libs/go-core/dev/localsandbox，每个环境一个 sandbox-agent 进程，不隔离，只给开发与测试。
 //	  - workspace：mount（挂卷）或 archive（不挂卷，建环境后从存档恢复、销毁前存档，D-06）；没写时 Cloudflare 是 archive，其余 mount。
 //	  - enabled（默认 true）为 false 的后端不接新环境，已有的照常用到回收（D-19）；default 不能指向停用的后端。
-//	  - firecracker：只能登记为 enabled: false、workspace: archive（实现在 D-20）。
+//	  - firecracker：libs/go-core/adapters/fcsandbox，宿主上的 fc-manager（D-20）；manager_url、runtimes（宿主上有 rootfs 的运行环境）、
+//	    disk_mb；令牌取 sandbox/fc-manager-token。要写 workspace: archive（客户机不挂卷）；isolation 没写时是 microvm。
+//	    出网经 egress_gateway_url（客户机里的转发器 http://127.0.0.1:3128）与 pkg_mirror_url（http://127.0.0.1:3129），D-22。
 //
 // 用哪个后端由租户策略的 sandbox.backend 决定（按租户缓存一分钟），没写时用 default；登记里没有的名字一律拒绝。
 package registry
@@ -38,6 +40,7 @@ import (
 	"time"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/cfsandbox"
+	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/fcsandbox"
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/k8ssandbox"
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/kube"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/localsandbox"
@@ -51,7 +54,7 @@ import (
 // 种类、隔离强度、能力、工作区模式。
 var (
 	Kinds          = []string{"k8s", "cloudflare", "local", "firecracker"}
-	BuildableKinds = []string{"k8s", "cloudflare", "local"}
+	BuildableKinds = []string{"k8s", "cloudflare", "local", "firecracker"}
 	Isolations     = []string{"none", "container", "microvm"}
 	Capabilities   = []string{"snapshot", "block_attach", "vsock"}
 	WorkspaceModes = []string{"mount", "archive"}
@@ -64,6 +67,7 @@ var IsolationRank = map[string]int{"none": 0, "container": 1, "microvm": 2}
 const (
 	TokenKeySecret    = "sandbox/token-key"
 	BridgeTokenSecret = "sandbox/cloudflare-bridge-token"
+	FCManagerSecret   = "sandbox/fc-manager-token"
 	SecretPurpose     = "sandbox"
 )
 
@@ -183,8 +187,8 @@ func Parse(raw []byte, opts Options) (*Registry, error) {
 			if spec.str("workspace") != "archive" {
 				return nil, fmt.Errorf("沙箱后端 %s 是 firecracker，要写 workspace: archive（客户机不挂卷，工作区经存档恢复）", name)
 			}
-			if en, ok := spec["enabled"].(bool); !ok || en {
-				return nil, fmt.Errorf("沙箱后端 %s：firecracker 后端还没有实现（D-20），只能登记为 enabled: false", name)
+			if spec.str("manager_url") == "" {
+				return nil, fmt.Errorf("沙箱后端 %s 是 firecracker，要写 manager_url（fc-manager 的地址）", name)
 			}
 		}
 	}
@@ -265,6 +269,9 @@ func (r *Registry) Isolation(name string) string {
 	if s := r.spec(name).str("isolation"); s != "" {
 		return s
 	}
+	if r.spec(name).Kind() == "firecracker" {
+		return "microvm"
+	}
 	return "container"
 }
 
@@ -274,7 +281,7 @@ func (r *Registry) WorkspaceMode(name string) string {
 	if m := s.str("workspace"); m != "" {
 		return m
 	}
-	if s.Kind() == "cloudflare" {
+	if s.Kind() == "cloudflare" || s.Kind() == "firecracker" {
 		return "archive"
 	}
 	return "mount"
@@ -435,6 +442,30 @@ func (r *Registry) build(ctx context.Context, name string, s Spec) (sandbox.Prov
 		p, err := cfsandbox.New(s.str("bridge_url"), string(token), runtimes, faults)
 		if err != nil {
 			return nil, providererr.Wrap(providererr.Invalid, "invalid_bridge", err.Error(), err)
+		}
+		return p, nil
+	case "firecracker":
+		token, err := r.ReadSecret(ctx, FCManagerSecret)
+		if err != nil {
+			return nil, err
+		}
+		if len(token) == 0 {
+			return nil, providererr.New(providererr.Invalid, "missing_fc_manager_token", "SecretStore 的平台作用域里没有 "+FCManagerSecret+"（Firecracker 后端 "+name+" 要用）")
+		}
+		cfg := fcsandbox.Config{ManagerURL: s.str("manager_url")}
+		if list, ok := s["runtimes"].([]any); ok {
+			for _, v := range list {
+				if str, ok := v.(string); ok {
+					cfg.Runtimes = append(cfg.Runtimes, str)
+				}
+			}
+		}
+		if v, ok := s.num("disk_mb"); ok {
+			cfg.DiskMB = v
+		}
+		p, err := fcsandbox.New(cfg, strings.TrimSpace(string(token)), faults)
+		if err != nil {
+			return nil, providererr.Wrap(providererr.Invalid, "invalid_fc_manager", err.Error(), err)
 		}
 		return p, nil
 	}

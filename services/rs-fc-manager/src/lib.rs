@@ -8,6 +8,7 @@
 //! POST   /v1/envs                              {"runtime", "cpu_millis", "memory_mb", "disk_mb"?, "labels"?} → 201 {"env_id", …}
 //! DELETE /v1/envs/<env_id>                     销毁；已经没了也是 204
 //! *      /v1/envs/<env_id>/agent/<agent 路径>   原样转给客户机里的 agent（/v1/exec、/v1/files/…），带上这台 VM 的 agent 令牌
+//! POST   /v1/envs/<env_id>/preview             {"port"} → {"address": "IP:端口"}：客户机这个端口的预览入口（D-22，net.rs）
 //! ```
 //!
 //! 认证：`Authorization: Bearer <令牌>`，令牌是 SecretStore 平台作用域的 `sandbox/fc-manager-token`（`AR_SECRETS_FILE`，
@@ -30,6 +31,8 @@ pub mod timefmt;
 pub mod app;
 #[cfg(target_os = "linux")]
 pub mod manager;
+#[cfg(target_os = "linux")]
+pub mod net;
 #[cfg(target_os = "linux")]
 pub mod proxy;
 #[cfg(target_os = "linux")]

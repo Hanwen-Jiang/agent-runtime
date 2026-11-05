@@ -21,6 +21,7 @@ use std::time::{Instant, SystemTime};
 use serde_json::{Value, json};
 
 use crate::config::{Config, Fault};
+use crate::net::{self, Links};
 use crate::secrets::Token;
 use crate::spec::{self, CreateRequest, VmSpec};
 use crate::store::{Record, Store};
@@ -75,6 +76,7 @@ struct Vm {
     /// 有线程正在拆它（销毁、或者 reaper 发现它死了）。
     busy: bool,
     conns: usize,
+    links: std::sync::Arc<Links>,
 }
 
 #[derive(Default)]
@@ -265,6 +267,7 @@ impl Manager {
             warn!("取随机数失败：{e}");
             ApiError::new(500, "internal", "fc-manager 内部错误")
         })?;
+        let links = Links::new(self.cfg.max_forward_conns);
         let mut rec = {
             let mut g = self.lock();
             let c = &self.cfg;
@@ -312,12 +315,13 @@ impl Manager {
                 cancelled: false,
                 busy: true,
                 conns: 0,
+                links: links.clone(),
             };
             g.vms.insert(env_id.clone(), vm);
             rec
         };
         let started = Instant::now();
-        match self.boot(&mut rec, &rootfs) {
+        match self.boot(&mut rec, &rootfs, &links) {
             Ok(token) => {
                 let mut g = self.lock();
                 let vm = g.vms.get_mut(&env_id).expect("建的期间只有本线程会删它");
@@ -363,7 +367,12 @@ impl Manager {
         }
     }
 
-    fn boot(&self, rec: &mut Record, rootfs: &Path) -> Result<Token, VmError> {
+    fn boot(
+        &self,
+        rec: &mut Record,
+        rootfs: &Path,
+        links: &std::sync::Arc<Links>,
+    ) -> Result<Token, VmError> {
         let write = |r: &Record| {
             self.store
                 .write(r)
@@ -387,6 +396,10 @@ impl Manager {
         let token =
             Token::new(vm::random_hex(32).map_err(|e| VmError::Host(format!("取随机数：{e}")))?);
         let listener = vm::token_listener(&self.cfg, &p, rec.uid)?;
+        net::open_outbound(&self.cfg, &p, rec.uid, links, |path, uid| {
+            vm::chown(&self.cfg, path, uid).map_err(|e| e.detail())
+        })
+        .map_err(VmError::Host)?;
         vm::start(&p)?;
         self.fault(Fault::AfterStart);
         let deadline = Instant::now() + self.cfg.boot_timeout;
@@ -419,6 +432,7 @@ impl Manager {
     fn release(&self, env_id: &str) {
         let mut g = self.lock();
         if let Some(vm) = g.vms.remove(env_id) {
+            vm.links.stop();
             g.slots.remove(&vm.rec.slot);
             g.vcpus -= u64::from(vm.rec.spec.vcpus);
             g.memory -= vm.rec.spec.memory_mib;
@@ -490,6 +504,30 @@ impl Manager {
                 })
             })
             .collect()
+    }
+
+    /// 客户机端口 `port` 的预览入口（D-22）：在 fc-manager 的监听 IP 上开一个端口，返回 `IP:端口`。
+    pub fn preview(&self, owner: &str, env_id: &str, port: u16) -> Result<String, ApiError> {
+        let links = {
+            let g = self.lock();
+            let Some(vm) = g.vms.get(env_id) else {
+                return Err(ApiError::unknown_env());
+            };
+            if vm.rec.owner != owner || vm.state != State::Ready {
+                return Err(ApiError::unknown_env());
+            }
+            vm.links.clone()
+        };
+        let ip = self
+            .cfg
+            .listen
+            .parse::<std::net::SocketAddr>()
+            .map(|a| a.ip())
+            .map_err(|_| ApiError::new(500, "internal", "fc-manager 内部错误"))?;
+        let p = Paths::new(&self.cfg, env_id);
+        net::open_preview(ip, &p, &links, port)
+            .map(|a| a.to_string())
+            .map_err(|m| ApiError::new(409, "preview_unavailable", m))
     }
 
     pub fn agent_route(&self, owner: &str, env_id: &str) -> Result<AgentRoute<'_>, ApiError> {

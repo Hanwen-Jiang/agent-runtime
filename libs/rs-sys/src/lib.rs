@@ -13,6 +13,10 @@ mod unix;
 #[cfg(unix)]
 pub use unix::*;
 
+/// Firecracker 客户机里的 PID 1 与 vsock（D-20）。
+#[cfg(target_os = "linux")]
+pub mod guest;
+
 /// 子进程的结束状态与它用掉的 CPU 时间（wait4 的 rusage：用户态加内核态，含它等待过的子进程）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Exit {

@@ -43,6 +43,10 @@ pub struct Config {
     pub reap_interval: Duration,
     pub max_connections: usize,
     pub max_agent_connections: usize,
+    /// 客户机出网的两个目标（D-22，net.rs）；没配的不开。
+    pub egress_target: Option<std::net::SocketAddr>,
+    pub mirror_target: Option<std::net::SocketAddr>,
+    pub max_forward_conns: usize,
     pub fault: Option<Fault>,
 }
 
@@ -119,6 +123,17 @@ impl Config {
                 );
             }
         };
+        let target = |k: &str| -> Result<Option<std::net::SocketAddr>, String> {
+            match get(k).filter(|v| !v.is_empty()) {
+                None => Ok(None),
+                Some(v) => v
+                    .parse()
+                    .map(Some)
+                    .map_err(|_| format!("{k} 要是 IP:端口（宿主上解析不了集群里的域名）")),
+            }
+        };
+        let egress_target = target("AR_FC_EGRESS_TARGET")?;
+        let mirror_target = target("AR_FC_MIRROR_TARGET")?;
         let cfg = Config {
             listen,
             secrets_file,
@@ -154,6 +169,9 @@ impl Config {
             reap_interval: Duration::from_millis(num("AR_FC_REAP_INTERVAL_MS", 2_000)?),
             max_connections: num("AR_FC_MAX_CONNECTIONS", 512)? as usize,
             max_agent_connections: num("AR_FC_MAX_AGENT_CONNECTIONS", 64)? as usize,
+            egress_target,
+            mirror_target,
+            max_forward_conns: num("AR_FC_MAX_FORWARD_CONNS", 128)? as usize,
             fault,
         };
         if u64::from(cfg.uid_base) + u64::from(cfg.max_vms) > u64::from(u32::MAX - 1) {
@@ -227,6 +245,7 @@ mod tests {
             ("AR_FC_PARENT_CGROUP", "/abs"),
             ("AR_FC_GUEST_INIT", "sandbox-agent"),
             ("AR_FC_FAULT_INJECT", "whenever"),
+            ("AR_FC_EGRESS_TARGET", "egress-gateway.svc:8095"),
             ("AR_FC_CHROOT_BASE", &format!("/{}", "x".repeat(80))),
         ] {
             let e = cfg(&[(k, v)]).unwrap_err();
