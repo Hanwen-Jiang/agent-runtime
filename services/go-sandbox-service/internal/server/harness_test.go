@@ -26,6 +26,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/sandbox"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/telemetry"
 	"github.com/agentruntime/agent-runtime/libs/go-core/testkit"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	sandboxv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/sandbox/v1"
@@ -68,6 +69,7 @@ type harness struct {
 	egress     string
 	// wrap 按后端名包一层 Provider（测试注入后端的行为）。
 	wrap map[string]func(sandbox.Provider) sandbox.Provider
+	tel  telemetry.Provider
 
 	svc    *server.Service
 	srv    *httptest.Server
@@ -104,6 +106,8 @@ func withWrappedProvider(name string, wrap func(sandbox.Provider) sandbox.Provid
 		h.wrap[name] = wrap
 	}
 }
+
+func withTelemetry(tel telemetry.Provider) option { return func(h *harness) { h.tel = tel } }
 
 func withGateways(mirror, egress string) option {
 	return func(h *harness) { h.mirror, h.egress = mirror, egress }
@@ -191,7 +195,7 @@ func (h *harness) start() {
 			return nil, nil
 		},
 		Callers:   []string{"worker", "task-service"},
-		MirrorURL: h.mirror, EgressURL: h.egress,
+		MirrorURL: h.mirror, EgressURL: h.egress, Telemetry: h.tel,
 	})
 	if err != nil {
 		h.t.Fatal(err)

@@ -108,6 +108,9 @@ func FromEnv(getenv func(string) string) (Config, error) {
 	if c.ColdDays, err = intVar(getenv, "AR_WORKSPACE_COLD_AFTER_DAYS", 0); err != nil {
 		return c, err
 	}
+	if c.ColdDays > 365 {
+		return c, errors.New("AR_WORKSPACE_COLD_AFTER_DAYS 要是 0 到 365 的整数（天）")
+	}
 	ttl, err := intVar(getenv, "AR_SANDBOX_POLICY_TTL_S", 60)
 	if err != nil {
 		return c, err

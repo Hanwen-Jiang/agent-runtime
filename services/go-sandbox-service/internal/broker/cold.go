@@ -41,11 +41,12 @@ func (b *Broker) SetCold(o ColdOptions) {
 
 // CoolIdleWorkspaces 扫一遍工作区根，把闲置够天数的挂卷工作区转冷；返回转冷了几个。
 func (b *Broker) CoolIdleWorkspaces(ctx context.Context) (int, error) {
+	now := b.ledger.Now()
 	b.mu.Lock()
 	cold := b.cold
-	due := time.Since(b.lastCool) >= cold.Every
+	due := b.lastCool.IsZero() || now.Sub(b.lastCool) >= cold.Every
 	if due {
-		b.lastCool = time.Now()
+		b.lastCool = now
 	}
 	b.mu.Unlock()
 	root := b.reg.WorkspaceRoot()
@@ -56,7 +57,6 @@ func (b *Broker) CoolIdleWorkspaces(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, nil
 	}
-	now := b.ledger.Now()
 	cooled := 0
 	for _, t := range tenants {
 		owner := t.Name()
