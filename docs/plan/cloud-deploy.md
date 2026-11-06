@@ -939,6 +939,14 @@ Grafana 按仓库的 `deploy/data/values/grafana.yaml` 升到 Helm 第 4 版（C
 发件 `alerts@cgent.link` 给 `root@nsnzd.com` 发了测试邮件（id `01a1aea9…`，被接受）。没做：这个 Secret 没进 SOPS 文件（Key 只在集群与 `resend.key` 里）。
 回滚：`helm rollback grafana 3 -n observability`。
 
+第 38 版（2026-11-06，目录 `rev40`，脚本 `prepare.sh`、`rev40.sh`）：Runtime `edf20ae`：契约修订 `mcp.hosts` 可以写单独一个 `*`（Registry 校验用 task-service 镜像里的
+`/schemas`，所以 U-7 要等这一版）；**firecracker 后端 `enabled: true`**：U-6 的 `sandbox/fc-manager-token` 已在 `agent-runtime-secrets` 里（SOPS 文件
+2026-11-06 00:36 服务器时间更新过），sandbox-service 带着它正常启动，后端列表有 firecracker；`defaultBackend` 仍是 gvisor，只有策略写了
+`backend: firecracker` 的租户会用到。渲染与第 37 版比只有 tag 与 `sandbox-backends` 的 `backends.json`。线上清单与 `manifest-rev40.yaml` 一致，
+没有 Pod 重启，四个对外地址 200。回滚：`helm rollback ar 37`。
+U-7 第一次发布（用户跑 `/root/ar-release/mcp/publish-default-v3.sh`）失败：种子的 24 个顶级域通配（`*.com` 等）不合 `host_pattern`，Registry 一条也没写，
+默认策略仍是 v2。种子改成 `hosts: ["*"]`，按新契约校验通过。
+
 宿主上的 Firecracker（2026-11-05，V1-FC：宿主上的 systemd 服务，不经 Helm；规矩见总表第 0 节第 6 条）：
 
 - 装了什么（与 `deploy/cluster/install.sh` 第 3b 步相同的命令，分步手工跑，没跑整个 install.sh）：Firecracker 与 jailer v1.17.0（`/usr/local/bin`，按
