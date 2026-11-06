@@ -17,6 +17,10 @@
 - `evals/budget.py` 为共用的纯标准库预算适配器（提交 `360e365c`）：每次 Generate/Embed 在调用前收紧 `max_cost_usd_micros`，重试放在其外层，因此每次回退单独扣账；并发串行预留；同路径 OS 文件锁只允许一个 owner；调用前持久化 pending，未知费用或崩溃后须对账，不能盲目重试。恢复不允许扩大原上限或把已记录费用减小。已知未发出请求的拒绝带 0 计费标记，可嵌套总预算与单题预算。实际 Gateway 若违背最大费用契约，仍记录真实超额并停止后续请求，不能伪造费用回退。
 - score 固定裁判、实际被测模型、证据摘要、评分代码、预算与框架版本；冻结验收限定真实安装的 DeepEval 4.3.1 与 Gateway 路径。report 分开报告被测/裁判/总费用、未知费用和证据状态，`acceptance_ready` 不把缺证据或缺费用当通过。`--compare` 只读旧报告，明确版本未知/不同不是同配置实验。
 
+预算复核修正：Gateway 异常上的 `billed_cost_usd_micros` 只证明已知尝试的费用下界，同一个 RPC 仍可能有另一次费用未知的尝试。现在累计该已知金额，同时保留 pending；普通 RPC 异常即使带 0 也不能清除 pending。只有本地 `BudgetError(0)` 的调用前拒绝可解除本次外层预留。成功响应缺 usage 同样保留 pending，重启后须对账。DeepEval 报告保留已知裁判费用下界、标记未知，总费用不伪造为确定数。真实 Gateway 成功响应是否完整披露全部尝试的未知状态仍依赖核心负责人修复并上线验证；本轮适配器回归不能被表述为端到端硬上限已验收。
+
+该修正后 `test_eval_budget.py`、`test_deepeval_acceptance.py`、`test_deliverable_evidence.py`、`test_judging.py`、`test_deepeval_metrics.py` 共 **46 passed、0 skipped**；覆盖 Generate/Embed 的正数/零已知费用错误、缺 usage 的成功响应、跨重启禁止重试及 DeepEval 报告保留未知费用。模型花费仍为 $0。
+
 ## 验证与限制
 
 解释器可直接复用，不需下载工具链：测试 `/opt/evals/venv-2d94680/bin/python`；真实 DeepEval 4.3.1 `/opt/evals/venv-ff3a385/bin/python`（`venv-5b0b26a` 也有）。以下从本 worktree 根运行：

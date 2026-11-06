@@ -80,6 +80,59 @@ async def test_ambiguous_failure_stays_pending_across_restart(tmp_path):
     resumed.close()
 
 
+@pytest.mark.parametrize("method", ["generate", "embed"])
+@pytest.mark.parametrize("known_cost", [0, 1500])
+async def test_rpc_partial_billing_never_proves_all_attempts_settled(tmp_path, method, known_cost):
+    class PartialBillingError(RuntimeError):
+        billed_cost_usd_micros = known_cost
+
+    class PartialProvider(Provider):
+        async def invoke(self, request):
+            self.seen.append(request.call.max_cost_usd_micros)
+            # One RPC can have billed earlier attempts plus an unknown last one.
+            raise PartialBillingError("a later provider attempt has unknown usage")
+
+        generate = embed = invoke
+
+    provider = PartialProvider()
+    path = tmp_path / "state.json"
+    guard = BudgetGateway(provider, path, 1)
+    with pytest.raises(PartialBillingError):
+        await getattr(guard, method)(mg.GenerateRequest() if method == "generate" else mg.EmbedRequest())
+    assert guard.state["spent_usd_micros"] == known_cost
+    assert guard.state["pending"]
+    guard.close()
+    resumed = BudgetGateway(provider, path, 1, prior_cost_usd=known_cost / 1e6)
+    with pytest.raises(BudgetError, match="reconcile"):
+        await resumed.generate(mg.GenerateRequest())
+    assert len(provider.seen) == 1, "known partial charges must not authorize another RPC"
+    assert json.loads(path.read_text())["pending"]
+    resumed.close()
+
+
+@pytest.mark.parametrize("method", ["generate", "embed"])
+async def test_success_without_usage_stays_pending_across_restart(tmp_path, method):
+    class MissingUsage(Provider):
+        async def invoke(self, request):
+            self.seen.append(request.call.max_cost_usd_micros)
+            return mg.GenerateResponse(text="output without billing") if method == "generate" else mg.EmbedResponse()
+
+        generate = embed = invoke
+
+    provider = MissingUsage()
+    path = tmp_path / "state.json"
+    guard = BudgetGateway(provider, path, 1)
+    with pytest.raises(BudgetError, match="billing evidence") as err:
+        await getattr(guard, method)(mg.GenerateRequest() if method == "generate" else mg.EmbedRequest())
+    assert err.value.billed_cost_usd_micros is None
+    guard.close()
+    resumed = BudgetGateway(provider, path, 1)
+    with pytest.raises(BudgetError, match="reconcile"):
+        await resumed.generate(mg.GenerateRequest())
+    assert len(provider.seen) == 1 and resumed.state["pending"]
+    resumed.close()
+
+
 async def test_nested_item_denial_does_not_reserve_total_allowance(tmp_path):
     item = BudgetGateway(Provider(), tmp_path / "item.json", 0.0015)
     total = BudgetGateway(item, tmp_path / "total.json", 1)

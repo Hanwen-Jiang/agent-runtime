@@ -181,3 +181,29 @@ def test_report_keeps_unknown_cost_unknown_and_does_not_modify_baseline(tmp_path
     assert not report["acceptance_ready"]
     assert not report["comparison"]["same_frozen_configuration"]
     assert baseline.read_bytes() == before
+
+
+async def test_partial_judge_billing_remains_unknown_in_report(tmp_path: Path):
+    from test_judging import FakeCase, FakeMetric
+
+    class PartialBillingError(RuntimeError):
+        billed_cost_usd_micros = 1500
+
+    class PartialGateway(FakeGateway):
+        async def generate(self, request):
+            self.seen.append(request)
+            raise PartialBillingError("later attempt outcome unknown")
+
+    case, _ = collected(tmp_path, freeze=False)
+    gateway = PartialGateway()
+    todo = dv.bridge_cases([case], sb.read_records(tmp_path))
+    scores = await dv.gateway_scores(todo, gateway, tmp_path / "scores/judgments.jsonl", judge_budget_usd=1,
+                                     metric_factory=FakeMetric, test_case=FakeCase)
+    summary = dv.summarize({case.instance_id: scores[0]}, 1)
+    (tmp_path / "scores/summary.json").write_text(json.dumps(summary))
+    report = dv.report(tmp_path)
+    assert len(gateway.seen) == 1, "pending earlier attempt must prevent later metric calls"
+    assert report["costs"]["judge_usd"] == 0.0015
+    assert report["costs"]["judge_cost_unknown"] is True
+    assert report["costs"]["total_usd"] is None and report["acceptance_ready"] is False
+    assert report["scores"]["judge_budget"]["pending"] is True
