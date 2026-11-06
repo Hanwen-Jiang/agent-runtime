@@ -67,3 +67,11 @@ plan 必填：`run_id`、`seed`、`tenant_id`、`budget_usd`（不得超过 40�
 已运行当前 worktree 的 py-learning、py-worker、py-core 和生成代码路径，针对四个测试文件完成 93 条回归（命令与最终结果见提交说明）。原有 `test_benchmark_client.py` 另外实际尝试，8 条在 fixture 创建 AF_INET socket 时全部 `PermissionError: [Errno 1] Operation not permitted`，没有 skip、删除或修改有效断言。待恢复 socket 权限后原套件原样重跑。
 
 真实运行、部署、当前价格估算、R2/Temporal/账本线上核对未执行。本阶段新增实际模型费用 **$0**。没有覆盖真实网络验收的离线测试不算线上成功；三个任务继续保持未完成。
+
+### 交叉审查修正：Registry 身份与 worker 配置（2026-11-06）
+
+Registry 身份严格对齐 `libs/go-core/registryref/profile.go`：scope 必须为 `platform`，revision 必须为真实发布的 `v[1-9][0-9]*`，document_sha256 为 64 位十六进制。Git SHA、裸数字、v0、`_platform` 均拒绝；之前测试中的 `_platform` 已改正。
+
+`worker_config_sha256` 现在明确定义为 **仅剔除 AR_SUB_AGENT_POLICY 后的规范化配置摘要**。必须同时提供 `worker_configuration`，由 `provenance.worker_configuration(observed_specs)` 生成：保存原始观察配置、raw_sha256、normalized_sha256、规范化算法版本与逐个删除的 JSON Pointer/开关值。支持环境字典和 Kubernetes env 数组；valueFrom 中未观察到的开关不能冒充已固定。校验会从保留的原始配置重算全部依据，且所有 worker 的开关必须与该臂一致。采集只使用 worker spec 与 Secret 引用，不能解出 Secret 值。
+
+配对比较允许上述证据中的开关值及其必然变化的原始摘要不同，继续严格比较重算后的 normalized_sha256 和所有其它条件。改动 Gateway 地址、镜像、队列或其它环境项仍不能混入；不能直接拿两个调用方提供的哈希宣称相同。该修正的针对性/既有回归共 99 条通过。

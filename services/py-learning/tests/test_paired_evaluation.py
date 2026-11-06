@@ -19,10 +19,11 @@ from test_terminalbench import FakeDocker, make_task
 
 
 def provenance(arm='off'):
-    return {'runtime_commit': 'a' * 40, 'gateway_config_sha256': 'b' * 64, 'worker_config_sha256': 'c' * 64,
+    worker = pv.worker_configuration({'containers': [{'name': 'worker', 'image': 'worker@sha256:' + 'a' * 64, 'env': [{'name': 'AR_SUB_AGENT_POLICY', 'value': arm}, {'name': 'AR_MODEL_GATEWAY_ADDRESS', 'value': 'gateway:8080'}]}]})
+    return {'runtime_commit': 'a' * 40, 'gateway_config_sha256': 'b' * 64, 'worker_config_sha256': worker['normalized_sha256'], 'worker_configuration': worker,
             'tenant_policy_sha256': 'd' * 64, 'sub_agent_policy': arm, 'scoring_version': pe.RUBRIC_VERSION,
             'models': dict.fromkeys(('plan', 'act', 'route', 'judge', 'sub_agent'), 'profile1'),
-            'registry': {'profile1': {'revision': 'v7', 'scope': '_platform', 'document_sha256': 'e' * 64}},
+            'registry': {'profile1': {'revision': 'v7', 'scope': 'platform', 'document_sha256': 'e' * 64}},
             'memory': {'revision': 'memory-v2', 'corpus_sha256': 'f' * 64}}
 
 
@@ -36,7 +37,7 @@ def plan():
 
 def row(task='t1', *, node='act', cost=100_000):
     return {'reservation_id': task + node, 'task_id': task, 'node_id': node, 'model_profile_id': 'profile1',
-            'actual_usd_micros': cost, 'registry_scope': '_platform', 'registry_revision': 'v7', 'registry_document_sha256': 'e' * 64}
+            'actual_usd_micros': cost, 'registry_scope': 'platform', 'registry_revision': 'v7', 'registry_document_sha256': 'e' * 64}
 
 
 def test_rotating_ops_token_file_is_reread_without_exposing_credentials(tmp_path, monkeypatch):
@@ -245,3 +246,42 @@ def test_frozen_paired_cases_cover_both_delegation_decisions():
     root = Path(__file__).resolve().parents[1] / 'evalsets' / 'paired' / 'cases.json'
     cases = pe.load_cases(json.loads(root.read_text()))
     assert len(cases) == 10 and sum(c.should_delegate for c in cases) == 5
+
+
+@pytest.mark.parametrize('scope,revision', [('platform', 'a' * 40), ('_platform', 'v7'), ('platform', '7'), ('platform', 'v0')])
+def test_registry_identity_uses_the_real_published_contract(scope, revision):
+    frozen = provenance()
+    frozen['registry']['profile1'].update(scope=scope, revision=revision)
+    with pytest.raises(ValueError, match='real vN'):
+        pv.validate(frozen)
+
+
+def test_worker_normalization_only_removes_the_observed_arm_switch():
+    off, rules = provenance('off'), provenance('rules')
+    assert off['worker_configuration']['raw_sha256'] != rules['worker_configuration']['raw_sha256']
+    assert off['worker_config_sha256'] == rules['worker_config_sha256']
+    assert pv.comparable(off, rules, paired=True)
+    changed = copy.deepcopy(rules)
+    source = changed['worker_configuration']['configuration']
+    source['containers'][0]['env'][1]['value'] = 'different-gateway:8080'
+    observed = pv.worker_configuration(source)
+    changed.update(worker_configuration=observed, worker_config_sha256=observed['normalized_sha256'])
+    assert not pv.comparable(off, changed, paired=True)
+    changed['worker_config_sha256'] = off['worker_config_sha256']
+    with pytest.raises(ValueError, match='hashes'):
+        pv.comparable(off, changed, paired=True)
+
+
+def test_worker_normalization_evidence_cannot_fake_or_hide_an_arm():
+    frozen = provenance('off')
+    frozen['worker_configuration']['removed'][0]['value'] = 'rules'
+    with pytest.raises(ValueError, match='evidence'):
+        pv.validate(frozen)
+    with pytest.raises(ValueError, match='no observed'):
+        pv.worker_configuration({'env': [{'name': 'OTHER', 'value': 'off'}]})
+    with pytest.raises(ValueError, match='literal'):
+        pv.worker_configuration({'env': [{'name': 'AR_SUB_AGENT_POLICY', 'valueFrom': {'configMapKeyRef': {'name': 'x', 'key': 'mode'}}}]})
+    frozen = provenance('off')
+    frozen['sub_agent_policy'] = 'rules'
+    with pytest.raises(ValueError, match='do not match'):
+        pv.validate(frozen)
