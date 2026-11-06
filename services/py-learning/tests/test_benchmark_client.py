@@ -214,7 +214,10 @@ def test_requests_carry_their_own_user_agent(server: tuple[str, Fake]) -> None:
         c.delete_workspace("w-gone")
     list(c.events("t-1", f"{base}/v1/tasks/t-1/events"))
     agents = [r["headers"].get("user-agent", "") for r in fake.requests]
-    assert len(agents) == 2 and all(a.startswith("agentruntime-benchmarks/") for a in agents), agents
+    assert [r["path"] for r in fake.requests] == [
+        WORKSPACE + "StartWorkspaceOperation", WORKSPACE + "DeleteWorkspace", "/v1/tasks/t-1/events",
+    ], "只有明确的unimplemented才回退旧接口，SSE仍携带相同客户端身份"
+    assert len(agents) == 3 and all(a.startswith("agentruntime-benchmarks/") for a in agents), agents
 
 
 def test_fetch_pages_through_the_rows_api(server: tuple[str, Fake], tmp_path: Path) -> None:
