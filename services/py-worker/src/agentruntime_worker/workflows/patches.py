@@ -77,6 +77,9 @@ N16_PATCH = "n16-sub-agents"
 # N16-R（docs/plan/sub-agent.md 第 6 节）：子 Agent 按份额停下时不带工具再问一步、交回部分结果，多了一个 activity，改变了命令序列。
 SUB_AGENT_WRAP_UP_PATCH = "n16r-sub-agent-wrap-up"
 
+# WS-CF-524: persist terminal failures before completing the operation workflow.
+WORKSPACE_ASYNC_RESULT_PATCH = "workspace-async-result-v1"
+
 # 新的运行在第一个工作流任务里一次问完全部版本分支（模块说明）。
 PATCHES_AT_START = "s04-patches-at-start"
 # 只能在末尾追加。
@@ -103,6 +106,7 @@ AT_START = (
     PLAN_PATCH,
     N16_PATCH,
     SUB_AGENT_WRAP_UP_PATCH,
+    WORKSPACE_ASYNC_RESULT_PATCH,
 )
 
 

@@ -23,6 +23,7 @@ with workflow.unsafe.imports_passed_through():
 
     from agentruntime_worker import names
     from agentruntime_worker.workflows.failures import failure_message
+    from agentruntime_worker.workflows.patches import WORKSPACE_ASYNC_RESULT_PATCH
 
 _CODE = re.compile(r"^([a-z][a-z0-9_]{0,63}): ")
 
@@ -35,6 +36,8 @@ def operation_workflow_id(operation_id: str) -> str:
 class WorkspaceOperationWorkflow:
     @workflow.run
     async def run(self, inp: workspace_pb2.WorkspaceOperationInput) -> workspace_pb2.WorkspaceOperationResult:
+        enabled = inp.args.fields.get("__async_result")
+        persist_async = bool(enabled and enabled.bool_value and workflow.patched(WORKSPACE_ASYNC_RESULT_PATCH))
         push = inp.operation == workspace_pb2.WORKSPACE_OPERATION_PUSH
         retry = RetryPolicy(maximum_attempts=1) if push else RetryPolicy(maximum_attempts=3, initial_interval=timedelta(seconds=5))
         queue = names.WORKSPACE_QUEUE if workflow.info().task_queue == names.WORKSPACE_QUEUE else names.PROGRAM_QUEUE
@@ -57,8 +60,7 @@ class WorkspaceOperationWorkflow:
 
         # Only new async executions add this command. Legacy root histories and
         # already running async workflows replay their original command sequence.
-        enabled = inp.args.fields.get("__async_result")
-        if enabled and enabled.bool_value and workflow.patched("workspace-async-result-v1"):
+        if persist_async:
             await workflow.execute_activity(
                 names.WORKSPACE_OPERATION_RESULT,
                 args=[inp, result],

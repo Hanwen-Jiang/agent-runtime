@@ -107,7 +107,7 @@ async def test_legacy_root_golden_replay(temporal_env: WorkflowEnvironment) -> N
     from pathlib import Path
     from temporalio.client import WorkflowHistory
     from temporalio.worker import Replayer
-    path = Path(__file__).parent / "histories" / "workspace_root_legacy.json"
+    path = Path(__file__).parent / "workspace_histories" / "workspace_root_legacy.json"
     if os.environ.get("UPDATE_WORKSPACE_GOLDEN") == "1":
         client = await connect(temporal_env)
         async with (
