@@ -69,31 +69,42 @@ func (r *Registry) PutPersonalConfig(ctx context.Context, t *commonv1.TenantCont
 	created := false
 	err = retry(ctx, func() error {
 		return scope.st.Transaction(ctx, relational.TxOptions{}, func(ctx context.Context, tx relational.Tx) error {
-			row, ok, e := tx.QueryOne(ctx, `SELECT `+entryColumns+` FROM registry_entries WHERE kind = $1 AND name = $2 AND state = $3`, int64(personalKind), name, int64(rg.ReleaseState_RELEASE_STATE_DEFAULT))
+			// Read the document and version counter from one database snapshot.
+			// A separate MAX(version) read can observe a concurrent insert that
+			// the earlier default read missed and publish identical data again.
+			row, ok, e := tx.QueryOne(ctx, `SELECT `+entryColumns+` FROM registry_entries WHERE kind = $1 AND name = $2 ORDER BY version DESC LIMIT 1`, int64(personalKind), name)
 			if e != nil {
 				return e
 			}
 			current := ""
+			latest := int64(0)
+			active := false
 			if ok {
 				output = decodeEntry(row)
-				current = "user/" + output.label()
+				latest = output.version
+				active = output.state == rg.ReleaseState_RELEASE_STATE_DEFAULT
+				if active {
+					current = "user/" + output.label()
+				}
 			}
 			if expected != "" && expected != current {
 				return providererr.New(providererr.Conflict, "personal_config_version_conflict", "个人配置已更新，请重新读取")
 			}
-			if ok && output.document == string(body) {
+			if active && output.document == string(body) {
 				created = false
 				return nil
 			}
-			latest, _, e := tx.QueryOne(ctx, `SELECT COALESCE(MAX(version),0) AS latest FROM registry_entries WHERE kind = $1 AND name = $2`, int64(personalKind), name)
-			if e != nil {
-				return e
-			}
 			now := r.clock.Now().UnixMilli()
-			if _, e = tx.Execute(ctx, `UPDATE registry_entries SET state = $1, updated_at = $2 WHERE kind = $3 AND name = $4 AND state = $5`, int64(rg.ReleaseState_RELEASE_STATE_RETIRED), now, int64(personalKind), name, int64(rg.ReleaseState_RELEASE_STATE_DEFAULT)); e != nil {
-				return e
+			if active {
+				affected, e := tx.Execute(ctx, `UPDATE registry_entries SET state = $1, updated_at = $2 WHERE kind = $3 AND name = $4 AND state = $5 AND version = $6`, int64(rg.ReleaseState_RELEASE_STATE_RETIRED), now, int64(personalKind), name, int64(rg.ReleaseState_RELEASE_STATE_DEFAULT), latest)
+				if e != nil {
+					return e
+				}
+				if affected != 1 {
+					return providererr.New(providererr.Conflict, "personal_config_version_conflict", "个人配置在写入期间变化，请重试")
+				}
 			}
-			output = entry{kind: personalKind, name: name, version: asInt(latest["latest"]) + 1, state: rg.ReleaseState_RELEASE_STATE_DEFAULT, document: string(body)}
+			output = entry{kind: personalKind, name: name, version: latest + 1, state: rg.ReleaseState_RELEASE_STATE_DEFAULT, document: string(body)}
 			_, e = tx.Execute(ctx, `INSERT INTO registry_entries (kind,name,version,state,task_family,document,change_note,evaluation,created_at,updated_at) VALUES ($1,$2,$3,$4,'',$5,'personal config','',$6,$6)`, int64(personalKind), name, output.version, int64(output.state), output.document, now)
 			created = e == nil
 			return e

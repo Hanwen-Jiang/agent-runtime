@@ -23,3 +23,11 @@ Publisher authentication is checked before both promotion schemas. Capability-on
 ## Resource window
 
 Light tests used GOMAXPROCS4 and the cached CI toolchain. Go windows (UTC): original full suite20:03:15–20:04:24; fixed full suite20:07:44–20:08:49; targeted repeated suite20:10:02–20:10:25. These overlap another thread's `fc-pin-measure-20261107` measurement and must be considered before publishing those timing samples. No further heavy suite was started after the coordinator's instruction.
+
+## Independent PersonalConfig race resolved
+
+The earlier full-suite failure was made deterministic with real PostgreSQL interleavings. An empty-default read followed by another publisher committing v1 caused the first writer to read MAX(version)=1 separately and create identical user/v2. The same two-snapshot window also accepted expected_version=user/v1 after another writer had already committed user/v2, incorrectly overwriting it with user/v3. Both cases failed against the frozen source (`B-audit-personal-race-red.log`).
+
+The fix reads the latest entry (version, document and active/retired state) in one query, allocates the next version from that same snapshot, and retires an active default using a version comparison plus affected-row check. Conflicts retry: an identical concurrent publication reuses the winning version; an explicit stale expected version fails. Retired entries still advance the immutable version counter without being treated as an active default. No new migration, schema or permission change.
+
+Validation: PersonalConfig privacy/immutability/none-pinning, identical concurrent publish, retry selection pinning and both deterministic PostgreSQL interleavings all passed five times with race detection (40.749s), including SQLite and PostgreSQL for the existing tests. `git diff --check` passed. UTC test window20:14:40–20:15:28; no new broad suite was run. The earlier full-suite failure remains recorded rather than relabeled as green. The separate Python fixed-cohort completeness finding remains handed off to its owner; current complete100-item historical candidates were not invalidated. No paid calls or online changes occurred.
