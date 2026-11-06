@@ -42,8 +42,9 @@ PYTHON_QUEUES = {names.TASK_QUEUE, names.DECISION_QUEUE, names.MODEL_QUEUE, name
 # KEDA 按哪种积压扩缩：task 池只有工作流；workspace 池（WS-READ-02）工作流与 activity 都在这个队列；其余只有 activity。
 QUEUE_TYPES = {names.TASK_QUEUE: "workflow", names.WORKSPACE_QUEUE: "workflow,activity"}
 SENSITIVE_ENV = re.compile(r"(?i)(password|secret|token|api_?key|signing_key|auth|dsn|credential)")
-# 不是密钥、名字却像的环境变量：它们的值是文件路径、密钥的名字或开关（AR_INGRESS_DEV_TOKENS 是 accept 或 refuse，AUTH-01）。
-NOT_SECRET_ENV = {"AR_SECRETS_FILE", "AR_SECRETS_SEED_FILE", "AR_MODEL_PROVIDER_KEY_NAME", "AR_INGRESS_DEV_TOKENS"}
+# 不是密钥、名字却像的环境变量：它们的值是文件路径、密钥的名字或开关（AR_INGRESS_DEV_TOKENS 是 accept 或 refuse，AUTH-01；
+# AR_SECRETS_MASTER_KEY_FILE 是主密钥文件的路径、AR_SECRETS_ENCRYPT 是开关，主密钥本身按文件从 Secret 挂进来，R-04）。
+NOT_SECRET_ENV = {"AR_SECRETS_FILE", "AR_SECRETS_SEED_FILE", "AR_MODEL_PROVIDER_KEY_NAME", "AR_INGRESS_DEV_TOKENS", "AR_SECRETS_MASTER_KEY_FILE", "AR_SECRETS_ENCRYPT"}
 OTLP_HTTP_PORT = 4318
 
 
