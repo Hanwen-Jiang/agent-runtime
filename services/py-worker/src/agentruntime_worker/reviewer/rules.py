@@ -319,7 +319,8 @@ class _Rules:
     def judged_problem(self) -> tuple[str, str, dict[str, Any]] | None:
         """Jev 的检查（N-09）：disowns 高的一律拦；answers 低的只在没有模型评审时拦（模型评审过的以模型为准）。"""
         checks = self.checks
-        if checks is None:
+        if checks is None or int((self.verification or {}).get("judge_blocked") or 0) >= 1:
+            # 同一个 Task 只拦一次（workflows/verification.JUDGE_BLOCKED_CODES）：拦过之后再判 done 就算数。
             return None
         if checks.disowns >= JUDGE_DISOWN_THRESHOLD:
             return (

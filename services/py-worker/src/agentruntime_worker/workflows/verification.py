@@ -21,6 +21,8 @@ NOT_FILE_CHANGES = frozenset({"shell_run", "request_network", DELIVER_TOOL})
 DONE_BLOCKED_CODES = frozenset({"rule_done_unverified", "rule_done_without_changes"})
 # 回答说交付了文件、这个 Task 却没交付过时的 reason_code（DLV-CHECK），另记次数。
 UNDELIVERED_CODE = "rule_done_undelivered"
+# Jev（交付检查）拦下交付的原因码：同一个 Task 只拦一次，之后再判 done 就算数（调研类回答如实写“未确认”常被当成不认账）。
+JUDGE_BLOCKED_CODES = frozenset({"rule_judge_disowns", "rule_judge_off_topic"})
 WRITE_EFFECTS = frozenset({"write_reversible", "write_irreversible"})
 
 _READ_TOOLS = frozenset({"repo_read", "repo_list", "repo_grep", "context_read"})
@@ -64,6 +66,7 @@ class VerificationRecord:
     # 经 deliver_file 成功交付给用户的文件（规范化的路径，按先后、不重复），跨轮累计；判 done 被 UNDELIVERED_CODE 拦过的次数。
     delivered: list[str] = field(default_factory=list)
     delivery_blocked: int = 0
+    judge_blocked: int = 0
 
     def offered(self, tool_effects: Mapping[str, str]) -> None:
         """一个 Goal Node 拿到了这些工具。只给 shell_run 不算能改文件：很多只读的任务靠它查东西。"""
@@ -104,6 +107,8 @@ class VerificationRecord:
             self.done_blocked += 1
         elif code == UNDELIVERED_CODE:
             self.delivery_blocked += 1
+        elif code in JUDGE_BLOCKED_CODES:
+            self.judge_blocked += 1
 
     def as_dict(self) -> dict[str, Any]:
         """没交付过、没拦过时不带后两项，与之前的记录一样。"""
@@ -121,4 +126,6 @@ class VerificationRecord:
             out["delivered"] = list(self.delivered)
         if self.delivery_blocked:
             out["delivery_blocked"] = self.delivery_blocked
+        if self.judge_blocked:
+            out["judge_blocked"] = self.judge_blocked
         return out
