@@ -1061,8 +1061,10 @@ V1-MCP 线上验收（2026-11-05，总表第 0 节完成标准第 1 条；第 33
     如实说被拒；Server 上 `add_note` 0 次。批准的对照：`tsk_01M6PQ2BYENF7G6927TQVWMB6Y` approve 之后 Server 收到 1 次 `add_note`，`_meta` 里带着幂等键 `idk_…`。
   - 删除后再调：`tsk_01M6PQ3G3FNR9DS72PHG9EZ6KK` 等审批时删掉连接（再删一次 `deleted` 为 false），然后 approve：调用被拒（denied），Server 上 0 次。
     当时的说明是“没有登记”，`9d3ebfbb` 改成说租约已收回（`mcp_lease_revoked`），随下一版上线。调用进行中被收回、中途取消的那条路径没在线上走到。
-- 没做的：平台默认的租户策略没有加 `mcp`（想加 `default/v3`：通配常见的顶级域、`max_effect: read`，被会话的权限检查拦下，等用户定；种子备在
-  `/root/ar-release/mcp/`）。所以现在只有策略里写了 `mcp` 的租户能用，网页上的普通用户建连接会看到“账号的策略不允许登记 MCP Server”。
+- 平台默认策略（2026-11-06 更新）：用户发布了 `default/v3`（`mcp: {allowed: true, hosts: ["*"], max_connections: 10, max_effect: read}`；单独的 `*`
+  表示任意公网域名，契约与匹配见 `edf20ae2`），网页上的普通用户能建连接、打开只读工具；不可逆写要租户自己的策略（effect 上限与 `mcp.max_effect`）。
+  线上核对：Registry 给没有自己策略的租户的是 `default/v3`，task-service `809cb41` 含 `edf20ae2`。
+- 令牌（2026-11-06）：AUTH-01 第 4 步之后开发令牌一律 401，`mcp01` 的令牌改用 `/root/ar-release/ops-token.sh mcp01 u1 2h`（`rpc.sh` 读 `/root/ar-release/mcp/token`）。
 - 回退：删掉测试的东西 `kubectl delete -f deploy/dev/mcp-test/mcp-test.yaml`、`kubectl -n agent-runtime delete secret mcp-test-auth configmap mcp-test-server`；
   代码的回退是 `helm rollback ar 33`（第 34 版的修复）或 `32`（没有 MCP）。
 
