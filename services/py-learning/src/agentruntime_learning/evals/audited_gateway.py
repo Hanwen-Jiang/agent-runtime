@@ -37,8 +37,12 @@ class AuditedGateway:
         self.inner, self.directory = inner, Path(directory)
         self.owner = DirectoryOwner(self.directory)
         self.lock = asyncio.Lock()
+        if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}", tenant):
+            self.owner.close()
+            raise ValueError("invalid explicitly configured evaluation tenant")
         self.task_id, self.tenant = task_identity(run_id), tenant
-        self.identity = {"run_id": run_id, "task_id": self.task_id, "tenant_id": tenant, "gateway_address": address}
+        self.identity = {"run_id": run_id, "task_id": self.task_id, "tenant_id": tenant,
+                         "source_tenant_id": "evals", "gateway_address": address}
         self.manifest = self.directory / "identity.json"
         self.journal = self.directory / "calls.jsonl"
         try:
@@ -66,11 +70,15 @@ class AuditedGateway:
             self.owner.require(self.directory)
             if self.unresolved:
                 raise BudgetError("direct evaluation has an unsettled call; reconcile model_usage", billed_cost_usd_micros=0)
-            if request.tenant.tenant_id != self.tenant:
+            # Component evaluators use the reserved evals identity. An explicit
+            # per-experiment tenant scopes its own allowance and ledger without
+            # allowing arbitrary caller tenants to be silently rewritten.
+            if request.tenant.tenant_id != "evals":
                 raise BudgetError("evaluation tenant mismatch", billed_cost_usd_micros=0)
             if request.call.max_cost_usd_micros <= 0:
                 raise BudgetError("direct evaluations require a bounded Gateway request", billed_cost_usd_micros=0)
             call = type(request).FromString(request.SerializeToString())
+            call.tenant.tenant_id = self.tenant
             self.sequence += 1
             call.call.task_id = self.task_id
             call.call.node_id = f"eval_call_{self.sequence:08d}"
