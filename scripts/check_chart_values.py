@@ -3,7 +3,7 @@
     uv run --no-sync python scripts/check_chart_values.py
 
 版本取自 deploy/cluster/versions.conf，Chart 的源码经 `gh api` 从 GitHub 读（要联网、gh 已登录；不下载 Chart 包）。
-我们写了、Chart 的默认值里没有的键都列出来；原样交给应用自己配置的键（Qdrant 的 config、Grafana 的 grafana.ini 等）与
+我们写了、Chart 的默认值里没有的键都列出来；原样交给应用自己配置的键（Grafana 的 grafana.ini 等）与
 Kubernetes 的 resources 不查。升级 versions.conf 里的 Chart 版本之后跑一遍。有不对的键时退出码 1。
 """
 
@@ -21,7 +21,6 @@ VALUES = ROOT / "deploy" / "data" / "values"
 # values 文件名 → (GitHub 仓库, 标签的模板, values.yaml 的路径, versions.conf 里的变量)
 CHARTS = {
     "temporal": ("temporalio/helm-charts", "temporal-{v}", "charts/temporal/values.yaml", "TEMPORAL_CHART_VERSION"),
-    "qdrant": ("qdrant/qdrant-helm", "qdrant-{v}", "charts/qdrant/values.yaml", "QDRANT_CHART_VERSION"),
     "redpanda": ("redpanda-data/redpanda-operator", "charts/redpanda/v{v}", "charts/redpanda/chart/values.yaml", "REDPANDA_CHART_VERSION"),
     "langfuse": ("langfuse/langfuse-k8s", "langfuse-{v}", "charts/langfuse/values.yaml", "LANGFUSE_CHART_VERSION"),
     "tempo": ("grafana-community/helm-charts", "tempo-{v}", "charts/tempo/values.yaml", "TEMPO_CHART_VERSION"),
@@ -29,7 +28,7 @@ CHARTS = {
     "victoria-metrics": ("VictoriaMetrics/helm-charts", "victoria-metrics-single-{v}", "charts/victoria-metrics-single/values.yaml", "VM_CHART_VERSION"),
 }
 # 顶层里原样交给应用的键；任何层级的 resources（Kubernetes 的资源请求与上限）也不查。
-FREE_FORM = {"qdrant": {"config"}, "grafana": {"grafana.ini", "datasources", "alerting"}, "redpanda": {"config"}}
+FREE_FORM = {"grafana": {"grafana.ini", "datasources", "alerting"}, "redpanda": {"config"}}
 
 
 def versions() -> dict[str, str]:

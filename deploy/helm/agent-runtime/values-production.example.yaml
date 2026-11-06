@@ -20,8 +20,9 @@ external:
   temporal:
     address: temporal-frontend.temporal.svc:7233
     namespace: agent-runtime
-  qdrant:
-    url: http://qdrant.qdrant.svc:6333
+  # Memory Service 的向量库（docs/plan/memory-live.md）：Milvus；与 qdrant.url 只能设一个。
+  milvus:
+    uri: http://milvus.milvus.svc:19530
   redpanda:
     brokers: redpanda-0.redpanda.redpanda.svc:9092
   tempo:

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 装数据层与观测组件（docs/plan/cloud-deploy.md D-03），deploy/cluster/install.sh 与密钥（deploy/cluster/secrets）之后运行：
 #   deploy/data/install.sh
-# Postgres（CloudNativePG）、Runtime 的 Valkey、Temporal、Qdrant、Redpanda 装在 data；Langfuse、Tempo、VictoriaMetrics、Grafana 装在 observability。
+# Postgres（CloudNativePG）、Runtime 的 Valkey、Temporal、Milvus（Memory 的向量库，milvus.yaml）、Redpanda 装在 data；Langfuse、Tempo、VictoriaMetrics、Grafana 装在 observability。
 # 版本见 deploy/cluster/versions.conf；资源的预算见 deploy/cluster/README.md。重复运行是安全的。
 set -euo pipefail
 
@@ -31,7 +31,6 @@ kubectl apply -f "$HERE/milvus.yaml"
 kubectl -n data rollout status sts/milvus --timeout=10m
 
 helm repo add temporal https://go.temporal.io/helm-charts >/dev/null
-helm repo add qdrant https://qdrant.github.io/qdrant-helm >/dev/null
 helm repo add redpanda https://charts.redpanda.com >/dev/null
 helm repo add langfuse https://langfuse.github.io/langfuse-k8s >/dev/null
 helm repo add grafana https://grafana-community.github.io/helm-charts >/dev/null
@@ -42,8 +41,7 @@ log "Temporal"
 # Runtime 用的命名空间 agent-runtime（保留期 7 天，短于业务对象的生命周期，S-06）由 Chart 的 namespace Job 建（values/temporal.yaml）。
 helm upgrade --install temporal temporal/temporal --version "$TEMPORAL_CHART_VERSION" -n data -f "$HERE/values/temporal.yaml" --wait --timeout 15m
 
-log "Qdrant、Redpanda"
-helm upgrade --install qdrant qdrant/qdrant --version "$QDRANT_CHART_VERSION" -n data -f "$HERE/values/qdrant.yaml" --wait
+log "Redpanda"
 helm upgrade --install redpanda redpanda/redpanda --version "$REDPANDA_CHART_VERSION" -n data -f "$HERE/values/redpanda.yaml" --wait --timeout 15m
 
 log "ClickHouse operator（Langfuse 2.x 的 ClickHouse 由它部署；要 cert-manager，deploy/cluster/install.sh 装过）"

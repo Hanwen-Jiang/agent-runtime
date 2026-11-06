@@ -9,7 +9,7 @@ Helm Chart 与各环境的配置（设计书 4.15、附录 L.19）。
 | `helm/agent-runtime/values-production.example.yaml` | 生产 values 的样例 |
 | `dev` | 本地开发用的配置（开发用 Model Profile） |
 
-第三方组件（Temporal、Postgres、Qdrant、Redpanda、Langfuse、Tempo）不在 Chart 里，只在 values 的 `external` 填地址；密钥只引用已有的 Secret。
+第三方组件（Temporal、Postgres、Milvus、Redpanda、Langfuse、Tempo）不在 Chart 里，只在 values 的 `external` 填地址；密钥只引用已有的 Secret。
 镜像与 Dockerfile 还没有，Chart 里的镜像名是占位。
 
 ```powershell

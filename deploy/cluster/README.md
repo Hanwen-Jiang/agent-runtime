@@ -13,7 +13,7 @@
 | `deploy/cluster/k3s/` | k3s 配置、Pod Security 默认值、containerd 模板（runsc）、Traefik 配置 |
 | `deploy/cluster/*.yaml` | 命名空间、沙箱命名空间的约束、RuntimeClass、工作区与业务对象的卷 |
 | `deploy/cluster/secrets/` | SOPS 加密的 Secret（见那里的 README） |
-| `deploy/data/` | Postgres（CloudNativePG，备份到 R2）、Temporal、Qdrant、Redpanda、Langfuse、Tempo、VictoriaMetrics（指标，保留 30 天）、Grafana |
+| `deploy/data/` | Postgres（CloudNativePG，备份到 R2）、Temporal、Milvus（Memory 的向量库）、Redpanda、Langfuse、Tempo、VictoriaMetrics（指标，保留 30 天）、Grafana |
 | `deploy/helm/agent-runtime/values-cloud.yaml` | Runtime 的 Chart 在这台机器上的 values |
 | `deploy/cloudflare/sandbox-bridge/` | 可选的第二个 microVM 后端（Cloudflare Containers，D-07） |
 
@@ -58,7 +58,7 @@
 | 部分 | 约 | 出处 |
 | --- | --- | --- |
 | 系统与 k3s（system-reserved、kube-reserved、Traefik、CoreDNS 等） | 3.5 GiB | `k3s/config.yaml` |
-| 数据层：Postgres 2、Runtime 的 Valkey 0.25、Temporal 1.25、Qdrant 1、Redpanda 2、Langfuse（含 ClickHouse、Redis）3.1、Tempo 0.5、VictoriaMetrics 0.25、Grafana 0.1 | 10.6 GiB | `deploy/data/` |
+| 数据层：Postgres 2、Runtime 的 Valkey 0.25、Temporal 1.25、Milvus 2、Redpanda 2、Langfuse（含 ClickHouse、Redis）3.1、Tempo 0.5、VictoriaMetrics 0.25、Grafana 0.1 | 10.6 GiB | `deploy/data/` |
 | Runtime：最少副本时约 2.4，Worker 都扩到上限时约 6.7 | 2.4–6.7 GiB | `values-cloud.yaml` |
 | 沙箱（命名空间配额的 requests） | 32 GiB | `sandboxes.yaml` |
 | 合计（最坏） | 约 52 GiB | `tests/deploy/test_cluster.py` 核对不超过 60 GiB |
