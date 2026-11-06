@@ -45,12 +45,17 @@ def provenance(value: Mapping[str, Any]) -> dict[str, Any]:
             raise ValueError("Registry revision fields must be nonempty strings")
         if not re.fullmatch(r"v[1-9][0-9]*", row["version"]) or not re.fullmatch(r"[a-f0-9]{64}", row["document_sha256"]):
             raise ValueError("Registry evidence needs its published vN and document digest")
+        if row["kind"] == "model_profile" and row["scope"] != "platform":
+            raise ValueError("Model Profile Registry scope must be platform")
+    profiles = [row["name"] for row in revisions if row["kind"] == "model_profile"]
+    if len(profiles) != len(set(profiles)) or set(models) - set(profiles):
+        raise ValueError("subject models need unique published Registry identities")
     return json.loads(json.dumps(value))
 
 
 def source_digest() -> str:
     base = Path(__file__).parent
-    sources = ["deliverables.py", "deepeval_acceptance.py", "deepeval_metrics.py", "judging.py", "budget.py", "bridges/deepeval_bridge.py",
+    sources = ["deliverables.py", "deepeval_acceptance.py", "deepeval_ledger.py", "deepeval_metrics.py", "judging.py", "budget.py", "bridges/deepeval_bridge.py",
                "../benchmarks/swebench.py", "../benchmarks/client.py"]
     return digest({name: hashlib.sha256((base / name).read_bytes()).hexdigest() for name in sources})
 

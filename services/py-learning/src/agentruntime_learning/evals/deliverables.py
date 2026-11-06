@@ -310,6 +310,12 @@ def score(
                    if (records.get(c.instance_id) or {}).get("state") == "finished" and acceptance.evidence_status(records[c.instance_id]) != "captured"}
         if invalid:
             raise ValueError("fresh, task-bound tool evidence required: " + json.dumps(invalid, sort_keys=True))
+    from agentruntime_learning.evals import deepeval_ledger
+
+    subject_ledger = deepeval_ledger.status(out_dir, run_doc, records)
+    if identity.get("deployment") and not subject_ledger["valid"]:
+        raise ValueError("authoritative subject model_usage evidence required before paid scoring: "
+                         + ", ".join(subject_ledger["problems"]))
     if identity.get("deployment"):
         from importlib.metadata import PackageNotFoundError, version
 
@@ -332,6 +338,7 @@ def score(
                     "judge_profile": (judge_profile or DEFAULT_JUDGE) if gateway is not None else None,
                     "judge_model": judge.model if judge is not None else None, "subject_models": list(subject_models),
                     "judge_budget_usd": judge_budget_usd, "require_tool_evidence": require_tool_evidence,
+                    "subject_ledger_evidence_sha256": subject_ledger.get("evidence_sha256"),
                     "records_sha256": acceptance.digest({cid: records.get(cid) for cid in sorted(ids)})}
     score_manifest = scores_dir / "score-config.json"
     if score_manifest.exists() and json.loads(score_manifest.read_text("utf-8")) != score_config:
@@ -359,6 +366,7 @@ def score(
             sb._write_text(scores_dir / f"{row['id']}.json", json.dumps({**row, "judge_model": judge.model, "judge": "bridge"}, ensure_ascii=False, indent=2) + "\n")
     summary = summarize({p.stem: json.loads(p.read_text("utf-8")) for p in scores_dir.glob("*.json") if p.stem in ids}, len(cases))
     summary["evidence"] = acceptance.evidence_summary(run_doc["instance_ids"], records)
+    summary["subject_ledger"] = subject_ledger
     if (scores_dir / "budget-state.json").exists():
         summary["judge_budget"] = json.loads((scores_dir / "budget-state.json").read_text("utf-8"))
     if log_path.exists():
@@ -424,12 +432,24 @@ def report(out_dir: Path, *, compare: Path | None = None) -> dict[str, Any]:
     missing_cost = [cid for cid in run_doc["instance_ids"] if (records.get(cid) or {}).get("task_id") and records[cid].get("cost_usd") is None]
     judge_cost = (judgments or {}).get("cost_usd")
     unknown_judge = bool(budget.get("pending"))
+    from agentruntime_learning.evals import deepeval_ledger
+
+    subject_ledger = deepeval_ledger.status(out_dir, run_doc, records)
+    rep["subject_ledger"] = subject_ledger
+    authoritative_subject = subject_ledger["authoritative_subject_usd"]
     rep["costs"] = {"subject_usd": cost, "subject_cost_unknown": missing_cost, "judge_usd": judge_cost,
                     "judge_cost_unknown": unknown_judge,
-                    "total_usd": round(cost + judge_cost, 6) if judge_cost is not None and not missing_cost and not unknown_judge else None}
+                    "subject_reported_usd": cost, "subject_reported_cost_source": "Task API/SSE comparison only",
+                    "authoritative_subject_usd": authoritative_subject,
+                    "subject_ledger_known_lower_bound_usd": subject_ledger["known_subject_usd"],
+                    "subject_ledger_cost_unknown": not subject_ledger["cost_known"],
+                    "cost_scope": deepeval_ledger.SCOPE + "; judge costs use separately metered scoring requests",
+                    "total_usd": round(authoritative_subject + judge_cost, 6)
+                    if authoritative_subject is not None and judge_cost is not None and not unknown_judge else None}
+    rep["cost_source"] = "Legacy cost_usd is the Task API comparison; use costs.authoritative_subject_usd"
     rep["acceptance_ready"] = bool((run_doc.get("identity") or {}).get("deployment") and rep["evidence"]["all_captured"]
                                     and rep["ran"] == rep["selected"] and summary and summary["scored"] == rep["selected"]
-                                    and not missing_cost and judge_cost is not None
+                                    and subject_ledger["valid"] and judge_cost is not None
                                     and budget and not unknown_judge and budget["spent_usd_micros"] <= budget["limit_usd_micros"]
                                     and not any((judgments or {}).get(k) for k in ("errors", "not_pinned"))
                                     and not any(m["errors"] for m in summary["metrics"].values()))
@@ -444,9 +464,11 @@ def report(out_dir: Path, *, compare: Path | None = None) -> dict[str, Any]:
                                              for name, m in (summary or {}).get("metrics", {}).items()
                                              if m["mean"] is not None and old_metrics.get(name, {}).get("mean") is not None}}
     sb._write_text(out_dir / "report.json", json.dumps(rep, ensure_ascii=False, indent=2) + "\n")
-    lines = [f"# 交付质量（DeepEval）· {rep['run_id']}", "", f"- 选了 {rep['selected']} 条，跑完 {rep['ran']} 条，花费 ${cost:.2f}"]
+    lines = [f"# 交付质量（DeepEval）· {rep['run_id']}", "", f"- 选了 {rep['selected']} 条，跑完 {rep['ran']} 条，Task API 费用对照 ${cost:.2f}"]
     lines += [f"- 真实工具证据：{rep['evidence']['captured']}/{rep['selected']}；完整验收证据：{rep['acceptance_ready']}",
-              f"- 被测费用 ${cost:.6f}；裁判费用 {judge_cost if judge_cost is not None else '未知'}；合计 {rep['costs']['total_usd']}"]
+              f"- 被测账本费用 {authoritative_subject if authoritative_subject is not None else '未知'}；裁判费用 {judge_cost if judge_cost is not None else '未知'}；该范围合计 {rep['costs']['total_usd']}"]
+    lines += [f"- 被测账本验收：{subject_ledger['valid']}；问题：{', '.join(subject_ledger['problems']) or '无'}",
+              f"- 费用范围：{rep['costs']['cost_scope']}"]
     if compare is not None:
         lines.append(f"- 前后对照：{rep['comparison']['baseline_run_id']}；同一冻结配置：{rep['comparison']['same_frozen_configuration']}；均分差 {rep['comparison']['mean_deltas']}")
     if summary:
