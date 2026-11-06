@@ -81,6 +81,33 @@ fn healthz_needs_no_token_and_everything_else_does() {
 }
 
 #[test]
+fn warm_pool_survives_jail_hardlinks_and_hands_off_the_same_vm() {
+    let rig = Rig::new()
+        .with("AR_FC_WARM_POOL", "python:1000:256:1")
+        .with("AR_FC_VM_DEFAULT_DISK_MIB", "256");
+    let m = rig.start();
+    assert!(wait_until(Duration::from_secs(5), || m
+        .log()
+        .contains("bootstrap path: cold")));
+    // The initial image hardlink changes ctime but not content. It must not
+    // invalidate the freshly booted pool VM or create an endless refill loop.
+    std::thread::sleep(Duration::from_millis(100));
+    let pool: Vec<_> = fs::read_dir(rig.path("j/firecracker"))
+        .unwrap()
+        .flatten()
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(pool.len(), 1);
+    let id = m.create_ok(
+        "t1",
+        json!({"runtime":"python", "cpu_millis":1000, "memory_mb":256,"disk_mb":256}),
+    );
+    assert_eq!(id, pool[0], "{}", m.log());
+    assert!(m.log().contains("从预热池交出"));
+    assert_eq!(m.destroy("t1", &id).status, 204);
+}
+
+#[test]
 fn create_list_destroy_round_trip_leaves_nothing_behind() {
     let rig = Rig::new();
     fs::write(rig.path("img/python.ext4.sha256"), "ab".repeat(32)).unwrap();
