@@ -794,6 +794,9 @@ class WorkspaceOperations:
                     entries = await lease.box.list_dir(lease.env_id, "")
                     if not any(e.name == repo["path"] and e.type == "dir" for e in entries):
                         raise InvalidError("invalid_repo_path", "仓库目录不存在或已变成符号链接")
+                    entries = await lease.box.list_dir(lease.env_id, repo["path"])
+                    if not any(e.name == ".git" and e.type == "dir" for e in entries):
+                        raise InvalidError("invalid_repo_path", "仓库必须有自己的 .git 目录，不能链接到另一个仓库")
                 yield lease
                 ok = True
             finally:
@@ -819,7 +822,14 @@ class WorkspaceOperations:
             env[f"GIT_CONFIG_KEY_{i}"], env[f"GIT_CONFIG_VALUE_{i}"] = key, value
         try:
             with timing.phase("command"):
-                res = await lease.box.exec(lease.env_id, ["git", *(["-C", multirepo.selected.get()["path"]] if multirepo.selected.get() else []), *argv], timeout=self.git_timeout, stdin=stdin, env=env)
+                scope: list[str] = []
+                if repo := multirepo.selected.get():
+                    scope = ["-C", repo["path"]]
+                    if "--git-dir" not in argv and "--bare" not in argv:
+                        # Sandbox code can edit core.worktree. A scoped discard
+                        # or commit must still use this repository's own files.
+                        scope += ["--git-dir=.git", "--work-tree=."]
+                res = await lease.box.exec(lease.env_id, ["git", *scope, *argv], timeout=self.git_timeout, stdin=stdin, env=env)
             timing.exec_bytes(stdin, res)
         except OSError:
             raise InvalidError("git_unavailable", "沙箱里没有 git（运行环境要带 git，例如 universal）") from None

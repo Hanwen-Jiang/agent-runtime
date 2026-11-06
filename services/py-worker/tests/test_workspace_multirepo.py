@@ -88,3 +88,19 @@ async def test_detach_checks_unpublished_commits_on_other_branches(tmp_path: Pat
     assert (await s.error(Op.WORKSPACE_OPERATION_DETACH_REPO, repo="api")).code == "repo_dirty"
     removed = await s.run(Op.WORKSPACE_OPERATION_DETACH_REPO, repo="api", discard_changes=True)
     assert removed["discarded_commits"] == 1
+
+
+@pytest.mark.parametrize("mode", ["mount", "archive"])
+async def test_repository_git_metadata_cannot_redirect_operations_to_another_repo(tmp_path: Path, mode: str) -> None:
+    url, _ = make_remote(tmp_path)
+    s = Setup(tmp_path, mode=mode)
+    await s.run(Op.WORKSPACE_OPERATION_CREATE, layout="multi")
+    for name in ("a", "b"):
+        await s.run(Op.WORKSPACE_OPERATION_ATTACH_REPO, repo={"name": name, "path": name, "url": url, "access": "write" if name == "a" else "read"})
+    await s.tool("repo_edit", {"path": "b/private.txt", "new": "keep other repository\n"})
+    await s.tool("shell_run", {"argv": ["git", "-C", "a", "config", "core.worktree", "../../b"]})
+    await s.run(Op.WORKSPACE_OPERATION_DISCARD, repo="a")
+    assert (await s.run(Op.WORKSPACE_OPERATION_READ_FILE, path="b/private.txt"))["content"] == "keep other repository\n"
+    await s.tool("shell_run", {"argv": ["python", "-c", "import os,shutil; shutil.rmtree('a/.git'); os.symlink('../b/.git','a/.git')"]})
+    assert (await s.error(Op.WORKSPACE_OPERATION_COMMIT, repo="a", message="must not touch b")).code == "invalid_repo_path"
+    assert (await s.run(Op.WORKSPACE_OPERATION_READ_FILE, path="b/private.txt"))["content"] == "keep other repository\n"

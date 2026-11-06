@@ -28,3 +28,20 @@ golden. Existing Task/Stage histories remain intact, but no workspace golden is
 currently present. Final integration must capture it using the pre-D-25 baseline
 `67b4f5bc` and a real Temporal server, then replay it with the final implementation;
 a synthetic fixture or the existing in-session workflow test is not that evidence.
+
+Repository scoping follow-up: each selected repository must retain its own real
+`.git` directory (a symlink or gitdir pointer to another repository is rejected).
+Local scoped Git commands explicitly set their git-dir and work-tree, so a
+sandbox-authored `core.worktree` cannot redirect discard/commit into a sibling.
+The separately created safe bare repository used for credential-bearing remote
+commands remains unchanged. `test_workspace_git_scope.py` exercises production
+lease validation and command construction with real on-disk Git repositories:
+three tests pass, including sibling file preservation, symlink/gitfile rejection
+and continued safe-bare remote reads. Full mount/archive regressions are also
+added, with the listening-server restriction above still applying.
+
+READ remains the approved Git-operation policy, not a filesystem mount guarantee:
+`RepoAccess_READ` rejects Commit/Push and permits Sync/Discard. The approved
+`environment-config.md` decision 4 and D-25 section explicitly allow shell
+commands to enter every repository and describe OAuth read-only access as a
+policy restriction. No new chmod/mount isolation promise is introduced.
