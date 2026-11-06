@@ -164,6 +164,11 @@ class Manager:
 
 def boot_source(created: dict[str, Any], before: dict[str, dict[str, Any]], cfg: dict[str, str], log: str) -> str:
     env_id = created["env_id"]
+    # The background pool may create and hand out a VM after our pre-request
+    # snapshot. Attribute the lease from its actual handoff, not its earlier
+    # physical boot (which may itself have used a memory snapshot).
+    if re.search(r"从预热池交出\s+" + re.escape(env_id) + r"(?=（|\(|\s|$)", log):
+        return "warm"
     if before.get(env_id, {}).get("owner") == "_pool":
         return "warm"
     if created.get("boot_source") in ("cold", "warm", "memory-snapshot", "cold-fallback"):
@@ -248,6 +253,10 @@ def preflight(args: argparse.Namespace, cfg: dict[str, str]) -> dict[str, Any]:
                       and int(part.split(":")[3]) > 0 for part in cfg["AR_FC_WARM_POOL"].split(","))
         if not matched or args.disk_mb != int(cfg["AR_FC_VM_DEFAULT_DISK_MIB"]):
             reasons.append("requested_spec_not_in_warm_pool")
+        if not args.manager_log:
+            reasons.append("warm_handoff_evidence_log_required")
+        elif not args.manager_log.is_file() or not os.access(args.manager_log, os.R_OK):
+            reasons.append("warm_handoff_evidence_log_unreadable")
     if args.mode == "snapshot" and (not int(cfg["AR_FC_SNAPSHOT_CACHE_MIB"]) or cfg["AR_FC_WARM_POOL"]):
         reasons.append("snapshot_requires_cache_enabled_and_pool_disabled")
     if args.mode == "snapshot":
@@ -363,7 +372,9 @@ def run(args: argparse.Namespace, cfg: dict[str, str], manager: Manager) -> dict
                 if args.manager_log and args.manager_log.exists():
                     with args.manager_log.open("rb") as f:
                         f.seek(offset)
-                        log = f.read(4 << 20).decode("utf-8", "replace")
+                        raw_log = f.read((4 << 20) + 1)
+                        row["log_truncated"] = len(raw_log) > (4 << 20)
+                        log = "" if row["log_truncated"] else raw_log.decode("utf-8", "replace")
                 row["boot_source"] = boot_source(created, existing, cfg, log)
                 if args.mode == "density":
                     time.sleep(args.settle_s)
