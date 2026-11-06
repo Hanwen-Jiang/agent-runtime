@@ -41,7 +41,7 @@ from typing import Any
 from agentruntime_core.providers.telemetry import Telemetry
 from agentruntime_worker.executor.model_gateway import ModelGateway
 
-from agentruntime_learning.capability import scoring
+from agentruntime_learning.capability import publication, scoring
 from agentruntime_learning.capability.base import Cell, CellEval, Item, ItemResult, PinningGateway
 from agentruntime_learning.capability.evals import load_eval
 from agentruntime_learning.evals.live import LiveRun
@@ -629,6 +629,12 @@ def score_results(plan: MatrixPlan, rows: Sequence[Mapping[str, Any]]) -> dict[s
         extras = eval_extras(mine)
         if extras:
             cells[-1]["extras"] = extras
+        # Use resolved evaluator names (the rows carry these, not factory specs).
+        expected_repeats = {
+            load_eval(entry.spec, entry.options).name: entry.r
+            for entry in cp.evals
+        }
+        publication.enforce(cells[-1], mine, expected_repeats=expected_repeats, allow_extended_samples=plan.extend)
     return {"plan": plan.name, "seed": plan.seed, "scored_at": datetime.now(UTC).isoformat(timespec="seconds"), "cells": cells}
 
 

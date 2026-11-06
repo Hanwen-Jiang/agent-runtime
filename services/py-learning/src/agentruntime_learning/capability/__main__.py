@@ -95,7 +95,11 @@ def _score(args: argparse.Namespace) -> int:
 
 
 def _publish(args: argparse.Namespace) -> int:
-    report = json.loads((args.out / matrix.SCORES).read_text("utf-8"))
+    # Never trust a stale or manually edited publishable flag. Re-evaluate the
+    # original observations with the current, frozen publication policy.
+    plan = matrix.load_plan(args.out / matrix.PLAN_COPY)
+    report = matrix.score_results(plan, matrix.read_results(args.out))
+    matrix.write_scores(args.out, report)
     today = dt.date.fromisoformat(args.date) if args.date else None
     result = publish.publish(report, profiles_path=args.profiles, seed_path=args.seed, today=today, dry_run=args.dry_run)
     (args.out / publish.PATCH).write_text(json.dumps(result["patch"], ensure_ascii=False, indent=2), "utf-8")
