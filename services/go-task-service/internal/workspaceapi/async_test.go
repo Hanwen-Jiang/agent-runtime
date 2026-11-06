@@ -3,6 +3,7 @@ package workspaceapi
 import (
 	"connectrpc.com/connect"
 	"context"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/durable"
 	workflowv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1"
 	workspacev1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workspace/v1"
@@ -128,5 +129,72 @@ func TestAsyncRejectsInvalidBeforeStarting(t *testing.T) {
 	}
 	if len(h.w.started) != 0 {
 		t.Fatal("invalid request started")
+	}
+}
+
+func TestAsyncExpiredHistoryRetainsUnknownOutcomeWithoutRestart(t *testing.T) {
+	h := newHarness(t, func(d *Deps) {
+		if err := d.Store.Migrate(context.Background(), Migrations()); err != nil {
+			t.Fatal(err)
+		}
+	})
+	h.w.status = durable.StatusRunning
+	ctx := context.Background()
+	started, err := h.client.StartWorkspaceOperation(ctx, authed(h, "t1", asyncCreate("expired-key")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.w.mu.Lock()
+	h.w.started, h.w.scopes = nil, nil // Timeout terminated it; Temporal retention removed history.
+	h.w.mu.Unlock()
+	query := &workspacev1.GetWorkspaceOperationRequest{WorkspaceId: "w1", OperationId: started.Msg.OperationId}
+	for range 2 {
+		got, err := h.client.GetWorkspaceOperation(ctx, authed(h, "t1", query))
+		if err != nil || got.Msg.Status != workspacev1.WorkspaceOperationStatus_WORKSPACE_OPERATION_STATUS_FAILED || got.Msg.GetError().GetCode() != "workspace_operation_history_unavailable" {
+			t.Fatalf("lost explicit unknown outcome: %v %v", got, err)
+		}
+	}
+	if _, err := h.client.StartWorkspaceOperation(ctx, authed(h, "t1", asyncCreate("expired-key"))); err != nil {
+		t.Fatal(err)
+	}
+	if len(h.w.started) != 0 {
+		t.Fatal("unknown side effects were repeated")
+	}
+}
+
+func TestAsyncUnconfirmedAdmissionCannotBecomeTerminal(t *testing.T) {
+	h := newHarness(t, func(d *Deps) {
+		if err := d.Store.Migrate(context.Background(), Migrations()); err != nil {
+			t.Fatal(err)
+		}
+	})
+	entered, release := make(chan struct{}), make(chan struct{})
+	h.w.beforeStart = func(ctx context.Context) error {
+		close(entered)
+		select {
+		case <-release:
+		case <-ctx.Done():
+		}
+		return providererr.New(providererr.Transient, "start_unknown", "start not confirmed")
+	}
+	done := make(chan error, 1)
+	go func() {
+		_, err := h.client.StartWorkspaceOperation(context.Background(), authed(h, "t1", asyncCreate("unconfirmed-key")))
+		done <- err
+	}()
+	<-entered
+	query := &workspacev1.GetWorkspaceOperationRequest{WorkspaceId: "w1", OperationId: "wso-" + hashOperation("t1", "u-alice", "unconfirmed-key")}
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	got, _ := h.client.GetWorkspaceOperation(ctx, authed(h, "t1", query))
+	cancel()
+	if got != nil && got.Msg.Status == workspacev1.WorkspaceOperationStatus_WORKSPACE_OPERATION_STATUS_FAILED {
+		t.Fatal("an uncommitted start became terminal")
+	}
+	close(release)
+	if err := <-done; err == nil {
+		t.Fatal("start should be unconfirmed")
+	}
+	if _, err := h.client.GetWorkspaceOperation(context.Background(), authed(h, "t1", query)); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("rolled-back admission retained an outcome: %v", err)
 	}
 }
