@@ -74,7 +74,10 @@ def snapshot(argv: Sequence[str]) -> dict[str, Any]:
     return pv.validate(json.loads(proc.stdout))
 
 
-class Runner(sb._Runner):
+from agentruntime_learning.evals.deliverables import _Runner as EvidenceRunner
+
+
+class Runner(EvidenceRunner):
     def _workspace_args(self, inst: Any) -> tuple[str, str, list[dict[str, str]]]:
         return "", "", list(inst.files)
 
@@ -86,6 +89,7 @@ class Runner(sb._Runner):
         return super()._follow(rec, interactive=interactive)
 
     def _observe_event(self, rec: dict[str, Any], ev: Event) -> None:
+        super()._observe_event(rec, ev)
         if ev.name not in ("node_started", "node_finished", "tool_status", "verdict", "stage_started"):
             return
         item = {"event_id": ev.id, "event": ev.name}
@@ -182,7 +186,7 @@ async def collect_ledger(task_id: str, tenant_id: str) -> list[dict[str, Any]]:
         await store.aclose()
 
 
-async def collect_temporal(task_id: str) -> dict[str, Any]:
+async def collect_temporal(task_id: str, tenant_id: str | None = None) -> dict[str, Any]:
     """Read child identities and authoritative elapsed time, without payloads.
 
     No model prompts, tool arguments, claim-check bodies or credentials are
@@ -199,6 +203,7 @@ async def collect_temporal(task_id: str) -> dict[str, Any]:
     children: set[str] = set()
     complete = True
     elapsed = None
+    planning = None
     while queue:
         workflow_id = queue.pop()
         if workflow_id in seen:
@@ -208,6 +213,10 @@ async def collect_temporal(task_id: str) -> dict[str, Any]:
             raise ValueError("unexpectedly large workflow tree")
         history = await client.get_workflow_handle(workflow_id).fetch_history()
         events = history.events
+        if workflow_id == task_id and tenant_id is not None:
+            from agentruntime_learning.benchmarks.paired_completion import plan_evidence
+            from agentruntime_worker.replay import claim_check_from_env
+            planning = await plan_evidence(history, tenant_id, claim_check=claim_check_from_env())
         closed = any(e.HasField(field) for e in events for field in (
             "workflow_execution_completed_event_attributes", "workflow_execution_failed_event_attributes",
             "workflow_execution_canceled_event_attributes", "workflow_execution_timed_out_event_attributes",
@@ -226,7 +235,7 @@ async def collect_temporal(task_id: str) -> dict[str, Any]:
                 if child.workflow_type.name == "SubAgentWorkflow":
                     children.add(child.workflow_id.split("/", 2)[2].split("/", 1)[0])
     return {"sub_agent_nodes": sorted(children), "elapsed_s": elapsed, "complete": complete,
-            "workflow_ids": sorted(seen), "source": "Temporal histories"}
+            "workflow_ids": sorted(seen), "source": "Temporal histories", "planning_evidence": planning}
 
 
 def score_case(case: Case, rec: Mapping[str, Any]) -> dict[str, Any]:
@@ -258,17 +267,19 @@ def validate_plan(plan: Mapping[str, Any]) -> list[Case]:
         raise ValueError("EV-REAL/N16-R approved shared cap is $40")
     if not 0 < float(plan["task_usd_limit"]) <= float(plan["budget_usd"]):
         raise ValueError("invalid per-task cap")
+    if "completion" in plan:
+        from agentruntime_learning.benchmarks.paired_completion import validate_completion
+        validate_completion(plan)
     return load_cases(plan["cases"])
 
 
 def estimate(plan: Mapping[str, Any]) -> dict[str, Any]:
     cases = validate_plan(plan)
     history = pv.historical_cost([Path(p) for p in plan.get("historical_runs", [])])
-    worst = len(cases) * 2 * float(plan["task_usd_limit"])
-    return {"new_tasks": 2 * len(cases), "reserved_upper_bound_usd": worst, "historical": history,
-            "budget_usd": plan["budget_usd"], "fits": not history["unknown_task_ids"] and history["known_usd"] + worst <= float(plan["budget_usd"]),
-            "judging_cost_usd": 0, "quality_metric": RUBRIC_VERSION,
-            "note": "preflight reservation, not a provider price guarantee; settle every actual attempt"}
+    from agentruntime_learning.benchmarks.paired_completion import spending
+    return {"new_tasks": 2 * len(cases), "historical": history,
+            **spending(plan, history), "quality_metric": RUBRIC_VERSION}
+
 
 
 def run_arm(plan: Mapping[str, Any], out: Path, arm: str, *, runtime: Any = None, inspect: Any = snapshot, ledger: Any = None,
@@ -283,12 +294,13 @@ def run_arm(plan: Mapping[str, Any], out: Path, arm: str, *, runtime: Any = None
     expected = pv.validate(cfg["provenance"])
     if inspect(cfg["snapshot_command"]) != expected:
         raise ValueError("live runtime does not match frozen configuration")
-    historical = estimate(plan)["historical"]
+    estimation = estimate(plan)
+    historical = estimation["historical"]
     if historical["unknown_task_ids"]:
         raise ValueError("historical cost unknown; reconcile model_usage before spending")
     runtime = runtime or RuntimeClient(cfg["task_api"], token_from_env())
     ledger = ledger or (lambda task: asyncio.run(collect_ledger(task, str(plan["tenant_id"]))))
-    histories = histories or (lambda task: asyncio.run(collect_temporal(task)))
+    histories = histories or (lambda task: asyncio.run(collect_temporal(task, str(plan["tenant_id"]))))
     random.Random(int(plan.get("seed", 0))).shuffle(cases)
     for case in cases:
         run_dir = out / arm / case.instance_id
@@ -311,7 +323,7 @@ def run_arm(plan: Mapping[str, Any], out: Path, arm: str, *, runtime: Any = None
             if prior.get("task_id") and prior_run != run_dir and not (prior_run / "metrics.json").exists():
                 raise ValueError("another task has uncollected ledger evidence; resume its arm before spending")
         # Existing tasks are reconciled even when the remaining budget is zero.
-        if not existing.get("task_id") and spent + float(plan["task_usd_limit"]) > float(plan["budget_usd"]):
+        if not existing.get("task_id") and spent + float(plan["task_usd_limit"]) > historical["known_usd"] + estimation["task_gateway_budget_usd"]:
             break
         if inspect(cfg["snapshot_command"]) != expected:
             raise ValueError("runtime drift detected before task")
@@ -336,6 +348,9 @@ def run_arm(plan: Mapping[str, Any], out: Path, arm: str, *, runtime: Any = None
         _write(run_dir / "model_usage.json", rows)
         temporal = histories(rec["task_id"])
         _write(run_dir / "temporal-evidence.json", temporal)
+        if "completion" in plan:
+            from agentruntime_learning.benchmarks.paired_completion import planning_score
+            metrics["planning"] = planning_score(temporal.get("planning_evidence") or {}, should_delegate=case.should_delegate, arm=arm)
         metrics["sub_agent_nodes"] = temporal["sub_agent_nodes"]
         metrics["delegation_correct"] = bool(temporal["sub_agent_nodes"]) == case.should_delegate
         metrics["elapsed_s"] = temporal["elapsed_s"]
@@ -346,7 +361,8 @@ def run_arm(plan: Mapping[str, Any], out: Path, arm: str, *, runtime: Any = None
                             and temporal["complete"] and temporal["elapsed_s"] is not None
                             and not metrics["unsupported_subtasks"]
                             and not metrics["ledger"]["registry_mismatch_reservations"]
-                            and not metrics["ledger"]["model_mismatch_reservations"])
+                            and not metrics["ledger"]["model_mismatch_reservations"]
+                            and ("completion" not in plan or metrics["planning"]["complete"]))
         _write(metric_path, metrics)
         if not metrics["valid"]:
             raise RuntimeError("incomplete or mismatched evidence; no further tasks submitted")

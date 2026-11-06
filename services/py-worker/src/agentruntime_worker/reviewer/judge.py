@@ -22,6 +22,8 @@ import urllib.error
 import urllib.request
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
@@ -30,6 +32,19 @@ SECRET_NAME = "judge/jev-api-key"
 SECRET_PURPOSE = "judge"
 DEFAULT_URL = "https://api.typesafe.ai"
 DEFAULT_MODEL = "jev-latest"
+_USAGE: ContextVar[list[dict[str, Any]] | None] = ContextVar("jev_attempt_usage", default=None)
+
+
+@contextmanager
+def capture_usage():
+    rows: list[dict[str, Any]] = []
+    token = _USAGE.set(rows)
+    try:
+        yield rows
+    finally:
+        _USAGE.reset(token)
+
+
 REQUEST_CHARS = 4000
 REPLY_CHARS = 8000
 
@@ -63,7 +78,7 @@ class JudgeChecks:
     answers: float
     disowns: float
     model: str = ""
-    input_tokens: int = 0
+    input_tokens: int | None = None
 
 
 class DeliverableJudge(Protocol):
@@ -113,6 +128,9 @@ class JevJudge:
         self.post = post or _urllib_post
 
     async def check(self, request: str, reply: str) -> JudgeChecks | None:
+        usage_row: dict[str, Any] = {"provider_attempted": False, "check_performed": False, "usage_known": True, "input_tokens": 0, "model": self.model}
+        if (rows := _USAGE.get()) is not None:
+            rows.append(usage_row)
         try:
             key = await self.key()
         except Exception as exc:  # noqa: BLE001 — 取不到密钥就不检查
@@ -127,7 +145,9 @@ class JevJudge:
         ).encode()
         headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
         try:
+            usage_row.update(provider_attempted=True, usage_known=False, input_tokens=None)
             status, raw = await self.post(self.url, headers, body, self.timeout_s)
+            usage_row["http_status"] = status
         except Exception as exc:  # noqa: BLE001 — 网络问题不影响判定
             logger.warning("Jev：调用失败（%s），这次不检查", type(exc).__name__)
             return None
@@ -138,10 +158,15 @@ class JevJudge:
             data = json.loads(raw)
             answers = data["answers"]
             usage = data.get("usage") or {}
-            return JudgeChecks(
+            tokens = usage.get("input_tokens")
+            known = isinstance(tokens, int) and not isinstance(tokens, bool) and tokens >= 0
+            usage_row.update(usage_known=known, input_tokens=tokens if known else None, model=str(data.get("model") or self.model))
+            checks = JudgeChecks(
                 answers=_probability(answers["answers"]), disowns=_probability(answers["disowns"]), model=str(data.get("model") or ""),
-                input_tokens=int(usage.get("input_tokens") or 0),
+                input_tokens=tokens if known else None,
             )
+            usage_row["check_performed"] = True
+            return checks
         except (KeyError, TypeError, ValueError) as exc:
             logger.warning("Jev：回答不合格（%s），这次不检查", type(exc).__name__)
             return None

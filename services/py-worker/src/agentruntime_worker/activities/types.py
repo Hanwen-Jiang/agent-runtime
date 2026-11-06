@@ -336,6 +336,9 @@ class ReviewRoundOutput:
     # 这一轮的重要输出，已查过形状（docs/plan/running-task-interaction.md 第 4 节）；路径的核对在工作流里。
     highlights: dict[str, Any] | None = None
 
+    # Optional observation only; old Temporal payloads decode as unknown.
+    judge_usage: dict[str, Any] | None = None
+
 
 @dataclass
 class FinalizeTaskInput:

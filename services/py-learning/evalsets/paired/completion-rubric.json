@@ -1,0 +1,21 @@
+{
+  "version": "paired-semantic-planning-v1",
+  "frozen_before_run": true,
+  "source_basis": ["docs/plan/sub-agent.md section 3", "original rev38/sub-walk.sh request", "schemas/stage.schema.json"],
+  "structural_planning": {
+    "all_arms": ["First plan has unique node IDs, no unknown dependencies and no dependency cycle", "Keep subsequent replans and failures; do not select the best graph"],
+    "rules_independent_comparison": ["Exactly three independent sub_agent branches", "At least one synthesis node transitively depends on all three"],
+    "off_or_single_fact": ["No sub_agent branch"]
+  },
+  "semantic_dimensions": [
+    {"name": "factual_correctness", "weight": 1, "criteria": "Claims match the supplied evidence or the preserved cited sources; product names and numeric tokens alone earn no credit. For the HTTP regression distinguish requests, httpx and aiohttp accurately."},
+    {"name": "coverage", "weight": 1, "criteria": "Satisfy every requested attribute and conclusion. HTTP regression covers sync/async, timeout/retry examples, pooling, HTTP/2, maintenance evidence, and both requested scenarios. Single facts need only the requested name and evidence value."},
+    {"name": "evidence_and_uncertainty", "weight": 1, "criteria": "Citations support the corresponding claims; distinguish absent evidence from negative evidence. Truthful unknowns are not disowning the task and must not be penalized merely for cautious wording."},
+    {"name": "synthesis_and_recommendations", "weight": 1, "criteria": "Comparison connects source facts to differences and requested recommendations; do not merely repeat three disconnected summaries. A single-fact request is complete when answered directly without invented synthesis."},
+    {"name": "planning_coverage", "weight": 1, "criteria": "Use preserved plan topology and actual tool/answer evidence to assess whether the decomposition covered the requested independent work and joined it correctly. Do not infer successful planning just from a sub_agent count."}
+  ],
+  "anchors": {"0": "incorrect, unsupported or missing", "0.5": "partially correct with a material omission", "1": "correct, complete and supported"},
+  "aggregation": "equal-weight mean across all five dimensions and all retained paired cases",
+  "acceptance": {"minimum_semantic_quality_gain": 0.1, "maximum_total_cost_ratio": 2.0, "planning_structure_pass_rate": 1.0, "all_pairs_required": true, "external_jev_costs_required": true},
+  "mandatory_regression": {"id": "http-libraries-jev-regression", "historical_task_id": "tsk_01M6Q70KK2A2NRVG2HYXDSN5DD", "check": "Report first and repeat Jev vetoes, extra rounds and settled costs; one-veto cap alone does not prove the historical first false veto was fixed."}
+}

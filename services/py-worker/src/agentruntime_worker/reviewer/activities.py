@@ -18,6 +18,7 @@ from agentruntime_worker.executor.dev import data_root, dev_object_store
 from agentruntime_worker.executor.heartbeat import heartbeating
 from agentruntime_worker.reviewer.reviewer import Reviewer, ReviewRequest
 from agentruntime_worker.reviewer.rules import ReviewCatalog
+from agentruntime_worker.reviewer.judge import capture_usage, JevJudge
 from agentruntime_worker.memory import memory_client
 from agentruntime_worker.reviewer.wrap_up import WrapUp
 from agentruntime_worker.telemetry import worker_telemetry
@@ -63,20 +64,21 @@ class ReviewerActivities:
             raise ApplicationError("review_round 缺少本轮执行的 Stage：工作流早于 S-10，不能交给真正的 Reviewer", type="invalid_review_input", non_retryable=True)
         catalog = await self.catalogs.load(inp.tenant, inp.task_id)
         ceiling = _lower_ceiling(catalog.effect_ceiling, (inp.task_state.get("constraints") or {}).get("effect_ceiling"))
-        result = await self.reviewer.review(
-            ReviewRequest(
-                tenant=inp.tenant,
-                task_id=inp.task_id,
-                round_seq=inp.round_seq,
-                task_state=inp.task_state,
-                stage=inp.stage,
-                results={nid: _result_dict(r) for nid, r in inp.stage_results.items()},
-                history=list(inp.history),
-                catalog=ReviewCatalog(recipes=dict(catalog.recipes), effect_ceiling=ceiling),
-                rules_only=inp.rules_only,
-                verification=inp.verification,
+        with capture_usage() as judge_attempts:
+            result = await self.reviewer.review(
+                ReviewRequest(
+                    tenant=inp.tenant,
+                    task_id=inp.task_id,
+                    round_seq=inp.round_seq,
+                    task_state=inp.task_state,
+                    stage=inp.stage,
+                    results={nid: _result_dict(r) for nid, r in inp.stage_results.items()},
+                    history=list(inp.history),
+                    catalog=ReviewCatalog(recipes=dict(catalog.recipes), effect_ceiling=ceiling),
+                    rules_only=inp.rules_only,
+                    verification=inp.verification,
+                )
             )
-        )
         # 判定依据与模型调用写入日志（trace），不传给下游。
         logger.info(
             "Reviewer：第 %s 轮判 %s%s；依据 %s；模型调用 %s%s%s",
@@ -89,7 +91,18 @@ class ReviewerActivities:
             (f"；Jev（{result.checks.model}，输入 {result.checks.input_tokens} token）：回答了 {result.checks.answers:.2f}、不认工具或输入 {result.checks.disowns:.2f}"
              if result.checks is not None else ""),
         )
-        return ReviewRoundOutput(verdict=result.verdict, state_update=result.state_update, cost_usd=round(sum(c.cost_usd for c in result.calls), 6), highlights=result.highlights)
+        try:
+            attempt = activity.info().attempt
+        except RuntimeError:
+            attempt = 1
+        for index, row in enumerate(judge_attempts):
+            row.update(task_id=inp.task_id, attempt_id=f"r{inp.round_seq}/activity{attempt}/jev{index + 1}",
+                       veto_rule_disabled=int((inp.verification or {}).get("judge_blocked") or 0) >= 1)
+        observed = self.reviewer.judge is None or isinstance(self.reviewer.judge, JevJudge)
+        judge_usage = {"source": "jev_provider_attempts_v1", "complete": observed, "attempts": judge_attempts,
+                       "provider_attempted": any(r["provider_attempted"] for r in judge_attempts),
+                       "usage_known": observed and all(r["usage_known"] for r in judge_attempts)}
+        return ReviewRoundOutput(verdict=result.verdict, state_update=result.state_update, cost_usd=round(sum(c.cost_usd for c in result.calls), 6), highlights=result.highlights, judge_usage=judge_usage)
 
     @activity.defn(name=names.REVIEW_ROUND)
     async def review_round(self, inp: ReviewRoundInput) -> ReviewRoundOutput:
