@@ -73,7 +73,7 @@ enum State {
     Destroying,
 }
 
-type RootfsStamp = (u64, u64, u64, i64, i64, i64, i64);
+type RootfsStamp = (u64, u64, u64, i64, i64);
 
 struct Vm {
     rec: Record,
@@ -145,17 +145,9 @@ fn image_digest(rootfs: &Path) -> String {
 }
 
 fn rootfs_stamp(rootfs: &Path) -> Option<RootfsStamp> {
-    fs::metadata(rootfs).ok().map(|m| {
-        (
-            m.dev(),
-            m.ino(),
-            m.len(),
-            m.mtime(),
-            m.mtime_nsec(),
-            m.ctime(),
-            m.ctime_nsec(),
-        )
-    })
+    fs::metadata(rootfs)
+        .ok()
+        .map(|m| (m.dev(), m.ino(), m.len(), m.mtime(), m.mtime_nsec()))
 }
 
 impl Manager {
