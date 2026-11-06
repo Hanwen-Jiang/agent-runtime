@@ -1,0 +1,55 @@
+{
+  "tenant": "evals",
+  "name": "",
+  "version": "v1",
+  "state": 2,
+  "document_sha256": "fbb00d14afac2e0436fb741a8d2e4615b05984d0059d5773207c34a5935c2e7f",
+  "document": {
+    "budget": {
+      "tool_calls": 50,
+      "usd": 1,
+      "wall_clock_min": 20
+    },
+    "effect_ceiling": "write_reversible",
+    "mcp": {
+      "allowed": true,
+      "hosts": [
+        "*"
+      ],
+      "max_connections": 10,
+      "max_effect": "read"
+    },
+    "sandbox": {
+      "backend": "firecracker",
+      "fallback": [
+        "cloudflare"
+      ],
+      "min_isolation": "microvm",
+      "network": {
+        "allowed": true,
+        "approver": "submitter",
+        "hosts": [
+          "github.com",
+          "gitlab.com",
+          "gitee.com",
+          "codeberg.org",
+          "bitbucket.org"
+        ],
+        "max_grant_minutes": 60
+      },
+      "quota": {
+        "daily_egress_bytes": 2000000000,
+        "daily_mirror_miss_bytes": 5000000000,
+        "daily_sandbox_seconds": 7200,
+        "max_concurrent": 2
+      }
+    },
+    "workspace": {
+      "max_bytes": 1000000000,
+      "max_workspaces": 10,
+      "push_branches": [
+        "agent/**"
+      ]
+    }
+  }
+}

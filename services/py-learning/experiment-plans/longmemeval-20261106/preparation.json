@@ -1,0 +1,22 @@
+{
+  "observed_at_unix": 1793993944.4546037,
+  "source_registry_identity": {
+    "tenant": "evals",
+    "name": "",
+    "version": "v1",
+    "state": 2,
+    "document_sha256": "fbb00d14afac2e0436fb741a8d2e4615b05984d0059d5773207c34a5935c2e7f"
+  },
+  "gateway_configmap": "agent-runtime-model-allowlist",
+  "gateway_configmap_resource_version": "2830901",
+  "gateway_source_sha256": "f89b6c0f2a1f625b5e1186d857dac44205753ba785971edf4c0fa6a6ecab36d8",
+  "new_tenant": "evalmem20261106",
+  "historical_attributed_usd": 0.015291,
+  "cap_usd": 19.984709,
+  "only_changes": [
+    "new tenant identity",
+    "model_allowlist restricted to existing embedding",
+    "daily/monthly limit set to remaining allowance"
+  ],
+  "applied": false
+}
