@@ -24,6 +24,7 @@ import (
 // Grant 是要写的一条授权。
 type Grant struct {
 	TaskID     string
+	Scope      string
 	Hosts      []string
 	Ports      []int32
 	Minutes    int32
@@ -48,17 +49,23 @@ func WriteSubmitGrant(ctx context.Context, store relational.Provider, tenant *co
 	if err != nil {
 		return err
 	}
+	if g.Scope == "" {
+		g.Scope = "hosts"
+	}
+	if g.Hosts == nil {
+		g.Hosts = []string{}
+	}
 	hosts, _ := json.Marshal(g.Hosts)
 	ports, _ := json.Marshal(g.Ports)
 	expires := now.Add(time.Duration(g.Minutes) * time.Minute)
 	err = db.Transaction(ctx, relational.TxOptions{}, func(ctx context.Context, tx relational.Tx) error {
 		_, err := tx.Execute(ctx, `INSERT INTO sandbox_grants (grant_id, task_id, workspace_id, session_id, hosts, ports, expires_at,
 			max_up_bytes, max_down_bytes, max_conns, max_rps, up_bytes, down_bytes, preview_port, state, approved_by, reason, created_at,
-			revoked_at, preview_env, preview_target)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0, 0, 0, 'active', $12, $13, $14, '', '', '')
+			revoked_at, preview_env, preview_target, scope)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0, 0, 0, 'active', $12, $13, $14, '', '', '', $15)
 			ON CONFLICT (grant_id) DO NOTHING`,
 			SubmitGrantID(g.TaskID), g.TaskID, tenant.GetWorkspaceId(), tenant.GetSessionId(), string(hosts), string(ports), ISO(expires),
-			g.MaxUpBytes, g.MaxDownBytes, g.MaxConns, g.MaxRPS, g.ApprovedBy, g.Reason, ISO(now))
+			g.MaxUpBytes, g.MaxDownBytes, g.MaxConns, g.MaxRPS, g.ApprovedBy, g.Reason, ISO(now), g.Scope)
 		return err
 	})
 	if err != nil && MissingTable(err) {

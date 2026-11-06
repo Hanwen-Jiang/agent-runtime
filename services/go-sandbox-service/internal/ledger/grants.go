@@ -15,6 +15,7 @@ import (
 // 托管后端按授权的主机建按域名放行的环境，以及构建项目环境时给构建记一条平台批准的授权（D-17）。
 type Grant struct {
 	GrantID   string
+	Scope     string
 	TaskID    string
 	Hosts     []string
 	ExpiresAt string
@@ -25,8 +26,11 @@ type Grant struct {
 	MaxRPS    int64
 }
 
-// Audited：授权带用量上限时只能落在经出网网关的后端（W11）。
-func (g Grant) Audited() bool { return g.MaxUp > 0 || g.MaxDown > 0 || g.MaxConns > 0 || g.MaxRPS > 0 }
+// Audited：用量上限与 PUBLIC 授权必须由出网网关执行（W11、NET-OPEN）。
+// 只有静态域名名单的托管后端无法执行 PUBLIC 的逐次 DNS/IP 与 SNI 准入。
+func (g Grant) Audited() bool {
+	return g.Scope == "public" || g.MaxUp > 0 || g.MaxDown > 0 || g.MaxConns > 0 || g.MaxRPS > 0
+}
 
 // GrantsForTask 是这个 Task 现在有效的授权。
 func (l *Ledger) GrantsForTask(ctx context.Context, owner, taskID string) ([]Grant, error) {
@@ -36,10 +40,10 @@ func (l *Ledger) GrantsForTask(ctx context.Context, owner, taskID string) ([]Gra
 	now := ISO(l.Now())
 	var out []Grant
 	err := l.Tx(ctx, owner, true, func(ctx context.Context, tx relational.Tx) error {
-		rows, err := tx.Query(ctx, "SELECT grant_id, task_id, hosts, expires_at, state, max_up_bytes, max_down_bytes, max_conns, max_rps "+
+		rows, err := tx.Query(ctx, "SELECT grant_id, task_id, scope, hosts, expires_at, state, max_up_bytes, max_down_bytes, max_conns, max_rps "+
 			"FROM sandbox_grants WHERE task_id = $1 ORDER BY created_at", taskID)
 		for _, r := range rows {
-			g := Grant{GrantID: Str(r, "grant_id"), TaskID: Str(r, "task_id"), ExpiresAt: Str(r, "expires_at"), State: Str(r, "state"),
+			g := Grant{Scope: Str(r, "scope"), GrantID: Str(r, "grant_id"), TaskID: Str(r, "task_id"), ExpiresAt: Str(r, "expires_at"), State: Str(r, "state"),
 				MaxUp: Int(r, "max_up_bytes"), MaxDown: Int(r, "max_down_bytes"), MaxConns: Int(r, "max_conns"), MaxRPS: Int(r, "max_rps")}
 			_ = json.Unmarshal([]byte(Str(r, "hosts")), &g.Hosts)
 			if g.State == "active" && g.ExpiresAt > now {

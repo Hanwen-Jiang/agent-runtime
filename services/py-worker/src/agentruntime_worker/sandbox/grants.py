@@ -46,6 +46,7 @@ class NetworkPolicy:
     """租户策略的 sandbox.network；0 表示不限。"""
 
     allowed: bool = False
+    modes: tuple[str, ...] = ("deny", "allowlist")
     hosts: tuple[str, ...] = ()
     max_grant_minutes: int = 60
     approver: str = "submitter"
@@ -63,6 +64,7 @@ class NetworkPolicy:
             raise InvalidError("invalid_network_policy", f"租户策略的 sandbox.network.approver 只能是 {'、'.join(APPROVERS)}")
         return cls(
             allowed=bool(doc.get("allowed", False)),
+            modes=tuple(doc.get("modes", ("deny", "allowlist"))),
             hosts=tuple(str(h).lower() for h in doc.get("hosts") or ()),
             max_grant_minutes=int(doc.get("max_grant_minutes") or 60),
             approver=approver,
@@ -113,12 +115,14 @@ class NetworkRequest:
     minutes: int
     reason: str
     preview_port: int = 0
+    scope: str = "hosts"
 
 
 def check_request(
     policy: NetworkPolicy,
     *,
-    hosts: Sequence[str],
+    hosts: Sequence[str] = (),
+    scope: str = "hosts",
     ports: Sequence[int] = (),
     minutes: int,
     reason: str = "",
@@ -131,7 +135,14 @@ def check_request(
         raise DeniedError("network_read_only", "只读的 Task 不能申请联网（联网的副作用按不可逆写处理）")
     if not policy.allowed:
         raise DeniedError("network_not_allowed", "租户策略不允许沙箱联网（sandbox.network.allowed）")
-    if not hosts:
+    if scope not in ("hosts", "public"):
+        raise InvalidError("invalid_network_request", "scope 只能是 hosts 或 public")
+    mode = "open" if scope == "public" else "allowlist"
+    if mode not in policy.modes:
+        raise DeniedError(f"network_{mode}_not_allowed", "租户策略不允许这个联网档位")
+    if scope == "public" and hosts:
+        raise InvalidError("invalid_network_request", "public 授权不能同时指定 hosts")
+    if scope == "hosts" and not hosts:
         raise InvalidError("invalid_network_request", "要写明访问哪些主机")
     if len(hosts) > MAX_HOSTS:
         raise InvalidError("invalid_network_request", f"一次最多申请 {MAX_HOSTS} 个主机")
@@ -145,6 +156,8 @@ def check_request(
     out_ports: list[int] = []
     for port in ports or DEFAULT_PORTS:
         p = int(port)
+        if p == 25:
+            raise DeniedError("port_25", "不允许访问 25 端口")
         if not 1 <= p <= 65535:
             raise InvalidError("invalid_network_request", f"端口 {port} 不在 1 到 65535 之间")
         if p not in out_ports:
@@ -161,7 +174,7 @@ def check_request(
     reason = str(reason or "").strip()
     if len(reason) > 500:
         raise InvalidError("invalid_network_request", "理由最多 500 个字符")
-    return NetworkRequest(hosts=tuple(sorted(normalized)), ports=tuple(sorted(out_ports)), minutes=int(minutes), reason=reason, preview_port=int(preview_port or 0))
+    return NetworkRequest(scope=scope, hosts=tuple(sorted(normalized)), ports=tuple(sorted(out_ports)), minutes=int(minutes), reason=reason, preview_port=int(preview_port or 0))
 
 
 @dataclass(frozen=True)
@@ -188,12 +201,13 @@ class Grant:
     approved_by: str = ""
     reason: str = ""
     revoked_at: str = ""
+    scope: str = "hosts"
 
     @classmethod
     def from_row(cls, owner: str, row: Mapping[str, Any]) -> Grant:
         names = {f.name for f in fields(cls)} - {"owner", "hosts", "ports"}
         values = {k: row[k] for k in names if k in row}
-        return cls(owner=owner, hosts=tuple(json.loads(row["hosts"] or "[]")), ports=tuple(int(p) for p in json.loads(row["ports"] or "[]")), **values)
+        return cls(owner=owner, hosts=tuple(json.loads(row["hosts"] or "[]") or []), ports=tuple(int(p) for p in json.loads(row["ports"] or "[]")), **values)
 
     def active(self, now: datetime) -> bool:
         return self.state == "active" and self.expires_at > iso(now)
@@ -205,7 +219,7 @@ class Grant:
 
 _COLUMNS = (
     "grant_id", "task_id", "workspace_id", "session_id", "hosts", "ports", "expires_at", "max_up_bytes", "max_down_bytes", "max_conns", "max_rps",
-    "up_bytes", "down_bytes", "preview_port", "state", "approved_by", "reason", "created_at", "revoked_at", "preview_env", "preview_target",
+    "up_bytes", "down_bytes", "preview_port", "state", "approved_by", "reason", "created_at", "revoked_at", "preview_env", "preview_target", "scope",
 )
 
 
@@ -239,7 +253,7 @@ class GrantStore:
     ) -> Grant:
         now = self.clock()
         grant = Grant(
-            grant_id=new_grant_id(), owner=owner, task_id=task_id, hosts=request.hosts, ports=request.ports,
+            grant_id=new_grant_id(), scope=request.scope, owner=owner, task_id=task_id, hosts=request.hosts, ports=request.ports,
             expires_at=iso(now + timedelta(minutes=request.minutes)), state="active", created_at=iso(now), workspace_id=workspace_id,
             session_id=session_id, max_up_bytes=policy.max_up_bytes, max_down_bytes=policy.max_down_bytes, max_conns=policy.max_conns,
             max_rps=policy.max_rps, preview_port=request.preview_port, preview_env=preview_env, preview_target=preview_target,

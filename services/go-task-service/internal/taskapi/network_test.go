@@ -26,7 +26,7 @@ import (
 var grantsTable = []relational.Migration{{Version: 202, Name: "sandbox_grants", Statements: []string{
 	`CREATE TABLE sandbox_grants (
 		grant_id TEXT PRIMARY KEY, task_id TEXT NOT NULL, workspace_id TEXT NOT NULL DEFAULT '', session_id TEXT NOT NULL DEFAULT '',
-		hosts TEXT NOT NULL, ports TEXT NOT NULL, expires_at TEXT NOT NULL, max_up_bytes BIGINT NOT NULL DEFAULT 0,
+		scope TEXT NOT NULL DEFAULT 'hosts', hosts TEXT NOT NULL, ports TEXT NOT NULL, expires_at TEXT NOT NULL, max_up_bytes BIGINT NOT NULL DEFAULT 0,
 		max_down_bytes BIGINT NOT NULL DEFAULT 0, max_conns BIGINT NOT NULL DEFAULT 0, max_rps BIGINT NOT NULL DEFAULT 0,
 		up_bytes BIGINT NOT NULL DEFAULT 0, down_bytes BIGINT NOT NULL DEFAULT 0, preview_port BIGINT NOT NULL DEFAULT 0,
 		state TEXT NOT NULL, approved_by TEXT NOT NULL DEFAULT '', reason TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL,
@@ -34,6 +34,7 @@ var grantsTable = []relational.Migration{{Version: 202, Name: "sandbox_grants", 
 }}}
 
 const networkPolicies = `{"tenants": {
+  "tp": {"effect_ceiling": "write_irreversible", "sandbox": {"network": {"allowed": true, "modes": ["deny", "open"], "max_conns": 4}}},
   "tn": {"effect_ceiling": "write_irreversible", "sandbox": {"network": {"allowed": true, "hosts": ["api.example.com", "*.pypi.org"],
          "max_grant_minutes": 30, "max_up_bytes": 1048576, "max_conns": 4}}},
   "ta": {"effect_ceiling": "write_irreversible", "sandbox": {"network": {"allowed": true, "hosts": ["api.example.com"], "approver": "admin"}}},
@@ -66,7 +67,7 @@ func (f *apiFixture) grantRows(tenant string) []relational.Row {
 	var rows []relational.Row
 	if err := db.Transaction(context.Background(), relational.TxOptions{ReadOnly: true}, func(ctx context.Context, tx relational.Tx) error {
 		var err error
-		rows, err = tx.Query(ctx, "SELECT grant_id, task_id, hosts, ports, expires_at, state, approved_by, reason, max_up_bytes, max_conns, created_at FROM sandbox_grants ORDER BY created_at")
+		rows, err = tx.Query(ctx, "SELECT grant_id, task_id, scope, hosts, ports, expires_at, state, approved_by, reason, max_up_bytes, max_conns, created_at FROM sandbox_grants ORDER BY created_at")
 		return err
 	}); err != nil {
 		f.t.Fatal(err)

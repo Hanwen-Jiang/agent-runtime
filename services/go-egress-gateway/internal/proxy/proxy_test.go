@@ -362,7 +362,7 @@ func TestSNIMustBeGranted(t *testing.T) {
 		for _, r := range h.audits() {
 			reasons[r["reason"]] = true
 		}
-		return reasons["sni_not_granted"] && reasons["sni_missing"]
+		return reasons["sni_mismatch"] && reasons["sni_missing"]
 	})
 }
 

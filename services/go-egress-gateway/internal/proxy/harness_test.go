@@ -44,7 +44,7 @@ var workerTables = []relational.Migration{
 	{Version: 202, Name: "sandbox_grants", Statements: []string{
 		`CREATE TABLE sandbox_grants (
 			grant_id TEXT PRIMARY KEY, task_id TEXT NOT NULL, workspace_id TEXT NOT NULL DEFAULT '', session_id TEXT NOT NULL DEFAULT '',
-			hosts TEXT NOT NULL, ports TEXT NOT NULL, expires_at TEXT NOT NULL, max_up_bytes BIGINT NOT NULL DEFAULT 0,
+			scope TEXT NOT NULL DEFAULT 'hosts', hosts TEXT NOT NULL, ports TEXT NOT NULL, expires_at TEXT NOT NULL, max_up_bytes BIGINT NOT NULL DEFAULT 0,
 			max_down_bytes BIGINT NOT NULL DEFAULT 0, max_conns BIGINT NOT NULL DEFAULT 0, max_rps BIGINT NOT NULL DEFAULT 0,
 			up_bytes BIGINT NOT NULL DEFAULT 0, down_bytes BIGINT NOT NULL DEFAULT 0, preview_port BIGINT NOT NULL DEFAULT 0,
 			state TEXT NOT NULL, approved_by TEXT NOT NULL DEFAULT '', reason TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL,
@@ -238,7 +238,11 @@ func newHarness(t *testing.T) *harness {
 	h.proxy = httptest.NewServer(h.gw)
 	h.admin = httptest.NewServer(h.gw.Admin(adminTk))
 	h.preview = httptest.NewServer(h.gw.Preview())
-	t.Cleanup(h.proxy.Close)
+	t.Cleanup(func() {
+		h.proxy.Close()
+		h.gw.CloseTask(tenant, taskID, "test_cleanup")
+		waitFor(t, "hijacked handlers finish auditing before closing the database", func() bool { return h.gw.active.Load() == 0 })
+	})
 	t.Cleanup(h.admin.Close)
 	t.Cleanup(h.preview.Close)
 	h.env(envRef, taskID, "ready")

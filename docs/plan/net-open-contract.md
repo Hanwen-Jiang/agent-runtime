@@ -1,6 +1,6 @@
-# NET-OPEN 公网授权的契约草案
+# NET-OPEN 公网授权的契约与实现
 
-> 状态：契约草案（S-01），2026-11-04，**等人审**。`buf lint`、`buf breaking --against proto/breaking-baseline.binpb` 通过，生成代码已更新。审过之后再写实现，并用 `buf build -o proto/breaking-baseline.binpb` 更新基线。
+> 状态：已批准契约的实现完成（2026-11-07），待整版集成与部署验收。此次未改 proto/schema，也未启用任何租户的 open 档位。
 > 依据：[环境配置计划](environment-config.md)第 1 节（open = 所有公网域名，默认对所有租户关闭）、第 121、128、143 行（`sandbox.network.modes`、`sandbox_grants.scope`、授权的 `scope: hosts / public`）；[代审结论](delegated-review-2026-11-04.md)与[后续](delegated-review-followup-2026-11-04.md)的 NET-OPEN 行（租户显式允许 open 才能发 public；旧授权没有 scope 按 hosts；拒绝 IP 字面量、非公网地址、云元数据、CGNAT、25 端口；按校验过的地址拨号，重定向重新准入，CONNECT 另核对 SNI；public 不扩大凭据的目标）。
 
 ## 草案
@@ -37,6 +37,14 @@
 2. `modes` 不含 allowlist 时拒绝 HOSTS 的申请（租户只想要全通或全断时可以这样写）。
 3. 25 端口在两种范围里都拒绝：现在的提交核对不拒 25（网关拒），实现时提交时就拒。
 
-## 在实现之前
+## 实现记录（2026-11-07）
 
-task-service 收到 `scope` 为 PUBLIC 的申请一律 denied（`network_scope_unavailable`，`internal/taskapi/network.go`），不留授权；租户策略里写了 `modes` 只经 Registry 校验，运行时还不读它（只看 `allowed`）。
+- Go/Python 同时执行 `modes` 与 `scope`，旧客户端默认为 hosts；PUBLIC+hosts、未知 scope、25 端口拒绝。提交与工具审批沿用时长、批准人、effect 与用量规则。
+- Sandbox Service 迁移 **211 sandbox_grant_scope** 为共享表增加非空 `scope`，默认 hosts；旧授权不扩权。Go 提交、Python 工具、Sandbox Service 与网关读写一致。
+- public 复用网关的逐次 DNS/IP 检查、固定地址拨号、环境限制、计量、到期和撤销；CONNECT 的 SNI 必须等于目标主机。SecretHeader 仍只注入配置的 HTTPS 主机。只有静态域名白名单且不经网关的后端不能承载 public，按现有需网关的授权筛选流程排除。
+- 已认证的 `GET /v1/network-policy` 只返回当前用户所属租户的联网投影（allowed/modes/hosts/max_grant_minutes/approver），不接收租户选择器；`Cache-Control: no-store`。coding-web 的同名 `/api/network-policy` 转发用户令牌，提交时把显式选择的 scope 写到已有 NetworkRequest；所有公网选项仅在策略允许 open 时出现，成功提交后清空本次选择。
+- 审批文案明确 public 是“所有公网域名”。这次只改审批文本，不改变工作流命令序列。
+- 新测试覆盖 Go/Python scope 规则、真实 SubmitTask 的 public 授权落库、旧授权迁移、认证投影隔离、PUBLIC 的 SSRF/重定向/SNI/环境限制/密钥目标/限流/撤销、web 转发；并保留已有网关回归。
+- 额外修复网关测试夹具清理竞态：等待被 hijack 的连接完成审计后再关闭临时数据库。
+
+部署顺序：先由 Sandbox Service 完成共享数据库迁移 211，再切读取/写入 scope 的 task-service、Worker、egress-gateway 与 coding-web；运行时当前策略默认不变。线上验证使用独立允许 open 的测试租户，验证后撤销该测试授权。此次未执行部署与真实公网探测。

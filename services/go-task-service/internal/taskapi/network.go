@@ -38,6 +38,7 @@ const maxGrantHosts = 20
 // NetworkPolicy 是租户策略的 sandbox.network；0 表示不限。
 type NetworkPolicy struct {
 	Allowed         bool     `json:"allowed"`
+	Modes           []string `json:"modes"`
 	Hosts           []string `json:"hosts"`
 	MaxGrantMinutes int32    `json:"max_grant_minutes"`
 	Approver        string   `json:"approver"`
@@ -132,6 +133,7 @@ func coversHost(pattern, host string) bool {
 
 // checkedNetwork 是核对过的申请。
 type checkedNetwork struct {
+	Scope   string
 	Hosts   []string
 	Ports   []int32
 	Minutes int32
@@ -146,19 +148,36 @@ func CheckNetworkRequest(policy NetworkPolicy, req *taskapiv1.NetworkRequest, ce
 	if !policy.Allowed {
 		return checkedNetwork{}, denied("network_not_allowed", "租户策略不允许沙箱联网（sandbox.network.allowed）")
 	}
-	// NET-OPEN（docs/plan/net-open-contract.md）的契约草案等人审，PUBLIC 还没实现。
-	if req.GetScope() == taskapiv1.NetworkScope_NETWORK_SCOPE_PUBLIC {
-		return checkedNetwork{}, denied("network_scope_unavailable", "公网授权（scope 为 public）还没实现")
+	modes := policy.Modes
+	if modes == nil {
+		modes = []string{"deny", "allowlist"}
+	}
+	scope := "hosts"
+	switch req.GetScope() {
+	case taskapiv1.NetworkScope_NETWORK_SCOPE_UNSPECIFIED, taskapiv1.NetworkScope_NETWORK_SCOPE_HOSTS:
+		if !slices.Contains(modes, "allowlist") {
+			return checkedNetwork{}, denied("network_allowlist_not_allowed", "租户策略不允许按主机申请联网")
+		}
+	case taskapiv1.NetworkScope_NETWORK_SCOPE_PUBLIC:
+		scope = "public"
+		if !slices.Contains(modes, "open") {
+			return checkedNetwork{}, denied("network_open_not_allowed", "租户策略不允许所有公网域名联网")
+		}
+		if len(req.GetHosts()) != 0 {
+			return checkedNetwork{}, invalidNetwork("public 授权不能同时指定 hosts")
+		}
+	default:
+		return checkedNetwork{}, invalidNetwork("未知的联网授权 scope")
 	}
 	switch {
-	case len(req.GetHosts()) == 0:
+	case scope == "hosts" && len(req.GetHosts()) == 0:
 		return checkedNetwork{}, invalidNetwork("要写明访问哪些主机")
 	case len(req.GetHosts()) > maxGrantHosts:
 		return checkedNetwork{}, invalidNetwork(fmt.Sprintf("一次最多申请 %d 个主机", maxGrantHosts))
 	case len(req.GetReason()) > 500 || !printable(req.GetReason()):
 		return checkedNetwork{}, invalidNetwork("理由最多 500 个字符，不能有控制字符")
 	}
-	out := checkedNetwork{Reason: strings.TrimSpace(req.GetReason())}
+	out := checkedNetwork{Scope: scope, Reason: strings.TrimSpace(req.GetReason())}
 	for _, raw := range req.GetHosts() {
 		h, err := checkGrantHost(raw)
 		if err != nil {
@@ -176,6 +195,9 @@ func CheckNetworkRequest(policy NetworkPolicy, req *taskapiv1.NetworkRequest, ce
 		ports = defaultPorts
 	}
 	for _, p := range ports {
+		if p == 25 {
+			return checkedNetwork{}, denied("port_25", "不允许访问 25 端口")
+		}
 		if p < 1 || p > 65535 {
 			return checkedNetwork{}, invalidNetwork(fmt.Sprintf("端口 %d 不在 1 到 65535 之间", p))
 		}
@@ -209,7 +231,7 @@ func CheckNetworkRequest(policy NetworkPolicy, req *taskapiv1.NetworkRequest, ce
 func writeSubmitGrant(ctx context.Context, store relational.Provider, tenant *commonv1.TenantContext, taskID string,
 	req checkedNetwork, policy NetworkPolicy, approvedBy string, now time.Time) error {
 	return sandboxgrants.WriteSubmitGrant(ctx, store, tenant, sandboxgrants.Grant{
-		TaskID: taskID, Hosts: req.Hosts, Ports: req.Ports, Minutes: req.Minutes, Reason: req.Reason, ApprovedBy: approvedBy,
+		TaskID: taskID, Scope: req.Scope, Hosts: req.Hosts, Ports: req.Ports, Minutes: req.Minutes, Reason: req.Reason, ApprovedBy: approvedBy,
 		MaxUpBytes: policy.MaxUpBytes, MaxDownBytes: policy.MaxDownBytes, MaxConns: policy.MaxConns, MaxRPS: policy.MaxRPS,
 	}, now)
 }

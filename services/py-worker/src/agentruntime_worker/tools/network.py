@@ -50,11 +50,12 @@ class NetworkTool:
     def tool(self) -> tuple[ToolSpec, ToolHandler]:
         schema = {
             "type": "object",
-            "required": ["hosts", "minutes", "reason"],
+            "required": ["minutes", "reason"],
             "additionalProperties": False,
             "properties": {
+                "scope": {"type": "string", "enum": ["hosts", "public"], "description": "hosts：指定主机（默认）；public：所有公网域名，hosts 必须为空，需要租户允许 open"},
                 "hosts": {
-                    "type": "array", "minItems": 1, "maxItems": MAX_HOSTS, "uniqueItems": True,
+                    "type": "array", "minItems": 0, "maxItems": MAX_HOSTS, "uniqueItems": True,
                     "items": {"type": "string", "minLength": 1, "maxLength": 253},
                     "description": "要访问的主机名（可以 *. 开头表示子域名），不能是 IP 地址，不带端口与路径",
                 },
@@ -85,7 +86,7 @@ class NetworkTool:
         args = invocation.arguments
         policy = NetworkPolicy.from_policy((await self.policies.policy_for(tenant_id)).network)
         request = check_request(
-            policy, hosts=list(args["hosts"]), ports=list(args.get("ports") or ()), minutes=int(args["minutes"]), reason=str(args.get("reason") or ""),
+            policy, scope=str(args.get("scope", "hosts")), hosts=list(args.get("hosts") or ()), ports=list(args.get("ports") or ()), minutes=int(args["minutes"]), reason=str(args.get("reason") or ""),
             preview_port=int(args.get("preview_port") or 0),
         )
         if not invocation.approved_by:
@@ -103,7 +104,7 @@ class NetworkTool:
             session_id=invocation.session_id, preview_env=preview_env, preview_target=preview_target,
         )
         out: dict[str, Any] = {
-            "grant_id": grant.grant_id, "hosts": list(grant.hosts), "ports": list(grant.ports), "expires_at": grant.expires_at,
+            "grant_id": grant.grant_id, "scope": grant.scope, "hosts": list(grant.hosts), "ports": list(grant.ports), "expires_at": grant.expires_at,
             "note": "shell_run 里的命令经 HTTP(S)_PROXY 访问这些主机；到期或 Task 结束即收回",
         }
         if preview_env:

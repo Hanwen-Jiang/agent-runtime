@@ -204,7 +204,7 @@ func grantFor(sess grants.Session, host string, port int, now time.Time) (grants
 	}
 	hostOK := false
 	for _, gr := range sess.Grants {
-		if !gr.Active(now) || !slices.ContainsFunc(gr.Hosts, func(p string) bool { return netguard.Covers(p, host) }) {
+		if !gr.Active(now) || !(gr.Scope == "public" || ((gr.Scope == "" || gr.Scope == "hosts") && slices.ContainsFunc(gr.Hosts, func(p string) bool { return netguard.Covers(p, host) }))) {
 			continue
 		}
 		hostOK = true
@@ -219,19 +219,25 @@ func grantFor(sess grants.Session, host string, port int, now time.Time) (grants
 }
 
 func (g *Gateway) admit(ctx context.Context, claims envcred.Claims, rawHost string, port int) (*admission, *refusal) {
-	host, reason := netguard.NormalizeHost(rawHost)
-	if reason != "" {
-		return nil, &refusal{http.StatusForbidden, reason}
-	}
-	if port < 1 || port > 65535 {
-		return nil, &refusal{http.StatusBadRequest, "invalid_port"}
-	}
 	sess, err := g.cfg.Store.Lookup(ctx, claims.TenantID, claims.EnvRef)
 	if err != nil {
 		if errors.Is(err, grants.ErrEnvGone) || providererr.CategoryOf(err) == providererr.Denied {
 			return nil, &refusal{http.StatusForbidden, "env_not_active"}
 		}
 		return nil, &refusal{http.StatusServiceUnavailable, "store_unavailable"}
+	}
+	host, reason := netguard.NormalizeHost(rawHost)
+	if reason != "" {
+		if reason == "ip_literal" && slices.ContainsFunc(sess.Grants, func(gr grants.Grant) bool { return gr.Scope == "public" && gr.Active(g.cfg.Now()) }) {
+			reason = "public_ip_literal"
+		}
+		return &admission{claims: claims, sess: sess, host: rawHost, port: port}, &refusal{http.StatusForbidden, reason}
+	}
+	if port == 25 {
+		return &admission{claims: claims, sess: sess, host: host, port: port}, &refusal{http.StatusForbidden, "port_25"}
+	}
+	if port < 1 || port > 65535 {
+		return nil, &refusal{http.StatusBadRequest, "invalid_port"}
 	}
 	now := g.cfg.Now()
 	grant, reason := grantFor(sess, host, port, now)
@@ -253,6 +259,9 @@ func (g *Gateway) admit(ctx context.Context, claims envcred.Claims, rawHost stri
 	// 解析出的任何一个地址在内网就整个拒绝（一个名字同时指向公网与内网，是重绑定的常见手法）。
 	for _, a := range addrs {
 		if why := netguard.Check(a, g.cfg.Deny); why != "" {
+			if grant.Scope == "public" {
+				return adm, &refusal{http.StatusForbidden, "public_private_address"}
+			}
 			return adm, &refusal{http.StatusForbidden, "blocked_address:" + why}
 		}
 	}
@@ -360,8 +369,8 @@ func (g *Gateway) checkSNI(reader *bufio.Reader, adm *admission) string {
 	if reason != "" {
 		return "sni_" + reason
 	}
-	if !slices.ContainsFunc(adm.grant.Hosts, func(p string) bool { return netguard.Covers(p, host) }) {
-		return "sni_not_granted"
+	if host != adm.host {
+		return "sni_mismatch"
 	}
 	if adm.sess.Env.Allows(host) != "" || adm.sess.Env.HeaderFor(host) != nil {
 		// 名单之外的 SNI；或 SNI 换成了配了网络密钥的主机（那要经终结 TLS 的那条路，见 intercept.go）。
@@ -513,8 +522,10 @@ func (g *Gateway) handleForward(w http.ResponseWriter, r *http.Request) {
 	defer g.active.Add(-1)
 	target := netip.AddrPortFrom(adm.addr, uint16(port)).String()
 	transport := &http.Transport{
-		Proxy:                 nil,
-		DialContext:           func(ctx context.Context, _, _ string) (net.Conn, error) { return g.cfg.Dialer.DialContext(ctx, "tcp", target) },
+		Proxy: nil,
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return g.cfg.Dialer.DialContext(ctx, "tcp", target)
+		},
 		DisableKeepAlives:     true,
 		ResponseHeaderTimeout: 2 * time.Minute,
 	}

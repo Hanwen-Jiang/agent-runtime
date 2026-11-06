@@ -183,6 +183,9 @@ var Migrations = []relational.Migration{
 		"ALTER TABLE sandbox_envs ADD COLUMN setup_error TEXT NOT NULL DEFAULT ''",
 		"ALTER TABLE sandbox_envs ADD COLUMN start_state TEXT NOT NULL DEFAULT 'none'",
 	}},
+	{Version: 211, Name: "sandbox_grant_scope", Statements: []string{
+		"ALTER TABLE sandbox_grants ADD COLUMN scope TEXT NOT NULL DEFAULT 'hosts'",
+	}},
 }
 
 // Record 是环境表的一行。

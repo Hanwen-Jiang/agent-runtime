@@ -1648,6 +1648,8 @@ class StageRunner:
         gate_id = sp.child_id(call_id, 1)
         args = json.dumps(step.args, ensure_ascii=False, sort_keys=True)
         text = f"批准调用 {step.tool} 吗？参数：{args}。这是不可撤销的操作。"
+        if step.tool == "request_network" and step.args.get("scope") == "public":
+            text += " 本次授权范围：所有公网域名（内网与云元数据仍禁止）。"
         try:
             reply, error = await self._interruptible(self._ask_and_wait(gate_id, text, sp.APPROVAL_OPTIONS, self.policy.approval_timeout_s, kind="tool_approval"))
         except interrupts.Interrupted:

@@ -38,6 +38,7 @@ func parseISO(s string) time.Time {
 // Grant 是一条联网授权。
 type Grant struct {
 	ID            string
+	Scope         string
 	TaskID        string
 	Hosts         []string
 	Ports         []int
@@ -225,7 +226,7 @@ func (s *Store) Invalidate(tenant string) {
 	}
 }
 
-const grantColumns = `grant_id, task_id, hosts, ports, expires_at, max_up_bytes, max_down_bytes, max_conns, max_rps, up_bytes, down_bytes,
+const grantColumns = `grant_id, task_id, scope, hosts, ports, expires_at, max_up_bytes, max_down_bytes, max_conns, max_rps, up_bytes, down_bytes,
 	preview_port, preview_env, preview_target`
 
 func (s *Store) load(ctx context.Context, tenant, envRef string, now time.Time) (Session, error) {
@@ -349,7 +350,7 @@ func (s *Store) Revoke(ctx context.Context, tenant, taskID string) (int64, error
 
 func grantFrom(r relational.Row) Grant {
 	g := Grant{
-		ID: str(r["grant_id"]), TaskID: str(r["task_id"]), ExpiresAt: parseISO(str(r["expires_at"])),
+		Scope: str(r["scope"]), ID: str(r["grant_id"]), TaskID: str(r["task_id"]), ExpiresAt: parseISO(str(r["expires_at"])),
 		MaxUpBytes: num(r["max_up_bytes"]), MaxDownBytes: num(r["max_down_bytes"]), MaxConns: num(r["max_conns"]), MaxRPS: num(r["max_rps"]),
 		UpBytes: num(r["up_bytes"]), DownBytes: num(r["down_bytes"]), PreviewPort: int(num(r["preview_port"])),
 		PreviewEnv: str(r["preview_env"]), PreviewTarget: str(r["preview_target"]),
@@ -602,21 +603,21 @@ func (s *Store) Flush(ctx context.Context) int {
 
 // Record 是一个连接的审计记录（不含凭据、请求与响应的内容）。
 type Record struct {
-	ID         string
-	Tenant     string
-	GrantID    string
-	TaskID     string
-	EnvRef     string
-	Direction  string // egress 或 preview
-	Host       string
-	Port       int
-	Address    string
-	Started    time.Time
-	Duration   time.Duration
-	UpBytes    int64
-	DownBytes  int64
-	Result     string // allowed、denied、closed
-	Reason     string
+	ID        string
+	Tenant    string
+	GrantID   string
+	TaskID    string
+	EnvRef    string
+	Direction string // egress 或 preview
+	Host      string
+	Port      int
+	Address   string
+	Started   time.Time
+	Duration  time.Duration
+	UpBytes   int64
+	DownBytes int64
+	Result    string // allowed、denied、closed
+	Reason    string
 }
 
 // Audit 写一行 sandbox_egress_audit。
