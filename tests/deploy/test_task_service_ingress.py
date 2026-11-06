@@ -53,10 +53,12 @@ def test_production_example_accepts_only_jwts() -> None:
     assert ISSUERS_FILE.startswith(mount["mountPath"] + "/") and mount["readOnly"] is True
 
 
-def test_cloud_accepts_dev_tokens_during_the_migration() -> None:
+def test_cloud_refuses_dev_tokens_after_the_migration() -> None:
+    """AUTH-01 第 4 步（2026-11-06）：云上只收签发方的 JWT，task-service 不持有开发签名密钥。"""
     _, env = task_service(render(CLOUD_VALUES))
     assert env["AR_PROFILE"]["value"] == "production"
-    assert env["AR_INGRESS_DEV_TOKENS"]["value"] == "accept" and "AR_DEV_SIGNING_KEY" in env
+    assert env["AR_INGRESS_DEV_TOKENS"]["value"] == "refuse" and "AR_DEV_SIGNING_KEY" not in env
+    assert "AR_INGRESS_ISSUERS_FILE" in env
 
 
 def test_production_without_issuers_or_dev_tokens_fails_to_render() -> None:

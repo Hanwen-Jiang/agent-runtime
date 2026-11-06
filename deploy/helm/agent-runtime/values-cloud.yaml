@@ -67,16 +67,19 @@ taskService:
   replicas: 1
   # 业务库是上面的 Postgres、Cache 是上面的 Valkey；没配时拒绝启动，不回落开发实现（TS-PROD-01）。
   profile: production
-  # AUTH-01 迁移期间：coding-agent 还在发开发令牌，生产模式显式收它（task-service 启动时记一条警告）。coding-agent 改发 JWT 后
-  # 在 issuers 里登记它的公钥（task-service keygen），再去掉这一行（默认就不收了）。
+  # AUTH-01（2026-11-06 切换完）：只收签发方用 Ed25519 签的 JWT，生产模式默认不收开发令牌，task-service 不持有任何能签令牌的东西。
   ingress:
-    devTokens: accept
     # AUTH-01 第 2 步（2026-11-06）：coding-web 的签发方（只有公钥；私钥在 Secret coding-jwt，只挂给 coding-web）。只能签 coding-web 自己的租户
     # （登录平台前缀 gh-、gl-、gitee-、gitea-、bb-、google-），签不了 evals、swebench 这类内部租户。
     issuers:
       - iss: coding-agent
         keys: {cgent-2026-11: 6hosCO1nvR_g-QSAS1YaYPyS5yPHXqL28BKXLb013Bs}
         tenants: ["gh-*", "gl-*", "gitee-*", "gitea-*", "bb-*", "google-*"]
+      # 运维与评测（评测客户端、冒烟与运维脚本，/root/ar-release/ops-token.sh）：私钥只在服务器的 /root/ar-secrets/ops-jwt.key.pem，
+      # 只能签内部租户，签不了 coding-web 用户的租户。
+      - iss: agentruntime-ops
+        keys: {ops-2026-11: V_ZSbbvzkr8mUK2fBU5m5QHCqWtU9z1xCRXdAvgrmE8}
+        tenants: ["evals", "swebench", "real01", "mcp01"]
   resources:
     requests: {cpu: 250m, memory: 256Mi}
     limits: {cpu: "1", memory: 512Mi}
