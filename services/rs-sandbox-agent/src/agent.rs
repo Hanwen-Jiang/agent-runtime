@@ -166,6 +166,7 @@ impl App {
             Route::RestoreBlocks => crate::restore::blocks(self, ctx),
             Route::RestoreFinish => crate::restore::finish(self, ctx),
             Route::Manifest => crate::archive::manifest(self, ctx),
+            Route::Snapshot => crate::archive::snapshot(self, ctx),
             Route::List => crate::archive::list(self, ctx, &wildcard),
             Route::Grep => crate::archive::grep(self, ctx),
         }
@@ -188,6 +189,7 @@ pub enum Route {
     Export,
     Import,
     Manifest,
+    Snapshot,
     List,
     Grep,
 }
@@ -221,7 +223,7 @@ fn route(method: &str, path: &str) -> Option<(Route, Vec<u8>)> {
             return Some((Route::RestoreFinish, v));
         }
         if let Some(v) = exact(&["v1", "snapshot"]) {
-            return Some((Route::Manifest, v));
+            return Some((Route::Snapshot, v));
         }
     }
     if get && let Some(v) = exact(&["healthz"]) {

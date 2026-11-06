@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import json
 import re
 import secrets
@@ -392,7 +393,7 @@ class WorkspaceArchiver:
         referenced: set[str] = set()
         for snap in kept:
             entries, foreign = await self._manifest(owner, snap)
-            referenced |= {e.sha256 for e in entries if e.type == "file" and e.sha256 not in foreign}
+            referenced |= {sha for e in entries for sha, _ in e.blocks if sha not in foreign}
         await self._delete_blobs(owner, workspace_id, keep=referenced | await self._shared(owner, workspace_id))
         await self._collect_deleted_sources(owner, sources)
 
@@ -433,7 +434,7 @@ class WorkspaceArchiver:
         if src.size_bytes > max_bytes:
             raise InvalidError("too_large", f"工作区超过上限 {max_bytes} 字节")
         entries, foreign = await self._manifest(owner, src)
-        located = {e.sha256: foreign.get(e.sha256, source) for e in entries if e.type == "file"}
+        located = {sha: foreign.get(sha, source) for e in entries for sha, _ in e.blocks}
         snapshot_id = new_snapshot_id()
         now = iso(self._clock())
         snap = Snapshot(
@@ -461,7 +462,16 @@ class WorkspaceArchiver:
             entry = by_path.get(path)
             if entry is None or entry.type != "file":
                 return None
-            return (await bucket.get(blob_key(located[entry.sha256], entry.sha256))).data
+            parts = []
+            for sha, size in entry.blocks:
+                part = (await bucket.get(blob_key(located[sha], sha))).data
+                if len(part) != size or hashlib.sha256(part).hexdigest() != sha:
+                    raise TransientError("workspace_restore_mismatch", "复制快照的内容与清单不符")
+                parts.append(part)
+            data = b"".join(parts)
+            if len(data) != entry.size or hashlib.sha256(data).hexdigest() != entry.sha256:
+                raise TransientError("workspace_restore_mismatch", "复制快照的完整文件与清单不符")
+            return data
 
         head, branch = await git_head(read)
         return snap, head, branch

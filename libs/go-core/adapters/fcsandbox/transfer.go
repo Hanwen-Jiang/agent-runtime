@@ -59,3 +59,18 @@ func (b *box) RestoreFinish(ctx context.Context, envID, id string, entries []san
 	}
 	return b.p.agent.RestoreFinish(ctx, ep, id, entries)
 }
+
+func (b *box) PrepareRange(ctx context.Context, envID, path string, offset, size int64) (sandbox.PreparedTransfer, error) {
+	ep, err := b.endpoint(envID)
+	if err != nil {
+		return sandbox.PreparedTransfer{}, err
+	}
+	return b.p.agent.PrepareRange(ctx, ep, path, offset, size)
+}
+func (b *box) SnapshotManifest(ctx context.Context, envID string) ([]sandbox.FileEntry, error) {
+	ep, err := b.endpoint(envID)
+	if err != nil {
+		return nil, err
+	}
+	return b.p.agent.SnapshotManifest(ctx, ep)
+}

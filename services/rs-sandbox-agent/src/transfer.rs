@@ -3,7 +3,7 @@ use crate::agent::{App, fail, resolve, write_json};
 use crate::http::Ctx;
 use serde_json::{Value, json};
 use std::collections::HashMap;
-use std::io::{self, Read};
+use std::io::{self, Read, Seek, SeekFrom};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 const TTL: Duration = Duration::from_secs(600);
@@ -95,9 +95,26 @@ pub fn prepare(app: &App, ctx: &mut Ctx<'_>) {
         if !path.starts_with(&root) {
             return Err(io::Error::other("path outside workspace"));
         }
-        let file = std::fs::File::open(&path)?;
+        let mut file = std::fs::File::open(&path)?;
         let md = file.metadata()?;
-        if !md.is_file() || md.len() > app.c.file_limit.min(rs_transfer::MAX_BLOB_BYTES) {
+        let range = if v.get("offset").is_some() || v.get("length").is_some() {
+            let offset = v["offset"]
+                .as_u64()
+                .ok_or_else(|| io::Error::other("invalid range"))?;
+            let length = v["length"]
+                .as_u64()
+                .filter(|n| *n <= 4 << 20)
+                .ok_or_else(|| io::Error::other("invalid range"))?;
+            if offset > md.len() || length > md.len() - offset {
+                return Err(io::Error::other("range outside file"));
+            }
+            Some((offset, length))
+        } else {
+            None
+        };
+        if !md.is_file()
+            || (range.is_none() && md.len() > app.c.file_limit.min(rs_transfer::MAX_BLOB_BYTES))
+        {
             return Err(io::Error::other("invalid file or file too large"));
         }
         #[cfg(target_os = "linux")]
@@ -109,8 +126,20 @@ pub fn prepare(app: &App, ctx: &mut Ctx<'_>) {
             }
         }
         let mut data = Vec::new();
-        file.take(app.c.file_limit.min(rs_transfer::MAX_BLOB_BYTES) + 1)
-            .read_to_end(&mut data)?;
+        if let Some((offset, length)) = range {
+            file.seek(SeekFrom::Start(offset))?;
+            file.take(length).read_to_end(&mut data)?;
+            if data.len() as u64 != length {
+                return Err(io::Error::other("file changed"));
+            }
+        } else {
+            file.take(app.c.file_limit.min(rs_transfer::MAX_BLOB_BYTES) + 1)
+                .read_to_end(&mut data)?;
+        }
+        if range.is_none() && data.len() as u64 > app.c.file_limit.min(rs_transfer::MAX_BLOB_BYTES)
+        {
+            return Err(io::Error::other("file grew beyond limit"));
+        }
         app.transfers.prepare(data)
     })();
     match result {

@@ -308,6 +308,9 @@ func entryDict(e sandbox.FileEntry) map[string]any {
 	out := map[string]any{"path": e.Path, "type": e.Type, "mode": e.Mode}
 	if e.Type == "file" {
 		out["size"], out["sha256"] = e.Size, e.SHA256
+		if len(e.Chunks) > 0 {
+			out["chunks"] = e.Chunks
+		}
 	}
 	if e.Type == "symlink" {
 		out["link"] = e.Link
@@ -343,6 +346,24 @@ func (a *Archiver) Manifest(ctx context.Context, owner string, snap Snapshot) ([
 
 // Blob 读一个块（核对 sha256 与大小）。
 func (a *Archiver) Blob(ctx context.Context, owner, workspaceID string, entry sandbox.FileEntry, foreign map[string]string) ([]byte, error) {
+	if len(entry.Chunks) > 0 {
+		if _, _, err := validEntries([]sandbox.FileEntry{entry}, entry.Size); err != nil {
+			return nil, err
+		}
+		var data []byte
+		for _, b := range entry.Chunks {
+			part, err := a.Blob(ctx, owner, workspaceID, sandbox.FileEntry{Path: entry.Path, Type: "file", SHA256: b.SHA256, Size: b.SizeBytes}, foreign)
+			if err != nil {
+				return nil, err
+			}
+			data = append(data, part...)
+		}
+		sum := sha256.Sum256(data)
+		if int64(len(data)) != entry.Size || hex.EncodeToString(sum[:]) != entry.SHA256 {
+			return nil, providererr.New(providererr.Transient, "workspace_restore_mismatch", "assembled file differs from manifest")
+		}
+		return data, nil
+	}
 	bucket, err := a.bucket(owner)
 	if err != nil {
 		return nil, err
@@ -381,8 +402,10 @@ func (a *Archiver) Snapshot(ctx context.Context, box sandbox.Sandbox, envID, own
 		if entries, f, err := a.Manifest(ctx, owner, *prev); err == nil {
 			foreign = f
 			for _, e := range entries {
-				if _, isForeign := f[e.SHA256]; e.Type == "file" && !isForeign {
-					known[e.SHA256] = true
+				for _, b := range e.Blocks() {
+					if _, isForeign := f[b.SHA256]; !isForeign {
+						known[b.SHA256] = true
+					}
 				}
 			}
 		}
@@ -422,8 +445,10 @@ func (a *Archiver) Snapshot(ctx context.Context, box sandbox.Sandbox, envID, own
 	for _, e := range entries {
 		if e.Type == "file" {
 			files++
-			if ws, ok := foreign[e.SHA256]; ok {
-				used[e.SHA256] = ws
+			for _, b := range e.Blocks() {
+				if ws, ok := foreign[b.SHA256]; ok {
+					used[b.SHA256] = ws
+				}
 			}
 		}
 	}
@@ -686,8 +711,10 @@ func (a *Archiver) deleteUnreferenced(ctx context.Context, owner, workspaceID st
 			return err
 		}
 		for _, e := range entries {
-			if _, isForeign := foreign[e.SHA256]; e.Type == "file" && !isForeign {
-				referenced[e.SHA256] = true
+			for _, b := range e.Blocks() {
+				if _, isForeign := foreign[b.SHA256]; !isForeign {
+					referenced[b.SHA256] = true
+				}
 			}
 		}
 	}

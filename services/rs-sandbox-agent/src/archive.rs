@@ -506,6 +506,12 @@ fn symlink(target: &Path, link: &Path) -> io::Result<()> {
 // --- 清单、列目录 ---
 
 pub fn manifest(app: &App, ctx: &mut Ctx<'_>) {
+    manifest_with_chunks(app, ctx, false);
+}
+pub fn snapshot(app: &App, ctx: &mut Ctx<'_>) {
+    manifest_with_chunks(app, ctx, true);
+}
+fn manifest_with_chunks(app: &App, ctx: &mut Ctx<'_>, chunked: bool) {
     let mut out: Vec<(Vec<u8>, String)> = Vec::new();
     let res = walk(&app.c.workdir, &mut |rel, path, md| {
         let ft = md.file_type();
@@ -525,15 +531,22 @@ pub fn manifest(app: &App, ctx: &mut Ctx<'_>) {
         } else {
             let mut f = fs::File::open(path)?;
             let mut h = Sha256::new();
-            let mut buf = vec![0u8; 64 << 10];
+            let mut chunks = vec![];
             let mut n: u64 = 0;
             loop {
-                let k = f.read(&mut buf)?;
+                let block_size = if chunked { 4 << 20 } else { 64 << 10 };
+                let mut part = Vec::with_capacity(block_size);
+                let k = (&mut f).take(block_size as u64).read_to_end(&mut part)?;
                 if k == 0 {
                     break;
                 }
-                h.update(&buf[..k]);
+                h.update(&part);
                 n += k as u64;
+                if chunked {
+                    chunks.push(
+                        serde_json::json!({"sha256":rs_transfer::digest(&part),"size_bytes":k}),
+                    );
+                }
             }
             let sum: String = h.finalize().iter().map(|b| format!("{b:02x}")).collect();
             let mut o = Obj::new()
@@ -542,6 +555,9 @@ pub fn manifest(app: &App, ctx: &mut Ctx<'_>) {
                 .i("mode", perm(md) as i64);
             if n > 0 {
                 o = o.i("size", n as i64);
+            }
+            if !chunks.is_empty() {
+                o = o.raw("chunks", &serde_json::Value::Array(chunks).to_string());
             }
             o.s("sha256", &sum).done()
         };

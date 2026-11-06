@@ -2,9 +2,10 @@
 use crate::agent::{App, fail, write_json};
 use crate::http::Ctx;
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fs::{self, File};
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -174,6 +175,76 @@ pub fn blocks(app: &App, ctx: &mut Ctx<'_>) {
         ),
     }
 }
+// Assemble and verify every ordered block and the complete file before it enters
+// the archive. The destination workspace remains untouched during this phase.
+fn assembled_file(session: &Session, entry: &Value) -> io::Result<rs_transfer::TempFile> {
+    let sum = entry["sha256"]
+        .as_str()
+        .filter(|s| rs_transfer::valid_digest(s))
+        .ok_or_else(bad)?;
+    let size = entry["size"].as_u64().unwrap_or(0);
+    if size > session.max_bytes {
+        return Err(bad());
+    }
+    let chunks: Vec<(String, u64)> = match entry.get("chunks") {
+        Some(Value::Array(chunks)) if !chunks.is_empty() => chunks
+            .iter()
+            .map(|b| {
+                let sha = b["sha256"]
+                    .as_str()
+                    .filter(|s| rs_transfer::valid_digest(s))
+                    .ok_or_else(bad)?;
+                let size = b["size_bytes"]
+                    .as_u64()
+                    .filter(|n| *n > 0 && *n <= 4 << 20)
+                    .ok_or_else(bad)?;
+                Ok((sha.to_string(), size))
+            })
+            .collect::<io::Result<_>>()?,
+        None | Some(Value::Array(_)) => vec![(sum.to_string(), size)],
+        _ => return Err(bad()),
+    };
+    let tmp = rs_transfer::TempFile::new()?;
+    let mut out = File::create(&tmp.path)?;
+    let mut hash = Sha256::new();
+    let mut total = 0u64;
+    let mut buf = vec![0u8; 64 << 10];
+    for (sha, n) in chunks {
+        total = total.checked_add(n).ok_or_else(bad)?;
+        if total > size {
+            return Err(bad());
+        }
+        let mut input = File::open(session.root.join(&sha))?;
+        if input.metadata()?.len() != n {
+            return Err(bad());
+        }
+        let mut part_hash = Sha256::new();
+        let mut remaining = n;
+        while remaining > 0 {
+            let limit = remaining.min(buf.len() as u64) as usize;
+            input.read_exact(&mut buf[..limit])?;
+            hash.update(&buf[..limit]);
+            part_hash.update(&buf[..limit]);
+            out.write_all(&buf[..limit])?;
+            remaining -= limit as u64;
+        }
+        let got: String = part_hash
+            .finalize()
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
+        if got != sha {
+            return Err(bad());
+        }
+    }
+    let got: String = hash.finalize().iter().map(|b| format!("{b:02x}")).collect();
+    if total != size || got != sum {
+        return Err(bad());
+    }
+    out.flush()?;
+    Ok(tmp)
+}
+
 pub fn finish(app: &App, ctx: &mut Ctx<'_>) {
     let Some(v) = request(ctx) else {
         return fail(ctx, 400, "invalid_request", "invalid restore plan");
@@ -225,20 +296,16 @@ pub fn finish(app: &App, ctx: &mut Ctx<'_>) {
                     builder.append_data(&mut header, path, io::empty())?;
                 }
                 "file" => {
-                    let sum = e["sha256"]
-                        .as_str()
-                        .filter(|s| rs_transfer::valid_digest(s))
-                        .ok_or_else(bad)?;
                     let size = e["size"].as_u64().unwrap_or(0);
                     total = total.checked_add(size).ok_or_else(bad)?;
-                    if total > session.max_bytes || !read_block(&session.root.join(sum), size, sum)
-                    {
+                    if total > session.max_bytes {
                         return Err(bad());
-                    };
+                    }
+                    let file = assembled_file(&session, e)?;
                     header.set_entry_type(tar::EntryType::Regular);
                     header.set_size(size);
                     header.set_cksum();
-                    builder.append_data(&mut header, path, File::open(session.root.join(sum))?)?;
+                    builder.append_data(&mut header, path, File::open(&file.path)?)?;
                 }
                 _ => return Err(bad()),
             }
@@ -259,5 +326,68 @@ pub fn finish(app: &App, ctx: &mut Ctx<'_>) {
             "workspace_restore_mismatch",
             "restore rejected; discard this environment",
         ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn ordered_chunks_verify_each_block_and_complete_file() {
+        let root = std::env::temp_dir().join(format!(
+            "restore-test-{}",
+            rs_transfer::random_id().unwrap()
+        ));
+        fs::create_dir(&root).unwrap();
+        let session = Session {
+            root,
+            expires: Instant::now() + Duration::from_secs(60),
+            max_bytes: 32,
+        };
+        let first = b"prefix";
+        let second = b"suffix";
+        let a = rs_transfer::digest(first);
+        let b = rs_transfer::digest(second);
+        fs::write(session.root.join(&a), first).unwrap();
+        fs::write(session.root.join(&b), second).unwrap();
+        let whole = [first.as_slice(), second.as_slice(), first.as_slice()].concat();
+        let mut entry = json!({"size":whole.len(),"sha256":rs_transfer::digest(&whole),"chunks":[
+            {"sha256":a,"size_bytes":first.len()},{"sha256":b,"size_bytes":second.len()},{"sha256":a,"size_bytes":first.len()}]});
+        let file = assembled_file(&session, &entry).unwrap();
+        assert_eq!(fs::read(file.path.clone()).unwrap(), whole);
+        entry["chunks"][0]["sha256"] = json!(b);
+        assert!(
+            assembled_file(&session, &entry).is_err(),
+            "ordered complete digest must be verified"
+        );
+        entry["chunks"][0]["sha256"] = json!(a);
+        fs::write(session.root.join(&b), b"broken").unwrap();
+        assert!(
+            assembled_file(&session, &entry).is_err(),
+            "same-size corrupted block must fail"
+        );
+    }
+
+    #[test]
+    fn legacy_and_empty_files_keep_their_integrity_checks() {
+        let root = std::env::temp_dir().join(format!(
+            "restore-test-{}",
+            rs_transfer::random_id().unwrap()
+        ));
+        fs::create_dir(&root).unwrap();
+        let session = Session {
+            root,
+            expires: Instant::now() + Duration::from_secs(60),
+            max_bytes: 16,
+        };
+        let sha = rs_transfer::digest(b"");
+        fs::write(session.root.join(&sha), b"").unwrap();
+        let empty = json!({"size":0,"sha256":sha});
+        let tmp = assembled_file(&session, &empty).unwrap();
+        assert_eq!(fs::metadata(&tmp.path).unwrap().len(), 0);
+        let invalid = json!({"size":1,"sha256":sha,"chunks":[{"sha256":sha,"size_bytes":0}]});
+        assert!(assembled_file(&session, &invalid).is_err());
     }
 }

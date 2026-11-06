@@ -47,3 +47,18 @@ func (b *box) RestoreFinish(ctx context.Context, envID, id string, entries []san
 	}
 	return b.p.client.RestoreFinish(ctx, b.endpoint(m), id, entries)
 }
+
+func (b *box) PrepareRange(ctx context.Context, envID, path string, offset, size int64) (sandbox.PreparedTransfer, error) {
+	m, err := b.get(envID)
+	if err != nil {
+		return sandbox.PreparedTransfer{}, err
+	}
+	return b.p.client.PrepareRange(ctx, b.endpoint(m), path, offset, size)
+}
+func (b *box) SnapshotManifest(ctx context.Context, envID string) ([]sandbox.FileEntry, error) {
+	m, err := b.get(envID)
+	if err != nil {
+		return nil, err
+	}
+	return b.p.client.SnapshotManifest(ctx, b.endpoint(m))
+}

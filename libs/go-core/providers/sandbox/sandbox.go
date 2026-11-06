@@ -129,15 +129,34 @@ type Closer interface {
 	Close() error
 }
 
+// FileBlock identifies one immutable content block in file order.
+type FileBlock struct {
+	SHA256    string `json:"sha256"`
+	SizeBytes int64  `json:"size_bytes"`
+}
+
 // FileEntry 是工作目录里的一项（存档的清单，D-06）：Path 相对工作目录、/ 分隔；Type 是 file、dir、symlink；
 // Mode 只留权限位（符号链接为 0）；文件有 Size 与 SHA256（十六进制），符号链接有 Link。
+// Chunks 为空时沿用旧版整文件块；非空时每块独立寻址，SHA256 仍校验完整文件。
 type FileEntry struct {
-	Path   string `json:"path"`
-	Type   string `json:"type"`
-	Mode   int    `json:"mode"`
-	Size   int64  `json:"size,omitempty"`
-	SHA256 string `json:"sha256,omitempty"`
-	Link   string `json:"link,omitempty"`
+	Chunks []FileBlock `json:"chunks,omitempty"`
+	Path   string      `json:"path"`
+	Type   string      `json:"type"`
+	Mode   int         `json:"mode"`
+	Size   int64       `json:"size,omitempty"`
+	SHA256 string      `json:"sha256,omitempty"`
+	Link   string      `json:"link,omitempty"`
+}
+
+// Blocks returns the persisted content keys, including legacy whole-file blobs.
+func (e FileEntry) Blocks() []FileBlock {
+	if e.Type != "file" {
+		return nil
+	}
+	if len(e.Chunks) > 0 {
+		return e.Chunks
+	}
+	return []FileBlock{{SHA256: e.SHA256, SizeBytes: e.Size}}
 }
 
 // DirEntry 是列目录的一项。

@@ -96,8 +96,7 @@ func TestDirectTransferServiceBindsTenantLeaseAndKeepsPreparedBytes(t *testing.T
 	}
 	h.mustExec(tc, lease, "printf changed > report.txt")
 	request := &sandboxv1.CommitTransferRequest{Tenant: tc, LeaseId: lease.LeaseId, TransferId: pre.Msg.Transfer.TransferId}
-	other := *request
-	other.Tenant = tenant("t2", "w1", s1)
+	other := sandboxv1.CommitTransferRequest{Tenant: tenant("t2", "w1", s1), LeaseId: request.LeaseId, TransferId: request.TransferId}
 	if _, err = h.worker.CommitTransfer(ctx, connect.NewRequest(&other)); err == nil {
 		t.Fatal("cross tenant transfer accepted")
 	}
@@ -186,5 +185,55 @@ func TestDirectArchiveOnlyUploadsMissingAndRestoresBytes(t *testing.T) {
 	}
 	if got := h.mustExec(otherTC, other, "cat a b"); strings.TrimSpace(got) != "sharedshared" {
 		t.Fatal("restored bytes mismatch")
+	}
+}
+
+func TestDirectArchiveChunksLargeFilesAndUploadsOnlyChangedBlocks(t *testing.T) {
+	objects, _ := objectServer(t)
+	h := newHarness(t, func(h *harness) { h.directObjects = objects; h.backends = localArchive })
+	tc := tenant("t1", "w-large", s1)
+	lease := h.mustAcquire(tc, onWorkspace("w-large"), taskID("task-large"))
+	h.mustExec(tc, lease, "dd if=/dev/zero of=large.bin bs=1048576 count=68 2>/dev/null")
+	ctx := context.Background()
+	broker := h.svc.Broker()
+	inner, err := broker.Get(ctx, tc, lease.LeaseId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	arch := broker.Archiver()
+	for i := 0; i < 4; i++ {
+		snap, err := arch.Snapshot(ctx, inner.Box, inner.EnvID, "t1", "w-large", 80<<20, lease.LeaseId, archive.TransferOptions{Enabled: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := int64(0)
+		if i == 0 {
+			want = 1
+		}
+		if snap.NewBlobs != want {
+			t.Fatalf("snapshot %d uploaded %d blobs, want %d", i, snap.NewBlobs, want)
+		}
+		entries, _, err := arch.Manifest(ctx, "t1", snap)
+		if err != nil || len(entries) != 1 || len(entries[0].Chunks) != 17 {
+			t.Fatalf("chunk manifest lost: %v %v", entries, err)
+		}
+	}
+	h.mustExec(tc, lease, "printf X | dd of=large.bin bs=1 seek=4194304 conv=notrunc 2>/dev/null")
+	snap, err := arch.Snapshot(ctx, inner.Box, inner.EnvID, "t1", "w-large", 80<<20, lease.LeaseId, archive.TransferOptions{Enabled: true})
+	if err != nil || snap.NewBlobs != 1 {
+		t.Fatalf("changed one block: %+v %v", snap, err)
+	}
+	expected := h.mustExec(tc, lease, "sha256sum large.bin")
+	otherTC := tenant("t1", "", s2)
+	other := h.mustAcquire(otherTC, taskID("task-large-restore"))
+	target, err := broker.Get(ctx, otherTC, other.LeaseId)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = arch.Restore(ctx, target.Box, target.EnvID, "t1", "w-large", 80<<20, archive.TransferOptions{Enabled: true}); err != nil {
+		t.Fatal(err)
+	}
+	if got := h.mustExec(otherTC, other, "sha256sum large.bin"); got != expected {
+		t.Fatalf("restored file differs: %s != %s", got, expected)
 	}
 }

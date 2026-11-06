@@ -36,3 +36,9 @@ type BlockTransfers interface {
 	RestoreBatch(context.Context, string, string, int64, []RestoreBlock) error
 	RestoreFinish(context.Context, string, string, []FileEntry) error
 }
+
+// SnapshotTransfers hashes large files into fixed ordered blocks without returning file bytes.
+type SnapshotTransfers interface {
+	SnapshotManifest(context.Context, string) ([]FileEntry, error)
+	PrepareRange(context.Context, string, string, int64, int64) (PreparedTransfer, error)
+}

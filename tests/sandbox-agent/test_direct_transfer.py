@@ -116,3 +116,35 @@ def test_corrupt_block_and_path_escape_never_restore(make_agent, impl, objects, 
     escape = call(agent, "/v1/restore", {"restore_id": "3" * 32, "entries": [{"path": "../escape", "type": "dir", "mode": 0o755}]})
     assert escape.status == 400
     assert not (agent.workdir.parent / "escape").exists()
+
+def test_large_file_snapshot_is_chunked_and_restore_verifies_order(make_agent, impl, objects):
+    agent = rust_agent(make_agent, impl)
+    base, data, counts = objects
+    # Deliberately exceed AGENT_FILE_LIMIT; snapshot chunks remain bounded.
+    chunks = [b"A" * (4 << 20), b"B" * (4 << 20), b"tail"]
+    whole = b"".join(chunks)
+    (agent.workdir / "large.bin").write_bytes(whole)
+    manifest = call(agent, "/v1/snapshot", {}).json()["entries"]
+    [entry] = manifest
+    assert entry["sha256"] == hashlib.sha256(whole).hexdigest()
+    assert entry["chunks"] == [{"sha256": hashlib.sha256(c).hexdigest(), "size_bytes": len(c)} for c in chunks]
+    prepared = call(agent, "/v1/transfer/prepare", {"path": "large.bin", "offset": 4 << 20, "length": 4 << 20})
+    assert prepared.status == 200 and prepared.json()["sha256"] == hashlib.sha256(chunks[1]).hexdigest()
+    (agent.workdir / "large.bin").unlink()
+    blocks = []
+    for i, chunk in enumerate(chunks):
+        data[f"/{i}"] = chunk
+        blocks.append({"sha256": hashlib.sha256(chunk).hexdigest(), "size_bytes": len(chunk), "target": {"url": f"{base}/{i}"}})
+    plan = {"restore_id": "4" * 32, "max_bytes": len(whole), "blocks": blocks}
+    assert call(agent, "/v1/restore/blocks", plan).status == 200
+    assert call(agent, "/v1/restore/blocks", plan).json()["downloaded_bytes"] == 0
+    assert counts["GET"] == len(chunks)
+    assert call(agent, "/v1/restore", {"restore_id": plan["restore_id"], "entries": manifest}).status == 200
+    assert (agent.workdir / "large.bin").read_bytes() == whole
+
+    failed = rust_agent(make_agent, impl)
+    plan["restore_id"] = "5" * 32
+    assert call(failed, "/v1/restore/blocks", plan).status == 200
+    entry["chunks"][0], entry["chunks"][1] = entry["chunks"][1], entry["chunks"][0]
+    assert call(failed, "/v1/restore", {"restore_id": plan["restore_id"], "entries": manifest}).status == 400
+    assert list(failed.workdir.iterdir()) == [], "wrong chunk order must not expose a partial workspace"

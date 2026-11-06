@@ -154,11 +154,18 @@ class FileEntry:
     size: int = 0
     sha256: str = ""
     link: str = ""
+    chunks: tuple[tuple[str, int], ...] = ()
+
+    @property
+    def blocks(self) -> tuple[tuple[str, int], ...]:
+        return (self.chunks or ((self.sha256, self.size),)) if self.type == "file" else ()
 
     def as_dict(self) -> dict[str, object]:
         out: dict[str, object] = {"path": self.path, "type": self.type, "mode": self.mode}
         if self.type == "file":
             out["size"], out["sha256"] = self.size, self.sha256
+            if self.chunks:
+                out["chunks"] = [{"sha256": sha, "size_bytes": size} for sha, size in self.chunks]
         if self.type == "symlink":
             out["link"] = self.link
         return out
@@ -172,6 +179,7 @@ class FileEntry:
         return cls(
             path=str(data["path"]), type=str(data["type"]), mode=number("mode"), size=number("size"),
             sha256=str(data.get("sha256") or ""), link=str(data.get("link") or ""),
+            chunks=tuple((str(b["sha256"]), int(b["size_bytes"])) for b in (data.get("chunks") or ())),
         )
 
 

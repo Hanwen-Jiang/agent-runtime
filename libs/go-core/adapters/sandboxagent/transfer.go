@@ -73,3 +73,22 @@ func (c Client) RestoreFinish(ctx context.Context, ep Endpoint, id string, entri
 	var out map[string]any
 	return c.transferCall(ctx, ep, "/v1/restore", map[string]any{"restore_id": id, "entries": entries}, &out)
 }
+
+func (c Client) SnapshotManifest(ctx context.Context, ep Endpoint) ([]sandbox.FileEntry, error) {
+	var out struct {
+		Entries []sandbox.FileEntry `json:"entries"`
+	}
+	err := c.transferCall(ctx, ep, "/v1/snapshot", map[string]any{}, &out)
+	return out.Entries, err
+}
+func (c Client) PrepareRange(ctx context.Context, ep Endpoint, path string, offset, size int64) (sandbox.PreparedTransfer, error) {
+	if err := sandbox.CheckPath(path); err != nil {
+		return sandbox.PreparedTransfer{}, err
+	}
+	var out sandbox.PreparedTransfer
+	err := c.transferCall(ctx, ep, "/v1/transfer/prepare", map[string]any{"path": path, "offset": offset, "length": size}, &out)
+	if err == nil && (out.TransferID == "" || len(out.SHA256) != 64 || out.SizeBytes != size) {
+		err = providererr.New(providererr.Transient, "sandbox_bad_response", "invalid block preparation")
+	}
+	return out, err
+}
