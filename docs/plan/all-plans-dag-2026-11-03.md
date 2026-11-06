@@ -57,7 +57,7 @@
 | # | 事 | 解开什么 | 不做的话 |
 | --- | --- | --- | --- |
 | ~~U-1~~ | **已解决（2026-11-06）**：用户说令牌本来就有全部权限。查下来令牌是 API Token，能用两个账号；Containers 只在 `Root@nsnzd.com's Account`（`60a1944e…`，有 Workers 付费计划）上可用，`EDU` 账号没有。11-04 失败在脚本自己调的申请镜像仓库凭据的接口，改用 `wrangler containers push` 就推上去了，桥已换成 `sandbox-universal:f06e30c`（Rust 版 agent），见 cloud-deploy.md | Cloudflare 桥换新镜像 | — |
-| U-2 | Resend：注册、建 API Key、加域名 `cgent.link`，把 Key 放到服务器上（如 `/root/.config/agentruntime/resend.key`，不贴进聊天）；DNS 记录照 Resend 给的加（或由 Claude 用 U-1 的令牌加） | F4 告警发邮件（发件人 `alerts@cgent.link`） | 告警只在 Grafana 里看得到 |
+| ~~U-2~~ | **已解决（2026-11-06）**：用户建了 Resend 的 Key（`/root/.config/agentruntime/resend.key`，已改成 0600），`cgent.link` 在 Resend 里已是 verified（DKIM、SPF 都过）。Claude 建了 Secret `observability/grafana-resend`（收件 `root@nsnzd.com`，用户选的），Grafana 升到第 4 版带上 SMTP 与联络点，经 Resend 接口发了测试邮件。见 cloud-deploy.md | F4 告警发邮件 | — |
 | U-3 | GitHub App 设置：权限加 Issues 读写，订阅 `issue_comment` 事件；各安装（你自己的账号或组织）点同意新权限 | G-06：在 Issue 里 @ 机器人自动开 Task | 自动触发用不了，其余 App 功能照常 |
 | U-4 | 设计书原文档（Claude Docs）的更新：二选一，你自己按各计划里“设计书的改动建议”改；或者在对话里授权 Claude 用 Claude Docs 的工具直接改并重新导出（给出文档链接） | 设计书与代码一致（4.10、4.14、4.15、附录 A、Memory 的 C1、Sandbox Service） | 不挡 v1，只是设计书越来越旧 |
 | U-6 | 把 `sandbox/fc-manager-token` 加进 `agent-runtime-secrets`：在服务器上自己跑 `/root/ar-release/v1-fc/add-fc-token.sh`（备份 SOPS 文件与线上 Secret、加这一个键、重新加密、只 apply 这一个 Secret，不打印值）；或者在 Claude Code 的权限设置里放行这类操作，由 Claude 跑。两个会话写生产密钥都被自动权限检查拦下了（2026-11-05） | Firecracker 后端打开（第 33 版已登记，`enabled: false`），V1-FC 的线上验收 | Firecracker 一直关着 |

@@ -931,6 +931,14 @@ Cloudflare 桥换新镜像（U-1 / REAL-01，2026-11-06，脚本 `/root/ar-relea
 `957ecb6af652`）。`wrangler deploy` 把容器应用的镜像从 `0.1.0` 换成 `f06e30c`，Worker 版本 `4f9063dd`；容器应用回到 ready，不带令牌访问桥 401。
 仓库的 `wrangler.jsonc` 同步。回滚：镜像写回 `:0.1.0` 再 `wrangler deploy`。没做：经 Cloudflare 后端跑一个真 Task（没有租户的策略选它）。
 
+告警邮件（U-2 / F4，2026-11-06，脚本 `/root/ar-release/resend/domain.sh`）：用户把 Resend 的 API Key 放在 `/root/.config/agentruntime/resend.key`（改成 0600）。
+Resend 里 `cgent.link`（us-east-1）已是 verified，DKIM（`resend._domainkey`）与 SPF（`send`、`rsend` 的 CNAME）都 verified，DNS 不用再加。
+建 Secret `observability/grafana-resend`（`user: resend`、`password` 取自 Key 文件、`to: root@nsnzd.com`，收件地址是用户在对话里选的），
+Grafana 按仓库的 `deploy/data/values/grafana.yaml` 升到 Helm 第 4 版（Chart 13.5.1；与第 3 版的 values 只差 SMTP、`ALERT_EMAIL_TO` 与联络点、通知策略，
+之前的存在 `resend/grafana-values.before.yaml`）。Grafana 的容器没有 shell，测试联络点没在 Pod 里调；改经 Resend 的接口用同一个 Key、
+发件 `alerts@cgent.link` 给 `root@nsnzd.com` 发了测试邮件（id `01a1aea9…`，被接受）。没做：这个 Secret 没进 SOPS 文件（Key 只在集群与 `resend.key` 里）。
+回滚：`helm rollback grafana 3 -n observability`。
+
 宿主上的 Firecracker（2026-11-05，V1-FC：宿主上的 systemd 服务，不经 Helm；规矩见总表第 0 节第 6 条）：
 
 - 装了什么（与 `deploy/cluster/install.sh` 第 3b 步相同的命令，分步手工跑，没跑整个 install.sh）：Firecracker 与 jailer v1.17.0（`/usr/local/bin`，按
