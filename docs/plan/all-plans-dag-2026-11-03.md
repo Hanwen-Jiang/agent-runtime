@@ -49,7 +49,7 @@
 | V1-SITE | 评测网站：SITE、SITE-DATA 随 V1-DEP 的 learning 镜像上线（只读令牌第 22 版已建，Secret `agent-runtime-eval-site`）；SITE-UI 的设计稿（https://claude.ai/artifact/VtHiCkT3fHaxtvnaRRd5Zr）由 Claude 定为通过，照稿改 `evals/site_pages` 三页，页面冒烟测试挪到 v2 | SITE、SITE-DATA、SITE-UI | SITE、SITE-DATA 已上线；SITE-UI 已完成（`6e4946b`，三页一套样式，截图核对过 1280 与 390 宽），第 37 版已上线（2026-11-06） |
 | V1-MEM | Memory 上线（M-01～M-03，按 7.1 已定：Milvus 3.0.2 单机版、`text-embedding-3-large`、所有租户白名单加 3-large）：`deploy/data` 装 Milvus，Memory Service 换新镜像（同时给 `external.milvus.uri`、`memory.embeddingVersion`，去掉 `external.qdrant.url`），Worker 设 `AR_MEMORY_ADDRESS`。PVC 照 7.1 给 50Gi（2026-11-05 核对：根盘 457G 用了 70%、剩 135G，内存 125G 可用 115G，够）；上线时不能有基线评测在跑。LongMemEval 验收挪到 v2 | MEM | 已上线（第 36 版，2026-11-06）：Milvus 在 data 命名空间，Memory 用真 embedding，Worker 已接上；线上写入与检索的核对随下一个真 Task |
 | V1-SEC | R-04 生产 SecretStore。Claude 定：不引 Vault、OpenBao、云 KMS（单节点 k3s，多一个要运维的组件）；在现有文件实现上加信封加密：每个作用域一把数据密钥加密值（AES-256-GCM），数据密钥由 KEK 加密，KEK 来自 K8s Secret 挂进需要的服务、不进共用卷；接口不变，旧的明文文件启动时一次性迁移。Go 与 Python 两边一起改 | R-04 | 待做 |
-| V1-AUTH | AUTH-01 切换（auth-tokens 第 4 节）：第 1～3 步随 V1-DEP 一起做（生成密钥对、Runtime 加 `issuers`、coding-web 加 JWT 私钥与 `CODING_TOKEN_KEY`）；一周后做第 4 步（`devTokens` 改 refuse、coding-web 去掉 `AR_DEV_SIGNING_KEY`） | AUTH-01 | 待做 |
+| V1-AUTH | AUTH-01 切换（auth-tokens 第 4 节）：第 1～3 步随 V1-DEP 一起做（生成密钥对、Runtime 加 `issuers`、coding-web 加 JWT 私钥与 `CODING_TOKEN_KEY`）；一周后做第 4 步（`devTokens` 改 refuse、coding-web 去掉 `AR_DEV_SIGNING_KEY`） | AUTH-01 | 第 1～3 步已完成（2026-11-06：用户生成密钥对，Helm 第 39 版登记 issuers，coding-web 改发 JWT）；第 4 步约 2026-11-13 |
 | V1-I18N | coding-web 的 `i18n.js` 加 `workspace_not_ready` 的说法 | WS-CREATE-RACE 剩下的客户端部分 | 已完成并上线（coding-agent `2f84868`，第 32 版） |
 
 **只有用户能做的**（2026-11-05 汇总；其余一律由 Claude 做、不等人。做完一条在这里划掉）
@@ -61,9 +61,9 @@
 | U-3 | GitHub App 设置：权限加 Issues 读写，订阅 `issue_comment` 事件；各安装（你自己的账号或组织）点同意新权限 | G-06：在 Issue 里 @ 机器人自动开 Task | 自动触发用不了，其余 App 功能照常 |
 | U-4 | 设计书原文档（Claude Docs）的更新：二选一，你自己按各计划里“设计书的改动建议”改；或者在对话里授权 Claude 用 Claude Docs 的工具直接改并重新导出（给出文档链接） | 设计书与代码一致（4.10、4.14、4.15、附录 A、Memory 的 C1、Sandbox Service） | 不挡 v1，只是设计书越来越旧 |
 | ~~U-6~~ | **已完成**：`sandbox/fc-manager-token` 已在 `agent-runtime-secrets` 里（2026-11-06 00:36 服务器时间），第 38 版打开了 firecracker 后端 | Firecracker 后端 | — |
-| U-7 | 同意（或在设置里放行）给平台默认的租户策略加 `mcp`：`default/v3` = 线上 `default/v2` 加 `mcp: {allowed: true, hosts: ["*"]（任意公网域名；2026-11-06 第一次发布时 24 个顶级域通配被格式拒绝，什么也没改，契约修订 `edf20ae` 加了单独的 `*`，第 38 版上线后重跑）, max_connections: 10, max_effect: read}`（种子 `/root/ar-release/mcp/default-v3-seed.json`，回退 `default-v2-rollback-seed.json`）。Claude 发布时被会话的权限检查拦下（改所有租户的策略） | 网页上的普通用户能用“我的 MCP”（只读工具；不可逆写还要租户的 effect 上限到 write_irreversible） | 只有策略里写了 `mcp` 的租户能用（现在只有测试租户 `mcp01`） |
-| U-8 | AUTH-01 切换的第 1 步：在服务器上跑 `/root/ar-release/auth01/auth01-key.sh`（生成 coding-web 签 JWT 的 Ed25519 密钥对，私钥进新 Secret `coding-jwt`，公钥登记写到 `issuer.json`，不打印私钥）。只有这一步碰生产密钥；跑完告诉 Claude，第 2、3 步（Runtime 登记 issuers、coding-web 挂上私钥）由 Claude 发版做 | V1-AUTH：Runtime 只持公钥，浏览器拿短期 JWT | 一直收开发令牌（对称密钥在 coding-web 与 task-service 两处） |
-| U-9 | 测试租户 `real01` 切到 Firecracker：跑 `/root/ar-release/v1-fc/publish-real01-firecracker.sh`（策略 v2 → v3，只改 `sandbox.backend: kata → firecracker`；回退换成 v2 的种子再跑）。V1-FC 会话发布租户策略被它的权限检查拦下 | V1-FC 的线上验收（完成标准 4） | Firecracker 打开着但没有租户用 |
+| ~~U-7~~ | **已完成（2026-11-06）**：平台默认策略 `default/v3` 已生效（`mcp: {allowed: true, hosts: ["*"], max_connections: 10, max_effect: read}`）；默认档用户都能用“我的 MCP”的只读工具 | — | — |
+| ~~U-8~~ | **已完成（2026-11-06）**：用户生成了密钥对（Secret `coding-jwt`）；Claude 做了第 2 步（Helm 第 39 版，Runtime 登记 issuers，只认 coding-web 的租户前缀）与第 3 步（coding-web 挂私钥签 JWT）。第 4 步（关开发令牌）约一周后，Claude 定了提醒 | — | — |
+| ~~U-9~~ | **已完成（2026-11-06）**：`real01` 策略 v3 已生效（`sandbox.backend: firecracker`），V1-FC 会话在走完成标准 4 | — | — |
 | U-5（可选） | 模型中转站控制台里设月度花费上限 | 开放注册的兜底 | 平台内的每日、每月预算照样生效 |
 
 不再要用户做的：G-05 的测试 App（属于测试，挪到 v2）；两条 Reviewer 样本的标注复核（评测，挪到 v2）；`evals.cgent.link` 的 DNS（已经有了）；GitHub App 的 Client secret（第 25 版已部署）。

@@ -947,6 +947,21 @@ Grafana 按仓库的 `deploy/data/values/grafana.yaml` 升到 Helm 第 4 版（C
 U-7 第一次发布（用户跑 `/root/ar-release/mcp/publish-default-v3.sh`）失败：种子的 24 个顶级域通配（`*.com` 等）不合 `host_pattern`，Registry 一条也没写，
 默认策略仍是 v2。种子改成 `hosts: ["*"]`，按新契约校验通过。
 
+U-7、U-9（用户 2026-11-06 跑的）：平台默认策略 `default/v3`（`mcp` 一节，`hosts: ["*"]`、只读）与 `real01` 策略 v3（`sandbox.backend: firecracker`）都已是默认版本。
+
+AUTH-01 切换（2026-11-06）：
+- 第 1 步（用户跑 `/root/ar-release/auth01/auth01-key.sh`）：Ed25519 密钥对，私钥在 Secret `coding-jwt`（另有 `/root/ar-secrets/coding-jwt.key.pem`，0600），
+  公钥登记在 `/root/ar-release/auth01/issuer.json`（签发方 `coding-agent`，kid `cgent-2026-11`）。
+- 第 2 步（Helm 第 39 版，目录 `rev41`，只改 values）：`taskService.ingress.issuers` 加这个签发方，`tenants` 限定为 coding-web 的租户前缀
+  （`gh-*`、`gl-*`、`gitee-*`、`gitea-*`、`bb-*`、`google-*`），签不了 `evals`、`swebench` 等内部租户；`devTokens: accept` 不变。渲染差异：多一个
+  ConfigMap `ar-agent-runtime-task-service-ingress-issuers`，task-service 多 `AR_INGRESS_ISSUERS_FILE` 与挂载。线上清单与 `manifest-rev41.yaml` 一致。
+- 第 3 步：coding-web 加 `CODING_JWT_KEY_FILE=/etc/coding/jwt/key.pem`、`CODING_JWT_KID=cgent-2026-11`，只读挂 Secret `coding-jwt`（0400）；
+  `AR_DEV_SIGNING_KEY` 先留着。`/root/ar-secrets/coding-web.yaml` 同步（之前的在 `rev41/coding-web.yaml.before`），线上与文件一致；新 Pod 第一秒连
+  Postgres 被拒重启一次（同以前），之后 200。已登录的用户要重新登录一次。
+- 没验证到：登录之后经 coding-web 调 Runtime 的真实请求（要以用户身份登录）。
+- 第 4 步约一周后：`devTokens` 去掉（生产默认 refuse），coding-web 去掉 `AR_DEV_SIGNING_KEY`。
+- 回滚：coding-web 用 `rev41/coding-web.yaml.before` apply（回到开发令牌）；Runtime `helm rollback ar 38`。
+
 宿主上的 Firecracker（2026-11-05，V1-FC：宿主上的 systemd 服务，不经 Helm；规矩见总表第 0 节第 6 条）：
 
 - 装了什么（与 `deploy/cluster/install.sh` 第 3b 步相同的命令，分步手工跑，没跑整个 install.sh）：Firecracker 与 jailer v1.17.0（`/usr/local/bin`，按
