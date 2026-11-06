@@ -962,6 +962,11 @@ AUTH-01 切换（2026-11-06）：
 - 第 4 步约一周后：`devTokens` 去掉（生产默认 refuse），coding-web 去掉 `AR_DEV_SIGNING_KEY`。
 - 回滚：coding-web 用 `rev41/coding-web.yaml.before` apply（回到开发令牌）；Runtime `helm rollback ar 38`。
 
+Qdrant 退场（2026-11-06）：Memory 从第 36 版起用 Milvus，线上 Runtime 的清单不再引用 Qdrant，Qdrant 里没有集合。仓库不再装它（`27ddb80`：
+`deploy/data/install.sh`、`versions.conf`、`values/qdrant.yaml`、`check_chart_values.py`，文档与生产样例改成 Milvus；Chart 仍保留 `external.qdrant.url`
+这个选项）。卸载线上的 release 与卷被会话的权限检查拦下（不可逆删除），交给用户：`/root/ar-release/qdrant-removal/remove-qdrant.sh`（总表 U-11），
+之前的 values 在同目录 `qdrant-values.before.yaml`。
+
 宿主上的 Firecracker（2026-11-05，V1-FC：宿主上的 systemd 服务，不经 Helm；规矩见总表第 0 节第 6 条）：
 
 - 装了什么（与 `deploy/cluster/install.sh` 第 3b 步相同的命令，分步手工跑，没跑整个 install.sh）：Firecracker 与 jailer v1.17.0（`/usr/local/bin`，按

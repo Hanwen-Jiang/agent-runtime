@@ -65,6 +65,7 @@
 | ~~U-8~~ | **已完成（2026-11-06）**：用户生成了密钥对（Secret `coding-jwt`）；Claude 做了第 2 步（Helm 第 39 版，Runtime 登记 issuers，只认 coding-web 的租户前缀）与第 3 步（coding-web 挂私钥签 JWT）。第 4 步（关开发令牌）约一周后，Claude 定了提醒 | — | — |
 | ~~U-9~~ | **已完成（2026-11-06）**：`real01` 策略 v3 已生效（`sandbox.backend: firecracker`），V1-FC 会话在走完成标准 4 | — | — |
 | U-10 | V1-SEC 的主密钥：跑 `/root/ar-release/sec/master-key.sh`（生成 32 字节主密钥，进新 Secret `agent-runtime-secrets-master`，副本在 `/root/ar-secrets/secrets-master.key`，不打印）。**请把副本另外备份到服务器以外**：打开加密后主密钥丢了，密钥文件就解不开。跑完告诉 Claude，它发两版（先挂主密钥，再打开写入加密） | 密钥文件的静态加密（R-04） | 共用卷上的密钥文件一直是明文 |
+| U-11 | 卸载已经没人用的 Qdrant：跑 `/root/ar-release/qdrant-removal/remove-qdrant.sh`（先核对 Qdrant 没有集合、Runtime 不引用它，再 `helm uninstall qdrant -n data` 并删它的 20Gi 卷；values 备份在同目录，可以装回）。Claude 卸载被会话的权限检查拦下（不可逆删除） | 腾出 Qdrant 的 Pod 与 20Gi 卷；仓库已不再装它（`27ddb80`） | Qdrant 空跑着，占一个 Pod 与 20Gi |
 | U-5（可选） | 模型中转站控制台里设月度花费上限 | 开放注册的兜底 | 平台内的每日、每月预算照样生效 |
 
 不再要用户做的：G-05 的测试 App（属于测试，挪到 v2）；两条 Reviewer 样本的标注复核（评测，挪到 v2）；`evals.cgent.link` 的 DNS（已经有了）；GitHub App 的 Client secret（第 25 版已部署）。
