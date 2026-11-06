@@ -262,6 +262,10 @@ message ExecResponse {
   bool stderr_truncated = 8;
   ObjectReference stdout_object = 9;
   ObjectReference stderr_object = 10;
+  // An upload failure retains prepared bytes at the agent. Only a bounded
+  // excerpt is returned above; retry CommitTransfer without re-running Exec.
+  PreparedTransfer stdout_pending = 11;
+  PreparedTransfer stderr_pending = 12;
 }
 
 message WriteFileRequest {
@@ -434,6 +438,9 @@ message PrepareTransferRequest {
   string task_id = 3;
   string path = 4;
   string name = 5;
+  // Stable tool invocation identity within tenant/task. Reuse resolves the
+  // original immutable transfer; changing path/name with this key conflicts.
+  string idempotency_key = 6;
 }
 message PrepareTransferResponse {
   PreparedTransfer transfer = 1;
@@ -442,6 +449,10 @@ message CommitTransferRequest {
   agentruntime.common.v1.TenantContext tenant = 1;
   string lease_id = 2;
   string transfer_id = 3;
+  // For recovery after an RPC response loss. An empty lease_id may only resolve
+  // this tenant/task's existing durable transfer; it never creates authority.
+  // Legacy callers may omit this field when the original lease is supplied.
+  string task_id = 4;
 }
 message CommitTransferResponse {
   ObjectReference object = 1;

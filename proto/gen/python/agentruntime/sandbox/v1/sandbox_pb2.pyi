@@ -277,7 +277,7 @@ class ExecRequest(_message.Message):
     def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., lease_id: _Optional[str] = ..., argv: _Optional[_Iterable[str]] = ..., timeout_ms: _Optional[int] = ..., stdin: _Optional[bytes] = ..., env: _Optional[_Mapping[str, str]] = ..., max_output_bytes: _Optional[int] = ..., offload_inline_bytes: _Optional[int] = ...) -> None: ...
 
 class ExecResponse(_message.Message):
-    __slots__ = ("has_exit_code", "exit_code", "stdout", "stderr", "timed_out", "cpu_time_ms", "stdout_truncated", "stderr_truncated", "stdout_object", "stderr_object")
+    __slots__ = ("has_exit_code", "exit_code", "stdout", "stderr", "timed_out", "cpu_time_ms", "stdout_truncated", "stderr_truncated", "stdout_object", "stderr_object", "stdout_pending", "stderr_pending")
     HAS_EXIT_CODE_FIELD_NUMBER: _ClassVar[int]
     EXIT_CODE_FIELD_NUMBER: _ClassVar[int]
     STDOUT_FIELD_NUMBER: _ClassVar[int]
@@ -288,6 +288,8 @@ class ExecResponse(_message.Message):
     STDERR_TRUNCATED_FIELD_NUMBER: _ClassVar[int]
     STDOUT_OBJECT_FIELD_NUMBER: _ClassVar[int]
     STDERR_OBJECT_FIELD_NUMBER: _ClassVar[int]
+    STDOUT_PENDING_FIELD_NUMBER: _ClassVar[int]
+    STDERR_PENDING_FIELD_NUMBER: _ClassVar[int]
     has_exit_code: bool
     exit_code: int
     stdout: bytes
@@ -298,7 +300,9 @@ class ExecResponse(_message.Message):
     stderr_truncated: bool
     stdout_object: ObjectReference
     stderr_object: ObjectReference
-    def __init__(self, has_exit_code: _Optional[bool] = ..., exit_code: _Optional[int] = ..., stdout: _Optional[bytes] = ..., stderr: _Optional[bytes] = ..., timed_out: _Optional[bool] = ..., cpu_time_ms: _Optional[int] = ..., stdout_truncated: _Optional[bool] = ..., stderr_truncated: _Optional[bool] = ..., stdout_object: _Optional[_Union[ObjectReference, _Mapping]] = ..., stderr_object: _Optional[_Union[ObjectReference, _Mapping]] = ...) -> None: ...
+    stdout_pending: PreparedTransfer
+    stderr_pending: PreparedTransfer
+    def __init__(self, has_exit_code: _Optional[bool] = ..., exit_code: _Optional[int] = ..., stdout: _Optional[bytes] = ..., stderr: _Optional[bytes] = ..., timed_out: _Optional[bool] = ..., cpu_time_ms: _Optional[int] = ..., stdout_truncated: _Optional[bool] = ..., stderr_truncated: _Optional[bool] = ..., stdout_object: _Optional[_Union[ObjectReference, _Mapping]] = ..., stderr_object: _Optional[_Union[ObjectReference, _Mapping]] = ..., stdout_pending: _Optional[_Union[PreparedTransfer, _Mapping]] = ..., stderr_pending: _Optional[_Union[PreparedTransfer, _Mapping]] = ...) -> None: ...
 
 class WriteFileRequest(_message.Message):
     __slots__ = ("tenant", "lease_id", "path", "data")
@@ -567,18 +571,20 @@ class ObjectReference(_message.Message):
     def __init__(self, object_key: _Optional[str] = ..., object_uri: _Optional[str] = ..., sha256: _Optional[str] = ..., size_bytes: _Optional[int] = ...) -> None: ...
 
 class PrepareTransferRequest(_message.Message):
-    __slots__ = ("tenant", "lease_id", "task_id", "path", "name")
+    __slots__ = ("tenant", "lease_id", "task_id", "path", "name", "idempotency_key")
     TENANT_FIELD_NUMBER: _ClassVar[int]
     LEASE_ID_FIELD_NUMBER: _ClassVar[int]
     TASK_ID_FIELD_NUMBER: _ClassVar[int]
     PATH_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
+    IDEMPOTENCY_KEY_FIELD_NUMBER: _ClassVar[int]
     tenant: _tenant_pb2.TenantContext
     lease_id: str
     task_id: str
     path: str
     name: str
-    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., lease_id: _Optional[str] = ..., task_id: _Optional[str] = ..., path: _Optional[str] = ..., name: _Optional[str] = ...) -> None: ...
+    idempotency_key: str
+    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., lease_id: _Optional[str] = ..., task_id: _Optional[str] = ..., path: _Optional[str] = ..., name: _Optional[str] = ..., idempotency_key: _Optional[str] = ...) -> None: ...
 
 class PrepareTransferResponse(_message.Message):
     __slots__ = ("transfer",)
@@ -587,14 +593,16 @@ class PrepareTransferResponse(_message.Message):
     def __init__(self, transfer: _Optional[_Union[PreparedTransfer, _Mapping]] = ...) -> None: ...
 
 class CommitTransferRequest(_message.Message):
-    __slots__ = ("tenant", "lease_id", "transfer_id")
+    __slots__ = ("tenant", "lease_id", "transfer_id", "task_id")
     TENANT_FIELD_NUMBER: _ClassVar[int]
     LEASE_ID_FIELD_NUMBER: _ClassVar[int]
     TRANSFER_ID_FIELD_NUMBER: _ClassVar[int]
+    TASK_ID_FIELD_NUMBER: _ClassVar[int]
     tenant: _tenant_pb2.TenantContext
     lease_id: str
     transfer_id: str
-    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., lease_id: _Optional[str] = ..., transfer_id: _Optional[str] = ...) -> None: ...
+    task_id: str
+    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., lease_id: _Optional[str] = ..., transfer_id: _Optional[str] = ..., task_id: _Optional[str] = ...) -> None: ...
 
 class CommitTransferResponse(_message.Message):
     __slots__ = ("object",)
