@@ -703,7 +703,10 @@ pub fn grep(app: &App, ctx: &mut Ctx<'_>) {
                 let cut: String = text.chars().take(500).collect();
                 o = o.s("text", &cut);
             } else {
-                o = o.b("text", line);
+                // Match and emit the same normalized Unicode text. Go's JSON
+                // encoder emits replacement runes as UTF-8; re-serializing the
+                // original invalid bytes would instead produce \ufffd escapes.
+                o = o.s("text", &text);
             }
             matches.push(o.done());
             if matches.len() >= limit {

@@ -1,4 +1,4 @@
-//! /v1/grep 的正则：语法与语义按 Go 的 regexp（RE2，Go 1.26 的 regexp/syntax），用 regex crate 执行。
+//! /v1/grep 的正则：语法与语义按 Go 的 regexp（RE2，Go 1.27 的 regexp/syntax），用 regex crate 执行。
 //!
 //! 两者大体相同，差别在细处（代审记录 2026-11-04 第 4 节要求 Go 与 Rust 的正则语义一致）。这里把 Go 的写法逐字解析一遍、
 //! 改写成意思相同的 regex 写法，Go 不收的一律报错（`invalid_pattern`），不让 regex crate 多收：
@@ -6,7 +6,7 @@
 //! - `\d \w \s \b` 在 Go 里只认 ASCII（`\s` 是 `[\t\n\f\r ]`，没有 `\v`）；regex crate 默认按 Unicode。改写成显式的 ASCII 集合。
 //! - Go 的 `\Q…\E`、八进制 `\123`、转义的标点（`\<` 在 Go 里就是 `<`，在 regex crate 里是词首）、`{` 不成重复时当字面量。
 //! - Go 不收的：`\C`、`\e`、`\u`、`\Z`、`(?x)`、`(?u)`、重复套重复（`a**`）、超过 1000 的重复次数（含嵌套相乘）、
-//!   不认识的 Unicode 类名（表来自 Go 1.26 的 unicode 包，名字的大小写、下划线按 Go 的 canonicalName 放宽）。
+//!   不认识的 Unicode 类名（表来自 Go 1.27 的 unicode 包，名字的大小写、下划线按 Go 的 canonicalName 放宽）。
 //! - 命名分组改成普通分组（Go 收重名，regex crate 不收；grep 只看匹不匹配，用不到名字）。
 //!
 //! 匹配在按 Go 的规矩逐字节解码过的行上做（不合法的字节是 U+FFFD，见 gostr::decode_lossy），与 Go 在不合法的 UTF-8 上的行为一致。
@@ -36,7 +36,7 @@ const POSIX: &[&str] = &[
     "space", "upper", "word", "xdigit",
 ];
 
-/// Go 1.26 的 regexp 收的 Unicode 类名：canonicalName 之后的名字 → regex crate 认的名字。
+/// Go 1.27 的 regexp 收的 Unicode 类名：canonicalName 之后的名字 → regex crate 认的名字。
 const UNICODE_NAMES: &[(&str, &str)] = &[
     ("Adlam", "Adlam"),
     ("Ahom", "Ahom"),
@@ -238,6 +238,63 @@ const UNICODE_NAMES: &[(&str, &str)] = &[
     ("Zl", "Zl"),
     ("Zp", "Zp"),
     ("Zs", "Zs"),
+    ("Anatolianhieroglyphs", "Anatolian_Hieroglyphs"),
+    ("Bassavah", "Bassa_Vah"),
+    ("Beriaerfe", "Beria_Erfe"),
+    ("Canadianaboriginal", "Canadian_Aboriginal"),
+    ("Caucasianalbanian", "Caucasian_Albanian"),
+    ("Cyprominoan", "Cypro_Minoan"),
+    ("Divesakuru", "Dives_Akuru"),
+    ("Egyptianhieroglyphs", "Egyptian_Hieroglyphs"),
+    ("Garay", "Garay"),
+    ("Gunjalagondi", "Gunjala_Gondi"),
+    ("Gurungkhema", "Gurung_Khema"),
+    ("Hanifirohingya", "Hanifi_Rohingya"),
+    ("Imperialaramaic", "Imperial_Aramaic"),
+    ("Inscriptionalpahlavi", "Inscriptional_Pahlavi"),
+    ("Inscriptionalparthian", "Inscriptional_Parthian"),
+    ("Kayahli", "Kayah_Li"),
+    ("Khitansmallscript", "Khitan_Small_Script"),
+    ("Kiratrai", "Kirat_Rai"),
+    ("Lineara", "Linear_A"),
+    ("Linearb", "Linear_B"),
+    ("Masaramgondi", "Masaram_Gondi"),
+    ("Meeteimayek", "Meetei_Mayek"),
+    ("Mendekikakui", "Mende_Kikakui"),
+    ("Meroiticcursive", "Meroitic_Cursive"),
+    ("Meroitichieroglyphs", "Meroitic_Hieroglyphs"),
+    ("Nagmundari", "Nag_Mundari"),
+    ("Newtailue", "New_Tai_Lue"),
+    ("Nyiakengpuachuehmong", "Nyiakeng_Puachue_Hmong"),
+    ("Olchiki", "Ol_Chiki"),
+    ("Olonal", "Ol_Onal"),
+    ("Oldhungarian", "Old_Hungarian"),
+    ("Olditalic", "Old_Italic"),
+    ("Oldnortharabian", "Old_North_Arabian"),
+    ("Oldpermic", "Old_Permic"),
+    ("Oldpersian", "Old_Persian"),
+    ("Oldsogdian", "Old_Sogdian"),
+    ("Oldsoutharabian", "Old_South_Arabian"),
+    ("Oldturkic", "Old_Turkic"),
+    ("Olduyghur", "Old_Uyghur"),
+    ("Pahawhhmong", "Pahawh_Hmong"),
+    ("Paucinhau", "Pau_Cin_Hau"),
+    ("Phagspa", "Phags_Pa"),
+    ("Psalterpahlavi", "Psalter_Pahlavi"),
+    ("Sidetic", "Sidetic"),
+    ("Signwriting", "SignWriting"),
+    ("Sorasompeng", "Sora_Sompeng"),
+    ("Sunuwar", "Sunuwar"),
+    ("Sylotinagri", "Syloti_Nagri"),
+    ("Taile", "Tai_Le"),
+    ("Taitham", "Tai_Tham"),
+    ("Taiviet", "Tai_Viet"),
+    ("Taiyo", "Tai_Yo"),
+    ("Todhri", "Todhri"),
+    ("Tolongsiki", "Tolong_Siki"),
+    ("Tulutigalari", "Tulu_Tigalari"),
+    ("Warangciti", "Warang_Citi"),
+    ("Zanabazarsquare", "Zanabazar_Square"),
 ];
 
 /// Go 的 canonicalName：首字母大写、其余小写，去掉 `_`、`-` 与空格。
@@ -419,6 +476,18 @@ impl Parser<'_> {
             None => name,
         };
         let rust = unicode_class(&name).ok_or(BadPattern)?;
+        // Go 1.27 uses Unicode 17. These four new scripts are not yet in
+        // regex 1.13's tables; ranges are pinned to Go's unicode.RangeTable.
+        let new_script = match rust {
+            "Beria_Erfe" => Some(r"\x{16EA0}-\x{16EB8}\x{16EBB}-\x{16ED3}"),
+            "Sidetic" => Some(r"\x{10940}-\x{10959}"),
+            "Tai_Yo" => Some(r"\x{1E6C0}-\x{1E6DE}\x{1E6E0}-\x{1E6F5}\x{1E6FE}-\x{1E6FF}"),
+            "Tolong_Siki" => Some(r"\x{11DB0}-\x{11DDB}\x{11DE0}-\x{11DE9}"),
+            _ => None,
+        };
+        if let Some(ranges) = new_script {
+            return Ok(format!("[{}{ranges}]", if neg { "^" } else { "" }));
+        }
         if rust == "Cs" || rust == "Surrogate" {
             // 代理区：解码过的文本里没有（Go 把那些字节当作不合法的 UTF-8），regex crate 也不收这个类。
             return Ok(if neg {
@@ -892,9 +961,19 @@ mod tests {
         assert!(!m(r"\p{Cs}", "\u{FFFD}") && m(r"\P{Cs}", "x") && m(r"[\p{Cs}x]", "x"));
         assert!(compile(r"\p{greek}").is_ok(), "Go 放宽大小写");
         assert!(
-            compile(r"\p{Old_Italic}").is_err(),
-            "Go 1.26 不收多词的文字名"
+            compile(r"\p{Old_Italic}").is_ok(),
+            "Go 1.27 accepts canonical multiword script aliases"
         );
+        for (name, member) in [
+            ("Beria_Erfe", '\u{16EA0}'),
+            ("Sidetic", '\u{10940}'),
+            ("Tai_Yo", '\u{1E6C0}'),
+            ("Tolong_Siki", '\u{11DB0}'),
+        ] {
+            assert!(m(&format!(r"\p{{{name}}}"), &member.to_string()));
+            assert!(!m(&format!(r"\p{{{name}}}"), "x"));
+            assert!(m(&format!(r"\P{{{name}}}"), "x"));
+        }
         assert!(compile(r"\p{Emoji}").is_err(), "regex crate 认、Go 不认");
     }
 

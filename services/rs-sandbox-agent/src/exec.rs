@@ -255,15 +255,16 @@ pub fn exec(app: &App, ctx: &mut Ctx<'_>) {
                 .enumerate()
                 {
                     if output.buf.len() > limit {
+                        let full = std::mem::take(&mut output.buf);
+                        let half = limit / 2;
+                        let mut excerpt = full[..half].to_vec();
+                        excerpt.extend_from_slice(b"\n...[externalized]...\n");
+                        excerpt.extend_from_slice(&full[full.len() - (limit - half)..]);
                         let prepared = reserved
                             .as_ref()
                             .expect("output reservation")
-                            .fill(index, output.buf.clone())
+                            .fill(index, full)
                             .expect("reserved bounded output");
-                        let half = limit / 2;
-                        let mut excerpt = output.buf[..half].to_vec();
-                        excerpt.extend_from_slice(b"\n...[externalized]...\n");
-                        excerpt.extend_from_slice(&output.buf[output.buf.len() - (limit - half)..]);
                         output.buf = excerpt;
                         refs.push((name, prepared.to_string()));
                     }
