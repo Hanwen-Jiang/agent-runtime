@@ -12,6 +12,8 @@ from __future__ import annotations
 import http.client
 import json
 import os
+import time
+import uuid
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -34,6 +36,10 @@ class ApiError(Exception):
         self.status = status
         self.code = code
         self.message = message
+
+
+class WorkspaceOperationFailed(ApiError):
+    """A durable operation reached a known failed terminal state."""
 
 
 @dataclass
@@ -71,12 +77,20 @@ def token_from_env() -> str | Callable[[], str]:
 
 
 class RuntimeClient:
-    def __init__(self, base_url: str, token: str | Callable[[], str], *, timeout: float = 60, events_timeout: float = 120) -> None:
+    def __init__(self, base_url: str, token: str | Callable[[], str], *, timeout: float = 60, events_timeout: float = 120,
+                 operation_timeout: float = 1800, poll_interval: float = 2, clock: Callable[[], float] = time.monotonic,
+                 sleep: Callable[[float], None] = time.sleep) -> None:
         self.base_url = base_url.rstrip("/")
         self._token = token
         self.timeout = timeout
         # SSE 的读超时：task-service 定时发心跳，超过这么久没有任何字节就当断了，由调用方续读。
         self.events_timeout = events_timeout
+        self.operation_timeout = operation_timeout
+        self.poll_interval = poll_interval
+        if operation_timeout <= 0 or poll_interval <= 0:
+            raise ValueError("operation timeout and poll interval must be positive")
+        self._clock, self._sleep = clock, sleep
+        self._legacy_workspace_api = False
 
     def __repr__(self) -> str:
         return f"RuntimeClient({self.base_url!r})"
@@ -105,17 +119,83 @@ class RuntimeClient:
     # --- Workspace API ---
 
     def create_workspace(self, workspace_id: str, *, repo_url: str, ref: str, files: list[dict[str, str]]) -> dict[str, Any]:
-        # 克隆大仓库要一会儿：等得比普通调用久（task-service 那边默认等 600 秒）。
-        out = self._call(WORKSPACE_SERVICE, "CreateWorkspace", {"workspace_id": workspace_id, "repo_url": repo_url, "ref": ref, "files": files},
-                         timeout=max(self.timeout, 660))
+        return self.create_workspace_operation(workspace_id, repo_url=repo_url, ref=ref, files=files, request_id=uuid.uuid4().hex)
+
+    def create_workspace_operation(self, workspace_id: str, *, repo_url: str, ref: str, files: list[dict[str, str]],
+                                   request_id: str, operation_id: str = "", checkpoint: Callable[[dict[str, Any]], None] | None = None) -> dict[str, Any]:
+        body = {"workspace_id": workspace_id, "repo_url": repo_url, "ref": ref, "files": files}
+        out = self._workspace_operation("create", body, request_id=request_id, operation_id=operation_id,
+                                        checkpoint=checkpoint, legacy_method="CreateWorkspace")
         ws = out.get("workspace") or {}
+        if not ws.get("head") or ws.get("workspaceId", workspace_id) != workspace_id:
+            raise ApiError(0, "invalid_workspace_result", "workspace operation result has no head or belongs to another workspace")
         return {"workspace_id": str(ws.get("workspaceId") or workspace_id), "head": str(ws.get("head") or ""), "branch": str(ws.get("branch") or "")}
 
     def delete_workspace(self, workspace_id: str) -> None:
-        self._call(WORKSPACE_SERVICE, "DeleteWorkspace", {"workspace_id": workspace_id})
+        self.delete_workspace_operation(workspace_id, request_id=uuid.uuid4().hex)
+
+    def delete_workspace_operation(self, workspace_id: str, *, request_id: str, operation_id: str = "",
+                                   checkpoint: Callable[[dict[str, Any]], None] | None = None) -> None:
+        self._workspace_operation("delete", {"workspace_id": workspace_id}, request_id=request_id, operation_id=operation_id,
+                                  checkpoint=checkpoint, legacy_method="DeleteWorkspace")
+
+    def _workspace_operation(self, kind: str, body: dict[str, Any], *, request_id: str, operation_id: str,
+                             checkpoint: Callable[[dict[str, Any]], None] | None, legacy_method: str) -> dict[str, Any]:
+        """Each HTTP request is short; operation identity survives disconnects.
+
+        The caller persists request_id before entering and checkpoints returned
+        operation_id before polling. Never downgrade an ambiguous start/poll to
+        the old synchronous API: it might launch a duplicate operation.
+        """
+        if not request_id:
+            raise ValueError("workspace operation requires a stable request_id")
+        timeout = min(self.timeout, 60)
+        if not operation_id and not self._legacy_workspace_api:
+            try:
+                started = self._call(WORKSPACE_SERVICE, "StartWorkspaceOperation", {"request_id": request_id, kind: body}, timeout=timeout)
+            except ApiError as exc:
+                if exc.code != "unimplemented":
+                    raise
+                self._legacy_workspace_api = True
+            else:
+                operation_id = str(started.get("operationId") or "")
+                if not operation_id:
+                    raise ApiError(0, "invalid_operation_response", "workspace start returned no operation id")
+                if checkpoint:
+                    checkpoint({"operation_id": operation_id, "transport": "async"})
+        if not operation_id:
+            if checkpoint:
+                checkpoint({"transport": "legacy"})
+            return self._call(WORKSPACE_SERVICE, legacy_method, body, timeout=timeout)
+        deadline = self._clock() + self.operation_timeout
+        failures = 0
+        while self._clock() < deadline:
+            try:
+                result = self._call(WORKSPACE_SERVICE, "GetWorkspaceOperation",
+                                    {"workspace_id": body["workspace_id"], "operation_id": operation_id}, timeout=timeout)
+            except ApiError as exc:
+                failures += 1
+                if exc.status not in (0, 408, 429, 500, 502, 503, 504, 522, 524) or failures >= 3:
+                    raise
+            else:
+                failures = 0
+                if str(result.get("operationId") or "") != operation_id:
+                    raise ApiError(0, "invalid_operation_response", "workspace poll returned a different operation id")
+                status = str(result.get("status") or "")
+                if status == "WORKSPACE_OPERATION_STATUS_COMPLETED":
+                    return dict(result.get("result") or {})
+                if status == "WORKSPACE_OPERATION_STATUS_FAILED":
+                    error = result.get("error") or {}
+                    category = str(error.get("category") or "").removeprefix("ERROR_CATEGORY_")
+                    http = {"INVALID": 400, "DENIED": 403, "NOT_FOUND": 404, "CONFLICT": 409, "TRANSIENT": 503}.get(category, 500)
+                    raise WorkspaceOperationFailed(http, str(error.get("code") or "workspace_operation_failed"), str(error.get("message") or "workspace operation failed"))
+                if status != "WORKSPACE_OPERATION_STATUS_RUNNING":
+                    raise ApiError(0, "invalid_operation_status", "workspace operation returned an unknown status")
+            self._sleep(min(self.poll_interval, max(0, deadline - self._clock())))
+        raise ApiError(0, "workspace_operation_pending", "workspace operation is still pending; resume with its saved operation id")
 
     def diff(self, workspace_id: str, *, base: str) -> dict[str, Any]:
-        out = self._call(WORKSPACE_SERVICE, "GetDiff", {"workspace_id": workspace_id, "base": base}, timeout=max(self.timeout, 660))
+        out = self._call(WORKSPACE_SERVICE, "GetDiff", {"workspace_id": workspace_id, "base": base}, timeout=min(self.timeout, 60))
         return {"diff": str(out.get("diff") or ""), "files": [str(f) for f in out.get("files") or []], "truncated": bool(out.get("truncated", False))}
 
     # --- Task API ---
@@ -133,7 +213,10 @@ class RuntimeClient:
         # AR_PUBLIC_BASE_URL 时给的是自己的监听地址（线上是 http://0.0.0.0:8080/…），从别处连不上。
         parts = urllib.parse.urlsplit(str(out["eventsUrl"]))
         path = parts.path + (f"?{parts.query}" if parts.query else "")
-        return {"task_id": str(out["taskId"]), "events_url": urllib.parse.urljoin(self.base_url + "/", path), "session_id": str(out.get("sessionId") or "")}
+        result = {"task_id": str(out["taskId"]), "events_url": urllib.parse.urljoin(self.base_url + "/", path), "session_id": str(out.get("sessionId") or "")}
+        if out.get("deduplicated"):
+            result["deduplicated"] = True
+        return result
 
     def query(self, task_id: str) -> dict[str, Any]:
         out = self._call(TASK_SERVICE, "QueryTask", {"task_id": task_id})
