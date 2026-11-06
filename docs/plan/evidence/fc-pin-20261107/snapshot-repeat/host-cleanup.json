@@ -1,0 +1,22 @@
+{
+  "complete": true,
+  "checked_unix": 1793995901.3919482,
+  "runs": [
+    {
+      "test_root": "/var/lib/agentruntime/fc/gp9",
+      "vm_records_remaining": 0,
+      "jails_remaining": 0,
+      "cgroups_remaining": 0,
+      "secrets_removed": true,
+      "snapshot_cache_removed": true
+    },
+    {
+      "test_root": "/var/lib/agentruntime/fc/gp10",
+      "vm_records_remaining": 0,
+      "jails_remaining": 0,
+      "cgroups_remaining": 0,
+      "secrets_removed": true,
+      "snapshot_cache_removed": true
+    }
+  ]
+}

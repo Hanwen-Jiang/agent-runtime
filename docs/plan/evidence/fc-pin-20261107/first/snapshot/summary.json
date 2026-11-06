@@ -1,0 +1,179 @@
+{
+  "run_id": "6a703007569944adb42161fd93eaa5b3",
+  "mode": "snapshot",
+  "vm_spec": {
+    "runtime": "python",
+    "cpu_millis": 1000,
+    "memory_mb": 256,
+    "disk_mb": 256
+  },
+  "requested_samples": 20,
+  "measured_samples": 20,
+  "by_boot_source": {
+    "memory-snapshot": {
+      "samples": 20,
+      "p50_ms": 9654.466141946614,
+      "p95_ms": 10201.031632022932,
+      "create_p50_ms": 9626.182303996757,
+      "create_p95_ms": 10171.713622054085
+    }
+  },
+  "priming": [
+    {
+      "index": 0,
+      "outcome": "completed",
+      "priming": true,
+      "host_before": {
+        "monotonic_s": 882817.120363781,
+        "cpu_ticks": [
+          70501239,
+          3056872,
+          31883661,
+          1982047237,
+          1135350,
+          0,
+          2058925,
+          0
+        ],
+        "memory_total_bytes": 135120699392,
+        "memory_available_bytes": 121039118336,
+        "swap_free_bytes": 2139992064,
+        "disk_free_bytes": 94647803904,
+        "disks": {
+          "sda": {
+            "read_bytes": 182607205376,
+            "write_bytes": 1819719036928,
+            "io_ms": 6869697
+          },
+          "sda1": {
+            "read_bytes": 585728,
+            "write_bytes": 0,
+            "io_ms": 86
+          },
+          "sda2": {
+            "read_bytes": 182604227584,
+            "write_bytes": 1819719036928,
+            "io_ms": 8957209
+          },
+          "sdb": {
+            "read_bytes": 5488640,
+            "write_bytes": 0,
+            "io_ms": 31
+          }
+        },
+        "pressure": {
+          "cpu": "some avg10=1.05 avg60=1.30 avg300=1.91 total=26732258916\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0",
+          "memory": "some avg10=0.00 avg60=0.00 avg300=0.00 total=50985559\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=50038554",
+          "io": "some avg10=0.00 avg60=0.00 avg300=0.00 total=1298753762\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=1164934490"
+        }
+      },
+      "remaining_configuration_capacity": {
+        "MAX_VMS": 8,
+        "MAX_VCPUS": 8,
+        "MAX_MEMORY_MIB": 128,
+        "MAX_SCRATCH_MIB": 128
+      },
+      "env_id": "fc-b493a1b3c6ff2dfa",
+      "create_ms": 11513.696872978471,
+      "first_command_ms": 11529.76716007106,
+      "boot_source": "cold-base-capture",
+      "resources": {
+        "cpu.stat": "usage_usec 1618442\nuser_usec 807218\nsystem_usec 811224\ncore_sched.force_idle_usec 0\nnr_periods 18\nnr_throttled 2\nthrottled_usec 4412\nnr_bursts 0\nburst_usec 0",
+        "memory.current": "333287424",
+        "memory.peak": "333516800",
+        "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0",
+        "io.stat": "8:0 rbytes=0 wbytes=268455936 rios=0 wios=1058 dbytes=0 dios=0"
+      },
+      "host_after": {
+        "monotonic_s": 882828.652375209,
+        "cpu_ticks": [
+          70505605,
+          3056872,
+          31884489,
+          1982069163,
+          1135360,
+          0,
+          2058965,
+          0
+        ],
+        "memory_total_bytes": 135120699392,
+        "memory_available_bytes": 120841113600,
+        "swap_free_bytes": 2139992064,
+        "disk_free_bytes": 94427144192,
+        "disks": {
+          "sda": {
+            "read_bytes": 182607418368,
+            "write_bytes": 1820083875840,
+            "io_ms": 6869927
+          },
+          "sda1": {
+            "read_bytes": 585728,
+            "write_bytes": 0,
+            "io_ms": 86
+          },
+          "sda2": {
+            "read_bytes": 182604440576,
+            "write_bytes": 1820083875840,
+            "io_ms": 8957524
+          },
+          "sdb": {
+            "read_bytes": 5488640,
+            "write_bytes": 0,
+            "io_ms": 31
+          }
+        },
+        "pressure": {
+          "cpu": "some avg10=0.31 avg60=1.06 avg300=1.83 total=26732323717\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0",
+          "memory": "some avg10=0.00 avg60=0.00 avg300=0.00 total=50985559\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=50038555",
+          "io": "some avg10=0.00 avg60=0.00 avg300=0.00 total=1298759689\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=1164940044"
+        }
+      },
+      "host_delta": {
+        "elapsed_s": 11.532011428033002,
+        "cpu_busy_percent": 19.263894000736105,
+        "memory_available_change_bytes": -198004736,
+        "disk_free_change_bytes": -220659712,
+        "disks": {
+          "sda": {
+            "read_bytes": 212992,
+            "write_bytes": 364838912,
+            "io_ms": 230
+          },
+          "sda1": {
+            "read_bytes": 0,
+            "write_bytes": 0,
+            "io_ms": 0
+          },
+          "sda2": {
+            "read_bytes": 212992,
+            "write_bytes": 364838912,
+            "io_ms": 315
+          },
+          "sdb": {
+            "read_bytes": 0,
+            "write_bytes": 0,
+            "io_ms": 0
+          }
+        }
+      },
+      "owned_concurrent": 1
+    }
+  ],
+  "failure_reasons": [],
+  "configuration_limits": {
+    "AR_FC_MAX_VMS": "8",
+    "AR_FC_MAX_VCPUS": "8",
+    "AR_FC_MAX_MEMORY_MIB": "32768",
+    "AR_FC_MAX_SCRATCH_MIB": "32768"
+  },
+  "maximum_observed_concurrent": 1,
+  "physical_capacity_conclusion": "lower_bound_only_no_physical_limit_established",
+  "cleanup": {
+    "complete": true,
+    "deleted": [],
+    "errors": {}
+  },
+  "resource_evidence_complete": true,
+  "complete": true,
+  "actual_model_cost_usd": 0
+}

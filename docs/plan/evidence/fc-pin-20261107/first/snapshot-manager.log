@@ -1,0 +1,129 @@
+fc-manager info: listening on 127.0.0.1:50157
+fc-manager info: GET /healthz -> 200（0 ms）
+fc-manager info: fc-b493a1b3c6ff2dfa bootstrap path: cold-base-capture
+fc-manager info: 建好了 fc-b493a1b3c6ff2dfa（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，11507 ms）
+fc-manager info: POST /v1/envs -> 201（11508 ms）
+fc-manager info: POST /v1/envs/fc-b493a1b3c6ff2dfa/agent/v1/exec -> 200（13 ms）
+fc-manager info: 销毁了 fc-b493a1b3c6ff2dfa
+fc-manager info: DELETE /v1/envs/fc-b493a1b3c6ff2dfa -> 204（45 ms）
+fc-manager info: fc-504d173ad3c0b007 bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-504d173ad3c0b007（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，9450 ms）
+fc-manager info: POST /v1/envs -> 201（9451 ms）
+fc-manager info: POST /v1/envs/fc-504d173ad3c0b007/agent/v1/exec -> 200（25 ms）
+fc-manager info: 销毁了 fc-504d173ad3c0b007
+fc-manager info: DELETE /v1/envs/fc-504d173ad3c0b007 -> 204（48 ms）
+fc-manager info: fc-d6500ee88dbf5e18 bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-d6500ee88dbf5e18（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，9417 ms）
+fc-manager info: POST /v1/envs -> 201（9418 ms）
+fc-manager info: POST /v1/envs/fc-d6500ee88dbf5e18/agent/v1/exec -> 200（22 ms）
+fc-manager info: 销毁了 fc-d6500ee88dbf5e18
+fc-manager info: DELETE /v1/envs/fc-d6500ee88dbf5e18 -> 204（36 ms）
+fc-manager info: fc-131ccd2f7d690324 bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-131ccd2f7d690324（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，9569 ms）
+fc-manager info: POST /v1/envs -> 201（9570 ms）
+fc-manager info: POST /v1/envs/fc-131ccd2f7d690324/agent/v1/exec -> 200（26 ms）
+fc-manager info: 销毁了 fc-131ccd2f7d690324
+fc-manager info: DELETE /v1/envs/fc-131ccd2f7d690324 -> 204（37 ms）
+fc-manager info: fc-8eb946edfc17753e bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-8eb946edfc17753e（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，9040 ms）
+fc-manager info: POST /v1/envs -> 201（9041 ms）
+fc-manager info: POST /v1/envs/fc-8eb946edfc17753e/agent/v1/exec -> 200（28 ms）
+fc-manager info: 销毁了 fc-8eb946edfc17753e
+fc-manager info: DELETE /v1/envs/fc-8eb946edfc17753e -> 204（38 ms）
+fc-manager info: fc-62e043c24b51c4a3 bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-62e043c24b51c4a3（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，9621 ms）
+fc-manager info: POST /v1/envs -> 201（9624 ms）
+fc-manager info: POST /v1/envs/fc-62e043c24b51c4a3/agent/v1/exec -> 200（28 ms）
+fc-manager info: 销毁了 fc-62e043c24b51c4a3
+fc-manager info: DELETE /v1/envs/fc-62e043c24b51c4a3 -> 204（27 ms）
+fc-manager info: fc-fdc8070a8bce250d bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-fdc8070a8bce250d（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，10169 ms）
+fc-manager info: POST /v1/envs -> 201（10170 ms）
+fc-manager info: POST /v1/envs/fc-fdc8070a8bce250d/agent/v1/exec -> 200（26 ms）
+fc-manager info: 销毁了 fc-fdc8070a8bce250d
+fc-manager info: DELETE /v1/envs/fc-fdc8070a8bce250d -> 204（39 ms）
+fc-manager info: fc-3d5cd542f6b36dfd bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-3d5cd542f6b36dfd（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，10145 ms）
+fc-manager info: POST /v1/envs -> 201（10146 ms）
+fc-manager info: POST /v1/envs/fc-3d5cd542f6b36dfd/agent/v1/exec -> 200（24 ms）
+fc-manager info: 销毁了 fc-3d5cd542f6b36dfd
+fc-manager info: DELETE /v1/envs/fc-3d5cd542f6b36dfd -> 204（36 ms）
+fc-manager info: fc-e2c6575f6bc436c4 bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-e2c6575f6bc436c4（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，9628 ms）
+fc-manager info: POST /v1/envs -> 201（9629 ms）
+fc-manager info: POST /v1/envs/fc-e2c6575f6bc436c4/agent/v1/exec -> 200（21 ms）
+fc-manager info: 销毁了 fc-e2c6575f6bc436c4
+fc-manager info: DELETE /v1/envs/fc-e2c6575f6bc436c4 -> 204（38 ms）
+fc-manager info: fc-580cd5f259867636 bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-580cd5f259867636（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，9579 ms）
+fc-manager info: POST /v1/envs -> 201（9579 ms）
+fc-manager info: POST /v1/envs/fc-580cd5f259867636/agent/v1/exec -> 200（20 ms）
+fc-manager info: 销毁了 fc-580cd5f259867636
+fc-manager info: DELETE /v1/envs/fc-580cd5f259867636 -> 204（37 ms）
+fc-manager info: fc-6091c3672626dbda bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-6091c3672626dbda（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，9392 ms）
+fc-manager info: POST /v1/envs -> 201（9393 ms）
+fc-manager info: POST /v1/envs/fc-6091c3672626dbda/agent/v1/exec -> 200（18 ms）
+fc-manager info: 销毁了 fc-6091c3672626dbda
+fc-manager info: DELETE /v1/envs/fc-6091c3672626dbda -> 204（27 ms）
+fc-manager info: fc-56a9114531057c8f bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-56a9114531057c8f（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，9752 ms）
+fc-manager info: POST /v1/envs -> 201（9754 ms）
+fc-manager info: POST /v1/envs/fc-56a9114531057c8f/agent/v1/exec -> 200（29 ms）
+fc-manager info: 销毁了 fc-56a9114531057c8f
+fc-manager info: DELETE /v1/envs/fc-56a9114531057c8f -> 204（37 ms）
+fc-manager info: fc-d8f406cb4cd1a541 bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-d8f406cb4cd1a541（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，9951 ms）
+fc-manager info: POST /v1/envs -> 201（9952 ms）
+fc-manager info: POST /v1/envs/fc-d8f406cb4cd1a541/agent/v1/exec -> 200（29 ms）
+fc-manager info: 销毁了 fc-d8f406cb4cd1a541
+fc-manager info: DELETE /v1/envs/fc-d8f406cb4cd1a541 -> 204（38 ms）
+fc-manager info: fc-fbbf4fcd2a471e79 bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-fbbf4fcd2a471e79（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，9451 ms）
+fc-manager info: POST /v1/envs -> 201（9453 ms）
+fc-manager info: POST /v1/envs/fc-fbbf4fcd2a471e79/agent/v1/exec -> 200（26 ms）
+fc-manager info: 销毁了 fc-fbbf4fcd2a471e79
+fc-manager info: DELETE /v1/envs/fc-fbbf4fcd2a471e79 -> 204（28 ms）
+fc-manager info: fc-fc8aec99fd94f091 bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-fc8aec99fd94f091（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，9592 ms）
+fc-manager info: POST /v1/envs -> 201（9593 ms）
+fc-manager info: POST /v1/envs/fc-fc8aec99fd94f091/agent/v1/exec -> 200（20 ms）
+fc-manager info: 销毁了 fc-fc8aec99fd94f091
+fc-manager info: DELETE /v1/envs/fc-fc8aec99fd94f091 -> 204（36 ms）
+fc-manager info: fc-c12ed514bb296296 bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-c12ed514bb296296（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，9712 ms）
+fc-manager info: POST /v1/envs -> 201（9713 ms）
+fc-manager info: POST /v1/envs/fc-c12ed514bb296296/agent/v1/exec -> 200（24 ms）
+fc-manager info: 销毁了 fc-c12ed514bb296296
+fc-manager info: DELETE /v1/envs/fc-c12ed514bb296296 -> 204（25 ms）
+fc-manager info: fc-6f31e12a48edd9fa bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-6f31e12a48edd9fa（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，10387 ms）
+fc-manager info: POST /v1/envs -> 201（10388 ms）
+fc-manager info: POST /v1/envs/fc-6f31e12a48edd9fa/agent/v1/exec -> 200（20 ms）
+fc-manager info: 销毁了 fc-6f31e12a48edd9fa
+fc-manager info: DELETE /v1/envs/fc-6f31e12a48edd9fa -> 204（36 ms）
+fc-manager info: fc-1166f9a81fc9df2a bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-1166f9a81fc9df2a（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，9830 ms）
+fc-manager info: POST /v1/envs -> 201（9831 ms）
+fc-manager info: POST /v1/envs/fc-1166f9a81fc9df2a/agent/v1/exec -> 200（20 ms）
+fc-manager info: 销毁了 fc-1166f9a81fc9df2a
+fc-manager info: DELETE /v1/envs/fc-1166f9a81fc9df2a -> 204（37 ms）
+fc-manager info: fc-b5f8344ffb7bed9f bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-b5f8344ffb7bed9f（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，9782 ms）
+fc-manager info: POST /v1/envs -> 201（9783 ms）
+fc-manager info: POST /v1/envs/fc-b5f8344ffb7bed9f/agent/v1/exec -> 200（21 ms）
+fc-manager info: 销毁了 fc-b5f8344ffb7bed9f
+fc-manager info: DELETE /v1/envs/fc-b5f8344ffb7bed9f -> 204（35 ms）
+fc-manager info: fc-d59724c41a0a6a3b bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-d59724c41a0a6a3b（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，10068 ms）
+fc-manager info: POST /v1/envs -> 201（10070 ms）
+fc-manager info: POST /v1/envs/fc-d59724c41a0a6a3b/agent/v1/exec -> 200（19 ms）
+fc-manager info: 销毁了 fc-d59724c41a0a6a3b
+fc-manager info: DELETE /v1/envs/fc-d59724c41a0a6a3b -> 204（35 ms）
+fc-manager info: fc-346d78ccf8b1c112 bootstrap path: memory-snapshot
+fc-manager info: 建好了 fc-346d78ccf8b1c112（fc-real-6a703007569944ad，1 vCPU，256 MiB，盘 256 MiB，9532 ms）
+fc-manager info: POST /v1/envs -> 201（9532 ms）
+fc-manager info: POST /v1/envs/fc-346d78ccf8b1c112/agent/v1/exec -> 200（18 ms）
+fc-manager info: 销毁了 fc-346d78ccf8b1c112
+fc-manager info: DELETE /v1/envs/fc-346d78ccf8b1c112 -> 204（47 ms）
+fc-manager info: GET /v1/envs -> 200（0 ms）

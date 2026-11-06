@@ -1,0 +1,39 @@
+{
+  "run_id": "7de1a9324bc24624b5a63df30a439c71",
+  "owner": "fc-real-7de1a9324bc24624",
+  "mode": "snapshot",
+  "samples": 20,
+  "vm_spec": {
+    "runtime": "python",
+    "cpu_millis": 1000,
+    "memory_mb": 256,
+    "disk_mb": 256
+  },
+  "configuration": {
+    "AR_FC_MAX_VMS": "8",
+    "AR_FC_MAX_VCPUS": "8",
+    "AR_FC_MAX_MEMORY_MIB": "32768",
+    "AR_FC_MAX_SCRATCH_MIB": "32768",
+    "AR_FC_VM_DEFAULT_DISK_MIB": "256",
+    "AR_FC_SNAPSHOT_CACHE_MIB": "2048",
+    "AR_FC_WARM_POOL": "",
+    "AR_FC_STATE_DIR": "/var/lib/agentruntime/fc/gp10/s/s",
+    "AR_FC_IMAGES_DIR": "/var/lib/agentruntime/fc/goal-final-img",
+    "AR_FC_KERNEL": "/var/lib/agentruntime/fc/images/vmlinux",
+    "AR_FC_CGROUP_ROOT": "/sys/fs/cgroup",
+    "AR_FC_PARENT_CGROUP": "goal-fc-repeat-snapshot",
+    "AR_FC_FIRECRACKER_BIN": "/usr/local/bin/firecracker",
+    "AR_FC_LISTEN": "127.0.0.1:41081"
+  },
+  "resource_window_id": "root-coordinated-fc-pin-repeat-20261107-memory-fixed-background",
+  "runtime_revision": "17f1c7b2c8e1a661eb09b8cbec0a6c9ed090f0c6",
+  "started_at_unix": 1793995669.5271554,
+  "workload": "idle VM plus one shell command",
+  "density_settle_s": 1.0,
+  "host_page_cache": "image hashes read before samples; VM cold boot does not mean cold host page cache",
+  "firecracker_sha256": "99ad0f5cd0514a88aad0e9ae8cfdb3cc3b4ab9d190e1194602406c786b5de7a5",
+  "kernel_sha256": "6939628033c1461d184c6ec5222ad0ef194b5622a65f75b54af578a826e1d9bc",
+  "rootfs_sha256": "b24ca2eb846a34d46b5e43a17729a19c6d582c1eb9a75e187519f13425327d25",
+  "manager_sha256": "22334ca3b70807fb94d476b6ea420341b2183a3fe6b783d61635e1cff3cb38f4",
+  "host_cpu_count": 24
+}

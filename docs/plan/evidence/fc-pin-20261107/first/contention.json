@@ -1,0 +1,26 @@
+{
+  "resource_window_id": "root-coordinated-fc-pin-20261107-memory-fixed-background",
+  "allowed_background": "Existing online services and an already-started 50-question live Memory experiment; neither was paused.",
+  "unexpected_load": [
+    {
+      "observed_at_utc": "2026-11-06T20:05:49Z",
+      "processes": [
+        {
+          "pid": 1442521,
+          "comm": "go",
+          "ps_cpu_percent": 70.7
+        },
+        {
+          "pid": 1442652,
+          "comm": "compile",
+          "ps_cpu_percent": 191.0
+        }
+      ],
+      "duration": "short-lived; gone on next inspection",
+      "owner": "unknown; root notified",
+      "effect": "Retain all samples, qualify performance comparison as shared-host measurements. No samples excluded."
+    }
+  ],
+  "production_mutated": false,
+  "model_cost_usd": 0
+}

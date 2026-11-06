@@ -1,0 +1,39 @@
+{
+  "run_id": "f57c1f3e7c704f49abc568d9754b3a37",
+  "mode": "warm",
+  "vm_spec": {
+    "runtime": "python",
+    "cpu_millis": 1000,
+    "memory_mb": 256,
+    "disk_mb": 256
+  },
+  "requested_samples": 20,
+  "measured_samples": 20,
+  "by_boot_source": {
+    "warm": {
+      "samples": 20,
+      "p50_ms": 24.52952996827662,
+      "p95_ms": 52.358060027472675,
+      "create_p50_ms": 3.4247139701619744,
+      "create_p95_ms": 5.021307966671884
+    }
+  },
+  "priming": [],
+  "failure_reasons": [],
+  "configuration_limits": {
+    "AR_FC_MAX_VMS": "8",
+    "AR_FC_MAX_VCPUS": "8",
+    "AR_FC_MAX_MEMORY_MIB": "32768",
+    "AR_FC_MAX_SCRATCH_MIB": "32768"
+  },
+  "maximum_observed_concurrent": 1,
+  "physical_capacity_conclusion": "lower_bound_only_no_physical_limit_established",
+  "cleanup": {
+    "complete": true,
+    "deleted": [],
+    "errors": {}
+  },
+  "resource_evidence_complete": true,
+  "complete": true,
+  "actual_model_cost_usd": 0
+}

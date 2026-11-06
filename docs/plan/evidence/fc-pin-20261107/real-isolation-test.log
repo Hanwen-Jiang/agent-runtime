@@ -1,0 +1,7 @@
+
+running 1 test
+fc-manager info: 清扫完：0 台
+test memory_snapshot_clones_refresh_identity_and_keep_tenant_disks_private ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 37.68s
+
