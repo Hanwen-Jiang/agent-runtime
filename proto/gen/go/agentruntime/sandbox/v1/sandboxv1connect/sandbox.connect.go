@@ -51,6 +51,12 @@ const (
 	SandboxServiceAcquireProcedure = "/agentruntime.sandbox.v1.SandboxService/Acquire"
 	// SandboxServiceExecProcedure is the fully-qualified name of the SandboxService's Exec RPC.
 	SandboxServiceExecProcedure = "/agentruntime.sandbox.v1.SandboxService/Exec"
+	// SandboxServicePrepareTransferProcedure is the fully-qualified name of the SandboxService's
+	// PrepareTransfer RPC.
+	SandboxServicePrepareTransferProcedure = "/agentruntime.sandbox.v1.SandboxService/PrepareTransfer"
+	// SandboxServiceCommitTransferProcedure is the fully-qualified name of the SandboxService's
+	// CommitTransfer RPC.
+	SandboxServiceCommitTransferProcedure = "/agentruntime.sandbox.v1.SandboxService/CommitTransfer"
 	// SandboxServiceWriteFileProcedure is the fully-qualified name of the SandboxService's WriteFile
 	// RPC.
 	SandboxServiceWriteFileProcedure = "/agentruntime.sandbox.v1.SandboxService/WriteFile"
@@ -107,6 +113,9 @@ type SandboxServiceClient interface {
 	Acquire(context.Context, *connect.Request[v1.AcquireRequest]) (*connect.Response[v1.AcquireResponse], error)
 	// 在借到的环境里执行一条命令。平台的环境变量（包镜像、出网代理、测试用密钥、.env）由服务按环境表补上，不出服务。
 	Exec(context.Context, *connect.Request[v1.ExecRequest]) (*connect.Response[v1.ExecResponse], error)
+	// Single-object uploads: the service chooses the key and signs only immutable prepared bytes.
+	PrepareTransfer(context.Context, *connect.Request[v1.PrepareTransferRequest]) (*connect.Response[v1.PrepareTransferResponse], error)
+	CommitTransfer(context.Context, *connect.Request[v1.CommitTransferRequest]) (*connect.Response[v1.CommitTransferResponse], error)
 	WriteFile(context.Context, *connect.Request[v1.WriteFileRequest]) (*connect.Response[v1.WriteFileResponse], error)
 	ReadLeaseFile(context.Context, *connect.Request[v1.ReadLeaseFileRequest]) (*connect.Response[v1.ReadLeaseFileResponse], error)
 	ListLeaseDir(context.Context, *connect.Request[v1.ListLeaseDirRequest]) (*connect.Response[v1.ListLeaseDirResponse], error)
@@ -188,6 +197,18 @@ func NewSandboxServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			httpClient,
 			baseURL+SandboxServiceExecProcedure,
 			connect.WithSchema(sandboxServiceMethods.ByName("Exec")),
+			connect.WithClientOptions(opts...),
+		),
+		prepareTransfer: connect.NewClient[v1.PrepareTransferRequest, v1.PrepareTransferResponse](
+			httpClient,
+			baseURL+SandboxServicePrepareTransferProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("PrepareTransfer")),
+			connect.WithClientOptions(opts...),
+		),
+		commitTransfer: connect.NewClient[v1.CommitTransferRequest, v1.CommitTransferResponse](
+			httpClient,
+			baseURL+SandboxServiceCommitTransferProcedure,
+			connect.WithSchema(sandboxServiceMethods.ByName("CommitTransfer")),
 			connect.WithClientOptions(opts...),
 		),
 		writeFile: connect.NewClient[v1.WriteFileRequest, v1.WriteFileResponse](
@@ -287,6 +308,8 @@ type sandboxServiceClient struct {
 	describeTenant   *connect.Client[v1.DescribeTenantRequest, v1.DescribeTenantResponse]
 	acquire          *connect.Client[v1.AcquireRequest, v1.AcquireResponse]
 	exec             *connect.Client[v1.ExecRequest, v1.ExecResponse]
+	prepareTransfer  *connect.Client[v1.PrepareTransferRequest, v1.PrepareTransferResponse]
+	commitTransfer   *connect.Client[v1.CommitTransferRequest, v1.CommitTransferResponse]
 	writeFile        *connect.Client[v1.WriteFileRequest, v1.WriteFileResponse]
 	readLeaseFile    *connect.Client[v1.ReadLeaseFileRequest, v1.ReadLeaseFileResponse]
 	listLeaseDir     *connect.Client[v1.ListLeaseDirRequest, v1.ListLeaseDirResponse]
@@ -341,6 +364,16 @@ func (c *sandboxServiceClient) Acquire(ctx context.Context, req *connect.Request
 // Exec calls agentruntime.sandbox.v1.SandboxService.Exec.
 func (c *sandboxServiceClient) Exec(ctx context.Context, req *connect.Request[v1.ExecRequest]) (*connect.Response[v1.ExecResponse], error) {
 	return c.exec.CallUnary(ctx, req)
+}
+
+// PrepareTransfer calls agentruntime.sandbox.v1.SandboxService.PrepareTransfer.
+func (c *sandboxServiceClient) PrepareTransfer(ctx context.Context, req *connect.Request[v1.PrepareTransferRequest]) (*connect.Response[v1.PrepareTransferResponse], error) {
+	return c.prepareTransfer.CallUnary(ctx, req)
+}
+
+// CommitTransfer calls agentruntime.sandbox.v1.SandboxService.CommitTransfer.
+func (c *sandboxServiceClient) CommitTransfer(ctx context.Context, req *connect.Request[v1.CommitTransferRequest]) (*connect.Response[v1.CommitTransferResponse], error) {
+	return c.commitTransfer.CallUnary(ctx, req)
 }
 
 // WriteFile calls agentruntime.sandbox.v1.SandboxService.WriteFile.
@@ -429,6 +462,9 @@ type SandboxServiceHandler interface {
 	Acquire(context.Context, *connect.Request[v1.AcquireRequest]) (*connect.Response[v1.AcquireResponse], error)
 	// 在借到的环境里执行一条命令。平台的环境变量（包镜像、出网代理、测试用密钥、.env）由服务按环境表补上，不出服务。
 	Exec(context.Context, *connect.Request[v1.ExecRequest]) (*connect.Response[v1.ExecResponse], error)
+	// Single-object uploads: the service chooses the key and signs only immutable prepared bytes.
+	PrepareTransfer(context.Context, *connect.Request[v1.PrepareTransferRequest]) (*connect.Response[v1.PrepareTransferResponse], error)
+	CommitTransfer(context.Context, *connect.Request[v1.CommitTransferRequest]) (*connect.Response[v1.CommitTransferResponse], error)
 	WriteFile(context.Context, *connect.Request[v1.WriteFileRequest]) (*connect.Response[v1.WriteFileResponse], error)
 	ReadLeaseFile(context.Context, *connect.Request[v1.ReadLeaseFileRequest]) (*connect.Response[v1.ReadLeaseFileResponse], error)
 	ListLeaseDir(context.Context, *connect.Request[v1.ListLeaseDirRequest]) (*connect.Response[v1.ListLeaseDirResponse], error)
@@ -506,6 +542,18 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 		SandboxServiceExecProcedure,
 		svc.Exec,
 		connect.WithSchema(sandboxServiceMethods.ByName("Exec")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServicePrepareTransferHandler := connect.NewUnaryHandler(
+		SandboxServicePrepareTransferProcedure,
+		svc.PrepareTransfer,
+		connect.WithSchema(sandboxServiceMethods.ByName("PrepareTransfer")),
+		connect.WithHandlerOptions(opts...),
+	)
+	sandboxServiceCommitTransferHandler := connect.NewUnaryHandler(
+		SandboxServiceCommitTransferProcedure,
+		svc.CommitTransfer,
+		connect.WithSchema(sandboxServiceMethods.ByName("CommitTransfer")),
 		connect.WithHandlerOptions(opts...),
 	)
 	sandboxServiceWriteFileHandler := connect.NewUnaryHandler(
@@ -610,6 +658,10 @@ func NewSandboxServiceHandler(svc SandboxServiceHandler, opts ...connect.Handler
 			sandboxServiceAcquireHandler.ServeHTTP(w, r)
 		case SandboxServiceExecProcedure:
 			sandboxServiceExecHandler.ServeHTTP(w, r)
+		case SandboxServicePrepareTransferProcedure:
+			sandboxServicePrepareTransferHandler.ServeHTTP(w, r)
+		case SandboxServiceCommitTransferProcedure:
+			sandboxServiceCommitTransferHandler.ServeHTTP(w, r)
 		case SandboxServiceWriteFileProcedure:
 			sandboxServiceWriteFileHandler.ServeHTTP(w, r)
 		case SandboxServiceReadLeaseFileProcedure:
@@ -677,6 +729,14 @@ func (UnimplementedSandboxServiceHandler) Acquire(context.Context, *connect.Requ
 
 func (UnimplementedSandboxServiceHandler) Exec(context.Context, *connect.Request[v1.ExecRequest]) (*connect.Response[v1.ExecResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.sandbox.v1.SandboxService.Exec is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) PrepareTransfer(context.Context, *connect.Request[v1.PrepareTransferRequest]) (*connect.Response[v1.PrepareTransferResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.sandbox.v1.SandboxService.PrepareTransfer is not implemented"))
+}
+
+func (UnimplementedSandboxServiceHandler) CommitTransfer(context.Context, *connect.Request[v1.CommitTransferRequest]) (*connect.Response[v1.CommitTransferResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.sandbox.v1.SandboxService.CommitTransfer is not implemented"))
 }
 
 func (UnimplementedSandboxServiceHandler) WriteFile(context.Context, *connect.Request[v1.WriteFileRequest]) (*connect.Response[v1.WriteFileResponse], error) {

@@ -40,6 +40,8 @@ const (
 	// Skill（N-14）：正文按 /schemas/skill.schema.json。Publish 不带租户是平台层、带租户是租户层（都要发布令牌）；
 	// 用户层只经 agentruntime.skill.v1.SkillService。发布即成为当前版本，不走 Promote。
 	RegistryKind_REGISTRY_KIND_SKILL RegistryKind = 7
+	// Private personal preferences; only PersonalConfigService publishes/reads these.
+	RegistryKind_REGISTRY_KIND_PERSONAL_CONFIG RegistryKind = 8
 )
 
 // Enum value maps for RegistryKind.
@@ -53,6 +55,7 @@ var (
 		5: "REGISTRY_KIND_TENANT_POLICY",
 		6: "REGISTRY_KIND_TASK_FAMILIES",
 		7: "REGISTRY_KIND_SKILL",
+		8: "REGISTRY_KIND_PERSONAL_CONFIG",
 	}
 	RegistryKind_value = map[string]int32{
 		"REGISTRY_KIND_UNSPECIFIED":        0,
@@ -63,6 +66,7 @@ var (
 		"REGISTRY_KIND_TENANT_POLICY":      5,
 		"REGISTRY_KIND_TASK_FAMILIES":      6,
 		"REGISTRY_KIND_SKILL":              7,
+		"REGISTRY_KIND_PERSONAL_CONFIG":    8,
 	}
 )
 
@@ -2319,7 +2323,7 @@ const file_agentruntime_registry_v1_registry_proto_rawDesc = "" +
 	"page_token\x18\x04 \x01(\tR\tpageToken\"u\n" +
 	"\x12ListSkillsResponse\x127\n" +
 	"\x06skills\x18\x01 \x03(\v2\x1f.agentruntime.registry.v1.SkillR\x06skills\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken*\x8a\x02\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken*\xad\x02\n" +
 	"\fRegistryKind\x12\x1d\n" +
 	"\x19REGISTRY_KIND_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bREGISTRY_KIND_NODE_TEMPLATE\x10\x01\x12\x18\n" +
@@ -2328,7 +2332,8 @@ const file_agentruntime_registry_v1_registry_proto_rawDesc = "" +
 	"\x1bREGISTRY_KIND_MODEL_PROFILE\x10\x04\x12\x1f\n" +
 	"\x1bREGISTRY_KIND_TENANT_POLICY\x10\x05\x12\x1f\n" +
 	"\x1bREGISTRY_KIND_TASK_FAMILIES\x10\x06\x12\x17\n" +
-	"\x13REGISTRY_KIND_SKILL\x10\a*q\n" +
+	"\x13REGISTRY_KIND_SKILL\x10\a\x12!\n" +
+	"\x1dREGISTRY_KIND_PERSONAL_CONFIG\x10\b*q\n" +
 	"\n" +
 	"SkillScope\x12\x1b\n" +
 	"\x17SKILL_SCOPE_UNSPECIFIED\x10\x00\x12\x18\n" +

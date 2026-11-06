@@ -65,6 +65,16 @@ class SandboxServiceStub:
                 request_serializer=agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.ExecRequest.SerializeToString,
                 response_deserializer=agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.ExecResponse.FromString,
                 _registered_method=True)
+        self.PrepareTransfer = channel.unary_unary(
+                '/agentruntime.sandbox.v1.SandboxService/PrepareTransfer',
+                request_serializer=agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.PrepareTransferRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.PrepareTransferResponse.FromString,
+                _registered_method=True)
+        self.CommitTransfer = channel.unary_unary(
+                '/agentruntime.sandbox.v1.SandboxService/CommitTransfer',
+                request_serializer=agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.CommitTransferRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.CommitTransferResponse.FromString,
+                _registered_method=True)
         self.WriteFile = channel.unary_unary(
                 '/agentruntime.sandbox.v1.SandboxService/WriteFile',
                 request_serializer=agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.WriteFileRequest.SerializeToString,
@@ -205,6 +215,19 @@ class SandboxServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def PrepareTransfer(self, request, context):
+        """Single-object uploads: the service chooses the key and signs only immutable prepared bytes.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def CommitTransfer(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def WriteFile(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -339,6 +362,16 @@ def add_SandboxServiceServicer_to_server(servicer, server):
                     servicer.Exec,
                     request_deserializer=agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.ExecRequest.FromString,
                     response_serializer=agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.ExecResponse.SerializeToString,
+            ),
+            'PrepareTransfer': grpc.unary_unary_rpc_method_handler(
+                    servicer.PrepareTransfer,
+                    request_deserializer=agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.PrepareTransferRequest.FromString,
+                    response_serializer=agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.PrepareTransferResponse.SerializeToString,
+            ),
+            'CommitTransfer': grpc.unary_unary_rpc_method_handler(
+                    servicer.CommitTransfer,
+                    request_deserializer=agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.CommitTransferRequest.FromString,
+                    response_serializer=agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.CommitTransferResponse.SerializeToString,
             ),
             'WriteFile': grpc.unary_unary_rpc_method_handler(
                     servicer.WriteFile,
@@ -638,6 +671,60 @@ class SandboxService:
             '/agentruntime.sandbox.v1.SandboxService/Exec',
             agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.ExecRequest.SerializeToString,
             agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.ExecResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def PrepareTransfer(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.sandbox.v1.SandboxService/PrepareTransfer',
+            agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.PrepareTransferRequest.SerializeToString,
+            agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.PrepareTransferResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def CommitTransfer(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.sandbox.v1.SandboxService/CommitTransfer',
+            agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.CommitTransferRequest.SerializeToString,
+            agentruntime_dot_sandbox_dot_v1_dot_sandbox__pb2.CommitTransferResponse.FromString,
             options,
             channel_credentials,
             insecure,

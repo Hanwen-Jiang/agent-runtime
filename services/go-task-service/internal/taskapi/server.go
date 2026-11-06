@@ -23,10 +23,12 @@ import (
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/clock"
 	"github.com/agentruntime/agent-runtime/libs/go-core/modelbudget"
+	"github.com/agentruntime/agent-runtime/libs/go-core/personalconfig"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/cache"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/durable"
@@ -123,7 +125,12 @@ type Deps struct {
 	// Cache 与 Workspace API 共用：建工作区期间那里记下“在建”，提交时查（WS-CREATE-RACE）；为空时不查。
 	Cache cache.Provider
 	// McpLeases 在提交时给 Task 发 MCP 租约（N-15，internal/mcp）；为空时不发。
-	McpLeases McpLeaseIssuer
+	McpLeases      McpLeaseIssuer
+	PersonalConfig PersonalConfigPinner
+}
+
+type PersonalConfigPinner interface {
+	PinPersonalConfig(context.Context, *commonv1.TenantContext, string, string, ...*structpb.Struct) error
 }
 
 // McpLeaseIssuer 按提交时的设置给 Task 发 MCP 租约（*mcp.Server 实现它）。
@@ -398,13 +405,39 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	if err != nil {
 		return nil, err
 	}
+	if s.d.PersonalConfig != nil {
+		if err := s.d.PersonalConfig.PinPersonalConfig(ctx, tenant, row.TaskID, id.UserID, req.GetInputs()); err != nil {
+			return nil, err
+		}
+	}
+	selection := personalconfig.Selection{}
+	if s.d.PersonalConfig != nil {
+		selection, err = personalconfig.LoadSelection(ctx, s.d.Store, tenant, row.TaskID)
+		if err != nil {
+			return nil, err
+		}
+		pins.Skills, err = personalconfig.FilterSkills(pins.GetSkills(), selection.SkillNames)
+		if err != nil {
+			return nil, err
+		}
+	}
 	// N-14：固定的 Skill 另记在 Task 的记录上，Worker 按 task_id 读（Planner 的目录与 skill_read），不经工作流。
 	if err := s.tasks.SetSkillPins(ctx, tenant, row.TaskID, pins.GetSkills()); err != nil {
 		return nil, err
 	}
 	// N-15：提交者打开了的 MCP 工具按此刻的设置发给这个 Task（Worker 按 task_id 读）；重投递时不变。
 	if s.d.McpLeases != nil {
-		if err := s.d.McpLeases.IssueLeases(ctx, tenant, row.TaskID, id.UserID); err != nil {
+		if selection.MCPConnectionIDs != nil {
+			issuer, ok := s.d.McpLeases.(interface {
+				IssueSelectedLeases(context.Context, *commonv1.TenantContext, string, string, []string) error
+			})
+			if !ok {
+				return nil, providererr.New(providererr.Invalid, "personal_mcp_unavailable", "当前部署不支持选择 MCP 连接")
+			}
+			if err := issuer.IssueSelectedLeases(ctx, tenant, row.TaskID, id.UserID, selection.MCPConnectionIDs); err != nil {
+				return nil, err
+			}
+		} else if err := s.d.McpLeases.IssueLeases(ctx, tenant, row.TaskID, id.UserID); err != nil {
 			return nil, err
 		}
 	}

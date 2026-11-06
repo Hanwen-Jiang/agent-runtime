@@ -64,6 +64,11 @@ MIGRATIONS = (
             expires_at TEXT NOT NULL
         )""",
     )),
+    Migration(214, "task_artifact_reservations", (
+        "CREATE TABLE task_artifact_quota_lock (task_id TEXT PRIMARY KEY, version BIGINT NOT NULL DEFAULT 0)",
+        "CREATE TABLE task_artifact_reservations (idempotency_key TEXT PRIMARY KEY, reservation_id TEXT NOT NULL, task_id TEXT NOT NULL, size_bytes BIGINT NOT NULL, expires_at TEXT NOT NULL)",
+        "CREATE INDEX task_artifact_reservations_task ON task_artifact_reservations (task_id, expires_at)",
+    )),
 )
 
 
@@ -191,6 +196,35 @@ class DeliverFile:
             row = await tx.query_one("SELECT * FROM task_artifacts WHERE idempotency_key = $1", (key,))
         return dict(row) if row else None
 
+    async def _reserve(self, tenant: TenantContext, invocation: ToolInvocation, reservation: str, size: int) -> None:
+        if size < 0 or size > self.limits.max_file_bytes:
+            raise InvalidError("delivery_file_too_large", f"文件超过上限 {self.limits.max_file_bytes} 字节")
+        now = _iso(self.clock.now())
+        async with self.store.bind(tenant).transaction() as tx:
+            await tx.execute("INSERT INTO task_artifact_quota_lock (task_id, version) VALUES ($1, 1) ON CONFLICT (task_id) DO UPDATE SET version = task_artifact_quota_lock.version + 1", (invocation.task_id,))
+            existing = await tx.query_one("SELECT artifact_id FROM task_artifacts WHERE idempotency_key = $1", (invocation.idempotency_key,))
+            if existing:
+                raise InvalidError("delivery_already_committed", "交付已完成")
+            pending = await tx.query_one("SELECT reservation_id, expires_at FROM task_artifact_reservations WHERE idempotency_key = $1", (invocation.idempotency_key,))
+            if pending and str(pending["expires_at"]) > now:
+                raise InvalidError("delivery_pending", "相同交付正在上传，请稍后重试")
+            if pending:
+                await tx.execute("DELETE FROM task_artifact_reservations WHERE idempotency_key = $1", (invocation.idempotency_key,))
+            used = await tx.query_one("SELECT COUNT(*) AS n, COALESCE(SUM(size_bytes),0) AS total FROM task_artifacts WHERE task_id=$1", (invocation.task_id,))
+            reserved = await tx.query_one("SELECT COUNT(*) AS n, COALESCE(SUM(size_bytes),0) AS total FROM task_artifact_reservations WHERE task_id=$1 AND expires_at>$2", (invocation.task_id, now))
+            count = int(used["n"] if used else 0) + int(reserved["n"] if reserved else 0)
+            total = int(used["total"] if used else 0) + int(reserved["total"] if reserved else 0)
+            if count + 1 > self.limits.max_files_per_task:
+                raise InvalidError("delivery_too_many_files", f"一个 Task 最多交付 {self.limits.max_files_per_task} 个文件")
+            if total + size > self.limits.max_task_bytes:
+                raise InvalidError("delivery_task_too_large", f"一个 Task 交付的文件合计不超过 {self.limits.max_task_bytes} 字节")
+            await tx.execute("INSERT INTO task_artifact_reservations (idempotency_key,reservation_id,task_id,size_bytes,expires_at) VALUES ($1,$2,$3,$4,$5)",
+                             (invocation.idempotency_key, reservation, invocation.task_id, size, _iso(self.clock.now() + timedelta(minutes=5))))
+
+    async def _unreserve(self, tenant: TenantContext, key: str, reservation: str) -> None:
+        async with self.store.bind(tenant).transaction() as tx:
+            await tx.execute("DELETE FROM task_artifact_reservations WHERE idempotency_key=$1 AND reservation_id=$2", (key, reservation))
+
     async def __call__(self, invocation: ToolInvocation) -> Any:
         if not invocation.task_id:
             raise InvalidError("delivery_needs_task", "交付文件要在 Task 里调用")
@@ -203,47 +237,59 @@ class DeliverFile:
         key = invocation.idempotency_key
         if (row := await self._existing(tenant, key)) is not None:
             return _output(row)
-        args = invocation.arguments
-        path = clean_path(args.get("path"))
-        name = _name(str(args.get("name") or PurePosixPath(path).name))
-        by_call = getattr(self.reader, "read_invocation", None)
-        if by_call is not None:  # 与 repo_read 同一条路（存档模式经 Sandbox Service 读环境里的文件，F3-SANDBOX）
-            data = await by_call(invocation, path, max_bytes=self.limits.max_file_bytes)
-        else:
-            data = await self.reader.read(invocation.tenant_id, invocation.workspace_id, path, max_bytes=self.limits.max_file_bytes)
-        if len(data) > self.limits.max_file_bytes:
-            raise InvalidError("delivery_file_too_large", f"文件超过上限 {self.limits.max_file_bytes} 字节")
-        async with self.store.bind(tenant).transaction(read_only=True) as tx:
-            used = await tx.query_one("SELECT COUNT(*) AS n, COALESCE(SUM(size_bytes), 0) AS total FROM task_artifacts WHERE task_id = $1", (invocation.task_id,))
-        count, total = (int(used["n"]), int(used["total"])) if used else (0, 0)
-        if count + 1 > self.limits.max_files_per_task:
-            raise InvalidError("delivery_too_many_files", f"一个 Task 最多交付 {self.limits.max_files_per_task} 个文件")
-        if total + len(data) > self.limits.max_task_bytes:
-            raise InvalidError("delivery_task_too_large", f"一个 Task 交付的文件合计不超过 {self.limits.max_task_bytes} 字节")
-
+        path = clean_path(invocation.arguments.get("path"))
+        name = _name(str(invocation.arguments.get("name") or PurePosixPath(path).name))
         now = self.clock.now()
         artifact_id = _artifact_id(now)
         kind = media_type(name)
         objects = self.objects.bind(tenant)
-        object_key = f"{PREFIX}/{invocation.task_id}/{secrets.token_urlsafe(18)}/{name}"
-        info = await objects.put(object_key, data, content_type=kind, metadata={"task_id": invocation.task_id, "artifact_id": artifact_id}, if_absent=True)
-        row = {
-            "artifact_id": artifact_id, "task_id": invocation.task_id, "idempotency_key": key, "name": name, "path": path, "media_type": kind,
-            "size_bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(), "object_uri": info.uri,
-            "created_at": _iso(now), "expires_at": _iso(now + RETENTION),
-        }
+        object_key: str | None = None
+        reserved_size: int | None = None
+
+        async def reserve(size: int) -> None:
+            nonlocal reserved_size
+            await self._reserve(tenant, invocation, artifact_id, size)
+            reserved_size = size
+
         try:
+            direct = getattr(self.reader, "upload_invocation", None)
+            ref = await direct(invocation, path, name, reserve) if direct else None
+            if ref is None:
+                by_call = getattr(self.reader, "read_invocation", None)
+                data = await by_call(invocation, path, max_bytes=self.limits.max_file_bytes) if by_call else await self.reader.read(invocation.tenant_id, invocation.workspace_id, path, max_bytes=self.limits.max_file_bytes)
+                await reserve(len(data))
+                object_key = f"{PREFIX}/{invocation.task_id}/{secrets.token_urlsafe(18)}/{name}"
+                info = await objects.put(object_key, data, content_type=kind, metadata={"task_id": invocation.task_id, "artifact_id": artifact_id}, if_absent=True)
+                ref = {"object_key": object_key, "object_uri": info.uri, "size_bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+            object_key = str(ref["object_key"])
+            # Never trust a service response to change this task's object scope.
+            if objects.key_of(str(ref["object_uri"])) != object_key or not object_key.startswith(f"{PREFIX}/{invocation.task_id}/"):
+                object_key = None
+                raise InvalidError("delivery_object_mismatch", "交付对象作用域不匹配")
+            if reserved_size is None or int(ref["size_bytes"]) != reserved_size:
+                raise InvalidError("delivery_size_mismatch", "交付大小与预占配额不一致")
+            row = {
+                "artifact_id": artifact_id, "task_id": invocation.task_id, "idempotency_key": key, "name": name, "path": path, "media_type": kind,
+                "size_bytes": reserved_size, "sha256": str(ref["sha256"]), "object_uri": str(ref["object_uri"]),
+                "created_at": _iso(now), "expires_at": _iso(now + RETENTION),
+            }
             async with self.store.bind(tenant).transaction() as tx:
+                await tx.execute("INSERT INTO task_artifact_quota_lock (task_id,version) VALUES ($1,1) ON CONFLICT (task_id) DO UPDATE SET version=task_artifact_quota_lock.version+1", (invocation.task_id,))
+                pending = await tx.query_one("SELECT reservation_id, expires_at FROM task_artifact_reservations WHERE idempotency_key=$1", (key,))
+                if not pending or pending["reservation_id"] != artifact_id or str(pending["expires_at"]) <= _iso(self.clock.now()):
+                    raise InvalidError("delivery_reservation_expired", "上传配额预占已过期，请重试")
                 await tx.execute(
                     "INSERT INTO task_artifacts (artifact_id, task_id, idempotency_key, name, path, media_type, size_bytes, sha256, object_uri, created_at, expires_at)"
                     " VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
                     tuple(row[k] for k in ("artifact_id", "task_id", "idempotency_key", "name", "path", "media_type", "size_bytes", "sha256",
                                            "object_uri", "created_at", "expires_at")),
                 )
-        except Exception:
-            # 同一个幂等键并发写入：别人的那一行先写成了，删掉自己的对象，返回那一行。
-            await objects.delete(object_key)
-            if (existing := await self._existing(tenant, key)) is not None:
+                await tx.execute("DELETE FROM task_artifact_reservations WHERE idempotency_key=$1 AND reservation_id=$2", (key, artifact_id))
+        except BaseException as error:
+            if object_key is not None:
+                await objects.delete(object_key)
+            await self._unreserve(tenant, key, artifact_id)
+            if isinstance(error, Exception) and (existing := await self._existing(tenant, key)) is not None:
                 return _output(existing)
             raise
         return _output(row)

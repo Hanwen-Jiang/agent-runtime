@@ -129,6 +129,7 @@ pub fn cancel(app: &App, ctx: &mut Ctx<'_>) {
 }
 
 struct ExecRequest {
+    offload_inline_bytes: i64,
     argv: Vec<String>,
     stdin: Vec<u8>,
     timeout_ms: i64,
@@ -140,6 +141,7 @@ fn parse_request(body: &[u8]) -> Option<ExecRequest> {
     let v = json::parse_first(body)?;
     let m = json::object(&v).ok()?;
     Some(ExecRequest {
+        offload_inline_bytes: json::get_i64(json::field(m, "offload_inline_bytes")).ok()?,
         argv: json::get_strings(json::field(m, "argv")).ok()?,
         stdin: json::get_bytes(json::field(m, "stdin")).ok()?,
         timeout_ms: json::get_i64(json::field(m, "timeout_ms")).ok()?,
@@ -216,23 +218,46 @@ pub fn exec(app: &App, ctx: &mut Ctx<'_>) {
         Outcome::Done {
             exit,
             timed_out,
-            stdout,
-            stderr,
+            mut stdout,
+            mut stderr,
         } => {
             let code = if timed_out {
                 None
             } else {
                 Some(exit.returncode() as i64)
             };
-            let body = Obj::new()
+            let mut refs = Vec::new();
+            if req.offload_inline_bytes > 0 {
+                let limit = (req.offload_inline_bytes as usize).min(1 << 20);
+                for (name, output) in [
+                    ("stdout_transfer", &mut stdout),
+                    ("stderr_transfer", &mut stderr),
+                ] {
+                    if output.buf.len() > limit {
+                        if let Ok(prepared) = app.transfers.prepare(output.buf.clone()) {
+                            let half = limit / 2;
+                            let mut excerpt = output.buf[..half].to_vec();
+                            excerpt.extend_from_slice(b"\n...[externalized]...\n");
+                            excerpt.extend_from_slice(
+                                &output.buf[output.buf.len() - (limit - half)..],
+                            );
+                            output.buf = excerpt;
+                            refs.push((name, prepared.to_string()));
+                        }
+                    }
+                }
+            }
+            let mut body = Obj::new()
                 .opt_i("exit_code", code)
                 .bool("timed_out", timed_out)
                 .s("stdout", &json::b64_encode(&stdout.buf))
                 .s("stderr", &json::b64_encode(&stderr.buf))
                 .bool("truncated", stdout.truncated || stderr.truncated)
-                .i("cpu_ms", (exit.cpu.as_micros() / 1000) as i64)
-                .done();
-            write_json(ctx, 200, body);
+                .i("cpu_ms", (exit.cpu.as_micros() / 1000) as i64);
+            for (name, value) in refs {
+                body = body.raw(name, &value);
+            }
+            write_json(ctx, 200, body.done());
         }
     }
 }
@@ -303,7 +328,14 @@ fn run(
             let _ = w.write_all(&data);
         }
     });
-    let output = proc::Output::start(&mut child, app.c.output_limit);
+    let output = proc::Output::start(
+        &mut child,
+        if req.offload_inline_bytes > 0 {
+            app.c.file_limit.min(rs_transfer::MAX_BLOB_BYTES) as usize
+        } else {
+            app.c.output_limit
+        },
+    );
     let pid = proc::Waiter::start(child, tx);
     let deadline = Instant::now() + Duration::from_millis(req.timeout_ms as u64);
     let mut timed_out = false;

@@ -55,6 +55,8 @@ pub struct Registry {
 pub struct App {
     pub c: Config,
     pub reg: Mutex<Registry>,
+    pub transfers: crate::transfer::Transfers,
+    pub restores: crate::restore::Restores,
 }
 
 impl App {
@@ -81,6 +83,8 @@ impl App {
         Ok(App {
             c,
             reg: Mutex::new(Registry::default()),
+            transfers: crate::transfer::Transfers::default(),
+            restores: crate::restore::Restores::default(),
         })
     }
 
@@ -148,6 +152,10 @@ impl App {
             return fail(ctx, 401, "unauthorized", "令牌不对");
         }
         match route {
+            Route::PrepareTransfer => crate::transfer::prepare(self, ctx),
+            Route::CommitTransfer => crate::transfer::commit(self, ctx),
+            Route::ReleaseTransfer => crate::transfer::release(self, ctx),
+            Route::ReadTransfer => crate::transfer::read(self, ctx),
             Route::Health => {}
             Route::Exec => crate::exec::exec(self, ctx),
             Route::Cancel => crate::exec::cancel(self, ctx),
@@ -155,6 +163,8 @@ impl App {
             Route::ReadFile => crate::files::read_file(self, ctx, &wildcard),
             Route::Export => crate::archive::export(self, ctx),
             Route::Import => crate::archive::import(self, ctx),
+            Route::RestoreBlocks => crate::restore::blocks(self, ctx),
+            Route::RestoreFinish => crate::restore::finish(self, ctx),
             Route::Manifest => crate::archive::manifest(self, ctx),
             Route::List => crate::archive::list(self, ctx, &wildcard),
             Route::Grep => crate::archive::grep(self, ctx),
@@ -164,6 +174,12 @@ impl App {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Route {
+    RestoreBlocks,
+    RestoreFinish,
+    PrepareTransfer,
+    CommitTransfer,
+    ReadTransfer,
+    ReleaseTransfer,
     Health,
     Exec,
     Cancel,
@@ -185,6 +201,29 @@ fn route(method: &str, path: &str) -> Option<(Route, Vec<u8>)> {
             .map(|_| Vec::new())
     };
     let wild = |lits: &[&str]| matches(path, lits).and_then(|rest| rest);
+    if method == "POST" {
+        for (name, route) in [
+            ("prepare", Route::PrepareTransfer),
+            ("commit", Route::CommitTransfer),
+            ("read", Route::ReadTransfer),
+            ("release", Route::ReleaseTransfer),
+        ] {
+            if let Some(v) = exact(&["v1", "transfer", name]) {
+                return Some((route, v));
+            }
+        }
+    }
+    if method == "POST" {
+        if let Some(v) = exact(&["v1", "restore", "blocks"]) {
+            return Some((Route::RestoreBlocks, v));
+        }
+        if let Some(v) = exact(&["v1", "restore"]) {
+            return Some((Route::RestoreFinish, v));
+        }
+        if let Some(v) = exact(&["v1", "snapshot"]) {
+            return Some((Route::Manifest, v));
+        }
+    }
     if get && let Some(v) = exact(&["healthz"]) {
         return Some((Route::Health, v));
     }

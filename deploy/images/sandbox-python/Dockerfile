@@ -13,6 +13,7 @@ FROM ${AGENT_RUST_IMAGE} AS build
 WORKDIR /src
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 COPY libs/rs-sys/ libs/rs-sys/
+COPY libs/rs-transfer/ libs/rs-transfer/
 COPY services/rs-sandbox-agent/ services/rs-sandbox-agent/
 COPY services/rs-fc-manager/ services/rs-fc-manager/
 RUN --mount=type=cache,target=/usr/local/cargo/registry --mount=type=cache,target=/src/target \
@@ -21,6 +22,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry --mount=type=cache,targe
 
 FROM ${PYTHON_IMAGE}
 COPY --from=build /out/sandbox-agent /usr/local/bin/sandbox-agent
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN groupadd --gid 10001 sandbox && useradd --uid 10001 --gid 10001 --home-dir /tmp --no-create-home --shell /usr/sbin/nologin sandbox \
     && mkdir -p /workspace && chown 10001:10001 /workspace
 ENV AGENT_WORKDIR=/workspace AGENT_ADDR=:7070 HOME=/tmp PYTHONDONTWRITEBYTECODE=1

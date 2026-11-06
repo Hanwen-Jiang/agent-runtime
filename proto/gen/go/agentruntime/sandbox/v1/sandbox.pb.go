@@ -1444,8 +1444,10 @@ type ExecRequest struct {
 	Env map[string]string `protobuf:"bytes,6,rep,name=env,proto3" json:"env,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// 每路输出最多返回多少字节（尾部截断）；0 时 4 MiB。
 	MaxOutputBytes int64 `protobuf:"varint,7,opt,name=max_output_bytes,json=maxOutputBytes,proto3" json:"max_output_bytes,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Opt-in: large output is retained by the agent and uploaded directly to storage.
+	OffloadInlineBytes int64 `protobuf:"varint,8,opt,name=offload_inline_bytes,json=offloadInlineBytes,proto3" json:"offload_inline_bytes,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ExecRequest) Reset() {
@@ -1527,6 +1529,13 @@ func (x *ExecRequest) GetMaxOutputBytes() int64 {
 	return 0
 }
 
+func (x *ExecRequest) GetOffloadInlineBytes() int64 {
+	if x != nil {
+		return x.OffloadInlineBytes
+	}
+	return 0
+}
+
 type ExecResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// 超时时没有退出码。
@@ -1536,9 +1545,11 @@ type ExecResponse struct {
 	Stderr      []byte `protobuf:"bytes,4,opt,name=stderr,proto3" json:"stderr,omitempty"`
 	TimedOut    bool   `protobuf:"varint,5,opt,name=timed_out,json=timedOut,proto3" json:"timed_out,omitempty"`
 	// 量不出时为 -1。
-	CpuTimeMs       int64 `protobuf:"varint,6,opt,name=cpu_time_ms,json=cpuTimeMs,proto3" json:"cpu_time_ms,omitempty"`
-	StdoutTruncated bool  `protobuf:"varint,7,opt,name=stdout_truncated,json=stdoutTruncated,proto3" json:"stdout_truncated,omitempty"`
-	StderrTruncated bool  `protobuf:"varint,8,opt,name=stderr_truncated,json=stderrTruncated,proto3" json:"stderr_truncated,omitempty"`
+	CpuTimeMs       int64            `protobuf:"varint,6,opt,name=cpu_time_ms,json=cpuTimeMs,proto3" json:"cpu_time_ms,omitempty"`
+	StdoutTruncated bool             `protobuf:"varint,7,opt,name=stdout_truncated,json=stdoutTruncated,proto3" json:"stdout_truncated,omitempty"`
+	StderrTruncated bool             `protobuf:"varint,8,opt,name=stderr_truncated,json=stderrTruncated,proto3" json:"stderr_truncated,omitempty"`
+	StdoutObject    *ObjectReference `protobuf:"bytes,9,opt,name=stdout_object,json=stdoutObject,proto3" json:"stdout_object,omitempty"`
+	StderrObject    *ObjectReference `protobuf:"bytes,10,opt,name=stderr_object,json=stderrObject,proto3" json:"stderr_object,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -1627,6 +1638,20 @@ func (x *ExecResponse) GetStderrTruncated() bool {
 		return x.StderrTruncated
 	}
 	return false
+}
+
+func (x *ExecResponse) GetStdoutObject() *ObjectReference {
+	if x != nil {
+		return x.StdoutObject
+	}
+	return nil
+}
+
+func (x *ExecResponse) GetStderrObject() *ObjectReference {
+	if x != nil {
+		return x.StderrObject
+	}
+	return nil
 }
 
 type WriteFileRequest struct {
@@ -3218,6 +3243,358 @@ func (x *DestroyTenantResponse) GetDestroyed() int32 {
 	return 0
 }
 
+type PreparedTransfer struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TransferId    string                 `protobuf:"bytes,1,opt,name=transfer_id,json=transferId,proto3" json:"transfer_id,omitempty"`
+	Sha256        string                 `protobuf:"bytes,2,opt,name=sha256,proto3" json:"sha256,omitempty"`
+	SizeBytes     int64                  `protobuf:"varint,3,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PreparedTransfer) Reset() {
+	*x = PreparedTransfer{}
+	mi := &file_agentruntime_sandbox_v1_sandbox_proto_msgTypes[52]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PreparedTransfer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PreparedTransfer) ProtoMessage() {}
+
+func (x *PreparedTransfer) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_sandbox_v1_sandbox_proto_msgTypes[52]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PreparedTransfer.ProtoReflect.Descriptor instead.
+func (*PreparedTransfer) Descriptor() ([]byte, []int) {
+	return file_agentruntime_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{52}
+}
+
+func (x *PreparedTransfer) GetTransferId() string {
+	if x != nil {
+		return x.TransferId
+	}
+	return ""
+}
+
+func (x *PreparedTransfer) GetSha256() string {
+	if x != nil {
+		return x.Sha256
+	}
+	return ""
+}
+
+func (x *PreparedTransfer) GetSizeBytes() int64 {
+	if x != nil {
+		return x.SizeBytes
+	}
+	return 0
+}
+
+type ObjectReference struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ObjectKey     string                 `protobuf:"bytes,1,opt,name=object_key,json=objectKey,proto3" json:"object_key,omitempty"`
+	ObjectUri     string                 `protobuf:"bytes,2,opt,name=object_uri,json=objectUri,proto3" json:"object_uri,omitempty"`
+	Sha256        string                 `protobuf:"bytes,3,opt,name=sha256,proto3" json:"sha256,omitempty"`
+	SizeBytes     int64                  `protobuf:"varint,4,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ObjectReference) Reset() {
+	*x = ObjectReference{}
+	mi := &file_agentruntime_sandbox_v1_sandbox_proto_msgTypes[53]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ObjectReference) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ObjectReference) ProtoMessage() {}
+
+func (x *ObjectReference) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_sandbox_v1_sandbox_proto_msgTypes[53]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ObjectReference.ProtoReflect.Descriptor instead.
+func (*ObjectReference) Descriptor() ([]byte, []int) {
+	return file_agentruntime_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{53}
+}
+
+func (x *ObjectReference) GetObjectKey() string {
+	if x != nil {
+		return x.ObjectKey
+	}
+	return ""
+}
+
+func (x *ObjectReference) GetObjectUri() string {
+	if x != nil {
+		return x.ObjectUri
+	}
+	return ""
+}
+
+func (x *ObjectReference) GetSha256() string {
+	if x != nil {
+		return x.Sha256
+	}
+	return ""
+}
+
+func (x *ObjectReference) GetSizeBytes() int64 {
+	if x != nil {
+		return x.SizeBytes
+	}
+	return 0
+}
+
+type PrepareTransferRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	LeaseId       string                 `protobuf:"bytes,2,opt,name=lease_id,json=leaseId,proto3" json:"lease_id,omitempty"`
+	TaskId        string                 `protobuf:"bytes,3,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
+	Path          string                 `protobuf:"bytes,4,opt,name=path,proto3" json:"path,omitempty"`
+	Name          string                 `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PrepareTransferRequest) Reset() {
+	*x = PrepareTransferRequest{}
+	mi := &file_agentruntime_sandbox_v1_sandbox_proto_msgTypes[54]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PrepareTransferRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PrepareTransferRequest) ProtoMessage() {}
+
+func (x *PrepareTransferRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_sandbox_v1_sandbox_proto_msgTypes[54]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PrepareTransferRequest.ProtoReflect.Descriptor instead.
+func (*PrepareTransferRequest) Descriptor() ([]byte, []int) {
+	return file_agentruntime_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{54}
+}
+
+func (x *PrepareTransferRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *PrepareTransferRequest) GetLeaseId() string {
+	if x != nil {
+		return x.LeaseId
+	}
+	return ""
+}
+
+func (x *PrepareTransferRequest) GetTaskId() string {
+	if x != nil {
+		return x.TaskId
+	}
+	return ""
+}
+
+func (x *PrepareTransferRequest) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *PrepareTransferRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type PrepareTransferResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Transfer      *PreparedTransfer      `protobuf:"bytes,1,opt,name=transfer,proto3" json:"transfer,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PrepareTransferResponse) Reset() {
+	*x = PrepareTransferResponse{}
+	mi := &file_agentruntime_sandbox_v1_sandbox_proto_msgTypes[55]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PrepareTransferResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PrepareTransferResponse) ProtoMessage() {}
+
+func (x *PrepareTransferResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_sandbox_v1_sandbox_proto_msgTypes[55]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PrepareTransferResponse.ProtoReflect.Descriptor instead.
+func (*PrepareTransferResponse) Descriptor() ([]byte, []int) {
+	return file_agentruntime_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{55}
+}
+
+func (x *PrepareTransferResponse) GetTransfer() *PreparedTransfer {
+	if x != nil {
+		return x.Transfer
+	}
+	return nil
+}
+
+type CommitTransferRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	LeaseId       string                 `protobuf:"bytes,2,opt,name=lease_id,json=leaseId,proto3" json:"lease_id,omitempty"`
+	TransferId    string                 `protobuf:"bytes,3,opt,name=transfer_id,json=transferId,proto3" json:"transfer_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CommitTransferRequest) Reset() {
+	*x = CommitTransferRequest{}
+	mi := &file_agentruntime_sandbox_v1_sandbox_proto_msgTypes[56]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CommitTransferRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CommitTransferRequest) ProtoMessage() {}
+
+func (x *CommitTransferRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_sandbox_v1_sandbox_proto_msgTypes[56]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CommitTransferRequest.ProtoReflect.Descriptor instead.
+func (*CommitTransferRequest) Descriptor() ([]byte, []int) {
+	return file_agentruntime_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{56}
+}
+
+func (x *CommitTransferRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+func (x *CommitTransferRequest) GetLeaseId() string {
+	if x != nil {
+		return x.LeaseId
+	}
+	return ""
+}
+
+func (x *CommitTransferRequest) GetTransferId() string {
+	if x != nil {
+		return x.TransferId
+	}
+	return ""
+}
+
+type CommitTransferResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Object        *ObjectReference       `protobuf:"bytes,1,opt,name=object,proto3" json:"object,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CommitTransferResponse) Reset() {
+	*x = CommitTransferResponse{}
+	mi := &file_agentruntime_sandbox_v1_sandbox_proto_msgTypes[57]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CommitTransferResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CommitTransferResponse) ProtoMessage() {}
+
+func (x *CommitTransferResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_sandbox_v1_sandbox_proto_msgTypes[57]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CommitTransferResponse.ProtoReflect.Descriptor instead.
+func (*CommitTransferResponse) Descriptor() ([]byte, []int) {
+	return file_agentruntime_sandbox_v1_sandbox_proto_rawDescGZIP(), []int{57}
+}
+
+func (x *CommitTransferResponse) GetObject() *ObjectReference {
+	if x != nil {
+		return x.Object
+	}
+	return nil
+}
+
 var File_agentruntime_sandbox_v1_sandbox_proto protoreflect.FileDescriptor
 
 const file_agentruntime_sandbox_v1_sandbox_proto_rawDesc = "" +
@@ -3325,7 +3702,7 @@ const file_agentruntime_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x05lease\x18\x01 \x01(\v2\x1e.agentruntime.sandbox.v1.LeaseR\x05lease\"k\n" +
 	"\x0fManifestRequest\x12=\n" +
 	"\x06tenant\x18\x01 \x01(\v2%.agentruntime.common.v1.TenantContextR\x06tenant\x12\x19\n" +
-	"\blease_id\x18\x02 \x01(\tR\aleaseId\"\xd3\x02\n" +
+	"\blease_id\x18\x02 \x01(\tR\aleaseId\"\x85\x03\n" +
 	"\vExecRequest\x12=\n" +
 	"\x06tenant\x18\x01 \x01(\v2%.agentruntime.common.v1.TenantContextR\x06tenant\x12\x19\n" +
 	"\blease_id\x18\x02 \x01(\tR\aleaseId\x12\x12\n" +
@@ -3334,10 +3711,11 @@ const file_agentruntime_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"timeout_ms\x18\x04 \x01(\x03R\ttimeoutMs\x12\x14\n" +
 	"\x05stdin\x18\x05 \x01(\fR\x05stdin\x12?\n" +
 	"\x03env\x18\x06 \x03(\v2-.agentruntime.sandbox.v1.ExecRequest.EnvEntryR\x03env\x12(\n" +
-	"\x10max_output_bytes\x18\a \x01(\x03R\x0emaxOutputBytes\x1a6\n" +
+	"\x10max_output_bytes\x18\a \x01(\x03R\x0emaxOutputBytes\x120\n" +
+	"\x14offload_inline_bytes\x18\b \x01(\x03R\x12offloadInlineBytes\x1a6\n" +
 	"\bEnvEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x92\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb0\x03\n" +
 	"\fExecResponse\x12\"\n" +
 	"\rhas_exit_code\x18\x01 \x01(\bR\vhasExitCode\x12\x1b\n" +
 	"\texit_code\x18\x02 \x01(\x05R\bexitCode\x12\x16\n" +
@@ -3346,7 +3724,10 @@ const file_agentruntime_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\ttimed_out\x18\x05 \x01(\bR\btimedOut\x12\x1e\n" +
 	"\vcpu_time_ms\x18\x06 \x01(\x03R\tcpuTimeMs\x12)\n" +
 	"\x10stdout_truncated\x18\a \x01(\bR\x0fstdoutTruncated\x12)\n" +
-	"\x10stderr_truncated\x18\b \x01(\bR\x0fstderrTruncated\"\x94\x01\n" +
+	"\x10stderr_truncated\x18\b \x01(\bR\x0fstderrTruncated\x12M\n" +
+	"\rstdout_object\x18\t \x01(\v2(.agentruntime.sandbox.v1.ObjectReferenceR\fstdoutObject\x12M\n" +
+	"\rstderr_object\x18\n" +
+	" \x01(\v2(.agentruntime.sandbox.v1.ObjectReferenceR\fstderrObject\"\x94\x01\n" +
 	"\x10WriteFileRequest\x12=\n" +
 	"\x06tenant\x18\x01 \x01(\v2%.agentruntime.common.v1.TenantContextR\x06tenant\x12\x19\n" +
 	"\blease_id\x18\x02 \x01(\tR\aleaseId\x12\x12\n" +
@@ -3443,7 +3824,36 @@ const file_agentruntime_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x18DestroyWorkspaceResponse\x12\x1c\n" +
 	"\tdestroyed\x18\x01 \x01(\x05R\tdestroyed\"5\n" +
 	"\x15DestroyTenantResponse\x12\x1c\n" +
-	"\tdestroyed\x18\x01 \x01(\x05R\tdestroyed2\xdf\x11\n" +
+	"\tdestroyed\x18\x01 \x01(\x05R\tdestroyed\"j\n" +
+	"\x10PreparedTransfer\x12\x1f\n" +
+	"\vtransfer_id\x18\x01 \x01(\tR\n" +
+	"transferId\x12\x16\n" +
+	"\x06sha256\x18\x02 \x01(\tR\x06sha256\x12\x1d\n" +
+	"\n" +
+	"size_bytes\x18\x03 \x01(\x03R\tsizeBytes\"\x86\x01\n" +
+	"\x0fObjectReference\x12\x1d\n" +
+	"\n" +
+	"object_key\x18\x01 \x01(\tR\tobjectKey\x12\x1d\n" +
+	"\n" +
+	"object_uri\x18\x02 \x01(\tR\tobjectUri\x12\x16\n" +
+	"\x06sha256\x18\x03 \x01(\tR\x06sha256\x12\x1d\n" +
+	"\n" +
+	"size_bytes\x18\x04 \x01(\x03R\tsizeBytes\"\xb3\x01\n" +
+	"\x16PrepareTransferRequest\x12=\n" +
+	"\x06tenant\x18\x01 \x01(\v2%.agentruntime.common.v1.TenantContextR\x06tenant\x12\x19\n" +
+	"\blease_id\x18\x02 \x01(\tR\aleaseId\x12\x17\n" +
+	"\atask_id\x18\x03 \x01(\tR\x06taskId\x12\x12\n" +
+	"\x04path\x18\x04 \x01(\tR\x04path\x12\x12\n" +
+	"\x04name\x18\x05 \x01(\tR\x04name\"`\n" +
+	"\x17PrepareTransferResponse\x12E\n" +
+	"\btransfer\x18\x01 \x01(\v2).agentruntime.sandbox.v1.PreparedTransferR\btransfer\"\x92\x01\n" +
+	"\x15CommitTransferRequest\x12=\n" +
+	"\x06tenant\x18\x01 \x01(\v2%.agentruntime.common.v1.TenantContextR\x06tenant\x12\x19\n" +
+	"\blease_id\x18\x02 \x01(\tR\aleaseId\x12\x1f\n" +
+	"\vtransfer_id\x18\x03 \x01(\tR\n" +
+	"transferId\"Z\n" +
+	"\x16CommitTransferResponse\x12@\n" +
+	"\x06object\x18\x01 \x01(\v2(.agentruntime.sandbox.v1.ObjectReferenceR\x06object2\xc8\x13\n" +
 	"\x0eSandboxService\x12b\n" +
 	"\tListFiles\x12).agentruntime.sandbox.v1.ListFilesRequest\x1a*.agentruntime.sandbox.v1.ListFilesResponse\x12_\n" +
 	"\bReadFile\x12(.agentruntime.sandbox.v1.ReadFileRequest\x1a).agentruntime.sandbox.v1.ReadFileResponse\x12S\n" +
@@ -3452,7 +3862,9 @@ const file_agentruntime_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\x06GetLog\x12&.agentruntime.sandbox.v1.GetLogRequest\x1a'.agentruntime.sandbox.v1.GetLogResponse\x12q\n" +
 	"\x0eDescribeTenant\x12..agentruntime.sandbox.v1.DescribeTenantRequest\x1a/.agentruntime.sandbox.v1.DescribeTenantResponse\x12\\\n" +
 	"\aAcquire\x12'.agentruntime.sandbox.v1.AcquireRequest\x1a(.agentruntime.sandbox.v1.AcquireResponse\x12S\n" +
-	"\x04Exec\x12$.agentruntime.sandbox.v1.ExecRequest\x1a%.agentruntime.sandbox.v1.ExecResponse\x12b\n" +
+	"\x04Exec\x12$.agentruntime.sandbox.v1.ExecRequest\x1a%.agentruntime.sandbox.v1.ExecResponse\x12t\n" +
+	"\x0fPrepareTransfer\x12/.agentruntime.sandbox.v1.PrepareTransferRequest\x1a0.agentruntime.sandbox.v1.PrepareTransferResponse\x12q\n" +
+	"\x0eCommitTransfer\x12..agentruntime.sandbox.v1.CommitTransferRequest\x1a/.agentruntime.sandbox.v1.CommitTransferResponse\x12b\n" +
 	"\tWriteFile\x12).agentruntime.sandbox.v1.WriteFileRequest\x1a*.agentruntime.sandbox.v1.WriteFileResponse\x12n\n" +
 	"\rReadLeaseFile\x12-.agentruntime.sandbox.v1.ReadLeaseFileRequest\x1a..agentruntime.sandbox.v1.ReadLeaseFileResponse\x12k\n" +
 	"\fListLeaseDir\x12,.agentruntime.sandbox.v1.ListLeaseDirRequest\x1a-.agentruntime.sandbox.v1.ListLeaseDirResponse\x12b\n" +
@@ -3481,7 +3893,7 @@ func file_agentruntime_sandbox_v1_sandbox_proto_rawDescGZIP() []byte {
 	return file_agentruntime_sandbox_v1_sandbox_proto_rawDescData
 }
 
-var file_agentruntime_sandbox_v1_sandbox_proto_msgTypes = make([]protoimpl.MessageInfo, 53)
+var file_agentruntime_sandbox_v1_sandbox_proto_msgTypes = make([]protoimpl.MessageInfo, 59)
 var file_agentruntime_sandbox_v1_sandbox_proto_goTypes = []any{
 	(*ListFilesRequest)(nil),         // 0: agentruntime.sandbox.v1.ListFilesRequest
 	(*ReadFileRequest)(nil),          // 1: agentruntime.sandbox.v1.ReadFileRequest
@@ -3535,102 +3947,118 @@ var file_agentruntime_sandbox_v1_sandbox_proto_goTypes = []any{
 	(*DestroySessionResponse)(nil),   // 49: agentruntime.sandbox.v1.DestroySessionResponse
 	(*DestroyWorkspaceResponse)(nil), // 50: agentruntime.sandbox.v1.DestroyWorkspaceResponse
 	(*DestroyTenantResponse)(nil),    // 51: agentruntime.sandbox.v1.DestroyTenantResponse
-	nil,                              // 52: agentruntime.sandbox.v1.ExecRequest.EnvEntry
-	(*v1.TenantContext)(nil),         // 53: agentruntime.common.v1.TenantContext
-	(*v11.ListFilesResponse)(nil),    // 54: agentruntime.workspace.v1.ListFilesResponse
-	(*v11.ReadFileResponse)(nil),     // 55: agentruntime.workspace.v1.ReadFileResponse
-	(*v11.GetDiffResponse)(nil),      // 56: agentruntime.workspace.v1.GetDiffResponse
-	(*v11.GetLogResponse)(nil),       // 57: agentruntime.workspace.v1.GetLogResponse
-	(*v12.EnvRecord)(nil),            // 58: agentruntime.environment.v1.EnvRecord
+	(*PreparedTransfer)(nil),         // 52: agentruntime.sandbox.v1.PreparedTransfer
+	(*ObjectReference)(nil),          // 53: agentruntime.sandbox.v1.ObjectReference
+	(*PrepareTransferRequest)(nil),   // 54: agentruntime.sandbox.v1.PrepareTransferRequest
+	(*PrepareTransferResponse)(nil),  // 55: agentruntime.sandbox.v1.PrepareTransferResponse
+	(*CommitTransferRequest)(nil),    // 56: agentruntime.sandbox.v1.CommitTransferRequest
+	(*CommitTransferResponse)(nil),   // 57: agentruntime.sandbox.v1.CommitTransferResponse
+	nil,                              // 58: agentruntime.sandbox.v1.ExecRequest.EnvEntry
+	(*v1.TenantContext)(nil),         // 59: agentruntime.common.v1.TenantContext
+	(*v11.ListFilesResponse)(nil),    // 60: agentruntime.workspace.v1.ListFilesResponse
+	(*v11.ReadFileResponse)(nil),     // 61: agentruntime.workspace.v1.ReadFileResponse
+	(*v11.GetDiffResponse)(nil),      // 62: agentruntime.workspace.v1.GetDiffResponse
+	(*v11.GetLogResponse)(nil),       // 63: agentruntime.workspace.v1.GetLogResponse
+	(*v12.EnvRecord)(nil),            // 64: agentruntime.environment.v1.EnvRecord
 }
 var file_agentruntime_sandbox_v1_sandbox_proto_depIdxs = []int32{
-	53, // 0: agentruntime.sandbox.v1.ListFilesRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	53, // 1: agentruntime.sandbox.v1.ReadFileRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	53, // 2: agentruntime.sandbox.v1.GrepRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	59, // 0: agentruntime.sandbox.v1.ListFilesRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	59, // 1: agentruntime.sandbox.v1.ReadFileRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	59, // 2: agentruntime.sandbox.v1.GrepRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
 	3,  // 3: agentruntime.sandbox.v1.GrepResponse.matches:type_name -> agentruntime.sandbox.v1.GrepMatch
 	3,  // 4: agentruntime.sandbox.v1.GrepLeaseResponse.matches:type_name -> agentruntime.sandbox.v1.GrepMatch
-	53, // 5: agentruntime.sandbox.v1.GetDiffRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	53, // 6: agentruntime.sandbox.v1.GetLogRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	54, // 7: agentruntime.sandbox.v1.ListFilesResponse.response:type_name -> agentruntime.workspace.v1.ListFilesResponse
-	55, // 8: agentruntime.sandbox.v1.ReadFileResponse.response:type_name -> agentruntime.workspace.v1.ReadFileResponse
-	56, // 9: agentruntime.sandbox.v1.GetDiffResponse.response:type_name -> agentruntime.workspace.v1.GetDiffResponse
-	57, // 10: agentruntime.sandbox.v1.GetLogResponse.response:type_name -> agentruntime.workspace.v1.GetLogResponse
-	53, // 11: agentruntime.sandbox.v1.DescribeTenantRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	53, // 12: agentruntime.sandbox.v1.AcquireRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	59, // 5: agentruntime.sandbox.v1.GetDiffRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	59, // 6: agentruntime.sandbox.v1.GetLogRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	60, // 7: agentruntime.sandbox.v1.ListFilesResponse.response:type_name -> agentruntime.workspace.v1.ListFilesResponse
+	61, // 8: agentruntime.sandbox.v1.ReadFileResponse.response:type_name -> agentruntime.workspace.v1.ReadFileResponse
+	62, // 9: agentruntime.sandbox.v1.GetDiffResponse.response:type_name -> agentruntime.workspace.v1.GetDiffResponse
+	63, // 10: agentruntime.sandbox.v1.GetLogResponse.response:type_name -> agentruntime.workspace.v1.GetLogResponse
+	59, // 11: agentruntime.sandbox.v1.DescribeTenantRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	59, // 12: agentruntime.sandbox.v1.AcquireRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
 	14, // 13: agentruntime.sandbox.v1.AcquireRequest.spec:type_name -> agentruntime.sandbox.v1.Spec
 	16, // 14: agentruntime.sandbox.v1.Lease.backend:type_name -> agentruntime.sandbox.v1.Backend
 	17, // 15: agentruntime.sandbox.v1.Lease.prepared:type_name -> agentruntime.sandbox.v1.Prepared
-	58, // 16: agentruntime.sandbox.v1.Lease.record:type_name -> agentruntime.environment.v1.EnvRecord
+	64, // 16: agentruntime.sandbox.v1.Lease.record:type_name -> agentruntime.environment.v1.EnvRecord
 	18, // 17: agentruntime.sandbox.v1.AcquireResponse.lease:type_name -> agentruntime.sandbox.v1.Lease
-	53, // 18: agentruntime.sandbox.v1.ManifestRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	53, // 19: agentruntime.sandbox.v1.ExecRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	52, // 20: agentruntime.sandbox.v1.ExecRequest.env:type_name -> agentruntime.sandbox.v1.ExecRequest.EnvEntry
-	53, // 21: agentruntime.sandbox.v1.WriteFileRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	53, // 22: agentruntime.sandbox.v1.ReadLeaseFileRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	53, // 23: agentruntime.sandbox.v1.ListLeaseDirRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	28, // 24: agentruntime.sandbox.v1.ListLeaseDirResponse.entries:type_name -> agentruntime.sandbox.v1.DirEntry
-	53, // 25: agentruntime.sandbox.v1.GrepLeaseRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	31, // 26: agentruntime.sandbox.v1.ManifestResponse.entries:type_name -> agentruntime.sandbox.v1.ManifestEntry
-	53, // 27: agentruntime.sandbox.v1.ExportArchiveRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	53, // 28: agentruntime.sandbox.v1.ImportArchiveHeader.tenant:type_name -> agentruntime.common.v1.TenantContext
-	35, // 29: agentruntime.sandbox.v1.ImportArchiveRequest.header:type_name -> agentruntime.sandbox.v1.ImportArchiveHeader
-	53, // 30: agentruntime.sandbox.v1.PreviewAddressRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	53, // 31: agentruntime.sandbox.v1.ReleaseRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	18, // 32: agentruntime.sandbox.v1.ReleaseResponse.lease:type_name -> agentruntime.sandbox.v1.Lease
-	53, // 33: agentruntime.sandbox.v1.SnapshotRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	53, // 34: agentruntime.sandbox.v1.DiscardRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	53, // 35: agentruntime.sandbox.v1.DestroySessionRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	53, // 36: agentruntime.sandbox.v1.DestroyWorkspaceRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	53, // 37: agentruntime.sandbox.v1.DestroyTenantRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	0,  // 38: agentruntime.sandbox.v1.SandboxService.ListFiles:input_type -> agentruntime.sandbox.v1.ListFilesRequest
-	1,  // 39: agentruntime.sandbox.v1.SandboxService.ReadFile:input_type -> agentruntime.sandbox.v1.ReadFileRequest
-	2,  // 40: agentruntime.sandbox.v1.SandboxService.Grep:input_type -> agentruntime.sandbox.v1.GrepRequest
-	6,  // 41: agentruntime.sandbox.v1.SandboxService.GetDiff:input_type -> agentruntime.sandbox.v1.GetDiffRequest
-	7,  // 42: agentruntime.sandbox.v1.SandboxService.GetLog:input_type -> agentruntime.sandbox.v1.GetLogRequest
-	12, // 43: agentruntime.sandbox.v1.SandboxService.DescribeTenant:input_type -> agentruntime.sandbox.v1.DescribeTenantRequest
-	15, // 44: agentruntime.sandbox.v1.SandboxService.Acquire:input_type -> agentruntime.sandbox.v1.AcquireRequest
-	21, // 45: agentruntime.sandbox.v1.SandboxService.Exec:input_type -> agentruntime.sandbox.v1.ExecRequest
-	23, // 46: agentruntime.sandbox.v1.SandboxService.WriteFile:input_type -> agentruntime.sandbox.v1.WriteFileRequest
-	25, // 47: agentruntime.sandbox.v1.SandboxService.ReadLeaseFile:input_type -> agentruntime.sandbox.v1.ReadLeaseFileRequest
-	26, // 48: agentruntime.sandbox.v1.SandboxService.ListLeaseDir:input_type -> agentruntime.sandbox.v1.ListLeaseDirRequest
-	30, // 49: agentruntime.sandbox.v1.SandboxService.GrepLease:input_type -> agentruntime.sandbox.v1.GrepLeaseRequest
-	20, // 50: agentruntime.sandbox.v1.SandboxService.Manifest:input_type -> agentruntime.sandbox.v1.ManifestRequest
-	33, // 51: agentruntime.sandbox.v1.SandboxService.ExportArchive:input_type -> agentruntime.sandbox.v1.ExportArchiveRequest
-	36, // 52: agentruntime.sandbox.v1.SandboxService.ImportArchive:input_type -> agentruntime.sandbox.v1.ImportArchiveRequest
-	38, // 53: agentruntime.sandbox.v1.SandboxService.PreviewAddress:input_type -> agentruntime.sandbox.v1.PreviewAddressRequest
-	40, // 54: agentruntime.sandbox.v1.SandboxService.Release:input_type -> agentruntime.sandbox.v1.ReleaseRequest
-	42, // 55: agentruntime.sandbox.v1.SandboxService.Snapshot:input_type -> agentruntime.sandbox.v1.SnapshotRequest
-	44, // 56: agentruntime.sandbox.v1.SandboxService.Discard:input_type -> agentruntime.sandbox.v1.DiscardRequest
-	46, // 57: agentruntime.sandbox.v1.SandboxService.DestroySession:input_type -> agentruntime.sandbox.v1.DestroySessionRequest
-	47, // 58: agentruntime.sandbox.v1.SandboxService.DestroyWorkspace:input_type -> agentruntime.sandbox.v1.DestroyWorkspaceRequest
-	48, // 59: agentruntime.sandbox.v1.SandboxService.DestroyTenant:input_type -> agentruntime.sandbox.v1.DestroyTenantRequest
-	8,  // 60: agentruntime.sandbox.v1.SandboxService.ListFiles:output_type -> agentruntime.sandbox.v1.ListFilesResponse
-	9,  // 61: agentruntime.sandbox.v1.SandboxService.ReadFile:output_type -> agentruntime.sandbox.v1.ReadFileResponse
-	4,  // 62: agentruntime.sandbox.v1.SandboxService.Grep:output_type -> agentruntime.sandbox.v1.GrepResponse
-	10, // 63: agentruntime.sandbox.v1.SandboxService.GetDiff:output_type -> agentruntime.sandbox.v1.GetDiffResponse
-	11, // 64: agentruntime.sandbox.v1.SandboxService.GetLog:output_type -> agentruntime.sandbox.v1.GetLogResponse
-	13, // 65: agentruntime.sandbox.v1.SandboxService.DescribeTenant:output_type -> agentruntime.sandbox.v1.DescribeTenantResponse
-	19, // 66: agentruntime.sandbox.v1.SandboxService.Acquire:output_type -> agentruntime.sandbox.v1.AcquireResponse
-	22, // 67: agentruntime.sandbox.v1.SandboxService.Exec:output_type -> agentruntime.sandbox.v1.ExecResponse
-	24, // 68: agentruntime.sandbox.v1.SandboxService.WriteFile:output_type -> agentruntime.sandbox.v1.WriteFileResponse
-	27, // 69: agentruntime.sandbox.v1.SandboxService.ReadLeaseFile:output_type -> agentruntime.sandbox.v1.ReadLeaseFileResponse
-	29, // 70: agentruntime.sandbox.v1.SandboxService.ListLeaseDir:output_type -> agentruntime.sandbox.v1.ListLeaseDirResponse
-	5,  // 71: agentruntime.sandbox.v1.SandboxService.GrepLease:output_type -> agentruntime.sandbox.v1.GrepLeaseResponse
-	32, // 72: agentruntime.sandbox.v1.SandboxService.Manifest:output_type -> agentruntime.sandbox.v1.ManifestResponse
-	34, // 73: agentruntime.sandbox.v1.SandboxService.ExportArchive:output_type -> agentruntime.sandbox.v1.ExportArchiveResponse
-	37, // 74: agentruntime.sandbox.v1.SandboxService.ImportArchive:output_type -> agentruntime.sandbox.v1.ImportArchiveResponse
-	39, // 75: agentruntime.sandbox.v1.SandboxService.PreviewAddress:output_type -> agentruntime.sandbox.v1.PreviewAddressResponse
-	41, // 76: agentruntime.sandbox.v1.SandboxService.Release:output_type -> agentruntime.sandbox.v1.ReleaseResponse
-	43, // 77: agentruntime.sandbox.v1.SandboxService.Snapshot:output_type -> agentruntime.sandbox.v1.SnapshotResponse
-	45, // 78: agentruntime.sandbox.v1.SandboxService.Discard:output_type -> agentruntime.sandbox.v1.DiscardResponse
-	49, // 79: agentruntime.sandbox.v1.SandboxService.DestroySession:output_type -> agentruntime.sandbox.v1.DestroySessionResponse
-	50, // 80: agentruntime.sandbox.v1.SandboxService.DestroyWorkspace:output_type -> agentruntime.sandbox.v1.DestroyWorkspaceResponse
-	51, // 81: agentruntime.sandbox.v1.SandboxService.DestroyTenant:output_type -> agentruntime.sandbox.v1.DestroyTenantResponse
-	60, // [60:82] is the sub-list for method output_type
-	38, // [38:60] is the sub-list for method input_type
-	38, // [38:38] is the sub-list for extension type_name
-	38, // [38:38] is the sub-list for extension extendee
-	0,  // [0:38] is the sub-list for field type_name
+	59, // 18: agentruntime.sandbox.v1.ManifestRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	59, // 19: agentruntime.sandbox.v1.ExecRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	58, // 20: agentruntime.sandbox.v1.ExecRequest.env:type_name -> agentruntime.sandbox.v1.ExecRequest.EnvEntry
+	53, // 21: agentruntime.sandbox.v1.ExecResponse.stdout_object:type_name -> agentruntime.sandbox.v1.ObjectReference
+	53, // 22: agentruntime.sandbox.v1.ExecResponse.stderr_object:type_name -> agentruntime.sandbox.v1.ObjectReference
+	59, // 23: agentruntime.sandbox.v1.WriteFileRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	59, // 24: agentruntime.sandbox.v1.ReadLeaseFileRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	59, // 25: agentruntime.sandbox.v1.ListLeaseDirRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	28, // 26: agentruntime.sandbox.v1.ListLeaseDirResponse.entries:type_name -> agentruntime.sandbox.v1.DirEntry
+	59, // 27: agentruntime.sandbox.v1.GrepLeaseRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	31, // 28: agentruntime.sandbox.v1.ManifestResponse.entries:type_name -> agentruntime.sandbox.v1.ManifestEntry
+	59, // 29: agentruntime.sandbox.v1.ExportArchiveRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	59, // 30: agentruntime.sandbox.v1.ImportArchiveHeader.tenant:type_name -> agentruntime.common.v1.TenantContext
+	35, // 31: agentruntime.sandbox.v1.ImportArchiveRequest.header:type_name -> agentruntime.sandbox.v1.ImportArchiveHeader
+	59, // 32: agentruntime.sandbox.v1.PreviewAddressRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	59, // 33: agentruntime.sandbox.v1.ReleaseRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	18, // 34: agentruntime.sandbox.v1.ReleaseResponse.lease:type_name -> agentruntime.sandbox.v1.Lease
+	59, // 35: agentruntime.sandbox.v1.SnapshotRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	59, // 36: agentruntime.sandbox.v1.DiscardRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	59, // 37: agentruntime.sandbox.v1.DestroySessionRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	59, // 38: agentruntime.sandbox.v1.DestroyWorkspaceRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	59, // 39: agentruntime.sandbox.v1.DestroyTenantRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	59, // 40: agentruntime.sandbox.v1.PrepareTransferRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	52, // 41: agentruntime.sandbox.v1.PrepareTransferResponse.transfer:type_name -> agentruntime.sandbox.v1.PreparedTransfer
+	59, // 42: agentruntime.sandbox.v1.CommitTransferRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	53, // 43: agentruntime.sandbox.v1.CommitTransferResponse.object:type_name -> agentruntime.sandbox.v1.ObjectReference
+	0,  // 44: agentruntime.sandbox.v1.SandboxService.ListFiles:input_type -> agentruntime.sandbox.v1.ListFilesRequest
+	1,  // 45: agentruntime.sandbox.v1.SandboxService.ReadFile:input_type -> agentruntime.sandbox.v1.ReadFileRequest
+	2,  // 46: agentruntime.sandbox.v1.SandboxService.Grep:input_type -> agentruntime.sandbox.v1.GrepRequest
+	6,  // 47: agentruntime.sandbox.v1.SandboxService.GetDiff:input_type -> agentruntime.sandbox.v1.GetDiffRequest
+	7,  // 48: agentruntime.sandbox.v1.SandboxService.GetLog:input_type -> agentruntime.sandbox.v1.GetLogRequest
+	12, // 49: agentruntime.sandbox.v1.SandboxService.DescribeTenant:input_type -> agentruntime.sandbox.v1.DescribeTenantRequest
+	15, // 50: agentruntime.sandbox.v1.SandboxService.Acquire:input_type -> agentruntime.sandbox.v1.AcquireRequest
+	21, // 51: agentruntime.sandbox.v1.SandboxService.Exec:input_type -> agentruntime.sandbox.v1.ExecRequest
+	54, // 52: agentruntime.sandbox.v1.SandboxService.PrepareTransfer:input_type -> agentruntime.sandbox.v1.PrepareTransferRequest
+	56, // 53: agentruntime.sandbox.v1.SandboxService.CommitTransfer:input_type -> agentruntime.sandbox.v1.CommitTransferRequest
+	23, // 54: agentruntime.sandbox.v1.SandboxService.WriteFile:input_type -> agentruntime.sandbox.v1.WriteFileRequest
+	25, // 55: agentruntime.sandbox.v1.SandboxService.ReadLeaseFile:input_type -> agentruntime.sandbox.v1.ReadLeaseFileRequest
+	26, // 56: agentruntime.sandbox.v1.SandboxService.ListLeaseDir:input_type -> agentruntime.sandbox.v1.ListLeaseDirRequest
+	30, // 57: agentruntime.sandbox.v1.SandboxService.GrepLease:input_type -> agentruntime.sandbox.v1.GrepLeaseRequest
+	20, // 58: agentruntime.sandbox.v1.SandboxService.Manifest:input_type -> agentruntime.sandbox.v1.ManifestRequest
+	33, // 59: agentruntime.sandbox.v1.SandboxService.ExportArchive:input_type -> agentruntime.sandbox.v1.ExportArchiveRequest
+	36, // 60: agentruntime.sandbox.v1.SandboxService.ImportArchive:input_type -> agentruntime.sandbox.v1.ImportArchiveRequest
+	38, // 61: agentruntime.sandbox.v1.SandboxService.PreviewAddress:input_type -> agentruntime.sandbox.v1.PreviewAddressRequest
+	40, // 62: agentruntime.sandbox.v1.SandboxService.Release:input_type -> agentruntime.sandbox.v1.ReleaseRequest
+	42, // 63: agentruntime.sandbox.v1.SandboxService.Snapshot:input_type -> agentruntime.sandbox.v1.SnapshotRequest
+	44, // 64: agentruntime.sandbox.v1.SandboxService.Discard:input_type -> agentruntime.sandbox.v1.DiscardRequest
+	46, // 65: agentruntime.sandbox.v1.SandboxService.DestroySession:input_type -> agentruntime.sandbox.v1.DestroySessionRequest
+	47, // 66: agentruntime.sandbox.v1.SandboxService.DestroyWorkspace:input_type -> agentruntime.sandbox.v1.DestroyWorkspaceRequest
+	48, // 67: agentruntime.sandbox.v1.SandboxService.DestroyTenant:input_type -> agentruntime.sandbox.v1.DestroyTenantRequest
+	8,  // 68: agentruntime.sandbox.v1.SandboxService.ListFiles:output_type -> agentruntime.sandbox.v1.ListFilesResponse
+	9,  // 69: agentruntime.sandbox.v1.SandboxService.ReadFile:output_type -> agentruntime.sandbox.v1.ReadFileResponse
+	4,  // 70: agentruntime.sandbox.v1.SandboxService.Grep:output_type -> agentruntime.sandbox.v1.GrepResponse
+	10, // 71: agentruntime.sandbox.v1.SandboxService.GetDiff:output_type -> agentruntime.sandbox.v1.GetDiffResponse
+	11, // 72: agentruntime.sandbox.v1.SandboxService.GetLog:output_type -> agentruntime.sandbox.v1.GetLogResponse
+	13, // 73: agentruntime.sandbox.v1.SandboxService.DescribeTenant:output_type -> agentruntime.sandbox.v1.DescribeTenantResponse
+	19, // 74: agentruntime.sandbox.v1.SandboxService.Acquire:output_type -> agentruntime.sandbox.v1.AcquireResponse
+	22, // 75: agentruntime.sandbox.v1.SandboxService.Exec:output_type -> agentruntime.sandbox.v1.ExecResponse
+	55, // 76: agentruntime.sandbox.v1.SandboxService.PrepareTransfer:output_type -> agentruntime.sandbox.v1.PrepareTransferResponse
+	57, // 77: agentruntime.sandbox.v1.SandboxService.CommitTransfer:output_type -> agentruntime.sandbox.v1.CommitTransferResponse
+	24, // 78: agentruntime.sandbox.v1.SandboxService.WriteFile:output_type -> agentruntime.sandbox.v1.WriteFileResponse
+	27, // 79: agentruntime.sandbox.v1.SandboxService.ReadLeaseFile:output_type -> agentruntime.sandbox.v1.ReadLeaseFileResponse
+	29, // 80: agentruntime.sandbox.v1.SandboxService.ListLeaseDir:output_type -> agentruntime.sandbox.v1.ListLeaseDirResponse
+	5,  // 81: agentruntime.sandbox.v1.SandboxService.GrepLease:output_type -> agentruntime.sandbox.v1.GrepLeaseResponse
+	32, // 82: agentruntime.sandbox.v1.SandboxService.Manifest:output_type -> agentruntime.sandbox.v1.ManifestResponse
+	34, // 83: agentruntime.sandbox.v1.SandboxService.ExportArchive:output_type -> agentruntime.sandbox.v1.ExportArchiveResponse
+	37, // 84: agentruntime.sandbox.v1.SandboxService.ImportArchive:output_type -> agentruntime.sandbox.v1.ImportArchiveResponse
+	39, // 85: agentruntime.sandbox.v1.SandboxService.PreviewAddress:output_type -> agentruntime.sandbox.v1.PreviewAddressResponse
+	41, // 86: agentruntime.sandbox.v1.SandboxService.Release:output_type -> agentruntime.sandbox.v1.ReleaseResponse
+	43, // 87: agentruntime.sandbox.v1.SandboxService.Snapshot:output_type -> agentruntime.sandbox.v1.SnapshotResponse
+	45, // 88: agentruntime.sandbox.v1.SandboxService.Discard:output_type -> agentruntime.sandbox.v1.DiscardResponse
+	49, // 89: agentruntime.sandbox.v1.SandboxService.DestroySession:output_type -> agentruntime.sandbox.v1.DestroySessionResponse
+	50, // 90: agentruntime.sandbox.v1.SandboxService.DestroyWorkspace:output_type -> agentruntime.sandbox.v1.DestroyWorkspaceResponse
+	51, // 91: agentruntime.sandbox.v1.SandboxService.DestroyTenant:output_type -> agentruntime.sandbox.v1.DestroyTenantResponse
+	68, // [68:92] is the sub-list for method output_type
+	44, // [44:68] is the sub-list for method input_type
+	44, // [44:44] is the sub-list for extension type_name
+	44, // [44:44] is the sub-list for extension extendee
+	0,  // [0:44] is the sub-list for field type_name
 }
 
 func init() { file_agentruntime_sandbox_v1_sandbox_proto_init() }
@@ -3648,7 +4076,7 @@ func file_agentruntime_sandbox_v1_sandbox_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agentruntime_sandbox_v1_sandbox_proto_rawDesc), len(file_agentruntime_sandbox_v1_sandbox_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   53,
+			NumMessages:   59,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

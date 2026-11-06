@@ -1,0 +1,59 @@
+syntax = "proto3";
+package agentruntime.personalconfig.v1;
+
+// PersonalConfigService manages one private, immutable-versioned configuration
+// per authenticated user. tenant_id only checks consistency with authentication.
+// No caller can read or modify another user's package, including tenant admins.
+service PersonalConfigService {
+  rpc PutPersonalConfig(PutPersonalConfigRequest) returns (PutPersonalConfigResponse);
+  rpc GetPersonalConfig(GetPersonalConfigRequest) returns (GetPersonalConfigResponse);
+  rpc RetirePersonalConfig(RetirePersonalConfigRequest) returns (RetirePersonalConfigResponse);
+}
+message PersonalConfigFile {
+  // Relative to the sandbox HOME, never absolute, traversing, or a script.
+  string path = 1;
+  string content = 2;
+}
+message PersonalConfigDefaults {
+  // References only; these never grant access or change tenant policy.
+  repeated string skill_names = 1;
+  repeated string mcp_connection_ids = 2;
+  string environment_id = 3;
+}
+message PersonalConfigDocument {
+  // User preference data, below system instructions and the current request; max 4 KiB.
+  string instructions = 1;
+  // At most 10 text files, 256 KiB total. Existing files/symlinks are never replaced.
+  repeated PersonalConfigFile files = 2;
+  PersonalConfigDefaults defaults = 3;
+}
+message PersonalConfig {
+  // user/vN; versions remain readable after replacement or retirement.
+  string version = 1;
+  string digest = 2;
+  PersonalConfigDocument document = 3;
+}
+message PutPersonalConfigRequest {
+  string tenant_id = 1;
+  PersonalConfigDocument document = 2;
+  // Optional optimistic concurrency guard, compared with the active version.
+  string expected_version = 3;
+}
+message PutPersonalConfigResponse {
+  PersonalConfig config = 1;
+  bool new_version = 2;
+}
+message GetPersonalConfigRequest {
+  string tenant_id = 1;
+  // Empty selects the active version; absence is NotFound.
+  string version = 2;
+}
+message GetPersonalConfigResponse {
+  PersonalConfig config = 1;
+}
+message RetirePersonalConfigRequest {
+  string tenant_id = 1;
+}
+message RetirePersonalConfigResponse {
+  bool retired = 1;
+}

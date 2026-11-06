@@ -746,3 +746,13 @@ mod tests {
         );
     }
 }
+
+/// Shared secure extraction for the direct block restore path.
+pub(crate) fn restore_tar(root: &Path, source: &mut dyn Read, limit: u64) -> io::Result<()> {
+    for entry in fs::read_dir(root)? {
+        if name_bytes(&entry?.file_name()) != MARKER {
+            return Err(io::Error::other("workspace not empty"));
+        }
+    }
+    extract(root, source, limit).map_err(|_| io::Error::other("invalid restore archive"))
+}

@@ -40,6 +40,8 @@ mod gostr;
 mod guest;
 mod http;
 mod json;
+mod restore;
+mod transfer;
 
 use std::ffi::{OsStr, OsString};
 use std::net::{TcpListener, ToSocketAddrs};

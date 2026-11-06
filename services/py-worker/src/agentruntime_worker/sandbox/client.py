@@ -173,6 +173,10 @@ class RemoteLease:
         return out
 
 
+def _object_ref(ref: Any) -> dict[str, str | int]:
+    return {"object_uri": ref.object_uri, "object_key": ref.object_key, "sha256": ref.sha256, "size_bytes": ref.size_bytes}
+
+
 class RemoteBox:
     """借到的环境：方法与原来的 Sandbox 一样（第一个参数是 env_id，就是 lease_id）。"""
 
@@ -181,15 +185,31 @@ class RemoteBox:
         self.tenant = tenant
 
     async def exec(
-        self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"", env: Mapping[str, str] | None = None
+        self, env_id: str, argv: Sequence[str], *, timeout: timedelta, stdin: bytes = b"", env: Mapping[str, str] | None = None, offload_inline_bytes: int = 0
     ) -> ExecResult:
         req = pb.ExecRequest(tenant=_tenant(self.tenant), lease_id=env_id, argv=list(argv), timeout_ms=max(1, int(timeout.total_seconds() * 1000)),
-                             stdin=stdin, env=dict(env or {}))
+                             stdin=stdin, env=dict(env or {}), offload_inline_bytes=offload_inline_bytes)
         resp = await self.client.call("Exec", req, timeout=timeout.total_seconds() + 120)
         return ExecResult(
             exit_code=resp.exit_code if resp.has_exit_code else None, stdout=resp.stdout, stderr=resp.stderr, timed_out=resp.timed_out,
             cpu_time=timedelta(milliseconds=resp.cpu_time_ms) if resp.cpu_time_ms >= 0 else None,
+            stdout_object=_object_ref(resp.stdout_object) if resp.HasField("stdout_object") else None,
+            stderr_object=_object_ref(resp.stderr_object) if resp.HasField("stderr_object") else None,
+            stdout_truncated=resp.stdout_truncated, stderr_truncated=resp.stderr_truncated,
         )
+
+    async def exec_with_output_refs(self, env_id: str, argv: Sequence[str], *, timeout: timedelta, env: Mapping[str, str] | None = None) -> ExecResult:
+        return await self.exec(env_id, argv, timeout=timeout, env=env, offload_inline_bytes=8000)
+
+    async def prepare_transfer(self, env_id: str, task_id: str, path: str, name: str) -> Any:
+        resp = await self.client.call("PrepareTransfer", pb.PrepareTransferRequest(tenant=_tenant(self.tenant), lease_id=env_id,
+                                      task_id=task_id, path=path, name=name))
+        return resp.transfer
+
+    async def commit_transfer(self, env_id: str, transfer_id: str) -> dict[str, str | int]:
+        resp = await self.client.call("CommitTransfer", pb.CommitTransferRequest(tenant=_tenant(self.tenant), lease_id=env_id,
+                                      transfer_id=transfer_id), timeout=180)
+        return _object_ref(resp.object)
 
     async def write_file(self, env_id: str, path: str, data: bytes) -> None:
         await self.client.call("WriteFile", pb.WriteFileRequest(tenant=_tenant(self.tenant), lease_id=env_id, path=path, data=data))

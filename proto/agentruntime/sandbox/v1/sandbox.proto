@@ -33,6 +33,9 @@ service SandboxService {
   rpc Acquire(AcquireRequest) returns (AcquireResponse);
   // 在借到的环境里执行一条命令。平台的环境变量（包镜像、出网代理、测试用密钥、.env）由服务按环境表补上，不出服务。
   rpc Exec(ExecRequest) returns (ExecResponse);
+  // Single-object uploads: the service chooses the key and signs only immutable prepared bytes.
+  rpc PrepareTransfer(PrepareTransferRequest) returns (PrepareTransferResponse);
+  rpc CommitTransfer(CommitTransferRequest) returns (CommitTransferResponse);
   rpc WriteFile(WriteFileRequest) returns (WriteFileResponse);
   rpc ReadLeaseFile(ReadLeaseFileRequest) returns (ReadLeaseFileResponse);
   rpc ListLeaseDir(ListLeaseDirRequest) returns (ListLeaseDirResponse);
@@ -242,6 +245,8 @@ message ExecRequest {
   map<string, string> env = 6;
   // 每路输出最多返回多少字节（尾部截断）；0 时 4 MiB。
   int64 max_output_bytes = 7;
+  // Opt-in: large output is retained by the agent and uploaded directly to storage.
+  int64 offload_inline_bytes = 8;
 }
 
 message ExecResponse {
@@ -255,6 +260,8 @@ message ExecResponse {
   int64 cpu_time_ms = 6;
   bool stdout_truncated = 7;
   bool stderr_truncated = 8;
+  ObjectReference stdout_object = 9;
+  ObjectReference stderr_object = 10;
 }
 
 message WriteFileRequest {
@@ -408,4 +415,34 @@ message DestroyWorkspaceResponse {
 
 message DestroyTenantResponse {
   int32 destroyed = 1;
+}
+
+message PreparedTransfer {
+  string transfer_id = 1;
+  string sha256 = 2;
+  int64 size_bytes = 3;
+}
+message ObjectReference {
+  string object_key = 1;
+  string object_uri = 2;
+  string sha256 = 3;
+  int64 size_bytes = 4;
+}
+message PrepareTransferRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string lease_id = 2;
+  string task_id = 3;
+  string path = 4;
+  string name = 5;
+}
+message PrepareTransferResponse {
+  PreparedTransfer transfer = 1;
+}
+message CommitTransferRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  string lease_id = 2;
+  string transfer_id = 3;
+}
+message CommitTransferResponse {
+  ObjectReference object = 1;
 }

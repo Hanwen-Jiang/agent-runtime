@@ -159,6 +159,39 @@ pub fn open_outbound(
             .spawn(move || accept_outbound(l, target, links))
             .map_err(|e| format!("起不了转发线程：{e}"))?;
     }
+    crate::blob::initialize(cfg.state_dir.join("blobs"))
+        .map_err(|e| format!("block cache: {e}"))?;
+    let path = vsock::host_port_path(&p.vsock(), 1082);
+    let _ = std::fs::remove_file(&path);
+    let listener = UnixListener::bind(&path).map_err(|e| format!("block socket: {e}"))?;
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
+        .map_err(|e| e.to_string())?;
+    chown(&path, uid)?;
+    listener.set_nonblocking(true).map_err(|e| e.to_string())?;
+    let env = p
+        .jail
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .into_owned();
+    let links = links.clone();
+    std::thread::Builder::new()
+        .name("blobs".into())
+        .spawn(move || {
+            while !links.stopped() {
+                match listener.accept() {
+                    Ok((stream, _)) => {
+                        let env = env.clone();
+                        spawn(&links, move || crate::blob::serve(&env, stream));
+                    }
+                    Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+                        std::thread::sleep(Duration::from_millis(20))
+                    }
+                    Err(_) => break,
+                }
+            }
+        })
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 

@@ -76,13 +76,16 @@ type Env struct {
 
 // ExecOptions 是一次执行的参数。
 type ExecOptions struct {
-	Timeout time.Duration
-	Stdin   []byte
-	Env     map[string]string
+	OffloadInlineBytes int64
+	Timeout            time.Duration
+	Stdin              []byte
+	Env                map[string]string
 }
 
 // ExecResult 是一次执行的结果。
 type ExecResult struct {
+	StdoutTransfer *PreparedTransfer
+	StderrTransfer *PreparedTransfer
 	// ExitCode 超时时为 nil。
 	ExitCode  *int
 	Stdout    []byte

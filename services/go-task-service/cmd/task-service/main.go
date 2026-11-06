@@ -60,11 +60,13 @@ import (
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	workflowv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1"
 
+	"github.com/agentruntime/agent-runtime/libs/go-core/personalconfig"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/config"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/environmentapi"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/events"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/ids"
 	mcpconn "github.com/agentruntime/agent-runtime/services/go-task-service/internal/mcp"
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/personalconfigapi"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/registry"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/sandboxclient"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/sandboxgrants"
@@ -471,6 +473,9 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	if err := store.Migrate(ctx, taskstore.Migrations()); err != nil {
 		return err
 	}
+	if err := store.Migrate(ctx, personalconfig.Migrations()); err != nil {
+		return err
+	}
 	if err := store.Migrate(ctx, modelbudget.Migrations()); err != nil {
 		return err
 	}
@@ -496,6 +501,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	var registryPolicies func(context.Context, *commonv1.TenantContext) ([]byte, bool, error)
 	// 用户的 Skill（N-14）存在 Registry 里：没配 Registry 时 SkillService 报不可用。
 	var skills skillapi.Skills
+	var personal *registry.Registry
 	if cfg.RegistryAddr != "" {
 		reg, err := newRegistry(ctx, store, cfg.SecretsFile, cfg.SchemasDir, logger)
 		if err != nil {
@@ -505,6 +511,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		registrySrv = registryServer(cfg.RegistryAddr, reg)
 		registryPolicies = reg.CurrentTenantPolicy
 		skills = reg
+		personal = reg
 		network = taskapi.NetworkPolicyFunc(func(ctx context.Context, tenant *commonv1.TenantContext) (taskapi.NetworkPolicy, error) {
 			doc, found, err := reg.CurrentTenantPolicy(ctx, tenant)
 			if err != nil || !found {
@@ -563,6 +570,12 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	if registryPolicies != nil {
 		policies.Else = taskapi.DocumentPolicyResolver{Source: registryPolicies, Fallback: defaults}
 	}
+	var personalPinner taskapi.PersonalConfigPinner
+	var personalRegistry personalconfigapi.Registry
+	if personal != nil {
+		personalPinner = personal
+		personalRegistry = personal
+	}
 	api, err := taskapi.New(taskapi.Deps{
 		ModelBudget:      modelbudget.New(store),
 		BudgetPolicies:   modelbudget.Policy{Path: cfg.TenantPoliciesFile, Source: registryPolicies},
@@ -579,8 +592,9 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		Network:          network,
 		Objects:          objects,
 		// WS-CREATE-RACE：与 Workspace API 同一个 Cache，提交时查工作区是不是还在建。
-		Cache:     cacheProvider,
-		McpLeases: mcpService,
+		Cache:          cacheProvider,
+		McpLeases:      mcpService,
+		PersonalConfig: personalPinner,
 	})
 	if err != nil {
 		return err
@@ -630,6 +644,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	environments.Mount(mux)
 	userSecrets.Mount(mux)
 	skillService.Mount(mux)
+	(&personalconfigapi.Server{Ingress: ing, Registry: personalRegistry, Logger: logger}).Mount(mux)
 	mcpService.Mount(mux)
 	// 逐字增量（DELTA）：配了内部端口才收，按租户关掉的不推；没配时 SSE 不订阅增量流。
 	deltasOff := func(string) bool { return true }

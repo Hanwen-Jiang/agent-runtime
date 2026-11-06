@@ -65,20 +65,23 @@ func (c Client) timeout() time.Duration {
 }
 
 type execRequest struct {
-	Argv      []string          `json:"argv"`
-	Stdin     string            `json:"stdin"`
-	TimeoutMS int64             `json:"timeout_ms"`
-	ExecID    string            `json:"exec_id"`
-	Env       map[string]string `json:"env,omitempty"`
+	OffloadInlineBytes int64             `json:"offload_inline_bytes,omitempty"`
+	Argv               []string          `json:"argv"`
+	Stdin              string            `json:"stdin"`
+	TimeoutMS          int64             `json:"timeout_ms"`
+	ExecID             string            `json:"exec_id"`
+	Env                map[string]string `json:"env,omitempty"`
 }
 
 type execResponse struct {
-	ExitCode  *int   `json:"exit_code"`
-	TimedOut  bool   `json:"timed_out"`
-	Stdout    string `json:"stdout"`
-	Stderr    string `json:"stderr"`
-	Truncated bool   `json:"truncated"`
-	CPUMS     *int64 `json:"cpu_ms"`
+	StdoutTransfer *sandbox.PreparedTransfer `json:"stdout_transfer"`
+	StderrTransfer *sandbox.PreparedTransfer `json:"stderr_transfer"`
+	ExitCode       *int                      `json:"exit_code"`
+	TimedOut       bool                      `json:"timed_out"`
+	Stdout         string                    `json:"stdout"`
+	Stderr         string                    `json:"stderr"`
+	Truncated      bool                      `json:"truncated"`
+	CPUMS          *int64                    `json:"cpu_ms"`
 }
 
 // Exec 执行一条命令。
@@ -91,7 +94,7 @@ func (c Client) Exec(ctx context.Context, ep Endpoint, argv []string, opts sandb
 	}
 	ms := max(int64(1), opts.Timeout.Milliseconds())
 	id := randomID()
-	body, _ := json.Marshal(execRequest{Argv: argv, Stdin: base64.StdEncoding.EncodeToString(opts.Stdin), TimeoutMS: ms, ExecID: id, Env: opts.Env})
+	body, _ := json.Marshal(execRequest{OffloadInlineBytes: opts.OffloadInlineBytes, Argv: argv, Stdin: base64.StdEncoding.EncodeToString(opts.Stdin), TimeoutMS: ms, ExecID: id, Env: opts.Env})
 	status, data, err := c.call(ctx, ep, http.MethodPost, "/v1/exec", body, "application/json", opts.Timeout+c.timeout())
 	if err != nil {
 		if ctx.Err() != nil {
@@ -120,7 +123,7 @@ func (c Client) Exec(ctx context.Context, ep Endpoint, argv []string, opts sandb
 	if err1 != nil || err2 != nil {
 		return sandbox.ExecResult{}, providererr.New(providererr.Transient, "sandbox_bad_response", "沙箱返回的结果格式不对")
 	}
-	res := sandbox.ExecResult{ExitCode: out.ExitCode, Stdout: stdout, Stderr: stderr, TimedOut: out.TimedOut, Truncated: out.Truncated, CPUTime: -1}
+	res := sandbox.ExecResult{StdoutTransfer: out.StdoutTransfer, StderrTransfer: out.StderrTransfer, ExitCode: out.ExitCode, Stdout: stdout, Stderr: stderr, TimedOut: out.TimedOut, Truncated: out.Truncated, CPUTime: -1}
 	if out.CPUMS != nil {
 		res.CPUTime = time.Duration(*out.CPUMS) * time.Millisecond
 	}

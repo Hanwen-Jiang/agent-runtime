@@ -250,7 +250,7 @@ class ManifestRequest(_message.Message):
     def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., lease_id: _Optional[str] = ...) -> None: ...
 
 class ExecRequest(_message.Message):
-    __slots__ = ("tenant", "lease_id", "argv", "timeout_ms", "stdin", "env", "max_output_bytes")
+    __slots__ = ("tenant", "lease_id", "argv", "timeout_ms", "stdin", "env", "max_output_bytes", "offload_inline_bytes")
     class EnvEntry(_message.Message):
         __slots__ = ("key", "value")
         KEY_FIELD_NUMBER: _ClassVar[int]
@@ -265,6 +265,7 @@ class ExecRequest(_message.Message):
     STDIN_FIELD_NUMBER: _ClassVar[int]
     ENV_FIELD_NUMBER: _ClassVar[int]
     MAX_OUTPUT_BYTES_FIELD_NUMBER: _ClassVar[int]
+    OFFLOAD_INLINE_BYTES_FIELD_NUMBER: _ClassVar[int]
     tenant: _tenant_pb2.TenantContext
     lease_id: str
     argv: _containers.RepeatedScalarFieldContainer[str]
@@ -272,10 +273,11 @@ class ExecRequest(_message.Message):
     stdin: bytes
     env: _containers.ScalarMap[str, str]
     max_output_bytes: int
-    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., lease_id: _Optional[str] = ..., argv: _Optional[_Iterable[str]] = ..., timeout_ms: _Optional[int] = ..., stdin: _Optional[bytes] = ..., env: _Optional[_Mapping[str, str]] = ..., max_output_bytes: _Optional[int] = ...) -> None: ...
+    offload_inline_bytes: int
+    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., lease_id: _Optional[str] = ..., argv: _Optional[_Iterable[str]] = ..., timeout_ms: _Optional[int] = ..., stdin: _Optional[bytes] = ..., env: _Optional[_Mapping[str, str]] = ..., max_output_bytes: _Optional[int] = ..., offload_inline_bytes: _Optional[int] = ...) -> None: ...
 
 class ExecResponse(_message.Message):
-    __slots__ = ("has_exit_code", "exit_code", "stdout", "stderr", "timed_out", "cpu_time_ms", "stdout_truncated", "stderr_truncated")
+    __slots__ = ("has_exit_code", "exit_code", "stdout", "stderr", "timed_out", "cpu_time_ms", "stdout_truncated", "stderr_truncated", "stdout_object", "stderr_object")
     HAS_EXIT_CODE_FIELD_NUMBER: _ClassVar[int]
     EXIT_CODE_FIELD_NUMBER: _ClassVar[int]
     STDOUT_FIELD_NUMBER: _ClassVar[int]
@@ -284,6 +286,8 @@ class ExecResponse(_message.Message):
     CPU_TIME_MS_FIELD_NUMBER: _ClassVar[int]
     STDOUT_TRUNCATED_FIELD_NUMBER: _ClassVar[int]
     STDERR_TRUNCATED_FIELD_NUMBER: _ClassVar[int]
+    STDOUT_OBJECT_FIELD_NUMBER: _ClassVar[int]
+    STDERR_OBJECT_FIELD_NUMBER: _ClassVar[int]
     has_exit_code: bool
     exit_code: int
     stdout: bytes
@@ -292,7 +296,9 @@ class ExecResponse(_message.Message):
     cpu_time_ms: int
     stdout_truncated: bool
     stderr_truncated: bool
-    def __init__(self, has_exit_code: _Optional[bool] = ..., exit_code: _Optional[int] = ..., stdout: _Optional[bytes] = ..., stderr: _Optional[bytes] = ..., timed_out: _Optional[bool] = ..., cpu_time_ms: _Optional[int] = ..., stdout_truncated: _Optional[bool] = ..., stderr_truncated: _Optional[bool] = ...) -> None: ...
+    stdout_object: ObjectReference
+    stderr_object: ObjectReference
+    def __init__(self, has_exit_code: _Optional[bool] = ..., exit_code: _Optional[int] = ..., stdout: _Optional[bytes] = ..., stderr: _Optional[bytes] = ..., timed_out: _Optional[bool] = ..., cpu_time_ms: _Optional[int] = ..., stdout_truncated: _Optional[bool] = ..., stderr_truncated: _Optional[bool] = ..., stdout_object: _Optional[_Union[ObjectReference, _Mapping]] = ..., stderr_object: _Optional[_Union[ObjectReference, _Mapping]] = ...) -> None: ...
 
 class WriteFileRequest(_message.Message):
     __slots__ = ("tenant", "lease_id", "path", "data")
@@ -537,3 +543,61 @@ class DestroyTenantResponse(_message.Message):
     DESTROYED_FIELD_NUMBER: _ClassVar[int]
     destroyed: int
     def __init__(self, destroyed: _Optional[int] = ...) -> None: ...
+
+class PreparedTransfer(_message.Message):
+    __slots__ = ("transfer_id", "sha256", "size_bytes")
+    TRANSFER_ID_FIELD_NUMBER: _ClassVar[int]
+    SHA256_FIELD_NUMBER: _ClassVar[int]
+    SIZE_BYTES_FIELD_NUMBER: _ClassVar[int]
+    transfer_id: str
+    sha256: str
+    size_bytes: int
+    def __init__(self, transfer_id: _Optional[str] = ..., sha256: _Optional[str] = ..., size_bytes: _Optional[int] = ...) -> None: ...
+
+class ObjectReference(_message.Message):
+    __slots__ = ("object_key", "object_uri", "sha256", "size_bytes")
+    OBJECT_KEY_FIELD_NUMBER: _ClassVar[int]
+    OBJECT_URI_FIELD_NUMBER: _ClassVar[int]
+    SHA256_FIELD_NUMBER: _ClassVar[int]
+    SIZE_BYTES_FIELD_NUMBER: _ClassVar[int]
+    object_key: str
+    object_uri: str
+    sha256: str
+    size_bytes: int
+    def __init__(self, object_key: _Optional[str] = ..., object_uri: _Optional[str] = ..., sha256: _Optional[str] = ..., size_bytes: _Optional[int] = ...) -> None: ...
+
+class PrepareTransferRequest(_message.Message):
+    __slots__ = ("tenant", "lease_id", "task_id", "path", "name")
+    TENANT_FIELD_NUMBER: _ClassVar[int]
+    LEASE_ID_FIELD_NUMBER: _ClassVar[int]
+    TASK_ID_FIELD_NUMBER: _ClassVar[int]
+    PATH_FIELD_NUMBER: _ClassVar[int]
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    tenant: _tenant_pb2.TenantContext
+    lease_id: str
+    task_id: str
+    path: str
+    name: str
+    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., lease_id: _Optional[str] = ..., task_id: _Optional[str] = ..., path: _Optional[str] = ..., name: _Optional[str] = ...) -> None: ...
+
+class PrepareTransferResponse(_message.Message):
+    __slots__ = ("transfer",)
+    TRANSFER_FIELD_NUMBER: _ClassVar[int]
+    transfer: PreparedTransfer
+    def __init__(self, transfer: _Optional[_Union[PreparedTransfer, _Mapping]] = ...) -> None: ...
+
+class CommitTransferRequest(_message.Message):
+    __slots__ = ("tenant", "lease_id", "transfer_id")
+    TENANT_FIELD_NUMBER: _ClassVar[int]
+    LEASE_ID_FIELD_NUMBER: _ClassVar[int]
+    TRANSFER_ID_FIELD_NUMBER: _ClassVar[int]
+    tenant: _tenant_pb2.TenantContext
+    lease_id: str
+    transfer_id: str
+    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., lease_id: _Optional[str] = ..., transfer_id: _Optional[str] = ...) -> None: ...
+
+class CommitTransferResponse(_message.Message):
+    __slots__ = ("object",)
+    OBJECT_FIELD_NUMBER: _ClassVar[int]
+    object: ObjectReference
+    def __init__(self, object: _Optional[_Union[ObjectReference, _Mapping]] = ...) -> None: ...

@@ -9,6 +9,7 @@ FROM ${AGENT_RUST_IMAGE} AS build
 WORKDIR /src
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 COPY libs/rs-sys/ libs/rs-sys/
+COPY libs/rs-transfer/ libs/rs-transfer/
 COPY services/rs-sandbox-agent/ services/rs-sandbox-agent/
 COPY services/rs-fc-manager/ services/rs-fc-manager/
 RUN --mount=type=cache,target=/usr/local/cargo/registry --mount=type=cache,target=/src/target \
