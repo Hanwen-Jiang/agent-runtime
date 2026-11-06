@@ -60,9 +60,10 @@
 | ~~U-2~~ | **已解决（2026-11-06）**：用户建了 Resend 的 Key（`/root/.config/agentruntime/resend.key`，已改成 0600），`cgent.link` 在 Resend 里已是 verified（DKIM、SPF 都过）。Claude 建了 Secret `observability/grafana-resend`（收件 `root@nsnzd.com`，用户选的），Grafana 升到第 4 版带上 SMTP 与联络点，经 Resend 接口发了测试邮件。见 cloud-deploy.md | F4 告警发邮件 | — |
 | U-3 | GitHub App 设置：权限加 Issues 读写，订阅 `issue_comment` 事件；各安装（你自己的账号或组织）点同意新权限 | G-06：在 Issue 里 @ 机器人自动开 Task | 自动触发用不了，其余 App 功能照常 |
 | U-4 | 设计书原文档（Claude Docs）的更新：二选一，你自己按各计划里“设计书的改动建议”改；或者在对话里授权 Claude 用 Claude Docs 的工具直接改并重新导出（给出文档链接） | 设计书与代码一致（4.10、4.14、4.15、附录 A、Memory 的 C1、Sandbox Service） | 不挡 v1，只是设计书越来越旧 |
-| U-6 | 把 `sandbox/fc-manager-token` 加进 `agent-runtime-secrets`：在服务器上自己跑 `/root/ar-release/v1-fc/add-fc-token.sh`（备份 SOPS 文件与线上 Secret、加这一个键、重新加密、只 apply 这一个 Secret，不打印值）；或者在 Claude Code 的权限设置里放行这类操作，由 Claude 跑。两个会话写生产密钥都被自动权限检查拦下了（2026-11-05） | Firecracker 后端打开（第 33 版已登记，`enabled: false`），V1-FC 的线上验收 | Firecracker 一直关着 |
+| ~~U-6~~ | **已完成**：`sandbox/fc-manager-token` 已在 `agent-runtime-secrets` 里（2026-11-06 00:36 服务器时间），第 38 版打开了 firecracker 后端 | Firecracker 后端 | — |
 | U-7 | 同意（或在设置里放行）给平台默认的租户策略加 `mcp`：`default/v3` = 线上 `default/v2` 加 `mcp: {allowed: true, hosts: ["*"]（任意公网域名；2026-11-06 第一次发布时 24 个顶级域通配被格式拒绝，什么也没改，契约修订 `edf20ae` 加了单独的 `*`，第 38 版上线后重跑）, max_connections: 10, max_effect: read}`（种子 `/root/ar-release/mcp/default-v3-seed.json`，回退 `default-v2-rollback-seed.json`）。Claude 发布时被会话的权限检查拦下（改所有租户的策略） | 网页上的普通用户能用“我的 MCP”（只读工具；不可逆写还要租户的 effect 上限到 write_irreversible） | 只有策略里写了 `mcp` 的租户能用（现在只有测试租户 `mcp01`） |
 | U-8 | AUTH-01 切换的第 1 步：在服务器上跑 `/root/ar-release/auth01/auth01-key.sh`（生成 coding-web 签 JWT 的 Ed25519 密钥对，私钥进新 Secret `coding-jwt`，公钥登记写到 `issuer.json`，不打印私钥）。只有这一步碰生产密钥；跑完告诉 Claude，第 2、3 步（Runtime 登记 issuers、coding-web 挂上私钥）由 Claude 发版做 | V1-AUTH：Runtime 只持公钥，浏览器拿短期 JWT | 一直收开发令牌（对称密钥在 coding-web 与 task-service 两处） |
+| U-9 | 测试租户 `real01` 切到 Firecracker：跑 `/root/ar-release/v1-fc/publish-real01-firecracker.sh`（策略 v2 → v3，只改 `sandbox.backend: kata → firecracker`；回退换成 v2 的种子再跑）。V1-FC 会话发布租户策略被它的权限检查拦下 | V1-FC 的线上验收（完成标准 4） | Firecracker 打开着但没有租户用 |
 | U-5（可选） | 模型中转站控制台里设月度花费上限 | 开放注册的兜底 | 平台内的每日、每月预算照样生效 |
 
 不再要用户做的：G-05 的测试 App（属于测试，挪到 v2）；两条 Reviewer 样本的标注复核（评测，挪到 v2）；`evals.cgent.link` 的 DNS（已经有了）；GitHub App 的 Client secret（第 25 版已部署）。
