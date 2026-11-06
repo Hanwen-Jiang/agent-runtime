@@ -81,6 +81,25 @@ fn sparse_copy(from: &Path, to: &Path) -> Result<(), VmError> {
     }
 }
 
+fn entry_stats(dir: &Path) -> Result<(u64, bool), VmError> {
+    let mut size = 0u64;
+    let mut pinned = false;
+    for name in FILES {
+        match fs::symlink_metadata(dir.join(name)) {
+            Ok(meta) if meta.is_file() => {
+                size = size
+                    .checked_add(meta.len())
+                    .ok_or_else(|| failure("snapshot size overflow"))?;
+                pinned |= meta.nlink() > 1;
+            }
+            Ok(_) => {} // Invalid links cannot be restored; count the remaining real files.
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => return Err(failure(e)),
+        }
+    }
+    Ok((size, pinned))
+}
+
 impl Cache {
     pub fn new(cfg: &Config) -> Result<Self, String> {
         let budget = cfg
@@ -161,6 +180,9 @@ impl Cache {
             return Err(failure("invalid cache key"));
         }
         let dir = self.root.join(key);
+        if dir.join("invalidated").exists() {
+            return Err(failure("snapshot generation is invalidated"));
+        }
         let manifest: Manifest =
             serde_json::from_slice(&fs::read(dir.join("manifest.json")).map_err(failure)?)
                 .map_err(failure)?;
@@ -183,15 +205,31 @@ impl Cache {
         if self.manifest(key).is_ok() {
             true
         } else {
-            self.invalidate(key);
+            let _ = self.invalidate(key);
             false
         }
     }
 
-    pub fn invalidate(&self, key: &str) {
-        if key_valid(key) {
-            let _ = fs::remove_dir_all(self.root.join(key));
+    /// Keep invalid generations accounted until every active VM releases its
+    /// hard links. Invalidation is not resource release.
+    pub fn invalidate(&self, key: &str) -> Result<(), VmError> {
+        if !key_valid(key) {
+            return Err(failure("invalid cache key"));
         }
+        let dir = self.root.join(key);
+        if !dir.exists() {
+            return Ok(());
+        }
+        File::create(dir.join("invalidated"))
+            .and_then(|f| f.sync_all())
+            .map_err(failure)?;
+        File::open(&dir)
+            .and_then(|f| f.sync_all())
+            .map_err(failure)?;
+        if !entry_stats(&dir)?.1 {
+            fs::remove_dir_all(&dir).map_err(failure)?;
+        }
+        Ok(())
     }
 
     fn make_room(&self, needed: u64) -> Result<(), VmError> {
@@ -205,36 +243,35 @@ impl Cache {
             if !key_valid(&key) {
                 continue;
             }
-            let Ok(manifest) = self.manifest(&key) else {
-                self.invalidate(&key);
-                continue;
-            };
-            let size = manifest
-                .lengths
-                .iter()
-                .try_fold(0u64, |sum, n| sum.checked_add(*n))
-                .ok_or_else(|| failure("snapshot size overflow"))?;
+            if self.manifest(&key).is_err() {
+                self.invalidate(&key)?;
+                if !entry.path().exists() {
+                    continue;
+                }
+            }
+            let (size, pinned) = entry_stats(&entry.path())?;
             total = total
                 .checked_add(size)
                 .ok_or_else(|| failure("cache size overflow"))?;
-            let meta = fs::metadata(entry.path().join("memory")).map_err(failure)?;
             let last = fs::metadata(entry.path().join("manifest.json"))
                 .and_then(|m| m.modified())
                 .unwrap_or(UNIX_EPOCH);
-            entries.push((last, key, size, meta.nlink() == 1));
+            entries.push((last, key, size, pinned));
         }
         entries.sort_by_key(|e| e.0);
-        for (_, key, size, unpinned) in entries {
+        for (_, key, size, pinned) in entries {
             if total <= self.budget - needed {
                 break;
             }
-            if unpinned {
-                self.invalidate(&key);
+            if !pinned {
+                self.invalidate(&key)?;
                 total -= size;
             }
         }
         if total > self.budget - needed {
-            return Err(failure("cache capacity pinned by active VMs"));
+            return Err(failure(
+                "cache capacity pinned by active VMs, including invalid generations",
+            ));
         }
         Ok(())
     }
@@ -284,6 +321,11 @@ impl Cache {
             .and_then(|b| b.checked_add(1 << 20))
             .ok_or_else(|| failure("snapshot size overflow"))?;
         self.make_room(estimate)?;
+        if self.root.join(key).exists() {
+            return Err(failure(
+                "invalid snapshot generation is still pinned; continue cold until released",
+            ));
+        }
         let work = p.in_root("/snapshots");
         fs::create_dir_all(&work).map_err(failure)?;
         fs::set_permissions(&work, fs::Permissions::from_mode(0o700)).map_err(failure)?;
@@ -471,5 +513,30 @@ mod tests {
                 .is_err()
         );
         assert!(!c.in_root(SCRATCH_IN_JAIL).exists());
+    }
+    #[test]
+    fn invalidated_pinned_generation_keeps_its_quota_until_last_vm_release() {
+        let test = TestCache::new(60);
+        let key = test.entry("a", 10);
+        let pin = test.root.join("live-vm-memory");
+        fs::hard_link(test.root.join(&key).join("memory"), &pin).unwrap();
+        test.cache.invalidate(&key).unwrap();
+        assert!(!test.cache.contains(&key));
+        assert!(test.root.join(&key).join("invalidated").exists());
+        assert!(
+            test.cache.make_room(31).is_err(),
+            "invalidated bytes are still charged"
+        );
+        test.cache.make_room(30).unwrap();
+        assert!(pin.exists());
+        // Reopening the manager cache cannot lose the tombstone accounting.
+        let reopened = Cache {
+            root: test.root.clone(),
+            budget: 60,
+        };
+        assert!(reopened.make_room(31).is_err());
+        fs::remove_file(pin).unwrap();
+        reopened.make_room(60).unwrap();
+        assert!(!test.root.join(key).exists());
     }
 }

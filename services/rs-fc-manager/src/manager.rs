@@ -456,7 +456,7 @@ impl Manager {
         self.snapshots
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .invalidate(key.as_deref().expect("snapshot key"));
+            .invalidate(key.as_deref().expect("snapshot key"))?;
         rec.pid = None;
         rec.pid_start = None;
         let replacement = Links::new(self.cfg.max_forward_conns);

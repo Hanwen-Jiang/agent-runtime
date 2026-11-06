@@ -198,7 +198,7 @@ fn memory_snapshot_clones_refresh_identity_and_keep_tenant_disks_private() {
         "clone should resume memory, not reboot kernel"
     );
     assert_eq!(m.destroy("t1", &a).status, 204);
-    assert_eq!(m.destroy("t2", &b).status, 204);
+    // Keep restored clone b active while another restore invalidates its base.
     // A corrupt snapshot must lead to a healthy cold boot, never a partial VM.
     let state = entry.join("state");
     fs::set_permissions(&state, std::os::unix::fs::PermissionsExt::from_mode(0o644)).unwrap();
@@ -206,10 +206,27 @@ fn memory_snapshot_clones_refresh_identity_and_keep_tenant_disks_private() {
     bytes[0] ^= 1;
     fs::write(&state, bytes).unwrap();
     fs::set_permissions(&state, std::os::unix::fs::PermissionsExt::from_mode(0o444)).unwrap();
-    let c = m.create_ok("t3", spec);
+    let c = m.create_ok("t3", spec.clone());
     assert!(m.log().contains("cold fallback"), "{}", m.log());
     assert_eq!(sh(&m, "t3", &c, "echo recovered").1.trim(), "recovered");
+    assert!(
+        entry.join("invalidated").exists(),
+        "invalid pinned base remains charged"
+    );
+    assert!(entry.join("memory").exists());
+    assert_eq!(
+        sh(&m, "t2", &b, "echo still-private").1.trim(),
+        "still-private"
+    );
+    assert_eq!(m.destroy("t2", &b).status, 204);
     assert_eq!(m.destroy("t3", &c).status, 204);
+    let d = m.create_ok("t4", spec);
+    assert!(
+        !entry.join("invalidated").exists(),
+        "released generation can be recaptured"
+    );
+    assert_eq!(sh(&m, "t4", &d, "echo recaptured").1.trim(), "recaptured");
+    assert_eq!(m.destroy("t4", &d).status, 204);
 }
 
 impl Drop for Real {
