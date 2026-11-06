@@ -9,3 +9,22 @@ Migration `212 workspace_async_operations` stores an index of accepted IDs and t
 Task-service applies 212 at startup; Worker applies 213 with existing workspace migrations. The sandbox archive format is unchanged. Multi git reads use the workspace Worker, since the Sandbox Service's root-only read RPC has no repository selector. ListFiles and ReadFile still address paths relative to the complete workspace root.
 
 Validation: Buf lint/breaking pass; Go workspaceapi and task-service command tests pass. The real Sandbox Service suite (multi mount/archive lifecycle, isolated git operations, read-only behavior, invalid/conflicting paths, quotas, partial failure, dirty detach, copy/archive/delete, old root operations and Temporal execution) passed against both agents: 17 tests with the Go agent, then 19 tests including async result retention with the deployed Rust agent extracted from `sandbox-agent:809cb41`. Async tests include concurrent retries, parameter conflicts, tenant/caller/workspace isolation, public-field filtering, restart and expired-history deduplication. Coding-web UI and deployed acceptance are tracked by their integration owner.
+
+Follow-up review: detach now checks every local ref plus detached HEAD rather
+than HEAD alone, so switching away from an unpublished branch cannot hide its
+commits. A corrupt ref/object inventory fails closed instead of being interpreted
+as zero unpublished commits. `--all` also handles an empty repository without
+requiring a HEAD commit. Added mount/archive regressions retain the repository
+when inventory fails and require explicit discard for a non-current local branch.
+The Git behavior was checked with real empty, detached and switched-branch
+repositories. End-to-end Sandbox Service execution of these additional cases
+remains pending: the current execution sandbox rejects socket creation with
+EPERM. No assertions were removed or tests skipped. Independent async-result and
+NET-OPEN Python checks pass (14 tests); Go workspace/task API and egress packages
+compile, while their listening-server suites need the permitted host environment.
+
+The approved D-25 baseline also calls for a legacy WorkspaceOperationWorkflow
+golden. Existing Task/Stage histories remain intact, but no workspace golden is
+currently present. Final integration must capture it using the pre-D-25 baseline
+`67b4f5bc` and a real Temporal server, then replay it with the final implementation;
+a synthetic fixture or the existing in-session workflow test is not that evidence.

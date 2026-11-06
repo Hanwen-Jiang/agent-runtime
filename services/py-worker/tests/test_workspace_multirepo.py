@@ -58,3 +58,33 @@ async def test_multirepo_boundaries_and_partial_success(tmp_path: Path) -> None:
     assert len((await s.run(Op.WORKSPACE_OPERATION_LIST_REPOS,workspace="m"))["repos"]) == 1
     await s.run(Op.WORKSPACE_OPERATION_ATTACH_REPO,workspace="m",repo={"name":"b","path":"b","url":url})
     assert (await s.error(Op.WORKSPACE_OPERATION_ATTACH_REPO,workspace="m",repo={"name":"c","path":"c","url":url})).code == "max_repos"
+
+
+@pytest.mark.parametrize("mode", ["mount", "archive"])
+async def test_detach_preserves_repository_when_commit_inventory_is_broken(tmp_path: Path, mode: str) -> None:
+    url, _ = make_remote(tmp_path)
+    s = Setup(tmp_path, mode=mode)
+    await s.run(Op.WORKSPACE_OPERATION_CREATE, layout="multi")
+    await s.run(Op.WORKSPACE_OPERATION_ATTACH_REPO, repo={"name": "api", "path": "api", "url": url, "access": "write"})
+    await s.tool("repo_edit", {"path": "api/local.txt", "new": "only local copy\n"})
+    await s.run(Op.WORKSPACE_OPERATION_COMMIT, repo="api", message="unpublished")
+    await s.tool("shell_run", {"argv": ["python", "-c", "from pathlib import Path; Path('api/.git/refs/remotes/origin/broken').write_text('f'*40+'\\n')"]})
+    error = await s.error(Op.WORKSPACE_OPERATION_DETACH_REPO, repo="api")
+    assert error.code == "git_not_found"
+    assert [r["name"] for r in (await s.run(Op.WORKSPACE_OPERATION_LIST_REPOS))["repos"]] == ["api"]
+    assert (await s.run(Op.WORKSPACE_OPERATION_READ_FILE, path="api/local.txt"))["content"] == "only local copy\n"
+
+
+@pytest.mark.parametrize("mode", ["mount", "archive"])
+async def test_detach_checks_unpublished_commits_on_other_branches(tmp_path: Path, mode: str) -> None:
+    url, _ = make_remote(tmp_path)
+    s = Setup(tmp_path, mode=mode)
+    await s.run(Op.WORKSPACE_OPERATION_CREATE, layout="multi")
+    await s.run(Op.WORKSPACE_OPERATION_ATTACH_REPO, repo={"name": "api", "path": "api", "url": url, "access": "write"})
+    await s.tool("shell_run", {"argv": ["git", "-C", "api", "checkout", "-b", "local-work"]})
+    await s.tool("repo_edit", {"path": "api/local.txt", "new": "unpublished branch\n"})
+    await s.run(Op.WORKSPACE_OPERATION_COMMIT, repo="api", message="unpublished")
+    await s.tool("shell_run", {"argv": ["git", "-C", "api", "checkout", "main"]})
+    assert (await s.error(Op.WORKSPACE_OPERATION_DETACH_REPO, repo="api")).code == "repo_dirty"
+    removed = await s.run(Op.WORKSPACE_OPERATION_DETACH_REPO, repo="api", discard_changes=True)
+    assert removed["discarded_commits"] == 1

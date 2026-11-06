@@ -183,8 +183,13 @@ async def detach(ops: Any, inp: Any, args: dict[str, Any]) -> dict[str, Any]:
         async with ops._lease(inp, writable=True) as lease:
             status = await ops._git(lease, ["status", "--porcelain", "-z", "--untracked-files=all"], what="检查仓库改动")
             files = len([p for p in status.stdout.split(b"\0") if p])
-            count = await ops._git(lease, ["rev-list", "--count", "HEAD", "--not", "--remotes", *([repo["pushed_head"]] if repo.get("pushed_head") else [])], what="检查未推送提交", check=False)
-            commits = int(count.stdout.strip() or b"0") if count.exit_code == 0 else 0
+            # A broken ref/object must never turn an unknown commit count into a
+            # clean repository: doing so could discard the only copy of a commit.
+            # Include other branches, tags, stash and detached HEAD; checking
+            # HEAD alone loses unpublished commits after switching branches.
+            # --all also handles a genuinely empty repository without an error.
+            count = await ops._git(lease, ["rev-list", "--count", "--all", "--not", "--remotes", *([repo["pushed_head"]] if repo.get("pushed_head") else [])], what="检查未推送提交")
+            commits = int(count.stdout.strip() or b"0")
             if (files or commits) and not args.get("discard_changes"):
                 raise ConflictError("repo_dirty", "仓库有未提交改动或未推送提交")
             result = await lease.box.exec(lease.env_id, ["rm", "-rf", "--", repo["path"]], timeout=ops.git_timeout)
