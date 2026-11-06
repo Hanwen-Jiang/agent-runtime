@@ -11,18 +11,20 @@
 
 live_retriever（docs/plan/memory-live.md 第 5 节，F2）对着已部署的 Memory Service 跑同样的评测，测的是部署：
 - 地址 AR_MEMORY_ADDRESS；令牌用 AR_DEV_SIGNING_KEY 现签（与服务端同一把；密钥只留在签令牌的闭包里，不进 repr 与错误信息）；
-- 评测租户 evals 下每个检索器一个新工作区，写入走 SubmitCandidates，等后台处理到最后一条再查；aclose 时把写入的逐条删掉。
+- 运行前用 AR_MEMORY_TOPOLOGY_EVIDENCE 核实且冻结单写者拓扑；每题独立 evals 工作区，FIFO 哨兵确认处理后删除哨兵，再检索；aclose 逐条核验清理，失败保留诊断。
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
+import hashlib
 import os
 import secrets
 import shutil
 import tempfile
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -145,13 +147,43 @@ def _payload(item: Mapping[str, Any]) -> payload_pb2.JsonPayload:
     return payload_pb2.JsonPayload(schema_id=SCHEMA_ID, value=value)
 
 
+def single_writer_evidence(path: str) -> dict[str, Any]:
+    """Validate a pre-run `kubectl get deployment,pods -l ... -o json`
+    snapshot. The release coordinator must freeze this topology for the run;
+    a process-local FIFO lock does not support multiple Memory replicas.
+    """
+    if not path:
+        raise ValueError("live evaluation requires AR_MEMORY_TOPOLOGY_EVIDENCE")
+    raw = Path(path).read_bytes()
+    evidence = json.loads(raw)
+    items = evidence.get("items", [])
+    deployments = [i for i in items if i.get("kind") == "Deployment"]
+    pods = [i for i in items if i.get("kind") == "Pod"]
+    if len(deployments) != 1 or len(pods) != 1:
+        raise ValueError("memory topology must contain exactly one Deployment and one Pod")
+    deployment, pod = deployments[0], pods[0]
+    status, spec, meta = deployment.get("status", {}), deployment.get("spec", {}), deployment.get("metadata", {})
+    selector = spec.get("selector", {}).get("matchLabels", {})
+    pod_meta, pod_status = pod.get("metadata", {}), pod.get("status", {})
+    if (spec.get("replicas") != 1 or any(status.get(k) != 1 for k in ("replicas", "updatedReplicas", "readyReplicas", "availableReplicas"))
+            or status.get("observedGeneration", 0) < meta.get("generation", 1) or not selector
+            or any(pod_meta.get("labels", {}).get(k) != v for k, v in selector.items())
+            or pod_meta.get("deletionTimestamp") or pod_status.get("phase") != "Running"
+            or not any(c.get("type") == "Ready" and c.get("status") == "True" for c in pod_status.get("conditions", []))):
+        raise ValueError("memory topology is not a stable single writer")
+    containers = spec.get("template", {}).get("spec", {}).get("containers", [])
+    return {"sha256": hashlib.sha256(raw).hexdigest(), "deployment_uid": meta.get("uid"),
+            "pod_uid": pod_meta.get("uid"), "generation": meta.get("generation"),
+            "images": [c.get("image", "") for c in containers]}
+
+
 class LiveMemoryRetriever:
     """对着已部署的 Memory Service：每个检索器一个新工作区，写完等后台处理，查完（aclose）逐条删掉。"""
 
     name = "memory-service-live"
 
     def __init__(self, corpus: Sequence[Mapping[str, str]], *, env: Mapping[str, str] | None = None, tenant: str = LIVE_TENANT,
-                 user: str = "u-evals", wait_s: float = 300.0) -> None:
+                 user: str = "u-evals", wait_s: float = 300.0, rpc_timeout_s: float = 30.0, single_writer_verified: bool = False) -> None:
         env = dict(os.environ if env is None else env)
         address, key = env.get("AR_MEMORY_ADDRESS", ""), env.get("AR_DEV_SIGNING_KEY", "")
         missing = [n for n, v in (("AR_MEMORY_ADDRESS", address), ("AR_DEV_SIGNING_KEY", key)) if not v]
@@ -162,17 +194,85 @@ class LiveMemoryRetriever:
         def token(ctx: tenant_pb2.TenantContext) -> str:
             return issue_dev_token(signing, tenant=ctx.tenant_id, user=ctx.user_id, workspace=ctx.workspace_id, session=ctx.session_id)
 
+        topology = {} if single_writer_verified else single_writer_evidence(env.get("AR_MEMORY_TOPOLOGY_EVIDENCE", ""))
         self.corpus = [dict(c) for c in corpus]
         self.identity = Identity(tenant_id=tenant, user_id=user, workspace_id=f"w-eval-{uuid.uuid4().hex[:16]}")
+        if wait_s <= 0 or rpc_timeout_s <= 0:
+            raise ValueError("wait_s and rpc_timeout_s must be positive")
         self.wait_s = wait_s
+        self.rpc_timeout_s = rpc_timeout_s
         self.accepted = 0
         self.timed_out = False
         self._client = MemoryServiceClient(address, token)
         self._ids: dict[str, str] = {}
         self._written = False
+        self._submitted: list[str] = []
+        self._barrier: tuple[str, str] | None = None
+        self._drained = False
+        self._closed = False
+        self._lifecycle_sink: Callable[[dict[str, Any]], None] | None = None
+        self.diagnostics: dict[str, Any] = {
+            "workspace": self.identity.workspace_id, "tenant": tenant, "user": user, "topology": topology,
+            "attempted": 0, "accepted": 0, "timed_out": False, "pipeline_complete": False,
+            "deleted": [], "not_found": [], "cleanup_errors": {}, "cleanup_complete": False,
+        }
 
     def __repr__(self) -> str:
         return f"LiveMemoryRetriever(address={self._client.address!r}, workspace={self.identity.workspace_id!r})"
+
+    def set_lifecycle_sink(self, sink: Callable[[dict[str, Any]], None]) -> None:
+        """Persist workspace/IDs before admitting writes, including a crash mid-batch."""
+        self._lifecycle_sink = sink
+        self._checkpoint()
+
+    def _checkpoint(self) -> None:
+        if self._lifecycle_sink is not None:
+            self._lifecycle_sink(self.diagnostics)
+
+    async def _rpc(self, request: Any) -> Any:
+        # The underlying client has no deadlines; an unreachable service must not
+        # hang an evaluation or its cleanup indefinitely.
+        return await asyncio.wait_for(request, timeout=self.rpc_timeout_s)
+
+    async def _submit(self, items: list[dict[str, Any]]) -> None:
+        # Track before the call: a timeout can occur after the server committed.
+        self._submitted.extend(item["id"] for item in items)
+        self.diagnostics["submitted_ids"] = list(self._submitted)
+        self.diagnostics["attempted"] += len(items)
+        self._checkpoint()
+        response = await self._rpc(self._client.submit_candidates(memory_pb2.SubmitCandidatesRequest(
+            tenant=self.identity.tenant_context(),
+            candidates=[memory_pb2.MemoryCandidate(memory_item=_payload(item), source_task_id=TASK_ID) for item in items])))
+        self.accepted += response.accepted
+        self.diagnostics["accepted"] = self.accepted
+        self._checkpoint()
+        if response.accepted != len(items):
+            raise RuntimeError("memory_candidate_not_accepted")
+
+    async def _wait_for_pipeline(self) -> None:
+        if self._drained or not self._barrier:
+            return
+        mid, query = self._barrier
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + self.wait_s
+        delay = 0.5
+        while loop.time() < deadline:
+            try:
+                remaining = deadline - loop.time()
+                found = await asyncio.wait_for(self._search_ids(query, MAX_TOP_K), timeout=remaining)
+                if mid in found:
+                    self._drained = True
+                    self.diagnostics["pipeline_complete"] = True
+                    self._checkpoint()
+                    return
+            except (TimeoutError, grpc.aio.AioRpcError):
+                pass
+            await asyncio.sleep(min(delay, max(0, deadline - loop.time())))
+            delay = min(delay * 2, 5.0)
+        self.timed_out = True
+        self.diagnostics["timed_out"] = True
+        self._checkpoint()
+        raise TimeoutError("memory_pipeline_timeout")
 
     async def _write(self) -> None:
         if self._written:
@@ -180,27 +280,22 @@ class LiveMemoryRetriever:
         self._written = True
         items = [memory_item(n, entry, self.identity, item_id=_random_memory_id()) for n, entry in enumerate(self.corpus, 1)]
         self._ids = {item["id"]: entry["id"] for item, entry in zip(items, self.corpus, strict=True)}
-        ctx = self.identity.tenant_context()
+        # Corpus entries may be screened out or merged. A separate neutral,
+        # unique sentinel establishes FIFO completion without relying on the
+        # last dataset entry surviving screening. It is deleted before scoring.
+        marker = f"The evaluation batch reference is {uuid.uuid4().hex}."
+        sentinel = memory_item(len(items) + 1, {"id": "sentinel", "kind": "fact", "text": marker}, self.identity,
+                               item_id=_random_memory_id())
+        self._barrier = (sentinel["id"], marker)
         for start in range(0, len(items), _SUBMIT_BATCH):
-            batch = items[start:start + _SUBMIT_BATCH]
-            response = await self._client.submit_candidates(memory_pb2.SubmitCandidatesRequest(
-                tenant=ctx, candidates=[memory_pb2.MemoryCandidate(memory_item=_payload(item), source_task_id=TASK_ID) for item in batch]))
-            self.accepted += response.accepted
-        if not items:
-            return
-        # 后台按顺序处理：最后一条查得到了，前面的也处理完了（被流水线拒掉的查不到，分数如实变低）。等不到就照常查，记下超时。
-        last, query = items[-1]["id"], str(items[-1]["content"]["guidance"])
-        loop = asyncio.get_running_loop()
-        deadline = loop.time() + self.wait_s
-        while loop.time() < deadline:
-            if last in await self._search_ids(query, MAX_TOP_K):
-                return
-            await asyncio.sleep(0.2)
-        self.timed_out = True
+            await self._submit(items[start:start + _SUBMIT_BATCH])
+        await self._submit([sentinel])
+        await self._wait_for_pipeline()
+        await self._delete(sentinel["id"])
 
     async def _search_ids(self, query: str, top_k: int) -> list[str]:
-        found = await self._client.search(memory_pb2.SearchRequest(
-            tenant=self.identity.tenant_context(), trigger=memory_pb2.SEARCH_TRIGGER_PLANNING, query=query, top_k=min(top_k, MAX_TOP_K)))
+        found = await self._rpc(self._client.search(memory_pb2.SearchRequest(
+            tenant=self.identity.tenant_context(), trigger=memory_pb2.SEARCH_TRIGGER_PLANNING, query=query, top_k=min(top_k, MAX_TOP_K))))
         return [str(json_format.MessageToDict(i.memory_item.value).get("id")) for i in found.items]
 
     async def retrieve(self, question: str, top_k: int) -> list[dict[str, str]]:
@@ -213,16 +308,61 @@ class LiveMemoryRetriever:
                 out.append({"id": cid, "text": texts[cid]})
         return out[:top_k]
 
-    async def aclose(self) -> None:
-        ctx = self.identity.tenant_context()
+    async def _delete(self, mid: str) -> None:
+        if mid in self.diagnostics["deleted"] or mid in self.diagnostics["not_found"]:
+            return
         try:
-            for mid in self._ids:
+            response = await self._rpc(self._client.delete(memory_pb2.DeleteRequest(
+                tenant=self.identity.tenant_context(), memory_id=mid, reason="评测结束")))
+            if mid not in response.deleted_memory_ids:
+                raise RuntimeError("memory_delete_unconfirmed")
+            self.diagnostics["deleted"].append(mid)
+        except grpc.aio.AioRpcError as exc:
+            # Only after FIFO completion does NOT_FOUND mean rejected/merged,
+            # rather than a queued item that could appear after cleanup.
+            if exc.code() != grpc.StatusCode.NOT_FOUND or not self._drained:
+                raise
+            self.diagnostics["not_found"].append(mid)
+        self._checkpoint()
+
+    async def aclose(self) -> None:
+        if self._closed:
+            return
+        failures: dict[str, str] = self.diagnostics["cleanup_errors"]
+        try:
+            if self._submitted and not self._drained:
                 try:
-                    await self._client.delete(memory_pb2.DeleteRequest(tenant=ctx, memory_id=mid, reason="评测结束"))
-                except grpc.aio.AioRpcError:
-                    pass  # 被流水线拒掉的条目没有写进去
+                    # Submit may have failed before the barrier was queued. A
+                    # fresh sentinel also wakes a previously failed drain.
+                    if self._barrier:
+                        old, marker = self._barrier
+                        if old not in self._submitted:
+                            sentinel = memory_item(len(self.corpus) + 1, {"id": "sentinel", "kind": "fact", "text": marker},
+                                                   self.identity, item_id=old)
+                            await self._submit([sentinel])
+                    await self._wait_for_pipeline()
+                except Exception as exc:
+                    failures["pipeline"] = type(exc).__name__
+            for mid in self._submitted:
+                for attempt in range(3):
+                    try:
+                        await self._delete(mid)
+                        failures.pop(mid, None)
+                        break
+                    except Exception as exc:
+                        code = exc.code().name if isinstance(exc, grpc.aio.AioRpcError) else type(exc).__name__
+                        failures[mid] = code
+                        if attempt < 2:
+                            await asyncio.sleep(0.1 * (attempt + 1))
+            self.diagnostics["pending_ids"] = [mid for mid in self._submitted
+                                                if mid not in self.diagnostics["deleted"] and mid not in self.diagnostics["not_found"]]
+            self.diagnostics["cleanup_complete"] = not failures and (not self._submitted or self._drained)
+            self._checkpoint()
         finally:
+            self._closed = True
             await self._client.aclose()
+        if not self.diagnostics["cleanup_complete"]:
+            raise RuntimeError("memory_cleanup_incomplete")
 
 
 def live_retriever(corpus: Sequence[Mapping[str, str]], *, env: Mapping[str, str] | None = None) -> LiveMemoryRetriever:

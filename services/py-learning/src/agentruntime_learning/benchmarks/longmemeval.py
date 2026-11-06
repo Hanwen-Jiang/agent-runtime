@@ -20,6 +20,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import inspect
+import hashlib
+import time
 import json
 import math
 import os
@@ -28,7 +30,7 @@ import sys
 import urllib.request
 from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -174,59 +176,209 @@ def _summary(rows: Sequence[Mapping[str, Any]], *, retriever: str, top_k: int, k
     }
 
 
-async def run(
+def _digest(value: Any) -> str:
+    return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()
+
+
+def _write_json(path: Path, value: Any) -> None:
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", "utf-8")
+    os.replace(temporary, path)
+
+
+def _read_rows(path: Path) -> dict[str, dict[str, Any]]:
+    done: dict[str, dict[str, Any]] = {}
+    if path.exists():
+        for line in path.read_text("utf-8").splitlines():
+            if line.strip():
+                row = json.loads(line)
+                done[str(row["question_id"])] = row
+    return done
+
+
+async def _run(
     instances: Sequence[Instance], retriever: str | Callable[[list[dict[str, Any]]], Any], out_dir: Path, *, top_k: int = DEFAULT_TOP_K,
     ks: Sequence[int] = DEFAULT_KS, budget_usd: float | None = None, price_per_m: float = DEFAULT_EMBED_PRICE,
+    provenance: Mapping[str, Any] | None = None, timeout_s: float = 600.0,
 ) -> dict[str, Any]:
-    """逐题检索、打分，结果一题一行追加到 <out_dir>/results.jsonl（续跑读它），写 summary.json 并返回。"""
+    """Resume only an identical experiment. Journal each start before paid work;
+    failed/interrupted attempts remain explicit and are never silently re-run.
+    """
+    if top_k <= 0 or top_k > DEFAULT_TOP_K or not ks or any(k <= 0 for k in ks) or not math.isfinite(timeout_s) or timeout_s <= 0:
+        raise ValueError("invalid retrieval limits")
+    if not math.isfinite(price_per_m) or price_per_m < 0 or budget_usd is not None and (not math.isfinite(budget_usd) or budget_usd < 0):
+        raise ValueError("invalid budget")
+    if len({i.question_id for i in instances}) != len(instances):
+        raise ValueError("duplicate question_id")
     out_dir = Path(out_dir)
     results = out_dir / "results.jsonl"
     todo = [i for i in instances if not i.abstention]
     skipped = len(instances) - len(todo)
-    done: dict[str, dict[str, Any]] = {}
-    if results.exists():
-        for line in results.read_text("utf-8").splitlines():
-            if line.strip():
-                row = json.loads(line)
-                done[str(row["question_id"])] = row
+    name = retriever if isinstance(retriever, str) else f"{retriever.__module__}:{retriever.__qualname__}"
+    manifest = {
+        "schema_version": 2, "scoring_version": "longmemeval-retrieval-v1", "retriever": name,
+        "dataset_digest": _digest([asdict(i) for i in instances]), "question_ids": [i.question_id for i in instances],
+        "top_k": top_k, "ks": list(ks), "price_per_m": price_per_m, "budget_usd": budget_usd,
+        "timeout_s": timeout_s, "max_round_chars": MAX_ROUND_CHARS, "provenance": dict(provenance or {}),
+    }
+    manifest_path = out_dir / "manifest.json"
+    if manifest_path.exists():
+        if json.loads(manifest_path.read_text("utf-8")) != manifest:
+            raise ValueError("experiment configuration or dataset changed; use a new output directory")
+    elif results.exists() and results.stat().st_size:
+        raise ValueError("legacy results lack immutable provenance; use a new output directory")
+    done = _read_rows(results)
+    if set(done) - {i.question_id for i in todo}:
+        raise ValueError("results contain questions outside the frozen selection")
     pending = [i for i in todo if i.question_id not in done]
-    if budget_usd is not None:
-        estimate = estimate_usd(pending, price_per_m=price_per_m)
-        if estimate > budget_usd:
-            raise BudgetExceeded(f"估计 embedding 要花 ${estimate:.4f}，超过预算 ${budget_usd:.4f}：一题都没跑")
+    if any(not r.get("cleanup_complete", False) for r in done.values()):
+        pending = []  # Reconcile previous unknown writes before adding any new ones.
+    # Check the whole frozen experiment, not a fresh allowance at each resume.
+    estimate = 0.0 if retriever == "lexical" else estimate_usd(todo, price_per_m=price_per_m)
+    if budget_usd is not None and estimate > budget_usd:
+        raise BudgetExceeded(f"估计 embedding 要花 ${estimate:.4f}，超过预算 ${budget_usd:.4f}：一题都没跑")
     factory = (lambda corpus: rag.load_retriever(retriever, corpus)) if isinstance(retriever, str) else retriever
-    name = retriever if isinstance(retriever, str) else ""
     out_dir.mkdir(parents=True, exist_ok=True)
-    for inst in pending:
-        corpus = rounds(inst)
-        backend = factory(corpus)
-        name = str(getattr(backend, "name", "") or name)
-        try:
-            got = await backend.retrieve(inst.question, top_k)
-        finally:
-            closer = getattr(backend, "aclose", None)
-            if closer is not None:
-                result = closer()
-                if inspect.isawaitable(result):
-                    await result
-        round_ids = [str(g["id"]) for g in got]
-        sessions = session_ranking(round_ids)
-        evidence = {r["id"] for r in corpus if r["has_answer"]}
-        row = {
-            "question_id": inst.question_id, "question_type": inst.question_type, "rounds": len(corpus),
-            "ranked_sessions": sessions[:max(ks)], "ranked_rounds": round_ids[:max(ks)],
-            "session": metrics(sessions, set(inst.answer_session_ids), ks=ks),
-            "turn": metrics(round_ids, evidence, ks=ks) if evidence else None,
-        }
+    _write_json(manifest_path, manifest)
+
+    def append(row: dict[str, Any]) -> None:
         with results.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(row, ensure_ascii=False) + "\n")
-        done[inst.question_id] = row
-    if not name and (out_dir / "summary.json").exists():
-        name = str(json.loads((out_dir / "summary.json").read_text("utf-8")).get("retriever") or "")
+            fh.flush()
+            os.fsync(fh.fileno())
+        done[row["question_id"]] = row
+
+    for inst in pending:
+        corpus = rounds(inst)
+        row: dict[str, Any] = {"question_id": inst.question_id, "question_type": inst.question_type,
+                               "rounds": len(corpus), "outcome": "interrupted", "session": metrics([], set(inst.answer_session_ids), ks=ks),
+                               "turn": None, "ranked_sessions": [], "ranked_rounds": [], "cleanup_complete": False}
+        append(row)
+        backend = None
+        started = time.monotonic()
+        got: list[Any] = []
+        try:
+            backend = factory(corpus)
+            lifecycle_sink = getattr(backend, "set_lifecycle_sink", None)
+            if lifecycle_sink is not None:
+                def checkpoint(diagnostics: dict[str, Any]) -> None:
+                    row["lifecycle"] = dict(diagnostics)
+                    append(row)
+                lifecycle_sink(checkpoint)
+            got = await asyncio.wait_for(backend.retrieve(inst.question, top_k), timeout=timeout_s)
+            row["outcome"] = "completed"
+        except Exception as exc:
+            # Record class/code only; arbitrary provider errors may contain
+            # credentials, URLs or private memory content.
+            row["outcome"] = "timeout" if isinstance(exc, TimeoutError) else "environment_error"
+            row["error_type"] = type(exc).__name__
+        finally:
+            if backend is not None:
+                try:
+                    closer = getattr(backend, "aclose", None)
+                    if closer is not None:
+                        closed = closer()
+                        if inspect.isawaitable(closed):
+                            await asyncio.wait_for(closed, timeout=timeout_s)
+                    row["cleanup_complete"] = True
+                except Exception as exc:
+                    row["outcome"] = "cleanup_error"
+                    row["cleanup_error_type"] = type(exc).__name__
+                diagnostics = getattr(backend, "diagnostics", None)
+                if isinstance(diagnostics, Mapping):
+                    row["lifecycle"] = dict(diagnostics)
+                    row["cleanup_complete"] = bool(diagnostics.get("cleanup_complete", row["cleanup_complete"]))
+            else:
+                row["cleanup_complete"] = True
+            row["elapsed_s"] = round(time.monotonic() - started, 4)
+        if row["outcome"] == "completed":
+            round_ids = [str(g["id"]) for g in got]
+            valid_ids = {r["id"] for r in corpus}
+            if len(round_ids) != len(set(round_ids)) or any(rid not in valid_ids for rid in round_ids):
+                row["outcome"] = "environment_error"
+                row["error_type"] = "InvalidRetrievalIds"
+            else:
+                sessions = session_ranking(round_ids)
+                evidence = {r["id"] for r in corpus if r["has_answer"]}
+                row.update({"ranked_sessions": sessions[:max(ks)], "ranked_rounds": round_ids[:max(ks)],
+                            "session": metrics(sessions, set(inst.answer_session_ids), ks=ks),
+                            "turn": metrics(round_ids, evidence, ks=ks) if evidence else None})
+        append(row)
+        # A failed cleanup may leave queued writes; do not add more work until
+        # its recorded workspace/IDs have been reconciled.
+        if not row["cleanup_complete"]:
+            break
     rows = [done[i.question_id] for i in todo if i.question_id in done]
-    summary = _summary(rows, retriever=name, top_k=top_k, ks=ks, skipped=skipped)
-    (out_dir / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", "utf-8")
+    summary = _summary(rows, retriever=str(name), top_k=top_k, ks=ks, skipped=skipped)
+    summary.update({"selected": len(todo), "completed": sum(r.get("outcome") == "completed" for r in rows),
+                    "outcomes": {o: sum(r.get("outcome") == o for r in rows) for o in sorted({r.get("outcome", "unknown") for r in rows})},
+                    "timeouts": sum(r.get("outcome") == "timeout" or bool(r.get("lifecycle", {}).get("timed_out")) for r in rows),
+                    "cleanup_complete": all(r.get("cleanup_complete", False) for r in rows),
+                    "estimated_embedding_usd": estimate, "actual_cost_usd": 0.0 if retriever == "lexical" else None,
+                    "manifest_digest": _digest(manifest)})
+    summary["valid"] = len(rows) == len(todo) and summary["completed"] == len(todo) and summary["cleanup_complete"] and not summary["timeouts"]
+    _write_json(out_dir / "summary.json", summary)
     return summary
+
+
+async def run(instances: Sequence[Instance], retriever: str | Callable[[list[dict[str, Any]]], Any], out_dir: Path, **kwargs: Any) -> dict[str, Any]:
+    """One writer per experiment directory; OS releases the lock after a crash."""
+    directory = Path(out_dir)
+    directory.mkdir(parents=True, exist_ok=True)
+    with (directory / ".run.lock").open("a+b") as lock:
+        if os.name == "nt":
+            import msvcrt
+            lock.seek(0, 2)
+            if lock.tell() == 0:
+                lock.write(b"0")
+                lock.flush()
+            lock.seek(0)
+            acquire = lambda: msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+            release = lambda: (lock.seek(0), msvcrt.locking(lock.fileno(), msvcrt.LK_UNLCK, 1))
+        else:
+            import fcntl
+            acquire = lambda: fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            release = lambda: fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+        try:
+            acquire()
+        except OSError as exc:
+            raise ValueError("experiment output directory is already running") from exc
+        try:
+            return await _run(instances, retriever, directory, **kwargs)
+        finally:
+            release()
+
+
+def compare(lexical_dir: Path, live_dir: Path) -> dict[str, Any]:
+    """Frozen acceptance rule: 50 paired questions, >=10 percentage-point
+    gain, one-sided exact McNemar p<=0.05, no timeout or cleanup failure.
+    """
+    dirs = (Path(lexical_dir), Path(live_dir))
+    manifests = [json.loads((d / "manifest.json").read_text("utf-8")) for d in dirs]
+    for key in ("dataset_digest", "question_ids", "top_k", "ks", "scoring_version", "max_round_chars"):
+        if manifests[0].get(key) != manifests[1].get(key):
+            raise ValueError(f"unpaired experiment: {key}")
+    if manifests[0]["retriever"] != "lexical" or manifests[1]["retriever"] != "agentruntime_memory.eval_retriever:live_retriever":
+        raise ValueError("acceptance requires lexical and deployed live_retriever")
+    for key in ("data_sha256", "seed", "limit"):
+        if manifests[0].get("provenance", {}).get(key) != manifests[1].get("provenance", {}).get(key):
+            raise ValueError(f"unpaired experiment provenance: {key}")
+    rows = [_read_rows(d / "results.jsonl") for d in dirs]
+    if rows[0].keys() != rows[1].keys():
+        raise ValueError("unpaired question results")
+    pairs = [(rows[0][qid]["session"]["recall_any@10"], rows[1][qid]["session"]["recall_any@10"]) for qid in rows[0]]
+    wins = sum(b > a for a, b in pairs)
+    losses = sum(b < a for a, b in pairs)
+    discordant = wins + losses
+    p = sum(math.comb(discordant, k) for k in range(wins, discordant + 1)) / 2 ** discordant if discordant else 1.0
+    gain = (wins - losses) / len(pairs) if pairs else 0.0
+    summaries = [json.loads((d / "summary.json").read_text("utf-8")) for d in dirs]
+    integrity = (all(s.get("valid") for s in summaries) and len(pairs) == 50
+                 and all(r.get("outcome") == "completed" and r.get("cleanup_complete")
+                         and not r.get("lifecycle", {}).get("timed_out") for rs in rows for r in rs.values()))
+    return {"rule": "longmemeval-live-acceptance-20261106-v1", "questions": len(pairs), "wins": wins, "losses": losses,
+            "recall_any_at_10_gain": gain, "exact_one_sided_p": p, "integrity_passed": integrity,
+            "passed": integrity and gain >= 0.10 and p <= 0.05}
 
 
 def fetch(url: str, out: Path) -> int:
@@ -259,6 +411,9 @@ def report(summary: Mapping[str, Any]) -> str:
         lines.append(row("轮级", "", summary["turn"]))
     for qtype, data in (summary.get("by_type") or {}).items():
         lines.append(row(f"会话级 · {qtype}", data.get("questions"), data.get("session") or {}))
+    lines += ["", f"完整性有效：{summary.get('valid', False)}；完成 {summary.get('completed', 0)}/{summary.get('selected', summary.get('questions'))}；"
+              f"超时 {summary.get('timeouts', 0)}；清理完成 {summary.get('cleanup_complete', False)}。",
+              f"费用：预计 embedding ${summary.get('estimated_embedding_usd', 0):.6f}；实际 {summary.get('actual_cost_usd', 'unknown')}（None 表示待账本核验）。"]
     return "\n".join(lines) + "\n"
 
 
@@ -278,6 +433,13 @@ def main(argv: list[str] | None = None) -> int:
     rp.add_argument("--k", type=int, action="append", help=f"报告的 k，可以给几个（默认 {', '.join(map(str, DEFAULT_KS))}）")
     rp.add_argument("--budget-usd", type=float)
     rp.add_argument("--embed-price-per-m", type=float, default=DEFAULT_EMBED_PRICE)
+    cp = sub.add_parser("compare", help="固定门槛的 lexical/live 配对验收")
+    cp.add_argument("--lexical", type=Path, required=True)
+    cp.add_argument("--live", type=Path, required=True)
+    rp.add_argument("--timeout-s", type=float, default=600.0)
+    rp.add_argument("--runtime-revision")
+    rp.add_argument("--registry-revision")
+    rp.add_argument("--memory-version")
     sp = sub.add_parser("report", help="打印 summary.json 的表")
     sp.add_argument("--out", type=Path, required=True)
     try:
@@ -285,6 +447,10 @@ def main(argv: list[str] | None = None) -> int:
     except SystemExit as exc:
         return 0 if exc.code in (0, None) else 2
     try:
+        if args.command == "compare":
+            comparison = compare(args.lexical, args.live)
+            print(json.dumps(comparison, ensure_ascii=False, indent=2))
+            return 0 if comparison["passed"] else 4
         if args.command == "fetch":
             print(f"取到 {fetch(args.url, args.out)} 题：{args.out}")
             return 0
@@ -293,10 +459,24 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         instances = load(args.data)
         chosen = sample(instances, limit=args.limit, seed=args.seed) if args.limit else instances
+        live = args.retriever == "agentruntime_memory.eval_retriever:live_retriever"
+        if live and not all((args.runtime_revision, args.registry_revision, args.memory_version, args.budget_usd is not None)):
+            raise ValueError("live requires --runtime-revision, --registry-revision, --memory-version and --budget-usd")
+        topology = {}
+        if live:
+            from agentruntime_memory.eval_retriever import single_writer_evidence
+            topology = single_writer_evidence(os.environ.get("AR_MEMORY_TOPOLOGY_EVIDENCE", ""))
+            if args.memory_version not in topology["images"]:
+                raise ValueError("--memory-version must match the deployed image in topology evidence")
+        provenance = {"memory_topology": topology, "data_sha256": hashlib.sha256(args.data.read_bytes()).hexdigest(), "seed": args.seed, "limit": args.limit,
+                      "runtime_revision": args.runtime_revision, "registry_revision": args.registry_revision,
+                      "memory_version": args.memory_version, "memory_address": os.environ.get("AR_MEMORY_ADDRESS", "") if live else "",
+                      "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
         summary = asyncio.run(run(chosen, args.retriever, args.out, top_k=args.top_k, ks=tuple(args.k or DEFAULT_KS),
-                                  budget_usd=args.budget_usd, price_per_m=args.embed_price_per_m))
+                                  budget_usd=args.budget_usd, price_per_m=args.embed_price_per_m,
+                                  provenance=provenance, timeout_s=args.timeout_s))
         print(report(summary))
-        return 0
+        return 0 if summary["valid"] else 4
     except BudgetExceeded as exc:
         print(exc, file=sys.stderr)
         return 3
