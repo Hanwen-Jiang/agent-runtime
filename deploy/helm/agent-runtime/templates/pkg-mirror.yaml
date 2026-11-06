@@ -58,7 +58,7 @@ spec:
             - name: admin
               containerPort: 8094
           env:
-            {{- include "ar.storeEnv" . | nindent 12 }}
+            {{- include "ar.storeEnv" (merge (dict "imageComponent" "pkg-mirror") .) | nindent 12 }}
             {{- include "ar.dsnEnv" . | nindent 12 }}
             - name: AR_PKG_MIRROR_ADDR
               value: ":8093"

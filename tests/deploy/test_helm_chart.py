@@ -48,6 +48,21 @@ NOT_SECRET_ENV = {"AR_SECRETS_FILE", "AR_SECRETS_SEED_FILE", "AR_MODEL_PROVIDER_
 OTLP_HTTP_PORT = 4318
 
 
+def test_component_images_and_trace_versions_can_remain_frozen() -> None:
+    manifests = render(set_values=("image.tag=new-core", "image.tags.model-gateway=frozen-gateway", "image.tags.memory=frozen-memory"))
+    observed = set()
+    for deployment in by_kind(manifests, "Deployment"):
+        component = deployment["metadata"]["labels"].get(COMPONENT)
+        if component not in {"model-gateway", "memory", "worker", "task-service"}:
+            continue
+        expected = {"model-gateway": "frozen-gateway", "memory": "frozen-memory"}.get(component, "new-core")
+        container = pod_spec(deployment)["containers"][0]
+        assert container["image"].endswith(":" + expected)
+        assert env_of(container)["OTEL_SERVICE_VERSION"]["value"] == expected
+        observed.add(component)
+    assert observed == {"model-gateway", "memory", "worker", "task-service"}
+
+
 VALUES = {"default": None, "production": PRODUCTION_VALUES, "cloud": CLOUD_VALUES}
 
 

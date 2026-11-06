@@ -58,7 +58,7 @@ spec:
               - --budget-usd
               - {{ $lp.budgetUsd | quote }}
             env:
-              {{- include "ar.commonEnv" . | nindent 14 }}
+              {{- include "ar.commonEnv" (merge (dict "imageComponent" "learning") .) | nindent 14 }}
               # 成本读 Model Gateway 结算的 model_usage（R-06-D）：与网关同一个业务库；没配时命令行退回读 trace 上的成本。
               {{- include "ar.dsnEnv" . | nindent 14 }}
               - name: AR_EVENT_STREAM_BROKERS

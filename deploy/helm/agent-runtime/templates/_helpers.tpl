@@ -28,12 +28,19 @@ app.kubernetes.io/component: {{ index . 1 }}
 {{- end -}}
 
 {{/* 镜像；用法：include "ar.image" (list $ "worker") */}}
-{{- define "ar.image" -}}
+{{- define "ar.imageTag" -}}
 {{- $root := index . 0 -}}
 {{- $tag := default $root.Chart.AppVersion $root.Values.image.tag -}}
+{{- $tag = default $tag (get (default (dict) $root.Values.image.tags) (index . 1)) -}}
 {{- if not (kindIs "string" $tag) -}}
 {{- fail "image.tag 要写成字符串：全是数字的提交号要加引号，否则镜像名是错的" -}}
 {{- end -}}
+{{- $tag -}}
+{{- end -}}
+
+{{- define "ar.image" -}}
+{{- $root := index . 0 -}}
+{{- $tag := include "ar.imageTag" . -}}
 {{- printf "%s/%s:%s" $root.Values.image.registry (index . 1) $tag -}}
 {{- end -}}
 
@@ -74,7 +81,7 @@ app.kubernetes.io/component: {{ index . 1 }}
 - name: OTEL_EXPORTER_OTLP_ENDPOINT
   value: {{ printf "http://%s:4318" (include "ar.collectorService" .) | quote }}
 - name: OTEL_SERVICE_VERSION
-  value: {{ default .Chart.AppVersion .Values.image.tag | quote }}
+  value: {{ include "ar.imageTag" (list . (default "" .imageComponent)) | quote }}
 - name: OTEL_DEPLOYMENT_ENVIRONMENT
   value: {{ .Values.global.environment | quote }}
 {{- end -}}

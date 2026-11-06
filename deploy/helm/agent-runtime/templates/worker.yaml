@@ -33,7 +33,7 @@ spec:
           imagePullPolicy: {{ $.Values.image.pullPolicy }}
           args: ["-m", "agentruntime_worker", "--queues", {{ $pool | quote }}]
           env:
-            {{- include "ar.storeEnv" $ | nindent 12 }}
+            {{- include "ar.storeEnv" (merge (dict "imageComponent" "worker") $) | nindent 12 }}
             - name: AR_TEMPORAL_ADDRESS
               value: {{ $.Values.external.temporal.address | quote }}
             - name: AR_TEMPORAL_NAMESPACE

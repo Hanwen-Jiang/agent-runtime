@@ -61,7 +61,7 @@ spec:
               containerPort: {{ $ts.deltas.port }}
             {{- end }}
           env:
-            {{- include "ar.storeEnv" . | nindent 12 }}
+            {{- include "ar.storeEnv" (merge (dict "imageComponent" "task-service") .) | nindent 12 }}
             # Ingress（AUTH-01）：只收 JWT 时不给签名密钥，task-service 不持有能签令牌的东西。
             - name: AR_INGRESS_DEV_TOKENS
               value: {{ $devTokens | quote }}

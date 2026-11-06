@@ -29,7 +29,7 @@ spec:
             - name: grpc
               containerPort: {{ $mem.port }}
           env:
-            {{- include "ar.storeEnv" . | nindent 12 }}
+            {{- include "ar.storeEnv" (merge (dict "imageComponent" "memory") .) | nindent 12 }}
             {{- include "ar.signingKeyEnv" . | nindent 12 }}
             {{- include "ar.dsnEnv" . | nindent 12 }}
             - name: AR_MEMORY_ADDRESS

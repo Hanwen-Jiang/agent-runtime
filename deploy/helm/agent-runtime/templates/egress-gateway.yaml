@@ -45,7 +45,7 @@ spec:
             - name: preview
               containerPort: 8097
           env:
-            {{- include "ar.storeEnv" . | nindent 12 }}
+            {{- include "ar.storeEnv" (merge (dict "imageComponent" "egress-gateway") .) | nindent 12 }}
             {{- include "ar.dsnEnv" . | nindent 12 }}
             - name: AR_EGRESS_ADDR
               value: ":8095"

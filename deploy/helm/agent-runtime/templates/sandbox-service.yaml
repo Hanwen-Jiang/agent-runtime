@@ -184,7 +184,7 @@ spec:
             - name: grpc
               containerPort: {{ $svc.port }}
           env:
-            {{- include "ar.storeEnv" . | nindent 12 }}
+            {{- include "ar.storeEnv" (merge (dict "imageComponent" "sandbox-service") .) | nindent 12 }}
             - name: AR_SANDBOX_SERVICE_ADDR
               value: {{ printf "0.0.0.0:%v" $svc.port | quote }}
             - name: AR_SANDBOX_SERVICE_CALLERS

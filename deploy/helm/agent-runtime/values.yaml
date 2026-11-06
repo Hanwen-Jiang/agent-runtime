@@ -10,6 +10,9 @@ image:
   registry: ghcr.io/agentruntime
   # 为空时用 Chart 的 appVersion。不要用 latest。
   tag: ""
+  # Optional component tags let an evaluation freeze Gateway/Memory while other
+  # services roll out. Unspecified components continue to use image.tag.
+  tags: {}
   pullPolicy: IfNotPresent
 
 # 已有的 Secret（由运维创建）：

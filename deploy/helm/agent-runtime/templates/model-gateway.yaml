@@ -34,7 +34,7 @@ spec:
             - name: grpc
               containerPort: {{ $gw.port }}
           env:
-            {{- include "ar.commonEnv" . | nindent 12 }}
+            {{- include "ar.commonEnv" (merge (dict "imageComponent" "model-gateway") .) | nindent 12 }}
             {{- include "ar.dsnEnv" . | nindent 12 }}
             - name: AR_DATA_DIR
               value: /data
