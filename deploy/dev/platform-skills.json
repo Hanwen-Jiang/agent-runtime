@@ -1,0 +1,36 @@
+{
+  "entries": [
+    {
+      "kind": "skill",
+      "name": "explore-repo",
+      "document": {
+        "description": "Get oriented in an unfamiliar repository before changing it: find the entry points, build and test commands, conventions and the files that matter for the task. Use at the start of any coding task in a repo you have not seen in this session.",
+        "instructions": "# Explore an unfamiliar repository\n\nGoal: in a few cheap steps, know enough to change the code safely. Do not read everything.\n\n1. **Top level first.** `repo_list` the root. Read the README and any CONTRIBUTING / AGENTS / CLAUDE / docs index file if present (skim, first ~150 lines).\n2. **Find how it builds and tests.** Look for `package.json` (scripts), `pyproject.toml` / `setup.cfg` / `tox.ini` / `pytest.ini`, `go.mod`, `Cargo.toml`, `Makefile`, `justfile`, `.github/workflows/*`. Write down the exact test and lint commands the project itself uses; prefer them over generic ones.\n3. **Locate the code for this task.** Use `repo_grep` for names from the user's request (error messages, function names, routes, config keys). Open only the files that match, and only the relevant ranges (`start_line`, `max_lines`).\n4. **Learn the local conventions** from 1-2 neighbouring files: naming, error handling, logging, test layout and fixtures. New code should look like the code around it.\n5. **Check the current state.** If a test command exists and is fast, run it once before changing anything so you know which failures already existed.\n\nOutput of this step (keep it short, in the user's language): the files you will touch, the commands you will use to verify, and any risk you noticed. Then do the task.\n\nAvoid: reading lock files, generated code, vendored dependencies and large data files; listing the whole tree recursively."
+      }
+    },
+    {
+      "kind": "skill",
+      "name": "write-tests",
+      "document": {
+        "description": "Add or update automated tests for a code change so the change is verified, following the project's existing test framework and layout. Use when fixing a bug, adding a feature, or when the user asks for tests.",
+        "instructions": "# Write tests for a change\n\n1. **Use what the project already uses.** Find the existing test directory and framework (pytest, unittest, jest/vitest, go test, cargo test, etc.) and copy the style of the nearest existing test file: imports, fixtures, naming, assertion style. Do not add a new test framework or dependency.\n2. **Bug fix:** first write a test that reproduces the bug and fails on the current code. Run it and confirm it fails for the right reason. Then fix the code and confirm it passes.\n3. **New behaviour:** cover the main path, one or two edge cases (empty input, boundaries, error path) and anything the user explicitly mentioned. Prefer a few meaningful tests over many trivial ones.\n4. **Keep tests deterministic:** no real network, no sleeps for timing, no dependence on the current date or random order; use the project's existing fakes or fixtures.\n5. **Run them.** Run the new tests, then the surrounding test file or package, with the project's own command (see the README, Makefile or CI config). Report the exact command and the result.\n6. **Do not weaken existing tests** to make them pass. If an existing test fails because the old behaviour was intentionally changed, update it and say why in your answer.\n\nIn the final answer: which tests you added, what they check, the command you ran and whether everything passed. If something could not be run (missing tool, no network), say so plainly."
+      }
+    },
+    {
+      "kind": "skill",
+      "name": "commit-and-pr",
+      "document": {
+        "description": "Finish a coding change cleanly: review the diff, write a clear commit message and a pull-request description a reviewer can act on. Use when the user asks to commit, push or open a PR, or when a change is ready to hand over.",
+        "instructions": "# Commit and prepare a pull request\n\n1. **Review the diff before committing.** Look at every changed file. Remove debugging output, commented-out code, unrelated formatting churn and accidental files (build output, `.env`, editor files). Never commit secrets or credentials.\n2. **Verify.** Run the project's tests and linters for the touched area (see the `write-tests` and `explore-repo` skills). Do not commit a known-broken state without saying so.\n3. **Commit message:**\n   - Subject line: imperative, at most ~72 characters, says what changes (e.g. `Fix crash when config file is empty`). Follow the repo's existing convention if it has one (e.g. `fix(scope): ...`).\n   - Body: why the change is needed, what was wrong, and anything non-obvious about the approach. Wrap at ~72 characters.\n4. **Pull request description** (in the user's language unless the repo is clearly English-only):\n   - **What**: one or two sentences.\n   - **Why**: the problem or request it addresses (link the issue if known).\n   - **How**: the main changes, as a short list.\n   - **Testing**: commands run and results; what was not tested.\n   - **Risks / follow-ups**: anything a reviewer should look at closely.\n5. **Push only when asked.** Committing locally is fine; pushing or opening a PR changes shared state, so do it when the user asked for it or the task clearly requires it.\n\nKeep the PR focused on one change; if you noticed unrelated problems, mention them instead of fixing them in the same PR."
+      }
+    },
+    {
+      "kind": "skill",
+      "name": "deliver-files",
+      "document": {
+        "description": "Hand files to the user (reports, CSV/Excel exports, images, archives) with deliver_file so they can download them, and make sure the delivery really happened. Use whenever the user asks for a file, attachment, download or export.",
+        "instructions": "# Deliver files to the user\n\n1. **Create the file inside the workspace** (with `shell_run` or `repo_edit`), using a clear file name and the right extension (`report.md`, `results.csv`, `chart.png`, `bundle.zip`).\n2. **Check it before delivering:** it exists, is not empty, and opens as the expected format (for example `head -5 results.csv`, `python -c 'import json; json.load(open(\"data.json\"))'`, `unzip -l bundle.zip`).\n3. **Deliver with `deliver_file`.** The path is relative to the workspace root, with `/` separators and no `./` or `..` (write `out/report.md`, not `./out/report.md`). Optionally give a display `name`.\n4. **One call per file.** Limits: about 25 MB per file and 20 files per task; for many files, zip them first and deliver the archive.\n5. **Only claim what happened.** A file counts as delivered only if `deliver_file` succeeded. If it failed, read the error (`file_not_found`: check the path with `ls`; `invalid_delivery_path`: remove `./`; `delivery_file_too_large`: compress or split) and retry once with the fix; otherwise tell the user exactly what failed.\n\nIn the final answer, list each delivered file with one line on what it contains."
+      }
+    }
+  ]
+}

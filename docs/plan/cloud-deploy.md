@@ -892,6 +892,13 @@ REAL-01 的检查（2026-11-04，在第 27 版上；目录 `rev29`，脚本 `smo
 - 冒烟 9（`evals`，Kata，新建工作区 16 秒）：列目录 0.3 秒、读文件 0.4 秒；`shell_run` 起沙箱 10.1 秒；`repo_read` 成功；**`deliver_file` 成功**（567 毫秒，F3-SANDBOX 修好）。
 - 回滚：`helm rollback ar 33`；`kubectl apply -f rev36/model-profiles.before.yaml` 再重启 model-gateway。
 
+第 35 版（2026-11-06，目录 `rev37`，脚本 `prepare.sh`、`rev37.sh`）：Runtime `8372fcb`（租户额度用完时 Reviewer 第一轮就问人 `67eb036`；MCP 租约收回时报
+`mcp_lease_revoked` `9d3ebfb`），coding-web `517a044`（`rule_tenant_budget_exceeded` 的说法）。只换镜像，渲染与第 34 版比只有 tag；线上清单与 `manifest-rev37.yaml`
+一致，这次没有 Pod 重启，四个对外地址 200。回滚：`helm rollback ar 34`；coding-web `rollout undo`。
+
+平台 Skill（V1-SKILL，2026-11-06）：按 `deploy/dev/platform-skills.json` 经 `registry-seed` 发布 `explore-repo`、`write-tests`、`commit-and-pr`、`deliver-files`（都是 v1；
+之前线上一个 Skill 也没有）。改正文后重跑同一条命令出新版本，内容不变的跳过。
+
 宿主上的 Firecracker（2026-11-05，V1-FC：宿主上的 systemd 服务，不经 Helm；规矩见总表第 0 节第 6 条）：
 
 - 装了什么（与 `deploy/cluster/install.sh` 第 3b 步相同的命令，分步手工跑，没跑整个 install.sh）：Firecracker 与 jailer v1.17.0（`/usr/local/bin`，按
