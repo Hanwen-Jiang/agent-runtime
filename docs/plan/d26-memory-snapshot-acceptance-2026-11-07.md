@@ -45,3 +45,7 @@ AR_TEST_FIRECRACKER=1 cargo test --offline -p fc-manager --test real_vm memory_s
 需恢复宿主 KVM、网络监听和部署工具访问，保持单独资源窗口。先保存当前 manager、配置、rootfs 的回退副本（rootfs 用独立硬链接，防止转换器清理旧镜像）；排空 Firecracker 环境后部署新 manager 与包含新 guest bootstrap 的 rootfs，再启用本项配置。无需模型调用，模型费用为 $0。
 
 依次运行上述真实隔离测试、已有 Firecracker 端到端验收，再使用 `scripts/fc_real_measure.py` 在相同规格和相同提交的独立实例采集 cold/warm/snapshot/density。runner 的窗口锁、原始样本、配置上限、资源余量、失败分类和清理审计见 `goal-fc-real-2026-11-06.md`。若真快照不能创建或恢复，必须保留失败日志并恢复服务，不能发布收益或宣告 D-26 完成。
+
+## 跨线集成
+
+D-26 提交 `5726d1f1` 已与主线 `f2daba6f`（含 WK-LITE/WS-BLOB 与 D-27）在独立分支合并；保留 blob 与 snapshot 模块，共用 `sha2` 一次。合并后 fc-manager 全目标 clippy 通过。全包 clippy 发现 transfer 旧代码的两项 lint（exec 嵌套 if、archive 测试模块后有函数），已交回该文件负责人修复；没有降低 lint 标准。
