@@ -25,6 +25,7 @@ class RegistryKind(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     REGISTRY_KIND_TENANT_POLICY: _ClassVar[RegistryKind]
     REGISTRY_KIND_TASK_FAMILIES: _ClassVar[RegistryKind]
     REGISTRY_KIND_SKILL: _ClassVar[RegistryKind]
+    REGISTRY_KIND_PERSONAL_CONFIG: _ClassVar[RegistryKind]
 
 class SkillScope(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
@@ -47,6 +48,7 @@ REGISTRY_KIND_MODEL_PROFILE: RegistryKind
 REGISTRY_KIND_TENANT_POLICY: RegistryKind
 REGISTRY_KIND_TASK_FAMILIES: RegistryKind
 REGISTRY_KIND_SKILL: RegistryKind
+REGISTRY_KIND_PERSONAL_CONFIG: RegistryKind
 SKILL_SCOPE_UNSPECIFIED: SkillScope
 SKILL_SCOPE_PLATFORM: SkillScope
 SKILL_SCOPE_TENANT: SkillScope

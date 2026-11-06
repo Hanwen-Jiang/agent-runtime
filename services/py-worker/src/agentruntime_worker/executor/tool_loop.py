@@ -24,6 +24,7 @@ from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 from agentruntime_core.errors import InvalidError
 
 from agentruntime_worker import names
+from agentruntime_worker.personal_config import TaskPersonalConfig, preference
 from agentruntime_worker.activities.types import ToolLoopStep, ToolLoopStepInput
 from agentruntime_worker.config import WorkerConfig
 from agentruntime_worker.memory import Searcher, node_experiences, searcher
@@ -102,9 +103,10 @@ class ModelToolLoop:
     def __init__(
         self, gateway: ModelGateway, builder: ContextBuilder, *, tier: str = TOOL_LOOP_TIER, tools: ToolCatalog | None = None,
         transcript: TranscriptSource | None = None, mcp_tools: Callable[[], frozenset[str]] | None = None, memory: Searcher | None = None,
-        sub_agent_tier: str | None = None,
+        sub_agent_tier: str | None = None, personal: TaskPersonalConfig | None = None,
     ) -> None:
         self.memory = memory
+        self.personal = personal
         # 子 Agent（isolated 的步）用的 Tier；None 时与主流程同一个。
         self.sub_agent_tier = sub_agent_tier
         # 给了 ToolCatalog 时，工具的说明与参数 schema 取自登记，没登记的不给模型（T-10）；没给时只有名字。
@@ -127,6 +129,7 @@ class ModelToolLoop:
         tools = await self._tool_specs(inp, [str(t) for t in node.get("tools") or []])
         leased = await self.tools.mcp_names(inp.tenant, inp.task_id) if self.tools is not None else frozenset()
         turns = await self.transcript.load(inp.tenant, inp.task_id) if self.transcript is not None else ()
+        personal = await self.personal.load(inp.tenant.tenant_id, inp.task_id) if self.personal is not None else None
         built = await self.builder.build(
             ContextRequest(
                 tenant=inp.tenant,
@@ -139,6 +142,7 @@ class ModelToolLoop:
                 context_version=inp.context_version,
                 task_family=inp.task_family,
                 system=[SYSTEM_PROMPT],
+                profile=[preference(personal.instructions)] if personal and personal.instructions else [],
                 tools=tools,
                 mcp_tools=(self.mcp_tools() if self.mcp_tools is not None else frozenset()) | leased,
                 conversation=transcript_text(turns, max_chars=CONVERSATION_CHARS),
@@ -239,7 +243,7 @@ def dev_tool_loop(config: WorkerConfig) -> ToolLoopActivities:
     """
     from agentruntime_worker.executor.dev import model_gateway
     from agentruntime_worker.session.transcript import worker_transcript
-    from agentruntime_worker.tools import context_objects, dev_tools, mcp_leases, mcp_tool_names
+    from agentruntime_worker.tools import context_objects, dev_tools, mcp_leases, mcp_tool_names, skill_pins
 
     gateway = model_gateway(config)
     builder = ContextBuilder(gateway, context_objects(config), ContextConfig(effective_tokens=config.context_effective_tokens, offload_tokens=config.context_offload_tokens))
@@ -247,6 +251,7 @@ def dev_tool_loop(config: WorkerConfig) -> ToolLoopActivities:
         ModelToolLoop(
             gateway, builder, tools=ToolCatalog(dev_tools(config), mcp_leases(config)), transcript=worker_transcript(config),
             mcp_tools=lambda: mcp_tool_names(config), memory=searcher(config),
+            personal=TaskPersonalConfig(skill_pins(config).store) if config.registry_address else None,
             sub_agent_tier=SUB_AGENT_TIER if config.sub_agent_policy == "rules" else None,
         )
     )

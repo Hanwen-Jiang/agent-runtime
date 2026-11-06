@@ -12,6 +12,8 @@ Context Builder（R-03）实现之后，由它按同样的分区组装。
 
 from __future__ import annotations
 
+from agentruntime_worker.personal_config import preference
+
 import json
 from typing import Any
 
@@ -206,6 +208,7 @@ def planning_messages(
     return [
         *system_zone(catalog, sub_agent_rules=sub_agent_rules),
         mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=_brief(context, decision, task_plan)),
+        *([mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=preference(context.personal_instructions))] if context.personal_instructions else []),
         mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=_round(message, round_seq, task_state, last_round, keep_nodes, transcript_text(context.conversation, max_chars=PLANNING_CONVERSATION_CHARS), earlier)),
     ]
 

@@ -251,6 +251,9 @@ func (b *Broker) Acquire(ctx context.Context, tenant *commonv1.TenantContext, a 
 		if err != nil || lease != nil {
 			if lease != nil {
 				lease.EnvironmentJSON = envJSON
+				if err = b.personalConfig(ctx, lease, a.TaskID); err != nil {
+					return nil, err
+				}
 			}
 			return lease, err
 		}
@@ -294,6 +297,9 @@ func (b *Broker) Acquire(ctx context.Context, tenant *commonv1.TenantContext, a 
 		}
 	}
 	lease.EnvironmentJSON = envJSON
+	if err = b.personalConfig(ctx, lease, a.TaskID); err != nil {
+		return nil, err
+	}
 	b.remember(lease)
 	return lease, nil
 }
@@ -317,6 +323,18 @@ func (b *Broker) reuse(ctx context.Context, tenant *commonv1.TenantContext, a Ac
 		}
 	}
 	if found == nil {
+		return nil, nil
+	}
+	samePersonal, err := b.personalFilesCompatible(ctx, owner, found.TaskID, a.TaskID)
+	if err != nil {
+		return nil, err
+	}
+	if !samePersonal {
+		if b.ledger.IdleNow(*found) {
+			if _, err := b.DestroyRecord(ctx, *found, "personal config changed", true, false); err != nil {
+				return nil, err
+			}
+		}
 		return nil, nil
 	}
 	if !b.fitsGrants(found.Backend, *found, grants) || (a.Spec.Image != "" && !SameImage(a.Spec.Image, found.Image)) {
@@ -867,6 +885,9 @@ func (b *Broker) Get(ctx context.Context, tenant *commonv1.TenantContext, id str
 		}
 	}
 	if err := b.withEnv(ctx, lease, policy, config); err != nil {
+		return nil, err
+	}
+	if err = b.personalConfig(ctx, lease, rec.TaskID); err != nil {
 		return nil, err
 	}
 	b.remember(lease)

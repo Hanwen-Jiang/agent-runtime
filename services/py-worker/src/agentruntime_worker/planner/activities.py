@@ -138,6 +138,9 @@ def dev_planner(config: WorkerConfig) -> PlannerActivities:
     memory = searcher(config)
     if memory is not None:
         source = RetrievalContextSource(source, memory)
+    if config.registry_address:
+        from agentruntime_worker.personal_config import PersonalConfigContextSource, TaskPersonalConfig
+        source = PersonalConfigContextSource(source, TaskPersonalConfig(skill_pins(config).store))
     # N16-R：派子 Agent 的规矩（AR_SUB_AGENT_POLICY=rules，默认 off）。
     planner = Planner(model_gateway(config), PlannerConfig(sub_agent_rules=config.sub_agent_policy == "rules"))
     return PlannerActivities(planner, source, tools=tools)

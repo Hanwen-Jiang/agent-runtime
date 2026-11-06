@@ -1018,11 +1018,19 @@ type LeaseTool struct {
 // IssueLeases 按提交时的设置给 Task 发租约：提交者的每个连接上打开了的工具（主机仍在策略的名单里）。租户策略不允许 MCP 时
 // 不发。同一个 Task 再发（重投递）不变。
 func (s *Server) IssueLeases(ctx context.Context, tenant *commonv1.TenantContext, taskID, user string) error {
+	return s.IssueSelectedLeases(ctx, tenant, taskID, user, nil)
+}
+
+// IssueSelectedLeases intersects caller selections with the existing enabled/authorized tools.
+func (s *Server) IssueSelectedLeases(ctx context.Context, tenant *commonv1.TenantContext, taskID, user string, selected []string) error {
 	if user == "" || taskID == "" {
 		return nil
 	}
 	policy, err := s.policy(ctx, tenant)
 	if err != nil || !policy.Allowed {
+		if err == nil && len(selected) > 0 {
+			return providererr.New(providererr.Denied, "personal_mcp_unavailable", "租户没有启用引用的 MCP 连接")
+		}
 		return err
 	}
 	db, err := s.db(tenant)
@@ -1036,8 +1044,16 @@ func (s *Server) IssueLeases(ctx context.Context, tenant *commonv1.TenantContext
 		if err != nil {
 			return err
 		}
+		wanted := map[string]bool{}
+		for _, id := range selected {
+			wanted[id] = true
+		}
+		available := map[string]bool{}
 		for _, r := range rows {
 			c := scanConn(r)
+			if selected != nil && !wanted[c.ID] {
+				continue
+			}
 			if _, _, err := checkURL(c.URL, policy); err != nil {
 				continue
 			}
@@ -1056,6 +1072,7 @@ func (s *Server) IssueLeases(ctx context.Context, tenant *commonv1.TenantContext
 			if len(leased) == 0 {
 				continue
 			}
+			available[c.ID] = true
 			data, _ := json.Marshal(leased)
 			if _, err := tx.Execute(ctx, `INSERT INTO mcp_leases (task_id, connection_id, user_id, connection_name, url, auth_secret, auth_header, tools, state,
 				created_at, revoked_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', $9, '') ON CONFLICT (task_id, connection_id) DO NOTHING`,
@@ -1063,6 +1080,11 @@ func (s *Server) IssueLeases(ctx context.Context, tenant *commonv1.TenantContext
 				return err
 			}
 			issued++
+		}
+		for id := range wanted {
+			if !available[id] {
+				return providererr.New(providererr.Invalid, "personal_mcp_unavailable", "个人配置引用的 MCP 连接不存在、未启用或不可用："+id)
+			}
 		}
 		return nil
 	})

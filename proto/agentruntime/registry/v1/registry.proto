@@ -50,6 +50,8 @@ enum RegistryKind {
   // Skill（N-14）：正文按 /schemas/skill.schema.json。Publish 不带租户是平台层、带租户是租户层（都要发布令牌）；
   // 用户层只经 agentruntime.skill.v1.SkillService。发布即成为当前版本，不走 Promote。
   REGISTRY_KIND_SKILL = 7;
+  // Private personal preferences; only PersonalConfigService publishes/reads these.
+  REGISTRY_KIND_PERSONAL_CONFIG = 8;
 }
 
 // SkillScope：Skill 登记在哪一层（N-14）。同名时上层优先：平台 > 租户 > 用户。下层不能发布上层已有的名字
