@@ -966,6 +966,19 @@ Qdrant 退场（2026-11-06）：Memory 从第 36 版起用 Milvus，线上 Runti
 `deploy/data/install.sh`、`versions.conf`、`values/qdrant.yaml`、`check_chart_values.py`，文档与生产样例改成 Milvus；Chart 仍保留 `external.qdrant.url`
 这个选项）。卸载线上的 release 与卷被会话的权限检查拦下（不可逆删除），交给用户：`/root/ar-release/qdrant-removal/remove-qdrant.sh`（总表 U-11），
 之前的 values 在同目录 `qdrant-values.before.yaml`。
+用户 2026-11-06 跑完 U-11：`data` 命名空间里已没有 qdrant 的 release、Pod 与卷。
+
+密钥文件的静态加密（V1-SEC / R-04，2026-11-06）：用户跑 `/root/ar-release/sec/master-key.sh`（U-10）建了 Secret `agent-runtime-secrets-master`（32 字节）。
+- 第 40 版（目录 `rev42`）：Runtime `809cb41`（`15ae98d` 的读写加密代码）；values 加 `secrets.masterKey`。用共用卷上密钥文件的 10 个部署（task-service、
+  sandbox-service、egress-gateway、pkg-mirror、memory、5 个 Worker 池）都挂上主密钥、有 `AR_SECRETS_MASTER_KEY_FILE`，写入照旧明文。model-gateway 与
+  learning 读的是只读的种子（`/var/run/agentruntime/secrets/secrets.json`，K8s Secret 本身），不受影响。等 FC 会话 real01 上的 Task 结束才升级。
+- 第 41 版（目录 `rev43`，只改 values）：`secrets.encryptAtRest: true`，那 10 个部署多 `AR_SECRETS_ENCRYPT=1`。升级前在 Worker 的 Pod 里统计：6 个作用域、19 个值
+  全是明文；升级后 19 个全是 `arenc1:` 的密文、明文 0 个（`rev42/count-sealed.py`，只数不打印）。各服务日志里没有主密钥或解密的错误；sandbox-service 重启两次
+  都是第一秒连不上业务库（同以前）。升级前存的明文备份在核对之后 `shred` 掉了。
+- 冒烟（`evals`，此时已切到 firecracker，`tsk_01M6QVECBBCK0AVVJGYDHEJHR3`）：shell_run（沙箱 2.8 秒）、repo_read、deliver_file 都成功，一轮 done，0.055 美元，
+  走过 Worker 读服务令牌、Claim-Check 的 kek 等读密钥文件的路径。
+- 回滚：`helm rollback ar 40`（只关写入加密，文件里的密文照样读得懂）；再退要先让文件变回明文（主密钥在时 `encryptAtRest: false` 不会把已有的密文改回去）。
+- 主密钥丢了，密钥文件就解不开：副本在 `/root/ar-secrets/secrets-master.key`，用户另存了服务器以外的备份。
 
 宿主上的 Firecracker（2026-11-05，V1-FC：宿主上的 systemd 服务，不经 Helm；规矩见总表第 0 节第 6 条）：
 

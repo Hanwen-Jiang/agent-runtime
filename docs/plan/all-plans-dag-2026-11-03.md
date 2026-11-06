@@ -48,7 +48,7 @@
 | V1-REV | REVIEW-FALLBACK：查清 Reviewer 的模型判定为什么被自己的校验拒掉并修；修不了的模型从 Reviewer 候选里去掉 | REVIEW-FALLBACK | 已修并上线（`1a66ba4`，第 34 版）：线上逐个模型探测，kimi 多写字段、qwen 放错层这类只错在形状的先整理再校验；mimo-v2.6-pro、glm-5.3 完全不按格式，去掉 `structured`（Profile 的 ConfigMap 与 Registry 已更新）。另：预算用完时第一轮就停（`67eb036`，下一版）。gemini 偶尔给出不完整的 JSON（网关 `bad_structured_output`），没追。完成标准 6 的线上统计待做 |
 | V1-SITE | 评测网站：SITE、SITE-DATA 随 V1-DEP 的 learning 镜像上线（只读令牌第 22 版已建，Secret `agent-runtime-eval-site`）；SITE-UI 的设计稿（https://claude.ai/artifact/VtHiCkT3fHaxtvnaRRd5Zr）由 Claude 定为通过，照稿改 `evals/site_pages` 三页，页面冒烟测试挪到 v2 | SITE、SITE-DATA、SITE-UI | SITE、SITE-DATA 已上线；SITE-UI 已完成（`6e4946b`，三页一套样式，截图核对过 1280 与 390 宽），第 37 版已上线（2026-11-06） |
 | V1-MEM | Memory 上线（M-01～M-03，按 7.1 已定：Milvus 3.0.2 单机版、`text-embedding-3-large`、所有租户白名单加 3-large）：`deploy/data` 装 Milvus，Memory Service 换新镜像（同时给 `external.milvus.uri`、`memory.embeddingVersion`，去掉 `external.qdrant.url`），Worker 设 `AR_MEMORY_ADDRESS`。PVC 照 7.1 给 50Gi（2026-11-05 核对：根盘 457G 用了 70%、剩 135G，内存 125G 可用 115G，够）；上线时不能有基线评测在跑。LongMemEval 验收挪到 v2 | MEM | 已上线（第 36 版，2026-11-06）：Milvus 在 data 命名空间，Memory 用真 embedding，Worker 已接上；线上写入与检索的核对随下一个真 Task |
-| V1-SEC | R-04 生产 SecretStore。Claude 定：不引 Vault、OpenBao、云 KMS（单节点 k3s，多一个要运维的组件）；在现有文件实现上加信封加密：每个作用域一把数据密钥加密值（AES-256-GCM），数据密钥由 KEK 加密，KEK 来自 K8s Secret 挂进需要的服务、不进共用卷；接口不变，旧的明文文件启动时一次性迁移。Go 与 Python 两边一起改 | R-04 | 代码已完成（`15ae98d`，2026-11-06）：两边复用 ARK1 包装逐值加密，主密钥 `AR_SECRETS_MASTER_KEY_FILE`，写入加密 `AR_SECRETS_ENCRYPT=1`，Chart 的 `secrets.masterKey`、`secrets.encryptAtRest`；跨语言往返核对过。等 U-10 的主密钥，之后分两版上线 |
+| V1-SEC | R-04 生产 SecretStore。Claude 定：不引 Vault、OpenBao、云 KMS（单节点 k3s，多一个要运维的组件）；在现有文件实现上加信封加密：每个作用域一把数据密钥加密值（AES-256-GCM），数据密钥由 KEK 加密，KEK 来自 K8s Secret 挂进需要的服务、不进共用卷；接口不变，旧的明文文件启动时一次性迁移。Go 与 Python 两边一起改 | R-04 | **已完成**（2026-11-06）：代码 `15ae98d`；第 40 版挂主密钥，第 41 版打开写入加密，共用卷上的密钥文件 19 个值全是密文；加密后的冒烟通过，见 cloud-deploy.md |
 | V1-AUTH | AUTH-01 切换（auth-tokens 第 4 节）：第 1～3 步随 V1-DEP 一起做（生成密钥对、Runtime 加 `issuers`、coding-web 加 JWT 私钥与 `CODING_TOKEN_KEY`）；一周后做第 4 步（`devTokens` 改 refuse、coding-web 去掉 `AR_DEV_SIGNING_KEY`） | AUTH-01 | 第 1～3 步已完成（2026-11-06：用户生成密钥对，Helm 第 39 版登记 issuers，coding-web 改发 JWT）；第 4 步约 2026-11-13 |
 | V1-I18N | coding-web 的 `i18n.js` 加 `workspace_not_ready` 的说法 | WS-CREATE-RACE 剩下的客户端部分 | 已完成并上线（coding-agent `2f84868`，第 32 版） |
 
@@ -58,14 +58,14 @@
 | --- | --- | --- | --- |
 | ~~U-1~~ | **已解决（2026-11-06）**：用户说令牌本来就有全部权限。查下来令牌是 API Token，能用两个账号；Containers 只在 `Root@nsnzd.com's Account`（`60a1944e…`，有 Workers 付费计划）上可用，`EDU` 账号没有。11-04 失败在脚本自己调的申请镜像仓库凭据的接口，改用 `wrangler containers push` 就推上去了，桥已换成 `sandbox-universal:f06e30c`（Rust 版 agent），见 cloud-deploy.md | Cloudflare 桥换新镜像 | — |
 | ~~U-2~~ | **已解决（2026-11-06）**：用户建了 Resend 的 Key（`/root/.config/agentruntime/resend.key`，已改成 0600），`cgent.link` 在 Resend 里已是 verified（DKIM、SPF 都过）。Claude 建了 Secret `observability/grafana-resend`（收件 `root@nsnzd.com`，用户选的），Grafana 升到第 4 版带上 SMTP 与联络点，经 Resend 接口发了测试邮件。见 cloud-deploy.md | F4 告警发邮件 | — |
-| U-3 | GitHub App 设置：权限加 Issues 读写，订阅 `issue_comment` 事件；各安装（你自己的账号或组织）点同意新权限 | G-06：在 Issue 里 @ 机器人自动开 Task | 自动触发用不了，其余 App 功能照常 |
+| ~~U-3~~ | **已完成（2026-11-06）**：GitHub 的公开接口核对 App `coding-agent-link`：Issues 读写、订阅 `issue_comment`。各安装要在 GitHub 上同意新权限（看不到，用户自己确认）；App 装到仓库后就能在 Issue 里 `@coding-agent-link` 触发 | G-06 | — |
 | U-4 | 设计书原文档（Claude Docs）的更新：二选一，你自己按各计划里“设计书的改动建议”改；或者在对话里授权 Claude 用 Claude Docs 的工具直接改并重新导出（给出文档链接） | 设计书与代码一致（4.10、4.14、4.15、附录 A、Memory 的 C1、Sandbox Service） | 不挡 v1，只是设计书越来越旧 |
 | ~~U-6~~ | **已完成**：`sandbox/fc-manager-token` 已在 `agent-runtime-secrets` 里（2026-11-06 00:36 服务器时间），第 38 版打开了 firecracker 后端 | Firecracker 后端 | — |
 | ~~U-7~~ | **已完成（2026-11-06）**：平台默认策略 `default/v3` 已生效（`mcp: {allowed: true, hosts: ["*"], max_connections: 10, max_effect: read}`）；默认档用户都能用“我的 MCP”的只读工具 | — | — |
 | ~~U-8~~ | **已完成（2026-11-06）**：用户生成了密钥对（Secret `coding-jwt`）；Claude 做了第 2 步（Helm 第 39 版，Runtime 登记 issuers，只认 coding-web 的租户前缀）与第 3 步（coding-web 挂私钥签 JWT）。第 4 步（关开发令牌）约一周后，Claude 定了提醒 | — | — |
 | ~~U-9~~ | **已完成（2026-11-06）**：`real01` 策略 v3 已生效（`sandbox.backend: firecracker`），V1-FC 会话在走完成标准 4 | — | — |
-| U-10 | V1-SEC 的主密钥：跑 `/root/ar-release/sec/master-key.sh`（生成 32 字节主密钥，进新 Secret `agent-runtime-secrets-master`，副本在 `/root/ar-secrets/secrets-master.key`，不打印）。**请把副本另外备份到服务器以外**：打开加密后主密钥丢了，密钥文件就解不开。跑完告诉 Claude，它发两版（先挂主密钥，再打开写入加密） | 密钥文件的静态加密（R-04） | 共用卷上的密钥文件一直是明文 |
-| U-11 | 卸载已经没人用的 Qdrant：跑 `/root/ar-release/qdrant-removal/remove-qdrant.sh`（先核对 Qdrant 没有集合、Runtime 不引用它，再 `helm uninstall qdrant -n data` 并删它的 20Gi 卷；values 备份在同目录，可以装回）。Claude 卸载被会话的权限检查拦下（不可逆删除） | 腾出 Qdrant 的 Pod 与 20Gi 卷；仓库已不再装它（`27ddb80`） | Qdrant 空跑着，占一个 Pod 与 20Gi |
+| ~~U-10~~ | **已完成（2026-11-06）**：Secret `agent-runtime-secrets-master` 已建；第 40、41 版上线了静态加密 | — | — |
+| ~~U-11~~ | **已完成（2026-11-06）**：Qdrant 的 release、Pod 与卷都已删除 | — | — |
 | U-5（可选） | 模型中转站控制台里设月度花费上限 | 开放注册的兜底 | 平台内的每日、每月预算照样生效 |
 
 不再要用户做的：G-05 的测试 App（属于测试，挪到 v2）；两条 Reviewer 样本的标注复核（评测，挪到 v2）；`evals.cgent.link` 的 DNS（已经有了）；GitHub App 的 Client secret（第 25 版已部署）。

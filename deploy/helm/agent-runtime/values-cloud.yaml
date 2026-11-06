@@ -15,6 +15,12 @@ secrets:
   existingSecret: agent-runtime-secrets
   # 可写的 SecretStore 文件（kek）；只读的 secrets.json 作种子（deploy/cluster/storage.yaml）。
   storeClaim: agent-runtime-secretstore
+  # 密钥文件的静态加密（R-04，V1-SEC，2026-11-06 第 40、41 版上线）：主密钥在 Secret agent-runtime-secrets-master（用户生成，副本只在
+  # 服务器的 /root/ar-secrets 与用户另存的备份里）；文件里每个值都是 arenc1: 的密文。主密钥丢了文件就解不开。
+  masterKey:
+    name: agent-runtime-secrets-master
+    key: master.key
+  encryptAtRest: true
   # 业务库 agentruntime（deploy/data/postgres.yaml）的连接串：角色 agentruntime 不是超级用户、没有 BYPASSRLS。
   # Secret 跨不了命名空间，这里的与 data 命名空间里给 CloudNativePG 的口令出自同一份 SOPS 文件（deploy/cluster/secrets）。
   relationalDsn:
