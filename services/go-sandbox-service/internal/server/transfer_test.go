@@ -22,11 +22,12 @@ import (
 )
 
 type transferObjects struct {
-	mu         sync.Mutex
-	data       map[string][]byte
-	puts, gets int
-	fail       bool
-	loseAck    bool
+	mu            sync.Mutex
+	data          map[string][]byte
+	puts, gets    int
+	fail          bool
+	loseAck       bool
+	trustedDigest bool
 }
 
 func objectServer(t *testing.T) (objectstore.Provider, *transferObjects) {
@@ -68,6 +69,10 @@ func objectServer(t *testing.T) (objectstore.Provider, *transferObjects) {
 			if !ok {
 				w.WriteHeader(404)
 				return
+			}
+			if state.trustedDigest {
+				sum := sha256.Sum256(data)
+				w.Header().Set("X-Amz-Meta-Ar-Sha256", fmt.Sprintf("%x", sum))
 			}
 			w.Header().Set("Content-Length", fmt.Sprint(len(data)))
 			w.WriteHeader(200)
@@ -350,6 +355,17 @@ func TestDirectTransferCachedReceiptDoesNotRecreateMissingObject(t *testing.T) {
 	bucket, err := objects.Bind(tc)
 	if err != nil {
 		t.Fatal(err)
+	}
+	// Model an authoritative object-store replacement of equal length. The
+	// trusted Head digest must contradict the cached receipt and be rejected.
+	state.mu.Lock()
+	for key, data := range state.data {
+		state.data[key] = bytes.Repeat([]byte("x"), len(data))
+	}
+	state.trustedDigest = true
+	state.mu.Unlock()
+	if _, err = h.worker.CommitTransfer(ctx, connect.NewRequest(req)); connect.CodeOf(err) != connect.CodeUnavailable {
+		t.Fatalf("same-length mismatching object must fail integrity validation, got %v", err)
 	}
 	if _, err = bucket.Delete(ctx, committed.Msg.Object.ObjectKey); err != nil {
 		t.Fatal(err)
