@@ -159,6 +159,8 @@ def _copies(tmp_path: Path) -> tuple[Path, Path]:
 
 def test_publish_writes_both_files_in_the_same_format(tmp_path: Path) -> None:
     profiles_path, seed_path = _copies(tmp_path)
+    before = next(p for p in json.loads(profiles_path.read_text("utf-8"))["profiles"] if p["id"] == cs.SONNET)
+    existing = {(e["task_family"], e["role"], e["tier"]): e for e in before.get("capability_scores", [])}
     report = score_report([(cs.SONNET, 0.71, True), (cs.OPUS, 0.69, True)])
     report["cells"].append(score_report([(cs.SONNET, 0.6, True)], role="judge")["cells"][0])
     dry = pb.publish(report, profiles_path=profiles_path, seed_path=seed_path, today=dt.date(2026, 11, 10), dry_run=True)
@@ -166,7 +168,14 @@ def test_publish_writes_both_files_in_the_same_format(tmp_path: Path) -> None:
     pb.publish(report, profiles_path=profiles_path, seed_path=seed_path, today=dt.date(2026, 11, 10))
     document = json.loads(profiles_path.read_text("utf-8"))
     sonnet = next(p for p in document["profiles"] if p["id"] == cs.SONNET)
-    assert [(e["role"], e["score"]) for e in sonnet["capability_scores"]] == [("judge", 0.6), ("plan", 0.71)]
+    after = {(e["task_family"], e["role"], e["tier"]): e for e in sonnet["capability_scores"]}
+    assert after[("general.unclassified", "judge", "medium")]["score"] == 0.6
+    assert after[("general.unclassified", "plan", "medium")]["score"] == 0.71
+    untouched = {k: v for k, v in existing.items() if k not in {
+        ("general.unclassified", "judge", "medium"), ("general.unclassified", "plan", "medium"),
+    }}
+    assert {k: after[k] for k in untouched} == untouched, "发布保留其他已验证维度的全部证据"
+    assert set(after) == set(existing) | {("general.unclassified", r, "medium") for r in ("judge", "plan")}
     seed = json.loads(seed_path.read_text("utf-8"))
     assert [e["document"] for e in seed["entries"] if e["kind"] == "model_profile"] == document["profiles"], "种子与 Profile 文件一致"
     import importlib.util
@@ -203,9 +212,13 @@ def test_the_capability_cli_end_to_end(tmp_path: Path, monkeypatch: pytest.Monke
         cells=[{"role": "plan", "tier": "medium", "evals": [{"eval": "capability_support:make", "options": {"skill": skill, "pool": 100}}], "candidates": list(skill)}],
     )
     out = tmp_path / "out"
+    from test_deepeval_acceptance import frozen
+
+    freeze_path = tmp_path / "freeze.json"
+    freeze_path.write_text(json.dumps(frozen()), "utf-8")
     assert capability_main(["estimate", "--plan", str(plan)]) == 0
     assert "合计还要约" in capsys.readouterr().out
-    assert capability_main(["run", "--plan", str(plan), "--out", str(out)]) == 0
+    assert capability_main(["run", "--plan", str(plan), "--out", str(out), "--freeze-config", str(freeze_path)]) == 0
     printed = capsys.readouterr().out
     assert printed.index("花费估算") < printed.index("这次跑了 200 次")
     assert capability_main(["score", "--out", str(out)]) == 0

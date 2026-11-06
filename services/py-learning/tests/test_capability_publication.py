@@ -66,10 +66,17 @@ def test_old_planning_records_stay_unpublishable_when_rescored():
     fresh = copy.deepcopy(data)
     for r in fresh:
         r["record"] = {"scoring_contract": scoring_contract()}
+        r["experiment_sha256"] = "a" * 64
+        r["deployment_frozen"] = True
     cell = {"role": "plan", **scoring.score_cell(fresh, ["a"]).to_json()}
     pub.enforce(cell, fresh, expected_repeats={"s09": 3})
     assert cell["candidates"][0]["publishable"]
     assert cell["publication"]["evidence_sha256"] != pub.evidence_digest(data)
+    for row in fresh:
+        row["record"]["scoring_contract"]["implementation_sha256"] = "not-even-a-digest"
+    cell = {"role": "plan", **scoring.score_cell(fresh, ["a"]).to_json()}
+    pub.enforce(cell, fresh, expected_repeats={"s09": 3})
+    assert not cell["candidates"][0]["publishable"]
 
 
 def test_legacy_publishable_flag_does_not_bypass_publication_policy():

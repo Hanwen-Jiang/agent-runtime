@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import asyncio
 from pathlib import Path
 from typing import Any
 
@@ -145,14 +146,77 @@ async def test_resuming_with_a_changed_eval_set_is_refused(tmp_path: Path) -> No
 
 
 async def test_item_and_total_spending_limits(tmp_path: Path) -> None:
+    class CapAwareGateway(cs.ServingGateway):
+        async def generate(self, request):
+            response = await super().generate(request)
+            if request.call.max_cost_usd_micros:
+                response.usage.cost_usd_micros = min(response.usage.cost_usd_micros, request.call.max_cost_usd_micros)
+            return response
+
+    provider = CapAwareGateway(cost_micros=1000)
     p = plan(n=10, r=1, candidates=[cs.SONNET], item_usd_limit=0.0005, options={"uses_judge": True})
-    await mx.MatrixRunner(p, cs.ServingGateway(cost_micros=1000), tmp_path / "item").run()
+    await mx.MatrixRunner(p, provider, tmp_path / "item").run()
     rows = mx.read_results(tmp_path / "item")
-    assert rows and all(r["error"] == "item_usd_limit" and r["contaminated"] for r in rows), "第一次调用就花了 $0.001，裁判那次在本地拒掉"
+    assert rows and all(r["error"] == "item_usd_limit" and r["contaminated"] for r in rows), "首次调用限定为500微美元，后续裁判调用在本地拒掉"
+    assert all(r.call.max_cost_usd_micros == 500 for r in provider.requests)
+    assert all(r["cost_usd"] == 0.0005 for r in rows)
     cs.reset()
-    runner = mx.MatrixRunner(plan(n=10, r=1, candidates=[cs.SONNET], concurrency=1), cs.ServingGateway(cost_micros=1000), tmp_path / "total", budget_usd=0.0035)
+    provider = CapAwareGateway(cost_micros=1000)
+    runner = mx.MatrixRunner(plan(n=10, r=1, candidates=[cs.SONNET], concurrency=1), provider, tmp_path / "total", budget_usd=0.0035)
     await runner.run()
-    assert runner.new_runs == 4 and runner.skipped_for_budget == 6 and runner.spent == pytest.approx(0.004)
+    assert runner.new_runs == 4 and runner.skipped_for_budget == 6 and runner.spent == pytest.approx(0.0035)
+    assert [r.call.max_cost_usd_micros for r in provider.requests] == [3500, 2500, 1500, 500]
+
+
+async def test_unknown_attempt_billing_stops_further_spending(tmp_path: Path) -> None:
+    class Unknown(cs.ServingGateway):
+        async def generate(self, request):
+            self.requests.append(request)
+            raise TimeoutError("outcome unknown")
+
+    provider = Unknown()
+    runner = mx.MatrixRunner(plan(n=10, r=1, candidates=[cs.SONNET], concurrency=1), provider, tmp_path, budget_usd=1)
+    report = await runner.run()
+    assert len(provider.requests) == 1 and runner.skipped_for_budget == 9
+    assert report["budget"]["pending"] is True
+    assert mx.read_results(tmp_path)[0]["cost_known"] is False
+    again = mx.MatrixRunner(plan(n=10, r=1, candidates=[cs.SONNET], concurrency=1), provider, tmp_path, budget_usd=1)
+    await again.run()
+    assert len(provider.requests) == 1, "resume must not turn unknown billing into free attempts"
+
+
+async def test_queued_budget_denials_are_not_model_observations(tmp_path: Path) -> None:
+    class Delayed(cs.ServingGateway):
+        async def generate(self, request):
+            await asyncio.sleep(0.005)
+            return await super().generate(request)
+
+    provider = Delayed(cost_micros=1000)
+    p = plan(n=5, r=1, candidates=[cs.SONNET], concurrency=3)
+    runner = mx.MatrixRunner(p, provider, tmp_path, budget_usd=0.001)
+    report = await runner.run()
+    assert len(provider.requests) == 1
+    assert len(mx.read_results(tmp_path)) == 1 and len(runner.done) == 1
+    assert runner.skipped_for_budget == 4 and len(report["not_run"]) == 4
+
+
+@pytest.mark.parametrize("change", [{"seed": 99}, {"n": 8}, {"r": 2}, {"candidates": [cs.SONNET]}])
+async def test_resuming_cannot_change_frozen_plan(tmp_path: Path, change: dict) -> None:
+    await mx.MatrixRunner(plan(n=2, r=1), cs.ServingGateway(), tmp_path).run()
+    with pytest.raises(mx.ResumeMismatch):
+        mx.MatrixRunner(plan(**({"n": 2, "r": 1} | change)), cs.ServingGateway(), tmp_path)
+
+
+async def test_score_cannot_trim_frozen_candidates(tmp_path: Path) -> None:
+    original = plan(n=2, r=1)
+    await mx.MatrixRunner(original, cs.ServingGateway(), tmp_path).run()
+    edited = plan(n=2, r=1, candidates=[cs.SONNET])
+    with pytest.raises(mx.ResumeMismatch, match="冻结计划"):
+        mx.verify_run_lock(tmp_path, edited, mx.read_results(tmp_path))
+    rows = mx.read_results(tmp_path)
+    rows[0]["version"] = "made-up-version"
+    with pytest.raises(mx.ResumeMismatch, match="冻结题集"):
+        mx.verify_run_lock(tmp_path, original, rows)
 
 
 async def test_judged_evals_log_every_judgment_pinned_to_opus(tmp_path: Path) -> None:

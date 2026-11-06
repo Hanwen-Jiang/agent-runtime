@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from typing import Any
@@ -53,6 +54,10 @@ def enforce(
         reasons = []
         if cid in mismatched:
             reasons.append("different_item_sets")
+        if any(r.get("cost_known") is False for r in mine):
+            reasons.append("unknown_cost")
+        if any(r.get("deployment_frozen") is False for r in mine):
+            reasons.append("deployment_not_frozen")
         identities = [(str(r["eval"]), str(r["item"]), int(r.get("repeat", 0))) for r in mine]
         if any(n > 1 for n in Counter(identities).values()):
             reasons.append("duplicate_observations")
@@ -70,7 +75,12 @@ def enforce(
             # contract. Merely running the new scorer over them cannot fix that.
             if row.get("eval") == "s09" and cell["role"] == "plan":
                 evidence = (row.get("record") or {}).get("scoring_contract") or {}
-                if evidence.get("id") != S09_CONTRACT or not evidence.get("implementation_sha256"):
+                if (
+                    evidence.get("id") != S09_CONTRACT
+                    or not re.fullmatch(r"[a-f0-9]{64}", str(evidence.get("implementation_sha256", "")))
+                    or not re.fullmatch(r"[a-f0-9]{64}", str(row.get("experiment_sha256", "")))
+                    or row.get("deployment_frozen") is not True
+                ):
                     reasons.append("legacy_planning_evidence")
                     break
         if reasons:

@@ -29,6 +29,7 @@ runtime.eval.*（suite capability，每个候选一个 run），评测看板读�
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import re
 from collections import defaultdict
@@ -45,12 +46,14 @@ from agentruntime_learning.capability import publication, scoring
 from agentruntime_learning.capability.base import Cell, CellEval, Item, ItemResult, PinningGateway
 from agentruntime_learning.capability.evals import load_eval
 from agentruntime_learning.evals.live import LiveRun
+from agentruntime_learning.evals.budget import BudgetError, BudgetGateway
 
 REPO = Path(__file__).resolve().parents[5]
 DEFAULT_PROFILES = REPO / "deploy" / "dev" / "model-profiles.json"
 DEFAULT_TASK_FAMILY = "general.unclassified"
 RESULTS = "results.jsonl"
 PLAN_COPY = "plan.json"
+RUN_LOCK = "run-lock.json"
 SCORES = "scores.json"
 JUDGE_LOG = "judgments.jsonl"
 SUITE = "capability"
@@ -331,25 +334,42 @@ def estimate(plan: MatrixPlan, profiles: Mapping[str, Mapping[str, Any]], evals:
 # --- 调度 ---
 
 
-class ItemBudgetExceeded(RuntimeError):
+class ItemBudgetExceeded(BudgetError):
     """单题的花费到了 item_usd_limit，不再调模型。"""
 
 
 class _ItemBudget:
-    def __init__(self, inner: ModelGateway, limit: float | None) -> None:
-        self.inner = inner
+    def __init__(self, inner: ModelGateway, limit: float | None, path: Path) -> None:
+        self.guard = BudgetGateway(inner, path, limit) if limit is not None else None
+        self.inner = self.guard or inner
         self.limit = limit
-        self.spent = 0.0
+        self.spent = self.guard.state["spent_usd_micros"] / 1e6 if self.guard else 0.0
         self.exceeded = False
+        self.cost_known = not (self.guard and self.guard.state["pending"])
+        self.responses = 0
 
     async def _call(self, method: str, request: Any) -> Any:
-        if self.limit is not None and self.spent >= self.limit:
-            self.exceeded = True
-            raise ItemBudgetExceeded(f"这道题已花 ${self.spent:.4f}，到了单题上限 ${self.limit}")
-        response = await getattr(self.inner, method)(request)
+        try:
+            response = await getattr(self.inner, method)(request)
+        except Exception as exc:
+            if isinstance(exc, BudgetError):
+                self.exceeded = True
+            billed = getattr(exc, "billed_cost_usd_micros", None)
+            if isinstance(billed, int) and billed >= 0:
+                self.spent += billed / 1e6
+            else:
+                self.cost_known = False
+            raise
         if response.HasField("usage"):
             self.spent += response.usage.cost_usd_micros / 1_000_000
+        else:
+            self.cost_known = False
+        self.responses += 1
         return response
+
+    def close(self) -> None:
+        if self.guard:
+            self.guard.close()
 
     async def generate(self, request: Any) -> Any:
         return await self._call("generate", request)
@@ -392,6 +412,7 @@ class MatrixRunner:
         budget_usd: float | None = None,
         concurrency: int | None = None,
         run_id: str | None = None,
+        frozen: Mapping[str, Any] | None = None,
     ) -> None:
         self.plan = plan
         self.gateway = gateway
@@ -410,10 +431,39 @@ class MatrixRunner:
         self.spent = sum(float(r.get("cost_usd") or 0) for r in self.rows)
         self.new_runs = 0
         self.skipped_for_budget = 0
+        self.not_run: list[dict[str, Any]] = []
         self._live: dict[str, LiveRun] = {}
         self._judge: Any = None
+        self._total_budget: BudgetGateway | None = None
         self._lock = asyncio.Lock()
         self._check_versions()
+        from agentruntime_learning.evals.deepeval_acceptance import provenance
+
+        self.frozen = provenance(frozen) if frozen is not None else None
+        self.run_lock = {
+            "plan": dict(plan.raw),
+            "profiles_sha256": _digest(self.profiles),
+            "deployment": self.frozen,
+            "budget_usd": budget_usd,
+            "concurrency": self.concurrency,
+            "evaluations": [
+                {"cell": cp.key, "spec": entry.spec, "name": self.evals[(cp.key, entry.spec)].name,
+                 "version": str(self.evals[(cp.key, entry.spec)].version),
+                 "contract": getattr(self.evals[(cp.key, entry.spec)], "contract", None),
+                 "items": [item.id for item in self.evals[(cp.key, entry.spec)].items(plan.max_n if plan.extend else entry.n, plan.seed)]}
+                for cp in plan.cells for entry in cp.evals
+            ],
+        }
+        lock_path = self.out_dir / RUN_LOCK
+        if lock_path.exists():
+            if json.loads(lock_path.read_text("utf-8")) != self.run_lock:
+                raise ResumeMismatch("评测计划、题集、Profile或部署配置变了：换一个输出目录，不混合结果")
+        elif self.rows:
+            raise ResumeMismatch("旧结果没有不可变运行配置：保留旧结果，换一个输出目录")
+        else:
+            with lock_path.open("x", encoding="utf-8") as lock:
+                json.dump(self.run_lock, lock, ensure_ascii=False, sort_keys=True, indent=2)
+        self.experiment_digest = _digest(self.run_lock)
 
     def _check_versions(self) -> None:
         current = {(cp.key, ev.name): str(ev.version) for cp in self.plan.cells for ev in (self.evals[(cp.key, e.spec)] for e in cp.evals)}
@@ -437,13 +487,6 @@ class MatrixRunner:
         return live
 
     # --- 跑题 ---
-
-    def _judge_gateway(self) -> Any:
-        if self._judge is None:
-            from agentruntime_learning.evals.judging import RecordingJudgeGateway
-
-            self._judge = RecordingJudgeGateway(self.gateway, self.out_dir / JUDGE_LOG)
-        return self._judge
 
     def _jobs(self, cp: CellPlan, candidates: Sequence[str], sizes: Mapping[str, tuple[int, int]]) -> list[_Job]:
         """candidates × 评测 × 前 n 道题 × r 次里还没做的；sizes 是 评测写法 → (n, r)。"""
@@ -473,20 +516,37 @@ class MatrixRunner:
         async def one(job: _Job) -> None:
             async with sem:
                 if self.budget_usd is not None and self.spent >= self.budget_usd:
-                    self.skipped_for_budget += 1
+                    self._skip(job, "experiment_budget_exhausted")
+                    return
+                if self._total_budget is not None and (
+                    self._total_budget.state["pending"] and not self._total_budget.lock.locked()
+                    or self._total_budget.state["spent_usd_micros"] >= self._total_budget.limit
+                ):
+                    self._skip(job, "experiment_budget_unavailable")
                     return
                 await self._run_one(job)
 
         await asyncio.gather(*(one(j) for j in jobs))
 
+    def _skip(self, job: _Job, reason: str) -> None:
+        self.skipped_for_budget += 1
+        self.not_run.append({"cell": job.cell.key, "eval": job.ev.name, "candidate": job.candidate,
+                             "item": job.item.id, "repeat": job.repeat, "reason": reason})
+
     async def _run_one(self, job: _Job) -> None:
         cp, ev, cell = job.cell, job.ev, job.cell.cell
         base = self.gateway
         uses_judge = bool(getattr(ev, "uses_judge", False))
+        identity = (cp.key, ev.name, job.candidate, job.item.id, job.repeat)
+        item_key = hashlib.sha256(json.dumps(identity).encode()).hexdigest()
+        budget = _ItemBudget(base, self.plan.item_usd_limit, self.out_dir / "item-budgets" / f"{item_key}.json")
+        base = budget
         if uses_judge:
-            base = self._judge_gateway()
-        budget = _ItemBudget(base, self.plan.item_usd_limit)
-        pin = PinningGateway(budget, role=cell.role, candidate=job.candidate, tier=request_tier(self.profiles[job.candidate], cell))
+            from agentruntime_learning.evals.judging import RecordingJudgeGateway
+
+            # Every retry/fallback goes through both item and experiment caps.
+            base = RecordingJudgeGateway(budget, self.out_dir / JUDGE_LOG)
+        pin = PinningGateway(base, role=cell.role, candidate=job.candidate, tier=request_tier(self.profiles[job.candidate], cell))
         try:
             if uses_judge:
                 from agentruntime_learning.evals.judging import judging
@@ -497,14 +557,25 @@ class MatrixRunner:
                 result = await ev.run_item(job.item, pin, candidate=job.candidate)
         except Exception as exc:  # noqa: BLE001 — 评测出错只记这一次（0 分），整轮继续
             result = ItemResult(job.item.id, score=0.0, error=f"{type(exc).__name__}: {exc}"[:300])
+        finally:
+            budget.close()
+        total_unavailable = self._total_budget is not None and (
+            self._total_budget.state["pending"] or self._total_budget.state["spent_usd_micros"] >= self._total_budget.limit
+        )
+        if budget.exceeded and total_unavailable and budget.responses == 0 and budget.spent == 0 and budget.cost_known:
+            self._skip(job, "experiment_budget_unavailable")
+            return  # No provider observation: must remain eligible for a reconciled resume.
         contaminated = bool(result.contaminated or pin.contaminated)
         error = result.error
         if budget.exceeded:
-            error, contaminated = "item_usd_limit", True
-        cost = max(float(result.cost_usd or 0.0), pin.cost_usd)
+            error, contaminated = ("experiment_budget_exhausted" if total_unavailable else "item_usd_limit"), True
+        cost = max(float(result.cost_usd or 0.0), pin.cost_usd, budget.spent)
         row = {
             "at": datetime.now(UTC).isoformat(timespec="seconds"),
             "plan": self.plan.name,
+            "plan_sha256": _digest(self.plan.raw),
+            "experiment_sha256": self.experiment_digest,
+            "deployment_frozen": self.frozen is not None,
             "task_family": cell.task_family,
             "role": cell.role,
             "tier": cell.tier,
@@ -517,6 +588,7 @@ class MatrixRunner:
             "contaminated": contaminated,
             "error": error,
             "cost_usd": round(cost, 6),
+            "cost_known": budget.cost_known,
             "calls": {f"{role}:{profile}": n for (role, profile), n in sorted(pin.calls.items())},
             "pinned_calls": pin.pinned_calls,
             "missed_calls": pin.missed_calls,
@@ -572,10 +644,26 @@ class MatrixRunner:
         return self.score_cell(cp)
 
     async def run(self) -> dict[str, Any]:
+        original_gateway = self.gateway
+        if self.budget_usd is not None:
+            self._total_budget = BudgetGateway(self.gateway, self.out_dir / "model-spending.json", self.budget_usd, prior_cost_usd=self.spent)
+            self.gateway = self._total_budget
+        try:
+            return await self._run()
+        finally:
+            if self._total_budget:
+                self._total_budget.close()
+            self.gateway = original_gateway
+            self._judge = None
+
+    async def _run(self) -> dict[str, Any]:
         (self.out_dir / PLAN_COPY).write_text(json.dumps(dict(self.plan.raw), ensure_ascii=False, indent=2), "utf-8")
         for cp in self.plan.cells:
             await self.run_cell(cp)
         report = score_results(self.plan, self.rows)
+        if self._total_budget:
+            report["budget"] = dict(self._total_budget.state)
+        report["not_run"] = self.not_run
         write_scores(self.out_dir, report)
         for cell in report["cells"]:
             for c in cell["candidates"]:
@@ -635,7 +723,45 @@ def score_results(plan: MatrixPlan, rows: Sequence[Mapping[str, Any]]) -> dict[s
             for entry in cp.evals
         }
         publication.enforce(cells[-1], mine, expected_repeats=expected_repeats, allow_extended_samples=plan.extend)
+        mismatched = (
+            any(r.get("plan_sha256") and r["plan_sha256"] != _digest(plan.raw) for r in mine)
+            or bool({r["candidate"] for r in mine} - set(cp.candidates))
+            or len({r["experiment_sha256"] for r in mine if r.get("experiment_sha256")}) > 1
+        )
+        if mismatched:
+            cells[-1]["problems"].append("原始记录与冻结计划/候选/实验不一致")
+            for candidate in cells[-1]["candidates"]:
+                candidate.update(publishable=False, status="inconsistent", reason="experiment_mismatch")
+            cells[-1]["publication"]["coverage_ok"] = False
     return {"plan": plan.name, "seed": plan.seed, "scored_at": datetime.now(UTC).isoformat(timespec="seconds"), "cells": cells}
+
+
+def _digest(value: Any) -> str:
+    return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
+
+
+def verify_run_lock(out_dir: Path, plan: MatrixPlan, rows: Sequence[Mapping[str, Any]]) -> None:
+    path = Path(out_dir) / RUN_LOCK
+    if not path.exists():
+        # Legacy results can be diagnosed but cannot be resumed. S09 and all
+        # other publication gates still apply when revalidating old evidence.
+        if any(row.get("experiment_sha256") for row in rows):
+            raise ResumeMismatch("运行配置丢失，不能验证新结果")
+        return
+    frozen = json.loads(path.read_text("utf-8"))
+    if frozen["plan"] != dict(plan.raw):
+        raise ResumeMismatch("不能改写冻结计划再评分或发布")
+    digest = _digest(frozen)
+    if any(row.get("experiment_sha256") != digest for row in rows):
+        raise ResumeMismatch("结果与冻结实验摘要不符")
+    evaluations = {(entry["cell"], entry["name"]): entry for entry in frozen["evaluations"]}
+    for row in rows:
+        key = (f"{row['task_family']}/{row['role']}/{row['tier']}", row["eval"])
+        entry = evaluations.get(key)
+        if entry is None or row["version"] != entry["version"] or row["item"] not in entry["items"]:
+            raise ResumeMismatch("结果的评测、版本或题目不属于冻结题集")
+        if entry["contract"] is not None and (row.get("record") or {}).get("scoring_contract") != entry["contract"]:
+            raise ResumeMismatch("规划评分证据与运行时冻结的实际提示/校验不符")
 
 
 def eval_extras(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
