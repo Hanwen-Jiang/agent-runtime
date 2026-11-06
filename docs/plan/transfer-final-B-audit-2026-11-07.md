@@ -20,3 +20,5 @@ Go/Python持久manifest预检接受明确v1/v2，旧nil空清单可读；v1拒�
 ## 证据与资源
 
 父目录 `.goal-tools/B-transfer-final-{build,go,python,http,receipt-red,receipt-green}.log`。`receipt-red`保留修复前失败，不冒充通过。测试仅使用独立临时本地HTTP对象服务器；无新真实R2调用、无模型调用，费用0。已启动必要测试后获知另有FC测量；未再启动额外全套，结束时间可用日志mtime与进程记录核对。所有测试进程已退出，测试夹具清理服务/agent/对象资源。A仍需将修复集成并部署后核验线上链路，不能把本报告当作全20项完成。
+
+补充可信摘要边界：若ObjectStore.Head返回非空SHA256，所有确认/恢复路径均与prepared摘要核对，摘要矛盾即拒绝。已补同长度对象替换、HEAD返回真实新摘要时拒绝缓存回执的回归。正常R2 SignedUpload的ObjectInfo不提供摘要，此时依赖checksum签名绑定、If-None-Match不可覆盖和唯一对象key（STOR-SEC真实验收），不能声称仅长度验证内容哈希。
