@@ -203,8 +203,12 @@ impl Manager {
             chain.push(dir.clone());
         }
         for d in chain {
-            fs::write(d.join("cgroup.subtree_control"), "+cpu +memory +pids")
-                .map_err(|e| format!("打不开 {} 的 cpu、memory、pids 控制器：{e}", d.display()))?;
+            fs::write(d.join("cgroup.subtree_control"), "+cpu +memory +pids +io").map_err(|e| {
+                format!(
+                    "打不开 {} 的 cpu、memory、pids、io 控制器：{e}",
+                    d.display()
+                )
+            })?;
         }
         Ok(())
     }

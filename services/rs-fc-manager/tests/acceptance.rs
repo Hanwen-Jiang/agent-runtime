@@ -202,7 +202,7 @@ fn jail_cgroup_and_vm_are_configured_from_the_spec() {
             .join("cgroup.subtree_control"),
     )
     .unwrap();
-    for c in ["+cpu", "+memory", "+pids"] {
+    for c in ["+cpu", "+memory", "+pids", "+io"] {
         assert!(subtree.contains(c), "{subtree}");
     }
 
