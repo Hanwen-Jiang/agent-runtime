@@ -36,11 +36,12 @@ var key = []byte(strings.Repeat("k", 32))
 
 // worker 是 Durable 的替身：记下起的工作流，用 handle 模拟 Worker 给出结果。
 type worker struct {
-	mu      sync.Mutex
-	started []*workflowv1.WorkspaceOperationInput
-	scopes  []string
-	handle  func(in *workflowv1.WorkspaceOperationInput) (*workflowv1.WorkspaceOperationResult, error)
-	status  durable.Status
+	mu          sync.Mutex
+	started     []*workflowv1.WorkspaceOperationInput
+	scopes      []string
+	handle      func(in *workflowv1.WorkspaceOperationInput) (*workflowv1.WorkspaceOperationResult, error)
+	status      durable.Status
+	beforeStart func(context.Context) error
 }
 
 func (w *worker) Bind(t *commonv1.TenantContext) (durable.Engine, error) {
@@ -62,10 +63,15 @@ type engine struct {
 	last  *workflowv1.WorkspaceOperationInput
 }
 
-func (e *engine) StartWorkflow(_ context.Context, typ string, opts durable.StartOptions) (durable.Run, error) {
+func (e *engine) StartWorkflow(ctx context.Context, typ string, opts durable.StartOptions) (durable.Run, error) {
 	// WS-READ-02：新起的操作放 workspace 队列。
 	if typ != WorkflowName || opts.TaskQueue != "workspace" || !strings.HasPrefix(opts.WorkflowID, "wsop-wso-") {
 		return durable.Run{}, providererr.New(providererr.Invalid, "unexpected", typ+" "+opts.TaskQueue+" "+opts.WorkflowID)
+	}
+	if e.w.beforeStart != nil {
+		if err := e.w.beforeStart(ctx); err != nil {
+			return durable.Run{}, err
+		}
 	}
 	in := proto.Clone(opts.Input).(*workflowv1.WorkspaceOperationInput)
 	e.w.mu.Lock()

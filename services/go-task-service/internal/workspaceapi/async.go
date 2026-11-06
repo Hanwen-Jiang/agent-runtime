@@ -191,6 +191,17 @@ func (s *Server) GetWorkspaceOperation(ctx context.Context, req *connect.Request
 		return nil, taskapi.ConnectError(err)
 	}
 	desc, err := engine.Describe(ctx, WorkflowID(m.GetOperationId()))
+	if providererr.CategoryOf(err) == providererr.NotFound {
+		// Admission is committed only after StartWorkflow confirms success (or
+		// Describe confirms a previous execution). An unconfirmed/rolled-back
+		// start cannot reach this branch because its row is not visible above.
+		// Whole-workflow timeouts can prevent the final result activity from
+		// running; after retention, report unknown side effects explicitly.
+		out.Status = workspacev1.WorkspaceOperationStatus_WORKSPACE_OPERATION_STATUS_FAILED
+		out.Error = &commonv1.Error{Category: commonv1.ErrorCategory_ERROR_CATEGORY_TRANSIENT,
+			Code: "workspace_operation_history_unavailable", Message: "操作已受理，但执行历史与结果已不可用；副作用未知，请核对工作区，不要自动重做"}
+		return persistWorkspaceOperation(ctx, db, out)
+	}
 	if err != nil {
 		return nil, taskapi.ConnectError(err)
 	}
@@ -227,13 +238,25 @@ func (s *Server) GetWorkspaceOperation(ctx context.Context, req *connect.Request
 		}
 		out.Status = workspacev1.WorkspaceOperationStatus_WORKSPACE_OPERATION_STATUS_COMPLETED
 	}
+	return persistWorkspaceOperation(ctx, db, out)
+}
+
+func persistWorkspaceOperation(ctx context.Context, db relational.Store, out *workspacev1.GetWorkspaceOperationResponse) (*connect.Response[workspacev1.GetWorkspaceOperationResponse], error) {
 	saved, err := protojson.Marshal(out)
 	if err != nil {
 		return nil, taskapi.ConnectError(err)
 	}
 	err = db.Transaction(ctx, relational.TxOptions{}, func(ctx context.Context, tx relational.Tx) error {
-		_, e := tx.Execute(ctx, `UPDATE workspace_operations SET result = $1 WHERE operation_id = $2`, string(saved), m.GetOperationId())
-		return e
+		// A concurrently completing activity has stronger evidence than this
+		// observation. Keep whichever terminal result was durably saved first.
+		if _, e := tx.Execute(ctx, `UPDATE workspace_operations SET result = $1 WHERE operation_id = $2 AND result = ''`, string(saved), out.GetOperationId()); e != nil {
+			return e
+		}
+		row, _, e := tx.QueryOne(ctx, `SELECT result FROM workspace_operations WHERE operation_id = $1`, out.GetOperationId())
+		if e != nil {
+			return e
+		}
+		return protojson.Unmarshal([]byte(row["result"].(string)), out)
 	})
 	if err != nil {
 		return nil, taskapi.ConnectError(err)
