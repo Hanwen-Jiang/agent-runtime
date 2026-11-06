@@ -2,7 +2,8 @@
 """Prepare auditable capability-only Registry shadows, never fake an A/B gate.
 
 The dedicated capability promotion contract is owned by the integration lane.
-This tool prepares its proposed evidence but does not send Promote requests.
+Explicit execute commands publish shadows or promote only the frozen, audited
+capability evidence after the coordinator opens the corresponding release window.
 """
 from __future__ import annotations
 
@@ -223,7 +224,7 @@ class Registry:
 
     def call(self, method: str, body: dict[str, Any]) -> dict[str, Any]:
         headers = {"Content-Type": "application/json"}
-        if method == "Publish":
+        if method in ("Publish", "Promote"):
             if self.token_file is None:
                 raise ValueError("AR_REGISTRY_PUBLISH_TOKEN_FILE is required")
             token = self.token_file.read_text().strip()
@@ -309,17 +310,79 @@ def publish_shadows(directory: Path, registry: Registry, *, execute: bool = Fals
         return state
 
 
+def promote_shadows(directory: Path, registry: Registry, *, execute: bool = False) -> dict[str, Any]:
+    """Promote the exact verified shadows, retaining rollback and lost-ACK state."""
+    import fcntl
+
+    with (directory / ".publication.lock").open("a+b") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        bundle = json.loads((directory / "bundle.json").read_text())
+        if (bundle.get("kind") != VERSION or bundle.get("publication_eligible_candidates") != len(bundle["items"])
+                or not all(item.get("pricing_known") is True for item in bundle["items"])):
+            raise ValueError("promotion requires the final cost-audited bundle")
+        bundle_sha = file_digest(directory / "bundle.json")
+        published = json.loads((directory / "publication-state.json").read_text())
+        state_path = directory / "promotion-state.json"
+        state = json.loads(state_path.read_text()) if state_path.exists() else {"bundle_sha256": bundle_sha, "profiles": {}}
+        if published["bundle_sha256"] != bundle_sha or state["bundle_sha256"] != bundle_sha:
+            raise ValueError("publication evidence changed")
+        for item in bundle["items"]:
+            folder = directory / item["directory"]
+            if any(file_digest(folder / name) != expected for name, expected in item["files"].items()):
+                raise ValueError("bundle file changed")
+            name = item["profile_id"]
+            baseline = json.loads((folder / "baseline.json").read_text())
+            document = json.loads((folder / "publish.json").read_text())["document"]["value"]
+            version = published["profiles"].get(name, {}).get("version", "")
+            if not re.fullmatch(r"v[1-9][0-9]*", version):
+                raise ValueError("published shadow version missing; reconcile Publish first")
+            if registry.get(name, version)["document"]["value"] != document:
+                raise ValueError("shadow content differs from the audited evidence")
+            current = registry.get(name)
+            if current["version"] == version:
+                state["profiles"][name] = {"state": "default_confirmed", "version": version, "previous_default_version": baseline["version"]}
+                if execute:
+                    save(state_path, state)
+                continue
+            if current["version"] != baseline["version"] or current["document"]["value"] != baseline["document"]:
+                raise ValueError("default profile drifted; do not overwrite another promotion")
+            if state["profiles"].get(name, {}).get("state") == "pending":
+                raise ValueError("previous Promote response unknown; reconcile before retry")
+            request = json.loads((folder / "promote-request-template.json").read_text())
+            if request.get("evaluation", {}).get("schema_id") != "https://agentruntime.example/schemas/registry_capability_evaluation.schema.json":
+                raise ValueError("capability-only evidence schema required")
+            evidence = request["evaluation"]["value"]
+            if (evidence.get("baseline_version") != baseline["version"] or not evidence.get("passed")
+                    or evidence.get("report_sha256") != file_digest(folder / "report.json")):
+                raise ValueError("promotion evidence does not bind the actual baseline and report")
+            request["version"] = version
+            if not execute:
+                continue
+            state["profiles"][name] = {"state": "pending", "version": version, "previous_default_version": baseline["version"]}
+            save(state_path, state)
+            response = registry.call("Promote", request)
+            actual = registry.get(name)
+            if actual["version"] != version or actual["document"]["value"] != document:
+                raise ValueError("promotion not confirmed; retain pending receipt")
+            if response.get("previousDefaultVersion", response.get("previous_default_version")) != baseline["version"]:
+                raise ValueError("promotion rollback receipt differs from frozen baseline")
+            state["profiles"][name] = {"state": "default_confirmed", "version": version, "previous_default_version": baseline["version"]}
+            save(state_path, state)
+        return state
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     build = commands.add_parser("prepare")
     for name in ("run", "scores", "registry-export", "ledger", "dataset", "promotion-schema", "out"):
         build.add_argument("--" + name, type=Path, required=True)
-    send = commands.add_parser("publish-shadows")
-    send.add_argument("--bundle", type=Path, required=True)
-    send.add_argument("--endpoint", required=True)
-    send.add_argument("--tenant", default="evals")
-    send.add_argument("--execute", action="store_true", help="coordinator only, after release window is fixed")
+    for verb in ("publish-shadows", "promote"):
+        send = commands.add_parser(verb)
+        send.add_argument("--bundle", type=Path, required=True)
+        send.add_argument("--endpoint", required=True)
+        send.add_argument("--tenant", default="evals")
+        send.add_argument("--execute", action="store_true", help="coordinator only, after release window is fixed")
     args = parser.parse_args()
     if args.command == "prepare":
         result = prepare(args)
@@ -327,8 +390,9 @@ def main() -> int:
                           "out": str(args.out), "published": False}))
     else:
         token = os.environ.get("AR_REGISTRY_PUBLISH_TOKEN_FILE")
-        result = publish_shadows(args.bundle, Registry(args.endpoint, args.tenant, Path(token) if token else None), execute=args.execute)
-        print(json.dumps({"execute": args.execute, "profiles": result["profiles"], "promoted": False}))
+        action = promote_shadows if args.command == "promote" else publish_shadows
+        result = action(args.bundle, Registry(args.endpoint, args.tenant, Path(token) if token else None), execute=args.execute)
+        print(json.dumps({"execute": args.execute, "profiles": result["profiles"], "promotion_requested": args.command == "promote"}))
     return 0
 
 

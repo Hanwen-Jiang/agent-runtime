@@ -12,10 +12,12 @@
 
 这是能力测量发布，不是模型更换或A/B非劣效实验，不构造baseline/candidate成本对照，不填0成本或waiver。历史调用未记录Registry修订，继续保持未知。当前Registry导出只用于发布前默认版本校验和回退点，不倒填旧调用来源。
 
-scripts/mx_registry_publication.py的prepare子命令生成全套材料。publish-shadows默认只读检查；部署负责人加--execute才发布影子版本，令牌从AR_REGISTRY_PUBLISH_TOKEN_FILE读取，只放Authorization头，不输出。脚本不发送Promote；后者由负责人使用专用模板，依靠服务端baseline_version的CAS保护。
+scripts/mx_registry_publication.py的prepare子命令生成全套材料。publish-shadows和promote默认只读检查；负责人加--execute才分别发布影子版本或按专用证据晋升，令牌从AR_REGISTRY_PUBLISH_TOKEN_FILE读取，只放Authorization头，不输出。promote从真实Publish回执取版本，验证影子正文、当前默认、完整报告与bundle摘要；保存pending及previous_default_version，回执丢失后先读实际default确认，不盲目重发，服务端baseline_version另有事务CAS保护。
 
 每次Publish前核对当前默认版本和完整正文，扫描后续版本，正文相同则复用。请求前持久化pending，回执丢失后只查询确认，不盲目重复发布。默认漂移、材料hash改变、未确认pending或未完成费用审计时停止。baseline.json保留旧默认版本、真实Registry摘要及完整正文；回退由部署负责人按项目流程执行。
 
 旧.goal-evidence/mx-publication-20261106是12项质量草案，保留供审查；最终脚本拒绝其缺少最终费用门槛的bundle，不得执行旧草案。
 
 验证：六条离线回归通过，覆盖只读预检、默认漂移、丢回执恢复、pending禁止重试、材料篡改、无关shadow保护和旧草案拒绝。生成流程已核验十项schema及原输出评分。新增模型费用0；线上发布、晋级、再导出及Gateway加载仍待主集成执行。
+
+A/B最终分工：B统一部署专用Promote接口后通知，A作为唯一发布执行者按本bundle的10项Publish→Promote；Memory实验结束前B不更新Gateway冻结的Profile快照。源码model-profiles.json与registry-seed.json已同步最终10项新证据来源摘要；仅撤回本Goal早先准备的Sonnet/Qwen两条未结算能力分，其他已有字段不动。撤回的精确旧值与最终集合在bundle目录source-reconciliation.json；不是删除原始评测结果。脚本晋升丢回执/默认漂移/证据篡改回归和现有发布CLI合计24项通过。

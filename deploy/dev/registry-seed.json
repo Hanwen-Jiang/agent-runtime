@@ -227,17 +227,7 @@
         "freshness": {
           "price_at": "2026-11-02"
         },
-        "released_at": "2026-09-28",
-        "capability_scores": [
-          {
-            "task_family": "general.unclassified",
-            "role": "act",
-            "tier": "medium",
-            "score": 0.7727,
-            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=d6c07cad76a0dec4630964a501b71ff73fde25c2bbbd7c575eb5e2307ffbf641",
-            "at": "2026-11-04"
-          }
-        ]
+        "released_at": "2026-09-28"
       }
     },
     {
@@ -327,7 +317,7 @@
             "role": "act",
             "tier": "medium",
             "score": 0.8364,
-            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=d6c07cad76a0dec4630964a501b71ff73fde25c2bbbd7c575eb5e2307ffbf641",
+            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=91310748430d5e42a7131e33372d97568b84a63bb2bc87053f147e9348eb5572",
             "at": "2026-11-04"
           }
         ]
@@ -476,7 +466,7 @@
             "role": "act",
             "tier": "medium",
             "score": 0.4182,
-            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=d6c07cad76a0dec4630964a501b71ff73fde25c2bbbd7c575eb5e2307ffbf641",
+            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=91310748430d5e42a7131e33372d97568b84a63bb2bc87053f147e9348eb5572",
             "at": "2026-11-04"
           }
         ]
@@ -527,7 +517,7 @@
             "role": "act",
             "tier": "medium",
             "score": 0.6455,
-            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=d6c07cad76a0dec4630964a501b71ff73fde25c2bbbd7c575eb5e2307ffbf641",
+            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=91310748430d5e42a7131e33372d97568b84a63bb2bc87053f147e9348eb5572",
             "at": "2026-11-04"
           }
         ]
@@ -619,7 +609,7 @@
             "role": "act",
             "tier": "medium",
             "score": 0.8165,
-            "source": "capmatrix:bfcl-v4@2026-11-04:n=99,r=1:run=round1:evidence=d6c07cad76a0dec4630964a501b71ff73fde25c2bbbd7c575eb5e2307ffbf641",
+            "source": "capmatrix:bfcl-v4@2026-11-04:n=99,r=1:run=round1:evidence=91310748430d5e42a7131e33372d97568b84a63bb2bc87053f147e9348eb5572",
             "at": "2026-11-04"
           }
         ]
@@ -670,7 +660,7 @@
             "role": "act",
             "tier": "medium",
             "score": 0.8636,
-            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=d6c07cad76a0dec4630964a501b71ff73fde25c2bbbd7c575eb5e2307ffbf641",
+            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=91310748430d5e42a7131e33372d97568b84a63bb2bc87053f147e9348eb5572",
             "at": "2026-11-04"
           }
         ]
@@ -721,7 +711,7 @@
             "role": "act",
             "tier": "medium",
             "score": 0.7727,
-            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=d6c07cad76a0dec4630964a501b71ff73fde25c2bbbd7c575eb5e2307ffbf641",
+            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=91310748430d5e42a7131e33372d97568b84a63bb2bc87053f147e9348eb5572",
             "at": "2026-11-04"
           }
         ]
@@ -772,7 +762,7 @@
             "role": "act",
             "tier": "medium",
             "score": 0.7182,
-            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=d6c07cad76a0dec4630964a501b71ff73fde25c2bbbd7c575eb5e2307ffbf641",
+            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=91310748430d5e42a7131e33372d97568b84a63bb2bc87053f147e9348eb5572",
             "at": "2026-11-04"
           }
         ]
@@ -816,17 +806,7 @@
         "freshness": {
           "price_at": "2026-11-03"
         },
-        "released_at": "2026-08-03",
-        "capability_scores": [
-          {
-            "task_family": "general.unclassified",
-            "role": "act",
-            "tier": "medium",
-            "score": 0.8364,
-            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=d6c07cad76a0dec4630964a501b71ff73fde25c2bbbd7c575eb5e2307ffbf641",
-            "at": "2026-11-04"
-          }
-        ]
+        "released_at": "2026-08-03"
       }
     },
     {
@@ -873,7 +853,7 @@
             "role": "act",
             "tier": "medium",
             "score": 0.8727,
-            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=d6c07cad76a0dec4630964a501b71ff73fde25c2bbbd7c575eb5e2307ffbf641",
+            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=91310748430d5e42a7131e33372d97568b84a63bb2bc87053f147e9348eb5572",
             "at": "2026-11-04"
           }
         ]
@@ -1031,7 +1011,7 @@
             "role": "act",
             "tier": "medium",
             "score": 0.3727,
-            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=d6c07cad76a0dec4630964a501b71ff73fde25c2bbbd7c575eb5e2307ffbf641",
+            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=91310748430d5e42a7131e33372d97568b84a63bb2bc87053f147e9348eb5572",
             "at": "2026-11-04"
           }
         ]
@@ -1117,7 +1097,7 @@
             "role": "act",
             "tier": "medium",
             "score": 0.8909,
-            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=d6c07cad76a0dec4630964a501b71ff73fde25c2bbbd7c575eb5e2307ffbf641",
+            "source": "capmatrix:bfcl-v4@2026-11-04:n=100,r=1:run=round1:evidence=91310748430d5e42a7131e33372d97568b84a63bb2bc87053f147e9348eb5572",
             "at": "2026-11-04"
           }
         ]
