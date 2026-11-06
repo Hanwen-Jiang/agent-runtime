@@ -1,0 +1,261 @@
+{
+  "bundle": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/bundle.json",
+  "original_candidate_count": 13,
+  "original_quality_eligible": 12,
+  "final_publication_eligible": 10,
+  "published": false,
+  "promoted": false,
+  "new_model_cost_usd": 0,
+  "items": [
+    {
+      "profile_id": "a6api/claude-opus-5-5@2026-10",
+      "baseline_version": "v2",
+      "publish": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/1a4b02cadebb772fd9d8/publish.json",
+      "promote_template": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/1a4b02cadebb772fd9d8/promote-request-template.json",
+      "report": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/1a4b02cadebb772fd9d8/report.json",
+      "report_sha256": "7c48fd807e2dfbeca5e64fe76e731a9fb31a1c5bbf83cecdeef881a321bf6b82",
+      "samples": 100,
+      "repeats": 1,
+      "raw_score": 0.87,
+      "score": 0.8364,
+      "ci95": [
+        0.8,
+        0.93
+      ],
+      "contamination_rate": 0.0,
+      "cost": {
+        "known": true,
+        "known_usd": 0.454332,
+        "actual_usd": 0.454332,
+        "pending_attempts": 0,
+        "pending_reserved_usd": 0.0,
+        "scope": "evals model_usage BFCL attempts; no fabricated cost_per_success or budget pass"
+      }
+    },
+    {
+      "profile_id": "a6api/deepseek-v4-pro@2026-11",
+      "baseline_version": "v1",
+      "publish": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/7847d45ad21f0d688b0e/publish.json",
+      "promote_template": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/7847d45ad21f0d688b0e/promote-request-template.json",
+      "report": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/7847d45ad21f0d688b0e/report.json",
+      "report_sha256": "a00bd255a00a18b022ddd70afeb35c52b568153573a01e6b4ab4c95241b0a124",
+      "samples": 100,
+      "repeats": 1,
+      "raw_score": 0.9,
+      "score": 0.8636,
+      "ci95": [
+        0.84,
+        0.96
+      ],
+      "contamination_rate": 0.0,
+      "cost": {
+        "known": true,
+        "known_usd": 0.074307,
+        "actual_usd": 0.074307,
+        "pending_attempts": 0,
+        "pending_reserved_usd": 0.0,
+        "scope": "evals model_usage BFCL attempts; no fabricated cost_per_success or budget pass"
+      }
+    },
+    {
+      "profile_id": "a6api/gemini-4-argon@2026-11",
+      "baseline_version": "v1",
+      "publish": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/53d8f837da721f5ffca2/publish.json",
+      "promote_template": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/53d8f837da721f5ffca2/promote-request-template.json",
+      "report": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/53d8f837da721f5ffca2/report.json",
+      "report_sha256": "c3edebef6ede24700c9f5ba912a3bacf3eff273354500a18e72aaec359fa709c",
+      "samples": 99,
+      "repeats": 1,
+      "raw_score": 0.8484848484848485,
+      "score": 0.8165,
+      "ci95": [
+        0.7777777777777778,
+        0.9090909090909091
+      ],
+      "contamination_rate": 0.01,
+      "cost": {
+        "known": true,
+        "known_usd": 0.168716,
+        "actual_usd": 0.168716,
+        "pending_attempts": 0,
+        "pending_reserved_usd": 0.0,
+        "scope": "evals model_usage BFCL attempts; no fabricated cost_per_success or budget pass"
+      }
+    },
+    {
+      "profile_id": "a6api/glm-5.3@2026-11",
+      "baseline_version": "v2",
+      "publish": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/b7ec78d7456ed44abc3d/publish.json",
+      "promote_template": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/b7ec78d7456ed44abc3d/promote-request-template.json",
+      "report": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/b7ec78d7456ed44abc3d/report.json",
+      "report_sha256": "a52a55fd28fd5ed5b8d6ca1134fbd080642efe005ce6d45f22760cbe9145f4ea",
+      "samples": 100,
+      "repeats": 1,
+      "raw_score": 0.91,
+      "score": 0.8727,
+      "ci95": [
+        0.85,
+        0.96
+      ],
+      "contamination_rate": 0.0,
+      "cost": {
+        "known": true,
+        "known_usd": 0.100727,
+        "actual_usd": 0.100727,
+        "pending_attempts": 0,
+        "pending_reserved_usd": 0.0,
+        "scope": "evals model_usage BFCL attempts; no fabricated cost_per_success or budget pass"
+      }
+    },
+    {
+      "profile_id": "a6api/gpt-6-astra@2026-11",
+      "baseline_version": "v1",
+      "publish": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/76b5346e9945469f8d5e/publish.json",
+      "promote_template": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/76b5346e9945469f8d5e/promote-request-template.json",
+      "report": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/76b5346e9945469f8d5e/report.json",
+      "report_sha256": "39677337b5f1f736b94b55c3c150ff5582dccc204c7a9d2aaa2e56a6655c59d7",
+      "samples": 100,
+      "repeats": 1,
+      "raw_score": 0.66,
+      "score": 0.6455,
+      "ci95": [
+        0.57,
+        0.75
+      ],
+      "contamination_rate": 0.0,
+      "cost": {
+        "known": true,
+        "known_usd": 11.225677,
+        "actual_usd": 11.225677,
+        "pending_attempts": 0,
+        "pending_reserved_usd": 0.0,
+        "scope": "evals model_usage BFCL attempts; no fabricated cost_per_success or budget pass"
+      }
+    },
+    {
+      "profile_id": "a6api/gpt-6.1-sol@2026-11",
+      "baseline_version": "v1",
+      "publish": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/dd0823ce28a0c5b90ebe/publish.json",
+      "promote_template": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/dd0823ce28a0c5b90ebe/promote-request-template.json",
+      "report": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/dd0823ce28a0c5b90ebe/report.json",
+      "report_sha256": "7c6bd36791ce0f07d7fea7c35ac4ae9e4daae40d8933187ab2c7e235993094f8",
+      "samples": 100,
+      "repeats": 1,
+      "raw_score": 0.41,
+      "score": 0.4182,
+      "ci95": [
+        0.31,
+        0.5
+      ],
+      "contamination_rate": 0.0,
+      "cost": {
+        "known": true,
+        "known_usd": 0.358705,
+        "actual_usd": 0.358705,
+        "pending_attempts": 0,
+        "pending_reserved_usd": 0.0,
+        "scope": "evals model_usage BFCL attempts; no fabricated cost_per_success or budget pass"
+      }
+    },
+    {
+      "profile_id": "a6api/grok-4.7@2026-11",
+      "baseline_version": "v1",
+      "publish": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/51bb2cbf9ec95ac71d93/publish.json",
+      "promote_template": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/51bb2cbf9ec95ac71d93/promote-request-template.json",
+      "report": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/51bb2cbf9ec95ac71d93/report.json",
+      "report_sha256": "f24337e3d7326b3f142e4d7ade9d9dc5e8d29e63eb7d3e76d6680f87d3bbcfef",
+      "samples": 100,
+      "repeats": 1,
+      "raw_score": 0.8,
+      "score": 0.7727,
+      "ci95": [
+        0.72,
+        0.88
+      ],
+      "contamination_rate": 0.0,
+      "cost": {
+        "known": true,
+        "known_usd": 0.48161,
+        "actual_usd": 0.48161,
+        "pending_attempts": 0,
+        "pending_reserved_usd": 0.0,
+        "scope": "evals model_usage BFCL attempts; no fabricated cost_per_success or budget pass"
+      }
+    },
+    {
+      "profile_id": "a6api/kimi-k3.1-pro@2026-11",
+      "baseline_version": "v1",
+      "publish": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/38d4402f3b6fbe9d1bce/publish.json",
+      "promote_template": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/38d4402f3b6fbe9d1bce/promote-request-template.json",
+      "report": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/38d4402f3b6fbe9d1bce/report.json",
+      "report_sha256": "8fa1da2edb3b9b8d8fc0deb8b25b8f02eaa9852d8fe77963fc0142abeb087b23",
+      "samples": 100,
+      "repeats": 1,
+      "raw_score": 0.74,
+      "score": 0.7182,
+      "ci95": [
+        0.65,
+        0.82
+      ],
+      "contamination_rate": 0.0,
+      "cost": {
+        "known": true,
+        "known_usd": 0.258099,
+        "actual_usd": 0.258099,
+        "pending_attempts": 0,
+        "pending_reserved_usd": 0.0,
+        "scope": "evals model_usage BFCL attempts; no fabricated cost_per_success or budget pass"
+      }
+    },
+    {
+      "profile_id": "a6api/longcat-2.0@2026-11",
+      "baseline_version": "v1",
+      "publish": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/2919bb8c2558fe53dcd0/publish.json",
+      "promote_template": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/2919bb8c2558fe53dcd0/promote-request-template.json",
+      "report": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/2919bb8c2558fe53dcd0/report.json",
+      "report_sha256": "e23784476c89d0f7c25fe779a96c60d24b8acabf7dedd455d31506a3827477a3",
+      "samples": 100,
+      "repeats": 1,
+      "raw_score": 0.36,
+      "score": 0.3727,
+      "ci95": [
+        0.27,
+        0.45
+      ],
+      "contamination_rate": 0.0,
+      "cost": {
+        "known": true,
+        "known_usd": 0.153415,
+        "actual_usd": 0.153415,
+        "pending_attempts": 0,
+        "pending_reserved_usd": 0.0,
+        "scope": "evals model_usage BFCL attempts; no fabricated cost_per_success or budget pass"
+      }
+    },
+    {
+      "profile_id": "a6api/mimo-v2.6-pro@2026-11",
+      "baseline_version": "v2",
+      "publish": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/40a1352b7ba836e76bef/publish.json",
+      "promote_template": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/40a1352b7ba836e76bef/promote-request-template.json",
+      "report": "/root/proj/agent-projs/.goal-evidence/mx-publication-audited-20261106/candidates/40a1352b7ba836e76bef/report.json",
+      "report_sha256": "890dd321440cee4dcc3db4e1111eed597b9de4b52972cf95436c06aa3c65071a",
+      "samples": 100,
+      "repeats": 1,
+      "raw_score": 0.93,
+      "score": 0.8909,
+      "ci95": [
+        0.88,
+        0.97
+      ],
+      "contamination_rate": 0.0,
+      "cost": {
+        "known": true,
+        "known_usd": 0.076328,
+        "actual_usd": 0.076328,
+        "pending_attempts": 0,
+        "pending_reserved_usd": 0.0,
+        "scope": "evals model_usage BFCL attempts; no fabricated cost_per_success or budget pass"
+      }
+    }
+  ]
+}
