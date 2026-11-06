@@ -13,6 +13,7 @@ import (
 	pb "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/personalconfig/v1"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"net/url"
 	"path"
 	"regexp"
 	"sort"
@@ -38,9 +39,70 @@ func invalid(code string) error {
 
 var segment = regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
 var reference = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_./:@-]{0,127}$`)
-var token = regexp.MustCompile(`(?i)(sk-[a-z0-9_-]{16,}|gh[pousr]_[a-z0-9]{20,}|AKIA[A-Z0-9]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----)`)
-var secretSetting = regexp.MustCompile(`(?i)^\s*[^#;]*(?:_authtoken|password|api[_-]?key|secret)\s*[=:]\s*(.+)$`)
-var variable = regexp.MustCompile(`^\$\{[A-Za-z_][A-Za-z0-9_.:-]*\}$`)
+var token = regexp.MustCompile(`(?i)(sk-[a-z0-9_-]{16,}|gh[pousr]_[a-z0-9]{20,}|github_pat_[a-z0-9_]{20,}|glpat-[a-z0-9_-]{20,}|AKIA[A-Z0-9]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----)`)
+var secretSetting = regexp.MustCompile(`(?i)(?:^|[^A-Za-z0-9])(_authtoken|_auth|password|api[_-]?key|secret|authorization)["']?\s*[=:]\s*`)
+
+const variablePattern = `\$\{[A-Za-z_][A-Za-z0-9_.:-]*\}`
+
+var variable = regexp.MustCompile("^" + variablePattern + "$")
+var variableInText = regexp.MustCompile(variablePattern)
+var urlUserinfo = regexp.MustCompile(`(?i)\b[a-z][a-z0-9+.-]*://([^/?#\s"'<>]*@)`)
+
+func maskConfigVariables(value string) string {
+	return variableInText.ReplaceAllStringFunc(value, func(v string) string { return strings.Repeat(" ", len(v)) })
+}
+
+// Recognize explicit credential formats and assignments, not arbitrary secrets.
+// Variable references are configuration, not resolved credential values.
+func knownSecret(content string) bool {
+	if token.MatchString(maskConfigVariables(content)) {
+		return true
+	}
+	for _, match := range urlUserinfo.FindAllStringSubmatch(content, -1) {
+		userinfo, err := url.PathUnescape(strings.TrimSuffix(match[1], "@"))
+		if err != nil {
+			return true
+		}
+		separator := strings.IndexByte(maskConfigVariables(userinfo), ':')
+		if separator >= 0 {
+			// A static username (e.g. oauth2) plus a referenced password is useful.
+			if !variable.MatchString(userinfo[separator+1:]) {
+				return true
+			}
+		} else if !variable.MatchString(userinfo) {
+			return true
+		}
+	}
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "#") || strings.HasPrefix(trimmed, ";") {
+			continue
+		}
+		for _, match := range secretSetting.FindAllStringSubmatchIndex(maskConfigVariables(line), -1) {
+			key := line[match[2]:match[3]]
+			value := strings.TrimSpace(line[match[1]:])
+			// JSON quoted values can be followed by a comma/closing object. Read
+			// just that value so a quoted ${VAR} remains a reference in JSON too.
+			if strings.HasPrefix(value, "\"") {
+				var decoded string
+				if json.NewDecoder(strings.NewReader(value)).Decode(&decoded) == nil {
+					value = decoded
+				}
+			}
+			value = strings.Trim(strings.TrimSpace(value), "\"'")
+			if strings.EqualFold(key, "authorization") {
+				parts := strings.Fields(value)
+				if len(parts) == 2 && (strings.EqualFold(parts[0], "Bearer") || strings.EqualFold(parts[0], "Basic")) {
+					value = parts[1]
+				}
+			}
+			if value != "" && !variable.MatchString(value) {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 // Canonical validates the entire package before any persistent write.
 func Canonical(doc *pb.PersonalConfigDocument) ([]byte, error) {
@@ -69,7 +131,7 @@ func Canonical(doc *pb.PersonalConfigDocument) ([]byte, error) {
 		}
 		first := strings.Split(lower, "/")[0]
 		switch first {
-		case ".ssh", ".aws", ".git", ".netrc", ".bashrc", ".bash_profile", ".profile", ".zshrc", ".zprofile":
+		case ".ssh", ".aws", ".git", ".netrc", ".bashrc", ".bash_profile", ".bash_login", ".bash_logout", ".profile", ".zshrc", ".zprofile", ".zshenv", ".zlogin", ".zlogout":
 			return nil, invalid("executable_or_secret_config")
 		}
 		switch strings.ToLower(path.Ext(p)) {
@@ -83,16 +145,8 @@ func Canonical(doc *pb.PersonalConfigDocument) ([]byte, error) {
 		if total > 256<<10 {
 			return nil, invalid("config_too_large")
 		}
-		if token.MatchString(file.Content) {
+		if knownSecret(file.Content) {
 			return nil, invalid("secret_in_config")
-		}
-		for _, line := range strings.Split(file.Content, "\n") {
-			if match := secretSetting.FindStringSubmatch(line); len(match) > 1 {
-				value := strings.Trim(strings.TrimSpace(match[1]), "\"'")
-				if value != "" && !variable.MatchString(value) {
-					return nil, invalid("secret_in_config")
-				}
-			}
 		}
 		paths = append(paths, lower)
 	}

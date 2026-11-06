@@ -68,3 +68,62 @@ func TestCanonicalDigestIsStableAcrossOrderingAndRepeatedSaves(t *testing.T) {
 		t.Fatal("canonicalization mutated input")
 	}
 }
+
+func TestCommonPlaintextCredentialFormatsAreRejected(t *testing.T) {
+	cases := map[string]string{
+		"github_fine_grained":  "token=github_pat_" + strings.Repeat("a", 22) + "_" + strings.Repeat("b", 59),
+		"gitlab_pat":           "token=glpat-" + strings.Repeat("a", 20),
+		"npm_basic":            "//registry.example/:_auth=YWxpY2U6c2VjcmV0",
+		"authorization_bearer": "Authorization: Bearer opaque-value",
+		"authorization_basic":  "header = 'Authorization: Basic YWxpY2U6c2VjcmV0'",
+		"json_authorization":   `{"Authorization":"Bearer opaque-value", "api_key":"${API_KEY}"}`,
+		"url_password":         "index-url=https://alice:secret@registry.example/simple",
+		"url_username_token":   "registry=https://opaque-token@registry.example",
+		"url_encoded_password": "registry=https://alice:%73ecret@registry.example",
+		"url_mixed_reference":  "registry=https://${USER}:plain-password@registry.example",
+	}
+	for name, content := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, err := Canonical(&pb.PersonalConfigDocument{Files: []*pb.PersonalConfigFile{{Path: ".config/tool/preferences", Content: content}}})
+			if err == nil {
+				t.Fatal("accepted explicit plaintext credential format")
+			}
+			if strings.Contains(err.Error(), content) {
+				t.Fatal("credential echoed in validation error")
+			}
+		})
+	}
+}
+
+func TestCredentialVariableReferencesRemainConfiguration(t *testing.T) {
+	cases := map[string]string{
+		"npm_token":             "//registry.example/:_authToken=${NPM_TOKEN}",
+		"npm_basic":             "//registry.example/:_auth='${NPM_AUTH}'",
+		"authorization_bearer":  "Authorization: Bearer ${ACCESS_TOKEN}",
+		"authorization_basic":   "Authorization = 'Basic ${BASIC_AUTH}'",
+		"json_authorization":    `{"Authorization":"Bearer ${ACCESS_TOKEN}", "api_key":"${API_KEY}"}`,
+		"url_password":          "index-url=https://oauth2:${REGISTRY_TOKEN}@registry.example/simple",
+		"url_username_token":    "registry=https://${REGISTRY_TOKEN}@registry.example",
+		"url_both_references":   "registry=https://${USERNAME}:${PASSWORD}@registry.example",
+		"url_encoded_reference": "registry=https://oauth2:%24%7BREGISTRY_TOKEN%7D@registry.example",
+		"named_references":      "api_key=${secret:api-key}\nregistry=https://${identity:user}:${secret:registry-token}@registry.example",
+		"ordinary_text":         "theme=dark\n# password is configured elsewhere\ndescription=Basic authentication is available\nregistry=https://registry.example/",
+	}
+	for name, content := range cases {
+		t.Run(name, func(t *testing.T) {
+			if _, err := Canonical(&pb.PersonalConfigDocument{Files: []*pb.PersonalConfigFile{{Path: ".npmrc", Content: content}}}); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestConfigurationPathsStayInsideNonExecutableHomeFiles(t *testing.T) {
+	for _, p := range []string{"/etc/passwd", "../escape", "a/../../escape", "a//b", `C:\escape`, ".SSH/config", ".Aws/credentials", ".Git/config", ".netrc", ".bashrc", ".bash_login", ".bash_logout", ".Zshenv", ".zlogin", ".zlogout", "a/boot.PS1", "x\x00y"} {
+		t.Run(strings.ReplaceAll(p, "/", "_"), func(t *testing.T) {
+			if _, err := Canonical(&pb.PersonalConfigDocument{Files: []*pb.PersonalConfigFile{{Path: p, Content: "non-secret"}}}); err == nil {
+				t.Fatal("accepted reserved or escaping path")
+			}
+		})
+	}
+}

@@ -8,3 +8,15 @@
 - environment_id 是 coding-web 本人配置目录的引用；网页新会话预选后通过原有 WorkspaceEnvironment 快照创建链路应用。已选环境/已有会话优先，Runtime 不把ID当可读取任意机密配置的授权。
 
 验证：Registry 全套 SQLite/PostgreSQL（非root PostgreSQL）通过；新增版本/私有隔离/none/旧版本/digest/并发/选择重试测试在两种数据库通过。PersonalConfig HTTP 真实认证与正文不进日志通过。MCP真实SQLite租约筛选、空选择、权限交集与失败整事务回滚通过；HOME真实shell预检/不覆盖/0600通过。taskapi、cmd/task-service、broker与相关Go包通过。Python个人pin+Planner/tool_loop相关43条通过。
+
+凭据格式复核：文件内容增加 GitHub `github_pat_`、GitLab `glpat-`、npm
+`_auth`、Authorization 的 Bearer/Basic 字面值，以及 URL userinfo 中明文密码或
+直接令牌的识别；百分号编码的 userinfo 先解码。`${VAR}` 及已有命名引用形式仍允许，
+包括 Authorization 引用、npm 引用和固定用户名搭配引用密码的 URL。JSON 同行多个
+配置项逐项检查，不能用后面的引用遮住前面的明文值。这里只覆盖明确已知格式和字段，
+不承诺识别任意密钥，不解析或展开变量，不扩展为通用内容防泄漏系统。
+
+路径复核补齐已有 Bash/Zsh 启动文件禁用列表的 `.bash_login`、`.bash_logout`、
+`.zshenv`、`.zlogin`、`.zlogout`。穿越、绝对路径、Windows 路径、大小写变体、
+保留目录和脚本后缀补回归；普通 `.npmrc` 和 `.config` 文本配置仍可用。
+本轮仅静态审查、格式检查与编写回归，单元执行等待 Firecracker 独占测量窗口释放。
