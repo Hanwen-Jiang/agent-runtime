@@ -240,13 +240,17 @@ impl Config {
     }
 
     fn longest_socket_path(&self) -> usize {
-        // <chroot_base>/<exec>/fc-<16 位>/root/run/v.sock_<令牌端口>
-        let tail = format!(
-            "/{}/{}/root{}_{TOKEN_PORT}",
-            self.exec_name(),
-            "f".repeat(19),
-            spec::VSOCK_UDS
-        );
+        // The Firecracker API name is longer than the vsock/token names.
+        // Validate every socket endpoint before creating any VM resources.
+        let endpoint = [
+            spec::API_SOCK.to_string(),
+            format!("{}_{TOKEN_PORT}", spec::VSOCK_UDS),
+            format!("{}_1082", spec::VSOCK_UDS),
+        ]
+        .into_iter()
+        .max_by_key(String::len)
+        .expect("socket endpoints");
+        let tail = format!("/{}/{}/root{endpoint}", self.exec_name(), "f".repeat(19));
         self.chroot_base.as_os_str().len() + tail.len()
     }
 }
@@ -272,6 +276,19 @@ mod tests {
         assert_eq!(c.cgroup_root, PathBuf::from("/sys/fs/cgroup"));
         assert!(!c.allow_non_root && c.fault.is_none());
         assert!(c.longest_socket_path() <= MAX_SOCKET_PATH);
+    }
+
+    #[test]
+    fn api_socket_length_is_checked_before_startup() {
+        let tail = format!("/firecracker/{}/root{}", "f".repeat(19), spec::API_SOCK);
+        let base = format!("/{}", "x".repeat(MAX_SOCKET_PATH - tail.len() - 1));
+        assert!(cfg(&[("AR_FC_CHROOT_BASE", &base)]).is_ok());
+        let too_long = format!("{base}x");
+        assert!(
+            cfg(&[("AR_FC_CHROOT_BASE", &too_long)])
+                .unwrap_err()
+                .contains("AR_FC_CHROOT_BASE")
+        );
     }
 
     #[test]
