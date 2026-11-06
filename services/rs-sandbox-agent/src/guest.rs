@@ -37,7 +37,7 @@ use ar_sys::guest;
 /// 客户机里跑命令的 uid、gid（与 K8s 后端的 run_as_user 一致）。
 pub const SANDBOX_UID: u32 = 10001;
 /// 环回转发器：客户机里的地址 → 宿主的 vsock 端口。出网网关、包镜像各一条（D-22）。
-pub const FORWARDS: &[(u16, u32)] = &[(3128, 1080), (3129, 1081)];
+pub const FORWARDS: &[(u16, u32)] = &[(3128, 1080), (3129, 1081), (3130, 1082)];
 /// 宿主来的预览连接（D-22）。
 pub const PREVIEW_VSOCK_PORT: u32 = 702;
 /// 转发的连接同时最多多少条（每台 VM）。
@@ -97,25 +97,140 @@ fn setup_filesystems() -> io::Result<()> {
     Ok(())
 }
 
-fn read_token(port: u32) -> io::Result<String> {
+// Never derive Debug: this reply contains the fresh per-VM credential.
+struct Bootstrap {
+    token: String,
+    identity: Option<(String, [u8; 64], u64)>,
+}
+
+fn parse_bootstrap(line: &str, v2: bool) -> io::Result<Bootstrap> {
+    let bad = || io::Error::new(io::ErrorKind::InvalidData, "invalid host bootstrap reply");
+    if !v2 {
+        let token = line.trim();
+        if token.len() < 32 {
+            return Err(bad());
+        }
+        return Ok(Bootstrap {
+            token: token.to_string(),
+            identity: None,
+        });
+    }
+    let doc: serde_json::Value = serde_json::from_str(line).map_err(|_| bad())?;
+    let hex = |key: &str, len: usize| -> io::Result<String> {
+        let value = doc[key].as_str().ok_or_else(bad)?;
+        if value.len() != len
+            || !value
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        {
+            return Err(bad());
+        }
+        Ok(value.to_string())
+    };
+    if doc["version"].as_u64() != Some(2) {
+        return Err(bad());
+    }
+    let token = hex("token", 64)?;
+    let machine_id = hex("machine_id", 32)?;
+    let entropy = hex("entropy", 128)?;
+    let unix = doc["unix_seconds"]
+        .as_u64()
+        .filter(|n| *n >= 1_577_836_800)
+        .ok_or_else(bad)?;
+    let mut seed = [0u8; 64];
+    for (i, byte) in seed.iter_mut().enumerate() {
+        *byte = u8::from_str_radix(&entropy[i * 2..i * 2 + 2], 16).map_err(|_| bad())?;
+    }
+    Ok(Bootstrap {
+        token,
+        identity: Some((machine_id, seed, unix)),
+    })
+}
+
+fn read_bootstrap(port: u32, v2: bool) -> io::Result<Bootstrap> {
     let mut last = io::Error::other("没试过");
     for _ in 0..50 {
         match guest::vsock_connect(guest::VMADDR_CID_HOST, port) {
-            Ok(s) => {
+            Ok(mut s) => {
                 s.set_read_timeout(Some(Duration::from_secs(5)))?;
-                let mut line = String::new();
-                BufReader::new(s.take(4096)).read_line(&mut line)?;
-                let t = line.trim().to_string();
-                if t.len() < 32 {
-                    return Err(io::Error::other("宿主给的令牌太短"));
+                if v2 && let Err(e) = s.write_all(b"BOOTSTRAP 2\n") {
+                    last = e;
+                    continue;
                 }
-                return Ok(t);
+                let mut line = String::new();
+                match BufReader::new((&mut s).take(4096)).read_line(&mut line) {
+                    Ok(n) if n > 0 => {
+                        let bootstrap = parse_bootstrap(&line, v2)?;
+                        if v2 {
+                            s.write_all(b"BOOTSTRAP OK\n")?;
+                        }
+                        return Ok(bootstrap);
+                    }
+                    Ok(_) => {
+                        last = io::Error::new(
+                            io::ErrorKind::UnexpectedEof,
+                            "bootstrap connection reset",
+                        )
+                    }
+                    Err(e) => last = e,
+                }
+                // Firecracker resets open vsock connections on restore. A
+                // pre-token snapshot must reconnect, not shut the guest down.
             }
             Err(e) => last = e,
         }
         std::thread::sleep(Duration::from_millis(100));
     }
     Err(last)
+}
+
+fn apply_identity(identity: &(String, [u8; 64], u64)) -> io::Result<()> {
+    let (machine_id, entropy, unix) = identity;
+    guest::reseed_random(entropy)?;
+    guest::set_realtime(*unix)?;
+    // The image converter supplies an empty /etc/machine-id mount target.
+    // This file is freshly created after restore, before any tenant code runs.
+    let hostname = format!("sandbox-{}", &machine_id[..12]);
+    guest::sethostname(&hostname)?;
+    let boot_id = fresh_boot_id(entropy);
+    for (name, target, value) in [
+        ("machine-id", "/etc/machine-id", machine_id.as_str()),
+        ("hostname", "/etc/hostname", hostname.as_str()),
+        (
+            "boot-id",
+            "/proc/sys/kernel/random/boot_id",
+            boot_id.as_str(),
+        ),
+    ] {
+        let path = format!("/run/{name}");
+        std::fs::write(&path, format!("{value}\n"))?;
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o444))?;
+        mount_or_log(&path, target, "", guest::MS_BIND, "")?;
+        mount_or_log(
+            "",
+            target,
+            "",
+            guest::MS_BIND | guest::MS_REMOUNT | guest::MS_RDONLY,
+            "",
+        )?;
+    }
+    Ok(())
+}
+
+fn fresh_boot_id(entropy: &[u8; 64]) -> String {
+    let mut bytes = [0u8; 16];
+    bytes.copy_from_slice(&entropy[..16]);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
+    format!(
+        "{}-{}-{}-{}-{}",
+        &hex[..8],
+        &hex[8..12],
+        &hex[12..16],
+        &hex[16..20],
+        &hex[20..]
+    )
 }
 
 /// 镜像的环境（`KEY=VALUE` 一行一个，D-21 转换时从镜像配置的 Env 写出）。名字不合法的、AGENT_ 开头的跳过。
@@ -300,17 +415,26 @@ pub fn run_init() -> ExitCode {
         .ok()
         .and_then(|p| p.parse::<u32>().ok())
         .unwrap_or(701);
-    let token = match read_token(token_port) {
+    let v2 = std::env::var("AGENT_BOOTSTRAP_V2").as_deref() == Ok("1");
+    if v2 {
+        guest::sync_filesystems();
+    }
+    let bootstrap = match read_bootstrap(token_port, v2) {
         Ok(t) => t,
         Err(e) => return fatal(format!("取不到令牌：{e}")),
     };
+    if let Some(identity) = &bootstrap.identity
+        && let Err(e) = apply_identity(identity)
+    {
+        return fatal(format!("恢复后的身份初始化失败：{e}"));
+    }
     // PID 1 自己不可转储：令牌在它的内存里（客户机里的命令虽然是另一个 uid，也不留口子）。
     let _ = ar_sys::set_not_dumpable();
-    let agent = match spawn_agent(&token) {
+    let agent = match spawn_agent(&bootstrap.token) {
         Ok(c) => c,
         Err(e) => return fatal(format!("起不了 agent：{e}")),
     };
-    drop(token);
+    drop(bootstrap);
     let slots = Arc::new(Slots(AtomicUsize::new(0)));
     for &(local, host_port) in FORWARDS {
         let s = slots.clone();
@@ -369,5 +493,48 @@ pub fn run_reaper() -> ExitCode {
                 return ExitCode::from(1);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod bootstrap_tests {
+    use super::*;
+
+    #[test]
+    fn boot_identity_uses_fresh_entropy_and_uuid_version_bits() {
+        let a = fresh_boot_id(&[0; 64]);
+        let b = fresh_boot_id(&[1; 64]);
+        assert_eq!(a, "00000000-0000-4000-8000-000000000000");
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn restored_guest_requires_complete_fresh_identity() {
+        let doc = serde_json::json!({"version":2, "token":"a".repeat(64),
+            "machine_id":"b".repeat(32), "entropy":"12".repeat(64), "unix_seconds":1_800_000_000});
+        let bootstrap = parse_bootstrap(&doc.to_string(), true).unwrap();
+        assert_eq!(bootstrap.token, "a".repeat(64));
+        assert_eq!(
+            bootstrap.identity.unwrap(),
+            ("b".repeat(32), [0x12; 64], 1_800_000_000)
+        );
+        for field in ["token", "machine_id", "entropy", "unix_seconds", "version"] {
+            let mut incomplete = doc.clone();
+            incomplete.as_object_mut().unwrap().remove(field);
+            assert!(
+                parse_bootstrap(&incomplete.to_string(), true).is_err(),
+                "{field}"
+            );
+        }
+        let mut bad = doc;
+        bad["entropy"] = serde_json::json!("x".repeat(128));
+        assert!(parse_bootstrap(&bad.to_string(), true).is_err());
+        assert!(parse_bootstrap(&"a".repeat(64), true).is_err());
+        assert!(
+            parse_bootstrap(&"a".repeat(64), false)
+                .unwrap()
+                .identity
+                .is_none()
+        );
     }
 }

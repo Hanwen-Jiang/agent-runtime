@@ -720,6 +720,15 @@ fn sweep_subcommand_cleans_up_after_a_crash() {
 }
 
 #[test]
+fn sweep_does_not_remove_another_managers_network_namespace() {
+    let rig = Rig::new();
+    let foreign = rig.path("ns/arfc-0123456789abcdef");
+    std::fs::write(&foreign, b"another manager owns this namespace").unwrap();
+    assert!(rig.command(&["sweep"]).status().unwrap().success());
+    assert!(foreign.exists());
+}
+
+#[test]
 fn a_vm_that_dies_is_forgotten_and_cleaned() {
     // 验收 7 的宿主侧：VM 被手工杀掉后 fc-manager 自己发现、清理，之后的请求是 unknown_env（适配器据此记 lost、透明换新）。
     let rig = Rig::new();

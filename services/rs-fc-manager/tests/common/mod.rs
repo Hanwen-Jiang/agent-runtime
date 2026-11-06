@@ -20,6 +20,14 @@ pub const PARENT_CGROUP: &str = "agentruntime-fc";
 
 static SEQ: AtomicU32 = AtomicU32::new(0);
 
+/// Real-VM measurements use the exact optimized deployment binary. Ordinary
+/// acceptance tests keep Cargo's matching test binary.
+pub fn manager_bin() -> PathBuf {
+    std::env::var_os("AR_FC_TEST_MANAGER_BIN")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_BIN_EXE_fc-manager")))
+}
+
 /// 一套隔离的目录与配置；Drop 时删掉。
 pub struct Rig {
     pub root: PathBuf,
@@ -123,7 +131,7 @@ impl Rig {
 
     /// fc-manager 的命令（env 清空后只给 env()），给 sweep、check 这些子命令用。
     pub fn command(&self, args: &[&str]) -> Command {
-        let mut cmd = Command::new(env!("CARGO_BIN_EXE_fc-manager"));
+        let mut cmd = Command::new(manager_bin());
         cmd.args(args).env_clear().envs(self.env());
         cmd
     }

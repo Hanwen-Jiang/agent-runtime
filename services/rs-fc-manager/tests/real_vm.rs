@@ -63,7 +63,7 @@ impl Real {
         let work = images
             .parent()
             .unwrap()
-            .join(format!("fcm-real-{}", std::process::id()));
+            .join(format!("fcr-{}", fc_manager::vm::random_hex(4).unwrap()));
         for d in ["j", "s"] {
             fs::create_dir_all(work.join(d)).unwrap();
         }
@@ -85,7 +85,11 @@ impl Real {
             ("AR_FC_IP_BIN".into(), which("ip")),
             ("AR_FC_MKFS_BIN".into(), which("mkfs.ext4")),
             ("AR_FC_CGROUP_ROOT".into(), "/sys/fs/cgroup".into()),
-            ("AR_FC_PARENT_CGROUP".into(), "agentruntime-fc-test".into()),
+            (
+                "AR_FC_PARENT_CGROUP".into(),
+                work.file_name().unwrap().to_string_lossy().into_owned(),
+            ),
+            ("AR_FC_UID_BASE".into(), "950000".into()),
             ("AR_FC_NETNS_DIR".into(), "/run/netns".into()),
             ("AR_FC_BOOT_TIMEOUT_S".into(), "30".into()),
             ("AR_FC_REAP_INTERVAL_MS".into(), "1000".into()),
@@ -117,7 +121,7 @@ impl Real {
         for dir in [
             self.work.join("j/firecracker"),
             self.work.join("s/vms"),
-            PathBuf::from("/sys/fs/cgroup/agentruntime-fc-test"),
+            PathBuf::from("/sys/fs/cgroup").join(self.work.file_name().unwrap()),
         ] {
             if let Ok(rd) = fs::read_dir(&dir) {
                 for e in rd.flatten() {
@@ -127,20 +131,115 @@ impl Real {
                 }
             }
         }
-        if let Ok(rd) = fs::read_dir("/run/netns") {
-            out.extend(
-                rd.flatten()
-                    .map(|e| e.file_name().to_string_lossy().into_owned())
-                    .filter(|n| n.starts_with("arfc-")),
-            );
-        }
+        // /run/netns also contains live production VMs; only this manager's
+        // durable records, jail and cgroup directories establish ownership.
         out
     }
 }
 
+#[test]
+fn memory_snapshot_clones_refresh_identity_and_keep_tenant_disks_private() {
+    let real = Real::new();
+    let (m, _rig) = real.start(&[("AR_FC_SNAPSHOT_CACHE_MIB", "2048")]);
+    let spec = json!({"runtime":"python", "cpu_millis":1000, "memory_mb":256, "disk_mb":256});
+    let a = m.create_ok("t1", spec.clone());
+    let cache = real.work.join("s/base-snapshots");
+    let entries: Vec<_> = fs::read_dir(&cache).unwrap().flatten().collect();
+    assert_eq!(
+        entries.len(),
+        1,
+        "real snapshot must have been created: {}",
+        m.log()
+    );
+    let entry = entries[0].path();
+    assert!(fs::metadata(entry.join("memory")).unwrap().len() >= 256 << 20);
+    let identity = "cat /etc/machine-id; cat /proc/sys/kernel/random/boot_id; cat /proc/sys/kernel/random/uuid; date +%s; hostname";
+    let first = sh(&m, "t1", &a, identity).1;
+    assert_eq!(
+        sh(&m, "t1", &a, "echo tenant-one > private-file").0,
+        Some(0)
+    );
+    let b = m.create_ok("t2", spec.clone());
+    let second = sh(&m, "t2", &b, identity).1;
+    let first: Vec<_> = first.lines().collect();
+    let second: Vec<_> = second.lines().collect();
+    assert_eq!(first.len(), 5);
+    assert_eq!(second.len(), 5);
+    assert_ne!(
+        first[0], second[0],
+        "machine-id must be fresh after restore"
+    );
+    assert_ne!(first[1], second[1], "boot_id must be fresh after restore");
+    assert_ne!(
+        first[2], second[2],
+        "kernel RNG must be reseeded before tenant code"
+    );
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    assert!(now.abs_diff(second[3].parse::<u64>().unwrap()) < 5);
+    assert_ne!(first[4], second[4], "hostname must be fresh after restore");
+    assert!(
+        m.log()
+            .contains(&format!("{b} bootstrap path: memory-snapshot")),
+        "{}",
+        m.log()
+    );
+    assert_ne!(sh(&m, "t2", &b, "cat private-file").0, Some(0));
+    assert_eq!(
+        m.agent("t1", &b, "POST", "/v1/exec", &[], Some(b"{}"))
+            .status,
+        404
+    );
+    let log = fs::read_to_string(real.work.join("s/logs").join(format!("{b}.log"))).unwrap();
+    assert!(
+        !log.contains("Kernel command line:"),
+        "clone should resume memory, not reboot kernel"
+    );
+    assert_eq!(m.destroy("t1", &a).status, 204);
+    assert_eq!(m.destroy("t2", &b).status, 204);
+    // A corrupt snapshot must lead to a healthy cold boot, never a partial VM.
+    let state = entry.join("state");
+    fs::set_permissions(&state, std::os::unix::fs::PermissionsExt::from_mode(0o644)).unwrap();
+    let mut bytes = fs::read(&state).unwrap();
+    bytes[0] ^= 1;
+    fs::write(&state, bytes).unwrap();
+    fs::set_permissions(&state, std::os::unix::fs::PermissionsExt::from_mode(0o444)).unwrap();
+    let c = m.create_ok("t3", spec);
+    assert!(m.log().contains("cold fallback"), "{}", m.log());
+    assert_eq!(sh(&m, "t3", &c, "echo recovered").1.trim(), "recovered");
+    assert_eq!(m.destroy("t3", &c).status, 204);
+}
+
 impl Drop for Real {
     fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.work);
+        if std::thread::panicking() {
+            let failed = self.work.join("failed-logs");
+            let _ = fs::create_dir_all(&failed);
+            if let Ok(logs) = fs::read_dir(self.work.join("s/logs")) {
+                for log in logs.flatten() {
+                    let _ = fs::copy(log.path(), failed.join(log.file_name()));
+                }
+            }
+            eprintln!("failed VM logs: {}", failed.display());
+        }
+        let cleaned = Command::new(manager_bin())
+            .arg("sweep")
+            .env_clear()
+            .envs(self.env.iter().cloned())
+            .status()
+            .is_ok_and(|status| status.success());
+        if cleaned {
+            let _ = fs::remove_dir(
+                PathBuf::from("/sys/fs/cgroup").join(self.work.file_name().unwrap()),
+            );
+            if !std::thread::panicking() {
+                let _ = fs::remove_dir_all(&self.work);
+            }
+        } else {
+            eprintln!("cleanup failed; preserved state: {}", self.work.display());
+        }
     }
 }
 
@@ -290,9 +389,15 @@ fn capacity_destroy_and_restart_leave_no_residue() {
 
 #[test]
 fn record_cold_start_and_density() {
-    // 验收 8：只记录，不设门槛。输出给人抄进 docs/plan/firecracker-backend.md。
+    // This is a configured-capacity regression, not physical host capacity.
+    // Full evidence collection (three modes, resource counters, raw samples)
+    // is scripts/fc_real_measure.py and requires a coordinated resource window.
     let real = Real::new();
-    let (m, _rig) = real.start(&[("AR_FC_MAX_VMS", "64"), ("AR_FC_MAX_MEMORY_MIB", "65536")]);
+    let (m, _rig) = real.start(&[
+        ("AR_FC_MAX_VMS", "64"),
+        ("AR_FC_MAX_VCPUS", "64"),
+        ("AR_FC_MAX_MEMORY_MIB", "65536"),
+    ]);
     let mut samples = vec![];
     for _ in 0..10 {
         let t = Instant::now();
@@ -305,7 +410,7 @@ fn record_cold_start_and_density() {
         assert_eq!(m.destroy("t1", &id).status, 204);
     }
     samples.sort();
-    let p = |q: f64| samples[((samples.len() as f64 - 1.0) * q).round() as usize];
+    let p = |q: f64| samples[(samples.len() as f64 * q).ceil() as usize - 1];
     eprintln!(
         "FC-REAL 冷启动到第一条命令：P50 {:?}，P95 {:?}（{} 次）",
         p(0.5),
@@ -320,7 +425,7 @@ fn record_cold_start_and_density() {
         );
         if r.status != 201 {
             eprintln!(
-                "FC-REAL 单宿主同时运行：{} 台（第 {} 台：{} {}）",
+                "FC-REAL idle VM观测下界：{} 台（第 {} 台：{} {}）；MAX_VMS=64/MAX_VCPUS=64，未测定物理上限",
                 ids.len(),
                 ids.len() + 1,
                 r.status,
@@ -328,9 +433,11 @@ fn record_cold_start_and_density() {
             );
             break;
         }
-        ids.push(r.json()["env_id"].as_str().unwrap().to_string());
+        let id = r.json()["env_id"].as_str().unwrap().to_string();
+        assert_eq!(sh(&m, "t1", &id, "true").0, Some(0));
+        ids.push(id);
     }
     for id in ids {
-        m.destroy("t1", &id);
+        assert_eq!(m.destroy("t1", &id).status, 204);
     }
 }

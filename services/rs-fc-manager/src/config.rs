@@ -49,6 +49,8 @@ pub struct Config {
     pub max_forward_conns: usize,
     /// 预热池（D-26 的待命 VM）：每项（runtime、cpu_millis、memory_mb、台数）。
     pub warm_pool: Vec<WarmSpec>,
+    /// Base-only memory snapshots. Zero disables creation and restore.
+    pub snapshot_cache_mib: u64,
     pub fault: Option<Fault>,
 }
 
@@ -207,6 +209,9 @@ impl Config {
             mirror_target,
             max_forward_conns: num("AR_FC_MAX_FORWARD_CONNS", 128)? as usize,
             warm_pool,
+            snapshot_cache_mib: text("AR_FC_SNAPSHOT_CACHE_MIB", "0").parse().map_err(|_| {
+                "AR_FC_SNAPSHOT_CACHE_MIB must be a non-negative integer".to_string()
+            })?,
             fault,
         };
         if u64::from(cfg.uid_base) + u64::from(cfg.max_vms) > u64::from(u32::MAX - 1) {

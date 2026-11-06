@@ -14,6 +14,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
+use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 use std::time::{Instant, SystemTime};
@@ -23,6 +24,7 @@ use serde_json::{Value, json};
 use crate::config::{Config, Fault};
 use crate::net::{self, Links};
 use crate::secrets::Token;
+use crate::snapshot;
 use crate::spec::{self, CreateRequest, VmSpec};
 use crate::store::{Record, Store};
 use crate::vm::{self, Paths, VmError};
@@ -71,6 +73,8 @@ enum State {
     Destroying,
 }
 
+type RootfsStamp = (u64, u64, u64, i64, i64, i64, i64);
+
 struct Vm {
     rec: Record,
     state: State,
@@ -81,6 +85,7 @@ struct Vm {
     busy: bool,
     conns: usize,
     links: std::sync::Arc<Links>,
+    rootfs_stamp: Option<RootfsStamp>,
 }
 
 #[derive(Default)]
@@ -96,6 +101,7 @@ pub struct Manager {
     pub cfg: Config,
     store: Store,
     inner: Mutex<Inner>,
+    snapshots: Mutex<snapshot::Cache>,
     _lock: fs::File,
 }
 
@@ -138,6 +144,20 @@ fn image_digest(rootfs: &Path) -> String {
     }
 }
 
+fn rootfs_stamp(rootfs: &Path) -> Option<RootfsStamp> {
+    fs::metadata(rootfs).ok().map(|m| {
+        (
+            m.dev(),
+            m.ino(),
+            m.len(),
+            m.mtime(),
+            m.mtime_nsec(),
+            m.ctime(),
+            m.ctime_nsec(),
+        )
+    })
+}
+
 impl Manager {
     /// 打开 state 目录并拿到它的锁：同一个目录同时只有一个 fc-manager（serve 或 sweep）。
     pub fn open(cfg: Config) -> Result<Manager, String> {
@@ -157,10 +177,12 @@ impl Manager {
                 cfg.state_dir.display()
             )
         })?;
+        let snapshots = Mutex::new(snapshot::Cache::new(&cfg)?);
         Ok(Manager {
             cfg,
             store,
             inner: Mutex::new(Inner::default()),
+            snapshots,
             _lock: lock,
         })
     }
@@ -233,7 +255,8 @@ impl Manager {
         let plain = |n: &str| spec::valid_env_id(n).then(|| n.to_string());
         scan(cfg.chroot_base.join(cfg.exec_name()), &plain);
         scan(cfg.cgroup_root.join(&cfg.parent_cgroup), &plain);
-        scan(cfg.netns_dir.clone(), &spec::env_id_from_netns);
+        // /run/netns is shared by independent managers. The durable record is
+        // written before netns creation; never infer ownership from arfc-* alone.
         scan(cfg.state_dir.join("logs"), &|n: &str| {
             n.strip_suffix(".log").and_then(plain)
         });
@@ -325,6 +348,7 @@ impl Manager {
                 busy: true,
                 conns: 0,
                 links: links.clone(),
+                rootfs_stamp: rootfs_stamp(&rootfs),
             };
             g.vms.insert(env_id.clone(), vm);
             rec
@@ -382,6 +406,66 @@ impl Manager {
         rootfs: &Path,
         links: &std::sync::Arc<Links>,
     ) -> Result<Token, VmError> {
+        let key = if self.cfg.snapshot_cache_mib > 0 {
+            match self
+                .snapshots
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .key(&self.cfg, &rec.spec, rootfs)
+            {
+                Ok(key) => Some(key),
+                Err(e) => {
+                    warn!("snapshot key unavailable; cold boot: {}", e.detail());
+                    None
+                }
+            }
+        } else {
+            None
+        };
+        let restoring = key.as_deref().is_some_and(|key| {
+            self.snapshots
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .contains(key)
+        });
+        let result = self.boot_attempt(rec, rootfs, links, key.as_deref(), restoring);
+        if key.is_none() || result.is_ok() || matches!(result, Err(VmError::Cancelled)) {
+            return result;
+        }
+        if let Err(ref e) = result {
+            warn!(
+                "snapshot bootstrap failed for {}; cold fallback: {}",
+                rec.env_id,
+                e.detail()
+            );
+        }
+        // A restored VMM and its listeners must be fully removed before trying
+        // a cold VM under the same reserved slot. Never reuse a stopped Links.
+        links.stop();
+        vm::teardown(&self.cfg, &rec.env_id, rec.pid, rec.pid_start).map_err(VmError::Host)?;
+        self.checkpoint(&rec.env_id)?;
+        self.snapshots
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .invalidate(key.as_deref().expect("snapshot key"));
+        rec.pid = None;
+        rec.pid_start = None;
+        let replacement = Links::new(self.cfg.max_forward_conns);
+        if let Some(vm) = self.lock().vms.get_mut(&rec.env_id) {
+            vm.rec = rec.clone();
+            vm.links = replacement.clone();
+        }
+        self.boot_attempt(rec, rootfs, &replacement, None, false)
+    }
+
+    fn boot_attempt(
+        &self,
+        rec: &mut Record,
+        rootfs: &Path,
+        links: &std::sync::Arc<Links>,
+        snapshot_key: Option<&str>,
+        restoring: bool,
+    ) -> Result<Token, VmError> {
         let write = |r: &Record| {
             self.store
                 .write(r)
@@ -391,6 +475,29 @@ impl Manager {
         self.fault(Fault::AfterRecord);
         let p = Paths::new(&self.cfg, &rec.env_id);
         vm::prepare(&self.cfg, &p, &rec.spec, rec.uid, rootfs)?;
+        if let Some(expected) = snapshot_key {
+            // Image publication atomically replaces the runtime pathname.
+            // Verify the actual hard-linked inputs after prepare, so a
+            // concurrent publication cannot restore RAM against another disk.
+            let mut pinned = self.cfg.clone();
+            pinned.kernel = p.in_root(crate::spec::KERNEL_IN_JAIL);
+            let actual = self
+                .snapshots
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .key(&pinned, &rec.spec, &p.in_root(crate::spec::ROOTFS_IN_JAIL))?;
+            if actual != expected {
+                return Err(VmError::Boot(
+                    "snapshot inputs changed during creation".into(),
+                ));
+            }
+        }
+        if restoring {
+            self.snapshots
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .install(&self.cfg, snapshot_key.expect("restore key"), &p, rec.uid)?;
+        }
         self.checkpoint(&rec.env_id)?;
         let (pid, start) = vm::spawn(&self.cfg, &p, &rec.env_id, &rec.spec, rec.uid)?;
         rec.pid = Some(pid);
@@ -401,7 +508,11 @@ impl Manager {
         }
         self.fault(Fault::AfterSpawn);
         self.checkpoint(&rec.env_id)?;
-        vm::configure(&self.cfg, &p, &rec.spec)?;
+        if restoring {
+            vm::load_snapshot(&p)?;
+        } else {
+            vm::configure_bootstrap(&self.cfg, &p, &rec.spec, snapshot_key.is_some())?;
+        }
         let token =
             Token::new(vm::random_hex(32).map_err(|e| VmError::Host(format!("取随机数：{e}")))?);
         let listener = vm::token_listener(&self.cfg, &p, rec.uid)?;
@@ -409,11 +520,49 @@ impl Manager {
             vm::chown(&self.cfg, path, uid).map_err(|e| e.detail())
         })
         .map_err(VmError::Host)?;
-        vm::start(&p)?;
+        if restoring {
+            vm::resume(&p)?;
+        } else {
+            vm::start(&p)?;
+        }
         self.fault(Fault::AfterStart);
         let deadline = Instant::now() + self.cfg.boot_timeout;
-        vm::deliver_token(&p, listener, &token, deadline)?;
-        vm::wait_healthy(&p, deadline)?;
+        if let Some(key) = snapshot_key {
+            if !restoring {
+                let stream = vm::await_bootstrap(&listener, deadline)?;
+                let result = self
+                    .snapshots
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .capture(&self.cfg, key, &p, &rec.spec, rec.uid);
+                if let Err(e) = result {
+                    warn!(
+                        "base snapshot capture unavailable; continue cold: {}",
+                        e.detail()
+                    );
+                }
+                // Saving and hashing memory can outlive the guest's socket
+                // timeout. Never send credentials over the captured stream:
+                // make the original VM reconnect just as a restored VM does.
+                drop(stream);
+            }
+            vm::complete_bootstrap(&listener, &token, Instant::now() + self.cfg.boot_timeout)?;
+            drop(listener);
+            let _ = fs::remove_file(p.token_sock());
+            info!(
+                "{} bootstrap path: {}",
+                rec.env_id,
+                if restoring {
+                    "memory-snapshot"
+                } else {
+                    "cold-base-capture"
+                }
+            );
+        } else {
+            vm::deliver_token(&p, listener, &token, deadline)?;
+            info!("{} bootstrap path: cold", rec.env_id);
+        }
+        vm::wait_healthy(&p, Instant::now() + self.cfg.boot_timeout)?;
         self.checkpoint(&rec.env_id)?;
         Ok(token)
     }
@@ -522,7 +671,9 @@ impl Manager {
         spec: &VmSpec,
         labels: &BTreeMap<String, String>,
     ) -> Option<Created> {
-        let current = image_digest(&self.cfg.images_dir.join(format!("{}.ext4", spec.runtime)));
+        let rootfs = self.cfg.images_dir.join(format!("{}.ext4", spec.runtime));
+        let current = image_digest(&rootfs);
+        let stamp = rootfs_stamp(&rootfs);
         let rec = {
             let mut g = self.lock();
             let vm = g.vms.values_mut().find(|v| {
@@ -531,6 +682,7 @@ impl Manager {
                     && !v.busy
                     && v.rec.spec == *spec
                     && v.rec.image == current
+                    && v.rootfs_stamp == stamp
             })?;
             vm.rec.owner = owner.to_string();
             vm.rec.labels = labels.clone();
@@ -552,7 +704,9 @@ impl Manager {
     /// 把预热池补满（定时跑）：每项按配置的台数补；镜像换了的旧待命 VM 拆掉。补不上（容量满）就等下次。
     pub fn fill_pool(&self) {
         for w in &self.cfg.warm_pool {
-            let current = image_digest(&self.cfg.images_dir.join(format!("{}.ext4", w.runtime)));
+            let rootfs = self.cfg.images_dir.join(format!("{}.ext4", w.runtime));
+            let current = image_digest(&rootfs);
+            let stamp = rootfs_stamp(&rootfs);
             let (have, stale): (u32, Vec<String>) = {
                 let g = self.lock();
                 let mine: Vec<&Vm> = g
@@ -567,7 +721,11 @@ impl Manager {
                     .collect();
                 let stale = mine
                     .iter()
-                    .filter(|v| v.state == State::Ready && !v.busy && v.rec.image != current)
+                    .filter(|v| {
+                        v.state == State::Ready
+                            && !v.busy
+                            && (v.rec.image != current || v.rootfs_stamp != stamp)
+                    })
                     .map(|v| v.rec.env_id.clone())
                     .collect();
                 (mine.len() as u32, stale)

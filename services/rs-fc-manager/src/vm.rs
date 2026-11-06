@@ -14,14 +14,14 @@
 //! 所有盘在启动前配好（不假设能热插）。客户机没有网卡：不调 PUT /network-interfaces。
 
 use std::fs;
-use std::io::{self, Read, Write};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde_json::{Value, json};
 
@@ -325,13 +325,22 @@ pub fn spawn(
 }
 
 fn api_put(p: &Paths, path: &str, body: &Value) -> Result<(), VmError> {
+    api_request(p, "PUT", path, body)
+}
+
+pub(crate) fn api_request(
+    p: &Paths,
+    method: &str,
+    path: &str,
+    body: &Value,
+) -> Result<(), VmError> {
     let mut s = UnixStream::connect(p.api_sock())
         .map_err(|e| VmError::Boot(format!("连不上 firecracker 的 API：{e}")))?;
     let _ = s.set_read_timeout(Some(Duration::from_secs(10)));
     let _ = s.set_write_timeout(Some(Duration::from_secs(10)));
     let data = body.to_string();
     let req = format!(
-        "PUT {path} HTTP/1.1\r\nHost: localhost\r\nAccept: application/json\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{data}",
+        "{method} {path} HTTP/1.1\r\nHost: localhost\r\nAccept: application/json\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{data}",
         data.len()
     );
     s.write_all(req.as_bytes())
@@ -339,7 +348,7 @@ fn api_put(p: &Paths, path: &str, body: &Value) -> Result<(), VmError> {
     let mut c = Conn::new(s);
     let h = c
         .read_response()
-        .map_err(|e| VmError::Boot(format!("firecracker 没有应答 PUT {path}：{e}")))?;
+        .map_err(|e| VmError::Boot(format!("firecracker 没有应答 {method} {path}：{e}")))?;
     if (200..300).contains(&h.status) {
         return Ok(());
     }
@@ -349,12 +358,12 @@ fn api_put(p: &Paths, path: &str, body: &Value) -> Result<(), VmError> {
         .and_then(|b| c.read_body(b, 64 << 10).ok())
         .unwrap_or_default();
     crate::warn!(
-        "firecracker 拒绝了 PUT {path}（HTTP {}）：{}",
+        "firecracker 拒绝了 {method} {path}（HTTP {}）：{}",
         h.status,
         String::from_utf8_lossy(&detail).trim()
     );
     Err(VmError::Rejected(format!(
-        "firecracker 拒绝了 PUT {path}（HTTP {}）",
+        "firecracker 拒绝了 {method} {path}（HTTP {}）",
         h.status
     )))
 }
@@ -372,6 +381,15 @@ fn wait_for_path(path: &Path, timeout: Duration) -> bool {
 
 /// 经 API 配好机器、内核、两块盘与 vsock。
 pub fn configure(cfg: &Config, p: &Paths, spec: &VmSpec) -> Result<(), VmError> {
+    configure_bootstrap(cfg, p, spec, false)
+}
+
+pub fn configure_bootstrap(
+    cfg: &Config,
+    p: &Paths,
+    spec: &VmSpec,
+    bootstrap_v2: bool,
+) -> Result<(), VmError> {
     if !wait_for_path(&p.api_sock(), Duration::from_secs(5)) {
         return Err(VmError::Boot(
             "firecracker 的 API socket 5 秒内没有出现".into(),
@@ -382,10 +400,15 @@ pub fn configure(cfg: &Config, p: &Paths, spec: &VmSpec) -> Result<(), VmError> 
         "/machine-config",
         &json!({"vcpu_count": spec.vcpus, "mem_size_mib": spec.memory_mib, "smt": false}),
     )?;
+    let mut boot_args = spec::boot_args(&cfg.guest_init);
+    if bootstrap_v2 {
+        // Kernel environment entries must precede the '--' init argument separator.
+        boot_args = boot_args.replace(" -- ", " AGENT_BOOTSTRAP_V2=1 -- ");
+    }
     api_put(
         p,
         "/boot-source",
-        &json!({"kernel_image_path": KERNEL_IN_JAIL, "boot_args": spec::boot_args(&cfg.guest_init)}),
+        &json!({"kernel_image_path": KERNEL_IN_JAIL, "boot_args": boot_args}),
     )?;
     api_put(
         p,
@@ -418,6 +441,103 @@ pub fn token_listener(cfg: &Config, p: &Paths, uid: u32) -> Result<UnixListener,
 
 pub fn start(p: &Paths) -> Result<(), VmError> {
     api_put(p, "/actions", &json!({"action_type": "InstanceStart"}))
+}
+
+/// The guest has flushed its blank disk and is waiting for credentials. No
+/// tenant input or host secret has crossed into the guest at this boundary.
+pub fn await_bootstrap(l: &UnixListener, deadline: Instant) -> Result<UnixStream, VmError> {
+    loop {
+        match l.accept() {
+            Ok((mut stream, _)) => {
+                stream
+                    .set_nonblocking(false)
+                    .map_err(|e| host("bootstrap socket", e))?;
+                stream
+                    .set_read_timeout(Some(Duration::from_secs(2)))
+                    .map_err(|e| host("bootstrap deadline", e))?;
+                let mut line = String::new();
+                BufReader::new((&mut stream).take(64))
+                    .read_line(&mut line)
+                    .map_err(|e| host("bootstrap greeting", e))?;
+                if line != "BOOTSTRAP 2\n" {
+                    return Err(VmError::Boot(
+                        "guest lacks snapshot bootstrap support".into(),
+                    ));
+                }
+                return Ok(stream);
+            }
+            Err(e) if e.kind() == io::ErrorKind::WouldBlock && Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
+                return Err(VmError::Boot("guest bootstrap deadline exceeded".into()));
+            }
+            Err(e) => return Err(host("await snapshot bootstrap", e)),
+        }
+    }
+}
+
+pub fn deliver_bootstrap(stream: &mut UnixStream, token: &Token) -> Result<(), VmError> {
+    let identity = random_hex(16).map_err(|e| host("fresh VM identity", e))?;
+    let entropy = random_hex(64).map_err(|e| host("fresh guest entropy", e))?;
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| VmError::Host("host clock before epoch".into()))?
+        .as_secs();
+    let payload = json!({"version": 2, "token": token.expose(), "machine_id": identity, "entropy": entropy, "unix_seconds": now});
+    stream
+        .set_write_timeout(Some(Duration::from_secs(2)))
+        .map_err(|e| host("bootstrap write timeout", e))?;
+    writeln!(stream, "{payload}").map_err(|e| host("deliver guest bootstrap", e))?;
+    stream
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .map_err(|e| host("bootstrap acknowledgment deadline", e))?;
+    let mut acknowledgment = String::new();
+    BufReader::new(stream.take(32))
+        .read_line(&mut acknowledgment)
+        .map_err(|e| host("bootstrap acknowledgment", e))?;
+    if acknowledgment != "BOOTSTRAP OK\n" {
+        return Err(VmError::Boot("guest did not acknowledge bootstrap".into()));
+    }
+    Ok(())
+}
+
+/// Restoring resets the captured vsock connection. Capturing can also leave
+/// expired guest retries in the listener backlog; only a fresh acknowledgment
+/// proves that the guest has received its new identity and credential.
+pub fn complete_bootstrap(
+    listener: &UnixListener,
+    token: &Token,
+    deadline: Instant,
+) -> Result<(), VmError> {
+    loop {
+        if let Ok(mut stream) = await_bootstrap(listener, deadline)
+            && deliver_bootstrap(&mut stream, token).is_ok()
+        {
+            return Ok(());
+        }
+        if Instant::now() >= deadline {
+            return Err(VmError::Boot("guest bootstrap was not acknowledged".into()));
+        }
+    }
+}
+
+pub fn load_snapshot(p: &Paths) -> Result<(), VmError> {
+    if !wait_for_path(&p.api_sock(), Duration::from_secs(5)) {
+        return Err(VmError::Boot("snapshot API socket unavailable".into()));
+    }
+    api_put(
+        p,
+        "/snapshot/load",
+        &json!({
+            "snapshot_path": "/snapshots/state", "mem_backend": {"backend_path": "/snapshots/memory", "backend_type": "File"},
+            "enable_diff_snapshots": false, "resume_vm": false
+        }),
+    )
+}
+
+pub fn resume(p: &Paths) -> Result<(), VmError> {
+    api_request(p, "PATCH", "/vm", &json!({"state": "Resumed"}))
 }
 
 /// 等客户机里的 agent（PID 1，最先起来的进程）来取令牌：写一行就关。之后这个端口不存在，客户机里后起的进程取不到。
@@ -577,4 +697,56 @@ pub fn teardown(
 /// 进程还是记录里那台 VM 的 firecracker。
 pub fn running(env_id: &str, pid: Option<i32>, start: Option<u64>) -> bool {
     pid.is_some_and(|p| sys::is_ours(p, start, env_id))
+}
+
+#[cfg(test)]
+mod bootstrap_tests {
+    use super::*;
+
+    #[test]
+    fn stale_pre_snapshot_connection_cannot_consume_fresh_credentials() {
+        let root = std::env::temp_dir().join(format!("fc-bootstrap-{}", random_hex(8).unwrap()));
+        fs::create_dir(&root).unwrap();
+        let path = root.join("bootstrap.sock");
+        let listener = UnixListener::bind(&path).unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let token = Token::new("a".repeat(64));
+        let host = std::thread::spawn(move || {
+            complete_bootstrap(&listener, &token, Instant::now() + Duration::from_secs(5)).unwrap();
+        });
+        let mut stale = UnixStream::connect(&path).unwrap();
+        stale.write_all(b"BOOTSTRAP 2\n").unwrap();
+        drop(stale);
+        let mut fresh = UnixStream::connect(&path).unwrap();
+        fresh
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        fresh.write_all(b"BOOTSTRAP 2\n").unwrap();
+        let mut line = String::new();
+        BufReader::new(&mut fresh).read_line(&mut line).unwrap();
+        let payload: Value = serde_json::from_str(&line).unwrap();
+        assert_eq!(payload["version"], 2);
+        assert_eq!(payload["token"], "a".repeat(64));
+        assert_eq!(payload["entropy"].as_str().unwrap().len(), 128);
+        assert_eq!(payload["machine_id"].as_str().unwrap().len(), 32);
+        fresh.write_all(b"BOOTSTRAP OK\n").unwrap();
+        host.join().unwrap();
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn delivered_but_unacknowledged_bootstrap_is_not_success() {
+        let (mut host, mut guest) = UnixStream::pair().unwrap();
+        guest
+            .set_read_timeout(Some(Duration::from_secs(3)))
+            .unwrap();
+        let peer = std::thread::spawn(move || {
+            let mut line = String::new();
+            BufReader::new(&mut guest).read_line(&mut line).unwrap();
+            assert!(line.contains("machine_id"));
+            // Simulate a disconnect after a full write at the host.
+        });
+        assert!(deliver_bootstrap(&mut host, &Token::new("b".repeat(64))).is_err());
+        peer.join().unwrap();
+    }
 }

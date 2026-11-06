@@ -150,6 +150,46 @@ pub fn sethostname(name: &str) -> io::Result<()> {
     check(unsafe { libc::sethostname(name.as_ptr() as *const libc::c_char, name.len()) })
 }
 
+/// Flush the blank scratch filesystem before the host captures a base snapshot.
+pub fn sync_filesystems() {
+    // SAFETY: sync(2) takes no arguments and retains no pointers.
+    unsafe { libc::sync() };
+}
+
+/// Mix fresh host entropy and immediately reseed the guest CRNG after cloning.
+/// Linux UAPI include/uapi/linux/random.h: RNDADDENTROPY and RNDRESEEDCRNG.
+pub fn reseed_random(seed: &[u8; 64]) -> io::Result<()> {
+    #[repr(C)]
+    struct Pool {
+        entropy_count: libc::c_int,
+        buf_size: libc::c_int,
+        bytes: [u8; 64],
+    }
+    let pool = Pool {
+        entropy_count: 512,
+        buf_size: 64,
+        bytes: *seed,
+    };
+    let device = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open("/dev/random")?;
+    // SAFETY: Pool matches the UAPI's two int fields followed by buf_size
+    // bytes. The fd and struct remain valid throughout the synchronous ioctl.
+    check(unsafe { libc::ioctl(device.as_raw_fd(), 0x4008_5203 as _, &pool) })?;
+    // SAFETY: RNDRESEEDCRNG takes no pointer argument. No stale pool is cleared.
+    check(unsafe { libc::ioctl(device.as_raw_fd(), 0x5207 as _) })
+}
+
+pub fn set_realtime(unix_seconds: u64) -> io::Result<()> {
+    let tv_sec = unix_seconds
+        .try_into()
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "clock out of range"))?;
+    let time = libc::timespec { tv_sec, tv_nsec: 0 };
+    // SAFETY: time is initialized and lives through clock_settime(2).
+    check(unsafe { libc::clock_settime(libc::CLOCK_REALTIME, &time) })
+}
+
 /// 把 lo 设成 up（客户机没有别的网卡；D-22 的环回转发器要 127.0.0.1）。
 pub fn loopback_up() -> io::Result<()> {
     // SAFETY: socket(2) 只读整数参数；描述符归 OwnedFd。
