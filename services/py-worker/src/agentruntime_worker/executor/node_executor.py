@@ -171,6 +171,14 @@ def _split_template(template: str) -> tuple[str, str]:
     return name, version
 
 
+def _unwrapped(schema: Any, result: Any) -> Any:
+    """模型只是把合规的输出多包了一层（{"output": "…"}、{"result": …}）：拆开。只在原样不合规、拆开后合规时才拆，别的原样返回。"""
+    if schema is None or not isinstance(result, dict) or len(result) != 1 or not validate(schema, result):
+        return result
+    inner = next(iter(result.values()))
+    return inner if not validate(schema, inner) else result
+
+
 def _error(message: str, error_type: str, *, retryable: bool = False) -> ApplicationError:
     return ApplicationError(message, type=error_type, non_retryable=not retryable)
 
@@ -782,14 +790,14 @@ class NodeExecutor:
         judge = node.get("role") == "judge"
         asked = judge_envelope(schema) if judge else schema
         response, messages, context_cost, first_token_ms = await self._generate(inp, tenant, asked, None)
-        result = self._result_of(response)
+        result = _unwrapped(asked, self._result_of(response))
         errors = validate(asked, result) if asked is not None else []
         if errors:
             # 输出不符合 schema：带上校验错误重问一次（附录 D.3、D.6）。
             span.add_event("invalid_output_retry", {"errors": "；".join(errors)})
             response, messages, retry_context_cost, _ = await self._generate(inp, tenant, asked, errors)
             context_cost += retry_context_cost
-            result = self._result_of(response)
+            result = _unwrapped(asked, self._result_of(response))
             errors = validate(asked, result) if asked is not None else []
             if errors:
                 raise _error(f"{node['id']} 的输出重问一次后仍不符合 output_schema：" + "；".join(errors), INVALID_OUTPUT)
