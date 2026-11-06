@@ -49,3 +49,27 @@ Registry现有不可变 `platform/model_profile/a6api/text-embedding-3-large@202
 实际宿主执行 `test_longmemeval.py` 和 `test_live_retriever.py`：**39 passed、0 skipped**，含原先被socket权限阻挡的真实gRPC本地监听、隔离租户认证写入及清理、取消后费用不重放。日志 `.goal-evidence/memory-live-audit-20261106/regression.log`。
 
 该39条回归及lexical结果不等于线上50题live已完成。当前尚需统一部署冻结、硬预算策略、live实验、最终账本及对照报告。
+
+## 隔离实验已启动（22:43，UTC+3）
+
+主集成负责人确认并发布专用租户后，本线作为唯一付费启动者执行。Registry tenant_policy/v1与Gateway文件白名单都只有已批准的embedding模型，日/月均为19.984709美元；Memory仍809cb41，Gateway为goal-9ef23021并开启requireRegistry，实际挂载不可变Profile ConfigMap。`scripts/run_longmemeval_live.py preflight`已核验上述状态、单Ready副本/实际imageID、真实Registry正文、专用租户零历史账单与空队列。
+
+源策略和增量发布材料位于 `services/py-learning/experiment-plans/longmemeval-20261106`。Registry source-policy.json 是实际evals/v1，新增tenant仅更改模型白名单和额度，其余配额不变。gateway-configmap-patch.json先test旧值后replace，只增加专用tenant，避免覆盖并发修改。launcher自身不执行seed、ConfigMap修改或部署。
+
+已启动进程 PID **1335794**（启动时刻1793994191.302 UTC epoch），独立session、stdin=/dev/null、日志直接持久写入 `/opt/evals/longmemeval-isolated-20261106/run.log`。完整argv、源码commit `b91db2eec2440b15dee8831b2f9801548ed9785d` 与预算估计见该目录process.json。工作目录为 `.worktrees/memory-live/agent-runtime`。单独的输出锁阻止重复启动；中断后必须核对原PID/账本/journal，不能因观察超时盲目重跑。
+
+启动命令（已执行，不能重复新开一份）：
+
+    PYTHONPATH=services/py-learning/src:services/py-memory/src:services/py-worker/src:libs/py-core/src:proto/gen/python \
+      /opt/evals/venv-2d94680/bin/python scripts/run_longmemeval_live.py run \
+      --out /opt/evals/longmemeval-isolated-20261106 \
+      --memory-commit 809cb41f9059e67d33fbb4da8e77ef4c2ec22218 \
+      --gateway-commit 9ef23021f618a5dfade58ce604fe3808c7b1eacf
+
+Memory使用既有内部HMAC密钥在进程内签专用tenant的短期请求身份，**无需Task API ops JWT**；密钥不写仓库、结果或argv。实验已冻结50题seed0，复用lexical-fixed；每题1200秒pipeline、1800秒总期限，门槛不变。每题前重新读实际部署/CM/Registry、专用租户全量账本与空队列；存在pending、非embedding/其他Task流量、版本漂移或保守预留累计达到16.984709美元即拒绝下一题。Gateway的19.984709月度账本限制是硬准入底线，脚本另外按完整历史防止新周期重置预算。
+
+首批实际R06证据已落 `first-batch-ledger.json`：11次Embed均为platform/v1和正文摘要ac61544d…28180，已结算$0.000237；当时2条为正在执行的预留，不能称最终unknown或失败，首题队列仍在处理。这证明本次真实调用写入了Registry身份，但不等于整个实验完成。
+
+脚本结束时会写 ledger-after.json、cleanup.json（journal全部ID、数据库排空与不存在核验）、costs.json、comparison.json和report.md。完整live实际费用只取专用租户model_usage，再加历史0.015291；未知结算不填0。预设gate即使未通过也如实交付全部指标，退出4不能解释为模型请求未执行。
+
+新增launcher离线边界回归2过：真实来源/策略失配、未知费用、跨任务流量与预算不足均阻止新写入。进程仍在运行，最终50题结果、成本和清理尚待完成。其他服务可部署，但Gateway/Memory及其配置快照在此实验期间须保持冻结。
