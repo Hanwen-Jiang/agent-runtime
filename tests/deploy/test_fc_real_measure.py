@@ -43,6 +43,8 @@ def test_boot_source_requires_evidence_and_never_uses_latency(tmp_path):
     assert fc.boot_source(created, {}, cfg, "fc-abc bootstrap path: memory-snapshot") == "memory-snapshot"
     assert fc.boot_source(created, {}, cfg, "fc-other bootstrap path: memory-snapshot") == "unknown"
     assert fc.boot_source(created, {}, cfg, "snapshot bootstrap failed for fc-abc; fc-abc bootstrap path: cold-base-capture") == "cold-fallback"
+    assert fc.boot_source(created, {}, cfg, "fc-abc bootstrap path: memory-snapshot\n从预热池交出 fc-abc（fc-real-own）") == "warm"
+    assert fc.boot_source(created, {}, cfg, "从预热池交出 fc-abcd（fc-real-own）") == "unknown"
 
 
 def test_snapshot_priming_is_excluded_but_fallbacks_are_retained(tmp_path):
