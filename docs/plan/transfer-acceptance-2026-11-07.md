@@ -84,3 +84,8 @@ cargo test --locked -p rs-transfer -p fc-manager --lib
 早先两个使用 debug agent 的重复 Service 测试进程已停止，改用 release agent 完整运行；未把中断当通过。旧 Go 与 Rust 共用黑盒首轮 240 通过、2 个 grep 逐字节兼容失败，定位为已替换 UTF-8 文本的 JSON 表示差异；保持有效断言，由独立兼容修复提交关闭。
 
 本轮模型调用 0、模型费用 0；R2 使用既有账号的小对象安全测试，账单尚无可独立归因的本次存储费用，未声称已核得存储费用为零。未自行生产部署。部署必须同时更新 Service、Worker、Rust agent 镜像和 FC rootfs；分块写入先关闭保存兼容 reader 回退点，再启用验收。
+
+最终共同黑盒兼容已修复并复跑：Go 1.27.2 与 Rust agent 的全部 242 项通过，0 skip，51.34 秒（`evidence/transfer-agent-compat-20261106.log`）。修复按固定 Go 工具链的实际 Unicode script alias/JSON 行为；旧的 Go 1.26 限制断言改为验证 1.27 接受别名，并继续验证不支持 Emoji、四个新增 script 的正反匹配。未删减固定或 400 个随机表达式的逐字节断言。Rust 输出转移改用 move，避免为大输出额外复制整个缓冲。
+
+额外摘取 `31708ff0` 的有意义清单入口防护：Go/Python 读取时都拒绝未知版本、缺失 entries、非法摘要/长度/路径/非目录父项/来源；Python 复制前完成验证，不先发布损坏元数据。v1 保持整文件格式，实际含 chunks 时才写 v2；关闭新写入开关仍生成 v1，读取同时支持合法 v1/v2。未重复引入旧的上传未知结果处理，持久 journal 仍是唯一恢复来源。Go archive 3 项与 Python 原 archive/copy 加新元数据回归 14 项通过。
+清单入口补强后，Service 的 Archive/Direct/Snapshot 14 项真实回归全部通过（`evidence/transfer-manifest-20261106.log`），含更新的 v1→v2→关闭写入仍能恢复用例，68 MiB 用例 22.86 秒。

@@ -49,7 +49,68 @@ from agentruntime_worker.workspace import timing
 from agentruntime_worker.workspace.multirepo import MIGRATIONS as REPO_MIGRATIONS
 
 KEEP = 3
-MANIFEST_VERSION = 1
+MANIFEST_VERSION = 2
+
+
+def _validated_manifest(doc: Any) -> tuple[list[FileEntry], dict[str, str]]:
+    """Reject corrupt metadata before copy/GC can persist or follow it."""
+    if not isinstance(doc, dict) or type(doc.get("version")) is not int or doc["version"] not in (1, 2):
+        raise ValueError("unsupported manifest version")
+    rows = doc.get("entries")
+    # Historical Go empty snapshots encoded a nil slice as JSON null.
+    if rows is None and "entries" in doc:
+        rows = []
+    if not isinstance(rows, list) or len(rows) > 100_000:
+        raise ValueError("invalid manifest entries")
+    entries, seen, total = [], {}, 0
+    digest = re.compile(r"[0-9a-f]{64}\Z")
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("invalid entry")
+        path, kind = row.get("path"), row.get("type")
+        if not isinstance(path, str) or not path or "\\" in path or "\x00" in path or ":" in path.split("/")[0] or any(p in ("", ".", "..") for p in path.split("/")) or path == ".agentruntime":
+            raise ValueError("invalid path")
+        if path in seen or kind not in ("file", "dir", "symlink"):
+            raise ValueError("duplicate or unsupported entry")
+        seen[path] = kind
+        if type(row.get("mode", 0)) is not int or not 0 <= row.get("mode", 0) <= 0o777:
+            raise ValueError("invalid mode")
+        if kind == "file":
+            size, sha = row.get("size"), row.get("sha256")
+            if type(size) is not int or size < 0 or not isinstance(sha, str) or not digest.fullmatch(sha):
+                raise ValueError("invalid file size or digest")
+            chunks = row.get("chunks", [])
+            if not isinstance(chunks, list) or (doc["version"] == 1 and chunks):
+                raise ValueError("invalid chunk version")
+            chunk_bytes = 0
+            for block in chunks:
+                if not isinstance(block, dict) or not isinstance(block.get("sha256"), str) or not digest.fullmatch(block["sha256"]) or type(block.get("size_bytes")) is not int or not 0 < block["size_bytes"] <= 4 << 20:
+                    raise ValueError("invalid chunk")
+                chunk_bytes += block["size_bytes"]
+            if chunks and chunk_bytes != size:
+                raise ValueError("chunk size mismatch")
+            total += size
+            if total > 64 << 30:
+                raise ValueError("workspace too large")
+        elif kind == "symlink":
+            import posixpath
+            link = row.get("link")
+            if not isinstance(link, str) or not link or link.startswith("/") or "\\" in link or "\x00" in link or ":" in link.split("/")[0]:
+                raise ValueError("invalid link")
+            target = posixpath.normpath(posixpath.join(posixpath.dirname(path), link))
+            if target == ".." or target.startswith("../"):
+                raise ValueError("escaping link")
+        entries.append(FileEntry.from_dict(row))
+    for path in seen:
+        parents = path.split("/")[:-1]
+        for i in range(1, len(parents) + 1):
+            if seen.get("/".join(parents[:i]), "dir") != "dir":
+                raise ValueError("non-directory parent")
+    foreign = doc.get("blob_workspaces") or {}
+    if not isinstance(foreign, dict) or any(not isinstance(k, str) or not digest.fullmatch(k) or not isinstance(v, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}", v) for k, v in foreign.items()):
+        raise ValueError("invalid blob origin")
+    return entries, foreign
+
 
 MIGRATIONS = (
     Migration(205, "workspaces", (
@@ -366,8 +427,7 @@ class WorkspaceArchiver:
         timing.add_bytes("object_store", "in", len(data))
         try:
             doc = json.loads(data)
-            foreign = {str(k): str(v) for k, v in dict(doc.get("blob_workspaces") or {}).items()}
-            return [FileEntry.from_dict(e) for e in doc["entries"]], foreign
+            return _validated_manifest(doc)
         except (ValueError, KeyError, TypeError, AttributeError):
             raise InvalidError("workspace_manifest_corrupt", "快照的清单格式不对") from None
 
@@ -442,7 +502,7 @@ class WorkspaceArchiver:
             files=src.files, size_bytes=src.size_bytes, new_blobs=0, blob_sources=_sources(located),
         )
         doc = {
-            "version": MANIFEST_VERSION, "workspace_id": workspace_id, "snapshot_id": snapshot_id, "created_at": now,
+            "version": MANIFEST_VERSION if any(e.chunks for e in entries) else 1, "workspace_id": workspace_id, "snapshot_id": snapshot_id, "created_at": now,
             "entries": [e.as_dict() for e in sorted(entries, key=lambda e: e.path)], "blob_workspaces": dict(sorted(located.items())),
         }
         bucket = self._bucket(owner)

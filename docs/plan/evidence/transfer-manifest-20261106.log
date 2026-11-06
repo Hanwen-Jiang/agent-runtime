@@ -1,0 +1,33 @@
+=== RUN   TestReadsInArchiveModeComeFromTheLatestSnapshot
+--- PASS: TestReadsInArchiveModeComeFromTheLatestSnapshot (0.21s)
+=== RUN   TestArchiveModeSnapshotsOnReleaseAndRestoresOnTheNextLease
+--- PASS: TestArchiveModeSnapshotsOnReleaseAndRestoresOnTheNextLease (0.25s)
+=== RUN   TestSnapshotRPCAndManifestAndArchiveStreams
+--- PASS: TestSnapshotRPCAndManifestAndArchiveStreams (0.22s)
+=== RUN   TestFlushWritableSnapshotsIdleHoldersBeforeAReadOnlyLease
+--- PASS: TestFlushWritableSnapshotsIdleHoldersBeforeAReadOnlyLease (0.26s)
+=== RUN   TestSkipSnapshotDestroysWithoutArchiving
+--- PASS: TestSkipSnapshotDestroysWithoutArchiving (0.14s)
+=== RUN   TestDestroyWorkspaceRemovesTheMountedDirectory
+--- PASS: TestDestroyWorkspaceRemovesTheMountedDirectory (0.05s)
+=== RUN   TestArchiveModeTenantsAreLeftAlone
+--- PASS: TestArchiveModeTenantsAreLeftAlone (0.04s)
+=== RUN   TestAFailedSnapshotKeepsTheLocalCopy
+2026/11/06 19:54:13 WARN 工作区转冷失败，本地目录留着 workspace=w1 error="injected: 注入的故障：export_archive"
+--- PASS: TestAFailedSnapshotKeepsTheLocalCopy (0.13s)
+=== RUN   TestArchiveBackendsFallBackToEachOtherAndRestore
+2026/11/06 19:54:14 WARN 沙箱后端暂时不可用，试下一个 backend=a code=injected
+--- PASS: TestArchiveBackendsFallBackToEachOtherAndRestore (0.21s)
+=== RUN   TestDirectTransferServiceBindsTenantLeaseAndKeepsPreparedBytes
+--- PASS: TestDirectTransferServiceBindsTenantLeaseAndKeepsPreparedBytes (0.21s)
+=== RUN   TestDirectExecReferencesAndUploadFailurePending
+2026/11/06 19:54:14 WARN direct output upload pending; prepared bytes retained stream=stdout
+2026/11/06 19:54:14 WARN direct output upload pending; prepared bytes retained stream=stderr
+--- PASS: TestDirectExecReferencesAndUploadFailurePending (0.24s)
+=== RUN   TestDirectArchiveOnlyUploadsMissingAndRestoresBytes
+--- PASS: TestDirectArchiveOnlyUploadsMissingAndRestoresBytes (0.25s)
+=== RUN   TestDirectArchiveChunksLargeFilesAndUploadsOnlyChangedBlocks
+--- PASS: TestDirectArchiveChunksLargeFilesAndUploadsOnlyChangedBlocks (22.86s)
+=== RUN   TestDirectTransferJournalSurvivesLostCommitResponseAndRestart
+--- PASS: TestDirectTransferJournalSurvivesLostCommitResponseAndRestart (0.24s)
+PASS
