@@ -804,11 +804,13 @@ def render_public(data: dict[str, Any], title: str, summary: dict[str, Any], cou
 PUBLIC_PAGE = r"""<!doctype html>
 <html lang="zh-CN" data-lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>__TITLE__</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-:root{--bg:#fbfbfa;--fg:#1f2328;--muted:#5b636c;--line:#d8dde3;--card:#fff;--soft:#f1f3f2;--c1:#2563eb;--c2:#d97706;--c3:#059669;--bad:#dc2626;--ok:#15803d}
-@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#9aa4ae;--line:#30363d;--card:#161b22;--soft:#1c222a;--c1:#3b82f6;--c2:#d97706;--c3:#34d399;--bad:#f87171;--ok:#4ade80}}
+/* 评测网站的设计规范（SITE-UI，2026-11-06）：白底墨字，蓝色只给链接与操作，琥珀色只给“草稿·未经人审”；图表用 dataviz 参考调色板的前三个分类色（亮暗两档都过了校验）。三页同一组值。 */
+:root{color-scheme:light;--bg:#ffffff;--fg:#16181d;--ink2:#3d3d3a;--muted:#63625e;--card:#ffffff;--soft:#f5f5f3;--line:#e2e1dc;--accent:#1c5cab;--ok:#006300;--bad:#c23434;--warn:#8a5a00;--draft-bg:#fff3d1;--code:#f7f7f5;--c1:#2a78d6;--c2:#eb6834;--c3:#1baf7a}
+@media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#121211;--fg:#f0efec;--ink2:#d6d5cf;--muted:#a3a29a;--card:#1a1a19;--soft:#232321;--line:#34342f;--accent:#86b6ef;--ok:#3fbf3f;--bad:#e66767;--warn:#f2c46b;--draft-bg:#3a2c0f;--code:#1a1a19;--c1:#3987e5;--c2:#d95926;--c3:#199e70}}
 *{box-sizing:border-box}html[data-lang="zh"] .en,html[data-lang="en"] .zh{display:none}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 "IBM Plex Sans","PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif}
 main{max-width:960px;margin:0 auto;padding:24px 16px 72px}h1{font-size:26px;line-height:1.3;margin:0 0 12px;padding-right:128px}
 h2{font-size:20px;line-height:1.4;margin:44px 0 12px}p{margin:0 0 12px}.lead{font-size:17px}.muted{color:var(--muted)}.conclusion{font-weight:600}.how{color:var(--muted)}
 .lang{float:right;display:flex;gap:4px;margin-top:2px}.lang button{font:inherit;font-size:13px;padding:4px 10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--fg);cursor:pointer}
@@ -828,9 +830,13 @@ table.plain th,table.plain td{text-align:left;white-space:normal;vertical-align:
 #sec-swebench .bar{grid-template-columns:minmax(0,230px) minmax(120px,1fr) 50px}
 @media (max-width:640px){h1{padding-right:0}.lang{float:none;margin-bottom:12px}.bar,.bars2 .bar,#sec-swebench .bar{grid-template-columns:1fr auto}.bar .track{grid-column:1/-1;grid-row:2}.timeline li{grid-template-columns:1fr;gap:0}}
 .prog{display:inline-block;vertical-align:middle;width:90px;height:8px;margin-right:6px;background:var(--soft);border-radius:4px;overflow:hidden}.prog i{display:block;height:100%;background:var(--c1)}
-.st{display:inline-block;padding:0 7px;border-radius:999px;font-size:12px;border:1px solid var(--line)}.st.running{color:var(--c1);border-color:var(--c1)}.st.stalled{color:var(--bad);border-color:var(--bad)}
+.st{display:inline-block;padding:0 7px;border-radius:999px;font-size:12px;border:1px solid var(--line)}.st.running{color:var(--fg);border-color:var(--fg)}.st.stalled{color:var(--bad);border-color:var(--bad)}
 #live td:nth-child(3){text-align:left}#live table{margin-top:0}
 svg text{fill:var(--fg);font-size:12px}svg .axis{stroke:var(--line)}svg .thr{stroke:var(--bad);stroke-dasharray:5 4}footer{margin-top:40px;font-size:13px;color:var(--muted)}
+h1,h2,h3{font-weight:600;letter-spacing:-.01em}a{color:var(--accent);text-underline-offset:2px}a:hover{text-decoration-thickness:2px}
+code,pre{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Consolas,monospace}b,.num,.stat b,.tile b,td{font-variant-numeric:tabular-nums}
+.lang,.lang button{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:6px;cursor:pointer}.lang:hover,.lang button:hover{border-color:var(--accent);color:var(--accent)}
+.badge.draft,.draft{color:var(--warn);background:var(--draft-bg);border-color:transparent}
 </style></head><body><main>
 <div class="lang"><button type="button" data-set-lang="zh">中文</button><button type="button" data-set-lang="en">English</button></div>
 <h1>Agent Runtime Eval Dashboard · 评测看板</h1>

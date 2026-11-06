@@ -4,11 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Datasets · 数据集</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-:root { --bg:#ffffff; --fg:#1b1f24; --muted:#5b6470; --card:#f6f7f9; --line:#e3e6ea; --accent:#2f5bd3; --ok:#1f7a4d; --warn:#9a6200; --code:#f0f2f5; }
-@media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --fg:#e8eaed; --muted:#9aa3ad; --card:#181b21; --line:#2a2f37; --accent:#7ea0ff; --ok:#5fcf98; --warn:#e6b454; --code:#11141a; } }
+/* 评测网站的设计规范（SITE-UI，2026-11-06）：白底墨字，蓝色只给链接与操作，琥珀色只给“草稿·未经人审”；图表用 dataviz 参考调色板的前三个分类色（亮暗两档都过了校验）。三页同一组值。 */
+:root{color-scheme:light;--bg:#ffffff;--fg:#16181d;--ink2:#3d3d3a;--muted:#63625e;--card:#ffffff;--soft:#f5f5f3;--line:#e2e1dc;--accent:#1c5cab;--ok:#006300;--bad:#c23434;--warn:#8a5a00;--draft-bg:#fff3d1;--code:#f7f7f5;--c1:#2a78d6;--c2:#eb6834;--c3:#1baf7a}
+@media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#121211;--fg:#f0efec;--ink2:#d6d5cf;--muted:#a3a29a;--card:#1a1a19;--soft:#232321;--line:#34342f;--accent:#86b6ef;--ok:#3fbf3f;--bad:#e66767;--warn:#f2c46b;--draft-bg:#3a2c0f;--code:#1a1a19;--c1:#3987e5;--c2:#d95926;--c3:#199e70}}
 * { box-sizing: border-box; }
-body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.65 "IBM Plex Sans","PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif; }
 main { max-width:1100px; margin:0 auto; padding:24px 16px 64px; }
 a { color:var(--accent); }
 header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
@@ -30,7 +32,7 @@ input[type=search] { min-width:220px; flex:1; }
 .row .a { color:var(--muted); overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; }
 .tags { display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; }
 .badge { font-size:12px; border-radius:999px; padding:1px 8px; border:1px solid var(--line); white-space:nowrap; }
-.confirmed { color:var(--ok); border-color:var(--ok); } .draft { color:var(--warn); border-color:var(--warn); } .original { color:var(--accent); border-color:var(--accent); }
+.confirmed { color:var(--ok); border-color:var(--ok); } .draft { color:var(--warn); border-color:var(--warn); } .original { color:var(--ink2); border-color:var(--line); }
 .body { padding:0 12px 12px; }
 .body dl { display:grid; grid-template-columns:max-content minmax(0, 1fr); gap:4px 12px; margin:8px 0; }
 .body dt { color:var(--muted); } .body dd { margin:0; overflow-wrap:anywhere; }
@@ -53,6 +55,10 @@ code { font-family:ui-monospace, SFMono-Regular, Consolas, monospace; font-size:
 .tool { margin:4px 0; } .tool summary { cursor:pointer; }
 .blk ul { margin:4px 0; padding-left:20px; } .blk li { overflow-wrap:anywhere; }
 @media (max-width: 720px) { .row > summary { grid-template-columns: 1fr; } .tags { justify-content:flex-start; } .badge { white-space:normal; overflow-wrap:anywhere; } }
+h1,h2,h3{font-weight:600;letter-spacing:-.01em}a{color:var(--accent);text-underline-offset:2px}a:hover{text-decoration-thickness:2px}
+code,pre{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Consolas,monospace}b,.num,.stat b,.tile b,td{font-variant-numeric:tabular-nums}
+.lang,.lang button{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:6px;cursor:pointer}.lang:hover,.lang button:hover{border-color:var(--accent);color:var(--accent)}
+.badge.draft,.draft{color:var(--warn);background:var(--draft-bg);border-color:transparent}
 </style>
 </head>
 <body>
