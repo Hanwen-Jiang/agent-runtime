@@ -83,3 +83,18 @@ flowchart LR
 - Jev原题见goal-jev-reproduction文档与evalsets/paired/jev-reproduction.json。f06e30c不修第一次误拦；原1.97美元只是文档近似，分项费用待账本/外部Jev记录核验。
 
 合并回归：相关七文件105过；配置与证据校验补强后四文件70过；另一组含真实DeepEval指标桥、Memory指标和FC工具100过。均为离线/进程内验证，不替代部署、线上模型或浏览器验收。本线新增模型费用仍为0美元。
+
+## 宿主权限恢复后的核验（2026-11-06 19:29 UTC起）
+
+本节取代此前“无法创建socket”的环境状态，但不将旧失败改写为成功。实际TCP、真实DeepEval/Ragas框架桥及Memory gRPC回归45项通过、0skip，日志位于父目录.goal-evidence/live-transports-20261106.log。原User-Agent断言已按StartWorkspaceOperation返回Unimplemented→旧DeleteWorkspace→SSE三个实际请求更新，仍逐请求校验身份。页面独立真实Chromium测试6过，线上桌面溢出缺口另由页面负责人修复，待部署重新验收。
+
+费用重核推翻了仅用旧report计算的余额，前文的“剩余”只能作为历史报告口径，不能再作为开工依据：
+
+- 原Jev Task已done/2轮；model_usage 13次已结算合计0.273624美元，8次pending预占1.695528美元，两者和1.969152美元接近旧文档1.97。预占不是已知实付，不能宣称“旧实际成本1.97已修好”。
+- TB30个历史Task：model_usage已结算42.786647美元，206次pending预占142.677378美元；report只有36.432857美元。未知尝试未查清前不能按report余额新开40美元实验。
+- DeepEval16个历史Task已结算1.972641美元，6次pending预占2.045521美元；裁判费用另外核对。旧报告重复引用同Task时只算一次。
+- 已有LongMemEval中断实验339次embed已结算0.015291美元、pending0；队列0，本次278个候选均已清理。原始interrupted记录不篡改，记录恢复证据；不得重复计费启动同一尝试。
+
+只读provider用量接口只能提供最近1000条消费记录；不能凭窗口内缺少记录把pending清零，也不能把provider折扣计量与冻结Registry单价混为一套费用。真实核对原件位于.goal-evidence/paired-live-preflight-20261106及memory-live-audit-20261106；后续实验必须等待费用不确定性得到处理和部署冻结。
+
+后续直接调用Gateway的MX/DeepEval采用evals.audited_gateway:from_env：设置稳定AR_EVAL_RUN_ID、独立AR_EVAL_USAGE_DIR（实验输出下的usage子目录）、AR_MODEL_GATEWAY_ADDRESS，并经现有预算包装调用。每个实验固定唯一task_id，每次RPC固定唯一node_id，日志只存原调用身份/摘要/计量，不存提示或凭据；未结算调用禁止盲目续跑。使用该模块的--directory和--out命令只读tenant-scoped model_usage，可核对逐次attempt的真实Registry修订和费用，而不会把旧的空task_id/共用评测id误归入新实验。实现5项回归通过，尚未新增付费调用。
