@@ -271,6 +271,47 @@ async def test_timeout_is_recorded_cleaned_and_not_automatically_rebilled(tmp_pa
     assert calls == [DOG["question"], "closed"] and again["completed"] == 0
 
 
+@pytest.mark.parametrize("cleanup_fails", [False, True])
+async def test_cancellation_records_cleanup_before_propagating_and_never_rebills(tmp_path: Path, cleanup_fails: bool) -> None:
+    import asyncio
+    instances = lme.load(_write(tmp_path / "s.json", [DOG]))
+    entered = asyncio.Event()
+    calls = []
+
+    class Backend:
+        def __init__(self):
+            self.diagnostics = {"workspace": "w-cancelled", "cleanup_complete": False}
+
+        async def retrieve(self, question, top_k):
+            calls.append(question)
+            entered.set()
+            await asyncio.Event().wait()
+
+        async def aclose(self):
+            await asyncio.sleep(0)
+            calls.append("closed")
+            if cleanup_fails:
+                raise RuntimeError("cleanup failure")
+            self.diagnostics["cleanup_complete"] = True
+
+    def factory(corpus):
+        return Backend()
+
+    task = asyncio.create_task(lme.run(instances, factory, tmp_path / "out"))
+    await entered.wait()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    row = lme._read_rows(tmp_path / "out" / "results.jsonl")["q-dog"]
+    assert row["outcome"] == ("cleanup_error" if cleanup_fails else "interrupted")
+    assert row["cleanup_complete"] is not cleanup_fails
+    assert row["lifecycle"]["cleanup_complete"] is not cleanup_fails
+    assert row["error_type"] == "CancelledError" and row["elapsed_s"] >= 0
+    again = await lme.run(instances, factory, tmp_path / "out")
+    assert calls == [DOG["question"], "closed"]
+    assert not again["valid"] and again["completed"] == 0
+
+
 async def test_cleanup_failure_preserves_receipt_and_stops_new_questions(tmp_path: Path) -> None:
     instances = lme.load(_write(tmp_path / "s.json", [DOG, SPORTS]))
     calls = []

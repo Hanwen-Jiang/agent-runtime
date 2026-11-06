@@ -21,6 +21,7 @@ import json
 import math
 import hashlib
 import os
+import re
 import secrets
 import shutil
 import tempfile
@@ -368,7 +369,10 @@ class LiveMemoryRetriever:
 
 def live_retriever(corpus: Sequence[Mapping[str, str]], *, env: Mapping[str, str] | None = None) -> LiveMemoryRetriever:
     settings = os.environ if env is None else env
-    return LiveMemoryRetriever(corpus, env=settings, wait_s=float(settings.get("AR_MEMORY_EVAL_WAIT_S", "300")))
+    tenant = settings.get("AR_MEMORY_EVAL_TENANT", LIVE_TENANT)
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,62}", tenant):
+        raise ValueError("AR_MEMORY_EVAL_TENANT must be a valid tenant id")
+    return LiveMemoryRetriever(corpus, env=settings, tenant=tenant, wait_s=float(settings.get("AR_MEMORY_EVAL_WAIT_S", "300")))
 
 
 __all__ = ["LiveMemoryRetriever", "MemoryEvalRetriever", "dev_retriever", "live_retriever", "memory_item"]
