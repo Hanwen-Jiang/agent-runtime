@@ -12,8 +12,9 @@
 - 花钱：开新题之前，已花的加上正在跑的每题按单题上限预留，再加这一题的上限，超过总预算就不再开新题，剩下的记为没跑。
   单题超过花费上限（QueryTask 的用量，收到事件时至多每 poll_s 秒查一次）或时间上限就取消；补丁照取。
 - 无人值守：问人时按 reply_for 回，回不了的取消 Task。
-- 续跑：输出目录里每题一份记录，提交了就先记下 task_id；再跑时已结束的跳过，记了 task_id 的接着跟（Task 已结束时只读事件、
-  不回复），出错的删掉工作区重来。影响结果的设定（PINNED）与选中的题要与 run.json 一致；预算、并发、上限可以改。
+- 续跑：创建/删除的请求号与操作号、Task 提交请求号在副作用之前持久记录；响应不明时保留工作区、按原身份恢复。
+  已结束的跳过，记了 task_id 的接着跟（Task 已结束时只读事件、不回复）；确认删除后重建用新的操作身份。
+  影响结果的设定（PINNED）与选中的题要与 run.json 一致；预算、并发、上限可以改（带 provenance 时另固定实验条件）。
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+import uuid
 from collections import Counter
 from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -38,7 +40,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol, TypeVar
 
-from agentruntime_learning.benchmarks.client import ApiError, Event
+from agentruntime_learning.benchmarks.client import ApiError, Event, WorkspaceOperationFailed
 
 REQUIRED = ("instance_id", "repo", "base_commit", "problem_statement")
 DEFAULT_DATASET = "SWE-bench/SWE-bench_Verified"
@@ -430,18 +432,21 @@ class _Runner:
         return sum(float(r.get("cost_usd") or 0) for r in self.records.values())
 
     def summary(self) -> RunSummary:
-        states = Counter(str((self.records.get(i.instance_id) or {}).get("state")) for i in self.instances)
+        states = Counter(str((self.records.get(i.instance_id) or {}).get("state", "not_run")) for i in self.instances)
         return RunSummary(states["finished"], states["not_run"], states["error"], round(self._spent(), 6), self.submitted)
 
     # 调度
 
     def go(self) -> None:
-        pending = [i for i in self.instances if (self.records.get(i.instance_id) or {}).get("state") != "finished"]
+        pending = [i for i in self.instances if (self.records.get(i.instance_id) or {}).get("state") != "finished"
+                   or (self.records.get(i.instance_id) or {}).get("cleanup_pending")]
         if self.live is not None:
             done = [self.records.get(i.instance_id) or {} for i in self.instances if i not in pending]
             self.live.planned(len(self.instances), carried=len(done), carried_cost_usd=sum(float(r.get("cost_usd") or 0) for r in done))
         # 上次提交了的先接着跟：钱已经在花了，不受预算门槛的约束（照样占一份预留）。
-        following = [i for i in pending if (self.records.get(i.instance_id) or {}).get("task_id")]
+        following = [i for i in pending if (self.records.get(i.instance_id) or {}).get("task_id")
+                     or (self.records.get(i.instance_id) or {}).get("submission_state") == "pending"]
+        uncertain = {i.instance_id for i in following if (self.records.get(i.instance_id) or {}).get("submission_state") == "pending"}
         fresh = [i for i in pending if i not in following]
         futures: list[Future[None]] = []
         with ThreadPoolExecutor(max_workers=self.s.concurrency) as pool:
@@ -451,7 +456,7 @@ class _Runner:
                     while True:
                         if self.stopping:
                             break
-                        room = len(self.reserved) < self.s.concurrency
+                        room = len(self.reserved) < self.s.concurrency and not (gated and uncertain.intersection(self.reserved))
                         fits = self._spent() + sum(self.reserved.values()) + self.s.task_usd_limit <= self.s.budget_usd + EPS
                         if room and (fits or not gated):
                             self.reserved[inst.instance_id] = self.s.task_usd_limit
@@ -487,15 +492,20 @@ class _Runner:
         rec.update({"instance_id": iid, "repo": inst.repo})
         try:
             self._attempt(inst, rec)
-        except Exception as err:  # noqa: BLE001 — 这一题出错不拖垮整轮，记下来，续跑时重来
+        except Exception as err:  # noqa: BLE001 — 保存可恢复状态；未知提交必须先对账
             if rec.get("task_id") and rec.get("state") == "submitted":
                 with contextlib.suppress(Exception):
                     self.rt.cancel(rec["task_id"], "adapter_error")
             rec.update({"state": "error", "error": f"{type(err).__name__}: {err}"[:1000]})
-            self._save(rec)
-            # A stream failure leaves a possibly billable Task. Reconcile it on
-            # resume before starting more work; its absent bill is not zero.
-            self._release(iid, crashed=bool(rec.get("task_id") and not rec.get("task_finished")))
+            persisted = False
+            try:
+                self._save(rec)
+                persisted = True
+            finally:
+                # Never deadlock the scheduler or release unknown intent as
+                # spare budget when the checkpoint itself cannot be written.
+                self._release(iid, crashed=bool(not persisted or rec.get("task_id") and not rec.get("task_finished")
+                                               or rec.get("submission_state") == "pending" or rec.get("submission_ambiguous")))
             self._report(rec)
         except BaseException:
             self._release(iid, crashed=True)
@@ -548,6 +558,12 @@ class _Runner:
 
     def _attempt(self, inst: Instance, rec: dict[str, Any]) -> None:
         ws = self._workspace_id(inst)
+        if rec.get("task_finished") and "patch" in rec and rec.get("cleanup_pending"):
+            self._delete_workspace(rec, ws)
+            rec["state"] = "finished"
+            rec.pop("error", None)
+            self._save(rec)
+            return
         # Task 已经做完、花过钱时，续跑只取补丁，不重新跑。
         if not rec.get("task_finished"):
             self._run_task(inst, rec, ws)
@@ -563,7 +579,7 @@ class _Runner:
         self._save(rec)
         if not self.s.keep_workspaces:
             with contextlib.suppress(ApiError):
-                self.rt.delete_workspace(ws)
+                self._delete_workspace(rec, ws)
 
     def _environment_check(self, ws: str, session_id: str) -> dict[str, Any]:
         """EV-TB（docs/plan/ev-tb-0of5-2026-11-04.md）：这个工作区的沙箱用上项目环境的镜像没有。配额满、构建中或构建失败时
@@ -579,37 +595,145 @@ class _Runner:
         images = sorted({str(e.get("image") or "") for e in envs if e.get("image")})
         return {"environment_used": any(project_image(i) for i in images), "sandbox_images": images[:10]}
 
+    def _operation(self, rec: dict[str, Any], ws: str, kind: str, **arguments: Any) -> Any:
+        """Persist identity before I/O; only a known terminal failure gets a new id."""
+        operations = rec.setdefault("workspace_operations", {})
+        operation = operations.get(kind)
+        payload_digest = hashlib.sha256(json.dumps({"workspace_id": ws, **arguments}, sort_keys=True).encode()).hexdigest()
+        if operation and operation["payload_digest"] != payload_digest:
+            raise ResumeMismatch("workspace operation input changed during recovery")
+        if operation and operation["state"] == "completed":
+            return operation.get("result")
+        if not operation or operation["state"] == "failed":
+            if operation:
+                rec.setdefault("workspace_operation_history", []).append(dict(operation))
+            rec.setdefault("workspace_generation", uuid.uuid4().hex)
+            operation = {"kind": kind, "request_id": uuid.uuid4().hex, "payload_digest": payload_digest, "state": "pending"}
+            operations[kind] = operation
+            self._save(rec)
+
+        def checkpoint(update: dict[str, Any]) -> None:
+            operation.update(update)
+            self._save(rec)
+
+        durable = getattr(self.rt, f"{kind}_workspace_operation", None)
+        try:
+            if callable(durable):
+                result = durable(ws, **arguments, request_id=operation["request_id"], operation_id=operation.get("operation_id", ""), checkpoint=checkpoint)
+            else:
+                checkpoint({"transport": "legacy"})
+                result = getattr(self.rt, f"{kind}_workspace")(ws, **arguments)
+        except WorkspaceOperationFailed:
+            operation["state"] = "failed"
+            self._save(rec)
+            raise
+        # All other exceptions retain this request id. Even an HTTP error from
+        # Start can follow a successful workflow start but a failed DB commit.
+        operation.update(state="completed", result=result)
+        self._save(rec)
+        return result
+
+    def _delete_workspace(self, rec: dict[str, Any], ws: str) -> None:
+        rec["cleanup_pending"] = True
+        self._save(rec)
+        try:
+            self._operation(rec, ws, "delete")
+        except WorkspaceOperationFailed as exc:
+            if exc.status != 404:
+                raise
+            # The durable delete reports that its workspace is already absent.
+            rec["workspace_operations"]["delete"].update(state="completed", result=None)
+        rec["cleanup_pending"] = False
+        self._save(rec)
+
+    def _ensure_workspace(self, inst: Instance, rec: dict[str, Any], ws: str) -> None:
+        if rec.get("submission_state") == "pending":
+            # Even a crash between checkpoint and HTTP send is ambiguous. Reuse
+            # this reservation/request; never discard a possibly live workspace.
+            rec["submission_ambiguous"] = True
+            if not rec.get("head") or not rec.get("client_request_id"):
+                raise RuntimeError("pending task submission is missing recovery metadata")
+            return
+        operations = rec.get("workspace_operations") or {}
+        if rec.get("cleanup_pending"):
+            self._delete_workspace(rec, ws)
+        if (operations.get("delete") or {}).get("state") == "completed":
+            rec.setdefault("workspace_operation_history", []).extend(dict(op) for op in operations.values())
+            rec["workspace_operations"] = {}
+            rec["workspace_generation"] = uuid.uuid4().hex
+            for key in ("head", "client_request_id", "submission_digest", "submission_state", "submission_attempts", "submission_ambiguous"):
+                rec.pop(key, None)
+            self._save(rec)
+        if rec.get("head"):
+            if not rec.get("submission_digest") and not rec.get("workspace_generation"):
+                # Legacy checkpoints cannot distinguish "not yet sent" from
+                # "submitted, response lost". Reconcile their old key first.
+                rec["submission_ambiguous"] = True
+            return
+        repo_url, ref, files = self._workspace_args(inst)
+        created = self._clone(lambda: self._when_room(lambda: self._operation(rec, ws, "create", repo_url=repo_url, ref=ref, files=files)))
+        rec.update({"state": "created", "workspace_id": ws, "head": created["head"]})
+        self._save(rec)
+
+    @staticmethod
+    def _submission_rejected(exc: Exception) -> bool:
+        # Generic HTTP 4xx is insufficient: task-service can return an error
+        # after InsertTask/SignalWithStart. Only these fixed input checks are
+        # known to precede insertion (server.go submit's initial switch).
+        if not isinstance(exc, ApiError):
+            return False
+        return (exc.status == 401 and exc.code == "unauthenticated"
+                or exc.status == 403 and exc.code == "permission_denied" and exc.message == "tenant model budget exceeded"
+                or exc.status == 400 and exc.code == "invalid_argument" and exc.message in (
+                    "命令不能为空", "命令过长", "消息太长", "session_id 格式不对",
+                    "client_request_id 必须是 1 到 128 个可打印字符"))
+
     def _run_task(self, inst: Instance, rec: dict[str, Any], ws: str) -> None:
         interactive = True
         if rec.get("task_id"):
             interactive = self.rt.query(rec["task_id"])["status"] not in TERMINAL
         else:
-            if rec.get("state") in ("created", "error", "submitted"):
-                # 上次建了工作区却没跑完：删掉重来（不在了也行）。
-                with contextlib.suppress(ApiError):
-                    self.rt.delete_workspace(ws)
-            for key in ("task_id", "events_url", "session_id", "error", "status", "final_verdict", "stop_reason", "auto_replies", "patch", "patch_files",
-                        "patch_error", "environment_used", "sandbox_images"):
-                rec.pop(key, None)
-            repo_url, ref, files = self._workspace_args(inst)
-            created = self._clone(lambda: self._when_room(lambda: self.rt.create_workspace(ws, repo_url=repo_url, ref=ref, files=files)))
-            rec.update({"state": "created", "workspace_id": ws, "head": created["head"]})
-            self._save(rec)
-            request_id = hashlib.sha256(f"{self.s.run_id}\x00{inst.instance_id}\x00{created['head']}".encode()).hexdigest()[:32]
+            self._ensure_workspace(inst, rec, ws)
+            message = self._message(inst)
+            network = self.s.network(inst.instance_id)
+            payload = {"workspace_id": ws, "message": message, "network": network}
+            digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+            if rec.get("submission_digest") and rec["submission_digest"] != digest:
+                raise ResumeMismatch("Task submission changed; reconcile its saved request before changing input")
+            if not rec.get("client_request_id"):
+                # Legacy created records used run/id/head; preserve that key to
+                # reconcile any submit whose response predates this checkpoint.
+                basis = f"{self.s.run_id}\x00{inst.instance_id}\x00{rec['head']}"
+                if rec.get("workspace_generation"):
+                    basis += "\x00" + rec["workspace_generation"]
+                rec["client_request_id"] = hashlib.sha256(basis.encode()).hexdigest()[:32]
+            rec["submission_digest"] = digest
+            extra = {"network": network} if network is not None else {}
+
+            def submit() -> dict[str, Any]:
+                rec.update(state="submitting", submission_state="pending", submission_attempts=int(rec.get("submission_attempts") or 0) + 1)
+                self._save(rec)  # durable intent before the request can launch a Task
+                try:
+                    return self.rt.submit(workspace_id=ws, message=message, client_request_id=rec["client_request_id"], **extra)
+                except Exception as exc:
+                    if self._submission_rejected(exc) and not rec.get("submission_ambiguous"):
+                        rec["submission_state"] = "rejected"
+                    else:
+                        rec["submission_ambiguous"] = True
+                    self._save(rec)
+                    raise
             try:
-                network = self.s.network(inst.instance_id)
-                extra = {"network": network} if network is not None else {}
-                sub = self._when_room(lambda: self.rt.submit(workspace_id=ws, message=self._message(inst), client_request_id=request_id, **extra))
+                sub = self._when_room(submit)
             except Exception:
-                # 没交上：工作区不留着占配额（续跑时会重建）。
-                if not self.s.keep_workspaces:
+                if rec.get("submission_state") == "rejected" and not self.s.keep_workspaces:
                     with contextlib.suppress(ApiError):
-                        self.rt.delete_workspace(ws)
+                        self._delete_workspace(rec, ws)
                 raise
-            rec.update({"state": "submitted", "task_id": sub["task_id"], "events_url": sub["events_url"], "session_id": str(sub.get("session_id") or "")})
+            rec.update({"state": "submitted", "submission_state": "accepted", "submission_ambiguous": False,
+                        "task_id": sub["task_id"], "events_url": sub["events_url"], "session_id": str(sub.get("session_id") or "")})
             self._save(rec)
             with self.cond:
-                self.submitted += 1
+                self.submitted += int(not sub.get("deduplicated"))
         finished = self._follow(rec, interactive=interactive)
         usage = finished.get("usage") or {}
         rec.update({
@@ -937,7 +1061,16 @@ def _markdown(rep: dict[str, Any]) -> str:
 
 
 def _write_text(path: Path, text: str) -> None:
-    """原子地写（先写临时文件再换名），LF 换行。"""
+    """Durable atomic checkpoint, including intent saved before external I/O."""
     tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(text, encoding="utf-8", newline="\n")
+    with tmp.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(text)
+        handle.flush()
+        os.fsync(handle.fileno())
     os.replace(tmp, path)
+    if os.name != "nt":
+        directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
