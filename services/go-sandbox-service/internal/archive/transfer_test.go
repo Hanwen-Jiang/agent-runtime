@@ -91,3 +91,40 @@ func TestInvalidChunkManifestRejectedBeforeTransfer(t *testing.T) {
 		}
 	}
 }
+
+func TestStoredManifestRejectsUnknownVersionsAndCorruptMetadata(t *testing.T) {
+	ctx := context.Background()
+	objects, _ := diskobjects.New(diskobjects.Options{Root: t.TempDir(), SigningKey: []byte("manifest-validation")})
+	arch := New(nil, objects, nil)
+	bucket, _ := objects.Bind(&commonv1.TenantContext{TenantId: "t1"})
+	snap := Snapshot{WorkspaceID: "source", ManifestKey: ManifestKey("source", "snap")}
+	entry := sandbox.FileEntry{Path: "a", Type: "file", Size: 1, Mode: 0644, SHA256: digest([]byte("a"))}
+	check := func(version int, entries []sandbox.FileEntry, foreign map[string]string, valid bool) {
+		t.Helper()
+		doc := map[string]any{"version": version, "entries": entries, "blob_workspaces": foreign}
+		body, _ := json.Marshal(doc)
+		if _, err := bucket.Put(ctx, snap.ManifestKey, body, objectstore.PutOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		_, _, err := arch.Manifest(ctx, "t1", snap)
+		if (err == nil) != valid {
+			t.Fatalf("version=%d entries=%v foreign=%v error=%v", version, entries, foreign, err)
+		}
+	}
+	check(1, []sandbox.FileEntry{entry}, nil, true)
+	check(2, []sandbox.FileEntry{entry}, nil, true)
+	check(3, []sandbox.FileEntry{entry}, nil, false)
+	check(0, []sandbox.FileEntry{entry}, nil, false)
+	check(2, []sandbox.FileEntry{entry}, map[string]string{entry.SHA256: "../source"}, false)
+	chunked := entry
+	chunked.Chunks = []sandbox.FileBlock{{SHA256: entry.SHA256, SizeBytes: 1}}
+	check(1, []sandbox.FileEntry{chunked}, nil, false)
+	check(2, []sandbox.FileEntry{chunked}, nil, true)
+	chunked.Size = 2
+	check(2, []sandbox.FileEntry{chunked}, nil, false)
+	child := entry
+	child.Path = "a/child"
+	check(2, []sandbox.FileEntry{entry, child}, nil, false)
+	entry.Path = "../escape"
+	check(2, []sandbox.FileEntry{entry}, nil, false)
+}

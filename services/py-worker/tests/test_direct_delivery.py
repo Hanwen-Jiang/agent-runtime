@@ -1,6 +1,7 @@
 """WK-LITE-02: reservations count before upload and failure releases only its own reservation."""
 import asyncio
 import hashlib
+from datetime import timedelta
 import pytest
 from agentruntime_core.dev.tool_driver import LocalToolDriverProvider
 from agentruntime_core.errors import InvalidError
@@ -54,16 +55,34 @@ async def test_pending_upload_consumes_quota_and_completed_retry_is_idempotent(t
     async with env.store.bind(TenantContext(tenant_id=TENANT)).transaction(read_only=True) as tx:
         assert await tx.query("SELECT * FROM task_artifact_reservations") == []
 
-async def test_upload_failure_releases_reservation_and_retry_works(tmp_path):
+async def test_upload_failure_without_receipt_keeps_quota_until_grant_expiry(tmp_path):
     env = Env(tmp_path, deliver.DeliveryLimits(max_file_bytes=20, max_files_per_task=1, max_task_bytes=20))
     reader = DirectReader(env); reader.continue_upload.set(); reader.fail = True
     tools = driver(env, reader)
     with pytest.raises(InvalidError, match="injected"):
         await env.call({"path": "out.bin"}, "same", tools)
     reader.fail = False
+    with pytest.raises(InvalidError, match="正在上传"):
+        await env.call({"path": "out.bin"}, "same", driver(env, reader))
+    env.clock.advance(deliver.RESERVATION_TTL + timedelta(seconds=1))
     result = await env.call({"path": "out.bin"}, "same", tools)
     assert result.output["size_bytes"] == len(b"agent bytes")
     assert reader.uploads == 1
+
+
+async def test_cancelled_upload_without_receipt_preserves_reserved_quota(tmp_path):
+    env = Env(tmp_path, deliver.DeliveryLimits(max_file_bytes=20, max_files_per_task=1, max_task_bytes=20))
+    reader = DirectReader(env)
+    running = asyncio.create_task(env.call({"path":"out.bin"}, "cancelled", driver(env, reader)))
+    await asyncio.wait_for(reader.prepared.wait(), 5)
+    running.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await running
+    async with env.store.bind(TenantContext(tenant_id=TENANT)).transaction(read_only=True) as tx:
+        rows = await tx.query("SELECT * FROM task_artifact_reservations")
+        assert len(rows) == 1 and rows[0]["size_bytes"] == len(b"agent bytes")
+    with pytest.raises(InvalidError, match="最多交付"):
+        await env.call({"path":"different.bin"}, "another", driver(env, reader))
 
 class CommitAckFaultStore:
     """Commit the real SQLite transaction, then lose its acknowledgement once."""

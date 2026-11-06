@@ -40,7 +40,7 @@ import (
 // Keep 是每个工作区保留的快照份数；ManifestVersion 是清单的版本。
 const (
 	Keep            = 3
-	ManifestVersion = 1
+	ManifestVersion = 2
 )
 
 // Migrations 是工作区的迁移（与原来 Python 的 workspace.archive.MIGRATIONS 逐字相同）。
@@ -335,17 +335,39 @@ func (a *Archiver) Manifest(ctx context.Context, owner string, snap Snapshot) ([
 		return nil, nil, err
 	}
 	var doc struct {
+		Version        int                 `json:"version"`
 		Entries        []sandbox.FileEntry `json:"entries"`
 		BlobWorkspaces map[string]string   `json:"blob_workspaces"`
 	}
-	if err := json.Unmarshal(obj.Data, &doc); err != nil {
+	if err := json.Unmarshal(obj.Data, &doc); err != nil || (doc.Version != 1 && doc.Version != ManifestVersion) {
 		return nil, nil, providererr.New(providererr.Invalid, "workspace_manifest_corrupt", "快照的清单格式不对")
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(obj.Data, &fields); err != nil || fields["entries"] == nil {
+		return nil, nil, providererr.New(providererr.Invalid, "workspace_manifest_corrupt", "快照缺少清单项目")
 	}
 	if doc.BlobWorkspaces == nil {
 		doc.BlobWorkspaces = map[string]string{}
 	}
-	return doc.Entries, doc.BlobWorkspaces, nil
+	entries, _, err := validEntries(doc.Entries, 64<<30)
+	if err != nil || len(entries) != len(doc.Entries) {
+		return nil, nil, providererr.New(providererr.Invalid, "workspace_manifest_corrupt", "快照的清单项目不合法")
+	}
+	for i, e := range entries {
+		if e.Path != doc.Entries[i].Path || (doc.Version == 1 && len(e.Chunks) > 0) {
+			return nil, nil, providererr.New(providererr.Invalid, "workspace_manifest_corrupt", "快照的清单版本或路径不合法")
+		}
+	}
+	for digest, workspace := range doc.BlobWorkspaces {
+		if !manifestDigest.MatchString(digest) || !manifestWorkspace.MatchString(workspace) {
+			return nil, nil, providererr.New(providererr.Invalid, "workspace_manifest_corrupt", "快照的块来源不合法")
+		}
+	}
+	return entries, doc.BlobWorkspaces, nil
 }
+
+var manifestDigest = regexp.MustCompile(`^[0-9a-f]{64}$`)
+var manifestWorkspace = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$`)
 
 // Blob 读一个块（核对 sha256 与大小）。
 func (a *Archiver) Blob(ctx context.Context, owner, workspaceID string, entry sandbox.FileEntry, foreign map[string]string) ([]byte, error) {

@@ -7,6 +7,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/sandbox"
+	"strings"
 	"time"
 )
 
@@ -26,7 +27,7 @@ func directSizes(entries []sandbox.FileEntry) bool {
 func validEntries(entries []sandbox.FileEntry, maxBytes int64) ([]sandbox.FileEntry, int64, error) {
 	var out []sandbox.FileEntry
 	var total int64
-	seen := map[string]bool{}
+	seen := map[string]string{}
 	for _, e := range entries {
 		p, err := CleanName(e.Path)
 		if err != nil {
@@ -35,10 +36,10 @@ func validEntries(entries []sandbox.FileEntry, maxBytes int64) ([]sandbox.FileEn
 		if p == "." || p == ".agentruntime" {
 			continue
 		}
-		if seen[p] {
+		if _, exists := seen[p]; exists {
 			return nil, 0, providererr.New(providererr.Invalid, "invalid_archive", "duplicate manifest entry")
 		}
-		seen[p] = true
+		seen[p] = e.Type
 		e.Path = p
 		e.Mode &= 0777
 		switch e.Type {
@@ -71,6 +72,14 @@ func validEntries(entries []sandbox.FileEntry, maxBytes int64) ([]sandbox.FileEn
 			return nil, 0, providererr.New(providererr.Invalid, "invalid_archive", "unsupported manifest entry")
 		}
 		out = append(out, e)
+	}
+	for name := range seen {
+		parts := strings.Split(name, "/")
+		for i := 1; i < len(parts); i++ {
+			if kind, exists := seen[strings.Join(parts[:i], "/")]; exists && kind != "dir" {
+				return nil, 0, providererr.New(providererr.Invalid, "invalid_archive", "non-directory manifest parent")
+			}
+		}
 	}
 	return out, total, nil
 }

@@ -37,6 +37,8 @@ _LOG = logging.getLogger(__name__)
 TOOL = "deliver_file"
 VERSION = "v1"
 RETENTION = timedelta(days=7)
+# Longer than the five-minute signed grant plus the agent's bounded PUT.
+RESERVATION_TTL = timedelta(minutes=15)
 PREFIX = "deliveries"
 _RESERVED = frozenset({".git", ".hg", ".svn"})
 _CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
@@ -222,7 +224,7 @@ class DeliverFile:
             if total + size > self.limits.max_task_bytes:
                 raise InvalidError("delivery_task_too_large", f"一个 Task 交付的文件合计不超过 {self.limits.max_task_bytes} 字节")
             await tx.execute("INSERT INTO task_artifact_reservations (idempotency_key,reservation_id,task_id,size_bytes,expires_at) VALUES ($1,$2,$3,$4,$5)",
-                             (invocation.idempotency_key, reservation, invocation.task_id, size, _iso(self.clock.now() + timedelta(minutes=5))))
+                             (invocation.idempotency_key, reservation, invocation.task_id, size, _iso(self.clock.now() + RESERVATION_TTL)))
 
     async def _unreserve(self, tenant: TenantContext, key: str, reservation: str) -> None:
         async with self.store.bind(tenant).transaction() as tx:
@@ -248,6 +250,7 @@ class DeliverFile:
         objects = self.objects.bind(tenant)
         object_key: str | None = None
         reserved_size: int | None = None
+        upload_confirmed = False
 
         async def reserve(size: int) -> None:
             nonlocal reserved_size
@@ -264,6 +267,7 @@ class DeliverFile:
                 object_key = f"{PREFIX}/{invocation.task_id}/{secrets.token_urlsafe(18)}/{name}"
                 info = await objects.put(object_key, data, content_type=kind, metadata={"task_id": invocation.task_id, "artifact_id": artifact_id}, if_absent=True)
                 ref = {"object_key": object_key, "object_uri": info.uri, "size_bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+            upload_confirmed = True
             object_key = str(ref["object_key"])
             # Never trust a service response to change this task's object scope.
             if objects.key_of(str(ref["object_uri"])) != object_key or not object_key.startswith(f"{PREFIX}/{invocation.task_id}/"):
@@ -297,8 +301,10 @@ class DeliverFile:
                 _LOG.warning("delivery outcome unknown; retaining object and reservation")
                 raise error from None
             registered_here = existing is not None and object_key is not None and existing["object_uri"] == objects.uri(object_key)
-            cleanup_ok = True
-            if object_key is not None and not registered_here:
+            # No receipt does not establish that a remote PUT stopped. A
+            # cancellation or lost RPC reply may leave the agent uploading.
+            cleanup_ok = reserved_size is None or (upload_confirmed and object_key is not None)
+            if upload_confirmed and object_key is not None and not registered_here:
                 try:
                     await objects.delete(object_key)
                 except Exception:
