@@ -54,7 +54,7 @@ from agentruntime_core.providers.telemetry import TelemetryProvider
 from agentruntime_core.providers.tool_driver import ToolHandler, ToolInvocation, ToolSpec
 from agentruntime_core.tenancy import TenantContext
 
-from agentruntime_worker.sandbox.client import ServiceBroker
+from agentruntime_worker.sandbox.client import ServiceBroker, RemoteBox
 from agentruntime_worker.tools.checkpoint import Checkpoint, Runner, UndoReport, create_checkpoint, undo_with
 from agentruntime_worker.workflows.interrupts import NOT_NEEDED, UNDO_FAILED
 from agentruntime_worker.workspace import timing
@@ -192,7 +192,7 @@ def register_platform_tools(
     if config.fetch_hosts:
         tools.append(_Fetcher(config).tool())
     if objects is not None:
-        tools.append(_ContextReader(objects, config).tool())
+        tools.append(_ContextReader(objects, config, broker).tool())
     for spec, handler in tools:
         provider.register(spec, handler)
     return [spec.name for spec, _ in tools]
@@ -236,12 +236,36 @@ class WorkspaceFiles:
             return None
         rel = self.w._env_path(path)
 
+        async def commit(box: Any, prepared: Any) -> dict[str, str | int]:
+            await reserve(int(prepared.size_bytes))
+            last = None
+            for _ in range(3):
+                try:
+                    return await box.commit_transfer("", prepared.transfer_id, invocation.task_id)
+                except TransientError as error:
+                    last = error
+                except asyncio.CancelledError as error:
+                    # Cancellation may race a completed PUT/RPC. Preserve the
+                    # durable identity and quota, but propagate cancellation.
+                    error.code = "transfer_pending"
+                    raise
+            raise TransientError("transfer_pending", "上传确认暂不可用；保留同一传输与预占，稍后重试") from last
+
+        # Recover the original immutable transfer before borrowing another VM.
+        assert self.w.broker is not None
+        recovering = RemoteBox(self.w.broker, TenantContext(tenant_id=invocation.tenant_id, workspace_id=invocation.workspace_id))
+        try:
+            prepared = await recovering.prepare_transfer("", invocation.task_id, rel, name, invocation.idempotency_key)
+        except NotFoundError:
+            pass
+        else:
+            return await commit(recovering, prepared)
+
         async def upload(box: Any, env_id: str) -> dict[str, str | int]:
             if not hasattr(box, "prepare_transfer"):
                 raise InvalidError("transfer_unsupported", "direct transfer unavailable")
-            prepared = await box.prepare_transfer(env_id, invocation.task_id, rel, name)
-            await reserve(int(prepared.size_bytes))
-            return await box.commit_transfer(env_id, prepared.transfer_id)
+            prepared = await box.prepare_transfer(env_id, invocation.task_id, rel, name, invocation.idempotency_key)
+            return await commit(box, prepared)
 
         return await self.w._in_env(invocation, writable=False, run=upload)
 
@@ -421,6 +445,7 @@ class _Workspaces:
         busy = timedelta(minutes=2)
         lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=writable, reuse=reuse, busy_for=busy)
         done = False
+        pending = False
         try:
             try:
                 out = await run(lease.box, lease.env_id)
@@ -431,9 +456,12 @@ class _Workspaces:
                 lease = await self.broker.acquire(tenant, spec, task_id=invocation.task_id, writable=writable, reuse=reuse, busy_for=busy)
                 out = await run(lease.box, lease.env_id)
             done = True
+        except BaseException as error:
+            pending = getattr(error, "code", "") == "transfer_pending"
+            raise
         finally:
             try:
-                await self.broker.release(lease, keep=reuse)
+                await self.broker.release(lease, keep=reuse or pending)
             except ProviderError:
                 # 写的工具的改动没存进快照：照实报错（读的工具还环境失败不影响结果）。
                 if done and writable:
@@ -792,7 +820,7 @@ class _Workspaces:
             finally:
                 exec_ms = int((time.monotonic() - ran) * 1000)
                 try:
-                    await self.broker.release(lease, result=result, keep=reuse)
+                    await self.broker.release(lease, result=result, keep=reuse or bool(result and (result.stdout_pending or result.stderr_pending)))
                 except ProviderError as err:
                     if lease.archive and lease.writable:
                         # 存档模式下这次的改动没存进快照（D-06）：告诉调用方，不当作成功悄悄丢掉。
@@ -818,6 +846,9 @@ class _Workspaces:
             ref = getattr(result, f"{stream}_object", None)
             if ref:
                 out[f"{stream}_object"] = ref
+            pending = getattr(result, f"{stream}_pending", None)
+            if pending:
+                out[f"{stream}_pending"] = {**pending, "path":f"transfer://{invocation.task_id}/{pending['transfer_id']}"}
 
         if startup_ms is not None:
             out["sandbox_startup_ms"] = startup_ms
@@ -923,15 +954,16 @@ class _Fetcher:
 
 
 class _ContextReader:
-    def __init__(self, objects: ObjectStoreProvider, config: PlatformToolsConfig) -> None:
+    def __init__(self, objects: ObjectStoreProvider, config: PlatformToolsConfig, broker: ServiceBroker | None = None) -> None:
         self.objects = objects
         self.config = config
+        self.broker = broker
 
     def tool(self) -> tuple[ToolSpec, ToolHandler]:
         limit = self.config.output_limit
         return (
-            _spec(CONTEXT_READ, Effect.READ, "按路径取回上下文里被外置或遮蔽的内容（obj:// 路径），以及 Node 的外置结果；内容长时用 offset 分段取", {
-                "path": {"type": "string", "minLength": 1, "description": "上下文里给出的 obj:// 路径"},
+            _spec(CONTEXT_READ, Effect.READ, "按路径取回上下文里被外置或遮蔽的内容（obj:// 或待上传的 transfer:// 路径），以及 Node 的外置结果；内容长时用 offset 分段取", {
+                "path": {"type": "string", "minLength": 1, "description": "上下文里给出的 obj:// 或 transfer:// 路径"},
                 "offset": {"type": "integer", "minimum": 0, "description": "从第几个字符开始，默认 0"},
                 "max_chars": {"type": "integer", "minimum": 1, "maximum": limit, "description": f"最多取多少个字符，默认 {self.config.context_read_chars}"},
             }, ["path"], 30),
@@ -942,6 +974,13 @@ class _ContextReader:
         if not invocation.tenant_id:
             raise DeniedError("no_tenant", "context_read 只在租户作用域里可用")
         uri = str(invocation.arguments["path"])
+        if uri.startswith("transfer://"):
+            target = uri.removeprefix("transfer://").split("/")
+            if len(target)!=2 or target[0]!=invocation.task_id or not invocation.task_id or self.broker is None:
+                raise NotFoundError("not_found", "没有这个路径")
+            box = RemoteBox(self.broker, TenantContext(tenant_id=invocation.tenant_id, workspace_id=invocation.workspace_id))
+            ref = await box.commit_transfer("", target[1], invocation.task_id)
+            uri = str(ref["object_uri"])
         store = self.objects.bind(TenantContext(tenant_id=invocation.tenant_id, workspace_id=invocation.workspace_id))
         try:
             key = store.key_of(uri)

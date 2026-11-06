@@ -158,3 +158,13 @@ def test_incomplete_restore_marker_blocks_work_until_environment_is_discarded(ma
     assert agent.request("GET", "/v1/manifest").status == 409
     refused = call(agent, "/v1/exec", {"argv": [sys.executable, "-c", "print('must not execute')"]})
     assert refused.status == 409 and refused.code == "workspace_restore_incomplete"
+
+def test_output_capacity_rejected_before_side_effect_command(make_agent, impl):
+    agent = rust_agent(make_agent, impl)
+    (agent.workdir / "small").write_bytes(b"one")
+    for _ in range(31):
+        assert call(agent, "/v1/transfer/prepare", {"path": "small"}).status == 200
+    refused = call(agent, "/v1/exec", {"argv": [sys.executable, "-c", "open('side-effect','w').write('wrong');print('X'*10000)"],
+                    "timeout_ms": 30000, "offload_inline_bytes": 256})
+    assert refused.status == 503 and refused.code == "output_capacity"
+    assert not (agent.workdir / "side-effect").exists()

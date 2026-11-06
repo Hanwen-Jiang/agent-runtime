@@ -248,6 +248,7 @@ class DeliverFile:
         objects = self.objects.bind(tenant)
         object_key: str | None = None
         reserved_size: int | None = None
+        service_owned = False
 
         async def reserve(size: int) -> None:
             nonlocal reserved_size
@@ -257,6 +258,7 @@ class DeliverFile:
         try:
             direct = getattr(self.reader, "upload_invocation", None)
             ref = await direct(invocation, path, name, reserve) if direct else None
+            service_owned = ref is not None
             if ref is None:
                 by_call = getattr(self.reader, "read_invocation", None)
                 data = await by_call(invocation, path, max_bytes=self.limits.max_file_bytes) if by_call else await self.reader.read(invocation.tenant_id, invocation.workspace_id, path, max_bytes=self.limits.max_file_bytes)
@@ -289,6 +291,10 @@ class DeliverFile:
                 )
                 await tx.execute("DELETE FROM task_artifact_reservations WHERE idempotency_key=$1 AND reservation_id=$2", (key, artifact_id))
         except BaseException as error:
+            if getattr(error, "code", "") == "transfer_pending":
+                # Service journal already binds task/idempotency key to immutable
+                # bytes. Leave quota reserved until that same transfer is resolved.
+                raise
             # A failed commit acknowledgement does not prove the transaction rolled
             # back. Resolve it before deleting bytes that may already be registered.
             try:
@@ -296,6 +302,14 @@ class DeliverFile:
             except Exception:
                 _LOG.warning("delivery outcome unknown; retaining object and reservation")
                 raise error from None
+            if service_owned:
+                # The stable Service journal may be resumed by this invocation
+                # or a newer reservation after expiry. Deleting its object here
+                # would leave that durable successful receipt dangling.
+                if isinstance(error, Exception) and existing is not None:
+                    return _output(existing)
+                _LOG.warning("delivery registration pending; retaining journal-owned object and reservation")
+                raise
             registered_here = existing is not None and object_key is not None and existing["object_uri"] == objects.uri(object_key)
             cleanup_ok = True
             if object_key is not None and not registered_here:

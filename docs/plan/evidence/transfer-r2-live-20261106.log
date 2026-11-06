@@ -1,0 +1,26 @@
+=== RUN   TestLiveSignedUploadSecurity
+=== RUN   TestLiveSignedUploadSecurity/real-agent-upload-and-block-restore
+=== RUN   TestLiveSignedUploadSecurity/valid-and-no-overwrite
+=== RUN   TestLiveSignedUploadSecurity/checksum-content
+=== RUN   TestLiveSignedUploadSecurity/content-length
+=== RUN   TestLiveSignedUploadSecurity/missing-If-None-Match
+=== RUN   TestLiveSignedUploadSecurity/changed-If-None-Match
+=== RUN   TestLiveSignedUploadSecurity/missing-x-amz-checksum-sha256
+=== RUN   TestLiveSignedUploadSecurity/changed-x-amz-checksum-sha256
+=== RUN   TestLiveSignedUploadSecurity/key
+=== RUN   TestLiveSignedUploadSecurity/method
+=== RUN   TestLiveSignedUploadSecurity/expiry
+--- PASS: TestLiveSignedUploadSecurity (6.53s)
+    --- PASS: TestLiveSignedUploadSecurity/real-agent-upload-and-block-restore (1.40s)
+    --- PASS: TestLiveSignedUploadSecurity/valid-and-no-overwrite (0.97s)
+    --- PASS: TestLiveSignedUploadSecurity/checksum-content (0.18s)
+    --- PASS: TestLiveSignedUploadSecurity/content-length (0.12s)
+    --- PASS: TestLiveSignedUploadSecurity/missing-If-None-Match (0.19s)
+    --- PASS: TestLiveSignedUploadSecurity/changed-If-None-Match (0.10s)
+    --- PASS: TestLiveSignedUploadSecurity/missing-x-amz-checksum-sha256 (0.10s)
+    --- PASS: TestLiveSignedUploadSecurity/changed-x-amz-checksum-sha256 (0.10s)
+    --- PASS: TestLiveSignedUploadSecurity/key (0.08s)
+    --- PASS: TestLiveSignedUploadSecurity/method (0.18s)
+    --- PASS: TestLiveSignedUploadSecurity/expiry (3.11s)
+PASS
+ok  	github.com/agentruntime/agent-runtime/libs/go-core/adapters/s3objects	6.539s

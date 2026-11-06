@@ -67,6 +67,8 @@ class ExecResult:
     cpu_time: timedelta | None = None
     stdout_object: dict[str, str | int] | None = None
     stderr_object: dict[str, str | int] | None = None
+    stdout_pending: dict[str, str | int] | None = None
+    stderr_pending: dict[str, str | int] | None = None
     stdout_truncated: bool = False
     stderr_truncated: bool = False
 

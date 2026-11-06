@@ -195,20 +195,22 @@ class RemoteBox:
             cpu_time=timedelta(milliseconds=resp.cpu_time_ms) if resp.cpu_time_ms >= 0 else None,
             stdout_object=_object_ref(resp.stdout_object) if resp.HasField("stdout_object") else None,
             stderr_object=_object_ref(resp.stderr_object) if resp.HasField("stderr_object") else None,
+            stdout_pending={"transfer_id":resp.stdout_pending.transfer_id,"sha256":resp.stdout_pending.sha256,"size_bytes":resp.stdout_pending.size_bytes} if resp.HasField("stdout_pending") else None,
+            stderr_pending={"transfer_id":resp.stderr_pending.transfer_id,"sha256":resp.stderr_pending.sha256,"size_bytes":resp.stderr_pending.size_bytes} if resp.HasField("stderr_pending") else None,
             stdout_truncated=resp.stdout_truncated, stderr_truncated=resp.stderr_truncated,
         )
 
     async def exec_with_output_refs(self, env_id: str, argv: Sequence[str], *, timeout: timedelta, env: Mapping[str, str] | None = None) -> ExecResult:
         return await self.exec(env_id, argv, timeout=timeout, env=env, offload_inline_bytes=8000)
 
-    async def prepare_transfer(self, env_id: str, task_id: str, path: str, name: str) -> Any:
+    async def prepare_transfer(self, env_id: str, task_id: str, path: str, name: str, idempotency_key: str = "") -> Any:
         resp = await self.client.call("PrepareTransfer", pb.PrepareTransferRequest(tenant=_tenant(self.tenant), lease_id=env_id,
-                                      task_id=task_id, path=path, name=name))
+                                      task_id=task_id, path=path, name=name,idempotency_key=idempotency_key))
         return resp.transfer
 
-    async def commit_transfer(self, env_id: str, transfer_id: str) -> dict[str, str | int]:
+    async def commit_transfer(self, env_id: str, transfer_id: str, task_id: str = "") -> dict[str, str | int]:
         resp = await self.client.call("CommitTransfer", pb.CommitTransferRequest(tenant=_tenant(self.tenant), lease_id=env_id,
-                                      transfer_id=transfer_id), timeout=180)
+                                      transfer_id=transfer_id,task_id=task_id), timeout=180)
         return _object_ref(resp.object)
 
     async def write_file(self, env_id: str, path: str, data: bytes) -> None:

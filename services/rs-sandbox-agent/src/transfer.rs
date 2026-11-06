@@ -11,6 +11,7 @@ const MAX_PENDING: usize = 32;
 const MAX_PENDING_BYTES: usize = 256 << 20;
 struct Prepared {
     data: Arc<Vec<u8>>,
+    reserved: usize,
     sum: String,
     expires: Instant,
     committed: Option<String>,
@@ -35,7 +36,73 @@ impl Default for Transfers {
         Self { entries }
     }
 }
+pub struct OutputReservation {
+    entries: Arc<Mutex<HashMap<String, Prepared>>>,
+    ids: [String; 2],
+}
+impl OutputReservation {
+    pub fn fill(&self, index: usize, data: Vec<u8>) -> io::Result<Value> {
+        let mut entries = self.entries.lock().unwrap_or_else(|e| e.into_inner());
+        let id = &self.ids[index];
+        let p = entries
+            .get_mut(id)
+            .ok_or_else(|| io::Error::other("output reservation missing"))?;
+        if data.len() > p.reserved {
+            return Err(io::Error::other("output reservation exceeded"));
+        }
+        p.sum = rs_transfer::digest(&data);
+        p.data = Arc::new(data);
+        p.reserved = 0;
+        p.expires = Instant::now() + TTL;
+        Ok(json!({"transfer_id":id,"sha256":p.sum,"size_bytes":p.data.len()}))
+    }
+}
+impl Drop for OutputReservation {
+    fn drop(&mut self) {
+        let mut entries = self.entries.lock().unwrap_or_else(|e| e.into_inner());
+        for id in &self.ids {
+            if entries.get(id).is_some_and(|p| p.reserved > 0) {
+                entries.remove(id);
+            }
+        }
+    }
+}
 impl Transfers {
+    pub fn reserve_outputs(
+        &self,
+        bytes: usize,
+        run_for: Duration,
+    ) -> io::Result<OutputReservation> {
+        let mut entries = self.entries.lock().unwrap_or_else(|e| e.into_inner());
+        entries.retain(|_, p| p.expires > Instant::now());
+        if entries.len() + 2 > MAX_PENDING
+            || entries
+                .values()
+                .map(|p| p.data.len() + p.reserved)
+                .sum::<usize>()
+                .saturating_add(bytes.saturating_mul(2))
+                > MAX_PENDING_BYTES
+        {
+            return Err(io::Error::other("output capacity reached before execution"));
+        }
+        let ids = [rs_transfer::random_id()?, rs_transfer::random_id()?];
+        for id in &ids {
+            entries.insert(
+                id.clone(),
+                Prepared {
+                    data: Arc::new(vec![]),
+                    reserved: bytes,
+                    sum: String::new(),
+                    expires: Instant::now() + run_for + TTL,
+                    committed: None,
+                },
+            );
+        }
+        Ok(OutputReservation {
+            entries: self.entries.clone(),
+            ids,
+        })
+    }
     pub fn prepare(&self, data: Vec<u8>) -> io::Result<Value> {
         if data.len() as u64 > rs_transfer::MAX_BLOB_BYTES {
             return Err(io::Error::other("transfer too large"));
@@ -43,7 +110,11 @@ impl Transfers {
         let mut entries = self.entries.lock().unwrap_or_else(|e| e.into_inner());
         entries.retain(|_, v| v.expires > Instant::now());
         if entries.len() >= MAX_PENDING
-            || entries.values().map(|v| v.data.len()).sum::<usize>() + data.len()
+            || entries
+                .values()
+                .map(|v| v.data.len() + v.reserved)
+                .sum::<usize>()
+                + data.len()
                 > MAX_PENDING_BYTES
         {
             return Err(io::Error::other("transfer capacity reached"));
@@ -55,6 +126,7 @@ impl Transfers {
             id.clone(),
             Prepared {
                 data: Arc::new(data),
+                reserved: 0,
                 sum: sum.clone(),
                 expires: Instant::now() + TTL,
                 committed: None,

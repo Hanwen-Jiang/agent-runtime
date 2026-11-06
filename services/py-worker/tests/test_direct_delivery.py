@@ -167,3 +167,65 @@ async def test_cleanup_failure_keeps_reservation_and_original_validation_error(t
     async with env.store.bind(TenantContext(tenant_id=TENANT)).transaction(read_only=True) as tx:
         assert len(await tx.query("SELECT * FROM task_artifact_reservations")) == 1
         assert await tx.query("SELECT * FROM task_artifacts") == []
+
+async def test_unknown_upload_rpc_keeps_quota_until_original_transfer_reconciles(tmp_path):
+    from datetime import timedelta
+    from agentruntime_core.errors import TransientError
+    env = Env(tmp_path)
+    reader = DirectReader(env)
+    reader.continue_upload.set()
+    original = reader.upload_invocation
+    receipt = None
+    calls = 0
+
+    async def lose_response(invocation, path, name, reserve):
+        nonlocal receipt, calls
+        calls += 1
+        if receipt is None:
+            receipt = await original(invocation, path, name, reserve)
+            raise TransientError("transfer_pending", "RPC acknowledgement lost")
+        # Restart recovery uses the same durable receipt; it never writes again.
+        await reserve(int(receipt["size_bytes"]))
+        return receipt
+    reader.upload_invocation = lose_response
+    with pytest.raises(TransientError, match="RPC acknowledgement lost"):
+        await env.call({"path":"out.bin"},"rpc-lost",driver(env,reader))
+    async with env.store.bind(TenantContext(tenant_id=TENANT)).transaction(read_only=True) as tx:
+        assert len(await tx.query("SELECT * FROM task_artifact_reservations")) == 1
+        assert await tx.query("SELECT * FROM task_artifacts") == []
+    with pytest.raises(InvalidError, match="正在上传"):
+        await env.call({"path":"out.bin"},"rpc-lost",driver(env,reader))
+    env.clock.advance(timedelta(minutes=6))
+    recovered = await env.call({"path":"out.bin"},"rpc-lost",driver(env,reader))
+    assert recovered.output["size_bytes"]==len(b"agent bytes") and reader.uploads==1
+    assert (await env.objects.bind(TenantContext(tenant_id=TENANT)).get(receipt["object_key"])).data==b"agent bytes"
+
+async def test_registration_failure_keeps_service_owned_object_for_later_retry(tmp_path):
+    from contextlib import asynccontextmanager
+    env=Env(tmp_path)
+    reader=DirectReader(env);reader.continue_upload.set()
+    original=env.store
+    class FailingStore:
+        async def migrate(self,migrations):return await original.migrate(migrations)
+        def bind(self,tenant):
+            bound=original.bind(tenant)
+            class Bound:
+                @asynccontextmanager
+                async def transaction(self,*args,**kwargs):
+                    async with bound.transaction(*args,**kwargs) as tx:
+                        class Tx:
+                            def __getattr__(self,name):return getattr(tx,name)
+                            async def execute(self,sql,params=()):
+                                if sql.startswith("INSERT INTO task_artifacts "):
+                                    raise InvalidError("database_unavailable","registration unavailable")
+                                return await tx.execute(sql,params)
+                        yield Tx()
+            return Bound()
+    env.store=FailingStore()
+    with pytest.raises(InvalidError,match="registration unavailable"):
+        await env.call({"path":"out.bin"},"stable-receipt",driver(env,reader))
+    bucket=env.objects.bind(TenantContext(tenant_id=TENANT))
+    assert (await bucket.get(f"deliveries/{TASK}/stable-receipt/out.bin")).data==b"agent bytes"
+    async with original.bind(TenantContext(tenant_id=TENANT)).transaction(read_only=True) as tx:
+        assert len(await tx.query("SELECT * FROM task_artifact_reservations"))==1
+        assert await tx.query("SELECT * FROM task_artifacts")==[]

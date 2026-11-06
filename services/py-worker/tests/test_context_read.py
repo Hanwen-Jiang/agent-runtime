@@ -188,3 +188,26 @@ async def test_context_read_is_not_added_when_read_is_not_allowed_or_not_registe
     for why, source, tools in cases:
         out = await ActivityEnvironment().run(PlannerActivities(Planner(invalid_twice()), source, tools=tools).plan_round, plan_input())
         assert all(CONTEXT_READ not in (g.get("tools") or []) for g in goal_nodes(out.stage)), why
+
+async def test_pending_command_output_recovers_original_transfer_without_rerunning_command(tmp_path: Path) -> None:
+    from agentruntime.sandbox.v1 import sandbox_pb2 as pb
+    from agentruntime_worker.tools.platform import PlatformToolsConfig, register_platform_tools
+    config=worker_config(tmp_path)
+    objects=context_objects(config)
+    store=objects.bind(T1)
+    content=b"recovered tool output"
+    info=await store.put(f"context/{TASK_ID}/external/transfer/stdout.txt",content)
+    calls=[]
+    class Recovery:
+        async def call(self, method, request, **kwargs):
+            calls.append((method,request.task_id,request.transfer_id,request.lease_id,request.tenant.tenant_id))
+            return pb.CommitTransferResponse(object=pb.ObjectReference(object_uri=info.uri,object_key=store.key_of(info.uri),sha256=info.sha256,size_bytes=len(content)))
+    tools=LocalToolDriverProvider()
+    register_platform_tools(tools,PlatformToolsConfig(),objects=objects,sandboxes=Recovery())
+    path=f"transfer://{TASK_ID}/retained-transfer"
+    result=(await tools.bind(T1).invoke(CONTEXT_READ,"v1",{"path":path,"offset":2,"max_chars":5},task_id=TASK_ID)).output
+    assert result["content"]==content.decode()[2:7] and result["total_chars"]==len(content)
+    assert calls==[("CommitTransfer",TASK_ID,"retained-transfer","","t1")]
+    with pytest.raises(NotFoundError):
+        await tools.bind(T1).invoke(CONTEXT_READ,"v1",{"path":path},task_id="another-task")
+    assert len(calls)==1,"foreign task must be rejected before contacting storage or sandbox"

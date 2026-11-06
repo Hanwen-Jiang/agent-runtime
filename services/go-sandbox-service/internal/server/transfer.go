@@ -4,6 +4,7 @@ import (
 	"connectrpc.com/connect"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/sandbox"
@@ -12,18 +13,17 @@ import (
 	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/broker"
 	"path"
 	"strings"
-	"sync"
+
 	"time"
 	"unicode"
 )
 
 type preparedUpload struct {
-	mu                sync.Mutex
-	owner, lease, key string
-	prepared          sandbox.PreparedTransfer
-	expires           time.Time
-	result            *sandboxv1.ObjectReference
-	release           func(context.Context) error
+	owner, lease, key          string
+	id, task, idem, path, name string
+	prepared                   sandbox.PreparedTransfer
+	expires                    time.Time
+	result                     *sandboxv1.ObjectReference
 }
 
 func newTransferID() (string, error) {
@@ -39,12 +39,9 @@ func safeSegment(s string) bool {
 }
 func (h *handler) PrepareTransfer(ctx context.Context, req *connect.Request[sandboxv1.PrepareTransferRequest]) (*connect.Response[sandboxv1.PrepareTransferResponse], error) {
 	m := req.Msg
-	lease, err := h.lease(ctx, m.GetTenant(), m.GetLeaseId())
-	if err != nil {
-		return nil, fail(err)
-	}
-	if lease.Record == nil || m.GetTaskId() != lease.Record.TaskID || !safeSegment(m.GetTaskId()) {
-		return nil, fail(providererr.New(providererr.Denied, "transfer_task_mismatch", "transfer must belong to leased task"))
+	owner := m.GetTenant().GetTenantId()
+	if owner == "" || !safeSegment(m.GetTaskId()) {
+		return nil, fail(providererr.New(providererr.Denied, "transfer_task_mismatch", "tenant and task required"))
 	}
 	name := m.GetName()
 	if name == "" {
@@ -53,7 +50,7 @@ func (h *handler) PrepareTransfer(ctx context.Context, req *connect.Request[sand
 	if !safeSegment(name) {
 		return nil, fail(providererr.New(providererr.Invalid, "invalid_delivery_name", "invalid delivery name"))
 	}
-	if err = sandbox.CheckPath(m.GetPath()); err != nil {
+	if err := sandbox.CheckPath(m.GetPath()); err != nil {
 		return nil, fail(err)
 	}
 	for _, part := range strings.Split(m.GetPath(), "/") {
@@ -61,104 +58,121 @@ func (h *handler) PrepareTransfer(ctx context.Context, req *connect.Request[sand
 			return nil, fail(providererr.New(providererr.Invalid, "invalid_delivery_path", "reserved directory"))
 		}
 	}
-	box, ok := lease.Box.(sandbox.Transfers)
-	if !ok {
-		return nil, fail(providererr.New(providererr.Invalid, "transfer_unsupported", "backend has no direct transfer support"))
-	}
-	now := h.s.opts.Clock.Now()
-	h.s.transferMu.Lock()
-	var expired, expiredHere []*preparedUpload
-	for key, v := range h.s.transfers {
-		if !v.expires.After(now) {
-			delete(h.s.transfers, key)
-			if v.lease == lease.ID() {
-				expiredHere = append(expiredHere, v)
-			} else {
-				expired = append(expired, v)
-			}
-		}
-	}
-	full := len(h.s.transfers) >= 8192
-	h.s.transferMu.Unlock()
-	// Agent expiry is an independent safety net; eager release must not hold the
-	// global table lock or wait on another VM's in-flight upload.
-	if len(expired) > 0 {
-		go releaseExpiredUploads(expired)
-	}
-	// Free this VM's expired slots before asking it to prepare more bytes.
-	releaseExpiredUploads(expiredHere)
-	if full {
-		return nil, fail(providererr.New(providererr.Transient, "transfer_capacity", "too many pending transfers"))
-	}
 	id, err := newTransferID()
 	if err != nil {
 		return nil, fail(err)
 	}
-	prepared, err := box.PrepareTransfer(ctx, lease.EnvID, m.GetPath())
+	if key := m.GetIdempotencyKey(); key != "" {
+		if len(key) > 1024 {
+			return nil, fail(providererr.New(providererr.Invalid, "invalid_idempotency_key", "idempotency key too long"))
+		}
+		sum := sha256.Sum256([]byte(m.GetTaskId() + "\x00" + key))
+		id = hex.EncodeToString(sum[:])
+		prior, e := h.loadTransfer(ctx, owner, id)
+		if e != nil {
+			return nil, fail(e)
+		}
+		if prior != nil {
+			if prior.task != m.GetTaskId() || prior.idem != key || prior.path != m.GetPath() || prior.name != name {
+				return nil, fail(providererr.New(providererr.Conflict, "transfer_idempotency_conflict", "transfer inputs changed"))
+			}
+			return connect.NewResponse(&sandboxv1.PrepareTransferResponse{Transfer: preparedResponse(prior)}), nil
+		}
+	}
+	if m.GetLeaseId() == "" {
+		return nil, fail(providererr.New(providererr.NotFound, "transfer_not_found", "no prepared transfer for this invocation"))
+	}
+	lease, err := h.lease(ctx, m.GetTenant(), m.GetLeaseId())
 	if err != nil {
 		return nil, fail(err)
 	}
-	release := func(cleanup context.Context) error {
-		return box.ReleaseTransfer(cleanup, lease.EnvID, prepared.TransferID)
+	if lease.Record == nil || lease.Record.TaskID != m.GetTaskId() {
+		return nil, fail(providererr.New(providererr.Denied, "transfer_task_mismatch", "transfer must belong to original task"))
+	}
+	box, ok := lease.Box.(sandbox.Transfers)
+	if !ok {
+		return nil, fail(providererr.New(providererr.Invalid, "transfer_unsupported", "backend has no direct transfer support"))
+	}
+	prepared, err := box.PrepareTransfer(ctx, lease.EnvID, m.GetPath())
+	if err != nil {
+		return nil, fail(err)
 	}
 	retained := false
 	defer func() {
 		if !retained {
 			cleanup, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			_ = release(cleanup)
+			_ = box.ReleaseTransfer(cleanup, lease.EnvID, prepared.TransferID)
 		}
 	}()
-	h.s.transferMu.Lock()
-	defer h.s.transferMu.Unlock()
-	if len(h.s.transfers) >= 8192 {
-		return nil, fail(providererr.New(providererr.Transient, "transfer_capacity", "too many pending transfers"))
+	p := &preparedUpload{owner: lease.Owner, id: id, task: m.GetTaskId(), idem: m.GetIdempotencyKey(), lease: lease.ID(), path: m.GetPath(), name: name, key: "deliveries/" + m.GetTaskId() + "/" + id + "/" + name, prepared: prepared, expires: h.s.opts.Clock.Now().Add(10 * time.Minute)}
+	retained = true // A lost INSERT acknowledgement may have persisted this identity.
+	saved, err := h.storeTransfer(ctx, p)
+	if err != nil {
+		return nil, fail(err)
 	}
-	if h.s.transfers == nil {
-		h.s.transfers = map[string]*preparedUpload{}
+	if saved.path != p.path || saved.name != p.name || saved.task != p.task {
+		return nil, fail(providererr.New(providererr.Conflict, "transfer_idempotency_conflict", "transfer inputs changed"))
 	}
-	h.s.transfers[id] = &preparedUpload{owner: lease.Owner, lease: lease.ID(), key: "deliveries/" + m.GetTaskId() + "/" + id + "/" + name,
-		prepared: prepared, expires: h.s.opts.Clock.Now().Add(5 * time.Minute), release: release}
-	retained = true
-	return connect.NewResponse(&sandboxv1.PrepareTransferResponse{Transfer: &sandboxv1.PreparedTransfer{TransferId: id, Sha256: prepared.SHA256, SizeBytes: prepared.SizeBytes}}), nil
-}
-func releaseExpiredUploads(expired []*preparedUpload) {
-	if len(expired) == 0 {
-		return
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	for _, p := range expired {
-		p.mu.Lock()
-		if p.release != nil {
-			_ = p.release(ctx)
-		}
-		p.mu.Unlock()
-	}
+	retained = saved.prepared.TransferID == prepared.TransferID
+	return connect.NewResponse(&sandboxv1.PrepareTransferResponse{Transfer: preparedResponse(saved)}), nil
 }
 
 func (h *handler) CommitTransfer(ctx context.Context, req *connect.Request[sandboxv1.CommitTransferRequest]) (*connect.Response[sandboxv1.CommitTransferResponse], error) {
 	m := req.Msg
-	lease, err := h.lease(ctx, m.GetTenant(), m.GetLeaseId())
+	owner := m.GetTenant().GetTenantId()
+	if owner == "" || (m.GetLeaseId() == "" && m.GetTaskId() == "") {
+		return nil, fail(providererr.New(providererr.Denied, "transfer_task_mismatch", "task or original lease required"))
+	}
+	p, err := h.loadTransfer(ctx, owner, m.GetTransferId())
 	if err != nil {
 		return nil, fail(err)
 	}
-	h.s.transferMu.Lock()
-	p := h.s.transfers[m.GetTransferId()]
-	h.s.transferMu.Unlock()
-	if p == nil || p.owner != lease.Owner || p.lease != lease.ID() || !p.expires.After(h.s.opts.Clock.Now()) {
-		return nil, fail(providererr.New(providererr.NotFound, "transfer_not_found", "unknown or expired transfer"))
+	if p == nil || (m.GetTaskId() != "" && m.GetTaskId() != p.task) || (m.GetLeaseId() != "" && m.GetLeaseId() != p.lease) {
+		return nil, fail(providererr.New(providererr.NotFound, "transfer_not_found", "unknown transfer"))
 	}
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.result == nil {
-		p.result, err = h.upload(ctx, lease, p.prepared, p.key)
+	if p.result != nil {
+		return connect.NewResponse(&sandboxv1.CommitTransferResponse{Object: p.result}), nil
+	}
+	if h.s.opts.Objects == nil {
+		return nil, fail(providererr.New(providererr.Invalid, "transfer_unsupported", "object store unavailable"))
+	}
+	objects, err := h.s.opts.Objects.Bind(&commonv1.TenantContext{TenantId: owner})
+	if err != nil {
+		return nil, fail(err)
+	}
+	head, headErr := objects.Head(ctx, p.key)
+	var result *sandboxv1.ObjectReference
+	if headErr == nil {
+		if head.Size != p.prepared.SizeBytes {
+			return nil, fail(providererr.New(providererr.Transient, "transfer_mismatch", "prepared object size differs"))
+		}
+		result = &sandboxv1.ObjectReference{ObjectKey: p.key, ObjectUri: objects.URI(p.key), Sha256: p.prepared.SHA256, SizeBytes: p.prepared.SizeBytes}
+	} else {
+		if providererr.CategoryOf(headErr) != providererr.NotFound {
+			return nil, fail(headErr)
+		}
+		if !p.expires.After(h.s.opts.Clock.Now()) {
+			return nil, fail(providererr.New(providererr.NotFound, "transfer_expired", "prepared bytes expired before upload"))
+		}
+		lease, e := h.b().Get(ctx, m.GetTenant(), p.lease)
+		if e != nil {
+			return nil, fail(e)
+		}
+		if lease.Record == nil || lease.Record.TaskID != p.task {
+			return nil, fail(providererr.New(providererr.Denied, "transfer_task_mismatch", "original lease task changed"))
+		}
+		result, err = h.upload(ctx, lease, p.prepared, p.key)
 		if err != nil {
 			return nil, fail(err)
 		}
 	}
-	return connect.NewResponse(&sandboxv1.CommitTransferResponse{Object: p.result}), nil
+	if err = h.recordTransferResult(ctx, p, result); err != nil {
+		return nil, fail(err)
+	}
+	return connect.NewResponse(&sandboxv1.CommitTransferResponse{Object: result}), nil
 }
+
 func (h *handler) upload(ctx context.Context, lease *broker.Lease, p sandbox.PreparedTransfer, key string) (*sandboxv1.ObjectReference, error) {
 	box, ok := lease.Box.(sandbox.Transfers)
 	if !ok || h.s.opts.Objects == nil {

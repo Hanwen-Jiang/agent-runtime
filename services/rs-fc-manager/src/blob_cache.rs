@@ -12,6 +12,7 @@ use std::time::SystemTime;
 static NEXT: AtomicU64 = AtomicU64::new(0);
 pub struct BlobCache {
     root: PathBuf,
+    _lock: File,
     capacity: u64,
     mutation: Mutex<()>,
     flights: Mutex<HashMap<String, Weak<Mutex<()>>>>,
@@ -50,8 +51,37 @@ impl BlobCache {
             use std::os::unix::fs::PermissionsExt;
             fs::set_permissions(&root, fs::Permissions::from_mode(0o700))?;
         }
+        let mut options = OpenOptions::new();
+        options.read(true).write(true).create(true).truncate(false);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let lock = options.open(root.join(".cache.lock"))?;
+        lock.try_lock()
+            .map_err(|_| invalid("cache already has a writer"))?;
+        // Only our numeric .pending-PID-counter regular files are abandoned
+        // writes. The process lock prevents deleting an active writer's file.
+        for entry in fs::read_dir(&root)? {
+            let entry = entry?;
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let owned = name
+                .strip_prefix(".pending-")
+                .and_then(|s| s.split_once('-'))
+                .is_some_and(|(pid, seq)| {
+                    !pid.is_empty()
+                        && !seq.is_empty()
+                        && pid.bytes().all(|b| b.is_ascii_digit())
+                        && seq.bytes().all(|b| b.is_ascii_digit())
+                });
+            if owned && fs::symlink_metadata(entry.path())?.file_type().is_file() {
+                fs::remove_file(entry.path())?;
+            }
+        }
         let cache = Self {
             root,
+            _lock: lock,
             capacity,
             mutation: Mutex::new(()),
             flights: Mutex::new(HashMap::new()),
@@ -292,5 +322,21 @@ mod tests {
             .get_or_fetch(&digest(big), big.len() as u64, || Ok(big.to_vec()))
             .unwrap();
         assert!(!d.0.join(digest(big)).exists());
+    }
+    #[test]
+    fn startup_cleans_only_abandoned_owned_files_under_exclusive_lock() {
+        let d = Dir::new();
+        fs::create_dir_all(&d.0).unwrap();
+        fs::write(d.0.join(".pending-123-4"), vec![0u8; 1024]).unwrap();
+        fs::write(d.0.join(".pending-not-ours"), b"keep").unwrap();
+        let cache = BlobCache::new(&d.0, 8).unwrap();
+        assert!(!d.0.join(".pending-123-4").exists());
+        assert!(d.0.join(".pending-not-ours").exists());
+        fs::write(d.0.join(".pending-456-7"), b"active").unwrap();
+        assert!(BlobCache::new(&d.0, 8).is_err());
+        assert!(d.0.join(".pending-456-7").exists());
+        drop(cache);
+        let _next = BlobCache::new(&d.0, 8).unwrap();
+        assert!(!d.0.join(".pending-456-7").exists());
     }
 }

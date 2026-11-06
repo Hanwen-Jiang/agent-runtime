@@ -64,3 +64,23 @@ cargo test --locked -p rs-transfer -p fc-manager --lib
 `Archiver.ChunkedSnapshots` 默认关闭，仅控制新分块写入，读取始终支持旧整文件和新 chunks。关闭时沿旧清单写入；超过 64 MiB 的文件仍用完整 tar 回退。Service/env/Helm 由主集成接线：`AR_WORKSPACE_CHUNKED_SNAPSHOTS` / `sandboxService.chunkedSnapshots`。部署先使用新 reader、关闭 chunks，验收并保存这个兼容新格式的回退版本；随后启用 chunks 做最终验收。回退关闭写入即可继续读取新旧快照，禁止通过恢复旧快照记录丢弃用户后续改动。
 
 审查树复测：Rust agent 25 项通过；`cargo clippy --offline --locked -p rs-sandbox-agent -p rs-transfer -p fc-manager --all-targets -- -D warnings` 通过；Go archive 2 项通过、Service 测试编译和 vet 通过；Python Worker 交付/分块复制 23 项通过、FileEntry 兼容 1 项通过。两个 Python 测试包需分别启动 pytest，合并调用有同名 `tests.conftest` 导入冲突（已拆开重跑）。新增 HTTP 失败 ACK、写入开关、崩溃标记路由端到端用例仍受当前 socket 权限限制，不能标记验收通过。无新增费用或部署。
+
+## 网络权限恢复后的真实链路与审查收敛（2026-11-06 UTC）
+
+审查 `GOAL-TRANSFER-REVIEW.json` 的 01/02/03 已实现：迁移 216 持久保存 tenant/task/工具幂等键对应的原始传输、稳定对象键、冻结摘要/大小和结果；相同幂等键改变路径或名字冲突；空 lease 恢复只查询指定 tenant/task 的既有身份，上传只能复用原 lease。Worker 在提交前已预占配额，丢响应或取消时保留预占，重建 Worker 与重启 Service 后仍恢复同一对象；登记失败不删除持久 journal 已拥有的对象。
+
+命令输出在执行前预占两个 agent 暂存槽；容量不足时命令未执行。上传失败只返回有界摘录及 `stdout_pending`/`stderr_pending`，`context_read` 通过 `transfer://<task>/<transfer>` 恢复同一上传后按窗口取回，不重执行命令，不再通过 Worker 回传全体字节。超出单流捕获硬上限 `min(file_limit,64 MiB)` 仍明确标为 truncated；引用的大小和摘要描述保留的尾部，不宣称无限完整输出。
+
+节点缓存持独占目录锁，在启动时仅清理本实现 `.pending-<数字PID>-<数字序号>` 常规文件；不删除无关文件，不清理活动写者的文件。04 的账号/桶专属主机校验已集成主负责人的 `50f476ac`。
+
+真实验证：
+
+- Rust agent HTTP 7 项通过（4.09 秒），含 immutable prepare、上传重试、缺块恢复、68 MiB Service 用例前置、恢复崩溃标记、满槽拒绝副作用命令。
+- Go Sandbox Service 完整包 90 个顶层测试通过，0 skip；非 root CI 容器启动真实 Postgres、真实 Rust agent。68 MiB 写入开关/缺块/恢复用例 25.91 秒；实际丢弃 Commit HTTP 响应后 Service 重启恢复通过。日志：`evidence/transfer-service-20261106.log`。
+- Worker→真实 Service→真实 agent→HTTP 存储两项端到端通过；连续丢三次 RPC 响应后重建 Worker/重启 Service 仅一次 PUT；失败输出只到 Worker 摘录，唯一一次 GET 来自显式 context_read，副作用命令只执行一次。相应回归与交付测试合计 26 项通过，7.31 秒。
+- 真实 R2 定向验收 11 子例全部通过，6.53 秒，包含实际 agent 上传/恢复（1.40 秒）、同长度错误内容、checksum/If-None-Match/Content-Length/对象键/方法/到期拒绝；测试对象全部清理，无桶生命周期修改。日志：`evidence/transfer-r2-live-20261106.log`。凭据只在子进程环境中，未落盘。
+- Firecracker 库 34 项和 rs-transfer 库 2 项（包含真实 TCP/Unix socket）通过；clippy 全 targets `-D warnings` 通过；Service vet 通过。Python 其他 Service/context/复制 12 项通过，平台/context/交付 43 项通过。
+
+早先两个使用 debug agent 的重复 Service 测试进程已停止，改用 release agent 完整运行；未把中断当通过。旧 Go 与 Rust 共用黑盒首轮 240 通过、2 个 grep 逐字节兼容失败，定位为已替换 UTF-8 文本的 JSON 表示差异；保持有效断言，由独立兼容修复提交关闭。
+
+本轮模型调用 0、模型费用 0；R2 使用既有账号的小对象安全测试，账单尚无可独立归因的本次存储费用，未声称已核得存储费用为零。未自行生产部署。部署必须同时更新 Service、Worker、Rust agent 镜像和 FC rootfs；分块写入先关闭保存兼容 reader 回退点，再启用验收。

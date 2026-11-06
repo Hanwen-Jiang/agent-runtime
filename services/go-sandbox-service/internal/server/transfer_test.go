@@ -11,6 +11,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/secret"
 	sandboxv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/sandbox/v1"
+	"github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/sandbox/v1/sandboxv1connect"
 	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/archive"
 	"io"
 	"net/http"
@@ -125,7 +126,7 @@ func TestDirectTransferServiceBindsTenantLeaseAndKeepsPreparedBytes(t *testing.T
 		t.Fatal("uploaded bytes were changed")
 	}
 }
-func TestDirectExecReferencesAndUploadFailureFallback(t *testing.T) {
+func TestDirectExecReferencesAndUploadFailurePending(t *testing.T) {
 	objects, state := objectServer(t)
 	h := newHarness(t, func(h *harness) { h.directObjects = objects })
 	tc := tenant("t1", "", s1)
@@ -150,8 +151,15 @@ func TestDirectExecReferencesAndUploadFailureFallback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fallback.Msg.StdoutObject != nil || !bytes.Equal(fallback.Msg.Stdout, bytes.Repeat([]byte("A"), 20000)) {
-		t.Fatal("failed upload lost stdout")
+	if fallback.Msg.StdoutObject != nil || fallback.Msg.StdoutPending == nil || len(fallback.Msg.Stdout) > 512 || fallback.Msg.StdoutPending.SizeBytes != 20000 {
+		t.Fatal("failed upload returned full bytes or lost recovery reference")
+	}
+	state.mu.Lock()
+	state.fail = false
+	state.mu.Unlock()
+	recovered, err := h.worker.CommitTransfer(context.Background(), connect.NewRequest(&sandboxv1.CommitTransferRequest{Tenant: tc, TaskId: "task-output", TransferId: fallback.Msg.StdoutPending.TransferId}))
+	if err != nil || recovered.Msg.Object.SizeBytes != 20000 {
+		t.Fatalf("pending output recovery failed: %v", err)
 	}
 }
 func TestDirectArchiveOnlyUploadsMissingAndRestoresBytes(t *testing.T) {
@@ -255,3 +263,70 @@ func TestDirectArchiveChunksLargeFilesAndUploadsOnlyChangedBlocks(t *testing.T) 
 		t.Fatalf("restored file differs: %s != %s", got, expected)
 	}
 }
+
+func TestDirectTransferJournalSurvivesLostCommitResponseAndRestart(t *testing.T) {
+	objects, state := objectServer(t)
+	h := newHarness(t, func(h *harness) { h.directObjects = objects })
+	tc := tenant("t1", "w1", s1)
+	h.mkWorkspace("t1", "w1", map[string]string{"out.txt": "original bytes"})
+	lease := h.mustAcquire(tc, onWorkspace("w1"), taskID("task-journal"))
+	ctx := context.Background()
+	prepare := &sandboxv1.PrepareTransferRequest{Tenant: tc, LeaseId: lease.LeaseId, TaskId: "task-journal", Path: "out.txt", IdempotencyKey: "tool-call-1"}
+	pre, err := h.worker.PrepareTransfer(ctx, connect.NewRequest(prepare))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A real HTTP response is consumed and dropped before reaching the caller.
+	dropped := false
+	client := &http.Client{Transport: transferRoundTrip(func(req *http.Request) (*http.Response, error) {
+		resp, err := h.srv.Client().Transport.RoundTrip(req)
+		if err == nil && strings.HasSuffix(req.URL.Path, "/CommitTransfer") && !dropped {
+			dropped = true
+			io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+			return nil, fmt.Errorf("injected lost response")
+		}
+		return resp, err
+	})}
+	unreliable := sandboxv1connect.NewSandboxServiceClient(client, h.srv.URL, connect.WithInterceptors(caller("worker", workerToken)))
+	if _, err = unreliable.CommitTransfer(ctx, connect.NewRequest(&sandboxv1.CommitTransferRequest{Tenant: tc, LeaseId: lease.LeaseId, TransferId: pre.Msg.Transfer.TransferId})); err == nil || !dropped {
+		t.Fatal("response loss not injected")
+	}
+	h.restart()
+	recovered, err := h.worker.CommitTransfer(ctx, connect.NewRequest(&sandboxv1.CommitTransferRequest{Tenant: tc, TaskId: "task-journal", TransferId: pre.Msg.Transfer.TransferId}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.puts != 1 {
+		t.Fatalf("recovery uploaded %d objects", state.puts)
+	}
+	h.mustExec(tc, lease, "printf changed > out.txt")
+	prepare.LeaseId = ""
+	resumed, err := h.worker.PrepareTransfer(ctx, connect.NewRequest(prepare))
+	if err != nil || resumed.Msg.Transfer.TransferId != pre.Msg.Transfer.TransferId {
+		t.Fatalf("prepare identity changed: %v", err)
+	}
+	prepare.Path = "different.txt"
+	if _, err = h.worker.PrepareTransfer(ctx, connect.NewRequest(prepare)); err == nil {
+		t.Fatal("idempotency key accepted changed input")
+	}
+	for _, bad := range []*sandboxv1.CommitTransferRequest{
+		{Tenant: tc, TaskId: "other-task", TransferId: pre.Msg.Transfer.TransferId},
+		{Tenant: tenant("t2", "w1", s1), TaskId: "task-journal", TransferId: pre.Msg.Transfer.TransferId},
+		{Tenant: tc, TransferId: pre.Msg.Transfer.TransferId},
+		{Tenant: tc, LeaseId: "another-lease", TaskId: "task-journal", TransferId: pre.Msg.Transfer.TransferId},
+	} {
+		if _, err = h.worker.CommitTransfer(ctx, connect.NewRequest(bad)); err == nil {
+			t.Fatal("recovery accepted foreign authority")
+		}
+	}
+	bucket, _ := objects.Bind(tc)
+	stored, err := bucket.Get(ctx, recovered.Msg.Object.ObjectKey)
+	if err != nil || string(stored.Data) != "original bytes" {
+		t.Fatal("immutable delivery changed")
+	}
+}
+
+type transferRoundTrip func(*http.Request) (*http.Response, error)
+
+func (f transferRoundTrip) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }

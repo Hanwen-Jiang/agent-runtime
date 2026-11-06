@@ -189,6 +189,24 @@ pub fn exec(app: &App, ctx: &mut Ctx<'_>) {
             &format!("找不到 {}", req.argv[0]),
         );
     };
+    let reserved = if req.offload_inline_bytes > 0 {
+        match app.transfers.reserve_outputs(
+            app.c.file_limit.min(rs_transfer::MAX_BLOB_BYTES) as usize,
+            Duration::from_millis(req.timeout_ms as u64),
+        ) {
+            Ok(r) => Some(r),
+            Err(_) => {
+                return fail(
+                    ctx,
+                    503,
+                    "output_capacity",
+                    "output capacity unavailable; command was not executed",
+                );
+            }
+        }
+    } else {
+        None
+    };
     let (tx, rx) = mpsc::channel::<Event>();
     if !req.exec_id.is_empty() {
         let mut reg = app.reg.lock().unwrap_or_else(|e| e.into_inner());
@@ -229,13 +247,19 @@ pub fn exec(app: &App, ctx: &mut Ctx<'_>) {
             let mut refs = Vec::new();
             if req.offload_inline_bytes > 0 {
                 let limit = (req.offload_inline_bytes as usize).min(1 << 20);
-                for (name, output) in [
+                for (index, (name, output)) in [
                     ("stdout_transfer", &mut stdout),
                     ("stderr_transfer", &mut stderr),
-                ] {
-                    if output.buf.len() > limit
-                        && let Ok(prepared) = app.transfers.prepare(output.buf.clone())
-                    {
+                ]
+                .into_iter()
+                .enumerate()
+                {
+                    if output.buf.len() > limit {
+                        let prepared = reserved
+                            .as_ref()
+                            .expect("output reservation")
+                            .fill(index, output.buf.clone())
+                            .expect("reserved bounded output");
                         let half = limit / 2;
                         let mut excerpt = output.buf[..half].to_vec();
                         excerpt.extend_from_slice(b"\n...[externalized]...\n");

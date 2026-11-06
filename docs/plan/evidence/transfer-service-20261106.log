@@ -1,0 +1,216 @@
+=== RUN   TestCallersNeedTheirOwnTokenAndTaskServiceOnlyReads
+--- PASS: TestCallersNeedTheirOwnTokenAndTaskServiceOnlyReads (0.02s)
+=== RUN   TestReadsOnAMountedWorkspaceCreateNoEnvironment
+--- PASS: TestReadsOnAMountedWorkspaceCreateNoEnvironment (0.07s)
+=== RUN   TestLargeFilesGiveOnlyTheSize
+--- PASS: TestLargeFilesGiveOnlyTheSize (0.01s)
+=== RUN   TestReadsRefuseOtherTenantsTraversalAndEscapingSymlinks
+--- PASS: TestReadsRefuseOtherTenantsTraversalAndEscapingSymlinks (0.07s)
+=== RUN   TestReadsInArchiveModeComeFromTheLatestSnapshot
+--- PASS: TestReadsInArchiveModeComeFromTheLatestSnapshot (0.19s)
+=== RUN   TestReadsSeeUncommittedChangesInTheSessionsWritableEnvironment
+--- PASS: TestReadsSeeUncommittedChangesInTheSessionsWritableEnvironment (0.16s)
+=== RUN   TestReadsKeepWorkingAcrossARestart
+--- PASS: TestReadsKeepWorkingAcrossARestart (0.01s)
+=== RUN   TestDiffAndLogRunGitInASandboxNotInTheService
+--- PASS: TestDiffAndLogRunGitInASandboxNotInTheService (0.29s)
+=== RUN   TestDiffErrorsAreClassifiedLikeTheWorkerDid
+--- PASS: TestDiffErrorsAreClassifiedLikeTheWorkerDid (0.31s)
+=== RUN   TestOneShotLeaseIsDestroyedOnRelease
+--- PASS: TestOneShotLeaseIsDestroyedOnRelease (0.17s)
+=== RUN   TestPlatformVariablesAreInjectedButNeverReturned
+--- PASS: TestPlatformVariablesAreInjectedButNeverReturned (0.14s)
+=== RUN   TestSessionLeasesAreReusedAcrossCallsAndReplicas
+--- PASS: TestSessionLeasesAreReusedAcrossCallsAndReplicas (0.23s)
+=== RUN   TestBusyWritableEnvironmentOfAnotherSessionIsNotPreempted
+--- PASS: TestBusyWritableEnvironmentOfAnotherSessionIsNotPreempted (0.19s)
+=== RUN   TestOtherTenantsCannotUseALease
+--- PASS: TestOtherTenantsCannotUseALease (0.19s)
+=== RUN   TestPathsInLeaseFileOperationsStayInTheWorkdir
+--- PASS: TestPathsInLeaseFileOperationsStayInTheWorkdir (0.15s)
+=== RUN   TestTwentyConcurrentAcquiresWithQuotaFiveGiveExactlyFiveSQLite
+--- PASS: TestTwentyConcurrentAcquiresWithQuotaFiveGiveExactlyFiveSQLite (0.30s)
+=== RUN   TestTwentyConcurrentAcquiresWithQuotaFiveGiveExactlyFivePostgres
+--- PASS: TestTwentyConcurrentAcquiresWithQuotaFiveGiveExactlyFivePostgres (0.53s)
+=== RUN   TestBudgetsAreDeniedAsBudgetExceeded
+--- PASS: TestBudgetsAreDeniedAsBudgetExceeded (0.14s)
+=== RUN   TestTransientOnThePreferredBackendFallsBackAndIsRecorded
+2026/11/06 19:40:49 WARN 沙箱后端暂时不可用，试下一个 backend=kata code=injected
+--- PASS: TestTransientOnThePreferredBackendFallsBackAndIsRecorded (0.14s)
+=== RUN   TestDeniedAndInvalidAreNotRetriedElsewhere
+--- PASS: TestDeniedAndInvalidAreNotRetriedElsewhere (0.15s)
+=== RUN   TestOnlyWeakerBackendsLeftIsRefused
+2026/11/06 19:40:50 WARN 沙箱后端暂时不可用，试下一个 backend=kata code=injected
+--- PASS: TestOnlyWeakerBackendsLeftIsRefused (0.11s)
+=== RUN   TestPolicyErrorsAreRefused
+--- PASS: TestPolicyErrorsAreRefused (0.01s)
+=== RUN   TestDisabledBackendTakesNoNewEnvironments
+--- PASS: TestDisabledBackendTakesNoNewEnvironments (0.00s)
+=== RUN   TestArchiveModeSnapshotsOnReleaseAndRestoresOnTheNextLease
+--- PASS: TestArchiveModeSnapshotsOnReleaseAndRestoresOnTheNextLease (0.29s)
+=== RUN   TestSnapshotRPCAndManifestAndArchiveStreams
+--- PASS: TestSnapshotRPCAndManifestAndArchiveStreams (0.23s)
+=== RUN   TestServiceKilledLeasedEnvironmentIsRecoveredFromTheEnvTable
+--- PASS: TestServiceKilledLeasedEnvironmentIsRecoveredFromTheEnvTable (0.17s)
+=== RUN   TestReconcileReapsIdleSessionEnvironmentsAndOrphans
+--- PASS: TestReconcileReapsIdleSessionEnvironmentsAndOrphans (0.22s)
+=== RUN   TestReconcileMarksVanishedEnvironmentsLost
+--- PASS: TestReconcileMarksVanishedEnvironmentsLost (0.15s)
+=== RUN   TestSetupRunsOncePerEnvironmentAndFailureDestroysIt
+--- PASS: TestSetupRunsOncePerEnvironmentAndFailureDestroysIt (0.42s)
+=== RUN   TestColdWorkspaceIsRestoredWhenLeased
+2026/11/06 19:40:52 INFO 工作区从存档恢复到本地盘（冷热分层） workspace=w1
+--- PASS: TestColdWorkspaceIsRestoredWhenLeased (0.26s)
+=== RUN   TestDestroyWorkspaceAndSession
+--- PASS: TestDestroyWorkspaceAndSession (0.26s)
+=== RUN   TestDescribeTenant
+--- PASS: TestDescribeTenant (0.06s)
+=== RUN   TestFlushWritableSnapshotsIdleHoldersBeforeAReadOnlyLease
+--- PASS: TestFlushWritableSnapshotsIdleHoldersBeforeAReadOnlyLease (0.30s)
+=== RUN   TestSkipSnapshotDestroysWithoutArchiving
+--- PASS: TestSkipSnapshotDestroysWithoutArchiving (0.15s)
+=== RUN   TestDestroyWorkspaceRemovesTheMountedDirectory
+--- PASS: TestDestroyWorkspaceRemovesTheMountedDirectory (0.04s)
+=== RUN   TestExecAfterAnUnconfirmedCancelIsRefusedUntilRelease
+2026/11/06 19:40:53 WARN 取消命令之后沙箱没确认它停了 env_ref=sbe-736e9449a349d4d2 backend=local
+--- PASS: TestExecAfterAnUnconfirmedCancelIsRefusedUntilRelease (0.37s)
+=== RUN   TestAnIdleWorkspaceGoesColdAndComesBack
+2026/11/06 19:40:53 INFO 工作区闲置够天数，转冷 workspace=w1 days=3 snapshot=wss-226929bf167970aa1ede
+2026/11/06 19:40:53 INFO 工作区从存档恢复到本地盘（冷热分层） workspace=w1
+--- PASS: TestAnIdleWorkspaceGoesColdAndComesBack (0.22s)
+=== RUN   TestRecentlyUsedOrHeldWorkspacesStay
+--- PASS: TestRecentlyUsedOrHeldWorkspacesStay (0.14s)
+=== RUN   TestTenantPolicyOverridesTheDeploymentDefault
+=== RUN   TestTenantPolicyOverridesTheDeploymentDefault/都没配：不转冷
+=== RUN   TestTenantPolicyOverridesTheDeploymentDefault/只有租户策略
+2026/11/06 19:40:53 INFO 工作区闲置够天数，转冷 workspace=w1 days=2 snapshot=wss-833e48bcecd4f05b6386
+=== RUN   TestTenantPolicyOverridesTheDeploymentDefault/租户策略优先于部署的默认值
+=== RUN   TestTenantPolicyOverridesTheDeploymentDefault/租户没写天数：用部署的默认值
+2026/11/06 19:40:54 INFO 工作区闲置够天数，转冷 workspace=w1 days=2 snapshot=wss-5bf15931704807997fea
+--- PASS: TestTenantPolicyOverridesTheDeploymentDefault (0.48s)
+    --- PASS: TestTenantPolicyOverridesTheDeploymentDefault/都没配：不转冷 (0.05s)
+    --- PASS: TestTenantPolicyOverridesTheDeploymentDefault/只有租户策略 (0.17s)
+    --- PASS: TestTenantPolicyOverridesTheDeploymentDefault/租户策略优先于部署的默认值 (0.06s)
+    --- PASS: TestTenantPolicyOverridesTheDeploymentDefault/租户没写天数：用部署的默认值 (0.20s)
+=== RUN   TestArchiveModeTenantsAreLeftAlone
+--- PASS: TestArchiveModeTenantsAreLeftAlone (0.07s)
+=== RUN   TestAFailedSnapshotKeepsTheLocalCopy
+2026/11/06 19:40:54 WARN 工作区转冷失败，本地目录留着 workspace=w1 error="injected: 注入的故障：export_archive"
+--- PASS: TestAFailedSnapshotKeepsTheLocalCopy (0.17s)
+=== RUN   TestLeasingWhileCoolingIsATransientError
+--- PASS: TestLeasingWhileCoolingIsATransientError (0.06s)
+=== RUN   TestTheSweepRunsAtMostHourly
+2026/11/06 19:40:54 INFO 工作区闲置够天数，转冷 workspace=w1 days=3 snapshot=wss-2ff13a58a3a6fd5c76a0
+2026/11/06 19:40:54 INFO 工作区闲置够天数，转冷 workspace=w2 days=3 snapshot=wss-96a6895c5554350dcc68
+--- PASS: TestTheSweepRunsAtMostHourly (0.40s)
+=== RUN   TestProjectEnvironmentFirstUseBuildsAndSecondUseHitsTheCache
+--- PASS: TestProjectEnvironmentFirstUseBuildsAndSecondUseHitsTheCache (0.22s)
+=== RUN   TestProjectEnvironmentFirstUseBuildsAndSecondUseHitsTheCachePostgres
+--- PASS: TestProjectEnvironmentFirstUseBuildsAndSecondUseHitsTheCachePostgres (0.70s)
+=== RUN   TestFailedBuildsFallBackToUniversalWithTheReason
+=== RUN   TestFailedBuildsFallBackToUniversalWithTheReason/big
+=== RUN   TestFailedBuildsFallBackToUniversalWithTheReason/error
+=== RUN   TestFailedBuildsFallBackToUniversalWithTheReason/timeout
+--- PASS: TestFailedBuildsFallBackToUniversalWithTheReason (0.59s)
+    --- PASS: TestFailedBuildsFallBackToUniversalWithTheReason/big (0.20s)
+    --- PASS: TestFailedBuildsFallBackToUniversalWithTheReason/error (0.17s)
+    --- PASS: TestFailedBuildsFallBackToUniversalWithTheReason/timeout (0.22s)
+=== RUN   TestUnsupportedAndMaliciousDefinitionsNeverStartABuild
+--- PASS: TestUnsupportedAndMaliciousDefinitionsNeverStartABuild (0.10s)
+=== RUN   TestImageQuotaAndIdleCleanup
+--- PASS: TestImageQuotaAndIdleCleanup (0.17s)
+=== RUN   TestStoredFailureReasonsDropSignatureFragments
+--- PASS: TestStoredFailureReasonsDropSignatureFragments (0.12s)
+=== RUN   TestAFailureIsNotRetriedRightAway
+--- PASS: TestAFailureIsNotRetriedRightAway (0.14s)
+=== RUN   TestAFailureCanBeRetriedAfterAWhile
+--- PASS: TestAFailureCanBeRetriedAfterAWhile (0.25s)
+=== RUN   TestTheRetryWaitIsConfigurable
+--- PASS: TestTheRetryWaitIsConfigurable (0.17s)
+=== RUN   TestRetryingRespectsTheImageQuota
+--- PASS: TestRetryingRespectsTheImageQuota (0.13s)
+=== RUN   TestTheEndOfALongFailureReasonIsKept
+--- PASS: TestTheEndOfALongFailureReasonIsKept (0.14s)
+=== RUN   TestBuildsRunInTheServiceProcess
+2026/11/06 19:40:57 INFO 项目环境构建结束 tenant=t1 key=1bf8fb2d4ed0 state=ready reason=""
+--- PASS: TestBuildsRunInTheServiceProcess (0.20s)
+=== RUN   TestAStuckBuildIsTakenOverWhenItsHeartbeatStops
+2026/11/06 19:40:57 INFO 接手心跳停了的项目环境构建 key=1bf8fb2d4ed0
+--- PASS: TestAStuckBuildIsTakenOverWhenItsHeartbeatStops (0.19s)
+=== RUN   TestAStuckBuildIsTakenOverWhenItsHeartbeatStopsPostgres
+2026/11/06 19:40:58 INFO 接手心跳停了的项目环境构建 key=1bf8fb2d4ed0
+--- PASS: TestAStuckBuildIsTakenOverWhenItsHeartbeatStopsPostgres (0.49s)
+=== RUN   TestShellRunSaysWhichEnvironmentItUsed
+--- PASS: TestShellRunSaysWhichEnvironmentItUsed (0.33s)
+=== RUN   TestTheBuiltImageIsUsedWhenTheBackendTakesImages
+--- PASS: TestTheBuiltImageIsUsedWhenTheBackendTakesImages (0.25s)
+=== RUN   TestSuccessfulSetupIsCachedByScriptAndBaseImage
+--- PASS: TestSuccessfulSetupIsCachedByScriptAndBaseImage (0.52s)
+=== RUN   TestFailedSetupNeverStartsACacheBuild
+--- PASS: TestFailedSetupNeverStartsACacheBuild (0.19s)
+=== RUN   TestDailySandboxSecondsCountRunningEnvironments
+--- PASS: TestDailySandboxSecondsCountRunningEnvironments (0.14s)
+=== RUN   TestExplicitMinIsolationCanRaiseTheFloor
+--- PASS: TestExplicitMinIsolationCanRaiseTheFloor (0.12s)
+=== RUN   TestStrongerBackendFallsBackOnlyWithAnExplicitMinIsolation
+2026/11/06 19:41:00 WARN 沙箱后端暂时不可用，试下一个 backend=firecracker code=injected
+2026/11/06 19:41:00 WARN 沙箱后端暂时不可用，试下一个 backend=firecracker code=injected
+--- PASS: TestStrongerBackendFallsBackOnlyWithAnExplicitMinIsolation (0.32s)
+=== RUN   TestDisabledFallbackBackendIsSkipped
+2026/11/06 19:41:00 WARN 沙箱后端暂时不可用，试下一个 backend=firecracker code=injected
+--- PASS: TestDisabledFallbackBackendIsSkipped (0.10s)
+=== RUN   TestDisabledBackendDrains
+--- PASS: TestDisabledBackendDrains (0.18s)
+=== RUN   TestLifecycleIsRecordedWithCostAndUsage
+--- PASS: TestLifecycleIsRecordedWithCostAndUsage (0.16s)
+=== RUN   TestCrashAfterBackendCreateIsRepairedWithoutOrphans
+--- PASS: TestCrashAfterBackendCreateIsRepairedWithoutOrphans (0.13s)
+=== RUN   TestCrashBetweenDestroyingAndBackendDeleteIsRetried
+--- PASS: TestCrashBetweenDestroyingAndBackendDeleteIsRetried (0.17s)
+=== RUN   TestFreshUnrecordedEnvironmentIsLeftAloneUntilTheGracePasses
+--- PASS: TestFreshUnrecordedEnvironmentIsLeftAloneUntilTheGracePasses (0.14s)
+=== RUN   TestIdleSessionEnvironmentIsReapedButABusyOneIsNot
+--- PASS: TestIdleSessionEnvironmentIsReapedButABusyOneIsNot (0.20s)
+=== RUN   TestTenantDeletionDestroysEveryEnvironment
+--- PASS: TestTenantDeletionDestroysEveryEnvironment (0.40s)
+=== RUN   TestAnEnvironmentIsKeptWhileItsTaskWaits
+--- PASS: TestAnEnvironmentIsKeptWhileItsTaskWaits (0.14s)
+=== RUN   TestTheHoldHasACeiling
+--- PASS: TestTheHoldHasACeiling (0.24s)
+=== RUN   TestAFinishedTaskDoesNotHoldItsEnvironment
+--- PASS: TestAFinishedTaskDoesNotHoldItsEnvironment (0.17s)
+=== RUN   TestWithoutTheTaskTableEnvironmentsAreReapedAsBefore
+--- PASS: TestWithoutTheTaskTableEnvironmentsAreReapedAsBefore (0.15s)
+=== RUN   TestHealthAndRealSessionReuseAreRecorded
+--- PASS: TestHealthAndRealSessionReuseAreRecorded (0.17s)
+=== RUN   TestCommandsGetTheMirrorAndACredentialForTheirEnvironment
+--- PASS: TestCommandsGetTheMirrorAndACredentialForTheirEnvironment (0.14s)
+=== RUN   TestRegisteredMirrorWinsAndHostedBackendsGetNoneByDefault
+--- PASS: TestRegisteredMirrorWinsAndHostedBackendsGetNoneByDefault (0.13s)
+=== RUN   TestConfiguredImageIsRecordedAndOldRowsKeepTheirs
+--- PASS: TestConfiguredImageIsRecordedAndOldRowsKeepTheirs (0.19s)
+=== RUN   TestTheImageReportedByTheBackendWins
+--- PASS: TestTheImageReportedByTheBackendWins (0.16s)
+=== RUN   TestMountModeCreatesTheWorkspaceDirBeforeBorrowingAnEnv
+--- PASS: TestMountModeCreatesTheWorkspaceDirBeforeBorrowingAnEnv (0.13s)
+=== RUN   TestArchiveBackendsFallBackToEachOtherAndRestore
+2026/11/06 19:41:03 WARN 沙箱后端暂时不可用，试下一个 backend=a code=injected
+--- PASS: TestArchiveBackendsFallBackToEachOtherAndRestore (0.25s)
+=== RUN   TestReconcileReportsTheVolumeUsage
+--- PASS: TestReconcileReportsTheVolumeUsage (0.04s)
+=== RUN   TestMissingCallerTokensAreGeneratedIntoTheSharedSecretStore
+2026/11/06 19:41:03 INFO 生成了调用方的令牌 caller=worker
+--- PASS: TestMissingCallerTokensAreGeneratedIntoTheSharedSecretStore (0.05s)
+=== RUN   TestDirectTransferServiceBindsTenantLeaseAndKeepsPreparedBytes
+--- PASS: TestDirectTransferServiceBindsTenantLeaseAndKeepsPreparedBytes (0.23s)
+=== RUN   TestDirectExecReferencesAndUploadFailurePending
+2026/11/06 19:41:04 WARN direct output upload pending; prepared bytes retained stream=stdout
+2026/11/06 19:41:04 WARN direct output upload pending; prepared bytes retained stream=stderr
+--- PASS: TestDirectExecReferencesAndUploadFailurePending (0.28s)
+=== RUN   TestDirectArchiveOnlyUploadsMissingAndRestoresBytes
+--- PASS: TestDirectArchiveOnlyUploadsMissingAndRestoresBytes (0.27s)
+=== RUN   TestDirectArchiveChunksLargeFilesAndUploadsOnlyChangedBlocks
+--- PASS: TestDirectArchiveChunksLargeFilesAndUploadsOnlyChangedBlocks (25.91s)
+=== RUN   TestDirectTransferJournalSurvivesLostCommitResponseAndRestart
+--- PASS: TestDirectTransferJournalSurvivesLostCommitResponseAndRestart (0.27s)
+PASS
