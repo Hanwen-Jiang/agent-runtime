@@ -913,6 +913,12 @@ Milvus（V1-MEM，2026-11-06）：`kubectl apply -f deploy/data/milvus.yaml`（�
 `external.qdrant.url`，`worker.memory.enabled: true`（每个 Worker 池多了 `AR_MEMORY_ADDRESS`）。同一版还有 `66984c9`（只改文档不要求跑命令）与
 `b673f4b`（节点输出多包一层的先拆开）。线上清单与 `manifest-rev38.yaml` 一致，没有 Pod 重启，四个对外地址 200。
 回滚：`helm rollback ar 35`（Memory 回到 52174d9 加 Qdrant，Worker 不接 Memory）。
+- Memory 线上在用：第 36 版之后网关日志里有 `evals` 租户经 `text-embedding-3-large` 的 embed 调用（规划时的检索）。
+
+V1-SUB 线上验收（完成标准 3，2026-11-06，`rev38/sub-walk.sh`，租户 `evals`，`tsk_01M6Q70KK2A2NRVG2HYXDSN5DD`）：“分别独立调查 requests、httpx、aiohttp，
+再综合成两个场景的推荐”。第 1 轮 Planner 派出 3 个并行的 sub_agent（`research_requests`、`research_httpx`、`research_aiohttp`，都成功），综合节点
+`compare_libraries` 在它们之后，再交付。**通过**。Reviewer 模型判 done，但 Jev 的 disowns 0.82（回答如实列了“未确认的问题”）按规则改成 replan，
+多跑一轮；第 2 轮 done。花费 1.97 美元，约一半是那一轮。修法 `f06e30c`：Jev 拦 done 每个 Task 只拦一次。
 
 宿主上的 Firecracker（2026-11-05，V1-FC：宿主上的 systemd 服务，不经 Helm；规矩见总表第 0 节第 6 条）：
 
