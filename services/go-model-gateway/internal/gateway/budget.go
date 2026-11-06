@@ -124,6 +124,14 @@ func (s *Server) settle(ctx context.Context, c *call, cand router.Candidate, u *
 	unbilled := errors.As(callErr, &pe) && (pe.Category == providererr.Denied || pe.Category == providererr.NotFound)
 	if !known && !unbilled {
 		s.opts.Logger.Warn("model usage pending", "reservation_id", r.ID, "tenant_id", r.TenantID, "model_profile_id", cand.Profile.ID)
+		if c.ctx.GetMaxCostUsdMicros() > 0 {
+			// The reserved estimate is not an actual bill. With a request cap we
+			// cannot establish any remaining allowance, so do not retry/fallback
+			// or advertise success until the outstanding charge is reconciled.
+			e := providererr.New(providererr.Conflict, "model_usage_pending", "model usage unknown; reservation retained")
+			e.BilledCostUSDMicros = c.billed.GetCostUsdMicros()
+			return e
+		}
 		return nil
 	}
 	actual := priced(cand, u).GetCostUsdMicros()
