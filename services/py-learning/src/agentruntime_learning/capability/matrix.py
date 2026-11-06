@@ -31,9 +31,11 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import os
 import re
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -56,6 +58,7 @@ PLAN_COPY = "plan.json"
 RUN_LOCK = "run-lock.json"
 SCORES = "scores.json"
 JUDGE_LOG = "judgments.jsonl"
+OWNER_LOCK = ".matrix-owner.lock"
 SUITE = "capability"
 _SLUG = re.compile(r"^[a-z][a-z0-9_]*$")
 
@@ -66,6 +69,68 @@ class PlanError(ValueError):
 
 class ResumeMismatch(ValueError):
     """输出目录里的结果来自另一版评测集或另一个计划。"""
+
+
+class DirectoryBusy(PlanError):
+    """Another run/score/publish owns this experiment directory."""
+
+
+class DirectoryOwner:
+    """Exclusive OS ownership, including when no spending cap is configured.
+
+    Never remove or replace the lock inode. A crashed process releases its OS
+    lock automatically; the next owner may then recover an incomplete tail.
+    """
+
+    def __init__(self, out_dir: Path) -> None:
+        self.path = Path(out_dir).resolve()
+        self._file = None
+        self.path.mkdir(parents=True, exist_ok=True)
+        handle = (self.path / OWNER_LOCK).open("a+b")
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                if handle.tell() == 0:
+                    handle.write(b"0")
+                    handle.flush()
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            handle.close()
+            raise DirectoryBusy("experiment directory has an active owner; no artifacts were read or changed") from None
+        self._file = handle
+
+    def require(self, out_dir: Path) -> None:
+        if self._file is None or self.path != Path(out_dir).resolve():
+            raise RuntimeError("active ownership of this experiment directory is required")
+
+    def close(self) -> None:
+        handle = getattr(self, "_file", None)
+        if handle is not None:
+            handle.close()
+            self._file = None
+
+    def __del__(self) -> None:
+        self.close()
+
+
+@contextmanager
+def output_owner(out_dir: Path, owner: DirectoryOwner | None = None) -> Iterator[DirectoryOwner]:
+    """Acquire ownership, or verify a caller's still-held ownership."""
+    if owner is not None:
+        owner.require(out_dir)
+        yield owner
+        return
+    acquired = DirectoryOwner(out_dir)
+    try:
+        yield acquired
+    finally:
+        acquired.close()
 
 
 @dataclass(frozen=True)
@@ -221,28 +286,82 @@ def row_key(row: Mapping[str, Any]) -> tuple[str, ...]:
     return (str(row["task_family"]), str(row["role"]), str(row["tier"]), str(row["eval"]), str(row["candidate"]), str(row["item"]), str(row["repeat"]))
 
 
-def _drop_partial_line(path: Path) -> None:
-    """上次写到一半被打断时，最后一行没有换行：截掉它（这一次重跑），新的行才不会接在它后面。"""
-    if not path.exists():
-        return
-    data = path.read_bytes()
-    if data and not data.endswith(b"\n"):
-        with path.open("r+b") as f:
-            f.truncate(data.rfind(b"\n") + 1)
+def _incomplete_json(exc: json.JSONDecodeError) -> bool:
+    """Only syntactic prefixes of a JSON value may be a truncated append."""
+    text = exc.doc.rstrip()
+    if exc.pos >= len(text) or exc.msg.startswith("Unterminated string"):
+        return True
+    suffix = text[exc.pos:]
+    if exc.msg.startswith("Expecting value"):
+        return suffix == "-" or any(word.startswith(suffix) and word != suffix for word in ("true", "false", "null"))
+    if exc.msg.startswith("Invalid \\uXXXX escape"):
+        return bool(re.fullmatch(r"u[0-9a-fA-F]{0,3}", suffix))
+    if exc.msg.startswith("Expecting ',' delimiter") and exc.pos > 0 and text[exc.pos - 1].isdigit():
+        return bool(re.fullmatch(r"\.[0-9]*|[eE][+-]?", suffix))
+    return False
 
 
-def read_results(out_dir: Path) -> list[dict[str, Any]]:
-    path = Path(out_dir) / RESULTS
-    if not path.exists():
-        return []
+def _result_records(data: bytes, *, recover_partial: bool) -> tuple[list[dict[str, Any]], bytes | None]:
+    """Validate without mutation, returning an optional tail recovery image."""
+    lines = data.split(b"\n")
     rows = []
-    for line in path.read_text("utf-8").splitlines():
-        if line.strip():
-            try:
-                rows.append(json.loads(line))
-            except json.JSONDecodeError:
-                continue  # 写到一半被打断的最后一行：这一次重跑
-    return rows
+    repair = None
+    for index, raw in enumerate(lines):
+        if not raw.strip():
+            continue
+        final = index == len(lines) - 1 and not data.endswith(b"\n")
+        try:
+            row = json.loads(raw.decode("utf-8"), parse_constant=_invalid_json_constant)
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            incomplete = (_incomplete_json(exc) if isinstance(exc, json.JSONDecodeError)
+                          else exc.reason == "unexpected end of data" and exc.end == len(raw))
+            if final and recover_partial and incomplete:
+                repair = data[:data.rfind(b"\n") + 1]
+                break
+            kind = "incomplete final record; resume the writer to recover" if final and incomplete else "corrupt JSON record"
+            raise ResumeMismatch(f"{RESULTS} line {index + 1}: {kind}") from None
+        except ValueError:
+            raise ResumeMismatch(f"{RESULTS} line {index + 1}: invalid JSON value") from None
+        if not isinstance(row, dict):
+            raise ResumeMismatch(f"{RESULTS} line {index + 1}: record must be an object")
+        rows.append(row)
+    if recover_partial and data and not data.endswith(b"\n") and repair is None:
+        repair = data + b"\n"
+    return rows, repair
+
+
+def _recover_results(path: Path, data: bytes | None, owner: DirectoryOwner) -> None:
+    owner.require(path.parent)
+    if data is not None:
+        with path.open("r+b") as handle:
+            size = handle.seek(0, os.SEEK_END)
+            if len(data) < size:
+                handle.truncate(len(data))
+            else:
+                handle.write(b"\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+
+
+def read_results(out_dir: Path, *, owner: DirectoryOwner | None = None, recover_partial: bool = False) -> list[dict[str, Any]]:
+    """Read all records under ownership; never silently drop corrupt evidence.
+
+    Only a run explicitly recovers an unterminated, malformed final line. The
+    complete prefix is validated first, so a bad body cannot trigger truncation.
+    A valid final JSON object without LF is retained and terminated on recovery.
+    Score/publish do not mutate incomplete data: resume the writer first.
+    """
+    with output_owner(out_dir, owner) as acquired:
+        path = Path(out_dir) / RESULTS
+        if not path.exists():
+            return []
+        rows, repaired = _result_records(path.read_bytes(), recover_partial=recover_partial)
+        _recover_results(path, repaired, acquired)
+        return rows
+
+
+def _invalid_json_constant(value: str) -> None:
+    raise ValueError("non-finite number in result JSON")
 
 
 def cell_rows(rows: Sequence[Mapping[str, Any]], cell: Cell) -> list[Mapping[str, Any]]:
@@ -413,6 +532,7 @@ class MatrixRunner:
         concurrency: int | None = None,
         run_id: str | None = None,
         frozen: Mapping[str, Any] | None = None,
+        owner: DirectoryOwner | None = None,
     ) -> None:
         self.plan = plan
         self.gateway = gateway
@@ -424,9 +544,21 @@ class MatrixRunner:
         self.budget_usd = budget_usd
         self.concurrency = concurrency or plan.concurrency
         self.run_id = run_id or f"{datetime.now(UTC):%Y%m%dT%H%M%SZ}-{_slug(plan.name)}"
-        self.out_dir.mkdir(parents=True, exist_ok=True)
-        _drop_partial_line(self.out_dir / RESULTS)
-        self.rows = read_results(self.out_dir)
+        self._running = False
+        self._owner = owner or DirectoryOwner(self.out_dir)
+        self._owner.require(self.out_dir)
+        try:
+            self._initialize_output(frozen)
+        except BaseException:
+            self.close()
+            raise
+
+    def _initialize_output(self, frozen: Mapping[str, Any] | None) -> None:
+        plan, budget_usd = self.plan, self.budget_usd
+        self._owner.require(self.out_dir)
+        result_path = self.out_dir / RESULTS
+        result_bytes = result_path.read_bytes() if result_path.exists() else b""
+        self.rows, repaired = _result_records(result_bytes, recover_partial=True)
         self.done = {row_key(r) for r in self.rows}
         self.spent = sum(float(r.get("cost_usd") or 0) for r in self.rows)
         self.new_runs = 0
@@ -458,12 +590,20 @@ class MatrixRunner:
         if lock_path.exists():
             if json.loads(lock_path.read_text("utf-8")) != self.run_lock:
                 raise ResumeMismatch("评测计划、题集、Profile或部署配置变了：换一个输出目录，不混合结果")
-        elif self.rows:
+            verify_run_lock(self.out_dir, plan, self.rows, owner=self._owner)
+        elif result_bytes:
             raise ResumeMismatch("旧结果没有不可变运行配置：保留旧结果，换一个输出目录")
         else:
             with lock_path.open("x", encoding="utf-8") as lock:
                 json.dump(self.run_lock, lock, ensure_ascii=False, sort_keys=True, indent=2)
         self.experiment_digest = _digest(self.run_lock)
+        _recover_results(result_path, repaired, self._owner)
+
+    def close(self) -> None:
+        """Release an unused/finished runner. Active work retains ownership."""
+        if self._running:
+            raise RuntimeError("cannot close a running experiment")
+        self._owner.close()
 
     def _check_versions(self) -> None:
         current = {(cp.key, ev.name): str(ev.version) for cp in self.plan.cells for ev in (self.evals[(cp.key, e.spec)] for e in cp.evals)}
@@ -526,7 +666,16 @@ class MatrixRunner:
                     return
                 await self._run_one(job)
 
-        await asyncio.gather(*(one(j) for j in jobs))
+        tasks = [asyncio.create_task(one(job)) for job in jobs]
+        try:
+            await asyncio.gather(*tasks)
+        except BaseException:
+            # gather's first error does not stop siblings. Drain them before
+            # releasing directory/budget ownership, including on cancellation.
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
 
     def _skip(self, job: _Job, reason: str) -> None:
         self.skipped_for_budget += 1
@@ -644,17 +793,25 @@ class MatrixRunner:
         return self.score_cell(cp)
 
     async def run(self) -> dict[str, Any]:
+        self._owner.require(self.out_dir)
+        if self._running:
+            raise RuntimeError("experiment runner is already running")
+        self._running = True
         original_gateway = self.gateway
-        if self.budget_usd is not None:
-            self._total_budget = BudgetGateway(self.gateway, self.out_dir / "model-spending.json", self.budget_usd, prior_cost_usd=self.spent)
-            self.gateway = self._total_budget
         try:
+            if self.budget_usd is not None:
+                self._total_budget = BudgetGateway(self.gateway, self.out_dir / "model-spending.json", self.budget_usd, prior_cost_usd=self.spent)
+                self.gateway = self._total_budget
             return await self._run()
         finally:
-            if self._total_budget:
-                self._total_budget.close()
-            self.gateway = original_gateway
-            self._judge = None
+            try:
+                if self._total_budget:
+                    self._total_budget.close()
+            finally:
+                self.gateway = original_gateway
+                self._judge = None
+                self._running = False
+                self.close()
 
     async def _run(self) -> dict[str, Any]:
         (self.out_dir / PLAN_COPY).write_text(json.dumps(dict(self.plan.raw), ensure_ascii=False, indent=2), "utf-8")
@@ -664,7 +821,7 @@ class MatrixRunner:
         if self._total_budget:
             report["budget"] = dict(self._total_budget.state)
         report["not_run"] = self.not_run
-        write_scores(self.out_dir, report)
+        write_scores(self.out_dir, report, owner=self._owner)
         for cell in report["cells"]:
             for c in cell["candidates"]:
                 live = self._live.get(c["candidate"])
@@ -740,28 +897,29 @@ def _digest(value: Any) -> str:
     return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
 
 
-def verify_run_lock(out_dir: Path, plan: MatrixPlan, rows: Sequence[Mapping[str, Any]]) -> None:
-    path = Path(out_dir) / RUN_LOCK
-    if not path.exists():
-        # Legacy results can be diagnosed but cannot be resumed. S09 and all
-        # other publication gates still apply when revalidating old evidence.
-        if any(row.get("experiment_sha256") for row in rows):
-            raise ResumeMismatch("运行配置丢失，不能验证新结果")
-        return
-    frozen = json.loads(path.read_text("utf-8"))
-    if frozen["plan"] != dict(plan.raw):
-        raise ResumeMismatch("不能改写冻结计划再评分或发布")
-    digest = _digest(frozen)
-    if any(row.get("experiment_sha256") != digest for row in rows):
-        raise ResumeMismatch("结果与冻结实验摘要不符")
-    evaluations = {(entry["cell"], entry["name"]): entry for entry in frozen["evaluations"]}
-    for row in rows:
-        key = (f"{row['task_family']}/{row['role']}/{row['tier']}", row["eval"])
-        entry = evaluations.get(key)
-        if entry is None or row["version"] != entry["version"] or row["item"] not in entry["items"]:
-            raise ResumeMismatch("结果的评测、版本或题目不属于冻结题集")
-        if entry["contract"] is not None and (row.get("record") or {}).get("scoring_contract") != entry["contract"]:
-            raise ResumeMismatch("规划评分证据与运行时冻结的实际提示/校验不符")
+def verify_run_lock(out_dir: Path, plan: MatrixPlan, rows: Sequence[Mapping[str, Any]], *, owner: DirectoryOwner | None = None) -> None:
+    with output_owner(out_dir, owner):
+        path = Path(out_dir) / RUN_LOCK
+        if not path.exists():
+            # Legacy results can be diagnosed but cannot be resumed. S09 and all
+            # other publication gates still apply when revalidating old evidence.
+            if any(row.get("experiment_sha256") for row in rows):
+                raise ResumeMismatch("运行配置丢失，不能验证新结果")
+            return
+        frozen = json.loads(path.read_text("utf-8"))
+        if frozen["plan"] != dict(plan.raw):
+            raise ResumeMismatch("不能改写冻结计划再评分或发布")
+        digest = _digest(frozen)
+        if any(row.get("experiment_sha256") != digest for row in rows):
+            raise ResumeMismatch("结果与冻结实验摘要不符")
+        evaluations = {(entry["cell"], entry["name"]): entry for entry in frozen["evaluations"]}
+        for row in rows:
+            key = (f"{row['task_family']}/{row['role']}/{row['tier']}", row["eval"])
+            entry = evaluations.get(key)
+            if entry is None or row["version"] != entry["version"] or row["item"] not in entry["items"]:
+                raise ResumeMismatch("结果的评测、版本或题目不属于冻结题集")
+            if entry["contract"] is not None and (row.get("record") or {}).get("scoring_contract") != entry["contract"]:
+                raise ResumeMismatch("规划评分证据与运行时冻结的实际提示/校验不符")
 
 
 def eval_extras(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
@@ -776,10 +934,11 @@ def eval_extras(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     return {simpleqa.NAME: {c: simpleqa.official_metrics(g) for c, g in sorted(grades.items())}} if grades else {}
 
 
-def write_scores(out_dir: Path, report: Mapping[str, Any]) -> Path:
-    path = Path(out_dir) / SCORES
-    path.write_text(json.dumps(report, ensure_ascii=False, indent=2), "utf-8")
-    return path
+def write_scores(out_dir: Path, report: Mapping[str, Any], *, owner: DirectoryOwner | None = None) -> Path:
+    with output_owner(out_dir, owner):
+        path = Path(out_dir) / SCORES
+        path.write_text(json.dumps(report, ensure_ascii=False, indent=2), "utf-8")
+        return path
 
 
 def scores_summary(report: Mapping[str, Any]) -> str:

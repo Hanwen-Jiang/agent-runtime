@@ -60,8 +60,13 @@ def _load(plan_path: Path, profiles_path: Path) -> tuple[matrix.MatrixPlan, dict
 
 
 def _estimate(args: argparse.Namespace) -> int:
-    plan, profiles, evals = _load(args.plan, args.profiles)
-    rows = matrix.read_results(args.out) if args.out else []
+    if args.out:
+        with matrix.output_owner(args.out) as owner:
+            plan, profiles, evals = _load(args.plan, args.profiles)
+            rows = matrix.read_results(args.out, owner=owner)
+    else:
+        plan, profiles, evals = _load(args.plan, args.profiles)
+        rows = []
     print(matrix.estimate(plan, profiles, evals, rows).summary())
     return 0
 
@@ -70,55 +75,61 @@ def _run(args: argparse.Namespace) -> int:
     from agentruntime_learning.evals.__main__ import _with_telemetry
     from agentruntime_learning.evals.judging import gateway_from_env
 
-    plan, profiles, evals = _load(args.plan, args.profiles)
-    gateway = gateway_from_env()
+    with matrix.output_owner(args.out) as owner:
+        plan, profiles, evals = _load(args.plan, args.profiles)
+        gateway = gateway_from_env()
 
-    async def go(telemetry: Any) -> dict[str, Any]:
-        frozen = json.loads(args.freeze_config.read_text("utf-8")) if args.freeze_config else None
-        runner = matrix.MatrixRunner(plan, gateway, args.out, profiles=profiles, evals=evals, telemetry=telemetry, budget_usd=args.budget_usd, concurrency=args.concurrency, frozen=frozen)
-        print(runner.estimate().summary(), flush=True)
-        report = await runner.run()
-        print(f"这次跑了 {runner.new_runs} 次，累计花费 ${runner.spent:.4f}" + (f"；预算用完，{runner.skipped_for_budget} 次没跑" if runner.skipped_for_budget else ""))
-        return report
+        async def go(telemetry: Any) -> dict[str, Any]:
+            frozen = json.loads(args.freeze_config.read_text("utf-8")) if args.freeze_config else None
+            runner = matrix.MatrixRunner(plan, gateway, args.out, profiles=profiles, evals=evals, telemetry=telemetry, budget_usd=args.budget_usd, concurrency=args.concurrency, frozen=frozen, owner=owner)
+            try:
+                print(runner.estimate().summary(), flush=True)
+                report = await runner.run()
+                print(f"这次跑了 {runner.new_runs} 次，累计花费 ${runner.spent:.4f}" + (f"；预算用完，{runner.skipped_for_budget} 次没跑" if runner.skipped_for_budget else ""))
+                return report
+            finally:
+                runner.close()
 
-    report = asyncio.run(_with_telemetry(go))
-    print(matrix.scores_summary(report))
-    print(f"结果：{args.out / matrix.RESULTS}；分数：{args.out / matrix.SCORES}")
-    return 0
+        report = asyncio.run(_with_telemetry(go))
+        print(matrix.scores_summary(report))
+        print(f"结果：{args.out / matrix.RESULTS}；分数：{args.out / matrix.SCORES}")
+        return 0
 
 
 def _score(args: argparse.Namespace) -> int:
-    plan = matrix.load_plan(args.plan or args.out / matrix.PLAN_COPY)
-    rows = matrix.read_results(args.out)
-    matrix.verify_run_lock(args.out, plan, rows)
-    report = matrix.score_results(plan, rows)
-    path = matrix.write_scores(args.out, report)
-    print(matrix.scores_summary(report))
-    print(f"分数：{path}")
-    return 0
+    with matrix.output_owner(args.out) as owner:
+        plan = matrix.load_plan(args.plan or args.out / matrix.PLAN_COPY)
+        rows = matrix.read_results(args.out, owner=owner)
+        matrix.verify_run_lock(args.out, plan, rows, owner=owner)
+        report = matrix.score_results(plan, rows)
+        path = matrix.write_scores(args.out, report, owner=owner)
+        print(matrix.scores_summary(report))
+        print(f"分数：{path}")
+        return 0
 
 
 def _publish(args: argparse.Namespace) -> int:
-    # Never trust a stale or manually edited publishable flag. Re-evaluate the
-    # original observations with the current, frozen publication policy.
-    plan = matrix.load_plan(args.out / matrix.PLAN_COPY)
-    rows = matrix.read_results(args.out)
-    matrix.verify_run_lock(args.out, plan, rows)
-    report = matrix.score_results(plan, rows)
-    matrix.write_scores(args.out, report)
-    today = dt.date.fromisoformat(args.date) if args.date else None
-    result = publish.publish(report, profiles_path=args.profiles, seed_path=args.seed, today=today, dry_run=args.dry_run)
-    (args.out / publish.PATCH).write_text(json.dumps(result["patch"], ensure_ascii=False, indent=2), "utf-8")
-    for note in result["notes"]:
-        print(note)
-    if not result["changed"]:
-        print("没有改动")
-    elif args.dry_run:
-        print("（--dry-run：没写文件）")
-    else:
-        print(f"写了 {args.profiles} 与 {args.seed}；人审后按现有流程经 Registry 发布")
-    print(f"补丁：{args.out / publish.PATCH}")
-    return 0
+    with matrix.output_owner(args.out) as owner:
+        # Never trust a stale or manually edited publishable flag. Re-evaluate the
+        # original observations with the current, frozen publication policy.
+        plan = matrix.load_plan(args.out / matrix.PLAN_COPY)
+        rows = matrix.read_results(args.out, owner=owner)
+        matrix.verify_run_lock(args.out, plan, rows, owner=owner)
+        report = matrix.score_results(plan, rows)
+        matrix.write_scores(args.out, report, owner=owner)
+        today = dt.date.fromisoformat(args.date) if args.date else None
+        result = publish.publish(report, profiles_path=args.profiles, seed_path=args.seed, today=today, dry_run=args.dry_run)
+        (args.out / publish.PATCH).write_text(json.dumps(result["patch"], ensure_ascii=False, indent=2), "utf-8")
+        for note in result["notes"]:
+            print(note)
+        if not result["changed"]:
+            print("没有改动")
+        elif args.dry_run:
+            print("（--dry-run：没写文件）")
+        else:
+            print(f"写了 {args.profiles} 与 {args.seed}；人审后按现有流程经 Registry 发布")
+        print(f"补丁：{args.out / publish.PATCH}")
+        return 0
 
 
 def main(argv: list[str] | None = None) -> int:
