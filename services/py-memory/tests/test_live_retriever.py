@@ -290,3 +290,20 @@ def test_live_factory_honors_frozen_pipeline_deadline(monkeypatch) -> None:
     monkeypatch.setattr(eval_retriever, "LiveMemoryRetriever", capture)
     eval_retriever.live_retriever([], env={"AR_MEMORY_EVAL_WAIT_S": "1200"})
     assert seen["wait_s"] == 1200.0
+    assert seen["tenant"] == "evals"
+    eval_retriever.live_retriever([], env={"AR_MEMORY_EVAL_TENANT": "evalmem20261106"})
+    assert seen["tenant"] == "evalmem20261106"
+    with pytest.raises(ValueError, match="valid tenant"):
+        eval_retriever.live_retriever([], env={"AR_MEMORY_EVAL_TENANT": "_platform"})
+
+
+async def test_isolated_tenant_is_used_by_authenticated_memory_requests(address: str, dev: Backend) -> None:
+    retriever = eval_retriever.LiveMemoryRetriever(CORPUS, env=_env(address), tenant="evalmem20261106", single_writer_verified=True)
+    try:
+        assert await retriever.retrieve("payments service port 8443 TLS", 5)
+        assert retriever.identity.tenant_id == "evalmem20261106"
+        assert retriever.diagnostics["tenant"] == "evalmem20261106"
+    finally:
+        await retriever.aclose()
+    assert retriever.diagnostics["cleanup_complete"]
+    assert not await dev.service.search(retriever.identity, SearchQuery(trigger="planning", query="payments service port", top_k=50))

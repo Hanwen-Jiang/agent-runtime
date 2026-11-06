@@ -261,6 +261,7 @@ async def _run(
         backend = None
         started = time.monotonic()
         got: list[Any] = []
+        cancelled: asyncio.CancelledError | None = None
         try:
             backend = factory(corpus)
             lifecycle_sink = getattr(backend, "set_lifecycle_sink", None)
@@ -271,6 +272,13 @@ async def _run(
                 lifecycle_sink(checkpoint)
             got = await asyncio.wait_for(backend.retrieve(inst.question, top_k), timeout=timeout_s)
             row["outcome"] = "completed"
+        except asyncio.CancelledError as exc:
+            # SIGINT cancels asyncio.run's main task. Finish cleanup, persist
+            # its actual outcome, then propagate cancellation; never score or
+            # silently resubmit the interrupted paid attempt.
+            cancelled = exc
+            row["outcome"] = "interrupted"
+            row["error_type"] = "CancelledError"
         except Exception as exc:
             # Record class/code only; arbitrary provider errors may contain
             # credentials, URLs or private memory content.
@@ -308,6 +316,8 @@ async def _run(
                             "session": metrics(sessions, set(inst.answer_session_ids), ks=ks),
                             "turn": metrics(round_ids, evidence, ks=ks) if evidence else None})
         append(row)
+        if cancelled is not None:
+            raise cancelled
         # A failed cleanup may leave queued writes; do not add more work until
         # its recorded workspace/IDs have been reconciled.
         if not row["cleanup_complete"]:
@@ -473,6 +483,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.memory_version not in topology["images"]:
                 raise ValueError("--memory-version must match the deployed image in topology evidence")
         provenance = {"memory_topology": topology, "data_sha256": hashlib.sha256(args.data.read_bytes()).hexdigest(), "seed": args.seed, "limit": args.limit,
+                      "memory_tenant": os.environ.get("AR_MEMORY_EVAL_TENANT", "evals") if live else None,
                       "runtime_revision": args.runtime_revision, "registry_revision": args.registry_revision,
                       "memory_version": args.memory_version, "pipeline_timeout_s": float(os.environ.get("AR_MEMORY_EVAL_WAIT_S", "300")) if live else None, "memory_address": os.environ.get("AR_MEMORY_ADDRESS", "") if live else "",
                       "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
