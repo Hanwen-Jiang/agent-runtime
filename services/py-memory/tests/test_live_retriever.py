@@ -280,3 +280,13 @@ async def test_offline_write_receipt_is_checkpointed_before_server_accepts(offli
     await retriever.retrieve("question", 50)
     await retriever.aclose()
     assert receipts[-1]["cleanup_complete"]
+
+
+def test_live_factory_honors_frozen_pipeline_deadline(monkeypatch) -> None:
+    seen = {}
+    def capture(corpus, **kwargs):
+        seen.update(kwargs)
+        return object()
+    monkeypatch.setattr(eval_retriever, "LiveMemoryRetriever", capture)
+    eval_retriever.live_retriever([], env={"AR_MEMORY_EVAL_WAIT_S": "1200"})
+    assert seen["wait_s"] == 1200.0
