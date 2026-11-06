@@ -920,6 +920,10 @@ V1-SUB 线上验收（完成标准 3，2026-11-06，`rev38/sub-walk.sh`，租户
 `compare_libraries` 在它们之后，再交付。**通过**。Reviewer 模型判 done，但 Jev 的 disowns 0.82（回答如实列了“未确认的问题”）按规则改成 replan，
 多跑一轮；第 2 轮 done。花费 1.97 美元，约一半是那一轮。修法 `f06e30c`：Jev 拦 done 每个 Task 只拦一次。
 
+第 37 版（2026-11-06，目录 `rev39`，脚本 `prepare.sh`、`rev39.sh`）：Runtime `f06e30c`（SITE-UI 三页一套样式；Jev 每个 Task 只拦一次）。结果页的
+ConfigMap `ar-agent-runtime-eval-dashboard`（不归 helm）换成线上原页面加新样式，数据不变（之前的在 `rev39/eval-dashboard.before.yaml`）。
+线上清单与 `manifest-rev39.yaml` 一致，没有 Pod 重启，四个对外地址 200，`/` 与 `/results` 都是新样式。回滚：`helm rollback ar 36`，再 apply 那份 before。
+
 宿主上的 Firecracker（2026-11-05，V1-FC：宿主上的 systemd 服务，不经 Helm；规矩见总表第 0 节第 6 条）：
 
 - 装了什么（与 `deploy/cluster/install.sh` 第 3b 步相同的命令，分步手工跑，没跑整个 install.sh）：Firecracker 与 jailer v1.17.0（`/usr/local/bin`，按
