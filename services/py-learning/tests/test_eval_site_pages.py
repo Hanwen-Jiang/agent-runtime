@@ -50,7 +50,8 @@ def find_browser() -> str | None:
 
 
 BROWSER = find_browser()
-pytestmark = pytest.mark.skipif(BROWSER is None, reason="没有找到 Chrome 或 Edge（可以用 AR_TEST_BROWSER 指定）")
+REQUIRE_BROWSER = os.environ.get("AR_REQUIRE_BROWSER") == "1"
+pytestmark = pytest.mark.skipif(BROWSER is None and not REQUIRE_BROWSER, reason="没有找到 Chrome 或 Edge（可以用 AR_TEST_BROWSER 指定）")
 
 # 探针共用的部分：收集脚本错误，等条件成立，最后把结果交回。
 PROBE_HEAD = """
@@ -112,9 +113,22 @@ const regroup = async (value) => { const sel = $("#grouping"); sel.value = value
 
 RESULTS_PROBE = PROBE_HEAD + """
 (async () => {
-  await sleep(1500);
-  out.steps.title = document.title;
-  out.steps.overflow = overflow();
+  try {
+    await wait(() => $("#runs tr"));
+    out.steps.title = document.title;
+    out.steps.rows = $$("#runs tr").length - 1;
+    out.steps.table_text = $("#runs").textContent;
+    const detail = $("#runs").closest("details");
+    detail.querySelector("summary").click();
+    out.steps.expanded = detail.open;
+    out.steps.overflow = overflow();
+    document.querySelector('[data-set-lang="en"]').click();
+    await sleep(100);
+    out.steps.lang = document.documentElement.lang;
+    out.steps.pressed = document.querySelector('[data-set-lang="en"]').getAttribute("aria-pressed");
+    out.steps.english_visible = [...document.querySelectorAll("#sec-runs .en")].some(e => getComputedStyle(e).display !== "none");
+    out.steps.overflow_expanded = overflow();
+  } catch (ex) { out.errors.push(String(ex && ex.stack || ex)); }
   await finish();
 })();
 """
@@ -123,7 +137,8 @@ RESULTS_PROBE = PROBE_HEAD + """
 class Site:
     """真的看板服务，前面一层代理：给页面注入探针，收探针的结果。"""
 
-    def __init__(self, pages: Path) -> None:
+    def __init__(self, pages: Path, expected_runs: list[dict[str, Any]]) -> None:
+        self.expected_runs = expected_runs
         self.upstream = make_server(pages, "127.0.0.1", 0, site=SiteSync.local(EVALSETS))
         threading.Thread(target=self.upstream.serve_forever, daemon=True).start()
         up = f"http://127.0.0.1:{self.upstream.server_address[1]}"
@@ -186,12 +201,31 @@ class Site:
 
 @pytest.fixture(scope="module")
 def site(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Site]:
+    if REQUIRE_BROWSER and not BROWSER:
+        pytest.fail("AR_REQUIRE_BROWSER=1: Chrome/Chromium is required; set AR_TEST_BROWSER", pytrace=False)
     pages = tmp_path_factory.mktemp("pages")
-    reports = tmp_path_factory.mktemp("reports")
+    external = os.environ.get("AR_EVAL_SITE_REPORTS")
+    if os.environ.get("AR_REQUIRE_REAL_REPORTS") == "1" and not external:
+        pytest.fail("AR_REQUIRE_REAL_REPORTS=1 requires AR_EVAL_SITE_REPORTS", pytrace=False)
+    reports = Path(external) if external else tmp_path_factory.mktemp("reports")
+    if not external:
+        # Explicit regression fixture, never presented as a real model run.
+        sample = {"subject": "worker", "split": "dev", "created_at": "2026-11-06T00:00:00Z",
+                  "metrics": {"planner": {"triage_accuracy": 0.91, "shape_match_rate": 0.8, "decisions": 100},
+                              "reviewer": {"verdict_accuracy": 0.87, "decisions": 100},
+                              "cost": {"total_usd": 0.123, "per_case_usd": 0.00123}}, "cases": []}
+        (reports / "task-loop--browser-regression.json").write_text(json.dumps(sample), "utf-8")
+    expected_runs = []
+    for path in sorted(reports.rglob("task-loop--*.json")):
+        try:
+            expected_runs.append(json.loads(path.read_text("utf-8")))
+        except (OSError, json.JSONDecodeError):
+            continue
+    assert expected_runs, "页面验收必须加载非空报告，不能只检查空壳标题"
     proc = subprocess.run([sys.executable, str(DASHBOARD_SCRIPT), "--public", "--reports", str(reports), "--out", str(pages / "index.html")],
                           capture_output=True, text=True, encoding="utf-8", errors="replace")
     assert proc.returncode == 0, proc.stderr
-    s = Site(pages)
+    s = Site(pages, expected_runs)
     yield s
     s.close()
 
@@ -223,7 +257,7 @@ def test_the_datasets_page(site: Site, expected: dict[str, int], tmp_path: Path)
     assert steps["lang"] == "en" and steps["title"] == "Datasets and frameworks"
 
 
-@pytest.mark.parametrize("path, probe", [("/", HOME_PROBE), ("/datasets", DATASETS_PROBE)], ids=["home", "datasets"])
+@pytest.mark.parametrize("path, probe", [("/", HOME_PROBE), ("/datasets", DATASETS_PROBE), ("/results", RESULTS_PROBE)], ids=["home", "datasets", "results"])
 def test_phone_width_does_not_scroll_sideways(site: Site, tmp_path: Path, path: str, probe: str) -> None:
     r = site.open(path, probe, tmp_path / "phone", width=390, height=844)
     assert not r["errors"], r["errors"]
@@ -235,4 +269,13 @@ def test_phone_width_does_not_scroll_sideways(site: Site, tmp_path: Path, path: 
 def test_the_results_page_opens(site: Site, tmp_path: Path) -> None:
     r = site.open("/results", RESULTS_PROBE, tmp_path / "results")
     assert not r["errors"], r["errors"]
-    assert r["steps"]["title"]
+    steps = r["steps"]
+    assert steps["title"]
+    assert steps["rows"] == len(site.expected_runs), "每份实际报告都呈现为结果行"
+    expected_triage = [(r.get("metrics") or {}).get("planner", {}).get("triage_accuracy") for r in site.expected_runs]
+    for value in expected_triage:
+        if isinstance(value, (int, float)):
+            assert f"{value * 100:.1f}%" in steps["table_text"]
+    assert steps["expanded"], "真实结果明细可展开"
+    assert steps["lang"] == "en" and steps["pressed"] == "true" and steps["english_visible"]
+    assert steps["overflow_expanded"] <= 1

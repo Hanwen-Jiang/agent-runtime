@@ -1,7 +1,6 @@
 """docs/plan/memory-live.md 第 5 节（F2）：LongMemEval_S 测 Memory Service 的检索（agentruntime_learning.benchmarks.longmemeval）。
 
 用几道很小的题离线跑（lexical 检索器，不联网）：读题、按轮切成记忆、分层抽题、每题单独的检索器、官方的检索指标、续跑、预算。
-实现还没有时整个文件跳过。
 """
 
 from __future__ import annotations
@@ -13,7 +12,7 @@ from typing import Any
 
 import pytest
 
-lme = pytest.importorskip("agentruntime_learning.benchmarks.longmemeval", reason="F2 的实现还没写：先审验收测试（docs/plan/memory-live.md 第 5 节）")
+from agentruntime_learning.benchmarks import longmemeval as lme
 
 
 def _turn(role: str, content: str, has_answer: bool = False) -> dict[str, Any]:
@@ -172,11 +171,14 @@ async def test_each_question_gets_its_own_retriever_over_its_own_rounds(tmp_path
 async def test_a_second_run_resumes(tmp_path: Path) -> None:
     instances = lme.load(_write(tmp_path / "s.json", [DOG, SPORTS]))
     first = Recording()
-    await lme.run(instances[:1], first.factory, tmp_path / "out", top_k=5, ks=(5,))
+    await lme.run(instances, first.factory, tmp_path / "out", top_k=5, ks=(5,))
+    # Simulate a disconnect after the first final row, before the second starts.
+    journal = tmp_path / "out" / "results.jsonl"
+    journal.write_text("\n".join(journal.read_text("utf-8").splitlines()[:2]) + "\n", "utf-8")
     second = Recording()
     summary = await lme.run(instances, second.factory, tmp_path / "out", top_k=5, ks=(5,))
     assert len(second.calls) == 1, "做过的题不再跑"
-    ids = [json.loads(line)["question_id"] for line in (tmp_path / "out" / "results.jsonl").read_text("utf-8").splitlines()]
+    ids = list(lme._read_rows(tmp_path / "out" / "results.jsonl"))
     assert sorted(ids) == ["q-dog", "q-sports"] and summary["questions"] == 2
 
 
@@ -210,3 +212,140 @@ def test_fetch_rejects_a_file_that_is_not_longmemeval(tmp_path: Path) -> None:
     bad.write_text(json.dumps([{"id": 1}]), "utf-8")
     assert lme.main(["fetch", "--url", bad.as_uri(), "--out", str(tmp_path / "x.json")]) != 0
     assert not (tmp_path / "x.json").exists()
+
+
+@pytest.mark.parametrize("change", ["content", "retriever", "top_k", "provenance", "selection"])
+async def test_resume_rejects_changed_experiment_before_any_calls(tmp_path: Path, change: str) -> None:
+    instances = lme.load(_write(tmp_path / "s.json", [DOG, SPORTS]))
+    rec = Recording()
+    out = tmp_path / "out"
+    await lme.run(instances, rec.factory, out, top_k=5, ks=(5,), provenance={"runtime": "frozen"})
+    kwargs: dict[str, Any] = {"top_k": 5, "ks": (5,), "provenance": {"runtime": "frozen"}}
+    retriever: Any = rec.factory
+    if change == "content":
+        from dataclasses import replace
+        instances[0] = replace(instances[0], question="changed question")
+    elif change == "retriever":
+        retriever = "lexical"
+    elif change == "top_k":
+        kwargs["top_k"] = 10
+    elif change == "provenance":
+        kwargs["provenance"] = {"runtime": "changed"}
+    else:
+        instances = instances[:1]
+    calls = len(rec.calls)
+    with pytest.raises(ValueError, match="configuration or dataset changed"):
+        await lme.run(instances, retriever, out, **kwargs)
+    assert len(rec.calls) == calls
+
+
+async def test_legacy_results_are_not_silently_reused(tmp_path: Path) -> None:
+    instances = lme.load(_write(tmp_path / "s.json", [DOG]))
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "results.jsonl").write_text('{"question_id":"q-dog"}\n', "utf-8")
+    with pytest.raises(ValueError, match="legacy results"):
+        await lme.run(instances, "lexical", out)
+
+
+async def test_timeout_is_recorded_cleaned_and_not_automatically_rebilled(tmp_path: Path) -> None:
+    import asyncio
+    instances = lme.load(_write(tmp_path / "s.json", [DOG]))
+    calls = []
+
+    class Backend:
+        async def retrieve(self, question: str, top_k: int):
+            calls.append(question)
+            await asyncio.sleep(1)
+
+        async def aclose(self):
+            calls.append("closed")
+
+    def factory(corpus):
+        return Backend()
+
+    summary = await lme.run(instances, factory, tmp_path / "out", timeout_s=0.01)
+    assert not summary["valid"] and summary["timeouts"] == 1 and summary["cleanup_complete"]
+    assert calls == [DOG["question"], "closed"]
+    again = await lme.run(instances, factory, tmp_path / "out", timeout_s=0.01)
+    assert calls == [DOG["question"], "closed"] and again["completed"] == 0
+
+
+async def test_cleanup_failure_preserves_receipt_and_stops_new_questions(tmp_path: Path) -> None:
+    instances = lme.load(_write(tmp_path / "s.json", [DOG, SPORTS]))
+    calls = []
+
+    class Backend:
+        diagnostics = {"workspace": "w-eval-recoverable", "submitted_ids": ["mem-safe-id"], "cleanup_complete": False}
+
+        async def retrieve(self, question, top_k):
+            calls.append(question)
+            return []
+
+        async def aclose(self):
+            raise RuntimeError("SECRET SHOULD NEVER REACH RESULTS")
+
+    def factory(corpus):
+        return Backend()
+
+    summary = await lme.run(instances, factory, tmp_path / "out")
+    assert len(calls) == 1 and not summary["valid"] and not summary["cleanup_complete"]
+    row = lme._read_rows(tmp_path / "out" / "results.jsonl")["q-dog"]
+    assert row["lifecycle"]["workspace"] == "w-eval-recoverable"
+    assert row["lifecycle"]["submitted_ids"] == ["mem-safe-id"]
+    assert "SECRET" not in (tmp_path / "out" / "results.jsonl").read_text("utf-8")
+    await lme.run(instances, factory, tmp_path / "out")
+    assert len(calls) == 1, "pending writes must be reconciled before any new paid work"
+
+
+def test_exact_paired_gate_does_not_accept_a_small_or_insignificant_improvement(tmp_path: Path) -> None:
+    dirs = [tmp_path / "lexical", tmp_path / "live"]
+    ids = [str(n) for n in range(50)]
+    for i, folder in enumerate(dirs):
+        folder.mkdir()
+        manifest = {"dataset_digest": "frozen", "question_ids": ids, "top_k": 50, "ks": [5, 10, 30],
+                    "scoring_version": "longmemeval-retrieval-v1", "max_round_chars": 24000,
+                    "retriever": "lexical" if i == 0 else "agentruntime_memory.eval_retriever:live_retriever"}
+        (folder / "manifest.json").write_text(json.dumps(manifest), "utf-8")
+        (folder / "summary.json").write_text('{"valid":true}', "utf-8")
+
+    def outcome(wins: int, losses: int):
+        for index, folder in enumerate(dirs):
+            rows = [{"question_id": qid, "outcome": "completed", "cleanup_complete": True, "session": {"recall_any@10": int(n < wins if index else wins <= n < wins + losses)}}
+                    for n, qid in enumerate(ids)]
+            (folder / "results.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), "utf-8")
+        return lme.compare(*dirs)
+
+    assert not outcome(4, 0)["passed"], "4/50 improvement cannot meet the frozen effect-size gate"
+    assert not outcome(10, 5)["passed"], "net 5 hits still needs statistical evidence"
+    passed = outcome(5, 0)
+    assert passed["passed"] and passed["exact_one_sided_p"] == 1 / 32
+    (dirs[1] / "summary.json").write_text('{"valid":false}', "utf-8")
+    assert not lme.compare(*dirs)["passed"], "quality cannot override invalid evidence"
+
+
+async def test_concurrent_resume_cannot_duplicate_paid_calls(tmp_path: Path) -> None:
+    import asyncio
+    instances = lme.load(_write(tmp_path / "s.json", [DOG]))
+    entered, release = asyncio.Event(), asyncio.Event()
+    calls = []
+
+    class Backend:
+        async def retrieve(self, question, top_k):
+            calls.append(question)
+            entered.set()
+            await release.wait()
+            return []
+
+    def factory(corpus):
+        return Backend()
+
+    first = asyncio.create_task(lme.run(instances, factory, tmp_path / "out"))
+    await entered.wait()
+    try:
+        with pytest.raises(ValueError, match="already running"):
+            await lme.run(instances, factory, tmp_path / "out")
+    finally:
+        release.set()
+        await first
+    assert calls == [DOG["question"]]
