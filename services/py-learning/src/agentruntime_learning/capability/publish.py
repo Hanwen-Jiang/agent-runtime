@@ -25,6 +25,7 @@ from types import ModuleType
 from typing import Any
 
 from agentruntime_learning.capability.base import ROLES
+from agentruntime_learning.capability.publication import POLICY_VERSION
 from agentruntime_learning.capability.matrix import REPO
 from agentruntime_learning.evals import schemas
 
@@ -42,13 +43,19 @@ class PublishError(ValueError):
 
 def source_of(cell: Mapping[str, Any], candidate: Mapping[str, Any], plan: str) -> str:
     evals = "+".join(e["name"] for e in cell["evals"])
-    return f"capmatrix:{evals}@{cell['at']}:n={candidate['items']},r={candidate['repeats']}:run={plan}"
+    digest = cell["publication"]["evidence_sha256"]
+    return f"capmatrix:{evals}@{cell['at']}:n={candidate['items']},r={candidate['repeats']}:run={plan}:evidence={digest}"
 
 
 def patch_from_scores(report: Mapping[str, Any]) -> dict[str, list[dict[str, Any]]]:
     """scores.json → {Profile id: [capability_scores 条目]}；只收可发布的。"""
     patch: dict[str, list[dict[str, Any]]] = {}
     for cell in report["cells"]:
+        evidence = cell.get("publication") or {}
+        if evidence.get("policy") != POLICY_VERSION or not re.fullmatch(r"[0-9a-f]{64}", str(evidence.get("evidence_sha256", ""))):
+            raise PublishError("报告缺少当前发布约束与证据摘要；先从原始 results.jsonl 重新 score，旧规划记录不能发布")
+        if not evidence.get("coverage_ok"):
+            continue
         if not cell.get("at"):
             continue
         for c in cell["candidates"]:

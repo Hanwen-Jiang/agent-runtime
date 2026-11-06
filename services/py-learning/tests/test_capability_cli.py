@@ -12,6 +12,7 @@ import pytest
 
 import capability_support as cs
 from agentruntime_learning.capability import publish as pb
+from agentruntime_learning.capability.publication import POLICY_VERSION
 from agentruntime_learning.capability.__main__ import main as capability_main
 from agentruntime_learning.evals.__main__ import main as evals_main
 from agentruntime_learning.evals.worker_subject import ENV_GATEWAY_FACTORY
@@ -76,6 +77,7 @@ def score_report(entries: list[tuple[str, float, bool]], *, role: str = "plan", 
                 "at": at,
                 "leader": entries[0][0],
                 "problems": [],
+                "publication": {"policy": POLICY_VERSION, "evidence_sha256": "a" * 64, "coverage_ok": True},
                 "candidates": [{"candidate": c, "score": s, "publishable": ok, "items": 60, "repeats": 3} for c, s, ok in entries],
             }
         ],
@@ -107,7 +109,7 @@ def test_only_publishable_scores_become_entries_with_a_traceable_source() -> Non
     assert list(patch) == ["a6api/a@1"]
     (e,) = patch["a6api/a@1"]
     assert e == {"task_family": "general.unclassified", "role": "plan", "tier": "medium", "score": 0.7123,
-                 "source": "capmatrix:s09+bfcl-v4@2026-11-10:n=60,r=3:run=round1", "at": "2026-11-10"}
+                 "source": "capmatrix:s09+bfcl-v4@2026-11-10:n=60,r=3:run=round1:evidence=" + "a" * 64, "at": "2026-11-10"}
 
 
 def test_merge_replaces_the_same_dimension_and_drops_old_entries() -> None:

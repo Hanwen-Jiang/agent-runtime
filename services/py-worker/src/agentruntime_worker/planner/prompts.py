@@ -77,10 +77,19 @@ def _catalog_text(catalog: CatalogView) -> str:
 _SUB_AGENT_RULES = """12. 派 sub_agent 时，每个都在 inputs 里写 brief：objective（一句话，要回答什么）、scope（查什么、到哪为止、不做什么）、output（交回格式：来源卡片的数组，每张 {claim, evidence, source, confidence, open_questions}，或给定的 output_schema），可选 sources（优先的来源或路径）与 budget（{"usd": 上限}，系统会再按 Task 剩余的预算分份额）。两个以上 sub_agent 时，后面接一个综合节点（model 的 transform，after 列出它们全部、inputs 引用各自的结果），列出互相矛盾的卡片与没查到的问题。Triage 是 fast、light 时不派。子 Agent 默认用 mid@low；查找、归类这类简单的子任务可以在这个 sub_agent 上写 tier 往小调（small@low），不能比 mid@low 大。"""
 
 
+# 设计书 D.5、E.1/E.2。固定通用写法，不含任何评测题或形状标注。
+_PLANNING_PATTERNS = """规划写法：
+- 已有适用的 Recipe 时，用 mode = template 的 Goal Node，recipe 引用 Catalog 中的版本；inputs 放这次展开需要的参数。批量独立对象可用相互独立的节点按条处理，再汇总；共享写入仍由单一写者串行完成。不要编造 Recipe，也不要把可复用的模板全部改成没有边界的大 tool_loop。
+- 有明确且便宜的质量判据（例如测试、格式规则、逐项核对）时，用 quality = revise 包装要检查的节点，按 schema 配置有限的检查与修正；低价值节点用 none。质量检查不能代替权限审批。
+- 缺少只有用户能决定的信息，或用户要求先确认试跑/范围时，用 Catalog 中 executor = human、role = gate 的 Atomic Node 收集决定，并在该信息检查点停下。不要猜测人的回答；不可逆副作用的授权仍由运行时 Hook 插入，不能用自行生成的 gate 绕过。
+- 本轮信息已足够完成用户要求时，安排 role = deliver 的出口，after 依赖实际产出、inputs 引用结果；本轮还在等待探索或人的确认时，先停在检查点，不虚构交付。
+- 依赖无关的只读子问题可以并行；after 只表达真实依赖。不要为了并行把同一文件或外部对象的写入拆给多个节点。"""
+
+
 def system_zone(catalog: CatalogView, *, sub_agent_rules: bool = False) -> list[mg.ChatMessage]:
     schemas = "\n".join(f"{name} 的 JSON Schema：{_dump(validate.schema(name))}" for name in ("defs", "atomic_node", "goal_node", "stage", "task_plan"))
     rules = f"{_PLANNER_RULES}\n{_SUB_AGENT_RULES}" if sub_agent_rules else _PLANNER_RULES
-    text = f"{rules}\n\n{schemas}\n\n{_catalog_text(catalog)}"
+    text = f"{rules}\n\n{_PLANNING_PATTERNS}\n\n{schemas}\n\n{_catalog_text(catalog)}"
     return [mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=text, cache_breakpoint=True)]
 
 

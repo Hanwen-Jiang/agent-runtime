@@ -26,8 +26,11 @@ from agentruntime.common.v1 import enums_pb2
 from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 from agentruntime_worker.executor.model_gateway import ModelGateway
 from agentruntime_worker.planner.triage import reviewer_decision
+from agentruntime_worker.planner import context as planner_context, planner, prompts, triage, validate
 
 from agentruntime_learning.capability.base import Item, ItemResult
+from agentruntime_learning.capability.publication import S09_CONTRACT
+from agentruntime_learning.evals import schemas, scoring, stages, worker_subject
 from agentruntime_learning.evals.cases import DEFAULT_EVAL_SET, EvalSet, TaskCase, load_eval_set
 from agentruntime_learning.evals.model import PlannerInput
 from agentruntime_learning.evals.scoring import DecisionScore, score_planner
@@ -37,6 +40,21 @@ SPLITS = ("all", "dev", "holdout")
 ADAPTED_ROOT = DEFAULT_EVAL_SET.parent / "public-adapted-drafts"
 ADAPTED_SETS = ("natural-plan", "travelplanner", "swebench")
 ADAPTED_PREFIX = "adapted:"
+
+
+def scoring_contract() -> dict[str, str]:
+    """Fingerprint what was actually evaluated, including prompt and validation.
+
+    This is evaluation provenance, never a Registry revision. Dataset labels are
+    already covered by EvalSet.version. New source cannot resume old observations.
+    """
+    modules = (planner_context, planner, prompts, triage, validate, schemas, scoring, stages, worker_subject)
+    sources = {m.__name__: hashlib.sha256(Path(m.__file__).read_bytes()).hexdigest() for m in modules}
+    sources["s09"] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    for path in sorted(validate.SCHEMAS_DIR.glob("*.schema.json")):
+        sources[f"schemas/{path.name}"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    digest = hashlib.sha256(json.dumps(sources, sort_keys=True).encode()).hexdigest()
+    return {"id": S09_CONTRACT, "implementation_sha256": digest}
 
 
 def source_groups(root: Path) -> dict[str, tuple[str, bool]]:
@@ -128,6 +146,8 @@ class _S09:
             self.version = hashlib.sha256("\n".join([self.eval_set.version, *versions]).encode()).hexdigest()[:12]
         else:
             self.version = self.eval_set.version[:12]
+        self.contract = scoring_contract()
+        self.version = hashlib.sha256(json.dumps({"dataset": self.version, **self.contract}, sort_keys=True).encode()).hexdigest()[:16]
 
     def _originals(self, selected: EvalSet, es: EvalSet, groups: dict[str, tuple[str, bool]]) -> list[TaskCase]:
         """这一格要的题，同一道原题只留一道：有原题就取原题，否则取派生题里 id 最小的。"""
@@ -164,6 +184,11 @@ class _S09:
             "failures": failures(score),
             "model_call_failures": dict(subject.model_call_failures),
             "confirmed": case.confirmed,
+            "scoring_contract": self.contract,
+            "checks": {
+                dim: not any(f.dimension == dim for f in score.failures)
+                for dim in ("schema", "rule", "triage", "shape")
+            },
         }
         if self.origin[item_id]:
             record["adapted"] = self.origin[item_id]
@@ -175,8 +200,9 @@ class S09Plan(_S09):
 
     name = "s09"
     role = "plan"
-    # S-09 实测约 0.008 美元/题（2026-11-02）：按强档的单价约 2.5k 输入、300 输出；分诊另计。
-    est_tokens = (2500, 300)
+    # MX-PUB v2 expands the documented patterns and preserves strict DAG output.
+    # Conservative preflight allowance; observed use and retries remain in usage.
+    est_tokens = (8000, 2000)
     est_other_usd = 0.0003
 
     def _wanted(self, case: TaskCase, eval_set: EvalSet) -> bool:
