@@ -22,6 +22,13 @@ func TestDeploymentSettingsMovedFromTheWorker(t *testing.T) {
 	if c.HoldMax != 2*time.Hour || c.ColdDays != 0 || c.ReconcileEvery != time.Minute || c.PolicyTTL != time.Minute {
 		t.Fatalf("默认值：%+v", c)
 	}
+	if c.ChunkedSnapshots {
+		t.Fatal("new archive writes must remain disabled until a compatible rollback release exists")
+	}
+	enabled, err := FromEnv(env(map[string]string{"AR_WORKSPACE_CHUNKED_SNAPSHOTS": "true"}))
+	if err != nil || !enabled.ChunkedSnapshots {
+		t.Fatalf("enable chunk writes: %+v %v", enabled, err)
+	}
 	c, err = FromEnv(env(map[string]string{"AR_SANDBOX_HOLD_MAX_S": "600", "AR_WORKSPACE_COLD_AFTER_DAYS": "14", "AR_SANDBOX_POLICY_TTL_S": "0"}))
 	if err != nil || c.HoldMax != 10*time.Minute || c.ColdDays != 14 || c.PolicyTTL >= 0 {
 		t.Fatalf("%+v %v", c, err)
@@ -29,6 +36,7 @@ func TestDeploymentSettingsMovedFromTheWorker(t *testing.T) {
 	for _, bad := range []map[string]string{
 		{"AR_SANDBOX_HOLD_MAX_S": "-1"}, {"AR_WORKSPACE_COLD_AFTER_DAYS": "-1"}, {"AR_WORKSPACE_COLD_AFTER_DAYS": "abc"},
 		{"AR_WORKSPACE_COLD_AFTER_DAYS": "366"},
+		{"AR_WORKSPACE_CHUNKED_SNAPSHOTS": "yes"},
 	} {
 		if _, err := FromEnv(env(bad)); err == nil {
 			t.Errorf("%v 要拒绝", bad)

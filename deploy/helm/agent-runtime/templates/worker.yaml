@@ -56,10 +56,8 @@ spec:
             {{- if not (has ($.Values.worker.subAgentPolicy | default "off") (list "off" "rules")) }}
             {{- fail "worker.subAgentPolicy 只能是 off 或 rules" }}
             {{- end }}
-            {{- if eq ($.Values.worker.subAgentPolicy | default "off") "rules" }}
             - name: AR_SUB_AGENT_POLICY
-              value: rules
-            {{- end }}
+              value: {{ $.Values.worker.subAgentPolicy | default "off" | quote }}
             {{- if not (has ($.Values.worker.judge | default "") (list "" "jev")) }}
             {{- fail "worker.judge 只能是空或 jev" }}
             {{- end }}

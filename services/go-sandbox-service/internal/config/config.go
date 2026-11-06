@@ -18,6 +18,7 @@
 //	AR_SANDBOX_HOLD_MAX_S              等人期间保留会话级环境的上限，默认 7200
 //	AR_SANDBOX_SETUP_TIMEOUT_S         环境配置的安装脚本（ENV-02 的 setup）的超时，默认 600
 //	AR_WORKSPACE_COLD_AFTER_DAYS       挂卷工作区闲置多少天转冷（租户策略没写时），默认 0（不转冷）
+//	AR_WORKSPACE_CHUNKED_SNAPSHOTS     写分块清单，默认 false；先部署兼容读取的回退版本再启用，关闭不影响读取已有分块
 //	AR_SANDBOX_POLICY_TTL_S            租户策略的缓存秒数，默认 60；0 不缓存（测试用）
 //	AR_SANDBOX_TMP_DIR                 临时文件（工作区存档、D-17 构建产物，可达几个 GB）的目录，默认系统的临时目录
 //	AR_PROFILE                         production 时没有 AR_RELATIONAL_DSN 拒绝启动
@@ -35,26 +36,27 @@ import (
 
 // Config 是服务的配置。
 type Config struct {
-	Addr            string
-	BackendsFile    string
-	WorkspaceRoot   string
-	StateDir        string
-	AgentBinary     string
-	DataDir         string
-	RelationalDSN   string
-	MaxConns        int
-	ObjectStoreDir  string
-	SecretsFile     string
-	SecretsSeedFile string
-	Callers         []string
-	RegistryAddress string
-	PoliciesFile    string
-	MirrorURL       string
-	EgressURL       string
-	Runtime         string
-	ReconcileEvery  time.Duration
-	HoldMax         time.Duration
-	ColdDays        int
+	Addr             string
+	BackendsFile     string
+	WorkspaceRoot    string
+	StateDir         string
+	AgentBinary      string
+	DataDir          string
+	RelationalDSN    string
+	MaxConns         int
+	ObjectStoreDir   string
+	SecretsFile      string
+	SecretsSeedFile  string
+	Callers          []string
+	RegistryAddress  string
+	PoliciesFile     string
+	MirrorURL        string
+	EgressURL        string
+	Runtime          string
+	ReconcileEvery   time.Duration
+	HoldMax          time.Duration
+	ColdDays         int
+	ChunkedSnapshots bool
 	// PolicyTTL 是租户策略的缓存时长；负数不缓存（AR_SANDBOX_POLICY_TTL_S=0，测试改策略即时生效）。
 	PolicyTTL  time.Duration
 	Production bool
@@ -97,6 +99,13 @@ func FromEnv(getenv func(string) string) (Config, error) {
 		}
 	}
 	var err error
+	switch getenv("AR_WORKSPACE_CHUNKED_SNAPSHOTS") {
+	case "", "false":
+	case "true":
+		c.ChunkedSnapshots = true
+	default:
+		return c, errors.New("AR_WORKSPACE_CHUNKED_SNAPSHOTS 要是 true 或 false")
+	}
 	if c.MaxConns, err = intVar(getenv, "AR_RELATIONAL_MAX_CONNS", 8); err != nil {
 		return c, err
 	}

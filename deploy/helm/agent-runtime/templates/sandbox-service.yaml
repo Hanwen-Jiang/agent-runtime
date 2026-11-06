@@ -223,6 +223,8 @@ spec:
             {{- end }}
             - name: AR_SANDBOX_RECONCILE_INTERVAL_S
               value: {{ $svc.reconcileIntervalSeconds | quote }}
+            - name: AR_WORKSPACE_CHUNKED_SNAPSHOTS
+              value: {{ $svc.chunkedSnapshots | default false | quote }}
             - name: AR_SANDBOX_SETUP_TIMEOUT_S
               value: {{ $svc.setupTimeoutSeconds | quote }}
             - name: AR_SANDBOX_TMP_DIR

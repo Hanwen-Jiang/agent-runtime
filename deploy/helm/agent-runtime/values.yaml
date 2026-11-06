@@ -280,6 +280,9 @@ egressGateway:
 # Sandbox Service（SBX-01）：worker.shell.mode=sandbox 时起（templates/sandbox-service.yaml）。后端登记、项目环境的构建与冷热分层
 # 的配置仍写在 worker.shell 与 worker.workspaceColdAfterDays 下（格式不变），由它读。
 sandboxService:
+  # Enable only after preserving a rollback release that reads chunk manifests.
+  # Turning this off keeps existing chunk archives readable and writes legacy manifests.
+  chunkedSnapshots: false
   port: 8097
   # 业务库连接池上限（AR_RELATIONAL_MAX_CONNS）。
   relationalMaxConns: 8

@@ -73,11 +73,13 @@ type Options struct {
 	MirrorURL string
 	EgressURL string
 	// Runtime 是服务自己借环境（git、转冷）时用的运行环境；空时 python。
-	Runtime   string
-	HoldMax   time.Duration
-	Grace     time.Duration
-	ColdDays  int
-	PolicyTTL time.Duration
+	Runtime  string
+	HoldMax  time.Duration
+	Grace    time.Duration
+	ColdDays int
+	// ChunkedSnapshots gates only writes; readers always accept both manifest formats.
+	ChunkedSnapshots bool
+	PolicyTTL        time.Duration
 	// SetupTimeout 是环境配置的安装脚本的超时（0 时十分钟）。
 	SetupTimeout time.Duration
 	TmpDir       string
@@ -139,6 +141,7 @@ func New(ctx context.Context, o Options) (*Service, error) {
 	led := ledger.New(o.Relational, o.Clock)
 	arch := archive.New(o.Relational, o.Objects, o.Clock)
 	arch.TmpDir = o.TmpDir
+	arch.ChunkedSnapshots = o.ChunkedSnapshots
 	if err := led.Migrate(ctx); err != nil {
 		return nil, err
 	}
