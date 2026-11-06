@@ -211,9 +211,16 @@ func (s scope) promote(ctx context.Context, kind registryv1.RegistryKind, name s
 				return invalid("capability_baseline_changed", "能力分的现行基线版本已变化")
 			}
 			if found {
-				if _, err := tx.Execute(ctx, `UPDATE registry_entries SET state = $1, updated_at = $2 WHERE kind = $3 AND name = $4 AND state = $5`,
-					int64(registryv1.ReleaseState_RELEASE_STATE_RETIRED), now.UnixMilli(), int64(kind), name, int64(registryv1.ReleaseState_RELEASE_STATE_DEFAULT)); err != nil {
+				// PostgreSQL uses READ COMMITTED: a different publisher can commit
+				// between the read above and this statement. Retire only the exact
+				// baseline read, then retry/revalidate if that comparison lost.
+				affected, err := tx.Execute(ctx, `UPDATE registry_entries SET state = $1, updated_at = $2 WHERE kind = $3 AND name = $4 AND state = $5 AND version = $6`,
+					int64(registryv1.ReleaseState_RELEASE_STATE_RETIRED), now.UnixMilli(), int64(kind), name, int64(registryv1.ReleaseState_RELEASE_STATE_DEFAULT), asInt(row["version"]))
+				if err != nil {
 					return err
+				}
+				if affected != 1 {
+					return providererr.New(providererr.Conflict, "default_changed", "Registry 默认版本在晋升期间变化")
 				}
 			}
 			_, err = tx.Execute(ctx, `UPDATE registry_entries SET state = $1, evaluation = $2, updated_at = $3 WHERE kind = $4 AND name = $5 AND version = $6`,
