@@ -302,6 +302,8 @@ class Settings:
     # 空时不申请，与原来一样。给了就固定在 run.json 的设置里，换了主机不能续跑。
     network_hosts: tuple[str, ...] = ()
     network_minutes: int = 60
+    # Verified runtime/deployment configuration; opaque labels alone are not a freeze.
+    provenance: Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         if not _RUN_ID.match(self.run_id):
@@ -322,6 +324,11 @@ class Settings:
         out = {k: getattr(self, k) for k in PINNED}
         if self.network_hosts:
             out.update(network_hosts=list(self.network_hosts), network_minutes=self.network_minutes)
+        if self.provenance is not None:
+            from agentruntime_learning.benchmarks.provenance import validate
+            out["provenance"] = validate(self.provenance)
+            out["task_usd_limit"] = self.task_usd_limit
+            out["task_timeout_s"] = self.task_timeout_s
         return out
 
     def network(self, instance_id: str) -> dict[str, Any] | None:
@@ -372,9 +379,9 @@ def _manifest(out_dir: Path, instances: Sequence[Instance], settings: Settings, 
     if path.exists():
         before = json.loads(path.read_text("utf-8"))
         old = {"run_id": before.get("run_id"), "instance_ids": before.get("instance_ids"), **(before.get("settings") or {})}
-        for key, value in current.items():
-            if old.get(key) != value:
-                raise ResumeMismatch(f"{out_dir} 里已有一次运行，{key} 不一致（原来 {str(old.get(key))[:200]}，这次 {str(value)[:200]}）：换一个输出目录")
+        for key in old.keys() | current.keys():
+            if old.get(key) != current.get(key):
+                raise ResumeMismatch(f"{out_dir} 里已有一次运行，{key} 不一致：换一个输出目录")
         doc = before
     else:
         doc = {"benchmark": "swe-bench", "schema_version": 1, "run_id": settings.run_id, "created_at": datetime.now(UTC).isoformat(),
@@ -420,7 +427,7 @@ class _Runner:
             _write_text(self.out / "records" / f"{rec['instance_id']}.json", json.dumps(rec, ensure_ascii=False, indent=2) + "\n")
 
     def _spent(self) -> float:
-        return sum(float(r.get("cost_usd") or 0) for r in self.records.values() if r.get("state") in ("finished", "error"))
+        return sum(float(r.get("cost_usd") or 0) for r in self.records.values())
 
     def summary(self) -> RunSummary:
         states = Counter(str((self.records.get(i.instance_id) or {}).get("state")) for i in self.instances)
@@ -434,7 +441,7 @@ class _Runner:
             done = [self.records.get(i.instance_id) or {} for i in self.instances if i not in pending]
             self.live.planned(len(self.instances), carried=len(done), carried_cost_usd=sum(float(r.get("cost_usd") or 0) for r in done))
         # 上次提交了的先接着跟：钱已经在花了，不受预算门槛的约束（照样占一份预留）。
-        following = [i for i in pending if (self.records.get(i.instance_id) or {}).get("state") == "submitted"]
+        following = [i for i in pending if (self.records.get(i.instance_id) or {}).get("task_id")]
         fresh = [i for i in pending if i not in following]
         futures: list[Future[None]] = []
         with ThreadPoolExecutor(max_workers=self.s.concurrency) as pool:
@@ -457,7 +464,9 @@ class _Runner:
                     if inst.instance_id not in self.reserved:
                         # 预算不够再开一题：这一题与之后的都记为没跑（续跑时加了预算还会跑）。
                         for rest in [*following, *fresh][n:]:
-                            self._save({"instance_id": rest.instance_id, "repo": rest.repo, "state": "not_run"})
+                            # Never erase a failed attempt's task id, evidence or bill.
+                            if rest.instance_id not in self.records:
+                                self._save({"instance_id": rest.instance_id, "repo": rest.repo, "state": "not_run"})
                         break
                 futures.append(pool.submit(self._one, inst))
         for f in futures:
@@ -484,7 +493,9 @@ class _Runner:
                     self.rt.cancel(rec["task_id"], "adapter_error")
             rec.update({"state": "error", "error": f"{type(err).__name__}: {err}"[:1000]})
             self._save(rec)
-            self._release(iid)
+            # A stream failure leaves a possibly billable Task. Reconcile it on
+            # resume before starting more work; its absent bill is not zero.
+            self._release(iid, crashed=bool(rec.get("task_id") and not rec.get("task_finished")))
             self._report(rec)
         except BaseException:
             self._release(iid, crashed=True)
@@ -570,7 +581,7 @@ class _Runner:
 
     def _run_task(self, inst: Instance, rec: dict[str, Any], ws: str) -> None:
         interactive = True
-        if rec.get("state") == "submitted" and rec.get("task_id"):
+        if rec.get("task_id"):
             interactive = self.rt.query(rec["task_id"])["status"] not in TERMINAL
         else:
             if rec.get("state") in ("created", "error", "submitted"):

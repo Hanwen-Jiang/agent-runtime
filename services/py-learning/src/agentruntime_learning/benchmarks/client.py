@@ -11,11 +11,13 @@ from __future__ import annotations
 
 import http.client
 import json
+import os
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 TASK_SERVICE = "/agentruntime.taskapi.v1.TaskService/"
@@ -47,8 +49,29 @@ def _micros(value: Any) -> float:
     return int(value or 0) / 1_000_000
 
 
+def token_from_env() -> str | Callable[[], str]:
+    """Task API only: reread a rotated ops JWT file for every HTTP/SSE request.
+
+    The issuer remains an operator concern (ops-token.sh); never generate dev
+    tokens or forward this credential to Memory/Model Gateway.
+    """
+    path = os.environ.get("AR_TASK_API_TOKEN_FILE", "").strip()
+    if path:
+        def read() -> str:
+            try:
+                token = Path(path).read_text("utf-8").strip()
+            except OSError:
+                raise ValueError("cannot read AR_TASK_API_TOKEN_FILE") from None
+            if not token or any(c.isspace() for c in token):
+                raise ValueError("AR_TASK_API_TOKEN_FILE must contain one token")
+            return token
+        read()  # fail before creating a workspace
+        return read
+    return os.environ.get("AR_TASK_API_TOKEN", "").strip()
+
+
 class RuntimeClient:
-    def __init__(self, base_url: str, token: str, *, timeout: float = 60, events_timeout: float = 120) -> None:
+    def __init__(self, base_url: str, token: str | Callable[[], str], *, timeout: float = 60, events_timeout: float = 120) -> None:
         self.base_url = base_url.rstrip("/")
         self._token = token
         self.timeout = timeout
@@ -59,7 +82,8 @@ class RuntimeClient:
         return f"RuntimeClient({self.base_url!r})"
 
     def _headers(self, **extra: str) -> dict[str, str]:
-        return {"Authorization": f"Bearer {self._token}", "User-Agent": USER_AGENT, **extra}
+        token = self._token() if callable(self._token) else self._token
+        return {"Authorization": f"Bearer {token}", "User-Agent": USER_AGENT, **extra}
 
     def _call(self, service: str, method: str, body: dict[str, Any], *, timeout: float | None = None) -> dict[str, Any]:
         request = urllib.request.Request(
