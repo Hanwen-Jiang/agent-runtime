@@ -9,7 +9,8 @@
 // 写文件时加锁并先重新读，缺 kek 时先重新读文件再生成，不会覆盖别的进程写进去的内容。
 // 绑定的 Store 实现 secretstore.Writer（用户密钥，SEC-API）；Read 每次重新读文件，别的进程刚写进去的、刚删掉的马上看得到
 // （出网网关按名字现读，不缓存）。
-// 文件里是明文，只能用于开发。
+// 给了主密钥（AR_SECRETS_MASTER_KEY_FILE）时文件里的值可以是加密的，设 AR_SECRETS_ENCRYPT=1 后写入时加密（atrest.go，R-04）；
+// 没给时文件里是明文，只能用于开发。
 package filesecrets
 
 import (
@@ -68,6 +69,7 @@ type Provider struct {
 	clock  clock.Clock
 	data   file
 	leases map[string]*lease
+	rest   atRest
 }
 
 // New 构造；文件存在时读入。
@@ -82,10 +84,20 @@ func New(opts Options) (*Provider, error) {
 	if c == nil {
 		c = clock.System{}
 	}
-	p := &Provider{opts: opts, clock: c, data: file{Version: 1, Scopes: map[string]*scopeEntry{}}, leases: map[string]*lease{}}
+	rest, err := atRestFromEnv()
+	if err != nil {
+		return nil, err
+	}
+	p := &Provider{opts: opts, clock: c, data: file{Version: 1, Scopes: map[string]*scopeEntry{}}, leases: map[string]*lease{}, rest: rest}
 	raw, err := os.ReadFile(opts.Path)
 	if err == nil {
 		if err := json.Unmarshal(raw, &p.data); err != nil {
+			return nil, err
+		}
+		if p.data.Scopes == nil {
+			p.data.Scopes = map[string]*scopeEntry{}
+		}
+		if err := p.rest.opened(&p.data); err != nil {
 			return nil, err
 		}
 	} else if !errors.Is(err, fs.ErrNotExist) {
@@ -157,6 +169,9 @@ func MergeSeed(path, seedPath string) error {
 	}
 	p, err := New(Options{Path: path})
 	if err != nil {
+		return err
+	}
+	if err := p.rest.opened(&seed); err != nil {
 		return err
 	}
 	p.mu.Lock()
@@ -276,12 +291,15 @@ func (p *Provider) reload() error {
 	if fresh.Scopes == nil {
 		fresh.Scopes = map[string]*scopeEntry{}
 	}
+	if err := p.rest.opened(&fresh); err != nil {
+		return err
+	}
 	p.data = fresh
 	return nil
 }
 
 func (p *Provider) save() error {
-	raw, err := json.MarshalIndent(p.data, "", "  ")
+	raw, err := json.MarshalIndent(p.rest.sealed(p.data), "", "  ")
 	if err != nil {
 		return err
 	}

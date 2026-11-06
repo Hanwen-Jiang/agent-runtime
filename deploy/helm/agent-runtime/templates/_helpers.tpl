@@ -100,6 +100,17 @@ app.kubernetes.io/component: {{ index . 1 }}
 - name: AR_SECRETS_FILE
   value: {{ include "ar.secretsMountFile" . | quote }}
 {{- end }}
+{{- if .Values.secrets.masterKey.name }}
+# 密钥文件的静态加密（R-04）：主密钥只按文件挂载；encryptAtRest 打开后写文件也加密。
+- name: AR_SECRETS_MASTER_KEY_FILE
+  value: /var/run/agentruntime/secrets-master/{{ .Values.secrets.masterKey.key }}
+{{- if .Values.secrets.encryptAtRest }}
+- name: AR_SECRETS_ENCRYPT
+  value: "1"
+{{- end }}
+{{- else if .Values.secrets.encryptAtRest }}
+{{- fail "secrets.encryptAtRest 要先配 secrets.masterKey.name（放主密钥的 Secret）" }}
+{{- end }}
 {{- end -}}
 
 {{- define "ar.signingKeyEnv" -}}
@@ -195,6 +206,17 @@ app.kubernetes.io/component: {{ index . 1 }}
   persistentVolumeClaim:
     claimName: {{ . }}
 {{- end }}
+{{- with .Values.secrets.masterKey }}
+{{- if .name }}
+- name: secrets-master
+  secret:
+    secretName: {{ .name }}
+    defaultMode: 0400
+    items:
+      - key: {{ .key }}
+        path: {{ .key }}
+{{- end }}
+{{- end }}
 {{- end -}}
 
 {{- define "ar.volumeMounts" -}}
@@ -210,6 +232,11 @@ app.kubernetes.io/component: {{ index . 1 }}
 {{- if .Values.secrets.storeClaim }}
 - name: secretstore
   mountPath: /var/lib/agentruntime/secretstore
+{{- end }}
+{{- if .Values.secrets.masterKey.name }}
+- name: secrets-master
+  mountPath: /var/run/agentruntime/secrets-master
+  readOnly: true
 {{- end }}
 {{- end -}}
 

@@ -5,7 +5,9 @@
 kek 是该作用域的密钥加密密钥，首次生成数据密钥时创建并写回文件。短期凭据的租约只在内存里。
 多个进程可以共用一份文件（task-service 与 Worker 互相解开对方的 Claim-Check 数据密钥，S-06）：
 写文件时加锁并先重新读，缺 kek 时先重新读文件再生成，不会覆盖别的进程写进去的内容。
-文件里是明文，只能用于开发与单节点演示。
+给了主密钥（AR_SECRETS_MASTER_KEY_FILE，32 字节的 base64）时文件里的值可以是加密的，设 AR_SECRETS_ENCRYPT=1 后写入时加密
+（R-04，静态加密；格式与 Go 侧 libs/go-core/dev/filesecrets/atrest.go 相同：每个作用域的密钥值与 kek 各自用 _keywrap 包装成
+"arenc1:<base64>"，作用域与用途 "secret/<名字>"、"kek" 参与认证）。内存里仍是明文。没给主密钥时文件里是明文，只能用于开发。
 
 集群里（docs/plan/cloud-deploy.md D-04）静态密钥来自只读挂载的 K8s Secret，kek 又要写回：密钥文件放在共用的可写卷上，
 各进程启动时用 merge_seed 把只读的种子文件并进来（AR_SECRETS_SEED_FILE）。Go 侧 filesecrets.MergeSeed 规则相同。
@@ -15,6 +17,7 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import hashlib
 import json
 import os
 import secrets
@@ -33,6 +36,75 @@ from agentruntime_core.providers.secret_store import Credential, DataKey, LeaseS
 from agentruntime_core.secrets import Secret
 from agentruntime_core.tenancy import Scope, TenantContext, platform_scope, tenant_scope
 from agentruntime_core.testing import FaultInjector
+
+ENV_MASTER_KEY_FILE = "AR_SECRETS_MASTER_KEY_FILE"
+ENV_ENCRYPT = "AR_SECRETS_ENCRYPT"
+_ENC_PREFIX = "arenc1:"
+
+
+def _at_rest_from_env() -> tuple[bytes | None, bool]:
+    master: bytes | None = None
+    path = os.environ.get(ENV_MASTER_KEY_FILE, "").strip()
+    if path:
+        try:
+            master = base64.b64decode(Path(path).read_text("utf-8").strip(), validate=True)
+        except (OSError, ValueError):
+            raise InvalidError("invalid_master_key", f"读不了密钥文件的主密钥（{ENV_MASTER_KEY_FILE}）") from None
+        if len(master) != 32:
+            raise InvalidError("invalid_master_key", "主密钥要是 32 字节的 base64")
+    encrypt = os.environ.get(ENV_ENCRYPT, "") == "1"
+    if encrypt and master is None:
+        raise InvalidError("invalid_master_key", f"{ENV_ENCRYPT}=1 要有主密钥（{ENV_MASTER_KEY_FILE}）")
+    return master, encrypt
+
+
+def _secret_purpose(name: str) -> str:
+    purpose = "secret/" + name
+    if len(purpose.encode()) > 255:  # ARK1 的用途字段一个字节记长度
+        purpose = "secret#" + hashlib.sha256(name.encode()).hexdigest()
+    return purpose
+
+
+def _open_value(master: bytes | None, owner: str, purpose: str, value: Any) -> Any:
+    if not isinstance(value, str) or not value.startswith(_ENC_PREFIX):
+        return value  # 明文（加密之前写的，或没打开加密）
+    if master is None:
+        raise InvalidError("missing_master_key", f"密钥文件里有加密的值，但没给主密钥（{ENV_MASTER_KEY_FILE}）")
+    try:
+        return _keywrap.unwrap(master, owner, purpose, base64.b64decode(value[len(_ENC_PREFIX) :], validate=True)).decode()
+    except (ValueError, InvalidError, DeniedError):
+        raise InvalidError("invalid_sealed_secret", "密钥文件里加密的值解不开（主密钥不对，或值被挪过）") from None
+
+
+def _opened(master: bytes | None, data: Any) -> Any:
+    """把从文件读到的内容解成明文（就地）。"""
+    for owner, entry in ((data or {}).get("scopes") or {}).items():
+        if not isinstance(entry, dict):
+            continue
+        secrets_ = entry.get("secrets") or {}
+        for name, value in list(secrets_.items()):
+            secrets_[name] = _open_value(master, owner, _secret_purpose(name), value)
+        if entry.get("kek"):
+            entry["kek"] = _open_value(master, owner, "kek", entry["kek"])
+    return data
+
+
+def _sealed(master: bytes | None, encrypt: bool, data: dict[str, Any]) -> dict[str, Any]:
+    """要写进文件的一份：打开加密时各值都加密，否则原样。"""
+    if not encrypt or master is None:
+        return data
+
+    def seal(owner: str, purpose: str, value: str) -> str:
+        return _ENC_PREFIX + base64.b64encode(_keywrap.wrap(master, owner, purpose, value.encode())).decode()
+
+    scopes: dict[str, Any] = {}
+    for owner, entry in (data.get("scopes") or {}).items():
+        copy_ = {**entry, "secrets": {name: seal(owner, _secret_purpose(name), str(v)) for name, v in (entry.get("secrets") or {}).items()}}
+        if entry.get("kek"):
+            copy_["kek"] = seal(owner, "kek", entry["kek"])
+        scopes[owner] = copy_
+    return {**data, "scopes": scopes}
+
 
 # 跨进程文件锁的等待上限，以及判定为崩溃遗留锁的时长。
 _LOCK_TIMEOUT_S = 10.0
@@ -61,8 +133,9 @@ class LocalFileSecretStoreProvider:
         self._clock = clock or SystemClock()
         self._faults = faults or FaultInjector()
         self._leases: dict[str, _Lease] = {}
+        self._master, self._encrypt = _at_rest_from_env()
         self._data: dict[str, Any] = (
-            json.loads(self._path.read_text("utf-8")) if self._path.exists() else {"version": 1, "scopes": {}}
+            _opened(self._master, json.loads(self._path.read_text("utf-8"))) if self._path.exists() else {"version": 1, "scopes": {}}
         )
 
     def bind(self, tenant: TenantContext) -> LocalFileSecretStore:
@@ -98,6 +171,7 @@ class LocalFileSecretStoreProvider:
         scopes = data.get("scopes") if isinstance(data, dict) else None
         if not isinstance(scopes, dict):
             raise InvalidError("invalid_seed", "密钥的种子文件里没有 scopes")
+        _opened(self._master, data)
         with self._locked():
             for owner, entry in scopes.items():
                 mine = self._scope(owner)
@@ -142,7 +216,7 @@ class LocalFileSecretStoreProvider:
                 time.sleep(0.01)
         try:
             if self._path.exists():
-                self._data = json.loads(self._path.read_text("utf-8"))
+                self._data = _opened(self._master, json.loads(self._path.read_text("utf-8")))
             yield
         finally:
             os.close(fd)
@@ -152,7 +226,7 @@ class LocalFileSecretStoreProvider:
     def _save(self) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self._path.with_name(self._path.name + ".tmp")
-        tmp.write_text(json.dumps(self._data, indent=2, ensure_ascii=False), "utf-8")
+        tmp.write_text(json.dumps(_sealed(self._master, self._encrypt, self._data), indent=2, ensure_ascii=False), "utf-8")
         os.replace(tmp, self._path)
 
 

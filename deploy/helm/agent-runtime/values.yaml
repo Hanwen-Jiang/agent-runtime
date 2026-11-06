@@ -25,6 +25,13 @@ secrets:
   # 上面的 secrets.json 作为种子在启动时并进去（AR_SECRETS_SEED_FILE；种子里的密钥覆盖旧值，已生成的 kek 不换）。
   # 为空时直接读只读的 secrets.json，写 kek 会失败，只适合不卸载大载荷的试跑。
   storeClaim: ""
+  # 密钥文件的静态加密（R-04，总表第 0 节 V1-SEC）：masterKey.name 是放主密钥（32 字节的 base64）的 Secret，只挂给用 SecretStore 的服务
+  # （AR_SECRETS_MASTER_KEY_FILE），文件里加密的值读得懂。encryptAtRest 为 true 时写文件也加密（AR_SECRETS_ENCRYPT=1），旧的明文值在
+  # 下一次写时变成密文。上线分两步：先只给 masterKey（新旧 Pod 并存时都读得懂明文），所有 Pod 都换完再打开 encryptAtRest。
+  masterKey:
+    name: ""
+    key: master.key
+  encryptAtRest: false
   # 业务库的连接串（AR_RELATIONAL_DSN）；name 为空时 task-service、Memory Service 与 Worker（沙箱环境表，D-11）用 AR_DATA_DIR 下的 SQLite。
   relationalDsn:
     name: ""
