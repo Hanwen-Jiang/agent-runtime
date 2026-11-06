@@ -21,3 +21,9 @@
 修复后的本地验收不代表旧部署已修好。需要主集成负责人发布包含此修改的learning镜像，再对部署三页重跑。保留此前失败产物，不覆盖原始评测数据。临时容器 `goal-page-browser-20261106` 留到最终部署复验后清理。
 
 本地复验环境：`AR_TEST_BROWSER=/usr/bin/chromium AR_REQUIRE_BROWSER=1 AR_REQUIRE_REAL_REPORTS=1 AR_EVAL_SITE_REPORTS=/reports PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`，源码PYTHONPATH指向当前worktree；运行 `python -m pytest -p pytest_asyncio.plugin -p no:cacheprovider services/py-learning/tests/test_eval_site_pages.py -q`。
+
+## 已部署最终复验
+
+2026-11-06 19:41 UTC，主集成负责人发布learning:goal-87051e2f，Deployment generation20/observedGeneration20、ready1。随后直接访问https://evals.cgent.link进行同一原生Chromium检查：三个页面×桌面1400×900/手机390×844全部6组通过；页面初始和展开后的横向溢出均为0。实际显示19个数据集、517题、32条报告；语言、分组、搜索、展开和可用分诊分数均与线上真实数据一致。
+
+最终证据为deployed-after-fix/live-browser.json、六张截图、deployment-final.json、manifest-final.json；旧失败证据保留。临时浏览器容器goal-page-browser-20261106已删除，cleanup.json记录清理；没有测试工作区、模型支出或桶级修改。此结果证明该部署三页冒烟通过，不代表其它19项总Goal完成。
