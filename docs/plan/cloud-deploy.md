@@ -962,6 +962,9 @@ U-7 第一次发布（用户跑 `/root/ar-release/mcp/publish-default-v3.sh`）�
   或 `systemctl disable --now fc-manager`（Chart 里的 firecracker 后端设回 `enabled: false`）。
 - 租户切换（firecracker 后端在 Chart 里启用之后）：`real01` 的租户策略第 3 版只把 `sandbox.backend` 从 kata 改成 firecracker（种子在 `/root/ar-release/v1-fc/`，
   回退用第 2 版的种子再发一次）。
+- 2026-11-06：`sandbox/fc-manager-token` 已进 `agent-runtime-secrets`，Helm 第 38 版（部署线）把 firecracker 设成 `enabled: true`（默认仍是 gvisor）。核对：
+  backends.json 里 firecracker 启用；Sandbox Service 的后端列表有它；对账每轮的 `GET /v1/envs` 在 fc-manager 的日志里都是 200、没有 401（令牌与 cni0 的路通）。
+  `real01` 策略第 3 版的发布被这次会话的自动权限检查拦下，没发；完成标准第 4 条的线上验收等它。
 
 V1-MCP 线上验收（2026-11-05，总表第 0 节完成标准第 1 条；第 33 版上线 N-15，第 34 版带 `97334bdb` 的修复；脚本与种子在 `/root/ar-release/mcp/`）：
 
