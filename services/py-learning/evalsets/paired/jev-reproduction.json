@@ -1,0 +1,187 @@
+[
+  {
+    "id": "jev-http-client-selection-original",
+    "message": "帮我做个技术选型调研：分别独立调查 Python 的三个 HTTP 客户端库 requests、httpx、aiohttp（各自的同步/异步支持、超时与重试的写法、连接池、HTTP/2 支持、维护活跃度），三份调查互不依赖，可以并行。最后综合成一份对比结论，给出在“高并发爬虫”和“普通后端调用第三方 API”两个场景下各推荐哪个，并说明理由。直接在回答里给出结论，不用写文件。",
+    "should_delegate": true,
+    "required_patterns": [
+      "\\brequests\\b",
+      "\\bhttpx\\b",
+      "\\baiohttp\\b",
+      "同步|synchronous|\\bsync\\b",
+      "异步|asynchronous|\\basync\\b",
+      "超时|timeout",
+      "重试|retry|retries",
+      "连接池|connection pool|pooling",
+      "HTTP\\s*/?\\s*2",
+      "维护|活跃|maintain|release",
+      "爬虫|crawler|高并发",
+      "后端|backend|API"
+    ],
+    "files": [],
+    "reproduction": {
+      "schema_version": 1,
+      "purpose": [
+        "N16-R original $1.97 Jev case",
+        "EV-REAL shared off/rules paired collection"
+      ],
+      "original_request": {
+        "task_id": "tsk_01M6Q70KK2A2NRVG2HYXDSN5DD",
+        "tenant_id": "evals",
+        "workspace_id": "v1dep-234230",
+        "message_source": "/root/ar-release/rev38/sub-walk.sh",
+        "message_line": 9,
+        "message_utf8_sha256": "9eb5f71e00978a1b9ad7f229f76d725cf6ee879d6b126cafe2bca2ae4ae09461",
+        "source_files": [
+          {
+            "path": "/root/ar-release/rev38/sub-walk.sh",
+            "sha256": "4b96078e780aa4c72fab15cd7da8c9836df656602ae307e5cd487143787165af"
+          },
+          {
+            "path": "/root/ar-release/rev38/sub-walk.log",
+            "sha256": "eb83cb8f5ecf29a7d1e829c016f95fc4181f9bb9e471becdf1f999ea56e96ed4"
+          },
+          {
+            "path": "/root/ar-release/rev38/deploy.log",
+            "sha256": "c88432ee538f01c4e5d19b8a3e065e20c81e3d3d8869246b470bba3cdeaf1516"
+          },
+          {
+            "path": "/root/ar-release/manifest-rev38.yaml",
+            "sha256": "f846669e32ddf2c8d23be6903cdefd7ba817bd0d26fe243d8cf926fc19f0c034"
+          },
+          {
+            "path": "/root/ar-release/rev36/registry-seed.log",
+            "sha256": "978dbbe17ac03715906a80313f051d1672189fc0a042280c0b0d83d9ba5a97a4"
+          }
+        ]
+      },
+      "historical_evidence": {
+        "runtime_commit": "b673f4bf45a0f736c9c62c4b3f33e814548b8aff",
+        "coding_agent_commit": "517a044bbb1f1c2c0f01cb856fa3d577ee2f6a50",
+        "helm_revision": 36,
+        "sub_agent_policy": "rules",
+        "reviewer": "model",
+        "jev_enabled": true,
+        "memory_enabled": true,
+        "sub_agent_nodes": [
+          "research_requests",
+          "research_httpx",
+          "research_aiohttp"
+        ],
+        "synthesis_node": "compare_libraries",
+        "observed_jev_veto_rounds": [
+          1
+        ],
+        "observed_jev_reason_code": "rule_judge_disowns",
+        "observed_log_terminal_status": null,
+        "observed_query_snapshot": {
+          "status": "TASK_STATUS_RUNNING",
+          "round_seq": 2,
+          "cost_usd": 0.2429,
+          "cost_is_final": false
+        },
+        "documented_final_status": "done",
+        "documented_rounds": 2,
+        "documented_approximate_total_usd": 1.97,
+        "documented_disowns_probability": 0.82,
+        "document_source": "docs/plan/cloud-deploy.md, V1-SUB acceptance after Helm revision 36",
+        "document_sha256": "ca532723ea2ecf61ee676859fd84f270c4e0c80d0a6a8add480346c585226864",
+        "ledger_verified_total_usd": null,
+        "ledger_verified_sub_agent_usd": null,
+        "ledger_verified_second_round_usd": null,
+        "external_jev_cost_usd": null,
+        "served_model_profiles": null,
+        "attempt_registry_revisions": null,
+        "historical_jev_served_version": null,
+        "configured_jev_alias": "jev-latest",
+        "historical_workspace_snapshot": null,
+        "sandbox_backend": null,
+        "registry_seed_evidence_scope": "rev36/registry-seed.log records platform publication revisions; it does not prove the later task selected those profiles or Gateway loaded those immutable revisions.",
+        "old_script_cost_monitor": {
+          "poll_seconds": 10,
+          "cancel_after_observed_usd": 1.5,
+          "enforcement": "post-spend polling; not a hard per-attempt cap",
+          "reuse_as_new_authorization": false
+        }
+      },
+      "fix_contract": {
+        "commit": "f06e30c9e92519cee6a2d1f42684d0f2e6048782",
+        "counter": "verification.judge_blocked",
+        "codes": [
+          "rule_judge_disowns",
+          "rule_judge_off_topic"
+        ],
+        "max_vetoes_per_task": 1,
+        "disowns_threshold_unchanged": 0.8,
+        "answers_threshold_unchanged": 0.2,
+        "eliminates_first_false_positive": false,
+        "disables_later_jev_calls": false,
+        "old_task_already_had_one_veto": true,
+        "expected_scope": "After the first Jev veto, a later done is not rejected again by either Jev rule. Other Reviewer rules still apply."
+      },
+      "current_pair": {
+        "arms": [
+          "off",
+          "rules"
+        ],
+        "new_task_count": 2,
+        "message_must_remain_exact": true,
+        "workspace_mode": "new empty workspace per arm",
+        "historical_workspace_content_parity_verified": false,
+        "historical_same_configuration_comparison_valid": false,
+        "same_between_arms": [
+          "runtime commit",
+          "model Profiles and immutable Registry revisions",
+          "Memory snapshot and config",
+          "Jev enabled state and served version",
+          "tools/MCP/skills",
+          "network policy",
+          "task and shared cost limits",
+          "rubric version",
+          "seed"
+        ],
+        "required_before_spending": [
+          "Use both frozen provenance snapshots from the shared paired plan.",
+          "Account for these two tasks inside the already approved N16-R/EV-REAL envelope, including prior settled costs and unresolved reservations.",
+          "Resolve external Jev accounting and version evidence; do not invent zero cost.",
+          "Keep original historical workspace untouched."
+        ],
+        "new_cost_authorized_by_this_file_usd": 0
+      },
+      "acceptance": {
+        "machine_patterns_mean": "Topic coverage only, not verified factual correctness.",
+        "quality_requirements": [
+          "Cover all three named libraries and all six requested comparison dimensions; make uncertainty explicit.",
+          "Give justified recommendations for both requested scenarios without fabricated validation or sources.",
+          "Do not require a predetermined winning library or penalize honest unconfirmed details."
+        ],
+        "jev_requirements": [
+          "Count Jev vetoes by actual Task ID and round. More than one combined disowns/off_topic veto is a regression.",
+          "Zero vetoes means the live run did not exercise the repeated-veto boundary; it is not proof that the boundary fix worked.",
+          "If a first veto occurs, inspect the next review input judge_blocked and its final verdict; retain actual Jev model/check evidence.",
+          "Record whether the original honest-uncertainty first-veto symptom recurs separately from the at-most-one-veto rule.",
+          "Do not infer savings or sub-agent efficiency from the old approximate $1.97 or the phrase about half."
+        ],
+        "cost_requirements": [
+          "Deduplicate model_usage by reservation_id; sum all known actual_usd_micros including failed/fallback attempts; pending/null keeps total unknown.",
+          "Resolve actual SubAgentWorkflow identities from Temporal histories and attribute matching node IDs; keep ambiguous costs unallocated.",
+          "Collect Jev service billing separately; Model Gateway model_usage does not include its external charges.",
+          "Compare current off/rules total/sub-agent cost, time, rounds and repeated tool observations only after matching frozen configuration."
+        ]
+      },
+      "collector_gaps": [
+        "paired.py observes Jev verdict counts but does not export actual Jev answers/disowns/model/token checks or judge_blocked review inputs.",
+        "Reviewer activities currently log Jev checks; ReviewRoundOutput does not carry checks. Export only sanitized task/round/model/check/cost evidence from correlated logs or trace.",
+        "paired.py model_usage reader omits reserved_at and per-round attribution; do not claim exact extra-round cost without a reliable join.",
+        "The original completed reply and final ledger export were not found in the saved local artifacts."
+      ],
+      "existing_paired_set": {
+        "path": "/root/proj/agent-projs/.worktrees/evaluation/agent-runtime/services/py-learning/evalsets/paired/cases.json",
+        "sha256": "c2ce6a64c70feef3ba22b573344bf9b0aae547f694a46b2f2254a112e4ee0913",
+        "case_count": 10,
+        "contains_original_message": false
+      },
+      "status": "prepared_not_run",
+      "new_model_cost_usd": 0
+    }
+  }
+]
