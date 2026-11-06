@@ -107,10 +107,12 @@ func (p Policy) maxEffect() commonv1.Effect {
 	return commonv1.Effect_EFFECT_WRITE_IRREVERSIBLE
 }
 
+// coversHost 判断已经核对过是公网域名的主机（netguard.NormalizeHost）落不落在 mcp.hosts 里。单独一个 "*" 表示任意公网域名
+// （平台默认策略用）：IP 字面量、内网与云元数据地址在这之前已经拒绝了。
 func (p Policy) coversHost(host string) bool {
 	for _, pattern := range p.Hosts {
 		pattern = strings.ToLower(strings.TrimSuffix(pattern, "."))
-		if pattern == host {
+		if pattern == "*" || pattern == host {
 			return true
 		}
 		if suffix, ok := strings.CutPrefix(pattern, "*"); ok && strings.HasPrefix(suffix, ".") && strings.HasSuffix(host, suffix) && host != suffix[1:] {

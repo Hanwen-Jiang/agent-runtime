@@ -175,6 +175,18 @@
       }
     },
     {
+      "name": "mcp_any_public_host",
+      "source": "N-15，2026-11-06：平台默认策略用单独一个 * 表示任意公网域名（IP、内网与云元数据地址由 task-service 的 netguard 照样拒绝），工具最高 read",
+      "instance": {
+        "mcp": {
+          "allowed": true,
+          "hosts": ["*"],
+          "max_connections": 5,
+          "max_effect": "read"
+        }
+      }
+    },
+    {
       "name": "network_allowlist_only",
       "source": "NET-OPEN：只许名单里的主机，与不写 modes 一样",
       "instance": {
@@ -500,13 +512,29 @@
       "violates": [
         {
           "path": "/mcp/hosts/0",
-          "keyword": "pattern"
+          "keyword": "anyOf"
         }
       ],
       "instance": {
         "mcp": {
           "allowed": true,
           "hosts": ["10.0.0.5"]
+        }
+      }
+    },
+    {
+      "name": "mcp_host_wildcard_over_a_tld",
+      "description": "*. 通配要带一级具体域名：*.com 这种通配整个顶级域的不行（要任意公网域名就写单独一个 *）",
+      "violates": [
+        {
+          "path": "/mcp/hosts/0",
+          "keyword": "anyOf"
+        }
+      ],
+      "instance": {
+        "mcp": {
+          "allowed": true,
+          "hosts": ["*.com"]
         }
       }
     },

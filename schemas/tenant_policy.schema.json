@@ -95,8 +95,13 @@
       "properties": {
         "allowed": {"description": "是否允许用户登记 MCP 连接；不写为 false", "type": "boolean"},
         "hosts": {
-          "description": "连接地址的主机要落在这里（可以用 *. 开头）；只收 https，IP 字面量、内网与云元数据地址照样拒绝",
-          "type": "array", "uniqueItems": true, "maxItems": 100, "items": {"$ref": "#/$defs/host_pattern"}
+          "description": "连接地址的主机要落在这里（可以用 *. 开头；单独一个 * 表示任意公网域名）；只收 https，IP 字面量、内网与云元数据地址照样拒绝",
+          "type": "array", "uniqueItems": true, "maxItems": 100, "items": {
+            "anyOf": [
+              {"description": "任意公网域名（2026-11-06 加，平台默认策略用）", "const": "*"},
+              {"$ref": "#/$defs/host_pattern"}
+            ]
+          }
         },
         "max_connections": {"description": "每个用户最多几个连接；不写为 10", "type": "integer", "minimum": 1, "maximum": 50},
         "max_effect": {"description": "用户能给 MCP 工具定的最高 effect；不写为 write_irreversible（每次调用都要人批）", "$ref": "defs.schema.json#/$defs/mcp_tool_effect"}

@@ -55,3 +55,12 @@
 | 网页 | coding-agent `internal/server/mcp.go` 与 `app.js` 的 `openMcp`（`04c91e7`） | 账号页的“我的 MCP”：建连接（鉴权头选“网络密钥”页里的名字）、看工具、逐个打开并定只读或不可逆写、刷新、删除。网络密钥页随之打开（`CODING_NETWORK_SECRETS=1`） |
 
 没做的（不挡 v1）：删除连接时 Worker 不主动发 DELETE 结束远端会话（租约收回后下次调用直接 denied，会话空着，Worker 重启时没了）；Planner 的目录只有工具名与 effect，没有说明（tool_loop 里有）；远端的 outputSchema 不校验。
+
+## 契约修订：`mcp.hosts` 可以写单独一个 `*`（2026-11-06）
+
+起因：平台默认策略 `default/v3` 要让默认档的用户能连自己域名上的 MCP Server，种子写成了 `*.com`、`*.io` 等 24 个顶级域通配，
+发布时被 `host_pattern` 拒绝（`*.` 通配要带一级具体域名，与沙箱联网的主机格式共用，那边不该放宽）。修订（S-01，人审按总表 7.2 视为已过）：
+`mcp.hosts` 的每一项是 `"*"` 或原来的 `host_pattern`；`"*"` 表示任意公网域名。task-service 的 `coversHost` 在 `netguard.NormalizeHost`
+确认是公网域名之后才看它，所以 IP 字面量、内网与云元数据地址照样拒绝。正例 `mcp_any_public_host`，反例 `mcp_host_wildcard_over_a_tld`
+（`*.com` 仍不合法）；原来 `mcp_host_is_an_ip` 的违反关键字从 `pattern` 变成 `anyOf`。沙箱联网的 `sandbox.network.hosts` 不变。
+
