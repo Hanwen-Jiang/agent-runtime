@@ -56,7 +56,7 @@
 
 | # | 事 | 解开什么 | 不做的话 |
 | --- | --- | --- | --- |
-| U-1 | Cloudflare：给现有令牌 `CF_NSNZDDOTCOM_ALL_KEY` 加 Account 的 Containers 编辑、Workers Scripts 编辑；顺带确认它有没有 `cgent.link` 的 DNS 编辑（有的话 U-2 的 DNS 记录由 Claude 加） | Cloudflare 桥换新镜像（Rust 版 agent，REAL-01） | 桥一直是 Go 版 agent，K8s 与 Firecracker 不受影响 |
+| ~~U-1~~ | **已解决（2026-11-06）**：用户说令牌本来就有全部权限。查下来令牌是 API Token，能用两个账号；Containers 只在 `Root@nsnzd.com's Account`（`60a1944e…`，有 Workers 付费计划）上可用，`EDU` 账号没有。11-04 失败在脚本自己调的申请镜像仓库凭据的接口，改用 `wrangler containers push` 就推上去了，桥已换成 `sandbox-universal:f06e30c`（Rust 版 agent），见 cloud-deploy.md | Cloudflare 桥换新镜像 | — |
 | U-2 | Resend：注册、建 API Key、加域名 `cgent.link`，把 Key 放到服务器上（如 `/root/.config/agentruntime/resend.key`，不贴进聊天）；DNS 记录照 Resend 给的加（或由 Claude 用 U-1 的令牌加） | F4 告警发邮件（发件人 `alerts@cgent.link`） | 告警只在 Grafana 里看得到 |
 | U-3 | GitHub App 设置：权限加 Issues 读写，订阅 `issue_comment` 事件；各安装（你自己的账号或组织）点同意新权限 | G-06：在 Issue 里 @ 机器人自动开 Task | 自动触发用不了，其余 App 功能照常 |
 | U-4 | 设计书原文档（Claude Docs）的更新：二选一，你自己按各计划里“设计书的改动建议”改；或者在对话里授权 Claude 用 Claude Docs 的工具直接改并重新导出（给出文档链接） | 设计书与代码一致（4.10、4.14、4.15、附录 A、Memory 的 C1、Sandbox Service） | 不挡 v1，只是设计书越来越旧 |

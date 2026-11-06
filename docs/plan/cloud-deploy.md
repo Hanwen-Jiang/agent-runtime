@@ -924,6 +924,13 @@ V1-SUB 线上验收（完成标准 3，2026-11-06，`rev38/sub-walk.sh`，租户
 ConfigMap `ar-agent-runtime-eval-dashboard`（不归 helm）换成线上原页面加新样式，数据不变（之前的在 `rev39/eval-dashboard.before.yaml`）。
 线上清单与 `manifest-rev39.yaml` 一致，没有 Pod 重启，四个对外地址 200，`/` 与 `/results` 都是新样式。回滚：`helm rollback ar 36`，再 apply 那份 before。
 
+Cloudflare 桥换新镜像（U-1 / REAL-01，2026-11-06，脚本 `/root/ar-release/cf-bridge2/cfbridge.sh`，令牌经标准输入、输出里屏蔽）：用户说 `CF_NSNZDDOTCOM_ALL_KEY`
+本来就有全部权限。`wrangler whoami`：它是 API Token，能用 `EDU` 与 `Root@nsnzd.com's Account`（`60a1944e…`）两个账号；`EDU` 没有 Workers 付费计划，
+用不了 Containers。11-04 那次失败在脚本自己调 `containers/registries/.../credentials` 拿推送凭据（`Authentication error`），这次改用
+`wrangler containers push`（它自己取凭据）就推上去了：`agentruntime-sandbox-universal:f06e30c`（agent 是 Rust 版，sha256 前缀 `4674877072d9`，0.1.0 是
+`957ecb6af652`）。`wrangler deploy` 把容器应用的镜像从 `0.1.0` 换成 `f06e30c`，Worker 版本 `4f9063dd`；容器应用回到 ready，不带令牌访问桥 401。
+仓库的 `wrangler.jsonc` 同步。回滚：镜像写回 `:0.1.0` 再 `wrangler deploy`。没做：经 Cloudflare 后端跑一个真 Task（没有租户的策略选它）。
+
 宿主上的 Firecracker（2026-11-05，V1-FC：宿主上的 systemd 服务，不经 Helm；规矩见总表第 0 节第 6 条）：
 
 - 装了什么（与 `deploy/cluster/install.sh` 第 3b 步相同的命令，分步手工跑，没跑整个 install.sh）：Firecracker 与 jailer v1.17.0（`/usr/local/bin`，按
