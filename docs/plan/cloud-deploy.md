@@ -899,6 +899,21 @@ REAL-01 的检查（2026-11-04，在第 27 版上；目录 `rev29`，脚本 `smo
 平台 Skill（V1-SKILL，2026-11-06）：按 `deploy/dev/platform-skills.json` 经 `registry-seed` 发布 `explore-repo`、`write-tests`、`commit-and-pr`、`deliver-files`（都是 v1；
 之前线上一个 Skill 也没有）。改正文后重跑同一条命令出新版本，内容不变的跳过。
 
+V1-SKILL 线上验收（完成标准 2，2026-11-06，`rev37/skill-walk.sh`，租户 `evals`）：用户 `skill-walk` 经 `SkillService.PutSkill` 建用户 Skill
+`team-release-notes`（规定 release notes 的开头、结尾标记与三个小节）；提交“按团队格式写 1.4.0 的 RELEASE_NOTES.md 并交付”的 Task。
+`tasks.skill_pins` 固定了 4 条平台 Skill 与这条用户 Skill；tool_loop 先 `skill_read` 了 `team-release-notes` 与 `deliver-files`，写、读回、`deliver_file` 都成功，
+交付的文件与 Skill 规定的格式逐行一致。**通过**。但跑了 4 轮（0.18 美元）：第 1 轮被 `rule_done_unverified` 拦（只写了 .md 也要求跑命令，`66984c9` 修），
+之后 `confirm_delivery` 两次把字符串包成 `{"output": …}` 被 schema 拒（`b673f4b` 修：多包一层的先拆开）。
+
+Milvus（V1-MEM，2026-11-06）：`kubectl apply -f deploy/data/milvus.yaml`（单机版 3.0.2，内嵌 etcd，本地存储，PVC 50Gi），64 秒就绪，从 Memory 的 Pod 连得上
+19530 与 `/healthz`。data 命名空间的 PodSecurity 只警告（restricted 的几项没写），没有拒绝。Qdrant 里没有集合，不用迁移。
+
+第 36 版（2026-11-06，目录 `rev38`，脚本 `prepare.sh`、`rev38.sh`）：Runtime `b673f4b`，**Memory 换成同一个 tag（第一次构建 memory 镜像以来第一次跟 image.tag）**：
+`memory.imageTag` 去掉，`memory.embeddingVersion: a6api/text-embedding-3-large@2026-10`，`external.milvus.uri: http://milvus.data.svc:19530` 取代
+`external.qdrant.url`，`worker.memory.enabled: true`（每个 Worker 池多了 `AR_MEMORY_ADDRESS`）。同一版还有 `66984c9`（只改文档不要求跑命令）与
+`b673f4b`（节点输出多包一层的先拆开）。线上清单与 `manifest-rev38.yaml` 一致，没有 Pod 重启，四个对外地址 200。
+回滚：`helm rollback ar 35`（Memory 回到 52174d9 加 Qdrant，Worker 不接 Memory）。
+
 宿主上的 Firecracker（2026-11-05，V1-FC：宿主上的 systemd 服务，不经 Helm；规矩见总表第 0 节第 6 条）：
 
 - 装了什么（与 `deploy/cluster/install.sh` 第 3b 步相同的命令，分步手工跑，没跑整个 install.sh）：Firecracker 与 jailer v1.17.0（`/usr/local/bin`，按
