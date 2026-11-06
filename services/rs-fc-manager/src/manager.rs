@@ -410,13 +410,26 @@ impl Manager {
         rootfs: &Path,
         links: &std::sync::Arc<Links>,
     ) -> Result<Token, VmError> {
+        // Pin the actual kernel/rootfs in this jail before hashing. Hashing the
+        // public image pathname first both doubled IO and raced publication.
+        self.store
+            .write(rec)
+            .map_err(|e| VmError::Host(format!("写记录：{e}")))?;
+        self.fault(Fault::AfterRecord);
+        let paths = Paths::new(&self.cfg, &rec.env_id);
+        vm::prepare(&self.cfg, &paths, &rec.spec, rec.uid, rootfs)?;
+        let mut pinned = self.cfg.clone();
+        pinned.kernel = paths.in_root(crate::spec::KERNEL_IN_JAIL);
         let key = if self.cfg.snapshot_cache_mib > 0 {
             match self
                 .snapshots
                 .lock()
                 .unwrap_or_else(|e| e.into_inner())
-                .key(&self.cfg, &rec.spec, rootfs)
-            {
+                .key(
+                    &pinned,
+                    &rec.spec,
+                    &paths.in_root(crate::spec::ROOTFS_IN_JAIL),
+                ) {
                 Ok(key) => Some(key),
                 Err(e) => {
                     warn!("snapshot key unavailable; cold boot: {}", e.detail());
@@ -432,7 +445,7 @@ impl Manager {
                 .unwrap_or_else(|e| e.into_inner())
                 .contains(key)
         });
-        let result = self.boot_attempt(rec, rootfs, links, key.as_deref(), restoring);
+        let result = self.boot_attempt(rec, rootfs, links, key.as_deref(), restoring, true);
         if key.is_none() || result.is_ok() || matches!(result, Err(VmError::Cancelled)) {
             return result;
         }
@@ -459,7 +472,7 @@ impl Manager {
             vm.rec = rec.clone();
             vm.links = replacement.clone();
         }
-        self.boot_attempt(rec, rootfs, &replacement, None, false)
+        self.boot_attempt(rec, rootfs, &replacement, None, false, false)
     }
 
     fn boot_attempt(
@@ -469,32 +482,18 @@ impl Manager {
         links: &std::sync::Arc<Links>,
         snapshot_key: Option<&str>,
         restoring: bool,
+        prepared: bool,
     ) -> Result<Token, VmError> {
         let write = |r: &Record| {
             self.store
                 .write(r)
                 .map_err(|e| VmError::Host(format!("写记录：{e}")))
         };
-        write(rec)?;
-        self.fault(Fault::AfterRecord);
         let p = Paths::new(&self.cfg, &rec.env_id);
-        vm::prepare(&self.cfg, &p, &rec.spec, rec.uid, rootfs)?;
-        if let Some(expected) = snapshot_key {
-            // Image publication atomically replaces the runtime pathname.
-            // Verify the actual hard-linked inputs after prepare, so a
-            // concurrent publication cannot restore RAM against another disk.
-            let mut pinned = self.cfg.clone();
-            pinned.kernel = p.in_root(crate::spec::KERNEL_IN_JAIL);
-            let actual = self
-                .snapshots
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .key(&pinned, &rec.spec, &p.in_root(crate::spec::ROOTFS_IN_JAIL))?;
-            if actual != expected {
-                return Err(VmError::Boot(
-                    "snapshot inputs changed during creation".into(),
-                ));
-            }
+        if !prepared {
+            write(rec)?;
+            self.fault(Fault::AfterRecord);
+            vm::prepare(&self.cfg, &p, &rec.spec, rec.uid, rootfs)?;
         }
         if restoring {
             self.snapshots
