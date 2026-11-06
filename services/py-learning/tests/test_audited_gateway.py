@@ -82,3 +82,15 @@ def test_same_directory_cannot_be_relabelled_or_owned_twice(tmp_path):
     gateway.close()
     with pytest.raises(ValueError, match="identity changed"):
         AuditedGateway(Provider(), tmp_path, "run-two")
+
+
+async def test_explicit_isolated_budget_tenant_keeps_source_identity(tmp_path):
+    inner = Provider()
+    gateway = AuditedGateway(inner, tmp_path, "mx-isolated", tenant="evalmx20261106")
+    original = request()
+    await gateway.generate(original)
+    gateway.close()
+    assert original.tenant.tenant_id == "evals"
+    assert inner.calls[0].tenant.tenant_id == "evalmx20261106"
+    identity = json.loads((tmp_path / "identity.json").read_text())
+    assert identity["source_tenant_id"] == "evals" and identity["tenant_id"] == "evalmx20261106"
