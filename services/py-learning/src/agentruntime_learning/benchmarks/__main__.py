@@ -35,7 +35,7 @@ from agentruntime_learning.benchmarks import suite
 from agentruntime_learning.benchmarks import swebench as sb
 from agentruntime_learning.benchmarks import tbench_harbor
 from agentruntime_learning.benchmarks import terminalbench as tb
-from agentruntime_learning.benchmarks.client import ApiError, RuntimeClient
+from agentruntime_learning.benchmarks.client import ApiError, RuntimeClient, token_from_env
 from agentruntime_learning.evals import deepeval_metrics as dm
 from agentruntime_learning.evals import ragas as rg
 
@@ -120,6 +120,7 @@ def _parser() -> argparse.ArgumentParser:
     tr.add_argument("--task-timeout-min", type=float, default=60.0)
     tr.add_argument("--poll-s", type=float, default=30.0)
     tr.add_argument("--model-name", default="agent-runtime")
+    tr.add_argument("--provenance", type=Path, help="observed immutable runtime/Registry/Memory/model configuration JSON")
     tr.add_argument("--environment", choices=("official", "none"), default="official")
     tr.add_argument("--workspace-path", default="/workspace")
     tr.add_argument("--keep-workspaces", action="store_true")
@@ -213,7 +214,7 @@ def _terminalbench(args: argparse.Namespace) -> int:
         rep = tb.report(args.out)
         print((args.out / "report.md").read_text("utf-8"))
         return 0 if rep["selected"] else 1
-    token = os.environ.get(TOKEN_ENV, "")
+    token = token_from_env()
     if not token:
         print(f"要设环境变量 {TOKEN_ENV}（Task API 的令牌）", file=sys.stderr)
         return 2
@@ -230,6 +231,7 @@ def _terminalbench(args: argparse.Namespace) -> int:
             run_id=run_id, budget_usd=args.budget_usd, task_usd_limit=args.task_usd_limit, model_name=args.model_name, concurrency=args.concurrency,
             task_timeout_s=args.task_timeout_min * 60, environment=args.environment, workspace_path=args.workspace_path, keep_workspaces=args.keep_workspaces,
             poll_s=args.poll_s, network_hosts=hosts, network_minutes=args.network_minutes,
+            provenance=json.loads(args.provenance.read_text("utf-8")) if args.provenance else None,
         )
     except ValueError as err:
         print(str(err), file=sys.stderr)
@@ -244,7 +246,7 @@ def _terminalbench(args: argparse.Namespace) -> int:
 
 
 def _run(args: argparse.Namespace) -> int:
-    token = os.environ.get(TOKEN_ENV, "")
+    token = token_from_env()
     if not token:
         print(f"要设环境变量 {TOKEN_ENV}（Task API 的令牌，例如 scripts/dev_stack.py token --tenant <租户> --user <用户> 的输出）", file=sys.stderr)
         return 2

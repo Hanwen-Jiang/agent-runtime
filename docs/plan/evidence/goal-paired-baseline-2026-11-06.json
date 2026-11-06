@@ -1,0 +1,512 @@
+{
+  "runs": [
+    {
+      "path": "/opt/evals/tb2/tb40-a",
+      "run_id": "ev-tb40-tb40-a",
+      "settings": {
+        "model_name": "agent-runtime-rev29",
+        "environment": "official",
+        "workspace_path": "/workspace",
+        "network_hosts": [
+          "github.com",
+          "codeload.github.com",
+          "objects.githubusercontent.com",
+          "raw.githubusercontent.com",
+          "download.pytorch.org"
+        ],
+        "network_minutes": 60
+      },
+      "dataset_sha256": null
+    },
+    {
+      "path": "/opt/evals/tb2/tb40-b",
+      "run_id": "ev-tb40-tb40-b",
+      "settings": {
+        "model_name": "agent-runtime-rev29",
+        "environment": "official",
+        "workspace_path": "/workspace",
+        "network_hosts": [
+          "github.com",
+          "codeload.github.com",
+          "objects.githubusercontent.com",
+          "raw.githubusercontent.com",
+          "download.pytorch.org"
+        ],
+        "network_minutes": 60
+      },
+      "dataset_sha256": null
+    }
+  ],
+  "selected": 40,
+  "duplicate_instance_ids": [],
+  "execution_counts": {
+    "finished": 23,
+    "executed_error": 4,
+    "not_run": 13
+  },
+  "outcome_counts": {
+    "model_unsolved": 14,
+    "resolved": 6,
+    "environment_failure": 7,
+    "not_run": 13
+  },
+  "finished_with_official_environment": 22,
+  "budget_exhausted_ids": [
+    "cancel-async-tasks",
+    "cobol-modernization"
+  ],
+  "comparable_frozen_baseline": false,
+  "historical_cost": {
+    "known_usd": 36.432857,
+    "unknown_task_ids": [],
+    "tasks": 30,
+    "source": "recorded_task_usage; final settlement must be checked against model_usage"
+  },
+  "approved_cap_usd": 80,
+  "remaining_usd": 43.567143,
+  "observed_usd_per_started_task": 1.2032587037037037,
+  "estimated_new_40_usd": 48.130348148148144,
+  "next_action": "retain old artifacts; freeze current configuration and run all selected 40",
+  "records": [
+    {
+      "instance_id": "adaptive-rejection-sampler",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6MSRFXM9VH0P9X3QSK5MRKK",
+      "state": "finished",
+      "cost_usd": 0.895709,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "model_unsolved"
+    },
+    {
+      "instance_id": "build-cython-ext",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6MSRFTEFM56H75NJRWVC6PF",
+      "state": "finished",
+      "cost_usd": 0.692657,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "model_unsolved"
+    },
+    {
+      "instance_id": "build-pmars",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6MSRG0QH3C37WXRR3RVZXR8",
+      "state": "finished",
+      "cost_usd": 0.42538,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "model_unsolved"
+    },
+    {
+      "instance_id": "build-pov-ray",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6MSRFY2DKZY4C1FW2W122DK",
+      "state": "finished",
+      "cost_usd": 0.636017,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "model_unsolved"
+    },
+    {
+      "instance_id": "cancel-async-tasks",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6MT2HTJH335DE0ZT5D9MP3Z",
+      "state": "finished",
+      "cost_usd": 2.588972,
+      "environment_used": true,
+      "budget_exhausted": true,
+      "execution": "finished",
+      "outcome": "resolved"
+    },
+    {
+      "instance_id": "cobol-modernization",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6MTGT0Z473JZ0JZZ8MVSP4V",
+      "state": "finished",
+      "cost_usd": 2.950794,
+      "environment_used": true,
+      "budget_exhausted": true,
+      "execution": "finished",
+      "outcome": "resolved"
+    },
+    {
+      "instance_id": "compile-compcert",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6MTHJFV13D9Z7R0H2SGKV6W",
+      "state": "finished",
+      "cost_usd": 0.286181,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "model_unsolved"
+    },
+    {
+      "instance_id": "configure-git-webserver",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6MV9EPPDKYMRGS1RECD0BBE",
+      "state": "finished",
+      "cost_usd": 0.196258,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "model_unsolved"
+    },
+    {
+      "instance_id": "constraints-scheduling",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6MVNMAZD35TY3K1P0EVC856",
+      "state": "finished",
+      "cost_usd": 1.219794,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "resolved"
+    },
+    {
+      "instance_id": "custom-memory-heap-crash",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6MWHV46GZ6Y1451GE8ZCNB7",
+      "state": "finished",
+      "cost_usd": 1.565222,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "model_unsolved"
+    },
+    {
+      "instance_id": "distribution-search",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6MWT2X1CHB7N0N4BMPESCX2",
+      "state": "finished",
+      "cost_usd": 0.834898,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "model_unsolved"
+    },
+    {
+      "instance_id": "dna-assembly",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6MWTHHMNPYBKBSWXS58AMT1",
+      "state": "finished",
+      "cost_usd": 0.87961,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "environment_failure"
+    },
+    {
+      "instance_id": "dna-insert",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6MXDN7RHEQH0DJSGX6KP705",
+      "state": "finished",
+      "cost_usd": 0.809214,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "environment_failure"
+    },
+    {
+      "instance_id": "extract-moves-from-video",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6MXX6EABGDBS5NCBAHAAM96",
+      "state": "finished",
+      "cost_usd": 0.254174,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "model_unsolved"
+    },
+    {
+      "instance_id": "feal-differential-cryptanalysis",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6MY8NTHPZWGBGD6B44JWFSS",
+      "state": "finished",
+      "cost_usd": 2.789629,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "resolved"
+    },
+    {
+      "instance_id": "filter-js-from-html",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6MYBYTTR6W915F5NH7B27EF",
+      "state": "finished",
+      "cost_usd": 2.489531,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "model_unsolved"
+    },
+    {
+      "instance_id": "git-multibranch",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6MYC5K3607XCEJ2WERW68W0",
+      "state": "finished",
+      "cost_usd": 0.227018,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "model_unsolved"
+    },
+    {
+      "instance_id": "headless-terminal",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6MYWEJ7Q0GKS0A3QVN3TA2Z",
+      "state": "finished",
+      "cost_usd": 1.806882,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "resolved"
+    },
+    {
+      "instance_id": "hf-model-inference",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6N0294VRMX2YAXG7SM5S2F9",
+      "state": "finished",
+      "cost_usd": 0.692241,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "model_unsolved"
+    },
+    {
+      "instance_id": "kv-store-grpc",
+      "run": "/opt/evals/tb2/tb40-a",
+      "task_id": "tsk_01M6N0VY2CZ88WF5TFYJHA9TBV",
+      "state": "finished",
+      "cost_usd": 0.199166,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "model_unsolved"
+    },
+    {
+      "instance_id": "largest-eigenval",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": "tsk_01M6N2RBB2T9MZ0PTHXGB33N9T",
+      "state": "error",
+      "cost_usd": 1.939309,
+      "environment_used": null,
+      "budget_exhausted": false,
+      "execution": "executed_error",
+      "outcome": "environment_failure"
+    },
+    {
+      "instance_id": "llm-inference-batching-scheduler",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": "tsk_01M6N2RBV759THEAYG7079Z4PZ",
+      "state": "finished",
+      "cost_usd": 2.779706,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "model_unsolved"
+    },
+    {
+      "instance_id": "mailman",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": "tsk_01M6N2RB7522TP1EJHPX2N1MD6",
+      "state": "error",
+      "cost_usd": 0.595482,
+      "environment_used": null,
+      "budget_exhausted": false,
+      "execution": "executed_error",
+      "outcome": "environment_failure"
+    },
+    {
+      "instance_id": "model-extraction-relu-logits",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": "tsk_01M6N2RBA8AECA83JXT5VAS759",
+      "state": "finished",
+      "cost_usd": 2.115804,
+      "environment_used": true,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "resolved"
+    },
+    {
+      "instance_id": "modernize-scientific-stack",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": "tsk_01M6N4XTH04CMKCKF5J6W66KMH",
+      "state": "finished",
+      "cost_usd": 0.34182,
+      "environment_used": false,
+      "budget_exhausted": false,
+      "execution": "finished",
+      "outcome": "environment_failure"
+    },
+    {
+      "instance_id": "mteb-leaderboard",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": "tsk_01M6N569N7E2H59N3WWBYYHSG8",
+      "state": "error",
+      "cost_usd": 2.057617,
+      "environment_used": null,
+      "budget_exhausted": false,
+      "execution": "executed_error",
+      "outcome": "environment_failure"
+    },
+    {
+      "instance_id": "mteb-retrieve",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": "tsk_01M6N585CYMPAFA1DGCZCB5ZKW",
+      "state": "error",
+      "cost_usd": 0.2189,
+      "environment_used": null,
+      "budget_exhausted": false,
+      "execution": "executed_error",
+      "outcome": "environment_failure"
+    },
+    {
+      "instance_id": "multi-source-data-merger",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": null,
+      "state": "error",
+      "cost_usd": null,
+      "environment_used": null,
+      "budget_exhausted": false,
+      "execution": "not_run",
+      "outcome": "not_run"
+    },
+    {
+      "instance_id": "nginx-request-logging",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": null,
+      "state": "error",
+      "cost_usd": null,
+      "environment_used": null,
+      "budget_exhausted": false,
+      "execution": "not_run",
+      "outcome": "not_run"
+    },
+    {
+      "instance_id": "openssl-selfsigned-cert",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": null,
+      "state": "error",
+      "cost_usd": null,
+      "environment_used": null,
+      "budget_exhausted": false,
+      "execution": "not_run",
+      "outcome": "not_run"
+    },
+    {
+      "instance_id": "polyglot-c-py",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": null,
+      "state": "error",
+      "cost_usd": null,
+      "environment_used": null,
+      "budget_exhausted": false,
+      "execution": "not_run",
+      "outcome": "not_run"
+    },
+    {
+      "instance_id": "polyglot-rust-c",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": null,
+      "state": "error",
+      "cost_usd": null,
+      "environment_used": null,
+      "budget_exhausted": false,
+      "execution": "not_run",
+      "outcome": "not_run"
+    },
+    {
+      "instance_id": "portfolio-optimization",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": null,
+      "state": "error",
+      "cost_usd": null,
+      "environment_used": null,
+      "budget_exhausted": false,
+      "execution": "not_run",
+      "outcome": "not_run"
+    },
+    {
+      "instance_id": "regex-chess",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": null,
+      "state": "error",
+      "cost_usd": null,
+      "environment_used": null,
+      "budget_exhausted": false,
+      "execution": "not_run",
+      "outcome": "not_run"
+    },
+    {
+      "instance_id": "regex-log",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": null,
+      "state": "error",
+      "cost_usd": null,
+      "environment_used": null,
+      "budget_exhausted": false,
+      "execution": "not_run",
+      "outcome": "not_run"
+    },
+    {
+      "instance_id": "rstan-to-pystan",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": null,
+      "state": "error",
+      "cost_usd": null,
+      "environment_used": null,
+      "budget_exhausted": false,
+      "execution": "not_run",
+      "outcome": "not_run"
+    },
+    {
+      "instance_id": "schemelike-metacircular-eval",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": null,
+      "state": "error",
+      "cost_usd": null,
+      "environment_used": null,
+      "budget_exhausted": false,
+      "execution": "not_run",
+      "outcome": "not_run"
+    },
+    {
+      "instance_id": "sparql-university",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": null,
+      "state": "error",
+      "cost_usd": null,
+      "environment_used": null,
+      "budget_exhausted": false,
+      "execution": "not_run",
+      "outcome": "not_run"
+    },
+    {
+      "instance_id": "torch-pipeline-parallelism",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": null,
+      "state": "error",
+      "cost_usd": null,
+      "environment_used": null,
+      "budget_exhausted": false,
+      "execution": "not_run",
+      "outcome": "not_run"
+    },
+    {
+      "instance_id": "tune-mjcf",
+      "run": "/opt/evals/tb2/tb40-b",
+      "task_id": null,
+      "state": "error",
+      "cost_usd": null,
+      "environment_used": null,
+      "budget_exhausted": false,
+      "execution": "not_run",
+      "outcome": "not_run"
+    }
+  ]
+}

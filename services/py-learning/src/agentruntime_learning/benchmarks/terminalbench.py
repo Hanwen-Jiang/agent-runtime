@@ -336,17 +336,28 @@ def _manifest(out_dir: Path, tasks: Sequence[TBTask], settings: sb.Settings, sel
     path = out_dir / "run.json"
     ids = [t.instance_id for t in tasks]
     pinned = {k: v for k, v in settings.pinned().items() if k not in ("hints", "repo_url_template")}
+    # Freeze instructions, verifier, environment and prepared workspace together.
+    # Hashes do not expose hidden tests to the model.
+    from agentruntime_learning.benchmarks.provenance import digest
+    content = {t.instance_id: {"files": {
+        str(p.relative_to(t.path)): hashlib.sha256(p.read_bytes()).hexdigest()
+        for p in sorted(t.path.rglob("*")) if p.is_file() and ".git" not in p.parts
+    }, "prepared": prepared(out_dir, t)} for t in tasks}
+    dataset_digest = digest(content)
     if path.exists():
         before = json.loads(path.read_text("utf-8"))
-        for key, value in {"run_id": settings.run_id, "instance_ids": ids, **pinned}.items():
-            old = before.get(key, (before.get("settings") or {}).get(key))
-            if old != value:
+        old = {"run_id": before.get("run_id"), "instance_ids": before.get("instance_ids"), **(before.get("settings") or {})}
+        current = {"run_id": settings.run_id, "instance_ids": ids, **pinned}
+        for key in old.keys() | current.keys():
+            if old.get(key) != current.get(key):
                 raise sb.ResumeMismatch(f"{out_dir} 里已有一次运行，{key} 不一致：换一个输出目录")
+        if before.get("dataset_sha256") and before["dataset_sha256"] != dataset_digest:
+            raise sb.ResumeMismatch("Terminal-Bench task/prepared/verifier content changed; use a new output directory")
         doc = before
     else:
         doc = {"benchmark": "terminal-bench", "schema_version": 1, "run_id": settings.run_id, "created_at": datetime.now(UTC).isoformat(),
                "instance_ids": ids, "settings": pinned, "selection": dict(selection or {}),
-               "tasks": {t.instance_id: t.raw for t in tasks}}
+               "tasks": {t.instance_id: t.raw for t in tasks}, "dataset_sha256": dataset_digest}
     doc["limits"] = {"budget_usd": settings.budget_usd, "task_usd_limit": settings.task_usd_limit, "concurrency": settings.concurrency}
     sb._write_text(path, json.dumps(doc, ensure_ascii=False, indent=2) + "\n")
 
@@ -488,11 +499,14 @@ def report(out_dir: Path) -> dict[str, Any]:
         rec = records.get(iid) or {}
         g = graded.get(iid) or {}
         meta = tasks.get(iid) or {}
+        outcome = classify(rec, g, official=(run_doc.get("settings") or {}).get("environment", "official") == "official")
         rows.append({
             "instance_id": iid, "difficulty": meta.get("difficulty"), "category": meta.get("category"), "state": rec.get("state") or "not_run",
             "status": rec.get("status"), "cost_usd": rec.get("cost_usd"), "rounds": rec.get("rounds"),
             "grading": "resolved" if g.get("resolved") else "error" if g.get("error") else "unresolved" if g else None, "reward": g.get("reward"),
             "environment_used": rec.get("environment_used"),
+            "outcome": outcome, "task_id": rec.get("task_id"), "error": rec.get("error"),
+            "budget_exhausted": budget_exhausted(rec),
         })
     selected = len(rows)
     ran = sum(1 for r in rows if r["state"] == "finished")
@@ -513,6 +527,13 @@ def report(out_dir: Path) -> dict[str, Any]:
         "selected": selected, "ran": ran, "graded": bool(graded), "resolved": resolved if graded else None,
         "resolve_rate": (resolved / selected) if graded and selected else None, "cost_usd": cost, "cost_per_instance_usd": (cost / ran) if ran else None,
         "by_difficulty": by("difficulty"), "by_category": by("category"),
+        "outcomes": dict(Counter(r["outcome"] for r in rows)),
+        "started": sum(bool(r["task_id"]) for r in rows),
+        "not_run": sum(r["outcome"] == "not_run" for r in rows),
+        "budget_exhausted_ids": [r["instance_id"] for r in rows if r["budget_exhausted"]],
+        "configuration_frozen": bool((run_doc.get("settings") or {}).get("provenance") and run_doc.get("dataset_sha256")),
+        "provenance": (run_doc.get("settings") or {}).get("provenance"),
+        "dataset_sha256": run_doc.get("dataset_sha256"),
         **sb.environment_summary(records, run_doc["instance_ids"], {r["instance_id"] for r in rows if r["grading"] == "resolved"} if graded else None,
                                  official=(run_doc.get("settings") or {}).get("environment", "official") == "official"),
         "instances": rows,
@@ -523,6 +544,8 @@ def report(out_dir: Path) -> dict[str, Any]:
         f"# Terminal-Bench 2.0 · {rep['run_id']}", "",
         f"- 选了 {selected} 个任务，跑完 {ran} 个；" + (f"解决 {resolved} 个（{resolved / selected:.1%}）" if graded and selected else "还没判分"),
         f"- 花费 ${cost:.2f}" + (f"，每个跑完的任务 ${cost / ran:.2f}" if ran else ""),
+        f"- 任务状态分类：{json.dumps(rep['outcomes'], ensure_ascii=False, sort_keys=True)}；已提交 {rep['started']}，未运行 {rep['not_run']}",
+        f"- 配置与数据已固定：{rep['configuration_frozen']}（旧标签不能证明版本一致）",
         *sb.environment_note(rep),
         "- 限制：判分只带回工作目录里的文件，要靠工作目录以外的状态的任务判不出来（分数偏保守）。", "",
         "| 难度 | 选了 | 解决 |", "| --- | --- | --- |",
@@ -530,6 +553,30 @@ def report(out_dir: Path) -> dict[str, Any]:
     ]
     sb._write_text(out_dir / "report.md", "\n".join(lines) + "\n")
     return rep
+
+
+def classify(rec: Mapping[str, Any], grading: Mapping[str, Any], *, official: bool) -> str:
+    """Distinguish non-execution, infrastructure/evidence loss and model failure."""
+    if not rec.get("task_id") and rec.get("state") != "finished":
+        return "not_run"
+    if (rec.get("state") == "finished" and grading.get("resolved") and not grading.get("error") and not rec.get("patch_error")
+            and (not official or rec.get("environment_used") is True)):
+        return "resolved"  # A budget stop does not erase a verified solution; report its flag separately.
+    if budget_exhausted(rec):
+        return "budget_exhausted"
+    if rec.get("state") != "finished" or rec.get("patch_error") or grading.get("error"):
+        return "environment_failure"
+    if official and rec.get("environment_used") is not True:
+        return "environment_failure" if rec.get("environment_used") is False else "environment_unknown"
+    if not grading:
+        return "not_graded"
+    return "resolved" if grading.get("resolved") else "model_unsolved"
+
+
+def budget_exhausted(rec: Mapping[str, Any]) -> bool:
+    return (rec.get("stop_reason") == "task_usd_limit"
+            or any(r.get("question_id") == "_budget" or r.get("code") == "budget_exhausted" for r in rec.get("auto_replies", []))
+            or "tenant_budget_exceeded" in str(rec.get("error", "")))
 
 
 def fetch(out: Path, *, repo: str = DEFAULT_REPO, ref: str = "", git: str = "git", runner: Callable[..., Any] = subprocess.run) -> str:

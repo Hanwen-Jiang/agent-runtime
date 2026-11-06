@@ -1,0 +1,212 @@
+[
+  {
+    "id": "compare-http",
+    "message": "Read and independently investigate each of the three http records in the workspace. Compare each product, its attribute and evidence value in a table, cite its file, then synthesize differences and explicitly state what is not established by these records. Do not modify files or consult outside sources.",
+    "should_delegate": true,
+    "required_patterns": [
+      "Atlas",
+      "Boreal",
+      "Cedar",
+      "1500",
+      "2500",
+      "3500"
+    ],
+    "files": [
+      {
+        "path": "http/atlas.txt",
+        "content": "Fictional frozen benchmark data. Product: Atlas\nAttribute: synchronous\nEvidence identifier/value: 1500\nNo other capabilities or guarantees are specified.\n"
+      },
+      {
+        "path": "http/boreal.txt",
+        "content": "Fictional frozen benchmark data. Product: Boreal\nAttribute: asynchronous\nEvidence identifier/value: 2500\nNo other capabilities or guarantees are specified.\n"
+      },
+      {
+        "path": "http/cedar.txt",
+        "content": "Fictional frozen benchmark data. Product: Cedar\nAttribute: both\nEvidence identifier/value: 3500\nNo other capabilities or guarantees are specified.\n"
+      }
+    ]
+  },
+  {
+    "id": "compare-storage",
+    "message": "Read and independently investigate each of the three storage records in the workspace. Compare each product, its attribute and evidence value in a table, cite its file, then synthesize differences and explicitly state what is not established by these records. Do not modify files or consult outside sources.",
+    "should_delegate": true,
+    "required_patterns": [
+      "Oak",
+      "Pine",
+      "Birch",
+      "7",
+      "14",
+      "30"
+    ],
+    "files": [
+      {
+        "path": "storage/oak.txt",
+        "content": "Fictional frozen benchmark data. Product: Oak\nAttribute: local\nEvidence identifier/value: 7\nNo other capabilities or guarantees are specified.\n"
+      },
+      {
+        "path": "storage/pine.txt",
+        "content": "Fictional frozen benchmark data. Product: Pine\nAttribute: replicated\nEvidence identifier/value: 14\nNo other capabilities or guarantees are specified.\n"
+      },
+      {
+        "path": "storage/birch.txt",
+        "content": "Fictional frozen benchmark data. Product: Birch\nAttribute: encrypted\nEvidence identifier/value: 30\nNo other capabilities or guarantees are specified.\n"
+      }
+    ]
+  },
+  {
+    "id": "compare-incident",
+    "message": "Read and independently investigate each of the three incident records in the workspace. Compare each product, its attribute and evidence value in a table, cite its file, then synthesize differences and explicitly state what is not established by these records. Do not modify files or consult outside sources.",
+    "should_delegate": true,
+    "required_patterns": [
+      "Search",
+      "Queue",
+      "Mail",
+      "CERT-301",
+      "DISK-402",
+      "RATE-503"
+    ],
+    "files": [
+      {
+        "path": "incident/search.txt",
+        "content": "Fictional frozen benchmark data. Product: Search\nAttribute: expired_certificate\nEvidence identifier/value: CERT-301\nNo other capabilities or guarantees are specified.\n"
+      },
+      {
+        "path": "incident/queue.txt",
+        "content": "Fictional frozen benchmark data. Product: Queue\nAttribute: disk_full\nEvidence identifier/value: DISK-402\nNo other capabilities or guarantees are specified.\n"
+      },
+      {
+        "path": "incident/mail.txt",
+        "content": "Fictional frozen benchmark data. Product: Mail\nAttribute: rate_limited\nEvidence identifier/value: RATE-503\nNo other capabilities or guarantees are specified.\n"
+      }
+    ]
+  },
+  {
+    "id": "compare-licence",
+    "message": "Read and independently investigate each of the three licence records in the workspace. Compare each product, its attribute and evidence value in a table, cite its file, then synthesize differences and explicitly state what is not established by these records. Do not modify files or consult outside sources.",
+    "should_delegate": true,
+    "required_patterns": [
+      "Amber",
+      "Blue",
+      "Coral",
+      "commercial_allowed",
+      "notice_required",
+      "patent_grant"
+    ],
+    "files": [
+      {
+        "path": "licence/amber.txt",
+        "content": "Fictional frozen benchmark data. Product: Amber\nAttribute: MIT\nEvidence identifier/value: commercial_allowed\nNo other capabilities or guarantees are specified.\n"
+      },
+      {
+        "path": "licence/blue.txt",
+        "content": "Fictional frozen benchmark data. Product: Blue\nAttribute: BSD-3-Clause\nEvidence identifier/value: notice_required\nNo other capabilities or guarantees are specified.\n"
+      },
+      {
+        "path": "licence/coral.txt",
+        "content": "Fictional frozen benchmark data. Product: Coral\nAttribute: Apache-2.0\nEvidence identifier/value: patent_grant\nNo other capabilities or guarantees are specified.\n"
+      }
+    ]
+  },
+  {
+    "id": "compare-release",
+    "message": "Read and independently investigate each of the three release records in the workspace. Compare each product, its attribute and evidence value in a table, cite its file, then synthesize differences and explicitly state what is not established by these records. Do not modify files or consult outside sources.",
+    "should_delegate": true,
+    "required_patterns": [
+      "Parser",
+      "Indexer",
+      "Exporter",
+      "parser-21",
+      "indexer-43",
+      "exporter-18"
+    ],
+    "files": [
+      {
+        "path": "release/parser.txt",
+        "content": "Fictional frozen benchmark data. Product: Parser\nAttribute: 2.1\nEvidence identifier/value: parser-21\nNo other capabilities or guarantees are specified.\n"
+      },
+      {
+        "path": "release/indexer.txt",
+        "content": "Fictional frozen benchmark data. Product: Indexer\nAttribute: 4.3\nEvidence identifier/value: indexer-43\nNo other capabilities or guarantees are specified.\n"
+      },
+      {
+        "path": "release/exporter.txt",
+        "content": "Fictional frozen benchmark data. Product: Exporter\nAttribute: 1.8\nEvidence identifier/value: exporter-18\nNo other capabilities or guarantees are specified.\n"
+      }
+    ]
+  },
+  {
+    "id": "single-http",
+    "message": "Read fact.txt and state the product name and its evidence identifier/value. One file is sufficient. Do not modify files or consult outside sources.",
+    "should_delegate": false,
+    "required_patterns": [
+      "Atlas",
+      "1500"
+    ],
+    "files": [
+      {
+        "path": "fact.txt",
+        "content": "Fictional frozen benchmark data. Product: Atlas\nAttribute: synchronous\nEvidence identifier/value: 1500\n"
+      }
+    ]
+  },
+  {
+    "id": "single-storage",
+    "message": "Read fact.txt and state the product name and its evidence identifier/value. One file is sufficient. Do not modify files or consult outside sources.",
+    "should_delegate": false,
+    "required_patterns": [
+      "Oak",
+      "7"
+    ],
+    "files": [
+      {
+        "path": "fact.txt",
+        "content": "Fictional frozen benchmark data. Product: Oak\nAttribute: local\nEvidence identifier/value: 7\n"
+      }
+    ]
+  },
+  {
+    "id": "single-incident",
+    "message": "Read fact.txt and state the product name and its evidence identifier/value. One file is sufficient. Do not modify files or consult outside sources.",
+    "should_delegate": false,
+    "required_patterns": [
+      "Search",
+      "CERT-301"
+    ],
+    "files": [
+      {
+        "path": "fact.txt",
+        "content": "Fictional frozen benchmark data. Product: Search\nAttribute: expired_certificate\nEvidence identifier/value: CERT-301\n"
+      }
+    ]
+  },
+  {
+    "id": "single-licence",
+    "message": "Read fact.txt and state the product name and its evidence identifier/value. One file is sufficient. Do not modify files or consult outside sources.",
+    "should_delegate": false,
+    "required_patterns": [
+      "Amber",
+      "commercial_allowed"
+    ],
+    "files": [
+      {
+        "path": "fact.txt",
+        "content": "Fictional frozen benchmark data. Product: Amber\nAttribute: MIT\nEvidence identifier/value: commercial_allowed\n"
+      }
+    ]
+  },
+  {
+    "id": "single-release",
+    "message": "Read fact.txt and state the product name and its evidence identifier/value. One file is sufficient. Do not modify files or consult outside sources.",
+    "should_delegate": false,
+    "required_patterns": [
+      "Parser",
+      "parser-21"
+    ],
+    "files": [
+      {
+        "path": "fact.txt",
+        "content": "Fictional frozen benchmark data. Product: Parser\nAttribute: 2.1\nEvidence identifier/value: parser-21\n"
+      }
+    ]
+  }
+]
