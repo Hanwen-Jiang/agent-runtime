@@ -110,12 +110,13 @@ def build_metric(spec: dict[str, Any], judge: Judge) -> Any:
 
 
 def score_case(case: dict[str, Any], judge: Judge) -> dict[str, Any]:
-    tc = LLMTestCase(
-        input=case["input"], actual_output=case.get("actual_output") or "", expected_output=case.get("expected_output"),
-        retrieval_context=case.get("context") or None, context=case.get("tool_evidence") or None,
-    )
     scores: dict[str, Any] = {}
     for spec in case.get("metrics") or []:
+        tc = LLMTestCase(
+            input=case["input"], actual_output=case.get("actual_output") or "", expected_output=case.get("expected_output"),
+            retrieval_context=case.get("context") or None,
+            context=(case.get("tool_evidence") or None) if "tool_evidence" in spec.get("params", []) else None,
+        )
         try:
             metric = build_metric(spec, judge)
             metric.measure(tc)

@@ -98,6 +98,7 @@ def _parser() -> argparse.ArgumentParser:
     drun.add_argument("--concurrency", type=int, default=2)
     drun.add_argument("--task-timeout-min", type=float, default=30.0)
     drun.add_argument("--model-name", default="agent-runtime", help="被测的系统的标签（看板与报告用）")
+    drun.add_argument("--freeze-config", type=Path, help="实际部署、Registry、Memory、模型与子 Agent 开关的冻结 JSON；不得填文件格式版本或假修订")
     dscore = dsub.add_parser("score", help="用 DeepEval 给交付打分：默认裁判经 Model Gateway（要在装了 eval-requirements.txt 的 Python 里跑）")
     dscore.add_argument("--eval-set", type=Path, default=None)
     dscore.add_argument("--out", type=Path, required=True)
@@ -106,8 +107,11 @@ def _parser() -> argparse.ArgumentParser:
     dscore.add_argument("--subject-models", default="", help="被测一侧用到的 Profile（逗号分隔），用来标出同家冲突")
     dscore.add_argument("--framework-python", default="", help="bridge：装了 DeepEval 的 Python")
     dscore.add_argument("--judge-model", default="", help="bridge：判分的模型（与被测的不是同一家）")
+    dscore.add_argument("--judge-budget-usd", type=float, help="Gateway 裁判总费用上限，含回退与续跑；冻结验收必填")
+    dscore.add_argument("--require-tool-evidence", action="store_true", help="拒绝缺失、截断或未绑定当前 Task 的工具证据")
     drep = dsub.add_parser("report", help="写 report.json 与 report.md")
     drep.add_argument("--out", type=Path, required=True)
+    drep.add_argument("--compare", type=Path, help="旧 report.json 或运行目录；只做描述性前后比较，不修改旧产物")
 
     rg = commands.add_parser("ragas", help="记忆检索（N-13）：检索器取回 top-k，自己算 hit、recall、MRR，再用 Ragas 打分")
     rg.add_argument("--eval-set", type=Path, default=None, help="默认 evalsets/memory-rag")
@@ -249,7 +253,7 @@ def _deepeval(args: argparse.Namespace) -> int:
     root = getattr(args, "eval_set", None) or dv.DEFAULT_SET  # report 子命令不收 --eval-set
     try:
         if args.action == "report":
-            dv.report(args.out)
+            dv.report(args.out, compare=args.compare)
             print((args.out / "report.md").read_text("utf-8"))
             return 0
         if args.action == "score":
@@ -259,25 +263,30 @@ def _deepeval(args: argparse.Namespace) -> int:
                 if args.judge == "gateway":
                     from agentruntime_learning.evals.judging import gateway_from_env
 
-                    summary = dv.score(args.out, root=root, live=live, gateway=gateway_from_env(), judge_profile=args.judge_profile, subject_models=subject)
+                    summary = dv.score(args.out, root=root, live=live, gateway=gateway_from_env(), judge_profile=args.judge_profile, subject_models=subject,
+                                       judge_budget_usd=args.judge_budget_usd, require_tool_evidence=args.require_tool_evidence)
                 else:
                     judge = frameworks.judge_config(args.judge_model)
-                    summary = dv.score(args.out, python=args.framework_python, judge=judge, root=root, live=live)
+                    summary = dv.score(args.out, python=args.framework_python, judge=judge, root=root, live=live,
+                                       judge_budget_usd=args.judge_budget_usd, require_tool_evidence=args.require_tool_evidence)
             print(f"打分完成：全部指标都通过 {summary['passed_all']}/{summary['selected']}；报告用 … deepeval report --out {args.out}")
             return 0
         token = os.environ.get(TOKEN_ENV, "")
         if not token:
-            print(f"要设环境变量 {TOKEN_ENV}（Task API 的令牌）", file=sys.stderr)
+            print(f"要设环境变量 {TOKEN_ENV}（线上用 ops-token.sh 为评测租户签发的 JWT；不是 Memory 内部令牌）", file=sys.stderr)
             return 2
         cases = dv.load_cases(root)
         wanted = [x for x in args.ids.split(",") if x]
         if wanted:
+            if set(wanted) - {c.instance_id for c in cases}:
+                raise ValueError("未知 DeepEval case id")
             cases = [c for c in cases if c.instance_id in wanted]
         run_id = args.run_id or re.sub(r"[^A-Za-z0-9._-]+", "-", args.out.absolute().name).strip("-.") or "run"
         settings = sb.Settings(run_id=run_id, budget_usd=args.budget_usd, task_usd_limit=args.task_usd_limit, model_name=args.model_name,
                                concurrency=args.concurrency, task_timeout_s=args.task_timeout_min * 60, environment="none")
         with _live(run_id, args.model_name, suite=dv.SUITE, split="deliverables") as live:
-            summary = dv.run(RuntimeClient(args.task_api, token), cases, args.out, settings, root=root, live=live)
+            frozen = json.loads(args.freeze_config.read_text("utf-8")) if args.freeze_config else None
+            summary = dv.run(RuntimeClient(args.task_api, token), cases, args.out, settings, root=root, live=live, frozen=frozen)
         print(f"跑完 {summary.finished} 条，出错 {summary.errors} 条，已花 ${summary.spent_usd:.4f}；打分：… deepeval score --out {args.out} …")
         return 1 if summary.errors else 0
     except (ValueError, OSError, RuntimeError) as exc:
