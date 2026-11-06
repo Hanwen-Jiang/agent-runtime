@@ -998,6 +998,22 @@ Qdrant 退场（2026-11-06）：Memory 从第 36 版起用 Milvus，线上 Runti
 - 2026-11-06：`sandbox/fc-manager-token` 已进 `agent-runtime-secrets`，Helm 第 38 版（部署线）把 firecracker 设成 `enabled: true`（默认仍是 gvisor）。核对：
   backends.json 里 firecracker 启用；Sandbox Service 的后端列表有它；对账每轮的 `GET /v1/envs` 在 fc-manager 的日志里都是 200、没有 401（令牌与 cni0 的路通）。
   `real01` 策略第 3 版的发布被这次会话的自动权限检查拦下，没发；完成标准第 4 条的线上验收等它。
+- 2026-11-06，完成标准第 4 条的线上走查（脚本都在 `/root/ar-release/v1-fc/`：`fc-smoke.sh`、`fc-smoke3.sh`～`fc-smoke5.sh`，日志同名 `.log`）：
+  - 租户切换：`real01` 策略第 3 版（用户跑的 U-9，只改 `sandbox.backend` kata → firecracker）；`evals` 原来没有自己的策略、用平台默认第 3 版，按用户的要求
+    建了 `evals` 策略第 1 版（照默认第 3 版复制，只改 `sandbox.backend`，回退种子 `evals-policy-seed-rollback-kata.json`）。部署线在第 41 版之后用 evals 跑的冒烟
+    `tsk_01M6QVECBBCK0AVVJGYDHEJHR3` 也落在 Firecracker 上（shell_run、repo_read、deliver_file 成功，沙箱 2.8 秒就绪，0.055 美元）。
+  - `tsk_01M6QC4PGQW8WHYNYP953ZSKXX`（real01，0.09 美元）：环境从预热池交出；shell_run、repo_edit、repo_read、repo_list、repo_grep、deliver_file 都成功，
+    交付的 `fc-smoke.txt` 在 ListTaskArtifacts 里；客户机里内核 `6.18.57-agentruntime`、PID 1 是 `sandbox-agent --init`、网卡只有 `lo`、命令以 10001 运行。
+    这一次 Planner 把前几步并成一个探索节点，那里没有 request_network（write_irreversible），模型没调就说做了：要联网的验收得带工作区、以读写会话提交。
+  - `tsk_01M6QTCWN1FFZFH84BA4EJDNWN`（real01，工作区 `real01-check-084421`，0.24 美元）：request_network 审批后成功；网关的审计（`sandbox_egress_audit`）：
+    example.com:443 放行（下了 5396 字节，Task 结束收回授权时连接被网关断开，`grant_revoked`）；`169.254.169.254`、`10.43.0.1` 被拒（`ip_literal`）；
+    `www.wikipedia.org` 被拒（`host_not_granted`）。授权记的预览目标是 fc-manager 为这台 VM 开的入口（`10.42.0.1:33691`）。Task 结束后再开预览是 403
+    （`preview_not_granted`，授权已收回），不带令牌是 401：都符合设计。
+  - **还差一项：Task 运行期间打开预览地址。** 两次没成：一次是先申请联网、隔了约 3 分钟才起服务，real01 的策略 `idle_timeout_s: 60` 把授权指向的那台 VM
+    回收了，服务起在了新 VM 上，网关因授权的环境不在而拒绝（`preview_not_granted`，换 Kata 也一样，不是 Firecracker 的问题）；最后一次（先起服务、再申请）
+    在申请之前就被模型网关以 `tenant_budget_exceeded` 拒绝：real01 当天的模型额度用完了。这一项要等额度恢复（或调高 real01 的额度）后用 `fc-smoke5.sh` 再跑一次；
+    跑之前先删掉工作区里上次留下的 `preview_url.txt`，否则脚本会读到旧地址。Firecracker 这一侧的预览隧道 11-05 已在宿主上直接测通（见上）。
+  - 花费合计约 0.6 美元（另有部署线的 0.055 美元）；测试 Task 都已结束或取消，没有留下在跑的 VM 以外的东西（预热池照常 2 台）。
 
 V1-MCP 线上验收（2026-11-05，总表第 0 节完成标准第 1 条；第 33 版上线 N-15，第 34 版带 `97334bdb` 的修复；脚本与种子在 `/root/ar-release/mcp/`）：
 
