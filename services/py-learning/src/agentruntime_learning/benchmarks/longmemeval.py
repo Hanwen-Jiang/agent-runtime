@@ -97,9 +97,12 @@ def load(path: Path) -> list[Instance]:
 def rounds(instance: Instance) -> list[dict[str, Any]]:
     """这一题的历史按轮切成记忆：{"id": "<会话>:<序号>", "kind", "text", "session", "has_answer"}。"""
     out: list[dict[str, Any]] = []
+    # Official data may repeat a session ID with a different date. Retain every
+    # occurrence while assigning unique round IDs in the original session group.
+    next_round: dict[str, int] = defaultdict(int)
     for session in instance.sessions:
         turns = [t for t in session.turns if str(t.get("content") or "").strip()]
-        n, i = 0, 0
+        n, i = next_round[session.id], 0
         while i < len(turns):
             group = [turns[i]]
             if str(turns[i].get("role")) == "user" and i + 1 < len(turns) and str(turns[i + 1].get("role")) == "assistant":
@@ -110,6 +113,7 @@ def rounds(instance: Instance) -> list[dict[str, Any]]:
             out.append({"id": f"{session.id}:{n}", "kind": "fact", "text": text, "session": session.id,
                         "has_answer": any(bool(t.get("has_answer")) for t in group)})
             n += 1
+        next_round[session.id] = n
     return out
 
 
