@@ -13,6 +13,7 @@ path = "src/main.rs"
 
 [dependencies]
 rs-sys.workspace = true
+rs-transfer.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 tar.workspace = true

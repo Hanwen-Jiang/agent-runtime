@@ -540,7 +540,7 @@ func (b *Broker) create(ctx context.Context, tenant *commonv1.TenantContext, own
 		back()
 		return nil, err
 	}
-	snap, err := b.archiver.Restore(ctx, lease.Box, lease.EnvID, owner, a.Spec.WorkspaceID, policy.Workspace.MaxBytes)
+	snap, err := b.archiver.Restore(ctx, lease.Box, lease.EnvID, owner, a.Spec.WorkspaceID, policy.Workspace.MaxBytes, b.transferOptions(lease))
 	if err != nil {
 		_ = b.destroy(ctx, lease, false, "restore of a cold workspace failed")
 		back()
@@ -664,7 +664,7 @@ func (b *Broker) createAny(ctx context.Context, tenant *commonv1.TenantContext, 
 			if !archived {
 				return lease, nil
 			}
-			snap, err := b.archiver.Restore(ctx, lease.Box, lease.EnvID, owner, a.Spec.WorkspaceID, policy.Workspace.MaxBytes)
+			snap, err := b.archiver.Restore(ctx, lease.Box, lease.EnvID, owner, a.Spec.WorkspaceID, policy.Workspace.MaxBytes, b.transferOptions(lease))
 			if err != nil {
 				var pe *providererr.Error
 				_ = b.destroy(ctx, lease, false, "restore failed")
@@ -874,7 +874,7 @@ func (b *Broker) Get(ctx context.Context, tenant *commonv1.TenantContext, id str
 }
 
 // Exec 在借到的环境里执行一条命令；extra 是调用方的变量，与平台注入的同名时报 invalid。
-func (b *Broker) Exec(ctx context.Context, lease *Lease, argv []string, timeout time.Duration, stdin []byte, extra map[string]string) (sandbox.ExecResult, error) {
+func (b *Broker) Exec(ctx context.Context, lease *Lease, argv []string, timeout time.Duration, stdin []byte, extra map[string]string, offloadInline ...int64) (sandbox.ExecResult, error) {
 	env := map[string]string{}
 	for k, v := range extra {
 		upper := strings.ToUpper(k)
@@ -892,7 +892,11 @@ func (b *Broker) Exec(ctx context.Context, lease *Lease, argv []string, timeout 
 		return sandbox.ExecResult{}, providererr.New(providererr.Conflict, "exec_not_stopped",
 			"上一条被取消的命令沙箱没确认停下，可能还在跑：这个环境先不执行别的命令，还掉之后再借")
 	}
-	res, err := lease.Box.Exec(ctx, lease.EnvID, argv, sandbox.ExecOptions{Timeout: timeout, Stdin: stdin, Env: env})
+	var inline int64
+	if len(offloadInline) > 0 {
+		inline = offloadInline[0]
+	}
+	res, err := lease.Box.Exec(ctx, lease.EnvID, argv, sandbox.ExecOptions{Timeout: timeout, Stdin: stdin, Env: env, OffloadInlineBytes: inline})
 	if errors.Is(err, sandbox.ErrExecNotStopped) {
 		b.mu.Lock()
 		b.notStopped[lease.ID()] = true
@@ -1015,7 +1019,7 @@ func (b *Broker) Snapshot(ctx context.Context, lease *Lease) (archive.Snapshot, 
 	if err := b.archiver.Ensure(ctx, lease.Owner, lease.WorkspaceID, policy.Workspace); err != nil {
 		return archive.Snapshot{}, err
 	}
-	return b.archiver.Snapshot(ctx, lease.Box, lease.EnvID, lease.Owner, lease.WorkspaceID, policy.Workspace.MaxBytes, lease.ID())
+	return b.archiver.Snapshot(ctx, lease.Box, lease.EnvID, lease.Owner, lease.WorkspaceID, policy.Workspace.MaxBytes, lease.ID(), b.transferOptions(lease))
 }
 
 // Discard：后端里已经没有这个环境（被回收、节点重启）：记为丢失，尽量删掉残留。

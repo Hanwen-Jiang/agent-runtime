@@ -94,10 +94,12 @@ type Options struct {
 
 // Service 是一个服务实例。
 type Service struct {
-	opts    Options
-	broker  *broker.Broker
-	handler http.Handler
-	log     *slog.Logger
+	transferMu sync.Mutex
+	transfers  map[string]*preparedUpload
+	opts       Options
+	broker     *broker.Broker
+	handler    http.Handler
+	log        *slog.Logger
 
 	mu     sync.Mutex
 	tokens map[string][]byte
@@ -499,7 +501,11 @@ func (h *handler) Exec(ctx context.Context, req *connect.Request[sandboxv1.ExecR
 	if timeout <= 0 {
 		timeout = time.Minute
 	}
-	res, err := h.b().Exec(ctx, lease, m.GetArgv(), timeout, m.GetStdin(), m.GetEnv())
+	inline := m.GetOffloadInlineBytes()
+	if _, ok := lease.Box.(sandbox.Transfers); !ok || h.s.opts.Objects == nil || lease.Record == nil || !safeSegment(lease.Record.TaskID) {
+		inline = 0
+	}
+	res, err := h.b().Exec(ctx, lease, m.GetArgv(), timeout, m.GetStdin(), m.GetEnv(), inline)
 	if err != nil {
 		return nil, fail(err)
 	}
@@ -508,6 +514,39 @@ func (h *handler) Exec(ctx context.Context, req *connect.Request[sandboxv1.ExecR
 		limit = 4 << 20
 	}
 	out := &sandboxv1.ExecResponse{TimedOut: res.TimedOut, CpuTimeMs: -1}
+	if lease.Record != nil && safeSegment(lease.Record.TaskID) {
+		for _, stream := range []struct {
+			name     string
+			prepared *sandbox.PreparedTransfer
+			data     *[]byte
+			ref      **sandboxv1.ObjectReference
+		}{
+			{"stdout", res.StdoutTransfer, &res.Stdout, &out.StdoutObject},
+			{"stderr", res.StderrTransfer, &res.Stderr, &out.StderrObject},
+		} {
+			if stream.prepared == nil {
+				continue
+			}
+			id, e := newTransferID()
+			if e == nil {
+				*stream.ref, e = h.upload(ctx, lease, *stream.prepared, "context/"+lease.Record.TaskID+"/external/"+id+"/"+stream.name+".txt")
+			}
+			if e != nil {
+				h.s.log.Warn("direct output upload failed; restoring inline output", "stream", stream.name)
+				transfer, ok := lease.Box.(sandbox.Transfers)
+				if !ok {
+					return nil, fail(e)
+				}
+				data, readErr := transfer.ReadTransfer(ctx, lease.EnvID, stream.prepared.TransferID)
+				if readErr != nil {
+					return nil, fail(readErr)
+				}
+				*stream.data = data
+				_ = transfer.ReleaseTransfer(ctx, lease.EnvID, stream.prepared.TransferID)
+			}
+		}
+	}
+
 	out.Stdout, out.StdoutTruncated = tail(res.Stdout, limit)
 	out.Stderr, out.StderrTruncated = tail(res.Stderr, limit)
 	if res.Truncated {

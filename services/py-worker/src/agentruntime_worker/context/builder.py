@@ -268,6 +268,9 @@ class ContextBuilder:
                 applied.add("offload")
             for i in range(state.covered, recent_start if current else len(state.steps)):
                 observation = state.steps[i].get("observation")
+                if isinstance(observation, Mapping) and (observation.get("stdout_object") or observation.get("stderr_object")):
+                    applied.add("offload")
+                    continue  # Agent already externalized bytes; preserve the direct references and excerpts.
                 if observation is not None and estimate(_json(observation)) > cfg.offload_tokens:
                     state.views[i] = ("offload", await self._externalize(store, prefix, i, state.steps[i]))
                     applied.add("offload")

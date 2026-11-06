@@ -24,6 +24,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/localsandbox"
 	"github.com/agentruntime/agent-runtime/libs/go-core/dev/sqlitestore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/sandbox"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/telemetry"
@@ -55,19 +56,20 @@ const (
 )
 
 type harness struct {
-	t          *testing.T
-	dir        string
-	workspaces string
-	state      string
-	clock      *testkit.FakeClock
-	store      relational.Provider
-	objects    *diskobjects.Provider
-	secrets    *filesecrets.Provider
-	backends   string
-	policies   map[string]map[string]any
-	faults     map[string]*testkit.Faults
-	mirror     string
-	egress     string
+	directObjects objectstore.Provider
+	t             *testing.T
+	dir           string
+	workspaces    string
+	state         string
+	clock         *testkit.FakeClock
+	store         relational.Provider
+	objects       *diskobjects.Provider
+	secrets       *filesecrets.Provider
+	backends      string
+	policies      map[string]map[string]any
+	faults        map[string]*testkit.Faults
+	mirror        string
+	egress        string
 	// wrap 按后端名包一层 Provider（测试注入后端的行为）。
 	wrap map[string]func(sandbox.Provider) sandbox.Provider
 	tel  telemetry.Provider
@@ -198,8 +200,12 @@ func (h *harness) start() {
 	if h.envs != nil {
 		h.env = h.envs(h)
 	}
+	objects := objectstore.Provider(h.objects)
+	if h.directObjects != nil {
+		objects = h.directObjects
+	}
 	svc, err := server.New(context.Background(), server.Options{
-		Registry: reg, Relational: h.store, Objects: h.objects, Secrets: h.secrets, Clock: h.clock, Environments: h.env,
+		Registry: reg, Relational: h.store, Objects: objects, Secrets: h.secrets, Clock: h.clock, Environments: h.env,
 		Policy: func(_ context.Context, tenantID string) (map[string]any, error) {
 			if p, ok := h.policies[tenantID]; ok {
 				return p, nil

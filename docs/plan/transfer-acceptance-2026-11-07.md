@@ -19,4 +19,8 @@
 AR_LIVE_S3=1 go test ./adapters/s3objects -run '^TestLiveSignedUploadSecurity$' -count=1 -v
 ```
 
-这项验收确认当前真实 R2 的签名约束，不代表 agent 直传、精确主机授权与操作结束收回已经接通；这些由 WK-LITE/WS-PULL 另验。
+补验真实 Rust agent 的两阶段 PUT 与分批 GET 恢复：11 个子用例全过，6.27 秒，其中真实 agent 流程 1.25 秒。Prepare 后修改源文件仍上传原字节；重复 Commit 成功且不重复覆盖；下载后恢复文件的原始字节一致。测试对象均已清理，未调用生命周期 API。
+
+代码验收：Rust 共 50 个单元用例通过；真实 agent HTTP 字节黑盒 4 项通过；Go Service 直传、独立 stdout/stderr 与故障回退、去重快照/恢复 3 项通过；Python 预占/交付 19 项和 Sandbox Service/平台工具 39 项通过。节点缓存覆盖同 hash 单次并发拉取、损坏后重拉、LRU 上限、重启复用以及 VM/method/expiry 拒绝。
+
+当前交付直传保留 25 MiB 文件配额，输出直传单流最大 64 MiB。工作区大文件分块正在后续提交补齐。部署时需在 agent 运行镜像与 fc-manager 宿主提供 /usr/bin/curl 和 CA 根证书，Firecracker guest 3130→vsock1082 接线由 D26 集成提交提供。

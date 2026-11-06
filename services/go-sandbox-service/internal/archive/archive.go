@@ -366,7 +366,7 @@ func (a *Archiver) Blob(ctx context.Context, owner, workspaceID string, entry sa
 }
 
 // Snapshot 把环境里的工作区存一份快照，返回它。
-func (a *Archiver) Snapshot(ctx context.Context, box sandbox.Sandbox, envID, owner, workspaceID string, maxBytes int64, envRef string) (Snapshot, error) {
+func (a *Archiver) Snapshot(ctx context.Context, box sandbox.Sandbox, envID, owner, workspaceID string, maxBytes int64, envRef string, transferOpts ...TransferOptions) (Snapshot, error) {
 	arch, ok := box.(sandbox.Archive)
 	if !ok {
 		return Snapshot{}, providererr.New(providererr.Invalid, "unsupported_archive", "这个沙箱后端不能导出、导入工作区")
@@ -387,21 +387,35 @@ func (a *Archiver) Snapshot(ctx context.Context, box sandbox.Sandbox, envID, own
 			}
 		}
 	}
-	tmp, err := os.CreateTemp(a.TmpDir, "ar-snapshot-*.tar")
-	if err != nil {
-		return Snapshot{}, providererr.Wrap(providererr.Transient, "tmp_unavailable", "建不了临时文件", err)
+	var entries []sandbox.FileEntry
+	var total, newBlobs int64
+	_, direct := box.(sandbox.Transfers)
+	directDone := false
+	if direct && len(transferOpts) > 0 && transferOpts[0].Enabled {
+		entries, total, newBlobs, err = a.storeDirect(ctx, box, envID, bucket, workspaceID, maxBytes, known, foreign, transferOpts[0])
+		if err == nil {
+			directDone = true
+		} else if e, ok := err.(*providererr.Error); !ok || e.Code != "transfer_unsupported" {
+			return Snapshot{}, err
+		}
 	}
-	defer os.Remove(tmp.Name())
-	defer tmp.Close()
-	if _, err := arch.ExportArchive(ctx, envID, tmp, maxBytes); err != nil {
-		return Snapshot{}, err
-	}
-	if _, err := tmp.Seek(0, io.SeekStart); err != nil {
-		return Snapshot{}, providererr.Wrap(providererr.Transient, "tmp_unavailable", "临时文件读不了", err)
-	}
-	entries, total, newBlobs, err := a.storeBlobs(ctx, bucket, workspaceID, tmp, maxBytes, known, foreign)
-	if err != nil {
-		return Snapshot{}, err
+	if !directDone {
+		tmp, err := os.CreateTemp(a.TmpDir, "ar-snapshot-*.tar")
+		if err != nil {
+			return Snapshot{}, providererr.Wrap(providererr.Transient, "tmp_unavailable", "建不了临时文件", err)
+		}
+		defer os.Remove(tmp.Name())
+		defer tmp.Close()
+		if _, err := arch.ExportArchive(ctx, envID, tmp, maxBytes); err != nil {
+			return Snapshot{}, err
+		}
+		if _, err := tmp.Seek(0, io.SeekStart); err != nil {
+			return Snapshot{}, providererr.Wrap(providererr.Transient, "tmp_unavailable", "临时文件读不了", err)
+		}
+		entries, total, newBlobs, err = a.storeBlobs(ctx, bucket, workspaceID, tmp, maxBytes, known, foreign)
+		if err != nil {
+			return Snapshot{}, err
+		}
 	}
 	used := map[string]string{}
 	var files int64
@@ -517,7 +531,7 @@ func (a *Archiver) storeBlobs(ctx context.Context, bucket objectstore.Store, wor
 }
 
 // Restore 把最近的快照恢复进一个空的环境；没有快照时什么也不做，返回 nil。
-func (a *Archiver) Restore(ctx context.Context, box sandbox.Sandbox, envID, owner, workspaceID string, maxBytes int64) (*Snapshot, error) {
+func (a *Archiver) Restore(ctx context.Context, box sandbox.Sandbox, envID, owner, workspaceID string, maxBytes int64, transferOpts ...TransferOptions) (*Snapshot, error) {
 	arch, ok := box.(sandbox.Archive)
 	if !ok {
 		return nil, providererr.New(providererr.Invalid, "unsupported_archive", "这个沙箱后端不能导出、导入工作区")
@@ -529,6 +543,19 @@ func (a *Archiver) Restore(ctx context.Context, box sandbox.Sandbox, envID, owne
 	entries, foreign, err := a.Manifest(ctx, owner, *snap)
 	if err != nil {
 		return nil, err
+	}
+	if direct, ok := box.(sandbox.BlockTransfers); ok && len(transferOpts) > 0 && transferOpts[0].Enabled && directSizes(entries) {
+		if err := a.restoreDirect(ctx, direct, envID, owner, workspaceID, entries, foreign, max(maxBytes, snap.SizeBytes, 1), transferOpts[0]); err != nil {
+			return nil, err
+		}
+		got, err := arch.Manifest(ctx, envID)
+		if err != nil {
+			return nil, err
+		}
+		if !SameShape(got, entries) {
+			return nil, providererr.New(providererr.Transient, "workspace_restore_mismatch", "restored manifest mismatch")
+		}
+		return snap, nil
 	}
 	sorted := append([]sandbox.FileEntry(nil), entries...)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Path < sorted[j].Path })

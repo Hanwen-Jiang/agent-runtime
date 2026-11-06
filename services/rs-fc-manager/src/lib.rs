@@ -20,6 +20,9 @@
 //!
 //! 只在 Linux 上运行。可移植的部分（HTTP 解析、配置、规格校验、SecretStore 文件）在别的平台上也编译，单元测试照跑。
 
+#[cfg(target_os = "linux")]
+pub mod blob;
+pub mod blob_cache;
 pub mod config;
 pub mod http;
 pub mod log;

@@ -5,7 +5,7 @@
 # 依赖只收发布满两周的版本，Cargo.lock 提交；cargo deny check（deny.toml）查许可证、安全公告与重复版本。
 [workspace]
 resolver = "3"
-members = ["libs/rs-sys", "services/rs-sandbox-agent", "services/rs-fc-manager"]
+members = ["libs/rs-sys", "libs/rs-transfer", "services/rs-sandbox-agent", "services/rs-fc-manager"]
 
 [workspace.package]
 edition = "2024"
@@ -16,6 +16,7 @@ publish = false
 # 版本写死：升级时有意识地改这里（发布满两周），再 cargo update -p <crate> --precise <版本>。
 [workspace.dependencies]
 rs-sys = { path = "libs/rs-sys" }
+rs-transfer = { path = "libs/rs-transfer" }
 libc = "=0.2.191"
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.154"

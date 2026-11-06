@@ -231,6 +231,20 @@ class WorkspaceFiles:
             raise InvalidError("delivery_file_too_large", f"文件超过上限 {max_bytes} 字节")
         return data
 
+    async def upload_invocation(self, invocation: ToolInvocation, path: str, name: str, reserve: Any) -> dict[str, str | int] | None:
+        if not await self.w._archived(invocation):
+            return None
+        rel = self.w._env_path(path)
+
+        async def upload(box: Any, env_id: str) -> dict[str, str | int]:
+            if not hasattr(box, "prepare_transfer"):
+                raise InvalidError("transfer_unsupported", "direct transfer unavailable")
+            prepared = await box.prepare_transfer(env_id, invocation.task_id, rel, name)
+            await reserve(int(prepared.size_bytes))
+            return await box.commit_transfer(env_id, prepared.transfer_id)
+
+        return await self.w._in_env(invocation, writable=False, run=upload)
+
     async def read(self, tenant_id: str, workspace_id: str, path: str, *, max_bytes: int) -> bytes:
         raise InvalidError("unsupported_workspace", "WorkspaceFiles 要按调用读（read_invocation）")
 
@@ -750,7 +764,7 @@ class _Workspaces:
                 try:
                     point = await create_checkpoint(in_env)
                     command_started = True
-                    result = await lease.box.exec(lease.env_id, argv, timeout=timedelta(seconds=timeout), env=lease.env or None)
+                    result = await getattr(lease.box, "exec_with_output_refs", lease.box.exec)(lease.env_id, argv, timeout=timedelta(seconds=timeout), env=lease.env or None)
                     timing.exec_bytes(None, result)
                 except NotFoundError:
                     if not lease.reused:
@@ -762,7 +776,7 @@ class _Workspaces:
                     )
                     ran = time.monotonic()
                     startup_ms = None if lease.reused else int((ran - retry_at) * 1000)
-                    result = await lease.box.exec(lease.env_id, argv, timeout=timedelta(seconds=timeout), env=lease.env or None)
+                    result = await getattr(lease.box, "exec_with_output_refs", lease.box.exec)(lease.env_id, argv, timeout=timedelta(seconds=timeout), env=lease.env or None)
                     timing.exec_bytes(None, result)
             except InvalidError as err:
                 if err.code == "command_not_found":
@@ -799,6 +813,12 @@ class _Workspaces:
             with contextlib.suppress(ProviderError):
                 await timing.record_bytes(self.telemetry.bind(TenantContext(tenant_id=invocation.tenant_id)), io_meter, activity="shell_run")
         out = {"exit_code": result.exit_code, "timed_out": result.timed_out, "sandbox": lease.backend.name, **self._outputs(result.stdout, result.stderr)}
+        out["truncated"] = out["truncated"] or bool(getattr(result, "stdout_truncated", False)) or bool(getattr(result, "stderr_truncated", False))
+        for stream in ("stdout", "stderr"):
+            ref = getattr(result, f"{stream}_object", None)
+            if ref:
+                out[f"{stream}_object"] = ref
+
         if startup_ms is not None:
             out["sandbox_startup_ms"] = startup_ms
         if lease.record is not None and lease.record.state == "destroyed" and lease.record.cost_usd > 0:

@@ -162,6 +162,21 @@ fn route(mgr: &Manager, tokens: &TokenSource, mut conn: Conn<TcpStream>, head: &
         }
     };
 
+    if path == "/v1/blob-cache" {
+        if owner != "_platform" {
+            return reply(
+                conn,
+                &ApiError::new(403, "platform_only", "cache metrics require platform scope"),
+            );
+        }
+        if method != "GET" {
+            return reply(
+                conn,
+                &ApiError::new(405, "method_not_allowed", "GET required"),
+            );
+        }
+        return respond(conn, 200, &crate::blob::stats());
+    }
     if path == "/v1/envs" {
         return match method {
             "GET" if owner == "_platform" => {
@@ -199,6 +214,35 @@ fn route(mgr: &Manager, tokens: &TokenSource, mut conn: Conn<TcpStream>, head: &
                 204
             }
             Err(e) => reply(conn, &e),
+        };
+    }
+    if tail == "blob-grants" {
+        if method != "POST" {
+            return reply(
+                conn,
+                &ApiError::new(405, "method_not_allowed", "POST required"),
+            );
+        }
+        let _scope = match mgr.agent_route(&owner, env_id) {
+            Ok(s) => s,
+            Err(e) => return reply(conn, &e),
+        };
+        let value = match conn
+            .read_body(body, API_BODY_LIMIT)
+            .ok()
+            .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
+        {
+            Some(v) => v,
+            None => {
+                return reply(
+                    conn,
+                    &ApiError::new(400, "invalid_grants", "invalid block plan"),
+                );
+            }
+        };
+        return match crate::blob::register(env_id, &value) {
+            Ok(v) => respond(conn, 200, &v),
+            Err(m) => reply(conn, &ApiError::new(400, "invalid_grants", m)),
         };
     }
     if tail == "preview" {
