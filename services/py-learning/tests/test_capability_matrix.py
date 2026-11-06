@@ -219,6 +219,23 @@ async def test_score_cannot_trim_frozen_candidates(tmp_path: Path) -> None:
         mx.verify_run_lock(tmp_path, original, rows)
 
 
+def test_frozen_run_requires_matching_actual_registry_exports(tmp_path: Path) -> None:
+    from test_deepeval_acceptance import frozen
+
+    snapshot = frozen()
+    snapshot["subject_models"] = [cs.SONNET]
+    snapshot["registry_revisions"] = [{
+        "scope": "platform", "kind": "model_profile", "name": cs.SONNET,
+        "version": "v2", "document_sha256": "e" * 64,
+    }]
+    p = plan(n=1, r=1, candidates=[cs.SONNET])
+    for exported in ({}, {cs.SONNET: {"scope": "platform", "version": "v1", "sha256": "e" * 64}},
+                     {cs.SONNET: {"scope": "platform", "version": "v2", "sha256": "a" * 64}}):
+        with pytest.raises(mx.PlanError, match="Registry"):
+            mx.MatrixRunner(p, cs.ServingGateway(), tmp_path, frozen=snapshot, registry_revisions=exported)
+    assert not (tmp_path / mx.RESULTS).exists(), "无来源或失配时不能开始调用"
+
+
 async def test_judged_evals_log_every_judgment_pinned_to_opus(tmp_path: Path) -> None:
     gateway = cs.ServingGateway()
     await mx.MatrixRunner(plan(n=3, r=1, candidates=[cs.SONNET], options={"uses_judge": True}), gateway, tmp_path).run()

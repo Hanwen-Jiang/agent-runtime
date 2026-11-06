@@ -215,10 +215,20 @@ def test_the_capability_cli_end_to_end(tmp_path: Path, monkeypatch: pytest.Monke
     from test_deepeval_acceptance import frozen
 
     freeze_path = tmp_path / "freeze.json"
-    freeze_path.write_text(json.dumps(frozen()), "utf-8")
+    observed = frozen()
+    observed["subject_models"] = list(skill)
+    observed["registry_revisions"] = [
+        {"scope": "platform", "kind": "model_profile", "name": pid, "version": "v2", "document_sha256": "e" * 64}
+        for pid in skill
+    ]
+    freeze_path.write_text(json.dumps(observed), "utf-8")
+    exported = json.loads((cs.REPO / "deploy/dev/model-profiles.json").read_text("utf-8"))
+    exported["registry_revisions"] = {p["id"]: {"scope": "platform", "version": "v2", "sha256": "e" * 64} for p in exported["profiles"]}
+    profile_path = tmp_path / "registry-profiles.json"
+    profile_path.write_text(json.dumps(exported), "utf-8")
     assert capability_main(["estimate", "--plan", str(plan)]) == 0
     assert "合计还要约" in capsys.readouterr().out
-    assert capability_main(["run", "--plan", str(plan), "--out", str(out), "--freeze-config", str(freeze_path)]) == 0
+    assert capability_main(["run", "--plan", str(plan), "--out", str(out), "--freeze-config", str(freeze_path), "--profiles", str(profile_path)]) == 0
     printed = capsys.readouterr().out
     assert printed.index("花费估算") < printed.index("这次跑了 200 次")
     assert capability_main(["score", "--out", str(out)]) == 0

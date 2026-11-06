@@ -81,7 +81,8 @@ def _run(args: argparse.Namespace) -> int:
 
         async def go(telemetry: Any) -> dict[str, Any]:
             frozen = json.loads(args.freeze_config.read_text("utf-8")) if args.freeze_config else None
-            runner = matrix.MatrixRunner(plan, gateway, args.out, profiles=profiles, evals=evals, telemetry=telemetry, budget_usd=args.budget_usd, concurrency=args.concurrency, frozen=frozen, owner=owner)
+            registry_revisions = json.loads(args.profiles.read_text("utf-8")).get("registry_revisions", {})
+            runner = matrix.MatrixRunner(plan, gateway, args.out, profiles=profiles, evals=evals, telemetry=telemetry, budget_usd=args.budget_usd, concurrency=args.concurrency, frozen=frozen, registry_revisions=registry_revisions, owner=owner)
             try:
                 print(runner.estimate().summary(), flush=True)
                 report = await runner.run()
