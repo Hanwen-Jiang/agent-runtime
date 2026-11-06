@@ -7,8 +7,10 @@
 package workspacev1
 
 import (
+	v1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
@@ -286,6 +288,58 @@ func (x FileType) Number() protoreflect.EnumNumber {
 // Deprecated: Use FileType.Descriptor instead.
 func (FileType) EnumDescriptor() ([]byte, []int) {
 	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{4}
+}
+
+type WorkspaceOperationStatus int32
+
+const (
+	WorkspaceOperationStatus_WORKSPACE_OPERATION_STATUS_UNSPECIFIED WorkspaceOperationStatus = 0
+	WorkspaceOperationStatus_WORKSPACE_OPERATION_STATUS_RUNNING     WorkspaceOperationStatus = 1
+	WorkspaceOperationStatus_WORKSPACE_OPERATION_STATUS_COMPLETED   WorkspaceOperationStatus = 2
+	WorkspaceOperationStatus_WORKSPACE_OPERATION_STATUS_FAILED      WorkspaceOperationStatus = 3
+)
+
+// Enum value maps for WorkspaceOperationStatus.
+var (
+	WorkspaceOperationStatus_name = map[int32]string{
+		0: "WORKSPACE_OPERATION_STATUS_UNSPECIFIED",
+		1: "WORKSPACE_OPERATION_STATUS_RUNNING",
+		2: "WORKSPACE_OPERATION_STATUS_COMPLETED",
+		3: "WORKSPACE_OPERATION_STATUS_FAILED",
+	}
+	WorkspaceOperationStatus_value = map[string]int32{
+		"WORKSPACE_OPERATION_STATUS_UNSPECIFIED": 0,
+		"WORKSPACE_OPERATION_STATUS_RUNNING":     1,
+		"WORKSPACE_OPERATION_STATUS_COMPLETED":   2,
+		"WORKSPACE_OPERATION_STATUS_FAILED":      3,
+	}
+)
+
+func (x WorkspaceOperationStatus) Enum() *WorkspaceOperationStatus {
+	p := new(WorkspaceOperationStatus)
+	*p = x
+	return p
+}
+
+func (x WorkspaceOperationStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (WorkspaceOperationStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_agentruntime_workspace_v1_workspace_proto_enumTypes[5].Descriptor()
+}
+
+func (WorkspaceOperationStatus) Type() protoreflect.EnumType {
+	return &file_agentruntime_workspace_v1_workspace_proto_enumTypes[5]
+}
+
+func (x WorkspaceOperationStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use WorkspaceOperationStatus.Descriptor instead.
+func (WorkspaceOperationStatus) EnumDescriptor() ([]byte, []int) {
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{5}
 }
 
 // WorkspaceRepo 是多仓库工作区里的一个仓库。
@@ -3219,11 +3273,388 @@ func (x *ListReposResponse) GetRepos() []*WorkspaceRepo {
 	return nil
 }
 
+// request_id is stable across retries and unique per caller within a tenant.
+// Reusing it with different input returns Conflict. Credentials are sealed.
+type StartWorkspaceOperationRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	RequestId string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	// Types that are valid to be assigned to Operation:
+	//
+	//	*StartWorkspaceOperationRequest_Create
+	//	*StartWorkspaceOperationRequest_Commit
+	//	*StartWorkspaceOperationRequest_Push
+	//	*StartWorkspaceOperationRequest_Archive
+	//	*StartWorkspaceOperationRequest_Delete
+	//	*StartWorkspaceOperationRequest_Sync
+	//	*StartWorkspaceOperationRequest_Discard
+	//	*StartWorkspaceOperationRequest_AttachRepo
+	//	*StartWorkspaceOperationRequest_DetachRepo
+	Operation     isStartWorkspaceOperationRequest_Operation `protobuf_oneof:"operation"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartWorkspaceOperationRequest) Reset() {
+	*x = StartWorkspaceOperationRequest{}
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartWorkspaceOperationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartWorkspaceOperationRequest) ProtoMessage() {}
+
+func (x *StartWorkspaceOperationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartWorkspaceOperationRequest.ProtoReflect.Descriptor instead.
+func (*StartWorkspaceOperationRequest) Descriptor() ([]byte, []int) {
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *StartWorkspaceOperationRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *StartWorkspaceOperationRequest) GetOperation() isStartWorkspaceOperationRequest_Operation {
+	if x != nil {
+		return x.Operation
+	}
+	return nil
+}
+
+func (x *StartWorkspaceOperationRequest) GetCreate() *CreateWorkspaceRequest {
+	if x != nil {
+		if x, ok := x.Operation.(*StartWorkspaceOperationRequest_Create); ok {
+			return x.Create
+		}
+	}
+	return nil
+}
+
+func (x *StartWorkspaceOperationRequest) GetCommit() *CommitWorkspaceRequest {
+	if x != nil {
+		if x, ok := x.Operation.(*StartWorkspaceOperationRequest_Commit); ok {
+			return x.Commit
+		}
+	}
+	return nil
+}
+
+func (x *StartWorkspaceOperationRequest) GetPush() *PushWorkspaceRequest {
+	if x != nil {
+		if x, ok := x.Operation.(*StartWorkspaceOperationRequest_Push); ok {
+			return x.Push
+		}
+	}
+	return nil
+}
+
+func (x *StartWorkspaceOperationRequest) GetArchive() *ArchiveWorkspaceRequest {
+	if x != nil {
+		if x, ok := x.Operation.(*StartWorkspaceOperationRequest_Archive); ok {
+			return x.Archive
+		}
+	}
+	return nil
+}
+
+func (x *StartWorkspaceOperationRequest) GetDelete() *DeleteWorkspaceRequest {
+	if x != nil {
+		if x, ok := x.Operation.(*StartWorkspaceOperationRequest_Delete); ok {
+			return x.Delete
+		}
+	}
+	return nil
+}
+
+func (x *StartWorkspaceOperationRequest) GetSync() *SyncWorkspaceRequest {
+	if x != nil {
+		if x, ok := x.Operation.(*StartWorkspaceOperationRequest_Sync); ok {
+			return x.Sync
+		}
+	}
+	return nil
+}
+
+func (x *StartWorkspaceOperationRequest) GetDiscard() *DiscardChangesRequest {
+	if x != nil {
+		if x, ok := x.Operation.(*StartWorkspaceOperationRequest_Discard); ok {
+			return x.Discard
+		}
+	}
+	return nil
+}
+
+func (x *StartWorkspaceOperationRequest) GetAttachRepo() *AttachRepoRequest {
+	if x != nil {
+		if x, ok := x.Operation.(*StartWorkspaceOperationRequest_AttachRepo); ok {
+			return x.AttachRepo
+		}
+	}
+	return nil
+}
+
+func (x *StartWorkspaceOperationRequest) GetDetachRepo() *DetachRepoRequest {
+	if x != nil {
+		if x, ok := x.Operation.(*StartWorkspaceOperationRequest_DetachRepo); ok {
+			return x.DetachRepo
+		}
+	}
+	return nil
+}
+
+type isStartWorkspaceOperationRequest_Operation interface {
+	isStartWorkspaceOperationRequest_Operation()
+}
+
+type StartWorkspaceOperationRequest_Create struct {
+	Create *CreateWorkspaceRequest `protobuf:"bytes,2,opt,name=create,proto3,oneof"`
+}
+
+type StartWorkspaceOperationRequest_Commit struct {
+	Commit *CommitWorkspaceRequest `protobuf:"bytes,3,opt,name=commit,proto3,oneof"`
+}
+
+type StartWorkspaceOperationRequest_Push struct {
+	Push *PushWorkspaceRequest `protobuf:"bytes,4,opt,name=push,proto3,oneof"`
+}
+
+type StartWorkspaceOperationRequest_Archive struct {
+	Archive *ArchiveWorkspaceRequest `protobuf:"bytes,5,opt,name=archive,proto3,oneof"`
+}
+
+type StartWorkspaceOperationRequest_Delete struct {
+	Delete *DeleteWorkspaceRequest `protobuf:"bytes,6,opt,name=delete,proto3,oneof"`
+}
+
+type StartWorkspaceOperationRequest_Sync struct {
+	Sync *SyncWorkspaceRequest `protobuf:"bytes,7,opt,name=sync,proto3,oneof"`
+}
+
+type StartWorkspaceOperationRequest_Discard struct {
+	Discard *DiscardChangesRequest `protobuf:"bytes,8,opt,name=discard,proto3,oneof"`
+}
+
+type StartWorkspaceOperationRequest_AttachRepo struct {
+	AttachRepo *AttachRepoRequest `protobuf:"bytes,9,opt,name=attach_repo,json=attachRepo,proto3,oneof"`
+}
+
+type StartWorkspaceOperationRequest_DetachRepo struct {
+	DetachRepo *DetachRepoRequest `protobuf:"bytes,10,opt,name=detach_repo,json=detachRepo,proto3,oneof"`
+}
+
+func (*StartWorkspaceOperationRequest_Create) isStartWorkspaceOperationRequest_Operation() {}
+
+func (*StartWorkspaceOperationRequest_Commit) isStartWorkspaceOperationRequest_Operation() {}
+
+func (*StartWorkspaceOperationRequest_Push) isStartWorkspaceOperationRequest_Operation() {}
+
+func (*StartWorkspaceOperationRequest_Archive) isStartWorkspaceOperationRequest_Operation() {}
+
+func (*StartWorkspaceOperationRequest_Delete) isStartWorkspaceOperationRequest_Operation() {}
+
+func (*StartWorkspaceOperationRequest_Sync) isStartWorkspaceOperationRequest_Operation() {}
+
+func (*StartWorkspaceOperationRequest_Discard) isStartWorkspaceOperationRequest_Operation() {}
+
+func (*StartWorkspaceOperationRequest_AttachRepo) isStartWorkspaceOperationRequest_Operation() {}
+
+func (*StartWorkspaceOperationRequest_DetachRepo) isStartWorkspaceOperationRequest_Operation() {}
+
+type StartWorkspaceOperationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OperationId   string                 `protobuf:"bytes,1,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartWorkspaceOperationResponse) Reset() {
+	*x = StartWorkspaceOperationResponse{}
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartWorkspaceOperationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartWorkspaceOperationResponse) ProtoMessage() {}
+
+func (x *StartWorkspaceOperationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartWorkspaceOperationResponse.ProtoReflect.Descriptor instead.
+func (*StartWorkspaceOperationResponse) Descriptor() ([]byte, []int) {
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *StartWorkspaceOperationResponse) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+type GetWorkspaceOperationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	WorkspaceId   string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	OperationId   string                 `protobuf:"bytes,3,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWorkspaceOperationRequest) Reset() {
+	*x = GetWorkspaceOperationRequest{}
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWorkspaceOperationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWorkspaceOperationRequest) ProtoMessage() {}
+
+func (x *GetWorkspaceOperationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWorkspaceOperationRequest.ProtoReflect.Descriptor instead.
+func (*GetWorkspaceOperationRequest) Descriptor() ([]byte, []int) {
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *GetWorkspaceOperationRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *GetWorkspaceOperationRequest) GetWorkspaceId() string {
+	if x != nil {
+		return x.WorkspaceId
+	}
+	return ""
+}
+
+func (x *GetWorkspaceOperationRequest) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+type GetWorkspaceOperationResponse struct {
+	state       protoimpl.MessageState   `protogen:"open.v1"`
+	OperationId string                   `protobuf:"bytes,1,opt,name=operation_id,json=operationId,proto3" json:"operation_id,omitempty"`
+	Status      WorkspaceOperationStatus `protobuf:"varint,2,opt,name=status,proto3,enum=agentruntime.workspace.v1.WorkspaceOperationStatus" json:"status,omitempty"`
+	// Public response of the selected RPC using protobuf JSON names, never input.
+	Result        *structpb.Struct `protobuf:"bytes,3,opt,name=result,proto3" json:"result,omitempty"`
+	Error         *v1.Error        `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWorkspaceOperationResponse) Reset() {
+	*x = GetWorkspaceOperationResponse{}
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[48]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWorkspaceOperationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWorkspaceOperationResponse) ProtoMessage() {}
+
+func (x *GetWorkspaceOperationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_workspace_v1_workspace_proto_msgTypes[48]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWorkspaceOperationResponse.ProtoReflect.Descriptor instead.
+func (*GetWorkspaceOperationResponse) Descriptor() ([]byte, []int) {
+	return file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP(), []int{48}
+}
+
+func (x *GetWorkspaceOperationResponse) GetOperationId() string {
+	if x != nil {
+		return x.OperationId
+	}
+	return ""
+}
+
+func (x *GetWorkspaceOperationResponse) GetStatus() WorkspaceOperationStatus {
+	if x != nil {
+		return x.Status
+	}
+	return WorkspaceOperationStatus_WORKSPACE_OPERATION_STATUS_UNSPECIFIED
+}
+
+func (x *GetWorkspaceOperationResponse) GetResult() *structpb.Struct {
+	if x != nil {
+		return x.Result
+	}
+	return nil
+}
+
+func (x *GetWorkspaceOperationResponse) GetError() *v1.Error {
+	if x != nil {
+		return x.Error
+	}
+	return nil
+}
+
 var File_agentruntime_workspace_v1_workspace_proto protoreflect.FileDescriptor
 
 const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
 	"\n" +
-	")agentruntime/workspace/v1/workspace.proto\x12\x19agentruntime.workspace.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9d\x02\n" +
+	")agentruntime/workspace/v1/workspace.proto\x12\x19agentruntime.workspace.v1\x1a\"agentruntime/common/v1/error.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9d\x02\n" +
 	"\rWorkspaceRepo\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x10\n" +
@@ -3448,7 +3879,34 @@ const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\"S\n" +
 	"\x11ListReposResponse\x12>\n" +
-	"\x05repos\x18\x01 \x03(\v2(.agentruntime.workspace.v1.WorkspaceRepoR\x05repos*j\n" +
+	"\x05repos\x18\x01 \x03(\v2(.agentruntime.workspace.v1.WorkspaceRepoR\x05repos\"\x81\x06\n" +
+	"\x1eStartWorkspaceOperationRequest\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12K\n" +
+	"\x06create\x18\x02 \x01(\v21.agentruntime.workspace.v1.CreateWorkspaceRequestH\x00R\x06create\x12K\n" +
+	"\x06commit\x18\x03 \x01(\v21.agentruntime.workspace.v1.CommitWorkspaceRequestH\x00R\x06commit\x12E\n" +
+	"\x04push\x18\x04 \x01(\v2/.agentruntime.workspace.v1.PushWorkspaceRequestH\x00R\x04push\x12N\n" +
+	"\aarchive\x18\x05 \x01(\v22.agentruntime.workspace.v1.ArchiveWorkspaceRequestH\x00R\aarchive\x12K\n" +
+	"\x06delete\x18\x06 \x01(\v21.agentruntime.workspace.v1.DeleteWorkspaceRequestH\x00R\x06delete\x12E\n" +
+	"\x04sync\x18\a \x01(\v2/.agentruntime.workspace.v1.SyncWorkspaceRequestH\x00R\x04sync\x12L\n" +
+	"\adiscard\x18\b \x01(\v20.agentruntime.workspace.v1.DiscardChangesRequestH\x00R\adiscard\x12O\n" +
+	"\vattach_repo\x18\t \x01(\v2,.agentruntime.workspace.v1.AttachRepoRequestH\x00R\n" +
+	"attachRepo\x12O\n" +
+	"\vdetach_repo\x18\n" +
+	" \x01(\v2,.agentruntime.workspace.v1.DetachRepoRequestH\x00R\n" +
+	"detachRepoB\v\n" +
+	"\toperation\"D\n" +
+	"\x1fStartWorkspaceOperationResponse\x12!\n" +
+	"\foperation_id\x18\x01 \x01(\tR\voperationId\"\x81\x01\n" +
+	"\x1cGetWorkspaceOperationRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
+	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12!\n" +
+	"\foperation_id\x18\x03 \x01(\tR\voperationId\"\xf5\x01\n" +
+	"\x1dGetWorkspaceOperationResponse\x12!\n" +
+	"\foperation_id\x18\x01 \x01(\tR\voperationId\x12K\n" +
+	"\x06status\x18\x02 \x01(\x0e23.agentruntime.workspace.v1.WorkspaceOperationStatusR\x06status\x12/\n" +
+	"\x06result\x18\x03 \x01(\v2\x17.google.protobuf.StructR\x06result\x123\n" +
+	"\x05error\x18\x04 \x01(\v2\x1d.agentruntime.common.v1.ErrorR\x05error*j\n" +
 	"\x0fWorkspaceLayout\x12 \n" +
 	"\x1cWORKSPACE_LAYOUT_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15WORKSPACE_LAYOUT_ROOT\x10\x01\x12\x1a\n" +
@@ -3472,8 +3930,15 @@ const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
 	"\x15FILE_TYPE_UNSPECIFIED\x10\x00\x12\x12\n" +
 	"\x0eFILE_TYPE_FILE\x10\x01\x12\x17\n" +
 	"\x13FILE_TYPE_DIRECTORY\x10\x02\x12\x15\n" +
-	"\x11FILE_TYPE_SYMLINK\x10\x032\xc5\x0f\n" +
-	"\x10WorkspaceService\x12x\n" +
+	"\x11FILE_TYPE_SYMLINK\x10\x03*\xbf\x01\n" +
+	"\x18WorkspaceOperationStatus\x12*\n" +
+	"&WORKSPACE_OPERATION_STATUS_UNSPECIFIED\x10\x00\x12&\n" +
+	"\"WORKSPACE_OPERATION_STATUS_RUNNING\x10\x01\x12(\n" +
+	"$WORKSPACE_OPERATION_STATUS_COMPLETED\x10\x02\x12%\n" +
+	"!WORKSPACE_OPERATION_STATUS_FAILED\x10\x032\xe5\x11\n" +
+	"\x10WorkspaceService\x12\x90\x01\n" +
+	"\x17StartWorkspaceOperation\x129.agentruntime.workspace.v1.StartWorkspaceOperationRequest\x1a:.agentruntime.workspace.v1.StartWorkspaceOperationResponse\x12\x8a\x01\n" +
+	"\x15GetWorkspaceOperation\x127.agentruntime.workspace.v1.GetWorkspaceOperationRequest\x1a8.agentruntime.workspace.v1.GetWorkspaceOperationResponse\x12x\n" +
 	"\x0fCreateWorkspace\x121.agentruntime.workspace.v1.CreateWorkspaceRequest\x1a2.agentruntime.workspace.v1.CreateWorkspaceResponse\x12u\n" +
 	"\x0eListWorkspaces\x120.agentruntime.workspace.v1.ListWorkspacesRequest\x1a1.agentruntime.workspace.v1.ListWorkspacesResponse\x12`\n" +
 	"\aGetDiff\x12).agentruntime.workspace.v1.GetDiffRequest\x1a*.agentruntime.workspace.v1.GetDiffResponse\x12x\n" +
@@ -3507,133 +3972,156 @@ func file_agentruntime_workspace_v1_workspace_proto_rawDescGZIP() []byte {
 	return file_agentruntime_workspace_v1_workspace_proto_rawDescData
 }
 
-var file_agentruntime_workspace_v1_workspace_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_agentruntime_workspace_v1_workspace_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
+var file_agentruntime_workspace_v1_workspace_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_agentruntime_workspace_v1_workspace_proto_msgTypes = make([]protoimpl.MessageInfo, 49)
 var file_agentruntime_workspace_v1_workspace_proto_goTypes = []any{
 	(WorkspaceLayout)(0),                    // 0: agentruntime.workspace.v1.WorkspaceLayout
 	(RepoAccess)(0),                         // 1: agentruntime.workspace.v1.RepoAccess
 	(WorkspaceState)(0),                     // 2: agentruntime.workspace.v1.WorkspaceState
 	(NetworkMode)(0),                        // 3: agentruntime.workspace.v1.NetworkMode
 	(FileType)(0),                           // 4: agentruntime.workspace.v1.FileType
-	(*WorkspaceRepo)(nil),                   // 5: agentruntime.workspace.v1.WorkspaceRepo
-	(*GitCredential)(nil),                   // 6: agentruntime.workspace.v1.GitCredential
-	(*Workspace)(nil),                       // 7: agentruntime.workspace.v1.Workspace
-	(*WorkspaceEnvironment)(nil),            // 8: agentruntime.workspace.v1.WorkspaceEnvironment
-	(*EnvironmentNetwork)(nil),              // 9: agentruntime.workspace.v1.EnvironmentNetwork
-	(*NetworkHost)(nil),                     // 10: agentruntime.workspace.v1.NetworkHost
-	(*SecretHeader)(nil),                    // 11: agentruntime.workspace.v1.SecretHeader
-	(*InitialFile)(nil),                     // 12: agentruntime.workspace.v1.InitialFile
-	(*CreateWorkspaceRequest)(nil),          // 13: agentruntime.workspace.v1.CreateWorkspaceRequest
-	(*CreateWorkspaceResponse)(nil),         // 14: agentruntime.workspace.v1.CreateWorkspaceResponse
-	(*ListWorkspacesRequest)(nil),           // 15: agentruntime.workspace.v1.ListWorkspacesRequest
-	(*ListWorkspacesResponse)(nil),          // 16: agentruntime.workspace.v1.ListWorkspacesResponse
-	(*GetDiffRequest)(nil),                  // 17: agentruntime.workspace.v1.GetDiffRequest
-	(*DiffStat)(nil),                        // 18: agentruntime.workspace.v1.DiffStat
-	(*GetDiffResponse)(nil),                 // 19: agentruntime.workspace.v1.GetDiffResponse
-	(*CommitWorkspaceRequest)(nil),          // 20: agentruntime.workspace.v1.CommitWorkspaceRequest
-	(*CommitWorkspaceResponse)(nil),         // 21: agentruntime.workspace.v1.CommitWorkspaceResponse
-	(*PushWorkspaceRequest)(nil),            // 22: agentruntime.workspace.v1.PushWorkspaceRequest
-	(*PushWorkspaceResponse)(nil),           // 23: agentruntime.workspace.v1.PushWorkspaceResponse
-	(*ArchiveWorkspaceRequest)(nil),         // 24: agentruntime.workspace.v1.ArchiveWorkspaceRequest
-	(*ArchiveWorkspaceResponse)(nil),        // 25: agentruntime.workspace.v1.ArchiveWorkspaceResponse
-	(*DeleteWorkspaceRequest)(nil),          // 26: agentruntime.workspace.v1.DeleteWorkspaceRequest
-	(*DeleteWorkspaceResponse)(nil),         // 27: agentruntime.workspace.v1.DeleteWorkspaceResponse
-	(*FileEntry)(nil),                       // 28: agentruntime.workspace.v1.FileEntry
-	(*ListFilesRequest)(nil),                // 29: agentruntime.workspace.v1.ListFilesRequest
-	(*ListFilesResponse)(nil),               // 30: agentruntime.workspace.v1.ListFilesResponse
-	(*ReadFileRequest)(nil),                 // 31: agentruntime.workspace.v1.ReadFileRequest
-	(*ReadFileResponse)(nil),                // 32: agentruntime.workspace.v1.ReadFileResponse
-	(*GetLogRequest)(nil),                   // 33: agentruntime.workspace.v1.GetLogRequest
-	(*Commit)(nil),                          // 34: agentruntime.workspace.v1.Commit
-	(*GetLogResponse)(nil),                  // 35: agentruntime.workspace.v1.GetLogResponse
-	(*DiscardChangesRequest)(nil),           // 36: agentruntime.workspace.v1.DiscardChangesRequest
-	(*DiscardChangesResponse)(nil),          // 37: agentruntime.workspace.v1.DiscardChangesResponse
-	(*SyncWorkspaceRequest)(nil),            // 38: agentruntime.workspace.v1.SyncWorkspaceRequest
-	(*SyncWorkspaceResponse)(nil),           // 39: agentruntime.workspace.v1.SyncWorkspaceResponse
-	(*DeleteEnvironmentConfigRequest)(nil),  // 40: agentruntime.workspace.v1.DeleteEnvironmentConfigRequest
-	(*DeleteEnvironmentConfigResponse)(nil), // 41: agentruntime.workspace.v1.DeleteEnvironmentConfigResponse
-	(*SetWorkspaceEnvironmentRequest)(nil),  // 42: agentruntime.workspace.v1.SetWorkspaceEnvironmentRequest
-	(*SetWorkspaceEnvironmentResponse)(nil), // 43: agentruntime.workspace.v1.SetWorkspaceEnvironmentResponse
-	(*AttachRepoRequest)(nil),               // 44: agentruntime.workspace.v1.AttachRepoRequest
-	(*AttachRepoResponse)(nil),              // 45: agentruntime.workspace.v1.AttachRepoResponse
-	(*DetachRepoRequest)(nil),               // 46: agentruntime.workspace.v1.DetachRepoRequest
-	(*DetachRepoResponse)(nil),              // 47: agentruntime.workspace.v1.DetachRepoResponse
-	(*ListReposRequest)(nil),                // 48: agentruntime.workspace.v1.ListReposRequest
-	(*ListReposResponse)(nil),               // 49: agentruntime.workspace.v1.ListReposResponse
-	(*timestamppb.Timestamp)(nil),           // 50: google.protobuf.Timestamp
+	(WorkspaceOperationStatus)(0),           // 5: agentruntime.workspace.v1.WorkspaceOperationStatus
+	(*WorkspaceRepo)(nil),                   // 6: agentruntime.workspace.v1.WorkspaceRepo
+	(*GitCredential)(nil),                   // 7: agentruntime.workspace.v1.GitCredential
+	(*Workspace)(nil),                       // 8: agentruntime.workspace.v1.Workspace
+	(*WorkspaceEnvironment)(nil),            // 9: agentruntime.workspace.v1.WorkspaceEnvironment
+	(*EnvironmentNetwork)(nil),              // 10: agentruntime.workspace.v1.EnvironmentNetwork
+	(*NetworkHost)(nil),                     // 11: agentruntime.workspace.v1.NetworkHost
+	(*SecretHeader)(nil),                    // 12: agentruntime.workspace.v1.SecretHeader
+	(*InitialFile)(nil),                     // 13: agentruntime.workspace.v1.InitialFile
+	(*CreateWorkspaceRequest)(nil),          // 14: agentruntime.workspace.v1.CreateWorkspaceRequest
+	(*CreateWorkspaceResponse)(nil),         // 15: agentruntime.workspace.v1.CreateWorkspaceResponse
+	(*ListWorkspacesRequest)(nil),           // 16: agentruntime.workspace.v1.ListWorkspacesRequest
+	(*ListWorkspacesResponse)(nil),          // 17: agentruntime.workspace.v1.ListWorkspacesResponse
+	(*GetDiffRequest)(nil),                  // 18: agentruntime.workspace.v1.GetDiffRequest
+	(*DiffStat)(nil),                        // 19: agentruntime.workspace.v1.DiffStat
+	(*GetDiffResponse)(nil),                 // 20: agentruntime.workspace.v1.GetDiffResponse
+	(*CommitWorkspaceRequest)(nil),          // 21: agentruntime.workspace.v1.CommitWorkspaceRequest
+	(*CommitWorkspaceResponse)(nil),         // 22: agentruntime.workspace.v1.CommitWorkspaceResponse
+	(*PushWorkspaceRequest)(nil),            // 23: agentruntime.workspace.v1.PushWorkspaceRequest
+	(*PushWorkspaceResponse)(nil),           // 24: agentruntime.workspace.v1.PushWorkspaceResponse
+	(*ArchiveWorkspaceRequest)(nil),         // 25: agentruntime.workspace.v1.ArchiveWorkspaceRequest
+	(*ArchiveWorkspaceResponse)(nil),        // 26: agentruntime.workspace.v1.ArchiveWorkspaceResponse
+	(*DeleteWorkspaceRequest)(nil),          // 27: agentruntime.workspace.v1.DeleteWorkspaceRequest
+	(*DeleteWorkspaceResponse)(nil),         // 28: agentruntime.workspace.v1.DeleteWorkspaceResponse
+	(*FileEntry)(nil),                       // 29: agentruntime.workspace.v1.FileEntry
+	(*ListFilesRequest)(nil),                // 30: agentruntime.workspace.v1.ListFilesRequest
+	(*ListFilesResponse)(nil),               // 31: agentruntime.workspace.v1.ListFilesResponse
+	(*ReadFileRequest)(nil),                 // 32: agentruntime.workspace.v1.ReadFileRequest
+	(*ReadFileResponse)(nil),                // 33: agentruntime.workspace.v1.ReadFileResponse
+	(*GetLogRequest)(nil),                   // 34: agentruntime.workspace.v1.GetLogRequest
+	(*Commit)(nil),                          // 35: agentruntime.workspace.v1.Commit
+	(*GetLogResponse)(nil),                  // 36: agentruntime.workspace.v1.GetLogResponse
+	(*DiscardChangesRequest)(nil),           // 37: agentruntime.workspace.v1.DiscardChangesRequest
+	(*DiscardChangesResponse)(nil),          // 38: agentruntime.workspace.v1.DiscardChangesResponse
+	(*SyncWorkspaceRequest)(nil),            // 39: agentruntime.workspace.v1.SyncWorkspaceRequest
+	(*SyncWorkspaceResponse)(nil),           // 40: agentruntime.workspace.v1.SyncWorkspaceResponse
+	(*DeleteEnvironmentConfigRequest)(nil),  // 41: agentruntime.workspace.v1.DeleteEnvironmentConfigRequest
+	(*DeleteEnvironmentConfigResponse)(nil), // 42: agentruntime.workspace.v1.DeleteEnvironmentConfigResponse
+	(*SetWorkspaceEnvironmentRequest)(nil),  // 43: agentruntime.workspace.v1.SetWorkspaceEnvironmentRequest
+	(*SetWorkspaceEnvironmentResponse)(nil), // 44: agentruntime.workspace.v1.SetWorkspaceEnvironmentResponse
+	(*AttachRepoRequest)(nil),               // 45: agentruntime.workspace.v1.AttachRepoRequest
+	(*AttachRepoResponse)(nil),              // 46: agentruntime.workspace.v1.AttachRepoResponse
+	(*DetachRepoRequest)(nil),               // 47: agentruntime.workspace.v1.DetachRepoRequest
+	(*DetachRepoResponse)(nil),              // 48: agentruntime.workspace.v1.DetachRepoResponse
+	(*ListReposRequest)(nil),                // 49: agentruntime.workspace.v1.ListReposRequest
+	(*ListReposResponse)(nil),               // 50: agentruntime.workspace.v1.ListReposResponse
+	(*StartWorkspaceOperationRequest)(nil),  // 51: agentruntime.workspace.v1.StartWorkspaceOperationRequest
+	(*StartWorkspaceOperationResponse)(nil), // 52: agentruntime.workspace.v1.StartWorkspaceOperationResponse
+	(*GetWorkspaceOperationRequest)(nil),    // 53: agentruntime.workspace.v1.GetWorkspaceOperationRequest
+	(*GetWorkspaceOperationResponse)(nil),   // 54: agentruntime.workspace.v1.GetWorkspaceOperationResponse
+	(*timestamppb.Timestamp)(nil),           // 55: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),                 // 56: google.protobuf.Struct
+	(*v1.Error)(nil),                        // 57: agentruntime.common.v1.Error
 }
 var file_agentruntime_workspace_v1_workspace_proto_depIdxs = []int32{
 	1,  // 0: agentruntime.workspace.v1.WorkspaceRepo.access:type_name -> agentruntime.workspace.v1.RepoAccess
-	50, // 1: agentruntime.workspace.v1.WorkspaceRepo.attached_at:type_name -> google.protobuf.Timestamp
+	55, // 1: agentruntime.workspace.v1.WorkspaceRepo.attached_at:type_name -> google.protobuf.Timestamp
 	2,  // 2: agentruntime.workspace.v1.Workspace.state:type_name -> agentruntime.workspace.v1.WorkspaceState
-	50, // 3: agentruntime.workspace.v1.Workspace.created_at:type_name -> google.protobuf.Timestamp
-	50, // 4: agentruntime.workspace.v1.Workspace.updated_at:type_name -> google.protobuf.Timestamp
+	55, // 3: agentruntime.workspace.v1.Workspace.created_at:type_name -> google.protobuf.Timestamp
+	55, // 4: agentruntime.workspace.v1.Workspace.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 5: agentruntime.workspace.v1.Workspace.layout:type_name -> agentruntime.workspace.v1.WorkspaceLayout
-	5,  // 6: agentruntime.workspace.v1.Workspace.repos:type_name -> agentruntime.workspace.v1.WorkspaceRepo
-	9,  // 7: agentruntime.workspace.v1.WorkspaceEnvironment.network:type_name -> agentruntime.workspace.v1.EnvironmentNetwork
-	11, // 8: agentruntime.workspace.v1.WorkspaceEnvironment.secret_headers:type_name -> agentruntime.workspace.v1.SecretHeader
+	6,  // 6: agentruntime.workspace.v1.Workspace.repos:type_name -> agentruntime.workspace.v1.WorkspaceRepo
+	10, // 7: agentruntime.workspace.v1.WorkspaceEnvironment.network:type_name -> agentruntime.workspace.v1.EnvironmentNetwork
+	12, // 8: agentruntime.workspace.v1.WorkspaceEnvironment.secret_headers:type_name -> agentruntime.workspace.v1.SecretHeader
 	3,  // 9: agentruntime.workspace.v1.EnvironmentNetwork.mode:type_name -> agentruntime.workspace.v1.NetworkMode
-	10, // 10: agentruntime.workspace.v1.EnvironmentNetwork.hosts:type_name -> agentruntime.workspace.v1.NetworkHost
-	6,  // 11: agentruntime.workspace.v1.CreateWorkspaceRequest.credential:type_name -> agentruntime.workspace.v1.GitCredential
-	12, // 12: agentruntime.workspace.v1.CreateWorkspaceRequest.files:type_name -> agentruntime.workspace.v1.InitialFile
-	8,  // 13: agentruntime.workspace.v1.CreateWorkspaceRequest.environment:type_name -> agentruntime.workspace.v1.WorkspaceEnvironment
+	11, // 10: agentruntime.workspace.v1.EnvironmentNetwork.hosts:type_name -> agentruntime.workspace.v1.NetworkHost
+	7,  // 11: agentruntime.workspace.v1.CreateWorkspaceRequest.credential:type_name -> agentruntime.workspace.v1.GitCredential
+	13, // 12: agentruntime.workspace.v1.CreateWorkspaceRequest.files:type_name -> agentruntime.workspace.v1.InitialFile
+	9,  // 13: agentruntime.workspace.v1.CreateWorkspaceRequest.environment:type_name -> agentruntime.workspace.v1.WorkspaceEnvironment
 	0,  // 14: agentruntime.workspace.v1.CreateWorkspaceRequest.layout:type_name -> agentruntime.workspace.v1.WorkspaceLayout
-	7,  // 15: agentruntime.workspace.v1.CreateWorkspaceResponse.workspace:type_name -> agentruntime.workspace.v1.Workspace
-	7,  // 16: agentruntime.workspace.v1.ListWorkspacesResponse.workspaces:type_name -> agentruntime.workspace.v1.Workspace
-	18, // 17: agentruntime.workspace.v1.GetDiffResponse.stats:type_name -> agentruntime.workspace.v1.DiffStat
-	6,  // 18: agentruntime.workspace.v1.PushWorkspaceRequest.credential:type_name -> agentruntime.workspace.v1.GitCredential
+	8,  // 15: agentruntime.workspace.v1.CreateWorkspaceResponse.workspace:type_name -> agentruntime.workspace.v1.Workspace
+	8,  // 16: agentruntime.workspace.v1.ListWorkspacesResponse.workspaces:type_name -> agentruntime.workspace.v1.Workspace
+	19, // 17: agentruntime.workspace.v1.GetDiffResponse.stats:type_name -> agentruntime.workspace.v1.DiffStat
+	7,  // 18: agentruntime.workspace.v1.PushWorkspaceRequest.credential:type_name -> agentruntime.workspace.v1.GitCredential
 	4,  // 19: agentruntime.workspace.v1.FileEntry.type:type_name -> agentruntime.workspace.v1.FileType
-	28, // 20: agentruntime.workspace.v1.ListFilesResponse.entries:type_name -> agentruntime.workspace.v1.FileEntry
-	50, // 21: agentruntime.workspace.v1.Commit.authored_at:type_name -> google.protobuf.Timestamp
-	34, // 22: agentruntime.workspace.v1.GetLogResponse.commits:type_name -> agentruntime.workspace.v1.Commit
-	6,  // 23: agentruntime.workspace.v1.SyncWorkspaceRequest.credential:type_name -> agentruntime.workspace.v1.GitCredential
-	8,  // 24: agentruntime.workspace.v1.SetWorkspaceEnvironmentRequest.environment:type_name -> agentruntime.workspace.v1.WorkspaceEnvironment
-	7,  // 25: agentruntime.workspace.v1.SetWorkspaceEnvironmentResponse.workspace:type_name -> agentruntime.workspace.v1.Workspace
-	5,  // 26: agentruntime.workspace.v1.AttachRepoRequest.repo:type_name -> agentruntime.workspace.v1.WorkspaceRepo
-	6,  // 27: agentruntime.workspace.v1.AttachRepoRequest.credential:type_name -> agentruntime.workspace.v1.GitCredential
-	5,  // 28: agentruntime.workspace.v1.AttachRepoResponse.repo:type_name -> agentruntime.workspace.v1.WorkspaceRepo
-	7,  // 29: agentruntime.workspace.v1.AttachRepoResponse.workspace:type_name -> agentruntime.workspace.v1.Workspace
-	7,  // 30: agentruntime.workspace.v1.DetachRepoResponse.workspace:type_name -> agentruntime.workspace.v1.Workspace
-	5,  // 31: agentruntime.workspace.v1.ListReposResponse.repos:type_name -> agentruntime.workspace.v1.WorkspaceRepo
-	13, // 32: agentruntime.workspace.v1.WorkspaceService.CreateWorkspace:input_type -> agentruntime.workspace.v1.CreateWorkspaceRequest
-	15, // 33: agentruntime.workspace.v1.WorkspaceService.ListWorkspaces:input_type -> agentruntime.workspace.v1.ListWorkspacesRequest
-	17, // 34: agentruntime.workspace.v1.WorkspaceService.GetDiff:input_type -> agentruntime.workspace.v1.GetDiffRequest
-	20, // 35: agentruntime.workspace.v1.WorkspaceService.CommitWorkspace:input_type -> agentruntime.workspace.v1.CommitWorkspaceRequest
-	22, // 36: agentruntime.workspace.v1.WorkspaceService.PushWorkspace:input_type -> agentruntime.workspace.v1.PushWorkspaceRequest
-	24, // 37: agentruntime.workspace.v1.WorkspaceService.ArchiveWorkspace:input_type -> agentruntime.workspace.v1.ArchiveWorkspaceRequest
-	26, // 38: agentruntime.workspace.v1.WorkspaceService.DeleteWorkspace:input_type -> agentruntime.workspace.v1.DeleteWorkspaceRequest
-	29, // 39: agentruntime.workspace.v1.WorkspaceService.ListFiles:input_type -> agentruntime.workspace.v1.ListFilesRequest
-	31, // 40: agentruntime.workspace.v1.WorkspaceService.ReadFile:input_type -> agentruntime.workspace.v1.ReadFileRequest
-	33, // 41: agentruntime.workspace.v1.WorkspaceService.GetLog:input_type -> agentruntime.workspace.v1.GetLogRequest
-	36, // 42: agentruntime.workspace.v1.WorkspaceService.DiscardChanges:input_type -> agentruntime.workspace.v1.DiscardChangesRequest
-	38, // 43: agentruntime.workspace.v1.WorkspaceService.SyncWorkspace:input_type -> agentruntime.workspace.v1.SyncWorkspaceRequest
-	40, // 44: agentruntime.workspace.v1.WorkspaceService.DeleteEnvironmentConfig:input_type -> agentruntime.workspace.v1.DeleteEnvironmentConfigRequest
-	42, // 45: agentruntime.workspace.v1.WorkspaceService.SetWorkspaceEnvironment:input_type -> agentruntime.workspace.v1.SetWorkspaceEnvironmentRequest
-	44, // 46: agentruntime.workspace.v1.WorkspaceService.AttachRepo:input_type -> agentruntime.workspace.v1.AttachRepoRequest
-	46, // 47: agentruntime.workspace.v1.WorkspaceService.DetachRepo:input_type -> agentruntime.workspace.v1.DetachRepoRequest
-	48, // 48: agentruntime.workspace.v1.WorkspaceService.ListRepos:input_type -> agentruntime.workspace.v1.ListReposRequest
-	14, // 49: agentruntime.workspace.v1.WorkspaceService.CreateWorkspace:output_type -> agentruntime.workspace.v1.CreateWorkspaceResponse
-	16, // 50: agentruntime.workspace.v1.WorkspaceService.ListWorkspaces:output_type -> agentruntime.workspace.v1.ListWorkspacesResponse
-	19, // 51: agentruntime.workspace.v1.WorkspaceService.GetDiff:output_type -> agentruntime.workspace.v1.GetDiffResponse
-	21, // 52: agentruntime.workspace.v1.WorkspaceService.CommitWorkspace:output_type -> agentruntime.workspace.v1.CommitWorkspaceResponse
-	23, // 53: agentruntime.workspace.v1.WorkspaceService.PushWorkspace:output_type -> agentruntime.workspace.v1.PushWorkspaceResponse
-	25, // 54: agentruntime.workspace.v1.WorkspaceService.ArchiveWorkspace:output_type -> agentruntime.workspace.v1.ArchiveWorkspaceResponse
-	27, // 55: agentruntime.workspace.v1.WorkspaceService.DeleteWorkspace:output_type -> agentruntime.workspace.v1.DeleteWorkspaceResponse
-	30, // 56: agentruntime.workspace.v1.WorkspaceService.ListFiles:output_type -> agentruntime.workspace.v1.ListFilesResponse
-	32, // 57: agentruntime.workspace.v1.WorkspaceService.ReadFile:output_type -> agentruntime.workspace.v1.ReadFileResponse
-	35, // 58: agentruntime.workspace.v1.WorkspaceService.GetLog:output_type -> agentruntime.workspace.v1.GetLogResponse
-	37, // 59: agentruntime.workspace.v1.WorkspaceService.DiscardChanges:output_type -> agentruntime.workspace.v1.DiscardChangesResponse
-	39, // 60: agentruntime.workspace.v1.WorkspaceService.SyncWorkspace:output_type -> agentruntime.workspace.v1.SyncWorkspaceResponse
-	41, // 61: agentruntime.workspace.v1.WorkspaceService.DeleteEnvironmentConfig:output_type -> agentruntime.workspace.v1.DeleteEnvironmentConfigResponse
-	43, // 62: agentruntime.workspace.v1.WorkspaceService.SetWorkspaceEnvironment:output_type -> agentruntime.workspace.v1.SetWorkspaceEnvironmentResponse
-	45, // 63: agentruntime.workspace.v1.WorkspaceService.AttachRepo:output_type -> agentruntime.workspace.v1.AttachRepoResponse
-	47, // 64: agentruntime.workspace.v1.WorkspaceService.DetachRepo:output_type -> agentruntime.workspace.v1.DetachRepoResponse
-	49, // 65: agentruntime.workspace.v1.WorkspaceService.ListRepos:output_type -> agentruntime.workspace.v1.ListReposResponse
-	49, // [49:66] is the sub-list for method output_type
-	32, // [32:49] is the sub-list for method input_type
-	32, // [32:32] is the sub-list for extension type_name
-	32, // [32:32] is the sub-list for extension extendee
-	0,  // [0:32] is the sub-list for field type_name
+	29, // 20: agentruntime.workspace.v1.ListFilesResponse.entries:type_name -> agentruntime.workspace.v1.FileEntry
+	55, // 21: agentruntime.workspace.v1.Commit.authored_at:type_name -> google.protobuf.Timestamp
+	35, // 22: agentruntime.workspace.v1.GetLogResponse.commits:type_name -> agentruntime.workspace.v1.Commit
+	7,  // 23: agentruntime.workspace.v1.SyncWorkspaceRequest.credential:type_name -> agentruntime.workspace.v1.GitCredential
+	9,  // 24: agentruntime.workspace.v1.SetWorkspaceEnvironmentRequest.environment:type_name -> agentruntime.workspace.v1.WorkspaceEnvironment
+	8,  // 25: agentruntime.workspace.v1.SetWorkspaceEnvironmentResponse.workspace:type_name -> agentruntime.workspace.v1.Workspace
+	6,  // 26: agentruntime.workspace.v1.AttachRepoRequest.repo:type_name -> agentruntime.workspace.v1.WorkspaceRepo
+	7,  // 27: agentruntime.workspace.v1.AttachRepoRequest.credential:type_name -> agentruntime.workspace.v1.GitCredential
+	6,  // 28: agentruntime.workspace.v1.AttachRepoResponse.repo:type_name -> agentruntime.workspace.v1.WorkspaceRepo
+	8,  // 29: agentruntime.workspace.v1.AttachRepoResponse.workspace:type_name -> agentruntime.workspace.v1.Workspace
+	8,  // 30: agentruntime.workspace.v1.DetachRepoResponse.workspace:type_name -> agentruntime.workspace.v1.Workspace
+	6,  // 31: agentruntime.workspace.v1.ListReposResponse.repos:type_name -> agentruntime.workspace.v1.WorkspaceRepo
+	14, // 32: agentruntime.workspace.v1.StartWorkspaceOperationRequest.create:type_name -> agentruntime.workspace.v1.CreateWorkspaceRequest
+	21, // 33: agentruntime.workspace.v1.StartWorkspaceOperationRequest.commit:type_name -> agentruntime.workspace.v1.CommitWorkspaceRequest
+	23, // 34: agentruntime.workspace.v1.StartWorkspaceOperationRequest.push:type_name -> agentruntime.workspace.v1.PushWorkspaceRequest
+	25, // 35: agentruntime.workspace.v1.StartWorkspaceOperationRequest.archive:type_name -> agentruntime.workspace.v1.ArchiveWorkspaceRequest
+	27, // 36: agentruntime.workspace.v1.StartWorkspaceOperationRequest.delete:type_name -> agentruntime.workspace.v1.DeleteWorkspaceRequest
+	39, // 37: agentruntime.workspace.v1.StartWorkspaceOperationRequest.sync:type_name -> agentruntime.workspace.v1.SyncWorkspaceRequest
+	37, // 38: agentruntime.workspace.v1.StartWorkspaceOperationRequest.discard:type_name -> agentruntime.workspace.v1.DiscardChangesRequest
+	45, // 39: agentruntime.workspace.v1.StartWorkspaceOperationRequest.attach_repo:type_name -> agentruntime.workspace.v1.AttachRepoRequest
+	47, // 40: agentruntime.workspace.v1.StartWorkspaceOperationRequest.detach_repo:type_name -> agentruntime.workspace.v1.DetachRepoRequest
+	5,  // 41: agentruntime.workspace.v1.GetWorkspaceOperationResponse.status:type_name -> agentruntime.workspace.v1.WorkspaceOperationStatus
+	56, // 42: agentruntime.workspace.v1.GetWorkspaceOperationResponse.result:type_name -> google.protobuf.Struct
+	57, // 43: agentruntime.workspace.v1.GetWorkspaceOperationResponse.error:type_name -> agentruntime.common.v1.Error
+	51, // 44: agentruntime.workspace.v1.WorkspaceService.StartWorkspaceOperation:input_type -> agentruntime.workspace.v1.StartWorkspaceOperationRequest
+	53, // 45: agentruntime.workspace.v1.WorkspaceService.GetWorkspaceOperation:input_type -> agentruntime.workspace.v1.GetWorkspaceOperationRequest
+	14, // 46: agentruntime.workspace.v1.WorkspaceService.CreateWorkspace:input_type -> agentruntime.workspace.v1.CreateWorkspaceRequest
+	16, // 47: agentruntime.workspace.v1.WorkspaceService.ListWorkspaces:input_type -> agentruntime.workspace.v1.ListWorkspacesRequest
+	18, // 48: agentruntime.workspace.v1.WorkspaceService.GetDiff:input_type -> agentruntime.workspace.v1.GetDiffRequest
+	21, // 49: agentruntime.workspace.v1.WorkspaceService.CommitWorkspace:input_type -> agentruntime.workspace.v1.CommitWorkspaceRequest
+	23, // 50: agentruntime.workspace.v1.WorkspaceService.PushWorkspace:input_type -> agentruntime.workspace.v1.PushWorkspaceRequest
+	25, // 51: agentruntime.workspace.v1.WorkspaceService.ArchiveWorkspace:input_type -> agentruntime.workspace.v1.ArchiveWorkspaceRequest
+	27, // 52: agentruntime.workspace.v1.WorkspaceService.DeleteWorkspace:input_type -> agentruntime.workspace.v1.DeleteWorkspaceRequest
+	30, // 53: agentruntime.workspace.v1.WorkspaceService.ListFiles:input_type -> agentruntime.workspace.v1.ListFilesRequest
+	32, // 54: agentruntime.workspace.v1.WorkspaceService.ReadFile:input_type -> agentruntime.workspace.v1.ReadFileRequest
+	34, // 55: agentruntime.workspace.v1.WorkspaceService.GetLog:input_type -> agentruntime.workspace.v1.GetLogRequest
+	37, // 56: agentruntime.workspace.v1.WorkspaceService.DiscardChanges:input_type -> agentruntime.workspace.v1.DiscardChangesRequest
+	39, // 57: agentruntime.workspace.v1.WorkspaceService.SyncWorkspace:input_type -> agentruntime.workspace.v1.SyncWorkspaceRequest
+	41, // 58: agentruntime.workspace.v1.WorkspaceService.DeleteEnvironmentConfig:input_type -> agentruntime.workspace.v1.DeleteEnvironmentConfigRequest
+	43, // 59: agentruntime.workspace.v1.WorkspaceService.SetWorkspaceEnvironment:input_type -> agentruntime.workspace.v1.SetWorkspaceEnvironmentRequest
+	45, // 60: agentruntime.workspace.v1.WorkspaceService.AttachRepo:input_type -> agentruntime.workspace.v1.AttachRepoRequest
+	47, // 61: agentruntime.workspace.v1.WorkspaceService.DetachRepo:input_type -> agentruntime.workspace.v1.DetachRepoRequest
+	49, // 62: agentruntime.workspace.v1.WorkspaceService.ListRepos:input_type -> agentruntime.workspace.v1.ListReposRequest
+	52, // 63: agentruntime.workspace.v1.WorkspaceService.StartWorkspaceOperation:output_type -> agentruntime.workspace.v1.StartWorkspaceOperationResponse
+	54, // 64: agentruntime.workspace.v1.WorkspaceService.GetWorkspaceOperation:output_type -> agentruntime.workspace.v1.GetWorkspaceOperationResponse
+	15, // 65: agentruntime.workspace.v1.WorkspaceService.CreateWorkspace:output_type -> agentruntime.workspace.v1.CreateWorkspaceResponse
+	17, // 66: agentruntime.workspace.v1.WorkspaceService.ListWorkspaces:output_type -> agentruntime.workspace.v1.ListWorkspacesResponse
+	20, // 67: agentruntime.workspace.v1.WorkspaceService.GetDiff:output_type -> agentruntime.workspace.v1.GetDiffResponse
+	22, // 68: agentruntime.workspace.v1.WorkspaceService.CommitWorkspace:output_type -> agentruntime.workspace.v1.CommitWorkspaceResponse
+	24, // 69: agentruntime.workspace.v1.WorkspaceService.PushWorkspace:output_type -> agentruntime.workspace.v1.PushWorkspaceResponse
+	26, // 70: agentruntime.workspace.v1.WorkspaceService.ArchiveWorkspace:output_type -> agentruntime.workspace.v1.ArchiveWorkspaceResponse
+	28, // 71: agentruntime.workspace.v1.WorkspaceService.DeleteWorkspace:output_type -> agentruntime.workspace.v1.DeleteWorkspaceResponse
+	31, // 72: agentruntime.workspace.v1.WorkspaceService.ListFiles:output_type -> agentruntime.workspace.v1.ListFilesResponse
+	33, // 73: agentruntime.workspace.v1.WorkspaceService.ReadFile:output_type -> agentruntime.workspace.v1.ReadFileResponse
+	36, // 74: agentruntime.workspace.v1.WorkspaceService.GetLog:output_type -> agentruntime.workspace.v1.GetLogResponse
+	38, // 75: agentruntime.workspace.v1.WorkspaceService.DiscardChanges:output_type -> agentruntime.workspace.v1.DiscardChangesResponse
+	40, // 76: agentruntime.workspace.v1.WorkspaceService.SyncWorkspace:output_type -> agentruntime.workspace.v1.SyncWorkspaceResponse
+	42, // 77: agentruntime.workspace.v1.WorkspaceService.DeleteEnvironmentConfig:output_type -> agentruntime.workspace.v1.DeleteEnvironmentConfigResponse
+	44, // 78: agentruntime.workspace.v1.WorkspaceService.SetWorkspaceEnvironment:output_type -> agentruntime.workspace.v1.SetWorkspaceEnvironmentResponse
+	46, // 79: agentruntime.workspace.v1.WorkspaceService.AttachRepo:output_type -> agentruntime.workspace.v1.AttachRepoResponse
+	48, // 80: agentruntime.workspace.v1.WorkspaceService.DetachRepo:output_type -> agentruntime.workspace.v1.DetachRepoResponse
+	50, // 81: agentruntime.workspace.v1.WorkspaceService.ListRepos:output_type -> agentruntime.workspace.v1.ListReposResponse
+	63, // [63:82] is the sub-list for method output_type
+	44, // [44:63] is the sub-list for method input_type
+	44, // [44:44] is the sub-list for extension type_name
+	44, // [44:44] is the sub-list for extension extendee
+	0,  // [0:44] is the sub-list for field type_name
 }
 
 func init() { file_agentruntime_workspace_v1_workspace_proto_init() }
@@ -3641,13 +4129,24 @@ func file_agentruntime_workspace_v1_workspace_proto_init() {
 	if File_agentruntime_workspace_v1_workspace_proto != nil {
 		return
 	}
+	file_agentruntime_workspace_v1_workspace_proto_msgTypes[45].OneofWrappers = []any{
+		(*StartWorkspaceOperationRequest_Create)(nil),
+		(*StartWorkspaceOperationRequest_Commit)(nil),
+		(*StartWorkspaceOperationRequest_Push)(nil),
+		(*StartWorkspaceOperationRequest_Archive)(nil),
+		(*StartWorkspaceOperationRequest_Delete)(nil),
+		(*StartWorkspaceOperationRequest_Sync)(nil),
+		(*StartWorkspaceOperationRequest_Discard)(nil),
+		(*StartWorkspaceOperationRequest_AttachRepo)(nil),
+		(*StartWorkspaceOperationRequest_DetachRepo)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agentruntime_workspace_v1_workspace_proto_rawDesc), len(file_agentruntime_workspace_v1_workspace_proto_rawDesc)),
-			NumEnums:      5,
-			NumMessages:   45,
+			NumEnums:      6,
+			NumMessages:   49,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

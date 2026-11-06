@@ -462,6 +462,9 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		return err
 	}
 	defer store.Close()
+	if err := store.Migrate(ctx, workspaceapi.Migrations()); err != nil {
+		return err
+	}
 	if err := store.Migrate(ctx, taskstore.Migrations()); err != nil {
 		return err
 	}

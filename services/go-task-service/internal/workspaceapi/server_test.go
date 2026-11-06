@@ -40,6 +40,7 @@ type worker struct {
 	started []*workflowv1.WorkspaceOperationInput
 	scopes  []string
 	handle  func(in *workflowv1.WorkspaceOperationInput) (*workflowv1.WorkspaceOperationResult, error)
+	status  durable.Status
 }
 
 func (w *worker) Bind(t *commonv1.TenantContext) (durable.Engine, error) {
@@ -76,12 +77,40 @@ func (e *engine) StartWorkflow(_ context.Context, typ string, opts durable.Start
 }
 
 func (e *engine) Result(_ context.Context, id string, result proto.Message, _ time.Duration) (durable.Outcome, error) {
+	if e.last == nil {
+		e.w.mu.Lock()
+		for i, in := range e.w.started {
+			if WorkflowID(in.OperationId) == id && e.w.scopes[i] == e.scope {
+				e.last = in
+				break
+			}
+		}
+		e.w.mu.Unlock()
+		if e.last == nil {
+			return durable.Outcome{}, providererr.New(providererr.NotFound, "not_found", "missing workflow")
+		}
+	}
 	out, err := e.w.handle(e.last)
 	if err != nil {
 		return durable.Outcome{}, err
 	}
 	proto.Merge(result, out)
 	return durable.Outcome{Status: durable.StatusCompleted}, nil
+}
+
+func (e *engine) Describe(_ context.Context, id string) (durable.Description, error) {
+	e.w.mu.Lock()
+	defer e.w.mu.Unlock()
+	for i, in := range e.w.started {
+		if WorkflowID(in.OperationId) == id && e.w.scopes[i] == e.scope {
+			status := e.w.status
+			if status == "" {
+				status = durable.StatusCompleted
+			}
+			return durable.Description{WorkflowID: id, WorkflowType: WorkflowName, Status: status}, nil
+		}
+	}
+	return durable.Description{}, providererr.New(providererr.NotFound, "not_found", "missing workflow")
 }
 
 type harness struct {

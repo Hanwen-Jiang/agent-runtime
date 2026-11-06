@@ -22,6 +22,16 @@ class WorkspaceServiceStub:
         Args:
             channel: A grpc.Channel.
         """
+        self.StartWorkspaceOperation = channel.unary_unary(
+                '/agentruntime.workspace.v1.WorkspaceService/StartWorkspaceOperation',
+                request_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.StartWorkspaceOperationRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.StartWorkspaceOperationResponse.FromString,
+                _registered_method=True)
+        self.GetWorkspaceOperation = channel.unary_unary(
+                '/agentruntime.workspace.v1.WorkspaceService/GetWorkspaceOperation',
+                request_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.GetWorkspaceOperationRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.GetWorkspaceOperationResponse.FromString,
+                _registered_method=True)
         self.CreateWorkspace = channel.unary_unary(
                 '/agentruntime.workspace.v1.WorkspaceService/CreateWorkspace',
                 request_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.CreateWorkspaceRequest.SerializeToString,
@@ -119,6 +129,20 @@ class WorkspaceServiceServicer:
     路径（ListFiles、ReadFile、InitialFile）：相对工作区根、用 / 分隔；绝对路径、盘符、空段、. 与 ..、反斜杠、NUL 一律
     InvalidArgument；任何一级是 .git 也是 InvalidArgument（.git 只经 git 操作，不直接给应用读）。
     """
+
+    def StartWorkspaceOperation(self, request, context):
+        """Start a durable operation without waiting for completion (WS-CF-524).
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetWorkspaceOperation(self, request, context):
+        """Read an operation submitted by this caller, in the same tenant/workspace.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def CreateWorkspace(self, request, context):
         """建一个工作区：给了 repo_url 时克隆它（可以带 ref，ref 可以是一个提交；可以带 files，克隆之后写入并另做一次提交）；
@@ -267,6 +291,16 @@ class WorkspaceServiceServicer:
 
 def add_WorkspaceServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'StartWorkspaceOperation': grpc.unary_unary_rpc_method_handler(
+                    servicer.StartWorkspaceOperation,
+                    request_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.StartWorkspaceOperationRequest.FromString,
+                    response_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.StartWorkspaceOperationResponse.SerializeToString,
+            ),
+            'GetWorkspaceOperation': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetWorkspaceOperation,
+                    request_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.GetWorkspaceOperationRequest.FromString,
+                    response_serializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.GetWorkspaceOperationResponse.SerializeToString,
+            ),
             'CreateWorkspace': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateWorkspace,
                     request_deserializer=agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.CreateWorkspaceRequest.FromString,
@@ -370,6 +404,60 @@ class WorkspaceService:
     路径（ListFiles、ReadFile、InitialFile）：相对工作区根、用 / 分隔；绝对路径、盘符、空段、. 与 ..、反斜杠、NUL 一律
     InvalidArgument；任何一级是 .git 也是 InvalidArgument（.git 只经 git 操作，不直接给应用读）。
     """
+
+    @staticmethod
+    def StartWorkspaceOperation(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.workspace.v1.WorkspaceService/StartWorkspaceOperation',
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.StartWorkspaceOperationRequest.SerializeToString,
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.StartWorkspaceOperationResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetWorkspaceOperation(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.workspace.v1.WorkspaceService/GetWorkspaceOperation',
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.GetWorkspaceOperationRequest.SerializeToString,
+            agentruntime_dot_workspace_dot_v1_dot_workspace__pb2.GetWorkspaceOperationResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def CreateWorkspace(request,

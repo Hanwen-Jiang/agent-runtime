@@ -297,6 +297,10 @@ func (s *Server) run(
 ) error {
 	var err error
 	operationID := s.d.NewOperationID()
+	async, _ := ctx.Value(asyncKey{}).(*asyncStart)
+	if async != nil {
+		operationID = "wso-" + hashOperation(tenant.GetTenantId(), id.UserID, async.requestID)
+	}
 	in := &workflowv1.WorkspaceOperationInput{
 		Tenant: tenant, OperationId: operationID, Operation: op, WorkspaceId: workspaceID, RequestedBy: id.UserID,
 	}
@@ -325,6 +329,9 @@ func (s *Server) run(
 		return err
 	}
 	execution := s.d.Timeout + 30*time.Minute
+	if async != nil {
+		return s.startAsync(ctx, id, tenant, engine, in, execution, out, async)
+	}
 	// WS-CREATE-RACE：建工作区期间不收在它上面的 Task（taskapi 的 submit 查这个标记）。
 	creating, err := s.markCreating(ctx, tenant, op, workspaceID, operationID, execution)
 	if err != nil {

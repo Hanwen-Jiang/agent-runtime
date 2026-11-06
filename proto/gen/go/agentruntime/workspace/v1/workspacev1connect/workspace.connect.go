@@ -33,6 +33,12 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// WorkspaceServiceStartWorkspaceOperationProcedure is the fully-qualified name of the
+	// WorkspaceService's StartWorkspaceOperation RPC.
+	WorkspaceServiceStartWorkspaceOperationProcedure = "/agentruntime.workspace.v1.WorkspaceService/StartWorkspaceOperation"
+	// WorkspaceServiceGetWorkspaceOperationProcedure is the fully-qualified name of the
+	// WorkspaceService's GetWorkspaceOperation RPC.
+	WorkspaceServiceGetWorkspaceOperationProcedure = "/agentruntime.workspace.v1.WorkspaceService/GetWorkspaceOperation"
 	// WorkspaceServiceCreateWorkspaceProcedure is the fully-qualified name of the WorkspaceService's
 	// CreateWorkspace RPC.
 	WorkspaceServiceCreateWorkspaceProcedure = "/agentruntime.workspace.v1.WorkspaceService/CreateWorkspace"
@@ -87,6 +93,10 @@ const (
 
 // WorkspaceServiceClient is a client for the agentruntime.workspace.v1.WorkspaceService service.
 type WorkspaceServiceClient interface {
+	// Start a durable operation without waiting for completion (WS-CF-524).
+	StartWorkspaceOperation(context.Context, *connect.Request[v1.StartWorkspaceOperationRequest]) (*connect.Response[v1.StartWorkspaceOperationResponse], error)
+	// Read an operation submitted by this caller, in the same tenant/workspace.
+	GetWorkspaceOperation(context.Context, *connect.Request[v1.GetWorkspaceOperationRequest]) (*connect.Response[v1.GetWorkspaceOperationResponse], error)
 	// 建一个工作区：给了 repo_url 时克隆它（可以带 ref，ref 可以是一个提交；可以带 files，克隆之后写入并另做一次提交）；
 	// 给了 from_workspace_id 时复制同租户的另一个工作区；都没给时 git init，再写入 files 并做一次初始提交（没有 files 时不提交）。
 	// from_workspace_id 与另两种来源不能同给。已有同名的工作区时 AlreadyExists。
@@ -159,6 +169,18 @@ func NewWorkspaceServiceClient(httpClient connect.HTTPClient, baseURL string, op
 	baseURL = strings.TrimRight(baseURL, "/")
 	workspaceServiceMethods := v1.File_agentruntime_workspace_v1_workspace_proto.Services().ByName("WorkspaceService").Methods()
 	return &workspaceServiceClient{
+		startWorkspaceOperation: connect.NewClient[v1.StartWorkspaceOperationRequest, v1.StartWorkspaceOperationResponse](
+			httpClient,
+			baseURL+WorkspaceServiceStartWorkspaceOperationProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("StartWorkspaceOperation")),
+			connect.WithClientOptions(opts...),
+		),
+		getWorkspaceOperation: connect.NewClient[v1.GetWorkspaceOperationRequest, v1.GetWorkspaceOperationResponse](
+			httpClient,
+			baseURL+WorkspaceServiceGetWorkspaceOperationProcedure,
+			connect.WithSchema(workspaceServiceMethods.ByName("GetWorkspaceOperation")),
+			connect.WithClientOptions(opts...),
+		),
 		createWorkspace: connect.NewClient[v1.CreateWorkspaceRequest, v1.CreateWorkspaceResponse](
 			httpClient,
 			baseURL+WorkspaceServiceCreateWorkspaceProcedure,
@@ -266,6 +288,8 @@ func NewWorkspaceServiceClient(httpClient connect.HTTPClient, baseURL string, op
 
 // workspaceServiceClient implements WorkspaceServiceClient.
 type workspaceServiceClient struct {
+	startWorkspaceOperation *connect.Client[v1.StartWorkspaceOperationRequest, v1.StartWorkspaceOperationResponse]
+	getWorkspaceOperation   *connect.Client[v1.GetWorkspaceOperationRequest, v1.GetWorkspaceOperationResponse]
 	createWorkspace         *connect.Client[v1.CreateWorkspaceRequest, v1.CreateWorkspaceResponse]
 	listWorkspaces          *connect.Client[v1.ListWorkspacesRequest, v1.ListWorkspacesResponse]
 	getDiff                 *connect.Client[v1.GetDiffRequest, v1.GetDiffResponse]
@@ -283,6 +307,16 @@ type workspaceServiceClient struct {
 	attachRepo              *connect.Client[v1.AttachRepoRequest, v1.AttachRepoResponse]
 	detachRepo              *connect.Client[v1.DetachRepoRequest, v1.DetachRepoResponse]
 	listRepos               *connect.Client[v1.ListReposRequest, v1.ListReposResponse]
+}
+
+// StartWorkspaceOperation calls agentruntime.workspace.v1.WorkspaceService.StartWorkspaceOperation.
+func (c *workspaceServiceClient) StartWorkspaceOperation(ctx context.Context, req *connect.Request[v1.StartWorkspaceOperationRequest]) (*connect.Response[v1.StartWorkspaceOperationResponse], error) {
+	return c.startWorkspaceOperation.CallUnary(ctx, req)
+}
+
+// GetWorkspaceOperation calls agentruntime.workspace.v1.WorkspaceService.GetWorkspaceOperation.
+func (c *workspaceServiceClient) GetWorkspaceOperation(ctx context.Context, req *connect.Request[v1.GetWorkspaceOperationRequest]) (*connect.Response[v1.GetWorkspaceOperationResponse], error) {
+	return c.getWorkspaceOperation.CallUnary(ctx, req)
 }
 
 // CreateWorkspace calls agentruntime.workspace.v1.WorkspaceService.CreateWorkspace.
@@ -373,6 +407,10 @@ func (c *workspaceServiceClient) ListRepos(ctx context.Context, req *connect.Req
 // WorkspaceServiceHandler is an implementation of the agentruntime.workspace.v1.WorkspaceService
 // service.
 type WorkspaceServiceHandler interface {
+	// Start a durable operation without waiting for completion (WS-CF-524).
+	StartWorkspaceOperation(context.Context, *connect.Request[v1.StartWorkspaceOperationRequest]) (*connect.Response[v1.StartWorkspaceOperationResponse], error)
+	// Read an operation submitted by this caller, in the same tenant/workspace.
+	GetWorkspaceOperation(context.Context, *connect.Request[v1.GetWorkspaceOperationRequest]) (*connect.Response[v1.GetWorkspaceOperationResponse], error)
 	// 建一个工作区：给了 repo_url 时克隆它（可以带 ref，ref 可以是一个提交；可以带 files，克隆之后写入并另做一次提交）；
 	// 给了 from_workspace_id 时复制同租户的另一个工作区；都没给时 git init，再写入 files 并做一次初始提交（没有 files 时不提交）。
 	// from_workspace_id 与另两种来源不能同给。已有同名的工作区时 AlreadyExists。
@@ -441,6 +479,18 @@ type WorkspaceServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	workspaceServiceMethods := v1.File_agentruntime_workspace_v1_workspace_proto.Services().ByName("WorkspaceService").Methods()
+	workspaceServiceStartWorkspaceOperationHandler := connect.NewUnaryHandler(
+		WorkspaceServiceStartWorkspaceOperationProcedure,
+		svc.StartWorkspaceOperation,
+		connect.WithSchema(workspaceServiceMethods.ByName("StartWorkspaceOperation")),
+		connect.WithHandlerOptions(opts...),
+	)
+	workspaceServiceGetWorkspaceOperationHandler := connect.NewUnaryHandler(
+		WorkspaceServiceGetWorkspaceOperationProcedure,
+		svc.GetWorkspaceOperation,
+		connect.WithSchema(workspaceServiceMethods.ByName("GetWorkspaceOperation")),
+		connect.WithHandlerOptions(opts...),
+	)
 	workspaceServiceCreateWorkspaceHandler := connect.NewUnaryHandler(
 		WorkspaceServiceCreateWorkspaceProcedure,
 		svc.CreateWorkspace,
@@ -545,6 +595,10 @@ func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.Han
 	)
 	return "/agentruntime.workspace.v1.WorkspaceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case WorkspaceServiceStartWorkspaceOperationProcedure:
+			workspaceServiceStartWorkspaceOperationHandler.ServeHTTP(w, r)
+		case WorkspaceServiceGetWorkspaceOperationProcedure:
+			workspaceServiceGetWorkspaceOperationHandler.ServeHTTP(w, r)
 		case WorkspaceServiceCreateWorkspaceProcedure:
 			workspaceServiceCreateWorkspaceHandler.ServeHTTP(w, r)
 		case WorkspaceServiceListWorkspacesProcedure:
@@ -587,6 +641,14 @@ func NewWorkspaceServiceHandler(svc WorkspaceServiceHandler, opts ...connect.Han
 
 // UnimplementedWorkspaceServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedWorkspaceServiceHandler struct{}
+
+func (UnimplementedWorkspaceServiceHandler) StartWorkspaceOperation(context.Context, *connect.Request[v1.StartWorkspaceOperationRequest]) (*connect.Response[v1.StartWorkspaceOperationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.workspace.v1.WorkspaceService.StartWorkspaceOperation is not implemented"))
+}
+
+func (UnimplementedWorkspaceServiceHandler) GetWorkspaceOperation(context.Context, *connect.Request[v1.GetWorkspaceOperationRequest]) (*connect.Response[v1.GetWorkspaceOperationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.workspace.v1.WorkspaceService.GetWorkspaceOperation is not implemented"))
+}
 
 func (UnimplementedWorkspaceServiceHandler) CreateWorkspace(context.Context, *connect.Request[v1.CreateWorkspaceRequest]) (*connect.Response[v1.CreateWorkspaceResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.workspace.v1.WorkspaceService.CreateWorkspace is not implemented"))

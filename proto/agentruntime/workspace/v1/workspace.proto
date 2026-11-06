@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package agentruntime.workspace.v1;
 
+import "agentruntime/common/v1/error.proto";
+import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
 // WorkspaceService 是 Task API 之外管理工作区的一组接口（设计书改动稿 W2、新增 4.10.1；docs/plan/cloud-deploy.md D-06），
@@ -13,6 +15,10 @@ import "google/protobuf/timestamp.proto";
 // 路径（ListFiles、ReadFile、InitialFile）：相对工作区根、用 / 分隔；绝对路径、盘符、空段、. 与 ..、反斜杠、NUL 一律
 // InvalidArgument；任何一级是 .git 也是 InvalidArgument（.git 只经 git 操作，不直接给应用读）。
 service WorkspaceService {
+  // Start a durable operation without waiting for completion (WS-CF-524).
+  rpc StartWorkspaceOperation(StartWorkspaceOperationRequest) returns (StartWorkspaceOperationResponse);
+  // Read an operation submitted by this caller, in the same tenant/workspace.
+  rpc GetWorkspaceOperation(GetWorkspaceOperationRequest) returns (GetWorkspaceOperationResponse);
   // 建一个工作区：给了 repo_url 时克隆它（可以带 ref，ref 可以是一个提交；可以带 files，克隆之后写入并另做一次提交）；
   // 给了 from_workspace_id 时复制同租户的另一个工作区；都没给时 git init，再写入 files 并做一次初始提交（没有 files 时不提交）。
   // from_workspace_id 与另两种来源不能同给。已有同名的工作区时 AlreadyExists。
@@ -499,4 +505,42 @@ message ListReposRequest {
 
 message ListReposResponse {
   repeated WorkspaceRepo repos = 1;
+}
+
+// request_id is stable across retries and unique per caller within a tenant.
+// Reusing it with different input returns Conflict. Credentials are sealed.
+message StartWorkspaceOperationRequest {
+  string request_id = 1;
+  oneof operation {
+    CreateWorkspaceRequest create = 2;
+    CommitWorkspaceRequest commit = 3;
+    PushWorkspaceRequest push = 4;
+    ArchiveWorkspaceRequest archive = 5;
+    DeleteWorkspaceRequest delete = 6;
+    SyncWorkspaceRequest sync = 7;
+    DiscardChangesRequest discard = 8;
+    AttachRepoRequest attach_repo = 9;
+    DetachRepoRequest detach_repo = 10;
+  }
+}
+message StartWorkspaceOperationResponse {
+  string operation_id = 1;
+}
+message GetWorkspaceOperationRequest {
+  string tenant_id = 1;
+  string workspace_id = 2;
+  string operation_id = 3;
+}
+enum WorkspaceOperationStatus {
+  WORKSPACE_OPERATION_STATUS_UNSPECIFIED = 0;
+  WORKSPACE_OPERATION_STATUS_RUNNING = 1;
+  WORKSPACE_OPERATION_STATUS_COMPLETED = 2;
+  WORKSPACE_OPERATION_STATUS_FAILED = 3;
+}
+message GetWorkspaceOperationResponse {
+  string operation_id = 1;
+  WorkspaceOperationStatus status = 2;
+  // Public response of the selected RPC using protobuf JSON names, never input.
+  google.protobuf.Struct result = 3;
+  agentruntime.common.v1.Error error = 4;
 }

@@ -1,5 +1,7 @@
 import datetime
 
+from agentruntime.common.v1 import error_pb2 as _error_pb2
+from google.protobuf import struct_pb2 as _struct_pb2
 from google.protobuf import timestamp_pb2 as _timestamp_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
@@ -42,6 +44,13 @@ class FileType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     FILE_TYPE_FILE: _ClassVar[FileType]
     FILE_TYPE_DIRECTORY: _ClassVar[FileType]
     FILE_TYPE_SYMLINK: _ClassVar[FileType]
+
+class WorkspaceOperationStatus(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    WORKSPACE_OPERATION_STATUS_UNSPECIFIED: _ClassVar[WorkspaceOperationStatus]
+    WORKSPACE_OPERATION_STATUS_RUNNING: _ClassVar[WorkspaceOperationStatus]
+    WORKSPACE_OPERATION_STATUS_COMPLETED: _ClassVar[WorkspaceOperationStatus]
+    WORKSPACE_OPERATION_STATUS_FAILED: _ClassVar[WorkspaceOperationStatus]
 WORKSPACE_LAYOUT_UNSPECIFIED: WorkspaceLayout
 WORKSPACE_LAYOUT_ROOT: WorkspaceLayout
 WORKSPACE_LAYOUT_MULTI: WorkspaceLayout
@@ -60,6 +69,10 @@ FILE_TYPE_UNSPECIFIED: FileType
 FILE_TYPE_FILE: FileType
 FILE_TYPE_DIRECTORY: FileType
 FILE_TYPE_SYMLINK: FileType
+WORKSPACE_OPERATION_STATUS_UNSPECIFIED: WorkspaceOperationStatus
+WORKSPACE_OPERATION_STATUS_RUNNING: WorkspaceOperationStatus
+WORKSPACE_OPERATION_STATUS_COMPLETED: WorkspaceOperationStatus
+WORKSPACE_OPERATION_STATUS_FAILED: WorkspaceOperationStatus
 
 class WorkspaceRepo(_message.Message):
     __slots__ = ("name", "url", "ref", "path", "access", "primary", "head", "branch", "attached_at")
@@ -544,3 +557,55 @@ class ListReposResponse(_message.Message):
     REPOS_FIELD_NUMBER: _ClassVar[int]
     repos: _containers.RepeatedCompositeFieldContainer[WorkspaceRepo]
     def __init__(self, repos: _Optional[_Iterable[_Union[WorkspaceRepo, _Mapping]]] = ...) -> None: ...
+
+class StartWorkspaceOperationRequest(_message.Message):
+    __slots__ = ("request_id", "create", "commit", "push", "archive", "delete", "sync", "discard", "attach_repo", "detach_repo")
+    REQUEST_ID_FIELD_NUMBER: _ClassVar[int]
+    CREATE_FIELD_NUMBER: _ClassVar[int]
+    COMMIT_FIELD_NUMBER: _ClassVar[int]
+    PUSH_FIELD_NUMBER: _ClassVar[int]
+    ARCHIVE_FIELD_NUMBER: _ClassVar[int]
+    DELETE_FIELD_NUMBER: _ClassVar[int]
+    SYNC_FIELD_NUMBER: _ClassVar[int]
+    DISCARD_FIELD_NUMBER: _ClassVar[int]
+    ATTACH_REPO_FIELD_NUMBER: _ClassVar[int]
+    DETACH_REPO_FIELD_NUMBER: _ClassVar[int]
+    request_id: str
+    create: CreateWorkspaceRequest
+    commit: CommitWorkspaceRequest
+    push: PushWorkspaceRequest
+    archive: ArchiveWorkspaceRequest
+    delete: DeleteWorkspaceRequest
+    sync: SyncWorkspaceRequest
+    discard: DiscardChangesRequest
+    attach_repo: AttachRepoRequest
+    detach_repo: DetachRepoRequest
+    def __init__(self, request_id: _Optional[str] = ..., create: _Optional[_Union[CreateWorkspaceRequest, _Mapping]] = ..., commit: _Optional[_Union[CommitWorkspaceRequest, _Mapping]] = ..., push: _Optional[_Union[PushWorkspaceRequest, _Mapping]] = ..., archive: _Optional[_Union[ArchiveWorkspaceRequest, _Mapping]] = ..., delete: _Optional[_Union[DeleteWorkspaceRequest, _Mapping]] = ..., sync: _Optional[_Union[SyncWorkspaceRequest, _Mapping]] = ..., discard: _Optional[_Union[DiscardChangesRequest, _Mapping]] = ..., attach_repo: _Optional[_Union[AttachRepoRequest, _Mapping]] = ..., detach_repo: _Optional[_Union[DetachRepoRequest, _Mapping]] = ...) -> None: ...
+
+class StartWorkspaceOperationResponse(_message.Message):
+    __slots__ = ("operation_id",)
+    OPERATION_ID_FIELD_NUMBER: _ClassVar[int]
+    operation_id: str
+    def __init__(self, operation_id: _Optional[str] = ...) -> None: ...
+
+class GetWorkspaceOperationRequest(_message.Message):
+    __slots__ = ("tenant_id", "workspace_id", "operation_id")
+    TENANT_ID_FIELD_NUMBER: _ClassVar[int]
+    WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
+    OPERATION_ID_FIELD_NUMBER: _ClassVar[int]
+    tenant_id: str
+    workspace_id: str
+    operation_id: str
+    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., operation_id: _Optional[str] = ...) -> None: ...
+
+class GetWorkspaceOperationResponse(_message.Message):
+    __slots__ = ("operation_id", "status", "result", "error")
+    OPERATION_ID_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    RESULT_FIELD_NUMBER: _ClassVar[int]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    operation_id: str
+    status: WorkspaceOperationStatus
+    result: _struct_pb2.Struct
+    error: _error_pb2.Error
+    def __init__(self, operation_id: _Optional[str] = ..., status: _Optional[_Union[WorkspaceOperationStatus, str]] = ..., result: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., error: _Optional[_Union[_error_pb2.Error, _Mapping]] = ...) -> None: ...
