@@ -78,9 +78,9 @@
 2. Skill：线上一个用户 Skill 被 Task 读到并照着做。
 3. 子 Agent：默认打开，线上一个要并行调研的 Task 派出子 Agent 并有综合节点。
 4. Firecracker：一个租户的 Task 在 firecracker 后端上跑完 `shell_run`、`repo_*`、交付文件，联网经出网网关、预览地址打得开。
-5. 默认档租户经 coding-web：建会话（克隆仓库）→ 改代码并交付文件的 Task → done，文件能在网页上下载（含 V1-F3）。
+~~5. 默认档租户经 coding-web：建会话（克隆仓库）→ 改代码并交付文件的 Task → done，文件能在网页上下载（含 V1-F3）。~~（2026-11-06 用户撤掉，不等、不跟踪）
 6. Reviewer：线上 10 个 Task 里按规则回退（`rule_fallback`）的不超过 20%。
-7. 最后一版上线后 48 小时内没有需要回滚的故障。
+~~7. 最后一版上线后 48 小时内没有需要回滚的故障。~~（2026-11-06 用户撤掉，不等、不跟踪）
 
 **挪到 v2 的**：WK-LITE-01/02、WS-PULL-01、WS-BLOB-01、D-26 的内存快照（理由见上表 V1-SBX、firecracker-backend.md 的 D-26）；所有新测试与补测试、EV-TB 补跑 17 题、N16-R 的评测对照、FC-REAL 的耗时与密度测量、EV-REAL、EV-DE 线上重判、MX-PUB、SITE-UI 的页面冒烟测试、LongMemEval、STOR-SEC 的真实 R2 核对。
 
