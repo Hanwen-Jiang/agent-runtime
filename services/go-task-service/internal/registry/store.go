@@ -19,7 +19,8 @@ type entry struct {
 	state      registryv1.ReleaseState
 	taskFamily string
 	// document 是规范化的 JSON（键排序），发布后不再修改。
-	document string
+	document   string
+	evaluation string
 }
 
 func (e entry) label() string { return versionLabel(e.version) }
@@ -27,7 +28,7 @@ func (e entry) label() string { return versionLabel(e.version) }
 // ref 是 name@vN。
 func (e entry) ref() string { return e.name + "@" + e.label() }
 
-const entryColumns = `kind, name, version, state, task_family, document`
+const entryColumns = `kind, name, version, state, task_family, document, evaluation`
 
 func asInt(v any) int64 {
 	switch n := v.(type) {
@@ -48,6 +49,7 @@ func decodeEntry(row relational.Row) entry {
 		state:      registryv1.ReleaseState(asInt(row["state"])),
 		taskFamily: str("task_family"),
 		document:   str("document"),
+		evaluation: str("evaluation"),
 	}
 }
 
@@ -192,12 +194,28 @@ func (s scope) promote(ctx context.Context, kind registryv1.RegistryKind, name s
 	err := retry(ctx, func() error {
 		previous = ""
 		return s.st.Transaction(ctx, relational.TxOptions{}, func(ctx context.Context, tx relational.Tx) error {
-			_, found, err := tx.QueryOne(ctx, `SELECT version FROM registry_entries WHERE kind = $1 AND name = $2 AND version = $3`, int64(kind), name, version)
+			// Every version of a name shares stable existing rows. Lock them
+			// before reading the default so READ COMMITTED cannot validate a
+			// stale baseline while another promotion publishes a new default.
+			if _, err := tx.Execute(ctx, `UPDATE registry_entries SET updated_at=updated_at WHERE kind=$1 AND name=$2`, int64(kind), name); err != nil {
+				return err
+			}
+			target, found, err := tx.QueryOne(ctx, `SELECT state,evaluation FROM registry_entries WHERE kind=$1 AND name=$2 AND version=$3`, int64(kind), name, version)
 			if err != nil {
 				return err
 			}
 			if !found {
 				return notFound("version_not_found", "没有这个版本")
+			}
+			if len(expectedDefault) > 0 {
+				targetState := registryv1.ReleaseState(asInt(target["state"]))
+				if targetState == registryv1.ReleaseState_RELEASE_STATE_DEFAULT && target["evaluation"] == evaluation {
+					previous = expectedDefault[0]
+					return nil
+				}
+				if targetState != registryv1.ReleaseState_RELEASE_STATE_SHADOW {
+					return invalid("capability_version_not_shadow", "能力分只能晋升未发布的影子版本")
+				}
 			}
 			row, found, err := tx.QueryOne(ctx, `SELECT version FROM registry_entries WHERE kind = $1 AND name = $2 AND state = $3`,
 				int64(kind), name, int64(registryv1.ReleaseState_RELEASE_STATE_DEFAULT))

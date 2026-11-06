@@ -32,3 +32,17 @@ unknown cost, incomplete repeats, contamination and wide confidence intervals.
 All 378 schema fixture checks passed. No live capability score has been published
 by these code checks; actual publication and loaded Registry revisions are logged
 in the main Goal record after the live evidence gate.
+
+Review hardening: promotions lock the existing rows for the same kind/name before
+reading the default, so Postgres READ COMMITTED cannot admit two promotions of
+different candidates against one stale baseline. Capability-only publication is
+limited to SHADOW revisions; an exact replay of the current DEFAULT's certificate
+returns without changing evidence or timestamps, and RETIRED revisions are
+rejected. Non-score JSON comparisons preserve exact numeric values with
+UseNumber, and the half-candidate gate avoids integer overflow.
+
+The complete SQLite/Postgres Registry suite passes after these changes, including
+eight concurrent promotion requests, immutable replay/retirement evidence,
+integers on either side of 2^53, and MaxInt coverage. `go vet` passes. Evidence is
+in `evidence/capability-registry-review-20261106.log`. No live score was published
+by these tests and no model calls were made.

@@ -1,0 +1,483 @@
+=== RUN   TestCapabilityComparisonPreservesLargeIntegers
+--- PASS: TestCapabilityComparisonPreservesLargeIntegers (0.00s)
+=== RUN   TestCapabilityCoverageCannotOverflow
+--- PASS: TestCapabilityCoverageCannotOverflow (0.00s)
+=== RUN   TestPublishAndPromoteRequireThePublishToken
+=== RUN   TestPublishAndPromoteRequireThePublishToken/sqlite
+=== RUN   TestPublishAndPromoteRequireThePublishToken/postgres
+--- PASS: TestPublishAndPromoteRequireThePublishToken (0.36s)
+    --- PASS: TestPublishAndPromoteRequireThePublishToken/sqlite (0.11s)
+    --- PASS: TestPublishAndPromoteRequireThePublishToken/postgres (0.25s)
+=== RUN   TestPublishTokenNeverAppearsInErrorsOrLogs
+=== RUN   TestPublishTokenNeverAppearsInErrorsOrLogs/sqlite
+=== RUN   TestPublishTokenNeverAppearsInErrorsOrLogs/postgres
+--- PASS: TestPublishTokenNeverAppearsInErrorsOrLogs (0.32s)
+    --- PASS: TestPublishTokenNeverAppearsInErrorsOrLogs/sqlite (0.07s)
+    --- PASS: TestPublishTokenNeverAppearsInErrorsOrLogs/postgres (0.25s)
+=== RUN   TestPublishIsDeniedWhenNoTokenIsConfigured
+=== RUN   TestPublishIsDeniedWhenNoTokenIsConfigured/sqlite
+=== RUN   TestPublishIsDeniedWhenNoTokenIsConfigured/postgres
+--- PASS: TestPublishIsDeniedWhenNoTokenIsConfigured (0.31s)
+    --- PASS: TestPublishIsDeniedWhenNoTokenIsConfigured/sqlite (0.09s)
+    --- PASS: TestPublishIsDeniedWhenNoTokenIsConfigured/postgres (0.23s)
+=== RUN   TestCapabilityScoresPromoteOnlyVerifiedMeasurementsOnUnchangedModels
+=== RUN   TestCapabilityScoresPromoteOnlyVerifiedMeasurementsOnUnchangedModels/sqlite
+=== RUN   TestCapabilityScoresPromoteOnlyVerifiedMeasurementsOnUnchangedModels/postgres
+--- PASS: TestCapabilityScoresPromoteOnlyVerifiedMeasurementsOnUnchangedModels (0.38s)
+    --- PASS: TestCapabilityScoresPromoteOnlyVerifiedMeasurementsOnUnchangedModels/sqlite (0.12s)
+    --- PASS: TestCapabilityScoresPromoteOnlyVerifiedMeasurementsOnUnchangedModels/postgres (0.26s)
+=== RUN   TestCapabilityPublishedEvidenceIsImmutableAndRetryIsReadOnly
+=== RUN   TestCapabilityPublishedEvidenceIsImmutableAndRetryIsReadOnly/sqlite
+=== RUN   TestCapabilityPublishedEvidenceIsImmutableAndRetryIsReadOnly/postgres
+--- PASS: TestCapabilityPublishedEvidenceIsImmutableAndRetryIsReadOnly (0.36s)
+    --- PASS: TestCapabilityPublishedEvidenceIsImmutableAndRetryIsReadOnly/sqlite (0.09s)
+    --- PASS: TestCapabilityPublishedEvidenceIsImmutableAndRetryIsReadOnly/postgres (0.26s)
+=== RUN   TestCapabilityConcurrentPromotionsKeepOneDefaultAndRejectStaleBaseline
+=== RUN   TestCapabilityConcurrentPromotionsKeepOneDefaultAndRejectStaleBaseline/sqlite
+=== RUN   TestCapabilityConcurrentPromotionsKeepOneDefaultAndRejectStaleBaseline/postgres
+--- PASS: TestCapabilityConcurrentPromotionsKeepOneDefaultAndRejectStaleBaseline (0.42s)
+    --- PASS: TestCapabilityConcurrentPromotionsKeepOneDefaultAndRejectStaleBaseline/sqlite (0.15s)
+    --- PASS: TestCapabilityConcurrentPromotionsKeepOneDefaultAndRejectStaleBaseline/postgres (0.28s)
+=== RUN   TestModelRoutingMetadataAtPublish
+=== RUN   TestModelRoutingMetadataAtPublish/sqlite
+=== RUN   TestModelRoutingMetadataAtPublish/postgres
+--- PASS: TestModelRoutingMetadataAtPublish (0.27s)
+    --- PASS: TestModelRoutingMetadataAtPublish/sqlite (0.07s)
+    --- PASS: TestModelRoutingMetadataAtPublish/postgres (0.20s)
+=== RUN   TestPersonalConfigPrivacyImmutablePinsAndNone
+=== RUN   TestPersonalConfigPrivacyImmutablePinsAndNone/sqlite
+=== RUN   TestPersonalConfigPrivacyImmutablePinsAndNone/postgres
+--- PASS: TestPersonalConfigPrivacyImmutablePinsAndNone (2.34s)
+    --- PASS: TestPersonalConfigPrivacyImmutablePinsAndNone/sqlite (1.07s)
+    --- PASS: TestPersonalConfigPrivacyImmutablePinsAndNone/postgres (1.27s)
+=== RUN   TestPersonalConfigConcurrentIdenticalPublish
+=== RUN   TestPersonalConfigConcurrentIdenticalPublish/sqlite
+=== RUN   TestPersonalConfigConcurrentIdenticalPublish/postgres
+--- PASS: TestPersonalConfigConcurrentIdenticalPublish (0.29s)
+    --- PASS: TestPersonalConfigConcurrentIdenticalPublish/sqlite (0.07s)
+    --- PASS: TestPersonalConfigConcurrentIdenticalPublish/postgres (0.22s)
+=== RUN   TestPersonalSelectionPinnedAcrossRetries
+=== RUN   TestPersonalSelectionPinnedAcrossRetries/sqlite
+=== RUN   TestPersonalSelectionPinnedAcrossRetries/postgres
+--- PASS: TestPersonalSelectionPinnedAcrossRetries (0.32s)
+    --- PASS: TestPersonalSelectionPinnedAcrossRetries/sqlite (0.09s)
+    --- PASS: TestPersonalSelectionPinnedAcrossRetries/postgres (0.23s)
+=== RUN   TestPublishNumbersVersionsAndStartsAsShadow
+=== RUN   TestPublishNumbersVersionsAndStartsAsShadow/sqlite
+=== RUN   TestPublishNumbersVersionsAndStartsAsShadow/postgres
+--- PASS: TestPublishNumbersVersionsAndStartsAsShadow (0.31s)
+    --- PASS: TestPublishNumbersVersionsAndStartsAsShadow/sqlite (0.08s)
+    --- PASS: TestPublishNumbersVersionsAndStartsAsShadow/postgres (0.24s)
+=== RUN   TestShadowVersionsDoNotLeak
+=== RUN   TestShadowVersionsDoNotLeak/sqlite
+=== RUN   TestShadowVersionsDoNotLeak/postgres
+--- PASS: TestShadowVersionsDoNotLeak (0.33s)
+    --- PASS: TestShadowVersionsDoNotLeak/sqlite (0.08s)
+    --- PASS: TestShadowVersionsDoNotLeak/postgres (0.25s)
+=== RUN   TestPromoteSetsDefaultAndRetiresThePrevious
+=== RUN   TestPromoteSetsDefaultAndRetiresThePrevious/sqlite
+=== RUN   TestPromoteSetsDefaultAndRetiresThePrevious/postgres
+--- PASS: TestPromoteSetsDefaultAndRetiresThePrevious (0.35s)
+    --- PASS: TestPromoteSetsDefaultAndRetiresThePrevious/sqlite (0.11s)
+    --- PASS: TestPromoteSetsDefaultAndRetiresThePrevious/postgres (0.24s)
+=== RUN   TestPromoteCanRollBackToARetiredVersion
+=== RUN   TestPromoteCanRollBackToARetiredVersion/sqlite
+=== RUN   TestPromoteCanRollBackToARetiredVersion/postgres
+--- PASS: TestPromoteCanRollBackToARetiredVersion (0.29s)
+    --- PASS: TestPromoteCanRollBackToARetiredVersion/sqlite (0.08s)
+    --- PASS: TestPromoteCanRollBackToARetiredVersion/postgres (0.22s)
+=== RUN   TestPublishedContentNeverChanges
+=== RUN   TestPublishedContentNeverChanges/sqlite
+=== RUN   TestPublishedContentNeverChanges/postgres
+--- PASS: TestPublishedContentNeverChanges (0.29s)
+    --- PASS: TestPublishedContentNeverChanges/sqlite (0.07s)
+    --- PASS: TestPublishedContentNeverChanges/postgres (0.22s)
+=== RUN   TestConcurrentPublishesGetDistinctVersions
+=== RUN   TestConcurrentPublishesGetDistinctVersions/sqlite
+=== RUN   TestConcurrentPublishesGetDistinctVersions/postgres
+--- PASS: TestConcurrentPublishesGetDistinctVersions (0.36s)
+    --- PASS: TestConcurrentPublishesGetDistinctVersions/sqlite (0.09s)
+    --- PASS: TestConcurrentPublishesGetDistinctVersions/postgres (0.27s)
+=== RUN   TestNodeTemplateFieldsComeFromTheDocument
+=== RUN   TestNodeTemplateFieldsComeFromTheDocument/sqlite
+=== RUN   TestNodeTemplateFieldsComeFromTheDocument/postgres
+--- PASS: TestNodeTemplateFieldsComeFromTheDocument (0.40s)
+    --- PASS: TestNodeTemplateFieldsComeFromTheDocument/sqlite (0.11s)
+    --- PASS: TestNodeTemplateFieldsComeFromTheDocument/postgres (0.29s)
+=== RUN   TestPromoteRequiresPassingEvidence
+=== RUN   TestPromoteRequiresPassingEvidence/sqlite
+=== RUN   TestPromoteRequiresPassingEvidence/sqlite/没有证据
+=== RUN   TestPromoteRequiresPassingEvidence/sqlite/证据不合_schema
+=== RUN   TestPromoteRequiresPassingEvidence/sqlite/结论不通过
+=== RUN   TestPromoteRequiresPassingEvidence/postgres
+=== RUN   TestPromoteRequiresPassingEvidence/postgres/没有证据
+=== RUN   TestPromoteRequiresPassingEvidence/postgres/证据不合_schema
+=== RUN   TestPromoteRequiresPassingEvidence/postgres/结论不通过
+--- PASS: TestPromoteRequiresPassingEvidence (0.33s)
+    --- PASS: TestPromoteRequiresPassingEvidence/sqlite (0.10s)
+        --- PASS: TestPromoteRequiresPassingEvidence/sqlite/没有证据 (0.00s)
+        --- PASS: TestPromoteRequiresPassingEvidence/sqlite/证据不合_schema (0.00s)
+        --- PASS: TestPromoteRequiresPassingEvidence/sqlite/结论不通过 (0.00s)
+    --- PASS: TestPromoteRequiresPassingEvidence/postgres (0.22s)
+        --- PASS: TestPromoteRequiresPassingEvidence/postgres/没有证据 (0.01s)
+        --- PASS: TestPromoteRequiresPassingEvidence/postgres/证据不合_schema (0.01s)
+        --- PASS: TestPromoteRequiresPassingEvidence/postgres/结论不通过 (0.01s)
+=== RUN   TestPromoteUnknownVersionIsNotFound
+=== RUN   TestPromoteUnknownVersionIsNotFound/sqlite
+=== RUN   TestPromoteUnknownVersionIsNotFound/postgres
+--- PASS: TestPromoteUnknownVersionIsNotFound (0.24s)
+    --- PASS: TestPromoteUnknownVersionIsNotFound/sqlite (0.06s)
+    --- PASS: TestPromoteUnknownVersionIsNotFound/postgres (0.18s)
+=== RUN   TestTenantPolicyTakesEffectOnPublish
+=== RUN   TestTenantPolicyTakesEffectOnPublish/sqlite
+=== RUN   TestTenantPolicyTakesEffectOnPublish/postgres
+--- PASS: TestTenantPolicyTakesEffectOnPublish (0.24s)
+    --- PASS: TestTenantPolicyTakesEffectOnPublish/sqlite (0.05s)
+    --- PASS: TestTenantPolicyTakesEffectOnPublish/postgres (0.18s)
+=== RUN   TestTenantsWithoutAPolicyGetThePlatformDefault
+=== RUN   TestTenantsWithoutAPolicyGetThePlatformDefault/sqlite
+=== RUN   TestTenantsWithoutAPolicyGetThePlatformDefault/postgres
+--- PASS: TestTenantsWithoutAPolicyGetThePlatformDefault (0.31s)
+    --- PASS: TestTenantsWithoutAPolicyGetThePlatformDefault/sqlite (0.09s)
+    --- PASS: TestTenantsWithoutAPolicyGetThePlatformDefault/postgres (0.21s)
+=== RUN   TestResolvePinnedVersionsPinsOnlyDefaults
+=== RUN   TestResolvePinnedVersionsPinsOnlyDefaults/sqlite
+=== RUN   TestResolvePinnedVersionsPinsOnlyDefaults/postgres
+--- PASS: TestResolvePinnedVersionsPinsOnlyDefaults (0.36s)
+    --- PASS: TestResolvePinnedVersionsPinsOnlyDefaults/sqlite (0.09s)
+    --- PASS: TestResolvePinnedVersionsPinsOnlyDefaults/postgres (0.27s)
+=== RUN   TestPinnedQueriesIgnoreLaterReleases
+=== RUN   TestPinnedQueriesIgnoreLaterReleases/sqlite
+=== RUN   TestPinnedQueriesIgnoreLaterReleases/postgres
+--- PASS: TestPinnedQueriesIgnoreLaterReleases (0.39s)
+    --- PASS: TestPinnedQueriesIgnoreLaterReleases/sqlite (0.13s)
+    --- PASS: TestPinnedQueriesIgnoreLaterReleases/postgres (0.26s)
+=== RUN   TestPinnedListingFailsClosedOnUnknownVersions
+=== RUN   TestPinnedListingFailsClosedOnUnknownVersions/sqlite
+=== RUN   TestPinnedListingFailsClosedOnUnknownVersions/postgres
+--- PASS: TestPinnedListingFailsClosedOnUnknownVersions (0.27s)
+    --- PASS: TestPinnedListingFailsClosedOnUnknownVersions/sqlite (0.06s)
+    --- PASS: TestPinnedListingFailsClosedOnUnknownVersions/postgres (0.20s)
+=== RUN   TestResolvePinsTheRecipeOfTheTaskFamily
+=== RUN   TestResolvePinsTheRecipeOfTheTaskFamily/sqlite
+=== RUN   TestResolvePinsTheRecipeOfTheTaskFamily/sqlite/按任务族取唯一的默认_Recipe
+=== RUN   TestResolvePinsTheRecipeOfTheTaskFamily/sqlite/指定的_Recipe_原样固定
+=== RUN   TestResolvePinsTheRecipeOfTheTaskFamily/sqlite/任务族只有影子版本时不固定
+=== RUN   TestResolvePinsTheRecipeOfTheTaskFamily/sqlite/任务族有多个默认_Recipe_时不替_Planner_选
+=== RUN   TestResolvePinsTheRecipeOfTheTaskFamily/sqlite/没有这个任务族
+=== RUN   TestResolvePinsTheRecipeOfTheTaskFamily/sqlite/不给任务族也不指定
+=== RUN   TestResolvePinsTheRecipeOfTheTaskFamily/postgres
+=== RUN   TestResolvePinsTheRecipeOfTheTaskFamily/postgres/按任务族取唯一的默认_Recipe
+=== RUN   TestResolvePinsTheRecipeOfTheTaskFamily/postgres/指定的_Recipe_原样固定
+=== RUN   TestResolvePinsTheRecipeOfTheTaskFamily/postgres/任务族只有影子版本时不固定
+=== RUN   TestResolvePinsTheRecipeOfTheTaskFamily/postgres/任务族有多个默认_Recipe_时不替_Planner_选
+=== RUN   TestResolvePinsTheRecipeOfTheTaskFamily/postgres/没有这个任务族
+=== RUN   TestResolvePinsTheRecipeOfTheTaskFamily/postgres/不给任务族也不指定
+--- PASS: TestResolvePinsTheRecipeOfTheTaskFamily (0.57s)
+    --- PASS: TestResolvePinsTheRecipeOfTheTaskFamily/sqlite (0.18s)
+        --- PASS: TestResolvePinsTheRecipeOfTheTaskFamily/sqlite/按任务族取唯一的默认_Recipe (0.01s)
+        --- PASS: TestResolvePinsTheRecipeOfTheTaskFamily/sqlite/指定的_Recipe_原样固定 (0.01s)
+        --- PASS: TestResolvePinsTheRecipeOfTheTaskFamily/sqlite/任务族只有影子版本时不固定 (0.01s)
+        --- PASS: TestResolvePinsTheRecipeOfTheTaskFamily/sqlite/任务族有多个默认_Recipe_时不替_Planner_选 (0.01s)
+        --- PASS: TestResolvePinsTheRecipeOfTheTaskFamily/sqlite/没有这个任务族 (0.01s)
+        --- PASS: TestResolvePinsTheRecipeOfTheTaskFamily/sqlite/不给任务族也不指定 (0.01s)
+    --- PASS: TestResolvePinsTheRecipeOfTheTaskFamily/postgres (0.39s)
+        --- PASS: TestResolvePinsTheRecipeOfTheTaskFamily/postgres/按任务族取唯一的默认_Recipe (0.02s)
+        --- PASS: TestResolvePinsTheRecipeOfTheTaskFamily/postgres/指定的_Recipe_原样固定 (0.01s)
+        --- PASS: TestResolvePinsTheRecipeOfTheTaskFamily/postgres/任务族只有影子版本时不固定 (0.01s)
+        --- PASS: TestResolvePinsTheRecipeOfTheTaskFamily/postgres/任务族有多个默认_Recipe_时不替_Planner_选 (0.02s)
+        --- PASS: TestResolvePinsTheRecipeOfTheTaskFamily/postgres/没有这个任务族 (0.01s)
+        --- PASS: TestResolvePinsTheRecipeOfTheTaskFamily/postgres/不给任务族也不指定 (0.01s)
+=== RUN   TestListingsArePagedInNameOrder
+=== RUN   TestListingsArePagedInNameOrder/sqlite
+=== RUN   TestListingsArePagedInNameOrder/postgres
+--- PASS: TestListingsArePagedInNameOrder (0.41s)
+    --- PASS: TestListingsArePagedInNameOrder/sqlite (0.13s)
+    --- PASS: TestListingsArePagedInNameOrder/postgres (0.28s)
+=== RUN   TestPlatformEntriesAreVisibleToEveryTenant
+=== RUN   TestPlatformEntriesAreVisibleToEveryTenant/sqlite
+=== RUN   TestPlatformEntriesAreVisibleToEveryTenant/postgres
+--- PASS: TestPlatformEntriesAreVisibleToEveryTenant (0.39s)
+    --- PASS: TestPlatformEntriesAreVisibleToEveryTenant/sqlite (0.12s)
+    --- PASS: TestPlatformEntriesAreVisibleToEveryTenant/postgres (0.27s)
+=== RUN   TestTenantRecipesAreInvisibleToOtherTenants
+=== RUN   TestTenantRecipesAreInvisibleToOtherTenants/sqlite
+=== RUN   TestTenantRecipesAreInvisibleToOtherTenants/postgres
+--- PASS: TestTenantRecipesAreInvisibleToOtherTenants (0.43s)
+    --- PASS: TestTenantRecipesAreInvisibleToOtherTenants/sqlite (0.14s)
+    --- PASS: TestTenantRecipesAreInvisibleToOtherTenants/postgres (0.29s)
+=== RUN   TestTenantRecipeCannotTakeAPlatformName
+=== RUN   TestTenantRecipeCannotTakeAPlatformName/sqlite
+=== RUN   TestTenantRecipeCannotTakeAPlatformName/postgres
+--- PASS: TestTenantRecipeCannotTakeAPlatformName (0.35s)
+    --- PASS: TestTenantRecipeCannotTakeAPlatformName/sqlite (0.10s)
+    --- PASS: TestTenantRecipeCannotTakeAPlatformName/postgres (0.25s)
+=== RUN   TestPlatformRecipeWinsOverAnOlderTenantRecipeOfTheSameName
+=== RUN   TestPlatformRecipeWinsOverAnOlderTenantRecipeOfTheSameName/sqlite
+=== RUN   TestPlatformRecipeWinsOverAnOlderTenantRecipeOfTheSameName/postgres
+--- PASS: TestPlatformRecipeWinsOverAnOlderTenantRecipeOfTheSameName (0.41s)
+    --- PASS: TestPlatformRecipeWinsOverAnOlderTenantRecipeOfTheSameName/sqlite (0.13s)
+    --- PASS: TestPlatformRecipeWinsOverAnOlderTenantRecipeOfTheSameName/postgres (0.29s)
+=== RUN   TestTenantPoliciesAreIsolated
+=== RUN   TestTenantPoliciesAreIsolated/sqlite
+=== RUN   TestTenantPoliciesAreIsolated/postgres
+--- PASS: TestTenantPoliciesAreIsolated (0.34s)
+    --- PASS: TestTenantPoliciesAreIsolated/sqlite (0.09s)
+    --- PASS: TestTenantPoliciesAreIsolated/postgres (0.25s)
+=== RUN   TestReadsWithoutTenantAreDenied
+=== RUN   TestReadsWithoutTenantAreDenied/sqlite
+=== RUN   TestReadsWithoutTenantAreDenied/sqlite/GetNodeTemplate
+=== RUN   TestReadsWithoutTenantAreDenied/sqlite/ListNodeTemplates
+=== RUN   TestReadsWithoutTenantAreDenied/sqlite/GetRecipe
+=== RUN   TestReadsWithoutTenantAreDenied/sqlite/ListRecipes
+=== RUN   TestReadsWithoutTenantAreDenied/sqlite/GetModelProfile
+=== RUN   TestReadsWithoutTenantAreDenied/sqlite/ListModelProfiles
+=== RUN   TestReadsWithoutTenantAreDenied/sqlite/GetTenantPolicy
+=== RUN   TestReadsWithoutTenantAreDenied/sqlite/ResolvePinnedVersions
+=== RUN   TestReadsWithoutTenantAreDenied/postgres
+=== RUN   TestReadsWithoutTenantAreDenied/postgres/GetNodeTemplate
+=== RUN   TestReadsWithoutTenantAreDenied/postgres/ListNodeTemplates
+=== RUN   TestReadsWithoutTenantAreDenied/postgres/GetRecipe
+=== RUN   TestReadsWithoutTenantAreDenied/postgres/ListRecipes
+=== RUN   TestReadsWithoutTenantAreDenied/postgres/GetModelProfile
+=== RUN   TestReadsWithoutTenantAreDenied/postgres/ListModelProfiles
+=== RUN   TestReadsWithoutTenantAreDenied/postgres/GetTenantPolicy
+=== RUN   TestReadsWithoutTenantAreDenied/postgres/ResolvePinnedVersions
+--- PASS: TestReadsWithoutTenantAreDenied (0.38s)
+    --- PASS: TestReadsWithoutTenantAreDenied/sqlite (0.11s)
+        --- PASS: TestReadsWithoutTenantAreDenied/sqlite/GetNodeTemplate (0.00s)
+        --- PASS: TestReadsWithoutTenantAreDenied/sqlite/ListNodeTemplates (0.00s)
+        --- PASS: TestReadsWithoutTenantAreDenied/sqlite/GetRecipe (0.00s)
+        --- PASS: TestReadsWithoutTenantAreDenied/sqlite/ListRecipes (0.00s)
+        --- PASS: TestReadsWithoutTenantAreDenied/sqlite/GetModelProfile (0.00s)
+        --- PASS: TestReadsWithoutTenantAreDenied/sqlite/ListModelProfiles (0.00s)
+        --- PASS: TestReadsWithoutTenantAreDenied/sqlite/GetTenantPolicy (0.00s)
+        --- PASS: TestReadsWithoutTenantAreDenied/sqlite/ResolvePinnedVersions (0.00s)
+    --- PASS: TestReadsWithoutTenantAreDenied/postgres (0.27s)
+        --- PASS: TestReadsWithoutTenantAreDenied/postgres/GetNodeTemplate (0.00s)
+        --- PASS: TestReadsWithoutTenantAreDenied/postgres/ListNodeTemplates (0.00s)
+        --- PASS: TestReadsWithoutTenantAreDenied/postgres/GetRecipe (0.00s)
+        --- PASS: TestReadsWithoutTenantAreDenied/postgres/ListRecipes (0.00s)
+        --- PASS: TestReadsWithoutTenantAreDenied/postgres/GetModelProfile (0.00s)
+        --- PASS: TestReadsWithoutTenantAreDenied/postgres/ListModelProfiles (0.00s)
+        --- PASS: TestReadsWithoutTenantAreDenied/postgres/GetTenantPolicy (0.00s)
+        --- PASS: TestReadsWithoutTenantAreDenied/postgres/ResolvePinnedVersions (0.00s)
+=== RUN   TestPublishScopeFollowsTheKind
+=== RUN   TestPublishScopeFollowsTheKind/sqlite
+=== RUN   TestPublishScopeFollowsTheKind/sqlite/Node_Template_只在平台作用域
+=== RUN   TestPublishScopeFollowsTheKind/sqlite/Model_Profile_只在平台作用域
+=== RUN   TestPublishScopeFollowsTheKind/sqlite/租户策略要有租户
+=== RUN   TestPublishScopeFollowsTheKind/sqlite/Reasoning_Template_第一期不收（还没有_schema）
+=== RUN   TestPublishScopeFollowsTheKind/sqlite/种类未指定
+=== RUN   TestPublishScopeFollowsTheKind/postgres
+=== RUN   TestPublishScopeFollowsTheKind/postgres/Node_Template_只在平台作用域
+=== RUN   TestPublishScopeFollowsTheKind/postgres/Model_Profile_只在平台作用域
+=== RUN   TestPublishScopeFollowsTheKind/postgres/租户策略要有租户
+=== RUN   TestPublishScopeFollowsTheKind/postgres/Reasoning_Template_第一期不收（还没有_schema）
+=== RUN   TestPublishScopeFollowsTheKind/postgres/种类未指定
+--- PASS: TestPublishScopeFollowsTheKind (0.30s)
+    --- PASS: TestPublishScopeFollowsTheKind/sqlite (0.08s)
+        --- PASS: TestPublishScopeFollowsTheKind/sqlite/Node_Template_只在平台作用域 (0.00s)
+        --- PASS: TestPublishScopeFollowsTheKind/sqlite/Model_Profile_只在平台作用域 (0.00s)
+        --- PASS: TestPublishScopeFollowsTheKind/sqlite/租户策略要有租户 (0.00s)
+        --- PASS: TestPublishScopeFollowsTheKind/sqlite/Reasoning_Template_第一期不收（还没有_schema） (0.00s)
+        --- PASS: TestPublishScopeFollowsTheKind/sqlite/种类未指定 (0.00s)
+    --- PASS: TestPublishScopeFollowsTheKind/postgres (0.22s)
+        --- PASS: TestPublishScopeFollowsTheKind/postgres/Node_Template_只在平台作用域 (0.00s)
+        --- PASS: TestPublishScopeFollowsTheKind/postgres/Model_Profile_只在平台作用域 (0.00s)
+        --- PASS: TestPublishScopeFollowsTheKind/postgres/租户策略要有租户 (0.00s)
+        --- PASS: TestPublishScopeFollowsTheKind/postgres/Reasoning_Template_第一期不收（还没有_schema） (0.00s)
+        --- PASS: TestPublishScopeFollowsTheKind/postgres/种类未指定 (0.00s)
+=== RUN   TestErrorsCarryTheErrorTrailer
+=== RUN   TestErrorsCarryTheErrorTrailer/sqlite
+=== RUN   TestErrorsCarryTheErrorTrailer/postgres
+--- PASS: TestErrorsCarryTheErrorTrailer (0.31s)
+    --- PASS: TestErrorsCarryTheErrorTrailer/sqlite (0.08s)
+    --- PASS: TestErrorsCarryTheErrorTrailer/postgres (0.23s)
+=== RUN   TestMigrationsDoNotCollideWithTheTaskStore
+--- PASS: TestMigrationsDoNotCollideWithTheTaskStore (0.00s)
+=== RUN   TestRegistryTablesAreCoveredByRowLevelSecurity
+--- PASS: TestRegistryTablesAreCoveredByRowLevelSecurity (0.16s)
+=== RUN   TestPinnedSkillVersionsStayReadableAfterANewVersion
+=== RUN   TestPinnedSkillVersionsStayReadableAfterANewVersion/sqlite
+=== RUN   TestPinnedSkillVersionsStayReadableAfterANewVersion/postgres
+--- PASS: TestPinnedSkillVersionsStayReadableAfterANewVersion (0.37s)
+    --- PASS: TestPinnedSkillVersionsStayReadableAfterANewVersion/sqlite (0.10s)
+    --- PASS: TestPinnedSkillVersionsStayReadableAfterANewVersion/postgres (0.27s)
+=== RUN   TestUnchangedSkillContentDoesNotMakeANewVersion
+=== RUN   TestUnchangedSkillContentDoesNotMakeANewVersion/sqlite
+=== RUN   TestUnchangedSkillContentDoesNotMakeANewVersion/postgres
+--- PASS: TestUnchangedSkillContentDoesNotMakeANewVersion (0.35s)
+    --- PASS: TestUnchangedSkillContentDoesNotMakeANewVersion/sqlite (0.10s)
+    --- PASS: TestUnchangedSkillContentDoesNotMakeANewVersion/postgres (0.25s)
+=== RUN   TestLowerLayersCannotShadowUpperLayers
+=== RUN   TestLowerLayersCannotShadowUpperLayers/sqlite
+=== RUN   TestLowerLayersCannotShadowUpperLayers/postgres
+--- PASS: TestLowerLayersCannotShadowUpperLayers (0.42s)
+    --- PASS: TestLowerLayersCannotShadowUpperLayers/sqlite (0.13s)
+    --- PASS: TestLowerLayersCannotShadowUpperLayers/postgres (0.29s)
+=== RUN   TestOthersCannotReadAUsersSkill
+=== RUN   TestOthersCannotReadAUsersSkill/sqlite
+=== RUN   TestOthersCannotReadAUsersSkill/postgres
+--- PASS: TestOthersCannotReadAUsersSkill (0.41s)
+    --- PASS: TestOthersCannotReadAUsersSkill/sqlite (0.13s)
+    --- PASS: TestOthersCannotReadAUsersSkill/postgres (0.29s)
+=== RUN   TestSkillDocumentsAreChecked
+=== RUN   TestSkillDocumentsAreChecked/sqlite
+=== RUN   TestSkillDocumentsAreChecked/postgres
+--- PASS: TestSkillDocumentsAreChecked (0.34s)
+    --- PASS: TestSkillDocumentsAreChecked/sqlite (0.10s)
+    --- PASS: TestSkillDocumentsAreChecked/postgres (0.23s)
+=== RUN   TestRetiredSkillsLeaveTheCatalogButPinsStillRead
+=== RUN   TestRetiredSkillsLeaveTheCatalogButPinsStillRead/sqlite
+=== RUN   TestRetiredSkillsLeaveTheCatalogButPinsStillRead/postgres
+--- PASS: TestRetiredSkillsLeaveTheCatalogButPinsStillRead (0.34s)
+    --- PASS: TestRetiredSkillsLeaveTheCatalogButPinsStillRead/sqlite (0.12s)
+    --- PASS: TestRetiredSkillsLeaveTheCatalogButPinsStillRead/postgres (0.22s)
+=== RUN   TestEachUserHasAtMostAHundredSkills
+=== RUN   TestEachUserHasAtMostAHundredSkills/sqlite
+=== RUN   TestEachUserHasAtMostAHundredSkills/postgres
+--- PASS: TestEachUserHasAtMostAHundredSkills (1.57s)
+    --- PASS: TestEachUserHasAtMostAHundredSkills/sqlite (0.54s)
+    --- PASS: TestEachUserHasAtMostAHundredSkills/postgres (1.03s)
+=== RUN   TestSkillBodiesStayOutOfTheLogs
+=== RUN   TestSkillBodiesStayOutOfTheLogs/sqlite
+=== RUN   TestSkillBodiesStayOutOfTheLogs/postgres
+--- PASS: TestSkillBodiesStayOutOfTheLogs (0.36s)
+    --- PASS: TestSkillBodiesStayOutOfTheLogs/sqlite (0.10s)
+    --- PASS: TestSkillBodiesStayOutOfTheLogs/postgres (0.26s)
+=== RUN   TestSkillPayloadCarriesTheSchemaID
+=== RUN   TestSkillPayloadCarriesTheSchemaID/sqlite
+=== RUN   TestSkillPayloadCarriesTheSchemaID/postgres
+--- PASS: TestSkillPayloadCarriesTheSchemaID (0.28s)
+    --- PASS: TestSkillPayloadCarriesTheSchemaID/sqlite (0.07s)
+    --- PASS: TestSkillPayloadCarriesTheSchemaID/postgres (0.21s)
+=== RUN   TestTaskFamiliesFallBackToThePlatformDefault
+=== RUN   TestTaskFamiliesFallBackToThePlatformDefault/sqlite
+=== RUN   TestTaskFamiliesFallBackToThePlatformDefault/postgres
+--- PASS: TestTaskFamiliesFallBackToThePlatformDefault (0.33s)
+    --- PASS: TestTaskFamiliesFallBackToThePlatformDefault/sqlite (0.10s)
+    --- PASS: TestTaskFamiliesFallBackToThePlatformDefault/postgres (0.22s)
+=== RUN   TestTaskFamiliesAreValidatedOnPublish
+=== RUN   TestTaskFamiliesAreValidatedOnPublish/sqlite
+=== RUN   TestTaskFamiliesAreValidatedOnPublish/postgres
+--- PASS: TestTaskFamiliesAreValidatedOnPublish (0.24s)
+    --- PASS: TestTaskFamiliesAreValidatedOnPublish/sqlite (0.06s)
+    --- PASS: TestTaskFamiliesAreValidatedOnPublish/postgres (0.18s)
+=== RUN   TestNodeTemplateExamples
+=== RUN   TestNodeTemplateExamples/sqlite
+=== RUN   TestNodeTemplateExamples/postgres
+--- PASS: TestNodeTemplateExamples (0.44s)
+    --- PASS: TestNodeTemplateExamples/sqlite (0.13s)
+    --- PASS: TestNodeTemplateExamples/postgres (0.31s)
+=== RUN   TestRecipeExamples
+=== RUN   TestRecipeExamples/sqlite
+=== RUN   TestRecipeExamples/postgres
+--- PASS: TestRecipeExamples (0.36s)
+    --- PASS: TestRecipeExamples/sqlite (0.14s)
+    --- PASS: TestRecipeExamples/postgres (0.22s)
+=== RUN   TestModelProfileExamples
+=== RUN   TestModelProfileExamples/sqlite
+=== RUN   TestModelProfileExamples/postgres
+--- PASS: TestModelProfileExamples (0.26s)
+    --- PASS: TestModelProfileExamples/sqlite (0.06s)
+    --- PASS: TestModelProfileExamples/postgres (0.20s)
+=== RUN   TestTenantPolicyExamples
+=== RUN   TestTenantPolicyExamples/sqlite
+=== RUN   TestTenantPolicyExamples/postgres
+--- PASS: TestTenantPolicyExamples (0.34s)
+    --- PASS: TestTenantPolicyExamples/sqlite (0.11s)
+    --- PASS: TestTenantPolicyExamples/postgres (0.23s)
+=== RUN   TestEvaluationExamples
+=== RUN   TestEvaluationExamples/sqlite
+=== RUN   TestEvaluationExamples/postgres
+--- PASS: TestEvaluationExamples (0.29s)
+    --- PASS: TestEvaluationExamples/sqlite (0.08s)
+    --- PASS: TestEvaluationExamples/postgres (0.21s)
+=== RUN   TestDocumentSchemaIDMustMatchTheKind
+=== RUN   TestDocumentSchemaIDMustMatchTheKind/sqlite
+=== RUN   TestDocumentSchemaIDMustMatchTheKind/postgres
+--- PASS: TestDocumentSchemaIDMustMatchTheKind (0.26s)
+    --- PASS: TestDocumentSchemaIDMustMatchTheKind/sqlite (0.06s)
+    --- PASS: TestDocumentSchemaIDMustMatchTheKind/postgres (0.20s)
+=== RUN   TestNamesFollowTheRefFormat
+=== RUN   TestNamesFollowTheRefFormat/sqlite
+=== RUN   TestNamesFollowTheRefFormat/postgres
+--- PASS: TestNamesFollowTheRefFormat (0.24s)
+    --- PASS: TestNamesFollowTheRefFormat/sqlite (0.05s)
+    --- PASS: TestNamesFollowTheRefFormat/postgres (0.18s)
+=== RUN   TestModelProfileNameMustEqualDocumentID
+=== RUN   TestModelProfileNameMustEqualDocumentID/sqlite
+=== RUN   TestModelProfileNameMustEqualDocumentID/postgres
+--- PASS: TestModelProfileNameMustEqualDocumentID (0.22s)
+    --- PASS: TestModelProfileNameMustEqualDocumentID/sqlite (0.04s)
+    --- PASS: TestModelProfileNameMustEqualDocumentID/postgres (0.18s)
+=== RUN   TestTierNamesAreUniqueWithinAProfile
+=== RUN   TestTierNamesAreUniqueWithinAProfile/sqlite
+=== RUN   TestTierNamesAreUniqueWithinAProfile/postgres
+--- PASS: TestTierNamesAreUniqueWithinAProfile (0.22s)
+    --- PASS: TestTierNamesAreUniqueWithinAProfile/sqlite (0.04s)
+    --- PASS: TestTierNamesAreUniqueWithinAProfile/postgres (0.18s)
+=== RUN   TestRollbackTemplateMustBePublished
+=== RUN   TestRollbackTemplateMustBePublished/sqlite
+=== RUN   TestRollbackTemplateMustBePublished/postgres
+--- PASS: TestRollbackTemplateMustBePublished (0.30s)
+    --- PASS: TestRollbackTemplateMustBePublished/sqlite (0.06s)
+    --- PASS: TestRollbackTemplateMustBePublished/postgres (0.24s)
+=== RUN   TestRecipeReferencesAreChecked
+=== RUN   TestRecipeReferencesAreChecked/sqlite
+=== RUN   TestRecipeReferencesAreChecked/sqlite/引用的模板不存在
+=== RUN   TestRecipeReferencesAreChecked/sqlite/引用的模板版本不存在
+=== RUN   TestRecipeReferencesAreChecked/sqlite/risk_低于_Goal_Node_的上限
+=== RUN   TestRecipeReferencesAreChecked/sqlite/Node_id_重复
+=== RUN   TestRecipeReferencesAreChecked/sqlite/after_引用别的_Stage
+=== RUN   TestRecipeReferencesAreChecked/sqlite/写操作的节点设缓存
+=== RUN   TestRecipeReferencesAreChecked/sqlite/write_irreversible_的节点重试
+=== RUN   TestRecipeReferencesAreChecked/sqlite/read_的节点缓存不设_TTL
+=== RUN   TestRecipeReferencesAreChecked/sqlite/risk_低于模板的_effect
+=== RUN   TestRecipeReferencesAreChecked/sqlite/after_引用不存在
+=== RUN   TestRecipeReferencesAreChecked/sqlite/after_成环
+=== RUN   TestRecipeReferencesAreChecked/postgres
+=== RUN   TestRecipeReferencesAreChecked/postgres/引用的模板版本不存在
+=== RUN   TestRecipeReferencesAreChecked/postgres/risk_低于_Goal_Node_的上限
+=== RUN   TestRecipeReferencesAreChecked/postgres/after_引用别的_Stage
+=== RUN   TestRecipeReferencesAreChecked/postgres/写操作的节点设缓存
+=== RUN   TestRecipeReferencesAreChecked/postgres/write_irreversible_的节点重试
+=== RUN   TestRecipeReferencesAreChecked/postgres/引用的模板不存在
+=== RUN   TestRecipeReferencesAreChecked/postgres/risk_低于模板的_effect
+=== RUN   TestRecipeReferencesAreChecked/postgres/Node_id_重复
+=== RUN   TestRecipeReferencesAreChecked/postgres/after_引用不存在
+=== RUN   TestRecipeReferencesAreChecked/postgres/after_成环
+=== RUN   TestRecipeReferencesAreChecked/postgres/read_的节点缓存不设_TTL
+--- PASS: TestRecipeReferencesAreChecked (0.45s)
+    --- PASS: TestRecipeReferencesAreChecked/sqlite (0.11s)
+        --- PASS: TestRecipeReferencesAreChecked/sqlite/引用的模板不存在 (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/sqlite/引用的模板版本不存在 (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/sqlite/risk_低于_Goal_Node_的上限 (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/sqlite/Node_id_重复 (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/sqlite/after_引用别的_Stage (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/sqlite/写操作的节点设缓存 (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/sqlite/write_irreversible_的节点重试 (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/sqlite/read_的节点缓存不设_TTL (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/sqlite/risk_低于模板的_effect (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/sqlite/after_引用不存在 (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/sqlite/after_成环 (0.00s)
+    --- PASS: TestRecipeReferencesAreChecked/postgres (0.34s)
+        --- PASS: TestRecipeReferencesAreChecked/postgres/引用的模板版本不存在 (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/postgres/risk_低于_Goal_Node_的上限 (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/postgres/after_引用别的_Stage (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/postgres/写操作的节点设缓存 (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/postgres/write_irreversible_的节点重试 (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/postgres/引用的模板不存在 (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/postgres/risk_低于模板的_effect (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/postgres/Node_id_重复 (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/postgres/after_引用不存在 (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/postgres/after_成环 (0.00s)
+        --- PASS: TestRecipeReferencesAreChecked/postgres/read_的节点缓存不设_TTL (0.00s)
+=== RUN   TestRecipeMetadataComesFromTheDocument
+=== RUN   TestRecipeMetadataComesFromTheDocument/sqlite
+=== RUN   TestRecipeMetadataComesFromTheDocument/postgres
+--- PASS: TestRecipeMetadataComesFromTheDocument (0.30s)
+    --- PASS: TestRecipeMetadataComesFromTheDocument/sqlite (0.07s)
+    --- PASS: TestRecipeMetadataComesFromTheDocument/postgres (0.23s)
+PASS

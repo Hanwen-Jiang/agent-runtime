@@ -38,7 +38,9 @@ type capabilityEvidence struct {
 
 func capabilityScores(document string) (map[string]any, map[string]capabilityMeasurement, error) {
 	var doc map[string]any
-	if err := json.Unmarshal([]byte(document), &doc); err != nil {
+	decoder := json.NewDecoder(strings.NewReader(document))
+	decoder.UseNumber()
+	if err := decoder.Decode(&doc); err != nil {
 		return nil, nil, err
 	}
 	var profile struct {
@@ -66,19 +68,27 @@ func (r *Registry) checkCapabilityPromotion(ctx context.Context, sc scope, kind 
 	if err := json.Unmarshal(raw, &evidence); err != nil {
 		return "", err
 	}
-	baseline, found, err := sc.get(ctx, kind, name, 0)
-	if err != nil {
-		return "", err
-	}
-	if !found || baseline.label() != evidence.BaselineVersion {
-		return "", invalid("capability_baseline_changed", "能力分的现行基线版本不匹配")
-	}
 	candidate, found, err := sc.get(ctx, kind, name, version)
 	if err != nil {
 		return "", err
 	}
 	if !found {
 		return "", notFound("version_not_found", "没有这个版本")
+	}
+	if candidate.state == registryv1.ReleaseState_RELEASE_STATE_DEFAULT && candidate.evaluation == string(raw) {
+		// Rechecked while holding the promotion lock; this must not rewrite
+		// evidence or timestamps on an already published revision.
+		return evidence.BaselineVersion, nil
+	}
+	if candidate.state != registryv1.ReleaseState_RELEASE_STATE_SHADOW {
+		return "", invalid("capability_version_not_shadow", "能力分只能晋升未发布的影子版本")
+	}
+	baseline, found, err := sc.get(ctx, kind, name, 0)
+	if err != nil {
+		return "", err
+	}
+	if !found || baseline.label() != evidence.BaselineVersion {
+		return "", invalid("capability_baseline_changed", "能力分的现行基线版本不匹配")
 	}
 	oldDoc, want, err := capabilityScores(baseline.document)
 	if err != nil {
@@ -98,10 +108,10 @@ func (r *Registry) checkCapabilityPromotion(ctx context.Context, sc scope, kind 
 			return "", invalid("capability_duplicate", "能力分证据维度重复")
 		}
 		seen[m.key()] = true
-		if e.Eligible > e.Total || e.Eligible < (e.Total+1)/2 || len(e.CI95) != 2 || e.CI95[1] < e.CI95[0] || (e.CI95[1]-e.CI95[0])/2 > 0.15+1e-9 {
+		if !capabilityCoverage(e.Eligible, e.Total) || len(e.CI95) != 2 || e.CI95[1] < e.CI95[0] || (e.CI95[1]-e.CI95[0])/2 > 0.15+1e-9 {
 			return "", invalid("capability_gate_failed", "能力分覆盖或置信区间未达门槛")
 		}
-		expected := math.Round((float64(e.Items)*e.RawSuccessRate+5)/float64(e.Items+10)*10000) / 10000
+		expected := math.Round((float64(e.Items)*e.RawSuccessRate+5)/(float64(e.Items)+10)*10000) / 10000
 		if math.Abs(m.Score-expected) > 0.0000001 || !strings.HasPrefix(m.Source, "capmatrix:") || !strings.HasSuffix(m.Source, ":evidence="+e.EvidenceSHA) {
 			return "", invalid("capability_evidence_mismatch", "能力分数或来源与冻结证据不匹配")
 		}
@@ -111,4 +121,8 @@ func (r *Registry) checkCapabilityPromotion(ctx context.Context, sc scope, kind 
 		return "", invalid("capability_evidence_mismatch", "候选能力分包含未验收的改动")
 	}
 	return evidence.BaselineVersion, nil
+}
+
+func capabilityCoverage(eligible, total int) bool {
+	return total > 0 && eligible > 0 && eligible <= total && eligible >= total/2+total%2
 }
