@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
+	"github.com/agentruntime/agent-runtime/libs/go-core/registryref"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 )
 
@@ -116,6 +117,9 @@ type CapabilityScore struct {
 // Profile 是一个 Model Profile。
 type Profile struct {
 	ID string `json:"id"`
+	// Registry is verified against the loaded document, then frozen per attempt.
+	// It is populated from the catalog envelope, never from model/user input.
+	Registry *registryref.Profile `json:"-"`
 	// Vendor 是模型所属的家（openai、anthropic、google、deepseek 等），judge 用 avoid_vendor 选另一家。
 	Vendor string `json:"vendor"`
 	// Model 是供应商端点上的模型名。
@@ -175,8 +179,9 @@ func invalid(format string, args ...any) error {
 // 返回 Invalid 的 *providererr.Error（code invalid_profiles），说明里指出哪个 Profile 的哪个字段。
 func Parse(data []byte) (*Catalog, error) {
 	var file struct {
-		Version  *int      `json:"version"`
-		Profiles []Profile `json:"profiles"`
+		Version           *int                           `json:"version"`
+		Profiles          []Profile                      `json:"profiles"`
+		RegistryRevisions map[string]registryref.Profile `json:"registry_revisions"`
 	}
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
@@ -188,6 +193,15 @@ func Parse(data []byte) (*Catalog, error) {
 	}
 	if len(file.Profiles) == 0 {
 		return nil, invalid("一个 Profile 都没有")
+	}
+	var documents struct {
+		Profiles []json.RawMessage `json:"profiles"`
+	}
+	if err := json.Unmarshal(data, &documents); err != nil {
+		return nil, invalid("Profile 文件不是合法的 JSON：%v", err)
+	}
+	if file.RegistryRevisions != nil && len(file.RegistryRevisions) != len(file.Profiles) {
+		return nil, invalid("registry_revisions 必须覆盖全部 Profile，不能有多余条目")
 	}
 	// 解码之后缺的单价与 null 都成了 0，分不出“免费”与“不知道”：另按原文核对三项单价都写了（R-06：未知价格不得静默按 0 计费）。
 	var prices struct {
@@ -211,6 +225,17 @@ func Parse(data []byte) (*Catalog, error) {
 		}
 		if seen[p.ID] {
 			return nil, invalid("%s：id 重复", name)
+		}
+		if file.RegistryRevisions != nil {
+			ref, found := file.RegistryRevisions[p.ID]
+			if !found || ref.Validate() != nil {
+				return nil, invalid("%s：缺少有效的 Registry 发布版本", name)
+			}
+			hash, err := registryref.Digest(documents.Profiles[i])
+			if err != nil || hash != ref.SHA256 {
+				return nil, invalid("%s：Profile 与 Registry 发布版本的内容不一致", name)
+			}
+			file.Profiles[i].Registry = &ref
 		}
 		seen[p.ID] = true
 	}
@@ -312,6 +337,16 @@ func (c *Catalog) Get(id string) (Profile, bool) {
 // All 返回全部 Profile，按 id 升序。
 func (c *Catalog) All() []Profile {
 	return slices.Clone(c.profiles)
+}
+
+// RequireRegistry refuses legacy catalogs when production provenance is required.
+func (c *Catalog) RequireRegistry() error {
+	for _, p := range c.profiles {
+		if p.Registry == nil {
+			return invalid("%s：必须从 Registry 导出已发布的 Model Profile", p.ID)
+		}
+	}
+	return nil
 }
 
 // TierRef 是解析后的 Tier 字符串 <class>@<tier 名>。

@@ -13,6 +13,7 @@ import (
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
+	"github.com/agentruntime/agent-runtime/libs/go-core/registryref"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 )
 
@@ -45,6 +46,7 @@ type ReservationRequest struct {
 	Vendor         string
 	Method         string
 	Price          *Price
+	Registry       *registryref.Profile
 }
 
 // Price is the model profile's rate card at reservation time, in USD micros
@@ -182,6 +184,14 @@ func Migrations() []relational.Migration {
 		Version:    302,
 		Name:       "model_usage_price_evidence",
 		Statements: addColumns,
+	}, {
+		Version: 303,
+		Name:    "model_usage_registry_evidence",
+		Statements: []string{
+			"ALTER TABLE model_usage ADD COLUMN registry_scope TEXT",
+			"ALTER TABLE model_usage ADD COLUMN registry_revision TEXT",
+			"ALTER TABLE model_usage ADD COLUMN registry_document_sha256 TEXT",
+		},
 	}}
 }
 
@@ -266,6 +276,13 @@ func (l *Ledger) Reserve(ctx context.Context, req ReservationRequest) (Reservati
 	if err := req.Price.validate(); err != nil {
 		return Reservation{}, err
 	}
+	var registryScope, registryRevision, registryDigest any
+	if ref := req.Registry; ref != nil {
+		if ref.Validate() != nil || req.ModelProfileID == "" {
+			return Reservation{}, ledgerInvalid("invalid_registry_reference", "model usage needs a valid published profile reference")
+		}
+		registryScope, registryRevision, registryDigest = ref.Scope, ref.Version, ref.SHA256
+	}
 	var currency, unit, priceAt, in, out, cacheRead any
 	if p := req.Price; p != nil {
 		currency, unit, priceAt, in, out, cacheRead = PriceCurrency, PriceUnit, p.PriceAt, p.InPerMMicros, p.OutPerMMicros, p.CacheReadPerMMicros
@@ -287,10 +304,11 @@ func (l *Ledger) Reserve(ctx context.Context, req ReservationRequest) (Reservati
 		}
 		_, err = tx.Execute(ctx, `INSERT INTO model_usage
 			(reservation_id, reserved_at, reserved_usd_micros, actual_usd_micros, task_id, node_id, model_profile_id, vendor, method,
-			 price_currency, price_unit, price_at, in_usd_micros_per_m, out_usd_micros_per_m, cache_read_usd_micros_per_m)
-			VALUES ($1, $2, $3, NULL, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+			 price_currency, price_unit, price_at, in_usd_micros_per_m, out_usd_micros_per_m, cache_read_usd_micros_per_m,
+			 registry_scope, registry_revision, registry_document_sha256)
+			VALUES ($1, $2, $3, NULL, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
 			r.ID, r.At.UnixMilli(), r.USDMicros, req.TaskID, req.NodeID, req.ModelProfileID, req.Vendor, req.Method,
-			currency, unit, priceAt, in, out, cacheRead)
+			currency, unit, priceAt, in, out, cacheRead, registryScope, registryRevision, registryDigest)
 		return err
 	})
 	if err != nil {

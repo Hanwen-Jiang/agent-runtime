@@ -2,6 +2,7 @@ package gateway_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -11,9 +12,12 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/modelprovider"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
+	"github.com/agentruntime/agent-runtime/libs/go-core/registryref"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	mg "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/modelgateway/v1"
 	"github.com/agentruntime/agent-runtime/services/go-model-gateway/internal/gateway"
+	"github.com/agentruntime/agent-runtime/services/go-model-gateway/internal/profiles"
+	"github.com/agentruntime/agent-runtime/services/go-model-gateway/internal/router"
 )
 
 type fixedBudget modelbudget.Limits
@@ -63,7 +67,8 @@ func usageRows(t *testing.T, p *sqlitestore.Provider, tenantID string) []relatio
 	err = s.Transaction(ctx, relational.TxOptions{ReadOnly: true}, func(ctx context.Context, tx relational.Tx) error {
 		var err error
 		rows, err = tx.Query(ctx, `SELECT model_profile_id, actual_usd_micros, price_currency, price_unit, price_at,
-			in_usd_micros_per_m, out_usd_micros_per_m, cache_read_usd_micros_per_m, input_tokens, output_tokens, cache_read_tokens
+			in_usd_micros_per_m, out_usd_micros_per_m, cache_read_usd_micros_per_m, input_tokens, output_tokens, cache_read_tokens,
+			registry_scope, registry_revision, registry_document_sha256
 			FROM model_usage ORDER BY model_profile_id, reservation_id`)
 		return err
 	})
@@ -101,7 +106,39 @@ func TestAttemptRowFreezesProfilePriceAndUsage(t *testing.T) {
 }
 
 func TestFallbackAttemptsEachFreezeTheirOwnPrice(t *testing.T) {
-	h, _, p := budgetHarnessStore(t, 1_000_000)
+	var file map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(testProfiles), &file); err != nil {
+		t.Fatal(err)
+	}
+	var docs []json.RawMessage
+	if err := json.Unmarshal(file["profiles"], &docs); err != nil {
+		t.Fatal(err)
+	}
+	refs := map[string]registryref.Profile{}
+	for _, doc := range docs {
+		var profile struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(doc, &profile); err != nil {
+			t.Fatal(err)
+		}
+		hash, err := registryref.Digest(doc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		version := "v11"
+		if profile.ID == "test/mid-b@1" {
+			version = "v12"
+		}
+		refs[profile.ID] = registryref.Profile{Scope: "platform", Version: version, SHA256: hash}
+	}
+	file["registry_revisions"], _ = json.Marshal(refs)
+	encoded, _ := json.Marshal(file)
+	catalog, err := profiles.Parse(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, _, p := budgetHarnessStore(t, 1_000_000, func(o *gateway.Options) { o.Router = router.New(catalog, nil) })
 	h.fake.onGenerate("mid-a", callsTool("Bash"))
 	h.mustGenerate(t, "t1", call(commonv1.Role_ROLE_ACT), withSearchTool(t, "找一下"))
 	rows := usageRows(t, p, "t1")
@@ -113,6 +150,10 @@ func TestFallbackAttemptsEachFreezeTheirOwnPrice(t *testing.T) {
 		{InPerMMicros: 300_000, OutPerMMicros: 2_500_000, CacheReadPerMMicros: 30_000, PriceAt: "2026-10-28"},
 	}
 	for i, r := range rows {
+		ref := refs[r["model_profile_id"].(string)]
+		if r["registry_scope"] != ref.Scope || r["registry_revision"] != ref.Version || r["registry_document_sha256"] != ref.SHA256 {
+			t.Errorf("fallback attempt did not freeze its actual Registry version: %v", r)
+		}
 		got := modelbudget.Price{
 			InPerMMicros: r["in_usd_micros_per_m"].(int64), OutPerMMicros: r["out_usd_micros_per_m"].(int64),
 			CacheReadPerMMicros: r["cache_read_usd_micros_per_m"].(int64), PriceAt: r["price_at"].(string),

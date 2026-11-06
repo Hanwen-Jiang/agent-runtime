@@ -73,6 +73,19 @@ func TestMockProviderNeedsNoEndpointOrSecrets(t *testing.T) {
 	}
 }
 
+func TestRequireRegistryConfiguration(t *testing.T) {
+	m := base()
+	m[EnvRequireRegistry] = "true"
+	cfg, err := FromEnv(env(m))
+	if err != nil || !cfg.RequireRegistry {
+		t.Fatalf("require Registry not enabled: %+v %v", cfg, err)
+	}
+	m[EnvRequireRegistry] = "typo"
+	if _, err := FromEnv(env(m)); err == nil {
+		t.Fatal("invalid provenance enforcement option accepted")
+	}
+}
+
 func TestFromEnvRejectsMissingOrBadValues(t *testing.T) {
 	cases := map[string]struct {
 		mutate  func(m map[string]string)

@@ -100,7 +100,7 @@ func (s *Server) reserve(ctx context.Context, c *call, cand router.Candidate) er
 	r, err := s.opts.ModelBudget.Reserve(ctx, modelbudget.ReservationRequest{
 		TenantID: c.tenant.GetTenantId(), At: s.opts.Now(), USDMicros: int64(cost), Limits: limits,
 		TaskID: c.ctx.GetTaskId(), NodeID: c.ctx.GetNodeId(), ModelProfileID: cand.Profile.ID,
-		Vendor: cand.Profile.Vendor, Method: c.method, Price: price,
+		Vendor: cand.Profile.Vendor, Method: c.method, Price: price, Registry: cand.Profile.Registry,
 	})
 	if err == nil {
 		c.reservation = &r

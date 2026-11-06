@@ -44,6 +44,8 @@ spec:
               value: {{ printf "0.0.0.0:%v" $gw.port | quote }}
             - name: AR_MODEL_PROFILES_FILE
               value: /etc/agentruntime/model-profiles/model-profiles.json
+            - name: AR_MODEL_PROFILES_REQUIRE_REGISTRY
+              value: {{ $gw.requireRegistryProfiles | default false | quote }}
             - name: AR_MODEL_PROVIDER
               value: {{ $gw.provider | quote }}
             - name: AR_MODEL_PROVIDER_BASE_URL

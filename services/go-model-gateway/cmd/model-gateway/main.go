@@ -94,6 +94,9 @@ func serve(ctx context.Context, stdout, stderr io.Writer, getenv func(string) st
 		return 2
 	}
 	catalog, err := profiles.Load(cfg.ProfilesFile)
+	if err == nil && cfg.RequireRegistry {
+		err = catalog.RequireRegistry()
+	}
 	if err != nil {
 		fmt.Fprintln(stderr, "model-gateway：加载 Model Profile 失败：", err)
 		return 1

@@ -15,7 +15,8 @@ const (
 	// EnvAddr 是监听地址：同一端口提供 gRPC（h2c）与 GET /healthz。
 	EnvAddr = "AR_MODEL_GATEWAY_ADDR"
 	// EnvProfilesFile 是 Model Profile 文件（必填）。
-	EnvProfilesFile = "AR_MODEL_PROFILES_FILE"
+	EnvProfilesFile    = "AR_MODEL_PROFILES_FILE"
+	EnvRequireRegistry = "AR_MODEL_PROFILES_REQUIRE_REGISTRY"
 	// EnvProvider 选择供应商适配层：openai_compat（默认）或 mock（libs/go-core/dev/mockmodel）。
 	EnvProvider = "AR_MODEL_PROVIDER"
 	// EnvProviderBaseURL 是 OpenAI 兼容端点，形如 https://host/v1；openai_compat 时必填。
@@ -48,6 +49,7 @@ type Config struct {
 	RegistryAddress    string
 	Addr               string
 	ProfilesFile       string
+	RequireRegistry    bool
 	Provider           string
 	ProviderBaseURL    string
 	ProviderKeyName    string
@@ -77,6 +79,13 @@ func FromEnv(getenv func(string) string) (Config, error) {
 	}
 	if dsn := get(EnvRelationalDSN); dsn != "" {
 		cfg.RelationalDSN = secret.New(dsn)
+	}
+	if raw := get(EnvRequireRegistry); raw != "" {
+		value, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, errors.New(EnvRequireRegistry + " must be a boolean")
+		}
+		cfg.RequireRegistry = value
 	}
 	if raw := get(EnvDefaultMaxOutput); raw != "" {
 		n, err := strconv.Atoi(raw)

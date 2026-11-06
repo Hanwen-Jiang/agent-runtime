@@ -26,7 +26,8 @@ func usageRow(t *testing.T, p relational.Provider, tenant, id string) relational
 	var row relational.Row
 	err = s.Transaction(context.Background(), relational.TxOptions{ReadOnly: true}, func(ctx context.Context, tx relational.Tx) error {
 		r, found, err := tx.QueryOne(ctx, `SELECT actual_usd_micros, price_currency, price_unit, price_at,
-			in_usd_micros_per_m, out_usd_micros_per_m, cache_read_usd_micros_per_m, input_tokens, output_tokens, cache_read_tokens
+			in_usd_micros_per_m, out_usd_micros_per_m, cache_read_usd_micros_per_m, input_tokens, output_tokens, cache_read_tokens,
+			registry_scope, registry_revision, registry_document_sha256
 			FROM model_usage WHERE reservation_id = $1`, id)
 		if err == nil && !found {
 			t.Fatalf("reservation %s not visible to %s", id, tenant)
@@ -216,7 +217,7 @@ func TestRowsFromMigration301ReadAsUnknownEvidence(t *testing.T) {
 	}
 	l, p2 := sqliteLedger(t, dir)
 	row := usageRow(t, p2, "t1", "old")
-	for _, k := range []string{"price_currency", "price_unit", "price_at", "in_usd_micros_per_m", "out_usd_micros_per_m", "cache_read_usd_micros_per_m", "input_tokens", "output_tokens", "cache_read_tokens"} {
+	for _, k := range []string{"price_currency", "price_unit", "price_at", "in_usd_micros_per_m", "out_usd_micros_per_m", "cache_read_usd_micros_per_m", "input_tokens", "output_tokens", "cache_read_tokens", "registry_scope", "registry_revision", "registry_document_sha256"} {
 		if v, ok := row[k]; !ok || v != nil {
 			t.Errorf("old row %s = %#v (present %v), want NULL", k, v, ok)
 		}

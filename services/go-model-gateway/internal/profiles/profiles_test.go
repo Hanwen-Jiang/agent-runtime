@@ -277,6 +277,7 @@ func TestDevProfilesFileLoads(t *testing.T) {
 		"kimi-k3.1-pro":    {"moonshotai", "strong", []string{"medium", "high"}},
 		"qwen3.8-max":      {"alibaba", "strong", []string{"medium", "high"}},
 		"glm-5.3":          {"zhipuai", "strong", []string{"medium", "high"}},
+		"mimo-v2.6-pro":    {"xiaomi", "strong", []string{"medium", "high"}},
 		"gemini-3.8-flash": {"google", "mid", []string{"low"}},
 		"gpt-6.1-terra":    {"openai", "mid", []string{"low"}},
 		"gpt-6-luna":       {"openai", "small", []string{"low"}},
@@ -305,8 +306,14 @@ func TestDevProfilesFileLoads(t *testing.T) {
 				t.Errorf("%s：嵌入模型要有 embed 能力与输入单价", p.Model)
 			}
 		} else {
-			if !p.Has(profiles.CapGenerate) || !p.Has(profiles.CapStructured) || p.Cost.InPerM <= 0 || p.Cost.OutPerM <= 0 {
-				t.Errorf("%s：生成模型要有 generate、structured 能力与单价", p.Model)
+			if !p.Has(profiles.CapGenerate) || p.Cost.InPerM <= 0 || p.Cost.OutPerM <= 0 {
+				t.Errorf("%s：生成模型要有 generate 能力与单价", p.Model)
+			}
+			// REVIEW-FALLBACK (1a66ba4): GLM/MiMo were deliberately removed from
+			// structured routing after live validation; guard both decisions.
+			wantStructured := p.Model != "glm-5.3" && p.Model != "mimo-v2.6-pro"
+			if p.Has(profiles.CapStructured) != wantStructured {
+				t.Errorf("%s：structured = %v, want %v", p.Model, p.Has(profiles.CapStructured), wantStructured)
 			}
 		}
 		if !strings.HasPrefix(p.ID, "a6api/"+p.Model+"@") {

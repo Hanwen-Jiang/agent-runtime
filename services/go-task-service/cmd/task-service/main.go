@@ -82,6 +82,7 @@ const usage = `用法：
   task-service keygen --iss <签发方> --kid <kid> --out <私钥文件>
   task-service replay --dir <事件历史目录>
   task-service registry-seed <种子文件>
+  task-service registry-export-profiles
 `
 
 func main() {
@@ -103,6 +104,8 @@ func run(args []string, stdout, stderr io.Writer, getenv func(string) string) in
 		return keygen(args[1:], stdout, stderr)
 	case "registry-seed":
 		return registrySeed(args[1:], stdout, stderr, getenv)
+	case "registry-export-profiles":
+		return registryExportProfiles(args[1:], stdout, stderr, getenv)
 	case "replay":
 		return replay(args[1:], stdout, stderr, getenv)
 	default:
