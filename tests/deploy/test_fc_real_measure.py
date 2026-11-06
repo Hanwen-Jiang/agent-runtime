@@ -157,3 +157,43 @@ def test_runner_uses_existing_api_and_cleans_only_its_created_vm(tmp_path, monke
     assert result["complete"] and result["by_boot_source"]["cold"]["samples"] == 1
     assert sum(method == "POST" and path == "/v1/envs" for method, path, _ in calls) == 1
     assert (args.out / "cleanup.json").is_file() and (args.out / "requests.jsonl").is_file()
+
+
+@pytest.mark.parametrize("failure", ["fallback", "capacity"])
+def test_failed_restore_or_capacity_keeps_one_raw_row_and_resource_evidence(tmp_path, monkeypatch, failure):
+    import base64
+    (tmp_path / "state").mkdir()
+    cfg = config(tmp_path / "state")
+    cfg["AR_FC_SNAPSHOT_CACHE_MIB"] = "2048"
+    args = SimpleNamespace(out=tmp_path / "run", mode="snapshot", samples=2, runtime="python", cpu_millis=1000,
+                           memory_mb=512, disk_mb=256, manager_pid=123, resource_window_id="offline-test",
+                           runtime_revision="1234567", min_free_memory_mib=1, min_free_disk_gib=1,
+                           manager_log=None, pool_wait_s=0, settle_s=0)
+    monkeypatch.setattr(fc, "preflight", lambda *a: {"ready": True})
+    monkeypatch.setattr(fc, "digest", lambda *a: "sha256")
+    monkeypatch.setattr(fc, "vm_resources", lambda *a: {k: "0" for k in ("cpu.stat", "memory.current", "memory.peak", "memory.events", "io.stat")})
+    monkeypatch.setattr(fc, "host_resources", lambda *a: {"memory_available_bytes": 20 << 30, "disk_free_bytes": 50 << 30})
+    monkeypatch.setattr(fc, "host_delta", lambda *a: {"cpu_busy_percent": 17})
+
+    class API:
+        created = 0
+
+        def call(self, method, path, owner, body=None):
+            if method == "POST" and path == "/v1/envs":
+                self.created += 1
+                if self.created == 2 and failure == "capacity":
+                    raise fc.Failure("host_capacity", 503)
+                return {"env_id": "fc-abc", "boot_source": "cold-fallback"}
+            if method == "POST":
+                return {"exit_code": 0, "stdout": base64.b64encode(b"fc-real-ready").decode()}
+            if method == "GET":
+                return {"environments": []}
+            return {}
+
+    result = fc.run(args, cfg, API())
+    rows = [json.loads(line) for line in (args.out / "samples.jsonl").read_text().splitlines()]
+    assert len(rows) == 2 and [r["index"] for r in rows] == [0, 1]
+    assert rows[1]["failure"] == ("configuration_limit" if failure == "capacity" else "snapshot_restore_not_observed")
+    assert rows[1]["host_delta"]["cpu_busy_percent"] == 17
+    assert not result["complete"] and result["cleanup"]["complete"]
+    assert result["measured_samples"] == 1

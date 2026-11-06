@@ -333,6 +333,7 @@ def run(args: argparse.Namespace, cfg: dict[str, str], manager: Manager) -> dict
             row: dict[str, Any] = {"index": i, "outcome": "failed", "priming": args.mode == "snapshot" and i == 0}
             existing = records(cfg)
             before = host_resources(cfg)
+            row["host_before"] = before
             if before["memory_available_bytes"] < args.min_free_memory_mib * 1048576 + args.memory_mb * 1048576 or before["disk_free_bytes"] < args.min_free_disk_gib * 1073741824 + args.disk_mb * 1048576:
                 row["failure"] = "host_safety_reserve_reached"
                 append(out / "samples.jsonl", row)
@@ -383,13 +384,21 @@ def run(args: argparse.Namespace, cfg: dict[str, str], manager: Manager) -> dict
                 if isinstance(exc, Failure) and exc.status is not None:
                     manifest["pending_create"] = False  # An explicit rejection is not an unknown create.
                     append(out / "requests.jsonl", {"phase": "rejected", "known_ids": list(manifest["known_ids"]), "index": i})
+                # Keep host pressure at failures too; successful samples alone
+                # cannot explain boot failures during a density run.
+                try:
+                    row["host_after"] = host_resources(cfg)
+                    row["host_delta"] = host_delta(before, row["host_after"])
+                    if row.get("env_id"):
+                        row["resources"] = vm_resources(cfg, row["env_id"])
+                except (OSError, ValueError) as telemetry_error:
+                    row["resource_error"] = type(telemetry_error).__name__
+            unexpected_restore = args.mode == "snapshot" and not row["priming"] and row.get("boot_source") != "memory-snapshot"
+            if unexpected_restore and row["outcome"] == "completed":
+                row["failure"] = "snapshot_restore_not_observed"
             append(out / "samples.jsonl", row)
             samples.append(row)
-            if row["outcome"] != "completed":
-                break
-            if args.mode == "snapshot" and not row["priming"] and row.get("boot_source") != "memory-snapshot":
-                row["failure"] = "snapshot_restore_not_observed"
-                append(out / "samples.jsonl", row)
+            if row["outcome"] != "completed" or unexpected_restore:
                 break
     finally:
         cleaned = cleanup(manager, manifest)

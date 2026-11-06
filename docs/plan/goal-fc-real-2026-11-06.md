@@ -54,3 +54,7 @@ python scripts/fc_real_measure.py cleanup --config-file <原实例env文件> --t
 - `/opt/evals/venv-2d94680/bin/python -m pytest tests/deploy/test_fc_real_measure.py -q`，配置worktree的 `PYTHONPATH=services/py-worker/src:libs/py-core/src:proto/gen/python`：**9 passed**。覆盖容量边界、池占用、来源证据、快照预填充、冷回退保留、资源单位、仅本次资源清理、启动中记录、未知创建不伪称清理、真实API序列的离线回归。替身只用于离线控制流程测试，不产生性能数据。
 - 只读preflight结果 `/tmp/goal-fc-real-preflight/preflight.json`：`ready=false`；当前沙箱缺 `/dev/kvm`，现有配置 `MAX_VMS=16`、`MAX_VCPUS=32`、内存65536MiB、pool `universal:2000:2048:2`、snapshot cache 0。未启动VM、未改变manager、未跑密度压力。
 - `git diff --check` 通过。真实cold/warm/snapshot时延和密度尚未采集；不把工具完成当作FC-REAL验收完成。实际模型费用 **$0**，无本次VM资源需清理。
+
+## 后续静态审查（2026-11-07）
+
+修复测量证据的两个缺口：快照回退现在只写一条带失败原因的原始样本，避免同一 index 重复；创建/首命令失败也收集宿主资源前后值与可取得的 VM cgroup 数据。新增回归固定两类失败：`snapshot_restore_not_observed` 与 `configuration_limit`，仍明确 `complete=false`，但确认清理不误报未知创建。测量工具现 **11 passed**；这些离线用例不产生真实性能结论。D-26 实现、真实环境阻塞及部署条件见 `d26-memory-snapshot-acceptance-2026-11-07.md`。
