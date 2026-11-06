@@ -980,6 +980,26 @@ Qdrant 退场（2026-11-06）：Memory 从第 36 版起用 Milvus，线上 Runti
 - 回滚：`helm rollback ar 40`（只关写入加密，文件里的密文照样读得懂）；再退要先让文件变回明文（主密钥在时 `encryptAtRest: false` 不会把已有的密文改回去）。
 - 主密钥丢了，密钥文件就解不开：副本在 `/root/ar-secrets/secrets-master.key`，用户另存了服务器以外的备份。
 
+`real01` 的模型日额度（2026-11-06，用户：“不要啥都等”）：`agent-runtime-model-allowlist` 里给 `real01` 单列，模型白名单照抄默认档，`daily_usd` 50、
+`monthly_usd` 500（之前走默认档的 3、20，当天被冒烟用完，挡住了 V1-FC 的预览验收）。重启 model-gateway 与 task-service 生效。之前的 ConfigMap 在
+`/root/ar-release/real01-budget/allowlist.before.yaml`。默认档的行为（含额度用完第一轮就停）之前已经测过。
+
+V1-FC 的预览补验（2026-11-06，`/root/ar-release/v1-fc/fc-smoke5b.sh`，租户 `real01`，firecracker）：FC 会话的 `fc-smoke5.sh` 第一次读到了工作区里上一次运行
+留下的 `preview_url.txt`（授权还没批就去开，401）；b 版第一步先删旧文件、批过联网申请后才读地址。`tsk_01M6QZ020RAERFER3MXGARBR58`：运行中带令牌打开预览
+200、页面里有本次的标记，不带令牌 401，Task 结束后 403（授权已收回）；0.11 美元。完成标准第 4 条至此全部走过。
+
+AUTH-01 第 4 步（2026-11-06，用户：“不等”）：
+- 原定等一周，原因有两条，都改成当场解决：① coding-web 里 11-04 之前的平台令牌与环境密钥是用开发签名密钥派生的旧密钥加密的，只在读到时迁移。coding-agent
+  `23a0881` 让 coding-web 启动时先把它们全部改用 `CODING_TOKEN_KEY` 重新加密（`Server.Reseal`）；换上这个镜像时日志：账号 3 个、改写 2 个，环境密钥 0 个，
+  解不开的 0 个。② 评测、冒烟与运维脚本都用 `task-service dev-token` 签开发令牌，关掉就全断：另建签发方 `agentruntime-ops`（kid `ops-2026-11`，私钥只在
+  `/root/ar-secrets/ops-jwt.key.pem`），只能签 `evals`、`swebench`、`real01`、`mcp01`；取令牌用 `/root/ar-release/ops-token.sh <租户> <用户> [ttl] [--scope …]`。
+- Helm 第 42 版（目录 `rev44`，只改 values）：`taskService.ingress` 去掉 `devTokens: accept`（生产默认 refuse），`issuers` 加 `agentruntime-ops`；渲染差异：
+  签发方 ConfigMap 变了，task-service 不再有 `AR_DEV_SIGNING_KEY`。核对：ops 的 JWT 被接受；之前签的开发令牌 401；ops 的 JWT 签 coding-web 的租户
+  （`gh-hanwen-jiang`）401。
+- coding-web 去掉 `AR_DEV_SIGNING_KEY`（`/root/ar-secrets/coding-web.yaml`，之前的在 `auth01/coding-web.yaml.before-step4`），起来正常，200。
+- 没验证到：登录之后经 coding-web 调 Runtime 的真实请求（用户要重新登录一次，会顺带验证）。
+- 回滚：Runtime `helm rollback ar 41`（回到收开发令牌）；coding-web 用 `auth01/coding-web.yaml.before-step4` apply。
+
 宿主上的 Firecracker（2026-11-05，V1-FC：宿主上的 systemd 服务，不经 Helm；规矩见总表第 0 节第 6 条）：
 
 - 装了什么（与 `deploy/cluster/install.sh` 第 3b 步相同的命令，分步手工跑，没跑整个 install.sh）：Firecracker 与 jailer v1.17.0（`/usr/local/bin`，按
