@@ -99,9 +99,10 @@ class ReviewerActivities:
             row.update(task_id=inp.task_id, attempt_id=f"r{inp.round_seq}/activity{attempt}/jev{index + 1}",
                        veto_rule_disabled=int((inp.verification or {}).get("judge_blocked") or 0) >= 1)
         observed = self.reviewer.judge is None or isinstance(self.reviewer.judge, JevJudge)
-        judge_usage = {"source": "jev_provider_attempts_v1", "complete": observed, "attempts": judge_attempts,
+        judge_usage = {"source": "jev_provider_attempts_v1", "complete": observed and attempt == 1, "attempts": judge_attempts,
+                       "activity_attempt": attempt, "prior_attempt_usage_unknown": attempt > 1,
                        "provider_attempted": any(r["provider_attempted"] for r in judge_attempts),
-                       "usage_known": observed and all(r["usage_known"] for r in judge_attempts)}
+                       "usage_known": observed and attempt == 1 and all(r["usage_known"] for r in judge_attempts)}
         return ReviewRoundOutput(verdict=result.verdict, state_update=result.state_update, cost_usd=round(sum(c.cost_usd for c in result.calls), 6), highlights=result.highlights, judge_usage=judge_usage)
 
     @activity.defn(name=names.REVIEW_ROUND)
