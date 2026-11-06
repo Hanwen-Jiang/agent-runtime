@@ -60,7 +60,8 @@ def test_cloud_accepts_dev_tokens_during_the_migration() -> None:
 
 
 def test_production_without_issuers_or_dev_tokens_fails_to_render() -> None:
-    err = render_fails("taskService.ingress.devTokens=", values=[CLOUD_VALUES])
+    # 云上的 values 已登记 coding-web 的签发方（AUTH-01 第 2 步，2026-11-06）：一起清掉才是“生产模式既没有签发方也不收开发令牌”。
+    err = render_fails("taskService.ingress.devTokens=", "taskService.ingress.issuers=null", values=[CLOUD_VALUES])
     assert "taskService.ingress" in err
     err = render_fails("taskService.ingress.devTokens=yes")
     assert "taskService.ingress.devTokens" in err
