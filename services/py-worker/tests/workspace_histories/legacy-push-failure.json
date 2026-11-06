@@ -1,0 +1,229 @@
+{
+  "events": [
+    {
+      "eventId": "1",
+      "eventTime": "2026-11-06T19:41:45.219033329Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+      "taskId": "1048653",
+      "workflowExecutionStartedEventAttributes": {
+        "workflowType": {
+          "name": "WorkspaceOperationWorkflow"
+        },
+        "taskQueue": {
+          "name": "task",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wcm90b2J1Zg==",
+                "messageType": "YWdlbnRydW50aW1lLndvcmtmbG93LnYxLldvcmtzcGFjZU9wZXJhdGlvbklucHV0"
+              },
+              "data": "eyJvcGVyYXRpb24iOiJXT1JLU1BBQ0VfT1BFUkFUSU9OX1BVU0giLCJvcGVyYXRpb25JZCI6Indzby1nb2xkZW4tbGVnYWN5LXB1c2gtZmFpbHVyZSIsInRlbmFudCI6eyJ0ZW5hbnRJZCI6ImZpeHR1cmUiLCJ1c2VySWQiOiJvd25lciJ9LCJ3b3Jrc3BhY2VJZCI6IndvcmtzcGFjZSJ9"
+            }
+          ]
+        },
+        "workflowTaskTimeout": "10s",
+        "originalExecutionRunId": "01a1b261-a183-7075-9212-17f8740b3da6",
+        "identity": "1322056@srv.ded.148170.com",
+        "firstExecutionRunId": "01a1b261-a183-7075-9212-17f8740b3da6",
+        "attempt": 1,
+        "firstWorkflowTaskBackoff": "0s",
+        "workflowId": "wsop-golden-legacy-push-failure",
+        "priority": {}
+      }
+    },
+    {
+      "eventId": "2",
+      "eventTime": "2026-11-06T19:41:45.219397793Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1048654",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "task",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "3",
+      "eventTime": "2026-11-06T19:41:45.227754808Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1048659",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "2",
+        "identity": "1322056@srv.ded.148170.com",
+        "requestId": "f67a307a-bd82-4546-95a7-6b27690de3a3",
+        "historySizeBytes": "523",
+        "workerVersion": {
+          "buildId": "a9dc424cea77bd84c9ae97740c1a1405"
+        }
+      }
+    },
+    {
+      "eventId": "4",
+      "eventTime": "2026-11-06T19:41:45.257404446Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1048663",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "2",
+        "startedEventId": "3",
+        "identity": "1322056@srv.ded.148170.com",
+        "workerVersion": {
+          "buildId": "a9dc424cea77bd84c9ae97740c1a1405"
+        },
+        "sdkMetadata": {
+          "coreUsedFlags": [
+            1,
+            2,
+            3
+          ],
+          "sdkName": "temporal-python",
+          "sdkVersion": "1.34.0"
+        },
+        "meteringMetadata": {}
+      }
+    },
+    {
+      "eventId": "5",
+      "eventTime": "2026-11-06T19:41:45.257562366Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
+      "taskId": "1048664",
+      "activityTaskScheduledEventAttributes": {
+        "activityId": "1",
+        "activityType": {
+          "name": "workspace_operation"
+        },
+        "taskQueue": {
+          "name": "program",
+          "kind": "TASK_QUEUE_KIND_NORMAL"
+        },
+        "header": {},
+        "input": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wcm90b2J1Zg==",
+                "messageType": "YWdlbnRydW50aW1lLndvcmtmbG93LnYxLldvcmtzcGFjZU9wZXJhdGlvbklucHV0"
+              },
+              "data": "eyJvcGVyYXRpb24iOiJXT1JLU1BBQ0VfT1BFUkFUSU9OX1BVU0giLCJvcGVyYXRpb25JZCI6Indzby1nb2xkZW4tbGVnYWN5LXB1c2gtZmFpbHVyZSIsInRlbmFudCI6eyJ0ZW5hbnRJZCI6ImZpeHR1cmUiLCJ1c2VySWQiOiJvd25lciJ9LCJ3b3Jrc3BhY2VJZCI6IndvcmtzcGFjZSJ9"
+            }
+          ]
+        },
+        "scheduleToCloseTimeout": "0s",
+        "scheduleToStartTimeout": "0s",
+        "startToCloseTimeout": "1800s",
+        "heartbeatTimeout": "0s",
+        "workflowTaskCompletedEventId": "4",
+        "retryPolicy": {
+          "initialInterval": "1s",
+          "backoffCoefficient": 2.0,
+          "maximumInterval": "100s",
+          "maximumAttempts": 1
+        },
+        "priority": {}
+      }
+    },
+    {
+      "eventId": "6",
+      "eventTime": "2026-11-06T19:41:45.264645256Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_STARTED",
+      "taskId": "1048671",
+      "activityTaskStartedEventAttributes": {
+        "scheduledEventId": "5",
+        "identity": "1322056@srv.ded.148170.com",
+        "requestId": "56b278a4-edcd-460f-b56d-9866799f2cbd",
+        "attempt": 1,
+        "workerVersion": {
+          "buildId": "a9dc424cea77bd84c9ae97740c1a1405"
+        }
+      }
+    },
+    {
+      "eventId": "7",
+      "eventTime": "2026-11-06T19:41:45.293366734Z",
+      "eventType": "EVENT_TYPE_ACTIVITY_TASK_FAILED",
+      "taskId": "1048672",
+      "activityTaskFailedEventAttributes": {
+        "failure": {
+          "message": "transport_unknown: fixture records a billed-side-effect uncertainty",
+          "stackTrace": "  File \"/root/.cache/ar-venv/lib/python3.13/site-packages/temporalio/worker/_activity.py\", line 351, in _handle_start_activity_task\n    result = await self._execute_activity(\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n        start, running_activity, task_token, data_converter\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n\n  File \"/root/.cache/ar-venv/lib/python3.13/site-packages/temporalio/worker/_activity.py\", line 681, in _execute_activity\n    return await impl.execute_activity(input)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\n  File \"/root/.cache/ar-venv/lib/python3.13/site-packages/temporalio/worker/_activity.py\", line 889, in execute_activity\n    return await input.fn(*input.args)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\n  File \"/tmp/goal-record-workspace-history.py\", line 17, in probe\n    raise ApplicationError('transport_unknown: fixture records a billed-side-effect uncertainty')\n",
+          "applicationFailureInfo": {}
+        },
+        "scheduledEventId": "5",
+        "startedEventId": "6",
+        "identity": "1322056@srv.ded.148170.com",
+        "retryState": "RETRY_STATE_MAXIMUM_ATTEMPTS_REACHED"
+      }
+    },
+    {
+      "eventId": "8",
+      "eventTime": "2026-11-06T19:41:45.293505218Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_SCHEDULED",
+      "taskId": "1048673",
+      "workflowTaskScheduledEventAttributes": {
+        "taskQueue": {
+          "name": "1322056@srv.ded.148170.com-9777eb448a26431e86e0899c2a1a8c3d",
+          "kind": "TASK_QUEUE_KIND_STICKY",
+          "normalName": "task"
+        },
+        "startToCloseTimeout": "10s",
+        "attempt": 1
+      }
+    },
+    {
+      "eventId": "9",
+      "eventTime": "2026-11-06T19:41:45.299557064Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_STARTED",
+      "taskId": "1048677",
+      "workflowTaskStartedEventAttributes": {
+        "scheduledEventId": "8",
+        "identity": "1322056@srv.ded.148170.com",
+        "requestId": "25dd057c-003b-4590-abb7-86e7dbbf9ab8",
+        "historySizeBytes": "2456",
+        "workerVersion": {
+          "buildId": "a9dc424cea77bd84c9ae97740c1a1405"
+        }
+      }
+    },
+    {
+      "eventId": "10",
+      "eventTime": "2026-11-06T19:41:45.313512663Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_TASK_COMPLETED",
+      "taskId": "1048681",
+      "workflowTaskCompletedEventAttributes": {
+        "scheduledEventId": "8",
+        "startedEventId": "9",
+        "identity": "1322056@srv.ded.148170.com",
+        "workerVersion": {
+          "buildId": "a9dc424cea77bd84c9ae97740c1a1405"
+        },
+        "sdkMetadata": {},
+        "meteringMetadata": {}
+      }
+    },
+    {
+      "eventId": "11",
+      "eventTime": "2026-11-06T19:41:45.313637499Z",
+      "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_COMPLETED",
+      "taskId": "1048682",
+      "workflowExecutionCompletedEventAttributes": {
+        "result": {
+          "payloads": [
+            {
+              "metadata": {
+                "encoding": "anNvbi9wcm90b2J1Zg==",
+                "messageType": "YWdlbnRydW50aW1lLndvcmtmbG93LnYxLldvcmtzcGFjZU9wZXJhdGlvblJlc3VsdA=="
+              },
+              "data": "eyJlcnJvciI6eyJjYXRlZ29yeSI6IkVSUk9SX0NBVEVHT1JZX1RSQU5TSUVOVCIsImNvZGUiOiJ0cmFuc3BvcnRfdW5rbm93biIsIm1lc3NhZ2UiOiJmaXh0dXJlIHJlY29yZHMgYSBiaWxsZWQtc2lkZS1lZmZlY3QgdW5jZXJ0YWludHkifX0="
+            }
+          ]
+        },
+        "workflowTaskCompletedEventId": "10"
+      }
+    }
+  ]
+}
