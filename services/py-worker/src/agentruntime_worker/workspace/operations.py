@@ -1112,8 +1112,14 @@ class WorkspaceActivities:
         queued_ms = (info.started_time - info.current_attempt_scheduled_time).total_seconds() * 1000
         return await self.operations.run(inp, queued_ms=queued_ms)
 
+    @activity.defn(name=names.WORKSPACE_OPERATION_RESULT)
+    async def workspace_operation_result(self, inp: workspace_pb2.WorkspaceOperationInput, result: workspace_pb2.WorkspaceOperationResult) -> None:
+        if self.operations is None:
+            raise TransientError("workspace_api_unavailable", "保存异步结果需要配置 Workspace 存储")
+        await async_results.save(self.operations, inp, result)
+
     def activities(self) -> dict[str, object]:
-        return {names.WORKSPACE_OPERATION: self.workspace_operation}
+        return {names.WORKSPACE_OPERATION: self.workspace_operation, names.WORKSPACE_OPERATION_RESULT: self.workspace_operation_result}
 
 
 __all__ = [

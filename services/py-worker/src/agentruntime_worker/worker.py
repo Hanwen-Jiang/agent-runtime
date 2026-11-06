@@ -82,12 +82,12 @@ QUEUE_COMPONENTS: dict[str, QueueComponents] = {
     names.PROGRAM_QUEUE: QueueComponents(
         activities=(
             names.EXECUTE_PROGRAM_NODE, names.CALL_TOOL, names.RECONCILE_NODE, names.RECONCILE_SANDBOXES, names.BUILD_ENVIRONMENT,
-            names.WORKSPACE_OPERATION,
+            names.WORKSPACE_OPERATION, names.WORKSPACE_OPERATION_RESULT,
         )
     ),
     # WS-READ-02：task-service 新起的 Workspace 操作在这里，工作流与 activity 同一个队列。task、program 上照旧登记它们，
     # 给改之前起的、还在跑的操作；那些跑完之后再从旧队列去掉。
-    names.WORKSPACE_QUEUE: QueueComponents(workflows=(names.WORKSPACE_OPERATION_WORKFLOW,), activities=(names.WORKSPACE_OPERATION,)),
+    names.WORKSPACE_QUEUE: QueueComponents(workflows=(names.WORKSPACE_OPERATION_WORKFLOW,), activities=(names.WORKSPACE_OPERATION, names.WORKSPACE_OPERATION_RESULT)),
 }
 
 WORKFLOWS = {

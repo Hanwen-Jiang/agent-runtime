@@ -65,5 +65,6 @@ BUILD_ENVIRONMENT = "build_environment"
 # 工作流名在 names.proto 里；它的 activity 只在 Python 里（program 队列）。
 WORKSPACE_OPERATION_WORKFLOW = "WorkspaceOperationWorkflow"
 WORKSPACE_OPERATION = "workspace_operation"
+WORKSPACE_OPERATION_RESULT = "workspace_operation_result"
 
 TASK_STATE_SCHEMA_ID = "https://agentruntime.example/schemas/task_state.schema.json"

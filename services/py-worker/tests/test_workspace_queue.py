@@ -67,3 +67,55 @@ async def test_operations_started_on_the_task_queue_keep_the_program_queue(tempo
     ):
         result = await run_on(client, names.TASK_QUEUE, "wso-wsread02queue000000000002")
     assert result == {"queue": names.PROGRAM_QUEUE}
+
+
+class PersistedFailure:
+    def __init__(self):
+        self.attempts = 0
+        self.saved = None
+
+    @activity.defn(name=names.WORKSPACE_OPERATION)
+    async def fail(self, inp: workspace_pb2.WorkspaceOperationInput) -> workspace_pb2.WorkspaceOperationResult:
+        from temporalio.exceptions import ApplicationError
+        raise ApplicationError("network_timeout: simulated timeout", non_retryable=True)
+
+    @activity.defn(name=names.WORKSPACE_OPERATION_RESULT)
+    async def save(self, inp: workspace_pb2.WorkspaceOperationInput, result: workspace_pb2.WorkspaceOperationResult) -> None:
+        self.attempts += 1
+        if self.attempts == 1:
+            raise RuntimeError("simulated storage restart")
+        self.saved = result
+
+
+async def test_async_final_failure_is_saved_before_completion_and_replays(temporal_env: WorkflowEnvironment) -> None:
+    from temporalio.worker import Replayer
+    client = await connect(temporal_env)
+    activities = PersistedFailure()
+    inp = operation("wso-async-final-failure")
+    inp.args.update({"__async_result": True})
+    async with Worker(client, task_queue=names.WORKSPACE_QUEUE, workflows=[WorkspaceOperationWorkflow], activities=[activities.fail, activities.save]):
+        handle = await client.start_workflow(names.WORKSPACE_OPERATION_WORKFLOW, inp, id=operation_workflow_id(inp.operation_id), task_queue=names.WORKSPACE_QUEUE, result_type=workspace_pb2.WorkspaceOperationResult)
+        result = await handle.result()
+        assert result.HasField("error") and result.error.code == "network_timeout"
+        assert activities.attempts == 2 and activities.saved == result
+        history = await handle.fetch_history()
+    await Replayer(workflows=[WorkspaceOperationWorkflow]).replay_workflow(history)
+
+
+async def test_legacy_root_golden_replay(temporal_env: WorkflowEnvironment) -> None:
+    import os
+    from pathlib import Path
+    from temporalio.client import WorkflowHistory
+    from temporalio.worker import Replayer
+    path = Path(__file__).parent / "histories" / "workspace_root_legacy.json"
+    if os.environ.get("UPDATE_WORKSPACE_GOLDEN") == "1":
+        client = await connect(temporal_env)
+        async with (
+            Worker(client, task_queue=names.TASK_QUEUE, workflows=[WorkspaceOperationWorkflow]),
+            Worker(client, task_queue=names.PROGRAM_QUEUE, activities=[report_queue]),
+        ):
+            await run_on(client, names.TASK_QUEUE, "wso-legacy-root-golden")
+            history = await client.get_workflow_handle(operation_workflow_id("wso-legacy-root-golden")).fetch_history()
+            path.write_text(history.to_json())
+    history = WorkflowHistory.from_json("wsop-wso-legacy-root-golden", path.read_text())
+    await Replayer(workflows=[WorkspaceOperationWorkflow]).replay_workflow(history)
