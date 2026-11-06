@@ -20,3 +20,8 @@
 `.zshenv`、`.zlogin`、`.zlogout`。穿越、绝对路径、Windows 路径、大小写变体、
 保留目录和脚本后缀补回归；普通 `.npmrc` 和 `.config` 文本配置仍可用。
 本轮仅静态审查、格式检查与编写回归，单元执行等待 Firecracker 独占测量窗口释放。
+
+Firecracker 测量窗口释放后，执行 `go test ./personalconfig -run
+'Test(CommonPlaintextCredentialFormatsAreRejected|CredentialVariableReferencesRemainConfiguration|ConfigurationPathsStayInsideNonExecutableHomeFiles)'
+-count=1 -v`：3组、38个子用例全部通过，包耗时0.013s。证据保存在
+`/root/proj/agent-projs/.goal-tools/personal-secret-review.log`；未运行模型或产生评测费用。
