@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import hashlib
 import os
 import secrets
@@ -197,7 +198,7 @@ class LiveMemoryRetriever:
         topology = {} if single_writer_verified else single_writer_evidence(env.get("AR_MEMORY_TOPOLOGY_EVIDENCE", ""))
         self.corpus = [dict(c) for c in corpus]
         self.identity = Identity(tenant_id=tenant, user_id=user, workspace_id=f"w-eval-{uuid.uuid4().hex[:16]}")
-        if wait_s <= 0 or rpc_timeout_s <= 0:
+        if not math.isfinite(wait_s) or not math.isfinite(rpc_timeout_s) or wait_s <= 0 or rpc_timeout_s <= 0:
             raise ValueError("wait_s and rpc_timeout_s must be positive")
         self.wait_s = wait_s
         self.rpc_timeout_s = rpc_timeout_s
@@ -366,7 +367,8 @@ class LiveMemoryRetriever:
 
 
 def live_retriever(corpus: Sequence[Mapping[str, str]], *, env: Mapping[str, str] | None = None) -> LiveMemoryRetriever:
-    return LiveMemoryRetriever(corpus, env=env)
+    settings = os.environ if env is None else env
+    return LiveMemoryRetriever(corpus, env=settings, wait_s=float(settings.get("AR_MEMORY_EVAL_WAIT_S", "300")))
 
 
 __all__ = ["LiveMemoryRetriever", "MemoryEvalRetriever", "dev_retriever", "live_retriever", "memory_item"]

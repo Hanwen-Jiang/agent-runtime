@@ -474,7 +474,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError("--memory-version must match the deployed image in topology evidence")
         provenance = {"memory_topology": topology, "data_sha256": hashlib.sha256(args.data.read_bytes()).hexdigest(), "seed": args.seed, "limit": args.limit,
                       "runtime_revision": args.runtime_revision, "registry_revision": args.registry_revision,
-                      "memory_version": args.memory_version, "memory_address": os.environ.get("AR_MEMORY_ADDRESS", "") if live else "",
+                      "memory_version": args.memory_version, "pipeline_timeout_s": float(os.environ.get("AR_MEMORY_EVAL_WAIT_S", "300")) if live else None, "memory_address": os.environ.get("AR_MEMORY_ADDRESS", "") if live else "",
                       "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
         summary = asyncio.run(run(chosen, args.retriever, args.out, top_k=args.top_k, ks=tuple(args.k or DEFAULT_KS),
                                   budget_usd=args.budget_usd, price_per_m=args.embed_price_per_m,
