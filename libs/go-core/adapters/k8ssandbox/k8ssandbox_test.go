@@ -218,7 +218,8 @@ func TestAgentOnlyAcceptsItsOwnToken(t *testing.T) {
 }
 
 func TestCommandsCannotReadTheAgentTokenFromProc(t *testing.T) {
-	// AGENT-TOK-01：agent 是 PID 1，与命令同一个 uid；命令扫遍 /proc 也找不到令牌，agent 的 environ、mem 都打不开。
+	// AGENT-TOK-01 / SBX-ZOMBIE：Rust 版由 PID 1 回收孤儿，子 agent 执行命令。
+	// reaper 与 agent 都可能持有令牌，两者的 environ、mem 均须不可读。
 	p, _ := makeProvider(t, nil, "", nil)
 	ctx := context.Background()
 	box := conformance.Must(p.Bind(conformance.TenantA()))
@@ -231,34 +232,44 @@ func TestCommandsCannotReadTheAgentTokenFromProc(t *testing.T) {
 		"            found[pid + '/' + name] = open(f'/proc/{pid}/{name}', 'rb').read().decode('latin-1')\n" +
 		"        except OSError:\n" +
 		"            found[pid + '/' + name] = None\n" +
-		"try:\n" +
-		"    open('/proc/1/mem', 'rb').close(); mem = True\n" +
-		"except OSError:\n" +
-		"    mem = False\n" +
-		"print(json.dumps({'ppid': os.getppid(), 'files': found, 'mem': mem}))\n"
+		"parent = os.getppid()\n" +
+		"parent_parent = int(open(f'/proc/{parent}/stat').read().rsplit(')', 1)[1].split()[1])\n" +
+		"parent_comm = open(f'/proc/{parent}/comm').read().strip()\n" +
+		"mem = {}\n" +
+		"for pid in {1, parent}:\n" +
+		"    try:\n" +
+		"        open(f'/proc/{pid}/mem', 'rb').close(); mem[str(pid)] = True\n" +
+		"    except OSError:\n" +
+		"        mem[str(pid)] = False\n" +
+		"print(json.dumps({'ppid': parent, 'parent_parent': parent_parent, 'parent_comm': parent_comm, 'files': found, 'mem': mem}))\n"
 	res := conformance.Must(box.Exec(ctx, env.ID, []string{"python", "-c", probe}, sandbox.ExecOptions{Timeout: timeout}))
 	var seen struct {
-		PPID  int                `json:"ppid"`
-		Files map[string]*string `json:"files"`
-		Mem   bool               `json:"mem"`
+		PPID         int                `json:"ppid"`
+		ParentParent int                `json:"parent_parent"`
+		ParentComm   string             `json:"parent_comm"`
+		Files        map[string]*string `json:"files"`
+		Mem          map[string]bool    `json:"mem"`
 	}
 	if err := json.Unmarshal(res.Stdout, &seen); err != nil {
 		t.Fatalf("%v：%s %s", err, res.Stdout, res.Stderr)
 	}
 	token := p.Token(env.ID)
-	if seen.PPID != 1 {
-		t.Fatalf("命令由 agent（PID 1）直接起：ppid = %d", seen.PPID)
+	if seen.PPID < 1 || seen.ParentComm != "sandbox-agent" || (seen.PPID != 1 && seen.ParentParent != 1) {
+		t.Fatalf("命令必须由 agent 直接执行，agent 为 PID 1 或 PID 1 的子进程：ppid=%d, parent_parent=%d, comm=%q", seen.PPID, seen.ParentParent, seen.ParentComm)
 	}
 	for k, v := range seen.Files {
 		if v != nil && strings.Contains(*v, token) {
 			t.Fatalf("命令在 /proc 里读到了 agent 的令牌：%s", k)
 		}
 	}
-	if seen.Files["1/environ"] != nil {
-		t.Fatal("agent 的 environ 不该让命令读")
-	}
-	if seen.Mem {
-		t.Fatal("命令能打开 agent 的 mem")
+	for _, pid := range []int{1, seen.PPID} {
+		name := fmt.Sprint(pid)
+		if value, present := seen.Files[name+"/environ"]; !present || value != nil {
+			t.Fatalf("agent/reaper 的 environ 不该让命令读：pid=%d", pid)
+		}
+		if readable, present := seen.Mem[name]; !present || readable {
+			t.Fatalf("命令能打开 agent/reaper 的 mem 或未验证它：pid=%d", pid)
+		}
 	}
 }
 
