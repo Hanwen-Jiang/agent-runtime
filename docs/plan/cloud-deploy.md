@@ -1034,6 +1034,11 @@ AUTH-01 第 4 步（2026-11-06，用户：“不等”）：
     在申请之前就被模型网关以 `tenant_budget_exceeded` 拒绝：real01 当天的模型额度用完了。这一项要等额度恢复（或调高 real01 的额度）后用 `fc-smoke5.sh` 再跑一次；
     跑之前先删掉工作区里上次留下的 `preview_url.txt`，否则脚本会读到旧地址。Firecracker 这一侧的预览隧道 11-05 已在宿主上直接测通（见上）。
   - 花费合计约 0.6 美元（另有部署线的 0.055 美元）；测试 Task 都已结束或取消，没有留下在跑的 VM 以外的东西（预热池照常 2 台）。
+  - **补上的一项（2026-11-06，部署线跑的，用户要求不等额度：real01 的日额度在 `agent-runtime-model-allowlist` 里提到 50 美元）**：`fc-smoke5b.sh`
+    （先删工作区里旧的 `preview_url.txt`、批过联网申请后才读地址），`tsk_01M6QZ020RAERFER3MXGARBR58`：运行中带令牌 200、页面里有标记，不带令牌 401，结束后 403。
+    V1-FC 会话按网关的审计核对过：授权 `sbg-048a26bc24face1e` 的预览目标是 fc-manager 为这台 VM 开的入口 `10.42.0.1:43245`；08:21:05 的预览请求 `allowed`、
+    经 `10.42.0.1:43245` 回了 21 字节（一行标记）；08:27:49 Task 结束收回授权，08:27:56 再开 `denied`（`preview_not_granted`）。完成标准第 4 条全部在线上做到。
+  - 之后的脚本：AUTH-01 第 4 步（Helm 第 42 版）起 Runtime 不收开发令牌，`fc-smoke*.sh` 里取令牌改用 `/root/ar-release/ops-token.sh real01 fc-smoke`。
 
 V1-MCP 线上验收（2026-11-05，总表第 0 节完成标准第 1 条；第 33 版上线 N-15，第 34 版带 `97334bdb` 的修复；脚本与种子在 `/root/ar-release/mcp/`）：
 
