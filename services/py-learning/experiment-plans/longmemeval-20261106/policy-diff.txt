@@ -1,0 +1,17 @@
+--- observed/evals-v1
++++ candidate/evalmem20261106
+@@ -12,6 +12,13 @@
+     ],
+     "max_connections": 10,
+     "max_effect": "read"
++  },
++  "model_allowlist": [
++    "a6api/text-embedding-3-large@2026-10"
++  ],
++  "model_budget": {
++    "daily_usd": 19.984709,
++    "monthly_usd": 19.984709
+   },
+   "sandbox": {
+     "backend": "firecracker",
+

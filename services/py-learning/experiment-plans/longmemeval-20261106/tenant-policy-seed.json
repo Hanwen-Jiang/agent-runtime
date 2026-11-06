@@ -1,0 +1,63 @@
+{
+  "entries": [
+    {
+      "kind": "tenant_policy",
+      "tenant": "evalmem20261106",
+      "document": {
+        "budget": {
+          "tool_calls": 50,
+          "usd": 1,
+          "wall_clock_min": 20
+        },
+        "effect_ceiling": "write_reversible",
+        "mcp": {
+          "allowed": true,
+          "hosts": [
+            "*"
+          ],
+          "max_connections": 10,
+          "max_effect": "read"
+        },
+        "sandbox": {
+          "backend": "firecracker",
+          "fallback": [
+            "cloudflare"
+          ],
+          "min_isolation": "microvm",
+          "network": {
+            "allowed": true,
+            "approver": "submitter",
+            "hosts": [
+              "github.com",
+              "gitlab.com",
+              "gitee.com",
+              "codeberg.org",
+              "bitbucket.org"
+            ],
+            "max_grant_minutes": 60
+          },
+          "quota": {
+            "daily_egress_bytes": 2000000000,
+            "daily_mirror_miss_bytes": 5000000000,
+            "daily_sandbox_seconds": 7200,
+            "max_concurrent": 2
+          }
+        },
+        "workspace": {
+          "max_bytes": 1000000000,
+          "max_workspaces": 10,
+          "push_branches": [
+            "agent/**"
+          ]
+        },
+        "model_allowlist": [
+          "a6api/text-embedding-3-large@2026-10"
+        ],
+        "model_budget": {
+          "daily_usd": 19.984709,
+          "monthly_usd": 19.984709
+        }
+      }
+    }
+  ]
+}
