@@ -532,9 +532,11 @@ class MatrixRunner:
         concurrency: int | None = None,
         run_id: str | None = None,
         frozen: Mapping[str, Any] | None = None,
+        registry_revisions: Mapping[str, Any] | None = None,
         owner: DirectoryOwner | None = None,
     ) -> None:
         self.plan = plan
+        self.registry_revisions = dict(registry_revisions or {})
         self.gateway = gateway
         self.out_dir = Path(out_dir)
         self.profiles = profiles if profiles is not None else load_profiles()
@@ -572,9 +574,27 @@ class MatrixRunner:
         from agentruntime_learning.evals.deepeval_acceptance import provenance
 
         self.frozen = provenance(frozen) if frozen is not None else None
+        if self.frozen is not None:
+            candidates = {c for cp in plan.cells for c in cp.candidates}
+            documents = [entry for entry in self.frozen["registry_revisions"] if entry["kind"] == "model_profile"]
+            observed = {entry["name"]: entry for entry in documents}
+            if len(observed) != len(documents) or candidates - set(self.frozen["subject_models"]):
+                raise PlanError("冻结配置缺少候选模型或有重复的Registry Profile身份")
+            for candidate in candidates:
+                entry = observed.get(candidate, {})
+                exported = self.registry_revisions.get(candidate, {})
+                if (
+                    entry.get("scope") != "platform" or exported.get("scope") != "platform"
+                    or entry.get("version") != exported.get("version")
+                    or entry.get("document_sha256") != exported.get("sha256")
+                    or not re.fullmatch(r"v[1-9][0-9]*", str(exported.get("version", "")))
+                    or not re.fullmatch(r"[a-f0-9]{64}", str(exported.get("sha256", "")))
+                ):
+                    raise PlanError("候选模型必须来自与实际部署冻结身份一致的Registry导出Profile文件")
         self.run_lock = {
             "plan": dict(plan.raw),
             "profiles_sha256": _digest(self.profiles),
+            "registry_revisions": self.registry_revisions,
             "deployment": self.frozen,
             "budget_usd": budget_usd,
             "concurrency": self.concurrency,
