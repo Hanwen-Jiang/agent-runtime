@@ -126,7 +126,13 @@ class BudgetGateway:
             except Exception as exc:
                 billed = getattr(exc, "billed_cost_usd_micros", None)
                 if isinstance(billed, int) and billed >= 0:
+                    # Gateway errors expose known billed attempts, not proof
+                    # that every attempt in the RPC settled. Preserve that lower
+                    # bound while retaining the reservation for unknown attempts.
                     self.state["spent_usd_micros"] += billed
+                if type(exc) is BudgetError and billed == 0:
+                    # Only our explicit local pre-I/O rejection proves that
+                    # this invocation incurred no new, potentially pending cost.
                     self.state["pending"] = False
                 self._save()
                 raise
