@@ -171,19 +171,20 @@ def planning_score(evidence: Mapping[str, Any], *, should_delegate: bool, arm: s
     by_id = {n["id"]: n for n in nodes}
     children = [n["id"] for n in nodes if n.get("mode") == "sub_agent"]
     dangling = sorted({d for n in nodes for d in n["after"] if d not in by_id})
-    cyclic = False
-
-    def ancestors(name: str, stack: frozenset[str] = frozenset()) -> set[str]:
-        nonlocal cyclic
-        if name in stack:
-            cyclic = True
-            return set()
-        found = set(by_id.get(name, {}).get("after", []))
-        for parent in list(found):
-            found |= ancestors(parent, stack | {name})
-        return found
-
-    upstream = {i: ancestors(i) for i in ids}
+    # Visit each reachable node once per source. Recursive path enumeration
+    # grows exponentially on valid dense DAGs and can hang report generation.
+    upstream = {}
+    for source in ids:
+        found: set[str] = set()
+        pending = set(by_id[source].get("after", []))
+        while pending:
+            parent = pending.pop()
+            if parent in found:
+                continue
+            found.add(parent)
+            pending.update(set(by_id.get(parent, {}).get("after", [])) - found)
+        upstream[source] = found
+    cyclic = any(source in ancestors for source, ancestors in upstream.items())
     valid = len(ids) == len(set(ids)) and not dangling and not cyclic
     independent = all(not (upstream[c] & set(children)) for c in children)
     joins = [i for i in ids if i not in children and set(children) <= upstream[i]] if children else []
