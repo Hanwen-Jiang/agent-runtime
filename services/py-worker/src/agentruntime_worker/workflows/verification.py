@@ -48,10 +48,16 @@ def only_reads(tool: Any, args: Any) -> bool:
     return command in _READ_COMMANDS
 
 
+# 文档与数据类文件：改完没有可运行的验证，不要求“改完跑一次命令”（rule_done_unverified 只管改了代码的）。
+DOC_SUFFIXES = (".md", ".markdown", ".txt", ".rst", ".adoc", ".org", ".csv", ".tsv", ".log")
+
+
 @dataclass
 class VerificationRecord:
     write_capable: bool = False
     wrote: bool = False
+    # 改过的文件里有不是文档的（按 repo_edit 的路径；别的写类工具一律当作代码）。
+    wrote_code: bool = False
     ran_after_write: bool = False
     last_exit_code: int | None = None
     done_blocked: int = 0
@@ -75,6 +81,9 @@ class VerificationRecord:
             return
         if effect in WRITE_EFFECTS and tool not in NOT_FILE_CHANGES:
             self.wrote = True
+            path = args.get("path") if isinstance(args, Mapping) else None
+            if not (isinstance(path, str) and path.strip().lower().endswith(DOC_SUFFIXES)):
+                self.wrote_code = True
             self.ran_after_write = False
             self.last_exit_code = None
         elif tool == "shell_run" and self.wrote and not only_reads(tool, args):
@@ -105,6 +114,9 @@ class VerificationRecord:
             "last_exit_code": self.last_exit_code,
             "done_blocked": self.done_blocked,
         }
+        if self.wrote and not self.wrote_code:
+            # 只改了文档（.md、.txt、.csv 等）：不要求改完再跑命令。只在这时带上，别的记录与之前一样。
+            out["docs_only"] = True
         if self.delivered:
             out["delivered"] = list(self.delivered)
         if self.delivery_blocked:

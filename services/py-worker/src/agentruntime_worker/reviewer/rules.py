@@ -338,7 +338,7 @@ class _Rules:
             return None
         if not record.get("wrote"):
             return "能改文件，却一个文件都没有改就判 done：先确认是不是真的不用改", "rule_done_without_changes"
-        if not record.get("ran_after_write"):
+        if not record.get("ran_after_write") and not record.get("docs_only"):
             return "改完之后没有运行过任何命令：先验证再交付", "rule_done_unverified"
         return None
 
