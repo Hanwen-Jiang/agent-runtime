@@ -38,6 +38,8 @@ pub mod proxy;
 #[cfg(target_os = "linux")]
 pub mod server;
 #[cfg(target_os = "linux")]
+pub mod snapshot;
+#[cfg(target_os = "linux")]
 pub mod store;
 #[cfg(target_os = "linux")]
 pub mod sys;

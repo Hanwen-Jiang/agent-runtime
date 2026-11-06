@@ -61,6 +61,7 @@ dependencies = [
  "rs-sys",
  "serde",
  "serde_json",
+ "sha2",
 ]
 
 [[package]]

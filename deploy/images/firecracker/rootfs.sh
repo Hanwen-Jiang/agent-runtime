@@ -20,7 +20,7 @@
 #     /etc/agentruntime/env，--init 交给 agent 与命令（K8s 后端里它们是容器的环境变量）。
 set -euo pipefail
 
-FORMAT=1
+FORMAT=2
 runtime="${1:?runtime}"
 image="${2:?镜像引用}"
 agent="${3:?sandbox-agent 二进制}"
@@ -77,6 +77,9 @@ if [[ ! -f "$disk" ]]; then
   printf 'sandbox\n' > "$stage/etc/hostname"
   printf '127.0.0.1\tlocalhost sandbox\n::1\tlocalhost\n' > "$stage/etc/hosts"
   : > "$stage/etc/resolv.conf"
+  # D-26 replaces this empty target with a fresh per-VM identity after restore.
+  rm -f "$stage/etc/machine-id"
+  : > "$stage/etc/machine-id"
   # 大小：内容加两成、再加 256 MiB 的余量（ext4 的元数据与 inode 表）。
   used_kib="$(du -sk --apparent-size "$stage" | cut -f1)"
   size_mib=$(( used_kib * 12 / 10 / 1024 + 256 ))

@@ -25,6 +25,7 @@ path = "src/bin/fc-fake.rs"
 rs-sys.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 
 # unsafe 只在 libs/rs-sys（根 Cargo.toml 的 workspace.lints 一律 deny）。
 [lints]
