@@ -330,3 +330,38 @@ func TestDirectTransferJournalSurvivesLostCommitResponseAndRestart(t *testing.T)
 type transferRoundTrip func(*http.Request) (*http.Response, error)
 
 func (f transferRoundTrip) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestDirectTransferCachedReceiptDoesNotRecreateMissingObject(t *testing.T) {
+	objects, state := objectServer(t)
+	h := newHarness(t, func(h *harness) { h.directObjects = objects })
+	tc := tenant("t1", "w1", s1)
+	h.mkWorkspace("t1", "w1", map[string]string{"out.txt": "immutable original"})
+	lease := h.mustAcquire(tc, onWorkspace("w1"), taskID("task-expired-object"))
+	ctx := context.Background()
+	prepared, err := h.worker.PrepareTransfer(ctx, connect.NewRequest(&sandboxv1.PrepareTransferRequest{Tenant: tc, LeaseId: lease.LeaseId, TaskId: "task-expired-object", Path: "out.txt", IdempotencyKey: "same-invocation"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := &sandboxv1.CommitTransferRequest{Tenant: tc, LeaseId: lease.LeaseId, TaskId: "task-expired-object", TransferId: prepared.Msg.Transfer.TransferId}
+	committed, err := h.worker.CommitTransfer(ctx, connect.NewRequest(req))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bucket, err := objects.Bind(tc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = bucket.Delete(ctx, committed.Msg.Object.ObjectKey); err != nil {
+		t.Fatal(err)
+	}
+	h.restart()
+	req.LeaseId = ""
+	if _, err = h.worker.CommitTransfer(ctx, connect.NewRequest(req)); connect.CodeOf(err) != connect.CodeNotFound {
+		t.Fatalf("missing cached object must be not_found, got %v", err)
+	}
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	if state.puts != 1 || state.gets != 0 {
+		t.Fatalf("recovery retransmitted bytes: puts=%d gets=%d", state.puts, state.gets)
+	}
+}

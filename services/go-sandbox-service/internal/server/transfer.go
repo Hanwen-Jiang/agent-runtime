@@ -131,9 +131,6 @@ func (h *handler) CommitTransfer(ctx context.Context, req *connect.Request[sandb
 	if p == nil || (m.GetTaskId() != "" && m.GetTaskId() != p.task) || (m.GetLeaseId() != "" && m.GetLeaseId() != p.lease) {
 		return nil, fail(providererr.New(providererr.NotFound, "transfer_not_found", "unknown transfer"))
 	}
-	if p.result != nil {
-		return connect.NewResponse(&sandboxv1.CommitTransferResponse{Object: p.result}), nil
-	}
 	if h.s.opts.Objects == nil {
 		return nil, fail(providererr.New(providererr.Invalid, "transfer_unsupported", "object store unavailable"))
 	}
@@ -142,6 +139,19 @@ func (h *handler) CommitTransfer(ctx context.Context, req *connect.Request[sandb
 		return nil, fail(err)
 	}
 	head, headErr := objects.Head(ctx, p.key)
+	if p.result != nil {
+		// A durable receipt outlives both the agent and object retention. It is
+		// authority for the original bytes, not proof that the object still
+		// exists. Recovery must never register a fresh dangling delivery or
+		// silently re-upload a different version of the source file.
+		if headErr != nil {
+			return nil, fail(headErr)
+		}
+		if head.Size != p.prepared.SizeBytes {
+			return nil, fail(providererr.New(providererr.Transient, "transfer_mismatch", "prepared object size differs"))
+		}
+		return connect.NewResponse(&sandboxv1.CommitTransferResponse{Object: p.result}), nil
+	}
 	var result *sandboxv1.ObjectReference
 	if headErr == nil {
 		if head.Size != p.prepared.SizeBytes {
