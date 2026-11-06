@@ -94,6 +94,15 @@ func TestAsyncReturnsWithoutWaitingAndRetriesAreDurable(t *testing.T) {
 	if len(h.w.started) != 1 {
 		t.Fatal("completed workflow restarted")
 	}
+	// Temporal retention can remove history; a committed admission still deduplicates.
+	h.w.started = nil
+	h.w.scopes = nil
+	if _, err = h.client.StartWorkspaceOperation(ctx, authed(h, "t1", asyncCreate("stable-key"))); err != nil {
+		t.Fatal(err)
+	}
+	if len(h.w.started) != 0 {
+		t.Fatal("expired workflow was executed again")
+	}
 	// A new server and unavailable workflow history still read the persisted public result.
 	deps.Durable = &worker{}
 	restarted, err := New(deps)

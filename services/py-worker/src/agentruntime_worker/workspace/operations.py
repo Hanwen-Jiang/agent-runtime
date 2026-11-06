@@ -42,7 +42,7 @@ import stat
 import tempfile
 import urllib.parse
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -66,7 +66,7 @@ from agentruntime_worker.sandbox.env_config import EnvironmentConfig
 from agentruntime_worker.sandbox.grants import GrantStore, NetworkPolicy, check_request
 from agentruntime_worker.sandbox.policy import TenantPolicies
 from agentruntime_worker.sandbox.times import iso
-from agentruntime_worker.workspace import timing
+from agentruntime_worker.workspace import timing, multirepo, async_results
 from agentruntime_worker.workspace.archive import WorkspaceRecord
 from agentruntime_worker.workspace.copy import copy_working_copy
 
@@ -75,7 +75,7 @@ log = logging.getLogger(__name__)
 Op = workspace_pb2.WorkspaceOperation
 # 只读的操作：不动工作区的版本号（WS-READ-03），task-service 可以按版本缓存它们的结果。
 READ_OPERATIONS = frozenset({
-    Op.WORKSPACE_OPERATION_LIST_FILES, Op.WORKSPACE_OPERATION_READ_FILE, Op.WORKSPACE_OPERATION_LOG, Op.WORKSPACE_OPERATION_DIFF,
+    Op.WORKSPACE_OPERATION_LIST_REPOS, Op.WORKSPACE_OPERATION_LIST_FILES, Op.WORKSPACE_OPERATION_READ_FILE, Op.WORKSPACE_OPERATION_LOG, Op.WORKSPACE_OPERATION_DIFF,
 })
 CREDENTIAL_SECRET = "workspace/credential-key"
 MAX_DIFF_BYTES = 1 << 20
@@ -108,8 +108,10 @@ DETACHED_PREFIX = "/tmp/agentruntime-git-"
 _FILE_TYPES = {"file": "FILE_TYPE_FILE", "dir": "FILE_TYPE_DIRECTORY", "symlink": "FILE_TYPE_SYMLINK"}
 
 
-def push_key(tenant_id: str, workspace_id: str, branch: str, sha: str) -> str:
+def push_key(tenant_id: str, workspace_id: str, branch: str, sha: str, repo: str = "") -> str:
     """推送的幂等键：同一个提交推到同一个分支只算一次，与重试次数无关（附录 D.4）。"""
+    if repo:
+        workspace_id = workspace_id + "\x00repo:" + repo
     return "wsp-" + hashlib.sha256(f"{tenant_id}\x00{workspace_id}\x00{branch}\x00{sha}".encode()).hexdigest()[:32]
 
 
@@ -235,6 +237,9 @@ class WorkspaceOperations:
 
     async def run(self, inp: workspace_pb2.WorkspaceOperationInput, *, queued_ms: float | None = None) -> workspace_pb2.WorkspaceOperationResult:
         """queued_ms：这次尝试从排进队列到开始执行的毫秒数（activity 一侧算好传进来，PERF-00）。"""
+        saved = await async_results.cached(self, inp)
+        if saved is not None:
+            return saved
         with timing.metering() as meter:
             if queued_ms is not None:
                 meter.add_ms("queue", queued_ms)
@@ -250,7 +255,7 @@ class WorkspaceOperations:
                     except ProviderError as err:
                         outcome = err.code
                         log.info("工作区操作 %s 失败（%s）", Op.Name(inp.operation), err.code)
-                        return workspace_pb2.WorkspaceOperationResult(error=err.to_proto())
+                        return await async_results.save(self, inp, workspace_pb2.WorkspaceOperationResult(error=err.to_proto()))
                     finally:
                         await self._report(inp, meter, span, outcome)
             finally:
@@ -258,7 +263,7 @@ class WorkspaceOperations:
                 if self._telemetry_for(inp) is not None:
                     with contextlib.suppress(ProviderError):
                         await self._telemetry_for(inp).flush()  # type: ignore[union-attr]
-        return workspace_pb2.WorkspaceOperationResult(result=struct(result))
+        return await async_results.save(self, inp, workspace_pb2.WorkspaceOperationResult(result=struct(result)))
 
     def _telemetry_for(self, inp: workspace_pb2.WorkspaceOperationInput) -> Any:
         """只绑租户的 Telemetry（指标与导出用）；没给 telemetry 或租户不合法时 None。"""
@@ -301,6 +306,9 @@ class WorkspaceOperations:
             raise InvalidError("invalid_workspace", "workspace_id 的格式不对")
         args = json_format.MessageToDict(inp.args) if inp.HasField("args") else {}
         handlers = {
+            Op.WORKSPACE_OPERATION_ATTACH_REPO: lambda i, a: multirepo.attach(self, i, a),
+            Op.WORKSPACE_OPERATION_DETACH_REPO: lambda i, a: multirepo.detach(self, i, a),
+            Op.WORKSPACE_OPERATION_LIST_REPOS: lambda i, a: multirepo.list_repos(self, i, a),
             Op.WORKSPACE_OPERATION_CREATE: self.create,
             Op.WORKSPACE_OPERATION_DIFF: self.diff,
             Op.WORKSPACE_OPERATION_COMMIT: self.commit,
@@ -317,7 +325,14 @@ class WorkspaceOperations:
         handler = handlers.get(inp.operation)
         if handler is None:
             raise InvalidError("invalid_operation", "不认识的工作区操作")
-        result = await handler(inp, {str(k): v for k, v in args.items()})
+        scoped = {Op.WORKSPACE_OPERATION_DIFF, Op.WORKSPACE_OPERATION_LOG, Op.WORKSPACE_OPERATION_COMMIT,
+                  Op.WORKSPACE_OPERATION_PUSH, Op.WORKSPACE_OPERATION_SYNC, Op.WORKSPACE_OPERATION_DISCARD}
+        repo = await multirepo.choose(self, inp, args) if inp.operation in scoped else None
+        token = multirepo.selected.set(repo)
+        try:
+            result = await handler(inp, {str(k): v for k, v in args.items()})
+        finally:
+            multirepo.selected.reset(token)
         if inp.operation not in READ_OPERATIONS:
             # WS-READ-03：改动过工作区，task-service 按旧版本缓存的只读结果不再命中。加不上只少了一次失效，TTL 兜底。
             try:
@@ -332,6 +347,11 @@ class WorkspaceOperations:
         owner, ws = inp.tenant.tenant_id, inp.workspace_id
         url = str(args.get("repo_url") or "")
         source = str(args.get("from_workspace_id") or "")
+        layout = str(args.get("layout") or "root")
+        if layout not in ("root", "multi"):
+            raise InvalidError("invalid_layout", "工作区布局不合法")
+        if layout == "multi" and (url or args.get("ref") or args.get("files")):
+            raise InvalidError("conflicting_sources", "multi 工作区通过 AttachRepo 加入仓库")
         files = _initial_files(args.get("files"))
         if source and (url or files):
             raise InvalidError("conflicting_sources", "from_workspace_id 不能与 repo_url、files 同给")
@@ -350,13 +370,18 @@ class WorkspaceOperations:
             if source == ws or not _SLUG.match(source):
                 raise InvalidError("invalid_source", "from_workspace_id 要是同租户里另一个工作区")
             origin = await self._record_of(owner, source)
+            if origin.layout != layout:
+                raise ConflictError("layout_mismatch", "复制的工作区布局必须相同")
         limits = (await self.policies.policy_for(owner)).workspace
         await self._archiver.ensure(owner, ws, limits, repo_url=url or (origin.repo_url if origin else ""), exclusive=True)
         try:
+            await self._archiver.update(owner, ws, layout=layout)
             if environment is not None:
                 await self._archiver.set_environment(owner, ws, environment, owner_user=inp.requested_by or inp.tenant.user_id)
             if origin is not None:
                 head, branch = await self._copy(inp, source, max_bytes=limits.max_bytes)
+                if layout == "multi":
+                    await multirepo.copy_metadata(self, owner, source, ws)
             else:
                 async with self._lease(inp, writable=True, remote=remote) as lease:
                     if commit and remote is not None:
@@ -367,7 +392,7 @@ class WorkspaceOperations:
                     elif remote is not None:
                         argv = ["clone", "--quiet", *(["--branch", ref] if ref else []), "--", remote.url, "."]
                         await self._git(lease, argv, credential=credential, what="克隆")
-                    else:
+                    elif layout == "root":
                         await self._git(lease, ["init", "--quiet", "-b", "main"], what="初始化")
                     if files:
                         await self._write_and_commit(lease, files, author, cloned=remote is not None)
@@ -383,7 +408,9 @@ class WorkspaceOperations:
             raise
         record = await self._archiver.get(owner, ws)
         assert record is not None
-        return {"workspace": workspace_dict(record, branch=branch)}
+        result = await multirepo.workspace(self, owner, ws)
+        result["branch"] = branch
+        return {"workspace": result}
 
     async def _write_and_commit(self, lease: Lease, files: list[tuple[str, str]], author: tuple[str, str], *, cloned: bool) -> None:
         """写入建工作区时给的文件并提交：空工作区是初始提交；克隆之后另做一次提交（同名的覆盖）。
@@ -461,7 +488,7 @@ class WorkspaceOperations:
             await self._git(lease, [*common, "--binary", f"--output={DIFF_FILE}", *target], extra=index, what="diff")
             numstat = await self._git(lease, [*common, "--numstat", "-z", *target], extra=index, what="diff")
             with timing.phase("command"):
-                data = await lease.box.read_file(lease.env_id, DIFF_FILE)
+                data = await lease.box.read_file(lease.env_id, multirepo.path(DIFF_FILE))
             timing.add_bytes("sandbox", "in", len(data))
         stats = parse_numstat(numstat.stdout.decode("utf-8", errors="replace"))
         return {
@@ -567,7 +594,7 @@ class WorkspaceOperations:
                 return {"sha": await self._head(lease), "committed": False}
             await self._git(lease, [*_author_config(author), "commit", "--quiet", "--no-verify", "-F", "-"], stdin=message.encode("utf-8"), what="提交")
             sha = await self._head(lease)
-        await self._archiver.update(inp.tenant.tenant_id, record.workspace_id, head=sha)
+        await multirepo.update_head(self, inp.tenant.tenant_id, record.workspace_id, sha)
         return {"sha": sha, "committed": True}
 
     async def discard(self, inp: workspace_pb2.WorkspaceOperationInput, args: dict[str, Any]) -> dict[str, Any]:
@@ -609,7 +636,7 @@ class WorkspaceOperations:
             await self._git(lease, ["update-ref", ref, fetched], what="记远端分支")
             await self._git(lease, ["checkout", "--quiet", "-B", branch, ref], what="切到远端分支")
             head = await self._head(lease)
-        await self._archiver.update(owner, ws, head=head)
+        await multirepo.update_head(self, owner, ws, head)
         return {"head": head, "branch": branch}
 
     async def push(self, inp: workspace_pb2.WorkspaceOperationInput, args: dict[str, Any]) -> dict[str, Any]:
@@ -628,7 +655,7 @@ class WorkspaceOperations:
             sha = await self._head(lease)
             if not sha:
                 raise InvalidError("nothing_to_push", "工作区还没有提交")
-            key = push_key(owner, ws, branch, sha)
+            key = push_key(owner, ws, branch, sha, str((multirepo.selected.get() or {}).get("name", "")))
             approved = inp.requested_by or "workspace-api"
             await self._gate(owner, key, ws=ws, branch=branch, sha=sha, remote=remote.url, approved_by=approved, operation_id=inp.operation_id)
             async with self._detached(lease) as d:
@@ -682,6 +709,8 @@ class WorkspaceOperations:
         await self._record(inp)
         await self._broker.destroy_workspace(owner, ws)
         await self._archiver.delete(owner, ws)
+        async with self._archiver._db(owner).transaction() as tx:
+            await tx.execute("DELETE FROM workspace_repos WHERE workspace_id = $1", (ws,))
         self._remove_host_dir(owner, ws)
         return {}
 
@@ -707,7 +736,9 @@ class WorkspaceOperations:
         return self.broker.archiver
 
     async def _record(self, inp: workspace_pb2.WorkspaceOperationInput) -> WorkspaceRecord:
-        return await self._record_of(inp.tenant.tenant_id, inp.workspace_id)
+        record = await self._record_of(inp.tenant.tenant_id, inp.workspace_id)
+        repo = multirepo.selected.get()
+        return replace(record, repo_url=repo["url"], head=repo["head"]) if repo else record
 
     async def _record_of(self, owner: str, ws: str) -> WorkspaceRecord:
         record = await self._archiver.get(owner, ws)
@@ -758,6 +789,11 @@ class WorkspaceOperations:
                 meter.labels.update({"workspace.mode": "archive" if lease.archive else "mount", "sandbox.backend": lease.backend.name})
             ok = False
             try:
+                repo = multirepo.selected.get()
+                if repo:
+                    entries = await lease.box.list_dir(lease.env_id, "")
+                    if not any(e.name == repo["path"] and e.type == "dir" for e in entries):
+                        raise InvalidError("invalid_repo_path", "仓库目录不存在或已变成符号链接")
                 yield lease
                 ok = True
             finally:
@@ -783,7 +819,7 @@ class WorkspaceOperations:
             env[f"GIT_CONFIG_KEY_{i}"], env[f"GIT_CONFIG_VALUE_{i}"] = key, value
         try:
             with timing.phase("command"):
-                res = await lease.box.exec(lease.env_id, ["git", *argv], timeout=self.git_timeout, stdin=stdin, env=env)
+                res = await lease.box.exec(lease.env_id, ["git", *(["-C", multirepo.selected.get()["path"]] if multirepo.selected.get() else []), *argv], timeout=self.git_timeout, stdin=stdin, env=env)
             timing.exec_bytes(stdin, res)
         except OSError:
             raise InvalidError("git_unavailable", "沙箱里没有 git（运行环境要带 git，例如 universal）") from None
@@ -881,10 +917,10 @@ class WorkspaceOperations:
         now = iso(archiver._clock())  # noqa: SLF001
         async with archiver._db(owner).transaction() as tx:  # noqa: SLF001
             await tx.execute(
-                "INSERT INTO workspace_pushes (push_key, workspace_id, branch, sha, remote, approved_by, operation_id, state, reason, created_at, finished_at) "
-                "VALUES ($1, $2, $3, $4, $5, $6, $7, 'pushing', '', $8, '') "
+                "INSERT INTO workspace_pushes (push_key, workspace_id, branch, sha, remote, approved_by, operation_id, state, reason, created_at, finished_at, repo) "
+                "VALUES ($1, $2, $3, $4, $5, $6, $7, 'pushing', '', $8, '', $9) "
                 "ON CONFLICT (push_key) DO UPDATE SET state = 'pushing', operation_id = excluded.operation_id, approved_by = excluded.approved_by",
-                (key, ws, branch, sha, remote, approved_by, operation_id, now),
+                (key, ws, branch, sha, remote, approved_by, operation_id, now, str((multirepo.selected.get() or {}).get("name", ""))),
             )
 
     async def _finish(self, owner: str, key: str, state: str, reason: str = "") -> None:
@@ -894,6 +930,10 @@ class WorkspaceOperations:
                 "UPDATE workspace_pushes SET state = $1, reason = $2, finished_at = $3 WHERE push_key = $4",
                 (state, reason[:300], iso(archiver._clock()), key),  # noqa: SLF001
             )
+            if state in ("pushed", "reconciled"):
+                row = await tx.query_one("SELECT workspace_id, repo, sha FROM workspace_pushes WHERE push_key = $1", (key,))
+                if row and row["repo"]:
+                    await tx.execute("UPDATE workspace_repos SET pushed_head = $1 WHERE workspace_id = $2 AND name = $3", (row["sha"], row["workspace_id"], row["repo"]))
 
     async def pushes(self, owner: str, workspace_id: str) -> list[dict[str, Any]]:
         """这个工作区的推送记录（测试与排查用）。"""
@@ -999,7 +1039,7 @@ def workspace_dict(record: WorkspaceRecord, *, branch: str = "") -> dict[str, An
     out: dict[str, Any] = {
         "workspace_id": record.workspace_id, "state": _STATES.get(record.state, "WORKSPACE_STATE_ARCHIVED"),
         "repo_url": record.repo_url, "head": record.head, "snapshot_id": record.snapshot_id, "size_bytes": str(record.size_bytes), "files": record.files,
-        "branch": branch, "environment_id": record.environment_id,
+        "branch": branch, "environment_id": record.environment_id, "layout": "WORKSPACE_LAYOUT_MULTI" if record.layout == "multi" else "WORKSPACE_LAYOUT_ROOT",
     }
     for name in ("created_at", "updated_at"):
         if getattr(record, name):

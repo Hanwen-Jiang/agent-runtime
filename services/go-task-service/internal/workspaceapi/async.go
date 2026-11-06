@@ -100,7 +100,7 @@ func (s *Server) startAsync(ctx context.Context, id ingress.Identity, tenant *co
 		return err
 	}
 	return db.Transaction(ctx, relational.TxOptions{}, func(ctx context.Context, tx relational.Tx) error {
-		_, err := tx.Execute(ctx, `INSERT INTO workspace_operations (operation_id, requested_by, workspace_id, input_digest, response_type)
+		inserted, err := tx.Execute(ctx, `INSERT INTO workspace_operations (operation_id, requested_by, workspace_id, input_digest, response_type)
    VALUES ($1,$2,$3,$4,$5) ON CONFLICT (operation_id) DO NOTHING`, in.OperationId, id.UserID, in.WorkspaceId, a.digest, string(out.ProtoReflect().Descriptor().FullName()))
 		if err != nil {
 			return err
@@ -115,6 +115,11 @@ func (s *Server) startAsync(ctx context.Context, id ingress.Identity, tenant *co
 		}
 		if row["input_digest"] != a.digest {
 			return providererr.New(providererr.Conflict, "request_id_conflict", "request_id 已被不同的操作参数使用")
+		}
+		if inserted == 0 {
+			// A committed row means this request was accepted, even after Temporal retention.
+			a.operationID = in.OperationId
+			return nil
 		}
 		desc, err := engine.Describe(ctx, WorkflowID(in.OperationId))
 		if err == nil {

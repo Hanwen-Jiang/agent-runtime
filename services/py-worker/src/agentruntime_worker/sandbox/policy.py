@@ -25,6 +25,7 @@ class WorkspaceLimits:
     """租户策略的 workspace 一节（设计书改动稿 W2；D-06，docs/plan/workspace-layer.md）：同时存在的工作区个数、单个工作区
     （存档）的字节上限、能推送的远端分支（glob：* 匹配不含 / 的一段，** 匹配任意多段）。不写的项用部署的默认值。"""
 
+    max_repos: int = 10
     max_workspaces: int = 20
     max_bytes: int = 2 << 30
     push_branches: tuple[str, ...] = ("agent/*",)
@@ -35,6 +36,7 @@ class WorkspaceLimits:
         section = dict(((doc or {}).get("workspace") or {}))
         default = cls()
         return cls(
+            max_repos=int(section.get("max_repos") or default.max_repos),
             max_workspaces=int(section.get("max_workspaces") or default.max_workspaces),
             max_bytes=int(section["max_bytes"]) if section.get("max_bytes") is not None else default.max_bytes,
             push_branches=tuple(str(b) for b in section.get("push_branches") or default.push_branches),

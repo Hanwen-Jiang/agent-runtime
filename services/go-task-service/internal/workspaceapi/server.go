@@ -200,7 +200,7 @@ func (s *Server) operateRead(
 			return nil
 		}
 	}
-	if s.d.Sandbox != nil {
+	if s.d.Sandbox != nil && args["repo"] == nil && !s.multiLayout(ctx, tenant, workspaceID) {
 		if err := s.readFromSandbox(ctx, tenant, workspaceID, op, args, out); err != nil {
 			return err
 		}
@@ -310,6 +310,12 @@ func (s *Server) run(
 			return invalid("invalid_argument", "参数格式不对")
 		}
 		in.Args = st
+	}
+	if async != nil {
+		if in.Args == nil {
+			in.Args = &structpb.Struct{Fields: map[string]*structpb.Value{}}
+		}
+		in.Args.Fields["__async_result"] = structpb.NewBoolValue(true)
 	}
 	if credential != nil && (credential.GetUsername() != "" || credential.GetPassword() != "") {
 		key, err := s.d.SealingKey(ctx)
@@ -450,8 +456,11 @@ func checkAuthor(name, email string) error {
 
 func (s *Server) CreateWorkspace(ctx context.Context, req *connect.Request[workspacev1.CreateWorkspaceRequest]) (*connect.Response[workspacev1.CreateWorkspaceResponse], error) {
 	m := req.Msg
-	if m.GetLayout() == workspacev1.WorkspaceLayout_WORKSPACE_LAYOUT_MULTI {
-		return nil, errMultiRepo()
+	if m.GetLayout() == workspacev1.WorkspaceLayout_WORKSPACE_LAYOUT_MULTI && (m.GetRepoUrl() != "" || m.GetRef() != "" || len(m.GetFiles()) != 0) {
+		return nil, taskapi.ConnectError(invalid("conflicting_sources", "multi 工作区通过 AttachRepo 加入仓库"))
+	}
+	if m.GetLayout() < 0 || m.GetLayout() > workspacev1.WorkspaceLayout_WORKSPACE_LAYOUT_MULTI {
+		return nil, taskapi.ConnectError(invalid("invalid_layout", "工作区布局不合法"))
 	}
 	if err := s.checkRepoURL(m.GetRepoUrl()); err != nil {
 		return nil, taskapi.ConnectError(err)
@@ -488,6 +497,9 @@ func (s *Server) CreateWorkspace(ctx context.Context, req *connect.Request[works
 		"repo_url": m.GetRepoUrl(), "ref": m.GetRef(), "from_workspace_id": m.GetFromWorkspaceId(), "files": files,
 		"author_name": m.GetAuthorName(), "author_email": m.GetAuthorEmail(),
 	}
+	if m.GetLayout() == workspacev1.WorkspaceLayout_WORKSPACE_LAYOUT_MULTI {
+		args["layout"] = "multi"
+	}
 	if env := m.GetEnvironment(); env != nil {
 		// ENV-02：选用的环境配置随建工作区交给 Worker（只有密钥的名字），见 environment.go。
 		if err := checkEnvironment(env); err != nil {
@@ -500,7 +512,7 @@ func (s *Server) CreateWorkspace(ctx context.Context, req *connect.Request[works
 		args["environment"] = doc
 	}
 	if err := s.operate(ctx, req.Header(), "workspace_create", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_CREATE, args, m.GetCredential(), out); err != nil {
-		return nil, taskapi.ConnectError(err)
+		return nil, workspaceError(err)
 	}
 	return connect.NewResponse(out), nil
 }
@@ -512,8 +524,11 @@ func (s *Server) GetDiff(ctx context.Context, req *connect.Request[workspacev1.G
 	}
 	out := &workspacev1.GetDiffResponse{}
 	args := map[string]any{"base": m.GetBase(), "find_renames": m.GetFindRenames()}
+	if m.GetRepo() != "" {
+		args["repo"] = m.GetRepo()
+	}
 	if err := s.operateRead(ctx, req.Header(), "workspace_diff", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_DIFF, args, out); err != nil {
-		return nil, taskapi.ConnectError(err)
+		return nil, workspaceError(err)
 	}
 	return connect.NewResponse(out), nil
 }
@@ -528,8 +543,11 @@ func (s *Server) CommitWorkspace(ctx context.Context, req *connect.Request[works
 	}
 	out := &workspacev1.CommitWorkspaceResponse{}
 	args := map[string]any{"message": m.GetMessage(), "author_name": m.GetAuthorName(), "author_email": m.GetAuthorEmail()}
+	if m.GetRepo() != "" {
+		args["repo"] = m.GetRepo()
+	}
 	if err := s.operate(ctx, req.Header(), "workspace_commit", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_COMMIT, args, nil, out); err != nil {
-		return nil, taskapi.ConnectError(err)
+		return nil, workspaceError(err)
 	}
 	return connect.NewResponse(out), nil
 }
@@ -543,8 +561,8 @@ func (s *Server) PushWorkspace(ctx context.Context, req *connect.Request[workspa
 		return nil, taskapi.ConnectError(err)
 	}
 	out := &workspacev1.PushWorkspaceResponse{}
-	if err := s.operate(ctx, req.Header(), "workspace_push", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_PUSH, map[string]any{"branch": m.GetBranch()}, m.GetCredential(), out); err != nil {
-		return nil, taskapi.ConnectError(err)
+	if err := s.operate(ctx, req.Header(), "workspace_push", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_PUSH, map[string]any{"branch": m.GetBranch(), "repo": m.GetRepo()}, m.GetCredential(), out); err != nil {
+		return nil, workspaceError(err)
 	}
 	return connect.NewResponse(out), nil
 }
@@ -553,7 +571,7 @@ func (s *Server) ArchiveWorkspace(ctx context.Context, req *connect.Request[work
 	m := req.Msg
 	out := &workspacev1.ArchiveWorkspaceResponse{}
 	if err := s.operate(ctx, req.Header(), "workspace_archive", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_ARCHIVE, nil, nil, out); err != nil {
-		return nil, taskapi.ConnectError(err)
+		return nil, workspaceError(err)
 	}
 	return connect.NewResponse(out), nil
 }
@@ -562,7 +580,7 @@ func (s *Server) DeleteWorkspace(ctx context.Context, req *connect.Request[works
 	m := req.Msg
 	out := &workspacev1.DeleteWorkspaceResponse{}
 	if err := s.operate(ctx, req.Header(), "workspace_delete", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_DELETE, nil, nil, out); err != nil {
-		return nil, taskapi.ConnectError(err)
+		return nil, workspaceError(err)
 	}
 	return connect.NewResponse(out), nil
 }
@@ -574,7 +592,7 @@ func (s *Server) ListFiles(ctx context.Context, req *connect.Request[workspacev1
 	}
 	out := &workspacev1.ListFilesResponse{}
 	if err := s.operateRead(ctx, req.Header(), "workspace_read", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_LIST_FILES, map[string]any{"path": m.GetPath()}, out); err != nil {
-		return nil, taskapi.ConnectError(err)
+		return nil, workspaceError(err)
 	}
 	return connect.NewResponse(out), nil
 }
@@ -586,7 +604,7 @@ func (s *Server) ReadFile(ctx context.Context, req *connect.Request[workspacev1.
 	}
 	out := &workspacev1.ReadFileResponse{}
 	if err := s.operateRead(ctx, req.Header(), "workspace_read", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_READ_FILE, map[string]any{"path": m.GetPath()}, out); err != nil {
-		return nil, taskapi.ConnectError(err)
+		return nil, workspaceError(err)
 	}
 	return connect.NewResponse(out), nil
 }
@@ -601,8 +619,11 @@ func (s *Server) GetLog(ctx context.Context, req *connect.Request[workspacev1.Ge
 	}
 	out := &workspacev1.GetLogResponse{}
 	args := map[string]any{"limit": float64(m.GetLimit()), "base": m.GetBase()}
+	if m.GetRepo() != "" {
+		args["repo"] = m.GetRepo()
+	}
 	if err := s.operateRead(ctx, req.Header(), "workspace_read", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_LOG, args, out); err != nil {
-		return nil, taskapi.ConnectError(err)
+		return nil, workspaceError(err)
 	}
 	return connect.NewResponse(out), nil
 }
@@ -610,8 +631,8 @@ func (s *Server) GetLog(ctx context.Context, req *connect.Request[workspacev1.Ge
 func (s *Server) DiscardChanges(ctx context.Context, req *connect.Request[workspacev1.DiscardChangesRequest]) (*connect.Response[workspacev1.DiscardChangesResponse], error) {
 	m := req.Msg
 	out := &workspacev1.DiscardChangesResponse{}
-	if err := s.operate(ctx, req.Header(), "workspace_discard", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_DISCARD, nil, nil, out); err != nil {
-		return nil, taskapi.ConnectError(err)
+	if err := s.operate(ctx, req.Header(), "workspace_discard", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_DISCARD, map[string]any{"repo": m.GetRepo()}, nil, out); err != nil {
+		return nil, workspaceError(err)
 	}
 	return connect.NewResponse(out), nil
 }
@@ -625,8 +646,8 @@ func (s *Server) SyncWorkspace(ctx context.Context, req *connect.Request[workspa
 		return nil, taskapi.ConnectError(err)
 	}
 	out := &workspacev1.SyncWorkspaceResponse{}
-	if err := s.operate(ctx, req.Header(), "workspace_sync", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_SYNC, map[string]any{"branch": m.GetBranch()}, m.GetCredential(), out); err != nil {
-		return nil, taskapi.ConnectError(err)
+	if err := s.operate(ctx, req.Header(), "workspace_sync", m.GetTenantId(), m.GetWorkspaceId(), workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_SYNC, map[string]any{"branch": m.GetBranch(), "repo": m.GetRepo()}, m.GetCredential(), out); err != nil {
+		return nil, workspaceError(err)
 	}
 	return connect.NewResponse(out), nil
 }
@@ -663,7 +684,10 @@ func (s *Server) ListWorkspaces(ctx context.Context, req *connect.Request[worksp
 			return nil
 		})
 	}
-	err = read(", environment_id")
+	err = read(", environment_id, layout")
+	if missingColumn(err) {
+		err = read(", environment_id")
+	}
 	if missingColumn(err) {
 		// Worker 还没迁移 207（ENV-02）：没有 environment_id 列，另开一个事务按旧的列读（Postgres 上出错的事务不能再用）。
 		err = read("")
@@ -676,7 +700,22 @@ func (s *Server) ListWorkspaces(ctx context.Context, req *connect.Request[worksp
 	}
 	out := &workspacev1.ListWorkspacesResponse{}
 	for _, r := range rows {
-		out.Workspaces = append(out.Workspaces, decode(r, live))
+		w := decode(r, live)
+		if w.Layout == workspacev1.WorkspaceLayout_WORKSPACE_LAYOUT_MULTI {
+			if err := db.Transaction(ctx, relational.TxOptions{ReadOnly: true}, func(ctx context.Context, tx relational.Tx) error {
+				repos, e := tx.Query(ctx, `SELECT name, url, ref, path, access, is_primary, head, branch, attached_at FROM workspace_repos WHERE workspace_id = $1 ORDER BY path`, w.WorkspaceId)
+				if e != nil {
+					return e
+				}
+				for _, repo := range repos {
+					w.Repos = append(w.Repos, decodeRepo(repo))
+				}
+				return nil
+			}); err != nil {
+				return nil, taskapi.ConnectError(err)
+			}
+		}
+		out.Workspaces = append(out.Workspaces, w)
 	}
 	return connect.NewResponse(out), nil
 }
@@ -702,7 +741,10 @@ func decode(r relational.Row, live map[string]bool) *workspacev1.Workspace {
 	w := &workspacev1.Workspace{
 		WorkspaceId: str("workspace_id"), State: workspacev1.WorkspaceState_WORKSPACE_STATE_ACTIVE, RepoUrl: str("repo_url"), Head: str("head"),
 		SnapshotId: str("snapshot_id"), SizeBytes: num("size_bytes"), Files: int32(num("files")), CreatedAt: ts("created_at"), UpdatedAt: ts("updated_at"),
-		EnvironmentId: str("environment_id"),
+		EnvironmentId: str("environment_id"), Layout: workspacev1.WorkspaceLayout_WORKSPACE_LAYOUT_ROOT,
+	}
+	if str("layout") == "multi" {
+		w.Layout = workspacev1.WorkspaceLayout_WORKSPACE_LAYOUT_MULTI
 	}
 	if !live[w.WorkspaceId] && w.SnapshotId != "" {
 		w.State = workspacev1.WorkspaceState_WORKSPACE_STATE_ARCHIVED

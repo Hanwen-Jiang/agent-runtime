@@ -45,6 +45,7 @@ from agentruntime_worker.sandbox.env_config import BoundEnvironment, Environment
 from agentruntime_worker.sandbox.policy import WorkspaceLimits
 from agentruntime_worker.sandbox.times import iso, utc_now
 from agentruntime_worker.workspace import timing
+from agentruntime_worker.workspace.multirepo import MIGRATIONS as REPO_MIGRATIONS
 
 KEEP = 3
 MANIFEST_VERSION = 1
@@ -106,7 +107,7 @@ MIGRATIONS = (
     Migration(210, "workspace_generation", (
         "ALTER TABLE workspaces ADD COLUMN generation BIGINT NOT NULL DEFAULT 0",
     )),
-)
+) + REPO_MIGRATIONS
 
 
 def blob_key(workspace_id: str, sha256: str) -> str:
@@ -135,6 +136,7 @@ class WorkspaceRecord:
     deleted_at: str = ""
     # 选用的环境配置的 ID（ENV-02）；配置本身另读（environment）。
     environment_id: str = ""
+    layout: str = "root"
 
     @classmethod
     def from_row(cls, row: Mapping[str, Any]) -> WorkspaceRecord:
@@ -249,7 +251,7 @@ class WorkspaceArchiver:
                 await tx.execute(
                     "UPDATE workspaces SET state = 'active', repo_url = $1, head = '', snapshot_id = '', size_bytes = 0, files = 0, "
                     "created_at = $2, updated_at = $2, deleted_at = '', environment_id = '', environment = '', environment_owner = '', "
-                    "environment_deleted_at = '', environment_secrets = '' WHERE workspace_id = $3",
+                    "environment_deleted_at = '', environment_secrets = '', layout = 'root' WHERE workspace_id = $3",
                     (repo_url, now, workspace_id),
                 )
             else:
@@ -261,7 +263,7 @@ class WorkspaceArchiver:
 
     async def update(self, owner: str, workspace_id: str, **values: Any) -> None:
         """改工作区的 head、repo_url 等（Workspace API 的操作之后）。"""
-        allowed = {"head", "repo_url"}
+        allowed = {"head", "repo_url", "layout"}
         columns = [c for c in values if c in allowed]
         if not columns:
             return
