@@ -39,6 +39,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--profiles", type=Path, default=matrix.DEFAULT_PROFILES)
     run.add_argument("--budget-usd", type=float, default=None, help="总花费到了就不再开始新的题（默认不设上限）")
     run.add_argument("--concurrency", type=int, default=None, help="同时跑几道题（默认用计划里的）")
+    run.add_argument("--freeze-config", type=Path, help="经部署核实的提交、Registry、Memory和模型快照；没有时新结果不发布")
     sc = commands.add_parser("score", help="按结果重新折算分数，写 scores.json")
     sc.add_argument("--out", type=Path, required=True)
     sc.add_argument("--plan", type=Path, default=None, help="默认用输出目录里的 plan.json")
@@ -73,7 +74,8 @@ def _run(args: argparse.Namespace) -> int:
     gateway = gateway_from_env()
 
     async def go(telemetry: Any) -> dict[str, Any]:
-        runner = matrix.MatrixRunner(plan, gateway, args.out, profiles=profiles, evals=evals, telemetry=telemetry, budget_usd=args.budget_usd, concurrency=args.concurrency)
+        frozen = json.loads(args.freeze_config.read_text("utf-8")) if args.freeze_config else None
+        runner = matrix.MatrixRunner(plan, gateway, args.out, profiles=profiles, evals=evals, telemetry=telemetry, budget_usd=args.budget_usd, concurrency=args.concurrency, frozen=frozen)
         print(runner.estimate().summary(), flush=True)
         report = await runner.run()
         print(f"这次跑了 {runner.new_runs} 次，累计花费 ${runner.spent:.4f}" + (f"；预算用完，{runner.skipped_for_budget} 次没跑" if runner.skipped_for_budget else ""))
@@ -87,7 +89,9 @@ def _run(args: argparse.Namespace) -> int:
 
 def _score(args: argparse.Namespace) -> int:
     plan = matrix.load_plan(args.plan or args.out / matrix.PLAN_COPY)
-    report = matrix.score_results(plan, matrix.read_results(args.out))
+    rows = matrix.read_results(args.out)
+    matrix.verify_run_lock(args.out, plan, rows)
+    report = matrix.score_results(plan, rows)
     path = matrix.write_scores(args.out, report)
     print(matrix.scores_summary(report))
     print(f"分数：{path}")
@@ -98,7 +102,9 @@ def _publish(args: argparse.Namespace) -> int:
     # Never trust a stale or manually edited publishable flag. Re-evaluate the
     # original observations with the current, frozen publication policy.
     plan = matrix.load_plan(args.out / matrix.PLAN_COPY)
-    report = matrix.score_results(plan, matrix.read_results(args.out))
+    rows = matrix.read_results(args.out)
+    matrix.verify_run_lock(args.out, plan, rows)
+    report = matrix.score_results(plan, rows)
     matrix.write_scores(args.out, report)
     today = dt.date.fromisoformat(args.date) if args.date else None
     result = publish.publish(report, profiles_path=args.profiles, seed_path=args.seed, today=today, dry_run=args.dry_run)
