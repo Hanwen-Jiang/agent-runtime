@@ -29,8 +29,9 @@ external:
   temporal:
     address: temporal-frontend.data.svc:7233
     namespace: agent-runtime
-  qdrant:
-    url: http://qdrant.data.svc:6333
+  # Memory Service 的向量库：Milvus 单机版（deploy/data/milvus.yaml，V1-MEM，2026-11-06）；与 qdrant.url 只能设一个。
+  milvus:
+    uri: http://milvus.data.svc:19530
   redpanda:
     brokers: redpanda.data.svc:9093
   tempo:
@@ -76,6 +77,8 @@ modelGateway:
 
 memory:
   replicas: 1
+  # 真 embedding 经 Model Gateway（docs/plan/memory-live.md M-02）；所有租户的白名单都有它。
+  embeddingVersion: a6api/text-embedding-3-large@2026-10
 
 pkgMirror:
   enabled: true
@@ -91,6 +94,9 @@ egressGateway:
   previewHostCidrs: ["10.42.0.1/32"]
 
 worker:
+  # Worker 接 Memory Service：写入经验、规划与 tool_loop 时检索（M-03）。
+  memory:
+    enabled: true
   workspacesClaim: workspaces
   shell:
     mode: sandbox

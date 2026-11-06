@@ -24,10 +24,19 @@ def env(manifests: list[dict[str, Any]], suffix: str) -> dict[str, dict[str, Any
 
 
 def test_off_by_default() -> None:
-    manifests = render(CLOUD_VALUES)
+    manifests = render()
     memory = env(manifests, "-memory")
     assert "AR_MILVUS_URI" not in memory and "AR_EMBEDDING_VERSION" not in memory
     assert "AR_MEMORY_ADDRESS" not in env(manifests, "-worker-task")
+
+
+def test_on_in_the_cloud_values() -> None:
+    """V1-MEM（2026-11-06）：云上接 Milvus 与真 embedding，Worker 接 Memory Service。"""
+    manifests = render(CLOUD_VALUES)
+    memory = env(manifests, "-memory")
+    assert memory["AR_MILVUS_URI"]["value"] == "http://milvus.data.svc:19530" and "AR_QDRANT_URL" not in memory
+    assert memory["AR_EMBEDDING_VERSION"]["value"] == "a6api/text-embedding-3-large@2026-10"
+    assert "AR_MEMORY_ADDRESS" in env(manifests, "-worker-task")
 
 
 def test_memory_gets_milvus_and_the_gateway() -> None:

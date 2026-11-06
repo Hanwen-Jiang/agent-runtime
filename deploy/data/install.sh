@@ -26,6 +26,9 @@ kubectl -n data wait --for=condition=Ready cluster/pg --timeout=15m
 log "Valkey（Runtime 的 Cache，CACHE-01）"
 kubectl apply -f "$HERE/valkey.yaml"
 kubectl -n data rollout status deploy/valkey-agentruntime --timeout=5m
+# Memory Service 的向量库（V1-MEM）：Milvus 单机版，内嵌 etcd、本地存储。
+kubectl apply -f "$HERE/milvus.yaml"
+kubectl -n data rollout status sts/milvus --timeout=10m
 
 helm repo add temporal https://go.temporal.io/helm-charts >/dev/null
 helm repo add qdrant https://qdrant.github.io/qdrant-helm >/dev/null

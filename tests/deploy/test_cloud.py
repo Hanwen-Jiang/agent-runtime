@@ -441,13 +441,17 @@ def test_cloud_service_addresses_match_the_data_layer() -> None:
     install = (DATA / "install.sh").read_text("utf-8")
     for release, namespace, address in [
         ("temporal", "data", external["temporal"]["address"]),
-        ("qdrant", "data", external["qdrant"]["url"]),
         ("redpanda", "data", external["redpanda"]["brokers"]),
         ("tempo", "observability", external["tempo"]["endpoint"]),
         ("langfuse", "observability", external["langfuse"]["endpoint"]),
     ]:
         assert re.search(rf"helm upgrade --install {release} \S+ --version \S+ -n {namespace}\b", install), f"{release} 装在 {namespace}"
         assert f".{namespace}.svc" in address and release in address, f"{address} 对不上 {release}（{namespace}）"
+    # Milvus（V1-MEM）不经 helm，是 deploy/data/milvus.yaml 的清单，install.sh 直接 apply。
+    milvus = [d for d in yaml.safe_load_all((DATA / "milvus.yaml").read_text("utf-8")) if d and d["kind"] == "Service"]
+    assert [(d["metadata"]["name"], d["metadata"]["namespace"]) for d in milvus] == [("milvus", "data")]
+    assert external["milvus"]["uri"] == "http://milvus.data.svc:19530" and "qdrant" not in external
+    assert 'kubectl apply -f "$HERE/milvus.yaml"' in install
 
 
 def test_cloud_learning_consumes_what_the_collector_writes(cloud: list[dict[str, Any]]) -> None:
