@@ -39,7 +39,7 @@ class WorkspaceOperationWorkflow:
         retry = RetryPolicy(maximum_attempts=1) if push else RetryPolicy(maximum_attempts=3, initial_interval=timedelta(seconds=5))
         queue = names.WORKSPACE_QUEUE if workflow.info().task_queue == names.WORKSPACE_QUEUE else names.PROGRAM_QUEUE
         try:
-            return await workflow.execute_activity(
+            result = await workflow.execute_activity(
                 names.WORKSPACE_OPERATION,
                 inp,
                 result_type=workspace_pb2.WorkspaceOperationResult,
@@ -52,7 +52,21 @@ class WorkspaceOperationWorkflow:
             match = _CODE.match(message)
             code = match.group(1) if match else "workspace_operation_failed"
             text = message[match.end():] if match else "工作区的操作暂时失败，稍后再试"
-            return workspace_pb2.WorkspaceOperationResult(error=error_pb2.Error(category=error_pb2.ERROR_CATEGORY_TRANSIENT, code=code, message=text))
+            result = workspace_pb2.WorkspaceOperationResult(error=error_pb2.Error(category=error_pb2.ERROR_CATEGORY_TRANSIENT, code=code, message=text))
+
+
+        # Only new async executions add this command. Legacy root histories and
+        # already running async workflows replay their original command sequence.
+        enabled = inp.args.fields.get("__async_result")
+        if enabled and enabled.bool_value and workflow.patched("workspace-async-result-v1"):
+            await workflow.execute_activity(
+                names.WORKSPACE_OPERATION_RESULT,
+                args=[inp, result],
+                task_queue=queue,
+                start_to_close_timeout=timedelta(minutes=2),
+                retry_policy=RetryPolicy(initial_interval=timedelta(seconds=1), maximum_interval=timedelta(minutes=1)),
+            )
+        return result
 
 
 __all__ = ["WorkspaceOperationWorkflow", "operation_workflow_id"]
