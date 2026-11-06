@@ -253,6 +253,8 @@ def test_the_datasets_page(site: Site, expected: dict[str, int], tmp_path: Path)
     assert steps["groups"] >= 5, "默认按评测类别分组"
     assert steps["dataset_groups"] == expected["datasets"], "按数据集分组时每个数据集一组"
     assert steps["expanded"] and steps["expanded_pairwise"], "展开一道成对比较的题，看得到两个回答"
+    assert steps["overflow"] <= 1, "桌面来源标记不能撑宽整页"
+    assert steps["overflow_expanded"] <= 1, "桌面展开真实题目后不能横向滚动"
     assert 0 < steps["searched"] < expected["shown"], "搜索能筛"
     assert steps["lang"] == "en" and steps["title"] == "Datasets and frameworks"
 
