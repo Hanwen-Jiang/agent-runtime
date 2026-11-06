@@ -50,3 +50,21 @@ func TestDefaultSelectionAndExplicitOverride(t *testing.T) {
 		t.Fatal("legacy changed")
 	}
 }
+
+func TestCanonicalDigestIsStableAcrossOrderingAndRepeatedSaves(t *testing.T) {
+	first := &pb.PersonalConfigDocument{Instructions: "same", Files: []*pb.PersonalConfigFile{{Path: "z", Content: "z"}, {Path: "a", Content: "a"}}}
+	second := &pb.PersonalConfigDocument{Instructions: "same", Files: []*pb.PersonalConfigFile{{Path: "a", Content: "a"}, {Path: "z", Content: "z"}}}
+	want, err := Canonical(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 100 {
+		got, err := Canonical(second)
+		if err != nil || string(got) != string(want) {
+			t.Fatalf("unstable content: %s %s %v", want, got, err)
+		}
+	}
+	if first.Files[0].Path != "z" {
+		t.Fatal("canonicalization mutated input")
+	}
+}

@@ -117,7 +117,17 @@ func Canonical(doc *pb.PersonalConfigDocument) ([]byte, error) {
 			}
 		}
 	}
-	return (protojson.MarshalOptions{UseProtoNames: true}).Marshal(copy)
+	raw, err := (protojson.MarshalOptions{UseProtoNames: true}).Marshal(copy)
+	if err != nil {
+		return nil, err
+	}
+	// protojson deliberately does not promise byte stability. Normalize JSON
+	// keys/whitespace before hashing and comparing immutable package versions.
+	var normalized any
+	if err = json.Unmarshal(raw, &normalized); err != nil {
+		return nil, err
+	}
+	return json.Marshal(normalized)
 }
 
 func Migrations() []relational.Migration {

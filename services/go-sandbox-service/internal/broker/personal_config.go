@@ -5,9 +5,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/personalconfig"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/sandbox"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	pb "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/personalconfig/v1"
@@ -31,7 +33,7 @@ func (b *Broker) personalConfig(ctx context.Context, lease *Lease, taskID string
 		sum := sha256.Sum256([]byte(lease.Owner + "\x00" + lease.ID()))
 		lease.Env["HOME"] = "/tmp/agentruntime-personal-" + hex.EncodeToString(sum[:16])
 	}
-	result := applyPersonalFiles(ctx, lease, config)
+	result, deliveryErr := applyPersonalFiles(ctx, lease, config)
 	environment := map[string]any{}
 	if lease.EnvironmentJSON != "" {
 		_ = json.Unmarshal([]byte(lease.EnvironmentJSON), &environment)
@@ -39,6 +41,13 @@ func (b *Broker) personalConfig(ctx context.Context, lease *Lease, taskID string
 	environment["personal_config"] = result
 	raw, _ := json.Marshal(environment)
 	lease.EnvironmentJSON = string(raw)
+	if deliveryErr != nil {
+		// A partially configured HOME must never be handed to a task. Preserve
+		// workspace changes before destroying the failed environment.
+		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+		defer cancel()
+		return errors.Join(deliveryErr, b.destroy(cleanup, lease, true, "personal config delivery failed"))
+	}
 	b.log.Info("personal config applied", "tenant", lease.Owner, "task", taskID, "version", config.Version, "digest", config.Digest)
 	return nil
 }
@@ -81,7 +90,7 @@ set -C
 cat > "$1"
 `
 
-func applyPersonalFiles(ctx context.Context, lease *Lease, config *pb.PersonalConfig) map[string]any {
+func applyPersonalFiles(ctx context.Context, lease *Lease, config *pb.PersonalConfig) (map[string]any, error) {
 	applied, skipped := []string{}, []string{}
 	issues := []map[string]string{}
 	result := map[string]any{"version": config.Version, "digest": config.Digest}
@@ -96,7 +105,7 @@ func applyPersonalFiles(ctx context.Context, lease *Lease, config *pb.PersonalCo
 		if err != nil || out.TimedOut || out.ExitCode == nil || *out.ExitCode != 0 {
 			issues = append(issues, map[string]string{"path": "", "code": "personal_config_preflight_failed"})
 			result["applied"], result["skipped"], result["errors"] = applied, skipped, issues
-			return result
+			return result, providererr.New(providererr.Invalid, "personal_config_preflight_failed", "个人配置目录校验失败")
 		}
 	}
 	for _, file := range files {
@@ -109,10 +118,12 @@ func applyPersonalFiles(ctx context.Context, lease *Lease, config *pb.PersonalCo
 			skipped = append(skipped, file.Path)
 		default:
 			issues = append(issues, map[string]string{"path": file.Path, "code": "personal_config_write_failed"})
+			result["applied"], result["skipped"], result["errors"] = applied, skipped, issues
+			return result, providererr.New(providererr.Transient, "personal_config_write_failed", "个人配置文件写入失败")
 		}
 	}
 	result["applied"], result["skipped"], result["errors"] = applied, skipped, issues
-	return result
+	return result, nil
 }
 
 // Reuse must not carry HOME files from a different pinned package into a task.
