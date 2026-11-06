@@ -113,3 +113,67 @@ def test_quality_only_draft_cannot_bypass_cost_gate(tmp_path):
     with pytest.raises(ValueError, match="cost-audited"):
         pub.publish_shadows(tmp_path, remote, execute=True)
     assert remote.writes == []
+
+
+def promotion_bundle(tmp_path):
+    baseline, candidate = bundle(tmp_path)
+    folder = tmp_path / "candidates/model"
+    pub.save(folder / "report.json", {"quality": "fixed evidence"})
+    pub.save(folder / "promote-request-template.json", {
+        "kind": "REGISTRY_KIND_MODEL_PROFILE", "name": baseline["id"], "version": "<PUBLISHED_VERSION>",
+        "evaluation": {"schema_id": "https://agentruntime.example/schemas/registry_capability_evaluation.schema.json",
+                       "value": {"passed": True, "baseline_version": "v1", "report_sha256": pub.file_digest(folder / "report.json")}},
+    })
+    doc = json.loads((tmp_path / "bundle.json").read_text())
+    doc["items"][0]["files"] = {p.name: pub.file_digest(p) for p in folder.iterdir()}
+    pub.save(tmp_path / "bundle.json", doc)
+    pub.save(tmp_path / "publication-state.json", {
+        "bundle_sha256": pub.file_digest(tmp_path / "bundle.json"),
+        "profiles": {baseline["id"]: {"state": "published_shadow", "version": "v2"}},
+    })
+    return baseline, candidate
+
+
+class PromotingRegistry(FakeRegistry):
+    def __init__(self, baseline, candidate, **kwargs):
+        super().__init__(baseline, **kwargs)
+        self.versions["v2"] = candidate
+
+    def call(self, method, request):
+        assert method == "Promote"
+        self.writes.append(copy.deepcopy(request))
+        previous, self.current = self.current, request["version"]
+        if self.lose_reply:
+            raise pub.RemoteError("response_unknown")
+        return {"previousDefaultVersion": previous}
+
+
+def test_promotion_dry_run_and_lost_reply_preserve_rollback(tmp_path):
+    base, candidate = promotion_bundle(tmp_path)
+    remote = PromotingRegistry(base, candidate, lose_reply=True)
+    pub.promote_shadows(tmp_path, remote)
+    assert remote.current == "v1" and not remote.writes
+    with pytest.raises(pub.RemoteError):
+        pub.promote_shadows(tmp_path, remote, execute=True)
+    result = pub.promote_shadows(tmp_path, remote, execute=True)
+    assert len(remote.writes) == 1 and remote.current == "v2"
+    assert result["profiles"][base["id"]] == {"state": "default_confirmed", "version": "v2", "previous_default_version": "v1"}
+
+
+def test_promotion_never_overwrites_a_drifted_default(tmp_path):
+    base, candidate = promotion_bundle(tmp_path)
+    remote = PromotingRegistry(base, candidate)
+    remote.versions["v3"] = {**base, "cost": {"in_per_m": 99}}
+    remote.current = "v3"
+    with pytest.raises(ValueError, match="drifted"):
+        pub.promote_shadows(tmp_path, remote, execute=True)
+    assert not remote.writes
+
+
+def test_promotion_rejects_modified_evidence(tmp_path):
+    base, candidate = promotion_bundle(tmp_path)
+    remote = PromotingRegistry(base, candidate)
+    (tmp_path / "candidates/model/report.json").write_text("{}")
+    with pytest.raises(ValueError, match="changed"):
+        pub.promote_shadows(tmp_path, remote, execute=True)
+    assert not remote.writes
