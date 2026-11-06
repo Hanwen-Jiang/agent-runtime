@@ -143,13 +143,16 @@ func snapFromRow(r relational.Row) Snapshot {
 
 // Archiver 是工作区的存档。
 type Archiver struct {
-	store    relational.Provider
-	objects  objectstore.Provider
-	clock    clock.Clock
-	TmpDir   string
-	Keep     int
-	mu       sync.Mutex
-	migrated bool
+	store   relational.Provider
+	objects objectstore.Provider
+	clock   clock.Clock
+	TmpDir  string
+	Keep    int
+	// ChunkedSnapshots gates new writes only. Readers always accept both formats.
+	// Enable after a reader-compatible rollback release has been saved.
+	ChunkedSnapshots bool
+	mu               sync.Mutex
+	migrated         bool
 }
 
 // New 构造。

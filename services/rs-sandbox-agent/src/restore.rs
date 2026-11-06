@@ -20,9 +20,29 @@ impl Drop for Session {
         let _ = fs::remove_dir_all(&self.root);
     }
 }
-#[derive(Default)]
 pub struct Restores {
-    sessions: Mutex<HashMap<String, Arc<Mutex<Session>>>>,
+    sessions: Arc<Mutex<HashMap<String, Arc<Mutex<Session>>>>>,
+}
+impl Default for Restores {
+    fn default() -> Self {
+        let sessions = Arc::new(Mutex::new(HashMap::<String, Arc<Mutex<Session>>>::new()));
+        let weak = Arc::downgrade(&sessions);
+        std::thread::spawn(move || {
+            loop {
+                std::thread::sleep(Duration::from_secs(30));
+                let Some(sessions) = weak.upgrade() else {
+                    break;
+                };
+                sessions
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .retain(|_, s| {
+                        s.lock().unwrap_or_else(|e| e.into_inner()).expires > Instant::now()
+                    });
+            }
+        });
+        Self { sessions }
+    }
 }
 fn bad() -> io::Error {
     io::Error::other("invalid restore plan")

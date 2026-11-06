@@ -83,7 +83,7 @@ func network(ctx context.Context, opt TransferOptions, url string) (string, func
 func (a *Archiver) storeDirect(ctx context.Context, box sandbox.Sandbox, envID string, bucket objectstore.Store, workspaceID string, maxBytes int64, known map[string]bool, foreign map[string]string, opt TransferOptions) ([]sandbox.FileEntry, int64, int64, error) {
 	manifest := box.(sandbox.Archive).Manifest
 	chunked, canChunk := box.(sandbox.SnapshotTransfers)
-	if canChunk {
+	if canChunk && a.ChunkedSnapshots {
 		manifest = chunked.SnapshotManifest
 	}
 	entries, err := manifest(ctx, envID)

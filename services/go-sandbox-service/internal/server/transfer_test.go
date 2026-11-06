@@ -25,6 +25,7 @@ type transferObjects struct {
 	data       map[string][]byte
 	puts, gets int
 	fail       bool
+	loseAck    bool
 }
 
 func objectServer(t *testing.T) (objectstore.Provider, *transferObjects) {
@@ -56,6 +57,10 @@ func objectServer(t *testing.T) (objectstore.Provider, *transferObjects) {
 			}
 			state.puts++
 			state.data[key] = data
+			if state.loseAck {
+				w.WriteHeader(503)
+				return
+			}
 			w.WriteHeader(200)
 		case "GET", "HEAD":
 			data, ok := state.data[key]
@@ -100,6 +105,9 @@ func TestDirectTransferServiceBindsTenantLeaseAndKeepsPreparedBytes(t *testing.T
 	if _, err = h.worker.CommitTransfer(ctx, connect.NewRequest(&other)); err == nil {
 		t.Fatal("cross tenant transfer accepted")
 	}
+	state.mu.Lock()
+	state.loseAck = true
+	state.mu.Unlock()
 	result, err := h.worker.CommitTransfer(ctx, connect.NewRequest(request))
 	if err != nil {
 		t.Fatal(err)
@@ -108,7 +116,7 @@ func TestDirectTransferServiceBindsTenantLeaseAndKeepsPreparedBytes(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Msg.Object.ObjectUri != repeated.Msg.Object.ObjectUri || state.puts != 1 {
+	if result.Msg.Object.ObjectUri != repeated.Msg.Object.ObjectUri || state.puts != 1 || state.gets != 0 {
 		t.Fatal("repeat uploaded twice")
 	}
 	bucket, _ := objects.Bind(tc)
@@ -201,6 +209,15 @@ func TestDirectArchiveChunksLargeFilesAndUploadsOnlyChangedBlocks(t *testing.T) 
 		t.Fatal(err)
 	}
 	arch := broker.Archiver()
+	legacy, err := arch.Snapshot(ctx, inner.Box, inner.EnvID, "t1", "w-large", 80<<20, lease.LeaseId, archive.TransferOptions{Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldEntries, _, err := arch.Manifest(ctx, "t1", legacy)
+	if err != nil || len(oldEntries) != 1 || len(oldEntries[0].Chunks) != 0 {
+		t.Fatalf("disabled writer produced chunks: %v %v", oldEntries, err)
+	}
+	arch.ChunkedSnapshots = true
 	for i := 0; i < 4; i++ {
 		snap, err := arch.Snapshot(ctx, inner.Box, inner.EnvID, "t1", "w-large", 80<<20, lease.LeaseId, archive.TransferOptions{Enabled: true})
 		if err != nil {
@@ -230,6 +247,7 @@ func TestDirectArchiveChunksLargeFilesAndUploadsOnlyChangedBlocks(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
+	arch.ChunkedSnapshots = false // Rollback disables writes, not chunk-compatible reads.
 	if _, err = arch.Restore(ctx, target.Box, target.EnvID, "t1", "w-large", 80<<20, archive.TransferOptions{Enabled: true}); err != nil {
 		t.Fatal(err)
 	}

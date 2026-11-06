@@ -233,17 +233,15 @@ pub fn exec(app: &App, ctx: &mut Ctx<'_>) {
                     ("stdout_transfer", &mut stdout),
                     ("stderr_transfer", &mut stderr),
                 ] {
-                    if output.buf.len() > limit {
-                        if let Ok(prepared) = app.transfers.prepare(output.buf.clone()) {
-                            let half = limit / 2;
-                            let mut excerpt = output.buf[..half].to_vec();
-                            excerpt.extend_from_slice(b"\n...[externalized]...\n");
-                            excerpt.extend_from_slice(
-                                &output.buf[output.buf.len() - (limit - half)..],
-                            );
-                            output.buf = excerpt;
-                            refs.push((name, prepared.to_string()));
-                        }
+                    if output.buf.len() > limit
+                        && let Ok(prepared) = app.transfers.prepare(output.buf.clone())
+                    {
+                        let half = limit / 2;
+                        let mut excerpt = output.buf[..half].to_vec();
+                        excerpt.extend_from_slice(b"\n...[externalized]...\n");
+                        excerpt.extend_from_slice(&output.buf[output.buf.len() - (limit - half)..]);
+                        output.buf = excerpt;
+                        refs.push((name, prepared.to_string()));
                     }
                 }
             }

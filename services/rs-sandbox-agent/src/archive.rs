@@ -723,6 +723,72 @@ pub fn grep(app: &App, ctx: &mut Ctx<'_>) {
     write_json(ctx, 200, body);
 }
 
+// This directory is also a durable incomplete-restore marker. The workspace
+// itself may be a mount point, so publishing it by renaming the root is not valid.
+const RESTORE_STAGE: &str = ".agentruntime-restore";
+
+pub(crate) fn restore_incomplete(root: &Path) -> bool {
+    root.join(RESTORE_STAGE).try_exists().unwrap_or(true)
+}
+
+struct RestoreStage {
+    root: PathBuf,
+    moved: Vec<std::ffi::OsString>,
+    committed: bool,
+}
+impl Drop for RestoreStage {
+    fn drop(&mut self) {
+        if self.committed {
+            return;
+        }
+        let stage = self.root.join(RESTORE_STAGE);
+        let mut rolled_back = true;
+        for name in self.moved.iter().rev() {
+            if fs::rename(self.root.join(name), stage.join(name)).is_err() {
+                rolled_back = false;
+            }
+        }
+        // If rollback failed, keep the marker: no subsequent API request may
+        // observe or execute this workspace. The broker must discard the VM.
+        if rolled_back {
+            let _ = fs::remove_dir_all(stage);
+        }
+    }
+}
+
+/// Fully validate/extract before publishing; reject subsequent requests after a
+/// process crash during publication. Existing caller data is never overwritten.
+pub(crate) fn restore_tar(root: &Path, source: &mut dyn Read, limit: u64) -> io::Result<()> {
+    for entry in fs::read_dir(root)? {
+        if name_bytes(&entry?.file_name()) != MARKER {
+            return Err(io::Error::other("workspace not empty"));
+        }
+    }
+    let stage = root.join(RESTORE_STAGE);
+    mkdir(&stage, 0o700)?;
+    let mut guard = RestoreStage {
+        root: root.to_path_buf(),
+        moved: vec![],
+        committed: false,
+    };
+    extract(&stage, source, limit).map_err(|_| io::Error::other("invalid restore archive"))?;
+    let mut entries = fs::read_dir(&stage)?.collect::<io::Result<Vec<_>>>()?;
+    entries.sort_by_key(|entry| entry.file_name());
+    for entry in entries {
+        let name = entry.file_name();
+        let target = root.join(&name);
+        match fs::symlink_metadata(&target) {
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+            _ => return Err(io::Error::other("restore target already exists")),
+        }
+        fs::rename(entry.path(), target)?;
+        guard.moved.push(name);
+    }
+    fs::remove_dir(&stage)?;
+    guard.committed = true;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -761,14 +827,94 @@ mod tests {
             "不合法的 UTF-8 按字节保留"
         );
     }
-}
 
-/// Shared secure extraction for the direct block restore path.
-pub(crate) fn restore_tar(root: &Path, source: &mut dyn Read, limit: u64) -> io::Result<()> {
-    for entry in fs::read_dir(root)? {
-        if name_bytes(&entry?.file_name()) != MARKER {
-            return Err(io::Error::other("workspace not empty"));
+    #[test]
+    fn restore_rejects_late_invalid_entry_without_partial_workspace() {
+        let root = std::env::temp_dir().join(format!(
+            "atomic-restore-{}",
+            rs_transfer::random_id().unwrap()
+        ));
+        fs::create_dir(&root).unwrap();
+        let mut archive = Vec::new();
+        {
+            let mut builder = tar::Builder::new(&mut archive);
+            let mut good = tar::Header::new_gnu();
+            good.set_mode(0o644);
+            good.set_size(4);
+            good.set_cksum();
+            builder
+                .append_data(&mut good, "first.txt", b"good".as_slice())
+                .unwrap();
+            let mut bad = tar::Header::new_gnu();
+            bad.set_entry_type(tar::EntryType::Symlink);
+            bad.set_mode(0o777);
+            bad.set_size(0);
+            builder
+                .append_link(&mut bad, "late-link", "../../outside")
+                .unwrap();
+            builder.finish().unwrap();
         }
+        assert!(restore_tar(&root, &mut archive.as_slice(), 100).is_err());
+        assert_eq!(fs::read_dir(&root).unwrap().count(), 0);
+        assert!(!restore_incomplete(&root));
+        fs::remove_dir(root).unwrap();
     }
-    extract(root, source, limit).map_err(|_| io::Error::other("invalid restore archive"))
+
+    #[test]
+    fn restore_publishes_complete_archive_and_crash_marker_fails_closed() {
+        let root = std::env::temp_dir().join(format!(
+            "atomic-restore-{}",
+            rs_transfer::random_id().unwrap()
+        ));
+        fs::create_dir(&root).unwrap();
+        let mut archive = Vec::new();
+        {
+            let mut builder = tar::Builder::new(&mut archive);
+            let mut header = tar::Header::new_gnu();
+            header.set_mode(0o644);
+            header.set_size(4);
+            header.set_cksum();
+            builder
+                .append_data(&mut header, "nested/file", b"good".as_slice())
+                .unwrap();
+            builder.finish().unwrap();
+        }
+        restore_tar(&root, &mut archive.as_slice(), 100).unwrap();
+        assert_eq!(fs::read(root.join("nested/file")).unwrap(), b"good");
+        assert!(!restore_incomplete(&root));
+        assert!(restore_tar(&root, &mut archive.as_slice(), 100).is_err());
+        fs::remove_dir_all(root.join("nested")).unwrap();
+        fs::create_dir(root.join(RESTORE_STAGE)).unwrap();
+        assert!(restore_incomplete(&root));
+        assert!(restore_tar(&root, &mut archive.as_slice(), 100).is_err());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn failed_publication_rolls_back_already_moved_entries() {
+        let root = std::env::temp_dir().join(format!(
+            "atomic-restore-{}",
+            rs_transfer::random_id().unwrap()
+        ));
+        fs::create_dir(&root).unwrap();
+        let mut archive = Vec::new();
+        {
+            let mut builder = tar::Builder::new(&mut archive);
+            for name in ["!first", RESTORE_STAGE] {
+                let mut header = tar::Header::new_gnu();
+                header.set_mode(0o644);
+                header.set_size(4);
+                header.set_cksum();
+                builder
+                    .append_data(&mut header, name, b"good".as_slice())
+                    .unwrap();
+            }
+            builder.finish().unwrap();
+        }
+        // !first is published first; the reserved stage name then conflicts.
+        assert!(restore_tar(&root, &mut archive.as_slice(), 100).is_err());
+        assert_eq!(fs::read_dir(&root).unwrap().count(), 0);
+        assert!(!restore_incomplete(&root));
+        fs::remove_dir(root).unwrap();
+    }
 }

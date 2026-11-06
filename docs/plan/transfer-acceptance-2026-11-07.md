@@ -51,3 +51,16 @@ cargo test --locked -p rs-transfer -p fc-manager --lib
 ```
 
 本次没有付费模型调用、重复 R2 对象写入或部署，费用为 0；测试临时文件由夹具清理。
+
+## 审查补强与可回退启用
+
+补强位于独立 `goal/transfer-review-20261106` / `.worktrees/transfer-review/agent-runtime`；旧 transfer 工作树出现其他执行者的并发编辑后，不再用于这次审查验收。
+
+- **事务结果不明**：交付登记的 commit ACK 丢失后先查询幂等记录，已登记对象不删除；查询也失败时保留对象和预占，不把未知结果当作回滚。清理失败保留预占至到期并保留原始错误。真实 SQLite 注入“成功 commit 后抛错”的回归验证对象仍可读且重试不重复上传。
+- **暂存生命周期**：Service 在随机 ID/容量失败时不留下准备结果，过期记录同时释放 agent 暂存；同 VM 的过期槽先清理再准备新上传。agent 独立每 30 秒清理过期内存/恢复块，Service 崩溃不会导致暂存无限保留。
+- **恢复发布**：先在同盘私有 `.agentruntime-restore` 中完整解包；失败不搬进工作区，发布中途失败回滚已搬入项。崩溃遗留该目录时，agent 拒绝工作区读写与执行（仍允许 health/cancel），需要销毁该环境，防止重启误复用半成品。目录本身可能是挂载点，不能依赖重命名工作区根。
+- **可信字节核验**：`ObjectStore.SignedUpload` 明确保证一次写入、固定 checksum 和 size；diskobjects 实际核对内容，R2 的同长度篡改、签名头篡改和覆盖拒绝已有上面的真实证据。因此随机专用键的 `HEAD` 大小核对用于确认 PUT 完成，摘要信任来自存储端强制校验，不是 agent 回报。新增“PUT 已写入但返回失败”回归同时要求成功幂等与 Service 不 GET 全体字节。不能满足该保证的 provider 必须拒绝 SignedUpload。
+
+`Archiver.ChunkedSnapshots` 默认关闭，仅控制新分块写入，读取始终支持旧整文件和新 chunks。关闭时沿旧清单写入；超过 64 MiB 的文件仍用完整 tar 回退。Service/env/Helm 由主集成接线：`AR_WORKSPACE_CHUNKED_SNAPSHOTS` / `sandboxService.chunkedSnapshots`。部署先使用新 reader、关闭 chunks，验收并保存这个兼容新格式的回退版本；随后启用 chunks 做最终验收。回退关闭写入即可继续读取新旧快照，禁止通过恢复旧快照记录丢弃用户后续改动。
+
+审查树复测：Rust agent 25 项通过；`cargo clippy --offline --locked -p rs-sandbox-agent -p rs-transfer -p fc-manager --all-targets -- -D warnings` 通过；Go archive 2 项通过、Service 测试编译和 vet 通过；Python Worker 交付/分块复制 23 项通过、FileEntry 兼容 1 项通过。两个 Python 测试包需分别启动 pytest，合并调用有同名 `tests.conftest` 导入冲突（已拆开重跑）。新增 HTTP 失败 ACK、写入开关、崩溃标记路由端到端用例仍受当前 socket 权限限制，不能标记验收通过。无新增费用或部署。

@@ -15,9 +15,25 @@ struct Prepared {
     expires: Instant,
     committed: Option<String>,
 }
-#[derive(Default)]
 pub struct Transfers {
-    entries: Mutex<HashMap<String, Prepared>>,
+    entries: Arc<Mutex<HashMap<String, Prepared>>>,
+}
+impl Default for Transfers {
+    fn default() -> Self {
+        let entries = Arc::new(Mutex::new(HashMap::<String, Prepared>::new()));
+        let weak = Arc::downgrade(&entries);
+        std::thread::spawn(move || {
+            loop {
+                std::thread::sleep(Duration::from_secs(30));
+                let Some(entries) = weak.upgrade() else { break };
+                entries
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .retain(|_, v| v.expires > Instant::now());
+            }
+        });
+        Self { entries }
+    }
 }
 impl Transfers {
     pub fn prepare(&self, data: Vec<u8>) -> io::Result<Value> {

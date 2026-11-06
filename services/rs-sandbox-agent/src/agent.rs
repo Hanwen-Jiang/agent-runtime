@@ -151,6 +151,14 @@ impl App {
         if !self.authed(ctx) {
             return fail(ctx, 401, "unauthorized", "令牌不对");
         }
+        if route != Route::Cancel && crate::archive::restore_incomplete(&self.c.workdir) {
+            return fail(
+                ctx,
+                409,
+                "workspace_restore_incomplete",
+                "workspace restore incomplete; discard this environment",
+            );
+        }
         match route {
             Route::PrepareTransfer => crate::transfer::prepare(self, ctx),
             Route::CommitTransfer => crate::transfer::commit(self, ctx),

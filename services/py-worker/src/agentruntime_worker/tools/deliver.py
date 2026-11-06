@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import mimetypes
 import secrets
 from collections.abc import Mapping
@@ -30,6 +31,8 @@ from agentruntime_core.providers.object_store import ObjectStoreProvider
 from agentruntime_core.providers.relational_store import Migration, RelationalStoreProvider
 from agentruntime_core.providers.tool_driver import ToolInvocation, ToolSpec
 from agentruntime_core.tenancy import TenantContext
+
+_LOG = logging.getLogger(__name__)
 
 TOOL = "deliver_file"
 VERSION = "v1"
@@ -286,10 +289,27 @@ class DeliverFile:
                 )
                 await tx.execute("DELETE FROM task_artifact_reservations WHERE idempotency_key=$1 AND reservation_id=$2", (key, artifact_id))
         except BaseException as error:
-            if object_key is not None:
-                await objects.delete(object_key)
-            await self._unreserve(tenant, key, artifact_id)
-            if isinstance(error, Exception) and (existing := await self._existing(tenant, key)) is not None:
+            # A failed commit acknowledgement does not prove the transaction rolled
+            # back. Resolve it before deleting bytes that may already be registered.
+            try:
+                existing = await self._existing(tenant, key)
+            except Exception:
+                _LOG.warning("delivery outcome unknown; retaining object and reservation")
+                raise error from None
+            registered_here = existing is not None and object_key is not None and existing["object_uri"] == objects.uri(object_key)
+            cleanup_ok = True
+            if object_key is not None and not registered_here:
+                try:
+                    await objects.delete(object_key)
+                except Exception:
+                    cleanup_ok = False
+                    _LOG.warning("delivery cleanup failed; retaining reservation until expiry")
+            if cleanup_ok:
+                try:
+                    await self._unreserve(tenant, key, artifact_id)
+                except Exception:
+                    _LOG.warning("delivery reservation cleanup failed; expiry will release it")
+            if isinstance(error, Exception) and existing is not None:
                 return _output(existing)
             raise
         return _output(row)

@@ -148,3 +148,13 @@ def test_large_file_snapshot_is_chunked_and_restore_verifies_order(make_agent, i
     entry["chunks"][0], entry["chunks"][1] = entry["chunks"][1], entry["chunks"][0]
     assert call(failed, "/v1/restore", {"restore_id": plan["restore_id"], "entries": manifest}).status == 400
     assert list(failed.workdir.iterdir()) == [], "wrong chunk order must not expose a partial workspace"
+
+def test_incomplete_restore_marker_blocks_work_until_environment_is_discarded(make_agent, impl):
+    agent = rust_agent(make_agent, impl)
+    (agent.workdir / ".agentruntime-restore").mkdir()
+    (agent.workdir / "partial.txt").write_text("must stay unavailable")
+    assert agent.request("GET", "/healthz").status == 200
+    assert agent.request("GET", "/v1/files/partial.txt").status == 409
+    assert agent.request("GET", "/v1/manifest").status == 409
+    refused = call(agent, "/v1/exec", {"argv": [sys.executable, "-c", "print('must not execute')"]})
+    assert refused.status == 409 and refused.code == "workspace_restore_incomplete"
