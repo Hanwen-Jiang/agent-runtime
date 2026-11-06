@@ -349,3 +349,16 @@ async def test_concurrent_resume_cannot_duplicate_paid_calls(tmp_path: Path) -> 
         release.set()
         await first
     assert calls == [DOG["question"]]
+
+
+def test_repeated_session_ids_keep_every_round_without_id_collision(tmp_path: Path) -> None:
+    item = _instance("duplicate-session", "temporal-reasoning", "q", "a", [
+        ("s", "2023/01/01", [_turn("user", "first", True)]),
+        ("s", "2023/01/02", [_turn("user", "second")]),
+    ], ["s"])
+    [instance] = lme.load(_write(tmp_path / "data.json", [item]))
+    rows = lme.rounds(instance)
+    assert [r["id"] for r in rows] == ["s:0", "s:1"]
+    assert [r["has_answer"] for r in rows] == [True, False]
+    assert "first" in rows[0]["text"] and "second" in rows[1]["text"]
+    assert lme.session_ranking([r["id"] for r in rows]) == ["s"]
