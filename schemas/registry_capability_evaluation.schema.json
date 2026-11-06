@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/registry_capability_evaluation.schema.json",
+  "title": "Capability measurement publication evidence",
+  "description": "MX-PUB: publish only measured capability_scores on an otherwise identical current Model Profile. This is not a model replacement or an A/B waiver. Registry checks the frozen publication gates and retains the report digest; the authorized evaluator owns raw evidence verification.",
+  "type": "object",
+  "required": ["kind", "policy", "baseline_version", "report", "report_sha256", "evaluated_at", "passed", "measurements"],
+  "properties": {
+    "kind": {"const": "capability_scores"},
+    "policy": {"const": "capmatrix-publication-v2"},
+    "baseline_version": {"type": "string", "pattern": "^v[1-9][0-9]*$"},
+    "report": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+    "report_sha256": {"$ref": "#/$defs/digest"},
+    "evaluated_at": {"type": "string", "format": "date-time"},
+    "passed": {"const": true},
+    "measurements": {
+      "type": "array", "minItems": 1, "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "required": ["measurement", "items", "repeats", "complete_repeats", "raw_success_rate", "ci95", "contamination_rate", "eligible_candidates", "total_candidates", "evidence_sha256", "cost_known"],
+        "properties": {
+          "measurement": {"type": "object", "required": ["task_family", "role", "tier", "score", "source", "at"], "properties": {
+            "task_family": {"$ref": "defs.schema.json#/$defs/task_family"},
+            "role": {"$ref": "defs.schema.json#/$defs/role"},
+            "tier": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+            "score": {"$ref": "defs.schema.json#/$defs/unit_interval"},
+            "source": {"$ref": "defs.schema.json#/$defs/non_empty_string"},
+            "at": {"type": "string", "format": "date"}
+          }, "additionalProperties": false},
+          "items": {"type": "integer", "minimum": 40},
+          "repeats": {"type": "integer", "minimum": 1},
+          "complete_repeats": {"const": true},
+          "raw_success_rate": {"$ref": "defs.schema.json#/$defs/unit_interval"},
+          "ci95": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "defs.schema.json#/$defs/unit_interval"}},
+          "contamination_rate": {"type": "number", "minimum": 0, "maximum": 0.05},
+          "eligible_candidates": {"type": "integer", "minimum": 1},
+          "total_candidates": {"type": "integer", "minimum": 1},
+          "evidence_sha256": {"$ref": "#/$defs/digest"},
+          "cost_known": {"const": true}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

@@ -187,7 +187,7 @@ func (s scope) insert(ctx context.Context, c candidate, note, evaluation string,
 }
 
 // promote 把一个版本设为默认，原默认退役；evaluation 是原样存下的评测证据。返回原默认版本（没有时为空）。
-func (s scope) promote(ctx context.Context, kind registryv1.RegistryKind, name string, version int64, evaluation string, now time.Time) (string, error) {
+func (s scope) promote(ctx context.Context, kind registryv1.RegistryKind, name string, version int64, evaluation string, now time.Time, expectedDefault ...string) (string, error) {
 	var previous string
 	err := retry(ctx, func() error {
 		previous = ""
@@ -206,6 +206,11 @@ func (s scope) promote(ctx context.Context, kind registryv1.RegistryKind, name s
 			}
 			if found {
 				previous = versionLabel(asInt(row["version"]))
+			}
+			if len(expectedDefault) > 0 && previous != expectedDefault[0] {
+				return invalid("capability_baseline_changed", "能力分的现行基线版本已变化")
+			}
+			if found {
 				if _, err := tx.Execute(ctx, `UPDATE registry_entries SET state = $1, updated_at = $2 WHERE kind = $3 AND name = $4 AND state = $5`,
 					int64(registryv1.ReleaseState_RELEASE_STATE_RETIRED), now.UnixMilli(), int64(kind), name, int64(registryv1.ReleaseState_RELEASE_STATE_DEFAULT)); err != nil {
 					return err

@@ -157,11 +157,15 @@ func (r *Registry) promote(ctx context.Context, msg *registryv1.PromoteRequest) 
 	if version == 0 {
 		return "", invalid("invalid_version", "要指定晋升的版本")
 	}
-	evidence, err := payloadJSON(msg.GetEvaluation(), "evaluation", r.schemas.ids[evaluationSchema])
+	evidenceSchema := evaluationSchema
+	if msg.GetEvaluation().GetValue().GetStructValue().GetFields()["kind"].GetStringValue() == "capability_scores" {
+		evidenceSchema = capabilityEvaluationSchema
+	}
+	evidence, err := payloadJSON(msg.GetEvaluation(), "evaluation", r.schemas.ids[evidenceSchema])
 	if err != nil {
 		return "", err
 	}
-	if err := r.schemas.validate(evaluationSchema, evidence); err != nil {
+	if err := r.schemas.validate(evidenceSchema, evidence); err != nil {
 		return "", err
 	}
 	var verdict struct {
@@ -170,7 +174,15 @@ func (r *Registry) promote(ctx context.Context, msg *registryv1.PromoteRequest) 
 	if err := json.Unmarshal(evidence, &verdict); err != nil || !verdict.Passed {
 		return "", invalid("evaluation_not_passed", "评测证据的结论不是达标（passed 不是 true）")
 	}
-	previous, err := sc.promote(ctx, msg.GetKind(), msg.GetName(), version, string(evidence), r.clock.Now())
+	var expectedDefault []string
+	if evidenceSchema == capabilityEvaluationSchema {
+		baseline, err := r.checkCapabilityPromotion(ctx, sc, msg.GetKind(), msg.GetName(), version, evidence)
+		if err != nil {
+			return "", err
+		}
+		expectedDefault = []string{baseline}
+	}
+	previous, err := sc.promote(ctx, msg.GetKind(), msg.GetName(), version, string(evidence), r.clock.Now(), expectedDefault...)
 	if err != nil {
 		return "", err
 	}

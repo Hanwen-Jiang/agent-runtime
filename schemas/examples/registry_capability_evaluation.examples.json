@@ -1,0 +1,90 @@
+{
+  "schema": "registry_capability_evaluation",
+  "valid": [
+    {
+      "name": "frozen_capability_only_promotion",
+      "source": "MX-PUB capmatrix-publication-v2 frozen gates",
+      "instance": {
+        "kind": "capability_scores",
+        "policy": "capmatrix-publication-v2",
+        "baseline_version": "v1",
+        "report": "capability-report.json",
+        "report_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "evaluated_at": "2026-11-06T18:00:00Z",
+        "passed": true,
+        "measurements": [
+          {
+            "measurement": {
+              "task_family": "general.unclassified",
+              "role": "act",
+              "tier": "medium",
+              "score": 0.7273,
+              "source": "capmatrix:fixture:evidence=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "at": "2026-11-06"
+            },
+            "items": 100,
+            "repeats": 1,
+            "complete_repeats": true,
+            "raw_success_rate": 0.75,
+            "ci95": [
+              0.67,
+              0.83
+            ],
+            "contamination_rate": 0.01,
+            "eligible_candidates": 10,
+            "total_candidates": 13,
+            "evidence_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "cost_known": true
+          }
+        ]
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "unknown_cost_not_publishable",
+      "source": "MX-PUB frozen cost-known gate",
+      "instance": {
+        "kind": "capability_scores",
+        "policy": "capmatrix-publication-v2",
+        "baseline_version": "v1",
+        "report": "capability-report.json",
+        "report_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "evaluated_at": "2026-11-06T18:00:00Z",
+        "passed": true,
+        "measurements": [
+          {
+            "measurement": {
+              "task_family": "general.unclassified",
+              "role": "act",
+              "tier": "medium",
+              "score": 0.7273,
+              "source": "capmatrix:fixture:evidence=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "at": "2026-11-06"
+            },
+            "items": 100,
+            "repeats": 1,
+            "complete_repeats": true,
+            "raw_success_rate": 0.75,
+            "ci95": [
+              0.67,
+              0.83
+            ],
+            "contamination_rate": 0.01,
+            "eligible_candidates": 10,
+            "total_candidates": 13,
+            "evidence_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "cost_known": false
+          }
+        ]
+      },
+      "violates": [
+        {
+          "path": "/measurements/0/cost_known",
+          "keyword": "const"
+        }
+      ],
+      "description": "A pending charge is unknown and cannot satisfy the frozen publication gate"
+    }
+  ]
+}

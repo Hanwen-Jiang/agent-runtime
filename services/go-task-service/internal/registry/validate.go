@@ -56,7 +56,7 @@ func loadSchemas(dir string) (*schemaSet, error) {
 		}
 		set.ids[strings.TrimSuffix(filepath.Base(f), ".schema.json")] = id
 	}
-	names := []string{evaluationSchema}
+	names := []string{evaluationSchema, capabilityEvaluationSchema}
 	for _, spec := range kinds {
 		names = append(names, spec.schema)
 	}
