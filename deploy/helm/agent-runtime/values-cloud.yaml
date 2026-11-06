@@ -65,6 +65,12 @@ taskService:
   # 在 issuers 里登记它的公钥（task-service keygen），再去掉这一行（默认就不收了）。
   ingress:
     devTokens: accept
+    # AUTH-01 第 2 步（2026-11-06）：coding-web 的签发方（只有公钥；私钥在 Secret coding-jwt，只挂给 coding-web）。只能签 coding-web 自己的租户
+    # （登录平台前缀 gh-、gl-、gitee-、gitea-、bb-、google-），签不了 evals、swebench 这类内部租户。
+    issuers:
+      - iss: coding-agent
+        keys: {cgent-2026-11: 6hosCO1nvR_g-QSAS1YaYPyS5yPHXqL28BKXLb013Bs}
+        tenants: ["gh-*", "gl-*", "gitee-*", "gitea-*", "bb-*", "google-*"]
   resources:
     requests: {cpu: 250m, memory: 256Mi}
     limits: {cpu: "1", memory: 512Mi}
