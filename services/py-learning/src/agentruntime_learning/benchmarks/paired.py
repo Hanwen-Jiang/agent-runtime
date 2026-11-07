@@ -139,7 +139,7 @@ def ledger_metrics(rows: Sequence[Mapping[str, Any]], sub_nodes: Sequence[str], 
         profile = str(row.get("model_profile_id") or "")
         role = {"plan": "plan", "triage": "route", "review": "judge"}.get(node)
         if node.endswith("#summary"):
-            role = "transform"
+            role = "summary"
         elif node.endswith("#probe"):
             role = "probe" if "probe" in frozen["models"] else "judge"
         elif is_child:
