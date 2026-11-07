@@ -362,6 +362,14 @@ func (b *Broker) reuse(ctx context.Context, tenant *commonv1.TenantContext, a Ac
 		f := false
 		healthy = &f
 	}
+	// A taskless workspace transfer's identity belongs only to this lease.
+	// Reusing the environment for a real Task must revoke any unfinished
+	// transfer grant as well as changing the gateway's task lookup binding.
+	if found.TaskID == "workspace-transfer-"+found.EnvRef && a.TaskID != "" && a.TaskID != found.TaskID {
+		if err := b.ledger.RevokeTask(ctx, owner, found.TaskID); err != nil {
+			return nil, err
+		}
+	}
 	rec, err := b.ledger.Touch(ctx, *found, ledger.TouchArgs{TaskID: a.TaskID, BusyFor: a.BusyFor, HealthConfirmed: healthy, Reused: true})
 	if err != nil {
 		return nil, err

@@ -3,10 +3,10 @@ package broker
 import (
 	"context"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/sandbox"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/ledger"
-	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/registry"
 	"net"
 	"net/url"
 	"regexp"
@@ -36,12 +36,9 @@ func (b *Broker) OpenTransferTarget(ctx context.Context, lease *Lease, method st
 	if err != nil {
 		return target, close, err
 	}
-	task := lease.Record.TaskID
-	if task == "" {
-		// Internal archive reads can acquire an authorized workspace lease
-		// without a model Task. Keep a lease-scoped audit identity; it grants
-		// no user network access and never enters model_usage.
-		task = "workspace-" + lease.ID()
+	task, err := b.transferAuditTask(ctx, lease)
+	if err != nil {
+		return target, close, err
 	}
 	id, err := b.ledger.CreateTransferGrant(ctx, lease.Owner, task, strings.ToLower(u.Hostname()))
 	if err != nil {
@@ -144,6 +141,38 @@ func scopedTransferHost(host string) bool {
 	return accountR2Host.MatchString(host) || bucketS3Host.MatchString(host)
 }
 
+// Internal workspace reads have no model Task. The egress gateway resolves
+// grants through sandbox_envs.task_id, so persist a per-lease audit identity
+// before issuing a transfer grant. Never use an empty tenant-wide identity or
+// overwrite a real Task attached concurrently. This creates no tasks/usage row.
+func (b *Broker) transferAuditTask(ctx context.Context, lease *Lease) (string, error) {
+	if lease.Record == nil || lease.Record.Owner != lease.Owner {
+		return "", providererr.New(providererr.Denied, "transfer_lease_required", "storage transfer requires an authorized lease")
+	}
+	if lease.Record.TaskID != "" {
+		return lease.Record.TaskID, nil
+	}
+	task := "workspace-transfer-" + lease.ID()
+	err := b.ledger.Tx(ctx, lease.Owner, false, func(ctx context.Context, tx relational.Tx) error {
+		if _, err := tx.Execute(ctx, `UPDATE sandbox_envs SET task_id=$1 WHERE env_ref=$2 AND state='ready' AND task_id=''`, task, lease.ID()); err != nil {
+			return err
+		}
+		row, found, err := tx.QueryOne(ctx, `SELECT task_id,state FROM sandbox_envs WHERE env_ref=$1`, lease.ID())
+		if err != nil {
+			return err
+		}
+		if !found || ledger.Str(row, "state") != "ready" || ledger.Str(row, "task_id") != task {
+			return providererr.New(providererr.Conflict, "transfer_lease_changed", "storage transfer lease no longer matches its audit identity")
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	lease.Record.TaskID = task
+	return task, nil
+}
+
 func (b *Broker) OpenTransferNetwork(ctx context.Context, lease *Lease, rawURL string) (string, func() error, error) {
 	close := func() error { return nil }
 	if lease.Kind == "firecracker" || lease.Kind == "local" {
@@ -158,17 +187,25 @@ func (b *Broker) OpenTransferNetwork(ctx context.Context, lease *Lease, rawURL s
 	}
 	proxy := lease.Env["HTTPS_PROXY"]
 	if proxy == "" && b.creds != nil && lease.Record != nil {
+		policy, e := b.policies.For(ctx, lease.Owner)
+		if e != nil {
+			return "", close, e
+		}
 		spec, _ := b.reg.Spec(lease.Backend)
-		vars, e := b.creds.ExecEnv(ctx, *lease.Record, spec, registry.Quota{})
+		vars, e := b.creds.ExecEnv(ctx, *lease.Record, spec, policy.Quota)
 		if e != nil {
 			return "", close, e
 		}
 		proxy = vars["HTTPS_PROXY"]
 	}
-	if proxy == "" || lease.Record == nil || lease.Record.TaskID == "" {
+	if proxy == "" || lease.Record == nil {
 		return "", close, providererr.New(providererr.Invalid, "transfer_gateway_required", "storage transfer requires an audited gateway")
 	}
-	id, err := b.ledger.CreateTransferGrant(ctx, lease.Owner, lease.Record.TaskID, strings.ToLower(u.Hostname()))
+	task, err := b.transferAuditTask(ctx, lease)
+	if err != nil {
+		return "", close, err
+	}
+	id, err := b.ledger.CreateTransferGrant(ctx, lease.Owner, task, strings.ToLower(u.Hostname()))
 	if err != nil {
 		return "", close, err
 	}
