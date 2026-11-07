@@ -1,0 +1,59 @@
+{
+  "tenant": "transfer-accept-bbce47367d0ae1d6",
+  "workspace": "workspace",
+  "task": "task-transfer-bbce47367d0ae1d6",
+  "started_unix": 1794046643.1789293,
+  "model_calls": 0,
+  "model_cost_usd": 0,
+  "owned_cache_blobs": {
+    "1b2fa1d0c5828f1cf08b5d6003b13d4139e59abb056767c76cbb3bce8e36fff8": 1048576,
+    "cf6ec703e3a301f65135fdf7ad381050f6a22484dd9a0d106de716c7e0218ddc": 131072
+  },
+  "checks": {
+    "model_spending_disabled": true,
+    "WK-LITE-01": {
+      "stdout_bytes": 1048576,
+      "stderr_bytes": 131072,
+      "worker_received_bytes": 16044
+    }
+  },
+  "cleanup": {
+    "envs_destroyed": true,
+    "objects_deleted": 2,
+    "scoped_rows_deleted": true,
+    "cache_removed": [
+      "1b2fa1d0c5828f1cf08b5d6003b13d4139e59abb056767c76cbb3bce8e36fff8",
+      "cf6ec703e3a301f65135fdf7ad381050f6a22484dd9a0d106de716c7e0218ddc"
+    ]
+  },
+  "policy_version": "v1",
+  "cache_before": {
+    "corruptions": 0,
+    "enabled": true,
+    "evictions": 0,
+    "hits": 0,
+    "misses": 0
+  },
+  "failure": {
+    "type": "InvalidError",
+    "code": "transfer_prepare_failed",
+    "message": "transfer_prepare_failed: cannot prepare bounded workspace file"
+  },
+  "sandbox_usage": [
+    {
+      "day": "2026-11-07",
+      "sandbox_seconds": 8,
+      "egress_bytes": 0,
+      "mirror_miss_bytes": 0,
+      "cost_usd": 0.0
+    }
+  ],
+  "elapsed_seconds": 10.427,
+  "passed": false,
+  "images": {
+    "ar-agent-runtime-worker-program": "ghcr.io/agentruntime/worker:goal-f1388e13",
+    "ar-agent-runtime-sandbox-service": "ghcr.io/agentruntime/sandbox-service:goal-f1388e13"
+  },
+  "source_sha256": "505531456ac910223c51b878adef245ef354916e154b291e2cf3bbfad0347432",
+  "host_completed_unix": 1794046693.8615012
+}

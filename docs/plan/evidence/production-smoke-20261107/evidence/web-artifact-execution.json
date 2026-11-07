@@ -1,0 +1,12 @@
+{
+  "script_sha256": "609d520a4cd26ee368a898b0d4c5f5b6a6f494366aed3cac59cfa1c1cc686752",
+  "base": "https://code.cgent.link",
+  "tenant": "gh-goalaccept-20261107",
+  "script": ".goal-tools/web-artifact-production-smoke.py",
+  "expected_worker_image": "ghcr.io/agentruntime/worker:goal-f1388e13",
+  "sandbox_service_image": "ghcr.io/agentruntime/sandbox-service:goal-c2e9fcb4",
+  "coding_web_image": "ghcr.io/agentruntime/coding-web:goal-0fbf18e",
+  "model_calls": 0,
+  "model_cost_usd": 0,
+  "secret_arguments": "cookie file paths only; file contents never logged"
+}

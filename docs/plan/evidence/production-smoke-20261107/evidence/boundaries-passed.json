@@ -1,0 +1,197 @@
+{
+  "tenant": "transfer-accept-boundary-e151aacc88e60511",
+  "started_unix": 1794046917.5861518,
+  "model_calls": 0,
+  "model_cost_usd": 0,
+  "checks": {
+    "D-27-HOME": {
+      "version": "user/v1",
+      "digest": "3b451c5c2a0d6aff60b11ed4a137b52893d8e471997fdda188f1c0f2e446a924",
+      "mode": "0600",
+      "existing_file_preserved": true,
+      "new_default_does_not_change_pin": true,
+      "fixture_task_not_submitted": true
+    },
+    "NET-OPEN": {
+      "public": {
+        "exit": 0,
+        "status": "200",
+        "gateway_denied": false,
+        "private_literal_denied": false,
+        "quota_denied": false,
+        "body_bytes": 577
+      },
+      "private_and_metadata_denied": {
+        "http://169.254.169.254/": {
+          "exit": 0,
+          "status": "403",
+          "gateway_denied": true,
+          "private_literal_denied": true,
+          "quota_denied": false,
+          "body_bytes": 39
+        },
+        "http://127.0.0.1/": {
+          "exit": 0,
+          "status": "403",
+          "gateway_denied": true,
+          "private_literal_denied": true,
+          "quota_denied": false,
+          "body_bytes": 39
+        },
+        "http://10.0.0.1/": {
+          "exit": 0,
+          "status": "403",
+          "gateway_denied": true,
+          "private_literal_denied": true,
+          "quota_denied": false,
+          "body_bytes": 39
+        },
+        "http://localhost/": {
+          "exit": 0,
+          "status": "403",
+          "gateway_denied": true,
+          "private_literal_denied": false,
+          "quota_denied": false,
+          "body_bytes": 35
+        },
+        "http://kubernetes.default.svc/": {
+          "exit": 0,
+          "status": "403",
+          "gateway_denied": true,
+          "private_literal_denied": false,
+          "quota_denied": false,
+          "body_bytes": 35
+        },
+        "http://example.com:25/": {
+          "exit": 0,
+          "status": "403",
+          "gateway_denied": true,
+          "private_literal_denied": false,
+          "quota_denied": false,
+          "body_bytes": 29
+        }
+      },
+      "revoked": {
+        "exit": 0,
+        "status": "403",
+        "gateway_denied": true,
+        "private_literal_denied": false,
+        "quota_denied": false,
+        "body_bytes": 30
+      },
+      "expired": {
+        "exit": 0,
+        "status": "403",
+        "gateway_denied": true,
+        "private_literal_denied": false,
+        "quota_denied": false,
+        "body_bytes": 30
+      },
+      "byte_quota": {
+        "exit": 35,
+        "status": "000",
+        "gateway_denied": false,
+        "private_literal_denied": false,
+        "quota_denied": false,
+        "body_bytes": 0
+      },
+      "audits": [
+        {
+          "host": "169.254.169.254",
+          "port": 80,
+          "result": "denied",
+          "reason": "public_ip_literal"
+        },
+        {
+          "host": "example.com",
+          "port": 25,
+          "result": "denied",
+          "reason": "port_25"
+        },
+        {
+          "host": "127.0.0.1",
+          "port": 80,
+          "result": "denied",
+          "reason": "public_ip_literal"
+        },
+        {
+          "host": "localhost",
+          "port": 80,
+          "result": "denied",
+          "reason": "internal_name"
+        },
+        {
+          "host": "example.com",
+          "port": 80,
+          "result": "denied",
+          "reason": "no_grant"
+        },
+        {
+          "host": "example.com",
+          "port": 80,
+          "result": "allowed",
+          "reason": ""
+        },
+        {
+          "host": "example.com",
+          "port": 443,
+          "result": "closed",
+          "reason": "down_bytes_exceeded"
+        },
+        {
+          "host": "kubernetes.default.svc",
+          "port": 80,
+          "result": "denied",
+          "reason": "internal_name"
+        },
+        {
+          "host": "10.0.0.1",
+          "port": 80,
+          "result": "denied",
+          "reason": "public_ip_literal"
+        },
+        {
+          "host": "example.com",
+          "port": 80,
+          "result": "denied",
+          "reason": "no_grant"
+        },
+        {
+          "host": "example.com",
+          "port": 443,
+          "result": "closed",
+          "reason": "grant_revoked"
+        }
+      ],
+      "grant_scope": "public",
+      "expiry_fixture": "own row deadline set to now+2seconds; host clock unchanged"
+    },
+    "zero_model_usage_rows": true
+  },
+  "cleanup": {
+    "envs_destroyed": true,
+    "scoped_rows_deleted": true,
+    "objects_empty": true,
+    "cache_removed": []
+  },
+  "owned_cache_blobs": {},
+  "boundary": "Fixture task rows and authorized internal GrantStore; public PersonalConfig HTTP covered separately; no Task API Submit",
+  "policy_version": "v1",
+  "sandbox_usage": [
+    {
+      "day": "2026-11-07",
+      "sandbox_seconds": 21,
+      "egress_bytes": 6749,
+      "mirror_miss_bytes": 0,
+      "cost_usd": 0.0
+    }
+  ],
+  "elapsed_seconds": 23.782,
+  "passed": true,
+  "images": {
+    "ar-agent-runtime-worker-program": "ghcr.io/agentruntime/worker:goal-f1388e13",
+    "ar-agent-runtime-sandbox-service": "ghcr.io/agentruntime/sandbox-service:goal-f1388e13"
+  },
+  "source_sha256": "606e3fd8ced9b3f1ca55f0da3a9fa06ca038188a744a9895baaa0509102c4585",
+  "host_completed_unix": 1794046941.561013
+}

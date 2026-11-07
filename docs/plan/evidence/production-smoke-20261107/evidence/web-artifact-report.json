@@ -1,0 +1,37 @@
+{
+  "tenant": "gh-goalaccept-20261107",
+  "task": "tsk_79X61YKTQW15VK9ZPPK32JYGPR",
+  "runtime_session": "ses_43RKQ1GDCK6QFDD40RNYPWHWWF",
+  "nonce": "8f5398091a93faa8",
+  "model_calls": 0,
+  "checks": {},
+  "cleanup": {
+    "runtime": {
+      "artifact_objects_deleted": 1,
+      "task_rows_removed": true,
+      "envs_destroyed": true,
+      "model_usage_rows": 0
+    },
+    "project_status": 200,
+    "project_operation": "who-6b4e152349cc10bc5df96514d5d7a551a0c2124b93cea97929136a739a66805d"
+  },
+  "boundary": "Only task/session association fixture rows are seeded; real deliver_file and authenticated HTTP download chain used",
+  "project_id": "we997ef1c6c535d9776cb49f3",
+  "session_id": "w815e58cbeed19790f8849630",
+  "workspace_id": "we17860125284870ba0df40ba",
+  "artifact": {
+    "artifact_id": "art_01M6TSD1VWX44MVQATEVGTHS26",
+    "name": "download-8f5398091a93faa8.txt",
+    "path": "download-8f5398091a93faa8.txt",
+    "media_type": "text/plain",
+    "size_bytes": 2944,
+    "sha256": "7b903515c2c8800a345521f98e73a929413b4ee41f93c13706f27c5bb7832f8c",
+    "expires_at": "2026-11-14T10:38:23.612568Z"
+  },
+  "backend": "firecracker",
+  "passed": false,
+  "failure": {
+    "type": "AssertionError",
+    "message": ""
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "base": "https://code.cgent.link",
+  "tenant": "gh-goalaccept-20261107",
+  "started_at": "2026-11-07T10:21:54Z",
+  "model_cost_usd": 0,
+  "checks": [
+    {
+      "name": "personal_versions_private",
+      "versions": [
+        "user/v1",
+        "user/v2"
+      ],
+      "digests": [
+        "2a9a895964d286772495315937a29c32db149aad2a92bf5c83ad75939f005451",
+        "760b772daecd1b2f765747861486a72aa5ae1781a6e995d7e4d4f402d3c28402"
+      ]
+    },
+    {
+      "name": "known_credential_formats_rejected"
+    },
+    {
+      "name": "async_create_and_reconnect",
+      "project_id": "w9dd47cb5560415aa79490e15",
+      "operation_id": "who-4aefb2eea3284519a27c519b8bf71722ca3a7b958b6f203acbc5e5b31ed80b51",
+      "admission_seconds": 0.03873958089388907
+    }
+  ],
+  "cleanup": [
+    {
+      "project_id": "w9dd47cb5560415aa79490e15",
+      "status": 200,
+      "operation_id": "who-0557719a7da9bef6fe92f8fe2c63e21887a06e158f235f414f10ee49e8e2f87e"
+    },
+    {
+      "personal_default_retired": true,
+      "immutable_versions_retained": true
+    }
+  ],
+  "status": "failed",
+  "error": "AssertionError: "
+}

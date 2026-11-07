@@ -1,0 +1,16 @@
+{
+  "started_unix": 1794048251.4712708,
+  "deployments": {
+    "ar-agent-runtime-sandbox-service": {
+      "image": "ghcr.io/agentruntime/sandbox-service:goal-727513db",
+      "generation": 17,
+      "ready": 1
+    },
+    "ar-agent-runtime-worker-program": {
+      "image": "ghcr.io/agentruntime/worker:goal-f1388e13",
+      "generation": 37,
+      "ready": 1
+    }
+  },
+  "script_sha256": "57321e617fd599ad6668d8f0ba9e165ff5284e133bdbbd0aae7a15661c08749b"
+}

@@ -1,0 +1,10 @@
+{
+  "images": {
+    "ar-agent-runtime-worker-program": "ghcr.io/agentruntime/worker:goal-f1388e13",
+    "ar-agent-runtime-sandbox-service": "ghcr.io/agentruntime/sandbox-service:goal-f1388e13"
+  },
+  "manager_sha256": "eed2e5449423357ca151393de659d3fdb14866b37d78409c44a693f4174be77b",
+  "script": "/root/proj/agent-projs/.goal-tools/production-transfer-accept.py",
+  "source_sha256": "122e9558bcd8a6a68856435e035c80b6455ca55d765f9c6fdf41bca93949103d",
+  "started_unix": 1794046784.065458
+}

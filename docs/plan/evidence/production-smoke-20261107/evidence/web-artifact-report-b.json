@@ -1,0 +1,76 @@
+{
+  "tenant": "gh-goalaccept-20261107",
+  "task": "tsk_33GTS9V1PFY4GHHDQ6ZPWK82WC",
+  "runtime_session": "ses_7KYMBJ4DCWN1T5F25NXYRV5D4H",
+  "nonce": "8e7c92612432b249",
+  "model_calls": 0,
+  "checks": {
+    "list": [
+      {
+        "created_at": "2026-11-07T10:39:29.856554Z",
+        "expired": false,
+        "expires_at": "2026-11-14T10:39:29.856554Z",
+        "id": "art_01M6TSF2J0Q1WRH2E1DPJYXC8W",
+        "media_type": "text/plain",
+        "name": "download-8e7c92612432b249.txt",
+        "path": "download-8e7c92612432b249.txt",
+        "sha256": "58231db3293fe40e6998d654c750df5e830f3f4bb20a7bb5e280a801cfa23596",
+        "size_bytes": 2944,
+        "url": "/api/projects/we3a026f99b4e13fd513c858f/sessions/w5d6eb5f59ba8197b3ef43433/tasks/tsk_33GTS9V1PFY4GHHDQ6ZPWK82WC/artifacts/art_01M6TSF2J0Q1WRH2E1DPJYXC8W"
+      }
+    ],
+    "download": {
+      "http_status": 200,
+      "sha256": "58231db3293fe40e6998d654c750df5e830f3f4bb20a7bb5e280a801cfa23596",
+      "bytes": 2944,
+      "headers": {
+        "content-type": "text/plain",
+        "content-length": "2944",
+        "content-disposition": "attachment; filename*=UTF-8''download-8e7c92612432b249.txt",
+        "cache-control": "no-store",
+        "x-content-type-options": "nosniff",
+        "content-security-policy": "sandbox"
+      }
+    },
+    "delivery_registered": true,
+    "coding_web_download_status": 200,
+    "sha256": "58231db3293fe40e6998d654c750df5e830f3f4bb20a7bb5e280a801cfa23596",
+    "bytes": 2944,
+    "security_headers": {
+      "content-type": "text/plain",
+      "content-length": "2944",
+      "content-disposition": "attachment; filename*=UTF-8''download-8e7c92612432b249.txt",
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+      "content-security-policy": "sandbox"
+    },
+    "same_tenant_shared_read": 200,
+    "cross_tenant_denied": 404,
+    "wrong_task_denied": 404
+  },
+  "cleanup": {
+    "runtime": {
+      "artifact_objects_deleted": 1,
+      "task_rows_removed": true,
+      "envs_destroyed": true,
+      "model_usage_rows": 0
+    },
+    "project_status": 200,
+    "project_operation": "who-16dc3e57fa14371619ddec0950f85738c3077d8ae76fc3bff59af05b79dbca0f"
+  },
+  "boundary": "Only task/session association fixture rows are seeded; real deliver_file and authenticated HTTP download chain used",
+  "project_id": "we3a026f99b4e13fd513c858f",
+  "session_id": "w5d6eb5f59ba8197b3ef43433",
+  "workspace_id": "wb1417300853a8a3136281579",
+  "artifact": {
+    "artifact_id": "art_01M6TSF2J0Q1WRH2E1DPJYXC8W",
+    "name": "download-8e7c92612432b249.txt",
+    "path": "download-8e7c92612432b249.txt",
+    "media_type": "text/plain",
+    "size_bytes": 2944,
+    "sha256": "58231db3293fe40e6998d654c750df5e830f3f4bb20a7bb5e280a801cfa23596",
+    "expires_at": "2026-11-14T10:39:29.856554Z"
+  },
+  "backend": "firecracker",
+  "passed": true
+}

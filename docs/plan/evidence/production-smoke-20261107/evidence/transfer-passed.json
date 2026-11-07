@@ -1,0 +1,113 @@
+{
+  "tenant": "transfer-accept-a1cf862973d22d6c",
+  "workspace": "workspace",
+  "task": "task-transfer-a1cf862973d22d6c",
+  "started_unix": 1794046786.5225365,
+  "model_calls": 0,
+  "model_cost_usd": 0,
+  "owned_cache_blobs": {
+    "b6b4259a7cd1a4fc87629ae8ef35be33bcf11febb8fe62df1bce0a52c69e8bac": 1048576,
+    "3b1cafdbbaa9d81813b687eae8f39ea12e6b190c341b300584560782b7d79030": 131072,
+    "d14e860b01aa2850474d68e0d1295fa2437a168c1d5d84a58ac85143702d5b2c": 12582912,
+    "cdd1b260834ef2ad99752ed8eed23ccbd8a6a8ac932b043ae6fd07912c908890": 4194304,
+    "3b81ea962667b52ad67852bbd001a6c3ac2f9e797c4cec5fc153beb9457a1838": 4194304
+  },
+  "checks": {
+    "model_spending_disabled": true,
+    "WK-LITE-01": {
+      "stdout_bytes": 1048576,
+      "stderr_bytes": 131072,
+      "worker_received_bytes": 16044
+    },
+    "WK-LITE-02": {
+      "artifacts": 1,
+      "sha256": "d14e860b01aa2850474d68e0d1295fa2437a168c1d5d84a58ac85143702d5b2c",
+      "bytes": 12582912,
+      "idempotent": true
+    },
+    "WS-PULL-01": {
+      "ordered_chunks": 3,
+      "unique_chunks": 2,
+      "second_snapshot_new_blobs": 0,
+      "two_restores_verified": true
+    },
+    "WS-BLOB-01": {
+      "restores": [
+        {
+          "before": {
+            "corruptions": 0,
+            "enabled": true,
+            "evictions": 0,
+            "hits": 0,
+            "misses": 7
+          },
+          "after": {
+            "corruptions": 0,
+            "enabled": true,
+            "evictions": 0,
+            "hits": 2,
+            "misses": 7
+          }
+        },
+        {
+          "before": {
+            "corruptions": 0,
+            "enabled": true,
+            "evictions": 0,
+            "hits": 2,
+            "misses": 7
+          },
+          "after": {
+            "corruptions": 0,
+            "enabled": true,
+            "evictions": 0,
+            "hits": 4,
+            "misses": 7
+          }
+        }
+      ],
+      "cache_source": "verified PUT write-through",
+      "object_store_misses_during_restores": 0
+    },
+    "restore_failure_no_partial_environment": true,
+    "restore_recovered_after_repair": true,
+    "zero_model_usage_rows": true
+  },
+  "cleanup": {
+    "envs_destroyed": true,
+    "objects_deleted": 3,
+    "scoped_rows_deleted": true,
+    "cache_removed": [
+      "b6b4259a7cd1a4fc87629ae8ef35be33bcf11febb8fe62df1bce0a52c69e8bac",
+      "3b1cafdbbaa9d81813b687eae8f39ea12e6b190c341b300584560782b7d79030",
+      "d14e860b01aa2850474d68e0d1295fa2437a168c1d5d84a58ac85143702d5b2c",
+      "cdd1b260834ef2ad99752ed8eed23ccbd8a6a8ac932b043ae6fd07912c908890",
+      "3b81ea962667b52ad67852bbd001a6c3ac2f9e797c4cec5fc153beb9457a1838"
+    ]
+  },
+  "policy_version": "v1",
+  "cache_before": {
+    "corruptions": 0,
+    "enabled": true,
+    "evictions": 0,
+    "hits": 0,
+    "misses": 2
+  },
+  "sandbox_usage": [
+    {
+      "day": "2026-11-07",
+      "sandbox_seconds": 29,
+      "egress_bytes": 0,
+      "mirror_miss_bytes": 0,
+      "cost_usd": 0.0
+    }
+  ],
+  "elapsed_seconds": 36.016,
+  "passed": true,
+  "images": {
+    "ar-agent-runtime-worker-program": "ghcr.io/agentruntime/worker:goal-f1388e13",
+    "ar-agent-runtime-sandbox-service": "ghcr.io/agentruntime/sandbox-service:goal-f1388e13"
+  },
+  "source_sha256": "122e9558bcd8a6a68856435e035c80b6455ca55d765f9c6fdf41bca93949103d",
+  "host_completed_unix": 1794046822.7855973
+}

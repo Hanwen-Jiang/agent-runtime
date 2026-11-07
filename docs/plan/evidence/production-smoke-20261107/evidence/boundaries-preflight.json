@@ -1,0 +1,10 @@
+{
+  "images": {
+    "ar-agent-runtime-worker-program": "ghcr.io/agentruntime/worker:goal-f1388e13",
+    "ar-agent-runtime-sandbox-service": "ghcr.io/agentruntime/sandbox-service:goal-f1388e13"
+  },
+  "manager_sha256": "eed2e5449423357ca151393de659d3fdb14866b37d78409c44a693f4174be77b",
+  "script": ".goal-tools/production-boundary-accept.py",
+  "source_sha256": "606e3fd8ced9b3f1ca55f0da3a9fa06ca038188a744a9895baaa0509102c4585",
+  "started_unix": 1794046914.867009
+}

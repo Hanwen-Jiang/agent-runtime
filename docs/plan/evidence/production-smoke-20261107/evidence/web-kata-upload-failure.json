@@ -1,0 +1,41 @@
+{
+  "base": "https://code.cgent.link",
+  "tenant": "gh-goalaccept-20261107",
+  "started_at": "2026-11-07T10:29:31Z",
+  "model_cost_usd": 0,
+  "checks": [
+    {
+      "name": "personal_versions_private",
+      "versions": [
+        "user/v3",
+        "user/v4"
+      ],
+      "digests": [
+        "2a9a895964d286772495315937a29c32db149aad2a92bf5c83ad75939f005451",
+        "760b772daecd1b2f765747861486a72aa5ae1781a6e995d7e4d4f402d3c28402"
+      ]
+    },
+    {
+      "name": "known_credential_formats_rejected"
+    },
+    {
+      "name": "async_create_and_reconnect",
+      "project_id": "w182af577b03d8801e26739b7",
+      "operation_id": "who-b9f65b7a402a8e01a59e872f85591c29d229fd91af8451ff2ab0e185f76c17ae",
+      "admission_seconds": 0.05863236600998789
+    }
+  ],
+  "cleanup": [
+    {
+      "project_id": "w182af577b03d8801e26739b7",
+      "status": 200,
+      "operation_id": "who-e6bb97afe21040dbb40601c87a1763c1c531ffd6719b0f1670dc7acd3a74882f"
+    },
+    {
+      "personal_default_retired": true,
+      "immutable_versions_retained": true
+    }
+  ],
+  "status": "failed",
+  "error": "AssertionError: ('attach failed', 'source', 503, {'error': 'upload failed; prepared bytes retained for retry'})"
+}

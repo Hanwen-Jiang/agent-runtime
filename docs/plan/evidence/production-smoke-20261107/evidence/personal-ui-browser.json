@@ -1,0 +1,55 @@
+{
+  "read_only": true,
+  "model_calls": 0,
+  "checks": [
+    {
+      "user": "alice",
+      "facts": {
+        "tenant": "gh-goalaccept-20261107",
+        "user": "alice",
+        "editor": true,
+        "files": true,
+        "skills": true,
+        "mcp": true,
+        "environment": true,
+        "save": true,
+        "instruction_empty": true,
+        "body_width": 1401,
+        "viewport": 1400
+      },
+      "screenshot": "alice.png",
+      "sha256": "03cfbd55024877a98a4defda17ef9f89813659cbe82ef8d02c06f04433ba5ad2"
+    },
+    {
+      "user": "bob",
+      "facts": {
+        "tenant": "gh-goalaccept-20261107",
+        "user": "bob",
+        "editor": true,
+        "files": true,
+        "skills": true,
+        "mcp": true,
+        "environment": true,
+        "save": true,
+        "instruction_empty": true,
+        "body_width": 1401,
+        "viewport": 1400
+      },
+      "screenshot": "bob.png",
+      "sha256": "1088b65bc30f7e84c2b5a2633b3ceb8679898f5f06d1a41a16b766f18e70b080"
+    }
+  ],
+  "browser": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/156.0.8078.79",
+    "revision": "@a21ce95c24ce3964416f09ae1862f53f319eb4d0",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "jsVersion": "15.6.75.27"
+  },
+  "passed": true,
+  "cleanup": {
+    "browser_stopped": true,
+    "profile_removed": true
+  },
+  "source_sha256": "a22ab351154858b45c88a47c9d466a472832cbee399bec7714f84959c0525a65"
+}
