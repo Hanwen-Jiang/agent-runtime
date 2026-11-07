@@ -99,10 +99,13 @@ def _contract(plan: Mapping[str, Any], export: Mapping[str, Any]) -> tuple[str, 
     return profiles[0], dict(identity), tokens
 
 
-def _generation_limits(estimated: int, visible: int, thinking: int) -> None:
-    if (type(visible) is not int or visible <= 0 or type(thinking) is not int or thinking < 0
-            or visible + thinking > estimated):
-        raise JudgeError("visible and thinking tokens must fit the original frozen output estimate")
+def _generation_limits(estimated: int, completion: int, thinking: int) -> None:
+    # Gateway passes an explicit output limit straight to max_completion_tokens.
+    # Its OpenAI-compatible adapter maps thinking to reasoning_effort; it does
+    # not append that number to the completion cap or reserve it a second time.
+    if (type(completion) is not int or not 0 < completion <= estimated
+            or type(thinking) is not int or not 0 <= thinking <= estimated):
+        raise JudgeError("completion cap and effort hint must fit the original frozen output estimate")
 
 
 def _request_digests(manifest: dict, export: dict) -> dict[str, str]:
@@ -116,8 +119,8 @@ def prepare(plan: dict, export: dict, out: Path, *, tenant_id: str,
             gateway_address: str, tier: str = "strong@medium", max_output_tokens: int | None = None,
             thinking_budget_tokens: int = 0) -> dict:
     profile, registry, tokens = _contract(plan, export)
-    visible = tokens if max_output_tokens is None else max_output_tokens
-    _generation_limits(tokens, visible, thinking_budget_tokens)
+    completion = tokens if max_output_tokens is None else max_output_tokens
+    _generation_limits(tokens, completion, thinking_budget_tokens)
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", tenant_id):
         raise JudgeError("invalid isolated judge tenant")
     if not gateway_address or any(c.isspace() for c in gateway_address) or "://" in gateway_address or "@" in gateway_address:
@@ -128,7 +131,7 @@ def prepare(plan: dict, export: dict, out: Path, *, tenant_id: str,
     manifest = {"version": VERSION, "run_id": run_id, "task_id": task_identity(run_id),
                 "plan_sha256": pv.digest(plan), "export_sha256": pv.digest(export),
                 "tenant_id": tenant_id, "gateway_address": gateway_address, "profile": profile,
-                "registry": registry, "tier": tier, "max_output_tokens": visible,
+                "registry": registry, "tier": tier, "max_output_tokens": completion,
                 "thinking_budget_tokens": thinking_budget_tokens, "system_prompt": SYSTEM,
                 "material_version": MATERIAL_VERSION,
                 "budget_usd": plan["cost_reserves"]["semantic_judge_usd"],

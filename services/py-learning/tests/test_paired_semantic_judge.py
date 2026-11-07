@@ -111,32 +111,32 @@ def test_prepare_requires_complete_22_item_export_and_preserves_it(tmp_path):
     assert manifest['system_prompt'] == sj.SYSTEM and len(manifest['request_sha256']) == 22
 
 
-@pytest.mark.parametrize('visible,thinking', [(0, 0), (-1, 0), (True, 0), (1000.0, 0),
-    (1000, -1), (1000, True), (1000, .5), (2000, 1)])
-def test_generation_limits_cannot_expand_or_round_the_original_estimate(tmp_path, visible, thinking):
+@pytest.mark.parametrize('completion,thinking', [(0, 0), (-1, 0), (True, 0), (1000.0, 0),
+    (1000, -1), (1000, True), (1000, .5), (2001, 0), (1000, 2001)])
+def test_generation_limits_cannot_expand_or_round_the_original_estimate(tmp_path, completion, thinking):
     plan, export = fixture()
     with pytest.raises(sj.JudgeError, match='original frozen output estimate'):
         sj.prepare(plan, export, tmp_path / 'judge', tenant_id=TENANT, gateway_address=ADDRESS,
-                   max_output_tokens=visible, thinking_budget_tokens=thinking)
+                   max_output_tokens=completion, thinking_budget_tokens=thinking)
     assert not (tmp_path / 'judge' / 'manifest.json').exists()
 
 
-async def test_explicit_visible_and_thinking_limits_reach_all_22_requests(tmp_path):
+async def test_completion_cap_includes_thinking_instead_of_adding_it_twice(tmp_path):
     plan, export = fixture()
     plan['completion']['price_estimate']['judge_assumptions']['output_tokens'] = 12000
     before = copy.deepcopy(plan)
     out = tmp_path / 'judge'
     manifest = sj.prepare(plan, export, out, tenant_id=TENANT, gateway_address=ADDRESS,
-                          max_output_tokens=3000, thinking_budget_tokens=8192)
+                          max_output_tokens=12000, thinking_budget_tokens=8192)
     gateway = FakeGateway(plan, export)
     result = await sj.run(out, gateway, gateway.ledger)
     assert len(result['items']) == 22 and manifest['budget_usd'] == 7
     assert plan == before
-    assert all(request.generation.max_output_tokens == 3000 and request.generation.thinking_budget_tokens == 8192
+    assert all(request.generation.max_output_tokens == 12000 and request.generation.thinking_budget_tokens == 8192
                for request in gateway.requests)
     with pytest.raises(sj.JudgeError, match='prepared judge inputs changed'):
         sj.prepare(plan, export, out, tenant_id=TENANT, gateway_address=ADDRESS,
-                   max_output_tokens=3001, thinking_budget_tokens=8192)
+                   max_output_tokens=11999, thinking_budget_tokens=8192)
 
 
 def test_blinding_removes_internal_judgments_but_preserves_all_plan_and_source_evidence(tmp_path):
@@ -192,17 +192,17 @@ async def test_changed_request_construction_is_detected_before_first_rpc(tmp_pat
     assert not gateway.requests
 
 
-def test_prepare_cli_freezes_explicit_token_split_without_execution(tmp_path):
+def test_prepare_cli_freezes_total_completion_cap_without_execution(tmp_path):
     plan, export = fixture()
     plan['completion']['price_estimate']['judge_assumptions']['output_tokens'] = 12000
     plan_path, export_path = tmp_path / 'plan.json', tmp_path / 'export.json'
     plan_path.write_text(json.dumps(plan)); export_path.write_text(json.dumps(export))
     out = tmp_path / 'judge'
     assert sj.main(['prepare', '--out', str(out), '--plan', str(plan_path), '--export', str(export_path),
-                    '--tenant', TENANT, '--gateway', ADDRESS, '--max-output-tokens', '3000',
+                    '--tenant', TENANT, '--gateway', ADDRESS, '--max-output-tokens', '12000',
                     '--thinking-budget-tokens', '8192']) == 0
     manifest = json.loads((out / 'manifest.json').read_text())
-    assert manifest['max_output_tokens'] == 3000 and manifest['thinking_budget_tokens'] == 8192
+    assert manifest['max_output_tokens'] == 12000 and manifest['thinking_budget_tokens'] == 8192
     assert not (out / 'calls.jsonl').exists() and not (out / 'budget.json').exists()
 
 

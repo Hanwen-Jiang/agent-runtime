@@ -20,7 +20,7 @@ python -m agentruntime_learning.benchmarks.paired_prepare review-export \
 python -m agentruntime_learning.benchmarks.paired_semantic_judge prepare \
   --plan <paired-manifest.json> --export <blinded-export.json> \
   --tenant <已批准裁判租户> --gateway <实际grpc-host:port> \
-  --tier strong@medium --max-output-tokens 3000 --thinking-budget-tokens 8192 \
+  --tier strong@medium --max-output-tokens 12000 --thinking-budget-tokens 8192 \
   --out <全新judge目录>
 # 默认只预览，不发生RPC
 python -m agentruntime_learning.benchmarks.paired_semantic_judge run --out <judge目录>
@@ -35,6 +35,8 @@ python -m agentruntime_learning.benchmarks.paired_semantic_judge run --out <judg
 
 最终回归：新执行器30passed/0skip（0.90s），既有paired_completion、paired_evaluation、eval_budget、audited_gateway64passed/0skip（2.11s）。日志.goal-tools/B-semantic-judge-tests-final.log和B-semantic-judge-compat.log。
 
-A接续整合：manifest还固定SYSTEM、材料转换版本与全部22请求模板摘要，恢复重建核对。实际生成设置3000可见输出+8192 thinking，合计11192不超过原12000 output估计。只投影所有真实plan图与triage_level，剔除运行内Jev评分提示；原export不改，附加材料单独保存。scripts/prepare_paired_semantic_review.py完整保留22份答案，加入原fixture路径、已冻结HTTP参考资料及完整真实工具轨迹摘要；参考摘要/跨Task或租户/不完整trace拒绝。全部材料准备后再核算输入、thinking/output预计费用，7美元原裁判限不变，不截断难题。
+A接续整合：manifest还固定SYSTEM、材料转换版本与全部22请求模板摘要，恢复重建核对。付费前核实真实适配器：显式MaxOutputTokens直接写入max_completion_tokens；ThinkingBudgetTokens仅映射reasoning_effort。因此使用原计划的总completion cap12000、effort hint8192（medium），不把两项相加或解释为独立可见/思考额度。此前未执行准备曾误写3000+8192，已在首笔调用前纠正并保留旧准备版本；模型、评分及7美元上限不变。只投影所有真实plan图与triage_level，剔除运行内Jev评分提示；原export不改，附加材料单独保存。scripts/prepare_paired_semantic_review.py完整保留22份答案，加入原fixture路径、已冻结HTTP参考资料及完整真实工具轨迹摘要；参考摘要/跨Task或租户/不完整trace拒绝。全部材料准备后再核算完整输入及总completion预计费用，7美元原裁判限不变，不截断难题。
 
 新版执行器48测试及材料准备4测试通过，邻接兼容79测试通过，均未调用真实模型。旧/opt/evals/.../score_semantic.py仅保留未执行的准备记录；本模块是唯一最终评分路径，不运行两套循环。
+
+输出限制依据：services/go-model-gateway/internal/gateway/budget.go的outputLimit及libs/go-core/adapters/openaicompat/wire.go的chatRequest、provider.go的EffortForBudget。该次修正只涉及尚未付费的裁判准备，不改变已执行Task或线上环境；实际请求摘要将在完整22份材料准备时冻结。
