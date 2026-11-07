@@ -1,0 +1,20 @@
+{
+  "at_utc": "2026-11-07T19:56:26.903056+00:00",
+  "scope_before_raw_sha256": "7ed7c541fce081af3aa85058b6dc2b24bd6697c8bc5933e28264ef83eb80c857",
+  "scope_after_raw_sha256": "775925fe335993ebe878cb12a94007d53068dcfdc845705a8d042938ba70e9d6",
+  "rows_before": 148,
+  "rows_after": 156,
+  "prior_rows_unchanged": true,
+  "new_rows_all_belong_to_first_rules_task": true,
+  "known_subject_usd_micros": 1282125,
+  "pending_reserved_usd_micros": 23600,
+  "remaining_subject_usd_micros": 17139536,
+  "completed_first_rules_task": "tsk_01M6VRSEGWAQC8YV0GMYD9RS9V",
+  "cleanup_pending": false,
+  "first_rules_metrics_valid": false,
+  "first_rules_metrics_raw_sha256": "b099aec76fea0ecfbea0837c4ad3a0de1430944660301a16f135f6c0f35d0dcf",
+  "finite_continuation_scope": "Only the original 10 remaining rules cases, after exact immutable successor receipt checks; no new cases, caps, model settings, ledger settlement or reruns.",
+  "cost_known": false,
+  "new_model_calls": 0,
+  "ledger_writes": 0
+}

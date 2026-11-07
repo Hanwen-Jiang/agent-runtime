@@ -1,0 +1,27 @@
+{
+  "at_utc": "2026-11-07T19:54:03.325845+00:00",
+  "reservation_id": "mbr_QXBAQLBWMIB2BSAG4U5B33M2SJ",
+  "task_id": "tsk_01M6VRSEGWAQC8YV0GMYD9RS9V",
+  "node_id": "triage",
+  "profile": "a6api/claude-haiku-5-5@2026-10",
+  "reserved_at_utc": "2026-11-07T19:46:56.773+00:00",
+  "failure_at_utc": "2026-11-07T19:47:26.787+00:00",
+  "category": "ERROR_CATEGORY_TRANSIENT",
+  "code": "timeout",
+  "attempt": 1,
+  "usage_status": "pending",
+  "reserved_usd_micros": 9083,
+  "actual_usd_micros": null,
+  "subsequent_same_node_success_at_utc": "2026-11-07T19:47:35.714809958+00:00",
+  "subsequent_success_cost_usd_micros": 406,
+  "subsequent_success_input_tokens": 3644,
+  "subsequent_success_output_tokens": 84,
+  "warnings": [
+    "2026-11-07T22:47:26.788040011+03:00 time=2026-11-07T19:47:26.787Z level=WARN msg=\"model usage pending\" reservation_id=mbr_QXBAQLBWMIB2BSAG4U5B33M2SJ tenant_id=gh-goalpair-20261107 model_profile_id=a6api/claude-haiku-5-5@2026-10",
+    "2026-11-07T22:47:26.788117379+03:00 time=2026-11-07T19:47:26.787Z level=WARN msg=模型调用失败 profile=a6api/claude-haiku-5-5@2026-10 category=ERROR_CATEGORY_TRANSIENT code=timeout attempt=1"
+  ],
+  "private_raw_log_sha256": "520deeefb700836eb6deae2b7d3d10a22443d27adc16298f2d913f15b2288109",
+  "limitation": "The timeout and a later successful retry do not establish the first provider attempt was unbilled. No authoritative actual usage is present for the retained reservation.",
+  "database_or_cache_writes": 0,
+  "new_model_calls": 0
+}

@@ -1,0 +1,33 @@
+{
+  "at_unix": 1794081575.27303,
+  "root_receipt_raw_sha256": "3f37c4044012e18f2c9a72f5007e23b995f3058048650db0a2f4d056ef18e9ed",
+  "run_root_receipt_raw_sha256": "3f37c4044012e18f2c9a72f5007e23b995f3058048650db0a2f4d056ef18e9ed",
+  "previous_receipt_sha256": "27089eaaaa8c68ff60be4a16eec5302dcb1804fb77f648b24c286d37c18541c6",
+  "extension_sha256": "e171c02a44af8be13bd714609579721f9e6425d55710a86f19a2fe570b96beaa",
+  "scope": {
+    "known_usd_micros": 1282125,
+    "pending_reserved_usd_micros": 23600,
+    "accounted_usd_micros": 1305725,
+    "remaining_usd_micros": 17139536,
+    "cost_known": false,
+    "pending_reservation_ids": [
+      "mbr_DTTAF6WU2EWRW4S267NLH6APYE",
+      "mbr_QXBAQLBWMIB2BSAG4U5B33M2SJ"
+    ]
+  },
+  "metrics_sha256": {
+    "rules/single-licence/metrics.json": "b099aec76fea0ecfbea0837c4ad3a0de1430944660301a16f135f6c0f35d0dcf",
+    "off/single-incident/metrics.json": "aed508175adabdd1fe421f098fb75afd0e574c4c6144ca4c6f9dd309adccc963",
+    "off/compare-licence/metrics.json": "44b41197ee1b7cae4ce44b8de5d49eb305c2ec7f7293d8bfc846679c14310df7",
+    "off/compare-incident/metrics.json": "09b38d35e7b273e41ebafdae2488ee620755035a03c96f9984e9c4256e4e3ac7",
+    "off/single-http/metrics.json": "fd7dbe5ab78b1e2da6db7cb42124007093988e08928e818394f18af9297e965b",
+    "off/single-licence/metrics.json": "2a755bab1114b28684a4bf076e7f612f523ca7208e6578002f72676b97300f0b",
+    "off/http-libraries-jev-regression/metrics.json": "6f49fea5606555f135834358f7fa3a62c2fda1016c18f59a5f8c1918d1f83605",
+    "off/single-release/metrics.json": "a0dff6df845cec7b782c59d41bf770c636b6ed1645a875979fd0b0b45389496b",
+    "off/compare-release/metrics.json": "ce60002f48681fb57032851bcb23be7ef6745623e9834b3f89c044c08ed6aaf2",
+    "off/compare-http/metrics.json": "bf4c31c2dd698e0905cfade408416e548ad6ff85556bf7cbe3e4f4a2e7b4c91e",
+    "off/compare-storage/metrics.json": "a81667dc757de1a0825334ee961da9c54c8f3af5d2c20c31c8ebf0fdb4ac48ea",
+    "off/single-storage/metrics.json": "419b8852f19249f1be829c3f91d87287ea9fc6560b64896ff2866a9a0503832c"
+  },
+  "new_model_calls": 0
+}
