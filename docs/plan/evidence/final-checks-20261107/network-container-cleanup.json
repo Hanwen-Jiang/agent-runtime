@@ -1,0 +1,30 @@
+{
+  "at_utc": "2026-11-07T18:36:55.283388+00:00",
+  "name": "/goal-network-check",
+  "container_id": "7e33a312dc7e30baaf11576f29d2ebe8bcebc83a3ee0f26229e00cf242e23b5f",
+  "command": [
+    "sleep",
+    "infinity"
+  ],
+  "processes": "PID                 PPID                COMMAND\n845106              845083              sleep\n",
+  "mounts": [
+    {
+      "Type": "bind",
+      "Source": "/root/proj/agent-projs/.worktrees/network/agent-runtime",
+      "Destination": "/work",
+      "Mode": "",
+      "RW": true,
+      "Propagation": "rprivate"
+    },
+    {
+      "Type": "bind",
+      "Source": "/root/proj/agent-projs/.worktrees/network/coding-agent",
+      "Destination": "/coding",
+      "Mode": "",
+      "RW": true,
+      "Propagation": "rprivate"
+    }
+  ],
+  "scope": "Only completed goal-network-check container, no mounts or data deletion. A confirmed unused.",
+  "removed": true
+}

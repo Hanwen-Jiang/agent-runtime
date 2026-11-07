@@ -1,5 +1,7 @@
 # Evaluation readiness, 2026-11-07
 
+> 历史盘点记录，费用与完成状态以[全量交付最新记录](goal-full-20-2026-11-07.md)及各次原始账本证据为准。早期报告金额不代表已核实余额；pending既不是实际费用，也不能视为免费。
+
 ## Authorization and remaining recorded budget
 
 `all-plans-dag-2026-11-03.md` section 7.1 records the user's authorization and
