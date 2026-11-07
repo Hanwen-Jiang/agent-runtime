@@ -1,0 +1,103 @@
+{
+  "known_cost_basis": "Frozen Registry rate cards and authoritative model_usage, plus actual Jev input tokens at the frozen published rate; not a complete supplier invoice",
+  "known_paired_including_invalid_pilot_usd": "3.849185294",
+  "known_memory_including_preparatory_runs_usd": "0.837277",
+  "known_current_goal_model_cost_usd": "4.686462294",
+  "actual_complete_model_cost_usd": null,
+  "actual_infrastructure_cost_usd": null,
+  "pending_reserved_usd": "0.331718",
+  "pending_reserved_is_not_actual_or_proven_upper_bound": true,
+  "pending": [
+    {
+      "group": "paired_subject",
+      "reservation_id": "mbr_DTTAF6WU2EWRW4S267NLH6APYE",
+      "task_id": "tsk_01M6VP824GCAY36NPBPMYXXS7W",
+      "node_id": "compose.1",
+      "model_profile_id": "a6api/deepseek-v4-flash@2026-10",
+      "actual_usd_micros": null,
+      "reserved_at": 1794078260490,
+      "reserved_usd_micros": 14517,
+      "registry_scope": "platform",
+      "registry_revision": "v2",
+      "registry_document_sha256": "b6f4c36572c5db4dcc601fbfdadb8a881ecdf881b949aa6215ec34371d93f1be"
+    },
+    {
+      "group": "paired_subject",
+      "reservation_id": "mbr_QXBAQLBWMIB2BSAG4U5B33M2SJ",
+      "task_id": "tsk_01M6VRSEGWAQC8YV0GMYD9RS9V",
+      "node_id": "triage",
+      "model_profile_id": "a6api/claude-haiku-5-5@2026-10",
+      "actual_usd_micros": null,
+      "reserved_at": 1794080816773,
+      "reserved_usd_micros": 9083,
+      "registry_scope": "platform",
+      "registry_revision": "v2",
+      "registry_document_sha256": "ba45f390cd51419982b714ae3ca2f82c2dc89de87f197fbe68a9542352b98bfe"
+    },
+    {
+      "group": "paired_subject",
+      "reservation_id": "mbr_UZORZ3YUTV5V7ELFMW643HXTZM",
+      "task_id": "tsk_01M6VWNDVJ6WFFNTZXNDVEV8GD",
+      "node_id": "triage",
+      "model_profile_id": "a6api/claude-haiku-5-5@2026-10",
+      "actual_usd_micros": null,
+      "reserved_at": 1794084878770,
+      "reserved_usd_micros": 9214,
+      "registry_scope": "platform",
+      "registry_revision": "v2",
+      "registry_document_sha256": "ba45f390cd51419982b714ae3ca2f82c2dc89de87f197fbe68a9542352b98bfe"
+    },
+    {
+      "group": "paired_judge",
+      "reservation_id": "mbr_WO3FHOU4DZAELVWGLO3BNQOPXX",
+      "task_id": "tsk_3FBFH3Y2GF8EHB4RG9HJQKRZRT",
+      "node_id": "eval_call_00000001",
+      "method": "generate",
+      "model_profile_id": "a6api/claude-opus-5-5@2026-10",
+      "reserved_at": 1794086710747,
+      "actual_usd_micros": null,
+      "reserved_usd_micros": 298752,
+      "input_tokens": null,
+      "output_tokens": null,
+      "registry_scope": "platform",
+      "registry_revision": "v3",
+      "registry_document_sha256": "e42df3b1eba85d89bcf869ef8942c993d469e4ca3f03818789dc1cea1bed0d5a"
+    },
+    {
+      "group": "memory",
+      "reservation_id": "mbr_LWYEYVHYISZIFZWLH76YANFWBC",
+      "reserved_at": 1794068582694,
+      "model_profile_id": "a6api/text-embedding-3-large@2026-10",
+      "method": "embed",
+      "task_id": "",
+      "actual_usd_micros": null,
+      "reserved_usd_micros": 152,
+      "registry_scope": "platform",
+      "registry_revision": "v1",
+      "registry_document_sha256": "ac61544d2cec07c76bdbeee2a68cb9e1a4e3f171076242374725a93a87028180"
+    }
+  ],
+  "historical_tb": {
+    "known_usd": "42.786647",
+    "unknown_reserved_usd": "142.677378",
+    "old_cap_usd": 80,
+    "new_complete40_run_not_started": true
+  },
+  "historical_deepeval": {
+    "known_usd": "3.025569",
+    "unknown_reserved_usd": "63.997193",
+    "old_cap_usd": 10,
+    "new_real_trace_run_score_report_not_started": true
+  },
+  "historical_costs_not_added_to_current_goal_total": true,
+  "authorized_caps_unchanged": {
+    "paired_shared_usd": 40,
+    "memory_total_usd": 20,
+    "judge_inside_paired_usd": 7
+  },
+  "sources": {
+    "/opt/evals/n16-evreal-pinned-20261107/paired-completion-final.json": "d34e302bbceae7af9255a89ec0b1235fb110f16547d9a7ed6b7e2778efaf4500",
+    "/opt/evals/longmemeval-recovered-20261107/recovery-summary.json": "a1fcff8569ad29caf1807eb24e6efbbda0cdf9eeed29c7fdd050b664c4795424",
+    "/opt/evals/longmemeval-recovered-20261107/recovery-ledger-final.json": "bb3a382b4a0f355da5fd896705899bcc37f018c67f2dae238007d64d7910a3f8"
+  }
+}

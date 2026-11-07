@@ -1,0 +1,1302 @@
+{
+  "evidence_complete": false,
+  "actual_shared_total_usd": null,
+  "semantic_judge_usd": null,
+  "known_semantic_judge_usd": 1.063538,
+  "semantic_judge_cost_known": false,
+  "arm_costs": {
+    "off": {
+      "gateway": {
+        "known": false,
+        "attempts": 140,
+        "known_gateway_usd": 1.12475,
+        "pending_attempts": 1,
+        "pending_reserved_usd": 0.014517,
+        "total_gateway_usd": null,
+        "task_gateway_usd": null,
+        "additional_gateway_usd": null,
+        "source": "isolated tenant model_usage before/after, includes Memory embeddings and non-Task attempts"
+      },
+      "jev": {
+        "known": true,
+        "calls": 11,
+        "expected_calls": 11,
+        "input_tokens": 14241,
+        "cost_usd": 0.0005981220000000001,
+        "price_usd_per_million_input_tokens": 0.042,
+        "output_cost_usd": 0,
+        "price_source": "https://help.typesafe.ai/articles/5187202169-how-much-does-jev-cost"
+      },
+      "total_usd": null
+    },
+    "rules": {
+      "gateway": {
+        "known": false,
+        "attempts": 167,
+        "known_gateway_usd": 1.574219,
+        "pending_attempts": 2,
+        "pending_reserved_usd": 0.018297,
+        "total_gateway_usd": null,
+        "task_gateway_usd": null,
+        "additional_gateway_usd": null,
+        "source": "isolated tenant model_usage before/after, includes Memory embeddings and non-Task attempts"
+      },
+      "jev": {
+        "known": true,
+        "calls": 11,
+        "expected_calls": 11,
+        "input_tokens": 11747,
+        "cost_usd": 0.000493374,
+        "price_usd_per_million_input_tokens": 0.042,
+        "output_cost_usd": 0,
+        "price_source": "https://help.typesafe.ai/articles/5187202169-how-much-does-jev-cost"
+      },
+      "total_usd": null
+    }
+  },
+  "judge_raw_schema_failures": 1,
+  "judge_result_extraction_version": "paired-score-extraction-v1",
+  "collection_complete": true,
+  "cost_known": false,
+  "unknown_cost_continuation_used": true,
+  "quality": {
+    "off": 0.9454545454545454,
+    "rules": 0.9636363636363636
+  },
+  "quality_gain": 0.018181818181818188,
+  "total_cost_ratio": null,
+  "planning_structure_pass_rate": {
+    "off": 1.0,
+    "rules": 0.5454545454545454
+  },
+  "n16_r": {
+    "passed": false
+  },
+  "ev_real": {
+    "passed": false,
+    "semantic_planning_review_included": true
+  },
+  "original_jev_regression": {
+    "off": {
+      "task_id": "tsk_01M6VQQYNY0KSJATEZB77GH91W",
+      "jev_vetoes": 0,
+      "jev_veto_rounds": [],
+      "extra_rounds": 1,
+      "elapsed_s": 97.799145,
+      "ledger": {
+        "total_cost_usd": 0.138242,
+        "sub_agent_cost_usd": 0.0,
+        "attempts": 14,
+        "pending": 0,
+        "known": true,
+        "registry_mismatch_reservations": [],
+        "source": "model_usage",
+        "model_mismatch_reservations": [],
+        "unresolved_role_reservations": [],
+        "cost_scope": "Model Gateway attempts; external Jev and infrastructure charges are not included",
+        "models_served": [
+          "a6api/claude-haiku-5-5@2026-10",
+          "a6api/claude-sonnet-5-5@2026-10",
+          "a6api/deepseek-v4-flash@2026-10"
+        ]
+      }
+    },
+    "rules": {
+      "task_id": "tsk_01M6VWNDVJ6WFFNTZXNDVEV8GD",
+      "jev_vetoes": 0,
+      "jev_veto_rounds": [],
+      "extra_rounds": 0,
+      "elapsed_s": 118.903019,
+      "ledger": {
+        "total_cost_usd": 0.135798,
+        "sub_agent_cost_usd": 0.002109,
+        "attempts": 14,
+        "pending": 1,
+        "known": false,
+        "registry_mismatch_reservations": [],
+        "source": "model_usage",
+        "model_mismatch_reservations": [],
+        "unresolved_role_reservations": [],
+        "cost_scope": "Model Gateway attempts; external Jev and infrastructure charges are not included",
+        "models_served": [
+          "a6api/claude-haiku-5-5@2026-10",
+          "a6api/claude-sonnet-5-5@2026-10",
+          "a6api/deepseek-v4-flash@2026-10"
+        ]
+      }
+    }
+  },
+  "limitations": [
+    "No inference that a one-veto cap fixes the first false veto; inspect the mandatory pair",
+    "Repeating public tool targets remains a proxy, not full tool-argument equality"
+  ],
+  "pairs": [
+    {
+      "case_id": "compare-http",
+      "expected_delegation": true,
+      "off": {
+        "task_id": "tsk_01M6VP824GCAY36NPBPMYXXS7W",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 1.0,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "synthesis_and_recommendations": {
+            "score": 1.0,
+            "reason": "The synthesis connects source facts to identified differences: attributes are mutually distinct, evidence values form a strict increasing sequence, but no causal or semantic relationship is established between attributes and values. The response connects these observations to the constraint that records are fictional frozen data and contain explicit disclaimers, grounding the synthesis in the actual sources rather than repeating disconnected summaries."
+          },
+          "planning_coverage": {
+            "score": 1.0,
+            "reason": "Two plans are preserved: the first (investigate goal) and the second (compose then deliver). Tool evidence shows 11 scheduled requests with 3 repeated full requests, all completed on first attempt. The work decomposition covers investigation (repo_list, repo_read, repo_grep calls on all three files) and composition/delivery. The topology was executed as planned without modification to files or external consultation."
+          },
+          "coverage": {
+            "score": 1.0,
+            "reason": "The response satisfies all requested attributes: reads and investigates all three http records, compares each product with its attribute and evidence value, cites file sources, synthesizes differences, and explicitly states six distinct categories of what is not established by the records."
+          },
+          "factual_correctness": {
+            "score": 1.0,
+            "reason": "All claims match the supplied evidence exactly. The table correctly extracts Product, Attribute, Evidence identifier/value, and file paths from the three records. The statement that records are fictional frozen benchmark data is directly cited. No product names or numeric tokens are claimed without support."
+          },
+          "evidence_and_uncertainty": {
+            "score": 1.0,
+            "reason": "Citations directly reference the three files (http/atlas.txt, http/boreal.txt, http/cedar.txt). The response distinguishes absent evidence from negative evidence throughout the 'not established' section, clearly separating what records do not say (unit definitions, measurement methods, confidence intervals, benchmark conditions) from what they explicitly state ('No other capabilities or guarantees are specified'). Cautious language about unknowns is appropriate and truthful, not disowning."
+          }
+        },
+        "known_gateway_usd": "0.119361",
+        "jev_usd": "0.00006888",
+        "total_usd": null,
+        "pending_reserved_usd": "0.014517",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 222.119319,
+        "extra_rounds": 2,
+        "jev_vetoes": 0,
+        "planning_passed": true,
+        "scheduled_tools": 11,
+        "exact_repeated_tools": 3,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": false,
+        "cost_known": false
+      },
+      "rules": {
+        "task_id": "tsk_01M6VW4HZEVKKVGA3WYJP8J76V",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 1.0,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "synthesis_and_recommendations": {
+            "score": 1.0,
+            "reason": "The synthesis section connects the three records by identifying their structural identity and differing values. It explicitly states that records differ only in product name, attribute label, and numeric evidence while maintaining identical source attribution and scope disclaimers. The answer then systematically articulates what cannot be concluded (real-world validity, semantic meaning, comparative ranking, relationships between attributes), directly addressing the input request to state what is not established."
+          },
+          "planning_coverage": {
+            "score": 1.0,
+            "reason": "The preserved plan uses two graph structures: the first locates records, extracts facts, and checks extraction; the second composes, verifies, and delivers the answer. Tool evidence shows 10 scheduled requests (repo_list, repo_read, repo_grep calls) completed across both planning phases with 4 repeated full requests, consistent with thorough independent investigation. The topology supports parallel locate/extract work followed by composition and verification, and the actual answer output demonstrates that both planning phases succeeded in their decomposed tasks."
+          },
+          "coverage": {
+            "score": 1.0,
+            "reason": "The answer satisfies all requested attributes: reads and investigates each of the three HTTP records, presents a comparison table with product, attribute, evidence value and file source, cites file paths correctly (http/atlas.txt, http/boreal.txt, http/cedar.txt), synthesizes differences between records, and explicitly states what is not established (7 specific categories of unestablished claims including real-world behavior, undefined meanings, cross-record relationships, and completeness)."
+          },
+          "factual_correctness": {
+            "score": 1.0,
+            "reason": "All claimed facts match the supplied evidence exactly. The answer correctly extracts product names (Atlas, Boreal, Cedar), attributes (synchronous, asynchronous, both), evidence values (1500, 2500, 3500), and file paths from the three provided context files. No unsupported claims are made."
+          },
+          "evidence_and_uncertainty": {
+            "score": 1.0,
+            "reason": "Citations support every claim with precise line references (e.g., 'http/atlas.txt:1-4'). The answer distinguishes absent evidence (undefined meanings of attribute labels and evidence numbers) from negative evidence (explicit statements that 'no other capabilities or guarantees are specified'). Uncertainty is truthfully acknowledged rather than glossed over, and the answer correctly identifies that data is marked as fictional and frozen."
+          }
+        },
+        "known_gateway_usd": "0.137642",
+        "jev_usd": "0.000055524",
+        "total_usd": "0.137697524",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 173.957857,
+        "extra_rounds": 1,
+        "jev_vetoes": 0,
+        "planning_passed": false,
+        "scheduled_tools": 10,
+        "exact_repeated_tools": 4,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "total_cost_ratio": null
+    },
+    {
+      "case_id": "compare-storage",
+      "expected_delegation": true,
+      "off": {
+        "task_id": "tsk_01M6TW8P2H6CNVE62D5PM8SR9C",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 0.9,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "synthesis_and_recommendations": {
+            "score": 1.0,
+            "reason": "The synthesis connects source facts to meaningful differences: attributes span different dimensions rather than a common scale, numeric values lack units and comparability, and no shared metric exists across records. The answer correctly refrains from invented recommendations beyond what the records support, which is appropriate for a single-fact comparison task with no recommendation request."
+          },
+          "planning_coverage": {
+            "score": 0.5,
+            "reason": "The plan graph contains only two nodes (inspect_storage_records → deliver_record_comparison) with no independent sub_agent branches. The rubric requires exactly three independent sub_agent branches and at least one synthesis node transitively depending on all three. The actual execution used sequential repo_read calls rather than three independent parallel branches, so the planning structure does not satisfy the structural planning requirements, even though the final answer quality is high."
+          },
+          "coverage": {
+            "score": 1.0,
+            "reason": "The answer covers every requested attribute (product name, attribute, evidence value) for all three records in a table, cites each file, synthesizes differences, and explicitly enumerates what is not established by the records (units, semantics, definitions, SLA, comparability, authenticity caveat). All requested elements are present."
+          },
+          "factual_correctness": {
+            "score": 1.0,
+            "reason": "All three product/attribute/value triples match the supplied context files exactly: Oak/local/7, Pine/replicated/14, Birch/encrypted/30. File paths are correctly cited. No fabricated numeric tokens or product names introduced. The HTTP regression dimension is not applicable to this single-fact storage comparison task."
+          },
+          "evidence_and_uncertainty": {
+            "score": 1.0,
+            "reason": "Citations map directly to the three context files with line-level detail confirmed by both repo_read and repo_grep calls. The answer clearly distinguishes absent evidence (units, definitions, inter-product relationships) from negative evidence, and notes the fictional benchmark disclaimer from the files themselves. Uncertainty is expressed accurately without over-hedging."
+          }
+        },
+        "known_gateway_usd": "0.052703",
+        "jev_usd": "0.000069048",
+        "total_usd": "0.052772048",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 114.91561,
+        "extra_rounds": 0,
+        "jev_vetoes": 0,
+        "planning_passed": true,
+        "scheduled_tools": 7,
+        "exact_repeated_tools": 0,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "rules": {
+        "task_id": "tsk_01M6VSX58WHREWHJVEQW46GM0B",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 1.0,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "synthesis_and_recommendations": {
+            "score": 1.0,
+            "reason": "The response synthesizes differences systematically: product name variance, orthogonal attribute dimensions, unequal numeric values, and consistent formatting structure. It then connects these observations to concrete conclusions (attributes are not comparable; no ranking can be derived; no combined judgment is supported). The synthesis moves beyond disconnected summaries to explain why comparison fails."
+          },
+          "planning_coverage": {
+            "score": 1.0,
+            "reason": "Five plans show decomposition attempts: initial two-node explore-and-deliver, single-node file-building, replan with explore, two-node final-report-and-answer, and single-node direct answer. Tool evidence confirms three successful repo_read calls (all three files read), with failed deliver_file and repo_read attempts (file creation blocked). The preserved plans and actual tool evidence demonstrate iterative recovery; final answer was delivered directly after file-delivery obstacles. Planning structure meets the frozen rubric requirement."
+          },
+          "coverage": {
+            "score": 1.0,
+            "reason": "The response fully addresses all requested elements: independently investigates each record, presents a comparison table with product, attribute, evidence value, and file citation, explicitly identifies what is not established by the records (real capabilities, ranking, metric units, timespan, guarantees, common affiliation, combined conclusions), and confirms no file modifications or external sources were consulted."
+          },
+          "factual_correctness": {
+            "score": 1.0,
+            "reason": "All three file contents are correctly extracted and cited. Product names (Birch, Oak, Pine), attributes (encrypted, local, replicated), and evidence values (30, 7, 14) match the supplied context exactly. The claim that records are fictional is directly supported by the 'Fictional frozen benchmark data' opening line in each file."
+          },
+          "evidence_and_uncertainty": {
+            "score": 1.0,
+            "reason": "Citations are precise and traceable to the three supplied files. The response carefully distinguishes absent evidence (no SLA, no measurement methodology, no cross-reference) from negative evidence (explicit disclaimer of guarantees). Truthful unknowns about metric meaning and dimensional incomparability are stated without hedging as cautious wording; this directly supports rather than undermines task completion."
+          }
+        },
+        "known_gateway_usd": "0.360104",
+        "jev_usd": "0.000131964",
+        "total_usd": "0.360235964",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 340.923412,
+        "extra_rounds": 4,
+        "jev_vetoes": 0,
+        "planning_passed": false,
+        "scheduled_tools": 24,
+        "exact_repeated_tools": 13,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "total_cost_ratio": 6.826264616449981
+    },
+    {
+      "case_id": "compare-incident",
+      "expected_delegation": true,
+      "off": {
+        "task_id": "tsk_01M6TWMQR32019GC0WNRCYGRZR",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 1.0,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "synthesis_and_recommendations": {
+            "score": 1.0,
+            "reason": "The differences section connects source facts across three dimensions (product, attribute, evidence value) rather than restating three isolated summaries. The synthesis explicitly notes full independence along all axes and ties that to the absence of any shared root cause or common comparison axis."
+          },
+          "factual_correctness": {
+            "score": 1.0,
+            "reason": "Every table entry (product, attribute, evidence identifier) matches the corresponding context file content exactly. The structural description (4-line format, shared disclaimer, fictional header) is confirmed by all three supplied file contents. No unsupported claims appear."
+          },
+          "evidence_and_uncertainty": {
+            "score": 1.0,
+            "reason": "Each table row cites its source file. The unknowns section distinguishes absent evidence (no dates, no severity, no remediation) from explicit negative evidence (the disclaimer line), and does not invent conclusions. Truthful unknowns are stated without overclaiming."
+          },
+          "planning_coverage": {
+            "score": 1.0,
+            "reason": "The first plan graph contains exactly three independent read branches (read_incident_a/b/c) each depending only on explore_files, with deliver_answer transitively depending on all three, satisfying the independent-comparison rule. Unique node IDs, no unknown dependencies, no cycle. The replan graph is retained. Tool evidence shows completed reads for all three files, and the delivered answer covers all three records, confirming the decomposition joined correctly."
+          },
+          "coverage": {
+            "score": 1.0,
+            "reason": "The output provides the requested table comparing each product, attribute, evidence value, and source file citation; synthesizes differences across product, attribute, and evidence dimensions; and explicitly enumerates what is not established. No file modification or outside consultation is claimed. All requested attributes are satisfied."
+          }
+        },
+        "known_gateway_usd": "0.187069",
+        "jev_usd": "0.00005019",
+        "total_usd": "0.18711919",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 342.328862,
+        "extra_rounds": 1,
+        "jev_vetoes": 0,
+        "planning_passed": true,
+        "scheduled_tools": 12,
+        "exact_repeated_tools": 7,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "rules": {
+        "task_id": "tsk_01M6VTE90KGKB7EZP3JS19CVM8",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 1.0,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "synthesis_and_recommendations": {
+            "score": 1.0,
+            "reason": "Synthesis goes beyond disconnected summaries: explains that three records share no common dimensions (no field values overlap), belong to different domains (traffic control, storage, credentials), and cannot be compared on a single scale. Explicitly connects this non-overlap back to the file content and clarifies what it does and does not imply about relationships, causality, or temporal ordering."
+          },
+          "planning_coverage": {
+            "score": 1.0,
+            "reason": "Plan topology shows three independent sequential steps (fetch_incidents, extract_incidents, deliver_answer in first plan; simplified in subsequent replans) with correct dependency structure. Tool evidence shows six completed tool calls (repo_list twice, repo_grep, repo_read three times) executed once each with no retries. All three files were accessed and read. Planning decomposition correctly separated discovery from synthesis and covered the requested independent investigation."
+          },
+          "coverage": {
+            "score": 1.0,
+            "reason": "Response fully satisfies the request: reads all three incident records independently, extracts each product/attribute/evidence value, presents in table format with file citations, synthesizes differences (three distinct products, attributes, evidence codes with no overlapping values), and explicitly lists nine categories of unestablished content (timing, duration, scope, severity, root cause, product capabilities, other events, relationships, real-world facts)."
+          },
+          "factual_correctness": {
+            "score": 1.0,
+            "reason": "All extracted data (Product, Attribute, Evidence identifier/value) matches the supplied file content exactly. Mail→rate_limited→RATE-503, Queue→disk_full→DISK-402, Search→expired_certificate→CERT-301 are all correctly cited and transcribed."
+          },
+          "evidence_and_uncertainty": {
+            "score": 1.0,
+            "reason": "Citations are precise (file paths provided for each record). Response clearly distinguishes between what the records contain (four fields plus disclaimer) and what they do not contain, explicitly stating unknowns rather than inferring them. The disclaimer 'No other capabilities or guarantees are specified' is correctly cited and respected. Truthful acknowledgment of absent evidence is comprehensive and appropriately cautious."
+          }
+        },
+        "known_gateway_usd": "0.178923",
+        "jev_usd": "0.00005901",
+        "total_usd": "0.17898201",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 125.693579,
+        "extra_rounds": 2,
+        "jev_vetoes": 0,
+        "planning_passed": false,
+        "scheduled_tools": 6,
+        "exact_repeated_tools": 0,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "total_cost_ratio": 0.9565133859333188
+    },
+    {
+      "case_id": "compare-licence",
+      "expected_delegation": true,
+      "off": {
+        "task_id": "tsk_01M6VN3VK96H3J2YEF7FYRPTY2",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 1.0,
+        "judge_raw_schema_valid": false,
+        "semantic_dimensions": {
+          "evidence_and_uncertainty": {
+            "reason": "Citations are precise and traceable to specific file paths. The output distinguishes between what the records explicitly state (product names, attribute labels, evidence values) and what they do not state (license full text, mapping relationships between attributes and evidence values, completeness of license coverage). Uncertainty about attribute-evidence relationships is explicitly acknowledged rather than inferred, and the output carefully notes that records provide no causal or mappings claims.",
+            "score": 1.0
+          },
+          "coverage": {
+            "reason": "The output fully addresses the requested task: independently investigates all three licence records, presents each product with its attribute and evidence value in a structured table, cites each file explicitly, and provides comprehensive synthesis of differences. The output explicitly articulates what is not established by these records across nine distinct categories, fully satisfying the requirement to 'synthesize differences and explicitly state what is not established.'",
+            "score": 1.0
+          },
+          "synthesis_and_recommendations": {
+            "reason": "The synthesis moves beyond simple summary to connect factual observations to structural limitations. Section 2 identifies that evidence values occupy different semantic dimensions (permissiveness, obligation, rights), establishes they are not interchangeable or sortable, and notes the records contain no defined relationship between license name and evidence value. Section 3 systematically maps what remains unknown. The output correctly avoids false recommendations while explaining why comparison or ranking is unsupported.",
+            "score": 1.0
+          },
+          "factual_correctness": {
+            "reason": "All claims are directly supported by the three licence files provided. The output accurately reports Product names (Amber, Blue, Coral), Attributes (MIT, BSD-3-Clause, Apache-2.0), Evidence values (commercial_allowed, notice_required, patent_grant), and file citations. The statement that records are marked 'Fictional frozen benchmark data' is verbatim from each file. No unsupported inferences about license implications are made.",
+            "score": 1.0
+          },
+          "planning_coverage": {
+            "reason": "The plan topology (two sequential plans with locate_records → extract_records, followed by synthesize_answer → deliver_answer) matches the work performed. Tool evidence shows 11 scheduled tool requests completed across repo_list, repo_read, and repo_grep operations, consistent with systematic investigation of all three files and verification of no additional records. The graph structure is acyclic, nodes have unique IDs, and dependencies are explicit. No best-selection or filtering occurred; all records and findings were preserved and reported.",
+            "score": 1.0
+          }
+        },
+        "known_gateway_usd": "0.172715",
+        "jev_usd": "0.000125412",
+        "total_usd": "0.172840412",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 205.539462,
+        "extra_rounds": 1,
+        "jev_vetoes": 0,
+        "planning_passed": true,
+        "scheduled_tools": 11,
+        "exact_repeated_tools": 4,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "rules": {
+        "task_id": "tsk_01M6VV3261YBFXM43BEYG3XG6M",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 1.0,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "planning_coverage": {
+            "reason": "Planning topology preserved across three plans: initial goal→atomic delivery, replan with verify→synthesize chain, and final atomic delivery. All five tool calls (two repo_list, three repo_read) executed successfully with zero retries, covering all three licence files as required. The decomposition correctly isolated independent record exploration and joined them in synthesis without inferring success merely from structure.",
+            "score": 1.0
+          },
+          "coverage": {
+            "reason": "The output satisfies all requested attributes: (1) independent investigation of three licence records completed; (2) comparison table with product, attribute, evidence value, and source file columns provided; (3) synthesis of differences articulated; (4) explicit statement of what is not established by these records provided in section four with six distinct categories; (5) read-only declaration included; (6) no file modifications or external source consultation.",
+            "score": 1.0
+          },
+          "evidence_and_uncertainty": {
+            "reason": "Citations are precise and support corresponding claims. Section four explicitly and systematically distinguishes absent evidence (e.g., 'attribute含义与法律效果：记录只给出属性标识...未定义其含义与法律效果') from negative evidence. Truthful unknowns are clearly stated without overreach. The output truthfully acknowledges limitations of the frozen benchmark data.",
+            "score": 1.0
+          },
+          "factual_correctness": {
+            "reason": "All claims match the supplied evidence. The comparison table accurately reflects product names (Amber, Blue, Coral), attributes (MIT, BSD-3-Clause, Apache-2.0), and evidence values (commercial_allowed, notice_required, patent_grant) as they appear in the three licence files. File citations are precise and correct.",
+            "score": 1.0
+          },
+          "synthesis_and_recommendations": {
+            "reason": "Section three synthesizes differences beyond mere summary repetition: it identifies that the three attributes are not comparable on the same dimension, notes structural consistency across files with only value differences, and explicitly states that no mapping rules between attributes and evidence values are provided. Section four connects absence of capability definitions and product comparability context to the limitation on deriving recommendations.",
+            "score": 1.0
+          }
+        },
+        "known_gateway_usd": "0.296754",
+        "jev_usd": "0.000072618",
+        "total_usd": "0.296826618",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 177.597681,
+        "extra_rounds": 2,
+        "jev_vetoes": 0,
+        "planning_passed": false,
+        "scheduled_tools": 5,
+        "exact_repeated_tools": 0,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "total_cost_ratio": 1.7173450037830273
+    },
+    {
+      "case_id": "compare-release",
+      "expected_delegation": true,
+      "off": {
+        "task_id": "tsk_01M6VNTKKCV2FSDHZCGPG9JDQA",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 0.8,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "synthesis_and_recommendations": {
+            "score": 1.0,
+            "reason": "The synthesis goes beyond repeating three summaries: it identifies the unique structural regularity (evidence identifier naming pattern), states the numeric ordering while correctly refusing to interpret it as performance ranking due to missing units, and notes the absence of any cross-record binding (no shared version, date, or batch). Differences are connected to source facts."
+          },
+          "planning_coverage": {
+            "score": 0.0,
+            "reason": "The preserved plan graph contains only two plans with a total of three nodes (locate, read_records, compose), none of which are sub_agent nodes. The rubric requires exactly three independent sub_agent branches and at least one synthesis node transitively depending on all three. Neither plan satisfies this structural requirement. The tool evidence also shows no sub_agent calls — only repo_list and repo_read calls were made. Planning structure pass rate fails."
+          },
+          "coverage": {
+            "score": 1.0,
+            "reason": "The answer covers all three records in a comparative table with product, attribute, evidence identifier, and file citation. It synthesizes differences, identifies what is structurally identical, and explicitly enumerates what is not established (units, dates, comparability, methodology). The task asked for a table, citations, synthesis, and explicit unknowns — all are present."
+          },
+          "factual_correctness": {
+            "score": 1.0,
+            "reason": "All three product names, attribute values, evidence identifiers, and file paths match the supplied context files exactly. The structural observation about file format (4-line template) is accurate. No invented or incorrect claims."
+          },
+          "evidence_and_uncertainty": {
+            "score": 1.0,
+            "reason": "Every claim is grounded in the supplied files. The answer correctly distinguishes absent evidence (no dates, no units, no methodology) from negative evidence, and explicitly marks them as unknowns rather than negatives. Truthful unknowns are stated without abandoning the task."
+          }
+        },
+        "known_gateway_usd": "0.097338",
+        "jev_usd": "0.000059976",
+        "total_usd": "0.097397976",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 159.05253,
+        "extra_rounds": 1,
+        "jev_vetoes": 0,
+        "planning_passed": true,
+        "scheduled_tools": 9,
+        "exact_repeated_tools": 3,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "rules": {
+        "task_id": "tsk_01M6VVWCEQPXHVC0F9QB31E26J",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 1.0,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "synthesis_and_recommendations": {
+            "score": 1.0,
+            "reason": "The synthesis connects the three separate release records by identifying the only observable factual difference—the numeric ordering 4.3 > 2.1 > 1.8—and critically connects this to the absence of attribute definition, measurement methodology, and cross-product basis. The answer goes beyond summary to explain why the numbers alone cannot support comparative claims ('Since the attribute's meaning is undefined, nothing supports claiming Indexer is better'). It does not invent synthesis; it flows directly from the evidence gap."
+          },
+          "planning_coverage": {
+            "score": 1.0,
+            "reason": "The plan decomposed the task into three atomic nodes: compare (read and tabulate the three files), synthesize (analyze differences and unestablished claims), and deliver. Tool evidence shows six completed repo operations (two repo_list, three repo_read, one repo_grep) across a single attempt, consistent with investigating three files and searching the workspace. The graph topology progresses from compare through synthesize to deliver, with proper dependency edges. All scheduled requests completed without retry, and the output fully reflects the decomposed structure."
+          },
+          "coverage": {
+            "score": 1.0,
+            "reason": "The answer fully satisfies all requested attributes: independent investigation of each of the three release records (parser.txt, indexer.txt, exporter.txt); table with Product, Attribute, Attribute value, Evidence identifier/value, and Source file columns; citation of each file; synthesis of differences; and explicit statement of what is not established. All eight unestablished points (attribute meaning, cross-product comparability, dates/versions, verifiable external evidence, real-world validity, capabilities/guarantees, cross-check material, product ranking) are comprehensively addressed."
+          },
+          "factual_correctness": {
+            "score": 1.0,
+            "reason": "All claims are directly supported by the three provided source files. The table correctly reports Product, Attribute, values (1.8, 4.3, 2.1), evidence identifiers (exporter-18, indexer-43, parser-21), and source filenames. The observation that evidence identifiers are product-name-plus-digits concatenations is factually verifiable from the files. The statement that files contain 'Fictional frozen benchmark data' is a direct quote."
+          },
+          "evidence_and_uncertainty": {
+            "score": 1.0,
+            "reason": "Citations directly reference the three source files and quote relevant passages ('Fictional frozen benchmark data,' 'No other capabilities or guarantees are specified'). The answer explicitly distinguishes absent evidence (no methodology, no dates, no independent verification artifacts) from negative evidence (files explicitly state they are fictional and make no guarantees). Uncertainty is appropriately framed: 'it is impossible to tell,' 'cannot be determined,' 'cannot be treated as real.' These are truthful expressions of what the records do not support, not disowning the task."
+          }
+        },
+        "known_gateway_usd": "0.11069",
+        "jev_usd": "0.000054096",
+        "total_usd": "0.110744096",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 167.321629,
+        "extra_rounds": 1,
+        "jev_vetoes": 0,
+        "planning_passed": false,
+        "scheduled_tools": 6,
+        "exact_repeated_tools": 0,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "total_cost_ratio": 1.1370266667553748
+    },
+    {
+      "case_id": "single-http",
+      "expected_delegation": false,
+      "off": {
+        "task_id": "tsk_01M6VMW0HKHPEMCN1PM9WYZAGE",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 1.0,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "synthesis_and_recommendations": {
+            "score": 1.0,
+            "reason": "For a single-fact request, synthesis is not required beyond direct answer delivery. The output fulfills the task by stating the product name and evidence value without unnecessary elaboration."
+          },
+          "planning_coverage": {
+            "score": 1.0,
+            "reason": "The plan is minimal but well-formed: a read_fact goal followed by an answer delivery node with correct dependency. The tool evidence shows two completed calls (repo_list and repo_read) with no retries, matching the scheduled requests. The plan topology supports the requested independent work."
+          },
+          "coverage": {
+            "score": 1.0,
+            "reason": "The requested task asks to read fact.txt and state the product name and evidence identifier/value. Both attributes are provided in the output."
+          },
+          "factual_correctness": {
+            "score": 1.0,
+            "reason": "The output correctly identifies the product name as 'Atlas' and evidence identifier/value as '1500', both matching the content of fact.txt exactly. The citation to fact.txt is accurate."
+          },
+          "evidence_and_uncertainty": {
+            "score": 1.0,
+            "reason": "The output cites fact.txt directly and quotes the relevant content. No uncertain claims are made; all statements are grounded in the preserved source material."
+          }
+        },
+        "known_gateway_usd": "0.069867",
+        "jev_usd": "0.00002331",
+        "total_usd": "0.06989031",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 40.159582,
+        "extra_rounds": 0,
+        "jev_vetoes": 0,
+        "planning_passed": true,
+        "scheduled_tools": 2,
+        "exact_repeated_tools": 0,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "rules": {
+        "task_id": "tsk_01M6VTTD33FDTKYQ9ZG15S17M0",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 1.0,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "synthesis_and_recommendations": {
+            "score": 1.0,
+            "reason": "For a single-fact request, synthesis beyond direct extraction is not required. The answer provides the requested facts without unnecessary elaboration or invented synthesis."
+          },
+          "planning_coverage": {
+            "score": 1.0,
+            "reason": "The plan is minimal but complete: read_fact (goal, tool_loop) → answer (atomic delivery). Two tool calls (repo_list, repo_read) executed successfully with no retries reported. The decomposition correctly covers the requested independent work."
+          },
+          "coverage": {
+            "score": 1.0,
+            "reason": "The task requested reading fact.txt and stating the product name and evidence identifier/value. Both are provided: product name is Atlas, evidence value is 1500. The single-fact request is fully satisfied."
+          },
+          "factual_correctness": {
+            "score": 1.0,
+            "reason": "The output correctly extracts Product: Atlas and Evidence identifier/value: 1500 directly from the supplied fact.txt file. Claims match the preserved context exactly."
+          },
+          "evidence_and_uncertainty": {
+            "score": 1.0,
+            "reason": "The cited source is fact.txt, which is supplied in context. The extraction is direct and unambiguous. No invented sources or unsupported claims are present."
+          }
+        },
+        "known_gateway_usd": "0.07126",
+        "jev_usd": "0.000024738",
+        "total_usd": "0.071284738",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 66.107972,
+        "extra_rounds": 0,
+        "jev_vetoes": 0,
+        "planning_passed": true,
+        "scheduled_tools": 2,
+        "exact_repeated_tools": 0,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "total_cost_ratio": 1.019951664257892
+    },
+    {
+      "case_id": "single-storage",
+      "expected_delegation": false,
+      "off": {
+        "task_id": "tsk_01M6VRAXYWJSQVG5Z0TD8DNS7E",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 0.9,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "synthesis_and_recommendations": {
+            "score": 1.0,
+            "reason": "For a single-fact request, the rubric requires a direct answer without invented synthesis. The output delivers exactly that — the product name and evidence value stated directly, without unnecessary elaboration or invented comparisons."
+          },
+          "planning_coverage": {
+            "score": 0.5,
+            "reason": "The plan uses a sequential three-node graph (read_fact → extract → deliver) with no independent sub_agent branches. The rubric's structural planning rules require exactly three independent sub_agent branches and at least one synthesis node depending on all three; this plan has none. However, for a single-fact task, this over-engineering requirement may be inapplicable, and the actual tool evidence shows one completed repo_read call consistent with the plan's intent. Partial credit is given because the decomposition logically covers the task but structurally fails the required parallel sub_agent topology."
+          },
+          "coverage": {
+            "score": 1.0,
+            "reason": "The single-fact request asked for the product name and its evidence identifier/value. Both were provided: product name 'Oak' and evidence identifier/value '7'. No additional attributes were required for this task."
+          },
+          "factual_correctness": {
+            "score": 1.0,
+            "reason": "The output correctly states the product name as 'Oak' and the evidence identifier/value as '7', both of which match exactly the content of fact.txt as provided in the context."
+          },
+          "evidence_and_uncertainty": {
+            "score": 1.0,
+            "reason": "The output explicitly cites 'fact.txt' as the source, correctly attributing the claims to the supplied file. No unsupported claims are made, and the citation accurately corresponds to the provided context."
+          }
+        },
+        "known_gateway_usd": "0.041598",
+        "jev_usd": "0.000021714",
+        "total_usd": "0.041619714",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 106.781421,
+        "extra_rounds": 0,
+        "jev_vetoes": 0,
+        "planning_passed": true,
+        "scheduled_tools": 1,
+        "exact_repeated_tools": 0,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "rules": {
+        "task_id": "tsk_01M6VXQR41KB95XHRKD4AT330R",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 1.0,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "evidence_and_uncertainty": {
+            "reason": "Citation is direct and complete—fact.txt content is quoted verbatim in context. No ambiguity or absent evidence present; claims are fully grounded in the preserved source.",
+            "score": 1.0
+          },
+          "coverage": {
+            "reason": "All requested attributes satisfied: product name stated, evidence identifier/value provided. Input requirement to read one file and not modify or consult external sources fully met.",
+            "score": 1.0
+          },
+          "planning_coverage": {
+            "reason": "Plan is minimal but sufficient: two-node graph (read_facts → answer) with correct dependencies. Tool evidence confirms both repo_list and repo_read completed on first attempt. No cycles or unknown dependencies. Decomposition matches task scope.",
+            "score": 1.0
+          },
+          "factual_correctness": {
+            "reason": "Product name 'Oak' and evidence identifier/value '7' are directly extracted from fact.txt with exact match to supplied context content.",
+            "score": 1.0
+          },
+          "synthesis_and_recommendations": {
+            "reason": "Single-fact request requires only direct answer without invented synthesis. Output answers the query directly: product name and evidence value extracted and stated.",
+            "score": 1.0
+          }
+        },
+        "known_gateway_usd": "0.06981",
+        "jev_usd": "0.000024864",
+        "total_usd": "0.069834864",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 46.629051,
+        "extra_rounds": 0,
+        "jev_vetoes": 0,
+        "planning_passed": true,
+        "scheduled_tools": 2,
+        "exact_repeated_tools": 0,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "total_cost_ratio": 1.677927532130567
+    },
+    {
+      "case_id": "single-incident",
+      "expected_delegation": false,
+      "off": {
+        "task_id": "tsk_01M6VNCZ6AKGYFNP7368B2MAYW",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 0.9,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "synthesis_and_recommendations": {
+            "score": 1.0,
+            "reason": "For a single-fact request, direct extraction without invented synthesis is correct and complete. The answer is appropriately direct and does not pad with unnecessary synthesis."
+          },
+          "planning_coverage": {
+            "score": 0.5,
+            "reason": "The plan graph contains no sub_agent nodes and only two nodes (read_fact, deliver), which is a minimal but structurally valid sequential plan for a single-file read task. However, the rubric's structural_planning rules specify exactly three independent sub_agent branches and at least one synthesis node depending on all three — none of which are present. The plan satisfies the task semantically but fails the structural planning requirements of the rubric."
+          },
+          "coverage": {
+            "score": 1.0,
+            "reason": "The single-fact request required only the product name and evidence identifier/value. Both are present and correctly stated. No additional attributes were requested."
+          },
+          "factual_correctness": {
+            "score": 1.0,
+            "reason": "The output correctly extracts product_name 'Search' and evidence identifier/value 'CERT-301' verbatim from fact.txt content provided in context. No incorrect claims or invented values."
+          },
+          "evidence_and_uncertainty": {
+            "score": 1.0,
+            "reason": "The answer quotes the exact file content and attributes the extraction to fact.txt explicitly. No unsupported claims are made and no external sources were consulted."
+          }
+        },
+        "known_gateway_usd": "0.068147",
+        "jev_usd": "0.000026964",
+        "total_usd": "0.068173964",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 42.845411,
+        "extra_rounds": 0,
+        "jev_vetoes": 0,
+        "planning_passed": true,
+        "scheduled_tools": 2,
+        "exact_repeated_tools": 0,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "rules": {
+        "task_id": "tsk_01M6VVJHJ3S5C4SS818XDQAPZR",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 0.9,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "synthesis_and_recommendations": {
+            "score": 1.0,
+            "reason": "For a single-fact request, the rubric states it is complete when answered directly without invented synthesis. The output does exactly that — directly reporting the name and evidence value without adding unsupported synthesis."
+          },
+          "planning_coverage": {
+            "score": 0.5,
+            "reason": "The plan graph contains two nodes (read_fact and final_answer) with a linear dependency, which is a valid minimal structure for a single-fact task. However, the rubric's structural planning rules require exactly three independent sub_agent branches and a synthesis node depending on all three. The plan has no sub_agent branches at all (triage_level is 'full' but the graph is atomic/goal nodes only), failing the 'all_arms' and 'rules_independent_comparison' structural requirements. That said, for this trivial single-fact task, the off_or_single_fact rule notes 'No sub_agent branch' as a condition, which may apply here. The plan topology is minimal but not clearly conformant with the full structural requirements, warranting a partial score."
+          },
+          "coverage": {
+            "score": 1.0,
+            "reason": "The single-fact request required only the product name and evidence identifier/value. Both are present in the output. No additional attributes were requested, so the answer is complete."
+          },
+          "factual_correctness": {
+            "score": 1.0,
+            "reason": "The output correctly states the product name as 'Search' and the evidence identifier/value as 'CERT-301', both of which match exactly the content of fact.txt as provided in the context."
+          },
+          "evidence_and_uncertainty": {
+            "score": 1.0,
+            "reason": "The output cites fact.txt as the source and correctly attributes the expired_certificate attribute and CERT-301 value to it. No false claims or unsupported assertions are made."
+          }
+        },
+        "known_gateway_usd": "0.071471",
+        "jev_usd": "0.000022218",
+        "total_usd": "0.071493218",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 40.566537,
+        "extra_rounds": 0,
+        "jev_vetoes": 0,
+        "planning_passed": true,
+        "scheduled_tools": 2,
+        "exact_repeated_tools": 0,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "total_cost_ratio": 1.0486880005979995
+    },
+    {
+      "case_id": "single-licence",
+      "expected_delegation": false,
+      "off": {
+        "task_id": "tsk_01M6TVD6XBEC3SGVSVF3PJXBYS",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 1.0,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "synthesis_and_recommendations": {
+            "score": 1.0,
+            "reason": "This is a single-fact request. The task is complete when answered directly without invented synthesis. The output states the facts clearly without over-elaboration or unnecessary interpretation. No recommendations were requested or required."
+          },
+          "planning_coverage": {
+            "score": 1.0,
+            "reason": "The plan is minimal but adequate: two nodes (read_fact → answer) with correct dependency ordering, no cycles, unique node IDs, and no unknown dependencies. The atomic deliver node executes after the goal node. The planning structure passes structural requirements for this trivial single-file task."
+          },
+          "coverage": {
+            "score": 1.0,
+            "reason": "The task requested reading fact.txt and stating the product name and its evidence identifier/value. All requested attributes are provided: product name (Amber), evidence identifier/value (commercial_allowed), and the associated attribute (MIT). No external sources were consulted and no file modifications occurred."
+          },
+          "factual_correctness": {
+            "score": 1.0,
+            "reason": "The output correctly identifies the product name as 'Amber' and the evidence identifier/value as 'commercial_allowed' with attribute 'MIT'. These facts directly match the supplied context in fact.txt with no fabrication or product name confusion."
+          },
+          "evidence_and_uncertainty": {
+            "score": 1.0,
+            "reason": "The output cites the source material directly from fact.txt and provides the exact evidence identifier and value as they appear in the frozen benchmark data. No unsubstantiated claims or invented synthesis is present. The citation is explicit and traceable."
+          }
+        },
+        "known_gateway_usd": "0.069375",
+        "jev_usd": "0.000026712",
+        "total_usd": "0.069401712",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 116.16774,
+        "extra_rounds": 0,
+        "jev_vetoes": 0,
+        "planning_passed": true,
+        "scheduled_tools": 2,
+        "exact_repeated_tools": 0,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "rules": {
+        "task_id": "tsk_01M6VRSEGWAQC8YV0GMYD9RS9V",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 1.0,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "evidence_and_uncertainty": {
+            "reason": "Claims are directly supported by fact.txt. No uncertain or inferred content. Citation is implicit but clear from the single-file constraint and matching content.",
+            "score": 1.0
+          },
+          "coverage": {
+            "reason": "Task requested product name and evidence identifier/value. Both are provided. Acknowledgment of additional Attribute: MIT demonstrates complete file review without over-scope.",
+            "score": 1.0
+          },
+          "synthesis_and_recommendations": {
+            "reason": "Single-fact request requires direct answer only. No synthesis or recommendations were requested or needed. Answer format is appropriate to task scope.",
+            "score": 1.0
+          },
+          "factual_correctness": {
+            "reason": "Output correctly identifies product name 'Amber' and evidence identifier/value 'commercial_allowed' matching fact.txt content exactly.",
+            "score": 1.0
+          },
+          "planning_coverage": {
+            "reason": "Plan graph has two nodes (read_file, answer) with correct dependency ordering. Single tool call (repo_read) completed successfully. Plan topology matches task execution: file read followed by answer delivery.",
+            "score": 1.0
+          }
+        },
+        "known_gateway_usd": "0.07181",
+        "jev_usd": "0.00002331",
+        "total_usd": null,
+        "pending_reserved_usd": "0.009083",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 71.354283,
+        "extra_rounds": 0,
+        "jev_vetoes": 0,
+        "planning_passed": true,
+        "scheduled_tools": 1,
+        "exact_repeated_tools": 0,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": false,
+        "cost_known": false
+      },
+      "total_cost_ratio": null
+    },
+    {
+      "case_id": "single-release",
+      "expected_delegation": false,
+      "off": {
+        "task_id": "tsk_01M6TVYC7WHPSG9VVJEF0NRWW2",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 1.0,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "evidence_and_uncertainty": {
+            "reason": "Citations are concrete and direct: product name sourced to 'line 1', evidence identifier/value sourced to 'line 3'. No unsupported claims or invented synthesis. The output distinguishes between available evidence (lines 1 and 3) and peripheral information (line 2 attribute).",
+            "score": 1.0
+          },
+          "coverage": {
+            "reason": "The task requested reading fact.txt and stating the product name and evidence identifier/value. The output provides all three requested attributes: product name (Parser), evidence identifier (parser-21), and evidence value (parser-21), with explicit citation of source lines.",
+            "score": 1.0
+          },
+          "synthesis_and_recommendations": {
+            "reason": "For a single-fact request, synthesis is not required beyond direct answering. The output correctly provides only the requested facts without inventing additional interpretation or recommendations.",
+            "score": 1.0
+          },
+          "factual_correctness": {
+            "reason": "The output correctly extracts product name 'Parser' from line 1 and evidence identifier/value 'parser-21' from line 3 of fact.txt. All numeric tokens and product names match the supplied context exactly.",
+            "score": 1.0
+          },
+          "planning_coverage": {
+            "reason": "Planning consists of two atomic nodes: read_fact (completed via repo_read tool) and deliver_answer. Tool evidence shows one scheduled repo_read request completed in one attempt. The plan topology is minimal and appropriate for the task scope; decomposition is correctly joined by sequential execution.",
+            "score": 1.0
+          }
+        },
+        "known_gateway_usd": "0.108335",
+        "jev_usd": "0.0000273",
+        "total_usd": "0.1083623",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 120.350845,
+        "extra_rounds": 1,
+        "jev_vetoes": 0,
+        "planning_passed": true,
+        "scheduled_tools": 1,
+        "exact_repeated_tools": 0,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "rules": {
+        "task_id": "tsk_01M6VSN52ZTTQ9E7W22J9S60HD",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 1.0,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "synthesis_and_recommendations": {
+            "score": 1.0,
+            "reason": "The single-fact request is complete when answered directly. The output delivers the requested facts without unnecessary synthesis or invented recommendations, which is appropriate for this task type."
+          },
+          "planning_coverage": {
+            "score": 1.0,
+            "reason": "The plan topology is minimal and appropriate: read_fact node with tool_loop mode followed by atomic deliver node. Tool evidence confirms 2 completed tool calls (repo_list, repo_read) executed within 1 attempt. The decomposition correctly covered the requested work and joined it as needed for a simple fact-extraction task."
+          },
+          "coverage": {
+            "score": 1.0,
+            "reason": "The task requested product name and evidence identifier/value. Both attributes are satisfied: Product=Parser, Evidence identifier/value=parser-21. No additional synthesis or scenarios were requested."
+          },
+          "factual_correctness": {
+            "score": 1.0,
+            "reason": "The output correctly extracts the product name 'Parser' and evidence identifier 'parser-21' directly from fact.txt. Claims match the supplied evidence exactly with no unsupported inferences."
+          },
+          "evidence_and_uncertainty": {
+            "score": 1.0,
+            "reason": "Citations are explicit and properly sourced from fact.txt content. The answer distinguishes what was found in the file from external sources (correctly stating none were consulted). No invented or uncertain claims are presented."
+          }
+        },
+        "known_gateway_usd": "0.069957",
+        "jev_usd": "0.000025032",
+        "total_usd": "0.069982032",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 44.415074,
+        "extra_rounds": 0,
+        "jev_vetoes": 0,
+        "planning_passed": true,
+        "scheduled_tools": 2,
+        "exact_repeated_tools": 0,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "total_cost_ratio": 0.6458153066149389
+    },
+    {
+      "case_id": "http-libraries-jev-regression",
+      "expected_delegation": true,
+      "off": {
+        "task_id": "tsk_01M6VQQYNY0KSJATEZB77GH91W",
+        "task_status": "done",
+        "dag_valid": true,
+        "semantic_quality": 0.9,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "synthesis_and_recommendations": {
+            "score": 1.0,
+            "reason": "The comparison actively connects source facts to differentiated recommendations rather than repeating three disconnected summaries. The crawler recommendation (aiohttp primary, httpx for HTTP/2 targets) is grounded in specific facts: asyncio native, TCPConnector configuration, no HTTP/2 in aiohttp. The backend API recommendation (httpx primary) is grounded in symmetric sync/async API, FastAPI/Starlette integration, fine-grained timeout, HTTP/2 support, and explicit caveats about 5xx retry gaps and 0.x versioning. Cross-scenario tradeoffs are explicitly compared."
+          },
+          "planning_coverage": {
+            "score": 0.5,
+            "reason": "The plan graph contains exactly three independent survey nodes (survey_requests, survey_httpx, survey_aiohttp) with no dependencies between them, and a synthesis node (compare) that transitively depends on all three, satisfying structural requirements. However, all three tool calls (skill_read) are recorded as failed with state='failed' and reported_started_attempt=1, with no successful tool executions confirmed. The answer is substantively complete, but the tool evidence shows the decomposed independent work was not successfully executed via the planned tool calls — the answer appears to rely on prior knowledge rather than confirmed tool-gathered evidence from the plan's execution. Planning structure is correct but execution coverage is unconfirmed."
+          },
+          "coverage": {
+            "score": 1.0,
+            "reason": "All five requested dimensions are covered for all three libraries: sync/async support, timeout/retry examples with specific API names, connection pooling (urllib3 HTTPAdapter params, httpx Limits, aiohttp TCPConnector), HTTP/2 support, and maintenance activity. Both requested scenarios (high-concurrency crawler and ordinary backend third-party API calls) are addressed with specific recommendations and rationale. Sync/async distinction, timeout granularity differences, and pooling configuration details are all present."
+          },
+          "factual_correctness": {
+            "score": 1.0,
+            "reason": "All major factual claims align with the frozen evidence: requests is synchronous/blocking via urllib3, no native retry for 5xx (urllib3 Retry + HTTPAdapter required), HTTP/1.1 only. httpx provides sync Client and async AsyncClient, fine-grained Timeout (connect/read/write/pool), HTTPTransport retries cover only connection failures not 5xx, HTTP/2 requires optional dep and http2=True with ALPN fallback. aiohttp is asyncio-native with ClientSession, ClientTimeout with total/connect/sock_read controls, no built-in retry policy (PR13039 for HTTP/2 unmerged per evidence). Maintenance facts (requests v2.34.2 active but feature-frozen, httpx 0.28.1 active 0.x, aiohttp v3.14.5 active) are correctly represented. No unsupported claims detected."
+          },
+          "evidence_and_uncertainty": {
+            "score": 1.0,
+            "reason": "Citations are implicitly consistent with the frozen sources throughout. The answer correctly distinguishes absent evidence (aiohttp HTTP/2 not supported, PR unmerged) from negative evidence. Uncertainty is expressed appropriately: httpx 0.x API breakage risk noted, aiohttp retry gap acknowledged, requests maintenance-mode status distinguished from abandonment. No false certainty is asserted for unverified claims. Truthful unknowns are not penalized in the answer."
+          }
+        },
+        "known_gateway_usd": "0.138242",
+        "jev_usd": "0.000098616",
+        "total_usd": "0.138340616",
+        "pending_reserved_usd": "0",
+        "known_sub_agent_gateway_usd": 0.0,
+        "sub_agent_nodes": [],
+        "elapsed_s": 97.799145,
+        "extra_rounds": 1,
+        "jev_vetoes": 0,
+        "planning_passed": true,
+        "scheduled_tools": 3,
+        "exact_repeated_tools": 0,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": true,
+        "cost_known": true
+      },
+      "rules": {
+        "task_id": "tsk_01M6VWNDVJ6WFFNTZXNDVEV8GD",
+        "task_status": "aborted",
+        "dag_valid": true,
+        "semantic_quality": 0.7,
+        "judge_raw_schema_valid": true,
+        "semantic_dimensions": {
+          "synthesis_and_recommendations": {
+            "score": 1.0,
+            "reason": "The synthesis connects source facts to differences rather than repeating three disconnected summaries: it explains why aiohttp suits high-concurrency crawlers (event loop, TCPConnector per-host limiting, no GIL overhead), why requests suits ordinary backend calls (simplicity, mature Session+Retry pattern, low onboarding cost), and where httpx bridges both (sync/async unified API, HTTP/2). The exception cases (use httpx when HTTP/2 is needed for crawling; use httpx when already on asyncio stack for backend) are grounded in the technical distinctions identified. The six selection principles logically derive from the comparison. This satisfies the rubric's requirement to connect facts to recommendations rather than summarize in isolation."
+          },
+          "planning_coverage": {
+            "score": 0.5,
+            "reason": "The plan topology is correct: three independent sub_agent nodes (survey_requests, survey_httpx, survey_aiohttp) with no inter-dependencies, a synthesize node depending on all three, and a deliver node depending on synthesize. This satisfies the structural requirements (three independent branches, one synthesis node transitively depending on all three, unique node IDs, no cycles). However, the tool evidence shows all three survey sub-agents only called repo_list and repo_grep against an empty repository—they produced no actual sourced evidence. The synthesize node's 'quality check failed once' is noted in the reason field. The delivery node is listed as 'not_completed' despite being marked succeeded in codes.nodes. The plan structure is sound but execution coverage was materially incomplete: sub-agents gathered zero evidence, undermining the independence and parallelism that the planning structure was meant to provide."
+          },
+          "coverage": {
+            "score": 0.5,
+            "reason": "The answer covers sync/async support, timeout syntax, retry approaches, connection pooling, HTTP/2 support, and maintenance activity for all three libraries, and addresses both requested scenarios (high-concurrency crawler and ordinary backend API calls). However, several rubric-required elements have gaps: no concrete code examples for timeout/retry are provided (the rubric specifically calls for 'timeout/retry examples'); HTTP/2 coverage omits the unmerged PR13039 status for aiohttp; pooling descriptions lack explicit default values (the answer flags these as 'to be verified'). The two scenario recommendations are present and reasoned. Coverage is partial due to missing code examples and incomplete HTTP/2 evidence citation."
+          },
+          "factual_correctness": {
+            "score": 0.5,
+            "reason": "Most technical claims align with frozen references: requests is sync-only, httpx supports sync+async and HTTP/2 (with h2 dependency), aiohttp is async-only with no HTTP/2 client support (PR13039 unmerged per evidence). Timeout and pooling descriptions are broadly accurate. However, the answer states aiohttp 'client does not support HTTP/2' without noting the open PR13039, which is a minor omission. More critically, the answer describes requests retry via 'HTTPAdapter(max_retries=Retry(...))' correctly per the frozen source. The httpx retry claim ('HTTPTransport(retries=N) only covers connection layer') is consistent with frozen facts. The maintenance section claims httpx is 'actively iterated' but the frozen data shows its last release was 2024-12-06 vs requests 2026-05-14 and aiohttp 2026-10-11—the answer's characterization of requests as 'low-activity maintenance' and httpx as 'actively iterated faster' is partially inverted relative to the frozen dates; this is a material factual error on maintenance ordering."
+          },
+          "evidence_and_uncertainty": {
+            "score": 1.0,
+            "reason": "The answer explicitly flags that no external sources were found in the workspace and marks numeric details (version numbers, default values, dates) as 'pending verification.' It distinguishes absent evidence from negative evidence (e.g., noting aiohttp lacks HTTP/2 rather than claiming it was removed). The uncertainty disclosures are honest and appropriately scoped without abandoning the task. The 'pending verification checklist' at the end correctly identifies what needs online confirmation. This handling of truthful unknowns should not be penalized per rubric anchors."
+          }
+        },
+        "known_gateway_usd": "0.135798",
+        "jev_usd": "0.000",
+        "total_usd": null,
+        "pending_reserved_usd": "0.009214",
+        "known_sub_agent_gateway_usd": 0.002109,
+        "sub_agent_nodes": [
+          "survey_aiohttp",
+          "survey_httpx",
+          "survey_requests"
+        ],
+        "elapsed_s": 118.903019,
+        "extra_rounds": 0,
+        "jev_vetoes": 0,
+        "planning_passed": true,
+        "scheduled_tools": 6,
+        "exact_repeated_tools": 2,
+        "reported_retry_attempts_lower_bound": 0,
+        "original_valid": false,
+        "cost_known": false
+      },
+      "total_cost_ratio": null
+    }
+  ],
+  "tool_repeat_metric": "complete Temporal tree; canonical full tool+args SHA256 equality, not target-only proxy",
+  "known_fixed_cohort_usd": "3.763598496",
+  "known_goal_paired_including_invalid_pilot_usd": "3.849185294",
+  "subject_pending": [
+    {
+      "reservation_id": "mbr_DTTAF6WU2EWRW4S267NLH6APYE",
+      "task_id": "tsk_01M6VP824GCAY36NPBPMYXXS7W",
+      "node_id": "compose.1",
+      "model_profile_id": "a6api/deepseek-v4-flash@2026-10",
+      "actual_usd_micros": null,
+      "reserved_at": 1794078260490,
+      "reserved_usd_micros": 14517,
+      "registry_scope": "platform",
+      "registry_revision": "v2",
+      "registry_document_sha256": "b6f4c36572c5db4dcc601fbfdadb8a881ecdf881b949aa6215ec34371d93f1be"
+    },
+    {
+      "reservation_id": "mbr_QXBAQLBWMIB2BSAG4U5B33M2SJ",
+      "task_id": "tsk_01M6VRSEGWAQC8YV0GMYD9RS9V",
+      "node_id": "triage",
+      "model_profile_id": "a6api/claude-haiku-5-5@2026-10",
+      "actual_usd_micros": null,
+      "reserved_at": 1794080816773,
+      "reserved_usd_micros": 9083,
+      "registry_scope": "platform",
+      "registry_revision": "v2",
+      "registry_document_sha256": "ba45f390cd51419982b714ae3ca2f82c2dc89de87f197fbe68a9542352b98bfe"
+    },
+    {
+      "reservation_id": "mbr_UZORZ3YUTV5V7ELFMW643HXTZM",
+      "task_id": "tsk_01M6VWNDVJ6WFFNTZXNDVEV8GD",
+      "node_id": "triage",
+      "model_profile_id": "a6api/claude-haiku-5-5@2026-10",
+      "actual_usd_micros": null,
+      "reserved_at": 1794084878770,
+      "reserved_usd_micros": 9214,
+      "registry_scope": "platform",
+      "registry_revision": "v2",
+      "registry_document_sha256": "ba45f390cd51419982b714ae3ca2f82c2dc89de87f197fbe68a9542352b98bfe"
+    }
+  ],
+  "judge_retained_pending": [
+    {
+      "reservation_id": "mbr_WO3FHOU4DZAELVWGLO3BNQOPXX",
+      "task_id": "tsk_3FBFH3Y2GF8EHB4RG9HJQKRZRT",
+      "node_id": "eval_call_00000001",
+      "method": "generate",
+      "model_profile_id": "a6api/claude-opus-5-5@2026-10",
+      "reserved_at": 1794086710747,
+      "actual_usd_micros": null,
+      "reserved_usd_micros": 298752,
+      "input_tokens": null,
+      "output_tokens": null,
+      "registry_scope": "platform",
+      "registry_revision": "v3",
+      "registry_document_sha256": "e42df3b1eba85d89bcf869ef8942c993d469e4ca3f03818789dc1cea1bed0d5a"
+    }
+  ],
+  "judge_prior_settled_attempts": [
+    {
+      "reservation_id": "mbr_DELMVDFURKIJPIMQJ7WBLABXUZ",
+      "task_id": "tsk_3FBFH3Y2GF8EHB4RG9HJQKRZRT",
+      "node_id": "eval_call_00000002",
+      "method": "generate",
+      "model_profile_id": "a6api/claude-opus-5-5@2026-10",
+      "reserved_at": 1794089275625,
+      "actual_usd_micros": 34257,
+      "reserved_usd_micros": 298752,
+      "input_tokens": 8491,
+      "output_tokens": 331,
+      "registry_scope": "platform",
+      "registry_revision": "v3",
+      "registry_document_sha256": "e42df3b1eba85d89bcf869ef8942c993d469e4ca3f03818789dc1cea1bed0d5a"
+    },
+    {
+      "reservation_id": "mbr_QERFX26S73BEAYWOI22FNO3SUV",
+      "task_id": "tsk_3FBFH3Y2GF8EHB4RG9HJQKRZRT",
+      "node_id": "eval_call_00000003",
+      "method": "generate",
+      "model_profile_id": "a6api/claude-opus-5-5@2026-10",
+      "reserved_at": 1794089281574,
+      "actual_usd_micros": 35024,
+      "reserved_usd_micros": 298992,
+      "input_tokens": 8118,
+      "output_tokens": 405,
+      "registry_scope": "platform",
+      "registry_revision": "v3",
+      "registry_document_sha256": "e42df3b1eba85d89bcf869ef8942c993d469e4ca3f03818789dc1cea1bed0d5a"
+    },
+    {
+      "reservation_id": "mbr_D4BBPR3QQFCYTLTJASM47SBBEW",
+      "task_id": "tsk_3FBFH3Y2GF8EHB4RG9HJQKRZRT",
+      "node_id": "eval_call_00000004",
+      "method": "generate",
+      "model_profile_id": "a6api/claude-opus-5-5@2026-10",
+      "reserved_at": 1794089286021,
+      "actual_usd_micros": 47706,
+      "reserved_usd_micros": 338000,
+      "input_tokens": 9457,
+      "output_tokens": 739,
+      "registry_scope": "platform",
+      "registry_revision": "v3",
+      "registry_document_sha256": "e42df3b1eba85d89bcf869ef8942c993d469e4ca3f03818789dc1cea1bed0d5a"
+    },
+    {
+      "reservation_id": "mbr_AKS6JLJO4A5IFTYEHE4KRC7CAK",
+      "task_id": "tsk_3FBFH3Y2GF8EHB4RG9HJQKRZRT",
+      "node_id": "eval_call_00000026",
+      "method": "generate",
+      "model_profile_id": "a6api/claude-opus-5-5@2026-10",
+      "reserved_at": 1794093002218,
+      "actual_usd_micros": 35290,
+      "reserved_usd_micros": 344176,
+      "input_tokens": 2136,
+      "output_tokens": 1354,
+      "registry_scope": "platform",
+      "registry_revision": "v3",
+      "registry_document_sha256": "e42df3b1eba85d89bcf869ef8942c993d469e4ca3f03818789dc1cea1bed0d5a"
+    }
+  ],
+  "semantic_schema_transport_version": 2,
+  "prior_valid_scores_kept_separately": "semantic-strict/prior-valid-judgments.json",
+  "historical_jev_conservative_hold_usd": "1.969152",
+  "historical_jev_hold_is_not_actual_spending": true,
+  "actual_complete_total_usd": null,
+  "same_vendor_planning_judge_limitation": true,
+  "full_cohort_retained": true,
+  "no_additional_tasks_or_model_calls": true,
+  "source_sha256": {
+    "plan.json": "b978331eeb94b7d70fb36684ca63c8978c90d733c608108df71ef5e69f95a86c",
+    "review-export.json": "6cfbc9b8539e0a447326262079bb4920e3f69817c5e75e46796da8e84862639d",
+    "semantic-last/review.json": "46886f50a3b193fd9eb8da3edf9a55f4db958b9d2d6d4bfe2553e5d727abee63",
+    "semantic-last/ledger-final.json": "e2c60cb246ec08f1762a821bdafde54ca0b8442fbc731634cc30312581e74480",
+    "semantic-last/manifest.json": "3b4c4038e0aafa9ae5fb086d0088cc2ecd579dc114e31fa84d7fd1cb49ae6d5f",
+    "off-full-scope-before.json": "67780b1b710741089f21eedd225bb673c3972f882a0e969429b39fe8f2648eb5",
+    "off-full-scope-after.json": "7ed7c541fce081af3aa85058b6dc2b24bd6697c8bc5933e28264ef83eb80c857",
+    "rules-full-scope-before.json": "7ed7c541fce081af3aa85058b6dc2b24bd6697c8bc5933e28264ef83eb80c857",
+    "rules-full-scope-after.json": "665b8f6f411ed652813103290727562884c9f7f0cd8581c8888da52f6833fa3b",
+    "finalize_paired.py": "2bb91b8dd003e36b5d22b6e2f7d7f2a245fe5fc7d9e3f2b694fdffbf7ea27fcc"
+  }
+}

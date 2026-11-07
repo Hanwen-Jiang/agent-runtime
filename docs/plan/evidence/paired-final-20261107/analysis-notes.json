@@ -1,0 +1,71 @@
+{
+  "kind": "paired-final-analysis-limitations-v1",
+  "case_id": "compare-storage",
+  "arm": "off",
+  "task_id": "tsk_01M6TW8P2H6CNVE62D5PM8SR9C",
+  "semantic_item_id": "9e24ae67fc950f0b9641aab5",
+  "dimension": "planning_coverage",
+  "original_score": 0.5,
+  "original_reason": "The plan graph contains only two nodes (inspect_storage_records → deliver_record_comparison) with no independent sub_agent branches. The rubric requires exactly three independent sub_agent branches and at least one synthesis node transitively depending on all three. The actual execution used sequential repo_read calls rather than three independent parallel branches, so the planning structure does not satisfy the structural planning requirements, even though the final answer quality is high.",
+  "frozen_rule_evidence": {
+    "all_arms": [
+      "First plan has unique node IDs, no unknown dependencies and no dependency cycle",
+      "Keep subsequent replans and failures; do not select the best graph"
+    ],
+    "rules_independent_comparison": [
+      "Exactly three independent sub_agent branches",
+      "At least one synthesis node transitively depends on all three"
+    ],
+    "off_or_single_fact": [
+      "No sub_agent branch"
+    ]
+  },
+  "finding": "The judge applied the rules-only three-sub-agent condition to the off arm. The off_or_single_fact condition requires no sub-agent branch.",
+  "treatment": "Preserve every original score and report byte; label aggregate quality/gain as raw judge readings, not publishable validated capability scores. No rescore or model call.",
+  "original_readings": {
+    "off": 0.9454545454545454,
+    "rules": 0.9636363636363636,
+    "gain": 0.018181818181818188
+  },
+  "single_dimension_sensitivity": {
+    "replacement_range": [
+      0,
+      1
+    ],
+    "original_dimension_value": 0.5,
+    "dimensions": 5,
+    "paired_cases": 11,
+    "formula": "gain(x) = 1/55 - (x - 1/2)/55, x in [0,1]",
+    "gain_lower": 0.00909090909090909,
+    "gain_upper": 0.02727272727272727,
+    "gain_lower_fraction": "1/110",
+    "gain_upper_fraction": "3/110",
+    "minimum_quality_gain": 0.1,
+    "entire_range_below_gate": true,
+    "scope": "Only this one identified dimension with all other readings held fixed; not an overall bound on other possible judge errors."
+  },
+  "independent_evidence": {
+    "programmatic_structure_off": {
+      "passed": 11,
+      "total": 11
+    },
+    "programmatic_structure_rules": {
+      "passed": 6,
+      "total": 11
+    },
+    "criteria_are_arm_specific": true,
+    "cost_known": false,
+    "total_cost_ratio": null,
+    "raw_schema_failures": 1,
+    "n16_r_passed": false,
+    "ev_real_passed": false
+  },
+  "source_sha256": {
+    "paired-completion-final.json": "d34e302bbceae7af9255a89ec0b1235fb110f16547d9a7ed6b7e2778efaf4500",
+    "semantic-last/review.json": "46886f50a3b193fd9eb8da3edf9a55f4db958b9d2d6d4bfe2553e5d727abee63",
+    "review-export.json": "6cfbc9b8539e0a447326262079bb4920e3f69817c5e75e46796da8e84862639d"
+  },
+  "scores_modified": false,
+  "additional_model_calls": 0,
+  "additional_tests_run": false
+}
