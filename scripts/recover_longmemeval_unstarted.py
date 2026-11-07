@@ -137,7 +137,8 @@ def pending_baseline(snapshot: Mapping[str, Any], expected_pending: Mapping[str,
 
 
 def verify_ledger(snapshot: Mapping[str, Any], baseline: Mapping[str, Any],
-                  baseline_ledger: Mapping[str, Any], *, require_clean: bool = True) -> dict[str, Any]:
+                  baseline_ledger: Mapping[str, Any], *, require_clean: bool = True,
+                  frozen_registry: Mapping[str, Any] | None = None) -> dict[str, Any]:
     if (baseline.get("kind") != VERSION or baseline.get("tenant") != TENANT
             or baseline.get("ledger_sha256") != digest(baseline_ledger)
             or baseline.get("pending_sha256") != digest(baseline.get("pending"))):
@@ -151,6 +152,17 @@ def verify_ledger(snapshot: Mapping[str, Any], baseline: Mapping[str, Any],
     pending = {rid: row for rid, row in rows.items() if row["actual_usd_micros"] is None}
     if pending != baseline["pending"]:
         raise RecoveryError("new or changed pending attempt; stop before another question")
+    added = [row for rid, row in rows.items() if rid not in original]
+    if added:
+        profile = frozen_registry.get("profile", {}) if isinstance(frozen_registry, Mapping) else {}
+        version, sha256 = profile.get("version"), profile.get("document_sha256")
+        if not isinstance(version, str) or not version.startswith("v") or not isinstance(sha256, str) or len(sha256) != 64:
+            raise RecoveryError("new attempts require the frozen Registry profile identity")
+        expected = ("platform", version, sha256)
+        for row in added:
+            observed = tuple(row.get(key) for key in ("registry_scope", "registry_revision", "registry_document_sha256"))
+            if observed != expected:
+                raise RecoveryError("a resumed attempt differs from the frozen Registry profile")
     if require_clean and (snapshot.get("remaining_ids") or any(snapshot.get(key) != 0 for key in
             ("queue_count", "memory_item_count", "lineage_count", "review_count", "tombstone_count"))):
         raise RecoveryError("evaluation state is not completely cleaned")
@@ -206,7 +218,8 @@ def prepare(original: Path, out: Path, *, observed_deployment: Mapping[str, Any]
         if (baseline["cap_usd_micros"] != round(freeze["remaining_allowance_usd"] * 1e6)
                 or baseline["historical_usd_micros"] != round(freeze["historical_usd"] * 1e6)):
             raise RecoveryError("recovery budget differs from the original freeze")
-        accounting = verify_ledger(ledger, baseline, baseline_ledger)
+        accounting = verify_ledger(ledger, baseline, baseline_ledger,
+                                   frozen_registry=freeze["deployment"].get("registry"))
         histories, raw = journal(original / "live/results.jsonl")
         keep, pending = classify(histories, manifest)
         inputs = {name: file_hash(original / name) for name in ("freeze.json", "live/manifest.json", "live/results.jsonl", "live/summary.json")}
@@ -266,7 +279,9 @@ def _finalize(out: Path, *, ledger: Mapping[str, Any]) -> dict[str, Any]:
     baseline = json.loads((out / "pending-baseline.json").read_text())
     if digest(baseline) != receipt["pending_baseline_sha256"]:
         raise RecoveryError("pending baseline was edited")
-    accounting = verify_ledger(ledger, baseline, json.loads((out / "ledger-baseline.json").read_text()))
+    freeze = json.loads((out / "freeze.json").read_text())
+    accounting = verify_ledger(ledger, baseline, json.loads((out / "ledger-baseline.json").read_text()),
+                               frozen_registry=freeze["deployment"].get("registry"))
     successful = [r for r in rows if r.get("outcome") == "completed" and r.get("cleanup_complete") is True]
     # An environment failure has no measured retrieval quality. Do not include
     # its empty placeholder rankings in a model-quality denominator.
