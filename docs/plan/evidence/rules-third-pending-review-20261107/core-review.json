@@ -1,0 +1,94 @@
+{
+  "at_utc": "2026-11-07T21:04:28.775692+00:00",
+  "scope_before_raw_sha256": "775925fe335993ebe878cb12a94007d53068dcfdc845705a8d042938ba70e9d6",
+  "scope_after_raw_sha256": "9e683c094f161a7133eed0a04a99d80c377b2dcf610b618a83c5aa66cdbe86ab",
+  "original_before_snapshot_preserved": "/opt/evals/n16-evreal-pinned-20261107/before-rules-pending-extension/rules-full-scope-after.json",
+  "rows_before": 156,
+  "rows_after": 307,
+  "prior_rows_unchanged": true,
+  "known_subject_usd_micros": 2714724,
+  "pending_reserved_usd_micros": 32814,
+  "remaining_subject_usd_micros": 15697723,
+  "rules_collected": [
+    {
+      "case": "compare-http",
+      "task_id": "tsk_01M6VW4HZEVKKVGA3WYJP8J76V",
+      "status": "done"
+    },
+    {
+      "case": "compare-storage",
+      "task_id": "tsk_01M6VSX58WHREWHJVEQW46GM0B",
+      "status": "done"
+    },
+    {
+      "case": "compare-incident",
+      "task_id": "tsk_01M6VTE90KGKB7EZP3JS19CVM8",
+      "status": "done"
+    },
+    {
+      "case": "compare-licence",
+      "task_id": "tsk_01M6VV3261YBFXM43BEYG3XG6M",
+      "status": "done"
+    },
+    {
+      "case": "compare-release",
+      "task_id": "tsk_01M6VVWCEQPXHVC0F9QB31E26J",
+      "status": "done"
+    },
+    {
+      "case": "single-http",
+      "task_id": "tsk_01M6VTTD33FDTKYQ9ZG15S17M0",
+      "status": "done"
+    },
+    {
+      "case": "single-incident",
+      "task_id": "tsk_01M6VVJHJ3S5C4SS818XDQAPZR",
+      "status": "done"
+    },
+    {
+      "case": "single-licence",
+      "task_id": "tsk_01M6VRSEGWAQC8YV0GMYD9RS9V",
+      "status": "done"
+    },
+    {
+      "case": "single-release",
+      "task_id": "tsk_01M6VSN52ZTTQ9E7W22J9S60HD",
+      "status": "done"
+    },
+    {
+      "case": "http-libraries-jev-regression",
+      "task_id": "tsk_01M6VWNDVJ6WFFNTZXNDVEV8GD",
+      "status": "aborted"
+    }
+  ],
+  "remaining_original_case_ids": [
+    "single-storage"
+  ],
+  "metrics_sha256": {
+    "compare-http": "1f0c8ba1cdae4c3d480e448e58e503e40a177e01ecfc2b21ad6f2ac3d7c73e06",
+    "compare-storage": "0813f5ed015fa068ab43fc1aadf9d580077b2bc97b3830b6e119f87629bd3541",
+    "compare-incident": "d1891462f93f27f4dde74b56ca593e9326a7bb0a7e2e340911f5f77f3bf4d750",
+    "compare-licence": "afe39b6b3bb297e078c030b3f5c74d3e9f6c00d2b6eba41f226a8b40b8046d63",
+    "compare-release": "95916596071c71a3d6bf52130675e364805e68cf7dcda9d903035aa313bced09",
+    "single-http": "b13728e21e7b7e484aa39ea2a1a471f9db1adfee4740d43cb9c3a6d0d18b4a67",
+    "single-incident": "99e17f7d4bb60023d687ceca904dde0d357176cd0ef7f9e8709f2305c311ec42",
+    "single-licence": "b099aec76fea0ecfbea0837c4ad3a0de1430944660301a16f135f6c0f35d0dcf",
+    "single-release": "8be97601dc3356b34c52d8daf5c19d078c272836a9df0e3e8dd342710c868972",
+    "http-libraries-jev-regression": "7f84a07b6e4050056a36ef0ab65dd7c7a1090b9f0bd276457327383b9909fa97"
+  },
+  "new_pending_reservation": "mbr_UZORZ3YUTV5V7ELFMW643HXTZM",
+  "gateway_warning_evidence": [
+    "2026-11-07T23:55:08.837138426+03:00 time=2026-11-07T20:55:08.836Z level=WARN msg=\"model usage pending\" reservation_id=mbr_UZORZ3YUTV5V7ELFMW643HXTZM tenant_id=gh-goalpair-20261107 model_profile_id=a6api/claude-haiku-5-5@2026-10",
+    "2026-11-07T23:55:08.837216164+03:00 time=2026-11-07T20:55:08.836Z level=WARN msg=模型调用失败 profile=a6api/claude-haiku-5-5@2026-10 category=ERROR_CATEGORY_TRANSIENT code=unreachable attempt=1"
+  ],
+  "gateway_raw_log_sha256": "ba043d54eb396b7771de0dc61215f183e559c98f302caaa4f3ac668ae5fb706e",
+  "later_known_same_node": {
+    "at_utc": "2026-11-07T20:55:16.251684472+00:00",
+    "input_tokens": 4290,
+    "output_tokens": 89,
+    "cost_usd_micros": 474
+  },
+  "cost_known": false,
+  "no_new_model_calls_or_ledger_writes": true,
+  "scope": "Only original remaining single-storage rules case after an exact third-reservation successor; do not repeat aborted HTTP or waive unknown actual cost."
+}
