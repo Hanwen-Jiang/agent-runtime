@@ -1,0 +1,25 @@
+{
+  "at_utc": "2026-11-07T22:50:29.433095+00:00",
+  "task_id": "tsk_3FBFH3Y2GF8EHB4RG9HJQKRZRT",
+  "node_id": "eval_call_00000009",
+  "item_id": "360c0e00dbf0eba926bc86a6",
+  "rpc_state": "completed",
+  "gateway_status": "ok",
+  "local_state": "JudgeError",
+  "known_cost_usd_micros": 57578,
+  "input_tokens": 10757,
+  "output_tokens": 942,
+  "finish_reason": "FINISH_REASON_STOP",
+  "profile": "a6api/claude-opus-5-5@2026-10",
+  "tier": "strong@medium",
+  "result_top_level_keys": [
+    "overall_assessment",
+    "scores"
+  ],
+  "extra_key": "overall_assessment",
+  "scores_dimension_count": 5,
+  "response_raw_sha256": "1c9e35e8966eca9e7c70113b4da0c1093a23ba62cd7857bf2930365d0e23cbc4",
+  "private_gateway_log_sha256": "9ab1492e5526e5092489faaa6b87a0cb1499f4844d794121c86de8d9bfdf22e5",
+  "decision": "Preserve the rejected response and original closed-schema validator. Do not strip the extra field to accept a high score. Preserve four completed v2 judgments, and verify ledger/remaining budget before a bounded same-configuration retry of this unaccepted item.",
+  "new_model_calls_or_ledger_writes": 0
+}
