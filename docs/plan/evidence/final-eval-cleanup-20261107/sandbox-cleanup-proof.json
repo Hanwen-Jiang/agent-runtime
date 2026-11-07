@@ -1,0 +1,13 @@
+{
+  "at_unix": 1794094696.9926648,
+  "read_only": true,
+  "retained_environment_rows": 68,
+  "all_environment_states_destroyed": true,
+  "nonempty_busy_leases": 0,
+  "directory_rows": 68,
+  "all_directory_states_destroyed": true,
+  "matching_live_firecracker_or_jailer_processes": [],
+  "ledger_file_sha256": "20e30614ee99c4380de8e343a953a4e8a8b8d9213402fedfd0a087d6f5b43b8d",
+  "db_writes": 0,
+  "process_mutations": 0
+}

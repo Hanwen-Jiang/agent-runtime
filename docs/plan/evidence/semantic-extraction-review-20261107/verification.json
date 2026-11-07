@@ -1,0 +1,20 @@
+{
+  "manifest_raw_sha256": "3b4c4038e0aafa9ae5fb086d0088cc2ecd579dc114e31fa84d7fd1cb49ae6d5f",
+  "recovery_raw_sha256": "7a261e529174eb20e514025c134865faf72ecbc9828964658bcdcfb521cf8cdc",
+  "source_parent_files_verified": true,
+  "same_wire_schema_version": 2,
+  "legacy_completed_item_ids": [],
+  "original_raw_validator_still_rejects": true,
+  "original_five_scores_and_reasons_unchanged": true,
+  "raw_schema_valid": false,
+  "extraction_version": "paired-score-extraction-v1",
+  "ignored_root_fields": [
+    "overall_assessment"
+  ],
+  "retained_paid_responses": 5,
+  "model_calls_for_recovery": 0,
+  "remaining_original_items_at_admission": 17,
+  "estimate_with_all_prior_known_and_hold_usd": "5.669381",
+  "unknown_charge_not_settled": true,
+  "new_model_calls_or_ledger_writes": 0
+}

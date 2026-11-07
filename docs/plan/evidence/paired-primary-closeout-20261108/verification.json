@@ -1,0 +1,40 @@
+{
+  "same_wire_schema_version": 2,
+  "legacy_completed_item_ids": [],
+  "review_items": 22,
+  "original_pairs": 11,
+  "every_score_and_reason_matches_raw": true,
+  "prior_21_responses_and_scores_unchanged": true,
+  "judge_ledger_rows": 27,
+  "judge_known_usd_micros": 1063538,
+  "judge_unknown_hold_usd_micros": 298752,
+  "all_judge_attempts_same_registry_identity": true,
+  "raw_schema_failures": 1,
+  "overall_gates_passed": false,
+  "known_fixed_cohort_usd": "3.763598496",
+  "complete_actual_cost_known": false,
+  "arms": {
+    "off": {
+      "cases": 11,
+      "raw_semantic_quality_mean": "0.9454545454545454545454545455",
+      "structural_passes": 11,
+      "task_elapsed_s": 1568.059927,
+      "extra_rounds": 7,
+      "exact_repeated_tools": 17,
+      "known_subagent_gateway_usd": 0.0
+    },
+    "rules": {
+      "cases": 11,
+      "raw_semantic_quality_mean": "0.9636363636363636363636363636",
+      "structural_passes": 6,
+      "task_elapsed_s": 1373.470094,
+      "extra_rounds": 10,
+      "exact_repeated_tools": 19,
+      "known_subagent_gateway_usd": 0.002109
+    }
+  },
+  "report_raw_sha256": "d34e302bbceae7af9255a89ec0b1235fb110f16547d9a7ed6b7e2778efaf4500",
+  "review_raw_sha256": "46886f50a3b193fd9eb8da3edf9a55f4db958b9d2d6d4bfe2553e5d727abee63",
+  "judge_ledger_raw_sha256": "e2c60cb246ec08f1762a821bdafde54ca0b8442fbc731634cc30312581e74480",
+  "new_model_calls_or_ledger_writes": 0
+}
