@@ -1,8 +1,8 @@
 {
-  "at": "2026-11-07",
-  "helm_revision": 43,
-  "runtime_integrated_commit": "21d9fe74a6dfe324f4f9828e87bbb4bbab2023d5",
-  "coding_commit": "0fbf18ef0c88c4ee4ca76e072fa2f6199fa92db3",
+  "at": "2026-11-07T11:55:00Z",
+  "helm_revision": 44,
+  "runtime_integrated_commit": "7bfec7d5a598f85eca07d572650da278a535293e",
+  "coding_commit": "d6444c9a10ee67a6340c80e26a03aadceab570e9",
   "deployments": {
     "ar-agent-runtime-docker-mirror": {
       "images": {
@@ -63,17 +63,17 @@
     },
     "ar-agent-runtime-sandbox-service": {
       "images": {
-        "sandbox-service": "ghcr.io/agentruntime/sandbox-service:goal-f1388e13"
+        "sandbox-service": "ghcr.io/agentruntime/sandbox-service:goal-0ee834d8"
       },
       "available": 1,
-      "generation": 13
+      "generation": 22
     },
     "ar-agent-runtime-task-service": {
       "images": {
-        "task-service": "ghcr.io/agentruntime/task-service:goal-1521aacc"
+        "task-service": "ghcr.io/agentruntime/task-service:goal-f04660cc"
       },
       "available": 1,
-      "generation": 33
+      "generation": 36
     },
     "ar-agent-runtime-worker-decision": {
       "images": {
@@ -264,5 +264,11 @@
       }
     },
     "capability_scores_published": 10
+  },
+  "cloudflare": {
+    "worker_version": "3ae9361b-1b1a-45a1-ae79-bcba8566d553",
+    "image": "goal-cf-20261107",
+    "model_cost_usd": 0,
+    "infrastructure_billing_usd": null
   }
 }
