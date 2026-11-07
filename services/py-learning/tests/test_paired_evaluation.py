@@ -40,6 +40,24 @@ def row(task='t1', *, node='act', cost=100_000):
             'actual_usd_micros': cost, 'registry_scope': 'platform', 'registry_revision': 'v7', 'registry_document_sha256': 'e' * 64}
 
 
+def test_context_summary_has_its_own_frozen_profile_without_loosening_transform():
+    frozen = provenance()
+    frozen["models"].update(summary="small-summary", transform="mid-transform", probe="small-probe")
+    for profile in ("small-summary", "mid-transform", "small-probe"):
+        frozen["registry"][profile] = {"revision": "v7", "scope": "platform", "document_sha256": "e" * 64}
+    observations = [
+        {**row(node="gather#summary"), "model_profile_id": "small-summary"},
+        {**row(node="synthesize"), "model_profile_id": "mid-transform"},
+        {**row(node="gather#probe"), "model_profile_id": "small-probe"},
+    ]
+    assert pe.ledger_metrics(observations, [], frozen, {"synthesize": "transform"})["model_mismatch_reservations"] == []
+    observations[0]["model_profile_id"] = "mid-transform"
+    assert pe.ledger_metrics(observations, [], frozen, {"synthesize": "transform"})["model_mismatch_reservations"] == [observations[0]["reservation_id"]]
+    observations[0]["model_profile_id"] = "small-summary"
+    del frozen["models"]["summary"]
+    assert pe.ledger_metrics(observations, [], frozen, {"synthesize": "transform"})["model_mismatch_reservations"] == [observations[0]["reservation_id"]]
+
+
 def test_rotating_ops_token_file_is_reread_without_exposing_credentials(tmp_path, monkeypatch):
     token = tmp_path / 'token'
     token.write_text('first.jwt')
