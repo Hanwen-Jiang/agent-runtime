@@ -12,7 +12,7 @@ prepare只写本地不可变执行清单，原计划semantic_judge_usd预留是�
 
 ## 调用
 
-先等待A的完整22项证据导出，核裁判租户有批准的Opus权限和剩余7美元预留，Gateway与Registry和原观测匹配。若选择隔离配对Gateway，其硬role pins把judge固定为Sonnet，会导致与Opus评分计划冲突；应由A使用已批准的专用裁判租户/正确Gateway，不得偷偷改已冻结的Task角色模型。工具不创建策略或改预算。
+先等待A的完整22项证据导出，核裁判租户有批准的Opus权限和剩余7美元预留，Gateway与Registry和原观测匹配。真实hard-route配置仅匹配subject租户`gh-goalpair-20261107`；专用裁判租户`gh-goalpairjudge-20261107`不命中该覆盖，使用原Opus pin。配置读取已核实，不为裁判改变冻结的Task角色模型。工具不创建策略或改预算。
 
 ```sh
 python -m agentruntime_learning.benchmarks.paired_prepare review-export \
@@ -20,7 +20,8 @@ python -m agentruntime_learning.benchmarks.paired_prepare review-export \
 python -m agentruntime_learning.benchmarks.paired_semantic_judge prepare \
   --plan <paired-manifest.json> --export <blinded-export.json> \
   --tenant <已批准裁判租户> --gateway <实际grpc-host:port> \
-  --tier strong@medium --out <全新judge目录>
+  --tier strong@medium --max-output-tokens 3000 --thinking-budget-tokens 8192 \
+  --out <全新judge目录>
 # 默认只预览，不发生RPC
 python -m agentruntime_learning.benchmarks.paired_semantic_judge run --out <judge目录>
 # 由A执行；既有AR_RELATIONAL_DSN只用于租户作用域只读账本，不放argv/产物。
@@ -33,3 +34,7 @@ python -m agentruntime_learning.benchmarks.paired_semantic_judge run --out <judg
 本轮无模型支出。回归覆盖完整cohort与不可变身份、评分锚点/空理由、正常22项执行和零新增调用续跑、未知/格式错/截断响应拒绝、Ledger节点/Profile/Registry/费用失配、原响应篡改和错Gateway。精确命令与结果在父目录.goal-tools/B-semantic-judge-tests.log及最终针对套件日志。
 
 最终回归：新执行器30passed/0skip（0.90s），既有paired_completion、paired_evaluation、eval_budget、audited_gateway64passed/0skip（2.11s）。日志.goal-tools/B-semantic-judge-tests-final.log和B-semantic-judge-compat.log。
+
+A接续整合：manifest还固定SYSTEM、材料转换版本与全部22请求模板摘要，恢复重建核对。实际生成设置3000可见输出+8192 thinking，合计11192不超过原12000 output估计。只投影所有真实plan图与triage_level，剔除运行内Jev评分提示；原export不改，附加材料单独保存。scripts/prepare_paired_semantic_review.py完整保留22份答案，加入原fixture路径、已冻结HTTP参考资料及完整真实工具轨迹摘要；参考摘要/跨Task或租户/不完整trace拒绝。全部材料准备后再核算输入、thinking/output预计费用，7美元原裁判限不变，不截断难题。
+
+新版执行器48测试及材料准备4测试通过，邻接兼容79测试通过，均未调用真实模型。旧/opt/evals/.../score_semantic.py仅保留未执行的准备记录；本模块是唯一最终评分路径，不运行两套循环。

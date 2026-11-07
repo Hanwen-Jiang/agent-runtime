@@ -107,6 +107,103 @@ def test_prepare_requires_complete_22_item_export_and_preserves_it(tmp_path):
     assert manifest['task_id'] == task_identity(plan['run_id'] + '-semantic-judge')
     assert not (out / 'review.json').exists()
     assert export['rubric'] == pc.rubric()
+    assert manifest['max_output_tokens'] == 2000 and manifest['thinking_budget_tokens'] == 0
+    assert manifest['system_prompt'] == sj.SYSTEM and len(manifest['request_sha256']) == 22
+
+
+@pytest.mark.parametrize('visible,thinking', [(0, 0), (-1, 0), (True, 0), (1000.0, 0),
+    (1000, -1), (1000, True), (1000, .5), (2000, 1)])
+def test_generation_limits_cannot_expand_or_round_the_original_estimate(tmp_path, visible, thinking):
+    plan, export = fixture()
+    with pytest.raises(sj.JudgeError, match='original frozen output estimate'):
+        sj.prepare(plan, export, tmp_path / 'judge', tenant_id=TENANT, gateway_address=ADDRESS,
+                   max_output_tokens=visible, thinking_budget_tokens=thinking)
+    assert not (tmp_path / 'judge' / 'manifest.json').exists()
+
+
+async def test_explicit_visible_and_thinking_limits_reach_all_22_requests(tmp_path):
+    plan, export = fixture()
+    plan['completion']['price_estimate']['judge_assumptions']['output_tokens'] = 12000
+    before = copy.deepcopy(plan)
+    out = tmp_path / 'judge'
+    manifest = sj.prepare(plan, export, out, tenant_id=TENANT, gateway_address=ADDRESS,
+                          max_output_tokens=3000, thinking_budget_tokens=8192)
+    gateway = FakeGateway(plan, export)
+    result = await sj.run(out, gateway, gateway.ledger)
+    assert len(result['items']) == 22 and manifest['budget_usd'] == 7
+    assert plan == before
+    assert all(request.generation.max_output_tokens == 3000 and request.generation.thinking_budget_tokens == 8192
+               for request in gateway.requests)
+    with pytest.raises(sj.JudgeError, match='prepared judge inputs changed'):
+        sj.prepare(plan, export, out, tenant_id=TENANT, gateway_address=ADDRESS,
+                   max_output_tokens=3001, thinking_budget_tokens=8192)
+
+
+def test_blinding_removes_internal_judgments_but_preserves_all_plan_and_source_evidence(tmp_path):
+    plan, export = fixture()
+    item = export['items'][0]
+    item['context'] = [{'path': 'fixtures/client.txt', 'content': 'source facts'},
+                       {'primary_reference': {'source': 'https://official.example/docs', 'facts': ['HTTP fact']}}]
+    item['tool_evidence'] = {'events': [{'tool': 'repo_read', 'path': 'fixtures/client.txt', 'result': 'source facts'}]}
+    item['planning'] = {'complete': True, 'judge_usage': {'verdict': 'INTERNAL_VERDICT', 'score': .9},
+        'plans': [{'triage_level': 'full', 'graph': {'nodes': [{'id': 'first', 'after': []}]}, 'judge_score': 'INTERNAL_SCORE'},
+                  {'triage_level': 'replan', 'graph': {'nodes': [{'id': 'second', 'after': []}]}, 'judge_usage': 'INTERNAL_CALL'}]}
+    item['evidence_sha256'] = pv.digest({key: item[key] for key in sj.FIELDS})
+    original = copy.deepcopy(export)
+    manifest = sj.prepare(plan, export, tmp_path / 'judge', tenant_id=TENANT, gateway_address=ADDRESS)
+    request = sj._request(manifest, export, item)
+    material = json.loads(request.generation.messages[1].text)
+    assert material['rubric'] == pc.rubric()
+    assert material['material']['planning'] == {'plans': [
+        {key: row[key] for key in ('triage_level', 'graph')} for row in item['planning']['plans']]}
+    assert not any(marker in request.generation.messages[1].text for marker in ('INTERNAL_VERDICT', 'INTERNAL_SCORE', 'INTERNAL_CALL'))
+    for key in ('input', 'actual_output', 'context', 'tool_evidence'):
+        assert material['material'][key] == item[key]
+    assert export == original
+    assert sj.validate_scores(item, judgment(item))['evidence_sha256'] == original['items'][0]['evidence_sha256']
+
+
+@pytest.mark.parametrize('field,value', [('max_output_tokens', 1999), ('thinking_budget_tokens', 1),
+    ('system_prompt', 'different prompt'), ('material_version', 'different projection'),
+    ('tier', 'strong@low'), ('request_sha256', {})])
+async def test_changed_manifest_cannot_make_a_new_call_or_resume(tmp_path, field, value):
+    plan, export, out, _ = prepare(tmp_path)
+    gateway = FakeGateway(plan, export)
+    await sj.run(out, gateway, gateway.ledger)
+    manifest = json.loads((out / 'manifest.json').read_text())
+    manifest[field] = value
+    (out / 'manifest.json').write_text(json.dumps(manifest))
+    with pytest.raises(sj.JudgeError):
+        await sj.run(out, gateway, gateway.ledger)
+    assert len(gateway.requests) == 22
+
+
+async def test_changed_request_construction_is_detected_before_first_rpc(tmp_path, monkeypatch):
+    plan, export, out, _ = prepare(tmp_path)
+    gateway = FakeGateway(plan, export)
+    original_request = sj._request
+    def changed(*args):
+        request = original_request(*args)
+        request.generation.messages[1].text += '\nNew scoring instruction.'
+        return request
+    monkeypatch.setattr(sj, '_request', changed)
+    with pytest.raises(sj.JudgeError, match='immutable judgment inputs'):
+        await sj.run(out, gateway, gateway.ledger)
+    assert not gateway.requests
+
+
+def test_prepare_cli_freezes_explicit_token_split_without_execution(tmp_path):
+    plan, export = fixture()
+    plan['completion']['price_estimate']['judge_assumptions']['output_tokens'] = 12000
+    plan_path, export_path = tmp_path / 'plan.json', tmp_path / 'export.json'
+    plan_path.write_text(json.dumps(plan)); export_path.write_text(json.dumps(export))
+    out = tmp_path / 'judge'
+    assert sj.main(['prepare', '--out', str(out), '--plan', str(plan_path), '--export', str(export_path),
+                    '--tenant', TENANT, '--gateway', ADDRESS, '--max-output-tokens', '3000',
+                    '--thinking-budget-tokens', '8192']) == 0
+    manifest = json.loads((out / 'manifest.json').read_text())
+    assert manifest['max_output_tokens'] == 3000 and manifest['thinking_budget_tokens'] == 8192
+    assert not (out / 'calls.jsonl').exists() and not (out / 'budget.json').exists()
 
 
 @pytest.mark.parametrize('change', ['missing', 'duplicate', 'body', 'rubric', 'reserve', 'profile', 'registry'])
