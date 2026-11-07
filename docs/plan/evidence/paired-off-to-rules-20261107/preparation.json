@@ -1,0 +1,43 @@
+{
+  "at_utc": "2026-11-07T19:30:55.817464+00:00",
+  "prepared_only": true,
+  "kubernetes_mutations": 0,
+  "deployments": [
+    {
+      "name": "goal-paired-worker-task",
+      "before_template_sha256": "75f24c229150348a7a467af0d244193230802f7594fa8c8b969861cd937558bd",
+      "image": "ghcr.io/agentruntime/worker:goal-fdd0f202",
+      "policy": "off",
+      "patch_ready": true
+    },
+    {
+      "name": "goal-paired-worker-decision",
+      "before_template_sha256": "22594dcfff27b1ea9e5e9b73ff2abbd27c5eed7d194e56d41ec1e4099bef3785",
+      "image": "ghcr.io/agentruntime/worker:goal-fdd0f202",
+      "policy": "off",
+      "patch_ready": true
+    },
+    {
+      "name": "goal-paired-worker-model",
+      "before_template_sha256": "380e955bdc7c35d25f129dbb3a939be76e480140d22d0fb615b95a6c244437f1",
+      "image": "ghcr.io/agentruntime/worker:goal-fdd0f202",
+      "policy": "off",
+      "patch_ready": true
+    },
+    {
+      "name": "goal-paired-worker-program",
+      "before_template_sha256": "385ff6934e0df6660b68769bb960c5ccae479c87277c7e70812b34f4a92eef3a",
+      "image": "ghcr.io/agentruntime/worker:goal-fdd0f202",
+      "policy": "off",
+      "patch_ready": true
+    },
+    {
+      "name": "goal-paired-worker-workspace",
+      "before_template_sha256": "3871c314ba3894ef52b5743f5e678f285f0cbe623c75d10969ef0adfb14cbad5",
+      "image": "ghcr.io/agentruntime/worker:goal-fdd0f202",
+      "policy": "off",
+      "patch_ready": true
+    }
+  ],
+  "precondition": "A confirms all original 11 off Tasks terminal, cleanup complete, no active Task or pending operation; recheck live resourceVersion before apply."
+}

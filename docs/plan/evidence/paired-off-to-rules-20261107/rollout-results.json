@@ -1,0 +1,32 @@
+[
+  {
+    "name": "goal-paired-worker-task",
+    "returncode": 0,
+    "stdout": "deployment \"goal-paired-worker-task\" successfully rolled out\n",
+    "stderr": ""
+  },
+  {
+    "name": "goal-paired-worker-decision",
+    "returncode": 0,
+    "stdout": "deployment \"goal-paired-worker-decision\" successfully rolled out\n",
+    "stderr": ""
+  },
+  {
+    "name": "goal-paired-worker-model",
+    "returncode": 0,
+    "stdout": "deployment \"goal-paired-worker-model\" successfully rolled out\n",
+    "stderr": ""
+  },
+  {
+    "name": "goal-paired-worker-program",
+    "returncode": 0,
+    "stdout": "deployment \"goal-paired-worker-program\" successfully rolled out\n",
+    "stderr": ""
+  },
+  {
+    "name": "goal-paired-worker-workspace",
+    "returncode": 0,
+    "stdout": "deployment \"goal-paired-worker-workspace\" successfully rolled out\n",
+    "stderr": ""
+  }
+]

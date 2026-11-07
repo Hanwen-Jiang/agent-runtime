@@ -1,0 +1,112 @@
+{
+  "at_utc": "2026-11-07T19:45:03.469721+00:00",
+  "ready": true,
+  "changed_deployments": [
+    "goal-paired-worker-decision",
+    "goal-paired-worker-model",
+    "goal-paired-worker-program",
+    "goal-paired-worker-task",
+    "goal-paired-worker-workspace"
+  ],
+  "exact_change": "AR_SUB_AGENT_POLICY off -> rules only",
+  "workers": [
+    {
+      "name": "goal-paired-worker-decision",
+      "template_sha256": "373b5092beb942b35ce12a948873d83dab523b2b434739cf41c409d837a0b4df",
+      "ready": 1,
+      "policy": "rules",
+      "image": "ghcr.io/agentruntime/worker:goal-fdd0f202"
+    },
+    {
+      "name": "goal-paired-worker-model",
+      "template_sha256": "3fcf85e1219d9fa8673f000ae2a5ff7e87fb1221117531e380db99b13a21a2f6",
+      "ready": 1,
+      "policy": "rules",
+      "image": "ghcr.io/agentruntime/worker:goal-fdd0f202"
+    },
+    {
+      "name": "goal-paired-worker-program",
+      "template_sha256": "85b7e95bec3fc5d857f55d808181fc83a5e11a36b8d2b9871694d09d62a8b912",
+      "ready": 1,
+      "policy": "rules",
+      "image": "ghcr.io/agentruntime/worker:goal-fdd0f202"
+    },
+    {
+      "name": "goal-paired-worker-task",
+      "template_sha256": "8a8d9e235a23a8f68aa2c45ea1b0b657467d1c2486b928f079239234609b2c32",
+      "ready": 1,
+      "policy": "rules",
+      "image": "ghcr.io/agentruntime/worker:goal-fdd0f202"
+    },
+    {
+      "name": "goal-paired-worker-workspace",
+      "template_sha256": "8a8d18e669febfd581e903b10f4e40641d7c7d729d406461a0d6d80f9976bafc",
+      "ready": 1,
+      "policy": "rules",
+      "image": "ghcr.io/agentruntime/worker:goal-fdd0f202"
+    }
+  ],
+  "pods": [
+    {
+      "name": "goal-paired-worker-decision-79d667dc84-9lgcx",
+      "phase": "Running",
+      "terminating": false,
+      "policy": [
+        "rules"
+      ],
+      "image_ids": [
+        "sha256:91fc0dd0cf7bd0666b072aa9cadc8a97db0b3a21c5301e1b02b4bd4c55dea625"
+      ]
+    },
+    {
+      "name": "goal-paired-worker-model-d96fcd6c7-rqhfd",
+      "phase": "Running",
+      "terminating": false,
+      "policy": [
+        "rules"
+      ],
+      "image_ids": [
+        "sha256:91fc0dd0cf7bd0666b072aa9cadc8a97db0b3a21c5301e1b02b4bd4c55dea625"
+      ]
+    },
+    {
+      "name": "goal-paired-worker-program-79d55b889f-htjl8",
+      "phase": "Running",
+      "terminating": false,
+      "policy": [
+        "rules"
+      ],
+      "image_ids": [
+        "sha256:91fc0dd0cf7bd0666b072aa9cadc8a97db0b3a21c5301e1b02b4bd4c55dea625"
+      ]
+    },
+    {
+      "name": "goal-paired-worker-task-859c6cf4cf-jnzfx",
+      "phase": "Running",
+      "terminating": false,
+      "policy": [
+        "rules"
+      ],
+      "image_ids": [
+        "sha256:91fc0dd0cf7bd0666b072aa9cadc8a97db0b3a21c5301e1b02b4bd4c55dea625"
+      ]
+    },
+    {
+      "name": "goal-paired-worker-workspace-7985f577d5-ldgrp",
+      "phase": "Running",
+      "terminating": false,
+      "policy": [
+        "rules"
+      ],
+      "image_ids": [
+        "sha256:91fc0dd0cf7bd0666b072aa9cadc8a97db0b3a21c5301e1b02b4bd4c55dea625"
+      ]
+    }
+  ],
+  "all_other_templates_unchanged": true,
+  "all_configmap_data_unchanged": true,
+  "production_gateway_memory_unchanged": true,
+  "off_closeout_sha256": "b0d54c285c103bf4a68d68e9b6ca6804c2d69194fa31601543e76a61ae3f40cc",
+  "rollback_directory": "/root/ar-release/goal-full-20261106/paired-stack/off-to-rules",
+  "new_model_calls": 0
+}
