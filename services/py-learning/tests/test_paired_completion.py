@@ -134,7 +134,8 @@ def test_scope_cost_includes_memory_and_rejects_changed_baseline():
 
 @pytest.mark.parametrize("unknown", [False, True])
 @pytest.mark.parametrize("judge_unknown", [False, True])
-def test_completion_report_cannot_hide_unknown_task_cost_in_scope_baseline(tmp_path, unknown, judge_unknown):
+@pytest.mark.parametrize("raw_schema_failure", [False, True])
+def test_completion_report_cannot_hide_unknown_task_cost_in_scope_baseline(tmp_path, unknown, judge_unknown, raw_schema_failure):
     from agentruntime_learning.benchmarks import paired_admission as admission
     from test_paired_admission import fixture
 
@@ -184,12 +185,15 @@ def test_completion_report_cannot_hide_unknown_task_cost_in_scope_baseline(tmp_p
     if judge_unknown:
         review.update(actual_cost_usd=None, known_cost_usd=.001, cost_known=False,
                       retained_pending=[{"reservation_id": "unsettled-judge", "actual_usd_micros": None}])
+    if raw_schema_failure:
+        review.update(raw_schema_failures=1, result_extraction_version="paired-score-extraction-v1")
     report = pc.completed_report(tmp_path, export, review, scopes)
     assert report["collection_complete"] is True
     assert report["cost_known"] is (not unknown and not judge_unknown)
-    assert report["evidence_complete"] is (not unknown and not judge_unknown)
-    assert report["n16_r"]["passed"] is (not unknown and not judge_unknown)
-    assert report["ev_real"]["passed"] is (not unknown and not judge_unknown)
+    assert report["evidence_complete"] is (not unknown and not judge_unknown and not raw_schema_failure)
+    assert report["n16_r"]["passed"] is (not unknown and not judge_unknown and not raw_schema_failure)
+    assert report["ev_real"]["passed"] is (not unknown and not judge_unknown and not raw_schema_failure)
+    assert report["judge_raw_schema_failures"] == int(raw_schema_failure)
     if judge_unknown:
         assert report["actual_shared_total_usd"] is None and report["semantic_judge_usd"] is None
         assert report["known_semantic_judge_usd"] == .001
