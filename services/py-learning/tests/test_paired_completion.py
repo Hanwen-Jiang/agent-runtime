@@ -180,3 +180,13 @@ def test_materialized_provenance_requires_exact_loaded_registry_document():
     db['profiles'][0]['version'] = 8
     with pytest.raises(ValueError, match='immutable Registry'):
         pp.materialize(spec, {'worker': worker, 'gateway': gateway}, db)
+def test_goal_release_tag_still_requires_the_exact_source_commit():
+    from agentruntime_learning.benchmarks.paired_prepare import ensure_revision
+    revision = "a1234567" + "b" * 32
+    source = {"spec": {"containers": [{"image": "registry/worker:goal-a1234567"}]}}
+    ensure_revision(source, revision)
+    import pytest
+    for tag in ("goal-deadbeef", "goal-latest", "other-a1234567", "goal-a1234567-extra"):
+        source["spec"]["containers"][0]["image"] = "registry/worker:" + tag
+        with pytest.raises(ValueError):
+            ensure_revision(source, revision)

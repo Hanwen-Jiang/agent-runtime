@@ -183,6 +183,7 @@ def ensure_revision(source: dict[str, Any], revision: str) -> None:
         raise ValueError("runtime revision must be a full source commit")
     for container in source["spec"]["containers"]:
         tag = container["image"].rsplit(":", 1)[-1]
+        tag = tag.removeprefix("goal-")
         if not re.fullmatch(r"[0-9a-f]{7,40}", tag) or not revision.startswith(tag):
             raise ValueError("running worker/Gateway image tag does not identify the requested commit")
 
