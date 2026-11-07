@@ -349,7 +349,9 @@ def run_arm(plan: Mapping[str, Any], out: Path, arm: str, *, runtime: Any = None
         temporal = histories(rec["task_id"])
         _write(run_dir / "temporal-evidence.json", temporal)
         if "completion" in plan:
-            from agentruntime_learning.benchmarks.paired_completion import planning_score
+            from agentruntime_learning.benchmarks.paired_completion import planning_score, verify_jev_model
+            verify_jev_model((temporal.get("planning_evidence") or {}).get("judge_usage", {}).get("attempts", []),
+                             plan.get("expected_jev_model"))
             metrics["planning"] = planning_score(temporal.get("planning_evidence") or {}, should_delegate=case.should_delegate, arm=arm)
         metrics["sub_agent_nodes"] = temporal["sub_agent_nodes"]
         metrics["delegation_correct"] = bool(temporal["sub_agent_nodes"]) == case.should_delegate

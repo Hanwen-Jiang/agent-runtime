@@ -223,6 +223,13 @@ def review_export(out: Path, destination: Path) -> dict[str, Any]:
     return {"items": len(items), "path": str(destination), "new_task_cost_usd": 0}
 
 
+def verify_jev_model(checks: Sequence[Mapping[str, Any]], expected: str) -> None:
+    if not isinstance(expected, str) or not re.fullmatch(r"jev-[0-9]+\.[0-9]+\.[0-9]+", expected):
+        raise ValueError("Jev actual served version must be frozen before comparison")
+    if any(row.get("provider_attempted") and row.get("model") != expected for row in checks):
+        raise ValueError("Jev served model drifted; preserve the charge and stop further Tasks")
+
+
 def jev_cost(checks: Sequence[Mapping[str, Any]], expected_calls: int) -> dict[str, Any]:
     """Every actual check counts, even if its veto was ignored. No token guess."""
     unique = {}
@@ -298,6 +305,7 @@ def completed_report(out: Path, export: Mapping[str, Any], review: Mapping[str, 
             if not usage.get("cost", {}).get("known"):
                 known = False
             attempted = [r for r in usage.get("attempts", []) if r.get("provider_attempted")]
+            verify_jev_model(attempted, plan.get("expected_jev_model"))
             checks.extend(attempted)
             expected += usage.get("cost", {}).get("expected_calls", 0)
             if case["id"] == MANDATORY_ID:

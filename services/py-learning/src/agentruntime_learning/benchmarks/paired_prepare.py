@@ -360,6 +360,10 @@ def prepare(off: dict[str, Any], rules: dict[str, Any], settings: dict[str, Any]
     cases = pc.completion_cases()
     priced = price_estimate(settings, off["prices"], off["provenance"]["models"], off["provenance"]["semantic_judge_profile"], len(cases))
     plan = {k: settings[k] for k in ("run_id", "seed", "budget_usd", "task_usd_limit", "cost_reserves", "thresholds")}
+    expected_jev = settings.get("expected_jev_model", "")
+    if not isinstance(expected_jev, str) or not re.fullmatch(r"jev-[0-9]+\.[0-9]+\.[0-9]+", expected_jev):
+        raise ValueError("freeze the observed served Jev version, not jev-latest")
+    plan["expected_jev_model"] = expected_jev
     plan.update(tenant_id=off["tenant_id"], cases=cases, historical_runs=settings.get("historical_runs", []),
                 prior_external_cost_usd=settings.get("prior_external_cost_usd", 0), task_timeout_s=settings.get("task_timeout_s", 900),
                 arms={arm: {"task_api": r["task_api"], "snapshot_command": snapshot_command(r["spec_path"]),
