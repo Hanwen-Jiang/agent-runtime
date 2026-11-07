@@ -48,3 +48,13 @@ A接续整合：manifest还固定SYSTEM、材料转换版本与全部22请求模
 经A/B逐项核账，仅允许该未评分首项显式恢复一次，然后原余21项各一次：仍同runID/TaskID/item、模型/Registry/tier/12k总completion、评分材料与规则。原目录7份原件逐字节保持；独立恢复目录引用SHA，从audit序号2继续。原7美元减298752微美元保留额，新执行硬限6.701248美元；完整预计6.511312加保留额为6.810064，不增预算。保留额不计作已结算spent，不修改model_usage；新增未知、原row变化或有效旧score均拒绝恢复/继续。
 
 paired_semantic_recovery只接受该一次已核定失败，不是任意unknown开关。恢复器同时锁原目录及其usage目录，未执行完的下一次失败仍禁止盲重试。最终review记录known_cost_usd与retained_pending，actual_cost_usd=null/cost_known=false；完整报告也不通过费用门槛。140项恢复/裁判/账本/预算/报告回归通过（有限恢复、原件保护、22seq2..23、续跑0RPC、篡改/新pending拒绝），末次金额非有限值检查另53项回归通过。
+
+## 已结算格式失败与统一strict配置
+
+首恢复的新seq2/3有效评分分别34257/35024微美元，合计69281；seq4实际生成了9457输入/739输出，因bad_structured_output失败，已结算47706微美元。原budget已知116987包含这笔失败，不能回退为仅成功费用。适配器在非法JSON时仅保留Usage，现Trace无法还原原文，故不伪造评分。
+
+确定的兼容缺口是reason.minLength触发冻结Go strictUnsupported，导致wire strict:false。schema_transport_version2移除传输层minLength并给score显式number，使wire可strict:true；本地validate_scores仍要求非空理由、全部五维及0/0.5/1，评分标准不放宽。版本1的原22请求摘要仍完全兼容。
+
+为避免混合实际配置，新正式对照集统一22项全部使用v2，旧两项有效评分/原响应原样单列，绝不与新20混均值或择高。仍同runID/TaskID、同22个既有答案、同模型/Registry/tier/12k；未重新执行受评Task。旧4attempt全部保留：原298752未知占用，加116987已知；新audit从seq5开始，原7美元下执行cap6.701248、prior spent0.116987，准入余6.584261。实际完整新估价6.508232，加原已知及未知保留额6.923971≤7。
+
+paired_semantic_format_recovery仅接受本次已核定原数据/金额，保护父目录及原首失败目录，核父输入与manifest摘要、旧响应/有效评分、所有旧row、新22模板及重算费用。新未知或再次失败停止，不自动循环；本轮不再新增实验配置。格式恢复17项通过、邻接schema/judge/首恢复106项通过，旧原件/费用/评分标准保持。

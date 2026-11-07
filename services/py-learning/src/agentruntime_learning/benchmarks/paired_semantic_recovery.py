@@ -116,7 +116,9 @@ def prepare(original: Path, out: Path, proof: dict, estimate_path: Path) -> dict
             or estimate["request_sha256"] != manifest["request_sha256"]):
         raise sj.JudgeError("full unchanged cohort plus retained charge exceeds the original allowance")
     prepared = sj.prepare(plan, export, out, tenant_id=TENANT, gateway_address=manifest["gateway_address"],
-                          tier=manifest["tier"], max_output_tokens=12000, thinking_budget_tokens=8192)
+                          tier=manifest["tier"], max_output_tokens=12000, thinking_budget_tokens=8192,
+                          schema_transport_version=manifest.get("schema_transport_version", 1),
+                          legacy_completed_item_ids=manifest.get("legacy_completed_item_ids"))
     if prepared != manifest:
         raise sj.JudgeError("recovery changed original requests")
     receipt = {"kind": KIND, "original_directory": str(original), "original_files": {name: _hash(original / name) for name in FILES},
@@ -134,6 +136,9 @@ def validate(out: Path, manifest: dict) -> dict | None:
     if not path.exists():
         return None
     receipt = _read(path)
+    if receipt.get("kind") == "paired-semantic-paid-format-v1":
+        from agentruntime_learning.benchmarks.paired_semantic_format_recovery import validate as validate_format
+        return validate_format(out, manifest, receipt)
     if (any(type(receipt.get(key)) is not int for key in ("sequence_offset", "original_cap_usd_micros", "held_usd_micros", "execution_cap_usd_micros", "first_item_retry_limit"))
             or receipt.get("kind") != KIND or receipt.get("sequence_offset") != 1
             or receipt.get("original_cap_usd_micros") != CAP_MICROS or receipt.get("held_usd_micros") != HELD_MICROS

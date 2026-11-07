@@ -109,17 +109,36 @@ def _generation_limits(estimated: int, completion: int, thinking: int) -> None:
         raise JudgeError("completion cap and effort hint must fit the original frozen output estimate")
 
 
+def _schema_transport(manifest: dict, export: dict) -> tuple[int, set[str]]:
+    version = manifest.get("schema_transport_version", 1)
+    legacy = manifest.get("legacy_completed_item_ids", [])
+    cohort = {item["id"] for item in export["items"]}
+    if (type(version) is not int or version not in (1, 2)
+            or not isinstance(legacy, list) or not all(isinstance(item, str) for item in legacy)
+            or len(set(legacy)) != len(legacy) or not set(legacy) <= cohort
+            or legacy != sorted(legacy) or version == 1 and legacy):
+        raise JudgeError("invalid schema transport version or legacy completed item identities")
+    return version, set(legacy)
+
+
 def _request_digests(manifest: dict, export: dict) -> dict[str, str]:
     # These are templates before the audited adapter adds the remaining cap and
     # per-RPC identity. That adapter retains the hash of each actual wire call.
+    _schema_transport(manifest, export)
     return {item["id"]: hashlib.sha256(_request(manifest, export, item).SerializeToString(deterministic=True)).hexdigest()
             for item in export["items"]}
 
 
 def prepare(plan: dict, export: dict, out: Path, *, tenant_id: str,
             gateway_address: str, tier: str = "strong@medium", max_output_tokens: int | None = None,
-            thinking_budget_tokens: int = 0) -> dict:
+            thinking_budget_tokens: int = 0, schema_transport_version: int = 2,
+            legacy_completed_item_ids: list[str] | None = None) -> dict:
     profile, registry, tokens = _contract(plan, export)
+    legacy = [] if legacy_completed_item_ids is None else legacy_completed_item_ids
+    if isinstance(legacy, list) and all(isinstance(item, str) for item in legacy):
+        legacy = sorted(legacy)
+    _schema_transport({"schema_transport_version": schema_transport_version,
+                       "legacy_completed_item_ids": legacy}, export)
     completion = tokens if max_output_tokens is None else max_output_tokens
     _generation_limits(tokens, completion, thinking_budget_tokens)
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", tenant_id):
@@ -137,6 +156,8 @@ def prepare(plan: dict, export: dict, out: Path, *, tenant_id: str,
                 "material_version": MATERIAL_VERSION,
                 "budget_usd": plan["cost_reserves"]["semantic_judge_usd"],
                 "item_ids": sorted(item["id"] for item in export["items"])}
+    if schema_transport_version == 2:
+        manifest.update(schema_transport_version=2, legacy_completed_item_ids=list(legacy))
     manifest["request_sha256"] = _request_digests(manifest, export)
     out = Path(out)
     with output_owner(out):
@@ -167,9 +188,15 @@ def validate_scores(item: dict, result: dict) -> dict:
 
 
 def _request(manifest: dict, export: dict, item: dict) -> mg.GenerateRequest:
+    version, legacy = _schema_transport(manifest, export)
+    strict_transport = version == 2 and item["id"] not in legacy
     fields = {d["name"]: {"type": "object", "properties": {"score": {"enum": [0, .5, 1]},
               "reason": {"type": "string", "minLength": 1}}, "required": ["score", "reason"],
               "additionalProperties": False} for d in export["rubric"]["semantic_dimensions"]}
+    if strict_transport:
+        for field in fields.values():
+            field["properties"]["score"]["type"] = "number"
+            field["properties"]["reason"].pop("minLength")
     schema = {"type": "object", "properties": {"scores": {"type": "object", "properties": fields,
               "required": list(fields), "additionalProperties": False}}, "required": ["scores"], "additionalProperties": False}
     value = struct_pb2.Value(); json_format.ParseDict(schema, value)
@@ -213,7 +240,8 @@ def _history(out: Path) -> dict:
     return records
 
 
-def _ledger(proof: dict, manifest: dict, records: dict, spent: int, retained: list[dict] | None = None) -> int:
+def _ledger(proof: dict, manifest: dict, records: dict, spent: int, retained: list[dict] | None = None,
+            prior_known: list[dict] | None = None) -> int:
     if proof.get("tenant_id") != manifest["tenant_id"] or proof.get("task_id") != manifest["task_id"]:
         raise JudgeError("authoritative ledger belongs to another experiment")
     rows = proof.get("attempts", [])
@@ -224,6 +252,15 @@ def _ledger(proof: dict, manifest: dict, records: dict, spent: int, retained: li
         observed = {row["reservation_id"]: row for row in rows if row["reservation_id"] in original}
         if observed != original or len(observed) != len(retained):
             raise JudgeError("retained unknown attempt changed or disappeared")
+        rows = [row for row in rows if row["reservation_id"] not in original]
+    prior_cost = 0
+    if prior_known:
+        original = {row["reservation_id"]: row for row in prior_known}
+        observed = {row["reservation_id"]: row for row in rows if row["reservation_id"] in original}
+        if (observed != original or len(observed) != len(prior_known)
+                or any(type(row.get("actual_usd_micros")) is not int or row["actual_usd_micros"] < 0 for row in prior_known)):
+            raise JudgeError("previous settled attempt changed or disappeared")
+        prior_cost = sum(row["actual_usd_micros"] for row in prior_known)
         rows = [row for row in rows if row["reservation_id"] not in original]
     expected_nodes = {row["node_id"] for row in records.values()}
     if (len({row["reservation_id"] for row in rows}) != len(rows)
@@ -241,7 +278,7 @@ def _ledger(proof: dict, manifest: dict, records: dict, spent: int, retained: li
     for record in records.values():
         if sum(row["actual_usd_micros"] for row in rows if row["node_id"] == record["node_id"]) != record["rpc_cost_micros"]:
             raise JudgeError("per-RPC accounting differs from authoritative attempts")
-    total = sum(row["actual_usd_micros"] for row in rows)
+    total = prior_cost + sum(row["actual_usd_micros"] for row in rows)
     held = sum(row["reserved_usd_micros"] for row in retained or [])
     if total != spent or total + held > round(manifest["budget_usd"] * 1e6):
         raise JudgeError("authoritative costs disagree with the bounded call journal")
@@ -270,13 +307,15 @@ async def run(out: Path, gateway: Any, ledger_reader: Any) -> dict:
         from agentruntime_learning.benchmarks.paired_semantic_recovery import validate as validate_recovery
         recovery = validate_recovery(out, manifest)
         retained = recovery["retained_pending"] if recovery else []
+        prior_known = recovery.get("retained_prior_known", []) if recovery else []
         offset = recovery["sequence_offset"] if recovery else 0
         if gateway.identity.get("sequence_offset", 0) != offset:
             raise JudgeError("audit sequence differs from reviewed recovery")
         if recovery:
-            original = Path(recovery["original_directory"])
-            owners.enter_context(output_owner(original))
-            owners.enter_context(output_owner(original / "usage"))
+            originals = recovery.get("preserved_directories", [recovery["original_directory"]])
+            for original in sorted(set(originals)):
+                owners.enter_context(output_owner(Path(original)))
+                owners.enter_context(output_owner(Path(original) / "usage"))
             validate_recovery(out, manifest)
         records = _history(out)
         items = {item["id"]: item for item in export["items"]}
@@ -285,11 +324,12 @@ async def run(out: Path, gateway: Any, ledger_reader: Any) -> dict:
         held = sum(row["reserved_usd_micros"] for row in retained)
         execution_cap = (round(manifest["budget_usd"] * 1e6) - held) / 1e6
         budget = BudgetGateway(gateway, out / "budget.json", execution_cap,
-                               prior_cost_usd=sum(r["rpc_cost_micros"] for r in records.values()) / 1e6)
+                               prior_cost_usd=(sum(r["rpc_cost_micros"] for r in records.values())
+                                               + sum(r["actual_usd_micros"] for r in prior_known)) / 1e6)
         try:
             if budget.state["pending"]:
                 raise JudgeError("pending budget requires authoritative reconciliation")
-            _ledger(await ledger_reader(), manifest, records, budget.state["spent_usd_micros"], retained)
+            _ledger(await ledger_reader(), manifest, records, budget.state["spent_usd_micros"], retained, prior_known)
             for identity in sorted(items):
                 if identity in records:
                     validate_scores(items[identity], {"scores": records[identity]["review"]["scores"]})
@@ -318,17 +358,19 @@ async def run(out: Path, gateway: Any, ledger_reader: Any) -> dict:
                               "rpc_cost_micros": response.usage.cost_usd_micros, "review": review,
                               "response_sha256": pv.digest(raw_response)}
                     proof = await ledger_reader()
-                    _ledger(proof, manifest, {**records, identity: record}, budget.state["spent_usd_micros"], retained)
+                    _ledger(proof, manifest, {**records, identity: record}, budget.state["spent_usd_micros"], retained, prior_known)
                     _append(out / "calls.jsonl", record)
                     records[identity] = record
                 except BaseException as exc:
                     _append(out / "calls.jsonl", {"id": identity, "state": "failed", "error_type": type(exc).__name__})
                     raise
             proof = await ledger_reader()
-            total = _ledger(proof, manifest, records, budget.state["spent_usd_micros"], retained)
+            total = _ledger(proof, manifest, records, budget.state["spent_usd_micros"], retained, prior_known)
             review = {"rubric_sha256": export["rubric_sha256"], "reviewer_version": VERSION + "/" + profile,
                       "actual_cost_usd": None if retained else total / 1e6, "known_cost_usd": total / 1e6,
                       "cost_known": not retained, "retained_pending": retained,
+                      "prior_settled_attempts": prior_known,
+                      "schema_transport_version": manifest.get("schema_transport_version", 1),
                       "pending_reserved_usd": held / 1e6, "cost_evidence": {"source": "model_usage", "task_id": gateway.task_id,
                           "ledger_sha256": pv.digest(proof), "registry": registry},
                       "items": [records[key]["review"] for key in sorted(records)]}
