@@ -1,0 +1,12 @@
+=== RUN   TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes
+=== RUN   TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes/transient_then_success
+=== RUN   TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes/completed_but_ack_lost
+=== RUN   TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes/bounded_failures
+=== RUN   TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes/unknown_upload_outcome
+--- PASS: TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes (2.05s)
+    --- PASS: TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes/transient_then_success (0.84s)
+    --- PASS: TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes/completed_but_ack_lost (0.21s)
+    --- PASS: TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes/bounded_failures (0.81s)
+    --- PASS: TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes/unknown_upload_outcome (0.20s)
+PASS
+ok  	github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/server	4.014s

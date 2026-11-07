@@ -160,30 +160,7 @@ func (a *Archiver) storeDirect(ctx context.Context, box sandbox.Sandbox, envID s
 				if p.SHA256 != e.SHA256 || p.SizeBytes != e.Size {
 					return providererr.New(providererr.Transient, "workspace_changed", "workspace changed while snapshotting")
 				}
-				signed, err := bucket.SignedUpload(ctx, key, 5*time.Minute, p.SHA256, p.SizeBytes)
-				if err != nil {
-					return err
-				}
-				target, close, err := network(ctx, opt, "PUT", p.SizeBytes, sandbox.TransferTarget{URL: signed.URL, Headers: signed.Headers})
-				if err != nil {
-					return err
-				}
-				_, err = transfers.CommitTransfer(ctx, envID, p, key, target)
-				closeErr := close()
-				if err != nil {
-					return err
-				}
-				if closeErr != nil {
-					return closeErr
-				}
-				info, err := bucket.Head(ctx, key)
-				if err != nil {
-					return err
-				}
-				if info.Size != p.SizeBytes {
-					return providererr.New(providererr.Transient, "workspace_restore_mismatch", "uploaded blob size mismatch")
-				}
-				return nil
+				return uploadPreparedBlock(ctx, transfers, envID, bucket, key, p, opt)
 			}()
 			if uploadErr != nil {
 				return nil, 0, 0, uploadErr
@@ -205,6 +182,55 @@ func (a *Archiver) storeDirect(ctx context.Context, box sandbox.Sandbox, envID s
 	}
 	return entries, total, added, nil
 }
+
+// A workspace can contain many small Git objects. A transient CONNECT failure
+// must not restart the whole snapshot or re-read mutable source files. Reconcile
+// each immutable prepared block first, then retry at most twice when storage
+// confirms it is absent. An unknown HEAD result never authorizes another PUT.
+func uploadPreparedBlock(ctx context.Context, transfers sandbox.Transfers, envID string, bucket objectstore.Store, key string, prepared sandbox.PreparedTransfer, opt TransferOptions) error {
+	for attempt := 1; ; attempt++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		signed, err := bucket.SignedUpload(ctx, key, 5*time.Minute, prepared.SHA256, prepared.SizeBytes)
+		if err != nil {
+			return err
+		}
+		target, close, err := network(ctx, opt, "PUT", prepared.SizeBytes, sandbox.TransferTarget{URL: signed.URL, Headers: signed.Headers})
+		if err != nil {
+			return err
+		}
+		_, uploadErr := transfers.CommitTransfer(ctx, envID, prepared, key, target)
+		closeErr := close()
+		if closeErr != nil {
+			return closeErr
+		}
+		info, headErr := bucket.Head(ctx, key)
+		if headErr == nil {
+			// SignedUpload binds this content-addressed key to the exact hash
+			// and length and refuses overwrite. HEAD therefore also confirms a
+			// completed PUT whose acknowledgement was lost; no body is relayed.
+			if info.Size != prepared.SizeBytes {
+				return providererr.New(providererr.Transient, "workspace_restore_mismatch", "uploaded blob size mismatch")
+			}
+			return nil
+		}
+		if uploadErr == nil {
+			return headErr
+		}
+		if providererr.CategoryOf(headErr) != providererr.NotFound || !providererr.IsRetryable(uploadErr) || attempt >= 3 {
+			return uploadErr
+		}
+		timer := time.NewTimer(time.Duration(attempt) * 200 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+	}
+}
+
 func (a *Archiver) restoreDirect(ctx context.Context, box sandbox.BlockTransfers, envID, owner, workspaceID string, entries []sandbox.FileEntry, foreign map[string]string, maxBytes int64, opt TransferOptions) error {
 	entries, _, err := validEntries(entries, maxBytes)
 	if err != nil {

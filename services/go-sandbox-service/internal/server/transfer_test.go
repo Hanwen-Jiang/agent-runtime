@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/agentruntime/agent-runtime/libs/go-core/adapters/s3objects"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/sandbox"
 	"github.com/agentruntime/agent-runtime/libs/go-core/secret"
 	sandboxv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/sandbox/v1"
 	"github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/sandbox/v1/sandboxv1connect"
@@ -22,12 +23,16 @@ import (
 )
 
 type transferObjects struct {
-	mu            sync.Mutex
-	data          map[string][]byte
-	puts, gets    int
-	fail          bool
-	loseAck       bool
-	trustedDigest bool
+	mu                  sync.Mutex
+	data                map[string][]byte
+	puts, gets          int
+	fail                bool
+	loseAck             bool
+	failSignedPuts      int
+	loseSignedAck       bool
+	signedPuts          int
+	failHeadAfterSigned bool
+	trustedDigest       bool
 }
 
 func objectServer(t *testing.T) (objectstore.Provider, *transferObjects) {
@@ -43,6 +48,15 @@ func objectServer(t *testing.T) (objectstore.Provider, *transferObjects) {
 		key := r.URL.Path
 		switch r.Method {
 		case "PUT":
+			signed := r.URL.Query().Get("X-Amz-Signature") != ""
+			if signed {
+				state.signedPuts++
+				if state.failSignedPuts > 0 {
+					state.failSignedPuts--
+					w.WriteHeader(503)
+					return
+				}
+			}
 			if state.fail {
 				w.WriteHeader(503)
 				return
@@ -59,12 +73,16 @@ func objectServer(t *testing.T) (objectstore.Provider, *transferObjects) {
 			}
 			state.puts++
 			state.data[key] = data
-			if state.loseAck {
+			if state.loseAck || (signed && state.loseSignedAck) {
 				w.WriteHeader(503)
 				return
 			}
 			w.WriteHeader(200)
 		case "GET", "HEAD":
+			if r.Method == "HEAD" && state.failHeadAfterSigned && state.signedPuts > 0 {
+				w.WriteHeader(503)
+				return
+			}
 			data, ok := state.data[key]
 			if !ok {
 				w.WriteHeader(404)
@@ -206,6 +224,61 @@ func TestDirectArchiveOnlyUploadsMissingAndRestoresBytes(t *testing.T) {
 	}
 	if got := h.mustExec(otherTC, other, "cat a b"); strings.TrimSpace(got) != "sharedshared" {
 		t.Fatal("restored bytes mismatch")
+	}
+}
+
+func TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		failures     int
+		loseAck      bool
+		unknownHead  bool
+		wantAttempts int
+		wantSuccess  bool
+	}{{"transient_then_success", 2, false, false, 3, true}, {"completed_but_ack_lost", 0, true, false, 1, true}, {"bounded_failures", 4, false, false, 3, false}, {"unknown_upload_outcome", 0, true, true, 1, false}} {
+		t.Run(tc.name, func(t *testing.T) {
+			objects, state := objectServer(t)
+			h := newHarness(t, func(h *harness) { h.directObjects = objects; h.backends = localArchive })
+			tenant := tenant("t1", "retry-workspace", s1)
+			lease := h.mustAcquire(tenant, onWorkspace("retry-workspace"), taskID("retry-snapshot"))
+			h.mustExec(tenant, lease, "printf immutable > file")
+			ctx := context.Background()
+			inner, err := h.svc.Broker().Get(ctx, tenant, lease.LeaseId)
+			if err != nil {
+				t.Fatal(err)
+			}
+			state.mu.Lock()
+			state.failSignedPuts = tc.failures
+			state.loseSignedAck = tc.loseAck
+			state.failHeadAfterSigned = tc.unknownHead
+			state.mu.Unlock()
+			opened, closed := 0, 0
+			opts := archive.TransferOptions{Enabled: true, OpenTarget: func(_ context.Context, _ string, _ int64, target sandbox.TransferTarget) (sandbox.TransferTarget, func() error, error) {
+				opened++
+				return target, func() error { closed++; return nil }, nil
+			}}
+			snapshot, err := h.svc.Broker().Archiver().Snapshot(ctx, inner.Box, inner.EnvID, "t1", "retry-workspace", 1<<20, lease.LeaseId, opts)
+			if (err == nil) != tc.wantSuccess {
+				t.Fatalf("snapshot=%+v err=%v", snapshot, err)
+			}
+			state.mu.Lock()
+			attempts := state.signedPuts
+			state.mu.Unlock()
+			if attempts != tc.wantAttempts || opened != tc.wantAttempts || closed != opened {
+				t.Fatalf("attempts=%d opened=%d closed=%d", attempts, opened, closed)
+			}
+			if !tc.wantSuccess {
+				if got := h.rows("t1", "SELECT snapshot_id FROM workspace_snapshots WHERE workspace_id='retry-workspace'"); len(got) != 0 {
+					t.Fatal("failed transfer published a snapshot")
+				}
+				return
+			}
+			bucket, _ := objects.Bind(tenant)
+			stored, err := bucket.Get(ctx, archive.BlobKey("retry-workspace", fmt.Sprintf("%x", sha256.Sum256([]byte("immutable")))))
+			if err != nil || string(stored.Data) != "immutable" {
+				t.Fatal("uploaded bytes mismatch")
+			}
+		})
 	}
 }
 

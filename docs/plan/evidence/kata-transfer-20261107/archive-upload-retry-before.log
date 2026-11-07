@@ -1,0 +1,14 @@
+=== RUN   TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes
+=== RUN   TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes/transient_then_success
+    transfer_test.go:255: snapshot={SnapshotID: WorkspaceID: ManifestKey: CreatedAt: EnvRef: DeletedAt: BlobSources: Seq:0 Files:0 SizeBytes:0 NewBlobs:0} err=transfer_upload_failed: upload failed; prepared bytes retained for retry
+=== RUN   TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes/completed_but_ack_lost
+    transfer_test.go:255: snapshot={SnapshotID: WorkspaceID: ManifestKey: CreatedAt: EnvRef: DeletedAt: BlobSources: Seq:0 Files:0 SizeBytes:0 NewBlobs:0} err=transfer_upload_failed: upload failed; prepared bytes retained for retry
+=== RUN   TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes/bounded_failures
+    transfer_test.go:261: attempts=1 opened=1 closed=1
+--- FAIL: TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes (0.53s)
+    --- FAIL: TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes/transient_then_success (0.21s)
+    --- FAIL: TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes/completed_but_ack_lost (0.16s)
+    --- FAIL: TestDirectArchiveRecoversTransientUploadsWithoutRepeatingCommittedBytes/bounded_failures (0.17s)
+FAIL
+FAIL	github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/server	2.376s
+FAIL
