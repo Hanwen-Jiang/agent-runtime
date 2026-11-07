@@ -100,3 +100,13 @@ flowchart LR
 只读provider用量接口只能提供最近1000条消费记录；不能凭窗口内缺少记录把pending清零，也不能把provider折扣计量与冻结Registry单价混为一套费用。真实核对原件位于.goal-evidence/paired-live-preflight-20261106及memory-live-audit-20261106；后续实验必须等待费用不确定性得到处理和部署冻结。
 
 后续直接调用Gateway的MX/DeepEval采用evals.audited_gateway:from_env：设置稳定AR_EVAL_RUN_ID、独立AR_EVAL_USAGE_DIR（实验输出下的usage子目录）、AR_MODEL_GATEWAY_ADDRESS，并经现有预算包装调用。每个实验固定唯一task_id，每次RPC固定唯一node_id，日志只存原调用身份/摘要/计量，不存提示或凭据；未结算调用禁止盲目续跑。使用该模块的--directory和--out命令只读tenant-scoped model_usage，可核对逐次attempt的真实Registry修订和费用，而不会把旧的空task_id/共用评测id误归入新实验。实现5项回归通过，尚未新增付费调用。
+
+## 2026-11-07 19:24 UTC 配对实验有限续采集
+
+固定11题×off/rules的原实验已采集9道off；第9题质量轨迹完整，但一次DeepSeek调用实际费用未知。原`metrics.valid=false`逐字节保留，未知reservation `mbr_DTTAF6WU2EWRW4S267NLH6APYE`预占14,517微美元；不得当成实付、退款或确定的实际费用上界。
+
+A/B复核完整隔离租户126条账本后，只允许补原2道off和11道rules。已知费用1.030475美元、保留预占0.014517美元、subject硬额度18.445261美元，扣除两者的准入余额17.400269美元。原总限仍40美元：当前实验37.945261美元加旧Jev保留1.969152美元、早期无效样本0.085586798美元为39.999999798美元；没有追加预算。Jev和语义裁判分别保持12.5与7美元原分配。
+
+`paired_admission`将原plan、完整baseline账本和唯一pending的摘要固定；新pending、旧行变化、额外Task、预算变更均停止下一题。完整质量证据可进入盲评，但原有效性及费用未知不改。汇总报告要求每题和scope费用均已知，否则完整费用/比例为null且验收不能通过；缺题时不报告部分题目的费用比例为完整cohort结果。
+
+针对性回归90项通过、0skip：`test_paired_admission.py test_paired_evaluation.py test_paired_completion.py`，显式加载pytest_asyncio。真实断点只读验证确认原9题全部跳过，不重复付费；仅给第9题账本补全权威`reserved_usd_micros`，旧字段/metrics不变，原件另存。证据在`/opt/evals/n16-evreal-pinned-20261107/{pending-subject-ledger.json,pending-admission-reconciliation.json,collection-continue.json,collection-continuation-preflight.json,before-pending-continuation/}`。证据采集代码修订独立记录；运行时fdd0f202、模型/Registry/题目/评分门槛不变。

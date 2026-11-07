@@ -40,6 +40,58 @@ def row(task='t1', *, node='act', cost=100_000):
             'actual_usd_micros': cost, 'registry_scope': 'platform', 'registry_revision': 'v7', 'registry_document_sha256': 'e' * 64}
 
 
+def test_explicit_continuation_rejects_new_unknown_before_any_task(tmp_path):
+    from test_paired_admission import fixture
+    from agentruntime_learning.benchmarks import paired_admission as admission
+    _, receipt, baseline, _ = fixture()
+    p = plan()
+    p.update(tenant_id=admission.TENANT, budget_usd=37.945261,
+             cost_reserves={"semantic_judge_usd": 7, "external_jev_usd": 12.5})
+    receipt["plan_sha256"] = admission.digest(p)
+    runtime = FakeRuntime()
+    extra = dict(baseline[-1], reservation_id="unexpected-new-pending")
+    with pytest.raises(ValueError, match="new or changed pending"):
+        pe.run_arm(p, tmp_path, "off", runtime=runtime, inspect=lambda argv: p["arms"]["off"]["provenance"],
+                   collection_continue=receipt, scope_ledger=lambda: [*baseline, extra])
+    assert not runtime.submits and not runtime.create_calls
+
+
+def test_collection_review_never_changes_an_unknown_cost_verdict(tmp_path):
+    from test_paired_admission import fixture
+    from agentruntime_learning.benchmarks import paired_admission as admission
+    from agentruntime_learning.benchmarks.paired_completion import collection_record
+    p, receipt, rows, metric = fixture()
+    folder = tmp_path / "off" / "case"
+    folder.mkdir(parents=True)
+    (folder / "metrics.json").write_text(json.dumps(metric))
+    (folder / "model_usage.json").write_text(json.dumps(rows))
+    (tmp_path / "collection-continue.json").write_text(json.dumps(receipt))
+    before = (folder / "metrics.json").read_bytes()
+    observed = collection_record(tmp_path, {**p, "rubric_version": pe.RUBRIC_VERSION}, folder)
+    assert observed["valid"] is False and observed["ledger"]["known"] is False
+    assert (folder / "metrics.json").read_bytes() == before
+    metric["runtime_stable"] = False
+    (folder / "metrics.json").write_text(json.dumps(metric))
+    with pytest.raises(ValueError, match="incomplete quality"):
+        collection_record(tmp_path, p, folder)
+
+
+def test_partial_pairs_never_report_a_complete_cohort_cost_ratio(tmp_path):
+    p = plan()
+    p["cases"].append({**p["cases"][0], "id": "unsettled-case"})
+    (tmp_path / "paired-manifest.json").write_text(json.dumps(p))
+    metric = {"valid": True, "quality": 1, "delegation_correct": True, "elapsed_s": 1,
+              "extra_rounds": 0, "repeated_tool_targets": 0, "jev_vetoes": 0,
+              "ledger": {"total_cost_usd": 1, "sub_agent_cost_usd": 0}}
+    for arm in ("off", "rules"):
+        directory = tmp_path / arm / "single-fact"
+        directory.mkdir(parents=True)
+        (directory / "metrics.json").write_text(json.dumps(metric))
+    result = pe.report(tmp_path)
+    assert result["paired_cases"] == 1 and result["cost_totals_are_partial"]
+    assert result["cost_ratio"] is None and not result["n16_r_quality_and_gateway_cost_gate"]
+
+
 def test_context_summary_has_its_own_frozen_profile_without_loosening_transform():
     frozen = provenance()
     frozen["models"].update(summary="small-summary", transform="mid-transform", probe="small-probe")

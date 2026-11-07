@@ -12,6 +12,7 @@ import argparse
 import asyncio
 import dataclasses
 import json
+import math
 import os
 import random
 import re
@@ -206,10 +207,26 @@ async def collect_ledger(task_id: str, tenant_id: str) -> list[dict[str, Any]]:
     try:
         async with store.bind(TenantContext(tenant_id=tenant_id)).transaction(read_only=True) as tx:
             rows = await tx.query(
-                "SELECT reservation_id, task_id, node_id, model_profile_id, actual_usd_micros, reserved_at, "
+                "SELECT reservation_id, task_id, node_id, model_profile_id, actual_usd_micros, reserved_at, reserved_usd_micros, "
                 "registry_scope, registry_revision, registry_document_sha256 "
                 "FROM model_usage WHERE task_id = $1", [task_id])
         return [dict(r) for r in rows]
+    finally:
+        await store.aclose()
+
+
+async def collect_scope_ledger(tenant_id: str) -> list[dict[str, Any]]:
+    """Read the entire isolated allowance, including retained unknown attempts."""
+    from agentruntime_core.adapters.postgres import PostgresRelationalStoreProvider
+    from agentruntime_core.tenancy import TenantContext
+
+    store = await PostgresRelationalStoreProvider.connect(os.environ["AR_RELATIONAL_DSN"])
+    try:
+        async with store.bind(TenantContext(tenant_id=tenant_id)).transaction(read_only=True) as tx:
+            rows = await tx.query(
+                "SELECT reservation_id, task_id, node_id, model_profile_id, actual_usd_micros, reserved_at, reserved_usd_micros, "
+                "registry_scope, registry_revision, registry_document_sha256 FROM model_usage ORDER BY reserved_at, reservation_id")
+        return [dict(row) for row in rows]
     finally:
         await store.aclose()
 
@@ -322,7 +339,7 @@ def estimate(plan: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def run_arm(plan: Mapping[str, Any], out: Path, arm: str, *, runtime: Any = None, inspect: Any = snapshot, ledger: Any = None,
-            histories: Any = None) -> dict[str, Any]:
+            histories: Any = None, collection_continue: Mapping[str, Any] | None = None, scope_ledger: Any = None) -> dict[str, Any]:
     cases = validate_plan(plan)
     frozen_plan = {**dict(plan), "rubric_version": RUBRIC_VERSION}
     manifest = out / "paired-manifest.json"
@@ -340,11 +357,40 @@ def run_arm(plan: Mapping[str, Any], out: Path, arm: str, *, runtime: Any = None
     runtime = runtime or RuntimeClient(cfg["task_api"], token_from_env())
     ledger = ledger or (lambda task: asyncio.run(collect_ledger(task, str(plan["tenant_id"]))))
     histories = histories or (lambda task: asyncio.run(collect_temporal(task, str(plan["tenant_id"]))))
+    if collection_continue is not None:
+        from agentruntime_learning.benchmarks.paired_admission import validate_receipt, check_scope, collection_eligible
+        validate_receipt(plan, collection_continue)
+        continuation_path = out / "collection-continue.json"
+        if continuation_path.exists() and json.loads(continuation_path.read_text()) != dict(collection_continue):
+            raise ValueError("collection continuation receipt changed")
+        if not continuation_path.exists():
+            _write(continuation_path, dict(collection_continue))
+        scope_ledger = scope_ledger or (lambda: asyncio.run(collect_scope_ledger(str(plan["tenant_id"]))))
+        check_scope(scope_ledger(), collection_continue)
+
+    def collected(metric: Mapping[str, Any], directory: Path) -> bool:
+        if metric.get("valid"):
+            return True
+        if collection_continue is None:
+            return False
+        return collection_eligible(metric, json.loads((directory / "model_usage.json").read_text()), collection_continue)
+
+    def checked_scope() -> dict[str, Any]:
+        rows = scope_ledger()
+        known_tasks = {row["task_id"] for row in collection_continue["baseline_rows"]}
+        for path in out.glob("*/*/records/*.json"):
+            task = json.loads(path.read_text()).get("task_id")
+            if task:
+                known_tasks.add(task)
+        if any(row.get("task_id") not in known_tasks for row in rows):
+            raise ValueError("isolated allowance contains a new unowned Task charge")
+        return check_scope(rows, collection_continue)
+
     random.Random(int(plan.get("seed", 0))).shuffle(cases)
     for case in cases:
         run_dir = out / arm / case.instance_id
         metric_path = run_dir / "metrics.json"
-        if metric_path.exists() and json.loads(metric_path.read_text()).get("valid"):
+        if metric_path.exists() and collected(json.loads(metric_path.read_text()), run_dir):
             continue
         recs = sb.read_records(run_dir)
         existing = recs.get(case.instance_id, {})
@@ -353,7 +399,7 @@ def run_arm(plan: Mapping[str, Any], out: Path, arm: str, *, runtime: Any = None
             if path == metric_path:
                 continue
             metric = json.loads(path.read_text())
-            if not metric["ledger"]["known"] or not metric.get("valid"):
+            if not collected(metric, path.parent):
                 raise ValueError("previous evidence is unsettled or invalid; reconcile it before further tasks")
             spent += metric["ledger"]["total_cost_usd"]
         for record_path in out.glob("*/*/records/*.json"):
@@ -364,6 +410,11 @@ def run_arm(plan: Mapping[str, Any], out: Path, arm: str, *, runtime: Any = None
         # Existing tasks are reconciled even when the remaining budget is zero.
         if not existing.get("task_id") and spent + float(plan["task_usd_limit"]) > historical["known_usd"] + estimation["task_gateway_budget_usd"]:
             break
+        if collection_continue is not None:
+            admission = checked_scope()
+            _write(out / f"collection-admission-{arm}-{case.instance_id}.json", admission)
+            if not existing.get("task_id") and admission["remaining_usd_micros"] < math.ceil(float(plan["task_usd_limit"]) * 1e6):
+                break
         if inspect(cfg["snapshot_command"]) != expected:
             raise ValueError("runtime drift detected before task")
         run_dir.mkdir(parents=True, exist_ok=True)
@@ -398,7 +449,7 @@ def run_arm(plan: Mapping[str, Any], out: Path, arm: str, *, runtime: Any = None
         metrics["wall_time_complete"] = bool(temporal["complete"])
         roles = {e["node_id"]: e.get("role") or "act" for e in rec.get("observations", []) if e["event"] == "node_started"}
         metrics["ledger"] = ledger_metrics(rows, metrics["sub_agent_nodes"], expected, roles, temporal.get("model_role_evidence"))
-        metrics["valid"] = (rec.get("state") == "finished" and post == expected and metrics["ledger"]["known"]
+        metrics["collection_complete"] = (rec.get("state") == "finished" and post == expected
                             and temporal["complete"] and temporal["elapsed_s"] is not None
                             and not metrics["unsupported_subtasks"]
                             and not metrics["ledger"]["registry_mismatch_reservations"]
@@ -406,8 +457,11 @@ def run_arm(plan: Mapping[str, Any], out: Path, arm: str, *, runtime: Any = None
                             and not metrics["ledger"]["unresolved_role_reservations"]
                             and ("completion" not in plan or (temporal.get("model_role_evidence") or {}).get("complete"))
                             and ("completion" not in plan or metrics["planning"]["complete"]))
+        metrics["valid"] = metrics["collection_complete"] and metrics["ledger"]["known"]
         _write(metric_path, metrics)
-        if not metrics["valid"]:
+        if collection_continue is not None:
+            checked_scope()
+        if not collected(metrics, run_dir):
             raise RuntimeError("incomplete or mismatched evidence; no further tasks submitted")
     return report(out)
 
@@ -433,10 +487,11 @@ def report(out: Path) -> dict[str, Any]:
         means[arm] = {key: statistics.mean(float(r[key]) for r in rows) if rows else None
                       for key in ("quality", "delegation_correct", "elapsed_s", "extra_rounds", "repeated_tool_targets", "jev_vetoes")}
         means[arm].update({key: sum(r["ledger"][key] for r in rows) for key in ("total_cost_usd", "sub_agent_cost_usd")})
-    ratio = means["rules"]["total_cost_usd"] / means["off"]["total_cost_usd"] if means["off"]["total_cost_usd"] else None
+    ratio = means["rules"]["total_cost_usd"] / means["off"]["total_cost_usd"] if not invalid and means["off"]["total_cost_usd"] else None
     gain = means["rules"]["quality"] - means["off"]["quality"] if pairs else None
     passed = not invalid and ratio is not None and gain is not None and gain >= plan["thresholds"]["minimum_quality_gain"] and ratio <= plan["thresholds"]["max_cost_ratio"]
     result = {"paired_cases": len(pairs), "incomplete_or_invalid": invalid, "means": means, "quality_gain": gain, "cost_ratio": ratio,
+              "cost_totals_are_partial": bool(invalid),
               "n16_r_quality_and_gateway_cost_gate": passed,
               "acceptance_requires": ["separate reconciliation of external Jev costs", "semantic correctness review; factual checklist alone is insufficient"],
               "ev_real": {"delegation_accuracy": means["rules"]["delegation_correct"], "quality_metric": RUBRIC_VERSION},
@@ -454,6 +509,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--plan", type=Path)
     parser.add_argument("--out", type=Path)
     parser.add_argument("--arm", choices=("off", "rules"))
+    parser.add_argument("--collection-continue", type=Path, help="explicit exact-reservation admission receipt; does not waive cost or quality gates")
     args = parser.parse_args(argv)
     if args.command == "report":
         result = report(args.out)
@@ -469,7 +525,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.out.mkdir(parents=True, exist_ok=True)
             with (args.out / ".run.lock").open("a") as lock:
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                result = run_arm(plan, args.out, args.arm)
+                continuation = json.loads(args.collection_continue.read_text()) if args.collection_continue else None
+                result = run_arm(plan, args.out, args.arm, collection_continue=continuation)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
 

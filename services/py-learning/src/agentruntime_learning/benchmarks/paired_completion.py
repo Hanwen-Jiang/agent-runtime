@@ -196,6 +196,22 @@ def planning_score(evidence: Mapping[str, Any], *, should_delegate: bool, arm: s
             "scope": "graph validity and decomposition; semantic planning coverage requires separate review"}
 
 
+def collection_record(out: Path, plan: Mapping[str, Any], directory: Path) -> dict[str, Any]:
+    """Allow review of complete observations while retaining unknown-cost failure."""
+    metric = json.loads((directory / "metrics.json").read_text())
+    if metric.get("valid"):
+        return metric
+    receipt_path = out / "collection-continue.json"
+    if not receipt_path.exists():
+        raise ValueError("invalid or missing pair evidence")
+    from agentruntime_learning.benchmarks.paired_admission import validate_receipt, collection_eligible
+    receipt = json.loads(receipt_path.read_text())
+    validate_receipt(plan, receipt)
+    if not collection_eligible(metric, json.loads((directory / "model_usage.json").read_text()), receipt):
+        raise ValueError("continuation cannot waive incomplete quality evidence")
+    return metric
+
+
 def review_export(out: Path, destination: Path) -> dict[str, Any]:
     """Produce blinded review items from existing answers, never run more Tasks."""
     from agentruntime_learning.benchmarks import swebench as sb
@@ -205,8 +221,8 @@ def review_export(out: Path, destination: Path) -> dict[str, Any]:
     for case in plan["cases"]:
         for arm in ("off", "rules"):
             run = out / arm / case["id"]
-            metric = json.loads((run / "metrics.json").read_text())
-            if not metric.get("valid") or not metric.get("planning", {}).get("complete"):
+            metric = collection_record(out, plan, run)
+            if not metric.get("planning", {}).get("complete"):
                 raise ValueError("review requires collected valid Task and plan evidence for every arm")
             rec = sb.read_records(run)[case["id"]]
             body = {"input": case["message"], "actual_output": rec.get("deliverable", ""),
@@ -258,6 +274,11 @@ def scope_cost(before: Sequence[Mapping[str, Any]], after: Sequence[Mapping[str,
     delta = [r for key, r in current.items() if key not in original]
     known = all(isinstance(r.get("actual_usd_micros"), int) and r["actual_usd_micros"] >= 0 for r in delta)
     return {"known": known, "attempts": len(delta),
+            "known_gateway_usd": sum(r["actual_usd_micros"] or 0 for r in delta) / 1e6,
+            "pending_attempts": sum(r["actual_usd_micros"] is None for r in delta),
+            "pending_reserved_usd": (
+                sum(r["reserved_usd_micros"] for r in delta if r["actual_usd_micros"] is None) / 1e6
+                if all("reserved_usd_micros" in r for r in delta if r["actual_usd_micros"] is None) else None),
             "total_gateway_usd": sum(r["actual_usd_micros"] for r in delta) / 1e6 if known else None,
             "task_gateway_usd": sum(r["actual_usd_micros"] for r in delta if r.get("task_id") in task_ids) / 1e6 if known else None,
             "additional_gateway_usd": sum(r["actual_usd_micros"] for r in delta if r.get("task_id") not in task_ids) / 1e6 if known else None,
@@ -296,9 +317,7 @@ def completed_report(out: Path, export: Mapping[str, Any], review: Mapping[str, 
         known = True
         for case in plan["cases"]:
             directory = out / arm / case["id"]
-            metric = json.loads((directory / "metrics.json").read_text())
-            if not metric.get("valid"):
-                raise ValueError("an invalid or missing pair cannot enter the completion report")
+            metric = collection_record(out, plan, directory)
             metrics.append(metric)
             evidence = json.loads((directory / "temporal-evidence.json").read_text()).get("planning_evidence") or {}
             usage = evidence.get("judge_usage") or {}
@@ -317,7 +336,8 @@ def completed_report(out: Path, export: Mapping[str, Any], review: Mapping[str, 
         jev["known"] &= known
         if not jev["known"]:
             jev["cost_usd"] = None
-        total = gateway["total_gateway_usd"] + jev["cost_usd"] if gateway["known"] and jev["known"] else None
+        task_cost_known = all(m["ledger"].get("known") is True for m in metrics)
+        total = gateway["total_gateway_usd"] + jev["cost_usd"] if gateway["known"] and jev["known"] and task_cost_known else None
         cost[arm] = {"gateway": gateway, "jev": jev, "total_usd": total}
         quality[arm] = sum(semantic[pv.digest([plan["run_id"], arm, c["id"]])[:24]] for c in plan["cases"]) / len(plan["cases"])
         planning[arm] = sum(bool(m.get("planning", {}).get("passed")) for m in metrics) / len(metrics)
@@ -333,6 +353,8 @@ def completed_report(out: Path, export: Mapping[str, Any], review: Mapping[str, 
     valid = (total is not None and total <= plan["budget_usd"] and judge <= plan["cost_reserves"]["semantic_judge_usd"]
              and sum(c["jev"]["cost_usd"] for c in cost.values() if c["jev"]["known"]) <= plan["cost_reserves"]["external_jev_usd"])
     return {"evidence_complete": valid, "actual_shared_total_usd": total, "semantic_judge_usd": judge, "arm_costs": cost,
+            "collection_complete": True, "cost_known": settled,
+            "unknown_cost_continuation_used": (out / "collection-continue.json").exists(),
             "quality": quality, "quality_gain": quality_gain, "total_cost_ratio": ratio, "planning_structure_pass_rate": planning,
             "n16_r": {"passed": valid and ratio is not None and ratio <= gate["maximum_total_cost_ratio"] and quality_gain >= gate["minimum_semantic_quality_gain"]},
             "ev_real": {"passed": valid and all(v >= gate["planning_structure_pass_rate"] for v in planning.values()),

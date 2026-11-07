@@ -132,6 +132,65 @@ def test_scope_cost_includes_memory_and_rejects_changed_baseline():
         pc.scope_cost(before, altered, {'t'})
 
 
+@pytest.mark.parametrize("unknown", [False, True])
+def test_completion_report_cannot_hide_unknown_task_cost_in_scope_baseline(tmp_path, unknown):
+    from agentruntime_learning.benchmarks import paired_admission as admission
+    from test_paired_admission import fixture
+
+    frozen, receipt, baseline, pending_metric = fixture()
+    frozen.update(run_id="same-cohort", cases=pc.completion_cases(), expected_jev_model="jev-1.15.0")
+    frozen["completion"] = {"version": pc.VERSION, "rubric": pc.rubric(),
+        "cases_sha256": pc.pv.digest(frozen["cases"]),
+        "original_message_sha256": hashlib.sha256(pc.ORIGINAL_MESSAGE.encode()).hexdigest(),
+        "price_estimate": {"observed": True}, "observation_receipts": {"observed": True}}
+    receipt["plan_sha256"] = admission.digest(frozen)
+    (tmp_path / "paired-manifest.json").write_text(json.dumps({**frozen, "rubric_version": pe.RUBRIC_VERSION}))
+    if unknown:
+        (tmp_path / "collection-continue.json").write_text(json.dumps(receipt))
+    export = {"rubric": pc.rubric(), "rubric_sha256": pc.pv.digest(pc.rubric()), "items": []}
+    review = {"rubric_sha256": export["rubric_sha256"], "reviewer_version": "manual-frozen-v1",
+              "actual_cost_usd": 0, "cost_evidence": "manual review", "items": []}
+    scopes = {}
+    for arm in ("off", "rules"):
+        # A mistaken before snapshot can contain the unresolved attempt. Delta
+        # costs then look known and equal the metrics' known subtotals exactly.
+        before = [baseline[1]] if unknown and arm == "off" else []
+        scopes[arm] = {"before": before, "after": list(before)}
+        for i, case in enumerate(frozen["cases"]):
+            directory = tmp_path / arm / case["id"]
+            directory.mkdir(parents=True)
+            metric = copy.deepcopy(pending_metric)
+            metric.update(jev_vetoes=0, jev_veto_rounds=[], extra_rounds=0)
+            metric["planning"]["passed"] = True
+            if unknown and arm == "off" and i == 0:
+                task_rows = baseline
+                scopes[arm]["after"].append(baseline[0])
+            else:
+                task = arm + "-" + case["id"]
+                task_rows = [dict(baseline[0], reservation_id=task, task_id=task, actual_usd_micros=100)]
+                metric.update(task_id=task, valid=True)
+                metric["ledger"].update(attempts=1, pending=0, known=True, total_cost_usd=.0001)
+                scopes[arm]["after"].extend(task_rows)
+            (directory / "metrics.json").write_text(json.dumps(metric))
+            (directory / "model_usage.json").write_text(json.dumps(task_rows))
+            (directory / "temporal-evidence.json").write_text(json.dumps({"planning_evidence": {
+                "judge_usage": {"attempts": [], "cost": {"known": True, "expected_calls": 0}}}}))
+            identity = pc.pv.digest([frozen["run_id"], arm, case["id"]])[:24]
+            export["items"].append({"id": identity, "evidence_sha256": identity})
+            review["items"].append({"id": identity, "evidence_sha256": identity,
+                "scores": {d["name"]: {"score": int(arm == "rules"), "reason": "fixture evidence"}
+                           for d in pc.rubric()["semantic_dimensions"]}})
+    report = pc.completed_report(tmp_path, export, review, scopes)
+    assert report["collection_complete"] is True
+    assert report["cost_known"] is (not unknown)
+    assert report["evidence_complete"] is (not unknown)
+    assert report["n16_r"]["passed"] is (not unknown)
+    assert report["ev_real"]["passed"] is (not unknown)
+    if unknown:
+        assert report["arm_costs"]["off"]["total_usd"] is None
+        assert report["actual_shared_total_usd"] is None and report["total_cost_ratio"] is None
+
+
 def test_semantic_review_cannot_drop_hard_case_or_change_evidence():
     export = {'rubric': pc.rubric(), 'rubric_sha256': 'frozen', 'items': [{'id': 'hard', 'evidence_sha256': 'real'}]}
     review = {'rubric_sha256': 'frozen', 'reviewer_version': 'manual-frozen-v1', 'items': [{'id': 'hard', 'evidence_sha256': 'real',
