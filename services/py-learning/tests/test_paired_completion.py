@@ -57,6 +57,29 @@ def test_structural_evidence_omits_prompts_and_checks_all_branches():
     assert not pc.planning_score({}, should_delegate=True, arm='rules')['complete']
 
 
+def test_dense_planning_graphs_are_bounded_and_cycles_remain_invalid():
+    # Deterministic work bound, not a flaky wall-clock timeout. A valid graph
+    # may have exponentially many paths despite only 64 distinct nodes.
+    expansions = 0
+
+    class Node(dict):
+        def get(self, key, default=None):
+            nonlocal expansions
+            if key == 'after':
+                expansions += 1
+                assert expansions <= 64 * 64 + 128, 'dependency traversal enumerated paths'
+            return super().get(key, default)
+
+    nodes = [Node(id=f'n{i}', after=[f'n{j}' for j in range(i)]) for i in range(64)]
+    evidence = {'complete': True, 'plans': [{'graph': {'nodes': nodes}}]}
+    score = pc.planning_score(evidence, should_delegate=False, arm='off')
+    assert score['passed'] and score['valid_dag'] and not score['cyclic']
+    expansions = 0
+    nodes[0]['after'] = ['n63']
+    score = pc.planning_score(evidence, should_delegate=False, arm='off')
+    assert score['cyclic'] and not score['valid_dag'] and not score['passed']
+
+
 async def test_temporal_plan_decodes_real_payloads_and_rejects_cross_tenant():
     converter = DataConverter.default
     memo = (await converter.encode(['tenant1']))[0]

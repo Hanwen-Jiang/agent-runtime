@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/sandbox"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
 	sandboxv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/sandbox/v1"
@@ -131,9 +132,6 @@ func (h *handler) CommitTransfer(ctx context.Context, req *connect.Request[sandb
 	if p == nil || (m.GetTaskId() != "" && m.GetTaskId() != p.task) || (m.GetLeaseId() != "" && m.GetLeaseId() != p.lease) {
 		return nil, fail(providererr.New(providererr.NotFound, "transfer_not_found", "unknown transfer"))
 	}
-	if p.result != nil {
-		return connect.NewResponse(&sandboxv1.CommitTransferResponse{Object: p.result}), nil
-	}
 	if h.s.opts.Objects == nil {
 		return nil, fail(providererr.New(providererr.Invalid, "transfer_unsupported", "object store unavailable"))
 	}
@@ -142,9 +140,22 @@ func (h *handler) CommitTransfer(ctx context.Context, req *connect.Request[sandb
 		return nil, fail(err)
 	}
 	head, headErr := objects.Head(ctx, p.key)
+	if p.result != nil {
+		// A durable receipt outlives both the agent and object retention. It is
+		// authority for the original bytes, not proof that the object still
+		// exists. Recovery must never register a fresh dangling delivery or
+		// silently re-upload a different version of the source file.
+		if headErr != nil {
+			return nil, fail(headErr)
+		}
+		if !matchesPreparedObject(head, p.prepared) {
+			return nil, fail(providererr.New(providererr.Transient, "transfer_mismatch", "prepared object size differs"))
+		}
+		return connect.NewResponse(&sandboxv1.CommitTransferResponse{Object: p.result}), nil
+	}
 	var result *sandboxv1.ObjectReference
 	if headErr == nil {
-		if head.Size != p.prepared.SizeBytes {
+		if !matchesPreparedObject(head, p.prepared) {
 			return nil, fail(providererr.New(providererr.Transient, "transfer_mismatch", "prepared object size differs"))
 		}
 		result = &sandboxv1.ObjectReference{ObjectKey: p.key, ObjectUri: objects.URI(p.key), Sha256: p.prepared.SHA256, SizeBytes: p.prepared.SizeBytes}
@@ -200,7 +211,7 @@ func (h *handler) upload(ctx context.Context, lease *broker.Lease, p sandbox.Pre
 		// Therefore this random key's existence proves the only signed bytes
 		// arrived. Do not trust an agent-supplied digest or re-read bytes through
 		// the Worker. Providers lacking this guarantee must reject SignedUpload.
-		if head, headErr := objects.Head(ctx, key); headErr != nil || head.Size != p.SizeBytes {
+		if head, headErr := objects.Head(ctx, key); headErr != nil || !matchesPreparedObject(head, p) {
 			return nil, uploadErr
 		}
 		receipt = sandbox.TransferReceipt{ObjectKey: key, SHA256: p.SHA256, SizeBytes: p.SizeBytes}
@@ -212,10 +223,18 @@ func (h *handler) upload(ctx context.Context, lease *broker.Lease, p sandbox.Pre
 	if err != nil {
 		return nil, err
 	}
-	if head.Size != p.SizeBytes || receipt.SizeBytes != p.SizeBytes || receipt.SHA256 != p.SHA256 {
+	if !matchesPreparedObject(head, p) || receipt.SizeBytes != p.SizeBytes || receipt.SHA256 != p.SHA256 {
 		_, _ = objects.Delete(ctx, key)
 		return nil, providererr.New(providererr.Transient, "transfer_mismatch", "uploaded object differs from prepared bytes")
 	}
 	_ = box.ReleaseTransfer(ctx, lease.EnvID, p.TransferID)
 	return &sandboxv1.ObjectReference{ObjectKey: key, ObjectUri: objects.URI(key), Sha256: p.SHA256, SizeBytes: p.SizeBytes}, nil
+}
+
+// Some stores return a trusted write-time digest; a contradictory digest is
+// always an integrity failure. S3/R2 SignedUpload currently exposes no digest
+// in ObjectInfo, so that case relies on the checksum-bound, write-once URL for
+// this unique key (STOR-SEC), not on content length as a cryptographic proof.
+func matchesPreparedObject(head objectstore.ObjectInfo, p sandbox.PreparedTransfer) bool {
+	return head.Size == p.SizeBytes && (head.SHA256 == "" || head.SHA256 == p.SHA256)
 }
