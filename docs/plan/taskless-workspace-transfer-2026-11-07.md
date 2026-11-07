@@ -31,3 +31,23 @@ tenant, revoke original grants, acquire a taskless read-only lease, verify the
 restored README and lease-specific revoked audit rows, then clean the isolated
 VMs, objects and rows. It must run only after the updated Sandbox Service rollout;
 the code regression does not claim that production acceptance has already run.
+
+## Production acceptance completed
+
+On 2026-11-07, Sandbox Service `goal-0ee834d8` (generation 21, one available
+replica) passed the prepared test in isolated tenant
+`gh-goalkata-debug-709760ad3c`. Kata cloned and snapshotted all 27 fixture files;
+after the original grants were revoked, a new read-only lease with no model Task
+restored the snapshot and read the exact README bytes. The lease received
+`workspace-transfer-sbe-f681f9d93e87837c`; all 25 transfer grants were revoked
+when restoration completed. No `model_usage` row was created.
+
+The test used a 32 MiB daily egress policy. This was a small real transfer, not a
+quota saturation experiment; the exact signed quota and cross-lease/tenant
+boundaries remain covered by the SQLite/Postgres regression above. Independent
+post-cleanup queries found zero remaining diagnostic policies, environments,
+grants, quota/transfer/workspace rows, directory records and R2 objects.
+
+Raw execution, scoped egress audit, the exact reproduction script, regression
+log, cleanup verification and content hashes are preserved under
+`docs/plan/evidence/taskless-kata-20261107`. Actual model cost was $0.

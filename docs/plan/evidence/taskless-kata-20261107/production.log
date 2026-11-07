@@ -1,0 +1,5 @@
+{"event": "start", "tenant": "gh-goalkata-debug-709760ad3c", "task": "diag-f2d33b4b1cea75c8"}
+{"event": "lease", "tenant": "gh-goalkata-debug-709760ad3c", "backend": "kata", "env": "sbx-0626473825a2bcae"}
+{"event": "snapshot", "attempt": 0, "result": {"passed": true, "files": 27, "size": 28218}}
+{"event": "readonly_restore", "passed": true, "internal_task": "workspace-transfer-sbe-f681f9d93e87837c", "grants": 25, "all_revoked": true, "restored_snapshot": "wss-6fe296049f77d5b30c4c", "README_sha256": "03ba204e50d126e4674c005e04d82e84c21366780af1f43bd54a37816b6ab340"}
+{"tenant": "gh-goalkata-debug-709760ad3c", "task": "diag-f2d33b4b1cea75c8", "rows": [], "cleanup": {"envs_destroyed": true, "objects_removed": true, "rows_removed": true}, "model_calls": 0, "backend_env": "sbx-0626473825a2bcae", "snapshot_0": {"passed": true, "files": 27, "size": 28218}, "readonly_restore": {"passed": true, "internal_task": "workspace-transfer-sbe-f681f9d93e87837c", "grants": 25, "all_revoked": true, "restored_snapshot": "wss-6fe296049f77d5b30c4c", "README_sha256": "03ba204e50d126e4674c005e04d82e84c21366780af1f43bd54a37816b6ab340"}}

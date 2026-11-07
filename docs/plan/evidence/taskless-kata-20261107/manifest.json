@@ -1,0 +1,19 @@
+{
+  "service_image": "ghcr.io/agentruntime/sandbox-service:goal-0ee834d8",
+  "generation": 21,
+  "available_replicas": 1,
+  "tenant": "gh-goalkata-debug-709760ad3c",
+  "passed": true,
+  "model_calls": 0,
+  "model_cost_usd": 0,
+  "configured_daily_egress_bytes": 33554432,
+  "quota_scope": "small real transfer; credential limit and isolation regression verified separately; no saturation test",
+  "cleanup_complete": true,
+  "files": {
+    "production.log": "06c9a52c830457826a341b84d5399a74361fb4e02fceb7e8ce319229000af30e",
+    "egress.jsonl": "a55301d1768f9ba257549a1591a611aa3acab0a899dc187dccabb1854aa0d6dc",
+    "reproduce.py": "ba269a858484963c500b8012f57ac4746df99f85765d5484c1fe3bd350854d2f",
+    "regression.log": "ca940b26cc8e00394995ee40de88684aad99fb79cb05608e940c7a19da2062c3",
+    "cleanup.json": "97f35f49b89656d4814eb9bce2e21e9d9e8bd98be5b70c78e754a3b12ce4d2e9"
+  }
+}
