@@ -82,12 +82,16 @@ with psycopg.connect(os.environ["AR_RELATIONAL_DSN"]) as c:
  missing=sorted(set(required)-set(columns))
  usage=[] if missing or args["ids_only"] else [dict(zip(required,row)) for row in c.execute("select "+",".join(required)+" from model_usage order by reserved_at").fetchall()]
  queue=c.execute("select count(*) from memory_queue").fetchone()[0]
+ item_count=c.execute("select count(*) from memory_items").fetchone()[0]
+ tombstone_count=c.execute("select count(*) from memory_tombstones").fetchone()[0]
+ lineage_count=c.execute("select count(*) from memory_lineage").fetchone()[0]
+ review_count=c.execute("select count(*) from memory_reviews").fetchone()[0]
  remaining=[r[0] for r in c.execute("select id from memory_items where id=ANY(%s)",(args["ids"],)).fetchall()]
  policy=c.execute("select version,document from registry_entries where kind=5 and state=2").fetchall()
  c.execute("select set_config(%s,%s,true)",("agentruntime.tenant_id","_platform"))
  profile=c.execute("select version,document from registry_entries where kind=4 and name=%s and state=2",(args["model"],)).fetchall()
  def entries(rows): return [{"version":"v"+str(v),"document_sha256":hashlib.sha256(d.encode()).hexdigest(),"document":json.loads(d)} for v,d in rows]
- print(json.dumps({"tenant":args["tenant"],"missing_ledger_columns":missing,"queue_count":queue,"remaining_ids":remaining,"model_usage":usage,"tenant_policy":entries(policy),"profile":entries(profile)}))
+ print(json.dumps({"tenant":args["tenant"],"missing_ledger_columns":missing,"queue_count":queue,"memory_item_count":item_count,"tombstone_count":tombstone_count,"lineage_count":lineage_count,"review_count":review_count,"remaining_ids":remaining,"model_usage":usage,"tenant_policy":entries(policy),"profile":entries(profile)}))
 '''.replace("ARGS", repr(args))
     return json.loads(kubectl("exec", "-i", "deploy/ar-agent-runtime-memory", "--", "python", "-", stdin=program))
 
@@ -173,7 +177,7 @@ def observe(args: argparse.Namespace, *, before_question: bool = False, ids: lis
     db = db_snapshot(ids)
     identity = validate_registry(db, json.loads(profiles_raw), json.loads(policies_raw))
     money = check_money(db["model_usage"], before_question=before_question)
-    if db["queue_count"] or db["remaining_ids"]:
+    if db["queue_count"] or db["remaining_ids"] or any(db.get(k) for k in ("memory_item_count", "tombstone_count", "lineage_count", "review_count")):
         raise PreflightError("isolated Memory queue or submitted memory IDs remain")
     service = resource("service", "ar-agent-runtime-memory")
     port = next(v["port"] for v in service["spec"]["ports"] if v["port"] == 50061)
@@ -225,6 +229,67 @@ def prior_experiment(directory: Path | None, current: dict[str, Any], *, fresh: 
             "cleanup_sha256": hashlib.sha256((directory / "stop-cleanup-recovery.json").read_bytes()).hexdigest()}
 
 
+def evaluation_ids(directory: Path | None, seen: set[Path] | None = None) -> list[str]:
+    """Only IDs durably recorded under this one explicitly isolated tenant."""
+    if directory is None:
+        return []
+    directory = directory.resolve()
+    seen = set() if seen is None else seen
+    if directory in seen or len(seen) >= 10:
+        raise PreflightError("invalid prior experiment chain")
+    seen.add(directory)
+    ids = set()
+    journal = directory / "live" / "results.jsonl"
+    if journal.exists():
+        for line in journal.read_text().splitlines():
+            if not line.strip():
+                continue
+            lifecycle = json.loads(line).get("lifecycle") or {}
+            submitted = lifecycle.get("submitted_ids") or []
+            deleted = lifecycle.get("deleted_memory_ids") or []
+            if submitted or deleted:
+                if lifecycle.get("tenant") != TENANT or not str(lifecycle.get("workspace", "")).startswith("w-eval-"):
+                    raise PreflightError("cleanup journal contains another tenant or workspace")
+                ids.update(submitted)
+                ids.update(deleted)
+    freeze = directory / "freeze.json"
+    if freeze.exists():
+        previous = (json.loads(freeze.read_text()).get("prior_experiment") or {}).get("directory")
+        if previous:
+            ids.update(evaluation_ids(Path(previous), seen))
+    if any(not re.fullmatch(r"mem_[0-9A-HJKMNP-TV-Z]{26}", mid) for mid in ids):
+        raise PreflightError("invalid evaluation memory id")
+    return sorted(ids)
+
+
+def clear_evaluation_tombstones(ids: list[str]) -> dict[str, Any]:
+    """Remove only test-owned forget markers after normal API deletion.
+
+    Production forgetting remains untouched. The isolated tenant must have no
+    queued writes, live memories or unknown costs; unowned markers abort before
+    mutation. No memory bodies or content hashes are returned.
+    """
+    if any(not re.fullmatch(r"mem_[0-9A-HJKMNP-TV-Z]{26}", mid) for mid in ids):
+        raise PreflightError("invalid evaluation cleanup id")
+    args = json.dumps({"tenant": TENANT, "ids": sorted(set(ids))})
+    program = '''import json,os,psycopg
+args=json.loads(ARGS)
+if args["tenant"] != "evalmem20261106": raise RuntimeError("isolated test tenant required")
+with psycopg.connect(os.environ["AR_RELATIONAL_DSN"]) as c:
+ c.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
+ role=c.execute("select rolsuper,rolbypassrls from pg_roles where rolname=current_user").fetchone()
+ if role[0] or role[1]: raise RuntimeError("cleanup requires a tenant RLS role")
+ c.execute("select set_config(%s,%s,true)",("agentruntime.tenant_id",args["tenant"]))
+ if any(c.execute(q).fetchone()[0] for q in ("select count(*) from memory_queue","select count(*) from memory_items","select count(*) from memory_lineage","select count(*) from memory_reviews","select count(*) from model_usage where actual_usd_micros IS NULL")): raise RuntimeError("test tenant not drained, cleaned and settled")
+ found=[r[0] for r in c.execute("select memory_id from memory_tombstones").fetchall()]
+ if set(found)-set(args["ids"]): raise RuntimeError("unowned tombstone; refuse cleanup")
+ deleted=[r[0] for r in c.execute("delete from memory_tombstones where memory_id=ANY(%s) returning memory_id",(args["ids"],)).fetchall()]
+ remaining=c.execute("select count(*) from memory_tombstones").fetchone()[0]
+print(json.dumps({"tenant":args["tenant"],"recorded_ids":len(args["ids"]),"deleted_ids":deleted,"remaining":remaining,"scope":"only recorded evaluation IDs; normal API deletion and queue drain preceded this transaction"}))
+'''.replace("ARGS", repr(args))
+    return json.loads(kubectl("exec", "-i", "deploy/ar-agent-runtime-memory", "--", "python", "-", stdin=program))
+
+
 @contextmanager
 def output_lock(path: Path):
     import fcntl
@@ -239,6 +304,15 @@ def run(args: argparse.Namespace) -> int:
     from agentruntime_memory import eval_retriever
     with output_lock(args.out):
         chosen = fixed_data()
+        prior_dir = getattr(args, "prior_run", None)
+        known_cleanup_ids = set(evaluation_ids(prior_dir))
+        # A fresh run may follow a deliberately stopped invalid experiment. Its
+        # ledger proof is checked before removing any test-owned tombstones.
+        current = db_snapshot()
+        prior_experiment(prior_dir, current, fresh=not (args.out / "freeze.json").exists())
+        if args.command != "preflight":
+            startup_cleanup = clear_evaluation_tombstones(sorted(known_cleanup_ids))
+            write(args.out / "tombstone-startup-cleanup.json", startup_cleanup)
         frozen, db, evidence = observe(args)
         prior = prior_experiment(getattr(args, "prior_run", None), db, fresh=not (args.out / "freeze.json").exists())
         estimate = lme.estimate_usd(chosen)
@@ -269,6 +343,11 @@ def run(args: argparse.Namespace) -> int:
         env["AR_DEV_SIGNING_KEY"] = base64.b64decode(secret).decode()
         factory = eval_retriever.live_retriever
         def checked_factory(corpus):
+            known_cleanup_ids.update(evaluation_ids(args.out))
+            cleanup = clear_evaluation_tombstones(sorted(known_cleanup_ids))
+            with (args.out / "tombstone-cleanup.jsonl").open("a", encoding="utf-8") as stream:
+                stream.write(json.dumps({"at": datetime.now(UTC).isoformat(), **cleanup}) + "\n")
+                stream.flush(); os.fsync(stream.fileno())
             now, rows, state = observe(args, before_question=True)
             if now != frozen:
                 raise PreflightError("deployment drift before question; no new writes admitted")
@@ -293,6 +372,15 @@ def run(args: argparse.Namespace) -> int:
             # Preserve raw evidence, including unknown costs or partial cleanup.
             final = db_snapshot()
             write(args.out / "ledger-after.json", final)
+            if not final["queue_count"] and not final.get("memory_item_count") and all(r["actual_usd_micros"] is not None for r in final["model_usage"]):
+                try:
+                    known_cleanup_ids.update(evaluation_ids(args.out))
+                    cleanup = clear_evaluation_tombstones(sorted(known_cleanup_ids))
+                    write(args.out / "tombstone-exit-cleanup.json", cleanup)
+                except (PreflightError, ValueError, OSError) as exc:
+                    # Keep the original cancellation/error and an explicit
+                    # incomplete cleanup record; never erase unowned markers.
+                    write(args.out / "tombstone-exit-cleanup.json", {"complete": False, "error_type": type(exc).__name__})
         if summary is None:
             return 4
         rows = lme._read_rows(args.out / "live/results.jsonl")
@@ -300,6 +388,9 @@ def run(args: argparse.Namespace) -> int:
         remaining = []
         for i in range(0, len(all_ids), 200):
             remaining.extend(db_snapshot(all_ids[i:i + 200])["remaining_ids"])
+        known_cleanup_ids.update(evaluation_ids(args.out))
+        final_tombstones = clear_evaluation_tombstones(sorted(known_cleanup_ids))
+        write(args.out / "tombstone-final-cleanup.json", final_tombstones)
         after, final, state = observe(args)
         cleanup = {"submitted_ids": len(all_ids), "remaining_ids": remaining, "queue_count": final["queue_count"],
                    "journal_cleanup_complete": all(row.get("cleanup_complete") for row in rows.values())}
