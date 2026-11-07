@@ -1,0 +1,91 @@
+{
+  "at_utc": "2026-11-07T22:14:16.938870+00:00",
+  "task_id": "tsk_3FBFH3Y2GF8EHB4RG9HJQKRZRT",
+  "failed_node_id": "eval_call_00000004",
+  "failed_item_id": "2b0688ac4e72aa9f1ced387b",
+  "error_code": "bad_structured_output",
+  "failed_input_tokens": 9457,
+  "failed_output_tokens": 739,
+  "failed_known_cost_usd_micros": 47706,
+  "completed_scores": 2,
+  "completed_score_cost_usd_micros": 69281,
+  "known_total_including_failed_output_usd_micros": 116987,
+  "original_unknown_hold_usd_micros": 298752,
+  "gateway_events": [
+    {
+      "timestamp": "2026-11-08T01:08:01.476520185+03:00",
+      "meter": {
+        "tenant_id": "gh-goalpairjudge-20261107",
+        "task_id": "tsk_3FBFH3Y2GF8EHB4RG9HJQKRZRT",
+        "node_id": "eval_call_00000002",
+        "role": "judge",
+        "method": "generate",
+        "model_profile_id": "a6api/claude-opus-5-5@2026-10",
+        "tier": "strong@medium",
+        "vendor": "anthropic",
+        "input_tokens": 8491,
+        "output_tokens": 331,
+        "cache_read_tokens": 1665,
+        "cost_usd_micros": 34257,
+        "price_at": "2026-10-21",
+        "status": "ok",
+        "pinned_model_profile": "a6api/claude-opus-5-5@2026-10",
+        "pin_ignored": false,
+        "avoid_vendor_unmet": false
+      }
+    },
+    {
+      "timestamp": "2026-11-08T01:08:05.927139369+03:00",
+      "meter": {
+        "tenant_id": "gh-goalpairjudge-20261107",
+        "task_id": "tsk_3FBFH3Y2GF8EHB4RG9HJQKRZRT",
+        "node_id": "eval_call_00000003",
+        "role": "judge",
+        "method": "generate",
+        "model_profile_id": "a6api/claude-opus-5-5@2026-10",
+        "tier": "strong@medium",
+        "vendor": "anthropic",
+        "input_tokens": 8118,
+        "output_tokens": 405,
+        "cache_read_tokens": 1460,
+        "cost_usd_micros": 35024,
+        "price_at": "2026-10-21",
+        "status": "ok",
+        "pinned_model_profile": "a6api/claude-opus-5-5@2026-10",
+        "pin_ignored": false,
+        "avoid_vendor_unmet": false
+      }
+    },
+    {
+      "timestamp": "2026-11-08T01:08:13.050370076+03:00",
+      "meter": {
+        "tenant_id": "gh-goalpairjudge-20261107",
+        "task_id": "tsk_3FBFH3Y2GF8EHB4RG9HJQKRZRT",
+        "node_id": "eval_call_00000004",
+        "role": "judge",
+        "method": "generate",
+        "model_profile_id": "a6api/claude-opus-5-5@2026-10",
+        "tier": "strong@medium",
+        "vendor": "anthropic",
+        "input_tokens": 9457,
+        "output_tokens": 739,
+        "cache_read_tokens": 1290,
+        "cost_usd_micros": 47706,
+        "price_at": "2026-10-21",
+        "status": "failed",
+        "error_code": "bad_structured_output",
+        "pinned_model_profile": "a6api/claude-opus-5-5@2026-10",
+        "pin_ignored": false,
+        "avoid_vendor_unmet": false
+      }
+    },
+    {
+      "timestamp": "2026-11-08T01:08:13.050484335+03:00",
+      "warning": "time=2026-11-07T22:08:13.050Z level=WARN msg=模型调用失败 profile=a6api/claude-opus-5-5@2026-10 category=ERROR_CATEGORY_INVALID code=bad_structured_output attempt=1"
+    }
+  ],
+  "private_log_sha256": "57084d65353e3e8dc1182b2fea0f9dc9e0e1dde3b21b061af909f73190e300e7",
+  "raw_text_recoverable_from_gateway_or_rpc_trace": false,
+  "source_reason": "openaicompat.result returns only Usage when structured JSON parsing fails; Gateway error spans omit prompts and outputs. No response artifact exists for seq4.",
+  "new_model_calls_or_ledger_writes": 0
+}

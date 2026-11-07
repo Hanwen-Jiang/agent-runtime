@@ -1,0 +1,28 @@
+{
+  "at_utc": "2026-11-07T21:37:54.256207+00:00",
+  "ledger_file_sha256": "04eacec7f93a631ddbe25c37dc8028a876e26367ca31f864a31c621e70ec220f",
+  "pending_row": {
+    "reservation_id": "mbr_WO3FHOU4DZAELVWGLO3BNQOPXX",
+    "task_id": "tsk_3FBFH3Y2GF8EHB4RG9HJQKRZRT",
+    "node_id": "eval_call_00000001",
+    "method": "generate",
+    "model_profile_id": "a6api/claude-opus-5-5@2026-10",
+    "reserved_at": 1794086710747,
+    "actual_usd_micros": null,
+    "reserved_usd_micros": 298752,
+    "input_tokens": null,
+    "output_tokens": null,
+    "registry_scope": "platform",
+    "registry_revision": "v3",
+    "registry_document_sha256": "e42df3b1eba85d89bcf869ef8942c993d469e4ca3f03818789dc1cea1bed0d5a"
+  },
+  "full_original_22_estimate_usd": "6.511312",
+  "retained_unknown_reservation_usd": "0.298752",
+  "combined_admission_estimate_usd": "6.810064",
+  "original_judge_cap_usd": "7",
+  "remaining_after_hold_usd": "6.701248",
+  "actual_total_cost_known": false,
+  "scope": "One explicitly reviewed retry of the original first item without any response/score, then the remaining original 21 items. Same run ID, frozen inputs/model/Registry/tier/token cap. Preserve original failed journals and budget; retain hold against original cap, stop on new unknown, do not repeat any completed score.",
+  "source_trace_limitation": "No HTTP transport span is instrumented; the RPC span records only the replacement model_usage_pending error, so the original provider cause is not recoverable from current instrumentation.",
+  "new_model_calls_or_ledger_writes": 0
+}

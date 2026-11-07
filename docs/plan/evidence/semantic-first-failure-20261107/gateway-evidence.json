@@ -1,0 +1,20 @@
+{
+  "at_utc": "2026-11-07T21:32:21.610832+00:00",
+  "task_id": "tsk_3FBFH3Y2GF8EHB4RG9HJQKRZRT",
+  "node_id": "eval_call_00000001",
+  "item_id": "00469dc1dfe404422c4dd931",
+  "tenant": "gh-goalpairjudge-20261107",
+  "reservation_id": "mbr_WO3FHOU4DZAELVWGLO3BNQOPXX",
+  "log_event_at_utc": "2026-11-07T21:25:41.092Z",
+  "gateway_log": "2026-11-08T00:25:41.092933499+03:00 time=2026-11-07T21:25:41.092Z level=WARN msg=\"model usage pending\" reservation_id=mbr_WO3FHOU4DZAELVWGLO3BNQOPXX tenant_id=gh-goalpairjudge-20261107 model_profile_id=a6api/claude-opus-5-5@2026-10",
+  "gateway_raw_log_sha256": "a389b1a6e97bc5cc73388b84305ed77358975df3edc666ee528c314335fa554b",
+  "observed_error": "ConflictError / model usage pending",
+  "underlying_provider_error_code": null,
+  "response_artifact_present": false,
+  "known_spent_zero_does_not_establish_zero_actual_cost": true,
+  "source_explanation": "Frozen gateway settle returns model_usage_pending for a request cap before logging the original provider error. Existing logs therefore cannot establish timeout, HTTP status, or whether the upstream received the request.",
+  "default_gateway_attempt_timeout_seconds": 90,
+  "default_adapter_timeout_seconds": 120,
+  "no_retries_or_ledger_mutations_performed": true,
+  "new_model_calls": 0
+}
