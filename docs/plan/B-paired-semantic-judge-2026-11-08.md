@@ -6,7 +6,7 @@
 
 prepare只写本地不可变执行清单，原计划semantic_judge_usd预留是唯一总限；当前正式plan为7美元、22次预计6.336美元。模型从两臂semantic_judge_profile固定（当前Opus5.5），不使用Task内部judge角色的Sonnet配置替代。显式tier在付费前冻结，默认strong@medium；生成上限沿原judge_assumptions.output_tokens。profile/tier返回失配立即停止且保留费用。
 
-执行只支持真实grpc_gateway经AuditedGateway逐RPC身份记录，再由BudgetGateway约束累计额度。每项调用前fsync pending，返回原始响应先落0600文件，再校验完整STOP、全部维度、分值和证据理由。逐次读取model_usage，核所有attempt的node身份、Profile、Registry和费用；任何pending、额外节点、错Profile、缺摘要或账本与返回费不一致均停止后续调用。Gateway内部重试产生多个attempt仍全部计费；本执行器不额外重试。
+执行只支持真实grpc_gateway经AuditedGateway逐RPC身份记录，再由BudgetGateway约束累计额度。默认每项调用前fsync pending，返回原始响应先落0600文件，再校验完整STOP、全部维度、分值和证据理由。逐次读取model_usage，核所有attempt的node身份、Profile、Registry和费用；任何pending、额外节点、错Profile、缺摘要或账本与返回费不一致均停止后续调用。Gateway内部重试产生多个attempt仍全部计费；本执行器不额外重试。
 
 每项成功逐字节保持在journal，正常续跑只跳过已确认完成项；未知/失败/残缺尾部拒绝自动续跑，不因有已结算下界而清掉pending。恢复核原始响应摘要与评分一致。输出review.json直接符合paired_completion.semantic_review/completed_report，ledger-final.json可复查所有尝试。不会将BudgetGateway账单当作真实ledger替代。目录用进程锁，另一执行者不能同时使用。
 
@@ -40,3 +40,11 @@ A接续整合：manifest还固定SYSTEM、材料转换版本与全部22请求模
 新版执行器48测试及材料准备4测试通过，邻接兼容79测试通过，均未调用真实模型。旧/opt/evals/.../score_semantic.py仅保留未执行的准备记录；本模块是唯一最终评分路径，不运行两套循环。
 
 输出限制依据：services/go-model-gateway/internal/gateway/budget.go的outputLimit及libs/go-core/adapters/openaicompat/wire.go的chatRequest、provider.go的EffortForBudget。该次修正只涉及尚未付费的裁判准备，不改变已执行Task或线上环境；实际请求摘要将在完整22份材料准备时冻结。
+
+## 首个未返回请求的唯一显式恢复
+
+原22任务和工具轨迹已完整，实际材料估价6.511312美元。首个Opus RPC只得到ConflictError，没有response或score；权威账本唯一`mbr_WO3FHOU4DZAELVWGLO3BNQOPXX`保留298752微美元，实际用量/费用未知。现有日志遮蔽原provider error，不能推断是timeout/免费；同实际凭据只读GET /v1/models返回200且含Opus，没有发现配置缺口。
+
+经A/B逐项核账，仅允许该未评分首项显式恢复一次，然后原余21项各一次：仍同runID/TaskID/item、模型/Registry/tier/12k总completion、评分材料与规则。原目录7份原件逐字节保持；独立恢复目录引用SHA，从audit序号2继续。原7美元减298752微美元保留额，新执行硬限6.701248美元；完整预计6.511312加保留额为6.810064，不增预算。保留额不计作已结算spent，不修改model_usage；新增未知、原row变化或有效旧score均拒绝恢复/继续。
+
+paired_semantic_recovery只接受该一次已核定失败，不是任意unknown开关。恢复器同时锁原目录及其usage目录，未执行完的下一次失败仍禁止盲重试。最终review记录known_cost_usd与retained_pending，actual_cost_usd=null/cost_known=false；完整报告也不通过费用门槛。140项恢复/裁判/账本/预算/报告回归通过（有限恢复、原件保护、22seq2..23、续跑0RPC、篡改/新pending拒绝），末次金额非有限值检查另53项回归通过。

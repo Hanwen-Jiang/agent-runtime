@@ -340,19 +340,24 @@ def completed_report(out: Path, export: Mapping[str, Any], review: Mapping[str, 
         cost[arm] = {"gateway": gateway, "jev": jev, "total_usd": total}
         quality[arm] = sum(semantic[pv.digest([plan["run_id"], arm, c["id"]])[:24]] for c in plan["cases"]) / len(plan["cases"])
         planning[arm] = sum(bool(m.get("planning", {}).get("passed")) for m in metrics) / len(metrics)
-    judge = finite(review.get("actual_cost_usd", -1), "semantic judge actual cost")
+    judge_known = review.get("cost_known", True) is True
+    judge = finite(review.get("actual_cost_usd", -1) if judge_known else review.get("known_cost_usd", -1),
+                   "semantic judge actual cost" if judge_known else "semantic judge known cost lower bound")
+    if not judge_known and (review.get("actual_cost_usd") is not None or not review.get("retained_pending")):
+        raise ValueError("unknown judge cost requires explicit pending evidence and null actual total")
     if not review.get("cost_evidence"):
         raise ValueError("semantic judging requires cost evidence, including explicit manual zero-cost review")
     settled = all(c["total_usd"] is not None for c in cost.values())
     ratio = cost["rules"]["total_usd"] / cost["off"]["total_usd"] if settled and cost["off"]["total_usd"] else None
     quality_gain = quality["rules"] - quality["off"]
     prior = pv.historical_cost([Path(p) for p in plan.get("historical_runs", [])])
-    total = sum(c["total_usd"] for c in cost.values()) + judge + prior["known_usd"] + plan.get("prior_external_cost_usd", 0) if settled and not prior["unknown_task_ids"] else None
+    total = sum(c["total_usd"] for c in cost.values()) + judge + prior["known_usd"] + plan.get("prior_external_cost_usd", 0) if settled and judge_known and not prior["unknown_task_ids"] else None
     gate = rubric()["acceptance"]
     valid = (total is not None and total <= plan["budget_usd"] and judge <= plan["cost_reserves"]["semantic_judge_usd"]
              and sum(c["jev"]["cost_usd"] for c in cost.values() if c["jev"]["known"]) <= plan["cost_reserves"]["external_jev_usd"])
-    return {"evidence_complete": valid, "actual_shared_total_usd": total, "semantic_judge_usd": judge, "arm_costs": cost,
-            "collection_complete": True, "cost_known": settled,
+    return {"evidence_complete": valid, "actual_shared_total_usd": total, "semantic_judge_usd": judge if judge_known else None,
+            "known_semantic_judge_usd": judge, "semantic_judge_cost_known": judge_known, "arm_costs": cost,
+            "collection_complete": True, "cost_known": settled and judge_known,
             "unknown_cost_continuation_used": (out / "collection-continue.json").exists(),
             "quality": quality, "quality_gain": quality_gain, "total_cost_ratio": ratio, "planning_structure_pass_rate": planning,
             "n16_r": {"passed": valid and ratio is not None and ratio <= gate["maximum_total_cost_ratio"] and quality_gain >= gate["minimum_semantic_quality_gain"]},

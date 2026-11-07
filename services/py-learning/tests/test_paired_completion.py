@@ -133,7 +133,8 @@ def test_scope_cost_includes_memory_and_rejects_changed_baseline():
 
 
 @pytest.mark.parametrize("unknown", [False, True])
-def test_completion_report_cannot_hide_unknown_task_cost_in_scope_baseline(tmp_path, unknown):
+@pytest.mark.parametrize("judge_unknown", [False, True])
+def test_completion_report_cannot_hide_unknown_task_cost_in_scope_baseline(tmp_path, unknown, judge_unknown):
     from agentruntime_learning.benchmarks import paired_admission as admission
     from test_paired_admission import fixture
 
@@ -180,12 +181,18 @@ def test_completion_report_cannot_hide_unknown_task_cost_in_scope_baseline(tmp_p
             review["items"].append({"id": identity, "evidence_sha256": identity,
                 "scores": {d["name"]: {"score": int(arm == "rules"), "reason": "fixture evidence"}
                            for d in pc.rubric()["semantic_dimensions"]}})
+    if judge_unknown:
+        review.update(actual_cost_usd=None, known_cost_usd=.001, cost_known=False,
+                      retained_pending=[{"reservation_id": "unsettled-judge", "actual_usd_micros": None}])
     report = pc.completed_report(tmp_path, export, review, scopes)
     assert report["collection_complete"] is True
-    assert report["cost_known"] is (not unknown)
-    assert report["evidence_complete"] is (not unknown)
-    assert report["n16_r"]["passed"] is (not unknown)
-    assert report["ev_real"]["passed"] is (not unknown)
+    assert report["cost_known"] is (not unknown and not judge_unknown)
+    assert report["evidence_complete"] is (not unknown and not judge_unknown)
+    assert report["n16_r"]["passed"] is (not unknown and not judge_unknown)
+    assert report["ev_real"]["passed"] is (not unknown and not judge_unknown)
+    if judge_unknown:
+        assert report["actual_shared_total_usd"] is None and report["semantic_judge_usd"] is None
+        assert report["known_semantic_judge_usd"] == .001
     if unknown:
         assert report["arm_costs"]["off"]["total_usd"] is None
         assert report["actual_shared_total_usd"] is None and report["total_cost_ratio"] is None
