@@ -190,3 +190,13 @@ def test_goal_release_tag_still_requires_the_exact_source_commit():
         source["spec"]["containers"][0]["image"] = "registry/worker:" + tag
         with pytest.raises(ValueError):
             ensure_revision(source, revision)
+
+
+def test_observations_allow_only_known_nonsecret_numeric_settings():
+    from agentruntime_learning.benchmarks.paired_prepare import literal_env
+    import pytest
+    fields = {"AR_SECRETS_ENCRYPT": "1", "AR_CONTEXT_EFFECTIVE_TOKENS": "32000", "AR_CONTEXT_OFFLOAD_TOKENS": "2000"}
+    assert literal_env({"containers": [{"env": [{"name": k, "value": v} for k, v in fields.items()]}]}) == fields
+    for key, value in [("API_TOKEN", "1234"), ("AR_SECRETS_ENCRYPT", "secret"), ("AR_CONTEXT_EFFECTIVE_TOKENS", "https://user:pass@host")]:
+        with pytest.raises(ValueError):
+            literal_env({"containers": [{"env": [{"name": key, "value": value}]}]})

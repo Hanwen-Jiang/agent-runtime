@@ -65,7 +65,8 @@ def literal_env(spec: dict[str, Any]) -> dict[str, str]:
                 continue
             name, value = env["name"], str(env["value"])
             # Paths and names referencing a secret are not secret values.
-            if re.search(r"TOKEN|PASSWORD|SECRET|SIGNING_KEY|API_KEY|RELATIONAL_DSN", name) and not name.endswith(("_FILE", "_NAME", "_DIR")):
+            numeric_setting = name in {"AR_SECRETS_ENCRYPT", "AR_CONTEXT_EFFECTIVE_TOKENS", "AR_CONTEXT_OFFLOAD_TOKENS"} and value.isdecimal()
+            if re.search(r"TOKEN|PASSWORD|SECRET|SIGNING_KEY|API_KEY|RELATIONAL_DSN", name) and not name.endswith(("_FILE", "_NAME", "_DIR")) and not numeric_setting:
                 raise ValueError("inline sensitive environment value cannot enter an observation")
             parsed = urlsplit(value)
             if parsed.username or parsed.password:
