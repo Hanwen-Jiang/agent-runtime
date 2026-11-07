@@ -1,0 +1,80 @@
+{
+  "memory_fixed_source_present": true,
+  "evaluation_writer_present": true,
+  "memory_recovery_pid_alive": true,
+  "memory_fixed_source_commit": "7dd4ea10f29edaaffa9987e7ecfb168dfda4c65c",
+  "retained_unproven_or_dirty": [
+    {
+      "path": "/root/proj/agent-projs/.worktrees/B-audit-registry-20261107/agent-runtime",
+      "dirty": false,
+      "patch_equivalence_proven": false,
+      "occupied": false
+    },
+    {
+      "path": "/root/proj/agent-projs/.worktrees/fc-pin/agent-runtime",
+      "dirty": false,
+      "patch_equivalence_proven": false,
+      "occupied": false
+    },
+    {
+      "path": "/root/proj/agent-projs/.worktrees/live-release-20261107/agent-runtime",
+      "dirty": false,
+      "patch_equivalence_proven": false,
+      "occupied": false
+    },
+    {
+      "path": "/root/proj/agent-projs/.worktrees/livecheck-eval-20261107/agent-runtime",
+      "dirty": false,
+      "patch_equivalence_proven": false,
+      "occupied": false
+    },
+    {
+      "path": "/root/proj/agent-projs/.worktrees/livecheck-transfer-20261107/agent-runtime",
+      "dirty": false,
+      "patch_equivalence_proven": false,
+      "occupied": false
+    },
+    {
+      "path": "/root/proj/agent-projs/.worktrees/livecheck-ws-20261107/agent-runtime",
+      "dirty": false,
+      "patch_equivalence_proven": false,
+      "occupied": false
+    },
+    {
+      "path": "/root/proj/agent-projs/.worktrees/network/agent-runtime",
+      "dirty": false,
+      "patch_equivalence_proven": false,
+      "occupied": false
+    },
+    {
+      "path": "/root/proj/agent-projs/.worktrees/registry-numeric/agent-runtime",
+      "dirty": false,
+      "patch_equivalence_proven": false,
+      "occupied": false
+    },
+    {
+      "path": "/root/proj/agent-projs/.worktrees/root-test/agent-runtime",
+      "dirty": true,
+      "patch_equivalence_proven": true,
+      "occupied": false
+    },
+    {
+      "path": "/root/proj/agent-projs/.worktrees/transfer/agent-runtime",
+      "dirty": true,
+      "patch_equivalence_proven": true,
+      "occupied": false
+    },
+    {
+      "path": "/root/proj/agent-projs/.worktrees/livecheck-ws-20261107/coding-agent",
+      "dirty": false,
+      "patch_equivalence_proven": false,
+      "occupied": false
+    },
+    {
+      "path": "/root/proj/agent-projs/.worktrees/network/coding-agent",
+      "dirty": false,
+      "patch_equivalence_proven": false,
+      "occupied": false
+    }
+  ]
+}

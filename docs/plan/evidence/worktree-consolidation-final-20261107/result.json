@@ -1,0 +1,48 @@
+{
+  "at_utc": "2026-11-07T19:50:23.607647+00:00",
+  "results": [
+    {
+      "path": "/root/proj/agent-projs/.worktrees/b-longmem-closeout-20261108/agent-runtime",
+      "head": "cbfe6c7ea86254d9c87b24542f929f3a3216d885",
+      "branch": "refs/heads/goal/b-longmem-closeout-20261108",
+      "bundle": "b-longmem-closeout-20261108-agent-runtime.bundle",
+      "bundle_sha256": "e5cf4eac8f9ba27ad9803b149749b7f8a07c4074a4f96a7a7a12f7f6cca99e02",
+      "ignored_archive": "b-longmem-closeout-20261108-agent-runtime-ignored.tar",
+      "ignored_archive_sha256": "0504470c09ae36d25135499c23b61a586f19cacad2417babb027fbf1fb09af3b",
+      "ignored_files_preserved": 14,
+      "removed": true
+    },
+    {
+      "path": "/root/proj/agent-projs/.worktrees/b-semantic-judge-20261108/agent-runtime",
+      "head": "0ff88ca46546790dfae82f6637f26dee8e88952f",
+      "branch": "refs/heads/goal/b-semantic-judge-20261108",
+      "bundle": "b-semantic-judge-20261108-agent-runtime.bundle",
+      "bundle_sha256": "52f91e57a83925bc504952373b7dbfdbfc4e6f0cdb8545e5fabde449fb819481",
+      "ignored_archive": "b-semantic-judge-20261108-agent-runtime-ignored.tar",
+      "ignored_archive_sha256": "5dadd12986e0ae34c7606fb28d9ea5e466b79e934660870c5f4a538359e970d0",
+      "ignored_files_preserved": 76,
+      "removed": true
+    },
+    {
+      "path": "/root/proj/agent-projs/.worktrees/codex-sync-20261107/agent-runtime",
+      "head": "1dfa9191fde991fb4c95ff300c3cc8a4f5e17688",
+      "branch": "refs/heads/codex/sync-cloudnium-20261107",
+      "bundle": "codex-sync-20261107-agent-runtime.bundle",
+      "bundle_sha256": "eff78460e9d95473bb9148e81729314c7e9e7210cf8dd26bf6ad76ccfed133dc",
+      "removed": true
+    },
+    {
+      "path": "/root/proj/agent-projs/.worktrees/livecheck-isolated-20261107/agent-runtime",
+      "head": "3c9ffcb5be4736fa462456ae0e08a3d3b01a802e",
+      "branch": "detached",
+      "bundle": "livecheck-isolated-20261107-agent-runtime.bundle",
+      "bundle_sha256": "aa7e2db071a203afcaefe232fc0118010fef932dd82565b2238c8f652ff2a297",
+      "ignored_archive": "livecheck-isolated-20261107-agent-runtime-ignored.tar",
+      "ignored_archive_sha256": "e4ef83be41a545ddbd6b0736e3e8d9d4fd72bcb96694fa2bffcc511f1c16f0e4",
+      "ignored_files_preserved": 1304,
+      "removed": true
+    }
+  ],
+  "refs_deleted": false,
+  "original_eval_evidence_deleted": false
+}
