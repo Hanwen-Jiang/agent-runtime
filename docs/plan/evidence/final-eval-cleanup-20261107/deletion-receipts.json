@@ -1,0 +1,91 @@
+{
+  "at_utc": "2026-11-07T23:32:50.555623+00:00",
+  "scope_sha256": "274db9b962b18e3925eeb6bcc61ee9f3e1b3b8ab2c2f0a1ec9794cbe6f44871d",
+  "uid_preconditions": true,
+  "resources": [
+    {
+      "kind": "Service",
+      "name": "goal-paired-model-gateway",
+      "uid": "8d9ddbc2-8232-4b2a-b05d-e2fdede229da",
+      "delete_http_status": 200
+    },
+    {
+      "kind": "Service",
+      "name": "goal-paired-sandbox-service",
+      "uid": "05736f9c-f1e1-4ec2-aa18-243e4f660e6f",
+      "delete_http_status": 200
+    },
+    {
+      "kind": "Service",
+      "name": "goal-paired-task-service",
+      "uid": "e43a5029-64f1-4d5d-8ca5-e245fe0f48b2",
+      "delete_http_status": 200
+    },
+    {
+      "kind": "Deployment",
+      "name": "goal-paired-worker-decision",
+      "uid": "e8d18773-3430-4583-8d3f-3af2b6a485b1",
+      "delete_http_status": 200
+    },
+    {
+      "kind": "Deployment",
+      "name": "goal-paired-worker-model",
+      "uid": "765c1223-e112-4df4-b85c-23562a3189fd",
+      "delete_http_status": 200
+    },
+    {
+      "kind": "Deployment",
+      "name": "goal-paired-worker-program",
+      "uid": "20cc9c11-6f0c-4972-80e5-e5cbb3b6c2ff",
+      "delete_http_status": 200
+    },
+    {
+      "kind": "Deployment",
+      "name": "goal-paired-worker-task",
+      "uid": "dbe008a7-f5c1-4a1d-8a30-e744315da353",
+      "delete_http_status": 200
+    },
+    {
+      "kind": "Deployment",
+      "name": "goal-paired-worker-workspace",
+      "uid": "a19b0690-9728-4a9d-8a5c-950e5c1288d9",
+      "delete_http_status": 200
+    },
+    {
+      "kind": "Deployment",
+      "name": "goal-paired-model-gateway",
+      "uid": "d6f652a8-6946-41db-8563-8c6b37e60f31",
+      "delete_http_status": 200
+    },
+    {
+      "kind": "Deployment",
+      "name": "goal-paired-sandbox-service",
+      "uid": "44a483a7-c56b-4220-9506-8dfbdda8628e",
+      "delete_http_status": 200
+    },
+    {
+      "kind": "Deployment",
+      "name": "goal-paired-task-service",
+      "uid": "dd65d82c-c159-4c84-8ca4-e34e3ae6ea90",
+      "delete_http_status": 200
+    },
+    {
+      "kind": "ConfigMap",
+      "name": "goal-paired-hard-routes-20261107",
+      "uid": "7855f8dc-b390-448e-80a3-82719b125cae",
+      "delete_http_status": 200
+    },
+    {
+      "kind": "ConfigMap",
+      "name": "goal-paired-model-allowlist",
+      "uid": "3afd4ec1-e44a-4eae-a416-08e71ce1ba32",
+      "delete_http_status": 200
+    },
+    {
+      "kind": "ConfigMap",
+      "name": "goal-paired-sandbox-backends",
+      "uid": "173235ab-35de-4bd8-9fbd-8637fea92475",
+      "delete_http_status": 200
+    }
+  ]
+}
