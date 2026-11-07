@@ -1,0 +1,9 @@
+{
+  "contract_result": "613 passed; the single Go umbrella test is intentionally run separately using the repository checker split",
+  "go_umbrella_result": "1 passed; iterates all go.work modules build, vet, test, using non-root CI, PostgreSQL and real kind/gVisor",
+  "go_seconds": 181.17,
+  "toolchain_environment": "agentruntime-ci:3; final static agent; native Docker wrapper; 2CPU/6GiB CI container",
+  "earlier_failures_retained": "Host PATH missed initdb/cargo; corrected CI PATH/group and AR_DOCKER_BIN; non-root temporary module cache required -modcacherw. No assertions removed or suite skips added. Earlier logs retained under .goal-tools.",
+  "resource_cleanup": "Owned kind cluster deleted and inotify setting restored to 128",
+  "model_cost_usd": 0
+}

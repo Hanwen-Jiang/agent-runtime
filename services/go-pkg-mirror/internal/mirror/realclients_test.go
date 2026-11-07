@@ -90,7 +90,9 @@ func TestRealGoDownloadsThroughTheMirrorAndTheSecondTimeCostsNoUpstream(t *testi
 	proxy := f.http.URL + "/t/" + token(t, "t-go", 0) + "/go"
 	for i := 0; i < 2; i++ {
 		home := t.TempDir()
-		env := []string{"GOPROXY=" + proxy, "GOSUMDB=off", "GOFLAGS=-mod=mod", "GOWORK=off", "GO111MODULE=on", "GONOSUMDB=*", "GONOPROXY=", "GOPRIVATE=",
+		// This disposable module cache must be removable by the non-root test
+		// user after checking both real downloads and the upstream cache hit.
+		env := []string{"GOPROXY=" + proxy, "GOSUMDB=off", "GOFLAGS=-mod=mod -modcacherw", "GOWORK=off", "GO111MODULE=on", "GONOSUMDB=*", "GONOPROXY=", "GOPRIVATE=",
 			"GOPATH=" + filepath.Join(home, "gopath"), "GOMODCACHE=" + filepath.Join(home, "mod"), "GOCACHE=" + filepath.Join(home, "cache"), "GOTOOLCHAIN=local"}
 		out := run(t, home, env, gocmd, "mod", "download", "-json", "example.com/demo@v1.0.0")
 		if !strings.Contains(out, `"Version": "v1.0.0"`) || strings.Contains(out, `"Error"`) {
