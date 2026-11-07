@@ -1,0 +1,12 @@
+{
+  "scope": "single-storage off submission readiness only",
+  "finding": "SubmitTask checks the tenant-scoped workspace_creating cache marker, not WorkspaceState. Archived snapshots are valid for later Task restoration.",
+  "temporal_terminal": "COMPLETED at 2026-11-07T19:32:44.922051+00:00",
+  "cache_observed_at": "2026-11-07T19:37:31.100758+00:00",
+  "marker_absent": true,
+  "manual_marker_clear": false,
+  "deployment_changes": false,
+  "model_calls": 0,
+  "next_action": "A reuses original workspace, operation and Task client_request_id; no recreate, no altered model configuration.",
+  "timing_inference": "A persisted successful activity result may be observed shortly before Temporal closes and the readiness marker is cleared. Exact duration of the transient marker after public completion was not measured."
+}
