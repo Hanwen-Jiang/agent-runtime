@@ -215,6 +215,15 @@ def test_goal_release_tag_still_requires_the_exact_source_commit():
             ensure_revision(source, revision)
 
 
+def test_cli_generated_snapshot_command_runs_as_an_importable_module(monkeypatch, tmp_path):
+    import subprocess
+    monkeypatch.setattr(pp, "__name__", "__main__")
+    argv = pp.snapshot_command(str(tmp_path / "spec.json"))
+    result = subprocess.run([*argv, "--help"], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert "--spec" in result.stdout and "--provenance-only" in result.stdout
+
+
 def test_observations_allow_only_known_nonsecret_numeric_settings():
     from agentruntime_learning.benchmarks.paired_prepare import literal_env
     import pytest

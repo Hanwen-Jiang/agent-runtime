@@ -288,6 +288,13 @@ def price_estimate(settings: dict[str, Any], prices: dict[str, Any], models: dic
             "is_hard_upper_bound": False, "source": "observed Registry prices and preregistered token/call assumptions"}
 
 
+def snapshot_command(spec_path: str) -> list[str]:
+    # python -m executes this file as __main__, which is not an importable
+    # subprocess module. Keep the generated command valid in both entry modes.
+    return [sys.executable, "-m", "agentruntime_learning.benchmarks.paired_prepare",
+            "observe", "--spec", spec_path, "--provenance-only"]
+
+
 def prepare(off: dict[str, Any], rules: dict[str, Any], settings: dict[str, Any]) -> dict[str, Any]:
     from agentruntime_learning.benchmarks.paired import estimate
     for arm, receipt in (("off", off), ("rules", rules)):
@@ -309,7 +316,7 @@ def prepare(off: dict[str, Any], rules: dict[str, Any], settings: dict[str, Any]
     plan = {k: settings[k] for k in ("run_id", "seed", "budget_usd", "task_usd_limit", "cost_reserves", "thresholds")}
     plan.update(tenant_id=off["tenant_id"], cases=cases, historical_runs=settings.get("historical_runs", []),
                 prior_external_cost_usd=settings.get("prior_external_cost_usd", 0), task_timeout_s=settings.get("task_timeout_s", 900),
-                arms={arm: {"task_api": r["task_api"], "snapshot_command": [sys.executable, "-m", __name__, "observe", "--spec", r["spec_path"], "--provenance-only"],
+                arms={arm: {"task_api": r["task_api"], "snapshot_command": snapshot_command(r["spec_path"]),
                             "provenance": r["provenance"]} for arm, r in (("off", off), ("rules", rules))})
     plan["completion"] = {"version": pc.VERSION, "rubric": pc.rubric(), "cases_sha256": pv.digest(cases),
                           "original_message_sha256": hashlib.sha256(pc.ORIGINAL_MESSAGE.encode()).hexdigest(), "price_estimate": priced,
