@@ -111,6 +111,16 @@ def test_jev_missing_usage_stays_unknown_and_all_checks_cost():
     assert pc.jev_cost(checks, 2)['cost_usd'] is None
 
 
+def test_jev_alias_or_changed_served_version_cannot_enter_a_pair():
+    rows = [{"provider_attempted": True, "model": "jev-1.14.0", "usage_known": True, "input_tokens": 519}]
+    pc.verify_jev_model(rows, "jev-1.14.0")
+    with pytest.raises(ValueError, match="frozen"):
+        pc.verify_jev_model(rows, "jev-latest")
+    with pytest.raises(ValueError, match="drifted"):
+        pc.verify_jev_model(rows, "jev-1.15.0")
+    assert rows[0]["input_tokens"] == 519, "mismatch does not erase the actual charge evidence"
+
+
 def test_scope_cost_includes_memory_and_rejects_changed_baseline():
     before = [{'reservation_id': 'old', 'task_id': 'old', 'actual_usd_micros': 5}]
     after = before + [{'reservation_id': 'task', 'task_id': 't', 'actual_usd_micros': 100},
