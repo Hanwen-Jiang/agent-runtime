@@ -1,0 +1,39 @@
+{
+  "arm": "off",
+  "at_unix": 1794080582.3545241,
+  "collected_original_cases": 11,
+  "valid_known_cost_cases": 10,
+  "all_terminal": true,
+  "all_cleanup_pending_false": true,
+  "remaining_workspaces": 0,
+  "active_tasks": [],
+  "known_task_gateway_usd": 1.12475,
+  "scope": {
+    "known_usd_micros": 1210315,
+    "pending_reserved_usd_micros": 14517,
+    "accounted_usd_micros": 1224832,
+    "remaining_usd_micros": 17220429,
+    "cost_known": false,
+    "pending_reservation_ids": [
+      "mbr_DTTAF6WU2EWRW4S267NLH6APYE"
+    ]
+  },
+  "pending_kept_unknown": true,
+  "cost_gate_passed": false,
+  "task_ids": [
+    "tsk_01M6VP824GCAY36NPBPMYXXS7W",
+    "tsk_01M6TW8P2H6CNVE62D5PM8SR9C",
+    "tsk_01M6TWMQR32019GC0WNRCYGRZR",
+    "tsk_01M6VN3VK96H3J2YEF7FYRPTY2",
+    "tsk_01M6VNTKKCV2FSDHZCGPG9JDQA",
+    "tsk_01M6VMW0HKHPEMCN1PM9WYZAGE",
+    "tsk_01M6VRAXYWJSQVG5Z0TD8DNS7E",
+    "tsk_01M6VNCZ6AKGYFNP7368B2MAYW",
+    "tsk_01M6TVD6XBEC3SGVSVF3PJXBYS",
+    "tsk_01M6TVYC7WHPSG9VVJEF0NRWW2",
+    "tsk_01M6VQQYNY0KSJATEZB77GH91W"
+  ],
+  "plan_sha256": "b978331eeb94b7d70fb36684ca63c8978c90d733c608108df71ef5e69f95a86c",
+  "subject_runtime": "fdd0f202a2939ac697dd54b717afab0708f13443",
+  "model_calls": 0
+}

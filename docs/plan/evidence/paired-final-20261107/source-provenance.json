@@ -1,0 +1,263 @@
+{
+  "kind": "paired-final-delivery-copy-v1",
+  "source_root": "/opt/evals/n16-evreal-pinned-20261107",
+  "copied_files": [
+    {
+      "source": "/opt/evals/n16-evreal-pinned-20261107/paired-completion-final.json",
+      "destination": "paired-completion-final.json",
+      "sha256": "d34e302bbceae7af9255a89ec0b1235fb110f16547d9a7ed6b7e2778efaf4500",
+      "bytes": 79162
+    },
+    {
+      "source": "/opt/evals/n16-evreal-pinned-20261107/semantic-last/review.json",
+      "destination": "semantic-last/review.json",
+      "sha256": "46886f50a3b193fd9eb8da3edf9a55f4db958b9d2d6d4bfe2553e5d727abee63",
+      "bytes": 57234
+    },
+    {
+      "source": "/opt/evals/n16-evreal-pinned-20261107/semantic-last/manifest.json",
+      "destination": "semantic-last/manifest.json",
+      "sha256": "3b4c4038e0aafa9ae5fb086d0088cc2ecd579dc114e31fa84d7fd1cb49ae6d5f",
+      "bytes": 4301
+    },
+    {
+      "source": "/opt/evals/n16-evreal-pinned-20261107/semantic-last/ledger-final.json",
+      "destination": "semantic-last/ledger-final.json",
+      "sha256": "e2c60cb246ec08f1762a821bdafde54ca0b8442fbc731634cc30312581e74480",
+      "bytes": 16091
+    },
+    {
+      "source": "/opt/evals/n16-evreal-pinned-20261107/off-closeout.json",
+      "destination": "off-closeout.json",
+      "sha256": "b0d54c285c103bf4a68d68e9b6ca6804c2d69194fa31601543e76a61ae3f40cc",
+      "bytes": 1207
+    },
+    {
+      "source": "/opt/evals/n16-evreal-pinned-20261107/rules-closeout.json",
+      "destination": "rules-closeout.json",
+      "sha256": "7a82d9350522e730763705aae9c343d94278ad00e7bc7767fc15ce196b33cf34",
+      "bytes": 1289
+    }
+  ],
+  "source_plan_sha256": "b978331eeb94b7d70fb36684ca63c8978c90d733c608108df71ef5e69f95a86c",
+  "original_case_ids": [
+    "compare-http",
+    "compare-storage",
+    "compare-incident",
+    "compare-licence",
+    "compare-release",
+    "single-http",
+    "single-storage",
+    "single-incident",
+    "single-licence",
+    "single-release",
+    "http-libraries-jev-regression"
+  ],
+  "original_task_ids": {
+    "off": [
+      "tsk_01M6VP824GCAY36NPBPMYXXS7W",
+      "tsk_01M6TW8P2H6CNVE62D5PM8SR9C",
+      "tsk_01M6TWMQR32019GC0WNRCYGRZR",
+      "tsk_01M6VN3VK96H3J2YEF7FYRPTY2",
+      "tsk_01M6VNTKKCV2FSDHZCGPG9JDQA",
+      "tsk_01M6VMW0HKHPEMCN1PM9WYZAGE",
+      "tsk_01M6VRAXYWJSQVG5Z0TD8DNS7E",
+      "tsk_01M6VNCZ6AKGYFNP7368B2MAYW",
+      "tsk_01M6TVD6XBEC3SGVSVF3PJXBYS",
+      "tsk_01M6TVYC7WHPSG9VVJEF0NRWW2",
+      "tsk_01M6VQQYNY0KSJATEZB77GH91W"
+    ],
+    "rules": [
+      "tsk_01M6VW4HZEVKKVGA3WYJP8J76V",
+      "tsk_01M6VSX58WHREWHJVEQW46GM0B",
+      "tsk_01M6VTE90KGKB7EZP3JS19CVM8",
+      "tsk_01M6VV3261YBFXM43BEYG3XG6M",
+      "tsk_01M6VVWCEQPXHVC0F9QB31E26J",
+      "tsk_01M6VTTD33FDTKYQ9ZG15S17M0",
+      "tsk_01M6VXQR41KB95XHRKD4AT330R",
+      "tsk_01M6VVJHJ3S5C4SS818XDQAPZR",
+      "tsk_01M6VRSEGWAQC8YV0GMYD9RS9V",
+      "tsk_01M6VSN52ZTTQ9E7W22J9S60HD",
+      "tsk_01M6VWNDVJ6WFFNTZXNDVEV8GD"
+    ]
+  },
+  "subject": {
+    "off": {
+      "runtime_commit": "fdd0f202a2939ac697dd54b717afab0708f13443",
+      "models": {
+        "plan": "a6api/claude-sonnet-5-5@2026-10",
+        "judge": "a6api/claude-sonnet-5-5@2026-10",
+        "route": "a6api/claude-haiku-5-5@2026-10",
+        "act": "a6api/deepseek-v4-flash@2026-10",
+        "sub_agent": "a6api/deepseek-v4-flash@2026-10",
+        "transform": "a6api/deepseek-v4-flash@2026-10",
+        "aggregate": "a6api/deepseek-v4-flash@2026-10",
+        "deliver": "a6api/deepseek-v4-flash@2026-10",
+        "fetch": "a6api/deepseek-v4-flash@2026-10",
+        "summary": "a6api/claude-haiku-5-5@2026-10",
+        "probe": "a6api/claude-haiku-5-5@2026-10",
+        "embedding": "a6api/text-embedding-3-large@2026-10"
+      },
+      "registry": {
+        "a6api/claude-haiku-5-5@2026-10": {
+          "scope": "platform",
+          "revision": "v2",
+          "document_sha256": "ba45f390cd51419982b714ae3ca2f82c2dc89de87f197fbe68a9542352b98bfe"
+        },
+        "a6api/claude-opus-5-5@2026-10": {
+          "scope": "platform",
+          "revision": "v3",
+          "document_sha256": "e42df3b1eba85d89bcf869ef8942c993d469e4ca3f03818789dc1cea1bed0d5a"
+        },
+        "a6api/claude-sonnet-5-5@2026-10": {
+          "scope": "platform",
+          "revision": "v2",
+          "document_sha256": "0e6c0318486a6f67dcd58ad7418bfd8353800e814e6125bfed59f7735ea5271f"
+        },
+        "a6api/deepseek-v4-flash@2026-10": {
+          "scope": "platform",
+          "revision": "v2",
+          "document_sha256": "b6f4c36572c5db4dcc601fbfdadb8a881ecdf881b949aa6215ec34371d93f1be"
+        },
+        "a6api/text-embedding-3-large@2026-10": {
+          "scope": "platform",
+          "revision": "v1",
+          "document_sha256": "ac61544d2cec07c76bdbeee2a68cb9e1a4e3f171076242374725a93a87028180"
+        }
+      },
+      "gateway_config_sha256": "ced52cccadbe7784979213980c71c7ba96186cd716451c3c02137813b3243446",
+      "worker_config_sha256": "38e835f8c4acb39c37c73ae1588b8616c864f882a4cdf64ea5b08f6143ef0424",
+      "tenant_policy_sha256": "343960ebb2575a0cb4e42c31edd7985808188955580a7678aa08bf52d1c4d2a2",
+      "memory": {
+        "revision": "5acf3ff77b4420677b5923071f303facaba7a9273a346284a667a275df325146",
+        "corpus_sha256": "5acf3ff77b4420677b5923071f303facaba7a9273a346284a667a275df325146",
+        "enabled": false
+      },
+      "sub_agent_policy": "off",
+      "scoring_version": "paired-semantic-planning-v1",
+      "worker_raw_sha256": "2ed1c600cd449d46a0a59ea5e8efaaa21f7e00c3525bb7e26a6d83c6b6f9a3ed",
+      "normalization": "worker-config-exclude-sub-agent-policy-v1"
+    },
+    "rules": {
+      "runtime_commit": "fdd0f202a2939ac697dd54b717afab0708f13443",
+      "models": {
+        "plan": "a6api/claude-sonnet-5-5@2026-10",
+        "judge": "a6api/claude-sonnet-5-5@2026-10",
+        "route": "a6api/claude-haiku-5-5@2026-10",
+        "act": "a6api/deepseek-v4-flash@2026-10",
+        "sub_agent": "a6api/deepseek-v4-flash@2026-10",
+        "transform": "a6api/deepseek-v4-flash@2026-10",
+        "aggregate": "a6api/deepseek-v4-flash@2026-10",
+        "deliver": "a6api/deepseek-v4-flash@2026-10",
+        "fetch": "a6api/deepseek-v4-flash@2026-10",
+        "summary": "a6api/claude-haiku-5-5@2026-10",
+        "probe": "a6api/claude-haiku-5-5@2026-10",
+        "embedding": "a6api/text-embedding-3-large@2026-10"
+      },
+      "registry": {
+        "a6api/claude-haiku-5-5@2026-10": {
+          "scope": "platform",
+          "revision": "v2",
+          "document_sha256": "ba45f390cd51419982b714ae3ca2f82c2dc89de87f197fbe68a9542352b98bfe"
+        },
+        "a6api/claude-opus-5-5@2026-10": {
+          "scope": "platform",
+          "revision": "v3",
+          "document_sha256": "e42df3b1eba85d89bcf869ef8942c993d469e4ca3f03818789dc1cea1bed0d5a"
+        },
+        "a6api/claude-sonnet-5-5@2026-10": {
+          "scope": "platform",
+          "revision": "v2",
+          "document_sha256": "0e6c0318486a6f67dcd58ad7418bfd8353800e814e6125bfed59f7735ea5271f"
+        },
+        "a6api/deepseek-v4-flash@2026-10": {
+          "scope": "platform",
+          "revision": "v2",
+          "document_sha256": "b6f4c36572c5db4dcc601fbfdadb8a881ecdf881b949aa6215ec34371d93f1be"
+        },
+        "a6api/text-embedding-3-large@2026-10": {
+          "scope": "platform",
+          "revision": "v1",
+          "document_sha256": "ac61544d2cec07c76bdbeee2a68cb9e1a4e3f171076242374725a93a87028180"
+        }
+      },
+      "gateway_config_sha256": "ced52cccadbe7784979213980c71c7ba96186cd716451c3c02137813b3243446",
+      "worker_config_sha256": "38e835f8c4acb39c37c73ae1588b8616c864f882a4cdf64ea5b08f6143ef0424",
+      "tenant_policy_sha256": "343960ebb2575a0cb4e42c31edd7985808188955580a7678aa08bf52d1c4d2a2",
+      "memory": {
+        "revision": "5acf3ff77b4420677b5923071f303facaba7a9273a346284a667a275df325146",
+        "corpus_sha256": "5acf3ff77b4420677b5923071f303facaba7a9273a346284a667a275df325146",
+        "enabled": false
+      },
+      "sub_agent_policy": "rules",
+      "scoring_version": "paired-semantic-planning-v1",
+      "worker_raw_sha256": "c143b7933adf7ec0472e6ba6a6364e2a86bce4b50b7b2edadc294dc4c54c9f10",
+      "normalization": "worker-config-exclude-sub-agent-policy-v1"
+    }
+  },
+  "semantic_judge": {
+    "version": "paired-semantic-gateway-v1",
+    "run_id": "n16-evreal-pinned-20261107-semantic-judge",
+    "task_id": "tsk_3FBFH3Y2GF8EHB4RG9HJQKRZRT",
+    "profile": "a6api/claude-opus-5-5@2026-10",
+    "registry": {
+      "scope": "platform",
+      "revision": "v3",
+      "document_sha256": "e42df3b1eba85d89bcf869ef8942c993d469e4ca3f03818789dc1cea1bed0d5a"
+    },
+    "tier": "strong@medium",
+    "budget_usd": 7.0,
+    "schema_transport_version": 2,
+    "legacy_completed_item_ids": []
+  },
+  "cleanup_scope": {
+    "off": {
+      "at_unix": 1794080582.3545241,
+      "collected_original_cases": 11,
+      "all_terminal": true,
+      "all_cleanup_pending_false": true,
+      "remaining_workspaces": 0,
+      "active_tasks": [],
+      "scope": {
+        "known_usd_micros": 1210315,
+        "pending_reserved_usd_micros": 14517,
+        "accounted_usd_micros": 1224832,
+        "remaining_usd_micros": 17220429,
+        "cost_known": false,
+        "pending_reservation_ids": [
+          "mbr_DTTAF6WU2EWRW4S267NLH6APYE"
+        ]
+      },
+      "pending_kept_unknown": true,
+      "cost_gate_passed": false
+    },
+    "rules": {
+      "at_unix": 1794086432.5230203,
+      "collected_original_cases": 11,
+      "all_terminal": true,
+      "all_cleanup_pending_false": true,
+      "remaining_workspaces": 0,
+      "active_tasks": [],
+      "scope": {
+        "known_usd_micros": 2784534,
+        "pending_reserved_usd_micros": 32814,
+        "accounted_usd_micros": 2817348,
+        "remaining_usd_micros": 15627913,
+        "cost_known": false,
+        "pending_reservation_ids": [
+          "mbr_DTTAF6WU2EWRW4S267NLH6APYE",
+          "mbr_QXBAQLBWMIB2BSAG4U5B33M2SJ",
+          "mbr_UZORZ3YUTV5V7ELFMW643HXTZM"
+        ]
+      },
+      "pending_kept_unknown": true,
+      "cost_gate_passed": false
+    },
+    "description": "off and rules scope are cumulative checkpoints on the same subject tenant; do not sum them as two separate bills."
+  },
+  "raw_artifacts_retained": "/opt/evals/n16-evreal-pinned-20261107",
+  "raw_responses_copied": false,
+  "new_model_calls": 0,
+  "tests_run_during_copy": false,
+  "copy_notes": "Byte-identical copies of existing final reports and receipts; source scope observations are retained snapshots, not new live queries."
+}

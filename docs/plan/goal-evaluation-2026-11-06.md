@@ -167,3 +167,83 @@ HTTP原题rules已真实运行3个SubAgent，规划证据与模型/Registry一�
 固定cohort已知模型费用$0.760814；隔离tenant累计$0.821986，加最早外部实验$0.015291，全部相关已知费用$0.837277。唯一152微美元pending完整保留，实际总额仍unknown，不把预占当实付或免费。实验完整性及质量门槛结果与费用是否结清分开记录。
 
 运行与模型：评测源7dd4ea10、Memory镜像goal-60a266a3、Gateway goal-9ef23021，数据SHA256 d6f21ea9d60a0d56f34a05b609c79c88a451d2ae03597821ea3d5a9678c3a442；完整冻结、逐题原始结果及账本仍在`/opt/evals/longmemeval-recovered-20261107/`。本次汇总未触发额外模型调用。
+
+## N16-R / EV-REAL 最终配对交付（2026-11-07 实验，2026-11-08 汇总）
+
+**原11题×off/rules共22个Task已全部采集并清理；整体验收未通过。** 本节取代前文“rules仍在运行”的阶段状态，不修改任何旧失败、旧指标或未知账单。完整逐题裁判原始读数、五维理由、Task身份、费用与行为指标见[最终配对报告](evidence/paired-final-20261107/paired-completion-final.json)；[来源与清理摘要](evidence/paired-final-20261107/source-provenance.json)保存复制来源、逐文件SHA256、固定配置及两臂的原始清理快照。本次只整理既有证据，没有运行模型、测试或新增费用。
+
+### 固定条件与评分证据
+
+所有subject Task继续使用原runtime `fdd0f202a2939ac697dd54b717afab0708f13443`，5个隔离Worker只改变`AR_SUB_AGENT_POLICY=off/rules`。实际模型、Registry scope/vN/digest、Gateway配置、租户策略、Memory和评分版本均固定；两臂剔除且仅剔除该开关后的Worker摘要相同。plan/运行时judge为Sonnet 5.5，route为Haiku 5.5，act/sub_agent及其它生成角色按原固定表使用DeepSeek v4 Flash；完整逐角色映射及Profile修订保留在来源摘要，未以部署SHA冒充Registry修订。
+
+语义裁判固定Opus 5.5及真实Registry `platform/v3/e42df3b1…0d5a`，原五维rubric、盲评输入材料及22题全部保留。当前[manifest](evidence/paired-final-20261107/semantic-last/manifest.json)明确`schema_transport_version=2`、22个item、`legacy_completed_item_ids=[]`；旧wire v1的两份有效评分独立留在原始目录`semantic-strict/prior-valid-judgments.json`，没有混入当前22份结果。
+
+统一`paired-score-extraction-v1`只从原响应提取原五维字段，22份提取分数与原响应逐字段一致，不改评分尺度、理由或分数。唯一raw schema失败为off的`compare-licence`（item `360c0e00dbf0eba926bc86a6`），额外顶层字段导致原始schema不合法；[review](evidence/paired-final-20261107/semantic-last/review.json)及逐题记录保留`raw_schema_failures=1`/`judge_raw_schema_valid=false`，没有把传输失败改写成严格schema通过。完整raw响应和恢复链均留在`/opt/evals/n16-evreal-pinned-20261107/`，交付目录不复制`*.response.json`或`response.rationale`。
+
+### 两臂结果与结论
+
+| 指标 | off | rules |
+| --- | ---: | ---: |
+| 原题/原Task采集数 | 11/11 | 11/11 |
+| 五维语义裁判原始读数均值 | 0.9454545455 | 0.9636363636 |
+| 各策略自身结构条件通过数 | 11/11 | 6/11 |
+| Task耗时中位数（秒） | 116.167740 | 118.903019 |
+| 完整Temporal树计划工具请求数 | 61 | 66 |
+| 完整工具名与参数规范化摘要重复数 | 17 | 19 |
+| 额外轮次合计 | 7 | 10 |
+| 已知Task Gateway费用（美元） | 1.124750 | 1.574219 |
+| 已知Jev费用（美元） | 0.000598122 | 0.000493374 |
+| 两者已知费用下界（美元，不含共享语义裁判） | 1.125348122 | 1.574712374 |
+| 未结算subject预占（美元；不是实付） | 0.014517 | 0.018297 |
+
+裁判原始均值差为**0.0181818182，小于原门槛0.10**；没有事后降低门槛。已识别一处off评分理由误用了rules结构条件，故这两个均值及其差值只作裁判原始读数，不能当作可信能力分发布；具体限定与单维敏感性见下文。结构条件按各自策略判断：off不要求派子Agent，rules要求应拆分题符合原拆分/综合规则，因此不能把11/11与6/11直接解释为同一裸DAG有效率。只有原HTTP库题的rules臂实际执行3个SubAgent（survey_requests、survey_httpx、survey_aiohttp），已知子Agent费用$0.002109；该Task最终**aborted**，不能因有答案、结构通过或子Agent执行而改记完全解决。其余应拆分题未派子Agent的事实保留。
+
+N16-R结论：本固定cohort不能据含已知裁判误判的原始读数证明开启rules达到预设质量收益；工具重复和额外轮次均未下降，成本未知，不能报告成本倍数通过。EV-REAL结论：已有真实规划图、工具执行树与五维语义证据，rules只满足6/11项策略结构条件，无法通过本次规划/拆分验收。最终`n16_r.passed=false`、`ev_real.passed=false`、`evidence_complete=false`，同时`collection_complete=true`；区分实验完整采集、模型/策略表现和账单完整性。
+
+完整11对保留如下，不丢弃难题、aborted或费用未知题。结构列为off/rules各自策略条件；`*`表示保留原raw schema失败而使用统一字段提取的质量值。
+
+| 原题 | off裁判原始读数 | rules裁判原始读数 | 结构off/rules | 终态off/rules | 费用未知臂 |
+| --- | ---: | ---: | --- | --- | --- |
+| compare-http | 1.0 | 1.0 | 通过/未通过 | done/done | off |
+| compare-storage | 0.9 | 1.0 | 通过/未通过 | done/done | — |
+| compare-incident | 1.0 | 1.0 | 通过/未通过 | done/done | — |
+| compare-licence | 1.0* | 1.0 | 通过/未通过 | done/done | — |
+| compare-release | 0.8 | 1.0 | 通过/未通过 | done/done | — |
+| single-http | 1.0 | 1.0 | 通过/通过 | done/done | — |
+| single-storage | 0.9 | 1.0 | 通过/通过 | done/done | — |
+| single-incident | 0.9 | 0.9 | 通过/通过 | done/done | — |
+| single-licence | 1.0 | 1.0 | 通过/通过 | done/done | rules |
+| single-release | 1.0 | 1.0 | 通过/通过 | done/done | — |
+| http-libraries-jev-regression | 0.9 | 0.7 | 通过/通过 | done/aborted | rules |
+
+### 已识别的单维裁判误判与敏感性限定
+
+只读核对发现`compare-storage/off`的`planning_coverage=0.5`理由写道：“The rubric requires exactly three independent sub_agent branches and at least one synthesis node transitively depending on all three.” 该要求在原冻结rubric中属于`structural_planning.rules_independent_comparison`；off适用`off_or_single_fact: No sub_agent branch`，其程序化结构证据为`sub_agent_count=0`、`passed=true`。这是已确认的裁判条件误用，不修改原始score、原理由、原review或最终JSON，也不重新调用模型。完整原理由、对应规则和来源SHA见[分析限定](evidence/paired-final-20261107/analysis-notes.json)。
+
+仅将这一处维度值作为`x∈[0,1]`，其它54个维度观察值及rules全部读数保持原样，均值差为`1/55 − (x−0.5)/55`，因此单维敏感性范围为**[0.0090909, 0.0272727]**，整段仍低于原0.10门槛。这只是该已识别单维的敏感性分析，**不是其他潜在裁判误差的总体界限**，也不产生调整后的发布分数。
+
+程序化结构通过率off11/11、rules6/11继续按各自策略条件有效，不依赖这一语义误判。最终gate=false另有rules结构未达门槛、subject/裁判费用未知及保留的raw schema失败；不会把纠正这段理由解释为可通过验收。表中的0.945454/0.963636及0.01818差值均保留为原始裁判读数，不能作为可信能力分发布。
+
+### Jev原问题的实证边界
+
+原HTTP题off Task `tsk_01M6VQQYNY0KSJATEZB77GH91W` 的Temporal证据`planning_evidence.judge_usage.attempts[0]`为：`check_performed=true`、`provider_attempted=true`、HTTP200、`model=jev-1.14.0`、2348输入token、`veto_rule_disabled=false`。该次实际检查没有否决，metrics为`jev_vetoes=0`、`extra_rounds=1`。
+
+rules Task `tsk_01M6VWNDVJ6WFFNTZXNDVEV8GD` 的同字段`attempts=[]`，`cost.calls=0`、`expected_calls=0`，metrics的`jev_vetoes=0`仅代表没有发生否决，**不能称Jev检查通过**。原件在`jev-evidence/<task_id>.json`和`run/{off,rules}/http-libraries-jev-regression/`，最终报告保留两题指标及身份。
+
+旧文档的约$1.97不是已核实实付：原历史Task已结算$0.273624，另有预占$1.695528未结算。`f06e30c`只限制每Task最多一次否决，并不消除第一次误拦。本次off检查无否决、rules未调用Jev的结果，不支持“首次误拦已完全修好”或把全部费用下降归因于该修复。
+
+### 费用、预算与清理
+
+[最终语义裁判账本](evidence/paired-final-20261107/semantic-last/ledger-final.json)含**27次attempt**，已知结算合计**$1.063538**；唯一未结算`mbr_WO3FHOU4DZAELVWGLO3BNQOPXX`预占**$0.298752**保留，未当作实付、免费或确定的实际费用上界。27次均使用原Opus Profile及相同真实Registry修订；4次此前已知尝试计入费用但未混为当前22题评分。
+
+subject三笔未知完整保留：`mbr_DTTAF6WU2EWRW4S267NLH6APYE`为$0.014517、`mbr_QXBAQLBWMIB2BSAG4U5B33M2SJ`为$0.009083、`mbr_UZORZ3YUTV5V7ELFMW643HXTZM`为$0.009214，合计**$0.032814**预占。固定cohort已知费用下界含共享裁判为$3.763598496；全部本次paired范围加无效pilot等已知支出为**$3.849185294**，不是最终实际总额。完整`actual_complete_total_usd`与`total_cost_ratio`继续为**null**，不使用已知子集之比冒充全批成本比。
+
+原语义裁判$7分配及配对总$40授权不变，没有扩额；未知预占继续占住准入空间，历史旧Jev保守hold也不改为实付。恢复链、原raw、旧v1两分、原无效pilot及每次失败/重试全部留存，不重跑已完成subject Task。
+
+[off清理回执](evidence/paired-final-20261107/off-closeout.json)与[rules清理回执](evidence/paired-final-20261107/rules-closeout.json)均显示11原Task全部终态、`all_cleanup_pending_false=true`、`remaining_workspaces=0`、`active_tasks=[]`。两份scope是同一隔离subject租户的不同时点累计账本，不能相加重复计费；未知行及不可变审计保留。这里不把工作区清理回执扩称为删除全部隔离部署或清空账本。
+
+限制：11对小样本不足以推广到所有编码/研究任务；规划模型与语义裁判同属Anthropic，报告明确保留shared-vendor偏差。模型输出的语义评分、结构满足率、Task终态、费用是否结清分别报告，不以任何单项高分替代整体门槛。原Memory完整50题交付段及其报告保持不变。
+
+本轮模型成本结算汇总见`evidence/paired-final-20261107/current-goal-costs.json`：配对实验含无效pilot已知$3.849185294，Memory含准备运行已知$0.837277，合计可核对成本$4.686462294。五笔未知预占合计$0.331718另列，不能当实付、免费或确定的实际费用上界；完整实际模型总额及基础设施账单均未给假零。成本口径为冻结Registry价格/实际用量账本及Jev冻结公开费率，不能冒称完整供应商实付发票。
+
+总Goal仍有外部阻塞：Terminal-Bench新的可比40题基线与DeepEval新的真实工具轨迹run/score/report没有执行。TB历史已知$42.786647并有206条未知预占$142.677378；DeepEval历史已知$3.025569、未知预占$63.997193。现token只读接口仅给最近1000条，不能凭缺失记录清零；已用普通文字向用户请求2026-11-02至11-07 UTC完整消费/失败/退款明细或只读历史入口。没有追加费用授权，不能按早期report余额继续花费；本轮不将这些未完成项标为完成。
