@@ -183,11 +183,14 @@ def test_live_deployment_observation_checks_running_images_and_loaded_config():
 
 
 def test_materialized_provenance_requires_exact_loaded_registry_document():
-    raw = '{"cost":{"in_per_m":1,"out_per_m":2},"id":"subject"}'
+    raw = '{"class":"mid","cost":{"in_per_m":1,"out_per_m":2},"id":"subject","tiers":[{"name":"low"}]}'
     profile = json.loads(raw)
     identity = {'scope': 'platform', 'version': 'v7', 'sha256': hashlib.sha256(raw.encode()).hexdigest()}
-    env = [{'name': 'AR_MODEL_PROFILES_REQUIRE_REGISTRY', 'value': 'true'}, {'name': 'AR_MODEL_PROVIDER', 'value': 'openai_compat'}]
-    source = {'spec': {'containers': [{'name': 'gateway', 'image': 'repo/gateway:abcdef1', 'env': env}]}}
+    env = [{'name': 'AR_MODEL_PROFILES_REQUIRE_REGISTRY', 'value': 'true'}, {'name': 'AR_MODEL_PROVIDER', 'value': 'openai_compat'},
+           {'name': 'AR_MODEL_ROUTING_OVERRIDES_FILE', 'value': '/pins/routing.json'}]
+    source = {'spec': {'containers': [{'name': 'gateway', 'image': 'repo/gateway:abcdef1', 'env': env,
+                                      'volumeMounts': [{'name': 'pins', 'mountPath': '/pins'}]}],
+                       'volumes': [{'name': 'pins', 'configMap': {'name': 'pin-map'}}]}}
     get, _, _, _ = deployment_fixture()
     worker, _ = pp.deployment('test', 'worker', get)
     worker['source']['configmap_sha256'] = {}
@@ -195,6 +198,10 @@ def test_materialized_provenance_requires_exact_loaded_registry_document():
                'policy': {'tenant-policies.json': json.dumps({'tenants': {'test': {'model_allowlist': ['subject'], 'model_budget': {'daily_usd': 20, 'monthly_usd': 20}}}})}}}
     spec = {'workers': ['worker'], 'gateway': 'gateway', 'memory': 'memory', 'runtime_commit': 'abcdef1' + 'a' * 33, 'tenant_id': 'test',
             'models': dict.fromkeys(('plan', 'act', 'route', 'judge', 'sub_agent'), 'subject'), 'semantic_judge_profile': 'subject'}
+    spec["model_tiers"] = dict.fromkeys(spec["models"], "mid@low")
+    gateway["configmaps"]["pin-map"] = {"routing.json": json.dumps({"tenants": {"test": {
+        role: {"profile": "subject", "tier": "mid@low"} for role in ("plan", "act", "route", "judge")
+    }}})}
     db = {'profiles': [{'name': 'subject', 'version': 7, 'document': raw}], 'tenant_policy': {'revision': 'v2', 'document': {}},
           'memory_corpus_sha256': 'e' * 64, 'memory_scopes': []}
     result = pp.materialize(spec, {'worker': worker, 'gateway': gateway}, db)
@@ -203,6 +210,30 @@ def test_materialized_provenance_requires_exact_loaded_registry_document():
     db['profiles'][0]['version'] = 8
     with pytest.raises(ValueError, match='immutable Registry'):
         pp.materialize(spec, {'worker': worker, 'gateway': gateway}, db)
+
+
+def test_role_pins_must_match_the_mounted_tenant_file_and_supported_tier():
+    spec = {"tenant_id": "experiment", "models": {"act": "m", "sub_agent": "m", "summary": "s"},
+            "model_tiers": {"act": "mid@low", "sub_agent": "mid@low", "summary": "small@low"}}
+    own = {"act": {"profile": "m", "tier": "mid@low"}, "summary": {"profile": "s", "tier": "small@low"}}
+    gateway = {"source": {"spec": {
+        "containers": [{"env": [{"name": "AR_MODEL_ROUTING_OVERRIDES_FILE", "value": "/cfg/pins.json"}],
+                        "volumeMounts": [{"name": "pins", "mountPath": "/cfg", "readOnly": True}]}],
+        "volumes": [{"name": "pins", "configMap": {"name": "actual", "items": [{"key": "wire", "path": "pins.json"}]}}],
+    }}, "configmaps": {"actual": {"wire": json.dumps({"tenants": {"experiment": own}})}}}
+    profiles = {"m": {"class": "mid", "tiers": [{"name": "low"}]}, "s": {"class": "small", "tiers": [{"name": "low"}]}}
+    result = pp.observed_role_pins(spec, gateway, profiles)
+    assert result["pins"] == own and result["configmap"] == "actual" and result["key"] == "wire"
+    own["act"]["profile"] = "s"
+    gateway["configmaps"]["actual"]["wire"] = json.dumps({"tenants": {"experiment": own}})
+    with pytest.raises(ValueError, match="differs"):
+        pp.observed_role_pins(spec, gateway, profiles)
+    gateway["configmaps"]["actual"]["wire"] = json.dumps({"tenants": {"other": own}})
+    with pytest.raises(ValueError, match="experiment tenant"):
+        pp.observed_role_pins(spec, gateway, profiles)
+    gateway["source"]["spec"]["containers"][0]["env"][0]["value"] = "/elsewhere/pins.json"
+    with pytest.raises(ValueError, match="mounted"):
+        pp.observed_role_pins(spec, gateway, profiles)
 def test_goal_release_tag_still_requires_the_exact_source_commit():
     from agentruntime_learning.benchmarks.paired_prepare import ensure_revision
     revision = "a1234567" + "b" * 32
@@ -213,6 +244,15 @@ def test_goal_release_tag_still_requires_the_exact_source_commit():
         source["spec"]["containers"][0]["image"] = "registry/worker:" + tag
         with pytest.raises(ValueError):
             ensure_revision(source, revision)
+
+
+def test_cli_generated_snapshot_command_runs_as_an_importable_module(monkeypatch, tmp_path):
+    import subprocess
+    monkeypatch.setattr(pp, "__name__", "__main__")
+    argv = pp.snapshot_command(str(tmp_path / "spec.json"))
+    result = subprocess.run([*argv, "--help"], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert "--spec" in result.stdout and "--provenance-only" in result.stdout
 
 
 def test_observations_allow_only_known_nonsecret_numeric_settings():
