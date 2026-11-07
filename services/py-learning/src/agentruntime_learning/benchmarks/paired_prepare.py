@@ -16,7 +16,7 @@ import re
 import subprocess
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -189,6 +189,50 @@ def ensure_revision(source: dict[str, Any], revision: str) -> None:
             raise ValueError("running worker/Gateway image tag does not identify the requested commit")
 
 
+def observed_role_pins(spec: dict[str, Any], gateway: dict[str, Any], profiles: dict[str, Any]) -> dict[str, Any]:
+    """Verify the exact mounted file and actual per-role Profile/tier selection."""
+    pod = gateway["source"]["spec"]
+    configured = literal_env(pod).get("AR_MODEL_ROUTING_OVERRIDES_FILE", "")
+    path = PurePosixPath(configured)
+    if not configured or not path.is_absolute() or ".." in path.parts:
+        raise ValueError("paired runs require an explicit mounted role-pinning file")
+    volumes = {v["name"]: v.get("configMap") for v in pod.get("volumes", []) if v.get("configMap")}
+    matches = []
+    for container in pod["containers"]:
+        for mount in container.get("volumeMounts", []):
+            source = volumes.get(mount["name"])
+            if not source:
+                continue
+            data = gateway["configmaps"].get(source["name"], {})
+            items = source.get("items") or [{"key": key, "path": key} for key in data]
+            for item in items:
+                if mount.get("subPath") and mount["subPath"] != item["path"]:
+                    continue
+                resolved = PurePosixPath(mount["mountPath"]) if mount.get("subPath") else PurePosixPath(mount["mountPath"]) / item["path"]
+                if resolved == path and item["key"] in data:
+                    matches.append((source["name"], item["key"], data[item["key"]]))
+    if len(matches) != 1:
+        raise ValueError("role-pinning path does not identify exactly one mounted ConfigMap file")
+    cm, key, raw = matches[0]
+    own = json.loads(raw).get("tenants", {}).get(spec["tenant_id"])
+    if not isinstance(own, dict):
+        raise ValueError("role-pinning file does not cover the experiment tenant")
+    tiers = spec.get("model_tiers")
+    if not isinstance(tiers, dict) or set(tiers) != set(spec["models"]):
+        raise ValueError("freeze an explicit tier for every experiment model role")
+    for role, expected in spec["models"].items():
+        wire_role = "act" if role == "sub_agent" else role
+        pin = own.get(wire_role) or {}
+        if pin.get("profile") != expected or pin.get("tier") != tiers[role]:
+            raise ValueError(f"loaded routing pin differs from frozen {role} Profile or tier")
+        profile = profiles[expected]
+        allowed = {profile["class"] + "@" + tier["name"] for tier in profile["tiers"]}
+        if tiers[role] not in allowed:
+            raise ValueError("frozen routing tier is not supported by the actual Registry Profile")
+    return {"file": configured, "configmap": cm, "key": key, "sha256": hashlib.sha256(raw.encode()).hexdigest(),
+            "tenant_id": spec["tenant_id"], "pins": own, "model_tiers": tiers}
+
+
 def materialize(spec: dict[str, Any], observed: dict[str, Any], db: dict[str, Any]) -> dict[str, Any]:
     workers = {name: observed[name]["source"] for name in spec["workers"]}
     for source in workers.values():
@@ -221,6 +265,7 @@ def materialize(spec: dict[str, Any], observed: dict[str, Any], db: dict[str, An
     used = set(spec["models"].values()) | {spec["semantic_judge_profile"]}
     if not used <= registry.keys():
         raise ValueError("a frozen subject/judge profile is not loaded from its Registry version")
+    hard_pins = observed_role_pins(spec, gateway, actual)
     files = [json.loads(v["tenant-policies.json"]) for v in maps.values() if "tenant-policies.json" in v]
     if len(files) > 1:
         raise ValueError("ambiguous Gateway policy files")
@@ -244,7 +289,8 @@ def materialize(spec: dict[str, Any], observed: dict[str, Any], db: dict[str, An
                   "worker_config_sha256": worker["normalized_sha256"], "tenant_policy_sha256": pv.digest({"registry": db["tenant_policy"], "file": file}),
                   "memory": {"revision": pv.digest(memory), "corpus_sha256": db["memory_corpus_sha256"], "enabled": True in enabled},
                   "sub_agent_policy": next(iter(policies)), "scoring_version": pc.VERSION,
-                  "gateway_budget_limits": limits, "semantic_judge_profile": spec["semantic_judge_profile"]}
+                  "gateway_budget_limits": limits, "semantic_judge_profile": spec["semantic_judge_profile"],
+                  "gateway_role_pins": hard_pins}
     return {"provenance": pv.validate(provenance), "prices": {k: prices[k] for k in sorted(used)}, "memory_scopes": db["memory_scopes"]}
 
 
@@ -332,7 +378,8 @@ def prepare(off: dict[str, Any], rules: dict[str, Any], settings: dict[str, Any]
     return plan
 
 
-def scaffold(manifest: Path, models: Path, runtime_commit: str, tenant: str, task_api: str, judge_profile: str) -> dict[str, Any]:
+def scaffold(manifest: Path, models: Path, runtime_commit: str, tenant: str, task_api: str, judge_profile: str,
+             *, model_tiers: Path | None = None) -> dict[str, Any]:
     import yaml
     docs = [x for x in yaml.safe_load_all(manifest.read_text()) if isinstance(x, dict) and x.get("kind") == "Deployment"]
     def names(component):
@@ -344,7 +391,9 @@ def scaffold(manifest: Path, models: Path, runtime_commit: str, tenant: str, tas
         raise ValueError("saved manifest namespaces differ")
     return {"namespace": namespaces.pop(), "workers": sorted(names("worker")), "gateway": names("model-gateway")[0], "memory": names("memory")[0],
             "runtime_commit": runtime_commit, "tenant_id": tenant, "task_api": task_api,
-            "models": json.loads(models.read_text()), "semantic_judge_profile": judge_profile,
+            "models": json.loads(models.read_text()),
+            "model_tiers": json.loads(model_tiers.read_text()) if model_tiers is not None else {},
+            "semantic_judge_profile": judge_profile,
             "source_manifest_sha256": hashlib.sha256(manifest.read_bytes()).hexdigest(), "observed": False}
 
 
@@ -363,7 +412,7 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     sub = p.add_subparsers(dest="command", required=True)
     sc = sub.add_parser("scaffold")
-    for name in ("manifest", "models", "out"):
+    for name in ("manifest", "models", "model-tiers", "out"):
         sc.add_argument("--" + name, type=Path, required=True)
     for name in ("runtime-commit", "tenant", "task-api", "judge-profile"):
         sc.add_argument("--" + name, required=True)
@@ -386,7 +435,8 @@ def main(argv=None) -> int:
     args = p.parse_args(argv)
     try:
         if args.command == "scaffold":
-            result = scaffold(args.manifest, args.models, args.runtime_commit, args.tenant, args.task_api, args.judge_profile)
+            result = scaffold(args.manifest, args.models, args.runtime_commit, args.tenant, args.task_api, args.judge_profile,
+                              model_tiers=args.model_tiers)
             write_new(args.out, result)
         elif args.command == "observe":
             result = observe(args.spec)
