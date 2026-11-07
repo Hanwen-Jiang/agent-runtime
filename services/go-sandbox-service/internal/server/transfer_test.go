@@ -204,6 +204,69 @@ func TestDirectArchiveOnlyUploadsMissingAndRestoresBytes(t *testing.T) {
 	}
 }
 
+func TestDirectArchiveRestoresEmptyWorkspaceBeforeFirstRepositoryWrite(t *testing.T) {
+	for _, directoriesOnly := range []bool{false, true} {
+		t.Run(fmt.Sprint("directories_only=", directoriesOnly), func(t *testing.T) {
+			objects, _ := objectServer(t)
+			h := newHarness(t, func(h *harness) { h.directObjects = objects; h.backends = localArchive })
+			ctx := context.Background()
+			tc := tenant("t1", "empty-multi", "")
+			first := h.mustAcquire(tc, onWorkspace("empty-multi"), taskID("create-empty"))
+			if directoriesOnly {
+				h.mustExec(tc, first, "mkdir -p empty/nested")
+			}
+			broker := h.svc.Broker()
+			inner, err := broker.Get(ctx, tc, first.LeaseId)
+			if err != nil {
+				t.Fatal(err)
+			}
+			arch := broker.Archiver()
+			direct := archive.TransferOptions{Enabled: true}
+			snapshot, err := arch.Snapshot(ctx, inner.Box, inner.EnvID, "t1", "empty-multi", 1<<20, first.LeaseId, direct)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if snapshot.Files != 0 || snapshot.NewBlobs != 0 {
+				t.Fatalf("not a zero-blob workspace: %+v", snapshot)
+			}
+			// The local harness normally uses tar restoration. Explicitly select
+			// the direct path used by production Firecracker so [] vs null crosses
+			// the real HTTP boundary into the unmodified Rust agent.
+			targetTC := tenant("t1", "", "")
+			second := h.mustAcquire(targetTC, taskID("attach-first"))
+			target, err := broker.Get(ctx, targetTC, second.LeaseId)
+			if err != nil {
+				t.Fatal(err)
+			}
+			restored, err := arch.Restore(ctx, target.Box, target.EnvID, "t1", "empty-multi", 1<<20, direct)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if restored == nil || restored.SnapshotID != snapshot.SnapshotID {
+				t.Fatal("empty snapshot was not restored")
+			}
+			if directoriesOnly {
+				h.mustExec(targetTC, second, "test -d empty/nested")
+			}
+			h.mustExec(targetTC, second, "mkdir -p repo && git -C repo init -q -b main && printf attached > repo/README")
+			if _, err = arch.Snapshot(ctx, target.Box, target.EnvID, "t1", "empty-multi", 1<<20, second.LeaseId, direct); err != nil {
+				t.Fatal(err)
+			}
+			third := h.mustAcquire(targetTC, taskID("read-first"))
+			next, err := broker.Get(ctx, targetTC, third.LeaseId)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err = arch.Restore(ctx, next.Box, next.EnvID, "t1", "empty-multi", 1<<20, direct); err != nil {
+				t.Fatal(err)
+			}
+			if got := h.mustExec(targetTC, third, "git -C repo rev-parse --is-inside-work-tree && cat repo/README"); got != "true\nattached" {
+				t.Fatalf("first repository contents were not preserved: %q", got)
+			}
+		})
+	}
+}
+
 func TestDirectArchiveChunksLargeFilesAndUploadsOnlyChangedBlocks(t *testing.T) {
 	objects, _ := objectServer(t)
 	h := newHarness(t, func(h *harness) { h.directObjects = objects; h.backends = localArchive })

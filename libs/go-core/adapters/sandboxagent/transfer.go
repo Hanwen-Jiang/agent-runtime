@@ -70,6 +70,11 @@ func (c Client) RestoreBatch(ctx context.Context, ep Endpoint, id string, maxByt
 	return c.transferCall(ctx, ep, "/v1/restore/blocks", map[string]any{"restore_id": id, "max_bytes": maxBytes, "blocks": blocks}, &out)
 }
 func (c Client) RestoreFinish(ctx context.Context, ep Endpoint, id string, entries []sandbox.FileEntry) error {
+	// Empty workspaces are valid snapshots. The agent accepts a manifest array,
+	// so preserve an empty manifest as [] rather than Go's nil-slice JSON null.
+	if entries == nil {
+		entries = []sandbox.FileEntry{}
+	}
 	var out map[string]any
 	return c.transferCall(ctx, ep, "/v1/restore", map[string]any{"restore_id": id, "entries": entries}, &out)
 }
