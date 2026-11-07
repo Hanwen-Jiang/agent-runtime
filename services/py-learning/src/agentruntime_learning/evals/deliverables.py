@@ -466,8 +466,8 @@ def report(out_dir: Path, *, compare: Path | None = None) -> dict[str, Any]:
     sb._write_text(out_dir / "report.json", json.dumps(rep, ensure_ascii=False, indent=2) + "\n")
     lines = [f"# 交付质量（DeepEval）· {rep['run_id']}", "", f"- 选了 {rep['selected']} 条，跑完 {rep['ran']} 条，Task API 费用对照 ${cost:.2f}"]
     lines += [f"- 真实工具证据：{rep['evidence']['captured']}/{rep['selected']}；完整验收证据：{rep['acceptance_ready']}",
-              f"- 被测账本费用 {authoritative_subject if authoritative_subject is not None else '未知'}；裁判费用 {judge_cost if judge_cost is not None else '未知'}；该范围合计 {rep['costs']['total_usd']}"]
-    lines += [f"- 被测账本验收：{subject_ledger['valid']}；问题：{', '.join(subject_ledger['problems']) or '无'}",
+              f"- 被测 model_usage 费用 {authoritative_subject if authoritative_subject is not None else '未知'}；裁判费用 {judge_cost if judge_cost is not None else '未知'}；该范围合计 {rep['costs']['total_usd']}"]
+    lines += [f"- 被测 model_usage 验收：{subject_ledger['valid']}；问题：{', '.join(subject_ledger['problems']) or '无'}",
               f"- 费用范围：{rep['costs']['cost_scope']}"]
     if compare is not None:
         lines.append(f"- 前后对照：{rep['comparison']['baseline_run_id']}；同一冻结配置：{rep['comparison']['same_frozen_configuration']}；均分差 {rep['comparison']['mean_deltas']}")

@@ -427,7 +427,7 @@ def report(summary: Mapping[str, Any]) -> str:
         lines.append(row(f"会话级 · {qtype}", data.get("questions"), data.get("session") or {}))
     lines += ["", f"完整性有效：{summary.get('valid', False)}；完成 {summary.get('completed', 0)}/{summary.get('selected', summary.get('questions'))}；"
               f"超时 {summary.get('timeouts', 0)}；清理完成 {summary.get('cleanup_complete', False)}。",
-              f"费用：预计 embedding ${summary.get('estimated_embedding_usd', 0):.6f}；实际 {summary.get('actual_cost_usd', 'unknown')}（None 表示待账本核验）。"]
+              f"费用：预计 embedding ${summary.get('estimated_embedding_usd', 0):.6f}；实际 {summary.get('actual_cost_usd', 'unknown')}（None 表示待 model_usage 核验）。"]
     return "\n".join(lines) + "\n"
 
 

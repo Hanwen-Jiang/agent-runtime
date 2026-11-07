@@ -343,6 +343,17 @@ def test_payload_fields_use_json_carriers():
         for field in desc.fields:
             if field.name not in PAYLOAD_FIELD_NAMES:
                 continue
+            if field.full_name == "agentruntime.personalconfig.v1.PersonalConfigDocument.defaults":
+                # D-27 defaults are three registered-resource references, not
+                # arbitrary Node/Template parameter defaults. Keep their wire
+                # shape strict while retaining the payload rule everywhere else.
+                assert field.message_type.full_name == "agentruntime.personalconfig.v1.PersonalConfigDefaults"
+                refs = field.message_type.fields_by_name
+                assert set(refs) == {"skill_names", "mcp_connection_ids", "environment_id"}
+                assert all(ref.type == ref.TYPE_STRING for ref in refs.values())
+                assert refs["skill_names"].is_repeated and refs["mcp_connection_ids"].is_repeated
+                assert not refs["environment_id"].is_repeated
+                continue
             carried = field
             if protos.is_map(field):
                 carried = field.message_type.fields_by_name["value"]
