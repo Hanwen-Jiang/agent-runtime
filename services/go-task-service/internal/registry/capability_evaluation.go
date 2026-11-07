@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"math"
+	"math/big"
 	"reflect"
 	"strings"
 
@@ -50,11 +51,61 @@ func capabilityScores(document string) (map[string]any, map[string]capabilityMea
 		return nil, nil, err
 	}
 	delete(doc, "capability_scores")
+	// Registry seeds retain decimal spelling while the protobuf JSON API may
+	// emit 4 for 4.0 or 1000000 for 1e6. Compare exact decimal values, without
+	// rounding large integers through float64 or rewriting stored documents.
+	normalizeCapabilityNumbers(doc)
 	scores := map[string]capabilityMeasurement{}
 	for _, m := range profile.Scores {
 		scores[m.key()] = m
 	}
 	return doc, scores, nil
+}
+
+// An exact decimal is coefficient * 10^exponent. Keep the exponent symbolic:
+// a valid input such as 1e1000000000 must not allocate a billion-digit integer.
+// A separate type prevents numeric values from comparing equal to JSON strings.
+type capabilityDecimal struct {
+	coefficient string
+	exponent    string
+}
+
+func normalizeCapabilityNumbers(value any) any {
+	switch value := value.(type) {
+	case map[string]any:
+		for key, item := range value {
+			value[key] = normalizeCapabilityNumbers(item)
+		}
+	case []any:
+		for i, item := range value {
+			value[i] = normalizeCapabilityNumbers(item)
+		}
+	case json.Number:
+		// Decoder.UseNumber already validated JSON number syntax.
+		mantissa := string(value)
+		exponent := new(big.Int)
+		if at := strings.IndexAny(mantissa, "eE"); at >= 0 {
+			exponent.SetString(mantissa[at+1:], 10)
+			mantissa = mantissa[:at]
+		}
+		negative := strings.HasPrefix(mantissa, "-")
+		mantissa = strings.TrimPrefix(mantissa, "-")
+		if at := strings.IndexByte(mantissa, '.'); at >= 0 {
+			exponent.Sub(exponent, big.NewInt(int64(len(mantissa)-at-1)))
+			mantissa = mantissa[:at] + mantissa[at+1:]
+		}
+		mantissa = strings.TrimLeft(mantissa, "0")
+		if mantissa == "" {
+			return capabilityDecimal{coefficient: "0", exponent: "0"}
+		}
+		coefficient := strings.TrimRight(mantissa, "0")
+		exponent.Add(exponent, big.NewInt(int64(len(mantissa)-len(coefficient))))
+		if negative {
+			coefficient = "-" + coefficient
+		}
+		return capabilityDecimal{coefficient: coefficient, exponent: exponent.String()}
+	}
+	return value
 }
 
 // Capability publication cannot change the served model, pricing, supported

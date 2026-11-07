@@ -6,12 +6,42 @@ import (
 	"fmt"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	registryv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/registry/v1"
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/registry"
 	"reflect"
 	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
 )
+
+func TestCapabilityPromotionAcceptsEquivalentSeedAndWireNumbers(t *testing.T) {
+	eachBackend(t, func(t *testing.T, h *harness) {
+		// A seed preserves decimal spelling; publishing via protobuf Struct
+		// serializes equivalent values differently, as in the live MX report.
+		seed := strings.NewReplacer(
+			`"in_per_m":0.15`, `"in_per_m":0.1500`,
+			`"out_per_m":0.6`, `"out_per_m":6e-1`,
+			`"cache_read_per_m":0.075`, `"cache_read_per_m":0.0750`,
+			`"context_window":128000`, `"context_window":1.28e5`,
+			`"max_output":16384`, `"max_output":16384.00`,
+			`"thinking_budget":0`, `"thinking_budget":-0.0`,
+		).Replace(profileDoc)
+		seeded, err := h.reg.Seed(t.Context(), []registry.SeedEntry{{Kind: "model_profile", Name: profileID, Document: json.RawMessage(seed)}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		baseline := seeded[0].Version
+		before := registryRows(t, h, `SELECT document,evaluation FROM registry_entries WHERE kind=$1 AND name=$2 AND version=1`, int64(kindProfile), profileID)
+		version, evidence := capabilityCandidate(t, h, baseline, "exact-numeric-values")
+		if _, err := h.promote(nil, kindProfile, profileID, version, evidence); err != nil {
+			t.Fatal(err)
+		}
+		after := registryRows(t, h, `SELECT document,evaluation FROM registry_entries WHERE kind=$1 AND name=$2 AND version=1`, int64(kindProfile), profileID)
+		if !reflect.DeepEqual(before, after) {
+			t.Fatal("comparison rewrote the immutable baseline document or evidence")
+		}
+	})
+}
 
 func TestCapabilityScoresPromoteOnlyVerifiedMeasurementsOnUnchangedModels(t *testing.T) {
 	eachBackend(t, func(t *testing.T, h *harness) {
