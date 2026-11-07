@@ -651,7 +651,7 @@ class _Runner:
             # Even a crash between checkpoint and HTTP send is ambiguous. Reuse
             # this reservation/request; never discard a possibly live workspace.
             rec["submission_ambiguous"] = True
-            if not rec.get("head") or not rec.get("client_request_id"):
+            if "head" not in rec or not rec.get("client_request_id"):
                 raise RuntimeError("pending task submission is missing recovery metadata")
             return
         operations = rec.get("workspace_operations") or {}
@@ -664,7 +664,7 @@ class _Runner:
             for key in ("head", "client_request_id", "submission_digest", "submission_state", "submission_attempts", "submission_ambiguous"):
                 rec.pop(key, None)
             self._save(rec)
-        if rec.get("head"):
+        if "head" in rec:
             if not rec.get("submission_digest") and not rec.get("workspace_generation"):
                 # Legacy checkpoints cannot distinguish "not yet sent" from
                 # "submitted, response lost". Reconcile their old key first.

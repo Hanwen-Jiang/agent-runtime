@@ -127,7 +127,8 @@ class RuntimeClient:
         out = self._workspace_operation("create", body, request_id=request_id, operation_id=operation_id,
                                         checkpoint=checkpoint, legacy_method="CreateWorkspace")
         ws = out.get("workspace") or {}
-        if not ws.get("head") or ws.get("workspaceId", workspace_id) != workspace_id:
+        empty_repository = not repo_url and not ref and not files and ws.get("workspaceId") == workspace_id
+        if (not ws.get("head") and not empty_repository) or ws.get("workspaceId", workspace_id) != workspace_id:
             raise ApiError(0, "invalid_workspace_result", "workspace operation result has no head or belongs to another workspace")
         return {"workspace_id": str(ws.get("workspaceId") or workspace_id), "head": str(ws.get("head") or ""), "branch": str(ws.get("branch") or "")}
 
