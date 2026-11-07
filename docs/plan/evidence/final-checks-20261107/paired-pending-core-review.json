@@ -1,0 +1,18 @@
+{
+  "at_utc": "2026-11-07T19:13:33.385696+00:00",
+  "reviewer": "core_thread 01a1b1e6-e989-7982-a00d-5fb25bdc9c98",
+  "snapshot": "/opt/evals/n16-evreal-pinned-20261107/pending-subject-ledger.json",
+  "raw_file_sha256": "c7a3d002ee61a96d691bc4973c16dae07a1c4b0b076517089a11fc9fb7be9c49",
+  "rows": 126,
+  "active_tasks": 0,
+  "known_tenant_usd_micros": 1030475,
+  "pending_reserved_usd_micros": 14517,
+  "pending_reservation_id": "mbr_DTTAF6WU2EWRW4S267NLH6APYE",
+  "subject_remaining_usd": "17.400269",
+  "all_envelopes_usd": "39.999999798",
+  "original_limit_usd": "40",
+  "permission_scope": "Continue only original 2 off and 11 rules cases after exact baseline regression checks; do not rerun prior tasks, mutate original invalid metrics, settle or refund unknown attempts, or waive scoring/cost completeness gates. New pending stops.",
+  "writes_to_services_or_ledger": 0,
+  "actual_total_cost_known": false,
+  "failed_initial_sql_preserved_at": "/opt/evals/n16-evreal-pinned-20261107/pending-ledger-query-recovery.json"
+}
