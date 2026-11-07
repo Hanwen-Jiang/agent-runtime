@@ -1,5 +1,6 @@
 """The live launcher refuses drift and budget uncertainty before any writes."""
 import importlib.util
+import json
 from pathlib import Path
 
 import pytest
@@ -50,3 +51,25 @@ def test_registry_actual_export_and_policy_must_all_agree():
     policies["tenants"][launch.TENANT]["model_budget"]["daily_usd"]=20
     with pytest.raises(launch.PreflightError,match="hard budget"):
         launch.validate_registry(db,file,policies)
+
+
+def test_new_fixed_run_keeps_settled_prior_cost_and_rejects_new_unattributed_calls(tmp_path):
+    old = row(reservation_id="old", actual_usd_micros=60847)
+    db = {"tenant": launch.TENANT, "model_usage": [old]}
+    (tmp_path / "ledger-after.json").write_text(json.dumps(db))
+    (tmp_path / "stop-cleanup-recovery.json").write_text(json.dumps({
+        "complete": True, "original_process_terminated": True, "remaining_ids": [],
+        "queue_count": 0, "pending_attempts": 0, "actual_usd": .060847,
+    }))
+    proof = launch.prior_experiment(tmp_path, db, fresh=True)
+    assert proof["actual_usd_micros"] == 60847
+    assert launch.check_money(db["model_usage"], before_question=True)["total_including_history_usd"] == .076138
+    with pytest.raises(launch.PreflightError, match="charged"):
+        launch.prior_experiment(None, db, fresh=True)
+    new = {"tenant": launch.TENANT, "model_usage": [old, row(reservation_id="new")]}
+    with pytest.raises(launch.PreflightError, match="matches"):
+        launch.prior_experiment(tmp_path, new, fresh=True)
+    assert launch.prior_experiment(tmp_path, new, fresh=False) == proof
+    old["actual_usd_micros"] = 0
+    with pytest.raises(launch.PreflightError, match="matches"):
+        launch.prior_experiment(tmp_path, db, fresh=False)

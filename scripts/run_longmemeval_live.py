@@ -198,6 +198,33 @@ def fixed_data():
     return selected
 
 
+def prior_experiment(directory: Path | None, current: dict[str, Any], *, fresh: bool) -> dict[str, Any] | None:
+    """Reuse the same hard-capped tenant without erasing its previous spend."""
+    if directory is None:
+        if fresh and current["model_usage"]:
+            raise PreflightError("fresh experiment tenant already has charged attempts; supply its cleaned prior run")
+        return None
+    directory = directory.resolve()
+    receipt = json.loads((directory / "stop-cleanup-recovery.json").read_text())
+    before = json.loads((directory / "ledger-after.json").read_text())
+    if (not receipt.get("complete") or not receipt.get("original_process_terminated")
+            or receipt.get("remaining_ids") or receipt.get("queue_count") or receipt.get("pending_attempts")
+            or before.get("tenant") != TENANT):
+        raise PreflightError("prior experiment is not verifiably stopped, cleaned and settled")
+    rows = {r["reservation_id"]: r for r in before["model_usage"]}
+    actual = {r["reservation_id"]: r for r in current["model_usage"]}
+    if len(rows) != len(before["model_usage"]) or any(r["actual_usd_micros"] is None for r in rows.values()):
+        raise PreflightError("prior experiment costs are incomplete")
+    if any(actual.get(key) != value for key, value in rows.items()) or fresh and set(actual) != set(rows):
+        raise PreflightError("prior experiment ledger no longer matches the isolated tenant")
+    spend = sum(r["actual_usd_micros"] for r in rows.values())
+    if round(receipt["actual_usd"] * 1e6) != spend:
+        raise PreflightError("prior cleanup receipt does not reconcile to the ledger")
+    return {"directory": str(directory), "actual_usd_micros": spend,
+            "ledger_sha256": hashlib.sha256((directory / "ledger-after.json").read_bytes()).hexdigest(),
+            "cleanup_sha256": hashlib.sha256((directory / "stop-cleanup-recovery.json").read_bytes()).hexdigest()}
+
+
 @contextmanager
 def output_lock(path: Path):
     import fcntl
@@ -213,6 +240,7 @@ def run(args: argparse.Namespace) -> int:
     with output_lock(args.out):
         chosen = fixed_data()
         frozen, db, evidence = observe(args)
+        prior = prior_experiment(getattr(args, "prior_run", None), db, fresh=not (args.out / "freeze.json").exists())
         estimate = lme.estimate_usd(chosen)
         code = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in (
             Path(__file__), Path(lme.__file__), Path(eval_retriever.__file__))}
@@ -221,12 +249,11 @@ def run(args: argparse.Namespace) -> int:
                   "historical_usd": PRIOR_MICROS / 1e6, "remaining_allowance_usd": CAP_MICROS / 1e6,
                   "admission_limit_usd": ADMIT_MICROS / 1e6, "estimated_embedding_usd": estimate,
                   "lexical_results_sha256": hashlib.sha256((LEXICAL / "results.jsonl").read_bytes()).hexdigest()}
+        freeze["prior_experiment"] = prior
         path = args.out / "freeze.json"
         if path.exists():
             if json.loads(path.read_text()) != freeze:
                 raise PreflightError("frozen deployment or experiment changed; use a new output directory")
-        elif db["model_usage"]:
-            raise PreflightError("fresh experiment tenant already has charged attempts; reconcile original output")
         write(args.out / "preflight.json", {"freeze": freeze, "money": evidence["money"], "ready": True})
         if args.command == "preflight":
             print(json.dumps({"ready": True, "estimate_usd": estimate, "prior_cost_usd": PRIOR_MICROS / 1e6}))
@@ -278,7 +305,10 @@ def run(args: argparse.Namespace) -> int:
                    "journal_cleanup_complete": all(row.get("cleanup_complete") for row in rows.values())}
         cleanup["complete"] = not remaining and not cleanup["queue_count"] and cleanup["journal_cleanup_complete"]
         write(args.out / "cleanup.json", cleanup)
-        summary["actual_cost_usd"] = state["money"]["actual_usd"]
+        previous_usd = prior["actual_usd_micros"] / 1e6 if prior else 0.0
+        summary["actual_cost_usd"] = round(state["money"]["actual_usd"] - previous_usd, 6)
+        summary["prior_experiment_usd"] = previous_usd
+        summary["cumulative_tenant_usd"] = state["money"]["actual_usd"]
         summary["cost_source"] = "isolated tenant model_usage; every provider attempt"
         summary["valid"] = summary["valid"] and cleanup["complete"] and after == frozen
         write(args.out / "live/summary.json", summary)
@@ -296,6 +326,7 @@ def main(argv=None) -> int:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--memory-commit", required=True)
     parser.add_argument("--gateway-commit", required=True)
+    parser.add_argument("--prior-run", type=Path, help="previous stopped/cleaned experiment; its ledger remains charged against the same tenant cap")
     args = parser.parse_args(argv)
     try:
         return run(args)

@@ -224,6 +224,44 @@ def _cosine(a: Sequence[float], b: Sequence[float]) -> float:
     return dot / norm if norm else 0.0
 
 
+def _mmr_select(
+    scored: list[tuple[bool, float, tuple[int, str], dict[str, Any], tuple[float, ...]]], top_k: int
+) -> list[tuple[bool, float, tuple[int, str], dict[str, Any], tuple[float, ...]]]:
+    """Keep the original ranking while computing each candidate pair once.
+
+    The input already has its stable relevance/id ordering. Exact matches
+    retain priority. An empty selected set uses zero only for the first choice:
+    the first actual similarity may be negative and must not be clamped.
+    """
+    selected = [s for s in scored if s[0]][:top_k]
+    pool = [s for s in scored if not s[0]]
+    best = max((s[1] for s in pool), default=1.0) or 1.0
+    similarities = [max((_cosine(s[4], t[4]) for t in selected)) if selected else None for s in pool]
+    while pool and len(selected) < top_k:
+        choice, value = None, -math.inf
+        for index, s in enumerate(pool):
+            similarity = similarities[index] if similarities[index] is not None else 0.0
+            if similarity >= REDUNDANT:
+                continue
+            mmr = MMR_LAMBDA * s[1] / best - (1 - MMR_LAMBDA) * similarity
+            if mmr > value:
+                choice, value = index, mmr
+        if choice is None:
+            break
+        picked = pool.pop(choice)
+        similarities.pop(choice)
+        selected.append(picked)
+        if len(selected) >= top_k:
+            break
+        for index, s in enumerate(pool):
+            similarity = _cosine(s[4], picked[4])
+            previous = similarities[index]
+            # max(previous, similarity) preserves the original max iteration's
+            # tie, negative-zero and NaN behavior, unlike clamping or sorting.
+            similarities[index] = similarity if previous is None else max(previous, similarity)
+    return selected
+
+
 def estimate_tokens(item: dict[str, Any]) -> int:
     """注入一条要占的 token：英文词与数字各算一个，非 ASCII 字符各算一个，加上来源等说明的开销。"""
     text = item["content"]["title"] + " " + item["content"]["guidance"]
@@ -732,22 +770,7 @@ class MemoryService:
         scored.sort(key=lambda s: (not s[0], -s[1], s[2]))
 
         # MMR：精确命中的排在前面；其余按分数与和已选条目的相似度挑选，跳过冗余的。
-        selected = [s for s in scored if s[0]][:top_k]
-        pool = [s for s in scored if not s[0]]
-        best = max((s[1] for s in pool), default=1.0) or 1.0
-        while pool and len(selected) < top_k:
-            choice, value = None, -math.inf
-            for s in pool:
-                similarity = max((_cosine(s[4], t[4]) for t in selected), default=0.0)
-                if similarity >= REDUNDANT:
-                    continue
-                mmr = MMR_LAMBDA * s[1] / best - (1 - MMR_LAMBDA) * similarity
-                if mmr > value:
-                    choice, value = s, mmr
-            if choice is None:
-                break
-            selected.append(choice)
-            pool.remove(choice)
+        selected = _mmr_select(scored, top_k)
 
         results: list[Retrieved] = []
         used = 0
