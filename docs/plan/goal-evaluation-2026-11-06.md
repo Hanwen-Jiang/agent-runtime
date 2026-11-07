@@ -112,3 +112,11 @@ A/B复核完整隔离租户126条账本后，只允许补原2道off和11道rules
 针对性回归90项通过、0skip：`test_paired_admission.py test_paired_evaluation.py test_paired_completion.py`，显式加载pytest_asyncio。真实断点只读验证确认原9题全部跳过，不重复付费；仅给第9题账本补全权威`reserved_usd_micros`，旧字段/metrics不变，原件另存。证据在`/opt/evals/n16-evreal-pinned-20261107/{pending-subject-ledger.json,pending-admission-reconciliation.json,collection-continue.json,collection-continuation-preflight.json,before-pending-continuation/}`。证据采集代码修订独立记录；运行时fdd0f202、模型/Registry/题目/评分门槛不变。
 
 续跑在HTTP题提交前暴露空仓兼容缺口：异步create已完成，但空仓没有Git head，评测客户端误拒；此次未创建Task、无模型费用。客户端仅在repo/ref/files均空且workspaceId精确匹配时接受空head，runner按head字段是否存在恢复创建/幂等提交，仍拒缺失恢复元数据及clone缺head。真实操作号与失败原件保留，复用同操作恢复；冻结题目及服务版本不变。paired/SWE/TB回归110通过，交付证据回归8通过，0skip。
+
+## 2026-11-07 rules 首题未结算与追加收据
+
+off原11题全部终态并清理，已知Gateway费用1.124750美元，Jev14241输入token对应0.000598122美元；原14517微美元未知仍保留，完整费用不是两者相加。五隔离Worker只切off→rules，真实模板、镜像及其他ConfigMap逐项核对不变。rules首题完成/清理，但新增Haiku triage reservation `mbr_QXBAQLBWMIB2BSAG4U5B33M2SJ`，预占9083微美元。Gateway同rid日志证实30秒timeout；后续成功3644输入/84输出、406微美元可对应provider消费记录，不能据此把首次超时费用记零。运行器正确停止，未继续第二题。
+
+A/B核对完整scope：已知1282125微美元，两笔预占共23600微美元，原18445261微美元subject限下准入余额17139536微美元；旧148行不变，新8行全属首rules题。仍在原40美元总分配内只补剩余10题，不改变旧题有效性或总费用未知。原`collection-continue.json`原位保留；新增收据引用整份前件摘要，扩展只新增指定9083微美元完整行，存`collection-continue-extensions/<digest>.json`。新未知、分叉、孤立扩展、旧行修改、回退与预算变化继续拒绝，完整cost ratio继续null。
+
+131项针对性回归通过、0skip（admission/evaluation/completion/semantic material）。真实证据：`.goal-evidence/rules-pending-review-20261107/`及`/opt/evals/n16-evreal-pinned-20261107/rules-{new-pending-reconciliation,first-provider-window,first-provider-recent}.json`；原首rules metrics字节与失败记录保留，不重新调用该题模型。

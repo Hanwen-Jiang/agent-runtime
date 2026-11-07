@@ -204,9 +204,8 @@ def collection_record(out: Path, plan: Mapping[str, Any], directory: Path) -> di
     receipt_path = out / "collection-continue.json"
     if not receipt_path.exists():
         raise ValueError("invalid or missing pair evidence")
-    from agentruntime_learning.benchmarks.paired_admission import validate_receipt, collection_eligible
-    receipt = json.loads(receipt_path.read_text())
-    validate_receipt(plan, receipt)
+    from agentruntime_learning.benchmarks.paired_admission import stored_receipt, collection_eligible
+    receipt = stored_receipt(out, plan)
     if not collection_eligible(metric, json.loads((directory / "model_usage.json").read_text()), receipt):
         raise ValueError("continuation cannot waive incomplete quality evidence")
     return metric

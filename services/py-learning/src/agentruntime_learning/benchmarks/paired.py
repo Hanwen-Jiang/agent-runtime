@@ -358,13 +358,8 @@ def run_arm(plan: Mapping[str, Any], out: Path, arm: str, *, runtime: Any = None
     ledger = ledger or (lambda task: asyncio.run(collect_ledger(task, str(plan["tenant_id"]))))
     histories = histories or (lambda task: asyncio.run(collect_temporal(task, str(plan["tenant_id"]))))
     if collection_continue is not None:
-        from agentruntime_learning.benchmarks.paired_admission import validate_receipt, check_scope, collection_eligible
-        validate_receipt(plan, collection_continue)
-        continuation_path = out / "collection-continue.json"
-        if continuation_path.exists() and json.loads(continuation_path.read_text()) != dict(collection_continue):
-            raise ValueError("collection continuation receipt changed")
-        if not continuation_path.exists():
-            _write(continuation_path, dict(collection_continue))
+        from agentruntime_learning.benchmarks.paired_admission import store_receipt, check_scope, collection_eligible
+        store_receipt(out, plan, collection_continue)
         scope_ledger = scope_ledger or (lambda: asyncio.run(collect_scope_ledger(str(plan["tenant_id"]))))
         check_scope(scope_ledger(), collection_continue)
 
