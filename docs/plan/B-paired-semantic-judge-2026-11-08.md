@@ -58,3 +58,11 @@ paired_semantic_recovery只接受该一次已核定失败，不是任意unknown�
 为避免混合实际配置，新正式对照集统一22项全部使用v2，旧两项有效评分/原响应原样单列，绝不与新20混均值或择高。仍同runID/TaskID、同22个既有答案、同模型/Registry/tier/12k；未重新执行受评Task。旧4attempt全部保留：原298752未知占用，加116987已知；新audit从seq5开始，原7美元下执行cap6.701248、prior spent0.116987，准入余6.584261。实际完整新估价6.508232，加原已知及未知保留额6.923971≤7。
 
 paired_semantic_format_recovery仅接受本次已核定原数据/金额，保护父目录及原首失败目录，核父输入与manifest摘要、旧响应/有效评分、所有旧row、新22模板及重算费用。新未知或再次失败停止，不自动循环；本轮不再新增实验配置。格式恢复17项通过、邻接schema/judge/首恢复106项通过，旧原件/费用/评分标准保持。
+
+## 同wire v2的原始评分证据提取
+
+v2原四项有效，第五项返回STOP、同模型/tier及已知57578微美元，五维分值与理由均符合原标准，但根级多overall_assessment字符串，违反原additionalProperties=false。原validate_scores(raw)仍拒绝；原raw、failed事件、费用和raw schema不合规事实全部保留，不重发该已返回请求。
+
+新增独立paired-score-extraction-v1，仅对恰好多这个非评分字符串的响应提取原scores，值/理由逐字不变；其他根键、非字符串metadata、缺维度、非法锚点或空理由继续拒绝。该提取对全部22统一，0/0.5/1不区分，旧四项是恒等映射；五维标准与请求配置都不变。每项记录raw_schema_valid及ignored_root_fields，review/报告保留失败计数；原payload不因此变合规，整体验收也不因此通过。
+
+独立semantic-extracted目录复用五份原响应与四原评分、派生第五份评分；同manifest/模型/schema2/run/Task，原strict目录不修改。九行账本严格核对，已知332277微美元包含全部旧费；原298752未知仍保留，执行cap6.701248、prior spent0.332277。offset9，从seq10仅续原余17；实际余17估价5.038352，加已知与未知预占为5.669381≤原7。恢复动作模型调用0；原件/seed/账单篡改或新pending拒绝，未知实际总额仍null。

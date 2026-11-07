@@ -353,10 +353,15 @@ def completed_report(out: Path, export: Mapping[str, Any], review: Mapping[str, 
     prior = pv.historical_cost([Path(p) for p in plan.get("historical_runs", [])])
     total = sum(c["total_usd"] for c in cost.values()) + judge + prior["known_usd"] + plan.get("prior_external_cost_usd", 0) if settled and judge_known and not prior["unknown_task_ids"] else None
     gate = rubric()["acceptance"]
-    valid = (total is not None and total <= plan["budget_usd"] and judge <= plan["cost_reserves"]["semantic_judge_usd"]
+    raw_schema_failures = review.get("raw_schema_failures", 0)
+    if type(raw_schema_failures) is not int or raw_schema_failures < 0:
+        raise ValueError("judge raw-schema failure count must be explicit")
+    valid = (raw_schema_failures == 0 and total is not None and total <= plan["budget_usd"] and judge <= plan["cost_reserves"]["semantic_judge_usd"]
              and sum(c["jev"]["cost_usd"] for c in cost.values() if c["jev"]["known"]) <= plan["cost_reserves"]["external_jev_usd"])
     return {"evidence_complete": valid, "actual_shared_total_usd": total, "semantic_judge_usd": judge if judge_known else None,
             "known_semantic_judge_usd": judge, "semantic_judge_cost_known": judge_known, "arm_costs": cost,
+            "judge_raw_schema_failures": raw_schema_failures,
+            "judge_result_extraction_version": review.get("result_extraction_version"),
             "collection_complete": True, "cost_known": settled and judge_known,
             "unknown_cost_continuation_used": (out / "collection-continue.json").exists(),
             "quality": quality, "quality_gain": quality_gain, "total_cost_ratio": ratio, "planning_structure_pass_rate": planning,
