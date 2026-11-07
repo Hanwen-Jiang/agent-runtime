@@ -1,0 +1,16 @@
+{
+  "alice": {
+    "revoke_all_http": 200,
+    "private_cookie_removed": true
+  },
+  "bob": {
+    "revoke_all_http": 200,
+    "private_cookie_removed": true
+  },
+  "eve": {
+    "revoke_all_http": 200,
+    "revoked": 3,
+    "private_cookie_removed": true
+  },
+  "note": "First cleanup completed Alice/Bob and then encountered expired Eve JWT. Issued a 10-minute Eve cleanup identity via the same existing issuer, revoked all Eve sessions, removed private file. No policy changes."
+}

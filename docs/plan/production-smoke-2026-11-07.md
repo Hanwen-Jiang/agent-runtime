@@ -1,6 +1,6 @@
 # 生产无模型验收（2026-11-07）
 
-本次直接运行已部署服务。Worker 与 Sandbox Service 为 `goal-f1388e13`，coding-web 为 `goal-0fbf18e`；FC manager SHA-256 为 `eed2e5449423357ca151393de659d3fdb14866b37d78409c44a693f4174be77b`。运行前检查 Deployment 镜像、更新代数和可用副本、manager 二进制摘要及 `AR_WORKSPACE_CHUNKED_SNAPSHOTS=true`。
+本次直接运行已部署服务。首批Worker与Sandbox Service为`goal-f1388e13`，coding-web为`goal-0fbf18e`；最终Kata网页流程使用修复后的Sandbox Service `goal-0ee834d8`，Worker/Web不变。FC manager SHA-256 为 `eed2e5449423357ca151393de659d3fdb14866b37d78409c44a693f4174be77b`。运行前检查 Deployment 镜像、更新代数和可用副本、manager 二进制摘要及 `AR_WORKSPACE_CHUNKED_SNAPSHOTS=true`。
 
 所有操作限定新建的唯一测试租户/工作区，没有调用 SubmitTask、模型、Git push 或桶生命周期 API。报告记录的模型费用为 $0，且两个服务验收租户的 model_usage 均为空；沙箱用时与出网字节另留原始 usage，不把它们称为供应商实付费用。
 
@@ -23,10 +23,22 @@
 
 Web预检遇Cloudflare对默认Python User-Agent的1010拒绝，改用项目明确的`agentruntime-goal-acceptance/1.0`应用标识；未修改防火墙或认证策略。最初goal-*租户不在coding issuer允许范围，因此改用现有获准前缀下全新的`gh-goalaccept-20261107`，未扩大issuer ACL。
 
-Web个人配置HTTP CRUD、旧版本no-store、owner隔离、明文凭据拒绝及38ms异步空多仓创建/重试/异owner404已通过。但首Attach遇到真实空manifest `entries:null`恢复错误，原FAILED operation及报告保留；应用负责人已以`e3c3fa6c`修复并完成先红后绿回归。Service更新`goal-c2e9fcb4`后，同流程复验越过空恢复，在Kata后端克隆成功后遇R2直传失败，原503操作、egress审计和完整清理报告保留，不能用FC下载通过替代Kata失败。最终D25生产Web全流程（含dirty detach默认拒绝与显式discard）仍待该Kata上传故障修复后复验。
+Web个人配置HTTP CRUD、旧版本no-store、owner隔离、明文凭据拒绝及38ms异步空多仓创建/重试/异owner404已通过。但首Attach遇到真实空manifest `entries:null`恢复错误，原FAILED operation及报告保留；应用负责人已以`e3c3fa6c`修复并完成先红后绿回归。Service更新`goal-c2e9fcb4`后，同流程复验越过空恢复，在Kata后端克隆成功后遇R2直传失败，原503操作、egress审计和完整清理报告保留，不能用FC下载通过替代Kata失败。此时未标为通过；最终原Kata条件复验结果见下文。
 
 网页下载的第一次脚本断言把HTTP头按大小写敏感字典读取，原始应用HTTP200并非失败；已改为HTTP规范的大小写无关读取，原报告保留，随后同等安全断言全部通过。未修改应用以掩盖这一夹具错误。
+
+Service `goal-96772b80`补齐Kata快照每块上传的有限重试及ACK对账后，原Web流程已成功挂载source/reference两个仓库并通过非法路径拒绝。下一步新会话复制暴露维护读取缺少审计任务作用域：`WorkspaceOperations._current()`借只读环境时未传task_id，Kata恢复所需临时storage grant被`transfer_gateway_required`拒绝。失败操作、响应和完整清理证据已保存为`web-copy-transfer-scope-failure.json`及`web-copy-failed-operation.json`；交实现负责人作最小修复，不通过修改测试策略或TLS绕过该边界。
 
 ## 清理
 
 两个transfer-accept-*租户所有测试VM、对象、作用域业务行已删除；只按本次随机内容摘要验证并删除5个专属缓存块，没有清空生产cache。Web测试项目已通过API删除、个人默认包退役；不可变版本和operation审计保留以便追溯。浏览器进程和独立profile已清理，测试Cookie仅在0600私有文件中使用，未写入证据。
+
+## 最终Kata网页复验通过
+
+2026-11-07 11:28 UTC，Service `goal-0ee834d8`包含空清单、局部上传重试/ACK对账和无Task维护恢复的独立审计作用域修复后，原Kata策略下完整流程退出0。没有切换为FC来掩盖Kata故障。
+
+八组检查全部通过：个人配置不可变版本/digest/旧版本no-store/owner隔离，已知明文凭据拒绝，异步创建/同幂等键/异owner操作隐藏，多仓attach/list及非法路径拒绝，新会话复制与只读仓commit403、本人显式空工具选择，复制会话，clean detach不改基线，dirty detach默认409且保留仓库、只有明确discard_changes=true才200卸下。基线和复制副本的两个仓库保持完整。
+
+所有变更HTTP请求先返回202，最大受理耗时0.051262秒，操作号与终态逐步落盘；原请求关闭后由短轮询查询，包含长时间删除操作，不依赖Cloudflare持续连接。期望的400/403/409仍作为FAILED操作证据保留，未弱化断言。
+
+最终原删除操作`who-4b6d3c7ddeff0ec5852091cef1e11908b86bbebf93cfb4a2e015bd07968e8a85`返回COMPLETED/200，个人默认配置退役。独立读取确认该隔离tenant剩余活动工作区0、活跃环境0、model_usage行0、对象为空；网页项目与会话0、active personal config=false。完整证据为`web-final-passed.json`、`web-final-dirty-fixture.json`、`web-final-runtime-cleanup.json`、`web-final-ui-cleanup.json`和`web-final-execution.json`。之前的所有失败报告保留作对照；未重跑已经通过的传输/网络/下载用例。

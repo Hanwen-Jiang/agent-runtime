@@ -1,0 +1,44 @@
+{
+  "base": "https://code.cgent.link",
+  "tenant": "gh-goalaccept-20261107",
+  "started_at": "2026-11-07T10:58:51Z",
+  "model_cost_usd": 0,
+  "checks": [
+    {
+      "name": "personal_versions_private",
+      "versions": [
+        "user/v5",
+        "user/v6"
+      ],
+      "digests": [
+        "2a9a895964d286772495315937a29c32db149aad2a92bf5c83ad75939f005451",
+        "760b772daecd1b2f765747861486a72aa5ae1781a6e995d7e4d4f402d3c28402"
+      ]
+    },
+    {
+      "name": "known_credential_formats_rejected"
+    },
+    {
+      "name": "async_create_and_reconnect",
+      "project_id": "w34c56fd284d6679a56b5cdaa",
+      "operation_id": "who-b6f13cc32beefbd46b242d38da040e9573f63768a507ab6cdde99470820899ae",
+      "admission_seconds": 0.04650348098948598
+    },
+    {
+      "name": "attach_list_and_invalid_path"
+    }
+  ],
+  "cleanup": [
+    {
+      "project_id": "w34c56fd284d6679a56b5cdaa",
+      "status": 200,
+      "operation_id": "who-2cc03958a1b63746ae0cb418b746f2c9824d7a77ba28ab4c335c692974af06ab"
+    },
+    {
+      "personal_default_retired": true,
+      "immutable_versions_retained": true
+    }
+  ],
+  "status": "failed",
+  "error": "AssertionError: "
+}

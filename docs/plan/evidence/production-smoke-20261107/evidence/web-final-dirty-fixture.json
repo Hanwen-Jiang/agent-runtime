@@ -1,0 +1,13 @@
+{
+  "returncode": 0,
+  "parameters": {
+    "tenant": "gh-goalaccept-20261107",
+    "workspace": "w2b3ca9c850772fff7e9feb6c",
+    "path": "source/goal-acceptance-8bbaa58f0be5432c.txt"
+  },
+  "model_calls": 0,
+  "fixture_written": true,
+  "tenant": "gh-goalaccept-20261107",
+  "workspace": "w2b3ca9c850772fff7e9feb6c",
+  "path": "source/goal-acceptance-8bbaa58f0be5432c.txt"
+}

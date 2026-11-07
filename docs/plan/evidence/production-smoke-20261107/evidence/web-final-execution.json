@@ -1,0 +1,13 @@
+{
+  "script_sha256": "bd187517757259202a477912d1145a21bfd470438c16395094f438509a107971",
+  "dirty_fixture_sha256": "5c4b6cf80efce200bd2fcac7982b3b87745d85a59dde8b44db4a8c44c63c4e02",
+  "service_image": "ghcr.io/agentruntime/sandbox-service:goal-0ee834d8",
+  "worker_image": "ghcr.io/agentruntime/worker:goal-f1388e13",
+  "web_image": "ghcr.io/agentruntime/coding-web:goal-0fbf18e",
+  "backend": "kata",
+  "model_calls": 0,
+  "admission_seconds_max": 0.05126164294779301,
+  "commands": [
+    "python3 .goal-tools/web-production-smoke.py --base https://code.cgent.link --tenant gh-goalaccept-20261107 --user alice --other-user bob --cookie-file <0600-alice-cookie> --other-cookie-file <0600-bob-cookie> --repo-url https://github.com/octocat/Hello-World.git --dirty-fixture .goal-tools/web-workspace-dirty-fixture.py --expected-worker-image ghcr.io/agentruntime/worker:goal-f1388e13 --out <fresh-report-path>"
+  ]
+}

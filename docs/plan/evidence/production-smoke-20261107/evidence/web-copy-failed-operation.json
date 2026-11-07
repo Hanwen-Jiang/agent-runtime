@@ -1,0 +1,42 @@
+{
+  "id": "who-afd74e11477a0e153822f997d91d901cc347d1acdfc3cb069b0308785528942b",
+  "user": "alice",
+  "kind": "create_session",
+  "digest": "e3a8f587a95d0910be3b9710095af185e9f47f0e67d582490329337f18db2aeb",
+  "method": "POST",
+  "language": "zh",
+  "url": "/api/projects/w34c56fd284d6679a56b5cdaa/sessions",
+  "body": {
+    "personal_config": {
+      "skill_names": [],
+      "mcp_connection_ids": []
+    },
+    "title": "Zero-model acceptance"
+  },
+  "paths": {
+    "project": "w34c56fd284d6679a56b5cdaa",
+    "repo": "",
+    "session": ""
+  },
+  "created": "2026-11-07T11:00:09.606416257Z",
+  "status": 500,
+  "response": {
+    "error": "开会话失败：Task API 400 ERROR_CATEGORY_INVALID：storage transfer requires an audited gateway"
+  },
+  "facts": {
+    "project:w34c56fd284d6679a56b5cdaa": {
+      "layout": "WORKSPACE_LAYOUT_MULTI",
+      "id": "w34c56fd284d6679a56b5cdaa",
+      "name": "Goal multi acceptance 635bffc7",
+      "source": "empty",
+      "created_at": "2026-11-07T10:58:52.224161133Z",
+      "created_by": "alice"
+    },
+    "runtime:cw-ebd705d4dc123ea80a9799c034fa2e31369d1c86bbe4077e4940cc72761bb30e": {
+      "method": "CreateWorkspace",
+      "operation_id": "wso-fbfce39d98e18ec9ddfbd1798bd85f7900d25b43ce3468eda92f94cbd81ab134",
+      "request_id": "cw-ebd705d4dc123ea80a9799c034fa2e31369d1c86bbe4077e4940cc72761bb30e",
+      "workspace_id": "wad394f6a50c62a5f4b441762"
+    }
+  }
+}

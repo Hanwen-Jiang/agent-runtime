@@ -1,0 +1,216 @@
+{
+  "base": "https://code.cgent.link",
+  "tenant": "gh-goalaccept-20261107",
+  "started_at": "2026-11-07T11:17:55Z",
+  "model_cost_usd": 0,
+  "status": "passed",
+  "checks": [
+    {
+      "name": "personal_versions_private",
+      "versions": [
+        "user/v7",
+        "user/v8"
+      ],
+      "digests": [
+        "2a9a895964d286772495315937a29c32db149aad2a92bf5c83ad75939f005451",
+        "760b772daecd1b2f765747861486a72aa5ae1781a6e995d7e4d4f402d3c28402"
+      ]
+    },
+    {
+      "name": "known_credential_formats_rejected"
+    },
+    {
+      "name": "async_create_and_reconnect",
+      "project_id": "w86d234101360c4173663185a",
+      "operation_id": "who-27514941e104b3943d1887c63c9606b7dffd805a24e0c53b6cf88abeea43d45a",
+      "admission_seconds": 0.04470437008421868
+    },
+    {
+      "name": "attach_list_and_invalid_path"
+    },
+    {
+      "name": "copied_layout_read_only_and_private_selection",
+      "session_id": "w4129e704aa18298030c5d93e",
+      "workspace_id": "w2b3ca9c850772fff7e9feb6c"
+    },
+    {
+      "name": "session_copy"
+    },
+    {
+      "name": "clean_detach_preserves_baseline"
+    },
+    {
+      "name": "dirty_detach_requires_explicit_discard",
+      "fixture_evidence": ".goal-evidence/production-web-20261107-e.dirty-fixture.json",
+      "default_status": 409,
+      "discard_status": 200
+    }
+  ],
+  "cleanup": [
+    {
+      "project_id": "w86d234101360c4173663185a",
+      "status": 200,
+      "operation_id": "who-4b6d3c7ddeff0ec5852091cef1e11908b86bbebf93cfb4a2e015bd07968e8a85"
+    },
+    {
+      "personal_default_retired": true,
+      "immutable_versions_retained": true
+    }
+  ],
+  "operations": [
+    {
+      "method": "POST",
+      "path": "/api/projects",
+      "operation_id": "who-27514941e104b3943d1887c63c9606b7dffd805a24e0c53b6cf88abeea43d45a",
+      "status": "RUNNING",
+      "admission_seconds": 0.04470437008421868
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects",
+      "operation_id": "who-27514941e104b3943d1887c63c9606b7dffd805a24e0c53b6cf88abeea43d45a",
+      "status": "COMPLETED",
+      "http_status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/w86d234101360c4173663185a/repos",
+      "operation_id": "who-350cc946df1b323ed21b4dd8895ae248e745ab82d794dbf75033532b42d1d8ee",
+      "status": "RUNNING",
+      "admission_seconds": 0.05126164294779301
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/w86d234101360c4173663185a/repos",
+      "operation_id": "who-350cc946df1b323ed21b4dd8895ae248e745ab82d794dbf75033532b42d1d8ee",
+      "status": "COMPLETED",
+      "http_status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/w86d234101360c4173663185a/repos",
+      "operation_id": "who-934f8aaf035179aae2a3b287db193608f24f01b0286454290b0ddaa17c485995",
+      "status": "RUNNING",
+      "admission_seconds": 0.040740191005170345
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/w86d234101360c4173663185a/repos",
+      "operation_id": "who-934f8aaf035179aae2a3b287db193608f24f01b0286454290b0ddaa17c485995",
+      "status": "COMPLETED",
+      "http_status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/w86d234101360c4173663185a/repos",
+      "operation_id": "who-c9fb7f0b5124c04195765c6eb49a00e248e704ed3da2625e84fe88b077d0df60",
+      "status": "RUNNING",
+      "admission_seconds": 0.04217932198662311
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/w86d234101360c4173663185a/repos",
+      "operation_id": "who-c9fb7f0b5124c04195765c6eb49a00e248e704ed3da2625e84fe88b077d0df60",
+      "status": "FAILED",
+      "http_status": 400
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/w86d234101360c4173663185a/sessions",
+      "operation_id": "who-678c897087105cad2b5c8d5c7748a1acaacd34f1e13051f04ab5b9ce17547584",
+      "status": "RUNNING",
+      "admission_seconds": 0.04119359399192035
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/w86d234101360c4173663185a/sessions",
+      "operation_id": "who-678c897087105cad2b5c8d5c7748a1acaacd34f1e13051f04ab5b9ce17547584",
+      "status": "COMPLETED",
+      "http_status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/w86d234101360c4173663185a/sessions/w4129e704aa18298030c5d93e/commit?repo=reference",
+      "operation_id": "who-31b73719fe6a0dc7cd9ae85fbc6eaea4399eaae9b68ea679b1d703a650967977",
+      "status": "RUNNING",
+      "admission_seconds": 0.028687043930403888
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/w86d234101360c4173663185a/sessions/w4129e704aa18298030c5d93e/commit?repo=reference",
+      "operation_id": "who-31b73719fe6a0dc7cd9ae85fbc6eaea4399eaae9b68ea679b1d703a650967977",
+      "status": "FAILED",
+      "http_status": 403
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/w86d234101360c4173663185a/sessions/w4129e704aa18298030c5d93e/duplicate",
+      "operation_id": "who-79fe5fd25622fd0d49f910f5e3f863aadb86bf0cd84df8fd6d4ead8419cfd162",
+      "status": "RUNNING",
+      "admission_seconds": 0.043568019988015294
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/w86d234101360c4173663185a/sessions/w4129e704aa18298030c5d93e/duplicate",
+      "operation_id": "who-79fe5fd25622fd0d49f910f5e3f863aadb86bf0cd84df8fd6d4ead8419cfd162",
+      "status": "COMPLETED",
+      "http_status": 201
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/w86d234101360c4173663185a/sessions/w4129e704aa18298030c5d93e/repos/reference/detach",
+      "operation_id": "who-6f9607a9279cd72ae7a8965d52c366f1ebed3cab861a40b4b6f99c670de1dc49",
+      "status": "RUNNING",
+      "admission_seconds": 0.029880599002353847
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/w86d234101360c4173663185a/sessions/w4129e704aa18298030c5d93e/repos/reference/detach",
+      "operation_id": "who-6f9607a9279cd72ae7a8965d52c366f1ebed3cab861a40b4b6f99c670de1dc49",
+      "status": "COMPLETED",
+      "http_status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/w86d234101360c4173663185a/sessions/w4129e704aa18298030c5d93e/repos/source/detach",
+      "operation_id": "who-bac74cace69463f1167e1dc4131798eedc9fe377126005334b40edd655fb8e58",
+      "status": "RUNNING",
+      "admission_seconds": 0.04023456701543182
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/w86d234101360c4173663185a/sessions/w4129e704aa18298030c5d93e/repos/source/detach",
+      "operation_id": "who-bac74cace69463f1167e1dc4131798eedc9fe377126005334b40edd655fb8e58",
+      "status": "FAILED",
+      "http_status": 409
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/w86d234101360c4173663185a/sessions/w4129e704aa18298030c5d93e/repos/source/detach",
+      "operation_id": "who-23033f6726f0e9ed7930fdf7d39990f60ffc41e5886f4c6837ec886d484594d5",
+      "status": "RUNNING",
+      "admission_seconds": 0.02853543101809919
+    },
+    {
+      "method": "POST",
+      "path": "/api/projects/w86d234101360c4173663185a/sessions/w4129e704aa18298030c5d93e/repos/source/detach",
+      "operation_id": "who-23033f6726f0e9ed7930fdf7d39990f60ffc41e5886f4c6837ec886d484594d5",
+      "status": "COMPLETED",
+      "http_status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/projects/w86d234101360c4173663185a",
+      "operation_id": "who-4b6d3c7ddeff0ec5852091cef1e11908b86bbebf93cfb4a2e015bd07968e8a85",
+      "status": "RUNNING",
+      "admission_seconds": 0.04166544508188963
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/projects/w86d234101360c4173663185a",
+      "operation_id": "who-4b6d3c7ddeff0ec5852091cef1e11908b86bbebf93cfb4a2e015bd07968e8a85",
+      "status": "COMPLETED",
+      "http_status": 200
+    }
+  ]
+}

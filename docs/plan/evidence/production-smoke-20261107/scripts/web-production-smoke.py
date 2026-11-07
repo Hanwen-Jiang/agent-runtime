@@ -35,6 +35,7 @@ class Client:
         if parsed.scheme != "https" or not parsed.hostname:
             raise ValueError("production base must be https")
         self.base = base.rstrip("/")
+        self.operation_event = None
         jar = http.cookiejar.CookieJar()
         jar.set_cookie(http.cookiejar.Cookie(0, "cw_token", value, None, False,
             parsed.hostname, False, False, "/", True, True, None, True, None, None, {}, False))
@@ -78,6 +79,8 @@ class Client:
             again_status, again, _, _ = self.request(method, path, body, key)
             assert again_status == 202 and again["operation_id"] == started["operation_id"], "duplicate request changed operation"
         url = started["status_url"]
+        if self.operation_event:
+            self.operation_event({"method":method,"path":path,"operation_id":started["operation_id"],"status":"RUNNING","admission_seconds":elapsed})
         if other is not None:
             assert other.request("GET", url)[0] == 404, "operation exposed to another owner"
         deadline = time.monotonic() + 1800
@@ -86,6 +89,8 @@ class Client:
             if result["status"] in ("COMPLETED", "FAILED"):
                 # Terminal query must remain stable independently of the original connection.
                 assert self.get(url) == result
+                if self.operation_event:
+                    self.operation_event({"method":method,"path":path,"operation_id":started["operation_id"],"status":result["status"],"http_status":result["http_status"]})
                 return result["http_status"], result["result"], started["operation_id"], elapsed
             assert result["status"] == "RUNNING"
             time.sleep(.5)
@@ -124,11 +129,21 @@ def main():
     assert baseline.get("available", True) and not baseline.get("config"), "test owner must have no existing personal package"
     other_baseline = other.get("/api/personal-config")
     assert other_baseline.get("available", True) and not other_baseline.get("config"), "second test owner must be empty"
-    results = {"base": args.base, "tenant": args.tenant, "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "model_cost_usd": 0, "checks": [], "cleanup": []}
+    results = {"base": args.base, "tenant": args.tenant, "started_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "model_cost_usd": 0, "status":"running", "checks": [], "cleanup": [], "operations":[]}
     projects = []
     personal_created = False
+    def checkpoint():
+        args.out.parent.mkdir(parents=True,exist_ok=True)
+        raw=json.dumps(results,indent=2)+'\n'
+        fd=os.open(args.out,os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600)
+        with os.fdopen(fd,'w') as stream:
+            stream.write(raw);stream.flush();os.fsync(stream.fileno())
+    def operation_event(event):
+        results['operations'].append(event);checkpoint()
+    owner.operation_event=operation_event
     def check(label, **data):
         results["checks"].append({"name": label, **data})
+        checkpoint()
     try:
         document = {"instructions": "Goal acceptance: use concise output.", "files": [{"path": ".config/goal-acceptance/preferences.toml", "content": "theme='light'\n"}], "defaults": {}}
         status, first, _, _ = owner.request("PUT", "/api/personal-config", {"document": document})

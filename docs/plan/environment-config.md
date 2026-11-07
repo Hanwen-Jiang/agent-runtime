@@ -1,5 +1,7 @@
 # 环境配置与多仓库工作区（D-23、D-24、D-25、D-27）
 
+> 2026-11-07：D-25、D-27按本设计已实现部署并完成生产验收；当前证据与限制见[全量Goal执行记录](goal-full-20-2026-11-07.md)。
+
 > 2026-11-01 起草；2026-11-02 按用户要求补齐云环境增强设计并发布到仓库。**状态：设计草案，未实现；本次文档补全与推送不等于契约或代码验收。** 第 1 节保留此前已确认决定；本次增量见第 1.1 节。实现仍按仓库流程先写验收测试；契约变更清单见第 5 节，走 S-01，本次不修改 `/proto`、`/schemas` 或兼容性基线。
 > Firecracker 后端（D-19～D-22、D-26）在 [firecracker-backend.md](firecracker-backend.md)。依据：[沙箱平台](sandbox-platform.md)、[Workspace 层](workspace-layer.md)、[云上部署计划](cloud-deploy.md)，以及 2026-11-01 对当前代码的核对（第 3 节）。
 > Codex / Claude 的版本、字段、凭据和脚本语义已单列在 [云环境调研](../reference/cloud-environments-codex-claude.md)。该文记录外部事实；本文拥有本系统的拟议行为与验收，不把竞品限制直接变成我们的要求。
