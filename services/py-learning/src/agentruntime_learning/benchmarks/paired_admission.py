@@ -8,6 +8,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+from pathlib import Path
+import tempfile
 from collections.abc import Mapping, Sequence
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -16,6 +19,8 @@ KIND = "paired-collection-continue-v1"
 TENANT = "gh-goalpair-20261107"
 PENDING = "mbr_DTTAF6WU2EWRW4S267NLH6APYE"
 PENDING_MICROS = 14_517
+SECOND_PENDING = "mbr_QXBAQLBWMIB2BSAG4U5B33M2SJ"
+SECOND_PENDING_MICROS = 9_083
 SUBJECT_CAP_MICROS = 18_445_261
 RUBRIC_VERSION = "paired-factual-checklist-v1"
 
@@ -70,8 +75,14 @@ def _receipt(receipt: Mapping[str, Any]) -> tuple[dict, dict]:
     if digest(base) != receipt.get("baseline_sha256") or digest(allowed) != receipt.get("allowed_pending_sha256"):
         raise ValueError("receipt ledger digest changed")
     original, pending = _rows(base), _rows(allowed)
-    if set(pending) != {PENDING} or pending[PENDING]["reserved_usd_micros"] != PENDING_MICROS:
+    amounts = {PENDING: PENDING_MICROS, SECOND_PENDING: SECOND_PENDING_MICROS}
+    if (set(pending) not in ({PENDING}, set(amounts))
+            or any(row["reserved_usd_micros"] != amounts[key] for key, row in pending.items())):
         raise ValueError("only the explicitly retained reservation and amount are allowed")
+    if SECOND_PENDING in pending:
+        previous = receipt.get("previous_receipt_sha256")
+        if not isinstance(previous, str) or len(previous) != 64 or any(c not in "0123456789abcdef" for c in previous):
+            raise ValueError("the second retained charge requires a predecessor receipt digest")
     if {k: r for k, r in original.items() if r["actual_usd_micros"] is None} != pending:
         raise ValueError("receipt pending rows differ from the complete baseline")
     if type(receipt.get("subject_cap_usd_micros")) is not int or receipt["subject_cap_usd_micros"] != SUBJECT_CAP_MICROS:
@@ -101,6 +112,99 @@ def validate_receipt(plan: Mapping[str, Any], receipt: Mapping[str, Any]) -> Non
             or cap + hold + invalid > total):
         raise ValueError("original shared allowance or earlier charges changed")
     check_scope(receipt["baseline_rows"], receipt)
+
+
+def validate_successor(plan: Mapping[str, Any], before: Mapping[str, Any], after: Mapping[str, Any]) -> None:
+    """Validate the single reviewed extension; do not activate or write it."""
+    validate_receipt(plan, before)
+    validate_receipt(plan, after)
+    if after.get("previous_receipt_sha256") != digest(before):
+        raise ValueError("successor does not bind the exact predecessor receipt")
+    fixed = ("kind", "tenant_id", "plan_sha256", "subject_cap_usd_micros",
+             "original_total_cap_usd", "prior_budget_hold_usd", "prior_invalid_sample_usd")
+    if any(after.get(key) != before.get(key) for key in fixed):
+        raise ValueError("successor changed the original plan, tenant or allocation")
+    original, old_pending = _receipt(before)
+    current, new_pending = _receipt(after)
+    if any(current.get(key) != row for key, row in original.items()):
+        raise ValueError("successor removed or changed a baseline ledger row")
+    if set(old_pending) != {PENDING} or set(new_pending) != {PENDING, SECOND_PENDING}:
+        raise ValueError("successor may append only the exact second retained charge once")
+
+
+def _root_receipt(plan: Mapping[str, Any], receipt: Mapping[str, Any]) -> None:
+    validate_receipt(plan, receipt)
+    if "previous_receipt_sha256" in receipt or set(_receipt(receipt)[1]) != {PENDING}:
+        raise ValueError("the original single-charge receipt must exist before any extension")
+
+
+def stored_receipt(out: Path, plan: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Load the untouched root and its unique, verified append-only chain."""
+    out = Path(out)
+    root = out / "collection-continue.json"
+    paths = sorted((out / "collection-continue-extensions").glob("*.json"))
+    if not root.exists():
+        if paths:
+            raise ValueError("orphan receipt extensions without the original receipt")
+        return None
+    current = json.loads(root.read_text("utf-8"))
+    _root_receipt(plan, current)
+    successors = {}
+    for path in paths:
+        receipt = json.loads(path.read_text("utf-8"))
+        if path.name != digest(receipt) + ".json":
+            raise ValueError("receipt filename and content digest disagree")
+        validate_receipt(plan, receipt)
+        previous = receipt.get("previous_receipt_sha256")
+        if previous in successors:
+            raise ValueError("forked receipt extensions")
+        successors[previous] = receipt
+    while digest(current) in successors:
+        following = successors.pop(digest(current))
+        validate_successor(plan, current, following)
+        current = following
+    if successors:
+        raise ValueError("orphan receipt extension does not descend from the original")
+    return current
+
+
+def _create_receipt(path: Path, receipt: Mapping[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(prefix=".receipt-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(receipt, stream, ensure_ascii=False, indent=2, allow_nan=False)
+            stream.write("\n"); stream.flush(); os.fsync(stream.fileno())
+        os.link(temporary, path)  # Atomic publish; never replace existing evidence.
+        directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        os.unlink(temporary)
+
+
+def store_receipt(out: Path, plan: Mapping[str, Any], receipt: Mapping[str, Any]) -> dict[str, Any]:
+    """Persist a root or one reviewed extension; preserve all prior bytes."""
+    import fcntl
+
+    out = Path(out)
+    validate_receipt(plan, receipt)
+    out.mkdir(parents=True, exist_ok=True)
+    with (out / ".collection-continue.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        current = stored_receipt(out, plan)
+        if current == receipt:
+            return current
+        if current is None:
+            _root_receipt(plan, receipt)
+            destination = out / "collection-continue.json"
+        else:
+            validate_successor(plan, current, receipt)
+            destination = out / "collection-continue-extensions" / (digest(receipt) + ".json")
+        _create_receipt(destination, receipt)
+        return dict(receipt)
 
 
 def check_scope(rows: Sequence[Mapping[str, Any]], receipt: Mapping[str, Any]) -> dict[str, Any]:

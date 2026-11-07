@@ -92,6 +92,24 @@ def test_partial_pairs_never_report_a_complete_cohort_cost_ratio(tmp_path):
     assert result["cost_ratio"] is None and not result["n16_r_quality_and_gateway_cost_gate"]
 
 
+def test_review_reads_verified_extension_without_overwriting_original_receipt(tmp_path):
+    from test_paired_admission import successor_fixture
+    from agentruntime_learning.benchmarks import paired_admission as admission
+    from agentruntime_learning.benchmarks.paired_completion import collection_record
+    p, before, after, metric = successor_fixture()
+    admission.store_receipt(tmp_path, p, before)
+    original = (tmp_path / "collection-continue.json").read_bytes()
+    admission.store_receipt(tmp_path, p, after)
+    folder = tmp_path / "rules" / "case"; folder.mkdir(parents=True)
+    metric["task_id"] = "rules-first-task"
+    metric["ledger"].update(attempts=1, total_cost_usd=0)
+    (folder / "metrics.json").write_text(json.dumps(metric))
+    (folder / "model_usage.json").write_text(json.dumps([after["baseline_rows"][-1]]))
+    result = collection_record(tmp_path, p, folder)
+    assert result["valid"] is False and result["ledger"]["known"] is False
+    assert (tmp_path / "collection-continue.json").read_bytes() == original
+
+
 def test_context_summary_has_its_own_frozen_profile_without_loosening_transform():
     frozen = provenance()
     frozen["models"].update(summary="small-summary", transform="mid-transform", probe="small-probe")
