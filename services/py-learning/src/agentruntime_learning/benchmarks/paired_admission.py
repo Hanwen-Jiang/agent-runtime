@@ -21,6 +21,8 @@ PENDING = "mbr_DTTAF6WU2EWRW4S267NLH6APYE"
 PENDING_MICROS = 14_517
 SECOND_PENDING = "mbr_QXBAQLBWMIB2BSAG4U5B33M2SJ"
 SECOND_PENDING_MICROS = 9_083
+THIRD_PENDING = "mbr_UZORZ3YUTV5V7ELFMW643HXTZM"
+THIRD_PENDING_MICROS = 9_214
 SUBJECT_CAP_MICROS = 18_445_261
 RUBRIC_VERSION = "paired-factual-checklist-v1"
 
@@ -75,14 +77,14 @@ def _receipt(receipt: Mapping[str, Any]) -> tuple[dict, dict]:
     if digest(base) != receipt.get("baseline_sha256") or digest(allowed) != receipt.get("allowed_pending_sha256"):
         raise ValueError("receipt ledger digest changed")
     original, pending = _rows(base), _rows(allowed)
-    amounts = {PENDING: PENDING_MICROS, SECOND_PENDING: SECOND_PENDING_MICROS}
-    if (set(pending) not in ({PENDING}, set(amounts))
+    amounts = {PENDING: PENDING_MICROS, SECOND_PENDING: SECOND_PENDING_MICROS, THIRD_PENDING: THIRD_PENDING_MICROS}
+    if (set(pending) not in ({PENDING}, {PENDING, SECOND_PENDING}, set(amounts))
             or any(row["reserved_usd_micros"] != amounts[key] for key, row in pending.items())):
         raise ValueError("only the explicitly retained reservation and amount are allowed")
     if SECOND_PENDING in pending:
         previous = receipt.get("previous_receipt_sha256")
         if not isinstance(previous, str) or len(previous) != 64 or any(c not in "0123456789abcdef" for c in previous):
-            raise ValueError("the second retained charge requires a predecessor receipt digest")
+            raise ValueError("additional retained charges require a predecessor receipt digest")
     if {k: r for k, r in original.items() if r["actual_usd_micros"] is None} != pending:
         raise ValueError("receipt pending rows differ from the complete baseline")
     if type(receipt.get("subject_cap_usd_micros")) is not int or receipt["subject_cap_usd_micros"] != SUBJECT_CAP_MICROS:
@@ -115,7 +117,7 @@ def validate_receipt(plan: Mapping[str, Any], receipt: Mapping[str, Any]) -> Non
 
 
 def validate_successor(plan: Mapping[str, Any], before: Mapping[str, Any], after: Mapping[str, Any]) -> None:
-    """Validate the single reviewed extension; do not activate or write it."""
+    """Validate one reviewed charge at a time; do not activate or write it."""
     validate_receipt(plan, before)
     validate_receipt(plan, after)
     if after.get("previous_receipt_sha256") != digest(before):
@@ -128,8 +130,10 @@ def validate_successor(plan: Mapping[str, Any], before: Mapping[str, Any], after
     current, new_pending = _receipt(after)
     if any(current.get(key) != row for key, row in original.items()):
         raise ValueError("successor removed or changed a baseline ledger row")
-    if set(old_pending) != {PENDING} or set(new_pending) != {PENDING, SECOND_PENDING}:
-        raise ValueError("successor may append only the exact second retained charge once")
+    transitions = (({PENDING}, {PENDING, SECOND_PENDING}),
+                   ({PENDING, SECOND_PENDING}, {PENDING, SECOND_PENDING, THIRD_PENDING}))
+    if (set(old_pending), set(new_pending)) not in transitions:
+        raise ValueError("successor may append only the exact next retained charge once")
 
 
 def _root_receipt(plan: Mapping[str, Any], receipt: Mapping[str, Any]) -> None:

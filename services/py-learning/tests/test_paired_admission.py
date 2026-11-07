@@ -263,8 +263,83 @@ def test_successor_rejects_rollback_and_noop_even_with_a_new_chain_digest():
         admission.validate_successor(plan, after, rollback)
     unchanged = copy.deepcopy(after)
     unchanged["previous_receipt_sha256"] = admission.digest(after)
-    with pytest.raises(ValueError, match="only the exact second"):
+    with pytest.raises(ValueError, match="only the exact next"):
         admission.validate_successor(plan, after, unchanged)
+
+
+def third_successor_fixture():
+    plan, original, second, metric = successor_fixture()
+    third = copy.deepcopy(second)
+    row = dict(second["allowed_pending"][-1], reservation_id=admission.THIRD_PENDING,
+               task_id="http-rules-task", node_id="triage", reserved_usd_micros=9214)
+    third["baseline_rows"].append(copy.deepcopy(row))
+    third["allowed_pending"].append(copy.deepcopy(row))
+    third["previous_receipt_sha256"] = admission.digest(second)
+    rehash(third)
+    return plan, original, second, third, metric
+
+
+def test_third_receipt_extends_the_unchanged_old_chain_and_keeps_unknown_cost(tmp_path):
+    plan, original, second, third, metric = third_successor_fixture()
+    admission.validate_successor(plan, original, second)
+    admission.validate_successor(plan, second, third)
+    totals = admission.check_scope(third["baseline_rows"], third)
+    assert totals["pending_reserved_usd_micros"] == 32814
+    assert totals["accounted_usd_micros"] == 119361 + 32814 and totals["cost_known"] is False
+    task_metric = copy.deepcopy(metric)
+    task_metric.update(task_id="http-rules-task", status="aborted")
+    task_metric["ledger"].update(attempts=1, total_cost_usd=0)
+    before_metric = copy.deepcopy(task_metric)
+    assert admission.collection_eligible(task_metric, [third["baseline_rows"][-1]], third)
+    assert task_metric == before_metric and task_metric["valid"] is False and task_metric["ledger"]["known"] is False
+    for receipt in (original, second):
+        admission.store_receipt(tmp_path, plan, receipt)
+    old_files = {path: path.read_bytes() for path in tmp_path.rglob("*.json")}
+    admission.store_receipt(tmp_path, plan, third)
+    assert admission.stored_receipt(tmp_path, plan) == third
+    assert admission.store_receipt(tmp_path, plan, third) == third
+    assert all(path.read_bytes() == body for path, body in old_files.items())
+    assert len(list((tmp_path / "collection-continue-extensions").glob("*.json"))) == 2
+    with pytest.raises(ValueError, match="new or changed pending"):
+        admission.check_scope(third["baseline_rows"], second)
+
+
+def test_third_receipt_cannot_skip_the_second_or_become_the_root(tmp_path):
+    plan, original, _, third, _ = third_successor_fixture()
+    with pytest.raises(ValueError, match="original single-charge"):
+        admission.store_receipt(tmp_path, plan, third)
+    third["previous_receipt_sha256"] = admission.digest(original)
+    with pytest.raises(ValueError, match="only the exact next"):
+        admission.validate_successor(plan, original, third)
+    admission.store_receipt(tmp_path, plan, original)
+    with pytest.raises(ValueError, match="only the exact next"):
+        admission.store_receipt(tmp_path, plan, third)
+    assert admission.stored_receipt(tmp_path, plan) == original
+
+
+@pytest.mark.parametrize("change", ["amount", "fourth", "remove_second", "old_pending", "old_known", "cap"])
+def test_third_extension_cannot_expand_authority_or_rewrite_previous_rows(change):
+    plan, _, second, third, _ = third_successor_fixture()
+    if change == "amount":
+        third["baseline_rows"][-1]["reserved_usd_micros"] += 1
+        third["allowed_pending"][-1]["reserved_usd_micros"] += 1
+    elif change == "fourth":
+        row = dict(third["allowed_pending"][-1], reservation_id="unapproved-fourth")
+        third["baseline_rows"].append(row)
+        third["allowed_pending"].append(row)
+    elif change == "remove_second":
+        third["baseline_rows"] = [r for r in third["baseline_rows"] if r["reservation_id"] != admission.SECOND_PENDING]
+        third["allowed_pending"] = [r for r in third["allowed_pending"] if r["reservation_id"] != admission.SECOND_PENDING]
+    elif change == "old_pending":
+        third["baseline_rows"][2]["reserved_at"] += 1
+        third["allowed_pending"][1]["reserved_at"] += 1
+    elif change == "old_known":
+        third["baseline_rows"][0]["actual_usd_micros"] -= 1
+    else:
+        third["subject_cap_usd_micros"] += 1
+    rehash(third)
+    with pytest.raises(ValueError):
+        admission.validate_successor(plan, second, third)
 
 
 def test_receipt_storage_appends_without_rewriting_and_is_idempotent(tmp_path):
