@@ -91,6 +91,7 @@ fn validate_url(url: &str) -> io::Result<()> {
     if scheme != "https"
         && !(scheme == "http"
             && (authority.starts_with("127.0.0.1:") || authority.starts_with("[::1]:")))
+        && !(scheme == "http" && authority == "ar-transfer.internal")
     {
         return Err(err("HTTPS required for object transfers"));
     }
@@ -210,7 +211,13 @@ mod tests {
         };
         assert!(!format!("{r:?}").contains("123"));
         assert!(config(&r).is_ok());
+        r.url = "http://ar-transfer.internal/sbg-opaque".into();
+        assert!(config(&r).is_ok());
         for url in [
+            "http://ar-transfer.internal:80/cap",
+            "http://ar-transfer.internal.evil.test/cap",
+            "http://ar-transfer.internal@evil.test/cap",
+            "http://AR-TRANSFER.INTERNAL/cap",
             "http://169.254.169.254/a",
             "file:///etc/passwd",
             "https://x@host/a",

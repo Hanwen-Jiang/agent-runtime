@@ -1,0 +1,6 @@
+=== RUN   TestLiveCloudflareServiceDirectOutputAndQuota
+2026/11/07 10:36:48 WARN direct output upload pending; prepared bytes retained stream=stdout
+    cf_transfer_live_test.go:101: real CF Service→agent→gateway→R2: bounded output, exact 20k actual/60k reservation settlement, quota denial and pending output verified
+--- PASS: TestLiveCloudflareServiceDirectOutputAndQuota (3.89s)
+PASS
+ok  	github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/server	5.879s

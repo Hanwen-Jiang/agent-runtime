@@ -1,0 +1,37 @@
+{
+  "worker_version": "3ae9361b-1b1a-45a1-ae79-bcba8566d553",
+  "container_image": "registry.cloudflare.com/60a1944efd471ed11fad60eaba55e59c/agentruntime-sandbox-universal:goal-cf-20261107",
+  "image_manifest_digest": "sha256:b27f0cfd05609238222e6f8e68d90b0462ec4ab287df78afaeed645446bd1ca1",
+  "agent_sha256": "795c96f868594cdc9bf62d0379dc11d2cf767bac09c17cb8a7dfcfd037fce7a5",
+  "rollout_complete": true,
+  "sdk": "@cloudflare/containers 0.3.7",
+  "wrangler_executed": "4.158.0",
+  "actual_model_cost_usd": 0,
+  "cloudflare_usage_cost_usd": null,
+  "cloudflare_usage_note": "Uses existing paid account, unchanged standard-2/max20 configuration; provider bill not yet reported. Only isolated short-lived test environments were created.",
+  "source_sha256": {
+    "deploy/cloudflare/sandbox-bridge/src/index.ts": "116d2c443d9ad4c87c66f8e90763c6bdb05bd8a84c8581a3c1af56681d1f158a",
+    "deploy/cloudflare/sandbox-bridge/src/transfer-policy.ts": "c5c921409d5e4dbbce044691c7ca1280bf5a4b10c17d4e64dfa2a9a7fb9d20c9",
+    "libs/rs-transfer/src/lib.rs": "21be07c21fe547d0b529ef6830eccb4c8e2f0ffb252526d21418e06158d479a8"
+  },
+  "checks": {
+    "actual_cf_r2_transfer_seconds": 11.17,
+    "actual_service_cf_r2_quota_seconds": 3.89,
+    "live_transfer_checks": [
+      "immutable PUT",
+      "hash-verified GET restore",
+      "byte accounting",
+      "wrong method and revoked denial",
+      "expiry denial",
+      "cross-tenant rejection",
+      "delayed mint rejected",
+      "in-flight revoke aborts PUT and object absent"
+    ],
+    "service_checks": [
+      "20k output only bounded excerpt+ref",
+      "60k prepaid retry budget settled to20k",
+      "next60k reserve denied under60k quota",
+      "failure returns bounded pending"
+    ]
+  }
+}

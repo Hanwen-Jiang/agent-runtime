@@ -14,6 +14,7 @@ import (
 type TransferOptions struct {
 	Enabled     bool
 	OpenNetwork func(context.Context, string) (string, func() error, error)
+	OpenTarget  func(context.Context, string, int64, sandbox.TransferTarget) (sandbox.TransferTarget, func() error, error)
 }
 
 func directSizes(entries []sandbox.FileEntry) bool {
@@ -83,11 +84,16 @@ func validEntries(entries []sandbox.FileEntry, maxBytes int64) ([]sandbox.FileEn
 	}
 	return out, total, nil
 }
-func network(ctx context.Context, opt TransferOptions, url string) (string, func() error, error) {
-	if opt.OpenNetwork == nil {
-		return "", func() error { return nil }, nil
+func network(ctx context.Context, opt TransferOptions, method string, size int64, target sandbox.TransferTarget) (sandbox.TransferTarget, func() error, error) {
+	if opt.OpenTarget != nil {
+		return opt.OpenTarget(ctx, method, size, target)
 	}
-	return opt.OpenNetwork(ctx, url)
+	if opt.OpenNetwork == nil {
+		return target, func() error { return nil }, nil
+	}
+	proxy, close, err := opt.OpenNetwork(ctx, target.URL)
+	target.Proxy = proxy
+	return target, close, err
 }
 func (a *Archiver) storeDirect(ctx context.Context, box sandbox.Sandbox, envID string, bucket objectstore.Store, workspaceID string, maxBytes int64, known map[string]bool, foreign map[string]string, opt TransferOptions) ([]sandbox.FileEntry, int64, int64, error) {
 	manifest := box.(sandbox.Archive).Manifest
@@ -158,11 +164,11 @@ func (a *Archiver) storeDirect(ctx context.Context, box sandbox.Sandbox, envID s
 				if err != nil {
 					return err
 				}
-				proxy, close, err := network(ctx, opt, signed.URL)
+				target, close, err := network(ctx, opt, "PUT", p.SizeBytes, sandbox.TransferTarget{URL: signed.URL, Headers: signed.Headers})
 				if err != nil {
 					return err
 				}
-				_, err = transfers.CommitTransfer(ctx, envID, p, key, sandbox.TransferTarget{URL: signed.URL, Headers: signed.Headers, Proxy: proxy})
+				_, err = transfers.CommitTransfer(ctx, envID, p, key, target)
 				closeErr := close()
 				if err != nil {
 					return err
@@ -245,12 +251,12 @@ func (a *Archiver) restoreDirect(ctx context.Context, box sandbox.BlockTransfers
 				if err != nil {
 					return err
 				}
-				proxy, close, err := network(ctx, opt, url)
+				target, close, err := network(ctx, opt, "GET", e.Size, sandbox.TransferTarget{URL: url})
 				if err != nil {
 					return err
 				}
 				cleanups = append(cleanups, close)
-				blocks = append(blocks, sandbox.RestoreBlock{SHA256: e.SHA256, SizeBytes: e.Size, Target: sandbox.TransferTarget{URL: url, Proxy: proxy}})
+				blocks = append(blocks, sandbox.RestoreBlock{SHA256: e.SHA256, SizeBytes: e.Size, Target: target})
 			}
 			return box.RestoreBatch(ctx, envID, id, maxBytes, blocks)
 		}()

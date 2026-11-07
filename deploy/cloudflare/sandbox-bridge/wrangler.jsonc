@@ -12,7 +12,7 @@
       // 它有 2.6 GB，不在这里构建：在构建它的机器上 `wrangler containers push agentruntime-sandbox-universal:<版本>`，
       // 推到 Cloudflare 的镜像仓库后写在这里。Worker 的后端登记要写 "runtimes": ["universal", "python"]。
       // 只要 Python 的小镜像时换回 "../../images/sandbox-python/Dockerfile" 加 "image_build_context": "../../.."。
-      "image": "registry.cloudflare.com/60a1944efd471ed11fad60eaba55e59c/agentruntime-sandbox-universal:f06e30c",
+      "image": "registry.cloudflare.com/60a1944efd471ed11fad60eaba55e59c/agentruntime-sandbox-universal:goal-cf-20261107",
       // 1 vCPU、6 GiB、12 GB 盘；一次编码任务约 0.02 美元（计划第 4.3 节）。
       "instance_type": "standard-2",
       "max_instances": 20

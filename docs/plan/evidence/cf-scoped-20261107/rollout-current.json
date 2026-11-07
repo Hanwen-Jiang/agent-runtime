@@ -1,0 +1,67 @@
+{
+  "id": "30d92429-d257-4ee6-8117-dfc3499c1457",
+  "created_at": "2026-11-07T10:28:36.404Z",
+  "last_updated_at": "2026-11-07T10:28:36.404Z",
+  "description": "Progressive update",
+  "status": "completed",
+  "health": {
+    "errors": [],
+    "instances": {
+      "active": 0,
+      "assigned": 0,
+      "healthy": 4,
+      "stopped": 0,
+      "failed": 0,
+      "scheduling": 0,
+      "starting": 1
+    }
+  },
+  "kind": "full_auto",
+  "strategy": "rolling",
+  "current_configuration": {
+    "image": "registry.cloudflare.com/60a1944efd471ed11fad60eaba55e59c/agentruntime-sandbox-universal:goal-f1388e13",
+    "vcpu": 1,
+    "memory": "6GiB",
+    "memory_mib": 6144,
+    "disk": {
+      "size_mb": 12000,
+      "size": "12GB"
+    }
+  },
+  "target_configuration": {
+    "image": "registry.cloudflare.com/60a1944efd471ed11fad60eaba55e59c/agentruntime-sandbox-universal:goal-cf-20261107",
+    "vcpu": 1,
+    "memory_mib": 6144,
+    "disk": {
+      "size_mb": 12000,
+      "size": "12GB"
+    },
+    "memory": "6GiB"
+  },
+  "current_version": 4,
+  "target_version": 7,
+  "steps": [
+    {
+      "id": 1,
+      "status": "completed",
+      "step_size": {
+        "percentage": 100
+      },
+      "description": "Rollout to 100% of instances",
+      "started_at": "2026-11-07T10:28:36.404Z",
+      "reason": "current step(id=1) has the required target instances. moving this step to completed.",
+      "completed_at": "2026-11-07T10:29:56.271000064Z"
+    }
+  ],
+  "progress": {
+    "total_steps": 1,
+    "current_step": 1,
+    "updated_instances": 5,
+    "total_instances": 5,
+    "version_distribution": {
+      "target_version_instances": 5,
+      "current_version_instances": 0,
+      "target_version_percentage": 100
+    }
+  }
+}

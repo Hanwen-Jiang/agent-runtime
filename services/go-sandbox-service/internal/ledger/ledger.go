@@ -348,6 +348,9 @@ func (l *Ledger) Migrate(ctx context.Context) error {
 	if err := l.store.Migrate(ctx, Migrations); err != nil {
 		return err
 	}
+	if err := l.store.Migrate(ctx, TransferUsageMigrations); err != nil {
+		return err
+	}
 	l.migrated = true
 	return nil
 }

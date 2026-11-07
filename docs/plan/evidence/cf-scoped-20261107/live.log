@@ -1,0 +1,6 @@
+=== RUN   TestLiveCloudflareScopedObjectTransfer
+    transfer_live_test.go:37: live agent identity="795c96f868594cdc9bf62d0379dc11d2cf767bac09c17cb8a7dfcfd037fce7a5  /usr/local/bin/sandbox-agent\n" error=<nil>
+    transfer_live_test.go:212: immutable PUT + bounded GET, actual byte counts, revoke, expiry, tenant isolation and delayed mint rejection verified; test objects/VM cleaned
+--- PASS: TestLiveCloudflareScopedObjectTransfer (11.17s)
+PASS
+ok  	github.com/agentruntime/agent-runtime/libs/go-core/adapters/cfsandbox	11.180s

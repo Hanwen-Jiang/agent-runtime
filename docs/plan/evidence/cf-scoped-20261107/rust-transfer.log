@@ -1,0 +1,24 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling typenum v1.20.1
+   Compiling unicode-ident v1.0.27
+   Compiling quote v1.0.47
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling cfg-if v1.0.5
+   Compiling cpufeatures v0.3.1
+   Compiling syn v3.0.9
+   Compiling hybrid-array v0.4.15
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling digest v0.11.3
+   Compiling sha2 v0.11.1
+   Compiling serde_derive v1.0.229
+   Compiling rs-transfer v0.1.0 (/root/proj/agent-projs/.worktrees/transfer-review/agent-runtime/libs/rs-transfer)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.77s
+     Running unittests src/lib.rs (/root/proj/agent-projs/.goal-tools/cf-rust-target/debug/deps/rs_transfer-e608a100da39d10a)
+
+running 2 tests
+test tests::rejects_credential_leaks_and_unsafe_targets ... ok
+test tests::actual_http_bytes_upload_and_hash_checked_download ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s

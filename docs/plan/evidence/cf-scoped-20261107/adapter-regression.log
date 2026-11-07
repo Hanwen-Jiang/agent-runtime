@@ -1,0 +1,92 @@
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/BindWithoutTenantIsDenied
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/BindWithMalformedTenantIsInvalid
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/BindPlatformRequiresPurpose
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/TenantBCannotSeeTenantAData
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/PlatformAndTenantScopesAreIsolated
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/BindCopiesTenantContext
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/TransientErrorIsRetryable
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/NotRetryable_ERROR_CATEGORY_INVALID
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/NotRetryable_ERROR_CATEGORY_DENIED
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/NotRetryable_ERROR_CATEGORY_NOT_FOUND
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/NotRetryable_ERROR_CATEGORY_CONFLICT
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/ExecRunsCode
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/ExecReturnsNonZeroExitCode
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/ExecPassesStdin
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/ExecEnvIsOnlyForThatCommand
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/ExecTimeoutIsReportedNotRaised
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/CancellingExecStopsTheCommandAndItsChildren
+2026/11/07 13:30:23 http: proxy error: context canceled
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/FilesRoundtripAndAreVisibleToCode
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/EnvironmentsDoNotShareFiles
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/PathsCannotEscapeWorkdir
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/ReadMissingFileIsNotFound
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/DestroyedEnvironmentIsGone
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/OtherTenantCannotUseOrDestroyEnvironment
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/UnknownEnvironmentIsNotFound
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/WorkspaceIsSharedWithTheHost
+    sandboxtest.go:298: 这个实现不绑定工作区（存档模式）
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/DestroyKeepsWorkspaceFiles
+    sandboxtest.go:298: 这个实现不绑定工作区（存档模式）
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/SameWorkspaceIDDiffersPerTenant
+    sandboxtest.go:298: 这个实现不绑定工作区（存档模式）
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/PlatformScopeHasNoWorkspace
+    sandboxtest.go:298: 这个实现不绑定工作区（存档模式）
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/MalformedWorkspaceIDIsInvalid
+    sandboxtest.go:298: 这个实现不绑定工作区（存档模式）
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/ExportThenImportIntoAFreshEnvironmentKeepsEverything
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/ImportNeedsAnEmptyWorkdirAndRespectsTheLimits
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/HostileArchivesAreRefused
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/SymlinksInsideTheWorkdirRoundtrip
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/OtherTenantsCannotExportImportOrBrowse
+=== RUN   TestCloudflareSandboxAgainstTheFakeBridge/ListAndGrepRunInsideTheEnvironment
+--- PASS: TestCloudflareSandboxAgainstTheFakeBridge (4.59s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/BindWithoutTenantIsDenied (0.00s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/BindWithMalformedTenantIsInvalid (0.00s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/BindPlatformRequiresPurpose (0.00s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/TenantBCannotSeeTenantAData (0.06s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/PlatformAndTenantScopesAreIsolated (0.12s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/BindCopiesTenantContext (0.06s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/TransientErrorIsRetryable (0.06s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/NotRetryable_ERROR_CATEGORY_INVALID (0.00s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/NotRetryable_ERROR_CATEGORY_DENIED (0.00s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/NotRetryable_ERROR_CATEGORY_NOT_FOUND (0.00s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/NotRetryable_ERROR_CATEGORY_CONFLICT (0.00s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/ExecRunsCode (0.10s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/ExecReturnsNonZeroExitCode (0.09s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/ExecPassesStdin (0.09s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/ExecEnvIsOnlyForThatCommand (0.14s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/ExecTimeoutIsReportedNotRaised (0.56s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/CancellingExecStopsTheCommandAndItsChildren (1.67s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/FilesRoundtripAndAreVisibleToCode (0.10s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/EnvironmentsDoNotShareFiles (0.11s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/PathsCannotEscapeWorkdir (0.06s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/ReadMissingFileIsNotFound (0.06s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/DestroyedEnvironmentIsGone (0.06s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/OtherTenantCannotUseOrDestroyEnvironment (0.10s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/UnknownEnvironmentIsNotFound (0.00s)
+    --- SKIP: TestCloudflareSandboxAgainstTheFakeBridge/WorkspaceIsSharedWithTheHost (0.00s)
+    --- SKIP: TestCloudflareSandboxAgainstTheFakeBridge/DestroyKeepsWorkspaceFiles (0.00s)
+    --- SKIP: TestCloudflareSandboxAgainstTheFakeBridge/SameWorkspaceIDDiffersPerTenant (0.00s)
+    --- SKIP: TestCloudflareSandboxAgainstTheFakeBridge/PlatformScopeHasNoWorkspace (0.00s)
+    --- SKIP: TestCloudflareSandboxAgainstTheFakeBridge/MalformedWorkspaceIDIsInvalid (0.00s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/ExportThenImportIntoAFreshEnvironmentKeepsEverything (0.17s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/ImportNeedsAnEmptyWorkdirAndRespectsTheLimits (0.12s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/HostileArchivesAreRefused (0.60s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/SymlinksInsideTheWorkdirRoundtrip (0.12s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/OtherTenantsCannotExportImportOrBrowse (0.06s)
+    --- PASS: TestCloudflareSandboxAgainstTheFakeBridge/ListAndGrepRunInsideTheEnvironment (0.07s)
+=== RUN   TestWrongBridgeTokenIsDenied
+--- PASS: TestWrongBridgeTokenIsDenied (0.00s)
+=== RUN   TestAllowlistIsPassedToTheBridge
+--- PASS: TestAllowlistIsPassedToTheBridge (0.06s)
+=== RUN   TestBadAllowHostsAreInvalid
+--- PASS: TestBadAllowHostsAreInvalid (0.00s)
+=== RUN   TestWorkspaceCannotBeMounted
+--- PASS: TestWorkspaceCannotBeMounted (0.00s)
+=== RUN   TestRuntimesFollowTheBridgeImage
+--- PASS: TestRuntimesFollowTheBridgeImage (0.06s)
+=== RUN   TestPlatformListsEnvironments
+--- PASS: TestPlatformListsEnvironments (0.06s)
+PASS
+ok  	github.com/agentruntime/agent-runtime/libs/go-core/adapters/cfsandbox	4.776s

@@ -197,11 +197,11 @@ func (h *handler) upload(ctx context.Context, lease *broker.Lease, p sandbox.Pre
 	if err != nil {
 		return nil, err
 	}
-	proxy, close, err := h.b().OpenTransferNetwork(ctx, lease, signed.URL)
+	target, close, err := h.b().OpenTransferTarget(ctx, lease, "PUT", p.SizeBytes, sandbox.TransferTarget{URL: signed.URL, Headers: signed.Headers})
 	if err != nil {
 		return nil, err
 	}
-	receipt, uploadErr := box.CommitTransfer(ctx, lease.EnvID, p, key, sandbox.TransferTarget{URL: signed.URL, Headers: signed.Headers, Proxy: proxy})
+	receipt, uploadErr := box.CommitTransfer(ctx, lease.EnvID, p, key, target)
 	closeErr := close()
 	if uploadErr != nil {
 		// A timed-out PUT can still have succeeded. ObjectStore.SignedUpload is

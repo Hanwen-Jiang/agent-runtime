@@ -1,6 +1,17 @@
 package sandbox
 
-import "context"
+import (
+	"context"
+	"time"
+)
+
+// ScopedTransferNetwork is an optional, per-object egress capability. Providers
+// must persist revocation and enforce method, size and expiry in their gateway.
+type ScopedTransferNetwork interface {
+	GrantTransferTarget(context.Context, string, string, string, string, int64, time.Time, TransferTarget) (TransferTarget, error)
+	RevokeTransferTarget(context.Context, string, string) (int64, error)
+	AcknowledgeTransferTarget(context.Context, string, string) error
+}
 
 // PreparedTransfer names immutable, bounded bytes retained by one sandbox agent.
 type PreparedTransfer struct {

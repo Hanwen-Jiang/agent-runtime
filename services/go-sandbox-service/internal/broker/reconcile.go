@@ -89,6 +89,9 @@ type listing struct {
 // Reconcile 跑一轮对账。
 func (b *Broker) Reconcile(ctx context.Context, grace, holdMax time.Duration) (Report, error) {
 	report := Report{VolumeUsedRatio: volumeUsedRatio(b.reg.WorkspaceRoot())}
+	if err := b.reconcileTransferUsage(ctx); err != nil {
+		report.Errors = append(report.Errors, "transfer accounting: "+errText(err))
+	}
 	now := b.ledger.Now()
 	listings := map[string]map[string]sandbox.ListedEnvironment{}
 	for _, name := range b.reg.Names() {
