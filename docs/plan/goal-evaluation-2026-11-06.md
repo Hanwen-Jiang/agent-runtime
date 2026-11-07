@@ -120,3 +120,11 @@ off原11题全部终态并清理，已知Gateway费用1.124750美元，Jev14241�
 A/B核对完整scope：已知1282125微美元，两笔预占共23600微美元，原18445261微美元subject限下准入余额17139536微美元；旧148行不变，新8行全属首rules题。仍在原40美元总分配内只补剩余10题，不改变旧题有效性或总费用未知。原`collection-continue.json`原位保留；新增收据引用整份前件摘要，扩展只新增指定9083微美元完整行，存`collection-continue-extensions/<digest>.json`。新未知、分叉、孤立扩展、旧行修改、回退与预算变化继续拒绝，完整cost ratio继续null。
 
 131项针对性回归通过、0skip（admission/evaluation/completion/semantic material）。真实证据：`.goal-evidence/rules-pending-review-20261107/`及`/opt/evals/n16-evreal-pinned-20261107/rules-{new-pending-reconciliation,first-provider-window,first-provider-recent}.json`；原首rules metrics字节与失败记录保留，不重新调用该题模型。
+
+## 已完成实测的原始证据入口
+
+- D-26/FC-REAL：`evidence/fc-pin-20261107/comparison.json`及`first/{cold,warm,snapshot}/summary.json`、`snapshot-repeat/snapshot/summary.json`。固定1000m CPU、256MiB内存、256MiB盘，各20样本；cold p50/p95为1025.287/1227.864ms，warm为24.530/52.358ms，真实内存快照为9654.466/10201.032ms；另20次快照复核为9649.908/10319.383ms。未观察到快照加速，生产snapshot cache保持0。CPU/内存/IO原样本及背景负载原件保留，不过滤慢样本。
+- 密度：`evidence/fc-pin-20261107/density-earlier-source/{manifest,summary,cleanup}.json`。96台同时存在、资源证据完整并已清理；当时配置上限也为96，且是idle VM加单条shell，结论只为观测下界，绝非物理密度极限。该批较早source单独列示，不与最新冷/暖/快照源码混成同版本。
+- STOR-SEC：`evidence/transfer-r2-live-20261106.log`列明真实R2全部11子例通过，包含真实agent上传/缺块恢复、不可覆盖、同长度错误内容、checksum/If-None-Match/Content-Length/对象key/method/过期。执行与清理条件见`transfer-acceptance-2026-11-07.md`；后续复核日志为父目录`.goal-tools/livecheck-transfer-r2.log`，没有桶生命周期修改。
+
+以上是已存在原始验收文件的交付索引，没有重跑实验或新增模型费用。2026-11-07用户指定后，两仓作者与提交者email均设为`haven-just@qq.com`，新提交使用该邮箱；已推送历史未重写。
