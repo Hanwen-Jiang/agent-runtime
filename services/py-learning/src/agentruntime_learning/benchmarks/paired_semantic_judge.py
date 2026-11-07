@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import hashlib
 import json
 import os
@@ -212,10 +213,18 @@ def _history(out: Path) -> dict:
     return records
 
 
-def _ledger(proof: dict, manifest: dict, records: dict, spent: int) -> int:
+def _ledger(proof: dict, manifest: dict, records: dict, spent: int, retained: list[dict] | None = None) -> int:
     if proof.get("tenant_id") != manifest["tenant_id"] or proof.get("task_id") != manifest["task_id"]:
         raise JudgeError("authoritative ledger belongs to another experiment")
     rows = proof.get("attempts", [])
+    if len({row["reservation_id"] for row in rows}) != len(rows):
+        raise JudgeError("duplicate authoritative reservation")
+    if retained:
+        original = {row["reservation_id"]: row for row in retained}
+        observed = {row["reservation_id"]: row for row in rows if row["reservation_id"] in original}
+        if observed != original or len(observed) != len(retained):
+            raise JudgeError("retained unknown attempt changed or disappeared")
+        rows = [row for row in rows if row["reservation_id"] not in original]
     expected_nodes = {row["node_id"] for row in records.values()}
     if (len({row["reservation_id"] for row in rows}) != len(rows)
             or {row["node_id"] for row in rows} != expected_nodes):
@@ -233,14 +242,15 @@ def _ledger(proof: dict, manifest: dict, records: dict, spent: int) -> int:
         if sum(row["actual_usd_micros"] for row in rows if row["node_id"] == record["node_id"]) != record["rpc_cost_micros"]:
             raise JudgeError("per-RPC accounting differs from authoritative attempts")
     total = sum(row["actual_usd_micros"] for row in rows)
-    if total != spent or total > round(manifest["budget_usd"] * 1e6):
+    held = sum(row["reserved_usd_micros"] for row in retained or [])
+    if total != spent or total + held > round(manifest["budget_usd"] * 1e6):
         raise JudgeError("authoritative costs disagree with the bounded call journal")
     return total
 
 
 async def run(out: Path, gateway: Any, ledger_reader: Any) -> dict:
     out = Path(out)
-    with output_owner(out):
+    with output_owner(out), contextlib.ExitStack() as owners:
         manifest, plan, export = (_read(out / name) for name in ("manifest.json", "plan.json", "export.json"))
         profile, registry, tokens = _contract(plan, export)
         _generation_limits(tokens, manifest.get("max_output_tokens"), manifest.get("thinking_budget_tokens"))
@@ -257,16 +267,29 @@ async def run(out: Path, gateway: Any, ledger_reader: Any) -> dict:
         if (gateway.task_id != manifest["task_id"] or gateway.tenant != manifest["tenant_id"]
                 or gateway.identity.get("gateway_address") != manifest["gateway_address"]):
             raise JudgeError("audited Gateway differs from prepared identity")
+        from agentruntime_learning.benchmarks.paired_semantic_recovery import validate as validate_recovery
+        recovery = validate_recovery(out, manifest)
+        retained = recovery["retained_pending"] if recovery else []
+        offset = recovery["sequence_offset"] if recovery else 0
+        if gateway.identity.get("sequence_offset", 0) != offset:
+            raise JudgeError("audit sequence differs from reviewed recovery")
+        if recovery:
+            original = Path(recovery["original_directory"])
+            owners.enter_context(output_owner(original))
+            owners.enter_context(output_owner(original / "usage"))
+            validate_recovery(out, manifest)
         records = _history(out)
         items = {item["id"]: item for item in export["items"]}
         if not records.keys() <= items.keys():
             raise JudgeError("unknown judgment in journal")
-        budget = BudgetGateway(gateway, out / "budget.json", manifest["budget_usd"],
+        held = sum(row["reserved_usd_micros"] for row in retained)
+        execution_cap = (round(manifest["budget_usd"] * 1e6) - held) / 1e6
+        budget = BudgetGateway(gateway, out / "budget.json", execution_cap,
                                prior_cost_usd=sum(r["rpc_cost_micros"] for r in records.values()) / 1e6)
         try:
             if budget.state["pending"]:
                 raise JudgeError("pending budget requires authoritative reconciliation")
-            _ledger(await ledger_reader(), manifest, records, budget.state["spent_usd_micros"])
+            _ledger(await ledger_reader(), manifest, records, budget.state["spent_usd_micros"], retained)
             for identity in sorted(items):
                 if identity in records:
                     validate_scores(items[identity], {"scores": records[identity]["review"]["scores"]})
@@ -295,16 +318,18 @@ async def run(out: Path, gateway: Any, ledger_reader: Any) -> dict:
                               "rpc_cost_micros": response.usage.cost_usd_micros, "review": review,
                               "response_sha256": pv.digest(raw_response)}
                     proof = await ledger_reader()
-                    _ledger(proof, manifest, {**records, identity: record}, budget.state["spent_usd_micros"])
+                    _ledger(proof, manifest, {**records, identity: record}, budget.state["spent_usd_micros"], retained)
                     _append(out / "calls.jsonl", record)
                     records[identity] = record
                 except BaseException as exc:
                     _append(out / "calls.jsonl", {"id": identity, "state": "failed", "error_type": type(exc).__name__})
                     raise
             proof = await ledger_reader()
-            total = _ledger(proof, manifest, records, budget.state["spent_usd_micros"])
+            total = _ledger(proof, manifest, records, budget.state["spent_usd_micros"], retained)
             review = {"rubric_sha256": export["rubric_sha256"], "reviewer_version": VERSION + "/" + profile,
-                      "actual_cost_usd": total / 1e6, "cost_evidence": {"source": "model_usage", "task_id": gateway.task_id,
+                      "actual_cost_usd": None if retained else total / 1e6, "known_cost_usd": total / 1e6,
+                      "cost_known": not retained, "retained_pending": retained,
+                      "pending_reserved_usd": held / 1e6, "cost_evidence": {"source": "model_usage", "task_id": gateway.task_id,
                           "ledger_sha256": pv.digest(proof), "registry": registry},
                       "items": [records[key]["review"] for key in sorted(records)]}
             pc.semantic_review(export, review)
@@ -347,7 +372,14 @@ def main(argv=None) -> int:
         os.environ["AR_EVAL_RUN_ID"] = manifest["run_id"]
         os.environ["AR_EVAL_USAGE_DIR"] = str(args.out / "usage")
         async def execute():
-            gateway = audited.from_env()
+            from agentruntime_learning.benchmarks.paired_semantic_recovery import validate as validate_recovery
+            recovery = validate_recovery(args.out, manifest)
+            if recovery:
+                from agentruntime_worker.executor.grpc_gateway import from_env as inner_gateway
+                gateway = audited.AuditedGateway(inner_gateway(), args.out / "usage", manifest["run_id"],
+                    tenant=manifest["tenant_id"], address=manifest["gateway_address"], sequence_offset=recovery["sequence_offset"])
+            else:
+                gateway = audited.from_env()
             try:
                 return await run(args.out, gateway, lambda: audited.ledger(args.out / "usage"))
             finally:

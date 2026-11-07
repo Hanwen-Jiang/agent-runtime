@@ -1,0 +1,84 @@
+{
+  "selected_questions": 50,
+  "lifecycle_totals": {
+    "attempted": 12661,
+    "accepted": 12661,
+    "deleted": 12577,
+    "not_found": 84,
+    "cleanup_errors": 0
+  },
+  "pipeline_complete_questions": 50,
+  "pending": [
+    {
+      "reservation_id": "mbr_LWYEYVHYISZIFZWLH76YANFWBC",
+      "reserved_at": 1794068582694,
+      "model_profile_id": "a6api/text-embedding-3-large@2026-10",
+      "method": "embed",
+      "task_id": "",
+      "actual_usd_micros": null,
+      "reserved_usd_micros": 152,
+      "registry_scope": "platform",
+      "registry_revision": "v1",
+      "registry_document_sha256": "ac61544d2cec07c76bdbeee2a68cb9e1a4e3f171076242374725a93a87028180"
+    }
+  ],
+  "cleanup_counts": {
+    "queue_count": 0,
+    "memory_item_count": 0,
+    "tombstone_count": 0,
+    "lineage_count": 0,
+    "review_count": 0
+  },
+  "source_files": {
+    "/opt/evals/longmemeval-recovered-20261107/recovery-summary.json": {
+      "bytes": 3945,
+      "sha256": "a1fcff8569ad29caf1807eb24e6efbbda0cdf9eeed29c7fdd050b664c4795424"
+    },
+    "/opt/evals/longmemeval-livecheck-20261107/lexical-fixed/summary.json": {
+      "bytes": 3141,
+      "sha256": "b8b2dded9b893f33a5238645850eb375baecc49523b12d21df5a2236d12437d8"
+    },
+    "/opt/evals/longmemeval-recovered-20261107/comparison.json": {
+      "bytes": 214,
+      "sha256": "c106d75b298c36c4885cf3cb40ca5ff9eaadb74fa9d892c42f52f6b1db30fbb1"
+    },
+    "/opt/evals/longmemeval-recovered-20261107/final-acceptance.json": {
+      "bytes": 391,
+      "sha256": "07b4662ef8eae49b3e38e52ba46b4d3baed646ccdeca749b38cc71e7117ecac4"
+    },
+    "/root/proj/agent-projs/.goal-evidence/longmem-primary-closeout-20261107/verification.json": {
+      "bytes": 944,
+      "sha256": "a16646ad2a11ce038e7d91841c807c4dbd82935e46f30b22add2916e614bc501"
+    },
+    "/opt/evals/longmemeval-recovered-20261107/recovery-ledger-final.json": {
+      "bytes": 7710054,
+      "sha256": "bb3a382b4a0f355da5fd896705899bcc37f018c67f2dae238007d64d7910a3f8"
+    },
+    "/opt/evals/longmemeval-recovered-20261107/live/manifest.json": {
+      "bytes": 2363,
+      "sha256": "8c84f5d797d15f4bbf55e82e228d67aff12913d1eae3b4319e4df8ca95bffde4"
+    },
+    "/opt/evals/longmemeval-recovered-20261107/live/results.jsonl": {
+      "bytes": 238914449,
+      "sha256": "709dd223ccb9201bfd9936e91527c4ddc6bd3a0a1b125765a443d32bc8281dcf"
+    },
+    "/opt/evals/longmemeval-recovered-20261107/recovery.json": {
+      "bytes": 3176,
+      "sha256": "07d0b3763063b6168281890d7f984071f41e3e122953fd500257a1a844f75916"
+    },
+    "/opt/evals/longmemeval-recovered-20261107/freeze.json": {
+      "bytes": 3442,
+      "sha256": "d13f1da9daf67f98b306b5cbdbee30c597ecd4bb3d8da549949fd052775a79cb"
+    },
+    "/opt/evals/longmemeval-recovered-20261107/tombstone-final-cleanup.json": {
+      "bytes": 10776,
+      "sha256": "8807b12c77b7f3e8d982d4ff0743078e3f8817ee1f3c9a50cd8bfb40e16143d2"
+    },
+    "/opt/evals/longmemeval-recovered-20261107/finalize_report.py": {
+      "bytes": 5761,
+      "sha256": "98b9fcb435c376dbbd9ee4eed7f11817af9440c1e4d51845cc59a561945ff895"
+    }
+  },
+  "interpretation": "Accepted is asynchronous ingestion acceptance; deleted/not_found are normal cleanup outcomes, not all accepted items surviving pipeline filtering.",
+  "new_model_calls": 0
+}

@@ -1,0 +1,10 @@
+{
+  "rule": "longmemeval-live-acceptance-20261106-v1",
+  "questions": 50,
+  "wins": 1,
+  "losses": 2,
+  "recall_any_at_10_gain": -0.02,
+  "exact_one_sided_p": 0.875,
+  "integrity_passed": true,
+  "passed": false
+}

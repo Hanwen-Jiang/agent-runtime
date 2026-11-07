@@ -1,0 +1,28 @@
+{
+  "selected": 50,
+  "completed": 50,
+  "timeouts": 0,
+  "retained_originals_byte_identical": 36,
+  "new_previously_unstarted": 14,
+  "all_original_artifact_hashes_match": true,
+  "cleanup_counts": {
+    "queue_count": 0,
+    "memory_item_count": 0,
+    "tombstone_count": 0,
+    "lineage_count": 0,
+    "review_count": 0
+  },
+  "remaining_ids": 0,
+  "model_usage_rows": 16980,
+  "known_tenant_usd_micros": 821986,
+  "known_fixed_cohort_usd_micros": 760814,
+  "known_prior_tenant_usd_micros": 61172,
+  "known_prior_external_usd_micros": 15291,
+  "all_known_experiment_spend_usd_micros": 837277,
+  "pending_retained_usd_micros": 152,
+  "actual_total_cost_known": false,
+  "original_quality_gate_passed": false,
+  "source_summary_sha256": "a1fcff8569ad29caf1807eb24e6efbbda0cdf9eeed29c7fdd050b664c4795424",
+  "source_final_ledger_sha256": "bb3a382b4a0f355da5fd896705899bcc37f018c67f2dae238007d64d7910a3f8",
+  "new_model_calls_or_db_writes": 0
+}

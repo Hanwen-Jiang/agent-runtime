@@ -134,3 +134,36 @@ A/B核对完整scope：已知1282125微美元，两笔预占共23600微美元，
 HTTP原题rules已真实运行3个SubAgent，规划证据与模型/Registry一致；Reviewer escalate后，原无人值守策略选择stop_and_wrap_up，终态aborted并已清理，不能改成完全解决或重跑。主triage新增唯一未结算`mbr_UZORZ3YUTV5V7ELFMW643HXTZM`（9214微美元），Gateway错误为unreachable；后续4290输入/89输出、474微美元成功记录仅对应后一次调用，不证明首尝试免费。原HTTP metrics valid=false/collection_complete=true保持，子Agent已知费用0.002109美元，Jev否决0。
 
 完整307行账本冻结在`/opt/evals/n16-evreal-pinned-20261107/rules-third-subject-ledger.json`（SHA256 9e683c094f161a7133eed0a04a99d80c377b2dcf610b618a83c5aa66cdbe86ab），旧156行逐字段不变；已知2.714724美元、三笔未知预占0.032814美元，原subject额度内准入余额15.697723美元。A/B只允许原最后一道single-storage；不新增cohort/预算，不重跑原21个Task。追加式收据仅支持精确1→2→3前缀，跳级及第四ID拒绝；原收据与已执行metrics保留。相关admission/completion/evaluation共135测试通过，未修改线上模型或配置。
+
+## LongMemEval完整50题交付（2026-11-07 UTC）
+
+固定数据、seed0、top50、k5/10/30及原评分规则均保持。原36题逐字节保留，只补14道原未启动题；50/50均completed，0超时、50/50管线完成并清理。六题型9/9/8/8/8/8，完整结果见`evidence/longmemeval-final-20261107/`；未把环境失败填成模型零分。
+
+| 会话级指标 | lexical | 线上Memory |
+| --- | ---: | ---: |
+| recall_any@5 | 0.9000 | 0.8800 |
+| recall_all@5 | 0.7000 | 0.7000 |
+| ndcg_any@5 | 0.7847 | 0.7424 |
+| recall_any@10 | 0.9600 | 0.9400 |
+| recall_all@10 | 0.8000 | 0.8000 |
+| ndcg_any@10 | 0.8200 | 0.7804 |
+| recall_any@30 | 1.0000 | 1.0000 |
+| recall_all@30 | 1.0000 | 1.0000 |
+| ndcg_any@30 | 0.8523 | 0.8157 |
+
+| 题型 | 题数 | lexical recall@10 | live recall@10 | lexical NDCG@10 | live NDCG@10 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| knowledge-update | 9 | 1.0000 | 1.0000 | 0.9094 | 0.8702 |
+| multi-session | 9 | 1.0000 | 1.0000 | 0.7727 | 0.7833 |
+| single-session-assistant | 8 | 1.0000 | 1.0000 | 1.0000 | 0.8484 |
+| single-session-preference | 8 | 0.7500 | 0.6250 | 0.6234 | 0.5417 |
+| single-session-user | 8 | 1.0000 | 1.0000 | 1.0000 | 0.9375 |
+| temporal-reasoning | 8 | 1.0000 | 1.0000 | 0.6092 | 0.6896 |
+
+写入/清理：请求12661、接受12661；正常删除12577，not_found 84，cleanup_errors 0。接受数不是过滤/去重后的永久存储数；最终队列、记忆、谱系、审核、墓碑、remaining IDs均为0。原始账本16980行、Registry全部platform/v1/ac61544…28180；独立只读复核与原始文件SHA在execution-proof/independent-verification中。
+
+原质量门槛是recall@10增益至少0.10、单侧精确McNemar p≤0.05及完整50题无超时/清理失败。实际win1/loss2，增益−0.02、p=0.875，判未通过；原lexical已0.96，该子集理论最高增益仅0.04，也没有事后放宽门槛或追加调分实验。
+
+固定cohort已知模型费用$0.760814；隔离tenant累计$0.821986，加最早外部实验$0.015291，全部相关已知费用$0.837277。唯一152微美元pending完整保留，实际总额仍unknown，不把预占当实付或免费。实验完整性及质量门槛结果与费用是否结清分开记录。
+
+运行与模型：评测源7dd4ea10、Memory镜像goal-60a266a3、Gateway goal-9ef23021，数据SHA256 d6f21ea9d60a0d56f34a05b609c79c88a451d2ae03597821ea3d5a9678c3a442；完整冻结、逐题原始结果及账本仍在`/opt/evals/longmemeval-recovered-20261107/`。本次汇总未触发额外模型调用。

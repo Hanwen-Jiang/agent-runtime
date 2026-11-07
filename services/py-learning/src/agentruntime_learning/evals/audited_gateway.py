@@ -31,9 +31,12 @@ def task_identity(run_id: str) -> str:
 
 
 class AuditedGateway:
-    def __init__(self, inner: Any, directory: Path, run_id: str, tenant: str = "evals", address: str = "") -> None:
+    def __init__(self, inner: Any, directory: Path, run_id: str, tenant: str = "evals", address: str = "",
+                 *, sequence_offset: int = 0) -> None:
         from agentruntime_learning.capability.matrix import DirectoryOwner
 
+        if type(sequence_offset) is not int or sequence_offset < 0:
+            raise ValueError("sequence_offset must be a nonnegative integer")
         self.inner, self.directory = inner, Path(directory)
         self.owner = DirectoryOwner(self.directory)
         self.lock = asyncio.Lock()
@@ -43,6 +46,8 @@ class AuditedGateway:
         self.task_id, self.tenant = task_identity(run_id), tenant
         self.identity = {"run_id": run_id, "task_id": self.task_id, "tenant_id": tenant,
                          "source_tenant_id": "evals", "gateway_address": address}
+        if sequence_offset:
+            self.identity["sequence_offset"] = sequence_offset
         self.manifest = self.directory / "identity.json"
         self.journal = self.directory / "calls.jsonl"
         try:
@@ -52,8 +57,10 @@ class AuditedGateway:
             else:
                 self.manifest.write_text(json.dumps(self.identity, indent=2) + "\n", "utf-8")
             rows = [json.loads(line) for line in self.journal.read_text("utf-8").splitlines() if line.strip()] if self.journal.exists() else []
+            if any(type(row.get("sequence")) is not int or row["sequence"] <= sequence_offset for row in rows):
+                raise ValueError("journal sequence must be an integer above the frozen offset")
             latest = {row["sequence"]: row for row in rows}
-            self.sequence = max(latest, default=0)
+            self.sequence = max(latest, default=sequence_offset)
             self.unresolved = any(row["state"] != "completed" for row in latest.values())
         except BaseException:
             self.owner.close()
@@ -151,7 +158,8 @@ async def ledger(directory: Path) -> dict[str, Any]:
         async with store.bind(TenantContext(tenant_id=identity["tenant_id"])).transaction(read_only=True) as tx:
             rows = await tx.query(
                 "SELECT reservation_id, task_id, node_id, model_profile_id, method, actual_usd_micros, "
-                "reserved_usd_micros, registry_scope, registry_revision, registry_document_sha256 "
+                "reserved_usd_micros, reserved_at, input_tokens, output_tokens, "
+                "registry_scope, registry_revision, registry_document_sha256 "
                 "FROM model_usage WHERE task_id = $1 ORDER BY reserved_at, reservation_id", [identity["task_id"]])
         items = [dict(row) for row in rows]
     finally:
