@@ -58,6 +58,33 @@ def test_context_summary_has_its_own_frozen_profile_without_loosening_transform(
     assert pe.ledger_metrics(observations, [], frozen, {"synthesize": "transform"})["model_mismatch_reservations"] == [observations[0]["reservation_id"]]
 
 
+def test_expanded_judges_use_real_activity_roles_and_time_not_the_parent_label():
+    frozen = provenance()
+    frozen["models"].update(deliver="deliver-profile", judge="judge-profile", summary="small-profile")
+    for profile in ("deliver-profile", "judge-profile", "small-profile"):
+        frozen["registry"][profile] = {"revision": "v7", "scope": "platform", "document_sha256": "e" * 64}
+    evidence = {"complete": True, "observations": [
+        {"task_id": "t1", "node_id": "answer.2", "context_node_id": "answer.2", "role": "judge",
+         "scheduled_at_unix_ms": 100, "terminal_at_unix_ms": 200},
+        {"task_id": "t1", "node_id": "answer.2", "context_node_id": "answer.2", "role": "deliver",
+         "scheduled_at_unix_ms": 300, "terminal_at_unix_ms": 400},
+    ]}
+    earlier = {**row(node="answer.2"), "reserved_at": 150, "model_profile_id": "judge-profile"}
+    later = {**row(node="answer.2"), "reservation_id": "later", "reserved_at": 350, "model_profile_id": "deliver-profile"}
+    result = pe.ledger_metrics([earlier, later], [], frozen, {"answer": "deliver"}, evidence)
+    assert result["model_mismatch_reservations"] == [] and result["unresolved_role_reservations"] == []
+    wrong = {**earlier, "model_profile_id": "deliver-profile"}
+    assert pe.ledger_metrics([wrong], [], frozen, {"answer": "deliver"}, evidence)["model_mismatch_reservations"] == [wrong["reservation_id"]]
+    outside = {**earlier, "reserved_at": 250}
+    assert pe.ledger_metrics([outside], [], frozen, {}, evidence)["unresolved_role_reservations"] == [outside["reservation_id"]]
+    overlap = {"complete": True, "observations": [*evidence["observations"], {
+        **evidence["observations"][0], "role": "deliver",
+    }]}
+    assert pe.resolved_attempt_role(earlier, overlap) is None
+    summary = {**earlier, "node_id": "answer.2#summary", "model_profile_id": "small-profile"}
+    assert pe.resolved_attempt_role(summary, evidence) == "summary"
+
+
 def test_rotating_ops_token_file_is_reread_without_exposing_credentials(tmp_path, monkeypatch):
     token = tmp_path / 'token'
     token.write_text('first.jwt')

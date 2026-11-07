@@ -117,8 +117,31 @@ def observations(rec: Mapping[str, Any]) -> dict[str, Any]:
             "evidence_scope": "public SSE; repeated targets are a proxy, not identical full arguments"}
 
 
+def resolved_attempt_role(row: Mapping[str, Any], evidence: Mapping[str, Any]) -> str | None:
+    """Resolve a model attempt against actual activity inputs and its time window."""
+    if not evidence.get("complete"):
+        return None
+    at = row.get("reserved_at")
+    if isinstance(at, bool) or not isinstance(at, int):
+        return None
+    node = str(row.get("node_id") or "")
+    special = "summary" if "#summary" in node else "probe" if "#probe" in node else None
+    base = node.split("#" + special, 1)[0] if special else node
+    candidates = [
+        observation for observation in evidence.get("observations", [])
+        if observation.get("task_id") == row.get("task_id")
+        and observation.get("context_node_id" if special else "node_id") == base
+        and isinstance(observation.get("scheduled_at_unix_ms"), int)
+        and isinstance(observation.get("terminal_at_unix_ms"), int)
+        and observation["scheduled_at_unix_ms"] <= at <= observation["terminal_at_unix_ms"]
+    ]
+    roles = {observation["role"] for observation in candidates}
+    return (special or next(iter(roles))) if len(roles) == 1 else None
+
+
 def ledger_metrics(rows: Sequence[Mapping[str, Any]], sub_nodes: Sequence[str], frozen: Mapping[str, Any],
-                   node_roles: Mapping[str, str] | None = None) -> dict[str, Any]:
+                   node_roles: Mapping[str, str] | None = None,
+                   role_evidence: Mapping[str, Any] | None = None) -> dict[str, Any]:
     # reservation_id makes retries of evidence collection idempotent.
     unique: dict[str, Mapping[str, Any]] = {}
     for row in rows:
@@ -129,6 +152,7 @@ def ledger_metrics(rows: Sequence[Mapping[str, Any]], sub_nodes: Sequence[str], 
     pending = [r for r in unique.values() if r.get("actual_usd_micros") is None]
     bad = []
     model_mismatch = []
+    unresolved_roles = []
     total = child = 0
     for row in unique.values():
         node = str(row.get("node_id") or "")
@@ -141,19 +165,22 @@ def ledger_metrics(rows: Sequence[Mapping[str, Any]], sub_nodes: Sequence[str], 
             if is_child:
                 child += int(cost)
         profile = str(row.get("model_profile_id") or "")
-        role = {"plan": "plan", "triage": "route", "review": "judge"}.get(node)
-        if node.endswith("#summary"):
+        role = resolved_attempt_role(row, role_evidence) if role_evidence is not None else {"plan": "plan", "triage": "route", "review": "judge"}.get(node)
+        if role_evidence is not None:
+            if role is None:
+                unresolved_roles.append(str(row["reservation_id"]))
+        elif node.endswith("#summary"):
             role = "summary"
         elif node.endswith("#probe"):
             role = "probe" if "probe" in frozen["models"] else "judge"
         elif is_child:
             role = "sub_agent"
-        if role is None:
+        if role is None and role_evidence is None:
             # Public node events identify ordinary top-level roles; expanded
             # tool-loop nodes inherit the longest matching parent role.
             parents = [n for n in (node_roles or {}) if node == n or node.startswith(n + ".")]
             role = (node_roles or {})[max(parents, key=len)] if parents else "act"
-        if frozen["models"].get(role) != profile:
+        if role is not None and frozen["models"].get(role) != profile:
             model_mismatch.append(str(row["reservation_id"]))
         identity = frozen["registry"].get(profile)
         if not identity or any(str(row.get(k) or "") != str(identity[v]) for k, v in (
@@ -163,6 +190,7 @@ def ledger_metrics(rows: Sequence[Mapping[str, Any]], sub_nodes: Sequence[str], 
             "attempts": len(unique), "pending": len(pending), "known": bool(unique) and not pending,
             "registry_mismatch_reservations": bad, "source": "model_usage",
             "model_mismatch_reservations": model_mismatch,
+            "unresolved_role_reservations": unresolved_roles,
             "cost_scope": "Model Gateway attempts; external Jev and infrastructure charges are not included",
             "models_served": sorted({str(r["model_profile_id"]) for r in unique.values()})}
 
@@ -178,7 +206,7 @@ async def collect_ledger(task_id: str, tenant_id: str) -> list[dict[str, Any]]:
     try:
         async with store.bind(TenantContext(tenant_id=tenant_id)).transaction(read_only=True) as tx:
             rows = await tx.query(
-                "SELECT reservation_id, task_id, node_id, model_profile_id, actual_usd_micros, "
+                "SELECT reservation_id, task_id, node_id, model_profile_id, actual_usd_micros, reserved_at, "
                 "registry_scope, registry_revision, registry_document_sha256 "
                 "FROM model_usage WHERE task_id = $1", [task_id])
         return [dict(r) for r in rows]
@@ -204,6 +232,8 @@ async def collect_temporal(task_id: str, tenant_id: str | None = None) -> dict[s
     complete = True
     elapsed = None
     planning = None
+    model_roles = []
+    workflow_runs = {}
     while queue:
         workflow_id = queue.pop()
         if workflow_id in seen:
@@ -211,8 +241,14 @@ async def collect_temporal(task_id: str, tenant_id: str | None = None) -> dict[s
         seen.add(workflow_id)
         if len(seen) > 128:
             raise ValueError("unexpectedly large workflow tree")
-        history = await client.get_workflow_handle(workflow_id).fetch_history()
+        described = await client.get_workflow_handle(workflow_id).describe()
+        workflow_runs[workflow_id] = described.run_id
+        history = await client.get_workflow_handle(workflow_id, run_id=described.run_id).fetch_history()
         events = history.events
+        if tenant_id is not None:
+            from agentruntime_learning.benchmarks.tool_history_evidence import model_role_evidence
+            from agentruntime_worker.replay import claim_check_from_env
+            model_roles.append(await model_role_evidence(history, tenant_id, run_id=described.run_id, claim_check=claim_check_from_env()))
         if workflow_id == task_id and tenant_id is not None:
             from agentruntime_learning.benchmarks.paired_completion import plan_evidence
             from agentruntime_worker.replay import claim_check_from_env
@@ -234,8 +270,11 @@ async def collect_temporal(task_id: str, tenant_id: str | None = None) -> dict[s
                 queue.append(child.workflow_id)
                 if child.workflow_type.name == "SubAgentWorkflow":
                     children.add(child.workflow_id.split("/", 2)[2].split("/", 1)[0])
+    from agentruntime_learning.benchmarks.tool_history_evidence import merge_model_roles
     return {"sub_agent_nodes": sorted(children), "elapsed_s": elapsed, "complete": complete,
-            "workflow_ids": sorted(seen), "source": "Temporal histories", "planning_evidence": planning}
+            "workflow_ids": sorted(seen), "source": "Temporal histories", "planning_evidence": planning,
+            "workflow_runs": workflow_runs,
+            "model_role_evidence": merge_model_roles(model_roles, task_id) if model_roles else None}
 
 
 def score_case(case: Case, rec: Mapping[str, Any]) -> dict[str, Any]:
@@ -358,12 +397,14 @@ def run_arm(plan: Mapping[str, Any], out: Path, arm: str, *, runtime: Any = None
         metrics["elapsed_s"] = temporal["elapsed_s"]
         metrics["wall_time_complete"] = bool(temporal["complete"])
         roles = {e["node_id"]: e.get("role") or "act" for e in rec.get("observations", []) if e["event"] == "node_started"}
-        metrics["ledger"] = ledger_metrics(rows, metrics["sub_agent_nodes"], expected, roles)
+        metrics["ledger"] = ledger_metrics(rows, metrics["sub_agent_nodes"], expected, roles, temporal.get("model_role_evidence"))
         metrics["valid"] = (rec.get("state") == "finished" and post == expected and metrics["ledger"]["known"]
                             and temporal["complete"] and temporal["elapsed_s"] is not None
                             and not metrics["unsupported_subtasks"]
                             and not metrics["ledger"]["registry_mismatch_reservations"]
                             and not metrics["ledger"]["model_mismatch_reservations"]
+                            and not metrics["ledger"]["unresolved_role_reservations"]
+                            and ("completion" not in plan or (temporal.get("model_role_evidence") or {}).get("complete"))
                             and ("completion" not in plan or metrics["planning"]["complete"]))
         _write(metric_path, metrics)
         if not metrics["valid"]:
