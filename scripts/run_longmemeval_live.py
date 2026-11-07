@@ -97,7 +97,9 @@ with psycopg.connect(os.environ["AR_RELATIONAL_DSN"]) as c:
 
 
 def deployment_snapshot(component: str) -> tuple[dict[str, Any], dict[str, Any]]:
-    raw = json.loads(kubectl("get", "deployment,pods", "-l", f"app.kubernetes.io/component={component}", "-o", "json"))
+    raw = json.loads(kubectl("get", "deployment,pods", "-l",
+                            f"app.kubernetes.io/component={component},app.kubernetes.io/instance=ar,app.kubernetes.io/name=agent-runtime",
+                            "-o", "json"))
     deploys = [v for v in raw["items"] if v["kind"] == "Deployment"]
     pods = [v for v in raw["items"] if v["kind"] == "Pod"]
     if len(deploys) != 1 or len(pods) != 1:
