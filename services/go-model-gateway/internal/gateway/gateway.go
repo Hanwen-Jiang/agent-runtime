@@ -112,7 +112,8 @@ type Options struct {
 	// Provider 是供应商适配层（openaicompat 或 mockmodel），必填。
 	Provider modelprovider.Provider
 	// Router 是选档器，必填。
-	Router *router.Router
+	Router           *router.Router
+	RoutingOverrides *router.RoutingOverrides
 	// Meter 接收计量记录，每次成功的 RPC 一行 JSON；nil 表示丢弃。并发写入时按行串行。
 	Meter io.Writer
 	// Logger 记录失败的尝试（只记类别、code、Profile id，不记消息与密钥）；nil 表示丢弃。
@@ -339,6 +340,11 @@ func (s *Server) prepare(ctx context.Context, tenant *commonv1.TenantContext, cc
 	req.TenantID, req.Role, req.Tier = tenant.GetTenantId(), cc.GetRole(), cc.GetTier()
 	req.TaskFamily = cc.GetTaskFamily()
 	req.PinnedProfile, req.AvoidVendor = cc.GetPinnedModelProfile(), cc.GetAvoidVendor()
+	var err error
+	req, err = s.opts.RoutingOverrides.Apply(req, cc.GetNodeId())
+	if err != nil {
+		return nil, err
+	}
 	choice, err := s.opts.Router.Select(ctx, req)
 	if err != nil {
 		return nil, err

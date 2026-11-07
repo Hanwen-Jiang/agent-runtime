@@ -1,0 +1,4 @@
+ok  	github.com/agentruntime/agent-runtime/services/go-model-gateway/internal/router	0.021s
+ok  	github.com/agentruntime/agent-runtime/services/go-model-gateway/internal/config	0.004s
+ok  	github.com/agentruntime/agent-runtime/services/go-model-gateway/internal/gateway	2.572s
+ok  	github.com/agentruntime/agent-runtime/services/go-model-gateway/cmd/model-gateway	4.110s

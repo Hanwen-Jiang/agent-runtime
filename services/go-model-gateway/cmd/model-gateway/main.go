@@ -101,6 +101,11 @@ func serve(ctx context.Context, stdout, stderr io.Writer, getenv func(string) st
 		fmt.Fprintln(stderr, "model-gateway：加载 Model Profile 失败：", err)
 		return 1
 	}
+	overrides, err := router.LoadRoutingOverrides(cfg.RoutingOverridesFile, catalog)
+	if err != nil {
+		fmt.Fprintln(stderr, "model-gateway:", config.EnvRoutingOverrides, err)
+		return 1
+	}
 	provider, err := newProvider(cfg)
 	if err != nil {
 		fmt.Fprintln(stderr, "model-gateway：", err)
@@ -125,13 +130,14 @@ func serve(ctx context.Context, stdout, stderr io.Writer, getenv func(string) st
 		defer tel.Close()
 	}
 	srv, err := gateway.New(gateway.Options{
-		ModelBudget:    modelbudget.New(store),
-		BudgetPolicies: modelbudget.Policy{Path: cfg.TenantPoliciesFile, Source: registryBudgetSource(cfg.RegistryAddress)},
-		Provider:       provider,
-		Router:         router.New(catalog, router.FileAllowlist{Path: cfg.TenantPoliciesFile}),
-		Meter:          stdout,
-		Logger:         logger,
-		Telemetry:      tel,
+		ModelBudget:      modelbudget.New(store),
+		BudgetPolicies:   modelbudget.Policy{Path: cfg.TenantPoliciesFile, Source: registryBudgetSource(cfg.RegistryAddress)},
+		Provider:         provider,
+		Router:           router.New(catalog, router.FileAllowlist{Path: cfg.TenantPoliciesFile}),
+		RoutingOverrides: overrides,
+		Meter:            stdout,
+		Logger:           logger,
+		Telemetry:        tel,
 		// BUDGET-DEFAULT：请求没写输出上限时的可见输出上限（AR_MODEL_DEFAULT_MAX_OUTPUT）。
 		DefaultMaxOutput: cfg.DefaultMaxOutput,
 	})

@@ -400,3 +400,23 @@ func TestBudgetStoreRetriesUntilTheDatabaseIsReachable(t *testing.T) {
 		t.Fatalf("retried within the bound: calls=%d took=%s", calls, time.Since(start))
 	}
 }
+
+func TestServeRefusesInvalidRoutingOverridesBeforeOpeningProviders(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "routing.json")
+	if err := os.WriteFile(path, []byte(`{"tenants":{"forced":{"plan":{"profile":"missing/profile","tier":"strong@medium"}}}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	env := map[string]string{config.EnvProvider: config.ProviderMock, config.EnvProfilesFile: "testdata/mock-profiles.json", config.EnvRoutingOverrides: path}
+	var out, log bytes.Buffer
+	if code := run(context.Background(), []string{"serve"}, strings.NewReader(""), &out, &log, getenv(env)); code != 1 {
+		t.Fatalf("invalid overrides started Gateway: %d", code)
+	}
+	if !strings.Contains(log.String(), config.EnvRoutingOverrides) {
+		t.Fatalf("missing configuration diagnostic: %s", log.String())
+	}
+	env[config.EnvRoutingOverrides] = filepath.Join(t.TempDir(), "absent.json")
+	log.Reset()
+	if code := run(context.Background(), []string{"serve"}, strings.NewReader(""), &out, &log, getenv(env)); code != 1 {
+		t.Fatalf("missing override file silently ignored: %d", code)
+	}
+}

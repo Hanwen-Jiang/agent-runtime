@@ -83,7 +83,10 @@ type Request struct {
 	// Tier 是请求期望的 Tier；为空时用 DefaultTier。
 	Tier          string
 	PinnedProfile string
-	AvoidVendor   string
+	// RequiredProfile is a deployment restriction. No other profile may be a
+	// candidate or fallback; allowlist, availability and capabilities still apply.
+	RequiredProfile string
+	AvoidVendor     string
 	// Structured 表示请求要结构化输出（output_schema 非空）。
 	Structured bool
 	// Tools 表示请求带了工具。
@@ -248,6 +251,9 @@ func needs(req Request) []profiles.Capability {
 // Select 按包注释的顺序选档。Tier 格式不对：Invalid；没有可选的 Profile：NotFound（code no_eligible_model）；
 // 白名单读取失败：原样返回其错误。
 func (r *Router) Select(ctx context.Context, req Request) (Choice, error) {
+	if req.RequiredProfile != "" && req.PinnedProfile != "" && req.RequiredProfile != req.PinnedProfile {
+		return Choice{}, providererr.New(providererr.Denied, "routing_override_pin_conflict", "requested profile conflicts with the required route")
+	}
 	tierName := req.Tier
 	if tierName == "" {
 		tierName = DefaultTier(req.Kind, req.Role)
@@ -272,6 +278,9 @@ func (r *Router) Select(ctx context.Context, req Request) (Choice, error) {
 	required := needs(req)
 	var candidates []Candidate
 	for _, p := range r.catalog.All() {
+		if req.RequiredProfile != "" && p.ID != req.RequiredProfile {
+			continue
+		}
 		tier, ok := p.Tier(ref.Name)
 		if p.Class != ref.Class || !ok || (allowed != nil && !allowed[p.ID]) || (p.Availability != nil && !*p.Availability) {
 			continue

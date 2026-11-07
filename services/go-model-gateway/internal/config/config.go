@@ -15,8 +15,9 @@ const (
 	// EnvAddr 是监听地址：同一端口提供 gRPC（h2c）与 GET /healthz。
 	EnvAddr = "AR_MODEL_GATEWAY_ADDR"
 	// EnvProfilesFile 是 Model Profile 文件（必填）。
-	EnvProfilesFile    = "AR_MODEL_PROFILES_FILE"
-	EnvRequireRegistry = "AR_MODEL_PROFILES_REQUIRE_REGISTRY"
+	EnvProfilesFile     = "AR_MODEL_PROFILES_FILE"
+	EnvRequireRegistry  = "AR_MODEL_PROFILES_REQUIRE_REGISTRY"
+	EnvRoutingOverrides = "AR_MODEL_ROUTING_OVERRIDES_FILE"
 	// EnvProvider 选择供应商适配层：openai_compat（默认）或 mock（libs/go-core/dev/mockmodel）。
 	EnvProvider = "AR_MODEL_PROVIDER"
 	// EnvProviderBaseURL 是 OpenAI 兼容端点，形如 https://host/v1；openai_compat 时必填。
@@ -44,17 +45,18 @@ const (
 
 // Config 是 serve 子命令的配置。
 type Config struct {
-	DataDir            string
-	RelationalDSN      secret.Value
-	RegistryAddress    string
-	Addr               string
-	ProfilesFile       string
-	RequireRegistry    bool
-	Provider           string
-	ProviderBaseURL    string
-	ProviderKeyName    string
-	SecretsFile        string
-	TenantPoliciesFile string
+	DataDir              string
+	RelationalDSN        secret.Value
+	RegistryAddress      string
+	Addr                 string
+	ProfilesFile         string
+	RequireRegistry      bool
+	RoutingOverridesFile string
+	Provider             string
+	ProviderBaseURL      string
+	ProviderKeyName      string
+	SecretsFile          string
+	TenantPoliciesFile   string
 	// DefaultMaxOutput 交给 gateway.Options.DefaultMaxOutput：0 是网关的默认值，-1 是不设上限（变量写 0），正数照用。
 	DefaultMaxOutput int
 }
@@ -67,15 +69,16 @@ type Config struct {
 func FromEnv(getenv func(string) string) (Config, error) {
 	get := func(name string) string { return strings.TrimSpace(getenv(name)) }
 	cfg := Config{
-		DataDir:            or(get(EnvDataDir), "data"),
-		RegistryAddress:    get(EnvRegistryAddress),
-		Addr:               or(get(EnvAddr), DefaultAddr),
-		ProfilesFile:       get(EnvProfilesFile),
-		Provider:           or(get(EnvProvider), ProviderOpenAICompat),
-		ProviderBaseURL:    get(EnvProviderBaseURL),
-		ProviderKeyName:    or(get(EnvProviderKeyName), DefaultKeyName),
-		SecretsFile:        get(EnvSecretsFile),
-		TenantPoliciesFile: get(EnvTenantPoliciesFile),
+		DataDir:              or(get(EnvDataDir), "data"),
+		RegistryAddress:      get(EnvRegistryAddress),
+		Addr:                 or(get(EnvAddr), DefaultAddr),
+		ProfilesFile:         get(EnvProfilesFile),
+		RoutingOverridesFile: get(EnvRoutingOverrides),
+		Provider:             or(get(EnvProvider), ProviderOpenAICompat),
+		ProviderBaseURL:      get(EnvProviderBaseURL),
+		ProviderKeyName:      or(get(EnvProviderKeyName), DefaultKeyName),
+		SecretsFile:          get(EnvSecretsFile),
+		TenantPoliciesFile:   get(EnvTenantPoliciesFile),
 	}
 	if dsn := get(EnvRelationalDSN); dsn != "" {
 		cfg.RelationalDSN = secret.New(dsn)

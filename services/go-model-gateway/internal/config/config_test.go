@@ -47,6 +47,7 @@ func TestFromEnvReadsAllVariables(t *testing.T) {
 		EnvProviderKeyName:    "vendor/key",
 		EnvSecretsFile:        "/var/ar/secrets.json",
 		EnvTenantPoliciesFile: "/etc/ar/tenants.json",
+		EnvRoutingOverrides:   "/etc/ar/isolated-routing.json",
 	}
 	cfg, err := FromEnv(env(m))
 	if err != nil {
@@ -57,6 +58,7 @@ func TestFromEnvReadsAllVariables(t *testing.T) {
 		Addr:    "0.0.0.0:9000", ProfilesFile: "/etc/ar/profiles.json", Provider: "openai_compat",
 		ProviderBaseURL: "http://127.0.0.1:5001/v1", ProviderKeyName: "vendor/key",
 		SecretsFile: "/var/ar/secrets.json", TenantPoliciesFile: "/etc/ar/tenants.json",
+		RoutingOverridesFile: "/etc/ar/isolated-routing.json",
 	}
 	if cfg != want {
 		t.Errorf("环境变量没有读进来：\n got %+v\nwant %+v", cfg, want)
