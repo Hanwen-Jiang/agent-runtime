@@ -152,6 +152,101 @@ def test_rotating_ops_token_file_is_reread_without_exposing_credentials(tmp_path
     assert 'secret' not in str(exc.value)
 
 
+@pytest.mark.parametrize("head", [None, ""])
+def test_empty_workspace_contract_accepts_an_unborn_head(monkeypatch, head):
+    client = RuntimeClient("https://example.invalid", "")
+    calls = []
+    workspace = {"workspaceId": "empty-workspace"}
+    if head is not None:
+        workspace["head"] = head
+    def call(service, method, body, **kwargs):
+        calls.append((method, body))
+        if method == "StartWorkspaceOperation":
+            return {"operationId": "op-empty"}
+        return {"operationId": "op-empty", "status": "WORKSPACE_OPERATION_STATUS_COMPLETED",
+                "result": {"workspace": workspace}}
+    monkeypatch.setattr(client, "_call", call)
+    result = client.create_workspace_operation("empty-workspace", repo_url="", ref="", files=[], request_id="stable")
+    assert result == {"workspace_id": "empty-workspace", "head": "", "branch": ""}
+    assert [c[0] for c in calls] == ["StartWorkspaceOperation", "GetWorkspaceOperation"]
+    assert calls[0][1]["create"] == {"workspace_id": "empty-workspace", "repo_url": "", "ref": "", "files": []}
+
+
+@pytest.mark.parametrize("workspace,args", [
+    ({"workspaceId": "another", "head": ""}, {}),
+    ({"head": ""}, {}),
+    ({"workspaceId": "empty-workspace", "head": ""}, {"repo_url": "https://example.invalid/repo.git"}),
+    ({"workspaceId": "empty-workspace", "head": ""}, {"ref": "main"}),
+    ({"workspaceId": "empty-workspace", "head": ""}, {"files": [{"path": "a.txt", "content": "a"}]}),
+])
+def test_unborn_head_exception_cannot_accept_clones_fixtures_or_wrong_workspace(monkeypatch, workspace, args):
+    client = RuntimeClient("https://example.invalid", "")
+    monkeypatch.setattr(client, "_workspace_operation", lambda *a, **kw: {"workspace": workspace})
+    with pytest.raises(ApiError) as caught:
+        client.create_workspace_operation("empty-workspace", **{"repo_url": "", "ref": "", "files": [], **args}, request_id="stable")
+    assert caught.value.code == "invalid_workspace_result"
+
+
+@pytest.mark.parametrize("ambiguous", [False, True])
+def test_empty_head_recovery_preserves_workspace_and_submits_only_one_task(tmp_path, ambiguous):
+    class EmptyRuntime(FakeRuntime):
+        def __init__(self):
+            super().__init__()
+            self.responses = {}
+            self.request_keys = []
+
+        def create_workspace(self, workspace_id, **kwargs):
+            return {**super().create_workspace(workspace_id, **kwargs), "head": ""}
+
+        def submit(self, **kwargs):
+            key = kwargs["client_request_id"]
+            self.request_keys.append(key)
+            if key in self.responses:
+                return {**self.responses[key], "deduplicated": True}
+            response = super().submit(**kwargs)
+            self.responses[key] = response
+            if ambiguous:
+                raise ApiError(0, "transport", "accepted Task response was lost")
+            return response
+
+    case = pe.Case("empty-http", "Compare HTTP libraries.", ("HTTP",), True)
+    out = tmp_path / "run"
+    (out / "records").mkdir(parents=True)
+    runtime = EmptyRuntime()
+    config = settings(environment="none", keep_workspaces=True)
+    runner = pe.Runner(runtime, [case], out, config)
+    workspace = runner._workspace_id(case)
+    if not ambiguous:
+        # A durable older created checkpoint has no operation-result cache.
+        runtime.create_workspace(workspace, repo_url="", ref="", files=[])
+        runner._save({"instance_id": case.instance_id, "state": "created", "head": "",
+                      "workspace_id": workspace, "workspace_generation": "already-created"})
+    runner.go()
+    if ambiguous:
+        saved = records(out)[case.instance_id]
+        assert saved["submission_state"] == "pending" and saved["head"] == ""
+        assert not saved.get("task_id") and len(runtime.tasks) == 1
+        runner = pe.Runner(runtime, [case], out, config)
+        runner.go()
+    assert runner.summary().finished == 1
+    assert runtime.create_calls == [workspace] and runtime.deleted == []
+    assert len(runtime.submits) == len(runtime.tasks) == 1
+    assert len(runtime.request_keys) == (2 if ambiguous else 1)
+    assert len(set(runtime.request_keys)) == 1
+    assert runtime.diffs == [(workspace, "")]
+    pe.Runner(runtime, [case], out, config).go()
+    assert len(runtime.submits) == 1 and runtime.create_calls == [workspace]
+
+
+def test_pending_submission_without_a_head_checkpoint_still_fails(tmp_path):
+    case = pe.Case("empty-http", "Compare HTTP libraries.", ("HTTP",), True)
+    runtime = FakeRuntime()
+    runner = pe.Runner(runtime, [case], tmp_path, settings(environment="none"))
+    with pytest.raises(RuntimeError, match="missing recovery metadata"):
+        runner._ensure_workspace(case, {"submission_state": "pending", "client_request_id": "stable"}, "empty")
+    assert runtime.create_calls == [] and runtime.submits == []
+
+
 def test_recovery_of_executed_task_does_not_rerun_or_forget_cost(tmp_path):
     insts = sb.load_instances(write_instances(tmp_path / 'cases.jsonl'))[:1]
     runtime = Flaky(diff_errors=[ApiError(403, 'permission_denied', 'egress quota')],

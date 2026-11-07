@@ -110,3 +110,5 @@ A/B复核完整隔离租户126条账本后，只允许补原2道off和11道rules
 `paired_admission`将原plan、完整baseline账本和唯一pending的摘要固定；新pending、旧行变化、额外Task、预算变更均停止下一题。完整质量证据可进入盲评，但原有效性及费用未知不改。汇总报告要求每题和scope费用均已知，否则完整费用/比例为null且验收不能通过；缺题时不报告部分题目的费用比例为完整cohort结果。
 
 针对性回归90项通过、0skip：`test_paired_admission.py test_paired_evaluation.py test_paired_completion.py`，显式加载pytest_asyncio。真实断点只读验证确认原9题全部跳过，不重复付费；仅给第9题账本补全权威`reserved_usd_micros`，旧字段/metrics不变，原件另存。证据在`/opt/evals/n16-evreal-pinned-20261107/{pending-subject-ledger.json,pending-admission-reconciliation.json,collection-continue.json,collection-continuation-preflight.json,before-pending-continuation/}`。证据采集代码修订独立记录；运行时fdd0f202、模型/Registry/题目/评分门槛不变。
+
+续跑在HTTP题提交前暴露空仓兼容缺口：异步create已完成，但空仓没有Git head，评测客户端误拒；此次未创建Task、无模型费用。客户端仅在repo/ref/files均空且workspaceId精确匹配时接受空head，runner按head字段是否存在恢复创建/幂等提交，仍拒缺失恢复元数据及clone缺head。真实操作号与失败原件保留，复用同操作恢复；冻结题目及服务版本不变。paired/SWE/TB回归110通过，交付证据回归8通过，0skip。
