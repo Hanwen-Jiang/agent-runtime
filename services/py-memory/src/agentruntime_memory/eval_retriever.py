@@ -319,6 +319,10 @@ class LiveMemoryRetriever:
             if mid not in response.deleted_memory_ids:
                 raise RuntimeError("memory_delete_unconfirmed")
             self.diagnostics["deleted"].append(mid)
+            # Keep cascade IDs too: isolated evaluation cleanup must account for
+            # every actual deletion without touching unrelated forget markers.
+            deleted = self.diagnostics.setdefault("deleted_memory_ids", [])
+            deleted.extend(value for value in response.deleted_memory_ids if value not in deleted)
         except grpc.aio.AioRpcError as exc:
             # Only after FIFO completion does NOT_FOUND mean rejected/merged,
             # rather than a queued item that could appear after cleanup.

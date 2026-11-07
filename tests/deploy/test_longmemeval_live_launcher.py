@@ -73,3 +73,42 @@ def test_new_fixed_run_keeps_settled_prior_cost_and_rejects_new_unattributed_cal
     old["actual_usd_micros"] = 0
     with pytest.raises(launch.PreflightError, match="matches"):
         launch.prior_experiment(tmp_path, db, fresh=False)
+
+
+def test_evaluation_cleanup_ids_follow_only_recorded_isolated_runs(tmp_path):
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    for path in (first, second):
+        (path / "live").mkdir(parents=True)
+    one, two = "mem_" + "0" * 26, "mem_" + "1" * 26
+    def record(path, tenant, submitted, deleted=()):
+        (path / "live/results.jsonl").write_text(json.dumps({"lifecycle": {
+            "tenant": tenant, "workspace": "w-eval-isolated", "submitted_ids": submitted,
+            "deleted_memory_ids": list(deleted)}}) + "\n")
+    record(first, launch.TENANT, [one])
+    record(second, launch.TENANT, [], [two])
+    (second / "freeze.json").write_text(json.dumps({"prior_experiment": {"directory": str(first)}}))
+    assert launch.evaluation_ids(second) == [one, two]
+    record(first, "other-tenant", [one])
+    with pytest.raises(launch.PreflightError, match="another tenant"):
+        launch.evaluation_ids(second)
+    record(first, launch.TENANT, [one])
+    (first / "freeze.json").write_text(json.dumps({"prior_experiment": {"directory": str(second)}}))
+    with pytest.raises(launch.PreflightError, match="chain"):
+        launch.evaluation_ids(second)
+
+
+def test_inline_database_programs_are_valid_before_any_live_operation(monkeypatch):
+    seen = []
+    def inspect(*args, stdin=None):
+        compile(stdin, "<isolated-memory-db-operation>", "exec")
+        assert '"evalmem20261106"' in stdin
+        assert "rolbypassrls" in stdin and "agentruntime.tenant_id" in stdin
+        seen.append(stdin)
+        return b"{}"
+    monkeypatch.setattr(launch, "kubectl", inspect)
+    launch.db_snapshot()
+    launch.clear_evaluation_tombstones(["mem_" + "0" * 26])
+    assert "DELETE FROM MEMORY_TOMBSTONES" not in seen[0].upper()
+    assert "where memory_id=ANY" in seen[1]
+    assert 'set(found)-set(args["ids"])' in seen[1]
