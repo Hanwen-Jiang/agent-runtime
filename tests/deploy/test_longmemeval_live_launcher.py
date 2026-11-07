@@ -112,3 +112,15 @@ def test_inline_database_programs_are_valid_before_any_live_operation(monkeypatc
     assert "DELETE FROM MEMORY_TOMBSTONES" not in seen[0].upper()
     assert "where memory_id=ANY" in seen[1]
     assert 'set(found)-set(args["ids"])' in seen[1]
+
+
+def test_production_topology_selector_excludes_the_isolated_paired_stack(monkeypatch):
+    seen = []
+    def read(*args, **kwargs):
+        seen.append(args)
+        return b'{"items":[]}'
+    monkeypatch.setattr(launch, "kubectl", read)
+    with pytest.raises(launch.PreflightError, match="single replica"):
+        launch.deployment_snapshot("model-gateway")
+    selector = seen[0][seen[0].index("-l") + 1]
+    assert selector == "app.kubernetes.io/component=model-gateway,app.kubernetes.io/instance=ar,app.kubernetes.io/name=agent-runtime"
