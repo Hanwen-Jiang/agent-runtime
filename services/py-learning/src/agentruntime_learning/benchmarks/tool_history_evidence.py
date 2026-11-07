@@ -41,6 +41,7 @@ _TERMINALS = {
     "activity_task_canceled_event_attributes": "canceled",
 }
 _WORKFLOWS = {"TaskWorkflow", "SubAgentWorkflow", "SubgraphWorkflow"}
+_MODEL_ROLES = {"fetch", "transform", "plan", "route", "judge", "aggregate", "act", "gate", "deliver"}
 
 
 def canonical_request_hash(tool: str, arguments: dict[str, Any]) -> str:
@@ -66,6 +67,180 @@ def _enum_name(enum: Any, value: int) -> str:
         return enum.Name(value)
     except ValueError:
         return "UNRECOGNIZED"
+
+
+def _role_map(observations: list[dict[str, Any]]) -> tuple[dict[str, str], list[dict[str, Any]]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in observations:
+        grouped.setdefault(row["node_id"], []).append(row)
+    roles, conflicts = {}, []
+    for node_id, rows in sorted(grouped.items()):
+        values = sorted({row["role"] for row in rows})
+        if len(values) == 1:
+            roles[node_id] = values[0]
+        else:
+            conflicts.append({"node_id": node_id, "roles": values,
+                              "sources": [{"workflow_id": row["workflow_id"], "run_id": row["run_id"],
+                                           "round_seq": row["round_seq"], "scheduled_event_id": row["scheduled_event_id"]}
+                                          for row in rows]})
+    return roles, conflicts
+
+
+def _activity_windows(history: WorkflowHistory) -> dict[int, dict[str, Any]]:
+    result: dict[int, dict[str, Any]] = {}
+    for event in history.events:
+        if event.HasField("activity_task_scheduled_event_attributes"):
+            result[int(event.event_id)] = {
+                "scheduled_at": event.event_time.ToJsonString() if event.HasField("event_time") else None,
+                "scheduled_at_unix_ms": event.event_time.ToMilliseconds() if event.HasField("event_time") else None,
+                "started_events": [], "terminal_event_id": None, "terminal_at": None,
+                "terminal_at_unix_ms": None, "terminal_state": None,
+            }
+        elif event.HasField("activity_task_started_event_attributes"):
+            attrs = event.activity_task_started_event_attributes
+            row = result.get(int(attrs.scheduled_event_id))
+            if row is not None:
+                row["started_events"].append({
+                    "event_id": int(event.event_id), "attempt": int(attrs.attempt),
+                    "at": event.event_time.ToJsonString() if event.HasField("event_time") else None,
+                    "at_unix_ms": event.event_time.ToMilliseconds() if event.HasField("event_time") else None,
+                })
+        else:
+            for field, state in _TERMINALS.items():
+                if not event.HasField(field):
+                    continue
+                attrs = getattr(event, field)
+                row = result.get(int(attrs.scheduled_event_id))
+                if row is not None:
+                    if row["terminal_event_id"] is not None:
+                        raise ValueError("conflicting model activity terminal events")
+                    row.update(
+                        terminal_event_id=int(event.event_id), terminal_state=state,
+                        terminal_started_event_id=int(attrs.started_event_id),
+                        terminal_at=event.event_time.ToJsonString() if event.HasField("event_time") else None,
+                        terminal_at_unix_ms=event.event_time.ToMilliseconds() if event.HasField("event_time") else None,
+                    )
+    for row in result.values():
+        start, end = row["scheduled_at_unix_ms"], row["terminal_at_unix_ms"]
+        row["window_start_unix_ms"] = start
+        row["window_end_unix_ms"] = end
+        row["window_complete"] = start is not None and end is not None and start <= end
+        row["window_basis"] = "scheduled-to-terminal bounds include earlier retries whose starts Temporal may omit"
+    return result
+
+
+async def model_role_evidence(history: WorkflowHistory, tenant_id: str, *, run_id: str = "",
+                              claim_check: Any = None) -> dict[str, Any]:
+    """Attribute wire roles from actual expanded model activity inputs.
+
+    A revise wrapper's child judge is a judge even when its enclosing node is
+    deliver. A tool-loop thought always uses ACT, including sub-agent thoughts.
+    Flat node IDs reused with distinct roles remain ambiguous because the usage
+    ledger has no Round column; no last-write-wins role inference is permitted.
+    """
+    owner = tenant_from_history(history)
+    if owner is None or owner.tenant_id != tenant_id:
+        raise ValueError("model activity history tenant does not match the experiment")
+    if not _ID.fullmatch(history.workflow_id):
+        raise ValueError("invalid workflow identity")
+    event_ids = [int(event.event_id) for event in history.events]
+    if event_ids != sorted(set(event_ids)):
+        raise ValueError("model history event identities are not unique and ordered")
+    observations, errors = [], []
+    windows = _activity_windows(history)
+    seen = set()
+    expected_task = history.workflow_id.split("/r", 1)[0]
+    for event in history.events:
+        if int(event.event_id) in seen:
+            raise ValueError("duplicate history event identity")
+        seen.add(int(event.event_id))
+        if not event.HasField("activity_task_scheduled_event_attributes"):
+            continue
+        scheduled = event.activity_task_scheduled_event_attributes
+        kind = scheduled.activity_type.name
+        if kind not in ("execute_model_node", "tool_loop_step", "plan_round", "review_round"):
+            continue
+        payloads = list(scheduled.input.payloads)
+        wire_digests = [hashlib.sha256(p.SerializeToString(deterministic=True)).hexdigest() for p in payloads]
+        referenced = any(is_reference(p) for p in payloads)
+        try:
+            if referenced:
+                if claim_check is None:
+                    raise ValueError("claim_check_reader_required")
+                payloads = await claim_check.bind(owner).decode(payloads)
+            decoded = await DataConverter.default.decode(payloads)
+            if len(decoded) != 1 or not isinstance(decoded[0], dict):
+                raise ValueError("invalid_model_activity_input")
+            value = decoded[0]
+            if not isinstance(value.get("tenant"), dict) or value["tenant"].get("tenant_id") != tenant_id:
+                raise ValueError("model_input_tenant_mismatch")
+            if value.get("task_id") != expected_task:
+                raise ValueError("model_input_task_mismatch")
+            round_seq = value.get("round_seq")
+            if not isinstance(round_seq, int) or isinstance(round_seq, bool) or round_seq < 1:
+                raise ValueError("invalid_model_round")
+            if kind == "plan_round":
+                entries = [] if value.get("no_model") is True else [("plan", "plan"), ("triage", "route")]
+                context_node_id = None
+            elif kind == "review_round":
+                entries = [] if value.get("rules_only") is True else [("review", "judge")]
+                context_node_id = None
+            else:
+                node = value.get("node")
+                if not isinstance(node, dict):
+                    raise ValueError("missing_model_node")
+                context_node_id = node.get("id")
+                if not isinstance(context_node_id, str) or not _ID.fullmatch(context_node_id):
+                    raise ValueError("invalid_context_node_identity")
+                entries = [(node.get("id"), node.get("role"))] if kind == "execute_model_node" else [(value.get("step_id") or node.get("id"), "act")]
+            for node_id, role in entries:
+                if not isinstance(node_id, str) or not _ID.fullmatch(node_id) or role not in _MODEL_ROLES:
+                    raise ValueError("invalid_model_node_identity_or_role")
+                observations.append({"workflow_id": history.workflow_id, "run_id": run_id,
+                                     "task_id": expected_task, "round_seq": round_seq,
+                                     "scheduled_event_id": int(event.event_id), "activity": kind,
+                                     "node_id": node_id, "context_node_id": context_node_id,
+                                     "role": role, "claim_check_decoded": referenced,
+                                     "input_payload_sha256": wire_digests,
+                                     "decoded_payload_sha256": [hashlib.sha256(p.SerializeToString(deterministic=True)).hexdigest() for p in payloads],
+                                     **windows[int(event.event_id)]})
+        except Exception as exc:
+            errors.append({"workflow_id": history.workflow_id, "scheduled_event_id": int(event.event_id),
+                           "activity": kind, "input_payload_sha256": wire_digests,
+                           "claim_check": referenced, "error_type": type(exc).__name__})
+    node_roles, conflicts = _role_map(observations)
+    closed = any(event.HasField(field) for event in history.events for field in _CLOSED)
+    continued = any(event.HasField("workflow_execution_continued_as_new_event_attributes") for event in history.events)
+    return {"schema_version": "temporal-model-roles-v1", "tenant_id": tenant_id,
+            "workflow_id": history.workflow_id, "run_id": run_id, "task_id": expected_task,
+            "history_sha256": _event_hash(history), "workflow_closed": closed,
+            "complete": closed and not continued and not errors and all(row["window_complete"] for row in observations),
+            "requires_time_resolution": bool(conflicts),
+            "node_roles": node_roles, "observations": observations, "conflicts": conflicts, "errors": errors,
+            "scope": "wire role attribution from actual scheduled activity inputs; not a new model execution or scoring rule"}
+
+
+def merge_model_roles(evidences: list[dict[str, Any]], task_id: str) -> dict[str, Any]:
+    """Merge root/subgraph/sub-agent evidence, checking cross-history conflicts."""
+    if not evidences or not _ID.fullmatch(task_id) or len({e["tenant_id"] for e in evidences}) != 1:
+        raise ValueError("model-role evidence must have one tenant and a valid Task")
+    selected = [e for e in evidences if e["task_id"] == task_id]
+    observations, seen = [], {}
+    for evidence in selected:
+        for row in evidence["observations"]:
+            identity = (row["workflow_id"], row["run_id"], row["scheduled_event_id"], row["node_id"])
+            if identity in seen and seen[identity] != row:
+                raise ValueError("conflicting evidence for the same activity")
+            if identity not in seen:
+                observations.append(row)
+                seen[identity] = row
+    roles, conflicts = _role_map(observations)
+    errors = [error for e in selected for error in e["errors"]]
+    return {"schema_version": "temporal-model-roles-v1", "tenant_id": evidences[0]["tenant_id"], "task_id": task_id,
+            "complete": bool(selected) and all(e["complete"] for e in selected) and not errors,
+            "requires_time_resolution": bool(conflicts),
+            "node_roles": roles, "observations": observations, "conflicts": conflicts, "errors": errors,
+            "source_histories": [{"workflow_id": e["workflow_id"], "run_id": e["run_id"], "sha256": e["history_sha256"]} for e in selected]}
 
 
 async def history_evidence(history: WorkflowHistory, tenant_id: str, *, run_id: str = "",
