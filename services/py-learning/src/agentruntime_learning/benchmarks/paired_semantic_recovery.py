@@ -136,6 +136,9 @@ def validate(out: Path, manifest: dict) -> dict | None:
     if not path.exists():
         return None
     receipt = _read(path)
+    if receipt.get("kind") == "paired-semantic-last-known-v1":
+        from agentruntime_learning.benchmarks.paired_semantic_last_recovery import validate as validate_last
+        return validate_last(out, manifest, receipt)
     if receipt.get("kind") == "paired-semantic-raw-extraction-v1":
         from agentruntime_learning.benchmarks.paired_semantic_raw_recovery import validate as validate_raw
         return validate_raw(out, manifest, receipt)
