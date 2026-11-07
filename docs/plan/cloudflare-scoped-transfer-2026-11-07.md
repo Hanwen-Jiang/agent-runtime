@@ -34,6 +34,12 @@ settles the actual byte count from the revoked gateway receipt and refunds the
 unused reservation exactly once. Unknown outcomes remain charged and are
 reconciled by the existing Service reconcile pass, including destroyed leases;
 receipt acknowledgement releases remote state only after local settlement.
+`Directory(ctx,false)` deliberately includes destroyed environment tombstones;
+its owner remains discoverable for delayed transfer reconciliation. A focused
+SQLite regression destroys the environment, confirms it is absent from the
+active directory but still present in the full directory, then settles the
+previously unknown transfer without refunding it as zero. The remote gateway's
+owner-bound final count also survives environment teardown until ACK.
 Internal workspace reads without a model Task use a lease-scoped audit label,
 not a fabricated model-usage identity. FC/K8s retain their existing transfer
 network implementations. The broker's Cloudflare archive path now enables
@@ -80,6 +86,9 @@ instance type and max_instances; its infrastructure bill is not yet available
 and is not reported as zero. All test VMs and scoped R2 objects were deleted;
 no bucket lifecycle, account plan, unrelated Worker or original eval artifact
 was changed. Host credentials and signed URLs are absent from committed logs.
+The recorded bytes are payload bytes accepted by the object-transfer gateway,
+including interrupted attempts; they exclude TLS/TCP/HTTP framing overhead and
+are not a claim about Cloudflare's billable bandwidth or total infrastructure cost.
 The parent deployer must still publish the new Go Service code/migration217;
 Cloudflare bridge deployment alone is not full core-service deployment.
 

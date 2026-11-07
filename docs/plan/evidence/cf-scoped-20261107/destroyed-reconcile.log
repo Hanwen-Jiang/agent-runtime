@@ -1,0 +1,4 @@
+=== RUN   TestDestroyedEnvironmentOwnerStillFindsPendingTransferAccounting
+--- PASS: TestDestroyedEnvironmentOwnerStillFindsPendingTransferAccounting (0.10s)
+PASS
+ok  	github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/ledger	0.115s
