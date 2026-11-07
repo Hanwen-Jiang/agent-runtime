@@ -43,7 +43,7 @@ type pausePersonalTx struct {
 
 func (t *pausePersonalTx) QueryOne(ctx context.Context, q string, a ...any) (relational.Row, bool, error) {
 	row, found, err := t.Tx.QueryOne(ctx, q, a...)
-	if err == nil && strings.HasPrefix(q, "SELECT kind, name, version, state, task_family, document FROM registry_entries") && t.p.enabled.CompareAndSwap(true, false) {
+	if err == nil && strings.HasPrefix(q, "SELECT kind, name, version, state, task_family, document") && strings.Contains(q, " FROM registry_entries WHERE kind = $1 AND name = $2") && t.p.enabled.CompareAndSwap(true, false) {
 		close(t.p.ready)
 		select {
 		case <-t.p.resume:
