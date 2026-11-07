@@ -128,3 +128,9 @@ A/B核对完整scope：已知1282125微美元，两笔预占共23600微美元，
 - STOR-SEC：`evidence/transfer-r2-live-20261106.log`列明真实R2全部11子例通过，包含真实agent上传/缺块恢复、不可覆盖、同长度错误内容、checksum/If-None-Match/Content-Length/对象key/method/过期。执行与清理条件见`transfer-acceptance-2026-11-07.md`；后续复核日志为父目录`.goal-tools/livecheck-transfer-r2.log`，没有桶生命周期修改。
 
 以上是已存在原始验收文件的交付索引，没有重跑实验或新增模型费用。2026-11-07用户指定后，两仓作者与提交者email均设为`haven-just@qq.com`，新提交使用该邮箱；已推送历史未重写。
+
+## 2026-11-07 21:05 UTC 最后一道规则题准入
+
+HTTP原题rules已真实运行3个SubAgent，规划证据与模型/Registry一致；Reviewer escalate后，原无人值守策略选择stop_and_wrap_up，终态aborted并已清理，不能改成完全解决或重跑。主triage新增唯一未结算`mbr_UZORZ3YUTV5V7ELFMW643HXTZM`（9214微美元），Gateway错误为unreachable；后续4290输入/89输出、474微美元成功记录仅对应后一次调用，不证明首尝试免费。原HTTP metrics valid=false/collection_complete=true保持，子Agent已知费用0.002109美元，Jev否决0。
+
+完整307行账本冻结在`/opt/evals/n16-evreal-pinned-20261107/rules-third-subject-ledger.json`（SHA256 9e683c094f161a7133eed0a04a99d80c377b2dcf610b618a83c5aa66cdbe86ab），旧156行逐字段不变；已知2.714724美元、三笔未知预占0.032814美元，原subject额度内准入余额15.697723美元。A/B只允许原最后一道single-storage；不新增cohort/预算，不重跑原21个Task。追加式收据仅支持精确1→2→3前缀，跳级及第四ID拒绝；原收据与已执行metrics保留。相关admission/completion/evaluation共135测试通过，未修改线上模型或配置。
