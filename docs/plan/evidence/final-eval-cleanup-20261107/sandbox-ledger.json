@@ -1,0 +1,1103 @@
+{
+  "at_unix": 1794094603.9348383,
+  "read_only": true,
+  "tenants": {
+    "gh-goalpair-20261107": {
+      "environments": [
+        {
+          "env_ref": "sbe-005538b09da8d640",
+          "backend": "firecracker",
+          "backend_env_id": "fc-55b99e93691f9e01",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-http-c959b27d67",
+          "task_id": "wsop-wso-a8eb77848eb6d871943d1773b039dad80dbfd0f00d4361716963337bed7d9f4b",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T18:38:24.111984Z"
+        },
+        {
+          "env_ref": "sbe-04e23355eb74c1ce",
+          "backend": "firecracker",
+          "backend_env_id": "fc-07dd259910133379",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-licence-2ea1b013b1",
+          "task_id": "tsk_01M6VN3VK96H3J2YEF7FYRPTY2",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T18:46:10.459006Z"
+        },
+        {
+          "env_ref": "sbe-0611277975ec8065",
+          "backend": "firecracker",
+          "backend_env_id": "fc-e141338238e3389f",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-licence-9baddd0314",
+          "task_id": "wsop-wso-c220fd14a5523a951c2c88f5e9cfa866212566d1bfddc54fcc8db79e781548e3",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:27:07.422818Z"
+        },
+        {
+          "env_ref": "sbe-088a3103292bb57a",
+          "backend": "firecracker",
+          "backend_env_id": "fc-1250ed06d205b6aa",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-incident-2ebda46d55",
+          "task_id": "tsk_01M6VTE90KGKB7EZP3JS19CVM8",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:17:54.886628Z"
+        },
+        {
+          "env_ref": "sbe-0b7487b84bc4005c",
+          "backend": "firecracker",
+          "backend_env_id": "fc-d8303b9f3b83aac4",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-http-573b4f9e17",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T19:06:13.012126Z"
+        },
+        {
+          "env_ref": "sbe-0c1d944955bcd8fe",
+          "backend": "firecracker",
+          "backend_env_id": "fc-9b303112a1eb7b6a",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-release-4d3d338d27",
+          "task_id": "wsop-wso-df1e31dd0d080306ac26a3b587524edeb2816be232ab0096e630fc2b78837020",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:40:57.258381Z"
+        },
+        {
+          "env_ref": "sbe-16968ed59ec2fcd2",
+          "backend": "firecracker",
+          "backend_env_id": "fc-b095b1c7127f32ca",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-storage-b6b18811aa",
+          "task_id": "wsop-wso-effaefbad61fc339490d1ce816e9c8af1e475ac886b0285f55177bd0b26f8ccf",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T21:13:21.286821Z"
+        },
+        {
+          "env_ref": "sbe-1741901634ed387b",
+          "backend": "firecracker",
+          "backend_env_id": "fc-39a41ac5a206c4fa",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-release-68b620475f",
+          "task_id": "tsk_01M6VSN52ZTTQ9E7W22J9S60HD",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:02:50.374271Z"
+        },
+        {
+          "env_ref": "sbe-1d864b1e281ae05f",
+          "backend": "firecracker",
+          "backend_env_id": "fc-0e8d4184e9399b21",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-release-59e2f445ad",
+          "task_id": "tsk_01M6TVYC7WHPSG9VVJEF0NRWW2",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T11:24:51.135344Z"
+        },
+        {
+          "env_ref": "sbe-1f7b9233ad25e9f7",
+          "backend": "firecracker",
+          "backend_env_id": "fc-6aa8349abdf2e06a",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-storage-0b2c30d715",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:12:08.658847Z"
+        },
+        {
+          "env_ref": "sbe-24d80ffb46292b12",
+          "backend": "firecracker",
+          "backend_env_id": "fc-7ab8497047f042a4",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-licence-2ea1b013b1",
+          "task_id": "wsop-wso-91a905f5dbcee88608b1aca49334f9ac246a784625e6354f826c06b0a4ae1f69",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T18:42:41.684771Z"
+        },
+        {
+          "env_ref": "sbe-2a7d64f5b9743b83",
+          "backend": "firecracker",
+          "backend_env_id": "fc-56473baf0fe5fe43",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-release-553a0760f1",
+          "task_id": "tsk_01M6VNTKKCV2FSDHZCGPG9JDQA",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T18:57:49.540458Z"
+        },
+        {
+          "env_ref": "sbe-2b9711a8a1b19bd4",
+          "backend": "firecracker",
+          "backend_env_id": "fc-30587add17787378",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-licence-9baddd0314",
+          "task_id": "tsk_01M6VV3261YBFXM43BEYG3XG6M",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:30:07.530927Z"
+        },
+        {
+          "env_ref": "sbe-2d55af797f3b6c35",
+          "backend": "firecracker",
+          "backend_env_id": "fc-6c753d989b4906b9",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-incident-04cfbec2c2",
+          "task_id": "wsop-wso-3a049b6061310079161d8953276a9b2ac815e2f64c4593a7013c0221721ba31c",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T18:47:38.990490Z"
+        },
+        {
+          "env_ref": "sbe-2d756e12b73fec89",
+          "backend": "firecracker",
+          "backend_env_id": "fc-5bfb0034c1007a77",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-storage-a039002f7e",
+          "task_id": "wsop-wso-0cf9b3fd08f639f75c1c944aad6ef6f8d8f3afcd417786f3fcc5c59b2c42efac",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T19:32:44.771117Z"
+        },
+        {
+          "env_ref": "sbe-3306733ca0d58ff6",
+          "backend": "firecracker",
+          "backend_env_id": "fc-99425c35d1498a85",
+          "state": "destroyed",
+          "workspace_id": "dlv-http-libraries-jev-regression-b8c481b9cc",
+          "task_id": "tsk_01M6VWNDVJ6WFFNTZXNDVEV8GD",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:56:39.297208Z"
+        },
+        {
+          "env_ref": "sbe-3493671cf814de67",
+          "backend": "firecracker",
+          "backend_env_id": "fc-d935b123b52745c9",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-storage-5e5020bc72",
+          "task_id": "wsop-wso-e6841bc44539d69b58659cf621caa4b6b21b9eb8b96a42d91aff6e8ea3c0188f",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T11:28:24.908245Z"
+        },
+        {
+          "env_ref": "sbe-3e3792fd3266fac3",
+          "backend": "firecracker",
+          "backend_env_id": "fc-5bb0c302e23e9663",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-licence-3d8faaefda",
+          "task_id": "tsk_01M6TVD6XBEC3SGVSVF3PJXBYS",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T11:15:24.553606Z"
+        },
+        {
+          "env_ref": "sbe-47cc2649eaf80ff8",
+          "backend": "firecracker",
+          "backend_env_id": "fc-f89d76349d453eda",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-incident-11c6f3b01f",
+          "task_id": "wsop-wso-7dad4c8a3827487fb2ef1a850ba0e3337243ca3d75d2f8564fac5f635ad40634",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T11:35:00.302965Z"
+        },
+        {
+          "env_ref": "sbe-483b801a8aad33e9",
+          "backend": "firecracker",
+          "backend_env_id": "fc-4a3b14840dcd9e2c",
+          "state": "destroyed",
+          "workspace_id": "dlv-http-libraries-jev-regression-47dcb387e8",
+          "task_id": "wsop-wso-2272d412f2e9317bce8217fd893e392c94e942332e305c3d6309271f01622f55",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T19:25:01.415585Z"
+        },
+        {
+          "env_ref": "sbe-4b5fee4f3bf19945",
+          "backend": "firecracker",
+          "backend_env_id": "fc-859012e9a5336ea6",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-storage-0b2c30d715",
+          "task_id": "tsk_01M6VSX58WHREWHJVEQW46GM0B",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:12:08.849641Z"
+        },
+        {
+          "env_ref": "sbe-4bd6cc97f1fd4d18",
+          "backend": "firecracker",
+          "backend_env_id": "fc-26d89bd6df6fe99b",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-http-014c52e47a",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:48:21.694281Z"
+        },
+        {
+          "env_ref": "sbe-4cc2bb676e33cb83",
+          "backend": "firecracker",
+          "backend_env_id": "fc-2e2cc26cfdfd55d9",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-licence-3d8faaefda",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T11:15:24.398520Z"
+        },
+        {
+          "env_ref": "sbe-53066100f4fe0049",
+          "backend": "firecracker",
+          "backend_env_id": "fc-e1afa2508a848691",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-release-4d3d338d27",
+          "task_id": "tsk_01M6VVWCEQPXHVC0F9QB31E26J",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:43:47.284638Z"
+        },
+        {
+          "env_ref": "sbe-54ecb29c3ea29af3",
+          "backend": "firecracker",
+          "backend_env_id": "fc-c25758d3ebf963f6",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-incident-462f5bf9fa",
+          "task_id": "tsk_01M6VVJHJ3S5C4SS818XDQAPZR",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:36:18.010541Z"
+        },
+        {
+          "env_ref": "sbe-585bcc68a785a0a9",
+          "backend": "firecracker",
+          "backend_env_id": "fc-ca5f5c0c6aae9a5c",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-licence-2ea1b013b1",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T18:46:10.256457Z"
+        },
+        {
+          "env_ref": "sbe-5b5154a3268f399a",
+          "backend": "firecracker",
+          "backend_env_id": "fc-77c72b96bc12a9bc",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-http-573b4f9e17",
+          "task_id": "tsk_01M6VP824GCAY36NPBPMYXXS7W",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T19:06:13.180446Z"
+        },
+        {
+          "env_ref": "sbe-5c538d3f66ce0aa8",
+          "backend": "firecracker",
+          "backend_env_id": "fc-2c2a916e37306242",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-http-199abccac2",
+          "task_id": "tsk_01M6VTTD33FDTKYQ9ZG15S17M0",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:23:32.644625Z"
+        },
+        {
+          "env_ref": "sbe-5def0b7ae226ed19",
+          "backend": "firecracker",
+          "backend_env_id": "fc-29c74dd7a7e87e4f",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-release-59e2f445ad",
+          "task_id": "wsop-wso-38aac3476d700204c1f2122fd060a8c4bb7ae3de38b474417ce26a18868aba00",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T11:22:48.152419Z"
+        },
+        {
+          "env_ref": "sbe-5f3faf07a26e6f6c",
+          "backend": "firecracker",
+          "backend_env_id": "fc-855827cb6b4c180e",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-http-c959b27d67",
+          "task_id": "tsk_01M6VMW0HKHPEMCN1PM9WYZAGE",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T18:39:07.870660Z"
+        },
+        {
+          "env_ref": "sbe-65d9243b4b70a75a",
+          "backend": "firecracker",
+          "backend_env_id": "fc-3c969c3dfd360ded",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-incident-04cfbec2c2",
+          "task_id": "tsk_01M6VNCZ6AKGYFNP7368B2MAYW",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T18:48:26.452014Z"
+        },
+        {
+          "env_ref": "sbe-6d4c1a954bc08b91",
+          "backend": "firecracker",
+          "backend_env_id": "fc-43bed19793d761dd",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-http-573b4f9e17",
+          "task_id": "wsop-wso-68beff9d3353c078a5dbc08e4161dad67fb824eb4aa7ce3b2e9a448fc7b33b55",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T19:02:28.519439Z"
+        },
+        {
+          "env_ref": "sbe-6d90e84fa0314637",
+          "backend": "firecracker",
+          "backend_env_id": "fc-1e416aa26e9f803e",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-storage-a039002f7e",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T19:40:48.616329Z"
+        },
+        {
+          "env_ref": "sbe-6fef511b8218cb0b",
+          "backend": "firecracker",
+          "backend_env_id": "fc-1c3b2afa9a2a2b5f",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-storage-0b2c30d715",
+          "task_id": "wsop-wso-c6412152ef383dcbc9951a2794732224d7f689b13daa663a9d4b5e4ac186d3e8",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:06:24.675272Z"
+        },
+        {
+          "env_ref": "sbe-719189ae70003dae",
+          "backend": "firecracker",
+          "backend_env_id": "fc-82232299281ab146",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-licence-396d7f9393",
+          "task_id": "wsop-wso-8e05a8eb1fe5c25e871945a0886cd43facd56f058e855e22486045441642490b",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T10:47:01.642395Z"
+        },
+        {
+          "env_ref": "sbe-73b99bab9e8019d3",
+          "backend": "firecracker",
+          "backend_env_id": "fc-0c7ee7e0b5febbf8",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-release-59e2f445ad",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T11:24:50.980463Z"
+        },
+        {
+          "env_ref": "sbe-7470821db59bb1ac",
+          "backend": "firecracker",
+          "backend_env_id": "fc-df81c074a4e4607a",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-licence-220d8e069a",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T19:48:09.137609Z"
+        },
+        {
+          "env_ref": "sbe-77b2ef800b2570ee",
+          "backend": "firecracker",
+          "backend_env_id": "fc-555babd09314191a",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-licence-3d8faaefda",
+          "task_id": "wsop-wso-a923e902fb876c6aa551f1a9fcb28e94b39ad3743d3a6e095a10f0cf0b3ac9a7",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T11:13:24.972576Z"
+        },
+        {
+          "env_ref": "sbe-7a5dc5eda29fbc2b",
+          "backend": "firecracker",
+          "backend_env_id": "fc-9683fa1e2115c6b3",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-storage-5e5020bc72",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T11:30:23.319572Z"
+        },
+        {
+          "env_ref": "sbe-7ab0edfcf264082b",
+          "backend": "firecracker",
+          "backend_env_id": "fc-c0e23aae3e49fdf6",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-http-199abccac2",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:23:32.460372Z"
+        },
+        {
+          "env_ref": "sbe-7ed6d22bddbb8bfb",
+          "backend": "firecracker",
+          "backend_env_id": "fc-0a81acf2287230e5",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-incident-04cfbec2c2",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T18:48:26.278230Z"
+        },
+        {
+          "env_ref": "sbe-8608bf829bd5872e",
+          "backend": "firecracker",
+          "backend_env_id": "fc-9aefcadae8f29111",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-release-68b620475f",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:02:50.201283Z"
+        },
+        {
+          "env_ref": "sbe-8c0b770bf34a22ba",
+          "backend": "firecracker",
+          "backend_env_id": "fc-c8506028884e7e75",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-release-553a0760f1",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T18:57:49.151250Z"
+        },
+        {
+          "env_ref": "sbe-9358e8891d39f2d7",
+          "backend": "firecracker",
+          "backend_env_id": "fc-301a47f931d1c8dc",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-release-553a0760f1",
+          "task_id": "wsop-wso-9a154c8c1a96ebd03908d2a6946bda0d81ac6a455946c81dd06b3b44e31c0628",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T18:55:06.372600Z"
+        },
+        {
+          "env_ref": "sbe-942ccc3eab2d3b56",
+          "backend": "firecracker",
+          "backend_env_id": "fc-fb146a8f370504a1",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-incident-2ebda46d55",
+          "task_id": "wsop-wso-36f7fd334641bccece8740b1eb5ef7f54d6e4ff9c9b1243a82610e3647a3daa3",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:15:45.912636Z"
+        },
+        {
+          "env_ref": "sbe-a103e3cb194b763b",
+          "backend": "firecracker",
+          "backend_env_id": "fc-4bfc0484115324fa",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-licence-220d8e069a",
+          "task_id": "tsk_01M6VRSEGWAQC8YV0GMYD9RS9V",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T19:48:09.285747Z"
+        },
+        {
+          "env_ref": "sbe-a156f8eea14e8fbf",
+          "backend": "firecracker",
+          "backend_env_id": "fc-d5f537062ebff68a",
+          "state": "destroyed",
+          "workspace_id": "dlv-http-libraries-jev-regression-47dcb387e8",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T19:30:17.848573Z"
+        },
+        {
+          "env_ref": "sbe-a59b6b042863b7d9",
+          "backend": "firecracker",
+          "backend_env_id": "fc-064502cf4891f303",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-licence-396d7f9393",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T10:47:47.512507Z"
+        },
+        {
+          "env_ref": "sbe-a850fc81087bac8f",
+          "backend": "firecracker",
+          "backend_env_id": "fc-18e8ad5e5e192589",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-incident-462f5bf9fa",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:36:17.843539Z"
+        },
+        {
+          "env_ref": "sbe-a8e243e3444599e9",
+          "backend": "firecracker",
+          "backend_env_id": "fc-4beba8659bb9e685",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-http-014c52e47a",
+          "task_id": "wsop-wso-f8963245ce921e89c78ca6e3393c61da8a77457341d66ba4a951c8fca79854a9",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:45:23.765771Z"
+        },
+        {
+          "env_ref": "sbe-b19e6e61844468d3",
+          "backend": "firecracker",
+          "backend_env_id": "fc-15d72ff2ccd5c963",
+          "state": "destroyed",
+          "workspace_id": "dlv-http-libraries-jev-regression-b8c481b9cc",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:56:39.131665Z"
+        },
+        {
+          "env_ref": "sbe-b6bfe1e2f8bb66c9",
+          "backend": "firecracker",
+          "backend_env_id": "fc-eea9865f87dafdf3",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-incident-11c6f3b01f",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T11:40:45.912285Z"
+        },
+        {
+          "env_ref": "sbe-bbba5f1627e1dee3",
+          "backend": "firecracker",
+          "backend_env_id": "fc-7f6dfa0dca488b37",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-licence-396d7f9393",
+          "task_id": "tsk_01M6TSWW3DPYE33KA2R6SPTJ80",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T10:47:47.654112Z"
+        },
+        {
+          "env_ref": "sbe-bd73c75c8d5d1347",
+          "backend": "firecracker",
+          "backend_env_id": "fc-b70da755e75c0156",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-release-68b620475f",
+          "task_id": "wsop-wso-3c935330a6fc94381675718316b3d27aa2448703032fca38391665b5888db064",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:02:02.088911Z"
+        },
+        {
+          "env_ref": "sbe-bd9e99e83bdf27a0",
+          "backend": "firecracker",
+          "backend_env_id": "fc-913dadd156307c04",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-storage-b6b18811aa",
+          "task_id": "tsk_01M6VXQR41KB95XHRKD4AT330R",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T21:14:11.704862Z"
+        },
+        {
+          "env_ref": "sbe-c981b926ba5dec02",
+          "backend": "firecracker",
+          "backend_env_id": "fc-5332eb40ba4859ba",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-incident-11c6f3b01f",
+          "task_id": "tsk_01M6TWMQR32019GC0WNRCYGRZR",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T11:40:46.065398Z"
+        },
+        {
+          "env_ref": "sbe-ce11556a59fd7afc",
+          "backend": "firecracker",
+          "backend_env_id": "fc-2f84216e8809a20d",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-licence-220d8e069a",
+          "task_id": "wsop-wso-8711e7b269edbf2eb56f54e2f85d3709254ea2233d77918ce5b4e21b6954cf25",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T19:46:54.403516Z"
+        },
+        {
+          "env_ref": "sbe-ce33aed270ac4573",
+          "backend": "firecracker",
+          "backend_env_id": "fc-360e01d53314d2c6",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-storage-a039002f7e",
+          "task_id": "tsk_01M6VRAXYWJSQVG5Z0TD8DNS7E",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T19:40:48.763696Z"
+        },
+        {
+          "env_ref": "sbe-d3702313e5e3aa9f",
+          "backend": "firecracker",
+          "backend_env_id": "fc-52bc935422d6f876",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-incident-2ebda46d55",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:17:54.745976Z"
+        },
+        {
+          "env_ref": "sbe-d561ce9a46a25059",
+          "backend": "firecracker",
+          "backend_env_id": "fc-9a71da94611eeb94",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-http-199abccac2",
+          "task_id": "wsop-wso-5841c00957c2821fdc788fbd6db176390a86327adddc15849cdc3f653706aeb3",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:22:22.648282Z"
+        },
+        {
+          "env_ref": "sbe-d74dd1a8a4d1cd35",
+          "backend": "firecracker",
+          "backend_env_id": "fc-21894abfda3cf149",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-licence-9baddd0314",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:30:07.339242Z"
+        },
+        {
+          "env_ref": "sbe-da2e57ad74ffd9c3",
+          "backend": "firecracker",
+          "backend_env_id": "fc-23424696ab2e285b",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-storage-b6b18811aa",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T21:14:11.510992Z"
+        },
+        {
+          "env_ref": "sbe-dbce004c39112886",
+          "backend": "firecracker",
+          "backend_env_id": "fc-e535cbe8a0f61c61",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-incident-462f5bf9fa",
+          "task_id": "wsop-wso-ffb492ce8a632653dc6a7c0bffb0aa49d023f1a7826249e1c3a845fefecc4459",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:35:34.747814Z"
+        },
+        {
+          "env_ref": "sbe-dce2629dd6c6eda9",
+          "backend": "firecracker",
+          "backend_env_id": "fc-082b82bd27d19d77",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-http-014c52e47a",
+          "task_id": "tsk_01M6VW4HZEVKKVGA3WYJP8J76V",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:48:21.843119Z"
+        },
+        {
+          "env_ref": "sbe-e435811942a0936b",
+          "backend": "firecracker",
+          "backend_env_id": "fc-18ab2a75e7f80802",
+          "state": "destroyed",
+          "workspace_id": "dlv-http-libraries-jev-regression-b8c481b9cc",
+          "task_id": "wsop-wso-798cb05f214cb214a808703dce32facbde73d44d9c2f5d5d1323c9bf6e5ba701",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:54:36.993834Z"
+        },
+        {
+          "env_ref": "sbe-f5487a67097b56dc",
+          "backend": "firecracker",
+          "backend_env_id": "fc-8c0032de6d830e68",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-release-4d3d338d27",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T20:43:47.126967Z"
+        },
+        {
+          "env_ref": "sbe-fb144440da4f5f01",
+          "backend": "firecracker",
+          "backend_env_id": "fc-aa512d3abc14e4e5",
+          "state": "destroyed",
+          "workspace_id": "dlv-single-http-c959b27d67",
+          "task_id": "",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T18:39:07.674964Z"
+        },
+        {
+          "env_ref": "sbe-fee9698886e36128",
+          "backend": "firecracker",
+          "backend_env_id": "fc-13978ee96f80c47a",
+          "state": "destroyed",
+          "workspace_id": "dlv-compare-storage-5e5020bc72",
+          "task_id": "tsk_01M6TW8P2H6CNVE62D5PM8SR9C",
+          "busy_until": "",
+          "destroyed_at": "2026-11-07T11:30:23.522009Z"
+        }
+      ]
+    },
+    "gh-goalpairjudge-20261107": {
+      "environments": []
+    }
+  },
+  "environment_directory": [
+    {
+      "env_ref": "sbe-005538b09da8d640",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-04e23355eb74c1ce",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-0611277975ec8065",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-088a3103292bb57a",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-0b7487b84bc4005c",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-0c1d944955bcd8fe",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-16968ed59ec2fcd2",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-1741901634ed387b",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-1d864b1e281ae05f",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-1f7b9233ad25e9f7",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-24d80ffb46292b12",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-2a7d64f5b9743b83",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-2b9711a8a1b19bd4",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-2d55af797f3b6c35",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-2d756e12b73fec89",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-3306733ca0d58ff6",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-3493671cf814de67",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-3e3792fd3266fac3",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-47cc2649eaf80ff8",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-483b801a8aad33e9",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-4b5fee4f3bf19945",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-4bd6cc97f1fd4d18",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-4cc2bb676e33cb83",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-53066100f4fe0049",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-54ecb29c3ea29af3",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-585bcc68a785a0a9",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-5b5154a3268f399a",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-5c538d3f66ce0aa8",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-5def0b7ae226ed19",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-5f3faf07a26e6f6c",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-65d9243b4b70a75a",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-6d4c1a954bc08b91",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-6d90e84fa0314637",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-6fef511b8218cb0b",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-719189ae70003dae",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-73b99bab9e8019d3",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-7470821db59bb1ac",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-77b2ef800b2570ee",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-7a5dc5eda29fbc2b",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-7ab0edfcf264082b",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-7ed6d22bddbb8bfb",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-8608bf829bd5872e",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-8c0b770bf34a22ba",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-9358e8891d39f2d7",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-942ccc3eab2d3b56",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-a103e3cb194b763b",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-a156f8eea14e8fbf",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-a59b6b042863b7d9",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-a850fc81087bac8f",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-a8e243e3444599e9",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-b19e6e61844468d3",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-b6bfe1e2f8bb66c9",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-bbba5f1627e1dee3",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-bd73c75c8d5d1347",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-bd9e99e83bdf27a0",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-c981b926ba5dec02",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-ce11556a59fd7afc",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-ce33aed270ac4573",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-d3702313e5e3aa9f",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-d561ce9a46a25059",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-d74dd1a8a4d1cd35",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-da2e57ad74ffd9c3",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-dbce004c39112886",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-dce2629dd6c6eda9",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-e435811942a0936b",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-f5487a67097b56dc",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-fb144440da4f5f01",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    },
+    {
+      "env_ref": "sbe-fee9698886e36128",
+      "owner": "gh-goalpair-20261107",
+      "backend": "firecracker",
+      "state": "destroyed"
+    }
+  ]
+}

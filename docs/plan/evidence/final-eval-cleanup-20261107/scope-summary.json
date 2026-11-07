@@ -1,0 +1,22 @@
+{
+  "at_unix": 1794093839.31545,
+  "source_path": "/opt/evals/n16-evreal-pinned-20261107/final-live-scope.json",
+  "source_sha256": "274db9b962b18e3925eeb6bcc61ee9f3e1b3b8ab2c2f0a1ec9794cbe6f44871d",
+  "workspaces": [],
+  "experiment_processes_terminal": true,
+  "scopes": {
+    "gh-goalpair-20261107": {
+      "attempts": 315,
+      "known_usd_micros": 2784534,
+      "pending_reserved_usd_micros": 32814,
+      "active_tasks": []
+    },
+    "gh-goalpairjudge-20261107": {
+      "attempts": 27,
+      "known_usd_micros": 1063538,
+      "pending_reserved_usd_micros": 298752,
+      "active_tasks": []
+    }
+  },
+  "new_model_calls": 0
+}
