@@ -66,3 +66,9 @@ v2原四项有效，第五项返回STOP、同模型/tier及已知57578微美元�
 新增独立paired-score-extraction-v1，仅对恰好多这个非评分字符串的响应提取原scores，值/理由逐字不变；其他根键、非字符串metadata、缺维度、非法锚点或空理由继续拒绝。该提取对全部22统一，0/0.5/1不区分，旧四项是恒等映射；五维标准与请求配置都不变。每项记录raw_schema_valid及ignored_root_fields，review/报告保留失败计数；原payload不因此变合规，整体验收也不因此通过。
 
 独立semantic-extracted目录复用五份原响应与四原评分、派生第五份评分；同manifest/模型/schema2/run/Task，原strict目录不修改。九行账本严格核对，已知332277微美元包含全部旧费；原298752未知仍保留，执行cap6.701248、prior spent0.332277。offset9，从seq10仅续原余17；实际余17估价5.038352，加已知与未知预占为5.669381≤原7。恢复动作模型调用0；原件/seed/账单篡改或新pending拒绝，未知实际总额仍null。
+
+## 同v2最后未评分项的有限恢复
+
+提取后已保留21项有效评分，最后item fd5dff6d8baa993de772afea 的seq26因bad_structured_output没有原response/有效score，已结算35290微美元；不是新增unknown。完整26行账本已知1002408微美元，唯一旧unknown仍298752微美元，原7美元准入余额5698840微美元。最后同v2请求估0.304432美元，与全部已知/保留额合计1.605592美元。
+
+paired_semantic_last_recovery只接受既定raw-extraction父目录，不能再串接一次last恢复；保留21份raw、score、所有父文件与账本，配置/提示/标准不变。新的prior_known包含原3笔116987及本失败35290，共152277；seed21已知850131，启动spent仍1002408。offset26只发seq27这一项，完成后恢复为0新增调用；新pending停。17项回归与真实父目录/26行账只读核验通过。
