@@ -21,3 +21,24 @@ scripts/mx_registry_publication.py的prepare子命令生成全套材料。publis
 验证：六条离线回归通过，覆盖只读预检、默认漂移、丢回执恢复、pending禁止重试、材料篡改、无关shadow保护和旧草案拒绝。生成流程已核验十项schema及原输出评分。新增模型费用0；线上发布、晋级、再导出及Gateway加载仍待主集成执行。
 
 A/B最终分工：B统一部署专用Promote接口后通知，A作为唯一发布执行者按本bundle的10项Publish→Promote；Memory实验结束前B不更新Gateway冻结的Profile快照。源码model-profiles.json与registry-seed.json已同步最终10项新证据来源摘要；仅撤回本Goal早先准备的Sonnet/Qwen两条未结算能力分，其他已有字段不动。撤回的精确旧值与最终集合在bundle目录source-reconciliation.json；不是删除原始评测结果。脚本晋升丢回执/默认漂移/证据篡改回归和现有发布CLI合计24项通过。
+
+## 实际 Registry 发布（2026-11-07）
+
+A已完成10个Publish并逐项GET核对影子正文；第一次Opus晋升被服务端明确400拒绝，原默认仍v2。只读数据库比对确认原文数字4.0/20.0经protobuf转为4/20，数值完全相等，但旧UseNumber字符串比较误判。B以精确有理数比较修复1521aacc（不改历史正文/摘要），SQLite/Postgres回归通过并部署task-service:goal-1521aacc。A保留拒绝回执，重新读取默认及影子对账后恢复同一晋升，没有重复Publish。
+
+随后10项Promote全部成功，重读确认default及完整正文：
+
+| 模型Profile（a6api前缀） | 原默认 | 新默认 |
+| --- | --- | --- |
+| claude-opus-5-5@2026-10 | v2 | v3 |
+| deepseek-v4-pro@2026-11 | v1 | v2 |
+| gemini-4-argon@2026-11 | v1 | v2 |
+| glm-5.3@2026-11 | v2 | v3 |
+| gpt-6-astra@2026-11 | v1 | v2 |
+| gpt-6.1-sol@2026-11 | v1 | v2 |
+| grok-4.7@2026-11 | v1 | v2 |
+| kimi-k3.1-pro@2026-11 | v1 | v2 |
+| longcat-2.0@2026-11 | v1 | v2 |
+| mimo-v2.6-pro@2026-11 | v2 | v3 |
+
+证据：bundle目录publication-state.json、promotion-state.json、live-promote-after-numeric-fix.log；初次拒绝与精确数字诊断原件保留。私有临时发布凭据文件已删除。发布本身未调用模型，费用0。Gateway最终导出/加载由B统一完成后另记；此刻不能将Registry晋升称为Gateway已生效。plan/route/judge/transform以及2个费用未知act项的未发布原因仍全部保留。
