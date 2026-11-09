@@ -1,6 +1,6 @@
 # Agent 文件工作台与文档智能架构设计
 
-版本：设计稿 1.1 · 2026-11-10
+版本：设计稿 1.2 · 2026-11-10
 范围：Agent Runtime 与 Coding Agent 的下一期文件能力。本文定义目标能力、底层模型、交互、工具契约和分期出口；除“现状”明确列出的项目外，均为拟议设计，不表示已经实现。本文是专项设计提案，合入现有主设计前按 S-01 审阅契约。
 
 **核心决策：把文件从“聊天附件”提升为有版本、有权限、有结构、有计算能力、能编辑交付的工作对象。** 用户可以交给 Agent 一组 PDF、Word、Excel、PPT、图片和代码资料，要求查找、比较、分析、计算、修改并输出文件；每一步都能定位到原始证据，任务结束有可验证结果。
@@ -271,7 +271,7 @@ verify(candidate, base, criteria) -> verification_report
 | 复杂 PDF/表格 | Docling 标准PDF流水线，确定为主布局后端；Poppler作为独立页面渲染器 | Docling负责阅读顺序/段落/表格/图关系，渲染图和坐标统一映射到SourceAnchor；输出映射到平台IR，不泄漏库类型到API。[S10][S10b] |
 | OCR | RapidOCR＋ONNX Runtime CPU，模型预置的离线镜像 | 先支持中文/英文，按页/区域执行，记录语言模型、bbox、置信与耗时；不默认云OCR或整库重复OCR。[S15][S16] |
 | DOCX/XLSX/PPTX | 专用 OOXML 适配器 | 读/写结构比统一纯文本更可靠；使用 python-docx/openpyxl/python-pptx 类库前验证保留对象，不等于无损 |
-| Office 渲染/重算 | 独立 LibreOffice 或许可允许的 Office 引擎容器 | 环境字体和版本固定；重算能力单列，第三方库写公式不代表已计算 |
+| Office 渲染/重算 | 独立LibreOffice容器；XLSX公式默认由Calc的UNO接口全量重算 | 环境、引擎、字体和选项固定；重算与保真分别验证。Microsoft Excel原生后端为可选后续接入，不作为离线默认依赖。[S20][S21] |
 | 表格数据分析 | DuckDB＋可控 Python 计算 | 读 CSV/Parquet/JSON，XLSX 由结构适配器或固定[Excel扩展][S11b]接入；禁止运行中联网安装扩展。[S11] |
 | Notebook/归档 | 轻量专用适配器 | 保留 cell/member identity；读取不执行，执行另走工具与 effect |
 
@@ -382,6 +382,8 @@ VectorStore 不可用时可降级到授权原件的精确读取/词法搜索，�
 selector授权必须落实到物理输入：只有某张sheet/区域权限的子任务获得物化的受限Dataset或裁剪后的派生副本，只读挂载；没有`read_original`就不能获得完整XLSX、原blob或含其它sheet的OOXML包。`shell_run`、`attachment_import`、任意Python执行遵守同样的挂载与访问限制，不能绕过table工具。公式引用越过授权选区时返回缺依赖，不能偷偷补读整份工作簿。
 
 `table.query` 只允许受控只读表访问；防止 SQL 借文件函数、扩展安装或网络函数读取任务以外内容。引擎禁运行期`INSTALL/LOAD/ATTACH`以及指向授权目录外的文件读取/`COPY`，扩展和表函数用白名单约束；仅限制SQL动词为SELECT是不充分的。复杂 Python 计算仍在 Sandbox，可取消、有 CPU/内存/输出限制。执行成功只证明程序运行，需核对行数、空值、抽样和总量守恒等业务条件。
+
+默认计算后端冻结为 **LibreOffice Calc**：XLSX是文件格式，Calc才是重算引擎。通过UNO显式执行`calculateAll()`，不能仅`--convert-to`另存为或设置`fullCalcOnLoad`就报告已重算。[S20]
 
 XLSX 分离 `formula`、`cached_value`、`evaluated_value` 与 `calculation_status`。没有真实引擎执行就标记 `not_recalculated`。外部工作簿引用和宏默认不执行；用户授权时另建有依赖说明的执行任务。图表、透视表与条件格式的保留/刷新能力按后端声明，不能用 openpyxl 写成功等同 Excel 全功能重算。
 
@@ -561,7 +563,7 @@ ACL缩小：立即提升revocation epoch并拒绝旧授权，异步删/改索引
 
 ## 20 已冻结的首批工程决策
 
-决策日期：2026-11-10。以下四项由本轮设计收口，后续实施按此推进；它们是目标配置，不代表现运行服务已更新。Excel公式引擎与部署中的向量后端仍按M3/M2核验，不作为本轮额外选型任务。
+决策日期：2026-11-10。以下五项已完成设计抉择，后续实施按此推进；它们是目标配置，不代表现运行服务已更新。Excel采用现成引擎全量重算，不自研完整Excel兼容引擎；部署中的向量后端仍在M2核验。
 
 ### 20.1 PDF 采用三条明确路径
 
@@ -631,9 +633,58 @@ M0.1仍只实现owner-private目录；项目grant、回收站、GC和备份政�
 
 配置支持部署调整，但能力响应、服务验证、配额计量与UI必须一致。后续再评估200 MiB/文件的大文件档，必须有直传/分片、断点恢复与实际压测数据；本轮不再新增第二档实现。
 
-### 20.5 本次决策的执行顺序
+### 20.5 Excel采用现成全量重算引擎
 
-先完成M0.1的文件权威/版本/幂等目录，以统一配置承载上述额度；随后补传输与Task/Worker限额贯通，再在M1构建固定Docling/RapidOCR/字体镜像。共享/保留按M0–M4中的授权和清理阶段落实。四项方向已冻结，不再把“再比较一个后端”当持续延长任务的理由；质量门失败时报告具体样本与受影响能力后有限修复。
+**决策：XLSX为默认工作簿格式，LibreOffice Calc为默认公式重算引擎；openpyxl/OOXML适配器负责结构读取与受限修改，DuckDB负责数据查询。** 不自研一套完整Excel公式解释器，不把文件格式、公式引擎和分析引擎混称为同一能力。
+
+#### 难度判断与承诺边界
+
+| 目标 | 判断 | 本期选择 |
+| --- | --- | --- |
+| 对完整授权工作簿执行所有公式的重新计算 | 现成Calc有`calculateAll()`接口，接线与隔离的工程难度可控 | 纳入M3默认能力 |
+| 写公式、读旧缓存值 | 文件结构库可以做到，但没有完成计算 | 不能作为重算成功证据；openpyxl官方明确不求值。[S22] |
+| 与所有Excel版本、全部函数、宏、插件、外部数据和复杂对象100%一致 | 属于长期兼容工程，远超一个适配器的工作量 | 不承诺；按固定引擎版本与样本给出实测兼容范围 |
+| 使用Microsoft Excel原生计算 | Graph提供`FullRebuild`，但有账号、存储和委托权限要求 | 留为显式配置的可选后端，不是离线默认路径。[S23] |
+
+“全量”指所有已授权且依赖齐全的公式单元都提交给引擎重算，不意味着每一种Excel公式都得到兼容结果。新函数、动态数组、命名公式、循环引用、插件函数分别进入能力评测；不能把某函数未经验证就一概写成不支持，也不能无误差承诺。
+
+#### 标准执行流程
+
+1. 固定输入FileVersion、允许选区、所需保真等级和公式结果验证规则；检查加密、宏、自定义函数、外部数据/链接、日期系统和迭代计算设置。
+2. 把授权候选副本放入隔离沙箱。每作业独立LibreOffice用户profile，进程不跨租户复用；输入原件只读，输出写独立目录。UNO监听只用沙箱内部IPC，不暴露公网。
+3. 用UNO以Hidden模式载入，显式禁用文档宏和自动外部链接更新。计算需要的依赖必须已授权并固定版本；缺跨sheet/跨工作簿依赖返回`missing_dependencies`，不能借“全量”扩大读取范围。
+4. 调用`calculateAll()`，而非只计算dirty cells的`calculate()`；全量重算调用受deadline控制，取消或超时终止该作业的进程组并隔离未发布输出。[S20]
+5. 用`storeToURL()`导出新候选XLSX，不覆盖原件；关闭引擎后用独立OOXML读取器核对公式、值、错误单元和结构，再做必要渲染检查。[S21]
+6. 只有重算完成、必要公式/业务断言通过且保真等级满足，才可`edit_publish`。损坏输出、超时、缺引擎、未知函数或结果异常均返回实际状态；不能因为soffice退出码0就标成功。
+
+`calculation_status`至少区分`not_requested/not_recalculated/queued/running/recalculated/recalculated_with_errors/unsupported/missing_dependencies/failed/cancelled`，状态通过共享schema冻结。`recalculated`只说明本次引擎计算完成，另有`verification_status`和`preservation_status`；公式本身合法返回`#N/A`等错误时记录原有/新增差异及用户验收规则，不以“出现任何错误”机械判定全部失败。
+
+重算记录包含：engine名称/版本/digest、输入/输出SHA、调用方式、开始/结束时间、locale、日期系统、时区、precision/iteration选项、公式单元覆盖和新增错误清单、关键结果断言、依赖版本、导出filter。`NOW/TODAY/RAND`等易变函数记录运行环境与易变单元；未固定时钟或随机源时不承诺逐字节重复结果。外部刷新、VBA、数据连接、透视表刷新不等于公式重算，默认关闭并独立声明。
+
+#### 保真与预算
+
+全工作簿经Calc重新导出可能影响格式、图表或其它OOXML部件，所以不能无条件称为L2定点保真。默认返回候选＋公式结果报告；若用户要求L2，则检查未选中结构和对象，验证不过不能默默退成L0后发布。优先保留用户原件，对支持范围内的单元操作进行针对性验收。
+
+初始单次重算预算120秒、2 vCPU、4 GiB内存；同一预算内最多一次由基础设施transient故障触发的重试。文件50 MiB上传档不保证任意50 MiB工作簿都能在该预算内重算，内部XML大小、单元数和依赖复杂度还需预检。大文件超限返回明确未完成状态，不无限等进程或重复重算。
+
+固定镜像需包含受支持的LibreOffice稳定版本、匹配的UNO运行库、字体和导出filter；本机可用的开发版/精简版只用于可行性探测，不能直接作为生产镜像。引擎未通过自检时`can_recalculate=false`，编辑流程最多返回未重算候选。
+
+#### 验收出口
+
+在M3已有XLSX样本集中加入以下检查，不另开无界兼容项目：
+
+- 人工构造错误旧缓存值，显式重算后基础公式、跨sheet链、条件汇总、查找、舍入结果正确且公式保留。
+- 1900/1904日期系统、百分数/货币、空值/文本数值、隐藏sheet、命名区域和已声明的新函数行为按参考结果验证。
+- 计算超时/取消/崩溃后无残留可执行进程，无半成品误发布；输入原件SHA不变。
+- 宏、外部链接、缺依赖、自定义函数、循环引用都有可观察结果，不能默默读取网络或未知本地文件。
+- 保存后重新打开核对公式值/样式/图表与目标保真；无引擎时不把`data_only`旧缓存说成新结果。
+- 只有这些门通过才在产品显示“支持全量重算”；“与Microsoft Excel完全兼容”不是本期出口。
+
+Microsoft Graph可选后端必须由用户显式连接工作/学校账号并授权文件访问；当前calculate接口不支持application-only或个人账号权限，不能作为免授权后台替代。[S23] 也不采用无人值守桌面Excel COM作为默认服务器方案。[S24]
+
+### 20.6 本次决策的执行顺序
+
+先完成M0.1的文件权威/版本/幂等目录，以统一配置承载上述额度；随后补传输与Task/Worker限额贯通，再在M1构建固定Docling/RapidOCR/字体镜像。共享/保留按M0–M4中的授权和清理阶段落实。M3使用本节已选的Calc全量重算适配，不再另起自研公式引擎选型。五项方向已冻结，不再把“再比较一个后端”当持续延长任务的理由；质量门失败时报告具体样本与受影响能力后有限修复。
 
 ## 参考来源
 
@@ -658,6 +709,11 @@ M0.1仍只实现owner-private目录；项目grant、回收站、GC和备份政�
 - S17：[Docling本地模型目录与pipeline配置][S17]。
 - S18：[Noto CJK字体][S18]。
 - S19：[Liberation字体][S19]。
+- S20：[LibreOffice UNO计算接口][S20]。
+- S21：[LibreOffice保存到候选文件接口][S21]。
+- S22：[openpyxl公式求值边界][S22]。
+- S23：[Microsoft Graph Excel重算与权限][S23]。
+- S24：[Microsoft关于Office服务端自动化的限制][S24]。
 
 DuckDB链接固定到本次核对的2.0文档，仅用于说明能力，实际部署版本需经M1/M3验收冻结。
 
@@ -685,3 +741,9 @@ DuckDB链接固定到本次核对的2.0文档，仅用于说明能力，实际�
 [S17]: https://docling-project.github.io/docling/reference/pipeline_options/
 [S18]: https://github.com/notofonts/noto-cjk
 [S19]: https://github.com/liberationfonts/liberation-fonts
+
+[S20]: https://api.libreoffice.org/docs/idl/ref/interfacecom_1_1sun_1_1star_1_1sheet_1_1XCalculatable.html
+[S21]: https://api.libreoffice.org/docs/idl/ref/interfacecom_1_1sun_1_1star_1_1frame_1_1XStorable.html
+[S22]: https://openpyxl.readthedocs.io/en/stable/simple_formulae.html
+[S23]: https://learn.microsoft.com/en-us/graph/api/workbookapplication-calculate?view=graph-rest-1.0
+[S24]: https://support.microsoft.com/en-au/visio/considerations-for-server-side-automation-of-office
