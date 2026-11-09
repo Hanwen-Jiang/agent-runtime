@@ -1,11 +1,11 @@
 # Agent 文件工作台与文档智能架构设计
 
-版本：设计稿 1.2 · 2026-11-10
+版本：设计稿 1.3 · 2026-11-10
 范围：Agent Runtime 与 Coding Agent 的下一期文件能力。本文定义目标能力、底层模型、交互、工具契约和分期出口；除“现状”明确列出的项目外，均为拟议设计，不表示已经实现。本文是专项设计提案，合入现有主设计前按 S-01 审阅契约。
 
 **核心决策：把文件从“聊天附件”提升为有版本、有权限、有结构、有计算能力、能编辑交付的工作对象。** 用户可以交给 Agent 一组 PDF、Word、Excel、PPT、图片和代码资料，要求查找、比较、分析、计算、修改并输出文件；每一步都能定位到原始证据，任务结束有可验证结果。
 
-功能目标采取完整闭环，不停留在“多装几个解析库”。工程实现保持边界清晰：文件权威在 Runtime，原件与派生物在 ObjectStore，解析和计算在 Sandbox，所有模型经 Model Gateway，检索复用 VectorStore，Coding Agent 负责交互。文档知识与长期经验记忆使用独立语料和生命周期。
+功能目标采取完整闭环，不停留在“多装几个解析库”。工程实现保持边界清晰：文件权威在 Runtime，原件与派生物在 ObjectStore，解析和计算在 Sandbox，所有模型经 Model Gateway，检索复用 VectorStore，Coding Agent 负责交互。文档知识与长期经验记忆使用独立语料和生命周期，共用一套检索实现。技术栈冻结为现有Go控制层、Python文件处理/检索层、React/TypeScript界面；LlamaIndex作为统一检索模块的内部组件接入现有VectorStore，不建立平行系统。
 
 **阅读路线：** 先看第1–5节的产品目标与借鉴，第6–15节是架构和契约，第16–20节是预算、验收与实施出口。
 
@@ -136,15 +136,15 @@ flowchart TB
     JOB --> WORKER["Python 文件处理模块"]
     WORKER --> BOX["Sandbox 解析 OCR 渲染 计算 编辑"]
     WORKER --> OBJ
-    WORKER --> INDEX["文档索引模块"]
-    INDEX --> VEC["VectorStore document_chunks"]
-    INDEX --> LEX["词法索引与结构索引"]
+    WORKER --> RET["统一检索模块 LlamaIndex组件与Runtime适配"]
+    RET --> VEC["现有VectorStore dense与sparse查询"]
+    RET --> META["统一索引元数据与来源映射"]
     AGENT["Planner Node Executor Context Builder"] --> API
     AGENT --> MG["Model Gateway 文本 视觉 Embedding Rerank"]
+    RET --> MG
     MG --> OBJ
-    API --> RET["授权过滤 检索与证据复核"]
-    RET --> VEC
-    RET --> LEX
+    API --> RET
+    MEM["MemoryService 经验规则"] --> RET
     RET --> DB
     RET --> OBJ
 ```
@@ -152,14 +152,14 @@ flowchart TB
 | 责任 | 部署归属 | 不承担什么 |
 | --- | --- | --- |
 | File Catalog / Access | 先作为 `go-task-service` 内部模块＋共享数据表 | 不执行解析器，不把应用服务器本地盘当原件库 |
-| Knowledge / Retrieval | 首版在 `py-memory` 进程中注册独立 `KnowledgeService` 与 sibling package，复用Python VectorStore/embedding；负载证明需要时再拆部署 | 只共享进程与Provider，不共享Memory Item、RPC或文档/经验生命周期 |
+| Knowledge / Retrieval | `py-memory`进程内一套Python RetrievalEngine，集成LlamaIndex；KnowledgeService与MemoryService复用同一存储/embedding/召回组件 | 业务授权、证据映射和经验规则仍各自明确；不建立第二套分块/向量库连接/检索流水线 |
 | File Processing | `py-worker` 独立任务队列和模块；确定性编排＋activity | 不在 workflow 里读文件、运行解析器或调用模型 |
-| Parser/Renderer/Editor | 版本固定的 Sandbox 镜像中的适配器 | 不允许供应商库散落在 Planner/Go API 业务逻辑里 |
+| Parser/Renderer/Editor | 版本固定的Python文件处理Sandbox镜像；直接调用Docling/Python格式库与LibreOffice/Poppler可执行程序 | 不允许供应商库散落在 Planner/Go API 业务逻辑里 |
 | Computation | 沙箱内的可取消、有配额执行后端 | 不用模型生成的结论替代真实计算输出 |
 | Model Gateway | 原生多模态、embedding、计量、限流和模型路由 | 不成为全部文档解析的唯一入口 |
 | Coding Web | 身份与应用会话映射、API 代理、UI、用户操作意图 | 不保留第二份不可恢复的文件权威 |
 
-Go File API经独立Knowledge RPC访问Python检索模块；处理Worker通过同一接口登记generation。这样遵守现有VectorStore仅Python接口的事实，同时避免起步就增加新的服务部署。
+Go File API经Knowledge RPC访问统一Python检索模块；处理Worker通过同一模块的摄取入口登记generation。Memory的业务接口仍保留，但底层embedding、VectorStore访问、召回与重排复用同一实现。LlamaIndex只作为Python库，不引入它的Agent/Workflows替代现有Runtime和Temporal，也不额外部署Docling API、独立任务队列或另一套检索服务。
 
 `FileProcessor`/`Renderer`/`Editor` 首先是 Worker 内部适配接口；复用现有 Sandbox、ObjectStore、Relational、VectorStore、ModelProvider，不默认新增“第十四种核心 Provider”。只有需跨语言共享或独立部署的接口才走 S-01 升级。
 
@@ -269,10 +269,10 @@ verify(candidate, base, criteria) -> verification_report
 | --- | --- | --- |
 | PDF 基础读取 | pypdf 快速元数据/文字读取＋Poppler 页渲染 | 简单文字页不必启动重型布局流水线；页锚点与字形/阅读顺序异常触发升级 |
 | 复杂 PDF/表格 | Docling 标准PDF流水线，确定为主布局后端；Poppler作为独立页面渲染器 | Docling负责阅读顺序/段落/表格/图关系，渲染图和坐标统一映射到SourceAnchor；输出映射到平台IR，不泄漏库类型到API。[S10][S10b] |
-| OCR | RapidOCR＋ONNX Runtime CPU，模型预置的离线镜像 | 先支持中文/英文，按页/区域执行，记录语言模型、bbox、置信与耗时；不默认云OCR或整库重复OCR。[S15][S16] |
-| DOCX/XLSX/PPTX | 专用 OOXML 适配器 | 读/写结构比统一纯文本更可靠；使用 python-docx/openpyxl/python-pptx 类库前验证保留对象，不等于无损 |
-| Office 渲染/重算 | 独立LibreOffice容器；XLSX公式默认由Calc的UNO接口全量重算 | 环境、引擎、字体和选项固定；重算与保真分别验证。Microsoft Excel原生后端为可选后续接入，不作为离线默认依赖。[S20][S21] |
-| 表格数据分析 | DuckDB＋可控 Python 计算 | 读 CSV/Parquet/JSON，XLSX 由结构适配器或固定[Excel扩展][S11b]接入；禁止运行中联网安装扩展。[S11] |
+| OCR | 在Docling流水线内接RapidOCR＋ONNX Runtime CPU，模型预置的离线镜像 | 先支持中文/英文，按页/区域执行，记录语言模型、bbox、置信与耗时；不默认云OCR或整库重复OCR。[S15][S16] |
+| DOCX/XLSX/PPTX | Python专用OOXML适配器：python-docx/openpyxl/python-pptx | 读/写结构比统一纯文本更可靠；使用 python-docx/openpyxl/python-pptx 类库前验证保留对象，不等于无损 |
+| Office 渲染/重算 | Linux文件处理镜像内LibreOffice＋Python UNO；XLSX公式默认由Calc全量重算 | 环境、引擎、字体和选项固定；重算与保真分别验证。Microsoft Excel原生后端为可选后续接入，不作为离线默认依赖。[S20][S21] |
+| 表格数据分析 | DuckDB Python API＋可控Python计算 | 读 CSV/Parquet/JSON，XLSX 由结构适配器或固定[Excel扩展][S11b]接入；禁止运行中联网安装扩展。[S11] |
 | Notebook/归档 | 轻量专用适配器 | 保留 cell/member identity；读取不执行，执行另走工具与 effect |
 
 本轮已冻结PDF与OCR后端方向，后续验证只决定版本/参数/覆盖与是否达到发布门，不重新进行无止境的后端竞赛。新增运行依赖进入现有依赖审核流程。准确包版本、模型文件SHA与字体digest在首个合格镜像构建时登记；不能用未构建验证的版本号假装已可复现，也不把某库支持格式等同全部复杂对象无损。
@@ -348,11 +348,11 @@ flowchart LR
     M -. "独立审核的经验提炼，不复制全文" .-> MEM["Memory corpus"]
 ```
 
-原件/IR 是事实来源，向量是可重建加速层。文档使用 `document_chunks`（逻辑 corpus），Memory 保持现有 `memory` corpus。复用 Provider 与运行设施，不复用 Memory Item 的标题/guidance/promotion 语义。现有 Memory sparse 实现不必然等于 BM25；第一版明确记录 lexical 后端与算法，不能换名宣传。
+原件/IR 是事实来源，向量是可重建加速层。文档使用 `document_chunks`（逻辑 corpus），Memory 保持现有 `memory` corpus。复用 Provider 与运行设施，不复用 Memory Item 的标题/guidance/promotion 语义。现有 Memory sparse 实现不必然等于BM25；统一模块明确记录稀疏构造与融合算法，不能换名宣传。分语料不分实现：文档选择结构分块策略，Memory保留经验单元边界；两者共用embedding入口、VectorStore适配器、查询和重排执行器。
 
 ### 11.3 分块与索引身份
 
-按文档结构切块：段落带所属标题；表格保留表头/单位与行区间；PDF 保留页跨度；代码保持符号/路径边界。巨表不把百万行逐行 embedding，索引 schema/字段说明/表级概要，实际数值通过查询获取。
+分块由统一检索模块调用LlamaIndex的可替换转换组件执行一次；Docling输出结构与来源定位，不先生成一套会被再次切碎的检索chunks。按文档结构切块：段落带所属标题；表格保留表头/单位与行区间；PDF 保留页跨度；代码保持符号/路径边界。巨表不把百万行逐行 embedding，索引 schema/字段说明/表级概要，实际数值通过查询获取。
 
 建议初始 chunk 目标 600 tokens、上限 1000、最多 80 overlap，作为可调整的工程初值；表格和代码不能为了达字符数切坏语义。LLM 补上下文的 chunk enrichment 单独预算、单独派生标签，未默认开启。
 
@@ -366,7 +366,7 @@ physical_vector_id = hash(tenant, file_version_id, representation_id,
 ### 11.4 查询、发布与降级
 
 1. 服务端根据身份、Task pins/集合快照、action、有效期计算允许范围，客户端只能收窄。
-2. 分别召回 dense/lexical 候选；建议各 40 条，RRF 合并，最多 20 条进入可选 rerank，最终 8 条且受上下文预算截断。这些是默认配置，不是固定质量承诺。
+2. 通过现有VectorStore查询能力完成dense/sparse召回与一次RRF融合，LlamaIndex Retriever只做适配，不再叠加QueryFusionRetriever重复融合。目标为两路候选各40条、最多20条进入可选rerank、最终8条；当前Provider尚未暴露独立双路Top K，首版使用其统一top_k并如实记录有效参数；只有确需独立预算时才扩契约。这些是默认配置，不是固定质量承诺。
 3. 每条结果回数据库复核 FileVersion、当前 ACL、tombstone、generation，再取正文和锚点；不能直接信向量 payload 中的旧权限。
 4. 精确查询高优先级匹配不得被语义重排淹没；金额/公式/日期关键结论调用局部读取验证。
 5. 回答引用带版本与锚点。检索不足返回 coverage/未命中，不把“不在Top K”写成“文件不存在”。
@@ -374,6 +374,27 @@ physical_vector_id = hash(tenant, file_version_id, representation_id,
 新代索引后台构建、校验覆盖后，在数据库事务切换 `active_generation`。新Task据此建立固定输入快照；运行Task始终使用第7.3节绑定的代次，单次查询也固定相同snapshot。旧代为仍持有pin的任务保留，并支持短期回滚。只发布部分覆盖时必须显式版本化 coverage，不把未完成新代替换完整旧代。
 
 VectorStore 不可用时可降级到授权原件的精确读取/词法搜索，标明降级；embedding/rerank 不可用不触发无限重试。处理/索引/检索分层及dense/lexical混合召回借鉴 [OpenAI Retrieval][S07] 与 [Dify索引设置][S06b]；generation原子发布、事务与权限规则由本平台定义。
+
+### 11.5 LlamaIndex与现有VectorStore的一体化实现
+
+冻结使用LlamaIndex Python核心组件实现统一检索模块，采用官方支持的可定制存储和摄取接口。[S25][S26] 对外只有一组语义入口：`ingest(source_snapshot, policy)`、`search(query, authorized_scope, options)`、`resolve(evidence_refs)`、`delete(source_version)`。文件/版本权限仍由Runtime掌握；模块同时服务文档与Memory，不再并行保留另一套自研索引流水线。
+
+| 环节 | 唯一实现归属 | 接入约束 |
+| --- | --- | --- |
+| 文档结构提取 | Docling/格式适配器 | 输出Representation，不负责再写一份向量索引 |
+| 分块与Node组织 | LlamaIndex转换组件 | Node ID映射本设计physical_vector_id；ref_doc_id映射不可变源版本，保留SourceAnchor |
+| 文本embedding | Runtime Model Gateway适配器 | 统一模型版本、成本、限流；禁止隐式启用LlamaIndex默认外部模型客户端 |
+| 向量CRUD与查询 | 一个LlamaIndex→Runtime VectorStore适配器 | 先Bind租户；不用LlamaIndex的Milvus/Qdrant直连插件绕过现有Provider |
+| 混合融合 | 现有VectorStore实现 | 只做一次dense/sparse融合；重排调用与模型预算共用已有路径 |
+| docstore/index store | 映射Runtime Relational＋ObjectStore | 只存必要Node/索引投影，File Catalog仍是版本与ACL权威；禁止另写本地JSON文件成为第二真相 |
+| 作业运行、取消、恢复 | 现有Temporal＋Worker activity | LlamaIndex pipeline作为一次处理组件执行，不新增Workflows/Celery/RQ调度 |
+| 回答生成 | 现有Agent主循环 | 检索只返回证据包；不用QueryEngine另起隐藏生成/工具循环 |
+
+文档去重、更新和删除以FileVersion/IndexGeneration决定；不把LlamaIndex默认的“同doc_id更新”直接用于覆写不可变历史。Node缓存键包含tenant scope、版本、处理参数、embedding版本与generation，不能跨租户共享正文缓存。Docstore缓存只能加速，删除屏障与最新ACL检查仍在读取/出结果边界。
+
+适配器对当前Provider不能表达的filter、query mode和删除范围明确拒绝或在授权后进行有界变换，不能静默丢掉过滤条件、全库检索后才隐藏结果。按source删除先从权威映射得到精确physical IDs，再由Provider删除；不以用户传入的tenant_id拼接过滤器。所有同一功能只有一个入口和一个实现，但查询组件不承担文件解析、用户权限变更或调度职责。
+
+Memory业务规则（审核、晋升、有效期、经验评分）留在MemoryService；Knowledge侧负责文件版本/证据/generation。这是业务策略差异，而不是复制两套embedding、存储连接或检索引擎。迁移已有Memory查询时先做结果对照，保留作用域过滤和已有评分语义，通过后删除替代的重复实现。
 
 ## 12 表格计算与可复现分析
 
@@ -527,7 +548,7 @@ ACL缩小：立即提升revocation epoch并拒绝旧授权，异步删/改索引
 | 文件权威/API | taskapi uploads、ObjectStore、Relational | `go-task-service/internal/files`；File/Knowledge服务骨架走S-01 |
 | 应用来源兼容 | `coding-agent/internal/server/sources.go` | 保留旧source_id→file_version映射；代理新File API，JSON仅缓存/迁移输入 |
 | 处理流水线 | py-worker activities、Sandbox、Temporal | `agentruntime_worker/files/{inspect,parse,render,compute,edit}`；依赖位于隔离镜像 |
-| 文档检索 | VectorStore/embedding/rerank | `py-memory/knowledge`独立模块与KnowledgeService，独立corpus、generation/outbox；不复用MemoryService/MemoryItem语义 |
+| 统一检索实现 | 现有VectorStore/Model Gateway/Relational | `py-memory/.../retrieval`集成LlamaIndex与Runtime适配；KnowledgeService和MemoryService共用；文档与经验保持各自corpus/业务生命周期 |
 | Agent入口 | ToolDriver、context_read、attachment_import | 能力注册与file/table/document工具族；保留旧工具兼容并标后续迁移 |
 | 图像派生授权 | Gateway Task image manifest | FileVersion/EvidenceRef/derived grant解析器；GetCapabilities扩展可声明region/derived支持 |
 | UI | `ui/chat`与现控制器 | React文件库、预览、sources、changeset/计算结果组件；统一事件消费 |
@@ -563,7 +584,7 @@ ACL缩小：立即提升revocation epoch并拒绝旧授权，异步删/改索引
 
 ## 20 已冻结的首批工程决策
 
-决策日期：2026-11-10。以下五项已完成设计抉择，后续实施按此推进；它们是目标配置，不代表现运行服务已更新。Excel采用现成引擎全量重算，不自研完整Excel兼容引擎；部署中的向量后端仍在M2核验。
+决策日期：2026-11-10。以下六项已完成设计抉择，后续实施按此推进；它们是目标配置，不代表现运行服务已更新。Excel采用现成引擎全量重算，不自研完整Excel兼容引擎；部署中的向量后端仍在M2核验。
 
 ### 20.1 PDF 采用三条明确路径
 
@@ -684,9 +705,35 @@ M0.1仍只实现owner-private目录；项目grant、回收站、GC和备份政�
 
 Microsoft Graph可选后端必须由用户显式连接工作/学校账号并授权文件访问；当前calculate接口不支持application-only或个人账号权限，不能作为免授权后台替代。[S23] 也不采用无人值守桌面Excel COM作为默认服务器方案。[S24]
 
-### 20.6 本次决策的执行顺序
+### 20.6 语言、框架与部署边界冻结
 
-先完成M0.1的文件权威/版本/幂等目录，以统一配置承载上述额度；随后补传输与Task/Worker限额贯通，再在M1构建固定Docling/RapidOCR/字体镜像。共享/保留按M0–M4中的授权和清理阶段落实。M3使用本节已选的Calc全量重算适配，不再另起自研公式引擎选型。五项方向已冻结，不再把“再比较一个后端”当持续延长任务的理由；质量门失败时报告具体样本与受影响能力后有限修复。
+**选择：Go控制层＋Python统一文件处理/检索层＋现有React/TypeScript界面。新增业务功能不引入Java、C#/.NET或独立Node.js后端。** 已有Rust沙箱基础设施继续使用，本期不为文件业务新增Rust实现。
+
+| 层次 | 冻结选型 | 运行形态 |
+| --- | --- | --- |
+| 文件身份/版本/授权/配额 | Go Runtime＋现有Relational/ObjectStore | 复用task-service，不新增第二文件元数据服务 |
+| PDF复杂结构/OCR | Docling Python库，内部接RapidOCR＋ONNX Runtime CPU | 在文件处理Sandbox中执行；不用docling-serve或Jobkit再建HTTP/队列层。[S28] |
+| 轻量读取/页面渲染 | pypdf＋Poppler | 同一格式适配门面按意图选路径；两者不建立独立资料库 |
+| 文档与Memory检索 | LlamaIndex核心组件＋现有VectorStore适配器 | 一套Python RetrievalEngine；底层复用当前部署Milvus或Qdrant，不再引第三种库 |
+| 表格分析 | DuckDB Python API | 运行于受限计算Sandbox，临时数据库和文件挂载按任务隔离。[S27] |
+| Office编辑 | python-docx/openpyxl/python-pptx适配 | 按已声明对象和保真等级处理，不用模型直接重建未知格式部件 |
+| Excel重算/Office渲染 | LibreOffice＋Python UNO | 固定Linux镜像、每作业隔离profile；复用Sandbox生命周期管理 |
+| Agent执行/恢复 | 现有Temporal和Worker | 单一调度/取消/幂等链；不用LlamaIndex Workflows、Celery、RQ另起任务系统 |
+| 交互 | React/TypeScript＋HeroUI Pro | 复用输入、预览、来源、工具流与审阅组件 |
+
+这里“不新增语言”指团队新增维护的业务工程语言，不要求依赖内部也是纯Python。LibreOffice、Poppler、DuckDB、ONNX Runtime作为固定版本的原生依赖使用，不维护其C/C++源码。模型、字体、包与镜像digest在构建验收时固定，不以未验证的latest作为生产锁定版本。
+
+主Worker当前Python版本与LibreOffice的pyuno不强行混装。文件处理镜像选择相互兼容的LibreOffice、系统Python和pyuno，主Worker经现有Sandbox执行Python适配入口；请求/响应只携带受控对象引用、参数与报告。pyuno对Python运行环境的要求由LibreOffice绑定决定，[unoserver官方安装说明][S29]也明确要求匹配其Python。这一选择不增加新的开发语言；本期无须另起通用转换服务器。
+
+首次接入只安装`llama-index-core`及确有需要的组件；禁用隐式供应商默认值，embedding/重排仍走Model Gateway。LlamaIndex的公开接口不泄漏到File API/Task协议；固定内部适配版本，在升级时验证序列化、filter和ID行为。Docling与LlamaIndex是实现组件，不是新的业务权威或新的任务编排系统。
+
+不同时部署Haystack与LlamaIndex；不为转换再加Gotenberg服务；不为进程管理引JODConverter/Java；不把Aspose.NET作为默认重算依赖。未来若单独有在线Office编辑需求，再评估Univer等前端SDK，不进入本期默认安装集。
+
+本决策的验收门：一次文件摄取只有一个分块/embedding/写索引链；一次搜索只做一次混合融合；文档与Memory通过同一个Provider适配器执行查询；旧租户隔离、预算、版本引用及Temporal恢复语义不回归。解析和计算输出仍按各自格式门验收，不能因框架调用成功就直接标业务成功。
+
+### 20.7 本次决策的执行顺序
+
+先完成M0.1的文件权威/版本/幂等目录，以统一配置承载上述额度；随后补传输与Task/Worker限额贯通，再在M1构建固定Docling/RapidOCR/字体镜像。共享/保留按M0–M4中的授权和清理阶段落实。M3使用本节已选的Calc全量重算适配，不再另起自研公式引擎选型。六项方向已冻结，M2按第11.5节统一LlamaIndex与现有VectorStore，不另造平行检索链；不再把“再比较一个后端”当持续延长任务的理由；质量门失败时报告具体样本与受影响能力后有限修复。
 
 ## 参考来源
 
@@ -716,6 +763,11 @@ Microsoft Graph可选后端必须由用户显式连接工作/学校账号并授�
 - S22：[openpyxl公式求值边界][S22]。
 - S23：[Microsoft Graph Excel重算与权限][S23]。
 - S24：[Microsoft关于Office服务端自动化的限制][S24]。
+- S25：[LlamaIndex自定义存储][S25]。
+- S26：[LlamaIndex摄取流水线、缓存与文档管理][S26]。
+- S27：[DuckDB Python API][S27]。
+- S28：[Docling库、API与批处理运行方式的区别][S28]。
+- S29：[unoserver与LibreOffice Python运行环境要求][S29]。
 
 DuckDB链接固定到本次核对的2.0文档，仅用于说明能力，实际部署版本需经M1/M3验收冻结。
 
@@ -749,3 +801,9 @@ DuckDB链接固定到本次核对的2.0文档，仅用于说明能力，实际�
 [S22]: https://openpyxl.readthedocs.io/en/stable/simple_formulae.html
 [S23]: https://learn.microsoft.com/en-us/graph/api/workbookapplication-calculate?view=graph-rest-1.0
 [S24]: https://support.microsoft.com/en-au/visio/considerations-for-server-side-automation-of-office
+
+[S25]: https://developers.llamaindex.ai/python/framework/module_guides/storing/customization/
+[S26]: https://developers.llamaindex.ai/python/framework/module_guides/loading/ingestion_pipeline/
+[S27]: https://duckdb.org/docs/2.0/clients/python/overview
+[S28]: https://docling-project.github.io/docling/usage/api_server/
+[S29]: https://github.com/unoconv/unoserver
