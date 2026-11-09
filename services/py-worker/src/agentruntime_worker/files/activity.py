@@ -262,4 +262,13 @@ class FileActivities:
             if lease is not None:await self.broker.release(lease,keep=False,skip_snapshot=True)
             if temp is not None:temp.cleanup()
 
-    def activities(self):return {'file_operation':self.run}
+    @activity.defn(name='file_operation_complete')
+    async def finish(self, message: Struct, outcome: Struct) -> Struct:
+        result = json_format.MessageToDict(outcome)
+        result.pop('completion_pending', None)
+        completed = await self.complete(json_format.MessageToDict(message), result)
+        if completed.get('completion_pending'):
+            raise TransientError('file_completion_unavailable', 'file terminal persistence is temporarily unavailable')
+        return json_format.ParseDict(completed, Struct())
+
+    def activities(self):return {'file_operation':self.run, 'file_operation_complete':self.finish}

@@ -1,0 +1,110 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 3.79kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 0.2s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done
+#3 CACHED
+
+#4 [internal] load metadata for docker.io/library/rust:1.99.1-bookworm
+#4 ...
+
+#5 [internal] load metadata for docker.io/library/ubuntu:24.04
+#5 DONE 0.2s
+
+#4 [internal] load metadata for docker.io/library/rust:1.99.1-bookworm
+#4 DONE 0.2s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 1.43kB done
+#6 DONE 0.0s
+
+#7 [stage-1  1/13] FROM docker.io/library/ubuntu:24.04@sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852
+#7 resolve docker.io/library/ubuntu:24.04@sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852 0.0s done
+#7 DONE 0.0s
+
+#8 [agent 1/9] FROM docker.io/library/rust:1.99.1-bookworm@sha256:e6f2cff35d0f309acf8433b4f05878ed77092602c5065cc81801177da0bb3a9c
+#8 resolve docker.io/library/rust:1.99.1-bookworm@sha256:e6f2cff35d0f309acf8433b4f05878ed77092602c5065cc81801177da0bb3a9c 0.0s done
+#8 DONE 0.0s
+
+#9 [internal] load build context
+#9 transferring context: 24.04kB 0.0s done
+#9 DONE 0.0s
+
+#10 [agent 7/9] COPY services/rs-sandbox-agent/ services/rs-sandbox-agent/
+#10 CACHED
+
+#11 [agent 2/9] RUN apt-get update && apt-get install -y --no-install-recommends musl-tools && rm -rf /var/lib/apt/lists/*
+#11 CACHED
+
+#12 [agent 3/9] WORKDIR /src
+#12 CACHED
+
+#13 [agent 6/9] COPY libs/rs-transfer/ libs/rs-transfer/
+#13 CACHED
+
+#14 [agent 8/9] COPY services/rs-fc-manager/ services/rs-fc-manager/
+#14 CACHED
+
+#15 [agent 4/9] COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
+#15 CACHED
+
+#16 [agent 5/9] COPY libs/rs-sys/ libs/rs-sys/
+#16 CACHED
+
+#17 [agent 9/9] RUN --mount=type=cache,target=/usr/local/cargo/registry --mount=type=cache,target=/src/target     cargo build --locked --release --target x86_64-unknown-linux-musl -p rs-sandbox-agent     && install -D -m 0755 target/x86_64-unknown-linux-musl/release/sandbox-agent /out/sandbox-agent
+#17 CACHED
+
+#18 [stage-1  8/13] COPY deploy/images/file-engines/models.lock.json /opt/models.lock.json
+#18 CACHED
+
+#19 [stage-1  4/13] RUN python3.12 -m venv --system-site-packages /opt/file-engines
+#19 CACHED
+
+#20 [stage-1  6/13] RUN /opt/file-engines/bin/pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.14.1 torchvision==0.29.1     && /opt/file-engines/bin/pip install --no-cache-dir -r /opt/requirements-file-engines.lock
+#20 CACHED
+
+#21 [stage-1  7/13] COPY scripts/file-engines/prefetch_models.py /opt/prefetch_models.py
+#21 CACHED
+
+#22 [stage-1  2/13] COPY --from=agent /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+#22 CACHED
+
+#23 [stage-1  5/13] COPY requirements-file-engines.lock /opt/requirements-file-engines.lock
+#23 CACHED
+
+#24 [stage-1  3/13] RUN sed -i "s|http://archive.ubuntu.com/ubuntu/|https://snapshot.ubuntu.com/ubuntu/20261110T000000Z/|g;s|http://security.ubuntu.com/ubuntu/|https://snapshot.ubuntu.com/ubuntu/20261110T000000Z/|g" /etc/apt/sources.list.d/ubuntu.sources     && apt-get -o Acquire::Check-Valid-Until=false update     && apt-get install -y --no-install-recommends python3.12 python3.12-venv python3-pip python3-uno        libreoffice-writer libreoffice-calc libreoffice-impress poppler-utils fontconfig locales ca-certificates        fonts-noto-cjk fonts-noto-core fonts-noto-extra fonts-liberation2 fonts-dejavu-core libgl1 libglib2.0-0     && rm -rf /var/lib/apt/lists/*     && locale-gen en_US.UTF-8
+#24 CACHED
+
+#25 [stage-1  9/13] RUN /opt/file-engines/bin/python /opt/prefetch_models.py --manifest /opt/models.lock.json --output /opt/file-models
+#25 CACHED
+
+#26 [stage-1 10/13] COPY services/py-worker/src/agentruntime_worker/files /opt/engine/agentruntime_worker/files
+#26 DONE 0.0s
+
+#27 [stage-1 11/13] COPY --from=agent /out/sandbox-agent /usr/local/bin/sandbox-agent
+#27 DONE 0.0s
+
+#28 [stage-1 12/13] RUN touch /opt/engine/agentruntime_worker/__init__.py     && dpkg-query -W > /opt/system-packages.lock     && fc-cache -f     && find /usr/share/fonts -type f -exec sha256sum {} ; | sort > /opt/fonts.lock     && /usr/bin/python3 -c 'import uno'     && useradd --uid 10001 --create-home engine     && mkdir -p /workspace && chown 10001:10001 /workspace
+#28 DONE 12.4s
+
+#29 [stage-1 13/13] WORKDIR /workspace
+#29 DONE 0.0s
+
+#30 exporting to image
+#30 exporting layers
+#30 exporting layers 0.3s done
+#30 exporting manifest sha256:8626232659a246734c72d6f5a60c4a2d3ca94d2af1c75cb77fc3c46dfac53252 done
+#30 exporting config sha256:3d4469f9d75658b7cf97311e84081993fe9b841cd62abec05e701687898414cc done
+#30 exporting attestation manifest sha256:96ecbb97633b3f7c06ffb82c4c33748de25819c11ebddc63ed64f7cf9b4d769e 0.0s done
+#30 exporting manifest list sha256:fb638071d954329c16dba47b9292e4efec3dddd9075fe7fa35cfc2b18c3229d7 done
+#30 naming to docker.io/library/fi-20261110-engines:validation done
+#30 unpacking to docker.io/library/fi-20261110-engines:validation
+#30 unpacking to docker.io/library/fi-20261110-engines:validation 0.2s done
+#30 DONE 0.6s
+WARNING: current commit information was not captured by the build: failed to read current commit information with git rev-parse --is-inside-work-tree

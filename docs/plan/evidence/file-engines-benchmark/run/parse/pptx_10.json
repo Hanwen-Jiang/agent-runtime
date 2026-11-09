@@ -1,0 +1,374 @@
+{
+  "evaluation": {
+    "id": "pptx_10",
+    "family": "pptx",
+    "variant": "slides_text_table_notes",
+    "language": "en",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 0.05340320500545204,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_beaa15e8690b7fd2475ffb5d"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_1e7be723a5e98b095ba87ff6"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_1439831607282c96d8eb9d94"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_ceab4edcc44c397a1bfba13e"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_a93553843bf9f4384e656d17"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_dc4d4ee287d6af5dcd34d969"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "raw_ooxml",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_slides": 6,
+      "processed_slides": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "charts_visual_only": true,
+      "returned_blocks": 13,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_beaa15e8690b7fd2475ffb5d",
+        "kind": "text",
+        "text": "Travel reimbursement must be submitted within 15 business days.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 0,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_bc0af371977fb129ca227793",
+        "kind": "notes",
+        "text": "Speaker note 10/0: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 0,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_1e7be723a5e98b095ba87ff6",
+        "kind": "text",
+        "text": "Finance is responsible for approving travel reimbursement.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 1,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_ea3553e0889f54f7c1704ead",
+        "kind": "notes",
+        "text": "Speaker note 10/1: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 1,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_1439831607282c96d8eb9d94",
+        "kind": "text",
+        "text": "Travel reimbursement requires itemized receipts.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 2,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_e3c1c3474fa3e72d4a65c75a",
+        "kind": "table",
+        "text": "Review\t\n\tComplete",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 2,
+          "shape_id": 3,
+          "bbox": [
+            0.05,
+            0.5333333333333333,
+            0.55,
+            0.6666666666666666
+          ]
+        }
+      },
+      {
+        "id": "blk_95402c851a5cf0e224c80855",
+        "kind": "notes",
+        "text": "Speaker note 10/2: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 2,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_ceab4edcc44c397a1bfba13e",
+        "kind": "text",
+        "text": "Records for travel reimbursement must be retained for 10 months.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 3,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_08e02d33117d097bb5841b3a",
+        "kind": "notes",
+        "text": "Speaker note 10/3: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 3,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_a93553843bf9f4384e656d17",
+        "kind": "text",
+        "text": "Emergency exceptions for travel reimbursement require written approval from the department head.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 4,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_ebb1102a926223d28ea75115",
+        "kind": "notes",
+        "text": "Speaker note 10/4: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 4,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_dc4d4ee287d6af5dcd34d969",
+        "kind": "text",
+        "text": "Travel reimbursement must be submitted through the expense portal.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 5,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_a0cd29938030c4e894438a83",
+        "kind": "notes",
+        "text": "Speaker note 10/5: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 5,
+          "part": "notes"
+        }
+      }
+    ],
+    "outline": [
+      {
+        "kind": "slide",
+        "slide_index": 0,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 1,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 2,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 3,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 4,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 5,
+        "title": ""
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_slides": 6,
+      "processed_slides": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "charts_visual_only": true,
+      "returned_blocks": 13,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/pptx_10/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "403906d84542ea248af88ff488cf513a18e0311233c87832b75d8a3ce4d47c59",
+        "size_bytes": 4128
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "61916b1cf131e3698913b09b3fb531d3284910ccdfa5b3ec6622936f04e0448d",
+      "size_bytes": 43035,
+      "mime_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "3555600d2cc3ddf5685a8401ee2cded590e598f382516d69e80bf06e47c783b3"
+    }
+  }
+}

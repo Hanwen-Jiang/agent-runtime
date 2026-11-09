@@ -4,6 +4,8 @@
   "title": "共享定义",
   "description": "其余 schema 共用的枚举与格式。枚举只在这里列出取值；与 /proto 同名的枚举（snake_case ↔ CamelCase）以 proto 为准，由契约测试比对。ID 前缀以 proto 的 IdKind 为准。",
   "$defs": {
+    "file_operation": {"description": "Bounded File Intelligence job operation", "enum": ["inspect", "read", "render", "archive_list", "extract", "query", "edit", "recalculate", "notebook_execute", "index"]},
+    "file_lifecycle": {"description": "File Catalog lifecycle", "enum": ["active", "trash", "purging", "purged"]},
     "executor": {"description": "由谁执行（附录 A、D.3）", "enum": ["model", "program", "human"]},
     "effect": {"description": "副作用等级（附录 A、D.4）", "enum": ["none", "read", "write_reversible", "write_irreversible"]},
     "write_effect": {"description": "需要幂等键的写操作", "enum": ["write_reversible", "write_irreversible"]},

@@ -1,0 +1,416 @@
+{
+  "evaluation": {
+    "id": "xlsx_09",
+    "family": "xlsx",
+    "variant": "multi_sheet_formula_hidden_reference",
+    "language": "zh",
+    "expected": "readable",
+    "status": "partial",
+    "elapsed_seconds": 0.03514542197808623,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_ac639fb2604d96a71b8bcc4a"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_9a9b8cdf2532bac7e9d10304"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_990bb71e9d1a69e3152769e3"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_0899ba97f899cbbc5a8fca6d"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_69269e01200c849673268e03"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_c1125f244c1b315f147b22a0"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "raw_ooxml",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "sheet": "Policy",
+      "range": [
+        1,
+        1,
+        2,
+        7
+      ],
+      "formulas_recalculated": false,
+      "returned_blocks": 14,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "partial",
+    "blocks": [
+      {
+        "id": "blk_25fe13b97a98d93e0d61b37b",
+        "kind": "cell",
+        "text": "Facet",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A1"
+        },
+        "value": "Facet",
+        "formula": null,
+        "cached_value": "Facet",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_0f70b44d52e00a8b1e4f9133",
+        "kind": "cell",
+        "text": "Clause",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B1"
+        },
+        "value": "Clause",
+        "formula": null,
+        "cached_value": "Clause",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_c2604cdd37f59d6f6c77b643",
+        "kind": "cell",
+        "text": "0",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A2"
+        },
+        "value": 0,
+        "formula": null,
+        "cached_value": 0,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_ac639fb2604d96a71b8bcc4a",
+        "kind": "cell",
+        "text": "合同续签的提交期限为10个工作日。",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B2"
+        },
+        "value": "合同续签的提交期限为10个工作日。",
+        "formula": null,
+        "cached_value": "合同续签的提交期限为10个工作日。",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_571fe3194b208bac48f5a8f5",
+        "kind": "cell",
+        "text": "1",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A3"
+        },
+        "value": 1,
+        "formula": null,
+        "cached_value": 1,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_9a9b8cdf2532bac7e9d10304",
+        "kind": "cell",
+        "text": "合同续签的审批责任人为法务。",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B3"
+        },
+        "value": "合同续签的审批责任人为法务。",
+        "formula": null,
+        "cached_value": "合同续签的审批责任人为法务。",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_24c2484865f827e152770454",
+        "kind": "cell",
+        "text": "2",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A4"
+        },
+        "value": 2,
+        "formula": null,
+        "cached_value": 2,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_990bb71e9d1a69e3152769e3",
+        "kind": "cell",
+        "text": "合同续签必须提供现有合同副本。",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B4"
+        },
+        "value": "合同续签必须提供现有合同副本。",
+        "formula": null,
+        "cached_value": "合同续签必须提供现有合同副本。",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_9cde7ba67e5e7587acbd7a29",
+        "kind": "cell",
+        "text": "3",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A5"
+        },
+        "value": 3,
+        "formula": null,
+        "cached_value": 3,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_0899ba97f899cbbc5a8fca6d",
+        "kind": "cell",
+        "text": "合同续签记录须保留23个月。",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B5"
+        },
+        "value": "合同续签记录须保留23个月。",
+        "formula": null,
+        "cached_value": "合同续签记录须保留23个月。",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_65d007b726b7042aac383e03",
+        "kind": "cell",
+        "text": "4",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A6"
+        },
+        "value": 4,
+        "formula": null,
+        "cached_value": 4,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_69269e01200c849673268e03",
+        "kind": "cell",
+        "text": "合同续签的紧急例外需要部门负责人书面批准。",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B6"
+        },
+        "value": "合同续签的紧急例外需要部门负责人书面批准。",
+        "formula": null,
+        "cached_value": "合同续签的紧急例外需要部门负责人书面批准。",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_9a6aaf0485ad9f20b48ce54a",
+        "kind": "cell",
+        "text": "5",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A7"
+        },
+        "value": 5,
+        "formula": null,
+        "cached_value": 5,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_c1125f244c1b315f147b22a0",
+        "kind": "cell",
+        "text": "合同续签必须通过合同系统提交。",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B7"
+        },
+        "value": "合同续签必须通过合同系统提交。",
+        "formula": null,
+        "cached_value": "合同续签必须通过合同系统提交。",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      }
+    ],
+    "outline": [
+      {
+        "kind": "sheet",
+        "name": "Policy",
+        "sheet_id": "sheet-0",
+        "rows": 7,
+        "columns": 2,
+        "state": "visible"
+      },
+      {
+        "kind": "sheet",
+        "name": "Budget",
+        "sheet_id": "sheet-1",
+        "rows": 4,
+        "columns": 3,
+        "state": "visible"
+      },
+      {
+        "kind": "sheet",
+        "name": "Reference",
+        "sheet_id": "sheet-2",
+        "rows": 1,
+        "columns": 1,
+        "state": "hidden"
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "sheet": "Policy",
+      "range": [
+        1,
+        1,
+        2,
+        7
+      ],
+      "formulas_recalculated": false,
+      "returned_blocks": 14,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/xlsx_09/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "7958e8d8f0022e64b3a978b5460355b6037de4c3f6dd3b552c5b8ea66536c02d",
+        "size_bytes": 6030
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "a33f45267261334d649b283c4f9a30aafe23fd3dd6f8c6a5b9624e1ba1a0ee48",
+      "size_bytes": 6229,
+      "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "fc3eab1492cdd65878e15401898abd391d015d28268d67d452224264104524a0"
+    }
+  }
+}

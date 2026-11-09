@@ -36,11 +36,11 @@ def test_given_values_reach_every_worker_as_strings() -> None:
 
 
 def test_the_sub_agent_rules_are_on_by_default() -> None:
-    """N16-R（docs/plan/sub-agent.md 第 12 节；总表第 0 节 V1-SUB 默认打开）：默认 rules，每个 Worker 池都拿到；off 时不渲染；别的取值渲染失败。"""
+    """N16-R（docs/plan/sub-agent.md 第 12 节；总表第 0 节 V1-SUB 默认打开）：默认 rules，每个 Worker 池都拿到；off 时明确传入 off；别的取值渲染失败。"""
     for manifests in (render(), render(CLOUD_VALUES)):
         assert all(env_of(pod_spec(w)["containers"][0])["AR_SUB_AGENT_POLICY"]["value"] == "rules" for w in workers(manifests))
     off = render(CLOUD_VALUES, set_values=["worker.subAgentPolicy=off"])
-    assert all("AR_SUB_AGENT_POLICY" not in env_of(pod_spec(w)["containers"][0]) for w in workers(off))
+    assert all(env_of(pod_spec(w)["containers"][0])["AR_SUB_AGENT_POLICY"]["value"] == "off" for w in workers(off))
     with pytest.raises(pytest.fail.Exception, match="subAgentPolicy"):
         render(CLOUD_VALUES, set_values=["worker.subAgentPolicy=always"])
 

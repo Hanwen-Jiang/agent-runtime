@@ -1,0 +1,326 @@
+{
+  "id": "q09_2",
+  "query": "设备借用需要哪些凭证？比较不同资料的要求。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_09",
+      "scan_pdf_09",
+      "text_09",
+      "text_pdf_09",
+      "xlsx_04"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.6,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7227265726449519,
+    "relevant_files": [
+      "docx_09",
+      "text_09",
+      "text_pdf_09"
+    ],
+    "expected_files": [
+      "text_pdf_09",
+      "scan_pdf_09",
+      "docx_09",
+      "xlsx_04",
+      "text_09"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 18.08822900056839
+  },
+  "hybrid": {
+    "recall_at_8": 0.6,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7227265726449519,
+    "relevant_files": [
+      "docx_09",
+      "text_09",
+      "text_pdf_09"
+    ],
+    "expected_files": [
+      "text_pdf_09",
+      "scan_pdf_09",
+      "docx_09",
+      "xlsx_04",
+      "text_09"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 4569.28123999387
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_0f22ab6b016e459367255c5f",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 15.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.37745098039215685,
+          0.12052112044648612
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_text_pdf_09",
+      "version_id": "text_pdf_09",
+      "score": 2.9001004695892334,
+      "text": "设备借用必须提供资产借用记录。",
+      "quote_hash": "72184d91fb9a1a322fb280d8c055bb35f4d517efc3ec4ffe138b636729f3287c",
+      "id": "chunk_13a55cd7c14a76d9bdc9d2f0e0d6572160926ebb905d1715dfb2dcf696277546"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_bfdb9e0a9684d67349371e81",
+        "kind": "document_block",
+        "block_index": 3.0,
+        "char_end": 15.0
+      },
+      "representation_id": "rep_docx_09",
+      "version_id": "docx_09",
+      "score": 2.9001004695892334,
+      "text": "设备借用必须提供资产借用记录。",
+      "quote_hash": "72184d91fb9a1a322fb280d8c055bb35f4d517efc3ec4ffe138b636729f3287c",
+      "id": "chunk_1b46b5d492be0b4d4a177489a14f31783fc678900961d4595d9e77111536086c"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_cb5bc674b381c4165e4ed024",
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0,
+        "end_line": 6.0,
+        "char_end": 102.0
+      },
+      "representation_id": "rep_text_09",
+      "version_id": "text_09",
+      "score": 0.8688173890113831,
+      "text": "设备借用的提交期限为6个工作日。\n设备借用的审批责任人为设施组。\n设备借用必须提供资产借用记录。\n设备借用记录须保留20个月。\n设备借用的紧急例外需要部门负责人书面批准。\n设备借用必须通过资产服务台提交。",
+      "quote_hash": "75e7f8053a01981b1288214ddbb1c88669a99620698d1fbdf1fa25330348661e",
+      "id": "chunk_da61e3be3cbc40e820f05852b655f1b060df687de93db70e84d5fcbf3dca2ee2"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_8746f955f226e677abecdab0",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.39869281045751637,
+          0.12052112044648612
+        ],
+        "page_index": 5.0
+      },
+      "representation_id": "rep_text_pdf_09",
+      "version_id": "text_pdf_09",
+      "score": 0.04716426134109497,
+      "text": "设备借用必须通过资产服务台提交。",
+      "quote_hash": "623d7ff5d898dade1317b2c8771e442628f124f9f0d911ad71e4c1264ab8d46a",
+      "id": "chunk_e19be10dfb5d3613a14fbb10b7a31c7a86f58f6c458da76675449fcd2690b64a"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_abd05e44ff5e58c59dc9bb76",
+        "kind": "document_block",
+        "block_index": 6.0,
+        "char_end": 16.0
+      },
+      "representation_id": "rep_docx_09",
+      "version_id": "docx_09",
+      "score": 0.04716426134109497,
+      "text": "设备借用必须通过资产服务台提交。",
+      "quote_hash": "623d7ff5d898dade1317b2c8771e442628f124f9f0d911ad71e4c1264ab8d46a",
+      "id": "chunk_eb1efdad52adf3825ea0994dd95b04aa0209c82059ce0bac771ab850c85743c0"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_69593c6fffcdc7c771291028",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 54.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.786176470588235,
+          0.12052112044648612
+        ],
+        "page_index": 4.0
+      },
+      "representation_id": "rep_text_pdf_09",
+      "version_id": "text_pdf_09",
+      "score": -0.3668668568134308,
+      "text": "设备借用的紧急例外需要部门负责人书面批准。 Supplementary audit notes / 审计备注",
+      "quote_hash": "d4887ed9956f293d58b3e9d2ff78f41f1087b24a4ebe8a472554fff63975ec5c",
+      "id": "chunk_8bcaec09e7d246eb6a81b59dc8f6f53b83820df25900adadc20c17f2111b62e8"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_f8db977a4e69da5b6d09e75f",
+        "kind": "document_block",
+        "block_index": 5.0,
+        "char_end": 21.0
+      },
+      "representation_id": "rep_docx_09",
+      "version_id": "docx_09",
+      "score": -0.9333760738372803,
+      "text": "设备借用的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "c7ca519bfe7a274829540389e0d17806e0ac213aa3ce45e1b2db4f96b1ae7e11",
+      "id": "chunk_87d7f68fb89d0dcaeeb55940711c96d0f30ad33c8bcf7691e1fc68bf8ca4f7de"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_1213461c23a47897623a09b9",
+        "kind": "document_block",
+        "block_index": 4.0,
+        "char_end": 14.0
+      },
+      "representation_id": "rep_docx_09",
+      "version_id": "docx_09",
+      "score": -1.1380066871643066,
+      "text": "设备借用记录须保留17个月。",
+      "quote_hash": "f5098bd3077c61575eb523d69ad33187b5a49e4b9be6a1830bc2cf3fa56e78b8",
+      "id": "chunk_f45bf8972b4aece02afe53798e24a1a3c5ce8dd2a0ff2a799f98cdbb671c43ff"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_da61e3be3cbc40e820f05852b655f1b060df687de93db70e84d5fcbf3dca2ee2",
+      "version_id": "text_09",
+      "text": "设备借用的提交期限为6个工作日。\n设备借用的审批责任人为设施组。\n设备借用必须提供资产借用记录。\n设备借用记录须保留20个月。\n设备借用的紧急例外需要部门负责人书面批准。\n设备借用必须通过资产服务台提交。",
+      "anchor": {
+        "block_id": "blk_cb5bc674b381c4165e4ed024",
+        "char_end": 102,
+        "char_start": 0,
+        "end_line": 6.0,
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0
+      }
+    },
+    {
+      "id": "chunk_13a55cd7c14a76d9bdc9d2f0e0d6572160926ebb905d1715dfb2dcf696277546",
+      "version_id": "text_pdf_09",
+      "text": "设备借用必须提供资产借用记录。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.37745098039215685,
+          0.12052112044648612
+        ],
+        "block_id": "blk_0f22ab6b016e459367255c5f",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_1b46b5d492be0b4d4a177489a14f31783fc678900961d4595d9e77111536086c",
+      "version_id": "docx_09",
+      "text": "设备借用必须提供资产借用记录。",
+      "anchor": {
+        "block_id": "blk_bfdb9e0a9684d67349371e81",
+        "block_index": 3.0,
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_40a9fa858037c92d232d5960d5a671f2eaba56b9835d409e0666fff33af03767",
+      "version_id": "text_pdf_09",
+      "text": "设备借用记录须保留15个月。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.3333529411764706,
+          0.12052112044648612
+        ],
+        "block_id": "blk_d8e50859e4e09d23c98a57ab",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_f45bf8972b4aece02afe53798e24a1a3c5ce8dd2a0ff2a799f98cdbb671c43ff",
+      "version_id": "docx_09",
+      "text": "设备借用记录须保留17个月。",
+      "anchor": {
+        "block_id": "blk_1213461c23a47897623a09b9",
+        "block_index": 4.0,
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_87d7f68fb89d0dcaeeb55940711c96d0f30ad33c8bcf7691e1fc68bf8ca4f7de",
+      "version_id": "docx_09",
+      "text": "设备借用的紧急例外需要部门负责人书面批准。",
+      "anchor": {
+        "block_id": "blk_f8db977a4e69da5b6d09e75f",
+        "block_index": 5.0,
+        "char_end": 21,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_5429a673499d5ec92a35f1f50767a0fa79f7d52d97f6928b6d3b0cca824c1367",
+      "version_id": "docx_09",
+      "text": "设备借用的审批责任人为设施组。",
+      "anchor": {
+        "block_id": "blk_97f796d5f44d53d5adc20a39",
+        "block_index": 2.0,
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_86e89a39421e3b81b14380194c130eb79e1d3d31abdc7a091a01516a32fd4f6a",
+      "version_id": "text_pdf_09",
+      "text": "设备借用的审批责任人为设施组。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.37745098039215685,
+          0.12052112044648612
+        ],
+        "block_id": "blk_07eaa74edc2b8dfe709e96a6",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    }
+  ]
+}

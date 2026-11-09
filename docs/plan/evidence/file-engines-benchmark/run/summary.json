@@ -1,0 +1,681 @@
+{
+  "provenance": "Generated non-private policy scenarios; not real business documents; golden anchors are automatic, NOT human annotated.",
+  "human_review": {
+    "reviewed_anchors": 0,
+    "required_anchors": 500,
+    "gate": "pending"
+  },
+  "parser_environment": {
+    "python": "3.12.3",
+    "platform": "Linux-6.8.0-147-generic-x86_64-with-glibc2.39",
+    "engine_source": "/opt/engine",
+    "peak_rss_bytes": 2340716544,
+    "user_cpu_seconds": 581.554479,
+    "system_cpu_seconds": 67.766441
+  },
+  "notebook_read_only": true,
+  "files": 120,
+  "parsed_files": 120,
+  "golden_anchors": 690,
+  "families": {
+    "abnormal": {
+      "files": 5,
+      "statuses": {
+        "failed": 4,
+        "unsupported": 1
+      },
+      "golden_anchors": 0,
+      "exact_text_and_anchor": 0,
+      "p50_seconds": null,
+      "p95_seconds": null,
+      "unchanged": true,
+      "by_variant": {
+        "compression_ratio": {
+          "files": 1,
+          "targets": 0,
+          "exact": 0,
+          "ocr_low_confidence_blocks": 0
+        },
+        "corrupt_docx": {
+          "files": 1,
+          "targets": 0,
+          "exact": 0,
+          "ocr_low_confidence_blocks": 0
+        },
+        "encrypted_pdf": {
+          "files": 1,
+          "targets": 0,
+          "exact": 0,
+          "ocr_low_confidence_blocks": 0
+        },
+        "path_traversal": {
+          "files": 1,
+          "targets": 0,
+          "exact": 0,
+          "ocr_low_confidence_blocks": 0
+        },
+        "unsupported_binary": {
+          "files": 1,
+          "targets": 0,
+          "exact": 0,
+          "ocr_low_confidence_blocks": 0
+        }
+      },
+      "by_language": {
+        "en": {
+          "targets": 0,
+          "exact": 0
+        }
+      }
+    },
+    "archive": {
+      "files": 5,
+      "statuses": {
+        "ready": 5
+      },
+      "golden_anchors": 30,
+      "exact_text_and_anchor": 30,
+      "p50_seconds": 0.030582880834117532,
+      "p95_seconds": 0.03294012602418661,
+      "unchanged": true,
+      "by_variant": {
+        "nested_members_explicit_extract": {
+          "files": 5,
+          "targets": 30,
+          "exact": 30,
+          "ocr_low_confidence_blocks": 0
+        }
+      },
+      "by_language": {
+        "en": {
+          "targets": 30,
+          "exact": 30
+        }
+      }
+    },
+    "docx": {
+      "files": 15,
+      "statuses": {
+        "ready": 15
+      },
+      "golden_anchors": 90,
+      "exact_text_and_anchor": 90,
+      "p50_seconds": 0.05382633698172867,
+      "p95_seconds": 0.07132736779749393,
+      "unchanged": true,
+      "by_variant": {
+        "paragraphs_tables_headers": {
+          "files": 5,
+          "targets": 30,
+          "exact": 30,
+          "ocr_low_confidence_blocks": 0
+        },
+        "styled_paragraphs": {
+          "files": 10,
+          "targets": 60,
+          "exact": 60,
+          "ocr_low_confidence_blocks": 0
+        }
+      },
+      "by_language": {
+        "en": {
+          "targets": 48,
+          "exact": 48
+        },
+        "zh": {
+          "targets": 42,
+          "exact": 42
+        }
+      }
+    },
+    "image": {
+      "files": 5,
+      "statuses": {
+        "ready": 5
+      },
+      "golden_anchors": 30,
+      "exact_text_and_anchor": 29,
+      "p50_seconds": 4.255195706151426,
+      "p95_seconds": 4.785832593915984,
+      "unchanged": true,
+      "by_variant": {
+        "low_resolution": {
+          "files": 1,
+          "targets": 6,
+          "exact": 6,
+          "ocr_low_confidence_blocks": 0
+        },
+        "raster_jpg": {
+          "files": 1,
+          "targets": 6,
+          "exact": 6,
+          "ocr_low_confidence_blocks": 0
+        },
+        "raster_png": {
+          "files": 1,
+          "targets": 6,
+          "exact": 6,
+          "ocr_low_confidence_blocks": 0
+        },
+        "raster_webp": {
+          "files": 1,
+          "targets": 6,
+          "exact": 5,
+          "ocr_low_confidence_blocks": 1
+        },
+        "rotated": {
+          "files": 1,
+          "targets": 6,
+          "exact": 6,
+          "ocr_low_confidence_blocks": 0
+        }
+      },
+      "by_language": {
+        "en": {
+          "targets": 18,
+          "exact": 17
+        },
+        "zh": {
+          "targets": 12,
+          "exact": 12
+        }
+      }
+    },
+    "notebook": {
+      "files": 4,
+      "statuses": {
+        "ready": 4
+      },
+      "golden_anchors": 24,
+      "exact_text_and_anchor": 24,
+      "p50_seconds": 0.017706203972920775,
+      "p95_seconds": 0.026657076086848974,
+      "unchanged": true,
+      "by_variant": {
+        "markdown_code_read_without_execution": {
+          "files": 4,
+          "targets": 24,
+          "exact": 24,
+          "ocr_low_confidence_blocks": 0
+        }
+      },
+      "by_language": {
+        "en": {
+          "targets": 12,
+          "exact": 12
+        },
+        "zh": {
+          "targets": 12,
+          "exact": 12
+        }
+      }
+    },
+    "pptx": {
+      "files": 15,
+      "statuses": {
+        "ready": 15
+      },
+      "golden_anchors": 90,
+      "exact_text_and_anchor": 90,
+      "p50_seconds": 0.04932134295813739,
+      "p95_seconds": 0.061053129844367504,
+      "unchanged": true,
+      "by_variant": {
+        "slides_text_table_notes": {
+          "files": 15,
+          "targets": 90,
+          "exact": 90,
+          "ocr_low_confidence_blocks": 0
+        }
+      },
+      "by_language": {
+        "en": {
+          "targets": 48,
+          "exact": 48
+        },
+        "zh": {
+          "targets": 42,
+          "exact": 42
+        }
+      }
+    },
+    "scan_pdf": {
+      "files": 20,
+      "statuses": {
+        "partial": 1,
+        "ready": 19
+      },
+      "golden_anchors": 120,
+      "exact_text_and_anchor": 119,
+      "p50_seconds": 9.198212241986766,
+      "p95_seconds": 12.36591149494052,
+      "unchanged": true,
+      "by_variant": {
+        "low_resolution": {
+          "files": 3,
+          "targets": 18,
+          "exact": 18,
+          "ocr_low_confidence_blocks": 0
+        },
+        "mixed_native_scan": {
+          "files": 5,
+          "targets": 30,
+          "exact": 30,
+          "ocr_low_confidence_blocks": 0
+        },
+        "scan_clean": {
+          "files": 11,
+          "targets": 66,
+          "exact": 65,
+          "ocr_low_confidence_blocks": 1
+        },
+        "scan_rotated": {
+          "files": 1,
+          "targets": 6,
+          "exact": 6,
+          "ocr_low_confidence_blocks": 0
+        }
+      },
+      "by_language": {
+        "en": {
+          "targets": 60,
+          "exact": 59
+        },
+        "zh": {
+          "targets": 60,
+          "exact": 60
+        }
+      }
+    },
+    "table": {
+      "files": 6,
+      "statuses": {
+        "partial": 1,
+        "ready": 5
+      },
+      "golden_anchors": 36,
+      "exact_text_and_anchor": 36,
+      "p50_seconds": 0.016487669898197055,
+      "p95_seconds": 0.1832244659308344,
+      "unchanged": true,
+      "by_variant": {
+        "100000_rows_exact_query": {
+          "files": 1,
+          "targets": 6,
+          "exact": 6,
+          "ocr_low_confidence_blocks": 0
+        },
+        "quoted_delimited_table": {
+          "files": 5,
+          "targets": 30,
+          "exact": 30,
+          "ocr_low_confidence_blocks": 0
+        }
+      },
+      "by_language": {
+        "en": {
+          "targets": 18,
+          "exact": 18
+        },
+        "zh": {
+          "targets": 18,
+          "exact": 18
+        }
+      }
+    },
+    "text": {
+      "files": 10,
+      "statuses": {
+        "ready": 10
+      },
+      "golden_anchors": 60,
+      "exact_text_and_anchor": 60,
+      "p50_seconds": 0.01529237488284707,
+      "p95_seconds": 0.02690936205908656,
+      "unchanged": true,
+      "by_variant": {
+        "json_utf-8": {
+          "files": 1,
+          "targets": 6,
+          "exact": 6,
+          "ocr_low_confidence_blocks": 0
+        },
+        "jsonl_utf-8": {
+          "files": 1,
+          "targets": 6,
+          "exact": 6,
+          "ocr_low_confidence_blocks": 0
+        },
+        "log_utf-8": {
+          "files": 1,
+          "targets": 6,
+          "exact": 6,
+          "ocr_low_confidence_blocks": 0
+        },
+        "md_utf-8": {
+          "files": 1,
+          "targets": 6,
+          "exact": 6,
+          "ocr_low_confidence_blocks": 0
+        },
+        "py_utf-8": {
+          "files": 1,
+          "targets": 6,
+          "exact": 6,
+          "ocr_low_confidence_blocks": 0
+        },
+        "txt_gb18030": {
+          "files": 1,
+          "targets": 6,
+          "exact": 6,
+          "ocr_low_confidence_blocks": 0
+        },
+        "txt_utf-16": {
+          "files": 1,
+          "targets": 6,
+          "exact": 6,
+          "ocr_low_confidence_blocks": 0
+        },
+        "txt_utf-8": {
+          "files": 1,
+          "targets": 6,
+          "exact": 6,
+          "ocr_low_confidence_blocks": 0
+        },
+        "xml_utf-8": {
+          "files": 1,
+          "targets": 6,
+          "exact": 6,
+          "ocr_low_confidence_blocks": 0
+        },
+        "yaml_utf-8": {
+          "files": 1,
+          "targets": 6,
+          "exact": 6,
+          "ocr_low_confidence_blocks": 0
+        }
+      },
+      "by_language": {
+        "en": {
+          "targets": 30,
+          "exact": 30
+        },
+        "zh": {
+          "targets": 30,
+          "exact": 30
+        }
+      }
+    },
+    "text_pdf": {
+      "files": 20,
+      "statuses": {
+        "partial": 1,
+        "ready": 19
+      },
+      "golden_anchors": 120,
+      "exact_text_and_anchor": 120,
+      "p50_seconds": 0.057072537019848824,
+      "p95_seconds": 23.638339380035177,
+      "unchanged": true,
+      "by_variant": {
+        "30_page_definition_p12": {
+          "files": 1,
+          "targets": 6,
+          "exact": 6,
+          "ocr_low_confidence_blocks": 0
+        },
+        "headings_footers": {
+          "files": 14,
+          "targets": 84,
+          "exact": 84,
+          "ocr_low_confidence_blocks": 0
+        },
+        "two_column_table": {
+          "files": 5,
+          "targets": 30,
+          "exact": 30,
+          "ocr_low_confidence_blocks": 0
+        }
+      },
+      "by_language": {
+        "en": {
+          "targets": 60,
+          "exact": 60
+        },
+        "zh": {
+          "targets": 60,
+          "exact": 60
+        }
+      }
+    },
+    "xlsx": {
+      "files": 15,
+      "statuses": {
+        "partial": 15
+      },
+      "golden_anchors": 90,
+      "exact_text_and_anchor": 90,
+      "p50_seconds": 0.03522525797598064,
+      "p95_seconds": 0.045970031060278416,
+      "unchanged": true,
+      "by_variant": {
+        "multi_sheet_formula_hidden_reference": {
+          "files": 15,
+          "targets": 90,
+          "exact": 90,
+          "ocr_low_confidence_blocks": 0
+        }
+      },
+      "by_language": {
+        "en": {
+          "targets": 48,
+          "exact": 48
+        },
+        "zh": {
+          "targets": 42,
+          "exact": 42
+        }
+      }
+    }
+  },
+  "exact_100k_csv": true,
+  "limitations": [
+    "Generated source truth independently checked for text/OOXML/PDF where possible; raster source/reading order still requires human visual review.",
+    "Page/cell/paragraph/shape locations and normalized bbox bounds checked; no human geometric bbox IoU measurement.",
+    "A synthetic corpus is not the fixed human-labeled release set; the >=500 manually reviewed anchors gate is not met by this run.",
+    "Engine CLI and injected RetrievalEngine authority do not prove all HTTP/Temporal/production-backend lifecycle gates."
+  ],
+  "retrieval": {
+    "documents": 110,
+    "queries": 100,
+    "model": {
+      "model_id": "intfloat/multilingual-e5-small",
+      "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+      "version": "e5-small-614241f622f5",
+      "license": "MIT",
+      "source": "https://huggingface.co/intfloat/multilingual-e5-small",
+      "sha256": {
+        "config.json": "69137736cab8b8903a07fe8afaafdda25aac55415a12a55d1bffa9f581abf959",
+        "model.safetensors": "1a55775f53449dac10a2bcbc312469fac40b96d53198c407081a831f81c98477",
+        "tokenizer.json": "0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39",
+        "tokenizer_config.json": "a1d6bc8734a6f635dc158508bef000f8e2e5a759c7d92f984b2c86e5ff53425b",
+        "special_tokens_map.json": "d05497f1da52c5e09554c0cd874037a083e1dc1b9cfd48034d1c717f1afc07a7",
+        "sentencepiece.bpe.model": "cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865",
+        "README.md": "0038de97aee16258cecbad7ffda4b4febd6953e747a00e0ddbc8e6ed241e9c1c"
+      }
+    },
+    "index_seconds": 29.774604263016954,
+    "authority_checks": {
+      "knowledge_rpc_internal_token_denied": true,
+      "twenty_files_two_representations": true,
+      "multiple_representations_search": true,
+      "ungranted_user_empty": true,
+      "revoked_source_not_resolved": true,
+      "cross_tenant_denied": true,
+      "cross_workspace_denied": true,
+      "delete_cleans_vectors": true,
+      "deleted_generation_denied": true
+    },
+    "cost": {
+      "paid_api_requests": 0,
+      "model_calls": 140,
+      "model_input_tokens": 22774,
+      "model_cpu_wall_seconds": 38.85267438762821,
+      "cpu_quota": 4,
+      "memory_limit_gib": 8
+    },
+    "by_source_format": {
+      "docx": {
+        "exact": 0.38666666666666666,
+        "hybrid": 0.28
+      },
+      "image": {
+        "exact": 0.12,
+        "hybrid": 0.12
+      },
+      "notebook": {
+        "exact": 0.3,
+        "hybrid": 0.3
+      },
+      "pptx": {
+        "exact": 0.41333333333333333,
+        "hybrid": 0.3466666666666667
+      },
+      "scan_pdf": {
+        "exact": 0.18,
+        "hybrid": 0.17
+      },
+      "table": {
+        "exact": 0.13333333333333333,
+        "hybrid": 0.3
+      },
+      "text": {
+        "exact": 0.5,
+        "hybrid": 0.5
+      },
+      "text_pdf": {
+        "exact": 0.15,
+        "hybrid": 0.31
+      },
+      "xlsx": {
+        "exact": 0.32,
+        "hybrid": 0.32
+      }
+    },
+    "exact": {
+      "mean_recall_at_8": 0.2826666666666667,
+      "mean_relevant_hit_precision": 0.19375,
+      "mean_citation_integrity": 1.0,
+      "p50_ms": 18.790412927046418,
+      "p95_ms": 27.045372873544693
+    },
+    "hybrid": {
+      "mean_recall_at_8": 0.296,
+      "mean_relevant_hit_precision": 0.2025,
+      "mean_citation_integrity": 1.0,
+      "p50_ms": 191.87898910604417,
+      "p95_ms": 265.0466391351074
+    }
+  },
+  "fixed_gold_comparison": {
+    "exact": {
+      "recall_at_8": 0.2826666666666667,
+      "hit_at_8": 0.78,
+      "mrr_at_8": 0.4791785714285714,
+      "unique_source_ndcg_at_8": 0.2849241640645902,
+      "citation_integrity": 1.0,
+      "relevant_hit_precision": 0.19375,
+      "p50_ms": 18.790412927046418,
+      "p95_ms": 27.045372873544693,
+      "by_language": {
+        "en": {
+          "recall_at_8": 0.21944444444444444,
+          "hit_at_8": 0.6666666666666666,
+          "mrr_at_8": 0.4270436507936508
+        },
+        "zh": {
+          "recall_at_8": 0.3775,
+          "hit_at_8": 0.95,
+          "mrr_at_8": 0.5573809523809524
+        }
+      },
+      "by_source_format": {
+        "docx": 0.38666666666666666,
+        "image": 0.12,
+        "notebook": 0.3,
+        "pptx": 0.41333333333333333,
+        "scan_pdf": 0.18,
+        "table": 0.13333333333333333,
+        "text": 0.5,
+        "text_pdf": 0.15,
+        "xlsx": 0.32
+      }
+    },
+    "hybrid": {
+      "recall_at_8": 0.296,
+      "hit_at_8": 0.79,
+      "mrr_at_8": 0.5588571428571428,
+      "unique_source_ndcg_at_8": 0.3162099244229651,
+      "citation_integrity": 1.0,
+      "relevant_hit_precision": 0.2025,
+      "p50_ms": 191.87898910604417,
+      "p95_ms": 265.0466391351074,
+      "by_language": {
+        "en": {
+          "recall_at_8": 0.2288888888888889,
+          "hit_at_8": 0.6833333333333333,
+          "mrr_at_8": 0.5375198412698413
+        },
+        "zh": {
+          "recall_at_8": 0.39666666666666667,
+          "hit_at_8": 0.95,
+          "mrr_at_8": 0.5908630952380952
+        }
+      },
+      "by_source_format": {
+        "docx": 0.28,
+        "image": 0.12,
+        "notebook": 0.3,
+        "pptx": 0.3466666666666667,
+        "scan_pdf": 0.17,
+        "table": 0.3,
+        "text": 0.5,
+        "text_pdf": 0.31,
+        "xlsx": 0.32
+      }
+    },
+    "reranked": {
+      "recall_at_8": 0.5026666666666667,
+      "hit_at_8": 0.95,
+      "mrr_at_8": 0.93,
+      "unique_source_ndcg_at_8": 0.5997977273964257,
+      "citation_integrity": 1.0,
+      "relevant_hit_precision": 0.34875,
+      "p50_ms": 4644.237541826442,
+      "p95_ms": 6359.838633099571,
+      "by_language": {
+        "en": {
+          "recall_at_8": 0.49277777777777776,
+          "hit_at_8": 0.9166666666666666,
+          "mrr_at_8": 0.9083333333333333
+        },
+        "zh": {
+          "recall_at_8": 0.5175,
+          "hit_at_8": 1.0,
+          "mrr_at_8": 0.9625
+        }
+      },
+      "by_source_format": {
+        "docx": 0.49333333333333335,
+        "image": 0.16,
+        "notebook": 0.65,
+        "pptx": 0.5733333333333334,
+        "scan_pdf": 0.34,
+        "table": 0.6333333333333333,
+        "text": 0.42,
+        "text_pdf": 0.7,
+        "xlsx": 0.5066666666666667
+      }
+    }
+  }
+}

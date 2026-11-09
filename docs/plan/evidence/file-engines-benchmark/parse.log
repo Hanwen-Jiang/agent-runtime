@@ -1,0 +1,131 @@
+{"id": "text_pdf_00", "status": "partial", "elapsed_seconds": 0.25989860901609063, "error": null}
+Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights:  39%|███▉      | 303/770 [00:00<00:00, 3006.75it/s]Loading weights:  78%|███████▊  | 604/770 [00:00<00:00, 2662.57it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 2695.75it/s]
+{"id": "text_pdf_01", "status": "ready", "elapsed_seconds": 38.195147605845705, "error": null}
+{"id": "text_pdf_02", "status": "ready", "elapsed_seconds": 0.04302701586857438, "error": null}
+{"id": "text_pdf_03", "status": "ready", "elapsed_seconds": 0.0352586240042001, "error": null}
+{"id": "text_pdf_04", "status": "ready", "elapsed_seconds": 0.03945948905311525, "error": null}
+Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights:  42%|████▏     | 323/770 [00:00<00:00, 3224.83it/s]Loading weights:  84%|████████▍ | 646/770 [00:00<00:00, 2823.41it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 2927.35it/s]
+{"id": "text_pdf_05", "status": "ready", "elapsed_seconds": 21.946139063918963, "error": null}
+{"id": "text_pdf_06", "status": "ready", "elapsed_seconds": 0.04817551001906395, "error": null}
+{"id": "text_pdf_07", "status": "ready", "elapsed_seconds": 0.039913014974445105, "error": null}
+{"id": "text_pdf_08", "status": "ready", "elapsed_seconds": 0.04778681299649179, "error": null}
+Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights:  47%|████▋     | 360/770 [00:00<00:00, 3596.27it/s]Loading weights:  94%|█████████▎| 720/770 [00:00<00:00, 3012.76it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 3060.24it/s]
+{"id": "text_pdf_09", "status": "ready", "elapsed_seconds": 23.638339380035177, "error": null}
+{"id": "text_pdf_10", "status": "ready", "elapsed_seconds": 0.09501098096370697, "error": null}
+{"id": "text_pdf_11", "status": "ready", "elapsed_seconds": 0.06661806884221733, "error": null}
+{"id": "text_pdf_12", "status": "ready", "elapsed_seconds": 0.10021324711851776, "error": null}
+Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights:  45%|████▌     | 350/770 [00:00<00:00, 3479.79it/s]Loading weights:  91%|█████████ | 698/770 [00:00<00:00, 2842.96it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 2940.86it/s]
+{"id": "text_pdf_13", "status": "ready", "elapsed_seconds": 22.8592055530753, "error": null}
+{"id": "text_pdf_14", "status": "ready", "elapsed_seconds": 0.04262182395905256, "error": null}
+{"id": "text_pdf_15", "status": "ready", "elapsed_seconds": 0.040970242116600275, "error": null}
+{"id": "text_pdf_16", "status": "ready", "elapsed_seconds": 0.05905753606930375, "error": null}
+Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights:  43%|████▎     | 334/770 [00:00<00:00, 3338.39it/s]Loading weights:  87%|████████▋ | 668/770 [00:00<00:00, 3000.46it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 3070.61it/s]
+{"id": "text_pdf_17", "status": "ready", "elapsed_seconds": 21.90634469804354, "error": null}
+{"id": "text_pdf_18", "status": "ready", "elapsed_seconds": 0.057072537019848824, "error": null}
+{"id": "text_pdf_19", "status": "ready", "elapsed_seconds": 0.039522520964965224, "error": null}
+[32m[INFO] 2026-11-09 21:38:44,487 [RapidOCR] base.py:23: Using engine_name: onnxruntime[0m
+[32m[INFO] 2026-11-09 21:38:44,557 [RapidOCR] main.py:63: Using /opt/file-models/rapidocr/det.onnx[0m
+[32m[INFO] 2026-11-09 21:38:44,671 [RapidOCR] base.py:23: Using engine_name: onnxruntime[0m
+[32m[INFO] 2026-11-09 21:38:44,672 [RapidOCR] main.py:63: Using /opt/file-models/rapidocr/cls.onnx[0m
+[32m[INFO] 2026-11-09 21:38:44,766 [RapidOCR] base.py:23: Using engine_name: onnxruntime[0m
+[32m[INFO] 2026-11-09 21:38:44,767 [RapidOCR] main.py:63: Using /opt/file-models/rapidocr/rec.onnx[0m
+{"id": "scan_pdf_00", "status": "partial", "elapsed_seconds": 11.357770373811945, "error": null}
+{"id": "scan_pdf_01", "status": "ready", "elapsed_seconds": 13.065113791031763, "error": null}
+{"id": "scan_pdf_02", "status": "ready", "elapsed_seconds": 9.270029658917338, "error": null}
+{"id": "scan_pdf_03", "status": "ready", "elapsed_seconds": 7.986191906966269, "error": null}
+{"id": "scan_pdf_04", "status": "ready", "elapsed_seconds": 8.9992886709515, "error": null}
+{"id": "scan_pdf_05", "status": "ready", "elapsed_seconds": 10.99043699214235, "error": null}
+{"id": "scan_pdf_06", "status": "ready", "elapsed_seconds": 9.21835490502417, "error": null}
+{"id": "scan_pdf_07", "status": "ready", "elapsed_seconds": 7.840262220008299, "error": null}
+{"id": "scan_pdf_08", "status": "ready", "elapsed_seconds": 9.450216697063297, "error": null}
+{"id": "scan_pdf_09", "status": "ready", "elapsed_seconds": 12.097781902877614, "error": null}
+{"id": "scan_pdf_10", "status": "ready", "elapsed_seconds": 8.965232260990888, "error": null}
+{"id": "scan_pdf_11", "status": "ready", "elapsed_seconds": 7.928736394038424, "error": null}
+{"id": "scan_pdf_12", "status": "ready", "elapsed_seconds": 9.094636417925358, "error": null}
+{"id": "scan_pdf_13", "status": "ready", "elapsed_seconds": 12.105327661847696, "error": null}
+{"id": "scan_pdf_14", "status": "ready", "elapsed_seconds": 8.96629241714254, "error": null}
+{"id": "scan_pdf_15", "status": "ready", "elapsed_seconds": 7.826238312991336, "error": null}
+{"id": "scan_pdf_16", "status": "ready", "elapsed_seconds": 9.198212241986766, "error": null}
+{"id": "scan_pdf_17", "status": "ready", "elapsed_seconds": 12.36591149494052, "error": null}
+{"id": "scan_pdf_18", "status": "ready", "elapsed_seconds": 10.105238212971017, "error": null}
+{"id": "scan_pdf_19", "status": "ready", "elapsed_seconds": 8.680591494077817, "error": null}
+{"id": "docx_00", "status": "ready", "elapsed_seconds": 0.05613436782732606, "error": null}
+{"id": "docx_01", "status": "ready", "elapsed_seconds": 0.05879677808843553, "error": null}
+{"id": "docx_02", "status": "ready", "elapsed_seconds": 0.05382633698172867, "error": null}
+{"id": "docx_03", "status": "ready", "elapsed_seconds": 0.04713798104785383, "error": null}
+{"id": "docx_04", "status": "ready", "elapsed_seconds": 0.05606444808654487, "error": null}
+{"id": "docx_05", "status": "ready", "elapsed_seconds": 0.05088520096614957, "error": null}
+{"id": "docx_06", "status": "ready", "elapsed_seconds": 0.05584918102249503, "error": null}
+{"id": "docx_07", "status": "ready", "elapsed_seconds": 0.04976807511411607, "error": null}
+{"id": "docx_08", "status": "ready", "elapsed_seconds": 0.047669186955317855, "error": null}
+{"id": "docx_09", "status": "ready", "elapsed_seconds": 0.052804240956902504, "error": null}
+{"id": "docx_10", "status": "ready", "elapsed_seconds": 0.04766476294025779, "error": null}
+{"id": "docx_11", "status": "ready", "elapsed_seconds": 0.05480732209980488, "error": null}
+{"id": "docx_12", "status": "ready", "elapsed_seconds": 0.0462876008823514, "error": null}
+{"id": "docx_13", "status": "ready", "elapsed_seconds": 0.06790698296390474, "error": null}
+{"id": "docx_14", "status": "ready", "elapsed_seconds": 0.07132736779749393, "error": null}
+{"id": "xlsx_00", "status": "partial", "elapsed_seconds": 0.045970031060278416, "error": null}
+{"id": "xlsx_01", "status": "partial", "elapsed_seconds": 0.03522525797598064, "error": null}
+{"id": "xlsx_02", "status": "partial", "elapsed_seconds": 0.035081926034763455, "error": null}
+{"id": "xlsx_03", "status": "partial", "elapsed_seconds": 0.04230408906005323, "error": null}
+{"id": "xlsx_04", "status": "partial", "elapsed_seconds": 0.03463112283498049, "error": null}
+{"id": "xlsx_05", "status": "partial", "elapsed_seconds": 0.03743733395822346, "error": null}
+{"id": "xlsx_06", "status": "partial", "elapsed_seconds": 0.037540107034146786, "error": null}
+{"id": "xlsx_07", "status": "partial", "elapsed_seconds": 0.034656536066904664, "error": null}
+{"id": "xlsx_08", "status": "partial", "elapsed_seconds": 0.033346857875585556, "error": null}
+{"id": "xlsx_09", "status": "partial", "elapsed_seconds": 0.03514542197808623, "error": null}
+{"id": "xlsx_10", "status": "partial", "elapsed_seconds": 0.041257421020418406, "error": null}
+{"id": "xlsx_11", "status": "partial", "elapsed_seconds": 0.04076226195320487, "error": null}
+{"id": "xlsx_12", "status": "partial", "elapsed_seconds": 0.04048854298889637, "error": null}
+{"id": "xlsx_13", "status": "partial", "elapsed_seconds": 0.03517776704393327, "error": null}
+{"id": "xlsx_14", "status": "partial", "elapsed_seconds": 0.03445194289088249, "error": null}
+{"id": "pptx_00", "status": "ready", "elapsed_seconds": 0.055182608077302575, "error": null}
+{"id": "pptx_01", "status": "ready", "elapsed_seconds": 0.05116472393274307, "error": null}
+{"id": "pptx_02", "status": "ready", "elapsed_seconds": 0.04853132599964738, "error": null}
+{"id": "pptx_03", "status": "ready", "elapsed_seconds": 0.05470428499393165, "error": null}
+{"id": "pptx_04", "status": "ready", "elapsed_seconds": 0.047880230005830526, "error": null}
+{"id": "pptx_05", "status": "ready", "elapsed_seconds": 0.04932134295813739, "error": null}
+{"id": "pptx_06", "status": "ready", "elapsed_seconds": 0.061053129844367504, "error": null}
+{"id": "pptx_07", "status": "ready", "elapsed_seconds": 0.048158863093703985, "error": null}
+{"id": "pptx_08", "status": "ready", "elapsed_seconds": 0.04879445699043572, "error": null}
+{"id": "pptx_09", "status": "ready", "elapsed_seconds": 0.0488344628829509, "error": null}
+{"id": "pptx_10", "status": "ready", "elapsed_seconds": 0.05340320500545204, "error": null}
+{"id": "pptx_11", "status": "ready", "elapsed_seconds": 0.059382526902481914, "error": null}
+{"id": "pptx_12", "status": "ready", "elapsed_seconds": 0.05088378000073135, "error": null}
+{"id": "pptx_13", "status": "ready", "elapsed_seconds": 0.048834369983524084, "error": null}
+{"id": "pptx_14", "status": "ready", "elapsed_seconds": 0.04705197783187032, "error": null}
+{"id": "text_00", "status": "ready", "elapsed_seconds": 0.016214404022321105, "error": null}
+{"id": "text_01", "status": "ready", "elapsed_seconds": 0.014878622023388743, "error": null}
+{"id": "text_02", "status": "ready", "elapsed_seconds": 0.021817042026668787, "error": null}
+{"id": "text_03", "status": "ready", "elapsed_seconds": 0.02690936205908656, "error": null}
+{"id": "text_04", "status": "ready", "elapsed_seconds": 0.01667471486143768, "error": null}
+{"id": "text_05", "status": "ready", "elapsed_seconds": 0.01529237488284707, "error": null}
+{"id": "text_06", "status": "ready", "elapsed_seconds": 0.01460094191133976, "error": null}
+{"id": "text_07", "status": "ready", "elapsed_seconds": 0.015141512965783477, "error": null}
+{"id": "text_08", "status": "ready", "elapsed_seconds": 0.015173631953075528, "error": null}
+{"id": "text_09", "status": "ready", "elapsed_seconds": 0.017431740183383226, "error": null}
+{"id": "table_00", "status": "partial", "elapsed_seconds": 0.1832244659308344, "error": null}
+{"id": "table_01", "status": "ready", "elapsed_seconds": 0.016487669898197055, "error": null}
+{"id": "table_02", "status": "ready", "elapsed_seconds": 0.015334319090470672, "error": null}
+{"id": "table_03", "status": "ready", "elapsed_seconds": 0.016283703967928886, "error": null}
+{"id": "table_04", "status": "ready", "elapsed_seconds": 0.016571978805586696, "error": null}
+{"id": "table_05", "status": "ready", "elapsed_seconds": 0.01753559918142855, "error": null}
+{"id": "image_00", "status": "ready", "elapsed_seconds": 4.785832593915984, "error": null}
+{"id": "image_01", "status": "ready", "elapsed_seconds": 2.6284652650356293, "error": null}
+{"id": "image_02", "status": "ready", "elapsed_seconds": 4.255195706151426, "error": null}
+{"id": "image_03", "status": "ready", "elapsed_seconds": 2.7641702799592167, "error": null}
+{"id": "image_04", "status": "ready", "elapsed_seconds": 4.351579390000552, "error": null}
+{"id": "notebook_00", "status": "ready", "elapsed_seconds": 0.017706203972920775, "error": null}
+{"id": "notebook_01", "status": "ready", "elapsed_seconds": 0.015256352024152875, "error": null}
+{"id": "notebook_02", "status": "ready", "elapsed_seconds": 0.01792539283633232, "error": null}
+{"id": "notebook_03", "status": "ready", "elapsed_seconds": 0.026657076086848974, "error": null}
+{"id": "archive_00", "status": "ready", "elapsed_seconds": 0.03159515094012022, "error": null}
+{"id": "archive_01", "status": "ready", "elapsed_seconds": 0.030582880834117532, "error": null}
+{"id": "archive_02", "status": "ready", "elapsed_seconds": 0.02998078311793506, "error": null}
+{"id": "archive_03", "status": "ready", "elapsed_seconds": 0.03294012602418661, "error": null}
+{"id": "archive_04", "status": "ready", "elapsed_seconds": 0.016622147988528013, "error": null}
+{"id": "abnormal_00", "status": "failed", "elapsed_seconds": 0.014248776948079467, "error": {"code": "unsafe_archive_member", "message": "archive contains an unsafe member path"}}
+{"id": "abnormal_01", "status": "failed", "elapsed_seconds": 0.013918888987973332, "error": {"code": "archive_ratio_limit", "message": "archive member expansion ratio exceeds 100"}}
+{"id": "abnormal_02", "status": "failed", "elapsed_seconds": 0.02489221910946071, "error": {"code": "encrypted_document", "message": "encrypted PDF cannot be read without an authorized decrypt operation"}}
+{"id": "abnormal_03", "status": "failed", "elapsed_seconds": 0.0012342960108071566, "error": {"code": "file_processing_failed", "message": "BadZipFile"}}
+{"id": "abnormal_04", "status": "unsupported", "elapsed_seconds": 0.014025828102603555, "error": {"code": "unsupported_format", "message": "no structural reader installed for this format"}}

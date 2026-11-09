@@ -1,0 +1,163 @@
+{
+  "evaluation": {
+    "id": "text_02",
+    "family": "text",
+    "variant": "json_utf-8",
+    "language": "en",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 0.021817042026668787,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.2526,
+        "candidate_ids": [
+          "blk_ba0d0554354d4ec2619d38be"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.1535,
+        "candidate_ids": [
+          "blk_ba0d0554354d4ec2619d38be"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.2481,
+        "candidate_ids": [
+          "blk_ba0d0554354d4ec2619d38be"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.2571,
+        "candidate_ids": [
+          "blk_ba0d0554354d4ec2619d38be"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.3628,
+        "candidate_ids": [
+          "blk_ba0d0554354d4ec2619d38be"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.0969,
+        "candidate_ids": [
+          "blk_ba0d0554354d4ec2619d38be"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "source_structure",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_lines": 10,
+      "start_line": 1,
+      "end_line": 10,
+      "next_line": null,
+      "returned_blocks": 1,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_ba0d0554354d4ec2619d38be",
+        "kind": "text",
+        "text": "{\n  \"clauses\": [\n    \"Customer refunds must be submitted within 7 business days.\",\n    \"Customer Care is responsible for approving customer refunds.\",\n    \"Customer refunds requires original order confirmation.\",\n    \"Records for customer refunds must be retained for 13 months.\",\n    \"Emergency exceptions for customer refunds require written approval from the department head.\",\n    \"Customer refunds must be submitted through the support ticket.\"\n  ]\n}",
+        "anchor": {
+          "kind": "text_range",
+          "start_line": 1,
+          "end_line": 10,
+          "offset_unit": "unicode_code_point"
+        }
+      }
+    ],
+    "outline": [
+      {
+        "kind": "structure",
+        "type": "dict",
+        "keys": [
+          "clauses"
+        ],
+        "count": 1
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_lines": 10,
+      "start_line": 1,
+      "end_line": 10,
+      "next_line": null,
+      "returned_blocks": 1,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/text_02/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "f0acad2ff26427a84c3bdea1c3ea6046c06b689a6d8ee7048207f2deafa67df0",
+        "size_bytes": 1719
+      }
+    ],
+    "capabilities": {},
+    "source": {
+      "sha256": "ca55a29d50efacee33bb3a767fbb1b8bddf9db49fe5e39041878485101297922",
+      "size_bytes": 455,
+      "mime_type": "application/json"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "e2b8939c665acf5b7af59ba90409c2f9c4d207e6bfda5ee60dd57c56e9728364"
+    }
+  }
+}

@@ -1,0 +1,343 @@
+{
+  "id": "q12_0",
+  "query": "Compare the submission deadlines for visitor access across the policies.",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_12",
+      "pptx_02",
+      "scan_pdf_12",
+      "table_02",
+      "text_pdf_12",
+      "xlsx_07"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.0,
+    "hit_at_8": 0.0,
+    "reciprocal_rank_at_8": 0,
+    "unique_source_ndcg_at_8": 0.0,
+    "relevant_files": [],
+    "expected_files": [
+      "text_pdf_12",
+      "scan_pdf_12",
+      "docx_12",
+      "xlsx_07",
+      "pptx_02",
+      "table_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.0,
+    "latency_ms": 12.3537159524858
+  },
+  "hybrid": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.4935232796777482,
+    "relevant_files": [
+      "table_02",
+      "text_pdf_12"
+    ],
+    "expected_files": [
+      "text_pdf_12",
+      "scan_pdf_12",
+      "docx_12",
+      "xlsx_07",
+      "pptx_02",
+      "table_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 4392.505555180833
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e5ca31338a283bb84e6c7793",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 25.0,
+        "row_index": 0.0
+      },
+      "representation_id": "rep_table_02",
+      "version_id": "table_02",
+      "score": 1.3415038585662842,
+      "text": "0\t访客通行的提交期限为5个工作日。\t0\teast",
+      "quote_hash": "29dcbd23a0b5f722a6a539faa140c5eb7524230289fadddc41c1b3a585e9fd51",
+      "id": "chunk_075a8addc231d4038229c2654ebd4ce5d8bbafb658f49c187e9ef46216ec1c8c"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_b74adefa4dcc055aa157ea69",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 100.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_text_pdf_12",
+      "version_id": "text_pdf_12",
+      "score": 0.7614098191261292,
+      "text": "Synthetic policy edition / 合成政策版本 — page 1\nVisitor access must be submitted within 12 business days.",
+      "quote_hash": "de6f6062ebb9ca7c499121b7dd68716f016ccd1681c9ba2b6bc1c81bd5af62e3",
+      "id": "chunk_1d06f06e2c0a4cc045b350227b309615d4128ef30db9ea436c9ee2a96fc0425b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e9d796655a0150b37ee7ffe1",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 102.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 5.0
+      },
+      "representation_id": "rep_text_pdf_12",
+      "version_id": "text_pdf_12",
+      "score": -1.315427541732788,
+      "text": "Synthetic policy edition / 合成政策版本 — page 6\nVisitor access must be submitted through the visitor kiosk.",
+      "quote_hash": "cf0141edcfc80d323fc117b4345bdf1ad9a740e22012258b4f56e19f49dbf547",
+      "id": "chunk_20781c12552ff2820df96acd0a1b314fb70c4be95f019bfbb7d9d183f015fb76"
+    },
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_2f52e99144377a54b1d64fed",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 59.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_02",
+      "version_id": "pptx_02",
+      "score": -1.3522889614105225,
+      "text": "Visitor access must be submitted through the visitor kiosk.",
+      "quote_hash": "d6cd5ea9a85aad5fd505926d38f00c634563b8afce546caef6d86650b456a533",
+      "id": "chunk_774d1b6194b5a10ba5ab9a2d79374aff389892a13ee7ae58cc8fdff8a4b83a0a"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d6896d3040ce2e4abbb193b6",
+        "kind": "document_block",
+        "block_index": 6.0,
+        "char_end": 59.0
+      },
+      "representation_id": "rep_docx_12",
+      "version_id": "docx_12",
+      "score": -1.3522889614105225,
+      "text": "Visitor access must be submitted through the visitor kiosk.",
+      "quote_hash": "d6cd5ea9a85aad5fd505926d38f00c634563b8afce546caef6d86650b456a533",
+      "id": "chunk_d260a8c1dd84b1eb7ae26e93d89b3dddfaf80c6c65054a4f79207d9be8c2ca33"
+    },
+    {
+      "anchor": {
+        "slide_index": 1.0,
+        "block_id": "blk_0303ae91f83aa5361c398e2a",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 54.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_02",
+      "version_id": "pptx_02",
+      "score": -1.6860038042068481,
+      "text": "Reception is responsible for approving visitor access.",
+      "quote_hash": "45260299965a181732b44220a64e1b935a24f483f02aa1e4afd9fcc028f7fc22",
+      "id": "chunk_0eac76bf3a8bb7fd31ece549ee025f3b1340fbd4a36bd5c10b61438b9ea0960b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_0c3e9638c0e91ceb59119e95",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 24.0,
+        "row_index": 5.0
+      },
+      "representation_id": "rep_table_02",
+      "version_id": "table_02",
+      "score": -1.7857556343078613,
+      "text": "5\t访客通行必须通过访客终端提交。\t5\twest",
+      "quote_hash": "72d1008f769099d092afadcefef57e5ea5b323a2e5b41662e8dfe09dbef9cc88",
+      "id": "chunk_1d47f1261ed5a895b9d739df82612b47e6b921eff42752178cad75dde62f7076"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_0093dbe3723b4a8cf4b20342",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 15.0,
+        "bbox": [
+          0.026209676638245583,
+          0.2765625,
+          0.36643144488334656,
+          0.3609375
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_12",
+      "version_id": "scan_pdf_12",
+      "score": -1.9093002080917358,
+      "text": "访客通行必须通过访客终端提交。",
+      "quote_hash": "8669c26d0df5987d65e1b5763ac30e00d9a390b42f1b7071847736503802a346",
+      "id": "chunk_78f7411dcc192b9c331233bdddc5b3cdefeedf804d80067ff8bdbc2957a56656"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_774d1b6194b5a10ba5ab9a2d79374aff389892a13ee7ae58cc8fdff8a4b83a0a",
+      "version_id": "pptx_02",
+      "text": "Visitor access must be submitted through the visitor kiosk.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_2f52e99144377a54b1d64fed",
+        "char_end": 59,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_d260a8c1dd84b1eb7ae26e93d89b3dddfaf80c6c65054a4f79207d9be8c2ca33",
+      "version_id": "docx_12",
+      "text": "Visitor access must be submitted through the visitor kiosk.",
+      "anchor": {
+        "block_id": "blk_d6896d3040ce2e4abbb193b6",
+        "block_index": 6.0,
+        "char_end": 59,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_0eac76bf3a8bb7fd31ece549ee025f3b1340fbd4a36bd5c10b61438b9ea0960b",
+      "version_id": "pptx_02",
+      "text": "Reception is responsible for approving visitor access.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_0303ae91f83aa5361c398e2a",
+        "char_end": 54,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_ec53f700149b374bc26d6f292bc66d70eab853653ad9e888a1a1b71e72328e8d",
+      "version_id": "docx_12",
+      "text": "Reception is responsible for approving visitor access.",
+      "anchor": {
+        "block_id": "blk_85e518a2cee9645520a71351",
+        "block_index": 2.0,
+        "char_end": 54,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_3c2bc1d68af1c220a13386e104d4c182158052220dc2238bfc942b47801604e7",
+      "version_id": "pptx_02",
+      "text": "Emergency exceptions for visitor access require written approval from the department head.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_477facd45e838541f1deadf4",
+        "char_end": 90,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 4.0
+      }
+    },
+    {
+      "id": "chunk_b9fb6f792ccf2416004928e4a0d2b4951d3d0c3bae2b04dc0ab18d890047fbc4",
+      "version_id": "docx_12",
+      "text": "Emergency exceptions for visitor access require written approval from the department head.",
+      "anchor": {
+        "block_id": "blk_a202d7c2123bfb4516360c8c",
+        "block_index": 5.0,
+        "char_end": 90,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_48f8ee481c8975cb19e76b2d65235f23348fdfc67939a4ddfc0418b6649bfcf8",
+      "version_id": "docx_12",
+      "text": "Records for visitor access must be retained for 20 months.",
+      "anchor": {
+        "block_id": "blk_7536f68f13aa0eaba623e915",
+        "block_index": 4.0,
+        "char_end": 58,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_7e05b6c9e90e9542dd7738493ad7495d70e888cbc488e97df1482ad52ee1eed4",
+      "version_id": "pptx_02",
+      "text": "Records for visitor access must be retained for 22 months.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_3844df9f8bf04e32d894faad",
+        "char_end": 58,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 3.0
+      }
+    }
+  ]
+}

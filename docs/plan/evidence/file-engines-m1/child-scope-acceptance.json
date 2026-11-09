@@ -1,0 +1,80 @@
+{
+  "checks": [
+    {
+      "name": "unmodified_legacy_history_replays_with_terminal_patch",
+      "status": "passed"
+    },
+    {
+      "name": "real_api_idempotency_frozen_inputs_and_completion_without_get",
+      "status": "passed"
+    },
+    {
+      "name": "real_subagent_public_sheet_read_no_secret_outline_or_content",
+      "status": "passed"
+    },
+    {
+      "name": "real_subagent_query_only_materializes_delegated_sheet",
+      "status": "passed"
+    },
+    {
+      "name": "secret_raw_shell_alias_range_extra_sources_and_no_scope_denied",
+      "status": "passed"
+    },
+    {
+      "name": "legacy_pending_child_without_scope_is_denied_from_trusted_workflow_type",
+      "status": "passed"
+    },
+    {
+      "name": "normal_parent_keeps_its_existing_file_access",
+      "status": "passed"
+    },
+    {
+      "name": "no_attachment_coding_subagent_retains_original_tools",
+      "status": "passed"
+    },
+    {
+      "name": "collection_only_parent_fail_closed_without_delegation",
+      "status": "passed"
+    },
+    {
+      "name": "concurrent_parent_child_context_scopes_do_not_bleed",
+      "status": "passed"
+    }
+  ],
+  "temporal": "temporal version 1.9.1 (Server 1.32.0, UI 2.54.1)",
+  "mode": "real_temporal_go_file_api_sandbox_service_local_backend",
+  "namespace": "fi-1794259685",
+  "status": "passed",
+  "attempts": [
+    {
+      "job": "fjob_14be9bd52cb93fe0b0e2f720bf080bb3769577dbafda303d",
+      "scenario": "legacy",
+      "attempt": 1,
+      "pid": 217
+    },
+    {
+      "job": "fjob_4addebfbc4554a9c3e7cdcbfd71aa3acfd7139870ea39029",
+      "scenario": "simple",
+      "attempt": 1,
+      "pid": 268
+    },
+    {
+      "job": "fjob_74cd3f594a2e568024ae8ebe614579dba87e05543a825ff9",
+      "scenario": "two-sheets.xlsx",
+      "attempt": 1,
+      "pid": 268
+    },
+    {
+      "job": "fjob_6b640e9774283da760128d131163ff5b0533cae2e85b402c",
+      "scenario": "two-sheets.xlsx",
+      "attempt": 1,
+      "pid": 268
+    },
+    {
+      "job": "fjob_27e7f4660c0f44dfcff3827cf27ea9416684306ffad952fe",
+      "scenario": "two-sheets.xlsx",
+      "attempt": 1,
+      "pid": 268
+    }
+  ]
+}

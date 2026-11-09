@@ -1,0 +1,373 @@
+{
+  "id": "q01_0",
+  "query": "Compare the submission deadlines for employee onboarding across the policies.",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_01",
+      "pptx_11",
+      "text_01",
+      "text_pdf_01"
+    ],
+    "extraction_chunking_recall_ceiling": 0.8
+  },
+  "exact": {
+    "recall_at_8": 0.0,
+    "hit_at_8": 0.0,
+    "reciprocal_rank_at_8": 0,
+    "unique_source_ndcg_at_8": 0.0,
+    "relevant_files": [],
+    "expected_files": [
+      "text_pdf_01",
+      "scan_pdf_01",
+      "docx_01",
+      "pptx_11",
+      "text_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.0,
+    "latency_ms": 17.85177900455892
+  },
+  "hybrid": {
+    "recall_at_8": 0.2,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.3391602052736161,
+    "relevant_files": [
+      "text_pdf_01"
+    ],
+    "expected_files": [
+      "text_pdf_01",
+      "scan_pdf_01",
+      "docx_01",
+      "pptx_11",
+      "text_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.125,
+    "latency_ms": 6807.951262919232
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_478cf227a03b0e3774d92a9c",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 17.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.397078431372549,
+          0.12052112044648612
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_text_pdf_01",
+      "version_id": "text_pdf_01",
+      "score": 0.08478140830993652,
+      "text": "员工入职的提交期限为10个工作日。",
+      "quote_hash": "c9677e9ffe901f5f69fbf2042eaa220cc591430d07f38a9f40ddce7421af2134",
+      "id": "chunk_da322df6f67d9c35ae55367718d6898517df28a69d257b0fb96c6e3078db2895"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_3529cf746db1b6a6402a4fb3",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 55.0,
+        "bbox": [
+          0.026209676638245583,
+          0.3859375,
+          0.6784273982048035,
+          0.4703125
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_01",
+      "version_id": "scan_pdf_01",
+      "score": -1.0972940921783447,
+      "text": "Employee onboarding must be submitted through the staff",
+      "quote_hash": "013591bb6f68a937733ba9efa6a830f29a1f9c6ca4161fb2e39d17693461de70",
+      "id": "chunk_5562d0fbc07cd299c93dbc8fe56e6aade3d2cd6a0c06ed97c556ab807d79a714"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_1760c56355c5c8f028c5bb42",
+        "range": "B2",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 18.0
+      },
+      "representation_id": "rep_xlsx_05",
+      "version_id": "xlsx_05",
+      "score": -1.6956002712249756,
+      "text": "远程办公申请的提交期限为7个工作日。",
+      "quote_hash": "8517a2751d71b6b5403fd1bf769fab29818df49d41e76b88b2b90152294106bc",
+      "id": "chunk_2cc30573f44e877a077d7c2cd0cf0e22dafebeaab7d03ff5772774d09c1b4ce0"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_a4f486e14a7dc2bdd8e45d38",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.02368951588869095,
+          0.096875,
+          0.3785282075405121,
+          0.2078125
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_00",
+      "version_id": "scan_pdf_00",
+      "score": -1.7122825384140015,
+      "text": "差旅报销的提交期限为6个工作日。",
+      "quote_hash": "9e267ef7f20c0c253f14b2ae9ace3732fc7b28b3c9d876946a70cddf1e0d8481",
+      "id": "chunk_a4ab72f6bd3f575e4d9a4985f2a4ddb974f046e910be948a0d563e9db5034466"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d457b6c55e32f8dc72bbc6e0",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 54.0,
+        "bbox": [
+          0.024697579443454742,
+          0.2703125,
+          0.6617943644523621,
+          0.3625
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_01",
+      "version_id": "scan_pdf_01",
+      "score": -2.3627851009368896,
+      "text": "Records for employee onboarding must be retained for 8",
+      "quote_hash": "65c15e30671ed8da082eaba065c1a2012a59111825b4b5beaa9b39cb25b34851",
+      "id": "chunk_45687126cdf7011f705c68a58cdc529ba9e4b00704e73e9fe0c5da5f15184930"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_8fc04bd81fb193fa10062551",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 59.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_text_pdf_11",
+      "version_id": "text_pdf_11",
+      "score": -3.1720266342163086,
+      "text": "Synthetic policy edition / 合成政策版本 — page 1\n培训报销的提交期限为5个工作日。",
+      "quote_hash": "37ce3573dfaad6dd61b456a90fe889d289a4f59cd15f9dd19573f28ad923c141",
+      "id": "chunk_031c6e1b3414089d3d09fde0013f9093caaf0bde788f22396d2b419eb207edcb"
+    },
+    {
+      "anchor": {
+        "slide_index": 0.0,
+        "block_id": "blk_57d9c9aeba4a746d639f997f",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 17.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_01",
+      "version_id": "pptx_01",
+      "score": -3.3692073822021484,
+      "text": "培训报销的提交期限为17个工作日。",
+      "quote_hash": "6cbb339b8eee436e5cdb13a09f63edb5d0b2ce4443d4513d17de7b0d5d72f8c0",
+      "id": "chunk_68489ce540aaba8106cdcc10b36b275b0397b02f8fda4074e7e87312ccbb27a5"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_ad0a76adb81d05a7c1b8e903",
+        "kind": "document_block",
+        "block_index": 1.0,
+        "char_end": 17.0
+      },
+      "representation_id": "rep_docx_11",
+      "version_id": "docx_11",
+      "score": -3.402618169784546,
+      "text": "培训报销的提交期限为11个工作日。",
+      "quote_hash": "66ff670927d6d5d903455d8a8b465930a48dd789d12680a9df4b588260c25cba",
+      "id": "chunk_65b31765b27812f69baa7b23d04857295b218d0c29387854fb27e8cb0d44db6b"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_7b93438fbe1f9a739b91dcf126af433919de722cb15834776f276f06f517b6d3",
+      "version_id": "scan_pdf_01",
+      "text": "Emergency exceptions for employee onboarding require",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.0953125,
+          0.6597781777381897,
+          0.184375
+        ],
+        "block_id": "blk_662b299866efbce1cc6060de",
+        "char_end": 52,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_5562d0fbc07cd299c93dbc8fe56e6aade3d2cd6a0c06ed97c556ab807d79a714",
+      "version_id": "scan_pdf_01",
+      "text": "Employee onboarding must be submitted through the staff",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.3859375,
+          0.6784273982048035,
+          0.4703125
+        ],
+        "block_id": "blk_3529cf746db1b6a6402a4fb3",
+        "char_end": 55,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_45687126cdf7011f705c68a58cdc529ba9e4b00704e73e9fe0c5da5f15184930",
+      "version_id": "scan_pdf_01",
+      "text": "Records for employee onboarding must be retained for 8",
+      "anchor": {
+        "bbox": [
+          0.024697579443454742,
+          0.2703125,
+          0.6617943644523621,
+          0.3625
+        ],
+        "block_id": "blk_d457b6c55e32f8dc72bbc6e0",
+        "char_end": 54,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_21db96f25db5e8339c85a44f6863f04912e8065c06deb1a4faa419f9585d8b0c",
+      "version_id": "scan_pdf_01",
+      "text": "Employee onboarding requires signed employment agreement.",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.096875,
+          0.737399160861969,
+          0.184375
+        ],
+        "block_id": "blk_ce36fc16ee8f868a253a3e2d",
+        "char_end": 57,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_3cc3f65e5d1a07194c7c1e77bd631637da05a33b89151864cca401a44a070b97",
+      "version_id": "scan_pdf_01",
+      "text": "Employee onboarding must be submitted within 13 business",
+      "anchor": {
+        "bbox": [
+          0.024697579443454742,
+          0.0921875,
+          0.6885080337524414,
+          0.1875
+        ],
+        "block_id": "blk_5b206273e0ddd9ae9df3f58d",
+        "char_end": 56,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_12b0b0e221a6382d6b45cfbf5259906ea4f7d83954d829a9798d8435ae7d8980",
+      "version_id": "scan_pdf_01",
+      "text": "onboarding.",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.5,
+          0.16683466732501984,
+          0.58125
+        ],
+        "block_id": "blk_31f2ad33c4b7674e26492fa5",
+        "char_end": 11,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_24b8daa07de4cacc3d8bbf7740d051edd9c1151da63459026d9bd438036acd07",
+      "version_id": "scan_pdf_01",
+      "text": "People Operations is responsible for approving employee",
+      "anchor": {
+        "bbox": [
+          0.02520161122083664,
+          0.3796875,
+          0.6638104915618896,
+          0.475
+        ],
+        "block_id": "blk_3aefd23aa7b3bd0450f71887",
+        "char_end": 55,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_0a5eef466c143f5829c8c2e8c220a33085cf2c092f10e812fa949cd1eef29337",
+      "version_id": "pptx_08",
+      "text": "Emergency exceptions for accessibility review require written approval from the department head.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_6c08105150b4de01e8eec52b",
+        "char_end": 96,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 4.0
+      }
+    }
+  ]
+}

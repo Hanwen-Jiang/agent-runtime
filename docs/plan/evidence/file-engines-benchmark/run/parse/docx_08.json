@@ -1,0 +1,248 @@
+{
+  "evaluation": {
+    "id": "docx_08",
+    "family": "docx",
+    "variant": "styled_paragraphs",
+    "language": "en",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 0.047669186955317855,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_064136b0ce8368b004c0a159"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_002128e625673816cab29f8f"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_038e147cda283e866471f769"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_3622dee78caa1eb794d99dab"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_21a4035730ef736c28fc2757"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_2f3f577344dd8abf5f3ec036"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "raw_ooxml",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_blocks": 8,
+      "start": 0,
+      "returned": 8,
+      "inline_images": 0,
+      "images_read": false,
+      "returned_blocks": 8,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_6a72b5e8689ee7a2b59267f1",
+        "kind": "paragraph",
+        "text": "Synthetic policy 8 / 合成政策",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 0
+        },
+        "style": "Title"
+      },
+      {
+        "id": "blk_064136b0ce8368b004c0a159",
+        "kind": "paragraph",
+        "text": "Software release approval must be submitted within 15 business days.",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 1
+        },
+        "style": "Heading 2"
+      },
+      {
+        "id": "blk_002128e625673816cab29f8f",
+        "kind": "paragraph",
+        "text": "Release Board is responsible for approving software release approval.",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 2
+        },
+        "style": "Normal"
+      },
+      {
+        "id": "blk_038e147cda283e866471f769",
+        "kind": "paragraph",
+        "text": "Software release approval requires passing regression report.",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 3
+        },
+        "style": "Normal"
+      },
+      {
+        "id": "blk_3622dee78caa1eb794d99dab",
+        "kind": "paragraph",
+        "text": "Records for software release approval must be retained for 16 months.",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 4
+        },
+        "style": "Normal"
+      },
+      {
+        "id": "blk_21a4035730ef736c28fc2757",
+        "kind": "paragraph",
+        "text": "Emergency exceptions for software release approval require written approval from the department head.",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 5
+        },
+        "style": "Normal"
+      },
+      {
+        "id": "blk_2f3f577344dd8abf5f3ec036",
+        "kind": "paragraph",
+        "text": "Software release approval must be submitted through the release tracker.",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 6
+        },
+        "style": "Normal"
+      },
+      {
+        "id": "blk_0cdafd928f1d5d02087db5a7",
+        "kind": "header",
+        "text": "Synthetic benchmark — not business policy",
+        "anchor": {
+          "kind": "document_block",
+          "section": 0,
+          "part": "header",
+          "block_index": 0
+        }
+      }
+    ],
+    "outline": [
+      {
+        "block_index": 1,
+        "text": "Software release approval must be submitted within 15 business days.",
+        "style": "Heading 2"
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_blocks": 8,
+      "start": 0,
+      "returned": 8,
+      "inline_images": 0,
+      "images_read": false,
+      "returned_blocks": 8,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/docx_08/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "c093446a27b1ef321ecc9fbb566ec0719fa256f28022080051dfade02293a748",
+        "size_bytes": 3051
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "0ee4968fb1bde66509ca008245b829a21cb082ed60053e2d83e680d367d81556",
+      "size_bytes": 37434,
+      "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "3555600d2cc3ddf5685a8401ee2cded590e598f382516d69e80bf06e47c783b3"
+    }
+  }
+}

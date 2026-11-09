@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import contextlib
 import subprocess
 import sys
 from pathlib import Path
@@ -36,7 +37,7 @@ def test_workspace_operations_have_their_own_queue() -> None:
     还在跑的操作（旧池留到它们跑完）。"""
     workspace = QUEUE_COMPONENTS[names.WORKSPACE_QUEUE]
     assert workspace.workflows == (names.WORKSPACE_OPERATION_WORKFLOW, "FileOperationWorkflow")
-    assert workspace.activities == (names.WORKSPACE_OPERATION, names.WORKSPACE_OPERATION_RESULT, "file_operation")
+    assert workspace.activities == (names.WORKSPACE_OPERATION, names.WORKSPACE_OPERATION_RESULT, "file_operation", "file_operation_complete")
     assert names.WORKSPACE_OPERATION_WORKFLOW in QUEUE_COMPONENTS[names.TASK_QUEUE].workflows
     assert names.WORKSPACE_OPERATION in QUEUE_COMPONENTS[names.PROGRAM_QUEUE].activities
 
@@ -119,7 +120,10 @@ def test_the_model_reviewer_takes_over_review_and_wrap_up_only_when_asked() -> N
 @pytest.mark.asyncio(loop_scope="session")
 async def test_build_workers_registers_components_per_queue(temporal_env: WorkflowEnvironment) -> None:
     workers = build_workers(temporal_env.client, WorkerConfig(), [names.DECISION_QUEUE, names.TASK_QUEUE])
-    assert [w.task_queue for w in workers] == [names.DECISION_QUEUE, names.TASK_QUEUE]
+    async with contextlib.AsyncExitStack() as stack:
+        for worker in workers:
+            await stack.enter_async_context(worker)
+        assert [w.task_queue for w in workers] == [names.DECISION_QUEUE, names.TASK_QUEUE]
 
 
 @pytest.mark.temporal

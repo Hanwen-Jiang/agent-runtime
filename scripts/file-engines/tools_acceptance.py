@@ -22,11 +22,11 @@ async def main():
  checks=[]
  with tempfile.TemporaryDirectory(prefix='file-tools-') as temp:
   temp=Path(temp);(temp/'relational').mkdir();db=sqlite3.connect(temp/'relational/t1.sqlite3',check_same_thread=False)
-  db.executescript('''CREATE TABLE tasks(task_id TEXT,submitted_by TEXT);CREATE TABLE runtime_files(file_id TEXT,workspace_id TEXT,created_by TEXT,lifecycle TEXT,acl_epoch INTEGER);CREATE TABLE runtime_file_versions(file_id TEXT,version_id TEXT,sha256 TEXT,object_uri TEXT,parent_version_id TEXT);CREATE TABLE runtime_file_sources(file_id TEXT,object_uri TEXT);CREATE TABLE runtime_file_grants(file_id TEXT,workspace_id TEXT,subject_type TEXT,subject_id TEXT,permission TEXT);CREATE TABLE runtime_file_task_artifacts(task_id TEXT,job_id TEXT,artifact_id TEXT,object_uri TEXT,roots TEXT,sha256 TEXT,mime_type TEXT,size_bytes INTEGER,name TEXT);CREATE TABLE runtime_file_collection_freezes(task_id TEXT,workspace_id TEXT,created_by TEXT,manifest TEXT);''')
+  db.executescript('''CREATE TABLE tasks(task_id TEXT,submitted_by TEXT);CREATE TABLE runtime_files(file_id TEXT,workspace_id TEXT,created_by TEXT,lifecycle TEXT,acl_epoch INTEGER,name TEXT);CREATE TABLE runtime_file_versions(file_id TEXT,version_id TEXT,sha256 TEXT,object_uri TEXT,parent_version_id TEXT,mime_type TEXT);CREATE TABLE runtime_file_sources(file_id TEXT,object_uri TEXT);CREATE TABLE runtime_file_grants(file_id TEXT,workspace_id TEXT,subject_type TEXT,subject_id TEXT,permission TEXT);CREATE TABLE runtime_file_task_artifacts(task_id TEXT,job_id TEXT,artifact_id TEXT,object_uri TEXT,roots TEXT,sha256 TEXT,mime_type TEXT,size_bytes INTEGER,name TEXT);CREATE TABLE runtime_file_collection_freezes(task_id TEXT,workspace_id TEXT,created_by TEXT,manifest TEXT);''')
   objects=LocalDiskObjectStoreProvider(temp/'objects',signing_key=b'file-tool-probe');store=objects.bind(TenantContext(tenant_id='t1'))
   source=await store.put('uploads/src_'+('1'*32)+'/file.pdf',b'synthetic source',content_type='application/pdf')
   fid='src_'+('1'*32);vid='ver_'+('2'*32);task='tsk_probe';root={'file_id':fid,'version_id':vid,'sha256':source.sha256,'acl_epoch':1,'object_uri':source.uri}
-  db.execute('INSERT INTO tasks VALUES(?,?)',(task,'u1'));db.execute('INSERT INTO runtime_files VALUES(?,?,?,?,?)',(fid,'w1','u1','active',1));db.execute('INSERT INTO runtime_file_versions VALUES(?,?,?,?,?)',(fid,vid,source.sha256,source.uri,''));db.execute('INSERT INTO runtime_file_collection_freezes VALUES(?,?,?,?)',(task,'w1','u1','[{"generation":"fixed"}]'));db.commit()
+  db.execute('INSERT INTO tasks VALUES(?,?)',(task,'u1'));db.execute('INSERT INTO runtime_files VALUES(?,?,?,?,?,?)',(fid,'w1','u1','active',1,'file.pdf'));db.execute('INSERT INTO runtime_file_versions VALUES(?,?,?,?,?,?)',(fid,vid,source.sha256,source.uri,'','application/pdf'));db.execute('INSERT INTO runtime_file_collection_freezes VALUES(?,?,?,?)',(task,'w1','u1','[{"generation":"fixed"}]'));db.commit()
   await store.put(f'task-inputs/{task}/manifest.json',json.dumps({'workspace_id':'w1','user_id':'u1','attachments':[source.uri]}).encode())
   image=await store.put('file-derived/fjob_'+('3'*48)+'/image',b'picture-bytes',content_type='image/png')
   jid='fjob_'+('3'*48);aid='art_'+('4'*32);requests=[];pending=False
@@ -68,7 +68,17 @@ async def main():
   try:await running
   except asyncio.CancelledError:pass
   assert any(path.split('?')[0].endswith('/cancel') and body['consumer_id'].startswith('tool-') for _,path,body in requests);checks.append('task_cancellation_detaches_only_its_consumer')
+  # Collection-only inputs expose only frozen summaries, with current ACL checks.
+  collection={'id':'col_probe','generation':'gen_probe','embedding_version':'embed_probe','revision':1,'roots':[root]}
+  db.execute('UPDATE runtime_file_collection_freezes SET manifest=? WHERE task_id=?',(json.dumps([collection]),task));db.commit()
+  summary={k:v for k,v in collection.items() if k!='roots'};summary['root_count']=1
+  await store.put(f'task-inputs/{task}/manifest.json',json.dumps({'workspace_id':'w1','user_id':'u1','attachments':[],'collections':[summary]}).encode())
+  summaries=await attachments.collections('t1',task,'w1');assert summaries==[summary] and not await attachments.references('t1',task,'w1');checks.append('collection_only_frozen_summary_without_direct_file_authority')
   db.execute('UPDATE runtime_files SET acl_epoch=2');db.commit()
+  try:await attachments.collections('t1',task,'w1')
+  except ProviderError:checks.append('collection_summary_revocation_denied')
+  else:raise AssertionError('stale collection accepted')
+  await store.put(f'task-inputs/{task}/manifest.json',json.dumps({'workspace_id':'w1','user_id':'u1','attachments':[source.uri]}).encode())
   try:await attachments.describe('t1',task,'w1')
   except ProviderError:checks.append('derived_epoch_revocation_denied')
   else:raise AssertionError('stale derived image accepted')

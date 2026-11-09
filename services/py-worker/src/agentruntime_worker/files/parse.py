@@ -295,7 +295,7 @@ def xlsx_read(ctx: Context) -> dict:
                 blocks.append(ctx.block("cell", str(cell.value), {"kind":"sheet_range","sheet_id":f"sheet-{wb.sheetnames.index(name)}","sheet":name,"range":cell.coordinate},
                                         value=None if formula else cell.value,formula=formula,cached_value=old.value,calculation_status="not_recalculated",number_format=cell.number_format))
         partial=len(wb.sheetnames)>1 or d<(ws.max_row or 0) or c<(ws.max_column or 0) or a>1 or b>1
-        return ctx.response(status="partial" if partial else "ready",blocks=blocks,outline=[{"kind":"sheet","name":s.title,"sheet_id":f"sheet-{i}","rows":s.max_row,"columns":s.max_column,"state":s.sheet_state} for i,s in enumerate(wb)],
+        return ctx.response(status="partial" if partial else "ready",blocks=blocks,outline=[{"kind":"sheet","name":s.title,"sheet_id":f"sheet-{i}","rows":s.max_row,"columns":s.max_column,"state":s.sheet_state} for i,s in enumerate(wb) if not ctx.options.get('_restrict_sheet') or s.title==name],
                             coverage={"sheet":name,"range":[a,b,c,d],"formulas_recalculated":False},capabilities=capabilities())
     finally:
         wb.close();cached.close()

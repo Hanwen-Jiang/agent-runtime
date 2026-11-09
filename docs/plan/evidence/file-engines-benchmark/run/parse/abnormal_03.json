@@ -1,0 +1,44 @@
+{
+  "evaluation": {
+    "id": "abnormal_03",
+    "family": "abnormal",
+    "variant": "corrupt_docx",
+    "language": "en",
+    "expected": "rejected",
+    "status": "failed",
+    "elapsed_seconds": 0.0012342960108071566,
+    "checks": [],
+    "independent": {
+      "method": "negative_case",
+      "verified": null
+    },
+    "original_unchanged": true,
+    "error": {
+      "code": "file_processing_failed",
+      "message": "BadZipFile"
+    },
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "complete": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "failed",
+    "error": {
+      "code": "file_processing_failed",
+      "message": "BadZipFile"
+    },
+    "blocks": [],
+    "artifacts": [],
+    "coverage": {
+      "complete": false
+    },
+    "warnings": [],
+    "outline": [],
+    "capabilities": {}
+  }
+}

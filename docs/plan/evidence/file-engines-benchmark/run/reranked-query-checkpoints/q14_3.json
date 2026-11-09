@@ -1,0 +1,345 @@
+{
+  "id": "q14_3",
+  "query": "合同续签的记录保存多久？请找出各文件中的规定。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_14",
+      "pptx_04",
+      "scan_pdf_14",
+      "table_04",
+      "text_pdf_14",
+      "xlsx_09"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.3333333333333333,
+    "unique_source_ndcg_at_8": 0.28162497265977743,
+    "relevant_files": [
+      "scan_pdf_14",
+      "xlsx_09"
+    ],
+    "expected_files": [
+      "text_pdf_14",
+      "scan_pdf_14",
+      "docx_14",
+      "xlsx_09",
+      "pptx_04",
+      "table_04"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 27.335486840456724
+  },
+  "hybrid": {
+    "recall_at_8": 0.5,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.644824486427155,
+    "relevant_files": [
+      "scan_pdf_14",
+      "table_04",
+      "xlsx_09"
+    ],
+    "expected_files": [
+      "text_pdf_14",
+      "scan_pdf_14",
+      "docx_14",
+      "xlsx_09",
+      "pptx_04",
+      "table_04"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 3460.1533291861415
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_0899ba97f899cbbc5a8fca6d",
+        "range": "B5",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 14.0
+      },
+      "representation_id": "rep_xlsx_09",
+      "version_id": "xlsx_09",
+      "score": 6.734816551208496,
+      "text": "合同续签记录须保留23个月。",
+      "quote_hash": "13bbeb1cee403ede3e6588ecfaa3faa8a75d909680b6f769abf275669510487a",
+      "id": "chunk_30ea3b70ee79f8ad98ef756cd1c44673e99bbf3d58e80427a5a9c379fc96b1af"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e4b2edef61b21d3e77d9c569",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 14.0,
+        "bbox": [
+          0.024193547666072845,
+          0.278125,
+          0.32207658886909485,
+          0.3828125
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_14",
+      "version_id": "scan_pdf_14",
+      "score": 6.694007873535156,
+      "text": "合同续签记录须保留21个月。",
+      "quote_hash": "4b4ddf72b9ac2aac534e47ad1f14109f6f5f6521a117a15aa156bdd63167227e",
+      "id": "chunk_ea630058c511754a3656fbf9199f50af0868505aa482a9cd49c3454f3730b645"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_5d22dc7b9800ab0087a9e359",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 22.0,
+        "row_index": 3.0
+      },
+      "representation_id": "rep_table_04",
+      "version_id": "table_04",
+      "score": 4.515903949737549,
+      "text": "3\t合同续签记录须保留7个月。\t3\twest",
+      "quote_hash": "938534fb01c4fd574d5819801057b895070cdfb0c9ca1fdc3892bf2fdae186af",
+      "id": "chunk_0d41d421f78c3198c43ae77fd44249092e9ec8733fa28fd8707d8cdce6284862"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_ac639fb2604d96a71b8bcc4a",
+        "range": "B2",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 17.0
+      },
+      "representation_id": "rep_xlsx_09",
+      "version_id": "xlsx_09",
+      "score": 1.2468616962432861,
+      "text": "合同续签的提交期限为10个工作日。",
+      "quote_hash": "a0b725b450b25d14172c006d6712842956cc9bacbe619a7ef01a258318eaa05d",
+      "id": "chunk_4f33880be7981265292b27b9e45704c9cc785d5d9c9d5dae49552cf548502257"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_c57e758a698d6c280e93bc1a",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.024193547666072845,
+          0.1,
+          0.3780241906642914,
+          0.20625
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_14",
+      "version_id": "scan_pdf_14",
+      "score": 1.1833322048187256,
+      "text": "合同续签的提交期限为4个工作日。",
+      "quote_hash": "68ebbc0751ca2c993270ad471bca13754a3c20b97e0d2558101a5bea87a93329",
+      "id": "chunk_b5c96b13ed03338efd3dc97cb12a38621c2f4560c4ea2f19ed0ea3a05ec450c1"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_bb672c895b138c9ab90d1568",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 13.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_07",
+      "version_id": "pptx_07",
+      "score": 0.3611856997013092,
+      "text": "备份恢复记录须保留8个月。",
+      "quote_hash": "03abded1206d91b390833844f39c0b5b8dac9649af25deaaa223297147643219",
+      "id": "chunk_28cd466f7d4cafc53d9457c811844e93cadf51074fafb68fad9812c9abb752a2"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_dcd9464cca744395225678c2",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 15.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_09",
+      "version_id": "pptx_09",
+      "score": 0.047792527824640274,
+      "text": "采购单变更记录须保留10个月。",
+      "quote_hash": "19f5dffc339331b749cf14cc231498acd8b5099c9656deb565e97e3cb1176252",
+      "id": "chunk_571de9e542270f052f1b9bee7d7ce5bd5de0eb17a950e6e307dd3cf00e0a4eaa"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_64ac7cbbdb8cd855a554e04a",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 26.0,
+        "row_index": 0.0
+      },
+      "representation_id": "rep_table_04",
+      "version_id": "table_04",
+      "score": -0.32984235882759094,
+      "text": "0\t合同续签的提交期限为19个工作日。\t0\teast",
+      "quote_hash": "ede9581ce169e5bea060f2c6c6d073073c120fbfcf2cd6b3849fbcd6d75f94d3",
+      "id": "chunk_e799cbc831f9253cdd69ec0bbae30c74ed6ec48f651aac3a7d44e54c660c56d4"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_5a23ada199cf7f20e5a9ec79ff634d8c8e210255735d07cf186069643b77d8ca",
+      "version_id": "scan_pdf_14",
+      "text": "合同续签的审批责任人为法务。",
+      "anchor": {
+        "bbox": [
+          0.024697579443454742,
+          0.278125,
+          0.3432459533214569,
+          0.3828125
+        ],
+        "block_id": "blk_ee8cb29eec4ef7eb74d80c13",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_7aff70a923031e0f4cfa6a075b41875aaf9d1ae7334ffaededb5dc127dbf638e",
+      "version_id": "xlsx_09",
+      "text": "合同续签的审批责任人为法务。",
+      "anchor": {
+        "block_id": "blk_9a9b8cdf2532bac7e9d10304",
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B3",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_30ea3b70ee79f8ad98ef756cd1c44673e99bbf3d58e80427a5a9c379fc96b1af",
+      "version_id": "xlsx_09",
+      "text": "合同续签记录须保留23个月。",
+      "anchor": {
+        "block_id": "blk_0899ba97f899cbbc5a8fca6d",
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B5",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_ea630058c511754a3656fbf9199f50af0868505aa482a9cd49c3454f3730b645",
+      "version_id": "scan_pdf_14",
+      "text": "合同续签记录须保留21个月。",
+      "anchor": {
+        "bbox": [
+          0.024193547666072845,
+          0.278125,
+          0.32207658886909485,
+          0.3828125
+        ],
+        "block_id": "blk_e4b2edef61b21d3e77d9c569",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_4f33880be7981265292b27b9e45704c9cc785d5d9c9d5dae49552cf548502257",
+      "version_id": "xlsx_09",
+      "text": "合同续签的提交期限为10个工作日。",
+      "anchor": {
+        "block_id": "blk_ac639fb2604d96a71b8bcc4a",
+        "char_end": 17,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B2",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_b5c96b13ed03338efd3dc97cb12a38621c2f4560c4ea2f19ed0ea3a05ec450c1",
+      "version_id": "scan_pdf_14",
+      "text": "合同续签的提交期限为4个工作日。",
+      "anchor": {
+        "bbox": [
+          0.024193547666072845,
+          0.1,
+          0.3780241906642914,
+          0.20625
+        ],
+        "block_id": "blk_c57e758a698d6c280e93bc1a",
+        "char_end": 16,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_f3f75e8e3ca62fd1c2da4ff97464ccb7c5816db77131561270c8b010febde86a",
+      "version_id": "table_04",
+      "text": "1\t合同续签的审批责任人为法务。\t1\twest",
+      "anchor": {
+        "block_id": "blk_96227ee26552caa0cce6d9a4",
+        "char_end": 23,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "row_index": 1.0,
+        "sheet_id": "csv"
+      }
+    },
+    {
+      "id": "chunk_e799cbc831f9253cdd69ec0bbae30c74ed6ec48f651aac3a7d44e54c660c56d4",
+      "version_id": "table_04",
+      "text": "0\t合同续签的提交期限为19个工作日。\t0\teast",
+      "anchor": {
+        "block_id": "blk_64ac7cbbdb8cd855a554e04a",
+        "char_end": 26,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "row_index": 0.0,
+        "sheet_id": "csv"
+      }
+    }
+  ]
+}

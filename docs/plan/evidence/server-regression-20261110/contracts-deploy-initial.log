@@ -1,0 +1,74 @@
+...............................................................F........ [  6%]
+........................................................................ [ 13%]
+........................................................................ [ 20%]
+........................................................................ [ 26%]
+........................................................................ [ 33%]
+........................................................................ [ 40%]
+........................................................................ [ 47%]
+........................................................................ [ 53%]
+.................................................F...................... [ 60%]
+................................................s....................... [ 67%]
+........................................................................ [ 73%]
+........................................................................ [ 80%]
+....F................sssssssssssssssssssssssss.......................... [ 87%]
+........................................................................ [ 94%]
+....................................................F...........         [100%]
+=================================== FAILURES ===================================
+________________________ test_schema_enums_only_in_defs ________________________
+
+    def test_schema_enums_only_in_defs():
+        """除 defs.schema.json 外，schema 里不内联 enum，一律 $ref 共享定义。"""
+        offenders = [
+            f"{name}.schema.json{location}"
+            for name, schema in schemas.schema_files().items()
+            if name != schemas.DEFS_SCHEMA
+            for location in _enum_keywords(schema)
+        ]
+>       assert not offenders, f"内联的 enum：{offenders}"
+E       AssertionError: 内联的 enum：['file_catalog.schema.json/$defs/runtime_file/properties/lifecycle', 'file_intelligence.schema.json/properties/operation']
+E       assert not ['file_catalog.schema.json/$defs/runtime_file/properties/lifecycle', 'file_intelligence.schema.json/properties/operation']
+
+tests/contract/test_enum_parity.py:116: AssertionError
+___________________________ test_uv_lock_is_current ____________________________
+命令失败（退出码 2）：/opt/tools/bin/uv lock --check
+--- stdout ---
+
+--- stderr ---
+error: Failed to initialize cache at `/home/ci/.cache/uv`
+  cause: failed to open file `/home/ci/.cache/uv/sdists-v9/.git`: Permission denied (os error 13)
+
+____________ test_cloudflare_bridge_runs_one_of_our_sandbox_images _____________
+
+    def test_cloudflare_bridge_runs_one_of_our_sandbox_images() -> None:
+        """桥跑我们构建的沙箱镜像：要么在这里构建 sandbox-python（Dockerfile，上下文是仓库根），要么是推到 Cloudflare 镜像仓库的
+        sandbox-universal（按版本或 git 提交号，不用 latest）。"""
+        wrangler = (REPO_ROOT / "deploy" / "cloudflare" / "sandbox-bridge" / "wrangler.jsonc").read_text("utf-8")
+        image = re.search(r'"image":\s*"([^"]+)"', wrangler)
+        assert image
+        if image.group(1).startswith("registry.cloudflare.com/"):
+>           assert re.fullmatch(r"registry\.cloudflare\.com/[0-9a-f]{32}/agentruntime-sandbox-universal:(\d+\.\d+\.\d+|[0-9a-f]{7,40})", image.group(1))
+E           assert None
+E            +  where None = <function fullmatch at 0x7057106332e0>('registry\\.cloudflare\\.com/[0-9a-f]{32}/agentruntime-sandbox-universal:(\\d+\\.\\d+\\.\\d+|[0-9a-f]{7,40})', 'registry.cloudflare.com/60a1944efd471ed11fad60eaba55e59c/agentruntime-sandbox-universal:goal-cf-20261107')
+E            +    where <function fullmatch at 0x7057106332e0> = re.fullmatch
+E            +    and   'registry.cloudflare.com/60a1944efd471ed11fad60eaba55e59c/agentruntime-sandbox-universal:goal-cf-20261107' = <built-in method group of re.Match object at 0x7056c88f35b0>(1)
+E            +      where <built-in method group of re.Match object at 0x7056c88f35b0> = <re.Match object; span=(723, 838), match='"image": "registry.cloudflare.com/60a1944efd471ed>.group
+
+tests/deploy/test_images.py:108: AssertionError
+__________________ test_the_sub_agent_rules_are_on_by_default __________________
+
+    def test_the_sub_agent_rules_are_on_by_default() -> None:
+        """N16-R（docs/plan/sub-agent.md 第 12 节；总表第 0 节 V1-SUB 默认打开）：默认 rules，每个 Worker 池都拿到；off 时不渲染；别的取值渲染失败。"""
+        for manifests in (render(), render(CLOUD_VALUES)):
+            assert all(env_of(pod_spec(w)["containers"][0])["AR_SUB_AGENT_POLICY"]["value"] == "rules" for w in workers(manifests))
+        off = render(CLOUD_VALUES, set_values=["worker.subAgentPolicy=off"])
+>       assert all("AR_SUB_AGENT_POLICY" not in env_of(pod_spec(w)["containers"][0]) for w in workers(off))
+E       assert False
+E        +  where False = all(<generator object test_the_sub_agent_rules_are_on_by_default.<locals>.<genexpr> at 0x7056c910d3f0>)
+
+tests/deploy/test_worker_context_settings.py:43: AssertionError
+=========================== short test summary info ============================
+FAILED tests/contract/test_enum_parity.py::test_schema_enums_only_in_defs - A...
+FAILED tests/contract/test_toolchain.py::test_uv_lock_is_current - Failed: 命...
+FAILED tests/deploy/test_images.py::test_cloudflare_bridge_runs_one_of_our_sandbox_images
+FAILED tests/deploy/test_worker_context_settings.py::test_the_sub_agent_rules_are_on_by_default
+4 failed, 1042 passed, 26 skipped, 1 deselected in 266.48s (0:04:26)

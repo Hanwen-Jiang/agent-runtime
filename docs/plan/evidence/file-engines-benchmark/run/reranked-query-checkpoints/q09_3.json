@@ -1,0 +1,339 @@
+{
+  "id": "q09_3",
+  "query": "设备借用的记录保存多久？请找出各文件中的规定。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_09",
+      "text_09",
+      "text_pdf_09",
+      "xlsx_04"
+    ],
+    "extraction_chunking_recall_ceiling": 0.8
+  },
+  "exact": {
+    "recall_at_8": 0.6,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.5730249097309823,
+    "relevant_files": [
+      "docx_09",
+      "text_09",
+      "text_pdf_09"
+    ],
+    "expected_files": [
+      "text_pdf_09",
+      "scan_pdf_09",
+      "docx_09",
+      "xlsx_04",
+      "text_09"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 20.720634143799543
+  },
+  "hybrid": {
+    "recall_at_8": 0.6,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7227265726449519,
+    "relevant_files": [
+      "docx_09",
+      "text_09",
+      "text_pdf_09"
+    ],
+    "expected_files": [
+      "text_pdf_09",
+      "scan_pdf_09",
+      "docx_09",
+      "xlsx_04",
+      "text_09"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 3453.939368017018
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_1213461c23a47897623a09b9",
+        "kind": "document_block",
+        "block_index": 4.0,
+        "char_end": 14.0
+      },
+      "representation_id": "rep_docx_09",
+      "version_id": "docx_09",
+      "score": 6.176832675933838,
+      "text": "设备借用记录须保留17个月。",
+      "quote_hash": "f5098bd3077c61575eb523d69ad33187b5a49e4b9be6a1830bc2cf3fa56e78b8",
+      "id": "chunk_f45bf8972b4aece02afe53798e24a1a3c5ce8dd2a0ff2a799f98cdbb671c43ff"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d8e50859e4e09d23c98a57ab",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 14.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.3333529411764706,
+          0.12052112044648612
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_09",
+      "version_id": "text_pdf_09",
+      "score": 6.118793487548828,
+      "text": "设备借用记录须保留15个月。",
+      "quote_hash": "55ed829baace6f6e947d32f6fbc62af3552c1b92c6103be1c5f1a10983e5045c",
+      "id": "chunk_40a9fa858037c92d232d5960d5a671f2eaba56b9835d409e0666fff33af03767"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_cb5bc674b381c4165e4ed024",
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0,
+        "end_line": 6.0,
+        "char_end": 102.0
+      },
+      "representation_id": "rep_text_09",
+      "version_id": "text_09",
+      "score": 4.148078441619873,
+      "text": "设备借用的提交期限为6个工作日。\n设备借用的审批责任人为设施组。\n设备借用必须提供资产借用记录。\n设备借用记录须保留20个月。\n设备借用的紧急例外需要部门负责人书面批准。\n设备借用必须通过资产服务台提交。",
+      "quote_hash": "75e7f8053a01981b1288214ddbb1c88669a99620698d1fbdf1fa25330348661e",
+      "id": "chunk_da61e3be3cbc40e820f05852b655f1b060df687de93db70e84d5fcbf3dca2ee2"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_f89fb8036b976da629e196f0",
+        "kind": "document_block",
+        "block_index": 1.0,
+        "char_end": 17.0
+      },
+      "representation_id": "rep_docx_09",
+      "version_id": "docx_09",
+      "score": 1.826979398727417,
+      "text": "设备借用的提交期限为22个工作日。",
+      "quote_hash": "8a1193738246e820b833b46e71394877ede7663b6b95cb7e954679ccba5ace1f",
+      "id": "chunk_a3cccb589376e47be599db6c72cb12e52edaafcad5681e863cc7510a2ebe2ab0"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_cec11cf632c50394dc0f0e46",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 17.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.397078431372549,
+          0.12052112044648612
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_text_pdf_09",
+      "version_id": "text_pdf_09",
+      "score": 1.7455830574035645,
+      "text": "设备借用的提交期限为16个工作日。",
+      "quote_hash": "50528426ab9ed7c4723587250931417e1d033dc470d9ae4bca61c233e5552fe2",
+      "id": "chunk_b6cb0baf3f1bec5fb7c3c83f9044ee298a7d6a149b20778efbee69c31c497c27"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_64cfd876e5434fe4e5e94fed",
+        "kind": "document_block",
+        "block_index": 4.0,
+        "char_end": 15.0
+      },
+      "representation_id": "rep_docx_07",
+      "version_id": "docx_07",
+      "score": -0.8567785620689392,
+      "text": "供应商准入记录须保留15个月。",
+      "quote_hash": "8419d86f46f6f5497dd05c2ee593e0fe59241178529a1f150e219a456734cfbe",
+      "id": "chunk_dd7fa4ca6c4e2dad7a559d6ec4e74f4c6edb2cc633d0c3b2c32cc829743d8322"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e59537b408d36a4df83f969a",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 14.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.3333529411764706,
+          0.12052112044648612
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_17",
+      "version_id": "text_pdf_17",
+      "score": -1.1968014240264893,
+      "text": "备份恢复记录须保留23个月。",
+      "quote_hash": "6fbcc6bc81ccfe4651f2b26e77baac035956e83fd26ace731bd2b6c70df5ee0f",
+      "id": "chunk_cea0cb22ee3beea17789a6d1e8e60c29e859ab041f20e0df5b0ebbde031a8603"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_bb672c895b138c9ab90d1568",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 13.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_07",
+      "version_id": "pptx_07",
+      "score": -1.2071857452392578,
+      "text": "备份恢复记录须保留8个月。",
+      "quote_hash": "03abded1206d91b390833844f39c0b5b8dac9649af25deaaa223297147643219",
+      "id": "chunk_28cd466f7d4cafc53d9457c811844e93cadf51074fafb68fad9812c9abb752a2"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_da61e3be3cbc40e820f05852b655f1b060df687de93db70e84d5fcbf3dca2ee2",
+      "version_id": "text_09",
+      "text": "设备借用的提交期限为6个工作日。\n设备借用的审批责任人为设施组。\n设备借用必须提供资产借用记录。\n设备借用记录须保留20个月。\n设备借用的紧急例外需要部门负责人书面批准。\n设备借用必须通过资产服务台提交。",
+      "anchor": {
+        "block_id": "blk_cb5bc674b381c4165e4ed024",
+        "char_end": 102,
+        "char_start": 0,
+        "end_line": 6.0,
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0
+      }
+    },
+    {
+      "id": "chunk_5429a673499d5ec92a35f1f50767a0fa79f7d52d97f6928b6d3b0cca824c1367",
+      "version_id": "docx_09",
+      "text": "设备借用的审批责任人为设施组。",
+      "anchor": {
+        "block_id": "blk_97f796d5f44d53d5adc20a39",
+        "block_index": 2.0,
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_86e89a39421e3b81b14380194c130eb79e1d3d31abdc7a091a01516a32fd4f6a",
+      "version_id": "text_pdf_09",
+      "text": "设备借用的审批责任人为设施组。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.37745098039215685,
+          0.12052112044648612
+        ],
+        "block_id": "blk_07eaa74edc2b8dfe709e96a6",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_a3cccb589376e47be599db6c72cb12e52edaafcad5681e863cc7510a2ebe2ab0",
+      "version_id": "docx_09",
+      "text": "设备借用的提交期限为22个工作日。",
+      "anchor": {
+        "block_id": "blk_f89fb8036b976da629e196f0",
+        "block_index": 1.0,
+        "char_end": 17,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_b6cb0baf3f1bec5fb7c3c83f9044ee298a7d6a149b20778efbee69c31c497c27",
+      "version_id": "text_pdf_09",
+      "text": "设备借用的提交期限为16个工作日。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.397078431372549,
+          0.12052112044648612
+        ],
+        "block_id": "blk_cec11cf632c50394dc0f0e46",
+        "char_end": 17,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_40a9fa858037c92d232d5960d5a671f2eaba56b9835d409e0666fff33af03767",
+      "version_id": "text_pdf_09",
+      "text": "设备借用记录须保留15个月。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.3333529411764706,
+          0.12052112044648612
+        ],
+        "block_id": "blk_d8e50859e4e09d23c98a57ab",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_f45bf8972b4aece02afe53798e24a1a3c5ce8dd2a0ff2a799f98cdbb671c43ff",
+      "version_id": "docx_09",
+      "text": "设备借用记录须保留17个月。",
+      "anchor": {
+        "block_id": "blk_1213461c23a47897623a09b9",
+        "block_index": 4.0,
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_13a55cd7c14a76d9bdc9d2f0e0d6572160926ebb905d1715dfb2dcf696277546",
+      "version_id": "text_pdf_09",
+      "text": "设备借用必须提供资产借用记录。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.37745098039215685,
+          0.12052112044648612
+        ],
+        "block_id": "blk_0f22ab6b016e459367255c5f",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,370 @@
+{
+  "id": "q17_3",
+  "query": "备份恢复的记录保存多久？请找出各文件中的规定。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "pptx_07",
+      "text_pdf_17",
+      "xlsx_12"
+    ],
+    "extraction_chunking_recall_ceiling": 0.6
+  },
+  "exact": {
+    "recall_at_8": 0.4,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.3333333333333333,
+    "unique_source_ndcg_at_8": 0.3156484524795145,
+    "relevant_files": [
+      "pptx_07",
+      "text_pdf_17"
+    ],
+    "expected_files": [
+      "text_pdf_17",
+      "scan_pdf_17",
+      "xlsx_12",
+      "pptx_07",
+      "image_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 21.716856863349676
+  },
+  "hybrid": {
+    "recall_at_8": 0.4,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.5531464700081437,
+    "relevant_files": [
+      "pptx_07",
+      "text_pdf_17"
+    ],
+    "expected_files": [
+      "text_pdf_17",
+      "scan_pdf_17",
+      "xlsx_12",
+      "pptx_07",
+      "image_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 3900.656328070909
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e59537b408d36a4df83f969a",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 14.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.3333529411764706,
+          0.12052112044648612
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_17",
+      "version_id": "text_pdf_17",
+      "score": 5.789468288421631,
+      "text": "备份恢复记录须保留23个月。",
+      "quote_hash": "6fbcc6bc81ccfe4651f2b26e77baac035956e83fd26ace731bd2b6c70df5ee0f",
+      "id": "chunk_cea0cb22ee3beea17789a6d1e8e60c29e859ab041f20e0df5b0ebbde031a8603"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_bb672c895b138c9ab90d1568",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 13.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_07",
+      "version_id": "pptx_07",
+      "score": 5.660603046417236,
+      "text": "备份恢复记录须保留8个月。",
+      "quote_hash": "03abded1206d91b390833844f39c0b5b8dac9649af25deaaa223297147643219",
+      "id": "chunk_28cd466f7d4cafc53d9457c811844e93cadf51074fafb68fad9812c9abb752a2"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_46cfe6c35b8c7e8c595e5eb2",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 17.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.397078431372549,
+          0.12052112044648612
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_text_pdf_17",
+      "version_id": "text_pdf_17",
+      "score": 0.9349316954612732,
+      "text": "备份恢复的提交期限为22个工作日。",
+      "quote_hash": "be20a90b1f011b4e183a751a27f46815474c7aa7be8e07295f2083a3f100811b",
+      "id": "chunk_67e2bef2c712b4e7862daf1d3af3f24296b2fc4ab89aa8b9a14489b6017a350b"
+    },
+    {
+      "anchor": {
+        "slide_index": 0.0,
+        "block_id": "blk_a7ba7fc60c8ba9e2c12e2109",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 16.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_07",
+      "version_id": "pptx_07",
+      "score": 0.8450846076011658,
+      "text": "备份恢复的提交期限为9个工作日。",
+      "quote_hash": "4573dc32a269928c0c5b10f2b16a0e5e0b7ea6abe3ff36600e9cc1424b1fb683",
+      "id": "chunk_39e61de7b181ccf8658b6cc807fcb5cf8e6af9e3640dbe4118a1e0017b065fcd"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_0899ba97f899cbbc5a8fca6d",
+        "range": "B5",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 14.0
+      },
+      "representation_id": "rep_xlsx_09",
+      "version_id": "xlsx_09",
+      "score": -0.381570041179657,
+      "text": "合同续签记录须保留23个月。",
+      "quote_hash": "13bbeb1cee403ede3e6588ecfaa3faa8a75d909680b6f769abf275669510487a",
+      "id": "chunk_30ea3b70ee79f8ad98ef756cd1c44673e99bbf3d58e80427a5a9c379fc96b1af"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_5d22dc7b9800ab0087a9e359",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 22.0,
+        "row_index": 3.0
+      },
+      "representation_id": "rep_table_04",
+      "version_id": "table_04",
+      "score": -0.9934289455413818,
+      "text": "3\t合同续签记录须保留7个月。\t3\twest",
+      "quote_hash": "938534fb01c4fd574d5819801057b895070cdfb0c9ca1fdc3892bf2fdae186af",
+      "id": "chunk_0d41d421f78c3198c43ae77fd44249092e9ec8733fa28fd8707d8cdce6284862"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_83e88f5b21b27cbd42fb1dc5",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 14.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_13",
+      "version_id": "pptx_13",
+      "score": -1.1635591983795166,
+      "text": "仓库退货记录须保留13个月。",
+      "quote_hash": "90d7d1c632b476c5139cea0e3e57572fe9b627f2ff64522895a5d4a550208398",
+      "id": "chunk_b3d013e903ba613e81ccacf79425091746cacc2946f923243ed0815a565033da"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e865a27df0673af517d31a4a",
+        "kind": "document_block",
+        "block_index": 4.0,
+        "char_end": 14.0
+      },
+      "representation_id": "rep_docx_03",
+      "version_id": "docx_03",
+      "score": -1.1820032596588135,
+      "text": "仓库退货记录须保留11个月。",
+      "quote_hash": "2a2a229fd5f05a07904dd84be56947d1e2dde157982222760d371acaafba85e8",
+      "id": "chunk_9d83aa850ae859dc1d3977e0193885b38963e77d96a8d39f18bbb38644d0f67e"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_39e61de7b181ccf8658b6cc807fcb5cf8e6af9e3640dbe4118a1e0017b065fcd",
+      "version_id": "pptx_07",
+      "text": "备份恢复的提交期限为9个工作日。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_a7ba7fc60c8ba9e2c12e2109",
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_67e2bef2c712b4e7862daf1d3af3f24296b2fc4ab89aa8b9a14489b6017a350b",
+      "version_id": "text_pdf_17",
+      "text": "备份恢复的提交期限为22个工作日。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.397078431372549,
+          0.12052112044648612
+        ],
+        "block_id": "blk_46cfe6c35b8c7e8c595e5eb2",
+        "char_end": 17,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_28cd466f7d4cafc53d9457c811844e93cadf51074fafb68fad9812c9abb752a2",
+      "version_id": "pptx_07",
+      "text": "备份恢复记录须保留8个月。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_bb672c895b138c9ab90d1568",
+        "char_end": 13,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_cea0cb22ee3beea17789a6d1e8e60c29e859ab041f20e0df5b0ebbde031a8603",
+      "version_id": "text_pdf_17",
+      "text": "备份恢复记录须保留23个月。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.3333529411764706,
+          0.12052112044648612
+        ],
+        "block_id": "blk_e59537b408d36a4df83f969a",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_09d8e6f822d97e4b2dd1d7262af3093242eba51f0ad879afb81ffc3cf7c4b280",
+      "version_id": "pptx_07",
+      "text": "备份恢复的审批责任人为存储团队。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_f5c6d7a2976c5dd54fb6eb7f",
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_6242578ed83e9c1d37d791b01248005d91addcd21b16c7632ce2901df827ef8a",
+      "version_id": "text_pdf_17",
+      "text": "备份恢复的审批责任人为存储团队。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.39869281045751637,
+          0.12052112044648612
+        ],
+        "block_id": "blk_37fb640f5a18a9dab8bc8550",
+        "char_end": 16,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_aab84f9b83f67c75eb98ed8a0eaee3ac98397a1dbe97851cacd165ae8864ee23",
+      "version_id": "pptx_07",
+      "text": "备份恢复的紧急例外需要部门负责人书面批准。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_e36f23a284926bb9c4949150",
+        "char_end": 21,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 4.0
+      }
+    },
+    {
+      "id": "chunk_204e517ea4e8bc25e8be5a56ac1cb26b81cbe5d8f16c705d7b25bd9df3d00f99",
+      "version_id": "pptx_07",
+      "text": "备份恢复必须提供恢复审批工单。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_0c77e437c2d6ecd93c9c0a3e",
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 2.0
+      }
+    }
+  ]
+}

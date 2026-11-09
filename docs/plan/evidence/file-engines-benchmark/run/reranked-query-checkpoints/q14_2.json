@@ -1,0 +1,346 @@
+{
+  "id": "q14_2",
+  "query": "合同续签需要哪些凭证？比较不同资料的要求。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_14",
+      "pptx_04",
+      "scan_pdf_14",
+      "table_04",
+      "text_pdf_14",
+      "xlsx_09"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.3333333333333333,
+    "unique_source_ndcg_at_8": 0.28162497265977743,
+    "relevant_files": [
+      "scan_pdf_14",
+      "xlsx_09"
+    ],
+    "expected_files": [
+      "text_pdf_14",
+      "scan_pdf_14",
+      "docx_14",
+      "xlsx_09",
+      "pptx_04",
+      "table_04"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 25.072937132790685
+  },
+  "hybrid": {
+    "recall_at_8": 0.5,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.644824486427155,
+    "relevant_files": [
+      "scan_pdf_14",
+      "table_04",
+      "xlsx_09"
+    ],
+    "expected_files": [
+      "text_pdf_14",
+      "scan_pdf_14",
+      "docx_14",
+      "xlsx_09",
+      "pptx_04",
+      "table_04"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 4271.720024989918
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d0ff1ede79df62de4fda8029",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 15.0,
+        "bbox": [
+          0.02368951588869095,
+          0.1015625,
+          0.36542338132858276,
+          0.20625
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_14",
+      "version_id": "scan_pdf_14",
+      "score": 1.267652988433838,
+      "text": "合同续签必须提供现有合同副本。",
+      "quote_hash": "a5690e5377fc609aa2ae46227175204ce0362c89251df3b61093e707c4ec25f0",
+      "id": "chunk_7c420a3e75948675becfb5b37ea073371032c03d1ff0cf9302933e5707a645d9"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_990bb71e9d1a69e3152769e3",
+        "range": "B4",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 15.0
+      },
+      "representation_id": "rep_xlsx_09",
+      "version_id": "xlsx_09",
+      "score": 1.267652988433838,
+      "text": "合同续签必须提供现有合同副本。",
+      "quote_hash": "a5690e5377fc609aa2ae46227175204ce0362c89251df3b61093e707c4ec25f0",
+      "id": "chunk_fc68cba1ba9999f5ef306fd2ae02be1c876e984792aebfa6e40ded1c7582cac2"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_24317a912935df25fc82d987",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 24.0,
+        "row_index": 2.0
+      },
+      "representation_id": "rep_table_04",
+      "version_id": "table_04",
+      "score": 0.551450788974762,
+      "text": "2\t合同续签必须提供现有合同副本。\t2\teast",
+      "quote_hash": "d8583a2cb3b84b4c8ad63ba73f62ef74ea8d038e308b61c22151d1f0fc33165a",
+      "id": "chunk_8fbba3d590f5d7f21732bad72ae2e06856218d3e987bcdc5fd500d484bd9f2c7"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_7c7446e47ee01e768aced4d9",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 24.0,
+        "row_index": 5.0
+      },
+      "representation_id": "rep_table_04",
+      "version_id": "table_04",
+      "score": -0.4307807981967926,
+      "text": "5\t合同续签必须通过合同系统提交。\t5\twest",
+      "quote_hash": "a8c16ccf7702c74dace75d8a58b1c9f499569b91d5940be278f574e349dae4ae",
+      "id": "chunk_7bba8c10305c46119f57f1177e5ada3a92a1c5d4c6240630f1ef86f5936d18d1"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_f9fa83b6e2190a66d3faaeb9",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 15.0,
+        "bbox": [
+          0.024697579443454742,
+          0.2765625,
+          0.36592739820480347,
+          0.3828125
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_14",
+      "version_id": "scan_pdf_14",
+      "score": -0.540471613407135,
+      "text": "合同续签必须通过合同系统提交。",
+      "quote_hash": "bcb607a54eddcc61683641cbe745ec7dd0358396b9f63eacc87929ad6ac273b1",
+      "id": "chunk_6afcf4fef37ac05a7ccd6dafd0787777c585701c923ae0a1463dbbe779a6315d"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_c1125f244c1b315f147b22a0",
+        "range": "B7",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 15.0
+      },
+      "representation_id": "rep_xlsx_09",
+      "version_id": "xlsx_09",
+      "score": -0.540471613407135,
+      "text": "合同续签必须通过合同系统提交。",
+      "quote_hash": "bcb607a54eddcc61683641cbe745ec7dd0358396b9f63eacc87929ad6ac273b1",
+      "id": "chunk_78ad9ea36810cc0365ec408619cdce1dbc641faf8796093644764ee69f0f60b9"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_ef2735e06ad0087ff7c0e512",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 30.0,
+        "row_index": 4.0
+      },
+      "representation_id": "rep_table_04",
+      "version_id": "table_04",
+      "score": -0.972533106803894,
+      "text": "4\t合同续签的紧急例外需要部门负责人书面批准。\t4\teast",
+      "quote_hash": "9004c14bf7a2c8bd9486f4639baf6c6b8bef6330d71af79fc9cd895724218c31",
+      "id": "chunk_006ba74fed8949f0973168873b9e38c539279b387e38639c188e9e9226f041ed"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_6f7a759af2e4cde67f9a03b0",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 21.0,
+        "bbox": [
+          0.024193547666072845,
+          0.09375,
+          0.5035282373428345,
+          0.20625
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_14",
+      "version_id": "scan_pdf_14",
+      "score": -1.1413650512695312,
+      "text": "合同续签的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "ad28ccacff96e7aa98cb5c2c3916349dae80b1f7631e4ee65065079c32df2b71",
+      "id": "chunk_290cffa03af04e66dc26e5c6b848db17efb4f6f03f7ca4f7607cca8a72c16f12"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_6afcf4fef37ac05a7ccd6dafd0787777c585701c923ae0a1463dbbe779a6315d",
+      "version_id": "scan_pdf_14",
+      "text": "合同续签必须通过合同系统提交。",
+      "anchor": {
+        "bbox": [
+          0.024697579443454742,
+          0.2765625,
+          0.36592739820480347,
+          0.3828125
+        ],
+        "block_id": "blk_f9fa83b6e2190a66d3faaeb9",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_78ad9ea36810cc0365ec408619cdce1dbc641faf8796093644764ee69f0f60b9",
+      "version_id": "xlsx_09",
+      "text": "合同续签必须通过合同系统提交。",
+      "anchor": {
+        "block_id": "blk_c1125f244c1b315f147b22a0",
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B7",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_7c420a3e75948675becfb5b37ea073371032c03d1ff0cf9302933e5707a645d9",
+      "version_id": "scan_pdf_14",
+      "text": "合同续签必须提供现有合同副本。",
+      "anchor": {
+        "bbox": [
+          0.02368951588869095,
+          0.1015625,
+          0.36542338132858276,
+          0.20625
+        ],
+        "block_id": "blk_d0ff1ede79df62de4fda8029",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_fc68cba1ba9999f5ef306fd2ae02be1c876e984792aebfa6e40ded1c7582cac2",
+      "version_id": "xlsx_09",
+      "text": "合同续签必须提供现有合同副本。",
+      "anchor": {
+        "block_id": "blk_990bb71e9d1a69e3152769e3",
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B4",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_30ea3b70ee79f8ad98ef756cd1c44673e99bbf3d58e80427a5a9c379fc96b1af",
+      "version_id": "xlsx_09",
+      "text": "合同续签记录须保留23个月。",
+      "anchor": {
+        "block_id": "blk_0899ba97f899cbbc5a8fca6d",
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B5",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_ea630058c511754a3656fbf9199f50af0868505aa482a9cd49c3454f3730b645",
+      "version_id": "scan_pdf_14",
+      "text": "合同续签记录须保留21个月。",
+      "anchor": {
+        "bbox": [
+          0.024193547666072845,
+          0.278125,
+          0.32207658886909485,
+          0.3828125
+        ],
+        "block_id": "blk_e4b2edef61b21d3e77d9c569",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_5a23ada199cf7f20e5a9ec79ff634d8c8e210255735d07cf186069643b77d8ca",
+      "version_id": "scan_pdf_14",
+      "text": "合同续签的审批责任人为法务。",
+      "anchor": {
+        "bbox": [
+          0.024697579443454742,
+          0.278125,
+          0.3432459533214569,
+          0.3828125
+        ],
+        "block_id": "blk_ee8cb29eec4ef7eb74d80c13",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_7aff70a923031e0f4cfa6a075b41875aaf9d1ae7334ffaededb5dc127dbf638e",
+      "version_id": "xlsx_09",
+      "text": "合同续签的审批责任人为法务。",
+      "anchor": {
+        "block_id": "blk_9a9b8cdf2532bac7e9d10304",
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B3",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    }
+  ]
+}

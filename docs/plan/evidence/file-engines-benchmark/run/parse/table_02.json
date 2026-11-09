@@ -1,0 +1,264 @@
+{
+  "evaluation": {
+    "id": "table_02",
+    "family": "table",
+    "variant": "quoted_delimited_table",
+    "language": "zh",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 0.015334319090470672,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8333,
+        "candidate_ids": [
+          "blk_e5ca31338a283bb84e6c7793"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8125,
+        "candidate_ids": [
+          "blk_2955d739dd61207fc60d3fb8"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8125,
+        "candidate_ids": [
+          "blk_85d9743aab4f269c8816475c"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8125,
+        "candidate_ids": [
+          "blk_735fa26656508d89efd56cec"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8696,
+        "candidate_ids": [
+          "blk_f430c20230f12ea269417298"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8235,
+        "candidate_ids": [
+          "blk_0c3e9638c0e91ceb59119e95"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "source_structure",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_rows": 6,
+      "start": 0,
+      "returned": 6,
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_e5ca31338a283bb84e6c7793",
+        "kind": "row",
+        "text": "0\t访客通行的提交期限为5个工作日。\t0\teast",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "csv",
+          "row_index": 0
+        },
+        "values": [
+          "0",
+          "访客通行的提交期限为5个工作日。",
+          "0",
+          "east"
+        ]
+      },
+      {
+        "id": "blk_2955d739dd61207fc60d3fb8",
+        "kind": "row",
+        "text": "1\t访客通行的审批责任人为前台。\t1\twest",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "csv",
+          "row_index": 1
+        },
+        "values": [
+          "1",
+          "访客通行的审批责任人为前台。",
+          "1",
+          "west"
+        ]
+      },
+      {
+        "id": "blk_85d9743aab4f269c8816475c",
+        "kind": "row",
+        "text": "2\t访客通行必须提供接待人确认。\t2\teast",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "csv",
+          "row_index": 2
+        },
+        "values": [
+          "2",
+          "访客通行必须提供接待人确认。",
+          "2",
+          "east"
+        ]
+      },
+      {
+        "id": "blk_735fa26656508d89efd56cec",
+        "kind": "row",
+        "text": "3\t访客通行记录须保留24个月。\t3\twest",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "csv",
+          "row_index": 3
+        },
+        "values": [
+          "3",
+          "访客通行记录须保留24个月。",
+          "3",
+          "west"
+        ]
+      },
+      {
+        "id": "blk_f430c20230f12ea269417298",
+        "kind": "row",
+        "text": "4\t访客通行的紧急例外需要部门负责人书面批准。\t4\teast",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "csv",
+          "row_index": 4
+        },
+        "values": [
+          "4",
+          "访客通行的紧急例外需要部门负责人书面批准。",
+          "4",
+          "east"
+        ]
+      },
+      {
+        "id": "blk_0c3e9638c0e91ceb59119e95",
+        "kind": "row",
+        "text": "5\t访客通行必须通过访客终端提交。\t5\twest",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "csv",
+          "row_index": 5
+        },
+        "values": [
+          "5",
+          "访客通行必须通过访客终端提交。",
+          "5",
+          "west"
+        ]
+      }
+    ],
+    "outline": [
+      {
+        "kind": "table",
+        "columns": [
+          "id",
+          "clause",
+          "amount",
+          "region"
+        ],
+        "rows": 6
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_rows": 6,
+      "start": 0,
+      "returned": 6,
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/table_02/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "f3bcaa57d11d998d0e0fa0a7209926f96a621ebac1c2e61bd674250243362f38",
+        "size_bytes": 2836
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "3d46636a67569dc7b656c1082bbaaf0e1caee4ee42306b7504eaf0faf27c02dc",
+      "size_bytes": 367,
+      "mime_type": "text/csv"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "e6b8b22855172195bd72b85fa42769bbd23acd55f22556fa3ba98f7760ddbb7c"
+    }
+  }
+}

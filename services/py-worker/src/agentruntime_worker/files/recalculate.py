@@ -11,12 +11,16 @@ import json
 import os
 from pathlib import Path
 import shutil
+import re
+import signal
 import subprocess
 import sys
 import tempfile
 import time
 import uuid
 import zipfile
+import posixpath
+import xml.etree.ElementTree as ET
 
 
 def _uno_worker(config_path: str) -> None:
@@ -63,6 +67,29 @@ def _uno_worker(config_path: str) -> None:
         desktop.terminate()
 
 
+def _empty_formula_caches(path: Path) -> set[tuple[str, str]]:
+    # openpyxl represents both an absent cache and a genuine cached empty
+    # string as None. Only explicit t="str" + <f> + empty <v> proves the latter.
+    namespaces = {"s": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+    relationship_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    found = set()
+    with zipfile.ZipFile(path) as archive:
+        workbook = ET.fromstring(archive.read("xl/workbook.xml"))
+        relationships = ET.fromstring(archive.read("xl/_rels/workbook.xml.rels"))
+        targets = {node.get("Id"): node.get("Target") for node in relationships if node.get("TargetMode") != "External"}
+        for sheet in workbook.findall("s:sheets/s:sheet", namespaces):
+            target = targets.get(sheet.get("{" + relationship_ns + "}id"), "")
+            member = target.lstrip("/") if target.startswith("/") else posixpath.normpath("xl/" + target)
+            if not member.startswith("xl/worksheets/"):
+                continue
+            tree = ET.fromstring(archive.read(member))
+            for cell in tree.findall(".//s:c", namespaces):
+                value = cell.find("s:v", namespaces)
+                if cell.get("t") == "str" and cell.find("s:f", namespaces) is not None and value is not None and not value.text:
+                    found.add((sheet.get("name"), cell.get("r")))
+    return found
+
+
 def recalculate_workbook(source: Path, output: Path, options: dict | None = None) -> dict:
     from .models import FileEngineError
     import openpyxl
@@ -70,13 +97,24 @@ def recalculate_workbook(source: Path, output: Path, options: dict | None = None
     source, output = Path(source).resolve(), Path(output).resolve()
     if source == output:
         raise FileEngineError("overwrite_original", "Recalculation must create a separate output version")
+    source_digest = hashlib.sha256(source.read_bytes()).hexdigest()
     with zipfile.ZipFile(source) as archive:
+        if len(archive.infolist()) > 10_000 or sum(item.file_size for item in archive.infolist()) > 200 << 20:
+            raise FileEngineError("package_limit", "Workbook exceeds expanded package limits")
+        if any(name.lower().endswith("vbaproject.bin") for name in archive.namelist()):
+            raise FileEngineError("macro_workbook_unsupported", "Macro workbooks require a separately authorized macro-preserving processor")
         if any(name.startswith("xl/externalLinks/") for name in archive.namelist()):
             raise FileEngineError("external_formula_dependency", "External workbook links require a separately authorized dependency snapshot")
     book = openpyxl.load_workbook(source, read_only=True, data_only=False, keep_links=False)
     try:
         formulas = [{"sheet": sheet.title, "cell": cell.coordinate, "formula": cell.value}
                     for sheet in book for row in sheet.iter_rows() for cell in row if cell.data_type == "f"]
+        for reference in formulas:
+            formula = reference["formula"]
+            if not isinstance(formula, str):
+                raise FileEngineError("unsupported_formula", "Array/data-table formula objects need explicit engine support")
+            if re.search(r"\[(?:\d+|[^\]]+\.(?:xlsx?|xlsm|xlsb|ods))\]", formula, re.I) or re.search(r"\b(?:WEBSERVICE|DDE)\s*\(", formula, re.I):
+                raise FileEngineError("external_formula_dependency", "External workbook and data-service formulas require explicit dependencies")
     finally:
         book.close()
     executable = os.environ.get("AR_SOFFICE_BIN") or shutil.which("libreoffice") or shutil.which("soffice")
@@ -91,7 +129,7 @@ def recalculate_workbook(source: Path, output: Path, options: dict | None = None
         config_path = directory/"request.json"
         config_path.write_text(json.dumps(config))
         with (directory/"soffice.log").open("wb") as log:
-            process = subprocess.Popen([executable, "-env:UserInstallation="+(directory/"profile").as_uri(), "--headless", "--nologo", "--nodefault", "--nofirststartwizard", "--norestore", "--accept=pipe,name="+pipe+";urp;StarOffice.ServiceManager"], stdout=log, stderr=log)
+            process = subprocess.Popen([executable, "-env:UserInstallation="+(directory/"profile").as_uri(), "--headless", "--nologo", "--nodefault", "--nofirststartwizard", "--norestore", "--accept=pipe,name="+pipe+";urp;StarOffice.ServiceManager"], stdout=log, stderr=log, start_new_session=True)
             try:
                 result = subprocess.run([python, str(Path(__file__).resolve()), "--uno-worker", str(config_path)], capture_output=True, text=True, timeout=timeout)
                 if result.returncode:
@@ -99,27 +137,40 @@ def recalculate_workbook(source: Path, output: Path, options: dict | None = None
             except subprocess.TimeoutExpired:
                 raise FileEngineError("recalculation_timeout", "UNO calculateAll exceeded its time limit") from None
             finally:
-                if process.poll() is None:
-                    process.terminate()
+                # soffice may spawn soffice.bin; terminate the private process
+                # group even if the launcher has already exited.
+                try:
+                    os.killpg(process.pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
                     try:
-                        process.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        process.kill()
-                        process.wait()
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    process.wait()
         report = json.loads((directory/"report.json").read_text())
     values = openpyxl.load_workbook(output, read_only=True, data_only=True, keep_links=False)
     expressions = openpyxl.load_workbook(output, read_only=True, data_only=False, keep_links=False)
     verified, missing = [], []
+    empty_caches = _empty_formula_caches(output)
+    def cached_value(sheet, cell):
+        value = values[sheet][cell].value
+        return "" if value is None and (sheet, cell) in empty_caches else value
     try:
         for ref in formulas:
             value = values[ref["sheet"]][ref["cell"]]
             formula = expressions[ref["sheet"]][ref["cell"]]
-            if formula.data_type != "f" or value.data_type == "e" or value.value is None:
-                missing.append({"sheet": ref["sheet"], "cell": ref["cell"], "cached_value": value.value})
-            verified.append({**ref, "saved_formula": formula.value, "evaluated_value": value.value, "calculation_status": "recalculated"})
+            evaluated = cached_value(ref["sheet"], ref["cell"])
+            invalid_cache = formula.data_type != "f" or value.data_type == "e" or evaluated is None
+            if invalid_cache:
+                missing.append({"sheet": ref["sheet"], "cell": ref["cell"], "cached_value": evaluated})
+            verified.append({**ref, "saved_formula": formula.value, "evaluated_value": evaluated, "calculation_status": "error" if invalid_cache else "recalculated"})
         mismatches = []
         for expected in options.get("expected_values", []):
-            actual = values[expected["sheet"]][expected["cell"]].value
+            actual = cached_value(expected["sheet"], expected["cell"])
             wanted = expected["value"]
             close = abs(actual-wanted) <= float(expected.get("tolerance", 1e-9)) if isinstance(actual, (int,float)) and isinstance(wanted, (int,float)) else actual == wanted
             if not close:
@@ -127,7 +178,9 @@ def recalculate_workbook(source: Path, output: Path, options: dict | None = None
     finally:
         values.close()
         expressions.close()
-    report.update(status="verified" if not (missing or mismatches or report["formula_errors"]) else "failed",
+    original_unchanged = hashlib.sha256(source.read_bytes()).hexdigest() == source_digest
+    report.update(status="verified" if not (missing or mismatches or report["formula_errors"]) and original_unchanged else "failed",
+                  original_unchanged=original_unchanged,
                   formula_count=len(formulas), missing_or_error_caches=missing, value_mismatches=mismatches,
                   cells=verified, output_sha256=hashlib.sha256(output.read_bytes()).hexdigest())
     return report

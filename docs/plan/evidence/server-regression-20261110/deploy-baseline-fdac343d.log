@@ -1,0 +1,35 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+____________ test_cloudflare_bridge_runs_one_of_our_sandbox_images _____________
+
+    def test_cloudflare_bridge_runs_one_of_our_sandbox_images() -> None:
+        """桥跑我们构建的沙箱镜像：要么在这里构建 sandbox-python（Dockerfile，上下文是仓库根），要么是推到 Cloudflare 镜像仓库的
+        sandbox-universal（按版本或 git 提交号，不用 latest）。"""
+        wrangler = (REPO_ROOT / "deploy" / "cloudflare" / "sandbox-bridge" / "wrangler.jsonc").read_text("utf-8")
+        image = re.search(r'"image":\s*"([^"]+)"', wrangler)
+        assert image
+        if image.group(1).startswith("registry.cloudflare.com/"):
+>           assert re.fullmatch(r"registry\.cloudflare\.com/[0-9a-f]{32}/agentruntime-sandbox-universal:(\d+\.\d+\.\d+|[0-9a-f]{7,40})", image.group(1))
+E           assert None
+E            +  where None = <function fullmatch at 0x76a642bd9800>('registry\\.cloudflare\\.com/[0-9a-f]{32}/agentruntime-sandbox-universal:(\\d+\\.\\d+\\.\\d+|[0-9a-f]{7,40})', 'registry.cloudflare.com/60a1944efd471ed11fad60eaba55e59c/agentruntime-sandbox-universal:goal-cf-20261107')
+E            +    where <function fullmatch at 0x76a642bd9800> = re.fullmatch
+E            +    and   'registry.cloudflare.com/60a1944efd471ed11fad60eaba55e59c/agentruntime-sandbox-universal:goal-cf-20261107' = <built-in method group of re.Match object at 0x76a641ddc670>(1)
+E            +      where <built-in method group of re.Match object at 0x76a641ddc670> = <re.Match object; span=(723, 838), match='"image": "registry.cloudflare.com/60a1944efd471ed>.group
+
+../baseline-fdac343d/tests/deploy/test_images.py:108: AssertionError
+__________________ test_the_sub_agent_rules_are_on_by_default __________________
+
+    def test_the_sub_agent_rules_are_on_by_default() -> None:
+        """N16-R（docs/plan/sub-agent.md 第 12 节；总表第 0 节 V1-SUB 默认打开）：默认 rules，每个 Worker 池都拿到；off 时不渲染；别的取值渲染失败。"""
+        for manifests in (render(), render(CLOUD_VALUES)):
+            assert all(env_of(pod_spec(w)["containers"][0])["AR_SUB_AGENT_POLICY"]["value"] == "rules" for w in workers(manifests))
+        off = render(CLOUD_VALUES, set_values=["worker.subAgentPolicy=off"])
+>       assert all("AR_SUB_AGENT_POLICY" not in env_of(pod_spec(w)["containers"][0]) for w in workers(off))
+E       assert False
+E        +  where False = all(<generator object test_the_sub_agent_rules_are_on_by_default.<locals>.<genexpr> at 0x76a641e84f40>)
+
+../baseline-fdac343d/tests/deploy/test_worker_context_settings.py:43: AssertionError
+=========================== short test summary info ============================
+FAILED ../baseline-fdac343d/tests/deploy/test_images.py::test_cloudflare_bridge_runs_one_of_our_sandbox_images
+FAILED ../baseline-fdac343d/tests/deploy/test_worker_context_settings.py::test_the_sub_agent_rules_are_on_by_default
+2 failed in 2.27s

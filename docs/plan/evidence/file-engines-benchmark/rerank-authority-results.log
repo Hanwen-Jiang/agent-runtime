@@ -1,0 +1,1 @@
+PASS: bounded candidate union, post-score revocation, invalid scorer outputs, generation deletion during scoring; candidate counts: [42, 42, 42, 42, 42]

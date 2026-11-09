@@ -1,0 +1,416 @@
+{
+  "evaluation": {
+    "id": "xlsx_14",
+    "family": "xlsx",
+    "variant": "multi_sheet_formula_hidden_reference",
+    "language": "en",
+    "expected": "readable",
+    "status": "partial",
+    "elapsed_seconds": 0.03445194289088249,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_45df8cb48cc72f0f221e3f9f"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_b070c27bf47e81d896939da1"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_31f0fb6d08e124913dfa40b2"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_990779a87624c3f8d79ae1f0"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_e356ba6ac96ce5b547a1e1cd"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_36c4897011c40d284e6cece3"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "raw_ooxml",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "sheet": "Policy",
+      "range": [
+        1,
+        1,
+        2,
+        7
+      ],
+      "formulas_recalculated": false,
+      "returned_blocks": 14,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "partial",
+    "blocks": [
+      {
+        "id": "blk_4514cc036fde04416a55ca98",
+        "kind": "cell",
+        "text": "Facet",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A1"
+        },
+        "value": "Facet",
+        "formula": null,
+        "cached_value": "Facet",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_43520b7d2e580005003b6840",
+        "kind": "cell",
+        "text": "Clause",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B1"
+        },
+        "value": "Clause",
+        "formula": null,
+        "cached_value": "Clause",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_71131c322fb712dc8b114095",
+        "kind": "cell",
+        "text": "0",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A2"
+        },
+        "value": 0,
+        "formula": null,
+        "cached_value": 0,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_45df8cb48cc72f0f221e3f9f",
+        "kind": "cell",
+        "text": "Purchase order changes must be submitted within 20 business days.",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B2"
+        },
+        "value": "Purchase order changes must be submitted within 20 business days.",
+        "formula": null,
+        "cached_value": "Purchase order changes must be submitted within 20 business days.",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_5a2f3a0cfff1e4690f0d1285",
+        "kind": "cell",
+        "text": "1",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A3"
+        },
+        "value": 1,
+        "formula": null,
+        "cached_value": 1,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_b070c27bf47e81d896939da1",
+        "kind": "cell",
+        "text": "Purchasing is responsible for approving purchase order changes.",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B3"
+        },
+        "value": "Purchasing is responsible for approving purchase order changes.",
+        "formula": null,
+        "cached_value": "Purchasing is responsible for approving purchase order changes.",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_3ede9b1b532b6f58f238a950",
+        "kind": "cell",
+        "text": "2",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A4"
+        },
+        "value": 2,
+        "formula": null,
+        "cached_value": 2,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_31f0fb6d08e124913dfa40b2",
+        "kind": "cell",
+        "text": "Purchase order changes requires supplier acknowledgement.",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B4"
+        },
+        "value": "Purchase order changes requires supplier acknowledgement.",
+        "formula": null,
+        "cached_value": "Purchase order changes requires supplier acknowledgement.",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_4039cce46edaea275b36f4fa",
+        "kind": "cell",
+        "text": "3",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A5"
+        },
+        "value": 3,
+        "formula": null,
+        "cached_value": 3,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_990779a87624c3f8d79ae1f0",
+        "kind": "cell",
+        "text": "Records for purchase order changes must be retained for 9 months.",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B5"
+        },
+        "value": "Records for purchase order changes must be retained for 9 months.",
+        "formula": null,
+        "cached_value": "Records for purchase order changes must be retained for 9 months.",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_618a96591ae5df4794109e7a",
+        "kind": "cell",
+        "text": "4",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A6"
+        },
+        "value": 4,
+        "formula": null,
+        "cached_value": 4,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_e356ba6ac96ce5b547a1e1cd",
+        "kind": "cell",
+        "text": "Emergency exceptions for purchase order changes require written approval from the department head.",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B6"
+        },
+        "value": "Emergency exceptions for purchase order changes require written approval from the department head.",
+        "formula": null,
+        "cached_value": "Emergency exceptions for purchase order changes require written approval from the department head.",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_05fa84b5279e85e3b57b018b",
+        "kind": "cell",
+        "text": "5",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A7"
+        },
+        "value": 5,
+        "formula": null,
+        "cached_value": 5,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_36c4897011c40d284e6cece3",
+        "kind": "cell",
+        "text": "Purchase order changes must be submitted through the purchasing system.",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B7"
+        },
+        "value": "Purchase order changes must be submitted through the purchasing system.",
+        "formula": null,
+        "cached_value": "Purchase order changes must be submitted through the purchasing system.",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      }
+    ],
+    "outline": [
+      {
+        "kind": "sheet",
+        "name": "Policy",
+        "sheet_id": "sheet-0",
+        "rows": 7,
+        "columns": 2,
+        "state": "visible"
+      },
+      {
+        "kind": "sheet",
+        "name": "Budget",
+        "sheet_id": "sheet-1",
+        "rows": 4,
+        "columns": 3,
+        "state": "visible"
+      },
+      {
+        "kind": "sheet",
+        "name": "Reference",
+        "sheet_id": "sheet-2",
+        "rows": 1,
+        "columns": 1,
+        "state": "hidden"
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "sheet": "Policy",
+      "range": [
+        1,
+        1,
+        2,
+        7
+      ],
+      "formulas_recalculated": false,
+      "returned_blocks": 14,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/xlsx_14/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "19c2799a10186e18bd630a50465d392bca6821bf90872e22ceba32811ab130f7",
+        "size_bytes": 6447
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "131bbcf4eb6ed1d6fd6b889755d44eed8fa1ee8d490e6b142301934cd4f2d5dc",
+      "size_bytes": 6181,
+      "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "fc3eab1492cdd65878e15401898abd391d015d28268d67d452224264104524a0"
+    }
+  }
+}

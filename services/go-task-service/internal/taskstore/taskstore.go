@@ -288,6 +288,26 @@ func (s *Store) SubmissionExists(ctx context.Context, tenant *commonv1.TenantCon
 	return found, err
 }
 
+// LookupSubmission resolves an idempotency key without creating a Task. It is
+// used only to choose frozen admission scope on retries; the caller must verify
+// SubmittedBy before treating this as the authenticated user's request.
+func (s *Store) LookupSubmission(ctx context.Context, tenant *commonv1.TenantContext, sessionKey, requestID string) (Task, bool, error) {
+	var out Task
+	var found bool
+	err := s.tx(ctx, tenant, true, func(ctx context.Context, tx relational.Tx) error {
+		row, ok, e := tx.QueryOne(ctx, `SELECT `+taskColumns+` FROM tasks WHERE session_key=$1 AND client_request_id=$2`, sessionKey, requestID)
+		if e != nil {
+			return e
+		}
+		found = ok
+		if ok {
+			out = decode(row)
+		}
+		return nil
+	})
+	return out, found, err
+}
+
 // InsertTask 插入一行；（SessionKey, ClientRequestID）已存在时不插入，返回已有的那一行与 true。
 func (s *Store) InsertTask(ctx context.Context, tenant *commonv1.TenantContext, t Task) (Task, bool, error) {
 	return s.insertTask(ctx, tenant, t, 0)

@@ -1,0 +1,264 @@
+{
+  "evaluation": {
+    "id": "table_04",
+    "family": "table",
+    "variant": "quoted_delimited_table",
+    "language": "zh",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 0.016571978805586696,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8421,
+        "candidate_ids": [
+          "blk_64ac7cbbdb8cd855a554e04a"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8125,
+        "candidate_ids": [
+          "blk_96227ee26552caa0cce6d9a4"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8235,
+        "candidate_ids": [
+          "blk_24317a912935df25fc82d987"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8,
+        "candidate_ids": [
+          "blk_5d22dc7b9800ab0087a9e359"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8696,
+        "candidate_ids": [
+          "blk_ef2735e06ad0087ff7c0e512"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8235,
+        "candidate_ids": [
+          "blk_7c7446e47ee01e768aced4d9"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "source_structure",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_rows": 6,
+      "start": 0,
+      "returned": 6,
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_64ac7cbbdb8cd855a554e04a",
+        "kind": "row",
+        "text": "0\t合同续签的提交期限为19个工作日。\t0\teast",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "csv",
+          "row_index": 0
+        },
+        "values": [
+          "0",
+          "合同续签的提交期限为19个工作日。",
+          "0",
+          "east"
+        ]
+      },
+      {
+        "id": "blk_96227ee26552caa0cce6d9a4",
+        "kind": "row",
+        "text": "1\t合同续签的审批责任人为法务。\t1\twest",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "csv",
+          "row_index": 1
+        },
+        "values": [
+          "1",
+          "合同续签的审批责任人为法务。",
+          "1",
+          "west"
+        ]
+      },
+      {
+        "id": "blk_24317a912935df25fc82d987",
+        "kind": "row",
+        "text": "2\t合同续签必须提供现有合同副本。\t2\teast",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "csv",
+          "row_index": 2
+        },
+        "values": [
+          "2",
+          "合同续签必须提供现有合同副本。",
+          "2",
+          "east"
+        ]
+      },
+      {
+        "id": "blk_5d22dc7b9800ab0087a9e359",
+        "kind": "row",
+        "text": "3\t合同续签记录须保留7个月。\t3\twest",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "csv",
+          "row_index": 3
+        },
+        "values": [
+          "3",
+          "合同续签记录须保留7个月。",
+          "3",
+          "west"
+        ]
+      },
+      {
+        "id": "blk_ef2735e06ad0087ff7c0e512",
+        "kind": "row",
+        "text": "4\t合同续签的紧急例外需要部门负责人书面批准。\t4\teast",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "csv",
+          "row_index": 4
+        },
+        "values": [
+          "4",
+          "合同续签的紧急例外需要部门负责人书面批准。",
+          "4",
+          "east"
+        ]
+      },
+      {
+        "id": "blk_7c7446e47ee01e768aced4d9",
+        "kind": "row",
+        "text": "5\t合同续签必须通过合同系统提交。\t5\twest",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "csv",
+          "row_index": 5
+        },
+        "values": [
+          "5",
+          "合同续签必须通过合同系统提交。",
+          "5",
+          "west"
+        ]
+      }
+    ],
+    "outline": [
+      {
+        "kind": "table",
+        "columns": [
+          "id",
+          "clause",
+          "amount",
+          "region"
+        ],
+        "rows": 6
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_rows": 6,
+      "start": 0,
+      "returned": 6,
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/table_04/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "852bfcc167a812f8f363d1a10c14bf36c7c1ce7b397f8a2f89cfc7a7d0622c41",
+        "size_bytes": 2859
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "29f5c3199d08dbd36d6e3883e8cd31c9e346c423978983ad8c6e1241bed0a412",
+      "size_bytes": 370,
+      "mime_type": "text/tab-separated-values"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "e6b8b22855172195bd72b85fa42769bbd23acd55f22556fa3ba98f7760ddbb7c"
+    }
+  }
+}

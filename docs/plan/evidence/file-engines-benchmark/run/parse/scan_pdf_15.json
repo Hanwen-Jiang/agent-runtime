@@ -1,0 +1,382 @@
+{
+  "evaluation": {
+    "id": "scan_pdf_15",
+    "family": "scan_pdf",
+    "variant": "mixed_native_scan",
+    "language": "en",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 7.826238312991336,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8793,
+        "candidate_ids": []
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8036,
+        "candidate_ids": []
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.795,
+        "candidate_ids": [
+          "blk_a84b2111582140040a95f290"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.7975,
+        "candidate_ids": [
+          "blk_bc8e92b9c702801487eefd45"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.7075,
+        "candidate_ids": []
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.7965,
+        "candidate_ids": []
+      }
+    ],
+    "independent": {
+      "method": "raster_requires_human_visual_review",
+      "verified": null
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 8,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_pages": 4,
+      "processed_pages": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "unselected_pages": 0,
+      "returned_blocks": 10,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_b776872d65ad5db15898bf9b",
+        "kind": "ocr_text",
+        "text": "Security vulnerability reporting must be submitted within",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.024193547666072845,
+            0.0953125,
+            0.6426411271095276,
+            0.184375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99392,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_8322f883480129f3cdd6c018",
+        "kind": "ocr_text",
+        "text": "11 business days.",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.027217742055654526,
+            0.203125,
+            0.21522176265716553,
+            0.2953125
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.97529,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_4503fc679392cb974eb9fe5e",
+        "kind": "ocr_text",
+        "text": "Security Team is responsible for approving security",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.02318548411130905,
+            0.3796875,
+            0.5796370506286621,
+            0.4765625
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.98546,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_903c1936d91a8cdb31bfa0f8",
+        "kind": "ocr_text",
+        "text": "vulnerabilityreporting.",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.024193547666072845,
+            0.4953125,
+            0.27419352531433105,
+            0.584375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99996,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_a84b2111582140040a95f290",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 — page 1\nSecurity vulnerability reporting requires reproducible proof of\nconcept.\n",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "native_text"
+      },
+      {
+        "id": "blk_bc8e92b9c702801487eefd45",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 — page 2\nRecords for security vulnerability reporting must be retained\nfor 22 months.\n",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "native_text"
+      },
+      {
+        "id": "blk_b28dae6be544cc9d1ecfb59f",
+        "kind": "ocr_text",
+        "text": "Emergency exceptions for security vulnerability reporting",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0.024193547666072845,
+            0.0890625,
+            0.6552419066429138,
+            0.1921875
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99992,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_ef1ec37fd9a485bcd0632687",
+        "kind": "ocr_text",
+        "text": "require written approval from the department head.",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0.024193547666072845,
+            0.2046875,
+            0.6083669066429138,
+            0.2984375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.98701,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_09fd942bcbb6151d915a704e",
+        "kind": "ocr_text",
+        "text": "Security vulnerability reporting must be submitted",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0.02368951588869095,
+            0.38125,
+            0.5740927457809448,
+            0.475
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99665,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_27df625ffa521c624722e637",
+        "kind": "ocr_text",
+        "text": "through the security inbox.",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0.025705644860863686,
+            0.4953125,
+            0.32207658886909485,
+            0.5859375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.98082,
+        "low_confidence": false
+      }
+    ],
+    "outline": [
+      {
+        "kind": "pdf",
+        "pages": 4
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_pages": 4,
+      "processed_pages": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "unselected_pages": 0,
+      "returned_blocks": 10,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_15/page-00000.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "784163ea10dbc6990cdf0d6784adfc9162960566d789ec3a6b99801505edc11b",
+        "size_bytes": 319462
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_15/page-00003.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "c786683212e7af83fd41194798110261e81a472332c0a97ba89bf30eb5fbfaf8",
+        "size_bytes": 389575
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_15/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "77b60a09406ef72a61e5f835863c03be229f5dc4703741bfde25fdd3621a869e",
+        "size_bytes": 5303
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "d326de220f80b0d152d5ddc9e9854df28b6e1a17ee47fe72d7c9180c17e53b00",
+      "size_bytes": 57881,
+      "mime_type": "application/pdf"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "81ec0bf0e1711cea5345bb6c426e835e7e394448ecb24afdf27acc58ddd58ffe"
+    }
+  }
+}

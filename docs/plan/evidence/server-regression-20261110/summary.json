@@ -1,0 +1,116 @@
+{
+  "date": "2026-11-10",
+  "environment": "cloudnium_cloud, isolated validation directory and agentruntime-ci:3 containers; production services not changed",
+  "suites": {
+    "go-task-service": {
+      "passed_tests_including_subtests": 630,
+      "passed_packages": 16,
+      "failed": []
+    },
+    "go-model-gateway": {
+      "passed_tests_including_subtests": 191,
+      "passed_packages": 5,
+      "failed": []
+    },
+    "memory_full_with_backends": {
+      "passed": 211,
+      "failed": 0,
+      "seconds": 46.8,
+      "includes": "real local PostgreSQL and Qdrant test backends"
+    },
+    "worker_complete_before_patch_convention_corrections": {
+      "passed": 1649,
+      "failed": 2,
+      "skipped": 1,
+      "seconds": 1148.12,
+      "failed_tests": [
+        "test_patches_at_start.py::test_every_version_branch_is_asked_at_start",
+        "test_sub_agent_wrap_up.py::test_the_patch_is_appended_at_the_end"
+      ]
+    },
+    "worker_patch_and_replay_final": {
+      "passed": 23,
+      "failed": 0,
+      "seconds": 50.21,
+      "checks": [
+        "new-run patch markers in first workflow task",
+        "patch append-only order",
+        "N16 wrap-up behavior",
+        "all golden replay histories",
+        "mutation changes command order and replay must fail",
+        "Task/SubAgent/Subgraph histories generated in this focused session",
+        "workspace queue and durable result persistence"
+      ]
+    },
+    "workspace_baseline_replay": {
+      "log_summary": "3 passed in 1.57s"
+    },
+    "new_saved_file_and_child_histories": {
+      "passed": 19,
+      "failed": 0,
+      "regenerated_histories": false
+    },
+    "contracts": {
+      "passed": 440,
+      "failed": 0,
+      "seconds": 8.18
+    },
+    "contracts_and_deploy_initial": {
+      "passed": 1042,
+      "failed": 4,
+      "skipped": 26,
+      "deselected": 1,
+      "seconds": 266.48,
+      "classification": {
+        "file_feature_contract_deficiency": "Inline enums, fixed by unchanged values in shared defs and $refs",
+        "test_environment": "uv cache path permissions, fixed for the rerun through environment only",
+        "preexisting_deployment_expectations": [
+          "Cloudflare image tag pattern",
+          "sub-agent off environment omission"
+        ]
+      }
+    },
+    "full_contracts_after_fix": {
+      "passed": 638,
+      "failed": 0,
+      "deselected": 1,
+      "seconds": 45.62,
+      "excluded_case": "test_go_modules_build_vet_and_test",
+      "uv_lock_check": "passed",
+      "buf_lint": "passed",
+      "buf_breaking": "passed"
+    },
+    "deployment_failure_baseline_comparison": {
+      "baseline": "fdac343dae9a893cb80692fa7c0da15538b40902",
+      "failed_expected": 2,
+      "seconds": 2.27,
+      "source_comparison": "eight relevant files identical to baseline",
+      "configuration_or_assertion_changed": false,
+      "comparison_time": "Before the root integrator subsequently updated the two assertions to the checked-in semantics",
+      "assertions_subsequently_updated_by_root": true
+    }
+  },
+  "limitations": [
+    "The complete Worker run preceded the two patch-convention fixes; it had 1649 passes, two failures, and one opt-in live Jev skip. A focused rerun verifies both corrections and replay behavior; no claim is made that a new complete run occurred.",
+    "Go/Memory/contract files below are server regression runs already completed by the root integrator before final review, not replacements for later changed-path acceptance."
+  ],
+  "artifacts": {
+    "buf-final-fixed.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "buf.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "contracts-deploy-initial.log": "7b3003f20ce5c7b04816d21a820ad97d1446bd7aea1075f7d07071b6ac3fc633",
+    "contracts-final-fixed.log": "5288c2df2bace4dbd00b93b4b1ba0a2411cb2b44203495059ee67aba110a5ab7",
+    "contracts-final-status.json": "df0f9592eb3dfc470310af40188b98677a7f3dcbe631ec1e32687f3245c4ec8c",
+    "contracts.log": "178bad0c7ac2042a68ce8cfd8833b4c23510022a69158c6942d5bf426cd48a82",
+    "deploy-baseline-fdac343d.log": "bee68b01f2651ab668dcf617d890c081e06e69b268045b64e6ef5a18d023723d",
+    "deploy-baseline-source-comparison.json": "b7a12bc89b37800be36d1c6efe9513222d962d1ba74f381dce3f636eb493500b",
+    "file-histories-replay-final.json": "241840885d887061f4dcaecaee41afa853905fc8b9740fe3a6af64dd853e094c",
+    "file-histories-replay-final.log": "89a8b408ed52d03992c3144cef1d07dedf05eebd4910d8248105822b7e2b3bda",
+    "go-model-gateway.json.gz": "995791b42a332c3758360ac3a422c73bd0bdf34acddd47f55229669b8e07e4cd",
+    "go-task-service.json.gz": "13d682d632c46006a4fa8344458bd10aafc1ca715ecee0f9c1587930d01c9cc0",
+    "memory-full-backends.log": "aa63140f7951ac623006dc3f9d2c9e7b816e6d674f45ce287d223ad0457017c4",
+    "replay_saved_histories.py": "9b1432fcd0916f9ad1b8680d5f94632ceff067d60e63fa3a6974dd7f24f587d0",
+    "worker-full.log": "7f4d1efaa49e96196182f49edd51d7c3eecc6801f2378b0f2ee123b299d989ba",
+    "worker-patches-replay-final.log": "bc729af250b25de9abd0f1ecc3e569ab62b53297200882813be1b86d27c292aa",
+    "worker-workspace-replay-final.log": "2fd77a80df5b9fe9af735aab79fbfd9d9b6d544b08e0d297ba1f9b8d93413ab1"
+  }
+}

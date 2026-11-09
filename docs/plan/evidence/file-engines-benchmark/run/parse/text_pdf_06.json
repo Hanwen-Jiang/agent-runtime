@@ -1,0 +1,278 @@
+{
+  "evaluation": {
+    "id": "text_pdf_06",
+    "family": "text_pdf",
+    "variant": "headings_footers",
+    "language": "en",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 0.04817551001906395,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.7724,
+        "candidate_ids": [
+          "blk_161c566ac00a3758b2d83891"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.7843,
+        "candidate_ids": [
+          "blk_e808a1467eadd225f382ca1a"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.7519,
+        "candidate_ids": [
+          "blk_689f49523d435f933d47563d"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.7724,
+        "candidate_ids": [
+          "blk_67b8ec19e9c819a84441abfc"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.839,
+        "candidate_ids": [
+          "blk_bd56279ddc75e3dbb8d937a0"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.7898,
+        "candidate_ids": [
+          "blk_d06390a8b1ed0d658c62b8e2"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "poppler_pdftotext",
+      "verified": false,
+      "found": 0,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_pages": 6,
+      "processed_pages": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "unselected_pages": 0,
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_161c566ac00a3758b2d83891",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 — page 1\nResearch data retention must be submitted within 20 business\ndays.\n",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "native_text"
+      },
+      {
+        "id": "blk_e808a1467eadd225f382ca1a",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 — page 2\nResearch Office is responsible for approving research data\nretention.\n",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "native_text"
+      },
+      {
+        "id": "blk_689f49523d435f933d47563d",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 — page 3\nResearch data retention requires approved study protocol.\n",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "native_text"
+      },
+      {
+        "id": "blk_67b8ec19e9c819a84441abfc",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 — page 4\nRecords for research data retention must be retained for 12\nmonths.\n",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "native_text"
+      },
+      {
+        "id": "blk_bd56279ddc75e3dbb8d937a0",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 — page 5\nEmergency exceptions for research data retention require written\napproval from the department head.\n",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 4,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "native_text"
+      },
+      {
+        "id": "blk_d06390a8b1ed0d658c62b8e2",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 — page 6\nResearch data retention must be submitted through the research\nregistry.\n",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 5,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "native_text"
+      }
+    ],
+    "outline": [
+      {
+        "kind": "pdf",
+        "pages": 6
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_pages": 6,
+      "processed_pages": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "unselected_pages": 0,
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/text_pdf_06/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "936ce7ac1729d2f29061febe860f0a083a6a2afd97714e0b8f20ccc0221eab90",
+        "size_bytes": 3331
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "1bf851409154279f7ea894004be16eecda70104f9299eedb8c7cc2ffbdc7d9f0",
+      "size_bytes": 5794,
+      "mime_type": "application/pdf"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "05bdd4644a3950f639f47b34d1ab0815ab9fcc66285e74784c23ca2026a2c3a3"
+    }
+  }
+}

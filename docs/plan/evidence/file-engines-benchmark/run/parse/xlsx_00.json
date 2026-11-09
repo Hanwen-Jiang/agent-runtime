@@ -1,0 +1,416 @@
+{
+  "evaluation": {
+    "id": "xlsx_00",
+    "family": "xlsx",
+    "variant": "multi_sheet_formula_hidden_reference",
+    "language": "en",
+    "expected": "readable",
+    "status": "partial",
+    "elapsed_seconds": 0.045970031060278416,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_5690e267eae0bae5fe837c8c"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_61f460fcfeb5f2bb81610ade"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_71133fa7ee3834e31d566c48"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_cb37af831116f39db9f6eb67"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_fa9e1fb74ee1135cb7e44331"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_332ec1522fab554b6c089658"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "raw_ooxml",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "sheet": "Policy",
+      "range": [
+        1,
+        1,
+        2,
+        7
+      ],
+      "formulas_recalculated": false,
+      "returned_blocks": 14,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "partial",
+    "blocks": [
+      {
+        "id": "blk_ff4efe84c0bbb81b9c448226",
+        "kind": "cell",
+        "text": "Facet",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A1"
+        },
+        "value": "Facet",
+        "formula": null,
+        "cached_value": "Facet",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_ca5646d90a920bed262daf29",
+        "kind": "cell",
+        "text": "Clause",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B1"
+        },
+        "value": "Clause",
+        "formula": null,
+        "cached_value": "Clause",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_fe2fcbf0eda177c70a35f280",
+        "kind": "cell",
+        "text": "0",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A2"
+        },
+        "value": 0,
+        "formula": null,
+        "cached_value": 0,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_5690e267eae0bae5fe837c8c",
+        "kind": "cell",
+        "text": "Production incident response must be submitted within 22 business days.",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B2"
+        },
+        "value": "Production incident response must be submitted within 22 business days.",
+        "formula": null,
+        "cached_value": "Production incident response must be submitted within 22 business days.",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_0720f0abd201a2abe6af8fee",
+        "kind": "cell",
+        "text": "1",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A3"
+        },
+        "value": 1,
+        "formula": null,
+        "cached_value": 1,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_61f460fcfeb5f2bb81610ade",
+        "kind": "cell",
+        "text": "Site Reliability is responsible for approving production incident response.",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B3"
+        },
+        "value": "Site Reliability is responsible for approving production incident response.",
+        "formula": null,
+        "cached_value": "Site Reliability is responsible for approving production incident response.",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_a400539ffe9e2fc0c3ab535d",
+        "kind": "cell",
+        "text": "2",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A4"
+        },
+        "value": 2,
+        "formula": null,
+        "cached_value": 2,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_71133fa7ee3834e31d566c48",
+        "kind": "cell",
+        "text": "Production incident response requires incident timeline.",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B4"
+        },
+        "value": "Production incident response requires incident timeline.",
+        "formula": null,
+        "cached_value": "Production incident response requires incident timeline.",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_29bb0fe71b0dd704394b7e3d",
+        "kind": "cell",
+        "text": "3",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A5"
+        },
+        "value": 3,
+        "formula": null,
+        "cached_value": 3,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_cb37af831116f39db9f6eb67",
+        "kind": "cell",
+        "text": "Records for production incident response must be retained for 14 months.",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B5"
+        },
+        "value": "Records for production incident response must be retained for 14 months.",
+        "formula": null,
+        "cached_value": "Records for production incident response must be retained for 14 months.",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_1c4e45ccd98c88cd7e25d174",
+        "kind": "cell",
+        "text": "4",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A6"
+        },
+        "value": 4,
+        "formula": null,
+        "cached_value": 4,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_fa9e1fb74ee1135cb7e44331",
+        "kind": "cell",
+        "text": "Emergency exceptions for production incident response require written approval from the department head.",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B6"
+        },
+        "value": "Emergency exceptions for production incident response require written approval from the department head.",
+        "formula": null,
+        "cached_value": "Emergency exceptions for production incident response require written approval from the department head.",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_abe3a42c3aa217d32732b85c",
+        "kind": "cell",
+        "text": "5",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A7"
+        },
+        "value": 5,
+        "formula": null,
+        "cached_value": 5,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_332ec1522fab554b6c089658",
+        "kind": "cell",
+        "text": "Production incident response must be submitted through the incident channel.",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B7"
+        },
+        "value": "Production incident response must be submitted through the incident channel.",
+        "formula": null,
+        "cached_value": "Production incident response must be submitted through the incident channel.",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      }
+    ],
+    "outline": [
+      {
+        "kind": "sheet",
+        "name": "Policy",
+        "sheet_id": "sheet-0",
+        "rows": 7,
+        "columns": 2,
+        "state": "visible"
+      },
+      {
+        "kind": "sheet",
+        "name": "Budget",
+        "sheet_id": "sheet-1",
+        "rows": 4,
+        "columns": 3,
+        "state": "visible"
+      },
+      {
+        "kind": "sheet",
+        "name": "Reference",
+        "sheet_id": "sheet-2",
+        "rows": 1,
+        "columns": 1,
+        "state": "hidden"
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "sheet": "Policy",
+      "range": [
+        1,
+        1,
+        2,
+        7
+      ],
+      "formulas_recalculated": false,
+      "returned_blocks": 14,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/xlsx_00/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "b184d7d49849c14b80e17929254ebf049b8a9cefb50df306108d2cc11dd7e02a",
+        "size_bytes": 6552
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "5f6247fcd30cc84aba5ab9b5487796d90350798f5e7eb8bab10bfa1273f3e531",
+      "size_bytes": 6179,
+      "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "fc3eab1492cdd65878e15401898abd391d015d28268d67d452224264104524a0"
+    }
+  }
+}

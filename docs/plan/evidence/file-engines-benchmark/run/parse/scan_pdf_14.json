@@ -1,0 +1,333 @@
+{
+  "evaluation": {
+    "id": "scan_pdf_14",
+    "family": "scan_pdf",
+    "variant": "scan_rotated",
+    "language": "zh",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 8.96629241714254,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_c57e758a698d6c280e93bc1a"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_ee8cb29eec4ef7eb74d80c13"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_d0ff1ede79df62de4fda8029"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_e4b2edef61b21d3e77d9c569"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_6f7a759af2e4cde67f9a03b0"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_f9fa83b6e2190a66d3faaeb9"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "raster_requires_human_visual_review",
+      "verified": null
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 6,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_pages": 3,
+      "processed_pages": [
+        0,
+        1,
+        2
+      ],
+      "unselected_pages": 0,
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_c57e758a698d6c280e93bc1a",
+        "kind": "ocr_text",
+        "text": "合同续签的提交期限为4个工作日。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.024193547666072845,
+            0.1,
+            0.3780241906642914,
+            0.20625
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99991,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_ee8cb29eec4ef7eb74d80c13",
+        "kind": "ocr_text",
+        "text": "合同续签的审批责任人为法务。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.024697579443454742,
+            0.278125,
+            0.3432459533214569,
+            0.3828125
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99995,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_d0ff1ede79df62de4fda8029",
+        "kind": "ocr_text",
+        "text": "合同续签必须提供现有合同副本。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.02368951588869095,
+            0.1015625,
+            0.36542338132858276,
+            0.20625
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99985,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_e4b2edef61b21d3e77d9c569",
+        "kind": "ocr_text",
+        "text": "合同续签记录须保留21个月。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.024193547666072845,
+            0.278125,
+            0.32207658886909485,
+            0.3828125
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.9998,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_6f7a759af2e4cde67f9a03b0",
+        "kind": "ocr_text",
+        "text": "合同续签的紧急例外需要部门负责人书面批准。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.024193547666072845,
+            0.09375,
+            0.5035282373428345,
+            0.20625
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.98911,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_f9fa83b6e2190a66d3faaeb9",
+        "kind": "ocr_text",
+        "text": "合同续签必须通过合同系统提交。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.024697579443454742,
+            0.2765625,
+            0.36592739820480347,
+            0.3828125
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99986,
+        "low_confidence": false
+      }
+    ],
+    "outline": [
+      {
+        "kind": "pdf",
+        "pages": 3
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_pages": 3,
+      "processed_pages": [
+        0,
+        1,
+        2
+      ],
+      "unselected_pages": 0,
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_14/page-00000.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "87336091aa14c7f0f31b5d091c888ca87aaf019ed61e652033692cef943a0100",
+        "size_bytes": 239484
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_14/page-00001.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "8c92d47504cf2e13d526da3e756bb57894e015837afedc96e59c1fe81b686d17",
+        "size_bytes": 231794
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_14/page-00002.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "ea8438b6594c218a40093e02dc1b213be4c4530a709ca144b7d8cdec9856bad1",
+        "size_bytes": 292875
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_14/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "ec3d6eb669f16dbbe8a51522c3da11184f7d4e40f9de1912dc366cfa364bf0ec",
+        "size_bytes": 4258
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "79f6a8fbb302d15daceb00f153da6500d3ab3dbbcc1e2997fa6f6b7764a3b5f5",
+      "size_bytes": 68202,
+      "mime_type": "application/pdf"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "a108fe22c857e2878460d20b6ff4c4fd7970799840268863fa16cf2c014bfa24"
+    }
+  }
+}

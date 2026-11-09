@@ -1,0 +1,14 @@
+{
+  "go-final-task.json": {
+    "sha256": "663f64eb21b1044b44e3795b786de1a0cb16fcb84404c0ddc7008f170c14f3f6",
+    "passed_tests_including_subtests": 630,
+    "passed_packages": 16,
+    "failed": []
+  },
+  "go-final-gateway.json": {
+    "sha256": "91f06f049e95f806fe1ce81bc1f7a55851cb9d0c8aa28e0362b5ff6a1f656ab8",
+    "passed_tests_including_subtests": 191,
+    "passed_packages": 5,
+    "failed": []
+  }
+}

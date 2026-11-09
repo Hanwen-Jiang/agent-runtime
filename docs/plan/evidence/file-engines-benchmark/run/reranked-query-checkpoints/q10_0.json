@@ -1,0 +1,340 @@
+{
+  "id": "q10_0",
+  "query": "Compare the submission deadlines for remote work requests across the policies.",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_10",
+      "pptx_00",
+      "scan_pdf_10",
+      "table_00",
+      "text_pdf_10",
+      "xlsx_05"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.0,
+    "hit_at_8": 0.0,
+    "reciprocal_rank_at_8": 0,
+    "unique_source_ndcg_at_8": 0.0,
+    "relevant_files": [],
+    "expected_files": [
+      "text_pdf_10",
+      "scan_pdf_10",
+      "docx_10",
+      "xlsx_05",
+      "pptx_00",
+      "table_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.0,
+    "latency_ms": 15.001831110566854
+  },
+  "hybrid": {
+    "recall_at_8": 0.8333333333333334,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.8922108454754891,
+    "relevant_files": [
+      "docx_10",
+      "scan_pdf_10",
+      "table_00",
+      "text_pdf_10",
+      "xlsx_05"
+    ],
+    "expected_files": [
+      "text_pdf_10",
+      "scan_pdf_10",
+      "docx_10",
+      "xlsx_05",
+      "pptx_00",
+      "table_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.625,
+    "latency_ms": 4511.355826165527
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e7d8410b6bfe090494cdad91",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 106.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_text_pdf_10",
+      "version_id": "text_pdf_10",
+      "score": 3.609375476837158,
+      "text": "Synthetic policy edition / 合成政策版本 — page 1\nRemote work requests must be submitted within 23 business days.",
+      "quote_hash": "340d98c874ae4c6091a41e79875e7956cf0044566eded0553967b274bd110788",
+      "id": "chunk_b2bd6e267b8ed20bf44292f2006802cb52ecd7b1c20a9ef14fe338460399ad1b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_48ab0de8847ff82e7726af06",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 19.0,
+        "bbox": [
+          0.026209676638245583,
+          0.096875,
+          0.4380040168762207,
+          0.1859375
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_10",
+      "version_id": "scan_pdf_10",
+      "score": 2.4435184001922607,
+      "text": "远程办公申请的提交期限为26个工作日。",
+      "quote_hash": "3e927843a615a9975701b7f691f62e915d3888c657d805d8bfa4a203f479a6f4",
+      "id": "chunk_804cf3ecc4b8a2b227a9358e45fb3d9e763168d4f50cbabcf8164fa665e48234"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_1760c56355c5c8f028c5bb42",
+        "range": "B2",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 18.0
+      },
+      "representation_id": "rep_xlsx_05",
+      "version_id": "xlsx_05",
+      "score": 2.3352959156036377,
+      "text": "远程办公申请的提交期限为7个工作日。",
+      "quote_hash": "8517a2751d71b6b5403fd1bf769fab29818df49d41e76b88b2b90152294106bc",
+      "id": "chunk_2cc30573f44e877a077d7c2cd0cf0e22dafebeaab7d03ff5772774d09c1b4ce0"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d635d049c559564dd1c9a8f4",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 28.0,
+        "row_index": 0.0
+      },
+      "representation_id": "rep_table_00",
+      "version_id": "table_00",
+      "score": 2.0997517108917236,
+      "text": "0\t远程办公申请的提交期限为16个工作日。\t0\teast",
+      "quote_hash": "ef5af46b85701fc888a30c7f557531e7ab28177382af86da1b079b94ced2de8f",
+      "id": "chunk_dbe096bd2390f3334c0448b30290f7a284221a72333de6d0d06c5de061d32b9c"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_7dd47826c1dc9a9d9c92e557",
+        "kind": "document_block",
+        "block_index": 1.0,
+        "char_end": 62.0
+      },
+      "representation_id": "rep_docx_10",
+      "version_id": "docx_10",
+      "score": 1.791371464729309,
+      "text": "Remote work requests must be submitted within 4 business days.",
+      "quote_hash": "1e55c215421d8f947b9d46d8d170368c1f9cf477155815c461493d8066458b2c",
+      "id": "chunk_7169af3a84056be27cee753042cbb1142de940c907241ee2201d34bcbfe7f4b2"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e15afb8208b72385470fa007",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 111.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 5.0
+      },
+      "representation_id": "rep_text_pdf_10",
+      "version_id": "text_pdf_10",
+      "score": 0.8085182309150696,
+      "text": "Synthetic policy edition / 合成政策版本 — page 6\nRemote work requests must be submitted through the workforce\nportal.",
+      "quote_hash": "d13d16aa1bdea02f09e180a30007bdb7ae53b9854e4cbf1cc29aee1966809cfe",
+      "id": "chunk_51b4f80e980c5f8e7294128dfe28d9586941da6fdeec4ce85cfa68d0f94ddf22"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_79fafb80feed17e0cc75ca18",
+        "kind": "document_block",
+        "block_index": 6.0,
+        "char_end": 68.0
+      },
+      "representation_id": "rep_docx_10",
+      "version_id": "docx_10",
+      "score": 0.13152015209197998,
+      "text": "Remote work requests must be submitted through the workforce portal.",
+      "quote_hash": "17dbdf287e485d580296212998196b2179e9f3eefb53de3424f58860a866421a",
+      "id": "chunk_0f0524c6765a4a99a1380a77c1d7c6e5cad5f3496521f413dbdb280ad2296f06"
+    },
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_a2ab6de5fc95563b04fd5346",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 68.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_00",
+      "version_id": "pptx_00",
+      "score": 0.13152015209197998,
+      "text": "Remote work requests must be submitted through the workforce portal.",
+      "quote_hash": "17dbdf287e485d580296212998196b2179e9f3eefb53de3424f58860a866421a",
+      "id": "chunk_508e2467d5c2fdfd97793aae94fa26842e50bcee095606c8a95b1f747d609f80"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_e39f6b458c7672e3e07cc821bf8c6a080e50b028fedae76d681fc97ea17fca10",
+      "version_id": "docx_10",
+      "text": "Team Lead is responsible for approving remote work requests.",
+      "anchor": {
+        "block_id": "blk_4bd2cc866d93e6608c1f1a9b",
+        "block_index": 2.0,
+        "char_end": 60,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_fc0d26fe23d10a444f2fa5c374ae54076b73e9fd5fd225f4073510af88dd5780",
+      "version_id": "pptx_00",
+      "text": "Team Lead is responsible for approving remote work requests.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_bab1e6c5074b5fab9a6c8f87",
+        "char_end": 60,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_8334dcb2d87afe8a3e163775e59254a90d2d7d17a7dd055128846f1700c1a0e7",
+      "version_id": "pptx_00",
+      "text": "Emergency exceptions for remote work requests require written approval from the department head.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_9cd35796183df4571a52010e",
+        "char_end": 96,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 4.0
+      }
+    },
+    {
+      "id": "chunk_a39dc6b6e5f51aac6eb42620d1ad094b2a2db6b0756969c925552e661c5f76ce",
+      "version_id": "docx_10",
+      "text": "Emergency exceptions for remote work requests require written approval from the department head.",
+      "anchor": {
+        "block_id": "blk_664519d3887cbffe4882447f",
+        "block_index": 5.0,
+        "char_end": 96,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_d584a620d937ac1817f7b3d4414a72c5e7a17350e692efcfa49add0501cf99b0",
+      "version_id": "pptx_00",
+      "text": "Remote work requests requires coverage schedule.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_879b664e7d11476be37ca7b8",
+        "char_end": 48,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_dcefc269cfbfe9c01b364d18ad2cbb21d312c4f0cf985ea1a923e665abd92691",
+      "version_id": "docx_10",
+      "text": "Remote work requests requires coverage schedule.",
+      "anchor": {
+        "block_id": "blk_a44c6d295794763f10596bd6",
+        "block_index": 3.0,
+        "char_end": 48,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_0f0524c6765a4a99a1380a77c1d7c6e5cad5f3496521f413dbdb280ad2296f06",
+      "version_id": "docx_10",
+      "text": "Remote work requests must be submitted through the workforce portal.",
+      "anchor": {
+        "block_id": "blk_79fafb80feed17e0cc75ca18",
+        "block_index": 6.0,
+        "char_end": 68,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_508e2467d5c2fdfd97793aae94fa26842e50bcee095606c8a95b1f747d609f80",
+      "version_id": "pptx_00",
+      "text": "Remote work requests must be submitted through the workforce portal.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_a2ab6de5fc95563b04fd5346",
+        "char_end": 68,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 5.0
+      }
+    }
+  ]
+}

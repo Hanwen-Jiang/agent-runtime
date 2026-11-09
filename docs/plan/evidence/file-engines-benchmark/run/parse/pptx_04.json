@@ -1,0 +1,374 @@
+{
+  "evaluation": {
+    "id": "pptx_04",
+    "family": "pptx",
+    "variant": "slides_text_table_notes",
+    "language": "en",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 0.047880230005830526,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_c5ae8abd197c8919520ce60d"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_992914ff5ce3fd3625e0087e"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_9bf5c9104f19e91cc5a67ed8"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_e3181283600b2d42e0d2a40d"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_423b141d762053532f09c431"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_17282c9485e34b51d9af350f"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "raw_ooxml",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_slides": 6,
+      "processed_slides": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "charts_visual_only": true,
+      "returned_blocks": 13,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_c5ae8abd197c8919520ce60d",
+        "kind": "text",
+        "text": "Contract renewal must be submitted within 13 business days.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 0,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_3bb5a9fa30690f699b131f29",
+        "kind": "notes",
+        "text": "Speaker note 4/0: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 0,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_992914ff5ce3fd3625e0087e",
+        "kind": "text",
+        "text": "Legal Operations is responsible for approving contract renewal.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 1,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_03121875cb32b422db8fae46",
+        "kind": "notes",
+        "text": "Speaker note 4/1: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 1,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_9bf5c9104f19e91cc5a67ed8",
+        "kind": "text",
+        "text": "Contract renewal requires current contract copy.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 2,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_1166a59ee6ecfe879273b21e",
+        "kind": "table",
+        "text": "Review\t\n\tComplete",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 2,
+          "shape_id": 3,
+          "bbox": [
+            0.05,
+            0.5333333333333333,
+            0.55,
+            0.6666666666666666
+          ]
+        }
+      },
+      {
+        "id": "blk_3abcbeff8b3549c66d2d3682",
+        "kind": "notes",
+        "text": "Speaker note 4/2: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 2,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_e3181283600b2d42e0d2a40d",
+        "kind": "text",
+        "text": "Records for contract renewal must be retained for 24 months.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 3,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_3c462170b8fa154e5fa0dd2d",
+        "kind": "notes",
+        "text": "Speaker note 4/3: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 3,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_423b141d762053532f09c431",
+        "kind": "text",
+        "text": "Emergency exceptions for contract renewal require written approval from the department head.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 4,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_238043c22c17c9411a3e06a4",
+        "kind": "notes",
+        "text": "Speaker note 4/4: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 4,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_17282c9485e34b51d9af350f",
+        "kind": "text",
+        "text": "Contract renewal must be submitted through the contract registry.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 5,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_383e3377d77ffad65ec9776a",
+        "kind": "notes",
+        "text": "Speaker note 4/5: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 5,
+          "part": "notes"
+        }
+      }
+    ],
+    "outline": [
+      {
+        "kind": "slide",
+        "slide_index": 0,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 1,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 2,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 3,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 4,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 5,
+        "title": ""
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_slides": 6,
+      "processed_slides": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "charts_visual_only": true,
+      "returned_blocks": 13,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/pptx_04/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "df7c554cea85a4665f63fd909734c4a74f8ef111ee9e1aa4996554967600da5a",
+        "size_bytes": 4114
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "79305e84062a846e769b4dec04a55b45917cfa3a3540336428e9bbd115fae043",
+      "size_bytes": 43017,
+      "mime_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "3555600d2cc3ddf5685a8401ee2cded590e598f382516d69e80bf06e47c783b3"
+    }
+  }
+}

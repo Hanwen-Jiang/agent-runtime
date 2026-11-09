@@ -127,9 +127,18 @@ class ModelToolLoop:
 
     async def step(self, inp: ToolLoopStepInput) -> ToolLoopStep:
         node = inp.node
-        tools = await self._tool_specs(inp, [str(t) for t in node.get("tools") or []])
+        offered = [str(t) for t in node.get("tools") or []]
+        file_constrained = False
+        if inp.isolated:
+            from agentruntime_worker.files.scopes import ALLOWED_CHILD_TOOLS, parent_has_file_inputs
+            delegated = (node.get("inputs") or {}).get("file_scopes")
+            parent_files = await parent_has_file_inputs(self.builder.objects, inp.tenant, inp.task_id)
+            file_constrained = delegated is not None or bool(parent_files)
+            if file_constrained:
+                offered = [tool for tool in offered if tool in ALLOWED_CHILD_TOOLS] if delegated else []
+        tools = await self._tool_specs(inp, offered)
         leased = await self.tools.mcp_names(inp.tenant, inp.task_id) if self.tools is not None else frozenset()
-        turns = await self.transcript.load(inp.tenant, inp.task_id) if self.transcript is not None else ()
+        turns = await self.transcript.load(inp.tenant, inp.task_id) if self.transcript is not None and not inp.isolated else ()
         personal = await self.personal.load(inp.tenant.tenant_id, inp.task_id) if self.personal is not None else None
         from agentruntime_worker.executor.image_input import ImageInputs, prepare_images
         images = ImageInputs()
@@ -140,6 +149,10 @@ class ModelToolLoop:
             if files:
                 images = await prepare_images(self.gateway, inp.tenant, files)
                 conversation += "\n\n" + manifest_text(files, native_images=bool(images.messages))
+        collection_loader = getattr(self.attachments, "collections", None)
+        if collection_loader and not inp.isolated:
+            from agentruntime_worker.tools.attachments import collection_text
+            conversation += "\n\n" + collection_text(await collection_loader(inp.tenant.tenant_id, inp.task_id, inp.tenant.workspace_id))
         built = await self.builder.build(
             ContextRequest(
                 tenant=inp.tenant,
@@ -158,7 +171,7 @@ class ModelToolLoop:
                 conversation=conversation,
                 image_messages=images.messages,
                 image_token_reserve=images.token_reserve,
-                experiences=await node_experiences(self.memory, inp.tenant, inp.task_id, node, iteration=inp.iteration),
+                experiences=() if file_constrained else await node_experiences(self.memory, inp.tenant, inp.task_id, node, iteration=inp.iteration),
             )
         )
         # N-15：远程 MCP 工具的内核名带点（mcp.<连接>.<工具>），模型厂商的工具名不收点：给模型时（工具定义与此前的调用）换成 __，

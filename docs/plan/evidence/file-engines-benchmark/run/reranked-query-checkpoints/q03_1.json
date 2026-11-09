@@ -1,0 +1,345 @@
+{
+  "id": "q03_1",
+  "query": "Who signs off on warehouse returns according to the different documents?",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_03",
+      "notebook_00",
+      "pptx_13",
+      "scan_pdf_03",
+      "text_03",
+      "text_pdf_03"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.16666666666666666,
+    "unique_source_ndcg_at_8": 0.2086566256907821,
+    "relevant_files": [
+      "notebook_00",
+      "scan_pdf_03"
+    ],
+    "expected_files": [
+      "text_pdf_03",
+      "scan_pdf_03",
+      "docx_03",
+      "pptx_13",
+      "text_03",
+      "notebook_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 13.76839680597186
+  },
+  "hybrid": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.4935232796777482,
+    "relevant_files": [
+      "notebook_00",
+      "scan_pdf_03"
+    ],
+    "expected_files": [
+      "text_pdf_03",
+      "scan_pdf_03",
+      "docx_03",
+      "pptx_13",
+      "text_03",
+      "notebook_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 7210.450971033424
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e51267da227974d6af933c89",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 57.0,
+        "bbox": [
+          0.026209676638245583,
+          0.3859375,
+          0.640625,
+          0.4703125
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_03",
+      "version_id": "scan_pdf_03",
+      "score": 0.07886457443237305,
+      "text": "Logistics is responsible for approving warehouse returns.",
+      "quote_hash": "d9aa28f3e94c82b2fff9a42d9fc7df33a0369b35b6db5807012000d8abbfda7b",
+      "id": "chunk_979f8ccb6267eff1b76f8e0703d11841be0db0beb70d43dd24615263bafeb452"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_6a018f64d21bc63ae63d0ad6",
+        "kind": "notebook_cell",
+        "cell_id": "clause-1",
+        "char_end": 57.0,
+        "cell_index": 1.0
+      },
+      "representation_id": "rep_notebook_00",
+      "version_id": "notebook_00",
+      "score": 0.07886457443237305,
+      "text": "Logistics is responsible for approving warehouse returns.",
+      "quote_hash": "d9aa28f3e94c82b2fff9a42d9fc7df33a0369b35b6db5807012000d8abbfda7b",
+      "id": "chunk_f3c39fdb9a23593ce4c87af9063414686a9799f672cf988d7905e01ca0ea022b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_1af45c639b4dd05910d0e526",
+        "kind": "notebook_cell",
+        "cell_id": "clause-5",
+        "char_end": 61.0,
+        "cell_index": 5.0
+      },
+      "representation_id": "rep_notebook_00",
+      "version_id": "notebook_00",
+      "score": -2.4228928089141846,
+      "text": "Warehouse returns must be submitted through the returns desk.",
+      "quote_hash": "1eb43ba5cbb8e277dbac04b0cbf179de5760cdbfea7aa47d20e2f4c5e4cee4d7",
+      "id": "chunk_9d469b69302ab9f5788f013f790b17dfef851792f57ab237be075024045eaefc"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_33725e5cac756ec7cca66697",
+        "kind": "notebook_cell",
+        "cell_id": "clause-4",
+        "char_end": 93.0,
+        "cell_index": 4.0
+      },
+      "representation_id": "rep_notebook_00",
+      "version_id": "notebook_00",
+      "score": -2.650791883468628,
+      "text": "Emergency exceptions for warehouse returns require written approval from the department head.",
+      "quote_hash": "f1dd7a10cb403f62b6b5c467a16fef68335b0cd5be5b4c15418a516d13ec8f05",
+      "id": "chunk_eda3201dd4dff41918ea03b185fd5bc94cd18daa2e4ad02c371fbd02b868bf0f"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_2d46eda188eb637ecaf37cb4",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 55.0,
+        "bbox": [
+          0.02520161122083664,
+          0.38125,
+          0.6612902879714966,
+          0.4703125
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_scan_pdf_03",
+      "version_id": "scan_pdf_03",
+      "score": -2.950364112854004,
+      "text": "Warehouse returns must be submitted through the returns",
+      "quote_hash": "a37cd981f200d1444fad57e3947b27430fb0db912faccf54021ae1155a5a4ffe",
+      "id": "chunk_e2a48ed5fcf5dad535d069389d24faac9629c6ebf7815e273e241bd03d6c6d98"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_5d237dac3f8e92108241bd6d",
+        "kind": "notebook_cell",
+        "cell_id": "clause-2",
+        "char_end": 50.0,
+        "cell_index": 2.0
+      },
+      "representation_id": "rep_notebook_00",
+      "version_id": "notebook_00",
+      "score": -3.5721805095672607,
+      "text": "Warehouse returns requires parcel tracking record.",
+      "quote_hash": "a071303eee2c56f3f98ca1f1d10387d76bfa0fd60cc21e3f1260802ad7359175",
+      "id": "chunk_c156ce717e4125ece4a71834f27feeedd2fef8aec0b3dd6c1d52ddad9abb7d0f"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d9a4bd3135ceedfc4e08b6df",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 54.0,
+        "bbox": [
+          0.026209676638245583,
+          0.096875,
+          0.643649160861969,
+          0.1765625
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_03",
+      "version_id": "scan_pdf_03",
+      "score": -3.629615068435669,
+      "text": "Warehouse returns must be submitted within 27 business",
+      "quote_hash": "d4374888da0ee468dd53b917cd2d5dc5afaae7a172b83be035ee456da25e3845",
+      "id": "chunk_835f33e2f00cdcb79b005fa4792093dbeef5884d2e7307303d21caf7e24254e9"
+    },
+    {
+      "anchor": {
+        "slide_index": 2.0,
+        "block_id": "blk_fbae10c5e89fe48e8cd3308e",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 53.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_06",
+      "version_id": "pptx_06",
+      "score": -3.798265218734741,
+      "text": "Inventory reconciliation requires signed stock count.",
+      "quote_hash": "d3a13097814fa6c6a7430cd94768889508c9242b3670d748eabce1dd06d5bb7e",
+      "id": "chunk_1f1941e4329086bfbd64b763a6844d37d31d596565b1c4730b9171f50b647367"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_e2a48ed5fcf5dad535d069389d24faac9629c6ebf7815e273e241bd03d6c6d98",
+      "version_id": "scan_pdf_03",
+      "text": "Warehouse returns must be submitted through the returns",
+      "anchor": {
+        "bbox": [
+          0.02520161122083664,
+          0.38125,
+          0.6612902879714966,
+          0.4703125
+        ],
+        "block_id": "blk_2d46eda188eb637ecaf37cb4",
+        "char_end": 55,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_9d469b69302ab9f5788f013f790b17dfef851792f57ab237be075024045eaefc",
+      "version_id": "notebook_00",
+      "text": "Warehouse returns must be submitted through the returns desk.",
+      "anchor": {
+        "block_id": "blk_1af45c639b4dd05910d0e526",
+        "cell_id": "clause-5",
+        "cell_index": 5.0,
+        "char_end": 61,
+        "char_start": 0,
+        "kind": "notebook_cell"
+      }
+    },
+    {
+      "id": "chunk_bedd1c7e72df5123141fd3c17c7a9fc622a435fe198d19baa34375d52d53a09e",
+      "version_id": "scan_pdf_03",
+      "text": "Emergency exceptions for warehouse returns require",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.0953125,
+          0.6113911271095276,
+          0.1828125
+        ],
+        "block_id": "blk_861aef5bce55b48831d43b49",
+        "char_end": 50,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_c156ce717e4125ece4a71834f27feeedd2fef8aec0b3dd6c1d52ddad9abb7d0f",
+      "version_id": "notebook_00",
+      "text": "Warehouse returns requires parcel tracking record.",
+      "anchor": {
+        "block_id": "blk_5d237dac3f8e92108241bd6d",
+        "cell_id": "clause-2",
+        "cell_index": 2.0,
+        "char_end": 50,
+        "char_start": 0,
+        "kind": "notebook_cell"
+      }
+    },
+    {
+      "id": "chunk_eda3201dd4dff41918ea03b185fd5bc94cd18daa2e4ad02c371fbd02b868bf0f",
+      "version_id": "notebook_00",
+      "text": "Emergency exceptions for warehouse returns require written approval from the department head.",
+      "anchor": {
+        "block_id": "blk_33725e5cac756ec7cca66697",
+        "cell_id": "clause-4",
+        "cell_index": 4.0,
+        "char_end": 93,
+        "char_start": 0,
+        "kind": "notebook_cell"
+      }
+    },
+    {
+      "id": "chunk_979f8ccb6267eff1b76f8e0703d11841be0db0beb70d43dd24615263bafeb452",
+      "version_id": "scan_pdf_03",
+      "text": "Logistics is responsible for approving warehouse returns.",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.3859375,
+          0.640625,
+          0.4703125
+        ],
+        "block_id": "blk_e51267da227974d6af933c89",
+        "char_end": 57,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_f3c39fdb9a23593ce4c87af9063414686a9799f672cf988d7905e01ca0ea022b",
+      "version_id": "notebook_00",
+      "text": "Logistics is responsible for approving warehouse returns.",
+      "anchor": {
+        "block_id": "blk_6a018f64d21bc63ae63d0ad6",
+        "cell_id": "clause-1",
+        "cell_index": 1.0,
+        "char_end": 57,
+        "char_start": 0,
+        "kind": "notebook_cell"
+      }
+    },
+    {
+      "id": "chunk_835f33e2f00cdcb79b005fa4792093dbeef5884d2e7307303d21caf7e24254e9",
+      "version_id": "scan_pdf_03",
+      "text": "Warehouse returns must be submitted within 27 business",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.096875,
+          0.643649160861969,
+          0.1765625
+        ],
+        "block_id": "blk_d9a4bd3135ceedfc4e08b6df",
+        "char_end": 54,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    }
+  ]
+}

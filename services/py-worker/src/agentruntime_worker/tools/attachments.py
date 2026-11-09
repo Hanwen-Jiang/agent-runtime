@@ -65,6 +65,26 @@ class TaskAttachments:
             files.extend(await self.authority.describe_derived(tenant_id, workspace_id, task_id))
         return files
 
+    async def collections(self, tenant_id: str, task_id: str, workspace_id: str = "") -> list[dict[str, Any]]:
+        if not tenant_id or not _SCOPE.fullmatch(task_id):
+            return []
+        store = self.objects.bind(TenantContext(tenant_id=tenant_id, workspace_id=workspace_id))
+        try:
+            value = await store.get(f"task-inputs/{task_id}/manifest.json")
+        except NotFoundError:
+            return []
+        if len(value.data) > 64 << 10:
+            raise InvalidError("invalid_attachment_manifest", "任务输入清单超过限制")
+        manifest = json.loads(value.data)
+        if manifest.get("workspace_id", workspace_id) != workspace_id:
+            raise NotFoundError("not_found", "没有这个任务的知识集合")
+        collections = manifest.get("collections") or []
+        if not isinstance(collections, list) or any(not isinstance(item, dict) for item in collections):
+            raise InvalidError("invalid_collection_manifest", "任务知识集合清单无效")
+        if collections and self.authority is not None:
+            await self.authority.check_collections(tenant_id, workspace_id, task_id, collections)
+        return [{key: item[key] for key in ("id", "generation", "embedding_version", "revision", "root_count") if key in item} for item in collections]
+
     async def content(self, invocation: ToolInvocation, uri: str):
         refs = await self.references(invocation.tenant_id or "", invocation.task_id, invocation.workspace_id or "")
         if uri not in refs:
@@ -126,3 +146,11 @@ class AttachmentImport:
         await self.files.write_input(invocation, path, data.data)
         return {"source": uri, "path": path, "size_bytes": len(data.data), "sha256": data.info.sha256,
                 "media_type": data.info.content_type, "parsed": False}
+
+
+def collection_text(collections: list[dict[str, Any]]) -> str:
+    if not collections:
+        return ""
+    return ("本任务明确固定的知识集合（版本快照已固定，未检索不代表已读过内容）：\n"
+            + json.dumps(collections, ensure_ascii=False, sort_keys=True)
+            + "\n用 file_search 检索当前任务快照，用 evidence_resolve 核对返回的证据节点。不能选择新 generation 或把集合当作已授权的原件列表。")

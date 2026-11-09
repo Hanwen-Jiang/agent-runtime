@@ -1,0 +1,360 @@
+{
+  "id": "q18_2",
+  "query": "无障碍审查需要哪些凭证？比较不同资料的要求。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "image_03",
+      "pptx_08",
+      "scan_pdf_18",
+      "text_pdf_18",
+      "xlsx_13"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.2,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.14285714285714285,
+    "unique_source_ndcg_at_8": 0.11305340175787204,
+    "relevant_files": [
+      "xlsx_13"
+    ],
+    "expected_files": [
+      "text_pdf_18",
+      "scan_pdf_18",
+      "xlsx_13",
+      "pptx_08",
+      "image_03"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.125,
+    "latency_ms": 19.52641597017646
+  },
+  "hybrid": {
+    "recall_at_8": 0.6,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.25,
+    "unique_source_ndcg_at_8": 0.3980847300545424,
+    "relevant_files": [
+      "image_03",
+      "scan_pdf_18",
+      "xlsx_13"
+    ],
+    "expected_files": [
+      "text_pdf_18",
+      "scan_pdf_18",
+      "xlsx_13",
+      "pptx_08",
+      "image_03"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 3828.633215976879
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_8c2e69ca49d211fe1906cdf9",
+        "range": "B7",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 18.0
+      },
+      "representation_id": "rep_xlsx_13",
+      "version_id": "xlsx_13",
+      "score": -0.45040762424468994,
+      "text": "无障碍审查必须通过设计审查队列提交。",
+      "quote_hash": "6931d2fe00d1f2b5c9ea7d0eeb1e62e4bf143772d86335278a18f8368d33cc50",
+      "id": "chunk_c19a323338e9fe429b59556b7c22676ef09439e108d75b0efb86cc9d616a3122"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_0559a62ac7f62bc359087505",
+        "kind": "image_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 18.0,
+        "bbox": [
+          0.02666666666666667,
+          0.3801801801801802,
+          0.43703703703703706,
+          0.4144144144144144
+        ]
+      },
+      "representation_id": "rep_image_03",
+      "version_id": "image_03",
+      "score": -0.45040762424468994,
+      "text": "无障碍审查必须通过设计审查队列提交。",
+      "quote_hash": "6931d2fe00d1f2b5c9ea7d0eeb1e62e4bf143772d86335278a18f8368d33cc50",
+      "id": "chunk_dbce212c748f9cdbc27047c59f631b955fea968b8e801a8cc588ce7a52b2ef8b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_349e432e3d00f459f86f20b3",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 18.0,
+        "bbox": [
+          0.02671370841562748,
+          0.2765625,
+          0.4354838728904724,
+          0.3609375
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_18",
+      "version_id": "scan_pdf_18",
+      "score": -0.45040762424468994,
+      "text": "无障碍审查必须通过设计审查队列提交。",
+      "quote_hash": "6931d2fe00d1f2b5c9ea7d0eeb1e62e4bf143772d86335278a18f8368d33cc50",
+      "id": "chunk_faa7a85171aaaf003f8f7c7df995c1fec48faf9889cbde46bca70b8de0592f96"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_c41fde3c8b14add25fc9519b",
+        "range": "B4",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 16.0
+      },
+      "representation_id": "rep_xlsx_13",
+      "version_id": "xlsx_13",
+      "score": -0.5311225056648254,
+      "text": "无障碍审查必须提供键盘导航清单。",
+      "quote_hash": "60cc1844f20f1a6b4c9ed22a272f30d0d54fb77ba28cf6261c678c65d24fca00",
+      "id": "chunk_2d2a1ea24c15150744a0205e9a5ae4a562498910c4c50d4626d813eb489b2664"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_0238768661a7e0c6af0a9b0f",
+        "kind": "image_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.02666666666666667,
+          0.17477477477477477,
+          0.39185185185185184,
+          0.2099099099099099
+        ]
+      },
+      "representation_id": "rep_image_03",
+      "version_id": "image_03",
+      "score": -0.5311225056648254,
+      "text": "无障碍审查必须提供键盘导航清单。",
+      "quote_hash": "60cc1844f20f1a6b4c9ed22a272f30d0d54fb77ba28cf6261c678c65d24fca00",
+      "id": "chunk_b407b5e50cedc3bd7ae36076d68ab8ce956e7d24108796a533b4300d6377a268"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_50d02f04a259f4808386c6c1",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.026209676638245583,
+          0.0984375,
+          0.390625,
+          0.1828125
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_18",
+      "version_id": "scan_pdf_18",
+      "score": -0.5311225056648254,
+      "text": "无障碍审查必须提供键盘导航清单。",
+      "quote_hash": "60cc1844f20f1a6b4c9ed22a272f30d0d54fb77ba28cf6261c678c65d24fca00",
+      "id": "chunk_f7d4a9f2e8003637849a97b4a276afd907a1928dc06490042b31215eb7b65b35"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_4e72ae1d8394375d1d218b6f",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 22.0,
+        "bbox": [
+          0.026209676638245583,
+          0.0984375,
+          0.5272177457809448,
+          0.184375
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_18",
+      "version_id": "scan_pdf_18",
+      "score": -0.8570706248283386,
+      "text": "无障碍审查的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "e6e19d59ae07c5215840271f4dfe87ed9dcb00925b4ef1b51f058fbc9e3e8072",
+      "id": "chunk_370b480308fc509bb7a3d3e2b077c68254f10503351953c17ad347dd154d9549"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_647143202e198ddecb785e78",
+        "kind": "image_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 22.0,
+        "bbox": [
+          0.027407407407407408,
+          0.31351351351351353,
+          0.5274074074074074,
+          0.34594594594594597
+        ]
+      },
+      "representation_id": "rep_image_03",
+      "version_id": "image_03",
+      "score": -0.8570706248283386,
+      "text": "无障碍审查的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "e6e19d59ae07c5215840271f4dfe87ed9dcb00925b4ef1b51f058fbc9e3e8072",
+      "id": "chunk_98e7af32362fca0acc41d2e1b8bbe8cdf38093cd43e1bb39ed8d6c58ccb57ba0"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_ac6a80ee55fa7745743a7adafbee69bcf7f934a7d532208d6d5a905157dbcfcc",
+      "version_id": "xlsx_13",
+      "text": "无障碍审查记录须保留8个月。",
+      "anchor": {
+        "block_id": "blk_044ab89c08d9676975e4143f",
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B5",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_d72b6dba3e60160df4fdb9496f51fd46f290f649cbd7ac6c9d2da69003551893",
+      "version_id": "scan_pdf_18",
+      "text": "无障碍审查记录须保留6个月。",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.271875,
+          0.33417338132858276,
+          0.3609375
+        ],
+        "block_id": "blk_44e2e59d2c683409f02f3467",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_e734fe6bd3409709a4b81f34ff64f76eaa01f444b8b13a887d29661eefbee553",
+      "version_id": "image_03",
+      "text": "无障碍审查记录须保留12个月。",
+      "anchor": {
+        "bbox": [
+          0.02666666666666667,
+          0.24324324324324326,
+          0.3474074074074074,
+          0.27837837837837837
+        ],
+        "block_id": "blk_70b46fe8b9af4dcd962303a4",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_c19a323338e9fe429b59556b7c22676ef09439e108d75b0efb86cc9d616a3122",
+      "version_id": "xlsx_13",
+      "text": "无障碍审查必须通过设计审查队列提交。",
+      "anchor": {
+        "block_id": "blk_8c2e69ca49d211fe1906cdf9",
+        "char_end": 18,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B7",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_dbce212c748f9cdbc27047c59f631b955fea968b8e801a8cc588ce7a52b2ef8b",
+      "version_id": "image_03",
+      "text": "无障碍审查必须通过设计审查队列提交。",
+      "anchor": {
+        "bbox": [
+          0.02666666666666667,
+          0.3801801801801802,
+          0.43703703703703706,
+          0.4144144144144144
+        ],
+        "block_id": "blk_0559a62ac7f62bc359087505",
+        "char_end": 18,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_faa7a85171aaaf003f8f7c7df995c1fec48faf9889cbde46bca70b8de0592f96",
+      "version_id": "scan_pdf_18",
+      "text": "无障碍审查必须通过设计审查队列提交。",
+      "anchor": {
+        "bbox": [
+          0.02671370841562748,
+          0.2765625,
+          0.4354838728904724,
+          0.3609375
+        ],
+        "block_id": "blk_349e432e3d00f459f86f20b3",
+        "char_end": 18,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_2d2a1ea24c15150744a0205e9a5ae4a562498910c4c50d4626d813eb489b2664",
+      "version_id": "xlsx_13",
+      "text": "无障碍审查必须提供键盘导航清单。",
+      "anchor": {
+        "block_id": "blk_c41fde3c8b14add25fc9519b",
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B4",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_93ce8c206a7ab90c442cec51b2d9bb0d2424e6f0c617166e17198ed2301a9e56",
+      "version_id": "scan_pdf_18",
+      "text": "无障碍审查的提交期限为7个工作日。",
+      "anchor": {
+        "bbox": [
+          0.02671370841562748,
+          0.0984375,
+          0.4027217626571655,
+          0.1828125
+        ],
+        "block_id": "blk_54a2618065657389c1da1653",
+        "char_end": 17,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    }
+  ]
+}

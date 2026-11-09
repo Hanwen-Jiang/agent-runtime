@@ -1,0 +1,416 @@
+{
+  "evaluation": {
+    "id": "xlsx_13",
+    "family": "xlsx",
+    "variant": "multi_sheet_formula_hidden_reference",
+    "language": "zh",
+    "expected": "readable",
+    "status": "partial",
+    "elapsed_seconds": 0.03517776704393327,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_9b9ca10e9f059a5ea838e583"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_382c9ffe2dec16aa415dc46d"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_c41fde3c8b14add25fc9519b"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_044ab89c08d9676975e4143f"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_3428803dad6e2df58be21626"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_8c2e69ca49d211fe1906cdf9"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "raw_ooxml",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "sheet": "Policy",
+      "range": [
+        1,
+        1,
+        2,
+        7
+      ],
+      "formulas_recalculated": false,
+      "returned_blocks": 14,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "partial",
+    "blocks": [
+      {
+        "id": "blk_f82cab3b3d1f0c57a1265265",
+        "kind": "cell",
+        "text": "Facet",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A1"
+        },
+        "value": "Facet",
+        "formula": null,
+        "cached_value": "Facet",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_2e3baad67af2ba7a4c5a2292",
+        "kind": "cell",
+        "text": "Clause",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B1"
+        },
+        "value": "Clause",
+        "formula": null,
+        "cached_value": "Clause",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_8978e65de367cbb11af01a3a",
+        "kind": "cell",
+        "text": "0",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A2"
+        },
+        "value": 0,
+        "formula": null,
+        "cached_value": 0,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_9b9ca10e9f059a5ea838e583",
+        "kind": "cell",
+        "text": "无障碍审查的提交期限为13个工作日。",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B2"
+        },
+        "value": "无障碍审查的提交期限为13个工作日。",
+        "formula": null,
+        "cached_value": "无障碍审查的提交期限为13个工作日。",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_299f7f4b7826ad914052ad80",
+        "kind": "cell",
+        "text": "1",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A3"
+        },
+        "value": 1,
+        "formula": null,
+        "cached_value": 1,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_382c9ffe2dec16aa415dc46d",
+        "kind": "cell",
+        "text": "无障碍审查的审批责任人为设计质量组。",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B3"
+        },
+        "value": "无障碍审查的审批责任人为设计质量组。",
+        "formula": null,
+        "cached_value": "无障碍审查的审批责任人为设计质量组。",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_7d16027dcf33b3f7d32880c2",
+        "kind": "cell",
+        "text": "2",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A4"
+        },
+        "value": 2,
+        "formula": null,
+        "cached_value": 2,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_c41fde3c8b14add25fc9519b",
+        "kind": "cell",
+        "text": "无障碍审查必须提供键盘导航清单。",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B4"
+        },
+        "value": "无障碍审查必须提供键盘导航清单。",
+        "formula": null,
+        "cached_value": "无障碍审查必须提供键盘导航清单。",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_2407cdf8531981eb4db48f5d",
+        "kind": "cell",
+        "text": "3",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A5"
+        },
+        "value": 3,
+        "formula": null,
+        "cached_value": 3,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_044ab89c08d9676975e4143f",
+        "kind": "cell",
+        "text": "无障碍审查记录须保留8个月。",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B5"
+        },
+        "value": "无障碍审查记录须保留8个月。",
+        "formula": null,
+        "cached_value": "无障碍审查记录须保留8个月。",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_ee3a66e7f39d777bfa90ae01",
+        "kind": "cell",
+        "text": "4",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A6"
+        },
+        "value": 4,
+        "formula": null,
+        "cached_value": 4,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_3428803dad6e2df58be21626",
+        "kind": "cell",
+        "text": "无障碍审查的紧急例外需要部门负责人书面批准。",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B6"
+        },
+        "value": "无障碍审查的紧急例外需要部门负责人书面批准。",
+        "formula": null,
+        "cached_value": "无障碍审查的紧急例外需要部门负责人书面批准。",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_59889fac97ff79dd00654ad4",
+        "kind": "cell",
+        "text": "5",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A7"
+        },
+        "value": 5,
+        "formula": null,
+        "cached_value": 5,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_8c2e69ca49d211fe1906cdf9",
+        "kind": "cell",
+        "text": "无障碍审查必须通过设计审查队列提交。",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B7"
+        },
+        "value": "无障碍审查必须通过设计审查队列提交。",
+        "formula": null,
+        "cached_value": "无障碍审查必须通过设计审查队列提交。",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      }
+    ],
+    "outline": [
+      {
+        "kind": "sheet",
+        "name": "Policy",
+        "sheet_id": "sheet-0",
+        "rows": 7,
+        "columns": 2,
+        "state": "visible"
+      },
+      {
+        "kind": "sheet",
+        "name": "Budget",
+        "sheet_id": "sheet-1",
+        "rows": 4,
+        "columns": 3,
+        "state": "visible"
+      },
+      {
+        "kind": "sheet",
+        "name": "Reference",
+        "sheet_id": "sheet-2",
+        "rows": 1,
+        "columns": 1,
+        "state": "hidden"
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "sheet": "Policy",
+      "range": [
+        1,
+        1,
+        2,
+        7
+      ],
+      "formulas_recalculated": false,
+      "returned_blocks": 14,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/xlsx_13/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "5825cc8430ee079639045241c415454e99a1ac6f5f52fef956ba23895c772095",
+        "size_bytes": 6126
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "352e5ad8cc4cd93127dd54f2ca34289198d8e53faaabe6cffae8754bc13b583b",
+      "size_bytes": 6251,
+      "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "fc3eab1492cdd65878e15401898abd391d015d28268d67d452224264104524a0"
+    }
+  }
+}

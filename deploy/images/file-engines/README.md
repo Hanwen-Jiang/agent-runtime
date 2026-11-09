@@ -96,8 +96,12 @@ checks original hashes, archive rejection and JSON CLI framing, then removes the
 fixtures. It does not call a paid model. Current evidence was produced on macOS
 arm64 using Python 3.12.14, Poppler and an available LibreOffice executable;
 Docker image building was not performed on that host because its Docker
-executable is a broken symlink. Linux image/UNO certification remains a deployment
-check; local parser results must not be represented as a successful image build.
+executable is a broken symlink. Subsequently, the full image was built and the
+explicit UNO calculateAll suite passed on an isolated Linux server; see
+[Linux image/UNO evidence](../../../docs/plan/evidence/file-engines-linux/README.md).
+That evidence records the exact image/source hashes, two date systems, stale
+caches, failure cases and XLOOKUP's explicit unsupported result. The earlier
+macOS parser run itself is still not an image-build claim.
 
 ## Trusted Worker bridge and Agent tools
 
@@ -150,3 +154,31 @@ HTTP service double for tool-wire checks and real local authority/object stores;
 it is not a claim of an end-to-end production HTTP deployment. Temporary local
 mode must be selected explicitly with `AR_FILE_ENGINES_LOCAL_PYTHON`, is blocked
 under `AR_PROFILE=production`, and is never an automatic fallback.
+
+## Whole-sheet child delegation
+
+A file sub-agent receives only explicit whole-sheet scopes in its trusted node
+inputs, for example `file_scopes: [{path: "obj://…/workbook.xlsx", selector:
+{sheet: "Public"}}]`. Only `file_read` and `table_query` may use those scopes;
+read/query selectors must match the named sheet exactly. Worksheet-ID aliases,
+cross-sheet ranges, extra input tables, arbitrary paths, raw attachment reads,
+imports, shell/repository tools and collection search are rejected for that
+file-scoped child. Returned worksheet outlines contain only the selected sheet.
+The first implementation supports actual XLSX inputs; a text/PDF renamed XLSX
+cannot obtain a whole-file read by supplying a worksheet selector.
+
+The workflow pins this scope in internal activity input under
+`child-file-whole-sheet-v1`. The Node Executor also identifies an old pending
+SubAgentWorkflow call from trusted Temporal activity metadata, so old payloads
+cannot bypass the new guard. Missing delegation fails closed when the parent
+has direct files **or** pinned knowledge collections. Ordinary coding sub-agents
+whose parent has neither keep their existing tools. Parent file access is
+unchanged. Scoped children receive neither the parent's file/collection catalog
+nor its full conversation transcript; file-scoped children do not inject broader
+memory retrieval. A ContextVar carries the trusted scope only during that tool
+call and is reset even on failure.
+
+`temporal_acceptance.py --scopes-only` exercises real SubAgentWorkflow → Node
+Executor → File API → Sandbox Service → XLSX/DuckDB, with Public/Secret fixtures,
+legacy pending inputs, concurrent parent/child calls and history replay. The
+recorded server evidence is under `docs/plan/evidence/file-engines-m1/`.

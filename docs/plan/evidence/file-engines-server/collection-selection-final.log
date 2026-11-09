@@ -1,0 +1,10 @@
+=== RUN   TestTemporaryFileHandlerReview
+    file_server_probe_test.go:137: PASS real handler: completion requires internal token, terminal state persists without GET, callback retry is idempotent
+    file_server_probe_test.go:171: PASS real handler: two parsed jobs for one version retain both representations, one root, duplicate same job deduplicates, partial coverage preserved
+    file_server_probe_test.go:178: PASS real handler: owner isolation, strict body, job public scrub, current-task attach, foreign-task rejection, revoked derived download
+    file_server_probe_test.go:185: PASS: Knowledge RPC unavailable maps to HTTP 503
+--- PASS: TestTemporaryFileHandlerReview (1.14s)
+=== RUN   TestTemporaryCollectionTwentySources
+--- PASS: TestTemporaryCollectionTwentySources (5.49s)
+PASS
+ok  	github.com/agentruntime/agent-runtime/services/go-task-service/internal/taskapi	7.753s

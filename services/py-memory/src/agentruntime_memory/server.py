@@ -140,7 +140,7 @@ async def start_server(
     knowledge: Any = None, knowledge_internal_token: str = ""
 ) -> tuple[grpc.aio.Server, int]:
     """启动 gRPC 服务，返回（服务, 端口）。"""
-    server = grpc.aio.server()
+    server = grpc.aio.server(options=(("grpc.max_receive_message_length",24<<20),("grpc.max_send_message_length",16<<20)))
     memory_pb2_grpc.add_MemoryServiceServicer_to_server(MemoryServicer(service, authenticator, drain_in_background=drain_in_background), server)
     if knowledge is not None:
         from agentruntime_memory.knowledge import register_knowledge

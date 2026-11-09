@@ -1,0 +1,355 @@
+{
+  "id": "q19_1",
+  "query": "Who signs off on purchase order changes according to the different documents?",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "pptx_09",
+      "text_pdf_19",
+      "xlsx_14"
+    ],
+    "extraction_chunking_recall_ceiling": 0.6
+  },
+  "exact": {
+    "recall_at_8": 0.0,
+    "hit_at_8": 0.0,
+    "reciprocal_rank_at_8": 0,
+    "unique_source_ndcg_at_8": 0.0,
+    "relevant_files": [],
+    "expected_files": [
+      "text_pdf_19",
+      "scan_pdf_19",
+      "xlsx_14",
+      "pptx_09",
+      "image_04"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.0,
+    "latency_ms": 15.086913947016
+  },
+  "hybrid": {
+    "recall_at_8": 0.4,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.48522855511632257,
+    "relevant_files": [
+      "text_pdf_19",
+      "xlsx_14"
+    ],
+    "expected_files": [
+      "text_pdf_19",
+      "scan_pdf_19",
+      "xlsx_14",
+      "pptx_09",
+      "image_04"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 4391.827134881169
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_b070c27bf47e81d896939da1",
+        "range": "B3",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 63.0
+      },
+      "representation_id": "rep_xlsx_14",
+      "version_id": "xlsx_14",
+      "score": 0.8413339257240295,
+      "text": "Purchasing is responsible for approving purchase order changes.",
+      "quote_hash": "8e4e2364d7887439509410861aa2552a33bd6c823383a39fabbdabcc88ca02f4",
+      "id": "chunk_bea425ed569285cfc2204a36a5acdaae09f373269c7e795fb7840fb28c64e3a0"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_31f0fb6d08e124913dfa40b2",
+        "range": "B4",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 57.0
+      },
+      "representation_id": "rep_xlsx_14",
+      "version_id": "xlsx_14",
+      "score": -1.023404836654663,
+      "text": "Purchase order changes requires supplier acknowledgement.",
+      "quote_hash": "616e046629fe28ba9ea65e57fe58af5da56d9919264fdf3034627ef9b4b03ab4",
+      "id": "chunk_595db26bf3db8179178ecd1e0ea7332d4829c3acd705b8a1234e0b32b0dede4e"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_743350ac7eb48512d20d7265",
+        "kind": "image_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 57.0,
+        "bbox": [
+          0.022222222222222223,
+          0.25675675675675674,
+          0.7081481481481482,
+          0.3036036036036036
+        ]
+      },
+      "representation_id": "rep_image_04",
+      "version_id": "image_04",
+      "score": -1.023404836654663,
+      "text": "Purchase order changes requires supplier acknowledgement.",
+      "quote_hash": "616e046629fe28ba9ea65e57fe58af5da56d9919264fdf3034627ef9b4b03ab4",
+      "id": "chunk_9a2883ee3ffb6adf7be9ce6d2e96122c826ce0446ad03d85f3b5b214429cfb44"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_7a21567f0ecd99a5c67ec02b",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 61.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_text_pdf_19",
+      "version_id": "text_pdf_19",
+      "score": -1.2228811979293823,
+      "text": "Synthetic policy edition / 合成政策版本 — page 2\n采购单变更的审批责任人为采购执行组。",
+      "quote_hash": "814af9dc4b4f951dd98130e75c8d5aab3dd8769a4c51fa48b190013304620a22",
+      "id": "chunk_3c1292a0115f9401d15e09abbfcc47e0eaef1a23059fd5442ed2c62730867278"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_767da06b7b4d3c4ec26c52bc",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 54.0,
+        "bbox": [
+          0.02520161122083664,
+          0.38125,
+          0.633568525314331,
+          0.475
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_19",
+      "version_id": "scan_pdf_19",
+      "score": -1.5496997833251953,
+      "text": "Purchasing is responsible for approving purchase order",
+      "quote_hash": "c02d40b1012420a3232f31e61662866cf32d0aa05787bfe62385c36448c55078",
+      "id": "chunk_469c7556ffe5e1a07ef39d3e0e169b3a3fb65bc5deb3dd62b58d84c9c1199abf"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_8c076980952032b1716cd9b4",
+        "kind": "image_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 54.0,
+        "bbox": [
+          0.02074074074074074,
+          0.14594594594594595,
+          0.6296296296296297,
+          0.19099099099099098
+        ]
+      },
+      "representation_id": "rep_image_04",
+      "version_id": "image_04",
+      "score": -1.5496997833251953,
+      "text": "Purchasing is responsible for approving purchase order",
+      "quote_hash": "c02d40b1012420a3232f31e61662866cf32d0aa05787bfe62385c36448c55078",
+      "id": "chunk_7ce7d5243d0d36adf7ae03bfa716f377799e1ad4283a2f70c07f0c7987eac42e"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e356ba6ac96ce5b547a1e1cd",
+        "range": "B6",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 98.0
+      },
+      "representation_id": "rep_xlsx_14",
+      "version_id": "xlsx_14",
+      "score": -1.6646573543548584,
+      "text": "Emergency exceptions for purchase order changes require written approval from the department head.",
+      "quote_hash": "8655daca60e9479b1559107e3d07a801aeea730ab7d81c317e74b5ec29815fca",
+      "id": "chunk_7d9620dc0c1f5839f42f9c58c770dcb8b3e29e548fdab3299060a3bc4f647e16"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_140bbe997f63c0380582ea38",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 52.0,
+        "bbox": [
+          0.025705644860863686,
+          0.3828125,
+          0.6471773982048035,
+          0.4703125
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_scan_pdf_19",
+      "version_id": "scan_pdf_19",
+      "score": -1.8050581216812134,
+      "text": "Purchase order changes must be submitted through the",
+      "quote_hash": "f8191f464a3887f6e8194fe0d10831b94ab7ed58e690dc47dc273e7270d81455",
+      "id": "chunk_59d5dc6b26f485139d2a12c7bf385139a67fca1d2146470448f9214a42dd9968"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_59d5dc6b26f485139d2a12c7bf385139a67fca1d2146470448f9214a42dd9968",
+      "version_id": "scan_pdf_19",
+      "text": "Purchase order changes must be submitted through the",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.3828125,
+          0.6471773982048035,
+          0.4703125
+        ],
+        "block_id": "blk_140bbe997f63c0380582ea38",
+        "char_end": 52,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_5dda5e4e79bafd8c4b21cf8131fc557c5a158de7e9bb407eeea5ada0e6168458",
+      "version_id": "image_04",
+      "text": "Purchase order changes must be submitted through the",
+      "anchor": {
+        "bbox": [
+          0.025185185185185185,
+          0.5504504504504505,
+          0.6488888888888888,
+          0.5945945945945946
+        ],
+        "block_id": "blk_575d50a92036aac12d3d3f0e",
+        "char_end": 52,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_595db26bf3db8179178ecd1e0ea7332d4829c3acd705b8a1234e0b32b0dede4e",
+      "version_id": "xlsx_14",
+      "text": "Purchase order changes requires supplier acknowledgement.",
+      "anchor": {
+        "block_id": "blk_31f0fb6d08e124913dfa40b2",
+        "char_end": 57,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B4",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_9a2883ee3ffb6adf7be9ce6d2e96122c826ce0446ad03d85f3b5b214429cfb44",
+      "version_id": "image_04",
+      "text": "Purchase order changes requires supplier acknowledgement.",
+      "anchor": {
+        "bbox": [
+          0.022222222222222223,
+          0.25675675675675674,
+          0.7081481481481482,
+          0.3036036036036036
+        ],
+        "block_id": "blk_743350ac7eb48512d20d7265",
+        "char_end": 57,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_d6241bbd64401a051ce5cb0f3c9659c19ae2caa5f0576e07518f34cc039e0edc",
+      "version_id": "xlsx_14",
+      "text": "Purchase order changes must be submitted through the purchasing system.",
+      "anchor": {
+        "block_id": "blk_36c4897011c40d284e6cece3",
+        "char_end": 71,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B7",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_a08cf1277374f27c067342226dae589b59062fc480e1dc30d021e59804d1ac8e",
+      "version_id": "image_04",
+      "text": "Emergency exceptions for purchase order changes require",
+      "anchor": {
+        "bbox": [
+          0.024444444444444446,
+          0.4369369369369369,
+          0.6822222222222222,
+          0.4837837837837838
+        ],
+        "block_id": "blk_e922bc6bdd6f96e1ee42b590",
+        "char_end": 55,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_aea2458f52c6ecf976807ac86876943a92b1a37928e00e94f1708b08b397f946",
+      "version_id": "scan_pdf_19",
+      "text": "Emergency exceptions for purchase order changes require",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.0953125,
+          0.6824596524238586,
+          0.184375
+        ],
+        "block_id": "blk_0bf7f9827f718880720b7031",
+        "char_end": 55,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_2dbc85e82f23e8bd2d8ee6d44b5f3120324dc6f2b83df683aa533eda0c44552b",
+      "version_id": "scan_pdf_19",
+      "text": "Purchase order changes must be submitted within 14",
+      "anchor": {
+        "bbox": [
+          0.02520161122083664,
+          0.0953125,
+          0.6154233813285828,
+          0.1828125
+        ],
+        "block_id": "blk_23e25801a3f37a2f3822a981",
+        "char_end": 50,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    }
+  ]
+}

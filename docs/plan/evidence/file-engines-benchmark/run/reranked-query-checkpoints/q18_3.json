@@ -1,0 +1,364 @@
+{
+  "id": "q18_3",
+  "query": "无障碍审查的记录保存多久？请找出各文件中的规定。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "image_03",
+      "pptx_08",
+      "scan_pdf_18",
+      "text_pdf_18",
+      "xlsx_13"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.6,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7227265726449519,
+    "relevant_files": [
+      "image_03",
+      "scan_pdf_18",
+      "xlsx_13"
+    ],
+    "expected_files": [
+      "text_pdf_18",
+      "scan_pdf_18",
+      "xlsx_13",
+      "pptx_08",
+      "image_03"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 22.789285983890295
+  },
+  "hybrid": {
+    "recall_at_8": 0.8,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.8297197050122155,
+    "relevant_files": [
+      "image_03",
+      "scan_pdf_18",
+      "text_pdf_18",
+      "xlsx_13"
+    ],
+    "expected_files": [
+      "text_pdf_18",
+      "scan_pdf_18",
+      "xlsx_13",
+      "pptx_08",
+      "image_03"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.5,
+    "latency_ms": 3715.6149849761277
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_044ab89c08d9676975e4143f",
+        "range": "B5",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 14.0
+      },
+      "representation_id": "rep_xlsx_13",
+      "version_id": "xlsx_13",
+      "score": 6.597202301025391,
+      "text": "无障碍审查记录须保留8个月。",
+      "quote_hash": "94020d816194a6ddaf053bc4b6dab7d8cf55575564f617206a5e7697d19f47e3",
+      "id": "chunk_ac6a80ee55fa7745743a7adafbee69bcf7f934a7d532208d6d5a905157dbcfcc"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_70b46fe8b9af4dcd962303a4",
+        "kind": "image_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 15.0,
+        "bbox": [
+          0.02666666666666667,
+          0.24324324324324326,
+          0.3474074074074074,
+          0.27837837837837837
+        ]
+      },
+      "representation_id": "rep_image_03",
+      "version_id": "image_03",
+      "score": 6.594281196594238,
+      "text": "无障碍审查记录须保留12个月。",
+      "quote_hash": "6c0d6cb64918ca0ef35f244cc7cad4b539b6ca67229faeaf804d55cf0e4ef3b3",
+      "id": "chunk_e734fe6bd3409709a4b81f34ff64f76eaa01f444b8b13a887d29661eefbee553"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_44e2e59d2c683409f02f3467",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 14.0,
+        "bbox": [
+          0.025705644860863686,
+          0.271875,
+          0.33417338132858276,
+          0.3609375
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_18",
+      "version_id": "scan_pdf_18",
+      "score": 6.5836405754089355,
+      "text": "无障碍审查记录须保留6个月。",
+      "quote_hash": "021e662301d354613b317f70e926893109712ebf4a3492b904844aef889e878c",
+      "id": "chunk_d72b6dba3e60160df4fdb9496f51fd46f290f649cbd7ac6c9d2da69003551893"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_9426605b1f15f1ff45304a97",
+        "kind": "image_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 18.0,
+        "bbox": [
+          0.02666666666666667,
+          0.03783783783783784,
+          0.41555555555555557,
+          0.07207207207207207
+        ]
+      },
+      "representation_id": "rep_image_03",
+      "version_id": "image_03",
+      "score": 1.3267611265182495,
+      "text": "无障碍审查的提交期限为25个工作日。",
+      "quote_hash": "ac06ea5664611b299b9735da526d4b3d3c5f8d7c5f424ab7580dbe9ae6ecf935",
+      "id": "chunk_968e6ec21d35f1bad3f66b21dfb9417aa7d152705eb84c794f5966568d0a8958"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_9b9ca10e9f059a5ea838e583",
+        "range": "B2",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 18.0
+      },
+      "representation_id": "rep_xlsx_13",
+      "version_id": "xlsx_13",
+      "score": 1.2452526092529297,
+      "text": "无障碍审查的提交期限为13个工作日。",
+      "quote_hash": "b50a312a9b4b799bcceaf7295c0f9b78ac566d8dcac4bee5d9fbd7d78ea19edf",
+      "id": "chunk_c2c5245d34549c2955fc8182dab0a09dc48907c91dc0a5b5f4c8c23ae1458987"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_54a2618065657389c1da1653",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 17.0,
+        "bbox": [
+          0.02671370841562748,
+          0.0984375,
+          0.4027217626571655,
+          0.1828125
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_18",
+      "version_id": "scan_pdf_18",
+      "score": 1.2204132080078125,
+      "text": "无障碍审查的提交期限为7个工作日。",
+      "quote_hash": "f77f040118cb9ef2993db5046dd5f92f1d2234519ac27f3a4576e79b3779b2ab",
+      "id": "chunk_93ce8c206a7ab90c442cec51b2d9bb0d2424e6f0c617166e17198ed2301a9e56"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_cc0032010d58b0a81a625b6b",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 15.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_05",
+      "version_id": "pptx_05",
+      "score": 0.7102245688438416,
+      "text": "安全漏洞报告记录须保留6个月。",
+      "quote_hash": "89602a20bda2db82b95ab9a88a7553014e1e0cf2814c25e74cce189c3adcefd7",
+      "id": "chunk_3c66e4c9b08b44f5febf39f63c97c84494bf954ef904e66ddc2e95614159a7ef"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_32c024f52897b9bcf6423bd5",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 107.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_18",
+      "version_id": "text_pdf_18",
+      "score": 0.3380279541015625,
+      "text": "Synthetic policy edition / 合成政策版本 — page 4\nRecords for accessibility review must be retained for 24 months.",
+      "quote_hash": "8019a2a628f215bbeab020d23e583db54d7fc6e409bdea70526a215bb92669a8",
+      "id": "chunk_ef60b965dca2ebd36af2cd4a02abf82ab54b09d7634fd31eb861e34225f3629c"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_ac6a80ee55fa7745743a7adafbee69bcf7f934a7d532208d6d5a905157dbcfcc",
+      "version_id": "xlsx_13",
+      "text": "无障碍审查记录须保留8个月。",
+      "anchor": {
+        "block_id": "blk_044ab89c08d9676975e4143f",
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B5",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_d72b6dba3e60160df4fdb9496f51fd46f290f649cbd7ac6c9d2da69003551893",
+      "version_id": "scan_pdf_18",
+      "text": "无障碍审查记录须保留6个月。",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.271875,
+          0.33417338132858276,
+          0.3609375
+        ],
+        "block_id": "blk_44e2e59d2c683409f02f3467",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_e734fe6bd3409709a4b81f34ff64f76eaa01f444b8b13a887d29661eefbee553",
+      "version_id": "image_03",
+      "text": "无障碍审查记录须保留12个月。",
+      "anchor": {
+        "bbox": [
+          0.02666666666666667,
+          0.24324324324324326,
+          0.3474074074074074,
+          0.27837837837837837
+        ],
+        "block_id": "blk_70b46fe8b9af4dcd962303a4",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_93ce8c206a7ab90c442cec51b2d9bb0d2424e6f0c617166e17198ed2301a9e56",
+      "version_id": "scan_pdf_18",
+      "text": "无障碍审查的提交期限为7个工作日。",
+      "anchor": {
+        "bbox": [
+          0.02671370841562748,
+          0.0984375,
+          0.4027217626571655,
+          0.1828125
+        ],
+        "block_id": "blk_54a2618065657389c1da1653",
+        "char_end": 17,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_968e6ec21d35f1bad3f66b21dfb9417aa7d152705eb84c794f5966568d0a8958",
+      "version_id": "image_03",
+      "text": "无障碍审查的提交期限为25个工作日。",
+      "anchor": {
+        "bbox": [
+          0.02666666666666667,
+          0.03783783783783784,
+          0.41555555555555557,
+          0.07207207207207207
+        ],
+        "block_id": "blk_9426605b1f15f1ff45304a97",
+        "char_end": 18,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_c2c5245d34549c2955fc8182dab0a09dc48907c91dc0a5b5f4c8c23ae1458987",
+      "version_id": "xlsx_13",
+      "text": "无障碍审查的提交期限为13个工作日。",
+      "anchor": {
+        "block_id": "blk_9b9ca10e9f059a5ea838e583",
+        "char_end": 18,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B2",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_269fb120bf4f596fd8ee079102658fd5b381ab95ec7cbc2d56e10eae0fa906cd",
+      "version_id": "xlsx_13",
+      "text": "无障碍审查的审批责任人为设计质量组。",
+      "anchor": {
+        "block_id": "blk_382c9ffe2dec16aa415dc46d",
+        "char_end": 18,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B3",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_2b21fb86b51f364cd6b50ab2f57c8b74003287665feb2f8b121704b7ddeb3b56",
+      "version_id": "scan_pdf_18",
+      "text": "无障碍审查的审批责任人为设计质量组。",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.2734375,
+          0.4349798262119293,
+          0.3609375
+        ],
+        "block_id": "blk_1bc2f83b7807856315956645",
+        "char_end": 18,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,345 @@
+{
+  "id": "q12_3",
+  "query": "访客通行的记录保存多久？请找出各文件中的规定。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_12",
+      "pptx_02",
+      "scan_pdf_12",
+      "table_02",
+      "text_pdf_12",
+      "xlsx_07"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.3333333333333333,
+    "unique_source_ndcg_at_8": 0.28162497265977743,
+    "relevant_files": [
+      "scan_pdf_12",
+      "xlsx_07"
+    ],
+    "expected_files": [
+      "text_pdf_12",
+      "scan_pdf_12",
+      "docx_12",
+      "xlsx_07",
+      "pptx_02",
+      "table_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 28.299982892349362
+  },
+  "hybrid": {
+    "recall_at_8": 0.5,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.644824486427155,
+    "relevant_files": [
+      "scan_pdf_12",
+      "table_02",
+      "xlsx_07"
+    ],
+    "expected_files": [
+      "text_pdf_12",
+      "scan_pdf_12",
+      "docx_12",
+      "xlsx_07",
+      "pptx_02",
+      "table_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 4035.205061081797
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_27bd0cbb22e445558d1234bb",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 14.0,
+        "bbox": [
+          0.025705644860863686,
+          0.271875,
+          0.32308468222618103,
+          0.3609375
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_12",
+      "version_id": "scan_pdf_12",
+      "score": 6.630810260772705,
+      "text": "访客通行记录须保留19个月。",
+      "quote_hash": "4bc5ed93ddf34c971e9d9bc6b49548a270dd47088636fb23c4f1b3efdee3f1ae",
+      "id": "chunk_2acd84e72db2772e8c2a96d446c444ee1eeeae80a31c2a29e1291edae9186057"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_acea027be6ca0ed2661decda",
+        "range": "B5",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 14.0
+      },
+      "representation_id": "rep_xlsx_07",
+      "version_id": "xlsx_07",
+      "score": 6.55949068069458,
+      "text": "访客通行记录须保留21个月。",
+      "quote_hash": "4167c855cdda7130f9f386bd119a4d76f13f07a599d35663c08a6d8b8d24cbe5",
+      "id": "chunk_df0486feb9dfa2eda7f5ead1e840c1e690b79c4a3f83f89f04bfc63cf18b50b9"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_735fa26656508d89efd56cec",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 23.0,
+        "row_index": 3.0
+      },
+      "representation_id": "rep_table_02",
+      "version_id": "table_02",
+      "score": 4.7414164543151855,
+      "text": "3\t访客通行记录须保留24个月。\t3\twest",
+      "quote_hash": "da06db302d6c96b809c01199d8b2b196e55b3aca3af59bdc0ff542c8c00c8017",
+      "id": "chunk_4d8bb29c2467bf56cd6586d5841e7f1c6ea1dea853b73917953859ee336c09b0"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_90005b734e8d297d23ce1413",
+        "range": "B2",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 17.0
+      },
+      "representation_id": "rep_xlsx_07",
+      "version_id": "xlsx_07",
+      "score": 1.1956455707550049,
+      "text": "访客通行的提交期限为21个工作日。",
+      "quote_hash": "5727788d23c9f8009575581cd9577137ded5fd22b271090d57afb6cd746b65ab",
+      "id": "chunk_c5646fcb2f51b747a4e9e5cca2ba740dfb4a655f04f559da093e406e8adcf955"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_7647bcce585ef133d6f844dd",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 17.0,
+        "bbox": [
+          0.026209676638245583,
+          0.0984375,
+          0.3916330635547638,
+          0.1828125
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_12",
+      "version_id": "scan_pdf_12",
+      "score": 1.1361637115478516,
+      "text": "访客通行的提交期限为15个工作日。",
+      "quote_hash": "bbaa458ef8bc78f9919051530b618b892fc41e65b6bddcf2ca87ba85b81f5b48",
+      "id": "chunk_816d30451c11eb30db5de5f15c4b725a72830a0f2e503c34f8a9e6c2dcc61b67"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_3a6b213cf54a20f5f89bd1a9",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 13.0,
+        "bbox": [
+          0.024193547666072845,
+          0.275,
+          0.3104838728904724,
+          0.384375
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_00",
+      "version_id": "scan_pdf_00",
+      "score": 0.00035124272108078003,
+      "text": "差旅报销记录须保留7个月。",
+      "quote_hash": "eda599eddef817da17bd0b310bb4f71cc9e484726a550bee3f6a362e09b98fb4",
+      "id": "chunk_3eae94d9b42e232f93b71215ca542eaebbc7c87fac5a15f169800b76b1251261"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e5ca31338a283bb84e6c7793",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 25.0,
+        "row_index": 0.0
+      },
+      "representation_id": "rep_table_02",
+      "version_id": "table_02",
+      "score": -0.2877749800682068,
+      "text": "0\t访客通行的提交期限为5个工作日。\t0\teast",
+      "quote_hash": "29dcbd23a0b5f722a6a539faa140c5eb7524230289fadddc41c1b3a585e9fd51",
+      "id": "chunk_075a8addc231d4038229c2654ebd4ce5d8bbafb658f49c187e9ef46216ec1c8c"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_bb672c895b138c9ab90d1568",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 13.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_07",
+      "version_id": "pptx_07",
+      "score": -1.0238304138183594,
+      "text": "备份恢复记录须保留8个月。",
+      "quote_hash": "03abded1206d91b390833844f39c0b5b8dac9649af25deaaa223297147643219",
+      "id": "chunk_28cd466f7d4cafc53d9457c811844e93cadf51074fafb68fad9812c9abb752a2"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_40c6cda11f42d0c9635a283938e169694d133f9d3fe486a407e6e99cac188b17",
+      "version_id": "xlsx_07",
+      "text": "访客通行的审批责任人为前台。",
+      "anchor": {
+        "block_id": "blk_7c5eba5d91cf2daf0ff701bd",
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B3",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_8e2594c709bd3eff001b15794a1ccbe2e29d2513adc3525e35c6ddaff263c9b2",
+      "version_id": "scan_pdf_12",
+      "text": "访客通行的审批责任人为前台。",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.2734375,
+          0.3447580635547638,
+          0.3625
+        ],
+        "block_id": "blk_c35f7c945bb50ebbf14ceede",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_2acd84e72db2772e8c2a96d446c444ee1eeeae80a31c2a29e1291edae9186057",
+      "version_id": "scan_pdf_12",
+      "text": "访客通行记录须保留19个月。",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.271875,
+          0.32308468222618103,
+          0.3609375
+        ],
+        "block_id": "blk_27bd0cbb22e445558d1234bb",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_df0486feb9dfa2eda7f5ead1e840c1e690b79c4a3f83f89f04bfc63cf18b50b9",
+      "version_id": "xlsx_07",
+      "text": "访客通行记录须保留21个月。",
+      "anchor": {
+        "block_id": "blk_acea027be6ca0ed2661decda",
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B5",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_816d30451c11eb30db5de5f15c4b725a72830a0f2e503c34f8a9e6c2dcc61b67",
+      "version_id": "scan_pdf_12",
+      "text": "访客通行的提交期限为15个工作日。",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.0984375,
+          0.3916330635547638,
+          0.1828125
+        ],
+        "block_id": "blk_7647bcce585ef133d6f844dd",
+        "char_end": 17,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_c5646fcb2f51b747a4e9e5cca2ba740dfb4a655f04f559da093e406e8adcf955",
+      "version_id": "xlsx_07",
+      "text": "访客通行的提交期限为21个工作日。",
+      "anchor": {
+        "block_id": "blk_90005b734e8d297d23ce1413",
+        "char_end": 17,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B2",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_0a1f6fdb048a15e95f2117e6f5e7498a28b196791f5d4de94cc71965a9a5e964",
+      "version_id": "table_02",
+      "text": "1\t访客通行的审批责任人为前台。\t1\twest",
+      "anchor": {
+        "block_id": "blk_2955d739dd61207fc60d3fb8",
+        "char_end": 23,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "row_index": 1.0,
+        "sheet_id": "csv"
+      }
+    },
+    {
+      "id": "chunk_075a8addc231d4038229c2654ebd4ce5d8bbafb658f49c187e9ef46216ec1c8c",
+      "version_id": "table_02",
+      "text": "0\t访客通行的提交期限为5个工作日。\t0\teast",
+      "anchor": {
+        "block_id": "blk_e5ca31338a283bb84e6c7793",
+        "char_end": 25,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "row_index": 0.0,
+        "sheet_id": "csv"
+      }
+    }
+  ]
+}

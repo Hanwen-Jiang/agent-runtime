@@ -1,0 +1,344 @@
+{
+  "id": "q03_2",
+  "query": "仓库退货需要哪些凭证？比较不同资料的要求。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_03",
+      "notebook_00",
+      "pptx_13",
+      "scan_pdf_03",
+      "text_03",
+      "text_pdf_03"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.5,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.5112590391895956,
+    "relevant_files": [
+      "docx_03",
+      "pptx_13",
+      "text_03"
+    ],
+    "expected_files": [
+      "text_pdf_03",
+      "scan_pdf_03",
+      "docx_03",
+      "pptx_13",
+      "text_03",
+      "notebook_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 29.31063692085445
+  },
+  "hybrid": {
+    "recall_at_8": 0.6666666666666666,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7402849195166222,
+    "relevant_files": [
+      "docx_03",
+      "pptx_13",
+      "scan_pdf_03",
+      "text_03"
+    ],
+    "expected_files": [
+      "text_pdf_03",
+      "scan_pdf_03",
+      "docx_03",
+      "pptx_13",
+      "text_03",
+      "notebook_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.5,
+    "latency_ms": 5026.01757296361
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_2bf64c787f80d427f6b14198",
+        "kind": "document_block",
+        "block_index": 3.0,
+        "char_end": 13.0
+      },
+      "representation_id": "rep_docx_03",
+      "version_id": "docx_03",
+      "score": 1.0664196014404297,
+      "text": "仓库退货必须提供物流单号。",
+      "quote_hash": "5c49999895985232d8357128ac46dccd0a86aaec7cab639a08a4e57410ba376e",
+      "id": "chunk_1ea1421c29453801f20885173f6ebb505717a13a6f1d9640baeb4e72059ac434"
+    },
+    {
+      "anchor": {
+        "slide_index": 2.0,
+        "block_id": "blk_5354e2f1fa63461bd524b9cd",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 13.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_13",
+      "version_id": "pptx_13",
+      "score": 1.0664196014404297,
+      "text": "仓库退货必须提供物流单号。",
+      "quote_hash": "5c49999895985232d8357128ac46dccd0a86aaec7cab639a08a4e57410ba376e",
+      "id": "chunk_dbeacfc2f048a42c258310f85c5a6545b007eb967c7b13e91f635ce70a376ebe"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_22e29803fd897452efe2fb9b",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 93.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_03",
+      "version_id": "scan_pdf_03",
+      "score": 0.9962136149406433,
+      "text": "Synthetic policy edition / 合成政策版本 — page 1\nWarehouse returns requires parcel tracking record.",
+      "quote_hash": "de01fb45b08b6e266d5dbad714678fc06c880296f002dd4825ab84d049bc0a9f",
+      "id": "chunk_ebe39f7a7d370d2d976673bd907b786574ae1a427c7b9c78e3b910081d933b2e"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_11ba33ab36116972aa3ad633",
+        "kind": "document_block",
+        "block_index": 6.0,
+        "char_end": 16.0
+      },
+      "representation_id": "rep_docx_03",
+      "version_id": "docx_03",
+      "score": 0.5421565771102905,
+      "text": "仓库退货必须通过退货登记台提交。",
+      "quote_hash": "7e7e7dcd5650d60447e1a8f877ad5f1a83597de737632262b7836ead5d70f065",
+      "id": "chunk_26c30d2187ebc8f6ab1944204aaaa2ebf8ac4b61fadc95edd9742038937eeb43"
+    },
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_4b906fb67cd78cf06053b54b",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 16.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_13",
+      "version_id": "pptx_13",
+      "score": 0.5421565771102905,
+      "text": "仓库退货必须通过退货登记台提交。",
+      "quote_hash": "7e7e7dcd5650d60447e1a8f877ad5f1a83597de737632262b7836ead5d70f065",
+      "id": "chunk_965efa4d78d1da654b03dbc2ba3735b38bb3adf2f0b8fb73e9f626e2d7d70aa8"
+    },
+    {
+      "anchor": {
+        "slide_index": 4.0,
+        "block_id": "blk_cb79d7c2d5d8fd3e8130ceb7",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 21.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_13",
+      "version_id": "pptx_13",
+      "score": -0.692225992679596,
+      "text": "仓库退货的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "4d68607c579594a801aef25363884023d7ba7892a9342855e23bee290874be7c",
+      "id": "chunk_61d2a2f621b454ecab64f9ad5ef0f08418fd735ae99d917cf44d480fa8eb915b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_11a100c75e1d7ebb11531225",
+        "kind": "document_block",
+        "block_index": 5.0,
+        "char_end": 21.0
+      },
+      "representation_id": "rep_docx_03",
+      "version_id": "docx_03",
+      "score": -0.692225992679596,
+      "text": "仓库退货的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "4d68607c579594a801aef25363884023d7ba7892a9342855e23bee290874be7c",
+      "id": "chunk_c51f2cd7c8f0c946d1d428512035a340a850fda4e5e8cac58f22384e1ff694c8"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_c653a10406687a8d7bd8bec4",
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0,
+        "end_line": 6.0,
+        "char_end": 184.0
+      },
+      "representation_id": "rep_text_03",
+      "version_id": "text_03",
+      "score": -1.1684019565582275,
+      "text": "{\"clause\": \"仓库退货的提交期限为14个工作日。\"}\n{\"clause\": \"仓库退货的审批责任人为物流。\"}\n{\"clause\": \"仓库退货必须提供物流单号。\"}\n{\"clause\": \"仓库退货记录须保留14个月。\"}\n{\"clause\": \"仓库退货的紧急例外需要部门负责人书面批准。\"}\n{\"clause\": \"仓库退货必须通过退货登记台提交。\"}",
+      "quote_hash": "5f4ea309e57e23ab742757ffb533d9d49da64a0565cab28eb365410ec74d71db",
+      "id": "chunk_40470f1e0d637f19d28895be3414f13b1a3979ceb302741606f7d778bee512bb"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_40470f1e0d637f19d28895be3414f13b1a3979ceb302741606f7d778bee512bb",
+      "version_id": "text_03",
+      "text": "{\"clause\": \"仓库退货的提交期限为14个工作日。\"}\n{\"clause\": \"仓库退货的审批责任人为物流。\"}\n{\"clause\": \"仓库退货必须提供物流单号。\"}\n{\"clause\": \"仓库退货记录须保留14个月。\"}\n{\"clause\": \"仓库退货的紧急例外需要部门负责人书面批准。\"}\n{\"clause\": \"仓库退货必须通过退货登记台提交。\"}",
+      "anchor": {
+        "block_id": "blk_c653a10406687a8d7bd8bec4",
+        "char_end": 184,
+        "char_start": 0,
+        "end_line": 6.0,
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0
+      }
+    },
+    {
+      "id": "chunk_9d83aa850ae859dc1d3977e0193885b38963e77d96a8d39f18bbb38644d0f67e",
+      "version_id": "docx_03",
+      "text": "仓库退货记录须保留11个月。",
+      "anchor": {
+        "block_id": "blk_e865a27df0673af517d31a4a",
+        "block_index": 4.0,
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_b3d013e903ba613e81ccacf79425091746cacc2946f923243ed0815a565033da",
+      "version_id": "pptx_13",
+      "text": "仓库退货记录须保留13个月。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_83e88f5b21b27cbd42fb1dc5",
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_26c30d2187ebc8f6ab1944204aaaa2ebf8ac4b61fadc95edd9742038937eeb43",
+      "version_id": "docx_03",
+      "text": "仓库退货必须通过退货登记台提交。",
+      "anchor": {
+        "block_id": "blk_11ba33ab36116972aa3ad633",
+        "block_index": 6.0,
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_965efa4d78d1da654b03dbc2ba3735b38bb3adf2f0b8fb73e9f626e2d7d70aa8",
+      "version_id": "pptx_13",
+      "text": "仓库退货必须通过退货登记台提交。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_4b906fb67cd78cf06053b54b",
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_1ea1421c29453801f20885173f6ebb505717a13a6f1d9640baeb4e72059ac434",
+      "version_id": "docx_03",
+      "text": "仓库退货必须提供物流单号。",
+      "anchor": {
+        "block_id": "blk_2bf64c787f80d427f6b14198",
+        "block_index": 3.0,
+        "char_end": 13,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_dbeacfc2f048a42c258310f85c5a6545b007eb967c7b13e91f635ce70a376ebe",
+      "version_id": "pptx_13",
+      "text": "仓库退货必须提供物流单号。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_5354e2f1fa63461bd524b9cd",
+        "char_end": 13,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_794c58f6ade394a13be6b83318077ef7602272dbd78ea936b6f851a66e7ec8b7",
+      "version_id": "pptx_13",
+      "text": "仓库退货的审批责任人为物流。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_d1d1d09a232d21a00161dedf",
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 1.0
+      }
+    }
+  ]
+}

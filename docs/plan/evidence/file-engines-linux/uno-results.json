@@ -1,0 +1,527 @@
+{
+  "platform": "Linux-6.8.0-147-generic-x86_64-with-glibc2.39",
+  "python": "3.12.3",
+  "libreoffice": "LibreOffice 24.2.7.2 420(Build:2)",
+  "checks": {
+    "functions-1900": "22 formulas evaluated from incorrect caches, dates/names/chain verified, source/hidden-sheet/style preserved",
+    "functions-1904": "22 formulas evaluated from incorrect caches, dates/names/chain verified, source/hidden-sheet/style preserved",
+    "structured_table": "local Table1[Amount] recalculated to 12 without external-link classification",
+    "formula_error": "failed verification, not publishable",
+    "wrong_expected_value": "rejected",
+    "xlookup": "unsupported by installed Calc, explicit formula error",
+    "circular": "explicit formula error, no verified result",
+    "unknown-function": "explicit formula error, no verified result",
+    "external-links": "external_formula_dependency",
+    "macro": "macro_workbook_unsupported",
+    "timeout_cleanup": "deadline rejected, no residual private soffice processes",
+    "external-formula": "rejected before opening in UNO",
+    "data-service": "rejected before opening in UNO"
+  },
+  "reports": {
+    "functions-1900": {
+      "engine": "libreoffice-uno",
+      "calculate_all": true,
+      "formula_errors": [],
+      "status": "verified",
+      "original_unchanged": true,
+      "formula_count": 22,
+      "missing_or_error_caches": [],
+      "value_mismatches": [],
+      "cells": [
+        {
+          "sheet": "Formulas",
+          "cell": "D1",
+          "formula": "=SUM(B2:B5)",
+          "saved_formula": "=SUM(B2:B5)",
+          "evaluated_value": 10,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D2",
+          "formula": "=AVERAGE(B2:B5)",
+          "saved_formula": "=AVERAGE(B2:B5)",
+          "evaluated_value": 2.5,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "F2",
+          "formula": "=F1+1",
+          "saved_formula": "=F1+1",
+          "evaluated_value": "2024-03-01 00:00:00",
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D3",
+          "formula": "=COUNTIF(A2:A5,\"a\")",
+          "saved_formula": "=COUNTIF(A2:A5,\"a\")",
+          "evaluated_value": 2,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D4",
+          "formula": "=SUMIFS(B2:B5,A2:A5,\"a\")",
+          "saved_formula": "=SUMIFS(B2:B5,A2:A5,\"a\")",
+          "evaluated_value": 7,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D5",
+          "formula": "=IFERROR(1/0,99)",
+          "saved_formula": "=IFERROR(1/0,99)",
+          "evaluated_value": 99,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D6",
+          "formula": "=ROUND(10/3,2)",
+          "saved_formula": "=ROUND(10/3,2)",
+          "evaluated_value": 3.33,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D7",
+          "formula": "=INDEX(B2:B5,MATCH(\"b\",A2:A5,0))",
+          "saved_formula": "=INDEX(B2:B5,MATCH(\"b\",A2:A5,0))",
+          "evaluated_value": 3,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D8",
+          "formula": "=VLOOKUP(\"a\",A2:B5,2,FALSE)",
+          "saved_formula": "=VLOOKUP(\"a\",A2:B5,2,FALSE())",
+          "evaluated_value": 2,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D9",
+          "formula": "=COUNTIFS(A2:A5,\"b\",B2:B5,\">0\")",
+          "saved_formula": "=COUNTIFS(A2:A5,\"b\",B2:B5,\">0\")",
+          "evaluated_value": 1,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D10",
+          "formula": "=IF(SUM(B2:B5)=10,TRUE,FALSE)",
+          "saved_formula": "=IF(SUM(B2:B5)=10,TRUE(),FALSE())",
+          "evaluated_value": true,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D11",
+          "formula": "=LEN(\"数据\")",
+          "saved_formula": "=LEN(\"数据\")",
+          "evaluated_value": 2,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D12",
+          "formula": "=SUM(B2:B5)*25%",
+          "saved_formula": "=SUM(B2:B5)*25%",
+          "evaluated_value": 2.5,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D13",
+          "formula": "=YEAR(DATE(2024,2,29))",
+          "saved_formula": "=YEAR(DATE(2024,2,29))",
+          "evaluated_value": 2024,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D14",
+          "formula": "=DAY(DATE(2024,2,29)+1)",
+          "saved_formula": "=DAY(DATE(2024,2,29)+1)",
+          "evaluated_value": 1,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D15",
+          "formula": "=IF(TRUE,\"\",\"x\")",
+          "saved_formula": "=IF(TRUE(),\"\",\"x\")",
+          "evaluated_value": "",
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D16",
+          "formula": "=SUMPRODUCT(B2:B5,B2:B5)",
+          "saved_formula": "=SUMPRODUCT(B2:B5,B2:B5)",
+          "evaluated_value": 38,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D17",
+          "formula": "=_xlfn.TEXTJOIN(\"-\",TRUE,A2:A4)",
+          "saved_formula": "=_xlfn.TEXTJOIN(\"-\",TRUE(),A2:A4)",
+          "evaluated_value": "a-b-a",
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D18",
+          "formula": "=SUM(B2,B3)+SUM(B4:B5)",
+          "saved_formula": "=SUM(B2,B3)+SUM(B4:B5)",
+          "evaluated_value": 10,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D19",
+          "formula": "=SUM(Values)",
+          "saved_formula": "=SUM(Values)",
+          "evaluated_value": 10,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D20",
+          "formula": "=Untouched!B1+SUM(B2:B5)",
+          "saved_formula": "=Untouched!B1+SUM(B2:B5)",
+          "evaluated_value": 133,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D21",
+          "formula": "=VALUE(\"12.5\")+1",
+          "saved_formula": "=VALUE(\"12.5\")+1",
+          "evaluated_value": 13.5,
+          "calculation_status": "recalculated"
+        }
+      ],
+      "output_sha256": "9c5e8529518ceb141317e2566fa06c2e8971377dcc6961770f6f4fd35c06b7e7",
+      "passed": true,
+      "base_sha256": "0cacc0353802639a1ee1fa83ba2045af0cd0cdf91ffad667b847a0322d0c8830",
+      "candidate_sha256": "9c5e8529518ceb141317e2566fa06c2e8971377dcc6961770f6f4fd35c06b7e7",
+      "criteria_digest": "71331fe7abadcab9acaa81b029b84bd60997712a677f5c720b824bd354580273",
+      "fidelity": "L1",
+      "render_verified": false
+    },
+    "functions-1904": {
+      "engine": "libreoffice-uno",
+      "calculate_all": true,
+      "formula_errors": [],
+      "status": "verified",
+      "original_unchanged": true,
+      "formula_count": 22,
+      "missing_or_error_caches": [],
+      "value_mismatches": [],
+      "cells": [
+        {
+          "sheet": "Formulas",
+          "cell": "D1",
+          "formula": "=SUM(B2:B5)",
+          "saved_formula": "=SUM(B2:B5)",
+          "evaluated_value": 10,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D2",
+          "formula": "=AVERAGE(B2:B5)",
+          "saved_formula": "=AVERAGE(B2:B5)",
+          "evaluated_value": 2.5,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "F2",
+          "formula": "=F1+1",
+          "saved_formula": "=F1+1",
+          "evaluated_value": "2024-03-01 00:00:00",
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D3",
+          "formula": "=COUNTIF(A2:A5,\"a\")",
+          "saved_formula": "=COUNTIF(A2:A5,\"a\")",
+          "evaluated_value": 2,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D4",
+          "formula": "=SUMIFS(B2:B5,A2:A5,\"a\")",
+          "saved_formula": "=SUMIFS(B2:B5,A2:A5,\"a\")",
+          "evaluated_value": 7,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D5",
+          "formula": "=IFERROR(1/0,99)",
+          "saved_formula": "=IFERROR(1/0,99)",
+          "evaluated_value": 99,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D6",
+          "formula": "=ROUND(10/3,2)",
+          "saved_formula": "=ROUND(10/3,2)",
+          "evaluated_value": 3.33,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D7",
+          "formula": "=INDEX(B2:B5,MATCH(\"b\",A2:A5,0))",
+          "saved_formula": "=INDEX(B2:B5,MATCH(\"b\",A2:A5,0))",
+          "evaluated_value": 3,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D8",
+          "formula": "=VLOOKUP(\"a\",A2:B5,2,FALSE)",
+          "saved_formula": "=VLOOKUP(\"a\",A2:B5,2,FALSE())",
+          "evaluated_value": 2,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D9",
+          "formula": "=COUNTIFS(A2:A5,\"b\",B2:B5,\">0\")",
+          "saved_formula": "=COUNTIFS(A2:A5,\"b\",B2:B5,\">0\")",
+          "evaluated_value": 1,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D10",
+          "formula": "=IF(SUM(B2:B5)=10,TRUE,FALSE)",
+          "saved_formula": "=IF(SUM(B2:B5)=10,TRUE(),FALSE())",
+          "evaluated_value": true,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D11",
+          "formula": "=LEN(\"数据\")",
+          "saved_formula": "=LEN(\"数据\")",
+          "evaluated_value": 2,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D12",
+          "formula": "=SUM(B2:B5)*25%",
+          "saved_formula": "=SUM(B2:B5)*25%",
+          "evaluated_value": 2.5,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D13",
+          "formula": "=YEAR(DATE(2024,2,29))",
+          "saved_formula": "=YEAR(DATE(2024,2,29))",
+          "evaluated_value": 2024,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D14",
+          "formula": "=DAY(DATE(2024,2,29)+1)",
+          "saved_formula": "=DAY(DATE(2024,2,29)+1)",
+          "evaluated_value": 1,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D15",
+          "formula": "=IF(TRUE,\"\",\"x\")",
+          "saved_formula": "=IF(TRUE(),\"\",\"x\")",
+          "evaluated_value": "",
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D16",
+          "formula": "=SUMPRODUCT(B2:B5,B2:B5)",
+          "saved_formula": "=SUMPRODUCT(B2:B5,B2:B5)",
+          "evaluated_value": 38,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D17",
+          "formula": "=_xlfn.TEXTJOIN(\"-\",TRUE,A2:A4)",
+          "saved_formula": "=_xlfn.TEXTJOIN(\"-\",TRUE(),A2:A4)",
+          "evaluated_value": "a-b-a",
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D18",
+          "formula": "=SUM(B2,B3)+SUM(B4:B5)",
+          "saved_formula": "=SUM(B2,B3)+SUM(B4:B5)",
+          "evaluated_value": 10,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D19",
+          "formula": "=SUM(Values)",
+          "saved_formula": "=SUM(Values)",
+          "evaluated_value": 10,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D20",
+          "formula": "=Untouched!B1+SUM(B2:B5)",
+          "saved_formula": "=Untouched!B1+SUM(B2:B5)",
+          "evaluated_value": 133,
+          "calculation_status": "recalculated"
+        },
+        {
+          "sheet": "Formulas",
+          "cell": "D21",
+          "formula": "=VALUE(\"12.5\")+1",
+          "saved_formula": "=VALUE(\"12.5\")+1",
+          "evaluated_value": 13.5,
+          "calculation_status": "recalculated"
+        }
+      ],
+      "output_sha256": "041f2a729de5c4ff65ec5162217376e9138f7257e217a2819a4fe37c36154ddb",
+      "passed": true,
+      "base_sha256": "af9d5d8a33f0677d23d22ec9fc3906648749ddd63ea739a1a7bf8c52a9fe2c45",
+      "candidate_sha256": "041f2a729de5c4ff65ec5162217376e9138f7257e217a2819a4fe37c36154ddb",
+      "criteria_digest": "8bfab699c04374204a08414224aeba8a02375710daac8c0db3c58e6e0979e9c5",
+      "fidelity": "L1",
+      "render_verified": false
+    },
+    "structured_table": {
+      "engine": "libreoffice-uno",
+      "calculate_all": true,
+      "formula_errors": [],
+      "status": "verified",
+      "original_unchanged": true,
+      "formula_count": 1,
+      "missing_or_error_caches": [],
+      "value_mismatches": [],
+      "cells": [
+        {
+          "sheet": "Formulas",
+          "cell": "D1",
+          "formula": "=SUM(Table1[Amount])",
+          "saved_formula": "=SUM(Table1[Amount])",
+          "evaluated_value": 12,
+          "calculation_status": "recalculated"
+        }
+      ],
+      "output_sha256": "b692336182515c30ffbf55773e5480fb147b2e542f693387cd92f2bc4d5628ad",
+      "passed": true,
+      "base_sha256": "95ba23fe769efe3c185abb859ec452aabe3d1ac09569ba91d29f707895eb00aa",
+      "candidate_sha256": "b692336182515c30ffbf55773e5480fb147b2e542f693387cd92f2bc4d5628ad",
+      "criteria_digest": "7fe7ad58e08afe5b53f8533dcaa66bb96ca923e84bc7e8ad6ba4dcac65213846",
+      "fidelity": "L1",
+      "render_verified": false
+    },
+    "formula_error": {
+      "engine": "libreoffice-uno",
+      "calculate_all": true,
+      "formula_errors": [
+        {
+          "sheet": "Sheet",
+          "cell": "A1",
+          "formula": "=1/0",
+          "error": 532
+        }
+      ],
+      "status": "failed",
+      "original_unchanged": true,
+      "formula_count": 1,
+      "missing_or_error_caches": [
+        {
+          "sheet": "Sheet",
+          "cell": "A1",
+          "cached_value": "#DIV/0!"
+        }
+      ],
+      "value_mismatches": [],
+      "cells": [
+        {
+          "sheet": "Sheet",
+          "cell": "A1",
+          "formula": "=1/0",
+          "saved_formula": "=1/0",
+          "evaluated_value": "#DIV/0!",
+          "calculation_status": "error"
+        }
+      ],
+      "output_sha256": "a913080f2e37c6895b92b8925a273a5abc0309235fc93f81634ae855d588de0c",
+      "passed": false,
+      "base_sha256": "6a95b8203af4d74179e710a43808ad9d87383fa2272cf880d0956f12e82e5391",
+      "candidate_sha256": "a913080f2e37c6895b92b8925a273a5abc0309235fc93f81634ae855d588de0c",
+      "criteria_digest": "0f42a7a24d34970c67b4017fdd19fb7c221c723e750b00c9bfecd6a0af4216e6",
+      "fidelity": "L1",
+      "render_verified": false
+    },
+    "xlookup": {
+      "engine": "libreoffice-uno",
+      "calculate_all": true,
+      "formula_errors": [
+        {
+          "sheet": "Formulas",
+          "cell": "D1",
+          "formula": "=_xlfn.XLOOKUP(\"b\",A1:A2,B1:B2)",
+          "error": 525
+        }
+      ],
+      "status": "failed",
+      "original_unchanged": true,
+      "formula_count": 1,
+      "missing_or_error_caches": [
+        {
+          "sheet": "Formulas",
+          "cell": "D1",
+          "cached_value": "#NAME?"
+        }
+      ],
+      "value_mismatches": [
+        {
+          "sheet": "Formulas",
+          "cell": "D1",
+          "expected": 3,
+          "actual": "#NAME?"
+        }
+      ],
+      "cells": [
+        {
+          "sheet": "Formulas",
+          "cell": "D1",
+          "formula": "=_xlfn.XLOOKUP(\"b\",A1:A2,B1:B2)",
+          "saved_formula": "=_xlfn.xlookup(\"b\",A1:A2,B1:B2)",
+          "evaluated_value": "#NAME?",
+          "calculation_status": "error"
+        }
+      ],
+      "output_sha256": "285df3fabb887a7e57155b55d260b889ec33ecff491236c651ea7edb13fe1ca0",
+      "passed": false,
+      "base_sha256": "c8235fc89606571666eb18af6998e7e3bdb9285c49642426b9b19ad902e1e7a8",
+      "candidate_sha256": "285df3fabb887a7e57155b55d260b889ec33ecff491236c651ea7edb13fe1ca0",
+      "criteria_digest": "fa2f63cd2010a4c634899bd381e2a6bd41053325f1316309a5f4e683ac9af7df",
+      "fidelity": "L1",
+      "render_verified": false
+    }
+  },
+  "processor_sha256": "1328f465c069df579a25ecfd4df784cbd31b51c363d6ed728426e216b1d47998"
+}

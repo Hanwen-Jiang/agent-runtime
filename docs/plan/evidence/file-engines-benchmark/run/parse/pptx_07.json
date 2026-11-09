@@ -1,0 +1,374 @@
+{
+  "evaluation": {
+    "id": "pptx_07",
+    "family": "pptx",
+    "variant": "slides_text_table_notes",
+    "language": "zh",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 0.048158863093703985,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_a7ba7fc60c8ba9e2c12e2109"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_f5c6d7a2976c5dd54fb6eb7f"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_0c77e437c2d6ecd93c9c0a3e"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_bb672c895b138c9ab90d1568"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_e36f23a284926bb9c4949150"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_efe32f9a88ed91b6ba537919"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "raw_ooxml",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_slides": 6,
+      "processed_slides": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "charts_visual_only": true,
+      "returned_blocks": 13,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_a7ba7fc60c8ba9e2c12e2109",
+        "kind": "text",
+        "text": "备份恢复的提交期限为9个工作日。",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 0,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_5d3f1559c7cccacc1690e10f",
+        "kind": "notes",
+        "text": "Speaker note 7/0: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 0,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_f5c6d7a2976c5dd54fb6eb7f",
+        "kind": "text",
+        "text": "备份恢复的审批责任人为存储团队。",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 1,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_a61aea04cd3be87a43796a27",
+        "kind": "notes",
+        "text": "Speaker note 7/1: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 1,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_0c77e437c2d6ecd93c9c0a3e",
+        "kind": "text",
+        "text": "备份恢复必须提供恢复审批工单。",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 2,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_dce7d9a960654bf032c36b15",
+        "kind": "table",
+        "text": "Review\t\n\tComplete",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 2,
+          "shape_id": 3,
+          "bbox": [
+            0.05,
+            0.5333333333333333,
+            0.55,
+            0.6666666666666666
+          ]
+        }
+      },
+      {
+        "id": "blk_360a92e16b4056ae21397e06",
+        "kind": "notes",
+        "text": "Speaker note 7/2: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 2,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_bb672c895b138c9ab90d1568",
+        "kind": "text",
+        "text": "备份恢复记录须保留8个月。",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 3,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_a2abe7ae99ba31d2a73bee42",
+        "kind": "notes",
+        "text": "Speaker note 7/3: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 3,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_e36f23a284926bb9c4949150",
+        "kind": "text",
+        "text": "备份恢复的紧急例外需要部门负责人书面批准。",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 4,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_5790817b21c8a31aacc34fae",
+        "kind": "notes",
+        "text": "Speaker note 7/4: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 4,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_efe32f9a88ed91b6ba537919",
+        "kind": "text",
+        "text": "备份恢复必须通过恢复控制台提交。",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 5,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_6d796bdb6bdb78b0f826e78b",
+        "kind": "notes",
+        "text": "Speaker note 7/5: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 5,
+          "part": "notes"
+        }
+      }
+    ],
+    "outline": [
+      {
+        "kind": "slide",
+        "slide_index": 0,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 1,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 2,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 3,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 4,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 5,
+        "title": ""
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_slides": 6,
+      "processed_slides": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "charts_visual_only": true,
+      "returned_blocks": 13,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/pptx_07/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "449ae536fce55e984fb936f169ab101202298c12f5dcc1f688ecc1d3d2596708",
+        "size_bytes": 4014
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "29b449698b656543a908867fa965d9886bbcb387a88fcdd9c3bade6819cd04a1",
+      "size_bytes": 43230,
+      "mime_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "3555600d2cc3ddf5685a8401ee2cded590e598f382516d69e80bf06e47c783b3"
+    }
+  }
+}

@@ -1,0 +1,254 @@
+{
+  "evaluation": {
+    "id": "archive_01",
+    "family": "archive",
+    "variant": "nested_members_explicit_extract",
+    "language": "en",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 0.030582880834117532,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_557d5ae8b724b656004742c2"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_4a58a846428e4a10dcb9fca9"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_f762d4545a68c5a76bccbacf"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_da4b7f3aeee7b196bdd7756a"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_7cb2faf36e245f3ad59edff6"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_31aefaed1beba797ae7cae27"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "source_structure",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_members": 6,
+      "extracted_members": 0,
+      "selected_members": [],
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_557d5ae8b724b656004742c2",
+        "kind": "archive_member",
+        "text": "policies/training-reimbursement/clause-1.txt",
+        "anchor": {
+          "kind": "archive_member",
+          "member": "policies/training-reimbursement/clause-1.txt"
+        },
+        "size_bytes": 64,
+        "directory": false
+      },
+      {
+        "id": "blk_4a58a846428e4a10dcb9fca9",
+        "kind": "archive_member",
+        "text": "policies/training-reimbursement/clause-2.txt",
+        "anchor": {
+          "kind": "archive_member",
+          "member": "policies/training-reimbursement/clause-2.txt"
+        },
+        "size_bytes": 66,
+        "directory": false
+      },
+      {
+        "id": "blk_f762d4545a68c5a76bccbacf",
+        "kind": "archive_member",
+        "text": "policies/training-reimbursement/clause-3.txt",
+        "anchor": {
+          "kind": "archive_member",
+          "member": "policies/training-reimbursement/clause-3.txt"
+        },
+        "size_bytes": 55,
+        "directory": false
+      },
+      {
+        "id": "blk_da4b7f3aeee7b196bdd7756a",
+        "kind": "archive_member",
+        "text": "policies/training-reimbursement/clause-4.txt",
+        "anchor": {
+          "kind": "archive_member",
+          "member": "policies/training-reimbursement/clause-4.txt"
+        },
+        "size_bytes": 65,
+        "directory": false
+      },
+      {
+        "id": "blk_7cb2faf36e245f3ad59edff6",
+        "kind": "archive_member",
+        "text": "policies/training-reimbursement/clause-5.txt",
+        "anchor": {
+          "kind": "archive_member",
+          "member": "policies/training-reimbursement/clause-5.txt"
+        },
+        "size_bytes": 98,
+        "directory": false
+      },
+      {
+        "id": "blk_31aefaed1beba797ae7cae27",
+        "kind": "archive_member",
+        "text": "policies/training-reimbursement/clause-6.txt",
+        "anchor": {
+          "kind": "archive_member",
+          "member": "policies/training-reimbursement/clause-6.txt"
+        },
+        "size_bytes": 69,
+        "directory": false
+      }
+    ],
+    "outline": [
+      {
+        "name": "policies/training-reimbursement/clause-1.txt",
+        "size_bytes": 64,
+        "directory": false
+      },
+      {
+        "name": "policies/training-reimbursement/clause-2.txt",
+        "size_bytes": 66,
+        "directory": false
+      },
+      {
+        "name": "policies/training-reimbursement/clause-3.txt",
+        "size_bytes": 55,
+        "directory": false
+      },
+      {
+        "name": "policies/training-reimbursement/clause-4.txt",
+        "size_bytes": 65,
+        "directory": false
+      },
+      {
+        "name": "policies/training-reimbursement/clause-5.txt",
+        "size_bytes": 98,
+        "directory": false
+      },
+      {
+        "name": "policies/training-reimbursement/clause-6.txt",
+        "size_bytes": 69,
+        "directory": false
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_members": 6,
+      "extracted_members": 0,
+      "selected_members": [],
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/archive_01/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "59faaac094c6830517d774095a4e1cd01ff40de10d99aea480417c5732aa9ff2",
+        "size_bytes": 3242
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "8779cd912eaef2b2de293eea02536b85082ed231fcb1eb6c21f775571d78f3ed",
+      "size_bytes": 1384,
+      "mime_type": "application/zip"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "3555600d2cc3ddf5685a8401ee2cded590e598f382516d69e80bf06e47c783b3"
+    }
+  }
+}

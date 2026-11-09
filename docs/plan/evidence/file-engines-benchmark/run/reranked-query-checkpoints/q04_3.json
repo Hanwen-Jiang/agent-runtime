@@ -1,0 +1,357 @@
+{
+  "id": "q04_3",
+  "query": "密码找回的记录保存多久？请找出各文件中的规定。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_04",
+      "notebook_01",
+      "pptx_14",
+      "scan_pdf_04",
+      "text_04",
+      "text_pdf_04"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.3333333333333333,
+    "unique_source_ndcg_at_8": 0.28162497265977743,
+    "relevant_files": [
+      "notebook_01",
+      "scan_pdf_04"
+    ],
+    "expected_files": [
+      "text_pdf_04",
+      "scan_pdf_04",
+      "docx_04",
+      "pptx_14",
+      "text_04",
+      "notebook_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 22.08183193579316
+  },
+  "hybrid": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.4935232796777482,
+    "relevant_files": [
+      "notebook_01",
+      "scan_pdf_04"
+    ],
+    "expected_files": [
+      "text_pdf_04",
+      "scan_pdf_04",
+      "docx_04",
+      "pptx_14",
+      "text_04",
+      "notebook_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 4098.349386127666
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_33d51f7b93caf39d7b126d4f",
+        "kind": "notebook_cell",
+        "cell_id": "clause-3",
+        "char_end": 14.0,
+        "cell_index": 3.0
+      },
+      "representation_id": "rep_notebook_01",
+      "version_id": "notebook_01",
+      "score": 5.277163982391357,
+      "text": "密码找回记录须保留18个月。",
+      "quote_hash": "6e8b2f9bc8f3a8131525f73bc823a795bb5963b5d36d6d2bb35b812bd3825a01",
+      "id": "chunk_f9a159423a5ae02bebf133141ca928b894a36f6dd9339a3190b30ffaf449d75b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_44090b1a9df9daa7c4e13804",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 14.0,
+        "bbox": [
+          0.025705644860863686,
+          0.2703125,
+          0.32358869910240173,
+          0.3625
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_04",
+      "version_id": "scan_pdf_04",
+      "score": 5.198338985443115,
+      "text": "密码找回记录须保留11个月。",
+      "quote_hash": "6ae623330a665aca48753a9239522488e76e577a855e2dd38d55a9d60889efd0",
+      "id": "chunk_bfd41509fbe100e0f831138f4b3e7b8c6da4895295b7f207ac8478131e261f3c"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_df41f0a6ec296c6fc6ec3b80",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.02671370841562748,
+          0.09375,
+          0.3790322542190552,
+          0.1859375
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_04",
+      "version_id": "scan_pdf_04",
+      "score": 1.1720645427703857,
+      "text": "密码找回的提交期限为9个工作日。",
+      "quote_hash": "0b863fcb88afa6995f25ee86fb198f433b87df40e86ed0d483bd31558b83a50d",
+      "id": "chunk_c467cb683a1a8440cadaafbf096c7a942c7159cacf967559385b8b99011cb06a"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_15110a7a599638aa97b2023e",
+        "kind": "notebook_cell",
+        "cell_id": "clause-0",
+        "char_end": 16.0,
+        "cell_index": 0.0
+      },
+      "representation_id": "rep_notebook_01",
+      "version_id": "notebook_01",
+      "score": 1.0936272144317627,
+      "text": "密码找回的提交期限为5个工作日。",
+      "quote_hash": "09cc09d8197cbc813a4575d921ee57792694d8f421766ceec9825c876baa1c35",
+      "id": "chunk_e002d33a05c1d0f47860892d7d8fb768c1081dbc3a319686637cb5d3412f69f8"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e59537b408d36a4df83f969a",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 14.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.3333529411764706,
+          0.12052112044648612
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_17",
+      "version_id": "text_pdf_17",
+      "score": -1.1903653144836426,
+      "text": "备份恢复记录须保留23个月。",
+      "quote_hash": "6fbcc6bc81ccfe4651f2b26e77baac035956e83fd26ace731bd2b6c70df5ee0f",
+      "id": "chunk_cea0cb22ee3beea17789a6d1e8e60c29e859ab041f20e0df5b0ebbde031a8603"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_bb672c895b138c9ab90d1568",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 13.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_07",
+      "version_id": "pptx_07",
+      "score": -1.2147150039672852,
+      "text": "备份恢复记录须保留8个月。",
+      "quote_hash": "03abded1206d91b390833844f39c0b5b8dac9649af25deaaa223297147643219",
+      "id": "chunk_28cd466f7d4cafc53d9457c811844e93cadf51074fafb68fad9812c9abb752a2"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_54f6574cd8357198015d6809",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.37583660130718954,
+          0.12052112044648612
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_13",
+      "version_id": "text_pdf_13",
+      "score": -1.3907747268676758,
+      "text": "客户数据删除记录须保留19个月。",
+      "quote_hash": "e8a5fe255c842b4199117c40c5f2c65ecb30400a55d368a44f2c3894e962fd8d",
+      "id": "chunk_0d8f60f76ef63c1d8b11f4c6a73be1e27daa51f64bc9164929c955974411f051"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_45c81f1521c6cdd1fd3636b0",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 16.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_03",
+      "version_id": "pptx_03",
+      "score": -1.419458031654358,
+      "text": "客户数据删除记录须保留23个月。",
+      "quote_hash": "4281832196cd35dced03e9bf637232d594f40f078725711f78119969c8312ac7",
+      "id": "chunk_6931f692a3d0e5258787d7842095a48616df49977072420e21b3bd91a25990d3"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_c467cb683a1a8440cadaafbf096c7a942c7159cacf967559385b8b99011cb06a",
+      "version_id": "scan_pdf_04",
+      "text": "密码找回的提交期限为9个工作日。",
+      "anchor": {
+        "bbox": [
+          0.02671370841562748,
+          0.09375,
+          0.3790322542190552,
+          0.1859375
+        ],
+        "block_id": "blk_df41f0a6ec296c6fc6ec3b80",
+        "char_end": 16,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_e002d33a05c1d0f47860892d7d8fb768c1081dbc3a319686637cb5d3412f69f8",
+      "version_id": "notebook_01",
+      "text": "密码找回的提交期限为5个工作日。",
+      "anchor": {
+        "block_id": "blk_15110a7a599638aa97b2023e",
+        "cell_id": "clause-0",
+        "cell_index": 0.0,
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "notebook_cell"
+      }
+    },
+    {
+      "id": "chunk_bfd41509fbe100e0f831138f4b3e7b8c6da4895295b7f207ac8478131e261f3c",
+      "version_id": "scan_pdf_04",
+      "text": "密码找回记录须保留11个月。",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.2703125,
+          0.32358869910240173,
+          0.3625
+        ],
+        "block_id": "blk_44090b1a9df9daa7c4e13804",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_f9a159423a5ae02bebf133141ca928b894a36f6dd9339a3190b30ffaf449d75b",
+      "version_id": "notebook_01",
+      "text": "密码找回记录须保留18个月。",
+      "anchor": {
+        "block_id": "blk_33d51f7b93caf39d7b126d4f",
+        "cell_id": "clause-3",
+        "cell_index": 3.0,
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "notebook_cell"
+      }
+    },
+    {
+      "id": "chunk_9da937c1b0309928a7c2818d44dda2c4fb39461aefbb696db80abd7ef5c6280a",
+      "version_id": "notebook_01",
+      "text": "密码找回的审批责任人为身份管理组。",
+      "anchor": {
+        "block_id": "blk_dc0e77feb7753995f7cb0841",
+        "cell_id": "clause-1",
+        "cell_index": 1.0,
+        "char_end": 17,
+        "char_start": 0,
+        "kind": "notebook_cell"
+      }
+    },
+    {
+      "id": "chunk_e59f04f8bb5e750c0eeb34f49b20d542462a91a5962de4603b7754502c62e418",
+      "version_id": "scan_pdf_04",
+      "text": "密码找回的审批责任人为身份管理组。",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.271875,
+          0.41280239820480347,
+          0.3609375
+        ],
+        "block_id": "blk_0e4b5e9a38c41ecbe624869d",
+        "char_end": 17,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_47e15510f93fc091a62b57461517e248ff6655d43fcfbe7269859b28b46930b3",
+      "version_id": "notebook_01",
+      "text": "密码找回的紧急例外需要部门负责人书面批准。",
+      "anchor": {
+        "block_id": "blk_107c78ff06fa5135418fb3dc",
+        "cell_id": "clause-4",
+        "cell_index": 4.0,
+        "char_end": 21,
+        "char_start": 0,
+        "kind": "notebook_cell"
+      }
+    },
+    {
+      "id": "chunk_f6cb18139a861a0629c7d8f6c87f9ae59866e60091e5fcf48efad6b944c95a51",
+      "version_id": "scan_pdf_04",
+      "text": "密码找回的紧急例外需要部门负责人书面批准。",
+      "anchor": {
+        "bbox": [
+          0.02671370841562748,
+          0.096875,
+          0.5045362710952759,
+          0.184375
+        ],
+        "block_id": "blk_27a4a88f3d9363f02c7e3413",
+        "char_end": 21,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,278 @@
+{
+  "evaluation": {
+    "id": "text_pdf_16",
+    "family": "text_pdf",
+    "variant": "headings_footers",
+    "language": "en",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 0.05905753606930375,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.7785,
+        "candidate_ids": [
+          "blk_d1da9edede6f1597fd8dda9b"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.795,
+        "candidate_ids": [
+          "blk_ff413fd9f915674c3daaac78"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.7402,
+        "candidate_ids": [
+          "blk_1ca27ecd4f6f915dd1ed084d"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.7785,
+        "candidate_ids": [
+          "blk_8b5c08aca9819ad59a5decc7"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8421,
+        "candidate_ids": [
+          "blk_e4298357f24c4fcec0458d04"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.7925,
+        "candidate_ids": [
+          "blk_b326a0aaf9a3acd7b1fbeb3f"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "poppler_pdftotext",
+      "verified": false,
+      "found": 0,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_pages": 6,
+      "processed_pages": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "unselected_pages": 0,
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_d1da9edede6f1597fd8dda9b",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 — page 1\nInventory reconciliation must be submitted within 15 business\ndays.\n",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "native_text"
+      },
+      {
+        "id": "blk_ff413fd9f915674c3daaac78",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 — page 2\nInventory Control is responsible for approving inventory\nreconciliation.\n",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "native_text"
+      },
+      {
+        "id": "blk_1ca27ecd4f6f915dd1ed084d",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 — page 3\nInventory reconciliation requires signed stock count.\n",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "native_text"
+      },
+      {
+        "id": "blk_8b5c08aca9819ad59a5decc7",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 — page 4\nRecords for inventory reconciliation must be retained for 22\nmonths.\n",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "native_text"
+      },
+      {
+        "id": "blk_e4298357f24c4fcec0458d04",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 — page 5\nEmergency exceptions for inventory reconciliation require\nwritten approval from the department head.\n",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 4,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "native_text"
+      },
+      {
+        "id": "blk_b326a0aaf9a3acd7b1fbeb3f",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 — page 6\nInventory reconciliation must be submitted through the inventory\nledger.\n",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 5,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "native_text"
+      }
+    ],
+    "outline": [
+      {
+        "kind": "pdf",
+        "pages": 6
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_pages": 6,
+      "processed_pages": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "unselected_pages": 0,
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/text_pdf_16/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "27f059102df2c15ba74e27d78aba2a9ac3ef7cb126cdb8d0b740b391d1fe26ce",
+        "size_bytes": 3333
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "bace9a4bcbe93ca64d7ba6bf667b559c7bd9173257aa7bd9f4b8b7c778e582f2",
+      "size_bytes": 5773,
+      "mime_type": "application/pdf"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "05bdd4644a3950f639f47b34d1ab0815ab9fcc66285e74784c23ca2026a2c3a3"
+    }
+  }
+}

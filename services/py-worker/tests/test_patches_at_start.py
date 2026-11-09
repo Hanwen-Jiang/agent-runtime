@@ -35,6 +35,23 @@ KNOWN_AT_START = (
     "d16-expect-reply-before-ask",
     "s05-reconcile",
     "d16-tool-loop-approval",
+    "r01-audit-and-budget",
+    "progress-node-and-tool",
+    "tmp-time-tool-budgets",
+    "tmp-decision-retry",
+    "tmp-message-codes",
+    "parallel-tool-calls",
+    "context-usage-events",
+    "guidance-and-interrupt",
+    "interrupt-withdraws-question",
+    "n01-references",
+    "q87-context-builder-v2",
+    "n04-task-plan",
+    "n16-sub-agents",
+    "n16r-sub-agent-wrap-up",
+    "workspace-async-result-v1",
+    "file-operation-terminal-v1",
+    "child-file-whole-sheet-v1",
 )
 
 

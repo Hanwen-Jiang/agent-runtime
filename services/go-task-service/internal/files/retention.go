@@ -34,7 +34,7 @@ type RetentionReport struct {
 // table is also the hook for future EvidenceRef retention rather than a TTL.
 func retainedRoots(ctx context.Context, tx relational.Tx, workspace string) (map[string]bool, error) {
 	keep := map[string]bool{}
-	rows, e := tx.Query(ctx, `SELECT manifest AS roots FROM runtime_file_snapshots WHERE workspace_id=$1 UNION ALL SELECT inputs AS roots FROM runtime_file_jobs WHERE workspace_id=$1 AND status IN ('pending','running') UNION ALL SELECT roots FROM runtime_file_collections WHERE workspace_id=$1`, workspace)
+	rows, e := tx.Query(ctx, `SELECT manifest AS roots FROM runtime_file_snapshots WHERE workspace_id=$1 UNION ALL SELECT g.roots FROM runtime_file_collection_snapshots g JOIN runtime_file_snapshots s ON s.snapshot_id=g.task_id WHERE s.workspace_id=$1 UNION ALL SELECT inputs AS roots FROM runtime_file_jobs WHERE workspace_id=$1 AND status IN ('pending','running') UNION ALL SELECT roots FROM runtime_file_collections WHERE workspace_id=$1`, workspace)
 	if e != nil {
 		return nil, e
 	}

@@ -47,6 +47,28 @@ class FileAuthority:
                 files.append({'uri':item['object_uri'],'name':item['name'],'media_type':item['mime_type'],'size_bytes':int(item['size_bytes']),'sha256':item['sha256'],'derived':True})
             return files
 
+
+    async def check_collections(self, tenant_id, workspace_id, task_id, summaries):
+        tenant=TenantContext(tenant_id=tenant_id,workspace_id=workspace_id)
+        async with self.provider.bind(tenant).transaction(read_only=True) as tx:
+            task=await tx.query_one("SELECT submitted_by FROM tasks WHERE task_id=$1",(task_id,))
+            actor=task.get('submitted_by') if task else ''
+            frozen=await tx.query_one("SELECT created_by,workspace_id,manifest FROM runtime_file_collection_freezes WHERE task_id=$1",(task_id,))
+            if not actor or not frozen or frozen['created_by']!=actor or frozen['workspace_id']!=workspace_id:
+                raise NotFoundError('collection_not_pinned','任务知识集合快照不可用')
+            pinned={item['id']:item for item in json.loads(frozen['manifest'])}
+            for summary in summaries:
+                item=pinned.get(summary.get('id'))
+                if not item or any(item.get(key)!=summary.get(key) for key in ('generation','embedding_version','revision')):
+                    raise NotFoundError('collection_snapshot_mismatch','知识集合快照不一致')
+                for root in item.get('roots',[]):
+                    row=await tx.query_one("SELECT f.created_by,f.lifecycle,f.acl_epoch,v.sha256 FROM runtime_files f JOIN runtime_file_versions v ON f.file_id=v.file_id WHERE f.file_id=$1 AND v.version_id=$2 AND f.workspace_id=$3",(root['file_id'],root['version_id'],workspace_id))
+                    if not row or row['lifecycle']!='active' or int(row['acl_epoch'])!=int(root['acl_epoch']) or row['sha256']!=root['sha256']:
+                        raise NotFoundError('collection_access_revoked','知识集合来源已撤权或改变')
+                    if row['created_by']!=actor:
+                        grant=await tx.query_one("SELECT permission FROM runtime_file_grants WHERE file_id=$1 AND workspace_id=$2 AND subject_type='user' AND subject_id=$3",(root['file_id'],workspace_id,actor))
+                        if not grant:raise NotFoundError('collection_access_revoked','知识集合来源访问已撤销')
+
 def task_attachments(config,objects=None):
     from agentruntime_worker.tools import context_objects
     from agentruntime_worker.tools.attachments import TaskAttachments

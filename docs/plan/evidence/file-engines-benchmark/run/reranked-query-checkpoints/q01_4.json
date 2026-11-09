@@ -1,0 +1,358 @@
+{
+  "id": "q01_4",
+  "query": "Which channel should I use to file employee onboarding? Compare the documents.",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_01",
+      "pptx_11",
+      "text_01",
+      "text_pdf_01"
+    ],
+    "extraction_chunking_recall_ceiling": 0.8
+  },
+  "exact": {
+    "recall_at_8": 0.0,
+    "hit_at_8": 0.0,
+    "reciprocal_rank_at_8": 0,
+    "unique_source_ndcg_at_8": 0.0,
+    "relevant_files": [],
+    "expected_files": [
+      "text_pdf_01",
+      "scan_pdf_01",
+      "docx_01",
+      "pptx_11",
+      "text_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.0,
+    "latency_ms": 15.656507108360529
+  },
+  "hybrid": {
+    "recall_at_8": 0.0,
+    "hit_at_8": 0.0,
+    "reciprocal_rank_at_8": 0,
+    "unique_source_ndcg_at_8": 0.0,
+    "relevant_files": [],
+    "expected_files": [
+      "text_pdf_01",
+      "scan_pdf_01",
+      "docx_01",
+      "pptx_11",
+      "text_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.0,
+    "latency_ms": 5236.129866912961
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_3529cf746db1b6a6402a4fb3",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 55.0,
+        "bbox": [
+          0.026209676638245583,
+          0.3859375,
+          0.6784273982048035,
+          0.4703125
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_01",
+      "version_id": "scan_pdf_01",
+      "score": -0.7838827967643738,
+      "text": "Employee onboarding must be submitted through the staff",
+      "quote_hash": "013591bb6f68a937733ba9efa6a830f29a1f9c6ca4161fb2e39d17693461de70",
+      "id": "chunk_5562d0fbc07cd299c93dbc8fe56e6aade3d2cd6a0c06ed97c556ab807d79a714"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_ce36fc16ee8f868a253a3e2d",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 57.0,
+        "bbox": [
+          0.025705644860863686,
+          0.096875,
+          0.737399160861969,
+          0.184375
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_01",
+      "version_id": "scan_pdf_01",
+      "score": -1.1787503957748413,
+      "text": "Employee onboarding requires signed employment agreement.",
+      "quote_hash": "5830b7d5b527157be3ba30012b3d9a1766dafec6596f5525e9d5ece1990495a2",
+      "id": "chunk_21db96f25db5e8339c85a44f6863f04912e8065c06deb1a4faa419f9585d8b0c"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_5b206273e0ddd9ae9df3f58d",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 56.0,
+        "bbox": [
+          0.024697579443454742,
+          0.0921875,
+          0.6885080337524414,
+          0.1875
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_01",
+      "version_id": "scan_pdf_01",
+      "score": -2.067526340484619,
+      "text": "Employee onboarding must be submitted within 13 business",
+      "quote_hash": "d28129907d7f7a218c4fc602fd1190ab6f284aae638ebb5edabd91b4761babcb",
+      "id": "chunk_3cc3f65e5d1a07194c7c1e77bd631637da05a33b89151864cca401a44a070b97"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_79fafb80feed17e0cc75ca18",
+        "kind": "document_block",
+        "block_index": 6.0,
+        "char_end": 68.0
+      },
+      "representation_id": "rep_docx_10",
+      "version_id": "docx_10",
+      "score": -2.8064963817596436,
+      "text": "Remote work requests must be submitted through the workforce portal.",
+      "quote_hash": "17dbdf287e485d580296212998196b2179e9f3eefb53de3424f58860a866421a",
+      "id": "chunk_0f0524c6765a4a99a1380a77c1d7c6e5cad5f3496521f413dbdb280ad2296f06"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d457b6c55e32f8dc72bbc6e0",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 54.0,
+        "bbox": [
+          0.024697579443454742,
+          0.2703125,
+          0.6617943644523621,
+          0.3625
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_01",
+      "version_id": "scan_pdf_01",
+      "score": -3.449664354324341,
+      "text": "Records for employee onboarding must be retained for 8",
+      "quote_hash": "65c15e30671ed8da082eaba065c1a2012a59111825b4b5beaa9b39cb25b34851",
+      "id": "chunk_45687126cdf7011f705c68a58cdc529ba9e4b00704e73e9fe0c5da5f15184930"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_45a8b0cec23b69479c937c4b",
+        "kind": "image_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 27.0,
+        "bbox": [
+          0.02666666666666667,
+          0.6414414414414414,
+          0.3214814814814815,
+          0.672972972972973
+        ]
+      },
+      "representation_id": "rep_image_00",
+      "version_id": "image_00",
+      "score": -3.8246097564697266,
+      "text": "through the security inbox.",
+      "quote_hash": "30b45d787ba1efee734b517a9787645c23bc722ed7af6ec3661719aa745b6317",
+      "id": "chunk_2e535f7f2a17bb36a7c25b41426b26f53bf0f8165726c8098ddff11d53ca9a3a"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_662b299866efbce1cc6060de",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 52.0,
+        "bbox": [
+          0.026209676638245583,
+          0.0953125,
+          0.6597781777381897,
+          0.184375
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_01",
+      "version_id": "scan_pdf_01",
+      "score": -4.315974235534668,
+      "text": "Emergency exceptions for employee onboarding require",
+      "quote_hash": "8aa871d877bc77ad2cdbd4c7f71d7d47323eb466fea1f3dadd8194f3679b0dcf",
+      "id": "chunk_7b93438fbe1f9a739b91dcf126af433919de722cb15834776f276f06f517b6d3"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_9b82e796124f44dc9d3f454e",
+        "kind": "notebook_cell",
+        "cell_id": "clause-5",
+        "char_end": 76.0,
+        "cell_index": 5.0
+      },
+      "representation_id": "rep_notebook_02",
+      "version_id": "notebook_02",
+      "score": -4.672897815704346,
+      "text": "Production incident response must be submitted through the incident channel.",
+      "quote_hash": "6b556694785a41730bada7dd6d09e2e7acd289c2c4fb09f9f15decd0ad14aa1f",
+      "id": "chunk_3b84f49b2fa95917c648aa87835658e4d83068ff6865e96ad88e882c791e9e0b"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_5562d0fbc07cd299c93dbc8fe56e6aade3d2cd6a0c06ed97c556ab807d79a714",
+      "version_id": "scan_pdf_01",
+      "text": "Employee onboarding must be submitted through the staff",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.3859375,
+          0.6784273982048035,
+          0.4703125
+        ],
+        "block_id": "blk_3529cf746db1b6a6402a4fb3",
+        "char_end": 55,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_21db96f25db5e8339c85a44f6863f04912e8065c06deb1a4faa419f9585d8b0c",
+      "version_id": "scan_pdf_01",
+      "text": "Employee onboarding requires signed employment agreement.",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.096875,
+          0.737399160861969,
+          0.184375
+        ],
+        "block_id": "blk_ce36fc16ee8f868a253a3e2d",
+        "char_end": 57,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_7b93438fbe1f9a739b91dcf126af433919de722cb15834776f276f06f517b6d3",
+      "version_id": "scan_pdf_01",
+      "text": "Emergency exceptions for employee onboarding require",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.0953125,
+          0.6597781777381897,
+          0.184375
+        ],
+        "block_id": "blk_662b299866efbce1cc6060de",
+        "char_end": 52,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_3cc3f65e5d1a07194c7c1e77bd631637da05a33b89151864cca401a44a070b97",
+      "version_id": "scan_pdf_01",
+      "text": "Employee onboarding must be submitted within 13 business",
+      "anchor": {
+        "bbox": [
+          0.024697579443454742,
+          0.0921875,
+          0.6885080337524414,
+          0.1875
+        ],
+        "block_id": "blk_5b206273e0ddd9ae9df3f58d",
+        "char_end": 56,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_45687126cdf7011f705c68a58cdc529ba9e4b00704e73e9fe0c5da5f15184930",
+      "version_id": "scan_pdf_01",
+      "text": "Records for employee onboarding must be retained for 8",
+      "anchor": {
+        "bbox": [
+          0.024697579443454742,
+          0.2703125,
+          0.6617943644523621,
+          0.3625
+        ],
+        "block_id": "blk_d457b6c55e32f8dc72bbc6e0",
+        "char_end": 54,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_3b84f49b2fa95917c648aa87835658e4d83068ff6865e96ad88e882c791e9e0b",
+      "version_id": "notebook_02",
+      "text": "Production incident response must be submitted through the incident channel.",
+      "anchor": {
+        "block_id": "blk_9b82e796124f44dc9d3f454e",
+        "cell_id": "clause-5",
+        "cell_index": 5.0,
+        "char_end": 76,
+        "char_start": 0,
+        "kind": "notebook_cell"
+      }
+    },
+    {
+      "id": "chunk_9c34b25a87fd03e16161966919a4b543b1be4a91ade99e8247791a866d35f58b",
+      "version_id": "xlsx_00",
+      "text": "Production incident response must be submitted through the incident channel.",
+      "anchor": {
+        "block_id": "blk_332ec1522fab554b6c089658",
+        "char_end": 76,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B7",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_12b0b0e221a6382d6b45cfbf5259906ea4f7d83954d829a9798d8435ae7d8980",
+      "version_id": "scan_pdf_01",
+      "text": "onboarding.",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.5,
+          0.16683466732501984,
+          0.58125
+        ],
+        "block_id": "blk_31f2ad33c4b7674e26492fa5",
+        "char_end": 11,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    }
+  ]
+}

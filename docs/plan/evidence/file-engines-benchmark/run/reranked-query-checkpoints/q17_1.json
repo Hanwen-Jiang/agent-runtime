@@ -1,0 +1,357 @@
+{
+  "id": "q17_1",
+  "query": "Who signs off on backup restoration according to the different documents?",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "pptx_07",
+      "text_pdf_17",
+      "xlsx_12"
+    ],
+    "extraction_chunking_recall_ceiling": 0.6
+  },
+  "exact": {
+    "recall_at_8": 0.0,
+    "hit_at_8": 0.0,
+    "reciprocal_rank_at_8": 0,
+    "unique_source_ndcg_at_8": 0.0,
+    "relevant_files": [],
+    "expected_files": [
+      "text_pdf_17",
+      "scan_pdf_17",
+      "xlsx_12",
+      "pptx_07",
+      "image_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.0,
+    "latency_ms": 14.02439596131444
+  },
+  "hybrid": {
+    "recall_at_8": 0.6,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7227265726449519,
+    "relevant_files": [
+      "pptx_07",
+      "text_pdf_17",
+      "xlsx_12"
+    ],
+    "expected_files": [
+      "text_pdf_17",
+      "scan_pdf_17",
+      "xlsx_12",
+      "pptx_07",
+      "image_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 5087.139067938551
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_412184e4096326183d440cae",
+        "range": "B3",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 61.0
+      },
+      "representation_id": "rep_xlsx_12",
+      "version_id": "xlsx_12",
+      "score": -0.19887803494930267,
+      "text": "Storage Team is responsible for approving backup restoration.",
+      "quote_hash": "00a916f46cc8668915ed80698b2d6129a9498572f60890217d16b0c8c58fcc57",
+      "id": "chunk_dac8988dbb709ac6c65053a91fe136249466ec2c059a62302ae418489b2062db"
+    },
+    {
+      "anchor": {
+        "slide_index": 1.0,
+        "block_id": "blk_f5c6d7a2976c5dd54fb6eb7f",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 16.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_07",
+      "version_id": "pptx_07",
+      "score": -1.7656878232955933,
+      "text": "备份恢复的审批责任人为存储团队。",
+      "quote_hash": "3b1a957e2327eb0fc67264945f6f7f936d9db606d937ecfc17a34943eab09375",
+      "id": "chunk_09d8e6f822d97e4b2dd1d7262af3093242eba51f0ad879afb81ffc3cf7c4b280"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_37fb640f5a18a9dab8bc8550",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.39869281045751637,
+          0.12052112044648612
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_text_pdf_17",
+      "version_id": "text_pdf_17",
+      "score": -1.7656878232955933,
+      "text": "备份恢复的审批责任人为存储团队。",
+      "quote_hash": "3b1a957e2327eb0fc67264945f6f7f936d9db606d937ecfc17a34943eab09375",
+      "id": "chunk_6242578ed83e9c1d37d791b01248005d91addcd21b16c7632ce2901df827ef8a"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_28041d5d4a2a0f60aff10747",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 53.0,
+        "bbox": [
+          0.02520161122083664,
+          0.09375,
+          0.6270161271095276,
+          0.1875
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_17",
+      "version_id": "scan_pdf_17",
+      "score": -2.182464361190796,
+      "text": "Backup restoration requires approved recovery ticket.",
+      "quote_hash": "77220d217e30754fb4caed9c8ab3ec4bb61217fd51241a802202d2f22250012f",
+      "id": "chunk_2d86e87dc74cbb8308bc42700b76afb52a0ecd4fa72d9a6dacb9044b482898a8"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_37e73f283bc0017b3e928cbc",
+        "range": "B4",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 53.0
+      },
+      "representation_id": "rep_xlsx_12",
+      "version_id": "xlsx_12",
+      "score": -2.182464361190796,
+      "text": "Backup restoration requires approved recovery ticket.",
+      "quote_hash": "77220d217e30754fb4caed9c8ab3ec4bb61217fd51241a802202d2f22250012f",
+      "id": "chunk_4a50a65d1c7edab82af1e5ac5dbc0d89d513ef47105a62e72a259a9e55c73e9e"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_bc3e221148688205ac59408f",
+        "kind": "image_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 53.0,
+        "bbox": [
+          0.025925925925925925,
+          0.26036036036036037,
+          0.6274074074074074,
+          0.2954954954954955
+        ]
+      },
+      "representation_id": "rep_image_02",
+      "version_id": "image_02",
+      "score": -2.182464361190796,
+      "text": "Backup restoration requires approved recovery ticket.",
+      "quote_hash": "77220d217e30754fb4caed9c8ab3ec4bb61217fd51241a802202d2f22250012f",
+      "id": "chunk_6da55396f9cbbd0b2555aae6a4d25bb0172d638ce1955ae34c6e75d6bcf93d86"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_00bb12b6a64b96b2cf90c907",
+        "kind": "image_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 48.0,
+        "bbox": [
+          0.024444444444444446,
+          0.14864864864864866,
+          0.582962962962963,
+          0.18288288288288287
+        ]
+      },
+      "representation_id": "rep_image_02",
+      "version_id": "image_02",
+      "score": -2.3063595294952393,
+      "text": "Storage Team is responsible for approving backup",
+      "quote_hash": "a24ebc79a80d4b0970dc8f12f197a51341eadccf70d6581b232ebe034474a20f",
+      "id": "chunk_49ba149b8097a73393348afc28b47a994998760bf5656abf28f783c5d744a18c"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_02403dc7a66ab426c48b607b",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 48.0,
+        "bbox": [
+          0.024193547666072845,
+          0.3796875,
+          0.5831652879714966,
+          0.4734375
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_17",
+      "version_id": "scan_pdf_17",
+      "score": -2.3063595294952393,
+      "text": "Storage Team is responsible for approving backup",
+      "quote_hash": "a24ebc79a80d4b0970dc8f12f197a51341eadccf70d6581b232ebe034474a20f",
+      "id": "chunk_fb5eac2675a8418c3481641ded45070869c1a77b747129538ec3f689cbcfb188"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_00c98c92b99d931b07ea22cfc5643c47e28d8d87c2cacb5fa06788cb2bbb8cd8",
+      "version_id": "scan_pdf_17",
+      "text": "Backup restoration must be submitted through the recovery",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.3796875,
+          0.6900201439857483,
+          0.475
+        ],
+        "block_id": "blk_e3eda9c5d6250418986d96d8",
+        "char_end": 57,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_ff065ff6a5084522a242b8ce77c920b585780b42e26cf448cdb6f2ea9d4dfb9a",
+      "version_id": "image_02",
+      "text": "Backup restoration must be submitted through the recovery",
+      "anchor": {
+        "bbox": [
+          0.025925925925925925,
+          0.5522522522522523,
+          0.6888888888888889,
+          0.5864864864864865
+        ],
+        "block_id": "blk_4a2cb1ca0a55fdc4a1a957e7",
+        "char_end": 57,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_73653ef5b88f80687a22766c04e8b65df2c73efe66eac07f78205463036f4212",
+      "version_id": "xlsx_12",
+      "text": "Backup restoration must be submitted through the recovery console.",
+      "anchor": {
+        "block_id": "blk_344e739b0e417dad4972a945",
+        "char_end": 66,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B7",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_2d86e87dc74cbb8308bc42700b76afb52a0ecd4fa72d9a6dacb9044b482898a8",
+      "version_id": "scan_pdf_17",
+      "text": "Backup restoration requires approved recovery ticket.",
+      "anchor": {
+        "bbox": [
+          0.02520161122083664,
+          0.09375,
+          0.6270161271095276,
+          0.1875
+        ],
+        "block_id": "blk_28041d5d4a2a0f60aff10747",
+        "char_end": 53,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_4a50a65d1c7edab82af1e5ac5dbc0d89d513ef47105a62e72a259a9e55c73e9e",
+      "version_id": "xlsx_12",
+      "text": "Backup restoration requires approved recovery ticket.",
+      "anchor": {
+        "block_id": "blk_37e73f283bc0017b3e928cbc",
+        "char_end": 53,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B4",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_6da55396f9cbbd0b2555aae6a4d25bb0172d638ce1955ae34c6e75d6bcf93d86",
+      "version_id": "image_02",
+      "text": "Backup restoration requires approved recovery ticket.",
+      "anchor": {
+        "bbox": [
+          0.025925925925925925,
+          0.26036036036036037,
+          0.6274074074074074,
+          0.2954954954954955
+        ],
+        "block_id": "blk_bc3e221148688205ac59408f",
+        "char_end": 53,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_3b727579047d4566c24a0e0c7e64b4d6b5868e0236ef87c5f36a0ef97f0def52",
+      "version_id": "xlsx_12",
+      "text": "Emergency exceptions for backup restoration require written approval from the department head.",
+      "anchor": {
+        "block_id": "blk_cbc9b162239ec74b6323aabc",
+        "char_end": 94,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B6",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_258fa8079b2f2988acd7438a1dfa78083a3b2d5c80e52d7479e3e24a9684ec94",
+      "version_id": "scan_pdf_17",
+      "text": "Backup restoration must be submitted within 25 business",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.0921875,
+          0.6461693644523621,
+          0.18125
+        ],
+        "block_id": "blk_dc4f536881bdfbb699215fb6",
+        "char_end": 55,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    }
+  ]
+}

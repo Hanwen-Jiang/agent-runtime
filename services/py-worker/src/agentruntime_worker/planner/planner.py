@@ -115,7 +115,7 @@ class Planner:
         decided_by_reviewer = reviewer_decision(request.last_round, context=request.context) is not None
         signals = None if decided_by_reviewer else await self._classify(request, calls)
         decision = decide(signals, context=request.context, last_round=request.last_round, confidence_threshold=self.config.confidence_threshold)
-        if request.attachments and decision.level in ("fast", "light"):
+        if (request.attachments or request.context.has_collections) and decision.level in ("fast", "light"):
             decision = replace(decision, level="full", reasons=[*decision.reasons, "用户附件需用工具实际读取后作答"])
         if decision.level == "fast":
             stage = self._fast_stage(request, decision)

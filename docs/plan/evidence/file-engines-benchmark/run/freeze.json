@@ -1,0 +1,12 @@
+{
+  "frozen_before_execution": true,
+  "utc": "2026-11-09T21:05:55.501254+00:00",
+  "manifest_sha256": "3639f4f6d66325098d3530f797c74e32a2e36c032c9f75f7e07082eb1dbd2a17",
+  "generator_sha256": "a163539b9dfaffb1da093e3be605b22ec01b473da6e57e7d003b3d3f95f4cab7",
+  "corpus": "120 synthetic files, 690 automatic golden anchors, 100 synthetic relevance queries; human-reviewed anchors:0",
+  "raster_font": "STHeiti Medium.ttc from host OS; raster output only, font file not distributed",
+  "raster_font_sha256": "2d37f927fb4c24a2ba4d318b903a607f6b7ad4e5f365c26aba6aaccb84038beb",
+  "generation_python": "Python 3.14.5",
+  "pdf_generator": "reportlab==4.4.10; pypdf==6.19.0",
+  "repository_head": "fdac343dae9a893cb80692fa7c0da15538b40902"
+}

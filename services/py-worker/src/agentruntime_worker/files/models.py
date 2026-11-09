@@ -168,6 +168,12 @@ class Context:
             if status == "ready":
                 status = "partial"
         coverage = dict(coverage or {})
+        low_confidence = sum(bool(block.get("low_confidence")) for block in kept)
+        if low_confidence:
+            warnings.append({"code": "ocr_low_confidence", "message": f"{low_confidence} OCR text blocks are unconfirmed; review the original image before relying on them", "blocks": low_confidence})
+            coverage["ocr_low_confidence_blocks"] = low_confidence
+            if status == "ready":
+                status = "partial"
         coverage.update({"returned_blocks": len(kept), "output_truncated": clipped})
         manifest = engine_manifest()
         return {"status": status, "blocks": kept, "outline": outline or [], "warnings": warnings, "coverage": coverage,

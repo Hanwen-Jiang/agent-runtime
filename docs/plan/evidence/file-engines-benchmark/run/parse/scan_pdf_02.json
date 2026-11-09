@@ -1,0 +1,333 @@
+{
+  "evaluation": {
+    "id": "scan_pdf_02",
+    "family": "scan_pdf",
+    "variant": "scan_clean",
+    "language": "zh",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 9.270029658917338,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_e5457d42e920373e220fed6d"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_1530a3a0db21fd52e98c958a"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_8a352a7d780f841248d8039d"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_e01b09f09ccb4d5c9da5efd6"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_d931093e5116d405df5146a7"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_e90c9f2a42186a1f6aa52b69"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "raster_requires_human_visual_review",
+      "verified": null
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 6,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_pages": 3,
+      "processed_pages": [
+        0,
+        1,
+        2
+      ],
+      "unselected_pages": 0,
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_e5457d42e920373e220fed6d",
+        "kind": "ocr_text",
+        "text": "客户退款的提交期限为20个工作日。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.026209676638245583,
+            0.0984375,
+            0.3916330635547638,
+            0.184375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99992,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_1530a3a0db21fd52e98c958a",
+        "kind": "ocr_text",
+        "text": "客户退款的审批责任人为客服。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.026209676638245583,
+            0.2765625,
+            0.34375,
+            0.3609375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99992,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_8a352a7d780f841248d8039d",
+        "kind": "ocr_text",
+        "text": "客户退款必须提供原始订单。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.025705644860863686,
+            0.096875,
+            0.32157257199287415,
+            0.1859375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99961,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_e01b09f09ccb4d5c9da5efd6",
+        "kind": "ocr_text",
+        "text": "客户退款记录须保留9个月。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.025705644860863686,
+            0.2734375,
+            0.3109878897666931,
+            0.3609375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99986,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_d931093e5116d405df5146a7",
+        "kind": "ocr_text",
+        "text": "客户退款的紧急例外需要部门负责人书面批准。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.02671370841562748,
+            0.0984375,
+            0.5045362710952759,
+            0.1828125
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99945,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_e90c9f2a42186a1f6aa52b69",
+        "kind": "ocr_text",
+        "text": "客户退款必须通过客服工单提交。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.026209676638245583,
+            0.2765625,
+            0.36643144488334656,
+            0.3609375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99988,
+        "low_confidence": false
+      }
+    ],
+    "outline": [
+      {
+        "kind": "pdf",
+        "pages": 3
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_pages": 3,
+      "processed_pages": [
+        0,
+        1,
+        2
+      ],
+      "unselected_pages": 0,
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_02/page-00000.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "cd4bbb42f094b75b4a8481f71546318dcc008044e6053badb0536e205e052451",
+        "size_bytes": 237928
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_02/page-00001.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "fd0c0c375c423b9cd1aa1d3a46bfa12371fcb92a5ddd124004553183eb2dd0b1",
+        "size_bytes": 216165
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_02/page-00002.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "51d586aef8d8380ef78f5d142777016308272204c2d222a1b16611179e465d51",
+        "size_bytes": 281804
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_02/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "ad64b160eb34529bf3544982500fe0239e73ebd3f8b9f8f4324908bb66fcd258",
+        "size_bytes": 4255
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "6a439c452ca6fcebed5f4bc33e80cb6b80244fc4849147039fb4d8fa713c95bf",
+      "size_bytes": 68622,
+      "mime_type": "application/pdf"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "a108fe22c857e2878460d20b6ff4c4fd7970799840268863fa16cf2c014bfa24"
+    }
+  }
+}

@@ -254,6 +254,10 @@ class ToolCallInput:
     effect: str
     # 通过的人工审批；只有 effect 为 write_irreversible 的调用有，审批 id 是 <node_id>.1（D16）。
     gate: GateRecord | None = None
+    # Trusted workflow fields, not model-supplied tool arguments. Old pending
+    # SubAgentWorkflow activities are also detected from Temporal activity info.
+    isolated: bool = False
+    file_scopes: list[dict[str, Any]] | None = None
 
 
 @dataclass

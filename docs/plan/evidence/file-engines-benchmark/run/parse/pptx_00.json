@@ -1,0 +1,374 @@
+{
+  "evaluation": {
+    "id": "pptx_00",
+    "family": "pptx",
+    "variant": "slides_text_table_notes",
+    "language": "en",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 0.055182608077302575,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_8290577bfb001bc429e0305f"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_bab1e6c5074b5fab9a6c8f87"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_879b664e7d11476be37ca7b8"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_e4a1b071eb95ed3be3ce6b80"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_9cd35796183df4571a52010e"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_a2ab6de5fc95563b04fd5346"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "raw_ooxml",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_slides": 6,
+      "processed_slides": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "charts_visual_only": true,
+      "returned_blocks": 13,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_8290577bfb001bc429e0305f",
+        "kind": "text",
+        "text": "Remote work requests must be submitted within 10 business days.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 0,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_7d4488700b425fc930cc6cb0",
+        "kind": "notes",
+        "text": "Speaker note 0/0: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 0,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_bab1e6c5074b5fab9a6c8f87",
+        "kind": "text",
+        "text": "Team Lead is responsible for approving remote work requests.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 1,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_d6a1d7de822112b08c116e5a",
+        "kind": "notes",
+        "text": "Speaker note 0/1: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 1,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_879b664e7d11476be37ca7b8",
+        "kind": "text",
+        "text": "Remote work requests requires coverage schedule.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 2,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_2143ec976b8991f2063a73b6",
+        "kind": "table",
+        "text": "Review\t\n\tComplete",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 2,
+          "shape_id": 3,
+          "bbox": [
+            0.05,
+            0.5333333333333333,
+            0.55,
+            0.6666666666666666
+          ]
+        }
+      },
+      {
+        "id": "blk_73d0a13f84317961c2c0047f",
+        "kind": "notes",
+        "text": "Speaker note 0/2: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 2,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_e4a1b071eb95ed3be3ce6b80",
+        "kind": "text",
+        "text": "Records for remote work requests must be retained for 20 months.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 3,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_549ae5bf3a0c81fe06257db3",
+        "kind": "notes",
+        "text": "Speaker note 0/3: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 3,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_9cd35796183df4571a52010e",
+        "kind": "text",
+        "text": "Emergency exceptions for remote work requests require written approval from the department head.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 4,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_1ae67db437a2b86266089897",
+        "kind": "notes",
+        "text": "Speaker note 0/4: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 4,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_a2ab6de5fc95563b04fd5346",
+        "kind": "text",
+        "text": "Remote work requests must be submitted through the workforce portal.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 5,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_19e7ff516f4f17fc161def89",
+        "kind": "notes",
+        "text": "Speaker note 0/5: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 5,
+          "part": "notes"
+        }
+      }
+    ],
+    "outline": [
+      {
+        "kind": "slide",
+        "slide_index": 0,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 1,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 2,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 3,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 4,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 5,
+        "title": ""
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_slides": 6,
+      "processed_slides": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "charts_visual_only": true,
+      "returned_blocks": 13,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/pptx_00/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "1e28ef105b785e10374e21d5bbd79b2fdbc1f748f1f02797bbff73a1252106a6",
+        "size_bytes": 4126
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "b6a210c3487125b826f842437d7c233322e256f56d7a4b67fdfe367649d9cf3c",
+      "size_bytes": 43031,
+      "mime_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "3555600d2cc3ddf5685a8401ee2cded590e598f382516d69e80bf06e47c783b3"
+    }
+  }
+}

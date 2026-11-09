@@ -1,0 +1,389 @@
+{
+  "id": "q16_4",
+  "query": "Which channel should I use to file inventory reconciliation? Compare the documents.",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "image_01",
+      "pptx_06",
+      "scan_pdf_16",
+      "text_pdf_16",
+      "xlsx_11"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.4,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.4703652827859579,
+    "relevant_files": [
+      "pptx_06",
+      "text_pdf_16"
+    ],
+    "expected_files": [
+      "text_pdf_16",
+      "scan_pdf_16",
+      "xlsx_11",
+      "pptx_06",
+      "image_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 15.062120044603944
+  },
+  "hybrid": {
+    "recall_at_8": 0.4,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.5531464700081437,
+    "relevant_files": [
+      "pptx_06",
+      "text_pdf_16"
+    ],
+    "expected_files": [
+      "text_pdf_16",
+      "scan_pdf_16",
+      "xlsx_11",
+      "pptx_06",
+      "image_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 4495.955045800656
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_b8f9bfc34365bea3eebc130f",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 72.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_06",
+      "version_id": "pptx_06",
+      "score": 2.1775290966033936,
+      "text": "Inventory reconciliation must be submitted through the inventory ledger.",
+      "quote_hash": "8bc54142ddf8ea34cb99683e2ef7dc5f8ee97a58c11575c0cc42557d737bf411",
+      "id": "chunk_873ddf1497deda796181b8fd4507a7a646d4de677a3868edfeb33da06b8c6224"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_b326a0aaf9a3acd7b1fbeb3f",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 115.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 5.0
+      },
+      "representation_id": "rep_text_pdf_16",
+      "version_id": "text_pdf_16",
+      "score": -0.4959281086921692,
+      "text": "Synthetic policy edition / 合成政策版本 — page 6\nInventory reconciliation must be submitted through the inventory\nledger.",
+      "quote_hash": "67696763bbe073ead48bda82d555ebce36fa328e2a197f995707c0a72c4d03d3",
+      "id": "chunk_6de0d8544b35097b3a36a283cedb316dd77559205d1a0aeb5b5e914166005a6b"
+    },
+    {
+      "anchor": {
+        "slide_index": 1.0,
+        "block_id": "blk_2a581f588a21db168a1a1147",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 72.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_06",
+      "version_id": "pptx_06",
+      "score": -0.7049462199211121,
+      "text": "Inventory Control is responsible for approving inventory reconciliation.",
+      "quote_hash": "88a554a181191476a7f9a8f05e6e93076fde6aac1fa1a8113890e611ae838ba1",
+      "id": "chunk_ddf8b9aaee96a545169c43e0635f66b9cc1d8f9262472cfbbeab03ef25b492a7"
+    },
+    {
+      "anchor": {
+        "slide_index": 2.0,
+        "block_id": "blk_fbae10c5e89fe48e8cd3308e",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 53.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_06",
+      "version_id": "pptx_06",
+      "score": -0.9161443114280701,
+      "text": "Inventory reconciliation requires signed stock count.",
+      "quote_hash": "d3a13097814fa6c6a7430cd94768889508c9242b3670d748eabce1dd06d5bb7e",
+      "id": "chunk_1f1941e4329086bfbd64b763a6844d37d31d596565b1c4730b9171f50b647367"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_1ca27ecd4f6f915dd1ed084d",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 96.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_text_pdf_16",
+      "version_id": "text_pdf_16",
+      "score": -2.2514729499816895,
+      "text": "Synthetic policy edition / 合成政策版本 — page 3\nInventory reconciliation requires signed stock count.",
+      "quote_hash": "e70700597514df1279df9ce0a03323ae3d9b67a57caca37e9369e9e8a0558ab8",
+      "id": "chunk_8f575843b54e38a26adb6f25d9efc8c79cc60579fab25b0139f2aa6cf9f40af8"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_ff413fd9f915674c3daaac78",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 115.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_text_pdf_16",
+      "version_id": "text_pdf_16",
+      "score": -2.3836376667022705,
+      "text": "Synthetic policy edition / 合成政策版本 — page 2\nInventory Control is responsible for approving inventory\nreconciliation.",
+      "quote_hash": "1e2f2668219e7c77a11ff1fccd4710eba5e96908bf5ed6221aaa25271fa2aaf5",
+      "id": "chunk_3cca1019910ceaf30d2ad825a09f4ed1aecd2a8b513e275a3b5104b3519aa127"
+    },
+    {
+      "anchor": {
+        "slide_index": 0.0,
+        "block_id": "blk_595ed4aa7773d60ae8e603a5",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 67.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_06",
+      "version_id": "pptx_06",
+      "score": -2.734834909439087,
+      "text": "Inventory reconciliation must be submitted within 27 business days.",
+      "quote_hash": "c651b6e045653a83dc6ccbb9fc65e25bcb352d82dd30ac32ccc1c79ef1bc61df",
+      "id": "chunk_b3780bf82777d0c6404ff8c73f18a3a042afd45cb8e508504ba491b87bba7914"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_45a8b0cec23b69479c937c4b",
+        "kind": "image_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 27.0,
+        "bbox": [
+          0.02666666666666667,
+          0.6414414414414414,
+          0.3214814814814815,
+          0.672972972972973
+        ]
+      },
+      "representation_id": "rep_image_00",
+      "version_id": "image_00",
+      "score": -2.8634374141693115,
+      "text": "through the security inbox.",
+      "quote_hash": "30b45d787ba1efee734b517a9787645c23bc722ed7af6ec3661719aa745b6317",
+      "id": "chunk_2e535f7f2a17bb36a7c25b41426b26f53bf0f8165726c8098ddff11d53ca9a3a"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_873ddf1497deda796181b8fd4507a7a646d4de677a3868edfeb33da06b8c6224",
+      "version_id": "pptx_06",
+      "text": "Inventory reconciliation must be submitted through the inventory ledger.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_b8f9bfc34365bea3eebc130f",
+        "char_end": 72,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_ddf8b9aaee96a545169c43e0635f66b9cc1d8f9262472cfbbeab03ef25b492a7",
+      "version_id": "pptx_06",
+      "text": "Inventory Control is responsible for approving inventory reconciliation.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_2a581f588a21db168a1a1147",
+        "char_end": 72,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_1f1941e4329086bfbd64b763a6844d37d31d596565b1c4730b9171f50b647367",
+      "version_id": "pptx_06",
+      "text": "Inventory reconciliation requires signed stock count.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_fbae10c5e89fe48e8cd3308e",
+        "char_end": 53,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_a1af8a9632fcea26e3b4d78b79a4bf620e2c10a73ef4caa3eb2121a50553015e",
+      "version_id": "pptx_06",
+      "text": "Emergency exceptions for inventory reconciliation require written approval from the department head.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_3b9a3be74d19aee6ff76fd6a",
+        "char_end": 100,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 4.0
+      }
+    },
+    {
+      "id": "chunk_6de0d8544b35097b3a36a283cedb316dd77559205d1a0aeb5b5e914166005a6b",
+      "version_id": "text_pdf_16",
+      "text": "Synthetic policy edition / 合成政策版本 — page 6\nInventory reconciliation must be submitted through the inventory\nledger.",
+      "anchor": {
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "block_id": "blk_b326a0aaf9a3acd7b1fbeb3f",
+        "char_end": 115,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_b3780bf82777d0c6404ff8c73f18a3a042afd45cb8e508504ba491b87bba7914",
+      "version_id": "pptx_06",
+      "text": "Inventory reconciliation must be submitted within 27 business days.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_595ed4aa7773d60ae8e603a5",
+        "char_end": 67,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_a9f39d1e9adf13b28d31e70ac56ebe9f103bb6e138e30aac99be5f8e8cbbded8",
+      "version_id": "pptx_06",
+      "text": "Records for inventory reconciliation must be retained for 7 months.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_ced0387051e2f5b05ddd25fe",
+        "char_end": 67,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_3cca1019910ceaf30d2ad825a09f4ed1aecd2a8b513e275a3b5104b3519aa127",
+      "version_id": "text_pdf_16",
+      "text": "Synthetic policy edition / 合成政策版本 — page 2\nInventory Control is responsible for approving inventory\nreconciliation.",
+      "anchor": {
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "block_id": "blk_ff413fd9f915674c3daaac78",
+        "char_end": 115,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    }
+  ]
+}

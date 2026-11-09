@@ -1,0 +1,336 @@
+{
+  "id": "q10_1",
+  "query": "Who signs off on remote work requests according to the different documents?",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_10",
+      "pptx_00",
+      "scan_pdf_10",
+      "table_00",
+      "text_pdf_10",
+      "xlsx_05"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.14285714285714285,
+    "unique_source_ndcg_at_8": 0.1963279042557385,
+    "relevant_files": [
+      "docx_10",
+      "pptx_00"
+    ],
+    "expected_files": [
+      "text_pdf_10",
+      "scan_pdf_10",
+      "docx_10",
+      "xlsx_05",
+      "pptx_00",
+      "table_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 15.671123983338475
+  },
+  "hybrid": {
+    "recall_at_8": 0.6666666666666666,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7751482523375256,
+    "relevant_files": [
+      "docx_10",
+      "pptx_00",
+      "table_00",
+      "text_pdf_10"
+    ],
+    "expected_files": [
+      "text_pdf_10",
+      "scan_pdf_10",
+      "docx_10",
+      "xlsx_05",
+      "pptx_00",
+      "table_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.5,
+    "latency_ms": 4042.0940739568323
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_4bd2cc866d93e6608c1f1a9b",
+        "kind": "document_block",
+        "block_index": 2.0,
+        "char_end": 60.0
+      },
+      "representation_id": "rep_docx_10",
+      "version_id": "docx_10",
+      "score": -0.26664623618125916,
+      "text": "Team Lead is responsible for approving remote work requests.",
+      "quote_hash": "6839052982417f78d1e6caa0026f5efbcd06500587d76e5d9c88b1e94cb2e5d8",
+      "id": "chunk_e39f6b458c7672e3e07cc821bf8c6a080e50b028fedae76d681fc97ea17fca10"
+    },
+    {
+      "anchor": {
+        "slide_index": 1.0,
+        "block_id": "blk_bab1e6c5074b5fab9a6c8f87",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 60.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_00",
+      "version_id": "pptx_00",
+      "score": -0.26664623618125916,
+      "text": "Team Lead is responsible for approving remote work requests.",
+      "quote_hash": "6839052982417f78d1e6caa0026f5efbcd06500587d76e5d9c88b1e94cb2e5d8",
+      "id": "chunk_fc0d26fe23d10a444f2fa5c374ae54076b73e9fd5fd225f4073510af88dd5780"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_b500487e9f8fdee16ba6041b",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 103.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_text_pdf_10",
+      "version_id": "text_pdf_10",
+      "score": -0.9975489974021912,
+      "text": "Synthetic policy edition / 合成政策版本 — page 2\nTeam Lead is responsible for approving remote work requests.",
+      "quote_hash": "1c216ba915c83118749130e09412764d259f7561ead8508294e2157338b30430",
+      "id": "chunk_f06e87194680ce70c8d0d92b5a340bba76eb796eef437a479f00af96f7eda723"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_f25397b5144425fb2af89800",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 27.0,
+        "row_index": 1.0
+      },
+      "representation_id": "rep_table_00",
+      "version_id": "table_00",
+      "score": -1.2280535697937012,
+      "text": "1\t远程办公申请的审批责任人为团队主管。\t1\twest",
+      "quote_hash": "b9f8963f2586bff00e0dfc7dc7aff10cf0610ab7d041a2d07a674a5e19c0ac11",
+      "id": "chunk_beee122e9668718d1749fd4d6f6aacb6b0c4af31e62b096ca11bf83a0ab8b489"
+    },
+    {
+      "anchor": {
+        "slide_index": 4.0,
+        "block_id": "blk_9cd35796183df4571a52010e",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 96.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_00",
+      "version_id": "pptx_00",
+      "score": -1.530261516571045,
+      "text": "Emergency exceptions for remote work requests require written approval from the department head.",
+      "quote_hash": "e3f855d378df0612f3158ac24928ed73d7cb62f642395bed843e88a84221a16f",
+      "id": "chunk_8334dcb2d87afe8a3e163775e59254a90d2d7d17a7dd055128846f1700c1a0e7"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_664519d3887cbffe4882447f",
+        "kind": "document_block",
+        "block_index": 5.0,
+        "char_end": 96.0
+      },
+      "representation_id": "rep_docx_10",
+      "version_id": "docx_10",
+      "score": -1.530261516571045,
+      "text": "Emergency exceptions for remote work requests require written approval from the department head.",
+      "quote_hash": "e3f855d378df0612f3158ac24928ed73d7cb62f642395bed843e88a84221a16f",
+      "id": "chunk_a39dc6b6e5f51aac6eb42620d1ad094b2a2db6b0756969c925552e661c5f76ce"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_622bf84079339a6850ae1c83",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 32.0,
+        "row_index": 4.0
+      },
+      "representation_id": "rep_table_00",
+      "version_id": "table_00",
+      "score": -1.7041335105895996,
+      "text": "4\t远程办公申请的紧急例外需要部门负责人书面批准。\t4\teast",
+      "quote_hash": "a61d8c4084484bf16b95b3746f1331d06c54e907066fbd5593a8a3fe5c8f59e0",
+      "id": "chunk_ff8a2b288fa6fa2991b16b4c85a994b2b972e30ed06bdf1004ee7cac7ef4b969"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_6c38548e89d6252f4f74eb0f",
+        "range": "B6",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 23.0
+      },
+      "representation_id": "rep_xlsx_05",
+      "version_id": "xlsx_05",
+      "score": -1.73124361038208,
+      "text": "远程办公申请的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "94b7f2706911bb414c1ba78f4b8b30183c9702d9f0695c41919c08343b1fb771",
+      "id": "chunk_12f234f76e948fe849ce96c78c09e5024ce0c1f9eb4a9df76adacfa49caffb3b"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_d584a620d937ac1817f7b3d4414a72c5e7a17350e692efcfa49add0501cf99b0",
+      "version_id": "pptx_00",
+      "text": "Remote work requests requires coverage schedule.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_879b664e7d11476be37ca7b8",
+        "char_end": 48,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_dcefc269cfbfe9c01b364d18ad2cbb21d312c4f0cf985ea1a923e665abd92691",
+      "version_id": "docx_10",
+      "text": "Remote work requests requires coverage schedule.",
+      "anchor": {
+        "block_id": "blk_a44c6d295794763f10596bd6",
+        "block_index": 3.0,
+        "char_end": 48,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_0f0524c6765a4a99a1380a77c1d7c6e5cad5f3496521f413dbdb280ad2296f06",
+      "version_id": "docx_10",
+      "text": "Remote work requests must be submitted through the workforce portal.",
+      "anchor": {
+        "block_id": "blk_79fafb80feed17e0cc75ca18",
+        "block_index": 6.0,
+        "char_end": 68,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_508e2467d5c2fdfd97793aae94fa26842e50bcee095606c8a95b1f747d609f80",
+      "version_id": "pptx_00",
+      "text": "Remote work requests must be submitted through the workforce portal.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_a2ab6de5fc95563b04fd5346",
+        "char_end": 68,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_8334dcb2d87afe8a3e163775e59254a90d2d7d17a7dd055128846f1700c1a0e7",
+      "version_id": "pptx_00",
+      "text": "Emergency exceptions for remote work requests require written approval from the department head.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_9cd35796183df4571a52010e",
+        "char_end": 96,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 4.0
+      }
+    },
+    {
+      "id": "chunk_a39dc6b6e5f51aac6eb42620d1ad094b2a2db6b0756969c925552e661c5f76ce",
+      "version_id": "docx_10",
+      "text": "Emergency exceptions for remote work requests require written approval from the department head.",
+      "anchor": {
+        "block_id": "blk_664519d3887cbffe4882447f",
+        "block_index": 5.0,
+        "char_end": 96,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_e39f6b458c7672e3e07cc821bf8c6a080e50b028fedae76d681fc97ea17fca10",
+      "version_id": "docx_10",
+      "text": "Team Lead is responsible for approving remote work requests.",
+      "anchor": {
+        "block_id": "blk_4bd2cc866d93e6608c1f1a9b",
+        "block_index": 2.0,
+        "char_end": 60,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_fc0d26fe23d10a444f2fa5c374ae54076b73e9fd5fd225f4073510af88dd5780",
+      "version_id": "pptx_00",
+      "text": "Team Lead is responsible for approving remote work requests.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_bab1e6c5074b5fab9a6c8f87",
+        "char_end": 60,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 1.0
+      }
+    }
+  ]
+}

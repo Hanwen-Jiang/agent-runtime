@@ -1,0 +1,264 @@
+{
+  "evaluation": {
+    "id": "table_01",
+    "family": "table",
+    "variant": "quoted_delimited_table",
+    "language": "en",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 0.016487669898197055,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.9492,
+        "candidate_ids": [
+          "blk_3c48d584afe7f7aa38d11ee1"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.9508,
+        "candidate_ids": [
+          "blk_db5af4b819c72f7bc0c6649f"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.9434,
+        "candidate_ids": [
+          "blk_e126f3cffe2f575ca9d85e61"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.9492,
+        "candidate_ids": [
+          "blk_6e4b1551a718084516d63e85"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.9663,
+        "candidate_ids": [
+          "blk_47191a1dbf31682cf9b6b0f2"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.9524,
+        "candidate_ids": [
+          "blk_456f14dd60e10de2b24b308c"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "source_structure",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_rows": 6,
+      "start": 0,
+      "returned": 6,
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_3c48d584afe7f7aa38d11ee1",
+        "kind": "row",
+        "text": "0\tTraining reimbursement must be submitted within 23 business days.\t0\teast",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "csv",
+          "row_index": 0
+        },
+        "values": [
+          "0",
+          "Training reimbursement must be submitted within 23 business days.",
+          "0",
+          "east"
+        ]
+      },
+      {
+        "id": "blk_db5af4b819c72f7bc0c6649f",
+        "kind": "row",
+        "text": "1\tLearning Team is responsible for approving training reimbursement.\t1\twest",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "csv",
+          "row_index": 1
+        },
+        "values": [
+          "1",
+          "Learning Team is responsible for approving training reimbursement.",
+          "1",
+          "west"
+        ]
+      },
+      {
+        "id": "blk_e126f3cffe2f575ca9d85e61",
+        "kind": "row",
+        "text": "2\tTraining reimbursement requires completion certificate.\t2\teast",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "csv",
+          "row_index": 2
+        },
+        "values": [
+          "2",
+          "Training reimbursement requires completion certificate.",
+          "2",
+          "east"
+        ]
+      },
+      {
+        "id": "blk_6e4b1551a718084516d63e85",
+        "kind": "row",
+        "text": "3\tRecords for training reimbursement must be retained for 23 months.\t3\twest",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "csv",
+          "row_index": 3
+        },
+        "values": [
+          "3",
+          "Records for training reimbursement must be retained for 23 months.",
+          "3",
+          "west"
+        ]
+      },
+      {
+        "id": "blk_47191a1dbf31682cf9b6b0f2",
+        "kind": "row",
+        "text": "4\tEmergency exceptions for training reimbursement require written approval from the department head.\t4\teast",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "csv",
+          "row_index": 4
+        },
+        "values": [
+          "4",
+          "Emergency exceptions for training reimbursement require written approval from the department head.",
+          "4",
+          "east"
+        ]
+      },
+      {
+        "id": "blk_456f14dd60e10de2b24b308c",
+        "kind": "row",
+        "text": "5\tTraining reimbursement must be submitted through the learning portal.\t5\twest",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "csv",
+          "row_index": 5
+        },
+        "values": [
+          "5",
+          "Training reimbursement must be submitted through the learning portal.",
+          "5",
+          "west"
+        ]
+      }
+    ],
+    "outline": [
+      {
+        "kind": "table",
+        "columns": [
+          "id",
+          "clause",
+          "amount",
+          "region"
+        ],
+        "rows": 6
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_rows": 6,
+      "start": 0,
+      "returned": 6,
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/table_01/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "c3b78931708cf615eba509d7438ad4e51691d0d1daab76b84fb04e10e9908282",
+        "size_bytes": 3122
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "298d50e2bd8187a0f6425282fc84e6878f7a1cb6af1e9727fae807975af2cff7",
+      "size_bytes": 510,
+      "mime_type": "text/csv"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "e6b8b22855172195bd72b85fa42769bbd23acd55f22556fa3ba98f7760ddbb7c"
+    }
+  }
+}

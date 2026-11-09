@@ -1,0 +1,418 @@
+{
+  "evaluation": {
+    "id": "scan_pdf_17",
+    "family": "scan_pdf",
+    "variant": "scan_clean",
+    "language": "en",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 12.36591149494052,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.96,
+        "candidate_ids": []
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8842,
+        "candidate_ids": []
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_28041d5d4a2a0f60aff10747"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.9388,
+        "candidate_ids": []
+      },
+      {
+        "fact": 4,
+        "text_found": false,
+        "anchor_found": true,
+        "best_block_similarity": 0.6102,
+        "candidate_ids": []
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.9346,
+        "candidate_ids": []
+      }
+    ],
+    "independent": {
+      "method": "raster_requires_human_visual_review",
+      "verified": null
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 11,
+      "low_confidence_blocks": 1
+    },
+    "coverage": {
+      "total_pages": 3,
+      "processed_pages": [
+        0,
+        1,
+        2
+      ],
+      "unselected_pages": 0,
+      "returned_blocks": 11,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_dc4f536881bdfbb699215fb6",
+        "kind": "ocr_text",
+        "text": "Backup restoration must be submitted within 25 business",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.025705644860863686,
+            0.0921875,
+            0.6461693644523621,
+            0.18125
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.98924,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_cc8b030ec1d0b5d33e0cd1e0",
+        "kind": "ocr_text",
+        "text": "days.",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.024697579443454742,
+            0.20625,
+            0.09072580188512802,
+            0.2984375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99975,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_02403dc7a66ab426c48b607b",
+        "kind": "ocr_text",
+        "text": "Storage Team is responsible for approving backup",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.024193547666072845,
+            0.3796875,
+            0.5831652879714966,
+            0.4734375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.9855,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_a2091b8119c77182cfc93366",
+        "kind": "ocr_text",
+        "text": "restoration.",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.02520161122083664,
+            0.4984375,
+            0.15372984111309052,
+            0.5765625
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99996,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_28041d5d4a2a0f60aff10747",
+        "kind": "ocr_text",
+        "text": "Backup restoration requires approved recovery ticket.",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.02520161122083664,
+            0.09375,
+            0.6270161271095276,
+            0.1875
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99833,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_5463d8f4992c5ac015987dd5",
+        "kind": "ocr_text",
+        "text": "Records for backup restoration must be retained for 24",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.025705644860863686,
+            0.2734375,
+            0.6330645084381104,
+            0.3578125
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99228,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_dd1380abee117a470522ab30",
+        "kind": "ocr_text",
+        "text": "months.",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.025705644860863686,
+            0.3859375,
+            0.11794354766607285,
+            0.4640625
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99996,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_9f74a05d02611b8043ab086a",
+        "kind": "ocr_text",
+        "text": "Em  irm  buire",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.026209676638245583,
+            0.0953125,
+            0.6194556355476379,
+            0.184375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.62216,
+        "low_confidence": true
+      },
+      {
+        "id": "blk_dce4c70aea6bb4b9c563b3bb",
+        "kind": "ocr_text",
+        "text": "written approval from the department head.",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.026209676638245583,
+            0.2109375,
+            0.524193525314331,
+            0.290625
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99501,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_e3eda9c5d6250418986d96d8",
+        "kind": "ocr_text",
+        "text": "Backup restoration must be submitted through the recovery",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.025705644860863686,
+            0.3796875,
+            0.6900201439857483,
+            0.475
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.9956,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_7b31990c868abb6c8fc93fa2",
+        "kind": "ocr_text",
+        "text": "console.",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.025705644860863686,
+            0.5,
+            0.12348789721727371,
+            0.578125
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99975,
+        "low_confidence": false
+      }
+    ],
+    "outline": [
+      {
+        "kind": "pdf",
+        "pages": 3
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_pages": 3,
+      "processed_pages": [
+        0,
+        1,
+        2
+      ],
+      "unselected_pages": 0,
+      "returned_blocks": 11,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_17/page-00000.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "30b092f53ca6c210fb2dd2de182dd499c2c3e33a2a63f1b2a915528e42360dc6",
+        "size_bytes": 363272
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_17/page-00001.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "a55707bf1b3c7c101d7fc5135baf37b6adb8b8a3f24846aa49ddcf944d6ee9ec",
+        "size_bytes": 334275
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_17/page-00002.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "21a2e5381630c6a00482a2f7587587529f853b24d6017fc13be59b5b095539c0",
+        "size_bytes": 459760
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_17/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "7b936cb2c6b4303202cbc91ad64340e4a2d151d938e2f49c4cc3d33a9f50dab7",
+        "size_bytes": 5826
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "3e22bf9f652e9b3240bc67a82e0b2d5d42df21c5c2bec7a396ffab5976666910",
+      "size_bytes": 97414,
+      "mime_type": "application/pdf"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "a108fe22c857e2878460d20b6ff4c4fd7970799840268863fa16cf2c014bfa24"
+    }
+  }
+}

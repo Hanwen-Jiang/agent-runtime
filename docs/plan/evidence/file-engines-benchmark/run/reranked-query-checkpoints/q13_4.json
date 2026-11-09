@@ -1,0 +1,348 @@
+{
+  "id": "q13_4",
+  "query": "Which channel should I use to file customer data deletion? Compare the documents.",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_13",
+      "pptx_03",
+      "table_03",
+      "text_pdf_13",
+      "xlsx_08"
+    ],
+    "extraction_chunking_recall_ceiling": 0.8333333333333334
+  },
+  "exact": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.25,
+    "unique_source_ndcg_at_8": 0.22578419899983798,
+    "relevant_files": [
+      "table_03",
+      "xlsx_08"
+    ],
+    "expected_files": [
+      "text_pdf_13",
+      "scan_pdf_13",
+      "docx_13",
+      "xlsx_08",
+      "pptx_03",
+      "table_03"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 15.43498900718987
+  },
+  "hybrid": {
+    "recall_at_8": 0.8333333333333334,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.8922108454754891,
+    "relevant_files": [
+      "docx_13",
+      "pptx_03",
+      "table_03",
+      "text_pdf_13",
+      "xlsx_08"
+    ],
+    "expected_files": [
+      "text_pdf_13",
+      "scan_pdf_13",
+      "docx_13",
+      "xlsx_08",
+      "pptx_03",
+      "table_03"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.625,
+    "latency_ms": 5215.972805861384
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_27d41169a734b6ddf97c4aeb",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 17.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.4199346405228758,
+          0.12052112044648612
+        ],
+        "page_index": 5.0
+      },
+      "representation_id": "rep_text_pdf_13",
+      "version_id": "text_pdf_13",
+      "score": 3.277306079864502,
+      "text": "客户数据删除必须通过隐私平台提交。",
+      "quote_hash": "ff47e24cf093d4a379e6ea12c51e4ad2949d614132803415344f5eb8f1f943a4",
+      "id": "chunk_0f6a3fdc38fdf7553c54b836fe79fe72697b00e692c2e26dc7e2f78298e0a5b0"
+    },
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_e356e5fd8bb9ba18d464b035",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 17.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_03",
+      "version_id": "pptx_03",
+      "score": 3.277306079864502,
+      "text": "客户数据删除必须通过隐私平台提交。",
+      "quote_hash": "ff47e24cf093d4a379e6ea12c51e4ad2949d614132803415344f5eb8f1f943a4",
+      "id": "chunk_8273c876a89355b04d3736ee3f142c89f01ff69f36cda9e1213e86c8d6b622a1"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_b4a46f8a8639e99d6a28e0d0",
+        "kind": "document_block",
+        "block_index": 6.0,
+        "char_end": 17.0
+      },
+      "representation_id": "rep_docx_13",
+      "version_id": "docx_13",
+      "score": 3.277306079864502,
+      "text": "客户数据删除必须通过隐私平台提交。",
+      "quote_hash": "ff47e24cf093d4a379e6ea12c51e4ad2949d614132803415344f5eb8f1f943a4",
+      "id": "chunk_e4631b5c4b41fbb7a5198517a4db0b1bfc0432f0f7eb31c78e22507dfb06da72"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_4848074966a0541369adc0c1",
+        "range": "B7",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 68.0
+      },
+      "representation_id": "rep_xlsx_08",
+      "version_id": "xlsx_08",
+      "score": 2.3101871013641357,
+      "text": "Customer data deletion must be submitted through the privacy portal.",
+      "quote_hash": "d3bbc2b4faec6da65c1795c0394842213178474ec1b0a1d96f196a4f43c1867b",
+      "id": "chunk_6753be6497d785547baa2a9ba96e6f2d3b24f0b44cc911b838d64d57bf5702cd"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_c5576bdc681a1a128d491606",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 77.0,
+        "row_index": 5.0
+      },
+      "representation_id": "rep_table_03",
+      "version_id": "table_03",
+      "score": 1.8987228870391846,
+      "text": "5\tCustomer data deletion must be submitted through the privacy portal.\t5\twest",
+      "quote_hash": "3c01a4684c444b0a03f53bd960fc47666bc7cf32fed8f24fba97b72660ac5faa",
+      "id": "chunk_8564d7f5955cbe2075069c370f0d1366091d288615b9a0c7de8c4f67564bae7f"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_9760ed523193d0aef1b0a302",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 18.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.4411764705882353,
+          0.12052112044648612
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_text_pdf_13",
+      "version_id": "text_pdf_13",
+      "score": 0.16330371797084808,
+      "text": "客户数据删除必须提供已验证删除请求。",
+      "quote_hash": "c3444d7cd0705aed2e971fc7f903421f99b5c991f9a07c200638ecf30febfb33",
+      "id": "chunk_61e4501d50c1f9aa1045fcd36486cdc25a675c0431fd686a3e372e216c0cba83"
+    },
+    {
+      "anchor": {
+        "slide_index": 2.0,
+        "block_id": "blk_7fdc61c50b0de2fbc75a85f4",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 18.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_03",
+      "version_id": "pptx_03",
+      "score": 0.16330371797084808,
+      "text": "客户数据删除必须提供已验证删除请求。",
+      "quote_hash": "c3444d7cd0705aed2e971fc7f903421f99b5c991f9a07c200638ecf30febfb33",
+      "id": "chunk_a4c3a6ea4d07b3f6187395980f3b857b29c012ebcea771caeb2eabae614e12d2"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_cfb3ad2e3b76dab25af831ea",
+        "kind": "document_block",
+        "block_index": 3.0,
+        "char_end": 18.0
+      },
+      "representation_id": "rep_docx_13",
+      "version_id": "docx_13",
+      "score": 0.16330371797084808,
+      "text": "客户数据删除必须提供已验证删除请求。",
+      "quote_hash": "c3444d7cd0705aed2e971fc7f903421f99b5c991f9a07c200638ecf30febfb33",
+      "id": "chunk_b52ce2ca81178ebaa16771bf85a18fe27124be2c7d2fde15405eb139716b073d"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_cbff64c588fb448335e249d903fb583d95c6fd37bb339235606e17ce0fe4bd1e",
+      "version_id": "scan_pdf_13",
+      "text": "Customer data deletion requires verified deletion",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.0953125,
+          0.5730846524238586,
+          0.1828125
+        ],
+        "block_id": "blk_5d71f7605c551ffda1bd3cbc",
+        "char_end": 49,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_0d826037e13fe68436ce28209c1d345988a51dfb5b81a2cdb6a2fb82b72c7b2d",
+      "version_id": "scan_pdf_13",
+      "text": "Customer data deletion must be submitted through the",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.3796875,
+          0.6411290168762207,
+          0.471875
+        ],
+        "block_id": "blk_5232cd8f412db1428ad3b2d7",
+        "char_end": 52,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_145c822698adf90b512a2dbcddb92a32d042bf72fd8762edef38977e3d751a7c",
+      "version_id": "xlsx_08",
+      "text": "Customer data deletion requires verified deletion request.",
+      "anchor": {
+        "block_id": "blk_2aeaeed444764f24f0c8c278",
+        "char_end": 58,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B4",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_6753be6497d785547baa2a9ba96e6f2d3b24f0b44cc911b838d64d57bf5702cd",
+      "version_id": "xlsx_08",
+      "text": "Customer data deletion must be submitted through the privacy portal.",
+      "anchor": {
+        "block_id": "blk_4848074966a0541369adc0c1",
+        "char_end": 68,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B7",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_aa390577f30f26afb1d340a99f3e80c79b02d0ecdbfe6bd9174214c48865635b",
+      "version_id": "table_03",
+      "text": "2\tCustomer data deletion requires verified deletion request.\t2\teast",
+      "anchor": {
+        "block_id": "blk_c41b9927c3cc1790c73fee14",
+        "char_end": 67,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "row_index": 2.0,
+        "sheet_id": "csv"
+      }
+    },
+    {
+      "id": "chunk_0ce1b600be5b0319977931df1a6344384e975bdddcb33a9781f0b6e42f09d5ca",
+      "version_id": "scan_pdf_13",
+      "text": "Emergency exceptions for customer data deletion require",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.0921875,
+          0.6703628897666931,
+          0.184375
+        ],
+        "block_id": "blk_ac162c0782ce19e8c584c048",
+        "char_end": 55,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_2e74ad4720e5b74495a7121aaa2df192042e403dba0382a13c2f19655c0e0d48",
+      "version_id": "scan_pdf_13",
+      "text": "Customer data deletion must be submitted within 22",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.0953125,
+          0.6078628897666931,
+          0.178125
+        ],
+        "block_id": "blk_ec85fe8d7132ff3f15a41e08",
+        "char_end": 50,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_8564d7f5955cbe2075069c370f0d1366091d288615b9a0c7de8c4f67564bae7f",
+      "version_id": "table_03",
+      "text": "5\tCustomer data deletion must be submitted through the privacy portal.\t5\twest",
+      "anchor": {
+        "block_id": "blk_c5576bdc681a1a128d491606",
+        "char_end": 77,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "row_index": 5.0,
+        "sheet_id": "csv"
+      }
+    }
+  ]
+}

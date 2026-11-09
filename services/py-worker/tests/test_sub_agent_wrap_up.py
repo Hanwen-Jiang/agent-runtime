@@ -43,8 +43,10 @@ def steps_of(h: StageHarness, nid: str) -> list[Any]:
     return [c.inp for c in h.script.calls if c.activity == names.TOOL_LOOP_STEP and c.workflow_id.endswith(nid)]
 
 
-def test_the_patch_is_appended_at_the_end() -> None:
-    assert AT_START[-1] == SUB_AGENT_WRAP_UP_PATCH and AT_START.index(N16_PATCH) == len(AT_START) - 2
+def test_the_patch_is_appended_after_n16_without_reordering() -> None:
+    # Later features may append more patches; the already-recorded N16 pair
+    # must retain its relative order rather than forever occupy the tail.
+    assert AT_START.index(SUB_AGENT_WRAP_UP_PATCH) == AT_START.index(N16_PATCH) + 1
 
 
 async def test_a_sub_agent_out_of_its_share_wraps_up_with_partial_results(harness: StageHarness) -> None:  # noqa: F811

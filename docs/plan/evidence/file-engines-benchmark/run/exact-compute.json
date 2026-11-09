@@ -1,0 +1,232 @@
+{
+  "expected": {
+    "rows": [
+      [
+        50000,
+        2450000
+      ]
+    ],
+    "input_rows": 100000
+  },
+  "passed": true,
+  "attempts": [
+    {
+      "status": "ready",
+      "blocks": [],
+      "outline": [],
+      "warnings": [],
+      "coverage": {
+        "requested": {},
+        "processed": {},
+        "omitted": [],
+        "returned_blocks": 0,
+        "output_truncated": false
+      },
+      "artifacts": [
+        {
+          "path": "/workspace/run/artifacts/csv_aggregate_0/query-result.csv",
+          "mime_type": "text/csv",
+          "selector": {},
+          "sha256": "492a24f39db2196cce2b9b345f07d7b591c927f82c01b07d0518bfbcdcae3bb1",
+          "size_bytes": 25
+        }
+      ],
+      "capabilities": {},
+      "source": {
+        "sha256": "af54a82aaad9024e07f6230d3dd47dbf655af5019d85f8c38114d2ad18238f78",
+        "size_bytes": 4167989,
+        "mime_type": "text/csv"
+      },
+      "processor": {
+        "version": "file-engines-v1",
+        "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+        "packages": {
+          "pypdf": "6.19.0",
+          "docling": "2.133.0",
+          "rapidocr": "3.9.2",
+          "onnxruntime": "1.30.0",
+          "python-docx": "1.2.0",
+          "openpyxl": "3.1.5",
+          "python-pptx": "1.0.2",
+          "Pillow": "12.3.0",
+          "duckdb": "1.5.6",
+          "PyYAML": "6.0.3",
+          "defusedxml": "0.7.1"
+        },
+        "assets": {
+          "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+          "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+          "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+        },
+        "config_digest": "a366bf9f05c44d69c6363b68b84c538f8a1a291d9ea425f61fc235594886e887"
+      },
+      "columns": [
+        "n",
+        "amount"
+      ],
+      "rows": [
+        [
+          50000,
+          2450000
+        ]
+      ],
+      "schema": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": true
+        },
+        {
+          "name": "clause",
+          "type": "VARCHAR",
+          "nullable": true
+        },
+        {
+          "name": "amount",
+          "type": "BIGINT",
+          "nullable": true
+        },
+        {
+          "name": "region",
+          "type": "VARCHAR",
+          "nullable": true
+        }
+      ],
+      "dataset": {
+        "rows": 100000,
+        "selector": {},
+        "calculation_status": "not_applicable"
+      },
+      "verification": {
+        "input_rows": 100000,
+        "returned_rows": 1,
+        "total_rows_known": true,
+        "read_only": true
+      },
+      "computation": {
+        "sql": "SELECT COUNT(*) AS n, SUM(amount) AS amount FROM data WHERE region = 'east'",
+        "parameters": [],
+        "engine": "duckdb/1.5.6",
+        "source_sha256": "af54a82aaad9024e07f6230d3dd47dbf655af5019d85f8c38114d2ad18238f78",
+        "inputs": [
+          {
+            "alias": "data",
+            "source_sha256": "af54a82aaad9024e07f6230d3dd47dbf655af5019d85f8c38114d2ad18238f78",
+            "selector": {}
+          }
+        ],
+        "selector": {},
+        "semantic_rules": {}
+      }
+    },
+    {
+      "status": "ready",
+      "blocks": [],
+      "outline": [],
+      "warnings": [],
+      "coverage": {
+        "requested": {},
+        "processed": {},
+        "omitted": [],
+        "returned_blocks": 0,
+        "output_truncated": false
+      },
+      "artifacts": [
+        {
+          "path": "/workspace/run/artifacts/csv_aggregate_1/query-result.csv",
+          "mime_type": "text/csv",
+          "selector": {},
+          "sha256": "492a24f39db2196cce2b9b345f07d7b591c927f82c01b07d0518bfbcdcae3bb1",
+          "size_bytes": 25
+        }
+      ],
+      "capabilities": {},
+      "source": {
+        "sha256": "af54a82aaad9024e07f6230d3dd47dbf655af5019d85f8c38114d2ad18238f78",
+        "size_bytes": 4167989,
+        "mime_type": "text/csv"
+      },
+      "processor": {
+        "version": "file-engines-v1",
+        "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+        "packages": {
+          "pypdf": "6.19.0",
+          "docling": "2.133.0",
+          "rapidocr": "3.9.2",
+          "onnxruntime": "1.30.0",
+          "python-docx": "1.2.0",
+          "openpyxl": "3.1.5",
+          "python-pptx": "1.0.2",
+          "Pillow": "12.3.0",
+          "duckdb": "1.5.6",
+          "PyYAML": "6.0.3",
+          "defusedxml": "0.7.1"
+        },
+        "assets": {
+          "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+          "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+          "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+        },
+        "config_digest": "a366bf9f05c44d69c6363b68b84c538f8a1a291d9ea425f61fc235594886e887"
+      },
+      "columns": [
+        "n",
+        "amount"
+      ],
+      "rows": [
+        [
+          50000,
+          2450000
+        ]
+      ],
+      "schema": [
+        {
+          "name": "id",
+          "type": "BIGINT",
+          "nullable": true
+        },
+        {
+          "name": "clause",
+          "type": "VARCHAR",
+          "nullable": true
+        },
+        {
+          "name": "amount",
+          "type": "BIGINT",
+          "nullable": true
+        },
+        {
+          "name": "region",
+          "type": "VARCHAR",
+          "nullable": true
+        }
+      ],
+      "dataset": {
+        "rows": 100000,
+        "selector": {},
+        "calculation_status": "not_applicable"
+      },
+      "verification": {
+        "input_rows": 100000,
+        "returned_rows": 1,
+        "total_rows_known": true,
+        "read_only": true
+      },
+      "computation": {
+        "sql": "SELECT COUNT(*) AS n, SUM(amount) AS amount FROM data WHERE region = 'east'",
+        "parameters": [],
+        "engine": "duckdb/1.5.6",
+        "source_sha256": "af54a82aaad9024e07f6230d3dd47dbf655af5019d85f8c38114d2ad18238f78",
+        "inputs": [
+          {
+            "alias": "data",
+            "source_sha256": "af54a82aaad9024e07f6230d3dd47dbf655af5019d85f8c38114d2ad18238f78",
+            "selector": {}
+          }
+        ],
+        "selector": {},
+        "semantic_rules": {}
+      }
+    }
+  ]
+}

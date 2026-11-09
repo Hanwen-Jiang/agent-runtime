@@ -1,0 +1,72 @@
+{
+  "evaluation": {
+    "id": "abnormal_02",
+    "family": "abnormal",
+    "variant": "encrypted_pdf",
+    "language": "en",
+    "expected": "rejected",
+    "status": "failed",
+    "elapsed_seconds": 0.02489221910946071,
+    "checks": [],
+    "independent": {
+      "method": "negative_case",
+      "verified": null
+    },
+    "original_unchanged": true,
+    "error": {
+      "code": "encrypted_document",
+      "message": "encrypted PDF cannot be read without an authorized decrypt operation"
+    },
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "complete": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "failed",
+    "error": {
+      "code": "encrypted_document",
+      "message": "encrypted PDF cannot be read without an authorized decrypt operation"
+    },
+    "blocks": [],
+    "outline": [],
+    "warnings": [],
+    "coverage": {
+      "complete": false
+    },
+    "artifacts": [],
+    "capabilities": {},
+    "source": {
+      "sha256": "a426be0bebe847e26acc721e9504ef2ea04d9469d4eae20e714d320a50620864",
+      "size_bytes": 828,
+      "mime_type": "application/pdf"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "3555600d2cc3ddf5685a8401ee2cded590e598f382516d69e80bf06e47c783b3"
+    }
+  }
+}

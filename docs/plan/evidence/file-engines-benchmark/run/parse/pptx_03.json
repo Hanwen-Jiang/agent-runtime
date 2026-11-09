@@ -1,0 +1,374 @@
+{
+  "evaluation": {
+    "id": "pptx_03",
+    "family": "pptx",
+    "variant": "slides_text_table_notes",
+    "language": "zh",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 0.05470428499393165,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_7a64d6a9c1d45299bf530d96"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_78cb41273f869da9abdc169c"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_7fdc61c50b0de2fbc75a85f4"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_45c81f1521c6cdd1fd3636b0"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_6d50923df2f6288fa583d30a"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_e356e5fd8bb9ba18d464b035"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "raw_ooxml",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_slides": 6,
+      "processed_slides": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "charts_visual_only": true,
+      "returned_blocks": 13,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_7a64d6a9c1d45299bf530d96",
+        "kind": "text",
+        "text": "客户数据删除的提交期限为6个工作日。",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 0,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_740289b100abe855aa99979a",
+        "kind": "notes",
+        "text": "Speaker note 3/0: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 0,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_78cb41273f869da9abdc169c",
+        "kind": "text",
+        "text": "客户数据删除的审批责任人为隐私办公室。",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 1,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_e5cb078b8171d7f5bbd90361",
+        "kind": "notes",
+        "text": "Speaker note 3/1: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 1,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_7fdc61c50b0de2fbc75a85f4",
+        "kind": "text",
+        "text": "客户数据删除必须提供已验证删除请求。",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 2,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_4a325174d843061a22e54ce5",
+        "kind": "table",
+        "text": "Review\t\n\tComplete",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 2,
+          "shape_id": 3,
+          "bbox": [
+            0.05,
+            0.5333333333333333,
+            0.55,
+            0.6666666666666666
+          ]
+        }
+      },
+      {
+        "id": "blk_a0296874384ac62788757665",
+        "kind": "notes",
+        "text": "Speaker note 3/2: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 2,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_45c81f1521c6cdd1fd3636b0",
+        "kind": "text",
+        "text": "客户数据删除记录须保留23个月。",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 3,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_a3c07819bc660432241aa2c8",
+        "kind": "notes",
+        "text": "Speaker note 3/3: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 3,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_6d50923df2f6288fa583d30a",
+        "kind": "text",
+        "text": "客户数据删除的紧急例外需要部门负责人书面批准。",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 4,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_29082b7b9fc42b542acbd4ac",
+        "kind": "notes",
+        "text": "Speaker note 3/4: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 4,
+          "part": "notes"
+        }
+      },
+      {
+        "id": "blk_e356e5fd8bb9ba18d464b035",
+        "kind": "text",
+        "text": "客户数据删除必须通过隐私平台提交。",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 5,
+          "shape_id": 2,
+          "bbox": [
+            0.05,
+            0.08,
+            0.95,
+            0.48
+          ]
+        }
+      },
+      {
+        "id": "blk_a5229ef91e32402748663e64",
+        "kind": "notes",
+        "text": "Speaker note 3/5: preserve this information.",
+        "anchor": {
+          "kind": "slide_shape",
+          "slide_index": 5,
+          "part": "notes"
+        }
+      }
+    ],
+    "outline": [
+      {
+        "kind": "slide",
+        "slide_index": 0,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 1,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 2,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 3,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 4,
+        "title": ""
+      },
+      {
+        "kind": "slide",
+        "slide_index": 5,
+        "title": ""
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_slides": 6,
+      "processed_slides": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "charts_visual_only": true,
+      "returned_blocks": 13,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/pptx_03/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "7c1af6508fc7c368ebb8b642e907abeecbc89707cba2724e056abefc24ff5917",
+        "size_bytes": 4054
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "a8f4a76b04852b3427c00ee1d5b3053efea8b72bdb428fd1090fa19882724691",
+      "size_bytes": 43292,
+      "mime_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "3555600d2cc3ddf5685a8401ee2cded590e598f382516d69e80bf06e47c783b3"
+    }
+  }
+}

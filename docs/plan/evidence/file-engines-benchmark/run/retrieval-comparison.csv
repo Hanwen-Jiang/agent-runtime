@@ -1,0 +1,301 @@
+query_id,language,query,mode,expected_sources,recall_at_8,hit_at_8,mrr_at_8,unique_source_ndcg_at_8,citation_integrity,relevant_hit_precision,latency_ms
+q00_0,en,Compare the submission deadlines for travel reimbursement across the policies.,exact,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,14.109526062384248
+q00_0,en,Compare the submission deadlines for travel reimbursement across the policies.,hybrid,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,182.33484914526343
+q00_0,en,Compare the submission deadlines for travel reimbursement across the policies.,reranked,5,0.6,1.0,1.0,0.7227265726449519,1.0,0.375,7858.684627804905
+q00_1,en,Who signs off on travel reimbursement according to the different documents?,exact,5,0.4,1.0,1.0,0.44615333764087994,1.0,0.25,15.736262081190944
+q00_1,en,Who signs off on travel reimbursement according to the different documents?,hybrid,5,0.4,1.0,1.0,0.4599715079731103,1.0,0.25,182.47043015435338
+q00_1,en,Who signs off on travel reimbursement according to the different documents?,reranked,5,0.8,1.0,1.0,0.8687949224876582,1.0,0.5,5716.829666867852
+q00_2,zh,差旅报销需要哪些凭证？比较不同资料的要求。,exact,5,0.2,1.0,0.3333333333333333,0.16958010263680806,1.0,0.125,19.136107992380857
+q00_2,zh,差旅报销需要哪些凭证？比较不同资料的要求。,hybrid,5,0.2,1.0,0.5,0.21398626473452756,1.0,0.125,173.94957807846367
+q00_2,zh,差旅报销需要哪些凭证？比较不同资料的要求。,reranked,5,0.4,1.0,1.0,0.5531464700081437,1.0,0.25,4937.899034935981
+q00_3,zh,差旅报销的记录保存多久？请找出各文件中的规定。,exact,5,0.2,1.0,0.5,0.21398626473452756,1.0,0.125,21.137743955478072
+q00_3,zh,差旅报销的记录保存多久？请找出各文件中的规定。,hybrid,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,187.42681900039315
+q00_3,zh,差旅报销的记录保存多久？请找出各文件中的规定。,reranked,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,4109.587582061067
+q00_4,en,Which channel should I use to file travel reimbursement? Compare the documents.,exact,5,0.6,1.0,1.0,0.7227265726449519,1.0,0.375,15.675727976486087
+q00_4,en,Which channel should I use to file travel reimbursement? Compare the documents.,hybrid,5,0.8,1.0,1.0,0.8687949224876582,1.0,0.5,172.21679911017418
+q00_4,en,Which channel should I use to file travel reimbursement? Compare the documents.,reranked,5,0.8,1.0,1.0,0.8687949224876582,1.0,0.5,5700.619451003149
+q01_0,en,Compare the submission deadlines for employee onboarding across the policies.,exact,5,0.0,0.0,0,0.0,1.0,0.0,16.33984688669443
+q01_0,en,Compare the submission deadlines for employee onboarding across the policies.,hybrid,5,0.0,0.0,0,0.0,1.0,0.0,257.2598569095135
+q01_0,en,Compare the submission deadlines for employee onboarding across the policies.,reranked,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,6807.951262919232
+q01_1,en,Who signs off on employee onboarding according to the different documents?,exact,5,0.0,0.0,0,0.0,1.0,0.0,18.249510088935494
+q01_1,en,Who signs off on employee onboarding according to the different documents?,hybrid,5,0.0,0.0,0,0.0,1.0,0.0,190.58525399304926
+q01_1,en,Who signs off on employee onboarding according to the different documents?,reranked,5,0.0,0.0,0,0.0,1.0,0.0,5023.977022850886
+q01_2,zh,员工入职需要哪些凭证？比较不同资料的要求。,exact,5,0.4,1.0,1.0,0.44615333764087994,1.0,0.25,22.697863867506385
+q01_2,zh,员工入职需要哪些凭证？比较不同资料的要求。,hybrid,5,0.6,1.0,0.2,0.3590095125790998,1.0,0.375,207.76011608541012
+q01_2,zh,员工入职需要哪些凭证？比较不同资料的要求。,reranked,5,0.8,1.0,1.0,0.8687949224876582,1.0,0.5,4542.529430938885
+q01_3,zh,员工入职的记录保存多久？请找出各文件中的规定。,exact,5,0.8,1.0,1.0,0.7042299872433241,1.0,0.5,22.650699829682708
+q01_3,zh,员工入职的记录保存多久？请找出各文件中的规定。,hybrid,5,0.8,1.0,1.0,0.8051628502199797,1.0,0.5,189.18375484645367
+q01_3,zh,员工入职的记录保存多久？请找出各文件中的规定。,reranked,5,0.8,1.0,1.0,0.8687949224876582,1.0,0.5,4356.787522090599
+q01_4,en,Which channel should I use to file employee onboarding? Compare the documents.,exact,5,0.0,0.0,0,0.0,1.0,0.0,16.57618279568851
+q01_4,en,Which channel should I use to file employee onboarding? Compare the documents.,hybrid,5,0.0,0.0,0,0.0,1.0,0.0,199.98944690451026
+q01_4,en,Which channel should I use to file employee onboarding? Compare the documents.,reranked,5,0.0,0.0,0,0.0,1.0,0.0,5236.129866912961
+q02_0,en,Compare the submission deadlines for customer refunds across the policies.,exact,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,15.60155302286148
+q02_0,en,Compare the submission deadlines for customer refunds across the policies.,hybrid,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,191.87898910604417
+q02_0,en,Compare the submission deadlines for customer refunds across the policies.,reranked,5,0.6,1.0,1.0,0.7227265726449519,1.0,0.375,5555.311294039711
+q02_1,en,Who signs off on customer refunds according to the different documents?,exact,5,0.6,1.0,1.0,0.6164336326286644,1.0,0.375,17.611105926334858
+q02_1,en,Who signs off on customer refunds according to the different documents?,hybrid,5,0.6,1.0,1.0,0.6992148198508501,1.0,0.375,197.9439491406083
+q02_1,en,Who signs off on customer refunds according to the different documents?,reranked,5,0.8,1.0,1.0,0.8687949224876582,1.0,0.5,5732.915390050039
+q02_2,zh,客户退款需要哪些凭证？比较不同资料的要求。,exact,5,0.2,1.0,0.5,0.21398626473452756,1.0,0.125,19.868857925757766
+q02_2,zh,客户退款需要哪些凭证？比较不同资料的要求。,hybrid,5,0.2,1.0,0.3333333333333333,0.16958010263680806,1.0,0.125,191.55774102546275
+q02_2,zh,客户退款需要哪些凭证？比较不同资料的要求。,reranked,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,4041.0879619885236
+q02_3,zh,客户退款的记录保存多久？请找出各文件中的规定。,exact,5,0.2,1.0,0.3333333333333333,0.16958010263680806,1.0,0.125,22.54187618382275
+q02_3,zh,客户退款的记录保存多久？请找出各文件中的规定。,hybrid,5,0.2,1.0,0.5,0.21398626473452756,1.0,0.125,197.52991292625666
+q02_3,zh,客户退款的记录保存多久？请找出各文件中的规定。,reranked,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,5010.191644076258
+q02_4,en,Which channel should I use to file customer refunds? Compare the documents.,exact,5,0.6,1.0,1.0,0.7227265726449519,1.0,0.375,18.017797963693738
+q02_4,en,Which channel should I use to file customer refunds? Compare the documents.,hybrid,5,0.8,1.0,1.0,0.6904118169110937,1.0,0.5,223.31054299138486
+q02_4,en,Which channel should I use to file customer refunds? Compare the documents.,reranked,5,0.4,1.0,1.0,0.5531464700081437,1.0,0.25,6501.40197807923
+q03_0,en,Compare the submission deadlines for warehouse returns across the policies.,exact,6,0.0,0.0,0,0.0,1.0,0.0,15.329667134210467
+q03_0,en,Compare the submission deadlines for warehouse returns across the policies.,hybrid,6,0.0,0.0,0,0.0,1.0,0.0,195.82664291374385
+q03_0,en,Compare the submission deadlines for warehouse returns across the policies.,reranked,6,0.0,0.0,0,0.0,1.0,0.0,7149.421303067356
+q03_1,en,Who signs off on warehouse returns according to the different documents?,exact,6,0.3333333333333333,1.0,0.16666666666666666,0.2086566256907821,1.0,0.25,15.98479482345283
+q03_1,en,Who signs off on warehouse returns according to the different documents?,hybrid,6,0.3333333333333333,1.0,0.25,0.2311912370766418,1.0,0.25,202.10591121576726
+q03_1,en,Who signs off on warehouse returns according to the different documents?,reranked,6,0.3333333333333333,1.0,1.0,0.4935232796777482,1.0,0.25,7210.450971033424
+q03_2,zh,仓库退货需要哪些凭证？比较不同资料的要求。,exact,6,0.5,1.0,1.0,0.5112590391895956,1.0,0.375,21.168808918446302
+q03_2,zh,仓库退货需要哪些凭证？比较不同资料的要求。,hybrid,6,0.3333333333333333,1.0,0.3333333333333333,0.28162497265977743,1.0,0.25,185.48255995847285
+q03_2,zh,仓库退货需要哪些凭证？比较不同资料的要求。,reranked,6,0.6666666666666666,1.0,1.0,0.7402849195166222,1.0,0.5,5026.01757296361
+q03_3,zh,仓库退货的记录保存多久？请找出各文件中的规定。,exact,6,0.5,1.0,0.3333333333333333,0.39868756579774095,1.0,0.375,22.493502125144005
+q03_3,zh,仓库退货的记录保存多久？请找出各文件中的规定。,hybrid,6,0.6666666666666666,1.0,1.0,0.6159929108925155,1.0,0.5,201.8456009682268
+q03_3,zh,仓库退货的记录保存多久？请找出各文件中的规定。,reranked,6,0.6666666666666666,1.0,1.0,0.7751482523375256,1.0,0.5,4861.28650396131
+q03_4,en,Which channel should I use to file warehouse returns? Compare the documents.,exact,6,0.16666666666666666,1.0,0.5,0.1909208661789347,1.0,0.125,17.395983915776014
+q03_4,en,Which channel should I use to file warehouse returns? Compare the documents.,hybrid,6,0.16666666666666666,1.0,1.0,0.3026024134988135,1.0,0.125,191.98090001009405
+q03_4,en,Which channel should I use to file warehouse returns? Compare the documents.,reranked,6,0.16666666666666666,1.0,1.0,0.3026024134988135,1.0,0.125,4459.838042035699
+q04_0,en,Compare the submission deadlines for password recovery across the policies.,exact,6,0.16666666666666666,1.0,1.0,0.3026024134988135,1.0,0.125,14.474204974249005
+q04_0,en,Compare the submission deadlines for password recovery across the policies.,hybrid,6,0.16666666666666666,1.0,1.0,0.3026024134988135,1.0,0.125,188.12165409326553
+q04_0,en,Compare the submission deadlines for password recovery across the policies.,reranked,6,0.6666666666666666,1.0,1.0,0.7751482523375256,1.0,0.5,6092.543757054955
+q04_1,en,Who signs off on password recovery according to the different documents?,exact,6,0.3333333333333333,1.0,1.0,0.39806284658828084,1.0,0.25,16.094682039692998
+q04_1,en,Who signs off on password recovery according to the different documents?,hybrid,6,0.16666666666666666,1.0,1.0,0.3026024134988135,1.0,0.125,183.32903692498803
+q04_1,en,Who signs off on password recovery according to the different documents?,reranked,6,0.8333333333333334,1.0,1.0,0.8922108454754891,1.0,0.625,5123.5261738765985
+q04_2,zh,密码找回需要哪些凭证？比较不同资料的要求。,exact,6,0.0,0.0,0,0.0,1.0,0.0,20.056175999343395
+q04_2,zh,密码找回需要哪些凭证？比较不同资料的要求。,hybrid,6,0.3333333333333333,1.0,0.3333333333333333,0.25909036127391766,1.0,0.25,185.6772240716964
+q04_2,zh,密码找回需要哪些凭证？比较不同资料的要求。,reranked,6,0.5,1.0,1.0,0.5889837127672155,1.0,0.375,4611.21655581519
+q04_3,zh,密码找回的记录保存多久？请找出各文件中的规定。,exact,6,0.3333333333333333,1.0,0.3333333333333333,0.28162497265977743,1.0,0.25,25.288556003943086
+q04_3,zh,密码找回的记录保存多久？请找出各文件中的规定。,hybrid,6,0.3333333333333333,1.0,1.0,0.419665006636777,1.0,0.25,190.23195817135274
+q04_3,zh,密码找回的记录保存多久？请找出各文件中的规定。,reranked,6,0.3333333333333333,1.0,1.0,0.4935232796777482,1.0,0.25,4098.349386127666
+q04_4,en,Which channel should I use to file password recovery? Compare the documents.,exact,6,0.5,1.0,1.0,0.5499887725471477,1.0,0.375,17.01299916021526
+q04_4,en,Which channel should I use to file password recovery? Compare the documents.,hybrid,6,0.6666666666666666,1.0,1.0,0.6571532078621984,1.0,0.5,186.9813979137689
+q04_4,en,Which channel should I use to file password recovery? Compare the documents.,reranked,6,0.5,1.0,1.0,0.6105858728157117,1.0,0.375,5614.39340794459
+q05_0,en,Compare the submission deadlines for production incident response across the policies.,exact,6,0.0,0.0,0,0.0,1.0,0.0,16.269230050966144
+q05_0,en,Compare the submission deadlines for production incident response across the policies.,hybrid,6,0.0,0.0,0,0.0,1.0,0.0,200.07087499834597
+q05_0,en,Compare the submission deadlines for production incident response across the policies.,reranked,6,0.6666666666666666,1.0,1.0,0.7751482523375256,1.0,0.5,5475.191524019465
+q05_1,en,Who signs off on production incident response according to the different documents?,exact,6,0.0,0.0,0,0.0,1.0,0.0,17.59423385374248
+q05_1,en,Who signs off on production incident response according to the different documents?,hybrid,6,0.0,0.0,0,0.0,1.0,0.0,210.64065513201058
+q05_1,en,Who signs off on production incident response according to the different documents?,reranked,6,0.3333333333333333,1.0,1.0,0.4935232796777482,1.0,0.25,4237.489146180451
+q05_2,zh,生产故障响应需要哪些凭证？比较不同资料的要求。,exact,6,0.5,1.0,1.0,0.5943907508440193,1.0,0.375,22.35180209390819
+q05_2,zh,生产故障响应需要哪些凭证？比较不同资料的要求。,hybrid,6,0.3333333333333333,1.0,0.3333333333333333,0.2683637998873703,1.0,0.25,191.71684607863426
+q05_2,zh,生产故障响应需要哪些凭证？比较不同资料的要求。,reranked,6,0.5,1.0,1.0,0.5943907508440193,1.0,0.375,5749.0369360893965
+q05_3,zh,生产故障响应的记录保存多久？请找出各文件中的规定。,exact,6,0.5,1.0,1.0,0.6105858728157117,1.0,0.375,23.70035112835467
+q05_3,zh,生产故障响应的记录保存多久？请找出各文件中的规定。,hybrid,6,0.5,1.0,1.0,0.644824486427155,1.0,0.375,186.3604700192809
+q05_3,zh,生产故障响应的记录保存多久？请找出各文件中的规定。,reranked,6,0.5,1.0,1.0,0.644824486427155,1.0,0.375,5297.01704508625
+q05_4,en,Which channel should I use to file production incident response? Compare the documents.,exact,6,0.3333333333333333,1.0,1.0,0.4935232796777482,1.0,0.25,17.259360989555717
+q05_4,en,Which channel should I use to file production incident response? Compare the documents.,hybrid,6,0.3333333333333333,1.0,1.0,0.4935232796777482,1.0,0.25,181.52469396591187
+q05_4,en,Which channel should I use to file production incident response? Compare the documents.,reranked,6,0.6666666666666666,1.0,1.0,0.7751482523375256,1.0,0.5,5784.984580939636
+q06_0,en,Compare the submission deadlines for research data retention across the policies.,exact,6,0.3333333333333333,1.0,1.0,0.4034698846650846,1.0,0.25,15.912743983790278
+q06_0,en,Compare the submission deadlines for research data retention across the policies.,hybrid,6,0.16666666666666666,1.0,1.0,0.3026024134988135,1.0,0.125,178.15353791229427
+q06_0,en,Compare the submission deadlines for research data retention across the policies.,reranked,6,0.8333333333333334,1.0,1.0,0.8922108454754891,1.0,0.625,5757.5793960131705
+q06_1,en,Who signs off on research data retention according to the different documents?,exact,6,0.3333333333333333,1.0,0.5,0.34222207292834145,1.0,0.25,16.112760873511434
+q06_1,en,Who signs off on research data retention according to the different documents?,hybrid,6,0.5,1.0,1.0,0.5842273861585909,1.0,0.375,181.16230005398393
+q06_1,en,Who signs off on research data retention according to the different documents?,reranked,6,0.8333333333333334,1.0,1.0,0.8829374068620365,1.0,0.625,5283.245268044993
+q06_2,zh,科研数据保留需要哪些凭证？比较不同资料的要求。,exact,6,0.5,1.0,0.25,0.35517551357284516,1.0,0.375,23.381576174870133
+q06_2,zh,科研数据保留需要哪些凭证？比较不同资料的要求。,hybrid,6,0.0,0.0,0,0.0,1.0,0.0,199.00666712783277
+q06_2,zh,科研数据保留需要哪些凭证？比较不同资料的要求。,reranked,6,0.6666666666666666,1.0,0.25,0.4560429847391163,1.0,0.5,3446.673353901133
+q06_3,zh,科研数据保留的记录保存多久？请找出各文件中的规定。,exact,6,0.5,1.0,1.0,0.644824486427155,1.0,0.375,23.319949861615896
+q06_3,zh,科研数据保留的记录保存多久？请找出各文件中的规定。,hybrid,6,0.5,1.0,1.0,0.644824486427155,1.0,0.375,197.45460408739746
+q06_3,zh,科研数据保留的记录保存多久？请找出各文件中的规定。,reranked,6,0.6666666666666666,1.0,1.0,0.7751482523375256,1.0,0.5,2998.0005850084126
+q06_4,en,Which channel should I use to file research data retention? Compare the documents.,exact,6,0.5,1.0,1.0,0.5943907508440193,1.0,0.375,18.646241165697575
+q06_4,en,Which channel should I use to file research data retention? Compare the documents.,hybrid,6,0.5,1.0,1.0,0.6238470455881189,1.0,0.375,265.0466391351074
+q06_4,en,Which channel should I use to file research data retention? Compare the documents.,reranked,6,0.5,1.0,1.0,0.5616927747727312,1.0,0.375,5971.967319957912
+q07_0,en,Compare the submission deadlines for supplier qualification across the policies.,exact,5,0.0,0.0,0,0.0,1.0,0.0,24.0354728884995
+q07_0,en,Compare the submission deadlines for supplier qualification across the policies.,hybrid,5,0.0,0.0,0,0.0,1.0,0.0,300.48471386544406
+q07_0,en,Compare the submission deadlines for supplier qualification across the policies.,reranked,5,0.0,0.0,0,0.0,1.0,0.0,4203.984644031152
+q07_1,en,Who signs off on supplier qualification according to the different documents?,exact,5,0.2,1.0,0.14285714285714285,0.11305340175787204,1.0,0.125,16.44624094478786
+q07_1,en,Who signs off on supplier qualification according to the different documents?,hybrid,5,0.2,1.0,0.2,0.13120507751234178,1.0,0.125,186.40836304984987
+q07_1,en,Who signs off on supplier qualification according to the different documents?,reranked,5,0.4,1.0,1.0,0.44615333764087994,1.0,0.25,4234.39338686876
+q07_2,zh,供应商准入需要哪些凭证？比较不同资料的要求。,exact,5,0.4,1.0,1.0,0.48522855511632257,1.0,0.25,21.15316898562014
+q07_2,zh,供应商准入需要哪些凭证？比较不同资料的要求。,hybrid,5,0.6,1.0,0.5,0.4660026449463635,1.0,0.375,191.95481506176293
+q07_2,zh,供应商准入需要哪些凭证？比较不同资料的要求。,reranked,5,0.6,1.0,1.0,0.6843515475204855,1.0,0.375,5651.043783174828
+q07_3,zh,供应商准入的记录保存多久？请找出各文件中的规定。,exact,5,0.4,1.0,1.0,0.5087403079104241,1.0,0.25,23.982015904039145
+q07_3,zh,供应商准入的记录保存多久？请找出各文件中的规定。,hybrid,5,0.6,1.0,1.0,0.639945385422766,1.0,0.375,208.1896250601858
+q07_3,zh,供应商准入的记录保存多久？请找出各文件中的规定。,reranked,5,0.6,1.0,1.0,0.7227265726449519,1.0,0.375,5178.419417934492
+q07_4,en,Which channel should I use to file supplier qualification? Compare the documents.,exact,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,17.513605998829007
+q07_4,en,Which channel should I use to file supplier qualification? Compare the documents.,hybrid,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,185.28596009127796
+q07_4,en,Which channel should I use to file supplier qualification? Compare the documents.,reranked,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,4352.418242022395
+q08_0,en,Compare the submission deadlines for software release approval across the policies.,exact,5,0.4,1.0,1.0,0.45221360703148816,1.0,0.25,15.873375115916133
+q08_0,en,Compare the submission deadlines for software release approval across the policies.,hybrid,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,192.48254597187042
+q08_0,en,Compare the submission deadlines for software release approval across the policies.,reranked,5,0.8,1.0,1.0,0.8687949224876582,1.0,0.5,6359.838633099571
+q08_1,en,Who signs off on software release approval according to the different documents?,exact,5,0.4,1.0,0.5,0.38356636737133565,1.0,0.25,24.602209916338325
+q08_1,en,Who signs off on software release approval according to the different documents?,hybrid,5,0.6,1.0,1.0,0.6661998717660157,1.0,0.375,193.15369799733162
+q08_1,en,Who signs off on software release approval according to the different documents?,reranked,5,0.8,1.0,1.0,0.7234267649959281,1.0,0.5,4547.684146091342
+q08_2,zh,软件发布审批需要哪些凭证？比较不同资料的要求。,exact,5,0.0,0.0,0,0.0,1.0,0.0,23.50892499089241
+q08_2,zh,软件发布审批需要哪些凭证？比较不同资料的要求。,hybrid,5,0.0,0.0,0,0.0,1.0,0.0,183.6582508403808
+q08_2,zh,软件发布审批需要哪些凭证？比较不同资料的要求。,reranked,5,0.6,1.0,1.0,0.6843515475204855,1.0,0.375,3840.434404090047
+q08_3,zh,软件发布审批的记录保存多久？请找出各文件中的规定。,exact,5,0.4,1.0,0.3333333333333333,0.3156484524795145,1.0,0.25,24.373922031372786
+q08_3,zh,软件发布审批的记录保存多久？请找出各文件中的规定。,hybrid,5,0.4,1.0,1.0,0.48522855511632257,1.0,0.25,191.37120200321078
+q08_3,zh,软件发布审批的记录保存多久？请找出各文件中的规定。,reranked,5,0.4,1.0,1.0,0.5531464700081437,1.0,0.25,5747.94760113582
+q08_4,en,Which channel should I use to file software release approval? Compare the documents.,exact,5,0.6,1.0,1.0,0.6661998717660157,1.0,0.375,17.4481519497931
+q08_4,en,Which channel should I use to file software release approval? Compare the documents.,hybrid,5,0.6,1.0,1.0,0.6843515475204855,1.0,0.375,183.5336370859295
+q08_4,en,Which channel should I use to file software release approval? Compare the documents.,reranked,5,0.6,1.0,1.0,0.6992148198508501,1.0,0.375,5007.508185924962
+q09_0,en,Compare the submission deadlines for equipment borrowing across the policies.,exact,5,0.0,0.0,0,0.0,1.0,0.0,15.577659010887146
+q09_0,en,Compare the submission deadlines for equipment borrowing across the policies.,hybrid,5,0.0,0.0,0,0.0,1.0,0.0,194.6923090144992
+q09_0,en,Compare the submission deadlines for equipment borrowing across the policies.,reranked,5,0.0,0.0,0,0.0,1.0,0.0,4316.835365025327
+q09_1,en,Who signs off on equipment borrowing according to the different documents?,exact,5,0.2,1.0,0.14285714285714285,0.11305340175787204,1.0,0.125,16.055051004514098
+q09_1,en,Who signs off on equipment borrowing according to the different documents?,hybrid,5,0.2,1.0,0.3333333333333333,0.16958010263680806,1.0,0.125,196.63551589474082
+q09_1,en,Who signs off on equipment borrowing according to the different documents?,reranked,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,4257.988997967914
+q09_2,zh,设备借用需要哪些凭证？比较不同资料的要求。,exact,5,0.6,1.0,1.0,0.7227265726449519,1.0,0.375,26.641224045306444
+q09_2,zh,设备借用需要哪些凭证？比较不同资料的要求。,hybrid,5,0.6,1.0,1.0,0.7227265726449519,1.0,0.375,325.7581468205899
+q09_2,zh,设备借用需要哪些凭证？比较不同资料的要求。,reranked,5,0.6,1.0,1.0,0.7227265726449519,1.0,0.375,4569.28123999387
+q09_3,zh,设备借用的记录保存多久？请找出各文件中的规定。,exact,5,0.6,1.0,1.0,0.5730249097309823,1.0,0.375,23.308470845222473
+q09_3,zh,设备借用的记录保存多久？请找出各文件中的规定。,hybrid,5,0.6,1.0,1.0,0.6843515475204855,1.0,0.375,211.54314395971596
+q09_3,zh,设备借用的记录保存多久？请找出各文件中的规定。,reranked,5,0.6,1.0,1.0,0.7227265726449519,1.0,0.375,3453.939368017018
+q09_4,en,Which channel should I use to file equipment borrowing? Compare the documents.,exact,5,0.2,1.0,0.5,0.21398626473452756,1.0,0.125,32.18025085516274
+q09_4,en,Which channel should I use to file equipment borrowing? Compare the documents.,hybrid,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,202.77742994949222
+q09_4,en,Which channel should I use to file equipment borrowing? Compare the documents.,reranked,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,4266.459412872791
+q10_0,en,Compare the submission deadlines for remote work requests across the policies.,exact,6,0.0,0.0,0,0.0,1.0,0.0,16.49773516692221
+q10_0,en,Compare the submission deadlines for remote work requests across the policies.,hybrid,6,0.16666666666666666,1.0,0.16666666666666666,0.10778915452451095,1.0,0.125,251.47781195119023
+q10_0,en,Compare the submission deadlines for remote work requests across the policies.,reranked,6,0.8333333333333334,1.0,1.0,0.8922108454754891,1.0,0.625,4511.355826165527
+q10_1,en,Who signs off on remote work requests according to the different documents?,exact,6,0.3333333333333333,1.0,0.14285714285714285,0.1963279042557385,1.0,0.25,18.790412927046418
+q10_1,en,Who signs off on remote work requests according to the different documents?,hybrid,6,0.0,0.0,0,0.0,1.0,0.0,189.56111907027662
+q10_1,en,Who signs off on remote work requests according to the different documents?,reranked,6,0.6666666666666666,1.0,1.0,0.7751482523375256,1.0,0.5,4042.0940739568323
+q10_2,zh,远程办公申请需要哪些凭证？比较不同资料的要求。,exact,6,0.3333333333333333,1.0,0.3333333333333333,0.28162497265977743,1.0,0.25,25.258946930989623
+q10_2,zh,远程办公申请需要哪些凭证？比较不同资料的要求。,hybrid,6,0.16666666666666666,1.0,0.16666666666666666,0.10778915452451095,1.0,0.125,188.03332420066
+q10_2,zh,远程办公申请需要哪些凭证？比较不同资料的要求。,reranked,6,0.3333333333333333,1.0,1.0,0.4935232796777482,1.0,0.25,3398.492156062275
+q10_3,zh,远程办公申请的记录保存多久？请找出各文件中的规定。,exact,6,0.5,1.0,1.0,0.5943907508440193,1.0,0.375,23.753517074510455
+q10_3,zh,远程办公申请的记录保存多久？请找出各文件中的规定。,hybrid,6,0.5,1.0,1.0,0.644824486427155,1.0,0.375,189.9326490238309
+q10_3,zh,远程办公申请的记录保存多久？请找出各文件中的规定。,reranked,6,0.6666666666666666,1.0,1.0,0.7751482523375256,1.0,0.5,3538.712135050446
+q10_4,en,Which channel should I use to file remote work requests? Compare the documents.,exact,6,0.3333333333333333,1.0,0.3333333333333333,0.28162497265977743,1.0,0.25,19.378283992409706
+q10_4,en,Which channel should I use to file remote work requests? Compare the documents.,hybrid,6,0.5,1.0,1.0,0.6238470455881189,1.0,0.375,200.2948538865894
+q10_4,en,Which channel should I use to file remote work requests? Compare the documents.,reranked,6,1.0,1.0,1.0,1.0,1.0,0.75,5748.330062022433
+q11_0,en,Compare the submission deadlines for training reimbursement across the policies.,exact,6,0.0,0.0,0,0.0,1.0,0.0,16.2333850748837
+q11_0,en,Compare the submission deadlines for training reimbursement across the policies.,hybrid,6,0.0,0.0,0,0.0,1.0,0.0,202.15495093725622
+q11_0,en,Compare the submission deadlines for training reimbursement across the policies.,reranked,6,0.3333333333333333,1.0,1.0,0.4935232796777482,1.0,0.25,5396.5267890598625
+q11_1,en,Who signs off on training reimbursement according to the different documents?,exact,6,0.0,0.0,0,0.0,1.0,0.0,19.380023004487157
+q11_1,en,Who signs off on training reimbursement according to the different documents?,hybrid,6,0.0,0.0,0,0.0,1.0,0.0,213.9148018322885
+q11_1,en,Who signs off on training reimbursement according to the different documents?,reranked,6,0.3333333333333333,1.0,1.0,0.4935232796777482,1.0,0.25,4872.749150032178
+q11_2,zh,培训报销需要哪些凭证？比较不同资料的要求。,exact,6,0.3333333333333333,1.0,0.14285714285714285,0.1963279042557385,1.0,0.25,19.899684004485607
+q11_2,zh,培训报销需要哪些凭证？比较不同资料的要求。,hybrid,6,0.3333333333333333,1.0,0.25,0.2311912370766418,1.0,0.25,181.04867008514702
+q11_2,zh,培训报销需要哪些凭证？比较不同资料的要求。,reranked,6,0.6666666666666666,1.0,1.0,0.7751482523375256,1.0,0.5,3232.1401219815016
+q11_3,zh,培训报销的记录保存多久？请找出各文件中的规定。,exact,6,0.3333333333333333,1.0,0.3333333333333333,0.28162497265977743,1.0,0.25,22.642884869128466
+q11_3,zh,培训报销的记录保存多久？请找出各文件中的规定。,hybrid,6,0.5,1.0,0.25,0.33357335352434897,1.0,0.375,188.2972070015967
+q11_3,zh,培训报销的记录保存多久？请找出各文件中的规定。,reranked,6,0.5,1.0,1.0,0.644824486427155,1.0,0.375,2948.834831127897
+q11_4,en,Which channel should I use to file training reimbursement? Compare the documents.,exact,6,0.3333333333333333,1.0,0.5,0.32124463208930537,1.0,0.25,18.032321939244866
+q11_4,en,Which channel should I use to file training reimbursement? Compare the documents.,hybrid,6,0.3333333333333333,1.0,1.0,0.45390362024822023,1.0,0.25,193.32071393728256
+q11_4,en,Which channel should I use to file training reimbursement? Compare the documents.,reranked,6,0.6666666666666666,1.0,1.0,0.7751482523375256,1.0,0.5,4763.23931501247
+q12_0,en,Compare the submission deadlines for visitor access across the policies.,exact,6,0.0,0.0,0,0.0,1.0,0.0,15.03967889584601
+q12_0,en,Compare the submission deadlines for visitor access across the policies.,hybrid,6,0.0,0.0,0,0.0,1.0,0.0,191.89116917550564
+q12_0,en,Compare the submission deadlines for visitor access across the policies.,reranked,6,0.3333333333333333,1.0,1.0,0.4935232796777482,1.0,0.25,4392.505555180833
+q12_1,en,Who signs off on visitor access according to the different documents?,exact,6,0.3333333333333333,1.0,0.14285714285714285,0.1963279042557385,1.0,0.25,16.22748118825257
+q12_1,en,Who signs off on visitor access according to the different documents?,hybrid,6,0.16666666666666666,1.0,0.16666666666666666,0.10778915452451095,1.0,0.125,187.62509291991591
+q12_1,en,Who signs off on visitor access according to the different documents?,reranked,6,0.6666666666666666,1.0,1.0,0.7526136409516658,1.0,0.5,3872.480637161061
+q12_2,zh,访客通行需要哪些凭证？比较不同资料的要求。,exact,6,0.3333333333333333,1.0,0.14285714285714285,0.1963279042557385,1.0,0.25,22.52630307339132
+q12_2,zh,访客通行需要哪些凭证？比较不同资料的要求。,hybrid,6,0.16666666666666666,1.0,0.14285714285714285,0.10086747116627115,1.0,0.125,187.07859213463962
+q12_2,zh,访客通行需要哪些凭证？比较不同资料的要求。,reranked,6,0.5,1.0,1.0,0.644824486427155,1.0,0.375,3803.2016051001847
+q12_3,zh,访客通行的记录保存多久？请找出各文件中的规定。,exact,6,0.3333333333333333,1.0,0.3333333333333333,0.28162497265977743,1.0,0.25,22.84597000107169
+q12_3,zh,访客通行的记录保存多久？请找出各文件中的规定。,hybrid,6,0.5,1.0,0.5,0.4157726138414092,1.0,0.375,192.87123112007976
+q12_3,zh,访客通行的记录保存多久？请找出各文件中的规定。,reranked,6,0.5,1.0,1.0,0.644824486427155,1.0,0.375,4035.205061081797
+q12_4,en,Which channel should I use to file visitor access? Compare the documents.,exact,6,0.3333333333333333,1.0,1.0,0.4935232796777482,1.0,0.25,17.287414986640215
+q12_4,en,Which channel should I use to file visitor access? Compare the documents.,hybrid,6,0.16666666666666666,1.0,1.0,0.3026024134988135,1.0,0.125,215.32252011820674
+q12_4,en,Which channel should I use to file visitor access? Compare the documents.,reranked,6,0.5,1.0,1.0,0.644824486427155,1.0,0.375,6248.619673075154
+q13_0,en,Compare the submission deadlines for customer data deletion across the policies.,exact,6,0.0,0.0,0,0.0,1.0,0.0,16.410344978794456
+q13_0,en,Compare the submission deadlines for customer data deletion across the policies.,hybrid,6,0.0,0.0,0,0.0,1.0,0.0,185.76565384864807
+q13_0,en,Compare the submission deadlines for customer data deletion across the policies.,reranked,6,0.6666666666666666,1.0,1.0,0.7618870795651186,1.0,0.5,6138.797242194414
+q13_1,en,Who signs off on customer data deletion according to the different documents?,exact,6,0.0,0.0,0,0.0,1.0,0.0,16.985378926619887
+q13_1,en,Who signs off on customer data deletion according to the different documents?,hybrid,6,0.3333333333333333,1.0,0.16666666666666666,0.20324958761397832,1.0,0.25,185.67070784047246
+q13_1,en,Who signs off on customer data deletion according to the different documents?,reranked,6,0.8333333333333334,1.0,1.0,0.7805552904143294,1.0,0.625,4708.49634706974
+q13_2,zh,客户数据删除需要哪些凭证？比较不同资料的要求。,exact,6,0.5,1.0,0.25,0.35517551357284516,1.0,0.375,23.93742185086012
+q13_2,zh,客户数据删除需要哪些凭证？比较不同资料的要求。,hybrid,6,0.3333333333333333,1.0,0.3333333333333333,0.2683637998873703,1.0,0.25,189.81759110465646
+q13_2,zh,客户数据删除需要哪些凭证？比较不同资料的要求。,reranked,6,0.5,1.0,1.0,0.644824486427155,1.0,0.375,3309.738527983427
+q13_3,zh,客户数据删除的记录保存多久？请找出各文件中的规定。,exact,6,0.5,1.0,1.0,0.644824486427155,1.0,0.375,24.866445921361446
+q13_3,zh,客户数据删除的记录保存多久？请找出各文件中的规定。,hybrid,6,0.5,1.0,1.0,0.644824486427155,1.0,0.375,195.46740385703743
+q13_3,zh,客户数据删除的记录保存多久？请找出各文件中的规定。,reranked,6,0.5,1.0,1.0,0.644824486427155,1.0,0.375,2941.131972009316
+q13_4,en,Which channel should I use to file customer data deletion? Compare the documents.,exact,6,0.3333333333333333,1.0,0.25,0.22578419899983798,1.0,0.25,18.43583188019693
+q13_4,en,Which channel should I use to file customer data deletion? Compare the documents.,hybrid,6,0.3333333333333333,1.0,1.0,0.43292617940918415,1.0,0.25,225.7526949979365
+q13_4,en,Which channel should I use to file customer data deletion? Compare the documents.,reranked,6,0.8333333333333334,1.0,1.0,0.8922108454754891,1.0,0.625,5215.972805861384
+q14_0,en,Compare the submission deadlines for contract renewal across the policies.,exact,6,0.0,0.0,0,0.0,1.0,0.0,15.299099031835794
+q14_0,en,Compare the submission deadlines for contract renewal across the policies.,hybrid,6,0.0,0.0,0,0.0,1.0,0.0,179.13291789591312
+q14_0,en,Compare the submission deadlines for contract renewal across the policies.,reranked,6,0.16666666666666666,1.0,1.0,0.3026024134988135,1.0,0.125,5983.138768002391
+q14_1,en,Who signs off on contract renewal according to the different documents?,exact,6,0.16666666666666666,1.0,0.125,0.09546043308946735,1.0,0.125,15.520378947257996
+q14_1,en,Who signs off on contract renewal according to the different documents?,hybrid,6,0.16666666666666666,1.0,0.14285714285714285,0.10086747116627115,1.0,0.125,315.9547841642052
+q14_1,en,Who signs off on contract renewal according to the different documents?,reranked,6,0.6666666666666666,1.0,1.0,0.7751482523375256,1.0,0.5,5328.988888999447
+q14_2,zh,合同续签需要哪些凭证？比较不同资料的要求。,exact,6,0.3333333333333333,1.0,0.3333333333333333,0.28162497265977743,1.0,0.25,38.21819485165179
+q14_2,zh,合同续签需要哪些凭证？比较不同资料的要求。,hybrid,6,0.5,1.0,0.5,0.42211210325557647,1.0,0.375,203.33936880342662
+q14_2,zh,合同续签需要哪些凭证？比较不同资料的要求。,reranked,6,0.5,1.0,1.0,0.644824486427155,1.0,0.375,4271.720024989918
+q14_3,zh,合同续签的记录保存多久？请找出各文件中的规定。,exact,6,0.3333333333333333,1.0,0.3333333333333333,0.28162497265977743,1.0,0.25,22.788116009905934
+q14_3,zh,合同续签的记录保存多久？请找出各文件中的规定。,hybrid,6,0.5,1.0,1.0,0.5889837127672155,1.0,0.375,192.8533569443971
+q14_3,zh,合同续签的记录保存多久？请找出各文件中的规定。,reranked,6,0.5,1.0,1.0,0.644824486427155,1.0,0.375,3460.1533291861415
+q14_4,en,Which channel should I use to file contract renewal? Compare the documents.,exact,6,0.5,1.0,1.0,0.5943907508440193,1.0,0.375,19.785546930506825
+q14_4,en,Which channel should I use to file contract renewal? Compare the documents.,hybrid,6,0.5,1.0,1.0,0.5842273861585909,1.0,0.375,184.40820300020278
+q14_4,en,Which channel should I use to file contract renewal? Compare the documents.,reranked,6,0.5,1.0,1.0,0.5889837127672155,1.0,0.375,5224.764438113198
+q15_0,en,Compare the submission deadlines for security vulnerability reporting across the policies.,exact,6,0.0,0.0,0,0.0,1.0,0.0,17.274295911192894
+q15_0,en,Compare the submission deadlines for security vulnerability reporting across the policies.,hybrid,6,0.0,0.0,0,0.0,1.0,0.0,327.788561116904
+q15_0,en,Compare the submission deadlines for security vulnerability reporting across the policies.,reranked,6,0.5,1.0,1.0,0.644824486427155,1.0,0.375,4438.643864123151
+q15_1,en,Who signs off on security vulnerability reporting according to the different documents?,exact,6,0.16666666666666666,1.0,0.125,0.09546043308946735,1.0,0.125,31.718327896669507
+q15_1,en,Who signs off on security vulnerability reporting according to the different documents?,hybrid,6,0.3333333333333333,1.0,1.0,0.41039156802332444,1.0,0.25,222.36060677096248
+q15_1,en,Who signs off on security vulnerability reporting according to the different documents?,reranked,6,0.6666666666666666,1.0,1.0,0.7114533439819829,1.0,0.5,4089.7810640744865
+q15_2,zh,安全漏洞报告需要哪些凭证？比较不同资料的要求。,exact,6,0.16666666666666666,1.0,0.2,0.11706259313796355,1.0,0.125,22.147837094962597
+q15_2,zh,安全漏洞报告需要哪些凭证？比较不同资料的要求。,hybrid,6,0.3333333333333333,1.0,0.25,0.24738635904833423,1.0,0.25,192.17900489456952
+q15_2,zh,安全漏洞报告需要哪些凭证？比较不同资料的要求。,reranked,6,0.5,1.0,1.0,0.644824486427155,1.0,0.375,4610.026692040265
+q15_3,zh,安全漏洞报告的记录保存多久？请找出各文件中的规定。,exact,6,0.16666666666666666,1.0,0.5,0.1909208661789347,1.0,0.125,23.997838143259287
+q15_3,zh,安全漏洞报告的记录保存多久？请找出各文件中的规定。,hybrid,6,0.3333333333333333,1.0,1.0,0.4935232796777482,1.0,0.25,231.9601869676262
+q15_3,zh,安全漏洞报告的记录保存多久？请找出各文件中的规定。,reranked,6,0.3333333333333333,1.0,1.0,0.4935232796777482,1.0,0.25,4644.237541826442
+q15_4,en,Which channel should I use to file security vulnerability reporting? Compare the documents.,exact,6,0.3333333333333333,1.0,1.0,0.45390362024822023,1.0,0.25,38.46148797310889
+q15_4,en,Which channel should I use to file security vulnerability reporting? Compare the documents.,hybrid,6,0.3333333333333333,1.0,1.0,0.45390362024822023,1.0,0.25,191.95956201292574
+q15_4,en,Which channel should I use to file security vulnerability reporting? Compare the documents.,reranked,6,0.6666666666666666,1.0,1.0,0.7456919575934261,1.0,0.5,4655.3364638239145
+q16_0,en,Compare the submission deadlines for inventory reconciliation across the policies.,exact,5,0.2,1.0,0.125,0.10699313236726378,1.0,0.125,14.699778985232115
+q16_0,en,Compare the submission deadlines for inventory reconciliation across the policies.,hybrid,5,0.0,0.0,0,0.0,1.0,0.0,213.72652193531394
+q16_0,en,Compare the submission deadlines for inventory reconciliation across the policies.,reranked,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,5215.8424709923565
+q16_1,en,Who signs off on inventory reconciliation according to the different documents?,exact,5,0.4,1.0,0.5,0.32097939710179135,1.0,0.25,33.55449391528964
+q16_1,en,Who signs off on inventory reconciliation according to the different documents?,hybrid,5,0.4,1.0,0.3333333333333333,0.30078518014914984,1.0,0.25,300.35763792693615
+q16_1,en,Who signs off on inventory reconciliation according to the different documents?,reranked,5,0.4,1.0,0.5,0.34519134224686937,1.0,0.25,4373.533885926008
+q16_2,zh,库存盘点需要哪些凭证？比较不同资料的要求。,exact,5,0.6,1.0,1.0,0.5730249097309823,1.0,0.375,21.127756917849183
+q16_2,zh,库存盘点需要哪些凭证？比较不同资料的要求。,hybrid,5,0.6,1.0,0.5,0.45824474400474136,1.0,0.375,181.61016586236656
+q16_2,zh,库存盘点需要哪些凭证？比较不同资料的要求。,reranked,5,0.6,1.0,1.0,0.7227265726449519,1.0,0.375,3544.9772200081497
+q16_3,zh,库存盘点的记录保存多久？请找出各文件中的规定。,exact,5,0.6,1.0,0.25,0.3980847300545424,1.0,0.375,27.045372873544693
+q16_3,zh,库存盘点的记录保存多久？请找出各文件中的规定。,hybrid,5,0.4,1.0,0.3333333333333333,0.29039140533630226,1.0,0.25,190.66361617296934
+q16_3,zh,库存盘点的记录保存多久？请找出各文件中的规定。,reranked,5,0.6,1.0,1.0,0.7227265726449519,1.0,0.375,4383.190959924832
+q16_4,en,Which channel should I use to file inventory reconciliation? Compare the documents.,exact,5,0.4,1.0,1.0,0.4703652827859579,1.0,0.25,16.34941203519702
+q16_4,en,Which channel should I use to file inventory reconciliation? Compare the documents.,hybrid,5,0.4,1.0,1.0,0.5531464700081437,1.0,0.25,181.41292803920805
+q16_4,en,Which channel should I use to file inventory reconciliation? Compare the documents.,reranked,5,0.4,1.0,1.0,0.5531464700081437,1.0,0.25,4495.955045800656
+q17_0,en,Compare the submission deadlines for backup restoration across the policies.,exact,5,0.0,0.0,0,0.0,1.0,0.0,14.177598990499973
+q17_0,en,Compare the submission deadlines for backup restoration across the policies.,hybrid,5,0.0,0.0,0,0.0,1.0,0.0,179.84665604308248
+q17_0,en,Compare the submission deadlines for backup restoration across the policies.,reranked,5,0.4,1.0,1.0,0.5531464700081437,1.0,0.25,5255.744261899963
+q17_1,en,Who signs off on backup restoration according to the different documents?,exact,5,0.0,0.0,0,0.0,1.0,0.0,15.612502116709948
+q17_1,en,Who signs off on backup restoration according to the different documents?,hybrid,5,0.2,1.0,0.125,0.10699313236726378,1.0,0.125,181.80475500412285
+q17_1,en,Who signs off on backup restoration according to the different documents?,reranked,5,0.6,1.0,1.0,0.7227265726449519,1.0,0.375,5087.139067938551
+q17_2,zh,备份恢复需要哪些凭证？比较不同资料的要求。,exact,5,0.4,1.0,1.0,0.5531464700081437,1.0,0.25,19.983024802058935
+q17_2,zh,备份恢复需要哪些凭证？比较不同资料的要求。,hybrid,5,0.4,1.0,0.5,0.36005461457723403,1.0,0.25,194.01840982027352
+q17_2,zh,备份恢复需要哪些凭证？比较不同资料的要求。,reranked,5,0.4,1.0,1.0,0.5531464700081437,1.0,0.25,4387.166270986199
+q17_3,zh,备份恢复的记录保存多久？请找出各文件中的规定。,exact,5,0.4,1.0,0.3333333333333333,0.3156484524795145,1.0,0.25,23.339985171332955
+q17_3,zh,备份恢复的记录保存多久？请找出各文件中的规定。,hybrid,5,0.4,1.0,1.0,0.4599715079731103,1.0,0.25,198.90547706745565
+q17_3,zh,备份恢复的记录保存多久？请找出各文件中的规定。,reranked,5,0.4,1.0,1.0,0.5531464700081437,1.0,0.25,3900.656328070909
+q17_4,en,Which channel should I use to file backup restoration? Compare the documents.,exact,5,0.2,1.0,0.3333333333333333,0.16958010263680806,1.0,0.125,17.379507888108492
+q17_4,en,Which channel should I use to file backup restoration? Compare the documents.,hybrid,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,192.29758204892278
+q17_4,en,Which channel should I use to file backup restoration? Compare the documents.,reranked,5,0.6,1.0,1.0,0.7227265726449519,1.0,0.375,4409.512104932219
+q18_0,en,Compare the submission deadlines for accessibility review across the policies.,exact,5,0.2,1.0,0.14285714285714285,0.11305340175787204,1.0,0.125,15.593783929944038
+q18_0,en,Compare the submission deadlines for accessibility review across the policies.,hybrid,5,0.0,0.0,0,0.0,1.0,0.0,187.97084596008062
+q18_0,en,Compare the submission deadlines for accessibility review across the policies.,reranked,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,4955.934282857925
+q18_1,en,Who signs off on accessibility review according to the different documents?,exact,5,0.2,1.0,0.25,0.14606834984270645,1.0,0.125,16.741483006626368
+q18_1,en,Who signs off on accessibility review according to the different documents?,hybrid,5,0.2,1.0,0.2,0.13120507751234178,1.0,0.125,189.52466594055295
+q18_1,en,Who signs off on accessibility review according to the different documents?,reranked,5,0.4,1.0,1.0,0.5531464700081437,1.0,0.25,4420.626690145582
+q18_2,zh,无障碍审查需要哪些凭证？比较不同资料的要求。,exact,5,0.2,1.0,0.14285714285714285,0.11305340175787204,1.0,0.125,20.91747778467834
+q18_2,zh,无障碍审查需要哪些凭证？比较不同资料的要求。,hybrid,5,0.2,1.0,0.25,0.14606834984270645,1.0,0.125,185.43134699575603
+q18_2,zh,无障碍审查需要哪些凭证？比较不同资料的要求。,reranked,5,0.6,1.0,0.25,0.3980847300545424,1.0,0.375,3828.633215976879
+q18_3,zh,无障碍审查的记录保存多久？请找出各文件中的规定。,exact,5,0.6,1.0,1.0,0.7227265726449519,1.0,0.375,23.48544797860086
+q18_3,zh,无障碍审查的记录保存多久？请找出各文件中的规定。,hybrid,5,0.6,1.0,0.5,0.4660026449463635,1.0,0.375,198.84785707108676
+q18_3,zh,无障碍审查的记录保存多久？请找出各文件中的规定。,reranked,5,0.8,1.0,1.0,0.8297197050122155,1.0,0.5,3715.6149849761277
+q18_4,en,Which channel should I use to file accessibility review? Compare the documents.,exact,5,0.4,1.0,1.0,0.4703652827859579,1.0,0.25,18.230724846944213
+q18_4,en,Which channel should I use to file accessibility review? Compare the documents.,hybrid,5,0.4,1.0,1.0,0.5087403079104241,1.0,0.25,191.55265484005213
+q18_4,en,Which channel should I use to file accessibility review? Compare the documents.,reranked,5,0.4,1.0,1.0,0.4703652827859579,1.0,0.25,5126.572861103341
+q19_0,en,Compare the submission deadlines for purchase order changes across the policies.,exact,5,0.0,0.0,0,0.0,1.0,0.0,16.73602405935526
+q19_0,en,Compare the submission deadlines for purchase order changes across the policies.,hybrid,5,0.0,0.0,0,0.0,1.0,0.0,185.4981582146138
+q19_0,en,Compare the submission deadlines for purchase order changes across the policies.,reranked,5,0.4,1.0,1.0,0.5531464700081437,1.0,0.25,5221.154100960121
+q19_1,en,Who signs off on purchase order changes according to the different documents?,exact,5,0.0,0.0,0,0.0,1.0,0.0,17.79304421506822
+q19_1,en,Who signs off on purchase order changes according to the different documents?,hybrid,5,0.2,1.0,0.16666666666666666,0.1208113026994942,1.0,0.125,186.90009298734367
+q19_1,en,Who signs off on purchase order changes according to the different documents?,reranked,5,0.4,1.0,1.0,0.48522855511632257,1.0,0.25,4391.827134881169
+q19_2,zh,采购单变更需要哪些凭证？比较不同资料的要求。,exact,5,0.2,1.0,0.25,0.14606834984270645,1.0,0.125,21.46776393055916
+q19_2,zh,采购单变更需要哪些凭证？比较不同资料的要求。,hybrid,5,0.2,1.0,0.125,0.10699313236726378,1.0,0.125,199.21925896778703
+q19_2,zh,采购单变更需要哪些凭证？比较不同资料的要求。,reranked,5,0.4,1.0,1.0,0.48522855511632257,1.0,0.25,4870.462573831901
+q19_3,zh,采购单变更的记录保存多久？请找出各文件中的规定。,exact,5,0.2,1.0,0.5,0.21398626473452756,1.0,0.125,22.662041010335088
+q19_3,zh,采购单变更的记录保存多久？请找出各文件中的规定。,hybrid,5,0.4,1.0,1.0,0.5531464700081437,1.0,0.25,188.64879989996552
+q19_3,zh,采购单变更的记录保存多久？请找出各文件中的规定。,reranked,5,0.4,1.0,1.0,0.5531464700081437,1.0,0.25,4574.453552020714
+q19_4,en,Which channel should I use to file purchase order changes? Compare the documents.,exact,5,0.2,1.0,0.2,0.13120507751234178,1.0,0.125,20.39644098840654
+q19_4,en,Which channel should I use to file purchase order changes? Compare the documents.,hybrid,5,0.2,1.0,1.0,0.3391602052736161,1.0,0.125,184.30952006019652
+q19_4,en,Which channel should I use to file purchase order changes? Compare the documents.,reranked,5,0.6,1.0,1.0,0.6843515475204855,1.0,0.375,5193.044581916183

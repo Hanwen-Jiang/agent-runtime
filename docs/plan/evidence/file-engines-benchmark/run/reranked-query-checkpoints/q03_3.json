@@ -1,0 +1,351 @@
+{
+  "id": "q03_3",
+  "query": "仓库退货的记录保存多久？请找出各文件中的规定。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_03",
+      "notebook_00",
+      "pptx_13",
+      "scan_pdf_03",
+      "text_03",
+      "text_pdf_03"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.5,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.3333333333333333,
+    "unique_source_ndcg_at_8": 0.39868756579774095,
+    "relevant_files": [
+      "docx_03",
+      "pptx_13",
+      "text_03"
+    ],
+    "expected_files": [
+      "text_pdf_03",
+      "scan_pdf_03",
+      "docx_03",
+      "pptx_13",
+      "text_03",
+      "notebook_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 21.183426026254892
+  },
+  "hybrid": {
+    "recall_at_8": 0.6666666666666666,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7751482523375256,
+    "relevant_files": [
+      "docx_03",
+      "pptx_13",
+      "text_03",
+      "text_pdf_03"
+    ],
+    "expected_files": [
+      "text_pdf_03",
+      "scan_pdf_03",
+      "docx_03",
+      "pptx_13",
+      "text_03",
+      "notebook_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.5,
+    "latency_ms": 4861.28650396131
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_83e88f5b21b27cbd42fb1dc5",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 14.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_13",
+      "version_id": "pptx_13",
+      "score": 6.720522880554199,
+      "text": "仓库退货记录须保留13个月。",
+      "quote_hash": "90d7d1c632b476c5139cea0e3e57572fe9b627f2ff64522895a5d4a550208398",
+      "id": "chunk_b3d013e903ba613e81ccacf79425091746cacc2946f923243ed0815a565033da"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e865a27df0673af517d31a4a",
+        "kind": "document_block",
+        "block_index": 4.0,
+        "char_end": 14.0
+      },
+      "representation_id": "rep_docx_03",
+      "version_id": "docx_03",
+      "score": 6.660921573638916,
+      "text": "仓库退货记录须保留11个月。",
+      "quote_hash": "2a2a229fd5f05a07904dd84be56947d1e2dde157982222760d371acaafba85e8",
+      "id": "chunk_9d83aa850ae859dc1d3977e0193885b38963e77d96a8d39f18bbb38644d0f67e"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_550c6b68b14747476e25f531",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 56.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_03",
+      "version_id": "text_pdf_03",
+      "score": 4.000059604644775,
+      "text": "Synthetic policy edition / 合成政策版本 — page 4\n仓库退货记录须保留9个月。",
+      "quote_hash": "8149218b902ca06b98959892f090e01667e3ee812fdce57641eae5878efc61ee",
+      "id": "chunk_a72c9688fd359d530208280f1c428984ed1b9d4f5d59d666a8d74807c70fbb9d"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_c653a10406687a8d7bd8bec4",
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0,
+        "end_line": 6.0,
+        "char_end": 184.0
+      },
+      "representation_id": "rep_text_03",
+      "version_id": "text_03",
+      "score": 2.978295087814331,
+      "text": "{\"clause\": \"仓库退货的提交期限为14个工作日。\"}\n{\"clause\": \"仓库退货的审批责任人为物流。\"}\n{\"clause\": \"仓库退货必须提供物流单号。\"}\n{\"clause\": \"仓库退货记录须保留14个月。\"}\n{\"clause\": \"仓库退货的紧急例外需要部门负责人书面批准。\"}\n{\"clause\": \"仓库退货必须通过退货登记台提交。\"}",
+      "quote_hash": "5f4ea309e57e23ab742757ffb533d9d49da64a0565cab28eb365410ec74d71db",
+      "id": "chunk_40470f1e0d637f19d28895be3414f13b1a3979ceb302741606f7d778bee512bb"
+    },
+    {
+      "anchor": {
+        "slide_index": 0.0,
+        "block_id": "blk_5527030823fefcd3cbeefb91",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 17.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_13",
+      "version_id": "pptx_13",
+      "score": 1.5531365871429443,
+      "text": "仓库退货的提交期限为11个工作日。",
+      "quote_hash": "0e5cf443c162c2261d5d29f66dacbc5f86a918675db5f4d1534e47133cebbc41",
+      "id": "chunk_98d48f31a94e9b980d4d81d8d29957c1dc4715c104bffeb0cf353c7ac86b6bea"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d05bba50101048de995dfbe3",
+        "kind": "document_block",
+        "block_index": 1.0,
+        "char_end": 16.0
+      },
+      "representation_id": "rep_docx_03",
+      "version_id": "docx_03",
+      "score": 1.4542194604873657,
+      "text": "仓库退货的提交期限为5个工作日。",
+      "quote_hash": "b0239f1122d46d6f4898bbe52bef223c1640687a4a60ebc7eff9a9545c4e52b8",
+      "id": "chunk_67225811d4feaca767f8d99e234353af34bbf0fa5be021955622065d2ae2c99f"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e01b09f09ccb4d5c9da5efd6",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 13.0,
+        "bbox": [
+          0.025705644860863686,
+          0.2734375,
+          0.3109878897666931,
+          0.3609375
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_02",
+      "version_id": "scan_pdf_02",
+      "score": 0.26690763235092163,
+      "text": "客户退款记录须保留9个月。",
+      "quote_hash": "f31f652fd6e846d7638fc7d83f876408e214c95503ac918045204640b4029ea5",
+      "id": "chunk_e8e5b61222f2fd4d38271c27472e26ab2ebc2c29f4344746bf3d95371c65449b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d758d0292192abeaea25564d",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 14.0,
+        "bbox": [
+          0.025705644860863686,
+          0.271875,
+          0.32258063554763794,
+          0.3609375
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_16",
+      "version_id": "scan_pdf_16",
+      "score": -0.11797523498535156,
+      "text": "库存盘点记录须保留23个月。",
+      "quote_hash": "98e2857e666c6e90429109810afdcf38fcc2e1f919571f19af4328f0dadbd066",
+      "id": "chunk_b08d88df43f6b5dea170b456edb16f51e16148b3513fd4673d1c63bbc86a7187"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_794c58f6ade394a13be6b83318077ef7602272dbd78ea936b6f851a66e7ec8b7",
+      "version_id": "pptx_13",
+      "text": "仓库退货的审批责任人为物流。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_d1d1d09a232d21a00161dedf",
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_9380a642b7626c42d67cbd0cace72e8002615c16fb8d755b99155e327213f7a0",
+      "version_id": "docx_03",
+      "text": "仓库退货的审批责任人为物流。",
+      "anchor": {
+        "block_id": "blk_93f12b712df6fdf3ffb62336",
+        "block_index": 2.0,
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_40470f1e0d637f19d28895be3414f13b1a3979ceb302741606f7d778bee512bb",
+      "version_id": "text_03",
+      "text": "{\"clause\": \"仓库退货的提交期限为14个工作日。\"}\n{\"clause\": \"仓库退货的审批责任人为物流。\"}\n{\"clause\": \"仓库退货必须提供物流单号。\"}\n{\"clause\": \"仓库退货记录须保留14个月。\"}\n{\"clause\": \"仓库退货的紧急例外需要部门负责人书面批准。\"}\n{\"clause\": \"仓库退货必须通过退货登记台提交。\"}",
+      "anchor": {
+        "block_id": "blk_c653a10406687a8d7bd8bec4",
+        "char_end": 184,
+        "char_start": 0,
+        "end_line": 6.0,
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0
+      }
+    },
+    {
+      "id": "chunk_9d83aa850ae859dc1d3977e0193885b38963e77d96a8d39f18bbb38644d0f67e",
+      "version_id": "docx_03",
+      "text": "仓库退货记录须保留11个月。",
+      "anchor": {
+        "block_id": "blk_e865a27df0673af517d31a4a",
+        "block_index": 4.0,
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_b3d013e903ba613e81ccacf79425091746cacc2946f923243ed0815a565033da",
+      "version_id": "pptx_13",
+      "text": "仓库退货记录须保留13个月。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_83e88f5b21b27cbd42fb1dc5",
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_67225811d4feaca767f8d99e234353af34bbf0fa5be021955622065d2ae2c99f",
+      "version_id": "docx_03",
+      "text": "仓库退货的提交期限为5个工作日。",
+      "anchor": {
+        "block_id": "blk_d05bba50101048de995dfbe3",
+        "block_index": 1.0,
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_98d48f31a94e9b980d4d81d8d29957c1dc4715c104bffeb0cf353c7ac86b6bea",
+      "version_id": "pptx_13",
+      "text": "仓库退货的提交期限为11个工作日。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_5527030823fefcd3cbeefb91",
+        "char_end": 17,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_61d2a2f621b454ecab64f9ad5ef0f08418fd735ae99d917cf44d480fa8eb915b",
+      "version_id": "pptx_13",
+      "text": "仓库退货的紧急例外需要部门负责人书面批准。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_cb79d7c2d5d8fd3e8130ceb7",
+        "char_end": 21,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 4.0
+      }
+    }
+  ]
+}

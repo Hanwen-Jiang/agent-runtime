@@ -1,0 +1,23 @@
+{
+  "image_id": "sha256:b3a9cdcdda52b573259ebeaf00b9fb9a2b61a6d6232566c21ccb907c04f09f5e",
+  "state": {
+    "Status": "exited",
+    "Running": false,
+    "Paused": false,
+    "Restarting": false,
+    "OOMKilled": false,
+    "Dead": false,
+    "Pid": 0,
+    "ExitCode": 0,
+    "Error": "",
+    "StartedAt": "2026-11-09T22:25:02.004713398Z",
+    "FinishedAt": "2026-11-09T22:25:21.060654685Z"
+  },
+  "network_mode": "none",
+  "read_only_root": true,
+  "memory_bytes": 8589934592,
+  "nanocpus": 4000000000,
+  "cmd": [
+    "/validation/check.py"
+  ]
+}

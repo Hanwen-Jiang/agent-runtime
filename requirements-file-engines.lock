@@ -3,7 +3,7 @@ annotated-doc==0.0.5
 annotated-types==0.8.0
 antlr4-python3-runtime==4.9.3
 anyio==4.15.1
-appnope==1.0.0
+appnope==1.0.0; sys_platform == "darwin"
 asttokens==3.0.2
 attrs==26.1.0
 beautifulsoup4==4.15.0

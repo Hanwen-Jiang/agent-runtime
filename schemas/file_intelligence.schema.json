@@ -12,18 +12,7 @@
   ],
   "properties": {
     "operation": {
-      "enum": [
-        "inspect",
-        "read",
-        "render",
-        "archive_list",
-        "extract",
-        "query",
-        "edit",
-        "recalculate",
-        "notebook_execute",
-        "index"
-      ]
+      "$ref": "defs.schema.json#/$defs/file_operation"
     },
     "request_id": {
       "type": "string",

@@ -1,0 +1,395 @@
+{
+  "evaluation": {
+    "id": "image_00",
+    "family": "image",
+    "variant": "raster_png",
+    "language": "en",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 4.785832593915984,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.887,
+        "candidate_ids": []
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8036,
+        "candidate_ids": []
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8772,
+        "candidate_ids": []
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8364,
+        "candidate_ids": []
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.7075,
+        "candidate_ids": []
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8235,
+        "candidate_ids": []
+      }
+    ],
+    "independent": {
+      "method": "raster_requires_human_visual_review",
+      "verified": null
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 12,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "selection": {
+        "kind": "image_region",
+        "bbox": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "coordinate_space": "normalized_top_left_after_rotation"
+      },
+      "visual_content_in_artifact": true,
+      "ocr_requested": true,
+      "ocr_regions": 12,
+      "returned_blocks": 12,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_a837a026b3f7d299542a4a05",
+        "kind": "ocr_text",
+        "text": "Security vulnerability reporting must be submitted within",
+        "anchor": {
+          "kind": "image_region",
+          "bbox": [
+            0.025185185185185185,
+            0.03873873873873874,
+            0.6414814814814814,
+            0.07027027027027027
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99862,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_ed3d5eb804f08af22e97f296",
+        "kind": "ocr_text",
+        "text": "4 business days.",
+        "anchor": {
+          "kind": "image_region",
+          "bbox": [
+            0.025185185185185185,
+            0.08198198198198198,
+            0.20222222222222222,
+            0.11441441441441441
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99962,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_52593f82dc73f1154e29820d",
+        "kind": "ocr_text",
+        "text": "Security Team is responsible for approving security",
+        "anchor": {
+          "kind": "image_region",
+          "bbox": [
+            0.025185185185185185,
+            0.15045045045045044,
+            0.5792592592592593,
+            0.18288288288288287
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99656,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_91f5ea8b38bdd24890df5615",
+        "kind": "ocr_text",
+        "text": "vulnerability reporting.",
+        "anchor": {
+          "kind": "image_region",
+          "bbox": [
+            0.025925925925925925,
+            0.1945945945945946,
+            0.2748148148148148,
+            0.22702702702702704
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.98049,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_67134f317b530d85cf518525",
+        "kind": "ocr_text",
+        "text": "Security vulnerability reporting requires reproducible",
+        "anchor": {
+          "kind": "image_region",
+          "bbox": [
+            0.025925925925925925,
+            0.26126126126126126,
+            0.6029629629629629,
+            0.2936936936936937
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99539,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_a8e03a2df675717cddbd81bf",
+        "kind": "ocr_text",
+        "text": "proof of concept.",
+        "anchor": {
+          "kind": "image_region",
+          "bbox": [
+            0.025925925925925925,
+            0.3063063063063063,
+            0.22740740740740742,
+            0.3396396396396396
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99264,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_83ee69b879804c844e22c80f",
+        "kind": "ocr_text",
+        "text": "Records for security vulnerability reporting must be",
+        "anchor": {
+          "kind": "image_region",
+          "bbox": [
+            0.024444444444444446,
+            0.37117117117117115,
+            0.5851851851851851,
+            0.4081081081081081
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99937,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_930139efcb7edaf2a13b3d43",
+        "kind": "ocr_text",
+        "text": "retained for 9 months.",
+        "anchor": {
+          "kind": "image_region",
+          "bbox": [
+            0.025185185185185185,
+            0.418018018018018,
+            0.27111111111111114,
+            0.4477477477477477
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99729,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_77baef399105b40dcd50879a",
+        "kind": "ocr_text",
+        "text": "Emergency exceptions for security vulnerability reporting",
+        "anchor": {
+          "kind": "image_region",
+          "bbox": [
+            0.02666666666666667,
+            0.48558558558558557,
+            0.654074074074074,
+            0.5180180180180181
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99972,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_79c5795156cccea602feed40",
+        "kind": "ocr_text",
+        "text": "require written approval from the department head.",
+        "anchor": {
+          "kind": "image_region",
+          "bbox": [
+            0.025185185185185185,
+            0.5297297297297298,
+            0.6081481481481481,
+            0.5612612612612613
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.9915,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_bae2cc60e7e268fec94b247e",
+        "kind": "ocr_text",
+        "text": "Security vulnerability reporting must be submitted",
+        "anchor": {
+          "kind": "image_region",
+          "bbox": [
+            0.025185185185185185,
+            0.5963963963963964,
+            0.5725925925925925,
+            0.6297297297297297
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99715,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_45a8b0cec23b69479c937c4b",
+        "kind": "ocr_text",
+        "text": "through the security inbox.",
+        "anchor": {
+          "kind": "image_region",
+          "bbox": [
+            0.02666666666666667,
+            0.6414414414414414,
+            0.3214814814814815,
+            0.672972972972973
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.98568,
+        "low_confidence": false
+      }
+    ],
+    "outline": [],
+    "warnings": [],
+    "coverage": {
+      "selection": {
+        "kind": "image_region",
+        "bbox": [
+          0,
+          0,
+          1,
+          1
+        ],
+        "coordinate_space": "normalized_top_left_after_rotation"
+      },
+      "visual_content_in_artifact": true,
+      "ocr_requested": true,
+      "ocr_regions": 12,
+      "returned_blocks": 12,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/image_00/image-region.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "image_region",
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "629156d68687a0d5bc0e47df040e8b039478fdae1ca8705852cf5bf3ccf7d77a",
+        "size_bytes": 92637
+      },
+      {
+        "path": "/workspace/run/artifacts/image_00/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "dd8468b78c19d56dc0be30645bdf5f0738d4865a5293b50f7205635c18248240",
+        "size_bytes": 5804
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "40d4b8567541d68fb1a489e9a43331f004e51f66891f9ca3fe1f33d25eb808a6",
+      "size_bytes": 89222,
+      "mime_type": "image/png"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "21f9738d3548254984f4076fd223573075d305f2dcc44db041616b7478f750ee"
+    }
+  }
+}

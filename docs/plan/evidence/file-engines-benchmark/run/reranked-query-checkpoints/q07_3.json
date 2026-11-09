@@ -1,0 +1,320 @@
+{
+  "id": "q07_3",
+  "query": "供应商准入的记录保存多久？请找出各文件中的规定。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_07",
+      "scan_pdf_07",
+      "text_07",
+      "text_pdf_07",
+      "xlsx_02"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.4,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.5087403079104241,
+    "relevant_files": [
+      "docx_07",
+      "text_07"
+    ],
+    "expected_files": [
+      "text_pdf_07",
+      "scan_pdf_07",
+      "docx_07",
+      "xlsx_02",
+      "text_07"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 22.149762837216258
+  },
+  "hybrid": {
+    "recall_at_8": 0.6,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7227265726449519,
+    "relevant_files": [
+      "docx_07",
+      "text_07",
+      "text_pdf_07"
+    ],
+    "expected_files": [
+      "text_pdf_07",
+      "scan_pdf_07",
+      "docx_07",
+      "xlsx_02",
+      "text_07"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 5178.419417934492
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_64cfd876e5434fe4e5e94fed",
+        "kind": "document_block",
+        "block_index": 4.0,
+        "char_end": 15.0
+      },
+      "representation_id": "rep_docx_07",
+      "version_id": "docx_07",
+      "score": 6.701924800872803,
+      "text": "供应商准入记录须保留15个月。",
+      "quote_hash": "8419d86f46f6f5497dd05c2ee593e0fe59241178529a1f150e219a456734cfbe",
+      "id": "chunk_dd7fa4ca6c4e2dad7a559d6ec4e74f4c6edb2cc633d0c3b2c32cc829743d8322"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d525be7e7f8b3a90a6c80695",
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0,
+        "end_line": 6.0,
+        "char_end": 106.0
+      },
+      "representation_id": "rep_text_07",
+      "version_id": "text_07",
+      "score": 4.198121547698975,
+      "text": "供应商准入的提交期限为17个工作日。\n供应商准入的审批责任人为采购。\n供应商准入必须提供安全问卷。\n供应商准入记录须保留18个月。\n供应商准入的紧急例外需要部门负责人书面批准。\n供应商准入必须通过供应商平台提交。",
+      "quote_hash": "e66c8660152e4bb1a4e0255debd9a652ed422f6cf2fef9c964bb4a03ed01d9f0",
+      "id": "chunk_3dee489c7c37de17fe9f2e753ecb8600833fad962e7757e41fc5221cc7f58bb0"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_10c296efd3d3f2fad38be832",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 58.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_07",
+      "version_id": "text_pdf_07",
+      "score": 3.566477060317993,
+      "text": "Synthetic policy edition / 合成政策版本 — page 4\n供应商准入记录须保留13个月。",
+      "quote_hash": "4d8bb3fa41e937c6999b162f938fb4460053468e36f2f8099d195be6b674d2f4",
+      "id": "chunk_4046a57e04950d723044d11d32a8a226902704141e71f14eaea53f4a26806934"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_c837aae4fbf25bc3612eb531",
+        "kind": "document_block",
+        "block_index": 1.0,
+        "char_end": 17.0
+      },
+      "representation_id": "rep_docx_07",
+      "version_id": "docx_07",
+      "score": 1.5909866094589233,
+      "text": "供应商准入的提交期限为8个工作日。",
+      "quote_hash": "9245a452cd21aa8a7697700148a8df6f694029babac0a4044fbd12a58468445f",
+      "id": "chunk_1cf073317a1859f2a35a270996c2939a9e991a22d32b2d1aa91ccbdbc0843175"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_dcd9464cca744395225678c2",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 15.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_09",
+      "version_id": "pptx_09",
+      "score": 0.2864557206630707,
+      "text": "采购单变更记录须保留10个月。",
+      "quote_hash": "19f5dffc339331b749cf14cc231498acd8b5099c9656deb565e97e3cb1176252",
+      "id": "chunk_571de9e542270f052f1b9bee7d7ce5bd5de0eb17a950e6e307dd3cf00e0a4eaa"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d74be6c5513044fa9a4dbef9",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 61.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_text_pdf_07",
+      "version_id": "text_pdf_07",
+      "score": -0.6266338229179382,
+      "text": "Synthetic policy edition / 合成政策版本 — page 1\n供应商准入的提交期限为27个工作日。",
+      "quote_hash": "6c10f1509914faf25c786bfb53c69e29beae02f4cc414811b9adbbc341d0ce18",
+      "id": "chunk_64013746a15055bb50e007d202d7d10ca7805949300dd0917fefef3c7db3d703"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_8e66358b2b0484564c00bb74",
+        "range": "B5",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 16.0
+      },
+      "representation_id": "rep_xlsx_03",
+      "version_id": "xlsx_03",
+      "score": -0.7734290361404419,
+      "text": "软件发布审批记录须保留17个月。",
+      "quote_hash": "8cc2710c1d3add1998ba493969f2cdd5c9ac2b79264dfe244f1a6764fff5b67c",
+      "id": "chunk_31518d92c5ccfdb49ccfb20aea8d38a0b08f77495cd31273e5ea27384700cdd6"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_a37bd2426b189ecc1ffc3c87",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.026209676638245583,
+          0.275,
+          0.36945563554763794,
+          0.359375
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_08",
+      "version_id": "scan_pdf_08",
+      "score": -0.8038056492805481,
+      "text": "软件发布审批记录须保留15个月。",
+      "quote_hash": "5eb695290e93ec6c717fad45ad6a652520d4a2fbbf490a0221d0e11b220d105e",
+      "id": "chunk_52765154fd10aaf6063afab97d753d19489c7aa236e4f44ea2e0b7be973917ba"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_3dee489c7c37de17fe9f2e753ecb8600833fad962e7757e41fc5221cc7f58bb0",
+      "version_id": "text_07",
+      "text": "供应商准入的提交期限为17个工作日。\n供应商准入的审批责任人为采购。\n供应商准入必须提供安全问卷。\n供应商准入记录须保留18个月。\n供应商准入的紧急例外需要部门负责人书面批准。\n供应商准入必须通过供应商平台提交。",
+      "anchor": {
+        "block_id": "blk_d525be7e7f8b3a90a6c80695",
+        "char_end": 106,
+        "char_start": 0,
+        "end_line": 6.0,
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0
+      }
+    },
+    {
+      "id": "chunk_5653a1c402db7f0727dcd5dc44fe0e5c90d402828e57eb27ab24dc81f312ccb0",
+      "version_id": "docx_07",
+      "text": "供应商准入的审批责任人为采购。",
+      "anchor": {
+        "block_id": "blk_ab1a05f8f47830471fb5c569",
+        "block_index": 2.0,
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_dd7fa4ca6c4e2dad7a559d6ec4e74f4c6edb2cc633d0c3b2c32cc829743d8322",
+      "version_id": "docx_07",
+      "text": "供应商准入记录须保留15个月。",
+      "anchor": {
+        "block_id": "blk_64cfd876e5434fe4e5e94fed",
+        "block_index": 4.0,
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_1cf073317a1859f2a35a270996c2939a9e991a22d32b2d1aa91ccbdbc0843175",
+      "version_id": "docx_07",
+      "text": "供应商准入的提交期限为8个工作日。",
+      "anchor": {
+        "block_id": "blk_c837aae4fbf25bc3612eb531",
+        "block_index": 1.0,
+        "char_end": 17,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_3cffc9497ca01e3e9d1fea8f18c5e5602cf2171d9c7b29a4495bd49db0701dfa",
+      "version_id": "docx_07",
+      "text": "供应商准入必须通过供应商平台提交。",
+      "anchor": {
+        "block_id": "blk_8e268389d270ca798ce3c5c1",
+        "block_index": 6.0,
+        "char_end": 17,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_c2cdbdb8262a6f308f65b86749f75734debcf7fb07dc9d324b8d573a63aaa382",
+      "version_id": "docx_07",
+      "text": "供应商准入必须提供安全问卷。",
+      "anchor": {
+        "block_id": "blk_6f94a27328112d78565dfc6c",
+        "block_index": 3.0,
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_5085b4c635bc60707626be0badc5a5a14528d9bdb780870ec7ffa657baa912b0",
+      "version_id": "docx_07",
+      "text": "供应商准入的紧急例外需要部门负责人书面批准。",
+      "anchor": {
+        "block_id": "blk_186f2448feae503c63dcb9b2",
+        "block_index": 5.0,
+        "char_end": 22,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_c8b225a20a914e1eb83bccf145244a6ed85438cd7909dcae2dabc8d5c675e720",
+      "version_id": "text_pdf_07",
+      "text": "Synthetic policy edition / 合成政策版本 — page 2\n供应商准入的审批责任人为采购。",
+      "anchor": {
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "block_id": "blk_4fc34623a852520b48da9c63",
+        "char_end": 58,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    }
+  ]
+}

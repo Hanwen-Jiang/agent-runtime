@@ -1,0 +1,346 @@
+{
+  "id": "q11_2",
+  "query": "培训报销需要哪些凭证？比较不同资料的要求。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_11",
+      "pptx_01",
+      "scan_pdf_11",
+      "table_01",
+      "text_pdf_11",
+      "xlsx_06"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.14285714285714285,
+    "unique_source_ndcg_at_8": 0.1963279042557385,
+    "relevant_files": [
+      "docx_11",
+      "pptx_01"
+    ],
+    "expected_files": [
+      "text_pdf_11",
+      "scan_pdf_11",
+      "docx_11",
+      "xlsx_06",
+      "pptx_01",
+      "table_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 23.560711881145835
+  },
+  "hybrid": {
+    "recall_at_8": 0.6666666666666666,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7751482523375256,
+    "relevant_files": [
+      "docx_11",
+      "pptx_01",
+      "scan_pdf_11",
+      "text_pdf_11"
+    ],
+    "expected_files": [
+      "text_pdf_11",
+      "scan_pdf_11",
+      "docx_11",
+      "xlsx_06",
+      "pptx_01",
+      "table_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.5,
+    "latency_ms": 3232.1401219815016
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_1f5951e2d9a77c69fea9bec4",
+        "kind": "document_block",
+        "block_index": 3.0,
+        "char_end": 13.0
+      },
+      "representation_id": "rep_docx_11",
+      "version_id": "docx_11",
+      "score": 3.6419594287872314,
+      "text": "培训报销必须提供结课证书。",
+      "quote_hash": "aa06d11e82e2243a00229551217f67b2baa5123fc6ba155f9d1f40e8436372a4",
+      "id": "chunk_4ee3d38661a11b1e566184b00d11b08d083608810f3ac5a637499753d5adb486"
+    },
+    {
+      "anchor": {
+        "slide_index": 2.0,
+        "block_id": "blk_0895633263815c52a708586e",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 13.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_01",
+      "version_id": "pptx_01",
+      "score": 3.6419594287872314,
+      "text": "培训报销必须提供结课证书。",
+      "quote_hash": "aa06d11e82e2243a00229551217f67b2baa5123fc6ba155f9d1f40e8436372a4",
+      "id": "chunk_692b541c39b21373d3effe0a0c86ff3bf14e75b179c16e52e3ea5d30171c5627"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_60a91b8b892a70defd12cbaf",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 98.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_11",
+      "version_id": "scan_pdf_11",
+      "score": 2.3319966793060303,
+      "text": "Synthetic policy edition / 合成政策版本 — page 1\nTraining reimbursement requires completion certificate.",
+      "quote_hash": "974ad2eca8bfa796d3edfe98c13aa85d30ddcd59b23d155f33a4ff17d53aa5ab",
+      "id": "chunk_b5ed8e9acf1f5cbf23fae9baafcc4d0ef4c26ce244b77029f61ee827a0eba27f"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_4148c2777dfafa3a618f4c10",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 56.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_text_pdf_11",
+      "version_id": "text_pdf_11",
+      "score": 1.128027319908142,
+      "text": "Synthetic policy edition / 合成政策版本 — page 3\n培训报销必须提供结课证书。",
+      "quote_hash": "88d58a7328e4dcaaf247b33bccd16219e0e9d0de1bd54ea6a5db0b9016850554",
+      "id": "chunk_fd3a7bcaf487881d84418f0e1160b9c475d3f3433103d0c591fe3beeaa956462"
+    },
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_cd3cd6bce924b15ed6bc43b9",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 15.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_01",
+      "version_id": "pptx_01",
+      "score": -0.17204248905181885,
+      "text": "培训报销必须通过培训平台提交。",
+      "quote_hash": "c33f56e00aaec10ec94f7b1e8308fbdf6ce1327627b225f1c4b692efeb4534e3",
+      "id": "chunk_353181806e24ba15cfa01518e7a83171bfa71d69eea47210d227f94108dec570"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_3bce8c58bea0444fad98ecca",
+        "kind": "document_block",
+        "block_index": 6.0,
+        "char_end": 15.0
+      },
+      "representation_id": "rep_docx_11",
+      "version_id": "docx_11",
+      "score": -0.17204248905181885,
+      "text": "培训报销必须通过培训平台提交。",
+      "quote_hash": "c33f56e00aaec10ec94f7b1e8308fbdf6ce1327627b225f1c4b692efeb4534e3",
+      "id": "chunk_b9d4e0a3ad35160c10b6620ba9c8a5e6cdc60dad6def374428663c8893bddad2"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_3a24ea0c67ed7accf89ade0c",
+        "kind": "document_block",
+        "block_index": 5.0,
+        "char_end": 21.0
+      },
+      "representation_id": "rep_docx_11",
+      "version_id": "docx_11",
+      "score": -0.8784933686256409,
+      "text": "培训报销的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "d45c29e2d9e2bca496a892921a2edf575cfa3bd34f2e6f13e73c5dc79790347c",
+      "id": "chunk_b418ce64b20185de033d06005664f56861d650ca978b43b1d3214b668f88b0ad"
+    },
+    {
+      "anchor": {
+        "slide_index": 4.0,
+        "block_id": "blk_cc1ed93e16377f4a03762808",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 21.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_01",
+      "version_id": "pptx_01",
+      "score": -0.8784933686256409,
+      "text": "培训报销的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "d45c29e2d9e2bca496a892921a2edf575cfa3bd34f2e6f13e73c5dc79790347c",
+      "id": "chunk_faa22be3920a68c4f8262596e8abd4f6d215b36f237d04709ce1b67e2d239f05"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_15c5afd74dfc009c9cdeb4b2ede19be49cd9ae2087a7f223381d11075d24329c",
+      "version_id": "docx_11",
+      "text": "培训报销的审批责任人为培训组。",
+      "anchor": {
+        "block_id": "blk_7a08ad6e39c822d8faae6a63",
+        "block_index": 2.0,
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_353181806e24ba15cfa01518e7a83171bfa71d69eea47210d227f94108dec570",
+      "version_id": "pptx_01",
+      "text": "培训报销必须通过培训平台提交。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_cd3cd6bce924b15ed6bc43b9",
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_8a711b0016f016442cfa12fb3db9130f2d61a6c5ede525897a6ae93436fc8d70",
+      "version_id": "pptx_01",
+      "text": "培训报销的审批责任人为培训组。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_b7fbb56db65374222e4c0bda",
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_b9d4e0a3ad35160c10b6620ba9c8a5e6cdc60dad6def374428663c8893bddad2",
+      "version_id": "docx_11",
+      "text": "培训报销必须通过培训平台提交。",
+      "anchor": {
+        "block_id": "blk_3bce8c58bea0444fad98ecca",
+        "block_index": 6.0,
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_9ecb0a6e47df03c0e9de18f008b8cc79ec4157d475bebda4619993ec11bfb25f",
+      "version_id": "docx_11",
+      "text": "培训报销记录须保留19个月。",
+      "anchor": {
+        "block_id": "blk_30c1a3e168d46b4b0680cfeb",
+        "block_index": 4.0,
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_d665085b1aa6b18764dbaa978104575ad6a7c7541cf5f712f8185c436cba1983",
+      "version_id": "pptx_01",
+      "text": "培训报销记录须保留21个月。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_3dfffacd3baa192ff4c48267",
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_4ee3d38661a11b1e566184b00d11b08d083608810f3ac5a637499753d5adb486",
+      "version_id": "docx_11",
+      "text": "培训报销必须提供结课证书。",
+      "anchor": {
+        "block_id": "blk_1f5951e2d9a77c69fea9bec4",
+        "block_index": 3.0,
+        "char_end": 13,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_692b541c39b21373d3effe0a0c86ff3bf14e75b179c16e52e3ea5d30171c5627",
+      "version_id": "pptx_01",
+      "text": "培训报销必须提供结课证书。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_0895633263815c52a708586e",
+        "char_end": 13,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 2.0
+      }
+    }
+  ]
+}

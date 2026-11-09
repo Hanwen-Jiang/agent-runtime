@@ -1,0 +1,70 @@
+[
+    {
+        "Id": "sha256:984b4bfbcaa8765d14412e7d6de24d078cf0e30279226cec18161fd2c94015cf",
+        "RepoTags": [
+            "fi-20261110-benchmark:validation"
+        ],
+        "RepoDigests": [
+            "fi-20261110-benchmark@sha256:984b4bfbcaa8765d14412e7d6de24d078cf0e30279226cec18161fd2c94015cf"
+        ],
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-11-10T00:37:07.095924767+03:00",
+        "Config": {
+            "User": "10001:10001",
+            "Env": [
+                "PATH=/opt/file-engines/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "PYTHONPATH=/opt/engine",
+                "FILE_ENGINES_MODEL_DIR=/opt/file-models",
+                "HF_HUB_OFFLINE=1",
+                "TRANSFORMERS_OFFLINE=1",
+                "AR_UNO_PYTHON=/usr/bin/python3",
+                "AR_SOFFICE_BIN=/usr/bin/soffice",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "HOME=/tmp",
+                "LANG=en_US.UTF-8",
+                "LC_ALL=en_US.UTF-8",
+                "TZ=UTC",
+                "AGENT_WORKDIR=/workspace",
+                "AGENT_ADDR=:7070",
+                "AGENT_ENV_PASSTHROUGH=PATH,PYTHONPATH,FILE_ENGINES_MODEL_DIR,HF_HUB_OFFLINE,TRANSFORMERS_OFFLINE,AR_UNO_PYTHON,AR_SOFFICE_BIN,LANG,LC_ALL,TZ"
+            ],
+            "Entrypoint": [
+                "/usr/local/bin/sandbox-agent"
+            ],
+            "WorkingDir": "/workspace",
+            "Labels": {
+                "org.opencontainers.image.version": "24.04"
+            }
+        },
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 1893333799,
+        "RootFS": {
+            "Type": "layers",
+            "Layers": [
+                "sha256:bec87777bc2fb2edcdf9af11df1531469e7df911309c1413082b18fcb8610278",
+                "sha256:53d2239c758bde0b34b8aba4ece94e6892ca9d1c3f715e22b81fa773629521e2",
+                "sha256:6794e2cd50e7af6b6cc3733bc33725474948fd277f6577c2216a9b4e4e4b7207",
+                "sha256:dbd0cf2212d1c9e3a01f86d4c924eb7cff5e21b9c55e08ff4821beb0f80c819e",
+                "sha256:de71f7cb23b71641601443ea13f223a1103b148a4148d4a596aab3d49eef3e69",
+                "sha256:315ab9a42a0d141788f8f6b171eb0146418ebcd0fa4b48deb2dbed9a15b909b2",
+                "sha256:648a627d36b6121632da2daee23773f8dcb546d4f1ed1d87170bcc3d8dbed893",
+                "sha256:522e7d6c19f7d4b3ae7b5ca9e8ede124e59a37fb3b063c193e97ecef27919610",
+                "sha256:fc636a1eb3f8eaffb142502d99276e8294ae5547aa7a9ef4ba12e975ed6a2cd2",
+                "sha256:35a89587020b147d25b31cb0a18939e8bd93bbddc24eebc3416800617fe711ba",
+                "sha256:8c5f33fd82e6cba0659994d1884b68f7336d5f9fc012ce49f4326c0ed2384c7f",
+                "sha256:782dd40523d649c19f3ec7aa2083e0b048ce6f82909db27ec8bbcb928e95d678",
+                "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+                "sha256:dece42f6a59c2c41ad79faf262973d8c3609aebfe5b8ea2429f508424e5283c3"
+            ]
+        },
+        "Metadata": {
+            "LastTagTime": "2026-11-09T21:37:21.515168426Z"
+        },
+        "Descriptor": {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "digest": "sha256:984b4bfbcaa8765d14412e7d6de24d078cf0e30279226cec18161fd2c94015cf",
+            "size": 856
+        }
+    }
+]

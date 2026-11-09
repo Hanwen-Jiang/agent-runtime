@@ -1,0 +1,309 @@
+{
+  "id": "q08_1",
+  "query": "Who signs off on software release approval according to the different documents?",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_08",
+      "scan_pdf_08",
+      "text_08",
+      "text_pdf_08",
+      "xlsx_03"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.4,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.5,
+    "unique_source_ndcg_at_8": 0.38356636737133565,
+    "relevant_files": [
+      "docx_08",
+      "text_08"
+    ],
+    "expected_files": [
+      "text_pdf_08",
+      "scan_pdf_08",
+      "docx_08",
+      "xlsx_03",
+      "text_08"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 15.576952835544944
+  },
+  "hybrid": {
+    "recall_at_8": 0.8,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7234267649959281,
+    "relevant_files": [
+      "docx_08",
+      "text_08",
+      "text_pdf_08",
+      "xlsx_03"
+    ],
+    "expected_files": [
+      "text_pdf_08",
+      "scan_pdf_08",
+      "docx_08",
+      "xlsx_03",
+      "text_08"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.5,
+    "latency_ms": 4547.684146091342
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_002128e625673816cab29f8f",
+        "kind": "document_block",
+        "block_index": 2.0,
+        "char_end": 69.0
+      },
+      "representation_id": "rep_docx_08",
+      "version_id": "docx_08",
+      "score": 1.3682034015655518,
+      "text": "Release Board is responsible for approving software release approval.",
+      "quote_hash": "c8b6050ecdc3706e36349ce76296a34d71de6516542267415957eb9340143656",
+      "id": "chunk_619c9d3e0fe46adfe05218b40e583698e0245fe4f0c915118e996038518b27fa"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_8045167b43ea4b5c867ae528",
+        "range": "B7",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 19.0
+      },
+      "representation_id": "rep_xlsx_03",
+      "version_id": "xlsx_03",
+      "score": 0.3081320524215698,
+      "text": "软件发布审批必须通过发布登记系统提交。",
+      "quote_hash": "dfb5dc38161e24e96b2d6c1ed5ccc7cf9c312879c9f3d1fd30d13334ee1fe496",
+      "id": "chunk_279eefbe06436c3972791c8b5e88d24bb03aff954d69b10544b9a1aa387021b4"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_46cf25e430aa782c66b9c7b9",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 19.0,
+        "bbox": [
+          0.026209676638245583,
+          0.275,
+          0.45816531777381897,
+          0.359375
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_08",
+      "version_id": "scan_pdf_08",
+      "score": 0.3081320524215698,
+      "text": "软件发布审批必须通过发布登记系统提交。",
+      "quote_hash": "dfb5dc38161e24e96b2d6c1ed5ccc7cf9c312879c9f3d1fd30d13334ee1fe496",
+      "id": "chunk_c2782d77c53c1d248bd6ac51cc8a524947d841e6d9a27ca03b9c93f8ea9df2f4"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_361aaec5b61ff11dfd1299a0",
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0,
+        "end_line": 6.0,
+        "char_end": 445.0
+      },
+      "representation_id": "rep_text_08",
+      "version_id": "text_08",
+      "score": 0.12895625829696655,
+      "text": "Software release approval must be submitted within 24 business days.\nRelease Board is responsible for approving software release approval.\nSoftware release approval requires passing regression report.\nRecords for software release approval must be retained for 19 months.\nEmergency exceptions for software release approval require written approval from the department head.\nSoftware release approval must be submitted through the release tracker.",
+      "quote_hash": "b935746661eeb2d104aae52f5490632f33535f4361dd4a4a43c22c632cc0c009",
+      "id": "chunk_8e05620b9b94ce4d0423247e8f91ae06ed382d632adc7dc9c9960ccf6dedf144"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_58ab6e093b1124746336b197",
+        "range": "B3",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 19.0
+      },
+      "representation_id": "rep_xlsx_03",
+      "version_id": "xlsx_03",
+      "score": 0.11855146288871765,
+      "text": "软件发布审批的审批责任人为发布委员会。",
+      "quote_hash": "cb4e950535f5d36b8ac88d8a960148850903b30a3ad622e268545e1700ba87ac",
+      "id": "chunk_4f395a449e57a787cebbcf0c9e3afb8a6ef10de338e8aff7579ac0905f3b727f"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_2f3f577344dd8abf5f3ec036",
+        "kind": "document_block",
+        "block_index": 6.0,
+        "char_end": 72.0
+      },
+      "representation_id": "rep_docx_08",
+      "version_id": "docx_08",
+      "score": 0.08999337255954742,
+      "text": "Software release approval must be submitted through the release tracker.",
+      "quote_hash": "c6d659191e4b5aa8a58711b8a4110fca14abbc111e533a4f9349af36e52d6437",
+      "id": "chunk_e3fc643556a69ac0f64f9764a6f7b7e2aae9e9240a0e15f2e6fc082e1988926d"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_21a4035730ef736c28fc2757",
+        "kind": "document_block",
+        "block_index": 5.0,
+        "char_end": 101.0
+      },
+      "representation_id": "rep_docx_08",
+      "version_id": "docx_08",
+      "score": -0.13733558356761932,
+      "text": "Emergency exceptions for software release approval require written approval from the department head.",
+      "quote_hash": "821e6ebe10c461d51c34ac70da6395bcf41ec7f6f3127518b45095b20184cd59",
+      "id": "chunk_a9859dffe06fcdb7c1ba5314f36f1347566587eee5e35d04142a45b08538c1fe"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_3ae77ff6a753f0b01a021e2e",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 112.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_text_pdf_08",
+      "version_id": "text_pdf_08",
+      "score": -0.47870898246765137,
+      "text": "Synthetic policy edition / 合成政策版本 — page 2\nRelease Board is responsible for approving software release\napproval.",
+      "quote_hash": "86e787b419d2df5590fccb3d0e6f7d17d4732c585dc3b5d95e83b1d4c8938e4c",
+      "id": "chunk_f2c5dbb85a7ffde41d9f49aefd6d192ba4b36be3fd07da20a38b88fd56380386"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_e3fc643556a69ac0f64f9764a6f7b7e2aae9e9240a0e15f2e6fc082e1988926d",
+      "version_id": "docx_08",
+      "text": "Software release approval must be submitted through the release tracker.",
+      "anchor": {
+        "block_id": "blk_2f3f577344dd8abf5f3ec036",
+        "block_index": 6.0,
+        "char_end": 72,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_8e05620b9b94ce4d0423247e8f91ae06ed382d632adc7dc9c9960ccf6dedf144",
+      "version_id": "text_08",
+      "text": "Software release approval must be submitted within 24 business days.\nRelease Board is responsible for approving software release approval.\nSoftware release approval requires passing regression report.\nRecords for software release approval must be retained for 19 months.\nEmergency exceptions for software release approval require written approval from the department head.\nSoftware release approval must be submitted through the release tracker.",
+      "anchor": {
+        "block_id": "blk_361aaec5b61ff11dfd1299a0",
+        "char_end": 445,
+        "char_start": 0,
+        "end_line": 6.0,
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0
+      }
+    },
+    {
+      "id": "chunk_619c9d3e0fe46adfe05218b40e583698e0245fe4f0c915118e996038518b27fa",
+      "version_id": "docx_08",
+      "text": "Release Board is responsible for approving software release approval.",
+      "anchor": {
+        "block_id": "blk_002128e625673816cab29f8f",
+        "block_index": 2.0,
+        "char_end": 69,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_a9859dffe06fcdb7c1ba5314f36f1347566587eee5e35d04142a45b08538c1fe",
+      "version_id": "docx_08",
+      "text": "Emergency exceptions for software release approval require written approval from the department head.",
+      "anchor": {
+        "block_id": "blk_21a4035730ef736c28fc2757",
+        "block_index": 5.0,
+        "char_end": 101,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_04a28e398e16ec1c890531103af8e8601f8e1fa4f6bc1ea66014b4607c9949a9",
+      "version_id": "docx_08",
+      "text": "Software release approval requires passing regression report.",
+      "anchor": {
+        "block_id": "blk_038e147cda283e866471f769",
+        "block_index": 3.0,
+        "char_end": 61,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_ab5770dac7f408e3f1d5957257d1c3a0265ceed8c2c56f0c26d35c8e696de77d",
+      "version_id": "docx_08",
+      "text": "Software release approval must be submitted within 15 business days.",
+      "anchor": {
+        "block_id": "blk_064136b0ce8368b004c0a159",
+        "block_index": 1.0,
+        "char_end": 68,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_bfb8e5ac3ceef2dfd665e3ce56b15207071c74f47a7e129703d737dfcb89920d",
+      "version_id": "text_pdf_08",
+      "text": "Synthetic policy edition / 合成政策版本 — page 6\nSoftware release approval must be submitted through the release\ntracker.",
+      "anchor": {
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "block_id": "blk_f4a248ab2adb92ad02b6adac",
+        "char_end": 115,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_e94f5726cd44ef6ed41bbdd3c59f44f2d1abf5e23238beaec005481ebcb0ac85",
+      "version_id": "docx_08",
+      "text": "Records for software release approval must be retained for 16 months.",
+      "anchor": {
+        "block_id": "blk_3622dee78caa1eb794d99dab",
+        "block_index": 4.0,
+        "char_end": 69,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    }
+  ]
+}

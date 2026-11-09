@@ -1,0 +1,350 @@
+{
+  "id": "q01_3",
+  "query": "员工入职的记录保存多久？请找出各文件中的规定。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_01",
+      "pptx_11",
+      "text_01",
+      "text_pdf_01"
+    ],
+    "extraction_chunking_recall_ceiling": 0.8
+  },
+  "exact": {
+    "recall_at_8": 0.8,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7042299872433241,
+    "relevant_files": [
+      "docx_01",
+      "pptx_11",
+      "text_01",
+      "text_pdf_01"
+    ],
+    "expected_files": [
+      "text_pdf_01",
+      "scan_pdf_01",
+      "docx_01",
+      "pptx_11",
+      "text_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.5,
+    "latency_ms": 22.03248394653201
+  },
+  "hybrid": {
+    "recall_at_8": 0.8,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.8687949224876582,
+    "relevant_files": [
+      "docx_01",
+      "pptx_11",
+      "text_01",
+      "text_pdf_01"
+    ],
+    "expected_files": [
+      "text_pdf_01",
+      "scan_pdf_01",
+      "docx_01",
+      "pptx_11",
+      "text_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.5,
+    "latency_ms": 4356.787522090599
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_baec5c7fa8ea64aa1709bdc4",
+        "kind": "document_block",
+        "block_index": 4.0,
+        "char_end": 13.0
+      },
+      "representation_id": "rep_docx_01",
+      "version_id": "docx_01",
+      "score": 6.206796169281006,
+      "text": "员工入职记录须保留9个月。",
+      "quote_hash": "6f457e876936609f6e58d81d9f5f0a7a2f91bb0d8ca7a593c7034e73dd327b5d",
+      "id": "chunk_6e358eea339f0e5ac93427a47391d55c15e0635933ad1eee8d0929555432f347"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_41e87de274234291a4a1009f",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 14.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_11",
+      "version_id": "pptx_11",
+      "score": 6.204732418060303,
+      "text": "员工入职记录须保留11个月。",
+      "quote_hash": "f548a02a33a51a361e8b9b1ac70661f419a5f4139ea77a24a62ddbfcd6358b42",
+      "id": "chunk_2647f1a6530c0e3f577c43c5edb05cfd8d3c9d7eb1d3b6e50dad4c0a130c5664"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_8ec1d6d68b32abbf2d486c9a",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 13.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.32353921568627453,
+          0.12052112044648612
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_01",
+      "version_id": "text_pdf_01",
+      "score": 6.1980671882629395,
+      "text": "员工入职记录须保留7个月。",
+      "quote_hash": "4cae0f02cabe6d5f8d1da50816762cf79d836837076aaad767fec6eb5d50d7db",
+      "id": "chunk_900aa35936bb8fdf05245e16b1aba90c8d2fde0107cff728830a2b3304267423"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_9cef6cb624d80818394804af",
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0,
+        "end_line": 13.0,
+        "char_end": 119.0
+      },
+      "representation_id": "rep_text_01",
+      "version_id": "text_01",
+      "score": 3.9565258026123047,
+      "text": "# Policy / 政策\n\n员工入职的提交期限为25个工作日。\n\n员工入职的审批责任人为人事。\n\n员工入职必须提供劳动合同。\n\n员工入职记录须保留12个月。\n\n员工入职的紧急例外需要部门负责人书面批准。\n\n员工入职必须通过员工平台提交。",
+      "quote_hash": "d4160b43a1dea962bd29dd974d28fda0d1ac570d6830b38e77aa1745930fda37",
+      "id": "chunk_37dce7ac13a2948e33a0a9986eac571785572b9dbe28553c2ebbe664e1c0dff1"
+    },
+    {
+      "anchor": {
+        "slide_index": 0.0,
+        "block_id": "blk_1379a501eeac222604dbfc80",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 17.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_11",
+      "version_id": "pptx_11",
+      "score": 1.083272933959961,
+      "text": "员工入职的提交期限为22个工作日。",
+      "quote_hash": "47960aeb437ffd750a9af8abdb8ecc48a1763077b61cbe6089735e45c9ba306a",
+      "id": "chunk_1313de5f1ab87be89d0cd24010e51343a583c90241736e9ea26b2fa763a70281"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_c9ea8fe3fa0cce91079bc97f",
+        "kind": "document_block",
+        "block_index": 1.0,
+        "char_end": 17.0
+      },
+      "representation_id": "rep_docx_01",
+      "version_id": "docx_01",
+      "score": 0.9932145476341248,
+      "text": "员工入职的提交期限为16个工作日。",
+      "quote_hash": "92aa60bbb8ae58c37a6938384b8e708d4d31cbcdc0f3a0b5048235b37c57ef16",
+      "id": "chunk_39182b35fed560794c7d78fd680120f93b8d0f6bb008df0e8982c38239d08f32"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_478cf227a03b0e3774d92a9c",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 17.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.397078431372549,
+          0.12052112044648612
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_text_pdf_01",
+      "version_id": "text_pdf_01",
+      "score": 0.9779176115989685,
+      "text": "员工入职的提交期限为10个工作日。",
+      "quote_hash": "c9677e9ffe901f5f69fbf2042eaa220cc591430d07f38a9f40ddce7421af2134",
+      "id": "chunk_da322df6f67d9c35ae55367718d6898517df28a69d257b0fb96c6e3078db2895"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_7e71a89da0774633cbacbf0c",
+        "range": "B5",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 16.0
+      },
+      "representation_id": "rep_xlsx_05",
+      "version_id": "xlsx_05",
+      "score": -0.3063359558582306,
+      "text": "远程办公申请记录须保留19个月。",
+      "quote_hash": "8e8ed3d4caa8bb888b2359e0d4ed615d3cda2044483a39bb56cfe9f5e1055e0c",
+      "id": "chunk_22291767ebd0143421fc534429989de0b1a911e7f8d7ec7aaa832eb95739e25d"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_37dce7ac13a2948e33a0a9986eac571785572b9dbe28553c2ebbe664e1c0dff1",
+      "version_id": "text_01",
+      "text": "# Policy / 政策\n\n员工入职的提交期限为25个工作日。\n\n员工入职的审批责任人为人事。\n\n员工入职必须提供劳动合同。\n\n员工入职记录须保留12个月。\n\n员工入职的紧急例外需要部门负责人书面批准。\n\n员工入职必须通过员工平台提交。",
+      "anchor": {
+        "block_id": "blk_9cef6cb624d80818394804af",
+        "char_end": 119,
+        "char_start": 0,
+        "end_line": 13.0,
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0
+      }
+    },
+    {
+      "id": "chunk_324d8957a1f1fdae9df66becf77f049360696b3cd0e522bb61659ec0468da15e",
+      "version_id": "text_pdf_01",
+      "text": "员工入职的审批责任人为人事。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.3562091503267974,
+          0.12052112044648612
+        ],
+        "block_id": "blk_5f1858a9cf0c08cbbaad738c",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_a29ea329bfdab3cfc56ae66f08cc905b549bbf375cd3528a66a30cb3dcffc3b6",
+      "version_id": "docx_01",
+      "text": "员工入职的审批责任人为人事。",
+      "anchor": {
+        "block_id": "blk_e9e857338f967c1e5e0a5aa2",
+        "block_index": 2.0,
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_aa220c83411d96fadb0e00f41382bd80e5b5636176b8ee6d0c9c4bb322956acf",
+      "version_id": "pptx_11",
+      "text": "员工入职的审批责任人为人事。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_07f2308eb8683ba93fc311ee",
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_2647f1a6530c0e3f577c43c5edb05cfd8d3c9d7eb1d3b6e50dad4c0a130c5664",
+      "version_id": "pptx_11",
+      "text": "员工入职记录须保留11个月。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_41e87de274234291a4a1009f",
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_6e358eea339f0e5ac93427a47391d55c15e0635933ad1eee8d0929555432f347",
+      "version_id": "docx_01",
+      "text": "员工入职记录须保留9个月。",
+      "anchor": {
+        "block_id": "blk_baec5c7fa8ea64aa1709bdc4",
+        "block_index": 4.0,
+        "char_end": 13,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_900aa35936bb8fdf05245e16b1aba90c8d2fde0107cff728830a2b3304267423",
+      "version_id": "text_pdf_01",
+      "text": "员工入职记录须保留7个月。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.32353921568627453,
+          0.12052112044648612
+        ],
+        "block_id": "blk_8ec1d6d68b32abbf2d486c9a",
+        "char_end": 13,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_1313de5f1ab87be89d0cd24010e51343a583c90241736e9ea26b2fa763a70281",
+      "version_id": "pptx_11",
+      "text": "员工入职的提交期限为22个工作日。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_1379a501eeac222604dbfc80",
+        "char_end": 17,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 0.0
+      }
+    }
+  ]
+}

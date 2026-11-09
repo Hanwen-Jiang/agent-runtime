@@ -1,0 +1,333 @@
+{
+  "id": "q12_4",
+  "query": "Which channel should I use to file visitor access? Compare the documents.",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_12",
+      "pptx_02",
+      "scan_pdf_12",
+      "table_02",
+      "text_pdf_12",
+      "xlsx_07"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.4935232796777482,
+    "relevant_files": [
+      "docx_12",
+      "pptx_02"
+    ],
+    "expected_files": [
+      "text_pdf_12",
+      "scan_pdf_12",
+      "docx_12",
+      "xlsx_07",
+      "pptx_02",
+      "table_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 16.57720608636737
+  },
+  "hybrid": {
+    "recall_at_8": 0.5,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.644824486427155,
+    "relevant_files": [
+      "docx_12",
+      "pptx_02",
+      "table_02"
+    ],
+    "expected_files": [
+      "text_pdf_12",
+      "scan_pdf_12",
+      "docx_12",
+      "xlsx_07",
+      "pptx_02",
+      "table_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 6248.619673075154
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_2f52e99144377a54b1d64fed",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 59.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_02",
+      "version_id": "pptx_02",
+      "score": 2.1182873249053955,
+      "text": "Visitor access must be submitted through the visitor kiosk.",
+      "quote_hash": "d6cd5ea9a85aad5fd505926d38f00c634563b8afce546caef6d86650b456a533",
+      "id": "chunk_774d1b6194b5a10ba5ab9a2d79374aff389892a13ee7ae58cc8fdff8a4b83a0a"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d6896d3040ce2e4abbb193b6",
+        "kind": "document_block",
+        "block_index": 6.0,
+        "char_end": 59.0
+      },
+      "representation_id": "rep_docx_12",
+      "version_id": "docx_12",
+      "score": 2.1182873249053955,
+      "text": "Visitor access must be submitted through the visitor kiosk.",
+      "quote_hash": "d6cd5ea9a85aad5fd505926d38f00c634563b8afce546caef6d86650b456a533",
+      "id": "chunk_d260a8c1dd84b1eb7ae26e93d89b3dddfaf80c6c65054a4f79207d9be8c2ca33"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_0c3e9638c0e91ceb59119e95",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 24.0,
+        "row_index": 5.0
+      },
+      "representation_id": "rep_table_02",
+      "version_id": "table_02",
+      "score": 0.37400662899017334,
+      "text": "5\t访客通行必须通过访客终端提交。\t5\twest",
+      "quote_hash": "72d1008f769099d092afadcefef57e5ea5b323a2e5b41662e8dfe09dbef9cc88",
+      "id": "chunk_1d47f1261ed5a895b9d739df82612b47e6b921eff42752178cad75dde62f7076"
+    },
+    {
+      "anchor": {
+        "slide_index": 1.0,
+        "block_id": "blk_0303ae91f83aa5361c398e2a",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 54.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_02",
+      "version_id": "pptx_02",
+      "score": 0.044999197125434875,
+      "text": "Reception is responsible for approving visitor access.",
+      "quote_hash": "45260299965a181732b44220a64e1b935a24f483f02aa1e4afd9fcc028f7fc22",
+      "id": "chunk_0eac76bf3a8bb7fd31ece549ee025f3b1340fbd4a36bd5c10b61438b9ea0960b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_85e518a2cee9645520a71351",
+        "kind": "document_block",
+        "block_index": 2.0,
+        "char_end": 54.0
+      },
+      "representation_id": "rep_docx_12",
+      "version_id": "docx_12",
+      "score": 0.044999197125434875,
+      "text": "Reception is responsible for approving visitor access.",
+      "quote_hash": "45260299965a181732b44220a64e1b935a24f483f02aa1e4afd9fcc028f7fc22",
+      "id": "chunk_ec53f700149b374bc26d6f292bc66d70eab853653ad9e888a1a1b71e72328e8d"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_2955d739dd61207fc60d3fb8",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 23.0,
+        "row_index": 1.0
+      },
+      "representation_id": "rep_table_02",
+      "version_id": "table_02",
+      "score": -0.3416435122489929,
+      "text": "1\t访客通行的审批责任人为前台。\t1\twest",
+      "quote_hash": "c12e7cc11d90ef6482d1ee26f6186273d7d16f93fd33d91c97d821941b04941e",
+      "id": "chunk_0a1f6fdb048a15e95f2117e6f5e7498a28b196791f5d4de94cc71965a9a5e964"
+    },
+    {
+      "anchor": {
+        "slide_index": 2.0,
+        "block_id": "blk_fbc6f176bc30e9c25e619819",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 42.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_02",
+      "version_id": "pptx_02",
+      "score": -0.8837624788284302,
+      "text": "Visitor access requires host confirmation.",
+      "quote_hash": "30aa21cd08ae519e7925b77b43e0e5f7c9f968d204fa41f5c8073c744541faf1",
+      "id": "chunk_78117d8949b460175efb9f2a10dc5d1c9869dc2f5d8c7e84ebaeff861c627d82"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_574cb31a7c9d360dda7ba875",
+        "kind": "document_block",
+        "block_index": 3.0,
+        "char_end": 42.0
+      },
+      "representation_id": "rep_docx_12",
+      "version_id": "docx_12",
+      "score": -0.8837624788284302,
+      "text": "Visitor access requires host confirmation.",
+      "quote_hash": "30aa21cd08ae519e7925b77b43e0e5f7c9f968d204fa41f5c8073c744541faf1",
+      "id": "chunk_8a086b0445ef76a7872bf193a4966ba22b062f5aaf5c05f07207c060b1699054"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_774d1b6194b5a10ba5ab9a2d79374aff389892a13ee7ae58cc8fdff8a4b83a0a",
+      "version_id": "pptx_02",
+      "text": "Visitor access must be submitted through the visitor kiosk.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_2f52e99144377a54b1d64fed",
+        "char_end": 59,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_d260a8c1dd84b1eb7ae26e93d89b3dddfaf80c6c65054a4f79207d9be8c2ca33",
+      "version_id": "docx_12",
+      "text": "Visitor access must be submitted through the visitor kiosk.",
+      "anchor": {
+        "block_id": "blk_d6896d3040ce2e4abbb193b6",
+        "block_index": 6.0,
+        "char_end": 59,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_78117d8949b460175efb9f2a10dc5d1c9869dc2f5d8c7e84ebaeff861c627d82",
+      "version_id": "pptx_02",
+      "text": "Visitor access requires host confirmation.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_fbc6f176bc30e9c25e619819",
+        "char_end": 42,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_8a086b0445ef76a7872bf193a4966ba22b062f5aaf5c05f07207c060b1699054",
+      "version_id": "docx_12",
+      "text": "Visitor access requires host confirmation.",
+      "anchor": {
+        "block_id": "blk_574cb31a7c9d360dda7ba875",
+        "block_index": 3.0,
+        "char_end": 42,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_3c2bc1d68af1c220a13386e104d4c182158052220dc2238bfc942b47801604e7",
+      "version_id": "pptx_02",
+      "text": "Emergency exceptions for visitor access require written approval from the department head.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_477facd45e838541f1deadf4",
+        "char_end": 90,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 4.0
+      }
+    },
+    {
+      "id": "chunk_b9fb6f792ccf2416004928e4a0d2b4951d3d0c3bae2b04dc0ab18d890047fbc4",
+      "version_id": "docx_12",
+      "text": "Emergency exceptions for visitor access require written approval from the department head.",
+      "anchor": {
+        "block_id": "blk_a202d7c2123bfb4516360c8c",
+        "block_index": 5.0,
+        "char_end": 90,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_0eac76bf3a8bb7fd31ece549ee025f3b1340fbd4a36bd5c10b61438b9ea0960b",
+      "version_id": "pptx_02",
+      "text": "Reception is responsible for approving visitor access.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_0303ae91f83aa5361c398e2a",
+        "char_end": 54,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_ec53f700149b374bc26d6f292bc66d70eab853653ad9e888a1a1b71e72328e8d",
+      "version_id": "docx_12",
+      "text": "Reception is responsible for approving visitor access.",
+      "anchor": {
+        "block_id": "blk_85e518a2cee9645520a71351",
+        "block_index": 2.0,
+        "char_end": 54,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    }
+  ]
+}

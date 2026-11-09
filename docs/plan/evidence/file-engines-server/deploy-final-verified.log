@@ -1,0 +1,18 @@
+..........................................................s............. [ 16%]
+........................................................................ [ 33%]
+........................................................................ [ 49%]
+...............................sssssssssssssssssssssssss................ [ 66%]
+........................................................................ [ 82%]
+........................................................................ [ 99%]
+..                                                                       [100%]
+=========================== short test summary info ============================
+SKIPPED [1] tests/deploy/test_cloud.py:642: 设 AR_TEST_KIND=1 才在 kind 集群里核对 RBAC
+SKIPPED [1] tests/deploy/test_images.py:339: 设 AR_TEST_IMAGES=1 才构建、运行镜像（要拉基础镜像、下载依赖）
+SKIPPED [1] tests/deploy/test_images.py:352: 设 AR_TEST_IMAGES=1 才构建、运行镜像（要拉基础镜像、下载依赖）
+SKIPPED [1] tests/deploy/test_images.py:368: 设 AR_TEST_IMAGES=1 才构建、运行镜像（要拉基础镜像、下载依赖）
+SKIPPED [1] tests/deploy/test_images.py:382: 设 AR_TEST_IMAGES=1 才构建、运行镜像（要拉基础镜像、下载依赖）
+SKIPPED [1] tests/deploy/test_images.py:400: 设 AR_TEST_IMAGES=1 才构建、运行镜像（要拉基础镜像、下载依赖）
+SKIPPED [5] tests/deploy/test_images.py:405: 设 AR_TEST_IMAGES=1 才构建、运行镜像（要拉基础镜像、下载依赖）
+SKIPPED [1] tests/deploy/test_images.py:427: 设 AR_TEST_IMAGES=1 才构建、运行镜像（要拉基础镜像、下载依赖）
+SKIPPED [14] tests/deploy/test_images.py:447: 设 AR_TEST_IMAGES=1 才构建、运行镜像（要拉基础镜像、下载依赖）
+408 passed, 26 skipped in 78.09s (0:01:18)

@@ -1,0 +1,343 @@
+{
+  "id": "q04_1",
+  "query": "Who signs off on password recovery according to the different documents?",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_04",
+      "notebook_01",
+      "pptx_14",
+      "scan_pdf_04",
+      "text_04",
+      "text_pdf_04"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.39806284658828084,
+    "relevant_files": [
+      "docx_04",
+      "text_04"
+    ],
+    "expected_files": [
+      "text_pdf_04",
+      "scan_pdf_04",
+      "docx_04",
+      "pptx_14",
+      "text_04",
+      "notebook_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 13.739452930167317
+  },
+  "hybrid": {
+    "recall_at_8": 0.8333333333333334,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.8922108454754891,
+    "relevant_files": [
+      "docx_04",
+      "notebook_01",
+      "pptx_14",
+      "scan_pdf_04",
+      "text_pdf_04"
+    ],
+    "expected_files": [
+      "text_pdf_04",
+      "scan_pdf_04",
+      "docx_04",
+      "pptx_14",
+      "text_04",
+      "notebook_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.625,
+    "latency_ms": 5123.5261738765985
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_03b697300714d43879c22f5c",
+        "kind": "document_block",
+        "block_index": 2.0,
+        "char_end": 61.0
+      },
+      "representation_id": "rep_docx_04",
+      "version_id": "docx_04",
+      "score": -0.07503832876682281,
+      "text": "Identity Team is responsible for approving password recovery.",
+      "quote_hash": "267720e1f4f656ecff7451e58b20614c4deefe9960e5f3c2bbda3afcd4bbb6d7",
+      "id": "chunk_363be61dece2ee54c9c62e14985386465e2bb7366fecf48e16ebea693cfe3471"
+    },
+    {
+      "anchor": {
+        "slide_index": 1.0,
+        "block_id": "blk_9e14695851c5842cefd6ffc5",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 61.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_14",
+      "version_id": "pptx_14",
+      "score": -0.07503832876682281,
+      "text": "Identity Team is responsible for approving password recovery.",
+      "quote_hash": "267720e1f4f656ecff7451e58b20614c4deefe9960e5f3c2bbda3afcd4bbb6d7",
+      "id": "chunk_5cb4190d12cc66f08373bb0a454b17000e01c0b152afcb53fb5198db686d59db"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_8a58c89602323d554c6c7919",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 104.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_text_pdf_04",
+      "version_id": "text_pdf_04",
+      "score": -1.1806516647338867,
+      "text": "Synthetic policy edition / 合成政策版本 — page 2\nIdentity Team is responsible for approving password recovery.",
+      "quote_hash": "cb1226e5336ebc266ccd3352bdcbb5b79bfd70bea4af642cfd251dac5a8261e2",
+      "id": "chunk_ea71828aa8fb2d03d08f366d3dea2b3d7af069f31cf33309aedafccaa951c51a"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_dc0e77feb7753995f7cb0841",
+        "kind": "notebook_cell",
+        "cell_id": "clause-1",
+        "char_end": 17.0,
+        "cell_index": 1.0
+      },
+      "representation_id": "rep_notebook_01",
+      "version_id": "notebook_01",
+      "score": -1.6081414222717285,
+      "text": "密码找回的审批责任人为身份管理组。",
+      "quote_hash": "c074b0531604ff8328764519ada7183a05f1e7b2af481baaa44d6f92a29c7bad",
+      "id": "chunk_9da937c1b0309928a7c2818d44dda2c4fb39461aefbb696db80abd7ef5c6280a"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_0e4b5e9a38c41ecbe624869d",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 17.0,
+        "bbox": [
+          0.026209676638245583,
+          0.271875,
+          0.41280239820480347,
+          0.3609375
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_04",
+      "version_id": "scan_pdf_04",
+      "score": -1.6081414222717285,
+      "text": "密码找回的审批责任人为身份管理组。",
+      "quote_hash": "c074b0531604ff8328764519ada7183a05f1e7b2af481baaa44d6f92a29c7bad",
+      "id": "chunk_e59f04f8bb5e750c0eeb34f49b20d542462a91a5962de4603b7754502c62e418"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e5374c509f2226e03f5b3970",
+        "kind": "document_block",
+        "block_index": 6.0,
+        "char_end": 64.0
+      },
+      "representation_id": "rep_docx_04",
+      "version_id": "docx_04",
+      "score": -2.419508695602417,
+      "text": "Password recovery must be submitted through the identity portal.",
+      "quote_hash": "bd404d240050727b115f8fd776fbd41590fa937e566c5c2b05e050b641aa7c70",
+      "id": "chunk_bde9244cfc4fc2067d3492c421438c6186fcf2c6088cf5f8c39b7eca9c33e956"
+    },
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_963be34b4b734e65a78983dd",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 64.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_14",
+      "version_id": "pptx_14",
+      "score": -2.419508695602417,
+      "text": "Password recovery must be submitted through the identity portal.",
+      "quote_hash": "bd404d240050727b115f8fd776fbd41590fa937e566c5c2b05e050b641aa7c70",
+      "id": "chunk_eae4eb01fc6e42494d2bf020748d00da67a42a96c4c9e199331f4329ee963d73"
+    },
+    {
+      "anchor": {
+        "slide_index": 4.0,
+        "block_id": "blk_3c4e076e057e83f2e3d4bca4",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 93.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_14",
+      "version_id": "pptx_14",
+      "score": -2.8003146648406982,
+      "text": "Emergency exceptions for password recovery require written approval from the department head.",
+      "quote_hash": "99ddd31b71e1865f69c890f981b6ef48ca73c10f010e4b06e3f2728cae3b8c7b",
+      "id": "chunk_29376493928bad7cea7c625f5079ac853b6b303f07bd6cdd5a99f7355791768a"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_2427cffe8cfbe7391e6301df6b2c10ae6cd10b7d58d34aae843cf410bac55944",
+      "version_id": "text_04",
+      "text": "clauses:\n  - Password recovery must be submitted within 21 business days.\n  - Identity Team is responsible for approving password recovery.\n  - Password recovery requires verified recovery address.\n  - Records for password recovery must be retained for 15 months.\n  - Emergency exceptions for password recovery require written approval from the department head.\n  - Password recovery must be submitted through the identity portal.",
+      "anchor": {
+        "block_id": "blk_ce369349791e5a15ac898b00",
+        "char_end": 430,
+        "char_start": 0,
+        "end_line": 7.0,
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0
+      }
+    },
+    {
+      "id": "chunk_41dbc6a21fe51dbeec3e7710c1ca77f2541069029be7b68876d873f6f32f6a50",
+      "version_id": "docx_04",
+      "text": "Password recovery requires verified recovery address.",
+      "anchor": {
+        "block_id": "blk_42a4e9b77e95222b7f448727",
+        "block_index": 3.0,
+        "char_end": 53,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_8900b4f5c9395675a167dd5f330f5ccbc6c88a4fb368964fe570da7fa6835553",
+      "version_id": "pptx_14",
+      "text": "Password recovery requires verified recovery address.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_18bf56d5544e2ebe9fc4d3d0",
+        "char_end": 53,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_bde9244cfc4fc2067d3492c421438c6186fcf2c6088cf5f8c39b7eca9c33e956",
+      "version_id": "docx_04",
+      "text": "Password recovery must be submitted through the identity portal.",
+      "anchor": {
+        "block_id": "blk_e5374c509f2226e03f5b3970",
+        "block_index": 6.0,
+        "char_end": 64,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_eae4eb01fc6e42494d2bf020748d00da67a42a96c4c9e199331f4329ee963d73",
+      "version_id": "pptx_14",
+      "text": "Password recovery must be submitted through the identity portal.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_963be34b4b734e65a78983dd",
+        "char_end": 64,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_29376493928bad7cea7c625f5079ac853b6b303f07bd6cdd5a99f7355791768a",
+      "version_id": "pptx_14",
+      "text": "Emergency exceptions for password recovery require written approval from the department head.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_3c4e076e057e83f2e3d4bca4",
+        "char_end": 93,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 4.0
+      }
+    },
+    {
+      "id": "chunk_2d8a20e629158f63b701e550985d080bb6cfed8cc59da24d12e5baad0311311f",
+      "version_id": "docx_04",
+      "text": "Emergency exceptions for password recovery require written approval from the department head.",
+      "anchor": {
+        "block_id": "blk_3345a9cb21097b7f3874ff0f",
+        "block_index": 5.0,
+        "char_end": 93,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_363be61dece2ee54c9c62e14985386465e2bb7366fecf48e16ebea693cfe3471",
+      "version_id": "docx_04",
+      "text": "Identity Team is responsible for approving password recovery.",
+      "anchor": {
+        "block_id": "blk_03b697300714d43879c22f5c",
+        "block_index": 2.0,
+        "char_end": 61,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    }
+  ]
+}

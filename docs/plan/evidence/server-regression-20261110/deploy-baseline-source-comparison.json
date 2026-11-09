@@ -1,0 +1,55 @@
+{
+  "baseline_commit": "fdac343dae9a893cb80692fa7c0da15538b40902",
+  "checks": [
+    {
+      "path": "tests/deploy/test_images.py",
+      "baseline_sha256": "9f19e6a3a7cbc771f262d496cb08be68b8b0773629340ca8974cf119f1fabfcd",
+      "current_sha256": "9f19e6a3a7cbc771f262d496cb08be68b8b0773629340ca8974cf119f1fabfcd",
+      "identical": true
+    },
+    {
+      "path": "tests/deploy/test_worker_context_settings.py",
+      "baseline_sha256": "ec6a5440c1a6acb88df3b741fc79b8b0406b0fde524c32feed41d248664bbb88",
+      "current_sha256": "ec6a5440c1a6acb88df3b741fc79b8b0406b0fde524c32feed41d248664bbb88",
+      "identical": true
+    },
+    {
+      "path": "tests/deploy/deploy_tests/__init__.py",
+      "baseline_sha256": "02a1dab800e385a61bd7d6c90415532b01faca063f4e1728105d2664d00ecf0d",
+      "current_sha256": "02a1dab800e385a61bd7d6c90415532b01faca063f4e1728105d2664d00ecf0d",
+      "identical": true
+    },
+    {
+      "path": "deploy/cloudflare/sandbox-bridge/wrangler.jsonc",
+      "baseline_sha256": "4cf17d558ab1b44e2f25d63c98dfd54b9fb52dd3e95b0a82c0819cde924d58bb",
+      "current_sha256": "4cf17d558ab1b44e2f25d63c98dfd54b9fb52dd3e95b0a82c0819cde924d58bb",
+      "identical": true
+    },
+    {
+      "path": "deploy/helm/agent-runtime/templates/worker.yaml",
+      "baseline_sha256": "f70fd72b9824d44a7c6c050073beb0a34528b1d64cf557a0df7f2d24545d8c94",
+      "current_sha256": "f70fd72b9824d44a7c6c050073beb0a34528b1d64cf557a0df7f2d24545d8c94",
+      "identical": true
+    },
+    {
+      "path": "deploy/helm/agent-runtime/templates/_helpers.tpl",
+      "baseline_sha256": "4c64be8d2eb68a427a3ffa97bd40f5c8736f6a4e74699d926ac658207f64ac53",
+      "current_sha256": "4c64be8d2eb68a427a3ffa97bd40f5c8736f6a4e74699d926ac658207f64ac53",
+      "identical": true
+    },
+    {
+      "path": "deploy/helm/agent-runtime/values.yaml",
+      "baseline_sha256": "2119444cbf06086ce6f07bb22b9922bce4002c05a0b8509b3082a397f1b0a2fc",
+      "current_sha256": "2119444cbf06086ce6f07bb22b9922bce4002c05a0b8509b3082a397f1b0a2fc",
+      "identical": true
+    },
+    {
+      "path": "deploy/helm/agent-runtime/values-cloud.yaml",
+      "baseline_sha256": "4a5948eaeffb00b1ad0bf0460630a7f53bbe30d4af83b819915d08b95118eb6c",
+      "current_sha256": "4a5948eaeffb00b1ad0bf0460630a7f53bbe30d4af83b819915d08b95118eb6c",
+      "identical": true
+    }
+  ],
+  "all_identical": true,
+  "note": "The two deployment assertions and their relevant checked-in configuration are unchanged from the pre-server-validation feature commit. Separate server execution uses an isolated git archive of this commit."
+}

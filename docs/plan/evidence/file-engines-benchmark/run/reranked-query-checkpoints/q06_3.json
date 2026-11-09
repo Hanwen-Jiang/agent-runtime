@@ -1,0 +1,341 @@
+{
+  "id": "q06_3",
+  "query": "科研数据保留的记录保存多久？请找出各文件中的规定。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_06",
+      "notebook_03",
+      "scan_pdf_06",
+      "text_06",
+      "text_pdf_06",
+      "xlsx_01"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.5,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.644824486427155,
+    "relevant_files": [
+      "notebook_03",
+      "scan_pdf_06",
+      "xlsx_01"
+    ],
+    "expected_files": [
+      "text_pdf_06",
+      "scan_pdf_06",
+      "docx_06",
+      "xlsx_01",
+      "text_06",
+      "notebook_03"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 24.115579202771187
+  },
+  "hybrid": {
+    "recall_at_8": 0.6666666666666666,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7751482523375256,
+    "relevant_files": [
+      "notebook_03",
+      "scan_pdf_06",
+      "text_pdf_06",
+      "xlsx_01"
+    ],
+    "expected_files": [
+      "text_pdf_06",
+      "scan_pdf_06",
+      "docx_06",
+      "xlsx_01",
+      "text_06",
+      "notebook_03"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.5,
+    "latency_ms": 2998.0005850084126
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_bfe2a312cc07d767c6610605",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.025705644860863686,
+          0.271875,
+          0.36995965242385864,
+          0.3609375
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_06",
+      "version_id": "scan_pdf_06",
+      "score": 9.039341926574707,
+      "text": "科研数据保留记录须保留13个月。",
+      "quote_hash": "fd19632562079851fa403e7e4f7b1799a9dc42240310429d23e8e7934a9992cb",
+      "id": "chunk_7ed69919a4d3facfbebc4c7b342fcd06ee9b4c952c48e65f0674acb79716cfd3"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_709ca03a879e06d2f7abb079",
+        "kind": "notebook_cell",
+        "cell_id": "clause-3",
+        "char_end": 16.0,
+        "cell_index": 3.0
+      },
+      "representation_id": "rep_notebook_03",
+      "version_id": "notebook_03",
+      "score": 9.03882122039795,
+      "text": "科研数据保留记录须保留20个月。",
+      "quote_hash": "25327b1844643958de700b0162cd9fef774e5d5b146603d754e8f390202236ea",
+      "id": "chunk_abc632f1dcd0dc4b6788f3243ccead4922115faafb39ec2bf0fba7e9970eba96"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_370c72724a4cdf5e1a3bd26e",
+        "range": "B5",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 16.0
+      },
+      "representation_id": "rep_xlsx_01",
+      "version_id": "xlsx_01",
+      "score": 9.030864715576172,
+      "text": "科研数据保留记录须保留15个月。",
+      "quote_hash": "74a7a0f11182557d3b79742ec556144f65a4e25922da10c875e44529a865a380",
+      "id": "chunk_26a9d4f2d537a6b826a1884095871bbfe67eb59e55607005cb7edbd96e40d008"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_67b8ec19e9c819a84441abfc",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 110.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_06",
+      "version_id": "text_pdf_06",
+      "score": 5.507832050323486,
+      "text": "Synthetic policy edition / 合成政策版本 — page 4\nRecords for research data retention must be retained for 12\nmonths.",
+      "quote_hash": "6efd69c0647e697f44fca3d24da22fa97b4bb5fb858ff37da063bc361f68909f",
+      "id": "chunk_cc54caf8c2bc6665f9cf533fd1708f57e2583e3bd5385bef9548bab0d6b99df4"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_198666dcd5b5a910515d0d14",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 19.0,
+        "bbox": [
+          0.026209676638245583,
+          0.0984375,
+          0.4375,
+          0.1828125
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_06",
+      "version_id": "scan_pdf_06",
+      "score": 4.5393595695495605,
+      "text": "科研数据保留的提交期限为23个工作日。",
+      "quote_hash": "c6f6241c41f177f28844bc683662d7dd27f7e0826c06416dd5401f421260a470",
+      "id": "chunk_8da160c9ffbe61ab97b1b1be1d20efb499da0b2e2005be79339168aa3583c80e"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_b67b1b2603c24904325243e2",
+        "kind": "notebook_cell",
+        "cell_id": "clause-0",
+        "char_end": 19.0,
+        "cell_index": 0.0
+      },
+      "representation_id": "rep_notebook_03",
+      "version_id": "notebook_03",
+      "score": 4.521938323974609,
+      "text": "科研数据保留的提交期限为19个工作日。",
+      "quote_hash": "cd7a3650064240df873659a8a267693288b54a42943c1e0a213842acf07d2c6f",
+      "id": "chunk_611397db65a1eb57e936119e9d4e7af25da7f06ea2b952e8d6627921602d321d"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_0558311769db22a7a3bc962a",
+        "range": "B2",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 18.0
+      },
+      "representation_id": "rep_xlsx_01",
+      "version_id": "xlsx_01",
+      "score": 4.182199001312256,
+      "text": "科研数据保留的提交期限为4个工作日。",
+      "quote_hash": "9ad2900c215c0cf5638b16fd126d614bdd6173bcb2c19d6e8c337f349c49e814",
+      "id": "chunk_5cc3b429921d6d7f0fca8d51485bbd22c9453e876ceba7d11514da59a3cecf33"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_161c566ac00a3758b2d83891",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 109.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_text_pdf_06",
+      "version_id": "text_pdf_06",
+      "score": 2.2147130966186523,
+      "text": "Synthetic policy edition / 合成政策版本 — page 1\nResearch data retention must be submitted within 20 business\ndays.",
+      "quote_hash": "c1730c377527c0c41549f7132ed237fb0e507c036ea48f4f45228a04c39eb105",
+      "id": "chunk_4a0da096129798574e14ce6940af89fb3fccaaff65618a0521a79e93f225ec59"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_26a9d4f2d537a6b826a1884095871bbfe67eb59e55607005cb7edbd96e40d008",
+      "version_id": "xlsx_01",
+      "text": "科研数据保留记录须保留15个月。",
+      "anchor": {
+        "block_id": "blk_370c72724a4cdf5e1a3bd26e",
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B5",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_7ed69919a4d3facfbebc4c7b342fcd06ee9b4c952c48e65f0674acb79716cfd3",
+      "version_id": "scan_pdf_06",
+      "text": "科研数据保留记录须保留13个月。",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.271875,
+          0.36995965242385864,
+          0.3609375
+        ],
+        "block_id": "blk_bfe2a312cc07d767c6610605",
+        "char_end": 16,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_abc632f1dcd0dc4b6788f3243ccead4922115faafb39ec2bf0fba7e9970eba96",
+      "version_id": "notebook_03",
+      "text": "科研数据保留记录须保留20个月。",
+      "anchor": {
+        "block_id": "blk_709ca03a879e06d2f7abb079",
+        "cell_id": "clause-3",
+        "cell_index": 3.0,
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "notebook_cell"
+      }
+    },
+    {
+      "id": "chunk_315aa47887340ec0419e664f09da29d26a3fe0e445b5a6b78c474fda8348a35a",
+      "version_id": "scan_pdf_06",
+      "text": "科研数据保留的审批责任人为科研办公室。",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.2765625,
+          0.4586693346500397,
+          0.359375
+        ],
+        "block_id": "blk_8842c360e92577b281007e0f",
+        "char_end": 19,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_91e26ed44834bfd9ac8f402386f0facd413b599faeef03a8dc5cf5a07844a5f1",
+      "version_id": "xlsx_01",
+      "text": "科研数据保留的审批责任人为科研办公室。",
+      "anchor": {
+        "block_id": "blk_2139bfceb65d87e556d32fbc",
+        "char_end": 19,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B3",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_df7baa971ed6502decccd3a29a8e5bcb74826f41016b96d228328709565b2a5a",
+      "version_id": "notebook_03",
+      "text": "科研数据保留的审批责任人为科研办公室。",
+      "anchor": {
+        "block_id": "blk_78c2979291ec37d0f72f1eee",
+        "cell_id": "clause-1",
+        "cell_index": 1.0,
+        "char_end": 19,
+        "char_start": 0,
+        "kind": "notebook_cell"
+      }
+    },
+    {
+      "id": "chunk_5cc3b429921d6d7f0fca8d51485bbd22c9453e876ceba7d11514da59a3cecf33",
+      "version_id": "xlsx_01",
+      "text": "科研数据保留的提交期限为4个工作日。",
+      "anchor": {
+        "block_id": "blk_0558311769db22a7a3bc962a",
+        "char_end": 18,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B2",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_611397db65a1eb57e936119e9d4e7af25da7f06ea2b952e8d6627921602d321d",
+      "version_id": "notebook_03",
+      "text": "科研数据保留的提交期限为19个工作日。",
+      "anchor": {
+        "block_id": "blk_b67b1b2603c24904325243e2",
+        "cell_id": "clause-0",
+        "cell_index": 0.0,
+        "char_end": 19,
+        "char_start": 0,
+        "kind": "notebook_cell"
+      }
+    }
+  ]
+}

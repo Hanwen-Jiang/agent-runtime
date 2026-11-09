@@ -54,6 +54,12 @@ class PlannerActivities:
             images = await prepare_images(self.planner.gateway, inp.tenant, files)
             context = dataclasses.replace(context, image_messages=images.messages)
             message += "\n\n" + manifest_text(files, native_images=bool(images.messages))
+        collection_loader = getattr(self.attachments, "collections", None)
+        collections = await collection_loader(inp.tenant.tenant_id, inp.task_id, inp.tenant.workspace_id) if collection_loader else []
+        if collections:
+            from agentruntime_worker.tools.attachments import collection_text
+            message += "\n\n" + collection_text(collections)
+            context = dataclasses.replace(context, has_collections=True)
         request = PlanRequest(
             tenant=inp.tenant,
             task_id=inp.task_id,

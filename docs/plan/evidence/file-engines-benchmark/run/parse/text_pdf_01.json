@@ -1,0 +1,592 @@
+{
+  "evaluation": {
+    "id": "text_pdf_01",
+    "family": "text_pdf",
+    "variant": "two_column_table",
+    "language": "zh",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 38.195147605845705,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_478cf227a03b0e3774d92a9c"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_5f1858a9cf0c08cbbaad738c"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_e49508281314c59f9ba5c17a"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_8ec1d6d68b32abbf2d486c9a"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.597,
+        "candidate_ids": [
+          "blk_710d7336db78da9267daf98e"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_f6fe1280aa29c15b7e31967b"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "poppler_pdftotext",
+      "verified": false,
+      "found": 0,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_pages": 6,
+      "processed_pages": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "layout_backend": "docling",
+      "returned_blocks": 23,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_50d6048fa3e894c35ac1091e",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 - page 1",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.058823529411764705,
+            0.03335732323232321,
+            0.4792843137254902,
+            0.04981404973941542
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 1
+      },
+      {
+        "id": "blk_478cf227a03b0e3774d92a9c",
+        "kind": "text",
+        "text": "员工入职的提交期限为10个工作日。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.058823529411764705,
+            0.10406439393939391,
+            0.397078431372549,
+            0.12052112044648612
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 1
+      },
+      {
+        "id": "blk_c75fcb750d4e274f63d57cd2",
+        "kind": "text",
+        "text": "Supplementary audit notes / 审计备注",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.5392156862745098,
+            0.10685606060606061,
+            0.786176470588235,
+            0.11951508099613159
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 1
+      },
+      {
+        "id": "blk_84952001cb4e3844c9fb769d",
+        "kind": "text",
+        "text": "Quarter | Owner | Status",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.5555555555555556,
+            0.18892676767676767,
+            0.709330065359477,
+            0.20158578806683866
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 1
+      },
+      {
+        "id": "blk_630f0077eb22a1e9019a4828",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 - page 2",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.058823529411764705,
+            0.03335732323232321,
+            0.4792843137254902,
+            0.04981404973941542
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_5f1858a9cf0c08cbbaad738c",
+        "kind": "text",
+        "text": "员工入职的审批责任人为人事。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.058823529411764705,
+            0.10406439393939391,
+            0.3562091503267974,
+            0.12052112044648612
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_8d3490d1039d0349af7fb71e",
+        "kind": "text",
+        "text": "Supplementary audit notes / 审计备注",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.5392156862745098,
+            0.10685606060606061,
+            0.786176470588235,
+            0.11951508099613159
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_13a13e5aa696bfa57f8b2157",
+        "kind": "text",
+        "text": "Quarter | Owner | Status",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.5555555555555556,
+            0.18892676767676767,
+            0.709330065359477,
+            0.20158578806683866
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_ecf2e639ef103c8433c9fa8f",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 - page 3",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.058823529411764705,
+            0.03335732323232321,
+            0.4792843137254902,
+            0.04981404973941542
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_e49508281314c59f9ba5c17a",
+        "kind": "text",
+        "text": "员工入职必须提供劳动合同。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.058823529411764705,
+            0.10406439393939391,
+            0.3349673202614379,
+            0.12052112044648612
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_bfe8f2d29490f556e301e157",
+        "kind": "text",
+        "text": "Supplementary audit notes / 审计备注",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.5392156862745098,
+            0.10685606060606061,
+            0.786176470588235,
+            0.11951508099613159
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_0ffda7776be6aa0aa4a02595",
+        "kind": "text",
+        "text": "Quarter | Owner | Status",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.5555555555555556,
+            0.18892676767676767,
+            0.709330065359477,
+            0.20158578806683866
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_d49d29a9bbc9abb6c2f67f59",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 - page 4",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0.058823529411764705,
+            0.03335732323232321,
+            0.4792843137254902,
+            0.04981404973941542
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 1
+      },
+      {
+        "id": "blk_8ec1d6d68b32abbf2d486c9a",
+        "kind": "text",
+        "text": "员工入职记录须保留7个月。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0.058823529411764705,
+            0.10406439393939391,
+            0.32353921568627453,
+            0.12052112044648612
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_f59a8759ba18331a0cf3c755",
+        "kind": "text",
+        "text": "Supplementary audit notes / 审计备注",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0.5392156862745098,
+            0.10685606060606061,
+            0.786176470588235,
+            0.11951508099613159
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_18811cec393baebbd1539f1b",
+        "kind": "text",
+        "text": "Quarter | Owner | Status",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0.5555555555555556,
+            0.18892676767676767,
+            0.709330065359477,
+            0.20158578806683866
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_1db46c249336095261361fd6",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 - page 5",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 4,
+          "bbox": [
+            0.058823529411764705,
+            0.03335732323232321,
+            0.4792843137254902,
+            0.04981404973941542
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 1
+      },
+      {
+        "id": "blk_710d7336db78da9267daf98e",
+        "kind": "text",
+        "text": "员工入职的紧急例外需要部门负责人书面批准。 Supplementary audit notes / 审计备注",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 4,
+          "bbox": [
+            0.058823529411764705,
+            0.10406439393939391,
+            0.786176470588235,
+            0.12052112044648612
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 1
+      },
+      {
+        "id": "blk_685ed1c5642929430f9fb593",
+        "kind": "text",
+        "text": "Quarter | Owner | Status",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 4,
+          "bbox": [
+            0.5555555555555556,
+            0.18892676767676767,
+            0.709330065359477,
+            0.20158578806683866
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 1
+      },
+      {
+        "id": "blk_00b5df092e1c6e41dfdb7235",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 - page 6",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 5,
+          "bbox": [
+            0.058823529411764705,
+            0.03335732323232321,
+            0.4792843137254902,
+            0.04981404973941542
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_f6fe1280aa29c15b7e31967b",
+        "kind": "text",
+        "text": "员工入职必须通过员工平台提交。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 5,
+          "bbox": [
+            0.058823529411764705,
+            0.10406439393939391,
+            0.37745098039215685,
+            0.12052112044648612
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_f99ae70a9bac585bb424374a",
+        "kind": "text",
+        "text": "Supplementary audit notes / 审计备注",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 5,
+          "bbox": [
+            0.5392156862745098,
+            0.10685606060606061,
+            0.786176470588235,
+            0.11951508099613159
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_14fb34a1cbc980c5a9d508ae",
+        "kind": "text",
+        "text": "Quarter | Owner | Status",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 5,
+          "bbox": [
+            0.5555555555555556,
+            0.18892676767676767,
+            0.709330065359477,
+            0.20158578806683866
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      }
+    ],
+    "outline": [],
+    "warnings": [],
+    "coverage": {
+      "total_pages": 6,
+      "processed_pages": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "layout_backend": "docling",
+      "returned_blocks": 23,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/text_pdf_01/docling-ir.json",
+        "mime_type": "application/json",
+        "selector": {},
+        "sha256": "8afa6a02851dd3cb980979748156e6785eb13d4b1e18586d80da5a1dc2c68319",
+        "size_bytes": 9969
+      },
+      {
+        "path": "/workspace/run/artifacts/text_pdf_01/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "1b30e92e9ae265e7ed30fbf33d8a65caaf0b60b0b4aadc53048e2b363a063567",
+        "size_bytes": 9000
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "37b4f65c2adfccfcac0bd4b8ac4aa025f4fdbc0065d17b45f368670763079189",
+      "size_bytes": 6345,
+      "mime_type": "application/pdf"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "d52848bae6f0fbe91570a239e8a493b84a9891f9690a0b88cd30b78b519c9d8c"
+    }
+  }
+}

@@ -45,7 +45,7 @@ func newKnowledge() Knowledge {
 			return (&net.Dialer{}).DialContext(ctx, network, addr)
 		}
 	}
-	return &knowledgeClient{client: memoryv1connect.NewKnowledgeServiceClient(&http.Client{Transport: transport, Timeout: 5 * time.Minute}, addr, connect.WithGRPC()), token: token}
+	return &knowledgeClient{client: memoryv1connect.NewKnowledgeServiceClient(&http.Client{Transport: transport, Timeout: 5 * time.Minute}, addr, connect.WithGRPC(), connect.WithSendMaxBytes(24<<20), connect.WithReadMaxBytes(16<<20)), token: token}
 }
 func (k *knowledgeClient) Execute(ctx context.Context, t *commonv1.TenantContext, bearer, operation string, payload map[string]any) (map[string]any, error) {
 	v, e := structpb.NewValue(payload)
@@ -87,8 +87,8 @@ func (s *Server) fileIndex(w http.ResponseWriter, r *http.Request) {
 		fileError(w, e)
 		return
 	}
-	if len(body.JobIDs) < 1 || len(body.JobIDs) > 10 {
-		fileError(w, invalid("select 1 to 10 parsed jobs"))
+	if len(body.JobIDs) < 1 || len(body.JobIDs) > 500 {
+		fileError(w, invalid("select 1 to 500 parsed jobs"))
 		return
 	}
 	docs := []any{}
@@ -118,6 +118,11 @@ func (s *Server) fileIndex(w http.ResponseWriter, r *http.Request) {
 		}
 		coverage = append(coverage, map[string]any{"version_id": root.VersionID, "representation_id": representation, "coverage": j.Result["coverage"], "status": j.Status})
 		docs = append(docs, map[string]any{"version_id": root.VersionID, "representation_id": j.Result["representation_id"], "blocks": j.Result["blocks"]})
+	}
+	payloadBytes, _ := json.Marshal(docs)
+	if len(payloadBytes) > 20<<20 {
+		fileError(w, invalid("selected representations exceed 20 MiB index payload; choose smaller ranges"))
+		return
 	}
 	colID := collectionID(id.UserID, t.GetWorkspaceId())
 	raw, _ := json.Marshal([]any{docs, os.Getenv("AR_EMBEDDING_VERSION"), body.ExpectedRevision})
@@ -209,4 +214,27 @@ func (s *Server) fileCollection(w http.ResponseWriter, r *http.Request) {
 		col.Roots[i].ObjectURI = ""
 	}
 	fileJSON(w, 200, col)
+}
+
+func requestedFileCollections(inputs *structpb.Struct) ([]string, bool, error) {
+	raw, ok := inputs.GetFields()["file_collection_ids"]
+	if !ok {
+		return nil, false, nil
+	}
+	list := raw.GetListValue()
+	if list == nil || len(list.Values) > 1 {
+		return nil, true, invalid("file_collection_ids must select at most one current workspace collection")
+	}
+	ids := []string{}
+	for _, value := range list.Values {
+		id := value.GetStringValue()
+		if len(id) != 36 || !strings.HasPrefix(id, "col_") {
+			return nil, true, invalid("invalid file collection identity")
+		}
+		if _, e := hex.DecodeString(id[4:]); e != nil {
+			return nil, true, invalid("invalid file collection identity")
+		}
+		ids = append(ids, id)
+	}
+	return ids, true, nil
 }

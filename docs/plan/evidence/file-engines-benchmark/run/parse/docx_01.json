@@ -1,0 +1,248 @@
+{
+  "evaluation": {
+    "id": "docx_01",
+    "family": "docx",
+    "variant": "styled_paragraphs",
+    "language": "zh",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 0.05879677808843553,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_c9ea8fe3fa0cce91079bc97f"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_e9e857338f967c1e5e0a5aa2"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_13f4dc3867bac60fb668ade9"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_baec5c7fa8ea64aa1709bdc4"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_345bccf9abab4198053de2aa"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_f1392fc842dcd294bc912c93"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "raw_ooxml",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_blocks": 8,
+      "start": 0,
+      "returned": 8,
+      "inline_images": 0,
+      "images_read": false,
+      "returned_blocks": 8,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_7c9c519408d624c5bedfa61a",
+        "kind": "paragraph",
+        "text": "Synthetic policy 1 / 合成政策",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 0
+        },
+        "style": "Title"
+      },
+      {
+        "id": "blk_c9ea8fe3fa0cce91079bc97f",
+        "kind": "paragraph",
+        "text": "员工入职的提交期限为16个工作日。",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 1
+        },
+        "style": "Heading 2"
+      },
+      {
+        "id": "blk_e9e857338f967c1e5e0a5aa2",
+        "kind": "paragraph",
+        "text": "员工入职的审批责任人为人事。",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 2
+        },
+        "style": "Normal"
+      },
+      {
+        "id": "blk_13f4dc3867bac60fb668ade9",
+        "kind": "paragraph",
+        "text": "员工入职必须提供劳动合同。",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 3
+        },
+        "style": "Normal"
+      },
+      {
+        "id": "blk_baec5c7fa8ea64aa1709bdc4",
+        "kind": "paragraph",
+        "text": "员工入职记录须保留9个月。",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 4
+        },
+        "style": "Normal"
+      },
+      {
+        "id": "blk_345bccf9abab4198053de2aa",
+        "kind": "paragraph",
+        "text": "员工入职的紧急例外需要部门负责人书面批准。",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 5
+        },
+        "style": "Normal"
+      },
+      {
+        "id": "blk_f1392fc842dcd294bc912c93",
+        "kind": "paragraph",
+        "text": "员工入职必须通过员工平台提交。",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 6
+        },
+        "style": "Normal"
+      },
+      {
+        "id": "blk_c05c6c2d5215b1aa8e074dbe",
+        "kind": "header",
+        "text": "Synthetic benchmark — not business policy",
+        "anchor": {
+          "kind": "document_block",
+          "section": 0,
+          "part": "header",
+          "block_index": 0
+        }
+      }
+    ],
+    "outline": [
+      {
+        "block_index": 1,
+        "text": "员工入职的提交期限为16个工作日。",
+        "style": "Heading 2"
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_blocks": 8,
+      "start": 0,
+      "returned": 8,
+      "inline_images": 0,
+      "images_read": false,
+      "returned_blocks": 8,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/docx_01/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "094dfd8300bf68bb825eee392911a5304e0767d25ce64f9fa0a8f6b71fa0876d",
+        "size_bytes": 2863
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "e78ca787b8fa3dc756f3a7eed6b4948476dafbc61b9e66d6a7de86de3294b7b5",
+      "size_bytes": 37452,
+      "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "3555600d2cc3ddf5685a8401ee2cded590e598f382516d69e80bf06e47c783b3"
+    }
+  }
+}

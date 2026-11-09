@@ -1,0 +1,336 @@
+{
+  "id": "q05_2",
+  "query": "生产故障响应需要哪些凭证？比较不同资料的要求。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_05",
+      "notebook_02",
+      "scan_pdf_05",
+      "text_05",
+      "text_pdf_05",
+      "xlsx_00"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.5,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.5943907508440193,
+    "relevant_files": [
+      "docx_05",
+      "text_05",
+      "text_pdf_05"
+    ],
+    "expected_files": [
+      "text_pdf_05",
+      "scan_pdf_05",
+      "docx_05",
+      "xlsx_00",
+      "text_05",
+      "notebook_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 25.7288150023669
+  },
+  "hybrid": {
+    "recall_at_8": 0.5,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.5943907508440193,
+    "relevant_files": [
+      "docx_05",
+      "text_05",
+      "text_pdf_05"
+    ],
+    "expected_files": [
+      "text_pdf_05",
+      "scan_pdf_05",
+      "docx_05",
+      "xlsx_00",
+      "text_05",
+      "notebook_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 5749.0369360893965
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_02dd684db2aaf7521d2ee215",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.39869281045751637,
+          0.12052112044648612
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_text_pdf_05",
+      "version_id": "text_pdf_05",
+      "score": 1.5097942352294922,
+      "text": "生产故障响应必须提供故障时间线。",
+      "quote_hash": "97d25956dec52f49aa8be00ae6525a9b1c31d8d416a816653987f6ee270a5974",
+      "id": "chunk_80cb147e9d70125b31b6acccfca65f2cc8e1320505a0481ecd9f42471c400f07"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_0f451bb1acf3ec201104727a",
+        "kind": "document_block",
+        "block_index": 3.0,
+        "char_end": 16.0
+      },
+      "representation_id": "rep_docx_05",
+      "version_id": "docx_05",
+      "score": 1.5097942352294922,
+      "text": "生产故障响应必须提供故障时间线。",
+      "quote_hash": "97d25956dec52f49aa8be00ae6525a9b1c31d8d416a816653987f6ee270a5974",
+      "id": "chunk_e0a2923f09fcaf6e9cf31791759db00befb05791e634cba83d5c1f060f897310"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_6961787e328db9c0dc01a966",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 17.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.4199346405228758,
+          0.12052112044648612
+        ],
+        "page_index": 5.0
+      },
+      "representation_id": "rep_text_pdf_05",
+      "version_id": "text_pdf_05",
+      "score": 1.078644871711731,
+      "text": "生产故障响应必须通过故障频道提交。",
+      "quote_hash": "22578adb1550b540ceb5039e557c6fac8a50096c623a9afb003f029036b0f6f5",
+      "id": "chunk_aab1548f21011ac9eb1ebf68891cad4dcb772e108eb8c6eefc3254a11f8070d3"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_c220ab8ba2b62f7d29e840ac",
+        "kind": "document_block",
+        "block_index": 6.0,
+        "char_end": 17.0
+      },
+      "representation_id": "rep_docx_05",
+      "version_id": "docx_05",
+      "score": 1.078644871711731,
+      "text": "生产故障响应必须通过故障频道提交。",
+      "quote_hash": "22578adb1550b540ceb5039e557c6fac8a50096c623a9afb003f029036b0f6f5",
+      "id": "chunk_d911363a09e68d16ceced7b0bf6a7bc8a0be106f6d53f367c1ba88c6891cf259"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_6854783b5e7aa9ce448e9990",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 55.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.786176470588235,
+          0.12052112044648612
+        ],
+        "page_index": 4.0
+      },
+      "representation_id": "rep_text_pdf_05",
+      "version_id": "text_pdf_05",
+      "score": 0.515431821346283,
+      "text": "生产故障响应的紧急例外需要部门负责人书面批准。Supplementary audit notes / 审计备注",
+      "quote_hash": "d3368888131b672554d05ec10ea5a10aa97ae15dd12dd7bfd640ed555c1502fb",
+      "id": "chunk_979e685e888267acd7d1ef2061471ae8a797ac67cce77b8e43e0653218789c14"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_7c52742a272040a459e1baa3",
+        "kind": "document_block",
+        "block_index": 5.0,
+        "char_end": 23.0
+      },
+      "representation_id": "rep_docx_05",
+      "version_id": "docx_05",
+      "score": 0.14804024994373322,
+      "text": "生产故障响应的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "3c255761385591b21ad04f690a2758f791aac9d67dc3b04e951b8a70be4af0f5",
+      "id": "chunk_80601a8d665ee5bf3359daf10c7c4900334dfb82a0c908ecc3a1ace85abacda4"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_8bffd1987a97fe1b379eb541",
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0,
+        "end_line": 8.0,
+        "char_end": 235.0
+      },
+      "representation_id": "rep_text_05",
+      "version_id": "text_05",
+      "score": -0.7471885681152344,
+      "text": "<policy>\n<clause>生产故障响应的提交期限为3个工作日。</clause>\n<clause>生产故障响应的审批责任人为可靠性团队。</clause>\n<clause>生产故障响应必须提供故障时间线。</clause>\n<clause>生产故障响应记录须保留16个月。</clause>\n<clause>生产故障响应的紧急例外需要部门负责人书面批准。</clause>\n<clause>生产故障响应必须通过故障频道提交。</clause>\n</policy>",
+      "quote_hash": "3a696aa8e68857dc41bd8754c622e64a10cddac1d0fea6ae46c242884f19e8ea",
+      "id": "chunk_d6d2b20558e79cc122727d09173d242d1517d242e39d998b7ba87d956cd7fdae"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_fcfa01124c58b56a0bfcb527",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.37583660130718954,
+          0.12052112044648612
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_05",
+      "version_id": "text_pdf_05",
+      "score": -0.8072841763496399,
+      "text": "生产故障响应记录须保留11个月。",
+      "quote_hash": "d0528e3155e47b9a49d9230bde77339efa26829e7f72cca6541dfdd81da6a0ef",
+      "id": "chunk_21fecfdcf2a9ced7b7371c4ab46ece5635c1945676727cca21c7c3d2309fbc91"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_80cb147e9d70125b31b6acccfca65f2cc8e1320505a0481ecd9f42471c400f07",
+      "version_id": "text_pdf_05",
+      "text": "生产故障响应必须提供故障时间线。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.39869281045751637,
+          0.12052112044648612
+        ],
+        "block_id": "blk_02dd684db2aaf7521d2ee215",
+        "char_end": 16,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_e0a2923f09fcaf6e9cf31791759db00befb05791e634cba83d5c1f060f897310",
+      "version_id": "docx_05",
+      "text": "生产故障响应必须提供故障时间线。",
+      "anchor": {
+        "block_id": "blk_0f451bb1acf3ec201104727a",
+        "block_index": 3.0,
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_21fecfdcf2a9ced7b7371c4ab46ece5635c1945676727cca21c7c3d2309fbc91",
+      "version_id": "text_pdf_05",
+      "text": "生产故障响应记录须保留11个月。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.37583660130718954,
+          0.12052112044648612
+        ],
+        "block_id": "blk_fcfa01124c58b56a0bfcb527",
+        "char_end": 16,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_287842895fe780384a013c63499fa67304c7aacca987188553448330e1ffd068",
+      "version_id": "docx_05",
+      "text": "生产故障响应记录须保留13个月。",
+      "anchor": {
+        "block_id": "blk_d3fd50a56f8fefd38d914f7a",
+        "block_index": 4.0,
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_aab1548f21011ac9eb1ebf68891cad4dcb772e108eb8c6eefc3254a11f8070d3",
+      "version_id": "text_pdf_05",
+      "text": "生产故障响应必须通过故障频道提交。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.4199346405228758,
+          0.12052112044648612
+        ],
+        "block_id": "blk_6961787e328db9c0dc01a966",
+        "char_end": 17,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_d911363a09e68d16ceced7b0bf6a7bc8a0be106f6d53f367c1ba88c6891cf259",
+      "version_id": "docx_05",
+      "text": "生产故障响应必须通过故障频道提交。",
+      "anchor": {
+        "block_id": "blk_c220ab8ba2b62f7d29e840ac",
+        "block_index": 6.0,
+        "char_end": 17,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_d6d2b20558e79cc122727d09173d242d1517d242e39d998b7ba87d956cd7fdae",
+      "version_id": "text_05",
+      "text": "<policy>\n<clause>生产故障响应的提交期限为3个工作日。</clause>\n<clause>生产故障响应的审批责任人为可靠性团队。</clause>\n<clause>生产故障响应必须提供故障时间线。</clause>\n<clause>生产故障响应记录须保留16个月。</clause>\n<clause>生产故障响应的紧急例外需要部门负责人书面批准。</clause>\n<clause>生产故障响应必须通过故障频道提交。</clause>\n</policy>",
+      "anchor": {
+        "block_id": "blk_8bffd1987a97fe1b379eb541",
+        "char_end": 235,
+        "char_start": 0,
+        "end_line": 8.0,
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0
+      }
+    },
+    {
+      "id": "chunk_0bcd634ff7439641b9fb8dd7f489f55a5d40347accd70ee3d48d206eb702568f",
+      "version_id": "docx_05",
+      "text": "生产故障响应的提交期限为19个工作日。",
+      "anchor": {
+        "block_id": "blk_abc0b7381aa1a554e2bedbf6",
+        "block_index": 1.0,
+        "char_end": 19,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    }
+  ]
+}

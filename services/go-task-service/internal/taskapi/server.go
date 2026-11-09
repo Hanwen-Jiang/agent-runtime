@@ -349,6 +349,53 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 			return nil, providererr.New(providererr.Denied, "foreign_object", "附件不属于当前租户")
 		}
 	}
+	collectionIDs, explicitCollections, collectionErr := requestedFileCollections(req.GetInputs())
+	if collectionErr != nil {
+		return nil, collectionErr
+	}
+	previous, retry, e := s.tasks.LookupSubmission(ctx, tenant, req.GetSessionId(), crid)
+	if e != nil {
+		return nil, e
+	}
+	if retry {
+		if previous.SubmittedBy != id.UserID {
+			return nil, missing("Task submission does not belong to this user")
+		}
+		if s.d.Objects != nil {
+			objects, e := s.d.Objects.Bind(tenant)
+			if e != nil {
+				return nil, e
+			}
+			manifest, e := objects.Get(ctx, "task-inputs/"+previous.TaskID+"/manifest.json")
+			if e == nil {
+				if e = checkTaskFileSelection(manifest.Data, tenant, req.GetAttachments(), collectionIDs, explicitCollections); e != nil {
+					return nil, e
+				}
+			} else if providererr.CategoryOf(e) != providererr.NotFound {
+				return nil, e
+			} else if previous.Signaled && (len(req.GetAttachments()) > 0 || len(collectionIDs) > 0) {
+				return nil, providererr.New(providererr.Conflict, "attachment_mismatch", "task file scope was not pinned")
+			}
+		}
+	}
+	if explicitCollections {
+		if len(collectionIDs) > 0 && s.d.Objects == nil {
+			return nil, invalid("file collections require configured object storage")
+		}
+		for _, cid := range collectionIDs {
+			frozenTask := ""
+			if retry {
+				frozenTask = previous.TaskID
+			}
+			_, e := s.files.Collection(ctx, tenant, id.UserID, cid, frozenTask)
+			// If an interrupted admission has no frozen SQL selection, its
+			// original scope cannot be confirmed. Fail closed instead of
+			// selecting the current generation as an implicit replacement.
+			if e != nil {
+				return nil, e
+			}
+		}
+	}
 	if err := s.validateUploadedSources(ctx, tenant, id.UserID, req.GetAttachments()); err != nil {
 		return nil, err
 	}
@@ -422,10 +469,17 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	if err != nil {
 		return nil, err
 	}
+	if existed && row.SubmittedBy != id.UserID {
+		return nil, missing("Task submission does not belong to this user")
+	}
 	resp := &taskapiv1.SubmitTaskResponse{
 		TaskId: row.TaskID, SessionId: row.SessionID, EventsUrl: events.URL(s.d.PublicBaseURL, row.TaskID), Deduplicated: existed,
 	}
-	if err := s.pinTaskAttachments(ctx, tenant, row.TaskID, req.GetAttachments(), !existed || !row.Signaled); err != nil {
+	var collectionSelection [][]string
+	if explicitCollections {
+		collectionSelection = append(collectionSelection, collectionIDs)
+	}
+	if err := s.pinTaskAttachments(ctx, tenant, row.TaskID, req.GetAttachments(), !existed || !row.Signaled, collectionSelection...); err != nil {
 		return nil, err
 	}
 	if existed && row.Signaled {

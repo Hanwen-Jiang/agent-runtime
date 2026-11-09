@@ -1,0 +1,389 @@
+{
+  "id": "q19_2",
+  "query": "采购单变更需要哪些凭证？比较不同资料的要求。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "image_04",
+      "pptx_09",
+      "scan_pdf_19",
+      "text_pdf_19",
+      "xlsx_14"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.2,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.25,
+    "unique_source_ndcg_at_8": 0.14606834984270645,
+    "relevant_files": [
+      "pptx_09"
+    ],
+    "expected_files": [
+      "text_pdf_19",
+      "scan_pdf_19",
+      "xlsx_14",
+      "pptx_09",
+      "image_04"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.125,
+    "latency_ms": 24.635656969621778
+  },
+  "hybrid": {
+    "recall_at_8": 0.4,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.48522855511632257,
+    "relevant_files": [
+      "pptx_09",
+      "text_pdf_19"
+    ],
+    "expected_files": [
+      "text_pdf_19",
+      "scan_pdf_19",
+      "xlsx_14",
+      "pptx_09",
+      "image_04"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 4870.462573831901
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "slide_index": 2.0,
+        "block_id": "blk_0f0f82e880bce75ac9032103",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 15.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_09",
+      "version_id": "pptx_09",
+      "score": 1.0314350128173828,
+      "text": "采购单变更必须提供供应商确认。",
+      "quote_hash": "38280f834d2298aa4508fc02f7f63e8bb8e98737c4291fcb333193f15168a12c",
+      "id": "chunk_96394713535917bd8c46056238109bdf304d48a0ccde04c0c51d510953d10c34"
+    },
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_550a14d7a5fc490d46930e50",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 16.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_09",
+      "version_id": "pptx_09",
+      "score": 0.1842968761920929,
+      "text": "采购单变更必须通过采购系统提交。",
+      "quote_hash": "4af32b9658f4da51aa264c1e6d010270babd385c031919bcc3eeed8ae1e626c2",
+      "id": "chunk_f90b1c4eb20a9144c51abed7b9e3d1677accbe40c7095586e565177ae1113978"
+    },
+    {
+      "anchor": {
+        "slide_index": 4.0,
+        "block_id": "blk_54c132ecbe16531ef5633192",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 22.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_09",
+      "version_id": "pptx_09",
+      "score": -0.3173648715019226,
+      "text": "采购单变更的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "afe8159670f1e62b33b43a764ea071ae671e4f4f0b00b1854804b370d435b5e0",
+      "id": "chunk_59fe6e3a779e6249ccd19b15d9ac2c53e55f36899cd907bb1f3d53323bbe781a"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_99b851d99c90d6912ac9f8cb",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 58.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_text_pdf_19",
+      "version_id": "text_pdf_19",
+      "score": -1.072269082069397,
+      "text": "Synthetic policy edition / 合成政策版本 — page 3\n采购单变更必须提供供应商确认。",
+      "quote_hash": "7305d29b61816018aee12a902e719458c49524339999ecaf04a35dd1737ce085",
+      "id": "chunk_290a5a017b618225c8520619dadacda14820201fb68485086e6b5fdaba784702"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_dcd9464cca744395225678c2",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 15.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_09",
+      "version_id": "pptx_09",
+      "score": -1.212707757949829,
+      "text": "采购单变更记录须保留10个月。",
+      "quote_hash": "19f5dffc339331b749cf14cc231498acd8b5099c9656deb565e97e3cb1176252",
+      "id": "chunk_571de9e542270f052f1b9bee7d7ce5bd5de0eb17a950e6e307dd3cf00e0a4eaa"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_4750f7f790fa4b075f17f55b",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 59.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 5.0
+      },
+      "representation_id": "rep_text_pdf_19",
+      "version_id": "text_pdf_19",
+      "score": -1.4821557998657227,
+      "text": "Synthetic policy edition / 合成政策版本 — page 6\n采购单变更必须通过采购系统提交。",
+      "quote_hash": "59e409586f02c8530527b8f4d763adc9976568ed5e71bfdfb84ffcc34f98d646",
+      "id": "chunk_97b552d039a151de676f4206e377d9520a6ba033d4652fb2d51e2c7415704fb9"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_2523b4febefa8a2e3dac42e1",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 65.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 4.0
+      },
+      "representation_id": "rep_text_pdf_19",
+      "version_id": "text_pdf_19",
+      "score": -1.575430154800415,
+      "text": "Synthetic policy edition / 合成政策版本 — page 5\n采购单变更的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "cb08984667444e03fb69195832de363c455446a3abec96b1c21121de01bf3f7a",
+      "id": "chunk_617c87a82915734b46889d2ee4a336729e68f8b8e29f761380962699613869d9"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_9ebb4ee31f681218ac1864fc",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 57.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_19",
+      "version_id": "text_pdf_19",
+      "score": -2.3420886993408203,
+      "text": "Synthetic policy edition / 合成政策版本 — page 4\n采购单变更记录须保留6个月。",
+      "quote_hash": "b8f30b84164f5ca84cd1a88592f29e0d6f0b916a5bee6c287df0a2849aa8695d",
+      "id": "chunk_002c5cbdf0da1e6913bf2e2f44a634d352b0731c6acae6535637666410bc5221"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_571de9e542270f052f1b9bee7d7ce5bd5de0eb17a950e6e307dd3cf00e0a4eaa",
+      "version_id": "pptx_09",
+      "text": "采购单变更记录须保留10个月。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_dcd9464cca744395225678c2",
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_f90b1c4eb20a9144c51abed7b9e3d1677accbe40c7095586e565177ae1113978",
+      "version_id": "pptx_09",
+      "text": "采购单变更必须通过采购系统提交。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_550a14d7a5fc490d46930e50",
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_76e2f49e12777c19235545a406df286bd1413e4bcb4c455868a6ec7d0edb9ded",
+      "version_id": "pptx_09",
+      "text": "采购单变更的审批责任人为采购执行组。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_ab4b3be0c188f066a2d363a0",
+        "char_end": 18,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_96394713535917bd8c46056238109bdf304d48a0ccde04c0c51d510953d10c34",
+      "version_id": "pptx_09",
+      "text": "采购单变更必须提供供应商确认。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_0f0f82e880bce75ac9032103",
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_d2300d8008f18b14c67fc6af7aff09c2077562b26a8df3157d2d5bc8356af671",
+      "version_id": "pptx_09",
+      "text": "采购单变更的提交期限为23个工作日。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_bfa6c7ee74a38a9f077b5545",
+        "char_end": 18,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_59fe6e3a779e6249ccd19b15d9ac2c53e55f36899cd907bb1f3d53323bbe781a",
+      "version_id": "pptx_09",
+      "text": "采购单变更的紧急例外需要部门负责人书面批准。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_54c132ecbe16531ef5633192",
+        "char_end": 22,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 4.0
+      }
+    },
+    {
+      "id": "chunk_97b552d039a151de676f4206e377d9520a6ba033d4652fb2d51e2c7415704fb9",
+      "version_id": "text_pdf_19",
+      "text": "Synthetic policy edition / 合成政策版本 — page 6\n采购单变更必须通过采购系统提交。",
+      "anchor": {
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "block_id": "blk_4750f7f790fa4b075f17f55b",
+        "char_end": 59,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_002c5cbdf0da1e6913bf2e2f44a634d352b0731c6acae6535637666410bc5221",
+      "version_id": "text_pdf_19",
+      "text": "Synthetic policy edition / 合成政策版本 — page 4\n采购单变更记录须保留6个月。",
+      "anchor": {
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "block_id": "blk_9ebb4ee31f681218ac1864fc",
+        "char_end": 57,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    }
+  ]
+}

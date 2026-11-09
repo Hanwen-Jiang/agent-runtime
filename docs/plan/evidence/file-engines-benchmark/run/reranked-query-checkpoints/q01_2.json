@@ -1,0 +1,354 @@
+{
+  "id": "q01_2",
+  "query": "员工入职需要哪些凭证？比较不同资料的要求。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_01",
+      "pptx_11",
+      "scan_pdf_01",
+      "text_01",
+      "text_pdf_01"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.4,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.44615333764087994,
+    "relevant_files": [
+      "pptx_11",
+      "text_01"
+    ],
+    "expected_files": [
+      "text_pdf_01",
+      "scan_pdf_01",
+      "docx_01",
+      "pptx_11",
+      "text_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 22.520085098221898
+  },
+  "hybrid": {
+    "recall_at_8": 0.8,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.8687949224876582,
+    "relevant_files": [
+      "docx_01",
+      "pptx_11",
+      "text_01",
+      "text_pdf_01"
+    ],
+    "expected_files": [
+      "text_pdf_01",
+      "scan_pdf_01",
+      "docx_01",
+      "pptx_11",
+      "text_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.5,
+    "latency_ms": 4542.529430938885
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "slide_index": 2.0,
+        "block_id": "blk_295944466948bef65a69e8bd",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 13.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_11",
+      "version_id": "pptx_11",
+      "score": -0.8591493964195251,
+      "text": "员工入职必须提供劳动合同。",
+      "quote_hash": "8166108ea56f0d4039df97203450ae6d246776077ccd3863bd66e64b1ee8eeb3",
+      "id": "chunk_5cb61c891ae399d6ba2c7fb7d6ff50cad413e7d6b24a40eebd803ed3bc9db495"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e49508281314c59f9ba5c17a",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 13.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.3349673202614379,
+          0.12052112044648612
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_text_pdf_01",
+      "version_id": "text_pdf_01",
+      "score": -0.8591493964195251,
+      "text": "员工入职必须提供劳动合同。",
+      "quote_hash": "8166108ea56f0d4039df97203450ae6d246776077ccd3863bd66e64b1ee8eeb3",
+      "id": "chunk_73ba8e92c9c7c1a07d3207b0f18cc0373e92f1e12bef24387d0ffb13fd65551a"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_13f4dc3867bac60fb668ade9",
+        "kind": "document_block",
+        "block_index": 3.0,
+        "char_end": 13.0
+      },
+      "representation_id": "rep_docx_01",
+      "version_id": "docx_01",
+      "score": -0.8591493964195251,
+      "text": "员工入职必须提供劳动合同。",
+      "quote_hash": "8166108ea56f0d4039df97203450ae6d246776077ccd3863bd66e64b1ee8eeb3",
+      "id": "chunk_d2ab5915c15a1a7517d5ce21767071448ec2fd25d6cc33ded335b8415de335bd"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_9cef6cb624d80818394804af",
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0,
+        "end_line": 13.0,
+        "char_end": 119.0
+      },
+      "representation_id": "rep_text_01",
+      "version_id": "text_01",
+      "score": -1.0399272441864014,
+      "text": "# Policy / 政策\n\n员工入职的提交期限为25个工作日。\n\n员工入职的审批责任人为人事。\n\n员工入职必须提供劳动合同。\n\n员工入职记录须保留12个月。\n\n员工入职的紧急例外需要部门负责人书面批准。\n\n员工入职必须通过员工平台提交。",
+      "quote_hash": "d4160b43a1dea962bd29dd974d28fda0d1ac570d6830b38e77aa1745930fda37",
+      "id": "chunk_37dce7ac13a2948e33a0a9986eac571785572b9dbe28553c2ebbe664e1c0dff1"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_710d7336db78da9267daf98e",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 54.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.786176470588235,
+          0.12052112044648612
+        ],
+        "page_index": 4.0
+      },
+      "representation_id": "rep_text_pdf_01",
+      "version_id": "text_pdf_01",
+      "score": -1.143642783164978,
+      "text": "员工入职的紧急例外需要部门负责人书面批准。 Supplementary audit notes / 审计备注",
+      "quote_hash": "5e20da87c1a3a803a0ef4938e10de12289a87f43fb00bda9cba5f1ea273069f3",
+      "id": "chunk_1646cf392423bf733718a45a904899bddd1383e88d8f7e3ff7b3f7742adde4ff"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_f1392fc842dcd294bc912c93",
+        "kind": "document_block",
+        "block_index": 6.0,
+        "char_end": 15.0
+      },
+      "representation_id": "rep_docx_01",
+      "version_id": "docx_01",
+      "score": -1.4626400470733643,
+      "text": "员工入职必须通过员工平台提交。",
+      "quote_hash": "38711be235acd4b5d69971d7b5a80265137d7359b11f605b20f9e7819e34f350",
+      "id": "chunk_3cc721b68801ed0263e5090b6351146e8a864e8c229db3190efbac5c7a5d6856"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_f6fe1280aa29c15b7e31967b",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 15.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.37745098039215685,
+          0.12052112044648612
+        ],
+        "page_index": 5.0
+      },
+      "representation_id": "rep_text_pdf_01",
+      "version_id": "text_pdf_01",
+      "score": -1.4626400470733643,
+      "text": "员工入职必须通过员工平台提交。",
+      "quote_hash": "38711be235acd4b5d69971d7b5a80265137d7359b11f605b20f9e7819e34f350",
+      "id": "chunk_87aca2b44e1070a21c76be40a7be6597268a8b1e0b28870019800bccd87dac0b"
+    },
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_1b38678a6a9bcf5ef04713c2",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 15.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_11",
+      "version_id": "pptx_11",
+      "score": -1.4626400470733643,
+      "text": "员工入职必须通过员工平台提交。",
+      "quote_hash": "38711be235acd4b5d69971d7b5a80265137d7359b11f605b20f9e7819e34f350",
+      "id": "chunk_f5bdaf04e3cdaa07af4e4bcc36c5ef1f4ec75f37d3edd372d7abeeb1a7516d5d"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_37dce7ac13a2948e33a0a9986eac571785572b9dbe28553c2ebbe664e1c0dff1",
+      "version_id": "text_01",
+      "text": "# Policy / 政策\n\n员工入职的提交期限为25个工作日。\n\n员工入职的审批责任人为人事。\n\n员工入职必须提供劳动合同。\n\n员工入职记录须保留12个月。\n\n员工入职的紧急例外需要部门负责人书面批准。\n\n员工入职必须通过员工平台提交。",
+      "anchor": {
+        "block_id": "blk_9cef6cb624d80818394804af",
+        "char_end": 119,
+        "char_start": 0,
+        "end_line": 13.0,
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0
+      }
+    },
+    {
+      "id": "chunk_3cc721b68801ed0263e5090b6351146e8a864e8c229db3190efbac5c7a5d6856",
+      "version_id": "docx_01",
+      "text": "员工入职必须通过员工平台提交。",
+      "anchor": {
+        "block_id": "blk_f1392fc842dcd294bc912c93",
+        "block_index": 6.0,
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_87aca2b44e1070a21c76be40a7be6597268a8b1e0b28870019800bccd87dac0b",
+      "version_id": "text_pdf_01",
+      "text": "员工入职必须通过员工平台提交。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.37745098039215685,
+          0.12052112044648612
+        ],
+        "block_id": "blk_f6fe1280aa29c15b7e31967b",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_f5bdaf04e3cdaa07af4e4bcc36c5ef1f4ec75f37d3edd372d7abeeb1a7516d5d",
+      "version_id": "pptx_11",
+      "text": "员工入职必须通过员工平台提交。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_1b38678a6a9bcf5ef04713c2",
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_2647f1a6530c0e3f577c43c5edb05cfd8d3c9d7eb1d3b6e50dad4c0a130c5664",
+      "version_id": "pptx_11",
+      "text": "员工入职记录须保留11个月。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_41e87de274234291a4a1009f",
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_6e358eea339f0e5ac93427a47391d55c15e0635933ad1eee8d0929555432f347",
+      "version_id": "docx_01",
+      "text": "员工入职记录须保留9个月。",
+      "anchor": {
+        "block_id": "blk_baec5c7fa8ea64aa1709bdc4",
+        "block_index": 4.0,
+        "char_end": 13,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_900aa35936bb8fdf05245e16b1aba90c8d2fde0107cff728830a2b3304267423",
+      "version_id": "text_pdf_01",
+      "text": "员工入职记录须保留7个月。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.32353921568627453,
+          0.12052112044648612
+        ],
+        "block_id": "blk_8ec1d6d68b32abbf2d486c9a",
+        "char_end": 13,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_5cb61c891ae399d6ba2c7fb7d6ff50cad413e7d6b24a40eebd803ed3bc9db495",
+      "version_id": "pptx_11",
+      "text": "员工入职必须提供劳动合同。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_295944466948bef65a69e8bd",
+        "char_end": 13,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 2.0
+      }
+    }
+  ]
+}

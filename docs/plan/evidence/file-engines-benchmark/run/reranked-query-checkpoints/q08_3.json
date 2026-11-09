@@ -1,0 +1,348 @@
+{
+  "id": "q08_3",
+  "query": "软件发布审批的记录保存多久？请找出各文件中的规定。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_08",
+      "scan_pdf_08",
+      "text_08",
+      "text_pdf_08",
+      "xlsx_03"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.4,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.3333333333333333,
+    "unique_source_ndcg_at_8": 0.3156484524795145,
+    "relevant_files": [
+      "scan_pdf_08",
+      "xlsx_03"
+    ],
+    "expected_files": [
+      "text_pdf_08",
+      "scan_pdf_08",
+      "docx_08",
+      "xlsx_03",
+      "text_08"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 21.677681943401694
+  },
+  "hybrid": {
+    "recall_at_8": 0.4,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.5531464700081437,
+    "relevant_files": [
+      "scan_pdf_08",
+      "xlsx_03"
+    ],
+    "expected_files": [
+      "text_pdf_08",
+      "scan_pdf_08",
+      "docx_08",
+      "xlsx_03",
+      "text_08"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 5747.94760113582
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_8e66358b2b0484564c00bb74",
+        "range": "B5",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 16.0
+      },
+      "representation_id": "rep_xlsx_03",
+      "version_id": "xlsx_03",
+      "score": 7.942652225494385,
+      "text": "软件发布审批记录须保留17个月。",
+      "quote_hash": "8cc2710c1d3add1998ba493969f2cdd5c9ac2b79264dfe244f1a6764fff5b67c",
+      "id": "chunk_31518d92c5ccfdb49ccfb20aea8d38a0b08f77495cd31273e5ea27384700cdd6"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_a37bd2426b189ecc1ffc3c87",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.026209676638245583,
+          0.275,
+          0.36945563554763794,
+          0.359375
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_08",
+      "version_id": "scan_pdf_08",
+      "score": 7.862269878387451,
+      "text": "软件发布审批记录须保留15个月。",
+      "quote_hash": "5eb695290e93ec6c717fad45ad6a652520d4a2fbbf490a0221d0e11b220d105e",
+      "id": "chunk_52765154fd10aaf6063afab97d753d19489c7aa236e4f44ea2e0b7be973917ba"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_9fc7b5c9931e86d3d2b51cb9",
+        "range": "B2",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 19.0
+      },
+      "representation_id": "rep_xlsx_03",
+      "version_id": "xlsx_03",
+      "score": 2.894465208053589,
+      "text": "软件发布审批的提交期限为18个工作日。",
+      "quote_hash": "b93e247d644e325ccb5c2b1f9f56edeac80bbfe8e7409d4ea15f57ede071866d",
+      "id": "chunk_186d7a0b19c9c07429dfcbb57c0a9368bcdbcb6ca849f97628defb5ad98f5088"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_cd8f9ca333c777a9260bb71a",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 19.0,
+        "bbox": [
+          0.026209676638245583,
+          0.0984375,
+          0.4375,
+          0.1828125
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_08",
+      "version_id": "scan_pdf_08",
+      "score": 2.8711647987365723,
+      "text": "软件发布审批的提交期限为12个工作日。",
+      "quote_hash": "d8c24b0c71843c25bf6b587cafc53be3132fef424fe373cb9de29118009621e3",
+      "id": "chunk_4d4024666930422c728783d2991f3b83f3f2d3103b070d6aaf34e671ea3d9f27"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_64cfd876e5434fe4e5e94fed",
+        "kind": "document_block",
+        "block_index": 4.0,
+        "char_end": 15.0
+      },
+      "representation_id": "rep_docx_07",
+      "version_id": "docx_07",
+      "score": -1.6073024272918701,
+      "text": "供应商准入记录须保留15个月。",
+      "quote_hash": "8419d86f46f6f5497dd05c2ee593e0fe59241178529a1f150e219a456734cfbe",
+      "id": "chunk_dd7fa4ca6c4e2dad7a559d6ec4e74f4c6edb2cc633d0c3b2c32cc829743d8322"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_bb672c895b138c9ab90d1568",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 13.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_07",
+      "version_id": "pptx_07",
+      "score": -1.9331265687942505,
+      "text": "备份恢复记录须保留8个月。",
+      "quote_hash": "03abded1206d91b390833844f39c0b5b8dac9649af25deaaa223297147643219",
+      "id": "chunk_28cd466f7d4cafc53d9457c811844e93cadf51074fafb68fad9812c9abb752a2"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d14d1103ee2c36b5996dc03f",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 17.0,
+        "bbox": [
+          0.026209676638245583,
+          0.0984375,
+          0.41330644488334656,
+          0.1828125
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_08",
+      "version_id": "scan_pdf_08",
+      "score": -2.308795690536499,
+      "text": "软件发布审批必须提供回归测试报告。",
+      "quote_hash": "49ff4d3a2e76eacabf12cdfa182456a062911992684baf235fc6a7cb20694b08",
+      "id": "chunk_8666368485de56c23a6c37319736f8497e68cba1bf62e9f9f8e8308fcbaf49f4"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_691c0c2ef15a3c5060df44b4",
+        "range": "B4",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 17.0
+      },
+      "representation_id": "rep_xlsx_03",
+      "version_id": "xlsx_03",
+      "score": -2.308795690536499,
+      "text": "软件发布审批必须提供回归测试报告。",
+      "quote_hash": "49ff4d3a2e76eacabf12cdfa182456a062911992684baf235fc6a7cb20694b08",
+      "id": "chunk_e2edf69fd23dcf6b2b1effef4850b1091a8391a226f85f3b390ae9731956c7d8"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_4f395a449e57a787cebbcf0c9e3afb8a6ef10de338e8aff7579ac0905f3b727f",
+      "version_id": "xlsx_03",
+      "text": "软件发布审批的审批责任人为发布委员会。",
+      "anchor": {
+        "block_id": "blk_58ab6e093b1124746336b197",
+        "char_end": 19,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B3",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_714ab89111a1b8ca7c42dabdcda927b800fdecef6c612eb15330bf09e3fb554a",
+      "version_id": "scan_pdf_08",
+      "text": "软件发布审批的审批责任人为发布委员会。",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.2765625,
+          0.45917338132858276,
+          0.3609375
+        ],
+        "block_id": "blk_2f4fc58ea620f2878c86f55e",
+        "char_end": 19,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_31518d92c5ccfdb49ccfb20aea8d38a0b08f77495cd31273e5ea27384700cdd6",
+      "version_id": "xlsx_03",
+      "text": "软件发布审批记录须保留17个月。",
+      "anchor": {
+        "block_id": "blk_8e66358b2b0484564c00bb74",
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B5",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_52765154fd10aaf6063afab97d753d19489c7aa236e4f44ea2e0b7be973917ba",
+      "version_id": "scan_pdf_08",
+      "text": "软件发布审批记录须保留15个月。",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.275,
+          0.36945563554763794,
+          0.359375
+        ],
+        "block_id": "blk_a37bd2426b189ecc1ffc3c87",
+        "char_end": 16,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_186d7a0b19c9c07429dfcbb57c0a9368bcdbcb6ca849f97628defb5ad98f5088",
+      "version_id": "xlsx_03",
+      "text": "软件发布审批的提交期限为18个工作日。",
+      "anchor": {
+        "block_id": "blk_9fc7b5c9931e86d3d2b51cb9",
+        "char_end": 19,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B2",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_4d4024666930422c728783d2991f3b83f3f2d3103b070d6aaf34e671ea3d9f27",
+      "version_id": "scan_pdf_08",
+      "text": "软件发布审批的提交期限为12个工作日。",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.0984375,
+          0.4375,
+          0.1828125
+        ],
+        "block_id": "blk_cd8f9ca333c777a9260bb71a",
+        "char_end": 19,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_45bba44fea5dcfe8ffcb9dba7144f36156b7b116bd6354a6e8750f909bd2d864",
+      "version_id": "xlsx_03",
+      "text": "软件发布审批的紧急例外需要部门负责人书面批准。",
+      "anchor": {
+        "block_id": "blk_3313ae426722c81097c63269",
+        "char_end": 23,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B6",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_75e3b800d63d499bc75a1e012440f4294e2d41fa2504e610cdaf4b56e57caf73",
+      "version_id": "scan_pdf_08",
+      "text": "软件发布审批的紧急例外需要部门负责人书面批准。",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.0984375,
+          0.5504032373428345,
+          0.1828125
+        ],
+        "block_id": "blk_3087621794db378b087c5c41",
+        "char_end": 23,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    }
+  ]
+}

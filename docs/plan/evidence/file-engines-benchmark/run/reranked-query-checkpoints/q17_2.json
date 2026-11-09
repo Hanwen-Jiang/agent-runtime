@@ -1,0 +1,390 @@
+{
+  "id": "q17_2",
+  "query": "备份恢复需要哪些凭证？比较不同资料的要求。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "image_02",
+      "pptx_07",
+      "scan_pdf_17",
+      "text_pdf_17",
+      "xlsx_12"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.4,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.5531464700081437,
+    "relevant_files": [
+      "pptx_07",
+      "text_pdf_17"
+    ],
+    "expected_files": [
+      "text_pdf_17",
+      "scan_pdf_17",
+      "xlsx_12",
+      "pptx_07",
+      "image_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 20.63734899275005
+  },
+  "hybrid": {
+    "recall_at_8": 0.4,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.5531464700081437,
+    "relevant_files": [
+      "pptx_07",
+      "text_pdf_17"
+    ],
+    "expected_files": [
+      "text_pdf_17",
+      "scan_pdf_17",
+      "xlsx_12",
+      "pptx_07",
+      "image_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 4387.166270986199
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "slide_index": 2.0,
+        "block_id": "blk_0c77e437c2d6ecd93c9c0a3e",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 15.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_07",
+      "version_id": "pptx_07",
+      "score": 0.3613739013671875,
+      "text": "备份恢复必须提供恢复审批工单。",
+      "quote_hash": "b3e2493d27ae4c06d7c74794ea89ff57974688514b45abb8c0da31e571937f2a",
+      "id": "chunk_204e517ea4e8bc25e8be5a56ac1cb26b81cbe5d8f16c705d7b25bd9df3d00f99"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_69292002da340c2900e3bca3",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 15.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.37745098039215685,
+          0.12052112044648612
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_text_pdf_17",
+      "version_id": "text_pdf_17",
+      "score": 0.3613739013671875,
+      "text": "备份恢复必须提供恢复审批工单。",
+      "quote_hash": "b3e2493d27ae4c06d7c74794ea89ff57974688514b45abb8c0da31e571937f2a",
+      "id": "chunk_a5cff50c262d35f2d762e9b248a72ff5aa4be23c531bfc2834c054f0ea54a5a9"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_4b0fdc59c7af35d1a81521d2",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 54.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.786176470588235,
+          0.12052112044648612
+        ],
+        "page_index": 4.0
+      },
+      "representation_id": "rep_text_pdf_17",
+      "version_id": "text_pdf_17",
+      "score": -0.43872594833374023,
+      "text": "备份恢复的紧急例外需要部门负责人书面批准。 Supplementary audit notes / 审计备注",
+      "quote_hash": "c733ec6a415f1efddcdea4c75bcf2f6db828be39520311cfebf7d3449cda75f6",
+      "id": "chunk_5272cd9a52465d2a7e7287bb4fd9aa790aa160ea4e0e9c6175453a04b6fe663d"
+    },
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_efe32f9a88ed91b6ba537919",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 16.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_07",
+      "version_id": "pptx_07",
+      "score": -1.0694448947906494,
+      "text": "备份恢复必须通过恢复控制台提交。",
+      "quote_hash": "bc108248f71d7e11fe0276cdff98b29eb5cd182b4a8b34998751f7fbd013a4dc",
+      "id": "chunk_14f4da094e267c410700fc639112cf12fc0175d6a3714a085f07a621b3cf5af7"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_a7c53ec1b444954c40ded310",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.39869281045751637,
+          0.12052112044648612
+        ],
+        "page_index": 5.0
+      },
+      "representation_id": "rep_text_pdf_17",
+      "version_id": "text_pdf_17",
+      "score": -1.0694448947906494,
+      "text": "备份恢复必须通过恢复控制台提交。",
+      "quote_hash": "bc108248f71d7e11fe0276cdff98b29eb5cd182b4a8b34998751f7fbd013a4dc",
+      "id": "chunk_ce1e23e26c9fa0a7d416797678f31d77ccff5f6c65bb5e0bf7893e0f4388e1cf"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_c334a1fc7bf98a3858d17b71",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 96.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_text_pdf_04",
+      "version_id": "text_pdf_04",
+      "score": -1.1004716157913208,
+      "text": "Synthetic policy edition / 合成政策版本 — page 3\nPassword recovery requires verified recovery address.",
+      "quote_hash": "4f809d52dca1bc613156af31835deb4559791c1826d0cbd6d0fac6f66b7b88b4",
+      "id": "chunk_207c9471628f2ad7d3553435f16c94002e5a366cdfd752ca7551eedbcc470413"
+    },
+    {
+      "anchor": {
+        "slide_index": 4.0,
+        "block_id": "blk_e36f23a284926bb9c4949150",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 21.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_07",
+      "version_id": "pptx_07",
+      "score": -1.4180909395217896,
+      "text": "备份恢复的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "bda3391c6ed33d1638b7d123d043f0c63e37c1812481748a3f8ac741435ee14a",
+      "id": "chunk_aab84f9b83f67c75eb98ed8a0eaee3ac98397a1dbe97851cacd165ae8864ee23"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e59537b408d36a4df83f969a",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 14.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.3333529411764706,
+          0.12052112044648612
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_17",
+      "version_id": "text_pdf_17",
+      "score": -2.5726001262664795,
+      "text": "备份恢复记录须保留23个月。",
+      "quote_hash": "6fbcc6bc81ccfe4651f2b26e77baac035956e83fd26ace731bd2b6c70df5ee0f",
+      "id": "chunk_cea0cb22ee3beea17789a6d1e8e60c29e859ab041f20e0df5b0ebbde031a8603"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_204e517ea4e8bc25e8be5a56ac1cb26b81cbe5d8f16c705d7b25bd9df3d00f99",
+      "version_id": "pptx_07",
+      "text": "备份恢复必须提供恢复审批工单。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_0c77e437c2d6ecd93c9c0a3e",
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_a5cff50c262d35f2d762e9b248a72ff5aa4be23c531bfc2834c054f0ea54a5a9",
+      "version_id": "text_pdf_17",
+      "text": "备份恢复必须提供恢复审批工单。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.37745098039215685,
+          0.12052112044648612
+        ],
+        "block_id": "blk_69292002da340c2900e3bca3",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_28cd466f7d4cafc53d9457c811844e93cadf51074fafb68fad9812c9abb752a2",
+      "version_id": "pptx_07",
+      "text": "备份恢复记录须保留8个月。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_bb672c895b138c9ab90d1568",
+        "char_end": 13,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_cea0cb22ee3beea17789a6d1e8e60c29e859ab041f20e0df5b0ebbde031a8603",
+      "version_id": "text_pdf_17",
+      "text": "备份恢复记录须保留23个月。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.3333529411764706,
+          0.12052112044648612
+        ],
+        "block_id": "blk_e59537b408d36a4df83f969a",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_14f4da094e267c410700fc639112cf12fc0175d6a3714a085f07a621b3cf5af7",
+      "version_id": "pptx_07",
+      "text": "备份恢复必须通过恢复控制台提交。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_efe32f9a88ed91b6ba537919",
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_ce1e23e26c9fa0a7d416797678f31d77ccff5f6c65bb5e0bf7893e0f4388e1cf",
+      "version_id": "text_pdf_17",
+      "text": "备份恢复必须通过恢复控制台提交。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.39869281045751637,
+          0.12052112044648612
+        ],
+        "block_id": "blk_a7c53ec1b444954c40ded310",
+        "char_end": 16,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_aab84f9b83f67c75eb98ed8a0eaee3ac98397a1dbe97851cacd165ae8864ee23",
+      "version_id": "pptx_07",
+      "text": "备份恢复的紧急例外需要部门负责人书面批准。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_e36f23a284926bb9c4949150",
+        "char_end": 21,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 4.0
+      }
+    },
+    {
+      "id": "chunk_39e61de7b181ccf8658b6cc807fcb5cf8e6af9e3640dbe4118a1e0017b065fcd",
+      "version_id": "pptx_07",
+      "text": "备份恢复的提交期限为9个工作日。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_a7ba7fc60c8ba9e2c12e2109",
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 0.0
+      }
+    }
+  ]
+}

@@ -36,11 +36,13 @@ Poppler executables on `PATH`.
 and pipe, disabled macros/external refresh, explicit `calculateAll`, `storeToURL`,
 and post-save formula/error/cache/expected-value checks. The Linux processing
 image must supply `libreoffice-calc`, `python3-uno`, and `AR_UNO_PYTHON` pointing to
-the matching system Python. The available host LibreOffice has no bundled pyuno
-runtime, and this host has no Docker runtime. Therefore the **UNO execution
-acceptance remains unverified here**. Conversion-to-XLSX or forcing a load flag
-is not recorded as a substitute for that acceptance. A request that cannot run
-UNO returns a concrete recalculation error and never claims recalculated values.
+the matching system Python. The original macOS host lacked pyuno and Docker, so the initial local report
+left actual UNO execution unverified. That gap was closed on 2026-11-10 by the
+isolated Linux image and real `calculateAll` acceptance described in
+[Linux validation](../file-engines-linux/README.md). Both date systems, stale
+caches, formula failures, forbidden dependencies, preservation and timeout
+cleanup were exercised. LibreOffice 24.2.7 does not support XLOOKUP; it returns an
+explicit failed verification rather than a claimed result.
 
 ## Limits and publication
 

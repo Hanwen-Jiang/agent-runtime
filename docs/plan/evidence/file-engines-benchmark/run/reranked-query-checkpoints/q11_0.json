@@ -1,0 +1,334 @@
+{
+  "id": "q11_0",
+  "query": "Compare the submission deadlines for training reimbursement across the policies.",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_11",
+      "pptx_01",
+      "table_01",
+      "text_pdf_11",
+      "xlsx_06"
+    ],
+    "extraction_chunking_recall_ceiling": 0.8333333333333334
+  },
+  "exact": {
+    "recall_at_8": 0.0,
+    "hit_at_8": 0.0,
+    "reciprocal_rank_at_8": 0,
+    "unique_source_ndcg_at_8": 0.0,
+    "relevant_files": [],
+    "expected_files": [
+      "text_pdf_11",
+      "scan_pdf_11",
+      "docx_11",
+      "xlsx_06",
+      "pptx_01",
+      "table_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.0,
+    "latency_ms": 14.749800786376
+  },
+  "hybrid": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.4935232796777482,
+    "relevant_files": [
+      "pptx_01",
+      "table_01"
+    ],
+    "expected_files": [
+      "text_pdf_11",
+      "scan_pdf_11",
+      "docx_11",
+      "xlsx_06",
+      "pptx_01",
+      "table_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 5396.5267890598625
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "slide_index": 0.0,
+        "block_id": "blk_57d9c9aeba4a746d639f997f",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 17.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_01",
+      "version_id": "pptx_01",
+      "score": 1.987894892692566,
+      "text": "培训报销的提交期限为17个工作日。",
+      "quote_hash": "6cbb339b8eee436e5cdb13a09f63edb5d0b2ce4443d4513d17de7b0d5d72f8c0",
+      "id": "chunk_68489ce540aaba8106cdcc10b36b275b0397b02f8fda4074e7e87312ccbb27a5"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_3c48d584afe7f7aa38d11ee1",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 74.0,
+        "row_index": 0.0
+      },
+      "representation_id": "rep_table_01",
+      "version_id": "table_01",
+      "score": 0.08017493784427643,
+      "text": "0\tTraining reimbursement must be submitted within 23 business days.\t0\teast",
+      "quote_hash": "f062d24f0bf5c5d3a1ac7f4d8faaf5d3e9b62cdc654268cf90a2fcb7b80fee9a",
+      "id": "chunk_26fd034a10e79a51216fdd4795172f28066e17de4ff1ce911116c45b2d8507e8"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d8d458d5edae5b63d2446161",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 52.0,
+        "bbox": [
+          0.025705644860863686,
+          0.38125,
+          0.633568525314331,
+          0.4703125
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_scan_pdf_11",
+      "version_id": "scan_pdf_11",
+      "score": -0.5623545050621033,
+      "text": "Training reimbursement must be submitted through the",
+      "quote_hash": "8a579815ae61472d98691d043e79443c263fe09b0334f7fbd9a25fb7685b8eed",
+      "id": "chunk_3a28bd56fe7a388101f2ab63842b8526d3e7e09171988ad78ad667b3002023df"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_456f14dd60e10de2b24b308c",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 78.0,
+        "row_index": 5.0
+      },
+      "representation_id": "rep_table_01",
+      "version_id": "table_01",
+      "score": -1.1454393863677979,
+      "text": "5\tTraining reimbursement must be submitted through the learning portal.\t5\twest",
+      "quote_hash": "b42b70314d0e2fd431bca8eb6caed53a7128e0a234679e50618204e3ea0004c4",
+      "id": "chunk_7da22d2678d0738f48871d322e39f17ef721f6d8cbc6cf65ffdf0a536d66d3b6"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_7654848dca3d6a24806702b5",
+        "range": "B7",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 69.0
+      },
+      "representation_id": "rep_xlsx_06",
+      "version_id": "xlsx_06",
+      "score": -1.1794532537460327,
+      "text": "Training reimbursement must be submitted through the learning portal.",
+      "quote_hash": "cd05fec79fad71e158ed25597df7f229b1731201f33ff397c692ee2b3a4e90ea",
+      "id": "chunk_eaa26c024d3019b4c5f6410ffabb1ff6f33e238380f434df3db251f173945ec3"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_1f5951e2d9a77c69fea9bec4",
+        "kind": "document_block",
+        "block_index": 3.0,
+        "char_end": 13.0
+      },
+      "representation_id": "rep_docx_11",
+      "version_id": "docx_11",
+      "score": -2.1833739280700684,
+      "text": "培训报销必须提供结课证书。",
+      "quote_hash": "aa06d11e82e2243a00229551217f67b2baa5123fc6ba155f9d1f40e8436372a4",
+      "id": "chunk_4ee3d38661a11b1e566184b00d11b08d083608810f3ac5a637499753d5adb486"
+    },
+    {
+      "anchor": {
+        "slide_index": 2.0,
+        "block_id": "blk_0895633263815c52a708586e",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 13.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_01",
+      "version_id": "pptx_01",
+      "score": -2.1833739280700684,
+      "text": "培训报销必须提供结课证书。",
+      "quote_hash": "aa06d11e82e2243a00229551217f67b2baa5123fc6ba155f9d1f40e8436372a4",
+      "id": "chunk_692b541c39b21373d3effe0a0c86ff3bf14e75b179c16e52e3ea5d30171c5627"
+    },
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_cd3cd6bce924b15ed6bc43b9",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 15.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_01",
+      "version_id": "pptx_01",
+      "score": -2.2435214519500732,
+      "text": "培训报销必须通过培训平台提交。",
+      "quote_hash": "c33f56e00aaec10ec94f7b1e8308fbdf6ce1327627b225f1c4b692efeb4534e3",
+      "id": "chunk_353181806e24ba15cfa01518e7a83171bfa71d69eea47210d227f94108dec570"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_ff2da02ed6102914754d3f511b32729a9fde5ff92a7f9d10ad2113396632c8e2",
+      "version_id": "scan_pdf_11",
+      "text": "Emergency exceptions for training reimbursement require",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.0953125,
+          0.6638104915618896,
+          0.184375
+        ],
+        "block_id": "blk_b6484bed13a57a4125ef8288",
+        "char_end": 55,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_3a28bd56fe7a388101f2ab63842b8526d3e7e09171988ad78ad667b3002023df",
+      "version_id": "scan_pdf_11",
+      "text": "Training reimbursement must be submitted through the",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.38125,
+          0.633568525314331,
+          0.4703125
+        ],
+        "block_id": "blk_d8d458d5edae5b63d2446161",
+        "char_end": 52,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_7e2b049b09f9e763f89c771cf42af7116eb9eefe6c050243c35ca3c10cf796ba",
+      "version_id": "xlsx_06",
+      "text": "Emergency exceptions for training reimbursement require written approval from the department head.",
+      "anchor": {
+        "block_id": "blk_07e3b49733c421aa355149f1",
+        "char_end": 98,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B6",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_eaa26c024d3019b4c5f6410ffabb1ff6f33e238380f434df3db251f173945ec3",
+      "version_id": "xlsx_06",
+      "text": "Training reimbursement must be submitted through the learning portal.",
+      "anchor": {
+        "block_id": "blk_7654848dca3d6a24806702b5",
+        "char_end": 69,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B7",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_1ae1858f5dce900137c2c37ecd8c66381a17cc14baf942030bad8549b158ed92",
+      "version_id": "xlsx_06",
+      "text": "Learning Team is responsible for approving training reimbursement.",
+      "anchor": {
+        "block_id": "blk_f539551830032a437169fd57",
+        "char_end": 66,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B3",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_663383d5fb1c817cd86fadd473cfca2205d0f402435628d1d347c5b9fdb3b477",
+      "version_id": "xlsx_06",
+      "text": "Records for training reimbursement must be retained for 20 months.",
+      "anchor": {
+        "block_id": "blk_7ce1691f2093cda8b02ca11c",
+        "char_end": 66,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B5",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_d6b1d6d43e3ba0bbf0ee0fc329702e0a3f14bbb94fcb378474f57553a081fa50",
+      "version_id": "table_01",
+      "text": "4\tEmergency exceptions for training reimbursement require written approval from the department head.\t4\teast",
+      "anchor": {
+        "block_id": "blk_47191a1dbf31682cf9b6b0f2",
+        "char_end": 107,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "row_index": 4.0,
+        "sheet_id": "csv"
+      }
+    },
+    {
+      "id": "chunk_70f481e551e474fa71e0bcf315c3fec36e6ee8e4b8b5480d974be25d1c71057a",
+      "version_id": "xlsx_06",
+      "text": "Training reimbursement requires completion certificate.",
+      "anchor": {
+        "block_id": "blk_2d6f7b938184b8f7b1643924",
+        "char_end": 55,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B4",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    }
+  ]
+}

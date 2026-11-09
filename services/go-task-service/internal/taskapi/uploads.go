@@ -247,8 +247,11 @@ func (s *Server) validateUploadedSources(ctx context.Context, tenant *commonv1.T
 	return err
 }
 
-func (s *Server) pinTaskAttachments(ctx context.Context, tenant *commonv1.TenantContext, taskID string, refs []string, create bool) error {
+func (s *Server) pinTaskAttachments(ctx context.Context, tenant *commonv1.TenantContext, taskID string, refs []string, create bool, selected ...[]string) error {
 	if s.d.Objects == nil {
+		if len(selected) > 0 && len(selected[0]) > 0 {
+			return invalid("file collections require configured object storage")
+		}
 		return nil
 	} // Older deployments without uploads remain compatible.
 	objects, err := s.d.Objects.Bind(tenant)
@@ -257,6 +260,28 @@ func (s *Server) pinTaskAttachments(ctx context.Context, tenant *commonv1.Tenant
 	}
 	if refs == nil {
 		refs = []string{}
+	}
+	selectionIDs := []string{}
+	explicit := len(selected) > 0
+	if explicit {
+		selectionIDs = append(selectionIDs, selected[0]...)
+	}
+	key := "task-inputs/" + taskID + "/manifest.json"
+	// Compare before creating any DB scope. Otherwise a text-only retry could
+	// acquire a collection in SQL even when its immutable object pin is empty.
+	existing, getErr := objects.Get(ctx, key)
+	if getErr == nil {
+		if err = checkTaskFileSelection(existing.Data, tenant, refs, selectionIDs, explicit); err != nil {
+			return err
+		}
+	} else if providererr.CategoryOf(getErr) != providererr.NotFound {
+		return getErr
+	} else if !create {
+		// A pre-feature signaled task without a manifest cannot gain new scope.
+		if len(refs) > 0 || len(selectionIDs) > 0 {
+			return providererr.New(providererr.Conflict, "attachment_mismatch", "task file scope was not pinned")
+		}
+		return nil
 	}
 	roots := []files.Root{}
 	for _, ref := range refs {
@@ -270,23 +295,34 @@ func (s *Server) pinTaskAttachments(ctx context.Context, tenant *commonv1.Tenant
 		}
 		roots = append(roots, root)
 	}
-	if len(roots) > 0 {
+	collections := []files.Collection{}
+	if len(selected) > 0 {
+		collections, err = s.files.PinSelectedCollections(ctx, tenant, tenant.GetUserId(), taskID, roots, selected[0])
+		if err != nil {
+			return err
+		}
+	} else if len(roots) == 0 && tenant.GetWorkspaceId() != "" {
+		collections, err = s.files.PinSelectedCollections(ctx, tenant, tenant.GetUserId(), taskID, roots, []string{})
+		if err != nil {
+			return err
+		}
+	} else if len(roots) > 0 {
 		if err = s.files.Snapshot(ctx, tenant, tenant.GetUserId(), taskID, roots); err != nil {
 			return err
 		}
-	}
-	collections := []files.Collection{}
-	if len(roots) > 0 {
 		collections, err = s.files.FreezeCollections(ctx, tenant, tenant.GetUserId(), taskID, roots)
 		if err != nil {
 			return err
 		}
 	}
-	data, err := json.Marshal(map[string]any{"attachments": refs, "workspace_id": tenant.GetWorkspaceId(), "user_id": tenant.GetUserId(), "versions": roots, "collections": collections})
+	summaries := []map[string]any{}
+	for _, col := range collections {
+		summaries = append(summaries, map[string]any{"id": col.ID, "generation": col.Generation, "embedding_version": col.EmbeddingVersion, "revision": col.Revision, "root_count": len(col.Roots)})
+	}
+	data, err := json.Marshal(map[string]any{"attachments": refs, "workspace_id": tenant.GetWorkspaceId(), "user_id": tenant.GetUserId(), "versions": roots, "collections": summaries, "schema_version": 2, "explicit_collection_selection": explicit, "selection_ids": selectionIDs})
 	if err != nil {
 		return err
 	}
-	key := "task-inputs/" + taskID + "/manifest.json"
 	if create {
 		_, err = objects.Put(ctx, key, data, objectstore.PutOptions{ContentType: "application/json", IfAbsent: true})
 		if err == nil {
@@ -303,12 +339,42 @@ func (s *Server) pinTaskAttachments(ctx context.Context, tenant *commonv1.Tenant
 	if err != nil {
 		return err
 	}
-	var manifest struct {
-		Attachments []string `json:"attachments"`
-		WorkspaceID string   `json:"workspace_id"`
+	return checkTaskFileSelection(old.Data, tenant, refs, selectionIDs, explicit)
+}
+
+// Legacy pins keep their recorded collection IDs; absence of the new selection
+// fields never authorizes expansion. New pins also bind explicit-vs-implicit
+// selection, owner and workspace, even for ordinary text-only tasks.
+func checkTaskFileSelection(raw []byte, tenant *commonv1.TenantContext, refs, ids []string, explicit bool) error {
+	var pin struct {
+		SchemaVersion int      `json:"schema_version"`
+		Attachments   []string `json:"attachments"`
+		WorkspaceID   string   `json:"workspace_id"`
+		UserID        string   `json:"user_id"`
+		Explicit      bool     `json:"explicit_collection_selection"`
+		SelectionIDs  []string `json:"selection_ids"`
+		Collections   []struct {
+			ID string `json:"id"`
+		} `json:"collections"`
 	}
-	if json.NewDecoder(bytes.NewReader(old.Data)).Decode(&manifest) != nil || !slices.Equal(manifest.Attachments, refs) || (manifest.WorkspaceID != "" && manifest.WorkspaceID != tenant.GetWorkspaceId()) {
-		return providererr.New(providererr.Conflict, "attachment_mismatch", "task attachments are already pinned")
+	conflict := func() error {
+		return providererr.New(providererr.Conflict, "attachment_mismatch", "task attachments and collection selection are already pinned")
+	}
+	if json.NewDecoder(bytes.NewReader(raw)).Decode(&pin) != nil || !slices.Equal(pin.Attachments, refs) || pin.WorkspaceID != tenant.GetWorkspaceId() || ((pin.SchemaVersion >= 2 || pin.UserID != "") && pin.UserID != tenant.GetUserId()) {
+		return conflict()
+	}
+	if pin.SchemaVersion >= 2 {
+		if pin.Explicit != explicit || !slices.Equal(pin.SelectionIDs, ids) {
+			return conflict()
+		}
+	} else if explicit {
+		legacy := []string{}
+		for _, col := range pin.Collections {
+			legacy = append(legacy, col.ID)
+		}
+		if !slices.Equal(legacy, ids) {
+			return conflict()
+		}
 	}
 	return nil
 }

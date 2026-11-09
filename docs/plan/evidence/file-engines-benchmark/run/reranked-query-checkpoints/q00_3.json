@@ -1,0 +1,362 @@
+{
+  "id": "q00_3",
+  "query": "差旅报销的记录保存多久？请找出各文件中的规定。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_00",
+      "pptx_10",
+      "scan_pdf_00",
+      "text_00",
+      "text_pdf_00"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.2,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.5,
+    "unique_source_ndcg_at_8": 0.21398626473452756,
+    "relevant_files": [
+      "scan_pdf_00"
+    ],
+    "expected_files": [
+      "text_pdf_00",
+      "scan_pdf_00",
+      "docx_00",
+      "pptx_10",
+      "text_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.125,
+    "latency_ms": 25.773043977096677
+  },
+  "hybrid": {
+    "recall_at_8": 0.2,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.3391602052736161,
+    "relevant_files": [
+      "scan_pdf_00"
+    ],
+    "expected_files": [
+      "text_pdf_00",
+      "scan_pdf_00",
+      "docx_00",
+      "pptx_10",
+      "text_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.125,
+    "latency_ms": 4109.587582061067
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_3a6b213cf54a20f5f89bd1a9",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 13.0,
+        "bbox": [
+          0.024193547666072845,
+          0.275,
+          0.3104838728904724,
+          0.384375
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_00",
+      "version_id": "scan_pdf_00",
+      "score": 6.167717933654785,
+      "text": "差旅报销记录须保留7个月。",
+      "quote_hash": "eda599eddef817da17bd0b310bb4f71cc9e484726a550bee3f6a362e09b98fb4",
+      "id": "chunk_3eae94d9b42e232f93b71215ca542eaebbc7c87fac5a15f169800b76b1251261"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_a4f486e14a7dc2bdd8e45d38",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.02368951588869095,
+          0.096875,
+          0.3785282075405121,
+          0.2078125
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_00",
+      "version_id": "scan_pdf_00",
+      "score": 0.698693573474884,
+      "text": "差旅报销的提交期限为6个工作日。",
+      "quote_hash": "9e267ef7f20c0c253f14b2ae9ace3732fc7b28b3c9d876946a70cddf1e0d8481",
+      "id": "chunk_a4ab72f6bd3f575e4d9a4985f2a4ddb974f046e910be948a0d563e9db5034466"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_30c1a3e168d46b4b0680cfeb",
+        "kind": "document_block",
+        "block_index": 4.0,
+        "char_end": 14.0
+      },
+      "representation_id": "rep_docx_11",
+      "version_id": "docx_11",
+      "score": -0.16367095708847046,
+      "text": "培训报销记录须保留19个月。",
+      "quote_hash": "1c56c7f2d17aa92cf366b1abbb9cafe79adce31aeae9a560cd62da5d99e0ab51",
+      "id": "chunk_9ecb0a6e47df03c0e9de18f008b8cc79ec4157d475bebda4619993ec11bfb25f"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_3dfffacd3baa192ff4c48267",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 14.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_01",
+      "version_id": "pptx_01",
+      "score": -0.18391577899456024,
+      "text": "培训报销记录须保留21个月。",
+      "quote_hash": "77b52468857261c8dda94714af2c8c13699dcb4a317e2411eac4d4d85b2d0842",
+      "id": "chunk_d665085b1aa6b18764dbaa978104575ad6a7c7541cf5f712f8185c436cba1983"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_27bd0cbb22e445558d1234bb",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 14.0,
+        "bbox": [
+          0.025705644860863686,
+          0.271875,
+          0.32308468222618103,
+          0.3609375
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_12",
+      "version_id": "scan_pdf_12",
+      "score": -0.33946138620376587,
+      "text": "访客通行记录须保留19个月。",
+      "quote_hash": "4bc5ed93ddf34c971e9d9bc6b49548a270dd47088636fb23c4f1b3efdee3f1ae",
+      "id": "chunk_2acd84e72db2772e8c2a96d446c444ee1eeeae80a31c2a29e1291edae9186057"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_acea027be6ca0ed2661decda",
+        "range": "B5",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 14.0
+      },
+      "representation_id": "rep_xlsx_07",
+      "version_id": "xlsx_07",
+      "score": -0.3598407804965973,
+      "text": "访客通行记录须保留21个月。",
+      "quote_hash": "4167c855cdda7130f9f386bd119a4d76f13f07a599d35663c08a6d8b8d24cbe5",
+      "id": "chunk_df0486feb9dfa2eda7f5ead1e840c1e690b79c4a3f83f89f04bfc63cf18b50b9"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e59537b408d36a4df83f969a",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 14.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.3333529411764706,
+          0.12052112044648612
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_17",
+      "version_id": "text_pdf_17",
+      "score": -1.1819802522659302,
+      "text": "备份恢复记录须保留23个月。",
+      "quote_hash": "6fbcc6bc81ccfe4651f2b26e77baac035956e83fd26ace731bd2b6c70df5ee0f",
+      "id": "chunk_cea0cb22ee3beea17789a6d1e8e60c29e859ab041f20e0df5b0ebbde031a8603"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_bb672c895b138c9ab90d1568",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 13.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_07",
+      "version_id": "pptx_07",
+      "score": -1.212868332862854,
+      "text": "备份恢复记录须保留8个月。",
+      "quote_hash": "03abded1206d91b390833844f39c0b5b8dac9649af25deaaa223297147643219",
+      "id": "chunk_28cd466f7d4cafc53d9457c811844e93cadf51074fafb68fad9812c9abb752a2"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_a0a7b203fd043bb1e47893b2d02718be82621acee06447224fc051b5e281e82f",
+      "version_id": "scan_pdf_00",
+      "text": "差旅报销的审批责任人为财务。",
+      "anchor": {
+        "bbox": [
+          0.024193547666072845,
+          0.2734375,
+          0.3442540168762207,
+          0.3890625
+        ],
+        "block_id": "blk_8a98f2e14f67250c8123e9a4",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_3eae94d9b42e232f93b71215ca542eaebbc7c87fac5a15f169800b76b1251261",
+      "version_id": "scan_pdf_00",
+      "text": "差旅报销记录须保留7个月。",
+      "anchor": {
+        "bbox": [
+          0.024193547666072845,
+          0.275,
+          0.3104838728904724,
+          0.384375
+        ],
+        "block_id": "blk_3a6b213cf54a20f5f89bd1a9",
+        "char_end": 13,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_a4ab72f6bd3f575e4d9a4985f2a4ddb974f046e910be948a0d563e9db5034466",
+      "version_id": "scan_pdf_00",
+      "text": "差旅报销的提交期限为6个工作日。",
+      "anchor": {
+        "bbox": [
+          0.02368951588869095,
+          0.096875,
+          0.3785282075405121,
+          0.2078125
+        ],
+        "block_id": "blk_a4f486e14a7dc2bdd8e45d38",
+        "char_end": 16,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_26c793def1f358356fc9231b2a803bf1361f306063ea5ade1d76b7a45e9d6467",
+      "version_id": "scan_pdf_00",
+      "text": "差旅报销必须通过报销系统提交。",
+      "anchor": {
+        "bbox": [
+          0.024697579443454742,
+          0.2765625,
+          0.36693546175956726,
+          0.3828125
+        ],
+        "block_id": "blk_a19d320e79f3906fdbbd5a8e",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_790ee82d55dcbfea0b15955e0d118e43f12add546ced60b646b7830067f43874",
+      "version_id": "scan_pdf_00",
+      "text": "差旅报销的紧急例外需要部门负责人书面批准。",
+      "anchor": {
+        "bbox": [
+          0.024193547666072845,
+          0.09375,
+          0.5045362710952759,
+          0.2078125
+        ],
+        "block_id": "blk_eba3652b9bea0e5eff627851",
+        "char_end": 21,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_99fc5e9900344f6ae48a93152b0bd7c858fa6a62c3de0a47443752007de289fd",
+      "version_id": "scan_pdf_00",
+      "text": "差旅报销必须提供明细发票。",
+      "anchor": {
+        "bbox": [
+          0.02368951588869095,
+          0.1015625,
+          0.32056450843811035,
+          0.2078125
+        ],
+        "block_id": "blk_aaa198c06bc2b821bce475fa",
+        "char_end": 13,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_15c5afd74dfc009c9cdeb4b2ede19be49cd9ae2087a7f223381d11075d24329c",
+      "version_id": "docx_11",
+      "text": "培训报销的审批责任人为培训组。",
+      "anchor": {
+        "block_id": "blk_7a08ad6e39c822d8faae6a63",
+        "block_index": 2.0,
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_65b31765b27812f69baa7b23d04857295b218d0c29387854fb27e8cb0d44db6b",
+      "version_id": "docx_11",
+      "text": "培训报销的提交期限为11个工作日。",
+      "anchor": {
+        "block_id": "blk_ad0a76adb81d05a7c1b8e903",
+        "block_index": 1.0,
+        "char_end": 17,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    }
+  ]
+}

@@ -1,0 +1,375 @@
+{
+  "id": "q00_2",
+  "query": "差旅报销需要哪些凭证？比较不同资料的要求。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_00",
+      "pptx_10",
+      "scan_pdf_00",
+      "text_00",
+      "text_pdf_00"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.2,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.3333333333333333,
+    "unique_source_ndcg_at_8": 0.16958010263680806,
+    "relevant_files": [
+      "scan_pdf_00"
+    ],
+    "expected_files": [
+      "text_pdf_00",
+      "scan_pdf_00",
+      "docx_00",
+      "pptx_10",
+      "text_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.125,
+    "latency_ms": 20.70265798829496
+  },
+  "hybrid": {
+    "recall_at_8": 0.4,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.5531464700081437,
+    "relevant_files": [
+      "scan_pdf_00",
+      "text_pdf_00"
+    ],
+    "expected_files": [
+      "text_pdf_00",
+      "scan_pdf_00",
+      "docx_00",
+      "pptx_10",
+      "text_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 4937.899034935981
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_aaa198c06bc2b821bce475fa",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 13.0,
+        "bbox": [
+          0.02368951588869095,
+          0.1015625,
+          0.32056450843811035,
+          0.2078125
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_00",
+      "version_id": "scan_pdf_00",
+      "score": 1.7775630950927734,
+      "text": "差旅报销必须提供明细发票。",
+      "quote_hash": "8feb8aaa2718b5da9a662d1f8db2b0f7b143b9322aab5fb8583b1dc743b9c706",
+      "id": "chunk_99fc5e9900344f6ae48a93152b0bd7c858fa6a62c3de0a47443752007de289fd"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_868e0608c762a693c8952e8b",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 92.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 11.0
+      },
+      "representation_id": "rep_text_pdf_00",
+      "version_id": "text_pdf_00",
+      "score": 1.2907543182373047,
+      "text": "Synthetic policy edition / 合成政策版本 — page 12\nTravel reimbursement requires itemized receipts.",
+      "quote_hash": "494504af873c739c967a8bc7d59c296d2be6b1a077558609b6ae5a37c6973b0c",
+      "id": "chunk_baa40a0a9ab9744475977b44613537ca6c8e999c73e2afe4d6264937f361a15b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_1f5951e2d9a77c69fea9bec4",
+        "kind": "document_block",
+        "block_index": 3.0,
+        "char_end": 13.0
+      },
+      "representation_id": "rep_docx_11",
+      "version_id": "docx_11",
+      "score": -0.3522951900959015,
+      "text": "培训报销必须提供结课证书。",
+      "quote_hash": "aa06d11e82e2243a00229551217f67b2baa5123fc6ba155f9d1f40e8436372a4",
+      "id": "chunk_4ee3d38661a11b1e566184b00d11b08d083608810f3ac5a637499753d5adb486"
+    },
+    {
+      "anchor": {
+        "slide_index": 2.0,
+        "block_id": "blk_0895633263815c52a708586e",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 13.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_01",
+      "version_id": "pptx_01",
+      "score": -0.3522951900959015,
+      "text": "培训报销必须提供结课证书。",
+      "quote_hash": "aa06d11e82e2243a00229551217f67b2baa5123fc6ba155f9d1f40e8436372a4",
+      "id": "chunk_692b541c39b21373d3effe0a0c86ff3bf14e75b179c16e52e3ea5d30171c5627"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_a19d320e79f3906fdbbd5a8e",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 15.0,
+        "bbox": [
+          0.024697579443454742,
+          0.2765625,
+          0.36693546175956726,
+          0.3828125
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_00",
+      "version_id": "scan_pdf_00",
+      "score": -0.9139188528060913,
+      "text": "差旅报销必须通过报销系统提交。",
+      "quote_hash": "eb4b765bbafd43d0ac035a37001392319c49ea9bcbe0f626a5c671932bbc1394",
+      "id": "chunk_26c793def1f358356fc9231b2a803bf1361f306063ea5ade1d76b7a45e9d6467"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_eba3652b9bea0e5eff627851",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 21.0,
+        "bbox": [
+          0.024193547666072845,
+          0.09375,
+          0.5045362710952759,
+          0.2078125
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_00",
+      "version_id": "scan_pdf_00",
+      "score": -0.9872707724571228,
+      "text": "差旅报销的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "677c659f549d6e5b1415efb40516eac05e78eef10b99318001a50eeda54485d7",
+      "id": "chunk_790ee82d55dcbfea0b15955e0d118e43f12add546ced60b646b7830067f43874"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_4148c2777dfafa3a618f4c10",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 56.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_text_pdf_11",
+      "version_id": "text_pdf_11",
+      "score": -1.9466198682785034,
+      "text": "Synthetic policy edition / 合成政策版本 — page 3\n培训报销必须提供结课证书。",
+      "quote_hash": "88d58a7328e4dcaaf247b33bccd16219e0e9d0de1bd54ea6a5db0b9016850554",
+      "id": "chunk_fd3a7bcaf487881d84418f0e1160b9c475d3f3433103d0c591fe3beeaa956462"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_3a6b213cf54a20f5f89bd1a9",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 13.0,
+        "bbox": [
+          0.024193547666072845,
+          0.275,
+          0.3104838728904724,
+          0.384375
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_00",
+      "version_id": "scan_pdf_00",
+      "score": -1.9949023723602295,
+      "text": "差旅报销记录须保留7个月。",
+      "quote_hash": "eda599eddef817da17bd0b310bb4f71cc9e484726a550bee3f6a362e09b98fb4",
+      "id": "chunk_3eae94d9b42e232f93b71215ca542eaebbc7c87fac5a15f169800b76b1251261"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_3eae94d9b42e232f93b71215ca542eaebbc7c87fac5a15f169800b76b1251261",
+      "version_id": "scan_pdf_00",
+      "text": "差旅报销记录须保留7个月。",
+      "anchor": {
+        "bbox": [
+          0.024193547666072845,
+          0.275,
+          0.3104838728904724,
+          0.384375
+        ],
+        "block_id": "blk_3a6b213cf54a20f5f89bd1a9",
+        "char_end": 13,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_26c793def1f358356fc9231b2a803bf1361f306063ea5ade1d76b7a45e9d6467",
+      "version_id": "scan_pdf_00",
+      "text": "差旅报销必须通过报销系统提交。",
+      "anchor": {
+        "bbox": [
+          0.024697579443454742,
+          0.2765625,
+          0.36693546175956726,
+          0.3828125
+        ],
+        "block_id": "blk_a19d320e79f3906fdbbd5a8e",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_99fc5e9900344f6ae48a93152b0bd7c858fa6a62c3de0a47443752007de289fd",
+      "version_id": "scan_pdf_00",
+      "text": "差旅报销必须提供明细发票。",
+      "anchor": {
+        "bbox": [
+          0.02368951588869095,
+          0.1015625,
+          0.32056450843811035,
+          0.2078125
+        ],
+        "block_id": "blk_aaa198c06bc2b821bce475fa",
+        "char_end": 13,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_a0a7b203fd043bb1e47893b2d02718be82621acee06447224fc051b5e281e82f",
+      "version_id": "scan_pdf_00",
+      "text": "差旅报销的审批责任人为财务。",
+      "anchor": {
+        "bbox": [
+          0.024193547666072845,
+          0.2734375,
+          0.3442540168762207,
+          0.3890625
+        ],
+        "block_id": "blk_8a98f2e14f67250c8123e9a4",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_a4ab72f6bd3f575e4d9a4985f2a4ddb974f046e910be948a0d563e9db5034466",
+      "version_id": "scan_pdf_00",
+      "text": "差旅报销的提交期限为6个工作日。",
+      "anchor": {
+        "bbox": [
+          0.02368951588869095,
+          0.096875,
+          0.3785282075405121,
+          0.2078125
+        ],
+        "block_id": "blk_a4f486e14a7dc2bdd8e45d38",
+        "char_end": 16,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_790ee82d55dcbfea0b15955e0d118e43f12add546ced60b646b7830067f43874",
+      "version_id": "scan_pdf_00",
+      "text": "差旅报销的紧急例外需要部门负责人书面批准。",
+      "anchor": {
+        "bbox": [
+          0.024193547666072845,
+          0.09375,
+          0.5045362710952759,
+          0.2078125
+        ],
+        "block_id": "blk_eba3652b9bea0e5eff627851",
+        "char_end": 21,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_b418ce64b20185de033d06005664f56861d650ca978b43b1d3214b668f88b0ad",
+      "version_id": "docx_11",
+      "text": "培训报销的紧急例外需要部门负责人书面批准。",
+      "anchor": {
+        "block_id": "blk_3a24ea0c67ed7accf89ade0c",
+        "block_index": 5.0,
+        "char_end": 21,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_faa22be3920a68c4f8262596e8abd4f6d215b36f237d04709ce1b67e2d239f05",
+      "version_id": "pptx_01",
+      "text": "培训报销的紧急例外需要部门负责人书面批准。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_cc1ed93e16377f4a03762808",
+        "char_end": 21,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 4.0
+      }
+    }
+  ]
+}

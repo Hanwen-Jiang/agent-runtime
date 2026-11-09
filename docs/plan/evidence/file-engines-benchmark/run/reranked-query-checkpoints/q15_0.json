@@ -1,0 +1,348 @@
+{
+  "id": "q15_0",
+  "query": "Compare the submission deadlines for security vulnerability reporting across the policies.",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "pptx_05",
+      "table_05",
+      "text_pdf_15",
+      "xlsx_10"
+    ],
+    "extraction_chunking_recall_ceiling": 0.6666666666666666
+  },
+  "exact": {
+    "recall_at_8": 0.0,
+    "hit_at_8": 0.0,
+    "reciprocal_rank_at_8": 0,
+    "unique_source_ndcg_at_8": 0.0,
+    "relevant_files": [],
+    "expected_files": [
+      "text_pdf_15",
+      "scan_pdf_15",
+      "xlsx_10",
+      "pptx_05",
+      "table_05",
+      "image_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.0,
+    "latency_ms": 14.212792040780187
+  },
+  "hybrid": {
+    "recall_at_8": 0.5,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.644824486427155,
+    "relevant_files": [
+      "pptx_05",
+      "text_pdf_15",
+      "xlsx_10"
+    ],
+    "expected_files": [
+      "text_pdf_15",
+      "scan_pdf_15",
+      "xlsx_10",
+      "pptx_05",
+      "table_05",
+      "image_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 4438.643864123151
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_90cc7cf74af99d4d55161117",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 61.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_text_pdf_15",
+      "version_id": "text_pdf_15",
+      "score": 3.8544247150421143,
+      "text": "Synthetic policy edition / 合成政策版本 — page 1\n安全漏洞报告的提交期限为8个工作日。",
+      "quote_hash": "6185cce69e78f8cd7d25cb43f328dac008f75ca66e9cd89cf7e21fec7e27af40",
+      "id": "chunk_6af422695bf6efac1e14d2d6ec1ab791f14933d012d91a42fa55f9e265335eda"
+    },
+    {
+      "anchor": {
+        "slide_index": 0.0,
+        "block_id": "blk_07dbbd2d0b0bc6658f66935f",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 19.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_05",
+      "version_id": "pptx_05",
+      "score": 2.5538594722747803,
+      "text": "安全漏洞报告的提交期限为20个工作日。",
+      "quote_hash": "f4ae49d1e59a3aa9a42e642d01c20b25d26d0fe84da00c2d13fd04f772b3a744",
+      "id": "chunk_f5e269a35051c80f9c9cd90762d705afb89e794a4da91730bf6c9958f6826114"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_bb6e9bc50091a97a6378b8ae",
+        "range": "B2",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 75.0
+      },
+      "representation_id": "rep_xlsx_10",
+      "version_id": "xlsx_10",
+      "score": 2.4762563705444336,
+      "text": "Security vulnerability reporting must be submitted within 17 business days.",
+      "quote_hash": "86f5edf2f034257d830d247e6a72ab8a09adcf2d03b3bd3b876e05230565d27b",
+      "id": "chunk_0a2643208878980c9bbbda19bea41cdc338886c0396fac0011d0026a5f39c4d5"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_1fc6b53b4c2bb5e5931a01ab",
+        "range": "B7",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 78.0
+      },
+      "representation_id": "rep_xlsx_10",
+      "version_id": "xlsx_10",
+      "score": 1.3812282085418701,
+      "text": "Security vulnerability reporting must be submitted through the security inbox.",
+      "quote_hash": "da780eef87b40c80287609ea66c10f667998f52d53d597ccd7d5459147b627e8",
+      "id": "chunk_19c4f0b6ce86715f24987889384622ef4063b689654ffb96efd7d9bb1b72bf96"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_09fd942bcbb6151d915a704e",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 50.0,
+        "bbox": [
+          0.02368951588869095,
+          0.38125,
+          0.5740927457809448,
+          0.475
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_scan_pdf_15",
+      "version_id": "scan_pdf_15",
+      "score": 1.333476185798645,
+      "text": "Security vulnerability reporting must be submitted",
+      "quote_hash": "ad50f35b86afade5dc4409e77935cac38b15c7c76c42499fc20b1bca981ba522",
+      "id": "chunk_1a557d177949fcbbc43104518f01778c3ce3fea6c52a12efb79e760f0b6a7880"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_bae2cc60e7e268fec94b247e",
+        "kind": "image_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 50.0,
+        "bbox": [
+          0.025185185185185185,
+          0.5963963963963964,
+          0.5725925925925925,
+          0.6297297297297297
+        ]
+      },
+      "representation_id": "rep_image_00",
+      "version_id": "image_00",
+      "score": 1.333476185798645,
+      "text": "Security vulnerability reporting must be submitted",
+      "quote_hash": "ad50f35b86afade5dc4409e77935cac38b15c7c76c42499fc20b1bca981ba522",
+      "id": "chunk_446c845f75709cf0cd110b9226e599df92d23081da5be5d4b4e4e1eaf9922aaa"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_5176aa8e06a47556dc82e95f",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 87.0,
+        "row_index": 5.0
+      },
+      "representation_id": "rep_table_05",
+      "version_id": "table_05",
+      "score": 0.9575541615486145,
+      "text": "5\tSecurity vulnerability reporting must be submitted through the security inbox.\t5\twest",
+      "quote_hash": "4969d73da97c0ef7ac08a15b19a8e763e059a96df4334a9b54180cd902638c6d",
+      "id": "chunk_688a6ae3fc50b93eeaea26906dbcedeba86bd37c62b10de53da89a197c5fe384"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_bc8e92b9c702801487eefd45",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 119.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_15",
+      "version_id": "scan_pdf_15",
+      "score": -0.09721653908491135,
+      "text": "Synthetic policy edition / 合成政策版本 — page 2\nRecords for security vulnerability reporting must be retained\nfor 22 months.",
+      "quote_hash": "3ea8a0f8387ac6ec93fb48262499f3d7878582f0ab7745092c6bae9384842d48",
+      "id": "chunk_857ebad4c0883ddf4ac9af2944d03ae6939c06cb6a01dd865b81968f15efb5f3"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_7a2499471510e499eea3ee4218a3050cb89eaf848c9e7a5ac9c6620bd42029dc",
+      "version_id": "scan_pdf_15",
+      "text": "Emergency exceptions for security vulnerability reporting",
+      "anchor": {
+        "bbox": [
+          0.024193547666072845,
+          0.0890625,
+          0.6552419066429138,
+          0.1921875
+        ],
+        "block_id": "blk_b28dae6be544cc9d1ecfb59f",
+        "char_end": 57,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_a51f3e6ab27059c0b0936de18a3327a589b87bf01f61ae61fe9744877950d484",
+      "version_id": "image_00",
+      "text": "Emergency exceptions for security vulnerability reporting",
+      "anchor": {
+        "bbox": [
+          0.02666666666666667,
+          0.48558558558558557,
+          0.654074074074074,
+          0.5180180180180181
+        ],
+        "block_id": "blk_77baef399105b40dcd50879a",
+        "char_end": 57,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_9da99eb489ceac2674a34b462032aae9dbc8c773e1cc85424d79f6c4d7fd5fbb",
+      "version_id": "xlsx_10",
+      "text": "Security Team is responsible for approving security vulnerability reporting.",
+      "anchor": {
+        "block_id": "blk_6e02199037c10368423619d2",
+        "char_end": 76,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B3",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_60d6078e78d9e6afb0ff9ba24133cca496dd93113da44db61caafd0df5206a84",
+      "version_id": "image_00",
+      "text": "Records for security vulnerability reporting must be",
+      "anchor": {
+        "bbox": [
+          0.024444444444444446,
+          0.37117117117117115,
+          0.5851851851851851,
+          0.4081081081081081
+        ],
+        "block_id": "blk_83ee69b879804c844e22c80f",
+        "char_end": 52,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_19c4f0b6ce86715f24987889384622ef4063b689654ffb96efd7d9bb1b72bf96",
+      "version_id": "xlsx_10",
+      "text": "Security vulnerability reporting must be submitted through the security inbox.",
+      "anchor": {
+        "block_id": "blk_1fc6b53b4c2bb5e5931a01ab",
+        "char_end": 78,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B7",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_7f3ea6b4ac8d551c3ab06cf75d542cd9ef559216f873354501dc1b7f1e81226e",
+      "version_id": "image_00",
+      "text": "Security vulnerability reporting requires reproducible",
+      "anchor": {
+        "bbox": [
+          0.025925925925925925,
+          0.26126126126126126,
+          0.6029629629629629,
+          0.2936936936936937
+        ],
+        "block_id": "blk_67134f317b530d85cf518525",
+        "char_end": 54,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_629e4111b1adbbdf030c09f004a91c314e082683639d0e8523e08f487cd59473",
+      "version_id": "xlsx_10",
+      "text": "Emergency exceptions for security vulnerability reporting require written approval from the department head.",
+      "anchor": {
+        "block_id": "blk_78babecba264cacd15728f76",
+        "char_end": 108,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B6",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_db7538adee0ec65dba411ea8fe00f4507e1191ca33fb4df432ea682a5b180eea",
+      "version_id": "table_05",
+      "text": "1\tSecurity Team is responsible for approving security vulnerability reporting.\t1\twest",
+      "anchor": {
+        "block_id": "blk_1b3157254bf800eadb4fde24",
+        "char_end": 85,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "row_index": 1.0,
+        "sheet_id": "csv"
+      }
+    }
+  ]
+}

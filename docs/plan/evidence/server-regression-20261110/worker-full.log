@@ -1,0 +1,70 @@
+........................................................................ [  4%]
+........................................................................ [  8%]
+........................................................................ [ 13%]
+........................................................................ [ 17%]
+........................................................................ [ 21%]
+........................................................................ [ 26%]
+........................................................................ [ 30%]
+................................................s....................... [ 34%]
+........................................................................ [ 39%]
+..........................F............................................. [ 43%]
+........................................................................ [ 47%]
+........................................................................ [ 52%]
+........................................................................ [ 56%]
+........................................................................ [ 61%]
+........................................................................ [ 65%]
+........................................................................ [ 69%]
+........................................................................ [ 74%]
+........................................................................ [ 78%]
+.....................................F.................................. [ 82%]
+........................................................................ [ 87%]
+........................................................................ [ 91%]
+........................................................................ [ 95%]
+....................................................................     [100%]
+=================================== FAILURES ===================================
+_________________ test_every_version_branch_is_asked_at_start __________________
+
+    def test_every_version_branch_is_asked_at_start() -> None:
+        calls = patched_calls()
+        assert calls, "workflows/ 里应当有版本分支"
+        problems = []
+        used: set[str] = set()
+        for filename, line, arg in calls:
+            value = getattr(patches, arg.id, None) if isinstance(arg, ast.Name) else None
+            if not isinstance(value, str):
+                problems.append(f"{filename}:{line}: workflow.patched 的参数要是 workflows/patches.py 里的常量")
+            elif value not in patches.AT_START:
+                problems.append(f"{filename}:{line}: {arg.id}（{value}）不在 patches.AT_START 里，新的运行不会在开头问它")
+            else:
+                used.add(value)
+>       assert not problems, "\n".join(problems)
+E       AssertionError: stage_runner.py:1877: workflow.patched 的参数要是 workflows/patches.py 里的常量
+E         stage_runner.py:1496: workflow.patched 的参数要是 workflows/patches.py 里的常量
+E       assert not ['stage_runner.py:1877: workflow.patched 的参数要是 workflows/patches.py 里的常量', 'stage_runner.py:1496: workflow.patched 的参数要是 workflows/patches.py 里的常量']
+
+tests/test_patches_at_start.py:72: AssertionError
+____________________ test_the_patch_is_appended_at_the_end _____________________
+
+    def test_the_patch_is_appended_at_the_end() -> None:
+>       assert AT_START[-1] == SUB_AGENT_WRAP_UP_PATCH and AT_START.index(N16_PATCH) == len(AT_START) - 2
+E       AssertionError: assert ('child-file-whole-sheet-v1' == 'n16r-sub-agent-wrap-up'
+E         
+E         - n16r-sub-agent-wrap-up
+E         + child-file-whole-sheet-v1)
+
+tests/test_sub_agent_wrap_up.py:47: AssertionError
+=============================== warnings summary ===============================
+../../../.venv-regression/lib/python3.13/site-packages/_pytest/cacheprovider.py:469
+  /work/.venv-regression/lib/python3.13/site-packages/_pytest/cacheprovider.py:469: PytestCacheWarning: could not create cache path /work/agent-runtime/services/py-worker/.pytest_cache/v/cache/nodeids: [Errno 13] Permission denied: '/work/agent-runtime/services/py-worker/pytest-cache-files-q9q0_kws'
+    config.cache.set("cache/nodeids", sorted(self.cached_nodeids))
+
+../../../.venv-regression/lib/python3.13/site-packages/_pytest/cacheprovider.py:423
+  /work/.venv-regression/lib/python3.13/site-packages/_pytest/cacheprovider.py:423: PytestCacheWarning: could not create cache path /work/agent-runtime/services/py-worker/.pytest_cache/v/cache/lastfailed: [Errno 13] Permission denied: '/work/agent-runtime/services/py-worker/pytest-cache-files-xpk2fy3m'
+    config.cache.set("cache/lastfailed", self.lastfailed)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_n09_jev_judge.py:178: 设 AR_LIVE_JEV=1 与 JEV_API_KEY 才对真接口跑
+FAILED tests/test_patches_at_start.py::test_every_version_branch_is_asked_at_start
+FAILED tests/test_sub_agent_wrap_up.py::test_the_patch_is_appended_at_the_end
+2 failed, 1649 passed, 1 skipped, 2 warnings in 1148.12s (0:19:08)

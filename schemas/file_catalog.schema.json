@@ -81,12 +81,7 @@
           "$ref": "#/$defs/version_id"
         },
         "lifecycle": {
-          "enum": [
-            "active",
-            "trash",
-            "purging",
-            "purged"
-          ]
+          "$ref": "defs.schema.json#/$defs/file_lifecycle"
         }
       },
       "additionalProperties": false

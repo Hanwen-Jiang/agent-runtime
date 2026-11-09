@@ -1,0 +1,248 @@
+{
+  "evaluation": {
+    "id": "docx_12",
+    "family": "docx",
+    "variant": "paragraphs_tables_headers",
+    "language": "en",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 0.0462876008823514,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_efd7c7dd3ae478401debb7c0"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_85e518a2cee9645520a71351"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_574cb31a7c9d360dda7ba875"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_7536f68f13aa0eaba623e915"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_a202d7c2123bfb4516360c8c"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_d6896d3040ce2e4abbb193b6"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "raw_ooxml",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_blocks": 8,
+      "start": 0,
+      "returned": 8,
+      "inline_images": 0,
+      "images_read": false,
+      "returned_blocks": 8,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_5023394d05752c225acff835",
+        "kind": "paragraph",
+        "text": "Synthetic policy 12 / 合成政策",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 0
+        },
+        "style": "Title"
+      },
+      {
+        "id": "blk_efd7c7dd3ae478401debb7c0",
+        "kind": "paragraph",
+        "text": "Visitor access must be submitted within 18 business days.",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 1
+        },
+        "style": "Heading 2"
+      },
+      {
+        "id": "blk_85e518a2cee9645520a71351",
+        "kind": "paragraph",
+        "text": "Reception is responsible for approving visitor access.",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 2
+        },
+        "style": "Normal"
+      },
+      {
+        "id": "blk_574cb31a7c9d360dda7ba875",
+        "kind": "paragraph",
+        "text": "Visitor access requires host confirmation.",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 3
+        },
+        "style": "Normal"
+      },
+      {
+        "id": "blk_7536f68f13aa0eaba623e915",
+        "kind": "table",
+        "text": "Records for visitor access must be retained for 20 months.",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 4
+        },
+        "rows": 1
+      },
+      {
+        "id": "blk_a202d7c2123bfb4516360c8c",
+        "kind": "paragraph",
+        "text": "Emergency exceptions for visitor access require written approval from the department head.",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 5
+        },
+        "style": "Normal"
+      },
+      {
+        "id": "blk_d6896d3040ce2e4abbb193b6",
+        "kind": "paragraph",
+        "text": "Visitor access must be submitted through the visitor kiosk.",
+        "anchor": {
+          "kind": "document_block",
+          "block_index": 6
+        },
+        "style": "Normal"
+      },
+      {
+        "id": "blk_5378e30203662ea304d0dc6b",
+        "kind": "header",
+        "text": "Synthetic benchmark — not business policy",
+        "anchor": {
+          "kind": "document_block",
+          "section": 0,
+          "part": "header",
+          "block_index": 0
+        }
+      }
+    ],
+    "outline": [
+      {
+        "block_index": 1,
+        "text": "Visitor access must be submitted within 18 business days.",
+        "style": "Heading 2"
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_blocks": 8,
+      "start": 0,
+      "returned": 8,
+      "inline_images": 0,
+      "images_read": false,
+      "returned_blocks": 8,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/docx_12/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "e1bddb936d374719a111bf0ff8bc4558138305f0a7d43169afb0769b7e1ceca2",
+        "size_bytes": 2949
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "a03d43a4d92fad9986e3ae7a1a66782f3ad821f48c9c1569596b3b1779b056ec",
+      "size_bytes": 37539,
+      "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "3555600d2cc3ddf5685a8401ee2cded590e598f382516d69e80bf06e47c783b3"
+    }
+  }
+}

@@ -331,6 +331,18 @@ class NodeExecutor:
         from agentruntime_worker.executor.tool_gate import require_tool_gate  # tool_gate 引用本模块的 DENIED
 
         require_tool_gate(inp)
+        from agentruntime_worker.files.scopes import CHILD_FILE_SCOPE, normalize, restrict, parent_has_file_inputs
+        isolated = inp.isolated or (activity.in_activity() and activity.info().workflow_type == names.SUB_AGENT_WORKFLOW)
+        child_scope = None
+        if isolated:
+            try:
+                parent_files = await parent_has_file_inputs(self.deps.objects, inp.tenant, inp.task_id)
+                constrained = inp.file_scopes is not None or bool(parent_files)
+                child_scope = normalize(inp.file_scopes) if constrained else None
+                if constrained:
+                    restrict(inp.tool, inp.args, child_scope)
+            except ProviderError as err:
+                raise self._from_provider(err, {}) from None
         tenant = _tenant(inp.tenant)
         try:
             spec = await latest_spec(await self._driver(tenant, inp.task_id), inp.tool)
@@ -351,8 +363,12 @@ class NodeExecutor:
         }
         if inp.effect in WRITE_EFFECTS:
             node["idempotency_key"] = keys.idempotency_key(inp.tenant.tenant_id, inp.task_id, inp.node_id, node["inputs"])
-        out = await self._execute(NodeInput(tenant=inp.tenant, task_id=inp.task_id, round_seq=inp.round_seq, node=node, gate=inp.gate), self._program)
-        return out["result"]
+        scope_token = CHILD_FILE_SCOPE.set(child_scope)
+        try:
+            out = await self._execute(NodeInput(tenant=inp.tenant, task_id=inp.task_id, round_seq=inp.round_seq, node=node, gate=inp.gate), self._program)
+            return out["result"]
+        finally:
+            CHILD_FILE_SCOPE.reset(scope_token)
 
     @activity.defn(name=names.EXECUTE_PROGRAM_NODE)
     async def execute_program_node(self, inp: NodeInput) -> dict[str, Any]:
@@ -435,6 +451,9 @@ class NodeExecutor:
                         # Images and other pinned inputs are outside template+inputs.
                         # Do not return a cached answer from a task with different files.
                         contextual = contextual or bool(await self.deps.attachments.references(inp.tenant.tenant_id, inp.task_id, inp.tenant.workspace_id))
+                        collection_loader = getattr(self.deps.attachments, "collections", None)
+                        if collection_loader:
+                            contextual = contextual or bool(await collection_loader(inp.tenant.tenant_id, inp.task_id, inp.tenant.workspace_id))
                     cached = None if contextual else await self._cache_get(tenant, node)
                     if cached is not None:
                         span.add_event("cache_hit")
@@ -725,6 +744,11 @@ class NodeExecutor:
         context_usage = None
         from agentruntime_worker.executor.image_input import ImageInputs, prepare_images
         images = ImageInputs()
+        collections_brief = ""
+        collection_loader = getattr(self.deps.attachments, "collections", None)
+        if collection_loader:
+            from agentruntime_worker.tools.attachments import collection_text
+            collections_brief = collection_text(await collection_loader(inp.tenant.tenant_id, inp.task_id, inp.tenant.workspace_id))
         if self.deps.attachments is not None:
             files = await self.deps.attachments.describe(inp.tenant.tenant_id, inp.task_id, inp.tenant.workspace_id)
             images = await prepare_images(self.deps.models, inp.tenant, files)
@@ -761,6 +785,7 @@ class NodeExecutor:
                     system=tuple(system),
                     context_version=inp.context_version,
                     task_family=inp.task_family,
+                    conversation=collections_brief,
                     image_messages=images.messages,
                     image_token_reserve=images.token_reserve,
                 )
@@ -773,7 +798,7 @@ class NodeExecutor:
                     mg.ChatMessage(role=mg.CHAT_ROLE_USER, text="上一次的输出不符合 output_schema，请改正后重新输出：\n" + "\n".join(retry_errors))
                 )
         else:
-            messages = [*self._messages(inp, retry_errors, turns), *images.messages]
+            messages = [*self._messages(inp, retry_errors, turns), *([mg.ChatMessage(role=mg.CHAT_ROLE_USER,text=collections_brief)] if collections_brief else []), *images.messages]
             if images.messages and message_tokens(messages, images.token_reserve) > self.config.context_effective_tokens:
                 raise InvalidError("context_window_exceeded", "图片与文字超过当前节点有效上下文预算")
         params = mg.GenerateParams(messages=messages)

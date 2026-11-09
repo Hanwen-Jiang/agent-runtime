@@ -1,0 +1,347 @@
+{
+  "id": "q10_3",
+  "query": "远程办公申请的记录保存多久？请找出各文件中的规定。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_10",
+      "pptx_00",
+      "scan_pdf_10",
+      "table_00",
+      "text_pdf_10",
+      "xlsx_05"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.5,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.5943907508440193,
+    "relevant_files": [
+      "scan_pdf_10",
+      "table_00",
+      "xlsx_05"
+    ],
+    "expected_files": [
+      "text_pdf_10",
+      "scan_pdf_10",
+      "docx_10",
+      "xlsx_05",
+      "pptx_00",
+      "table_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 23.131465073674917
+  },
+  "hybrid": {
+    "recall_at_8": 0.6666666666666666,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7751482523375256,
+    "relevant_files": [
+      "scan_pdf_10",
+      "table_00",
+      "text_pdf_10",
+      "xlsx_05"
+    ],
+    "expected_files": [
+      "text_pdf_10",
+      "scan_pdf_10",
+      "docx_10",
+      "xlsx_05",
+      "pptx_00",
+      "table_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.5,
+    "latency_ms": 3538.712135050446
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_7e71a89da0774633cbacbf0c",
+        "range": "B5",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 16.0
+      },
+      "representation_id": "rep_xlsx_05",
+      "version_id": "xlsx_05",
+      "score": 8.013043403625488,
+      "text": "远程办公申请记录须保留19个月。",
+      "quote_hash": "8e8ed3d4caa8bb888b2359e0d4ed615d3cda2044483a39bb56cfe9f5e1055e0c",
+      "id": "chunk_22291767ebd0143421fc534429989de0b1a911e7f8d7ec7aaa832eb95739e25d"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_a28674090d4b1b16405fcd24",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.02520161122083664,
+          0.2703125,
+          0.37046369910240173,
+          0.3640625
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_10",
+      "version_id": "scan_pdf_10",
+      "score": 7.921383380889893,
+      "text": "远程办公申请记录须保留17个月。",
+      "quote_hash": "5b41f91c8f90f1fa5c0f4a16334abdac2ef6ee1b0dd90e2da083733d6a0ddfef",
+      "id": "chunk_27099c8ef0738bac680a3f7cbc20cbdaa66a67792790fc3888b4122e18f17a58"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d2ea0e1cca83becfcedd225c",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 25.0,
+        "row_index": 3.0
+      },
+      "representation_id": "rep_table_00",
+      "version_id": "table_00",
+      "score": 5.736887454986572,
+      "text": "3\t远程办公申请记录须保留22个月。\t3\twest",
+      "quote_hash": "60bd58e43fccc0e7d5d9541d8c0622890fbcff00cacf6e07ceb51262bd4522b8",
+      "id": "chunk_0c94dbc960cc24142fcf190b368b4355f75ee86d34525c0f042e531f1a29997e"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_7535a24cd25f789c1e060f4f",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 107.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_10",
+      "version_id": "text_pdf_10",
+      "score": 4.092767238616943,
+      "text": "Synthetic policy edition / 合成政策版本 — page 4\nRecords for remote work requests must be retained for 16 months.",
+      "quote_hash": "d7661c10169e3a467f06582a485809efa4e28ef886974129f04402409717b17f",
+      "id": "chunk_440f8f0462deb84cc653ea5222d8f89f085b266b9b06eeeac1692c8d7953f124"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_48ab0de8847ff82e7726af06",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 19.0,
+        "bbox": [
+          0.026209676638245583,
+          0.096875,
+          0.4380040168762207,
+          0.1859375
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_10",
+      "version_id": "scan_pdf_10",
+      "score": 2.4537765979766846,
+      "text": "远程办公申请的提交期限为26个工作日。",
+      "quote_hash": "3e927843a615a9975701b7f691f62e915d3888c657d805d8bfa4a203f479a6f4",
+      "id": "chunk_804cf3ecc4b8a2b227a9358e45fb3d9e763168d4f50cbabcf8164fa665e48234"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_1760c56355c5c8f028c5bb42",
+        "range": "B2",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 18.0
+      },
+      "representation_id": "rep_xlsx_05",
+      "version_id": "xlsx_05",
+      "score": 2.2609140872955322,
+      "text": "远程办公申请的提交期限为7个工作日。",
+      "quote_hash": "8517a2751d71b6b5403fd1bf769fab29818df49d41e76b88b2b90152294106bc",
+      "id": "chunk_2cc30573f44e877a077d7c2cd0cf0e22dafebeaab7d03ff5772774d09c1b4ce0"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d635d049c559564dd1c9a8f4",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 28.0,
+        "row_index": 0.0
+      },
+      "representation_id": "rep_table_00",
+      "version_id": "table_00",
+      "score": 0.5480195879936218,
+      "text": "0\t远程办公申请的提交期限为16个工作日。\t0\teast",
+      "quote_hash": "ef5af46b85701fc888a30c7f557531e7ab28177382af86da1b079b94ced2de8f",
+      "id": "chunk_dbe096bd2390f3334c0448b30290f7a284221a72333de6d0d06c5de061d32b9c"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_41e87de274234291a4a1009f",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 14.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_11",
+      "version_id": "pptx_11",
+      "score": -1.5316654443740845,
+      "text": "员工入职记录须保留11个月。",
+      "quote_hash": "f548a02a33a51a361e8b9b1ac70661f419a5f4139ea77a24a62ddbfcd6358b42",
+      "id": "chunk_2647f1a6530c0e3f577c43c5edb05cfd8d3c9d7eb1d3b6e50dad4c0a130c5664"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_22291767ebd0143421fc534429989de0b1a911e7f8d7ec7aaa832eb95739e25d",
+      "version_id": "xlsx_05",
+      "text": "远程办公申请记录须保留19个月。",
+      "anchor": {
+        "block_id": "blk_7e71a89da0774633cbacbf0c",
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B5",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_27099c8ef0738bac680a3f7cbc20cbdaa66a67792790fc3888b4122e18f17a58",
+      "version_id": "scan_pdf_10",
+      "text": "远程办公申请记录须保留17个月。",
+      "anchor": {
+        "bbox": [
+          0.02520161122083664,
+          0.2703125,
+          0.37046369910240173,
+          0.3640625
+        ],
+        "block_id": "blk_a28674090d4b1b16405fcd24",
+        "char_end": 16,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_2cc30573f44e877a077d7c2cd0cf0e22dafebeaab7d03ff5772774d09c1b4ce0",
+      "version_id": "xlsx_05",
+      "text": "远程办公申请的提交期限为7个工作日。",
+      "anchor": {
+        "block_id": "blk_1760c56355c5c8f028c5bb42",
+        "char_end": 18,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B2",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_804cf3ecc4b8a2b227a9358e45fb3d9e763168d4f50cbabcf8164fa665e48234",
+      "version_id": "scan_pdf_10",
+      "text": "远程办公申请的提交期限为26个工作日。",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.096875,
+          0.4380040168762207,
+          0.1859375
+        ],
+        "block_id": "blk_48ab0de8847ff82e7726af06",
+        "char_end": 19,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_1229bc57c4dba02466a75ec9f0a88694abca7bbf34f3e38f374e78d2f75338e0",
+      "version_id": "scan_pdf_10",
+      "text": "远程办公申请的审批责任人为团队主管。",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.2734375,
+          0.4359878897666931,
+          0.3625
+        ],
+        "block_id": "blk_a61685eb1ce5efc760261528",
+        "char_end": 18,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_502427f77c3fb2c66596d0435f713973b9bb05224c22516d5c58aa83d9b826d3",
+      "version_id": "xlsx_05",
+      "text": "远程办公申请的审批责任人为团队主管。",
+      "anchor": {
+        "block_id": "blk_b54ce6a673782c06dc4dadb7",
+        "char_end": 18,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B3",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_0c94dbc960cc24142fcf190b368b4355f75ee86d34525c0f042e531f1a29997e",
+      "version_id": "table_00",
+      "text": "3\t远程办公申请记录须保留22个月。\t3\twest",
+      "anchor": {
+        "block_id": "blk_d2ea0e1cca83becfcedd225c",
+        "char_end": 25,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "row_index": 3.0,
+        "sheet_id": "csv"
+      }
+    },
+    {
+      "id": "chunk_dbe096bd2390f3334c0448b30290f7a284221a72333de6d0d06c5de061d32b9c",
+      "version_id": "table_00",
+      "text": "0\t远程办公申请的提交期限为16个工作日。\t0\teast",
+      "anchor": {
+        "block_id": "blk_d635d049c559564dd1c9a8f4",
+        "char_end": 28,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "row_index": 0.0,
+        "sheet_id": "csv"
+      }
+    }
+  ]
+}

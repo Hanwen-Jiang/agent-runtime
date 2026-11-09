@@ -1,0 +1,382 @@
+{
+  "evaluation": {
+    "id": "scan_pdf_19",
+    "family": "scan_pdf",
+    "variant": "mixed_native_scan",
+    "language": "en",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 8.680591494077817,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8776,
+        "candidate_ids": []
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.932,
+        "candidate_ids": []
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.7556,
+        "candidate_ids": [
+          "blk_9b1af317413f0764f0642258"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.766,
+        "candidate_ids": [
+          "blk_7414833e12b5dbf4997a5c66"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.7313,
+        "candidate_ids": []
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.8491,
+        "candidate_ids": []
+      }
+    ],
+    "independent": {
+      "method": "raster_requires_human_visual_review",
+      "verified": null
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 8,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_pages": 4,
+      "processed_pages": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "unselected_pages": 0,
+      "returned_blocks": 10,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_23e25801a3f37a2f3822a981",
+        "kind": "ocr_text",
+        "text": "Purchase order changes must be submitted within 14",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.02520161122083664,
+            0.0953125,
+            0.6154233813285828,
+            0.1828125
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.98089,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_7a33fbd938ec72ce8a1cf8c5",
+        "kind": "ocr_text",
+        "text": "business days.",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.025705644860863686,
+            0.20625,
+            0.18397176265716553,
+            0.29375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.9975,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_767da06b7b4d3c4ec26c52bc",
+        "kind": "ocr_text",
+        "text": "Purchasing is responsible for approving purchase order",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.02520161122083664,
+            0.38125,
+            0.633568525314331,
+            0.475
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.98467,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_e0f4c2007031910923486536",
+        "kind": "ocr_text",
+        "text": "changes.",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.025705644860863686,
+            0.4953125,
+            0.13407257199287415,
+            0.584375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99992,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_9b1af317413f0764f0642258",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 — page 1\nPurchase order changes requires supplier acknowledgement.\n",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "native_text"
+      },
+      {
+        "id": "blk_7414833e12b5dbf4997a5c66",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 — page 2\nRecords for purchase order changes must be retained for 7\nmonths.\n",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "native_text"
+      },
+      {
+        "id": "blk_0bf7f9827f718880720b7031",
+        "kind": "ocr_text",
+        "text": "Emergency exceptions for purchase order changes require",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0.026209676638245583,
+            0.0953125,
+            0.6824596524238586,
+            0.184375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99601,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_d5f6d011fd5a186f31787e1c",
+        "kind": "ocr_text",
+        "text": "written approval from the department head.",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0.025705644860863686,
+            0.209375,
+            0.5246975421905518,
+            0.29375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99627,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_140bbe997f63c0380582ea38",
+        "kind": "ocr_text",
+        "text": "Purchase order changes must be submitted through the",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0.025705644860863686,
+            0.3828125,
+            0.6471773982048035,
+            0.4703125
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.98908,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_04a046560001fc3b05f4d430",
+        "kind": "ocr_text",
+        "text": "purchasing system.",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0.026209676638245583,
+            0.5015625,
+            0.24042338132858276,
+            0.5828125
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99268,
+        "low_confidence": false
+      }
+    ],
+    "outline": [
+      {
+        "kind": "pdf",
+        "pages": 4
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_pages": 4,
+      "processed_pages": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "unselected_pages": 0,
+      "returned_blocks": 10,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_19/page-00000.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "50bb52a9e73cbcc8bf080daafffac525b8a276d5017c98b1aeb34e0d97ced69c",
+        "size_bytes": 384149
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_19/page-00003.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "b4d24540e4ff244e77399fbffb27f9fdabfecb49d57f2965669080e564c9e968",
+        "size_bytes": 492910
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_19/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "d231903f944008b19364d4b528bda0269cc30f1cd4a69b185714f86e03a80a9c",
+        "size_bytes": 5229
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "57582aec739e477d278a3fb7579a5b21b57a6e3d13fe6f958fe2ad3de31383b0",
+      "size_bytes": 73630,
+      "mime_type": "application/pdf"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "81ec0bf0e1711cea5345bb6c426e835e7e394448ecb24afdf27acc58ddd58ffe"
+    }
+  }
+}

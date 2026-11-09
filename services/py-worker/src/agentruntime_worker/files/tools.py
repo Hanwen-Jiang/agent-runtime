@@ -40,9 +40,9 @@ class FileTools:
                 raise DeniedError('file_task_actor_mismatch','file tool actor differs from task submitter')
             roots={}
             for uri in refs:
-                rows=await tx.query("SELECT f.file_id,v.version_id FROM runtime_files f JOIN runtime_file_versions v ON f.file_id=v.file_id WHERE f.workspace_id=$1 AND f.lifecycle='active' AND (v.object_uri=$2 OR (v.parent_version_id='' AND EXISTS(SELECT 1 FROM runtime_file_sources s WHERE s.file_id=f.file_id AND s.object_uri=$2)))",(invocation.workspace_id,uri))
+                rows=await tx.query("SELECT f.file_id,f.name,v.version_id,v.mime_type FROM runtime_files f JOIN runtime_file_versions v ON f.file_id=v.file_id WHERE f.workspace_id=$1 AND f.lifecycle='active' AND (v.object_uri=$2 OR (v.parent_version_id='' AND EXISTS(SELECT 1 FROM runtime_file_sources s WHERE s.file_id=f.file_id AND s.object_uri=$2)))",(invocation.workspace_id,uri))
                 if len(rows)!=1:raise NotFoundError('file_not_pinned','pinned file version cannot be resolved')
-                roots[uri]={'file_id':rows[0]['file_id'],'version_id':rows[0]['version_id']}
+                roots[uri]={'file_id':rows[0]['file_id'],'version_id':rows[0]['version_id'],'_name':rows[0]['name'],'_mime':rows[0]['mime_type']}
         return actor,roots
 
     async def http(self,invocation,actor,method,path,body=None):
@@ -93,6 +93,13 @@ class FileTools:
     async def invoke(self,invocation,operation):
         actor,roots=await self.scope(invocation)
         args=invocation.arguments
+        from .scopes import CHILD_FILE_SCOPE, restrict
+        child_scope=CHILD_FILE_SCOPE.get()
+        if child_scope is not None:
+            args=restrict('table_query' if operation=='query' else 'file_'+operation,args,child_scope)
+            selected=roots.get(args['path'])
+            if not selected or not str(selected.get('_name','')).lower().endswith('.xlsx') or str(selected.get('_mime','')).split(';',1)[0] not in ('application/zip','application/octet-stream','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'):
+                raise DeniedError('child_file_type_denied','whole-sheet delegation currently accepts only XLSX sources')
         job_id=args.get('job_id')
         if job_id:
             if operation!='inspect' or not isinstance(job_id,str) or not __import__('re').fullmatch(r'fjob_[a-f0-9]{48}',job_id):
@@ -102,7 +109,7 @@ class FileTools:
         paths=args.get('paths') or [args.get('path')]
         if not isinstance(paths,list) or not 1<=len(paths)<=10 or any(path not in roots for path in paths):
             raise NotFoundError('file_not_pinned','choose only URIs in the current task attachment manifest')
-        inputs=[roots[path] for path in dict.fromkeys(paths)]
+        inputs=[{k:v for k,v in roots[path].items() if not k.startswith('_')} for path in dict.fromkeys(paths)]
         options=dict(args.get('options') or {})
         if operation=='query' and args.get('sql'):options['sql']=args['sql']
         if operation=='edit' and args.get('operations'):options['operations']=args['operations']
@@ -126,7 +133,7 @@ class FileTools:
             except Exception:
                 pass
             raise
-        return {**job,'next_action':'Use file_inspect with this job_id to check its actual result; pending is not completion.'}
+        return {**job,'next_action':'Repeat the same delegated file operation to check its result; pending is not completion.' if child_scope is not None else 'Use file_inspect with this job_id to check its actual result; pending is not completion.'}
 
 
 

@@ -1,0 +1,359 @@
+{
+  "id": "q11_3",
+  "query": "培训报销的记录保存多久？请找出各文件中的规定。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_11",
+      "pptx_01",
+      "scan_pdf_11",
+      "table_01",
+      "text_pdf_11",
+      "xlsx_06"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.3333333333333333,
+    "unique_source_ndcg_at_8": 0.28162497265977743,
+    "relevant_files": [
+      "docx_11",
+      "pptx_01"
+    ],
+    "expected_files": [
+      "text_pdf_11",
+      "scan_pdf_11",
+      "docx_11",
+      "xlsx_06",
+      "pptx_01",
+      "table_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 21.85072796419263
+  },
+  "hybrid": {
+    "recall_at_8": 0.5,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.644824486427155,
+    "relevant_files": [
+      "docx_11",
+      "pptx_01",
+      "text_pdf_11"
+    ],
+    "expected_files": [
+      "text_pdf_11",
+      "scan_pdf_11",
+      "docx_11",
+      "xlsx_06",
+      "pptx_01",
+      "table_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 2948.834831127897
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_30c1a3e168d46b4b0680cfeb",
+        "kind": "document_block",
+        "block_index": 4.0,
+        "char_end": 14.0
+      },
+      "representation_id": "rep_docx_11",
+      "version_id": "docx_11",
+      "score": 7.216010093688965,
+      "text": "培训报销记录须保留19个月。",
+      "quote_hash": "1c56c7f2d17aa92cf366b1abbb9cafe79adce31aeae9a560cd62da5d99e0ab51",
+      "id": "chunk_9ecb0a6e47df03c0e9de18f008b8cc79ec4157d475bebda4619993ec11bfb25f"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_3dfffacd3baa192ff4c48267",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 14.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_01",
+      "version_id": "pptx_01",
+      "score": 7.1330413818359375,
+      "text": "培训报销记录须保留21个月。",
+      "quote_hash": "77b52468857261c8dda94714af2c8c13699dcb4a317e2411eac4d4d85b2d0842",
+      "id": "chunk_d665085b1aa6b18764dbaa978104575ad6a7c7541cf5f712f8185c436cba1983"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_9e8a6a93d53a3f34a146b550",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 57.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_11",
+      "version_id": "text_pdf_11",
+      "score": 3.939126968383789,
+      "text": "Synthetic policy edition / 合成政策版本 — page 4\n培训报销记录须保留17个月。",
+      "quote_hash": "3011a6e12ebf577fe761589f42004f6e09e7eede72354944bef7e4b9349d15bb",
+      "id": "chunk_4392308d1ba64bcfc100dcddecbf3a8cc48071852746449282b826f6d8b7b845"
+    },
+    {
+      "anchor": {
+        "slide_index": 0.0,
+        "block_id": "blk_57d9c9aeba4a746d639f997f",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 17.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_01",
+      "version_id": "pptx_01",
+      "score": 1.6389544010162354,
+      "text": "培训报销的提交期限为17个工作日。",
+      "quote_hash": "6cbb339b8eee436e5cdb13a09f63edb5d0b2ce4443d4513d17de7b0d5d72f8c0",
+      "id": "chunk_68489ce540aaba8106cdcc10b36b275b0397b02f8fda4074e7e87312ccbb27a5"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_ad0a76adb81d05a7c1b8e903",
+        "kind": "document_block",
+        "block_index": 1.0,
+        "char_end": 17.0
+      },
+      "representation_id": "rep_docx_11",
+      "version_id": "docx_11",
+      "score": 1.5911113023757935,
+      "text": "培训报销的提交期限为11个工作日。",
+      "quote_hash": "66ff670927d6d5d903455d8a8b465930a48dd789d12680a9df4b588260c25cba",
+      "id": "chunk_65b31765b27812f69baa7b23d04857295b218d0c29387854fb27e8cb0d44db6b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_3a6b213cf54a20f5f89bd1a9",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 13.0,
+        "bbox": [
+          0.024193547666072845,
+          0.275,
+          0.3104838728904724,
+          0.384375
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_00",
+      "version_id": "scan_pdf_00",
+      "score": -0.058365918695926666,
+      "text": "差旅报销记录须保留7个月。",
+      "quote_hash": "eda599eddef817da17bd0b310bb4f71cc9e484726a550bee3f6a362e09b98fb4",
+      "id": "chunk_3eae94d9b42e232f93b71215ca542eaebbc7c87fac5a15f169800b76b1251261"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_8fc04bd81fb193fa10062551",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 59.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_text_pdf_11",
+      "version_id": "text_pdf_11",
+      "score": -0.4084204435348511,
+      "text": "Synthetic policy edition / 合成政策版本 — page 1\n培训报销的提交期限为5个工作日。",
+      "quote_hash": "37ce3573dfaad6dd61b456a90fe889d289a4f59cd15f9dd19573f28ad923c141",
+      "id": "chunk_031c6e1b3414089d3d09fde0013f9093caaf0bde788f22396d2b419eb207edcb"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e59537b408d36a4df83f969a",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 14.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.3333529411764706,
+          0.12052112044648612
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_17",
+      "version_id": "text_pdf_17",
+      "score": -1.4062024354934692,
+      "text": "备份恢复记录须保留23个月。",
+      "quote_hash": "6fbcc6bc81ccfe4651f2b26e77baac035956e83fd26ace731bd2b6c70df5ee0f",
+      "id": "chunk_cea0cb22ee3beea17789a6d1e8e60c29e859ab041f20e0df5b0ebbde031a8603"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_15c5afd74dfc009c9cdeb4b2ede19be49cd9ae2087a7f223381d11075d24329c",
+      "version_id": "docx_11",
+      "text": "培训报销的审批责任人为培训组。",
+      "anchor": {
+        "block_id": "blk_7a08ad6e39c822d8faae6a63",
+        "block_index": 2.0,
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_8a711b0016f016442cfa12fb3db9130f2d61a6c5ede525897a6ae93436fc8d70",
+      "version_id": "pptx_01",
+      "text": "培训报销的审批责任人为培训组。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_b7fbb56db65374222e4c0bda",
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_9ecb0a6e47df03c0e9de18f008b8cc79ec4157d475bebda4619993ec11bfb25f",
+      "version_id": "docx_11",
+      "text": "培训报销记录须保留19个月。",
+      "anchor": {
+        "block_id": "blk_30c1a3e168d46b4b0680cfeb",
+        "block_index": 4.0,
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_d665085b1aa6b18764dbaa978104575ad6a7c7541cf5f712f8185c436cba1983",
+      "version_id": "pptx_01",
+      "text": "培训报销记录须保留21个月。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_3dfffacd3baa192ff4c48267",
+        "char_end": 14,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_65b31765b27812f69baa7b23d04857295b218d0c29387854fb27e8cb0d44db6b",
+      "version_id": "docx_11",
+      "text": "培训报销的提交期限为11个工作日。",
+      "anchor": {
+        "block_id": "blk_ad0a76adb81d05a7c1b8e903",
+        "block_index": 1.0,
+        "char_end": 17,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_68489ce540aaba8106cdcc10b36b275b0397b02f8fda4074e7e87312ccbb27a5",
+      "version_id": "pptx_01",
+      "text": "培训报销的提交期限为17个工作日。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_57d9c9aeba4a746d639f997f",
+        "char_end": 17,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_55ac5f1db4e25f750d083c3dd7424c00a8b55eda2d0a686a20d6723dc1ab53e3",
+      "version_id": "text_pdf_11",
+      "text": "Synthetic policy edition / 合成政策版本 — page 2\n培训报销的审批责任人为培训组。",
+      "anchor": {
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "block_id": "blk_32caaa311eddfbe4ae9335b5",
+        "char_end": 58,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_353181806e24ba15cfa01518e7a83171bfa71d69eea47210d227f94108dec570",
+      "version_id": "pptx_01",
+      "text": "培训报销必须通过培训平台提交。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_cd3cd6bce924b15ed6bc43b9",
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 5.0
+      }
+    }
+  ]
+}

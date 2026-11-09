@@ -100,12 +100,12 @@ def test_the_five_services_and_the_sandbox_images_are_listed() -> None:
 
 def test_cloudflare_bridge_runs_one_of_our_sandbox_images() -> None:
     """桥跑我们构建的沙箱镜像：要么在这里构建 sandbox-python（Dockerfile，上下文是仓库根），要么是推到 Cloudflare 镜像仓库的
-    sandbox-universal（按版本或 git 提交号，不用 latest）。"""
+    sandbox-universal（按版本、git 提交号或已记录的 goal-cf 日期发布号，不用 latest）。"""
     wrangler = (REPO_ROOT / "deploy" / "cloudflare" / "sandbox-bridge" / "wrangler.jsonc").read_text("utf-8")
     image = re.search(r'"image":\s*"([^"]+)"', wrangler)
     assert image
     if image.group(1).startswith("registry.cloudflare.com/"):
-        assert re.fullmatch(r"registry\.cloudflare\.com/[0-9a-f]{32}/agentruntime-sandbox-universal:(\d+\.\d+\.\d+|[0-9a-f]{7,40})", image.group(1))
+        assert re.fullmatch(r"registry\.cloudflare\.com/[0-9a-f]{32}/agentruntime-sandbox-universal:(\d+\.\d+\.\d+|[0-9a-f]{7,40}|goal-cf-\d{8})", image.group(1))
         return
     context = re.search(r'"image_build_context":\s*"([^"]+)"', wrangler)
     bridge = REPO_ROOT / "deploy" / "cloudflare" / "sandbox-bridge"

@@ -80,6 +80,11 @@ SUB_AGENT_WRAP_UP_PATCH = "n16r-sub-agent-wrap-up"
 # WS-CF-524: persist terminal failures before completing the operation workflow.
 WORKSPACE_ASYNC_RESULT_PATCH = "workspace-async-result-v1"
 
+# File job terminal persistence after retry exhaustion or completion transport failure.
+FILE_OPERATION_RESULT_PATCH = "file-operation-terminal-v1"
+
+CHILD_FILE_SCOPE_PATCH = "child-file-whole-sheet-v1"
+
 # 新的运行在第一个工作流任务里一次问完全部版本分支（模块说明）。
 PATCHES_AT_START = "s04-patches-at-start"
 # 只能在末尾追加。
@@ -107,6 +112,8 @@ AT_START = (
     N16_PATCH,
     SUB_AGENT_WRAP_UP_PATCH,
     WORKSPACE_ASYNC_RESULT_PATCH,
+    FILE_OPERATION_RESULT_PATCH,
+    CHILD_FILE_SCOPE_PATCH,
 )
 
 

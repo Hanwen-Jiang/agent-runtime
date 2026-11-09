@@ -1,0 +1,333 @@
+{
+  "evaluation": {
+    "id": "scan_pdf_04",
+    "family": "scan_pdf",
+    "variant": "scan_clean",
+    "language": "zh",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 8.9992886709515,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_df41f0a6ec296c6fc6ec3b80"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_0e4b5e9a38c41ecbe624869d"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_0ba77061f8cf660bb8f3f407"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_44090b1a9df9daa7c4e13804"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_27a4a88f3d9363f02c7e3413"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_f39bcfba7064ac3b8f687768"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "raster_requires_human_visual_review",
+      "verified": null
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 6,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_pages": 3,
+      "processed_pages": [
+        0,
+        1,
+        2
+      ],
+      "unselected_pages": 0,
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_df41f0a6ec296c6fc6ec3b80",
+        "kind": "ocr_text",
+        "text": "密码找回的提交期限为9个工作日。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.02671370841562748,
+            0.09375,
+            0.3790322542190552,
+            0.1859375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99992,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_0e4b5e9a38c41ecbe624869d",
+        "kind": "ocr_text",
+        "text": "密码找回的审批责任人为身份管理组。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.026209676638245583,
+            0.271875,
+            0.41280239820480347,
+            0.3609375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.9999,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_0ba77061f8cf660bb8f3f407",
+        "kind": "ocr_text",
+        "text": "密码找回必须提供已验证恢复邮箱。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.027217742055654526,
+            0.0984375,
+            0.390625,
+            0.184375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99979,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_44090b1a9df9daa7c4e13804",
+        "kind": "ocr_text",
+        "text": "密码找回记录须保留11个月。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.025705644860863686,
+            0.2703125,
+            0.32358869910240173,
+            0.3625
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.9998,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_27a4a88f3d9363f02c7e3413",
+        "kind": "ocr_text",
+        "text": "密码找回的紧急例外需要部门负责人书面批准。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.02671370841562748,
+            0.096875,
+            0.5045362710952759,
+            0.184375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99986,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_f39bcfba7064ac3b8f687768",
+        "kind": "ocr_text",
+        "text": "密码找回必须通过身份平台提交。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.027217742055654526,
+            0.2765625,
+            0.36643144488334656,
+            0.3609375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99971,
+        "low_confidence": false
+      }
+    ],
+    "outline": [
+      {
+        "kind": "pdf",
+        "pages": 3
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_pages": 3,
+      "processed_pages": [
+        0,
+        1,
+        2
+      ],
+      "unselected_pages": 0,
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_04/page-00000.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "e456a8b7a202a36399c6347bed1365cbde3d0dd8471807026ebc0f5d7f78bb8d",
+        "size_bytes": 249475
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_04/page-00001.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "1b9c32a2e773dfeacc1871a55e02364c278b83659c6c99f49334b708f06b8e3a",
+        "size_bytes": 235544
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_04/page-00002.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "3ac27c4d16670d8257c30c9392249e1ad9e7858387f8627a65445b49c5b24c6b",
+        "size_bytes": 279744
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_04/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "ee55443de55147ca93913836afa5cbf39ee669d6616e28e73ad60cd65eb456fd",
+        "size_bytes": 4265
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "e7025fdf9ff69198e85fc7d90772df51002583e839a8144a4600070f1de86375",
+      "size_bytes": 71280,
+      "mime_type": "application/pdf"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "a108fe22c857e2878460d20b6ff4c4fd7970799840268863fa16cf2c014bfa24"
+    }
+  }
+}

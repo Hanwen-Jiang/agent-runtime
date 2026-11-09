@@ -8,6 +8,8 @@
     "search_uses_server_frozen_task_scope",
     "evidence_resolve_uses_task_scope",
     "task_cancellation_detaches_only_its_consumer",
+    "collection_only_frozen_summary_without_direct_file_authority",
+    "collection_summary_revocation_denied",
     "derived_epoch_revocation_denied",
     "production_service_token_factory_no_dev_key"
   ]

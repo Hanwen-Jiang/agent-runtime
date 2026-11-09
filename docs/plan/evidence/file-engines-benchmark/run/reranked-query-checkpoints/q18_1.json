@@ -1,0 +1,389 @@
+{
+  "id": "q18_1",
+  "query": "Who signs off on accessibility review according to the different documents?",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "image_03",
+      "pptx_08",
+      "scan_pdf_18",
+      "text_pdf_18",
+      "xlsx_13"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.2,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.25,
+    "unique_source_ndcg_at_8": 0.14606834984270645,
+    "relevant_files": [
+      "pptx_08"
+    ],
+    "expected_files": [
+      "text_pdf_18",
+      "scan_pdf_18",
+      "xlsx_13",
+      "pptx_08",
+      "image_03"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.125,
+    "latency_ms": 13.908034889027476
+  },
+  "hybrid": {
+    "recall_at_8": 0.4,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.5531464700081437,
+    "relevant_files": [
+      "pptx_08",
+      "text_pdf_18"
+    ],
+    "expected_files": [
+      "text_pdf_18",
+      "scan_pdf_18",
+      "xlsx_13",
+      "pptx_08",
+      "image_03"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 4420.626690145582
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "slide_index": 1.0,
+        "block_id": "blk_b5ddcf0e8ab2d02eea52fcc7",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 65.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_08",
+      "version_id": "pptx_08",
+      "score": 1.0197584629058838,
+      "text": "Design Quality is responsible for approving accessibility review.",
+      "quote_hash": "9dff09a9f01ad173e37abfa8a4690619abc3704ccfc9e565228af13f14d2d8b6",
+      "id": "chunk_2d7c3987c3c69df2a5fb781a638b81c732d9cf6c8f5888f79876ad12a2f6f756"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_49adf1d5395d099e5691a530",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 108.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_text_pdf_18",
+      "version_id": "text_pdf_18",
+      "score": -0.6871849894523621,
+      "text": "Synthetic policy edition / 合成政策版本 — page 2\nDesign Quality is responsible for approving accessibility\nreview.",
+      "quote_hash": "130280ca34804c94dcaf7e1416317c4b0f8b410ec11573d0b807bd334f3e7862",
+      "id": "chunk_9398aadd13bd1793550aa22076df68ed31505d3aa6cc21255233e70a2e44ebdd"
+    },
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_45f0176267bf842413933a00",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 71.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_08",
+      "version_id": "pptx_08",
+      "score": -1.795322060585022,
+      "text": "Accessibility review must be submitted through the design review queue.",
+      "quote_hash": "11454978b6dfe801473728060d8bca05cc5f87950a84ad6b9d196ca55c8368fb",
+      "id": "chunk_ce00aa82c95210eb747257f50930bb10dc7408ea740a3020d011085ba085e86c"
+    },
+    {
+      "anchor": {
+        "slide_index": 2.0,
+        "block_id": "blk_87159475bfc18c5fafb2b209",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 60.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_08",
+      "version_id": "pptx_08",
+      "score": -2.410597085952759,
+      "text": "Accessibility review requires keyboard navigation checklist.",
+      "quote_hash": "bc28ca6c5e3b56c5e091b1888f3a013cbdf0fd15cc8af782ca5bae634119b113",
+      "id": "chunk_0476503a46054e5f5d1446809140b1be2ed9c7c9a665ff7d302d1307403d2dce"
+    },
+    {
+      "anchor": {
+        "slide_index": 4.0,
+        "block_id": "blk_6c08105150b4de01e8eec52b",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 96.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_08",
+      "version_id": "pptx_08",
+      "score": -2.5513205528259277,
+      "text": "Emergency exceptions for accessibility review require written approval from the department head.",
+      "quote_hash": "d8500c1922ce5fc681623a61820dec256aa50e37e883030a50b97046eacb9fd7",
+      "id": "chunk_0a5eef466c143f5829c8c2e8c220a33085cf2c092f10e812fa949cd1eef29337"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_c02a526dbb4ed4cf093ca20d",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 139.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 4.0
+      },
+      "representation_id": "rep_text_pdf_18",
+      "version_id": "text_pdf_18",
+      "score": -3.22574782371521,
+      "text": "Synthetic policy edition / 合成政策版本 — page 5\nEmergency exceptions for accessibility review require written\napproval from the department head.",
+      "quote_hash": "a3c53eb031b285412314f3ff804c0fadbffe1d5017c81c563aba271bda26a01c",
+      "id": "chunk_1cfe878e71249fa85a37382c68553b3a231ef4abc3a008cb36e4b7b6d2489964"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_46a66aad5851d289780ec34f",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 114.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 5.0
+      },
+      "representation_id": "rep_text_pdf_18",
+      "version_id": "text_pdf_18",
+      "score": -3.63542103767395,
+      "text": "Synthetic policy edition / 合成政策版本 — page 6\nAccessibility review must be submitted through the design review\nqueue.",
+      "quote_hash": "ad2398ef4fd567af0f6e1a13dca7014781cf451dc33cdd8c96e80b9cbfb6f4bc",
+      "id": "chunk_145d038054a2c6f1d4fc1f2059880953f6067d0b19be52a0a82c7c3d2628d9b5"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_492444046975f9f9fb7cb9a8",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 42.0,
+        "bbox": [
+          0.025705644860863686,
+          0.209375,
+          0.5246975421905518,
+          0.29375
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_09",
+      "version_id": "scan_pdf_09",
+      "score": -3.635885715484619,
+      "text": "written approval from the department head.",
+      "quote_hash": "20873e1a602ab70b1e6f910bda91bfe1bb99b1daf2531d72aab26d3e1d126515",
+      "id": "chunk_02cd902e554398949408d381beb8e2334ea62282259d34f12c99d5507987acd8"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_ce00aa82c95210eb747257f50930bb10dc7408ea740a3020d011085ba085e86c",
+      "version_id": "pptx_08",
+      "text": "Accessibility review must be submitted through the design review queue.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_45f0176267bf842413933a00",
+        "char_end": 71,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_0476503a46054e5f5d1446809140b1be2ed9c7c9a665ff7d302d1307403d2dce",
+      "version_id": "pptx_08",
+      "text": "Accessibility review requires keyboard navigation checklist.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_87159475bfc18c5fafb2b209",
+        "char_end": 60,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_0a5eef466c143f5829c8c2e8c220a33085cf2c092f10e812fa949cd1eef29337",
+      "version_id": "pptx_08",
+      "text": "Emergency exceptions for accessibility review require written approval from the department head.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_6c08105150b4de01e8eec52b",
+        "char_end": 96,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 4.0
+      }
+    },
+    {
+      "id": "chunk_2d7c3987c3c69df2a5fb781a638b81c732d9cf6c8f5888f79876ad12a2f6f756",
+      "version_id": "pptx_08",
+      "text": "Design Quality is responsible for approving accessibility review.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_b5ddcf0e8ab2d02eea52fcc7",
+        "char_end": 65,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_145d038054a2c6f1d4fc1f2059880953f6067d0b19be52a0a82c7c3d2628d9b5",
+      "version_id": "text_pdf_18",
+      "text": "Synthetic policy edition / 合成政策版本 — page 6\nAccessibility review must be submitted through the design review\nqueue.",
+      "anchor": {
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "block_id": "blk_46a66aad5851d289780ec34f",
+        "char_end": 114,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_88f59f170d4f8f2c08ea4b8bc8460880e00721b10c8ab36c896bd56baba59d91",
+      "version_id": "pptx_08",
+      "text": "Accessibility review must be submitted within 16 business days.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_99c66c1acc3be0e009c26493",
+        "char_end": 63,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_110effc9e8309fc7b390cceba1838f679848c577b19895ee54e2aa1e21b35cbf",
+      "version_id": "pptx_08",
+      "text": "Records for accessibility review must be retained for 9 months.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_63dbfbc9d7bf000437643e48",
+        "char_end": 63,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_1cfe878e71249fa85a37382c68553b3a231ef4abc3a008cb36e4b7b6d2489964",
+      "version_id": "text_pdf_18",
+      "text": "Synthetic policy edition / 合成政策版本 — page 5\nEmergency exceptions for accessibility review require written\napproval from the department head.",
+      "anchor": {
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "block_id": "blk_c02a526dbb4ed4cf093ca20d",
+        "char_end": 139,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 4.0
+      }
+    }
+  ]
+}

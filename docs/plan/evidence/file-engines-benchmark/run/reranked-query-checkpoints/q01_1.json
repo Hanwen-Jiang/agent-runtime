@@ -1,0 +1,382 @@
+{
+  "id": "q01_1",
+  "query": "Who signs off on employee onboarding according to the different documents?",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_01",
+      "pptx_11",
+      "text_01",
+      "text_pdf_01"
+    ],
+    "extraction_chunking_recall_ceiling": 0.8
+  },
+  "exact": {
+    "recall_at_8": 0.0,
+    "hit_at_8": 0.0,
+    "reciprocal_rank_at_8": 0,
+    "unique_source_ndcg_at_8": 0.0,
+    "relevant_files": [],
+    "expected_files": [
+      "text_pdf_01",
+      "scan_pdf_01",
+      "docx_01",
+      "pptx_11",
+      "text_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.0,
+    "latency_ms": 16.9746121391654
+  },
+  "hybrid": {
+    "recall_at_8": 0.0,
+    "hit_at_8": 0.0,
+    "reciprocal_rank_at_8": 0,
+    "unique_source_ndcg_at_8": 0.0,
+    "relevant_files": [],
+    "expected_files": [
+      "text_pdf_01",
+      "scan_pdf_01",
+      "docx_01",
+      "pptx_11",
+      "text_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.0,
+    "latency_ms": 5023.977022850886
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_ce36fc16ee8f868a253a3e2d",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 57.0,
+        "bbox": [
+          0.025705644860863686,
+          0.096875,
+          0.737399160861969,
+          0.184375
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_01",
+      "version_id": "scan_pdf_01",
+      "score": 1.677376627922058,
+      "text": "Employee onboarding requires signed employment agreement.",
+      "quote_hash": "5830b7d5b527157be3ba30012b3d9a1766dafec6596f5525e9d5ece1990495a2",
+      "id": "chunk_21db96f25db5e8339c85a44f6863f04912e8065c06deb1a4faa419f9585d8b0c"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_3529cf746db1b6a6402a4fb3",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 55.0,
+        "bbox": [
+          0.026209676638245583,
+          0.3859375,
+          0.6784273982048035,
+          0.4703125
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_01",
+      "version_id": "scan_pdf_01",
+      "score": -1.6645216941833496,
+      "text": "Employee onboarding must be submitted through the staff",
+      "quote_hash": "013591bb6f68a937733ba9efa6a830f29a1f9c6ca4161fb2e39d17693461de70",
+      "id": "chunk_5562d0fbc07cd299c93dbc8fe56e6aade3d2cd6a0c06ed97c556ab807d79a714"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_5b206273e0ddd9ae9df3f58d",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 56.0,
+        "bbox": [
+          0.024697579443454742,
+          0.0921875,
+          0.6885080337524414,
+          0.1875
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_01",
+      "version_id": "scan_pdf_01",
+      "score": -3.3162360191345215,
+      "text": "Employee onboarding must be submitted within 13 business",
+      "quote_hash": "d28129907d7f7a218c4fc602fd1190ab6f284aae638ebb5edabd91b4761babcb",
+      "id": "chunk_3cc3f65e5d1a07194c7c1e77bd631637da05a33b89151864cca401a44a070b97"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_3aefd23aa7b3bd0450f71887",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 55.0,
+        "bbox": [
+          0.02520161122083664,
+          0.3796875,
+          0.6638104915618896,
+          0.475
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_01",
+      "version_id": "scan_pdf_01",
+      "score": -3.9239909648895264,
+      "text": "People Operations is responsible for approving employee",
+      "quote_hash": "2e62065a36f237a4ef58f4ff069db220f7524dac1ce3ea73190b4c3d62c2b3c4",
+      "id": "chunk_24b8daa07de4cacc3d8bbf7740d051edd9c1151da63459026d9bd438036acd07"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d457b6c55e32f8dc72bbc6e0",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 54.0,
+        "bbox": [
+          0.024697579443454742,
+          0.2703125,
+          0.6617943644523621,
+          0.3625
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_01",
+      "version_id": "scan_pdf_01",
+      "score": -4.127423286437988,
+      "text": "Records for employee onboarding must be retained for 8",
+      "quote_hash": "65c15e30671ed8da082eaba065c1a2012a59111825b4b5beaa9b39cb25b34851",
+      "id": "chunk_45687126cdf7011f705c68a58cdc529ba9e4b00704e73e9fe0c5da5f15184930"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_492444046975f9f9fb7cb9a8",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 42.0,
+        "bbox": [
+          0.025705644860863686,
+          0.209375,
+          0.5246975421905518,
+          0.29375
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_09",
+      "version_id": "scan_pdf_09",
+      "score": -4.665964603424072,
+      "text": "written approval from the department head.",
+      "quote_hash": "20873e1a602ab70b1e6f910bda91bfe1bb99b1daf2531d72aab26d3e1d126515",
+      "id": "chunk_02cd902e554398949408d381beb8e2334ea62282259d34f12c99d5507987acd8"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_dce4c70aea6bb4b9c563b3bb",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 42.0,
+        "bbox": [
+          0.026209676638245583,
+          0.2109375,
+          0.524193525314331,
+          0.290625
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_17",
+      "version_id": "scan_pdf_17",
+      "score": -4.665964603424072,
+      "text": "written approval from the department head.",
+      "quote_hash": "20873e1a602ab70b1e6f910bda91bfe1bb99b1daf2531d72aab26d3e1d126515",
+      "id": "chunk_083d4e3e0ee677a25528f47355947ef1a9c5a6ea45650b869f9f3d854480e465"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d5f6d011fd5a186f31787e1c",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 42.0,
+        "bbox": [
+          0.025705644860863686,
+          0.209375,
+          0.5246975421905518,
+          0.29375
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_scan_pdf_19",
+      "version_id": "scan_pdf_19",
+      "score": -4.665964603424072,
+      "text": "written approval from the department head.",
+      "quote_hash": "20873e1a602ab70b1e6f910bda91bfe1bb99b1daf2531d72aab26d3e1d126515",
+      "id": "chunk_324fc0cef3aba4063088a882c6a86c5a5e2297884cdc05e02ecb3e13554f61a8"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_5562d0fbc07cd299c93dbc8fe56e6aade3d2cd6a0c06ed97c556ab807d79a714",
+      "version_id": "scan_pdf_01",
+      "text": "Employee onboarding must be submitted through the staff",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.3859375,
+          0.6784273982048035,
+          0.4703125
+        ],
+        "block_id": "blk_3529cf746db1b6a6402a4fb3",
+        "char_end": 55,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_21db96f25db5e8339c85a44f6863f04912e8065c06deb1a4faa419f9585d8b0c",
+      "version_id": "scan_pdf_01",
+      "text": "Employee onboarding requires signed employment agreement.",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.096875,
+          0.737399160861969,
+          0.184375
+        ],
+        "block_id": "blk_ce36fc16ee8f868a253a3e2d",
+        "char_end": 57,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_7b93438fbe1f9a739b91dcf126af433919de722cb15834776f276f06f517b6d3",
+      "version_id": "scan_pdf_01",
+      "text": "Emergency exceptions for employee onboarding require",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.0953125,
+          0.6597781777381897,
+          0.184375
+        ],
+        "block_id": "blk_662b299866efbce1cc6060de",
+        "char_end": 52,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_3cc3f65e5d1a07194c7c1e77bd631637da05a33b89151864cca401a44a070b97",
+      "version_id": "scan_pdf_01",
+      "text": "Employee onboarding must be submitted within 13 business",
+      "anchor": {
+        "bbox": [
+          0.024697579443454742,
+          0.0921875,
+          0.6885080337524414,
+          0.1875
+        ],
+        "block_id": "blk_5b206273e0ddd9ae9df3f58d",
+        "char_end": 56,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_45687126cdf7011f705c68a58cdc529ba9e4b00704e73e9fe0c5da5f15184930",
+      "version_id": "scan_pdf_01",
+      "text": "Records for employee onboarding must be retained for 8",
+      "anchor": {
+        "bbox": [
+          0.024697579443454742,
+          0.2703125,
+          0.6617943644523621,
+          0.3625
+        ],
+        "block_id": "blk_d457b6c55e32f8dc72bbc6e0",
+        "char_end": 54,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_12b0b0e221a6382d6b45cfbf5259906ea4f7d83954d829a9798d8435ae7d8980",
+      "version_id": "scan_pdf_01",
+      "text": "onboarding.",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.5,
+          0.16683466732501984,
+          0.58125
+        ],
+        "block_id": "blk_31f2ad33c4b7674e26492fa5",
+        "char_end": 11,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_24b8daa07de4cacc3d8bbf7740d051edd9c1151da63459026d9bd438036acd07",
+      "version_id": "scan_pdf_01",
+      "text": "People Operations is responsible for approving employee",
+      "anchor": {
+        "bbox": [
+          0.02520161122083664,
+          0.3796875,
+          0.6638104915618896,
+          0.475
+        ],
+        "block_id": "blk_3aefd23aa7b3bd0450f71887",
+        "char_end": 55,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_2e535f7f2a17bb36a7c25b41426b26f53bf0f8165726c8098ddff11d53ca9a3a",
+      "version_id": "image_00",
+      "text": "through the security inbox.",
+      "anchor": {
+        "bbox": [
+          0.02666666666666667,
+          0.6414414414414414,
+          0.3214814814814815,
+          0.672972972972973
+        ],
+        "block_id": "blk_45a8b0cec23b69479c937c4b",
+        "char_end": 27,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    }
+  ]
+}

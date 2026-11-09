@@ -1,0 +1,121 @@
+{
+  "scope": "Saved real Temporal file-operation and child-scope histories; no histories regenerated",
+  "cases": [
+    {
+      "history": "temporal-histories/cancelled-history.json",
+      "sha256": "af2747aff31f5f11d2bdb32c8e16f1f2147a23e962e4a6f009977823d130f56e",
+      "passed": true,
+      "error": null
+    },
+    {
+      "history": "temporal-histories/failed-history.json",
+      "sha256": "e1f00cb0c8ea4fbaa44eb619fb3b4c10ac89945be662f2ddbfee36cf2472c59d",
+      "passed": true,
+      "error": null
+    },
+    {
+      "history": "temporal-histories/legacy-history.json",
+      "sha256": "fdffa797dc843bdb6267ebc7addd61d8d2d310f01a454be04fe31990a6a19da4",
+      "passed": true,
+      "error": null
+    },
+    {
+      "history": "temporal-histories/recovered-history.json",
+      "sha256": "8a21cc199dbab0955ad63cf3a90209cc15efec786bc251091557d8d918c4f14e",
+      "passed": true,
+      "error": null
+    },
+    {
+      "history": "temporal-histories/timeout-history.json",
+      "sha256": "2def534600452f7d7f9c5d99c5133e2d23d5674e7e6583f7780bc97f0d083cc4",
+      "passed": true,
+      "error": null
+    },
+    {
+      "history": "child-scope-histories/scope-collection-only-history.json",
+      "sha256": "9e5b829f88aa1626e0848abc94cf1b6d6673055bb0b7156048dcc89d5dfbaeb7",
+      "passed": true,
+      "error": null
+    },
+    {
+      "history": "child-scope-histories/scope-extra-source-history.json",
+      "sha256": "53d36258a4804d2b43174e3529dc372505120965116bdd52c3049eefdfa1324c",
+      "passed": true,
+      "error": null
+    },
+    {
+      "history": "child-scope-histories/scope-fake-sheet-format-history.json",
+      "sha256": "a4e2ebff9a868718ad681764204d80454132b101d65e6a9f44f4a289ff107728",
+      "passed": true,
+      "error": null
+    },
+    {
+      "history": "child-scope-histories/scope-missing-history.json",
+      "sha256": "7a0f6d07ed3aed1e0c1e591fa4c016904fa2f13b1361854a383d71d48d05f304",
+      "passed": true,
+      "error": null
+    },
+    {
+      "history": "child-scope-histories/scope-ordinary-history.json",
+      "sha256": "c5fe3ac2f9bedc74577124325213013746d8b480a31e1e21d4394dd43530eaa3",
+      "passed": true,
+      "error": null
+    },
+    {
+      "history": "child-scope-histories/scope-other-file-history.json",
+      "sha256": "52043997daec4fb9ef9ca808de2ceb3d54eaeccf137c90a452aaf8b8bb4bf3ff",
+      "passed": true,
+      "error": null
+    },
+    {
+      "history": "child-scope-histories/scope-parallel-public-history.json",
+      "sha256": "27137afb2270a2cb20cc549378aaa7a0b61eae047d9625f329252198704fe3ef",
+      "passed": true,
+      "error": null
+    },
+    {
+      "history": "child-scope-histories/scope-public-history.json",
+      "sha256": "3153fad796cd71d68ec6ed96114ccc1402494228eb024f1f78eddb095a2fd622",
+      "passed": true,
+      "error": null
+    },
+    {
+      "history": "child-scope-histories/scope-query-history.json",
+      "sha256": "c82f359291a5bf8be831adb5cd940068a923fded677cc482810ad125ad4c2935",
+      "passed": true,
+      "error": null
+    },
+    {
+      "history": "child-scope-histories/scope-range-escape-history.json",
+      "sha256": "4636f7831b38b8aa5e7151eb8d2d034b9c5b84c0bb294207b8269a1ba5cd4dc0",
+      "passed": true,
+      "error": null
+    },
+    {
+      "history": "child-scope-histories/scope-raw-history.json",
+      "sha256": "6caee9f987247a5303988b26dbac690b46acbab2fb56288b96dc1ab37e0c133e",
+      "passed": true,
+      "error": null
+    },
+    {
+      "history": "child-scope-histories/scope-secret-history.json",
+      "sha256": "03e7c9fe54ffedc451bb670ba9ae4434c7460d3e2a7dc5c956a52450d0dc29f3",
+      "passed": true,
+      "error": null
+    },
+    {
+      "history": "child-scope-histories/scope-sheet-alias-history.json",
+      "sha256": "7b8461f264750bdf0a39f08acf3a361c842e9033ea067c36d6bd9f8a546d8de0",
+      "passed": true,
+      "error": null
+    },
+    {
+      "history": "child-scope-histories/scope-shell-history.json",
+      "sha256": "d0a8f4918c16160e2ac228b9ba09af7e1ba514997d15252c8f7951e9e07031d9",
+      "passed": true,
+      "error": null
+    }
+  ],
+  "passed": 19,
+  "failed": 0
+}

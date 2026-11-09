@@ -1,0 +1,340 @@
+{
+  "id": "q14_1",
+  "query": "Who signs off on contract renewal according to the different documents?",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_14",
+      "pptx_04",
+      "scan_pdf_14",
+      "table_04",
+      "text_pdf_14",
+      "xlsx_09"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.16666666666666666,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.125,
+    "unique_source_ndcg_at_8": 0.09546043308946735,
+    "relevant_files": [
+      "pptx_04"
+    ],
+    "expected_files": [
+      "text_pdf_14",
+      "scan_pdf_14",
+      "docx_14",
+      "xlsx_09",
+      "pptx_04",
+      "table_04"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.125,
+    "latency_ms": 23.822040064260364
+  },
+  "hybrid": {
+    "recall_at_8": 0.6666666666666666,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7751482523375256,
+    "relevant_files": [
+      "docx_14",
+      "pptx_04",
+      "table_04",
+      "text_pdf_14"
+    ],
+    "expected_files": [
+      "text_pdf_14",
+      "scan_pdf_14",
+      "docx_14",
+      "xlsx_09",
+      "pptx_04",
+      "table_04"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.5,
+    "latency_ms": 5328.988888999447
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_96227ee26552caa0cce6d9a4",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 23.0,
+        "row_index": 1.0
+      },
+      "representation_id": "rep_table_04",
+      "version_id": "table_04",
+      "score": 0.6604389548301697,
+      "text": "1\t合同续签的审批责任人为法务。\t1\twest",
+      "quote_hash": "8086bf54b729b9cab2e783da4dd9b3e231c0fb13872b079670a1ef02fa08d95e",
+      "id": "chunk_f3f75e8e3ca62fd1c2da4ff97464ccb7c5816db77131561270c8b010febde86a"
+    },
+    {
+      "anchor": {
+        "slide_index": 1.0,
+        "block_id": "blk_992914ff5ce3fd3625e0087e",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 63.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_04",
+      "version_id": "pptx_04",
+      "score": 0.20570625364780426,
+      "text": "Legal Operations is responsible for approving contract renewal.",
+      "quote_hash": "a9fd38f1b169b5c378cb67ef685ead5746591814d49790ad5bc015488bda006d",
+      "id": "chunk_9aa621f0379ea73ba1039e3cc7d34a2ccb76d2715a10b5c1c516f7c82a39b02b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_9ea3e0b2157053c8f6b25a78",
+        "kind": "document_block",
+        "block_index": 2.0,
+        "char_end": 63.0
+      },
+      "representation_id": "rep_docx_14",
+      "version_id": "docx_14",
+      "score": 0.20570625364780426,
+      "text": "Legal Operations is responsible for approving contract renewal.",
+      "quote_hash": "a9fd38f1b169b5c378cb67ef685ead5746591814d49790ad5bc015488bda006d",
+      "id": "chunk_b2427b21632e4ae40ff091285c24017fd74339665973a1e7056df4efa6ae8ec8"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_a7f1c2b7bdfcf311f6f14b49",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 106.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_text_pdf_14",
+      "version_id": "text_pdf_14",
+      "score": -0.7678110003471375,
+      "text": "Synthetic policy edition / 合成政策版本 — page 2\nLegal Operations is responsible for approving contract renewal.",
+      "quote_hash": "ff71dbd5850f331cb0660b7432fb97fd7ffb304c22545287c59e5f64a5eb7436",
+      "id": "chunk_9edf4a43a892dad791860637df455d11e721b4c720eeae80be2fa7c074cdb100"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_24317a912935df25fc82d987",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 24.0,
+        "row_index": 2.0
+      },
+      "representation_id": "rep_table_04",
+      "version_id": "table_04",
+      "score": -1.3046131134033203,
+      "text": "2\t合同续签必须提供现有合同副本。\t2\teast",
+      "quote_hash": "d8583a2cb3b84b4c8ad63ba73f62ef74ea8d038e308b61c22151d1f0fc33165a",
+      "id": "chunk_8fbba3d590f5d7f21732bad72ae2e06856218d3e987bcdc5fd500d484bd9f2c7"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_4e439a0e84087783cfd92b0d",
+        "kind": "document_block",
+        "block_index": 6.0,
+        "char_end": 65.0
+      },
+      "representation_id": "rep_docx_14",
+      "version_id": "docx_14",
+      "score": -2.237730026245117,
+      "text": "Contract renewal must be submitted through the contract registry.",
+      "quote_hash": "ce75ac5a68ab8af5a0a46fe4b925e3ceb5bc26dc26f671511ff83d519ac37deb",
+      "id": "chunk_bf32cf63aa62d958a5086cfa1acd1422bd7b2fd973ed1ff081039466ab1e96a2"
+    },
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_17282c9485e34b51d9af350f",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 65.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_04",
+      "version_id": "pptx_04",
+      "score": -2.237730026245117,
+      "text": "Contract renewal must be submitted through the contract registry.",
+      "quote_hash": "ce75ac5a68ab8af5a0a46fe4b925e3ceb5bc26dc26f671511ff83d519ac37deb",
+      "id": "chunk_cd6279f6b2eaacc2c64e3df117d80beeae410ddbfd5887fff786e72256d3d2fe"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_01f4088387d811e6e5cbd219",
+        "kind": "document_block",
+        "block_index": 5.0,
+        "char_end": 92.0
+      },
+      "representation_id": "rep_docx_14",
+      "version_id": "docx_14",
+      "score": -2.702011823654175,
+      "text": "Emergency exceptions for contract renewal require written approval from the department head.",
+      "quote_hash": "1b496cb3cc4f5330c75586ff3c50f2d632946bfbfe9a21a5cf74c41d8389ac6c",
+      "id": "chunk_7732fe124cf3a69a45e91af829524919b555f322d5ae42100b22daa0a5d10669"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_bf32cf63aa62d958a5086cfa1acd1422bd7b2fd973ed1ff081039466ab1e96a2",
+      "version_id": "docx_14",
+      "text": "Contract renewal must be submitted through the contract registry.",
+      "anchor": {
+        "block_id": "blk_4e439a0e84087783cfd92b0d",
+        "block_index": 6.0,
+        "char_end": 65,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_cd6279f6b2eaacc2c64e3df117d80beeae410ddbfd5887fff786e72256d3d2fe",
+      "version_id": "pptx_04",
+      "text": "Contract renewal must be submitted through the contract registry.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_17282c9485e34b51d9af350f",
+        "char_end": 65,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_2c72f0168aa5691d509f6e49eaa61f23253cf94df9dc09c3e5ac8d94c9c6ec88",
+      "version_id": "pptx_04",
+      "text": "Contract renewal requires current contract copy.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_9bf5c9104f19e91cc5a67ed8",
+        "char_end": 48,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_4a6c819803692a14dbb8c69c6cb3f9bcef96726d93a019cd2bd9a9686c9805c1",
+      "version_id": "docx_14",
+      "text": "Contract renewal requires current contract copy.",
+      "anchor": {
+        "block_id": "blk_1e991598529f68797999b228",
+        "block_index": 3.0,
+        "char_end": 48,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_7732fe124cf3a69a45e91af829524919b555f322d5ae42100b22daa0a5d10669",
+      "version_id": "docx_14",
+      "text": "Emergency exceptions for contract renewal require written approval from the department head.",
+      "anchor": {
+        "block_id": "blk_01f4088387d811e6e5cbd219",
+        "block_index": 5.0,
+        "char_end": 92,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_b9ce927aa36420e9bc783e1fcf9084117e61d41bb3da66632b82013c4d2b4470",
+      "version_id": "pptx_04",
+      "text": "Emergency exceptions for contract renewal require written approval from the department head.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_423b141d762053532f09c431",
+        "char_end": 92,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 4.0
+      }
+    },
+    {
+      "id": "chunk_8e1bafa6661d560b922c7abfd51782a1262d01faa15e842f18e10689c29289cc",
+      "version_id": "text_pdf_14",
+      "text": "Synthetic policy edition / 合成政策版本 — page 6\nContract renewal must be submitted through the contract\nregistry.",
+      "anchor": {
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "block_id": "blk_16645682a8522bdea1c5d7e8",
+        "char_end": 108,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_9aa621f0379ea73ba1039e3cc7d34a2ccb76d2715a10b5c1c516f7c82a39b02b",
+      "version_id": "pptx_04",
+      "text": "Legal Operations is responsible for approving contract renewal.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_992914ff5ce3fd3625e0087e",
+        "char_end": 63,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 1.0
+      }
+    }
+  ]
+}

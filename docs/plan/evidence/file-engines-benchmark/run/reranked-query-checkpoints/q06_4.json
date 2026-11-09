@@ -1,0 +1,308 @@
+{
+  "id": "q06_4",
+  "query": "Which channel should I use to file research data retention? Compare the documents.",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_06",
+      "notebook_03",
+      "scan_pdf_06",
+      "text_06",
+      "text_pdf_06",
+      "xlsx_01"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.5,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.5943907508440193,
+    "relevant_files": [
+      "docx_06",
+      "text_06",
+      "text_pdf_06"
+    ],
+    "expected_files": [
+      "text_pdf_06",
+      "scan_pdf_06",
+      "docx_06",
+      "xlsx_01",
+      "text_06",
+      "notebook_03"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 16.522511839866638
+  },
+  "hybrid": {
+    "recall_at_8": 0.5,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.5616927747727312,
+    "relevant_files": [
+      "docx_06",
+      "text_06",
+      "text_pdf_06"
+    ],
+    "expected_files": [
+      "text_pdf_06",
+      "scan_pdf_06",
+      "docx_06",
+      "xlsx_01",
+      "text_06",
+      "notebook_03"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 5971.967319957912
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_07ea099f71d8a2abbf7ca719",
+        "kind": "document_block",
+        "block_index": 6.0,
+        "char_end": 72.0
+      },
+      "representation_id": "rep_docx_06",
+      "version_id": "docx_06",
+      "score": 3.245957851409912,
+      "text": "Research data retention must be submitted through the research registry.",
+      "quote_hash": "575d6d220b4db87ca47c8d8282b9d8af4193064628bb33d391a1409ca1aa2bda",
+      "id": "chunk_304ccca2265ea22e4d47f5998a8192889de5231533b1cda6b765295aee93b615"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_b1b6542e8d545336e4212139",
+        "kind": "document_block",
+        "block_index": 3.0,
+        "char_end": 57.0
+      },
+      "representation_id": "rep_docx_06",
+      "version_id": "docx_06",
+      "score": 0.6642966866493225,
+      "text": "Research data retention requires approved study protocol.",
+      "quote_hash": "175d8c0da5144952987df70e1814eb16ca7b5e0d10deed1bdc952fa3064eed94",
+      "id": "chunk_0ecfac22378f611f2103bebe92f3850ecebac4f11fe36f209b9abd6179bf8eb1"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d06390a8b1ed0d658c62b8e2",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 115.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 5.0
+      },
+      "representation_id": "rep_text_pdf_06",
+      "version_id": "text_pdf_06",
+      "score": -0.1871195286512375,
+      "text": "Synthetic policy edition / 合成政策版本 — page 6\nResearch data retention must be submitted through the research\nregistry.",
+      "quote_hash": "0acac1a1b28dc6a9f5e2a1f8887e21aebff828f3739bc488fe60c2421fa7ffd1",
+      "id": "chunk_ea50eaa8ea393ea4c97347fa3be8bdef6c8130e5699894895e93135e4139b831"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_689f49523d435f933d47563d",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 100.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_text_pdf_06",
+      "version_id": "text_pdf_06",
+      "score": -0.7095633149147034,
+      "text": "Synthetic policy edition / 合成政策版本 — page 3\nResearch data retention requires approved study protocol.",
+      "quote_hash": "959777dd092084526aecf47e3d593fe6f23e0c7b4ec36316bcf6501596c63455",
+      "id": "chunk_93d91032fc487b3389af23736a09b867e3e100567769dd9388d73eb02ccd30b2"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_6983112b5f28961e3d8f1e81",
+        "kind": "document_block",
+        "block_index": 2.0,
+        "char_end": 69.0
+      },
+      "representation_id": "rep_docx_06",
+      "version_id": "docx_06",
+      "score": -1.3249244689941406,
+      "text": "Research Office is responsible for approving research data retention.",
+      "quote_hash": "6ba0c13afb3df06ac17c405f21a2474a0885f87ee9f5a64213a7a66dc53d7d75",
+      "id": "chunk_9fc91d75e27354e2e246d2619d5dedcd55538ab4ca3290e34210d4a30d5b6ba4"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_1ffb7596f9c89294a4cdc018",
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0,
+        "end_line": 7.0,
+        "char_end": 491.0
+      },
+      "representation_id": "rep_text_06",
+      "version_id": "text_06",
+      "score": -1.442753791809082,
+      "text": "# Research data retention must be submitted within 10 business days.\n# Research Office is responsible for approving research data retention.\n# Research data retention requires approved study protocol.\n# Records for research data retention must be retained for 17 months.\n# Emergency exceptions for research data retention require written approval from the department head.\n# Research data retention must be submitted through the research registry.\nraise RuntimeError(\"READ_MUST_NOT_EXECUTE\")",
+      "quote_hash": "b8c375e7b4c4a1b31e323fca316f04535db51d7cdfc7364be0d66b414cd69962",
+      "id": "chunk_7e66ac98c93cb25dd317cfedea8309f74d704705832584abc53e5fa7bb3017b2"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_dec137b14182218e0be2f556",
+        "kind": "document_block",
+        "block_index": 5.0,
+        "char_end": 99.0
+      },
+      "representation_id": "rep_docx_06",
+      "version_id": "docx_06",
+      "score": -1.9803776741027832,
+      "text": "Emergency exceptions for research data retention require written approval from the department head.",
+      "quote_hash": "dd5789405c37688f4fbf100cd2d095d794d650b0b26ab0234d3eeecb52511bd4",
+      "id": "chunk_45ee6315c6b3aafea4b6b9d04397a3ef9c774e6462eb6b7df8bda2f2734c4a80"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_888ac2483c62755f5cec76a8",
+        "kind": "document_block",
+        "block_index": 1.0,
+        "char_end": 66.0
+      },
+      "representation_id": "rep_docx_06",
+      "version_id": "docx_06",
+      "score": -2.002333641052246,
+      "text": "Research data retention must be submitted within 26 business days.",
+      "quote_hash": "f3c7f60f3d51d284002da8bc0c88a4a0f43690fe2bb63f84e6613c01af9639fa",
+      "id": "chunk_cf4a92260ccec985eb54dac2827a7b0f234c95babf5745299c25ae0bb1cbd8ad"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_304ccca2265ea22e4d47f5998a8192889de5231533b1cda6b765295aee93b615",
+      "version_id": "docx_06",
+      "text": "Research data retention must be submitted through the research registry.",
+      "anchor": {
+        "block_id": "blk_07ea099f71d8a2abbf7ca719",
+        "block_index": 6.0,
+        "char_end": 72,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_7e66ac98c93cb25dd317cfedea8309f74d704705832584abc53e5fa7bb3017b2",
+      "version_id": "text_06",
+      "text": "# Research data retention must be submitted within 10 business days.\n# Research Office is responsible for approving research data retention.\n# Research data retention requires approved study protocol.\n# Records for research data retention must be retained for 17 months.\n# Emergency exceptions for research data retention require written approval from the department head.\n# Research data retention must be submitted through the research registry.\nraise RuntimeError(\"READ_MUST_NOT_EXECUTE\")",
+      "anchor": {
+        "block_id": "blk_1ffb7596f9c89294a4cdc018",
+        "char_end": 491,
+        "char_start": 0,
+        "end_line": 7.0,
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0
+      }
+    },
+    {
+      "id": "chunk_9fc91d75e27354e2e246d2619d5dedcd55538ab4ca3290e34210d4a30d5b6ba4",
+      "version_id": "docx_06",
+      "text": "Research Office is responsible for approving research data retention.",
+      "anchor": {
+        "block_id": "blk_6983112b5f28961e3d8f1e81",
+        "block_index": 2.0,
+        "char_end": 69,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_0ecfac22378f611f2103bebe92f3850ecebac4f11fe36f209b9abd6179bf8eb1",
+      "version_id": "docx_06",
+      "text": "Research data retention requires approved study protocol.",
+      "anchor": {
+        "block_id": "blk_b1b6542e8d545336e4212139",
+        "block_index": 3.0,
+        "char_end": 57,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_45ee6315c6b3aafea4b6b9d04397a3ef9c774e6462eb6b7df8bda2f2734c4a80",
+      "version_id": "docx_06",
+      "text": "Emergency exceptions for research data retention require written approval from the department head.",
+      "anchor": {
+        "block_id": "blk_dec137b14182218e0be2f556",
+        "block_index": 5.0,
+        "char_end": 99,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_cf4a92260ccec985eb54dac2827a7b0f234c95babf5745299c25ae0bb1cbd8ad",
+      "version_id": "docx_06",
+      "text": "Research data retention must be submitted within 26 business days.",
+      "anchor": {
+        "block_id": "blk_888ac2483c62755f5cec76a8",
+        "block_index": 1.0,
+        "char_end": 66,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_ea50eaa8ea393ea4c97347fa3be8bdef6c8130e5699894895e93135e4139b831",
+      "version_id": "text_pdf_06",
+      "text": "Synthetic policy edition / 合成政策版本 — page 6\nResearch data retention must be submitted through the research\nregistry.",
+      "anchor": {
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "block_id": "blk_d06390a8b1ed0d658c62b8e2",
+        "char_end": 115,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_79bf057eedbd5d79ae74da837e001b098a4266092e4fd613260ee0ae2c6b2fdb",
+      "version_id": "docx_06",
+      "text": "Records for research data retention must be retained for 14 months.",
+      "anchor": {
+        "block_id": "blk_fb276bcbfc79aeddca5902e7",
+        "block_index": 4.0,
+        "char_end": 67,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    }
+  ]
+}

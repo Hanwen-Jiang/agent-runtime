@@ -1,0 +1,556 @@
+{
+  "evaluation": {
+    "id": "text_pdf_17",
+    "family": "text_pdf",
+    "variant": "two_column_table",
+    "language": "zh",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 21.90634469804354,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_46cfe6c35b8c7e8c595e5eb2"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_37fb640f5a18a9dab8bc8550"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_69292002da340c2900e3bca3"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_e59537b408d36a4df83f969a"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.597,
+        "candidate_ids": [
+          "blk_4b0fdc59c7af35d1a81521d2"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_a7c53ec1b444954c40ded310"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "poppler_pdftotext",
+      "verified": false,
+      "found": 0,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_pages": 6,
+      "processed_pages": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "layout_backend": "docling",
+      "returned_blocks": 21,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_46cfe6c35b8c7e8c595e5eb2",
+        "kind": "text",
+        "text": "备份恢复的提交期限为22个工作日。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.058823529411764705,
+            0.10406439393939391,
+            0.397078431372549,
+            0.12052112044648612
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_11cff1ac86fd423779973018",
+        "kind": "text",
+        "text": "Supplementary audit notes / 审计备注",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.5392156862745098,
+            0.10685606060606061,
+            0.786176470588235,
+            0.11951508099613159
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_1b9dee01055868ebc8f974d5",
+        "kind": "text",
+        "text": "Quarter | Owner | Status",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.5555555555555556,
+            0.18892676767676767,
+            0.709330065359477,
+            0.20158578806683866
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_e460e9196f1b7c1bc1096066",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 - page 2",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.058823529411764705,
+            0.03335732323232321,
+            0.4792843137254902,
+            0.04981404973941542
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 1
+      },
+      {
+        "id": "blk_37fb640f5a18a9dab8bc8550",
+        "kind": "text",
+        "text": "备份恢复的审批责任人为存储团队。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.058823529411764705,
+            0.10406439393939391,
+            0.39869281045751637,
+            0.12052112044648612
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 1
+      },
+      {
+        "id": "blk_536245d8d2f4cffb220de63c",
+        "kind": "text",
+        "text": "Supplementary audit notes / 审计备注",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.5392156862745098,
+            0.10685606060606061,
+            0.786176470588235,
+            0.11951508099613159
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 1
+      },
+      {
+        "id": "blk_f6edbb7e48b1079e4d68aaa3",
+        "kind": "text",
+        "text": "Quarter | Owner | Status Synthetic policy edition / 合成政策版本 - page 3",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.5555555555555556,
+            0.18892676767676767,
+            0.709330065359477,
+            0.20158578806683866
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 1
+      },
+      {
+        "id": "blk_8d51621b6ed8f40706a6af03",
+        "kind": "text",
+        "text": "Quarter | Owner | Status Synthetic policy edition / 合成政策版本 - page 3",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.058823529411764705,
+            0.03335732323232321,
+            0.4792843137254902,
+            0.04981404973941542
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 1
+      },
+      {
+        "id": "blk_69292002da340c2900e3bca3",
+        "kind": "text",
+        "text": "备份恢复必须提供恢复审批工单。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.058823529411764705,
+            0.10406439393939391,
+            0.37745098039215685,
+            0.12052112044648612
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_45995146b7c1af4523b1be12",
+        "kind": "text",
+        "text": "Supplementary audit notes / 审计备注",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.5392156862745098,
+            0.10685606060606061,
+            0.786176470588235,
+            0.11951508099613159
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_53a30749de60091f50c6c6fb",
+        "kind": "text",
+        "text": "Quarter | Owner | Status",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.5555555555555556,
+            0.18892676767676767,
+            0.709330065359477,
+            0.20158578806683866
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_5afc2f73285c36ac85e74b1d",
+        "kind": "text",
+        "text": "Synthetic policy edition / 合成政策版本 - page 4",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0.058823529411764705,
+            0.03335732323232321,
+            0.4792843137254902,
+            0.04981404973941542
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 1
+      },
+      {
+        "id": "blk_e59537b408d36a4df83f969a",
+        "kind": "text",
+        "text": "备份恢复记录须保留23个月。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0.058823529411764705,
+            0.10406439393939391,
+            0.3333529411764706,
+            0.12052112044648612
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 1
+      },
+      {
+        "id": "blk_53b5e24d4601b43cb89c0401",
+        "kind": "text",
+        "text": "Supplementary audit notes / 审计备注",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0.5392156862745098,
+            0.10685606060606061,
+            0.786176470588235,
+            0.11951508099613159
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_75e8d57fbec213635ba796fc",
+        "kind": "text",
+        "text": "Quarter | Owner | Status",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 3,
+          "bbox": [
+            0.5555555555555556,
+            0.18892676767676767,
+            0.709330065359477,
+            0.20158578806683866
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_4b0fdc59c7af35d1a81521d2",
+        "kind": "text",
+        "text": "备份恢复的紧急例外需要部门负责人书面批准。 Supplementary audit notes / 审计备注",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 4,
+          "bbox": [
+            0.058823529411764705,
+            0.10406439393939391,
+            0.786176470588235,
+            0.12052112044648612
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 1
+      },
+      {
+        "id": "blk_2eaa0cae8262b1ccf5972f85",
+        "kind": "text",
+        "text": "Quarter | Owner | Status Synthetic policy edition / 合成政策版本 - page 6",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 4,
+          "bbox": [
+            0.5555555555555556,
+            0.18892676767676767,
+            0.709330065359477,
+            0.20158578806683866
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 1
+      },
+      {
+        "id": "blk_700e4e98b1aa89c2db7cd981",
+        "kind": "text",
+        "text": "Quarter | Owner | Status Synthetic policy edition / 合成政策版本 - page 6",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 5,
+          "bbox": [
+            0.058823529411764705,
+            0.03335732323232321,
+            0.4792843137254902,
+            0.04981404973941542
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 1
+      },
+      {
+        "id": "blk_a7c53ec1b444954c40ded310",
+        "kind": "text",
+        "text": "备份恢复必须通过恢复控制台提交。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 5,
+          "bbox": [
+            0.058823529411764705,
+            0.10406439393939391,
+            0.39869281045751637,
+            0.12052112044648612
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_d081ba3be99068211fdecdfe",
+        "kind": "text",
+        "text": "Supplementary audit notes / 审计备注",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 5,
+          "bbox": [
+            0.5392156862745098,
+            0.10685606060606061,
+            0.786176470588235,
+            0.11951508099613159
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      },
+      {
+        "id": "blk_51254f850f62a69e14da6773",
+        "kind": "text",
+        "text": "Quarter | Owner | Status",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 5,
+          "bbox": [
+            0.5555555555555556,
+            0.18892676767676767,
+            0.709330065359477,
+            0.20158578806683866
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "docling",
+        "level": 2
+      }
+    ],
+    "outline": [],
+    "warnings": [],
+    "coverage": {
+      "total_pages": 6,
+      "processed_pages": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "layout_backend": "docling",
+      "returned_blocks": 21,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/text_pdf_17/docling-ir.json",
+        "mime_type": "application/json",
+        "selector": {},
+        "sha256": "3db182aa4bc8cc33ce3ece64b2c5f9845e99a1d3a2eda871edec08caa730d6c5",
+        "size_bytes": 9702
+      },
+      {
+        "path": "/workspace/run/artifacts/text_pdf_17/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "5b457438a9417195111d762e1c5a441fd4d2695392fc73bc6f89a5359d1a3d76",
+        "size_bytes": 8497
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "7cdd58e76f550186a4882d4d2b8e9dc620307c24b299d1ff6ec4a84d3f48f41b",
+      "size_bytes": 6367,
+      "mime_type": "application/pdf"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "d52848bae6f0fbe91570a239e8a493b84a9891f9690a0b88cd30b78b519c9d8c"
+    }
+  }
+}

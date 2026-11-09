@@ -1,0 +1,359 @@
+{
+  "id": "q13_2",
+  "query": "客户数据删除需要哪些凭证？比较不同资料的要求。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_13",
+      "pptx_03",
+      "table_03",
+      "text_pdf_13",
+      "xlsx_08"
+    ],
+    "extraction_chunking_recall_ceiling": 0.8333333333333334
+  },
+  "exact": {
+    "recall_at_8": 0.5,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.25,
+    "unique_source_ndcg_at_8": 0.35517551357284516,
+    "relevant_files": [
+      "docx_13",
+      "pptx_03",
+      "text_pdf_13"
+    ],
+    "expected_files": [
+      "text_pdf_13",
+      "scan_pdf_13",
+      "docx_13",
+      "xlsx_08",
+      "pptx_03",
+      "table_03"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 23.063346976414323
+  },
+  "hybrid": {
+    "recall_at_8": 0.5,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.644824486427155,
+    "relevant_files": [
+      "docx_13",
+      "pptx_03",
+      "text_pdf_13"
+    ],
+    "expected_files": [
+      "text_pdf_13",
+      "scan_pdf_13",
+      "docx_13",
+      "xlsx_08",
+      "pptx_03",
+      "table_03"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 3309.738527983427
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_9760ed523193d0aef1b0a302",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 18.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.4411764705882353,
+          0.12052112044648612
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_text_pdf_13",
+      "version_id": "text_pdf_13",
+      "score": 3.1429226398468018,
+      "text": "客户数据删除必须提供已验证删除请求。",
+      "quote_hash": "c3444d7cd0705aed2e971fc7f903421f99b5c991f9a07c200638ecf30febfb33",
+      "id": "chunk_61e4501d50c1f9aa1045fcd36486cdc25a675c0431fd686a3e372e216c0cba83"
+    },
+    {
+      "anchor": {
+        "slide_index": 2.0,
+        "block_id": "blk_7fdc61c50b0de2fbc75a85f4",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 18.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_03",
+      "version_id": "pptx_03",
+      "score": 3.1429226398468018,
+      "text": "客户数据删除必须提供已验证删除请求。",
+      "quote_hash": "c3444d7cd0705aed2e971fc7f903421f99b5c991f9a07c200638ecf30febfb33",
+      "id": "chunk_a4c3a6ea4d07b3f6187395980f3b857b29c012ebcea771caeb2eabae614e12d2"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_cfb3ad2e3b76dab25af831ea",
+        "kind": "document_block",
+        "block_index": 3.0,
+        "char_end": 18.0
+      },
+      "representation_id": "rep_docx_13",
+      "version_id": "docx_13",
+      "score": 3.1429226398468018,
+      "text": "客户数据删除必须提供已验证删除请求。",
+      "quote_hash": "c3444d7cd0705aed2e971fc7f903421f99b5c991f9a07c200638ecf30febfb33",
+      "id": "chunk_b52ce2ca81178ebaa16771bf85a18fe27124be2c7d2fde15405eb139716b073d"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_27d41169a734b6ddf97c4aeb",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 17.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.4199346405228758,
+          0.12052112044648612
+        ],
+        "page_index": 5.0
+      },
+      "representation_id": "rep_text_pdf_13",
+      "version_id": "text_pdf_13",
+      "score": 2.0251665115356445,
+      "text": "客户数据删除必须通过隐私平台提交。",
+      "quote_hash": "ff47e24cf093d4a379e6ea12c51e4ad2949d614132803415344f5eb8f1f943a4",
+      "id": "chunk_0f6a3fdc38fdf7553c54b836fe79fe72697b00e692c2e26dc7e2f78298e0a5b0"
+    },
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_e356e5fd8bb9ba18d464b035",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 17.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_03",
+      "version_id": "pptx_03",
+      "score": 2.0251665115356445,
+      "text": "客户数据删除必须通过隐私平台提交。",
+      "quote_hash": "ff47e24cf093d4a379e6ea12c51e4ad2949d614132803415344f5eb8f1f943a4",
+      "id": "chunk_8273c876a89355b04d3736ee3f142c89f01ff69f36cda9e1213e86c8d6b622a1"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_b4a46f8a8639e99d6a28e0d0",
+        "kind": "document_block",
+        "block_index": 6.0,
+        "char_end": 17.0
+      },
+      "representation_id": "rep_docx_13",
+      "version_id": "docx_13",
+      "score": 2.0251665115356445,
+      "text": "客户数据删除必须通过隐私平台提交。",
+      "quote_hash": "ff47e24cf093d4a379e6ea12c51e4ad2949d614132803415344f5eb8f1f943a4",
+      "id": "chunk_e4631b5c4b41fbb7a5198517a4db0b1bfc0432f0f7eb31c78e22507dfb06da72"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e6c0df915df33f6ced2d932d",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 55.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.786176470588235,
+          0.12052112044648612
+        ],
+        "page_index": 4.0
+      },
+      "representation_id": "rep_text_pdf_13",
+      "version_id": "text_pdf_13",
+      "score": 1.877842903137207,
+      "text": "客户数据删除的紧急例外需要部门负责人书面批准。Supplementary audit notes / 审计备注",
+      "quote_hash": "34366dafa8cb983de210bb014190c644d6bc42781731b3a750090a062ed9627d",
+      "id": "chunk_a8a2cddf4239c27024d1c49372ebbc31c29c8e4237d5841c389fed144ad01648"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_8878effbb05e0c50ca7931e1",
+        "kind": "document_block",
+        "block_index": 5.0,
+        "char_end": 23.0
+      },
+      "representation_id": "rep_docx_13",
+      "version_id": "docx_13",
+      "score": 1.2757670879364014,
+      "text": "客户数据删除的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "d722e29313f205e9a4396b7556f84db0d5ed6cfb6e2df9c5f5324ce365de2de0",
+      "id": "chunk_254c15e2b475881b125c8ca80a1e99b28f47e82f261cc610077cc816d25072fe"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_0d8f60f76ef63c1d8b11f4c6a73be1e27daa51f64bc9164929c955974411f051",
+      "version_id": "text_pdf_13",
+      "text": "客户数据删除记录须保留19个月。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.37583660130718954,
+          0.12052112044648612
+        ],
+        "block_id": "blk_54f6574cd8357198015d6809",
+        "char_end": 16,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_3cdcb9fb9962231126ae8ef5308920480291a0829b991787c213adb37181a966",
+      "version_id": "docx_13",
+      "text": "客户数据删除记录须保留21个月。",
+      "anchor": {
+        "block_id": "blk_95a7bfce636802f1dd949172",
+        "block_index": 4.0,
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_6931f692a3d0e5258787d7842095a48616df49977072420e21b3bd91a25990d3",
+      "version_id": "pptx_03",
+      "text": "客户数据删除记录须保留23个月。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_45c81f1521c6cdd1fd3636b0",
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_61e4501d50c1f9aa1045fcd36486cdc25a675c0431fd686a3e372e216c0cba83",
+      "version_id": "text_pdf_13",
+      "text": "客户数据删除必须提供已验证删除请求。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.4411764705882353,
+          0.12052112044648612
+        ],
+        "block_id": "blk_9760ed523193d0aef1b0a302",
+        "char_end": 18,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_a4c3a6ea4d07b3f6187395980f3b857b29c012ebcea771caeb2eabae614e12d2",
+      "version_id": "pptx_03",
+      "text": "客户数据删除必须提供已验证删除请求。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_7fdc61c50b0de2fbc75a85f4",
+        "char_end": 18,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_b52ce2ca81178ebaa16771bf85a18fe27124be2c7d2fde15405eb139716b073d",
+      "version_id": "docx_13",
+      "text": "客户数据删除必须提供已验证删除请求。",
+      "anchor": {
+        "block_id": "blk_cfb3ad2e3b76dab25af831ea",
+        "block_index": 3.0,
+        "char_end": 18,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_0f6a3fdc38fdf7553c54b836fe79fe72697b00e692c2e26dc7e2f78298e0a5b0",
+      "version_id": "text_pdf_13",
+      "text": "客户数据删除必须通过隐私平台提交。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.4199346405228758,
+          0.12052112044648612
+        ],
+        "block_id": "blk_27d41169a734b6ddf97c4aeb",
+        "char_end": 17,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_7a348e7262e72c6c96aad896f47de7a319f45dd800965becb1d21965bb65f580",
+      "version_id": "text_pdf_13",
+      "text": "客户数据删除的提交期限为19个工作日。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.43956209150326797,
+          0.12052112044648612
+        ],
+        "block_id": "blk_6a92feb654d2f29ccbb2e6d0",
+        "char_end": 19,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    }
+  ]
+}

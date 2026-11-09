@@ -1,0 +1,367 @@
+{
+  "id": "q02_3",
+  "query": "客户退款的记录保存多久？请找出各文件中的规定。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_02",
+      "pptx_12",
+      "scan_pdf_02",
+      "text_02",
+      "text_pdf_02"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.2,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.3333333333333333,
+    "unique_source_ndcg_at_8": 0.16958010263680806,
+    "relevant_files": [
+      "scan_pdf_02"
+    ],
+    "expected_files": [
+      "text_pdf_02",
+      "scan_pdf_02",
+      "docx_02",
+      "pptx_12",
+      "text_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.125,
+    "latency_ms": 21.48725581355393
+  },
+  "hybrid": {
+    "recall_at_8": 0.2,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.3391602052736161,
+    "relevant_files": [
+      "scan_pdf_02"
+    ],
+    "expected_files": [
+      "text_pdf_02",
+      "scan_pdf_02",
+      "docx_02",
+      "pptx_12",
+      "text_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.125,
+    "latency_ms": 5010.191644076258
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e01b09f09ccb4d5c9da5efd6",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 13.0,
+        "bbox": [
+          0.025705644860863686,
+          0.2734375,
+          0.3109878897666931,
+          0.3609375
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_02",
+      "version_id": "scan_pdf_02",
+      "score": 6.991501331329346,
+      "text": "客户退款记录须保留9个月。",
+      "quote_hash": "f31f652fd6e846d7638fc7d83f876408e214c95503ac918045204640b4029ea5",
+      "id": "chunk_e8e5b61222f2fd4d38271c27472e26ab2ebc2c29f4344746bf3d95371c65449b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_54f6574cd8357198015d6809",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.37583660130718954,
+          0.12052112044648612
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_13",
+      "version_id": "text_pdf_13",
+      "score": 3.939911365509033,
+      "text": "客户数据删除记录须保留19个月。",
+      "quote_hash": "e8a5fe255c842b4199117c40c5f2c65ecb30400a55d368a44f2c3894e962fd8d",
+      "id": "chunk_0d8f60f76ef63c1d8b11f4c6a73be1e27daa51f64bc9164929c955974411f051"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_45c81f1521c6cdd1fd3636b0",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 16.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_03",
+      "version_id": "pptx_03",
+      "score": 3.909182071685791,
+      "text": "客户数据删除记录须保留23个月。",
+      "quote_hash": "4281832196cd35dced03e9bf637232d594f40f078725711f78119969c8312ac7",
+      "id": "chunk_6931f692a3d0e5258787d7842095a48616df49977072420e21b3bd91a25990d3"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_95a7bfce636802f1dd949172",
+        "kind": "document_block",
+        "block_index": 4.0,
+        "char_end": 16.0
+      },
+      "representation_id": "rep_docx_13",
+      "version_id": "docx_13",
+      "score": 3.837009906768799,
+      "text": "客户数据删除记录须保留21个月。",
+      "quote_hash": "6af583bfde1c5e0a5241e1123c149b7acf62a0e976f6f57f4d17afd147e462cd",
+      "id": "chunk_3cdcb9fb9962231126ae8ef5308920480291a0829b991787c213adb37181a966"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e5457d42e920373e220fed6d",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 17.0,
+        "bbox": [
+          0.026209676638245583,
+          0.0984375,
+          0.3916330635547638,
+          0.184375
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_02",
+      "version_id": "scan_pdf_02",
+      "score": 1.522278070449829,
+      "text": "客户退款的提交期限为20个工作日。",
+      "quote_hash": "5796925b22a33dbe614266b7818361faed17de1c60eec24b2bcbe90ae12d7f34",
+      "id": "chunk_88ef3d2dc5a98264f507f291ac3ee69755c358c27adae935551dc8629ccacb68"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_6a92feb654d2f29ccbb2e6d0",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 19.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.43956209150326797,
+          0.12052112044648612
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_text_pdf_13",
+      "version_id": "text_pdf_13",
+      "score": 0.9620032906532288,
+      "text": "客户数据删除的提交期限为19个工作日。",
+      "quote_hash": "7c637df81d24d4fa13b34d565e802bf5b0b080b7c42ed99f5e2b122a28b3d78c",
+      "id": "chunk_7a348e7262e72c6c96aad896f47de7a319f45dd800965becb1d21965bb65f580"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_471c60d62c25bc59501c9d22",
+        "kind": "document_block",
+        "block_index": 1.0,
+        "char_end": 19.0
+      },
+      "representation_id": "rep_docx_13",
+      "version_id": "docx_13",
+      "score": 0.9568606019020081,
+      "text": "客户数据删除的提交期限为25个工作日。",
+      "quote_hash": "f9e712fd20c1df03f8453cbb6d5f788d18c406b8de1f274a1336c4b03a826736",
+      "id": "chunk_b24f57eebbf87dc417fb46492e6fdd718182c77ae480110437794a1761195a6a"
+    },
+    {
+      "anchor": {
+        "slide_index": 0.0,
+        "block_id": "blk_7a64d6a9c1d45299bf530d96",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 18.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_03",
+      "version_id": "pptx_03",
+      "score": 0.8405428528785706,
+      "text": "客户数据删除的提交期限为6个工作日。",
+      "quote_hash": "c016a4317145de9e26499a976a606a88374b948d3e3b6370e40b33404d791a8d",
+      "id": "chunk_bb22b615c83da0883b37877c6606be23950fccdbbd57f9cece67e5d26116bcda"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_cb2162c8f8d9ada3fa9b7fe3c890bb0963eb3eb116539df8d17b5a0f7ff91b7b",
+      "version_id": "scan_pdf_02",
+      "text": "客户退款的审批责任人为客服。",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.2765625,
+          0.34375,
+          0.3609375
+        ],
+        "block_id": "blk_1530a3a0db21fd52e98c958a",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_88ef3d2dc5a98264f507f291ac3ee69755c358c27adae935551dc8629ccacb68",
+      "version_id": "scan_pdf_02",
+      "text": "客户退款的提交期限为20个工作日。",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.0984375,
+          0.3916330635547638,
+          0.184375
+        ],
+        "block_id": "blk_e5457d42e920373e220fed6d",
+        "char_end": 17,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_e8e5b61222f2fd4d38271c27472e26ab2ebc2c29f4344746bf3d95371c65449b",
+      "version_id": "scan_pdf_02",
+      "text": "客户退款记录须保留9个月。",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.2734375,
+          0.3109878897666931,
+          0.3609375
+        ],
+        "block_id": "blk_e01b09f09ccb4d5c9da5efd6",
+        "char_end": 13,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_5dc9af947a23e8e11f2a62de2b25cc21cbbc27251257cb4b0f883a1eafb2d5ca",
+      "version_id": "scan_pdf_02",
+      "text": "客户退款的紧急例外需要部门负责人书面批准。",
+      "anchor": {
+        "bbox": [
+          0.02671370841562748,
+          0.0984375,
+          0.5045362710952759,
+          0.1828125
+        ],
+        "block_id": "blk_d931093e5116d405df5146a7",
+        "char_end": 21,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_f42588af642a48c704191c07e66e4d53bd22ceef9f57a18d6d62391e845f5cf2",
+      "version_id": "scan_pdf_02",
+      "text": "客户退款必须提供原始订单。",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.096875,
+          0.32157257199287415,
+          0.1859375
+        ],
+        "block_id": "blk_8a352a7d780f841248d8039d",
+        "char_end": 13,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_068ab1af7566943c8e7efdb9b5aec995ead8cf14d013c0b09b7b67c75247ac8e",
+      "version_id": "scan_pdf_02",
+      "text": "客户退款必须通过客服工单提交。",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.2765625,
+          0.36643144488334656,
+          0.3609375
+        ],
+        "block_id": "blk_e90c9f2a42186a1f6aa52b69",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_0d8f60f76ef63c1d8b11f4c6a73be1e27daa51f64bc9164929c955974411f051",
+      "version_id": "text_pdf_13",
+      "text": "客户数据删除记录须保留19个月。",
+      "anchor": {
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.37583660130718954,
+          0.12052112044648612
+        ],
+        "block_id": "blk_54f6574cd8357198015d6809",
+        "char_end": 16,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_3cdcb9fb9962231126ae8ef5308920480291a0829b991787c213adb37181a966",
+      "version_id": "docx_13",
+      "text": "客户数据删除记录须保留21个月。",
+      "anchor": {
+        "block_id": "blk_95a7bfce636802f1dd949172",
+        "block_index": 4.0,
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    }
+  ]
+}

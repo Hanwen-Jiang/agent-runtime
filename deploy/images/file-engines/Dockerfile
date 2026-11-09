@@ -5,6 +5,9 @@
 ARG BASE_IMAGE=ubuntu:24.04
 ARG AGENT_RUST_IMAGE=rust:1.99.1-slim-bookworm
 FROM ${AGENT_RUST_IMAGE} AS agent
+ARG CARGO_BUILD_JOBS=4
+ENV CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS}
+RUN apt-get update && apt-get install -y --no-install-recommends musl-tools && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 COPY libs/rs-sys/ libs/rs-sys/
@@ -17,6 +20,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry --mount=type=cache,targe
 FROM ${BASE_IMAGE}
 ARG DEBIAN_FRONTEND=noninteractive
 ARG UBUNTU_SNAPSHOT=20261110T000000Z
+COPY --from=agent /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 RUN sed -i "s|http://archive.ubuntu.com/ubuntu/|https://snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}/|g;s|http://security.ubuntu.com/ubuntu/|https://snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}/|g" /etc/apt/sources.list.d/ubuntu.sources \
     && apt-get -o Acquire::Check-Valid-Until=false update \
     && apt-get install -y --no-install-recommends python3.12 python3.12-venv python3-pip python3-uno \

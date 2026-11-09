@@ -1,0 +1,392 @@
+{
+  "id": "q15_2",
+  "query": "安全漏洞报告需要哪些凭证？比较不同资料的要求。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "pptx_05",
+      "scan_pdf_15",
+      "table_05",
+      "text_pdf_15",
+      "xlsx_10"
+    ],
+    "extraction_chunking_recall_ceiling": 0.8333333333333334
+  },
+  "exact": {
+    "recall_at_8": 0.16666666666666666,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.2,
+    "unique_source_ndcg_at_8": 0.11706259313796355,
+    "relevant_files": [
+      "pptx_05"
+    ],
+    "expected_files": [
+      "text_pdf_15",
+      "scan_pdf_15",
+      "xlsx_10",
+      "pptx_05",
+      "table_05",
+      "image_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.125,
+    "latency_ms": 23.07379012927413
+  },
+  "hybrid": {
+    "recall_at_8": 0.5,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.644824486427155,
+    "relevant_files": [
+      "pptx_05",
+      "scan_pdf_15",
+      "text_pdf_15"
+    ],
+    "expected_files": [
+      "text_pdf_15",
+      "scan_pdf_15",
+      "xlsx_10",
+      "pptx_05",
+      "table_05",
+      "image_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 4610.026692040265
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "slide_index": 2.0,
+        "block_id": "blk_eece13fd941bb11f09f0480d",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 18.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_05",
+      "version_id": "pptx_05",
+      "score": 3.534747362136841,
+      "text": "安全漏洞报告必须提供可复现验证材料。",
+      "quote_hash": "0be64542e9600c7cc53da7cfb7dcee73ffcd36ac0e2efd965e3ceabca1416c4b",
+      "id": "chunk_117d181ce878353bda7ddd16bb01b3fe87f1f1f1bc5649a167bc2e9e78f26f4f"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_a84b2111582140040a95f290",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 115.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_15",
+      "version_id": "scan_pdf_15",
+      "score": 1.9105130434036255,
+      "text": "Synthetic policy edition / 合成政策版本 — page 1\nSecurity vulnerability reporting requires reproducible proof of\nconcept.",
+      "quote_hash": "26428154438c185a7e1acd1512063239d22f6e74233df6503c93d640cbc4ef9a",
+      "id": "chunk_da8b47096b92717df1b7ad9942033d15fabd46f8327bab2c07f431c6893dcf0d"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_b5845143fb01e50b28447cf5",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 61.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_text_pdf_15",
+      "version_id": "text_pdf_15",
+      "score": 1.627497673034668,
+      "text": "Synthetic policy edition / 合成政策版本 — page 3\n安全漏洞报告必须提供可复现验证材料。",
+      "quote_hash": "de580a0b4e16c6f80f14a4811c737a6ac1abdaf448d40aef1517ac788aa1bef2",
+      "id": "chunk_101e27ce21f9be373536b4e4befffd26e02aa63c00e76690dd4cb18e72406039"
+    },
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_cbab3ad615c1128c41aca4f8",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 17.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_05",
+      "version_id": "pptx_05",
+      "score": 0.4770209789276123,
+      "text": "安全漏洞报告必须通过安全邮箱提交。",
+      "quote_hash": "0937bf11f2e1d8bd9286c9ee589af1fe0fc1b3a008cf23cd1e50dc6da08782c8",
+      "id": "chunk_5f24f04213bbf182d49e57c1a4a7034fbdf63eed6e8539f24a5a0a3233a2699c"
+    },
+    {
+      "anchor": {
+        "slide_index": 4.0,
+        "block_id": "blk_5488552728392eb525437226",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 23.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_05",
+      "version_id": "pptx_05",
+      "score": -0.08762627840042114,
+      "text": "安全漏洞报告的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "e69da85dd7ccbc98015f49d3ab3146a9bb118acf598a57ccddc61ca12a8c85e2",
+      "id": "chunk_ee1623268ae4c943d3ba500c0fcdfdb30c0b1048789df93359f2df7f32d7154a"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_788b622b7c548b6565be6536",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 60.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 5.0
+      },
+      "representation_id": "rep_text_pdf_15",
+      "version_id": "text_pdf_15",
+      "score": -0.7445736527442932,
+      "text": "Synthetic policy edition / 合成政策版本 — page 6\n安全漏洞报告必须通过安全邮箱提交。",
+      "quote_hash": "e1c5be4940f25d8b597e0ae6f72d9403afc0e355f29db4fea5a29264f94ad407",
+      "id": "chunk_4dec042e0ea4333e50124f18c32ed4f470be95b61eeb28a35488ba02559c8619"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_3a5b83086c5c0ef3447fc703",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 66.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 4.0
+      },
+      "representation_id": "rep_text_pdf_15",
+      "version_id": "text_pdf_15",
+      "score": -1.0256407260894775,
+      "text": "Synthetic policy edition / 合成政策版本 — page 5\n安全漏洞报告的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "c270d8f87b836ca90c488a4c2a5125c501658093c6b99d6ef9911d1204e3ab0a",
+      "id": "chunk_8cad10a8ff359150f6b785231cf3fc8ace84639e430a86eaeaffeb7213d8917e"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_cc0032010d58b0a81a625b6b",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 15.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_05",
+      "version_id": "pptx_05",
+      "score": -1.7441270351409912,
+      "text": "安全漏洞报告记录须保留6个月。",
+      "quote_hash": "89602a20bda2db82b95ab9a88a7553014e1e0cf2814c25e74cce189c3adcefd7",
+      "id": "chunk_3c66e4c9b08b44f5febf39f63c97c84494bf954ef904e66ddc2e95614159a7ef"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_3c66e4c9b08b44f5febf39f63c97c84494bf954ef904e66ddc2e95614159a7ef",
+      "version_id": "pptx_05",
+      "text": "安全漏洞报告记录须保留6个月。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_cc0032010d58b0a81a625b6b",
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_5f24f04213bbf182d49e57c1a4a7034fbdf63eed6e8539f24a5a0a3233a2699c",
+      "version_id": "pptx_05",
+      "text": "安全漏洞报告必须通过安全邮箱提交。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_cbab3ad615c1128c41aca4f8",
+        "char_end": 17,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_0186aa0fa4551d07f30a0684e405e40a2ec46e9654992734b7e6377d54926cd2",
+      "version_id": "pptx_05",
+      "text": "安全漏洞报告的审批责任人为安全团队。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_665ef1c14a7abefd6f1260c6",
+        "char_end": 18,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_f5e269a35051c80f9c9cd90762d705afb89e794a4da91730bf6c9958f6826114",
+      "version_id": "pptx_05",
+      "text": "安全漏洞报告的提交期限为20个工作日。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_07dbbd2d0b0bc6658f66935f",
+        "char_end": 19,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_117d181ce878353bda7ddd16bb01b3fe87f1f1f1bc5649a167bc2e9e78f26f4f",
+      "version_id": "pptx_05",
+      "text": "安全漏洞报告必须提供可复现验证材料。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_eece13fd941bb11f09f0480d",
+        "char_end": 18,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_ee1623268ae4c943d3ba500c0fcdfdb30c0b1048789df93359f2df7f32d7154a",
+      "version_id": "pptx_05",
+      "text": "安全漏洞报告的紧急例外需要部门负责人书面批准。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_5488552728392eb525437226",
+        "char_end": 23,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 4.0
+      }
+    },
+    {
+      "id": "chunk_4dec042e0ea4333e50124f18c32ed4f470be95b61eeb28a35488ba02559c8619",
+      "version_id": "text_pdf_15",
+      "text": "Synthetic policy edition / 合成政策版本 — page 6\n安全漏洞报告必须通过安全邮箱提交。",
+      "anchor": {
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "block_id": "blk_788b622b7c548b6565be6536",
+        "char_end": 60,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_f50917b9dad9f39acdbdb5892fbb0b3affbc4f4f817cd07b90beddbc59034412",
+      "version_id": "text_pdf_15",
+      "text": "Synthetic policy edition / 合成政策版本 — page 2\n安全漏洞报告的审批责任人为安全团队。",
+      "anchor": {
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "block_id": "blk_933b7da712af512921161669",
+        "char_end": 61,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    }
+  ]
+}

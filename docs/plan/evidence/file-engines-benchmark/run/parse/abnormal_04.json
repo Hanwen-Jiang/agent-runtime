@@ -1,0 +1,72 @@
+{
+  "evaluation": {
+    "id": "abnormal_04",
+    "family": "abnormal",
+    "variant": "unsupported_binary",
+    "language": "en",
+    "expected": "rejected",
+    "status": "unsupported",
+    "elapsed_seconds": 0.014025828102603555,
+    "checks": [],
+    "independent": {
+      "method": "negative_case",
+      "verified": null
+    },
+    "original_unchanged": true,
+    "error": {
+      "code": "unsupported_format",
+      "message": "no structural reader installed for this format"
+    },
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "complete": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "unsupported",
+    "error": {
+      "code": "unsupported_format",
+      "message": "no structural reader installed for this format"
+    },
+    "blocks": [],
+    "outline": [],
+    "warnings": [],
+    "coverage": {
+      "complete": false
+    },
+    "artifacts": [],
+    "capabilities": {},
+    "source": {
+      "sha256": "4345361085c730756d843f13849c50a996fe2f1fac3a7ac05fb063bb743a423e",
+      "size_bytes": 5120,
+      "mime_type": "application/octet-stream"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "3555600d2cc3ddf5685a8401ee2cded590e598f382516d69e80bf06e47c783b3"
+    }
+  }
+}

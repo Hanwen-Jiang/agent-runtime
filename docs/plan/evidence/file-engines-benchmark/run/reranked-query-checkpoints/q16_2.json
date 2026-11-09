@@ -1,0 +1,357 @@
+{
+  "id": "q16_2",
+  "query": "库存盘点需要哪些凭证？比较不同资料的要求。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "image_01",
+      "pptx_06",
+      "scan_pdf_16",
+      "text_pdf_16",
+      "xlsx_11"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.6,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.5730249097309823,
+    "relevant_files": [
+      "image_01",
+      "scan_pdf_16",
+      "xlsx_11"
+    ],
+    "expected_files": [
+      "text_pdf_16",
+      "scan_pdf_16",
+      "xlsx_11",
+      "pptx_06",
+      "image_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 20.438481820747256
+  },
+  "hybrid": {
+    "recall_at_8": 0.6,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7227265726449519,
+    "relevant_files": [
+      "image_01",
+      "scan_pdf_16",
+      "xlsx_11"
+    ],
+    "expected_files": [
+      "text_pdf_16",
+      "scan_pdf_16",
+      "xlsx_11",
+      "pptx_06",
+      "image_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 3544.9772200081497
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_7170703dacbf0a14ea267cc5",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 15.0,
+        "bbox": [
+          0.026209676638245583,
+          0.0984375,
+          0.36693546175956726,
+          0.184375
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_16",
+      "version_id": "scan_pdf_16",
+      "score": 1.1144757270812988,
+      "text": "库存盘点必须提供已签名盘点表。",
+      "quote_hash": "3e1a3849541773a0bb60a620fb260a7a2d97ceef391e6b73bd730c3479b7154b",
+      "id": "chunk_0e6f2f1d1e8cd8a17f291f77d2dab9faab626b3f7e8a712cc1336e9b541504d4"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_ce7bf56ddbd27ebdefa6b461",
+        "kind": "image_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 15.0,
+        "bbox": [
+          0.02666666666666667,
+          0.17567567567567569,
+          0.3674074074074074,
+          0.20810810810810812
+        ]
+      },
+      "representation_id": "rep_image_01",
+      "version_id": "image_01",
+      "score": 1.1144757270812988,
+      "text": "库存盘点必须提供已签名盘点表。",
+      "quote_hash": "3e1a3849541773a0bb60a620fb260a7a2d97ceef391e6b73bd730c3479b7154b",
+      "id": "chunk_81f62065e597b8a3b0aeb6855e891f4b1e72b59e241e40845400e158e7a3e432"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_a12e950aad909dd0a9a1012d",
+        "range": "B4",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 15.0
+      },
+      "representation_id": "rep_xlsx_11",
+      "version_id": "xlsx_11",
+      "score": 1.1144757270812988,
+      "text": "库存盘点必须提供已签名盘点表。",
+      "quote_hash": "3e1a3849541773a0bb60a620fb260a7a2d97ceef391e6b73bd730c3479b7154b",
+      "id": "chunk_aa14872640f868b7bb67e205552db528f15f636dd1cfbca855eb23478d8b27c9"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_1bf902043fc33d5b8789e59a",
+        "kind": "image_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 15.0,
+        "bbox": [
+          0.027407407407407408,
+          0.38288288288288286,
+          0.36592592592592593,
+          0.4126126126126126
+        ]
+      },
+      "representation_id": "rep_image_01",
+      "version_id": "image_01",
+      "score": 0.2659444212913513,
+      "text": "库存盘点必须通过库存台账提交。",
+      "quote_hash": "c5c50e92961c3c45395f90737447caa33dc09fec4613f4c86e1e2f2767f35b1a",
+      "id": "chunk_26ad21f7a9c9f57ca7becffc204f0a8934570834165834b09548ca9b806bd3c0"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_b3959850169d6d4be111473e",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 15.0,
+        "bbox": [
+          0.025705644860863686,
+          0.2734375,
+          0.36643144488334656,
+          0.3609375
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_16",
+      "version_id": "scan_pdf_16",
+      "score": 0.2659444212913513,
+      "text": "库存盘点必须通过库存台账提交。",
+      "quote_hash": "c5c50e92961c3c45395f90737447caa33dc09fec4613f4c86e1e2f2767f35b1a",
+      "id": "chunk_35333182dd2ff6c95c29d5476fd41c6ae2ad62ba8b0062793b83109a2c17c156"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_4e58aea73406444cfd3eea21",
+        "range": "B7",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 15.0
+      },
+      "representation_id": "rep_xlsx_11",
+      "version_id": "xlsx_11",
+      "score": 0.2659444212913513,
+      "text": "库存盘点必须通过库存台账提交。",
+      "quote_hash": "c5c50e92961c3c45395f90737447caa33dc09fec4613f4c86e1e2f2767f35b1a",
+      "id": "chunk_bb6085b6926c99a552acdd78ea4e8c4378da7418bb14f99aadebc6060856e29e"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_b36dcc0a91278ca4211b2e88",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 21.0,
+        "bbox": [
+          0.025705644860863686,
+          0.0953125,
+          0.5050402879714966,
+          0.1859375
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_16",
+      "version_id": "scan_pdf_16",
+      "score": -1.134286880493164,
+      "text": "库存盘点的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "63891562ea956a6ed22b45e189fdb75a15fa1baea90d1be4662f0b0c88638bd1",
+      "id": "chunk_579497299490bf43189460567f13660aec863f82474832e1d4538c3d9c360a3d"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_f019937e66308dd6f185253f",
+        "range": "B6",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 21.0
+      },
+      "representation_id": "rep_xlsx_11",
+      "version_id": "xlsx_11",
+      "score": -1.134286880493164,
+      "text": "库存盘点的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "63891562ea956a6ed22b45e189fdb75a15fa1baea90d1be4662f0b0c88638bd1",
+      "id": "chunk_c76f0118191007a7d696d7914da465caf494eef0981252213981b0e733fce2ef"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_0e6f2f1d1e8cd8a17f291f77d2dab9faab626b3f7e8a712cc1336e9b541504d4",
+      "version_id": "scan_pdf_16",
+      "text": "库存盘点必须提供已签名盘点表。",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.0984375,
+          0.36693546175956726,
+          0.184375
+        ],
+        "block_id": "blk_7170703dacbf0a14ea267cc5",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_26ad21f7a9c9f57ca7becffc204f0a8934570834165834b09548ca9b806bd3c0",
+      "version_id": "image_01",
+      "text": "库存盘点必须通过库存台账提交。",
+      "anchor": {
+        "bbox": [
+          0.027407407407407408,
+          0.38288288288288286,
+          0.36592592592592593,
+          0.4126126126126126
+        ],
+        "block_id": "blk_1bf902043fc33d5b8789e59a",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_35333182dd2ff6c95c29d5476fd41c6ae2ad62ba8b0062793b83109a2c17c156",
+      "version_id": "scan_pdf_16",
+      "text": "库存盘点必须通过库存台账提交。",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.2734375,
+          0.36643144488334656,
+          0.3609375
+        ],
+        "block_id": "blk_b3959850169d6d4be111473e",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_57372ea14d093997ed9e4679d4abd83b84b03d959df7c4e6bba1e76e45522833",
+      "version_id": "image_01",
+      "text": "库存盘点的审批责任人为库存组。",
+      "anchor": {
+        "bbox": [
+          0.02666666666666667,
+          0.10810810810810811,
+          0.3674074074074074,
+          0.14054054054054055
+        ],
+        "block_id": "blk_6690dfc7a7637a085f1b8988",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_60ae4f44c86fecbac0d77942f4a052b995725f1aae0b24d2fa9b8f1cf5c2c4ee",
+      "version_id": "xlsx_11",
+      "text": "库存盘点的审批责任人为库存组。",
+      "anchor": {
+        "block_id": "blk_973c18a7d8f51ded970ef77e",
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B3",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_81f62065e597b8a3b0aeb6855e891f4b1e72b59e241e40845400e158e7a3e432",
+      "version_id": "image_01",
+      "text": "库存盘点必须提供已签名盘点表。",
+      "anchor": {
+        "bbox": [
+          0.02666666666666667,
+          0.17567567567567569,
+          0.3674074074074074,
+          0.20810810810810812
+        ],
+        "block_id": "blk_ce7bf56ddbd27ebdefa6b461",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_aa14872640f868b7bb67e205552db528f15f636dd1cfbca855eb23478d8b27c9",
+      "version_id": "xlsx_11",
+      "text": "库存盘点必须提供已签名盘点表。",
+      "anchor": {
+        "block_id": "blk_a12e950aad909dd0a9a1012d",
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B4",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_bb6085b6926c99a552acdd78ea4e8c4378da7418bb14f99aadebc6060856e29e",
+      "version_id": "xlsx_11",
+      "text": "库存盘点必须通过库存台账提交。",
+      "anchor": {
+        "block_id": "blk_4e58aea73406444cfd3eea21",
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B7",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    }
+  ]
+}

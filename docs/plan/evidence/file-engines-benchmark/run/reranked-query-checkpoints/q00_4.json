@@ -1,0 +1,340 @@
+{
+  "id": "q00_4",
+  "query": "Which channel should I use to file travel reimbursement? Compare the documents.",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_00",
+      "pptx_10",
+      "scan_pdf_00",
+      "text_00",
+      "text_pdf_00"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.6,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7227265726449519,
+    "relevant_files": [
+      "docx_00",
+      "pptx_10",
+      "text_00"
+    ],
+    "expected_files": [
+      "text_pdf_00",
+      "scan_pdf_00",
+      "docx_00",
+      "pptx_10",
+      "text_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 15.262183034792542
+  },
+  "hybrid": {
+    "recall_at_8": 0.8,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.8687949224876582,
+    "relevant_files": [
+      "docx_00",
+      "pptx_10",
+      "scan_pdf_00",
+      "text_pdf_00"
+    ],
+    "expected_files": [
+      "text_pdf_00",
+      "scan_pdf_00",
+      "docx_00",
+      "pptx_10",
+      "text_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.5,
+    "latency_ms": 5700.619451003149
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_dc4d4ee287d6af5dcd34d969",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 66.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_10",
+      "version_id": "pptx_10",
+      "score": 1.6141400337219238,
+      "text": "Travel reimbursement must be submitted through the expense portal.",
+      "quote_hash": "49478aecf4ae304a93a7e2712986a45a8d115548413acc826f911dbb2f5a2583",
+      "id": "chunk_b82bc41c06a309d7b87de39e42905e4d5e35797e9b7a7bfb09eb58396746496c"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_30cc9b390ffc3ecc00022832",
+        "kind": "document_block",
+        "block_index": 6.0,
+        "char_end": 66.0
+      },
+      "representation_id": "rep_docx_00",
+      "version_id": "docx_00",
+      "score": 1.6141400337219238,
+      "text": "Travel reimbursement must be submitted through the expense portal.",
+      "quote_hash": "49478aecf4ae304a93a7e2712986a45a8d115548413acc826f911dbb2f5a2583",
+      "id": "chunk_ba256f27ea3f5f89fecd270cc38ab5c5a98f48845e20647b73c3c39042dc346a"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_a19d320e79f3906fdbbd5a8e",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 15.0,
+        "bbox": [
+          0.024697579443454742,
+          0.2765625,
+          0.36693546175956726,
+          0.3828125
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_00",
+      "version_id": "scan_pdf_00",
+      "score": -0.06689640879631042,
+      "text": "差旅报销必须通过报销系统提交。",
+      "quote_hash": "eb4b765bbafd43d0ac035a37001392319c49ea9bcbe0f626a5c671932bbc1394",
+      "id": "chunk_26c793def1f358356fc9231b2a803bf1361f306063ea5ade1d76b7a45e9d6467"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_a96f49c5d0f4953177da4918",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 110.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 29.0
+      },
+      "representation_id": "rep_text_pdf_00",
+      "version_id": "text_pdf_00",
+      "score": -0.49622803926467896,
+      "text": "Synthetic policy edition / 合成政策版本 — page 30\nTravel reimbursement must be submitted through the expense\nportal.",
+      "quote_hash": "50ef465617fb8c8285a469e5a206c0601140dacde2bfdf5fc1d197b7fbf8fbea",
+      "id": "chunk_7aca10b6f8ff8d0e44d4fb2fc10a9c12305b8f6fb7f429ebb0ba7df2f6b764a6"
+    },
+    {
+      "anchor": {
+        "slide_index": 1.0,
+        "block_id": "blk_1e7be723a5e98b095ba87ff6",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 58.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_10",
+      "version_id": "pptx_10",
+      "score": -1.4301068782806396,
+      "text": "Finance is responsible for approving travel reimbursement.",
+      "quote_hash": "e33dc444ec7a2eee14a3b39f4e10ece42b9617abf89552def783ac5dc022f987",
+      "id": "chunk_79aab03b2ced7332b12c023e8433c6363a6d07c8c246e6321c51a39fd2f5d905"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_9c8561de70fa5f533dd8febe",
+        "kind": "document_block",
+        "block_index": 2.0,
+        "char_end": 58.0
+      },
+      "representation_id": "rep_docx_00",
+      "version_id": "docx_00",
+      "score": -1.4301068782806396,
+      "text": "Finance is responsible for approving travel reimbursement.",
+      "quote_hash": "e33dc444ec7a2eee14a3b39f4e10ece42b9617abf89552def783ac5dc022f987",
+      "id": "chunk_8dcf824abb795c44112f7d8521729b5c2cca20955f66ec85770f8b07fc89bdbd"
+    },
+    {
+      "anchor": {
+        "slide_index": 2.0,
+        "block_id": "blk_1439831607282c96d8eb9d94",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 48.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_10",
+      "version_id": "pptx_10",
+      "score": -1.6997069120407104,
+      "text": "Travel reimbursement requires itemized receipts.",
+      "quote_hash": "36399b1889315116e4da31a6a5135bb994403201f6f3eb79e6f098212a69a09f",
+      "id": "chunk_98fa8881e439c6a0065b2a488b136fe8a69e5a5c71acd9bb418b8466486a0a80"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_65d932b91f403380f5cc1193",
+        "kind": "document_block",
+        "block_index": 3.0,
+        "char_end": 48.0
+      },
+      "representation_id": "rep_docx_00",
+      "version_id": "docx_00",
+      "score": -1.6997069120407104,
+      "text": "Travel reimbursement requires itemized receipts.",
+      "quote_hash": "36399b1889315116e4da31a6a5135bb994403201f6f3eb79e6f098212a69a09f",
+      "id": "chunk_e111660f181d70256fec83cc659a57e47f38970768a30a2fa998cd48b92d6020"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_72689785b23732ced5d261801ed815750b32d13ca9ad307cf8c7838992f5dbfe",
+      "version_id": "text_00",
+      "text": "Travel reimbursement must be submitted within 18 business days.\nFinance is responsible for approving travel reimbursement.\nTravel reimbursement requires itemized receipts.\nRecords for travel reimbursement must be retained for 11 months.\nEmergency exceptions for travel reimbursement require written approval from the department head.\nTravel reimbursement must be submitted through the expense portal.",
+      "anchor": {
+        "block_id": "blk_f49cebfe44a86ae4c3ea22fa",
+        "char_end": 400,
+        "char_start": 0,
+        "end_line": 6.0,
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0
+      }
+    },
+    {
+      "id": "chunk_b82bc41c06a309d7b87de39e42905e4d5e35797e9b7a7bfb09eb58396746496c",
+      "version_id": "pptx_10",
+      "text": "Travel reimbursement must be submitted through the expense portal.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_dc4d4ee287d6af5dcd34d969",
+        "char_end": 66,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_ba256f27ea3f5f89fecd270cc38ab5c5a98f48845e20647b73c3c39042dc346a",
+      "version_id": "docx_00",
+      "text": "Travel reimbursement must be submitted through the expense portal.",
+      "anchor": {
+        "block_id": "blk_30cc9b390ffc3ecc00022832",
+        "block_index": 6.0,
+        "char_end": 66,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_98fa8881e439c6a0065b2a488b136fe8a69e5a5c71acd9bb418b8466486a0a80",
+      "version_id": "pptx_10",
+      "text": "Travel reimbursement requires itemized receipts.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_1439831607282c96d8eb9d94",
+        "char_end": 48,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_e111660f181d70256fec83cc659a57e47f38970768a30a2fa998cd48b92d6020",
+      "version_id": "docx_00",
+      "text": "Travel reimbursement requires itemized receipts.",
+      "anchor": {
+        "block_id": "blk_65d932b91f403380f5cc1193",
+        "block_index": 3.0,
+        "char_end": 48,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_9c76926dcfb72ff6f07a3a02c56801090105d47f9673e990356f2196ff1a97e7",
+      "version_id": "pptx_10",
+      "text": "Emergency exceptions for travel reimbursement require written approval from the department head.",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_a93553843bf9f4384e656d17",
+        "char_end": 96,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 4.0
+      }
+    },
+    {
+      "id": "chunk_fd6c97137fa40ece8ca096496bd8fc21330c28d0a3d5988bfdbaf7613bec6234",
+      "version_id": "docx_00",
+      "text": "Emergency exceptions for travel reimbursement require written approval from the department head.",
+      "anchor": {
+        "block_id": "blk_c76ca8e0800ae586cc631ccd",
+        "block_index": 5.0,
+        "char_end": 96,
+        "char_start": 0,
+        "kind": "document_block"
+      }
+    },
+    {
+      "id": "chunk_3b84f49b2fa95917c648aa87835658e4d83068ff6865e96ad88e882c791e9e0b",
+      "version_id": "notebook_02",
+      "text": "Production incident response must be submitted through the incident channel.",
+      "anchor": {
+        "block_id": "blk_9b82e796124f44dc9d3f454e",
+        "cell_id": "clause-5",
+        "cell_index": 5.0,
+        "char_end": 76,
+        "char_start": 0,
+        "kind": "notebook_cell"
+      }
+    }
+  ]
+}

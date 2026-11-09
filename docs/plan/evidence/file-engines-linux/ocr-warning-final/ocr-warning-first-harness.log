@@ -1,0 +1,11 @@
+[32m[INFO] 2026-11-09 22:22:06,932 [RapidOCR] base.py:23: Using engine_name: onnxruntime[0m
+[32m[INFO] 2026-11-09 22:22:06,996 [RapidOCR] main.py:63: Using /opt/file-models/rapidocr/det.onnx[0m
+[32m[INFO] 2026-11-09 22:22:07,107 [RapidOCR] base.py:23: Using engine_name: onnxruntime[0m
+[32m[INFO] 2026-11-09 22:22:07,107 [RapidOCR] main.py:63: Using /opt/file-models/rapidocr/cls.onnx[0m
+[32m[INFO] 2026-11-09 22:22:07,188 [RapidOCR] base.py:23: Using engine_name: onnxruntime[0m
+[32m[INFO] 2026-11-09 22:22:07,189 [RapidOCR] main.py:63: Using /opt/file-models/rapidocr/rec.onnx[0m
+Traceback (most recent call last):
+  File "/validation/check.py", line 32, in <module>
+    assert old['status']=='ready' and result['status']=='ready'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

@@ -1,0 +1,81 @@
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 2814.71it/s]
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]Loading weights: 100%|██████████| 201/201 [00:00<00:00, 2709.32it/s]
+{"query": "q00_0", "exact_recall": 0.2, "hybrid_recall": 0.6, "hybrid_ms": 7761.601420119405}
+{"query": "q00_1", "exact_recall": 0.4, "hybrid_recall": 0.8, "hybrid_ms": 5431.128648109734}
+{"query": "q00_2", "exact_recall": 0.2, "hybrid_recall": 0.4, "hybrid_ms": 4516.912756953388}
+{"query": "q00_3", "exact_recall": 0.2, "hybrid_recall": 0.2, "hybrid_ms": 3663.583674002439}
+{"query": "q00_4", "exact_recall": 0.6, "hybrid_recall": 0.8, "hybrid_ms": 5533.965206006542}
+{"query": "q01_0", "exact_recall": 0.0, "hybrid_recall": 0.2, "hybrid_ms": 6379.519900074229}
+{"query": "q01_1", "exact_recall": 0.0, "hybrid_recall": 0.0, "hybrid_ms": 5109.43667194806}
+{"query": "q01_2", "exact_recall": 0.4, "hybrid_recall": 0.8, "hybrid_ms": 4709.519183961675}
+{"query": "q01_3", "exact_recall": 0.8, "hybrid_recall": 0.8, "hybrid_ms": 3757.8475680202246}
+{"query": "q01_4", "exact_recall": 0.0, "hybrid_recall": 0.0, "hybrid_ms": 5789.705523988232}
+{"query": "q02_0", "exact_recall": 0.2, "hybrid_recall": 0.6, "hybrid_ms": 5373.229635879397}
+{"query": "q02_1", "exact_recall": 0.6, "hybrid_recall": 0.8, "hybrid_ms": 5636.633506976068}
+{"query": "q02_2", "exact_recall": 0.2, "hybrid_recall": 0.2, "hybrid_ms": 4112.0659310836345}
+{"query": "q02_3", "exact_recall": 0.2, "hybrid_recall": 0.2, "hybrid_ms": 5498.809351120144}
+{"query": "q02_4", "exact_recall": 0.6, "hybrid_recall": 0.4, "hybrid_ms": 6427.2603371646255}
+{"query": "q03_0", "exact_recall": 0.0, "hybrid_recall": 0.0, "hybrid_ms": 6790.420254925266}
+{"query": "q03_1", "exact_recall": 0.3333333333333333, "hybrid_recall": 0.3333333333333333, "hybrid_ms": 6379.952786955982}
+{"query": "q03_2", "exact_recall": 0.5, "hybrid_recall": 0.6666666666666666, "hybrid_ms": 5722.139704041183}
+{"query": "q03_3", "exact_recall": 0.5, "hybrid_recall": 0.6666666666666666, "hybrid_ms": 6377.470199950039}
+{"query": "q03_4", "exact_recall": 0.16666666666666666, "hybrid_recall": 0.16666666666666666, "hybrid_ms": 5230.467787012458}
+{"query": "q04_0", "exact_recall": 0.16666666666666666, "hybrid_recall": 0.6666666666666666, "hybrid_ms": 7724.473695969209}
+{"query": "q04_1", "exact_recall": 0.3333333333333333, "hybrid_recall": 0.8333333333333334, "hybrid_ms": 7201.043547131121}
+{"query": "q04_2", "exact_recall": 0.0, "hybrid_recall": 0.5, "hybrid_ms": 5958.848316222429}
+{"query": "q04_3", "exact_recall": 0.3333333333333333, "hybrid_recall": 0.3333333333333333, "hybrid_ms": 4979.8818291164935}
+{"query": "q04_4", "exact_recall": 0.5, "hybrid_recall": 0.5, "hybrid_ms": 6383.579081855714}
+{"query": "q05_0", "exact_recall": 0.0, "hybrid_recall": 0.6666666666666666, "hybrid_ms": 5683.708784868941}
+{"query": "q05_1", "exact_recall": 0.0, "hybrid_recall": 0.3333333333333333, "hybrid_ms": 5277.3965580854565}
+{"query": "q05_2", "exact_recall": 0.5, "hybrid_recall": 0.5, "hybrid_ms": 6574.50584997423}
+{"query": "q05_3", "exact_recall": 0.5, "hybrid_recall": 0.5, "hybrid_ms": 7533.833699999377}
+{"query": "q05_4", "exact_recall": 0.3333333333333333, "hybrid_recall": 0.6666666666666666, "hybrid_ms": 6985.725362086669}
+{"query": "q06_0", "exact_recall": 0.3333333333333333, "hybrid_recall": 0.8333333333333334, "hybrid_ms": 7351.67289711535}
+{"query": "q06_1", "exact_recall": 0.3333333333333333, "hybrid_recall": 0.8333333333333334, "hybrid_ms": 6899.828843073919}
+{"query": "q06_2", "exact_recall": 0.5, "hybrid_recall": 0.6666666666666666, "hybrid_ms": 5261.2402071245015}
+{"query": "q06_3", "exact_recall": 0.5, "hybrid_recall": 0.6666666666666666, "hybrid_ms": 4441.620458848774}
+{"query": "q06_4", "exact_recall": 0.5, "hybrid_recall": 0.5, "hybrid_ms": 8653.915439965203}
+{"query": "q07_0", "exact_recall": 0.0, "hybrid_recall": 0.0, "hybrid_ms": 6157.614615978673}
+{"query": "q07_1", "exact_recall": 0.2, "hybrid_recall": 0.4, "hybrid_ms": 6352.698709117249}
+{"query": "q07_2", "exact_recall": 0.4, "hybrid_recall": 0.6, "hybrid_ms": 8624.46138705127}
+{"query": "q07_3", "exact_recall": 0.4, "hybrid_recall": 0.6, "hybrid_ms": 7648.347070906311}
+{"query": "q07_4", "exact_recall": 0.2, "hybrid_recall": 0.2, "hybrid_ms": 6484.550285153091}
+{"query": "q08_0", "exact_recall": 0.4, "hybrid_recall": 0.8, "hybrid_ms": 7820.634915027767}
+Traceback (most recent call last):
+  File "/src/scripts/file-engines/benchmark.py", line 512, in <module>
+    modes=('exact','hybrid','reranked') if improved else ('exact','hybrid')
+                        ^^^^^^
+  File "/src/scripts/file-engines/benchmark.py", line 509, in main
+    rows.append(row)
+                     
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/src/scripts/file-engines/benchmark.py", line 450, in retrieve
+    hits=found['hits'];resolved=await rpc('resolve',{**params,'node_ids':[h['id'] for h in hits]}) if hits else {'evidence':[]}
+                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/src/scripts/file-engines/benchmark.py", line 401, in rpc
+    response=await stub.Execute(kp.KnowledgeServiceExecuteRequest(tenant=alice.tenant_context(),operation=operation,payload=payload_pb2.JsonPayload(value=value)),metadata=metadata)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/file-engines/lib/python3.12/site-packages/grpc/aio/_call.py", line 333, in __await__
+    raise _create_rpc_error(
+grpc.aio._call.AioRpcError: <AioRpcError of RPC that terminated with:
+	status = StatusCode.UNAUTHENTICATED
+	details = "unauthenticated: 凭据已过期"
+	debug_error_string = "UNAUTHENTICATED:unauthenticated: 凭据已过期"
+>
+Exception ignored in: <function Server.__del__ at 0x77f852941620>
+Traceback (most recent call last):
+  File "/opt/file-engines/lib/python3.12/site-packages/grpc/aio/_server.py", line 219, in __del__
+  File "src/python/grpcio/grpc/_cython/_cygrpc/aio/common.pyx.pxi", line 121, in grpc._cython.cygrpc.schedule_coro_threadsafe
+  File "src/python/grpcio/grpc/_cython/_cygrpc/aio/common.pyx.pxi", line 113, in grpc._cython.cygrpc.schedule_coro_threadsafe
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 456, in create_task
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 541, in _check_closed
+RuntimeError: Event loop is closed
+sys:1: RuntimeWarning: coroutine 'AioServer.shutdown' was never awaited

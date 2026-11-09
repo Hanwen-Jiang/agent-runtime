@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "mode": "explicit_model_doubles_real_context_builder_and_executor",
+  "checks": [
+    "collection_only_task_forces_tool_plan_and_injects_frozen_summary",
+    "main_tool_loop_sees_collection_but_isolated_child_does_not",
+    "collection_only_model_results_do_not_reuse_cross_generation_cache"
+  ]
+}

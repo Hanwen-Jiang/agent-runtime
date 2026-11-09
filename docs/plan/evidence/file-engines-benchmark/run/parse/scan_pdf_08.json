@@ -1,0 +1,333 @@
+{
+  "evaluation": {
+    "id": "scan_pdf_08",
+    "family": "scan_pdf",
+    "variant": "scan_clean",
+    "language": "zh",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 9.450216697063297,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_cd8f9ca333c777a9260bb71a"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_2f4fc58ea620f2878c86f55e"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_d14d1103ee2c36b5996dc03f"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_a37bd2426b189ecc1ffc3c87"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_3087621794db378b087c5c41"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_46cf25e430aa782c66b9c7b9"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "raster_requires_human_visual_review",
+      "verified": null
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 6,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_pages": 3,
+      "processed_pages": [
+        0,
+        1,
+        2
+      ],
+      "unselected_pages": 0,
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_cd8f9ca333c777a9260bb71a",
+        "kind": "ocr_text",
+        "text": "软件发布审批的提交期限为12个工作日。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.026209676638245583,
+            0.0984375,
+            0.4375,
+            0.1828125
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99993,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_2f4fc58ea620f2878c86f55e",
+        "kind": "ocr_text",
+        "text": "软件发布审批的审批责任人为发布委员会。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0.026209676638245583,
+            0.2765625,
+            0.45917338132858276,
+            0.3609375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99991,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_d14d1103ee2c36b5996dc03f",
+        "kind": "ocr_text",
+        "text": "软件发布审批必须提供回归测试报告。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.026209676638245583,
+            0.0984375,
+            0.41330644488334656,
+            0.1828125
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99992,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_a37bd2426b189ecc1ffc3c87",
+        "kind": "ocr_text",
+        "text": "软件发布审批记录须保留15个月。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0.026209676638245583,
+            0.275,
+            0.36945563554763794,
+            0.359375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99981,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_3087621794db378b087c5c41",
+        "kind": "ocr_text",
+        "text": "软件发布审批的紧急例外需要部门负责人书面批准。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.026209676638245583,
+            0.0984375,
+            0.5504032373428345,
+            0.1828125
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99992,
+        "low_confidence": false
+      },
+      {
+        "id": "blk_46cf25e430aa782c66b9c7b9",
+        "kind": "ocr_text",
+        "text": "软件发布审批必须通过发布登记系统提交。",
+        "anchor": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0.026209676638245583,
+            0.275,
+            0.45816531777381897,
+            0.359375
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "derivation": "ocr",
+        "confidence": 0.99983,
+        "low_confidence": false
+      }
+    ],
+    "outline": [
+      {
+        "kind": "pdf",
+        "pages": 3
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "total_pages": 3,
+      "processed_pages": [
+        0,
+        1,
+        2
+      ],
+      "unselected_pages": 0,
+      "returned_blocks": 6,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_08/page-00000.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 0,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "946cdd1aee588c14c292ba950a2bf498dfb42d7acb53d125125765dc61898377",
+        "size_bytes": 282514
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_08/page-00001.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 1,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "e153233ef4b045784ccdb0970cd924e3fd505a9d45fd6b7f1e0f27cc019de736",
+        "size_bytes": 256048
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_08/page-00002.png",
+        "mime_type": "image/png",
+        "selector": {
+          "kind": "pdf_region",
+          "page_index": 2,
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "sha256": "a9f230155542c65d0a3c8a33f63e5f061e2c1596ef2bc4d2ea82ff6ce2900ab8",
+        "size_bytes": 327549
+      },
+      {
+        "path": "/workspace/run/artifacts/scan_pdf_08/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "381e4e07f46cf7f7da6bd15abb4458788a5e7751f7405259a61624095b1fd566",
+        "size_bytes": 4307
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "ae72af14ae1ec4a412e3e06842f7725a0a4f271be2c04ec86435c155c8019854",
+      "size_bytes": 77630,
+      "mime_type": "application/pdf"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "a108fe22c857e2878460d20b6ff4c4fd7970799840268863fa16cf2c014bfa24"
+    }
+  }
+}

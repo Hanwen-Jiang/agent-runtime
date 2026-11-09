@@ -1,0 +1,340 @@
+{
+  "id": "q07_4",
+  "query": "Which channel should I use to file supplier qualification? Compare the documents.",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_07",
+      "text_07",
+      "text_pdf_07",
+      "xlsx_02"
+    ],
+    "extraction_chunking_recall_ceiling": 0.8
+  },
+  "exact": {
+    "recall_at_8": 0.2,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.3391602052736161,
+    "relevant_files": [
+      "xlsx_02"
+    ],
+    "expected_files": [
+      "text_pdf_07",
+      "scan_pdf_07",
+      "docx_07",
+      "xlsx_02",
+      "text_07"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.125,
+    "latency_ms": 14.45779507048428
+  },
+  "hybrid": {
+    "recall_at_8": 0.2,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.3391602052736161,
+    "relevant_files": [
+      "xlsx_02"
+    ],
+    "expected_files": [
+      "text_pdf_07",
+      "scan_pdf_07",
+      "docx_07",
+      "xlsx_02",
+      "text_07"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.125,
+    "latency_ms": 4352.418242022395
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_7a690e3f4d7cd06e7d91c752",
+        "range": "B7",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 69.0
+      },
+      "representation_id": "rep_xlsx_02",
+      "version_id": "xlsx_02",
+      "score": 2.807762861251831,
+      "text": "Supplier qualification must be submitted through the supplier portal.",
+      "quote_hash": "f930b92cb0f3d1949c9b3c0553499347404fbd8af7d1fedca803c76e8c956bc5",
+      "id": "chunk_727a8bbb5c53361932b42fc476cea1258a3c5b08fb7e2e8f44150a4a315ce875"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_6f7aec602dce713b8ed289ee",
+        "range": "B3",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 64.0
+      },
+      "representation_id": "rep_xlsx_02",
+      "version_id": "xlsx_02",
+      "score": -0.037036456167697906,
+      "text": "Procurement is responsible for approving supplier qualification.",
+      "quote_hash": "f433e92dae3b2ced92ee253d4462d05a292e293c8d70431c54906d26382cb8f7",
+      "id": "chunk_945b6ae8c3c631de9e94ae21954085dbf4c2487558a25ef68877721d854351d8"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_4f651d477bbd8103c72e1392",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 52.0,
+        "bbox": [
+          0.02368951588869095,
+          0.3765625,
+          0.6073588728904724,
+          0.49375
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_scan_pdf_07",
+      "version_id": "scan_pdf_07",
+      "score": -0.44938093423843384,
+      "text": "Supplier qualification must be submitted through the",
+      "quote_hash": "32a37711dd3512279770d9840ff779db7bd2857aa75bbf31bdb6fca90a7d91a6",
+      "id": "chunk_ca152eb307fc8b6a6ee8da066b08143f9f8f33041e68e0196f9c49602769bca3"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_5206c61d6e95aab01edded1b",
+        "range": "B4",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 55.0
+      },
+      "representation_id": "rep_xlsx_02",
+      "version_id": "xlsx_02",
+      "score": -0.7843679189682007,
+      "text": "Supplier qualification requires security questionnaire.",
+      "quote_hash": "02820ca8fd844464146026d7b339948e672e8bd1e8fadd936b4b3d8983abff44",
+      "id": "chunk_7c692ce4b1c5a61fca6d8b845a0f730eca7ed48cae6ed9ccdf79c577b15d996b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_6f94a27328112d78565dfc6c",
+        "kind": "document_block",
+        "block_index": 3.0,
+        "char_end": 14.0
+      },
+      "representation_id": "rep_docx_07",
+      "version_id": "docx_07",
+      "score": -1.4703283309936523,
+      "text": "供应商准入必须提供安全问卷。",
+      "quote_hash": "25ebe8ac9fcea39af601699dc5888a2014fd5163890dfaf8b8216e81dd92d7fa",
+      "id": "chunk_c2cdbdb8262a6f308f65b86749f75734debcf7fb07dc9d324b8d573a63aaa382"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_c064259b15664c2d5f667b1b",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 49.0,
+        "bbox": [
+          0.02217741869390011,
+          0.090625,
+          0.5609878897666931,
+          0.2046875
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_07",
+      "version_id": "scan_pdf_07",
+      "score": -1.922560453414917,
+      "text": "Supplier qualification must be submitted within 5",
+      "quote_hash": "a028f64673f7f3120c0f03488a3778e928575cee70c744a3d57e93a2aaa51526",
+      "id": "chunk_4a0d100d4d3529e577ace3574eeef10282c1a72f37c2d5ea2519a2c3a0f26f9c"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e315ae76d0034326554c5cbb",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.02520161122083664,
+          0.5140625,
+          0.19254031777381897,
+          0.6
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_scan_pdf_07",
+      "version_id": "scan_pdf_07",
+      "score": -2.0006918907165527,
+      "text": "supplier portal.",
+      "quote_hash": "4369f9a979a1f6f121eb2ac826762cae631220fe412228a9c0ae7fcf41b65568",
+      "id": "chunk_c0146cfd0673971789fa187cf68444bac8bdb4e0f2bd554bd869472906e22548"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_0334e01b4c4175d4fd6f686e",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 57.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_text_pdf_07",
+      "version_id": "text_pdf_07",
+      "score": -2.201704263687134,
+      "text": "Synthetic policy edition / 合成政策版本 — page 3\n供应商准入必须提供安全问卷。",
+      "quote_hash": "5f1f7c8d4ce3df9d378acbcbffb949c53267d5a10bbc300b4acdbc449efdb4c2",
+      "id": "chunk_313314106df6ac8f3c375b1700b48612ae6064ec9feddb0f3d48676302ed9ea7"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_727a8bbb5c53361932b42fc476cea1258a3c5b08fb7e2e8f44150a4a315ce875",
+      "version_id": "xlsx_02",
+      "text": "Supplier qualification must be submitted through the supplier portal.",
+      "anchor": {
+        "block_id": "blk_7a690e3f4d7cd06e7d91c752",
+        "char_end": 69,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B7",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_ca152eb307fc8b6a6ee8da066b08143f9f8f33041e68e0196f9c49602769bca3",
+      "version_id": "scan_pdf_07",
+      "text": "Supplier qualification must be submitted through the",
+      "anchor": {
+        "bbox": [
+          0.02368951588869095,
+          0.3765625,
+          0.6073588728904724,
+          0.49375
+        ],
+        "block_id": "blk_4f651d477bbd8103c72e1392",
+        "char_end": 52,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_7c692ce4b1c5a61fca6d8b845a0f730eca7ed48cae6ed9ccdf79c577b15d996b",
+      "version_id": "xlsx_02",
+      "text": "Supplier qualification requires security questionnaire.",
+      "anchor": {
+        "block_id": "blk_5206c61d6e95aab01edded1b",
+        "char_end": 55,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B4",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_9117880b77b6ad714f32ca0cfca99b892c9b4502fb22594e7dab564bd1449ce4",
+      "version_id": "scan_pdf_07",
+      "text": "Emergency exceptions for supplier qualification require",
+      "anchor": {
+        "bbox": [
+          0.02318548411130905,
+          0.0859375,
+          0.6365927457809448,
+          0.20625
+        ],
+        "block_id": "blk_ea7196b82405c2215f740963",
+        "char_end": 55,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_48af2fe217f38ecfba7b0562155da74553cfe4deb18ef3be36e4f3a3d2c1a123",
+      "version_id": "xlsx_02",
+      "text": "Emergency exceptions for supplier qualification require written approval from the department head.",
+      "anchor": {
+        "block_id": "blk_f5b4202a0c2c514a548622d9",
+        "char_end": 98,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B6",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_4a0d100d4d3529e577ace3574eeef10282c1a72f37c2d5ea2519a2c3a0f26f9c",
+      "version_id": "scan_pdf_07",
+      "text": "Supplier qualification must be submitted within 5",
+      "anchor": {
+        "bbox": [
+          0.02217741869390011,
+          0.090625,
+          0.5609878897666931,
+          0.2046875
+        ],
+        "block_id": "blk_c064259b15664c2d5f667b1b",
+        "char_end": 49,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_945b6ae8c3c631de9e94ae21954085dbf4c2487558a25ef68877721d854351d8",
+      "version_id": "xlsx_02",
+      "text": "Procurement is responsible for approving supplier qualification.",
+      "anchor": {
+        "block_id": "blk_6f7aec602dce713b8ed289ee",
+        "char_end": 64,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B3",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_ac335e214dc9fe95167baf96cfbc2d08d55b329c71c16d570413dfabefde7181",
+      "version_id": "xlsx_02",
+      "text": "Supplier qualification must be submitted within 11 business days.",
+      "anchor": {
+        "block_id": "blk_ddc896b48acb397fe2fcc35c",
+        "char_end": 65,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B2",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    }
+  ]
+}

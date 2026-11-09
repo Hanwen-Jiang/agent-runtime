@@ -1,0 +1,328 @@
+{
+  "id": "q05_0",
+  "query": "Compare the submission deadlines for production incident response across the policies.",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_05",
+      "notebook_02",
+      "text_05",
+      "text_pdf_05",
+      "xlsx_00"
+    ],
+    "extraction_chunking_recall_ceiling": 0.8333333333333334
+  },
+  "exact": {
+    "recall_at_8": 0.0,
+    "hit_at_8": 0.0,
+    "reciprocal_rank_at_8": 0,
+    "unique_source_ndcg_at_8": 0.0,
+    "relevant_files": [],
+    "expected_files": [
+      "text_pdf_05",
+      "scan_pdf_05",
+      "docx_05",
+      "xlsx_00",
+      "text_05",
+      "notebook_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.0,
+    "latency_ms": 14.939946122467518
+  },
+  "hybrid": {
+    "recall_at_8": 0.6666666666666666,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7751482523375256,
+    "relevant_files": [
+      "docx_05",
+      "notebook_02",
+      "text_05",
+      "text_pdf_05"
+    ],
+    "expected_files": [
+      "text_pdf_05",
+      "scan_pdf_05",
+      "docx_05",
+      "xlsx_00",
+      "text_05",
+      "notebook_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.5,
+    "latency_ms": 5475.191524019465
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_8bffd1987a97fe1b379eb541",
+        "kind": "text_range",
+        "offset_unit": "unicode_code_point",
+        "start_line": 1.0,
+        "end_line": 8.0,
+        "char_end": 235.0
+      },
+      "representation_id": "rep_text_05",
+      "version_id": "text_05",
+      "score": 6.666198253631592,
+      "text": "<policy>\n<clause>生产故障响应的提交期限为3个工作日。</clause>\n<clause>生产故障响应的审批责任人为可靠性团队。</clause>\n<clause>生产故障响应必须提供故障时间线。</clause>\n<clause>生产故障响应记录须保留16个月。</clause>\n<clause>生产故障响应的紧急例外需要部门负责人书面批准。</clause>\n<clause>生产故障响应必须通过故障频道提交。</clause>\n</policy>",
+      "quote_hash": "3a696aa8e68857dc41bd8754c622e64a10cddac1d0fea6ae46c242884f19e8ea",
+      "id": "chunk_d6d2b20558e79cc122727d09173d242d1517d242e39d998b7ba87d956cd7fdae"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_abc0b7381aa1a554e2bedbf6",
+        "kind": "document_block",
+        "block_index": 1.0,
+        "char_end": 19.0
+      },
+      "representation_id": "rep_docx_05",
+      "version_id": "docx_05",
+      "score": 4.5185627937316895,
+      "text": "生产故障响应的提交期限为19个工作日。",
+      "quote_hash": "57cd436443dffa3bf5fdf8c151cae263a3fe11b3e73968d0a8cc3b06f8bfb727",
+      "id": "chunk_0bcd634ff7439641b9fb8dd7f489f55a5d40347accd70ee3d48d206eb702568f"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_4977cd33a1988701406b9693",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 19.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.43956209150326797,
+          0.12052112044648612
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_text_pdf_05",
+      "version_id": "text_pdf_05",
+      "score": 4.512244701385498,
+      "text": "生产故障响应的提交期限为13个工作日。",
+      "quote_hash": "28e0649119b67ccae8c30a71f89086f327da8c63aa14a9c28721d678d5e00f9b",
+      "id": "chunk_524a0d2e28f11c29a431da1a1d98ae4a8b56fb3cc23cf237bc64e41674ed99b8"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_9596d4b01c6931827392ebb9",
+        "kind": "notebook_cell",
+        "cell_id": "clause-0",
+        "char_end": 71.0,
+        "cell_index": 0.0
+      },
+      "representation_id": "rep_notebook_02",
+      "version_id": "notebook_02",
+      "score": 3.4246695041656494,
+      "text": "Production incident response must be submitted within 12 business days.",
+      "quote_hash": "e0141f007379b675efe20456bf799f0d1e26e0f7de228af428a15c829823154f",
+      "id": "chunk_66f4d851a58376b4d4b31270b1cff773becf9d5962d2ef89eee1de1a2d2794c9"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_9b82e796124f44dc9d3f454e",
+        "kind": "notebook_cell",
+        "cell_id": "clause-5",
+        "char_end": 76.0,
+        "cell_index": 5.0
+      },
+      "representation_id": "rep_notebook_02",
+      "version_id": "notebook_02",
+      "score": 2.147731065750122,
+      "text": "Production incident response must be submitted through the incident channel.",
+      "quote_hash": "6b556694785a41730bada7dd6d09e2e7acd289c2c4fb09f9f15decd0ad14aa1f",
+      "id": "chunk_3b84f49b2fa95917c648aa87835658e4d83068ff6865e96ad88e882c791e9e0b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_332ec1522fab554b6c089658",
+        "range": "B7",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 76.0
+      },
+      "representation_id": "rep_xlsx_00",
+      "version_id": "xlsx_00",
+      "score": 2.147731065750122,
+      "text": "Production incident response must be submitted through the incident channel.",
+      "quote_hash": "6b556694785a41730bada7dd6d09e2e7acd289c2c4fb09f9f15decd0ad14aa1f",
+      "id": "chunk_9c34b25a87fd03e16161966919a4b543b1be4a91ade99e8247791a866d35f58b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_95ed6ab63a8ba8d91150cad6",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 54.0,
+        "bbox": [
+          0.025705644860863686,
+          0.38125,
+          0.65625,
+          0.471875
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_05",
+      "version_id": "scan_pdf_05",
+      "score": 1.7475523948669434,
+      "text": "Production incident response must be submitted through",
+      "quote_hash": "40f7a67403b12abe6a55b73aec155816e1ff7e0f8726110969b91ed2be05719a",
+      "id": "chunk_4d8f3d0174d2506187687c0fd0596dc4071b190ce34a59b323f2fc2b216a0d6b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_027b66fa21a9d6bf3ec6923b",
+        "kind": "notebook_cell",
+        "cell_id": "clause-2",
+        "char_end": 56.0,
+        "cell_index": 2.0
+      },
+      "representation_id": "rep_notebook_02",
+      "version_id": "notebook_02",
+      "score": 1.5522209405899048,
+      "text": "Production incident response requires incident timeline.",
+      "quote_hash": "620bc8b881499945a680c248831f3e00fcf6f55aaea62dbdfd03bf71dfa3933c",
+      "id": "chunk_55a00735e3ae3821dfd0a75a0174b55ee8ce37ebd6fa60f81e11a87d0d52203f"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_b9045d951f40f7bd3a73e5482b98ddbcc8762ee8db649e5778c9f069e5faf594",
+      "version_id": "scan_pdf_05",
+      "text": "Emergency exceptions for production incident response",
+      "anchor": {
+        "bbox": [
+          0.024193547666072845,
+          0.0890625,
+          0.6507056355476379,
+          0.190625
+        ],
+        "block_id": "blk_e9d9a0c55ea9b01bc2828d49",
+        "char_end": 53,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_3b84f49b2fa95917c648aa87835658e4d83068ff6865e96ad88e882c791e9e0b",
+      "version_id": "notebook_02",
+      "text": "Production incident response must be submitted through the incident channel.",
+      "anchor": {
+        "block_id": "blk_9b82e796124f44dc9d3f454e",
+        "cell_id": "clause-5",
+        "cell_index": 5.0,
+        "char_end": 76,
+        "char_start": 0,
+        "kind": "notebook_cell"
+      }
+    },
+    {
+      "id": "chunk_9c34b25a87fd03e16161966919a4b543b1be4a91ade99e8247791a866d35f58b",
+      "version_id": "xlsx_00",
+      "text": "Production incident response must be submitted through the incident channel.",
+      "anchor": {
+        "block_id": "blk_332ec1522fab554b6c089658",
+        "char_end": 76,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B7",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_55a00735e3ae3821dfd0a75a0174b55ee8ce37ebd6fa60f81e11a87d0d52203f",
+      "version_id": "notebook_02",
+      "text": "Production incident response requires incident timeline.",
+      "anchor": {
+        "block_id": "blk_027b66fa21a9d6bf3ec6923b",
+        "cell_id": "clause-2",
+        "cell_index": 2.0,
+        "char_end": 56,
+        "char_start": 0,
+        "kind": "notebook_cell"
+      }
+    },
+    {
+      "id": "chunk_8f47c8f58cbe62b484d12402c9c966c12c13286f87f1aedf30f4bf0eb1acc7ad",
+      "version_id": "scan_pdf_05",
+      "text": "Production incident response requires incident timeline.",
+      "anchor": {
+        "bbox": [
+          0.024697579443454742,
+          0.0921875,
+          0.640625,
+          0.1859375
+        ],
+        "block_id": "blk_ed4a9b3242471f826e6feb09",
+        "char_end": 56,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_97ec485ecda88d5a983e171bf7a212bfe608cfcb1d2c202367f3db04d5433184",
+      "version_id": "xlsx_00",
+      "text": "Production incident response requires incident timeline.",
+      "anchor": {
+        "block_id": "blk_71133fa7ee3834e31d566c48",
+        "char_end": 56,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B4",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_2031bc39e4f6ac543d8c39f37b58d6a565b3ee8637ecccc8bfae9cfdd9d97a63",
+      "version_id": "scan_pdf_05",
+      "text": "Records for production incident response must be retained",
+      "anchor": {
+        "bbox": [
+          0.024697579443454742,
+          0.2703125,
+          0.6809475421905518,
+          0.359375
+        ],
+        "block_id": "blk_03e0246dfc25246b39f4a3d6",
+        "char_end": 57,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_73dd069f6ebca9e88dc8b65d2e0b53b162fd3c80f9d1b05142a75f88ecc60cd2",
+      "version_id": "notebook_02",
+      "text": "Site Reliability is responsible for approving production incident response.",
+      "anchor": {
+        "block_id": "blk_0a1d023a4f34b0c7116047b8",
+        "cell_id": "clause-1",
+        "cell_index": 1.0,
+        "char_end": 75,
+        "char_start": 0,
+        "kind": "notebook_cell"
+      }
+    }
+  ]
+}

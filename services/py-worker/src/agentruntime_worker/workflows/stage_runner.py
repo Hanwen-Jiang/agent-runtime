@@ -32,7 +32,7 @@ import contextlib
 import copy
 import json
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field, replace
+from dataclasses import asdict, dataclass, field, replace
 from datetime import timedelta
 from typing import Any, Protocol
 
@@ -77,6 +77,7 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.workflows.verification import VerificationRecord
     from agentruntime_worker.workflows.patches import (
         BUDGETS_PATCH,
+        CHILD_FILE_SCOPE_PATCH,
         CONTEXT_USAGE_PATCH,
         DECISION_RETRY_PATCH,
         GUIDANCE_PATCH,
@@ -1491,18 +1492,20 @@ class StageRunner:
         irreversible = effect == "write_irreversible"
         try:
             async with self._writer(effect, env), self._slot():
+                call_input = ToolCallInput(tenant=self._ctx.tenant, task_id=self._ctx.task_id, round_seq=self._ctx.round_seq,
+                    node_id=call_id, tool=tool, args=args, effect=effect, gate=gate)
+                if workflow.patched(CHILD_FILE_SCOPE_PATCH):
+                    scopes = getattr(self, "_isolated_file_scopes", None)
+                    call_input.isolated = bool(getattr(self, "_isolated_tool_context", False))
+                    call_input.file_scopes = copy.deepcopy(scopes)
+                else:
+                    # Preserve the exact old activity payload shape on replay.
+                    call_input = asdict(call_input)
+                    call_input.pop("isolated")
+                    call_input.pop("file_scopes")
                 call = workflow.execute_activity(
                     names.CALL_TOOL,
-                    ToolCallInput(
-                        tenant=self._ctx.tenant,
-                        task_id=self._ctx.task_id,
-                        round_seq=self._ctx.round_seq,
-                        node_id=call_id,
-                        tool=tool,
-                        args=args,
-                        effect=effect,
-                        gate=gate,
-                    ),
+                    call_input,
                     task_queue=names.PROGRAM_QUEUE,
                     start_to_close_timeout=timeouts.DEFAULT_NODE_TIMEOUT,
                     heartbeat_timeout=self._heartbeat(),
@@ -1872,6 +1875,9 @@ class SubAgentWorkflow:
         events = EventPublisher(inp.tenant, inp.task_id, detail=True) if inp.publish_events and workflow.patched(N16_PATCH) else None
         ctx = _child_context(inp, events=events, n16=workflow.patched(N16_PATCH), wrap_up=workflow.patched(SUB_AGENT_WRAP_UP_PATCH) and inp.by_share)
         runner = StageRunner(ctx, human=None)
+        if workflow.patched(CHILD_FILE_SCOPE_PATCH):
+            runner._isolated_tool_context = True
+            runner._isolated_file_scopes = copy.deepcopy((inp.node.get("inputs") or {}).get("file_scopes"))
         await runner._ensure_policy()
         result = await runner.tool_loop(inp.node, isolated=True, tool_effects=dict(inp.tools), env=_Env(results={}), progress=events is not None)
         return replace(result, cost_usd=round(runner.spent_usd, 6), tool_calls=runner.tool_calls)

@@ -1,0 +1,332 @@
+{
+  "id": "q11_4",
+  "query": "Which channel should I use to file training reimbursement? Compare the documents.",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_11",
+      "pptx_01",
+      "table_01",
+      "text_pdf_11",
+      "xlsx_06"
+    ],
+    "extraction_chunking_recall_ceiling": 0.8333333333333334
+  },
+  "exact": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.5,
+    "unique_source_ndcg_at_8": 0.32124463208930537,
+    "relevant_files": [
+      "table_01",
+      "xlsx_06"
+    ],
+    "expected_files": [
+      "text_pdf_11",
+      "scan_pdf_11",
+      "docx_11",
+      "xlsx_06",
+      "pptx_01",
+      "table_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 13.750473037362099
+  },
+  "hybrid": {
+    "recall_at_8": 0.6666666666666666,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7751482523375256,
+    "relevant_files": [
+      "docx_11",
+      "pptx_01",
+      "table_01",
+      "xlsx_06"
+    ],
+    "expected_files": [
+      "text_pdf_11",
+      "scan_pdf_11",
+      "docx_11",
+      "xlsx_06",
+      "pptx_01",
+      "table_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.5,
+    "latency_ms": 4763.23931501247
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_7654848dca3d6a24806702b5",
+        "range": "B7",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 69.0
+      },
+      "representation_id": "rep_xlsx_06",
+      "version_id": "xlsx_06",
+      "score": 2.556443929672241,
+      "text": "Training reimbursement must be submitted through the learning portal.",
+      "quote_hash": "cd05fec79fad71e158ed25597df7f229b1731201f33ff397c692ee2b3a4e90ea",
+      "id": "chunk_eaa26c024d3019b4c5f6410ffabb1ff6f33e238380f434df3db251f173945ec3"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_456f14dd60e10de2b24b308c",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 78.0,
+        "row_index": 5.0
+      },
+      "representation_id": "rep_table_01",
+      "version_id": "table_01",
+      "score": 2.0958058834075928,
+      "text": "5\tTraining reimbursement must be submitted through the learning portal.\t5\twest",
+      "quote_hash": "b42b70314d0e2fd431bca8eb6caed53a7128e0a234679e50618204e3ea0004c4",
+      "id": "chunk_7da22d2678d0738f48871d322e39f17ef721f6d8cbc6cf65ffdf0a536d66d3b6"
+    },
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_cd3cd6bce924b15ed6bc43b9",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 15.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_01",
+      "version_id": "pptx_01",
+      "score": 1.7575922012329102,
+      "text": "培训报销必须通过培训平台提交。",
+      "quote_hash": "c33f56e00aaec10ec94f7b1e8308fbdf6ce1327627b225f1c4b692efeb4534e3",
+      "id": "chunk_353181806e24ba15cfa01518e7a83171bfa71d69eea47210d227f94108dec570"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_3bce8c58bea0444fad98ecca",
+        "kind": "document_block",
+        "block_index": 6.0,
+        "char_end": 15.0
+      },
+      "representation_id": "rep_docx_11",
+      "version_id": "docx_11",
+      "score": 1.7575922012329102,
+      "text": "培训报销必须通过培训平台提交。",
+      "quote_hash": "c33f56e00aaec10ec94f7b1e8308fbdf6ce1327627b225f1c4b692efeb4534e3",
+      "id": "chunk_b9d4e0a3ad35160c10b6620ba9c8a5e6cdc60dad6def374428663c8893bddad2"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_db5af4b819c72f7bc0c6649f",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 75.0,
+        "row_index": 1.0
+      },
+      "representation_id": "rep_table_01",
+      "version_id": "table_01",
+      "score": -0.46225184202194214,
+      "text": "1\tLearning Team is responsible for approving training reimbursement.\t1\twest",
+      "quote_hash": "fd86d416feb11abf7cfebabb03f4b4b4507c46f275515c6fbcabb319f0835273",
+      "id": "chunk_631c79105a459c9af8b7359fb45e561933a72687022e5f533d6be183e2766477"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d8d458d5edae5b63d2446161",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 52.0,
+        "bbox": [
+          0.025705644860863686,
+          0.38125,
+          0.633568525314331,
+          0.4703125
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_scan_pdf_11",
+      "version_id": "scan_pdf_11",
+      "score": -0.6685227751731873,
+      "text": "Training reimbursement must be submitted through the",
+      "quote_hash": "8a579815ae61472d98691d043e79443c263fe09b0334f7fbd9a25fb7685b8eed",
+      "id": "chunk_3a28bd56fe7a388101f2ab63842b8526d3e7e09171988ad78ad667b3002023df"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_f539551830032a437169fd57",
+        "range": "B3",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 66.0
+      },
+      "representation_id": "rep_xlsx_06",
+      "version_id": "xlsx_06",
+      "score": -1.1855257749557495,
+      "text": "Learning Team is responsible for approving training reimbursement.",
+      "quote_hash": "0b24a409fea83195fdb592b8129371fcae29e258a786d3c5326eaaabe963807b",
+      "id": "chunk_1ae1858f5dce900137c2c37ecd8c66381a17cc14baf942030bad8549b158ed92"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e126f3cffe2f575ca9d85e61",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 64.0,
+        "row_index": 2.0
+      },
+      "representation_id": "rep_table_01",
+      "version_id": "table_01",
+      "score": -1.5135259628295898,
+      "text": "2\tTraining reimbursement requires completion certificate.\t2\teast",
+      "quote_hash": "df496cd777b1286002845374795810350f2cbf1bffb767f5a3e352d26e230a76",
+      "id": "chunk_2e874c9fb70dcc38f626f8b2620a368d829369c854b33449fed77d76f9642ee3"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_3a28bd56fe7a388101f2ab63842b8526d3e7e09171988ad78ad667b3002023df",
+      "version_id": "scan_pdf_11",
+      "text": "Training reimbursement must be submitted through the",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.38125,
+          0.633568525314331,
+          0.4703125
+        ],
+        "block_id": "blk_d8d458d5edae5b63d2446161",
+        "char_end": 52,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_eaa26c024d3019b4c5f6410ffabb1ff6f33e238380f434df3db251f173945ec3",
+      "version_id": "xlsx_06",
+      "text": "Training reimbursement must be submitted through the learning portal.",
+      "anchor": {
+        "block_id": "blk_7654848dca3d6a24806702b5",
+        "char_end": 69,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B7",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_70f481e551e474fa71e0bcf315c3fec36e6ee8e4b8b5480d974be25d1c71057a",
+      "version_id": "xlsx_06",
+      "text": "Training reimbursement requires completion certificate.",
+      "anchor": {
+        "block_id": "blk_2d6f7b938184b8f7b1643924",
+        "char_end": 55,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B4",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_7da22d2678d0738f48871d322e39f17ef721f6d8cbc6cf65ffdf0a536d66d3b6",
+      "version_id": "table_01",
+      "text": "5\tTraining reimbursement must be submitted through the learning portal.\t5\twest",
+      "anchor": {
+        "block_id": "blk_456f14dd60e10de2b24b308c",
+        "char_end": 78,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "row_index": 5.0,
+        "sheet_id": "csv"
+      }
+    },
+    {
+      "id": "chunk_7e2b049b09f9e763f89c771cf42af7116eb9eefe6c050243c35ca3c10cf796ba",
+      "version_id": "xlsx_06",
+      "text": "Emergency exceptions for training reimbursement require written approval from the department head.",
+      "anchor": {
+        "block_id": "blk_07e3b49733c421aa355149f1",
+        "char_end": 98,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B6",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_ff2da02ed6102914754d3f511b32729a9fde5ff92a7f9d10ad2113396632c8e2",
+      "version_id": "scan_pdf_11",
+      "text": "Emergency exceptions for training reimbursement require",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.0953125,
+          0.6638104915618896,
+          0.184375
+        ],
+        "block_id": "blk_b6484bed13a57a4125ef8288",
+        "char_end": 55,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_e63b52d21014edc5232f9649536a4816dac7d0e500605c63122a52a2f4a6bf01",
+      "version_id": "scan_pdf_11",
+      "text": "Training reimbursement must be submitted within 8",
+      "anchor": {
+        "bbox": [
+          0.024697579443454742,
+          0.0921875,
+          0.5877016186714172,
+          0.184375
+        ],
+        "block_id": "blk_9c27c104953904e194001cc5",
+        "char_end": 49,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_3b84f49b2fa95917c648aa87835658e4d83068ff6865e96ad88e882c791e9e0b",
+      "version_id": "notebook_02",
+      "text": "Production incident response must be submitted through the incident channel.",
+      "anchor": {
+        "block_id": "blk_9b82e796124f44dc9d3f454e",
+        "cell_id": "clause-5",
+        "cell_index": 5.0,
+        "char_end": 76,
+        "char_start": 0,
+        "kind": "notebook_cell"
+      }
+    }
+  ]
+}

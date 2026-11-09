@@ -1,0 +1,275 @@
+[
+    {
+        "Id": "50fdd646acedd69707afef55f5564164edcfbae4dc0ebd6265499739c0d78117",
+        "Created": "2026-11-09T21:44:21.231799239Z",
+        "Path": "/opt/file-engines/bin/python",
+        "Args": [
+            "/src/scripts/file-engines/benchmark.py",
+            "retrieve",
+            "--work",
+            "/workspace/run",
+            "--model-dir",
+            "/models/e5"
+        ],
+        "State": {
+            "Status": "exited",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-11-09T21:44:21.281316154Z",
+            "FinishedAt": "2026-11-09T21:45:47.189589157Z"
+        },
+        "Image": "sha256:984b4bfbcaa8765d14412e7d6de24d078cf0e30279226cec18161fd2c94015cf",
+        "ResolvConfPath": "/var/lib/docker/containers/50fdd646acedd69707afef55f5564164edcfbae4dc0ebd6265499739c0d78117/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/50fdd646acedd69707afef55f5564164edcfbae4dc0ebd6265499739c0d78117/hostname",
+        "HostsPath": "/var/lib/docker/containers/50fdd646acedd69707afef55f5564164edcfbae4dc0ebd6265499739c0d78117/hosts",
+        "LogPath": "/var/lib/docker/containers/50fdd646acedd69707afef55f5564164edcfbae4dc0ebd6265499739c0d78117/50fdd646acedd69707afef55f5564164edcfbae4dc0ebd6265499739c0d78117-json.log",
+        "Name": "/fi-20261110-benchmark-retrieval",
+        "RestartCount": 0,
+        "Driver": "overlayfs",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "docker-default",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": [
+                "/root/proj/agent-projs/.file-intelligence-validation-20261110/evidence/benchmark/models/e5:/models/e5:ro",
+                "/root/proj/agent-projs/.file-intelligence-validation-20261110/agent-runtime:/src:ro",
+                "/root/proj/agent-projs/.file-intelligence-validation-20261110/evidence/benchmark:/workspace"
+            ],
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {}
+            },
+            "NetworkMode": "none",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": false,
+            "SecurityOpt": null,
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 67108864,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 8589934592,
+            "NanoCpus": 4000000000,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 17179869184,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": null,
+            "Ulimits": [],
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware",
+                "/sys/devices/system/cpu/cpu0/thermal_throttle",
+                "/sys/devices/system/cpu/cpu1/thermal_throttle",
+                "/sys/devices/system/cpu/cpu2/thermal_throttle",
+                "/sys/devices/system/cpu/cpu3/thermal_throttle",
+                "/sys/devices/system/cpu/cpu4/thermal_throttle",
+                "/sys/devices/system/cpu/cpu5/thermal_throttle",
+                "/sys/devices/system/cpu/cpu6/thermal_throttle",
+                "/sys/devices/system/cpu/cpu7/thermal_throttle",
+                "/sys/devices/system/cpu/cpu8/thermal_throttle",
+                "/sys/devices/system/cpu/cpu9/thermal_throttle",
+                "/sys/devices/system/cpu/cpu10/thermal_throttle",
+                "/sys/devices/system/cpu/cpu11/thermal_throttle",
+                "/sys/devices/system/cpu/cpu12/thermal_throttle",
+                "/sys/devices/system/cpu/cpu13/thermal_throttle",
+                "/sys/devices/system/cpu/cpu14/thermal_throttle",
+                "/sys/devices/system/cpu/cpu15/thermal_throttle",
+                "/sys/devices/system/cpu/cpu16/thermal_throttle",
+                "/sys/devices/system/cpu/cpu17/thermal_throttle",
+                "/sys/devices/system/cpu/cpu18/thermal_throttle",
+                "/sys/devices/system/cpu/cpu19/thermal_throttle",
+                "/sys/devices/system/cpu/cpu20/thermal_throttle",
+                "/sys/devices/system/cpu/cpu21/thermal_throttle",
+                "/sys/devices/system/cpu/cpu22/thermal_throttle",
+                "/sys/devices/system/cpu/cpu23/thermal_throttle"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "Storage": {
+            "RootFS": {
+                "Snapshot": {
+                    "Name": "overlayfs"
+                }
+            }
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/root/proj/agent-projs/.file-intelligence-validation-20261110/evidence/benchmark",
+                "Destination": "/workspace",
+                "Mode": "",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/root/proj/agent-projs/.file-intelligence-validation-20261110/evidence/benchmark/models/e5",
+                "Destination": "/models/e5",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/root/proj/agent-projs/.file-intelligence-validation-20261110/agent-runtime",
+                "Destination": "/src",
+                "Mode": "ro",
+                "RW": false,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "50fdd646aced",
+            "Domainname": "",
+            "User": "10001:10001",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "OMP_NUM_THREADS=4",
+                "BENCHMARK_ENGINE_SOURCE=/opt/engine",
+                "PATH=/opt/file-engines/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "PYTHONPATH=/opt/engine",
+                "FILE_ENGINES_MODEL_DIR=/opt/file-models",
+                "HF_HUB_OFFLINE=1",
+                "TRANSFORMERS_OFFLINE=1",
+                "AR_UNO_PYTHON=/usr/bin/python3",
+                "AR_SOFFICE_BIN=/usr/bin/soffice",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "HOME=/tmp",
+                "LANG=en_US.UTF-8",
+                "LC_ALL=en_US.UTF-8",
+                "TZ=UTC",
+                "AGENT_WORKDIR=/workspace",
+                "AGENT_ADDR=:7070",
+                "AGENT_ENV_PASSTHROUGH=PATH,PYTHONPATH,FILE_ENGINES_MODEL_DIR,HF_HUB_OFFLINE,TRANSFORMERS_OFFLINE,AR_UNO_PYTHON,AR_SOFFICE_BIN,LANG,LC_ALL,TZ"
+            ],
+            "Cmd": [
+                "/src/scripts/file-engines/benchmark.py",
+                "retrieve",
+                "--work",
+                "/workspace/run",
+                "--model-dir",
+                "/models/e5"
+            ],
+            "Image": "fi-20261110-benchmark:validation",
+            "Volumes": null,
+            "WorkingDir": "/workspace",
+            "Entrypoint": [
+                "/opt/file-engines/bin/python"
+            ],
+            "Labels": {
+                "org.opencontainers.image.version": "24.04"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "none": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "2b715169ded8619f935bfe7f1e928bde578930adbad0e1e2077230e8a3cea857",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": null
+                }
+            }
+        },
+        "ImageManifestDescriptor": {
+            "mediaType": "application/vnd.oci.image.manifest.v1+json",
+            "digest": "sha256:d9d1f32690f892dacd3984a3deec226379ce753bf1cdc0a43abef8d5f3e9aec6",
+            "size": 2966,
+            "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+            }
+        }
+    }
+]

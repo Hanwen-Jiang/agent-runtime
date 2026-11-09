@@ -1,0 +1,250 @@
+{
+  "evaluation": {
+    "id": "notebook_03",
+    "family": "notebook",
+    "variant": "markdown_code_read_without_execution",
+    "language": "zh",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 0.026657076086848974,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_b67b1b2603c24904325243e2"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_78c2979291ec37d0f72f1eee"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_88f9f4ec04323daf72f8ebad"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_709ca03a879e06d2f7abb079"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_015f54a00a2932e4760128cd"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_35188d161538700f98a57288"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "source_structure",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_cells": 7,
+      "processed_cells": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "executed": false,
+      "returned_blocks": 7,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_b67b1b2603c24904325243e2",
+        "kind": "markdown",
+        "text": "科研数据保留的提交期限为19个工作日。",
+        "anchor": {
+          "kind": "notebook_cell",
+          "cell_index": 0,
+          "cell_id": "clause-0"
+        },
+        "executed": false
+      },
+      {
+        "id": "blk_78c2979291ec37d0f72f1eee",
+        "kind": "markdown",
+        "text": "科研数据保留的审批责任人为科研办公室。",
+        "anchor": {
+          "kind": "notebook_cell",
+          "cell_index": 1,
+          "cell_id": "clause-1"
+        },
+        "executed": false
+      },
+      {
+        "id": "blk_88f9f4ec04323daf72f8ebad",
+        "kind": "markdown",
+        "text": "科研数据保留必须提供研究方案。",
+        "anchor": {
+          "kind": "notebook_cell",
+          "cell_index": 2,
+          "cell_id": "clause-2"
+        },
+        "executed": false
+      },
+      {
+        "id": "blk_709ca03a879e06d2f7abb079",
+        "kind": "markdown",
+        "text": "科研数据保留记录须保留20个月。",
+        "anchor": {
+          "kind": "notebook_cell",
+          "cell_index": 3,
+          "cell_id": "clause-3"
+        },
+        "executed": false
+      },
+      {
+        "id": "blk_015f54a00a2932e4760128cd",
+        "kind": "markdown",
+        "text": "科研数据保留的紧急例外需要部门负责人书面批准。",
+        "anchor": {
+          "kind": "notebook_cell",
+          "cell_index": 4,
+          "cell_id": "clause-4"
+        },
+        "executed": false
+      },
+      {
+        "id": "blk_35188d161538700f98a57288",
+        "kind": "markdown",
+        "text": "科研数据保留必须通过科研登记系统提交。",
+        "anchor": {
+          "kind": "notebook_cell",
+          "cell_index": 5,
+          "cell_id": "clause-5"
+        },
+        "executed": false
+      },
+      {
+        "id": "blk_3a301efb2ec5b8e347168be7",
+        "kind": "code",
+        "text": "from pathlib import Path\nPath(\"NOTEBOOK_EXECUTED\").write_text(\"unsafe\")",
+        "anchor": {
+          "kind": "notebook_cell",
+          "cell_index": 6,
+          "cell_id": "do-not-run"
+        },
+        "executed": false
+      }
+    ],
+    "outline": [],
+    "warnings": [],
+    "coverage": {
+      "total_cells": 7,
+      "processed_cells": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "executed": false,
+      "returned_blocks": 7,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/notebook_03/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "c064cc1354c02504eca0ca6b1a0ab99d96322492256d0d0db941dd2b13474843",
+        "size_bytes": 2741
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "15c481dbb3c64e9b7ba5d6790aa163921e58a620585f0b0be42268a261224128",
+      "size_bytes": 1418,
+      "mime_type": "application/x-ipynb+json"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "3555600d2cc3ddf5685a8401ee2cded590e598f382516d69e80bf06e47c783b3"
+    }
+  }
+}

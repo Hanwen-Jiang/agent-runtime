@@ -1,0 +1,110 @@
+{
+  "checks": [
+    {
+      "name": "unmodified_legacy_history_replays_with_terminal_patch",
+      "status": "passed"
+    },
+    {
+      "name": "real_api_idempotency_frozen_inputs_and_completion_without_get",
+      "status": "passed"
+    },
+    {
+      "name": "worker_sigkill_heartbeat_timeout_retry_and_recovery",
+      "status": "passed"
+    },
+    {
+      "name": "one_consumer_cancel_keeps_shared_job_running",
+      "status": "passed"
+    },
+    {
+      "name": "last_consumer_cancel_persists_terminal_and_blocks_late_result",
+      "status": "passed"
+    },
+    {
+      "name": "transient_failure_and_actual_timeout_retry_at_most_twice_then_persist",
+      "status": "passed"
+    },
+    {
+      "name": "real_recovery_failure_and_timeout_histories_replay",
+      "status": "passed"
+    }
+  ],
+  "temporal": "temporal version 1.9.1 (Server 1.32.0, UI 2.54.1)",
+  "mode": "real_temporal_go_file_api_sandbox_service_local_backend",
+  "namespace": "fi-1794258496",
+  "status": "passed",
+  "attempts": [
+    {
+      "job": "fjob_456346f67d89d2aa083d13c2695c042a24c296657a55a7dc",
+      "scenario": "legacy",
+      "attempt": 1,
+      "pid": 178
+    },
+    {
+      "job": "fjob_040fd050aa4e925735ea7deb657c6957cdd813842be74707",
+      "scenario": "simple",
+      "attempt": 1,
+      "pid": 229
+    },
+    {
+      "job": "fjob_cd05fe68cab094c05ce9a250e2661c42a15e0dad7bfd6f3c",
+      "scenario": "recover",
+      "attempt": 1,
+      "pid": 229
+    },
+    {
+      "job": "fjob_cd05fe68cab094c05ce9a250e2661c42a15e0dad7bfd6f3c",
+      "scenario": "recover",
+      "attempt": 2,
+      "pid": 270
+    },
+    {
+      "job": "fjob_aa496df1d7e646442728159123d5baa0ec0a6f5d80d52e21",
+      "scenario": "shared",
+      "attempt": 1,
+      "pid": 270
+    },
+    {
+      "job": "fjob_468ee55b68ff06d360cf8fa35b772cc8bf460636bb618836",
+      "scenario": "cancel",
+      "attempt": 1,
+      "pid": 270
+    },
+    {
+      "job": "fjob_d056a5e48b918fd384ed200d30cfa0b3b208f2f0840b53a3",
+      "scenario": "retry",
+      "attempt": 1,
+      "pid": 270
+    },
+    {
+      "job": "fjob_25e7974ceee38485b963b97b0b8f00725e1d6a8f9aa16c57",
+      "scenario": "failure",
+      "attempt": 1,
+      "pid": 270
+    },
+    {
+      "job": "fjob_ec69c2fb6151e75e58157df60ace8c4c72411adbb3f88bd6",
+      "scenario": "timeout",
+      "attempt": 1,
+      "pid": 270
+    },
+    {
+      "job": "fjob_d056a5e48b918fd384ed200d30cfa0b3b208f2f0840b53a3",
+      "scenario": "retry",
+      "attempt": 2,
+      "pid": 270
+    },
+    {
+      "job": "fjob_25e7974ceee38485b963b97b0b8f00725e1d6a8f9aa16c57",
+      "scenario": "failure",
+      "attempt": 2,
+      "pid": 270
+    },
+    {
+      "job": "fjob_ec69c2fb6151e75e58157df60ace8c4c72411adbb3f88bd6",
+      "scenario": "timeout",
+      "attempt": 2,
+      "pid": 270
+    }
+  ]
+}

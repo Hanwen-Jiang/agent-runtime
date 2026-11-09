@@ -1,0 +1,340 @@
+{
+  "id": "q10_2",
+  "query": "远程办公申请需要哪些凭证？比较不同资料的要求。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_10",
+      "pptx_00",
+      "scan_pdf_10",
+      "table_00",
+      "text_pdf_10",
+      "xlsx_05"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.3333333333333333,
+    "unique_source_ndcg_at_8": 0.28162497265977743,
+    "relevant_files": [
+      "scan_pdf_10",
+      "xlsx_05"
+    ],
+    "expected_files": [
+      "text_pdf_10",
+      "scan_pdf_10",
+      "docx_10",
+      "xlsx_05",
+      "pptx_00",
+      "table_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 22.00462599284947
+  },
+  "hybrid": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.4935232796777482,
+    "relevant_files": [
+      "scan_pdf_10",
+      "xlsx_05"
+    ],
+    "expected_files": [
+      "text_pdf_10",
+      "scan_pdf_10",
+      "docx_10",
+      "xlsx_05",
+      "pptx_00",
+      "table_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 3398.492156062275
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_f0400e0478542b8a0a5cd6a3",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 15.0,
+        "bbox": [
+          0.026209676638245583,
+          0.096875,
+          0.36693546175956726,
+          0.1859375
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_10",
+      "version_id": "scan_pdf_10",
+      "score": 0.29168254137039185,
+      "text": "远程办公申请必须提供值班安排。",
+      "quote_hash": "f89ef6dfce0383b0cdc3cb50a13e3bbdd4f71e2f20b3ece0eeada54f5a0865d0",
+      "id": "chunk_74994d4fb486b77cbcfe25f76766574e4fb509a733991ac7f6dcd8178a54140a"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_2e697179372085365c72ed93",
+        "range": "B4",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 15.0
+      },
+      "representation_id": "rep_xlsx_05",
+      "version_id": "xlsx_05",
+      "score": 0.29168254137039185,
+      "text": "远程办公申请必须提供值班安排。",
+      "quote_hash": "f89ef6dfce0383b0cdc3cb50a13e3bbdd4f71e2f20b3ece0eeada54f5a0865d0",
+      "id": "chunk_bff4492f9862b81601cb72cb461d7c52c210d70cc478e632e5ea46458c12acf7"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_edc0028d2f2822f374179e61",
+        "range": "B7",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 17.0
+      },
+      "representation_id": "rep_xlsx_05",
+      "version_id": "xlsx_05",
+      "score": 0.11727307736873627,
+      "text": "远程办公申请必须通过考勤系统提交。",
+      "quote_hash": "a505f3e58a64dc1694947d372d1b09bdcb72880018ff47069ce21884e07a75e9",
+      "id": "chunk_03f85c0be940df5c4728f6138f51f0f49ab7433464d930bfa75331d060e59cf5"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_79391c31b8093707b78f3966",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 17.0,
+        "bbox": [
+          0.026209676638245583,
+          0.275,
+          0.41381046175956726,
+          0.3640625
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_10",
+      "version_id": "scan_pdf_10",
+      "score": 0.11727307736873627,
+      "text": "远程办公申请必须通过考勤系统提交。",
+      "quote_hash": "a505f3e58a64dc1694947d372d1b09bdcb72880018ff47069ce21884e07a75e9",
+      "id": "chunk_6932328b301d994deb353585338abc7615ecde420461b0423a81edf76c353c19"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_6c38548e89d6252f4f74eb0f",
+        "range": "B6",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 23.0
+      },
+      "representation_id": "rep_xlsx_05",
+      "version_id": "xlsx_05",
+      "score": 0.005144967697560787,
+      "text": "远程办公申请的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "94b7f2706911bb414c1ba78f4b8b30183c9702d9f0695c41919c08343b1fb771",
+      "id": "chunk_12f234f76e948fe849ce96c78c09e5024ce0c1f9eb4a9df76adacfa49caffb3b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d4bb65ac4fd5abdf38a9459e",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 23.0,
+        "bbox": [
+          0.026209676638245583,
+          0.096875,
+          0.5504032373428345,
+          0.1859375
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_10",
+      "version_id": "scan_pdf_10",
+      "score": 0.005144967697560787,
+      "text": "远程办公申请的紧急例外需要部门负责人书面批准。",
+      "quote_hash": "94b7f2706911bb414c1ba78f4b8b30183c9702d9f0695c41919c08343b1fb771",
+      "id": "chunk_d05070ae3b777e0d6d9461d904e61064b9794122826c0c26b92687150302b445"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_58f9363a96c0576d4054dd00",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 26.0,
+        "row_index": 5.0
+      },
+      "representation_id": "rep_table_00",
+      "version_id": "table_00",
+      "score": -0.11785388737916946,
+      "text": "5\t远程办公申请必须通过考勤系统提交。\t5\twest",
+      "quote_hash": "45ebd0458c0fb50e03ada18ac853aad9a3a0dc74247c39ae4e30493d1bbbfa23",
+      "id": "chunk_dc3f7489ae96ff03dc3a5c941fae5b9eba4853f2b69a76d132ba7171d8339981"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_622bf84079339a6850ae1c83",
+        "kind": "sheet_range",
+        "sheet_id": "csv",
+        "char_end": 32.0,
+        "row_index": 4.0
+      },
+      "representation_id": "rep_table_00",
+      "version_id": "table_00",
+      "score": -0.18112030625343323,
+      "text": "4\t远程办公申请的紧急例外需要部门负责人书面批准。\t4\teast",
+      "quote_hash": "a61d8c4084484bf16b95b3746f1331d06c54e907066fbd5593a8a3fe5c8f59e0",
+      "id": "chunk_ff8a2b288fa6fa2991b16b4c85a994b2b972e30ed06bdf1004ee7cac7ef4b969"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_22291767ebd0143421fc534429989de0b1a911e7f8d7ec7aaa832eb95739e25d",
+      "version_id": "xlsx_05",
+      "text": "远程办公申请记录须保留19个月。",
+      "anchor": {
+        "block_id": "blk_7e71a89da0774633cbacbf0c",
+        "char_end": 16,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B5",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_27099c8ef0738bac680a3f7cbc20cbdaa66a67792790fc3888b4122e18f17a58",
+      "version_id": "scan_pdf_10",
+      "text": "远程办公申请记录须保留17个月。",
+      "anchor": {
+        "bbox": [
+          0.02520161122083664,
+          0.2703125,
+          0.37046369910240173,
+          0.3640625
+        ],
+        "block_id": "blk_a28674090d4b1b16405fcd24",
+        "char_end": 16,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_74994d4fb486b77cbcfe25f76766574e4fb509a733991ac7f6dcd8178a54140a",
+      "version_id": "scan_pdf_10",
+      "text": "远程办公申请必须提供值班安排。",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.096875,
+          0.36693546175956726,
+          0.1859375
+        ],
+        "block_id": "blk_f0400e0478542b8a0a5cd6a3",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_bff4492f9862b81601cb72cb461d7c52c210d70cc478e632e5ea46458c12acf7",
+      "version_id": "xlsx_05",
+      "text": "远程办公申请必须提供值班安排。",
+      "anchor": {
+        "block_id": "blk_2e697179372085365c72ed93",
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B4",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_03f85c0be940df5c4728f6138f51f0f49ab7433464d930bfa75331d060e59cf5",
+      "version_id": "xlsx_05",
+      "text": "远程办公申请必须通过考勤系统提交。",
+      "anchor": {
+        "block_id": "blk_edc0028d2f2822f374179e61",
+        "char_end": 17,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B7",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_0c94dbc960cc24142fcf190b368b4355f75ee86d34525c0f042e531f1a29997e",
+      "version_id": "table_00",
+      "text": "3\t远程办公申请记录须保留22个月。\t3\twest",
+      "anchor": {
+        "block_id": "blk_d2ea0e1cca83becfcedd225c",
+        "char_end": 25,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "row_index": 3.0,
+        "sheet_id": "csv"
+      }
+    },
+    {
+      "id": "chunk_2cc30573f44e877a077d7c2cd0cf0e22dafebeaab7d03ff5772774d09c1b4ce0",
+      "version_id": "xlsx_05",
+      "text": "远程办公申请的提交期限为7个工作日。",
+      "anchor": {
+        "block_id": "blk_1760c56355c5c8f028c5bb42",
+        "char_end": 18,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B2",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_6932328b301d994deb353585338abc7615ecde420461b0423a81edf76c353c19",
+      "version_id": "scan_pdf_10",
+      "text": "远程办公申请必须通过考勤系统提交。",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.275,
+          0.41381046175956726,
+          0.3640625
+        ],
+        "block_id": "blk_79391c31b8093707b78f3966",
+        "char_end": 17,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,416 @@
+{
+  "evaluation": {
+    "id": "xlsx_05",
+    "family": "xlsx",
+    "variant": "multi_sheet_formula_hidden_reference",
+    "language": "zh",
+    "expected": "readable",
+    "status": "partial",
+    "elapsed_seconds": 0.03743733395822346,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_1760c56355c5c8f028c5bb42"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_b54ce6a673782c06dc4dadb7"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_2e697179372085365c72ed93"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_7e71a89da0774633cbacbf0c"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_6c38548e89d6252f4f74eb0f"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 1.0,
+        "candidate_ids": [
+          "blk_edc0028d2f2822f374179e61"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "raw_ooxml",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "sheet": "Policy",
+      "range": [
+        1,
+        1,
+        2,
+        7
+      ],
+      "formulas_recalculated": false,
+      "returned_blocks": 14,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "partial",
+    "blocks": [
+      {
+        "id": "blk_5dd14e20926953ff5af4050a",
+        "kind": "cell",
+        "text": "Facet",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A1"
+        },
+        "value": "Facet",
+        "formula": null,
+        "cached_value": "Facet",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_04e108282784175cea9f928f",
+        "kind": "cell",
+        "text": "Clause",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B1"
+        },
+        "value": "Clause",
+        "formula": null,
+        "cached_value": "Clause",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_fb426162e34c2d4d97ccb526",
+        "kind": "cell",
+        "text": "0",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A2"
+        },
+        "value": 0,
+        "formula": null,
+        "cached_value": 0,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_1760c56355c5c8f028c5bb42",
+        "kind": "cell",
+        "text": "远程办公申请的提交期限为7个工作日。",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B2"
+        },
+        "value": "远程办公申请的提交期限为7个工作日。",
+        "formula": null,
+        "cached_value": "远程办公申请的提交期限为7个工作日。",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_c4c7e6e6c7dd0b8e51867c3c",
+        "kind": "cell",
+        "text": "1",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A3"
+        },
+        "value": 1,
+        "formula": null,
+        "cached_value": 1,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_b54ce6a673782c06dc4dadb7",
+        "kind": "cell",
+        "text": "远程办公申请的审批责任人为团队主管。",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B3"
+        },
+        "value": "远程办公申请的审批责任人为团队主管。",
+        "formula": null,
+        "cached_value": "远程办公申请的审批责任人为团队主管。",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_b47e30e20eea0b258d33db5e",
+        "kind": "cell",
+        "text": "2",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A4"
+        },
+        "value": 2,
+        "formula": null,
+        "cached_value": 2,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_2e697179372085365c72ed93",
+        "kind": "cell",
+        "text": "远程办公申请必须提供值班安排。",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B4"
+        },
+        "value": "远程办公申请必须提供值班安排。",
+        "formula": null,
+        "cached_value": "远程办公申请必须提供值班安排。",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_32b4beb8dc4cb65e348084c7",
+        "kind": "cell",
+        "text": "3",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A5"
+        },
+        "value": 3,
+        "formula": null,
+        "cached_value": 3,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_7e71a89da0774633cbacbf0c",
+        "kind": "cell",
+        "text": "远程办公申请记录须保留19个月。",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B5"
+        },
+        "value": "远程办公申请记录须保留19个月。",
+        "formula": null,
+        "cached_value": "远程办公申请记录须保留19个月。",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_bf5cf42801a44867fd653f28",
+        "kind": "cell",
+        "text": "4",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A6"
+        },
+        "value": 4,
+        "formula": null,
+        "cached_value": 4,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_6c38548e89d6252f4f74eb0f",
+        "kind": "cell",
+        "text": "远程办公申请的紧急例外需要部门负责人书面批准。",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B6"
+        },
+        "value": "远程办公申请的紧急例外需要部门负责人书面批准。",
+        "formula": null,
+        "cached_value": "远程办公申请的紧急例外需要部门负责人书面批准。",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_fb368bb7ddc4dd983bdb7300",
+        "kind": "cell",
+        "text": "5",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "A7"
+        },
+        "value": 5,
+        "formula": null,
+        "cached_value": 5,
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      },
+      {
+        "id": "blk_edc0028d2f2822f374179e61",
+        "kind": "cell",
+        "text": "远程办公申请必须通过考勤系统提交。",
+        "anchor": {
+          "kind": "sheet_range",
+          "sheet_id": "sheet-0",
+          "sheet": "Policy",
+          "range": "B7"
+        },
+        "value": "远程办公申请必须通过考勤系统提交。",
+        "formula": null,
+        "cached_value": "远程办公申请必须通过考勤系统提交。",
+        "calculation_status": "not_recalculated",
+        "number_format": "General"
+      }
+    ],
+    "outline": [
+      {
+        "kind": "sheet",
+        "name": "Policy",
+        "sheet_id": "sheet-0",
+        "rows": 7,
+        "columns": 2,
+        "state": "visible"
+      },
+      {
+        "kind": "sheet",
+        "name": "Budget",
+        "sheet_id": "sheet-1",
+        "rows": 4,
+        "columns": 3,
+        "state": "visible"
+      },
+      {
+        "kind": "sheet",
+        "name": "Reference",
+        "sheet_id": "sheet-2",
+        "rows": 1,
+        "columns": 1,
+        "state": "hidden"
+      }
+    ],
+    "warnings": [],
+    "coverage": {
+      "sheet": "Policy",
+      "range": [
+        1,
+        1,
+        2,
+        7
+      ],
+      "formulas_recalculated": false,
+      "returned_blocks": 14,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/xlsx_05/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "02566f47b4a525616af0ab0461f8cc298167c5d8440f9f73e34b0a3e553adcf0",
+        "size_bytes": 6135
+      }
+    ],
+    "capabilities": {
+      "text": true,
+      "pdf_text": true,
+      "pdf_render": true,
+      "docx": true,
+      "xlsx": true,
+      "pptx": true,
+      "image": true,
+      "ipynb": true,
+      "archive": true,
+      "parquet": true,
+      "ocr": true,
+      "complex_pdf": true,
+      "office_render": true,
+      "executes_macros": false,
+      "network_required": false
+    },
+    "source": {
+      "sha256": "055ddccb0a67332fa4a38583d4654bcc98db78f607b0440e584a0dbb565f42d9",
+      "size_bytes": 6243,
+      "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "fc3eab1492cdd65878e15401898abd391d015d28268d67d452224264104524a0"
+    }
+  }
+}

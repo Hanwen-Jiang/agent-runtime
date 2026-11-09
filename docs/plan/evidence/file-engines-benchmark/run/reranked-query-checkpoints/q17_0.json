@@ -1,0 +1,357 @@
+{
+  "id": "q17_0",
+  "query": "Compare the submission deadlines for backup restoration across the policies.",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "pptx_07",
+      "text_pdf_17",
+      "xlsx_12"
+    ],
+    "extraction_chunking_recall_ceiling": 0.6
+  },
+  "exact": {
+    "recall_at_8": 0.0,
+    "hit_at_8": 0.0,
+    "reciprocal_rank_at_8": 0,
+    "unique_source_ndcg_at_8": 0.0,
+    "relevant_files": [],
+    "expected_files": [
+      "text_pdf_17",
+      "scan_pdf_17",
+      "xlsx_12",
+      "pptx_07",
+      "image_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.0,
+    "latency_ms": 14.849994098767638
+  },
+  "hybrid": {
+    "recall_at_8": 0.4,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.5531464700081437,
+    "relevant_files": [
+      "pptx_07",
+      "text_pdf_17"
+    ],
+    "expected_files": [
+      "text_pdf_17",
+      "scan_pdf_17",
+      "xlsx_12",
+      "pptx_07",
+      "image_02"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 5255.744261899963
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "slide_index": 0.0,
+        "block_id": "blk_a7ba7fc60c8ba9e2c12e2109",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 16.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_07",
+      "version_id": "pptx_07",
+      "score": 1.6982073783874512,
+      "text": "备份恢复的提交期限为9个工作日。",
+      "quote_hash": "4573dc32a269928c0c5b10f2b16a0e5e0b7ea6abe3ff36600e9cc1424b1fb683",
+      "id": "chunk_39e61de7b181ccf8658b6cc807fcb5cf8e6af9e3640dbe4118a1e0017b065fcd"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_46cfe6c35b8c7e8c595e5eb2",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 17.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.397078431372549,
+          0.12052112044648612
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_text_pdf_17",
+      "version_id": "text_pdf_17",
+      "score": 1.6743566989898682,
+      "text": "备份恢复的提交期限为22个工作日。",
+      "quote_hash": "be20a90b1f011b4e183a751a27f46815474c7aa7be8e07295f2083a3f100811b",
+      "id": "chunk_67e2bef2c712b4e7862daf1d3af3f24296b2fc4ab89aa8b9a14489b6017a350b"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e3eda9c5d6250418986d96d8",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 57.0,
+        "bbox": [
+          0.025705644860863686,
+          0.3796875,
+          0.6900201439857483,
+          0.475
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_17",
+      "version_id": "scan_pdf_17",
+      "score": -0.7434347867965698,
+      "text": "Backup restoration must be submitted through the recovery",
+      "quote_hash": "bd36fa8901a320fb1aefbd43508dbb6f9e5078ef6eaae8af91d6d7c66051f369",
+      "id": "chunk_00c98c92b99d931b07ea22cfc5643c47e28d8d87c2cacb5fa06788cb2bbb8cd8"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_4a2cb1ca0a55fdc4a1a957e7",
+        "kind": "image_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 57.0,
+        "bbox": [
+          0.025925925925925925,
+          0.5522522522522523,
+          0.6888888888888889,
+          0.5864864864864865
+        ]
+      },
+      "representation_id": "rep_image_02",
+      "version_id": "image_02",
+      "score": -0.7434347867965698,
+      "text": "Backup restoration must be submitted through the recovery",
+      "quote_hash": "bd36fa8901a320fb1aefbd43508dbb6f9e5078ef6eaae8af91d6d7c66051f369",
+      "id": "chunk_ff065ff6a5084522a242b8ce77c920b585780b42e26cf448cdb6f2ea9d4dfb9a"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_344e739b0e417dad4972a945",
+        "range": "B7",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 66.0
+      },
+      "representation_id": "rep_xlsx_12",
+      "version_id": "xlsx_12",
+      "score": -0.8668981194496155,
+      "text": "Backup restoration must be submitted through the recovery console.",
+      "quote_hash": "12472c76cc8ece4379379f1f9dac9e6b2c3241c27d3139973799f123539c0efa",
+      "id": "chunk_73653ef5b88f80687a22766c04e8b65df2c73efe66eac07f78205463036f4212"
+    },
+    {
+      "anchor": {
+        "slide_index": 5.0,
+        "block_id": "blk_efe32f9a88ed91b6ba537919",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 16.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_07",
+      "version_id": "pptx_07",
+      "score": -0.9421601295471191,
+      "text": "备份恢复必须通过恢复控制台提交。",
+      "quote_hash": "bc108248f71d7e11fe0276cdff98b29eb5cd182b4a8b34998751f7fbd013a4dc",
+      "id": "chunk_14f4da094e267c410700fc639112cf12fc0175d6a3714a085f07a621b3cf5af7"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_a7c53ec1b444954c40ded310",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.39869281045751637,
+          0.12052112044648612
+        ],
+        "page_index": 5.0
+      },
+      "representation_id": "rep_text_pdf_17",
+      "version_id": "text_pdf_17",
+      "score": -0.9421601295471191,
+      "text": "备份恢复必须通过恢复控制台提交。",
+      "quote_hash": "bc108248f71d7e11fe0276cdff98b29eb5cd182b4a8b34998751f7fbd013a4dc",
+      "id": "chunk_ce1e23e26c9fa0a7d416797678f31d77ccff5f6c65bb5e0bf7893e0f4388e1cf"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_5463d8f4992c5ac015987dd5",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 54.0,
+        "bbox": [
+          0.025705644860863686,
+          0.2734375,
+          0.6330645084381104,
+          0.3578125
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_17",
+      "version_id": "scan_pdf_17",
+      "score": -2.004344940185547,
+      "text": "Records for backup restoration must be retained for 24",
+      "quote_hash": "895dcb998e9185ffb17eb5dcc231b707c3f4656222b02500dcfb86e94a6e36cb",
+      "id": "chunk_85d26ef1271101e3042827a908c71312f4af4881c4dc5c023d565470029277b8"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_3b727579047d4566c24a0e0c7e64b4d6b5868e0236ef87c5f36a0ef97f0def52",
+      "version_id": "xlsx_12",
+      "text": "Emergency exceptions for backup restoration require written approval from the department head.",
+      "anchor": {
+        "block_id": "blk_cbc9b162239ec74b6323aabc",
+        "char_end": 94,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B6",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_00c98c92b99d931b07ea22cfc5643c47e28d8d87c2cacb5fa06788cb2bbb8cd8",
+      "version_id": "scan_pdf_17",
+      "text": "Backup restoration must be submitted through the recovery",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.3796875,
+          0.6900201439857483,
+          0.475
+        ],
+        "block_id": "blk_e3eda9c5d6250418986d96d8",
+        "char_end": 57,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_ff065ff6a5084522a242b8ce77c920b585780b42e26cf448cdb6f2ea9d4dfb9a",
+      "version_id": "image_02",
+      "text": "Backup restoration must be submitted through the recovery",
+      "anchor": {
+        "bbox": [
+          0.025925925925925925,
+          0.5522522522522523,
+          0.6888888888888889,
+          0.5864864864864865
+        ],
+        "block_id": "blk_4a2cb1ca0a55fdc4a1a957e7",
+        "char_end": 57,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_85d26ef1271101e3042827a908c71312f4af4881c4dc5c023d565470029277b8",
+      "version_id": "scan_pdf_17",
+      "text": "Records for backup restoration must be retained for 24",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.2734375,
+          0.6330645084381104,
+          0.3578125
+        ],
+        "block_id": "blk_5463d8f4992c5ac015987dd5",
+        "char_end": 54,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_dd5d60b800447319b23874e18a7578c97a12539c16a85c7f59c7964cce0d10e2",
+      "version_id": "image_02",
+      "text": "Records for backup restoration must be retained for 11",
+      "anchor": {
+        "bbox": [
+          0.025925925925925925,
+          0.33063063063063064,
+          0.6303703703703704,
+          0.3621621621621622
+        ],
+        "block_id": "blk_994b9e8ba729a0facf482318",
+        "char_end": 54,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_dac8988dbb709ac6c65053a91fe136249466ec2c059a62302ae418489b2062db",
+      "version_id": "xlsx_12",
+      "text": "Storage Team is responsible for approving backup restoration.",
+      "anchor": {
+        "block_id": "blk_412184e4096326183d440cae",
+        "char_end": 61,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B3",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_73653ef5b88f80687a22766c04e8b65df2c73efe66eac07f78205463036f4212",
+      "version_id": "xlsx_12",
+      "text": "Backup restoration must be submitted through the recovery console.",
+      "anchor": {
+        "block_id": "blk_344e739b0e417dad4972a945",
+        "char_end": 66,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B7",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_fb5e5e6387a748434b1396b93e141e3d449cab59272ddec45c9320cc7d42b096",
+      "version_id": "xlsx_12",
+      "text": "Records for backup restoration must be retained for 7 months.",
+      "anchor": {
+        "block_id": "blk_909a554a026da21bf2d0f5a5",
+        "char_end": 61,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B5",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    }
+  ]
+}

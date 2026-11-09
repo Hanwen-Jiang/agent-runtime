@@ -1,6 +1,8 @@
 # File Intelligence 1.3 — 集成实现与验收出口
 
 日期：2026-11-10。基于 `docs/design/file-intelligence-design.md` v1.3。
+
+> 后续服务器实测、已修问题与最新合并验收状态见 [服务器验收记录](file-intelligence-server-acceptance.md)。下文保留首次本地集成交付时的状态；其中 Linux UNO、真实 Temporal 和规模自动评测的“未跑”已由后续证据更新，人工质量门另列。
 本记录覆盖 M0.1 之后的实现，替代旧进度记录中“尚无解析/检索/计算/UI”的状态描述。
 **代码已覆盖下面的主链；这不等于已上线，也不等于全部生产验收通过。**
 

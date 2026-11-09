@@ -1,0 +1,154 @@
+{
+  "evaluation": {
+    "id": "text_07",
+    "family": "text",
+    "variant": "log_utf-8",
+    "language": "zh",
+    "expected": "readable",
+    "status": "ready",
+    "elapsed_seconds": 0.015141512965783477,
+    "checks": [
+      {
+        "fact": 0,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.3036,
+        "candidate_ids": [
+          "blk_d525be7e7f8b3a90a6c80695"
+        ]
+      },
+      {
+        "fact": 1,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.2569,
+        "candidate_ids": [
+          "blk_d525be7e7f8b3a90a6c80695"
+        ]
+      },
+      {
+        "fact": 2,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.2407,
+        "candidate_ids": [
+          "blk_d525be7e7f8b3a90a6c80695"
+        ]
+      },
+      {
+        "fact": 3,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.2569,
+        "candidate_ids": [
+          "blk_d525be7e7f8b3a90a6c80695"
+        ]
+      },
+      {
+        "fact": 4,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.3621,
+        "candidate_ids": [
+          "blk_d525be7e7f8b3a90a6c80695"
+        ]
+      },
+      {
+        "fact": 5,
+        "text_found": true,
+        "anchor_found": true,
+        "best_block_similarity": 0.2883,
+        "candidate_ids": [
+          "blk_d525be7e7f8b3a90a6c80695"
+        ]
+      }
+    ],
+    "independent": {
+      "method": "source_structure",
+      "verified": true,
+      "found": 6,
+      "total": 6
+    },
+    "original_unchanged": true,
+    "error": null,
+    "ocr": {
+      "blocks": 0,
+      "low_confidence_blocks": 0
+    },
+    "coverage": {
+      "total_lines": 6,
+      "start_line": 1,
+      "end_line": 6,
+      "next_line": null,
+      "returned_blocks": 1,
+      "output_truncated": false
+    },
+    "warnings": []
+  },
+  "result": {
+    "status": "ready",
+    "blocks": [
+      {
+        "id": "blk_d525be7e7f8b3a90a6c80695",
+        "kind": "text",
+        "text": "供应商准入的提交期限为17个工作日。\n供应商准入的审批责任人为采购。\n供应商准入必须提供安全问卷。\n供应商准入记录须保留18个月。\n供应商准入的紧急例外需要部门负责人书面批准。\n供应商准入必须通过供应商平台提交。",
+        "anchor": {
+          "kind": "text_range",
+          "start_line": 1,
+          "end_line": 6,
+          "offset_unit": "unicode_code_point"
+        }
+      }
+    ],
+    "outline": [],
+    "warnings": [],
+    "coverage": {
+      "total_lines": 6,
+      "start_line": 1,
+      "end_line": 6,
+      "next_line": null,
+      "returned_blocks": 1,
+      "output_truncated": false
+    },
+    "artifacts": [
+      {
+        "path": "/workspace/run/artifacts/text_07/representation.json",
+        "mime_type": "application/json",
+        "selector": {
+          "kind": "representation"
+        },
+        "sha256": "cd999d7b4616db60d453734824da9254d47a4533493a173bef89584ad520016e",
+        "size_bytes": 1488
+      }
+    ],
+    "capabilities": {},
+    "source": {
+      "sha256": "e66c8660152e4bb1a4e0255debd9a652ed422f6cf2fef9c964bb4a03ed01d9f0",
+      "size_bytes": 300,
+      "mime_type": "application/octet-stream"
+    },
+    "processor": {
+      "version": "file-engines-v1",
+      "digest": "28a55b9240b2e64a38fe1adc3a8fc78a6b0a9c865f706298bd1167ef47152688",
+      "packages": {
+        "pypdf": "6.19.0",
+        "docling": "2.133.0",
+        "rapidocr": "3.9.2",
+        "onnxruntime": "1.30.0",
+        "python-docx": "1.2.0",
+        "openpyxl": "3.1.5",
+        "python-pptx": "1.0.2",
+        "Pillow": "12.3.0",
+        "duckdb": "1.5.6",
+        "PyYAML": "6.0.3",
+        "defusedxml": "0.7.1"
+      },
+      "assets": {
+        "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+        "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+        "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+      },
+      "config_digest": "e2b8939c665acf5b7af59ba90409c2f9c4d207e6bfda5ee60dd57c56e9728364"
+    }
+  }
+}

@@ -1,0 +1,384 @@
+{
+  "id": "q15_3",
+  "query": "安全漏洞报告的记录保存多久？请找出各文件中的规定。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 6,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "pptx_05",
+      "scan_pdf_15",
+      "table_05",
+      "text_pdf_15",
+      "xlsx_10"
+    ],
+    "extraction_chunking_recall_ceiling": 0.8333333333333334
+  },
+  "exact": {
+    "recall_at_8": 0.16666666666666666,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.5,
+    "unique_source_ndcg_at_8": 0.1909208661789347,
+    "relevant_files": [
+      "pptx_05"
+    ],
+    "expected_files": [
+      "text_pdf_15",
+      "scan_pdf_15",
+      "xlsx_10",
+      "pptx_05",
+      "table_05",
+      "image_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.125,
+    "latency_ms": 22.54976611584425
+  },
+  "hybrid": {
+    "recall_at_8": 0.3333333333333333,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.4935232796777482,
+    "relevant_files": [
+      "pptx_05",
+      "text_pdf_15"
+    ],
+    "expected_files": [
+      "text_pdf_15",
+      "scan_pdf_15",
+      "xlsx_10",
+      "pptx_05",
+      "table_05",
+      "image_00"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.25,
+    "latency_ms": 4644.237541826442
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_cc0032010d58b0a81a625b6b",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 15.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_05",
+      "version_id": "pptx_05",
+      "score": 7.6626811027526855,
+      "text": "安全漏洞报告记录须保留6个月。",
+      "quote_hash": "89602a20bda2db82b95ab9a88a7553014e1e0cf2814c25e74cce189c3adcefd7",
+      "id": "chunk_3c66e4c9b08b44f5febf39f63c97c84494bf954ef904e66ddc2e95614159a7ef"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_4a8d8196e0ae84f26ffc5afc",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 59.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_15",
+      "version_id": "text_pdf_15",
+      "score": 5.304592132568359,
+      "text": "Synthetic policy edition / 合成政策版本 — page 4\n安全漏洞报告记录须保留21个月。",
+      "quote_hash": "21bc7c5d18e08cad8103360238a380ab56ba8146f39d2722ba7a564daad31e88",
+      "id": "chunk_12899ed1c73c34af20a8ea02b58c3aafd38b5c80fa3f857bc01bfc2741a08aa3"
+    },
+    {
+      "anchor": {
+        "slide_index": 0.0,
+        "block_id": "blk_07dbbd2d0b0bc6658f66935f",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 19.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_05",
+      "version_id": "pptx_05",
+      "score": 2.8642799854278564,
+      "text": "安全漏洞报告的提交期限为20个工作日。",
+      "quote_hash": "f4ae49d1e59a3aa9a42e642d01c20b25d26d0fe84da00c2d13fd04f772b3a744",
+      "id": "chunk_f5e269a35051c80f9c9cd90762d705afb89e794a4da91730bf6c9958f6826114"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_90cc7cf74af99d4d55161117",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 61.0,
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_text_pdf_15",
+      "version_id": "text_pdf_15",
+      "score": 1.1226040124893188,
+      "text": "Synthetic policy edition / 合成政策版本 — page 1\n安全漏洞报告的提交期限为8个工作日。",
+      "quote_hash": "6185cce69e78f8cd7d25cb43f328dac008f75ca66e9cd89cf7e21fec7e27af40",
+      "id": "chunk_6af422695bf6efac1e14d2d6ec1ab791f14933d012d91a42fa55f9e265335eda"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e59537b408d36a4df83f969a",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 14.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.3333529411764706,
+          0.12052112044648612
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_17",
+      "version_id": "text_pdf_17",
+      "score": -1.6238970756530762,
+      "text": "备份恢复记录须保留23个月。",
+      "quote_hash": "6fbcc6bc81ccfe4651f2b26e77baac035956e83fd26ace731bd2b6c70df5ee0f",
+      "id": "chunk_cea0cb22ee3beea17789a6d1e8e60c29e859ab041f20e0df5b0ebbde031a8603"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_bb672c895b138c9ab90d1568",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 13.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_07",
+      "version_id": "pptx_07",
+      "score": -1.6470801830291748,
+      "text": "备份恢复记录须保留8个月。",
+      "quote_hash": "03abded1206d91b390833844f39c0b5b8dac9649af25deaaa223297147643219",
+      "id": "chunk_28cd466f7d4cafc53d9457c811844e93cadf51074fafb68fad9812c9abb752a2"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_95a7bfce636802f1dd949172",
+        "kind": "document_block",
+        "block_index": 4.0,
+        "char_end": 16.0
+      },
+      "representation_id": "rep_docx_13",
+      "version_id": "docx_13",
+      "score": -1.7976784706115723,
+      "text": "客户数据删除记录须保留21个月。",
+      "quote_hash": "6af583bfde1c5e0a5241e1123c149b7acf62a0e976f6f57f4d17afd147e462cd",
+      "id": "chunk_3cdcb9fb9962231126ae8ef5308920480291a0829b991787c213adb37181a966"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_54f6574cd8357198015d6809",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 16.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.37583660130718954,
+          0.12052112044648612
+        ],
+        "page_index": 3.0
+      },
+      "representation_id": "rep_text_pdf_13",
+      "version_id": "text_pdf_13",
+      "score": -1.79781174659729,
+      "text": "客户数据删除记录须保留19个月。",
+      "quote_hash": "e8a5fe255c842b4199117c40c5f2c65ecb30400a55d368a44f2c3894e962fd8d",
+      "id": "chunk_0d8f60f76ef63c1d8b11f4c6a73be1e27daa51f64bc9164929c955974411f051"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_0186aa0fa4551d07f30a0684e405e40a2ec46e9654992734b7e6377d54926cd2",
+      "version_id": "pptx_05",
+      "text": "安全漏洞报告的审批责任人为安全团队。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_665ef1c14a7abefd6f1260c6",
+        "char_end": 18,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_3c66e4c9b08b44f5febf39f63c97c84494bf954ef904e66ddc2e95614159a7ef",
+      "version_id": "pptx_05",
+      "text": "安全漏洞报告记录须保留6个月。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_cc0032010d58b0a81a625b6b",
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 3.0
+      }
+    },
+    {
+      "id": "chunk_f5e269a35051c80f9c9cd90762d705afb89e794a4da91730bf6c9958f6826114",
+      "version_id": "pptx_05",
+      "text": "安全漏洞报告的提交期限为20个工作日。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_07dbbd2d0b0bc6658f66935f",
+        "char_end": 19,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_5f24f04213bbf182d49e57c1a4a7034fbdf63eed6e8539f24a5a0a3233a2699c",
+      "version_id": "pptx_05",
+      "text": "安全漏洞报告必须通过安全邮箱提交。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_cbab3ad615c1128c41aca4f8",
+        "char_end": 17,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 5.0
+      }
+    },
+    {
+      "id": "chunk_ee1623268ae4c943d3ba500c0fcdfdb30c0b1048789df93359f2df7f32d7154a",
+      "version_id": "pptx_05",
+      "text": "安全漏洞报告的紧急例外需要部门负责人书面批准。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_5488552728392eb525437226",
+        "char_end": 23,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 4.0
+      }
+    },
+    {
+      "id": "chunk_f50917b9dad9f39acdbdb5892fbb0b3affbc4f4f817cd07b90beddbc59034412",
+      "version_id": "text_pdf_15",
+      "text": "Synthetic policy edition / 合成政策版本 — page 2\n安全漏洞报告的审批责任人为安全团队。",
+      "anchor": {
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "block_id": "blk_933b7da712af512921161669",
+        "char_end": 61,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_117d181ce878353bda7ddd16bb01b3fe87f1f1f1bc5649a167bc2e9e78f26f4f",
+      "version_id": "pptx_05",
+      "text": "安全漏洞报告必须提供可复现验证材料。",
+      "anchor": {
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "block_id": "blk_eece13fd941bb11f09f0480d",
+        "char_end": 18,
+        "char_start": 0,
+        "kind": "slide_shape",
+        "shape_id": 2.0,
+        "slide_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_6af422695bf6efac1e14d2d6ec1ab791f14933d012d91a42fa55f9e265335eda",
+      "version_id": "text_pdf_15",
+      "text": "Synthetic policy edition / 合成政策版本 — page 1\n安全漏洞报告的提交期限为8个工作日。",
+      "anchor": {
+        "bbox": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "block_id": "blk_90cc7cf74af99d4d55161117",
+        "char_end": 61,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    }
+  ]
+}

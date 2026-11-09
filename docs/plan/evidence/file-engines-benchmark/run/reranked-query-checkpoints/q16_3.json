@@ -1,0 +1,356 @@
+{
+  "id": "q16_3",
+  "query": "库存盘点的记录保存多久？请找出各文件中的规定。",
+  "language": "zh",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "image_01",
+      "pptx_06",
+      "scan_pdf_16",
+      "text_pdf_16",
+      "xlsx_11"
+    ],
+    "extraction_chunking_recall_ceiling": 1.0
+  },
+  "exact": {
+    "recall_at_8": 0.6,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.25,
+    "unique_source_ndcg_at_8": 0.3980847300545424,
+    "relevant_files": [
+      "image_01",
+      "scan_pdf_16",
+      "xlsx_11"
+    ],
+    "expected_files": [
+      "text_pdf_16",
+      "scan_pdf_16",
+      "xlsx_11",
+      "pptx_06",
+      "image_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 24.176595965400338
+  },
+  "hybrid": {
+    "recall_at_8": 0.6,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.7227265726449519,
+    "relevant_files": [
+      "image_01",
+      "scan_pdf_16",
+      "xlsx_11"
+    ],
+    "expected_files": [
+      "text_pdf_16",
+      "scan_pdf_16",
+      "xlsx_11",
+      "pptx_06",
+      "image_01"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.375,
+    "latency_ms": 4383.190959924832
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_d758d0292192abeaea25564d",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 14.0,
+        "bbox": [
+          0.025705644860863686,
+          0.271875,
+          0.32258063554763794,
+          0.3609375
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_16",
+      "version_id": "scan_pdf_16",
+      "score": 5.909922122955322,
+      "text": "库存盘点记录须保留23个月。",
+      "quote_hash": "98e2857e666c6e90429109810afdcf38fcc2e1f919571f19af4328f0dadbd066",
+      "id": "chunk_b08d88df43f6b5dea170b456edb16f51e16148b3513fd4673d1c63bbc86a7187"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_3ab36ce65743f5ca395d6ec4",
+        "range": "B5",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 13.0
+      },
+      "representation_id": "rep_xlsx_11",
+      "version_id": "xlsx_11",
+      "score": 5.7049736976623535,
+      "text": "库存盘点记录须保留6个月。",
+      "quote_hash": "16c4150894ab97164a8d2755f64dacec45cd6e28e12ebbc9381380eb8b8206ea",
+      "id": "chunk_cd340e796076e2c36514690f6135c1a0c99269f5858c5b2b744600aa8b961955"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_55a4fb1e6af87e2c9206bc2b",
+        "kind": "image_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 14.0,
+        "bbox": [
+          0.02666666666666667,
+          0.24504504504504504,
+          0.3237037037037037,
+          0.2765765765765766
+        ]
+      },
+      "representation_id": "rep_image_01",
+      "version_id": "image_01",
+      "score": 5.64801549911499,
+      "text": "库存盘点记录须保留10个月。",
+      "quote_hash": "be2a8a98886f45ef81de6373f89b0935b1ee8f91cf026ec2354a8f82988debeb",
+      "id": "chunk_3b882057f4452f6ce92d4793022edff885e21a1bfb96586dded54be915c785da"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_3d417b4b208055221e22ea39",
+        "range": "B2",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 17.0
+      },
+      "representation_id": "rep_xlsx_11",
+      "version_id": "xlsx_11",
+      "score": 0.9290544390678406,
+      "text": "库存盘点的提交期限为24个工作日。",
+      "quote_hash": "3f40f74d28fa094247499d3b93c3356afc00b1bf0a8c5b6bed6c2c2e55f22417",
+      "id": "chunk_59d32be21517f0ec034ddea554c132b2761cb7056c308292a53e234d94665955"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_b04bd3771e6a51fb94842084",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 17.0,
+        "bbox": [
+          0.025705644860863686,
+          0.09375,
+          0.3921370804309845,
+          0.1859375
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_16",
+      "version_id": "scan_pdf_16",
+      "score": 0.8635081648826599,
+      "text": "库存盘点的提交期限为18个工作日。",
+      "quote_hash": "4808bd1eecc5ed149a0e58a9260204bbe8775ace45ffbdf62f1efa376341ecbb",
+      "id": "chunk_468dd8bc29ea64eca421cfd7c543c893d9bedc5a84a939f458facdfb2845a530"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_b944b8a029213e4b7de6a70f",
+        "kind": "image_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 17.0,
+        "bbox": [
+          0.02666666666666667,
+          0.03963963963963964,
+          0.39185185185185184,
+          0.07117117117117117
+        ]
+      },
+      "representation_id": "rep_image_01",
+      "version_id": "image_01",
+      "score": 0.8395282626152039,
+      "text": "库存盘点的提交期限为11个工作日。",
+      "quote_hash": "488fe5a02b8ba7ee2b7e2d6b23ac5813dd7d118f4b5ebc7e438838f4fdc9f6b8",
+      "id": "chunk_bebfae9bf057be77cd809461a53aa68d761cbabcc50bd70ea62e0e2a22930e84"
+    },
+    {
+      "anchor": {
+        "slide_index": 3.0,
+        "block_id": "blk_83e88f5b21b27cbd42fb1dc5",
+        "kind": "slide_shape",
+        "char_start": 0.0,
+        "bbox": [
+          0.05,
+          0.08,
+          0.95,
+          0.48
+        ],
+        "char_end": 14.0,
+        "shape_id": 2.0
+      },
+      "representation_id": "rep_pptx_13",
+      "version_id": "pptx_13",
+      "score": -0.632489025592804,
+      "text": "仓库退货记录须保留13个月。",
+      "quote_hash": "90d7d1c632b476c5139cea0e3e57572fe9b627f2ff64522895a5d4a550208398",
+      "id": "chunk_b3d013e903ba613e81ccacf79425091746cacc2946f923243ed0815a565033da"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e865a27df0673af517d31a4a",
+        "kind": "document_block",
+        "block_index": 4.0,
+        "char_end": 14.0
+      },
+      "representation_id": "rep_docx_03",
+      "version_id": "docx_03",
+      "score": -0.6343873143196106,
+      "text": "仓库退货记录须保留11个月。",
+      "quote_hash": "2a2a229fd5f05a07904dd84be56947d1e2dde157982222760d371acaafba85e8",
+      "id": "chunk_9d83aa850ae859dc1d3977e0193885b38963e77d96a8d39f18bbb38644d0f67e"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_57372ea14d093997ed9e4679d4abd83b84b03d959df7c4e6bba1e76e45522833",
+      "version_id": "image_01",
+      "text": "库存盘点的审批责任人为库存组。",
+      "anchor": {
+        "bbox": [
+          0.02666666666666667,
+          0.10810810810810811,
+          0.3674074074074074,
+          0.14054054054054055
+        ],
+        "block_id": "blk_6690dfc7a7637a085f1b8988",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_60ae4f44c86fecbac0d77942f4a052b995725f1aae0b24d2fa9b8f1cf5c2c4ee",
+      "version_id": "xlsx_11",
+      "text": "库存盘点的审批责任人为库存组。",
+      "anchor": {
+        "block_id": "blk_973c18a7d8f51ded970ef77e",
+        "char_end": 15,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B3",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_c28c4cec93ba58c2c4fcb96ae8d034fbb14d53bd15cdd1967bfe4efc4dc425fb",
+      "version_id": "scan_pdf_16",
+      "text": "库存盘点的审批责任人为库存组。",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.2765625,
+          0.36643144488334656,
+          0.3609375
+        ],
+        "block_id": "blk_fc5124ba3d32f1b81c95525b",
+        "char_end": 15,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_3b882057f4452f6ce92d4793022edff885e21a1bfb96586dded54be915c785da",
+      "version_id": "image_01",
+      "text": "库存盘点记录须保留10个月。",
+      "anchor": {
+        "bbox": [
+          0.02666666666666667,
+          0.24504504504504504,
+          0.3237037037037037,
+          0.2765765765765766
+        ],
+        "block_id": "blk_55a4fb1e6af87e2c9206bc2b",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "image_region"
+      }
+    },
+    {
+      "id": "chunk_b08d88df43f6b5dea170b456edb16f51e16148b3513fd4673d1c63bbc86a7187",
+      "version_id": "scan_pdf_16",
+      "text": "库存盘点记录须保留23个月。",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.271875,
+          0.32258063554763794,
+          0.3609375
+        ],
+        "block_id": "blk_d758d0292192abeaea25564d",
+        "char_end": 14,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_cd340e796076e2c36514690f6135c1a0c99269f5858c5b2b744600aa8b961955",
+      "version_id": "xlsx_11",
+      "text": "库存盘点记录须保留6个月。",
+      "anchor": {
+        "block_id": "blk_3ab36ce65743f5ca395d6ec4",
+        "char_end": 13,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B5",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_468dd8bc29ea64eca421cfd7c543c893d9bedc5a84a939f458facdfb2845a530",
+      "version_id": "scan_pdf_16",
+      "text": "库存盘点的提交期限为18个工作日。",
+      "anchor": {
+        "bbox": [
+          0.025705644860863686,
+          0.09375,
+          0.3921370804309845,
+          0.1859375
+        ],
+        "block_id": "blk_b04bd3771e6a51fb94842084",
+        "char_end": 17,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    },
+    {
+      "id": "chunk_59d32be21517f0ec034ddea554c132b2761cb7056c308292a53e234d94665955",
+      "version_id": "xlsx_11",
+      "text": "库存盘点的提交期限为24个工作日。",
+      "anchor": {
+        "block_id": "blk_3d417b4b208055221e22ea39",
+        "char_end": 17,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B2",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    }
+  ]
+}

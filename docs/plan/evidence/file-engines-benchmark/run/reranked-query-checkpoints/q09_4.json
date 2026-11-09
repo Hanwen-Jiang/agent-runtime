@@ -1,0 +1,345 @@
+{
+  "id": "q09_4",
+  "query": "Which channel should I use to file equipment borrowing? Compare the documents.",
+  "language": "en",
+  "diagnostics": {
+    "expected_count": 5,
+    "theoretical_recall_ceiling": 1.0,
+    "single_chunk_representable_files": [
+      "docx_09",
+      "text_09",
+      "text_pdf_09",
+      "xlsx_04"
+    ],
+    "extraction_chunking_recall_ceiling": 0.8
+  },
+  "exact": {
+    "recall_at_8": 0.2,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 0.5,
+    "unique_source_ndcg_at_8": 0.21398626473452756,
+    "relevant_files": [
+      "xlsx_04"
+    ],
+    "expected_files": [
+      "text_pdf_09",
+      "scan_pdf_09",
+      "docx_09",
+      "xlsx_04",
+      "text_09"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.125,
+    "latency_ms": 14.58963006734848
+  },
+  "hybrid": {
+    "recall_at_8": 0.2,
+    "hit_at_8": 1.0,
+    "reciprocal_rank_at_8": 1.0,
+    "unique_source_ndcg_at_8": 0.3391602052736161,
+    "relevant_files": [
+      "xlsx_04"
+    ],
+    "expected_files": [
+      "text_pdf_09",
+      "scan_pdf_09",
+      "docx_09",
+      "xlsx_04",
+      "text_09"
+    ],
+    "citation_integrity": 1.0,
+    "relevant_hit_precision": 0.125,
+    "latency_ms": 4266.459412872791
+  },
+  "resolved_count": 8,
+  "hits": [
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_562206f07c368f8b929fcc91",
+        "range": "B7",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 61.0
+      },
+      "representation_id": "rep_xlsx_04",
+      "version_id": "xlsx_04",
+      "score": 2.182196855545044,
+      "text": "Equipment borrowing must be submitted through the asset desk.",
+      "quote_hash": "f10d14b821e37fea5c1de6d7b6885272c6b63f8c184e2499d5163eee9a21a970",
+      "id": "chunk_864ff9c92ff4625a127dfe6d37639bfd68fa24c5283843ad47bc623bef5821f3"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_196b731aafc4ab4d09dbc0b7",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 55.0,
+        "bbox": [
+          0.026209676638245583,
+          0.384375,
+          0.6784273982048035,
+          0.4734375
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_scan_pdf_09",
+      "version_id": "scan_pdf_09",
+      "score": -0.2000964879989624,
+      "text": "Equipment borrowing must be submitted through the asset",
+      "quote_hash": "896271594eac4143306c2f88a0c163b0eeb7e0aeda4c02ed6c6fc926723ffa47",
+      "id": "chunk_06f0d2fd459b250e93a2fee9bb572538d96cff6e91b982afb067287c21967362"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_ed88283f8224ecce33f8e1e3",
+        "range": "B4",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 51.0
+      },
+      "representation_id": "rep_xlsx_04",
+      "version_id": "xlsx_04",
+      "score": -0.6782469749450684,
+      "text": "Equipment borrowing requires asset checkout record.",
+      "quote_hash": "d6b129bef6822c00558b14cc5ee7bb183ba2acbf84c56e16ee0348e5b0f1f486",
+      "id": "chunk_70f3d4fd0b92cbfbcee0ff4ca0306c2d29cf8ce50d43f2427e0f6468f5982324"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_e464ea9400f3c8052937b9fa",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 51.0,
+        "bbox": [
+          0.024697579443454742,
+          0.0921875,
+          0.6234878897666931,
+          0.190625
+        ],
+        "page_index": 1.0
+      },
+      "representation_id": "rep_scan_pdf_09",
+      "version_id": "scan_pdf_09",
+      "score": -0.6782469749450684,
+      "text": "Equipment borrowing requires asset checkout record.",
+      "quote_hash": "d6b129bef6822c00558b14cc5ee7bb183ba2acbf84c56e16ee0348e5b0f1f486",
+      "id": "chunk_906345162eac3457dc2f21a4a5aa4eed7d1559e82c2de6f0a7e34d766bf29c08"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_0f22ab6b016e459367255c5f",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 15.0,
+        "bbox": [
+          0.058823529411764705,
+          0.10406439393939391,
+          0.37745098039215685,
+          0.12052112044648612
+        ],
+        "page_index": 2.0
+      },
+      "representation_id": "rep_text_pdf_09",
+      "version_id": "text_pdf_09",
+      "score": -0.9280652403831482,
+      "text": "设备借用必须提供资产借用记录。",
+      "quote_hash": "72184d91fb9a1a322fb280d8c055bb35f4d517efc3ec4ffe138b636729f3287c",
+      "id": "chunk_13a55cd7c14a76d9bdc9d2f0e0d6572160926ebb905d1715dfb2dcf696277546"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_bfdb9e0a9684d67349371e81",
+        "kind": "document_block",
+        "block_index": 3.0,
+        "char_end": 15.0
+      },
+      "representation_id": "rep_docx_09",
+      "version_id": "docx_09",
+      "score": -0.9280652403831482,
+      "text": "设备借用必须提供资产借用记录。",
+      "quote_hash": "72184d91fb9a1a322fb280d8c055bb35f4d517efc3ec4ffe138b636729f3287c",
+      "id": "chunk_1b46b5d492be0b4d4a177489a14f31783fc678900961d4595d9e77111536086c"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_700f0fd80c3d9ae870565ddc",
+        "range": "B3",
+        "sheet": "Policy",
+        "kind": "sheet_range",
+        "sheet_id": "sheet-0",
+        "char_end": 60.0
+      },
+      "representation_id": "rep_xlsx_04",
+      "version_id": "xlsx_04",
+      "score": -2.0168566703796387,
+      "text": "Facilities is responsible for approving equipment borrowing.",
+      "quote_hash": "c143af96991ee8f1b7bc4bee59c64550bf29a92a9ba9e1632fe8db71a76bfebc",
+      "id": "chunk_48119d914930b1c5c1be91ec8977c1bc65a0baa12cfc018532d2588ab7876335"
+    },
+    {
+      "anchor": {
+        "char_start": 0.0,
+        "block_id": "blk_a4328e8c88d6726cd9cde695",
+        "kind": "pdf_region",
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "char_end": 56.0,
+        "bbox": [
+          0.02368951588869095,
+          0.0875,
+          0.6789314150810242,
+          0.19375
+        ],
+        "page_index": 0.0
+      },
+      "representation_id": "rep_scan_pdf_09",
+      "version_id": "scan_pdf_09",
+      "score": -2.4428818225860596,
+      "text": "Equipment borrowing must be submitted within 19 business",
+      "quote_hash": "b2865f2ebf1646d684d7d0d22e32452919e3b018d1a7182f5ef7fa68457d6c4c",
+      "id": "chunk_d073aabf265f62abc2c1ffca4e52c6ce0340ecff165488d869980fadd11eb2a4"
+    }
+  ],
+  "exact_hits": [
+    {
+      "id": "chunk_06f0d2fd459b250e93a2fee9bb572538d96cff6e91b982afb067287c21967362",
+      "version_id": "scan_pdf_09",
+      "text": "Equipment borrowing must be submitted through the asset",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.384375,
+          0.6784273982048035,
+          0.4734375
+        ],
+        "block_id": "blk_196b731aafc4ab4d09dbc0b7",
+        "char_end": 55,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_864ff9c92ff4625a127dfe6d37639bfd68fa24c5283843ad47bc623bef5821f3",
+      "version_id": "xlsx_04",
+      "text": "Equipment borrowing must be submitted through the asset desk.",
+      "anchor": {
+        "block_id": "blk_562206f07c368f8b929fcc91",
+        "char_end": 61,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B7",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_70f3d4fd0b92cbfbcee0ff4ca0306c2d29cf8ce50d43f2427e0f6468f5982324",
+      "version_id": "xlsx_04",
+      "text": "Equipment borrowing requires asset checkout record.",
+      "anchor": {
+        "block_id": "blk_ed88283f8224ecce33f8e1e3",
+        "char_end": 51,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B4",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_906345162eac3457dc2f21a4a5aa4eed7d1559e82c2de6f0a7e34d766bf29c08",
+      "version_id": "scan_pdf_09",
+      "text": "Equipment borrowing requires asset checkout record.",
+      "anchor": {
+        "bbox": [
+          0.024697579443454742,
+          0.0921875,
+          0.6234878897666931,
+          0.190625
+        ],
+        "block_id": "blk_e464ea9400f3c8052937b9fa",
+        "char_end": 51,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 1.0
+      }
+    },
+    {
+      "id": "chunk_a758c830bc9396024d4ac0b83f04c444beaa3df9151f17cc03ff3704b71c4a4e",
+      "version_id": "scan_pdf_09",
+      "text": "Emergency exceptions for equipment borrowing require",
+      "anchor": {
+        "bbox": [
+          0.026209676638245583,
+          0.0953125,
+          0.6502016186714172,
+          0.184375
+        ],
+        "block_id": "blk_0bfb3f4cec944cc2bca359a3",
+        "char_end": 52,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 2.0
+      }
+    },
+    {
+      "id": "chunk_9e1a7bd39ec11c2915968e05f58997c1a95123169d0416d6ef14d07ab4e369ee",
+      "version_id": "xlsx_04",
+      "text": "Emergency exceptions for equipment borrowing require written approval from the department head.",
+      "anchor": {
+        "block_id": "blk_c7dcac203bbad69b05091fb2",
+        "char_end": 95,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B6",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_48119d914930b1c5c1be91ec8977c1bc65a0baa12cfc018532d2588ab7876335",
+      "version_id": "xlsx_04",
+      "text": "Facilities is responsible for approving equipment borrowing.",
+      "anchor": {
+        "block_id": "blk_700f0fd80c3d9ae870565ddc",
+        "char_end": 60,
+        "char_start": 0,
+        "kind": "sheet_range",
+        "range": "B3",
+        "sheet": "Policy",
+        "sheet_id": "sheet-0"
+      }
+    },
+    {
+      "id": "chunk_d073aabf265f62abc2c1ffca4e52c6ce0340ecff165488d869980fadd11eb2a4",
+      "version_id": "scan_pdf_09",
+      "text": "Equipment borrowing must be submitted within 19 business",
+      "anchor": {
+        "bbox": [
+          0.02368951588869095,
+          0.0875,
+          0.6789314150810242,
+          0.19375
+        ],
+        "block_id": "blk_a4328e8c88d6726cd9cde695",
+        "char_end": 56,
+        "char_start": 0,
+        "coordinate_space": "normalized_top_left_after_rotation",
+        "kind": "pdf_region",
+        "page_index": 0.0
+      }
+    }
+  ]
+}
