@@ -680,6 +680,8 @@ M0.1仍只实现owner-private目录；项目grant、回收站、GC和备份政�
 - 保存后重新打开核对公式值/样式/图表与目标保真；无引擎时不把`data_only`旧缓存说成新结果。
 - 只有这些门通过才在产品显示“支持全量重算”；“与Microsoft Excel完全兼容”不是本期出口。
 
+本地可行性记录（2026-11-10）：使用当前附带的LibreOfficeDev 26.8.0.0.alpha0与隔离用户profile，8个公式（SUM、跨sheet引用、IF、SUMIF、COUNTIF、VLOOKUP、ROUND及依赖链）原缓存故意设为999。普通转换保留旧值；配置加载时强制重算后，8/8得到预期结果，公式与输入原件SHA保持不变。该结果验证了现成Calc引擎可实际重算，并非直接UNO `calculateAll()`调用验收，更不是全部Excel兼容证明。生产仍按上面的稳定镜像、显式调用和独立验证门交付。
+
 Microsoft Graph可选后端必须由用户显式连接工作/学校账号并授权文件访问；当前calculate接口不支持application-only或个人账号权限，不能作为免授权后台替代。[S23] 也不采用无人值守桌面Excel COM作为默认服务器方案。[S24]
 
 ### 20.6 本次决策的执行顺序
