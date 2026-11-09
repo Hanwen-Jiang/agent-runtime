@@ -36,7 +36,8 @@ def sha256(data: bytes) -> str:
 
 def engine_manifest() -> dict:
     packages = {}
-    for name in ("pypdf", "docling", "rapidocr", "onnxruntime", "python-docx", "openpyxl", "python-pptx", "Pillow", "duckdb", "PyYAML", "defusedxml"):
+    for name in ("pypdf", "docling", "rapidocr", "onnxruntime", "python-docx", "openpyxl", "python-pptx", "Pillow", "duckdb", "PyYAML", "defusedxml",
+                 "tree-sitter", "tree-sitter-python", "tree-sitter-javascript", "tree-sitter-typescript", "tree-sitter-c", "tree-sitter-go", "tree-sitter-rust"):
         try:
             packages[name] = importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError:
@@ -159,6 +160,17 @@ class Context:
             if len(text) > room:
                 value["text"] = text[:room]
                 value["truncated"] = True
+                if value.get("kind") == "code" and value.get("anchor", {}).get("kind") == "code_range":
+                    # Keep citations consistent with the bytes actually returned,
+                    # including when the overall response cap cuts a code block.
+                    anchor = dict(value["anchor"])
+                    selected = value["text"]
+                    anchor["end_byte"] = anchor["start_byte"] + len(selected.encode("utf-8"))
+                    anchor["end_line"] = anchor["start_line"] + selected.count("\n") - int(selected.endswith("\n"))
+                    anchor["partial_symbol"] = True
+                    anchor["boundary_split"] = True
+                    value["anchor"] = anchor
+                    value["id"] = "blk_" + sha256(canonical({"sha256": self.source_sha256, "kind": "code", "anchor": anchor}))[:24]
                 clipped = True
             used += len(value.get("text", ""))
             kept.append(value)

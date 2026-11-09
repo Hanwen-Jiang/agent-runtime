@@ -164,7 +164,7 @@ def register_file_tools(provider,config):
     from agentruntime_worker.tools import _relational
     tools=FileTools(base,config.dev_signing_key.encode(),task_attachments(config),_relational(config),service_token=service_token)
     definitions=[('file_inspect','inspect',Effect.READ,'Inspect a pinned file, or check a prior file job with job_id.'),
-                 ('file_read','read',Effect.READ,'Read bounded structured file content with evidence anchors; path is a pinned obj URI.'),
+                 ('file_read','read',Effect.READ,'Read bounded file content with evidence anchors; path is a pinned obj URI. Source code returns function/class structure. Use selector.symbol for an exact symbol or qualified name, or selector.start_line/max_lines for a line range. Unsupported parsers explicitly fall back to text.'),
                  ('file_render','render',Effect.READ,'Render selected pages or crop a pinned image; returns real derived artifacts.'),
                  ('table_query','query',Effect.READ,'Compute SQL on selected pinned tables. Use paths for multi-source joins; no external file or network reads.'),
                  ('file_edit','edit',Effect.WRITE_REVERSIBLE,'Create and verify a candidate document version. Does not publish or overwrite the original.')]
@@ -180,6 +180,6 @@ def register_file_tools(provider,config):
     for name,resolve in [('file_search',False),('evidence_resolve',True)]:
         properties={'node_ids':{'type':'array','items':{'type':'string'},'minItems':1,'maxItems':20}} if resolve else {'query':{'type':'string','minLength':1,'maxLength':8000},'limit':{'type':'integer','minimum':1,'maximum':20}}
         async def handler(invocation,res=resolve):return await tools.knowledge(invocation,res)
-        provider.register(ToolSpec(name=name,version='v1',description='Resolve exact evidence nodes in the current task knowledge snapshot.' if resolve else 'Search the explicitly pinned task knowledge snapshot; returns sourced evidence, not exhaustive file coverage.',input_schema={'type':'object','required':['node_ids' if resolve else 'query'],'properties':properties,'additionalProperties':False},output_schema={'type':'object'},effect=Effect.READ,permissions=frozenset(),timeout=timedelta(seconds=30)),handler)
+        provider.register(ToolSpec(name=name,version='v1',description='Resolve exact evidence nodes in the current task knowledge snapshot.' if resolve else 'Search the explicitly pinned task knowledge snapshot, including indexed source code; exact symbol names are prioritized among authorized retrieved candidates. Returns sourced evidence, not exhaustive repository coverage.',input_schema={'type':'object','required':['node_ids' if resolve else 'query'],'properties':properties,'additionalProperties':False},output_schema={'type':'object'},effect=Effect.READ,permissions=frozenset(),timeout=timedelta(seconds=30)),handler)
         names.append(name)
     return names

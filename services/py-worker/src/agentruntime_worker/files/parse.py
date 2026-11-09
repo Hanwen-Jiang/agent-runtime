@@ -363,6 +363,8 @@ def csv_read(ctx: Context) -> dict:
 
 def read(ctx: Context) -> dict:
     suffix=ctx.source.suffix.lower();mime=media_type(ctx.source)
+    from .code import SOURCE_LANGUAGES, code_read
+    if suffix in SOURCE_LANGUAGES:return code_read(ctx, text_read)
     if mime=='application/pdf':return pdf_read(ctx)
     if suffix=='.docx':return docx_read(ctx)
     if suffix=='.xlsx':return xlsx_read(ctx)

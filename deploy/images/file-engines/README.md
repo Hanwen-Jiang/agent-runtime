@@ -99,6 +99,23 @@ Docker image building was not performed on that host because its Docker
 executable is a broken symlink. Linux image/UNO certification remains a deployment
 check; local parser results must not be represented as a successful image build.
 
+## Source code representations
+
+`read` recognizes Python, JavaScript/JSX, TypeScript/TSX, C, Go and Rust source
+files and uses the pinned Tree-sitter grammars. It returns a symbol outline and
+syntax-aware `code` blocks with absolute UTF-8 byte offsets and one-based line
+ranges. `selector.symbol` selects an exact symbol or qualified name such as
+`Client.Run`; `selector.start_line` / `max_lines` selects a strict line range.
+Source is never executed. Unsupported syntax, unavailable grammars and oversized
+input explicitly fall back to text; symbol requests fail explicitly when syntax
+selection is unavailable.
+
+The Knowledge ingestion path preserves these blocks instead of applying the
+general sentence splitter. It prioritizes exact symbol matches only among
+already-authorized retrieved candidates. This operates on explicitly ingested
+file versions, not an automatic repository-wide symbol index. See
+`docs/plan/tree-sitter-code-retrieval-2026-11-10.md` for boundaries and evidence.
+
 ## Trusted Worker bridge and Agent tools
 
 Production Worker configuration:

@@ -22,6 +22,7 @@ from agentruntime_core.providers.vector_store import AnyOf, Filter, Hit, VectorR
 from agentruntime_memory.embedding import Embedder, sparse_vector
 from agentruntime_memory.identity import Identity
 from .adapter import RuntimeRetriever, RuntimeVectorAdapter
+from .code import CODE_CHUNKER, code_nodes, is_code_block
 
 CORPUS = "document_chunks"
 MIGRATIONS = (Migration(421, "unified_retrieval_generations", (
@@ -45,6 +46,22 @@ def _json(value: Any) -> str:
 
 def _digest(value: Any) -> str:
     return hashlib.sha256(_json(value).encode()).hexdigest()
+
+
+def _prioritize_symbol(hits: list[dict[str, Any]], query: str) -> list[dict[str, Any]]:
+    """Prefer an exact definition among already authorized recalled candidates.
+
+    No extra collection scan or authority from vector metadata is introduced;
+    anchors here came from the scoped SQL ledger, after source ACL filtering.
+    """
+    symbol = query.strip()
+    if not re.fullmatch(r"[^\W\d]\w*(?:(?:::|\.)[^\W\d]\w*)*", symbol):
+        return hits
+    for hit in hits:
+        anchor = hit.get("anchor", {})
+        if anchor.get("kind") == "code_range" and symbol in (anchor.get("symbol"), anchor.get("qualified_symbol")):
+            hit["symbol_exact_match"] = True
+    return sorted(hits, key=lambda hit: not hit.get("symbol_exact_match", False))
 
 
 class RetrievalEngine:
@@ -116,7 +133,13 @@ class RetrievalEngine:
             raise InvalidError("retrieval_duplicate_representation", "A generation may contain each immutable representation only once")
         if await self._authorized(identity, collection, generation, versions) != set(versions):
             raise DeniedError("retrieval_denied", "Index source is not authorized")
-        manifest = _digest([identity.user_id, identity.workspace_id, documents, self.embedder.version, self.chunker])
+        has_code = any(isinstance(document.get("blocks"), list) and
+                       any(isinstance(block, dict) and is_code_block(block) for block in document["blocks"])
+                       for document in documents)
+        # Keep existing plain-text generation identities stable. New structural
+        # blocks record their own ingestion semantics, including the size bound.
+        chunker = self.chunker + "+" + CODE_CHUNKER if has_code else self.chunker
+        manifest = _digest([identity.user_id, identity.workspace_id, documents, self.embedder.version, chunker])
         key = (identity.tenant_id, collection, generation)
         async with self._locks.setdefault(key, asyncio.Lock()):
             store = self._store(identity)
@@ -127,7 +150,7 @@ class RetrievalEngine:
                     raise ConflictError("retrieval_generation_conflict", "Generation identity is immutable")
                 if row["state"] == "staged":
                     count = await tx.query_one("SELECT COUNT(*) AS n FROM retrieval_nodes WHERE collection_id=$1 AND generation=$2", (collection,generation))
-                    return {"generation":generation,"status":"staged","chunks":count["n"],"embedding_version":self.embedder.version,"chunker":self.chunker}
+                    return {"generation":generation,"status":"staged","chunks":count["n"],"embedding_version":self.embedder.version,"chunker":chunker}
             staged = []
             for document in documents:
                 version = document["version_id"]
@@ -148,12 +171,20 @@ class RetrievalEngine:
                         raise InvalidError("retrieval_block", "Block text and anchor required")
                     if not text.strip():
                         continue
-                    doc = Document(id_=version+":"+block_id, text=text)
-                    nodes = self.splitter.get_nodes_from_documents([doc])
-                    for ordinal,node in enumerate(nodes):
-                        node.id_ = "chunk_"+_digest([identity.tenant_id,collection,generation,version,representation,block_id,self.embedder.version,self.chunker,ordinal,node.text])
+                    structural = is_code_block(block)
+                    if structural:
+                        nodes = code_nodes(text, anchor, truncated=block.get("truncated") is True)
+                    else:
+                        doc = Document(id_=version+":"+block_id, text=text)
+                        nodes = [(node, anchor) for node in self.splitter.get_nodes_from_documents([doc])]
+                    for ordinal,(node, node_anchor) in enumerate(nodes):
+                        block_chunker = CODE_CHUNKER if structural else self.chunker
+                        node.id_ = "chunk_"+_digest([identity.tenant_id,collection,generation,version,representation,block_id,self.embedder.version,block_chunker,ordinal,node.text])
                         node.metadata = {"owner_id":identity.user_id,"workspace_id":identity.workspace_id,"collection_id":collection,"generation":generation,"version_id":version,"representation_id":representation,"block_id":block_id}
-                        selected = {**anchor,"block_id":block_id,"char_start":node.start_char_idx,"char_end":node.end_char_idx}
+                        if structural:
+                            node.metadata.update({key: node_anchor[key] for key in ("language", "symbol", "qualified_symbol") if key in node_anchor})
+                            node.metadata["kind"] = "code"
+                        selected = {**node_anchor,"block_id":block_id,"char_start":node.start_char_idx,"char_end":node.end_char_idx}
                         staged.append((node,selected,ordinal))
             if len(staged)>20000:
                 raise InvalidError("retrieval_chunk_limit", "Generation contains too many chunks")
@@ -179,7 +210,7 @@ class RetrievalEngine:
                 updated=await tx.execute("UPDATE retrieval_generations SET state='staged' WHERE collection_id=$1 AND generation=$2 AND manifest_hash=$3 AND state='building'", (collection,generation,manifest))
                 if not updated:
                     raise ConflictError("retrieval_generation_conflict", "Generation was cancelled during indexing")
-            return {"generation":generation,"status":"staged","chunks":len(staged),"embedding_version":self.embedder.version,"chunker":self.chunker}
+            return {"generation":generation,"status":"staged","chunks":len(staged),"embedding_version":self.embedder.version,"chunker":chunker}
 
     async def search(self, identity: Identity, collection: str, generation: str, query: str, *, embedding_version: str, limit: int = 8, version_ids: Sequence[str] | None = None) -> dict[str, Any]:
         collection,generation=_id(collection,"collection"),_id(generation,"generation")
@@ -209,6 +240,7 @@ class RetrievalEngine:
                 node=await tx.query_one("SELECT * FROM retrieval_nodes WHERE node_id=$1 AND collection_id=$2 AND generation=$3",(candidate.id,collection,generation))
                 if node is None or node["version_id"] not in versions:continue
                 hits.append({"id":candidate.id,"score":candidate.score,"text":node["body"],"version_id":node["version_id"],"representation_id":node["representation_id"],"anchor":json.loads(node["anchor"]),"quote_hash":hashlib.sha256(node["body"].encode()).hexdigest()})
+        hits = _prioritize_symbol(hits, query)
         if self.rerank and hits:
             allowed=await self._authorized(identity,collection,generation,[hit["version_id"] for hit in hits])
             hits=[hit for hit in hits if hit["version_id"] in allowed]
@@ -217,6 +249,7 @@ class RetrievalEngine:
             if len(scores)!=len(scored) or any(not math.isfinite(value) for value in scores):raise InvalidError("retrieval_rerank", "Invalid rerank scores")
             for hit,score in zip(scored,scores,strict=True):hit["score"]=float(score)
             hits=sorted(scored,key=lambda hit:(-hit["score"],hit["id"]))
+            hits = _prioritize_symbol(hits, query)
         allowed=await self._authorized(identity,collection,generation,[hit["version_id"] for hit in hits])
         if (await self._generation(identity,collection,generation))["state"]!="staged":
             raise ConflictError("retrieval_generation_deleted", "Generation was deleted during query")
