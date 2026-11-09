@@ -46,6 +46,8 @@ from agentruntime_worker.workflows.sandbox_reconcile import SandboxReconcileWork
 from agentruntime_worker.workflows.stage_runner import SubAgentWorkflow, SubgraphWorkflow
 from agentruntime_worker.workflows.task import TaskWorkflow
 from agentruntime_worker.workflows.workspace import WorkspaceOperationWorkflow
+from agentruntime_worker.workflows.files import FileOperationWorkflow
+from agentruntime_worker.files.activity import FileActivities
 from agentruntime_worker.workspace.operations import WorkspaceActivities
 
 
@@ -87,10 +89,11 @@ QUEUE_COMPONENTS: dict[str, QueueComponents] = {
     ),
     # WS-READ-02：task-service 新起的 Workspace 操作在这里，工作流与 activity 同一个队列。task、program 上照旧登记它们，
     # 给改之前起的、还在跑的操作；那些跑完之后再从旧队列去掉。
-    names.WORKSPACE_QUEUE: QueueComponents(workflows=(names.WORKSPACE_OPERATION_WORKFLOW,), activities=(names.WORKSPACE_OPERATION, names.WORKSPACE_OPERATION_RESULT)),
+    names.WORKSPACE_QUEUE: QueueComponents(workflows=(names.WORKSPACE_OPERATION_WORKFLOW, "FileOperationWorkflow"), activities=(names.WORKSPACE_OPERATION, names.WORKSPACE_OPERATION_RESULT, "file_operation")),
 }
 
 WORKFLOWS = {
+    "FileOperationWorkflow": FileOperationWorkflow,
     names.TASK_WORKFLOW: TaskWorkflow,
     names.SUB_AGENT_WORKFLOW: SubAgentWorkflow,
     names.SUBGRAPH_WORKFLOW: SubgraphWorkflow,
@@ -172,6 +175,7 @@ def build_workers(
         **(executor or dev_executor(config, client=client)).activities(),
         **RetiredSandboxActivities().activities(),
         **WorkspaceActivities(workspace_operations(config)).activities(),
+        **FileActivities(config, dev_object_store(config, data_root(config)), sandbox_broker(config)).activities(),
     }
     workers = []
     for queue in queues:

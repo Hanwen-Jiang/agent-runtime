@@ -48,7 +48,7 @@ class PlannerActivities:
             from agentruntime_core.errors import InvalidError
             from agentruntime_worker.tools.attachments import manifest_text
             files = await self.attachments.describe(inp.tenant.tenant_id, inp.task_id, inp.tenant.workspace_id)
-            if set(inp.attachments) != {file["uri"] for file in files}:
+            if set(inp.attachments) != {file["uri"] for file in files if not file.get("derived")}:
                 raise InvalidError("attachment_manifest_missing", "任务附件清单不可用，不能读取上传内容")
             from agentruntime_worker.executor.image_input import prepare_images
             images = await prepare_images(self.planner.gateway, inp.tenant, files)
@@ -177,5 +177,5 @@ def dev_planner(config: WorkerConfig) -> PlannerActivities:
     # N16-R：派子 Agent 的规矩（AR_SUB_AGENT_POLICY=rules，默认 off）。
     planner = Planner(model_gateway(config), PlannerConfig(sub_agent_rules=config.sub_agent_policy == "rules"))
     from agentruntime_worker.tools import context_objects
-    from agentruntime_worker.tools.attachments import TaskAttachments
-    return PlannerActivities(planner, source, tools=tools, attachments=TaskAttachments(context_objects(config)))
+    from agentruntime_worker.files.authority import task_attachments
+    return PlannerActivities(planner, source, tools=tools, attachments=task_attachments(config))

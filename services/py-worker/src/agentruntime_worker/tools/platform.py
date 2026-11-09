@@ -162,6 +162,7 @@ def register_platform_tools(
     config: PlatformToolsConfig,
     *,
     objects: ObjectStoreProvider | None = None,
+    attachments: Any = None,
     sandboxes: ServiceBroker | None = None,
     telemetry: TelemetryProvider | None = None,
     generations: Any = None,
@@ -192,7 +193,7 @@ def register_platform_tools(
     if config.fetch_hosts:
         tools.append(_Fetcher(config).tool())
     if objects is not None:
-        tools.append(_ContextReader(objects, config, broker).tool())
+        tools.append(_ContextReader(objects, config, broker, attachments=attachments).tool())
     for spec, handler in tools:
         provider.register(spec, handler)
     return [spec.name for spec, _ in tools]
@@ -999,12 +1000,12 @@ class _Fetcher:
 
 
 class _ContextReader:
-    def __init__(self, objects: ObjectStoreProvider, config: PlatformToolsConfig, broker: ServiceBroker | None = None) -> None:
+    def __init__(self, objects: ObjectStoreProvider, config: PlatformToolsConfig, broker: ServiceBroker | None = None, *, attachments: Any = None) -> None:
         self.objects = objects
         self.config = config
         self.broker = broker
         from agentruntime_worker.tools.attachments import TaskAttachments
-        self.attachments = TaskAttachments(objects)
+        self.attachments = attachments or TaskAttachments(objects)
 
     def tool(self) -> tuple[ToolSpec, ToolHandler]:
         limit = self.config.output_limit

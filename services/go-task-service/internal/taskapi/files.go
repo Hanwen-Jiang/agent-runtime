@@ -1,6 +1,7 @@
 package taskapi
 
 import (
+	"connectrpc.com/connect"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -29,6 +30,32 @@ func fileError(w http.ResponseWriter, err error) {
 	status := downloadStatus(err)
 	code := "file_unavailable"
 	message := "file unavailable"
+	var ce *connect.Error
+	if errors.As(err, &ce) {
+		code = "knowledge_" + ce.Code().String()
+		message = "retrieval service unavailable"
+		switch ce.Code() {
+		case connect.CodeUnavailable, connect.CodeDeadlineExceeded:
+			status = 503
+		case connect.CodeResourceExhausted:
+			status = 429
+		case connect.CodeInvalidArgument:
+			status = 400
+			message = "invalid retrieval request"
+		case connect.CodeUnauthenticated:
+			status = 401
+		case connect.CodePermissionDenied:
+			status = 403
+		case connect.CodeNotFound:
+			status = 404
+			message = "retrieval source unavailable"
+		case connect.CodeAlreadyExists, connect.CodeAborted, connect.CodeFailedPrecondition:
+			status = 409
+			message = "retrieval generation conflict"
+		default:
+			status = 503
+		}
+	}
 	var pe *providererr.Error
 	if errors.As(err, &pe) {
 		code = pe.Code

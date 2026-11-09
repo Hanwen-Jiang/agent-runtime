@@ -321,11 +321,11 @@
     },
     {
       "name": "unsupported_lifecycle",
-      "description": "M0.1未实现删除状态，不以枚举假装已支持。",
+      "description": "删除通过 trash→purging→purged 状态流转，不接受未定义的 deleted 状态",
       "violates": [
         {
           "path": "/file/lifecycle",
-          "keyword": "const"
+          "keyword": "enum"
         }
       ],
       "instance": {

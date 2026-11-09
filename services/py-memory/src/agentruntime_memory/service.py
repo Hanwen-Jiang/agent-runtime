@@ -55,6 +55,7 @@ from agentruntime_core.providers.vector_store import AnyOf, Filter, VectorRecord
 from agentruntime_core.tenancy import Scope, platform_scope, tenant_scope
 
 from agentruntime_memory.embedding import Embedder, embedding_text, sparse_vector, tokens
+from agentruntime_memory.retrieval import RetrievalEngine
 from agentruntime_memory.identity import Identity
 from agentruntime_memory.promotion import Evidence, PromotionPolicy
 from agentruntime_memory.safety import EXTERNAL_TRUST_CAP, screen
@@ -318,11 +319,13 @@ class MemoryService:
         clock: Clock | None = None,
         duplicate_threshold: float = 0.95,
         conflict_threshold: float = 0.85,
+        retrieval: RetrievalEngine | None = None,
     ) -> None:
         self.relational = relational
         self.vectors = vectors
         self.keyring = keyring
         self.embedder = embedder
+        self.retrieval = retrieval or RetrievalEngine(vectors=vectors, embedder=embedder)
         self.policy = policy or PromotionPolicy()
         self.clock = clock or SystemClock()
         self.duplicate_threshold = duplicate_threshold
@@ -448,14 +451,14 @@ class MemoryService:
         await tx.execute("DELETE FROM memory_reviews WHERE memory_id = $1", (memory_id,))
 
     async def _embed(self, identity: Identity, item: dict[str, Any]) -> tuple[float, ...]:
-        [dense] = await self.embedder.embed(identity, [embedding_text(item)])
+        [dense] = await self.retrieval.embed(identity, [embedding_text(item)])
         return dense
 
     async def _index(self, ctx: _Context, env: dict[str, Any], dense: Sequence[float]) -> None:
         """active 的条目进向量索引；其余从索引里拿掉。"""
         item = env["item"]
         if env["status"] != "active" or item["validity"].get("superseded_by"):
-            await ctx.vectors.delete(CORPUS, [item["id"]])
+            await self.retrieval.delete_bound(ctx.vectors, CORPUS, [item["id"]])
             return
         applies = item.get("applies_when", {})
         fields = {
@@ -466,7 +469,7 @@ class MemoryService:
             "tools": tuple(applies.get("tools", [])) or ("*",),
         }
         record = VectorRecord(id=item["id"], dense=tuple(dense), embedding_version=item["embedding_version"], sparse=sparse_vector(embedding_text(item)), fields=fields)
-        await ctx.vectors.upsert(CORPUS, [record])
+        await self.retrieval.upsert_bound(ctx.vectors, CORPUS, [record])
 
     async def _tombstoned(self, ctx: _Context, content_hash: str) -> bool:
         async with ctx.store.transaction(read_only=True) as tx:
@@ -555,7 +558,7 @@ class MemoryService:
     async def _neighbors(self, ctx: _Context, item: dict[str, Any], dense: Sequence[float]) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
         """同一作用域、同一 kind 的近邻里找重复（返回第一个值）与冲突（第二个值）。"""
         flt = Filter(must={"acl": access_token(item["scope"]), "level": level_of(item["scope"]), "kind": item["kind"]})
-        hits = await ctx.vectors.query(CORPUS, embedding_version=item["embedding_version"], top_k=10, dense=dense, filter=flt)
+        hits = await self.retrieval.recall_bound(ctx.vectors, corpus=CORPUS, query="", embedding_version=item["embedding_version"], top_k=10, dense=dense, authorized_filter=flt)
         envs = await self._load(ctx, [h.id for h in hits])
         same = [(h, envs[h.id]) for h in hits if h.id in envs and envs[h.id]["status"] == "active" and _scope(envs[h.id]["item"]) == _scope(item)]
         for hit, env in same:
@@ -732,13 +735,12 @@ class MemoryService:
         text = " ".join(p for p in (query.query, query.task_family, *query.tools) if p)
         dense: tuple[float, ...] = ()
         if text:
-            [dense] = await self.embedder.embed(identity, [text])
-            sparse = sparse_vector(text)
+            [dense] = await self.retrieval.embed(identity, [text])
             limit = max(top_k * 5, 50)
             for n, (ctx, acl) in enumerate(((tenant, {"acl": AnyOf(read_tokens(identity))}), (platform, {}))):
                 must = {**common, **acl}
-                hits = await ctx.vectors.query(
-                    CORPUS, embedding_version=self.embedder.version, top_k=limit, dense=dense, sparse=sparse if sparse.indices else None, filter=Filter(must=must) if must else None
+                hits = await self.retrieval.recall_bound(
+                    ctx.vectors, corpus=CORPUS, query=text, embedding_version=self.embedder.version, top_k=limit, dense=dense, authorized_filter=Filter(must=must) if must else None
                 )
                 for h in hits:
                     candidates.setdefault((n, h.id), None)
@@ -753,7 +755,7 @@ class MemoryService:
             if not ids:
                 continue
             envs = await self._load(ctx, ids)
-            vectors = {r.id: r.dense for r in await ctx.vectors.get(CORPUS, ids)}
+            vectors = {r.id: r.dense for r in await self.retrieval.get_bound(ctx.vectors, CORPUS, ids)}
             for memory_id, env in envs.items():
                 if not self._usable(identity, env, query, now.date()):
                     continue
@@ -857,7 +859,7 @@ class MemoryService:
                 await tx.execute("UPDATE memory_revisions SET before_state = '', after_state = '' WHERE memory_id = $1", (memory_id,))
                 await self._revise(tx, ctx, actor, op, memory_id, None, None)
                 await self._audit(tx, actor, op, memory_id, detail)
-        await ctx.vectors.delete(CORPUS, list(ids))
+        await self.retrieval.delete_bound(ctx.vectors, CORPUS, list(ids))
 
     async def delete(self, identity: Identity, memory_id: str, reason: str = "") -> list[str]:
         """沿 lineage 级联删除，返回删掉的条目 id；看不到的条目：NotFoundError；没有删除权限：DeniedError。"""
@@ -940,7 +942,7 @@ class MemoryService:
                         await self._put(tx, ctx, before)
                     await self._revise(tx, ctx, identity, "rollback", memory_id, now_env, before)
                 if before is None:
-                    await ctx.vectors.delete(CORPUS, [memory_id])
+                    await self.retrieval.delete_bound(ctx.vectors, CORPUS, [memory_id])
                 else:
                     await self._index(ctx, before, await self._embed(identity, before["item"]))
                 if memory_id not in reverted:

@@ -136,11 +136,15 @@ class MemoryServicer(memory_pb2_grpc.MemoryServiceServicer):
 
 
 async def start_server(
-    service: MemoryService, authenticator: Authenticator, address: str = "127.0.0.1:0", *, drain_in_background: bool = False
+    service: MemoryService, authenticator: Authenticator, address: str = "127.0.0.1:0", *, drain_in_background: bool = False,
+    knowledge: Any = None, knowledge_internal_token: str = ""
 ) -> tuple[grpc.aio.Server, int]:
     """启动 gRPC 服务，返回（服务, 端口）。"""
     server = grpc.aio.server()
     memory_pb2_grpc.add_MemoryServiceServicer_to_server(MemoryServicer(service, authenticator, drain_in_background=drain_in_background), server)
+    if knowledge is not None:
+        from agentruntime_memory.knowledge import register_knowledge
+        register_knowledge(server, knowledge, authenticator, knowledge_internal_token)
     port = server.add_insecure_port(address)
     await server.start()
     return server, port

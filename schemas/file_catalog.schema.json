@@ -2,12 +2,20 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://agentruntime.example/schemas/file_catalog.schema.json",
   "title": "Runtime File Catalog Metadata",
-  "description": "M0.1 文件目录的 HTTP JSON 公共契约。record 用于文件读取，list_response 用于分页和 adopt 结果，capabilities_response 用于容量协商，adopt_request 只接受待验证旧对象引用。响应不包含对象 URI、原始字节或租户内部字段。租户由 Relational.Bind 隔离，owner/workspace 由服务端鉴权。File.id 复用规范 source_id；旧 source alias 仍可解析至同一规范文件。关联一致性和授权由服务校验，不由 JSON Schema 代替。Representation、SourceAnchor、Job 与共享 ACL 不在 M0.1 内。",
+  "description": "Runtime 文件目录公共契约。服务端按当前 owner/显式授权与 workspace 验证；source_uri 是不带凭证的不可变 obj 引用，仍需当前鉴权。处理与生命周期契约见 file_intelligence.schema.json。",
   "oneOf": [
-    {"$ref": "#/$defs/record"},
-    {"$ref": "#/$defs/list_response"},
-    {"$ref": "#/$defs/capabilities_response"},
-    {"$ref": "#/$defs/adopt_request"}
+    {
+      "$ref": "#/$defs/record"
+    },
+    {
+      "$ref": "#/$defs/list_response"
+    },
+    {
+      "$ref": "#/$defs/capabilities_response"
+    },
+    {
+      "$ref": "#/$defs/adopt_request"
+    }
   ],
   "$defs": {
     "file_id": {
@@ -25,83 +33,209 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 255,
-      "pattern": "^[^/\\\\\u0000-\u001f\u007f]+$",
-      "not": {"anyOf": [{"const": "."}, {"const": ".."}, {"pattern": "[\u0000-\u001f\u007f]"}]}
+      "pattern": "^[^/\\\\\u0000-\u001f]+$",
+      "not": {
+        "anyOf": [
+          {
+            "const": "."
+          },
+          {
+            "const": ".."
+          },
+          {
+            "pattern": "[\u0000-\u001f]"
+          }
+        ]
+      }
     },
     "runtime_file": {
-      "description": "M0.1 逻辑文件。created_by 同时是当前唯一 owner；不表示未来共享 ACL 已实现。",
+      "description": "逻辑文件与当前不可变 head；created_by 是 owner，其他访问由显式 grant 决定。",
       "type": "object",
-      "required": ["id", "workspace_id", "name", "created_by", "created_at", "head_version_id", "lifecycle"],
+      "required": [
+        "id",
+        "workspace_id",
+        "name",
+        "created_by",
+        "created_at",
+        "head_version_id",
+        "lifecycle"
+      ],
       "properties": {
-        "id": {"$ref": "#/$defs/file_id"},
-        "workspace_id": {"$ref": "defs.schema.json#/$defs/workspace_id"},
-        "name": {"$ref": "#/$defs/file_name"},
-        "created_by": {"$ref": "defs.schema.json#/$defs/user_id"},
-        "created_at": {"type": "string", "format": "date-time"},
-        "head_version_id": {"$ref": "#/$defs/version_id"},
-        "lifecycle": {"description": "M0.1 只有已登记的 active 文件；删除、撤权状态由后续契约定义。", "const": "active"}
+        "id": {
+          "$ref": "#/$defs/file_id"
+        },
+        "workspace_id": {
+          "$ref": "defs.schema.json#/$defs/workspace_id"
+        },
+        "name": {
+          "$ref": "#/$defs/file_name"
+        },
+        "created_by": {
+          "$ref": "defs.schema.json#/$defs/user_id"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "head_version_id": {
+          "$ref": "#/$defs/version_id"
+        },
+        "lifecycle": {
+          "enum": [
+            "active",
+            "trash",
+            "purging",
+            "purged"
+          ]
+        }
       },
       "additionalProperties": false
     },
     "file_version": {
-      "description": "不可变原件的公共元数据；blob/object URI 只保存在服务端版本记录中。",
+      "description": "不可变原件的公共元数据。",
       "type": "object",
-      "required": ["id", "file_id", "mime_type", "size_bytes", "sha256", "created_at", "created_by"],
+      "required": [
+        "id",
+        "file_id",
+        "mime_type",
+        "size_bytes",
+        "sha256",
+        "created_at",
+        "created_by"
+      ],
       "properties": {
-        "id": {"$ref": "#/$defs/version_id"},
-        "file_id": {"$ref": "#/$defs/file_id"},
-        "mime_type": {"description": "服务端探测的 MIME，可包含 charset 参数；不据此声称已解析文件内容。", "type": "string", "minLength": 1, "maxLength": 255, "not": {"pattern": "[\u0000-\u001f\u007f]"}},
-        "size_bytes": {"description": "原件字节数；标准档每文件 50 MiB，允许空文件。原生图片模型输入限制独立于文件存储容量。", "type": "integer", "minimum": 0, "maximum": 52428800},
-        "sha256": {"$ref": "defs.schema.json#/$defs/sha256"},
-        "created_at": {"type": "string", "format": "date-time"},
-        "created_by": {"$ref": "defs.schema.json#/$defs/user_id"},
-        "parent_version_id": {"$ref": "#/$defs/version_id"}
+        "id": {
+          "$ref": "#/$defs/version_id"
+        },
+        "file_id": {
+          "$ref": "#/$defs/file_id"
+        },
+        "mime_type": {
+          "description": "服务端探测的 MIME，可包含 charset 参数；不据此声称已解析文件内容。",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "not": {
+            "pattern": "[\u0000-\u001f]"
+          }
+        },
+        "size_bytes": {
+          "description": "原件字节数；标准档每文件 50 MiB，允许空文件。原生图片模型输入限制独立于文件存储容量。",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 52428800
+        },
+        "sha256": {
+          "$ref": "defs.schema.json#/$defs/sha256"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_by": {
+          "$ref": "defs.schema.json#/$defs/user_id"
+        },
+        "parent_version_id": {
+          "$ref": "#/$defs/version_id"
+        }
       },
       "additionalProperties": false
     },
     "record": {
       "description": "文件与一个授权版本的公共投影。version.file_id 必须等于 file.id；读取 head 时 version.id 必须等于 file.head_version_id。",
       "type": "object",
-      "required": ["file", "version"],
+      "required": [
+        "file",
+        "version"
+      ],
       "properties": {
-        "file": {"$ref": "#/$defs/runtime_file"},
-        "version": {"$ref": "#/$defs/file_version"}
+        "file": {
+          "$ref": "#/$defs/runtime_file"
+        },
+        "version": {
+          "$ref": "#/$defs/file_version"
+        },
+        "source_uri": {
+          "$ref": "defs.schema.json#/$defs/object_uri"
+        }
       },
       "additionalProperties": false
     },
     "get_response": {
-      "description": "GET 单文件及其 head 版本元数据的响应，与 record 使用同一 wire shape，避免相同 oneOf 分支相互冲突。M0.1 不单独暴露版本 GET 接口。",
+      "description": "GET 当前有权读取的 head 版本。",
       "$ref": "#/$defs/record"
     },
     "capabilities_response": {
       "description": "GET /v1/files/capabilities 的文件目录容量协商。值反映部署策略，不表示解析/OCR/原生图片输入能力。标准档为 50 MiB/文件、10 文件/Task、200 MiB/Task、500 文件/2 GiB workspace。",
       "type": "object",
-      "required": ["max_file_bytes", "max_task_files", "max_task_bytes", "max_workspace_files", "max_workspace_bytes"],
+      "required": [
+        "max_file_bytes",
+        "max_task_files",
+        "max_task_bytes",
+        "max_workspace_files",
+        "max_workspace_bytes"
+      ],
       "properties": {
-        "max_file_bytes": {"type": "integer", "minimum": 1},
-        "max_task_files": {"type": "integer", "minimum": 1},
-        "max_task_bytes": {"type": "integer", "minimum": 1},
-        "max_workspace_files": {"type": "integer", "minimum": 1},
-        "max_workspace_bytes": {"type": "integer", "minimum": 1}
+        "max_file_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_task_files": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_task_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_workspace_files": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_workspace_bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
       },
       "additionalProperties": false
     },
     "adopt_request": {
       "description": "POST /v1/files/adopt?workspace_id=... 的旧来源迁移输入；只接受 URI，owner、source_id、MIME、大小、SHA 和创建时间均由服务端验证对象元数据，不能由调用方指定。全批校验和事务提交成功后返回 list_response，结果顺序对应输入，next_cursor 固定为空串。",
       "type": "object",
-      "required": ["object_uris"],
+      "required": [
+        "object_uris"
+      ],
       "properties": {
-        "object_uris": {"type": "array", "minItems": 1, "maxItems": 500, "items": {"$ref": "defs.schema.json#/$defs/object_uri"}}
+        "object_uris": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": {
+            "$ref": "defs.schema.json#/$defs/object_uri"
+          }
+        }
       },
       "additionalProperties": false
     },
     "list_response": {
       "description": "服务端按当前 owner/workspace 过滤后的文件列表；每项带 head 版本元数据，游标不授予额外权限。",
       "type": "object",
-      "required": ["files", "next_cursor"],
+      "required": [
+        "files",
+        "next_cursor"
+      ],
       "properties": {
-        "files": {"type": "array", "items": {"$ref": "#/$defs/record"}},
-        "next_cursor": {"description": "后续页的 opaque 游标；必有，空串表示没有下一页。", "type": "string", "maxLength": 4096}
+        "files": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/record"
+          }
+        },
+        "next_cursor": {
+          "description": "后续页的 opaque 游标；必有，空串表示没有下一页。",
+          "type": "string",
+          "maxLength": 4096
+        }
       },
       "additionalProperties": false
     }

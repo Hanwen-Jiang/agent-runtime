@@ -15,6 +15,8 @@ dependencies = [
     "jsonschema-specifications>=2025.9.1",
     "protobuf>=7.36.2,<8",
     "referencing>=0.37",
+    # Unified document/Memory retrieval components; no provider plugins or agent workflow.
+    "llama-index-core==0.14.25",
 ]
 
 [project.optional-dependencies]

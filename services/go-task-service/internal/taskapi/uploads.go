@@ -39,7 +39,7 @@ func uploadName(value string) string {
 }
 
 func (s *Server) uploadObjects(r *http.Request) (ingress.Identity, *commonv1.TenantContext, objectstore.Store, error) {
-	id, err := s.authenticate(r.Context(), r.Header, "task_upload")
+	id, err := s.fileIdentity(r)
 	if err != nil {
 		return id, nil, nil, err
 	}
@@ -210,20 +210,40 @@ func (s *Server) validateUploadedSources(ctx context.Context, tenant *commonv1.T
 			return invalid("duplicate attachment")
 		}
 		seen[ref] = true
-		if !strings.HasPrefix(ref, "obj://"+tenant.GetTenantId()+"/uploads/src_") {
-			return providererr.New(providererr.Denied, "unregistered_attachment", "attachment must be an uploaded source")
+		record, lookupErr := s.files.ResolveVersion(ctx, tenant, user, ref)
+		if lookupErr == nil {
+			key, e := objects.KeyOf(record.ObjectURI)
+			if e != nil {
+				return e
+			}
+			data, e := objects.Get(ctx, key)
+			if e != nil {
+				return e
+			}
+			sum := sha256.Sum256(data.Data)
+			if hex.EncodeToString(sum[:]) != record.Version.SHA256 || int64(len(data.Data)) != record.Version.SizeBytes {
+				return invalid("source integrity mismatch")
+			}
+			total += record.Version.SizeBytes
+		} else {
+			if providererr.CategoryOf(lookupErr) != providererr.NotFound {
+				return lookupErr
+			}
+			item, e := checkedUpload(ctx, objects, tenant, user, ref, true)
+			if e != nil {
+				return e
+			}
+			// Known-but-deleted sources cannot be re-adopted: RegisterBatch checks lifecycle.
+			uploads = append(uploads, item)
+			total += item.SizeBytes
 		}
-		item, err := checkedUpload(ctx, objects, tenant, user, ref, true)
-		if err != nil {
-			return err
-		}
-		total += item.SizeBytes
 		if total > maxTaskUploadBytes {
 			return invalid("task attachments exceed 200 MiB")
 		}
-		uploads = append(uploads, item)
 	}
-	_, err = s.files.RegisterBatch(ctx, tenant, user, uploads)
+	if len(uploads) > 0 {
+		_, err = s.files.RegisterBatch(ctx, tenant, user, uploads)
+	}
 	return err
 }
 
@@ -238,7 +258,31 @@ func (s *Server) pinTaskAttachments(ctx context.Context, tenant *commonv1.Tenant
 	if refs == nil {
 		refs = []string{}
 	}
-	data, err := json.Marshal(map[string]any{"attachments": refs, "workspace_id": tenant.GetWorkspaceId()})
+	roots := []files.Root{}
+	for _, ref := range refs {
+		record, e := s.files.ResolveVersion(ctx, tenant, tenant.GetUserId(), ref)
+		if e != nil {
+			return e
+		}
+		root, e := s.files.Root(ctx, tenant, tenant.GetUserId(), record.File.ID, record.Version.ID)
+		if e != nil {
+			return e
+		}
+		roots = append(roots, root)
+	}
+	if len(roots) > 0 {
+		if err = s.files.Snapshot(ctx, tenant, tenant.GetUserId(), taskID, roots); err != nil {
+			return err
+		}
+	}
+	collections := []files.Collection{}
+	if len(roots) > 0 {
+		collections, err = s.files.FreezeCollections(ctx, tenant, tenant.GetUserId(), taskID, roots)
+		if err != nil {
+			return err
+		}
+	}
+	data, err := json.Marshal(map[string]any{"attachments": refs, "workspace_id": tenant.GetWorkspaceId(), "user_id": tenant.GetUserId(), "versions": roots, "collections": collections})
 	if err != nil {
 		return err
 	}

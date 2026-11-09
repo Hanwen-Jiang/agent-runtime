@@ -26,3 +26,8 @@ build/
 
 # Rust（根 Cargo workspace，D-28）
 /target/
+
+# Local file-engine acceptance environments and model caches
+.file-engines-venv/
+.file-engines-models/
+.retrieval-venv/

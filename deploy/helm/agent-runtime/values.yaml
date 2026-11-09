@@ -459,3 +459,11 @@ collector:
   resources:
     requests: {cpu: 200m, memory: 256Mi}
     limits: {cpu: "1", memory: 512Mi}
+
+# Complete file processing uses the existing workspace worker pool and sandbox
+# service. Enable after building/registering the pinned file-engines image.
+fileIntelligence:
+  enabled: false
+  runtime: file-engines
+  internalTokenSecret: {name: "", key: file-internal-token}
+  knowledgeTokenSecret: {name: "", key: knowledge-internal-token}

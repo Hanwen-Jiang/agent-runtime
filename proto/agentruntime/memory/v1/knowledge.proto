@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package agentruntime.memory.v1;
+
+import "agentruntime/common/v1/payload.proto";
+import "agentruntime/common/v1/tenant.proto";
+
+// File Catalog owns collection publication and task snapshots. This internal
+// service executes bounded retrieval operations using the same providers as Memory.
+service KnowledgeService {
+  rpc Execute(KnowledgeServiceExecuteRequest) returns (KnowledgeServiceExecuteResponse);
+}
+
+message KnowledgeServiceExecuteRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+  // index, search, resolve, or delete_generation. JSON contracts remain payloads.
+  string operation = 2;
+  agentruntime.common.v1.JsonPayload payload = 3;
+}
+
+message KnowledgeServiceExecuteResponse {
+  agentruntime.common.v1.JsonPayload result = 1;
+}

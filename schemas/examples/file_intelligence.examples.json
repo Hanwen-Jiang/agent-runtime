@@ -1,0 +1,84 @@
+{
+  "valid": [
+    {
+      "name": "bounded_pdf_read",
+      "description": "Authenticated control plane resolves file and version; selector is bounded by the engine.",
+      "source": "docs/plan/file-intelligence-integration.md#api-与工具出口",
+      "instance": {
+        "operation": "read",
+        "request_id": "read-pages-1",
+        "inputs": [
+          {
+            "file_id": "src_11111111111111111111111111111111",
+            "version_id": "ver_22222222222222222222222222222222"
+          }
+        ],
+        "selector": {
+          "pages": [
+            0,
+            1
+          ]
+        },
+        "options": {
+          "layout": "complex"
+        }
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "client_supplied_root_path",
+      "description": "Browser cannot choose an engine filesystem root.",
+      "violates": [
+        {
+          "path": "",
+          "keyword": "additionalProperties"
+        }
+      ],
+      "instance": {
+        "operation": "read",
+        "request_id": "read-pages-1",
+        "inputs": [
+          {
+            "file_id": "src_11111111111111111111111111111111",
+            "version_id": "ver_22222222222222222222222222222222"
+          }
+        ],
+        "selector": {
+          "pages": [
+            0,
+            1
+          ]
+        },
+        "options": {
+          "layout": "complex"
+        },
+        "input_root": "/etc"
+      }
+    },
+    {
+      "name": "empty_inputs",
+      "description": "A file operation needs at least one authorized file.",
+      "violates": [
+        {
+          "path": "/inputs",
+          "keyword": "minItems"
+        }
+      ],
+      "instance": {
+        "operation": "read",
+        "request_id": "read-pages-1",
+        "inputs": [],
+        "selector": {
+          "pages": [
+            0,
+            1
+          ]
+        },
+        "options": {
+          "layout": "complex"
+        }
+      }
+    }
+  ]
+}

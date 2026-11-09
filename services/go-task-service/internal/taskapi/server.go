@@ -105,6 +105,7 @@ type Defaults struct {
 
 // Deps 是 Server 的依赖。
 type Deps struct {
+	Knowledge      Knowledge
 	ModelBudget    modelbudget.Provider
 	BudgetPolicies modelbudget.PolicyResolver
 	// ActiveTaskLimits 按租户给准入时未终态 Task 的上限（没列出的租户不设上限）；0 也表示不设上限。
@@ -197,6 +198,9 @@ func New(d Deps) (*Server, error) {
 	if d.BudgetPolicies == nil {
 		d.BudgetPolicies = modelbudget.Policy{}
 	}
+	if d.Knowledge == nil {
+		d.Knowledge = newKnowledge()
+	}
 	return &Server{d: d, tasks: taskstore.New(d.Store), files: files.New(d.Store), uploadOwners: map[string]int{}}, nil
 }
 
@@ -211,6 +215,20 @@ func (s *Server) Mount(mux *http.ServeMux, opts ...connect.HandlerOption) {
 	mux.HandleFunc("GET /v1/files", s.listFiles)
 	mux.HandleFunc("GET /v1/files/{file_id}", s.getFile)
 	mux.HandleFunc("POST /v1/files/adopt", s.adoptFiles)
+	mux.HandleFunc("GET /v1/files/trash", s.fileTrash)
+	mux.HandleFunc("GET /v1/knowledge/collection", s.fileCollection)
+	mux.HandleFunc("POST /v1/knowledge/index", s.fileIndex)
+	mux.HandleFunc("POST /v1/knowledge/search", s.fileSearch)
+	mux.HandleFunc("GET /v1/files/{file_id}/details", s.fileDetail)
+	mux.HandleFunc("POST /v1/files/{file_id}/actions", s.fileMutation)
+	mux.HandleFunc("POST /v1/files/{file_id}/publish", s.filePublish)
+	mux.HandleFunc("GET /v1/files/{file_id}/versions/{version_id}/content", s.fileVersionContent)
+	mux.HandleFunc("POST /v1/file-jobs", s.fileStartJob)
+	mux.HandleFunc("GET /v1/file-jobs/{job_id}", s.fileGetJob)
+	mux.HandleFunc("POST /v1/file-jobs/{job_id}/cancel", s.fileCancelJob)
+	mux.HandleFunc("POST /v1/file-jobs/{job_id}/attach", s.fileAttachJob)
+	mux.HandleFunc("POST /v1/file-jobs/{job_id}/complete", s.fileCompleteJob)
+	mux.HandleFunc("GET /v1/file-jobs/{job_id}/artifacts/{artifact_id}", s.fileDerivedContent)
 	mux.HandleFunc("GET /v1/uploads/{upload_id}/{filename}", s.downloadSource)
 }
 

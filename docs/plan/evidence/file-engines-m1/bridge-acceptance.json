@@ -1,0 +1,70 @@
+{
+  "mode": "explicit_local_engine_real_subprocess",
+  "checks": [
+    {
+      "name": "source_hash_real_cli_derived_publication",
+      "status": "passed"
+    },
+    {
+      "name": "activity_completion_callback_retries_then_persists_without_poll",
+      "status": "passed"
+    },
+    {
+      "name": "operation_snapshot_tamper",
+      "status": "passed"
+    },
+    {
+      "name": "source_hash_mismatch",
+      "status": "passed"
+    },
+    {
+      "name": "multi_root_actual_duckdb_query",
+      "status": "passed"
+    },
+    {
+      "name": "secondary_root_revocation",
+      "status": "passed"
+    },
+    {
+      "name": "cancelled_before_execution",
+      "status": "passed"
+    },
+    {
+      "name": "revoke_during_execution_blocks_publication",
+      "status": "passed"
+    },
+    {
+      "name": "m3_edit_alias_candidate_verified_not_published",
+      "status": "passed"
+    },
+    {
+      "name": "m3_l2_independent_visual_verification",
+      "status": "passed"
+    },
+    {
+      "name": "index_operation_reads_real_source",
+      "status": "passed"
+    },
+    {
+      "name": "notebook_local_execution_forbidden",
+      "status": "passed"
+    },
+    {
+      "name": "original_bytes_unchanged",
+      "status": "passed"
+    },
+    {
+      "name": "production_local_execution_forbidden",
+      "status": "passed"
+    },
+    {
+      "name": "missing_broker_no_implicit_host_fallback",
+      "status": "passed"
+    },
+    {
+      "name": "actual_sandbox_service_no_workspace_no_prepare_no_project_env",
+      "status": "passed"
+    }
+  ],
+  "status": "passed"
+}

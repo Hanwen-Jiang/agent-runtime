@@ -95,3 +95,8 @@ Coding Web已使用Runtime catalog作为来源权威：legacy JSON仅作为按ow
 完整Coding Agent Go+Chrome回归通过（server约37秒，web约89秒）；另验11 MiB真实浏览器上传、50 MiB+1拒绝、draft最多200 MiB与alias历史链接，以及新draft/401账号切换/迟到来源列表等关键回归。Worker依赖基线迁入本隔离分支后270项通过、1项缺Temporal CLI未运行；8项原生图片探针通过。目录探针同时覆盖SQLite与PostgreSQL两个独立连接池并发。Gateway/adapter相关已有测试和go vet通过。
 
 代码推送：Runtime `272f4ebb`，Coding Web `7d96536`，均在各自`codex/file-intelligence-m0`分支。M0.1的目录/版本/legacy兼容出口已达到；整个M0的Representation/Anchor/Job与TaskInputSnapshot契约尚未完成，M1解析/OCR、M2统一LlamaIndex、M3Calc服务化、M4协作尚未交付。不将以上设计选型或本地测试等同已上线功能。
+
+
+## 2026-11-10 后续集成
+
+M0.1之后的M0–M4实现、实际证据和剩余发布门见 [集成验收记录](file-intelligence-integration.md)。上面的M0.1结论保留为历史，不代表当前功能范围。

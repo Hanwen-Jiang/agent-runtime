@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sqlite3
 from typing import Any
 
 from agentruntime_worker.config import WorkerConfig
@@ -73,10 +74,17 @@ async def test_without_a_workspace_only_context_read_is_listed(tmp_path: Path) -
 
 async def test_the_registry_planning_context_lists_the_registered_tools(tmp_path: Path) -> None:
     fake = seeded()
+    # The production personal-config wrapper reads the task-service-owned table.
+    # This catalog fixture has no task pin; initialize the empty authority table.
+    (tmp_path / "relational").mkdir(exist_ok=True)
+    with sqlite3.connect(tmp_path / "relational" / "t-reg.sqlite3") as db:
+        db.execute("CREATE TABLE tasks (task_id TEXT PRIMARY KEY, personal_config_pin TEXT NOT NULL DEFAULT '')")
     async with serve(fake) as address:
         planner = dev_planner(config(tmp_path, registry_address=address))
         # 外层是 Session 的对话（TranscriptContextSource），里面是 ToolsContextSource，再里面才是 Registry。
-        registry_source = planner.contexts.inner.inner
+        registry_source = planner.contexts
+        while hasattr(registry_source, "inner"):
+            registry_source = registry_source.inner
         assert isinstance(registry_source, RegistryContextSource)
         context = await planner.contexts.load(plan_input())
         await registry_source.registry.aclose()

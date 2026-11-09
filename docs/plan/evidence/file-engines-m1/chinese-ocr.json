@@ -1,0 +1,12 @@
+{
+  "input_text": "文件处理测试 合计 42",
+  "status": "ready",
+  "recognized": [
+    "文件处理测试 合计 42"
+  ],
+  "confidences": [
+    0.98068
+  ],
+  "font_release": "Noto CJK Sans2.004",
+  "font_sha256": "2c76254f6fc379fddfce0a7e84fb5385bb135d3e399294f6eeb6680d0365b74b"
+}

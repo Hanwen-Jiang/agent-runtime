@@ -35,8 +35,8 @@ def test_workspace_operations_have_their_own_queue() -> None:
     """WS-READ-02：Workspace 操作的工作流与 activity 都在 workspace 队列；task、program 队列照旧登记它们，给改之前起的、
     还在跑的操作（旧池留到它们跑完）。"""
     workspace = QUEUE_COMPONENTS[names.WORKSPACE_QUEUE]
-    assert workspace.workflows == (names.WORKSPACE_OPERATION_WORKFLOW,)
-    assert workspace.activities == (names.WORKSPACE_OPERATION,)
+    assert workspace.workflows == (names.WORKSPACE_OPERATION_WORKFLOW, "FileOperationWorkflow")
+    assert workspace.activities == (names.WORKSPACE_OPERATION, names.WORKSPACE_OPERATION_RESULT, "file_operation")
     assert names.WORKSPACE_OPERATION_WORKFLOW in QUEUE_COMPONENTS[names.TASK_QUEUE].workflows
     assert names.WORKSPACE_OPERATION in QUEUE_COMPONENTS[names.PROGRAM_QUEUE].activities
 
@@ -56,7 +56,7 @@ def test_every_component_is_registered_on_exactly_one_queue() -> None:
     executor_names = set(dev_executor(WorkerConfig()).activities())
     assert not stub_names & executor_names
     # 沙箱环境表的对账（D-11）是平台级的 activity，不属于桩也不属于 Node Executor。
-    assert set(activities) == stub_names | executor_names | {names.RECONCILE_SANDBOXES, names.BUILD_ENVIRONMENT, names.WORKSPACE_OPERATION}
+    assert set(activities) == stub_names | executor_names | {names.RECONCILE_SANDBOXES, names.BUILD_ENVIRONMENT, names.WORKSPACE_OPERATION, names.WORKSPACE_OPERATION_RESULT}
     assert {names.ASK_HUMAN, names.CANCEL_HUMAN} <= set(QUEUE_COMPONENTS[names.DECISION_QUEUE].activities)
     assert names.RECONCILE_NODE in QUEUE_COMPONENTS[names.PROGRAM_QUEUE].activities
 
@@ -172,7 +172,7 @@ async def test_tools_go_through_one_dev_tool_driver(tmp_path: Path) -> None:
     assert provider is dev_tools(config) and executor.deps.tools.base is provider, "同一进程只有一个开发用 ToolDriver"
     listed = {s.name for s in await provider.bind(TenantContext(tenant_id="t1")).list_tools()}
     # context_read 总是登记（R-03 评审 D11），其余按配置登记（deliver_file 跟着工作区目录，N-18）。
-    assert listed == {"repo_read", "repo_list", "repo_grep", "repo_edit", "shell_run", "web_fetch", "context_read", "deliver_file"}
+    assert listed == {"repo_read", "repo_list", "repo_grep", "repo_edit", "shell_run", "web_fetch", "context_read", "deliver_file", "attachment_import"}
     unconfigured = {s.name for s in await dev_tools(WorkerConfig(data_dir=tmp_path / "other")).bind(TenantContext(tenant_id="t1")).list_tools()}
     assert unconfigured == {"context_read"}, "没配置就只有 context_read"
 

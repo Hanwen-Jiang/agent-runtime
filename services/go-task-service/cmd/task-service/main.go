@@ -86,6 +86,7 @@ const usage = `用法：
   task-service replay --dir <事件历史目录>
   task-service registry-seed <种子文件>
   task-service registry-export-profiles
+  task-service file-gc --tenant T --workspace W [--limit 100] [--prefix uploads/|file-derived/] [--cursor CURSOR]
 `
 
 func main() {
@@ -99,6 +100,8 @@ func run(args []string, stdout, stderr io.Writer, getenv func(string) string) in
 		return 2
 	}
 	switch args[0] {
+	case "file-gc":
+		return fileGC(args[1:], stdout, stderr, getenv)
 	case "serve":
 		return serve(stderr, getenv)
 	case "dev-token":

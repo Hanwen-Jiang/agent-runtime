@@ -17,7 +17,7 @@ type UploadRecord struct {
 	CreatedAt   time.Time
 }
 
-// File is a logical identity. M0.1 only publishes its initial version.
+// File is a logical identity whose head changes only through verified CAS publication.
 type File struct {
 	ID            string    `json:"id"`
 	WorkspaceID   string    `json:"workspace_id"`
@@ -28,8 +28,7 @@ type File struct {
 	Lifecycle     string    `json:"lifecycle"`
 }
 
-// FileVersion describes immutable source bytes. ParentVersionID is reserved for
-// the version model; M0.1 exposes no API for editing or publishing later versions.
+// FileVersion describes immutable source bytes and its publication lineage.
 type FileVersion struct {
 	ID              string    `json:"id"`
 	FileID          string    `json:"file_id"`
@@ -41,11 +40,12 @@ type FileVersion struct {
 	ParentVersionID string    `json:"parent_version_id,omitempty"`
 }
 
-// Record keeps the storage reference internal, separate from the public schema.
+// Record includes a credential-free source reference. Reading its bytes still
+// requires current catalog authority; this URI is never a signed public link.
 type Record struct {
 	File      File        `json:"file"`
 	Version   FileVersion `json:"version"`
-	ObjectURI string      `json:"-"`
+	ObjectURI string      `json:"source_uri"`
 }
 
 type Page struct {

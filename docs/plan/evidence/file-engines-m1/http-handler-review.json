@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "mode": "real Go HTTP handlers + SQLite/ObjectStore; existing fake Durable/Knowledge",
+  "checks": [
+    "owner isolation and revoked derived download",
+    "unknown request fields rejected",
+    "job response removes internal URI and filesystem paths",
+    "task-snapshot attach succeeds; different task rejected",
+    "completion accepts internal service token only",
+    "completion persists terminal state without browser GET; retry idempotent",
+    "same-version two representations indexed; root unique; duplicate same-job deduplicated; partial coverage returned",
+    "Knowledge RPC unavailable maps to HTTP 503"
+  ],
+  "command": "go test ./services/go-task-service/internal/taskapi -run TestTemporaryFileHandlerReview -count=1 -v",
+  "temporary_probe": "/tmp/file-intelligence-handler-review-probe_test.go",
+  "probe_removed_from_repository": true
+}

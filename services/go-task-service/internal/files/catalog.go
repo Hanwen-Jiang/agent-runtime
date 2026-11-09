@@ -27,7 +27,7 @@ var digestPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
 // both Go and Python migrations. The provider supplies tenant isolation; no
 // application SQL or schema defines a tenant discriminator.
 func Migrations() []relational.Migration {
-	return []relational.Migration{{Version: 410, Name: "runtime_file_catalog_initial_versions", Statements: []string{
+	return append([]relational.Migration{{Version: 410, Name: "runtime_file_catalog_initial_versions", Statements: []string{
 		`CREATE TABLE runtime_files (
 			file_id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, name TEXT NOT NULL,
 			created_by TEXT NOT NULL, created_at BIGINT NOT NULL,
@@ -43,7 +43,7 @@ func Migrations() []relational.Migration {
 			object_uri TEXT NOT NULL UNIQUE, created_at BIGINT NOT NULL
 		)`,
 		`CREATE TABLE runtime_file_catalog_locks (workspace_id TEXT PRIMARY KEY, revision BIGINT NOT NULL)`,
-	}}}
+	}}}, append(append(lifecycleMigrations(), knowledgeMigrations()...), artifactMigrations()...)...)
 }
 
 type Catalog struct {
@@ -117,7 +117,7 @@ func initialRecord(owner string, upload UploadRecord) Record {
 }
 
 const recordColumns = `f.file_id, f.workspace_id, f.name, f.created_by, f.created_at, f.head_version_id, f.lifecycle,
-	v.version_id, v.object_uri, v.mime_type, v.size_bytes, v.sha256, v.parent_version_id`
+	v.version_id, v.object_uri, v.mime_type, v.size_bytes, v.sha256, v.parent_version_id, v.created_at AS version_created_at, v.created_by AS version_created_by`
 const recordFrom = ` FROM runtime_files f JOIN runtime_file_versions v ON f.head_version_id = v.version_id AND f.file_id = v.file_id`
 
 func decode(row relational.Row) Record {
@@ -128,7 +128,7 @@ func decode(row relational.Row) Record {
 		File: File{ID: str("file_id"), WorkspaceID: str("workspace_id"), Name: str("name"), CreatedBy: str("created_by"),
 			CreatedAt: created, HeadVersionID: str("head_version_id"), Lifecycle: str("lifecycle")},
 		Version: FileVersion{ID: str("version_id"), FileID: str("file_id"), MIMEType: str("mime_type"), SizeBytes: num("size_bytes"),
-			SHA256: str("sha256"), CreatedAt: created, CreatedBy: str("created_by"), ParentVersionID: str("parent_version_id")},
+			SHA256: str("sha256"), CreatedAt: time.UnixMilli(num("version_created_at")).UTC(), CreatedBy: str("version_created_by"), ParentVersionID: str("parent_version_id")},
 		ObjectURI: str("object_uri"),
 	}
 }
@@ -143,6 +143,7 @@ func (c *Catalog) Register(ctx context.Context, tenant *commonv1.TenantContext, 
 }
 
 const sourceFrom = recordFrom + ` JOIN runtime_file_sources s ON s.file_id = f.file_id`
+const initialSourceFrom = ` FROM runtime_files f JOIN runtime_file_sources s ON s.file_id=f.file_id JOIN runtime_file_versions v ON v.file_id=f.file_id AND v.parent_version_id=''`
 const sourceColumns = recordColumns + `, s.source_id AS source_id, s.object_uri AS source_object_uri, s.created_at AS source_created_at`
 
 // RegisterBatch adopts 1..500 verified uploads from one workspace atomically.
@@ -188,7 +189,7 @@ func (c *Catalog) RegisterBatch(ctx context.Context, tenant *commonv1.TenantCont
 		if _, err := tx.Execute(ctx, `UPDATE runtime_file_catalog_locks SET revision = revision + 1 WHERE workspace_id = $1`, workspace); err != nil {
 			return err
 		}
-		quota, _, err := tx.QueryOne(ctx, `SELECT COUNT(*) AS file_count, COALESCE(SUM(v.size_bytes), 0) AS total_bytes`+recordFrom+` WHERE f.workspace_id = $1 AND f.lifecycle = 'active'`, workspace)
+		quota, _, err := tx.QueryOne(ctx, `SELECT COUNT(DISTINCT f.file_id) AS file_count, CAST(COALESCE(SUM(v.size_bytes), 0) AS BIGINT) AS total_bytes FROM runtime_files f JOIN runtime_file_versions v ON v.file_id=f.file_id WHERE f.workspace_id = $1 AND f.lifecycle IN ('active','trash')`, workspace)
 		if err != nil {
 			return err
 		}
@@ -196,8 +197,13 @@ func (c *Catalog) RegisterBatch(ctx context.Context, tenant *commonv1.TenantCont
 		bytes, _ := quota["total_bytes"].(int64)
 		for _, i := range order {
 			upload := uploads[i]
+			if _, queued, e := tx.QueryOne(ctx, `SELECT object_uri FROM runtime_file_gc_objects WHERE object_uri=$1`, upload.ObjectURI); e != nil {
+				return e
+			} else if queued {
+				return conflict()
+			}
 			wanted := initialRecord(owner, upload)
-			row, found, err := tx.QueryOne(ctx, `SELECT `+sourceColumns+sourceFrom+` WHERE s.source_id = $1`, upload.SourceID)
+			row, found, err := tx.QueryOne(ctx, `SELECT `+sourceColumns+initialSourceFrom+` WHERE s.source_id = $1`, upload.SourceID)
 			if err != nil {
 				return err
 			}
@@ -209,7 +215,7 @@ func (c *Catalog) RegisterBatch(ctx context.Context, tenant *commonv1.TenantCont
 				sourceURI, _ := row["source_object_uri"].(string)
 				sourceCreated, _ := row["source_created_at"].(int64)
 				if sourceURI != upload.ObjectURI || sourceCreated != wanted.File.CreatedAt.UnixMilli() ||
-					record.File.Name != upload.Name || record.Version.MIMEType != upload.MIMEType ||
+					record.Version.MIMEType != upload.MIMEType ||
 					record.Version.SHA256 != upload.SHA256 || record.Version.SizeBytes != upload.SizeBytes {
 					return conflict()
 				}
@@ -302,7 +308,7 @@ func (c *Catalog) get(ctx context.Context, tenant *commonv1.TenantContext, owner
 	}
 	var result Record
 	err = store.Transaction(ctx, relational.TxOptions{ReadOnly: true}, func(ctx context.Context, tx relational.Tx) error {
-		row, found, err := tx.QueryOne(ctx, `SELECT `+recordColumns+sourceFrom+` WHERE f.created_by = $1 AND f.workspace_id = $2 AND f.lifecycle = 'active' AND `+condition+` = $3`, owner, workspace, value)
+		row, found, err := tx.QueryOne(ctx, `SELECT `+recordColumns+sourceFrom+` WHERE (f.created_by = $1 OR EXISTS (SELECT 1 FROM runtime_file_grants g WHERE g.file_id=f.file_id AND g.workspace_id=f.workspace_id AND g.subject_type='user' AND g.subject_id=$1)) AND f.workspace_id = $2 AND f.lifecycle = 'active' AND `+condition+` = $3`, owner, workspace, value)
 		if err != nil {
 			return err
 		}
@@ -326,10 +332,7 @@ func (c *Catalog) GetBySourceID(ctx context.Context, tenant *commonv1.TenantCont
 }
 
 func (c *Catalog) Resolve(ctx context.Context, tenant *commonv1.TenantContext, owner, workspace, objectURI string) (Record, error) {
-	if !strings.HasPrefix(objectURI, "obj://"+tenant.GetTenantId()+"/uploads/") {
-		return Record{}, missing()
-	}
-	return c.get(ctx, tenant, owner, workspace, "s.object_uri", objectURI)
+	return c.ResolveVersion(ctx, tenant, owner, objectURI)
 }
 
 type listCursor struct {
@@ -365,7 +368,7 @@ func (c *Catalog) List(ctx context.Context, tenant *commonv1.TenantContext, owne
 	}
 	page := Page{Files: []Record{}}
 	err = store.Transaction(ctx, relational.TxOptions{ReadOnly: true}, func(ctx context.Context, tx relational.Tx) error {
-		query := `SELECT ` + recordColumns + recordFrom + ` WHERE f.created_by = $1 AND f.workspace_id = $2 AND f.lifecycle = 'active'`
+		query := `SELECT ` + recordColumns + recordFrom + ` WHERE (f.created_by = $1 OR EXISTS (SELECT 1 FROM runtime_file_grants g WHERE g.file_id=f.file_id AND g.workspace_id=f.workspace_id AND g.subject_type='user' AND g.subject_id=$1)) AND f.workspace_id = $2 AND f.lifecycle = 'active'`
 		args := []any{owner, workspace}
 		if cursor != "" {
 			query += ` AND (f.created_at < $3 OR (f.created_at = $3 AND f.file_id < $4))`

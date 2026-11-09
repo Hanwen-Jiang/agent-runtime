@@ -61,6 +61,27 @@ spec:
               containerPort: {{ $ts.deltas.port }}
             {{- end }}
           env:
+            {{- if .Values.fileIntelligence.enabled }}
+            - name: AR_FILE_INTERNAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "fileIntelligence.internalTokenSecret.name is required" .Values.fileIntelligence.internalTokenSecret.name }}
+                  key: {{ .Values.fileIntelligence.internalTokenSecret.key }}
+            - name: AR_KNOWLEDGE_INTERNAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "fileIntelligence.knowledgeTokenSecret.name is required" .Values.fileIntelligence.knowledgeTokenSecret.name }}
+                  key: {{ .Values.fileIntelligence.knowledgeTokenSecret.key }}
+            - name: AR_MEMORY_ADDRESS
+              value: {{ printf "%s-memory:%v" (include "ar.fullname" .) .Values.memory.port | quote }}
+            - name: AR_EMBEDDING_VERSION
+              value: {{ required "fileIntelligence requires memory.embeddingVersion" .Values.memory.embeddingVersion | quote }}
+            - name: AR_KNOWLEDGE_SIGNING_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.existingSecret }}
+                  key: {{ .Values.secrets.signingKeyKey }}
+            {{- end }}
             {{- include "ar.storeEnv" (merge (dict "imageComponent" "task-service") .) | nindent 12 }}
             # Ingress（AUTH-01）：只收 JWT 时不给签名密钥，task-service 不持有能签令牌的东西。
             - name: AR_INGRESS_DEV_TOKENS

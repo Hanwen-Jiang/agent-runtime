@@ -139,6 +139,7 @@ func serve(ctx context.Context, stdout, stderr io.Writer, getenv func(string) st
 	}
 	srv, err := gateway.New(gateway.Options{
 		Objects:          objects,
+		FileAuthority:    store,
 		ModelBudget:      modelbudget.New(store),
 		BudgetPolicies:   modelbudget.Policy{Path: cfg.TenantPoliciesFile, Source: registryBudgetSource(cfg.RegistryAddress)},
 		Provider:         provider,

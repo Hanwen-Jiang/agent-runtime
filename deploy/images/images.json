@@ -77,6 +77,10 @@
         "MODULE": "services/go-sandbox-service",
         "MAIN": "./cmd/sandbox-service"
       }
+    },
+    "sandbox-file-engines": {
+      "dockerfile": "deploy/images/file-engines/Dockerfile",
+      "args": {}
     }
   }
 }

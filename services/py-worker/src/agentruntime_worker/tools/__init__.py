@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import os
 import tempfile
 from collections.abc import AsyncIterator
@@ -107,6 +108,7 @@ def _key(config: WorkerConfig) -> tuple[object, ...]:
         config.tool_workspace_root, config.tool_fetch_hosts, config.mcp_tools_file, config.tool_shell_sandbox,
         config.sandbox_backends_file, config.registry_address, config.sandbox_sessions, config.sandbox_runtime, config.preview_domain,
         *_broker_key(config), *_store_key(config),
+        config.task_service_internal_url, os.environ.get('AR_TASK_SERVICE_URL',''), hashlib.sha256(config.dev_signing_key.encode()).digest(), hashlib.sha256(os.environ.get('AR_FILE_INTERNAL_TOKEN','').encode()).digest(),
     )
 
 
@@ -223,10 +225,13 @@ def dev_tools(config: WorkerConfig) -> LocalToolDriverProvider:
         broker = sandbox_broker(config)
         # 工作区的版本号（WS-READ-03）记在 Workspace API 用的同一个业务库里。
         generations = _generations(config)
+        from agentruntime_worker.files.authority import task_attachments
+        attachments = task_attachments(config)
         register_platform_tools(
             provider,
             platform,
             objects=context_objects(config),
+            attachments=attachments,
             sandboxes=broker,
             telemetry=worker_telemetry(),
             generations=generations,
@@ -238,13 +243,15 @@ def dev_tools(config: WorkerConfig) -> LocalToolDriverProvider:
         # 内容进 context_objects 的 ObjectStore，元数据进业务库（task-service 读同一处）。
         files = workspace_files(platform, sandboxes=broker, telemetry=worker_telemetry(), generations=generations)
         if files is not None:
-            from agentruntime_worker.tools.attachments import AttachmentImport, TaskAttachments
-            spec, handler = AttachmentImport(TaskAttachments(context_objects(config)), files).tool()
+            from agentruntime_worker.tools.attachments import AttachmentImport
+            spec, handler = AttachmentImport(attachments, files).tool()
             provider.register(spec, handler)
             register_delivery_tools(
                 provider, objects=context_objects(config), store=relational_store(config.relational_dsn, config.data_dir or Path(tempfile.mkdtemp(prefix="agentruntime-delivery-"))),
                 reader=files, limits=DeliveryLimits.from_env(os.environ),
             )
+        from agentruntime_worker.files.tools import register_file_tools
+        register_file_tools(provider, config)
         if config.registry_address:
             # 用户 Skill（N-14）：正文在 Registry，固定的版本在业务库的 tasks.skill_pins。
             from agentruntime_worker.registry.client import GrpcRegistry

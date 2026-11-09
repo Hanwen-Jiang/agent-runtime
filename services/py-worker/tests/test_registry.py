@@ -381,8 +381,12 @@ def test_the_worker_uses_the_registry_only_when_configured() -> None:
     assert set(configured) == set(default)
 
     # 两种都包一层 ToolsContextSource：加上 ToolDriver 登记的工具（T-13）。
-    assert isinstance(dev_planner(WorkerConfig(planner="model")).contexts.inner, StaticContextSource)
-    assert isinstance(dev_planner(WorkerConfig(planner="model", registry_address="127.0.0.1:8092")).contexts.inner, RegistryContextSource)
+    def base_source(source):
+        while hasattr(source, "inner"):
+            source = source.inner
+        return source
+    assert isinstance(base_source(dev_planner(WorkerConfig(planner="model")).contexts), StaticContextSource)
+    assert isinstance(base_source(dev_planner(WorkerConfig(planner="model", registry_address="127.0.0.1:8092")).contexts), RegistryContextSource)
 
 
 def test_the_registry_address_is_read_from_the_environment() -> None:

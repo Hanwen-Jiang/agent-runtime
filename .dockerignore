@@ -42,3 +42,8 @@ tests/e2e/live
 tests/e2e/test_*.py
 tests/sandbox-agent/golden
 tests/sandbox-agent/*.py
+
+# Local file-engine acceptance environments and model caches
+.file-engines-venv/
+.file-engines-models/
+.retrieval-venv/

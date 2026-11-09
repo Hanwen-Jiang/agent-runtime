@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/agentruntime/agent-runtime/libs/go-core/fileaccess"
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
@@ -95,7 +96,11 @@ func (s *Server) resolveImages(ctx context.Context, tenant *commonv1.TenantConte
 			if count > maxImages {
 				return invalid("image_limit", "too many images")
 			}
-			if !allowed[im.ObjectURI] || !strings.HasPrefix(im.ObjectURI, "obj://"+tenant.GetTenantId()+"/uploads/src_") {
+			if s.opts.FileAuthority != nil {
+				if err := fileaccess.Authorize(ctx, s.opts.FileAuthority, tenant, call.GetTaskId(), im.ObjectURI, im.SHA256); err != nil {
+					return err
+				}
+			} else if !allowed[im.ObjectURI] || !strings.HasPrefix(im.ObjectURI, "obj://"+tenant.GetTenantId()+"/uploads/src_") {
 				return providererr.New(providererr.Denied, "image_not_authorized", "image input is not authorized for this task")
 			}
 			key, err := store.KeyOf(im.ObjectURI)

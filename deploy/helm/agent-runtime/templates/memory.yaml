@@ -29,6 +29,13 @@ spec:
             - name: grpc
               containerPort: {{ $mem.port }}
           env:
+            {{- if .Values.fileIntelligence.enabled }}
+            - name: AR_KNOWLEDGE_INTERNAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "fileIntelligence.knowledgeTokenSecret.name is required" .Values.fileIntelligence.knowledgeTokenSecret.name }}
+                  key: {{ .Values.fileIntelligence.knowledgeTokenSecret.key }}
+            {{- end }}
             {{- include "ar.storeEnv" (merge (dict "imageComponent" "memory") .) | nindent 12 }}
             {{- include "ar.signingKeyEnv" . | nindent 12 }}
             {{- include "ar.dsnEnv" . | nindent 12 }}

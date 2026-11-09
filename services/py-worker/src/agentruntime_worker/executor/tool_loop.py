@@ -257,7 +257,7 @@ def dev_tool_loop(config: WorkerConfig) -> ToolLoopActivities:
     from agentruntime_worker.session.transcript import worker_transcript
     from agentruntime_worker.tools import context_objects, dev_tools, mcp_leases, mcp_tool_names, skill_pins
 
-    from agentruntime_worker.tools.attachments import TaskAttachments
+    from agentruntime_worker.files.authority import task_attachments
     gateway = model_gateway(config)
     builder = ContextBuilder(gateway, context_objects(config), ContextConfig(effective_tokens=config.context_effective_tokens, offload_tokens=config.context_offload_tokens))
     return ToolLoopActivities(
@@ -265,7 +265,7 @@ def dev_tool_loop(config: WorkerConfig) -> ToolLoopActivities:
             gateway, builder, tools=ToolCatalog(dev_tools(config), mcp_leases(config)), transcript=worker_transcript(config),
             mcp_tools=lambda: mcp_tool_names(config), memory=searcher(config),
             personal=TaskPersonalConfig(skill_pins(config).store) if config.registry_address else None,
-            attachments=TaskAttachments(context_objects(config)),
+            attachments=task_attachments(config),
             sub_agent_tier=SUB_AGENT_TIER if config.sub_agent_policy == "rules" else None,
         )
     )

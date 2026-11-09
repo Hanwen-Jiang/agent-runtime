@@ -75,6 +75,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/modelprovider"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/telemetry"
 	"github.com/agentruntime/agent-runtime/libs/go-core/tenancy"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
@@ -106,7 +107,8 @@ const DefaultAttemptTimeout = 90 * time.Second
 
 // Options 是构造参数。
 type Options struct {
-	Objects objectstore.Provider
+	Objects       objectstore.Provider
+	FileAuthority relational.Provider
 	// ModelBudget is the shared durable ledger; production serve always sets it.
 	ModelBudget    modelbudget.Provider
 	BudgetPolicies modelbudget.PolicyResolver

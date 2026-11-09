@@ -1,0 +1,5 @@
+=== RUN   TestAuthorityManualProbe
+    authority_manual_probe_test.go:361: ACL, join revocation, consumers, immutable generations, CAS publication, alias+rename and pinned retention passed
+--- PASS: TestAuthorityManualProbe (0.21s)
+PASS
+ok  	github.com/agentruntime/agent-runtime/services/go-task-service/internal/files	0.882s

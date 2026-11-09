@@ -27,7 +27,9 @@ from agentruntime_core.dev.secret_store import LocalFileSecretStoreProvider
 from agentruntime_memory.identity import DevTokenAuthenticator
 from agentruntime_memory.server import start_server
 from agentruntime_memory.service import MemoryService
-from agentruntime_memory.wiring import embedder, vector_store
+from agentruntime_memory.wiring import GatewayClient, GatewayReranker, embedder, vector_store
+from agentruntime_memory.retrieval import RetrievalEngine
+from agentruntime_memory.knowledge import CatalogAuthorizer, KnowledgeService
 
 log = logging.getLogger("agentruntime_memory")
 
@@ -51,10 +53,17 @@ async def serve() -> None:
         relational = SQLiteRelationalStoreProvider(data_dir / "db")
     keyring = RelationalKeyRing(relational, secrets)
     vectors = vector_store(os.environ, keyring)
-    service = MemoryService(relational=relational, vectors=vectors, keyring=keyring, embedder=embedder(os.environ))
+    embeddings = embedder(os.environ)
+    rerank_address = os.environ.get("AR_MODEL_GATEWAY_ADDRESS", "")
+    reranker = GatewayReranker(GatewayClient(rerank_address)) if rerank_address and os.environ.get("AR_KNOWLEDGE_RERANK") == "1" else None
+    retrieval = RetrievalEngine(vectors=vectors, embedder=embeddings, relational=relational,
+                               authorize=CatalogAuthorizer(relational), rerank=reranker)
+    await retrieval.setup()
+    service = MemoryService(relational=relational, vectors=vectors, keyring=keyring, embedder=embeddings, retrieval=retrieval)
     await service.setup()
     server, port = await start_server(
-        service, DevTokenAuthenticator(signing_key.encode()), os.environ.get("AR_MEMORY_ADDRESS", "127.0.0.1:50061"), drain_in_background=True
+        service, DevTokenAuthenticator(signing_key.encode()), os.environ.get("AR_MEMORY_ADDRESS", "127.0.0.1:50061"), drain_in_background=True,
+        knowledge=KnowledgeService(retrieval), knowledge_internal_token=os.environ.get("AR_KNOWLEDGE_INTERNAL_TOKEN", ""),
     )
     log.info("Memory Service 在端口 %d 上监听", port)
     try:

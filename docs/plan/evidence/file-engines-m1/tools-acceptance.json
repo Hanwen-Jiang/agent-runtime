@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "mode": "real_SQLite_ObjectStore_with_explicit_HTTP_double",
+  "checks": [
+    "render_job_attach_endpoint_called",
+    "next_model_request_contains_derived_image_ref",
+    "unpinned_source_denied",
+    "search_uses_server_frozen_task_scope",
+    "evidence_resolve_uses_task_scope",
+    "task_cancellation_detaches_only_its_consumer",
+    "derived_epoch_revocation_denied",
+    "production_service_token_factory_no_dev_key"
+  ]
+}

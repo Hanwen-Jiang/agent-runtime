@@ -1,0 +1,2 @@
+PASS: delete during blocked embedding prevents late vector upsert/resurrection
+PASS: real LlamaIndex split/adapter/retriever; SQLite staged metadata; gateway embed request; relevant citation+anchor; stable IDs/retry; shared-file grant and revoke; cross tenant/workspace; delete generation/no resurrection. Evidence: /var/folders/wn/rrkvwygs0pv7dzyzrprnxf6m0000gn/T/retrieval-evidence-1dij5n7u

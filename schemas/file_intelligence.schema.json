@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentruntime.example/schemas/file_intelligence.schema.json",
+  "title": "File intelligence bounded job request",
+  "description": "Authenticated POST /v1/file-jobs. IDs are resolved server-side to immutable versions, current ACL epochs and content hashes. Paths, arbitrary object references and identity are never accepted as source authority. Output artifacts remain authenticated and are not public URLs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "operation",
+    "request_id",
+    "inputs"
+  ],
+  "properties": {
+    "operation": {
+      "enum": [
+        "inspect",
+        "read",
+        "render",
+        "archive_list",
+        "extract",
+        "query",
+        "edit",
+        "recalculate",
+        "notebook_execute",
+        "index"
+      ]
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "inputs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "file_id"
+        ],
+        "properties": {
+          "file_id": {
+            "$ref": "file_catalog.schema.json#/$defs/file_id"
+          },
+          "version_id": {
+            "$ref": "file_catalog.schema.json#/$defs/version_id"
+          }
+        }
+      }
+    },
+    "options": {
+      "type": "object",
+      "description": "Bounded engine options; frozen and hashed for this job. The trusted bridge removes paths and execution authorization flags and derives them from the source snapshot."
+    },
+    "selector": {
+      "type": "object",
+      "description": "A bounded range: PDF pages/normalized bbox; XLSX sheet/A1 range; DOCX block; PPTX slide/shape; notebook cell; archive member."
+    }
+  }
+}

@@ -33,6 +33,19 @@ spec:
           imagePullPolicy: {{ $.Values.image.pullPolicy }}
           args: ["-m", "agentruntime_worker", "--queues", {{ $pool | quote }}]
           env:
+            {{- if $.Values.fileIntelligence.enabled }}
+            - name: AR_FILE_INTERNAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "fileIntelligence.internalTokenSecret.name is required" $.Values.fileIntelligence.internalTokenSecret.name }}
+                  key: {{ $.Values.fileIntelligence.internalTokenSecret.key }}
+            - name: AR_TASK_SERVICE_URL
+              value: {{ printf "http://%s-task-service:%v" (include "ar.fullname" $) $.Values.taskService.httpPort | quote }}
+            - name: AR_FILE_ENGINES_RUNTIME
+              value: {{ $.Values.fileIntelligence.runtime | quote }}
+            - name: AR_PROFILE
+              value: production
+            {{- end }}
             {{- include "ar.storeEnv" (merge (dict "imageComponent" "worker") $) | nindent 12 }}
             - name: AR_TEMPORAL_ADDRESS
               value: {{ $.Values.external.temporal.address | quote }}

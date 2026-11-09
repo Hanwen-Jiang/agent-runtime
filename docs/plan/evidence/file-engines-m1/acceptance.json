@@ -1,0 +1,350 @@
+{
+  "engine": {
+    "version": "file-engines-v1",
+    "packages": {
+      "pypdf": "6.19.0",
+      "docling": "2.133.0",
+      "rapidocr": "3.9.2",
+      "onnxruntime": "1.30.0",
+      "python-docx": "1.2.0",
+      "openpyxl": "3.1.5",
+      "python-pptx": "1.0.2",
+      "Pillow": "12.3.0",
+      "duckdb": "1.5.6",
+      "PyYAML": "6.0.3",
+      "defusedxml": "0.7.1"
+    },
+    "sources": {
+      "__init__.py": "d6e01480bc295d83f04d7732e7d716a8f89e27ebbbdd0131259648ca5bf17165",
+      "activity.py": "1710c0a38df546ae42213422833c48261a0ffd260f5fa1c7f9e7d0fbea2416f2",
+      "authority.py": "b78cbfcf218cf8204e9d251e3a6bd2b16b889a3cfbc8e38aabcd390770e4c100",
+      "cli.py": "1897e049b42849ee72ada4ee888a67fed8d429b3a9be370b52b845257a2c148a",
+      "compute.py": "8a83b162ee3df8c0f205593bd601e42b0d18433f245c31c4559b68346df445b2",
+      "edit.py": "a4e79a5c84eb3a6e56b96b181ad8e0a6e05bbe2678fbb8280d2519d541d147a4",
+      "inspect.py": "8703de1fa703e75401e65e6b7da3ca0b673f2a9df40b28e2523d895aa80945a1",
+      "models.py": "fb22fed4940dab153004f47afe3b953a68a4e78c5de70ca23a7930e21c8f0f46",
+      "parse.py": "4503f9f45cd6f7bb2f3f83ac32e5ea0ca228b4f25ccc33fb428ee21261b741bf",
+      "recalculate.py": "eb312e4b675d625fba6fb52e8bbd7594b5a209200fef5feb0a13eb3f6e145b02",
+      "render.py": "063130e446ebfa215805ce4c1315c4e800965ab49a363b208618b40fa81bbc19"
+    },
+    "assets": {
+      "models": "86e70021fccd04492877edd742eabf51a4723aa89af0b9c8ae8aeaa8e2c39807",
+      "fonts": null,
+      "system_packages": null
+    },
+    "digest": "cdecaceaa6bdb5c1768fed3767e42d9f6a0fd06a00b9ed9c3f90480684106731"
+  },
+  "checks": [
+    {
+      "name": "text",
+      "status": "passed",
+      "operation_status": "ready",
+      "blocks": 1,
+      "artifacts": 1,
+      "coverage": {
+        "total_lines": 3,
+        "start_line": 1,
+        "end_line": 3,
+        "next_line": null,
+        "returned_blocks": 1,
+        "output_truncated": false
+      }
+    },
+    {
+      "name": "line-selection",
+      "status": "passed",
+      "operation_status": "partial",
+      "blocks": 1,
+      "artifacts": 1,
+      "coverage": {
+        "total_lines": 3,
+        "start_line": 2,
+        "end_line": 2,
+        "next_line": 3,
+        "returned_blocks": 1,
+        "output_truncated": false
+      }
+    },
+    {
+      "name": "json",
+      "status": "passed",
+      "operation_status": "ready",
+      "blocks": 1,
+      "artifacts": 1,
+      "coverage": {
+        "total_lines": 1,
+        "start_line": 1,
+        "end_line": 1,
+        "next_line": null,
+        "returned_blocks": 1,
+        "output_truncated": false
+      }
+    },
+    {
+      "name": "csv",
+      "status": "passed",
+      "operation_status": "ready",
+      "blocks": 2,
+      "artifacts": 1,
+      "coverage": {
+        "total_rows": 2,
+        "start": 0,
+        "returned": 2,
+        "returned_blocks": 2,
+        "output_truncated": false
+      }
+    },
+    {
+      "name": "docx",
+      "status": "passed",
+      "operation_status": "ready",
+      "blocks": 3,
+      "artifacts": 1,
+      "coverage": {
+        "total_blocks": 3,
+        "start": 0,
+        "returned": 3,
+        "inline_images": 0,
+        "images_read": false,
+        "returned_blocks": 3,
+        "output_truncated": false
+      }
+    },
+    {
+      "name": "xlsx",
+      "status": "passed",
+      "operation_status": "ready",
+      "blocks": 7,
+      "artifacts": 1,
+      "coverage": {
+        "sheet": "Data",
+        "range": [
+          1,
+          1,
+          2,
+          4
+        ],
+        "formulas_recalculated": false,
+        "returned_blocks": 7,
+        "output_truncated": false
+      }
+    },
+    {
+      "name": "pptx",
+      "status": "passed",
+      "operation_status": "ready",
+      "blocks": 2,
+      "artifacts": 1,
+      "coverage": {
+        "total_slides": 1,
+        "processed_slides": [
+          0
+        ],
+        "charts_visual_only": true,
+        "returned_blocks": 2,
+        "output_truncated": false
+      }
+    },
+    {
+      "name": "notebook-safe-read",
+      "status": "passed",
+      "operation_status": "ready",
+      "blocks": 1,
+      "artifacts": 1,
+      "coverage": {
+        "total_cells": 1,
+        "processed_cells": [
+          0
+        ],
+        "executed": false,
+        "returned_blocks": 1,
+        "output_truncated": false
+      }
+    },
+    {
+      "name": "archive-extract",
+      "status": "passed",
+      "operation_status": "ready",
+      "blocks": 1,
+      "artifacts": 2,
+      "coverage": {
+        "total_members": 1,
+        "extracted_members": 1,
+        "selected_members": [
+          "docs/readme.txt"
+        ],
+        "returned_blocks": 1,
+        "output_truncated": false
+      }
+    },
+    {
+      "name": "archive-traversal",
+      "status": "passed",
+      "operation_status": "failed",
+      "blocks": 0,
+      "artifacts": 0,
+      "coverage": {
+        "complete": false
+      }
+    },
+    {
+      "name": "archive-link",
+      "status": "passed",
+      "operation_status": "failed",
+      "blocks": 0,
+      "artifacts": 0,
+      "coverage": {
+        "complete": false
+      }
+    },
+    {
+      "name": "pdf-native",
+      "status": "passed",
+      "operation_status": "ready",
+      "blocks": 1,
+      "artifacts": 1,
+      "coverage": {
+        "total_pages": 1,
+        "processed_pages": [
+          0
+        ],
+        "unselected_pages": 0,
+        "returned_blocks": 1,
+        "output_truncated": false
+      }
+    },
+    {
+      "name": "pdf-page-render",
+      "status": "passed",
+      "operation_status": "ready",
+      "blocks": 0,
+      "artifacts": 2,
+      "coverage": {
+        "total_pages": 1,
+        "processed_pages": [
+          0
+        ],
+        "returned_blocks": 0,
+        "output_truncated": false
+      }
+    },
+    {
+      "name": "image-crop",
+      "status": "passed",
+      "operation_status": "ready",
+      "blocks": 0,
+      "artifacts": 2,
+      "coverage": {
+        "selection": {
+          "kind": "image_region",
+          "bbox": [
+            0,
+            0.1,
+            1,
+            0.7
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "visual_content_in_artifact": true,
+        "ocr_requested": false,
+        "ocr_regions": 0,
+        "returned_blocks": 0,
+        "output_truncated": false
+      }
+    },
+    {
+      "name": "image-real-ocr",
+      "status": "passed",
+      "operation_status": "ready",
+      "blocks": 1,
+      "artifacts": 2,
+      "coverage": {
+        "selection": {
+          "kind": "image_region",
+          "bbox": [
+            0,
+            0,
+            1,
+            1
+          ],
+          "coordinate_space": "normalized_top_left_after_rotation"
+        },
+        "visual_content_in_artifact": true,
+        "ocr_requested": true,
+        "ocr_regions": 1,
+        "returned_blocks": 1,
+        "output_truncated": false
+      }
+    },
+    {
+      "name": "pdf-real-ocr",
+      "status": "passed",
+      "operation_status": "ready",
+      "blocks": 1,
+      "artifacts": 2,
+      "coverage": {
+        "total_pages": 1,
+        "processed_pages": [
+          0
+        ],
+        "unselected_pages": 0,
+        "returned_blocks": 1,
+        "output_truncated": false
+      }
+    },
+    {
+      "name": "docling-native-layout",
+      "status": "passed",
+      "operation_status": "ready",
+      "blocks": 2,
+      "artifacts": 2,
+      "coverage": {
+        "total_pages": 1,
+        "processed_pages": [
+          0
+        ],
+        "layout_backend": "docling",
+        "returned_blocks": 2,
+        "output_truncated": false
+      }
+    },
+    {
+      "name": "docling-scan-layout-ocr",
+      "status": "passed",
+      "operation_status": "ready",
+      "blocks": 1,
+      "artifacts": 2,
+      "coverage": {
+        "total_pages": 1,
+        "processed_pages": [
+          0
+        ],
+        "layout_backend": "docling",
+        "returned_blocks": 1,
+        "output_truncated": false
+      }
+    },
+    {
+      "name": "office-pdf-render",
+      "status": "passed",
+      "operation_status": "ready",
+      "blocks": 0,
+      "artifacts": 2,
+      "coverage": {
+        "rendered": true,
+        "text_layout_preservation": "requires_visual_review",
+        "returned_blocks": 0,
+        "output_truncated": false
+      }
+    },
+    {
+      "name": "cli-one-json-stdout",
+      "status": "passed"
+    },
+    {
+      "name": "all-original-bytes-unchanged",
+      "status": "passed"
+    }
+  ],
+  "status": "passed"
+}

@@ -1,0 +1,107 @@
+{
+  "rapidocr_version": "3.9.2",
+  "repositories": [
+    {
+      "repo_id": "docling-project/docling-layout-heron",
+      "revision": "8f39ad3c0b4c58e9c2d2c84a38465abf757272d8",
+      "directory": "docling/docling-project--docling-layout-heron"
+    },
+    {
+      "repo_id": "docling-project/docling-models",
+      "revision": "fc0f2d45e2218ea24bce5045f58a389aed16dc23",
+      "directory": "docling/docling-project--docling-models"
+    }
+  ],
+  "files": [
+    {
+      "path": "docling/docling-project--docling-layout-heron/README.md",
+      "sha256": "175700839bc7808eac6af1d0c23e4f483606ab2276fe01122f4093e61a1a65b6",
+      "size_bytes": 3219
+    },
+    {
+      "path": "docling/docling-project--docling-layout-heron/config.json",
+      "sha256": "fdea30805ce2f5666b147fca941dcdd27ad468e27d6ed21902207d3da056a97d",
+      "size_bytes": 3268
+    },
+    {
+      "path": "docling/docling-project--docling-layout-heron/docling_heron_400.png",
+      "sha256": "e7f78610372b32a7938e480d2c7fa1c3037ee170bd82282a5bd026232f6e6f9e",
+      "size_bytes": 96925
+    },
+    {
+      "path": "docling/docling-project--docling-layout-heron/model.safetensors",
+      "sha256": "00333a43451945aaf89db8ca9c0a17e75d1537c17db60fdb91aa95f4c7929e0c",
+      "size_bytes": 171658996
+    },
+    {
+      "path": "docling/docling-project--docling-layout-heron/preprocessor_config.json",
+      "sha256": "cd38cd59999e7a95d68e487fbe5132df3d4e5c32a0836add57e6126ba0c4eaf1",
+      "size_bytes": 444
+    },
+    {
+      "path": "docling/docling-project--docling-layout-heron-onnx/README.md",
+      "sha256": "48de0f07390f6823a225ce8aab348e7b57408534b56b71f1433ed6280456597f",
+      "size_bytes": 294
+    },
+    {
+      "path": "docling/docling-project--docling-layout-heron-onnx/config.json",
+      "sha256": "c6e67b6cdf64fa245779d0409bb994aa96e8c1790e15ec07a65843628e232180",
+      "size_bytes": 878
+    },
+    {
+      "path": "docling/docling-project--docling-layout-heron-onnx/model.onnx",
+      "sha256": "59c81a3a2923042d85034ffc487f8f47e4854117e879aef89b2b9f728fb4922a",
+      "size_bytes": 171220471
+    },
+    {
+      "path": "docling/docling-project--docling-layout-heron-onnx/preprocessor_config.json",
+      "sha256": "54d086cf0d7d371f7fac36e5d3a0dae31e211298affc816106cc376506799d58",
+      "size_bytes": 445
+    },
+    {
+      "path": "docling/docling-project--docling-models/README.md",
+      "sha256": "d17f233378eff1240b623b36da76ee8b40afcca05d505949713bf03f7e00822a",
+      "size_bytes": 3413
+    },
+    {
+      "path": "docling/docling-project--docling-models/config.json",
+      "sha256": "9c34024dc28ff47b75818f415e769809798c29bf9bde6f2ccc63a4acb62396d9",
+      "size_bytes": 41
+    },
+    {
+      "path": "docling/docling-project--docling-models/model_artifacts/tableformer/accurate/tableformer_accurate.safetensors",
+      "sha256": "2a7d6c924b3cd12fb99a09280ca9c33a89c5d60b93253617d2e088c1a40374d9",
+      "size_bytes": 212758388
+    },
+    {
+      "path": "docling/docling-project--docling-models/model_artifacts/tableformer/accurate/tm_config.json",
+      "sha256": "984e122ceb8ccf84d84c9d2882f6f2302a44b4f1e577babd6289892c36f3cffd",
+      "size_bytes": 7060
+    },
+    {
+      "path": "docling/docling-project--docling-models/model_artifacts/tableformer/fast/tableformer_fast.safetensors",
+      "sha256": "3119563aab5a7c96fda4d621119b63fd8806272b86c30936d15507616422f718",
+      "size_bytes": 145453276
+    },
+    {
+      "path": "docling/docling-project--docling-models/model_artifacts/tableformer/fast/tm_config.json",
+      "sha256": "dca6762508dddfae6d57d6cb4ef822c6000119dff0f3b6489db7413118c2622a",
+      "size_bytes": 7060
+    },
+    {
+      "path": "rapidocr/cls.onnx",
+      "sha256": "e47acedf663230f8863ff1ab0e64dd2d82b838fceb5957146dab185a89d6215c",
+      "size_bytes": 585532
+    },
+    {
+      "path": "rapidocr/det.onnx",
+      "sha256": "090f04abcd9d9a7498bc4ebf677e4cb9bdce1fe4197ddb7e529f1ef44e1ff94f",
+      "size_bytes": 9929594
+    },
+    {
+      "path": "rapidocr/rec.onnx",
+      "sha256": "6f327246b50388f3c176ae304bd95767ea6dc0c9ae92153ef8cbe210b3c14884",
+      "size_bytes": 21234383
+    }
+  ]
+}
