@@ -41,13 +41,34 @@ const (
 
 // Message 是一条对话消息。
 type Message struct {
-	Role      Role
-	Text      string
+	Role Role
+	Text string
+	// Parts is mutually exclusive with Text. Image parts are user-role only.
+	Parts     []ContentPart `json:",omitempty"`
 	ToolCalls []ToolCall
 	// ToolCallID 是 Role 为 tool 时对应的调用。
 	ToolCallID string
 	// CacheBreakpoint 在这条消息之后设提示缓存断点（附录 G.1）。
 	CacheBreakpoint bool
+}
+
+// ContentPart carries text or a gateway-validated image, never both.
+type ContentPart struct {
+	Text  string
+	Image *ImagePart
+}
+
+// ImagePart holds a tenant-bound reference until the gateway validates it.
+// Data is deliberately excluded from JSON estimates, traces and stored state;
+// only the provider's wire adapter may encode it for transmission.
+type ImagePart struct {
+	ObjectURI string
+	MIMEType  string
+	SHA256    string
+	Detail    string
+	Data      []byte `json:"-"`
+	Width     int
+	Height    int
 }
 
 // ToolSpec 是提供给模型的工具。

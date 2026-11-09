@@ -197,6 +197,7 @@ def classifier_messages(message: str, task_state: dict[str, Any] | None, context
     return [
         mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=f"{_CLASSIFIER_RULES}\n可选的 kind：{'、'.join(MESSAGE_KINDS)}", cache_breakpoint=True),
         mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=f"用户消息：{message}{summary}{hint}{session}"),
+        *context.image_messages,
     ]
 
 
@@ -219,6 +220,7 @@ def planning_messages(
         mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=_brief(context, decision, task_plan)),
         *([mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=preference(context.personal_instructions))] if context.personal_instructions else []),
         mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=_round(message, round_seq, task_state, last_round, keep_nodes, transcript_text(context.conversation, max_chars=PLANNING_CONVERSATION_CHARS), earlier)),
+        *context.image_messages,
     ]
 
 

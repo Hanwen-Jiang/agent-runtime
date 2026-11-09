@@ -137,6 +137,7 @@ class ExecutorDeps:
     # 默认打开，AR_STREAM_DELIVER=0 关掉。片段经 deltas 推成 token_delta、thinking_delta（DELTA，executor.deltas）；没配时不推。
     stream_deliver: bool = True
     deltas: DeltaSink | None = None
+    attachments: Any = None
 
 
 def _conversational(node: Mapping[str, Any]) -> bool:
@@ -430,6 +431,10 @@ class NodeExecutor:
                     # v2 的结果还取决于 Task State/历史/会话；旧 template+inputs 缓存不覆盖这些输入。
                     # 本切片直接跳过它，不增加第二套缓存键或持久状态。
                     contextual = node.get("executor") == "model" and inp.context_version >= 2 and self.deps.context_builder is not None
+                    if node.get("executor") == "model" and self.deps.attachments is not None:
+                        # Images and other pinned inputs are outside template+inputs.
+                        # Do not return a cached answer from a task with different files.
+                        contextual = contextual or bool(await self.deps.attachments.references(inp.tenant.tenant_id, inp.task_id, inp.tenant.workspace_id))
                     cached = None if contextual else await self._cache_get(tenant, node)
                     if cached is not None:
                         span.add_event("cache_hit")
@@ -713,10 +718,16 @@ class NodeExecutor:
 
     async def _generate(
         self, inp: NodeInput, tenant: TenantContext, schema: Mapping[str, Any] | None, retry_errors: list[str] | None
-    ) -> tuple[mg.GenerateResponse, Sequence[mg.ChatMessage], float, int | None]:
+    ) -> tuple[mg.GenerateResponse, Sequence[mg.ChatMessage], float, int | None, dict[str, Any] | None]:
         transcript = self.deps.transcript
         turns = await transcript.load(inp.tenant, inp.task_id) if transcript is not None and _conversational(inp.node) else ()
         context_cost = 0.0
+        context_usage = None
+        from agentruntime_worker.executor.image_input import ImageInputs, prepare_images
+        images = ImageInputs()
+        if self.deps.attachments is not None:
+            files = await self.deps.attachments.describe(inp.tenant.tenant_id, inp.task_id, inp.tenant.workspace_id)
+            images = await prepare_images(self.deps.models, inp.tenant, files)
         # 旧 Activity 缺少快照时仍用原提示；v1 带快照时用原 Builder 算法。
         # v2 在 Task 启动时固定，覆盖普通和 conversational 生成节点。
         has_context_snapshot = bool(inp.history or inp.task_state or inp.task_plan is not None)
@@ -750,16 +761,21 @@ class NodeExecutor:
                     system=tuple(system),
                     context_version=inp.context_version,
                     task_family=inp.task_family,
+                    image_messages=images.messages,
+                    image_token_reserve=images.token_reserve,
                 )
             )
             messages = list(built.messages)
             context_cost = built.cost_usd
+            context_usage = built.usage
             if retry_errors:
                 messages.append(
                     mg.ChatMessage(role=mg.CHAT_ROLE_USER, text="上一次的输出不符合 output_schema，请改正后重新输出：\n" + "\n".join(retry_errors))
                 )
         else:
-            messages = self._messages(inp, retry_errors, turns)
+            messages = [*self._messages(inp, retry_errors, turns), *images.messages]
+            if images.messages and message_tokens(messages, images.token_reserve) > self.config.context_effective_tokens:
+                raise InvalidError("context_window_exceeded", "图片与文字超过当前节点有效上下文预算")
         params = mg.GenerateParams(messages=messages)
         if schema is not None:
             params.output_schema.CopyFrom(payload_pb2.JsonPayload(value=_to_value(dict(schema))))
@@ -774,7 +790,10 @@ class NodeExecutor:
                     await sink.aclose()
         else:
             response = await self.deps.models.generate(request)
-        return response, params.messages, context_cost, first_token_ms
+        usage = context_usage.payload(response.model.context_window, self.deps.context_builder.config.effective_tokens) if context_usage is not None else None
+        if usage is None and images.messages:
+            usage = self._context_usage(params.messages, response.model, images.token_reserve)
+        return response, params.messages, context_cost, first_token_ms, usage
 
     async def _model(self, inp: NodeInput, tenant: TenantContext, span: Span) -> dict[str, Any]:
         node = inp.node
@@ -789,13 +808,13 @@ class NodeExecutor:
         # TMP 计划第 7 节：judge 按 {result, regressions} 的外壳要输出，拆开后 result 照旧，regressions 另放（只交给 Reviewer）。
         judge = node.get("role") == "judge"
         asked = judge_envelope(schema) if judge else schema
-        response, messages, context_cost, first_token_ms = await self._generate(inp, tenant, asked, None)
+        response, messages, context_cost, first_token_ms, context_usage = await self._generate(inp, tenant, asked, None)
         result = _unwrapped(asked, self._result_of(response))
         errors = validate(asked, result) if asked is not None else []
         if errors:
             # 输出不符合 schema：带上校验错误重问一次（附录 D.3、D.6）。
             span.add_event("invalid_output_retry", {"errors": "；".join(errors)})
-            response, messages, retry_context_cost, _ = await self._generate(inp, tenant, asked, errors)
+            response, messages, retry_context_cost, _, context_usage = await self._generate(inp, tenant, asked, errors)
             context_cost += retry_context_cost
             result = _unwrapped(asked, self._result_of(response))
             errors = validate(asked, result) if asked is not None else []
@@ -818,12 +837,12 @@ class NodeExecutor:
         if regressions:
             out["regressions"] = regressions
         if _conversational(node):
-            out["context_usage"] = measured(self._context_usage(messages, response.model), int(response.usage.input_tokens))
+            out["context_usage"] = measured(context_usage if context_usage is not None else self._context_usage(messages, response.model), int(response.usage.input_tokens))
         return out
 
-    def _context_usage(self, messages: Sequence[mg.ChatMessage], model: mg.ModelChoice) -> dict[str, Any]:
+    def _context_usage(self, messages: Sequence[mg.ChatMessage], model: mg.ModelChoice, image_token_reserve: int = 0) -> dict[str, Any]:
         system = message_tokens([m for m in messages if m.role == mg.CHAT_ROLE_SYSTEM])
-        rest = message_tokens(messages) - system
+        rest = message_tokens(messages, image_token_reserve) - system
         effective = self.config.context_effective_tokens
         return {
             "window_tokens": model.context_window or effective,

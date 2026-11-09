@@ -109,6 +109,10 @@ class ContextRequest:
     """随请求给出的工具定义：不进 messages，但计入阈值。"""
     mcp_tools: frozenset[str] = frozenset()
     """tools 里哪些是 MCP 工具：占比里单独一类。"""
+    image_messages: Sequence[mg.ChatMessage] = ()
+    """Current-task typed image references; not part of compressed text history."""
+    image_token_reserve: int = 0
+    """Positive per-image reserve negotiated with this gateway before building."""
     context_version: int = 1
     """Task 开始时固定的实现版本；旧 Activity 输入缺省为 v1。"""
     task_family: str = ""
@@ -213,10 +217,17 @@ def _value(data: Any) -> struct_pb2.Value:
     return value
 
 
-def message_tokens(messages: Sequence[mg.ChatMessage]) -> int:
+def message_tokens(messages: Sequence[mg.ChatMessage], image_token_reserve: int = 0) -> int:
     total = 0
     for m in messages:
         total += estimate(m.text) + 4
+        for part in m.parts:
+            if part.WhichOneof("content") == "text":
+                total += estimate(part.text)
+            elif part.WhichOneof("content") == "image":
+                if image_token_reserve <= 0:
+                    raise InvalidError("image_budget_missing", "图片上下文缺少已确认的 token 预留")
+                total += image_token_reserve
         for call in m.tool_calls:
             total += estimate(call.name) + estimate(_json(json_format.MessageToDict(call.arguments)))
     return total
@@ -308,8 +319,8 @@ class ContextBuilder:
             if failed:
                 self._restore(request, state, failed)
                 messages = self._assemble(request, mode, state)
-        tokens = message_tokens(messages) + tool_tokens(request.tools)
-        if current and tokens > cfg.effective_tokens:
+        tokens = message_tokens(messages, request.image_token_reserve) + tool_tokens(request.tools)
+        if (current or request.image_messages) and tokens > cfg.effective_tokens:
             raise InvalidError("context_window_exceeded", f"保留系统约束、完整 Task State 和近期消息后需要 {tokens} tokens，超过有效窗口 {cfg.effective_tokens}")
         steps = [s for s in LADDER if s in applied]
         usage = self._usage(request, mode, state, messages, steps)
@@ -323,7 +334,7 @@ class ContextBuilder:
         tools = [(t.name, tool_tokens([t]), t.name in request.mcp_tools) for t in request.tools]
         system_tools = sum(tokens for _, tokens, mcp in tools if not mcp)
         mcp_tools = sum(tokens for _, tokens, mcp in tools if mcp)
-        rest = message_tokens(messages) - system - memory - brief
+        rest = message_tokens(messages, request.image_token_reserve) - system - memory - brief
         categories = [
             {"name": "system_prompt", "tokens": system},
             {"name": "system_tools", "tokens": system_tools},
@@ -471,12 +482,13 @@ class ContextBuilder:
             profile=list(request.profile),
             brief=self._brief(request, mode, state),
             history=self._history(mode, state),
+            images=list(request.image_messages),
             state=state.precise,
             status=self._status(request, state),
         ).to_messages()
 
     def _tokens(self, request: ContextRequest, mode: ModePolicy, state: _State) -> int:
-        return message_tokens(self._assemble(request, mode, state)) + tool_tokens(request.tools)
+        return message_tokens(self._assemble(request, mode, state), request.image_token_reserve) + tool_tokens(request.tools)
 
     def _cut(self, request: ContextRequest, mode: ModePolicy, state: _State, *, target: float) -> int:
         """摘要到第几步（不含）：最早的未摘要步骤一直摘到剩下的不超过 target，最近 keep_recent 步不摘。"""
@@ -572,6 +584,9 @@ class ContextBuilder:
         if not facts:
             return []
         payload = {"instruction": PROBE_INSTRUCTION, "questions": [f.question() for f in facts]}
+        # Probes verify compressed text facts. The image partition is copied
+        # unchanged and need not be sent to the separate summarizer/probe model.
+        text_messages = [message for message in messages if not any(part.WhichOneof("content") == "image" for part in message.parts)]
         try:
             response = await self.gateway.generate(
                 mg.GenerateRequest(
@@ -579,7 +594,7 @@ class ContextBuilder:
                     call=mg.CallContext(task_id=request.task_id, node_id=f"{request.node['id']}#probe", role=enums_pb2.ROLE_JUDGE, tier=self.config.probe_tier,
                                         task_family=task_family(request.task_plan, request.task_family)),
                     generation=mg.GenerateParams(
-                        messages=[*messages, mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=json.dumps(payload, ensure_ascii=False))],
+                        messages=[*text_messages, mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=json.dumps(payload, ensure_ascii=False))],
                         output_schema=payload_pb2.JsonPayload(schema_id="context_probe", value=_value(PROBE_SCHEMA)),
                     ),
                 )

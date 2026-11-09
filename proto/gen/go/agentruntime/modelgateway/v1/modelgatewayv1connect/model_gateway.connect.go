@@ -33,6 +33,9 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// ModelGatewayServiceGetCapabilitiesProcedure is the fully-qualified name of the
+	// ModelGatewayService's GetCapabilities RPC.
+	ModelGatewayServiceGetCapabilitiesProcedure = "/agentruntime.modelgateway.v1.ModelGatewayService/GetCapabilities"
 	// ModelGatewayServiceGenerateProcedure is the fully-qualified name of the ModelGatewayService's
 	// Generate RPC.
 	ModelGatewayServiceGenerateProcedure = "/agentruntime.modelgateway.v1.ModelGatewayService/Generate"
@@ -53,6 +56,8 @@ const (
 // ModelGatewayServiceClient is a client for the agentruntime.modelgateway.v1.ModelGatewayService
 // service.
 type ModelGatewayServiceClient interface {
+	// 图片调用前必须协商；旧网关返回 Unimplemented 时调用方明确拒绝，不降级成文本。
+	GetCapabilities(context.Context, *connect.Request[v1.GetCapabilitiesRequest]) (*connect.Response[v1.GetCapabilitiesResponse], error)
 	// 生成，含结构化输出与工具调用。
 	Generate(context.Context, *connect.Request[v1.GenerateRequest]) (*connect.Response[v1.GenerateResponse], error)
 	// 流式生成，供 deliver 节点边生成边推流。最后一个分片带 Usage。
@@ -75,6 +80,12 @@ func NewModelGatewayServiceClient(httpClient connect.HTTPClient, baseURL string,
 	baseURL = strings.TrimRight(baseURL, "/")
 	modelGatewayServiceMethods := v1.File_agentruntime_modelgateway_v1_model_gateway_proto.Services().ByName("ModelGatewayService").Methods()
 	return &modelGatewayServiceClient{
+		getCapabilities: connect.NewClient[v1.GetCapabilitiesRequest, v1.GetCapabilitiesResponse](
+			httpClient,
+			baseURL+ModelGatewayServiceGetCapabilitiesProcedure,
+			connect.WithSchema(modelGatewayServiceMethods.ByName("GetCapabilities")),
+			connect.WithClientOptions(opts...),
+		),
 		generate: connect.NewClient[v1.GenerateRequest, v1.GenerateResponse](
 			httpClient,
 			baseURL+ModelGatewayServiceGenerateProcedure,
@@ -110,11 +121,17 @@ func NewModelGatewayServiceClient(httpClient connect.HTTPClient, baseURL string,
 
 // modelGatewayServiceClient implements ModelGatewayServiceClient.
 type modelGatewayServiceClient struct {
-	generate       *connect.Client[v1.GenerateRequest, v1.GenerateResponse]
-	streamGenerate *connect.Client[v1.StreamGenerateRequest, v1.StreamGenerateResponse]
-	score          *connect.Client[v1.ScoreRequest, v1.ScoreResponse]
-	embed          *connect.Client[v1.EmbedRequest, v1.EmbedResponse]
-	classify       *connect.Client[v1.ClassifyRequest, v1.ClassifyResponse]
+	getCapabilities *connect.Client[v1.GetCapabilitiesRequest, v1.GetCapabilitiesResponse]
+	generate        *connect.Client[v1.GenerateRequest, v1.GenerateResponse]
+	streamGenerate  *connect.Client[v1.StreamGenerateRequest, v1.StreamGenerateResponse]
+	score           *connect.Client[v1.ScoreRequest, v1.ScoreResponse]
+	embed           *connect.Client[v1.EmbedRequest, v1.EmbedResponse]
+	classify        *connect.Client[v1.ClassifyRequest, v1.ClassifyResponse]
+}
+
+// GetCapabilities calls agentruntime.modelgateway.v1.ModelGatewayService.GetCapabilities.
+func (c *modelGatewayServiceClient) GetCapabilities(ctx context.Context, req *connect.Request[v1.GetCapabilitiesRequest]) (*connect.Response[v1.GetCapabilitiesResponse], error) {
+	return c.getCapabilities.CallUnary(ctx, req)
 }
 
 // Generate calls agentruntime.modelgateway.v1.ModelGatewayService.Generate.
@@ -145,6 +162,8 @@ func (c *modelGatewayServiceClient) Classify(ctx context.Context, req *connect.R
 // ModelGatewayServiceHandler is an implementation of the
 // agentruntime.modelgateway.v1.ModelGatewayService service.
 type ModelGatewayServiceHandler interface {
+	// 图片调用前必须协商；旧网关返回 Unimplemented 时调用方明确拒绝，不降级成文本。
+	GetCapabilities(context.Context, *connect.Request[v1.GetCapabilitiesRequest]) (*connect.Response[v1.GetCapabilitiesResponse], error)
 	// 生成，含结构化输出与工具调用。
 	Generate(context.Context, *connect.Request[v1.GenerateRequest]) (*connect.Response[v1.GenerateResponse], error)
 	// 流式生成，供 deliver 节点边生成边推流。最后一个分片带 Usage。
@@ -162,6 +181,12 @@ type ModelGatewayServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewModelGatewayServiceHandler(svc ModelGatewayServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	modelGatewayServiceMethods := v1.File_agentruntime_modelgateway_v1_model_gateway_proto.Services().ByName("ModelGatewayService").Methods()
+	modelGatewayServiceGetCapabilitiesHandler := connect.NewUnaryHandler(
+		ModelGatewayServiceGetCapabilitiesProcedure,
+		svc.GetCapabilities,
+		connect.WithSchema(modelGatewayServiceMethods.ByName("GetCapabilities")),
+		connect.WithHandlerOptions(opts...),
+	)
 	modelGatewayServiceGenerateHandler := connect.NewUnaryHandler(
 		ModelGatewayServiceGenerateProcedure,
 		svc.Generate,
@@ -194,6 +219,8 @@ func NewModelGatewayServiceHandler(svc ModelGatewayServiceHandler, opts ...conne
 	)
 	return "/agentruntime.modelgateway.v1.ModelGatewayService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case ModelGatewayServiceGetCapabilitiesProcedure:
+			modelGatewayServiceGetCapabilitiesHandler.ServeHTTP(w, r)
 		case ModelGatewayServiceGenerateProcedure:
 			modelGatewayServiceGenerateHandler.ServeHTTP(w, r)
 		case ModelGatewayServiceStreamGenerateProcedure:
@@ -212,6 +239,10 @@ func NewModelGatewayServiceHandler(svc ModelGatewayServiceHandler, opts ...conne
 
 // UnimplementedModelGatewayServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedModelGatewayServiceHandler struct{}
+
+func (UnimplementedModelGatewayServiceHandler) GetCapabilities(context.Context, *connect.Request[v1.GetCapabilitiesRequest]) (*connect.Response[v1.GetCapabilitiesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.modelgateway.v1.ModelGatewayService.GetCapabilities is not implemented"))
+}
 
 func (UnimplementedModelGatewayServiceHandler) Generate(context.Context, *connect.Request[v1.GenerateRequest]) (*connect.Response[v1.GenerateResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("agentruntime.modelgateway.v1.ModelGatewayService.Generate is not implemented"))

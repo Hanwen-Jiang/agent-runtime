@@ -31,6 +31,7 @@ class Partitions:
     system: list[str] = field(default_factory=list)
     profile: list[str] = field(default_factory=list)
     brief: list[str] = field(default_factory=list)
+    images: list[mg.ChatMessage] = field(default_factory=list)
     history: list[mg.ChatMessage] = field(default_factory=list)
     state: list[str] = field(default_factory=list)
     status: str = ""
@@ -45,6 +46,10 @@ class Partitions:
             out.append(mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=PROFILE_HEADER + "\n" + "\n".join(f"- {p}" for p in self.profile), cache_breakpoint=True))
         if self.brief:
             out.append(mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=BRIEF_HEADER + "\n" + "\n".join(self.brief), cache_breakpoint=True))
+        for message in self.images:
+            copy = mg.ChatMessage()
+            copy.CopyFrom(message)
+            out.append(copy)
         for message in self.history:
             copy = mg.ChatMessage()
             copy.CopyFrom(message)

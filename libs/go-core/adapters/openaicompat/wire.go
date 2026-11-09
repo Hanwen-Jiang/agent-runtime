@@ -89,8 +89,14 @@ func strictNode(node any) bool {
 
 type wirePart struct {
 	Type         string         `json:"type"`
-	Text         string         `json:"text"`
+	Text         *string        `json:"text,omitempty"`
+	ImageURL     *wireImageURL  `json:"image_url,omitempty"`
 	CacheControl map[string]any `json:"cache_control,omitempty"`
+}
+
+type wireImageURL struct {
+	URL    string `json:"url"`
+	Detail string `json:"detail,omitempty"`
 }
 
 type wireFunction struct {
@@ -176,8 +182,36 @@ func chatRequest(req modelprovider.GenerateRequest, stream bool) (*wireRequest, 
 			return nil, invalid("bad_message", fmt.Sprintf("第 %d 条消息的角色不对", i))
 		}
 		w := wireMessage{Role: role, Content: m.Text, ToolCallID: m.ToolCallID}
-		if m.CacheBreakpoint && m.Text != "" {
-			w.Content = []wirePart{{Type: "text", Text: m.Text, CacheControl: map[string]any{"type": "ephemeral"}}}
+		if len(m.Parts) > 0 {
+			if m.Text != "" {
+				return nil, invalid("bad_message", "text and parts are mutually exclusive")
+			}
+			parts := make([]wirePart, 0, len(m.Parts))
+			for _, part := range m.Parts {
+				if part.Image == nil {
+					text := part.Text
+					parts = append(parts, wirePart{Type: "text", Text: &text})
+					continue
+				}
+				img := part.Image
+				if part.Text != "" || m.Role != modelprovider.RoleUser {
+					return nil, invalid("bad_message", "image parts must be user content and contain no text")
+				}
+				if len(img.Data) == 0 || len(img.Data) > 10<<20 || (img.MIMEType != "image/png" && img.MIMEType != "image/jpeg" && img.MIMEType != "image/webp") {
+					return nil, invalid("bad_image", "image bytes or media type are invalid")
+				}
+				if img.Detail != "" && img.Detail != "auto" && img.Detail != "low" && img.Detail != "high" {
+					return nil, invalid("bad_image", "unsupported image detail")
+				}
+				parts = append(parts, wirePart{Type: "image_url", ImageURL: &wireImageURL{URL: "data:" + img.MIMEType + ";base64," + base64.StdEncoding.EncodeToString(img.Data), Detail: img.Detail}})
+			}
+			if m.CacheBreakpoint {
+				parts[len(parts)-1].CacheControl = map[string]any{"type": "ephemeral"}
+			}
+			w.Content = parts
+		} else if m.CacheBreakpoint && m.Text != "" {
+			text := m.Text
+			w.Content = []wirePart{{Type: "text", Text: &text, CacheControl: map[string]any{"type": "ephemeral"}}}
 		}
 		for _, call := range m.ToolCalls {
 			args := strings.TrimSpace(string(call.Arguments))
@@ -186,7 +220,7 @@ func chatRequest(req modelprovider.GenerateRequest, stream bool) (*wireRequest, 
 			}
 			w.ToolCalls = append(w.ToolCalls, wireToolCall{ID: call.ID, Type: "function", Function: wireFunction{Name: call.Name, Arguments: args}})
 		}
-		if role == "assistant" && m.Text == "" && len(m.ToolCalls) > 0 {
+		if role == "assistant" && m.Text == "" && len(m.Parts) == 0 && len(m.ToolCalls) > 0 {
 			w.Content = nil
 		}
 		if role == "tool" && m.ToolCallID == "" {

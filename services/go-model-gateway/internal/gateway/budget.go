@@ -26,6 +26,16 @@ func streamUsage(st modelprovider.Stream) *commonv1.Usage {
 // estimate, not billed usage; settlement always records the provider's usage.
 // maxOutput and thinking are what the request asked for (0 when unset).
 func (c *call) estimateInput(input any, maxOutput, thinking int) {
+	c.imageCount = 0
+	if request, ok := input.(modelprovider.GenerateRequest); ok {
+		for _, message := range request.Messages {
+			for _, part := range message.Parts {
+				if part.Image != nil {
+					c.imageCount++
+				}
+			}
+		}
+	}
 	raw, _ := json.Marshal(input)
 	c.inputEstimate = int64(len(raw))*2 + 1024
 	c.maxOutput = maxOutput
@@ -69,6 +79,18 @@ func frozenPrice(cand router.Candidate) (*modelbudget.Price, error) {
 }
 
 func (s *Server) reserve(ctx context.Context, c *call, cand router.Candidate) error {
+	input := c.inputEstimate
+	output := s.outputLimit(c.maxOutput, c.thinking, cand)
+	if c.imageCount > 0 {
+		perImage := int64(cand.Profile.Constraints.ImageInputTokens)
+		if perImage <= 0 || perImage > 1_000_000 || c.imageCount > 10 || output <= 0 {
+			return invalid("missing_image_limits", "vision profile must declare a valid per-image reservation")
+		}
+		input += c.imageCount * perImage
+		if cand.Profile.Constraints.ContextWindow <= 0 || input+int64(output) > int64(cand.Profile.Constraints.ContextWindow) {
+			return invalid("image_context_exceeded", "text and image reservation exceeds model context window")
+		}
+	}
 	if s.opts.ModelBudget == nil {
 		return nil
 	}
@@ -79,14 +101,13 @@ func (s *Server) reserve(ctx context.Context, c *call, cand router.Candidate) er
 	if err != nil {
 		return err
 	}
-	output := s.outputLimit(c.maxOutput, c.thinking, cand)
 	if c.method == "embed" {
 		output = 0
 	}
 	if output < 0 || (c.method != "embed" && output == 0) {
 		return invalid("missing_model_limits", "model profile must declare a positive output limit")
 	}
-	cost := math.Ceil(float64(c.inputEstimate)*max(cand.Profile.Cost.InPerM, cand.Profile.Cost.CacheReadPerM) + float64(output)*cand.Profile.Cost.OutPerM)
+	cost := math.Ceil(float64(input)*max(cand.Profile.Cost.InPerM, cand.Profile.Cost.CacheReadPerM) + float64(output)*cand.Profile.Cost.OutPerM)
 	if math.IsInf(cost, 0) || math.IsNaN(cost) || cost < 0 || cost >= float64(math.MaxInt64) {
 		return invalid("invalid_model_cost", "model cost cannot be reserved")
 	}

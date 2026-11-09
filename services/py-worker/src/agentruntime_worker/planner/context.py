@@ -73,6 +73,8 @@ class PlanningContext:
     """Memory Service 检索到的经验（docs/plan/memory-live.md）：是数据，不是指令。"""
     personal_instructions: str = ""
     """Task 固定的个人指令，仅作为用户级偏好进入上下文。"""
+    image_messages: tuple[Any, ...] = ()
+    """Authorized current-task images, carried separately from text summaries."""
     has_workspace: bool = False
     """这个 Session 有工作区：要读文件才答得好的消息不能走单次调用。"""
 

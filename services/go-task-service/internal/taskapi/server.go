@@ -17,6 +17,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 
 	"connectrpc.com/connect"
@@ -41,6 +42,7 @@ import (
 	workflowv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1"
 
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/events"
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/files"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/ids"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/session"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/taskstore"
@@ -63,7 +65,8 @@ const (
 // ScopeApprove 让持有者可以审批、回复与取消同租户里别人提交的 Task。
 const ScopeApprove = "task.approve"
 
-var objectURI = regexp.MustCompile(`^obj://([a-z0-9][a-z0-9_-]{0,62})/\S+$`)
+// ObjectStore references preserve keys literally, including spaces and URL punctuation.
+var objectURI = regexp.MustCompile(`^obj://([a-z0-9][a-z0-9_-]{0,62})/.+$`)
 
 // guidanceID 同 defs.schema.json 的 guidance_id。
 var guidanceID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
@@ -140,8 +143,12 @@ type McpLeaseIssuer interface {
 
 // Server 实现 taskapiv1connect.TaskServiceHandler。
 type Server struct {
-	d     Deps
-	tasks *taskstore.Store
+	d            Deps
+	tasks        *taskstore.Store
+	files        *files.Catalog
+	uploadMu     sync.Mutex
+	uploadTotal  int
+	uploadOwners map[string]int
 }
 
 // defaultMaxConcurrentTasks 是没列出的租户准入时未终态 Task 的上限：0，不设上限（2026-11-03 人定：写死每个租户 2 个太死，
@@ -190,7 +197,7 @@ func New(d Deps) (*Server, error) {
 	if d.BudgetPolicies == nil {
 		d.BudgetPolicies = modelbudget.Policy{}
 	}
-	return &Server{d: d, tasks: taskstore.New(d.Store)}, nil
+	return &Server{d: d, tasks: taskstore.New(d.Store), files: files.New(d.Store), uploadOwners: map[string]int{}}, nil
 }
 
 // Mount 把 Task API 挂到 mux 上。
@@ -199,6 +206,12 @@ func (s *Server) Mount(mux *http.ServeMux, opts ...connect.HandlerOption) {
 	mux.Handle(path, handler)
 	mux.HandleFunc("GET /v1/tasks/{task_id}/artifacts/{artifact_id}", s.downloadArtifact)
 	mux.HandleFunc("GET /v1/network-policy", s.networkPolicyView)
+	mux.HandleFunc("POST /v1/uploads", s.uploadSource)
+	mux.HandleFunc("GET /v1/files/capabilities", s.fileCapabilities)
+	mux.HandleFunc("GET /v1/files", s.listFiles)
+	mux.HandleFunc("GET /v1/files/{file_id}", s.getFile)
+	mux.HandleFunc("POST /v1/files/adopt", s.adoptFiles)
+	mux.HandleFunc("GET /v1/uploads/{upload_id}/{filename}", s.downloadSource)
 }
 
 func invalid(msg string) error { return providererr.New(providererr.Invalid, "invalid_argument", msg) }
@@ -311,12 +324,15 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	}
 	for _, uri := range req.GetAttachments() {
 		m := objectURI.FindStringSubmatch(uri)
-		if m == nil {
+		if m == nil || !printable(uri) {
 			return nil, invalid("附件必须是 obj:// 引用")
 		}
 		if m[1] != tenant.GetTenantId() {
 			return nil, providererr.New(providererr.Denied, "foreign_object", "附件不属于当前租户")
 		}
+	}
+	if err := s.validateUploadedSources(ctx, tenant, id.UserID, req.GetAttachments()); err != nil {
+		return nil, err
 	}
 	// 请求里的 effect 上限只能调低（docs/plan/cloud-deploy.md D-08）：在建 Task 之前核对，被拒的请求不留记录。
 	if want := req.GetEffectCeiling(); want != commonv1.Effect_EFFECT_UNSPECIFIED {
@@ -390,6 +406,9 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	}
 	resp := &taskapiv1.SubmitTaskResponse{
 		TaskId: row.TaskID, SessionId: row.SessionID, EventsUrl: events.URL(s.d.PublicBaseURL, row.TaskID), Deduplicated: existed,
+	}
+	if err := s.pinTaskAttachments(ctx, tenant, row.TaskID, req.GetAttachments(), !existed || !row.Signaled); err != nil {
+		return nil, err
 	}
 	if existed && row.Signaled {
 		return resp, nil

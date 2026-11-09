@@ -10,7 +10,7 @@ class ModelGatewayServiceStub:
     本期先定方法签名，实现分阶段补。
 
     每个请求的字段 1 都是 TenantContext：先按租户策略过滤可用 Tier，再按租户计量与限流。
-    每个响应都带 Usage。
+    模型调用响应带 Usage；GetCapabilities 只协商输入能力，不调用模型。
     """
 
     def __init__(self, channel):
@@ -19,6 +19,11 @@ class ModelGatewayServiceStub:
         Args:
             channel: A grpc.Channel.
         """
+        self.GetCapabilities = channel.unary_unary(
+                '/agentruntime.modelgateway.v1.ModelGatewayService/GetCapabilities',
+                request_serializer=agentruntime_dot_modelgateway_dot_v1_dot_model__gateway__pb2.GetCapabilitiesRequest.SerializeToString,
+                response_deserializer=agentruntime_dot_modelgateway_dot_v1_dot_model__gateway__pb2.GetCapabilitiesResponse.FromString,
+                _registered_method=True)
         self.Generate = channel.unary_unary(
                 '/agentruntime.modelgateway.v1.ModelGatewayService/Generate',
                 request_serializer=agentruntime_dot_modelgateway_dot_v1_dot_model__gateway__pb2.GenerateRequest.SerializeToString,
@@ -51,8 +56,15 @@ class ModelGatewayServiceServicer:
     本期先定方法签名，实现分阶段补。
 
     每个请求的字段 1 都是 TenantContext：先按租户策略过滤可用 Tier，再按租户计量与限流。
-    每个响应都带 Usage。
+    模型调用响应带 Usage；GetCapabilities 只协商输入能力，不调用模型。
     """
+
+    def GetCapabilities(self, request, context):
+        """图片调用前必须协商；旧网关返回 Unimplemented 时调用方明确拒绝，不降级成文本。
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def Generate(self, request, context):
         """生成，含结构化输出与工具调用。
@@ -90,6 +102,11 @@ class ModelGatewayServiceServicer:
 
 def add_ModelGatewayServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'GetCapabilities': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetCapabilities,
+                    request_deserializer=agentruntime_dot_modelgateway_dot_v1_dot_model__gateway__pb2.GetCapabilitiesRequest.FromString,
+                    response_serializer=agentruntime_dot_modelgateway_dot_v1_dot_model__gateway__pb2.GetCapabilitiesResponse.SerializeToString,
+            ),
             'Generate': grpc.unary_unary_rpc_method_handler(
                     servicer.Generate,
                     request_deserializer=agentruntime_dot_modelgateway_dot_v1_dot_model__gateway__pb2.GenerateRequest.FromString,
@@ -128,8 +145,35 @@ class ModelGatewayService:
     本期先定方法签名，实现分阶段补。
 
     每个请求的字段 1 都是 TenantContext：先按租户策略过滤可用 Tier，再按租户计量与限流。
-    每个响应都带 Usage。
+    模型调用响应带 Usage；GetCapabilities 只协商输入能力，不调用模型。
     """
+
+    @staticmethod
+    def GetCapabilities(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/agentruntime.modelgateway.v1.ModelGatewayService/GetCapabilities',
+            agentruntime_dot_modelgateway_dot_v1_dot_model__gateway__pb2.GetCapabilitiesRequest.SerializeToString,
+            agentruntime_dot_modelgateway_dot_v1_dot_model__gateway__pb2.GetCapabilitiesResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def Generate(request,

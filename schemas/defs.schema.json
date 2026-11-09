@@ -80,7 +80,7 @@
     "provenance_source": {"description": "记忆的来源（附录 I.3）", "enum": ["agent_reflection", "user_explicit", "user_correction", "admin", "external_content"]},
     "sensitivity": {"description": "敏感级别（附录 I.3）：pii 先脱敏，secret 禁止入库", "enum": ["none", "pii", "secret"]},
     "evidence_outcome": {"enum": ["verified", "failed"]},
-    "model_capability": {"description": "Model Profile 声明的能力（附录 H.1；取值与 go-model-gateway 的 profiles 包一致）", "enum": ["generate", "structured", "tools", "stream", "embed"]},
+    "model_capability": {"description": "Model Profile 声明的能力（附录 H.1；取值与 go-model-gateway 的 profiles 包一致）；image_input 须由运维确认具体端点与模型支持图片输入", "enum": ["generate", "structured", "tools", "stream", "embed", "image_input"]},
     "skill_media_type": {"description": "Skill 里参考文件的类型（N-14）：只收文本", "enum": ["text/plain", "text/markdown", "text/csv", "application/json", "application/yaml"]},
 
     "forbidden": {"description": "此处不允许出现该字段。用 not {} 而不用 false，Python jsonschema 才会把错误报在字段自身的位置", "not": {}},

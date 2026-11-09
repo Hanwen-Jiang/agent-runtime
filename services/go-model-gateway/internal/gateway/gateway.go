@@ -74,6 +74,7 @@ import (
 	"github.com/agentruntime/agent-runtime/libs/go-core/modelbudget"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/modelprovider"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
 	"github.com/agentruntime/agent-runtime/libs/go-core/providers/telemetry"
 	"github.com/agentruntime/agent-runtime/libs/go-core/tenancy"
 	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
@@ -105,6 +106,7 @@ const DefaultAttemptTimeout = 90 * time.Second
 
 // Options 是构造参数。
 type Options struct {
+	Objects objectstore.Provider
 	// ModelBudget is the shared durable ledger; production serve always sets it.
 	ModelBudget    modelbudget.Provider
 	BudgetPolicies modelbudget.PolicyResolver
@@ -278,6 +280,7 @@ func sleep(ctx context.Context, d time.Duration) error {
 
 // call 是一次 RPC 的公共部分：租户、选档结果与绑定的客户端。
 type call struct {
+	imageCount    int64
 	inputEstimate int64
 	maxOutput     int
 	// thinking 是请求写的思考预算（没写为 0）；输出上限的默认值要在它之外留出可见输出。
@@ -694,6 +697,30 @@ func generateRequest(g *modelgatewayv1.GenerateParams) (modelprovider.GenerateRe
 			return out, invalid("bad_message", fmt.Sprintf("第 %d 条消息的角色未指定", i))
 		}
 		msg := modelprovider.Message{Role: role, Text: m.GetText(), ToolCallID: m.GetToolCallId(), CacheBreakpoint: m.GetCacheBreakpoint()}
+		if len(m.GetParts()) > 0 && m.GetText() != "" {
+			return out, invalid("bad_message", "text and parts are mutually exclusive")
+		}
+		for _, part := range m.GetParts() {
+			switch value := part.GetContent().(type) {
+			case *modelgatewayv1.ContentPart_Text:
+				msg.Parts = append(msg.Parts, modelprovider.ContentPart{Text: value.Text})
+			case *modelgatewayv1.ContentPart_Image:
+				im := value.Image
+				if role != modelprovider.RoleUser || im == nil {
+					return out, invalid("bad_message", "images require user messages")
+				}
+				detail := im.GetDetail()
+				if detail == "" {
+					detail = "auto"
+				}
+				if detail != "auto" && detail != "low" && detail != "high" {
+					return out, invalid("invalid_image_detail", "unsupported image detail")
+				}
+				msg.Parts = append(msg.Parts, modelprovider.ContentPart{Image: &modelprovider.ImagePart{ObjectURI: im.GetObjectUri(), MIMEType: im.GetMimeType(), SHA256: im.GetSha256(), Detail: detail}})
+			default:
+				return out, invalid("bad_message", "content part must contain text or an image")
+			}
+		}
 		for _, tc := range m.GetToolCalls() {
 			args, err := protojson.Marshal(tc.GetArguments())
 			if err != nil {
@@ -791,8 +818,11 @@ func (s *Server) Generate(ctx context.Context, req *connect.Request[modelgateway
 	if err != nil {
 		return nil, connecterr.Error(err)
 	}
-	c, err := s.prepare(ctx, m.GetTenant(), m.GetCall(), "generate", router.Request{Kind: router.KindGenerate, Structured: len(gen.OutputSchema) > 0, Tools: len(gen.Tools) > 0})
+	c, err := s.prepare(ctx, m.GetTenant(), m.GetCall(), "generate", router.Request{Kind: router.KindGenerate, Structured: len(gen.OutputSchema) > 0, Tools: len(gen.Tools) > 0, Images: hasImages(gen)})
 	if err != nil {
+		return nil, connecterr.Error(err)
+	}
+	if err = s.resolveImages(ctx, m.GetTenant(), m.GetCall(), &gen); err != nil {
 		return nil, connecterr.Error(err)
 	}
 	tr := s.startSpan(ctx, c, "chat", false)
@@ -829,7 +859,11 @@ func (s *Server) Generate(ctx context.Context, req *connect.Request[modelgateway
 	s.served(c, cand, out.GetUsage())
 	out.Usage = addUsage(out.GetUsage(), c.billed)
 	tr.end(c, cand, out.GetUsage(), nil)
-	return connect.NewResponse(out), nil
+	response := connect.NewResponse(out)
+	if hasImages(gen) {
+		response.Header().Set("X-Ar-Image-Input", "v1")
+	}
+	return response, nil
 }
 
 // StreamGenerate 流式生成。各分片的 text_delta 依次拼接等于最后一个分片 final 的 text；
@@ -843,8 +877,14 @@ func (s *Server) StreamGenerate(ctx context.Context, req *connect.Request[modelg
 	if err != nil {
 		return connecterr.Error(err)
 	}
-	c, err := s.prepare(ctx, m.GetTenant(), m.GetCall(), "stream_generate", router.Request{Kind: router.KindStream, Structured: len(gen.OutputSchema) > 0, Tools: len(gen.Tools) > 0})
+	if hasImages(gen) {
+		stream.ResponseHeader().Set("X-Ar-Image-Input", "v1")
+	}
+	c, err := s.prepare(ctx, m.GetTenant(), m.GetCall(), "stream_generate", router.Request{Kind: router.KindStream, Structured: len(gen.OutputSchema) > 0, Tools: len(gen.Tools) > 0, Images: hasImages(gen)})
 	if err != nil {
+		return connecterr.Error(err)
+	}
+	if err = s.resolveImages(ctx, m.GetTenant(), m.GetCall(), &gen); err != nil {
 		return connecterr.Error(err)
 	}
 	tr := s.startSpan(ctx, c, "chat", true)

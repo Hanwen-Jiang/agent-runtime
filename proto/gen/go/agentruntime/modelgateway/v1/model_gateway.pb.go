@@ -326,8 +326,10 @@ type ChatMessage struct {
 	ToolCallId string `protobuf:"bytes,4,opt,name=tool_call_id,json=toolCallId,proto3" json:"tool_call_id,omitempty"`
 	// 在这条消息之后设提示缓存断点（附录 G.1）。
 	CacheBreakpoint bool `protobuf:"varint,5,opt,name=cache_breakpoint,json=cacheBreakpoint,proto3" json:"cache_breakpoint,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// 与非空 text 互斥。包含图片时 role 必须为 user；服务端校验并拒绝不合法组合。
+	Parts         []*ContentPart `protobuf:"bytes,6,rep,name=parts,proto3" json:"parts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ChatMessage) Reset() {
@@ -395,6 +397,298 @@ func (x *ChatMessage) GetCacheBreakpoint() bool {
 	return false
 }
 
+func (x *ChatMessage) GetParts() []*ContentPart {
+	if x != nil {
+		return x.Parts
+	}
+	return nil
+}
+
+// 内容分段保留原始顺序；图片只引用对象，不在请求、工作流历史或 trace 中携带 Base64。
+type ContentPart struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Content:
+	//
+	//	*ContentPart_Text
+	//	*ContentPart_Image
+	Content       isContentPart_Content `protobuf_oneof:"content"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ContentPart) Reset() {
+	*x = ContentPart{}
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ContentPart) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ContentPart) ProtoMessage() {}
+
+func (x *ContentPart) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ContentPart.ProtoReflect.Descriptor instead.
+func (*ContentPart) Descriptor() ([]byte, []int) {
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *ContentPart) GetContent() isContentPart_Content {
+	if x != nil {
+		return x.Content
+	}
+	return nil
+}
+
+func (x *ContentPart) GetText() string {
+	if x != nil {
+		if x, ok := x.Content.(*ContentPart_Text); ok {
+			return x.Text
+		}
+	}
+	return ""
+}
+
+func (x *ContentPart) GetImage() *ImagePart {
+	if x != nil {
+		if x, ok := x.Content.(*ContentPart_Image); ok {
+			return x.Image
+		}
+	}
+	return nil
+}
+
+type isContentPart_Content interface {
+	isContentPart_Content()
+}
+
+type ContentPart_Text struct {
+	Text string `protobuf:"bytes,1,opt,name=text,proto3,oneof"`
+}
+
+type ContentPart_Image struct {
+	Image *ImagePart `protobuf:"bytes,2,opt,name=image,proto3,oneof"`
+}
+
+func (*ContentPart_Text) isContentPart_Content() {}
+
+func (*ContentPart_Image) isContentPart_Content() {}
+
+type ImagePart struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 当前 Task 上传清单中授权的 obj:// 引用；网关不读取任意公网 URL。
+	ObjectUri string `protobuf:"bytes,1,opt,name=object_uri,json=objectUri,proto3" json:"object_uri,omitempty"`
+	// image/png、image/jpeg 或 image/webp；网关核对实际解码格式。
+	MimeType string `protobuf:"bytes,2,opt,name=mime_type,json=mimeType,proto3" json:"mime_type,omitempty"`
+	// 原始不可变图片字节的 SHA-256，网关读取后校验。
+	Sha256 string `protobuf:"bytes,3,opt,name=sha256,proto3" json:"sha256,omitempty"`
+	// auto、low、high；空串等同 auto。不是模型能力声明。
+	Detail        string `protobuf:"bytes,4,opt,name=detail,proto3" json:"detail,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ImagePart) Reset() {
+	*x = ImagePart{}
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ImagePart) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImagePart) ProtoMessage() {}
+
+func (x *ImagePart) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImagePart.ProtoReflect.Descriptor instead.
+func (*ImagePart) Descriptor() ([]byte, []int) {
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ImagePart) GetObjectUri() string {
+	if x != nil {
+		return x.ObjectUri
+	}
+	return ""
+}
+
+func (x *ImagePart) GetMimeType() string {
+	if x != nil {
+		return x.MimeType
+	}
+	return ""
+}
+
+func (x *ImagePart) GetSha256() string {
+	if x != nil {
+		return x.Sha256
+	}
+	return ""
+}
+
+func (x *ImagePart) GetDetail() string {
+	if x != nil {
+		return x.Detail
+	}
+	return ""
+}
+
+type GetCapabilitiesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCapabilitiesRequest) Reset() {
+	*x = GetCapabilitiesRequest{}
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCapabilitiesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCapabilitiesRequest) ProtoMessage() {}
+
+func (x *GetCapabilitiesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCapabilitiesRequest.ProtoReflect.Descriptor instead.
+func (*GetCapabilitiesRequest) Descriptor() ([]byte, []int) {
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GetCapabilitiesRequest) GetTenant() *v1.TenantContext {
+	if x != nil {
+		return x.Tenant
+	}
+	return nil
+}
+
+type GetCapabilitiesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 仅表示该部署具备图片传输和可用的已配置模型；实际候选仍须逐一验证。
+	ImageInput     bool     `protobuf:"varint,1,opt,name=image_input,json=imageInput,proto3" json:"image_input,omitempty"`
+	ImageMimeTypes []string `protobuf:"bytes,2,rep,name=image_mime_types,json=imageMimeTypes,proto3" json:"image_mime_types,omitempty"`
+	MaxImages      int32    `protobuf:"varint,3,opt,name=max_images,json=maxImages,proto3" json:"max_images,omitempty"`
+	MaxImageBytes  int64    `protobuf:"varint,4,opt,name=max_image_bytes,json=maxImageBytes,proto3" json:"max_image_bytes,omitempty"`
+	MaxImagePixels int64    `protobuf:"varint,5,opt,name=max_image_pixels,json=maxImagePixels,proto3" json:"max_image_pixels,omitempty"`
+	// 已启用图片 Profile 的每图预算最大值，供上下文保守预留；不是实际计费。
+	ImageTokenReserve int32 `protobuf:"varint,6,opt,name=image_token_reserve,json=imageTokenReserve,proto3" json:"image_token_reserve,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *GetCapabilitiesResponse) Reset() {
+	*x = GetCapabilitiesResponse{}
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCapabilitiesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCapabilitiesResponse) ProtoMessage() {}
+
+func (x *GetCapabilitiesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCapabilitiesResponse.ProtoReflect.Descriptor instead.
+func (*GetCapabilitiesResponse) Descriptor() ([]byte, []int) {
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GetCapabilitiesResponse) GetImageInput() bool {
+	if x != nil {
+		return x.ImageInput
+	}
+	return false
+}
+
+func (x *GetCapabilitiesResponse) GetImageMimeTypes() []string {
+	if x != nil {
+		return x.ImageMimeTypes
+	}
+	return nil
+}
+
+func (x *GetCapabilitiesResponse) GetMaxImages() int32 {
+	if x != nil {
+		return x.MaxImages
+	}
+	return 0
+}
+
+func (x *GetCapabilitiesResponse) GetMaxImageBytes() int64 {
+	if x != nil {
+		return x.MaxImageBytes
+	}
+	return 0
+}
+
+func (x *GetCapabilitiesResponse) GetMaxImagePixels() int64 {
+	if x != nil {
+		return x.MaxImagePixels
+	}
+	return 0
+}
+
+func (x *GetCapabilitiesResponse) GetImageTokenReserve() int32 {
+	if x != nil {
+		return x.ImageTokenReserve
+	}
+	return 0
+}
+
 type ToolSpec struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	Name        string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -407,7 +701,7 @@ type ToolSpec struct {
 
 func (x *ToolSpec) Reset() {
 	*x = ToolSpec{}
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[3]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -419,7 +713,7 @@ func (x *ToolSpec) String() string {
 func (*ToolSpec) ProtoMessage() {}
 
 func (x *ToolSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[3]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -432,7 +726,7 @@ func (x *ToolSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToolSpec.ProtoReflect.Descriptor instead.
 func (*ToolSpec) Descriptor() ([]byte, []int) {
-	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{3}
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ToolSpec) GetName() string {
@@ -467,7 +761,7 @@ type ToolCall struct {
 
 func (x *ToolCall) Reset() {
 	*x = ToolCall{}
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[4]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -479,7 +773,7 @@ func (x *ToolCall) String() string {
 func (*ToolCall) ProtoMessage() {}
 
 func (x *ToolCall) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[4]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -492,7 +786,7 @@ func (x *ToolCall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ToolCall.ProtoReflect.Descriptor instead.
 func (*ToolCall) Descriptor() ([]byte, []int) {
-	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{4}
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ToolCall) GetId() string {
@@ -531,7 +825,7 @@ type GenerateParams struct {
 
 func (x *GenerateParams) Reset() {
 	*x = GenerateParams{}
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[5]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -543,7 +837,7 @@ func (x *GenerateParams) String() string {
 func (*GenerateParams) ProtoMessage() {}
 
 func (x *GenerateParams) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[5]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -556,7 +850,7 @@ func (x *GenerateParams) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenerateParams.ProtoReflect.Descriptor instead.
 func (*GenerateParams) Descriptor() ([]byte, []int) {
-	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{5}
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GenerateParams) GetMessages() []*ChatMessage {
@@ -605,7 +899,7 @@ type GenerateRequest struct {
 
 func (x *GenerateRequest) Reset() {
 	*x = GenerateRequest{}
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[6]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -617,7 +911,7 @@ func (x *GenerateRequest) String() string {
 func (*GenerateRequest) ProtoMessage() {}
 
 func (x *GenerateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[6]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -630,7 +924,7 @@ func (x *GenerateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenerateRequest.ProtoReflect.Descriptor instead.
 func (*GenerateRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{6}
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GenerateRequest) GetTenant() *v1.TenantContext {
@@ -671,7 +965,7 @@ type GenerateResponse struct {
 
 func (x *GenerateResponse) Reset() {
 	*x = GenerateResponse{}
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[7]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -683,7 +977,7 @@ func (x *GenerateResponse) String() string {
 func (*GenerateResponse) ProtoMessage() {}
 
 func (x *GenerateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[7]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -696,7 +990,7 @@ func (x *GenerateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenerateResponse.ProtoReflect.Descriptor instead.
 func (*GenerateResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{7}
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GenerateResponse) GetText() string {
@@ -759,7 +1053,7 @@ type StreamGenerateRequest struct {
 
 func (x *StreamGenerateRequest) Reset() {
 	*x = StreamGenerateRequest{}
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[8]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -771,7 +1065,7 @@ func (x *StreamGenerateRequest) String() string {
 func (*StreamGenerateRequest) ProtoMessage() {}
 
 func (x *StreamGenerateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[8]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -784,7 +1078,7 @@ func (x *StreamGenerateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamGenerateRequest.ProtoReflect.Descriptor instead.
 func (*StreamGenerateRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{8}
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *StreamGenerateRequest) GetTenant() *v1.TenantContext {
@@ -825,7 +1119,7 @@ type StreamGenerateResponse struct {
 
 func (x *StreamGenerateResponse) Reset() {
 	*x = StreamGenerateResponse{}
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[9]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -837,7 +1131,7 @@ func (x *StreamGenerateResponse) String() string {
 func (*StreamGenerateResponse) ProtoMessage() {}
 
 func (x *StreamGenerateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[9]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -850,7 +1144,7 @@ func (x *StreamGenerateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamGenerateResponse.ProtoReflect.Descriptor instead.
 func (*StreamGenerateResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{9}
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *StreamGenerateResponse) GetChunk() isStreamGenerateResponse_Chunk {
@@ -946,7 +1240,7 @@ type ScoreRequest struct {
 
 func (x *ScoreRequest) Reset() {
 	*x = ScoreRequest{}
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[10]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -958,7 +1252,7 @@ func (x *ScoreRequest) String() string {
 func (*ScoreRequest) ProtoMessage() {}
 
 func (x *ScoreRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[10]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -971,7 +1265,7 @@ func (x *ScoreRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScoreRequest.ProtoReflect.Descriptor instead.
 func (*ScoreRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{10}
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ScoreRequest) GetTenant() *v1.TenantContext {
@@ -1021,7 +1315,7 @@ type ScoreResponse struct {
 
 func (x *ScoreResponse) Reset() {
 	*x = ScoreResponse{}
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[11]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1033,7 +1327,7 @@ func (x *ScoreResponse) String() string {
 func (*ScoreResponse) ProtoMessage() {}
 
 func (x *ScoreResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[11]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1046,7 +1340,7 @@ func (x *ScoreResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScoreResponse.ProtoReflect.Descriptor instead.
 func (*ScoreResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{11}
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *ScoreResponse) GetScores() []float64 {
@@ -1083,7 +1377,7 @@ type EmbedRequest struct {
 
 func (x *EmbedRequest) Reset() {
 	*x = EmbedRequest{}
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[12]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1095,7 +1389,7 @@ func (x *EmbedRequest) String() string {
 func (*EmbedRequest) ProtoMessage() {}
 
 func (x *EmbedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[12]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1108,7 +1402,7 @@ func (x *EmbedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EmbedRequest.ProtoReflect.Descriptor instead.
 func (*EmbedRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{12}
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *EmbedRequest) GetTenant() *v1.TenantContext {
@@ -1148,7 +1442,7 @@ type Embedding struct {
 
 func (x *Embedding) Reset() {
 	*x = Embedding{}
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[13]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1160,7 +1454,7 @@ func (x *Embedding) String() string {
 func (*Embedding) ProtoMessage() {}
 
 func (x *Embedding) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[13]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1173,7 +1467,7 @@ func (x *Embedding) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Embedding.ProtoReflect.Descriptor instead.
 func (*Embedding) Descriptor() ([]byte, []int) {
-	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{13}
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *Embedding) GetValues() []float32 {
@@ -1196,7 +1490,7 @@ type EmbedResponse struct {
 
 func (x *EmbedResponse) Reset() {
 	*x = EmbedResponse{}
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[14]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1208,7 +1502,7 @@ func (x *EmbedResponse) String() string {
 func (*EmbedResponse) ProtoMessage() {}
 
 func (x *EmbedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[14]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1221,7 +1515,7 @@ func (x *EmbedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EmbedResponse.ProtoReflect.Descriptor instead.
 func (*EmbedResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{14}
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *EmbedResponse) GetEmbeddings() []*Embedding {
@@ -1265,7 +1559,7 @@ type ClassifyRequest struct {
 
 func (x *ClassifyRequest) Reset() {
 	*x = ClassifyRequest{}
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[15]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1277,7 +1571,7 @@ func (x *ClassifyRequest) String() string {
 func (*ClassifyRequest) ProtoMessage() {}
 
 func (x *ClassifyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[15]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1290,7 +1584,7 @@ func (x *ClassifyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClassifyRequest.ProtoReflect.Descriptor instead.
 func (*ClassifyRequest) Descriptor() ([]byte, []int) {
-	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{15}
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ClassifyRequest) GetTenant() *v1.TenantContext {
@@ -1331,7 +1625,7 @@ type Classification struct {
 
 func (x *Classification) Reset() {
 	*x = Classification{}
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[16]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1343,7 +1637,7 @@ func (x *Classification) String() string {
 func (*Classification) ProtoMessage() {}
 
 func (x *Classification) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[16]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1356,7 +1650,7 @@ func (x *Classification) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Classification.ProtoReflect.Descriptor instead.
 func (*Classification) Descriptor() ([]byte, []int) {
-	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{16}
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *Classification) GetLabel() string {
@@ -1385,7 +1679,7 @@ type ClassifyResponse struct {
 
 func (x *ClassifyResponse) Reset() {
 	*x = ClassifyResponse{}
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[17]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1397,7 +1691,7 @@ func (x *ClassifyResponse) String() string {
 func (*ClassifyResponse) ProtoMessage() {}
 
 func (x *ClassifyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[17]
+	mi := &file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1410,7 +1704,7 @@ func (x *ClassifyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClassifyResponse.ProtoReflect.Descriptor instead.
 func (*ClassifyResponse) Descriptor() ([]byte, []int) {
-	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{17}
+	return file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ClassifyResponse) GetResults() []*Classification {
@@ -1454,7 +1748,7 @@ const file_agentruntime_modelgateway_v1_model_gateway_proto_rawDesc = "" +
 	"\x10model_profile_id\x18\x01 \x01(\tR\x0emodelProfileId\x12\x12\n" +
 	"\x04tier\x18\x02 \x01(\tR\x04tier\x12\x16\n" +
 	"\x06vendor\x18\x03 \x01(\tR\x06vendor\x12%\n" +
-	"\x0econtext_window\x18\x04 \x01(\x05R\rcontextWindow\"\xf1\x01\n" +
+	"\x0econtext_window\x18\x04 \x01(\x05R\rcontextWindow\"\xb2\x02\n" +
 	"\vChatMessage\x12:\n" +
 	"\x04role\x18\x01 \x01(\x0e2&.agentruntime.modelgateway.v1.ChatRoleR\x04role\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12E\n" +
@@ -1462,7 +1756,29 @@ const file_agentruntime_modelgateway_v1_model_gateway_proto_rawDesc = "" +
 	"tool_calls\x18\x03 \x03(\v2&.agentruntime.modelgateway.v1.ToolCallR\ttoolCalls\x12 \n" +
 	"\ftool_call_id\x18\x04 \x01(\tR\n" +
 	"toolCallId\x12)\n" +
-	"\x10cache_breakpoint\x18\x05 \x01(\bR\x0fcacheBreakpoint\"\x8a\x01\n" +
+	"\x10cache_breakpoint\x18\x05 \x01(\bR\x0fcacheBreakpoint\x12?\n" +
+	"\x05parts\x18\x06 \x03(\v2).agentruntime.modelgateway.v1.ContentPartR\x05parts\"o\n" +
+	"\vContentPart\x12\x14\n" +
+	"\x04text\x18\x01 \x01(\tH\x00R\x04text\x12?\n" +
+	"\x05image\x18\x02 \x01(\v2'.agentruntime.modelgateway.v1.ImagePartH\x00R\x05imageB\t\n" +
+	"\acontent\"w\n" +
+	"\tImagePart\x12\x1d\n" +
+	"\n" +
+	"object_uri\x18\x01 \x01(\tR\tobjectUri\x12\x1b\n" +
+	"\tmime_type\x18\x02 \x01(\tR\bmimeType\x12\x16\n" +
+	"\x06sha256\x18\x03 \x01(\tR\x06sha256\x12\x16\n" +
+	"\x06detail\x18\x04 \x01(\tR\x06detail\"W\n" +
+	"\x16GetCapabilitiesRequest\x12=\n" +
+	"\x06tenant\x18\x01 \x01(\v2%.agentruntime.common.v1.TenantContextR\x06tenant\"\x85\x02\n" +
+	"\x17GetCapabilitiesResponse\x12\x1f\n" +
+	"\vimage_input\x18\x01 \x01(\bR\n" +
+	"imageInput\x12(\n" +
+	"\x10image_mime_types\x18\x02 \x03(\tR\x0eimageMimeTypes\x12\x1d\n" +
+	"\n" +
+	"max_images\x18\x03 \x01(\x05R\tmaxImages\x12&\n" +
+	"\x0fmax_image_bytes\x18\x04 \x01(\x03R\rmaxImageBytes\x12(\n" +
+	"\x10max_image_pixels\x18\x05 \x01(\x03R\x0emaxImagePixels\x12.\n" +
+	"\x13image_token_reserve\x18\x06 \x01(\x05R\x11imageTokenReserve\"\x8a\x01\n" +
 	"\bToolSpec\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12H\n" +
@@ -1557,8 +1873,9 @@ const file_agentruntime_modelgateway_v1_model_gateway_proto_rawDesc = "" +
 	"\x12FINISH_REASON_STOP\x10\x01\x12\x1c\n" +
 	"\x18FINISH_REASON_MAX_TOKENS\x10\x02\x12\x1c\n" +
 	"\x18FINISH_REASON_TOOL_CALLS\x10\x03\x12 \n" +
-	"\x1cFINISH_REASON_CONTENT_FILTER\x10\x042\xae\x04\n" +
-	"\x13ModelGatewayService\x12i\n" +
+	"\x1cFINISH_REASON_CONTENT_FILTER\x10\x042\xae\x05\n" +
+	"\x13ModelGatewayService\x12~\n" +
+	"\x0fGetCapabilities\x124.agentruntime.modelgateway.v1.GetCapabilitiesRequest\x1a5.agentruntime.modelgateway.v1.GetCapabilitiesResponse\x12i\n" +
 	"\bGenerate\x12-.agentruntime.modelgateway.v1.GenerateRequest\x1a..agentruntime.modelgateway.v1.GenerateResponse\x12}\n" +
 	"\x0eStreamGenerate\x123.agentruntime.modelgateway.v1.StreamGenerateRequest\x1a4.agentruntime.modelgateway.v1.StreamGenerateResponse0\x01\x12`\n" +
 	"\x05Score\x12*.agentruntime.modelgateway.v1.ScoreRequest\x1a+.agentruntime.modelgateway.v1.ScoreResponse\x12`\n" +
@@ -1579,89 +1896,98 @@ func file_agentruntime_modelgateway_v1_model_gateway_proto_rawDescGZIP() []byte 
 }
 
 var file_agentruntime_modelgateway_v1_model_gateway_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_agentruntime_modelgateway_v1_model_gateway_proto_goTypes = []any{
-	(ChatRole)(0),                  // 0: agentruntime.modelgateway.v1.ChatRole
-	(FinishReason)(0),              // 1: agentruntime.modelgateway.v1.FinishReason
-	(*CallContext)(nil),            // 2: agentruntime.modelgateway.v1.CallContext
-	(*ModelChoice)(nil),            // 3: agentruntime.modelgateway.v1.ModelChoice
-	(*ChatMessage)(nil),            // 4: agentruntime.modelgateway.v1.ChatMessage
-	(*ToolSpec)(nil),               // 5: agentruntime.modelgateway.v1.ToolSpec
-	(*ToolCall)(nil),               // 6: agentruntime.modelgateway.v1.ToolCall
-	(*GenerateParams)(nil),         // 7: agentruntime.modelgateway.v1.GenerateParams
-	(*GenerateRequest)(nil),        // 8: agentruntime.modelgateway.v1.GenerateRequest
-	(*GenerateResponse)(nil),       // 9: agentruntime.modelgateway.v1.GenerateResponse
-	(*StreamGenerateRequest)(nil),  // 10: agentruntime.modelgateway.v1.StreamGenerateRequest
-	(*StreamGenerateResponse)(nil), // 11: agentruntime.modelgateway.v1.StreamGenerateResponse
-	(*ScoreRequest)(nil),           // 12: agentruntime.modelgateway.v1.ScoreRequest
-	(*ScoreResponse)(nil),          // 13: agentruntime.modelgateway.v1.ScoreResponse
-	(*EmbedRequest)(nil),           // 14: agentruntime.modelgateway.v1.EmbedRequest
-	(*Embedding)(nil),              // 15: agentruntime.modelgateway.v1.Embedding
-	(*EmbedResponse)(nil),          // 16: agentruntime.modelgateway.v1.EmbedResponse
-	(*ClassifyRequest)(nil),        // 17: agentruntime.modelgateway.v1.ClassifyRequest
-	(*Classification)(nil),         // 18: agentruntime.modelgateway.v1.Classification
-	(*ClassifyResponse)(nil),       // 19: agentruntime.modelgateway.v1.ClassifyResponse
-	(v1.Role)(0),                   // 20: agentruntime.common.v1.Role
-	(v1.Reasoning)(0),              // 21: agentruntime.common.v1.Reasoning
-	(*v1.JsonPayload)(nil),         // 22: agentruntime.common.v1.JsonPayload
-	(*structpb.Struct)(nil),        // 23: google.protobuf.Struct
-	(*v1.TenantContext)(nil),       // 24: agentruntime.common.v1.TenantContext
-	(*structpb.Value)(nil),         // 25: google.protobuf.Value
-	(*v1.Usage)(nil),               // 26: agentruntime.common.v1.Usage
+	(ChatRole)(0),                   // 0: agentruntime.modelgateway.v1.ChatRole
+	(FinishReason)(0),               // 1: agentruntime.modelgateway.v1.FinishReason
+	(*CallContext)(nil),             // 2: agentruntime.modelgateway.v1.CallContext
+	(*ModelChoice)(nil),             // 3: agentruntime.modelgateway.v1.ModelChoice
+	(*ChatMessage)(nil),             // 4: agentruntime.modelgateway.v1.ChatMessage
+	(*ContentPart)(nil),             // 5: agentruntime.modelgateway.v1.ContentPart
+	(*ImagePart)(nil),               // 6: agentruntime.modelgateway.v1.ImagePart
+	(*GetCapabilitiesRequest)(nil),  // 7: agentruntime.modelgateway.v1.GetCapabilitiesRequest
+	(*GetCapabilitiesResponse)(nil), // 8: agentruntime.modelgateway.v1.GetCapabilitiesResponse
+	(*ToolSpec)(nil),                // 9: agentruntime.modelgateway.v1.ToolSpec
+	(*ToolCall)(nil),                // 10: agentruntime.modelgateway.v1.ToolCall
+	(*GenerateParams)(nil),          // 11: agentruntime.modelgateway.v1.GenerateParams
+	(*GenerateRequest)(nil),         // 12: agentruntime.modelgateway.v1.GenerateRequest
+	(*GenerateResponse)(nil),        // 13: agentruntime.modelgateway.v1.GenerateResponse
+	(*StreamGenerateRequest)(nil),   // 14: agentruntime.modelgateway.v1.StreamGenerateRequest
+	(*StreamGenerateResponse)(nil),  // 15: agentruntime.modelgateway.v1.StreamGenerateResponse
+	(*ScoreRequest)(nil),            // 16: agentruntime.modelgateway.v1.ScoreRequest
+	(*ScoreResponse)(nil),           // 17: agentruntime.modelgateway.v1.ScoreResponse
+	(*EmbedRequest)(nil),            // 18: agentruntime.modelgateway.v1.EmbedRequest
+	(*Embedding)(nil),               // 19: agentruntime.modelgateway.v1.Embedding
+	(*EmbedResponse)(nil),           // 20: agentruntime.modelgateway.v1.EmbedResponse
+	(*ClassifyRequest)(nil),         // 21: agentruntime.modelgateway.v1.ClassifyRequest
+	(*Classification)(nil),          // 22: agentruntime.modelgateway.v1.Classification
+	(*ClassifyResponse)(nil),        // 23: agentruntime.modelgateway.v1.ClassifyResponse
+	(v1.Role)(0),                    // 24: agentruntime.common.v1.Role
+	(v1.Reasoning)(0),               // 25: agentruntime.common.v1.Reasoning
+	(*v1.TenantContext)(nil),        // 26: agentruntime.common.v1.TenantContext
+	(*v1.JsonPayload)(nil),          // 27: agentruntime.common.v1.JsonPayload
+	(*structpb.Struct)(nil),         // 28: google.protobuf.Struct
+	(*structpb.Value)(nil),          // 29: google.protobuf.Value
+	(*v1.Usage)(nil),                // 30: agentruntime.common.v1.Usage
 }
 var file_agentruntime_modelgateway_v1_model_gateway_proto_depIdxs = []int32{
-	20, // 0: agentruntime.modelgateway.v1.CallContext.role:type_name -> agentruntime.common.v1.Role
-	21, // 1: agentruntime.modelgateway.v1.CallContext.reasoning:type_name -> agentruntime.common.v1.Reasoning
+	24, // 0: agentruntime.modelgateway.v1.CallContext.role:type_name -> agentruntime.common.v1.Role
+	25, // 1: agentruntime.modelgateway.v1.CallContext.reasoning:type_name -> agentruntime.common.v1.Reasoning
 	0,  // 2: agentruntime.modelgateway.v1.ChatMessage.role:type_name -> agentruntime.modelgateway.v1.ChatRole
-	6,  // 3: agentruntime.modelgateway.v1.ChatMessage.tool_calls:type_name -> agentruntime.modelgateway.v1.ToolCall
-	22, // 4: agentruntime.modelgateway.v1.ToolSpec.params_schema:type_name -> agentruntime.common.v1.JsonPayload
-	23, // 5: agentruntime.modelgateway.v1.ToolCall.arguments:type_name -> google.protobuf.Struct
-	4,  // 6: agentruntime.modelgateway.v1.GenerateParams.messages:type_name -> agentruntime.modelgateway.v1.ChatMessage
-	5,  // 7: agentruntime.modelgateway.v1.GenerateParams.tools:type_name -> agentruntime.modelgateway.v1.ToolSpec
-	22, // 8: agentruntime.modelgateway.v1.GenerateParams.output_schema:type_name -> agentruntime.common.v1.JsonPayload
-	24, // 9: agentruntime.modelgateway.v1.GenerateRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	2,  // 10: agentruntime.modelgateway.v1.GenerateRequest.call:type_name -> agentruntime.modelgateway.v1.CallContext
-	7,  // 11: agentruntime.modelgateway.v1.GenerateRequest.generation:type_name -> agentruntime.modelgateway.v1.GenerateParams
-	25, // 12: agentruntime.modelgateway.v1.GenerateResponse.result:type_name -> google.protobuf.Value
-	6,  // 13: agentruntime.modelgateway.v1.GenerateResponse.tool_calls:type_name -> agentruntime.modelgateway.v1.ToolCall
-	1,  // 14: agentruntime.modelgateway.v1.GenerateResponse.finish_reason:type_name -> agentruntime.modelgateway.v1.FinishReason
-	3,  // 15: agentruntime.modelgateway.v1.GenerateResponse.model:type_name -> agentruntime.modelgateway.v1.ModelChoice
-	26, // 16: agentruntime.modelgateway.v1.GenerateResponse.usage:type_name -> agentruntime.common.v1.Usage
-	24, // 17: agentruntime.modelgateway.v1.StreamGenerateRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	2,  // 18: agentruntime.modelgateway.v1.StreamGenerateRequest.call:type_name -> agentruntime.modelgateway.v1.CallContext
-	7,  // 19: agentruntime.modelgateway.v1.StreamGenerateRequest.generation:type_name -> agentruntime.modelgateway.v1.GenerateParams
-	6,  // 20: agentruntime.modelgateway.v1.StreamGenerateResponse.tool_call:type_name -> agentruntime.modelgateway.v1.ToolCall
-	9,  // 21: agentruntime.modelgateway.v1.StreamGenerateResponse.final:type_name -> agentruntime.modelgateway.v1.GenerateResponse
-	26, // 22: agentruntime.modelgateway.v1.StreamGenerateResponse.usage:type_name -> agentruntime.common.v1.Usage
-	24, // 23: agentruntime.modelgateway.v1.ScoreRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	2,  // 24: agentruntime.modelgateway.v1.ScoreRequest.call:type_name -> agentruntime.modelgateway.v1.CallContext
-	3,  // 25: agentruntime.modelgateway.v1.ScoreResponse.model:type_name -> agentruntime.modelgateway.v1.ModelChoice
-	26, // 26: agentruntime.modelgateway.v1.ScoreResponse.usage:type_name -> agentruntime.common.v1.Usage
-	24, // 27: agentruntime.modelgateway.v1.EmbedRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	2,  // 28: agentruntime.modelgateway.v1.EmbedRequest.call:type_name -> agentruntime.modelgateway.v1.CallContext
-	15, // 29: agentruntime.modelgateway.v1.EmbedResponse.embeddings:type_name -> agentruntime.modelgateway.v1.Embedding
-	3,  // 30: agentruntime.modelgateway.v1.EmbedResponse.model:type_name -> agentruntime.modelgateway.v1.ModelChoice
-	26, // 31: agentruntime.modelgateway.v1.EmbedResponse.usage:type_name -> agentruntime.common.v1.Usage
-	24, // 32: agentruntime.modelgateway.v1.ClassifyRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
-	2,  // 33: agentruntime.modelgateway.v1.ClassifyRequest.call:type_name -> agentruntime.modelgateway.v1.CallContext
-	18, // 34: agentruntime.modelgateway.v1.ClassifyResponse.results:type_name -> agentruntime.modelgateway.v1.Classification
-	3,  // 35: agentruntime.modelgateway.v1.ClassifyResponse.model:type_name -> agentruntime.modelgateway.v1.ModelChoice
-	26, // 36: agentruntime.modelgateway.v1.ClassifyResponse.usage:type_name -> agentruntime.common.v1.Usage
-	8,  // 37: agentruntime.modelgateway.v1.ModelGatewayService.Generate:input_type -> agentruntime.modelgateway.v1.GenerateRequest
-	10, // 38: agentruntime.modelgateway.v1.ModelGatewayService.StreamGenerate:input_type -> agentruntime.modelgateway.v1.StreamGenerateRequest
-	12, // 39: agentruntime.modelgateway.v1.ModelGatewayService.Score:input_type -> agentruntime.modelgateway.v1.ScoreRequest
-	14, // 40: agentruntime.modelgateway.v1.ModelGatewayService.Embed:input_type -> agentruntime.modelgateway.v1.EmbedRequest
-	17, // 41: agentruntime.modelgateway.v1.ModelGatewayService.Classify:input_type -> agentruntime.modelgateway.v1.ClassifyRequest
-	9,  // 42: agentruntime.modelgateway.v1.ModelGatewayService.Generate:output_type -> agentruntime.modelgateway.v1.GenerateResponse
-	11, // 43: agentruntime.modelgateway.v1.ModelGatewayService.StreamGenerate:output_type -> agentruntime.modelgateway.v1.StreamGenerateResponse
-	13, // 44: agentruntime.modelgateway.v1.ModelGatewayService.Score:output_type -> agentruntime.modelgateway.v1.ScoreResponse
-	16, // 45: agentruntime.modelgateway.v1.ModelGatewayService.Embed:output_type -> agentruntime.modelgateway.v1.EmbedResponse
-	19, // 46: agentruntime.modelgateway.v1.ModelGatewayService.Classify:output_type -> agentruntime.modelgateway.v1.ClassifyResponse
-	42, // [42:47] is the sub-list for method output_type
-	37, // [37:42] is the sub-list for method input_type
-	37, // [37:37] is the sub-list for extension type_name
-	37, // [37:37] is the sub-list for extension extendee
-	0,  // [0:37] is the sub-list for field type_name
+	10, // 3: agentruntime.modelgateway.v1.ChatMessage.tool_calls:type_name -> agentruntime.modelgateway.v1.ToolCall
+	5,  // 4: agentruntime.modelgateway.v1.ChatMessage.parts:type_name -> agentruntime.modelgateway.v1.ContentPart
+	6,  // 5: agentruntime.modelgateway.v1.ContentPart.image:type_name -> agentruntime.modelgateway.v1.ImagePart
+	26, // 6: agentruntime.modelgateway.v1.GetCapabilitiesRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	27, // 7: agentruntime.modelgateway.v1.ToolSpec.params_schema:type_name -> agentruntime.common.v1.JsonPayload
+	28, // 8: agentruntime.modelgateway.v1.ToolCall.arguments:type_name -> google.protobuf.Struct
+	4,  // 9: agentruntime.modelgateway.v1.GenerateParams.messages:type_name -> agentruntime.modelgateway.v1.ChatMessage
+	9,  // 10: agentruntime.modelgateway.v1.GenerateParams.tools:type_name -> agentruntime.modelgateway.v1.ToolSpec
+	27, // 11: agentruntime.modelgateway.v1.GenerateParams.output_schema:type_name -> agentruntime.common.v1.JsonPayload
+	26, // 12: agentruntime.modelgateway.v1.GenerateRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	2,  // 13: agentruntime.modelgateway.v1.GenerateRequest.call:type_name -> agentruntime.modelgateway.v1.CallContext
+	11, // 14: agentruntime.modelgateway.v1.GenerateRequest.generation:type_name -> agentruntime.modelgateway.v1.GenerateParams
+	29, // 15: agentruntime.modelgateway.v1.GenerateResponse.result:type_name -> google.protobuf.Value
+	10, // 16: agentruntime.modelgateway.v1.GenerateResponse.tool_calls:type_name -> agentruntime.modelgateway.v1.ToolCall
+	1,  // 17: agentruntime.modelgateway.v1.GenerateResponse.finish_reason:type_name -> agentruntime.modelgateway.v1.FinishReason
+	3,  // 18: agentruntime.modelgateway.v1.GenerateResponse.model:type_name -> agentruntime.modelgateway.v1.ModelChoice
+	30, // 19: agentruntime.modelgateway.v1.GenerateResponse.usage:type_name -> agentruntime.common.v1.Usage
+	26, // 20: agentruntime.modelgateway.v1.StreamGenerateRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	2,  // 21: agentruntime.modelgateway.v1.StreamGenerateRequest.call:type_name -> agentruntime.modelgateway.v1.CallContext
+	11, // 22: agentruntime.modelgateway.v1.StreamGenerateRequest.generation:type_name -> agentruntime.modelgateway.v1.GenerateParams
+	10, // 23: agentruntime.modelgateway.v1.StreamGenerateResponse.tool_call:type_name -> agentruntime.modelgateway.v1.ToolCall
+	13, // 24: agentruntime.modelgateway.v1.StreamGenerateResponse.final:type_name -> agentruntime.modelgateway.v1.GenerateResponse
+	30, // 25: agentruntime.modelgateway.v1.StreamGenerateResponse.usage:type_name -> agentruntime.common.v1.Usage
+	26, // 26: agentruntime.modelgateway.v1.ScoreRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	2,  // 27: agentruntime.modelgateway.v1.ScoreRequest.call:type_name -> agentruntime.modelgateway.v1.CallContext
+	3,  // 28: agentruntime.modelgateway.v1.ScoreResponse.model:type_name -> agentruntime.modelgateway.v1.ModelChoice
+	30, // 29: agentruntime.modelgateway.v1.ScoreResponse.usage:type_name -> agentruntime.common.v1.Usage
+	26, // 30: agentruntime.modelgateway.v1.EmbedRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	2,  // 31: agentruntime.modelgateway.v1.EmbedRequest.call:type_name -> agentruntime.modelgateway.v1.CallContext
+	19, // 32: agentruntime.modelgateway.v1.EmbedResponse.embeddings:type_name -> agentruntime.modelgateway.v1.Embedding
+	3,  // 33: agentruntime.modelgateway.v1.EmbedResponse.model:type_name -> agentruntime.modelgateway.v1.ModelChoice
+	30, // 34: agentruntime.modelgateway.v1.EmbedResponse.usage:type_name -> agentruntime.common.v1.Usage
+	26, // 35: agentruntime.modelgateway.v1.ClassifyRequest.tenant:type_name -> agentruntime.common.v1.TenantContext
+	2,  // 36: agentruntime.modelgateway.v1.ClassifyRequest.call:type_name -> agentruntime.modelgateway.v1.CallContext
+	22, // 37: agentruntime.modelgateway.v1.ClassifyResponse.results:type_name -> agentruntime.modelgateway.v1.Classification
+	3,  // 38: agentruntime.modelgateway.v1.ClassifyResponse.model:type_name -> agentruntime.modelgateway.v1.ModelChoice
+	30, // 39: agentruntime.modelgateway.v1.ClassifyResponse.usage:type_name -> agentruntime.common.v1.Usage
+	7,  // 40: agentruntime.modelgateway.v1.ModelGatewayService.GetCapabilities:input_type -> agentruntime.modelgateway.v1.GetCapabilitiesRequest
+	12, // 41: agentruntime.modelgateway.v1.ModelGatewayService.Generate:input_type -> agentruntime.modelgateway.v1.GenerateRequest
+	14, // 42: agentruntime.modelgateway.v1.ModelGatewayService.StreamGenerate:input_type -> agentruntime.modelgateway.v1.StreamGenerateRequest
+	16, // 43: agentruntime.modelgateway.v1.ModelGatewayService.Score:input_type -> agentruntime.modelgateway.v1.ScoreRequest
+	18, // 44: agentruntime.modelgateway.v1.ModelGatewayService.Embed:input_type -> agentruntime.modelgateway.v1.EmbedRequest
+	21, // 45: agentruntime.modelgateway.v1.ModelGatewayService.Classify:input_type -> agentruntime.modelgateway.v1.ClassifyRequest
+	8,  // 46: agentruntime.modelgateway.v1.ModelGatewayService.GetCapabilities:output_type -> agentruntime.modelgateway.v1.GetCapabilitiesResponse
+	13, // 47: agentruntime.modelgateway.v1.ModelGatewayService.Generate:output_type -> agentruntime.modelgateway.v1.GenerateResponse
+	15, // 48: agentruntime.modelgateway.v1.ModelGatewayService.StreamGenerate:output_type -> agentruntime.modelgateway.v1.StreamGenerateResponse
+	17, // 49: agentruntime.modelgateway.v1.ModelGatewayService.Score:output_type -> agentruntime.modelgateway.v1.ScoreResponse
+	20, // 50: agentruntime.modelgateway.v1.ModelGatewayService.Embed:output_type -> agentruntime.modelgateway.v1.EmbedResponse
+	23, // 51: agentruntime.modelgateway.v1.ModelGatewayService.Classify:output_type -> agentruntime.modelgateway.v1.ClassifyResponse
+	46, // [46:52] is the sub-list for method output_type
+	40, // [40:46] is the sub-list for method input_type
+	40, // [40:40] is the sub-list for extension type_name
+	40, // [40:40] is the sub-list for extension extendee
+	0,  // [0:40] is the sub-list for field type_name
 }
 
 func init() { file_agentruntime_modelgateway_v1_model_gateway_proto_init() }
@@ -1669,7 +1995,11 @@ func file_agentruntime_modelgateway_v1_model_gateway_proto_init() {
 	if File_agentruntime_modelgateway_v1_model_gateway_proto != nil {
 		return
 	}
-	file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[9].OneofWrappers = []any{
+	file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[3].OneofWrappers = []any{
+		(*ContentPart_Text)(nil),
+		(*ContentPart_Image)(nil),
+	}
+	file_agentruntime_modelgateway_v1_model_gateway_proto_msgTypes[13].OneofWrappers = []any{
 		(*StreamGenerateResponse_TextDelta)(nil),
 		(*StreamGenerateResponse_ThinkingDelta)(nil),
 		(*StreamGenerateResponse_ToolCall)(nil),
@@ -1681,7 +2011,7 @@ func file_agentruntime_modelgateway_v1_model_gateway_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_agentruntime_modelgateway_v1_model_gateway_proto_rawDesc), len(file_agentruntime_modelgateway_v1_model_gateway_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   18,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

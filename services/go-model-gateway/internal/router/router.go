@@ -91,6 +91,8 @@ type Request struct {
 	Structured bool
 	// Tools 表示请求带了工具。
 	Tools bool
+	// Images requires every candidate, including fallback, to accept images.
+	Images bool
 }
 
 // Candidate 是一个可用的 Model Profile 及其 Tier。
@@ -245,7 +247,34 @@ func needs(req Request) []profiles.Capability {
 	if req.Tools {
 		out = append(out, profiles.CapTools)
 	}
+	if req.Images {
+		out = append(out, profiles.CapImageInput)
+	}
 	return out
+}
+
+// ImageTokenReserve reports the largest explicit reservation among the
+// tenant's available vision profiles. Zero means vision is unavailable.
+func (r *Router) ImageTokenReserve(ctx context.Context, tenantID string) (int, error) {
+	var allowed []string
+	var restricted bool
+	if r.allowlist != nil {
+		var err error
+		allowed, restricted, err = r.allowlist.ModelAllowlist(ctx, tenantID)
+		if err != nil {
+			return 0, err
+		}
+	}
+	reserve := 0
+	for _, p := range r.catalog.All() {
+		if p.Availability != nil && !*p.Availability || restricted && !slices.Contains(allowed, p.ID) {
+			continue
+		}
+		if p.Has(profiles.CapGenerate) && p.Has(profiles.CapImageInput) {
+			reserve = max(reserve, p.Constraints.ImageInputTokens)
+		}
+	}
+	return reserve, nil
 }
 
 // Select 按包注释的顺序选档。Tier 格式不对：Invalid；没有可选的 Profile：NotFound（code no_eligible_model）；

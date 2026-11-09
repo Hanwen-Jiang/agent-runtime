@@ -341,6 +341,7 @@ func transportError(ctx context.Context, err error) error {
 var (
 	upstreamCode = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,64}$`)
 	bearerToken  = regexp.MustCompile(`(?i)bearer\s+\S+`)
+	imageDataURL = regexp.MustCompile(`(?i)data:image/[a-z0-9.+-]+;base64,[a-z0-9+/=\r\n]*`)
 )
 
 // classify 把上游的非 2xx 响应分类（规则见包注释）。只引用 JSON 正文里的 error.message，先去掉密钥。
@@ -392,6 +393,9 @@ func sanitize(s string, key secret.Value) string {
 		s = strings.ReplaceAll(s, k, secret.Mask)
 	}
 	s = bearerToken.ReplaceAllString(s, "Bearer "+secret.Mask)
+	// Providers sometimes echo invalid image payloads in error.message. Never
+	// propagate those bytes into gateway errors, traces or metering logs.
+	s = imageDataURL.ReplaceAllString(s, "[image data redacted]")
 	if r := []rune(s); len(r) > maxQuoted {
 		s = string(r[:maxQuoted]) + "…"
 	}

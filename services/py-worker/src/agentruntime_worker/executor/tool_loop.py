@@ -103,8 +103,9 @@ class ModelToolLoop:
     def __init__(
         self, gateway: ModelGateway, builder: ContextBuilder, *, tier: str = TOOL_LOOP_TIER, tools: ToolCatalog | None = None,
         transcript: TranscriptSource | None = None, mcp_tools: Callable[[], frozenset[str]] | None = None, memory: Searcher | None = None,
-        sub_agent_tier: str | None = None, personal: TaskPersonalConfig | None = None,
+        sub_agent_tier: str | None = None, personal: TaskPersonalConfig | None = None, attachments: Any = None,
     ) -> None:
+        self.attachments = attachments
         self.memory = memory
         self.personal = personal
         # 子 Agent（isolated 的步）用的 Tier；None 时与主流程同一个。
@@ -130,6 +131,15 @@ class ModelToolLoop:
         leased = await self.tools.mcp_names(inp.tenant, inp.task_id) if self.tools is not None else frozenset()
         turns = await self.transcript.load(inp.tenant, inp.task_id) if self.transcript is not None else ()
         personal = await self.personal.load(inp.tenant.tenant_id, inp.task_id) if self.personal is not None else None
+        from agentruntime_worker.executor.image_input import ImageInputs, prepare_images
+        images = ImageInputs()
+        conversation = transcript_text(turns, max_chars=CONVERSATION_CHARS)
+        if self.attachments is not None and not inp.isolated:
+            from agentruntime_worker.tools.attachments import manifest_text
+            files = await self.attachments.describe(inp.tenant.tenant_id, inp.task_id, inp.tenant.workspace_id)
+            if files:
+                images = await prepare_images(self.gateway, inp.tenant, files)
+                conversation += "\n\n" + manifest_text(files, native_images=bool(images.messages))
         built = await self.builder.build(
             ContextRequest(
                 tenant=inp.tenant,
@@ -145,7 +155,9 @@ class ModelToolLoop:
                 profile=[preference(personal.instructions)] if personal and personal.instructions else [],
                 tools=tools,
                 mcp_tools=(self.mcp_tools() if self.mcp_tools is not None else frozenset()) | leased,
-                conversation=transcript_text(turns, max_chars=CONVERSATION_CHARS),
+                conversation=conversation,
+                image_messages=images.messages,
+                image_token_reserve=images.token_reserve,
                 experiences=await node_experiences(self.memory, inp.tenant, inp.task_id, node, iteration=inp.iteration),
             )
         )
@@ -245,6 +257,7 @@ def dev_tool_loop(config: WorkerConfig) -> ToolLoopActivities:
     from agentruntime_worker.session.transcript import worker_transcript
     from agentruntime_worker.tools import context_objects, dev_tools, mcp_leases, mcp_tool_names, skill_pins
 
+    from agentruntime_worker.tools.attachments import TaskAttachments
     gateway = model_gateway(config)
     builder = ContextBuilder(gateway, context_objects(config), ContextConfig(effective_tokens=config.context_effective_tokens, offload_tokens=config.context_offload_tokens))
     return ToolLoopActivities(
@@ -252,6 +265,7 @@ def dev_tool_loop(config: WorkerConfig) -> ToolLoopActivities:
             gateway, builder, tools=ToolCatalog(dev_tools(config), mcp_leases(config)), transcript=worker_transcript(config),
             mcp_tools=lambda: mcp_tool_names(config), memory=searcher(config),
             personal=TaskPersonalConfig(skill_pins(config).store) if config.registry_address else None,
+            attachments=TaskAttachments(context_objects(config)),
             sub_agent_tier=SUB_AGENT_TIER if config.sub_agent_policy == "rules" else None,
         )
     )

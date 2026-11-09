@@ -40,6 +40,7 @@ import (
 	"github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/taskapi/v1/taskapiv1connect"
 	workflowv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/workflow/v1"
 
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/files"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/ids"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/session"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/taskstore"
@@ -97,6 +98,9 @@ func newAPIWith(t *testing.T, deps func(*Deps), ingressOpts ...func(*localingres
 	}
 	t.Cleanup(func() { _ = store.Close() })
 	if err := store.Migrate(context.Background(), taskstore.Migrations()); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Migrate(context.Background(), files.Migrations()); err != nil {
 		t.Fatal(err)
 	}
 	f := &apiFixture{
@@ -350,7 +354,7 @@ func TestSubmitFillsTaskWorkflowInput(t *testing.T) {
 	inputs, _ := structpb.NewStruct(map[string]any{"quarter": "2026Q3"})
 	req := newRequest("c1")
 	req.Inputs = inputs
-	req.Attachments = []string{"obj://t1/uploads/refunds.csv"}
+	req.Attachments = []string{"obj://t1/uploads/refunds.csv", "obj://t1/uploads/需求 文档 #1? 100%.txt"}
 	req.SessionAccess = commonv1.SessionAccess_SESSION_ACCESS_READ_ONLY
 	req.Priority = commonv1.Priority_PRIORITY_BATCH
 	f.mustSubmit(f.token("t1", "u1"), req)
@@ -364,7 +368,7 @@ func TestSubmitFillsTaskWorkflowInput(t *testing.T) {
 		t.Errorf("submitted_at 应取服务端时钟，实际 %v", task.GetSubmittedAt())
 	}
 	if task.GetMessage() != req.GetMessage() || !proto.Equal(task.GetInputs(), inputs) ||
-		strings.Join(task.GetAttachments(), ",") != "obj://t1/uploads/refunds.csv" {
+		strings.Join(task.GetAttachments(), ",") != "obj://t1/uploads/refunds.csv,obj://t1/uploads/需求 文档 #1? 100%.txt" {
 		t.Errorf("命令、输入与附件应原样带入，实际 %v", task)
 	}
 	if task.GetSessionAccess() != commonv1.SessionAccess_SESSION_ACCESS_READ_ONLY || task.GetPriority() != commonv1.Priority_PRIORITY_BATCH {
@@ -480,6 +484,7 @@ func TestSubmitValidatesTheRequest(t *testing.T) {
 		"缺少 client_request_id": {func(r *taskapiv1.SubmitTaskRequest) { r.ClientRequestId = "" }, connect.CodeInvalidArgument},
 		"空命令":                  {func(r *taskapiv1.SubmitTaskRequest) { r.Message = "  " }, connect.CodeInvalidArgument},
 		"附件不是 obj:// 引用":       {func(r *taskapiv1.SubmitTaskRequest) { r.Attachments = []string{"https://x/y"} }, connect.CodeInvalidArgument},
+		"附件引用含控制字符":            {func(r *taskapiv1.SubmitTaskRequest) { r.Attachments = []string{"obj://t1/uploads/hidden\tfile.txt"} }, connect.CodeInvalidArgument},
 		"附件属于别的租户":             {func(r *taskapiv1.SubmitTaskRequest) { r.Attachments = []string{"obj://t2/secret.csv"} }, connect.CodePermissionDenied},
 		"workspace_id 格式不对":    {func(r *taskapiv1.SubmitTaskRequest) { r.WorkspaceId = "Bad Workspace" }, connect.CodeInvalidArgument},
 	}

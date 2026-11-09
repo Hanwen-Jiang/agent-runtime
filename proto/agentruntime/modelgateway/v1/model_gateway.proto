@@ -12,8 +12,10 @@ import "google/protobuf/struct.proto";
 // 本期先定方法签名，实现分阶段补。
 //
 // 每个请求的字段 1 都是 TenantContext：先按租户策略过滤可用 Tier，再按租户计量与限流。
-// 每个响应都带 Usage。
+// 模型调用响应带 Usage；GetCapabilities 只协商输入能力，不调用模型。
 service ModelGatewayService {
+  // 图片调用前必须协商；旧网关返回 Unimplemented 时调用方明确拒绝，不降级成文本。
+  rpc GetCapabilities(GetCapabilitiesRequest) returns (GetCapabilitiesResponse);
   // 生成，含结构化输出与工具调用。
   rpc Generate(GenerateRequest) returns (GenerateResponse);
   // 流式生成，供 deliver 节点边生成边推流。最后一个分片带 Usage。
@@ -67,6 +69,42 @@ message ChatMessage {
   string tool_call_id = 4;
   // 在这条消息之后设提示缓存断点（附录 G.1）。
   bool cache_breakpoint = 5;
+  // 与非空 text 互斥。包含图片时 role 必须为 user；服务端校验并拒绝不合法组合。
+  repeated ContentPart parts = 6;
+}
+
+// 内容分段保留原始顺序；图片只引用对象，不在请求、工作流历史或 trace 中携带 Base64。
+message ContentPart {
+  oneof content {
+    string text = 1;
+    ImagePart image = 2;
+  }
+}
+
+message ImagePart {
+  // 当前 Task 上传清单中授权的 obj:// 引用；网关不读取任意公网 URL。
+  string object_uri = 1;
+  // image/png、image/jpeg 或 image/webp；网关核对实际解码格式。
+  string mime_type = 2;
+  // 原始不可变图片字节的 SHA-256，网关读取后校验。
+  string sha256 = 3;
+  // auto、low、high；空串等同 auto。不是模型能力声明。
+  string detail = 4;
+}
+
+message GetCapabilitiesRequest {
+  agentruntime.common.v1.TenantContext tenant = 1;
+}
+
+message GetCapabilitiesResponse {
+  // 仅表示该部署具备图片传输和可用的已配置模型；实际候选仍须逐一验证。
+  bool image_input = 1;
+  repeated string image_mime_types = 2;
+  int32 max_images = 3;
+  int64 max_image_bytes = 4;
+  int64 max_image_pixels = 5;
+  // 已启用图片 Profile 的每图预算最大值，供上下文保守预留；不是实际计费。
+  int32 image_token_reserve = 6;
 }
 
 message ToolSpec {

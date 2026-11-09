@@ -86,7 +86,7 @@
     },
     {
       "name": "unknown_capability",
-      "description": "capabilities 只能取 Model Gateway 认识的五项",
+      "description": "capabilities 只能取 Model Gateway 认识的能力；图片输入的准确名字是 image_input，不是 vision",
       "violates": [{"path": "/capabilities/0", "keyword": "enum"}],
       "instance": {
         "id": "a6api/gpt-4o-mini@2026-10",

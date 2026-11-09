@@ -59,3 +59,9 @@ S-01 的验收样例。每个 schema 一个文件：`<schema>.examples.json`，�
 ## Registry 的文档（T-08）
 
 `node_template`、`recipe`、`model_profile`、`tenant_policy`、`task_families`、`skill`（N-14，见 `docs/plan/n14-skill-contract.md`）是 `RegistryService.Publish` 的 document，`registry_evaluation` 是 `Promote` 的 evaluation。名字、版本与发布状态是 Registry 的元数据，不写在正文里（Model Profile 的 `id` 例外：它与开发用的 Profile 文件相同，Registry 核对它等于发布名）。细化与取舍见 `docs/plan/registry.md` 第 3 节。
+
+## Runtime 文件目录（M0.1）
+
+`file_catalog` 是 File Catalog 的 HTTP JSON 元数据契约，见 [M0.1 计划](../../docs/plan/file-intelligence-m0.md)。根只区分 `{file, version}` 与 `{files, next_cursor}`；末页 `next_cursor` 为空串。样例覆盖空列表、空文件、owner 必填、ID/SHA 格式、50 MiB 上限、文件容量协商和拒绝向公共响应泄漏对象 URI。当前只有 owner 私有、`active` 生命周期；Representation、SourceAnchor、Job 与共享权限不在本切片。
+
+`src_<32hex>` 复用已登记的上传身份，`ver_<32hex>` 是内部版本身份；这不是新增 proto `IdKind`，也不改变 Task attachments wire shape。文件/版本关联、owner/workspace 鉴权、游标作用域与并发懒导入由服务端验证。

@@ -30,10 +30,11 @@ from agentruntime_worker.workflows import stage_plan as sp
 
 
 class PlannerActivities:
-    def __init__(self, planner: Planner, contexts: PlanningContextSource, *, tools: ToolCatalog | None = None) -> None:
+    def __init__(self, planner: Planner, contexts: PlanningContextSource, *, tools: ToolCatalog | None = None, attachments: Any = None) -> None:
         self.planner = planner
         self.contexts = contexts
         self.tools = tools
+        self.attachments = attachments
 
     @activity.defn(name=names.PLAN_ROUND)
     async def plan_round(self, inp: PlanRoundInput) -> PlanRoundOutput:
@@ -42,11 +43,22 @@ class PlannerActivities:
 
     async def _plan_round(self, inp: PlanRoundInput) -> PlanRoundOutput:
         context = await self.contexts.load(inp)
+        message = inp.message
+        if inp.attachments and self.attachments is not None:
+            from agentruntime_core.errors import InvalidError
+            from agentruntime_worker.tools.attachments import manifest_text
+            files = await self.attachments.describe(inp.tenant.tenant_id, inp.task_id, inp.tenant.workspace_id)
+            if set(inp.attachments) != {file["uri"] for file in files}:
+                raise InvalidError("attachment_manifest_missing", "任务附件清单不可用，不能读取上传内容")
+            from agentruntime_worker.executor.image_input import prepare_images
+            images = await prepare_images(self.planner.gateway, inp.tenant, files)
+            context = dataclasses.replace(context, image_messages=images.messages)
+            message += "\n\n" + manifest_text(files, native_images=bool(images.messages))
         request = PlanRequest(
             tenant=inp.tenant,
             task_id=inp.task_id,
             round_seq=inp.round_seq,
-            message=inp.message,
+            message=message,
             task_state=inp.task_state,
             attachments=list(inp.attachments),
             context=context,
@@ -66,6 +78,8 @@ class PlannerActivities:
             f"；代码改正：{'；'.join(result.adjustments)}" if result.adjustments else "",
         )
         stage = await self._with_reads(inp.tenant, result.stage, context.effect_ceiling, skills=bool(context.catalog.skills))
+        if inp.attachments:
+            stage = await self._with_attachment_import(inp.tenant, stage, context.effect_ceiling)
         cost = round(sum(c.cost_usd for c in result.calls), 6)
         return PlanRoundOutput(
             stage=stage, triage_level=result.triage_level, task_plan=result.task_plan, cost_usd=cost, goal_code=result.goal_code, task_family=result.task_family,
@@ -93,6 +107,22 @@ class PlannerActivities:
             node["tools"] = [*tools, *(name for name in adding if name not in tools)]
         return out
 
+    async def _with_attachment_import(self, tenant: Tenant, stage: Any, ceiling: str) -> Any:
+        from agentruntime_worker.tools.attachments import ATTACHMENT_IMPORT
+        if self.tools is None or not isinstance(stage, dict):
+            return stage
+        effects = await self.tools.effects(tenant, [ATTACHMENT_IMPORT])
+        if effects.get(ATTACHMENT_IMPORT) != "write_reversible":
+            return stage
+        out = copy.deepcopy(stage)
+        for node in out.get("nodes", []):
+            allowed = str(node.get("effect_ceiling") or ceiling)
+            if node.get("kind") == "goal" and node.get("mode") == "tool_loop" and allowed in sp.EFFECT_ORDER and sp.effect_rank(allowed) >= sp.effect_rank("write_reversible"):
+                tools = node.setdefault("tools", [])
+                if ATTACHMENT_IMPORT not in tools:
+                    tools.append(ATTACHMENT_IMPORT)
+        return out
+
     def activities(self) -> dict[str, object]:
         return {names.PLAN_ROUND: self.plan_round}
 
@@ -108,6 +138,9 @@ class ToolsContextSource:
     async def load(self, inp: PlanRoundInput) -> PlanningContext:
         ctx = await self.inner.load(inp)
         tools = {**ctx.catalog.tools, **await self.tools.all_effects(inp.tenant, inp.task_id)}
+        if not inp.attachments:
+            from agentruntime_worker.tools.attachments import ATTACHMENT_IMPORT
+            tools.pop(ATTACHMENT_IMPORT, None)
         if not ctx.catalog.skills:
             # N-14：没有 Skill 的 Task 用不上 skill_read，不列给 Planner。
             tools.pop(SKILL_READ, None)
@@ -143,4 +176,6 @@ def dev_planner(config: WorkerConfig) -> PlannerActivities:
         source = PersonalConfigContextSource(source, TaskPersonalConfig(skill_pins(config).store))
     # N16-R：派子 Agent 的规矩（AR_SUB_AGENT_POLICY=rules，默认 off）。
     planner = Planner(model_gateway(config), PlannerConfig(sub_agent_rules=config.sub_agent_policy == "rules"))
-    return PlannerActivities(planner, source, tools=tools)
+    from agentruntime_worker.tools import context_objects
+    from agentruntime_worker.tools.attachments import TaskAttachments
+    return PlannerActivities(planner, source, tools=tools, attachments=TaskAttachments(context_objects(config)))

@@ -39,7 +39,7 @@ INTERNAL_SERVICES = {
         "GetModelProfile",
         "GetTenantPolicy",
     },
-    f"{MODEL_GATEWAY}.ModelGatewayService": {"Generate", "StreamGenerate", "Score", "Embed", "Classify"},
+    f"{MODEL_GATEWAY}.ModelGatewayService": {"GetCapabilities", "Generate", "StreamGenerate", "Score", "Embed", "Classify"},
     f"{MEMORY}.MemoryService": {"Search", "SubmitCandidates", "RecordFeedback", "Delete"},
 }
 
@@ -249,9 +249,11 @@ def test_internal_requests_carry_tenant_context_first(service_name):
 
 
 def test_model_gateway_returns_usage():
-    """ModelProvider 回传计量（设计书 4.8）：每个方法的响应都带 Usage。"""
+    """ModelProvider 模型调用回传计量；能力协商不调用模型，也不产生 Usage。"""
     bad = []
     for method in protos.service(f"{MODEL_GATEWAY}.ModelGatewayService").methods:
+        if method.name == "GetCapabilities":
+            continue
         usage = method.output_type.fields_by_name.get("usage")
         if usage is None or protos.message_type_name(usage) != USAGE:
             bad.append(method.full_name)

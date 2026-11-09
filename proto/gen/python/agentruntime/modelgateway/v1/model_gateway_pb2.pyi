@@ -73,18 +73,62 @@ class ModelChoice(_message.Message):
     def __init__(self, model_profile_id: _Optional[str] = ..., tier: _Optional[str] = ..., vendor: _Optional[str] = ..., context_window: _Optional[int] = ...) -> None: ...
 
 class ChatMessage(_message.Message):
-    __slots__ = ("role", "text", "tool_calls", "tool_call_id", "cache_breakpoint")
+    __slots__ = ("role", "text", "tool_calls", "tool_call_id", "cache_breakpoint", "parts")
     ROLE_FIELD_NUMBER: _ClassVar[int]
     TEXT_FIELD_NUMBER: _ClassVar[int]
     TOOL_CALLS_FIELD_NUMBER: _ClassVar[int]
     TOOL_CALL_ID_FIELD_NUMBER: _ClassVar[int]
     CACHE_BREAKPOINT_FIELD_NUMBER: _ClassVar[int]
+    PARTS_FIELD_NUMBER: _ClassVar[int]
     role: ChatRole
     text: str
     tool_calls: _containers.RepeatedCompositeFieldContainer[ToolCall]
     tool_call_id: str
     cache_breakpoint: bool
-    def __init__(self, role: _Optional[_Union[ChatRole, str]] = ..., text: _Optional[str] = ..., tool_calls: _Optional[_Iterable[_Union[ToolCall, _Mapping]]] = ..., tool_call_id: _Optional[str] = ..., cache_breakpoint: _Optional[bool] = ...) -> None: ...
+    parts: _containers.RepeatedCompositeFieldContainer[ContentPart]
+    def __init__(self, role: _Optional[_Union[ChatRole, str]] = ..., text: _Optional[str] = ..., tool_calls: _Optional[_Iterable[_Union[ToolCall, _Mapping]]] = ..., tool_call_id: _Optional[str] = ..., cache_breakpoint: _Optional[bool] = ..., parts: _Optional[_Iterable[_Union[ContentPart, _Mapping]]] = ...) -> None: ...
+
+class ContentPart(_message.Message):
+    __slots__ = ("text", "image")
+    TEXT_FIELD_NUMBER: _ClassVar[int]
+    IMAGE_FIELD_NUMBER: _ClassVar[int]
+    text: str
+    image: ImagePart
+    def __init__(self, text: _Optional[str] = ..., image: _Optional[_Union[ImagePart, _Mapping]] = ...) -> None: ...
+
+class ImagePart(_message.Message):
+    __slots__ = ("object_uri", "mime_type", "sha256", "detail")
+    OBJECT_URI_FIELD_NUMBER: _ClassVar[int]
+    MIME_TYPE_FIELD_NUMBER: _ClassVar[int]
+    SHA256_FIELD_NUMBER: _ClassVar[int]
+    DETAIL_FIELD_NUMBER: _ClassVar[int]
+    object_uri: str
+    mime_type: str
+    sha256: str
+    detail: str
+    def __init__(self, object_uri: _Optional[str] = ..., mime_type: _Optional[str] = ..., sha256: _Optional[str] = ..., detail: _Optional[str] = ...) -> None: ...
+
+class GetCapabilitiesRequest(_message.Message):
+    __slots__ = ("tenant",)
+    TENANT_FIELD_NUMBER: _ClassVar[int]
+    tenant: _tenant_pb2.TenantContext
+    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ...) -> None: ...
+
+class GetCapabilitiesResponse(_message.Message):
+    __slots__ = ("image_input", "image_mime_types", "max_images", "max_image_bytes", "max_image_pixels", "image_token_reserve")
+    IMAGE_INPUT_FIELD_NUMBER: _ClassVar[int]
+    IMAGE_MIME_TYPES_FIELD_NUMBER: _ClassVar[int]
+    MAX_IMAGES_FIELD_NUMBER: _ClassVar[int]
+    MAX_IMAGE_BYTES_FIELD_NUMBER: _ClassVar[int]
+    MAX_IMAGE_PIXELS_FIELD_NUMBER: _ClassVar[int]
+    IMAGE_TOKEN_RESERVE_FIELD_NUMBER: _ClassVar[int]
+    image_input: bool
+    image_mime_types: _containers.RepeatedScalarFieldContainer[str]
+    max_images: int
+    max_image_bytes: int
+    max_image_pixels: int
+    image_token_reserve: int
+    def __init__(self, image_input: _Optional[bool] = ..., image_mime_types: _Optional[_Iterable[str]] = ..., max_images: _Optional[int] = ..., max_image_bytes: _Optional[int] = ..., max_image_pixels: _Optional[int] = ..., image_token_reserve: _Optional[int] = ...) -> None: ...
 
 class ToolSpec(_message.Message):
     __slots__ = ("name", "description", "params_schema")

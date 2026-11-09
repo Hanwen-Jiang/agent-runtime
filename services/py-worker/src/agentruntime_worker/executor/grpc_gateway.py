@@ -166,11 +166,44 @@ class GrpcModelGateway:
             raise TransientError("activity_deadline", "activity 剩下的时间不够再调用一次模型")
         return timeout
 
+    async def get_capabilities(self, tenant):
+        """Never cache a positive handshake across calls: rolling upgrades may change peers."""
+        try:
+            response = await self._client().GetCapabilities(mg.GetCapabilitiesRequest(tenant=tenant), timeout=min(self._deadline(), 10.0))
+        except grpc.aio.AioRpcError as exc:
+            if exc.code() == grpc.StatusCode.UNIMPLEMENTED:
+                raise InvalidError("image_input_unsupported", "当前 Model Gateway 版本不支持原生看图；未发送图片请求") from None
+            raise restore_error(exc) from None
+        return response
+
+    async def _check_images(self, request: mg.GenerateRequest) -> bool:
+        from agentruntime_worker.executor.image_input import has_images, require_image_capabilities
+        images = has_images(request.generation.messages)
+        if images:
+            await require_image_capabilities(self, request.tenant)
+        return images
+
+    @staticmethod
+    async def _image_ack(call) -> None:
+        metadata = await call.initial_metadata()
+        if not any(key.lower() == "x-ar-image-input" and value == "v1" for key, value in (metadata or ())):
+            # Trailers-only failures (for example denied image references) have
+            # no success acknowledgement. Let the caller restore their error.
+            if call.done() and await call.code() != grpc.StatusCode.OK:
+                return
+            call.cancel()
+            raise InvalidError("image_input_unsupported", "Model Gateway 未确认接收图片；已丢弃可能缺图的输出")
+
     async def generate(self, request: mg.GenerateRequest) -> mg.GenerateResponse:
         """调用 ModelGatewayService.Generate；请求与响应原样传递。失败抛 ProviderError（见模块说明）。"""
+        images = await self._check_images(request)
         timeout = self._deadline()
         try:
-            return await self._client().Generate(request, timeout=timeout)
+            call = self._client().Generate(request, timeout=timeout)
+            response = await call
+            if images:
+                await self._image_ack(call)
+            return response
         except grpc.aio.AioRpcError as exc:
             raise restore_error(exc) from None
 
@@ -178,10 +211,14 @@ class GrpcModelGateway:
         """调用 ModelGatewayService.StreamGenerate（N-19/N-20）：text_delta、thinking_delta 依次交给 on_delta（"text" 或 "thinking"，片段），
         返回最后一个分片里的完整结果（与 Generate 的响应相同，usage 取分片上的）。网关只在第一个分片之前重试与切换模型；
         之后出错直接结束流，这里抛 ProviderError；没有最后一个分片就结束的按 transient 处理。"""
+        images = await self._check_images(request)
         timeout = self._deadline()
         stream_request = mg.StreamGenerateRequest(tenant=request.tenant, call=request.call, generation=request.generation)
         try:
-            async for chunk in self._client().StreamGenerate(stream_request, timeout=timeout):
+            call = self._client().StreamGenerate(stream_request, timeout=timeout)
+            if images:
+                await self._image_ack(call)
+            async for chunk in call:
                 kind = chunk.WhichOneof("chunk")
                 if kind == "final":
                     final = mg.GenerateResponse()

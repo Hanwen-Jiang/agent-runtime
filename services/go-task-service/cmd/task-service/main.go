@@ -64,6 +64,7 @@ import (
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/config"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/environmentapi"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/events"
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/files"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/ids"
 	mcpconn "github.com/agentruntime/agent-runtime/services/go-task-service/internal/mcp"
 	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/personalconfigapi"
@@ -480,6 +481,9 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 		return err
 	}
 	// 交付文件的元数据（N-18）：与 Worker 同一个迁移 209，谁先启动谁建。
+	if err := store.Migrate(ctx, files.Migrations()); err != nil {
+		return err
+	}
 	if err := store.Migrate(ctx, taskapi.ArtifactMigrations()); err != nil {
 		return err
 	}

@@ -238,6 +238,9 @@ def dev_tools(config: WorkerConfig) -> LocalToolDriverProvider:
         # 内容进 context_objects 的 ObjectStore，元数据进业务库（task-service 读同一处）。
         files = workspace_files(platform, sandboxes=broker, telemetry=worker_telemetry(), generations=generations)
         if files is not None:
+            from agentruntime_worker.tools.attachments import AttachmentImport, TaskAttachments
+            spec, handler = AttachmentImport(TaskAttachments(context_objects(config)), files).tool()
+            provider.register(spec, handler)
             register_delivery_tools(
                 provider, objects=context_objects(config), store=relational_store(config.relational_dsn, config.data_dir or Path(tempfile.mkdtemp(prefix="agentruntime-delivery-"))),
                 reader=files, limits=DeliveryLimits.from_env(os.environ),

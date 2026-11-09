@@ -129,7 +129,16 @@ func serve(ctx context.Context, stdout, stderr io.Writer, getenv func(string) st
 		}
 		defer tel.Close()
 	}
+	objects, err := imageObjects(getenv)
+	if err != nil {
+		fmt.Fprintln(stderr, "model-gateway: image ObjectStore configuration failed")
+		return 1
+	}
+	if objects != nil {
+		defer objects.Close()
+	}
 	srv, err := gateway.New(gateway.Options{
+		Objects:          objects,
 		ModelBudget:      modelbudget.New(store),
 		BudgetPolicies:   modelbudget.Policy{Path: cfg.TenantPoliciesFile, Source: registryBudgetSource(cfg.RegistryAddress)},
 		Provider:         provider,

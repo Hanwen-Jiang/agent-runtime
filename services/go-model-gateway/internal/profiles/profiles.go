@@ -46,9 +46,10 @@ const (
 	CapTools      Capability = "tools"
 	CapStream     Capability = "stream"
 	CapEmbed      Capability = "embed"
+	CapImageInput Capability = "image_input"
 )
 
-var knownCapabilities = []Capability{CapGenerate, CapStructured, CapTools, CapStream, CapEmbed}
+var knownCapabilities = []Capability{CapGenerate, CapStructured, CapTools, CapStream, CapEmbed, CapImageInput}
 
 // Tier 是同一模型的一档推理强度（附录 H.1：不同推理强度或思考预算视为不同的 Tier）。
 type Tier struct {
@@ -91,6 +92,9 @@ func (c Cost) UnitPrice() float64 {
 type Constraints struct {
 	ContextWindow int `json:"context_window"`
 	MaxOutput     int `json:"max_output"`
+	// ImageInputTokens is an explicitly configured conservative per-image
+	// reservation. It is not inferred from a model name or Base64 length.
+	ImageInputTokens int `json:"image_input_tokens,omitempty"`
 }
 
 // Freshness 记录数据的取得日期。
@@ -276,6 +280,12 @@ func check(p Profile, name string) error {
 		if !slices.Contains(knownCapabilities, c) {
 			return invalid("%s：不认识的 capability %q", name, c)
 		}
+	}
+	if p.Constraints.ImageInputTokens < 0 || p.Constraints.ImageInputTokens > 1_000_000 {
+		return invalid("%s：constraints.image_input_tokens 必须在 0 到 1000000 内", name)
+	}
+	if p.Has(CapImageInput) && (!p.Has(CapGenerate) || p.Constraints.ImageInputTokens == 0 || p.Constraints.ContextWindow <= 0 || p.Constraints.MaxOutput <= 0) {
+		return invalid("%s：image_input 需要 generate、正 context_window/max_output 和显式的 image_input_tokens", name)
 	}
 	if p.Cost.InPerM < 0 || p.Cost.OutPerM < 0 || p.Cost.CacheReadPerM < 0 {
 		return invalid("%s：单价不能为负", name)

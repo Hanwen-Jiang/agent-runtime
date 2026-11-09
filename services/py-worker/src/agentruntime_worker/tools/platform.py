@@ -205,6 +205,51 @@ class WorkspaceFiles:
     def __init__(self, workspaces: _Workspaces) -> None:
         self.w = workspaces
 
+    async def write_input(self, invocation: ToolInvocation, path: str, data: bytes) -> None:
+        """Import immutable task input using the same leases and size guard as repo_edit."""
+        w = self.w
+        if not path.startswith(f".agent-inputs/{invocation.task_id}/"):
+            raise DeniedError("path_not_allowed", "附件只能导入本任务输入目录")
+        if await w._archived(invocation):
+            rel = w._env_path(path)
+
+            async def write(box: Any, env_id: str) -> None:
+                # ROOT workspaces are Git repositories; MULTI roots have no .git.
+                # Keep imported user inputs out of later workspace git add -A.
+                try:
+                    await box.read_file(env_id, ".git/HEAD")
+                except NotFoundError as err:
+                    if err.code == "unknown_env":
+                        raise
+                else:
+                    try:
+                        exclude = await box.read_file(env_id, ".git/info/exclude")
+                    except NotFoundError as err:
+                        if err.code == "unknown_env":
+                            raise
+                        exclude = b""
+                    if b"/.agent-inputs/" not in exclude.splitlines():
+                        await box.write_file(env_id, ".git/info/exclude", exclude + b"\n/.agent-inputs/\n")
+                await box.write_file(env_id, rel, data)
+
+            await w._in_env(invocation, writable=True, run=write)
+        else:
+            root = await w._mounted(invocation)
+            target = w._resolve(root, path)
+
+            async def write() -> None:
+                if w._resolve(root, ".git/HEAD").is_file():
+                    exclude_path = w._resolve(root, ".git/info/exclude")
+                    exclude = exclude_path.read_bytes() if exclude_path.is_file() else b""
+                    if b"/.agent-inputs/" not in exclude.splitlines():
+                        exclude_path.parent.mkdir(parents=True, exist_ok=True)
+                        exclude_path.write_bytes(exclude + b"\n/.agent-inputs/\n")
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(data)
+
+            await w._guarded(invocation, root, write)
+        await w._changed(invocation)
+
     async def read_invocation(self, invocation: ToolInvocation, path: str, *, max_bytes: int) -> bytes:
         w = self.w
         if await w._archived(invocation):
@@ -958,11 +1003,13 @@ class _ContextReader:
         self.objects = objects
         self.config = config
         self.broker = broker
+        from agentruntime_worker.tools.attachments import TaskAttachments
+        self.attachments = TaskAttachments(objects)
 
     def tool(self) -> tuple[ToolSpec, ToolHandler]:
         limit = self.config.output_limit
         return (
-            _spec(CONTEXT_READ, Effect.READ, "按路径取回上下文里被外置或遮蔽的内容（obj:// 或待上传的 transfer:// 路径），以及 Node 的外置结果；内容长时用 offset 分段取", {
+            _spec(CONTEXT_READ, Effect.READ, "按路径取回上下文里被外置或遮蔽的内容（obj:// 或待上传的 transfer:// 路径），以及 Node 的外置结果与本任务白名单附件；内容长时用 offset 分段取", {
                 "path": {"type": "string", "minLength": 1, "description": "上下文里给出的 obj:// 或 transfer:// 路径"},
                 "offset": {"type": "integer", "minimum": 0, "description": "从第几个字符开始，默认 0"},
                 "max_chars": {"type": "integer", "minimum": 1, "maximum": limit, "description": f"最多取多少个字符，默认 {self.config.context_read_chars}"},
@@ -987,7 +1034,10 @@ class _ContextReader:
         except DeniedError:
             raise NotFoundError("not_found", "没有这个路径") from None  # 别的租户的路径：不透露它是否存在
         if not key.startswith(_CONTEXT_PREFIXES):
-            raise DeniedError("path_not_allowed", "context_read 只能取回上下文里外置的内容与 Node 的外置结果")
+            refs = await self.attachments.references(invocation.tenant_id, invocation.task_id, invocation.workspace_id or "")
+            if uri not in refs:
+                raise DeniedError("path_not_allowed", "context_read 只能读取上下文、Node 结果与本任务白名单附件")
+            return await self.attachments.read(invocation, uri, max_chars=int(invocation.arguments.get("max_chars") or self.config.context_read_chars))
         if not invocation.task_id:
             raise DeniedError("no_task", "context_read 需要调用方的 Task 作用域")
         if key.split("/", 2)[1] != invocation.task_id:
