@@ -1,0 +1,148 @@
+{
+  "date": "2026-11-10",
+  "scope": "Only completed fi-20261110-* validation containers; no volumes/images or production resources removed",
+  "removed": [
+    {
+      "name": "fi-20261110-deploy-verified",
+      "id": "355200ef4d87",
+      "status": "exited",
+      "exit_code": 0,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-contract-deploy",
+      "id": "648061c54ed6",
+      "status": "exited",
+      "exit_code": 1,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-go-final",
+      "id": "5df4b95ccca5",
+      "status": "exited",
+      "exit_code": 0,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-settings-race",
+      "id": "fab4305130f8",
+      "status": "exited",
+      "exit_code": 0,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-benchmark-retrieval",
+      "id": "50fdd646aced",
+      "status": "exited",
+      "exit_code": 0,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-collection-ui",
+      "id": "be9572f72d87",
+      "status": "exited",
+      "exit_code": 0,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-benchmark-parse",
+      "id": "3bbfc3cc4fb4",
+      "status": "exited",
+      "exit_code": 0,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-browser-final",
+      "id": "0edd7ae4913e",
+      "status": "exited",
+      "exit_code": 1,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-worker-full",
+      "id": "c8f3ac133f5d",
+      "status": "exited",
+      "exit_code": 1,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-replay-isolated",
+      "id": "bc53d4efceef",
+      "status": "exited",
+      "exit_code": 1,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-memory-backends",
+      "id": "e17c1ee4a4a3",
+      "status": "exited",
+      "exit_code": 0,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-scope-regression",
+      "id": "ba0610bcc660",
+      "status": "exited",
+      "exit_code": 1,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-collection-task",
+      "id": "fbafe400c7ed",
+      "status": "exited",
+      "exit_code": 0,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-child-scope",
+      "id": "00286e569559",
+      "status": "exited",
+      "exit_code": 0,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-browser-rerun",
+      "id": "3682b13bff3f",
+      "status": "exited",
+      "exit_code": 0,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-collection-rerun",
+      "id": "6fec40075f70",
+      "status": "exited",
+      "exit_code": 0,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-authority",
+      "id": "24beb963db33",
+      "status": "exited",
+      "exit_code": 1,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-browser",
+      "id": "b8d67867a0de",
+      "status": "exited",
+      "exit_code": 1,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-temporal-acceptance",
+      "id": "3f09818d5456",
+      "status": "exited",
+      "exit_code": 0,
+      "oom_killed": false
+    },
+    {
+      "name": "fi-20261110-regression",
+      "id": "17ee6e8cbb68",
+      "status": "exited",
+      "exit_code": 0,
+      "oom_killed": false
+    }
+  ],
+  "still_running": [],
+  "preserved": "Tested engine/evaluation images, frozen models/corpus, source checkouts and original evidence directory"
+}
