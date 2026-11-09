@@ -1,7 +1,7 @@
 # 文件智能 M0.1：Runtime 文件目录与兼容入口
 
 状态：M0.1 集成本地验收已完成（integrated local verification done）；以设计基线 `92b84ff6` 为起点，Runtime Catalog、HTTP 入口与容量标准档已接线，尚未线上发布。
-日期：2026-11-10。  
+日期：2026-11-10。
 工作项：文件智能设计 M0 的首个可交付切片；HTTP JSON 契约按 S-01 流程审阅。
 
 ## 本轮结果与边界
@@ -87,3 +87,11 @@ Runtime catalog 是文件身份与版本元数据的权威。应用层列表/JSO
 ## 当前检查点
 
 主设计的 Python 文件引擎与统一 LlamaIndex 检索选择属于后续 M1/M2，本轮未安装解析/OCR/检索依赖。M0.1 集成本地验收通过，已发现的完整性顺序问题已关闭；没有把本地验收等同线上发布，也不宣称整个 M0 或 M1/M2 已交付。
+
+## 应用侧集成验收
+
+Coding Web已使用Runtime catalog作为来源权威：legacy JSON仅作为按owner校验的迁移输入，成功receipt可重建；新来源不再写JSON。canonical文件与旧source alias均能恢复历史链接。上传/下载经临时文件spool、流式hash与Reader转发，运行时两槽限并发；项目和会话caps被代理并驱动UI额度。
+
+完整Coding Agent Go+Chrome回归通过（server约37秒，web约89秒）；另验11 MiB真实浏览器上传、50 MiB+1拒绝、draft最多200 MiB与alias历史链接，以及新draft/401账号切换/迟到来源列表等关键回归。Worker依赖基线迁入本隔离分支后270项通过、1项缺Temporal CLI未运行；8项原生图片探针通过。目录探针同时覆盖SQLite与PostgreSQL两个独立连接池并发。Gateway/adapter相关已有测试和go vet通过。
+
+代码推送：Runtime `272f4ebb`，Coding Web `7d96536`，均在各自`codex/file-intelligence-m0`分支。M0.1的目录/版本/legacy兼容出口已达到；整个M0的Representation/Anchor/Job与TaskInputSnapshot契约尚未完成，M1解析/OCR、M2统一LlamaIndex、M3Calc服务化、M4协作尚未交付。不将以上设计选型或本地测试等同已上线功能。
