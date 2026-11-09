@@ -432,7 +432,7 @@ def test_s3_object_store_env_replaces_the_directory() -> None:
             assert env["AR_S3_SECRET_ACCESS_KEY"]["valueFrom"]["secretKeyRef"]["name"] == "agent-runtime-r2"
             assert env["AR_S3_PREFIX"]["value"] == "prod/"
     components = {w["metadata"]["labels"].get(WORKER) for w, c in containers(manifests) if "AR_S3_ENDPOINT" in env_of(c)}
-    assert components == {"task-service", "worker"}, "Claim-Check 的两端都换"
+    assert components == {"task-service", "worker", "model-gateway"}, "Claim-Check 和原生图片边界共用 ObjectStore"
     assert seen
 
 
