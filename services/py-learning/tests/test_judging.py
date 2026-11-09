@@ -19,7 +19,7 @@ from agentruntime.modelgateway.v1 import model_gateway_pb2 as mg
 
 from agentruntime_learning.evals import deliverables as dv
 from agentruntime_learning.evals import rag
-from agentruntime_learning.evals.judging import DEFAULT_JUDGE, RecordingJudgeGateway, judging, summarize_log, vendor_of
+from agentruntime_learning.evals.judging import DEFAULT_JUDGE, JudgePinMismatch, RecordingJudgeGateway, judging, summarize_log, vendor_of
 
 
 class FakeGateway:
@@ -74,12 +74,14 @@ async def test_judge_calls_are_pinned_and_recorded(tmp_path: Path) -> None:
 
 async def test_misses_and_errors_are_recorded(tmp_path: Path) -> None:
     gw = RecordingJudgeGateway(FakeGateway(serve="a6api/other@1"), tmp_path / "j.jsonl", pin_attempts=2)
-    await gw.generate(judge_request())
+    with pytest.raises(JudgePinMismatch) as mismatch:
+        await gw.generate(judge_request())
+    assert mismatch.value.billed_cost_usd_micros == 3000
     bad = RecordingJudgeGateway(FakeGateway(fail=True), tmp_path / "j.jsonl")
     with pytest.raises(RuntimeError):
         await bad.generate(judge_request())
     summary = summarize_log(tmp_path / "j.jsonl")
-    assert (summary["calls"], summary["retried"], summary["errors"], summary["not_pinned"]) == (3, 1, 1, 1)
+    assert (summary["calls"], summary["retried"], summary["errors"], summary["not_pinned"]) == (3, 1, 2, 1)
     assert summary["cost_usd"] == 0.003, "被取代的那次也花了钱"
 
 
@@ -116,6 +118,15 @@ class FakeMetric:
 class FakeCase:
     def __init__(self, **kw: Any) -> None:
         self.__dict__.update(kw)
+
+
+async def test_wrong_judge_never_becomes_a_valid_deliverable_score(tmp_path: Path) -> None:
+    inputs = [{"id": "c1", "input": "Locate the file", "actual_output": "inventory/core.py",
+               "metrics": [{"name": "correctness", **dv.METRICS["correctness"]}]}]
+    inner = FakeGateway(serve="a6api/other@1")
+    out = await dv.gateway_scores(inputs, inner, tmp_path / "judgments.jsonl", metric_factory=FakeMetric, test_case=FakeCase)
+    assert out[0]["scores"]["correctness"] == {"score": None, "success": False, "error": "JudgePinMismatch"}
+    assert len(inner.seen) == 3 and summarize_log(tmp_path / "judgments.jsonl")["cost_usd"] == 0.0045
 
 
 async def test_deliverables_gateway_scoring_records_every_judgment(tmp_path: Path) -> None:

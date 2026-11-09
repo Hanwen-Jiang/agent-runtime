@@ -7,7 +7,7 @@
   token 与花费、出错时的错误类型；以及被测一侧的模型（调用方给的 `subject_models`），裁判与被测同家时标 `same_vendor`；
 - 只记模型的输入输出，不记请求头或密钥（Gateway 的客户端不把密钥放进请求体）；
 - 没落在钉的模型上（裁判超时、Gateway 按选档回退到别的模型，2026-11-03 t18 的 Ragas 40 次里有 4 次换成了 Sonnet 5.5）时
-  重问，至多 `pin_attempts` 次；每次尝试都记一行（`attempt`），被重问取代的那行标 `superseded`，汇总只按最后一次算。
+  重问，至多 `pin_attempts` 次；仍不匹配则拒绝评分，不能把其它模型的回答当作指定裁判结果。每次尝试及费用全部保留。
 
 DeepEval、Ragas 的 Gateway 模型（`deepeval_metrics.GatewayDeepEvalLLM`、`ragas.ModelGatewayRagasLLM`）把这个包装当 gateway 用，
 所以框架内部的多次调用（G-Eval 的步骤与打分、Ragas 的逐句判断）都会被逐条记下。
@@ -33,6 +33,14 @@ DEFAULT_JUDGE = "a6api/claude-opus-5-5@2026-10"
 JUDGE_LOG = "judgments.jsonl"
 
 _case: contextvars.ContextVar[dict[str, Any]] = contextvars.ContextVar("judge_case", default={})
+
+
+class JudgePinMismatch(RuntimeError):
+    """A different model answered; its bill is real but its score is not valid."""
+
+    def __init__(self, requested: str, served: str, billed_cost_usd_micros: int) -> None:
+        super().__init__(f"requested judge {requested}, actually served {served or 'unknown'}")
+        self.billed_cost_usd_micros = billed_cost_usd_micros
 
 
 def vendor_of(profile: str) -> str:
@@ -76,11 +84,15 @@ class RecordingJudgeGateway:
             return await self.inner.generate(request)
         pinned = mg.GenerateRequest.FromString(request.SerializeToString())
         pinned.call.pinned_model_profile = self.judge_profile
+        before_cost = self.cost_usd_micros
         for attempt in range(1, self.pin_attempts + 1):
             response, row = await self._judge(pinned, attempt)
-            if row["judge_pinned_ok"] or attempt == self.pin_attempts:
+            if row["judge_pinned_ok"]:
                 self._write(row)
                 return response
+            if attempt == self.pin_attempts:
+                self._write({**row, "error": "JudgePinMismatch"})
+                raise JudgePinMismatch(self.judge_profile, row["judge_served"], self.cost_usd_micros - before_cost)
             self._write({**row, "superseded": True})
         raise AssertionError("unreachable")
 
@@ -128,7 +140,7 @@ def summarize_log(path: Path) -> dict[str, Any]:
         "calls": len(rows),
         "retried": len(rows) - len(final),
         "errors": sum(1 for r in final if r.get("error")),
-        "not_pinned": sum(1 for r in final if not r.get("error") and not r.get("judge_pinned_ok")),
+        "not_pinned": sum(1 for r in final if r.get("judge_pinned_ok") is False),
         "same_vendor": sum(1 for r in final if r.get("same_vendor")),
         "cost_usd": round(sum(int((r.get("usage") or {}).get("cost_usd_micros") or r.get("billed_cost_usd_micros") or 0) for r in rows) / 1e6, 6),
     }
@@ -141,5 +153,5 @@ def gateway_from_env() -> Any:
     return _gateway()
 
 
-__all__ = ["DEFAULT_JUDGE", "JUDGE_LOG", "RecordingJudgeGateway", "gateway_from_env", "judging", "summarize_log", "vendor_of"]
+__all__ = ["DEFAULT_JUDGE", "JUDGE_LOG", "JudgePinMismatch", "RecordingJudgeGateway", "gateway_from_env", "judging", "summarize_log", "vendor_of"]
 
