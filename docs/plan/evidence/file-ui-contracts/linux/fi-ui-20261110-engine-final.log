@@ -1,0 +1,87 @@
+{
+  "mode": "real LibreOffice + Poppler; generated DOCX/PPTX fixture",
+  "checks": [
+    {
+      "source": "document.docx",
+      "selector": {
+        "page_index": 1
+      },
+      "pages": [
+        1
+      ],
+      "status": "partial",
+      "source_unchanged": true,
+      "artifacts": 3
+    },
+    {
+      "source": "presentation.pptx",
+      "selector": {
+        "slide_index": 2
+      },
+      "pages": [
+        2
+      ],
+      "status": "partial",
+      "source_unchanged": true,
+      "artifacts": 3
+    },
+    {
+      "source": "presentation.pptx",
+      "selector": {},
+      "pages": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "status": "partial",
+      "source_unchanged": true,
+      "artifacts": 12
+    },
+    {
+      "selector": {
+        "slides": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+      },
+      "rejected": "invalid_selector"
+    },
+    {
+      "selector": {
+        "slide_index": 12
+      },
+      "rejected": "invalid_selector"
+    },
+    {
+      "selector": {
+        "page_index": 1,
+        "slide_index": 2
+      },
+      "rejected": "invalid_selector"
+    }
+  ]
+}
+[{"name": "docx_body_block_paragraph_and_table_indices", "passed": true}, {"name": "region.png_crop_ocr_original_coordinates", "passed": true, "text": ["REGION 42"], "bbox": [[0.29600000000000004, 0.43285714285714283, 0.5760000000000001, 0.52]]}, {"name": "region.pdf_crop_ocr_original_coordinates", "passed": true, "text": ["REGION 42"], "bbox": [[0.2892137091966194, 0.42100694089753854, 0.5837701632135226, 0.5316840135901543]]}]
+PASS: image-owned Office/Poppler, mixed DOCX selectors and real OCR original-coordinate identity
+[32m[INFO] 2026-11-10 05:04:34,536 [RapidOCR] base.py:23: Using engine_name: onnxruntime[0m
+[32m[INFO] 2026-11-10 05:04:34,598 [RapidOCR] main.py:63: Using /opt/file-models/rapidocr/det.onnx[0m
+[32m[INFO] 2026-11-10 05:04:34,711 [RapidOCR] base.py:23: Using engine_name: onnxruntime[0m
+[32m[INFO] 2026-11-10 05:04:34,711 [RapidOCR] main.py:63: Using /opt/file-models/rapidocr/cls.onnx[0m
+[32m[INFO] 2026-11-10 05:04:34,783 [RapidOCR] base.py:23: Using engine_name: onnxruntime[0m
+[32m[INFO] 2026-11-10 05:04:34,784 [RapidOCR] main.py:63: Using /opt/file-models/rapidocr/rec.onnx[0m

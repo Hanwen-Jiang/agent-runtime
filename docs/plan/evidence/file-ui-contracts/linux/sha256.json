@@ -1,0 +1,18 @@
+{
+  "README.md": "815b8bb87c8b91d0752a6ef6728f03eef2592c7fdbfc6f1fe9e8f7d007ee56af",
+  "build.log": "c9b671eb870c40f136f0d87bd177abef86f4971eb2072c88407cd4c35d77d03e",
+  "cleanup.json": "27be43521144dd2e39aa92aea244cce582dcd729ae2eeae1d3afbbd36334f27f",
+  "engine-module-sha256.json": "7bcc59f96be61a023c4a7942ed9a5ccd6e782e46784fe9227ad3595681c8cec5",
+  "engine_probe.py": "e98233f6d06c9967607347dfd35b86c04c0ee52fedc15763914ba5a0cb97b34b",
+  "execution.json": "7a19708aaa912c53ec012a058c23e7d7227199d0e38d70a7b620b0e52f028b63",
+  "fi-ui-20261110-engine-final.log": "249a22b01de3e9a851d44cb6173e0afd95ee2d4901521300c324816c8a8485b4",
+  "fi-ui-20261110-query-engine.log": "db44fcae602c17cbbaa5142b430c9a2ee1820ab8222168d0a1e3d2e78486ef16",
+  "fi-ui-20261110-query-options.log": "8f27fcbaeafd1e2daeed0641dcf6cbe85f7774979fc9f847bd1d7267ac85c69a",
+  "ocr-identity-results.json": "6baef634ecbc4018b2bdf9a9ccdd31f3a8f42389bbb0eeea2eb13122fe2bcbae",
+  "office-preview-results.json": "778b5b3a6f74e7a35d1c60f1d810fccfb2d9cafd26a7b02f52d36783a3ee6564",
+  "query-selector-result.json": "71bbaa18a633a75548e74c4009e9cc395f7e65aeffc6b8d426b8718b90dc9e8b",
+  "query_result_probe.py": "12aff268f26ed58e9ccb60c712cf42d562911e185d460a3c676393772fde7057",
+  "selector-results.json": "7b5e5c5b73bd44c7e6e6eca8ff31fa8028949ffae154250bd7fa281042126527",
+  "source-comparison.json": "ea848f39ec813487562323e130c39a2c1c14bb54afdbb192ae39f741679cb8f5",
+  "source-hashes.json": "e82030fbd7a9548dbd0f324bf4d29e75b942d91454b3e29e7391bf3ac437ef78"
+}

@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import tempfile
 from functools import lru_cache
+from dataclasses import replace
 from pathlib import Path
 
 from .models import Context, FileEngineError, indices, MAX_PAGES
@@ -45,7 +46,10 @@ def ocr_image(ctx: Context, path: Path, anchor: dict) -> list[dict]:
         points = result.boxes[index]
         x = [float(p[0]) / width for p in points]
         y = [float(p[1]) / height for p in points]
-        region = {**anchor, "bbox": [min(x), min(y), max(x), max(y)], "coordinate_space": "normalized_top_left_after_rotation"}
+        # OCR boxes are relative to the rendered/cropped bitmap; public anchors
+        # always stay in the original page/image coordinate space.
+        left,top,right,bottom=checked_bbox(anchor.get('bbox',[0,0,1,1]))
+        region = {**anchor, "bbox": [left+min(x)*(right-left), top+min(y)*(bottom-top), left+max(x)*(right-left), top+max(y)*(bottom-top)], "coordinate_space": "normalized_top_left_after_rotation"}
         score = float(result.scores[index])
         blocks.append(ctx.block("ocr_text", text, region, derivation="ocr", confidence=score, low_confidence=score < .8))
     return blocks
@@ -110,11 +114,6 @@ def image_read(ctx: Context) -> dict:
     blocks = []
     if ctx.options.get("ocr", False):
         blocks = ocr_image(ctx, path, anchor)
-        if cropped:
-            left,top,right,bottom=anchor["bbox"]
-            for block in blocks:
-                a,b,c,d=block["anchor"]["bbox"]
-                block["anchor"]["bbox"]=[left+a*(right-left),top+b*(bottom-top),left+c*(right-left),top+d*(bottom-top)]
     return ctx.response(blocks=blocks, artifacts=[ctx.artifact(path,"image/png",anchor)], capabilities=capabilities(),
                         coverage={"selection":anchor,"visual_content_in_artifact":True,"ocr_requested":bool(ctx.options.get("ocr")),"ocr_regions":len(blocks)})
 
@@ -147,5 +146,29 @@ def render(ctx: Context) -> dict:
         return ctx.response(status='partial' if partial else 'ready',artifacts=artifacts,coverage={'total_pages':len(reader.pages),'processed_pages':pages},capabilities=capabilities())
     if ctx.source.suffix.lower() in ('.docx','.xlsx','.pptx','.odt','.ods','.odp','.rtf','.doc','.xls','.ppt'):
         path=office_pdf(ctx)
-        return ctx.response(artifacts=[ctx.artifact(path,'application/pdf',{'kind':'rendered_document','renderer':'libreoffice'})],coverage={'rendered':True,'text_layout_preservation':'requires_visual_review'},capabilities=capabilities())
+        from pypdf import PdfReader
+        reader=PdfReader(path)
+        selector=dict(ctx.selector)
+        presentation=ctx.source.suffix.lower() in ('.pptx','.ppt','.odp')
+        if presentation:
+            if 'slide_index' in selector:
+                if 'page_index' in selector or 'pages' in selector or 'slides' in selector:
+                    raise FileEngineError('invalid_selector','choose one slide/page selector')
+                selector['page_index']=selector.pop('slide_index')
+            elif 'slides' in selector:
+                if 'page_index' in selector or 'pages' in selector:
+                    raise FileEngineError('invalid_selector','choose one slide/page selector')
+                selector['pages']=selector.pop('slides')
+        pages,partial=indices(selector,len(reader.pages))
+        # The temporary PDF is a renderer output, not a new source authority.
+        # Keep every public artifact attached to the original Office version.
+        rendered=replace(ctx,source=path,selector=selector)
+        paths=render_pdf_pages(rendered,pages)
+        artifacts=[ctx.artifact(path,'application/pdf',{'kind':'rendered_document','renderer':'libreoffice'})]
+        for page,index in zip(paths,pages):
+            anchor={'kind':'office_page','page_index':index,'bbox':selector.get('bbox',[0,0,1,1]),'renderer':'libreoffice_poppler'}
+            if presentation:anchor['slide_index']=index
+            artifacts.append(ctx.artifact(page,'image/png',anchor))
+        return ctx.response(status='partial' if partial else 'ready',artifacts=artifacts,
+                            coverage={'rendered':True,'total_pages':len(reader.pages),'processed_pages':pages,'text_layout_preservation':'requires_visual_review'},capabilities=capabilities())
     raise FileEngineError('unsupported_render','no renderer for this format','unsupported')

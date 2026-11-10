@@ -1,0 +1,122 @@
+package taskapi
+
+import (
+	"context"
+	"encoding/json"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/objectstore"
+	"github.com/agentruntime/agent-runtime/libs/go-core/providers/relational"
+	commonv1 "github.com/agentruntime/agent-runtime/proto/gen/go/agentruntime/common/v1"
+	"github.com/agentruntime/agent-runtime/services/go-task-service/internal/files"
+	"net/http"
+	"strings"
+	"testing"
+	"time"
+)
+
+func TestFileVersionUIProbe(t *testing.T) {
+	f := newArtifactAPI(t, true)
+	ctx := context.Background()
+	tenant := &commonv1.TenantContext{TenantId: "t1", UserId: "u1", WorkspaceId: "w1"}
+	objects, e := f.objects.Bind(tenant)
+	if e != nil {
+		t.Fatal(e)
+	}
+	id := "src_" + strings.Repeat("1", 32)
+	old, e := objects.Put(ctx, "uploads/"+id+"/notes.txt", []byte("old selected contents"), objectstore.PutOptions{ContentType: "text/plain"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	catalog := files.New(f.store)
+	record, e := catalog.Register(ctx, tenant, "u1", files.UploadRecord{SourceID: id, WorkspaceID: "w1", Name: "notes.txt", ObjectURI: old.URI, MIMEType: "text/plain", SHA256: old.SHA256, SizeBytes: old.Size, CreatedAt: time.Now()})
+	if e != nil {
+		t.Fatal(e)
+	}
+	latest, e := objects.Put(ctx, "file-derived/fjob_fixture/latest", []byte("new head contents"), objectstore.PutOptions{ContentType: "text/plain"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	newID := "ver_" + strings.Repeat("2", 32)
+	db, e := f.store.Bind(tenant)
+	if e != nil {
+		t.Fatal(e)
+	}
+	e = db.Transaction(ctx, relational.TxOptions{}, func(ctx context.Context, tx relational.Tx) error {
+		_, e := tx.Execute(ctx, `INSERT INTO runtime_file_versions(version_id,file_id,object_uri,mime_type,size_bytes,sha256,created_at,created_by,parent_version_id) VALUES($1,$2,$3,'text/plain',$4,$5,$6,'u1',$7)`, newID, id, latest.URI, latest.Size, latest.SHA256, time.Now().UnixMilli(), record.Version.ID)
+		if e != nil {
+			return e
+		}
+		_, e = tx.Execute(ctx, `UPDATE runtime_files SET head_version_id=$1 WHERE file_id=$2`, newID, id)
+		return e
+	})
+	if e != nil {
+		t.Fatal(e)
+	}
+	get := func(user, file, version string) (int, files.Record) {
+		req, _ := http.NewRequest("GET", f.url+"/v1/files/"+file+"/versions/"+version+"?workspace_id=w1", nil)
+		req.Header.Set("Authorization", "Bearer "+f.token("t1", user))
+		res, e := http.DefaultClient.Do(req)
+		if e != nil {
+			t.Fatal(e)
+		}
+		defer res.Body.Close()
+		var r files.Record
+		_ = json.NewDecoder(res.Body).Decode(&r)
+		return res.StatusCode, r
+	}
+	status, r := get("u1", id, record.Version.ID)
+	if status != 200 || r.Version.ID != record.Version.ID || r.File.HeadVersionID != newID || r.ObjectURI != old.URI {
+		t.Fatalf("historical selection drifted: %d %#v", status, r)
+	}
+	if status, _ := get("other", id, record.Version.ID); status != 404 {
+		t.Fatal("private version leaked")
+	}
+	if status, _ := get("u1", "src_"+strings.Repeat("3", 32), record.Version.ID); status != 404 {
+		t.Fatal("wrong file version accepted")
+	}
+	if e = catalog.Mutate(ctx, tenant, "u1", id, "grant", map[string]any{"subject_id": "other", "permission": "read"}); e != nil {
+		t.Fatal(e)
+	}
+	if status, _ := get("other", id, record.Version.ID); status != 200 {
+		t.Fatal("read grant could not read version")
+	}
+	if e = catalog.Mutate(ctx, tenant, "u1", id, "revoke", map[string]any{"subject_id": "other"}); e != nil {
+		t.Fatal(e)
+	}
+	if status, _ := get("other", id, record.Version.ID); status != 404 {
+		t.Fatal("revoked version leaked")
+	}
+	root, e := catalog.Root(ctx, tenant, "u1", id, record.Version.ID)
+	if e != nil {
+		t.Fatal(e)
+	}
+	job, e := catalog.BeginJob(ctx, tenant, "u1", "edit", "owner-edit", []files.Root{root}, map[string]any{})
+	if e != nil {
+		t.Fatal(e)
+	}
+	e = db.Transaction(ctx, relational.TxOptions{}, func(ctx context.Context, tx relational.Tx) error {
+		_, e := tx.Execute(ctx, `INSERT INTO runtime_file_changesets(changeset_id,job_id,file_id,expected_head,acl_epoch,candidate_uri,candidate_sha256,candidate_size,mime_type,required_fidelity,verification_digest,status,created_at) VALUES('chg_ui_probe',$1,$2,$3,1,$4,$5,12,'text/plain','L1',$5,'verified',0)`, job.ID, id, record.Version.ID, latest.URI, latest.SHA256)
+		return e
+	})
+	if e != nil {
+		t.Fatal(e)
+	}
+	ownerDetail, e := catalog.Detail(ctx, tenant, "u1", id)
+	if e != nil || len(ownerDetail["changesets"].([]relational.Row)) != 1 {
+		t.Fatalf("owner candidate missing: %v", e)
+	}
+	if e = catalog.Mutate(ctx, tenant, "u1", id, "grant", map[string]any{"subject_id": "other", "permission": "write"}); e != nil {
+		t.Fatal(e)
+	}
+	sharedTenant := &commonv1.TenantContext{TenantId: "t1", UserId: "other", WorkspaceId: "w1"}
+	shared, e := catalog.Detail(ctx, sharedTenant, "other", id)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if len(shared["changesets"].([]relational.Row)) != 0 {
+		t.Fatal("shared actor sees unopenable private candidate job")
+	}
+	if len(shared["versions"].([]relational.Row)) != 2 {
+		t.Fatal("candidate projection change hid authorized immutable versions")
+	}
+
+}

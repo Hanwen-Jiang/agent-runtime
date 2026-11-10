@@ -1,0 +1,55 @@
+{
+  "date": "2026-11-10",
+  "host": "cloudnium_cloud",
+  "production_modified": false,
+  "image": {
+    "tag": "fi-20261110-engines:ui-parity",
+    "id": "sha256:130437f1ff960777f485b3993c53c8859edafb85ca950efa3cd29fd084aa159b",
+    "docker_size_bytes": 1846999401
+  },
+  "runs": [
+    {
+      "name": "fi-ui-20261110-engine-final",
+      "image": "sha256:130437f1ff960777f485b3993c53c8859edafb85ca950efa3cd29fd084aa159b",
+      "status": "exited",
+      "exit_code": 0,
+      "oom_killed": false,
+      "cpus": 4.0,
+      "memory_bytes": 8589934592,
+      "network_mode": "none",
+      "read_only_rootfs": true,
+      "command": [
+        "/probes/linux/engine_probe.py"
+      ]
+    },
+    {
+      "name": "fi-ui-20261110-query-options",
+      "image": "sha256:0b063558b89333fa7a571e271a623bdc63ab2cc4f712bd47147a66417cf56495",
+      "status": "exited",
+      "exit_code": 0,
+      "oom_killed": false,
+      "cpus": 2.0,
+      "memory_bytes": 3221225472,
+      "network_mode": "none",
+      "read_only_rootfs": true,
+      "command": [
+        "/venv/bin/python",
+        "/probes/query_selector_probe.py"
+      ]
+    },
+    {
+      "name": "fi-ui-20261110-query-engine",
+      "image": "sha256:130437f1ff960777f485b3993c53c8859edafb85ca950efa3cd29fd084aa159b",
+      "status": "exited",
+      "exit_code": 0,
+      "oom_killed": false,
+      "cpus": 4.0,
+      "memory_bytes": 8589934592,
+      "network_mode": "none",
+      "read_only_rootfs": true,
+      "command": [
+        "/probes/linux/query_result_probe.py"
+      ]
+    }
+  ]
+}

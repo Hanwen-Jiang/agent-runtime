@@ -1,0 +1,134 @@
+{
+  "status": "ready",
+  "blocks": [],
+  "outline": [],
+  "warnings": [],
+  "coverage": {
+    "requested": {
+      "sheet": "Public",
+      "range": "A1:B3"
+    },
+    "processed": {
+      "sheet": "Public",
+      "range": "A1:B3"
+    },
+    "omitted": [],
+    "returned_blocks": 0,
+    "output_truncated": false
+  },
+  "artifacts": [
+    {
+      "path": "/evidence/selector-work/query-output/query-result.csv",
+      "mime_type": "text/csv",
+      "selector": {},
+      "sha256": "f725c019050cf21ca726f0b7cedf27b3896d9ed7c60572a2b493a3836c6e26d0",
+      "size_bytes": 11
+    }
+  ],
+  "capabilities": {},
+  "source": {
+    "sha256": "78328a5c0080671d5ef74e6e0548127ec2a3621e1d2c1b9df5ceb2dee71c24a7",
+    "size_bytes": 5374,
+    "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  },
+  "processor": {
+    "version": "file-engines-v1",
+    "digest": "0a47bb5dbfce835d58cbaab2ec9e3eec71a4052d3255ff4f7ebd9ff843403337",
+    "packages": {
+      "pypdf": "6.19.0",
+      "docling": "2.133.0",
+      "rapidocr": "3.9.2",
+      "onnxruntime": "1.30.0",
+      "python-docx": "1.2.0",
+      "openpyxl": "3.1.5",
+      "python-pptx": "1.0.2",
+      "Pillow": "12.3.0",
+      "duckdb": "1.5.6",
+      "PyYAML": "6.0.3",
+      "defusedxml": "0.7.1"
+    },
+    "assets": {
+      "models": "54ef2f87d3fb57e934a2f820a5f60fab5a5041e71b23fc3e27705cf4e2fc8426",
+      "fonts": "6546fd8a366d73456fb78c7f9e4c2d1477f4d765ea15b0182fa8b3b8a60876ac",
+      "system_packages": "4579bf1dbeb835500f911ab3f90c61b5dd20eac00d4781b943a0b6cf018bc549"
+    },
+    "config_digest": "fab289094d6c06f0d66b8c91d958348ba603fdc946188547f905fd722e33128d"
+  },
+  "columns": [
+    "total"
+  ],
+  "rows": [
+    [
+      26
+    ]
+  ],
+  "schema": [
+    {
+      "name": "id",
+      "type": "BIGINT",
+      "nullable": true
+    },
+    {
+      "name": "price",
+      "type": "BIGINT",
+      "nullable": true
+    }
+  ],
+  "dataset": {
+    "sheet": "Public",
+    "range": "A1:B3",
+    "rows": 2,
+    "columns": [
+      "id",
+      "price"
+    ],
+    "formula_cells": [],
+    "calculation_status": "not_applicable"
+  },
+  "verification": {
+    "input_rows": 2,
+    "returned_rows": 1,
+    "total_rows_known": true,
+    "read_only": true
+  },
+  "computation": {
+    "sql": "SELECT SUM(data.price * data_2.qty) AS total FROM data JOIN data_2 USING(id)",
+    "parameters": [],
+    "engine": "duckdb/1.5.6",
+    "source_sha256": "78328a5c0080671d5ef74e6e0548127ec2a3621e1d2c1b9df5ceb2dee71c24a7",
+    "inputs": [
+      {
+        "alias": "data",
+        "source_sha256": "78328a5c0080671d5ef74e6e0548127ec2a3621e1d2c1b9df5ceb2dee71c24a7",
+        "selector": {
+          "sheet": "Public",
+          "range": "A1:B3"
+        }
+      },
+      {
+        "alias": "data_2",
+        "source_sha256": "6e9fe7296053b11518b70fe5fd67d0c0bcf1dcca948aee2e2e5ef37421b392af",
+        "selector": {
+          "sheet": "Lookup",
+          "range": "A1:B3"
+        },
+        "dataset": {
+          "sheet": "Lookup",
+          "range": "A1:B3",
+          "rows": 2,
+          "columns": [
+            "id",
+            "qty"
+          ],
+          "formula_cells": [],
+          "calculation_status": "not_applicable"
+        }
+      }
+    ],
+    "selector": {
+      "sheet": "Public",
+      "range": "A1:B3"
+    },
+    "semantic_rules": {}
+  }
+}

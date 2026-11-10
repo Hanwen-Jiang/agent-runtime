@@ -264,7 +264,7 @@ func (c *Catalog) Detail(ctx context.Context, t *commonv1.TenantContext, actor, 
 			}
 		}
 		out["grants"] = grants
-		jobs, e := tx.Query(ctx, `SELECT job_id,operation,status,inputs,result,created_at FROM runtime_file_jobs WHERE workspace_id=$1 AND requested_by=$2 ORDER BY created_at DESC LIMIT 100`, t.GetWorkspaceId(), actor)
+		jobs, e := tx.Query(ctx, `SELECT job_id,operation,status,inputs,request,result,created_at FROM runtime_file_jobs WHERE workspace_id=$1 AND requested_by=$2 AND inputs LIKE $3 ORDER BY created_at DESC LIMIT 100`, t.GetWorkspaceId(), actor, `%"file_id":"`+fileID+`"%`)
 		if e != nil {
 			return e
 		}
@@ -278,14 +278,20 @@ func (c *Catalog) Detail(ctx context.Context, t *commonv1.TenantContext, actor, 
 						break
 					}
 					result := map[string]any{}
+					request := map[string]any{}
 					_ = json.Unmarshal([]byte(str(j, "result")), &result)
-					filtered = append(filtered, Job{ID: str(j, "job_id"), Operation: str(j, "operation"), Status: str(j, "status"), Result: result, CreatedAt: num(j, "created_at")})
+					_ = json.Unmarshal([]byte(str(j, "request")), &request)
+					consumer, e := activeConsumer(ctx, tx, actor, str(j, "job_id"))
+					if e != nil {
+						return e
+					}
+					filtered = append(filtered, Job{ID: str(j, "job_id"), Operation: str(j, "operation"), Status: str(j, "status"), Inputs: inputs, Request: request, ConsumerID: consumer, Result: result, CreatedAt: num(j, "created_at")})
 					break
 				}
 			}
 		}
 		out["jobs"] = filtered
-		changes, e := tx.Query(ctx, `SELECT changeset_id,job_id,expected_head,candidate_sha256,candidate_size,required_fidelity,verification_digest,status,published_version,created_at FROM runtime_file_changesets WHERE file_id=$1 ORDER BY created_at DESC`, fileID)
+		changes, e := tx.Query(ctx, `SELECT c.changeset_id,c.job_id,c.expected_head,c.candidate_sha256,c.candidate_size,c.required_fidelity,c.verification_digest,c.status,c.published_version,c.created_at FROM runtime_file_changesets c JOIN runtime_file_jobs j ON j.job_id=c.job_id WHERE c.file_id=$1 AND j.requested_by=$2 AND j.workspace_id=$3 ORDER BY c.created_at DESC LIMIT 100`, fileID, actor, t.GetWorkspaceId())
 		if e != nil {
 			return e
 		}

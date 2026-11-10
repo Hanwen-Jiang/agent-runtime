@@ -223,6 +223,7 @@ func (s *Server) Mount(mux *http.ServeMux, opts ...connect.HandlerOption) {
 	mux.HandleFunc("POST /v1/files/{file_id}/actions", s.fileMutation)
 	mux.HandleFunc("POST /v1/files/{file_id}/publish", s.filePublish)
 	mux.HandleFunc("GET /v1/files/{file_id}/versions/{version_id}/content", s.fileVersionContent)
+	mux.HandleFunc("GET /v1/files/{file_id}/versions/{version_id}", s.fileVersion)
 	mux.HandleFunc("POST /v1/file-jobs", s.fileStartJob)
 	mux.HandleFunc("GET /v1/file-jobs/{job_id}", s.fileGetJob)
 	mux.HandleFunc("POST /v1/file-jobs/{job_id}/cancel", s.fileCancelJob)

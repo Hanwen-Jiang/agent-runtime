@@ -1,0 +1,13 @@
+{
+  "removed_containers": [
+    "fi-ui-20261110-engine-final",
+    "fi-ui-20261110-query-options",
+    "fi-ui-20261110-query-engine"
+  ],
+  "all_exit_codes": 0,
+  "all_oom_killed": false,
+  "images_retained": [
+    "fi-20261110-engines:ui-parity"
+  ],
+  "production_modified": false
+}

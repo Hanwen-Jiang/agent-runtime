@@ -153,10 +153,6 @@ def pdf_read(ctx: Context) -> dict:
             anchor["bbox"] = ctx.selector["bbox"]
             artifacts.extend(ctx.artifact(path, "image/png", anchor) for path in paths)
             selected_blocks = ocr_image(ctx, paths[0], anchor)
-            left, top, right, bottom = anchor["bbox"]
-            for block in selected_blocks:
-                a,b,c,d = block["anchor"]["bbox"]
-                block["anchor"]["bbox"] = [left+a*(right-left),top+b*(bottom-top),left+c*(right-left),top+d*(bottom-top)]
             blocks.extend(selected_blocks)
             if not selected_blocks:
                 warnings.append({"code":"ocr_empty","message":"OCR found no text in the selected region","page_index":index})
@@ -234,26 +230,42 @@ def docx_read(ctx: Context) -> dict:
     from docx import Document
     doc = Document(ctx.source)
     blocks, outline = [], []
+    paragraph_index,table_index=0,0
     for index, item in enumerate(doc.iter_inner_content()):
         anchor = {"kind": "document_block", "block_index": index}
         if hasattr(item, "rows"):
+            anchor['table_index']=table_index
+            table_index+=1
             text = "\n".join("\t".join(c.text for c in row.cells) for row in item.rows)
             blocks.append(ctx.block("table", text, anchor, rows=len(item.rows)))
         else:
+            anchor['paragraph_index']=paragraph_index
+            paragraph_index+=1
             blocks.append(ctx.block("paragraph", item.text, anchor, style=item.style.name))
             if item.style.name.startswith("Heading"):
-                outline.append({"block_index": index, "text": item.text, "style": item.style.name})
+                outline.append({"block_index": index, "paragraph_index":anchor['paragraph_index'], "text": item.text, "style": item.style.name})
     for sec_id, section in enumerate(doc.sections):
         for kind in ("header", "footer"):
             content = getattr(section, kind)
             for index, paragraph in enumerate(content.paragraphs):
                 if paragraph.text:
                     blocks.append(ctx.block(kind, paragraph.text, {"kind": "document_block", "section": sec_id, "part": kind, "block_index": index}))
-    start = ctx.selector.get("block_index", ctx.selector.get("paragraph_index", ctx.selector.get("start", 0)))
-    count = 1 if "block_index" in ctx.selector or "paragraph_index" in ctx.selector else positive(ctx.selector.get("count"), 200, 500, "count")
-    if not isinstance(start, int) or isinstance(start, bool) or start < 0 or start > len(blocks):
-        raise FileEngineError("invalid_selector", "block start is outside document")
-    selected = blocks[start:start+count]
+    if 'paragraph_index' in ctx.selector or 'table_index' in ctx.selector:
+        field='paragraph_index' if 'paragraph_index' in ctx.selector else 'table_index'
+        if 'block_index' in ctx.selector or ('paragraph_index' in ctx.selector and 'table_index' in ctx.selector):
+            raise FileEngineError('invalid_selector','choose one document block selector')
+        value=ctx.selector[field]
+        if not isinstance(value,int) or isinstance(value,bool) or value<0:
+            raise FileEngineError('invalid_selector','document index must be nonnegative')
+        selected=[block for block in blocks if block['anchor'].get(field)==value]
+        if not selected:raise FileEngineError('invalid_selector','document index is outside document')
+        start=selected[0]['anchor']['block_index']
+    else:
+        start = ctx.selector.get("block_index", ctx.selector.get("start", 0))
+        count = 1 if "block_index" in ctx.selector else positive(ctx.selector.get("count"), 200, 500, "count")
+        if not isinstance(start, int) or isinstance(start, bool) or start < 0 or start > len(blocks):
+            raise FileEngineError("invalid_selector", "block start is outside document")
+        selected = blocks[start:start+count]
     xml = doc.part.blob
     warnings = [{"code": "revisions_present", "message": "tracked revisions exist; extracted text is not an accepted/rejected revision view"}] if b"<w:ins" in xml or b"<w:del" in xml else []
     return ctx.response(status="partial" if len(selected)<len(blocks) else "ready", blocks=selected, outline=outline, warnings=warnings,

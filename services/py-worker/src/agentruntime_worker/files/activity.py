@@ -28,6 +28,24 @@ from agentruntime_worker.sandbox.store import relational_store
 
 OPERATIONS={"query":"table.query","edit":"document.edit_apply","recalculate":"table.recalculate","notebook_execute":"notebook.execute","index":"read"}
 
+def query_input_options(options, selector, blobs):
+    """Bind per-input ranges to the already authorized immutable source order."""
+    options=dict(options)
+    selectors=options.pop('input_selectors',None)
+    headers=options.pop('input_headers',None)
+    if selectors is not None:
+        allowed={'sheet','sheet_id','range','columns','row_offset','row_limit'}
+        if not isinstance(selectors,list) or len(selectors)!=len(blobs) or any(not isinstance(item,dict) or set(item)-allowed for item in selectors):
+            raise InvalidError('invalid_input_selectors','input_selectors must contain one bounded table selector per authorized input')
+        if selectors[0]!=selector:
+            raise InvalidError('invalid_input_selectors','primary selector must match the selected source range')
+    if headers is not None and (not isinstance(headers,list) or len(headers)!=len(blobs) or any(not isinstance(value,bool) for value in headers)):
+        raise InvalidError('invalid_input_headers','input_headers must contain one boolean per authorized input')
+    if headers is not None:options['header']=headers[0]
+    options['tables']=[{'alias':f'data_{i+2}','path':path,'selector':selectors[i+1] if selectors is not None else {},'header':headers[i+1] if headers is not None else True} for i,(path,_) in enumerate(blobs[1:])]
+    return options
+
+
 class FileActivities:
     def __init__(self, config, objects, broker):
         self.config,self.objects,self.broker=config,objects,broker
@@ -128,7 +146,7 @@ class FileActivities:
         for key in ('path','input_root','output_dir','datasets','tables','image_path','candidate_path','base_path','execute_authorized'):
             options.pop(key,None)
         if request['operation']=='query':
-            options['tables']=[{'alias':f'data_{i+2}','path':path} for i,(path,_) in enumerate(blobs[1:])]
+            options=query_input_options(options,request.get('request',{}).get('selector') or {},blobs)
         if request['operation']=='edit':
             allowed_images={root['version_id']:path for root,(path,_) in zip(request['inputs'][1:],blobs[1:])}
             operations=[]

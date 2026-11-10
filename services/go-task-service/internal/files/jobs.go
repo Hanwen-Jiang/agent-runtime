@@ -120,6 +120,17 @@ func verifyRoots(ctx context.Context, tx relational.Tx, t *commonv1.TenantContex
 	}
 	return nil
 }
+
+// A resumable UI may only cancel one of this actor's active subscriptions.
+// The lexicographic choice is stable across reloads and never revokes peers.
+func activeConsumer(ctx context.Context, tx relational.Tx, actor, jobID string) (string, error) {
+	row, ok, e := tx.QueryOne(ctx, `SELECT consumer_id FROM runtime_file_job_consumers WHERE job_id=$1 AND requested_by=$2 AND state='active' ORDER BY consumer_id LIMIT 1`, jobID, actor)
+	if e != nil || !ok {
+		return "", e
+	}
+	return str(row, "consumer_id"), nil
+}
+
 func (c *Catalog) Job(ctx context.Context, t *commonv1.TenantContext, actor, id string) (Job, error) {
 	db, e := c.bind(t, actor, t.GetWorkspaceId())
 	if e != nil {
@@ -135,6 +146,10 @@ func (c *Catalog) Job(ctx context.Context, t *commonv1.TenantContext, actor, id 
 			return missing()
 		}
 		j = decodeJob(row)
+		j.ConsumerID, e = activeConsumer(ctx, tx, actor, id)
+		if e != nil {
+			return e
+		}
 		if e := verifyRoots(ctx, tx, t, actor, j.Inputs); e != nil {
 			return e
 		}

@@ -1,0 +1,18 @@
+[
+  {
+    "source": "region.png",
+    "recognized_text": [
+      "REGION 42"
+    ],
+    "anchor_identity_matches": true,
+    "source_unchanged": true
+  },
+  {
+    "source": "region.pdf",
+    "recognized_text": [
+      "REGION 42"
+    ],
+    "anchor_identity_matches": true,
+    "source_unchanged": true
+  }
+]

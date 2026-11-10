@@ -1,0 +1,83 @@
+package server
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+)
+
+func TestSelectedSourceVersionProbe(t *testing.T) {
+	id := "src_" + strings.Repeat("1", 32)
+	old := "ver_" + strings.Repeat("2", 32)
+	head := "ver_" + strings.Repeat("3", 32)
+	fake := &fakeTaskAPI{}
+	var mu sync.Mutex
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		if strings.HasPrefix(r.URL.Path, "/v1/files/") {
+			var record runtimeFileRecord
+			record.File.ID = id
+			record.File.HeadVersionID = head
+			record.File.CreatedBy = "alice"
+			record.File.WorkspaceID = r.URL.Query().Get("workspace_id")
+			record.File.Name = "plan.docx"
+			record.File.Lifecycle = "active"
+			record.File.CreatedAt = time.Now()
+			record.Version.ID = head
+			if strings.Contains(r.URL.Path, "/versions/") {
+				record.Version.ID = old
+			}
+			record.Version.FileID = id
+			record.Version.SHA256 = strings.Repeat("a", 64)
+			record.Version.SizeBytes = 12
+			record.Version.MIMEType = "application/zip"
+			record.Version.CreatedBy = "alice"
+			record.Version.CreatedAt = time.Now()
+			record.SourceURI = "obj://acme/file-derived/fjob_fixture/" + record.Version.ID
+			json.NewEncoder(w).Encode(record)
+			return
+		}
+		fake.ServeHTTP(w, r)
+	}))
+	defer upstream.Close()
+	server, _, cfg, _ := newServerWith(t, func(c *Config) { c.TaskAPI = upstream.URL })
+	fake.policies = cfg.PoliciesFile
+	c := newClient(t, server.URL)
+	project := sampleProject(t, c)
+	base, _ := newSession(t, c, cfg, "acme", project)
+	code, out, raw := c.do("POST", base+"/tasks", map[string]any{"message": "Read the selected historical plan", "source_ids": []string{id}, "source_versions": map[string]string{id: old}})
+	if code != 201 && code != 200 {
+		t.Fatal(code, raw)
+	}
+	if out["source_versions"].(map[string]any)[id] != old {
+		t.Fatal("history did not preserve chosen version")
+	}
+	mu.Lock()
+	submitted := fake.submits[len(fake.submits)-1]
+	mu.Unlock()
+	if submitted["attachments"].([]any)[0] != "obj://acme/file-derived/fjob_fixture/"+old {
+		t.Fatalf("selected version drifted: %v", submitted["attachments"])
+	}
+	code, ordinary, raw := c.do("POST", base+"/tasks", map[string]any{"message": "Read current head", "source_ids": []string{id}})
+	if code != 201 && code != 200 {
+		t.Fatal(code, raw)
+	}
+	if ordinary["source_versions"].(map[string]any)[id] != head {
+		t.Fatal("ordinary source submission did not persist resolved version")
+	}
+	bad := map[string]any{"message": "bad", "source_ids": []string{id}, "source_versions": map[string]string{id: head}}
+	code, _, _ = c.do("POST", base+"/tasks", bad)
+	if code != 400 {
+		t.Fatal("mismatched response version accepted", code)
+	}
+	bad["source_versions"] = map[string]string{"src_" + strings.Repeat("4", 32): old}
+	code, _, _ = c.do("POST", base+"/tasks", bad)
+	if code != 400 {
+		t.Fatal("extra version scope accepted", code)
+	}
+}
