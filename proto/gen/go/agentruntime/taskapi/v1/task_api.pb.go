@@ -257,8 +257,11 @@ type SubmitTaskRequest struct {
 	// 这个 Task 要联网（设计书改动稿 W8；docs/plan/cloud-deploy.md D-16）。沙箱默认断网；按租户策略的 sandbox.network 核对，
 	// 不允许联网、主机不在范围里、时长超过上限、只读的 Task（effect 上限是 read）一律 denied 并说明原因，不悄悄截断。
 	NetworkRequest *NetworkRequest `protobuf:"bytes,11,opt,name=network_request,json=networkRequest,proto3" json:"network_request,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// 可选的美元预算上限（百万分之一美元）。不填沿用租户策略；显式值必须为正，
+	// 且不能高于租户的非零美元预算。首次提交固定预算，重试不能更换预算或提交约束。
+	BudgetUsdMicros *int64 `protobuf:"varint,12,opt,name=budget_usd_micros,json=budgetUsdMicros,proto3,oneof" json:"budget_usd_micros,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SubmitTaskRequest) Reset() {
@@ -366,6 +369,13 @@ func (x *SubmitTaskRequest) GetNetworkRequest() *NetworkRequest {
 		return x.NetworkRequest
 	}
 	return nil
+}
+
+func (x *SubmitTaskRequest) GetBudgetUsdMicros() int64 {
+	if x != nil && x.BudgetUsdMicros != nil {
+		return *x.BudgetUsdMicros
+	}
+	return 0
 }
 
 // NetworkRequest 是提交时声明的联网申请。批准：租户策略的 approver 是 submitter（默认）时，提交本身就是提交者的批准；
@@ -1801,7 +1811,7 @@ var File_agentruntime_taskapi_v1_task_api_proto protoreflect.FileDescriptor
 
 const file_agentruntime_taskapi_v1_task_api_proto_rawDesc = "" +
 	"\n" +
-	"&agentruntime/taskapi/v1/task_api.proto\x12\x17agentruntime.taskapi.v1\x1a\"agentruntime/common/v1/enums.proto\x1a%agentruntime/common/v1/metering.proto\x1a$agentruntime/common/v1/payload.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb0\x04\n" +
+	"&agentruntime/taskapi/v1/task_api.proto\x12\x17agentruntime.taskapi.v1\x1a\"agentruntime/common/v1/enums.proto\x1a%agentruntime/common/v1/metering.proto\x1a$agentruntime/common/v1/payload.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf7\x04\n" +
 	"\x11SubmitTaskRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x1d\n" +
@@ -1815,7 +1825,9 @@ const file_agentruntime_taskapi_v1_task_api_proto_rawDesc = "" +
 	"\bpriority\x18\t \x01(\x0e2 .agentruntime.common.v1.PriorityR\bpriority\x12E\n" +
 	"\x0eeffect_ceiling\x18\n" +
 	" \x01(\x0e2\x1e.agentruntime.common.v1.EffectR\reffectCeiling\x12P\n" +
-	"\x0fnetwork_request\x18\v \x01(\v2'.agentruntime.taskapi.v1.NetworkRequestR\x0enetworkRequest\"\xab\x01\n" +
+	"\x0fnetwork_request\x18\v \x01(\v2'.agentruntime.taskapi.v1.NetworkRequestR\x0enetworkRequest\x12/\n" +
+	"\x11budget_usd_micros\x18\f \x01(\x03H\x00R\x0fbudgetUsdMicros\x88\x01\x01B\x14\n" +
+	"\x12_budget_usd_micros\"\xab\x01\n" +
 	"\x0eNetworkRequest\x12\x14\n" +
 	"\x05hosts\x18\x01 \x03(\tR\x05hosts\x12\x14\n" +
 	"\x05ports\x18\x02 \x03(\x05R\x05ports\x12\x18\n" +
@@ -2071,6 +2083,7 @@ func file_agentruntime_taskapi_v1_task_api_proto_init() {
 	if File_agentruntime_taskapi_v1_task_api_proto != nil {
 		return
 	}
+	file_agentruntime_taskapi_v1_task_api_proto_msgTypes[0].OneofWrappers = []any{}
 	file_agentruntime_taskapi_v1_task_api_proto_msgTypes[5].OneofWrappers = []any{
 		(*SignalTaskRequest_HumanReply)(nil),
 		(*SignalTaskRequest_SubmitGuidance)(nil),

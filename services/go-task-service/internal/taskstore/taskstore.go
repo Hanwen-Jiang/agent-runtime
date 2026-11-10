@@ -105,6 +105,13 @@ func Migrations() []relational.Migration {
 			// N-14：提交时固定的 Skill（名字 → <层>/vN 的 JSON；没有时为空）。Worker 的 Planner 目录与 skill_read 按 task_id 读，只读。
 			`ALTER TABLE tasks ADD COLUMN skill_pins TEXT NOT NULL DEFAULT ''`,
 		},
+	}, {
+		Version: 9,
+		Name:    "task_service_submission_budget",
+		Statements: []string{
+			`ALTER TABLE tasks ADD COLUMN submission_hash TEXT NOT NULL DEFAULT ''`,
+			`ALTER TABLE tasks ADD COLUMN submission_budget TEXT NOT NULL DEFAULT ''`,
+		},
 	}}
 }
 
@@ -233,6 +240,10 @@ type Task struct {
 	SubmittedBy string
 	// Message 是提交时的命令原文；迁移 4 之前提交的 Task 为空。
 	Message string
+	// SubmissionHash pins the complete client request; pre-v9 rows remain empty.
+	SubmissionHash string
+	// SubmissionBudget is the first admission's effective Budget (protojson).
+	SubmissionBudget string
 }
 
 // Finished 表示业务库里已记下终态与结局。
@@ -274,7 +285,7 @@ func (s *Store) SessionExists(ctx context.Context, tenant *commonv1.TenantContex
 	return ok, err
 }
 
-const taskColumns = `task_id, session_id, session_key, client_request_id, status, signaled, last_event_id, created_at, outcome, submitted_by, message`
+const taskColumns = `task_id, session_id, session_key, client_request_id, status, signaled, last_event_id, created_at, outcome, submitted_by, message, submission_hash, submission_budget`
 
 // SubmissionExists exempts retries of an already accepted request from new
 // budget admission. InsertTask still owns atomic request deduplication.
@@ -355,8 +366,8 @@ func (s *Store) insertTask(ctx context.Context, tenant *commonv1.TenantContext, 
 				return providererr.New(providererr.Denied, "tenant_busy", fmt.Sprintf("本租户已有 %d 个未完成的 Task", active))
 			}
 		}
-		n, err := tx.Execute(ctx, `INSERT INTO tasks (`+taskColumns+`) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) ON CONFLICT DO NOTHING`,
-			t.TaskID, t.SessionID, t.SessionKey, t.ClientRequestID, int64(t.Status), boolInt(t.Signaled), t.LastEventID, t.CreatedAt.UnixMilli(), t.Outcome, t.SubmittedBy, t.Message)
+		n, err := tx.Execute(ctx, `INSERT INTO tasks (`+taskColumns+`) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) ON CONFLICT DO NOTHING`,
+			t.TaskID, t.SessionID, t.SessionKey, t.ClientRequestID, int64(t.Status), boolInt(t.Signaled), t.LastEventID, t.CreatedAt.UnixMilli(), t.Outcome, t.SubmittedBy, t.Message, t.SubmissionHash, t.SubmissionBudget)
 		if err != nil {
 			return err
 		}
@@ -472,16 +483,18 @@ func decode(row relational.Row) Task {
 	str := func(k string) string { s, _ := row[k].(string); return s }
 	num := func(k string) int64 { n, _ := row[k].(int64); return n }
 	return Task{
-		TaskID:          str("task_id"),
-		SessionID:       str("session_id"),
-		SessionKey:      str("session_key"),
-		ClientRequestID: str("client_request_id"),
-		Status:          commonv1.TaskStatus(num("status")),
-		Signaled:        num("signaled") != 0,
-		LastEventID:     num("last_event_id"),
-		CreatedAt:       time.UnixMilli(num("created_at")).UTC(),
-		Outcome:         str("outcome"),
-		SubmittedBy:     str("submitted_by"),
-		Message:         str("message"),
+		TaskID:           str("task_id"),
+		SessionID:        str("session_id"),
+		SessionKey:       str("session_key"),
+		ClientRequestID:  str("client_request_id"),
+		Status:           commonv1.TaskStatus(num("status")),
+		Signaled:         num("signaled") != 0,
+		LastEventID:      num("last_event_id"),
+		CreatedAt:        time.UnixMilli(num("created_at")).UTC(),
+		Outcome:          str("outcome"),
+		SubmittedBy:      str("submitted_by"),
+		Message:          str("message"),
+		SubmissionHash:   str("submission_hash"),
+		SubmissionBudget: str("submission_budget"),
 	}
 }
