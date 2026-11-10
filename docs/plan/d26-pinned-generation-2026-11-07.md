@@ -95,5 +95,8 @@
 
 ```bash
 uv run --no-project --with matplotlib python scripts/render_fc_startup_report.py
-# 缺少中文字体时，追加：--font /path/to/CJK-font.ttf
+# 显式指定简体中文字体及粗体，避免地区字形或字体集合首字面选错：
+# --font /path/to/NotoSansCJKsc-Regular.otf --bold-font /path/to/NotoSansCJKsc-Bold.otf
 ```
+
+图表使用 **Noto Sans CJK SC（简体中文）**的常规与粗体字面；字体来自 [Noto CJK 的 SimplifiedChinese 目录](https://github.com/notofonts/noto-cjk/tree/f8d157532fbfaeda587e826d4cd5b21a49186f7c/Sans/OTF/SimplifiedChinese)。脚本按字体文件固定每个文字对象，不使用 TC／JP 地区字形替代。

@@ -2,7 +2,8 @@
 """Render the November 7 Firecracker report from immutable measurement evidence.
 
 uv run --no-project --with matplotlib python scripts/render_fc_startup_report.py
-Use --font /path/to/a/CJK-font.ttf when no supported Chinese font is installed.
+Use --font NotoSansCJKsc-Regular.otf --bold-font NotoSansCJKsc-Bold.otf
+to pin the Simplified Chinese glyphs and both font weights explicitly.
 """
 from __future__ import annotations
 
@@ -18,10 +19,14 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib import font_manager, ticker
 from matplotlib.lines import Line2D
+from matplotlib.text import Text
 
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE = ROOT / "docs/plan/evidence/fc-pin-20261107"
 OUTPUT = ROOT / "docs/plan/figures/fc-startup-20261107"
+SC_FAMILIES = ("Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "Source Han Sans CN",
+               "PingFang SC", "Heiti SC", "Microsoft YaHei", "WenQuanYi Zen Hei")
+RENDER_FONTS: dict[str, str] = {}
 GROUPS = [
     ("cold", "first/cold", "冷启动", "#3469A5"),
     ("warm", "first/warm", "预热池", "#16836A"),
@@ -49,21 +54,39 @@ def measurements():
     return result
 
 
-def configure(font):
+def configure(font, bold_font=None):
     if font:
         font_manager.fontManager.addfont(str(font))
         family = font_manager.FontProperties(fname=str(font)).get_name()
+        if family not in SC_FAMILIES:
+            raise SystemExit(f"Font resolves to {family!r}, not a supported Simplified Chinese face. "
+                             "Use a standalone NotoSansCJKsc-Regular.otf, not a TC/JP font or ambiguous collection.")
+        regular_path = str(font.resolve())
     else:
         family = None
-        for candidate in ("PingFang SC", "Heiti SC", "Noto Sans CJK SC", "Microsoft YaHei", "WenQuanYi Zen Hei"):
+        for candidate in SC_FAMILIES:
             try:
-                font_manager.findfont(candidate, fallback_to_default=False)
+                path = font_manager.findfont(candidate, fallback_to_default=False)
+                # A collection may match an SC family but open a different first face.
+                if font_manager.FontProperties(fname=path).get_name() != candidate:
+                    continue
                 family = candidate
+                regular_path = path
                 break
             except ValueError:
                 pass
         if not family:
-            raise SystemExit("No Chinese font found; supply --font.")
+            raise SystemExit("No unambiguous Simplified Chinese font found; supply --font.")
+    if bold_font:
+        font_manager.fontManager.addfont(str(bold_font))
+        if font_manager.FontProperties(fname=str(bold_font)).get_name() != family:
+            raise SystemExit("--bold-font must belong to the same Simplified Chinese family as --font.")
+        bold_path = str(bold_font.resolve())
+    else:
+        bold_path = font_manager.findfont(font_manager.FontProperties(family=family, weight="bold"), fallback_to_default=False)
+        if font_manager.FontProperties(fname=bold_path).get_name() != family:
+            raise SystemExit("Bold font resolves to another regional face; supply --bold-font.")
+    RENDER_FONTS.update(regular=regular_path, bold=bold_path)
     plt.rcParams.update({"font.family": family, "font.size": 12, "axes.unicode_minus": False,
                          "text.color": "#233247", "axes.labelcolor": "#526175",
                          "xtick.color": "#526175", "ytick.color": "#233247",
@@ -74,6 +97,13 @@ def configure(font):
 
 def finish(fig, name):
     OUTPUT.mkdir(parents=True, exist_ok=True)
+    fig.canvas.draw()  # Materialize tick labels before pinning every text artist.
+    for text in fig.findobj(match=Text):
+        properties = text.get_fontproperties().copy()
+        weight = properties.get_weight()
+        numeric_weight = weight if isinstance(weight, (int, float)) else font_manager.weight_dict.get(weight, 400)
+        properties.set_file(RENDER_FONTS["bold" if numeric_weight >= 600 else "regular"])
+        text.set_fontproperties(properties)
     fig.savefig(OUTPUT / name, dpi=180, bbox_inches="tight", pad_inches=.22)
     plt.close(fig)
 
@@ -136,12 +166,14 @@ def distributions(rows):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--font", type=Path)
+    parser.add_argument("--bold-font", type=Path)
     args = parser.parse_args()
-    configure(args.font)
+    configure(args.font, args.bold_font)
     rows = measurements()
     warm_comparison(rows)
     distributions(rows)
-    print(json.dumps({"output": str(OUTPUT), "groups": [{k: r[k] for k in ("key", "p50", "p95")} for r in rows]}, ensure_ascii=False))
+    print(json.dumps({"output": str(OUTPUT), "fonts": RENDER_FONTS,
+                      "groups": [{k: r[k] for k in ("key", "p50", "p95")} for r in rows]}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
