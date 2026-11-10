@@ -31,7 +31,12 @@ def capabilities() -> dict:
     model_dir = os.environ.get("FILE_ENGINES_MODEL_DIR", "")
     models = Path(model_dir) if model_dir else None
     rapid = models / "rapidocr" if models else None
-    return {"text": True, "pdf_text": available("pypdf"), "pdf_render": bool(shutil.which("pdftoppm")),
+    code_languages = {language: available("tree_sitter") and available(package) for language, package in (
+        ("python", "tree_sitter_python"), ("javascript", "tree_sitter_javascript"),
+        ("typescript", "tree_sitter_typescript"), ("tsx", "tree_sitter_typescript"),
+        ("c", "tree_sitter_c"), ("go", "tree_sitter_go"), ("rust", "tree_sitter_rust"))}
+    return {"text": True, "code_structure": any(code_languages.values()), "code_languages": code_languages,
+            "pdf_text": available("pypdf"), "pdf_render": bool(shutil.which("pdftoppm")),
             "docx": available("docx"), "xlsx": available("openpyxl"), "pptx": available("pptx"),
             "image": available("PIL"), "ipynb": True, "archive": True, "parquet": available("duckdb"),
             "ocr": bool(available("rapidocr") and rapid and (rapid / "det.onnx").is_file() and (rapid / "rec.onnx").is_file()),

@@ -1,0 +1,121 @@
+{
+  "language_cases": [
+    {
+      "file": "sample.py",
+      "symbols": [
+        "refund_total",
+        "Cart.total"
+      ],
+      "blocks": 6
+    },
+    {
+      "file": "sample.js",
+      "symbols": [
+        "refund_total",
+        "Cart.total",
+        "twice"
+      ],
+      "blocks": 9
+    },
+    {
+      "file": "sample.ts",
+      "symbols": [
+        "refund_total",
+        "Cart.total"
+      ],
+      "blocks": 8
+    },
+    {
+      "file": "sample.tsx",
+      "symbols": [
+        "View"
+      ],
+      "blocks": 3
+    },
+    {
+      "file": "sample.c",
+      "symbols": [
+        "refund_total"
+      ],
+      "blocks": 3
+    },
+    {
+      "file": "sample.go",
+      "symbols": [
+        "Client.Run"
+      ],
+      "blocks": 5
+    },
+    {
+      "file": "sample.rs",
+      "symbols": [
+        "Client.run"
+      ],
+      "blocks": 6
+    }
+  ],
+  "checks": [
+    "Unicode_BOM_CRLF_line_ranges",
+    "large_function_bounded_syntax_chunks",
+    "oversized_literal_and_response_cap_exact_offsets",
+    "syntax_and_unsupported_language_fallback",
+    "invalid_and_missing_symbol_rejected",
+    "cached_representation_deterministic",
+    "no_sentence_resplitting",
+    "index_idempotency",
+    "exact_symbol_ranking",
+    "citation_resolve",
+    "cross_user_tenant_workspace",
+    "revocation_rechecked",
+    "oversized_symbol_name_explicit_fallback",
+    "real_cli_subprocess",
+    "protobuf_struct_integer_offsets",
+    "nonintegral_offsets_rejected"
+  ],
+  "retrieval": {
+    "chunks": 4,
+    "symbol": "refund_total",
+    "anchor": {
+      "block_id": "blk_06bf17184c8752147b505749",
+      "char_end": 62,
+      "char_start": 0,
+      "end_byte": 100,
+      "end_line": 6,
+      "kind": "code_range",
+      "language": "python",
+      "offset_unit": "utf8_byte",
+      "partial_symbol": false,
+      "qualified_symbol": "refund_total",
+      "start_byte": 28,
+      "start_line": 4,
+      "symbol": "refund_total",
+      "symbol_kind": "function"
+    },
+    "embedding": "deterministic fixture, not quality evaluation"
+  },
+  "status": "passed",
+  "source": "local implementation verification; no production rollout or retrieval quality benchmark",
+  "rpc": "real KnowledgeService and ModelGateway gRPC transport; synthetic embedding/scoring fixture; code integer offsets round trip verified",
+  "packages": {
+    "tree-sitter": "0.26.0",
+    "tree-sitter-python": "0.25.0",
+    "tree-sitter-javascript": "0.25.0",
+    "tree-sitter-typescript": "0.23.2",
+    "tree-sitter-c": "0.24.2",
+    "tree-sitter-go": "0.25.0",
+    "tree-sitter-rust": "0.24.2"
+  },
+  "regression": {
+    "memory_dev": "194 passed; 17 production-backend tests deselected (Qdrant unavailable)",
+    "worker_registry_catalog": "36 passed",
+    "existing_retrieval_probe": "passed",
+    "commercial_quality_benchmark": "not run",
+    "linux_image": "not built",
+    "deployment": "not performed"
+  },
+  "sources_sha256": {
+    "services/py-worker/src/agentruntime_worker/files/code.py": "bb433c5d6d639e92d616c8034dc739d9ee21ab205ecb394d39da5c826c7a2bbf",
+    "services/py-memory/src/agentruntime_memory/retrieval/code.py": "f3565bc25d045bf62168b44b2b281278c221186cf763a78867fa96492f2c66d8",
+    "services/py-memory/src/agentruntime_memory/retrieval/engine.py": "4935eaf497e7fa8b07ef4fc0abc260610f23adf3c0d9ecd097352ae7a6bb4e47"
+  }
+}
