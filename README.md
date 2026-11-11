@@ -8,7 +8,7 @@
 
 ## 它怎么跑一个 Task
 
-![Task Loop：Planner、Stage、Reviewer 与外部状态](docs/design/assets/fig02.svg)
+![Task Loop：每个 Round 由 Planner 规划一个 Stage，Stage Runner 执行，Reviewer 给出 Verdict](docs/readme/task-loop.svg)
 
 ```text
 Tenant → User → Workspace → Session → Task → Round → Stage → Node → Attempt
@@ -24,7 +24,7 @@ Tenant → User → Workspace → Session → Task → Round → Stage → Node 
 
 ## 组成
 
-![总体架构：五个部署单元与 Provider 接口](docs/design/assets/fig01.svg)
+![Agent Runtime 的组成：应用经 Task Service 下任务，Worker 跑 Task Loop，并调用 Model Gateway、Memory Service 与 Sandbox Service](docs/readme/architecture.svg)
 
 | 部分 | 位置 | 语言 | 做什么 |
 | --- | --- | --- | --- |
@@ -38,7 +38,13 @@ Tenant → User → Workspace → Session → Task → Round → Stage → Node 
 | fc-manager | `services/rs-fc-manager` | Rust | 宿主上的服务，每个沙箱环境一台 Firecracker microVM |
 | 包镜像、出网网关 | `services/go-pkg-mirror`、`services/go-egress-gateway` | Go | 沙箱装依赖的缓存；沙箱联网的唯一出口，按 Task 的联网授权放行 |
 
-沙箱后端有四种：K8s Pod（gVisor 或 Kata）、Firecracker microVM、Cloudflare、本地进程（开发用）。
+### 沙箱这一层
+
+![沙箱这一层：Worker 与 Task Service 经 Sandbox Service 用沙箱，四种后端里都跑 sandbox-agent](docs/readme/sandbox.svg)
+
+Worker 的 `shell_run`、`repo_*` 与 Workspace 操作都经 Sandbox Service；它按租户策略选后端，管配额、会话级复用和工作区的存档与恢复。后端有四种：K8s Pod（gVisor 或 Kata）、Firecracker microVM、Cloudflare、本地进程（只给开发用）。沙箱默认断网，装依赖走包镜像，联网只经出网网关。
+
+### Provider 接口
 
 核心代码只依赖 13 个 Provider 接口，不直接引用具体产品的 SDK（Temporal 工作流代码除外）。现在用的实现：
 
@@ -120,14 +126,14 @@ libs/        共享库：Provider 接口、错误模型、租户绑定、适配�
 deploy/      Helm Chart、镜像、集群与数据层的脚本
 tests/       契约（contract）、端到端与故障注入（e2e）、部署（deploy）、sandbox-agent 的黑盒测试
 scripts/     check.py、dev_stack.py、build_images.py 与评测、同步模型目录等工具
-docs/        设计书、计划、参考文档、学习笔记、发布说明
+docs/        设计书（已锁定）、计划、参考文档、学习笔记、发布说明；docs/readme 是本页的图
 ```
 
 ## 文档
 
 | 文档 | 是什么 | 什么时候看 |
 | --- | --- | --- |
-| [设计书](docs/design/agent-runtime-design.md) | 唯一权威，含 34 张结构图；名词定义在附录 A | 实现任何模块前先读对应章节 |
+| [设计书](docs/design/agent-runtime-design.md) | 项目最开始定下的设计，**已锁定，不再修改**。名词（附录 A）、原则与各模块的逻辑以它为准 | 实现任何模块前先读对应章节 |
 | [强档实施计划](docs/plan/strong-tier-plan.md) | 工作项（S-xx、R-xx）、顺序、验收、评审方式 | 安排开发顺序、接任务、做评审时 |
 | [全部计划的总表](docs/plan/all-plans-dag-2026-11-03.md) | 各条线的计划汇总与依赖；`docs/plan/` 下还有各模块的细化 | 找某个工作项的现状时 |
 | [运行核心速查](docs/reference/runtime-quickref.md) | 对象存放、模块依赖、接口与开发实现、旧叫法对照 | 随手查 |
@@ -137,7 +143,11 @@ docs/        设计书、计划、参考文档、学习笔记、发布说明
 
 三者冲突时：设计书 > 实施计划 > 参考文档。
 
-设计书是从 Claude Docs 文档《Agent Runtime 项目设计书（暂名）》（https://claude.ai/code/artifact/9208d7e8-6b94-4792-9382-a0d0f36921b5）导出的副本，不在仓库里直接改；要改设计时先改原文档再重新导出。`docs/reference/` 由早期的三份调研文档重新编排而成，已全部改用附录 A 的术语；读调研原文时用速查第 7 节换算旧叫法。
+设计书锁定在开工之前，之后仓库长出了它没写的部分（Sandbox Service 与四种沙箱后端、出网网关、包镜像、Workspace API、用户 Skill 等），接口的实现也有几处没按当时的推荐。所以：
+
+- 后来确认的设计改动记在 [docs/plan/design-changes-2026-10.md](docs/plan/design-changes-2026-10.md)，各模块的细化在 `docs/plan/` 下各自的文档里。
+- 设计书里的 34 张图画的是当时的设计，其中总体架构、部署拓扑、Sandbox 等几张已经和现在的实现对不上。本页的图按仓库现状另画，在 `docs/readme/`。
+- 仓库现在是什么样，以本页和 [CLAUDE.md](CLAUDE.md) 为准。
 
 ## 参与开发
 

@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="616" viewBox="0 0 760 616" role="img" aria-label="Agent Runtime 的组成：应用经 Task Service 下任务，Worker 跑 Task Loop，并调用 Model Gateway、Memory Service 与 Sandbox Service" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Source Han Sans SC, sans-serif">
+<style>.bg{fill:#ffffff;stroke:#d0d7de}
+.t{fill:#1f2328}.m{fill:#59636e}
+.ln{stroke:#59636e;stroke-width:1.4;fill:none}.da{stroke-dasharray:5 4}.ah{fill:#59636e}
+.go{fill:#ddf4ff;stroke:#218bff}.py{fill:#dafbe1;stroke:#2da44e}.rs{fill:#fff1e5;stroke:#e16f24}
+.ext{fill:#f6f8fa;stroke:#afb8c1}.store{fill:#fbefff;stroke:#a475f9}.chip{fill:#f6f8fa;stroke:#d0d7de}
+@media (prefers-color-scheme: dark){
+.bg{fill:#0d1117;stroke:#30363d}
+.t{fill:#e6edf3}.m{fill:#b1bac4}
+.ln{stroke:#9198a1}.ah{fill:#9198a1}
+.go{fill:#0c2d6b;stroke:#388bfd}.py{fill:#0f3d1e;stroke:#2ea043}.rs{fill:#4a2409;stroke:#db6d28}
+.ext{fill:#161b22;stroke:#3d444d}.store{fill:#2e1461;stroke:#8957e5}.chip{fill:#161b22;stroke:#30363d}
+}</style>
+<defs><marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker><marker id="a0" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10,0 L0,5 L10,10 z" class="ah"/></marker></defs>
+<rect x="0.5" y="0.5" width="759" height="615" rx="10" class="bg"/>
+<rect x="190" y="16" width="380" height="46" rx="8" class="ext" stroke-width="1.2"/>
+<text x="380.0" y="35.0" class="t" font-size="13" text-anchor="middle" font-weight="600">应用（例如 Coding Agent）</text>
+<text x="380.0" y="52.0" class="m" font-size="11.5" text-anchor="middle">只经 Task API 与 Workspace API 用 Runtime</text>
+<path d="M380,62 L380,98" class="ln" marker-end="url(#a1)"/>
+<text x="390" y="84" class="m" font-size="11.5" text-anchor="start">HTTP POST + SSE · JWT</text>
+<rect x="130" y="98" width="500" height="66" rx="8" class="go" stroke-width="1.2"/>
+<text x="380.0" y="118.5" class="t" font-size="13" text-anchor="middle" font-weight="600">Task Service 与 Registry</text>
+<text x="380.0" y="135.5" class="m" font-size="11.5" text-anchor="middle">Task API · Workspace API · Session 与 Task 的生命周期 · 准入与配额</text>
+<text x="380.0" y="152.5" class="m" font-size="11.5" text-anchor="middle">Registry：Node Template · Recipe · Model Profile · 租户策略 · Skill</text>
+<path d="M380,164 L380,206" class="ln" marker-end="url(#a1)"/>
+<text x="390" y="189" class="m" font-size="11.5" text-anchor="start">Temporal 任务队列</text>
+<rect x="130" y="206" width="500" height="66" rx="8" class="py" stroke-width="1.2"/>
+<text x="380.0" y="226.5" class="t" font-size="13" text-anchor="middle" font-weight="600">Worker</text>
+<text x="380.0" y="243.5" class="m" font-size="11.5" text-anchor="middle">Task Loop：Planner → Stage Runner → Node Executor → Reviewer</text>
+<text x="380.0" y="260.5" class="m" font-size="11.5" text-anchor="middle">Policy Engine · Context Builder · 工具</text>
+<rect x="18" y="318" width="172" height="70" rx="8" class="go" stroke-width="1.2"/>
+<text x="104.0" y="340.5" class="t" font-size="13" text-anchor="middle" font-weight="600">Model Gateway</text>
+<text x="104.0" y="357.5" class="m" font-size="11.5" text-anchor="middle">所有模型调用的出口</text>
+<text x="104.0" y="374.5" class="m" font-size="11.5" text-anchor="middle">选档 · 限流 · 换家 · 计量</text>
+<rect x="202" y="318" width="172" height="70" rx="8" class="py" stroke-width="1.2"/>
+<text x="288.0" y="340.5" class="t" font-size="13" text-anchor="middle" font-weight="600">Memory Service</text>
+<text x="288.0" y="357.5" class="m" font-size="11.5" text-anchor="middle">作用域 · 写入 · 检索</text>
+<text x="288.0" y="374.5" class="m" font-size="11.5" text-anchor="middle">晋升 · 级联删除与回滚</text>
+<rect x="386" y="318" width="172" height="70" rx="8" class="go" stroke-width="1.2"/>
+<text x="472.0" y="340.5" class="t" font-size="13" text-anchor="middle" font-weight="600">Sandbox Service</text>
+<text x="472.0" y="357.5" class="m" font-size="11.5" text-anchor="middle">沙箱的借还与执行</text>
+<text x="472.0" y="374.5" class="m" font-size="11.5" text-anchor="middle">选后端 · 配额 · 存档与恢复</text>
+<rect x="570" y="318" width="172" height="70" rx="8" class="py" stroke-width="1.2"/>
+<text x="656.0" y="340.5" class="t" font-size="13" text-anchor="middle" font-weight="600">Learning Pipeline</text>
+<text x="656.0" y="357.5" class="m" font-size="11.5" text-anchor="middle">从 trace 归纳 Recipe</text>
+<text x="656.0" y="374.5" class="m" font-size="11.5" text-anchor="middle">评测集 · 评测 · Benchmark</text>
+<path d="M160,272 L160,295 L104,295 L104,318" class="ln" marker-end="url(#a1)"/>
+<path d="M288,272 L288,318" class="ln" marker-end="url(#a1)"/>
+<path d="M472,272 L472,318" class="ln" marker-end="url(#a1)"/>
+<text x="380" y="299" class="m" font-size="11.5" text-anchor="middle">gRPC</text>
+<path d="M600,272 L600,295 L656,295 L656,318" class="ln da" marker-end="url(#a1)"/>
+<text x="608" y="289" class="m" font-size="11.5" text-anchor="start">trace（异步）</text>
+<path d="M720,318 L720,131 L630,131" class="ln da" marker-end="url(#a1)"/>
+<text x="675" y="124" class="m" font-size="11.5" text-anchor="middle">发布 Recipe</text>
+<rect x="18" y="412" width="172" height="52" rx="8" class="ext" stroke-width="1.2"/>
+<text x="104.0" y="434.0" class="t" font-size="13" text-anchor="middle" font-weight="600">模型供应商</text>
+<text x="104.0" y="451.0" class="m" font-size="11.5" text-anchor="middle">OpenAI 兼容的端点</text>
+<path d="M104,388 L104,412" class="ln" marker-end="url(#a1)"/>
+<rect x="386" y="412" width="172" height="52" rx="8" class="rs" stroke-width="1.2"/>
+<text x="472.0" y="434.0" class="t" font-size="13" text-anchor="middle" font-weight="600">sandbox-agent</text>
+<text x="472.0" y="451.0" class="m" font-size="11.5" text-anchor="middle">在沙箱里执行命令、读写文件</text>
+<path d="M472,388 L472,412" class="ln" marker-end="url(#a1)"/>
+<rect x="570" y="412" width="172" height="52" rx="8" class="go" stroke-width="1.2"/>
+<text x="656.0" y="434.0" class="t" font-size="13" text-anchor="middle" font-weight="600">出网网关 · 包镜像</text>
+<text x="656.0" y="451.0" class="m" font-size="11.5" text-anchor="middle">沙箱联网与装依赖的出口</text>
+<path d="M558,438 L570,438" class="ln" marker-end="url(#a1)"/>
+<text x="18" y="500" class="m" font-size="12" text-anchor="start">Provider 接口：核心只依赖接口，下面是现在用的实现</text>
+<rect x="18" y="512" width="114" height="40" rx="8" class="chip" stroke-width="1.2"/>
+<text x="75.0" y="528.5" class="t" font-size="11" text-anchor="middle" font-weight="600">DurableEngine</text>
+<text x="75.0" y="542.5" class="m" font-size="11" text-anchor="middle">Temporal</text>
+<rect x="140" y="512" width="114" height="40" rx="8" class="chip" stroke-width="1.2"/>
+<text x="197.0" y="528.5" class="t" font-size="11" text-anchor="middle" font-weight="600">RelationalStore</text>
+<text x="197.0" y="542.5" class="m" font-size="11" text-anchor="middle">PostgreSQL</text>
+<rect x="262" y="512" width="114" height="40" rx="8" class="chip" stroke-width="1.2"/>
+<text x="319.0" y="528.5" class="t" font-size="11" text-anchor="middle" font-weight="600">VectorStore</text>
+<text x="319.0" y="542.5" class="m" font-size="11" text-anchor="middle">Qdrant · Milvus</text>
+<rect x="384" y="512" width="114" height="40" rx="8" class="chip" stroke-width="1.2"/>
+<text x="441.0" y="528.5" class="t" font-size="11" text-anchor="middle" font-weight="600">Cache</text>
+<text x="441.0" y="542.5" class="m" font-size="11" text-anchor="middle">Valkey</text>
+<rect x="506" y="512" width="114" height="40" rx="8" class="chip" stroke-width="1.2"/>
+<text x="563.0" y="528.5" class="t" font-size="11" text-anchor="middle" font-weight="600">EventStream</text>
+<text x="563.0" y="542.5" class="m" font-size="11" text-anchor="middle">Redpanda</text>
+<rect x="628" y="512" width="114" height="40" rx="8" class="chip" stroke-width="1.2"/>
+<text x="685.0" y="528.5" class="t" font-size="11" text-anchor="middle" font-weight="600">ObjectStore</text>
+<text x="685.0" y="542.5" class="m" font-size="11" text-anchor="middle">S3 兼容存储</text>
+<rect x="18" y="560" width="114" height="40" rx="8" class="chip" stroke-width="1.2"/>
+<text x="75.0" y="576.5" class="t" font-size="11" text-anchor="middle" font-weight="600">ModelProvider</text>
+<text x="75.0" y="590.5" class="m" font-size="11" text-anchor="middle">OpenAI 兼容端点</text>
+<rect x="140" y="560" width="114" height="40" rx="8" class="chip" stroke-width="1.2"/>
+<text x="197.0" y="576.5" class="t" font-size="11" text-anchor="middle" font-weight="600">ToolDriver</text>
+<text x="197.0" y="590.5" class="m" font-size="11" text-anchor="middle">工具登记 · MCP</text>
+<rect x="262" y="560" width="114" height="40" rx="8" class="chip" stroke-width="1.2"/>
+<text x="319.0" y="576.5" class="t" font-size="11" text-anchor="middle" font-weight="600">Sandbox</text>
+<text x="319.0" y="590.5" class="m" font-size="11" text-anchor="middle">四种后端</text>
+<rect x="384" y="560" width="114" height="40" rx="8" class="chip" stroke-width="1.2"/>
+<text x="441.0" y="576.5" class="t" font-size="11" text-anchor="middle" font-weight="600">SecretStore</text>
+<text x="441.0" y="590.5" class="m" font-size="11" text-anchor="middle">开发实现</text>
+<rect x="506" y="560" width="114" height="40" rx="8" class="chip" stroke-width="1.2"/>
+<text x="563.0" y="576.5" class="t" font-size="11" text-anchor="middle" font-weight="600">HumanChannel</text>
+<text x="563.0" y="590.5" class="m" font-size="11" text-anchor="middle">开发实现</text>
+<rect x="628" y="560" width="114" height="40" rx="8" class="chip" stroke-width="1.2"/>
+<text x="685.0" y="576.5" class="t" font-size="11" text-anchor="middle" font-weight="600">Telemetry</text>
+<text x="685.0" y="590.5" class="m" font-size="11" text-anchor="middle">OpenTelemetry</text>
+<rect x="18" y="19" width="11" height="11" rx="2.5" class="go" stroke-width="1.2"/>
+<text x="34" y="28" class="m" font-size="11" text-anchor="start">Go</text>
+<rect x="62.76" y="19" width="11" height="11" rx="2.5" class="py" stroke-width="1.2"/>
+<text x="78.75999999999999" y="28" class="m" font-size="11" text-anchor="start">Python</text>
+<rect x="18" y="39" width="11" height="11" rx="2.5" class="rs" stroke-width="1.2"/>
+<text x="34" y="48" class="m" font-size="11" text-anchor="start">Rust</text>
+<rect x="75.52" y="39" width="11" height="11" rx="2.5" class="ext" stroke-width="1.2"/>
+<text x="91.52" y="48" class="m" font-size="11" text-anchor="start">本仓库之外</text>
+</svg>

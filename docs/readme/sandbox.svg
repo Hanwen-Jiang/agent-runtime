@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="462" viewBox="0 0 760 462" role="img" aria-label="沙箱这一层：Worker 与 Task Service 经 Sandbox Service 用沙箱，四种后端里都跑 sandbox-agent" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Source Han Sans SC, sans-serif">
+<style>.bg{fill:#ffffff;stroke:#d0d7de}
+.t{fill:#1f2328}.m{fill:#59636e}
+.ln{stroke:#59636e;stroke-width:1.4;fill:none}.da{stroke-dasharray:5 4}.ah{fill:#59636e}
+.go{fill:#ddf4ff;stroke:#218bff}.py{fill:#dafbe1;stroke:#2da44e}.rs{fill:#fff1e5;stroke:#e16f24}
+.ext{fill:#f6f8fa;stroke:#afb8c1}.store{fill:#fbefff;stroke:#a475f9}.chip{fill:#f6f8fa;stroke:#d0d7de}
+@media (prefers-color-scheme: dark){
+.bg{fill:#0d1117;stroke:#30363d}
+.t{fill:#e6edf3}.m{fill:#b1bac4}
+.ln{stroke:#9198a1}.ah{fill:#9198a1}
+.go{fill:#0c2d6b;stroke:#388bfd}.py{fill:#0f3d1e;stroke:#2ea043}.rs{fill:#4a2409;stroke:#db6d28}
+.ext{fill:#161b22;stroke:#3d444d}.store{fill:#2e1461;stroke:#8957e5}.chip{fill:#161b22;stroke:#30363d}
+}</style>
+<defs><marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker><marker id="a0" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M10,0 L0,5 L10,10 z" class="ah"/></marker></defs>
+<rect x="0.5" y="0.5" width="759" height="461" rx="10" class="bg"/>
+<rect x="18" y="16" width="232" height="56" rx="8" class="py" stroke-width="1.2"/>
+<text x="134.0" y="40.0" class="t" font-size="13" text-anchor="middle" font-weight="600">Worker</text>
+<text x="134.0" y="57.0" class="m" font-size="11.5" text-anchor="middle">shell_run · repo_* · Workspace 操作</text>
+<rect x="264" y="16" width="232" height="56" rx="8" class="go" stroke-width="1.2"/>
+<text x="380.0" y="40.0" class="t" font-size="13" text-anchor="middle" font-weight="600">Task Service</text>
+<text x="380.0" y="57.0" class="m" font-size="11.5" text-anchor="middle">Workspace API 的只读方法</text>
+<rect x="510" y="16" width="232" height="56" rx="8" class="ext" stroke-width="1.2"/>
+<text x="626.0" y="40.0" class="t" font-size="13" text-anchor="middle" font-weight="600">ObjectStore</text>
+<text x="626.0" y="57.0" class="m" font-size="11.5" text-anchor="middle">工作区的快照 · 交付的文件</text>
+<path d="M134,72 L134,110" class="ln" marker-end="url(#a1)"/>
+<path d="M380,72 L380,110" class="ln" marker-end="url(#a1)"/>
+<text x="257" y="95" class="m" font-size="11.5" text-anchor="middle">gRPC</text>
+<path d="M626,72 L626,110" class="ln" marker-end="url(#a1)" marker-start="url(#a0)"/>
+<text x="634" y="95" class="m" font-size="11.5" text-anchor="start">存档与恢复</text>
+<rect x="18" y="110" width="724" height="66" rx="8" class="go" stroke-width="1.2"/>
+<text x="380.0" y="130.5" class="t" font-size="13" text-anchor="middle" font-weight="600">Sandbox Service</text>
+<text x="380.0" y="147.5" class="m" font-size="11.5" text-anchor="middle">借还与执行 · 按租户策略选后端 · 配额与预算 · 会话级复用</text>
+<text x="380.0" y="164.5" class="m" font-size="11.5" text-anchor="middle">工作区的存档与恢复 · 对账 · 冷热分层 · 按项目构建环境</text>
+<path d="M104,176 L104,218" class="ln" marker-end="url(#a1)"/>
+<rect x="18" y="218" width="172" height="54" rx="8" class="ext" stroke-width="1.2"/>
+<text x="104.0" y="241.0" class="t" font-size="13" text-anchor="middle" font-weight="600">K8s Pod</text>
+<text x="104.0" y="258.0" class="m" font-size="11.5" text-anchor="middle">gVisor 或 Kata</text>
+<path d="M288,176 L288,218" class="ln" marker-end="url(#a1)"/>
+<rect x="202" y="218" width="172" height="54" rx="8" class="ext" stroke-width="1.2"/>
+<text x="288.0" y="241.0" class="t" font-size="13" text-anchor="middle" font-weight="600">Firecracker microVM</text>
+<text x="288.0" y="258.0" class="m" font-size="11.5" text-anchor="middle">经宿主上的 fc-manager</text>
+<path d="M472,176 L472,218" class="ln" marker-end="url(#a1)"/>
+<rect x="386" y="218" width="172" height="54" rx="8" class="ext" stroke-width="1.2"/>
+<text x="472.0" y="241.0" class="t" font-size="13" text-anchor="middle" font-weight="600">Cloudflare</text>
+<text x="472.0" y="258.0" class="m" font-size="11.5" text-anchor="middle">经沙箱桥</text>
+<path d="M656,176 L656,218" class="ln" marker-end="url(#a1)"/>
+<rect x="570" y="218" width="172" height="54" rx="8" class="ext" stroke-width="1.2"/>
+<text x="656.0" y="241.0" class="t" font-size="13" text-anchor="middle" font-weight="600">本地进程</text>
+<text x="656.0" y="258.0" class="m" font-size="11.5" text-anchor="middle">只给开发用</text>
+<rect x="18" y="278" width="724" height="44" rx="8" class="rs" stroke-width="1.2"/>
+<text x="380.0" y="296.0" class="t" font-size="13" text-anchor="middle" font-weight="600">sandbox-agent：跑在每个沙箱里</text>
+<text x="380.0" y="313.0" class="m" font-size="11.5" text-anchor="middle">执行命令 · 读写文件 · 打包与恢复工作区</text>
+<rect x="18" y="370" width="342" height="56" rx="8" class="go" stroke-width="1.2"/>
+<text x="189.0" y="394.0" class="t" font-size="13" text-anchor="middle" font-weight="600">包镜像</text>
+<text x="189.0" y="411.0" class="m" font-size="11.5" text-anchor="middle">PyPI · npm · Go 的按需拉取缓存</text>
+<rect x="400" y="370" width="342" height="56" rx="8" class="go" stroke-width="1.2"/>
+<text x="571.0" y="394.0" class="t" font-size="13" text-anchor="middle" font-weight="600">出网网关</text>
+<text x="571.0" y="411.0" class="m" font-size="11.5" text-anchor="middle">按 Task 的联网授权放行 · SSRF 防线 · 逐连接审计</text>
+<path d="M189,322 L189,370" class="ln" marker-end="url(#a1)"/>
+<text x="197" y="350" class="m" font-size="11.5" text-anchor="start">装依赖</text>
+<path d="M571,322 L571,370" class="ln" marker-end="url(#a1)"/>
+<text x="579" y="350" class="m" font-size="11.5" text-anchor="start">联网只经它</text>
+<rect x="18" y="439" width="11" height="11" rx="2.5" class="go" stroke-width="1.2"/>
+<text x="34" y="448" class="m" font-size="11" text-anchor="start">Go</text>
+<rect x="62.76" y="439" width="11" height="11" rx="2.5" class="py" stroke-width="1.2"/>
+<text x="78.75999999999999" y="448" class="m" font-size="11" text-anchor="start">Python</text>
+<rect x="133.04" y="439" width="11" height="11" rx="2.5" class="rs" stroke-width="1.2"/>
+<text x="149.04" y="448" class="m" font-size="11" text-anchor="start">Rust</text>
+<rect x="190.56" y="439" width="11" height="11" rx="2.5" class="ext" stroke-width="1.2"/>
+<text x="206.56" y="448" class="m" font-size="11" text-anchor="start">本仓库之外</text>
+</svg>
