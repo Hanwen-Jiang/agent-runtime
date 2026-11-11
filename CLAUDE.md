@@ -6,7 +6,7 @@
 
 | 文件 | 作用 |
 | --- | --- |
-| `docs/design/agent-runtime-design.md` | 设计书，唯一权威。只读与当前任务相关的章节和附录 |
+| `docs/design/agent-runtime-design.md` | 设计书，唯一权威；最开始定下，已锁定（见“文档”一节）。只读与当前任务相关的章节和附录 |
 | `docs/plan/strong-tier-plan.md` | 实施计划：工作项编号（S-xx、R-xx）、顺序、验收、评审方式 |
 | `docs/reference/runtime-quickref.md` | 速查：模块依赖、接口的开发实现、旧叫法对照 |
 | `docs/reference/` 其余文件 | 调研依据，遇到边界情况时查 |
@@ -182,5 +182,6 @@ $env:UV_PROJECT_ENVIRONMENT = "$env:USERPROFILE\.local\venvs\agent-runtime"
 
 ## 文档
 
-- `docs/design/agent-runtime-design.md` 是从 Claude Docs 文档导出的副本，不直接修改。需要修改设计时，在回复里写出建议的改动，由人更新原文档后重新导出。
+- `docs/design/agent-runtime-design.md` 是项目最开始定下的设计书，已锁定，不再修改（2026-11-11 用户定）。需要改设计时，在回复里写出建议的改动，经人确认后记进 `docs/plan`（已确认的在 `docs/plan/design-changes-2026-10.md`），不改设计书原文。
+- 设计书里的图画的是当时的设计，有几张已经和现在的实现对不上。README 的图按仓库现状另画，在 `docs/readme`；实现变了要改图时改那里的 SVG。
 - 计划与参考文档可以修改，但改动要在回复里说明。
