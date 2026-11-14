@@ -1,0 +1,27 @@
+{
+  "name": "agent-runtime-evals-ui",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "@heroui/react": "3.2.7",
+    "@heroui/styles": "3.2.7",
+    "@heroui-pro/react": "1.0.0-beta.11",
+    "@react-aria/ssr": "3.10.1",
+    "@fontsource/ibm-plex-sans": "5.2.8",
+    "@fontsource/ibm-plex-mono": "5.2.7"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12",
+    "tailwindcss": "4.3.5",
+    "@tailwindcss/cli": "4.3.5"
+  },
+  "overrides": {
+    "figlet": "^1.11.3"
+  }
+}
