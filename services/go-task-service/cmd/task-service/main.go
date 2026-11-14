@@ -585,7 +585,7 @@ func serveWith(cfg config.Config, logger *slog.Logger) error {
 	}
 	api, err := taskapi.New(taskapi.Deps{
 		ModelBudget:      modelbudget.New(store),
-		BudgetPolicies:   modelbudget.Policy{Path: cfg.TenantPoliciesFile, Source: registryPolicies},
+		BudgetPolicies:   modelbudget.WithOperatorUnlimitedTenants(modelbudget.Policy{Path: cfg.TenantPoliciesFile, Source: registryPolicies}, os.Getenv("AR_MODEL_BUDGET_UNLIMITED_TENANTS")),
 		ActiveTaskLimits: cfg.ActiveTaskLimits,
 		Ingress:          ing,
 		Durable:          temporaladapter.New(c),

@@ -103,8 +103,10 @@ async def test_the_planner_does_not_ask_again_once_the_budget_is_spent() -> None
     result = await Planner(gateway).plan(request(round_seq=2, task_state=planner_state(budget=2.0, earlier=1.7)))
     assert len(gateway.calls("plan")) == 1, "美元预算用完了就不再重问"
     assert result.fallback and result.problems
-    [node] = result.stage["nodes"]
+    node, *delivery = result.stage["nodes"]
     assert node["kind"] == "goal" and node["mode"] == "tool_loop"
+    # 目录里有回答模板时，保守规划在探索之后接一个交付节点，把实际结果交给用户（planner.py 的回退）。
+    assert all(d["role"] == "deliver" and d["after"] == [node["id"]] for d in delivery)
     assert spent(result.calls) == pytest.approx(sum(200 if r.call.node_id.startswith("triage") else 400_000 for r in gateway.requests) / 1e6)
 
 

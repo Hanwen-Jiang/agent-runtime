@@ -7,8 +7,7 @@
 //   - 网络：客户机没有网卡。只收 network = none；联网一律经出网网关（D-22：客户机里 127.0.0.1:3128 的转发器 → vsock →
 //     fc-manager → 网关），代理变量由 Sandbox Service 按登记的 egress_gateway_url 注入，授权照旧在网关里。
 //   - 不能挂工作区：WorkspaceID 非空时 invalid（unsupported_workspace），登记成 workspace: archive。
-//   - 不收按项目定制的镜像（D-21：只转换平台的运行环境镜像）：Image 非空时 invalid（unsupported_image），Sandbox Service
-//     退回 universal 并说明。
+//   - 项目镜像只有经运维按不可变 OCI digest 转换并登记 image_runtimes 后才能使用；未登记或跨租户引用拒绝，不能冒充官方环境。
 //   - 预览：fc-manager 在它的监听地址上为这个客户机端口开一个入口（POST /v1/envs/<id>/preview），出网网关的预览入口连它。
 package fcsandbox
 
@@ -34,6 +33,14 @@ import (
 )
 
 var envIDPattern = regexp.MustCompile(`^fc-[0-9a-f]{16}$`)
+var runtimePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,62}$`)
+var scopedImagePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}/env@sha256:[0-9a-f]{64}$`)
+var imageDigestPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+
+type PreparedImage struct {
+	Runtime      string
+	SourceDigest string
+}
 
 // Config 是登记里 firecracker 后端的参数。
 type Config struct {
@@ -43,6 +50,21 @@ type Config struct {
 	Runtimes []string
 	// DiskMB 是每台 VM 的可写盘（scratch）大小；0 用 fc-manager 的默认值。
 	DiskMB int
+	// GuestProfile is operator-controlled; task specs cannot select it.
+	// Empty/workspace preserves read-only root and the ordinary guest UID.
+	GuestProfile string
+	RootDiskMB   int
+	// Benchmark-only base image containing the matching privileged guest agent.
+	// Public runtime names stay unchanged; callers cannot choose this alias.
+	BaseRuntime     string
+	BaseImageDigest string
+	// ImageRuntimes maps operator-prepared immutable OCI references to rootfs aliases.
+	// An entry is usable only by the tenant named below CustomImagePrefix.
+	CustomImagePrefix string
+	ImageRuntimes     map[string]PreparedImage
+	// ImagePrepareURL is a private, authenticated preparer for D17 OCI images.
+	// When absent, custom images still require a static mapping.
+	ImagePrepareURL string
 }
 
 // Provider 是 Firecracker Sandbox 的工厂。
@@ -54,8 +76,60 @@ type Provider struct {
 	client *http.Client
 }
 
+// ValidateGuestProfile validates only operator configuration. Root capacity is
+// separately constrained by the manager's configured per-VM and host limits.
+func ValidateGuestProfile(profile string, rootDiskMB int) error {
+	if profile == "" {
+		profile = "workspace"
+	}
+	if profile != "workspace" && profile != "benchmark-system" {
+		return errors.New("unsupported Firecracker guest_profile")
+	}
+	if profile == "workspace" && rootDiskMB != 0 {
+		return errors.New("root_disk_mb is forbidden for workspace guest_profile")
+	}
+	if profile == "benchmark-system" && (rootDiskMB < 64 || int64(rootDiskMB) > (1<<63-1)>>20) {
+		return errors.New("root_disk_mb must be at least 64 MiB and fit the disk byte capacity")
+	}
+	return nil
+}
+
+func ValidateGuestBase(profile, runtime, digest string) error {
+	if runtime == "" && digest == "" {
+		return nil
+	}
+	if profile != "benchmark-system" {
+		return errors.New("base_runtime and base_image_digest require benchmark-system guest_profile")
+	}
+	if !runtimePattern.MatchString(runtime) || !imageDigestPattern.MatchString(digest) {
+		return errors.New("base_runtime and base_image_digest must form a valid runtime alias and immutable source digest pair")
+	}
+	return nil
+}
+
 // New 构造。
 func New(cfg Config, token string, faults *testkit.Faults) (*Provider, error) {
+	if err := ValidateGuestProfile(cfg.GuestProfile, cfg.RootDiskMB); err != nil {
+		return nil, err
+	}
+	if err := ValidateGuestBase(cfg.GuestProfile, cfg.BaseRuntime, cfg.BaseImageDigest); err != nil {
+		return nil, err
+	}
+	if cfg.GuestProfile == "" {
+		cfg.GuestProfile = "workspace"
+	}
+	if err := validatePrepareURL(cfg.ImagePrepareURL, cfg.CustomImagePrefix); err != nil {
+		return nil, err
+	}
+	for image, prepared := range cfg.ImageRuntimes {
+		if cfg.CustomImagePrefix == "" || !strings.HasPrefix(image, strings.TrimRight(cfg.CustomImagePrefix, "/")+"/") || !runtimePattern.MatchString(prepared.Runtime) || !imageDigestPattern.MatchString(prepared.SourceDigest) {
+			return nil, errors.New("Firecracker image_runtimes must map scoped immutable images to valid prepared runtimes")
+		}
+		rest := strings.TrimPrefix(image, strings.TrimRight(cfg.CustomImagePrefix, "/")+"/")
+		if !scopedImagePattern.MatchString(rest) {
+			return nil, errors.New("Firecracker image_runtimes requires tenant-scoped digest references")
+		}
+	}
 	cfg.ManagerURL = strings.TrimRight(cfg.ManagerURL, "/")
 	if !strings.HasPrefix(cfg.ManagerURL, "http://") && !strings.HasPrefix(cfg.ManagerURL, "https://") {
 		return nil, errors.New("manager_url 要是 http:// 或 https:// 的地址")
@@ -167,6 +241,13 @@ type box struct {
 	owner string
 }
 
+func (b *box) rejectCreatedProfile(ctx context.Context, envID string) error {
+	if err := b.Destroy(context.WithoutCancel(ctx), envID); err != nil {
+		return providererr.New(providererr.Transient, "guest_profile_mismatch", "Firecracker guest profile differs from operator configuration; VM "+envID+" cleanup requires retry")
+	}
+	return providererr.New(providererr.Invalid, "guest_profile_mismatch", "Firecracker guest profile differs from operator configuration; VM destroyed")
+}
+
 func (b *box) endpoint(envID string) (sandboxagent.Endpoint, error) {
 	if !envIDPattern.MatchString(envID) {
 		return sandboxagent.Endpoint{}, providererr.New(providererr.NotFound, "unknown_env", "环境不存在")
@@ -188,8 +269,20 @@ func (b *box) Create(ctx context.Context, spec sandbox.Spec) (sandbox.Env, error
 	if !supported {
 		return sandbox.Env{}, providererr.New(providererr.Invalid, "unsupported_runtime", "Firecracker 后端只有这些运行环境："+strings.Join(b.p.cfg.Runtimes, "、"))
 	}
+	var prepared PreparedImage
 	if spec.Image != "" {
-		return sandbox.Env{}, providererr.New(providererr.Invalid, "unsupported_image", "Firecracker 后端只用平台的运行环境镜像，不能按项目定制（D-21）")
+		var err error
+		prepared, err = b.preparedImage(ctx, spec.Image)
+		if err != nil {
+			return sandbox.Env{}, err
+		}
+		runtime = prepared.Runtime
+	} else if b.p.cfg.GuestProfile == "benchmark-system" {
+		if b.p.cfg.BaseRuntime == "" {
+			return sandbox.Env{}, providererr.New(providererr.Invalid, "profile_base_unavailable", "benchmark guest requires an operator-prepared base image for this runtime")
+		}
+		prepared = PreparedImage{Runtime: b.p.cfg.BaseRuntime, SourceDigest: b.p.cfg.BaseImageDigest}
+		runtime = prepared.Runtime
 	}
 	if spec.WorkspaceID != "" {
 		return sandbox.Env{}, providererr.New(providererr.Invalid, "unsupported_workspace", "Firecracker 后端不能挂工作区，要按存档模式用（D-06）")
@@ -198,6 +291,10 @@ func (b *box) Create(ctx context.Context, spec sandbox.Spec) (sandbox.Env, error
 		return sandbox.Env{}, providererr.New(providererr.Invalid, "network_allowlist_unsupported", "Firecracker 的客户机没有网卡，联网只经出网网关的授权")
 	}
 	req := map[string]any{"runtime": runtime, "cpu_millis": spec.CPUMillis, "memory_mb": spec.MemoryMB}
+	if b.p.cfg.GuestProfile != "workspace" {
+		req["guest_profile"] = b.p.cfg.GuestProfile
+		req["root_disk_mb"] = b.p.cfg.RootDiskMB
+	}
 	if b.p.cfg.DiskMB > 0 {
 		req["disk_mb"] = b.p.cfg.DiskMB
 	}
@@ -212,14 +309,47 @@ func (b *box) Create(ctx context.Context, spec sandbox.Spec) (sandbox.Env, error
 		return sandbox.Env{}, err
 	}
 	var out struct {
-		EnvID string `json:"env_id"`
-		Image string `json:"image"`
+		EnvID        string `json:"env_id"`
+		Image        string `json:"image"`
+		GuestProfile string `json:"guest_profile"`
+		RootDiskMB   int    `json:"root_disk_mb"`
 	}
-	if json.Unmarshal(body, &out) != nil || !envIDPattern.MatchString(out.EnvID) {
+	if err := json.Unmarshal(body, &out); err != nil {
+		// A profile field with a wrong JSON type is also a failed identity
+		// confirmation. Retain enough of the response to clean up its VM.
+		var identity struct {
+			EnvID string `json:"env_id"`
+		}
+		if json.Unmarshal(body, &identity) == nil && envIDPattern.MatchString(identity.EnvID) {
+			return sandbox.Env{}, b.rejectCreatedProfile(ctx, identity.EnvID)
+		}
 		return sandbox.Env{}, providererr.New(providererr.Transient, "sandbox_bad_response", "fc-manager 返回的环境 id 格式不对")
 	}
+	if !envIDPattern.MatchString(out.EnvID) {
+		return sandbox.Env{}, providererr.New(providererr.Transient, "sandbox_bad_response", "fc-manager 返回的环境 id 格式不对")
+	}
+	profileMatches := out.GuestProfile == b.p.cfg.GuestProfile && out.RootDiskMB == b.p.cfg.RootDiskMB
+	if b.p.cfg.GuestProfile == "workspace" && out.GuestProfile == "" && out.RootDiskMB == 0 {
+		profileMatches = true // Existing managers omit profile fields for standard guests.
+	}
+	if !profileMatches {
+		return sandbox.Env{}, b.rejectCreatedProfile(ctx, out.EnvID)
+	}
 	// fc-manager 在回 201 之前已经等到 agent 的 /healthz。
-	return sandbox.Env{ID: out.EnvID, Spec: spec, Image: out.Image, HealthConfirmed: true}, nil
+	image := out.Image
+	if prepared.SourceDigest != "" {
+		if out.Image != prepared.SourceDigest {
+			cleanupErr := b.Destroy(context.WithoutCancel(ctx), out.EnvID)
+			if cleanupErr != nil {
+				return sandbox.Env{}, providererr.New(providererr.Transient, "image_identity_mismatch", "Firecracker rootfs 摘要与登记不符，拒绝执行；VM "+out.EnvID+" 清理需重试")
+			}
+			return sandbox.Env{}, providererr.New(providererr.Invalid, "image_identity_mismatch", "Firecracker rootfs 摘要与登记不符，已销毁 VM")
+		}
+		if spec.Image != "" {
+			image = spec.Image
+		}
+	}
+	return sandbox.Env{ID: out.EnvID, Spec: spec, Image: image, HealthConfirmed: true}, nil
 }
 
 func (b *box) Healthy(ctx context.Context, envID string) bool {

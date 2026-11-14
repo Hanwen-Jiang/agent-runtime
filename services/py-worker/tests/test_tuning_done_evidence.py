@@ -62,10 +62,10 @@ def test_done_without_running_anything_after_the_change_is_not_done() -> None:
     assert d.raised
 
 
-def test_done_without_any_change_when_it_could_change_files_is_not_done() -> None:
+def test_done_without_any_change_is_done_once_the_model_accepted_it() -> None:
+    # 有写权限不等于要写（reviewer/rules.py）：没有改动、模型已按用户要求验收的回答直接完成，不再追问改动。
     d = decide(done("report"), verified(wrote=False, ran_after_write=False, last_exit_code=None))
-    assert d.verdict["verdict"] == "continue"
-    assert d.verdict["reason_code"] == "rule_done_without_changes"
+    assert d.verdict["verdict"] == "done"
 
 
 def test_a_task_that_cannot_change_files_may_finish_without_changes() -> None:

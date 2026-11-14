@@ -61,6 +61,7 @@ from agentruntime_core.secrets import MASK
 from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker import names
+from agentruntime_worker.runtime_capabilities import RuntimeCapabilities, context_text
 from agentruntime_worker.activities.types import HumanCancel, HumanQuestion, NodeInput, ReconcileResult, Tenant, ToolCallInput
 from agentruntime_worker.context.builder import ContextBuilder, ContextRequest, measured, message_tokens, task_family
 from agentruntime_worker.executor import keys
@@ -138,6 +139,7 @@ class ExecutorDeps:
     stream_deliver: bool = True
     deltas: DeltaSink | None = None
     attachments: Any = None
+    runtime_capabilities: RuntimeCapabilities | None = None
 
 
 def _conversational(node: Mapping[str, Any]) -> bool:
@@ -514,9 +516,10 @@ class NodeExecutor:
             expected = keys.idempotency_key(inp.tenant.tenant_id, inp.task_id, node["id"], node.get("inputs", {}))
             if node.get("idempotency_key") != expected:
                 raise _error(f"写操作 {node['id']} 缺少由代码生成的幂等键", DENIED)
-        if effect == "write_irreversible":
+        network_control = str(node.get("template", "")).split("@", 1)[0] == "request_network"
+        if effect == "write_irreversible" or network_control:
             gate = inp.gate
-            if gate is None or gate.option != "approve" or gate.gate_node != f"{node['id']}.1":
+            if gate is None or gate.option != "approve" or gate.gate_node != f"{node['id']}.1" or (network_control and not gate.approved_by):
                 raise _error(f"write_irreversible 的 {node['id']} 没有通过的人工审批记录", DENIED)
 
     def _from_provider(self, err: ProviderError, node: Mapping[str, Any]) -> ApplicationError:
@@ -543,7 +546,9 @@ class NodeExecutor:
     # --- 缓存 ---
 
     def _cacheable(self, node: Mapping[str, Any]) -> bool:
-        return bool(node.get("cache")) and node.get("effect") in CACHEABLE_EFFECTS
+        if self.deps.runtime_capabilities is not None and _conversational(node):
+            return False  # Current task grants can change without changing the user message.
+        return str(node.get("template", "")).split("@", 1)[0] != "request_network" and bool(node.get("cache")) and node.get("effect") in CACHEABLE_EFFECTS
 
     async def _cache_get(self, tenant: TenantContext, node: Mapping[str, Any]) -> dict[str, Any] | None:
         if not self._cacheable(node):
@@ -585,7 +590,7 @@ class NodeExecutor:
         if name == names.SANDBOX_TEMPLATE:
             output = await self._sandbox(node, tenant)
         else:
-            approved_by = inp.gate.approved_by if inp.gate is not None and str(node.get("effect", "")) == "write_irreversible" else ""
+            approved_by = inp.gate.approved_by if inp.gate is not None and (str(node.get("effect", "")) == "write_irreversible" or name == "request_network") else ""
             output = await self._tool(node, tenant, name, version, span, task_id=inp.task_id, approved_by=approved_by)
         if schema is not None:
             errors = validate(schema, output)
@@ -707,12 +712,14 @@ class NodeExecutor:
             task_family=task_family(inp.task_plan, inp.task_family),
         )
 
-    def _messages(self, inp: NodeInput, retry_errors: list[str] | None, turns: tuple[Turn, ...] = ()) -> list[mg.ChatMessage]:
+    def _messages(self, inp: NodeInput, retry_errors: list[str] | None, turns: tuple[Turn, ...] = (), runtime_context: str = "") -> list[mg.ChatMessage]:
         """S-05 的最小上下文：系统提示加 inject 的内容，用户消息是模板与输入的 JSON。Context Builder 接入后由它组装。
         直接回复用户的节点按真实的对话问：之前各轮的 user、assistant，最后是用户这条消息的原文。"""
         node = inp.node
         conversational = _conversational(node)
         system = CONVERSATION_SYSTEM_PROMPT if conversational else SYSTEM_PROMPT
+        if runtime_context:
+            system += "\n\n" + runtime_context
         for injection in inp.injections:
             system += f"\n[{injection.get('zone', '')}] {injection.get('content', '')}"
         if conversational:
@@ -752,6 +759,10 @@ class NodeExecutor:
         if self.deps.attachments is not None:
             files = await self.deps.attachments.describe(inp.tenant.tenant_id, inp.task_id, inp.tenant.workspace_id)
             images = await prepare_images(self.deps.models, inp.tenant, files)
+        runtime_context = ""
+        if self.deps.runtime_capabilities is not None:
+            ceiling = str((inp.task_state.get("constraints") or {}).get("effect_ceiling") or "read")
+            runtime_context = context_text(await self.deps.runtime_capabilities.load(inp.tenant, inp.task_id, ceiling=ceiling))
         # 旧 Activity 缺少快照时仍用原提示；v1 带快照时用原 Builder 算法。
         # v2 在 Task 启动时固定，覆盖普通和 conversational 生成节点。
         has_context_snapshot = bool(inp.history or inp.task_state or inp.task_plan is not None)
@@ -772,6 +783,8 @@ class NodeExecutor:
                 node = {**node, "inputs": {}}
             else:
                 system = [SYSTEM_PROMPT, keys.canonical_json({"template": node.get("template")})]
+            if runtime_context:
+                system.append(runtime_context)
             system.extend(f"[{i.get('zone', '')}] {i.get('content', '')}" for i in inp.injections)
             built = await self.deps.context_builder.build(
                 ContextRequest(
@@ -798,7 +811,7 @@ class NodeExecutor:
                     mg.ChatMessage(role=mg.CHAT_ROLE_USER, text="上一次的输出不符合 output_schema，请改正后重新输出：\n" + "\n".join(retry_errors))
                 )
         else:
-            messages = [*self._messages(inp, retry_errors, turns), *([mg.ChatMessage(role=mg.CHAT_ROLE_USER,text=collections_brief)] if collections_brief else []), *images.messages]
+            messages = [*self._messages(inp, retry_errors, turns, runtime_context), *([mg.ChatMessage(role=mg.CHAT_ROLE_USER,text=collections_brief)] if collections_brief else []), *images.messages]
             if images.messages and message_tokens(messages, images.token_reserve) > self.config.context_effective_tokens:
                 raise InvalidError("context_window_exceeded", "图片与文字超过当前节点有效上下文预算")
         params = mg.GenerateParams(messages=messages)
@@ -871,6 +884,7 @@ class NodeExecutor:
         effective = self.config.context_effective_tokens
         return {
             "window_tokens": model.context_window or effective,
+            "window_source": "model_profile" if model.context_window > 0 else "effective_fallback",
             "effective_tokens": effective,
             "total_tokens": system + rest,
             "categories": [{"name": "system_prompt", "tokens": system}, {"name": "messages", "tokens": rest}],

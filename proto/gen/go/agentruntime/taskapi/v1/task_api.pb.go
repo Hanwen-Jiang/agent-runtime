@@ -34,7 +34,8 @@ type NetworkScope int32
 const (
 	// 旧客户端：同 HOSTS。
 	NetworkScope_NETWORK_SCOPE_UNSPECIFIED NetworkScope = 0
-	// 只放行 hosts 里的主机（要落在租户策略的 sandbox.network.hosts 里）。
+	// 只放行 hosts 里的主机。仅 allowlist 的策略仍受 hosts 上限约束；
+	// 同时允许 open 时可选择任意公网主机作为更窄的授权子集。
 	NetworkScope_NETWORK_SCOPE_HOSTS NetworkScope = 1
 	// 所有公网域名；hosts 必须为空（否则 InvalidArgument，code 为 invalid_network_request）。
 	NetworkScope_NETWORK_SCOPE_PUBLIC NetworkScope = 2
@@ -255,7 +256,8 @@ type SubmitTaskRequest struct {
 	// 不填时用租户策略的上限。应用按用户选的沙箱等级填它（docs/plan/cloud-deploy.md D-08）。
 	EffectCeiling v1.Effect `protobuf:"varint,10,opt,name=effect_ceiling,json=effectCeiling,proto3,enum=agentruntime.common.v1.Effect" json:"effect_ceiling,omitempty"`
 	// 这个 Task 要联网（设计书改动稿 W8；docs/plan/cloud-deploy.md D-16）。沙箱默认断网；按租户策略的 sandbox.network 核对，
-	// 不允许联网、主机不在范围里、时长超过上限、只读的 Task（effect 上限是 read）一律 denied 并说明原因，不悄悄截断。
+	// 不允许联网、主机超出策略范围或时长超过上限时 denied，不悄悄截断。
+	// 网络授权与工作区读写上限独立；只读 Task 可以明示申请联网，但 effect_ceiling 不会因此提升。
 	NetworkRequest *NetworkRequest `protobuf:"bytes,11,opt,name=network_request,json=networkRequest,proto3" json:"network_request,omitempty"`
 	// 可选的美元预算上限（百万分之一美元）。不填沿用租户策略；显式值必须为正，
 	// 且不能高于租户的非零美元预算。首次提交固定预算，重试不能更换预算或提交约束。
@@ -388,11 +390,15 @@ type NetworkRequest struct {
 	// 端口；不填为 80 与 443。
 	Ports []int32 `protobuf:"varint,2,rep,packed,name=ports,proto3" json:"ports,omitempty"`
 	// 授权多久（分钟）：15、30 或 60，不超过租户策略的 max_grant_minutes。
+	// 0 仅在 unlimited=true 且租户 allow_unlimited=true 时表示本 Task 不限时。
 	Minutes int32 `protobuf:"varint,3,opt,name=minutes,proto3" json:"minutes,omitempty"`
 	// 为什么要联网，记进授权与审计。
 	Reason string `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
 	// 放行的范围（NET-OPEN，docs/plan/net-open-contract.md）；不写就是 HOSTS。
-	Scope         NetworkScope `protobuf:"varint,5,opt,name=scope,proto3,enum=agentruntime.taskapi.v1.NetworkScope" json:"scope,omitempty"`
+	Scope NetworkScope `protobuf:"varint,5,opt,name=scope,proto3,enum=agentruntime.taskapi.v1.NetworkScope" json:"scope,omitempty"`
+	// 对 minutes=0 的显式确认；不能将旧客户端漏填的时长视为不限时。
+	// 授权仍在 Task 结束或手动撤销时失效，不跨任务自动授权。
+	Unlimited     bool `protobuf:"varint,6,opt,name=unlimited,proto3" json:"unlimited,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -460,6 +466,13 @@ func (x *NetworkRequest) GetScope() NetworkScope {
 		return x.Scope
 	}
 	return NetworkScope_NETWORK_SCOPE_UNSPECIFIED
+}
+
+func (x *NetworkRequest) GetUnlimited() bool {
+	if x != nil {
+		return x.Unlimited
+	}
+	return false
 }
 
 type SubmitTaskResponse struct {
@@ -1827,13 +1840,14 @@ const file_agentruntime_taskapi_v1_task_api_proto_rawDesc = "" +
 	" \x01(\x0e2\x1e.agentruntime.common.v1.EffectR\reffectCeiling\x12P\n" +
 	"\x0fnetwork_request\x18\v \x01(\v2'.agentruntime.taskapi.v1.NetworkRequestR\x0enetworkRequest\x12/\n" +
 	"\x11budget_usd_micros\x18\f \x01(\x03H\x00R\x0fbudgetUsdMicros\x88\x01\x01B\x14\n" +
-	"\x12_budget_usd_micros\"\xab\x01\n" +
+	"\x12_budget_usd_micros\"\xc9\x01\n" +
 	"\x0eNetworkRequest\x12\x14\n" +
 	"\x05hosts\x18\x01 \x03(\tR\x05hosts\x12\x14\n" +
 	"\x05ports\x18\x02 \x03(\x05R\x05ports\x12\x18\n" +
 	"\aminutes\x18\x03 \x01(\x05R\aminutes\x12\x16\n" +
 	"\x06reason\x18\x04 \x01(\tR\x06reason\x12;\n" +
-	"\x05scope\x18\x05 \x01(\x0e2%.agentruntime.taskapi.v1.NetworkScopeR\x05scope\"\x8f\x01\n" +
+	"\x05scope\x18\x05 \x01(\x0e2%.agentruntime.taskapi.v1.NetworkScopeR\x05scope\x12\x1c\n" +
+	"\tunlimited\x18\x06 \x01(\bR\tunlimited\"\x8f\x01\n" +
 	"\x12SubmitTaskResponse\x12\x17\n" +
 	"\atask_id\x18\x01 \x01(\tR\x06taskId\x12\x1d\n" +
 	"\n" +

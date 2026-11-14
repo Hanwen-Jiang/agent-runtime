@@ -76,12 +76,14 @@ class PlannerActivities:
         result = self.planner.plan_without_model(request) if inp.no_model else await self.planner.plan(request)
         # 判定依据与模型调用写入日志（trace），不传给下游。
         activity.logger.info(
-            "Planner：Triage %s，依据 %s；模型调用 %s%s%s",
+            "Planner：Triage %s，依据 %s；模型调用 %s%s%s%s",
             result.triage_level,
             "；".join(result.decision.reasons),
             [(c.purpose, c.tier, c.vendor) for c in result.calls],
             "；两次都不合格，用了保守规划" if result.fallback else "",
             f"；代码改正：{'；'.join(result.adjustments)}" if result.adjustments else "",
+            # Keep bounded validation diagnostics, never the model response.
+            f"；回退原因：{[str(problem)[:240] for problem in result.problems[:5]]}" if result.fallback and result.problems else "",
         )
         stage = await self._with_reads(inp.tenant, result.stage, context.effect_ceiling, skills=bool(context.catalog.skills))
         if inp.attachments:
@@ -180,6 +182,8 @@ def dev_planner(config: WorkerConfig) -> PlannerActivities:
     if config.registry_address:
         from agentruntime_worker.personal_config import PersonalConfigContextSource, TaskPersonalConfig
         source = PersonalConfigContextSource(source, TaskPersonalConfig(skill_pins(config).store))
+    from agentruntime_worker.runtime_capabilities import RuntimeCapabilityContextSource, from_config
+    source = RuntimeCapabilityContextSource(source, from_config(config, tools))
     # N16-R：派子 Agent 的规矩（AR_SUB_AGENT_POLICY=rules，默认 off）。
     planner = Planner(model_gateway(config), PlannerConfig(sub_agent_rules=config.sub_agent_policy == "rules"))
     from agentruntime_worker.tools import context_objects

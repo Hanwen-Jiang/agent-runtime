@@ -106,6 +106,12 @@ func serve(ctx context.Context, stdout, stderr io.Writer, getenv func(string) st
 		fmt.Fprintln(stderr, "model-gateway:", config.EnvRoutingOverrides, err)
 		return 1
 	}
+	// 运维指定的租户（评测）只试一次、不在同一 Profile 上重试；不改路由、档位、输出与超时（operator_retry.go）。
+	retryCaps, err := gateway.ParseSingleAttemptTenants(getenv("AR_MODEL_SINGLE_ATTEMPT_TENANTS"))
+	if err != nil {
+		fmt.Fprintln(stderr, "AR_MODEL_SINGLE_ATTEMPT_TENANTS:", err)
+		return 2
+	}
 	provider, err := newProvider(cfg)
 	if err != nil {
 		fmt.Fprintln(stderr, "model-gateway：", err)
@@ -138,10 +144,12 @@ func serve(ctx context.Context, stdout, stderr io.Writer, getenv func(string) st
 		defer objects.Close()
 	}
 	srv, err := gateway.New(gateway.Options{
-		Objects:          objects,
-		FileAuthority:    store,
-		ModelBudget:      modelbudget.New(store),
-		BudgetPolicies:   modelbudget.Policy{Path: cfg.TenantPoliciesFile, Source: registryBudgetSource(cfg.RegistryAddress)},
+		Objects:              objects,
+		FileAuthority:        store,
+		SingleAttemptTenants: retryCaps,
+		ModelBudget:          modelbudget.New(store),
+		// 运维指定的租户（AR_MODEL_BUDGET_UNLIMITED_TENANTS）不受金额上限；用量照旧预留与结算。策略文件不能给自己开这个口。
+		BudgetPolicies:   modelbudget.WithOperatorUnlimitedTenants(modelbudget.Policy{Path: cfg.TenantPoliciesFile, Source: registryBudgetSource(cfg.RegistryAddress)}, getenv("AR_MODEL_BUDGET_UNLIMITED_TENANTS")),
 		Provider:         provider,
 		Router:           router.New(catalog, router.FileAllowlist{Path: cfg.TenantPoliciesFile}),
 		RoutingOverrides: overrides,

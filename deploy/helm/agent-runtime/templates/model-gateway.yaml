@@ -55,6 +55,9 @@ spec:
             - name: AR_DEV_TENANT_POLICIES_FILE
               value: /etc/agentruntime/tenant-policies/tenant-policies.json
             {{- end }}
+            {{- with .Values.modelGateway.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           readinessProbe:
             httpGet:
               path: /healthz

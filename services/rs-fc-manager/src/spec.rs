@@ -33,6 +33,22 @@ pub const MIN_MEMORY_MIB: u64 = 128;
 pub const MIN_DISK_MIB: u64 = 64;
 pub const MAX_LABELS: usize = 16;
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum GuestProfile {
+    #[default]
+    Workspace,
+    BenchmarkSystem,
+}
+impl GuestProfile {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Workspace => "workspace",
+            Self::BenchmarkSystem => "benchmark-system",
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CreateRequest {
@@ -41,6 +57,10 @@ pub struct CreateRequest {
     pub memory_mb: u64,
     #[serde(default)]
     pub disk_mb: Option<u64>,
+    #[serde(default)]
+    pub guest_profile: GuestProfile,
+    #[serde(default)]
+    pub root_disk_mb: Option<u64>,
     #[serde(default)]
     pub labels: BTreeMap<String, String>,
 }
@@ -61,6 +81,15 @@ pub struct VmSpec {
     pub vcpus: u32,
     pub memory_mib: u64,
     pub disk_mib: u64,
+    #[serde(default)]
+    pub guest_profile: GuestProfile,
+    #[serde(default)]
+    pub root_disk_mib: u64,
+}
+impl VmSpec {
+    pub fn allocated_disk_mib(&self) -> u64 {
+        self.disk_mib + self.root_disk_mib
+    }
 }
 
 pub fn validate(
@@ -89,6 +118,21 @@ pub fn validate(
             l.vm_max_disk_mib
         ));
     }
+    let root_disk_mib = match (req.guest_profile, req.root_disk_mb) {
+        (GuestProfile::Workspace, None | Some(0)) => 0,
+        (GuestProfile::BenchmarkSystem, Some(n))
+            if (MIN_DISK_MIB..=l.vm_max_disk_mib).contains(&n) =>
+        {
+            n
+        }
+        _ => {
+            return Err(
+                "root_disk_mb is required for benchmark-system and forbidden for workspace".into(),
+            );
+        }
+    };
+    disk.checked_add(root_disk_mib)
+        .ok_or("total disk size overflow")?;
     if req.labels.len() > MAX_LABELS {
         return Err(format!("labels 最多 {MAX_LABELS} 个"));
     }
@@ -104,6 +148,8 @@ pub fn validate(
         vcpus,
         memory_mib: req.memory_mb,
         disk_mib: disk,
+        guest_profile: req.guest_profile,
+        root_disk_mib,
     };
     Ok((spec, req.labels))
 }
@@ -185,6 +231,15 @@ pub fn boot_args(guest_init: &str) -> String {
     )
 }
 
+pub fn profile_boot_args(guest_init: &str, profile: GuestProfile) -> String {
+    let args = boot_args(guest_init);
+    if profile == GuestProfile::Workspace {
+        return args;
+    }
+    args.replace(" ro root=", " rw root=")
+        .replace(" -- ", " AGENT_GUEST_PROFILE=benchmark-system -- ")
+}
+
 pub struct JailerArgs<'a> {
     pub env_id: &'a str,
     pub firecracker_bin: &'a Path,
@@ -255,8 +310,53 @@ mod tests {
             cpu_millis: cpu,
             memory_mb: mem,
             disk_mb: None,
+            guest_profile: GuestProfile::Workspace,
+            root_disk_mb: None,
             labels: BTreeMap::new(),
         }
+    }
+
+    #[test]
+    fn benchmark_profile_requires_private_capacity_and_preserves_default() {
+        let (normal, _) = validate(req(1000, 512), &limits()).unwrap();
+        assert_eq!(normal.guest_profile, GuestProfile::Workspace);
+        assert_eq!(normal.root_disk_mib, 0);
+        assert_eq!(normal.allocated_disk_mib(), normal.disk_mib);
+        let mut benchmark = req(1000, 512);
+        benchmark.guest_profile = GuestProfile::BenchmarkSystem;
+        assert!(validate(benchmark, &limits()).is_err());
+        let mut benchmark = req(1000, 512);
+        benchmark.guest_profile = GuestProfile::BenchmarkSystem;
+        benchmark.root_disk_mb = Some(8192);
+        let (spec, _) = validate(benchmark, &limits()).unwrap();
+        assert_eq!(spec.allocated_disk_mib(), 8192 + 4096);
+        let mut normal = req(1000, 512);
+        normal.root_disk_mb = Some(8192);
+        assert!(validate(normal, &limits()).is_err());
+        assert!(
+            serde_json::from_str::<CreateRequest>(
+                r#"{"runtime":"python","cpu_millis":1000,"memory_mb":512,"guest_profile":"root"}"#
+            )
+            .is_err()
+        );
+        let old: VmSpec = serde_json::from_str(
+            r#"{"runtime":"python","cpu_millis":1000,"vcpus":1,"memory_mib":512,"disk_mib":4096}"#,
+        )
+        .unwrap();
+        assert_eq!(old.guest_profile, GuestProfile::Workspace);
+    }
+
+    #[test]
+    fn benchmark_boot_args_are_fixed_and_default_is_unchanged() {
+        assert_eq!(
+            profile_boot_args("/agent", GuestProfile::Workspace),
+            boot_args("/agent")
+        );
+        let args = profile_boot_args("/agent", GuestProfile::BenchmarkSystem);
+        assert!(args.contains(" rw root=/dev/vda "));
+        assert!(!args.contains(" ro root="));
+        assert!(args.contains("AGENT_GUEST_PROFILE=benchmark-system -- --init"));
+        assert!(!args.contains("token="));
     }
 
     #[test]
@@ -341,6 +441,8 @@ mod tests {
             vcpus: 2,
             memory_mib: 1024,
             disk_mib: 4096,
+            guest_profile: GuestProfile::Workspace,
+            root_disk_mib: 0,
         };
         let a = jailer_args(&JailerArgs {
             env_id: "fc-0123456789abcdef",

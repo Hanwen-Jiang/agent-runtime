@@ -21,23 +21,24 @@ import (
 
 // 联网授权（设计书改动稿 W8；docs/plan/cloud-deploy.md D-16）。规则与 Worker 一侧（agentruntime_worker.sandbox.grants）
 // 相同，两边对着同一组用例测（network_test.go 与 py-worker 的 test_sandbox_grants.py）：
-//   - 只读的 Task（effect 上限是 read）不能申请；租户策略不允许、主机不在范围、时长超过上限：denied；写法不对：invalid。
-//   - 主机只能是域名：IP 地址、localhost、集群内的名字不收。时长只有 15、30、60 分钟。端口不写为 80 与 443。
+//   - 网络授权与工作区读写上限独立。租户策略不允许、主机不在范围、时长超过上限：denied；写法不对：invalid。
+//   - 主机只能是域名：IP 地址、localhost、集群内的名字不收。时长 15、30、60 分钟；显式 unlimited 可选 0。端口不写为 80 与 443。
 //   - approver 是 submitter 时提交本身就是提交者的批准；是 admin 时只接受带 ScopeApprove 的身份提交。
 //   - 批准的申请写进业务库的 sandbox_grants（表由 Worker 迁移，D-11），出网网关按它放行；Task 结束时由 FinishTask 收回。
 
 var (
 	grantHost        = regexp.MustCompile(`^(\*\.)?[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*\.[a-z]([a-z0-9-]{0,61}[a-z0-9])?$`)
 	internalSuffixes = []string{".local", ".localhost", ".internal", ".svc", ".cluster.local", ".home.arpa", ".lan", ".intranet", ".corp"}
-	grantMinutes     = []int32{15, 30, 60}
+	grantMinutes     = []int32{0, 15, 30, 60}
 	defaultPorts     = []int32{80, 443}
 )
 
 const maxGrantHosts = 20
 
-// NetworkPolicy 是租户策略的 sandbox.network；0 表示不限。
+// NetworkPolicy 是租户策略的 sandbox.network；用量上限 0 表示不限，时长不限由 AllowUnlimited 显式控制。
 type NetworkPolicy struct {
 	Allowed         bool     `json:"allowed"`
+	AllowUnlimited  bool     `json:"allow_unlimited"`
 	Modes           []string `json:"modes"`
 	Hosts           []string `json:"hosts"`
 	MaxGrantMinutes int32    `json:"max_grant_minutes"`
@@ -140,11 +141,9 @@ type checkedNetwork struct {
 	Reason  string
 }
 
-// CheckNetworkRequest 按租户策略核对提交时的联网申请；ceiling 是这个 Task 实际的 effect 上限，scopes 是提交者身份的权限。
-func CheckNetworkRequest(policy NetworkPolicy, req *taskapiv1.NetworkRequest, ceiling commonv1.Effect, scopes []string) (checkedNetwork, error) {
-	if ceiling <= commonv1.Effect_EFFECT_READ {
-		return checkedNetwork{}, denied("network_read_only", "只读的 Task 不能申请联网（联网的副作用按不可逆写处理）")
-	}
+// CheckNetworkRequest 按租户策略核对用户明示的联网申请；scopes 是提交者身份的权限。
+// 保留 effect 参数兼容调用方，但网络授权不提升或限制工作区读写上限，后者仍由普通提交与工具检查执行。
+func CheckNetworkRequest(policy NetworkPolicy, req *taskapiv1.NetworkRequest, _ commonv1.Effect, scopes []string) (checkedNetwork, error) {
 	if !policy.Allowed {
 		return checkedNetwork{}, denied("network_not_allowed", "租户策略不允许沙箱联网（sandbox.network.allowed）")
 	}
@@ -183,7 +182,7 @@ func CheckNetworkRequest(policy NetworkPolicy, req *taskapiv1.NetworkRequest, ce
 		if err != nil {
 			return checkedNetwork{}, err
 		}
-		if !slices.ContainsFunc(policy.Hosts, func(p string) bool { return coversHost(strings.ToLower(p), h) }) {
+		if !slices.Contains(modes, "open") && !slices.ContainsFunc(policy.Hosts, func(p string) bool { return coversHost(strings.ToLower(p), h) }) {
 			return checkedNetwork{}, denied("host_not_allowed", h+" 不在租户策略能放行的主机范围里")
 		}
 		if !slices.Contains(out.Hosts, h) {
@@ -205,8 +204,18 @@ func CheckNetworkRequest(policy NetworkPolicy, req *taskapiv1.NetworkRequest, ce
 			out.Ports = append(out.Ports, p)
 		}
 	}
+	if req.GetMinutes() == 0 {
+		if !req.GetUnlimited() {
+			return checkedNetwork{}, invalidNetwork("不限时授权需要显式 unlimited=true")
+		}
+		if !policy.AllowUnlimited {
+			return checkedNetwork{}, denied("network_unlimited_not_allowed", "租户策略不允许本任务不限时联网")
+		}
+	} else if req.GetUnlimited() {
+		return checkedNetwork{}, invalidNetwork("unlimited=true 只能与 minutes=0 一起使用")
+	}
 	if !slices.Contains(grantMinutes, req.GetMinutes()) {
-		return checkedNetwork{}, invalidNetwork("授权时长只能是 15、30、60 分钟")
+		return checkedNetwork{}, invalidNetwork("授权时长只能是 0（本任务不限时）、15、30、60 分钟")
 	}
 	if req.GetMinutes() > policy.maxMinutes() {
 		return checkedNetwork{}, denied("grant_too_long", fmt.Sprintf("租户策略的授权最长 %d 分钟", policy.maxMinutes()))
@@ -231,7 +240,7 @@ func CheckNetworkRequest(policy NetworkPolicy, req *taskapiv1.NetworkRequest, ce
 func writeSubmitGrant(ctx context.Context, store relational.Provider, tenant *commonv1.TenantContext, taskID string,
 	req checkedNetwork, policy NetworkPolicy, approvedBy string, now time.Time) error {
 	return sandboxgrants.WriteSubmitGrant(ctx, store, tenant, sandboxgrants.Grant{
-		TaskID: taskID, Scope: req.Scope, Hosts: req.Hosts, Ports: req.Ports, Minutes: req.Minutes, Reason: req.Reason, ApprovedBy: approvedBy,
+		TaskID: taskID, Scope: req.Scope, Hosts: req.Hosts, Ports: req.Ports, Minutes: req.Minutes, AllowUnlimited: policy.AllowUnlimited, Reason: req.Reason, ApprovedBy: approvedBy,
 		MaxUpBytes: policy.MaxUpBytes, MaxDownBytes: policy.MaxDownBytes, MaxConns: policy.MaxConns, MaxRPS: policy.MaxRPS,
 	}, now)
 }

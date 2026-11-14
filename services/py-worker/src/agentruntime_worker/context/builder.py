@@ -19,7 +19,7 @@ BuiltContext.usage 是这次上下文里各类内容占多少（docs/plan/runnin
 精确状态（Task State）单独成段放在 history 之后、status 之前。v2 固定保留完整 JSON 与系统约束，旧结果先外置再摘要，
 最近 keep_recent 条保留原文；仍超过 effective_tokens 时明确拒绝模型调用，不截断精确状态。历史 Task 的 v1 继续使用旧上限与 reset。
 
-阈值按模型实测的有效长度（effective_tokens）设，不按标称窗口；Task Plan 的 context.mask_at、summarize_at 覆盖默认值。
+阈值按部署配置的输入预算（effective_tokens）设；该预算不是标称窗口，也不自动表示经过质量评测。Task Plan 的 context.mask_at、summarize_at 覆盖默认值。
 计数算上随请求给出的工具定义（ContextRequest.tools）。
 持久摘要与外置的内容放在 ObjectStore（按租户绑定），键是 context/<task_id>/r<round>/<node_id>/…，同一步重复构建结果相同。
 每次模型调用都带租户上下文。
@@ -72,7 +72,7 @@ PROBE_INSTRUCTION = "只根据上面的上下文回答下面的填空题，按�
 @dataclass(frozen=True)
 class ContextConfig:
     effective_tokens: int = 32_000
-    """模型实测的有效长度（Model Profile 接好之前用配置）。"""
+    """部署配置的输入预算；不是模型标称窗口，也不是质量评测结论。"""
     mask_at: float = 0.4
     summarize_at: float = 0.7
     offload_tokens: int = 2_000
@@ -128,15 +128,21 @@ class ContextUsage:
     """[{"name", "tokens"，MCP 工具另有 "mcp": True}]。"""
     applied: list[str]
     total_tokens: int
+    mask_at_tokens: int | None = None
+    summarize_at_tokens: int | None = None
+    threshold_source: str = "runtime_config"
 
     def payload(self, window_tokens: int, effective_tokens: int) -> dict[str, Any]:
         """进度事件 context_usage 的数字部分。取不到模型的窗口时分母用压缩线。"""
         out: dict[str, Any] = {
             "window_tokens": window_tokens if window_tokens > 0 else effective_tokens,
+            "window_source": "model_profile" if window_tokens > 0 else "effective_fallback",
             "effective_tokens": effective_tokens,
             "total_tokens": self.total_tokens,
             "categories": self.categories,
         }
+        if self.mask_at_tokens is not None and self.summarize_at_tokens is not None:
+            out.update(mask_at_tokens=self.mask_at_tokens, summarize_at_tokens=self.summarize_at_tokens, threshold_source=self.threshold_source)
         if self.tools:
             out["tools"] = self.tools
         if self.applied:
@@ -323,7 +329,11 @@ class ContextBuilder:
         if (current or request.image_messages) and tokens > cfg.effective_tokens:
             raise InvalidError("context_window_exceeded", f"保留系统约束、完整 Task State 和近期消息后需要 {tokens} tokens，超过有效窗口 {cfg.effective_tokens}")
         steps = [s for s in LADDER if s in applied]
-        usage = self._usage(request, mode, state, messages, steps)
+        usage = replace(
+            self._usage(request, mode, state, messages, steps),
+            mask_at_tokens=int(mask_at), summarize_at_tokens=int(summarize_at),
+            threshold_source="task_plan" if "mask_at" in settings or "summarize_at" in settings else "runtime_config",
+        )
         return BuiltContext(messages=messages, applied=steps, tokens=tokens, probes=probes, cost_usd=round(state.cost_usd, 6), usage=usage)
 
     def _usage(self, request: ContextRequest, mode: ModePolicy, state: _State, messages: Sequence[mg.ChatMessage], applied: list[str]) -> ContextUsage:
@@ -406,7 +416,8 @@ class ContextBuilder:
         arguments = struct_pb2.Struct()
         json_format.ParseDict(step.get("args") or {}, arguments)
         call_id = f"call_{i}"
-        action = mg.ChatMessage(role=mg.CHAT_ROLE_ASSISTANT, tool_calls=[mg.ToolCall(id=call_id, name=str(step.get("tool", "")), arguments=arguments)])
+        action = mg.ChatMessage(role=mg.CHAT_ROLE_ASSISTANT, text=str(step.get("progress_message") or ""),
+                                tool_calls=[mg.ToolCall(id=call_id, name=str(step.get("tool", "")), arguments=arguments)])
         observation = step.get("observation")
         if "error" in step:
             text = f"第 {i} 步出错：{step['error']}"

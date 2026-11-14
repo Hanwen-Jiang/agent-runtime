@@ -19,6 +19,28 @@ use common::*;
 use serde_json::{Value, json};
 
 #[test]
+fn benchmark_profile_is_operator_gated_and_root_capacity_is_charged() {
+    let request = json!({"runtime":"python","cpu_millis":1000,"memory_mb":512,"disk_mb":256,"guest_profile":"benchmark-system","root_disk_mb":512});
+    let denied = Rig::new();
+    let manager = denied.start();
+    let response = manager.create("eval-tb20", request.clone());
+    assert_eq!(response.status, 403);
+    assert_eq!(response.code(), "guest_profile_denied");
+    assert!(denied.leftovers().is_empty());
+    let limited = Rig::new()
+        .with("AR_FC_BENCHMARK_OWNERS", "eval-tb20")
+        .with("AR_FC_MAX_SCRATCH_MIB", "600");
+    let manager = limited.start();
+    assert_eq!(
+        manager.create("other", request.clone()).code(),
+        "guest_profile_denied"
+    );
+    // Scratch alone fits; scratch plus private root does not.
+    assert_eq!(manager.create("eval-tb20", request).code(), "host_capacity");
+    assert!(limited.leftovers().is_empty());
+}
+
+#[test]
 fn healthz_needs_no_token_and_everything_else_does() {
     let rig = Rig::new();
     let m = rig.start();

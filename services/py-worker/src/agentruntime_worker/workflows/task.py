@@ -82,6 +82,7 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.workflows.latency import FirstEventLatency
     from agentruntime_worker.workflows.verification import VerificationRecord
     from agentruntime_worker.workflows.patches import (
+        NETWORK_CONTROL_APPROVAL_PATCH,
         BUDGETS_PATCH,
         CODES_PATCH,
         CONTEXT_BUILDER_V2_PATCH,
@@ -725,6 +726,8 @@ class TaskWorkflow:
                     return await self._stopped(seq, vd.stopped(results, f"问人没有得到回复：{verdict['reason']}；按停止处理，用现有结果收尾"), "human_no_reply")
                 if reply.option == "stop_and_wrap_up":
                     return await self._stopped(seq, vd.stopped(results, f"人选择停止并用现有结果收尾：{verdict['reason']}"), "human_stopped")
+                if workflow.patched(NETWORK_CONTROL_APPROVAL_PATCH) and self._verification.network_blocked and reply.option == "replan_with_guidance" and reply.guidance.strip():
+                    self._verification.network_replanned_by_human(reply.guidance)
                 last_round["human_reply"] = {"option": reply.option, "guidance": reply.guidance}
             elif kind == "rollback":
                 round_no = vd.checkpoint_round(verdict)

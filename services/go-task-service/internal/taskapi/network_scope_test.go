@@ -96,3 +96,34 @@ func TestNetworkPolicyViewUsesAuthenticatedTenant(t *testing.T) {
 		}
 	}
 }
+
+func TestUnlimitedRequestIsExplicitAndPolicyGated(t *testing.T) {
+	policy := NetworkPolicy{Allowed: true, AllowUnlimited: true, Modes: []string{"deny", "allowlist", "open"}, Hosts: []string{"github.com"}, MaxGrantMinutes: 60}
+	request := &taskapiv1.NetworkRequest{Scope: taskapiv1.NetworkScope_NETWORK_SCOPE_PUBLIC, Minutes: 0, Unlimited: true}
+	if _, err := CheckNetworkRequest(policy, request, commonv1.Effect_EFFECT_WRITE_REVERSIBLE, nil); err != nil {
+		t.Fatal(err)
+	}
+	request.Unlimited = false
+	if _, err := CheckNetworkRequest(policy, request, commonv1.Effect_EFFECT_WRITE_REVERSIBLE, nil); err == nil {
+		t.Fatal("omitted minutes silently became unlimited")
+	}
+	request.Unlimited = true
+	policy.AllowUnlimited = false
+	if _, err := CheckNetworkRequest(policy, request, commonv1.Effect_EFFECT_WRITE_REVERSIBLE, nil); err == nil {
+		t.Fatal("policy did not authorize unlimited")
+	}
+	request.Unlimited = false
+	request.Minutes = 60
+	if _, err := CheckNetworkRequest(policy, request, commonv1.Effect_EFFECT_WRITE_REVERSIBLE, nil); err != nil {
+		t.Fatal(err)
+	}
+	request.Scope = taskapiv1.NetworkScope_NETWORK_SCOPE_HOSTS
+	request.Hosts = []string{"api.github.com"}
+	if _, err := CheckNetworkRequest(policy, request, commonv1.Effect_EFFECT_WRITE_REVERSIBLE, nil); err != nil {
+		t.Fatal("open scope should allow its narrower host subset", err)
+	}
+	policy.Modes = []string{"deny", "allowlist"}
+	if _, err := CheckNetworkRequest(policy, request, commonv1.Effect_EFFECT_WRITE_REVERSIBLE, nil); err == nil {
+		t.Fatal("restricted host policy was bypassed")
+	}
+}

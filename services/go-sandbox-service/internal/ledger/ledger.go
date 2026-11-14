@@ -186,6 +186,10 @@ var Migrations = []relational.Migration{
 	{Version: 211, Name: "sandbox_grant_scope", Statements: []string{
 		"ALTER TABLE sandbox_grants ADD COLUMN scope TEXT NOT NULL DEFAULT 'hosts'",
 	}},
+	{Version: 218, Name: "sandbox_archive_lease", Statements: []string{
+		"ALTER TABLE sandbox_envs ADD COLUMN archive_token TEXT NOT NULL DEFAULT ''",
+		"ALTER TABLE sandbox_envs ADD COLUMN archive_until TEXT NOT NULL DEFAULT ''",
+	}},
 }
 
 // Record 是环境表的一行。
@@ -210,6 +214,8 @@ type Record struct {
 	MaxUntil          string
 	DestroyedAt       string
 	IdleSeconds       int64
+	ArchiveToken      string
+	ArchiveUntil      string
 	BusyUntil         string
 	CPUMS             int64
 	AliveMS           int64
@@ -232,7 +238,7 @@ var Columns = []string{
 	"env_ref", "backend", "kind", "isolation", "state", "created_at", "backend_env_id", "workspace_id", "session_id", "task_id", "writable",
 	"runtime", "image", "ready_at", "last_used_at", "expires_at", "max_until", "destroyed_at", "idle_seconds", "busy_until", "cpu_ms",
 	"alive_ms", "cost_usd", "fallback_from", "reason", "allow_hosts", "health_confirmed_at", "reused_at", "environment_id", "setup_state",
-	"setup_key", "setup_finished_at", "setup_error", "start_state",
+	"setup_key", "setup_finished_at", "setup_error", "start_state", "archive_token", "archive_until",
 }
 
 var columnList = strings.Join(Columns, ", ")
@@ -245,7 +251,7 @@ func (r Record) values() []any {
 	return []any{r.EnvRef, r.Backend, r.Kind, r.Isolation, r.State, r.CreatedAt, r.BackendEnvID, r.WorkspaceID, r.SessionID, r.TaskID, w,
 		r.Runtime, r.Image, r.ReadyAt, r.LastUsedAt, r.ExpiresAt, r.MaxUntil, r.DestroyedAt, r.IdleSeconds, r.BusyUntil, r.CPUMS,
 		r.AliveMS, r.CostUSD, r.FallbackFrom, r.Reason, r.AllowHosts, r.HealthConfirmedAt, r.ReusedAt, r.EnvironmentID, r.SetupState,
-		r.SetupKey, r.SetupFinishedAt, r.SetupError, r.StartState}
+		r.SetupKey, r.SetupFinishedAt, r.SetupError, r.StartState, r.ArchiveToken, r.ArchiveUntil}
 }
 
 // Str 取一列的文本。
@@ -305,7 +311,7 @@ func FromRow(owner string, row relational.Row) Record {
 		State: Str(row, "state"), CreatedAt: Str(row, "created_at"), BackendEnvID: Str(row, "backend_env_id"), WorkspaceID: Str(row, "workspace_id"),
 		SessionID: Str(row, "session_id"), TaskID: Str(row, "task_id"), Writable: Int(row, "writable") != 0, Runtime: Str(row, "runtime"),
 		Image: Str(row, "image"), ReadyAt: Str(row, "ready_at"), LastUsedAt: Str(row, "last_used_at"), ExpiresAt: Str(row, "expires_at"),
-		MaxUntil: Str(row, "max_until"), DestroyedAt: Str(row, "destroyed_at"), IdleSeconds: Int(row, "idle_seconds"), BusyUntil: Str(row, "busy_until"),
+		MaxUntil: Str(row, "max_until"), DestroyedAt: Str(row, "destroyed_at"), IdleSeconds: Int(row, "idle_seconds"), BusyUntil: Str(row, "busy_until"), ArchiveToken: Str(row, "archive_token"), ArchiveUntil: Str(row, "archive_until"),
 		CPUMS: Int(row, "cpu_ms"), AliveMS: Int(row, "alive_ms"), CostUSD: Float(row, "cost_usd"), FallbackFrom: Str(row, "fallback_from"),
 		Reason: Str(row, "reason"), AllowHosts: Str(row, "allow_hosts"), HealthConfirmedAt: Str(row, "health_confirmed_at"), ReusedAt: Str(row, "reused_at"),
 		EnvironmentID: Str(row, "environment_id"), SetupState: Str(row, "setup_state"), SetupKey: Str(row, "setup_key"),
@@ -588,7 +594,8 @@ func (l *Ledger) query(ctx context.Context, owner, sql string, args ...any) ([]R
 	return out, err
 }
 
-// FindReusable 是同一个（工作区，会话）里还没到期的 ready 环境（W5），最近用过的先给。
+// FindReusable 是同一个（工作区，会话）里未活满的 ready 环境（W5），最近用过的先给。
+// 空闲到期只是 GC 的候选条件；只要尚未被回收，同会话仍可经健康检查和 CAS 续租，避免满配额时新建失败。
 func (l *Ledger) FindReusable(ctx context.Context, owner, workspaceID, sessionID string, backends []string, writable bool) (*Record, error) {
 	now := ISO(l.Now())
 	w := 0
@@ -596,7 +603,7 @@ func (l *Ledger) FindReusable(ctx context.Context, owner, workspaceID, sessionID
 		w = 1
 	}
 	recs, err := l.query(ctx, owner, "SELECT "+columnList+" FROM sandbox_envs WHERE workspace_id = $1 AND session_id = $2 AND state = 'ready' "+
-		"AND writable = $3 AND expires_at > $4 AND max_until > $4 ORDER BY last_used_at DESC", workspaceID, sessionID, w, now)
+		"AND writable = $3 AND max_until > $4 AND (archive_until = '' OR archive_until <= $4) ORDER BY last_used_at DESC", workspaceID, sessionID, w, now)
 	if err != nil {
 		return nil, err
 	}
@@ -613,8 +620,10 @@ func (l *Ledger) FindReusable(ctx context.Context, owner, workspaceID, sessionID
 
 // TouchArgs 是 Touch 的参数。
 type TouchArgs struct {
-	CPUMS  int64
-	TaskID string
+	// ArchiveToken is supplied only by the operation which holds an archive claim.
+	ArchiveToken string
+	CPUMS        int64
+	TaskID       string
 	// BusyFor 给了时记下命令最晚跑到什么时候（这期间别的会话不能回收它），没给时清掉。
 	BusyFor         *time.Duration
 	HealthConfirmed *bool
@@ -649,11 +658,18 @@ func (l *Ledger) Touch(ctx context.Context, rec Record, a TouchArgs) (Record, er
 		extra += fmt.Sprintf(", reused_at = $%d", len(values))
 		rec.ReusedAt = ISO(now)
 	}
-	values = append(values, rec.EnvRef)
+	values = append(values, rec.EnvRef, ISO(now), a.ArchiveToken)
+	envIndex, nowIndex, tokenIndex := len(values)-2, len(values)-1, len(values)
 	err := l.Tx(ctx, rec.Owner, false, func(ctx context.Context, tx relational.Tx) error {
-		_, err := tx.Execute(ctx, "UPDATE sandbox_envs SET last_used_at = $1, expires_at = $2, cpu_ms = cpu_ms + $3, task_id = $4, busy_until = $5"+
-			extra+fmt.Sprintf(" WHERE env_ref = $%d AND state = 'ready'", len(values)), values...)
-		return err
+		n, err := tx.Execute(ctx, "UPDATE sandbox_envs SET last_used_at = $1, expires_at = $2, cpu_ms = cpu_ms + $3, task_id = $4, busy_until = $5"+
+			extra+fmt.Sprintf(" WHERE env_ref = $%d AND state = 'ready' AND (archive_until = '' OR archive_until <= $%d OR (archive_token = $%d AND archive_token <> ''))", envIndex, nowIndex, tokenIndex), values...)
+		if err != nil {
+			return err
+		}
+		if n != 1 {
+			return providererr.New(providererr.Conflict, "workspace_busy", "环境正在归档或借用已经结束")
+		}
+		return nil
 	})
 	rec.LastUsedAt, rec.ExpiresAt, rec.CPUMS, rec.TaskID, rec.BusyUntil = ISO(now), ISO(expires), rec.CPUMS+a.CPUMS, task, busy
 	return rec, err
@@ -689,7 +705,7 @@ func (l *Ledger) Hold(ctx context.Context, rec Record, until time.Time) (Record,
 
 // IdleNow：没有命令在跑（busy_until 空或已过），可以回收。
 func (l *Ledger) IdleNow(rec Record) bool {
-	return rec.State == "ready" && (rec.BusyUntil == "" || rec.BusyUntil <= ISO(l.Now()))
+	return rec.State == "ready" && (rec.BusyUntil == "" || rec.BusyUntil <= ISO(l.Now())) && (rec.ArchiveUntil == "" || rec.ArchiveUntil <= ISO(l.Now()))
 }
 
 // BeginDestroy 记 destroying。
