@@ -109,6 +109,7 @@ type Manager struct {
 	Store   *Store
 	network Network
 	usable  func(backend string) bool
+	strict  func(backend string) bool
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -164,6 +165,15 @@ func (m *Manager) Attach(b *broker.Broker) {
 		}
 		custom, _ := spec["custom_images"].(bool)
 		return spec.Kind() == "k8s" || custom
+	}
+	m.strict = func(name string) bool {
+		spec, err := reg.Spec(name)
+		if err != nil {
+			return false
+		}
+		strict, _ := spec["strict_project_images"].(bool)
+		prepare, _ := spec["image_prepare_url"].(string)
+		return strict || (spec.Kind() == "firecracker" && prepare != "")
 	}
 }
 
@@ -268,6 +278,12 @@ func (m *Manager) Resolve(ctx context.Context, tenant *commonv1.TenantContext, b
 		return "", "", err
 	}
 	data, _ := json.Marshal(res.Output())
+	if m.strict != nil && m.strict(backend) && res.State != "ready" {
+		if res.State == "building" {
+			return "", string(data), providererr.New(providererr.Transient, "environment_build_pending", "项目环境正在构建；不会使用通用环境替代")
+		}
+		return "", string(data), providererr.New(providererr.Invalid, "environment_not_ready", "项目环境尚未就绪；不会使用通用环境替代")
+	}
 	return res.Image, string(data), nil
 }
 

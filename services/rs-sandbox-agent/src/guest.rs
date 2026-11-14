@@ -36,6 +36,18 @@ use ar_sys::guest;
 
 /// 客户机里跑命令的 uid、gid（与 K8s 后端的 run_as_user 一致）。
 pub const SANDBOX_UID: u32 = 10001;
+const BENCHMARK_PROFILE: &str = "benchmark-system";
+
+fn profile_uid(profile: &str) -> io::Result<u32> {
+    match profile {
+        "" | "workspace" => Ok(SANDBOX_UID),
+        BENCHMARK_PROFILE => Ok(0),
+        _ => Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "unknown guest profile",
+        )),
+    }
+}
 /// 环回转发器：客户机里的地址 → 宿主的 vsock 端口。出网网关、包镜像各一条（D-22）。
 pub const FORWARDS: &[(u16, u32)] = &[(3128, 1080), (3129, 1081), (3130, 1082)];
 /// 宿主来的预览连接（D-22）。
@@ -56,7 +68,7 @@ fn mount_or_log(src: &str, target: &str, fstype: &str, flags: u64, data: &str) -
     })
 }
 
-fn setup_filesystems() -> io::Result<()> {
+fn setup_filesystems(uid: u32) -> io::Result<()> {
     let nsd = guest::MS_NOSUID | guest::MS_NODEV;
     mount_or_log("proc", "/proc", "proc", nsd | guest::MS_NOEXEC, "")?;
     mount_or_log("sysfs", "/sys", "sysfs", nsd | guest::MS_NOEXEC, "")?;
@@ -88,7 +100,7 @@ fn setup_filesystems() -> io::Result<()> {
     for (sub, target, mode) in [("workspace", "/workspace", 0o755), ("tmp", "/tmp", 0o1777)] {
         let dir = Path::new("/mnt/scratch").join(sub);
         std::fs::create_dir_all(&dir)?;
-        std::os::unix::fs::chown(&dir, Some(SANDBOX_UID), Some(SANDBOX_UID))?;
+        std::os::unix::fs::chown(&dir, Some(uid), Some(uid))?;
         std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(mode))?;
         mount_or_log(&dir.to_string_lossy(), target, "", guest::MS_BIND, "")?;
         // 绑定挂载的 nosuid、nodev 要再 remount 一次才生效。
@@ -250,7 +262,7 @@ fn image_env() -> Vec<(String, String)> {
         .collect()
 }
 
-fn spawn_agent(token: &str) -> io::Result<std::process::Child> {
+fn spawn_agent(token: &str, profile: &str, uid: u32) -> io::Result<std::process::Child> {
     let exe = std::env::current_exe()?;
     let env = image_env();
     let passthrough: Vec<&str> = env
@@ -261,13 +273,24 @@ fn spawn_agent(token: &str) -> io::Result<std::process::Child> {
     let mut cmd = Command::new(exe);
     cmd.env_clear()
         .envs(env.iter().map(|(k, v)| (k.as_str(), v.as_str())))
-        .env("HOME", "/tmp")
+        .env(
+            "HOME",
+            if uid == 0 {
+                env.iter()
+                    .find(|(k, _)| k == "HOME")
+                    .map(|(_, v)| v.as_str())
+                    .unwrap_or("/root")
+            } else {
+                "/tmp"
+            },
+        )
         .env(
             "AGENT_LISTEN",
             std::env::var("AGENT_LISTEN").unwrap_or_else(|_| "vsock:700".into()),
         )
         .env("AGENT_WORKDIR", "/workspace")
-        .env("AGENT_UID", SANDBOX_UID.to_string())
+        .env("AGENT_UID", uid.to_string())
+        .env("AGENT_GUEST_PROFILE", profile)
         .env("AGENT_TOKEN_STDIN", "1")
         .env("AGENT_ENV_PASSTHROUGH", passthrough.join(" "))
         .current_dir("/workspace")
@@ -277,6 +300,11 @@ fn spawn_agent(token: &str) -> io::Result<std::process::Child> {
             "PATH",
             "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
         );
+    }
+    // The longest frozen official verifier is 12000 seconds. Only this
+    // operator-selected profile admits it; normal guests keep their default.
+    if profile == BENCHMARK_PROFILE {
+        cmd.env("AGENT_MAX_TIMEOUT_S", "12600");
     }
     let mut child = cmd.spawn()?;
     let mut stdin = child.stdin.take().expect("piped");
@@ -404,7 +432,12 @@ pub fn run_init() -> ExitCode {
         log(&format!("关机失败：{e}"));
         ExitCode::from(1)
     };
-    if let Err(e) = setup_filesystems() {
+    let profile = std::env::var("AGENT_GUEST_PROFILE").unwrap_or_else(|_| "workspace".into());
+    let uid = match profile_uid(&profile) {
+        Ok(uid) => uid,
+        Err(e) => return fatal(e.to_string()),
+    };
+    if let Err(e) = setup_filesystems(uid) {
         return fatal(format!("文件系统没挂好：{e}"));
     }
     let _ = guest::sethostname("sandbox");
@@ -430,7 +463,7 @@ pub fn run_init() -> ExitCode {
     }
     // PID 1 自己不可转储：令牌在它的内存里（客户机里的命令虽然是另一个 uid，也不留口子）。
     let _ = ar_sys::set_not_dumpable();
-    let agent = match spawn_agent(&bootstrap.token) {
+    let agent = match spawn_agent(&bootstrap.token, &profile, uid) {
         Ok(c) => c,
         Err(e) => return fatal(format!("起不了 agent：{e}")),
     };
@@ -499,6 +532,14 @@ pub fn run_reaper() -> ExitCode {
 #[cfg(test)]
 mod bootstrap_tests {
     use super::*;
+
+    #[test]
+    fn guest_profile_defaults_to_unprivileged_and_rejects_unknown_values() {
+        assert_eq!(profile_uid("").unwrap(), 10001);
+        assert_eq!(profile_uid("workspace").unwrap(), 10001);
+        assert_eq!(profile_uid("benchmark-system").unwrap(), 0);
+        assert!(profile_uid("root").is_err());
+    }
 
     #[test]
     fn boot_identity_uses_fresh_entropy_and_uuid_version_bits() {

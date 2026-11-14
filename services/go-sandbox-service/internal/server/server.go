@@ -405,11 +405,13 @@ func (h *handler) GetDiff(ctx context.Context, req *connect.Request[sandboxv1.Ge
 	if err != nil {
 		return nil, fail(err)
 	}
-	d, err := h.b().Diff(ctx, t, req.Msg.GetWorkspaceId(), req.Msg.GetBase(), req.Msg.GetFindRenames(), h.s.opts.Runtime)
+	d, err := h.b().Diff(ctx, t, req.Msg.GetWorkspaceId(), req.Msg.GetBase(), req.Msg.GetFindRenames(), h.s.opts.Runtime,
+		broker.DiffChunk{Size: req.Msg.GetChunkSize(), Offset: req.Msg.GetChunkOffset(), ExpectedSHA256: req.Msg.GetExpectedSha256()})
 	if err != nil {
 		return nil, fail(err)
 	}
-	out := &workspacev1.GetDiffResponse{Diff: d.Diff, Files: d.Files, Truncated: d.Truncated, Head: d.Head, Branch: d.Branch}
+	out := &workspacev1.GetDiffResponse{Diff: d.Diff, Files: d.Files, Truncated: d.Truncated, Head: d.Head, Branch: d.Branch,
+		ChunkData: d.ChunkData, NextOffset: d.NextOffset, TotalBytes: d.TotalBytes, Sha256: d.SHA256}
 	for _, st := range d.Stats {
 		out.Stats = append(out.Stats, &workspacev1.DiffStat{Path: st.Path, Added: st.Added, Deleted: st.Deleted, Binary: st.Binary})
 	}

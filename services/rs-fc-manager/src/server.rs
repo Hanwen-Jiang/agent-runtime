@@ -356,6 +356,8 @@ fn create(mgr: &Manager, owner: &str, mut conn: Conn<TcpStream>, body: Body) -> 
                 "vcpus": c.spec.vcpus,
                 "memory_mb": c.spec.memory_mib,
                 "disk_mb": c.spec.disk_mib,
+                "guest_profile": c.spec.guest_profile,
+                "root_disk_mb": c.spec.root_disk_mib,
             });
             respond(conn, 201, &v)
         }

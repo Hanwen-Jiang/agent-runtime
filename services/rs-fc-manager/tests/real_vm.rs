@@ -138,6 +138,93 @@ impl Real {
 }
 
 #[test]
+fn benchmark_private_system_root_installs_in_same_vm_and_never_leaks() {
+    use std::os::unix::fs::MetadataExt;
+    let real = Real::new();
+    let (m, _rig) = real.start(&[
+        ("AR_FC_BENCHMARK_OWNERS", "eval-system"),
+        ("AR_FC_SNAPSHOT_CACHE_MIB", "2048"),
+    ]);
+    let image = PathBuf::from(required("AR_FC_TEST_IMAGES_DIR")).join("python.ext4");
+    let source_hash = fc_manager::blob_cache::digest(&fs::read(&image).unwrap());
+    let root_mb = image.metadata().unwrap().len().div_ceil(1 << 20) + 512;
+    let spec = json!({"runtime":"python","cpu_millis":1000,"memory_mb":512,"disk_mb":256,"root_disk_mb":root_mb,"guest_profile":"benchmark-system"});
+    assert_eq!(
+        m.create("ordinary-user", spec.clone()).code(),
+        "guest_profile_denied"
+    );
+    let first = m.create_ok("eval-system", spec.clone());
+    let health = m
+        .agent("eval-system", &first, "GET", "/healthz", &[], None)
+        .json();
+    assert_eq!(health["guest_profile"], "benchmark-system");
+    assert_eq!(health["uid"], 0);
+    assert!(health["max_timeout_s"].as_u64().unwrap() >= 12000);
+    let install = "set -e; test $(id -u) = 0; printf '#!/bin/sh\\nprintf system-profile-ok\\n' > /usr/local/bin/ar-profile-check; chmod 755 /usr/local/bin/ar-profile-check; printf installed > /etc/ar-profile-check";
+    assert_eq!(sh(&m, "eval-system", &first, install).0, Some(0));
+    // A separate request sees persistent system installation; the large
+    // requested timeout also must not be silently capped/rejected at 3600.
+    let body=serde_json::to_vec(&json!({"argv":["sh","-c","test $(/usr/local/bin/ar-profile-check) = system-profile-ok && test $(cat /etc/ar-profile-check) = installed"],"timeout_ms":12000000})).unwrap();
+    let verified = m.agent("eval-system", &first, "POST", "/v1/exec", &[], Some(&body));
+    assert_eq!(verified.status, 200);
+    assert_eq!(verified.json()["exit_code"], 0);
+    let second = m.create_ok("eval-system", spec);
+    assert_eq!(
+        sh(
+            &m,
+            "eval-system",
+            &second,
+            "test ! -e /usr/local/bin/ar-profile-check && test ! -e /etc/ar-profile-check"
+        )
+        .0,
+        Some(0)
+    );
+    let root_path = |id: &str| {
+        real.work
+            .join("j/firecracker")
+            .join(id)
+            .join("root/rootfs.ext4")
+    };
+    assert_ne!(
+        root_path(&first).metadata().unwrap().ino(),
+        image.metadata().unwrap().ino()
+    );
+    assert_ne!(
+        root_path(&first).metadata().unwrap().ino(),
+        root_path(&second).metadata().unwrap().ino()
+    );
+    assert_eq!(
+        fc_manager::blob_cache::digest(&fs::read(&image).unwrap()),
+        source_hash
+    );
+    assert_eq!(m.destroy("eval-system", &first).status, 204);
+    assert_eq!(m.destroy("eval-system", &second).status, 204);
+    let fresh=m.create_ok("eval-system",json!({"runtime":"python","cpu_millis":1000,"memory_mb":512,"disk_mb":256,"root_disk_mb":root_mb,"guest_profile":"benchmark-system"}));
+    assert_eq!(
+        sh(&m, "eval-system", &fresh, "test ! -e /etc/ar-profile-check").0,
+        Some(0)
+    );
+    assert_eq!(m.destroy("eval-system", &fresh).status, 204);
+    // The default profile remains UID10001 and cannot install system files.
+    let ordinary = m.create_ok(
+        "ordinary-user",
+        json!({"runtime":"python","cpu_millis":1000,"memory_mb":512,"disk_mb":256}),
+    );
+    assert_eq!(
+        sh(
+            &m,
+            "ordinary-user",
+            &ordinary,
+            "test $(id -u) = 10001 && test ! -w /usr/local/bin"
+        )
+        .0,
+        Some(0)
+    );
+    assert_eq!(m.destroy("ordinary-user", &ordinary).status, 204);
+    assert!(real.residue().is_empty(), "{:?}", real.residue());
+}
+
+#[test]
 fn memory_snapshot_clones_refresh_identity_and_keep_tenant_disks_private() {
     let real = Real::new();
     let (m, _rig) = real.start(&[("AR_FC_SNAPSHOT_CACHE_MIB", "2048")]);

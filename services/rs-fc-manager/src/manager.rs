@@ -277,6 +277,19 @@ impl Manager {
     pub fn create(&self, owner: &str, req: CreateRequest) -> Result<Created, ApiError> {
         let (spec, labels) = spec::validate(req, &self.cfg.limits)
             .map_err(|m| ApiError::new(400, "invalid_argument", m))?;
+        if spec.guest_profile == spec::GuestProfile::BenchmarkSystem
+            && !self
+                .cfg
+                .benchmark_owners
+                .iter()
+                .any(|allowed| allowed == owner)
+        {
+            return Err(ApiError::new(
+                403,
+                "guest_profile_denied",
+                "benchmark profile is not enabled for this owner",
+            ));
+        }
         let rootfs = self.cfg.images_dir.join(format!("{}.ext4", spec.runtime));
         if !rootfs.is_file() {
             return Err(ApiError::new(
@@ -285,7 +298,8 @@ impl Manager {
                 format!("没有 runtime {} 的镜像", spec.runtime),
             ));
         }
-        if owner != POOL_OWNER
+        if spec.guest_profile == spec::GuestProfile::Workspace
+            && owner != POOL_OWNER
             && let Some(c) = self.take_warm(owner, &spec, &labels)
         {
             return Ok(c);
@@ -305,7 +319,7 @@ impl Manager {
                 Some(format!("vCPU 只剩 {}", c.max_vcpus - g.vcpus))
             } else if g.memory + spec.memory_mib > c.max_memory_mib {
                 Some(format!("内存只剩 {} MiB", c.max_memory_mib - g.memory))
-            } else if g.disk + spec.disk_mib > c.max_scratch_mib {
+            } else if g.disk + spec.allocated_disk_mib() > c.max_scratch_mib {
                 Some(format!("盘只剩 {} MiB", c.max_scratch_mib - g.disk))
             } else {
                 None
@@ -323,7 +337,7 @@ impl Manager {
             g.slots.insert(slot);
             g.vcpus += u64::from(spec.vcpus);
             g.memory += spec.memory_mib;
-            g.disk += spec.disk_mib;
+            g.disk += spec.allocated_disk_mib();
             let rec = Record {
                 env_id: env_id.clone(),
                 owner: owner.to_string(),
@@ -412,7 +426,9 @@ impl Manager {
         vm::prepare(&self.cfg, &paths, &rec.spec, rec.uid, rootfs)?;
         let mut pinned = self.cfg.clone();
         pinned.kernel = paths.in_root(crate::spec::KERNEL_IN_JAIL);
-        let key = if self.cfg.snapshot_cache_mib > 0 {
+        let key = if rec.spec.guest_profile == spec::GuestProfile::Workspace
+            && self.cfg.snapshot_cache_mib > 0
+        {
             match self
                 .snapshots
                 .lock()
@@ -558,6 +574,9 @@ impl Manager {
             info!("{} bootstrap path: cold", rec.env_id);
         }
         vm::wait_healthy(&p, Instant::now() + self.cfg.boot_timeout)?;
+        if rec.spec.guest_profile == spec::GuestProfile::BenchmarkSystem {
+            vm::verify_benchmark_profile(&p)?;
+        }
         self.checkpoint(&rec.env_id)?;
         Ok(token)
     }
@@ -589,7 +608,7 @@ impl Manager {
             g.slots.remove(&vm.rec.slot);
             g.vcpus -= u64::from(vm.rec.spec.vcpus);
             g.memory -= vm.rec.spec.memory_mib;
-            g.disk -= vm.rec.spec.disk_mib;
+            g.disk -= vm.rec.spec.allocated_disk_mib();
         }
     }
 
@@ -654,6 +673,8 @@ impl Manager {
                     "vcpus": v.rec.spec.vcpus,
                     "memory_mb": v.rec.spec.memory_mib,
                     "disk_mb": v.rec.spec.disk_mib,
+                    "guest_profile": v.rec.spec.guest_profile,
+                    "root_disk_mb": v.rec.spec.root_disk_mib,
                 })
             })
             .collect()
@@ -734,6 +755,8 @@ impl Manager {
                     cpu_millis: w.cpu_millis,
                     memory_mb: w.memory_mb,
                     disk_mb: None,
+                    guest_profile: spec::GuestProfile::Workspace,
+                    root_disk_mb: None,
                     labels: BTreeMap::new(),
                 };
                 if let Err(e) = self.create(POOL_OWNER, req) {

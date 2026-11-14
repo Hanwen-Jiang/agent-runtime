@@ -609,7 +609,7 @@ func (a *Archiver) Restore(ctx context.Context, box sandbox.Sandbox, envID, owne
 			return nil, err
 		}
 		if !SameShape(got, entries) {
-			return nil, providererr.New(providererr.Transient, "workspace_restore_mismatch", "restored manifest mismatch")
+			return nil, providererr.New(providererr.Transient, "workspace_restore_mismatch", fmt.Sprintf("restored manifest mismatch: expected %d entries, got %d", len(entries), len(got)))
 		}
 		return snap, nil
 	}

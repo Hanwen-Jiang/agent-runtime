@@ -2,16 +2,20 @@ package registry
 
 import (
 	"context"
+	"math"
 	"sync"
 	"time"
 
 	"github.com/agentruntime/agent-runtime/libs/go-core/providererr"
 )
 
-// 部署的默认值：会话级沙箱空闲 15 分钟回收，一个环境最多活 6 小时；租户策略只能调低。
+// 默认沙箱的生命周期上限不变。只有运维登记的 benchmark-system 后端可由
+// 租户策略显式选择更长的有界时长，覆盖官方 agent + verifier 的单机执行。
 const (
-	DefaultIdle        = 15 * time.Minute
-	DefaultMaxLifetime = 6 * time.Hour
+	DefaultIdle          = 15 * time.Minute
+	DefaultMaxLifetime   = 6 * time.Hour
+	BenchmarkMaxIdle     = 12600 * time.Second
+	BenchmarkMaxLifetime = 25200 * time.Second
 )
 
 // Quota 是租户策略的 sandbox.quota（W10）；0 表示不限。
@@ -70,6 +74,16 @@ func number(v any) (float64, bool) {
 	return 0, false
 }
 
+func boundedSeconds(value any, fallback, ceiling time.Duration) time.Duration {
+	v, ok := number(value)
+	if !ok || math.IsNaN(v) || math.IsInf(v, 0) || v <= 0 {
+		return fallback
+	}
+	// Clamp before conversion so excessive JSON numbers cannot overflow a
+	// duration and accidentally produce a negative or unbounded lifetime.
+	return time.Duration(min(v, ceiling.Seconds())) * time.Second
+}
+
 // FromDocument 按租户策略文档（没有时 nil）与部署的默认后端给出策略。
 func FromDocument(doc map[string]any, defaultBackend string) Policy {
 	sb, _ := doc["sandbox"].(map[string]any)
@@ -85,12 +99,8 @@ func FromDocument(doc map[string]any, defaultBackend string) Policy {
 		}
 	}
 	p.MinIsolation, _ = sb["min_isolation"].(string)
-	if v, ok := number(sb["idle_timeout_s"]); ok && v > 0 {
-		p.IdleTimeout = min(DefaultIdle, time.Duration(v)*time.Second)
-	}
-	if v, ok := number(sb["max_lifetime_s"]); ok && v > 0 {
-		p.MaxLifetime = min(DefaultMaxLifetime, time.Duration(v)*time.Second)
-	}
+	p.IdleTimeout = boundedSeconds(sb["idle_timeout_s"], DefaultIdle, DefaultIdle)
+	p.MaxLifetime = boundedSeconds(sb["max_lifetime_s"], DefaultMaxLifetime, DefaultMaxLifetime)
 	if q, ok := sb["quota"].(map[string]any); ok {
 		get := func(k string) float64 { v, _ := number(q[k]); return v }
 		p.Quota = Quota{
@@ -156,10 +166,20 @@ func (p *Policies) For(ctx context.Context, tenantID string) (Policy, error) {
 		}
 	}
 	policy := FromDocument(doc, p.reg.Default)
+	benchmarkOnly := true
 	for _, name := range policy.Names() {
 		if !p.reg.Has(name) {
 			return Policy{}, providererr.New(providererr.Invalid, "unknown_sandbox_backend", "租户策略要的沙箱后端 "+name+" 在这个部署里没有登记")
 		}
+		spec := p.reg.spec(name)
+		benchmarkOnly = benchmarkOnly && spec.Kind() == "firecracker" && spec.str("guest_profile") == "benchmark-system"
+	}
+	// Lifecycle values apply to every candidate. A regular fallback must never
+	// inherit benchmark-only limits, even if the primary is a benchmark VM.
+	if benchmarkOnly {
+		sb, _ := doc["sandbox"].(map[string]any)
+		policy.IdleTimeout = boundedSeconds(sb["idle_timeout_s"], DefaultIdle, BenchmarkMaxIdle)
+		policy.MaxLifetime = boundedSeconds(sb["max_lifetime_s"], DefaultMaxLifetime, BenchmarkMaxLifetime)
 	}
 	if policy.MinIsolation != "" {
 		if _, ok := IsolationRank[policy.MinIsolation]; !ok {

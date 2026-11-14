@@ -12,6 +12,7 @@ package server_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -605,5 +606,30 @@ func TestFailedSetupNeverStartsACacheBuild(t *testing.T) {
 	}
 	if len(s.startedKeys()) != 0 {
 		t.Fatal("只缓存成功的结果")
+	}
+}
+
+func TestStrictProjectEnvironmentDoesNotSilentlyUseUniversal(t *testing.T) {
+	s := newEnvSetup(t, envOptions{harnessOpt: []option{withBackends(`{"default":"local","backends":{"local":{"kind":"local","isolation":"none","custom_images":true,"strict_project_images":true}}}`)}})
+	s.write(map[string]string{".tool-versions": toolVersions})
+	reader := func(path string) ([]byte, error) {
+		if path == ".tool-versions" {
+			return []byte(toolVersions), nil
+		}
+		return nil, nil
+	}
+	image, _, err := s.h.env.Resolve(context.Background(), t1w1, "local", reader)
+	var pe *providererr.Error
+	if !errors.As(err, &pe) || pe.Code != "environment_build_pending" || image != "" {
+		t.Fatalf("building fell back: %q %v", image, err)
+	}
+	keys := s.startedKeys()
+	if len(keys) != 1 {
+		t.Fatal(keys)
+	}
+	s.run(t, keys[0][1])
+	image, _, err = s.h.env.Resolve(context.Background(), t1w1, "local", reader)
+	if err != nil || image == "" {
+		t.Fatalf("ready image rejected: %q %v", image, err)
 	}
 }

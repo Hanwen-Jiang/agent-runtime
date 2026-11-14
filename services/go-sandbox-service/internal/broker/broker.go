@@ -346,6 +346,17 @@ func (b *Broker) reuse(ctx context.Context, tenant *commonv1.TenantContext, a Ac
 		}
 		return nil, nil
 	}
+	archiveToken := ""
+	if found != nil {
+		guard := &Lease{Record: found, Owner: owner}
+		protected, finish, err := b.claimArchive(ctx, guard, true, false)
+		if err != nil {
+			return nil, err
+		}
+		defer finish(0)
+		ctx, found = protected, guard.Record
+		archiveToken = found.ArchiveToken
+	}
 	provider, err := b.reg.Provider(ctx, found.Backend)
 	if err != nil {
 		return nil, err
@@ -362,6 +373,16 @@ func (b *Broker) reuse(ctx context.Context, tenant *commonv1.TenantContext, a Ac
 		f := false
 		healthy = &f
 	}
+	// An idle-expired environment may still be alive between GC sweeps. Reuse
+	// it only after positive health confirmation; a transient failed probe must
+	// not destroy unarchived writes or turn a missing backend into a valid lease.
+	if found.Expired(b.ledger.Now()) && (healthy == nil || !*healthy) {
+		return nil, providererr.New(providererr.Transient, "sandbox_unavailable", "空闲到期的沙箱尚未通过健康检查，稍后重试")
+	}
+	// The health request can outlast the remaining maximum lifetime.
+	if !ledger.ParseISO(found.MaxUntil).After(b.ledger.Now()) {
+		return nil, providererr.New(providererr.Transient, "sandbox_expired", "沙箱已达到最长存活时间，等待回收后重试")
+	}
 	// A taskless workspace transfer's identity belongs only to this lease.
 	// Reusing the environment for a real Task must revoke any unfinished
 	// transfer grant as well as changing the gateway's task lookup binding.
@@ -370,7 +391,7 @@ func (b *Broker) reuse(ctx context.Context, tenant *commonv1.TenantContext, a Ac
 			return nil, err
 		}
 	}
-	rec, err := b.ledger.Touch(ctx, *found, ledger.TouchArgs{TaskID: a.TaskID, BusyFor: a.BusyFor, HealthConfirmed: healthy, Reused: true})
+	rec, err := b.ledger.Touch(ctx, *found, ledger.TouchArgs{TaskID: a.TaskID, BusyFor: a.BusyFor, HealthConfirmed: healthy, Reused: true, ArchiveToken: archiveToken})
 	if err != nil {
 		return nil, err
 	}
@@ -698,7 +719,7 @@ func (b *Broker) createAny(ctx context.Context, tenant *commonv1.TenantContext, 
 					if attempt == 1 {
 						return nil, providererr.New(providererr.Invalid, "workspace_restore_mismatch", "工作区的快照恢复了两次都与清单不一致，不在半个工作区上执行")
 					}
-					b.log.Warn("工作区恢复后与清单不一致，换一个环境再试", "workspace", a.Spec.WorkspaceID)
+					b.log.Warn("工作区恢复后与清单不一致，换一个环境再试", "workspace", a.Spec.WorkspaceID, "restore_error", err)
 					continue
 				}
 				return nil, err
@@ -976,16 +997,11 @@ func (b *Broker) flushHolders(ctx context.Context, owner, workspaceID string) er
 			return providererr.New(providererr.Denied, "workspace_busy", "这个工作区正被一个可写的环境用着（命令还在跑），稍后再试")
 		}
 	}
-	busy := 10 * time.Minute
 	for _, h := range holders {
 		if h.State != "ready" || h.BackendEnvID == "" {
 			continue
 		}
-		// 存的时候占着它，别的命令不在半途改它。
-		rec, err := b.ledger.Touch(ctx, h, ledger.TouchArgs{BusyFor: &busy})
-		if err != nil {
-			return err
-		}
+		rec := h
 		lease, err := b.Get(ctx, &commonv1.TenantContext{TenantId: owner, WorkspaceId: workspaceID}, rec.EnvRef)
 		if err == nil {
 			_, err = b.Snapshot(ctx, lease)
@@ -997,9 +1013,6 @@ func (b *Broker) flushHolders(ctx context.Context, owner, workspaceID string) er
 			}
 			continue
 		}
-		if _, terr := b.ledger.Touch(context.WithoutCancel(ctx), rec, ledger.TouchArgs{}); terr != nil && err == nil {
-			err = terr
-		}
 		if err != nil {
 			return err
 		}
@@ -1008,11 +1021,14 @@ func (b *Broker) flushHolders(ctx context.Context, owner, workspaceID string) er
 }
 
 // Release 用完：会话级的环境留着（顺延空闲、记 CPU 时间），一次性的销毁（存档模式的可写环境先存档，skipSnapshot 时不存）。存档暂时
-// 失败时环境留着、报错，由下一轮对账或下一个要写的环境再存；永久性的失败照样销毁、报错。
+// 失败时环境留着、报错，由下一轮对账或下一个要写的环境再存；错误类别不能证明改动已经保存。
 func (b *Broker) Release(ctx context.Context, lease *Lease, keep bool, cpuMS int64, skipSnapshot ...bool) error {
 	b.mu.Lock()
 	delete(b.notStopped, lease.ID())
 	b.mu.Unlock()
+	if lease.Record != nil {
+		return b.releaseArchived(ctx, lease, keep, cpuMS, len(skipSnapshot) > 0 && skipSnapshot[0])
+	}
 	if lease.Record != nil {
 		rec, err := b.ledger.Touch(ctx, *lease.Record, ledger.TouchArgs{CPUMS: cpuMS})
 		if err != nil {
@@ -1023,21 +1039,24 @@ func (b *Broker) Release(ctx context.Context, lease *Lease, keep bool, cpuMS int
 	if keep {
 		return nil
 	}
-	if lease.Archive && lease.Writable && !(len(skipSnapshot) > 0 && skipSnapshot[0]) {
-		if _, err := b.Snapshot(ctx, lease); err != nil {
-			if providererr.CategoryOf(err) == providererr.Invalid {
-				var pe *providererr.Error
-				errors.As(err, &pe)
-				_ = b.destroy(ctx, lease, false, "存档失败："+pe.Code)
-			}
-			return err
-		}
-	}
 	return b.destroy(ctx, lease, false, "")
 }
 
 // Snapshot 把借到的环境里的工作区存一份快照（存档模式；挂卷的后端一样能导出）。
-func (b *Broker) Snapshot(ctx context.Context, lease *Lease) (archive.Snapshot, error) {
+func (b *Broker) Snapshot(ctx context.Context, lease *Lease) (snap archive.Snapshot, err error) {
+	ctx, finish, err := b.claimArchive(ctx, lease, false, true)
+	if err != nil {
+		return snap, err
+	}
+	defer func() {
+		if e := finish(0); err == nil {
+			err = e
+		}
+	}()
+	return b.snapshot(ctx, lease)
+}
+
+func (b *Broker) snapshot(ctx context.Context, lease *Lease) (archive.Snapshot, error) {
 	if lease.WorkspaceID == "" {
 		return archive.Snapshot{}, providererr.New(providererr.Invalid, "workspace_archive_unavailable", "环境没有绑定工作区")
 	}
@@ -1067,7 +1086,13 @@ func (b *Broker) Discard(ctx context.Context, lease *Lease, reason string) error
 
 func (b *Broker) destroy(ctx context.Context, lease *Lease, snapshot bool, reason string) error {
 	if snapshot && lease.Archive && lease.Writable {
-		if _, err := b.Snapshot(ctx, lease); err != nil {
+		protected, finish, err := b.claimArchive(ctx, lease, false, true)
+		if err != nil {
+			return err
+		}
+		defer finish(0)
+		ctx = protected
+		if _, err := b.snapshot(ctx, lease); err != nil {
 			return err
 		}
 	}
@@ -1096,9 +1121,22 @@ func (b *Broker) archived(rec ledger.Record) bool {
 	return rec.WorkspaceID != "" && rec.Writable && rec.State == "ready" && rec.BackendEnvID != "" && b.reg.Has(rec.Backend) && b.reg.Archive(rec.Backend)
 }
 
-// DestroyRecord 按环境表的一行销毁（对账、回收、抢占用）；后端里已经没了也算销毁完成。存档模式的可写环境先存档：存档暂时失败时
-// 报错、环境留着（force 时照样销毁，例如活满）；永久性的失败照样销毁，原因记进环境表。
+// DestroyRecord 按环境表的一行销毁（对账、回收、抢占用）。需要存档的可写环境只有成功保存后才销毁。
+// force（例如活满）也不能丢弃未保存的改动；明确 snapshot=false 的销毁保留原语义。
 func (b *Broker) DestroyRecord(ctx context.Context, rec ledger.Record, reason string, snapshot, force bool) (ledger.Record, error) {
+	// Claim against the inspected row, not a fresh row: stale GC work must not
+	// destroy an environment which was renewed while it was waiting.
+	if rec.State == "ready" || rec.State == "destroying" {
+		lease := &Lease{Record: &rec, Owner: rec.Owner}
+		var finish func(int64) error
+		var err error
+		ctx, finish, err = b.claimArchive(ctx, lease, true, true)
+		if err != nil {
+			return rec, err
+		}
+		defer finish(0)
+		rec = *lease.Record
+	}
 	b.forget(rec.EnvRef)
 	if snapshot && b.archived(rec) {
 		provider, err := b.reg.Provider(ctx, rec.Backend)
@@ -1109,21 +1147,15 @@ func (b *Broker) DestroyRecord(ctx context.Context, rec ledger.Record, reason st
 		if err != nil {
 			return rec, err
 		}
-		lease := &Lease{Backend: rec.Backend, Box: box, EnvID: rec.BackendEnvID, Record: &rec, Owner: rec.Owner, WorkspaceID: rec.WorkspaceID, Archive: true, Writable: true}
-		if _, err := b.Snapshot(ctx, lease); err != nil {
-			if providererr.CategoryOf(err) == providererr.NotFound {
+		lease := &Lease{Backend: rec.Backend, Kind: b.reg.Kind(rec.Backend), Isolation: b.reg.Isolation(rec.Backend), Box: box, EnvID: rec.BackendEnvID, Record: &rec, Owner: rec.Owner, WorkspaceID: rec.WorkspaceID, Archive: true, Writable: true}
+		if _, err := b.snapshot(ctx, lease); err != nil {
+			var pe *providererr.Error
+			// A missing storage object is not proof that the VM disappeared.
+			if errors.As(err, &pe) && pe.Category == providererr.NotFound && pe.Code == "unknown_env" {
 				return b.ledger.MarkLost(ctx, rec, "存档时后端里已经没有这个环境")
 			}
-			if !force && providererr.CategoryOf(err) != providererr.Invalid {
-				return rec, err
-			}
-			var pe *providererr.Error
-			code := "internal"
-			if errors.As(err, &pe) {
-				code = pe.Code
-			}
-			b.log.Warn("工作区销毁前存档失败，照样销毁，这个环境里的改动丢了", "workspace", rec.WorkspaceID, "code", code)
-			reason += "; 存档失败：" + code
+			b.log.Warn("工作区销毁前归档失败，保留环境等待重试", "workspace", rec.WorkspaceID, "env_ref", rec.EnvRef, "reason", reason, "error", errText(err))
+			return rec, err
 		}
 	}
 	if rec.Backend == BuildBackend {
