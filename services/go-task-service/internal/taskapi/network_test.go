@@ -34,6 +34,7 @@ var grantsTable = []relational.Migration{{Version: 202, Name: "sandbox_grants", 
 }}}
 
 const networkPolicies = `{"tenants": {
+  "tu": {"effect_ceiling": "write_reversible", "sandbox": {"network": {"allowed": true, "allow_unlimited": true, "modes": ["deny", "allowlist", "open"], "max_grant_minutes": 60}}},
   "tp": {"effect_ceiling": "write_irreversible", "sandbox": {"network": {"allowed": true, "modes": ["deny", "open"], "max_conns": 4}}},
   "tn": {"effect_ceiling": "write_irreversible", "sandbox": {"network": {"allowed": true, "hosts": ["api.example.com", "*.pypi.org"],
          "max_grant_minutes": 30, "max_up_bytes": 1048576, "max_conns": 4}}},
@@ -114,8 +115,6 @@ func TestSubmitNetworkRequestBecomesTheTasksGrant(t *testing.T) {
 
 func TestSubmitNetworkRequestOutsidePolicyIsRefusedWithReason(t *testing.T) {
 	f := networkAPI(t)
-	low := netRequest("c11", []string{"api.example.com"}, 15)
-	low.EffectCeiling = commonv1.Effect_EFFECT_READ
 	badPort := netRequest("c12", []string{"api.example.com"}, 15)
 	badPort.NetworkRequest.Ports = []int32{0}
 	cases := []struct {
@@ -132,9 +131,7 @@ func TestSubmitNetworkRequestOutsidePolicyIsRefusedWithReason(t *testing.T) {
 		{"内网名字", "tn", netRequest("c6", []string{"db.internal"}, 15), connect.CodePermissionDenied, "内网的名字"},
 		{"没写主机", "tn", netRequest("c7", nil, 15), connect.CodeInvalidArgument, "要写明访问哪些主机"},
 		{"策略不允许", "tx", netRequest("c8", []string{"api.example.com"}, 15), connect.CodePermissionDenied, "不允许沙箱联网"},
-		{"只读的租户", "tr", netRequest("c9", []string{"api.example.com"}, 15), connect.CodePermissionDenied, "只读的 Task 不能申请联网"},
 		{"要管理员批", "ta", netRequest("c10", []string{"api.example.com"}, 15), connect.CodePermissionDenied, "要求管理员批准联网"},
-		{"请求把上限调成 read", "tn", low, connect.CodePermissionDenied, "只读的 Task 不能申请联网"},
 		{"端口不对", "tn", badPort, connect.CodeInvalidArgument, "端口 0 不在"},
 	}
 
@@ -178,5 +175,63 @@ func TestNetworkPolicyFromRegistryDocument(t *testing.T) {
 	}
 	if p, err := NetworkPolicyFromDocument(nil); err != nil || p.Allowed {
 		t.Fatalf("没有策略：%+v %v", p, err)
+	}
+}
+
+func TestSubmitUnlimitedGrantEndsWithItsTask(t *testing.T) {
+	f := networkAPI(t)
+	req := newRequest("explicit-unlimited")
+	req.NetworkRequest = &taskapiv1.NetworkRequest{Scope: taskapiv1.NetworkScope_NETWORK_SCOPE_PUBLIC, Minutes: 0, Unlimited: true, Reason: "long research"}
+	result := f.mustSubmit(f.token("tu", "u1"), req)
+	rows := f.grantRows("tu")
+	if len(rows) != 1 || rows[0]["expires_at"] != sandboxgrants.UnlimitedExpiresAt || rows[0]["task_id"] != result.GetTaskId() {
+		t.Fatal(rows)
+	}
+	acts := &session.Activities{Cache: memcache.New(memcache.Options{Clock: f.clock}), Store: f.store, Clock: f.clock, Retention: time.Hour}
+	tenant := &commonv1.TenantContext{TenantId: "tu", UserId: "u1", SessionId: result.GetSessionId()}
+	if err := acts.FinishTask(context.Background(), tenant, &workflowv1.TaskWorkflowResult{TaskId: result.GetTaskId(), Status: commonv1.TaskStatus_TASK_STATUS_DONE}); err != nil {
+		t.Fatal(err)
+	}
+	if f.grantRows("tu")[0]["state"] != "revoked" {
+		t.Fatal("unlimited grant outlived Task completion")
+	}
+}
+
+func TestReadOnlyTaskCanExplicitlyAuthorizeNetworkWithoutWriteUpgrade(t *testing.T) {
+	for _, tc := range []struct {
+		name, tenant string
+		requested    commonv1.Effect
+	}{
+		{"read-only tenant", "tr", commonv1.Effect_EFFECT_UNSPECIFIED},
+		{"explicitly lowered task", "tn", commonv1.Effect_EFFECT_READ},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := networkAPI(t)
+			req := netRequest("read-network", []string{"api.example.com"}, 15)
+			req.EffectCeiling = tc.requested
+			result := f.mustSubmit(f.token(tc.tenant, "u1"), req)
+			_, signal := f.lastSubmit()
+			if signal.GetTask().GetEffectCeiling() != commonv1.Effect_EFFECT_READ {
+				t.Fatal("network request upgraded workspace permissions", signal.GetTask())
+			}
+			rows := f.grantRows(tc.tenant)
+			if len(rows) != 1 || rows[0]["task_id"] != result.GetTaskId() || rows[0]["approved_by"] != "u1" {
+				t.Fatal("explicit network grant missing", rows)
+			}
+			plain := newRequest("read-without-network")
+			plain.EffectCeiling = commonv1.Effect_EFFECT_READ
+			f.mustSubmit(f.token(tc.tenant, "u1"), plain)
+			if len(f.grantRows(tc.tenant)) != 1 {
+				t.Fatal("network was automatically granted without network_request")
+			}
+		})
+	}
+	f := networkAPI(t)
+	elevated := netRequest("cannot-upgrade-read", []string{"api.example.com"}, 15)
+	elevated.EffectCeiling = commonv1.Effect_EFFECT_WRITE_REVERSIBLE
+	_, err := f.submit(f.token("tr", "u1"), elevated)
+	wantCode(t, "network authorization must not allow workspace writes", err, connect.CodePermissionDenied)
+	if len(f.grantRows("tr")) != 0 || len(f.durable.callsOf("SignalWithStart")) != 0 {
+		t.Fatal("rejected write upgrade left a task or grant")
 	}
 }

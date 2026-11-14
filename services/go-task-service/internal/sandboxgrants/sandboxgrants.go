@@ -23,13 +23,16 @@ import (
 
 // Grant 是要写的一条授权。
 type Grant struct {
-	TaskID     string
-	Scope      string
-	Hosts      []string
-	Ports      []int32
-	Minutes    int32
-	Reason     string
-	ApprovedBy string
+	TaskID  string
+	Scope   string
+	Hosts   []string
+	Ports   []int32
+	Minutes int32
+	// AllowUnlimited is set only after the caller validates policy.allow_unlimited.
+	// Zero minutes still requires a Task owner and an authenticated approver.
+	AllowUnlimited bool
+	Reason         string
+	ApprovedBy     string
 	// 单次授权的用量上限，取自租户策略；0 表示不限。
 	MaxUpBytes, MaxDownBytes, MaxConns, MaxRPS int64
 }
@@ -43,8 +46,33 @@ func SubmitGrantID(taskID string) string {
 // ISO 是表里的时间写法（与 Worker 的 ledger.iso 相同，可以按字典序比较）。
 func ISO(t time.Time) string { return t.UTC().Format("2006-01-02T15:04:05.000000Z") }
 
+// UnlimitedExpiresAt is a storage sentinel, not a long-lived environment credential.
+// Task completion and explicit revocation continue to invalidate these grants.
+// Whole seconds avoid floating-point timestamp rounding into year 10000 in readers.
+const UnlimitedExpiresAt = "9999-12-31T23:59:59.000000Z"
+
+func grantExpiry(g Grant, now time.Time) (string, error) {
+	if g.Minutes < 0 || int64(g.Minutes) > int64((1<<63-1)/time.Minute) {
+		return "", providererr.New(providererr.Invalid, "invalid_network_request", "联网授权时长不合法")
+	}
+	if g.Minutes == 0 {
+		if !g.AllowUnlimited {
+			return "", providererr.New(providererr.Denied, "network_unlimited_not_allowed", "租户策略不允许本 Task 不限时联网")
+		}
+		if strings.TrimSpace(g.TaskID) == "" || strings.TrimSpace(g.ApprovedBy) == "" {
+			return "", providererr.New(providererr.Invalid, "invalid_network_request", "不限时授权必须属于 Task 且有批准人")
+		}
+		return UnlimitedExpiresAt, nil
+	}
+	return ISO(now.Add(time.Duration(g.Minutes) * time.Minute)), nil
+}
+
 // WriteSubmitGrant 写一条提交时批准的授权（同一个 Task 只写一次）。表还没有（Worker 还没起来迁移）时 transient。
 func WriteSubmitGrant(ctx context.Context, store relational.Provider, tenant *commonv1.TenantContext, g Grant, now time.Time) error {
+	expires, err := grantExpiry(g, now)
+	if err != nil {
+		return err
+	}
 	db, err := store.Bind(tenant)
 	if err != nil {
 		return err
@@ -57,14 +85,13 @@ func WriteSubmitGrant(ctx context.Context, store relational.Provider, tenant *co
 	}
 	hosts, _ := json.Marshal(g.Hosts)
 	ports, _ := json.Marshal(g.Ports)
-	expires := now.Add(time.Duration(g.Minutes) * time.Minute)
 	err = db.Transaction(ctx, relational.TxOptions{}, func(ctx context.Context, tx relational.Tx) error {
 		_, err := tx.Execute(ctx, `INSERT INTO sandbox_grants (grant_id, task_id, workspace_id, session_id, hosts, ports, expires_at,
 			max_up_bytes, max_down_bytes, max_conns, max_rps, up_bytes, down_bytes, preview_port, state, approved_by, reason, created_at,
 			revoked_at, preview_env, preview_target, scope)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0, 0, 0, 'active', $12, $13, $14, '', '', '', $15)
 			ON CONFLICT (grant_id) DO NOTHING`,
-			SubmitGrantID(g.TaskID), g.TaskID, tenant.GetWorkspaceId(), tenant.GetSessionId(), string(hosts), string(ports), ISO(expires),
+			SubmitGrantID(g.TaskID), g.TaskID, tenant.GetWorkspaceId(), tenant.GetSessionId(), string(hosts), string(ports), expires,
 			g.MaxUpBytes, g.MaxDownBytes, g.MaxConns, g.MaxRPS, g.ApprovedBy, g.Reason, ISO(now), g.Scope)
 		return err
 	})
