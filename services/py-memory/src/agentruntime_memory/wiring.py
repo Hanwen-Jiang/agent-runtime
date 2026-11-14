@@ -1,6 +1,9 @@
 """Memory Service 启动时按环境变量选向量库与 embedder（docs/plan/memory-live.md M-01、M-02）。
 
 生产（设了 AR_RELATIONAL_DSN）配置不全就拒绝启动，不悄悄退回开发实现：向量在内存里重启就丢，哈希嵌入没有语义。
+AR_MEMORY_RERANK_MODE 默认 legacy；可选 bm25 对 MMR 已选候选的脱敏 guidance 重排，
+保留错误签名精确命中优先、候选准入和 token 预算。不增加模型调用。
+bm25_pool50 使用固定 50 条 MMR 候选先重排，再取请求的 top_k；查询嵌入仍只调用一次。
 """
 
 from __future__ import annotations
@@ -23,6 +26,13 @@ EMBED_TIMEOUT_S = 30.0
 
 class ConfigError(ValueError):
     """环境变量的组合不对，服务不能这样启动。"""
+
+
+def rerank_mode(env: Mapping[str, str]) -> str:
+    mode = env.get("AR_MEMORY_RERANK_MODE", "legacy")
+    if mode not in ("legacy", "bm25", "bm25_pool50"):
+        raise ConfigError("AR_MEMORY_RERANK_MODE must be legacy, bm25 or bm25_pool50")
+    return mode
 
 
 class GatewayClient:
