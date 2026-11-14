@@ -40,7 +40,17 @@ func TestAdmissionLockUpgradePreservesTasks(t *testing.T) {
 				t.Fatal(err)
 			}
 			s := taskstore.New(p)
-			insert(t, s, t1, "tsk_before", "before")
+			// Simulate the pre-v6 writer, which did not know the v9 columns.
+			db, err := p.Bind(t1)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := db.Transaction(ctx, relational.TxOptions{}, func(ctx context.Context, tx relational.Tx) error {
+				_, err := tx.Execute(ctx, `INSERT INTO tasks (task_id,session_id,session_key,client_request_id,status,signaled,last_event_id,created_at,outcome,submitted_by,message) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, "tsk_before", "ses_tsk_before", "", "before", int64(0), int64(0), int64(0), now.UnixMilli(), "", "", "")
+				return err
+			}); err != nil {
+				t.Fatal(err)
+			}
 			if err := p.Migrate(ctx, migrations); err != nil {
 				t.Fatal(err)
 			}

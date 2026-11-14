@@ -327,6 +327,8 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	switch {
 	case crid == "" || len(crid) > maxClientRequestID || !printable(crid):
 		return nil, invalid("client_request_id 必须是 1 到 128 个可打印字符")
+	case req.BudgetUsdMicros != nil && req.GetBudgetUsdMicros() <= 0:
+		return nil, invalid("budget_usd_micros 必须为正数")
 	case strings.TrimSpace(req.GetMessage()) == "":
 		return nil, invalid("命令不能为空")
 	case len(req.GetMessage()) > maxMessageBytes:
@@ -354,6 +356,10 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	if collectionErr != nil {
 		return nil, collectionErr
 	}
+	requestHash, err := submissionHash(req)
+	if err != nil {
+		return nil, err
+	}
 	previous, retry, e := s.tasks.LookupSubmission(ctx, tenant, req.GetSessionId(), crid)
 	if e != nil {
 		return nil, e
@@ -361,6 +367,9 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	if retry {
 		if previous.SubmittedBy != id.UserID {
 			return nil, missing("Task submission does not belong to this user")
+		}
+		if err := checkSubmissionBudget(previous, req, requestHash); err != nil {
+			return nil, err
 		}
 		if s.d.Objects != nil {
 			objects, e := s.d.Objects.Bind(tenant)
@@ -435,6 +444,23 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 		network = &checked
 	}
 
+	policyForBudget, err := s.policies().Resolve(ctx, tenant)
+	if err != nil {
+		return nil, err
+	}
+	var budget *workflowv1.Budget
+	if retry && previous.SubmissionBudget != "" {
+		budget, err = frozenBudget(previous, nil)
+	} else {
+		budget, err = requestedBudget(policyForBudget.Budget, req)
+	}
+	if err != nil {
+		return nil, err
+	}
+	budgetJSON, err := protojson.Marshal(budget)
+	if err != nil {
+		return nil, err
+	}
 	now := s.d.Clock.Now()
 	if s.d.ModelBudget != nil {
 		existing, err := s.tasks.SubmissionExists(ctx, tenant, req.GetSessionId(), crid)
@@ -466,12 +492,22 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 	row, existed, err := s.tasks.InsertTaskWithLimit(ctx, tenant, taskstore.Task{
 		TaskID: s.d.IDs.TaskID(), SessionID: sessionID, SessionKey: req.GetSessionId(), ClientRequestID: crid, CreatedAt: now,
 		SubmittedBy: id.UserID, Message: req.GetMessage(),
+		SubmissionHash: requestHash, SubmissionBudget: string(budgetJSON),
 	}, s.maxActiveTasks(tenant.GetTenantId()))
 	if err != nil {
 		return nil, err
 	}
 	if existed && row.SubmittedBy != id.UserID {
 		return nil, missing("Task submission does not belong to this user")
+	}
+	if existed {
+		if err := checkSubmissionBudget(row, req, requestHash); err != nil {
+			return nil, err
+		}
+	}
+	budget, err = frozenBudget(row, budget)
+	if err != nil {
+		return nil, err
 	}
 	resp := &taskapiv1.SubmitTaskResponse{
 		TaskId: row.TaskID, SessionId: row.SessionID, EventsUrl: events.URL(s.d.PublicBaseURL, row.TaskID), Deduplicated: existed,
@@ -552,7 +588,7 @@ func (s *Server) submit(ctx context.Context, header http.Header, req *taskapiv1.
 		SessionAccess:  req.GetSessionAccess(),
 		Priority:       req.GetPriority(),
 		EffectCeiling:  ceiling,
-		Budget:         policy.Budget,
+		Budget:         budget,
 	}
 	if task.SessionAccess == commonv1.SessionAccess_SESSION_ACCESS_UNSPECIFIED {
 		// 不知道会不会写 Session 状态时按会写处理，串行最安全。

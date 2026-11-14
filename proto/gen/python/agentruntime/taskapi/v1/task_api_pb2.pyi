@@ -72,7 +72,7 @@ TASK_EVENT_TYPE_CONTEXT_USAGE: TaskEventType
 TASK_EVENT_TYPE_PLAN_UPDATED: TaskEventType
 
 class SubmitTaskRequest(_message.Message):
-    __slots__ = ("tenant_id", "workspace_id", "session_id", "client_request_id", "message", "inputs", "attachments", "session_access", "priority", "effect_ceiling", "network_request")
+    __slots__ = ("tenant_id", "workspace_id", "session_id", "client_request_id", "message", "inputs", "attachments", "session_access", "priority", "effect_ceiling", "network_request", "budget_usd_micros")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
     SESSION_ID_FIELD_NUMBER: _ClassVar[int]
@@ -84,6 +84,7 @@ class SubmitTaskRequest(_message.Message):
     PRIORITY_FIELD_NUMBER: _ClassVar[int]
     EFFECT_CEILING_FIELD_NUMBER: _ClassVar[int]
     NETWORK_REQUEST_FIELD_NUMBER: _ClassVar[int]
+    BUDGET_USD_MICROS_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
     workspace_id: str
     session_id: str
@@ -95,7 +96,8 @@ class SubmitTaskRequest(_message.Message):
     priority: _enums_pb2.Priority
     effect_ceiling: _enums_pb2.Effect
     network_request: NetworkRequest
-    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., session_id: _Optional[str] = ..., client_request_id: _Optional[str] = ..., message: _Optional[str] = ..., inputs: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., attachments: _Optional[_Iterable[str]] = ..., session_access: _Optional[_Union[_enums_pb2.SessionAccess, str]] = ..., priority: _Optional[_Union[_enums_pb2.Priority, str]] = ..., effect_ceiling: _Optional[_Union[_enums_pb2.Effect, str]] = ..., network_request: _Optional[_Union[NetworkRequest, _Mapping]] = ...) -> None: ...
+    budget_usd_micros: int
+    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., session_id: _Optional[str] = ..., client_request_id: _Optional[str] = ..., message: _Optional[str] = ..., inputs: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., attachments: _Optional[_Iterable[str]] = ..., session_access: _Optional[_Union[_enums_pb2.SessionAccess, str]] = ..., priority: _Optional[_Union[_enums_pb2.Priority, str]] = ..., effect_ceiling: _Optional[_Union[_enums_pb2.Effect, str]] = ..., network_request: _Optional[_Union[NetworkRequest, _Mapping]] = ..., budget_usd_micros: _Optional[int] = ...) -> None: ...
 
 class NetworkRequest(_message.Message):
     __slots__ = ("hosts", "ports", "minutes", "reason", "scope")

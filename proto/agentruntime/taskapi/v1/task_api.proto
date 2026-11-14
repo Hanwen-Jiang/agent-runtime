@@ -54,6 +54,9 @@ message SubmitTaskRequest {
   // 这个 Task 要联网（设计书改动稿 W8；docs/plan/cloud-deploy.md D-16）。沙箱默认断网；按租户策略的 sandbox.network 核对，
   // 不允许联网、主机不在范围里、时长超过上限、只读的 Task（effect 上限是 read）一律 denied 并说明原因，不悄悄截断。
   NetworkRequest network_request = 11;
+  // 可选的美元预算上限（百万分之一美元）。不填沿用租户策略；显式值必须为正，
+  // 且不能高于租户的非零美元预算。首次提交固定预算，重试不能更换预算或提交约束。
+  optional int64 budget_usd_micros = 12;
 }
 
 // NetworkRequest 是提交时声明的联网申请。批准：租户策略的 approver 是 submitter（默认）时，提交本身就是提交者的批准；

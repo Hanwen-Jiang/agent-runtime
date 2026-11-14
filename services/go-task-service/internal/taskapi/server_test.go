@@ -357,6 +357,7 @@ func TestSubmitFillsTaskWorkflowInput(t *testing.T) {
 	req.Attachments = []string{"obj://t1/uploads/refunds.csv", "obj://t1/uploads/需求 文档 #1? 100%.txt"}
 	req.SessionAccess = commonv1.SessionAccess_SESSION_ACCESS_READ_ONLY
 	req.Priority = commonv1.Priority_PRIORITY_BATCH
+	req.BudgetUsdMicros = proto.Int64(750_000)
 	f.mustSubmit(f.token("t1", "u1"), req)
 	_, sig := f.lastSubmit()
 	task := sig.GetTask()
@@ -374,8 +375,8 @@ func TestSubmitFillsTaskWorkflowInput(t *testing.T) {
 	if task.GetSessionAccess() != commonv1.SessionAccess_SESSION_ACCESS_READ_ONLY || task.GetPriority() != commonv1.Priority_PRIORITY_BATCH {
 		t.Errorf("session_access 与 priority 应原样带入，实际 %v / %v", task.GetSessionAccess(), task.GetPriority())
 	}
-	if task.GetBudget().GetUsdMicros() != 2_000_000 || task.GetEffectCeiling() != commonv1.Effect_EFFECT_READ {
-		t.Errorf("预算与 effect 上限取租户默认值，实际 %v / %v", task.GetBudget(), task.GetEffectCeiling())
+	if task.GetBudget().GetUsdMicros() != 750_000 || task.GetBudget().GetToolCalls() != 50 || task.GetEffectCeiling() != commonv1.Effect_EFFECT_READ {
+		t.Errorf("美元预算按请求下调且保留租户工具预算与 effect，实际 %v / %v", task.GetBudget(), task.GetEffectCeiling())
 	}
 	if task.GetDepth() != 0 || task.GetParentTaskId() != "" {
 		t.Error("从 Task API 提交的是顶层 Task")
@@ -391,6 +392,9 @@ func TestSubmitDefaultsUnspecifiedAccessAndPriority(t *testing.T) {
 	}
 	if got := sig.GetTask().GetPriority(); got != commonv1.Priority_PRIORITY_INTERACTIVE {
 		t.Errorf("未声明 priority 时按交互式处理，实际 %v", got)
+	}
+	if sig.GetTask().GetBudget().GetUsdMicros() != 2_000_000 {
+		t.Fatal("旧客户端未填预算必须保留租户策略")
 	}
 }
 
@@ -436,16 +440,33 @@ func TestDuplicateSubmitReturnsTheSameTask(t *testing.T) {
 func TestDuplicateSubmitResendsWhenTheFirstSignalFailed(t *testing.T) {
 	f := newAPI(t)
 	tok := f.token("t1", "u1")
+	original := newRequest("c1")
+	original.BudgetUsdMicros = proto.Int64(600_000)
 	f.durable.faults.FailNext("SignalWithStart", providererr.Transient)
-	_, err := f.submit(tok, newRequest("c1"))
+	_, err := f.submit(tok, original)
 	wantCode(t, "DurableEngine 暂时不可用", err, connect.CodeUnavailable)
 
-	retry := f.mustSubmit(tok, newRequest("c1"))
+	for _, changed := range []*taskapiv1.SubmitTaskRequest{func() *taskapiv1.SubmitTaskRequest {
+		r := proto.Clone(original).(*taskapiv1.SubmitTaskRequest)
+		r.BudgetUsdMicros = proto.Int64(1_000_000)
+		return r
+	}(), func() *taskapiv1.SubmitTaskRequest {
+		r := proto.Clone(original).(*taskapiv1.SubmitTaskRequest)
+		r.Message = "changed instructions"
+		return r
+	}(), newRequest("c1")} {
+		_, e := f.submit(tok, changed)
+		wantCode(t, "重试不能改变预算或请求", e, connect.CodeAlreadyExists)
+	}
+	retry := f.mustSubmit(tok, original)
 	calls := f.durable.callsOf("SignalWithStart")
 	if len(calls) != 2 {
 		t.Fatalf("第一次没送达，重试时必须再投递，实际投递 %d 次", len(calls))
 	}
 	firstSig := calls[0].Payload.(*workflowv1.SubmitTaskSignal)
+	if firstSig.Task.Budget.UsdMicros != 600_000 || calls[1].Payload.(*workflowv1.SubmitTaskSignal).Task.Budget.UsdMicros != 600_000 {
+		t.Fatal("重试必须沿用首次固定预算")
+	}
 	if retry.GetTaskId() != firstSig.GetTask().GetTaskId() {
 		t.Error("重试应沿用第一次分配的 task_id，Session 工作流按 client_request_id 去重")
 	}
@@ -481,6 +502,9 @@ func TestSubmitValidatesTheRequest(t *testing.T) {
 		mutate func(*taskapiv1.SubmitTaskRequest)
 		code   connect.Code
 	}{
+		"显式零预算":                {func(r *taskapiv1.SubmitTaskRequest) { r.BudgetUsdMicros = proto.Int64(0) }, connect.CodeInvalidArgument},
+		"负预算":                  {func(r *taskapiv1.SubmitTaskRequest) { r.BudgetUsdMicros = proto.Int64(-1) }, connect.CodeInvalidArgument},
+		"超过租户预算":               {func(r *taskapiv1.SubmitTaskRequest) { r.BudgetUsdMicros = proto.Int64(2_000_001) }, connect.CodePermissionDenied},
 		"缺少 client_request_id": {func(r *taskapiv1.SubmitTaskRequest) { r.ClientRequestId = "" }, connect.CodeInvalidArgument},
 		"空命令":                  {func(r *taskapiv1.SubmitTaskRequest) { r.Message = "  " }, connect.CodeInvalidArgument},
 		"附件不是 obj:// 引用":       {func(r *taskapiv1.SubmitTaskRequest) { r.Attachments = []string{"https://x/y"} }, connect.CodeInvalidArgument},
