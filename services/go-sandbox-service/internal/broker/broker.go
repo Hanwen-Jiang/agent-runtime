@@ -347,7 +347,10 @@ func (b *Broker) reuse(ctx context.Context, tenant *commonv1.TenantContext, a Ac
 		return nil, nil
 	}
 	archiveToken := ""
-	if found != nil {
+	// Only an environment whose contents are archived needs the archive claim while it is reused: the claim keeps GC and
+	// archiving from racing over unarchived writes. A read-only copy has nothing to archive, and claiming it would
+	// serialize concurrent reads, so each would create its own environment (test_parallel_tool_calls).
+	if found != nil && b.archived(*found) {
 		guard := &Lease{Record: found, Owner: owner}
 		protected, finish, err := b.claimArchive(ctx, guard, true, false)
 		if err != nil {
