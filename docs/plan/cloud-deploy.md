@@ -1068,6 +1068,22 @@ V1-MCP 线上验收（2026-11-05，总表第 0 节完成标准第 1 条；第 33
 - 回退：删掉测试的东西 `kubectl delete -f deploy/dev/mcp-test/mcp-test.yaml`、`kubectl -n agent-runtime delete secret mcp-test-auth configmap mcp-test-server`；
   代码的回退是 `helm rollback ar 33`（第 34 版的修复）或 `32`（没有 MCP）。
 
+coding-web `main-0cd2c89`（2026-11-14，目录 `cw-0cd2c89`，脚本 `cw-build.sh`、`cw-deploy.sh`，用户在对话里要求“推送、合并全部 PR 并部署上线”）：
+
+- coding-agent `0cd2c89`（HeroUI 的界面：侧栏、搜索面板、确认框、列表页、设置、状态面板与抽屉、对话框改用 Modal、表单控件；Windows 上工作区操作日志的
+  fsync；一条测试的修复），对着 Runtime `89f642e`（含 PR #3 的 `budgetUsdMicros`，coding-web 不发它）编译。镜像在服务器上构建：上下文是两个仓库
+  `git archive` 的包（`ca.tar`、`ar.tar`，哈希在 `archives.sha256`），导进 k3s；之前线上是 `main-968cb7e`（`coding-web.before.yaml`）。
+- `kubectl set image` 一次换完（Recreate，一个副本），新 Pod 第一秒连接入点的库被拒、重试后正常（同以前）。核对：`code.cgent.link` 与
+  `api.cgent.link/healthz` 200，页面的 `app.js` 与 `chat-ui.js` 是新版，登录页在浏览器里正常。`/root/ar-secrets/coding-web.yaml` 的镜像仍写着
+  `23a0881`（11-09 之后几次换镜像都没同步），这次也没改。回滚：`kubectl -n agent-runtime rollout undo deploy/coding-web`。
+- **没有验证**：登录之后的界面（只放行名单里的账号）。
+- **Runtime 没有随这次上线**：Helm 停在第 44 版（11-07），之后 11-09、11-10 的评测会话用 `kubectl set image` 换了 worker、task-service、
+  model-gateway、sandbox-service、memory、worker-workspace 与评测看板的镜像（`tb-*`、`cancel-race-20261110` 等，目录在 `/root/ar-release`），
+  其中有不在 main 上的改动：Worker 的 `patches.py` 多了 `network-control-approval-v1`、`network-unlimited-grants-v1`、
+  `cancel-after-normal-operation-completion-v1`（main 在同一位置是 `file-operation-terminal-v1`、`child-file-whole-sheet-v1`），
+  model-gateway 有 `AR_MODEL_BUDGET_UNLIMITED_TENANTS`（`modelbudget/operator.go`），源提交 `384b6722`、`8b3326db`、`fa96d650` 不在 GitHub 上。
+  直接按 main 发布会去掉这些改动、换掉 Worker 开头问的版本分支，要先把线上独有的改动收回 main 再整版发布。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
