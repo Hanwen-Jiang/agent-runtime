@@ -388,13 +388,17 @@ func (x *GrepLeaseResponse) GetTruncated() bool {
 }
 
 type GetDiffRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Tenant        *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
-	WorkspaceId   string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
-	Base          string                 `protobuf:"bytes,3,opt,name=base,proto3" json:"base,omitempty"`
-	FindRenames   bool                   `protobuf:"varint,4,opt,name=find_renames,json=findRenames,proto3" json:"find_renames,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Tenant      *v1.TenantContext      `protobuf:"bytes,1,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	WorkspaceId string                 `protobuf:"bytes,2,opt,name=workspace_id,json=workspaceId,proto3" json:"workspace_id,omitempty"`
+	Base        string                 `protobuf:"bytes,3,opt,name=base,proto3" json:"base,omitempty"`
+	FindRenames bool                   `protobuf:"varint,4,opt,name=find_renames,json=findRenames,proto3" json:"find_renames,omitempty"`
+	// 与 Workspace.GetDiffRequest 的分块语义和限制一致；0 为原来的文本预览。
+	ChunkSize      uint32 `protobuf:"varint,5,opt,name=chunk_size,json=chunkSize,proto3" json:"chunk_size,omitempty"`
+	ChunkOffset    uint64 `protobuf:"varint,6,opt,name=chunk_offset,json=chunkOffset,proto3" json:"chunk_offset,omitempty"`
+	ExpectedSha256 string `protobuf:"bytes,7,opt,name=expected_sha256,json=expectedSha256,proto3" json:"expected_sha256,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GetDiffRequest) Reset() {
@@ -453,6 +457,27 @@ func (x *GetDiffRequest) GetFindRenames() bool {
 		return x.FindRenames
 	}
 	return false
+}
+
+func (x *GetDiffRequest) GetChunkSize() uint32 {
+	if x != nil {
+		return x.ChunkSize
+	}
+	return 0
+}
+
+func (x *GetDiffRequest) GetChunkOffset() uint64 {
+	if x != nil {
+		return x.ChunkOffset
+	}
+	return 0
+}
+
+func (x *GetDiffRequest) GetExpectedSha256() string {
+	if x != nil {
+		return x.ExpectedSha256
+	}
+	return ""
 }
 
 type GetLogRequest struct {
@@ -3663,12 +3688,16 @@ const file_agentruntime_sandbox_v1_sandbox_proto_rawDesc = "" +
 	"\ttruncated\x18\x02 \x01(\bR\ttruncated\"o\n" +
 	"\x11GrepLeaseResponse\x12<\n" +
 	"\amatches\x18\x01 \x03(\v2\".agentruntime.sandbox.v1.GrepMatchR\amatches\x12\x1c\n" +
-	"\ttruncated\x18\x02 \x01(\bR\ttruncated\"\xa9\x01\n" +
+	"\ttruncated\x18\x02 \x01(\bR\ttruncated\"\x94\x02\n" +
 	"\x0eGetDiffRequest\x12=\n" +
 	"\x06tenant\x18\x01 \x01(\v2%.agentruntime.common.v1.TenantContextR\x06tenant\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x12\n" +
 	"\x04base\x18\x03 \x01(\tR\x04base\x12!\n" +
-	"\ffind_renames\x18\x04 \x01(\bR\vfindRenames\"\x9b\x01\n" +
+	"\ffind_renames\x18\x04 \x01(\bR\vfindRenames\x12\x1d\n" +
+	"\n" +
+	"chunk_size\x18\x05 \x01(\rR\tchunkSize\x12!\n" +
+	"\fchunk_offset\x18\x06 \x01(\x04R\vchunkOffset\x12'\n" +
+	"\x0fexpected_sha256\x18\a \x01(\tR\x0eexpectedSha256\"\x9b\x01\n" +
 	"\rGetLogRequest\x12=\n" +
 	"\x06tenant\x18\x01 \x01(\v2%.agentruntime.common.v1.TenantContextR\x06tenant\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x14\n" +

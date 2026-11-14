@@ -231,18 +231,24 @@ class ListWorkspacesResponse(_message.Message):
     def __init__(self, workspaces: _Optional[_Iterable[_Union[Workspace, _Mapping]]] = ...) -> None: ...
 
 class GetDiffRequest(_message.Message):
-    __slots__ = ("tenant_id", "workspace_id", "base", "find_renames", "repo")
+    __slots__ = ("tenant_id", "workspace_id", "base", "find_renames", "repo", "chunk_size", "chunk_offset", "expected_sha256")
     TENANT_ID_FIELD_NUMBER: _ClassVar[int]
     WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
     BASE_FIELD_NUMBER: _ClassVar[int]
     FIND_RENAMES_FIELD_NUMBER: _ClassVar[int]
     REPO_FIELD_NUMBER: _ClassVar[int]
+    CHUNK_SIZE_FIELD_NUMBER: _ClassVar[int]
+    CHUNK_OFFSET_FIELD_NUMBER: _ClassVar[int]
+    EXPECTED_SHA256_FIELD_NUMBER: _ClassVar[int]
     tenant_id: str
     workspace_id: str
     base: str
     find_renames: bool
     repo: str
-    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., base: _Optional[str] = ..., find_renames: _Optional[bool] = ..., repo: _Optional[str] = ...) -> None: ...
+    chunk_size: int
+    chunk_offset: int
+    expected_sha256: str
+    def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., base: _Optional[str] = ..., find_renames: _Optional[bool] = ..., repo: _Optional[str] = ..., chunk_size: _Optional[int] = ..., chunk_offset: _Optional[int] = ..., expected_sha256: _Optional[str] = ...) -> None: ...
 
 class DiffStat(_message.Message):
     __slots__ = ("path", "added", "deleted", "binary")
@@ -257,20 +263,28 @@ class DiffStat(_message.Message):
     def __init__(self, path: _Optional[str] = ..., added: _Optional[int] = ..., deleted: _Optional[int] = ..., binary: _Optional[bool] = ...) -> None: ...
 
 class GetDiffResponse(_message.Message):
-    __slots__ = ("diff", "files", "truncated", "head", "stats", "branch")
+    __slots__ = ("diff", "files", "truncated", "head", "stats", "branch", "chunk_data", "next_offset", "total_bytes", "sha256")
     DIFF_FIELD_NUMBER: _ClassVar[int]
     FILES_FIELD_NUMBER: _ClassVar[int]
     TRUNCATED_FIELD_NUMBER: _ClassVar[int]
     HEAD_FIELD_NUMBER: _ClassVar[int]
     STATS_FIELD_NUMBER: _ClassVar[int]
     BRANCH_FIELD_NUMBER: _ClassVar[int]
+    CHUNK_DATA_FIELD_NUMBER: _ClassVar[int]
+    NEXT_OFFSET_FIELD_NUMBER: _ClassVar[int]
+    TOTAL_BYTES_FIELD_NUMBER: _ClassVar[int]
+    SHA256_FIELD_NUMBER: _ClassVar[int]
     diff: str
     files: _containers.RepeatedScalarFieldContainer[str]
     truncated: bool
     head: str
     stats: _containers.RepeatedCompositeFieldContainer[DiffStat]
     branch: str
-    def __init__(self, diff: _Optional[str] = ..., files: _Optional[_Iterable[str]] = ..., truncated: _Optional[bool] = ..., head: _Optional[str] = ..., stats: _Optional[_Iterable[_Union[DiffStat, _Mapping]]] = ..., branch: _Optional[str] = ...) -> None: ...
+    chunk_data: bytes
+    next_offset: int
+    total_bytes: int
+    sha256: str
+    def __init__(self, diff: _Optional[str] = ..., files: _Optional[_Iterable[str]] = ..., truncated: _Optional[bool] = ..., head: _Optional[str] = ..., stats: _Optional[_Iterable[_Union[DiffStat, _Mapping]]] = ..., branch: _Optional[str] = ..., chunk_data: _Optional[bytes] = ..., next_offset: _Optional[int] = ..., total_bytes: _Optional[int] = ..., sha256: _Optional[str] = ...) -> None: ...
 
 class CommitWorkspaceRequest(_message.Message):
     __slots__ = ("tenant_id", "workspace_id", "message", "author_name", "author_email", "repo")

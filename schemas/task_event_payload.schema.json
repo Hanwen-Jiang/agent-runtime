@@ -90,9 +90,11 @@
         "round_seq": {"$ref": "#/$defs/round_seq"},
         "node_id": {"description": "这次调用所在的 Goal Node（sub_agent 里的调用是那个 sub_agent Goal Node）", "$ref": "defs.schema.json#/$defs/node_id"},
         "step": {"description": "tool_loop 的第几步，从 1 开始", "type": "integer", "minimum": 1},
+        "call_index": {"description": "同一步的工具调用序号，从 0 开始；首项和旧事件省略", "type": "integer", "minimum": 0},
         "tool": {"type": "string", "minLength": 1, "maxLength": 128},
         "state": {"$ref": "defs.schema.json#/$defs/tool_call_state"},
         "target": {"description": "这次调用作用在什么上：路径、命令的开头、网址；经凭据脱敏，截到 160 个字符", "type": "string", "maxLength": 160},
+        "progress_message": {"description": "本步第一次 running 随附的公开进展短句，来自模型 text 通道；不含 rationale，不作为最终回答", "type": "string", "maxLength": 2000},
         "duration_ms": {"description": "succeeded、failed 时这次调用花了多久（工作流时间）", "type": "integer", "minimum": 0},
         "sandbox_startup_ms": {"description": "这次调用新建了沙箱环境时，借到环境花的时间（冷启动）；复用已有环境时没有这一项", "type": "integer", "minimum": 0},
         "error": {"description": "failed 时的说明，截到 300 个字符", "type": "string", "maxLength": 300},
@@ -184,7 +186,7 @@
       "unevaluatedProperties": false
     },
     "context_usage": {
-      "description": "一次模型调用的上下文里各类内容占多少（docs/plan/running-task-interaction.md 第 3 节）：每次模型调用之后一条，token 是估算。只有数字与类别名，没有内容",
+      "description": "一次模型调用的上下文里各类内容占多少（docs/plan/running-task-interaction.md 第 3 节）：每次模型调用之后一条；总量优先取供应商实测输入 token，各类按估算比例分摊。只有数字与类别名，没有内容",
       "type": "object",
       "required": ["event", "round_seq", "node_id", "window_tokens", "effective_tokens", "total_tokens", "categories"],
       "properties": {
@@ -193,7 +195,11 @@
         "node_id": {"$ref": "defs.schema.json#/$defs/node_id"},
         "step": {"description": "tool_loop 的第几步；fast 的 answer 这样的模型节点没有", "type": "integer", "minimum": 1},
         "window_tokens": {"description": "模型的真实窗口（Model Profile 的 context_window）；取不到时等于 effective_tokens", "type": "integer", "minimum": 1},
-        "effective_tokens": {"description": "Runtime 的压缩线：Context Builder 按它算阈值", "type": "integer", "minimum": 1},
+        "effective_tokens": {"description": "Runtime 的输入预算：Context Builder 在该预算内按独立阈值遮蔽/摘要，不表示达到预算才开始压缩", "type": "integer", "minimum": 1},
+        "window_source": {"description": "窗口数值来源；旧事件可以缺省", "$ref": "defs.schema.json#/$defs/context_window_source"},
+        "mask_at_tokens": {"description": "本次实际使用的旧观察遮蔽阈值，允许 Task Plan 覆盖", "type": "integer", "minimum": 0},
+        "summarize_at_tokens": {"description": "本次实际使用的摘要阈值；只有执行了 Context Builder 才提供", "type": "integer", "minimum": 0},
+        "threshold_source": {"description": "触发阈值来源；task_plan 表示至少一个比例由当前计划覆盖", "$ref": "defs.schema.json#/$defs/context_threshold_source"},
         "total_tokens": {"description": "各类之和；Free space 由客户端用窗口减它", "type": "integer", "minimum": 0},
         "categories": {
           "type": "array",

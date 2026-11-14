@@ -276,6 +276,12 @@ message GetDiffRequest {
   // 仓库名（D-25）：MULTI 时必填（没有时 InvalidArgument repo_required，不认识时 NotFound repo_not_found），
   // 结果只是这个仓库的、路径相对它的根；ROOT 时必须为空（InvalidArgument repo_not_applicable）。下面几个 Request 的 repo 相同。
   string repo = 5;
+  // 0 保持原来的 1 MiB 文本预览；非零时按字节导出完整补丁，每块最多 256 KiB，完整补丁最多 32 MiB。
+  uint32 chunk_size = 6;
+  // 分块起始字节；必须不超过完整补丁大小，非零时必须给 expected_sha256。
+  uint64 chunk_offset = 7;
+  // 上次响应的完整补丁 SHA-256（64 位小写十六进制）。补丁改变时返回 Conflict diff_changed，不拼接不同版本。
+  string expected_sha256 = 8;
 }
 
 // DiffStat 是一个改动文件的行数（git diff --numstat）。
@@ -299,6 +305,13 @@ message GetDiffResponse {
   repeated DiffStat stats = 5;
   // 当前的分支；分离头指针时为空。
   string branch = 6;
+  // 分块模式的原始补丁字节；此时 diff 为空，truncated 表示仍有后续分块。
+  bytes chunk_data = 7;
+  // 下一块的起始位置；0 表示已经读完。
+  uint64 next_offset = 8;
+  // 完整补丁的大小与 SHA-256；预览模式也返回，旧服务可能为空。
+  uint64 total_bytes = 9;
+  string sha256 = 10;
 }
 
 message CommitWorkspaceRequest {

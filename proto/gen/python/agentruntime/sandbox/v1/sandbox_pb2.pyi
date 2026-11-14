@@ -70,16 +70,22 @@ class GrepLeaseResponse(_message.Message):
     def __init__(self, matches: _Optional[_Iterable[_Union[GrepMatch, _Mapping]]] = ..., truncated: _Optional[bool] = ...) -> None: ...
 
 class GetDiffRequest(_message.Message):
-    __slots__ = ("tenant", "workspace_id", "base", "find_renames")
+    __slots__ = ("tenant", "workspace_id", "base", "find_renames", "chunk_size", "chunk_offset", "expected_sha256")
     TENANT_FIELD_NUMBER: _ClassVar[int]
     WORKSPACE_ID_FIELD_NUMBER: _ClassVar[int]
     BASE_FIELD_NUMBER: _ClassVar[int]
     FIND_RENAMES_FIELD_NUMBER: _ClassVar[int]
+    CHUNK_SIZE_FIELD_NUMBER: _ClassVar[int]
+    CHUNK_OFFSET_FIELD_NUMBER: _ClassVar[int]
+    EXPECTED_SHA256_FIELD_NUMBER: _ClassVar[int]
     tenant: _tenant_pb2.TenantContext
     workspace_id: str
     base: str
     find_renames: bool
-    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., workspace_id: _Optional[str] = ..., base: _Optional[str] = ..., find_renames: _Optional[bool] = ...) -> None: ...
+    chunk_size: int
+    chunk_offset: int
+    expected_sha256: str
+    def __init__(self, tenant: _Optional[_Union[_tenant_pb2.TenantContext, _Mapping]] = ..., workspace_id: _Optional[str] = ..., base: _Optional[str] = ..., find_renames: _Optional[bool] = ..., chunk_size: _Optional[int] = ..., chunk_offset: _Optional[int] = ..., expected_sha256: _Optional[str] = ...) -> None: ...
 
 class GetLogRequest(_message.Message):
     __slots__ = ("tenant", "workspace_id", "limit", "base")

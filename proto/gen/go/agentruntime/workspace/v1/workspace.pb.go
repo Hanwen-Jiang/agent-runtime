@@ -1273,9 +1273,15 @@ type GetDiffRequest struct {
 	FindRenames bool `protobuf:"varint,4,opt,name=find_renames,json=findRenames,proto3" json:"find_renames,omitempty"`
 	// 仓库名（D-25）：MULTI 时必填（没有时 InvalidArgument repo_required，不认识时 NotFound repo_not_found），
 	// 结果只是这个仓库的、路径相对它的根；ROOT 时必须为空（InvalidArgument repo_not_applicable）。下面几个 Request 的 repo 相同。
-	Repo          string `protobuf:"bytes,5,opt,name=repo,proto3" json:"repo,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Repo string `protobuf:"bytes,5,opt,name=repo,proto3" json:"repo,omitempty"`
+	// 0 保持原来的 1 MiB 文本预览；非零时按字节导出完整补丁，每块最多 256 KiB，完整补丁最多 32 MiB。
+	ChunkSize uint32 `protobuf:"varint,6,opt,name=chunk_size,json=chunkSize,proto3" json:"chunk_size,omitempty"`
+	// 分块起始字节；必须不超过完整补丁大小，非零时必须给 expected_sha256。
+	ChunkOffset uint64 `protobuf:"varint,7,opt,name=chunk_offset,json=chunkOffset,proto3" json:"chunk_offset,omitempty"`
+	// 上次响应的完整补丁 SHA-256（64 位小写十六进制）。补丁改变时返回 Conflict diff_changed，不拼接不同版本。
+	ExpectedSha256 string `protobuf:"bytes,8,opt,name=expected_sha256,json=expectedSha256,proto3" json:"expected_sha256,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GetDiffRequest) Reset() {
@@ -1339,6 +1345,27 @@ func (x *GetDiffRequest) GetFindRenames() bool {
 func (x *GetDiffRequest) GetRepo() string {
 	if x != nil {
 		return x.Repo
+	}
+	return ""
+}
+
+func (x *GetDiffRequest) GetChunkSize() uint32 {
+	if x != nil {
+		return x.ChunkSize
+	}
+	return 0
+}
+
+func (x *GetDiffRequest) GetChunkOffset() uint64 {
+	if x != nil {
+		return x.ChunkOffset
+	}
+	return 0
+}
+
+func (x *GetDiffRequest) GetExpectedSha256() string {
+	if x != nil {
+		return x.ExpectedSha256
 	}
 	return ""
 }
@@ -1425,7 +1452,14 @@ type GetDiffResponse struct {
 	// 每个改动文件的行数，与 files 同序。
 	Stats []*DiffStat `protobuf:"bytes,5,rep,name=stats,proto3" json:"stats,omitempty"`
 	// 当前的分支；分离头指针时为空。
-	Branch        string `protobuf:"bytes,6,opt,name=branch,proto3" json:"branch,omitempty"`
+	Branch string `protobuf:"bytes,6,opt,name=branch,proto3" json:"branch,omitempty"`
+	// 分块模式的原始补丁字节；此时 diff 为空，truncated 表示仍有后续分块。
+	ChunkData []byte `protobuf:"bytes,7,opt,name=chunk_data,json=chunkData,proto3" json:"chunk_data,omitempty"`
+	// 下一块的起始位置；0 表示已经读完。
+	NextOffset uint64 `protobuf:"varint,8,opt,name=next_offset,json=nextOffset,proto3" json:"next_offset,omitempty"`
+	// 完整补丁的大小与 SHA-256；预览模式也返回，旧服务可能为空。
+	TotalBytes    uint64 `protobuf:"varint,9,opt,name=total_bytes,json=totalBytes,proto3" json:"total_bytes,omitempty"`
+	Sha256        string `protobuf:"bytes,10,opt,name=sha256,proto3" json:"sha256,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1498,6 +1532,34 @@ func (x *GetDiffResponse) GetStats() []*DiffStat {
 func (x *GetDiffResponse) GetBranch() string {
 	if x != nil {
 		return x.Branch
+	}
+	return ""
+}
+
+func (x *GetDiffResponse) GetChunkData() []byte {
+	if x != nil {
+		return x.ChunkData
+	}
+	return nil
+}
+
+func (x *GetDiffResponse) GetNextOffset() uint64 {
+	if x != nil {
+		return x.NextOffset
+	}
+	return 0
+}
+
+func (x *GetDiffResponse) GetTotalBytes() uint64 {
+	if x != nil {
+		return x.TotalBytes
+	}
+	return 0
+}
+
+func (x *GetDiffResponse) GetSha256() string {
+	if x != nil {
+		return x.Sha256
 	}
 	return ""
 }
@@ -3733,25 +3795,37 @@ const file_agentruntime_workspace_v1_workspace_proto_rawDesc = "" +
 	"\x16ListWorkspacesResponse\x12D\n" +
 	"\n" +
 	"workspaces\x18\x01 \x03(\v2$.agentruntime.workspace.v1.WorkspaceR\n" +
-	"workspaces\"\x9b\x01\n" +
+	"workspaces\"\x86\x02\n" +
 	"\x0eGetDiffRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x12\n" +
 	"\x04base\x18\x03 \x01(\tR\x04base\x12!\n" +
 	"\ffind_renames\x18\x04 \x01(\bR\vfindRenames\x12\x12\n" +
-	"\x04repo\x18\x05 \x01(\tR\x04repo\"f\n" +
+	"\x04repo\x18\x05 \x01(\tR\x04repo\x12\x1d\n" +
+	"\n" +
+	"chunk_size\x18\x06 \x01(\rR\tchunkSize\x12!\n" +
+	"\fchunk_offset\x18\a \x01(\x04R\vchunkOffset\x12'\n" +
+	"\x0fexpected_sha256\x18\b \x01(\tR\x0eexpectedSha256\"f\n" +
 	"\bDiffStat\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x14\n" +
 	"\x05added\x18\x02 \x01(\x05R\x05added\x12\x18\n" +
 	"\adeleted\x18\x03 \x01(\x05R\adeleted\x12\x16\n" +
-	"\x06binary\x18\x04 \x01(\bR\x06binary\"\xc0\x01\n" +
+	"\x06binary\x18\x04 \x01(\bR\x06binary\"\xb9\x02\n" +
 	"\x0fGetDiffResponse\x12\x12\n" +
 	"\x04diff\x18\x01 \x01(\tR\x04diff\x12\x14\n" +
 	"\x05files\x18\x02 \x03(\tR\x05files\x12\x1c\n" +
 	"\ttruncated\x18\x03 \x01(\bR\ttruncated\x12\x12\n" +
 	"\x04head\x18\x04 \x01(\tR\x04head\x129\n" +
 	"\x05stats\x18\x05 \x03(\v2#.agentruntime.workspace.v1.DiffStatR\x05stats\x12\x16\n" +
-	"\x06branch\x18\x06 \x01(\tR\x06branch\"\xca\x01\n" +
+	"\x06branch\x18\x06 \x01(\tR\x06branch\x12\x1d\n" +
+	"\n" +
+	"chunk_data\x18\a \x01(\fR\tchunkData\x12\x1f\n" +
+	"\vnext_offset\x18\b \x01(\x04R\n" +
+	"nextOffset\x12\x1f\n" +
+	"\vtotal_bytes\x18\t \x01(\x04R\n" +
+	"totalBytes\x12\x16\n" +
+	"\x06sha256\x18\n" +
+	" \x01(\tR\x06sha256\"\xca\x01\n" +
 	"\x16CommitWorkspaceRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
 	"\fworkspace_id\x18\x02 \x01(\tR\vworkspaceId\x12\x18\n" +

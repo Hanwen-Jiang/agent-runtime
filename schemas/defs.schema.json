@@ -72,6 +72,8 @@
       "maxContains": 1
     },
     "tool_call_state": {"description": "tool_loop 里一次工具调用的状态（进度事件 tool_status）：调用前 running，调用后 succeeded 或 failed", "enum": ["running", "succeeded", "failed"]},
+    "context_window_source": {"description": "context_usage 的窗口数值来源：Model Profile 的 context_window，或取不到时退回 effective_tokens", "enum": ["model_profile", "effective_fallback"]},
+    "context_threshold_source": {"description": "context_usage 的触发阈值来源：Runtime 配置，或当前 Task Plan 覆盖了至少一个比例", "enum": ["runtime_config", "task_plan"]},
     "finished_node_status": {"description": "Node 结束时的状态：node_status 里已经结束的那几个", "enum": ["succeeded", "failed", "skipped", "cancelled", "unknown"]},
     "question_kind": {"description": "等待人工回复的问题从哪来（T-11b）：human 节点、write_irreversible 前的审批、tool_loop 里不可逆工具调用前的审批、Reviewer 升级问人", "enum": ["human", "approval", "tool_approval", "escalation"]},
     "hook_decision": {"description": "Hook 的结果（附录 A、F.2）", "enum": ["allow", "deny", "modify", "inject"]},
