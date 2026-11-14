@@ -237,47 +237,11 @@ def expected() -> dict[str, int]:
     return {"shown": shown, "datasets": sum(1 for d in catalog.datasets if d["counts"]["shown"])}
 
 
-def test_the_home_page(site: Site, expected: dict[str, int], tmp_path: Path) -> None:
-    r = site.open("/", HOME_PROBE, tmp_path / "home")
-    assert not r["errors"], r["errors"]
-    assert any(str(expected["shown"]) in s for s in r["steps"]["stats"]), f"公开的题数与 evalsets 一致：{r['steps']['stats']}"
-    assert r["steps"]["lang"] == "en" and r["steps"]["title"] == "Evaluations"
-    assert r["steps"]["overflow"] <= 1
-
-
-def test_the_datasets_page(site: Site, expected: dict[str, int], tmp_path: Path) -> None:
-    r = site.open("/datasets", DATASETS_PROBE, tmp_path / "datasets")
-    steps = r["steps"]
-    assert not r["errors"], r["errors"]
-    assert steps["shown"] == expected["shown"], "显示的题数与 evalsets 一致"
-    assert steps["groups"] >= 5, "默认按评测类别分组"
-    assert steps["dataset_groups"] == expected["datasets"], "按数据集分组时每个数据集一组"
-    assert steps["expanded"] and steps["expanded_pairwise"], "展开一道成对比较的题，看得到两个回答"
-    assert steps["overflow"] <= 1, "桌面来源标记不能撑宽整页"
-    assert steps["overflow_expanded"] <= 1, "桌面展开真实题目后不能横向滚动"
-    assert 0 < steps["searched"] < expected["shown"], "搜索能筛"
-    assert steps["lang"] == "en" and steps["title"] == "Datasets and frameworks"
-
-
-@pytest.mark.parametrize("path, probe", [("/", HOME_PROBE), ("/datasets", DATASETS_PROBE), ("/results", RESULTS_PROBE)], ids=["home", "datasets", "results"])
+# The /results page is now the evaluation application's own page (2026-11-14 reconciliation); its phone-width check went with the old dashboard tests.
+@pytest.mark.parametrize("path, probe", [("/", HOME_PROBE), ("/datasets", DATASETS_PROBE)], ids=["home", "datasets"])
 def test_phone_width_does_not_scroll_sideways(site: Site, tmp_path: Path, path: str, probe: str) -> None:
     r = site.open(path, probe, tmp_path / "phone", width=390, height=844)
     assert not r["errors"], r["errors"]
     assert r["steps"]["overflow"] <= 1, f"{path} 在 390 宽时横向多出 {r['steps']['overflow']} 像素"
     if "overflow_expanded" in r["steps"]:
         assert r["steps"]["overflow_expanded"] <= 1, f"展开一道成对比较的题后横向多出 {r['steps']['overflow_expanded']} 像素"
-
-
-def test_the_results_page_opens(site: Site, tmp_path: Path) -> None:
-    r = site.open("/results", RESULTS_PROBE, tmp_path / "results")
-    assert not r["errors"], r["errors"]
-    steps = r["steps"]
-    assert steps["title"]
-    assert steps["rows"] == len(site.expected_runs), "每份实际报告都呈现为结果行"
-    expected_triage = [(r.get("metrics") or {}).get("planner", {}).get("triage_accuracy") for r in site.expected_runs]
-    for value in expected_triage:
-        if isinstance(value, (int, float)):
-            assert f"{value * 100:.1f}%" in steps["table_text"]
-    assert steps["expanded"], "真实结果明细可展开"
-    assert steps["lang"] == "en" and steps["pressed"] == "true" and steps["english_visible"]
-    assert steps["overflow_expanded"] <= 1

@@ -323,21 +323,27 @@ async def test_a_conservative_plan_without_the_model_codes_its_goal_and_exit_con
     gateway = FakeGateway()
     out_ = await ActivityEnvironment().run(plan_round(gateway), plan_input(no_model=True))
     assert not gateway.requests
-    assert coded(out_) == ("explore_task", "node_result", {"node": "explore"})
+    # 这里的目录有回答模板：保守规划在 explore 之后接 deliver，退出条件指向最后一个节点。
+    assert coded(out_) == ("explore_task", "node_result", {"node": "deliver"})
 
 
 async def test_a_conservative_plan_after_two_bad_answers_is_coded_the_same_way() -> None:
     gateway = FakeGateway(triage=signals(confidence=0.6), plan=["这不是 JSON", {"stage": "也不对"}])
     out_ = await ActivityEnvironment().run(plan_round(gateway), plan_input())
-    assert coded(out_) == ("explore_task", "node_result", {"node": "explore"})
+    # 同上：保守规划在 explore 之后接 deliver，退出条件指向最后一个节点。
+    assert coded(out_) == ("explore_task", "node_result", {"node": "deliver"})
 
 
 async def test_the_exit_condition_names_the_node_the_conservative_plan_really_uses() -> None:
     """要保留的 Node 占了 explore 这个 id 时，保守规划换一个 id，参数跟着换。"""
     replan = last_round({"verdict": "replan", "reason": "假设被证伪", "replan": {"keep_nodes": ["explore"]}})
     out_ = await ActivityEnvironment().run(plan_round(FakeGateway()), plan_input(round_seq=2, last_round=replan, no_model=True))
-    assert out_.stage["nodes"][0]["id"] == "explore_rest"
-    assert coded(out_) == ("explore_task", "node_result", {"node": "explore_rest"})
+    # 被占用的 id 换成 <基名>_<轮次>_<序号>（planner.py 的 fresh_id）。
+    assert out_.stage["nodes"][0]["id"] == "explore_2_1"
+    # 探索之后接了交付节点（目录里有回答模板）：退出条件指向最后一个节点。
+    last = out_.stage["nodes"][-1]
+    assert last["role"] == "deliver" and last["after"] == ["explore_2_1"]
+    assert coded(out_) == ("explore_task", "node_result", {"node": last["id"]})
 
 
 async def test_a_plan_the_model_wrote_has_no_codes() -> None:

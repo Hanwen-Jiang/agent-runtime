@@ -72,7 +72,8 @@ def test_first_negative_similarity_is_not_clamped_to_zero():
 
 def test_redundancy_boundary_and_ties_match(monkeypatch):
     values = {(1, 0): 0.9, (2, 0): math.nextafter(0.9, 0), (3, 0): -0.0}
-    monkeypatch.setattr(service, "_cosine", lambda a, b: values.get((a[0], b[0]), 0.0))
+    # _mmr_select passes each vector's cached norm (norm_a, norm_b); the stand-in ignores them.
+    monkeypatch.setattr(service, "_cosine", lambda a, b, **_: values.get((a[0], b[0]), 0.0))
     rows = candidates([(0,), (1,), (2,), (3,)], scores=[1.0, 0.7, 0.7, 0.7])
     assert ids(service._mmr_select(rows, 4)) == ids(original(rows, 4))
 
@@ -83,10 +84,10 @@ def test_cosine_work_is_linear_in_selected_count(monkeypatch):
     rows = candidates([tuple(float(i == j) for j in range(250)) for i in range(250)])
     cosine = service._cosine
     calls = 0
-    def counted(a, b):
+    def counted(a, b, **norms):
         nonlocal calls
         calls += 1
-        return cosine(a, b)
+        return cosine(a, b, **norms)
     monkeypatch.setattr(service, "_cosine", counted)
     optimized = service._mmr_select(rows, 50)
     optimized_calls, calls = calls, 0

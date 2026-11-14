@@ -110,7 +110,8 @@ def test_request_rules_match_the_go_side() -> None:
 async def test_request_network_needs_an_approver_and_writes_the_grant(tmp_path: Path) -> None:
     s = make(tmp_path)
     spec = await s.tools.bind(T1).describe("request_network", "v1")
-    assert spec.effect == Effect.WRITE_IRREVERSIBLE, "联网按不可逆写处理：只读的 Task 用不了，tool_loop 里逐次审批"
+    # 联网授权与工作区读写上限独立：对模型是 read 级的控制申请，Stage Runner 与 activity 每次都另经人工审批。
+    assert spec.effect == Effect.READ
     with pytest.raises(DeniedError) as info:
         await request(s, {"hosts": ["api.example.com"], "minutes": 15, "reason": "拉文档"}, approved_by="", key="k0")
     assert info.value.code == "network_not_approved"
@@ -127,9 +128,10 @@ async def test_request_network_needs_an_approver_and_writes_the_grant(tmp_path: 
 
 async def test_admin_approver_rejects_self_approval(tmp_path: Path) -> None:
     s = make(tmp_path, network={**NETWORK, "approver": "admin"})
-    with pytest.raises(DeniedError) as info:
-        await request(s, {"hosts": ["api.example.com"], "minutes": 15, "reason": "x"}, approved_by="u1", key="k1")
-    assert info.value.code == "network_needs_admin"
+    # 提交者本人批的不算：不写授权，结果告诉模型要管理员批准（不再作为错误抛出）。
+    out = await request(s, {"hosts": ["api.example.com"], "minutes": 15, "reason": "x"}, approved_by="u1", key="k1")
+    assert out["granted"] is False and out["code"] == "network_needs_admin"
+    assert await s.grants.for_task("t1", TASK) == []
     await request(s, {"hosts": ["api.example.com"], "minutes": 15, "reason": "x"}, approved_by="u-admin", key="k2")
     assert len(await s.grants.for_task("t1", TASK)) == 1
 
