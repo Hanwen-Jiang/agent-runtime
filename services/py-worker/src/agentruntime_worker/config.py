@@ -120,7 +120,7 @@ class WorkerConfig:
     delta_caller: str = "worker"
     # 子 Agent 的规矩（AR_SUB_AGENT_POLICY）：off 或 rules。
     sub_agent_policy: str = "off"
-    # 模型实测的有效长度（token），Context Builder 的阈值按它算。
+    # 部署配置的输入预算（token），Context Builder 按比例计算阈值；不是模型标称窗口或质量评测结论。
     context_effective_tokens: int = 32_000
     # 工具的输出超过这么多 token 就转存，只留摘录（Context Builder 的 offload）。
     context_offload_tokens: int = 2_000

@@ -151,6 +151,7 @@ def dev_executor(
     model_gateway_instance = model_gateway(config)
     object_store = objects or dev_object_store(config, root)
     from agentruntime_worker.files.authority import task_attachments
+    from agentruntime_worker.runtime_capabilities import from_config
     deps = ExecutorDeps(
         # N-15：call_tool 再加上 Task 租约里的远程 MCP 工具（bind_task）。
         tools=LeasedToolDriverProvider(dev_tools(config), mcp_leases(config)),
@@ -165,6 +166,7 @@ def dev_executor(
         transcript=session_transcript(config.relational_dsn, config.data_dir, object_store),
         stream_deliver=config.stream_deliver,
         attachments=task_attachments(config,object_store),
+        runtime_capabilities=from_config(config),
         # 逐字增量（DELTA）：给了 task-service 的内部端口才推。
         deltas=DeltaPusher(config.task_service_internal_url, secret_token(config.store_paths(root)[1], config.delta_caller))
         if config.task_service_internal_url else None,

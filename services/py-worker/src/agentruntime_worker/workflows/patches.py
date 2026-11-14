@@ -85,6 +85,16 @@ FILE_OPERATION_RESULT_PATCH = "file-operation-terminal-v1"
 
 CHILD_FILE_SCOPE_PATCH = "child-file-whole-sheet-v1"
 
+# 下面三个 2026-11-09、11-10 先在线上用（对账见 docs/plan/cloud-deploy.md 2026-11-14），线上的 AT_START 里它们直接接在
+# WORKSPACE_ASYNC_RESULT_PATCH 之后、没有上面两个。回放线上的历史时上面两个找不到标记、返回 False，这三个照常匹配。
+# request_network 每次先经人批准（tool_loop 与 program 节点都是），批准后的授权只执行一次、不重试、不被打断；
+# 拒绝与按人的指引重新规划记进 VerificationRecord。多了发问的命令。
+NETWORK_CONTROL_APPROVAL_PATCH = "network-control-approval-v1"
+# 联网授权的时长可以是 0：本 Task 内不限时（NetworkRequest.unlimited，租户策略要 allow_unlimited）。
+NETWORK_UNLIMITED_GRANTS_PATCH = "network-unlimited-grants-v1"
+# 已请求取消时，activity 的正常结果仍被接受：await 返回后不再排下一次模型或工具调用（interrupts.run）。
+CANCEL_COMPLETION_RACE_PATCH = "cancel-after-normal-operation-completion-v1"
+
 # 新的运行在第一个工作流任务里一次问完全部版本分支（模块说明）。
 PATCHES_AT_START = "s04-patches-at-start"
 # 只能在末尾追加。
@@ -114,6 +124,9 @@ AT_START = (
     WORKSPACE_ASYNC_RESULT_PATCH,
     FILE_OPERATION_RESULT_PATCH,
     CHILD_FILE_SCOPE_PATCH,
+    NETWORK_CONTROL_APPROVAL_PATCH,
+    NETWORK_UNLIMITED_GRANTS_PATCH,
+    CANCEL_COMPLETION_RACE_PATCH,
 )
 
 

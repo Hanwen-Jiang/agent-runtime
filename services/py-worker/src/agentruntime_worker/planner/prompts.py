@@ -13,6 +13,7 @@ Context Builder（R-03）实现之后，由它按同样的分区组装。
 from __future__ import annotations
 
 from agentruntime_worker.personal_config import preference
+from agentruntime_worker.runtime_capabilities import context_text
 
 import json
 from typing import Any
@@ -111,6 +112,8 @@ def _brief(context: PlanningContext, decision: TriageDecision, task_plan: dict[s
         f"判定依据：{'；'.join(decision.reasons) or '无'}",
         f"本 Session 已授权的风险等级：{context.risk_authorized}；effect 上限：{context.effect_ceiling}",
     ]
+    if current := context_text(context.runtime_capabilities):
+        lines.append(current)
     if context.session_budget_remaining_usd is not None:
         lines.append(f"Session 剩余预算：${context.session_budget_remaining_usd:.2f}")
     if context.recipes:
@@ -194,6 +197,8 @@ def classifier_messages(message: str, task_state: dict[str, Any] | None, context
         hint = f"\n已知的任务族：{'、'.join(families)}" if families else ""
     conversation = transcript_text(context.conversation, max_chars=CLASSIFIER_CONVERSATION_CHARS)
     session = (f"\n{conversation}" if conversation else "") + ("\n这个 Session 有工作区（用户的仓库与文件）。" if context.has_workspace else "")
+    if current := context_text(context.runtime_capabilities):
+        session += "\n" + current
     return [
         mg.ChatMessage(role=mg.CHAT_ROLE_SYSTEM, text=f"{_CLASSIFIER_RULES}\n可选的 kind：{'、'.join(MESSAGE_KINDS)}", cache_breakpoint=True),
         mg.ChatMessage(role=mg.CHAT_ROLE_USER, text=f"用户消息：{message}{summary}{hint}{session}"),

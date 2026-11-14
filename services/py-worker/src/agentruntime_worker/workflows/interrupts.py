@@ -17,8 +17,10 @@ from dataclasses import dataclass
 from typing import Any, TypeVar
 
 from temporalio.exceptions import ApplicationError, FailureError
+from temporalio import workflow
 
 from agentruntime_worker.workflows.failures import caused_by_cancel
+from agentruntime_worker.workflows.patches import CANCEL_COMPLETION_RACE_PATCH
 
 T = TypeVar("T")
 
@@ -97,7 +99,13 @@ async def run(scopes: list[Scope], call: Awaitable[T]) -> T:
     scope = Scope(asyncio.ensure_future(call))
     scopes.append(scope)
     try:
-        return await scope.task
+        result = await scope.task
+        # Temporal can accept a normal activity response after cancellation was
+        # requested. Await then returns although this parent is still cancelling;
+        # do not let the tool loop schedule another model/tool call in that race.
+        if (not workflow.in_workflow() or workflow.patched(CANCEL_COMPLETION_RACE_PATCH)) and asked_to_cancel():
+            raise asyncio.CancelledError()
+        return result
     except asyncio.CancelledError as err:
         if scope.interrupted and not asked_to_cancel():
             raise Interrupted() from err
