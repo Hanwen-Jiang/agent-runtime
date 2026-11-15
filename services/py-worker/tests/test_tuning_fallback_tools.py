@@ -25,7 +25,9 @@ def planned(ceiling: str, catalog: CatalogView = CATALOG) -> dict:
 
 
 def tools_of(stage: dict) -> set[str]:
-    [node] = stage["nodes"]
+    # 第一个是探索的 Goal Node；目录里有回答模板时后面另有一个不带工具的 deliver（planner.py 的回退）。
+    node = stage["nodes"][0]
+    assert all(not n.get("tools") for n in stage["nodes"][1:])
     return set(node.get("tools") or [])
 
 
@@ -44,7 +46,7 @@ def test_irreversible_tools_are_never_handed_out_by_the_fallback() -> None:
 
 def test_the_order_is_stable() -> None:
     """工作流代码要确定：不依赖 dict 的遍历顺序。"""
-    [node] = planned("write_reversible")["nodes"]
+    node = planned("write_reversible")["nodes"][0]  # 探索的 Goal Node；后面可能另有 deliver
     assert node["tools"] == sorted(node["tools"])
 
 
@@ -56,5 +58,5 @@ def test_a_catalog_without_tools_still_gives_a_valid_stage() -> None:
 
 def test_the_write_capable_node_also_gets_a_write_effect_ceiling_that_validates() -> None:
     """工具的 effect 不能高于节点的上限，否则校验会拒绝这份规划。"""
-    [node] = planned("write_reversible")["nodes"]
+    node = planned("write_reversible")["nodes"][0]  # 探索的 Goal Node；后面可能另有 deliver
     assert node.get("effect_ceiling", "write_reversible") == "write_reversible"

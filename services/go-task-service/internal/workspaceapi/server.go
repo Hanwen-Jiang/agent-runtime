@@ -234,8 +234,11 @@ func (s *Server) readFromSandbox(ctx context.Context, tenant *commonv1.TenantCon
 		}
 	case workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_DIFF:
 		renames, _ := args["find_renames"].(bool)
+		size, _ := args["chunk_size"].(float64)
+		offset, _ := args["chunk_offset"].(float64)
 		var r *connect.Response[sandboxv1.GetDiffResponse]
-		if r, err = s.d.Sandbox.GetDiff(ctx, connect.NewRequest(&sandboxv1.GetDiffRequest{Tenant: tenant, WorkspaceId: workspaceID, Base: str("base"), FindRenames: renames})); err == nil {
+		if r, err = s.d.Sandbox.GetDiff(ctx, connect.NewRequest(&sandboxv1.GetDiffRequest{Tenant: tenant, WorkspaceId: workspaceID, Base: str("base"), FindRenames: renames,
+			ChunkSize: uint32(size), ChunkOffset: uint64(offset), ExpectedSha256: str("expected_sha256")})); err == nil {
 			got = r.Msg.GetResponse()
 		}
 	case workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_LOG:
@@ -263,6 +266,10 @@ func (s *Server) readFromSandbox(ctx context.Context, tenant *commonv1.TenantCon
 // readCache 返回租户的 Cache 与这次读的键；不缓存时（没配 Cache、业务库里没有这个工作区、查不了版本号）返回 nil。
 // 键里有工作区、版本号、操作与参数的哈希；租户由 Cache 的绑定隔开。
 func (s *Server) readCache(ctx context.Context, tenant *commonv1.TenantContext, workspaceID string, op workflowv1.WorkspaceOperation, args map[string]any) (cache.Cache, string) {
+	// 分块每次都核对当前补丁哈希；generation 缓存不能掩盖两块之间的工作区变更。
+	if op == workflowv1.WorkspaceOperation_WORKSPACE_OPERATION_DIFF && args["chunk_size"] != nil {
+		return nil, ""
+	}
 	if s.d.Cache == nil {
 		return nil, ""
 	}
@@ -522,8 +529,16 @@ func (s *Server) GetDiff(ctx context.Context, req *connect.Request[workspacev1.G
 	if err := checkRef("base", m.GetBase()); err != nil {
 		return nil, taskapi.ConnectError(err)
 	}
+	if err := checkDiffChunk(m.GetChunkSize(), m.GetChunkOffset(), m.GetExpectedSha256()); err != nil {
+		return nil, taskapi.ConnectError(err)
+	}
 	out := &workspacev1.GetDiffResponse{}
 	args := map[string]any{"base": m.GetBase(), "find_renames": m.GetFindRenames()}
+	if m.GetChunkSize() > 0 {
+		args["chunk_size"] = float64(m.GetChunkSize())
+		args["chunk_offset"] = float64(m.GetChunkOffset())
+		args["expected_sha256"] = m.GetExpectedSha256()
+	}
 	if m.GetRepo() != "" {
 		args["repo"] = m.GetRepo()
 	}
@@ -531,6 +546,19 @@ func (s *Server) GetDiff(ctx context.Context, req *connect.Request[workspacev1.G
 		return nil, workspaceError(err)
 	}
 	return connect.NewResponse(out), nil
+}
+
+func checkDiffChunk(size uint32, offset uint64, expected string) error {
+	if size > 256<<10 || offset > 32<<20 || (size == 0 && (offset != 0 || expected != "")) || (offset > 0 && expected == "") {
+		return invalid("invalid_diff_chunk", "补丁分块最多 256 KiB，总大小最多 32 MiB；后续分块必须提供完整补丁的 SHA-256")
+	}
+	if expected != "" {
+		decoded, err := hex.DecodeString(expected)
+		if err != nil || len(decoded) != sha256.Size || strings.ToLower(expected) != expected {
+			return invalid("invalid_diff_chunk", "expected_sha256 必须为 64 位小写十六进制")
+		}
+	}
+	return nil
 }
 
 func (s *Server) CommitWorkspace(ctx context.Context, req *connect.Request[workspacev1.CommitWorkspaceRequest]) (*connect.Response[workspacev1.CommitWorkspaceResponse], error) {

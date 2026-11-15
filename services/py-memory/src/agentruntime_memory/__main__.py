@@ -27,7 +27,7 @@ from agentruntime_core.dev.secret_store import LocalFileSecretStoreProvider
 from agentruntime_memory.identity import DevTokenAuthenticator
 from agentruntime_memory.server import start_server
 from agentruntime_memory.service import MemoryService
-from agentruntime_memory.wiring import GatewayClient, GatewayReranker, embedder, vector_store
+from agentruntime_memory.wiring import GatewayClient, GatewayReranker, embedder, rerank_mode, vector_store
 from agentruntime_memory.retrieval import RetrievalEngine
 from agentruntime_memory.knowledge import CatalogAuthorizer, KnowledgeService
 
@@ -59,7 +59,9 @@ async def serve() -> None:
     retrieval = RetrievalEngine(vectors=vectors, embedder=embeddings, relational=relational,
                                authorize=CatalogAuthorizer(relational), rerank=reranker)
     await retrieval.setup()
-    service = MemoryService(relational=relational, vectors=vectors, keyring=keyring, embedder=embeddings, retrieval=retrieval)
+    # AR_MEMORY_RERANK_MODE（wiring.rerank_mode）：经验检索在 MMR 之后可选 BM25 重排，线上是 bm25_pool50。
+    service = MemoryService(relational=relational, vectors=vectors, keyring=keyring, embedder=embeddings, retrieval=retrieval,
+                            rerank_mode=rerank_mode(os.environ))
     await service.setup()
     server, port = await start_server(
         service, DevTokenAuthenticator(signing_key.encode()), os.environ.get("AR_MEMORY_ADDRESS", "127.0.0.1:50061"), drain_in_background=True,

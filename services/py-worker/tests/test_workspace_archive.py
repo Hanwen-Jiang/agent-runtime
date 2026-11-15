@@ -153,4 +153,5 @@ async def test_workspace_count_and_size_follow_the_tenant_policy(tmp_path: Path)
     assert info.value.code == "workspace_quota_exceeded"
     out = await s.py("open('big.bin', 'w').write('x' * 1000)")
     assert out["workspace_error"]["code"] == "too_large", out
-    assert s.envs("t1") == [], "超过大小上限的环境照样销毁"
+    # 存不下不等于可以丢：可写环境留着，没存的改动等下一次再存（broker 的 releaseArchived）。
+    assert len(s.envs("t1")) == 1, "超过大小上限时环境留着"

@@ -106,6 +106,8 @@ containerSecurityContext:
     drop: ["ALL"]
 
 taskService:
+  # 额外的环境变量（[{name, value}]），给运维的开关用，例如评测租户的 AR_MODEL_BUDGET_UNLIMITED_TENANTS；默认不加。
+  extraEnv: []
   # 大于 1 时要配 secrets.valkeyUrl（事件流、限流与锁要在副本之间共享，TS-PROD-01）；SSE 连哪个副本都能续传，入口不用粘性会话。
   replicas: 1
   # 运行模式（AR_PROFILE，TS-PROD-01）：development 时没配 secrets.relationalDsn 就用 /data 下的 SQLite、没配
@@ -164,6 +166,8 @@ ingress:
 modelGateway:
   replicas: 1
   port: 8091
+  # 额外的环境变量（[{name, value}]）：运维指定的租户开关 AR_MODEL_BUDGET_UNLIMITED_TENANTS、AR_MODEL_SINGLE_ATTEMPT_TENANTS 等；默认不加。
+  extraEnv: []
   # 网关单独用的镜像 tag，空时跟 image.tag（只换网关、不动别的组件时用，例如 TOOLS-KIMI 的修复单独上线）。
   imageTag: ""
   # openai_compat 或 mock。
@@ -208,6 +212,8 @@ modelGateway:
 
 memory:
   replicas: 1
+  # 额外的环境变量（[{name, value}]），例如 AR_MEMORY_RERANK_MODE（legacy、bm25、bm25_pool50；默认 legacy）。
+  extraEnv: []
   # Memory Service 单独用的镜像 tag，空时跟 image.tag。新镜像在生产配置不全时拒绝启动（docs/plan/memory-live.md 第 4 节），
   # 接上 Milvus 与真 embedding 之前留在旧镜像上。
   imageTag: ""
@@ -238,6 +244,10 @@ pkgMirror:
 # 要 ingress.enabled 且 ingress.type=traefik。页面由发布步骤写进 ConfigMap（docs/plan/cloud-deploy.md），host 要有 DNS 记录。
 evalDashboard:
   enabled: false
+  # 额外的环境变量与卷：评测网站读评测产物（AR_EVAL_EXPERIMENTS_DIR、AR_EVAL_BENCHMARKS_DIR）时挂只读的 PVC。默认不加。
+  extraEnv: []
+  extraVolumes: []
+  extraVolumeMounts: []
   # 看板单独用的 learning 镜像 tag，空时跟 image.tag（只换看板、不动别的组件时用）。
   imageTag: ""
   # 对外的域名，例如 evals.cgent.link。

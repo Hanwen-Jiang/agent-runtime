@@ -51,6 +51,8 @@ pub struct Config {
     pub warm_pool: Vec<WarmSpec>,
     /// Base-only memory snapshots. Zero disables creation and restore.
     pub snapshot_cache_mib: u64,
+    /// Exact owners permitted to request the operator-only mutable-root profile.
+    pub benchmark_owners: Vec<String>,
     pub fault: Option<Fault>,
 }
 
@@ -170,6 +172,18 @@ impl Config {
         let warm_pool = parse_warm_pool(&text("AR_FC_WARM_POOL", ""))?;
         let egress_target = target("AR_FC_EGRESS_TARGET")?;
         let mirror_target = target("AR_FC_MIRROR_TARGET")?;
+        let benchmark_owners: Vec<String> = text("AR_FC_BENCHMARK_OWNERS", "")
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_owned)
+            .collect();
+        if benchmark_owners
+            .iter()
+            .any(|s| s == "_platform" || !spec::valid_owner(s))
+        {
+            return Err("AR_FC_BENCHMARK_OWNERS must contain exact tenant IDs".into());
+        }
         let cfg = Config {
             listen,
             secrets_file,
@@ -212,6 +226,7 @@ impl Config {
             snapshot_cache_mib: text("AR_FC_SNAPSHOT_CACHE_MIB", "0").parse().map_err(|_| {
                 "AR_FC_SNAPSHOT_CACHE_MIB must be a non-negative integer".to_string()
             })?,
+            benchmark_owners,
             fault,
         };
         if u64::from(cfg.uid_base) + u64::from(cfg.max_vms) > u64::from(u32::MAX - 1) {
@@ -260,6 +275,15 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
 
+    #[test]
+    fn benchmark_profile_requires_explicit_exact_owners() {
+        let c = cfg(&[("AR_FC_BENCHMARK_OWNERS", "eval-tb20-20261109, eval-other")]).unwrap();
+        assert_eq!(c.benchmark_owners, vec!["eval-tb20-20261109", "eval-other"]);
+        for invalid in ["*", "eval-*", "_platform", "../owner"] {
+            assert!(cfg(&[("AR_FC_BENCHMARK_OWNERS", invalid)]).is_err());
+        }
+    }
+
     fn cfg(pairs: &[(&str, &str)]) -> Result<Config, String> {
         let m: HashMap<String, String> = pairs
             .iter()
@@ -275,6 +299,7 @@ mod tests {
         assert_eq!(c.exec_name(), "firecracker");
         assert_eq!(c.cgroup_root, PathBuf::from("/sys/fs/cgroup"));
         assert!(!c.allow_non_root && c.fault.is_none());
+        assert!(c.benchmark_owners.is_empty());
         assert!(c.longest_socket_path() <= MAX_SOCKET_PATH);
     }
 

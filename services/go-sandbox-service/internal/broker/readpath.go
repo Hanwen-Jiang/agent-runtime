@@ -3,6 +3,8 @@ package broker
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"io"
 	"io/fs"
@@ -22,25 +24,27 @@ import (
 	"github.com/agentruntime/agent-runtime/services/go-sandbox-service/internal/ledger"
 )
 
-// 工作区的只读操作（SBX-01 一期的快路径，WS-READ-01）：不进 Temporal、不改环境的 busy、不触发存档。
+// 工作区的只读操作（SBX-01 一期的快路径，WS-READ-01）：不进 Temporal。普通读不改 busy、不触发存档；Git 收集先取得最新快照。
 //
 //   - 存档模式、有活着的可写环境（同一个工作区同一时间只有一个）：直接在那个环境里读，看得到没存档的改动。
 //   - 存档模式、没有：读最近的快照（清单与块），不建环境。
 //   - 挂卷：直接读卷（os.Root：不跟随指出工作区的符号链接，.. 出不去）。
-//   - GetDiff、GetLog 在沙箱里跑 git（不在服务进程里对用户的仓库跑 git：.git/config 能配会执行命令的项）：会话里有活着的
-//     可写环境时用它，否则建一个只读的短命环境，用完即毁。
+//   - GetDiff、GetLog 先存档当前可写环境，再用可信基础镜像的只读短命沙箱跑 git，用完即毁。
+//     不在服务进程里对用户的仓库跑 git：.git/config 能配会执行命令的项。
 //
 // 规则同原来 Worker 里 Workspace 操作的读：路径相对工作区根、/ 分隔，任何一级都不能是 .git；列目录最多 1000 项（不列 .git）；
 // 超过 512 KiB 的文件只给大小，前 8 KiB 有 NUL 的是二进制、不给内容。
 
 // 读的上限。
 const (
-	MaxReadBytes = 512 << 10
-	BinaryProbe  = 8192
-	MaxList      = 1000
-	MaxDiffBytes = 1 << 20
-	DefaultLog   = 30
-	MaxLog       = 200
+	MaxReadBytes      = 512 << 10
+	BinaryProbe       = 8192
+	MaxList           = 1000
+	MaxDiffBytes      = 1 << 20
+	MaxDiffChunkBytes = 256 << 10
+	MaxFullDiffBytes  = 32 << 20
+	DefaultLog        = 30
+	MaxLog            = 200
 )
 
 // FileInfo 是列目录的一项。
@@ -482,7 +486,8 @@ func CheckRev(rev string) error {
 // GitTimeout 是一条 git 命令的时限。
 var GitTimeout = 2 * time.Minute
 
-// gitLease 是跑 git 用的环境：会话里有活着的可写环境时用它（keep），否则借一个只读的短命环境（用完即毁）。
+// gitLease 使用服务登记的基础运行环境收集 Git 信息，不依赖项目镜像安装 git。
+// 存档模式先 flush 当前 writer，之后只读收集器恢复最新快照；不运行项目 setup/start 或更换任务环境。
 func (b *Broker) gitLease(ctx context.Context, tenant *commonv1.TenantContext, workspaceID, runtime string) (*Lease, bool, error) {
 	if err := sandbox.CheckWorkspaceID(workspaceID); err != nil {
 		return nil, false, err
@@ -492,9 +497,6 @@ func (b *Broker) gitLease(ctx context.Context, tenant *commonv1.TenantContext, w
 		return nil, false, err
 	}
 	if archived {
-		if lease, err := b.liveWritable(ctx, tenant, workspaceID); err != nil || lease != nil {
-			return lease, true, err
-		}
 		// 没有这个工作区（或已删除）时不借环境：同原来 Worker 的 _record_of。
 		w, err := b.archiver.Get(ctx, tenant.GetTenantId(), workspaceID)
 		if err != nil {
@@ -509,8 +511,67 @@ func (b *Broker) gitLease(ctx context.Context, tenant *commonv1.TenantContext, w
 		}
 	}
 	readTenant := &commonv1.TenantContext{TenantId: tenant.GetTenantId(), UserId: tenant.GetUserId(), WorkspaceId: workspaceID, Trace: tenant.GetTrace()}
-	lease, err := b.Acquire(ctx, readTenant, AcquireArgs{Spec: sandbox.Spec{Runtime: runtime, WorkspaceID: workspaceID, IdleTimeout: 5 * time.Minute}, Writable: false})
+	if archived {
+		if err := b.flushHolders(ctx, tenant.GetTenantId(), workspaceID); err != nil {
+			return nil, false, err
+		}
+	}
+	args := AcquireArgs{Spec: sandbox.Spec{Runtime: runtime, WorkspaceID: workspaceID, IdleTimeout: 5 * time.Minute}, Writable: false}
+	lease, err := b.Acquire(ctx, readTenant, args)
+	if err != nil && archived {
+		var pe *providererr.Error
+		if errors.As(err, &pe) && pe.Code == "sandbox_quota_exceeded" {
+			// Collection must not require an extra tenant slot when this session
+			// already owns an idle read-only copy. Never evict the writer or another
+			// workspace/session, and let DestroyRecord's CAS reject a newly busy copy.
+			freed, cleanupErr := b.retireCollectionReader(ctx, tenant, workspaceID)
+			if cleanupErr != nil {
+				return nil, false, cleanupErr
+			}
+			if freed {
+				lease, err = b.Acquire(ctx, readTenant, args)
+			}
+		}
+	}
 	return lease, false, err
+}
+
+func (b *Broker) retireCollectionReader(ctx context.Context, tenant *commonv1.TenantContext, workspaceID string) (bool, error) {
+	policy, err := b.policies.For(ctx, tenant.GetTenantId())
+	if err != nil {
+		return false, err
+	}
+	if policy.Quota.MaxConcurrent <= 0 {
+		return false, nil
+	}
+	active, err := b.ledger.Active(ctx, tenant.GetTenantId())
+	if err != nil {
+		return false, err
+	}
+	if len(active) < policy.Quota.MaxConcurrent {
+		return false, nil
+	}
+	session := tenant.GetSessionId()
+	if session == "" {
+		// Workspace API does not always carry a session. The archive workspace has
+		// at most one writer, so its session determines which disposable copy is ours.
+		for _, rec := range active {
+			if rec.WorkspaceID == workspaceID && rec.Writable && rec.State == "ready" {
+				session = rec.SessionID
+				break
+			}
+		}
+	}
+	for _, rec := range active {
+		if rec.WorkspaceID != workspaceID || rec.SessionID != session || rec.Writable || !b.ledger.IdleNow(rec) {
+			continue
+		}
+		if _, err := b.DestroyRecord(ctx, rec, "replace idle read-only copy for Git collection", false, false); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	return false, nil
 }
 
 func (b *Broker) git(ctx context.Context, lease *Lease, argv []string, extra map[string]string) (sandbox.ExecResult, error) {
@@ -563,12 +624,63 @@ type DiffStat struct {
 
 // DiffResult 是 GetDiff 的结果。
 type DiffResult struct {
-	Diff      string
-	Files     []string
-	Stats     []DiffStat
-	Truncated bool
-	Head      string
-	Branch    string
+	Diff       string
+	Files      []string
+	Stats      []DiffStat
+	Truncated  bool
+	Head       string
+	Branch     string
+	ChunkData  []byte
+	NextOffset uint64
+	TotalBytes uint64
+	SHA256     string
+}
+
+// DiffChunk 为空时保持文本预览；非空时每次重新生成补丁并核对哈希。
+type DiffChunk struct {
+	Size           uint32
+	Offset         uint64
+	ExpectedSHA256 string
+}
+
+func (c DiffChunk) validate() error {
+	if c.Size > MaxDiffChunkBytes || c.Offset > MaxFullDiffBytes || (c.Size == 0 && (c.Offset != 0 || c.ExpectedSHA256 != "")) || (c.Offset > 0 && c.ExpectedSHA256 == "") {
+		return providererr.New(providererr.Invalid, "invalid_diff_chunk", "补丁分块最多 256 KiB，总大小最多 32 MiB；后续分块必须提供完整补丁的 SHA-256")
+	}
+	if c.ExpectedSHA256 != "" {
+		decoded, err := hex.DecodeString(c.ExpectedSHA256)
+		if err != nil || len(decoded) != sha256.Size || strings.ToLower(c.ExpectedSHA256) != c.ExpectedSHA256 {
+			return providererr.New(providererr.Invalid, "invalid_diff_chunk", "expected_sha256 必须为 64 位小写十六进制")
+		}
+	}
+	return nil
+}
+
+func (d *DiffResult) setData(data []byte, chunk DiffChunk) error {
+	if chunk.Size > 0 && len(data) > MaxFullDiffBytes {
+		return providererr.New(providererr.Invalid, "diff_too_large", "完整补丁超过 32 MiB，不能分块导出")
+	}
+	d.TotalBytes = uint64(len(data))
+	sum := sha256.Sum256(data)
+	d.SHA256 = hex.EncodeToString(sum[:])
+	if chunk.ExpectedSHA256 != "" && chunk.ExpectedSHA256 != d.SHA256 {
+		return providererr.New(providererr.Conflict, "diff_changed", "补丁在分块收集期间发生变化，请重新收集")
+	}
+	if chunk.Offset > d.TotalBytes {
+		return providererr.New(providererr.Invalid, "invalid_diff_chunk", "chunk_offset 超过完整补丁大小")
+	}
+	if chunk.Size == 0 {
+		d.Truncated = len(data) > MaxDiffBytes
+		d.Diff = strings.ToValidUTF8(string(data[:min(len(data), MaxDiffBytes)]), string(utf8.RuneError))
+		return nil
+	}
+	end := min(chunk.Offset+uint64(chunk.Size), d.TotalBytes)
+	d.ChunkData = append([]byte(nil), data[chunk.Offset:end]...)
+	d.Truncated = end < d.TotalBytes
+	if d.Truncated {
+		d.NextOffset = end
+	}
+	return nil
 }
 
 const (
@@ -590,7 +702,10 @@ func (b *Broker) withGit(ctx context.Context, tenant *commonv1.TenantContext, wo
 }
 
 // Diff 是工作区相对 base（空时 HEAD）的改动，含未跟踪的新文件；不动工作区自己的 index。
-func (b *Broker) Diff(ctx context.Context, tenant *commonv1.TenantContext, workspaceID, base string, renames bool, runtime string) (DiffResult, error) {
+func (b *Broker) Diff(ctx context.Context, tenant *commonv1.TenantContext, workspaceID, base string, renames bool, runtime string, chunk DiffChunk) (DiffResult, error) {
+	if err := chunk.validate(); err != nil {
+		return DiffResult{}, err
+	}
 	if base != "" {
 		if err := CheckRev(base); err != nil {
 			return DiffResult{}, err
@@ -647,11 +762,9 @@ func (b *Broker) Diff(ctx context.Context, tenant *commonv1.TenantContext, works
 		if err != nil {
 			return err
 		}
-		out.Truncated = len(data) > MaxDiffBytes
-		if out.Truncated {
-			data = data[:MaxDiffBytes]
+		if err := out.setData(data, chunk); err != nil {
+			return err
 		}
-		out.Diff = strings.ToValidUTF8(string(data), string(utf8.RuneError))
 		out.Stats = ParseNumstat(string(num.Stdout))
 		for _, s := range out.Stats {
 			out.Files = append(out.Files, s.Path)

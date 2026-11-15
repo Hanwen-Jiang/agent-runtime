@@ -25,6 +25,7 @@ type fakeReader struct {
 	calls []string
 	seen  []any
 	fail  error
+	diff  *workspacev1.GetDiffResponse
 }
 
 func (f *fakeReader) record(method string, req any) error {
@@ -58,6 +59,9 @@ func (f *fakeReader) ReadFile(_ context.Context, r *connect.Request[sandboxv1.Re
 func (f *fakeReader) GetDiff(_ context.Context, r *connect.Request[sandboxv1.GetDiffRequest]) (*connect.Response[sandboxv1.GetDiffResponse], error) {
 	if err := f.record("GetDiff", r.Msg); err != nil {
 		return nil, err
+	}
+	if f.diff != nil {
+		return connect.NewResponse(&sandboxv1.GetDiffResponse{Response: f.diff}), nil
 	}
 	return connect.NewResponse(&sandboxv1.GetDiffResponse{Response: &workspacev1.GetDiffResponse{Diff: "+x", Files: []string{"a.py"}}}), nil
 }

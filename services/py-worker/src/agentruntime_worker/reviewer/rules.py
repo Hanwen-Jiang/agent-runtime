@@ -332,12 +332,14 @@ class _Rules:
         return None
 
     def unproven_done(self) -> tuple[str, str] | None:
-        """判 done 却明显没做完（TMP 计划第 11.15 节）：能改文件却没改，或改完没运行过任何命令。各种情况合计只拦一次：有的任务确实不用改、
-        改完也没法跑，再判 done 就算数。最后一次命令失败不拦：项目可能本来就有失败的测试，由 Reviewer 判断。"""
+        """实际改动必须验证；没有模型验收时，无改动只核查一次。权限不是写入意图：模型已按用户要求验收的只读回答可直接完成。
+        这些启发式合计只拦一次。最后一次命令失败不直接拦：项目可能本来就有失败的测试，由 Reviewer 判断。"""
         record = self.verification
         if not record or not record.get("write_capable") or int(record.get("done_blocked") or 0) >= 1:
             return None
         if not record.get("wrote"):
+            if self.model_reviewed:
+                return None
             return "能改文件，却一个文件都没有改就判 done：先确认是不是真的不用改", "rule_done_without_changes"
         if not record.get("ran_after_write") and not record.get("docs_only"):
             return "改完之后没有运行过任何命令：先验证再交付", "rule_done_unverified"
@@ -357,6 +359,10 @@ class _Rules:
 
     def valid(self, verdict: dict[str, Any], reasons: list[str]) -> dict[str, Any]:
         kind = verdict["verdict"]
+        if kind in ("done", "continue") and (self.verification or {}).get("network_blocked"):
+            why = "完成原始任务所需的联网权限仍未解决；不能将任务降为本地盘点或以未核验清单宣告完成"
+            reasons.append(why)
+            return self.make("escalate_human", verdict, [why], question="联网权限尚未取得或超出当前租户范围。请选择调整授权/目标后重规划，或停止并交付现有部分结果。")
         if kind == "done" and (verdict.get("progress_check") or {}).get("criteria_met") is False:
             why = "Progress Check 自己答了验收条件没满足，却判 done：不能交付"
             reasons.append(why)

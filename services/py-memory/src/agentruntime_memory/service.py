@@ -58,6 +58,7 @@ from agentruntime_memory.embedding import Embedder, embedding_text, sparse_vecto
 from agentruntime_memory.retrieval import RetrievalEngine
 from agentruntime_memory.identity import Identity
 from agentruntime_memory.promotion import Evidence, PromotionPolicy
+from agentruntime_memory.ranking import bm25_order
 from agentruntime_memory.safety import EXTERNAL_TRUST_CAP, screen
 from agentruntime_memory.scopes import SCOPE_WEIGHTS, access_token, can_delete, can_read, can_write, level_of, read_tokens
 
@@ -131,6 +132,11 @@ class SearchQuery:
 class Retrieved:
     item: dict[str, Any]
     score: float
+    """Admission relevance × trust × freshness × scope weight, not confidence.
+
+    Result order also reflects exact-match priority, MMR and optional BM25;
+    scores are not guaranteed to be descending.
+    """
 
 
 @dataclass(frozen=True)
@@ -217,11 +223,11 @@ def title_similarity(a: dict[str, Any], b: dict[str, Any]) -> float:
     return dot / norm if norm else 0.0
 
 
-def _cosine(a: Sequence[float], b: Sequence[float]) -> float:
+def _cosine(a: Sequence[float], b: Sequence[float], *, norm_a: float | None = None, norm_b: float | None = None) -> float:
     if len(a) != len(b):
         return 0.0
     dot = sum(x * y for x, y in zip(a, b, strict=True))
-    norm = math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y * y for y in b))
+    norm = (math.sqrt(sum(x * x for x in a)) if norm_a is None else norm_a) * (math.sqrt(sum(y * y for y in b)) if norm_b is None else norm_b)
     return dot / norm if norm else 0.0
 
 
@@ -236,8 +242,13 @@ def _mmr_select(
     """
     selected = [s for s in scored if s[0]][:top_k]
     pool = [s for s in scored if not s[0]]
+    # Each immutable vector participates in many pairs. Reuse its exact norm;
+    # dot-product and multiplication order remain identical to the reference.
+    norms = {id(s[4]): math.sqrt(sum(x * x for x in s[4])) for s in scored}
+    def similarity_of(a, b):
+        return _cosine(a, b, norm_a=norms[id(a)], norm_b=norms[id(b)])
     best = max((s[1] for s in pool), default=1.0) or 1.0
-    similarities = [max((_cosine(s[4], t[4]) for t in selected)) if selected else None for s in pool]
+    similarities = [max((similarity_of(s[4], t[4]) for t in selected)) if selected else None for s in pool]
     while pool and len(selected) < top_k:
         choice, value = None, -math.inf
         for index, s in enumerate(pool):
@@ -255,7 +266,7 @@ def _mmr_select(
         if len(selected) >= top_k:
             break
         for index, s in enumerate(pool):
-            similarity = _cosine(s[4], picked[4])
+            similarity = similarity_of(s[4], picked[4])
             previous = similarities[index]
             # max(previous, similarity) preserves the original max iteration's
             # tie, negative-zero and NaN behavior, unlike clamping or sorting.
@@ -320,7 +331,10 @@ class MemoryService:
         duplicate_threshold: float = 0.95,
         conflict_threshold: float = 0.85,
         retrieval: RetrievalEngine | None = None,
+        rerank_mode: str = "legacy",
     ) -> None:
+        if rerank_mode not in ("legacy", "bm25", "bm25_pool50"):
+            raise ValueError("rerank_mode must be legacy, bm25 or bm25_pool50")
         self.relational = relational
         self.vectors = vectors
         self.keyring = keyring
@@ -330,6 +344,7 @@ class MemoryService:
         self.clock = clock or SystemClock()
         self.duplicate_threshold = duplicate_threshold
         self.conflict_threshold = conflict_threshold
+        self.rerank_mode = rerank_mode
         self._locks: dict[str, asyncio.Lock] = {}
 
     # --- 基础设施 ---
@@ -710,6 +725,9 @@ class MemoryService:
         if any(k not in KINDS for k in query.kinds):
             raise InvalidError("invalid_kind", "kinds 里有未知的记忆类型")
         top_k = min(query.top_k if query.top_k > 0 else 10, MAX_TOP_K)
+        # Rank a stable pool before limiting production requests (usually 3/5).
+        # Legacy and the original BM25 experiment retain their existing pool.
+        pool_k = MAX_TOP_K if self.rerank_mode == "bm25_pool50" else top_k
         now = self._now()
         tenant, platform = await self._tenant(identity), await self._platform()
         common: dict[str, Any] = {}
@@ -736,7 +754,7 @@ class MemoryService:
         dense: tuple[float, ...] = ()
         if text:
             [dense] = await self.retrieval.embed(identity, [text])
-            limit = max(top_k * 5, 50)
+            limit = max(pool_k * 5, 50)
             for n, (ctx, acl) in enumerate(((tenant, {"acl": AnyOf(read_tokens(identity))}), (platform, {}))):
                 must = {**common, **acl}
                 hits = await self.retrieval.recall_bound(
@@ -772,14 +790,24 @@ class MemoryService:
         scored.sort(key=lambda s: (not s[0], -s[1], s[2]))
 
         # MMR：精确命中的排在前面；其余按分数与和已选条目的相似度挑选，跳过冗余的。
-        selected = _mmr_select(scored, top_k)
+        selected = _mmr_select(scored, pool_k)
+        if self.rerank_mode in ("bm25", "bm25_pool50"):
+            # Preserve admission, MMR membership, and error-signature priority.
+            # Use the stored, safety-screened guidance, never raw source text.
+            exact_selected = [candidate for candidate in selected if candidate[0]]
+            rest = [candidate for candidate in selected if not candidate[0]]
+            order = bm25_order(tokens(query.query), [tokens(candidate[3]["content"]["guidance"]) for candidate in rest])
+            selected = exact_selected + [rest[index] for index in order]
+        selected = selected[:top_k]
 
         results: list[Retrieved] = []
         used = 0
         for _, score, _, item, _ in selected:
             cost = estimate_tokens(item)
             if query.token_budget > 0 and used + cost > query.token_budget:
-                break
+                # A long candidate must not discard later evidence that fits.
+                # Keep whole items and their relative rank within the same cap.
+                continue
             used += cost
             results.append(Retrieved(item=copy.deepcopy(item), score=score))
         return results

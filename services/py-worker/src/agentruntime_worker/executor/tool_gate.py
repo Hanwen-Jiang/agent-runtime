@@ -14,8 +14,8 @@ from agentruntime_worker.executor.node_executor import DENIED
 
 def require_tool_gate(inp: ToolCallInput) -> None:
     """effect 为 write_irreversible 时，要求带着这次调用自己的、通过的审批记录；否则抛不可重试的 denied。"""
-    if inp.effect != "write_irreversible":
+    if inp.effect != "write_irreversible" and inp.tool != "request_network":
         return
     gate = inp.gate
-    if gate is None or gate.option != "approve" or gate.gate_node != f"{inp.node_id}.1":
+    if gate is None or gate.option != "approve" or gate.gate_node != f"{inp.node_id}.1" or (inp.tool == "request_network" and not gate.approved_by):
         raise ApplicationError(f"不可逆工具 {inp.tool} 的调用 {inp.node_id} 没有通过的人工审批记录", type=DENIED, non_retryable=True)

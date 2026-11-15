@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing import Protocol
+from typing import Any, Protocol
 
 from agentruntime_worker.activities.types import PlanRoundInput
 from agentruntime_worker.session.transcript import TranscriptSource, Turn
@@ -76,6 +76,8 @@ class PlanningContext:
     has_collections: bool = False
     image_messages: tuple[Any, ...] = ()
     """Authorized current-task images, carried separately from text summaries."""
+    runtime_capabilities: dict[str, Any] | None = None
+    """Current task grants and visible tools, read by the activity rather than inferred from transcript."""
     has_workspace: bool = False
     """这个 Session 有工作区：要读文件才答得好的消息不能走单次调用。"""
 

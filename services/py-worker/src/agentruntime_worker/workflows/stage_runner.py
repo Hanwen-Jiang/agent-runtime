@@ -76,6 +76,8 @@ with workflow.unsafe.imports_passed_through():
     from agentruntime_worker.workflows.guidance import GuidanceBook, LoopView
     from agentruntime_worker.workflows.verification import VerificationRecord
     from agentruntime_worker.workflows.patches import (
+    NETWORK_CONTROL_APPROVAL_PATCH,
+    NETWORK_UNLIMITED_GRANTS_PATCH,
         BUDGETS_PATCH,
         CHILD_FILE_SCOPE_PATCH,
         CONTEXT_USAGE_PATCH,
@@ -700,6 +702,7 @@ class StageRunner:
             and sp.quality_type(node) == "none"
             and node.get("executor") in ("model", "program")
             and effect != "write_irreversible"
+            and not (str(node.get("template", "")).split("@", 1)[0] == "request_network" and workflow.patched(NETWORK_CONTROL_APPROVAL_PATCH))
         )
         if leaf:
             async with self._writer(effect, env), self._slot():
@@ -752,6 +755,16 @@ class StageRunner:
         executor = node.get("executor")
         if executor == "human":
             return await self._run_human(node, role)
+        control = executor == "program" and str(node.get("template", "")).split("@", 1)[0] == "request_network" and workflow.patched(NETWORK_CONTROL_APPROVAL_PATCH)
+        if control:
+            gate, rejection, reason = await self._tool_approval(node["id"], ToolLoopStep(action="tool", tool="request_network", args=dict(node.get("inputs") or {})))
+            if gate is None:
+                return _denied(role, reason or "联网申请未获批准")
+            async with self._slot():
+                result = await self._execute(node, injections, gate, env)
+            if self._ctx.verification is not None and result.status == "succeeded":
+                self._ctx.verification.called("request_network", "read", node.get("inputs"), result.result)
+            return result
         if node.get("effect") == "write_irreversible":
             gate, reason = await self._approval(node)
             if gate is None:
@@ -768,9 +781,10 @@ class StageRunner:
             # 幂等键一律由代码按 tenant_id、task_id、node_id 与最终的输入生成，Planner 或模型写的不算数（附录 D.4）。
             node = {**node, "idempotency_key": keys.idempotency_key(self._ctx.tenant.tenant_id, self._ctx.task_id, node["id"], node.get("inputs", {}))}
         start_to_close, heartbeat = timeouts.model_node_timeouts((node.get("budget") or {}).get("timeout_s"))
-        # write_irreversible 不自动重试（附录 D.4）。
-        attempts = 1 if effect == "write_irreversible" else int((node.get("retry") or {}).get("max", 0)) + 1
-        if effect == "write_irreversible":
+        control = not model and str(node.get("template", "")).split("@", 1)[0] == "request_network" and workflow.patched(NETWORK_CONTROL_APPROVAL_PATCH)
+        # Grant execution is not retried or interrupted after human approval.
+        attempts = 1 if effect == "write_irreversible" or control else int((node.get("retry") or {}).get("max", 0)) + 1
+        if effect == "write_irreversible" or control:
             self._irreversible.append(node["id"])
         try:
             activity_input = NodeInput(
@@ -810,7 +824,7 @@ class StageRunner:
                 return await self._reconcile(node, role)
             return _failed(role, failure_message(err), failure_class(err))
         finally:
-            if effect == "write_irreversible":
+            if effect == "write_irreversible" or control:
                 self._irreversible.remove(node["id"])
         if not model:
             self._note_paths(node.get("inputs"), effect)
@@ -855,7 +869,7 @@ class StageRunner:
         return StageResult(role=role, status="unknown", error=outcome.reason or "写操作结果未知")
 
     async def _ask_and_wait(
-        self, question_id: str, text: str, options: tuple[str, ...], timeout_s: int, *, kind: str
+        self, question_id: str, text: str, options: tuple[str, ...], timeout_s: int, *, kind: str, code: str = "", params: dict[str, Any] | None = None
     ) -> tuple[task_pb2.HumanReplySignal | None, str]:
         """经 HumanChannel 发出问题，再等 human_reply 信号；等待有持久化定时器，超时或取消时撤回问题。
         返回 (回复, 错误)；超时时回复为 None。S-05 之前的历史没有发问与定时器，按旧路径回放。
@@ -904,7 +918,7 @@ class StageRunner:
             raise asyncio.CancelledError()
         try:
             if self._ctx.events is not None:
-                await self._ctx.events.human_input_required(self._ctx.round_seq, question_id, kind, text, options, deadline.isoformat())
+                await self._ctx.events.human_input_required(self._ctx.round_seq, question_id, kind, text, options, deadline.isoformat(), code=code, params=params)
         except asyncio.CancelledError:
             self._human.forget_reply(question_id)
             await self._withdraw_if_interrupted(question_id)
@@ -1394,6 +1408,8 @@ class StageRunner:
                     return _failed(DEFAULT_ROLE, f"repeated_error：同一错误连续出现 {sp.REPEATED_ERROR_LIMIT} 次：{last}")
                 continue
             entry: dict[str, Any] = {"tool": step.tool, "args": step.args}
+            if step.progress_message:
+                entry["progress_message"] = step.progress_message
             if step.tool not in tool_effects:
                 entry["error"] = f"工具 {step.tool} 不在 {nid} 的可用列表里"
             else:
@@ -1408,7 +1424,7 @@ class StageRunner:
                     return stop
                 call_id = sp.child_id(nid, 2 * i)
                 gate: GateRecord | None = None
-                if effect == "write_irreversible" and workflow.patched(TOOL_LOOP_APPROVAL_PATCH):
+                if (effect == "write_irreversible" and workflow.patched(TOOL_LOOP_APPROVAL_PATCH)) or (step.tool == "request_network" and workflow.patched(NETWORK_CONTROL_APPROVAL_PATCH)):
                     gate, rejection, reason = await self._tool_approval(call_id, step)
                     if reason:
                         return _denied(DEFAULT_ROLE, reason)
@@ -1480,7 +1496,8 @@ class StageRunner:
 
     async def _announce_tool_call(self, nid: str, i: int, ordinal: int, entry: dict[str, Any], events: EventPublisher | None) -> None:
         if events is not None:
-            await events.tool_status(self._ctx.round_seq, nid, i, entry["tool"], "running", target=tool_target(entry["args"]), call=ordinal)
+            await events.tool_status(self._ctx.round_seq, nid, i, entry["tool"], "running", target=tool_target(entry["args"]), call=ordinal,
+                                     progress_message=entry.get("progress_message", ""))
 
     async def _execute_tool_call(
         self, nid: str, i: int, ordinal: int, call_id: str, entry: dict[str, Any], effect: str, gate: GateRecord | None,
@@ -1489,7 +1506,8 @@ class StageRunner:
         """执行一次工具调用，结果写进 entry（observation 或 error），完成后推 tool_status。"""
         tool, args = entry["tool"], entry["args"]
         called_at = workflow.now()
-        irreversible = effect == "write_irreversible"
+        control = tool == "request_network" and workflow.patched(NETWORK_CONTROL_APPROVAL_PATCH)
+        irreversible = effect == "write_irreversible" or control
         try:
             async with self._writer(effect, env), self._slot():
                 call_input = ToolCallInput(tenant=self._ctx.tenant, task_id=self._ctx.task_id, round_seq=self._ctx.round_seq,
@@ -1509,7 +1527,7 @@ class StageRunner:
                     task_queue=names.PROGRAM_QUEUE,
                     start_to_close_timeout=timeouts.DEFAULT_NODE_TIMEOUT,
                     heartbeat_timeout=self._heartbeat(),
-                    retry_policy=RetryPolicy(maximum_attempts=1 if effect in sp.WRITE_EFFECTS else 3),
+                    retry_policy=RetryPolicy(maximum_attempts=1 if effect in sp.WRITE_EFFECTS or control else 3),
                     cancellation_type=workflow.ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
                 )
                 if irreversible:
@@ -1558,6 +1576,8 @@ class StageRunner:
         返回（按模型给的顺序的记录、让节点停下的结果、这次被拒的次数）。
         """
         entries: list[dict[str, Any]] = [{"tool": str(c.get("tool") or ""), "args": c.get("args") or {}, "step": i} for c in step.calls]
+        if entries and step.progress_message:
+            entries[0]["progress_message"] = step.progress_message
         reads: list[tuple[int, str, dict[str, Any], str]] = []
         halted = ""
         rejected = 0
@@ -1574,7 +1594,8 @@ class StageRunner:
                 continue
             effect = tool_effects[tool]
             call_id = sp.child_id(nid, 2 * i) if k == 0 else sp.child_id(nid, 2 * i, k + 1)
-            if effect not in sp.WRITE_EFFECTS:
+            control = tool == "request_network" and workflow.patched(NETWORK_CONTROL_APPROVAL_PATCH)
+            if effect not in sp.WRITE_EFFECTS and not control:
                 reads.append((k, call_id, entry, effect))
                 continue
             stop = await self._run_reads(nid, i, reads, env, events, marks, view)
@@ -1589,7 +1610,7 @@ class StageRunner:
             if stop is not None:
                 return entries, stop, rejected
             gate: GateRecord | None = None
-            if effect == "write_irreversible":
+            if effect == "write_irreversible" or control:
                 gate, rejection, reason = await self._tool_approval(call_id, ToolLoopStep(action="tool", tool=tool, args=entry["args"]))
                 if reason:
                     return entries, _denied(DEFAULT_ROLE, reason), rejected
@@ -1646,15 +1667,37 @@ class StageRunner:
         返回 (审批记录, 拒绝时送回循环的观察, 不能审批的原因)：通过时只有审批记录；拒绝或超时时只有观察；
         没有人工审批通道或发不出问题时只有原因，整个 Goal Node 记为 denied。
         """
+        control = step.tool == "request_network" and workflow.patched(NETWORK_CONTROL_APPROVAL_PATCH)
+        if control:
+            args_ = step.args
+            allowed_minutes = (0, 15, 30, 60) if workflow.patched(NETWORK_UNLIMITED_GRANTS_PATCH) else (15, 30, 60)
+            hosts_ = args_.get("hosts", [])
+            ports_ = args_.get("ports", [])
+            valid = (args_.get("scope", "hosts") in ("hosts", "public")
+                     and isinstance(hosts_, list) and all(isinstance(h, str) and h.strip() for h in hosts_)
+                     and isinstance(ports_, list) and all(isinstance(p, int) and not isinstance(p, bool) and 1 <= p <= 65535 for p in ports_)
+                     and isinstance(args_.get("minutes"), int) and not isinstance(args_.get("minutes"), bool) and args_["minutes"] in allowed_minutes
+                     and isinstance(args_.get("reason"), str) and bool(args_["reason"].strip()))
+            if not valid:
+                return None, {"error": "invalid_network_request: check scope, hosts, ports, minutes and reason", "invalid_request": True}, ""
+            if self._ctx.verification is not None:
+                self._ctx.verification.network_request(step.args)
         if self._human is None:
-            return None, {}, f"这里没有人工审批通道，不能调用不可逆工具 {step.tool}"
+            return None, {}, f"这里没有人工审批通道，不能申请工具权限 {step.tool}"
         gate_id = sp.child_id(call_id, 1)
         args = json.dumps(step.args, ensure_ascii=False, sort_keys=True)
         text = f"批准调用 {step.tool} 吗？参数：{args}。这是不可撤销的操作。"
+        if step.tool == "request_network" and workflow.patched(NETWORK_CONTROL_APPROVAL_PATCH):
+            duration = "持续至本任务结束或手动撤销" if step.args.get("minutes") == 0 else f"{step.args.get('minutes')} 分钟"
+            text = f"是否批准本任务联网？授权时长：{duration}。范围与用途：{args}。仅对本任务生效，仍受租户策略限制；拒绝则不联网。"
         if step.tool == "request_network" and step.args.get("scope") == "public":
             text += " 本次授权范围：所有公网域名（内网与云元数据仍禁止）。"
         try:
-            reply, error = await self._interruptible(self._ask_and_wait(gate_id, text, sp.APPROVAL_OPTIONS, self.policy.approval_timeout_s, kind="tool_approval"))
+            code = "network_permission_public" if control and step.args.get("scope") == "public" else "network_permission_hosts" if control else ""
+            if control and step.args.get("minutes") == 0:
+                code += "_unlimited"
+            params = {"hosts": list(step.args.get("hosts") or []), "ports": [str(p) for p in step.args.get("ports") or [80, 443]], "minutes": step.args["minutes"], "reason": step.args["reason"][:300]} if control else None
+            reply, error = await self._interruptible(self._ask_and_wait(gate_id, text, sp.APPROVAL_OPTIONS, self.policy.approval_timeout_s, kind="tool_approval", code=code, params=params))
         except interrupts.Interrupted:
             # 撤回问题（_ask_and_wait 取消时撤回），按拒绝处理，下一步带上纠偏。不算审批人拒绝。
             return None, {"rejected": True, "interrupted": True}, ""
@@ -1663,6 +1706,8 @@ class StageRunner:
         if reply is None:
             return None, {"rejected": True, "timed_out": True}, ""
         if reply.option != "approve":
+            if step.tool == "request_network" and workflow.patched(NETWORK_CONTROL_APPROVAL_PATCH) and self._ctx.verification is not None:
+                self._ctx.verification.network_request(step.args, "rejected")
             return None, {"rejected": True, "guidance": reply.guidance, "replied_by": reply.replied_by_user_id}, ""
         return GateRecord(gate_node=gate_id, option=reply.option, approved_by=reply.replied_by_user_id), {}, ""
 

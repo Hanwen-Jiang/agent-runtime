@@ -73,3 +73,51 @@ func TestISOTimesSortLexically(t *testing.T) {
 		t.Fatal("来回不丢精度")
 	}
 }
+
+func TestArchiveClaimExpiresAndOldCleanupCannotClearReplacement(t *testing.T) {
+	store, err := sqlitestore.New(sqlitestore.Options{Dir: filepath.Join(t.TempDir(), "relational")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	clock := testkit.NewFakeClock()
+	l := New(store, clock)
+	ctx := context.Background()
+	rec, err := l.BeginCreate(ctx, "t1", CreateArgs{Backend: "test", Kind: "k8s", Isolation: "microvm", WorkspaceID: "w1", Idle: time.Minute, MaxLifetime: time.Hour})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rec, err = l.MarkReady(ctx, rec, "env-a", "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := l.ClaimArchive(ctx, rec, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := l.ClaimArchive(ctx, rec, time.Minute); err == nil {
+		t.Fatal("second replica claimed an active archive")
+	}
+	clock.Advance(time.Minute + time.Second)
+	second, err := l.ClaimArchive(ctx, first, time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.ArchiveToken == second.ArchiveToken {
+		t.Fatal("claim needs unique ownership")
+	}
+	if err := l.FinishArchive(ctx, first, 0, true); err != nil {
+		t.Fatal(err)
+	}
+	current, err := l.Get(ctx, "t1", rec.EnvRef)
+	if err != nil || current.ArchiveToken != second.ArchiveToken {
+		t.Fatalf("old cleanup cleared replacement: %+v %v", current, err)
+	}
+	if err := l.FinishArchive(ctx, second, 0, true); err != nil {
+		t.Fatal(err)
+	}
+	current, err = l.Get(ctx, "t1", rec.EnvRef)
+	if err != nil || current.ArchiveToken != "" || current.ArchiveUntil != "" {
+		t.Fatalf("current owner failed to release: %+v %v", current, err)
+	}
+}

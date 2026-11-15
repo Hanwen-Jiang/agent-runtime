@@ -179,7 +179,12 @@ pub fn prepare(
         .map_err(|e| host("建 jail 的 /run", e))?;
     chown(cfg, &run, uid)?;
     link(&cfg.kernel, &p.in_root(KERNEL_IN_JAIL))?;
-    link(rootfs, &p.in_root(ROOTFS_IN_JAIL))?;
+    if spec.guest_profile == spec::GuestProfile::BenchmarkSystem {
+        copy_writable_root(rootfs, &p.in_root(ROOTFS_IN_JAIL), spec.root_disk_mib)?;
+        chown(cfg, &p.in_root(ROOTFS_IN_JAIL), uid)?;
+    } else {
+        link(rootfs, &p.in_root(ROOTFS_IN_JAIL))?;
+    }
     let scratch = p.in_root(SCRATCH_IN_JAIL);
     let f = fs::OpenOptions::new()
         .write(true)
@@ -208,6 +213,48 @@ pub fn prepare(
         )?;
     }
     chown(cfg, &scratch, uid)
+}
+
+/// A writable disk must never share its inode with the immutable image. Rust's
+/// copy may use copy_file_range/reflinks, while its fallback still owns bytes.
+fn copy_writable_root(source: &Path, target: &Path, capacity_mib: u64) -> Result<(), VmError> {
+    let size = source
+        .metadata()
+        .map_err(|e| host("stat root image", e))?
+        .len();
+    let capacity = capacity_mib
+        .checked_mul(1 << 20)
+        .ok_or_else(|| VmError::Host("root capacity overflow".into()))?;
+    if capacity < size {
+        return Err(VmError::Host(
+            "private root capacity is below source image size".into(),
+        ));
+    }
+    let file = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(target)
+        .map_err(|e| host("create private root", e))?;
+    drop(file);
+    fs::copy(source, target).map_err(|e| host("copy private root", e))?;
+    fs::set_permissions(target, fs::Permissions::from_mode(0o600))
+        .map_err(|e| host("private root permissions", e))?;
+    if capacity > size {
+        let file = fs::OpenOptions::new()
+            .write(true)
+            .open(target)
+            .map_err(|e| host("open private root", e))?;
+        file.set_len(capacity)
+            .map_err(|e| host("extend private root", e))?;
+        drop(file);
+        run_tool(
+            Path::new("/usr/sbin/resize2fs"),
+            &[target.to_string_lossy().as_ref()],
+            "resize private root",
+        )?;
+    }
+    Ok(())
 }
 
 struct CappedLog {
@@ -400,7 +447,7 @@ pub fn configure_bootstrap(
         "/machine-config",
         &json!({"vcpu_count": spec.vcpus, "mem_size_mib": spec.memory_mib, "smt": false}),
     )?;
-    let mut boot_args = spec::boot_args(&cfg.guest_init);
+    let mut boot_args = spec::profile_boot_args(&cfg.guest_init, spec.guest_profile);
     if bootstrap_v2 {
         // Kernel environment entries must precede the '--' init argument separator.
         boot_args = boot_args.replace(" -- ", " AGENT_BOOTSTRAP_V2=1 -- ");
@@ -413,7 +460,7 @@ pub fn configure_bootstrap(
     api_put(
         p,
         "/drives/rootfs",
-        &json!({"drive_id": "rootfs", "path_on_host": ROOTFS_IN_JAIL, "is_root_device": true, "is_read_only": true}),
+        &json!({"drive_id": "rootfs", "path_on_host": ROOTFS_IN_JAIL, "is_root_device": true, "is_read_only": spec.guest_profile == spec::GuestProfile::Workspace}),
     )?;
     api_put(
         p,
@@ -597,6 +644,38 @@ pub fn wait_healthy(p: &Paths, deadline: Instant) -> Result<(), VmError> {
     }
 }
 
+pub fn verify_benchmark_profile(p: &Paths) -> Result<(), VmError> {
+    let mut conn = vsock::connect(&p.vsock(), AGENT_PORT, Duration::from_secs(2))
+        .map_err(|e| host("profile probe", e))?;
+    conn.get_mut()
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .map_err(|e| host("profile probe timeout", e))?;
+    conn.get_mut()
+        .write_all(b"GET /healthz HTTP/1.1\r\nHost: sandbox-agent\r\nConnection: close\r\n\r\n")
+        .map_err(|e| host("profile probe request", e))?;
+    let head = conn
+        .read_response()
+        .map_err(|e| VmError::Boot(format!("profile probe: {e}")))?;
+    let body = head
+        .body()
+        .map_err(|e| VmError::Boot(format!("profile probe: {e}")))?;
+    let bytes = conn
+        .read_body(body, 4096)
+        .map_err(|e| VmError::Boot(format!("profile probe: {e}")))?;
+    validate_benchmark_health(head.status, &bytes)
+}
+
+fn validate_benchmark_health(status: u16, bytes: &[u8]) -> Result<(), VmError> {
+    let value: serde_json::Value = serde_json::from_slice(bytes)
+        .map_err(|_| VmError::Boot("agent lacks benchmark profile support".into()))?;
+    if status != 200 || value["guest_profile"] != "benchmark-system" || value["uid"] != 0 {
+        return Err(VmError::Boot(
+            "guest profile does not match benchmark-system UID0".into(),
+        ));
+    }
+    Ok(())
+}
+
 fn read_procs(cgroup: &Path) -> Vec<i32> {
     fs::read_to_string(cgroup.join("cgroup.procs"))
         .unwrap_or_default()
@@ -702,6 +781,50 @@ pub fn running(env_id: &str, pid: Option<i32>, start: Option<u64>) -> bool {
 #[cfg(test)]
 mod bootstrap_tests {
     use super::*;
+
+    #[test]
+    fn readiness_rejects_old_or_unprivileged_agents_for_system_profile() {
+        assert!(
+            validate_benchmark_health(200, br#"{"guest_profile":"benchmark-system","uid":0}"#)
+                .is_ok()
+        );
+        for body in [
+            b"ok".as_slice(),
+            br#"{"guest_profile":"workspace","uid":0}"#,
+            br#"{"guest_profile":"benchmark-system","uid":10001}"#,
+        ] {
+            assert!(validate_benchmark_health(200, body).is_err());
+        }
+        assert!(
+            validate_benchmark_health(503, br#"{"guest_profile":"benchmark-system","uid":0}"#)
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn private_roots_never_share_inodes_or_modify_source() {
+        use std::os::unix::fs::MetadataExt;
+        let root = std::env::temp_dir().join(format!("fc-private-root-{}", random_hex(8).unwrap()));
+        fs::create_dir(&root).unwrap();
+        let source = root.join("immutable.ext4");
+        let a = root.join("a.ext4");
+        let b = root.join("b.ext4");
+        let data = vec![7u8; 1 << 20];
+        fs::write(&source, &data).unwrap();
+        copy_writable_root(&source, &a, 1).unwrap();
+        copy_writable_root(&source, &b, 1).unwrap();
+        assert_ne!(
+            source.metadata().unwrap().ino(),
+            a.metadata().unwrap().ino()
+        );
+        assert_ne!(a.metadata().unwrap().ino(), b.metadata().unwrap().ino());
+        fs::write(&a, b"changed by VM A").unwrap();
+        assert_eq!(fs::read(&source).unwrap(), data);
+        assert_eq!(fs::read(&b).unwrap(), data);
+        assert!(copy_writable_root(&source, &a, 1).is_err());
+        assert!(copy_writable_root(&source, &root.join("small"), 0).is_err());
+        fs::remove_dir_all(root).unwrap();
+    }
 
     #[test]
     fn stale_pre_snapshot_connection_cannot_consume_fresh_credentials() {

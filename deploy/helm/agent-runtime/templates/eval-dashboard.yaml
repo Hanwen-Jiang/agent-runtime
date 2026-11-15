@@ -38,7 +38,7 @@ spec:
           image: {{ if $d.imageTag }}{{ printf "%s/learning:%s" .Values.image.registry $d.imageTag }}{{ else }}{{ include "ar.image" (list . "learning") }}{{ end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args: ["-m", "agentruntime_learning.evals.dashboard_server", "--dir", "/srv/eval-dashboard", "--port", "8080"]
-          {{- if or $d.metricsUrl $d.site.repo }}
+          {{- if or $d.metricsUrl $d.site.repo $d.extraEnv }}
           env:
             {{- if $d.metricsUrl }}
             - name: AR_EVAL_METRICS_URL
@@ -53,6 +53,9 @@ spec:
               value: /var/run/eval-site/token
             - name: AR_EVAL_SITE_CACHE_DIR
               value: /var/cache/eval-site
+            {{- end }}
+            {{- with $d.extraEnv }}
+            {{- toYaml . | nindent 12 }}
             {{- end }}
           {{- end }}
           ports:
@@ -84,6 +87,9 @@ spec:
             - name: site-cache
               mountPath: /var/cache/eval-site
             {{- end }}
+            {{- with $d.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
       volumes:
         - name: page
           configMap:
@@ -100,6 +106,9 @@ spec:
         - name: site-cache
           emptyDir:
             sizeLimit: {{ $d.site.cacheSize | default "256Mi" }}
+        {{- end }}
+        {{- with $d.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
 ---
 apiVersion: v1

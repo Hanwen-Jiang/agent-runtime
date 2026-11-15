@@ -31,7 +31,8 @@ from agentruntime_core.tenancy import TenantContext
 
 from agentruntime_worker.sandbox.times import iso, utc_now
 
-GRANT_MINUTES = (15, 30, 60)
+GRANT_MINUTES = (0, 15, 30, 60)
+UNLIMITED_EXPIRES_AT = "9999-12-31T23:59:59.000000Z"
 DEFAULT_PORTS = (80, 443)
 APPROVERS = ("submitter", "admin")
 MAX_HOSTS = 20
@@ -43,9 +44,10 @@ _INTERNAL_SUFFIXES = (".local", ".localhost", ".internal", ".svc", ".cluster.loc
 
 @dataclass(frozen=True)
 class NetworkPolicy:
-    """租户策略的 sandbox.network；0 表示不限。"""
+    """租户策略的 sandbox.network；用量 0 为不限，任务不限时须显式 allow_unlimited。"""
 
     allowed: bool = False
+    allow_unlimited: bool = False
     modes: tuple[str, ...] = ("deny", "allowlist")
     hosts: tuple[str, ...] = ()
     max_grant_minutes: int = 60
@@ -64,6 +66,7 @@ class NetworkPolicy:
             raise InvalidError("invalid_network_policy", f"租户策略的 sandbox.network.approver 只能是 {'、'.join(APPROVERS)}")
         return cls(
             allowed=bool(doc.get("allowed", False)),
+            allow_unlimited=doc.get("allow_unlimited") is True,
             modes=tuple(doc.get("modes", ("deny", "allowlist"))),
             hosts=tuple(str(h).lower() for h in doc.get("hosts") or ()),
             max_grant_minutes=int(doc.get("max_grant_minutes") or 60),
@@ -149,7 +152,7 @@ def check_request(
     normalized: list[str] = []
     for host in hosts:
         h = check_host(host)
-        if not any(covers(p, h) for p in policy.hosts):
+        if "open" not in policy.modes and not any(covers(p, h) for p in policy.hosts):
             raise DeniedError("host_not_allowed", f"{h} 不在租户策略能放行的主机范围里")
         if h not in normalized:
             normalized.append(h)
@@ -162,6 +165,10 @@ def check_request(
             raise InvalidError("invalid_network_request", f"端口 {port} 不在 1 到 65535 之间")
         if p not in out_ports:
             out_ports.append(p)
+    if isinstance(minutes, bool) or not isinstance(minutes, int):
+        raise InvalidError("invalid_network_request", "授权时长必须是整数")
+    if minutes == 0 and not policy.allow_unlimited:
+        raise DeniedError("network_unlimited_not_allowed", "租户策略不允许本任务不限时联网")
     if int(minutes) not in GRANT_MINUTES:
         raise InvalidError("invalid_network_request", f"授权时长只能是 {'、'.join(map(str, GRANT_MINUTES))} 分钟")
     if int(minutes) > policy.max_grant_minutes:
@@ -251,10 +258,12 @@ class GrantStore:
         preview_env: str = "",
         preview_target: str = "",
     ) -> Grant:
+        if isinstance(request.minutes, bool) or not isinstance(request.minutes, int) or request.minutes not in GRANT_MINUTES or (request.minutes == 0 and (not policy.allow_unlimited or not task_id or not approved_by)):
+            raise DeniedError("network_unlimited_not_allowed", "不允许写入未经策略批准的不限时授权")
         now = self.clock()
         grant = Grant(
             grant_id=new_grant_id(), scope=request.scope, owner=owner, task_id=task_id, hosts=request.hosts, ports=request.ports,
-            expires_at=iso(now + timedelta(minutes=request.minutes)), state="active", created_at=iso(now), workspace_id=workspace_id,
+            expires_at=UNLIMITED_EXPIRES_AT if request.minutes == 0 else iso(now + timedelta(minutes=request.minutes)), state="active", created_at=iso(now), workspace_id=workspace_id,
             session_id=session_id, max_up_bytes=policy.max_up_bytes, max_down_bytes=policy.max_down_bytes, max_conns=policy.max_conns,
             max_rps=policy.max_rps, preview_port=request.preview_port, preview_env=preview_env, preview_target=preview_target,
             approved_by=approved_by, reason=request.reason,

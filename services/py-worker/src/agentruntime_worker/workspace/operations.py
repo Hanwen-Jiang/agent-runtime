@@ -79,6 +79,8 @@ READ_OPERATIONS = frozenset({
 })
 CREDENTIAL_SECRET = "workspace/credential-key"
 MAX_DIFF_BYTES = 1 << 20
+MAX_DIFF_CHUNK_BYTES = 256 << 10
+MAX_COMPLETE_DIFF_BYTES = 32 << 20
 MAX_READ_BYTES = 512 << 10
 BINARY_PROBE = 8192
 MAX_LIST = 1000
@@ -93,6 +95,34 @@ _SLUG = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")
 _REF = re.compile(r"^[A-Za-z0-9._/@^~+-]{1,200}$")
 _SHA = re.compile(r"^[0-9a-f]{40}([0-9a-f]{24})?$")
 _DRIVE = re.compile(r"^[A-Za-z]:")
+
+
+def diff_payload(data: bytes, args: Mapping[str, Any]) -> dict[str, Any]:
+    """Keep previews bounded; return byte-exact pages for complete patch collection."""
+    size, offset = args.get("chunk_size", 0), args.get("chunk_offset", 0)
+    if any(isinstance(v, bool) or not isinstance(v, (int, float)) or isinstance(v, float) and not v.is_integer() for v in (size, offset)):
+        raise InvalidError("invalid_diff_chunk", "diff chunk size and offset must be integers")
+    size, offset = int(size), int(offset)
+    expected = args.get("expected_sha256") or ""
+    if not 0 <= size <= MAX_DIFF_CHUNK_BYTES or not 0 <= offset <= MAX_COMPLETE_DIFF_BYTES:
+        raise InvalidError("invalid_diff_chunk", "diff chunk exceeds supported bounds")
+    if expected and (not isinstance(expected, str) or not re.fullmatch(r"[0-9a-f]{64}", expected)):
+        raise InvalidError("invalid_diff_chunk", "expected diff digest must be SHA-256")
+    if not size and (offset or expected) or offset and not expected:
+        raise InvalidError("invalid_diff_chunk", "continuation requires chunk size and expected digest")
+    digest = hashlib.sha256(data).hexdigest()
+    metadata = {"total_bytes": len(data), "sha256": digest}
+    if not size:
+        return {**metadata, "diff": data[:MAX_DIFF_BYTES].decode("utf-8", errors="replace"), "truncated": len(data) > MAX_DIFF_BYTES}
+    if len(data) > MAX_COMPLETE_DIFF_BYTES:
+        raise InvalidError("diff_too_large", "complete diff exceeds 32 MiB")
+    if expected and digest != expected:
+        raise ConflictError("diff_changed", "workspace diff changed during collection")
+    if offset > len(data):
+        raise InvalidError("invalid_diff_chunk", "diff offset exceeds its length")
+    end = min(offset + size, len(data))
+    return {**metadata, "diff": "", "chunk_data": base64.b64encode(data[offset:end]).decode("ascii"),
+            "next_offset": end if end < len(data) else 0, "truncated": end < len(data)}
 # git log 的格式：sha、作者、邮箱、作者时间（严格 ISO 8601）、说明的第一行，以 \x1f 分隔。
 _LOG_FORMAT = "%H%x1f%an%x1f%ae%x1f%aI%x1f%s"
 # 不要 git 读系统的配置、不要问人。
@@ -492,8 +522,8 @@ class WorkspaceOperations:
             timing.add_bytes("sandbox", "in", len(data))
         stats = parse_numstat(numstat.stdout.decode("utf-8", errors="replace"))
         return {
-            "diff": data[:MAX_DIFF_BYTES].decode("utf-8", errors="replace"), "files": [s["path"] for s in stats], "stats": stats,
-            "truncated": len(data) > MAX_DIFF_BYTES, "head": head, "branch": branch,
+            **diff_payload(data, args), "files": [s["path"] for s in stats], "stats": stats,
+            "head": head, "branch": branch,
         }
 
     async def list_files(self, inp: workspace_pb2.WorkspaceOperationInput, args: dict[str, Any]) -> dict[str, Any]:

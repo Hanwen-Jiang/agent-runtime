@@ -109,6 +109,9 @@ const DefaultAttemptTimeout = 90 * time.Second
 type Options struct {
 	Objects       objectstore.Provider
 	FileAuthority relational.Provider
+	// SingleAttemptTenants 是运维指定只试一次的租户（operator_retry.go）；nil 时照常按 Retry 重试。
+	SingleAttemptTenants *SingleAttemptTenants
+
 	// ModelBudget is the shared durable ledger; production serve always sets it.
 	ModelBudget    modelbudget.Provider
 	BudgetPolicies modelbudget.PolicyResolver
@@ -372,8 +375,9 @@ func (s *Server) run(ctx context.Context, c *call, candidates []router.Candidate
 	var tried router.Candidate
 	for _, cand := range candidates {
 		tried = cand
+		maxAttempts := s.opts.SingleAttemptTenants.maxAttempts(c.tenant.GetTenantId(), s.opts.Retry.MaxAttempts)
 	attempts:
-		for n := 1; n <= s.opts.Retry.MaxAttempts; n++ {
+		for n := 1; n <= maxAttempts; n++ {
 			if err := s.reserve(ctx, c, cand); err != nil {
 				return cand, err
 			}
@@ -415,7 +419,7 @@ func (s *Server) run(ctx context.Context, c *call, candidates []router.Candidate
 				return cand, pe
 			}
 			last = pe
-			if n == s.opts.Retry.MaxAttempts {
+			if n == maxAttempts {
 				break // 换同档的下一个 Profile，不等待
 			}
 			wait := s.wait(n, pe.RetryAfter)

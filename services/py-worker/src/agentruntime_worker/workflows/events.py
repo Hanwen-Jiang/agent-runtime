@@ -52,6 +52,8 @@ PUBLISH_RETRY = RetryPolicy(initial_interval=timedelta(milliseconds=500), backof
 ERROR_CHARS = 300
 TARGET_CHARS = 160
 TOOL_CHARS = 128
+PROGRESS_CHARS = 2000
+_PRIVATE_REASONING_TAG = re.compile(r"</?(?:think(?:ing)?|analysis|reasoning)(?:\s|>)", re.IGNORECASE)
 
 _TYPES = {
     "round_started": task_api_pb2.TASK_EVENT_TYPE_ROUND_STARTED,
@@ -101,6 +103,14 @@ def redact(text: str) -> str:
     for pattern, replacement in _SECRETS:
         text = pattern.sub(replacement, text)
     return _OPAQUE.sub(lambda m: "***" if _looks_random(m.group(0)) else m.group(0), text)
+
+
+def public_progress(text: str) -> str:
+    """仅处理模型的公开 text 通道；标记过的推理或结构化结果不作为进展发布。"""
+    text = text.strip()
+    if not text or _PRIVATE_REASONING_TAG.search(text) or text.startswith(("{", "[", "```json")):
+        return ""
+    return redact(text)[:PROGRESS_CHARS]
 
 
 def tool_target(args: Any) -> str:
@@ -255,14 +265,19 @@ class EventPublisher:
     async def tool_status(
         self, round_seq: int, node_id: str, step: int, tool: str, state: str, *,
         target: str = "", duration_ms: int | None = None, startup_ms: int | None = None, error: str = "", call: int = 0,
+        progress_message: str = "",
     ) -> None:
         """tool_loop 里一次工具调用的状态；去重键 r<Round>/tool_status/<Goal Node>/<步>/<状态>，同一步的第 2 个调用起再加上 /<序号>
         （call，从 0 开始；否则会被当成重复的事件丢掉）。"""
         if not self._detail:
             return
         payload: dict[str, Any] = {"node_id": node_id, "step": step, "tool": tool[:TOOL_CHARS], "state": state}
+        if call:
+            payload["call_index"] = call
         if target:
             payload["target"] = target
+        if state == "running" and (message := public_progress(progress_message)):
+            payload["progress_message"] = message
         if duration_ms is not None:
             payload["duration_ms"] = max(0, duration_ms)
         if startup_ms is not None:

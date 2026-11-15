@@ -308,19 +308,60 @@ class Planner:
         return None if left is None else round(left - sum(c.cost_usd for c in calls), 6)
 
     def _fallback(self, request: PlanRequest, decision: TriageDecision, keep: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
-        """保守规划：一个 tool_loop 的 Goal Node，去探索并完成剩余部分；不重做要保留的 Node。"""
-        node_id = next(i for i in ("explore", "explore_rest", "explore_next") if i not in keep)
+        """回退仍要保留实际结果并交付，不能把空对象作为一轮探索的成果。"""
+        occupied = set(keep) | set(request.earlier or {})
+
+        def fresh_id(base: str) -> str:
+            candidate = base
+            suffix = 0
+            while candidate in occupied:
+                suffix += 1
+                candidate = f"{base}_{request.round_seq}_{suffix}"
+            occupied.add(candidate)
+            return candidate
+
+        node_id = fresh_id("explore")
         done_when = str((request.task_state or {}).get("done_when") or "完成用户的请求")
         goal = request.message if not keep else f"在已验证的 {'、'.join(keep)} 的基础上完成剩余部分：{request.message}"
-        node: dict[str, Any] = {"id": node_id, "kind": "goal", "goal": goal, "done_when": done_when, "mode": "tool_loop", "output_schema": {"type": "object"}}
+        node: dict[str, Any] = {
+            "id": node_id, "kind": "goal", "goal": goal, "mode": "tool_loop",
+            "done_when": done_when + "；交回实际结论 answer、支持结论的 evidence，以及仍未完成的 remaining。遇到阻碍写明原因，不以空对象或虚构成功结束。",
+            "effect_ceiling": request.context.effect_ceiling,
+            "output_schema": {
+                "type": "object", "required": ["answer", "evidence", "remaining"], "additionalProperties": False,
+                "properties": {
+                    "answer": {"type": "string", "minLength": 1, "pattern": "\\S", "description": "用户请求的实际结果；未完成时说明已做的工作与阻碍"},
+                    "evidence": {"type": "array", "items": {"type": "string", "minLength": 1}, "description": "实际读取、执行或验证得到的证据，包含可定位的来源；没有证据时为空数组"},
+                    "remaining": {"type": "array", "items": {"type": "string", "minLength": 1}, "description": "尚未完成、缺失或需要确认的事项；确已完成时为空数组"},
+                },
+            },
+        }
+        prior = {nid: f"${nid}.result" for nid in keep if nid in (request.earlier or {})}
+        if prior:
+            node["inputs"] = {"verified_results": prior}
         tools = validate.fallback_tools(request.context)
         if tools:
             node["tools"] = tools
+        nodes = [node]
+        # A known model/none template provides a real delivery path without
+        # inventing a template or changing the task's permissions or budget.
+        if request.context.catalog.templates.get(self.config.answer_template) == ("model", "none"):
+            text = request.message.replace("$", "$$") if request.earlier is not None else ("$" + request.message if request.message.startswith("$") else request.message)
+            nodes.append({
+                "id": fresh_id("deliver"), "kind": "atomic", "template": self.config.answer_template,
+                "executor": "model", "output": "generate", "effect": "none", "role": "deliver", "after": [node_id],
+                "inputs": {
+                    # `request` invokes the conversational fast path, which
+                    # would omit the work result from the model's messages.
+                    "user_request": text, "work_result": f"${node_id}.result",
+                    "instructions": "用用户的语言交付 work_result 中已实际完成的结果和证据，明确 remaining；不要把未执行、未验证或受阻的事项说成完成。",
+                },
+            })
         stage = {
             "seq": request.round_seq,
             "goal": "探索并推进这个任务",
-            "exit_when": f"{node_id} 给出结果",
-            "nodes": [node],
+            "exit_when": f"{nodes[-1]['id']} 给出结果",
+            "nodes": nodes,
         }
         triage: dict[str, Any] = {"level": decision.level, "task_family": decision.task_family or UNCLASSIFIED_TASK_FAMILY}
         return stage, {"triage": triage, "horizon": "explore"}
@@ -335,7 +376,7 @@ def _budget_spent(task_state: Any, calls: list[ModelCall]) -> bool:
 def _stage_codes(result: PlanResult) -> dict[str, Any]:
     """Stage 的 goal、exit_when 是代码写的固定说明时的代码与参数（TMP 计划第 11.5 节）；Planner 模型写的没有。"""
     if result.fallback:
-        return {"goal_code": "explore_task", "exit_when_code": "node_result", "params": {"node": result.stage["nodes"][0]["id"]}}
+        return {"goal_code": "explore_task", "exit_when_code": "node_result", "params": {"node": result.stage["nodes"][-1]["id"]}}
     if result.triage_level == "fast":
         return {"goal_code": "reply_to_message", "exit_when_code": "reply_given"}
     if result.triage_level == "light":

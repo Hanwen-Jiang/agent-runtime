@@ -38,5 +38,5 @@ func (s *Server) networkPolicyView(w http.ResponseWriter, r *http.Request) {
 		hosts = []string{}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"allowed": policy.Allowed, "modes": modes, "hosts": hosts, "max_grant_minutes": policy.maxMinutes(), "approver": policy.approver()})
+	_ = json.NewEncoder(w).Encode(map[string]any{"allowed": policy.Allowed, "modes": modes, "hosts": hosts, "max_grant_minutes": policy.maxMinutes(), "approver": policy.approver(), "supports_unlimited": policy.Allowed && policy.AllowUnlimited})
 }

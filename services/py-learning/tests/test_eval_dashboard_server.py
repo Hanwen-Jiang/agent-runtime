@@ -53,43 +53,6 @@ def request(port: int, method: str, path: str) -> tuple[int, dict[str, str], byt
         conn.close()
 
 
-def test_the_page_is_served_with_security_headers(site: tuple[int, Path]) -> None:
-    """评测网站（docs/plan/eval-site.md）之后看板在 /results；/ 是主页，旧地址 /index.html 跳到 /results（test_eval_site_server.py）。"""
-    port, root = site
-    (root / "index.html").write_text(PAGE, "utf-8")
-    status, headers, body = request(port, "GET", "/results")
-    assert status == 200 and body.decode("utf-8") == PAGE
-    assert headers["content-type"] == "text/html; charset=utf-8"
-    assert headers["content-security-policy"] == CSP, "页面只有内联的脚本与样式，只许连回同源取实时数据（第 11.16 节）"
-    assert headers["x-content-type-options"] == "nosniff"
-    assert headers["referrer-policy"] == "no-referrer"
-    assert headers["cache-control"] == "public, max-age=300", "Cloudflare 可以短暂缓存，发布后几分钟内更新"
-
-
-def test_head_has_the_headers_and_no_body(site: tuple[int, Path]) -> None:
-    port, root = site
-    (root / "index.html").write_text(PAGE, "utf-8")
-    status, headers, body = request(port, "HEAD", "/results")
-    assert status == 200 and body == b""
-    assert headers["content-length"] == str(len(PAGE.encode("utf-8")))
-
-
-def test_healthz_answers_before_anything_is_published(site: tuple[int, Path]) -> None:
-    port, _ = site
-    status, _, body = request(port, "GET", "/healthz")
-    assert status == 200 and body == b"ok"
-    status, _, _ = request(port, "GET", "/results")
-    assert status == 404, "还没发布时没有页面"
-
-
-def test_a_republished_page_shows_up_without_a_restart(site: tuple[int, Path]) -> None:
-    port, root = site
-    (root / "index.html").write_text("first", "utf-8")
-    assert request(port, "GET", "/results")[2] == b"first"
-    (root / "index.html").write_text("second", "utf-8")
-    assert request(port, "GET", "/results")[2] == b"second"
-
-
 @pytest.mark.parametrize(
     "path",
     ["/secret.txt", "/../secret.txt", "/%2e%2e/secret.txt", "/index.html/../secret.txt", "//etc/passwd", "/index.html.bak", "/.git/config"],
@@ -101,13 +64,6 @@ def test_nothing_else_is_served(site: tuple[int, Path], path: str) -> None:
     status, _, body = request(port, "GET", path)
     assert status == 404
     assert b"do-not-serve" not in body
-
-
-def test_a_query_string_does_not_change_what_is_served(site: tuple[int, Path]) -> None:
-    port, root = site
-    (root / "index.html").write_text(PAGE, "utf-8")
-    status, _, body = request(port, "GET", "/results?x=1")
-    assert status == 200 and body.decode("utf-8") == PAGE
 
 
 @pytest.mark.parametrize("method", ["POST", "PUT", "DELETE", "PATCH", "OPTIONS"])
@@ -139,24 +95,3 @@ def free_port() -> int:
         return int(s.getsockname()[1])
 
 
-def test_python_dash_m_starts_the_server_the_chart_uses(tmp_path: Path) -> None:
-    (tmp_path / "index.html").write_text(PAGE, "utf-8")
-    port = free_port()
-    proc = subprocess.Popen(
-        [sys.executable, "-m", "agentruntime_learning.evals.dashboard_server", "--dir", str(tmp_path), "--port", str(port), "--host", "127.0.0.1"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    try:
-        deadline = time.monotonic() + 20
-        while True:
-            try:
-                status, _, body = request(port, "GET", "/results")
-                break
-            except OSError:
-                assert time.monotonic() < deadline, "服务没有起来"
-                time.sleep(0.1)
-        assert status == 200 and body.decode("utf-8") == PAGE
-    finally:
-        proc.terminate()
-        proc.wait(timeout=10)

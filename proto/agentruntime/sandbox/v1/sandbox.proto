@@ -107,6 +107,10 @@ message GetDiffRequest {
   string workspace_id = 2;
   string base = 3;
   bool find_renames = 4;
+  // 与 Workspace.GetDiffRequest 的分块语义和限制一致；0 为原来的文本预览。
+  uint32 chunk_size = 5;
+  uint64 chunk_offset = 6;
+  string expected_sha256 = 7;
 }
 
 message GetLogRequest {

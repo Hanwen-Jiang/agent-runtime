@@ -141,6 +141,16 @@ impl App {
             return;
         };
         if route == Route::Health {
+            #[cfg(target_os = "linux")]
+            if std::env::var("AGENT_GUEST_PROFILE").as_deref() == Ok("benchmark-system") {
+                let body = serde_json::json!({"status":"ok","guest_profile":"benchmark-system","uid":ar_sys::geteuid(),"max_timeout_s":self.c.max_timeout.as_secs()}).to_string();
+                ctx.resp.send(
+                    200,
+                    &[("Content-Type", "application/json".into())],
+                    body.as_bytes(),
+                );
+                return;
+            }
             ctx.resp.send(
                 200,
                 &[("Content-Type", "text/plain; charset=utf-8".into())],

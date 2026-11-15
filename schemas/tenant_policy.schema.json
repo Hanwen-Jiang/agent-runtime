@@ -56,7 +56,8 @@
               "description": "能放行的主机范围（可以用 *. 开头）；申请的主机要落在这里",
               "type": "array", "uniqueItems": true, "maxItems": 100, "items": {"$ref": "#/$defs/host_pattern"}
             },
-            "max_grant_minutes": {"description": "一次授权最长多久", "type": "integer", "minimum": 1, "maximum": 1440},
+            "allow_unlimited": {"description": "允许显式申请 minutes=0：仅本 Task 存续期间不限时，任务结束或撤销仍失效；缺省 false", "type": "boolean"},
+            "max_grant_minutes": {"description": "有限时授权最长多久（分钟），不影响显式 allow_unlimited", "type": "integer", "minimum": 1, "maximum": 1440},
             "approver": {"description": "谁来批", "$ref": "defs.schema.json#/$defs/network_approver"},
             "max_up_bytes": {"description": "一次授权的上行字节上限", "type": "integer", "minimum": 0},
             "max_down_bytes": {"description": "一次授权的下行字节上限", "type": "integer", "minimum": 0},

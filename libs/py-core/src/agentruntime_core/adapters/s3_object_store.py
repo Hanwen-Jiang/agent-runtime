@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import hashlib
+import http.client
 import json
 import math
 import urllib.error
@@ -28,6 +29,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
+from functools import partial
 from pathlib import Path
 from typing import Literal
 
@@ -55,6 +57,51 @@ ENV_PREFIX = "AR_S3_PREFIX"
 ENV_ACCESS_KEY_ID = "AR_S3_ACCESS_KEY_ID"
 ENV_SECRET_ACCESS_KEY = "AR_S3_SECRET_ACCESS_KEY"
 ENV_SECRET_ACCESS_KEY_FILE = "AR_S3_SECRET_ACCESS_KEY_FILE"
+
+
+class _BoundedConnect:
+    """Bound TCP/TLS setup while retaining the caller's transfer timeout."""
+
+    def __init__(self, *args, connect_timeout_s: float, **kwargs) -> None:
+        self._connect_timeout_s = connect_timeout_s
+        super().__init__(*args, **kwargs)
+
+    def connect(self) -> None:
+        transfer_timeout = self.timeout
+        self.timeout = min(transfer_timeout, self._connect_timeout_s)
+        try:
+            super().connect()
+        finally:
+            self.timeout = transfer_timeout
+        # HTTPConnection.connect sets the socket timeout; restoring just the
+        # attribute would leave large uploads/downloads on the shorter timeout.
+        self.sock.settimeout(transfer_timeout)
+
+
+class _HTTPConnection(_BoundedConnect, http.client.HTTPConnection):
+    pass
+
+
+class _HTTPSConnection(_BoundedConnect, http.client.HTTPSConnection):
+    pass
+
+
+class _HTTPHandler(urllib.request.HTTPHandler):
+    def __init__(self, connect_timeout_s: float) -> None:
+        super().__init__()
+        self._connection = partial(_HTTPConnection, connect_timeout_s=connect_timeout_s)
+
+    def http_open(self, req):
+        return self.do_open(self._connection, req)
+
+
+class _HTTPSHandler(urllib.request.HTTPSHandler):
+    def __init__(self, connect_timeout_s: float) -> None:
+        super().__init__()  # Standard verified SSL context, including hostname checks.
+        self._connection = partial(_HTTPSConnection, connect_timeout_s=connect_timeout_s)
+
+    def https_open(self, req):
+        return self.do_open(self._connection, req, context=self._context)
 
 
 @dataclass(frozen=True)
@@ -107,6 +154,7 @@ class S3ObjectStoreProvider:
         clock: Clock | None = None,
         faults: FaultInjector | None = None,
         timeout_s: float = 60,
+        connect_timeout_s: float = 5,
     ) -> None:
         if not endpoint.startswith(("https://", "http://127.0.0.1", "http://localhost")):
             raise ValueError("S3 的地址要是 https（本机测试除外）")
@@ -121,6 +169,9 @@ class S3ObjectStoreProvider:
         self._clock = clock or SystemClock()
         self._faults = faults or FaultInjector()
         self._timeout = timeout_s
+        if not math.isfinite(connect_timeout_s) or connect_timeout_s <= 0:
+            raise ValueError("S3 connection timeout must be positive and finite")
+        self._connect_timeout = connect_timeout_s
 
     def bind(self, tenant: TenantContext) -> S3ObjectStore:
         return S3ObjectStore(self, tenant_scope(tenant))
@@ -153,7 +204,9 @@ class S3ObjectStoreProvider:
             request.add_header(k, v)
 
         def send() -> tuple[int, dict[str, str], bytes]:
-            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+            opener = urllib.request.build_opener(
+                urllib.request.ProxyHandler({}), _HTTPHandler(self._connect_timeout), _HTTPSHandler(self._connect_timeout),
+            )
             try:
                 with opener.open(request, timeout=self._timeout) as resp:
                     return resp.status, {k.lower(): v for k, v in resp.headers.items()}, resp.read()

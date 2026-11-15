@@ -158,6 +158,9 @@ spec:
               value: {{ printf "http://%s-egress-gateway.%s.svc:8096" (include "ar.fullname" .) .Release.Namespace | quote }}
             {{- end }}
             {{- include "ar.objectStoreEnv" . | nindent 12 }}
+            {{- with .Values.taskService.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           readinessProbe:
             httpGet:
               path: /healthz

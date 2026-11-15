@@ -56,7 +56,8 @@ _PATTERNS = [(re.compile(pattern), replacement) for pattern, replacement in BANN
 SCANNED = ("proto", "schemas", "services", "libs", "deploy", "tests", "buf.yaml", "buf.gen.yaml", "go.work", "pyproject.toml")
 TEXT_SUFFIXES = {".proto", ".json", ".py", ".pyi", ".go", ".yaml", ".yml", ".toml", ".md", ".mod", ".txt", ".sql"}
 SKIP_DIRS = {".venv", "node_modules", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache"}
-SKIP_FILES = {"uv.lock", "go.sum"}
+# Lock files and npm manifests name third-party packages (for example the react library), not our terms.
+SKIP_FILES = {"uv.lock", "go.sum", "package.json", "package-lock.json"}
 THIS_FILE = Path(__file__).resolve()
 
 

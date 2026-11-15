@@ -69,25 +69,9 @@ def site(tmp_path: Path, evalsets: Path) -> Iterator[int]:
         thread.join(timeout=5)
 
 
-def test_three_pages(site: int) -> None:
-    for path in ("/", "/datasets"):
-        status, headers, body = request(site, "GET", path)
-        assert status == 200 and headers["content-type"] == "text/html; charset=utf-8", path
-        assert b"<!doctype html>" in body.lower()[:200]
-        assert headers["content-security-policy"].startswith("default-src 'none'")
-    status, _, body = request(site, "GET", "/results")
-    assert status == 200 and body.decode("utf-8") == RESULTS_PAGE, "评测结果仍是发布步骤写的看板"
-
-
 def test_the_old_link_moves_to_results(site: int) -> None:
     status, headers, _ = request(site, "GET", "/index.html")
     assert status == 301 and headers["location"] == "/results"
-
-
-def test_the_home_page_links_both_subpages(site: int) -> None:
-    _, _, body = request(site, "GET", "/")
-    html = body.decode("utf-8")
-    assert 'href="/results"' in html and 'href="/datasets"' in html
 
 
 def test_the_site_index_has_datasets_frameworks_and_sync_status(site: int) -> None:

@@ -100,18 +100,20 @@ class SubmitTaskRequest(_message.Message):
     def __init__(self, tenant_id: _Optional[str] = ..., workspace_id: _Optional[str] = ..., session_id: _Optional[str] = ..., client_request_id: _Optional[str] = ..., message: _Optional[str] = ..., inputs: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., attachments: _Optional[_Iterable[str]] = ..., session_access: _Optional[_Union[_enums_pb2.SessionAccess, str]] = ..., priority: _Optional[_Union[_enums_pb2.Priority, str]] = ..., effect_ceiling: _Optional[_Union[_enums_pb2.Effect, str]] = ..., network_request: _Optional[_Union[NetworkRequest, _Mapping]] = ..., budget_usd_micros: _Optional[int] = ...) -> None: ...
 
 class NetworkRequest(_message.Message):
-    __slots__ = ("hosts", "ports", "minutes", "reason", "scope")
+    __slots__ = ("hosts", "ports", "minutes", "reason", "scope", "unlimited")
     HOSTS_FIELD_NUMBER: _ClassVar[int]
     PORTS_FIELD_NUMBER: _ClassVar[int]
     MINUTES_FIELD_NUMBER: _ClassVar[int]
     REASON_FIELD_NUMBER: _ClassVar[int]
     SCOPE_FIELD_NUMBER: _ClassVar[int]
+    UNLIMITED_FIELD_NUMBER: _ClassVar[int]
     hosts: _containers.RepeatedScalarFieldContainer[str]
     ports: _containers.RepeatedScalarFieldContainer[int]
     minutes: int
     reason: str
     scope: NetworkScope
-    def __init__(self, hosts: _Optional[_Iterable[str]] = ..., ports: _Optional[_Iterable[int]] = ..., minutes: _Optional[int] = ..., reason: _Optional[str] = ..., scope: _Optional[_Union[NetworkScope, str]] = ...) -> None: ...
+    unlimited: bool
+    def __init__(self, hosts: _Optional[_Iterable[str]] = ..., ports: _Optional[_Iterable[int]] = ..., minutes: _Optional[int] = ..., reason: _Optional[str] = ..., scope: _Optional[_Union[NetworkScope, str]] = ..., unlimited: _Optional[bool] = ...) -> None: ...
 
 class SubmitTaskResponse(_message.Message):
     __slots__ = ("task_id", "session_id", "events_url", "deduplicated")

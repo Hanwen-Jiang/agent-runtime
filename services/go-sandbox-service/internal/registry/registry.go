@@ -21,6 +21,9 @@
 //	  - firecracker：libs/go-core/adapters/fcsandbox，宿主上的 fc-manager（D-20）；manager_url、runtimes（宿主上有 rootfs 的运行环境）、
 //	    disk_mb；令牌取 sandbox/fc-manager-token。要写 workspace: archive（客户机不挂卷）；isolation 没写时是 microvm。
 //	    出网经 egress_gateway_url（客户机里的转发器 http://127.0.0.1:3128）与 pkg_mirror_url（http://127.0.0.1:3129），D-22。
+//	    guest_profile 默认 workspace；评测专用 benchmark-system 必须配置 root_disk_mb（独立于 scratch disk_mb）。
+//	    profile 由运维登记指定，不能由 Task Spec 切换；fc-manager 另核对允许使用该 profile 的租户。
+//	    评测后端的 base_runtime/base_image_digest 成对指定新 agent 的基础镜像；未配时只接受显式项目镜像。
 //
 // 用哪个后端由租户策略的 sandbox.backend 决定（按租户缓存一分钟），没写时用 default；登记里没有的名字一律拒绝。
 package registry
@@ -30,6 +33,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -183,12 +187,29 @@ func Parse(raw []byte, opts Options) (*Registry, error) {
 				return nil, fmt.Errorf("沙箱后端 %s 的 capabilities 只能取 %s（数组）", name, strings.Join(Capabilities, "、"))
 			}
 		}
+		if _, present := spec["guest_profile"]; present && spec.Kind() != "firecracker" {
+			return nil, fmt.Errorf("沙箱后端 %s 的 guest_profile 只适用于 firecracker", name)
+		}
+		if _, present := spec["root_disk_mb"]; present && spec.Kind() != "firecracker" {
+			return nil, fmt.Errorf("沙箱后端 %s 的 root_disk_mb 只适用于 firecracker", name)
+		}
+		for _, key := range []string{"base_runtime", "base_image_digest"} {
+			if _, present := spec[key]; present && spec.Kind() != "firecracker" {
+				return nil, fmt.Errorf("沙箱后端 %s 的 %s 只适用于 firecracker", name, key)
+			}
+		}
 		if spec.Kind() == "firecracker" {
 			if spec.str("workspace") != "archive" {
 				return nil, fmt.Errorf("沙箱后端 %s 是 firecracker，要写 workspace: archive（客户机不挂卷，工作区经存档恢复）", name)
 			}
 			if spec.str("manager_url") == "" {
 				return nil, fmt.Errorf("沙箱后端 %s 是 firecracker，要写 manager_url（fc-manager 的地址）", name)
+			}
+			if _, _, err := firecrackerGuestProfile(spec); err != nil {
+				return nil, fmt.Errorf("沙箱后端 %s: %w", name, err)
+			}
+			if _, _, err := firecrackerGuestBase(spec); err != nil {
+				return nil, fmt.Errorf("沙箱后端 %s: %w", name, err)
 			}
 		}
 	}
@@ -199,6 +220,50 @@ func Parse(raw []byte, opts Options) (*Registry, error) {
 		opts.Faults = map[string]*testkit.Faults{}
 	}
 	return &Registry{specs: doc.Backends, Default: doc.Default, Environments: doc.Environments, opts: opts, providers: map[string]sandbox.Provider{}}, nil
+}
+
+// Keep these operator-only fields strict: s.num intentionally accepts older
+// loose numeric settings, but silently truncating or ignoring a profile's root
+// capacity could create a different execution environment than requested.
+func firecrackerGuestProfile(s Spec) (string, int, error) {
+	profile := ""
+	if raw, present := s["guest_profile"]; present {
+		var ok bool
+		profile, ok = raw.(string)
+		if !ok {
+			return "", 0, errors.New("guest_profile must be a string")
+		}
+	}
+	rootMB := 0
+	if raw, present := s["root_disk_mb"]; present {
+		switch n := raw.(type) {
+		case int:
+			rootMB = n
+		case float64:
+			if math.IsNaN(n) || math.IsInf(n, 0) || n != math.Trunc(n) || n < 0 || n > float64((1<<63-1)>>20) {
+				return "", 0, errors.New("root_disk_mb must be a non-negative integer disk capacity")
+			}
+			rootMB = int(n)
+		default:
+			return "", 0, errors.New("root_disk_mb must be an integer")
+		}
+	}
+	return profile, rootMB, fcsandbox.ValidateGuestProfile(profile, rootMB)
+}
+
+func firecrackerGuestBase(s Spec) (string, string, error) {
+	values := map[string]string{}
+	for _, key := range []string{"base_runtime", "base_image_digest"} {
+		if raw, present := s[key]; present {
+			value, ok := raw.(string)
+			if !ok || value == "" {
+				return "", "", fmt.Errorf("%s must be a non-empty string", key)
+			}
+			values[key] = value
+		}
+	}
+	runtime, digest := values["base_runtime"], values["base_image_digest"]
+	return runtime, digest, fcsandbox.ValidateGuestBase(s.str("guest_profile"), runtime, digest)
 }
 
 // Names 是登记的后端名，排好序。
@@ -452,7 +517,52 @@ func (r *Registry) build(ctx context.Context, name string, s Spec) (sandbox.Prov
 		if len(token) == 0 {
 			return nil, providererr.New(providererr.Invalid, "missing_fc_manager_token", "SecretStore 的平台作用域里没有 "+FCManagerSecret+"（Firecracker 后端 "+name+" 要用）")
 		}
-		cfg := fcsandbox.Config{ManagerURL: s.str("manager_url")}
+		profile, rootMB, err := firecrackerGuestProfile(s)
+		if err != nil {
+			return nil, providererr.Wrap(providererr.Invalid, "invalid_guest_profile", err.Error(), err)
+		}
+		cfg := fcsandbox.Config{ManagerURL: s.str("manager_url"), ImagePrepareURL: s.str("image_prepare_url"), GuestProfile: profile, RootDiskMB: rootMB}
+		cfg.BaseRuntime, cfg.BaseImageDigest, err = firecrackerGuestBase(s)
+		if err != nil {
+			return nil, providererr.Wrap(providererr.Invalid, "invalid_guest_base", err.Error(), err)
+		}
+		if cfg.ImagePrepareURL != "" {
+			if reg, ok := r.Environments["registry"].(map[string]any); ok {
+				host, _ := reg["pull_host"].(string)
+				prefix, _ := reg["prefix"].(string)
+				if prefix == "" {
+					prefix = "envs"
+				}
+				cfg.CustomImagePrefix = strings.TrimRight(host, "/") + "/" + strings.Trim(prefix, "/")
+			}
+		}
+		if raw, present := s["image_runtimes"]; present {
+			aliases, ok := raw.(map[string]any)
+			if !ok {
+				return nil, providererr.New(providererr.Invalid, "invalid_image_runtimes", "image_runtimes 必须是镜像到 rootfs runtime 的映射")
+			}
+			cfg.ImageRuntimes = map[string]fcsandbox.PreparedImage{}
+			for image, value := range aliases {
+				prepared, ok := value.(map[string]any)
+				if !ok {
+					return nil, providererr.New(providererr.Invalid, "invalid_image_runtimes", "image_runtimes 的值必须包含 runtime 与 source_digest")
+				}
+				runtime, _ := prepared["runtime"].(string)
+				digest, _ := prepared["source_digest"].(string)
+				if len(prepared) != 2 || runtime == "" || digest == "" {
+					return nil, providererr.New(providererr.Invalid, "invalid_image_runtimes", "image_runtimes 的值必须包含 runtime 与 source_digest")
+				}
+				cfg.ImageRuntimes[image] = fcsandbox.PreparedImage{Runtime: runtime, SourceDigest: digest}
+			}
+			if reg, ok := r.Environments["registry"].(map[string]any); ok {
+				host, _ := reg["pull_host"].(string)
+				prefix, _ := reg["prefix"].(string)
+				if prefix == "" {
+					prefix = "envs"
+				}
+				cfg.CustomImagePrefix = strings.TrimRight(host, "/") + "/" + strings.Trim(prefix, "/")
+			}
+		}
 		if list, ok := s["runtimes"].([]any); ok {
 			for _, v := range list {
 				if str, ok := v.(string); ok {

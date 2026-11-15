@@ -54,6 +54,18 @@ def only_reads(tool: Any, args: Any) -> bool:
 DOC_SUFFIXES = (".md", ".markdown", ".txt", ".rst", ".adoc", ".org", ".csv", ".tsv", ".log")
 
 
+def _network_ports(values: Any) -> list[int]:
+    if not isinstance(values, (list, tuple)):
+        return [80, 443]
+    return sorted({v for v in values if isinstance(v, int) and not isinstance(v, bool) and 1 <= v <= 65535}) or [80, 443]
+
+
+def _network_hosts(values: Any) -> list[str]:
+    if not isinstance(values, (list, tuple)):
+        return []
+    return sorted({h.strip().lower().rstrip(".") for h in values if isinstance(h, str) and h.strip()})
+
+
 @dataclass
 class VerificationRecord:
     write_capable: bool = False
@@ -67,6 +79,8 @@ class VerificationRecord:
     delivered: list[str] = field(default_factory=list)
     delivery_blocked: int = 0
     judge_blocked: int = 0
+    network_blocked: dict[str, Any] | None = None
+    network_scope_guidance: str = ""
 
     def offered(self, tool_effects: Mapping[str, str]) -> None:
         """一个 Goal Node 拿到了这些工具。只给 shell_run 不算能改文件：很多只读的任务靠它查东西。"""
@@ -76,6 +90,9 @@ class VerificationRecord:
     def called(self, tool: str, effect: str, args: Any, observation: Any) -> None:
         """一次调用成功返回。工具返回的 error 不算改过，只读的命令不算验证（否则测试失败之后 git diff 一下，退出码就成了 0）。"""
         if isinstance(observation, Mapping) and "error" in observation:
+            return
+        if tool == "request_network":
+            self.network_result(args, observation)
             return
         if tool == DELIVER_TOOL:
             path = args.get("path") if isinstance(args, Mapping) else None
@@ -93,6 +110,38 @@ class VerificationRecord:
             self.ran_after_write = True
             code = observation.get("exit_code") if isinstance(observation, Mapping) else None
             self.last_exit_code = code if isinstance(code, int) else None
+
+    def network_request(self, args: Mapping[str, Any], status: str = "approval_required", **details: Any) -> None:
+        request = {"scope": str(args.get("scope") or "hosts"), "hosts": _network_hosts(args.get("hosts")),
+                   "ports": _network_ports(args.get("ports")), "status": status, **details}
+        pending = list((self.network_blocked or {}).get("requests") or [])
+        pending = [p for p in pending if not all(p.get(k) == request[k] for k in ("scope", "hosts", "ports"))]
+        self.network_blocked = {"requests": [*pending, request]}
+
+    def network_result(self, args: Any, observation: Any) -> None:
+        args = args if isinstance(args, Mapping) else {}
+        if not isinstance(observation, Mapping) or not observation.get("grant_id"):
+            value = observation if isinstance(observation, Mapping) else {}
+            self.network_request(args, str(value.get("status", "blocked")), code=str(value.get("code", "network_not_granted")), reason=str(value.get("reason", "")))
+            return
+        scope = observation.get("scope", args.get("scope", "hosts"))
+        hosts = _network_hosts(observation.get("hosts", args.get("hosts")))
+        ports = set(_network_ports(observation.get("ports", args.get("ports"))))
+        def covered(request: Mapping[str, Any]) -> bool:
+            if not set(request.get("ports") or [80, 443]) <= ports:
+                return False
+            if scope == "public":
+                return True
+            return request.get("scope") == "hosts" and all(any(h == pattern or (pattern.startswith("*.") and h.endswith(pattern[1:]) and h != pattern[2:]) for pattern in hosts) for h in request.get("hosts") or [])
+        pending = [p for p in (self.network_blocked or {}).get("requests") or [] if not covered(p)]
+        self.network_blocked = {"requests": pending} if pending else None
+
+    def network_replanned_by_human(self, guidance: str) -> None:
+        # Called only by TaskWorkflow after a human selects replan_with_guidance.
+        # This changes the requested task scope, never the network grant or policy.
+        if guidance.strip():
+            self.network_scope_guidance = guidance.strip()
+            self.network_blocked = None
 
     def delivered_files(self, paths: Iterable[str]) -> None:
         for path in paths:
@@ -128,4 +177,8 @@ class VerificationRecord:
             out["delivery_blocked"] = self.delivery_blocked
         if self.judge_blocked:
             out["judge_blocked"] = self.judge_blocked
+        if self.network_blocked:
+            out["network_blocked"] = dict(self.network_blocked)
+        if self.network_scope_guidance:
+            out["network_scope_guidance"] = self.network_scope_guidance
         return out

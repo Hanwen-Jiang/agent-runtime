@@ -240,6 +240,8 @@ class ToolLoopStep:
     vendor: str = ""
     # 这次模型调用的上下文里各类内容占多少（进度事件 context_usage 的数字部分）；没有 Context Builder 的桩没有。
     context_usage: dict[str, Any] | None = None
+    # 与工具调用一起返回的公开进展，不是 rationale。旧历史没有此字段，默认不改变事件载荷。
+    progress_message: str = ""
 
 
 @dataclass

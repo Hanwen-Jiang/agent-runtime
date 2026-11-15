@@ -87,8 +87,10 @@ async def test_two_invalid_plans_fall_back_to_one_tool_loop_goal_node() -> None:
     result = await plan(gateway, round_seq=2)
     assert result.fallback and result.problems
     assert result.triage_level == "full"
-    [node] = result.stage["nodes"]
+    # 探索的 Goal Node 在前；目录里有回答模板时后面接一个 deliver（planner.py 的回退）。
+    node, *delivery = result.stage["nodes"]
     assert node["kind"] == "goal" and node["mode"] == "tool_loop"
+    assert all(d["role"] == "deliver" and d["after"] == [node["id"]] for d in delivery)
     assert result.stage["seq"] == 2
     assert_valid("stage", result.stage)
     assert_valid("task_plan", result.task_plan)
