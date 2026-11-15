@@ -1084,6 +1084,31 @@ coding-web `main-0cd2c89`（2026-11-14，目录 `cw-0cd2c89`，脚本 `cw-build.
   model-gateway 有 `AR_MODEL_BUDGET_UNLIMITED_TENANTS`（`modelbudget/operator.go`），源提交 `384b6722`、`8b3326db`、`fa96d650` 不在 GitHub 上。
   直接按 main 发布会去掉这些改动、换掉 Worker 开头问的版本分支，要先把线上独有的改动收回 main 再整版发布。
 
+对账与第 45 版（2026-11-14、15，PR #4 `a66c5827`；目录 `drift-20261114`（对账）与 `rev45-reconcile`（发布），脚本 `build.sh`、`release.sh`、`rollback.sh`；
+用户在对话里批准了协议改动并选“对账后部署”）：
+
+- 对账：七个组件线上实际跑的源码（Python 镜像里取出的、Go 镜像构建用的源码目录）按 GitHub 历史找到各自的基线（都在 main 上），只把“基线 → 线上”
+  的改动三方合并进 main。协议 5 个文件（`NetworkRequest.unlimited = 6`、`tenant_policy` 的 `allow_unlimited`、GetDiff 分块、`tool_status`
+  与 `context_usage` 的新字段；两个新枚举移进 `defs.schema.json`）经人审，`buf breaking` 与契约测试通过、基线已更新。代码约 135 个文件，9 个冲突
+  （8 个是两边各加，都留；memory 的 BM25 移到 main 的 RetrievalEngine 上）。另修了线上的一个回归：复用环境一律先拿存档租约，并发的只读工具调用
+  各建一个环境；现在只有存档模式的可写环境拿租约。被线上行为改动弄挂的已有测试按 v1 规矩改了断言，旧评测网站的 11 条测试删了（新网站的服务端没有 Python 测试）。
+- 回放：从线上 Temporal 导出 11-09 以来的 44 份 TaskWorkflow 历史（线上新 Worker 跑的，全部带 `network-*` 标记，28 份带 `cancel-after-normal-operation-completion-v1`），
+  在线上 Worker Pod 里分别用线上代码与合并后的代码回放，都是 44 份、0 失败。导出的历史用完已删。
+- CI：契约、Rust、py-worker 通过；Go（kind 里的 K8s 沙箱一致性）、Python 库（3 条）、端到端（9 条）失败，与 main 上失败的用例逐条相同。
+- Chart：task-service、model-gateway、memory 加 `extraEnv`，评测网站加 `extraEnv`、`extraVolumes`、`extraVolumeMounts`（默认空，`values-cloud.yaml` 的渲染逐字节不变）。
+- 镜像：在服务器上按 `a66c5827`（与构建用的 `c8ed02ec` 同一棵树）构建 task-service、model-gateway、sandbox-service、worker、memory、learning、
+  egress-gateway、pkg-mirror，标签 `rec-c8ed02ec`，导进 k3s。沙箱运行环境与 sandbox-agent 仍是 `goal-f1388e13`；宿主上的 fc-manager 仍是 `fa96d650` 的构建
+  （`986bf363…`，main 里这部分与它相同），没换。
+- values 第 45 版（`values-rev45.yaml`，`prep_values.py` 由第 44 版生成）：`image.tag` 换新，各组件单独的 tag 只留沙箱镜像；后端登记与签发方取线上 ConfigMap 原样
+  （含 `firecracker-tb20` 与运维签发方的 `eval-tb20-20261109`）；`memory.extraEnv` 是 `AR_MEMORY_RERANK_MODE=bm25_pool50`，model-gateway 与 task-service 的
+  `extraEnv` 是评测租户的两个开关，评测网站挂两个只读 PVC。升级前渲染与线上清单比过：除镜像标签与 `OTEL_SERVICE_VERSION` 外只多了 model-gateway 的 `AR_S3_*`
+  （main 新加的图片输入）。没有在跑的 Python 工作流时 `helm upgrade`，第 45 版 deployed。
+- 核对：全部 Deployment 是 `rec-c8ed02ec`、就绪；egress-gateway、pkg-mirror、sandbox-service、task-service 各重启一次（同以前）；新 Pod 十分钟内日志无错误；
+  sandbox-service 列出 `cloudflare firecracker firecracker-tb20 gvisor kata`；手工配置都在；`api.cgent.link/healthz`、`code.cgent.link`、`evals.cgent.link` 200，
+  评测网站是新的应用、数据读得到。
+- 回滚：`rollback.sh`（`helm rollback ar 44` 后按 `live-deployments-before.yaml`、`live-configmaps-before.yaml` 恢复手工换上去的镜像与配置；单靠 rollback 回不到 11-09 以来的状态）。
+- **没有验证**：真 Task 在新版本上跑完（要花钱）；不限时联网与人批联网、diff 分块、BM25 检索在线上的实际调用；Firecracker benchmark 后端经新 sandbox-service 起 VM。
+
 实现中与本计划写法不同的：
 
 - D-01 验收 1 说 Memory Service 的 `/healthz` 返回 200：它只有 gRPC，镜像测试改为核对 gRPC 端口接受连接。
