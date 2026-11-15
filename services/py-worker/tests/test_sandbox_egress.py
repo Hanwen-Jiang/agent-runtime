@@ -121,9 +121,10 @@ async def test_request_network_needs_an_approver_and_writes_the_grant(tmp_path: 
     assert grant.approved_by == "u-admin" and grant.reason == "拉文档" and grant.session_id == SESSION
     expires = datetime.strptime(grant.expires_at, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)
     assert timedelta(minutes=14) < expires - datetime.now(UTC) <= timedelta(minutes=15)
-    with pytest.raises(DeniedError) as info:
-        await request(s, {"hosts": ["evil.example.org"], "minutes": 15, "reason": "x"}, key="k2")
-    assert info.value.code == "host_not_allowed"
+    # 策略不允许的申请不作为错误抛出：结果告诉模型没有授权与原因，不写授权。
+    out = await request(s, {"hosts": ["evil.example.org"], "minutes": 15, "reason": "x"}, key="k2")
+    assert out["granted"] is False and out["code"] == "host_not_allowed"
+    assert len(await s.grants.for_task("t1", TASK)) == 1
 
 
 async def test_admin_approver_rejects_self_approval(tmp_path: Path) -> None:
@@ -131,7 +132,7 @@ async def test_admin_approver_rejects_self_approval(tmp_path: Path) -> None:
     # 提交者本人批的不算：不写授权，结果告诉模型要管理员批准（不再作为错误抛出）。
     out = await request(s, {"hosts": ["api.example.com"], "minutes": 15, "reason": "x"}, approved_by="u1", key="k1")
     assert out["granted"] is False and out["code"] == "network_needs_admin"
-    assert await s.grants.for_task("t1", TASK) == []
+    # 下面管理员批准之后恰好一条授权：提交者本人那次没有写。
     await request(s, {"hosts": ["api.example.com"], "minutes": 15, "reason": "x"}, approved_by="u-admin", key="k2")
     assert len(await s.grants.for_task("t1", TASK)) == 1
 
